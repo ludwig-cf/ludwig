@@ -62,6 +62,7 @@ struct colloid {
   FVector   r;             /* Position vector of centre of mass */
   FVector   v;             /* Linear velocity */
   FVector   omega;         /* Angular velocity */
+  double    random[6];     /* Random numbers for Brownian dynamics */
   FVector   force;         /* Total force on colloid */
   FVector   torque;        /* Total torque on colloid */
   FVector   f0;            /* Velocity independent force */
