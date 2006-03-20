@@ -554,12 +554,6 @@ void COM_init( int argc, char **argv )
   io_grp.index = cart_rank()/io_grp.size + 1;   /* Start IO indexing at 1 */
   sprintf(io_grp.file_ext, ".%d-%d", io_grp.n_io, io_grp.index);
 
-  if (io_grp.n_io >= FOPEN_MAX) {
-    verbose("Trying to open %d files (max is %d)\n", io_grp.n_io, FOPEN_MAX);
-    verbose("Set MAX_IO_NODE (now %d) to a smaller value\n", MAX_IO_NODE);
-    fatal("");
-  }  
-
   /* Create communicator for each IO group, and get rank within IO group */
   MPI_Comm_split(cart_comm(), io_grp.index, cart_rank(), &IO_Comm);
   MPI_Comm_rank(IO_Comm, &io_grp.rank);
@@ -1097,21 +1091,16 @@ void COM_process_options( Input_Data *h )
 {
 #ifdef _MPI_
 
-  int        i,flag,nthreads,max_io;
+  int        flag;
   Input_Data *p,*tmp;
   char       parameter[256],value[256];
 
   LUDWIG_ENTER("COM_process_options()");
 
   /* Set up defaults */
-  /* Sets default number of I/O channels to their optimal value */
+  /* Set default number of I/O channels */
 
-  for(i=1; i<=MAX_IO_NODE; i++)
-    {
-      if(((pe_size()%i) == 0) && ((pe_size()/i) > 1)){
-	io_grp.n_io = i;
-      }
-    }
+  io_grp.n_io = 1;
   
   /* Read out list */
   p = h->next;
