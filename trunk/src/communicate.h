@@ -19,8 +19,6 @@ enum{
 #endif /* _MPI_ */
 
 
-#define MAX_IO_NODE 128  /* Maximum number of IO nodes (for parallel IO) */
-
 void    COM_init( int, char ** );
 void    COM_finish( void );
 void    COM_halo( void );
