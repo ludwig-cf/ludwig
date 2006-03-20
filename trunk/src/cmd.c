@@ -71,18 +71,20 @@
 #include "cio.h"
 
 #define  POT_ALPHA       0.0002 /* p1 in soft sphere */
-#define  POT_BETA        -6.0   /* p1 in soft sphere */
+#define  POT_BETA        -12.0   /* p1 in soft sphere */
 #define  R_SSPH          0.3    /* soft sphere repulsion for MD */
 #define  R_MAXINFLATE    0.0025    /* Maximum growth rate */
-#define  HMIN_REQUEST    0.15   /* Should be safe */
-#define  HMIN_GROWTH     0.20
+#define  HMIN_REQUEST    0.1   /* Should be safe */
+#define  HMIN_GROWTH     0.1
 #define  VF_MAX          0.55
 #define  NMAX_ITERATIONS 12000
+#define  NMAX_BROWNIAN   500
 
 static void CMD_do_md(void);
-static void CMD_reset_particles(void);
+static void CMD_reset_particles(const double);
 static int  CMD_update_colloids(double hmin);
-
+static void CMD_brownian_dynamics_step(void);
+static void CMD_brownian_set_random(void);
 
 /*****************************************************************************
  *
@@ -190,6 +192,9 @@ void CMD_init_volume_fraction(int nradius, int flag) {
   /* Iterate until an acceptable solution is found */
 
   CMD_do_md();
+  CMD_reset_particles(0.0);
+  CMD_do_more_md();
+  CMD_reset_particles(1.0);
 
   /* Restore the original user parameters before saving the
    * initial particle data. Make sure the cell list is up-to-date,
@@ -201,7 +206,7 @@ void CMD_init_volume_fraction(int nradius, int flag) {
   Global_Colloid.r_lu_n = r_lu_n;
 
   CELL_update_cell_lists();
-  CMD_reset_particles();
+  /* CMD_reset_particles();*/
   CIO_write_state("config.cds000000");
 
 #ifdef _MPI_
@@ -287,6 +292,7 @@ void CMD_do_md() {
       info("CMD iteration %d: minimum separation was %f (request %f)\n", n,
 	   hmin, HMIN_REQUEST);
       info("CMD iteration %d: inflation total %f\n", n, delta);
+      CMD_test_particle_energy(n);
     }
 
   } while (too_close || too_small);
@@ -321,6 +327,10 @@ int CMD_update_colloids(double delta_a) {
   int     too_small = 0;
   Colloid * p_colloid;
 
+  double rmass;
+
+  rmass = 1.0/((4.0/3.0)*PI*Global_Colloid.ah);
+
   for (ic = 0; ic <= ncell.x + 1; ic++) {
     for (jc = 0; jc <= ncell.y + 1; jc++) {
       for (kc = 0; kc <= ncell.z + 1; kc++) {
@@ -329,9 +339,9 @@ int CMD_update_colloids(double delta_a) {
 
 	while (p_colloid) {
 
-	  p_colloid->v.x = p_colloid->force.x;
-	  p_colloid->v.y = p_colloid->force.y;
-	  p_colloid->v.z = p_colloid->force.z;
+	  p_colloid->v.x += rmass*p_colloid->force.x;
+	  p_colloid->v.y += rmass*p_colloid->force.y;
+	  p_colloid->v.z += rmass*p_colloid->force.z;
 
 	  p_colloid->r.x += p_colloid->v.x;
 	  p_colloid->r.y += p_colloid->v.y;
@@ -371,7 +381,7 @@ int CMD_update_colloids(double delta_a) {
  *
  *****************************************************************************/
 
-void CMD_reset_particles() {
+void CMD_reset_particles(const double factor) {
 
   int     ic, jc, kc;
   IVector ncell = Global_Colloid.Ncell;
@@ -392,9 +402,9 @@ void CMD_reset_particles() {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
-	  p_colloid->v.x   = cs*normalise*ran_parallel_gaussian();
-	  p_colloid->v.y   = cs*normalise*ran_parallel_gaussian();
-	  p_colloid->v.z   = cs*normalise*ran_parallel_gaussian();
+	  p_colloid->v.x   = factor*cs*normalise*ran_parallel_gaussian();
+	  p_colloid->v.y   = factor*cs*normalise*ran_parallel_gaussian();
+	  p_colloid->v.z   = factor*cs*normalise*ran_parallel_gaussian();
 	  p_colloid->omega = UTIL_fvector_zero();
 
 	  /* Accumulate the totals */
@@ -455,8 +465,299 @@ void CMD_reset_particles() {
 	    vmin, vmax);
   }
 
+  CELL_update_cell_lists();
   CCOM_halo_particles();
   CCOM_sort_halo_lists();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  CMD_test_particle_energy
+ *
+ *****************************************************************************/
+
+CMD_test_particle_energy(const int step) {
+
+  int     ic, jc, kc;
+  IVector ncell = Global_Colloid.Ncell;
+  Colloid * p_colloid;
+
+  double sum[3], gsum[3];
+  double mass;
+
+  mass = (4.0/3.0)*PI*pow(Global_Colloid.ah, 3.0);
+
+  sum[0] = 0.0;
+  sum[1] = 0.0;
+  sum[2] = 0.0;
+
+  for (ic = 1; ic <= ncell.x; ic++) {
+    for (jc = 1; jc <= ncell.y; jc++) {
+      for (kc = 1; kc <= ncell.z; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+
+	  /* Accumulate the totals */
+	  sum[0] += p_colloid->v.x;
+	  sum[1] += p_colloid->v.y;
+	  sum[2] += p_colloid->v.z;
+
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+#ifdef _MPI_
+  MPI_Reduce(sum, gsum, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  sum[0] = gsum[0];
+  sum[1] = gsum[1];
+  sum[2] = gsum[2];
+#endif
+
+  gsum[0] = sum[0]/Global_Colloid.N_colloid;
+  gsum[1] = sum[1]/Global_Colloid.N_colloid;
+  gsum[2] = sum[2]/Global_Colloid.N_colloid;
+
+  info("Mean particle velocities: [x, y, z]\n");
+  info("[%g, %g, %g]\n", gsum[0], gsum[1], gsum[2]);
+
+
+  sum[0] = 0.0;
+  sum[1] = 0.0;
+  sum[2] = 0.0;
+
+  for (ic = 1; ic <= ncell.x; ic++) {
+    for (jc = 1; jc <= ncell.y; jc++) {
+      for (kc = 1; kc <= ncell.z; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+
+	  /* Accumulate the totals */
+	  sum[0] += p_colloid->v.x*p_colloid->v.x;
+	  sum[1] += p_colloid->v.y*p_colloid->v.y;
+	  sum[2] += p_colloid->v.z*p_colloid->v.z;
+
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+#ifdef _MPI_
+  MPI_Reduce(sum, gsum, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  sum[0] = gsum[0];
+  sum[1] = gsum[1];
+  sum[2] = gsum[2];
+#endif
+
+  gsum[0] = sum[0]/Global_Colloid.N_colloid;
+  gsum[1] = sum[1]/Global_Colloid.N_colloid;
+  gsum[2] = sum[2]/Global_Colloid.N_colloid;
+
+  info("Particle: %d %g %g %g %g\n", step,
+       mass*gsum[0], mass*gsum[1], mass*gsum[2],
+       mass*(gsum[0] + gsum[1] + gsum[2]));
+
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ * CMD_do_more_md
+ *
+ *****************************************************************************/
+
+
+CMD_do_more_md() {
+
+  int n = 0;
+  double hmin;
+
+  void COLL_zero_forces(void);
+  void COLL_set_colloid_gravity(void);
+
+  do {
+
+    CMD_brownian_set_random();
+
+    CELL_update_cell_lists();
+    CCOM_halo_particles();
+    CCOM_sort_halo_lists();
+
+    COLL_zero_forces();
+    hmin = COLL_interactions();
+    COLL_set_colloid_gravity(); /* Zero force on halo particles! */
+
+    CCOM_halo_sum(CHALO_TYPE1);
+
+    CMD_brownian_dynamics_step();
+
+    if (n % 1 == 0) {
+      char md_file[64];
+
+#ifdef _MPI_
+      /* Get a global hmin */
+    {
+      double hmin_global = 0.0;
+      MPI_Reduce(&hmin, &hmin_global, 1, MPI_DOUBLE, MPI_MIN, 0, cart_comm());
+      hmin = hmin_global;
+    }
+#endif
+
+      info("BD iteration %d: minimum separation was %f\n", n, hmin);
+      CMD_test_particle_energy(n);
+      
+      sprintf(md_file, "%s%6.6d", "config.bd", n);
+      CIO_write_state(md_file);
+    }
+
+
+  } while (n++ < NMAX_BROWNIAN);
+
+  CELL_update_cell_lists();
+  CCOM_halo_particles();
+  CCOM_sort_halo_lists();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  CMD_brownian_dynamics_step
+ *
+ *  This updates the position an velocities of all particles.
+ *  The algorithm is that of Ermak as described by Allen & Tildesley.
+ *
+ *  All the particles are assumed to have the same mass.
+ *
+ *****************************************************************************/
+
+void CMD_brownian_dynamics_step() {
+
+  int     ic, jc, kc;
+  IVector ncell = Global_Colloid.Ncell;
+  Colloid * p_colloid;
+
+  double ranx, rany, ranz;
+  double cx, cy, cz;
+
+  double c0, c1, c2;
+  double xi, xidt;
+  double sigma_r, sigma_v;
+  double c12, c21;
+  double rmass, kT;
+  double dt;
+
+  extern double normalise;
+
+  dt = 1.0;
+  rmass = 1.0/((4.0/3.0)*PI*pow(Global_Colloid.ah, 3.0));
+
+  /* Friction coefficient is xi, and related quantities */
+
+  xi = 6.0*PI*gbl.eta*Global_Colloid.ah*rmass;
+  xidt = xi*dt;
+
+  c0 = exp(-xidt);
+  c1 = (1.0 - c0) / xidt;
+  c2 = (1.0 - c1) / xidt;
+
+  c1 *= dt;
+  c2 *= dt*dt;
+
+  /* Random variances */
+
+  kT = normalise*normalise/3.0;
+
+  sigma_r = sqrt(dt*dt*rmass*kT*(2.0 - (3.0 - 4.0*c0 + c0*c0)/xidt) / xidt);
+  sigma_v = sqrt(rmass*kT*(1.0 - c0*c0));
+
+  c12 = dt*rmass*kT*(1.0 - c0)*(1.0 - c0) / (xidt*sigma_r*sigma_v);
+  c21 = sqrt(1.0 - c12*c12);
+
+  /* Update each particle */
+
+  for (ic = 0; ic <= ncell.x + 1; ic++) {
+    for (jc = 0; jc <= ncell.y + 1; jc++) {
+      for (kc = 0; kc <= ncell.z + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+
+	  ranx = p_colloid->random[0];
+	  rany = p_colloid->random[1];
+	  ranz = p_colloid->random[2];
+
+	  cx = c1*p_colloid->v.x + rmass*c2*p_colloid->force.x + sigma_r*ranx;
+	  cy = c1*p_colloid->v.y + rmass*c2*p_colloid->force.y + sigma_r*rany;
+	  cz = c1*p_colloid->v.z + rmass*c2*p_colloid->force.z + sigma_r*ranz;
+
+	  p_colloid->r.x += cx;
+	  p_colloid->r.y += cy;
+	  p_colloid->r.z += cz;
+
+	  /* Generate correlated random pairs */
+
+	  ranx = (c12*ranx + c21*p_colloid->random[3]);
+	  rany = (c12*rany + c21*p_colloid->random[4]);
+	  ranz = (c12*ranz + c21*p_colloid->random[5]);
+
+	  cx = c0*p_colloid->v.x + rmass*c1*p_colloid->force.x + sigma_v*ranx;
+	  cy = c0*p_colloid->v.y + rmass*c1*p_colloid->force.y + sigma_v*rany;
+	  cz = c0*p_colloid->v.z + rmass*c1*p_colloid->force.z + sigma_v*ranz;
+
+	  p_colloid->v.x = cx;
+	  p_colloid->v.y = cy;
+	  p_colloid->v.z = cz;
+
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+
+void CMD_brownian_set_random() {
+
+  int     ic, jc, kc;
+  IVector ncell = Global_Colloid.Ncell;
+  Colloid * p_colloid;
+
+  /* Set random numbers for each particle */
+
+  for (ic = 1; ic <= ncell.x; ic++) {
+    for (jc = 1; jc <= ncell.y; jc++) {
+      for (kc = 1; kc <= ncell.z; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+
+	  p_colloid->random[0] = ran_parallel_gaussian();
+	  p_colloid->random[1] = ran_parallel_gaussian();
+	  p_colloid->random[2] = ran_parallel_gaussian();
+	  p_colloid->random[3] = ran_parallel_gaussian();
+	  p_colloid->random[4] = ran_parallel_gaussian();
+	  p_colloid->random[5] = ran_parallel_gaussian();
+
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
 
   return;
 }

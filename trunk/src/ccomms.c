@@ -55,6 +55,7 @@ struct colloid_halo_message {
   FVector   dir;
   Float     dp;
   Float     angle;
+  double    random[6];
 };
 
 struct colloid_sum_message_type1 {
@@ -430,6 +431,12 @@ void CMPI_accept_new(int nrecv) {
 	p_existing->omega.x = p_colloid->omega.x;
 	p_existing->omega.y = p_colloid->omega.y;
 	p_existing->omega.z = p_colloid->omega.z;
+	p_existing->random[0] = p_colloid->random[0];
+	p_existing->random[1] = p_colloid->random[1];
+	p_existing->random[2] = p_colloid->random[2];
+	p_existing->random[3] = p_colloid->random[3];
+	p_existing->random[4] = p_colloid->random[4];
+	p_existing->random[5] = p_colloid->random[5];
 #endif
 	p_existing->export = 1;
 	exists = 1;
@@ -856,6 +863,13 @@ void CCOM_load_halo_buffer(Colloid * p_colloid, int n, FVector rperiod) {
   _halo_send[n].dp      = p_colloid->dp;
   _halo_send[n].angle   = p_colloid->angle;
 
+  _halo_send[n].random[0] = p_colloid->random[0];
+  _halo_send[n].random[1] = p_colloid->random[1];
+  _halo_send[n].random[2] = p_colloid->random[2];
+  _halo_send[n].random[3] = p_colloid->random[3];
+  _halo_send[n].random[4] = p_colloid->random[4];
+  _halo_send[n].random[5] = p_colloid->random[5];
+
   return;
 }
 
@@ -892,6 +906,13 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->dir.z   = _halo_recv[nrecv].dir.z;
   p_colloid->dp      = _halo_recv[nrecv].dp;
   p_colloid->angle   = _halo_recv[nrecv].angle;
+
+  p_colloid->random[0] = _halo_recv[nrecv].random[0];
+  p_colloid->random[1] = _halo_recv[nrecv].random[1];
+  p_colloid->random[2] = _halo_recv[nrecv].random[2];
+  p_colloid->random[3] = _halo_recv[nrecv].random[3];
+  p_colloid->random[4] = _halo_recv[nrecv].random[4];
+  p_colloid->random[5] = _halo_recv[nrecv].random[5];
 
   /* Additionally, must set all accumulated quantities to zero. */
   p_colloid->rebuild = 1;
