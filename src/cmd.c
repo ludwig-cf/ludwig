@@ -74,11 +74,11 @@
 #define  POT_BETA        -12.0   /* p1 in soft sphere */
 #define  R_SSPH          0.3    /* soft sphere repulsion for MD */
 #define  R_MAXINFLATE    0.0025    /* Maximum growth rate */
-#define  HMIN_REQUEST    0.1   /* Should be safe */
-#define  HMIN_GROWTH     0.1
+#define  HMIN_REQUEST    0.01   /* Should be safe */
+#define  HMIN_GROWTH     0.01
 #define  VF_MAX          0.55
-#define  NMAX_ITERATIONS 12000
-#define  NMAX_BROWNIAN   500
+#define  NMAX_ITERATIONS 200000
+#define  NMAX_BROWNIAN   100000
 
 static void CMD_do_md(void);
 static void CMD_reset_particles(const double);
@@ -242,6 +242,7 @@ void CMD_do_md() {
       fatal("Hit NMAX_ITERATIONS in molecular dynamcics\n");
     }
 
+
     CELL_update_cell_lists();
     CCOM_halo_particles();
     CCOM_sort_halo_lists();
@@ -288,7 +289,7 @@ void CMD_do_md() {
     }
 #endif
 
-    if (n % 100 == 0) {
+    if (n % 1000 == 0) {
       info("CMD iteration %d: minimum separation was %f (request %f)\n", n,
 	   hmin, HMIN_REQUEST);
       info("CMD iteration %d: inflation total %f\n", n, delta);
@@ -461,8 +462,6 @@ void CMD_reset_particles(const double factor) {
 #ifdef _MPI_
     /* MPI_Reduce(); */
 #endif
-    verbose("MEAN SQ: %g %g %g MIN/MAX %g %g\n", xst/nt, yst/nt, zst/nt,
-	    vmin, vmax);
   }
 
   CELL_update_cell_lists();
@@ -598,9 +597,14 @@ CMD_do_more_md() {
 
     CCOM_halo_sum(CHALO_TYPE1);
 
-    CMD_brownian_dynamics_step();
+    if (n < NMAX_BROWNIAN/10) {
+      CMD_update_colloids(0.0);
+    }
+    else {
+      CMD_brownian_dynamics_step();
+    }
 
-    if (n % 1 == 0) {
+    if ((n % 1000) == 0) {
       char md_file[64];
 
 #ifdef _MPI_
@@ -614,9 +618,10 @@ CMD_do_more_md() {
 
       info("BD iteration %d: minimum separation was %f\n", n, hmin);
       CMD_test_particle_energy(n);
-      
-      sprintf(md_file, "%s%6.6d", "config.bd", n);
+
+      sprintf(md_file, "%s%6.6d", "config.bd", n/1000);
       CIO_write_state(md_file);
+
     }
 
 
