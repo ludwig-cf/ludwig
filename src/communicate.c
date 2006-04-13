@@ -1162,7 +1162,7 @@ int COM_local_index( int g_ind )
   int g_xfac, g_yfac, ind;
 
   get_N_local(N);
-  get_N_offset(N);
+  get_N_offset(offset);
 
   g_yfac = (N_total(Z) + 2);
   g_xfac = (N_total(Y) + 2) * g_yfac;
