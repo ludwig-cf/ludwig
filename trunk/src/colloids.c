@@ -237,13 +237,13 @@ void COLL_init_colloids_test() {
   r0.y =  .0 + 0.5*L(Y) + 0.0*RAN_uniform();
   r0.z =  .0 + 0.5*L(Z) + 0.0*RAN_uniform();
 
-  v0.x = 1.0*gbl.eta/ah;
+  v0.x = 1.0*get_eta_shear()/ah;
   v0.y = 0.0;
   v0.z = 0.0;
 
   omega0.x = 0.0;
   omega0.y = 0.0;
-  omega0.z = 0.0*gbl.eta/(ah*ah);
+  omega0.z = 0.0*get_eta_shear()/(ah*ah);
 
   /* Look at the proposed position and decide whether it is in
    * the local domain. If it is, then it can be added. */
@@ -285,7 +285,7 @@ void COLL_init_colloids_test() {
   r0.y = 0.0*L(Y) + _Lmin.y + RAN_uniform();
   r0.z = 0.0*L(Z) + _Lmin.z + RAN_uniform();
 
-  v0.x = 0.1*gbl.eta/ah;
+  v0.x = 0.1*get_eta_shear()/ah;
   v0.y = 0.0;
   v0.z = 0.0;
 
@@ -293,14 +293,14 @@ void COLL_init_colloids_test() {
   omega0.y = 0.0;
   omega0.z = 0.0;
 
-  v0.x = 0.01*gbl.eta/ah;
+  v0.x = 0.01*get_eta_shear()/ah;
   r0.x = 7.352999440561971;
   r0.y = 7.954383520227735;
   r0.z = 8.652245545163171;
 
   COLL_add_colloid_no_halo(1, a0, ah, r0, v0, omega0);
 
-  v0.x = -0.01*gbl.eta/ah;
+  v0.x = -0.01*get_eta_shear()/ah;
   r0.x = 11.367262769237062;
   r0.y = 10.313033605508135;
   r0.z = 10.090403708490734;
@@ -365,7 +365,7 @@ void COLL_init_colloids_test() {
    * scales as Re * viscosity / a. This also applies to the
    * external force (to within a minus sign). */
 
-  tmp = 0.05*gbl.eta/a0;
+  tmp = 0.05*get_eta_shear()/a0;
 
   v0.x = -RAN_uniform()*tmp;
   v0.y = -RAN_uniform()*tmp;
@@ -671,14 +671,15 @@ void COLL_set_fluid_gravity() {
 
   double volume;
   extern double MISC_fluid_volume(void); /* Move me */
+  extern double siteforce[3];
 
   volume = MISC_fluid_volume();
 
   /* Size of force per fluid node */
 
-  gbl.force.x = -Global_Colloid.N_colloid*Global_Colloid.F.x/volume;
-  gbl.force.y = -Global_Colloid.N_colloid*Global_Colloid.F.y/volume;
-  gbl.force.z = -Global_Colloid.N_colloid*Global_Colloid.F.z/volume;
+  siteforce[X] = -Global_Colloid.N_colloid*Global_Colloid.F.x/volume;
+  siteforce[Y] = -Global_Colloid.N_colloid*Global_Colloid.F.y/volume;
+  siteforce[Z] = -Global_Colloid.N_colloid*Global_Colloid.F.z/volume;
 
   return;
 }
@@ -875,7 +876,8 @@ FVector COLL_lubrication(Colloid * p_i, Colloid * p_j, FVector r_ij, Float h) {
     rh     = 1.0 / h;
     du     = UTIL_fvector_subtract(p_i->v, p_j->v);
     rdotdu = UTIL_dot_product(runit, du);
-    fmod   = -6.0*PI*gbl.eta*ai*ai*aj*aj*(rh - 1.0/r_lu_n) / ((ai+ai)*(aj+aj));
+    fmod   = -6.0*PI*get_eta_shear()*ai*ai*aj*aj*(rh - 1.0/r_lu_n)
+      / ((ai+ai)*(aj+aj));
 
     force.x += fmod*rdotdu*runit.x;
     force.y += fmod*rdotdu*runit.y;
@@ -884,7 +886,8 @@ FVector COLL_lubrication(Colloid * p_i, Colloid * p_j, FVector r_ij, Float h) {
     /* Tangential lubrication correction */
     if (h < r_lu_t) {
       rh = 0.5*(ai+aj)/h;
-      fmod = -(24.0/15.0)*PI*gbl.eta*ai*aj*(2.0*ai*ai + ai*aj + 2.0*aj*aj)*
+      fmod = -(24.0/15.0)*PI*get_eta_shear()*ai*aj*
+	(2.0*ai*ai + ai*aj + 2.0*aj*aj)*
 	(log(rh) - log(0.5*(ai+aj)/r_lu_t)) / ((ai+aj)*(ai+aj)*(ai+aj));
 
       force.x += fmod*(du.x - rdotdu*runit.x);

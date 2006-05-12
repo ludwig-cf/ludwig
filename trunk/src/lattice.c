@@ -34,8 +34,6 @@ static int _nalloc_mb;    /* Mbytes currently allocated */
  
 void LATT_allocate_sites(const int nsites) {
 
-  extern Site * site;
-
   info("Requesting %d bytes for site data\n", nsites*sizeof(Site));
 
 #ifdef _MPI_2_

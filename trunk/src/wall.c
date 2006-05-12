@@ -507,15 +507,15 @@ FVector WALL_lubrication(Colloid * p_colloid) {
 
     /* Normal force */
     if (gap < r_lu_n) {
-      fl.z = -6.0*PI*gbl.eta*ah*ah*(1.0/gap - 1.0/r_lu_n);
+      fl.z = -6.0*PI*get_eta_shear()*ah*ah*(1.0/gap - 1.0/r_lu_n);
     }
 
     /* Tangential force (dependent on particle velocity only) */
     if (gap < r_lu_t) {
       s  = log(gap/(gap + ah));
       s0 = log(r_lu_t/(r_lu_t + ah));
-      fl.x = +6.0*PI*gbl.eta*ah*(s - s0);
-      fl.y = +6.0*PI*gbl.eta*ah*(s - s0);
+      fl.x = +6.0*PI*get_eta_shear()*ah*(s - s0);
+      fl.y = +6.0*PI*get_eta_shear()*ah*(s - s0);
     }
 
     /* Upper wall */
@@ -534,13 +534,13 @@ FVector WALL_lubrication(Colloid * p_colloid) {
     }
 
     if (gap < r_lu_n) {
-      fl.z = -6.0*PI*gbl.eta*ah*ah*(1.0/gap - 1.0/r_lu_n);
+      fl.z = -6.0*PI*get_eta_shear()*ah*ah*(1.0/gap - 1.0/r_lu_n);
     }
     if (gap < r_lu_t) {
       s  = log(gap/(gap + ah));
       s0 = log(r_lu_t/(r_lu_t + ah));
-      fl.x = +6.0*PI*gbl.eta*ah*(s - s0);
-      fl.y = +6.0*PI*gbl.eta*ah*(s - s0);
+      fl.x = +6.0*PI*get_eta_shear()*ah*(s - s0);
+      fl.y = +6.0*PI*get_eta_shear()*ah*(s - s0);
     }
   }
 

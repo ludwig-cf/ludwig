@@ -17,7 +17,7 @@
 #include "cmem.h"
 #include "cio.h"
 
-static char rcsid[] = "$Id: main.c,v 1.1.1.1 2006-03-08 15:18:47 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.2 2006-05-12 15:00:10 kevin Exp $";
 
 
 int main( int argc, char **argv )
@@ -98,7 +98,7 @@ int main( int argc, char **argv )
     /* There must be no halo updates between COLL_bounce_back
      *  and propagation, as the halo regions hold active f,g */
 
-    MODEL_limited_propagate();
+    propagation();
 
 #else
     /* No colloids */
@@ -109,13 +109,7 @@ int main( int argc, char **argv )
     LE_apply_LEBC();
 
     COM_halo();
-#ifdef _D3Q19_
-    TIMER_start(TIMER_PROPAGATE);
-    d3q19_propagate_binary();
-    TIMER_stop(TIMER_PROPAGATE);
-#else
-    MODEL_limited_propagate();
-#endif
+    propagation();
 #endif /* _COLLOIDS_ */
 
     TIMER_stop(TIMER_STEPS);
@@ -175,7 +169,6 @@ int main( int argc, char **argv )
   sprintf(filename, "%s%6.6d", "config.cds", step);
   CIO_write_state(filename);
   COLL_finish();
-  MODEL_finish();
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();

@@ -5,7 +5,7 @@ N_cycles 40
 size 64_64_64
 #grid 4_1_1
 
-random_seed 5361237
+random_seed 7361237
 
 A -0.002
 B 0.002
