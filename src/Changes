@@ -1,0 +1,20 @@
+Changes
+
+Log file for changes to the code.
+=================================
+
+2006 May 12 kevin
+
+* I have moved all d3q15 dependent code to the new file d3q15.c
+  (including the propagation and the ghost modes). Likewise, all
+  d3q19 stuff is in d3q19.c. This means the site variable is
+  declared in d3qnn.h.
+
+* D3Q19 ghost noise has been added.
+
+* The single-fluid collision has been moved to model.c, and
+  single.c removed.
+
+* I've removed the variables gbl.eta and gbl.noise in favour
+  of encapsulated versions in model.c. All gbl objects are
+  scheduled for deletion.

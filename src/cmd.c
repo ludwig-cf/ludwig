@@ -60,10 +60,10 @@
  *****************************************************************************/
 
 #include "pe.h"
+#include "ran.h"
 #include "coords.h"
 #include "cartesian.h"
 
-#include "globals.h"
 #include "utilities.h"
 #include "colloids.h"
 #include "ccomms.h"
@@ -668,7 +668,7 @@ void CMD_brownian_dynamics_step() {
 
   /* Friction coefficient is xi, and related quantities */
 
-  xi = 6.0*PI*gbl.eta*Global_Colloid.ah*rmass;
+  xi = 6.0*PI*get_eta_shear()*Global_Colloid.ah*rmass;
   xidt = xi*dt;
 
   c0 = exp(-xidt);

@@ -223,9 +223,12 @@ FVector TEST_fluid_momentum() {
 	    mvy += cv[p][1]*f[p];
 	    mvz += cv[p][2]*f[p];
 	  }
+	  /* Check what is required here... */
+	  /*
 	  mvx += 0.5*gbl.force.x;
 	  mvy += 0.5*gbl.force.y;
 	  mvz += 0.5*gbl.force.z;
+	  */
 	}
       }
     }

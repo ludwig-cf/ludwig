@@ -2,15 +2,16 @@
 #
 # Makefile for LUDWIG
 #
-# General purpose flags:
+# Preprocessor flags.
 #
-# Physics
-#
+# -D_D3Q19_              Use D3Q19 instead of D3Q15 (the default)
 # -D_NOISE_              Switch on fluctuations
-# -D_SINGLE_FLUID_       Approximate single fluid (*)
+# -D_SINGLE_FLUID_       Use single fluid only
 # -D_COLLOIDS_           Introduce particles
 #
-# Other code options
+#
+# make serial            for serial code
+# make mpi               for parallel code
 #
 ###############################################################################
 
@@ -18,9 +19,9 @@
 OBJS= interaction.o main.o model.o \
       cells.o cio.o cmem.o cmd.o ccomms.o \
       colloids.o communicate.o coords.o cartesian.o control.o \
-      d3q19.o eigen3.o free_energy.o \
+      d3q15.o d3q19.o eigen3.o free_energy.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
-      test.o timer.o utilities.o single.o wall.o
+      test.o timer.o utilities.o wall.o
 
 EXE= Ludwig.exe
 
@@ -33,8 +34,8 @@ EXE= Ludwig.exe
 CC= cc
 MPICC= tmcc
 
-LDFLAGS= -Xc
-OPTS =  #-D_COLLOIDS_ -D_SINGLE_FLUID_
+LDFLAGS= -Xc -fast
+OPTS =  -D_NOISE_ -D_SINGLE_FLUID_
 
 # For Sun perflib use -xlic_lib=sunperf
 

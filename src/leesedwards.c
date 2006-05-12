@@ -471,14 +471,6 @@ void LE_init_distribs_tosteadystate( Float transvel )
   if(pe_rank() == 0){
     printf("Setting linear velocity ramp between LE walls with slope %lg\n"
 	   "and transverse velocity %lg\n", ugrad, transvel);
-
-    /* May be useful to test the Lees-Edwards */    
-    printf("Value of eta*gra_u is:\n\t%lg %lg %lg\n"
-	   "\t%lg %lg %lg\n"
-	   "\t%lg %lg %lg\n",
-	   0.0,ugrad*gbl.eta,0.0,
-	   0.0,0.0,0.0,
-	   0.0,0.0,0.0);
   }
 
   /* No plane intersects the local domain */

@@ -20,19 +20,4 @@
 /* Must be included after model.h */
 #include "communicate.h"
 
-#include "lattice.h"
-
-/* Random number routines */
-#include "ran.h"
-
-/* Graphics functions */
-#include "regsteer.h"
-
-/*--------------------- Definition of Global variables --------------------*/
-
-extern Global     gbl;        /* Most global variables live here */
-extern Site       *site;      /* The lattice */
-extern char       *site_map;  /* Map of full and empty sites */
-
-/*--------------------- End of header file --------------------------------*/
 #endif /* _GLOBALS_H */
