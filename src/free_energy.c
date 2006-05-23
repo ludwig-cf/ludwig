@@ -16,9 +16,9 @@
 
 #include <math.h>
 
-#include <pe.h>
-#include <runtime.h>
-#include <free_energy.h>
+#include "pe.h"
+#include "runtime.h"
+#include "free_energy.h"
 
 static double A     = -1.0;
 static double B     = +1.0;
