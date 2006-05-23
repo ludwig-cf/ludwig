@@ -20,6 +20,40 @@
 
 #ifdef _D3Q19_
 
+/*****************************************************************************
+ *
+ *  There are 19 eigenvectors:
+ *
+ *  rho             (eigenvector implicitly {1})
+ *  rho cv[p][X]    (x-component of velocity)
+ *  rho cv[p][Y]    (y-component of velocity) 
+ *  rho cv[p][Z]    (z-component of velocity)
+ *  q[p][X][X]      (xx component of deviatoric stress)
+ *  q[p][X][Y]      (xy component of deviatoric stress)
+ *  q[p][X][Z]      (xz ...
+ *  q[p][Y][Y]      (yy ...
+ *  q[p][Y][Z]      (yz ...
+ *  q[p][Z][Z]      (zz ...
+ *  chi1[p]         (1st ghost mode)
+ *  chi2[p]         (2nd ghost mode)
+ *  jchi1[p][X]     (x-component of ghost current chi1[p]*rho*cv[p][X])
+ *  jchi1[p][Y]     (y-component of ghost current chi1[p]*rho*cv[p][Y])
+ *  jchi1[p][Z]     (z-component of ghost current chi1[p]*rho*cv[p][Z])
+ *  jchi2[p][X]     (x-component of ghost current chi2[p]*rho*cv[p][X])
+ *  jchi2[p][Y]     (y-component of ghost current chi2[p]*rho*cv[p][Y])
+ *  jchi2[p][Z]     (z-component of ghost current chi2[p]*rho*cv[p][Z])
+ *  chi3[p]         (3rd ghost mode)
+ *
+ *  The associated quadrature weights are:
+ *
+ *  wv[p]
+ *
+ *  Note that q[p][i][j], jchi1[p][i], and jchi2[p][i] are computed
+ *  at run time.
+ *
+ *****************************************************************************/
+
+
 const int cv[NVEL][3] = {{ 0,  0,  0},
 			 { 1,  1,  0}, { 1,  0,  1}, { 1,  0,  0},
 			 { 1,  0, -1}, { 1, -1,  0}, { 0,  1,  1},
@@ -60,7 +94,9 @@ const double wv[NVEL] = {w0,
 Site    * site;
 
 
-const int BC_Map[NVEL];
+const int BC_Map[NVEL] = {0,
+			  18, 17, 16, 15, 14, 13, 12, 11, 10,
+			  9,  8,  7,  6,  5,  4,  3,  2,  1};
 
 
 static double jchi1[NVEL][3];
@@ -260,7 +296,6 @@ void d3q19_propagate_binary() {
   return;
 }
 
-
 /*****************************************************************************
  *
  *  init_ghosts
@@ -269,7 +304,7 @@ void d3q19_propagate_binary() {
  *
  *****************************************************************************/
 
-void init_ghosts(const double normalise) {
+void init_ghosts(const double kT) {
 
   double tau_ghost = 1.0;
   double var;
@@ -288,11 +323,11 @@ void init_ghosts(const double normalise) {
 
   var = sqrt((tau_ghost + tau_ghost - 1.0)/(tau_ghost*tau_ghost));
 
-  var_chi1  = normalise*sqrt(4.0/3.0)*var;
-  var_jchi1 = normalise*sqrt(2.0/3.0)*var;
-  var_chi2  = normalise*sqrt(1.0/3.0)*var;
-  var_jchi2 = normalise*sqrt(2.0/9.0)*var;
-  var_chi3 =  normalise*sqrt(2.0/1.0)*var;
+  var_chi1  = sqrt(kT)*sqrt(4.0/3.0)*var;
+  var_jchi1 = sqrt(kT)*sqrt(2.0/3.0)*var;
+  var_chi2  = sqrt(kT)*sqrt(4.0/9.0)*var;
+  var_jchi2 = sqrt(kT)*sqrt(2.0/9.0)*var;
+  var_chi3 =  sqrt(kT)*sqrt(2.0/1.0)*var;
 
   return;
 }
@@ -310,7 +345,7 @@ void get_ghosts(double fghost[]) {
 
   const double c3r4 = (3.0/4.0);   /* Normaliser for chi1 mode */
   const double c3r2 = (3.0/2.0);   /* Normaliser for jchi1 mode */
-  const double c3   =  3.0;        /* Normaliser for chi2 mode */
+  const double c3   = (9.0/4.0);   /* Normaliser for chi2 mode */
   const double c9r2 = (9.0/2.0);   /* Normaliser for jchi2 mode */
   const double r2   = (1.0/2.0);   /* Normaliser for chi3 mode */
 
@@ -320,7 +355,7 @@ void get_ghosts(double fghost[]) {
   double jchi1hat[3];
   double jchi2hat[3];
 
-  int   i, p;
+  int    i, p;
 
   /* Set fluctuating parts and and tot up the ghost projection. */
 
