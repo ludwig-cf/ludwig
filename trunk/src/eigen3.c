@@ -146,7 +146,7 @@ void tqli(double d[], double e[], int n, double ** z) {
  * because we cannot measure the length scales - modify to return */
 
 	if (iter++ == 50){
-	  printf("Too many iterations in TQLI (%d)\n",l);
+	  info("Too many iterations in TQLI (%d)\n",l);
 /* Set d to 0.0 and return -> L1 = L2 = L3 = 0.0 */
 /* Bad hack... */
 	  d[1] = 0.0; d[2] = 0.0; d[3] = 0.0;
@@ -198,7 +198,7 @@ void eigen3(double dxx,double dxy,double dxz,double dyy,double dyz,double dzz,
        double *eva2, double *eve2,
        double *eva3, double *eve3)
 {
-  int i,j,k;
+  int i;
   double *d,*e,**a;
   /*	static double c[NP][NP]=
 	{ 1.0, 0.1, 0.2,
@@ -349,7 +349,7 @@ void ql_factor(double d[ND], double e[ND], double z[ND][ND]) {
  * because we cannot measure the length scales - modify to return */
 
 	if (iter++ == 30){
-	  printf("Too many iterations in TQLI (%d)\n",l);
+	  info("Too many iterations in TQLI (%d)\n",l);
 	  /* Set d to 0.0 and return -> L1 = L2 = L3 = 0.0 */
 	  d[0] = 0.0; d[1] = 0.0; d[2] = 0.0;
 	  return;

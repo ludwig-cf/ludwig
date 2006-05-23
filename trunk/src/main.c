@@ -11,13 +11,16 @@
 #include "ran.h"
 #include "timer.h"
 #include "coords.h"
+#include "cartesian.h"
 #include "control.h"
+#include "free_energy.h"
 
 #include "globals.h"
 #include "cmem.h"
 #include "cio.h"
+#include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.2 2006-05-12 15:00:10 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.3 2006-05-23 17:06:44 kevin Exp $";
 
 
 int main( int argc, char **argv )
