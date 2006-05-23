@@ -393,8 +393,6 @@ void TEST_fluid_temperature() {
   double   rho, ux, uy, uz, chi2;
   double   *f;
 
-  extern double normalise;
-
   get_N_local(N);
   yfac = (N[Z] + 2);
   xfac = (N[Y] + 2)*yfac;
@@ -486,7 +484,7 @@ void TEST_fluid_temperature() {
   info("  <v_x^2> = %g\n", uxvar);
   info("  <v_y^2> = %g\n", uyvar);
   info("  <v_z^2> = %g\n", uzvar);
-  info("   <mv^2> = %g (target: %g)\n", uvar, normalise*normalise);
+  info("   <mv^2> = %g (target: %g)\n", uvar, get_kT());
   info(" <drho^2> = %g\n", rhovar);
   info("  <ghost> = %g\n", chi2var);
 

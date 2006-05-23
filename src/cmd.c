@@ -85,6 +85,8 @@ static void CMD_reset_particles(const double);
 static int  CMD_update_colloids(double hmin);
 static void CMD_brownian_dynamics_step(void);
 static void CMD_brownian_set_random(void);
+static void CMD_do_more_md(void);
+static void CMD_test_particle_energy(const int);
 
 /*****************************************************************************
  *
@@ -392,9 +394,10 @@ void CMD_reset_particles(const double factor) {
   double vmin = 0.0, vmax = 0.0;
   int nt = 0;
 
-  const double cs = 1.0/sqrt(3.0); /* c_s */
+  double var;
+  double get_kT(void);
 
-  extern double normalise;
+  var = factor*sqrt(get_kT());
 
   for (ic = 1; ic <= ncell.x; ic++) {
     for (jc = 1; jc <= ncell.y; jc++) {
@@ -403,9 +406,9 @@ void CMD_reset_particles(const double factor) {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
-	  p_colloid->v.x   = factor*cs*normalise*ran_parallel_gaussian();
-	  p_colloid->v.y   = factor*cs*normalise*ran_parallel_gaussian();
-	  p_colloid->v.z   = factor*cs*normalise*ran_parallel_gaussian();
+	  p_colloid->v.x   = var*ran_parallel_gaussian();
+	  p_colloid->v.y   = var*ran_parallel_gaussian();
+	  p_colloid->v.z   = var*ran_parallel_gaussian();
 	  p_colloid->omega = UTIL_fvector_zero();
 
 	  /* Accumulate the totals */
@@ -477,7 +480,7 @@ void CMD_reset_particles(const double factor) {
  *
  *****************************************************************************/
 
-CMD_test_particle_energy(const int step) {
+void CMD_test_particle_energy(const int step) {
 
   int     ic, jc, kc;
   IVector ncell = Global_Colloid.Ncell;
@@ -575,7 +578,7 @@ CMD_test_particle_energy(const int step) {
  *****************************************************************************/
 
 
-CMD_do_more_md() {
+void CMD_do_more_md() {
 
   int n = 0;
   double hmin;
@@ -660,8 +663,8 @@ void CMD_brownian_dynamics_step() {
   double c12, c21;
   double rmass, kT;
   double dt;
-
-  extern double normalise;
+  double get_eta_shear(void);
+  double get_kT(void);
 
   dt = 1.0;
   rmass = 1.0/((4.0/3.0)*PI*pow(Global_Colloid.ah, 3.0));
@@ -680,7 +683,7 @@ void CMD_brownian_dynamics_step() {
 
   /* Random variances */
 
-  kT = normalise*normalise/3.0;
+  kT = get_kT();
 
   sigma_r = sqrt(dt*dt*rmass*kT*(2.0 - (3.0 - 4.0*c0 + c0*c0)/xidt) / xidt);
   sigma_v = sqrt(rmass*kT*(1.0 - c0*c0));
