@@ -61,6 +61,7 @@ static double rtau_shear;      /* Inverse relaxation time for shear modes */
 static double rtau_bulk;       /* Inverse relaxation time for bulk modes */
 static double var_shear;       /* Variance for shear mode fluctuations */
 static double var_bulk;        /* Variance for bulk mode fluctuations */
+static double kT;              /* Isothermal fluctuating noise "temperature" */
        double _q[NVEL][3][3];  /* Q matrix */
 
 
@@ -72,17 +73,9 @@ static double var_bulk;        /* Variance for bulk mode fluctuations */
  *  MODEL_collide_multirelaxation
  *
  *  Collision with potentially different relaxation for different modes.
- *  From Ronojoy.
- *
  *  
  *  This routine is currently model independent, except that
  *  it is assumed that p = 0 is the null vector in the set.
- *
- *  The BGK form replaces the multirelaxation as :
- *    usq  = u[0]*u[0] + u[1]*u[1] + u[2]*u[2];
- *    feq  = wv[p]*rho*(1.0 + rcs2*udotc + r2rcs4*udotc*udotc - r2rcs2*usq);
- *    f[p] = f[p] - rtau*(f[p] - feq);
- *  with appropriate noise variances if required.
  *
  *****************************************************************************/
 
@@ -103,17 +96,17 @@ void MODEL_collide_multirelaxation() {
 
   Float    udotc;
   Float    sdotq;
-  Float    cdotf;
 
   Float    force[3];                /* External force */
+  double   tr_s, tr_seq, dij;
 
-  const Float    rcs2   = 3.0;      /* The constant 1 / c_s^2 */
-  const Float    r2rcs4 = 4.5;      /* The constant 1 / 2 c_s^4 */
+  const double   rcs2   = 3.0;      /* The constant 1 / c_s^2 */
+  const double   r2rcs4 = 4.5;      /* The constant 1 / 2 c_s^4 */
+  const double   r3     = (1.0/3.0);
 
   double fghost[NVEL];              /* Model-dependent ghost modes */
 
   extern FVector * _force;
-  extern double siteforce[3];
 
   TIMER_start(TIMER_COLLIDE);
 
@@ -167,22 +160,43 @@ void MODEL_collide_multirelaxation() {
 	  u[i] += rrho*force[i];  
 	}
 
-	/* Stress */
+	/* Relax stress with different shear and bulk viscosity */
+
+	tr_s   = 0.0;
+	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
+	    /* Compute s */
 	    s[i][j] = 0.0;
 	    shat[i][j] = 0.0;
 
 	    for (p = 0; p < NVEL; p++) {
 	      s[i][j] += f[p]*_q[p][i][j];
 	    }
+	  }
+	  /* Compute trace */
+	  tr_s   += s[i][i];
+	  tr_seq += (rho*u[i]*u[i]);
+	}
 
-	    /* Relax this stress mode */
-	    s[i][j] = s[i][j] - rtau*(s[i][j] - rho*u[i]*u[j]);
+	/* Form traceless parts */
+	for (i = 0; i < 3; i++) {
+	  s[i][i]   -= r3*tr_s;
+	}
 
-	    /* Add body force terms to give post-collision stress */
-	    s[i][j] = s[i][j] + (2.0-rtau)*(u[i]*force[j] + force[i]*u[j]);
+	/* Relax each mode */
+	tr_s = tr_s - rtau_bulk*(tr_s - tr_seq);
+
+	for (i = 0; i < 3; i++) {
+	  for (j = 0; j < 3; j++) {
+	    dij = (i == j);
+	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j]);
+	    s[i][j] += dij*r3*tr_s;
+
+	    /* Correction from body force (assumes equal relaxation times) */
+
+	    s[i][j] += (2.0-rtau_shear)*(u[i]*force[j] + force[i]*u[j]);
 	  }
 	}
 
@@ -204,31 +218,9 @@ void MODEL_collide_multirelaxation() {
 	      sdotq += (s[i][j] + shat[i][j])*_q[p][i][j];
 	    }
 	  }
- 
-#ifdef _BGK_
-	  /* b acts as u^2 and c as the equilibrium feq */
-	  b = u[0]*u[0] + u[1]*u[1] + u[2]*u[2];
-	  c = wv[p]*rho*(1.0 + rcs2*udotc + r2rcs4*udotc*udotc - 0.5*rcs2*b);
-	  f[p] = f[p] - rtau*(f[p] - c);
 
-	  /* Body force (Guo et al.) */
-
-	  b = 0.0;
-	  c = 0.0;
-	  cdotf = 0.0;
-
-	  for (i = 0; i < 3; i++) {
-	    b     += (cv[p][i] - u[i])*fxyz[i];
-	    c     += cv[p][i]*u[i];
-	    cdotf += cv[p][i]*fxyz[i];
-	  }
-
-	  f[p] = f[p] + 0.5*(2.0-rtau)*wv[p]*rcs2*(b + rcs2*c*cdotf);
-#else
 	  /* Reproject */
 	  f[p] = wv[p]*(rho + rho*udotc*rcs2 + sdotq*r2rcs4 + fghost[p]);
-
-#endif
 
 	  /* Next p */
 	}
@@ -296,7 +288,6 @@ void MODEL_collide_multirelaxation() {
   Float    dij;
 
   Float    force[3];                /* External force */
-  Float    cdotf;
 
   Float    phi;                     /* Order parameter */
   Float    phi_x, phi_y, phi_z;     /* \nabla\phi */
@@ -305,15 +296,11 @@ void MODEL_collide_multirelaxation() {
   Float    s1;                      /* Diagonal part of thermodynamic stress */
   Float    A, B, kappa;             /* Free energy parameters */
 
-  Float    phi0;
-
   const Float r2   = 0.5;
   const Float r3   = 1.0/3.0;
   const Float c3r2 = 1.5;
 
   const Float rcs2   = 3.0;         /* The constant 1 / c_s^2 */
-  const Float rcs4   = 9.0;         /* The constant 1 / c_s^4 */
-  const Float r2rcs2 = 1.5;         /* The constant 1 / 2 c_s^2 */
   const Float r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   double    fghost[NVEL];
@@ -518,164 +505,6 @@ void MODEL_collide_multirelaxation() {
 
 /*----------------------------------------------------------------------------*/
 /*!
- * Sets the velocity of the site s to a given value u via the distribution
- * functions
- *
- *- \c Options:   _TRACE_
- *- \c Arguments:
- *  -# \c FVector \c u: value of velocity the site will be set to
- *  -# \c Site \c *s: target site
- *- \c Returns:   void
- *- \c Buffers:   uses .grad_phi, invalidates .halo, .rho?, .phi?, .grad_phi?,
- *                .vels
- *- \c Version:   2.0
- *- \c Last \c updated: 12/01/2003 by JCD
- *- \c Authors:   P. Bladon and JC Desplat
- *- \c See \c also: MODEL_calc_vels(), MODEL_get_velocity(), MODEL_set_rho(),
- *                MODEL_set_phi()
- *- \c Note:      only performs atomic update for site s. If this function is
- *                called to set the velocity of a halo site, it is the user's
- *                responsibility to ensure that the halo is up-to-date
- */
-/*----------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Careful: "atrest" indicates steady state, not equilibrium 
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_set_distributions_atrest( FVector u, FTensor grad_u, Site *ps )
-{
-  int      N[3];
-  int      index;                   /* site index */
-  int      p;                       /* velocity index */
-  int      i, j;                    /* summed over indices ("alphabeta") */
-
-  FVector  gphi;                    /* Gradient of phi */
-  Float    grad_phi_sq;
-  Float    jphi[3];                 /* Order parameter flux */
-  Float    s[3][3];                 /* Stress */
-  FTensor  sth;                     /* Equilibrium stress (thermodynamic) */
-  Float    sphi[3][3];              /* Order parameter "stress" */
-  Float    rho, phi;                /* Density, and order parameter */
-  Float    *f,*g;
-
-  Float    udotc;
-  Float    jdotc;
-  Float    sdotq, sphidotq;
-
-  Float    s1;                      /* Diagonal part of thermodynamic stress */
-  Float    A, B, kappa;             /* Free energy parameters */
-
-  const Float r2     = 0.5;
-  const Float c3r2   = 1.5;
-  const Float rcs2   = 3.0;         /* The constant 1 / c_s^2 */
-  const Float r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
-
-  Float    dp0;
-
-  /* WARNING: phi_site[], and grad_phi[] must be up-to-date!!! */
-
-  index = ps-site;
-
-  /* JCD: Just in case (not suitable for colloidal systems... for now) */
-  /* Needs to be tidied up */
-  if(site_map[index] != FLUID){
-    fatal("MODEL_set_distributions_atrest() for non-fluid site\n");
-  }
-
-  A     = free_energy_A();
-  B     = free_energy_B();
-  kappa = free_energy_K();
-  get_N_local(N);
-
-  f = ps->f;
-  g = ps->g;
-
-  /* Tables need to be up-to-date (see assertions at start) */
-  rho = rho_site[index];
-  phi = phi_site[index];
-
-  jphi[0] = jphi[1] = jphi[2] = 0.0;
-  for(p = 1; p < NVEL; p++){
-    jphi[0] += g[p]*cv[p][0];
-    jphi[1] += g[p]*cv[p][1];
-    jphi[2] += g[p]*cv[p][2];
-  }
-
-  for(i = 0; i < 3; i++){
-    for(j = 0; j < 3; j++){
-      sphi[i][j] = 0.0;
-      for(p = 1; p < NVEL; p++){
-	sphi[i][j] += g[p]*_q[p][i][j];
-      }
-    }
-  }
-
-  /* 
-   * Note: in the equivalent fragment of code in the collision (multirelaxation)
-   * the momentum is normally scaled done by 1/rho at this stage. Here, it isn't
-   */
-
-  /* Thermodynamic part of the stress */
-  gphi.x = (grad_phi + index)->x;
-  gphi.y = (grad_phi + index)->y;
-  gphi.z = (grad_phi + index)->z;
-
-  grad_phi_sq = gphi.x*gphi.x + gphi.y*gphi.y + gphi.z*gphi.z;
-  s1 = r2*phi*phi*(A + c3r2*B*phi*phi)
-    - kappa*(phi*delsq_phi[index] + r2*grad_phi_sq);
-
-  sth.x.x = s1 + kappa*gphi.x*gphi.x;
-  sth.x.y =      kappa*gphi.x*gphi.y;
-  sth.x.z =      kappa*gphi.x*gphi.z;
-  sth.y.x = sth.x.y;
-  sth.y.y = s1 + kappa*gphi.y*gphi.y;
-  sth.y.z =      kappa*gphi.y*gphi.z;
-  sth.z.x = sth.x.z;
-  sth.z.y = sth.y.z;
-  sth.z.z = s1 + kappa*gphi.z*gphi.z;
-
-  /* Compute s[][] */
-  /* JCD: note - sign (in -eta grad_u)... as suggested by Ronojoy */
-  /* JCD: additional sth term required for 2-fluid (see Ronojoy) */
-  s[0][0] = rho*u.x*u.x - eta_shear*grad_u.x.x + sth.x.x;
-  s[0][1] = rho*u.x*u.y - eta_shear*grad_u.x.y + sth.x.y;
-  s[0][2] = rho*u.x*u.z - eta_shear*grad_u.x.z + sth.x.z;
-  s[1][0] = rho*u.y*u.x - eta_shear*grad_u.y.x + sth.y.x;
-  s[1][1] = rho*u.y*u.y - eta_shear*grad_u.y.y + sth.y.y;
-  s[1][2] = rho*u.y*u.z - eta_shear*grad_u.y.z + sth.y.z;
-  s[2][0] = rho*u.z*u.x - eta_shear*grad_u.z.x + sth.z.x;
-  s[2][1] = rho*u.z*u.y - eta_shear*grad_u.z.y + sth.z.y;
-  s[2][2] = rho*u.z*u.z - eta_shear*grad_u.z.z + sth.z.z;
-  
-  /* Now update the distributions */
-  for(p = 0; p < NVEL; p++){
-    dp0 = (p == 0);
-
-    udotc = u.x*cv[p][0] + u.y*cv[p][1] + u.z*cv[p][2];
-    jdotc = jphi[0]*cv[p][0] + jphi[1]*cv[p][1] + jphi[2]*cv[p][2];
-
-    sdotq    = 0.0;
-    sphidotq = 0.0;
-    for(i = 0; i < 3; i++){
-      for(j = 0; j < 3; j++){
-	sdotq += s[i][j]*_q[p][i][j];
-	sphidotq += sphi[i][j]*_q[p][i][j];
-      }
-    }
-
-    /* Project all this back to the distributions. The magic
-     * here is to move phi into the non-propagating distribution. */
-    f[p] = wv[p]*(rho + rho*udotc*rcs2 + sdotq*r2rcs4);
-    g[p] = wv[p]*(          jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
-  }
-
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * Initialise model (allocate buffers, initialise velocities, etc.)
  *
  *- \c Arguments: void
@@ -697,6 +526,7 @@ void MODEL_init( void )
   int     offset[3];
   Float   phi;
 
+  void le_init_transitional(void);
 
   LUDWIG_ENTER("MODEL_init()");
 
@@ -827,8 +657,7 @@ void MODEL_init( void )
 void MODEL_process_options( Input_Data *h )
 {
   Input_Data *p,*tmp;
-  int  flag,i1;
-  Float f1,f2;
+  int  flag;
   char parameter[256],value[256];
   
   LUDWIG_ENTER("MODEL_process_options()");
@@ -1736,12 +1565,10 @@ void MODEL_calc_phi() {
  *
  ****************************************************************************/
 
-double normalise = 0.0;
-
 void RAND_init_fluctuations() {
 
   int  i, j, p;
-  double tau;
+  double tau_s, tau_b;
 
   /* Initialise the viscosities and relaxation times */
 
@@ -1753,20 +1580,28 @@ void RAND_init_fluctuations() {
     eta_bulk  = eta_shear;
   }
   else {
+    eta_bulk = eta_shear;
     RUN_get_double_parameter("viscosity_bulk", &eta_bulk);
   }
 
   rtau_shear = 2.0 / (1.0 + 6.0*eta_shear);
   rtau_bulk  = 2.0 / (1.0 + 6.0*eta_bulk);
 
-  tau = 1.0/rtau_shear;
+  tau_s = 1.0/rtau_shear;
+  tau_b = 1.0/rtau_bulk;
 
-  p = RUN_get_double_parameter("temperature", &normalise);
+  /* Initialise the overall temperature and stress variances */
+
+  p = RUN_get_double_parameter("temperature", &kT);
+
+  if (p == 0) kT = 0.0;
+
+  var_bulk  = sqrt(kT)*sqrt(2.0/9.0)*sqrt((tau_b + tau_b - 1.0)/(tau_b*tau_b));
+  var_shear = sqrt(kT)*sqrt(1.0/9.0)*sqrt((tau_s + tau_s - 1.0)/(tau_s*tau_s));
+
+  init_ghosts(kT);
 
   /* Initialise q matrix */
-
-  var_shear = normalise*sqrt(2.0*2.0*eta_shear/(3.0*tau*tau));
-  var_bulk  = var_shear/sqrt(2.0);
 
   for (p = 0; p < NVEL; p++) {
 
@@ -1783,8 +1618,6 @@ void RAND_init_fluctuations() {
     }
   }
 
-  init_ghosts(normalise);
-
   /* Collision global force on fluid defaults to zero. */
 
   siteforce[X] = 0.0;
@@ -1793,44 +1626,80 @@ void RAND_init_fluctuations() {
 
   p = RUN_get_double_parameter_vector("force", siteforce);
 
+  /* Information */
+
+  info("\nModel physics:\n");
+  info("Shear viscosity: %f\n", eta_shear);
+  info("Relaxation time: %f\n", tau_s);
+  info("Bulk viscosity : %f\n", eta_bulk);
+  info("Relaxation time: %f\n", tau_b);
+  info("Isothermal kT:   %f\n", kT);
+
   return;
 }
 
 
 /*****************************************************************************
  *
- *  RAND_fluctuations
+ *  get_fluctuations_stress
  *
- *  Thermal fluctuations following Ronojoy.
+ *  Compute the random stress maxtrix with appropriate variances.
+ *  This should be called once per active lattice site to set
+ *  shat[][], which goes into the reprojection of the distributions.
  *
- *  This routine computes a vector fr[] of fluctuations which are
- *  added to the denisty distribution function after the collision
- *  stage.
- *
- *  A set of variances are required which depend upon random numbers
- *  and pre-computed factors.
+ *  Isothermal fluctuations following Adhikari et al., Europhys. Lett
+ *  (2005).
  *
  *****************************************************************************/
 
 void get_fluctuations_stress(double shat[3][3]) {
 
-  shat[0][0] = var_shear*ran_parallel_gaussian();
-  shat[1][1] = var_shear*ran_parallel_gaussian();
-  shat[2][2] = var_shear*ran_parallel_gaussian();
+  double tr;
+  const double r3 = (1.0/3.0);
 
-  shat[0][1] = var_bulk*ran_parallel_gaussian();
-  shat[1][2] = var_bulk*ran_parallel_gaussian();
-  shat[2][0] = var_bulk*ran_parallel_gaussian();
+  /* Set symetric random stress matrix (elements with unit variance) */
 
-  shat[1][0] = shat[0][1];
-  shat[2][1] = shat[1][2];
-  shat[0][2] = shat[2][0];
+  shat[X][X] = ran_parallel_gaussian();
+  shat[X][Y] = ran_parallel_gaussian();
+  shat[X][Z] = ran_parallel_gaussian();
 
-  return;
-}
+  shat[Y][X] = shat[X][Y];
+  shat[Y][Y] = ran_parallel_gaussian();
+  shat[Y][Z] = ran_parallel_gaussian();
 
-void get_fluctuations_ghost(double fr[]) {
-  
+  shat[Z][X] = shat[X][Z];
+  shat[Z][Y] = shat[Y][Z];
+  shat[Z][Z] = ran_parallel_gaussian();
+
+  /* Compute the trace and the traceless part */
+
+  tr = r3*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
+  shat[X][X] -= tr;
+  shat[Y][Y] -= tr;
+  shat[Z][Z] -= tr;
+
+  /* Set variance of the traceless part */
+
+  shat[X][X] *= sqrt(2.0)*var_shear;
+  shat[X][Y] *= var_shear;
+  shat[X][Z] *= var_shear;
+
+  shat[Y][X] *= var_shear;
+  shat[Y][Y] *= sqrt(2.0)*var_shear;
+  shat[Y][Z] *= var_shear;
+
+  shat[Z][X] *= var_shear;
+  shat[Z][Y] *= var_shear;
+  shat[Z][Z] *= sqrt(2.0)*var_shear;
+
+  /* Set variance of trace and recombine... */
+
+  tr *= (var_bulk);
+
+  shat[X][X] += tr;
+  shat[Y][Y] += tr;
+  shat[Z][Z] += tr;
+
   return;
 }
 
@@ -2003,6 +1872,9 @@ void  MISC_curvature() {
   double sum[6];
   double abnorm, rv;
 
+  void eigen3(double, double, double, double, double, double,
+	      double * , double * , double *, double *, double *, double *); 
+
   get_N_local(N);
   xfac = (N[Y]+2)*(N[Z]+2);
   yfac = (N[Z]+2);
@@ -2133,4 +2005,9 @@ void  MISC_curvature() {
 double get_eta_shear() {
 
   return eta_shear;
+}
+
+double get_kT() {
+
+  return kT;
 }
