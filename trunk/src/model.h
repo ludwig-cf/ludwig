@@ -49,15 +49,16 @@ void    MODEL_init( void );
 void    MODEL_finish( void );
 void    MODEL_process_options( Input_Data * );
 void    MODEL_get_gradients( void );
-void    MODEL_set_distributions_atrest( FVector, FTensor, Site * );
 void    MODEL_calc_rho( void );
 void    MODEL_calc_phi( void );
 void    get_fluctuations_stress(double shat[3][3]);
 void   RAND_init_fluctuations(void);
-void    MODEL_limited_propagate(void);
+void    MODEL_collide_multirelaxation(void);
+void     MISC_curvature(void);
 void     MISC_set_mean_phi(double);
 double    MISC_fluid_volume(void);
 double    get_eta_shear(void);
+double    get_kT(void);
 
 extern void (*MODEL_write_site)( FILE *, int, int );
 extern void (*MODEL_write_phi)( FILE *, int, int );
