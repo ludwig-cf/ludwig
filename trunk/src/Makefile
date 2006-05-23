@@ -34,8 +34,8 @@ EXE= Ludwig.exe
 CC= cc
 MPICC= tmcc
 
-LDFLAGS= -Xc -fast
-OPTS =  -D_NOISE_ -D_SINGLE_FLUID_
+LDFLAGS= -Xc -v -errwarn -fast
+OPTS = -D_SINGLE_FLUID_ -D_NOISE_ -D_D3Q19_
 
 # For Sun perflib use -xlic_lib=sunperf
 
