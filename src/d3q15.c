@@ -58,7 +58,6 @@ const int cv[NVEL][3] = {{ 0, 0, 0},
 
 const double chi1[NVEL] = {-2.0, -2.0, -2.0, -2.0, -2.0,  1.0,  1.0,  1.0,
 			          1.0,  1.0,  1.0, -2.0, -2.0, -2.0, -2.0};
-      double jchi1[NVEL][3];
 const double chi3[NVEL] = { 0.0,  1.0, -1.0, -1.0,  1.0,  0.0,  0.0,  0.0,
 			          0.0,  0.0,  0.0, -1.0,  1.0,  1.0, -1.0};
 
@@ -88,6 +87,8 @@ const int BC_Map[NVEL] = {  0,     /* 0th  element - mirror is 0  */
 			     1 };   /* 14th element - mirror is 1  */
 
 Site * site;
+
+static double jchi1[NVEL][3];
 
 static double var_chi1;  /* Variance for chi1 mode fluctuations */
 static double var_jchi1; /* Variance for jchi1 mode fluctuations */
@@ -338,11 +339,11 @@ void d3q15_propagate_binary() {
  *
  *  Initialise the D3Q15 ghost mode jchi1, and the variances for
  *  ghost fluctuations, which depend on the relaxation time, and
- *  the temperature ("normalise").
+ *  the "temperature".
  *
  *****************************************************************************/
 
-void init_ghosts(const double normalise) {
+void init_ghosts(const double kT) {
 
   double tau_ghost = 1.0;
   double var;
@@ -360,9 +361,9 @@ void init_ghosts(const double normalise) {
 
   var = sqrt((tau_ghost + tau_ghost - 1.0)/(tau_ghost*tau_ghost));
 
-  var_chi1  = normalise*sqrt(2.0)*var;
-  var_jchi1 = normalise*sqrt(2.0/3.0)*var;
-  var_chi3  = normalise*sqrt(1.0/9.0)*var;
+  var_chi1  = sqrt(kT)*sqrt(2.0)*var;
+  var_jchi1 = sqrt(kT)*sqrt(2.0/3.0)*var;
+  var_chi3  = sqrt(kT)*sqrt(1.0/9.0)*var;
 
   return;
 }
