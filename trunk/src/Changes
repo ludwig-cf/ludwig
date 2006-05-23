@@ -3,6 +3,19 @@ Changes
 Log file for changes to the code.
 =================================
 
+2006 May 23 kevin
+
+* I have rearranged the fluctuation code so that the sheer and
+  bulk viscosity can be varied independently. This also means
+  that the single fluid collision now has separate relaxation
+  times for sheer and bulk modes (like the binary fluid collision).
+
+* I have encapsulated the viscosity and the fluctuation "temperature"
+  kT in model.c. All gbl objects are still scheduled for deletion.
+
+* A number of minor changes to address missing function prototypes.
+
+
 2006 May 12 kevin
 
 * I have moved all d3q15 dependent code to the new file d3q15.c
