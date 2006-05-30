@@ -3,6 +3,17 @@ Changes
 Log file for changes to the code.
 =================================
 
+2006 May 30 kevin
+
+* I have rearranged the order of the velocity set in d3q15.c
+  so that it is in Sean's optimal order (equivalent to that
+  used in d3q19.c). This means the propagation routines are
+  slightly simplified. In addition, cv now satisfies
+  cv[p] = -cv[NVEL-p] for p > 0, so BC_Map[] can be dispensed
+  with in BBL.
+
+* Removed a number of minor used code segments.
+
 2006 May 23 kevin
 
 * I have rearranged the fluctuation code so that the sheer and
