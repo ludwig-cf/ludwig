@@ -233,9 +233,9 @@ void COLL_init_colloids_test() {
 
   Global_Colloid.N_colloid = 1;
 
-  r0.x =  .0 + 0.5*L(X) + 0.0*RAN_uniform();
-  r0.y =  .0 + 0.5*L(Y) + 0.0*RAN_uniform();
-  r0.z =  .0 + 0.5*L(Z) + 0.0*RAN_uniform();
+  r0.x =  .0 + 0.5*L(X);
+  r0.y =  .0 + 0.5*L(Y);
+  r0.z =  .0 + 0.5*L(Z);
 
   v0.x = 1.0*get_eta_shear()/ah;
   v0.y = 0.0;

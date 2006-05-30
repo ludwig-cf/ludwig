@@ -23,7 +23,6 @@
 Wall        _wall;
 
 static Wall_link * WALL_allocate_wall_link(void);
-static void        WALL_finish(void);
 static void        WALL_init_fluid(void);
 static void        WALL_init_side_wall_links(void);
 static void        WALL_init_site_map(void);
@@ -283,7 +282,7 @@ void WALL_init_site_map() {
 void WALL_update(int step) {
 
   double phase;
-  double ubot, udotc;
+  double udotc;
 
   int      i, j, index, p;
   int      xfac, yfac;
@@ -361,20 +360,6 @@ Wall_link * WALL_allocate_wall_link() {
   return p_link;
 }
 
-/****************************************************************************
- *
- *  WALL_finish
- *
- *  Deallocate wall links and structure at the end of execution.
- *
- ****************************************************************************/ 
-
-void WALL_finish() {
-
-  return;
-}
-
-
 /*****************************************************************************
  *
  *  WALL_bounce_back
@@ -403,7 +388,7 @@ void WALL_bounce_back() {
     i  = p_link->i;
     j  = p_link->j;
     ij = p_link->p;
-    ji = BC_Map[ij];
+    ji = NVEL - ij;
 
     cdotu = cv[ij][0]*_wall.sheer_u.x + cv[ij][1]*_wall.sheer_u.y;
     cdotu = _wall.sheer_diff*cdotu;
@@ -430,7 +415,7 @@ void WALL_bounce_back() {
     i  = p_link->i;
     j  = p_link->j;
     ij = p_link->p;
-    ji = BC_Map[ij];
+    ji = NVEL -ij;
 
     cdotu = cv[ij][0]*_wall.sheer_u.x + cv[ij][1]*_wall.sheer_u.y;
     dtmp = 2.0*wv[ij]*cdotu/3.0;

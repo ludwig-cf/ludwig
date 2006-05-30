@@ -10,6 +10,7 @@
 Colloid   * CMEM_allocate_colloid(void);
 COLL_Link * CMEM_allocate_boundary_link(void);
 void        CMEM_free_colloid(Colloid *);
+void        CMEM_free_all_colloids(void);
 void        CMEM_report_memory(void);
 
 #endif
