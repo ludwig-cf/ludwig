@@ -12,12 +12,10 @@
 #define _D3Q19_H_
 
 enum {NVEL = 19};
-enum {NGHOST = 9};
 enum {LE_N_VEL_XING = 5};
 
 extern const    int cv[NVEL][3];
 extern const double wv[NVEL];
-extern const    int BC_Map[NVEL];
 
 typedef struct { 
   double f[NVEL], g[NVEL];
