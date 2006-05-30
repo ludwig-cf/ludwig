@@ -49,42 +49,28 @@
  *****************************************************************************/
 
 const int cv[NVEL][3] = {{ 0, 0, 0},
-			 { 1,-1,-1}, { 1,-1, 1}, { 1, 1,-1},
-			 { 1, 1, 1}, { 0, 1, 0}, { 1, 0, 0},
-			 { 0, 0, 1}, {-1, 0, 0}, { 0,-1, 0},
-			 { 0, 0,-1}, {-1,-1,-1}, {-1,-1, 1},
-                         {-1, 1,-1}, {-1, 1, 1}};
+			 { 1,  1,  1}, { 1,  1, -1}, { 1,  0,  0},
+			 { 1, -1,  1}, { 1, -1, -1}, { 0,  1,  0},
+                         { 0,  0,  1}, { 0,  0, -1}, { 0, -1,  0},
+			 {-1,  1,  1}, {-1,  1, -1}, {-1,  0,  0},
+			 {-1, -1,  1}, {-1, -1, -1}};
 
+const double chi1[NVEL] = {-2.0,
+			   -2.0, -2.0,  1.0, -2.0, -2.0,  1.0,  1.0,
+			    1.0,  1.0, -2.0, -2.0,  1.0, -2.0, -2.0};
 
-const double chi1[NVEL] = {-2.0, -2.0, -2.0, -2.0, -2.0,  1.0,  1.0,  1.0,
-			          1.0,  1.0,  1.0, -2.0, -2.0, -2.0, -2.0};
-const double chi3[NVEL] = { 0.0,  1.0, -1.0, -1.0,  1.0,  0.0,  0.0,  0.0,
-			          0.0,  0.0,  0.0, -1.0,  1.0,  1.0, -1.0};
+const double chi3[NVEL] = { 0.0,
+			    1.0, -1.0,  0.0, -1.0,  1.0,  0.0,  0.0,
+			    0.0,  0.0, -1.0,  1.0,  0.0,  1.0, -1.0};
 
 
 #define w0 (16.0/72.0)
 #define w1 ( 8.0/72.0)
 #define w3 ( 1.0/72.0)
 
-const double wv[NVEL] = {w0, w3, w3, w3, w3, w1, w1, w1, w1, w1, w1,
-			 w3, w3, w3, w3};
-
-
-const int BC_Map[NVEL] = {  0,     /* 0th  element - mirror is 0  */
-			    14,     /* 1st  element - mirror is 14 */
-			    13,     /* 2nd  element - mirror is 13 */
-			    12,     /* 3rd  element - mirror is 12 */
-			    11,     /* 4th  element - mirror is 11 */
-			     9,     /* 5th  element - mirror is 9  */
-			     8,     /* 6th  element - mirror is 8  */
-			     10,    /* 7th  element - mirror is 10 */
-			     6,     /* 8th  element - mirror is 6  */
-			     5,     /* 9th  element - mirror is 5  */
-			     7,     /* 10th element - mirror is 7  */
-			     4,     /* 11th element - mirror is 11 */
-			     3,     /* 12th element - mirror is 3  */
-			     2,     /* 13th element - mirror is 2  */
-			     1 };   /* 14th element - mirror is 1  */
+const double wv[NVEL] = {w0,
+			 w3, w3, w1, w3, w3, w1, w1,
+			 w1, w1, w3, w3, w1, w3, w3};
 
 Site * site;
 
@@ -129,95 +115,57 @@ void propagation() {
 
 void d3q15_propagate_single() {
 
-  int i, j, k, ii, jj;
-  int xfac, yfac, stride1, stride2;
+  int i, j, k, ijk;
+  int xfac, yfac;
   int N[3];
 
-
-  /* Serial or domain decompostion */
-
   get_N_local(N);
+
   yfac = (N[Z]+2);
   xfac = (N[Y]+2)*yfac;
 
-  stride1 =  - xfac + yfac + 1;
-  stride2 =  - xfac + yfac - 1;
-
-  /* 1st Block: Basis vectors with x-component 0 or +ve */
+  /* Forward moving distributions */
   
-  for(i = N[X]; i > 0; i--) {
-    ii = i*xfac;
+  for (i = N[X]; i >= 1; i--) {
+    for (j = N[Y]; j >= 1; j--) {
+      for (k = N[Z]; k >= 1; k--) {
 
-    /* y-component 0 or +ve */
-    for(j = N[Y]; j > 0; j--) {
-      jj = ii + j*yfac;
+        ijk = xfac*i + yfac*j + k;
 
-      for(k = N[Z]; k > 0; k--) {
-	site[jj + k].f[7] = site[jj + k - 1].f[7];
-	site[jj + k].f[5] = site[jj + k - yfac].f[5];
-	site[jj + k].f[6] = site[jj + k - xfac].f[6];
-	site[jj + k].f[4] = site[jj + k - xfac - yfac - 1].f[4];
-      }
+        site[ijk].f[7] = site[ijk                         + (-1)].f[7];
+        site[ijk].f[6] = site[ijk             + (-1)*yfac       ].f[6];
+        site[ijk].f[5] = site[ijk + (-1)*xfac + (+1)*yfac + (+1)].f[5];
+        site[ijk].f[4] = site[ijk + (-1)*xfac + (+1)*yfac + (-1)].f[4];
+        site[ijk].f[3] = site[ijk + (-1)*xfac                   ].f[3];
+        site[ijk].f[2] = site[ijk + (-1)*xfac + (-1)*yfac + (+1)].f[2];
+        site[ijk].f[1] = site[ijk + (-1)*xfac + (-1)*yfac + (-1)].f[1];
 
-      for(k = 1; k <= N[Z]; k++) {
-	site[jj + k].f[3] = site[jj + k - xfac - yfac + 1].f[3];
       }
     }
-
-    /* y-component -ve */
-    for(j = 1;j <= N[Y]; j++) {
-      jj = ii + j*yfac;
-
-      for(k = 1; k <= N[Z]; k++) {
-	site[jj+k].f[1] = site[jj+k+stride1].f[1];
-      }
-      for(k = N[Z]; k > 0; k--) {
-	site[jj+k].f[2] = site[jj+k+stride2].f[2];
-      }
-    }
-
   }
 
+  /* Backward moving distributions */
+  
+  for (i = 1; i <= N[X]; i++) {
+    for (j = 1; j <= N[Y]; j++) {
+      for (k = 1; k <= N[Z]; k++) {
 
-  /* 2nd block: Basis vectors with x-component -ve */
+        ijk = xfac*i + yfac*j + k;
+   
+        site[ijk].f[ 8] = site[ijk                         + (+1)].f[ 8];
+        site[ijk].f[ 9] = site[ijk             + (+1)*yfac       ].f[ 9];
+        site[ijk].f[10] = site[ijk + (+1)*xfac + (-1)*yfac + (-1)].f[10];
+        site[ijk].f[11] = site[ijk + (+1)*xfac + (-1)*yfac + (+1)].f[11];
+        site[ijk].f[12] = site[ijk + (+1)*xfac                   ].f[12];
+        site[ijk].f[13] = site[ijk + (+1)*xfac + (+1)*yfac + (-1)].f[13];
+        site[ijk].f[14] = site[ijk + (+1)*xfac + (+1)*yfac + (+1)].f[14];
 
-  for(i = 1; i <= N[X]; i++) {
-    ii = i*xfac;
-
-    /* y-component 0 or -ve */
-    for(j = 1; j <= N[Y]; j++) {
-      jj = ii + j*yfac;
-
-      for(k = 1; k <= N[Z]; k++) {
-	site[jj + k].f[8] = site[jj + k + xfac].f[8];
-	site[jj + k].f[9] = site[jj + k + yfac].f[9];
-	site[jj + k].f[10] = site[jj + k + 1].f[10];
-	site[jj + k].f[11] = site[jj + k + xfac + yfac + 1].f[11];
-      }
-
-      for(k = N[Z]; k > 0; k--) {
-	site[jj + k].f[12] = site[jj + k + xfac + yfac - 1].f[12];
       }
     }
-
-    /* y-component +ve */
-    for(j = N[Y]; j > 0; j--) {
-      jj = ii + j*yfac;
-
-      for(k = 1; k <= N[Z]; k++) {
-	site[jj + k].f[13] = site[jj + k + xfac - yfac + 1].f[13];
-      }
-
-      for(k = N[Z]; k > 0; k--) {
-	site[jj + k].f[14] = site[jj + k + xfac - yfac - 1].f[14];
-      }
-    }
-
   }
 
   return;
 }
-
 
 /*****************************************************************************
  *
@@ -229,108 +177,83 @@ void d3q15_propagate_single() {
 
 void d3q15_propagate_binary() {
 
-  int i, j, k, ii, jj;
-  int xfac, yfac, stride1, stride2;
+  int i, j, k, ijk;
+  int xfac, yfac;
   int N[3];
-
-
-  /* Serial or domain decompostion */
 
   get_N_local(N);
 
   yfac = (N[Z]+2);
   xfac = (N[Y]+2)*yfac;
 
-  stride1 =  - xfac + yfac + 1;
-  stride2 =  - xfac + yfac - 1;
-
-  /* 1st Block: Basis vectors with x-component 0 or +ve */
+  /* Forward moving distributions */
   
-  for(i = N[X]; i > 0; i--) {
-    ii = i*xfac;
+  for (i = N[X]; i >= 1; i--) {
+    for (j = N[Y]; j >= 1; j--) {
+      for (k = N[Z]; k >= 1; k--) {
 
-    /* y-component 0 or +ve */
-    for(j = N[Y]; j > 0; j--) {
-      jj = ii + j*yfac;
+        ijk = xfac*i + yfac*j + k;
 
-      for(k = N[Z]; k > 0; k--) {
-	site[jj + k].f[7] = site[jj + k - 1].f[7];
-	site[jj + k].g[7] = site[jj + k - 1].g[7];
-	site[jj + k].f[5] = site[jj + k - yfac].f[5];
-	site[jj + k].g[5] = site[jj + k - yfac].g[5];
-	site[jj + k].f[6] = site[jj + k - xfac].f[6];
-	site[jj + k].g[6] = site[jj + k - xfac].g[6];
-	site[jj + k].f[4] = site[jj + k - xfac - yfac - 1].f[4];
-	site[jj + k].g[4] = site[jj + k - xfac - yfac - 1].g[4];
-      }
+        site[ijk].f[7] = site[ijk                         + (-1)].f[7];
+        site[ijk].g[7] = site[ijk                         + (-1)].g[7];
 
-      for(k = 1; k <= N[Z]; k++) {
-	site[jj + k].f[3] = site[jj + k - xfac - yfac + 1].f[3];
-	site[jj + k].g[3] = site[jj + k - xfac - yfac + 1].g[3];
-      }
-    }
+        site[ijk].f[6] = site[ijk             + (-1)*yfac       ].f[6];
+        site[ijk].g[6] = site[ijk             + (-1)*yfac       ].g[6];
 
-    /* y-component -ve */
-    for(j = 1;j <= N[Y]; j++) {
-      jj = ii + j*yfac;
+        site[ijk].f[5] = site[ijk + (-1)*xfac + (+1)*yfac + (+1)].f[5];
+        site[ijk].g[5] = site[ijk + (-1)*xfac + (+1)*yfac + (+1)].g[5];
 
-      for(k = 1; k <= N[Z]; k++) {
-	site[jj+k].f[1] = site[jj+k+stride1].f[1];
-	site[jj+k].g[1] = site[jj+k+stride1].g[1];
-      }
-      for(k = N[Z]; k > 0; k--) {
-	site[jj+k].f[2] = site[jj+k+stride2].f[2];
-	site[jj+k].g[2] = site[jj+k+stride2].g[2];
+        site[ijk].f[4] = site[ijk + (-1)*xfac + (+1)*yfac + (-1)].f[4];
+        site[ijk].g[4] = site[ijk + (-1)*xfac + (+1)*yfac + (-1)].g[4];
+
+        site[ijk].f[3] = site[ijk + (-1)*xfac                   ].f[3];
+        site[ijk].g[3] = site[ijk + (-1)*xfac                   ].g[3];
+
+        site[ijk].f[2] = site[ijk + (-1)*xfac + (-1)*yfac + (+1)].f[2];
+        site[ijk].g[2] = site[ijk + (-1)*xfac + (-1)*yfac + (+1)].g[2];
+
+        site[ijk].f[1] = site[ijk + (-1)*xfac + (-1)*yfac + (-1)].f[1];
+        site[ijk].g[1] = site[ijk + (-1)*xfac + (-1)*yfac + (-1)].g[1];
+
       }
     }
-
   }
 
+  /* Backward moving distributions */
+  
+  for (i = 1; i <= N[X]; i++) {
+    for (j = 1; j <= N[Y]; j++) {
+      for (k = 1; k <= N[Z]; k++) {
 
-  /* 2nd block: Basis vectors with x-component -ve */
+        ijk = xfac*i + yfac*j + k;
+   
+        site[ijk].f[ 8] = site[ijk                         + (+1)].f[ 8];
+        site[ijk].g[ 8] = site[ijk                         + (+1)].g[ 8];
 
-  for(i = 1; i <= N[X]; i++) {
-    ii = i*xfac;
+        site[ijk].f[ 9] = site[ijk             + (+1)*yfac       ].f[ 9];
+        site[ijk].g[ 9] = site[ijk             + (+1)*yfac       ].g[ 9];
 
-    /* y-component 0 or -ve */
-    for(j = 1; j <= N[Y]; j++) {
-      jj = ii + j*yfac;
+        site[ijk].f[10] = site[ijk + (+1)*xfac + (-1)*yfac + (-1)].f[10];
+        site[ijk].g[10] = site[ijk + (+1)*xfac + (-1)*yfac + (-1)].g[10];
 
-      for(k = 1; k <= N[Z]; k++) {
-	site[jj + k].f[8] = site[jj + k + xfac].f[8];
-	site[jj + k].g[8] = site[jj + k + xfac].g[8];
-	site[jj + k].f[9] = site[jj + k + yfac].f[9];
-	site[jj + k].g[9] = site[jj + k + yfac].g[9];
-	site[jj + k].f[10] = site[jj + k + 1].f[10];
-	site[jj + k].g[10] = site[jj + k + 1].g[10];
-	site[jj + k].f[11] = site[jj + k + xfac + yfac + 1].f[11];
-	site[jj + k].g[11] = site[jj + k + xfac + yfac + 1].g[11];
-      }
+        site[ijk].f[11] = site[ijk + (+1)*xfac + (-1)*yfac + (+1)].f[11];
+        site[ijk].g[11] = site[ijk + (+1)*xfac + (-1)*yfac + (+1)].g[11];
 
-      for(k = N[Z]; k > 0; k--) {
-	site[jj + k].f[12] = site[jj + k + xfac + yfac - 1].f[12];
-	site[jj + k].g[12] = site[jj + k + xfac + yfac - 1].g[12];
-      }
-    }
+        site[ijk].f[12] = site[ijk + (+1)*xfac                   ].f[12];
+        site[ijk].g[12] = site[ijk + (+1)*xfac                   ].g[12];
 
-    /* y-component +ve */
-    for(j = N[Y]; j > 0; j--) {
-      jj = ii + j*yfac;
+        site[ijk].f[13] = site[ijk + (+1)*xfac + (+1)*yfac + (-1)].f[13];
+        site[ijk].g[13] = site[ijk + (+1)*xfac + (+1)*yfac + (-1)].g[13];
 
-      for(k = 1; k <= N[Z]; k++) {
-	site[jj + k].f[13] = site[jj + k + xfac - yfac + 1].f[13];
-	site[jj + k].g[13] = site[jj + k + xfac - yfac + 1].g[13];
-      }
+        site[ijk].f[14] = site[ijk + (+1)*xfac + (+1)*yfac + (+1)].f[14];
+        site[ijk].g[14] = site[ijk + (+1)*xfac + (+1)*yfac + (+1)].g[14];
 
-      for(k = N[Z]; k > 0; k--) {
-	site[jj + k].f[14] = site[jj + k + xfac - yfac - 1].f[14];
-	site[jj + k].g[14] = site[jj + k + xfac - yfac - 1].g[14];
       }
     }
-
   }
 
   return;
+
 }
 
 /*****************************************************************************
