@@ -92,7 +92,7 @@ void COLL_update_map() {
   IVector ncell;
   int     N[3];
   int     offset[3];
-  int     ic, jc, kc, cindex;
+  int     ic, jc, kc;
   int     cifac, cjfac;
 
   get_N_local(N);
@@ -604,7 +604,7 @@ void COLL_bounce_back_pass1() {
 	      i = p_link->i;        /* index site i (inside) */
 	      j = p_link->j;        /* index site j (outside) */
 	      ij = p_link->v;       /* link velocity index i->j */
-	      ji = BC_Map[ij];      /* link velocity index j->i */
+	      ji = NVEL - ij;      /* link velocity index j->i */
 
 	      ci.x = (Float) cv[ij][0];
 	      ci.y = (Float) cv[ij][1];
@@ -769,7 +769,7 @@ void COLL_bounce_back_pass2() {
 	      i = p_link->i;        /* index site i (outside) */
 	      j = p_link->j;        /* index site j (inside) */
 	      ij = p_link->v;       /* link velocity index i->j */
-	      ji = BC_Map[ij];      /* link velocity index j->i */
+	      ji = NVEL - ij;      /* link velocity index j->i */
 
 	      ci.x = (Float) cv[ij][0];
 	      ci.y = (Float) cv[ij][1];
