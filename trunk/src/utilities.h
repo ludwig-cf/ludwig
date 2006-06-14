@@ -25,16 +25,6 @@ typedef struct{
   FVector x,y,z;
 } FTensor;
 
-
-
-/* Doubly linked list to manipulate input strings */
-typedef struct input_data Input_Data;
-struct input_data{
-  char str[256];
-  Input_Data *last,
-    *next;
-};
-
 enum io_type { BINARY, ASCII };
 
 /* struct for parallel IO */
