@@ -20,7 +20,7 @@
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.3 2006-05-23 17:06:44 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.4 2006-06-14 18:40:58 kevin Exp $";
 
 
 int main( int argc, char **argv )
@@ -64,7 +64,7 @@ int main( int argc, char **argv )
   init_free_energy();
 
   /* Report initial statistics */
-  /* MISC_set_mean_phi(gbl.phi);*/
+
   TEST_statistics();
   TEST_momentum();
 
@@ -106,7 +106,6 @@ int main( int argc, char **argv )
 #else
     /* No colloids */
 
-    /* COM_halo();*/
     MODEL_collide_multirelaxation();
 
     LE_apply_LEBC();
@@ -119,9 +118,8 @@ int main( int argc, char **argv )
 
     /* Configuration dump */
 
-    if (is_config_step()) {  
-      sprintf(filename, "%s%6.6d", gbl.output_config, step);
-      COM_write_site(filename, MODEL_write_site);
+    if (is_config_step()) {
+      COM_write_site(get_output_config_filename(step), MODEL_write_site);
       sprintf(filename, "%s%6.6d", "config.cds", step);
       CIO_write_state(filename);
     }
@@ -166,8 +164,7 @@ int main( int argc, char **argv )
    *   - terminate communications */
 
 
-  sprintf(filename, "%s%6.6d", gbl.output_config, step);
-  COM_write_site(filename, MODEL_write_site);
+  COM_write_site(get_output_config_filename(step), MODEL_write_site);
   LE_print_params();
   sprintf(filename, "%s%6.6d", "config.cds", step);
   CIO_write_state(filename);
@@ -175,8 +172,8 @@ int main( int argc, char **argv )
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
-  COM_finish();
 
+  pe_finalise();
   REGS_finish();
 
   return 0;
