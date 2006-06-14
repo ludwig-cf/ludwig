@@ -31,16 +31,13 @@ struct {
   Float     deltag;        /* Current order parameter deficit */
   Float     r_lu_n;        /* Cutoff for normal lubrication */
   Float     r_lu_t;        /* Cutoff for tangential lubrication */
-  Float     r_lu_r;        /* Cutoff for rotational lubrication */
   Float     r_ssph;        /* Cutoff distance for soft-sphere potential */
   Float     r_clus;        /* Cutoff distance for cluster-implicit */
   IVector   Ncell;         /* Number of cells in each dimension (local) */
   FVector   Lcell;         /* Cell width in each dimension */
   FVector   F;             /* Force on all colloids, e.g., gravity */
-  int       pid;           /* Identifier for drop-in potential */
   Float     drop_in_p1;    /* Parameter for "drop-in" potential */
   Float     drop_in_p2;    /* Parameter for "drop-in" potential */
-  Float     drop_in_p3;    /* Parameter for "drop-in" potential */
 
 } Global_Colloid;
 
@@ -86,7 +83,6 @@ struct colloid {
   /* Pointers */
 
   COLL_Link * lnk;         /* Pointer to the list of links defining surface */
-  int       export;        /* Communication flag */
   Colloid   * next;        /* colloid is a linked list */
 
 };
