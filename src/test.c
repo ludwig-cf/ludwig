@@ -17,7 +17,7 @@
 #include "cartesian.h"
 
 static FVector TEST_fluid_momentum(void);
-
+extern char * site_map;
 
 /*****************************************************************************
  *
