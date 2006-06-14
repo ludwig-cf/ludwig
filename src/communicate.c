@@ -2,19 +2,51 @@
 
 #include "pe.h"
 #include "timer.h"
+#include "runtime.h"
 #include "coords.h"
 #include "cartesian.h"
 
 static void COM_halo_rho( void );
-static void COM_read_input_file( char * );
-static void COM_process_input_file( Input_Data *, Input_Data * );
-static void COM_process_options(Input_Data *);
 
-/* MPI-specific functions and variables */
+IO_Param     io_grp;      /* Parameters of current IO group */
+
+int          input_format;     /* Default input format is ASCII */
+int          output_format;    /* Default output format is binary */
+
+char         input_config[256];
+char         output_config[256];
+
+
+/* Generic functions for output */
+
+static void (*MODEL_write_velocity)( FILE *, int, int );
+static void (*MODEL_write_rho)( FILE *, int, int );
+static void (*MODEL_write_rho_phi)( FILE *, int, int );
+
+/* Generic functions for input */
+void (*MODEL_read_site)( FILE * );
+
+void (*MODEL_write_site)( FILE *, int, int );
+void (*MODEL_write_phi)( FILE *, int, int );
+
+
+static void    MODEL_read_site_asc( FILE * );
+static void    MODEL_read_site_bin( FILE * );
+static void    MODEL_write_site_asc( FILE *, int, int );
+static void    MODEL_write_velocity_asc( FILE *, int, int );
+static void    MODEL_write_rho_asc( FILE *, int, int );
+static void    MODEL_write_phi_asc( FILE *, int, int );
+static void    MODEL_write_rho_phi_asc( FILE *, int, int );
+static void    MODEL_write_site_bin( FILE *, int, int );
+static void    MODEL_write_velocity_bin( FILE *, int, int );
+static void    MODEL_write_rho_bin( FILE *, int, int );
+static void    MODEL_write_phi_bin( FILE *, int, int );
+static void    MODEL_write_rho_phi_bin( FILE *, int, int );
+
+
 #ifdef _MPI_
 
-static IVector COM_decomp( int );
-static void    COM_Add_FVector( FVector *, FVector *, int *, MPI_Datatype * );
+/* MPI-specific functions and variables */
 
 static MPI_Datatype DT_plane_XY; /* MPI datatype defining XY plane */
 static MPI_Datatype DT_plane_XZ; /* MPI datatype defining XZ plane */
@@ -24,15 +56,20 @@ static MPI_Datatype DT_Float_plane_XZ;/* MPI Datatype: XZ plane of Floats */
 static MPI_Datatype DT_Float_plane_YZ;/* MPI Datatype: YZ plane of Floats */
 
 MPI_Comm     IO_Comm;     /* Communicator for parallel IO groups */
-
-MPI_Datatype DT_FVector;  /* MPI Datatype for type FVector */
 MPI_Datatype DT_Site;     /* MPI Datatype for type Site */
-MPI_Op       OP_AddFVector;     /* (user-def) MPI operator to add FVectors */
 
+/* MPI tags */
+enum{                            
+  TAG_HALO_SWP_X_BWD = 100,
+  TAG_HALO_SWP_X_FWD,
+  TAG_HALO_SWP_Y_BWD,
+  TAG_HALO_SWP_Y_FWD,
+  TAG_HALO_SWP_Z_BWD,
+  TAG_HALO_SWP_Z_FWD,
+  TAG_IO
+};
 
 #endif /* _MPI_ */
-
-IO_Param     io_grp;      /* Parameters of current IO group */
 
 
 /*---------------------------------------------------------------------------*\
@@ -488,8 +525,10 @@ void COM_halo_phi( void )
  * Last Updated: 06/01/2002 by JCD                                           *
 \*---------------------------------------------------------------------------*/
 
-void COM_init( int argc, char **argv )
-{
+void COM_init( int argc, char **argv ) {
+
+  char tmp[256];
+
 #ifdef _MPI_ /* Parallel (MPI) section */
 
   int nx2, ny2, ny3, nz2, nx2y2, ny2z2, ny3z2;
@@ -498,29 +537,11 @@ void COM_init( int argc, char **argv )
 
   MPI_Aint disp[2];
   MPI_Aint size1,size2;
-  MPI_Datatype DT_Global, DT_tmp, type[2];
+  MPI_Datatype DT_tmp, type[2];
 
   LUDWIG_ENTER("COM_init()");
 
   get_N_local(N);
-
-  /* PE0 reads parameters from file (and set default values if needed): */
-  /* this should only take place -after- MPI has been initialised (due */
-  /* to restrictions on the maximum number of files which can be opened */
-  /* simultaneously); root PE broadcasts parameters to other PEs */
-  if( argc > 1 ){
-    COM_read_input_file(argv[1]);
-  }
-  else{
-    COM_read_input_file("input");
-  }
-
-  /* Set-up MPI datatype for structure Global */
-  MPI_Type_contiguous(sizeof(Global),MPI_BYTE,&DT_Global);
-  MPI_Type_commit(&DT_Global);
-
-
-  MPI_Bcast(&io_grp.n_io, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   /* Compute extents to define new datatypes */
 
@@ -535,6 +556,9 @@ void COM_init( int argc, char **argv )
 
 
   /* Set-up parallel IO parameters (rank and root) */
+
+  io_grp.n_io = 1; /* Default */
+  RUN_get_int_parameter("n_io_nodes", &(io_grp.n_io));
 
   io_grp.size = pe_size() / io_grp.n_io;
 
@@ -557,8 +581,6 @@ void COM_init( int argc, char **argv )
   /* Create communicator for each IO group, and get rank within IO group */
   MPI_Comm_split(cart_comm(), io_grp.index, cart_rank(), &IO_Comm);
   MPI_Comm_rank(IO_Comm, &io_grp.rank);
-
-
 
 
   /* Set-up MPI datatype for structure Site */
@@ -591,26 +613,11 @@ void COM_init( int argc, char **argv )
   MPI_Type_contiguous(ny2z2, MPI_DOUBLE,&DT_Float_plane_YZ);
   MPI_Type_commit(&DT_Float_plane_YZ);
 
-  /* Set-up MPI datatype for FVector */
-  MPI_Type_contiguous(sizeof(FVector), MPI_BYTE, &DT_FVector);
-  MPI_Type_commit(&DT_FVector);
-
-  /* Initialise parallel (user-defined) operators to add FVector, IVector */
-  MPI_Op_create((MPI_User_function *)COM_Add_FVector, TRUE, &OP_AddFVector);
-
   MPI_Barrier(cart_comm());
 
 #else /* Serial section */
 
   LUDWIG_ENTER("COM_init()");
-
-  /* Setting-up parameters */
-  if( argc > 1 ){
-    COM_read_input_file(argv[1]);
-  }
-  else{
-    COM_read_input_file("input");
-  }
 
   /* Serial definition of io_grp (used in cio) */
   io_grp.root  = TRUE;
@@ -624,42 +631,64 @@ void COM_init( int argc, char **argv )
 
 #endif /* _MPI_ */
 
-}
+  /* Everybody */
 
-/*---------------------------------------------------------------------------*\
- * void COM_finish(  )                                                       *
- *                                                                           *
- * Close communications (if required). In practice, not much is required     *
- * besides flushing STDOUT/STDERR and calling MPI_Finalize() (for the MPI    *
- * implementation) and exiting with a suitable error code                    *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _TRACE_, _MPI_                                                   *
- *                                                                           *
- * Arguments                                                                 *
- *                                                                           *
- * Last Updated: 06/01/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
+  /* I/O */
+  strcpy(input_config, "EMPTY");
+  strcpy(output_config, "config.out");
 
-void COM_finish( )
-{
+  input_format = BINARY;
+  output_format = BINARY;
 
-  LUDWIG_ENTER("COM_finish()");
-  
-#ifdef _MPI_
-  
-  /* Free-up MPI-specific resources */
-  
-  MPI_Op_free(&OP_AddFVector);
+  RUN_get_string_parameter("input_config", input_config);
+  RUN_get_string_parameter("output_config", output_config);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  MPI_Finalize();
+  RUN_get_string_parameter("input_format", tmp);
+  if (strncmp("ASCII",  tmp, 5) == 0 ) input_format = ASCII;
+  if (strncmp("BINARY", tmp, 6) == 0 ) input_format = BINARY;
 
-#endif /* _MPI_ */
+  RUN_get_string_parameter("output_format", tmp);
+  if (strncmp("ASCII",  tmp, 5) == 0 ) output_format = ASCII;
+  if (strncmp("BINARY", tmp, 6) == 0 ) output_format = BINARY;
 
-  /* Make sure STDOUT/STDERR are flushed before exiting */
+  /* Set input routines: point to ASCII/binary routine depending on current 
+     settings */
 
-  fflush(NULL);
+  switch (input_format) {
+  case BINARY:
+    MODEL_read_site     = MODEL_read_site_bin;
+    info("Input format is binary\n");
+    break;
+  case ASCII:
+    MODEL_read_site     = MODEL_read_site_asc;
+    info("Input format is ASCII\n");
+    break;
+  default:
+    fatal("Incorrect input_format (%d)\n", input_format);
+  }
+
+  /* Set output routines: point to ASCII/binary routine depending on current 
+     settings */
+
+  switch (output_format) {
+  case BINARY:
+    MODEL_write_site     = MODEL_write_site_bin;
+    MODEL_write_velocity = MODEL_write_velocity_bin;
+    MODEL_write_rho      = MODEL_write_rho_bin;
+    MODEL_write_phi      = MODEL_write_phi_bin;
+    MODEL_write_rho_phi  = MODEL_write_rho_phi_bin;	
+    break;
+  case ASCII:
+    MODEL_write_site     = MODEL_write_site_asc;
+    MODEL_write_velocity = MODEL_write_velocity_asc;
+    MODEL_write_rho      = MODEL_write_rho_asc;
+    MODEL_write_phi      = MODEL_write_phi_asc;
+    MODEL_write_rho_phi  = MODEL_write_rho_phi_asc;	
+    break;
+  default:
+    fatal("Incorrect output format (%d)\n", output_format);
+  }
+
 
 }
 
@@ -948,198 +977,6 @@ void COM_write_site( char *filename, void (*func)( FILE *, int, int ))
 }
 
 /*---------------------------------------------------------------------------*\
- * void COM_read_input_file( char *filename )                                *
- *                                                                           *
- * Reads in input file to doubly linked list for later processing            *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _TRACE_, _MPI_                                                   *
- *                                                                           *
- * Arguments                                                                 *
- * - filename: input from which the parameter list will be read              *
- *                                                                           *
- * Last Updated: 15/07/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
-
-void COM_read_input_file( char *filename )
-{
-  Input_Data *h,*p,*tmp;
-  int  i,ii,nlines;
-  char str[256], *strout;
-  FILE *fp;
-  
-#ifdef _MPI_
-  MPI_Datatype DT_InputData;
-#endif /* _MPI_ */
-  
-  LUDWIG_ENTER("COM_read_input_file()");
-
-  /* Placeholder for head of list */
-  h = (Input_Data*)malloc(sizeof(Input_Data));
-  h->last = h->next = NULL;
-  
-#ifdef _MPI_
-  /* Set-up MPI datatype for structure Input_Data */
-  MPI_Type_contiguous(sizeof(h->str),MPI_BYTE,&DT_InputData);
-  MPI_Type_commit(&DT_InputData);
-#endif /* _MPI_ */
-  
-  /* Open input files (if possible) else, fall back on default "input" */
-
-  /* MPI implementation: root PE reads data, builds list and broadcasts to
-     other PEs (restriction on max number of files open) */
-
-  if(pe_rank() == 0)
-    {
-      nlines = 0;
-      if( (fp = fopen(filename,"r")) == NULL )
-	{
-	  info("COM_read_input_file(): couldn't open input file %s\n",
-	       filename);
-	  
-	  if( (fp = fopen("input","r")) == NULL ){
-	    info("COM_read_input_file(): Using defaults\n");
-	  }
-	}
-      
-      /* Read input file into linked list */
-      if( fp != NULL )
-	{
-	  while( (strout=fgets(str,256,fp)) != NULL )
-	    {
-	      nlines++;
-	      /* Get new link */
-	      p = (Input_Data*)malloc(sizeof(Input_Data));
-	      
-	      if( h->next != NULL ) h->next->last = p;
-	      
-	      p->next = h->next;
-	      p->last = h;
-	      h->next = p;
-	      
-	      /* Copy into string */
-	      strcpy(p->str,str);
-	    }
-	  
-	  /* Close down file */
-	  fclose(fp);
-	}
-    }
-  
-  /* Root PE broadcasts Input Data to other PEs */
-#ifdef _MPI_
-  MPI_Bcast(&nlines, 1, MPI_INT, 0, MPI_COMM_WORLD);
-#endif /* _MPI_ */
-
-  p = h->next;
-  for( i=0; i<nlines; i++ )
-    {
-      if( pe_rank() != 0 )
-	{
-	  /* Get new link */
-	  p = (Input_Data*)malloc(sizeof(Input_Data));
-	  
-	  if( h->next != NULL ) h->next->last = p;
-	  
-	  p->next = h->next; 
-	  p->last = h;
-	  h->next = p;
-	}
-#ifdef _MPI_
-      MPI_Bcast(p->str, 1, DT_InputData, 0, MPI_COMM_WORLD);
-#endif /* _MPI_ */
-      p = p->next;
-    }
-  
-  /* Process COM specific options -- parallel things probably */
-  COM_process_options( h );
-  
-  /* Process model dependent options */
-  MODEL_process_options( h );
-
-  /* Report on unused lines in input file */
-  /* Read out list */
-  p = h->next;
-  
-  /* Read out unused options */
-  while( p != NULL )
-    {
-
-      /* Free memory */
-      tmp = p;
-      p = p->next;
-      free(tmp);
-    }
-  
-  free(h);
-}
-/*---------------------------------------------------------------------------*\
- * void COM_process_options( Input_Data *h )                                 *
- *                                                                           *
- * Process parallel specific options                                         *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _TRACE_, _MPI_                                                   *
- *                                                                           *
- * Arguments                                                                 *
- * - h: pointer to start of input parameter list                             *
- *                                                                           *
- * Last Updated: 15/07/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
-
-void COM_process_options( Input_Data *h )
-{
-#ifdef _MPI_
-
-  int        flag;
-  Input_Data *p,*tmp;
-  char       parameter[256],value[256];
-
-  LUDWIG_ENTER("COM_process_options()");
-
-  /* Set up defaults */
-  /* Set default number of I/O channels */
-
-  io_grp.n_io = 1;
-  
-  /* Read out list */
-  p = h->next;
-  while( p != NULL )
-    {
-      /* Get strings */
-      sscanf(p->str,"%s %s",parameter,value);
-      
-      flag = FALSE;
-      
-      /* Process strings */
-      if( strcmp("n_io_nodes",parameter) == 0 )
-	{
-	  io_grp.n_io = imin(io_grp.n_io,atoi(value));
-	  flag = TRUE;
-	}
-      
-      /* If got an option ok, remove from list */
-      if( flag )
-	{
-	  if( p->next != NULL ) p->next->last = p->last;
-	  if( p->last != NULL ) p->last->next = p->next;		
-	  
-	  tmp = p->next;
-	  free(p);
-	  p = tmp;
-	}
-      else
-	{
-	  /* Next String */
-	  p = p->next;
-	}
-    }
-  
-#endif /* _MPI_ */
-
-  return;
-}
-/*---------------------------------------------------------------------------*\
  * int COM_local_index( int g_ind )                                          *
  *                                                                           *
  * Translates a global index g_ind into a local index ind                    *
@@ -1211,82 +1048,509 @@ IVector COM_index2coord( int index )
   return(coord);
 }
 
-/*------------------------- MPI-specific routines -------------------------*/
-#ifdef _MPI_
+/*----------------------------------------------------------------------------*/
+/*!
+ * Reads distribution function into site s from stream fp (ASCII input)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: FILE *fp: pointer for stream
+ *- \c Returns:   void
+ *- \c Buffers:   invalidates .halo, .rho, .phi, .grad_phi
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_read_site(), MODEL_read_site_bin(), COM_read_site()
+ *- \c Note:      All buffers will need to be re-computed following a
+ *                configuration read. An optimised version of this routine will
+ *                need to be developed for the typical situation where all sites
+ *                are read (simulation re-start). This may considerably speed-up
+ *                this operation depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
 
-/*---------------------------------------------------------------------------*\
- * IVector COM_decomp( IVector gblgrid, int npe )                            *
- *                                                                           *
- * Performs regular domain decomposition. Returns extents of local grid      *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _TRACE_, _MPI_                                                   *
- *                                                                           *
- * Arguments                                                                 *
- * - gblgrid: extents of global grid                                         *
- * - npe:     number of processors (MPI only)                                *
- *                                                                           *
- *                                                                           *
- * Last Updated: 15/07/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
-
-IVector COM_decomp( int npe )
+void MODEL_read_site_asc( FILE *fp )
 {
-  IVector locgrid;
-  long    minsurf, surf;
-  int     i, j, k, triplet=0;
+  int i,ind,g_ind;
   
-  LUDWIG_ENTER("COM_decomp()");
+  LUDWIG_ENTER("MODEL_read_site_asc()");
 
-  minsurf = LONG_MAX;
-  for (i=1; i <= N_total(X); i++)
-    for(j=1; j <= N_total(Y); j++)
-      for(k=1; k <= N_total(Z); k++)
+  if( fscanf(fp,"%d",&g_ind) != EOF )
+    {
+      /* Get local index */
+      ind = COM_local_index( g_ind );
+
+      for(i=0; i<NVEL; i++)
 	{
-	  if((N_total(X) % i == 0) && (N_total(Y)%j==0)&&(N_total(Z)%k==0)&&
-	     ((N_total(X)/i)*(N_total(Y)/j)*(N_total(Z)/k)==npe))
+	  if( fscanf(fp,"%lg %lg",&site[ind].f[i],&site[ind].g[i]) == EOF )
 	    {
-	      triplet=1;
-	      surf = i*j + i*k + j*k;
-	      if(surf<minsurf)
-		{
-		  locgrid.x = (int)i; 
-		  locgrid.y = (int)j;
-		  locgrid.z = (int)k;
-		  minsurf = surf;
-		}
+	      fatal("MODEL_read_site_asc(): read EOF\n");
 	    }
 	}
-  
-  if (!triplet) {
-    fatal("Could not decompose system with current parameters!\n");
-  }
-
-  return locgrid;
-}
-
-/*----- Utility routines for Global (user-defined) reduction operations ----*/
-
-/*--------------------------------------------------------------------------*\
- * Global sum of FVectors                                                   *
- \*--------------------------------------------------------------------------*/
-
-void COM_Add_FVector(FVector *invec, FVector *inoutvec, int *len,
-		     MPI_Datatype *DT_Vector)
-{
-  int i;
-  FVector fvec;
-
-  for(i=0;i<(*len);++i)
+    }
+  else
     {
-      fvec.x = invec->x + inoutvec->x;
-      fvec.y = invec->y + inoutvec->y;
-      fvec.z = invec->z + inoutvec->z;
-      *inoutvec = fvec;
-      invec++;
-      inoutvec++;
+      fatal("MODEL_read_site_asc(): read EOF\n");
     }
 }
 
-#endif /* _MPI_ */
-/*--------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
+/*!
+ * Reads distribution function into site s from stream fp (binary input)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: FILE *fp: pointer for stream
+ *- \c Returns:   void
+ *- \c Buffers:   invalidates .halo, .rho, .phi, .grad_phi
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_read_site(), MODEL_read_site_asc(), COM_read_site()
+ *- \c Note:      All buffers will need to be re-computed following a
+ *                configuration read. An optimised version of this routine will
+ *                need to be developed for the typical situation where all sites
+ *                are read (simulation re-start). This may considerably speed-up
+ *                this operation depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_read_site_bin( FILE *fp )
+{
+  int ind,g_ind;
+  
+  LUDWIG_ENTER("MODEL_read_site_bin()");
+
+  if( fread(&g_ind,sizeof(int),1,fp) != 1 )
+    {
+      fatal("MODEL_read_site_bin(): couldn't read index\n");
+    }
+  
+  /* Convert to local index */
+  ind = COM_local_index( g_ind );
+  
+  if( fread(site+ind,sizeof(Site),1,fp) != 1 )
+    {
+      fatal("MODEL_read_site_bin(): couldn't read site\n");
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes distribution function from site s with index ind to stream fp (ASCII
+ * output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_site(), MODEL_write_site_bin(), COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written (configuration dump). This may considerably speed-up
+ *                this operation depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_site_asc( FILE *fp, int ind, int g_ind )
+{
+  int i;
+
+  LUDWIG_ENTER("MODEL_write_site_asc()");
+
+  fprintf(fp,"%d ",g_ind);
+
+  /* Write site information to stream */
+  for(i=0; i<NVEL; i++)
+    {
+      if( fprintf(fp,"%g %g ",site[ind].f[i],site[ind].g[i]) < 0 )
+	{
+	  fatal("MODEL_write_site_asc(): couldn't write site data\n");
+	}
+    }
+  fprintf(fp,"\n");
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes velocity data from site s with index ind to stream fp (ASCII output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_velocity(), MODEL_write_velocity_bin(), 
+ *                COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written. This may considerably speed-up this operation 
+ *                depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_velocity_asc( FILE *fp, int ind, int g_ind )
+{
+  FVector u;
+
+  LUDWIG_ENTER("MODEL_write_velocity_asc()");
+
+  u = MODEL_get_momentum_at_site(ind);
+
+  /* Write velocity information to stream */
+  if( fprintf(fp,"%d %lg %lg %lg\n",g_ind,u.x,u.y,u.z) < 0 )
+    {
+      fatal("MODEL_write_velocity_asc(): couldn't write velocity data\n");
+    }
+
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes density (rho) from site s with index ind to stream fp (ASCII output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_rho(), MODEL_write_rho_bin(), COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written. This may considerably speed-up this operation 
+ *                depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_rho_asc( FILE *fp, int ind, int g_ind )
+{
+  Float rho;    
+
+  LUDWIG_ENTER("MODEL_write_rho_asc()");
+
+  rho = MODEL_get_rho_at_site(ind);
+
+  /* Write density information to stream */
+  if( fprintf(fp,"%d %lg\n",g_ind,rho) < 0 )
+    {
+      fatal("MODEL_write_rho_asc(): couldn't write data\n");
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes composition (phi) from site s with index ind to stream fp (ASCII 
+ * output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_phi(), MODEL_write_phi_bin(), COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written. This may considerably speed-up this operation
+ *                depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_phi_asc( FILE *fp, int ind, int g_ind )
+{
+  Float phi;    
+
+  LUDWIG_ENTER("MODEL_write_phi_asc()");
+
+  phi = MODEL_get_phi_at_site(ind);
+
+  /* Write composition information to stream */
+  if( fprintf(fp,"%d %lg\n",g_ind,phi) < 0 )
+    {
+      fatal("MODEL_write_phi_asc(): couldn't write data\n");
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes density (rho) and composition (phi) data from site s with index ind
+ * to stream fp (ASCII output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_rho_phi(), MODEL_write_rho_phi_bin(), 
+ *                COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written. This may considerably speed-up this operation 
+ *                depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_rho_phi_asc( FILE *fp, int ind, int g_ind )
+{
+  Float rho, phi;    
+
+  LUDWIG_ENTER("MODEL_write_rho_phi_asc()");
+
+  rho = MODEL_get_rho_at_site(ind);
+  phi = MODEL_get_phi_at_site(ind);
+
+  /* Write density and composition information to stream */
+  if( fprintf(fp,"%d %lg %lg\n",g_ind,rho,phi) < 0 )
+    {
+      fatal("MODEL_write_rho_phi_asc(): couldn't write data\n");
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes distribution function from site s with index ind to stream fp (binary
+ * output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_site(), MODEL_write_site_asc(), COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written (configuration dump). This may considerably speed-up
+ *                this operation depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_site_bin( FILE *fp, int ind, int g_ind )
+{
+  LUDWIG_ENTER("MODEL_write_site_bin()");
+
+  if( fwrite(&g_ind,sizeof(int),1,fp)    != 1  ||
+      fwrite(site+ind,sizeof(Site),1,fp) != 1 )
+    {
+      fatal("MODEL_write_site_bin(): couldn't write data\n");
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes velocity data from site s with index ind to stream fp (binary output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_velocity(), MODEL_write_velocity_asc(), 
+ *                COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written. This may considerably speed-up this operation 
+ *                depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_velocity_bin( FILE *fp, int ind, int g_ind )
+{
+  FVector u;
+
+  LUDWIG_ENTER("MODEL_write_velocity_bin()");
+
+  u = MODEL_get_momentum_at_site(ind);
+
+  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
+      fwrite(&u.x,sizeof(Float),1,fp) != 1  ||
+      fwrite(&u.y,sizeof(Float),1,fp) != 1  ||
+      fwrite(&u.z,sizeof(Float),1,fp) != 1  )
+    {
+      fatal("MODEL_write_velocity_bin(): couldn't write data\n");
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes density (rho) from site s with index ind to stream fp (binary output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_rho(), MODEL_write_rho_asc(), COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written. This may considerably speed-up this operation 
+ *                depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_rho_bin( FILE *fp, int ind, int g_ind )
+{
+  Float rho;    
+
+  LUDWIG_ENTER("MODEL_write_rho_bin()");
+
+  rho = MODEL_get_rho_at_site(ind);
+
+  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
+      fwrite(&rho,sizeof(Float),1,fp) != 1 )
+    {
+      fatal("MODEL_write_rho_bin(): couldn't write data\n");
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes composition (phi) from site s with index ind to stream fp (binary
+ * output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_phi(), MODEL_write_phi_asc(), COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written. This may considerably speed-up this operation
+ *                depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_phi_bin( FILE *fp, int ind, int g_ind )
+{
+  Float phi;    
+
+  LUDWIG_ENTER("MODEL_write_phi_bin()");
+
+  phi = MODEL_get_phi_at_site(ind);
+
+  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
+      fwrite(&phi,sizeof(Float),1,fp) != 1 )
+    {
+      fatal("MODEL_write_phi_bin(): couldn't write data\n");
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * Writes density (rho) and composition (phi) data from site s with index ind
+ * to stream fp (binary output)
+ *
+ *- \c Options:   _TRACE_
+ *- \c Arguments: 
+ *  -# \c FILE \c *fp: pointer for stream
+ *  -# \c int \c ind: local index of site s
+ *  -# \c int \c g_ind: global index of site s
+ *- \c Returns:   void
+ *- \c Buffers:   no dependence
+ *- \c Version:   2.0
+ *- \c Last \c updated: 03/03/2002 by JCD
+ *- \c Authors:   JC Desplat
+ *- \c See \c also: MODEL_write_rho_phi(), MODEL_write_rho_phi_asc(), 
+ *                COM_write_site()
+ *- \c Note:      An optimised version of this routine will need to be
+ *                developed for the typical situation where all sites are
+ *                written. This may considerably speed-up this operation 
+ *                depending on how the OS manages disc buffers
+ */
+/*----------------------------------------------------------------------------*/
+
+void MODEL_write_rho_phi_bin( FILE *fp, int ind, int g_ind )
+{
+  Float rho,phi;    
+
+  LUDWIG_ENTER("MODEL_write_rho_phi_bin()");
+
+  rho = MODEL_get_rho_at_site(ind);
+  phi = MODEL_get_phi_at_site(ind);
+
+  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
+      fwrite(&rho,sizeof(Float),1,fp) != 1 ||
+      fwrite(&phi,sizeof(Float),1,fp) != 1 )
+    {
+      fatal("MODEL_write_rho_phi_bin(): couldn't write data\n");
+    }
+}
+
+/*****************************************************************************
+ *
+ *  get_output_config_filename
+ *
+ *  Return conifguration file name stub for time "step"
+ *
+ *****************************************************************************/
+
+char * get_output_config_filename(const int step) {
+
+  char tmp[256];
+
+  sprintf(tmp, "%s%8.8d", output_config, step);
+
+  return tmp;
+}
+
+/*****************************************************************************
+ *
+ *  get_input_config_filename
+ *
+ *  Return configuration file name (where for historical reasons,
+ *  input_config holds the whole name). "step is ignored.
+ *
+ *****************************************************************************/
+
+char * get_input_config_filename(const int step) {
+
+  char tmp[256];
+
+  sprintf(tmp, "%s", input_config);
+
+  return tmp;
+}
+
