@@ -26,7 +26,7 @@ static Wall_link * WALL_allocate_wall_link(void);
 static void        WALL_init_fluid(void);
 static void        WALL_init_side_wall_links(void);
 static void        WALL_init_site_map(void);
-
+extern char * site_map;
 
 /*****************************************************************************
  *
@@ -46,6 +46,9 @@ static void        WALL_init_site_map(void);
  ****************************************************************************/
 
 void WALL_init() {
+
+  /* Walls are scheduled to be refactored. */
+  _wall.present = 0;
 
   if (! _wall.present) {
     /* Peridic in all three directions */
@@ -379,7 +382,7 @@ void WALL_bounce_back() {
   double       rho;
   double       cdotu, dtmp;
 
-  rho = gbl.rho;
+  rho = 1.0;
 
   p_link = _wall.lnklower;
 
