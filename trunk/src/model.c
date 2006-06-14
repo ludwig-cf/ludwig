@@ -13,44 +13,16 @@
 static void    MODEL_set_rho(const double, const int);
 static void    MODEL_set_phi(const double, const int);
 
-static void    MODEL_read_site_asc( FILE * );
-static void    MODEL_read_site_bin( FILE * );
-static void    MODEL_write_site_asc( FILE *, int, int );
-static void    MODEL_write_velocity_asc( FILE *, int, int );
-static void    MODEL_write_rho_asc( FILE *, int, int );
-static void    MODEL_write_phi_asc( FILE *, int, int );
-static void    MODEL_write_rho_phi_asc( FILE *, int, int );
-static void    MODEL_write_site_bin( FILE *, int, int );
-static void    MODEL_write_velocity_bin( FILE *, int, int );
-static void    MODEL_write_rho_bin( FILE *, int, int );
-static void    MODEL_write_phi_bin( FILE *, int, int );
-static void    MODEL_write_rho_phi_bin( FILE *, int, int );
-
 /* Variables (not static) */
 
 FVector * grad_phi;
 Float   * delsq_phi;
 Float   * rho_site;
 
-Global    gbl;
 char    * site_map;
 double    siteforce[3];
 
 extern double * phi_site;
-
-
-/* Generic functions for output */
-
-void (*MODEL_write_site)( FILE *, int, int );
-void (*MODEL_write_phi)( FILE *, int, int );
-
-static void (*MODEL_write_velocity)( FILE *, int, int );
-static void (*MODEL_write_rho)( FILE *, int, int );
-static void (*MODEL_write_rho_phi)( FILE *, int, int );
-
-/* Generic functions for input */
-static void (*MODEL_read_site)( FILE * );
-
 
 
 /* Variables concerned with the collision */
@@ -64,6 +36,11 @@ static double var_bulk;        /* Variance for bulk mode fluctuations */
 static double kT;              /* Isothermal fluctuating noise "temperature" */
        double _q[NVEL][3][3];  /* Q matrix */
 
+
+static double  rho0 = 1.0;     /* Average simulation density */
+static double  phi0 = 0.0;     /* Average order parameter    */
+static double  mobility;       /* Order parameter Mobility   */
+static double  noise0 = 0.1;   /* Initial noise amplitude    */
 
 
 #ifdef _SINGLE_FLUID_
@@ -87,18 +64,17 @@ void MODEL_collide_multirelaxation() {
   int      i, j;                    /* summed over indices ("alphabeta") */
   int      xfac, yfac;
 
-  Float    u[3];                    /* Velocity */
-  Float    s[3][3];                 /* Stress */
-  double   shat[3][3];              /* random stress */
-  Float    rho, rrho;               /* Density, reciprocal density */
-  Float    rtau;                    /* Reciprocal \tau */
-  Float *  f;
+  double    u[3];                    /* Velocity */
+  double    s[3][3];                 /* Stress */
+  double    shat[3][3];              /* random stress */
+  double    rho, rrho;               /* Density, reciprocal density */
+  double *  f;
 
-  Float    udotc;
-  Float    sdotq;
+  double    udotc;
+  double    sdotq;
 
-  Float    force[3];                /* External force */
-  double   tr_s, tr_seq, dij;
+  double    force[3];                /* External force */
+  double    tr_s, tr_seq, dij;
 
   const double   rcs2   = 3.0;      /* The constant 1 / c_s^2 */
   const double   r2rcs4 = 4.5;      /* The constant 1 / 2 c_s^4 */
@@ -113,8 +89,6 @@ void MODEL_collide_multirelaxation() {
   get_N_local(N);
   yfac = (N[Z]+2);
   xfac = (N[Y]+2)*yfac;
-
-  rtau = 2.0 / (1.0 + 6.0*get_eta_shear());
 
   for (p = 0; p < NVEL; p++) {
     fghost[p] = 0.0;
@@ -270,42 +244,42 @@ void MODEL_collide_multirelaxation() {
   int      i, j;                    /* summed over indices ("alphabeta") */
   int      xfac, yfac;
 
-  Float    u[3];                    /* Velocity */
-  Float    jphi[3];                 /* Order parameter flux */
-  Float    s[3][3];                 /* Stress */
+  double    u[3];                    /* Velocity */
+  double    jphi[3];                 /* Order parameter flux */
+  double    s[3][3];                 /* Stress */
   double   shat[3][3];              /* Random stress */
-  Float    sth[3][3];               /* Equilibrium stress (thermodynamic) */
-  Float    sphi[3][3];              /* Order parameter "stress" */
-  Float    rho, rrho;               /* Density, reciprocal density */
-  Float    rtau2;                   /* Reciprocal \tau \tau_2 */
-  Float    tr_s, tr_seq;
-  Float *  f;
-  Float *  g;
+  double    sth[3][3];               /* Equilibrium stress (thermodynamic) */
+  double    sphi[3][3];              /* Order parameter "stress" */
+  double    rho, rrho;               /* Density, reciprocal density */
+  double    rtau2;                   /* Reciprocal \tau \tau_2 */
+  double    tr_s, tr_seq;
+  double *  f;
+  double *  g;
 
-  Float    udotc;
-  Float    jdotc;
-  Float    sdotq, sphidotq;
-  Float    dij;
+  double    udotc;
+  double    jdotc;
+  double    sdotq, sphidotq;
+  double    dij;
 
-  Float    force[3];                /* External force */
+  double    force[3];                /* External force */
 
-  Float    phi;                     /* Order parameter */
-  Float    phi_x, phi_y, phi_z;     /* \nabla\phi */
-  Float    grad_phi_sq;
-  Float    mu;                      /* Chemical potential */
-  Float    s1;                      /* Diagonal part of thermodynamic stress */
-  Float    A, B, kappa;             /* Free energy parameters */
+  double    phi;                     /* Order parameter */
+  double    phi_x, phi_y, phi_z;     /* \nabla\phi */
+  double    grad_phi_sq;
+  double    mu;                      /* Chemical potential */
+  double    s1;                      /* Diagonal part of thermodynamic stress */
+  double    A, B, kappa;             /* Free energy parameters */
 
-  const Float r2   = 0.5;
-  const Float r3   = 1.0/3.0;
-  const Float c3r2 = 1.5;
+  const double r2   = 0.5;
+  const double r3   = 1.0/3.0;
+  const double c3r2 = 1.5;
 
-  const Float rcs2   = 3.0;         /* The constant 1 / c_s^2 */
-  const Float r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
+  const double rcs2   = 3.0;         /* The constant 1 / c_s^2 */
+  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   double    fghost[NVEL];
 
-  Float    dp0;
+  double    dp0;
 
   extern FVector * _force;
 
@@ -316,7 +290,7 @@ void MODEL_collide_multirelaxation() {
   yfac = (N[Z]+2);
   xfac = (N[Y]+2)*yfac;
 
-  rtau2 = 2.0 / (1.0 + 6.0*gbl.mobility);
+  rtau2 = 2.0 / (1.0 + 6.0*mobility);
 
   A = free_energy_A();
   B = free_energy_B();
@@ -488,6 +462,7 @@ void MODEL_collide_multirelaxation() {
 
 	  f[p] = wv[p]*(rho + rho*udotc*rcs2 + sdotq*r2rcs4 + fghost[p]);
 	  g[p] = wv[p]*(          jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
+
 	}
 
 	/* Next site */
@@ -519,12 +494,12 @@ void MODEL_collide_multirelaxation() {
  */
 /*----------------------------------------------------------------------------*/
 
-void MODEL_init( void )
-{
+void MODEL_init( void ) {
+
   int     i,j,k,ind,xfac,yfac,N_sites;
   int     N[3];
   int     offset[3];
-  Float   phi;
+  double   phi;
 
   void le_init_transitional(void);
 
@@ -550,17 +525,17 @@ void MODEL_init( void )
   /* Allocate memory */
 
   info("Requesting %d bytes for grad_phi\n", N_sites*sizeof(FVector));
-  info("Requesting %d bytes for delsq_phi\n", N_sites*sizeof(Float));
-  info("Requesting %d bytes for rho_site\n", N_sites*sizeof(Float));
+  info("Requesting %d bytes for delsq_phi\n", N_sites*sizeof(double));
+  info("Requesting %d bytes for rho_site\n", N_sites*sizeof(double));
 
   grad_phi  = (FVector*)calloc(N_sites,sizeof(FVector));
-  delsq_phi = (Float  *)calloc(N_sites,sizeof(Float  ));
-  rho_site  = (Float  *)calloc(N_sites,sizeof(Float  ));
+  delsq_phi = (double  *)calloc(N_sites,sizeof(double  ));
+  rho_site  = (double  *)calloc(N_sites,sizeof(double  ));
 
   if(grad_phi==NULL || delsq_phi==NULL || rho_site==NULL)
     {
       fatal("MODEL_init(): failed to allocate %d bytes for vels\n",
-	    2*N_sites*(sizeof(FVector)+sizeof(Float)));
+	    2*N_sites*(sizeof(FVector)+sizeof(double)));
     }
 
   LATT_allocate_sites(N_sites);
@@ -577,14 +552,17 @@ void MODEL_init( void )
    * 6. set rho/phi/velocity to default values, automatically set etc.
    */
 
+  RUN_get_double_parameter("phi", &phi0);
+  RUN_get_double_parameter("noise", &noise0);
+
   /* Option 1: read distribution functions from file */
-  if( strcmp(gbl.input_config,"EMPTY") != 0 ) {
+  if( strcmp(get_input_config_filename(0),"EMPTY") != 0 ) {
 
     info("Re-starting simulation at step %d with data read from "
-	 "config\nfile(s) %s\n", get_step(), gbl.input_config);
+	 "config\nfile(s) %s\n", get_step(), get_input_config_filename(0));
 
     /* Read distribution functions - sets both */
-    COM_read_site(gbl.input_config,MODEL_read_site);
+    COM_read_site(get_input_config_filename(0),MODEL_read_site);
   } 
   /* Option 6: set rho/phi to defaults */
   else {
@@ -602,7 +580,7 @@ void MODEL_init( void )
 
 	    ind = i*xfac + j*yfac + k;
 
-	    phi = gbl.phi + gbl.noise*(RAN_uniform() - 0.5);
+	    phi = phi0 + noise0*(RAN_uniform() - 0.5);
 	    if(fabs(phi) < TINY){
 	      phi = (phi > 0) ? TINY : (-TINY);
 	    }
@@ -616,11 +594,11 @@ void MODEL_init( void )
 		ind = (i-offset[X])*xfac + (j-offset[Y])*yfac + (k-offset[Z]);
 		site_map[ind] = FLUID;
 #ifdef _SINGLE_FLUID_
-		MODEL_set_rho(gbl.rho, ind);
-		MODEL_set_phi(gbl.phi, ind);
+		MODEL_set_rho(rho0, ind);
+		MODEL_set_phi(phi0, ind);
 #else
-		MODEL_set_rho(gbl.rho, ind); 
-		MODEL_set_phi(phi,     ind);
+		MODEL_set_rho(rho0, ind); 
+		MODEL_set_phi(phi,  ind);
 #endif
 	      }
 	  }
@@ -633,703 +611,6 @@ void MODEL_init( void )
    */
   LE_update_buffers(SITE_AND_PHI);
 
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Set simulation parameters to default values and parse user-supplied values
- * from input file
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: Input_Data *h: user-supplied parameter values
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   P. Bladon and JC Desplat
- *- \c See \c also: MODEL_init(), COM_read_input_file(), COM_process_options()
- *- \c Note:      although values for eta2/viscosity2 will be read from the
- *                input file, these parameters are not yet supported in the
- *                current release of the code
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_process_options( Input_Data *h )
-{
-  Input_Data *p,*tmp;
-  int  flag;
-  char parameter[256],value[256];
-  
-  LUDWIG_ENTER("MODEL_process_options()");
-
-  /* Set defaults here:  D3Q15 parameters of Qian et. al. */
-  gbl.rho = 1.0;
-  gbl.phi = 0.0;
-  gbl.mobility = 0.1;
-  gbl.noise = 0.1;
-
-  gbl.input_format = ASCII;
-  gbl.output_format = ASCII;
-
-  /* I/O */
-  strcpy(gbl.input_config,"EMPTY");
-  strcpy(gbl.output_config,"config.out");
-
-  /* Read out list */
-  p = h->next;
-  while( p != NULL )
-    {
-      /* Get strings */
-      if(sscanf(p->str,"%s %s",parameter,value) == EOF){
-	sprintf(parameter,"INVALID_ENTRY");
-      }
-
-      flag = FALSE;
-	
-      /* Work out what we got */
-
-      if( strcmp("input_format",parameter) == 0 )
-	{
-	  if( strncmp("BINARY",value,6) == 0 )
-	    {
-	      gbl.input_format = BINARY;
-	      flag = TRUE;
-	    }
-	  else if( strncmp("ASCII",value,5) == 0 )
-	    {
-	      gbl.input_format = ASCII;
-	      flag = TRUE;
-	    }
-	}
-      else if( strcmp("output_format",parameter) == 0 )
-	{
-	  if( strncmp("BINARY",value,6) == 0 )
-	    {
-	      gbl.output_format = BINARY;
-	      flag = TRUE;
-	    }
-	  else if( strncmp("ASCII",value,5) == 0 )
-	    {
-	      gbl.output_format = ASCII;
-	      flag = TRUE;
-	    }
-	}
-      else if( strcmp("rho",parameter) == 0 )
-	{
-	  gbl.rho = atof(value);
-	  flag = TRUE;
-	}
-      else if( strcmp("phi",parameter) == 0 )
-	{
-	  gbl.phi = atof(value);
-	  flag = TRUE;
-	}
-      else if( strcmp("mobility",parameter) == 0 )
-	{
-	  gbl.mobility = atof(value);
-	  flag = TRUE;
-	}
-      else if( strcmp("noise",parameter) == 0 )
-	{
-	  gbl.noise = atof(value);
-	  flag = TRUE;
-	}
-      else if( strcmp("input_config",parameter) == 0 )
-	{
-	  strcpy(gbl.input_config,value);
-	  flag = TRUE;
-	}
-      else if( strcmp("output_config",parameter) == 0 )
-	{
-	  strcpy(gbl.output_config,value);
-	  flag = TRUE;
-	}	
-      else if (strcmp("colloid_a0", parameter) == 0)
-	{
-	  Global_Colloid.a0 = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_ah", parameter) == 0)
-	{
-	  Global_Colloid.ah = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_vf", parameter) == 0)
-	{
-	  Global_Colloid.vf = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_r_lu_n", parameter) == 0)
-	{
-	  Global_Colloid.r_lu_n = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_r_lu_t", parameter) == 0)
-	{ 
-	  Global_Colloid.r_lu_t = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_r_lu_r", parameter) == 0)
-	{
-	  Global_Colloid.r_lu_r = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_r_ssph", parameter) == 0)
-	{
-	  Global_Colloid.r_ssph = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_r_clus", parameter) == 0)
-	{
-	  Global_Colloid.r_clus = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_drop_in_p1", parameter) == 0)
-	{
-	  Global_Colloid.drop_in_p1 = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_drop_in_p2", parameter) == 0)
-	{
-	  Global_Colloid.drop_in_p2 = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_drop_in_p3", parameter) == 0)
-	{
-	  Global_Colloid.drop_in_p3 = atof(value);
-	  flag = TRUE;
-	}
-      else if (strcmp("colloid_gravity", parameter) == 0)
-	{
-	  if( sscanf(value,"%lg_%lg_%lg", &Global_Colloid.F.x,
-		     &Global_Colloid.F.y, &Global_Colloid.F.z) != 3 )
-	    {
-	      fatal("colloid_gravity format not corrent in input\n");
-	    }
-	  flag = TRUE;
-	}
-
-      /* If got an option ok, remove from list */
-      if( flag )
-	{
-	  if( p->next != NULL ) p->next->last = p->last;
-	  if( p->last != NULL ) p->last->next = p->next;		
-	  
-	  tmp = p->next;
-	  free(p);
-	  p = tmp;
-	}
-      else
-	{
-	  /* Next String */
-	  p = p->next;
-	}
-    }
-
-  /* Set input routines: point to ASCII/binary routine depending on current 
-     settings */
-  switch( gbl.input_format )
-    {
-    case BINARY:
-      MODEL_read_site     = MODEL_read_site_bin;
-      break;
-
-    case ASCII:
-      MODEL_read_site     = MODEL_read_site_asc;
-      break;
-    }
-
-  /* Set output routines: point to ASCII/binary routine depending on current 
-     settings */
-  switch( gbl.output_format )
-    {
-    case BINARY:
-      MODEL_write_site     = MODEL_write_site_bin;
-      MODEL_write_velocity = MODEL_write_velocity_bin;
-      MODEL_write_rho      = MODEL_write_rho_bin;
-      MODEL_write_phi      = MODEL_write_phi_bin;
-      MODEL_write_rho_phi  = MODEL_write_rho_phi_bin;	
-      break;
-
-    case ASCII:
-      MODEL_write_site     = MODEL_write_site_asc;
-      MODEL_write_velocity = MODEL_write_velocity_asc;
-      MODEL_write_rho      = MODEL_write_rho_asc;
-      MODEL_write_phi      = MODEL_write_phi_asc;
-      MODEL_write_rho_phi  = MODEL_write_rho_phi_asc;	
-      break;
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Reads distribution function into site s from stream fp (ASCII input)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: FILE *fp: pointer for stream
- *- \c Returns:   void
- *- \c Buffers:   invalidates .halo, .rho, .phi, .grad_phi
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_read_site(), MODEL_read_site_bin(), COM_read_site()
- *- \c Note:      All buffers will need to be re-computed following a
- *                configuration read. An optimised version of this routine will
- *                need to be developed for the typical situation where all sites
- *                are read (simulation re-start). This may considerably speed-up
- *                this operation depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_read_site_asc( FILE *fp )
-{
-  int i,ind,g_ind;
-  
-  LUDWIG_ENTER("MODEL_read_site_asc()");
-
-  if( fscanf(fp,"%d",&g_ind) != EOF )
-    {
-      /* Get local index */
-      ind = COM_local_index( g_ind );
-
-      for(i=0; i<NVEL; i++)
-	{
-	  if( fscanf(fp,"%lg %lg",&site[ind].f[i],&site[ind].g[i]) == EOF )
-	    {
-	      fatal("MODEL_read_site_asc(): read EOF\n");
-	    }
-	}
-    }
-  else
-    {
-      fatal("MODEL_read_site_asc(): read EOF\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Reads distribution function into site s from stream fp (binary input)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: FILE *fp: pointer for stream
- *- \c Returns:   void
- *- \c Buffers:   invalidates .halo, .rho, .phi, .grad_phi
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_read_site(), MODEL_read_site_asc(), COM_read_site()
- *- \c Note:      All buffers will need to be re-computed following a
- *                configuration read. An optimised version of this routine will
- *                need to be developed for the typical situation where all sites
- *                are read (simulation re-start). This may considerably speed-up
- *                this operation depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_read_site_bin( FILE *fp )
-{
-  int ind,g_ind;
-  
-  LUDWIG_ENTER("MODEL_read_site_bin()");
-
-  if( fread(&g_ind,sizeof(int),1,fp) != 1 )
-    {
-      fatal("MODEL_read_site_bin(): couldn't read index\n");
-    }
-  
-  /* Convert to local index */
-  ind = COM_local_index( g_ind );
-  
-  if( fread(site+ind,sizeof(Site),1,fp) != 1 )
-    {
-      fatal("MODEL_read_site_bin(): couldn't read site\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes distribution function from site s with index ind to stream fp (ASCII
- * output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_site(), MODEL_write_site_bin(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written (configuration dump). This may considerably speed-up
- *                this operation depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_site_asc( FILE *fp, int ind, int g_ind )
-{
-  int i;
-
-  LUDWIG_ENTER("MODEL_write_site_asc()");
-
-  fprintf(fp,"%d ",g_ind);
-
-  /* Write site information to stream */
-  for(i=0; i<NVEL; i++)
-    {
-      if( fprintf(fp,"%g %g ",site[ind].f[i],site[ind].g[i]) < 0 )
-	{
-	  fatal("MODEL_write_site_asc(): couldn't write site data\n");
-	}
-    }
-  fprintf(fp,"\n");
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes velocity data from site s with index ind to stream fp (ASCII output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_velocity(), MODEL_write_velocity_bin(), 
- *                COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_velocity_asc( FILE *fp, int ind, int g_ind )
-{
-  FVector u;
-
-  LUDWIG_ENTER("MODEL_write_velocity_asc()");
-
-  u = MODEL_get_momentum_at_site(ind);
-
-  /* Write velocity information to stream */
-  if( fprintf(fp,"%d %lg %lg %lg\n",g_ind,u.x,u.y,u.z) < 0 )
-    {
-      fatal("MODEL_write_velocity_asc(): couldn't write velocity data\n");
-    }
-
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes density (rho) from site s with index ind to stream fp (ASCII output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_rho(), MODEL_write_rho_bin(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_rho_asc( FILE *fp, int ind, int g_ind )
-{
-  Float rho;    
-
-  LUDWIG_ENTER("MODEL_write_rho_asc()");
-
-  rho = MODEL_get_rho_at_site(ind);
-
-  /* Write density information to stream */
-  if( fprintf(fp,"%d %lg\n",g_ind,rho) < 0 )
-    {
-      fatal("MODEL_write_rho_asc(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes composition (phi) from site s with index ind to stream fp (ASCII 
- * output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_phi(), MODEL_write_phi_bin(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_phi_asc( FILE *fp, int ind, int g_ind )
-{
-  Float phi;    
-
-  LUDWIG_ENTER("MODEL_write_phi_asc()");
-
-  phi = MODEL_get_phi_at_site(ind);
-
-  /* Write composition information to stream */
-  if( fprintf(fp,"%d %lg\n",g_ind,phi) < 0 )
-    {
-      fatal("MODEL_write_phi_asc(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes density (rho) and composition (phi) data from site s with index ind
- * to stream fp (ASCII output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_rho_phi(), MODEL_write_rho_phi_bin(), 
- *                COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_rho_phi_asc( FILE *fp, int ind, int g_ind )
-{
-  Float rho, phi;    
-
-  LUDWIG_ENTER("MODEL_write_rho_phi_asc()");
-
-  rho = MODEL_get_rho_at_site(ind);
-  phi = MODEL_get_phi_at_site(ind);
-
-  /* Write density and composition information to stream */
-  if( fprintf(fp,"%d %lg %lg\n",g_ind,rho,phi) < 0 )
-    {
-      fatal("MODEL_write_rho_phi_asc(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes distribution function from site s with index ind to stream fp (binary
- * output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_site(), MODEL_write_site_asc(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written (configuration dump). This may considerably speed-up
- *                this operation depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_site_bin( FILE *fp, int ind, int g_ind )
-{
-  LUDWIG_ENTER("MODEL_write_site_bin()");
-
-  if( fwrite(&g_ind,sizeof(int),1,fp)    != 1  ||
-      fwrite(site+ind,sizeof(Site),1,fp) != 1 )
-    {
-      fatal("MODEL_write_site_bin(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes velocity data from site s with index ind to stream fp (binary output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_velocity(), MODEL_write_velocity_asc(), 
- *                COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_velocity_bin( FILE *fp, int ind, int g_ind )
-{
-  FVector u;
-
-  LUDWIG_ENTER("MODEL_write_velocity_bin()");
-
-  u = MODEL_get_momentum_at_site(ind);
-
-  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&u.x,sizeof(Float),1,fp) != 1  ||
-      fwrite(&u.y,sizeof(Float),1,fp) != 1  ||
-      fwrite(&u.z,sizeof(Float),1,fp) != 1  )
-    {
-      fatal("MODEL_write_velocity_bin(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes density (rho) from site s with index ind to stream fp (binary output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_rho(), MODEL_write_rho_asc(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_rho_bin( FILE *fp, int ind, int g_ind )
-{
-  Float rho;    
-
-  LUDWIG_ENTER("MODEL_write_rho_bin()");
-
-  rho = MODEL_get_rho_at_site(ind);
-
-  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&rho,sizeof(Float),1,fp) != 1 )
-    {
-      fatal("MODEL_write_rho_bin(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes composition (phi) from site s with index ind to stream fp (binary
- * output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_phi(), MODEL_write_phi_asc(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_phi_bin( FILE *fp, int ind, int g_ind )
-{
-  Float phi;    
-
-  LUDWIG_ENTER("MODEL_write_phi_bin()");
-
-  phi = MODEL_get_phi_at_site(ind);
-
-  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&phi,sizeof(Float),1,fp) != 1 )
-    {
-      fatal("MODEL_write_phi_bin(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes density (rho) and composition (phi) data from site s with index ind
- * to stream fp (binary output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_rho_phi(), MODEL_write_rho_phi_asc(), 
- *                COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_rho_phi_bin( FILE *fp, int ind, int g_ind )
-{
-  Float rho,phi;    
-
-  LUDWIG_ENTER("MODEL_write_rho_phi_bin()");
-
-  rho = MODEL_get_rho_at_site(ind);
-  phi = MODEL_get_phi_at_site(ind);
-
-  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&rho,sizeof(Float),1,fp) != 1 ||
-      fwrite(&phi,sizeof(Float),1,fp) != 1 )
-    {
-      fatal("MODEL_write_rho_phi_bin(): couldn't write data\n");
-    }
 }
 
 /*****************************************************************************
@@ -1475,7 +756,7 @@ void MODEL_calc_rho( void ) {
 
   int i,j,k,ind,xfac,yfac,p;
   int N[3];
-  Float *f;
+  double *f;
 
   
   LUDWIG_ENTER("MODEL_calc_rho()");
@@ -1634,6 +915,11 @@ void RAND_init_fluctuations() {
   info("Bulk viscosity : %f\n", eta_bulk);
   info("Relaxation time: %f\n", tau_b);
   info("Isothermal kT:   %f\n", kT);
+
+  /* Order parameter mobility (probably to move) */
+
+  p = RUN_get_double_parameter("mobility", &mobility);
+  info("\nOrder parameter mobility M: %f\n", mobility);
 
   return;
 }
@@ -2007,7 +1293,41 @@ double get_eta_shear() {
   return eta_shear;
 }
 
+/*****************************************************************************
+ *
+ * get_kT
+ *
+ *  Access function for the isothermal temperature.
+ *
+ *****************************************************************************/
+
 double get_kT() {
 
   return kT;
+}
+
+/*****************************************************************************
+ *
+ *  get_rho0
+ *
+ *  Access function for the mean fluid density.
+ *
+ *****************************************************************************/
+
+double get_rho0() {
+
+  return rho0;
+}
+
+/*****************************************************************************
+ *
+ *  get_phi0
+ *
+ *  Access function for the mean order parameter.
+ *
+ *****************************************************************************/
+
+double get_phi0() {
+
+  return phi0;
 }
