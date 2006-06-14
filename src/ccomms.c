@@ -438,7 +438,6 @@ void CMPI_accept_new(int nrecv) {
 	p_existing->random[4] = p_colloid->random[4];
 	p_existing->random[5] = p_colloid->random[5];
 #endif
-	p_existing->export = 1;
 	exists = 1;
       }
       p_existing = p_existing->next;
@@ -452,7 +451,6 @@ void CMPI_accept_new(int nrecv) {
     }
     else {
       /* Add the incoming colloid */
-      p_colloid->export = 1;
       CELL_insert_at_head_of_list(p_colloid);
       VERBOSE(("Added copy of [index %d] to [%d,%d,%d]\n", p_colloid->index,
 	       new.x, new.y, new.z));
