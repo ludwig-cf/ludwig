@@ -99,7 +99,6 @@ void CELL_init_cells() {
   info("Default hydrodynamic radius ah:   %f\n", Global_Colloid.ah);
   info("Normal lubrication breakdown:     %f\n", Global_Colloid.r_lu_n);
   info("Tangential lubrication breakdown: %f\n", Global_Colloid.r_lu_t);
-  info("Rotational lubrication breakdown: %f\n", Global_Colloid.r_lu_r);
   info("Implicit scheme cut off:          %f\n", Global_Colloid.r_clus);
   info("Minimum cell width:               %f\n\n", lcellmin);
   info("Local number of cells             [%d,%d,%d]\n", ncl.x, ncl.y, ncl.z);
@@ -354,7 +353,6 @@ void CELL_sort_list(int ic, int jc, int kc) {
   while (p_colloid) {
     sortlist[npart] = p_colloid;
     npart++;
-    p_colloid->export = 0; /* Set all flags to zero */
     p_colloid = p_colloid->next;
   }
 
