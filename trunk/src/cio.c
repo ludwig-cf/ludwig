@@ -214,31 +214,6 @@ void CIO_write_header_ascii(FILE * fp) {
   fprintf(fp, "I/O index: %22d\n",    io_grp.index);
   fprintf(fp, "N_colloid: %22d\n",    Global_Colloid.N_colloid);
   fprintf(fp, "nlocal:    %22d\n",    Global_Colloid.nlocal);
-  fprintf(fp, "rebuild:   %22d\n",    Global_Colloid.fr);
-  fprintf(fp, "a0:        %22.15e\n", Global_Colloid.a0);
-  fprintf(fp, "ah:        %22.15e\n", Global_Colloid.ah);
-  fprintf(fp, "vf:        %22.15e\n", Global_Colloid.vf);
-  fprintf(fp, "rho:       %22.15e\n", Global_Colloid.rho);
-  fprintf(fp, "deltaf:    %22.15e\n", Global_Colloid.deltaf);
-  fprintf(fp, "deltag:    %22.15e\n", Global_Colloid.deltag);
-  fprintf(fp, "r_lu_n:    %22.15e\n", Global_Colloid.r_lu_n);
-  fprintf(fp, "r_lu_t:    %22.15e\n", Global_Colloid.r_lu_t);
-  fprintf(fp, "r_lu_r:    %22.15e\n", Global_Colloid.r_lu_r);
-  fprintf(fp, "r_ssph:    %22.15e\n", Global_Colloid.r_ssph);
-  fprintf(fp, "r_clus:    %22.15e\n", Global_Colloid.r_clus);
-  fprintf(fp, "Ncell.x:   %22d\n",    Global_Colloid.Ncell.x);
-  fprintf(fp, "Ncell.y:   %22d\n",    Global_Colloid.Ncell.y);
-  fprintf(fp, "Ncell.z:   %22d\n",    Global_Colloid.Ncell.z);
-  fprintf(fp, "Lcell.x:   %22.15e\n", Global_Colloid.Lcell.x);
-  fprintf(fp, "Lcell.y:   %22.15e\n", Global_Colloid.Lcell.y);
-  fprintf(fp, "Lcell.z:   %22.15e\n", Global_Colloid.Lcell.z);
-  fprintf(fp, "F.x:       %22.15e\n", Global_Colloid.F.x);
-  fprintf(fp, "F.y:       %22.15e\n", Global_Colloid.F.y);
-  fprintf(fp, "F.z:       %22.15e\n", Global_Colloid.F.z);
-  fprintf(fp, "pid:       %22d\n",    Global_Colloid.pid);
-  fprintf(fp, "drop_in_p1:%22.15e\n", Global_Colloid.drop_in_p1);
-  fprintf(fp, "drop_in_p2:%22.15e\n", Global_Colloid.drop_in_p2);
-  fprintf(fp, "drop_in_p3:%22.15e\n", Global_Colloid.drop_in_p3);
 
   return;
 }
@@ -261,7 +236,6 @@ void CIO_write_header_ascii(FILE * fp) {
 void CIO_read_header_ascii(FILE * fp) {
 
   int    read_int;
-  Float  read_float;
 
   info("Colloid file header information has been filtered\n");
 
@@ -269,33 +243,6 @@ void CIO_read_header_ascii(FILE * fp) {
   fscanf(fp, "I/O index: %22d\n",  &read_int);
   fscanf(fp, "N_colloid: %22d\n",  &(Global_Colloid.N_colloid));
   fscanf(fp, "nlocal:    %22d\n",  &(Global_Colloid.nlocal));
-  fscanf(fp, "rebuild:   %22d\n",  &read_int);
-  fscanf(fp, "a0:        %22lg\n", &read_float);
-  fscanf(fp, "ah:        %22lg\n", &read_float);
-
-  fscanf(fp, "vf:        %22lg\n", &read_float);
-  fscanf(fp, "rho:       %22lg\n", &read_float);
-  fscanf(fp, "deltaf:    %22lg\n", &read_float);
-  fscanf(fp, "deltag:    %22lg\n", &read_float);
-  fscanf(fp, "r_lu_n:    %22lg\n", &read_float);
-  fscanf(fp, "r_lu_t:    %22lg\n", &read_float);
-  fscanf(fp, "r_lu_r:    %22lg\n", &read_float);
-  fscanf(fp, "r_ssph:    %22lg\n", &read_float);
-  fscanf(fp, "r_clus:    %22lg\n", &read_float);
-  fscanf(fp, "Ncell.x:   %22d\n",  &read_int);
-  fscanf(fp, "Ncell.y:   %22d\n",  &read_int);
-  fscanf(fp, "Ncell.z:   %22d\n",  &read_int);
-
-  fscanf(fp, "Lcell.x:   %22lg\n", &read_float);
-  fscanf(fp, "Lcell.y:   %22lg\n", &read_float);
-  fscanf(fp, "Lcell.z:   %22lg\n", &read_float);
-  fscanf(fp, "F.x:       %22lg\n", &read_float);
-  fscanf(fp, "F.y:       %22lg\n", &read_float);
-  fscanf(fp, "F.z:       %22lg\n", &read_float);
-  fscanf(fp, "pid:       %22d\n",  &read_int);
-  fscanf(fp, "drop_in_p1:%22lg\n", &read_float);
-  fscanf(fp, "drop_in_p2:%22lg\n", &read_float);
-  fscanf(fp, "drop_in_p3:%22lg\n", &read_float);
 
   return;
 }
@@ -315,27 +262,6 @@ void CIO_write_header_binary(FILE * fp) {
   fwrite(&(io_grp.index),              sizeof(int),     1, fp);
   fwrite(&(Global_Colloid.N_colloid),  sizeof(int),     1, fp);
   fwrite(&(Global_Colloid.nlocal),     sizeof(int),     1, fp);
-  fwrite(&(Global_Colloid.fr),         sizeof(int),     1, fp);
-
-  fwrite(&(Global_Colloid.a0),         sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.ah),         sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.vf),         sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.rho),        sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.deltaf),     sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.deltag),     sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.r_lu_n),     sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.r_lu_t),     sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.r_lu_r),     sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.r_ssph),     sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.r_clus),     sizeof(Float),   1, fp);
-
-  fwrite(&(Global_Colloid.Ncell),      sizeof(IVector), 1, fp);
-  fwrite(&(Global_Colloid.Lcell),      sizeof(FVector), 1, fp);
-  fwrite(&(Global_Colloid.F),          sizeof(FVector), 1, fp);
-  fwrite(&(Global_Colloid.pid),        sizeof(int),     1, fp);
-  fwrite(&(Global_Colloid.drop_in_p1), sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.drop_in_p2), sizeof(Float),   1, fp);
-  fwrite(&(Global_Colloid.drop_in_p3), sizeof(Float),   1, fp);
 
   return;
 }
@@ -358,9 +284,6 @@ void CIO_write_header_null(FILE * fp) {
 void CIO_read_header_binary(FILE * fp) {
 
   int     read_int;
-  IVector read_ivector;
-  Float   read_float;
-  FVector read_fvector;
 
   info("Colloid file header information has been filtered\n");
 
@@ -368,27 +291,6 @@ void CIO_read_header_binary(FILE * fp) {
   fread(&(read_int),                  sizeof(int),     1, fp);
   fread(&(Global_Colloid.N_colloid),  sizeof(int),     1, fp);
   fread(&(Global_Colloid.nlocal),     sizeof(int),     1, fp);
-  fread(&(read_int),                  sizeof(int),     1, fp);
-
-  fread(&(read_float),                sizeof(Float),   1, fp); /* a0 */
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-
-  fread(&(read_ivector),              sizeof(IVector), 1, fp);
-  fread(&(read_fvector),              sizeof(FVector), 1, fp);
-  fread(&(read_fvector),              sizeof(FVector), 1, fp);
-  fread(&(read_int),                  sizeof(int),     1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
-  fread(&(read_float),                sizeof(Float),   1, fp);
 
   return;
 }
