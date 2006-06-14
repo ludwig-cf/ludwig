@@ -17,6 +17,7 @@
 #include "timer.h"
 #include "coords.h"
 #include "cartesian.h"
+#include "free_energy.h"
 
 static void    COLL_link_mean_contrib(Colloid *, int, FVector);
 static void    COLL_remove_binary_fluid(int inode, Colloid *);
@@ -30,7 +31,7 @@ static void    COLL_compute_phi_missing(void);
 
 extern Colloid ** coll_map; /* From colloids.c */
 extern Colloid ** coll_old;
-
+extern char     * site_map; /* model.c */
 
 enum { NGRAD = 27 };
 
@@ -930,7 +931,7 @@ void COLL_remove_binary_fluid(int inode, Colloid * p_colloid) {
   /* Set the corrections for colloid motion. This requires
    * the local boundary vector rb */
 
-  p_colloid->deltam -= (oldrho - gbl.rho);
+  p_colloid->deltam -= (oldrho - get_rho0());
   p_colloid->f0      = UTIL_fvector_add(p_colloid->f0, oldu);
 
   ri    = COM_index2coord(inode);
@@ -946,7 +947,7 @@ void COLL_remove_binary_fluid(int inode, Colloid * p_colloid) {
 
   /* Set the corrections for order parameter */
 
-  p_colloid->deltaphi += (oldphi - gbl.phi);
+  p_colloid->deltaphi += (oldphi - get_phi0());
 
 #ifdef _DEVEL_
   printf("*** Remove fluid at (%d, %d, %d)\n", ri.x, ri.y, ri.z);
@@ -1052,7 +1053,7 @@ void COLL_replace_binary_fluid(int inode, Colloid * p_colloid) {
    * correction to the torque, we need the appropriate
    * boundary vector rb */
 
-  p_colloid->deltam += (newrho - gbl.rho);
+  p_colloid->deltam += (newrho - get_rho0());
   p_colloid->f0      = UTIL_fvector_add(p_colloid->f0, newu);
 
   ri    = COM_index2coord(inode);
@@ -1068,7 +1069,7 @@ void COLL_replace_binary_fluid(int inode, Colloid * p_colloid) {
 
   /* Set corrections arising from change in order parameter */
 
-  p_colloid->deltaphi -= (newphi - gbl.phi);
+  p_colloid->deltaphi -= (newphi - get_phi0());
 
 #ifdef _DEVEL_
   /* Report */
@@ -1121,6 +1122,7 @@ void COLL_compute_phi_gradients() {
 
   IVector count;
   int     N[3];
+  double  rk = 1.0 / free_energy_K();
 
   extern double * phi_site;
   extern double * delsq_phi;
@@ -1189,8 +1191,8 @@ void COLL_compute_phi_gradients() {
 
 	    /* Set gradient of phi at boundary following wetting properties */
 	    /* C and H are always zero at the moment */
-	    /* rk = 1.0/kappa;
-	     * gradt[p] = -(0.0*phi_b - 0.0)*rk; */
+
+	    gradt[p] = -(0.0*phi_b - 0.0)*rk;
 	  }
 	}
 
