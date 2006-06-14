@@ -3,6 +3,32 @@ Changes
 Log file for changes to the code.
 =================================
 
+2006 June 6 kevin
+
+* I have removed the remaining gbl objects. The rho/phi related
+  elements are encapsulated in model.c
+
+* All the I/O related stuff has been moved to communicate.c.
+  Eventually, I expect this to be split into halo related
+  stuff and lattice I/O related stuff.
+
+* I have removed all the original run time input processing
+  code in favour of the runtime interface. IMPORTANT: as a
+  consequence, there is no run time input for colloid parameters
+  which are hard set in COLL_init(). This will be updated.
+
+* cio.c: I have removed a lot of the Global_Colloid stuff from
+  the colloid I/O as this makes it extremely unweildy. A better
+  method for keeping restart state needs to be found.
+
+* colloids.h: various unused struct elements removed from
+  Global_Colloid. This struct is going to be removed (it's
+  undesirable global state). 
+
+* interaction.c: the order parameter gradient calculation has
+  been (correctly) reinstated.
+
+
 2006 May 30 kevin
 
 * I have rearranged the order of the velocity set in d3q15.c
