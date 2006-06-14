@@ -61,18 +61,40 @@ void COLL_init() {
   char filename[FILENAME_MAX];
   void CMD_init_volume_fraction(int, int);
 
-  Global_Colloid.N_colloid  = 0;
-  Global_Colloid.fr         = 1;
-  Global_Colloid.rho        = 1.0;
-  Global_Colloid.deltaf     = 0.0;
-  Global_Colloid.deltag     = 0.0;
+  extern int input_format;
+  extern int output_format;
+
+  /* DEFAULTS */
+
+  Global_Colloid.N_colloid   = 0;
+  Global_Colloid.nlocal      = 0;
+  Global_Colloid.fr          = 1;
+  Global_Colloid.a0          = 2.3;
+  Global_Colloid.ah          = 2.3;
+  Global_Colloid.vf          = 0.2;
+  Global_Colloid.rho         = 1.0;
+  Global_Colloid.deltaf      = 0.0;
+  Global_Colloid.deltag      = 0.0;
+  Global_Colloid.r_lu_n      = 0.7;
+  Global_Colloid.r_lu_t      = 0.0;
+  Global_Colloid.r_ssph      = 0.7;
+  Global_Colloid.r_clus      = 0.0;
+  Global_Colloid.Ncell.x     = 0;
+  Global_Colloid.Ncell.y     = 0;
+  Global_Colloid.Ncell.z     = 0;
+  Global_Colloid.Lcell       = UTIL_fvector_zero();
+  Global_Colloid.F           = UTIL_fvector_zero();   
+  Global_Colloid.drop_in_p1  = 0.0004;
+  Global_Colloid.drop_in_p2  = -2.0;
+
+  /* DEFAULTS */
 
   CMPI_init_global();
   COLL_init_coordinates();
   CELL_init_cells();
   CCOM_init_halos();
   CMPI_init_messages();
-  CIO_set_cio_format(gbl.input_format, gbl.output_format);
+  CIO_set_cio_format(input_format, output_format);
 
   if (get_step() == 0) {
 
@@ -528,7 +550,6 @@ Colloid * COLL_add_colloid(int index, Float a0, Float ah, FVector r, FVector u,
 
   tmp->lnk = NULL;
   tmp->rebuild = 1;
-  tmp->export = 1;
 
   /* Add to the cell list */
 
