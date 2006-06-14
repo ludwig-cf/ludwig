@@ -70,12 +70,12 @@
 #include "cells.h"
 #include "cio.h"
 
-#define  POT_ALPHA       0.0002 /* p1 in soft sphere */
-#define  POT_BETA        -12.0   /* p1 in soft sphere */
-#define  R_SSPH          0.3    /* soft sphere repulsion for MD */
-#define  R_MAXINFLATE    0.0025    /* Maximum growth rate */
-#define  HMIN_REQUEST    0.01   /* Should be safe */
-#define  HMIN_GROWTH     0.01
+#define  POT_ALPHA       0.0004 /* p1 in soft sphere */
+#define  POT_BETA        -2.0   /* p1 in soft sphere */
+#define  R_SSPH          0.7    /* soft sphere repulsion for MD */
+#define  R_MAXINFLATE    0.1    /* Maximum growth rate */
+#define  HMIN_REQUEST    0.25   /* Should be safe */
+#define  HMIN_GROWTH     0.25
 #define  VF_MAX          0.55
 #define  NMAX_ITERATIONS 200000
 #define  NMAX_BROWNIAN   100000
@@ -156,7 +156,7 @@ void CMD_init_volume_fraction(int nradius, int flag) {
   v_part  = (4.0/3.0)*PI*rtarget*rtarget*rtarget;
   vf_eff  = n_global*v_part / v_system;
 
-  info("The initial separation minumum requested is %f\n", r_lu_n);
+  info("The initial separation minumum requested is %f\n", HMIN_REQUEST);
   info("This gives effective solid fraction         %f\n", vf_eff);
 
   if (vf_eff > VF_MAX) {
@@ -194,9 +194,11 @@ void CMD_init_volume_fraction(int nradius, int flag) {
   /* Iterate until an acceptable solution is found */
 
   CMD_do_md();
+  /*
   CMD_reset_particles(0.0);
   CMD_do_more_md();
   CMD_reset_particles(1.0);
+  */
 
   /* Restore the original user parameters before saving the
    * initial particle data. Make sure the cell list is up-to-date,
@@ -208,7 +210,7 @@ void CMD_init_volume_fraction(int nradius, int flag) {
   Global_Colloid.r_lu_n = r_lu_n;
 
   CELL_update_cell_lists();
-  /* CMD_reset_particles();*/
+  CMD_reset_particles(0.0);
   CIO_write_state("config.cds000000");
 
 #ifdef _MPI_
