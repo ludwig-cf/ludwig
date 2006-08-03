@@ -3,6 +3,13 @@ Changes
 Log file for changes to the code.
 =================================
 
+2006 August 3 kevin
+
+* Updated the implementation of global force in lattice.c to
+  allow use of a subscripted vector[], rather than .x.y.z.
+
+* Old random number routines have been removed (ran.[ch]).
+
 2006 June 6 kevin
 
 * I have removed the remaining gbl objects. The rho/phi related
