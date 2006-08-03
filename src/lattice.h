@@ -13,4 +13,6 @@ void LATT_allocate_force(const int);
 void LATT_allocate_phi(const int);
 void LATT_allocate_sites(const int);
 
+struct vector {double c[3];};
+
 #endif /* _LATTICE_H_ */
