@@ -42,7 +42,6 @@ typedef struct{
 /*--------------------- Few standard defines and macros, etc ----------------*/
 
 #define PI 3.1415926535897932385E0
-#define TINY 1.0E-15
 
 /* Enums always start at 0, then 1, etc. */
 /* Do *NOT* change the order: FLUID has to be the 1st term, i.e., set to 0 */
