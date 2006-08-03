@@ -9,18 +9,19 @@
  *
  ***************************************************************************/
 
-#include "pe.h"
+#include <stdio.h>
 
+#include "pe.h"
 #include "utilities.h"
 #include "model.h"
 #include "lattice.h"
 
 
-FVector *  _force;        /* Force on fluid nodes at current time step. */
+struct vector * fl_force; /* Force on fluid nodes at current time step. */
 double  * phi_site;
 
 
-static int _nalloc_mb;    /* Mbytes currently allocated */
+static double total_bytes;     /* bytes currently allocated */
 
 
 /***************************************************************************
@@ -95,18 +96,16 @@ void LATT_allocate_phi(const int nsites) {
 
 void LATT_allocate_force(const int nsite) {
 
-  double mbyte;
+  double bytes;
 
-  mbyte = nsite*sizeof(FVector)/1.0e+6;
+  bytes = nsite*sizeof(struct vector);
 
-  info("Requesting %f Mb for force array\n", mbyte);
+  info("Requesting %.0f bytes for force array\n", bytes);
 
-  _force = (FVector *) calloc(nsite, sizeof(FVector));
-  if (_force == (FVector *) NULL) fatal("calloc(_force) failed\n");
+  fl_force = (struct vector *) calloc(nsite, sizeof(struct vector));
+  if (fl_force == (struct vector *) NULL) fatal("calloc(fl_force) failed\n");
 
-  _nalloc_mb += mbyte;
+  total_bytes += bytes;
 
   return;
 }
-
-

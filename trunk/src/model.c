@@ -16,8 +16,8 @@ static void    MODEL_set_phi(const double, const int);
 /* Variables (not static) */
 
 FVector * grad_phi;
-Float   * delsq_phi;
-Float   * rho_site;
+double  * delsq_phi;
+double  * rho_site;
 
 char    * site_map;
 double    siteforce[3];
@@ -82,7 +82,8 @@ void MODEL_collide_multirelaxation() {
 
   double fghost[NVEL];              /* Model-dependent ghost modes */
 
-  extern FVector * _force;
+  double * force_local;
+  extern struct vector * fl_force;
 
   TIMER_start(TIMER_COLLIDE);
 
@@ -116,22 +117,14 @@ void MODEL_collide_multirelaxation() {
 	  u[2] += f[p]*cv[p][2];
 	}
 
+	/* Compute the local velocity, taking account of any body force */
+
 	rrho = 1.0/rho;
-	u[0] *= rrho;
-	u[1] *= rrho;
-	u[2] *= rrho;
-
-	/* The local body force. */
-	/* Note the "global" force (gravity) is still constant. */ 
-
-	force[0] = 0.5*(siteforce[X] + (_force + index)->x);
-	force[1] = 0.5*(siteforce[Y] + (_force + index)->y);
-	force[2] = 0.5*(siteforce[Z] + (_force + index)->z);
-
-	/* Compute the velocity, taking account of any body force */
+	force_local = fl_force[index].c;
 
 	for (i = 0; i < 3; i++) {
-	  u[i] += rrho*force[i];  
+	  force[i] = 0.5*(siteforce[i] + force_local[i]);
+	  u[i] = rrho*(u[i] + force[i]);  
 	}
 
 	/* Relax stress with different shear and bulk viscosity */
@@ -281,7 +274,9 @@ void MODEL_collide_multirelaxation() {
 
   double    dp0;
 
-  extern FVector * _force;
+  double * force_local;
+  extern struct vector * fl_force;
+
 
   TIMER_start(TIMER_COLLIDE);
 
@@ -323,6 +318,8 @@ void MODEL_collide_multirelaxation() {
 	f = site[index].f;
 	g = site[index].g;
 
+	force_local = fl_force[index].c;
+
 	rho  = f[0];
 	phi  = g[0];
 	u[0] = 0.0;
@@ -343,10 +340,15 @@ void MODEL_collide_multirelaxation() {
 	  jphi[2] += g[p]*cv[p][2];
 	}
 
+	/* Body force is added to the velocity going into collision;
+	 * the variable "force" holds 0.5 x actual force. */
+
 	rrho = 1.0/rho;
-	u[0] *= rrho;
-	u[1] *= rrho;
-	u[2] *= rrho;
+
+	for (i = 0; i < 3; i++) {
+	  force[i] = 0.5*(siteforce[i] + force_local[i]);
+	  u[i] = rrho*(u[i] + force[i]);
+	}
 
 	/* Chemical potential */
 	mu = phi*(A + B*phi*phi) - kappa*delsq_phi[index];
@@ -370,17 +372,6 @@ void MODEL_collide_multirelaxation() {
 	sth[2][0] =      sth[0][2];
 	sth[2][1] =      sth[1][2];
 	sth[2][2] = s1 + kappa*phi_z*phi_z;
-
-	/* Body force is added to the velocity going into collision;
-	 * the variable "force" holds 0.5 x actual force. */
-
-	force[0] = 0.5*(siteforce[X] + (_force + index)->x);
-	force[1] = 0.5*(siteforce[Y] + (_force + index)->y);
-	force[2] = 0.5*(siteforce[Z] + (_force + index)->z);
-
-	for (i = 0; i < 3; i++) {
-	  u[i] += rrho*force[i];
-	}
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -568,7 +559,7 @@ void MODEL_init( void ) {
   else {
       /* 
        * Provides same initial conditions for rho/phi regardless of the
-       * decomposition (all implementations, i.e. serial, MPI, OpenMP) 
+       * decomposition. 
        */
       
       /* Initialise lattice with constant density */
@@ -578,12 +569,7 @@ void MODEL_init( void ) {
 	for(j=1; j<=N_total(Y); j++)
 	  for(k=1; k<=N_total(Z); k++) {
 
-	    ind = i*xfac + j*yfac + k;
-
-	    phi = phi0 + noise0*(RAN_uniform() - 0.5);
-	    if(fabs(phi) < TINY){
-	      phi = (phi > 0) ? TINY : (-TINY);
-	    }
+	    phi = phi0 + noise0*(ran_serial_uniform() - 0.5);
 
 	    /* For computation with single fluid and no noise */
 	    /* Only set values if within local box */
