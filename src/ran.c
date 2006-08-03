@@ -20,8 +20,8 @@ struct lecuyer {
   int    rstate[5];               /* State space (32-bit) */
 };
 
-static struct lecuyer p_rng;
-static struct lecuyer s_rng;
+static struct lecuyer p_rng;      /* Parallel generator */
+static struct lecuyer s_rng;      /* Serial generator */
 
 static double ran_gaussian(struct lecuyer *);
 static double ran_lecuyer(struct lecuyer *);
@@ -35,40 +35,35 @@ static double ran_lecuyer(struct lecuyer *);
 #define _q5       20554
 #define _r5       1727
 
-static int MYSEED;
+/****************************************************************************
+ *
+ *  ran_init
+ *
+ *  Initialise both serial and parallel random states.
+ *
+ ****************************************************************************/
 
-/*---------------------------------------------------------------------------*\
- * void RAN_init( void )                                                     *
- *                                                                           *
- * Initialise random number generator                                        *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _TRACE_, _MPI_                                                   *
- *                                                                           *
- * Last Updated: 07/01/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
-
-void RAN_init( void ) {
+void ran_init( void ) {
 
   int n;
+  int scalar_seed = 7361237;
 
   /* Look for "random_seed" in the user input, or use a default. */ 
 
-  n = RUN_get_int_parameter("random_seed", &MYSEED);
+  n = RUN_get_int_parameter("random_seed", &scalar_seed);
 
   if (n == 0) {
-    MYSEED = 7361237;
-    info("Using default random number seed: %d\n", MYSEED);
+    info("[Default] Random number seed: %d\n", scalar_seed);
   }
   else {
-    info("Random number seed has been set to: %d\n", MYSEED);
+    info("[User   ] Random number seed: %d\n", scalar_seed);
   }
 
   /* Serial generator */
 
   s_rng.ispare = 0;
 
-  s_rng.rstate[0] = MYSEED;
+  s_rng.rstate[0] = scalar_seed;
   s_rng.rstate[1] = 1;
   s_rng.rstate[2] = 0;
   s_rng.rstate[3] = 3;
@@ -78,78 +73,13 @@ void RAN_init( void ) {
 
   p_rng.ispare = 0;
 
-  p_rng.rstate[0] = MYSEED;
+  p_rng.rstate[0] = scalar_seed;
   p_rng.rstate[1] = pe_size();
   p_rng.rstate[2] = pe_rank();
   p_rng.rstate[3] = 3;
   p_rng.rstate[4] = 4;
 
   return;
-}
-
-/*---------------------------------------------------------------------------*\
- * void RAN_uniform( void )                                                  *
- *                                                                           *
- * ran3() routine from numerical recipies                                    *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _TRACE_                                                          *
- *                                                                           *
- * Last Updated: 07/01/2002 by JCD                                           *
- \*---------------------------------------------------------------------------*/
-
-double RAN_uniform( void )
-{
-  static int ma[56],mj,mk,mz,i,ii,k,inext,inextp,iff,mbig,mseed;
-  
-  if( iff == 0 ){
-    iff=1;
-    mbig = 1000000000;
-    mseed = 161803398 + MYSEED;
-    mz =0;
-    mj = mseed ;
-    mj = mj % mbig;
-    ma[55] = mj;
-    mk = 1;
-    
-    for (i=1;i<55;i++){
-      ii = (21*i) % 55;
-      ma[ii] = mk;
-      mk = mj - mk;
-      if( mk < mz ) mk = mk + mbig;
-      mj = ma[ii];
-    }
-    
-    for(k=1;k<=4;k++){
-      for(i=1;i<=55;i++){
-	ma[i] = ma[i] - ma[1 + ((i+30)%55)];
-	
-	if( ma[i]<mz ){
-	  ma[i] = ma[i] + mbig;
-	}
-      }
-    }
-    
-    inext = 0;
-    inextp = 31;
-  }
-
-  if( ++inext  == 56 ){
-    inext  = 1;
-  }
-  if( ++inextp == 56 ){
-    inextp = 1;
-  }
-
-  mj = ma[inext] - ma[inextp];
-
-  if( mj < mz ){
-    mj = mj + mbig;
-  }
-
-  ma[inext] = mj;
-
-  return((double)mj / mbig);
 }
 
 /*****************************************************************************
@@ -186,9 +116,12 @@ double ran_parallel_gaussian() {
  *  Return a single random number from Gaussian distribution
  *  with unit variance.
  *
+ *  The transformation for uniform to Gaussian is described
+ *  in Numerical Recipes by Press et al.
+ *
  *****************************************************************************/
 
-double ran_gaussian(struct lecuyer * rng) {
+static double ran_gaussian(struct lecuyer * rng) {
 
   double result;
   double ran1, ran2;
@@ -231,7 +164,7 @@ double ran_gaussian(struct lecuyer * rng) {
  *
  *****************************************************************************/
 
-double ran_lecuyer(struct lecuyer * rng) {
+static double ran_lecuyer(struct lecuyer * rng) {
 
   int h, p1, p5;
 

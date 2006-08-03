@@ -20,7 +20,7 @@
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.4 2006-06-14 18:40:58 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.5 2006-08-03 11:27:26 kevin Exp $";
 
 
 int main( int argc, char **argv )
@@ -55,7 +55,7 @@ int main( int argc, char **argv )
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
 
-  RAN_init();
+  ran_init();
   RAND_init_fluctuations();
   MODEL_init();
   WALL_init();
