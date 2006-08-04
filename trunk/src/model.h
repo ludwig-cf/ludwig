@@ -12,12 +12,6 @@
 #ifndef _MODEL_H
 #define _MODEL_H
 
-#ifdef _D3Q19_
-  #include "d3q19.h"
-#else
-  #include "d3q15.h"
-#endif
-
 double  MODEL_get_rho_at_site(const int);
 double  MODEL_get_phi_at_site(const int);
 FVector MODEL_get_momentum_at_site(const int);
