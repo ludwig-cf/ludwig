@@ -12,7 +12,11 @@
  *
  *****************************************************************************/
 
-#include "globals.h"
+#include "utilities.h"
+#include "lattice.h"
+#include "model.h"
+#include "colloids.h"
+#include "wall.h"
 
 #include "pe.h"
 #include "coords.h"
