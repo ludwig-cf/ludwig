@@ -8,7 +8,14 @@
  *
  *****************************************************************************/
 
-#include "globals.h"
+
+#include "utilities.h"
+#include "lattice.h"
+#include "model.h"
+#include "colloids.h"
+#include "interaction.h"
+#include "communicate.h"
+
 #include "ccomms.h"
 #include "cells.h"
 #include "cmem.h"
