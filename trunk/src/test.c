@@ -9,7 +9,12 @@
  *
  *****************************************************************************/
 
-#include "globals.h"
+#include "utilities.h"
+#include "lattice.h"
+#include "model.h"
+#include "test.h"
+#include "colloids.h"
+
 #include "cells.h"
 
 #include "pe.h"
