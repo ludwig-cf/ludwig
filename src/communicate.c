@@ -1,10 +1,14 @@
-#include "globals.h"
 
 #include "pe.h"
 #include "timer.h"
 #include "runtime.h"
 #include "coords.h"
 #include "cartesian.h"
+
+#include "utilities.h"
+#include "lattice.h"
+#include "model.h"
+#include "communicate.h"
 
 static void COM_halo_rho( void );
 

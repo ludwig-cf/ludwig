@@ -15,12 +15,20 @@
 #include "control.h"
 #include "free_energy.h"
 
-#include "globals.h"
+#include "utilities.h"
+#include "model.h"
+#include "colloids.h"
+#include "test.h"
+#include "wall.h"
+#include "communicate.h"
+#include "leesedwards.h"
+
+#include "lattice.h"
 #include "cmem.h"
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.5 2006-08-03 11:27:26 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.6 2006-08-04 18:04:43 kevin Exp $";
 
 
 int main( int argc, char **argv )

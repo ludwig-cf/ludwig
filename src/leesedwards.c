@@ -1,4 +1,3 @@
-#include "globals.h"
 
 #include "pe.h"
 #include "runtime.h"
@@ -6,6 +5,11 @@
 #include "coords.h"
 #include "cartesian.h"
 #include "control.h"
+
+#include "utilities.h"
+#include "lattice.h"
+#include "model.h"
+#include "leesedwards.h"
 
 static int    LE_cmpLEBC( const void *, const void * );
 static void   LE_print_LEbuffers( void );
