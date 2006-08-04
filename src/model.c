@@ -1,4 +1,4 @@
-#include "globals.h"
+
 
 #include "pe.h"
 #include "ran.h"
@@ -9,6 +9,11 @@
 #include "cartesian.h"
 #include "free_energy.h"
 #include "lattice.h"
+
+#include "utilities.h"
+#include "communicate.h"
+#include "leesedwards.h"
+#include "model.h"
 
 static void    MODEL_set_rho(const double, const int);
 static void    MODEL_set_phi(const double, const int);
