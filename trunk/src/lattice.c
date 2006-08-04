@@ -10,15 +10,16 @@
  ***************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "pe.h"
-#include "utilities.h"
-#include "model.h"
 #include "lattice.h"
 
 
+double * phi_site;
+
 struct vector * fl_force; /* Force on fluid nodes at current time step. */
-double  * phi_site;
+struct vector * fu;       /* The fluid velocity field (at lattice sites). */
 
 
 static double total_bytes;     /* bytes currently allocated */
@@ -104,6 +105,30 @@ void LATT_allocate_force(const int nsite) {
 
   fl_force = (struct vector *) calloc(nsite, sizeof(struct vector));
   if (fl_force == (struct vector *) NULL) fatal("calloc(fl_force) failed\n");
+
+  total_bytes += bytes;
+
+  return;
+}
+
+/***************************************************************************
+ *
+ *  latt_allocate_velocity
+ *
+ *  Allocate memory for the fluid velocity field.
+ *
+ ***************************************************************************/
+
+void latt_allocate_velocity(const int nsite) {
+
+  double bytes;
+
+  bytes = nsite*sizeof(struct vector);
+
+  info("Requesting %.0f bytes for velocity array\n", bytes);
+
+  fu = (struct vector *) calloc(nsite, sizeof(struct vector));
+  if (fu == (struct vector *) NULL) fatal("calloc(fu) failed\n");
 
   total_bytes += bytes;
 
