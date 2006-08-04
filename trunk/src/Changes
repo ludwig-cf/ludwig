@@ -3,6 +3,17 @@ Changes
 Log file for changes to the code.
 =================================
 
+2006 August 4 kevin
+
+* Removed (at last) globals.h. This means there are explicit
+  dependencies on include files in each source file.
+
+* Added velocity vector in lattice.c
+
+* Added stub code for sub-grid scale particles; introduced
+  with -D_SUBGRID_ in the Makefile.
+
+
 2006 August 3 kevin
 
 * Updated the implementation of global force in lattice.c to
