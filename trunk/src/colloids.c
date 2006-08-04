@@ -11,7 +11,13 @@
  *
  *****************************************************************************/
 
-#include "globals.h"
+
+#include "utilities.h"
+#include "model.h"
+#include "colloids.h"
+#include "interaction.h"
+#include "wall.h"
+
 #include "ccomms.h"
 #include "cells.h"
 #include "cmem.h"
@@ -117,8 +123,11 @@ void COLL_init() {
   CMPI_count_colloids();
   CCOM_halo_particles(); 
   CCOM_sort_halo_lists();
+
+#ifndef _SUBGRID_
   COLL_update_map();
   COLL_update_links();
+#endif /* _SUBGRID_ */
 
 #endif
 
@@ -186,9 +195,11 @@ void COLL_update() {
   TIMER_start(TIMER_REBUILD);
   CCOM_sort_halo_lists();
 
+#ifndef _SUBGRID_
   COLL_update_map();
   COLL_remove_or_replace_fluid();
   COLL_update_links();
+#endif /* _SUBGRID_ */
 
   TIMER_stop(TIMER_REBUILD);
 
