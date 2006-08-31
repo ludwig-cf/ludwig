@@ -166,6 +166,10 @@ void LE_apply_LEBC( void )
      * future release)
      */
     LeesEdw_plane[plane].disp += LeesEdw_plane[plane].vel;
+
+    /* No. The plane velocities are constant... */
+    LeesEdw_plane[plane].disp = LeesEdw_plane[plane].vel*get_step();
+
     /* -gbl.N_total.y < displ < gbl.N_total.y */
     displ = fmod(LeesEdw_plane[plane].disp,1.0*N_total(Y));
     /* -gbl.N_total.y <= integ <= gbl.N_total.y-1 */
