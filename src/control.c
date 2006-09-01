@@ -4,9 +4,13 @@
  *
  *  Model control and time stepping.
  *
+ *  $Id: control.c,v 1.2 2006-09-01 13:47:45 kevin Exp $
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
+
+#include <string.h>
 
 #include "pe.h"
 #include "runtime.h"
@@ -19,6 +23,7 @@ static int t_current = 0;
 static int freq_statistics = 100;
 static int freq_measure    = 1000;
 static int freq_config     = 10000;
+static int config_at_end   = 1;
 
 /*****************************************************************************
  *
@@ -31,12 +36,16 @@ static int freq_config     = 10000;
 void init_control() {
 
   int n;
+  char tmp[128];
 
   n = RUN_get_int_parameter("N_cycles", &t_steps);
   n = RUN_get_int_parameter("t_start", &t_start);
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
   n = RUN_get_int_parameter("freq_config", &freq_config);
+
+  n = RUN_get_string_parameter("config_at_end", tmp);
+  if (strcmp(tmp, "no") == 0) config_at_end = 0;
 
   t_current = t_start;
 
@@ -80,4 +89,14 @@ int is_measurement_step() {
 
 int is_config_step() {
   return ((t_current % freq_config) == 0);
+}
+
+/*****************************************************************************
+ *
+ *  is_config_at_end
+ *
+ *****************************************************************************/
+
+int is_config_at_end() {
+  return config_at_end;
 }
