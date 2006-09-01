@@ -15,5 +15,6 @@ int  next_step(void);
 int  is_statistics_step(void);
 int  is_measurement_step(void);
 int  is_config_step(void);
+int  is_config_at_end(void);
 
 #endif
