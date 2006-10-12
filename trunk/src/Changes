@@ -3,6 +3,102 @@ Changes
 Log file for changes to the code.
 =================================
 
+2006 October 2nd kevin
+
+* Major ongoing organisational changes:
+
+  - model.c        now just a wrapper for the model DdQnn
+                   - other routines have moved to...
+
+  - collision.c    contains routines related to collision
+  - propagation.c  contains routines related to propagation
+
+  - colloids.c     now contains only structure definition / cell list stuff
+                   - other routines have moved to...
+
+  - active.c       active particle stuff
+  - build.c        routines for colloid link construction
+  - bbl.c          colloid bounce back on links
+  - interaction.c  all the rest
+
+  - cmd.c          Initialisation by "growth" algorithm has been
+                   removed in favour of a well-posed Monte Carlo
+                   problem (requires kT to be set!).
+
+* There are a number of new options for the input file associated
+  with the colloid initialisation, which try to do away with
+  preprocessor options.
+
+  colloid_init     fixed_number_monodisperse
+  colloid_mc_steps 0         [number of Monte Carlo steps to run]
+  colloid_type     inactive  [the only choice at the moment]
+  colloid_a0       1.25
+  colloid_ah       1.09
+  colloid_vf       0.250     [if using fixed_volume_fraction_monodisperse]
+  colloid_no       32        [if using fixed_number_monodisperse]
+
+  Note that 'fixed_number_monodisperse' gives a random distribution
+  of exactly the number of particles requested: the maximum volume
+  fraction is then limited without running the Monte Carlo to remove
+  overlaps.
+
+  'fixed_volume_fraction_monodisperse' initialises particles on a lattice
+  for volume fractions up to 60%. Use the Monte Carlo to 'melt' the
+  lattice if required.
+
+  The minimum cell width is now set via the input file, e.g.:
+
+  cell_list_lmin 8.0
+
+  This means you can control the number of cells in the cell list.
+  The code checks that the cell width is large enough to catch all
+  the interactions requested (lubrication and so on).
+
+* Fluctuations.
+  - Still compile with -D_NOISE_
+  - Note the input parameter is now the temperature kT, NOT the
+    "thermal velocity" used previously.
+
+* Walls
+  - are now implemented in parallel.
+  - Note that the fluid system size is now exactly that requested
+    by 'size NX_NY_NZ' in the input. The walls are located at the
+    edge of the system (x = 0.5 and x = NX + 0.5 etc). Use
+
+  periodicity 1_1_0
+  boundary_walls_on yes
+
+  To get walls in the z-direction. You can also have a 'duct' or a
+  closed box. For the case of walls, you can set the top and bottom
+  wall speed (in the x-direction).
+
+  - DO NOT USE YET WITH COLLOIDS! I haven't included the wall-colloid
+  links in this check-in.
+
+* Other
+
+  - cartesian.c and coords.c have been combined in coords.c
+  - cmem.c has been combined with colloids.c
+
+
+
+2006 August 16 kevin
+
+* Removed restriction on cell list number in each coordinate
+  direction. This means the number of cells can be one.
+  There must be checks that particle-particle interactions
+  are accounted for correctly.
+
+* Removing utilities.h in favour of vector.h etc.
+
+* Removed Global_Colloid structure (temporary replced with
+  extern declaration where necessary.
+
+* Removed Global_Colloid.fr (unused)
+
+* Removed Global_Colloid.r_clus (always zero at present; may
+  reintroduce cluster implicit method at later date).
+
 2006 August 4 kevin
 
 * Removed (at last) globals.h. This means there are explicit
