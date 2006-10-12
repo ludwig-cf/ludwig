@@ -9,20 +9,20 @@
  *
  *****************************************************************************/
 
-#include "utilities.h"
-#include "lattice.h"
-#include "model.h"
-#include "test.h"
-#include "colloids.h"
-
-#include "cells.h"
+#include <math.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "cartesian.h"
+#include "colloids.h"
+#include "lattice.h"
+#include "model.h"
+#include "bbl.h"
+#include "test.h"
+
+extern char * site_map;
+extern Site * site;
 
 static FVector TEST_fluid_momentum(void);
-extern char * site_map;
 
 /*****************************************************************************
  *
@@ -33,13 +33,6 @@ extern char * site_map;
  *
  *  In the presence of solid particles, the current deficit in order
  *  parameter is taken into account in working out the total phi.
- *
- *  Issues
- *    If the function is called between particle reconstruction and
- *    bounce-back, the current mass deficit (deltaf) must be set
- *    correctly to acheive exact mass conservation. If called in
- *    the normal place (at the end of a time step), the mass
- *    deficit is correctly set to zero.
  *
  *****************************************************************************/
 
@@ -65,16 +58,16 @@ void TEST_statistics() {
   yfac = (N[Z]+2);
   xfac = (N[Y]+2)*yfac;
 
-  partsum[0] = -Global_Colloid.deltaf;  /* minus sign is correct */
-  partsum[1] =  Global_Colloid.deltag;  /* +ve correct */ 
-  partsum[2] =  0.0;                    /* volume of fluid */
+  partsum[0] =  0.0;
+  partsum[1] =  bbl_order_parameter_deficit();
+  partsum[2] =  0.0;     /* volume of fluid */
 
-  partmin[0] =  2.0;                    /* rho_min */
-  partmax[0] =  0.0;                    /* rho_max */
+  partmin[0] =  2.0;     /* rho_min */
+  partmax[0] =  0.0;     /* rho_max */
   rhovar     =  0.0;
 
-  partmin[1] = +1.0;                    /* phi_min */
-  partmax[1] = -1.0;                    /* phi_max */
+  partmin[1] = +1.0;     /* phi_min */
+  partmax[1] = -1.0;     /* phi_max */
   phivar     =  0.0;
 
   /* Accumulate the sums, minima, and maxima */
@@ -281,7 +274,6 @@ void TEST_momentum() {
   int       xfac, yfac;
   int       N[3];
   int       p;
-  IVector   Nc;
 
   double     gx, gy, gz, cx, cy, cz;
   double     mass;
@@ -318,13 +310,9 @@ void TEST_momentum() {
   /* Work out the net colloid momemtum (cx, cy, cz) */
   cx = cy = cz = 0.0;
 
-  Nc = Global_Colloid.Ncell;
-  yfac = (Nc.z + 2);
-  xfac = (Nc.y + 2)*yfac;
-
-  for (ic = 1; ic <= Nc.x; ic++) {
-    for (jc = 1; jc <= Nc.y; jc++) {
-      for (kc = 1; kc <= Nc.z; kc++) {
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 

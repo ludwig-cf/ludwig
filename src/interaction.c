@@ -2,197 +2,273 @@
  *
  *  interaction.c
  *
- *  Here, broadly, is where the lattice and the colloids interact.
+ *  Colloid potentials and colloid-colloid interactions.
+ *
+ *  Refactoring is in progress.
+ *
+ *  $Id: interaction.c,v 1.5 2006-10-12 14:09:18 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
+#include <stdio.h>
+#include <string.h>
+#include <float.h>
+#include <math.h>
 
-#include "utilities.h"
-#include "lattice.h"
-#include "model.h"
+#include "active.h"
+#include "build.h"
+
 #include "colloids.h"
 #include "interaction.h"
 #include "communicate.h"
+#include "model.h"
+#include "lattice.h"
+#include "collision.h"
+#include "cio.h"
+#include "control.h"
 
 #include "ccomms.h"
-#include "cells.h"
-#include "cmem.h"
 
 #include "pe.h"
 #include "timer.h"
 #include "coords.h"
-#include "cartesian.h"
+#include "runtime.h"
 #include "free_energy.h"
 
-static void    COLL_link_mean_contrib(Colloid *, int, FVector);
-static void    COLL_remove_binary_fluid(int inode, Colloid *);
-static void    COLL_replace_binary_fluid(int inode, Colloid *);
-static void    COLL_reconstruct_links(Colloid *);
-static void    COLL_reset_links(Colloid *);
-static void    COLL_set_virtual_velocity(int inode, int p, FVector u);
-
-static void    COLL_compute_phi_missing(void);
-
-
-extern Colloid ** coll_map; /* From colloids.c */
-extern Colloid ** coll_old;
-extern char     * site_map; /* model.c */
+extern char * site_map;
+extern int input_format;
+extern int output_format;
 
 enum { NGRAD = 27 };
+static int bs_cv[NGRAD][3] = {{ 0, 0, 0}, { 1,-1,-1}, { 1,-1, 1},
+			      { 1, 1,-1}, { 1, 1, 1}, { 0, 1, 0},
+			      { 1, 0, 0}, { 0, 0, 1}, {-1, 0, 0},
+			      { 0,-1, 0}, { 0, 0,-1}, {-1,-1,-1},
+			      {-1,-1, 1}, {-1, 1,-1}, {-1, 1, 1},
+			      { 1, 1, 0}, { 1,-1, 0}, {-1, 1, 0},
+			      {-1,-1, 0}, { 1, 0, 1}, { 1, 0,-1},
+			      {-1, 0, 1}, {-1, 0,-1}, { 0, 1, 1},
+			      { 0, 1,-1}, { 0,-1, 1}, { 0,-1,-1}};
 
-static int bs_cv[NGRAD][3] = {{ 0, 0, 0},
-			      { 1,-1,-1},
-			      { 1,-1, 1},
-			      { 1, 1,-1},
-			      { 1, 1, 1},
-			      { 0, 1, 0},
-			      { 1, 0, 0},
-			      { 0, 0, 1},
-			      {-1, 0, 0},
-			      { 0,-1, 0},
-			      { 0, 0,-1},
-			      {-1,-1,-1},
-			      {-1,-1, 1},
-			      {-1, 1,-1},
-			      {-1, 1, 1},
-			      { 1, 1, 0},
-			      { 1,-1, 0},
-			      {-1, 1, 0},
-			      {-1,-1, 0},
-			      { 1, 0, 1},
-			      { 1, 0,-1},
-			      {-1, 0, 1},
-			      {-1, 0,-1},
-			      { 0, 1, 1},
-			      { 0, 1,-1},
-			      { 0,-1, 1},
-			      { 0,-1,-1}};
 
+static void    COLL_compute_phi_missing(void);
+static void    COLL_overlap(Colloid *, Colloid *);
+static void    COLL_set_fluid_gravity(void);
+static FVector COLL_lubrication(Colloid *, Colloid *, FVector, Float);
+static void    COLL_init_colloids_test(void);
+static void    COLL_test_output(void);
+static void    COLL_update_colloids(void);
+
+/* Old Global_Colloid stuff */
+
+FVector   F;             /* Force on all colloids, e.g., gravity */
+
+struct lubrication_struct {
+  int corrections_on;
+  double cutoff_norm;  /* Normal */
+  double cutoff_tang;  /* Tangential */
+} lubrication;
+
+static struct soft_sphere_potential_struct {
+  int on;
+  double epsilon;
+  double sigma;
+  double nu;
+  double cutoff;
+} soft_sphere;
+
+
+/*
+struct leonard_jones_potential {
+  int leonard_jones_on;
+  double sigma;
+  double epsilon;
+  double cutoff;
+}
+*/
 
 /*****************************************************************************
  *
- *  COLL_update_map
+ *  COLL_update
  *
- *  This routine is responsible for setting the solid/fluid status
- *  of all nodes in the presence on colloids. This must be complete
- *  before attempting to build the colloid links.
+ *  The colloid positions have been updated. The following are required:
+ *    (1) deal with processor/periodic boundaries
+ *    (2) update the cell list if necessary and sort
+ *    (3) update the colloid map
+ *    (4) add or remove fluid to reflect changes in the colloid map
+ *    (5) reconstruct the boundary links
  *
- *  Issues:
+ *  The remove and replace functions expect distributions at their
+ *  proper locations (with halos up-to-date).
  *
- ****************************************************************************/
+ *****************************************************************************/
 
-void COLL_update_map() {
+void COLL_update() {
 
-  int     n, nsites;
-  int     i, j, k;
-  int     i_min, i_max, j_min, j_max, k_min, k_max;
-  int     index, xfac, yfac;
+  if (get_N_colloid() == 0) return;
 
-  Colloid * p_colloid;
+  /* Removal or replacement of fluid requires a lattice halo update */
+  COM_halo();
 
-  FVector r0;
-  FVector rsite0;
-  FVector rsep;
-  Float   radius, rsq;
+  TIMER_start(TIMER_PARTICLE_HALO);
 
-  IVector ncell;
-  int     N[3];
-  int     offset[3];
-  int     ic, jc, kc;
-  int     cifac, cjfac;
+  cell_update();
+  CCOM_halo_particles();
 
-  get_N_local(N);
-  get_N_offset(offset);
+  TIMER_stop(TIMER_PARTICLE_HALO);
 
-  xfac = (N[Y] + 2)*(N[Z] + 2);
-  yfac = (N[Z] + 2);
+  TIMER_start(TIMER_REBUILD);
 
-  ncell = Global_Colloid.Ncell;
-  cjfac = (ncell.z + 2);
-  cifac = (ncell.y + 2)*cjfac;
+#ifndef _SUBGRID_
+  COLL_update_map();
+  COLL_remove_or_replace_fluid();
+  COLL_update_links();
+#endif /* _SUBGRID_ */
 
-  /* First, set any existing colloid sites to fluid */
+  TIMER_stop(TIMER_REBUILD);
 
-  nsites = (N[X] + 2)*(N[Y] + 2)*(N[Z] + 2);
+  COLL_test_output();
+  COLL_forces();
+  active_bbl_prepass();
 
-  for (n = 0; n < nsites; n++) {
-    if (site_map[n] == COLLOID) site_map[n] = FLUID;
-    coll_old[n] = coll_map[n];
-    coll_map[n] = NULL;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  COLL_init
+ * 
+ *  Driver routine for colloid initialisation.
+ *
+ *****************************************************************************/
+
+void COLL_init() {
+
+  char filename[FILENAME_MAX];
+  char tmp[128];
+  int nc = 0;
+  double ahmax, f0[3];
+
+  void CMD_init_volume_fraction(int, int);
+  void lubrication_init(void);
+  void soft_sphere_init(void);
+  void check_interactions(const double);
+
+  /* Default position: no colloids */
+
+  RUN_get_string_parameter("colloid_init", tmp);
+  if (strcmp(tmp, "no_colloids") == 0) nc = 0;
+
+  /* This is just to get past the start. */
+  if (strcmp(tmp, "fixed_volume_fraction_monodisperse") == 0) nc = 1;
+  if (strcmp(tmp, "fixed_number_monodisperse") == 0) nc = 1;
+
+#ifdef _COLLOIDS_TEST_AUTOCORRELATION_
+  nc = 1;
+#endif
+
+  if (nc == 0) return;
+
+  nc = RUN_get_double_parameter("colloid_ah", &ahmax);
+  if (nc == 0) fatal("Please set colloids_ah in the input file\n");
+
+  nc = RUN_get_double_parameter_vector("colloid_gravity", f0);
+  if (nc != 0) {
+    F.x = f0[X];
+    F.y = f0[Y];
+    F.z = f0[Z];
   }
 
-  /* Loop through all cells (including the halo cells) */
+  /* Initialisation section. */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++)
-    for (jc = 0; jc <= ncell.y + 1; jc++)
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+  colloids_init();
 
-	/* Set the cell index */
+  COLL_init_coordinates();
+  CCOM_init_halos();
+  CMPI_init_messages();
+  CIO_set_cio_format(input_format, output_format);
+  lubrication_init();
+  soft_sphere_init();
+  check_interactions(ahmax);
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+  if (get_step() == 0) {
 
-	/* For each colloid in this cell, check solid/fluid status */
+#ifdef _COLLOIDS_TEST_
+    COLL_init_colloids_test();
+#else
+    CMD_init_volume_fraction(1, 0);
+    init_active();
+#endif
+  }
+  else {
+    /* Restart from previous configuration */
+    sprintf(filename, "%s%6.6d", "config.cds", get_step());
+    CIO_read_state(filename);
+  }
 
-	while (p_colloid != NULL) {
+  /* Transfer any particles in the halo regions, initialise the
+   * colloid map and build the particles for the first time. */
 
-	  /* Set actual position and radius */
+  CCOM_halo_particles(); 
 
-	  r0     = p_colloid->r;
-	  radius = p_colloid->a0;
-	  rsq    = radius*radius;
+#ifndef _SUBGRID_
+  COLL_update_map();
+  COLL_update_links();
+#endif /* _SUBGRID_ */
 
-	  /* Need to translate the colloid position to "local"
-	   * coordinates, so that the correct range of lattice
-	   * nodes is found */
+  return;
+}
 
-	  r0.x -= (double) offset[X];
-	  r0.y -= (double) offset[Y];
-	  r0.z -= (double) offset[Z];
+/*****************************************************************************
+ *
+ *  lubrication_init
+ *
+ *  Initialise the parameters for corrections to the lubrication
+ *  forces between colloids.
+ *
+ *****************************************************************************/
 
-	  /* Compute appropriate range of sites that require checks, i.e.,
-	   * a cubic box around the centre of the colloid. However, this
-	   * should not extend beyond the boundary of the current domain
-	   * (but include halos). */
+void lubrication_init() {
 
-	  i_min = imax(0,      (int) floor(r0.x - radius));
-	  i_max = imin(N[X]+1, (int) ceil (r0.x + radius));
-	  j_min = imax(0,      (int) floor(r0.y - radius));
-	  j_max = imin(N[Y]+1, (int) ceil (r0.y + radius));
-	  k_min = imax(0,      (int) floor(r0.z - radius));
-	  k_max = imin(N[Z]+1, (int) ceil (r0.z + radius));
+  int n;
 
-	  /* Check each site to see whether it is inside or not */
+  info("\nColloid-colloid lubrication corrections\n");
 
-	  for (i = i_min; i <= i_max; i++)
-	    for (j = j_min; j <= j_max; j++)
-	      for (k = k_min; k <= k_max; k++) {
+  n = RUN_get_int_parameter("lubrication_on", &(lubrication.corrections_on));
+  info((n == 0) ? "[Default] " : "[User   ] ");
+  info("Lubrication corrections are switched %s\n",
+       (lubrication.corrections_on == 0) ? "off" : "on");
 
-		/* rsite0 is the coordinate position of the site */
+  if (lubrication.corrections_on) {
+    n = RUN_get_double_parameter("lubrication_normal_cutoff",
+				 &(lubrication.cutoff_norm));
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Normal force cutoff is %f\n", lubrication.cutoff_norm);
+    
+    n = RUN_get_double_parameter("lubrication_tangential_cutoff",
+				 &(lubrication.cutoff_tang));
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Tangential force cutoff is %f\n", lubrication.cutoff_tang);
+  }
 
-		rsite0 = COLL_fcoords_from_ijk(i, j, k);
-		rsep = COLL_fvector_separation(rsite0, r0);
+  return;
+}
 
-		/* Are we inside? */
+/*****************************************************************************
+ *
+ *  COLL_finish
+ *
+ *  Execute once at the end of the model run.
+ *
+ *****************************************************************************/
 
-		if (UTIL_dot_product(rsep, rsep) < rsq) {
+void COLL_finish() {
 
-		  /* Set index */
-		  index = i*xfac + j*yfac + k;
+  if (get_N_colloid() == 0) return;
 
-		  coll_map[index] = p_colloid;
-		  site_map[index] = COLLOID;
-		}
-		/* Next site */
-	      }
-
-	  /* Next colloid */
-	  p_colloid = p_colloid->next;
-	}
-
-	/* Next cell */
-      }
+  colloids_finish();
 
   return;
 }
@@ -200,897 +276,787 @@ void COLL_update_map() {
 
 /*****************************************************************************
  *
- *  COLL_update_links
+ *  COLL_init_colloids_test
  *
- *  Reconstruct or reset the boundary links for each colloid as necessary.
+ *  This is a routine which hardwires a small number
+ *  of colloids for tests of colloid physics.
+ *
+ *  Serial.
  *
  *****************************************************************************/
 
-void COLL_update_links() {
+void COLL_init_colloids_test() {
 
-  Colloid   * p_colloid;
+#ifdef _COLLOIDS_TEST_AUTOCORRELATION_
 
-  int         ic, jc, kc;
-  IVector     ncell = Global_Colloid.Ncell;
+  FVector r0, v0, omega0;
+  IVector cell;
+  Colloid * p_colloid;
+  double    a0 = 2.3;
+  double    ah = 2.3;
 
-  for (ic = 0; ic <= ncell.x + 1; ic++)
-    for (jc = 0; jc <= ncell.y + 1; jc++)
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+  /* Autocorrelation test. */
+
+  set_N_colloid(1);
+
+  r0.x =  .0 + 1.0*L(X);
+  r0.y =  .0 + 1.0*L(Y);
+  r0.z =  .0 + 0.5*L(Z);
+
+  v0.x = 1.0*get_eta_shear()/ah;
+  v0.y = 0.0;
+  v0.z = 0.0;
+
+  omega0.x = 0.0;
+  omega0.y = 0.0;
+  omega0.z = 0.0*get_eta_shear()/(ah*ah);
+
+  /* Look at the proposed position and decide whether it is in
+   * the local domain. If it is, then it can be added. */
+
+  cell = cell_coords(r0);
+  if (cell.x < 1 || cell.x > Ncell(X)) return;
+  if (cell.y < 1 || cell.y > Ncell(Y)) return;
+  if (cell.z < 1 || cell.z > Ncell(Z)) return;
+
+  VERBOSE(("\n"));
+  VERBOSE(("Autocorrelation test\n"));
+  VERBOSE(("Colloid initialised at (%f,%f,%f)\n", r0.x, r0.y, r0.z));
+  VERBOSE(("Velocity               (%f,%f,%f)\n", v0.x, v0.y, v0.z));
+  p_colloid = COLL_add_colloid(1, a0, ah, r0, v0, omega0);
+
+  p_colloid->stats.x = v0.x;
+  p_colloid->dir.x = 1.0;
+  p_colloid->dir.y = 0.0;
+  p_colloid->dir.z = 0.0;
+
+#endif
+
+#ifdef _COLLOIDS_TEST_OF_OPPORTUNITY_
+
+  FVector r0, v0, omega0;
+  double    a0 = 1.25;
+  double    ah = 1.09;
+
+  set_N_colloid(1);
+
+  r0.x = 0.5*L(X);
+  r0.y = 0.5*L(Y);
+  r0.z = Lmin(Z) + L(Z) - a0;
+
+  v0.x = 0.0;
+  v0.y = 0.0;
+  v0.z = 0.0;
+
+  omega0.x = 0.0;
+  omega0.y = 0.0;
+  omega0.z = 0.0;
+
+  COLL_add_colloid(1, a0, ah, r0, v0, omega0);
+
+  r0.z = r0.z - 2.0*a0; 
+  v0.x = v0.x;
+
+  /*COLL_add_colloid(2, a0, ah, r0, v0, omega0);*/
+
+  info("Starting test of opportunity\n");
+#endif
+
+#ifdef _COLLOIDS_TEST_CALIBRATE_
+
+  N_colloid = 1;
+
+  r0.x = 0.5*L(X) + RAN_uniform();
+  r0.y = 0.5*L(Y) + RAN_uniform();
+  r0.z = 0.5*L(Z) + RAN_uniform();
+
+  /* For particle Reynolds number = 0.05 the velocity we want
+   * scales as Re * viscosity / a. This also applies to the
+   * external force (to within a minus sign). */
+
+  tmp = 0.05*get_eta_shear()/a0;
+
+  v0.x = -RAN_uniform()*tmp;
+  v0.y = -RAN_uniform()*tmp;
+  v0.z = -RAN_uniform()*tmp;
+
+  COLL_init_gravity(v0);
+
+  v0 = UTIL_fvector_zero();
+
+  omega0.x = 0.0;
+  omega0.y = 0.0;
+  omega0.z = 0.0;
+
+  COLL_add_colloid(1, a0, ah, r0, v0, omega0);
+
+#endif
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
+ *  COLL_test_output
+ *
+ *  Look at the particles in the domain proper and perform
+ *  diagnostic output as required.
+ *
+ *****************************************************************************/
+
+void COLL_test_output() {
+
+  Colloid * p_colloid;
+  int       ic, jc, kc;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+#ifdef _COLLOIDS_TEST_AUTOCORRELATION_
+	  verbose("Autocorrelation test output: %10.9f %10.9f\n",
+	    p_colloid->r.x, p_colloid->v.x/p_colloid->stats.x);
+	  /*verbose("Autocorrelation omega: %10.9f %10.9f %10.9f\n",
+		  p_colloid->omega.z/p_colloid->stats.x, p_colloid->dir.x,
+		  p_colloid->dir.y);*/
+#endif
+#ifdef _COLLOIDS_TEST_OF_OPPORTUNITY_
+	  verbose("Proximity test output: %f, %f, %f\n",
+		  p_colloid->cbar.x, p_colloid->cbar.y, p_colloid->cbar.z);
+	  verbose("Calibrate: %g %g %g %g %g %g\n",
+		  p_colloid->v.x, p_colloid->v.y, p_colloid->v.z,
+		  p_colloid->r.x, p_colloid->r.y, p_colloid->r.z);
+#endif
+#ifdef _COLLOIDS_TEST_CALIBRATE_
+	  verbose("Calibrate: %g %g %g %g %g %g\n",
+		  p_colloid->v.x, p_colloid->v.y, p_colloid->v.z,
+		  p_colloid->force.x, p_colloid->force.y, p_colloid->force.z);
+#endif
+	  p_colloid = p_colloid->next;
+
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
+ *  COLL_add_colloid_no_halo
+ *
+ *  Add a colloid only if the proposed position is in the domain
+ *  proper (and not in the halo).
+ *
+ *****************************************************************************/
+
+void COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
+			      FVector v0, FVector omega0) {
+
+  IVector cell;
+
+  cell = cell_coords(r0);
+  if (cell.x < 1 || cell.x > Ncell(X)) return;
+  if (cell.y < 1 || cell.y > Ncell(Y)) return;
+  if (cell.z < 1 || cell.z > Ncell(Z)) return;
+
+  COLL_add_colloid(index, a0, ah, r0, v0, omega0);
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
+ *  COLL_add_colloid
+ *
+ *  Add a colloid with the given properties to the head of the
+ *  appropriate cell list.
+ *
+ *  Important: it is up to the caller to ensure index is correct
+ *             i.e., it's unique.
+ *
+ *  A pointer to the new colloid is returned to allow further
+ *  modification of the structure. But it's already added to
+ *  the cell list.
+ *
+ *****************************************************************************/
+
+Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u,
+			   FVector omega) {
+
+  Colloid * tmp;
+  IVector   cell;
+  int       n;
+
+  /* Don't add to no-existant cells! */
+  n = 0;
+  cell = cell_coords(r);
+  if (cell.x < 0 || cell.x > Ncell(X) + 1) n++;
+  if (cell.y < 0 || cell.y > Ncell(Y) + 1) n++;
+  if (cell.z < 0 || cell.z > Ncell(Z) + 1) n++;
+
+  if (n) {
+    fatal("Trying to add colloid to no-existant cell [index %d]\n", index);
+  }
+
+  tmp = allocate_colloid();
+
+  /* Put the new colloid at the head of the appropriate cell list */
+
+  tmp->index   = index;
+  tmp->a0      = a0;
+  tmp->ah      = ah;
+  tmp->r.x     = r.x;
+  tmp->r.y     = r.y;
+  tmp->r.z     = r.z;
+  tmp->v.x     = u.x;
+  tmp->v.y     = u.y;
+  tmp->v.z     = u.z;
+  tmp->omega.x = omega.x;
+  tmp->omega.y = omega.y;
+  tmp->omega.z = omega.z;
+
+  tmp->t0      = UTIL_fvector_zero();
+  tmp->f0      = UTIL_fvector_zero();
+  tmp->force   = UTIL_fvector_zero();
+  tmp->torque  = UTIL_fvector_zero();
+  tmp->cbar    = UTIL_fvector_zero();
+  tmp->rxcbar  = UTIL_fvector_zero();
+
+  /* Record the initial position */
+  tmp->stats.x = tmp->r.x;
+  tmp->stats.y = tmp->r.y;
+  tmp->stats.z = tmp->r.z;
+
+  tmp->deltam   = 0.0;
+  tmp->deltaphi = 0.0;
+  tmp->sumw     = 0.0;
+
+  for (n = 0; n < 21; n++) {
+    tmp->zeta[n] = 0.0;
+  }
+
+  tmp->lnk = NULL;
+  tmp->rebuild = 1;
+
+  /* Add to the cell list */
+
+  cell_insert_colloid(tmp);
+
+  return tmp;
+}
+
+
+/*****************************************************************************
+ *
+ *  COLL_forces
+ *
+ *  Top-level function for compuatation of external forces to be called
+ *  once per time step. Note that particle copies in the halo regions
+ *  must have zero external force/torque on exit from this routine.
+ *
+ *****************************************************************************/
+
+void COLL_forces() {
+
+  double hmin;
+
+  COLL_zero_forces();
+  hmin = COLL_interactions();
+
+  if (is_statistics_step() && get_N_colloid() > 1) {
+#ifdef _MPI_
+    {
+      double hlocal = hmin;
+      MPI_Reduce(&hmin, &hlocal, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    }
+#endif
+    info("[Inter-particle gap minimum is: %f]\n", hmin);
+  }
+
+  COLL_set_fluid_gravity();
+  COLL_set_colloid_gravity(); /* This currently zeroes halo particles */
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
+ *  COLL_zero_forces
+ *
+ *  Set the external forces on the particles to zero.
+ *  All additional forces are accumulated.
+ *
+ *****************************************************************************/
+
+void COLL_zero_forces() {
+
+  int       ic, jc, kc;
+  Colloid * p_colloid;
+
+  /* Only real particles need correct external force. */
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+	  p_colloid->force  = UTIL_fvector_zero();
+	  p_colloid->torque = UTIL_fvector_zero();
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
+ *  COLL_set_colloid_gravity
+ *
+ *  Add the gravtitation force to the particles.
+ *
+ *  This is the last force addition, so also zero the
+ *  external force in the halo regions.
+ *
+ *****************************************************************************/
+
+void COLL_set_colloid_gravity() {
+
+  int       ic, jc, kc;
+  int       ihalo;
+  Colloid * p_colloid;
+
+  /* Check all the particles */
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
 
-	  p_colloid->sumw   = 0.0;
-	  p_colloid->cbar   = UTIL_fvector_zero();
-	  p_colloid->rxcbar = UTIL_fvector_zero();
+	  ihalo = (ic == 0 || jc == 0 || kc == 0 || ic == Ncell(X) + 1 ||
+		   jc == Ncell(Y) + 1  || kc == Ncell(Z) + 1);
 
-	  if (p_colloid->rebuild) {
-	    /* The shape has changed, so need to reconstruct */
-	    COLL_reconstruct_links(p_colloid);
+	  if (ihalo) {
+	    p_colloid->force  = UTIL_fvector_zero();
+	    p_colloid->torque = UTIL_fvector_zero();
 	  }
 	  else {
-	    /* Shape unchanged, so just reset existing links */
-	    COLL_reset_links(p_colloid);
+	    p_colloid->force  = UTIL_fvector_add(p_colloid->force, F);
 	  }
-
-#ifdef _VERY_VERBOSE_
-	  VERBOSE(("(partial [%d]) position (%g,%g,%g)\n", p_colloid->index,
-		   p_colloid->r));
-	  VERBOSE(("(partial [%d]) cbar     (%g,%g,%g)\n", p_colloid->index,
-		   p_colloid->cbar));
-	  VERBOSE(("(partial [%d]) f0       (%g,%g,%g)\n", p_colloid->index,
-		   p_colloid->f0));
-	  VERBOSE(("(partial [%d]) delta    (%g,%g)\n", p_colloid->index,
-		   p_colloid->deltam, p_colloid->deltaphi));
-#endif
-
-	  /* Next colloid */
-	  p_colloid->rebuild = 0;
 	  p_colloid = p_colloid->next;
 	}
-
-	/* Next cell */
       }
+    }
+  }
 
   return;
 }
 
+
+/*****************************************************************************
+ *
+ *  COLL_set_fluid_gravity
+ *
+ *  Set the current gravtitational force on the fluid. This should
+ *  match, exactly, the force on the colloids and so depends on the
+ *  current number of fluid sites globally (fluid volume).
+ *
+ *  Issues
+ *
+ *****************************************************************************/
+
+void COLL_set_fluid_gravity() {
+
+  double volume;
+  extern double MISC_fluid_volume(void); /* Move me */
+  extern double siteforce[3];
+
+  volume = MISC_fluid_volume();
+
+  /* Size of force per fluid node */
+
+  siteforce[X] = -get_N_colloid()*F.x/volume;
+  siteforce[Y] = -get_N_colloid()*F.y/volume;
+  siteforce[Z] = -get_N_colloid()*F.z/volume;
+
+  return;
+}
 
 /****************************************************************************
  *
- *  COLL_reconstruct_links
+ *  COLL_interactions
  *
- *  Rebuild the boundary links of a particle whose shape has just
- *  changed.
- *
- *  Check each lattice site in a cube around the particle to see
- *  whether it is inside or outside, and set appropriate links.
- *  The new links overwrite the existing ones, or new memory may
- *  be required if the new shape contains more links. The the
- *  new shape contains fewer links, then flag the excess links
- *  as solid.
- *
- *  Issues
- *    The way that "unused status" (-1) is set is a failsafe at the
- *    moment.
+ *  A cell list approach is used to achieve O(N) scaling. For a given
+ *  colloid, we should examine the distance to neighbours in its own
+ *  cell, and those neighbouring to one side.
  *
  ****************************************************************************/
 
-void COLL_reconstruct_links(Colloid * p_colloid) {
+double COLL_interactions() {
 
-  COLL_Link * p_link;
-  COLL_Link * p_last;
-  int         i_min, i_max, j_min, j_max, k_min, k_max;
-  int         i, ic, ii, j, jc, jj, k, kc, kk;
-  int         index0, index1, p;
+  Colloid * p_c1;
+  Colloid * p_c2;
 
-  Float       radius;
-  Float       lambda = 0.5;
-  FVector     rsite1, rsep;
-  FVector     r0;
-  int         xfac, yfac;
-  int         N[3];
-  int         offset[3];
+  FVector r_ij;              /* Separation vector joining  c1 -> c2 */
+  double   rmod;             /* Modulus thereof */
+  double   ra1, ra2;          /* Hydrodynamic radius both colloids */
+  double   gap;               /* Gap between the colloids */
+  FVector f0;                /* Current interaction force */
+  FVector f1;                /* Force on particle 1 */
+  FVector fa;
+  FVector COLL_fvector_separation(FVector, FVector);
 
-  get_N_local(N);
-  get_N_offset(offset);
+  int     ic, jc, kc, id, jd, kd, nd;
 
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
+  double   fmod;
+  double   mingap = L(X);
 
-  p_link = p_colloid->lnk;
-  p_last = p_link;
-  radius = p_colloid->a0;
-  r0     = p_colloid->r;
+  /* One-sided cell list search offsets */
+  enum    {NABORS = 14};
+  int     di[NABORS] = {0, 1, 1, 0, -1, 0, 1, 1, 0, -1, -1, -1,  0,  1};
+  int     dj[NABORS] = {0, 0, 1, 1,  1, 0, 0, 1, 1,  1,  0, -1, -1, -1};
+  int     dk[NABORS] = {0, 0, 0, 0,  0, 1, 1, 1, 1,  1,  1,  1,  1,  1};
 
-  /* Failsafe approach: set all links to unused status */
 
-  while (p_link) {
-    p_link->solid = -1;
-    p_link = p_link->next;
-  }
+  /* Note the loops are [0, ncell.x] etc, so that get right
+   * interactions. */
 
-  p_link = p_colloid->lnk;
-  p_last = p_link;
-  /* ... end failsafe */
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+	
+	p_c1 = CELL_get_head_of_list(ic, jc, kc);
 
-  /* Limits of the cube around the particle. Make sure these are
-   * the appropriate lattice nodes... */
+	while (p_c1) {
 
-  r0.x -= (double) offset[X];
-  r0.y -= (double) offset[Y];
-  r0.z -= (double) offset[Z];
+	  /* Total force on particle 1 */
+	  f1 = UTIL_fvector_zero();
+	  ra1 = p_c1->ah;
 
-  i_min = imax(1,    (int) floor(r0.x - radius));
-  i_max = imin(N[X], (int) ceil (r0.x + radius));
-  j_min = imax(1,    (int) floor(r0.y - radius));
-  j_max = imin(N[Y], (int) ceil (r0.y + radius));
-  k_min = imax(1,    (int) floor(r0.z - radius));
-  k_max = imin(N[Z], (int) ceil (r0.z + radius));
+	  /* Look at each of the neighbouring cells */
 
-  VERBOSE(("Reconstruct: particle (%d) at (%f,%f,%f)\n", p_colloid->index,
-	   p_colloid->r.x, p_colloid->r.y, p_colloid->r.z));
-  VERBOSE(("[%d, %d][%d, %d][%d, %d]\n", i_min, i_max, j_min, j_max,
-	   k_min, k_max));
+	  for (nd = 0; nd < NABORS; nd++) {
 
-  for (i = i_min; i <= i_max; i++)
-    for (j = j_min; j <= j_max; j++)
-      for (k = k_min; k <= k_max; k++) {
+	    kd = kc + dk[nd];
+	    jd = jc + dj[nd];
+	    id = ic + di[nd];
 
-	ic = i;
-	jc = j;
-	kc = k;
+	    /* Make sure we don't look outside the cell list */
+	    if (jd < 0 || id < 0) continue;
+	    if (kd > Ncell(Z)+1 || jd > Ncell(Y)+1 ||
+		id > Ncell(X)+1) continue;
 
-	index1 = ic*xfac + jc*yfac + kc;
+	    p_c2 = CELL_get_head_of_list(id, jd, kd);
 
-	if (coll_map[index1] == p_colloid) continue;
+	    /* Interaction. If two cells are the same, make sure
+	     * that we don't double count by looking ahead only. */
 
-	rsite1 = COLL_fcoords_from_ijk(ic, jc, kc);
-	rsep = COLL_fvector_separation(r0, rsite1);
+	    if (kc == kd && jc == jd && ic == id) p_c2 = p_c1->next;
 
-	/* Index 1 is outside, so cycle through the lattice vectors
-	 * to determine if the end is inside, and so requires a link */
+	    /* Look at particles in list 2 */
 
-	for (p = 1; p < NVEL; p++) {
+	    while (p_c2) {
+	      ra2 = p_c2->ah;
 
-	  /* Find the index of the inside site */
+	      /* Compute the separation vector and the gap, and the
+	       * unit vector joining the two centres */
+	      r_ij = COLL_fvector_separation(p_c1->r, p_c2->r);
+	      rmod  = UTIL_fvector_mod(r_ij);
 
-	  ii = ic + cv[p][0];
-	  jj = jc + cv[p][1];
-	  kk = kc + cv[p][2];
+	      gap = rmod - ra1 - ra2;
+	      if (gap < mingap) mingap = gap;
+	      if (gap < 0.0) COLL_overlap(p_c1, p_c2);
 
-	  index0 = ii*xfac + jj*yfac + kk;
+	      /* Lubrication corrections, soft sphere potential ... */
+	      f0 = COLL_lubrication(p_c1, p_c2, r_ij, rmod);
 
-	  if (coll_map[index0] != p_colloid) continue;
+	      fmod = soft_sphere_force(gap);
+	      fa.x = -fmod*r_ij.x/rmod;
+	      fa.y = -fmod*r_ij.y/rmod;
+	      fa.z = -fmod*r_ij.z/rmod;
 
-	  /* Index 0 is inside, so now add a link*/
+	      /* Total for this interaction */
+	      f0 = UTIL_fvector_add(f0, fa);
 
-	  if (p_link) {
-	    /* Use existing link (lambda always 0.5 at moment) */
+	      /* Add force for this interaction to particle 1, and
+	       * also accumulate it for particle 2 (with a - sign) */
+	      f1 = UTIL_fvector_add(f1, f0);
+	      p_c2->force = UTIL_fvector_subtract(p_c2->force, f0);
 
-	    p_link->rb.x = rsep.x + lambda*cv[p][0];
-	    p_link->rb.y = rsep.y + lambda*cv[p][1];
-	    p_link->rb.z = rsep.z + lambda*cv[p][2];
-
-	    p_link->i = index1;
-	    p_link->j = index0;
-	    p_link->v = p;
-
-	    if (site_map[index1] == FLUID) {
-	      p_link->solid = 0;
-	      COLL_link_mean_contrib(p_colloid, p, p_link->rb);
+	      /* Next colloid 2 */
+	      p_c2 = p_c2->next;
 	    }
-	    else {
-	      FVector ub;
-	      p_link->solid = 1;
-	      ub = UTIL_cross_product(p_colloid->omega, p_link->rb);
-	      ub = UTIL_fvector_add(ub, p_colloid->v);
-	      COLL_set_virtual_velocity(p_link->j, p_link->v, ub);
-	    }
-
-
-	    /* Next link */
-	    p_last = p_link;
-	    p_link = p_link->next;
-
-	  }
-	  else {
-	    /* Add a new link to the end of the list */
-
-	    p_link = CMEM_allocate_boundary_link();
-
-	    p_link->rb.x = rsep.x + lambda*cv[p][0];
-	    p_link->rb.y = rsep.y + lambda*cv[p][1];
-	    p_link->rb.z = rsep.z + lambda*cv[p][2];
-
-	    p_link->i = index1;
-	    p_link->j = index0;
-	    p_link->v = p;
-
-	    if (site_map[index1] == FLUID) {
-	      p_link->solid = 0;
-	      COLL_link_mean_contrib(p_colloid, p, p_link->rb);
-	    }
-	    else {
-	      FVector ub;
-	      p_link->solid = 1;
-	      ub = UTIL_cross_product(p_colloid->omega, p_link->rb);
-	      ub = UTIL_fvector_add(ub, p_colloid->v);
-	      COLL_set_virtual_velocity(p_link->j, p_link->v, ub);
-	    }
-
-	    if (p_colloid->lnk == NULL) {
-	      /* Remember to attach the head of the list */
-	      p_colloid->lnk = p_link;
-	      p_last = p_link;
-	    }
-	    else {
-	      p_last->next = p_link;
-	    }
-
-	    p_link->next = NULL;
-	    p_last = p_link;
-	    p_link = NULL;
+	    /* Next cell 2 */
 	  }
 
-	  /* Next lattice vector */
+	  /* Add total force on particle 1 */
+	  p_c1->force = UTIL_fvector_add(p_c1->force, f1);
+
+	  /* Next colloid 1 */
+	  p_c1 = p_c1->next;
 	}
-
-	/* Next site in the cube */
+	/* Next cell 1 */
       }
-
-  /* Finally, flag any remaining (unused) links as inactive */
-  /* All links may have to be flagged as unused... */
-
-  /* ... is the non-failsafe method ...
-  if (p_last) p_link = p_last->next;
-  if (p_last == p_colloid->lnk) p_link = p_last;
-
-  while (p_link) {
-    p_link->solid = -1;
-    p_link = p_link->next;
+    }
   }
-  */
 
-
-  return;
+  return mingap;
 }
 
 /*****************************************************************************
  *
- *  COLL_reset_links
+ *  soft_sphere_init
  *
- *  Recompute the boundary link vectors and solid/fluid status
- *  of links for an existing particle.
- *
- *  Issues
- *    Non volumetric lambda = 0.5 at the moment.
- *
- *    There is no assumption here about the form of the position update,
- *    so the separation is recomputed. For Euler update, one could just
- *    subtract the current velocity to get the new boundary link vector
- *    from the old one; however, no assumption is prefered.
- *
- ****************************************************************************/
-
-void COLL_reset_links(Colloid * p_colloid) {
-
-  COLL_Link * p_link;
-  FVector     rsite, rsep;
-  FVector     r0;
-  IVector     isite;
-  int         offset[3];
-
-  double      lambda = 0.5;
-
-  get_N_offset(offset);
-
-  p_link = p_colloid->lnk;
-
-  while (p_link) {
-
-    if (p_link->solid == -1) {
-      /* Link is not active */
-    }
-    else {
-
-      /* Compute the separation between the centre of the colloid
-       * and the fluid site involved with this link. The position
-       * of the outside site is rsite in local coordinates. */
-      isite = COM_index2coord(p_link->i);
-      rsite = COLL_fcoords_from_ijk(isite.x, isite.y, isite.z);
-      r0    = p_colloid->r;
-      r0.x -= offset[X];
-      r0.y -= offset[Y];
-      r0.z -= offset[Z];
-      rsep  = COLL_fvector_separation(r0, rsite);
-
-      p_link->rb.x = rsep.x + lambda*cv[p_link->v][0];
-      p_link->rb.y = rsep.y + lambda*cv[p_link->v][1];
-      p_link->rb.z = rsep.z + lambda*cv[p_link->v][2];
-
-      if (site_map[p_link->i] == FLUID) {
-	p_link->solid = 0;
-	COLL_link_mean_contrib(p_colloid, p_link->v, p_link->rb);
-      }
-      else {
-	FVector ub;
-
-	p_link->solid = 1;
-	ub = UTIL_cross_product(p_colloid->omega, p_link->rb);
-	ub = UTIL_fvector_add(ub, p_colloid->v);
-	COLL_set_virtual_velocity(p_link->j, p_link->v, ub);
-      }
-
-    }
-
-    /* Next link */
-    p_link = p_link->next;
-  }
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  COLL_bounce_back_pass1
- *
- *  Issues
- *    The computation of the drag matrix elements zeta might
- *    be moved away from here in the event of position
- *    updates occuring at frequency less than every time step.
+ *  Initialise the parameters for the soft-sphere interaction between
+ *  colloids.
  *
  *****************************************************************************/
 
-void COLL_bounce_back_pass1() {
+void soft_sphere_init() {
 
-  Colloid   * p_colloid;
-  COLL_Link * p_link;
+  int n;
 
-  FVector   ci;
-  FVector   vb;
+  info("\nColloid-colloid soft-sphere potential\n");
 
-  int       i, j, ij, ji;
-  Float     rho = Global_Colloid.rho;
-  Float     dm;
-  Float     delta;
-  Float     rsumw;
+  n = RUN_get_int_parameter("soft_sphere_on", &soft_sphere.on);
+  info((n == 0) ? "[Default] " : "[User   ] ");
+  info("Soft sphere potential is switched %s\n",
+       (soft_sphere.on == 0) ? "off" : "on");
 
-  IVector   ncell;
-  int       ic, jc, kc;
-  extern const double c2rcs2;
+  if (soft_sphere.on) {
+    n = RUN_get_double_parameter("soft_sphere_epsilon", &soft_sphere.epsilon);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Soft-sphere energy (epsilon) is %f (%f kT)\n", soft_sphere.epsilon,
+	 soft_sphere.epsilon/get_kT());
 
-  TIMER_start(TIMER_BBL);
+    n = RUN_get_double_parameter("soft_sphere_sigma", &soft_sphere.sigma);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Soft-sphere width (sigma) is %f\n", soft_sphere.sigma);
 
-  ncell = Global_Colloid.Ncell;
+    n = RUN_get_double_parameter("soft_sphere_nu", &soft_sphere.nu);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Soft-sphere exponent (nu) is %f\n", soft_sphere.nu);
+    if (soft_sphere.nu <= 0.0) fatal("Please check nu is positive\n");
 
-  for (ic = 0; ic <= ncell.x + 1; ic++)
-    for (jc = 0; jc <= ncell.y + 1; jc++)
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	/* For each colloid in the list */
-
-
-	while (p_colloid != NULL) {
-
-	  p_link = p_colloid->lnk;
-
-	  for (i = 0; i < 21; i++) {
-	    p_colloid->zeta[i] = 0.0;
-	  }
-
-	  /* We need to normalise link quantities by the sum of weights
-	   * over the particle. Note that sumw cannot be zero here during
-	   * correct operation (implies the particle has no links). */
-
-	  rsumw = 1.0 / p_colloid->sumw;
-	  p_colloid->cbar.x   *= rsumw;
-	  p_colloid->cbar.y   *= rsumw;
-	  p_colloid->cbar.z   *= rsumw;
-	  p_colloid->rxcbar.x *= rsumw;
-	  p_colloid->rxcbar.y *= rsumw;
-	  p_colloid->rxcbar.z *= rsumw;
-	  p_colloid->deltam   *= rsumw;
-	  p_colloid->deltaphi *= rsumw;
-
-	  /* Sum over the links */ 
-
-	  while (p_link != NULL) {
-
-#ifdef _VERY_VERBOSE_
-	    VERBOSE(("* bbl pass 1 p_link (%p) next (%p)\n",
-		     p_link, p_link->next));
-#endif
-	    if (p_link->solid == -1) {
-	      /* ignore */
-	    }
-	    else {
-	      i = p_link->i;        /* index site i (inside) */
-	      j = p_link->j;        /* index site j (outside) */
-	      ij = p_link->v;       /* link velocity index i->j */
-	      ji = NVEL - ij;      /* link velocity index j->i */
-
-	      ci.x = (Float) cv[ij][0];
-	      ci.y = (Float) cv[ij][1];
-	      ci.z = (Float) cv[ij][2];
-
-	      /* For stationary link, the momentum transfer from the
-	       * fluid to the colloid is "dm" */
-
-	      if (p_link->solid == 1) {
-		/* Virtual momentum transfer for solid->solid links,
-		 * but no contribution to drag maxtrix */
-		dm = site[i].f[ij] + site[j].f[ji];
-		delta = 0.0;
-	      }
-	      else {
-		/* Bounce back of fluid on outside plus correction
-		 * arising from changes in shape at previous step. */
-		dm =  2.0*site[i].f[ij]
-		  - wv[ij]*p_colloid->deltam; /* minus */
-		delta = c2rcs2*wv[ij]*rho;
-	      }
-
-	      vb = UTIL_cross_product(p_link->rb, ci);
-
-	      /* Now add contribution to the sums required for 
-	       * self-consistent evaluation of new velocities. */
-
-	      p_colloid->f0.x += dm*ci.x;
-	      p_colloid->f0.y += dm*ci.y;
-	      p_colloid->f0.z += dm*ci.z;
-
-	      p_colloid->t0.x += dm*vb.x;
-	      p_colloid->t0.y += dm*vb.y;
-	      p_colloid->t0.z += dm*vb.z;
-
-	      /* Corrections when links are missing (close to contact) */
-
-	      ci = UTIL_fvector_subtract(ci, p_colloid->cbar);
-	      vb = UTIL_fvector_subtract(vb, p_colloid->rxcbar);
-
-	      /* Drag matrix elements */
-
-	      p_colloid->zeta[ 0] += delta*ci.x*ci.x;
-	      p_colloid->zeta[ 1] += delta*ci.x*ci.y;
-	      p_colloid->zeta[ 2] += delta*ci.x*ci.z;
-	      p_colloid->zeta[ 3] += delta*ci.x*vb.x;
-	      p_colloid->zeta[ 4] += delta*ci.x*vb.y;
-	      p_colloid->zeta[ 5] += delta*ci.x*vb.z;
-
-	      p_colloid->zeta[ 6] += delta*ci.y*ci.y;
-	      p_colloid->zeta[ 7] += delta*ci.y*ci.z;
-	      p_colloid->zeta[ 8] += delta*ci.y*vb.x;
-	      p_colloid->zeta[ 9] += delta*ci.y*vb.y;
-	      p_colloid->zeta[10] += delta*ci.y*vb.z;
-
-	      p_colloid->zeta[11] += delta*ci.z*ci.z;
-	      p_colloid->zeta[12] += delta*ci.z*vb.x;
-	      p_colloid->zeta[13] += delta*ci.z*vb.y;
-	      p_colloid->zeta[14] += delta*ci.z*vb.z;
-
-	      p_colloid->zeta[15] += delta*vb.x*vb.x;
-	      p_colloid->zeta[16] += delta*vb.x*vb.y;
-	      p_colloid->zeta[17] += delta*vb.x*vb.z;
-
-	      p_colloid->zeta[18] += delta*vb.y*vb.y;
-	      p_colloid->zeta[19] += delta*vb.y*vb.z;
-
-	      p_colloid->zeta[20] += delta*vb.z*vb.z;
-	    }
-
-	    /* Next link */
-	    p_link = p_link->next;
-	  }
-
-	  /* Next colloid */
-	  p_colloid = p_colloid->next;
-	}
-
-	/* Next cell */
-      }
-
-  TIMER_stop(TIMER_BBL);
+    n = RUN_get_double_parameter("soft_sphere_cutoff", &soft_sphere.cutoff);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Soft-sphere cutoff range is %f\n", soft_sphere.cutoff);
+  }
 
   return;
 }
 
-
 /*****************************************************************************
  *
- *  COLL_bounce_back_pass2
+ *  check_interactions
  *
- *  Implement bounce-back on links having updated the colloid
- *  velocities via the implicit method.
+ *  Check the cell list width against the current interaction cut-off
+ *  lengths.
  *
  *****************************************************************************/
 
-void COLL_bounce_back_pass2() {
+void check_interactions(double ahmax) {
 
-  Colloid   * p_colloid;
-  COLL_Link * p_link;
+  double rmax = 0.0;
+  double lmin = DBL_MAX;
+  double rc;
 
-  FVector   vb;
-  FVector   ci;
+  info("\nChecking cell list against specified interactions\n");
 
-  int       i, j, ij, ji;
-  Float     dm;
-  Float     vdotc;
-  Float     rho = Global_Colloid.rho;
-  Float     dms;
-  Float     df, dg;
+  /* Work out the maximum cut-off range */
 
-  Float     dgtm1;
+  rc = 2.0*ahmax + lubrication.cutoff_norm;
+  rmax = dmax(rmax, rc);
+  rc = 2.0*ahmax + lubrication.cutoff_tang;
+  rmax = dmax(rmax, rc);
 
-  IVector   ncell;
-  int       ic, jc, kc;
+  rc = 2.0*ahmax + soft_sphere.cutoff;
+  rmax = dmax(rmax, rc);
 
-  extern double * phi_site;
-  extern const double c2rcs2;
+  /* Check against the cell list */
 
-  TIMER_start(TIMER_BBL);
+  lmin = dmin(lmin, Lcell(X));
+  lmin = dmin(lmin, Lcell(Y));
+  lmin = dmin(lmin, Lcell(Z));
 
-  ncell = Global_Colloid.Ncell;
-
-  /* Account the current phi deficit */
-  Global_Colloid.deltag = 0.0;
-
-  for (ic = 0; ic <= ncell.x + 1; ic++)
-    for (jc = 0; jc <= ncell.y + 1; jc++)
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	/* Update solid -> fluid links for each colloid in the list */
-
-	while (p_colloid != NULL) {
-
-	  /* Set correction for phi arising from previous step */
-
-	  dgtm1 = p_colloid->deltaphi;
-
-	  p_colloid->deltaphi = 0.0;
-
-	  /* Correction to the bounce-back for this particle if it is
-	   * without full complement of links */
-
-	  dms = c2rcs2*rho*
-	    (UTIL_dot_product(p_colloid->v, p_colloid->cbar)
-	     + UTIL_dot_product(p_colloid->omega, p_colloid->rxcbar));
-
-
-	  /* Run through the links */
-
-	  p_link = p_colloid->lnk;
-
-	  while (p_link != NULL) {
-
-	    if (p_link->solid != 0) {
-	      /* This is a colloid -> colloid link (or unused). */
-	    }
-	    else {
-
-	      i = p_link->i;        /* index site i (outside) */
-	      j = p_link->j;        /* index site j (inside) */
-	      ij = p_link->v;       /* link velocity index i->j */
-	      ji = NVEL - ij;      /* link velocity index j->i */
-
-	      ci.x = (Float) cv[ij][0];
-	      ci.y = (Float) cv[ij][1];
-	      ci.z = (Float) cv[ij][2];
-
-	      dm =  2.0*site[i].f[ij]
-		- wv[ij]*p_colloid->deltam; /* minus */
-
-	      /* Compute the self-consistent boundary velocity,
-	       * and add the correction term for changes in shape. */
-
-	      vb = UTIL_cross_product(p_colloid->omega, p_link->rb);
-	      vb = UTIL_fvector_add(vb, p_colloid->v);
-
-	      vdotc = c2rcs2*wv[ij]*UTIL_dot_product(vb, ci);
-
-	      df = rho*vdotc + wv[ij]*p_colloid->deltam;
-
-	      dg = phi_site[i]*vdotc;
-	      p_colloid->deltaphi += dg;
-	      dg -= wv[ij]*dgtm1;
-
-	      /* Correction owing to missing links "squeeze term" */
-
-	      df -= wv[ij]*dms;
-
-	      /* The outside site actually undergoes BBL. However,
-	       * the inside site also gets treated to fool the
-	       * propagation stage (not really necessary). */
-
-	      site[j].f[ji] = site[i].f[ij] - df;
-
-#ifndef _SINGLE_FLUID_
-	      site[j].g[ji] = site[i].g[ij] - dg;
-#endif
-	    }
-
-	    /* Next link */
-	    p_link = p_link->next;
-	  }
-
-	  /* Reset factors required for change of shape */
-	  p_colloid->deltam = 0.0;
-	  p_colloid->f0 = UTIL_fvector_zero();
-	  p_colloid->t0 = UTIL_fvector_zero();
-	  Global_Colloid.deltag += p_colloid->deltaphi;
-
-	  /* Next colloid */
-	  p_colloid = p_colloid->next;
-
-	}
-
-	/* Next cell */
-      }
-
-  TIMER_stop(TIMER_BBL);
+  if (rmax > lmin) {
+    info("Cell list width too small to capture specified interactions!\n");
+    info("The maximum interaction range is: %f\n", rmax);
+    info("The minumum cell width is only:   %f\n", lmin);
+    fatal("Please check and try again\n");
+  }
+  else {
+    info("The maximum interaction range is: %f\n", rmax);
+    info("The minimum cell width is %f (ok)\n", lmin);
+  }
 
   return;
 }
 
-
 /*****************************************************************************
  *
- *  COLL_remove_or_replace_fluid
+ *  soft_sphere_energy
  *
- *  Compare the current coll_map with the one from the previous time
- *  step and act on changes:
- *
- *    (1) newly occupied sites must have their fluid removed
- *    (2) newly vacated sites must have fluid replaced.
- *
- *  Correction terms are added for the appropriate colloids to be
- *  implemented at the next step.
+ *  Return the energy of interaction between two particles with
+ *  (surface-surface) separation h.
  *
  *****************************************************************************/
 
-void COLL_remove_or_replace_fluid() {
+double soft_sphere_energy(const double h) {
 
-  Colloid * p_colloid;
+  double e = 0.0;
 
-  int     i, j, k;
-  int     xfac, yfac, index;
-  int     sold, snew;
-  int     halo;
-  int     N[3];
+  if (soft_sphere.on) {
+    double hc = soft_sphere.cutoff;
+    double nu = soft_sphere.nu;
 
-  get_N_local(N);
+    if (h > 0 && h < hc) {
+      e = pow(h, -nu) - pow(hc, -nu)*(1.0 - (h-hc)*nu/hc);
+      e = e*soft_sphere.epsilon*pow(soft_sphere.sigma, nu);
+    }
+  }
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
+  return e;
+}
 
-  for (i = 0; i <= N[X] + 1; i++) {
-    for (j = 0; j <= N[Y] + 1; j++) {
-      for (k = 0; k <= N[Z] + 1; k++) {
+/*****************************************************************************
+ *
+ *  soft_sphere_force
+ *
+ *  Return the magnitude of the 'soft-sphere' interaction force between
+ *  two particles with (surface-surface) separation h.
+ *
+ ****************************************************************************/
 
-	index = i*xfac + j*yfac + k;
+double soft_sphere_force(const double h) {
 
-	sold = (coll_old[index] != (Colloid *) NULL);
-	snew = (coll_map[index] != (Colloid *) NULL);
+  double f = 0.0;
 
-	halo = (i == 0 || j == 0 || k == 0 ||
-		i > N[X] || j > N[Y] || k > N[Z]);
+  if (soft_sphere.on) {
+    double hc = soft_sphere.cutoff;
+    double nu = soft_sphere.nu;
 
-	if (sold == 0 && snew == 1) {
-	  p_colloid = coll_map[index];
-	  p_colloid->rebuild = 1;
-	  if (!halo) COLL_remove_binary_fluid(index, p_colloid);
-	}
+    if (h > 0 && h < hc) {
+      f = pow(h, -(nu+1)) - pow(hc, -(nu+1));
+      f = f*soft_sphere.epsilon*pow(soft_sphere.sigma, nu)*nu;
+    }
+  }
 
-	if (sold == 1 && snew == 0) {
-	  p_colloid = coll_old[index];
-	  p_colloid->rebuild = 1;
-	  if (!halo) COLL_replace_binary_fluid(index, p_colloid);
-	}
+  return f;
+}
+
+/*****************************************************************************
+ *
+ *  COLL_lubrication
+ *
+ *  Compute the net lubrication correction for the two colloids
+ *  which are separated by vector r_ij (the size of which is h
+ *  i.e., centre-centre distance).
+ *
+ *  If noise is on, then an additional random force is required to
+ *  satisfy the fluctuation-dissipation theorem. The size of the
+ *  random component depends on the "temperature", and is just
+ *  added to the lubrication contribution.
+ *
+ *****************************************************************************/
+
+FVector COLL_lubrication(Colloid * p_i, Colloid * p_j, FVector r_ij, double h) {
+
+  FVector force;
+
+  force = UTIL_fvector_zero();
+
+  if (lubrication.corrections_on) {
+
+    FVector du;
+    FVector runit;
+    double   ai, aj;
+    double   rh;
+    double   rdotdu;
+    double   fmod;
+
+    /* Define the surface-surface separation */
+
+    ai = p_i->ah;
+    aj = p_j->ah;
+    h  = h - ai - aj;
+
+    if (h < lubrication.cutoff_norm) {
+
+      double rn = 1.0/lubrication.cutoff_norm;
+
+      /* Compute the separation unit vector in the direction of r_ij */
+
+      rh = 1.0 / (h + ai + aj);
+      runit.x = rh*r_ij.x;
+      runit.y = rh*r_ij.y;
+      runit.z = rh*r_ij.z;
+
+      /* Normal lubrication correction */
+
+      rh     = 1.0 / h;
+      du     = UTIL_fvector_subtract(p_i->v, p_j->v);
+      rdotdu = UTIL_dot_product(runit, du);
+      fmod   = -6.0*PI*get_eta_shear()*ai*ai*aj*aj*(rh - rn)
+	/ ((ai+ai)*(aj+aj));
+
+      force.x += fmod*rdotdu*runit.x;
+      force.y += fmod*rdotdu*runit.y;
+      force.z += fmod*rdotdu*runit.z;
+
+      /* Tangential lubrication correction */
+      if (h < lubrication.cutoff_tang) {
+
+	double rt = 1.0/lubrication.cutoff_tang;
+
+	rh = 0.5*(ai+aj)/h;
+	fmod = -(24.0/15.0)*PI*get_eta_shear()*ai*aj*
+	  (2.0*ai*ai + ai*aj + 2.0*aj*aj)*
+	  (log(rh) - log(0.5*(ai+aj)*rt)) / ((ai+aj)*(ai+aj)*(ai+aj));
+
+	force.x += fmod*(du.x - rdotdu*runit.x);
+	force.y += fmod*(du.y - rdotdu*runit.y);
+	force.z += fmod*(du.z - rdotdu*runit.z);
       }
     }
   }
 
-  return;
+  return force;
 }
-
 
 /*****************************************************************************
  *
- *  COLL_remove_binary_fluid
+ *  COLL_overlap
  *
- *  Remove fluid at site inode, which has just been occupied by
- *  colloid p_colloid.
+ *  Action on detection of overlapping particles.
  *
- *  This requires corrections to the bounce-back for this colloid
- *  at the following time-step.
- *
- *  As the old fluid has disappeared inside the colloid, the
- *  distributions (f, g) at inode do not actually need to be reset.
- *
- ****************************************************************************/
+ *****************************************************************************/
 
-void COLL_remove_binary_fluid(int inode, Colloid * p_colloid) {
+void COLL_overlap(Colloid * p_c1, Colloid * p_c2) {
 
-  Float   oldrho;
-  Float   oldphi;
-  FVector oldu;
-
-  IVector ri;
-  FVector rb;
-  FVector r0;
-
-  int offset[3];
-
-  get_N_offset(offset);
-
-  /* Get the properties of the old fluid at inode */
-
-  oldrho = MODEL_get_rho_at_site(inode);
-  oldphi = MODEL_get_phi_at_site(inode);
-  oldu   = MODEL_get_momentum_at_site(inode);
-
-  /* Set the corrections for colloid motion. This requires
-   * the local boundary vector rb */
-
-  p_colloid->deltam -= (oldrho - get_rho0());
-  p_colloid->f0      = UTIL_fvector_add(p_colloid->f0, oldu);
-
-  ri    = COM_index2coord(inode);
-  rb    = COLL_fcoords_from_ijk(ri.x, ri.y, ri.z);
-  r0    = p_colloid->r;
-  r0.x -= offset[X];
-  r0.y -= offset[Y];
-  r0.z -= offset[Z];
-  rb    = COLL_fvector_separation(r0, rb);
-
-  oldu               = UTIL_cross_product(rb, oldu);
-  p_colloid->t0      = UTIL_fvector_add(p_colloid->t0, oldu);
-
-  /* Set the corrections for order parameter */
-
-  p_colloid->deltaphi += (oldphi - get_phi0());
-
-#ifdef _DEVEL_
-  printf("*** Remove fluid at (%d, %d, %d)\n", ri.x, ri.y, ri.z);
-  printf("Addtional rc   : (%g, %g, %g)\n", rb.x,rb.y, rb.z);
-  printf("Addtional force: (%g, %g, %g)\n", p_colloid->f0.x,
-	 p_colloid->f0.y, p_colloid->f0.z);
-  printf("Addtional torqe: (%g, %g, %g)\n", p_colloid->t0.x,
-	 p_colloid->t0.y, p_colloid->t0.z);
-  printf("*** Removed rho:  %f\n", oldrho);
-  printf("*** Removed phi:  %f\n\n", oldphi);
-#endif
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  COLL_replace_binary_fluid
- *
- *  Replace fluid at site inode, which has just been vacated by
- *  colloid p_colloid.
- *
- *  The new fluid properties must be set according to what
- *  fluid distributions (f, g) are
- *  present in the neighbourhood, and corrections added to the
- *  bounce-back for p_colloid at the next step.
- *
- *  Issues
- *    A naive weighted average at the moment.
- *
- ****************************************************************************/
-
-void COLL_replace_binary_fluid(int inode, Colloid * p_colloid) {
-
-  int      indexn, p, pdash;
-  int      xfac, yfac;
-  int      N[3];
-  int      offset[3];
-  IVector  ri;
-
-  FVector  rb;
-
-  Float    newrho = 0.0;
-  Float    newphi = 0.0;
-  FVector  newu, newt;
-  FVector  r0;
-
-  Float    weight = 0.0;
-
-  Float    newf[NVEL];
-  Float    newg[NVEL];
-
-  get_N_local(N);
-  get_N_offset(offset);
-
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
-
-  /* Check the surrounding sites that were linked to inode,
-   * and accumulate a (weighted) average distribution. */
-
-  for (p = 0; p < NVEL; p++) {
-    newf[p] = 0.0;
-    newg[p] = 0.0;
-  }
-
-  for (p = 1; p < NVEL; p++) {
-
-    indexn = inode + xfac*cv[p][0] + yfac*cv[p][1] + cv[p][2];
-
-    /* Site must have been fluid before position update */
-    if (coll_old[indexn] || site_map[indexn] == SOLID) continue;
-
-    for (pdash = 0; pdash < NVEL; pdash++) {
-      newf[pdash] += wv[p]*site[indexn].f[pdash];
-      newg[pdash] += wv[p]*site[indexn].g[pdash];
-    }
-    weight += wv[p];
-  }
-
-  /* Set new fluid distributions */
-
-  newu = UTIL_fvector_zero();
-
-  weight = 1.0/weight;
-
-  for (p = 0; p < NVEL; p++) {
-    newf[p] *= weight;
-    newg[p] *= weight;
-    site[inode].f[p] = newf[p];
-    site[inode].g[p] = newg[p];
-
-    /* ... and remember the new fluid properties */
-    newrho += newf[p];
-    newphi += newg[p];
-    newu.x -= newf[p]*cv[p][0]; /* minus sign is approprite for upcoming ... */
-    newu.y -= newf[p]*cv[p][1]; /* ... correction to colloid momentum */
-    newu.z -= newf[p]*cv[p][2];
-  }
-
-  /* Set corrections for excess mass and momentum. For the
-   * correction to the torque, we need the appropriate
-   * boundary vector rb */
-
-  p_colloid->deltam += (newrho - get_rho0());
-  p_colloid->f0      = UTIL_fvector_add(p_colloid->f0, newu);
-
-  ri    = COM_index2coord(inode);
-  rb    = COLL_fcoords_from_ijk(ri.x, ri.y, ri.z);
-  r0    = p_colloid->r;
-  r0.x -= offset[X];
-  r0.y -= offset[Y];
-  r0.z -= offset[Z];
-  rb    = COLL_fvector_separation(r0, rb);
-
-  newt               = UTIL_cross_product(rb, newu);
-  p_colloid->t0      = UTIL_fvector_add(p_colloid->t0, newt);
-
-  /* Set corrections arising from change in order parameter */
-
-  p_colloid->deltaphi -= (newphi - get_phi0());
-
-#ifdef _DEVEL_
-  /* Report */
-
-  printf("*** Replace fluid at (%d, %d, %d)\n", ri.x, ri.y, ri.z);
-  printf("*** New rho,phi: %g, %g\n", newrho, newphi);
-  printf("Addtional rc   : (%g, %g, %g)\n", rb.x,rb.y, rb.z);
-  printf("Addtional force: (%g, %g, %g)\n", p_colloid->f0.x,
-	 p_colloid->f0.y, p_colloid->f0.z);
-  printf("Addtional torqe: (%g, %g, %g)\n", p_colloid->t0.x,
-	 p_colloid->t0.y, p_colloid->t0.z);
-  printf("New fluid velocity: (%g, %g, %g)\n", newu.x, newu.y, newu.z);
-  printf("*** excess mass:  %g\n\n", p_colloid->deltam);
-#endif
+  verbose("Detected overlapping particles\n");
+  verbose("Particle[%d] at (%f,%f,%f)\n", p_c1->index, p_c1->r.x, p_c1->r.y,
+	  p_c1->r.z);
+  verbose("particle[%d] at (%f,%f,%f)\n", p_c2->index, p_c2->r.x, p_c2->r.y,
+	  p_c2->r.z);
+  fatal("Stopping");
 
   return;
 }
@@ -1289,60 +1255,3 @@ void COLL_compute_phi_missing() {
   return;
 }
 
-
-/****************************************************************************
- *
- *  COLL_set_virtual_velocity
- *
- *  Set f_p at inode to an equilibrium value for a given velocity.
- *
- ****************************************************************************/
-
-void COLL_set_virtual_velocity(int inode, int p, FVector u) {
-
-  Float uc;
-
-  uc = u.x*cv[p][0] + u.y*cv[p][1] + u.z*cv[p][2];
-  site[inode].f[p] = wv[p]*(1.0 + 3.0*uc);
-
-#ifdef _DEVELOPMET_
-  if (site_map[inode] == FLUID) {
-    printf("******* Error: trying to set fluid property!\n");
-  }
-  /* Full expression */
-  u2 = u.x*u.x + u.y*u.y + u.z*u.z;
-  site[inode].f[p] = wv[p]*(1.0 - 0.0*1.5*u2 + 3.0*uc + 0.0*4.5*uc*uc);
-#endif
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  COLL_link_mean_contrib
- *
- *  Add a contribution to cbar, rxcbar, and rsunw from
- *  a given link.
- *
- *****************************************************************************/
-
-void COLL_link_mean_contrib(Colloid * p_colloid, int p, FVector rb) {
-
-  FVector rxc;
-
-  rxc.x = cv[p][0];
-  rxc.y = cv[p][1];
-  rxc.z = cv[p][2];
-  rxc   = UTIL_cross_product(rb, rxc);
-
-  p_colloid->cbar.x   += wv[p]*cv[p][0];
-  p_colloid->cbar.y   += wv[p]*cv[p][1];
-  p_colloid->cbar.z   += wv[p]*cv[p][2];
-
-  p_colloid->rxcbar.x += wv[p]*rxc.x;
-  p_colloid->rxcbar.y += wv[p]*rxc.y;
-  p_colloid->rxcbar.z += wv[p]*rxc.z;
-
-  p_colloid->sumw     += wv[p];
-  return;
-}

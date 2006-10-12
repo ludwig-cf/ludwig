@@ -1,3 +1,15 @@
+/*****************************************************************************
+ *
+ *  vector.c
+ *
+ *  This file contains operations on struct FVector.
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *****************************************************************************/
+
+#include <math.h>
+
 #include "utilities.h"
 
 /*****************************************************************************
@@ -5,13 +17,13 @@
  *  UTIL_fdistance_sq
  *
  *  Distance between two points with position vectors r1 nad r2
- *  is returned as a Float. Squared.
+ *  is returned. Squared.
  *
  *****************************************************************************/
 
-Float UTIL_fdistance_sq(FVector r1, FVector r2) {
+double UTIL_fdistance_sq(FVector r1, FVector r2) {
 
-  Float sq = 0.0;
+  double sq = 0.0;
 
   sq += (r1.x - r2.x)*(r1.x - r2.x);
   sq += (r1.y - r2.y)*(r1.y - r2.y);
@@ -28,9 +40,9 @@ Float UTIL_fdistance_sq(FVector r1, FVector r2) {
  *
  *****************************************************************************/
 
-Float UTIL_fvector_mod(FVector r) {
+double UTIL_fvector_mod(FVector r) {
 
-  Float rmod;
+  double rmod;
 
   rmod = sqrt(r.x*r.x + r.y*r.y + r.z*r.z);
 
@@ -61,7 +73,7 @@ FVector UTIL_fvector_zero() {
  *
  *****************************************************************************/
 
-Float UTIL_dot_product(FVector v1, FVector v2) {
+double UTIL_dot_product(FVector v1, FVector v2) {
 
   return (v1.x*v2.x + v1.y*v2.y + v1.z*v2.z);
 }

@@ -40,6 +40,8 @@ void init_free_energy() {
   n = RUN_get_double_parameter("B", &B);
   n = RUN_get_double_parameter("K", &kappa);
 
+#ifdef _SINGLE_FLUID_
+#else
   if (A > 0.0) {
     fatal("The free energy parameter A must be negative\n");
   }
@@ -56,6 +58,7 @@ void init_free_energy() {
   info("Surface penalty kappa = %f\n", kappa);
   info("Surface tension       = %f\n", surface_tension());
   info("Interfacial width     = %f\n", interfacial_width());
+#endif
 
   return;
 }

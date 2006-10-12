@@ -1,7 +1,4 @@
 
-#ifndef _COLLOIDS_H
-#define _COLLOIDS_H
-
 /*****************************************************************************
  *
  *  colloids.h
@@ -11,41 +8,21 @@
  *  See Ludwig Technical Notes for a complete description
  *  of the colloid implementation.
  *
+ *  $Id: colloids.h,v 1.4 2006-10-12 14:09:18 kevin Exp $
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-/* Global_Colloid
- * contains fixed parameters for colloid physics */
-
-struct {
-
-  int       N_colloid;     /* Total number of colloids in model */
-  int       nlocal;        /* Local number of colloids */
-  int       fr;            /* Rebuild frequency */
-  Float     a0;            /* Default input radius */
-  Float     ah;            /* Hydrodynamic radius for a0 */
-  Float     vf;            /* volume fraction (input) */
-  Float     rho;           /* Colloid density */
-  Float     deltaf;        /* Current mass deficit */
-  Float     deltag;        /* Current order parameter deficit */
-  Float     r_lu_n;        /* Cutoff for normal lubrication */
-  Float     r_lu_t;        /* Cutoff for tangential lubrication */
-  Float     r_ssph;        /* Cutoff distance for soft-sphere potential */
-  Float     r_clus;        /* Cutoff distance for cluster-implicit */
-  IVector   Ncell;         /* Number of cells in each dimension (local) */
-  FVector   Lcell;         /* Cell width in each dimension */
-  FVector   F;             /* Force on all colloids, e.g., gravity */
-  Float     drop_in_p1;    /* Parameter for "drop-in" potential */
-  Float     drop_in_p2;    /* Parameter for "drop-in" potential */
-
-} Global_Colloid;
-
+#ifndef _COLLOIDS_H
+#define _COLLOIDS_H
 
 /* Colloid structure
  * contains state information for individual colloid.
  * This involves both physical properties (position, velocity, etc)
  * and structural information (linked lists, parallel information). */
+
+#include "utilities.h"
 
 typedef struct colloid Colloid;
 typedef struct coll_link COLL_Link;
@@ -59,7 +36,7 @@ struct colloid {
   FVector   r;             /* Position vector of centre of mass */
   FVector   v;             /* Linear velocity */
   FVector   omega;         /* Angular velocity */
-  double    random[6];     /* Random numbers for Brownian dynamics */
+  double    random[6];     /* Random numbers for MC/Brownian dynamics */
   FVector   force;         /* Total force on colloid */
   FVector   torque;        /* Total torque on colloid */
   FVector   f0;            /* Velocity independent force */
@@ -75,8 +52,8 @@ struct colloid {
   /* Active particle stuff */
 
   FVector  dir;            /* Currect direction of motion vector */
-  Float    dp;             /* Momentum exchange parameter */
-  Float    angle;          /* Cone angle */
+  double   dp;             /* Momentum exchange parameter */
+  double   cosine_ca;      /* Cosine of the cone angle */
   int      n1_nodes;       /* Number of fluid nodes cone 1 ('front'?) */
   int      n2_nodes;       /* Number of fluid nodes cone 2 ('back'?) */
 
@@ -90,13 +67,14 @@ struct colloid {
 /* Colloid boundary link structure
  * A linked list for the boundary links for a given colloid. */
 
+enum link_status {LINK_FLUID, LINK_COLLOID, LINK_BOUNDARY, LINK_UNUSED}; 
 
 struct coll_link {
 
-  int       i;             /* Index of lattice site inside/outside colloid */ 
-  int       j;             /* Index of lattice site outside/inside */
+  int       i;             /* Index of lattice site outside colloid */ 
+  int       j;             /* Index of lattice site inside */
   int       v;             /* Index of velocity connecting i -> j */
-  int       solid;         /* colloid -> colloid (or solid?) link */
+  int       status;        /* What is at site i (fluid, solid, etc) */
 
   FVector   rb;            /* Vector connecting centre of colloid and
 			    * centre of the boundary link */
@@ -104,19 +82,20 @@ struct coll_link {
   COLL_Link * next;        /* COLL_Link is a linked list */
 };
 
-Colloid * COLL_add_colloid(int, Float, Float, FVector, FVector, FVector);
-void      COLL_add_colloid_no_halo(int, Float, Float, FVector, FVector,
-				   FVector);
-FVector   COLL_fvector_separation(FVector, FVector);
-FVector   COLL_fcoords_from_ijk(int, int, int);
-void      COLL_set_colloid_gravity(void);
-void      COLL_zero_forces(void);
-void      COLL_init(void);
-void      COLL_finish(void);
-
-void      COLL_bounce_back(void);
-Float     COLL_interactions(void);
-void      COLL_update(void);
-void      COLL_forces(void);
+void      colloids_init(void);
+void      colloids_finish(void);
+IVector   cell_coords(FVector);
+Colloid * CELL_get_head_of_list(const int, const int, const int);
+void      cell_insert_colloid(Colloid *);
+int       Ncell(const int);
+double    Lcell(const int);
+Colloid * allocate_colloid(void);
+void      free_colloid(Colloid *);
+COLL_Link * allocate_boundary_link(void);
+void      cell_update(void);
+void      colloids_memory_report(void);
+void      set_N_colloid(const int);
+int       get_N_colloid(void);
+double    get_colloid_rho0(void);
 
 #endif /* _COLLOIDS_H */

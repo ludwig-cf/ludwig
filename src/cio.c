@@ -8,17 +8,21 @@
  *
  *****************************************************************************/
 
-#include "utilities.h"
-#include "colloids.h"
-#include "cells.h"
-#include "cio.h"
+#include <stdio.h>
 
 #include "pe.h"
+#include "coords.h"
+#include "colloids.h"
+#include "cio.h"
+#include "communicate.h"
+#include "interaction.h"
 
 #ifdef _MPI_
 #define         TAG_IO 2000
 extern MPI_Comm IO_Comm;
 #endif
+
+extern IO_Param io_grp;                  /* From communicate.c */
 
 void CIO_read_list_ascii(FILE *);
 void CIO_read_list_binary(FILE *);
@@ -31,12 +35,53 @@ int  CIO_write_list_ascii(FILE *, int, int, int);
 int  CIO_write_list_binary(FILE *, int, int, int);
 int  CIO_write_xu_binary(FILE *, int, int, int);
 
-extern IO_Param io_grp;                  /* From communicate.c */
-
 static void (* CIO_write_header)(FILE *);
 static int  (* CIO_write_list)(FILE *, int, int, int);
 static void (* CIO_read_header)(FILE *);
 static void (* CIO_read_list)(FILE *);
+static void CIO_count_colloids(void);
+
+static int nlocal;                       /* Local number of colloids. */
+static int ngroup;
+static int ntotal;
+
+/*****************************************************************************
+ *
+ *  CIO_count_colloids
+ *
+ *  Count the local number of (physical, not halo) colloids and
+ *  add up across proceses.
+ *
+ *****************************************************************************/
+
+void CIO_count_colloids() {
+
+  int       ic, jc, kc;
+  Colloid * p_colloid;
+
+  nlocal = 0;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+	  nlocal++;
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  ntotal = nlocal;
+
+#ifdef _MPI_
+  MPI_Allreduce(&nlocal, &ntotal, 1, MPI_INT, MPI_SUM, cart_comm());
+#endif
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -57,14 +102,12 @@ void CIO_write_state(const char * filename) {
   int       token = 0;
 
   int       ic, jc, kc;
-  IVector   ncell;
-  void      CMPI_count_colloids(void);
 
 #ifdef _MPI_
   MPI_Status status;
 #endif
 
-#ifdef _COLLOIDS_
+  if (get_N_colloid() == 0) return;
 
   /* Set the filename */
 
@@ -74,7 +117,7 @@ void CIO_write_state(const char * filename) {
   /* Make sure everyone has their current number of particles
    * up-to-date */
 
-  CMPI_count_colloids();
+  CIO_count_colloids();
 
   if (io_grp.root) {
     /* Open the file, and write the header, followed by own colloids.
@@ -100,11 +143,9 @@ void CIO_write_state(const char * filename) {
 
   CIO_write_header(fp_state);
 
-  ncell = Global_Colloid.Ncell;
-
-  for (ic = 1; ic <= ncell.x; ic++) {
-    for (jc = 1; jc <= ncell.y; jc++) {
-      for (kc = 1; kc <= ncell.z; kc++) {
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
 	token += CIO_write_list(fp_state, ic, jc, kc);
       }
     }
@@ -128,8 +169,6 @@ void CIO_write_state(const char * filename) {
     VERBOSE(("IO group %d wrote %d colloids to %s\n", io_grp.index,
 	     token, filename_io));
   }
-
-#endif
 
   return;
 }
@@ -210,10 +249,10 @@ void CIO_read_state(const char * filename) {
 
 void CIO_write_header_ascii(FILE * fp) {
 
-  fprintf(fp, "I/O n_io:  %22d\n",    io_grp.n_io);
-  fprintf(fp, "I/O index: %22d\n",    io_grp.index);
-  fprintf(fp, "N_colloid: %22d\n",    Global_Colloid.N_colloid);
-  fprintf(fp, "nlocal:    %22d\n",    Global_Colloid.nlocal);
+  fprintf(fp, "I/O n_io:  %22d\n", io_grp.n_io);
+  fprintf(fp, "I/O index: %22d\n", io_grp.index);
+  fprintf(fp, "N_colloid: %22d\n", ntotal);
+  fprintf(fp, "nlocal:    %22d\n", nlocal);
 
   return;
 }
@@ -241,8 +280,8 @@ void CIO_read_header_ascii(FILE * fp) {
 
   fscanf(fp, "I/O n_io:  %22d\n",  &read_int);
   fscanf(fp, "I/O index: %22d\n",  &read_int);
-  fscanf(fp, "N_colloid: %22d\n",  &(Global_Colloid.N_colloid));
-  fscanf(fp, "nlocal:    %22d\n",  &(Global_Colloid.nlocal));
+  fscanf(fp, "N_colloid: %22d\n",  &ntotal);
+  fscanf(fp, "nlocal:    %22d\n",  &nlocal);
 
   return;
 }
@@ -258,17 +297,17 @@ void CIO_read_header_ascii(FILE * fp) {
 
 void CIO_write_header_binary(FILE * fp) {
 
-  fwrite(&(io_grp.n_io),               sizeof(int),     1, fp);
-  fwrite(&(io_grp.index),              sizeof(int),     1, fp);
-  fwrite(&(Global_Colloid.N_colloid),  sizeof(int),     1, fp);
-  fwrite(&(Global_Colloid.nlocal),     sizeof(int),     1, fp);
+  fwrite(&(io_grp.n_io),   sizeof(int),     1, fp);
+  fwrite(&(io_grp.index),  sizeof(int),     1, fp);
+  fwrite(&ntotal,          sizeof(int),     1, fp);
+  fwrite(&nlocal,          sizeof(int),     1, fp);
 
   return;
 }
 
 void CIO_write_header_null(FILE * fp) {
 
-  fwrite(&(Global_Colloid.nlocal), sizeof(int), 1, fp);
+  fwrite(&nlocal, sizeof(int), 1, fp);
 
   return;
 }
@@ -287,10 +326,10 @@ void CIO_read_header_binary(FILE * fp) {
 
   info("Colloid file header information has been filtered\n");
 
-  fread(&(read_int),                  sizeof(int),     1, fp); /* n_io */
-  fread(&(read_int),                  sizeof(int),     1, fp);
-  fread(&(Global_Colloid.N_colloid),  sizeof(int),     1, fp);
-  fread(&(Global_Colloid.nlocal),     sizeof(int),     1, fp);
+  fread(&(read_int), sizeof(int),     1, fp); /* n_io */
+  fread(&(read_int), sizeof(int),     1, fp);
+  fread(&ntotal,     sizeof(int),     1, fp);
+  fread(&nlocal,     sizeof(int),     1, fp);
 
   return;
 }
@@ -342,13 +381,13 @@ void CIO_read_list_ascii(FILE * fp) {
 
   int       nread;
   int       read_index;
-  Float     read_a0;
-  Float     read_ah;
+  double    read_a0;
+  double    read_ah;
   FVector   read_r, read_v, read_o;
-  Float     read_deltaphi;
+  double    read_deltaphi;
   Colloid * p_colloid;
 
-  for (nread = 0; nread < Global_Colloid.nlocal; nread++) {
+  for (nread = 0; nread < nlocal; nread++) {
 
     fscanf(fp, "%22le %22le %22d\n",  &(read_a0), &(read_ah), &(read_index));
     fscanf(fp, "%22le %22le %22le\n", &(read_r.x), &(read_r.y), &(read_r.z));
@@ -388,13 +427,13 @@ int CIO_write_list_binary(FILE * fp, int ic, int jc, int kc) {
 
   while (p_colloid) {
     nwrite++;
-    fwrite(&(p_colloid->a0),       sizeof(Float),   1, fp);
-    fwrite(&(p_colloid->ah),       sizeof(Float),   1, fp);
+    fwrite(&(p_colloid->a0),       sizeof(double),  1, fp);
+    fwrite(&(p_colloid->ah),       sizeof(double),  1, fp);
     fwrite(&(p_colloid->index),    sizeof(int),     1, fp);
     fwrite(&(p_colloid->r),        sizeof(FVector), 1, fp);
     fwrite(&(p_colloid->v),        sizeof(FVector), 1, fp);
     fwrite(&(p_colloid->omega),    sizeof(FVector), 1, fp);
-    fwrite(&(p_colloid->deltaphi), sizeof(Float),   1, fp);
+    fwrite(&(p_colloid->deltaphi), sizeof(double),  1, fp);
 
     /* Next colloid */
     p_colloid = p_colloid->next;
@@ -416,21 +455,21 @@ void CIO_read_list_binary(FILE * fp) {
 
   int       nread;
   int       read_index;
-  Float     read_a0;
-  Float     read_ah;
+  double    read_a0;
+  double    read_ah;
   FVector   read_r, read_v, read_o;
-  Float     read_deltaphi;
+  double    read_deltaphi;
   Colloid * p_colloid;
 
-  for (nread = 0; nread < Global_Colloid.nlocal; nread++) {
+  for (nread = 0; nread < nlocal; nread++) {
 
-    fread(&read_a0,       sizeof(Float),   1, fp);
-    fread(&read_ah,       sizeof(Float),   1, fp);
+    fread(&read_a0,       sizeof(double),  1, fp);
+    fread(&read_ah,       sizeof(double),  1, fp);
     fread(&read_index,    sizeof(int),     1, fp);
     fread(&read_r,        sizeof(FVector), 1, fp);
     fread(&read_v,        sizeof(FVector), 1, fp);
     fread(&read_o,        sizeof(FVector), 1, fp);
-    fread(&read_deltaphi, sizeof(Float),   1, fp);
+    fread(&read_deltaphi, sizeof(double),  1, fp);
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
 				 read_v, read_o);

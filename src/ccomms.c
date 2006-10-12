@@ -13,15 +13,15 @@
  *
  *****************************************************************************/
 
-#include "utilities.h"
-#include "colloids.h"
-#include "ccomms.h"
-#include "cells.h"
-#include "cmem.h"
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "cartesian.h"
+#include "colloids.h"
+#include "ccomms.h"
 
 #ifdef _MPI_
 
@@ -46,34 +46,34 @@ typedef struct colloid_sum_message_type2 Colloid_sum_message_two;
 typedef struct colloid_sum_message_type6 Colloid_sum_message_six;
 
 struct colloid_halo_message {
-  int       index;
-  Float     a0;
-  Float     ah;
-  FVector   r;
-  FVector   v;
-  FVector   omega;
-  FVector   dir;
-  Float     dp;
-  Float     angle;
-  double    random[6];
+  int      index;
+  double   a0;
+  double   ah;
+  FVector  r;
+  FVector  v;
+  FVector  omega;
+  FVector  dir;
+  double   dp;
+  double   cosine_ca;
+  double   random[6];
 };
 
 struct colloid_sum_message_type1 {
   int     index;
   FVector cbar;
   FVector rxcbar;
-  Float   sumw;
+  double   sumw;
   FVector fex;
   FVector tex;
-  Float   deltam;
-  Float   deltaphi;
+  double   deltam;
+  double   deltaphi;
 };
 
 struct colloid_sum_message_type2 {
   int     index;
   FVector f0;
   FVector t0;
-  Float   zeta[21];
+  double   zeta[21];
 };
 
 struct colloid_sum_message_type6 {
@@ -87,7 +87,6 @@ static void CCOM_unload_halo_buffer(Colloid *, int);
 static void CCOM_load_sum_message_buffer(Colloid *, int, int);
 static void CCOM_unload_sum_message_buffer(Colloid *, int, int);
 static void CCOM_exchange_halo_sum(int, int, int, int);
-static void CCOM_clean_halos(void);
 
 static void CMPI_accept_new(int);
 static int  CMPI_exchange_halo(int, int, int);
@@ -114,26 +113,27 @@ static Colloid_sum_message_six * _halo_recv_six;
  *  CCOM_init_halos
  *
  *  Allocate buffer space for the particle transfers. Capacity
- *  is computed on the basis of particles with Global_Colloid.ah 
+ *  is computed on the basis of particles with ah 
  *  100% solid volume fraction (which should always be enough).
  *
  *****************************************************************************/
 
 void CCOM_init_halos() {
 
-  Float vcell;
-  int   ncell;
+  double vcell;
+  int    ncell;
 
   /* Work out the volume of each halo region and take the
    * largest. Then work out how many particles will fit
    * in the volume. */
 
-  vcell = Global_Colloid.Lcell.x*Global_Colloid.Lcell.y*Global_Colloid.Lcell.z;
-  ncell = imax(Global_Colloid.Ncell.x, Global_Colloid.Ncell.y);
-  ncell = imax(Global_Colloid.Ncell.z, ncell);
+  vcell = L(X)*L(Y)*L(Z)/(Ncell(X)*Ncell(Y)*Ncell(Z));
+  ncell = imax(Ncell(X), Ncell(Y));
+  ncell = imax(Ncell(Z), ncell);
   ncell += 2; /* Add halo cells */
 
-  _halo_message_nmax = ncell*ncell*vcell / pow(Global_Colloid.ah, 3);
+  /* Computing this number is a problem */
+  _halo_message_nmax = ncell*ncell*vcell / (pow(dmax(1.0,2.3), 3));
 
   info("\nCCOM_init\n");
   info("Allocating space for %d particles in halo buffers\n",
@@ -202,12 +202,15 @@ void CCOM_init_halos() {
 
 void CCOM_halo_particles() {
 
-  int                    nforw, nback, nrecv;
-  IVector                ncell;
-  int                    ic, jc, kc;
+  int         nforw, nback, nrecv;
+  int         ic, jc, kc;
 
-  Colloid *              p_colloid;
-  FVector                rperiod;
+  Colloid *   p_colloid;
+  FVector     rperiod;
+
+
+  /* Non-periodic system requires no halo exchanges */
+  if (is_periodic(X) == 0) return;
 
   /* This is for testing purposes: it sets all the indexes in the
    * communication buffers to -1 in order to pick up attempted
@@ -215,7 +218,6 @@ void CCOM_halo_particles() {
 
   CMPI_anull_buffers();
 
-  ncell = Global_Colloid.Ncell;
 
   /* Periodic boundary conditions are slightly clunky at the moment,
    * so could be improved */
@@ -229,8 +231,8 @@ void CCOM_halo_particles() {
 
   /* Backward x direction. */
 
-  for (jc = 1; jc <= ncell.y; jc++) {
-    for (kc = 1; kc <= ncell.z; kc++) {
+  for (jc = 1; jc <= Ncell(Y); jc++) {
+    for (kc = 1; kc <= Ncell(Z); kc++) {
 
       ic = 1;
       p_colloid = CELL_get_head_of_list(ic, jc, kc);
@@ -250,10 +252,10 @@ void CCOM_halo_particles() {
 
   /* Forward x direction. */
 
-  for (jc = 1; jc <= ncell.y; jc++) {
-    for (kc = 1; kc <= ncell.z; kc++) {
+  for (jc = 1; jc <= Ncell(Y); jc++) {
+    for (kc = 1; kc <= Ncell(Z); kc++) {
 
-      ic = ncell.x;
+      ic = Ncell(X);
       p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
       while (p_colloid) {
@@ -276,14 +278,15 @@ void CCOM_halo_particles() {
   nrecv = CMPI_exchange_halo(X, nforw, nback);
   CMPI_accept_new(nrecv);
 
+  if (is_periodic(Y) == 0) return;
 
   /* Backward y direction. */
 
   nforw = 0;
   nback = 0;
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (kc = 1; kc <= ncell.z    ; kc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (kc = 1; kc <= Ncell(Z)    ; kc++) {
 
       jc = 1;
       p_colloid = CELL_get_head_of_list(ic, jc, kc);
@@ -303,10 +306,10 @@ void CCOM_halo_particles() {
 
   /* Forward y direction. */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (kc = 1; kc <= ncell.z    ; kc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (kc = 1; kc <= Ncell(Z)    ; kc++) {
 
-      jc = ncell.y;
+      jc = Ncell(Y);
       p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
       while (p_colloid) {
@@ -328,13 +331,15 @@ void CCOM_halo_particles() {
   CMPI_accept_new(nrecv);
 
 
+  if (is_periodic(Z) == 0) return;
+
   /* Backward z-direction. */
 
   nforw = 0;
   nback = 0;
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
 
       kc = 1;
       p_colloid = CELL_get_head_of_list(ic, jc, kc);
@@ -354,10 +359,10 @@ void CCOM_halo_particles() {
 
   /* Forward z direction. */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
 
-      kc = ncell.z;
+      kc = Ncell(Z);
       p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
       while (p_colloid) {
@@ -403,12 +408,12 @@ void CMPI_accept_new(int nrecv) {
   for (n = 0; n < nrecv; n++) {
 
     /* Load the new particle */
-    p_colloid = CMEM_allocate_colloid();
+    p_colloid = allocate_colloid();
     CCOM_unload_halo_buffer(p_colloid, n);
 
     /* See where it wants to go in the cell list */
 
-    new = CELL_cell_coords(p_colloid->r);
+    new = cell_coords(p_colloid->r);
 
     /* Have a look at the existing particles in the list location:
      * if it's already present, just flag the existing particle so
@@ -420,8 +425,7 @@ void CMPI_accept_new(int nrecv) {
 
     while (p_existing) {
       if (p_colloid->index == p_existing->index) {
-#ifdef _NO_COPY_STATE_
-#else
+	/* Just copy the state information */
 	p_existing->r.x = p_colloid->r.x;
 	p_existing->r.y = p_colloid->r.y;
 	p_existing->r.z = p_colloid->r.z;
@@ -437,7 +441,6 @@ void CMPI_accept_new(int nrecv) {
 	p_existing->random[3] = p_colloid->random[3];
 	p_existing->random[4] = p_colloid->random[4];
 	p_existing->random[5] = p_colloid->random[5];
-#endif
 	exists = 1;
       }
       p_existing = p_existing->next;
@@ -447,67 +450,13 @@ void CMPI_accept_new(int nrecv) {
       /* Just drop the incoming copy */
       VERBOSE(("Dropped copy of [index %d] at [%d,%d,%d]\n", p_colloid->index,
 	       new.x, new.y, new.z));
-      CMEM_free_colloid(p_colloid);
+      free_colloid(p_colloid);
     }
     else {
       /* Add the incoming colloid */
-      CELL_insert_at_head_of_list(p_colloid);
+      cell_insert_colloid(p_colloid);
       VERBOSE(("Added copy of [index %d] to [%d,%d,%d]\n", p_colloid->index,
 	       new.x, new.y, new.z));
-    }
-  }
-
-  return;
-}
-
-
-
-/*****************************************************************************
- *
- *  CCOM_sort_halo_lists
- *
- *  Too ensure colloid sum messages are exchanged in the correct
- *  order, the particles in each cell in the halo regions are
- *  sorted into order depending on unique index. In this way,
- *  all sub-domains should agree on order of particles in the
- *  halo regions.
- *
- *  As any one list should not contain very many particles, a
- *  simple sink sort algorithm is used.
- *
- ****************************************************************************/
-
-void CCOM_sort_halo_lists() {
-
-  IVector ncell;
-  int     ic, jc, kc;
-
-  ncell = Global_Colloid.Ncell;
-
-  for (jc = 2; jc <= ncell.y - 1; jc++) {
-    for (kc = 2; kc <= ncell.z - 1; kc++) {
-      CELL_sort_list(0,           jc, kc);
-      CELL_sort_list(1,           jc, kc);
-      CELL_sort_list(ncell.x,     jc, kc);
-      CELL_sort_list(ncell.x + 1, jc, kc);
-    }
-  }
-
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (kc = 2; kc <= ncell.z - 1; kc++) {
-      CELL_sort_list(ic, 0,           kc);
-      CELL_sort_list(ic, 1,           kc);
-      CELL_sort_list(ic, ncell.y,     kc);
-      CELL_sort_list(ic, ncell.y + 1, kc);
-    }
-  }
-
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      CELL_sort_list(ic, jc, 0);
-      CELL_sort_list(ic, jc, 1);
-      CELL_sort_list(ic, jc, ncell.z);
-      CELL_sort_list(ic, jc, ncell.z + 1);
     }
   }
 
@@ -526,21 +475,20 @@ void CCOM_sort_halo_lists() {
 
 void CCOM_halo_sum(const int type) {
 
-  IVector     ncell;
   int         ic, jc, kc;
   int         n, nback, nforw;
   Colloid *   p_colloid;
 
-  ncell = Global_Colloid.Ncell;
-
   /* Send back and forward in the x-direction. First, back */
+
+  if (is_periodic(X) == 0) return;
 
   nforw = 0;
   nback = 0;
 
   for (ic = 0; ic <= 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -555,9 +503,9 @@ void CCOM_halo_sum(const int type) {
 
   /* Send forward in the x-direction */
 
-  for (ic = ncell.x; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+  for (ic = Ncell(X); ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -582,8 +530,8 @@ void CCOM_halo_sum(const int type) {
   n = 0;
 
   for (ic = 0; ic <= 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -600,9 +548,9 @@ void CCOM_halo_sum(const int type) {
 
   n = 0;
 
-  for (ic = ncell.x; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+  for (ic = Ncell(X); ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -618,14 +566,16 @@ void CCOM_halo_sum(const int type) {
 
   /* y-direction */
 
+  if (is_periodic(Y) == 0) return;
+
   nforw = 0;
   nback = 0;
 
   /* Send back in the y-direction */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -640,9 +590,9 @@ void CCOM_halo_sum(const int type) {
 
   /* Send forward in the y-direction */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = ncell.y; jc <= ncell.y + 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = Ncell(Y); jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -665,9 +615,9 @@ void CCOM_halo_sum(const int type) {
 
   n = 0;
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -682,9 +632,9 @@ void CCOM_halo_sum(const int type) {
 
   n = 0;
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = ncell.y; jc <= ncell.y + 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = Ncell(Y); jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -701,13 +651,15 @@ void CCOM_halo_sum(const int type) {
 
   /* z-direction */
 
+  if (is_periodic(Z) == 0) return;
+
   nforw = 0;
   nback = 0;
 
   /* Send back in the z-direction */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
@@ -723,9 +675,9 @@ void CCOM_halo_sum(const int type) {
 
   /* Send forward in the z-direction */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      for (kc = ncell.z; kc <= ncell.z + 1; kc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = Ncell(Z); kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -745,8 +697,8 @@ void CCOM_halo_sum(const int type) {
 
   n = 0;
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
@@ -764,9 +716,9 @@ void CCOM_halo_sum(const int type) {
 
   n = 0;
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      for (kc = ncell.z; kc <= ncell.z + 1; kc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = Ncell(Z); kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -843,23 +795,23 @@ void CCOM_load_halo_buffer(Colloid * p_colloid, int n, FVector rperiod) {
 
   VERBOSE(("Loading particle (index %d) (order = %d)\n", p_colloid->index, n));
 
-  _halo_send[n].index   = p_colloid->index;
-  _halo_send[n].a0      = p_colloid->a0;
-  _halo_send[n].ah      = p_colloid->ah;
-  _halo_send[n].r.x     = p_colloid->r.x + rperiod.x;
-  _halo_send[n].r.y     = p_colloid->r.y + rperiod.y;
-  _halo_send[n].r.z     = p_colloid->r.z + rperiod.z;
-  _halo_send[n].v.x     = p_colloid->v.x;
-  _halo_send[n].v.y     = p_colloid->v.y;
-  _halo_send[n].v.z     = p_colloid->v.z;
-  _halo_send[n].omega.x = p_colloid->omega.x;
-  _halo_send[n].omega.y = p_colloid->omega.y;
-  _halo_send[n].omega.z = p_colloid->omega.z;
-  _halo_send[n].dir.x   = p_colloid->dir.x;
-  _halo_send[n].dir.y   = p_colloid->dir.y;
-  _halo_send[n].dir.z   = p_colloid->dir.z;
-  _halo_send[n].dp      = p_colloid->dp;
-  _halo_send[n].angle   = p_colloid->angle;
+  _halo_send[n].index     = p_colloid->index;
+  _halo_send[n].a0        = p_colloid->a0;
+  _halo_send[n].ah        = p_colloid->ah;
+  _halo_send[n].r.x       = p_colloid->r.x + rperiod.x;
+  _halo_send[n].r.y       = p_colloid->r.y + rperiod.y;
+  _halo_send[n].r.z       = p_colloid->r.z + rperiod.z;
+  _halo_send[n].v.x       = p_colloid->v.x;
+  _halo_send[n].v.y       = p_colloid->v.y;
+  _halo_send[n].v.z       = p_colloid->v.z;
+  _halo_send[n].omega.x   = p_colloid->omega.x;
+  _halo_send[n].omega.y   = p_colloid->omega.y;
+  _halo_send[n].omega.z   = p_colloid->omega.z;
+  _halo_send[n].dir.x     = p_colloid->dir.x;
+  _halo_send[n].dir.y     = p_colloid->dir.y;
+  _halo_send[n].dir.z     = p_colloid->dir.z;
+  _halo_send[n].dp        = p_colloid->dp;
+  _halo_send[n].cosine_ca = p_colloid->cosine_ca;
 
   _halo_send[n].random[0] = p_colloid->random[0];
   _halo_send[n].random[1] = p_colloid->random[1];
@@ -887,23 +839,23 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
     fatal("Unloaded stale particle (order %d)\n", nrecv);
   }
 
-  p_colloid->index   = _halo_recv[nrecv].index;
-  p_colloid->a0      = _halo_recv[nrecv].a0;
-  p_colloid->ah      = _halo_recv[nrecv].ah;
-  p_colloid->r.x     = _halo_recv[nrecv].r.x;
-  p_colloid->r.y     = _halo_recv[nrecv].r.y;
-  p_colloid->r.z     = _halo_recv[nrecv].r.z;
-  p_colloid->v.x     = _halo_recv[nrecv].v.x;
-  p_colloid->v.y     = _halo_recv[nrecv].v.y;
-  p_colloid->v.z     = _halo_recv[nrecv].v.z;
-  p_colloid->omega.x = _halo_recv[nrecv].omega.x;
-  p_colloid->omega.y = _halo_recv[nrecv].omega.y;
-  p_colloid->omega.z = _halo_recv[nrecv].omega.z;
-  p_colloid->dir.x   = _halo_recv[nrecv].dir.x;
-  p_colloid->dir.y   = _halo_recv[nrecv].dir.y;
-  p_colloid->dir.z   = _halo_recv[nrecv].dir.z;
-  p_colloid->dp      = _halo_recv[nrecv].dp;
-  p_colloid->angle   = _halo_recv[nrecv].angle;
+  p_colloid->index     = _halo_recv[nrecv].index;
+  p_colloid->a0        = _halo_recv[nrecv].a0;
+  p_colloid->ah        = _halo_recv[nrecv].ah;
+  p_colloid->r.x       = _halo_recv[nrecv].r.x;
+  p_colloid->r.y       = _halo_recv[nrecv].r.y;
+  p_colloid->r.z       = _halo_recv[nrecv].r.z;
+  p_colloid->v.x       = _halo_recv[nrecv].v.x;
+  p_colloid->v.y       = _halo_recv[nrecv].v.y;
+  p_colloid->v.z       = _halo_recv[nrecv].v.z;
+  p_colloid->omega.x   = _halo_recv[nrecv].omega.x;
+  p_colloid->omega.y   = _halo_recv[nrecv].omega.y;
+  p_colloid->omega.z   = _halo_recv[nrecv].omega.z;
+  p_colloid->dir.x     = _halo_recv[nrecv].dir.x;
+  p_colloid->dir.y     = _halo_recv[nrecv].dir.y;
+  p_colloid->dir.z     = _halo_recv[nrecv].dir.z;
+  p_colloid->dp        = _halo_recv[nrecv].dp;
+  p_colloid->cosine_ca = _halo_recv[nrecv].cosine_ca;
 
   p_colloid->random[0] = _halo_recv[nrecv].random[0];
   p_colloid->random[1] = _halo_recv[nrecv].random[1];
@@ -1080,30 +1032,6 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
   return;
 }
 
-
-
-
-/*****************************************************************************
- *
- *  CMPI_init_global
- *
- *  Broadcast the contents of Global_Colloid.
- *
- *****************************************************************************/
-
-void CMPI_init_global() {
-
-#ifdef _MPI_
-  MPI_Datatype DT_Global;
-
-  MPI_Type_contiguous(sizeof(Global_Colloid), MPI_BYTE, &DT_Global);
-  MPI_Type_commit(&DT_Global);
-
-  MPI_Bcast(&Global_Colloid, 1, DT_Global, 0, MPI_COMM_WORLD);
-#endif
-
-  return;
-}
 
 
 /*****************************************************************************
@@ -1351,62 +1279,6 @@ void CMPI_exchange_sum_type6(int dimension, int nforw, int nback) {
 
 /*****************************************************************************
  *
- *  CMPI_count_colloids
- *
- *  Count the local number of (physical, not halo) colloids and
- *  add up across proceses.
- *
- *  The code checks that the global number has not changed in an
- *  unexpected manner.
- *
- *****************************************************************************/
-
-void CMPI_count_colloids() {
-
-  long int  n = 0;
-  int       ic, jc, kc;
-  IVector   ncell;
-  Colloid * p_colloid;
-
-  ncell = Global_Colloid.Ncell;
-
-  for (ic = 1; ic <= ncell.x; ic++) {
-    for (jc = 1; jc <= ncell.y; jc++) {
-      for (kc = 1; kc <= ncell.z; kc++) {
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-	  n++;
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
-
-  /* Set the local number, and then look at the global number. */
-  Global_Colloid.nlocal = n;
-
-#ifdef _MPI_
-  {
-    long int n_total;
-
-    MPI_Allreduce(&n, &n_total, 1, MPI_LONG, MPI_SUM, cart_comm());
-    n = n_total;
-  }
-#endif
-
-  if (n != Global_Colloid.N_colloid) {
-    verbose("The global number of colloids appears to have changed\n");
-    verbose("Were: %d now: %d\n", Global_Colloid.N_colloid, n);
-    fatal("");
-  }
-
-  return;
-}
-
-
-/*****************************************************************************
- *
  *  CMPI_anull_buffers
  *
  *  Set the index of associated with all particle messages to -1.
@@ -1429,43 +1301,3 @@ void CMPI_anull_buffers() {
 
   return;
 }
-
-/*****************************************************************************
- *
- *  CCOM_clean_halos
- *
- *  Remove all halo particles.
- *
- ****************************************************************************/
-
-void CCOM_clean_halos() {
-
-  IVector ncell;
-  int     ic, jc, kc;
-
-  ncell = Global_Colloid.Ncell;
-
-  for (jc = 1; jc <= ncell.y; jc++) {
-    for (kc = 1; kc <= ncell.z; kc++) {
-      CELL_destroy_list(0,           jc, kc);
-      CELL_destroy_list(ncell.x + 1, jc, kc);
-    }
-  }
-
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (kc = 1; kc <= ncell.z; kc++) {
-      CELL_destroy_list(ic, 0,           kc);
-      CELL_destroy_list(ic, ncell.y + 1, kc);
-    }
-  }
-
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      CELL_destroy_list(ic, jc, 0);
-      CELL_destroy_list(ic, jc, ncell.z + 1);
-    }
-  }
-
-  return;
-}
-

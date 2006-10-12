@@ -7,8 +7,7 @@
 # -D_D3Q19_              Use D3Q19 instead of D3Q15 (the default)
 # -D_NOISE_              Switch on fluctuations
 # -D_SINGLE_FLUID_       Use single fluid only
-# -D_COLLOIDS_           Introduce particles
-#
+# -DNDEBUG               Switch off standard C assert()
 #
 # make serial            for serial code
 # make mpi               for parallel code
@@ -16,12 +15,12 @@
 ###############################################################################
 
 
-OBJS= interaction.o main.o model.o \
-      cells.o cio.o cmem.o cmd.o ccomms.o \
-      colloids.o communicate.o coords.o cartesian.o control.o \
-      d3q15.o d3q19.o eigen3.o free_energy.o \
+OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
+      active.o cio.o cmd.o ccomms.o \
+      colloids.o bbl.o build.o communicate.o coords.o control.o \
+      eigen3.o free_energy.o interaction.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
-      test.o timer.o utilities.o wall.o
+      test.o timer.o utilities.o wall.o main.o
 
 EXE= Ludwig.exe
 
@@ -35,7 +34,7 @@ CC= cc
 MPICC= tmcc
 
 LDFLAGS= -Xc -v -errwarn -fast
-OPTS = -D_SINGLE_FLUID_ -D_NOISE_ -D_D3Q19_
+OPTS = -D_D3Q15_
 
 # For Sun perflib use -xlic_lib=sunperf
 
@@ -95,3 +94,16 @@ mpi:
 .PHONY : clean
 clean:
 	-rm -f $(OBJS) $(EXE)
+#
+# gcc -Wall can leave a mess
+#
+gcc-clean:
+	$(RM) ${OBJS:.o=*rtl}
+	$(RM) ${OBJS:.o=*jump}
+	$(RM) ${OBJS:.o=*addressof}
+	$(RM) ${OBJS:.o=*cfg}
+	$(RM) ${OBJS:.o=*life}
+	$(RM) ${OBJS:.o=*lreg}
+	$(RM) ${OBJS:.o=*greg}
+	$(RM) ${OBJS:.o=*postreload}
+	$(RM) ${OBJS:.o=*flow2}
