@@ -1,16 +1,20 @@
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "pe.h"
 #include "timer.h"
 #include "runtime.h"
 #include "coords.h"
-#include "cartesian.h"
 
 #include "utilities.h"
 #include "lattice.h"
 #include "model.h"
 #include "communicate.h"
 
-static void COM_halo_rho( void );
+extern Site * site;
+
 
 IO_Param     io_grp;      /* Parameters of current IO group */
 
@@ -34,15 +38,14 @@ void (*MODEL_write_site)( FILE *, int, int );
 void (*MODEL_write_phi)( FILE *, int, int );
 
 
+static void COM_halo_rho( void );
 static void    MODEL_read_site_asc( FILE * );
 static void    MODEL_read_site_bin( FILE * );
 static void    MODEL_write_site_asc( FILE *, int, int );
-static void    MODEL_write_velocity_asc( FILE *, int, int );
 static void    MODEL_write_rho_asc( FILE *, int, int );
 static void    MODEL_write_phi_asc( FILE *, int, int );
 static void    MODEL_write_rho_phi_asc( FILE *, int, int );
 static void    MODEL_write_site_bin( FILE *, int, int );
-static void    MODEL_write_velocity_bin( FILE *, int, int );
 static void    MODEL_write_rho_bin( FILE *, int, int );
 static void    MODEL_write_phi_bin( FILE *, int, int );
 static void    MODEL_write_rho_phi_bin( FILE *, int, int );
@@ -100,8 +103,6 @@ void COM_halo( void )
 
   MPI_Request req[4];
   MPI_Status status[4];
-
-  LUDWIG_ENTER("COM_halo()");
 
   TIMER_start(TIMER_HALO_LATTICE);
 
@@ -187,7 +188,6 @@ void COM_halo( void )
 
 #else /* Serial section */
   
-  LUDWIG_ENTER("COM_halo()");
   TIMER_start(TIMER_HALO_LATTICE);
   
   get_N_local(N);
@@ -245,7 +245,6 @@ void COM_halo_rho( void )
   MPI_Request req[4];
   MPI_Status status[4];
   
-  LUDWIG_ENTER("COM_halo_rho()");
   TIMER_start(TIMER_HALO_LATTICE);
 
   get_N_local(N);
@@ -335,7 +334,6 @@ void COM_halo_rho( void )
   
 #else /* Serial section */
   
-  LUDWIG_ENTER("COM_halo_rho()");
   TIMER_start(TIMER_HALO_LATTICE);
 
   get_N_local(N);
@@ -393,7 +391,6 @@ void COM_halo_phi( void )
   MPI_Request req[4];
   MPI_Status status[4];
   
-  LUDWIG_ENTER("COM_halo_phi()");
   TIMER_start(TIMER_HALO_LATTICE);
 
   get_N_local(N);
@@ -482,7 +479,6 @@ void COM_halo_phi( void )
 
 #else /* Serial section (or OpenMP as appropriate) */
 
-  LUDWIG_ENTER("COM_halo_phi()");
   TIMER_start(TIMER_HALO_LATTICE);
 
   get_N_local(N);
@@ -543,8 +539,6 @@ void COM_init( int argc, char **argv ) {
   MPI_Aint size1,size2;
   MPI_Datatype DT_tmp, type[2];
 
-  LUDWIG_ENTER("COM_init()");
-
   get_N_local(N);
 
   /* Compute extents to define new datatypes */
@@ -567,10 +561,10 @@ void COM_init( int argc, char **argv ) {
   io_grp.size = pe_size() / io_grp.n_io;
 
   if((cart_rank()%io_grp.size) == 0) {
-    io_grp.root = TRUE;
+    io_grp.root = 1;
   }
   else {
-    io_grp.root = FALSE;
+    io_grp.root = 0;
   }
 
   /* Set-up filename suffix for each parallel IO file */
@@ -610,7 +604,7 @@ void COM_init( int argc, char **argv ) {
   MPI_Type_commit(&DT_Float_plane_XY);
 
   /* (XZ) plane: N[X]+2 blocks of N[Z]+2 Floats (stride=(N[Y]+2)*(N[Z]+2)) */
-  MPI_Type_hvector(nx2,nz2,ny2z2*sizeof(Float),MPI_DOUBLE,&DT_Float_plane_XZ);
+  MPI_Type_hvector(nx2,nz2,ny2z2*sizeof(double),MPI_DOUBLE,&DT_Float_plane_XZ);
   MPI_Type_commit(&DT_Float_plane_XZ);
 
   /* (YZ) plane: one contiguous block of (N[Y]+2)*(N[Z]+2) Floats */
@@ -621,10 +615,8 @@ void COM_init( int argc, char **argv ) {
 
 #else /* Serial section */
 
-  LUDWIG_ENTER("COM_init()");
-
   /* Serial definition of io_grp (used in cio) */
-  io_grp.root  = TRUE;
+  io_grp.root  = 1;
   io_grp.n_io  = 1;
   io_grp.size  = 1;
   io_grp.index = 0;
@@ -677,14 +669,12 @@ void COM_init( int argc, char **argv ) {
   switch (output_format) {
   case BINARY:
     MODEL_write_site     = MODEL_write_site_bin;
-    MODEL_write_velocity = MODEL_write_velocity_bin;
     MODEL_write_rho      = MODEL_write_rho_bin;
     MODEL_write_phi      = MODEL_write_phi_bin;
     MODEL_write_rho_phi  = MODEL_write_rho_phi_bin;	
     break;
   case ASCII:
     MODEL_write_site     = MODEL_write_site_asc;
-    MODEL_write_velocity = MODEL_write_velocity_asc;
     MODEL_write_rho      = MODEL_write_rho_asc;
     MODEL_write_phi      = MODEL_write_phi_asc;
     MODEL_write_rho_phi  = MODEL_write_rho_phi_asc;	
@@ -692,7 +682,6 @@ void COM_init( int argc, char **argv ) {
   default:
     fatal("Incorrect output format (%d)\n", output_format);
   }
-
 
 }
 
@@ -724,15 +713,13 @@ void COM_read_site( char *filename, void (*func)( FILE * ))
   long    foffset;
   MPI_Status status;
   
-  LUDWIG_ENTER("COM_read_site()");
-
   get_N_local(N);
 
   /* Parallel input:  io_grp.n_io concurrent inputs will take place */
   
   /* Set correct filename from function argument and local rank */
   sprintf(io_filename, "%s%s", filename,io_grp.file_ext);
-  if(io_grp.root == TRUE)
+  if(io_grp.root)
     {
       /* Open file for input */
       if( (fp = fopen(io_filename,"r")) == NULL )
@@ -768,7 +755,7 @@ void COM_read_site( char *filename, void (*func)( FILE * ))
      IO group. All IO groups access their own file concurrently (parallel IO) */
   
     /* Initiate ring communication / synchronisation within local IO group */
-  else				/* i.e. non IO PE (io_grp.root==FALSE) */
+  else				 
     {
       /* Wait until previous PE in local group has completed its IO (use
 	 blocking receives: similar mechanism to COM_read_link()) */
@@ -804,8 +791,6 @@ void COM_read_site( char *filename, void (*func)( FILE * ))
   IVector N_read;
   char    io_filename[FILENAME_MAX];
   FILE    *fp;
-
-  LUDWIG_ENTER("COM_read_site()");
 
   get_N_local(N);
 
@@ -871,15 +856,13 @@ void COM_write_site( char *filename, void (*func)( FILE *, int, int ))
   int     msg=0;
   MPI_Status status;
 
-  LUDWIG_ENTER("COM_write_site()");
-
   get_N_local(N);
   get_N_offset(offset);
 
   sprintf(io_filename, "%s%s", filename,io_grp.file_ext);
   io_size = io_grp.size;
   io_index = io_grp.index;
-  if(io_grp.root == TRUE)
+  if(io_grp.root)
     {
       /* Open file for output */
       if( (fp = fopen(io_filename,"w")) == NULL )
@@ -941,9 +924,6 @@ void COM_write_site( char *filename, void (*func)( FILE *, int, int ))
   char    io_filename[FILENAME_MAX];
   FILE    *fp;
   
-  LUDWIG_ENTER("COM_write_site()");
-
-
   get_N_local(N);
   xfac = (N[Y]+2)*(N[Z]+2);
   yfac = (N[Z]+2);
@@ -997,7 +977,7 @@ void COM_write_site( char *filename, void (*func)( FILE *, int, int ))
 
 int COM_local_index( int g_ind )
 {
-  IVector coord;
+  int coordx, coordy, coordz;
   int N[3];
   int offset[3];
   int g_xfac, g_yfac, ind;
@@ -1008,48 +988,17 @@ int COM_local_index( int g_ind )
   g_yfac = (N_total(Z) + 2);
   g_xfac = (N_total(Y) + 2) * g_yfac;
   
-  coord.x =  g_ind / g_xfac;
-  coord.y = (g_ind % g_xfac) / g_yfac;
-  coord.z =  g_ind % g_yfac;
+  coordx =  g_ind / g_xfac;
+  coordy = (g_ind % g_xfac) / g_yfac;
+  coordz =  g_ind % g_yfac;
   
-  coord.x -= offset[X];
-  coord.y -= offset[Y];
-  coord.z -= offset[Z];
+  coordx -= offset[X];
+  coordy -= offset[Y];
+  coordz -= offset[Z];
   
-  ind = coord.x*(N[Y]+2)*(N[Z]+2) + coord.y*(N[Z]+2) + coord.z;
+  ind = coordx*(N[Y]+2)*(N[Z]+2) + coordy*(N[Z]+2) + coordz;
   
   return(ind); 
-}
-/*---------------------------------------------------------------------------*\
- * IVector COM_index2coord( int index )                                      *
- *                                                                           *
- * Translates a local index index to local coordinates (x,y,z)               *
- * Returns the local co-ordinates                                            *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: none                                                             *
- *                                                                           *
- * Arguments                                                                 *
- * - index: local index                                                      *
- *                                                                           *
- * Last Updated: 15/07/2002 by JCD                                           *
- \*---------------------------------------------------------------------------*/
-
-IVector COM_index2coord( int index )
-{
-  IVector coord;
-  int N[3];
-  int xfac,yfac;
-
-  get_N_local(N);
-
-  yfac = N[Z]+2;
-  xfac = (N[Y]+2)*yfac;
-  
-  coord.x = index/xfac;
-  coord.y = (index%xfac)/yfac;
-  coord.z = index%yfac;
-  return(coord);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1076,8 +1025,6 @@ void MODEL_read_site_asc( FILE *fp )
 {
   int i,ind,g_ind;
   
-  LUDWIG_ENTER("MODEL_read_site_asc()");
-
   if( fscanf(fp,"%d",&g_ind) != EOF )
     {
       /* Get local index */
@@ -1121,8 +1068,6 @@ void MODEL_read_site_bin( FILE *fp )
 {
   int ind,g_ind;
   
-  LUDWIG_ENTER("MODEL_read_site_bin()");
-
   if( fread(&g_ind,sizeof(int),1,fp) != 1 )
     {
       fatal("MODEL_read_site_bin(): couldn't read index\n");
@@ -1164,8 +1109,6 @@ void MODEL_write_site_asc( FILE *fp, int ind, int g_ind )
 {
   int i;
 
-  LUDWIG_ENTER("MODEL_write_site_asc()");
-
   fprintf(fp,"%d ",g_ind);
 
   /* Write site information to stream */
@@ -1177,45 +1120,6 @@ void MODEL_write_site_asc( FILE *fp, int ind, int g_ind )
 	}
     }
   fprintf(fp,"\n");
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes velocity data from site s with index ind to stream fp (ASCII output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_velocity(), MODEL_write_velocity_bin(), 
- *                COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_velocity_asc( FILE *fp, int ind, int g_ind )
-{
-  FVector u;
-
-  LUDWIG_ENTER("MODEL_write_velocity_asc()");
-
-  u = MODEL_get_momentum_at_site(ind);
-
-  /* Write velocity information to stream */
-  if( fprintf(fp,"%d %lg %lg %lg\n",g_ind,u.x,u.y,u.z) < 0 )
-    {
-      fatal("MODEL_write_velocity_asc(): couldn't write velocity data\n");
-    }
-
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1242,11 +1146,9 @@ void MODEL_write_velocity_asc( FILE *fp, int ind, int g_ind )
 
 void MODEL_write_rho_asc( FILE *fp, int ind, int g_ind )
 {
-  Float rho;    
+  double rho;    
 
-  LUDWIG_ENTER("MODEL_write_rho_asc()");
-
-  rho = MODEL_get_rho_at_site(ind);
+  rho = get_rho_at_site(ind);
 
   /* Write density information to stream */
   if( fprintf(fp,"%d %lg\n",g_ind,rho) < 0 )
@@ -1280,11 +1182,9 @@ void MODEL_write_rho_asc( FILE *fp, int ind, int g_ind )
 
 void MODEL_write_phi_asc( FILE *fp, int ind, int g_ind )
 {
-  Float phi;    
+  double phi;    
 
-  LUDWIG_ENTER("MODEL_write_phi_asc()");
-
-  phi = MODEL_get_phi_at_site(ind);
+  phi = get_phi_at_site(ind);
 
   /* Write composition information to stream */
   if( fprintf(fp,"%d %lg\n",g_ind,phi) < 0 )
@@ -1319,12 +1219,10 @@ void MODEL_write_phi_asc( FILE *fp, int ind, int g_ind )
 
 void MODEL_write_rho_phi_asc( FILE *fp, int ind, int g_ind )
 {
-  Float rho, phi;    
+  double rho, phi;    
 
-  LUDWIG_ENTER("MODEL_write_rho_phi_asc()");
-
-  rho = MODEL_get_rho_at_site(ind);
-  phi = MODEL_get_phi_at_site(ind);
+  rho = get_rho_at_site(ind);
+  phi = get_phi_at_site(ind);
 
   /* Write density and composition information to stream */
   if( fprintf(fp,"%d %lg %lg\n",g_ind,rho,phi) < 0 )
@@ -1358,52 +1256,11 @@ void MODEL_write_rho_phi_asc( FILE *fp, int ind, int g_ind )
 
 void MODEL_write_site_bin( FILE *fp, int ind, int g_ind )
 {
-  LUDWIG_ENTER("MODEL_write_site_bin()");
 
   if( fwrite(&g_ind,sizeof(int),1,fp)    != 1  ||
       fwrite(site+ind,sizeof(Site),1,fp) != 1 )
     {
       fatal("MODEL_write_site_bin(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes velocity data from site s with index ind to stream fp (binary output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_velocity(), MODEL_write_velocity_asc(), 
- *                COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_velocity_bin( FILE *fp, int ind, int g_ind )
-{
-  FVector u;
-
-  LUDWIG_ENTER("MODEL_write_velocity_bin()");
-
-  u = MODEL_get_momentum_at_site(ind);
-
-  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&u.x,sizeof(Float),1,fp) != 1  ||
-      fwrite(&u.y,sizeof(Float),1,fp) != 1  ||
-      fwrite(&u.z,sizeof(Float),1,fp) != 1  )
-    {
-      fatal("MODEL_write_velocity_bin(): couldn't write data\n");
     }
 }
 
@@ -1431,14 +1288,12 @@ void MODEL_write_velocity_bin( FILE *fp, int ind, int g_ind )
 
 void MODEL_write_rho_bin( FILE *fp, int ind, int g_ind )
 {
-  Float rho;    
+  double rho;    
 
-  LUDWIG_ENTER("MODEL_write_rho_bin()");
-
-  rho = MODEL_get_rho_at_site(ind);
+  rho = get_rho_at_site(ind);
 
   if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&rho,sizeof(Float),1,fp) != 1 )
+      fwrite(&rho,sizeof(double),1,fp) != 1 )
     {
       fatal("MODEL_write_rho_bin(): couldn't write data\n");
     }
@@ -1469,14 +1324,12 @@ void MODEL_write_rho_bin( FILE *fp, int ind, int g_ind )
 
 void MODEL_write_phi_bin( FILE *fp, int ind, int g_ind )
 {
-  Float phi;    
+  double phi;    
 
-  LUDWIG_ENTER("MODEL_write_phi_bin()");
-
-  phi = MODEL_get_phi_at_site(ind);
+  phi = get_phi_at_site(ind);
 
   if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&phi,sizeof(Float),1,fp) != 1 )
+      fwrite(&phi,sizeof(double),1,fp) != 1 )
     {
       fatal("MODEL_write_phi_bin(): couldn't write data\n");
     }
@@ -1508,16 +1361,14 @@ void MODEL_write_phi_bin( FILE *fp, int ind, int g_ind )
 
 void MODEL_write_rho_phi_bin( FILE *fp, int ind, int g_ind )
 {
-  Float rho,phi;    
+  double rho,phi;    
 
-  LUDWIG_ENTER("MODEL_write_rho_phi_bin()");
-
-  rho = MODEL_get_rho_at_site(ind);
-  phi = MODEL_get_phi_at_site(ind);
+  rho = get_rho_at_site(ind);
+  phi = get_phi_at_site(ind);
 
   if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&rho,sizeof(Float),1,fp) != 1 ||
-      fwrite(&phi,sizeof(Float),1,fp) != 1 )
+      fwrite(&rho,sizeof(double),1,fp) != 1 ||
+      fwrite(&phi,sizeof(double),1,fp) != 1 )
     {
       fatal("MODEL_write_rho_phi_bin(): couldn't write data\n");
     }

@@ -17,13 +17,6 @@ enum {LE_N_VEL_XING = 5};
 extern const    int cv[NVEL][3];
 extern const double wv[NVEL];
 
-typedef struct { 
-  double f[NVEL], g[NVEL];
-} Site;
-
-extern Site * site;
-
-void propagation(void);
 void init_ghosts(const double);
 void get_ghosts(double []);
 

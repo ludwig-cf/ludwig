@@ -2,159 +2,229 @@
  *
  *  wall.c
  *
- *  Routines for simple solid boundary walls.
+ *  Static solid objects.
  *
- *  These walls may be used to impart sheer to the system (or just
- *  break periodicity) and are designed to work with colloidal
- *  particles.
+ *  Special case: boundary walls.
+ *
+ *  $Id: wall.c,v 1.6 2006-10-12 14:09:18 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#include "utilities.h"
-#include "lattice.h"
-#include "model.h"
-#include "colloids.h"
-#include "wall.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "cartesian.h"
+#include "model.h"
+#include "wall.h"
+#include "lattice.h"
+#include "runtime.h"
 
-/* Global quantities */
-
-Wall        _wall;
-
-static Wall_link * WALL_allocate_wall_link(void);
-static void        WALL_init_fluid(void);
-static void        WALL_init_side_wall_links(void);
-static void        WALL_init_site_map(void);
 extern char * site_map;
+
+typedef struct B_link_struct B_link;
+
+struct B_link_struct {
+
+  int         i;     /* Outside (fluid) lattice node index */
+  int         j;     /* Inside (solid) lattice node index */
+  int         p;     /* Basis vector for this link */
+  double     ux;     /* x-component boundary speed */
+
+  B_link * next;     /* This is a linked list */
+};
+
+static int nalloc_links_ = 0;       /* Current number of links allocated */
+static B_link * link_list_ = NULL;  /* Boundary links. */
+static int is_boundary_wall_ = 0;   /* Any boundaries present? */
+
+static B_link * allocate_link(void);
+static void     init_links(void);
+static void     init_boundary_site_map(void);
+static void     init_boundary_speeds(const double, const double);
+static void     report_boundary_memory(void);
+static void     set_wall_velocity(void);
 
 /*****************************************************************************
  *
- *  WALL_init
- *
- *  Create a boundary wall with the specified parameters
- *  (hard-wired in at the moment).
- *
- *  This wall is designed to take up two planes in a given
- *  coordinate direction, one at the 'bottom' and one at the 'top'.
- *  The walls can be given a velocity in their own plane to impart
- *  sheer to the fluid. The 'top' and 'bottom' plane are independent
- *  and so can move with different velocities.
- *
- *  Oscillatory sheer is built in if required.
+ *  wall_init
  *
  ****************************************************************************/
 
-void WALL_init() {
+void wall_init() {
 
-  /* Walls are scheduled to be refactored. */
-  _wall.present = 0;
+  double ux_bottom = 0.0;
+  double ux_top = 0.0;
+  char   tmp[128];
 
-  if (! _wall.present) {
-    /* Peridic in all three directions */
-  }
-  else {
+  RUN_get_double_parameter("boundary_speed_bottom", &ux_bottom);
+  RUN_get_double_parameter("boundary_speed_top", &ux_top);
+  RUN_get_string_parameter("boundary_walls_on", tmp);
 
-    _wall.orientation = WALL_XY;             /* and only XY at the moment */
-    _wall.rlower = 1.0;                      /* bottom */
-    _wall.rupper = (Float) N_total(Z);       /* top */
-    _wall.C = 0.0;
-    _wall.H = 0.0;
-    _wall.lnkupper = NULL;
-    _wall.lnklower = NULL;
+  if (strcmp(tmp, "yes") == 0) is_boundary_wall_ = 1;
 
-    WALL_init_side_wall_links();
-    WALL_update(0);
-    WALL_init_site_map();
+  if (is_boundary_wall_) init_boundary_site_map();
+  init_links();
+  if (is_boundary_wall_) init_boundary_speeds(ux_bottom, ux_top);
 
-    /* Switch off periodic boundaries in the z-direction */
-
-    WALL_update(0);
-    WALL_init_fluid();
-
-    info("WALL_init_side_wall:\n");
-    info("Initialised side walls in XY plane\n");
-    info("sites at     = (z = %f and z = %f)\n", _wall.rlower, _wall.rupper);
-    info("lubrication  = %f\n", _wall.r_lu_n);
-    info("max velocity = (%f, %f)\n", _wall.sheer_uxmax, _wall.sheer_uymax);
-    info("sheer diff   = %f\n", _wall.sheer_diff);
-    info("sheer period = %f\n", _wall.sheer_period);
- 
- }
+  report_boundary_memory();
 
   return;
 }
 
-
 /*****************************************************************************
  *
- *  WALL_init_fluid()
+ *  boundaries_present
  *
- *  Look at the initial wall velocity and set an initial shear
- *  profile in the fluid to match. A simple linear profile is
- *  assumed; if the walls are initially stationary, nothing is
- *  done.
- *
- *  Will need to be extended to binary fluid. Single fluid only
- *  at the moment.
- *
- *  The z-coordinate is slightly oscure when walls are present:
- *  remember the first fluid node is at z = 2.
+ *  Return 0 is no boundaries are present.
  *
  *****************************************************************************/
 
-void WALL_init_fluid() {
-  
-  int     ic, jc, kc, index, xfac, yfac;
-  int     p;
-  int     N[3];
-  double   uxsheer, uysheer;
-  double * f;
-  double   udotc;
-  double   uxbottom, uybottom, dux, duy;
+int boundaries_present(void) {
+  return is_boundary_wall_;
+}
 
-  const   double rho  = 1.0;
-  const   double rcs2 = 3.0;
+/*****************************************************************************
+ *
+ *  wall_update
+ *
+ *  Call once per time step to provide any update to wall parameters.
+ *
+ *****************************************************************************/
 
-  get_N_local(N);
-  xfac     = (N[Y]+2)*(N[Z]+2);
-  yfac     = (N[Z]+2);
+void wall_update() {
 
-  /* Work out the sheer between top and bottom */
-  uxbottom = _wall.sheer_u.x*_wall.sheer_diff;
-  uybottom = _wall.sheer_u.y*_wall.sheer_diff;
+  set_wall_velocity();
 
-  dux = (_wall.sheer_u.x - uxbottom) / (double) (N[Z] - 2.0);
-  duy = (_wall.sheer_u.y - uybottom) / (double) (N[Z] - 2.0);
+  return;
+}
 
+/*****************************************************************************
+ *
+ *  wall_finish
+ *
+ *****************************************************************************/
 
-  /* Set up the initial distributions */
+void wall_finish() {
 
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 2; kc < N[Z]; kc++) {
+  B_link * p_link;
+  B_link * p_tmp;
+
+  p_link = link_list_;
+
+  info("\nReleasing boundary links...\n");
+
+  while (p_link) {
+    p_tmp = p_link->next;
+    free(p_link);
+    nalloc_links_--;
+    p_link = p_tmp;
+  }
+
+  report_boundary_memory();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  wall_bounce_back
+ *
+ *
+ *
+ *****************************************************************************/
+
+void wall_bounce_back() {
+
+  B_link * p_link;
+  int      i, j, ij, ji;
+  double   rho, cdotu;
+  double   fp;
+
+  p_link = link_list_;
+
+  while (p_link) {
+
+    i  = p_link->i;
+    j  = p_link->j;
+    ij = p_link->p;   /* Link index direction solid->fluid */
+    ji = NVEL - ij;   /* Opposite direction index */
+
+    rho = get_rho_at_site(i);
+    cdotu = cv[ij][X]*p_link->ux;
+    fp = get_f_at_site(i, ij) - 2.0*rcs2*wv[ij]*rho*cdotu;
+    set_f_at_site(j, ji, fp);
+
+#ifdef _SINGLE_FLUID_
+#else
+    /* Order parameter (for "rho", read "phi" here) */
+    rho = get_phi_at_site(i);
+    fp = get_g_at_site(i, ij) - 2.0*rcs2*wv[ij]*rho*cdotu;
+    set_g_at_site(j, ji, fp);
+#endif
+
+    p_link = p_link->next;
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  init_links
+ *
+ *  Look at the site_map[] to determine fluid (strictly, non-solid)
+ *  to solid links. Set once at the start of execution.
+ *
+ ****************************************************************************/
+
+static void init_links() {
+
+  int ic, jc, kc, index, index1;
+  int xfac, yfac;
+  int p;
+  int n[3];
+
+  B_link * tmp;
+
+  get_N_local(n);
+
+  yfac = (n[Z] + 2);
+  xfac = (n[Y] + 2)*yfac;
+
+  for (ic = 1; ic <= n[X]; ic++) {
+    for (jc = 1; jc <= n[Y]; jc++) {
+      for (kc = 1; kc <= n[Z]; kc++) {
 
 	index = xfac*ic + yfac*jc + kc;
 
-	f = site[index].f;
+	if (site_map[index] != FLUID) continue;
 
-	/* Interpolate the wall velocity between top and bottom */
-	/* The extra 0.5 allows the velocity to match at the
-	 * surface of the wall (bounce-back half way) */
-
-	/* linear */
-	uxsheer = uxbottom + dux*(kc - 1.5);
-	uysheer = uybottom + duy*(kc - 1.5);
+	/* Look for non-solid -> solid links */
 
 	for (p = 0; p < NVEL; p++) {
-	  udotc = cv[p][0]*uxsheer + cv[p][1]*uysheer;
-	  f[p] = wv[p]*rho*(1.0 + rcs2*udotc);
-	}
 
+	  index1 = index + xfac*cv[p][X] + yfac*cv[p][Y] + cv[p][Z];
+
+	  if (site_map[index1] == BOUNDARY) {
+
+	    /* Add a link to head of the list */
+
+	    tmp = allocate_link();
+	    tmp->i = index;
+	    tmp->j = index1;
+	    tmp->p = p;
+	    tmp->ux = 0.0;
+
+	    tmp->next = link_list_;
+	    link_list_ = tmp;
+	  }
+	  /* Next p. */
+	}
+	/* Next site */
       }
     }
   }
@@ -162,379 +232,153 @@ void WALL_init_fluid() {
   return;
 }
 
-
 /*****************************************************************************
  *
- *  WALL_init_side_wall_links
- *
- *  Initialise the links for a side wall. It is envisaged that the
- *  side wall will not move its position, so this need only be
- *  called once at start of execution.
- *
- ****************************************************************************/
-
-void WALL_init_side_wall_links() {
-
-  int         i, j, k, index, index1;
-  int         xfac, yfac;
-  int         p;
-
-  Wall_link * tmp;
-
-  yfac = (N_total(Z) + 2);
-  xfac = (N_total(Y) + 2)*yfac;
-
-  /* Loop through sites in the domain and in the XY plane */
-
-  for (i = 1; i <= N_total(X); i++)
-    for (j = 1; j <= N_total(Y); j++) {
-
-      /* At the lower side */
-      k     = 2;
-      index = xfac*i + yfac*j + k;
-
-      /* Add links joining k = 2 with k = 1 and set the appropriate
-       * properties */
-
-      for (p = 1; p < NVEL; p++) {
-
-	if (cv[p][2] == -1) {
-	  tmp = WALL_allocate_wall_link();
-
-	  index1 = index + xfac*cv[p][0] + yfac*cv[p][1] - 1;
-	  tmp->i = index;
-	  tmp->j = index1;
-	  tmp->p = p;
-
-	  tmp->next = _wall.lnklower;
-	  _wall.lnklower = tmp;
-	}
-
-      }
-
-      /* At the upper side */
-      k = N_total(Z) - 1;
-      index = xfac*i + yfac*j + k;
-
-      /* Add links joining the penultimate site with sites at k = N.z
-       * and set appropriate properties. */
-
-      for (p = 1; p < NVEL; p++) {
-
-	if (cv[p][2] == 1) {
-	  tmp = WALL_allocate_wall_link();
-
-	  index1 = index + xfac*cv[p][0] + yfac*cv[p][1] + 1;
-	  tmp->i = index;
-	  tmp->j = index1;
-	  tmp->p = p;
-
-	  tmp->next = _wall.lnkupper;
-	  _wall.lnkupper = tmp;
-	}
-      }
-
-    }
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  WALL_init_site_map
+ *  init_boundary_site_map
  *
  *  Set the site map to SOLID for the boundary walls.
  *
- *  Issues
- *    It is envisaged that the walls will not change position
- *    for the duration of the run, i.e., they only move parallel
- *    to their plane.
- *
  *****************************************************************************/
 
-void WALL_init_site_map() {
+static void init_boundary_site_map() {
 
-  int      i, j, index;
-  int      xfac, yfac;
+  int ic, jc, kc, index;
+  int ic_global, jc_global, kc_global;
+  int xfac, yfac;
+  int nlocal[3];
+  int noffset[3];
 
-  yfac = (N_total(Z) + 2);
-  xfac = (N_total(Y) + 2)*yfac;
+  get_N_local(nlocal);
+  get_N_offset(noffset);
 
-  for (i = 0; i <= N_total(X) +1; i++)
-    for (j = 0; j <= N_total(Y) +1; j++) {
+  yfac = (nlocal[Z] + 2);
+  xfac = (nlocal[Y] + 2)*yfac;
 
-      index = xfac*i + yfac*j;
+  for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+    for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
+      for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
 
-      site_map[index + 1]   = SOLID;
-      site_map[index + N_total(Z)] = SOLID;
-    }
+	/* If this is an appropriate periodic boundary, set to solid */
 
-  return;
-}
+	index = xfac*ic + yfac*jc + kc;
 
+	ic_global = ic + noffset[X];
+	jc_global = jc + noffset[Y];
+	kc_global = kc + noffset[Z];
 
-/*****************************************************************************
- *
- *  WALL_update
- *
- *  It is envisaged that this function is called once per time step
- *  to set the current sheer velocity of the wall.
- * 
- *  And in any case at least once to set the wall velocity at the
- *  start of the model run.
- *
- *****************************************************************************/
+	if (is_periodic(Z)) continue;
 
-void WALL_update(int step) {
+	if (kc_global == 0 || kc_global == N_total(Z) + 1)
+	  site_map[index] = BOUNDARY;
 
-  double phase;
-  double udotc;
+	if (is_periodic(Y)) continue;
 
-  int      i, j, index, p;
-  int      xfac, yfac;
+	if (jc_global == 0 || jc_global == N_total(Y) + 1)
+	  site_map[index] = BOUNDARY;
 
-  if (! _wall.present) {
-    /* Do nothing */
-  }
-  else {
+	if (is_periodic(X)) continue;
 
-    if (_wall.sheer_period <= 0.0) {
-      /* Time independent sheer velocity */
-
-      _wall.sheer_u.x = _wall.sheer_uxmax;
-      _wall.sheer_u.y = _wall.sheer_uymax;
-      _wall.sheer_u.z = 0.0;
-
-    }
-    else {
-      /* Sinusiodally varying sheer */
-
-      phase = sin(2.0*PI*step/_wall.sheer_period);
-
-      _wall.sheer_u.x = _wall.sheer_uxmax*phase;
-      _wall.sheer_u.y = _wall.sheer_uymax*phase;
-      _wall.sheer_u.z = 0.0;
-    }
-
-    yfac = (N_total(Z) + 2);
-    xfac = (N_total(Y) + 2)*yfac;
-
-    for (i = 0; i <= N_total(X) + 1; i++)
-      for (j = 0; j <= N_total(Y)+1; j++) {
-
-	index = xfac*i + yfac*j;
-
-	for (p = 0; p < NVEL; p++) {
-	  udotc = 3.0*(_wall.sheer_u.x*cv[p][0] + _wall.sheer_u.y*cv[p][1]);
-
-	  site[index + 1].f[p] = wv[p]*(1.0 + _wall.sheer_diff*udotc);
-	  site[index + N_total(Z)].f[p] = wv[p]*(1.0 + udotc);
-#ifdef _DUCT_
-	  site[index + N_total(Z)-1].f[p] = wv[p]*(1.0 + udotc);
-	  /*
-	  udotc = 3.0*ubot*cv[p][0]; 
-	  site[index + 2].f[p] = wv[p]*(1.0 + udotc);*/
-#endif
-	}
+	if (ic_global == 0 || ic_global == N_total(X) + 1)
+	  site_map[index] = BOUNDARY;
       }
+    }
   }
 
   return;
 }
-
 
 /****************************************************************************
  *
- *  WALL_allocate_wall_link
+ *  init_boundary_speeds
  *
- *  Return a pointer to a newly allocated wall boundary link structure
+ ****************************************************************************/
+
+static void init_boundary_speeds(const double ux_bot, const double ux_top) {
+
+  B_link * p_link;
+
+  p_link = link_list_;
+
+  while (p_link) {
+
+    /* Decide whether the link is at the top or bottom */
+
+    if (cv[p_link->p][Z] == -1) {
+      p_link->ux = ux_bot;
+    }
+    if (cv[p_link->p][Z] == +1) {
+      p_link->ux = ux_top;
+    }
+
+    p_link = p_link->next;
+  }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  allocate_link
+ *
+ *  Return a pointer to a newly allocated boundary link structure
  *  or fail gracefully.
  *
  ****************************************************************************/
 
-Wall_link * WALL_allocate_wall_link() {
+B_link * allocate_link() {
 
-  Wall_link * p_link;
+  B_link * p_link;
 
-  p_link = (Wall_link *) malloc(sizeof(Wall_link));
+  p_link = (B_link *) malloc(sizeof(B_link));
 
-  if (p_link == (Wall_link *) NULL) {
-    fatal("malloc(Wall_link) failed (requested %d bytes)\n",
-	  sizeof(Wall_link));
+  if (p_link == (B_link *) NULL) {
+    fatal("malloc(B_link) failed\n");
   }
+
+  nalloc_links_++;
 
   return p_link;
 }
 
 /*****************************************************************************
  *
- *  WALL_bounce_back
- *
- *  Bounce back on links for the wall.
- *  To be called between after the collision step.
- *
- *  Issues:
- *    No OMP at the moment (use at most two threads?).
+ *  report_boundary_memory
  *
  *****************************************************************************/
 
-void WALL_bounce_back() {
+static void report_boundary_memory() {
 
-  Wall_link * p_link;
-  int         i, j, ij, ji;
-  double       rho;
-  double       cdotu, dtmp;
+  info("[Boundary links: %d (%d bytes)]\n", nalloc_links_,
+       nalloc_links_*sizeof(B_link));
 
-  rho = 1.0;
+  return;
+}
 
-  p_link = _wall.lnklower;
+/*****************************************************************************
+ *
+ *  set_wall_velocity
+ *
+ *  Set distribution at solid sites to reflect solid body velocity.
+ *
+ *****************************************************************************/
 
-  while (p_link) {
+static void set_wall_velocity() {
 
-    i  = p_link->i;
-    j  = p_link->j;
-    ij = p_link->p;
-    ji = NVEL - ij;
+  B_link * p_link;
+  double   fp;
+  double   rho;
+  int      p;
 
-    cdotu = cv[ij][0]*_wall.sheer_u.x + cv[ij][1]*_wall.sheer_u.y;
-    cdotu = _wall.sheer_diff*cdotu;
-    dtmp = 2.0*wv[ij]*cdotu/3.0;
-
-    site[j].f[ji] = site[i].f[ij] - dtmp*rho;
-
-#ifdef _SINGLE_FLUID_
-#else
-    /* For phi should generally use site value */
-    /*    site[j].g[ji] = site[i].g[ij] - dtmp*phi_site[i];*/
-    site[j].g[ji] = site[i].g[ij] - dtmp*p_link->phi_b;
-#endif
-
-    p_link = p_link->next;
-  }
-
-  /* Repeat for the upper side */
-
-  p_link = _wall.lnkupper;
+  rho = get_rho0();
+  p_link = link_list_;
 
   while (p_link) {
-
-    i  = p_link->i;
-    j  = p_link->j;
-    ij = p_link->p;
-    ji = NVEL -ij;
-
-    cdotu = cv[ij][0]*_wall.sheer_u.x + cv[ij][1]*_wall.sheer_u.y;
-    dtmp = 2.0*wv[ij]*cdotu/3.0;
-
-    site[j].f[ji] = site[i].f[ij] - dtmp*rho;
-
-#ifdef _SINGLE_FLUID_
-#else
-    /* For phi should generally use site value */
-    /*    site[j].g[ji] = site[i].g[ij] - dtmp*phi_site[i];*/
-    site[j].g[ji] = site[i].g[ij] - dtmp*p_link->phi_b;
-#endif
+    p = NVEL - p_link->p; /* Want the outward going component */
+    fp = wv[p]*(rho + rcs2*p_link->ux*cv[p][X]);
+    set_f_at_site(p_link->j, p, fp);
 
     p_link = p_link->next;
   }
 
   return;
-}
-
-
-/******************************************************************************
- *
- *  WALL_lubrication
- *
- *  For a given colloid, add any appropriate particle-wall lubrication
- *  force. Again, this relies on the fact that the walls have no
- *  component of velocity nornal to their own plane.
- *
- *  The result should be added to the appropriate diagonal element of
- *  the colloid's drag matrix in the implicit update.
- *
- *  Issues
- *    Normal force is added to the diagonal of drag matrix \zeta^FU_zz
- *    Tangential force to \zeta^FU_xx and \zeta^FU_yy
- *
- *    If the colloid is near to both the top and bottom walls the system
- *    is too narrow!
- *
- *    Again, assumes wall is in XY plane.
- *
- *****************************************************************************/
-
-FVector WALL_lubrication(Colloid * p_colloid) {
-
-  FVector fl;
-  double ah;
-  double r_lu_n, r_lu_t;
-  double gap, s, s0;
-
-  fl = UTIL_fvector_zero();
-
-  if (! _wall.present) {
-    /* Do nothing */
-  }
-  else {
-    ah = p_colloid->ah;
-    r_lu_n = Global_Colloid.r_lu_n;
-    r_lu_t = Global_Colloid.r_lu_t;
-
-    /* Lower wall */
-
-    gap = p_colloid->r.z - _wall.rlower;
-    gap = gap - ah - _wall.r_lu_n;
-
-    if (gap < 0.0) {
-      verbose("---> WALL_lubrication:\n");
-      verbose("---> Particle %d overlapped lower wall\n", p_colloid->index);
-      verbose("---> Particle position: (%g, %g, %g)\n",
-	      p_colloid->r.x, p_colloid->r.y, p_colloid->r.z);
-      verbose("---> Particle velocity: (%g, %g, %g)\n",
-	      p_colloid->v.x, p_colloid->v.y, p_colloid->v.z);
-      fatal("aborted\n");
-    }
-
-    /* Normal force */
-    if (gap < r_lu_n) {
-      fl.z = -6.0*PI*get_eta_shear()*ah*ah*(1.0/gap - 1.0/r_lu_n);
-    }
-
-    /* Tangential force (dependent on particle velocity only) */
-    if (gap < r_lu_t) {
-      s  = log(gap/(gap + ah));
-      s0 = log(r_lu_t/(r_lu_t + ah));
-      fl.x = +6.0*PI*get_eta_shear()*ah*(s - s0);
-      fl.y = +6.0*PI*get_eta_shear()*ah*(s - s0);
-    }
-
-    /* Upper wall */
-
-    gap = _wall.rupper - p_colloid->r.z;
-    gap = gap - ah - _wall.r_lu_n;
-
-    if (gap < 0.0) {
-      verbose("---> WALL_lubrication:\n");
-      verbose("---> Particle %d overlapped upper wall\n", p_colloid->index);
-      verbose("---> Particle position: (%g, %g, %g)\n",
-	      p_colloid->r.x, p_colloid->r.y, p_colloid->r.z);
-      verbose("---> Particle velocity: (%g, %g, %g)\n",
-	      p_colloid->v.x, p_colloid->v.y, p_colloid->v.z);
-      fatal("aborted\n");
-    }
-
-    if (gap < r_lu_n) {
-      fl.z = -6.0*PI*get_eta_shear()*ah*ah*(1.0/gap - 1.0/r_lu_n);
-    }
-    if (gap < r_lu_t) {
-      s  = log(gap/(gap + ah));
-      s0 = log(r_lu_t/(r_lu_t + ah));
-      fl.x = +6.0*PI*get_eta_shear()*ah*(s - s0);
-      fl.y = +6.0*PI*get_eta_shear()*ah*(s - s0);
-    }
-  }
-
-  return fl;
 }

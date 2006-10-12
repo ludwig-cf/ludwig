@@ -2,216 +2,109 @@
  *
  *  cmd.c
  *
- *  Colloid Molecular Dynamics
- *
- *  This file contains routines for the initialisation of random
- *  particle configurations at various volume fractions via a
- *  simple "growing" algorithm plus molecular dynamics (a la
- *  Lubachevsky & Stillinger). This could be a serparate main
- *  program linked against the rest of the code.
- *
- *  PARAMETERS
- *
- *  The Lubachevsky Stillinger algorithm seems to be a bit of an
- *  art form, in that getting the right parameters is important,
- *  particularly at high volume fraction, if one wants to get a
- *  solution in a reasonable number of time steps.
- *
- *  So, this code proceeds by using a soft sphere potential with
- *  parameters POT_ALPHA and POT_BETA. The lubrication forces
- *  between the particles should be switched off. The range of
- *  the potential is set to R_SSPH.
- *
- *  POT_ALPHA   0.0004
- *  POT_BETA    -2.0
- *  R_SSPH      0.7
- *
- *  The particles should not be too close in the resultant initial
- *  conditions or else the resulting large forces will cause an
- *  immediate explosion when the LB starts. So, a minimum separation
- *  should be requested.
- *
- *  HMIN_REQUEST 0.25    Should be safe for most purposes
- *
- *  In the MD, the particles should not expand when in close proximity.
- *  There is therefore a minimum separation below which growth is
- *  stopped.
- *
- *  HMIN_GROWTH  0.25
- *
- *  The maximum sane volume fraction is
- *
- *  VF_MAX       0.55
- *
- *  The maximum number of MD steps is
- *
- *  NMAX_ITERATIONS 2000
- *
- *  If a very high volume fraction is required, VF_MAX should be
- *  increased along with NMAX_ITERATIONS. However, the above
- *  parameters should be reasonably robust to volume fraction 0.5.
- *
- *  The lubrication corrections are switched off for the duration
- *  of the MD, but restored to whatever the user input requested
- *  before any LB steps are performed.
+ *  $Id: cmd.c,v 1.7 2006-10-12 14:09:18 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+#include <assert.h>
+
 #include "pe.h"
 #include "ran.h"
 #include "coords.h"
-#include "cartesian.h"
-
-#include "utilities.h"
-#include "colloids.h"
 #include "ccomms.h"
-#include "cells.h"
-#include "cio.h"
+#include "runtime.h"
+#include "model.h"
 
-#define  POT_ALPHA       0.0004 /* p1 in soft sphere */
-#define  POT_BETA        -2.0   /* p1 in soft sphere */
-#define  R_SSPH          0.7    /* soft sphere repulsion for MD */
-#define  R_MAXINFLATE    0.1    /* Maximum growth rate */
-#define  HMIN_REQUEST    0.25   /* Should be safe */
-#define  HMIN_GROWTH     0.25
-#define  VF_MAX          0.55
-#define  NMAX_ITERATIONS 200000
-#define  NMAX_BROWNIAN   100000
+#include "colloids.h"
+#include "interaction.h"
 
-static void CMD_do_md(void);
+#define ENERGY_HARD_SPHERE 10.0
+#define ENERGY_HARD_WALL   2000.0
+
 static void CMD_reset_particles(const double);
-static int  CMD_update_colloids(double hmin);
 static void CMD_brownian_dynamics_step(void);
 static void CMD_brownian_set_random(void);
-static void CMD_do_more_md(void);
 static void CMD_test_particle_energy(const int);
+
+static void do_monte_carlo(const int);
+static void mc_move(void);
+static void mc_init_random(const int, const double, const double);
+static void mc_set_proposed_move(const double);
+static void mc_recover(void);
+static void mc_check_state(void);
+static void mc_mean_square_displacement(void);
+static int  mc_metropolis(double);
+static int  mc_init_bcc_lattice(const double, const double, const double);
+static double mc_total_energy(void);
+
+static double vf_max_ = 0.60;
+static double mc_max_exp_ = 100.0;
+static double mc_drmax_ = 0.001;
 
 /*****************************************************************************
  *
  *  CMD_init_volume_fraction
  *
- *  This routine will eventually take
- *       nradius - the number of different radii required
- *       radius  - a list of those radii
- *       flag    - equal number / equal area / equal volume
- *                 flag for nradius > 1
+ *  Look at the user input and work out how many particles are
+ *  required (and eventually of what type).
  *
  *****************************************************************************/
 
 void CMD_init_volume_fraction(int nradius, int flag) {
 
-  double v_part;
-  double v_system;
-  double rtarget;
-  double vf_eff;
-  int   n_global;
-  int   n;
+  double vf;
+  double a0, ah;
+  int    n, n_global;
+  char   cinit[128];
 
-  double r_clus = Global_Colloid.r_clus;
-  double r_lu_n = Global_Colloid.r_lu_n;
-  double r_ssph = Global_Colloid.r_ssph;
+  info("\nParticle initialisation\n");
 
-  FVector r0;
-  FVector zero;
-  int     index0;
+  /* At the moment, we manage with a single a0, ah */
+  n = RUN_get_double_parameter("colloid_a0", &a0);
+  n = RUN_get_double_parameter("colloid_ah", &ah);
 
-  zero = UTIL_fvector_zero();
+  RUN_get_string_parameter("colloid_init", cinit);
 
-  /* Look at the local volume and see how many particles
-   * are required to give the requested solid volume
-   * fraction. */
-
-  info("\nCMD_init_volume_fraction\n");
-
-  if (nradius > 1) {
-    info("Only monodisperse at the moment... taking radius = %f\n",
-	 Global_Colloid.ah);
+  if (strcmp(cinit, "fixed_number_monodisperse") == 0) {
+    /* Look for colloid_no */
+    n = RUN_get_int_parameter("colloid_no", &n_global);
+    if (n == 0) {
+      info("fixed_number_monodisperse is set but not colloids_no\n");
+      fatal("Please check and try again\n");
+    }
+    info("[User   ] requested %d particles (monodisperse)\n", n_global);
+    mc_init_random(n_global, a0, ah);
   }
 
-  rtarget = Global_Colloid.ah;
+  if (strcmp(cinit, "fixed_volume_fraction_monodisperse") == 0) {
+    /* Look for volume fraction */
+    n = RUN_get_double_parameter("colloid_vf", &vf);
+    if (n == 0) {
+      info("fixed_volume_fraction is set but not colloids_vf\n");
+      fatal("Please check and try again\n");
+    }
 
-  v_system = L(X)*L(Y)*L(Z);
-  v_part   = (4.0/3.0)*PI*rtarget*rtarget*rtarget;
-  n_global = Global_Colloid.vf*(v_system / v_part);
-
-  /* Report the requested volume fraction and what we actually
-   * will get. */
-
-  Global_Colloid.N_colloid = n_global;
-
-  vf_eff = v_part*n_global / v_system;
-
-  info("The requested solid volume fraction is      %f\n", Global_Colloid.vf);
-  info("Particle (hydrodynamic) radius requested is %f\n", rtarget);
-  info("Number of particles required is             %d\n", n_global);
-  info("Actual volume fraction is then              %f\n", vf_eff);
-
-  /* Look at the lubrication cutoff distance and decide a safe
-   * initial separation. This will give rise to an effective
-   * solid fraction which should not be too high. */
-
-  rtarget = Global_Colloid.ah + 0.5*HMIN_REQUEST;
-  v_part  = (4.0/3.0)*PI*rtarget*rtarget*rtarget;
-  vf_eff  = n_global*v_part / v_system;
-
-  info("The initial separation minumum requested is %f\n", HMIN_REQUEST);
-  info("This gives effective solid fraction         %f\n", vf_eff);
-
-  if (vf_eff > VF_MAX) {
-    fatal("Requested effective volume fraction too high\n");
+    info("[User   ] requested volume fraction of %f\n", vf);
+    n_global = mc_init_bcc_lattice(vf, a0, ah);
   }
 
-  /* For a decomposition-independent start, we generate positions
-   * for all particles, but only add those which are actually
-   * local. The hydrodynamic radius, which determines interactions,
-   * is set to zero. */
+  vf = (4.0/3.0)*PI*ah*ah*ah*n_global / (L(X)*L(Y)*L(Z));
+  info("[       ] initialised %d particles\n", n_global);
+  info("[       ] actual volume fraction of %f\n", vf);
 
-  rtarget = Global_Colloid.a0;
+  set_N_colloid(n_global);
 
-  for (n = 1; n <= n_global; n++) {
-    r0.x = Lmin(X) + ran_serial_uniform()*L(X);
-    r0.y = Lmin(Y) + ran_serial_uniform()*L(Y);
-    r0.z = Lmin(Z) + ran_serial_uniform()*L(Z);
-    COLL_add_colloid_no_halo(n, rtarget, 0.0, r0, zero, zero);
-  }
+  n = 0;
+  RUN_get_int_parameter("colloid_mc_steps", &n);
 
-  /* Set, temporarily, the divergence length for the potential
-   * to be r_lu_n, that is, the particles should not be closer
-   * than (separation) R_SAFE*r_lu_n in the initial conditions.
-   * It is possible to set R_SSPH large enough that the cell
-   * lists might miss some interactions, or not get truncated
-   * exactly to zero . But we don't care about energetics here.
-   * Further, the prefactor for the soft sphere potential
-   * could take account of the mass of the particle, which always
-   * depends on a0. */
+  if (n > 0) do_monte_carlo(n);
 
-  Global_Colloid.r_clus = 0.0;
-  Global_Colloid.r_ssph = R_SSPH;
-  Global_Colloid.r_lu_n = 0.0;
-
-  /* Iterate until an acceptable solution is found */
-
-  CMD_do_md();
-  /*
-  CMD_reset_particles(0.0);
-  CMD_do_more_md();
-  CMD_reset_particles(1.0);
-  */
-
-  /* Restore the original user parameters before saving the
-   * initial particle data. Make sure the cell list is up-to-date,
-   * and set the particle state clean before saving the initial
-   * positions. */
-
-  Global_Colloid.r_clus = r_clus;
-  Global_Colloid.r_ssph = r_ssph;
-  Global_Colloid.r_lu_n = r_lu_n;
-
-  CELL_update_cell_lists();
-  CMD_reset_particles(0.0);
-  CIO_write_state("config.cds000000");
+  mc_check_state();
 
 #ifdef _MPI_
   MPI_Barrier(MPI_COMM_WORLD);
@@ -220,146 +113,142 @@ void CMD_init_volume_fraction(int nradius, int flag) {
   return;
 }
 
-
 /*****************************************************************************
  *
- *  CMD_do_md
+ *  do_monte_carlo
  *
- *  Molecular dynamics iteration.
+ *  
  *
  *****************************************************************************/
 
-void CMD_do_md() {
+void do_monte_carlo(const int mc_max_iterations) {
 
-  int too_close, too_small;
-  int n = 0;
-  double hmin = 0.0;
-  double delta_a;
-  double delta = 0.0;
+  int    ntrials = 0;
+  int    naccept = 0;
+  int    accepted = 1;
+  double drmax, rate;
+  double etotal_old, etotal_new;
 
-  void COLL_zero_forces(void);
-  void COLL_set_colloid_gravity(void);
+  drmax = mc_drmax_;
+
+  etotal_old = mc_total_energy();
+
+  mc_set_proposed_move(drmax);
+
+  cell_update();
+  CCOM_halo_particles();
 
   do {
 
-    if (n++ > NMAX_ITERATIONS) {
-      fatal("Hit NMAX_ITERATIONS in molecular dynamcics\n");
-    }
+    /* Move the particles and set a proposed move for the next step. */
+    mc_move();
+    mc_set_proposed_move(drmax);
 
-
-    CELL_update_cell_lists();
+    cell_update();
     CCOM_halo_particles();
-    CCOM_sort_halo_lists();
 
-    COLL_zero_forces();
-    hmin = COLL_interactions();
-    COLL_set_colloid_gravity(); /* Zero force on halo particles! */
+    etotal_new = mc_total_energy();
+    accepted = mc_metropolis(etotal_new - etotal_old);
 
-    CCOM_halo_sum(CHALO_TYPE1);
+    /* Report */
+    ntrials++;
 
-    /* Step colloid position/velocity and inflate the radius by
-     * an amount delta_a. If hmin is large, then the particles
-     * can be inflated so that the separation is reduced to the
-     * point where interactions start (R_SSPH). If small, the
-     * inflation is restricted to a fraction of hmin. In addition,
-     * particle growth is stopped at separations lower than
-     * HMIN_GROWTH to allow time for the particles to move apart. */
-
-#ifdef _MPI_
-    /* Everyone should agree on hmin */
-    {
-      double hmin_global = 0.0;
-      MPI_Allreduce(&hmin, &hmin_global, 1, MPI_DOUBLE, MPI_MIN, cart_comm());
-      hmin = hmin_global;
-    }
-#endif
-
-    delta_a = dmax(R_MAXINFLATE*hmin, 0.5*(hmin - R_SSPH));
-    if (hmin < HMIN_GROWTH) delta_a = 0.0;
-    delta += delta_a;
-
-    /* Stopping criterion */
-
-    too_small = CMD_update_colloids(delta_a);
-    too_close = (hmin < HMIN_REQUEST);
-
-#ifdef _MPI_
-    /* Everyone must agree on the stopping criterion */
-    {
-      int    flag_global = 0;
-      MPI_Allreduce(&too_small, &flag_global, 1, MPI_INT, MPI_MAX,
-		    cart_comm());
-      too_small = flag_global;
-    }
-#endif
-
-    if (n % 1000 == 0) {
-      info("CMD iteration %d: minimum separation was %f (request %f)\n", n,
-	   hmin, HMIN_REQUEST);
-      info("CMD iteration %d: inflation total %f\n", n, delta);
-      CMD_test_particle_energy(n);
+    /* Adapt. */
+    rate = naccept / 10.0;
+    if ((ntrials % 10) == 0) {
+      if (rate < 0.45) drmax = drmax*0.95;
+      if (rate > 0.55) drmax = drmax*1.05;
+      info("Monte Carlo step %d rate = %d drmax = %f et = %f %f\n", ntrials,
+	   naccept, drmax, etotal_old, etotal_new);
+      naccept = 0;
     }
 
-  } while (too_close || too_small);
+    if (accepted) {
+      /* ok */
+      etotal_old = etotal_new;
+      naccept++;
+    }
+    else {
+      mc_recover();
+      cell_update();
+      CCOM_halo_particles();
+    }
 
-  info("FINAL ITERATION\n");
-  info("CMD iteration %d: minimum separation was %f (request %f)\n", n,
-       hmin, HMIN_REQUEST);
-  info("CMD iteration %d: inflation total %f\n", n, delta);
+    /* The last move must be accepted */
+  } while (ntrials < mc_max_iterations || !accepted);
 
   return;
 }
 
-
 /*****************************************************************************
  *
- *  CMD_update_colloids
+ *  mc_metropolis
  *
- *  Update the colloid positions. This is a [very] mimimal
- *  dynamics!
+ *  The Metropolis part of the Monte Carlo.
  *
- *  The colloid radius is also inflated by an amount delta_a
- *  to a maximum of the target radius (currently G.ah). The
- *  return value is only zero if all the particles have
- *  reached the target value.
+ *  The argument delta is the total change in energy for the system.
+ *  All processes determine the same acceptance criteria via use of
+ *  the serial random number stream.
  *
  *****************************************************************************/
 
-int CMD_update_colloids(double delta_a) {
+int mc_metropolis(double delta) {
 
-  int     ic, jc, kc;
-  IVector ncell = Global_Colloid.Ncell;
-  int     too_small = 0;
+  int accept = 0;
+
+  if (delta <= 0.0) {
+    /* Always accept */
+    accept = 1;
+  }
+  else {
+    /* Accept with probabilty exp(-delta/kt) */
+    delta = -delta / get_kT();
+    if (delta <= mc_max_exp_ && exp(delta) > ran_serial_uniform()) accept = 1;
+  }
+
+  return accept;
+}
+
+/*****************************************************************************
+ *
+ *  mc_set_proposed_move
+ *
+ *  Rotate the previous updates (need to be recovered if move rejected)
+ *  and generate a new one. The maximum displacement per coordinate
+ *  direction is drmax.
+ *
+ *****************************************************************************/
+
+void mc_set_proposed_move(const double drmax) {
+
+  int       ic, jc, kc, n;
   Colloid * p_colloid;
 
-  double rmass;
+  /* Moves of subsets 
+  int movelist[100];
+  int nc = get_N_colloid();
 
-  rmass = 1.0/((4.0/3.0)*PI*Global_Colloid.ah);
+  for (n = 0; n < 50; n++) {
+    movelist[n] = 1 + ran_serial_uniform()*nc;
+    assert(movelist[n] > 0 && movelist[n] <= nc);
+  }
+  */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
 
-	  p_colloid->v.x += rmass*p_colloid->force.x;
-	  p_colloid->v.y += rmass*p_colloid->force.y;
-	  p_colloid->v.z += rmass*p_colloid->force.z;
+	  p_colloid->random[3] = p_colloid->random[0];
+	  p_colloid->random[4] = p_colloid->random[1];
+	  p_colloid->random[5] = p_colloid->random[2];
 
-	  p_colloid->r.x += p_colloid->v.x;
-	  p_colloid->r.y += p_colloid->v.y;
-	  p_colloid->r.z += p_colloid->v.z;
-
-	  p_colloid->ah  += delta_a;
-
-	  if (p_colloid->ah >= Global_Colloid.ah) {
-	    p_colloid->ah = Global_Colloid.ah;
-	  }
-	  else {
-	    too_small = 1;
-	  }
+	  p_colloid->random[0] = drmax*(2.0*ran_parallel_uniform() - 1.0);
+	  p_colloid->random[1] = drmax*(2.0*ran_parallel_uniform() - 1.0);
+	  p_colloid->random[2] = drmax*(2.0*ran_parallel_uniform() - 1.0);
 
 	  p_colloid = p_colloid->next;
 	}
@@ -367,16 +256,399 @@ int CMD_update_colloids(double delta_a) {
     }
   }
 
-  return too_small;
+  return;
 }
 
+/****************************************************************************
+ *
+ *  mc_move
+ *
+ *  Actual Monte Carlo position update
+ *
+ ****************************************************************************/
+
+void mc_move() {
+
+  int       ic, jc, kc;
+  Colloid * p_colloid;
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+
+	  p_colloid->r.x += p_colloid->random[0];
+	  p_colloid->r.y += p_colloid->random[1];
+	  p_colloid->r.z += p_colloid->random[2];
+
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  mc_recover
+ *
+ *  If a Monte Carlo move is rejected, it must be reversed.
+ *
+ *****************************************************************************/
+
+void mc_recover() {
+
+  int       ic, jc, kc;
+  Colloid * p_colloid;
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+
+	  p_colloid->r.x -= p_colloid->random[3];
+	  p_colloid->r.y -= p_colloid->random[4];
+	  p_colloid->r.z -= p_colloid->random[5];
+
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  mc_check_state
+ *
+ *  Check for overlaps in the current state. Stop if there is a problem,
+ *  i.e., there appears to be a hard-sphere overlap.
+ *
+ *****************************************************************************/
+
+void mc_check_state() {
+
+  double e = 0.0;
+
+  e = mc_total_energy();
+
+  info("\nChecking colloid state... (total energy is %g kT)\n", e/get_kT());
+
+  mc_mean_square_displacement();
+
+  if (e >= ENERGY_HARD_SPHERE) {
+    info("This appears to include at least one hard sphere overlap.\n");
+    info("Please check the volume fraction (for fixed numbers),\n");
+    info("or try increasing the number of Monte Carlo steps.\n");
+    fatal("Stop.\n");
+  }
+
+  info("State appears to have no overlaps\n");
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  mc_total_energy
+ *
+ *****************************************************************************/
+
+double mc_total_energy() {
+
+  Colloid * p_c1;
+  Colloid * p_c2;
+
+  int    ic, jc, kc, id, jd, kd, dx, dy, dz;
+  double etot = 0.0;
+  double h;
+  double hard_sphere_energy(const double h);
+  double hard_wall(Colloid *);
+
+  FVector r_12;
+  FVector COLL_fvector_separation(FVector, FVector);
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	p_c1 = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_c1) {
+
+	  etot += hard_wall(p_c1);
+
+	  for (dx = -1; dx <= +1; dx++) {
+	    for (dy = -1; dy <= +1; dy++) {
+	      for (dz = -1; dz <= +1; dz++) {
+
+		id = ic + dx;
+		jd = jc + dy;
+		kd = kc + dz;
+
+		p_c2 = CELL_get_head_of_list(id, jd, kd);
+
+		while (p_c2) {
+
+		  if (p_c1->index < p_c2->index) {
+
+		    r_12 = COLL_fvector_separation(p_c1->r, p_c2->r);
+
+		    h = sqrt(r_12.x*r_12.x + r_12.y*r_12.y + r_12.z*r_12.z);
+		    h = h - p_c1->ah - p_c2->ah;
+		    
+		    etot += hard_sphere_energy(h);
+		    etot += soft_sphere_energy(h);
+		  }
+		  
+		  /* Next colloid */
+		  p_c2 = p_c2->next;
+		}
+
+		/* Next search cell */
+	      }
+	    }
+	  }
+
+	  /* Next colloid */
+	  p_c1 = p_c1->next;
+	}
+
+	/* Next cell */
+      }
+    }
+  }
+
+#ifdef _MPI_
+ {
+   double elocal = etot;
+   MPI_Allreduce(&elocal, &etot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+ }
+#endif
+
+  return etot;
+}
+
+/*****************************************************************************
+ *
+ *  hard_sphere
+ *
+ *  Return energy of hard-sphere interaction.
+ *
+ *****************************************************************************/
+
+double hard_sphere_energy(const double h) {
+
+  double e = 0.0;
+
+  if (h <= 0.0) e = ENERGY_HARD_SPHERE;
+
+  return e;
+}
+
+/*****************************************************************************
+ *
+ *  hard_wall
+ *
+ *  Return particle-hard-wall 'energy' if there is an overlap.
+ *
+ *****************************************************************************/
+
+double hard_wall(Colloid * p_coll) {
+
+  double etot = 0.0;
+
+  if (is_periodic(X) == 0) {
+    if ((p_coll->r.x - p_coll->ah) < Lmin(X)) etot += ENERGY_HARD_WALL;
+    if ((p_coll->r.x + p_coll->ah) > Lmin(X) + L(X)) etot += ENERGY_HARD_WALL;
+  }
+
+  if (is_periodic(Y) == 0) {
+    if ((p_coll->r.y - p_coll->ah) < Lmin(Y)) etot += ENERGY_HARD_WALL;
+    if ((p_coll->r.y + p_coll->ah) > Lmin(Y) + L(Y)) etot += ENERGY_HARD_WALL;
+  }
+
+  if (is_periodic(Z) == 0) {
+    if ((p_coll->r.z - p_coll->ah) < Lmin(Z)) etot += ENERGY_HARD_WALL;
+    if ((p_coll->r.z + p_coll->ah) > Lmin(Z) + L(Z)) etot += ENERGY_HARD_WALL;
+  }
+
+  return etot;
+}
+
+/*****************************************************************************
+ *
+ *  mc_init_random
+ *
+ *  Initialise a fixed number of particles in random positions.
+ *  As this is a simple insertion, the maximum practical
+ *  volume fraction is very limited.
+ *
+ *****************************************************************************/
+
+void mc_init_random(const int npart, const double a0, const double ah) {
+
+  int n;
+  FVector r0;
+  FVector zero = {0.0, 0.0, 0.0};
+  double Lex[3];
+
+  /* If boundaries are present, some of the volume must be excluded */
+  Lex[X] = ah*(1.0 - is_periodic(X));
+  Lex[Y] = ah*(1.0 - is_periodic(Y));
+  Lex[Z] = ah*(1.0 - is_periodic(Z));
+
+  for (n = 1; n <= npart; n++) {
+    r0.x = Lmin(X) + Lex[X] + ran_serial_uniform()*(L(X) - 2.0*Lex[X]);
+    r0.y = Lmin(Y) + Lex[Y] + ran_serial_uniform()*(L(Y) - 2.0*Lex[Y]);
+    r0.z = Lmin(Z) + Lex[Z] + ran_serial_uniform()*(L(Z) - 2.0*Lex[Z]);
+    COLL_add_colloid_no_halo(n, a0, ah, r0, zero, zero);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  mc_init_bcc_lattice
+ *
+ *  Initialise the given volume fraction. The positions of the
+ *  particles are those of a bcc lattice (not extending through
+ *  the periodic, or boundary, region).
+ *
+ *  Returns the actual number of particles initialised.
+ *
+ *****************************************************************************/
+
+int mc_init_bcc_lattice(double vf, double a0, double ah) {
+
+  int     n_request, n_max;
+  int     nx, ny, nz, ncx, ncy, ncz;
+  int     index = 0;
+  double  dx, dy, dz, vp;
+  FVector r0;
+  FVector zero = {0.0, 0.0, 0.0};
+
+  /* How many particles to get this volume fraction? */
+
+  n_request = (ceil) (L(X)*L(Y)*L(Z)*vf / ((4.0/3.0)*PI*ah*ah*ah));
+
+  /* How many will fit? */
+
+  ncx = L(X) / (4.0*(ah+0.0)/sqrt(3.0));
+  ncy = L(Y) / (4.0*(ah+0.0)/sqrt(3.0));
+  ncz = L(Z) / (4.0*(ah+0.0)/sqrt(3.0));
+
+  dx = L(X)/ncx;
+  dy = L(Y)/ncy;
+  dz = L(Z)/ncz;
+
+  n_max = ncx*ncy*ncz;
+  vp = (double) n_request / (double) n_max;
+
+  info("dx = %f dy = %f dz = %f\n", dx, dy, dz);
+
+  /* Allocate and initialise. */
+
+  for (nx = 1; nx <= ncx; nx++) {
+    for (ny = 1; ny <= ncy; ny++) {
+      for (nz = 1; nz <= ncz; nz++) {
+
+	r0.x = Lmin(X) + dx*(nx-0.5);
+	r0.y = Lmin(Y) + dy*(ny-0.5);
+	r0.z = Lmin(Z) + dz*(nz-0.5);
+
+	if (ran_serial_uniform() < vp) {
+	  index++;
+	  COLL_add_colloid_no_halo(index, a0, ah, r0, zero, zero);
+	}
+      }
+    }
+  }
+
+  /* Add fcc particles if required. */
+
+  n_request -= index;
+  n_max = (ncx-1)*(ncy-1)*(ncz-1);
+  vp = (double) n_request / (double) n_max;
+
+  for (nx = 1; nx < ncx; nx++) {
+    for (ny = 1; ny < ncy; ny++) {
+      for (nz = 1; nz < ncz; nz++) {
+
+	r0.x = Lmin(X) + dx*nx;
+	r0.y = Lmin(Y) + dy*ny;
+	r0.z = Lmin(Z) + dz*nz;
+
+	if (ran_serial_uniform() < vp) {
+	  index++;
+	  COLL_add_colloid_no_halo(index, a0, ah, r0, zero, zero);
+	}
+      }
+    }
+  }
+
+  return index;
+}
+
+/*****************************************************************************
+ *
+ *  mc_mean_square_displacement
+ *
+ *  Compute mean square displacement of particles since initialisation
+ *
+ *****************************************************************************/
+
+void mc_mean_square_displacement() {
+
+  int     ic, jc, kc;
+  Colloid * p_colloid;
+  double    ds, dxsq = 0.0, dysq = 0.0, dzsq = 0.0;
+
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+	  ds = p_colloid->r.x - p_colloid->stats.x;
+	  dxsq += ds*ds;
+	  ds = p_colloid->r.y - p_colloid->stats.y;
+	  dysq += ds*ds;
+	  ds = p_colloid->r.z - p_colloid->stats.z;
+	  dzsq += ds*ds;
+
+	  p_colloid = p_colloid->next;
+	}
+	/* Next cell */
+      }
+    }
+  }
+
+  dxsq /= get_N_colloid();
+  dysq /= get_N_colloid();
+  dzsq /= get_N_colloid();
+
+  info("Mean square displacements %f %f %f\n", dxsq, dysq, dzsq);
+
+  return;
+}
 
 /*****************************************************************************
  *
  *  CMD_reset_particles
- *
- *  At the end of the Molecular Dynamics stage, we need to
- *  re-initialise the colloid velocities.
  *
  *  Linear part: taken from Gaussian at current temperature.
  *  Rotational part: zero.
@@ -389,7 +661,6 @@ int CMD_update_colloids(double delta_a) {
 void CMD_reset_particles(const double factor) {
 
   int     ic, jc, kc;
-  IVector ncell = Global_Colloid.Ncell;
   Colloid * p_colloid;
 
   double xt = 0.0, yt = 0.0, zt = 0.0;
@@ -401,9 +672,9 @@ void CMD_reset_particles(const double factor) {
 
   var = factor*sqrt(get_kT());
 
-  for (ic = 1; ic <= ncell.x; ic++) {
-    for (jc = 1; jc <= ncell.y; jc++) {
-      for (kc = 1; kc <= ncell.z; kc++) {
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -436,9 +707,9 @@ void CMD_reset_particles(const double factor) {
     yt /= (double) nt;
     zt /= (double) nt;
 
-    for (ic = 1; ic <= ncell.x; ic++) {
-      for (jc = 1; jc <= ncell.y; jc++) {
-	for (kc = 1; kc <= ncell.z; kc++) {
+    for (ic = 1; ic <= Ncell(X); ic++) {
+      for (jc = 1; jc <= Ncell(Y); jc++) {
+	for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	  p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -469,9 +740,8 @@ void CMD_reset_particles(const double factor) {
 #endif
   }
 
-  CELL_update_cell_lists();
+  cell_update();
   CCOM_halo_particles();
-  CCOM_sort_halo_lists();
 
   return;
 }
@@ -485,21 +755,18 @@ void CMD_reset_particles(const double factor) {
 void CMD_test_particle_energy(const int step) {
 
   int     ic, jc, kc;
-  IVector ncell = Global_Colloid.Ncell;
   Colloid * p_colloid;
 
   double sum[3], gsum[3];
   double mass;
 
-  mass = (4.0/3.0)*PI*pow(Global_Colloid.ah, 3.0);
-
   sum[0] = 0.0;
   sum[1] = 0.0;
   sum[2] = 0.0;
 
-  for (ic = 1; ic <= ncell.x; ic++) {
-    for (jc = 1; jc <= ncell.y; jc++) {
-      for (kc = 1; kc <= ncell.z; kc++) {
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -523,21 +790,20 @@ void CMD_test_particle_energy(const int step) {
   sum[2] = gsum[2];
 #endif
 
-  gsum[0] = sum[0]/Global_Colloid.N_colloid;
-  gsum[1] = sum[1]/Global_Colloid.N_colloid;
-  gsum[2] = sum[2]/Global_Colloid.N_colloid;
+  gsum[0] = sum[0]/get_N_colloid();
+  gsum[1] = sum[1]/get_N_colloid();
+  gsum[2] = sum[2]/get_N_colloid();
 
   info("Mean particle velocities: [x, y, z]\n");
   info("[%g, %g, %g]\n", gsum[0], gsum[1], gsum[2]);
-
 
   sum[0] = 0.0;
   sum[1] = 0.0;
   sum[2] = 0.0;
 
-  for (ic = 1; ic <= ncell.x; ic++) {
-    for (jc = 1; jc <= ncell.y; jc++) {
-      for (kc = 1; kc <= ncell.z; kc++) {
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
@@ -561,80 +827,14 @@ void CMD_test_particle_energy(const int step) {
   sum[2] = gsum[2];
 #endif
 
-  gsum[0] = sum[0]/Global_Colloid.N_colloid;
-  gsum[1] = sum[1]/Global_Colloid.N_colloid;
-  gsum[2] = sum[2]/Global_Colloid.N_colloid;
+  gsum[0] = sum[0]/get_N_colloid();
+  gsum[1] = sum[1]/get_N_colloid();
+  gsum[2] = sum[2]/get_N_colloid();
 
-  info("Particle: %d %g %g %g %g\n", step,
-       mass*gsum[0], mass*gsum[1], mass*gsum[2],
-       mass*(gsum[0] + gsum[1] + gsum[2]));
+  /* Can multiply by mass */
+  info("Particle: %d %g %g %g %g\n", step, gsum[0], gsum[1], gsum[2],
+       (gsum[0] + gsum[1] + gsum[2]));
 
-
-  return;
-}
-
-/*****************************************************************************
- *
- * CMD_do_more_md
- *
- *****************************************************************************/
-
-
-void CMD_do_more_md() {
-
-  int n = 0;
-  double hmin;
-
-  void COLL_zero_forces(void);
-  void COLL_set_colloid_gravity(void);
-
-  do {
-
-    CMD_brownian_set_random();
-
-    CELL_update_cell_lists();
-    CCOM_halo_particles();
-    CCOM_sort_halo_lists();
-
-    COLL_zero_forces();
-    hmin = COLL_interactions();
-    COLL_set_colloid_gravity(); /* Zero force on halo particles! */
-
-    CCOM_halo_sum(CHALO_TYPE1);
-
-    if (n < NMAX_BROWNIAN/10) {
-      CMD_update_colloids(0.0);
-    }
-    else {
-      CMD_brownian_dynamics_step();
-    }
-
-    if ((n % 1000) == 0) {
-      char md_file[64];
-
-#ifdef _MPI_
-      /* Get a global hmin */
-    {
-      double hmin_global = 0.0;
-      MPI_Reduce(&hmin, &hmin_global, 1, MPI_DOUBLE, MPI_MIN, 0, cart_comm());
-      hmin = hmin_global;
-    }
-#endif
-
-      info("BD iteration %d: minimum separation was %f\n", n, hmin);
-      CMD_test_particle_energy(n);
-
-      sprintf(md_file, "%s%6.6d", "config.bd", n/1000);
-      CIO_write_state(md_file);
-
-    }
-
-
-  } while (n++ < NMAX_BROWNIAN);
-
-  CELL_update_cell_lists();
-  CCOM_halo_particles();
-  CCOM_sort_halo_lists();
 
   return;
 }
@@ -653,7 +853,6 @@ void CMD_do_more_md() {
 void CMD_brownian_dynamics_step() {
 
   int     ic, jc, kc;
-  IVector ncell = Global_Colloid.Ncell;
   Colloid * p_colloid;
 
   double ranx, rany, ranz;
@@ -669,39 +868,41 @@ void CMD_brownian_dynamics_step() {
   double get_kT(void);
 
   dt = 1.0;
-  rmass = 1.0/((4.0/3.0)*PI*pow(Global_Colloid.ah, 3.0));
-
-  /* Friction coefficient is xi, and related quantities */
-
-  xi = 6.0*PI*get_eta_shear()*Global_Colloid.ah*rmass;
-  xidt = xi*dt;
-
-  c0 = exp(-xidt);
-  c1 = (1.0 - c0) / xidt;
-  c2 = (1.0 - c1) / xidt;
-
-  c1 *= dt;
-  c2 *= dt*dt;
-
-  /* Random variances */
 
   kT = get_kT();
 
-  sigma_r = sqrt(dt*dt*rmass*kT*(2.0 - (3.0 - 4.0*c0 + c0*c0)/xidt) / xidt);
-  sigma_v = sqrt(rmass*kT*(1.0 - c0*c0));
-
-  c12 = dt*rmass*kT*(1.0 - c0)*(1.0 - c0) / (xidt*sigma_r*sigma_v);
-  c21 = sqrt(1.0 - c12*c12);
-
   /* Update each particle */
 
-  for (ic = 0; ic <= ncell.x + 1; ic++) {
-    for (jc = 0; jc <= ncell.y + 1; jc++) {
-      for (kc = 0; kc <= ncell.z + 1; kc++) {
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
+
+	  rmass = 1.0/((4.0/3.0)*PI*pow(p_colloid->ah, 3.0));
+
+	  /* Friction coefficient is xi, and related quantities */
+
+	  xi = 6.0*PI*get_eta_shear()*p_colloid->ah*rmass;
+	  xidt = xi*dt;
+
+	  c0 = exp(-xidt);
+	  c1 = (1.0 - c0) / xidt;
+	  c2 = (1.0 - c1) / xidt;
+
+	  c1 *= dt;
+	  c2 *= dt*dt;
+
+	  /* Random variances */
+
+	  sigma_r = sqrt(dt*dt*rmass*kT*(2.0 - (3.0 - 4.0*c0 + c0*c0)/xidt)
+			 / xidt);
+	  sigma_v = sqrt(rmass*kT*(1.0 - c0*c0));
+
+	  c12 = dt*rmass*kT*(1.0 - c0)*(1.0 - c0) / (xidt*sigma_r*sigma_v);
+	  c21 = sqrt(1.0 - c12*c12);
 
 	  ranx = p_colloid->random[0];
 	  rany = p_colloid->random[1];
@@ -742,14 +943,13 @@ void CMD_brownian_dynamics_step() {
 void CMD_brownian_set_random() {
 
   int     ic, jc, kc;
-  IVector ncell = Global_Colloid.Ncell;
   Colloid * p_colloid;
 
   /* Set random numbers for each particle */
 
-  for (ic = 1; ic <= ncell.x; ic++) {
-    for (jc = 1; jc <= ncell.y; jc++) {
-      for (kc = 1; kc <= ncell.z; kc++) {
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 

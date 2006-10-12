@@ -5,16 +5,18 @@
  *  Deals with the allocation, etc, of the large arrays holding the
  *  fluid distributions, force, etc.
  *
+ *  $Id: lattice.c,v 1.5 2006-10-12 14:09:18 kevin Exp $
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ***************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "pe.h"
 #include "lattice.h"
-
 
 double * phi_site;
 
@@ -23,39 +25,6 @@ struct vector * fu;       /* The fluid velocity field (at lattice sites). */
 
 
 static double total_bytes;     /* bytes currently allocated */
-
-
-/***************************************************************************
- *
- *  LATT_allocate_sites
- *
- *  Allocate memory for the distributions. If MPI2 is used, then
- *  this must use the appropriate utility to accomodate LE planes.
- *
- ***************************************************************************/
- 
-void LATT_allocate_sites(const int nsites) {
-
-  info("Requesting %d bytes for site data\n", nsites*sizeof(Site));
-
-#ifdef _MPI_2_
- {
-   int ifail;
-
-   ifail = MPI_Alloc_mem(nsites*sizeof(Site), MPI_INFO_NULL, &site);
-   if (ifail == MPI_ERR_NO_MEM) fatal("MPI_Alloc_mem(site) failed\n");
- }
-#else
-
-  /* Use calloc. */
-
-  site = (Site  *) calloc(nsites, sizeof(Site));
-  if (site == NULL) fatal("calloc(site) failed\n");
-
-#endif
-
-  return;
-}
 
 /****************************************************************************
  *
@@ -110,6 +79,43 @@ void LATT_allocate_force(const int nsite) {
 
   return;
 }
+
+/****************************************************************************
+ *
+ *  set_force_at_site
+ *
+ *  Set the fluid force at site index
+ *
+ ****************************************************************************/
+
+void set_force_at_site(const int index, double force[3]) {
+
+  int n;
+
+  assert(fl_force[index].c);
+  for (n = 0; n < 3; n++) fl_force[index].c[n] = force[n];
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  add_force_at_site
+ *
+ *  Accumulate the fluid force at site index
+ *
+ ****************************************************************************/
+
+void add_force_at_site(const int index, double force[3]) {
+
+  int n;
+
+  assert(fl_force[index].c);
+  for (n = 0; n < 3; n++) fl_force[index].c[n] += force[n];
+
+  return;
+}
+
 
 /***************************************************************************
  *

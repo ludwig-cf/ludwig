@@ -1,9 +1,8 @@
 /*****************************************************************************
  *
- *  This is a wrapper for the LB model.
+ *  model.h
  *
- *  The choice is currently _D3Q15_ (default) or _D3Q19_. See the files
- *  d3qNVEL.c for the actual definitions.
+ *  $Id: model.h,v 1.6 2006-10-12 14:09:18 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -12,23 +11,36 @@
 #ifndef _MODEL_H
 #define _MODEL_H
 
-double  MODEL_get_rho_at_site(const int);
-double  MODEL_get_phi_at_site(const int);
-FVector MODEL_get_momentum_at_site(const int);
-void    MODEL_init( void );
-void    MODEL_finish( void );
-void    MODEL_get_gradients( void );
-void    MODEL_calc_rho( void );
-void    MODEL_calc_phi( void );
-void    get_fluctuations_stress(double shat[3][3]);
-void   RAND_init_fluctuations(void);
-void    MODEL_collide_multirelaxation(void);
-void     MISC_curvature(void);
-void     MISC_set_mean_phi(double);
-double    MISC_fluid_volume(void);
-double    get_eta_shear(void);
-double    get_kT(void);
-double    get_rho0(void);
-double    get_phi0(void);
+#ifdef _D3Q19_
+  #include "d3q19.h"
+#else
+  #include "d3q15.h"
+#endif
 
-#endif /* _MODEL_H_ */
+typedef struct {
+  double f[NVEL], g[NVEL];
+} Site;
+
+extern const double rcs2;
+extern const double d_[3][3];
+
+void   model_init(void);
+void   allocate_site(const int);
+
+double get_eta_shear(void);
+double get_eta_bulk(void);
+double get_kT(void);
+double get_rho0(void);
+double get_phi0(void);
+
+double get_f_at_site(const int, const int);
+double get_g_at_site(const int, const int);
+double get_rho_at_site(const int);
+double get_phi_at_site(const int);
+void   set_rho(const double, const int);
+void   set_phi(const double, const int);
+void   set_f_at_site(const int, const int, const double);
+void   set_g_at_site(const int, const int, const double);
+void   set_rho_u_at_site(const double, const double [], const int);
+
+#endif

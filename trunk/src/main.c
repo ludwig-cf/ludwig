@@ -6,29 +6,32 @@
  *
  *****************************************************************************/
 
+#include <stdio.h>
+
 #include "pe.h"
 #include "runtime.h"
 #include "ran.h"
 #include "timer.h"
 #include "coords.h"
-#include "cartesian.h"
 #include "control.h"
 #include "free_energy.h"
-
-#include "utilities.h"
 #include "model.h"
+#include "bbl.h"
+
 #include "colloids.h"
+#include "collision.h"
 #include "test.h"
 #include "wall.h"
 #include "communicate.h"
 #include "leesedwards.h"
+#include "interaction.h"
+#include "propagation.h"
 
 #include "lattice.h"
-#include "cmem.h"
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.6 2006-08-04 18:04:43 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.7 2006-10-12 14:09:18 kevin Exp $";
 
 
 int main( int argc, char **argv )
@@ -41,7 +44,6 @@ int main( int argc, char **argv )
    *    - communications (MPI)
    *    - random number generation (serial RNG and parallel fluctuations)
    *    - model fields
-   *    - utilities
    *    - simple walls 
    *    - colloidal particles */
 
@@ -55,7 +57,6 @@ int main( int argc, char **argv )
     RUN_read_input_file("input");
   }
   coords_init();
-  cart_init();
   init_control();
 
   COM_init( argc, argv );
@@ -66,7 +67,7 @@ int main( int argc, char **argv )
   ran_init();
   RAND_init_fluctuations();
   MODEL_init();
-  WALL_init();
+  wall_init();
   COLL_init();
 
   init_free_energy();
@@ -75,7 +76,6 @@ int main( int argc, char **argv )
 
   TEST_statistics();
   TEST_momentum();
-
 
   /* Main time stepping loop */
 
@@ -92,35 +92,25 @@ int main( int argc, char **argv )
     }
 #endif
 
-#ifdef _COLLOIDS_
-
-    COM_halo();
+    latt_zero_force();
     COLL_update();
-    COLL_forces();
+    wall_update();
 
     MODEL_collide_multirelaxation();
+
+    LE_apply_LEBC();
     COM_halo();
 
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
 
-    COLL_bounce_back();
+    bounce_back_on_links();
+    wall_bounce_back();
 
-    /* There must be no halo updates between COLL_bounce_back
-     *  and propagation, as the halo regions hold active f,g */
+    /* There must be no halo updates between bounce back
+     * and propagation, as the halo regions hold active f,g */
 
     propagation();
-
-#else
-    /* No colloids */
-
-    MODEL_collide_multirelaxation();
-
-    LE_apply_LEBC();
-
-    COM_halo();
-    propagation();
-#endif /* _COLLOIDS_ */
 
     TIMER_stop(TIMER_STEPS);
 
@@ -155,28 +145,26 @@ int main( int argc, char **argv )
 #ifdef _NOISE_
       TEST_fluid_temperature();
 #endif
-#ifdef _COLLOIDS_
-      CMEM_report_memory();
-#endif
+
       info("\nCompleted cycle %d\n", step);
     }
 
     /* Next time step */
   }
 
-  /* Finalise the following:
-   *   - dump the final configuration
-   *   - LE parameters (required?)
-   *   - dump final colloid configuration and dellocate
-   *   - close down model
-   *   - terminate communications */
 
+  /* Dump the final configuration if required. */
 
-  COM_write_site(get_output_config_filename(step), MODEL_write_site);
-  LE_print_params();
-  sprintf(filename, "%s%6.6d", "config.cds", step);
-  CIO_write_state(filename);
+  if (is_config_at_end()) {
+    COM_write_site(get_output_config_filename(step), MODEL_write_site);
+    sprintf(filename, "%s%6.6d", "config.cds", step);
+    CIO_write_state(filename);
+  }
+
+  /* Shut down cleanly. Give the timer statistics. Finalise PE. */
+
   COLL_finish();
+  wall_finish();
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();

@@ -1,27 +1,29 @@
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
 #include "pe.h"
 #include "runtime.h"
 #include "timer.h"
 #include "coords.h"
-#include "cartesian.h"
 #include "control.h"
+#include "model.h"
 
 #include "utilities.h"
 #include "lattice.h"
-#include "model.h"
+#include "collision.h"
 #include "leesedwards.h"
 
-static int    LE_cmpLEBC( const void *, const void * );
-static void   LE_print_LEbuffers( void );
-
+extern Site * site;
+extern double q_[NVEL][3][3];
 extern double * phi_site;
-extern double _q[NVEL][3][3];
+
 
 #ifdef _MPI_
 
 extern MPI_Datatype DT_FVector;
 extern MPI_Datatype DT_Site;
-extern MPI_Op       OP_AddFVector;
 
 static MPI_Comm     LeesEdw_Comm;/* Communicator for Lees-Edwards (LE) RMA */
 static MPI_Comm     X_PEs_Comm;  /* Communicator for Lees-Edwards (X row) */
@@ -47,6 +49,9 @@ static Float      *LeesEdw_phi;
 static int        N_LE_plane;
 static int        N_LE_total = 0;
 static LE_Plane * LeesEdw = NULL;
+
+static int    LE_cmpLEBC( const void *, const void * );
+static void   LE_print_LEbuffers( void );
 
 /*****************************************************************************
  *
@@ -135,12 +140,9 @@ void LE_apply_LEBC( void )
   Float rho, phi, ds[3][3], dsphi[3][3], udotc, jdotc, sdotq, sphidotq;
   FVector u,du,jphi,djphi;
 
-  const Float rcs2   = 3.0;         /* The constant 1 / c_s^2 */
   const Float r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   int p,side;
-
-  LUDWIG_ENTER("LE_apply_LEBC()");
 
   if (N_LE_plane == 0) {
     VERBOSE(("LE_apply_LEBC(): no walls present\n"));
@@ -216,8 +218,8 @@ void LE_apply_LEBC( void )
 	  g = site[ind].g;
 
 	  /* Compute 0th and 1st moments */
-	  rho = MODEL_get_rho_at_site(ind);
-	  phi = MODEL_get_phi_at_site(ind);
+	  rho = get_rho_at_site(ind);
+	  phi = get_phi_at_site(ind);
 	  u   = MODEL_get_momentum_at_site(ind);
 
 	  jphi.x = 0.0;
@@ -271,8 +273,8 @@ void LE_apply_LEBC( void )
 	      
 	    for (i = 0; i < 3; i++) {
 	      for (j = 0; j < 3; j++) {
-		sdotq += ds[i][j]*_q[p][i][j];
-		sphidotq += dsphi[i][j]*_q[p][i][j];
+		sdotq += ds[i][j]*q_[p][i][j];
+		sphidotq += dsphi[i][j]*q_[p][i][j];
 	      }
 	    }
 	      
@@ -387,8 +389,6 @@ void LE_init( void )
   int     offset[3];
   int     gr_rank;
 
-  LUDWIG_ENTER("LE_init()");
-
   get_N_local(N);
   get_N_offset(offset);
   gr_rank = cart_rank();
@@ -422,7 +422,7 @@ void LE_init( void )
    * if a plane is located at the edge of the local box (i.e., X==0 or X==N[X]):
    * not allowed!
    */
-  flag = TRUE;
+  flag = 1;
 
   N_LE_plane = 0;
   LeesEdw_plane = (LE_Plane *)NULL;
@@ -459,7 +459,7 @@ void LE_init( void )
 	  if( (LeesEdw[i].loc == offset[X]) ||
 	      (LeesEdw[i].loc == (offset[X]+N[X])))
 	    {
-	      flag = FALSE;
+	      flag = 0;
 	      /* One warning per offending wall is sufficient! */
 	      if( (cart_coords(Y)==0) && (cart_coords(Z)==0) ){
 		verbose("LE_init(): Lees-Edwards plane at a PE boundary!\n");
@@ -472,7 +472,7 @@ void LE_init( void )
 
   /* Abort if any of the PEs has one or more walls at its domain boundary */
   MPI_Allreduce(&flag, &gblflag, 1, MPI_INT, MPI_LAND, cart_comm());
-  if(gblflag == FALSE){
+  if(gblflag == 0){
     fatal("LE_init(): wall at domain boundary\n");
   }
   
@@ -563,8 +563,6 @@ void LE_init( void )
     }
   
 #else  /* Serial */
-
-  LUDWIG_ENTER("LE_init()");
 
   get_N_local(N);
   
@@ -735,8 +733,6 @@ void LE_update_buffers( int target_buff )
   MPI_Request req[4];
   MPI_Status status[4];
 #endif /* _MPI_ */
-
-  LUDWIG_ENTER("LE_update_buffers()");
 
   if (N_LE_total == 0) {
     VERBOSE(("LE_update_buffers(): no planes present\n"));
@@ -1335,8 +1331,6 @@ void LE_print_params( void )
   int rank, colour, *displ;
   int nplanes, i, j;
 
-  LUDWIG_ENTER("LE_print_params()");
-
   /* Abort if no LE walls are present */
   if (N_LE_total==0) {
     VERBOSE(("LE_print_params(): no walls present\n"));
@@ -1394,8 +1388,6 @@ void LE_print_params( void )
 #else /* Serial */
 
   int i;
-
-  LUDWIG_ENTER("LE_print_params()");
 
   /* No walls, no output */
   if (N_LE_total == 0){
@@ -1546,8 +1538,6 @@ void MODEL_get_gradients( void )
 
   extern double  * delsq_phi;
   extern FVector * grad_phi;
-
-  LUDWIG_ENTER("MODEL_get_gradients()");
 
   get_N_local(N);
   xfac = (N[Y]+2)*(N[Z]+2);
