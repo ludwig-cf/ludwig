@@ -3,6 +3,17 @@ Changes
 Log file for changes to the code.
 =================================
 
+
+2006 October 16th kevin
+
+* Fixed a problem in the Monte Carlo initialisation.
+
+* Moved a number of routines dealing with particle-particle
+  interactions to new file potential.c
+
+* Slightly different restrictions on number of cells in
+  each direction: 3 for periodic directions; 1 for non-periodic.
+
 2006 October 2nd kevin
 
 * Major ongoing organisational changes:
