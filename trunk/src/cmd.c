@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.7 2006-10-12 14:09:18 kevin Exp $
+ *  $Id: cmd.c,v 1.8 2006-10-18 17:48:05 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -19,12 +19,10 @@
 #include "ccomms.h"
 #include "runtime.h"
 #include "model.h"
+#include "potential.h"
 
 #include "colloids.h"
 #include "interaction.h"
-
-#define ENERGY_HARD_SPHERE 10.0
-#define ENERGY_HARD_WALL   2000.0
 
 static void CMD_reset_particles(const double);
 static void CMD_brownian_dynamics_step(void);
@@ -32,10 +30,9 @@ static void CMD_brownian_set_random(void);
 static void CMD_test_particle_energy(const int);
 
 static void do_monte_carlo(const int);
-static void mc_move(void);
+static void mc_move(const double);
 static void mc_init_random(const int, const double, const double);
 static void mc_set_proposed_move(const double);
-static void mc_recover(void);
 static void mc_check_state(void);
 static void mc_mean_square_displacement(void);
 static int  mc_metropolis(double);
@@ -44,7 +41,7 @@ static double mc_total_energy(void);
 
 static double vf_max_ = 0.60;
 static double mc_max_exp_ = 100.0;
-static double mc_drmax_ = 0.001;
+static double mc_drmax_;
 
 /*****************************************************************************
  *
@@ -102,6 +99,12 @@ void CMD_init_volume_fraction(int nradius, int flag) {
   n = 0;
   RUN_get_int_parameter("colloid_mc_steps", &n);
 
+  /* Set maximum Monte-Carlo move */
+
+  mc_drmax_ = dmin(Lcell(X), Lcell(Y));
+  mc_drmax_ = dmin(Lcell(Z), mc_drmax_);
+  mc_drmax_ = 0.5*(mc_drmax_ - 2.0*ah - get_max_potential_range());
+
   if (n > 0) do_monte_carlo(n);
 
   mc_check_state();
@@ -125,57 +128,53 @@ void do_monte_carlo(const int mc_max_iterations) {
 
   int    ntrials = 0;
   int    naccept = 0;
-  int    accepted = 1;
+  int    accepted;
   double drmax, rate;
   double etotal_old, etotal_new;
 
   drmax = mc_drmax_;
 
-  etotal_old = mc_total_energy();
-
-  mc_set_proposed_move(drmax);
-
   cell_update();
   CCOM_halo_particles();
 
+  etotal_old = mc_total_energy();
+
   do {
 
-    /* Move the particles and set a proposed move for the next step. */
-    mc_move();
+    /* A proposed move for the next step must be communicated. */
+    ntrials++;
     mc_set_proposed_move(drmax);
-
-    cell_update();
     CCOM_halo_particles();
 
+    /* Move particles and calculate proposed new energy */
+    mc_move(+1.0);
+ 
     etotal_new = mc_total_energy();
     accepted = mc_metropolis(etotal_new - etotal_old);
 
-    /* Report */
-    ntrials++;
+    if (accepted) {
+      /* The particles really move, so update the cell list */
+      etotal_old = etotal_new;
+      naccept++;
+      cell_update();
+    }
+    else {
+      /* Just role back to the old positions everywhere */
+      mc_move(-1.0);
+    }
 
     /* Adapt. */
     rate = naccept / 10.0;
     if ((ntrials % 10) == 0) {
-      if (rate < 0.45) drmax = drmax*0.95;
-      if (rate > 0.55) drmax = drmax*1.05;
       info("Monte Carlo step %d rate = %d drmax = %f et = %f %f\n", ntrials,
 	   naccept, drmax, etotal_old, etotal_new);
+      if (rate < 0.45) drmax = drmax*0.95;
+      if (rate > 0.55) drmax = drmax*1.05;
+      drmax = dmin(drmax, mc_drmax_);
       naccept = 0;
     }
 
-    if (accepted) {
-      /* ok */
-      etotal_old = etotal_new;
-      naccept++;
-    }
-    else {
-      mc_recover();
-      cell_update();
-      CCOM_halo_particles();
-    }
-
-    /* The last move must be accepted */
-  } while (ntrials < mc_max_iterations || !accepted);
+  } while (ntrials < mc_max_iterations);
 
   return;
 }
@@ -213,9 +212,7 @@ int mc_metropolis(double delta) {
  *
  *  mc_set_proposed_move
  *
- *  Rotate the previous updates (need to be recovered if move rejected)
- *  and generate a new one. The maximum displacement per coordinate
- *  direction is drmax.
+ *  Generate a random update for real domain particles.
  *
  *****************************************************************************/
 
@@ -224,15 +221,7 @@ void mc_set_proposed_move(const double drmax) {
   int       ic, jc, kc, n;
   Colloid * p_colloid;
 
-  /* Moves of subsets 
-  int movelist[100];
-  int nc = get_N_colloid();
-
-  for (n = 0; n < 50; n++) {
-    movelist[n] = 1 + ran_serial_uniform()*nc;
-    assert(movelist[n] > 0 && movelist[n] <= nc);
-  }
-  */
+  double mc_move_prob_ = 0.05;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -242,13 +231,16 @@ void mc_set_proposed_move(const double drmax) {
 
 	while (p_colloid) {
 
-	  p_colloid->random[3] = p_colloid->random[0];
-	  p_colloid->random[4] = p_colloid->random[1];
-	  p_colloid->random[5] = p_colloid->random[2];
-
-	  p_colloid->random[0] = drmax*(2.0*ran_parallel_uniform() - 1.0);
-	  p_colloid->random[1] = drmax*(2.0*ran_parallel_uniform() - 1.0);
-	  p_colloid->random[2] = drmax*(2.0*ran_parallel_uniform() - 1.0);
+	  if (ran_parallel_uniform() < mc_move_prob_) {
+	    p_colloid->random[0] = drmax*(2.0*ran_parallel_uniform() - 1.0);
+	    p_colloid->random[1] = drmax*(2.0*ran_parallel_uniform() - 1.0);
+	    p_colloid->random[2] = drmax*(2.0*ran_parallel_uniform() - 1.0);
+	  }
+	  else {
+	    p_colloid->random[0] = 0.0;
+	    p_colloid->random[1] = 0.0;
+	    p_colloid->random[2] = 0.0;
+	  }
 
 	  p_colloid = p_colloid->next;
 	}
@@ -263,11 +255,11 @@ void mc_set_proposed_move(const double drmax) {
  *
  *  mc_move
  *
- *  Actual Monte Carlo position update
+ *  Actual Monte Carlo position update (all particles).
  *
  ****************************************************************************/
 
-void mc_move() {
+void mc_move(const double sign) {
 
   int       ic, jc, kc;
   Colloid * p_colloid;
@@ -280,43 +272,9 @@ void mc_move() {
 
 	while (p_colloid) {
 
-	  p_colloid->r.x += p_colloid->random[0];
-	  p_colloid->r.y += p_colloid->random[1];
-	  p_colloid->r.z += p_colloid->random[2];
-
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  mc_recover
- *
- *  If a Monte Carlo move is rejected, it must be reversed.
- *
- *****************************************************************************/
-
-void mc_recover() {
-
-  int       ic, jc, kc;
-  Colloid * p_colloid;
-
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-
-	  p_colloid->r.x -= p_colloid->random[3];
-	  p_colloid->r.y -= p_colloid->random[4];
-	  p_colloid->r.z -= p_colloid->random[5];
+	  p_colloid->r.x += sign*p_colloid->random[0];
+	  p_colloid->r.y += sign*p_colloid->random[1];
+	  p_colloid->r.z += sign*p_colloid->random[2];
 
 	  p_colloid = p_colloid->next;
 	}
@@ -372,8 +330,8 @@ double mc_total_energy() {
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
   double etot = 0.0;
   double h;
-  double hard_sphere_energy(const double h);
-  double hard_wall(Colloid *);
+  double hard_sphere_energy(const double);
+  double hard_wall_energy(const FVector, const double);
 
   FVector r_12;
   FVector COLL_fvector_separation(FVector, FVector);
@@ -386,7 +344,7 @@ double mc_total_energy() {
 
 	while (p_c1) {
 
-	  etot += hard_wall(p_c1);
+	  etot += hard_wall_energy(p_c1->r, p_c1->ah);
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
@@ -441,46 +399,29 @@ double mc_total_energy() {
 
 /*****************************************************************************
  *
- *  hard_sphere
- *
- *  Return energy of hard-sphere interaction.
- *
- *****************************************************************************/
-
-double hard_sphere_energy(const double h) {
-
-  double e = 0.0;
-
-  if (h <= 0.0) e = ENERGY_HARD_SPHERE;
-
-  return e;
-}
-
-/*****************************************************************************
- *
- *  hard_wall
+ *  hard_wall_energy
  *
  *  Return particle-hard-wall 'energy' if there is an overlap.
  *
  *****************************************************************************/
 
-double hard_wall(Colloid * p_coll) {
+double hard_wall_energy(const FVector r, const double ah) {
 
   double etot = 0.0;
 
   if (is_periodic(X) == 0) {
-    if ((p_coll->r.x - p_coll->ah) < Lmin(X)) etot += ENERGY_HARD_WALL;
-    if ((p_coll->r.x + p_coll->ah) > Lmin(X) + L(X)) etot += ENERGY_HARD_WALL;
+    if ((r.x - ah) < Lmin(X)) etot += ENERGY_HARD_SPHERE;
+    if ((r.x + ah) > Lmin(X) + L(X)) etot += ENERGY_HARD_SPHERE;
   }
 
   if (is_periodic(Y) == 0) {
-    if ((p_coll->r.y - p_coll->ah) < Lmin(Y)) etot += ENERGY_HARD_WALL;
-    if ((p_coll->r.y + p_coll->ah) > Lmin(Y) + L(Y)) etot += ENERGY_HARD_WALL;
+    if ((r.y - ah) < Lmin(Y)) etot += ENERGY_HARD_SPHERE;
+    if ((r.y + ah) > Lmin(Y) + L(Y)) etot += ENERGY_HARD_SPHERE;
   }
 
   if (is_periodic(Z) == 0) {
-    if ((p_coll->r.z - p_coll->ah) < Lmin(Z)) etot += ENERGY_HARD_WALL;
-    if ((p_coll->r.z + p_coll->ah) > Lmin(Z) + L(Z)) etot += ENERGY_HARD_WALL;
+    if ((r.z - ah) < Lmin(Z)) etot += ENERGY_HARD_SPHERE;
+    if ((r.z + ah) > Lmin(Z) + L(Z)) etot += ENERGY_HARD_SPHERE;
   }
 
   return etot;
