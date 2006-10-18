@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.5 2006-10-12 14:09:18 kevin Exp $
+ *  $Id: interaction.c,v 1.6 2006-10-18 17:48:05 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -19,6 +19,7 @@
 
 #include "active.h"
 #include "build.h"
+#include "potential.h"
 
 #include "colloids.h"
 #include "interaction.h"
@@ -70,24 +71,6 @@ struct lubrication_struct {
   double cutoff_norm;  /* Normal */
   double cutoff_tang;  /* Tangential */
 } lubrication;
-
-static struct soft_sphere_potential_struct {
-  int on;
-  double epsilon;
-  double sigma;
-  double nu;
-  double cutoff;
-} soft_sphere;
-
-
-/*
-struct leonard_jones_potential {
-  int leonard_jones_on;
-  double sigma;
-  double epsilon;
-  double cutoff;
-}
-*/
 
 /*****************************************************************************
  *
@@ -153,7 +136,6 @@ void COLL_init() {
 
   void CMD_init_volume_fraction(int, int);
   void lubrication_init(void);
-  void soft_sphere_init(void);
   void check_interactions(const double);
 
   /* Default position: no colloids */
@@ -822,49 +804,6 @@ double COLL_interactions() {
 
 /*****************************************************************************
  *
- *  soft_sphere_init
- *
- *  Initialise the parameters for the soft-sphere interaction between
- *  colloids.
- *
- *****************************************************************************/
-
-void soft_sphere_init() {
-
-  int n;
-
-  info("\nColloid-colloid soft-sphere potential\n");
-
-  n = RUN_get_int_parameter("soft_sphere_on", &soft_sphere.on);
-  info((n == 0) ? "[Default] " : "[User   ] ");
-  info("Soft sphere potential is switched %s\n",
-       (soft_sphere.on == 0) ? "off" : "on");
-
-  if (soft_sphere.on) {
-    n = RUN_get_double_parameter("soft_sphere_epsilon", &soft_sphere.epsilon);
-    info((n == 0) ? "[Default] " : "[User   ] ");
-    info("Soft-sphere energy (epsilon) is %f (%f kT)\n", soft_sphere.epsilon,
-	 soft_sphere.epsilon/get_kT());
-
-    n = RUN_get_double_parameter("soft_sphere_sigma", &soft_sphere.sigma);
-    info((n == 0) ? "[Default] " : "[User   ] ");
-    info("Soft-sphere width (sigma) is %f\n", soft_sphere.sigma);
-
-    n = RUN_get_double_parameter("soft_sphere_nu", &soft_sphere.nu);
-    info((n == 0) ? "[Default] " : "[User   ] ");
-    info("Soft-sphere exponent (nu) is %f\n", soft_sphere.nu);
-    if (soft_sphere.nu <= 0.0) fatal("Please check nu is positive\n");
-
-    n = RUN_get_double_parameter("soft_sphere_cutoff", &soft_sphere.cutoff);
-    info((n == 0) ? "[Default] " : "[User   ] ");
-    info("Soft-sphere cutoff range is %f\n", soft_sphere.cutoff);
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  check_interactions
  *
  *  Check the cell list width against the current interaction cut-off
@@ -887,7 +826,7 @@ void check_interactions(double ahmax) {
   rc = 2.0*ahmax + lubrication.cutoff_tang;
   rmax = dmax(rmax, rc);
 
-  rc = 2.0*ahmax + soft_sphere.cutoff;
+  rc = 2.0*ahmax + get_max_potential_range();
   rmax = dmax(rmax, rc);
 
   /* Check against the cell list */
@@ -907,59 +846,27 @@ void check_interactions(double ahmax) {
     info("The minimum cell width is %f (ok)\n", lmin);
   }
 
+  /* Check number of cells */
+
+  if (is_periodic(X) && Ncell(X) < 3) {
+    info("Please check number of cells in the X-direction (currrently %d)\n",
+	 Ncell(X));
+    fatal("Must be at least three in periodic directions.\n");
+  }
+
+  if (is_periodic(Y) && Ncell(Y) < 3) {
+    info("Please check number of cells in the Y-direction (currrently %d)\n",
+	 Ncell(Y));
+    fatal("Must be at least three in periodic directions.\n");
+  }
+
+  if (is_periodic(Z) && Ncell(Z) < 3) {
+    info("Please check number of cells in the Z-direction (currrently %d)\n",
+	 Ncell(Z));
+    fatal("Must be at least three in periodic directions.\n");
+  }
+
   return;
-}
-
-/*****************************************************************************
- *
- *  soft_sphere_energy
- *
- *  Return the energy of interaction between two particles with
- *  (surface-surface) separation h.
- *
- *****************************************************************************/
-
-double soft_sphere_energy(const double h) {
-
-  double e = 0.0;
-
-  if (soft_sphere.on) {
-    double hc = soft_sphere.cutoff;
-    double nu = soft_sphere.nu;
-
-    if (h > 0 && h < hc) {
-      e = pow(h, -nu) - pow(hc, -nu)*(1.0 - (h-hc)*nu/hc);
-      e = e*soft_sphere.epsilon*pow(soft_sphere.sigma, nu);
-    }
-  }
-
-  return e;
-}
-
-/*****************************************************************************
- *
- *  soft_sphere_force
- *
- *  Return the magnitude of the 'soft-sphere' interaction force between
- *  two particles with (surface-surface) separation h.
- *
- ****************************************************************************/
-
-double soft_sphere_force(const double h) {
-
-  double f = 0.0;
-
-  if (soft_sphere.on) {
-    double hc = soft_sphere.cutoff;
-    double nu = soft_sphere.nu;
-
-    if (h > 0 && h < hc) {
-      f = pow(h, -(nu+1)) - pow(hc, -(nu+1));
-      f = f*soft_sphere.epsilon*pow(soft_sphere.sigma, nu)*nu;
-    }
-  }
-
-  return f;
 }
 
 /*****************************************************************************
