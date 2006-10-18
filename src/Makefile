@@ -18,7 +18,7 @@
 OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
       active.o cio.o cmd.o ccomms.o \
       colloids.o bbl.o build.o communicate.o coords.o control.o \
-      eigen3.o free_energy.o interaction.o \
+      eigen3.o free_energy.o interaction.o potential.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
       test.o timer.o utilities.o wall.o main.o
 
@@ -33,8 +33,8 @@ EXE= Ludwig.exe
 CC= cc
 MPICC= tmcc
 
-LDFLAGS= -Xc -v -errwarn -fast
-OPTS = -D_D3Q15_
+LDFLAGS= -Xc -v -errwarn
+OPTS = -D_D3Q15_ -D_SINGLE_FLUID_
 
 # For Sun perflib use -xlic_lib=sunperf
 
