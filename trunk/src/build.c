@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.1 2006-10-12 13:55:21 kevin Exp $
+ *  $Id: build.c,v 1.2 2006-12-20 16:58:24 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -17,6 +17,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "physics.h"
 #include "model.h"
 #include "timer.h"
 #include "colloids.h"
@@ -25,7 +26,6 @@
 
 extern Site * site;
 extern char * site_map;
-extern FVector MODEL_get_momentum_at_site(const int);
 extern int     boundaries_present(void);
 
 
@@ -597,6 +597,7 @@ void COLL_remove_binary_fluid(int inode, Colloid * p_colloid) {
 
   double   oldrho;
   double   oldphi;
+  double   tmp[ND];
   FVector oldu;
 
   IVector ri;
@@ -611,7 +612,10 @@ void COLL_remove_binary_fluid(int inode, Colloid * p_colloid) {
 
   oldrho = get_rho_at_site(inode);
   oldphi = get_phi_at_site(inode);
-  oldu   = MODEL_get_momentum_at_site(inode);
+  get_momentum_at_site(inode, tmp);
+  oldu.x = tmp[X];
+  oldu.y = tmp[Y];
+  oldu.z = tmp[Z];
 
   /* Set the corrections for colloid motion. This requires
    * the local boundary vector rb */
