@@ -13,7 +13,7 @@ typedef struct{
   char *file_ext;                /* Filename suffix for parallel output */
 } IO_Param;
 
-void    COM_init( int, char ** );
+void    COM_init( void );
 void    COM_halo( void );
 void    COM_halo_phi( void );
 int     COM_local_index( int );

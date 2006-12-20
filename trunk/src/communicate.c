@@ -14,7 +14,7 @@
 #include "communicate.h"
 
 extern Site * site;
-
+extern double * phi_site;
 
 IO_Param     io_grp;      /* Parameters of current IO group */
 
@@ -38,7 +38,6 @@ void (*MODEL_write_site)( FILE *, int, int );
 void (*MODEL_write_phi)( FILE *, int, int );
 
 
-static void COM_halo_rho( void );
 static void    MODEL_read_site_asc( FILE * );
 static void    MODEL_read_site_bin( FILE * );
 static void    MODEL_write_site_asc( FILE *, int, int );
@@ -55,16 +54,11 @@ static void    MODEL_write_rho_phi_bin( FILE *, int, int );
 
 /* MPI-specific functions and variables */
 
-static MPI_Datatype DT_plane_XY; /* MPI datatype defining XY plane */
-static MPI_Datatype DT_plane_XZ; /* MPI datatype defining XZ plane */
-static MPI_Datatype DT_plane_YZ; /* MPI datatype defining YZ plane */
 static MPI_Datatype DT_Float_plane_XY;/* MPI Datatype: XY plane of Floats */
 static MPI_Datatype DT_Float_plane_XZ;/* MPI Datatype: XZ plane of Floats */
 static MPI_Datatype DT_Float_plane_YZ;/* MPI Datatype: YZ plane of Floats */
 
 MPI_Comm     IO_Comm;     /* Communicator for parallel IO groups */
-MPI_Datatype DT_Site;     /* MPI Datatype for type Site */
-
 /* MPI tags */
 enum{                            
   TAG_HALO_SWP_X_BWD = 100,
@@ -78,292 +72,6 @@ enum{
 
 #endif /* _MPI_ */
 
-
-/*---------------------------------------------------------------------------*\
- * void COM_halo( void )                                                     * 
- *                                                                           *
- * Halos data to neighbouring PEs -- or if serial code, to its periodic      *
- * image                                                                     *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _MPI_, _TRACE_                                                   *
- *                                                                           *
- * Last Updated: 04/01/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
-
-void COM_halo( void )
-{
-  int i, j, k;
-  int  xfac, yfac;
-  int N[3];
-
-#ifdef _MPI_
-
-  int nyz2, nxy2z2;
-
-  MPI_Request req[4];
-  MPI_Status status[4];
-
-  TIMER_start(TIMER_HALO_LATTICE);
-
-  get_N_local(N);
-  yfac = N[Z]+2;
-  nyz2 = N[Y]*yfac;
-  xfac = (N[Y]+2)*yfac;
-  nxy2z2 = N[X]*xfac;
-  
-  /* Swap (YZ) plane: one contiguous block in memory */
-  
-  /* Particular case where source_PE == destination_PE (although MPI should
-     cope with it by itself) */
-
-  if(cart_size(X) == 1) {
-    for(j=0;j<=N[Y]+1;j++)
-      for(k=0;k<=N[Z]+1;k++) {
-	site[                j*yfac + k] = site[N[X]*xfac + j*yfac + k];
-	site[(N[X]+1)*xfac + j*yfac + k] = site[     xfac + j*yfac + k];
-      }
-  }
-  else {   
-    MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
-	       TAG_HALO_SWP_X_BWD, cart_comm(), &req[0]);
-    MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ,
-	      cart_neighb(FORWARD,X),
-	      TAG_HALO_SWP_X_BWD, cart_comm(), &req[1]);
-    MPI_Issend(&site[nxy2z2].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
-	       TAG_HALO_SWP_X_FWD, cart_comm(), &req[2]);
-    MPI_Irecv(&site[0].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
-	      TAG_HALO_SWP_X_FWD, cart_comm(), &req[3]);
-    MPI_Waitall(4,req,status); /* Necessary to propagate corners */
-  }
-  
-  /* Swap (XZ) plane: N[X]+2 blocks of N[Z]+2 sites (stride=(N[Y]+2)*(N[Z]+2)) */
-
-  if(cart_size(Y) == 1)
-    {
-      for(i=0;i<=N[X]+1;i++)
-	for(k=0;k<=N[Z]+1;k++)
-	  {
-	    site[i*xfac                 + k] = site[i*xfac + N[Y]*yfac + k];
-	    site[i*xfac + (N[Y]+1)*yfac + k] = site[i*xfac +      yfac + k];
-	  }
-    }
-  else
-    {
-      MPI_Issend(&site[yfac].f[0], 1, DT_plane_XZ,
-		 cart_neighb(BACKWARD,Y), TAG_HALO_SWP_Y_BWD, cart_comm(),
-		 &req[0]);
-      MPI_Irecv(&site[(N[Y]+1)*yfac].f[0], 1, DT_plane_XZ,
-		cart_neighb(FORWARD,Y), TAG_HALO_SWP_Y_BWD, cart_comm(),
-		&req[1]);
-      MPI_Issend(&site[nyz2].f[0], 1, DT_plane_XZ, cart_neighb(FORWARD,Y),
-		 TAG_HALO_SWP_Y_FWD, cart_comm(), &req[2]);
-      MPI_Irecv(&site[0].f[0], 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
-		TAG_HALO_SWP_Y_FWD, cart_comm(), &req[3]);
-      MPI_Waitall(4,req,status); /* Necessary to propagate corners */
-    }
-  
-  /* Swap (XY) plane: (N[X]+2)*(N[Y]+2) blocks of 1 site (stride=N[Z]+2) */
-  if(cart_size(Z) == 1)
-    {
-      for(i=0;i<=N[X]+1;i++)
-	for(j=0;j<=N[Y]+1;j++)
-	  {
-	    site[i*xfac + j*yfac           ] = site[i*xfac + j*yfac + N[Z]];
-	    site[i*xfac + j*yfac + N[Z] + 1] = site[i*xfac + j*yfac + 1   ];
-	  }
-    }
-  else
-    {
-      MPI_Issend(site[1].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
-		 TAG_HALO_SWP_Z_BWD, cart_comm(), &req[0]);
-      MPI_Irecv(site[N[Z]+1].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
-		TAG_HALO_SWP_Z_BWD, cart_comm(), &req[1]);
-      MPI_Issend(site[N[Z]].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
-		 TAG_HALO_SWP_Z_FWD, cart_comm(), &req[2]);  
-      MPI_Irecv(site[0].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
-		TAG_HALO_SWP_Z_FWD, cart_comm(), &req[3]);
-      MPI_Waitall(4,req,status);
-    }
-
-#else /* Serial section */
-  
-  TIMER_start(TIMER_HALO_LATTICE);
-  
-  get_N_local(N);
-  yfac = N[Z]+2;
-  xfac = (N[Y]+2)*yfac;
-  
-  for (i = 1; i <= N[X]; i++)
-    for (j = 1; j <= N[Y]; j++) {
-      site[i*xfac + j*yfac           ] = site[i*xfac + j*yfac + N[Z]];
-      site[i*xfac + j*yfac + N[Z] + 1] = site[i*xfac + j*yfac + 1   ];
-    }
-    
-  for (i = 1; i <= N[X]; i++)
-    for (k = 0; k <= N[Z]+1; k++) {
-      site[i*xfac                 + k] = site[i*xfac + N[Y]*yfac + k];
-      site[i*xfac + (N[Y]+1)*yfac + k] = site[i*xfac +      yfac + k];
-    }
-    
-  for (j = 0; j <= N[Y]+1; j++)
-    for(k = 0; k <= N[Z]+1; k++) {
-      site[                j*yfac + k] = site[N[X]*xfac + j*yfac + k];
-      site[(N[X]+1)*xfac + j*yfac + k] = site[xfac      + j*yfac + k];
-    }
-
-#endif /* _MPI_ */
-
-  TIMER_stop(TIMER_HALO_LATTICE);
-
-  return;
-}
-
-/*---------------------------------------------------------------------------*\
- * void COM_halo_rho( void )                                                 *
- *                                                                           *
- * Halos rho_site to neighbouring PEs -- or if serial code, to its periodic  *
- * image                                                                     *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _MPI_, _TRACE_                                                   *
- *                                                                           *
- * Last Updated: 04/01/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
-
-void COM_halo_rho( void )
-{
-  int i, j, k;
-  int xfac, yfac;
-  int N[3];
-
-  extern double * rho_site;
-  
-#ifdef _MPI_
-  int nyz2, nxy2z2;
-
-  MPI_Request req[4];
-  MPI_Status status[4];
-  
-  TIMER_start(TIMER_HALO_LATTICE);
-
-  get_N_local(N);
-  yfac = N[Z]+2;
-  nyz2 = N[Y]*yfac;
-  xfac = (N[Y]+2)*yfac;
-  nxy2z2 = N[X]*xfac;
-  
-  /* Swap (YZ) plane: one contiguous block in memory */
-  
-  /* Particular case where source_PE == destination_PE (although MPI would */
-  /* cope with it by itself) */
-  if(cart_size(X) == 1)
-    {
-      for(j=0;j<=N[Y]+1;j++)
-	for(k=0;k<=N[Z]+1;k++)
-	  {
-	    rho_site[             j*yfac+k] = rho_site[N[X]*xfac+j*yfac+k];
-	    rho_site[(N[X]+1)*xfac+j*yfac+k] = rho_site[xfac    +j*yfac+k];
-	  }
-    }
-  else
-    {   
-      MPI_Issend(&rho_site[xfac], 1, DT_Float_plane_YZ,
-		 cart_neighb(BACKWARD,X), TAG_HALO_SWP_X_BWD, cart_comm(),
-		 &req[0]);
-      MPI_Irecv(&rho_site[(N[X]+1)*xfac], 1, DT_Float_plane_YZ,
-		cart_neighb(FORWARD,X), TAG_HALO_SWP_X_BWD, cart_comm(),
-		&req[1]);
-      MPI_Issend(&rho_site[nxy2z2], 1, DT_Float_plane_YZ,
-		 cart_neighb(FORWARD,X), TAG_HALO_SWP_X_FWD, cart_comm(),
-		 &req[2]);
-      MPI_Irecv(&rho_site[0], 1, DT_Float_plane_YZ,
-		cart_neighb(BACKWARD,X), TAG_HALO_SWP_X_FWD, cart_comm(),
-		&req[3]);
-      MPI_Waitall(4,req,status); /* Necessary to propagate corners */
-    }
-  
-  /* Swap (XZ) plane: N[X]+2 blocks of N[Z]+2 sites (stride=(N[Y]+2)*(N[Z]+2)) */
-  if(cart_size(Y) == 1)
-    {
-      for(i=0;i<=N[X]+1;i++)
-	for(k=0;k<=N[Z]+1;k++)
-	  {
-	    rho_site[i*xfac             +k] = rho_site[i*xfac+N[Y]*yfac+k];
-	    rho_site[i*xfac+(N[Y]+1)*yfac+k] = rho_site[i*xfac+    yfac+k];
-	  }
-    }
-  else
-    {
-      MPI_Issend(&rho_site[yfac], 1, DT_Float_plane_XZ,
-		 cart_neighb(BACKWARD,Y), TAG_HALO_SWP_Y_BWD, cart_comm(),
-		 &req[0]);
-      MPI_Irecv(&rho_site[(N[Y]+1)*yfac], 1, DT_Float_plane_XZ,
-		cart_neighb(FORWARD,Y),
-		TAG_HALO_SWP_Y_BWD, cart_comm(), &req[1]);
-      MPI_Issend(&rho_site[nyz2], 1, DT_Float_plane_XZ, cart_neighb(FORWARD,Y),
-		 TAG_HALO_SWP_Y_FWD, cart_comm(), &req[2]);
-      MPI_Irecv(&rho_site[0], 1, DT_Float_plane_XZ, cart_neighb(BACKWARD,Y),
-		TAG_HALO_SWP_Y_FWD, cart_comm(), &req[3]);
-      MPI_Waitall(4,req,status); /* Necessary to propagate corners */
-    }
-  
-  /* Swap (XY) plane: (N[X]+2)*(N[Y]+2) blocks of 1 site (stride=N[Z]+2) */
-  if(cart_size(Z) == 1)
-    {
-      for(i=0;i<=N[X]+1;i++)
-	for(j=0;j<=N[Y]+1;j++)
-	  {
-	    rho_site[i*xfac+j*yfac      ] = rho_site[i*xfac+j*yfac+N[Z]];
-	    rho_site[i*xfac+j*yfac+N[Z]+1] = rho_site[i*xfac+j*yfac+1  ];
-	  }
-    }
-  else
-    {
-      MPI_Issend(&rho_site[1], 1, DT_Float_plane_XY, cart_neighb(BACKWARD,Z),
-		 TAG_HALO_SWP_Z_BWD, cart_comm(), &req[0]);
-      MPI_Irecv(&rho_site[N[Z]+1], 1, DT_Float_plane_XY,
-		cart_neighb(FORWARD,Z),
-		TAG_HALO_SWP_Z_BWD, cart_comm(), &req[1]);
-      MPI_Issend(&rho_site[N[Z]], 1, DT_Float_plane_XY, cart_neighb(FORWARD,Z),
-		 TAG_HALO_SWP_Z_FWD, cart_comm(), &req[2]);  
-      MPI_Irecv(&rho_site[0], 1, DT_Float_plane_XY, cart_neighb(BACKWARD,Z),
-		TAG_HALO_SWP_Z_FWD, cart_comm(), &req[3]);
-      MPI_Waitall(4,req,status);
-    }
-  
-#else /* Serial section */
-  
-  TIMER_start(TIMER_HALO_LATTICE);
-
-  get_N_local(N);
-  yfac = N[Z]+2;
-  xfac = (N[Y]+2)*yfac;
-  
-  for(i=1;i<=N[X];i++)
-    for(j=1;j<=N[Y];j++) {
-      rho_site[i*xfac + j*yfac          ] = rho_site[i*xfac + j*yfac + N[Z]];
-      rho_site[i*xfac + j*yfac + N[Z] + 1] = rho_site[i*xfac + j*yfac + 1  ];
-    }
-    
-  for(i=1;i<=N[X];i++)
-    for(k=0;k<=N[Z]+1;k++) {
-      rho_site[i*xfac                + k] = rho_site[i*xfac + N[Y]*yfac + k];
-      rho_site[i*xfac + (N[Y]+1)*yfac + k] = rho_site[i*xfac +     yfac + k];
-    }
-    
-  for(j=0;j<=N[Y]+1;j++)
-    for(k=0;k<=N[Z]+1;k++) {
-      rho_site[               j*yfac + k] = rho_site[N[X]*xfac + j*yfac + k];
-      rho_site[(N[X]+1)*xfac + j*yfac + k] = rho_site[xfac     + j*yfac + k];
-    }
-
-#endif /* _MPI_ */
-
-  TIMER_stop(TIMER_HALO_LATTICE);
-
-  return;
-}
 
 /*---------------------------------------------------------------------------*\
  * void COM_halo_phi( void )                                                 *
@@ -382,8 +90,6 @@ void COM_halo_phi( void )
   int i, j, k;
   int xfac, yfac;
   int N[3];
-
-  extern double * phi_site;
   
 #ifdef _MPI_
   int nyz2, nxy2z2;
@@ -509,7 +215,6 @@ void COM_halo_phi( void )
   return;
 }
 
-
 /*---------------------------------------------------------------------------*\
  * void COM_init( int argc, char **argv )                                    *
  *                                                                           *
@@ -525,19 +230,15 @@ void COM_halo_phi( void )
  * Last Updated: 06/01/2002 by JCD                                           *
 \*---------------------------------------------------------------------------*/
 
-void COM_init( int argc, char **argv ) {
+void COM_init() {
 
   char tmp[256];
 
 #ifdef _MPI_ /* Parallel (MPI) section */
 
-  int nx2, ny2, ny3, nz2, nx2y2, ny2z2, ny3z2;
+  int nx2, ny2, nz2, nx2y2, ny2z2;
   int N_sites, colour;
   int N[3];
-
-  MPI_Aint disp[2];
-  MPI_Aint size1,size2;
-  MPI_Datatype DT_tmp, type[2];
 
   get_N_local(N);
 
@@ -545,11 +246,9 @@ void COM_init( int argc, char **argv ) {
 
   nx2 = N[X]+2;
   ny2 = N[Y]+2;
-  ny3 = N[Y]+3;
   nz2 = N[Z]+2;
   nx2y2 = nx2*ny2;
   ny2z2 = ny2*nz2;
-  ny3z2 = ny3*nz2;
   N_sites = (N[X]+2)*(N[Y]+2)*(N[Z]+2);
 
 
@@ -579,24 +278,6 @@ void COM_init( int argc, char **argv ) {
   /* Create communicator for each IO group, and get rank within IO group */
   MPI_Comm_split(cart_comm(), io_grp.index, cart_rank(), &IO_Comm);
   MPI_Comm_rank(IO_Comm, &io_grp.rank);
-
-
-  /* Set-up MPI datatype for structure Site */
-  MPI_Type_contiguous(sizeof(Site),MPI_BYTE,&DT_Site);
-  MPI_Type_commit(&DT_Site);
-
-  /* Set-up datatypes for XY, XZ and YZ planes (including halos!) */
-  /* (XY) plane: (N[X]+2)*(N[Y]+2) blocks of 1 site (stride=N[Z]+2) */
-  MPI_Type_vector(nx2y2,1,nz2,DT_Site,&DT_plane_XY);
-  MPI_Type_commit(&DT_plane_XY);
-
-  /* (XZ) plane: N[X]+2 blocks of N[Z]+2 sites (stride=(N[Y]+2)*(N[Z]+2)) */
-  MPI_Type_hvector(nx2,nz2,ny2z2*sizeof(Site),DT_Site,&DT_plane_XZ);
-  MPI_Type_commit(&DT_plane_XZ);
-
-  /* (YZ) plane: one contiguous block of (N[Y]+2)*(N[Z]+2) sites */
-  MPI_Type_contiguous(ny2z2,DT_Site,&DT_plane_YZ);
-  MPI_Type_commit(&DT_plane_YZ);
 
   /* Set-up datatypes for XY, XZ and YZ planes of Floats (including halos) */
   /* (XY) plane: (N[X]+2)*(N[Y]+2) blocks of 1 Float (stride=N[Z]+2) */
@@ -1013,11 +694,6 @@ int COM_local_index( int g_ind )
  *- \c Last \c updated: 03/03/2002 by JCD
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_read_site(), MODEL_read_site_bin(), COM_read_site()
- *- \c Note:      All buffers will need to be re-computed following a
- *                configuration read. An optimised version of this routine will
- *                need to be developed for the typical situation where all sites
- *                are read (simulation re-start). This may considerably speed-up
- *                this operation depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1056,11 +732,6 @@ void MODEL_read_site_asc( FILE *fp )
  *- \c Last \c updated: 03/03/2002 by JCD
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_read_site(), MODEL_read_site_asc(), COM_read_site()
- *- \c Note:      All buffers will need to be re-computed following a
- *                configuration read. An optimised version of this routine will
- *                need to be developed for the typical situation where all sites
- *                are read (simulation re-start). This may considerably speed-up
- *                this operation depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1098,10 +769,6 @@ void MODEL_read_site_bin( FILE *fp )
  *- \c Last \c updated: 03/03/2002 by JCD
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_write_site(), MODEL_write_site_bin(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written (configuration dump). This may considerably speed-up
- *                this operation depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1137,10 +804,6 @@ void MODEL_write_site_asc( FILE *fp, int ind, int g_ind )
  *- \c Last \c updated: 03/03/2002 by JCD
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_write_rho(), MODEL_write_rho_bin(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1173,10 +836,6 @@ void MODEL_write_rho_asc( FILE *fp, int ind, int g_ind )
  *- \c Last \c updated: 03/03/2002 by JCD
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_write_phi(), MODEL_write_phi_bin(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation
- *                depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1210,10 +869,6 @@ void MODEL_write_phi_asc( FILE *fp, int ind, int g_ind )
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_write_rho_phi(), MODEL_write_rho_phi_bin(), 
  *                COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1247,10 +902,6 @@ void MODEL_write_rho_phi_asc( FILE *fp, int ind, int g_ind )
  *- \c Last \c updated: 03/03/2002 by JCD
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_write_site(), MODEL_write_site_asc(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written (configuration dump). This may considerably speed-up
- *                this operation depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1279,10 +930,6 @@ void MODEL_write_site_bin( FILE *fp, int ind, int g_ind )
  *- \c Last \c updated: 03/03/2002 by JCD
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_write_rho(), MODEL_write_rho_asc(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1315,10 +962,6 @@ void MODEL_write_rho_bin( FILE *fp, int ind, int g_ind )
  *- \c Last \c updated: 03/03/2002 by JCD
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_write_phi(), MODEL_write_phi_asc(), COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation
- *                depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1352,10 +995,6 @@ void MODEL_write_phi_bin( FILE *fp, int ind, int g_ind )
  *- \c Authors:   JC Desplat
  *- \c See \c also: MODEL_write_rho_phi(), MODEL_write_rho_phi_asc(), 
  *                COM_write_site()
- *- \c Note:      An optimised version of this routine will need to be
- *                developed for the typical situation where all sites are
- *                written. This may considerably speed-up this operation 
- *                depending on how the OS manages disc buffers
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1404,6 +1043,7 @@ char * get_input_config_filename(const int step) {
 
   char tmp[256];
 
+  /* But use this... */
   sprintf(tmp, "%s", input_config);
 
   return tmp;
