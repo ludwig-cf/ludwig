@@ -33,7 +33,7 @@ int main(int argc, char ** argv) {
   info("Testing random number generators (may take a few minutes...)\n");
   info("Random sample size is %d\n", NLARGE);
 
-  RAN_init();
+  ran_init();
 
   /* Check first number from serial generators */
   /*
