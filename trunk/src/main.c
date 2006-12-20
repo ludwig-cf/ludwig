@@ -17,6 +17,7 @@
 #include "free_energy.h"
 #include "model.h"
 #include "bbl.h"
+#include "subgrid.h"
 
 #include "colloids.h"
 #include "collision.h"
@@ -31,7 +32,7 @@
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.7 2006-10-12 14:09:18 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.8 2006-12-20 17:05:46 kevin Exp $";
 
 
 int main( int argc, char **argv )
@@ -59,7 +60,7 @@ int main( int argc, char **argv )
   coords_init();
   init_control();
 
-  COM_init( argc, argv );
+  COM_init();
 
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
@@ -81,16 +82,8 @@ int main( int argc, char **argv )
 
   while (next_step()) {
 
-    step = get_step();
     TIMER_start(TIMER_STEPS);
-
-#ifdef _REGS_
-    {
-      int stop;
-      stop = REGS_control(step);
-      if (stop) break;
-    }
-#endif
+    step = get_step();
 
     latt_zero_force();
     COLL_update();
@@ -99,13 +92,17 @@ int main( int argc, char **argv )
     MODEL_collide_multirelaxation();
 
     LE_apply_LEBC();
-    COM_halo();
+    halo_site();
 
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
 
+#ifdef _SUBGRID_
+    subgrid_update();
+#else
     bounce_back_on_links();
     wall_bounce_back();
+#endif
 
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions hold active f,g */

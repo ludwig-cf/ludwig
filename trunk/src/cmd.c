@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.8 2006-10-18 17:48:05 kevin Exp $
+ *  $Id: cmd.c,v 1.9 2006-12-20 17:00:51 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -18,7 +18,7 @@
 #include "coords.h"
 #include "ccomms.h"
 #include "runtime.h"
-#include "model.h"
+#include "physics.h"
 #include "potential.h"
 
 #include "colloids.h"
@@ -52,7 +52,7 @@ static double mc_drmax_;
  *
  *****************************************************************************/
 
-void CMD_init_volume_fraction(int nradius, int flag) {
+void CMD_init_volume_fraction() {
 
   double vf;
   double a0, ah;
@@ -218,7 +218,7 @@ int mc_metropolis(double delta) {
 
 void mc_set_proposed_move(const double drmax) {
 
-  int       ic, jc, kc, n;
+  int       ic, jc, kc;
   Colloid * p_colloid;
 
   double mc_move_prob_ = 0.05;
@@ -699,7 +699,6 @@ void CMD_test_particle_energy(const int step) {
   Colloid * p_colloid;
 
   double sum[3], gsum[3];
-  double mass;
 
   sum[0] = 0.0;
   sum[1] = 0.0;

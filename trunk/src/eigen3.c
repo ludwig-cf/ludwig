@@ -17,8 +17,7 @@ double **matrix( int , int , int , int);
 void free_vector();
 void free_matrix();
 
-double * vector(nl,nh)
-int nl,nh;
+double * vector(int nl, int nh)
 {
   double *v;
 
@@ -28,8 +27,7 @@ int nl,nh;
 }
 
 
-double **matrix(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **matrix(int nrl, int nrh, int ncl, int nch)
 {
   int i;
   double **m;
