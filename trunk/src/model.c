@@ -2,15 +2,20 @@
  *
  *  model.c
  *
- *  This is a wrapper for the lattice Boltzmann model:
- *  either _D3Q15_ or _D3Q19_.
+ *  This encapsulates data/operations related to distributions.
+ *  However, the implementation of "Site" is exposed for performance
+ *  reasons. For non-performance critical operations, prefer the
+ *  access functions.
  *
- *  $Id: model.c,v 1.7 2006-10-12 14:09:18 kevin Exp $
+ *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
+ *
+ *  $Id: model.c,v 1.8 2006-12-20 16:51:55 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,93 +23,131 @@
 #include "runtime.h"
 #include "coords.h"
 #include "model.h"
+#include "timer.h"
 
-const  double rcs2 = 3.0;
-const  double d_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
-       double q_[NVEL][3][3];
+const double rcs2 = 3.0;
+const double d_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
+const int nhalo_site_ = 1;
 
-Site    * site;
+Site  * site;
 
-static double eta_shear = 1.0/6.0;   /* Shear viscosity */
-static double eta_bulk;              /* Bulk viscosity */
-static double kT = 0.0;              /* "Isothermal temperature" */
+static int nsites_ = 0;
+static int xfac_;
+static int yfac_;
 
-static double rho0 = 1.0;      /* Average simulation density */
-static double phi0 = 0.0;      /* Average order parameter    */
-
-
-/*****************************************************************************
- *
- *  model_init
- *
- *  Set the model parameters
- *
- *****************************************************************************/
-
-void model_init() {
-
-  int p, i, j;
-
-  p = RUN_get_double_parameter("viscosity", &eta_shear);
-  eta_bulk = eta_shear;
-
-  p = RUN_get_double_parameter("viscosity_bulk", &eta_bulk);
-  p = RUN_get_double_parameter("temperature", &kT);
-  kT = kT*rcs2; /* Without normalisation kT = cs^2 */
-  p = RUN_get_double_parameter("phi0", &phi0);
-  p = RUN_get_double_parameter("rho0", &rho0);
-
-  /* Initialise q matrix */
-
-  for (p = 0; p < NVEL; p++) {
-
-    for (i = 0; i < 3; i++) {
-
-      for (j = 0; j < 3; j++) {
-	if (i == j) {
-	  q_[p][i][j] = cv[p][i]*cv[p][j] - 1.0/rcs2;
-	}
-	else {
-	  q_[p][i][j] = cv[p][i]*cv[p][j];
-	}
-      }
-    }
-  }
-
-  return;
-}
-
+#ifdef _MPI_
+static MPI_Datatype DT_plane_XY;
+static MPI_Datatype DT_plane_XZ;
+static MPI_Datatype DT_plane_YZ;
+MPI_Datatype DT_Site;
+enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
+#endif
 
 /***************************************************************************
  *
- *  LATT_allocate_sites
+ *  init_site
  *
  *  Allocate memory for the distributions. If MPI2 is used, then
  *  this must use the appropriate utility to accomodate LE planes.
  *
  ***************************************************************************/
  
-void allocate_site(const int nsites) {
+void init_site() {
 
-  info("Requesting %d bytes for site data\n", nsites*sizeof(Site));
+  int N[3];
+  int nx, ny, nz;
+
+  get_N_local(N);
+
+  nx = N[X] + 2*nhalo_site_;
+  ny = N[Y] + 2*nhalo_site_;
+  nz = N[Z] + 2*nhalo_site_;
+  nsites_ = nx*ny*nz;
+  yfac_   = nz;
+  xfac_   = nz*ny;
+
+  info("Requesting %d bytes for site data\n", nsites_*sizeof(Site));
 
 #ifdef _MPI_2_
  {
    int ifail;
 
-   ifail = MPI_Alloc_mem(nsites*sizeof(Site), MPI_INFO_NULL, &site);
+   ifail = MPI_Alloc_mem(nsites_*sizeof(Site), MPI_INFO_NULL, &site);
    if (ifail == MPI_ERR_NO_MEM) fatal("MPI_Alloc_mem(site) failed\n");
  }
 #else
 
   /* Use calloc. */
 
-  site = (Site  *) calloc(nsites, sizeof(Site));
+  site = (Site  *) calloc(nsites_, sizeof(Site));
   if (site == NULL) fatal("calloc(site) failed\n");
 
 #endif
 
+#ifdef _MPI_
+  /* Set up the MPI Datatypes used for site, and its corresponding
+   * halo messages:
+   *
+   * in XY plane nx*ny blocks of 1 site with stride nz;
+   * in XZ plane nx blocks of nz sites with stride ny*nz;
+   * in YZ plane one contiguous block of ny*nz sites.
+   *
+   * This is only confirmed for nhalo_site_ = 1. */
+
+  MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
+  MPI_Type_commit(&DT_Site);
+
+  MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
+  MPI_Type_commit(&DT_plane_XY);
+
+  MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site, &DT_plane_XZ);
+  MPI_Type_commit(&DT_plane_XZ);
+
+  MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
+  MPI_Type_commit(&DT_plane_YZ);
+
+#endif
+
   return;
+}
+
+/*****************************************************************************
+ *
+ *  finish_site
+ *
+ *  Clean up.
+ *
+ *****************************************************************************/
+
+void finish_site() {
+
+#ifdef _MPI_2_
+  MPI_Free_mem(site);
+#else
+  free(site);
+#endif
+
+#ifdef _MPI_
+  MPI_Type_free(&DT_Site);
+  MPI_Type_free(&DT_plane_XY);
+  MPI_Type_free(&DT_plane_XZ);
+  MPI_Type_free(&DT_plane_YZ);
+#endif
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  index_site
+ *
+ *  Map the Cartesian coordinates (i, j, k) to index in site.
+ *
+ *****************************************************************************/
+
+int index_site(const int i, const int j, const int k) {
+
+  return (i*xfac_ + j*yfac_ + k);
 }
 
 /*****************************************************************************
@@ -119,6 +162,8 @@ void allocate_site(const int nsites) {
 void set_rho(const double rho, const int index) {
 
   int   p;
+
+  assert(index >= 0 || index < nsites_);
 
   for (p = 0; p < NVEL; p++) {
     site[index].f[p] = wv[p]*rho;
@@ -140,6 +185,8 @@ void set_rho_u_at_site(const double rho, const double u[], const int index) {
 
   int p;
   double udotc;
+
+  assert(index >= 0 || index < nsites_);
 
   for (p = 0; p < NVEL; p++) {
     udotc = u[X]*cv[p][X] + u[Y]*cv[p][Y] + u[Z]*cv[p][Z];
@@ -166,6 +213,8 @@ void set_phi(const double phi, const int index) {
 
   int   p;
 
+  assert(index >= 0 || index < nsites_);
+
   for (p = 0; p < NVEL; p++) {
     site[index].g[p] = wv[p]*phi;
   }
@@ -181,6 +230,7 @@ void set_phi(const double phi, const int index) {
 
 void set_f_at_site(const int index, const int p, const double fp) {
 
+  assert(index >= 0 || index < nsites_);
   site[index].f[p] = fp;
 
   return;
@@ -194,6 +244,7 @@ void set_f_at_site(const int index, const int p, const double fp) {
 
 double get_f_at_site(const int index, const int p) {
 
+  assert(index >= 0 || index < nsites_);
   return site[index].f[p];
 }
 
@@ -205,6 +256,7 @@ double get_f_at_site(const int index, const int p) {
 
 void set_g_at_site(const int index, const int p, const double gp) {
 
+  assert(index >= 0 || index < nsites_);
   site[index].g[p] = gp;
 
   return;
@@ -218,6 +270,7 @@ void set_g_at_site(const int index, const int p, const double gp) {
 
 double get_g_at_site(const int index, const int p) {
 
+  assert(index >= 0 || index < nsites_);
   return site[index].g[p];
 }
 
@@ -234,6 +287,8 @@ double get_rho_at_site(const int index) {
   double rho;
   double * f;
   int   p;
+
+  assert(index >= 0 || index < nsites_);
 
   rho = 0.0;
   f = site[index].f;
@@ -258,6 +313,8 @@ double get_phi_at_site(const int index) {
   double * g;
   int     p;
 
+  assert(index >= 0 || index < nsites_);
+
   phi = 0.0;
   g = site[index].g;
 
@@ -270,65 +327,133 @@ double get_phi_at_site(const int index) {
 
 /*****************************************************************************
  *
- *  get_eta_shear
+ *  get_momentum_at_site
  *
- *  Return the shear viscosity.
+ *  Return momentum density at lattice node index.
  *
  *****************************************************************************/
 
-double get_eta_shear() {
+void get_momentum_at_site(const int index, double rhou[ND]) {
 
-  return eta_shear;
+  double  * f;
+  int       i, p;
+
+  assert(index >= 0 || index < nsites_);
+
+  for (i = 0; i < ND; i++) {
+    rhou[i] = 0.0;
+  }
+
+  f  = site[index].f;
+
+  for (p = 0; p < NVEL; p++) {
+    for (i = 0; i < ND; i++) {
+      rhou[i] += f[p]*cv[p][i];
+    }
+  }
+
+  return;
 }
 
 /*****************************************************************************
  *
- *  get_eta_bulk
+ *  halo_site
  *
- *  Return the bulk viscosity
- *
- *****************************************************************************/
-
-double get_eta_bulk() {
-
-  return eta_bulk;
-}
-
-/*****************************************************************************
- *
- *  get_kT
- *
- *  Access function for the isothermal temperature.
+ *  Swap the distributions at the periodic/processor boundaries
+ *  in each direction.
  *
  *****************************************************************************/
 
-double get_kT() {
+void halo_site() {
 
-  return kT;
-}
+  int i, j, k;
+  int xfac, yfac;
+  int N[3];
 
-/*****************************************************************************
- *
- *  get_rho0
- *
- *  Access function for the mean fluid density.
- *
- *****************************************************************************/
+#ifdef _MPI_
+  MPI_Request request[4];
+  MPI_Status status[4];
+#endif
 
-double get_rho0() {
+  TIMER_start(TIMER_HALO_LATTICE);
 
-  return rho0;
-}
+  get_N_local(N);
+  yfac =  N[Z] + 2*nhalo_site_;
+  xfac = (N[Y] + 2*nhalo_site_)*yfac;
 
-/*****************************************************************************
- *
- *  get_phi0
- *
- *  Access function for the mean order parameter.
- *
- *****************************************************************************/
+  /* The x-direction (YZ plane) */
 
-double get_phi0() {
+  if (cart_size(X) == 1) {
+    for (j = 1; j <= N[Y]; j++) {
+      for (k = 1; k <= N[Z]; k++) {
+	site[                j*yfac + k] = site[N[X]*xfac + j*yfac + k];
+	site[(N[X]+1)*xfac + j*yfac + k] = site[     xfac + j*yfac + k];
+      }
+    }
+  }
+  else {
+#ifdef _MPI_   
+    MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
+	       TAG_BWD, cart_comm(), &request[0]);
+    MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ,
+	      cart_neighb(FORWARD,X), TAG_BWD, cart_comm(), &request[1]);
+    MPI_Issend(&site[N[X]*xfac].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
+	       TAG_FWD, cart_comm(), &request[2]);
+    MPI_Irecv(&site[0].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
+	      TAG_FWD, cart_comm(), &request[3]);
+    MPI_Waitall(4, request, status);
+#endif
+  }
+  
+  /* The y-direction (XZ plane) */
 
-  return phi0;
+  if (cart_size(Y) == 1) {
+    for (i = 0; i <= N[X]+1; i++) {
+      for (k = 1; k <= N[Z]; k++) {
+	site[i*xfac                 + k] = site[i*xfac + N[Y]*yfac + k];
+	site[i*xfac + (N[Y]+1)*yfac + k] = site[i*xfac +      yfac + k];
+      }
+    }
+  }
+  else {
+#ifdef _MPI_
+    MPI_Issend(&site[yfac].f[0], 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
+	       TAG_BWD, cart_comm(), &request[0]);
+    MPI_Irecv(&site[(N[Y]+1)*yfac].f[0], 1, DT_plane_XZ,
+	      cart_neighb(FORWARD,Y), TAG_BWD, cart_comm(), &request[1]);
+    MPI_Issend(&site[N[Y]*yfac].f[0], 1, DT_plane_XZ, cart_neighb(FORWARD,Y),
+	       TAG_FWD, cart_comm(), &request[2]);
+    MPI_Irecv(&site[0].f[0], 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
+	      TAG_FWD, cart_comm(), &request[3]);
+    MPI_Waitall(4, request, status);
+#endif
+  }
+  
+  /* Finally, z-direction (XY plane) */
+
+  if (cart_size(Z) == 1) {
+    for (i = 0; i<= N[X]+1; i++) {
+      for (j = 0; j <= N[Y]+1; j++) {
+	site[i*xfac + j*yfac           ] = site[i*xfac + j*yfac + N[Z]];
+	site[i*xfac + j*yfac + N[Z] + 1] = site[i*xfac + j*yfac + 1   ];
+      }
+    }
+  }
+  else {
+#ifdef _MPI_
+    MPI_Issend(site[1].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
+	       TAG_BWD, cart_comm(), &request[0]);
+    MPI_Irecv(site[N[Z]+1].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
+	      TAG_BWD, cart_comm(), &request[1]);
+    MPI_Issend(site[N[Z]].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
+	       TAG_FWD, cart_comm(), &request[2]);  
+    MPI_Irecv(site[0].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
+	      TAG_FWD, cart_comm(), &request[3]);
+    MPI_Waitall(4, request, status);
+#endif
+  }
+ 
+  TIMER_stop(TIMER_HALO_LATTICE);
+
+  return;
 }
