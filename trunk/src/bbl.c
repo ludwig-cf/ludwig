@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.1 2006-10-12 13:55:21 kevin Exp $
+ *  $Id: bbl.c,v 1.2 2006-12-20 16:57:40 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -15,6 +15,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "physics.h"
 #include "colloids.h"
 #include "ccomms.h"
 #include "model.h"
@@ -148,6 +149,30 @@ static void bounce_back_pass1() {
 		dm =  2.0*site[i].f[ij]
 		  - wv[ij]*p_colloid->deltam; /* minus */
 		delta = 2.0*rcs2*wv[ij]*rho0;
+#ifdef _ACTIVE2_
+		{
+		  double rbmod, dm_a, cost, plegendre;
+		  double tans[3];
+		  FVector va;
+
+		  rbmod = 1.0/UTIL_fvector_mod(p_link->rb);
+
+		  cost = rbmod*UTIL_dot_product(p_link->rb, p_colloid->dir);
+		  tans[X] = p_colloid->dir.x - cost*rbmod*p_link->rb.x;
+		  tans[Y] = p_colloid->dir.y - cost*rbmod*p_link->rb.y;
+		  tans[Z] = p_colloid->dir.z - cost*rbmod*p_link->rb.z;
+	
+		  rbmod = 1.0/p_colloid->n1_nodes;
+		  plegendre = 0.5*(3.0*cost*cost - 1.0);
+		  va.x = p_colloid->dp*tans[X]*plegendre*rbmod;
+		  va.y = p_colloid->dp*tans[Y]*plegendre*rbmod;
+		  va.z = p_colloid->dp*tans[Z]*plegendre*rbmod;
+		  
+		  dm_a = delta*UTIL_dot_product(va, ci);
+		  site[i].f[ij] -= dm_a;
+		  dm -= dm_a;
+		}
+#endif
 	      }
 	      else {
 		/* Virtual momentum transfer for solid->solid links,

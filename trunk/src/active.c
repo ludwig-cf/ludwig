@@ -4,7 +4,7 @@
  *
  *  Routines dealing with bounce-back on links for active particles.
  *
- *  $Id: active.c,v 1.1 2006-10-12 13:55:21 kevin Exp $
+ *  $Id: active.c,v 1.2 2006-12-20 16:57:40 kevin Exp $
  *
  *  Isaac Llopis (Barcelona) developed the active particles.
  *
@@ -21,13 +21,16 @@
 #include "runtime.h"
 #include "lattice.h"
 
-enum active_type {TYPE_INACTIVE, TYPE_ONE_BIPOLAR, TYPE_ONE_QUADRUPOLAR}; 
+enum active_type {TYPE_INACTIVE, TYPE_ONE_BIPOLAR, TYPE_ONE_QUADRUPOLAR,
+                  TYPE_TWO}; 
 
 static int    type_ = TYPE_INACTIVE;   /* Default */
 static double is_quad_ = 0.0;          /* Unity if quadrupolar selected */
 
 static void init_active1(void);
+static void init_active2(void);
 static void active1_prepass(void);
+static void active2_prepass(void);
 
 /*****************************************************************************
  *
@@ -46,21 +49,20 @@ void init_active() {
   if (strcmp(tmp, "active1_bipolar") == 0) {
     type_ = TYPE_ONE_BIPOLAR;
     info("\n\n[User   ] Active particle type one bipolar\n");
+    init_active1();
   }
 
   if (strcmp(tmp, "active1_quadrupolar") == 0) {
     type_ = TYPE_ONE_QUADRUPOLAR;
     info("\n\n[User   ] Active particle type one quadrulpolar\n");
     is_quad_ = 1.0;
+    init_active1();
   }
 
-  switch (type_) {
-  case TYPE_ONE_BIPOLAR:
-  case TYPE_ONE_QUADRUPOLAR:
-    init_active1();
-    break;
-  default:
-    break;
+  if (strcmp(tmp, "active2") == 0) {
+    type_ = TYPE_TWO;
+    info("\n\n[User   ] Active particle type 2\n");
+    init_active2();
   }
 
   return;
@@ -82,6 +84,9 @@ void active_bbl_prepass() {
   case TYPE_ONE_BIPOLAR:
   case TYPE_ONE_QUADRUPOLAR:
     active1_prepass();
+    break;
+  case TYPE_TWO:
+    active2_prepass();
     break;
   default:
     break;
@@ -269,3 +274,116 @@ static void active1_prepass() {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  init_active2
+ *
+ *  Set the momentum transfer coeffiecnt.
+ *
+ *****************************************************************************/
+
+static void init_active2() {
+
+  Colloid * p_colloid;
+  int       n, ic, jc, kc;
+  double    dp = 0.2;
+
+  n = RUN_get_double_parameter("colloid_dp", &dp);
+  info((n == 0) ? "[Default] " : "[User   ] "); 
+  info("active momentum parameter %f\n", dp);
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid != NULL) {             
+	  p_colloid->dp = dp;
+
+	  /* Initialise direction vector */
+	  p_colloid->dir.x = 0.0;
+	  p_colloid->dir.y = 0.0;
+	  p_colloid->dir.z = -1.0;
+
+	  /* Next colloid */
+	  p_colloid = p_colloid->next;
+	}
+	/* Next cell */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  active2_prepass
+ *
+ *  This step is called for "active2" particles.
+ *
+ *****************************************************************************/
+
+static void active2_prepass() {
+
+  Colloid   * p_colloid;
+  COLL_Link * p_link;
+  int         ic, jc, kc;
+  double      va[3], tans[3];
+  double      rbmod, costheta, plegendre;
+
+  /* Work through the links */
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid != NULL) {             
+ 
+	  p_colloid->n1_nodes = 0;
+	  p_colloid->tot_va.x = 0.0;
+	  p_colloid->tot_va.y = 0.0;
+	  p_colloid->tot_va.z = 0.0;
+	  va[X] = 0.0;
+	  va[Y] = 0.0;
+	  va[Z] = 0.0;
+
+	  p_link = p_colloid->lnk;
+   
+	  while (p_link != NULL) {
+
+	    if (p_link->status == LINK_FLUID) {
+	      /* Work out the active velocity at this link. */
+
+	      rbmod = 1.0/UTIL_fvector_mod(p_link->rb);
+
+	      costheta = rbmod*UTIL_dot_product(p_link->rb, p_colloid->dir);
+	      tans[X] = p_colloid->dir.x - costheta*rbmod*p_link->rb.x;
+	      tans[Y] = p_colloid->dir.y - costheta*rbmod*p_link->rb.y;
+	      tans[Z] = p_colloid->dir.z - costheta*rbmod*p_link->rb.z;
+
+	      plegendre = 0.5*(3.0*costheta*costheta - 1.0);
+	      p_colloid->tot_va.x += p_colloid->dp*tans[X]*plegendre;
+	      p_colloid->tot_va.y += p_colloid->dp*tans[Y]*plegendre;
+	      p_colloid->tot_va.z += p_colloid->dp*tans[Z]*plegendre;
+	      p_colloid->n1_nodes++;
+	    }
+
+	    p_link = p_link->next;
+	  }
+
+	  p_colloid = p_colloid->next;
+	}
+
+	/* Next cell */
+      }
+    }
+  }
+
+  CCOM_halo_sum(CHALO_TYPE6);
+
+  return;
+}
