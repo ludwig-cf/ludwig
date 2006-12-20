@@ -3,6 +3,54 @@ Changes
 Log file for changes to the code.
 =================================
 
+2006 December 20th kevin
+
+* Further ongoing refactoring:
+
+* Model. The (single fluid) collision stage has been rewritten
+         to allow a true multiple realxation time model. This
+         introduces the two matrices ma_ and mi_ (defined in
+         d3q15.c etc) which are the transformation between
+         hydrodynamic space and distribution space. This is
+         EXACTLY equilivalent to what we had before if not
+         worried about ghost modes.
+
+	 This allows relaxation time for the ghost modes to
+         be set not equal to unity (intended for Ginzburg/D'Humieres
+         BBL).
+
+         On most platforms I have tested, the calculation
+         including the full multirelaxation is as fast as the
+         old method (and it has up to twice as many floating
+         point operations).
+
+* In addition, I have tried to encapsulate the details of the
+  distribution f[] into model.c. However, the Site structure
+  is still exposed in collision.c etc. COM_halo() is replaced
+  by halo_site().
+
+* I intend to move the binary fluid collision to this approach
+  as well, and eliminate model-dependent code in d3qX.c etc.
+
+* Physical quantities related to the fluid have been separated
+  and now appear in their own file physics.c
+
+* Subgrid-scale particles and the singular force approach. This
+  is included in the file subgrid.c. At the moment compile with
+  -D_SUBGRID_ and choose e.g., a0 = 0.05 along with some value
+  for colloid gravity. I will try to move this to a run-time
+  option (ie., via colloid_type).
+
+* "Active2" particles (aka squirmers). Now included via the
+  compile time option -D_ACTIVE2_ *and* selecting coloid_type
+  active2. Set the parameter colloid_dp for the strength of
+  the coupling. Again, I will move this is a solely run-time
+  option when the refactoring catches up.
+
+* The tests have been updated.
+
+
+
 
 2006 October 16th kevin
 

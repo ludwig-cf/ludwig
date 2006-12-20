@@ -7,6 +7,13 @@
 # -D_D3Q19_              Use D3Q19 instead of D3Q15 (the default)
 # -D_NOISE_              Switch on fluctuations
 # -D_SINGLE_FLUID_       Use single fluid only
+#
+# Temporary (to be replaced by run-time options)
+# -D_SUBGRID_            Sub-grid particles
+# -D_ACTIVE2_            "Active2" particles
+#
+# Please use the following for any production run
+#
 # -DNDEBUG               Switch off standard C assert()
 #
 # make serial            for serial code
@@ -16,11 +23,11 @@
 
 
 OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
-      active.o cio.o cmd.o ccomms.o \
+      physics.o active.o cio.o cmd.o ccomms.o \
       colloids.o bbl.o build.o communicate.o coords.o control.o \
       eigen3.o free_energy.o interaction.o potential.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
-      test.o timer.o utilities.o wall.o main.o
+      subgrid.o test.o timer.o utilities.o wall.o main.o
 
 EXE= Ludwig.exe
 
@@ -32,15 +39,14 @@ EXE= Ludwig.exe
 
 CC= cc
 MPICC= tmcc
+CXX = CC +w2 # -xwe
 
-LDFLAGS= -Xc -v -errwarn
-OPTS = -D_D3Q15_ -D_SINGLE_FLUID_
+LDFLAGS= -Xc -v -errwarn -xO3
+OPTS =
 
 # For Sun perflib use -xlic_lib=sunperf
 
 CFLAGS=  $(OPTS) $(LDFLAGS) -dalign
-
-HOSTTYPE= sparc	# Value returned by uname (or $HOSTTYPE)
 
 ###############################################################################
 #
