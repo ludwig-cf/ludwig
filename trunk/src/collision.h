@@ -9,11 +9,9 @@
 #ifndef _COLLISION_H
 #define _COLLISION_H
 
-FVector MODEL_get_momentum_at_site(const int);
 void    MODEL_init( void );
 void    MODEL_finish( void );
 void    MODEL_get_gradients( void );
-void    MODEL_calc_rho( void );
 void    MODEL_calc_phi( void );
 void    get_fluctuations_stress(double shat[3][3]);
 void   RAND_init_fluctuations(void);

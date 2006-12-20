@@ -1,3 +1,14 @@
+/*****************************************************************************
+ *
+ *  collision.c
+ *
+ *  Collision stage routines and associated data.
+ *
+ *  $Id: collision.c,v 1.2 2006-12-20 17:02:30 kevin Exp $
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *****************************************************************************/
 
 #include <stdio.h>
 #include <math.h>
@@ -8,6 +19,7 @@
 #include "ran.h"
 #include "timer.h"
 #include "coords.h"
+#include "physics.h"
 #include "runtime.h"
 #include "control.h"
 #include "free_energy.h"
@@ -21,8 +33,8 @@
 
 extern Site * site;
 extern double * phi_site;
-extern double q_[NVEL][3][3];
 extern struct vector * fl_force;
+extern struct vector * fl_u;
 
 /* Variables (not static) */
 
@@ -33,13 +45,18 @@ char    * site_map;
 double    siteforce[3];
 
 /* Variables concerned with the collision */
+
+static int    nmodes_ = NVEL;  /* Modes to use in collsion stage */
+
 static double  mobility;       /* Order parameter Mobility   */
 static double  noise0 = 0.1;   /* Initial noise amplitude    */
 static double rtau_shear;      /* Inverse relaxation time for shear modes */
 static double rtau_bulk;       /* Inverse relaxation time for bulk modes */
+static double rtau_ghost = 1.0;/* Inverse relaxation time for ghost modes */
 static double var_shear;       /* Variance for shear mode fluctuations */
 static double var_bulk;        /* Variance for bulk mode fluctuations */
 
+static double noise_var[NVEL]; /* Noise variances */
 
 #ifdef _SINGLE_FLUID_
 
@@ -47,49 +64,48 @@ static double var_bulk;        /* Variance for bulk mode fluctuations */
  *
  *  MODEL_collide_multirelaxation
  *
- *  Collision with potentially different relaxation for different modes.
- *  
- *  This routine is currently model independent, except that
- *  it is assumed that p = 0 is the null vector in the set.
+ *  Collision with (potentially) different relaxation times for each
+ *  different mode.
+ *
+ *  The matrices ma_ and mi_ project the distributions onto the
+ *  modes, and vice-versa, respectively, for the current LB model.
+ *
+ *  The collision conserves density, and momentum (to within any
+ *  body force present). The stress modes, and ghost modes, are
+ *  relaxed toward their equilibrium values.
+ *
+ *  If ghost modes are not required, nmodes_ can be set equal to
+ *  the number of hydrodynamic modes. Otherwise nmodes_ = NVEL.  
  *
  *****************************************************************************/
 
 void MODEL_collide_multirelaxation() {
 
-  int      N[3];
-  int      ic, jc, kc, index;       /* site indices */
-  int      p;                       /* velocity index */
-  int      i, j;                    /* summed over indices ("alphabeta") */
-  int      xfac, yfac;
+  int       N[3];
+  int       ic, jc, kc, index;       /* site indices */
+  int       p, m;                    /* velocity index */
+  int       i, j;                    /* summed over indices ("alphabeta") */
+  int       xfac, yfac;
 
+  double *  f;
+  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
+  double    rho, rrho;               /* Density, reciprocal density */
   double    u[3];                    /* Velocity */
   double    s[3][3];                 /* Stress */
   double    shat[3][3];              /* random stress */
-  double    rho, rrho;               /* Density, reciprocal density */
-  double *  f;
-
-  double    udotc;
-  double    sdotq;
 
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
 
-  const double   r2rcs4 = 4.5;      /* The constant 1 / 2 c_s^4 */
-  const double   r3     = (1.0/3.0);
-
-  double fghost[NVEL];              /* Model-dependent ghost modes */
-
   double * force_local;
+  double * u_field;
+  const double   r3     = (1.0/3.0);
 
   TIMER_start(TIMER_COLLIDE);
 
   get_N_local(N);
   yfac = (N[Z]+2);
   xfac = (N[Y]+2)*yfac;
-
-  for (p = 0; p < NVEL; p++) {
-    fghost[p] = 0.0;
-  }
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
@@ -101,17 +117,30 @@ void MODEL_collide_multirelaxation() {
 
 	f = site[index].f;
 
-	rho  = f[0];
-	u[0] = 0.0;
-	u[1] = 0.0;
-	u[2] = 0.0;
+	/* Compute all the modes */
 
-	for (p = 1; p < NVEL; p++) {
-	  rho  += f[p];
-	  u[0] += f[p]*cv[p][0];
-	  u[1] += f[p]*cv[p][1];
-	  u[2] += f[p]*cv[p][2];
+	for (m = 0; m < nmodes_; m++) {
+	  mode[m] = 0.0;
+	  for (p = 0; p < NVEL; p++) {
+	    mode[m] += f[p]*ma_[m][p];
+	  }
 	}
+
+	/* For convenience, write out the physical modes. */
+
+	rho = mode[0];
+	for (i = 0; i < ND; i++) {
+	  u[i] = mode[1 + i];
+	}
+	s[X][X] = mode[4];
+	s[X][Y] = mode[5];
+	s[X][Z] = mode[6];
+	s[Y][X] = s[X][Y];
+	s[Y][Y] = mode[7];
+	s[Y][Z] = mode[8];
+	s[Z][X] = s[X][Z];
+	s[Z][Y] = s[Y][Z];
+	s[Z][Z] = mode[9];
 
 	rho_site[index] = rho;
 
@@ -119,11 +148,15 @@ void MODEL_collide_multirelaxation() {
 
 	rrho = 1.0/rho;
 	force_local = fl_force[index].c;
+	u_field = fl_u[index].c;
 
 	for (i = 0; i < 3; i++) {
-	  force[i] = 0.5*(siteforce[i] + force_local[i]);
-	  u[i] = rrho*(u[i] + force[i]);  
+	  force[i] = (siteforce[i] + force_local[i]);
+	  u[i] = rrho*(u[i] + 0.5*force[i]);  
+	  u_field[i] = u[i];
 	}
+
+	rho_site[index] = rho;
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -131,15 +164,6 @@ void MODEL_collide_multirelaxation() {
 	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
-	  for (j = 0; j < 3; j++) {
-	    /* Compute s */
-	    s[i][j] = 0.0;
-	    shat[i][j] = 0.0;
-
-	    for (p = 0; p < NVEL; p++) {
-	      s[i][j] += f[p]*q_[p][i][j];
-	    }
-	  }
 	  /* Compute trace */
 	  tr_s   += s[i][i];
 	  tr_seq += (rho*u[i]*u[i]);
@@ -161,32 +185,42 @@ void MODEL_collide_multirelaxation() {
 	    /* Correction from body force (assumes equal relaxation times) */
 
 	    s[i][j] += (2.0-rtau_shear)*(u[i]*force[j] + force[i]*u[j]);
+	    shat[i][j] = 0.0;
 	  }
 	}
 
-	/* Now update the distribution */
-
 #ifdef _NOISE_
 	get_fluctuations_stress(shat);
-	get_ghosts(fghost);
 #endif
 
+	/* Now reset the hydrodynamic modes to post-collision values */
+
+	mode[1] = mode[1] + force[X];    /* Conserved if no force */
+	mode[2] = mode[2] + force[Y];    /* Conserved if no force */
+	mode[3] = mode[3] + force[Z];    /* Conserved if no force */
+	mode[4] = s[X][X] + shat[X][X];
+	mode[5] = s[X][Y] + shat[X][Y];
+	mode[6] = s[X][Z] + shat[X][Z];
+	mode[7] = s[Y][Y] + shat[Y][Y];
+	mode[8] = s[Y][Z] + shat[Y][Z];
+	mode[9] = s[Z][Z] + shat[Z][Z];
+
+	/* Ghost modes are relaxed toward zero equilibrium. */
+
+	for (m = NHYDRO; m < nmodes_; m++) {
+	  mode[m] = mode[m] - rtau_ghost*(mode[m] - 0.0);
+#ifdef _NOISE_
+	  mode[m] += noise_var[m]*ran_parallel_gaussian();
+#endif
+	}
+
+	/* Project post-collision modes back onto the distribution */
+
 	for (p = 0; p < NVEL; p++) {
-
-	  udotc = 0.0;
-	  sdotq = 0.0;
-
-	  for (i = 0; i < 3; i++) {
-	    udotc += (u[i] + rrho*force[i])*cv[p][i];
-	    for (j = 0; j < 3; j++) {
-	      sdotq += (s[i][j] + shat[i][j])*q_[p][i][j];
-	    }
+	  f[p] = 0.0;
+	  for (m = 0; m < nmodes_; m++) {
+	    f[p] += mi_[p][m]*mode[m];
 	  }
-
-	  /* Reproject */
-	  f[p] = wv[p]*(rho + rho*udotc*rcs2 + sdotq*r2rcs4 + fghost[p]);
-
-	  /* Next p */
 	}
 
 	/* Next site */
@@ -198,7 +232,6 @@ void MODEL_collide_multirelaxation() {
 
   return;
 }
-
 
 #else
 
@@ -413,11 +446,13 @@ void MODEL_collide_multirelaxation() {
 	     * related to the chemical potential */
 
 	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
+	    /*sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
 	  }
 
 	  /* Order parameter flux is relaxed toward equilibrium value */
 
 	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
+	  /* jphi[i] = phi*u[i];*/
 	}
 
 	/* Now update the distribution */
@@ -457,7 +492,6 @@ void MODEL_collide_multirelaxation() {
       }
     }
   }
-
 
   TIMER_stop(TIMER_COLLIDE);
 
@@ -528,9 +562,10 @@ void MODEL_init( void ) {
 	    2*N_sites*(sizeof(FVector)+sizeof(double)));
     }
 
-  allocate_site(N_sites);
+  init_site();
   LATT_allocate_phi(N_sites);
   LATT_allocate_force(N_sites);
+  latt_allocate_velocity(N_sites);
 
   /* KS: should be called after MODEL_init() */
   le_init_transitional();
@@ -599,82 +634,6 @@ void MODEL_init( void ) {
 
 /*****************************************************************************
  *
- *  MODEL_get_momentum_at_site
- *
- *  Return momentum density at lattice node index.
- *
- *****************************************************************************/
-
-FVector MODEL_get_momentum_at_site(const int index) {
-
-  FVector mv;
-  double  * f;
-  int     p;
-
-  mv.x = 0.0;
-  mv.y = 0.0;
-  mv.z = 0.0;
-
-  f  = site[index].f;
-
-  for (p = 0; p < NVEL; p++) {
-    mv.x += cv[p][0]*f[p];
-    mv.y += cv[p][1]*f[p];
-    mv.z += cv[p][2]*f[p];
-  }
-
-  return mv;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Computes rho for all sites (including halos) with
- * \f[ \rho = \sum_{i=1}^{NVEL} f_i \f]
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: void
- *- \c Returns:   void
- *- \c Buffers:   uses .halo, sets .rho
- *- \c Version:   2.0b1
- *- \c Last \c updated: 27/01/2002 by JCD
- *- \c Authors:   P. Bladon and JC Desplat
- *- \c See \c also: MODEL_get_rho(), MODEL_set_rho(), MODEL_calc_phi()
- *- \c Note:      site.f in halos region must be up-to-date. COM_halo() is
- *                therefore called from within this routine
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_calc_rho( void ) {
-
-  int i,j,k,ind,xfac,yfac,p;
-  int N[3];
-  double *f;
-
-  get_N_local(N);
-  yfac = (N[Z]+2);
-  xfac = (N[Z]+2)*(N[Y]+2);
-  
-  COM_halo();
-  
-  for (i = 0; i <= N[X] + 1; i++)
-    for (j = 0; j <= N[Y] + 1; j++)
-      for (k = 0; k <= N[Z] + 1; k++)
-	{
-	  ind = i*xfac + j*yfac + k;
-	  
-	  f = site[ind].f;
-
-	  rho_site[ind] = 0.0;
-	  for (p = 0; p < NVEL; p++) {
-	    rho_site[ind] += f[p];
-	  }
-	}
-  
-}
-
-/*****************************************************************************
- *
  *  MODEL_calc_phi
  *
  *  Recompute the value of the order parameter at all the current
@@ -739,9 +698,14 @@ void MODEL_calc_phi() {
 void RAND_init_fluctuations() {
 
   int  p;
-  double tau_s, tau_b;
+  char tmp[128];
+  double tau_s, tau_b, tau_g, kt;
 
-  model_init();
+  p = RUN_get_double_parameter("temperature", &kt);
+  kt = kt*rcs2; /* Without normalisation kT = cs^2 */
+  set_kT(kt);
+
+  init_physics();
 
   /* Initialise the relaxation times */
 
@@ -754,11 +718,9 @@ void RAND_init_fluctuations() {
   /* Initialise the stress variances */
 
   var_bulk =
-    sqrt(get_kT())*sqrt(2.0/9.0)*sqrt((tau_b + tau_b - 1.0)/(tau_b*tau_b));
+    sqrt(kt)*sqrt(2.0/9.0)*sqrt((tau_b + tau_b - 1.0)/(tau_b*tau_b));
   var_shear =
-    sqrt(get_kT())*sqrt(1.0/9.0)*sqrt((tau_s + tau_s - 1.0)/(tau_s*tau_s));
-
-  init_ghosts(get_kT());
+    sqrt(kt)*sqrt(1.0/9.0)*sqrt((tau_s + tau_s - 1.0)/(tau_s*tau_s));
 
   /* Collision global force on fluid defaults to zero. */
 
@@ -781,6 +743,45 @@ void RAND_init_fluctuations() {
 
   p = RUN_get_double_parameter("mobility", &mobility);
   info("\nOrder parameter mobility M: %f\n", mobility);
+
+
+  /* Ghost modes */
+  init_ghosts(kt);
+
+  p = RUN_get_string_parameter("ghost_modes", tmp);
+  if (strcmp(tmp, "off") == 0) nmodes_ = NHYDRO;
+
+  info("\nGhost modes\n");
+  if (p == 1) {
+    info("[User   ] Ghost modes have been switched off.\n");
+  }
+  else {
+    info("[Default] All modes (hydrodynamic and ghost) are active\n");
+  }
+
+  /* Ginzburg / d'Humieres */
+
+  p = RUN_get_string_parameter("ginzburg-dhumieres", tmp);
+  if (p == 1 && strcmp(tmp, "off") == 0) p = 0;
+
+  if (p == 0) {
+    tau_g = 1.0/rtau_ghost;
+    info("[Default] Ghost mode relaxation time: %f\n", tau_g);
+  }
+  else {
+    rtau_ghost = 12.0*(2.0 - rtau_shear)/(8.0 - rtau_shear);
+    tau_g = 1.0/rtau_ghost;
+    info("[User   ] Ginzburg-D'Humieres relaxation time requested: %f\n",
+	 tau_g);
+  }
+
+  /* Noise variances */
+
+  for (p = NHYDRO; p < NVEL; p++) {
+    noise_var[p] = sqrt(kt/norm_[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
+  }
+
+  info("\n");
 
   return;
 }
