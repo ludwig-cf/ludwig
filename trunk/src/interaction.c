@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.6 2006-10-18 17:48:05 kevin Exp $
+ *  $Id: interaction.c,v 1.7 2006-12-20 17:05:14 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -19,6 +19,7 @@
 
 #include "active.h"
 #include "build.h"
+#include "physics.h"
 #include "potential.h"
 
 #include "colloids.h"
@@ -29,6 +30,7 @@
 #include "collision.h"
 #include "cio.h"
 #include "control.h"
+#include "subgrid.h"
 
 #include "ccomms.h"
 
@@ -60,7 +62,6 @@ static void    COLL_set_fluid_gravity(void);
 static FVector COLL_lubrication(Colloid *, Colloid *, FVector, Float);
 static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
-static void    COLL_update_colloids(void);
 
 /* Old Global_Colloid stuff */
 
@@ -92,9 +93,6 @@ void COLL_update() {
 
   if (get_N_colloid() == 0) return;
 
-  /* Removal or replacement of fluid requires a lattice halo update */
-  COM_halo();
-
   TIMER_start(TIMER_PARTICLE_HALO);
 
   cell_update();
@@ -102,19 +100,27 @@ void COLL_update() {
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
-  TIMER_start(TIMER_REBUILD);
-
 #ifndef _SUBGRID_
+
+  /* Removal or replacement of fluid requires a lattice halo update */
+  halo_site();
+
+  TIMER_start(TIMER_REBUILD);
   COLL_update_map();
   COLL_remove_or_replace_fluid();
   COLL_update_links();
-#endif /* _SUBGRID_ */
 
   TIMER_stop(TIMER_REBUILD);
 
   COLL_test_output();
   COLL_forces();
   active_bbl_prepass();
+
+#else /* _SUBGRID_ */
+  COLL_test_output();
+  COLL_forces();
+  subgrid_force_from_particles();
+#endif /* SUBGRID */
 
   return;
 }
@@ -134,7 +140,7 @@ void COLL_init() {
   int nc = 0;
   double ahmax, f0[3];
 
-  void CMD_init_volume_fraction(int, int);
+  void CMD_init_volume_fraction(void);
   void lubrication_init(void);
   void check_interactions(const double);
 
@@ -169,7 +175,6 @@ void COLL_init() {
 
   COLL_init_coordinates();
   CCOM_init_halos();
-  CMPI_init_messages();
   CIO_set_cio_format(input_format, output_format);
   lubrication_init();
   soft_sphere_init();
@@ -180,7 +185,7 @@ void COLL_init() {
 #ifdef _COLLOIDS_TEST_
     COLL_init_colloids_test();
 #else
-    CMD_init_volume_fraction(1, 0);
+    CMD_init_volume_fraction();
     init_active();
 #endif
   }
@@ -336,42 +341,7 @@ void COLL_init_colloids_test() {
 
   COLL_add_colloid(1, a0, ah, r0, v0, omega0);
 
-  r0.z = r0.z - 2.0*a0; 
-  v0.x = v0.x;
-
-  /*COLL_add_colloid(2, a0, ah, r0, v0, omega0);*/
-
   info("Starting test of opportunity\n");
-#endif
-
-#ifdef _COLLOIDS_TEST_CALIBRATE_
-
-  N_colloid = 1;
-
-  r0.x = 0.5*L(X) + RAN_uniform();
-  r0.y = 0.5*L(Y) + RAN_uniform();
-  r0.z = 0.5*L(Z) + RAN_uniform();
-
-  /* For particle Reynolds number = 0.05 the velocity we want
-   * scales as Re * viscosity / a. This also applies to the
-   * external force (to within a minus sign). */
-
-  tmp = 0.05*get_eta_shear()/a0;
-
-  v0.x = -RAN_uniform()*tmp;
-  v0.y = -RAN_uniform()*tmp;
-  v0.z = -RAN_uniform()*tmp;
-
-  COLL_init_gravity(v0);
-
-  v0 = UTIL_fvector_zero();
-
-  omega0.x = 0.0;
-  omega0.y = 0.0;
-  omega0.z = 0.0;
-
-  COLL_add_colloid(1, a0, ah, r0, v0, omega0);
-
 #endif
 
   return;
