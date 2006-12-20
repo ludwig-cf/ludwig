@@ -16,7 +16,6 @@
 #include "leesedwards.h"
 
 extern Site * site;
-extern double q_[NVEL][3][3];
 extern double * phi_site;
 
 
@@ -218,14 +217,22 @@ void LE_apply_LEBC( void )
 	  g = site[ind].g;
 
 	  /* Compute 0th and 1st moments */
-	  rho = get_rho_at_site(ind);
-	  phi = get_phi_at_site(ind);
-	  u   = MODEL_get_momentum_at_site(ind);
+
+	  rho = f[0];
+	  phi = g[0];
+	  u.x = 0.0;
+	  u.y = 0.0;
+	  u.z = 0.0;
 
 	  jphi.x = 0.0;
 	  jphi.y = 0.0;
 	  jphi.z = 0.0;
 	  for (p = 1; p < NVEL; p++) {
+	    rho    += f[p];
+	    u.x    += f[p]*cv[p][X];
+	    u.y    += f[p]*cv[p][Y];
+	    u.z    += f[p]*cv[p][Z];
+	    phi    += g[p];
 	    jphi.x += g[p]*cv[p][0];
 	    jphi.y += g[p]*cv[p][1];
 	    jphi.z += g[p]*cv[p][2];
