@@ -29,6 +29,7 @@ static MPI_Datatype _mpi_halo;
 static MPI_Datatype _mpi_sum1;
 static MPI_Datatype _mpi_sum2;
 static MPI_Datatype _mpi_sum6;
+static MPI_Datatype _mpi_sum7;
 
 #endif
 
@@ -44,6 +45,7 @@ typedef struct colloid_halo_message      Colloid_halo_message;
 typedef struct colloid_sum_message_type1 Colloid_sum_message_one;
 typedef struct colloid_sum_message_type2 Colloid_sum_message_two;
 typedef struct colloid_sum_message_type6 Colloid_sum_message_six;
+typedef struct colloid_sum_message_type7 Colloid_sum_message_sev;
 
 struct colloid_halo_message {
   int      index;
@@ -80,6 +82,12 @@ struct colloid_sum_message_type6 {
   int index;
   int n1_nodes;
   int n2_nodes;
+  FVector tot_va;
+};
+
+struct colloid_sum_message_type7 {
+  int index;
+  double f0[3];
 };
 
 static void CCOM_load_halo_buffer(Colloid *, int, FVector);
@@ -93,10 +101,12 @@ static int  CMPI_exchange_halo(int, int, int);
 static void CMPI_exchange_sum_type1(int, int, int);
 static void CMPI_exchange_sum_type2(int, int, int);
 static void CMPI_exchange_sum_type6(int, int, int);
+static void CMPI_exchange_sum_type7(int, int, int);
 static void CMPI_anull_buffers(void);
+static void CMPI_init_messages(void);
 
 static int                       _halo_message_nmax;
-static int                       _halo_message_size[3];
+static int                       _halo_message_size[4];
 
 static Colloid_halo_message    * _halo_send;
 static Colloid_halo_message    * _halo_recv;
@@ -106,6 +116,8 @@ static Colloid_sum_message_two * _halo_send_two;
 static Colloid_sum_message_two * _halo_recv_two;
 static Colloid_sum_message_six * _halo_send_six;
 static Colloid_sum_message_six * _halo_recv_six;
+static Colloid_sum_message_sev * _halo_send_sev;
+static Colloid_sum_message_sev * _halo_recv_sev;
 
 
 /*****************************************************************************
@@ -120,28 +132,36 @@ static Colloid_sum_message_six * _halo_recv_six;
 
 void CCOM_init_halos() {
 
-  double vcell;
+  double vcell, vdomain;
   int    ncell;
+  int    n;
 
   /* Work out the volume of each halo region and take the
    * largest. Then work out how many particles will fit
    * in the volume. */
 
+  n = 2000; /* Maximum number of particles per process */
+  vdomain = L(X)*L(Y)*L(Z)/pe_size();
+
   vcell = L(X)*L(Y)*L(Z)/(Ncell(X)*Ncell(Y)*Ncell(Z));
   ncell = imax(Ncell(X), Ncell(Y));
   ncell = imax(Ncell(Z), ncell);
   ncell += 2; /* Add halo cells */
+  _halo_message_nmax = vcell*n*ncell*ncell / vdomain;
 
-  /* Computing this number is a problem */
-  _halo_message_nmax = ncell*ncell*vcell / (pow(dmax(1.0,2.3), 3));
-
-  info("\nCCOM_init\n");
+  info("\nColloid message initiailisation...\n");
+  info("Mean number of colloids per process is %d\n", n);
+  info("Mean volume of subdomain: %f\n", vdomain);
+  info("Maximum cell number: %d\n", ncell);
   info("Allocating space for %d particles in halo buffers\n",
        _halo_message_nmax);
+
+  /* Computing this number is a problem */
 
   _halo_message_size[CHALO_TYPE1] = sizeof(Colloid_sum_message_one);
   _halo_message_size[CHALO_TYPE2] = sizeof(Colloid_sum_message_two);
   _halo_message_size[CHALO_TYPE6] = sizeof(Colloid_sum_message_six);
+  _halo_message_size[CHALO_TYPE7] = sizeof(Colloid_sum_message_sev);
 
   info("Requesting %d bytes for halo messages\n",
        2*_halo_message_nmax*sizeof(Colloid_halo_message));
@@ -168,6 +188,10 @@ void CCOM_init_halos() {
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_six));
   _halo_recv_six = (Colloid_sum_message_six *)
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_six));
+  _halo_send_sev = (Colloid_sum_message_sev *)
+    calloc(_halo_message_nmax, sizeof(Colloid_sum_message_sev));
+  _halo_recv_sev = (Colloid_sum_message_sev *)
+    calloc(_halo_message_nmax, sizeof(Colloid_sum_message_sev));
 
 
   if (_halo_send      == NULL) fatal("_halo_send failed");
@@ -178,6 +202,10 @@ void CCOM_init_halos() {
   if (_halo_recv_two  == NULL) fatal("_halo_recv_two failed");
   if (_halo_send_six  == NULL) fatal("_halo_send_six failed");
   if (_halo_recv_six  == NULL) fatal("_halo_recv_six failed");
+  if (_halo_send_sev  == NULL) fatal("_halo_send_sev failed");
+  if (_halo_recv_sev  == NULL) fatal("_halo_recv_sev failed");
+
+  CMPI_init_messages();
 
   return;
 }
@@ -401,7 +429,7 @@ void CMPI_accept_new(int nrecv) {
 
   Colloid * p_colloid;
   Colloid * p_existing;
-  IVector   new;
+  IVector   newc;
   int       exists;
   int       n;
 
@@ -413,15 +441,14 @@ void CMPI_accept_new(int nrecv) {
 
     /* See where it wants to go in the cell list */
 
-    new = cell_coords(p_colloid->r);
+    newc = cell_coords(p_colloid->r);
 
     /* Have a look at the existing particles in the list location:
-     * if it's already present, just flag the existing particle so
-     * it gets copied in the next direction; if it's new, the incoming
-     * particle does get added to the cell list. */
+     * if it's already present, make a copy of the state; if it's new,
+     * the incoming particle does get added to the cell list. */
 
     exists = 0;
-    p_existing = CELL_get_head_of_list(new.x, new.y, new.z);
+    p_existing = CELL_get_head_of_list(newc.x, newc.y, newc.z);
 
     while (p_existing) {
       if (p_colloid->index == p_existing->index) {
@@ -449,14 +476,14 @@ void CMPI_accept_new(int nrecv) {
     if (exists) {
       /* Just drop the incoming copy */
       VERBOSE(("Dropped copy of [index %d] at [%d,%d,%d]\n", p_colloid->index,
-	       new.x, new.y, new.z));
+	       newc.x, newc.y, newc.z));
       free_colloid(p_colloid);
     }
     else {
       /* Add the incoming colloid */
       cell_insert_colloid(p_colloid);
       VERBOSE(("Added copy of [index %d] to [%d,%d,%d]\n", p_colloid->index,
-	       new.x, new.y, new.z));
+	       newc.x, newc.y, newc.z));
     }
   }
 
@@ -771,6 +798,14 @@ void CCOM_exchange_halo_sum(int dimension, int type, int nback, int nforw) {
 	     (nback + nforw)*_halo_message_size[type]);
     }
     break;
+  case CHALO_TYPE7:
+    if (cart_size(dimension) > 1)
+      CMPI_exchange_sum_type7(dimension, nforw, nback);
+    else {
+      memcpy(_halo_recv_sev, _halo_send_sev,
+	     (nback + nforw)*_halo_message_size[type]);
+    }
+    break;
   default:
     fatal("internal error: Incorrect message type %d\n", type);
   }
@@ -941,6 +976,15 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     _halo_send_six[n].index    = p_colloid->index;
     _halo_send_six[n].n1_nodes = p_colloid->n1_nodes;
     _halo_send_six[n].n2_nodes = p_colloid->n2_nodes;
+    _halo_send_six[n].tot_va.x = p_colloid->tot_va.x;
+    _halo_send_six[n].tot_va.y = p_colloid->tot_va.y;
+    _halo_send_six[n].tot_va.z = p_colloid->tot_va.z;
+    break;
+  case CHALO_TYPE7:
+    _halo_send_sev[n].index = p_colloid->index;
+    _halo_send_sev[n].f0[X] = p_colloid->f0.x;
+    _halo_send_sev[n].f0[Y] = p_colloid->f0.y;
+    _halo_send_sev[n].f0[Z] = p_colloid->f0.z;
     break;
   default:
     fatal("Incorrect message type\n");
@@ -1018,6 +1062,22 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
 
     p_colloid->n1_nodes += _halo_recv_six[n].n1_nodes;
     p_colloid->n2_nodes += _halo_recv_six[n].n2_nodes;
+    p_colloid->tot_va.x += _halo_recv_six[n].tot_va.x;
+    p_colloid->tot_va.y += _halo_recv_six[n].tot_va.y;
+    p_colloid->tot_va.z += _halo_recv_six[n].tot_va.z;
+    break;
+
+  case CHALO_TYPE7:
+
+    if (p_colloid->index != _halo_recv_sev[n].index) {
+      verbose("Type seven does not match (order %d) (expected %d got %d)\n",
+	      n, p_colloid->index, _halo_recv_sev[n].index);
+      fatal("");
+    }
+
+    p_colloid->f0.x += _halo_recv_sev[n].f0[X];
+    p_colloid->f0.y += _halo_recv_sev[n].f0[Y];
+    p_colloid->f0.z += _halo_recv_sev[n].f0[Z];
     break;
 
   default:
@@ -1050,10 +1110,12 @@ void CMPI_init_messages() {
   MPI_Type_contiguous(sizeof(Colloid_sum_message_one), MPI_BYTE, &_mpi_sum1);
   MPI_Type_contiguous(sizeof(Colloid_sum_message_two), MPI_BYTE, &_mpi_sum2);
   MPI_Type_contiguous(sizeof(Colloid_sum_message_six), MPI_BYTE, &_mpi_sum6);
+  MPI_Type_contiguous(sizeof(Colloid_sum_message_sev), MPI_BYTE, &_mpi_sum7);
   MPI_Type_commit(&_mpi_halo);
   MPI_Type_commit(&_mpi_sum1);
   MPI_Type_commit(&_mpi_sum2);
   MPI_Type_commit(&_mpi_sum6);
+  MPI_Type_commit(&_mpi_sum7);
 
 #endif
 
@@ -1271,6 +1333,53 @@ void CMPI_exchange_sum_type6(int dimension, int nforw, int nback) {
 
   MPI_Waitall(nr, requests, status);
   VERBOSE(("Sum 6 waitall returned\n"));
+#endif
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
+ *  CMPI_exchange_sum_type7
+ *
+ *  This is exactly the same as the above, except for type seven
+ *  messages.
+ *
+ *****************************************************************************/
+
+void CMPI_exchange_sum_type7(int dimension, int nforw, int nback) {
+
+#ifdef _MPI_
+
+  const int   tagf = 1001, tagb = 1002;
+  MPI_Request requests[4];
+  MPI_Status  status[4];
+  int         nr = 0;
+
+  VERBOSE(("Sum 7 (direction %d) Sending %d and %d\n",
+	   dimension, nforw, nback));
+
+  if (nback) {
+    MPI_Issend(_halo_send_sev, nback, _mpi_sum7,
+	       cart_neighb(BACKWARD,dimension), tagb, cart_comm(),
+	       &requests[nr++]);
+    MPI_Irecv (_halo_recv_sev + nforw, nback, _mpi_sum7,
+	       cart_neighb(BACKWARD,dimension), tagf, cart_comm(),
+	       &requests[nr++]);
+  }
+
+  if (nforw) {
+    MPI_Issend(_halo_send_sev + nback, nforw, _mpi_sum7,
+	       cart_neighb(FORWARD,dimension), tagf, cart_comm(),
+	       &requests[nr++]);
+    MPI_Irecv (_halo_recv_sev, nforw, _mpi_sum7,
+	       cart_neighb(FORWARD,dimension), tagb, cart_comm(),
+	       &requests[nr++]);
+  }
+
+  MPI_Waitall(nr, requests, status);
+  VERBOSE(("Sum 7 waitall returned\n"));
 #endif
 
   return;
