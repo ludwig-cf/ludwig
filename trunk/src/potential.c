@@ -6,7 +6,7 @@
  *
  *  Provides routines for pairwise energies and forces.
  *
- *  $Id: potential.c,v 1.1 2006-10-18 17:47:02 kevin Exp $
+ *  $Id: potential.c,v 1.2 2006-12-20 16:55:45 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -16,8 +16,9 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "physics.h"
 #include "potential.h"
-#include "model.h"  /* required for kT */
+
 
 const double ENERGY_HARD_SPHERE = 100000.0;
 
