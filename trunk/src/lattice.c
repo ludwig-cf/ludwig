@@ -5,7 +5,7 @@
  *  Deals with the allocation, etc, of the large arrays holding the
  *  fluid distributions, force, etc.
  *
- *  $Id: lattice.c,v 1.5 2006-10-12 14:09:18 kevin Exp $
+ *  $Id: lattice.c,v 1.6 2006-12-20 16:56:57 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -21,7 +21,7 @@
 double * phi_site;
 
 struct vector * fl_force; /* Force on fluid nodes at current time step. */
-struct vector * fu;       /* The fluid velocity field (at lattice sites). */
+struct vector * fl_u;     /* The fluid velocity field (at lattice sites). */
 
 
 static double total_bytes;     /* bytes currently allocated */
@@ -133,10 +133,28 @@ void latt_allocate_velocity(const int nsite) {
 
   info("Requesting %.0f bytes for velocity array\n", bytes);
 
-  fu = (struct vector *) calloc(nsite, sizeof(struct vector));
-  if (fu == (struct vector *) NULL) fatal("calloc(fu) failed\n");
+  fl_u = (struct vector *) calloc(nsite, sizeof(struct vector));
+  if (fl_u == (struct vector *) NULL) fatal("calloc(fl_u) failed\n");
 
   total_bytes += bytes;
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  get_velocity_at_lattice
+ *
+ *  Return the velcoity at site index.
+ *
+ ****************************************************************************/
+
+void get_velocity_at_lattice(const int index, double u[3]) {
+
+  int n;
+
+  assert(fl_u[index].c);
+  for (n = 0; n < 3; n++) u[n] = fl_u[index].c[n];
 
   return;
 }
