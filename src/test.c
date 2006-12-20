@@ -16,6 +16,7 @@
 #include "colloids.h"
 #include "lattice.h"
 #include "model.h"
+#include "physics.h"
 #include "bbl.h"
 #include "test.h"
 

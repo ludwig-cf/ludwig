@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.6 2006-10-12 14:09:18 kevin Exp $
+ *  $Id: wall.c,v 1.7 2006-12-20 16:55:45 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -18,6 +18,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "physics.h"
 #include "model.h"
 #include "wall.h"
 #include "lattice.h"
