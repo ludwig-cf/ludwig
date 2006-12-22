@@ -187,3 +187,54 @@ static double ran_lecuyer(struct lecuyer * rng) {
 
   return (_rmodulus*rng->rstate[0]);
 }
+
+/*****************************************************************************
+ *
+ *  ran_serial_unit_vector
+ *
+ *  Returns a vector randomly on the surface of a unit sphere.
+ *  Method of Marsaglia [1972]. See Allen and Tildesley.
+ *
+ *****************************************************************************/
+
+void ran_serial_unit_vector(double rhat[3]) {
+
+  double zeta1, zeta2, zsq;  
+
+  do {
+    zeta1 = 1.0 - 2.0*ran_serial_uniform();
+    zeta2 = 1.0 - 2.0*ran_serial_uniform();
+    zsq   = zeta1*zeta1 + zeta2*zeta2;
+  } while (zsq > 1.0);
+
+  rhat[0] = 2.0*zeta1*sqrt(1.0 - zsq);
+  rhat[1] = 2.0*zeta2*sqrt(1.0 - zsq);
+  rhat[2] = 1.0 - 2.0*zsq;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  ran_parallel_unit_vector
+ *
+ *  Random unit vector via parallel generator.
+ *
+ *****************************************************************************/
+ 
+void ran_parallel_unit_vector(double rhat[3]) {
+
+  double zeta1, zeta2, zsq;  
+
+  do {
+    zeta1 = 1.0 - 2.0*ran_parallel_uniform();
+    zeta2 = 1.0 - 2.0*ran_parallel_uniform();
+    zsq   = zeta1*zeta1 + zeta2*zeta2;
+  } while (zsq > 1.0);
+
+  rhat[0] = 2.0*zeta1*sqrt(1.0 - zsq);
+  rhat[1] = 2.0*zeta2*sqrt(1.0 - zsq);
+  rhat[2] = 1.0 - 2.0*zsq;
+
+  return;
+}
