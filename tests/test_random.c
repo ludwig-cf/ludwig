@@ -26,12 +26,13 @@ int main(int argc, char ** argv) {
 
   double r;
   double rtot, rvar, rmin, rmax;
+  double rhat[3], rmean[3];
   int    n;
 
   pe_init(argc, argv);
 
-  info("Testing random number generators (may take a few minutes...)\n");
-  info("Random sample size is %d\n", NLARGE);
+  info("Testing random number generators (may take a minute...)\n");
+  info("Random sample size is %d\n\n", NLARGE);
 
   ran_init();
 
@@ -185,7 +186,96 @@ int main(int argc, char ** argv) {
   test_assert(fabs(rvar - 1.0) < STAT_TOLERANCE);
   info("(ok)\n");
 
+  /* The serial unit vector routine */
 
+  info("Testing serial_unit_vector()...\n");
+
+  rmin = 0.0;
+  rmax = 0.0;
+  rmean[0] = 0.0;
+  rmean[1] = 0.0;
+  rmean[2] = 0.0;
+
+  for (n = 0; n < NLARGE; n++) {
+    ran_serial_unit_vector(rhat);
+    rvar = rhat[0]*rhat[0] + rhat[1]*rhat[1] + rhat[2]*rhat[2];
+    test_assert(fabs(rvar - 1.0) < TEST_DOUBLE_TOLERANCE);
+    rmean[0] += rhat[0];
+    rmean[1] += rhat[1];
+    rmean[2] += rhat[2];
+    rmin = dmin(rmin, rhat[0]);
+    rmin = dmin(rmin, rhat[1]);
+    rmin = dmin(rmin, rhat[2]);
+    rmax = dmax(rmax, rhat[0]);
+    rmax = dmax(rmax, rhat[1]);
+    rmax = dmax(rmax, rhat[2]);
+  }
+
+  info("Unit vector modulus is %f (ok)\n", rvar);
+
+  test_assert(rmin >= -1.0);
+  info("Component min is %g (ok)\n", rmin);
+  
+  test_assert(rmax <= +1.0);
+  info("Component max is %g (ok)\n", rmax);
+
+  rmean[0] /= NLARGE;
+  rmean[1] /= NLARGE;
+  rmean[2] /= NLARGE;
+
+  test_assert(fabs(rmean[0]) < STAT_TOLERANCE);
+  info("Component <X> is %g (ok)\n", rmean[0]);
+  test_assert(fabs(rmean[1]) < STAT_TOLERANCE);
+  info("Component <Y> is %g (ok)\n", rmean[1]);
+  test_assert(fabs(rmean[2]) < STAT_TOLERANCE);
+  info("Component <Z> is %g (ok)\n", rmean[2]);
+
+  /* Repeat for the parallel version. */
+
+  info("Testing parallel_unit_vector()...\n");
+
+  rmin = 0.0;
+  rmax = 0.0;
+  rmean[0] = 0.0;
+  rmean[1] = 0.0;
+  rmean[2] = 0.0;
+
+  for (n = 0; n < NLARGE; n++) {
+    ran_parallel_unit_vector(rhat);
+    rvar = rhat[0]*rhat[0] + rhat[1]*rhat[1] + rhat[2]*rhat[2];
+    test_assert(fabs(rvar - 1.0) < TEST_DOUBLE_TOLERANCE);
+    rmean[0] += rhat[0];
+    rmean[1] += rhat[1];
+    rmean[2] += rhat[2];
+    rmin = dmin(rmin, rhat[0]);
+    rmin = dmin(rmin, rhat[1]);
+    rmin = dmin(rmin, rhat[2]);
+    rmax = dmax(rmax, rhat[0]);
+    rmax = dmax(rmax, rhat[1]);
+    rmax = dmax(rmax, rhat[2]);
+  }
+
+  info("Unit vector modulus is %f (ok)\n", rvar);
+
+  test_assert(rmin >= -1.0);
+  info("Component min is %g (ok)\n", rmin);
+  
+  test_assert(rmax <= +1.0);
+  info("Component max is %g (ok)\n", rmax);
+
+  rmean[0] /= NLARGE;
+  rmean[1] /= NLARGE;
+  rmean[2] /= NLARGE;
+
+  test_assert(fabs(rmean[0]) < STAT_TOLERANCE);
+  info("Component <X> is %g (ok)\n", rmean[0]);
+  test_assert(fabs(rmean[1]) < STAT_TOLERANCE);
+  info("Component <Y> is %g (ok)\n", rmean[1]);
+  test_assert(fabs(rmean[2]) < STAT_TOLERANCE);
+  info("Component <Z> is %g (ok)\n", rmean[2]);
+
+
+  info("\nRandom number tests ok\n\n");
 
   pe_finalise();
 
