@@ -9,6 +9,7 @@
 #include "coords.h"
 #include "control.h"
 #include "model.h"
+#include "physics.h"
 
 #include "utilities.h"
 #include "lattice.h"
@@ -51,6 +52,19 @@ static LE_Plane * LeesEdw = NULL;
 
 static int    LE_cmpLEBC( const void *, const void * );
 static void   LE_print_LEbuffers( void );
+static void   le_init_shear_profile(void);
+static double le_get_steady_uy(const int); 
+
+/* KS TODO: replace global LE_plane structure with... */
+/* Global Lees Edwards plane parameters */
+
+static struct le_global_parameters {
+  int    n_plane;     /* Total number of planes */
+  double uy_plane;    /* u[Y] for all planes */
+  double shear_rate;  /* Overall shear rate */
+  double dx_min;      /* Position first plane */
+  double dx_sep;      /* Plane separation */ 
+} le_params_;
 
 /*****************************************************************************
  *
@@ -69,27 +83,25 @@ static void   LE_print_LEbuffers( void );
 void le_init_transitional() {
 
   int n;
-  double vplane = 0.0;
 
   n = RUN_get_int_parameter("N_LE_plane", &N_LE_total);
-  n = RUN_get_double_parameter("LE_plane_vel", &vplane);
+  n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
 
   /* Initialise the global Lees-Edwards structure. */
 
   if (N_LE_total != 0) {
-
-    int dx;
 
     LeesEdw = (LE_Plane *) malloc(N_LE_total*sizeof(LE_Plane));
     if (LeesEdw == NULL) fatal("malloc(LE_planes failed\n");
 
     info("\nLees-Edwards boundary conditions are active:\n");
 
-    dx = N_total(X) / N_LE_total;
+    le_params_.dx_sep = L(X) / N_LE_total;
+    le_params_.dx_min = 0.5*le_params_.dx_sep;
 
     for (n = 0; n < N_LE_total; n++) {
-      LeesEdw[n].loc = dx/2 + n*dx;
-      LeesEdw[n].vel = vplane;
+      LeesEdw[n].loc = le_params_.dx_min + n*le_params_.dx_sep;
+      LeesEdw[n].vel = le_params_.uy_plane;
       LeesEdw[n].disp = 0.0;
       LeesEdw[n].frac = 0.0;
       LeesEdw[n].rank = n;
@@ -97,10 +109,23 @@ void le_init_transitional() {
 	   LeesEdw[n].vel);
     }
 
-    info("Overall shear rate = %f\n", vplane*N_LE_total/L(X));
+    le_params_.shear_rate = le_params_.uy_plane*N_LE_total/L(X);
+    info("Overall shear rate = %f\n", le_params_.shear_rate);
   }
 
   LE_init();
+
+  /* Only allow initialisation at t = 0 */
+
+  if (get_step() == 0) {
+
+    RUN_get_int_parameter("LE_init_profile", &n);
+
+    if (n == 1) {
+      info("Initialising shear profile\n");
+      le_init_shear_profile();
+    }
+  }
 
   return;
 }
@@ -1861,4 +1886,101 @@ void MODEL_get_gradients( void )
 	    }
     }
 
+}
+
+/*****************************************************************************
+ *
+ *  le_init_shear_profile
+ *
+ *  Initialise the distributions to be consistent with a steady-state
+ *  linear shear profile, consistent with plane velocity.
+ *
+ *****************************************************************************/
+
+void le_init_shear_profile() {
+
+  int ic, jc, kc, index;
+  int i, j, p;
+  int N[3];
+  double rho, u[ND], gradu[ND][ND];
+  double eta;
+
+  /* Initialise the density, velocity, gradu; ghost modes are zero */
+
+  rho = get_rho0();
+  eta = get_eta_shear();
+  get_N_local(N);
+
+  for (i = 0; i< ND; i++) {
+    u[i] = 0.0;
+    for (j = 0; j < ND; j++) {
+      gradu[i][j] = 0.0;
+    }
+  }
+
+  gradu[X][Y] = le_params_.shear_rate;
+
+  /* Loop trough the sites */
+
+  for (ic = 1; ic <= N[X]; ic++) {
+
+    u[Y] = le_get_steady_uy(ic);
+
+    /* We can now project the physical quantities to the distribution */
+
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+
+	index = index_site(ic, jc, kc);
+
+	for (p = 0; p < NVEL; p++) {
+	  double f = 0.0;
+	  double cdotu = 0.0;
+	  double sdotq = 0.0;
+
+	  for (i = 0; i < ND; i++) {
+	    cdotu += cv[p][i]*u[i];
+	    for (j = 0; j < ND; j++) {
+	      sdotq += (rho*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
+	    }
+	  }
+	  f = wv[p]*(rho + rcs2*rho*cdotu + 0.5*rcs2*rcs2*sdotq);
+	  set_f_at_site(index, p, f);
+	}
+	/* Next site */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  le_get_steady_uy
+ *
+ *  Return the velocity expected for steady shear profile at
+ *  position x (dependent on x-direction only). Takes a local index.
+ *
+ *****************************************************************************/
+
+double le_get_steady_uy(int ic) {
+
+  int offset[3];
+  int nplane;
+  double xglobal, uy;
+
+  get_N_offset(offset);
+
+  /* The shear profile is linear, so the local velocity is just a
+   * function of position, modulo the number of planes encountered
+   * since the origin. The planes are half way between sites giving
+   * the - 0.5. */
+
+  xglobal = offset[X] + (double) ic - 0.5;
+  nplane = (int) ((le_params_.dx_min + xglobal)/le_params_.dx_sep);
+
+  uy = xglobal*le_params_.shear_rate - le_params_.uy_plane*nplane;
+ 
+  return uy;
 }
