@@ -2,18 +2,15 @@
  *
  *  d3q19.c
  *
- *  D3Q19 definitions and model-dependent code.
+ *  D3Q19 definitions.
  *
- *  $Id: d3q19.c,v 1.6 2006-12-20 16:51:25 kevin Exp $
+ *  $Id: d3q19.c,v 1.7 2007-01-16 15:42:59 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#include <math.h>
-
 #include "pe.h"
-#include "ran.h"
 #include "d3q19.h"
 
 #ifdef _D3Q19_
@@ -52,8 +49,6 @@
  *
  *  ma_[NVEL][NVEL]  full matrix of eigenvectors (doubles)
  *  mi_[NVEL][NVEL]  inverse of ma_[][]
- *
- *  Note that jchi1[p][i], and jchi2[p][i] are computed at run time.
  *
  *****************************************************************************/
 
@@ -180,104 +175,5 @@ const double mi_[NVEL][NVEL] = {
 {w2,-wa, c0,-wa, wa, c0, r4,-wb, c0, wa, wd,-wb, c0,-wb,-we, r8, c0, r8, wc},
 {w2,-wa,-wa, c0, wa, r4, c0, wa, c0,-wb,-wb, wa, wa, c0, c0, c0, c0, c0, wc}
 };
-
-static double jchi1[NVEL][3];
-static double jchi2[NVEL][3];
-
-static double var_chi1;
-static double var_jchi1;
-static double var_chi2;
-static double var_jchi2;
-static double var_chi3;
-
-/*****************************************************************************
- *
- *  init_ghosts
- *
- *  Initialise the D3Q15 ghost modes jchi1 and jchi2.
- *
- *****************************************************************************/
-
-void init_ghosts(const double kT) {
-
-  double tau_ghost = 1.0;
-  double var;
-  int    i, p;
-
-  /* Set the ghost current eigenvectors jchi1 */
-
-  for (p = 0; p < NVEL; p++) {
-    for (i = 0; i < 3; i++) {
-      jchi1[p][i] = chi1[p]*cv[p][i];
-      jchi2[p][i] = chi2[p]*cv[p][i];
-    }
-  }
-
-  /* These are the variances for fluctuations in ghosts */
-
-  var = sqrt((tau_ghost + tau_ghost - 1.0)/(tau_ghost*tau_ghost));
-
-  var_chi1  = sqrt(kT)*sqrt(4.0/3.0)*var;
-  var_jchi1 = sqrt(kT)*sqrt(2.0/3.0)*var;
-  var_chi2  = sqrt(kT)*sqrt(4.0/9.0)*var;
-  var_jchi2 = sqrt(kT)*sqrt(2.0/9.0)*var;
-  var_chi3 =  sqrt(kT)*sqrt(2.0/1.0)*var;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  get_ghosts
- *
- *  Work out the model-dependent part of the distribution for the
- *  collision stage.
- *
- *****************************************************************************/
-
-void get_ghosts(double fghost[]) {
-
-  const double c3r4 = (3.0/4.0);   /* Normaliser for chi1 mode */
-  const double c3r2 = (3.0/2.0);   /* Normaliser for jchi1 mode */
-  const double c3   = (9.0/4.0);   /* Normaliser for chi2 mode */
-  const double c9r2 = (9.0/2.0);   /* Normaliser for jchi2 mode */
-                                   /* Normaliser for chi3 mode  is r2 */
-
-  double chi1hat;
-  double chi2hat;
-  double chi3hat;
-  double jchi1hat[3];
-  double jchi2hat[3];
-
-  int    i, p;
-
-  /* Set fluctuating parts and and tot up the ghost projection. */
-
-  chi1hat      = ran_parallel_gaussian()*var_chi1;
-  jchi1hat[0]  = ran_parallel_gaussian()*var_jchi1;
-  jchi1hat[1]  = ran_parallel_gaussian()*var_jchi1;
-  jchi1hat[2]  = ran_parallel_gaussian()*var_jchi1;
-  chi2hat      = ran_parallel_gaussian()*var_chi2;
-  jchi2hat[0]  = ran_parallel_gaussian()*var_jchi2;
-  jchi2hat[1]  = ran_parallel_gaussian()*var_jchi2;
-  jchi2hat[2]  = ran_parallel_gaussian()*var_jchi2;
-  chi3hat      = ran_parallel_gaussian()*var_chi3;
-
-  for (p = 0; p < NVEL; p++) {
-
-    fghost[p] = c3r4*chi1hat*chi1[p];
-
-    for (i = 0; i < 3; i++) {
-      fghost[p] += c3r2*jchi1hat[i]*jchi1[p][i];
-      fghost[p] += c9r2*jchi2hat[i]*jchi2[p][i];
-    }
-
-    fghost[p] += c3*chi2[p]*chi2hat;
-    fghost[p] += r2*chi3[p]*chi3hat;
-  }
-
-  return;
-}
-
 
 #endif
