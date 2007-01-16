@@ -34,6 +34,7 @@ static const char * timer_name[] = {"Total",
 				    "Propagation",
 				    "Collision",
 				    "Lattice halos",
+				    "phi gradients",
 				    "Lees Edwards BC",
 				    "I/O",
 				    "Forces",
@@ -43,7 +44,7 @@ static const char * timer_name[] = {"Total",
 				    "Particle halos",
 				    "Fluctuations",
 				    "Free1",
-                                    "Free2",
+				    "Free2",
                                     "Free3"};
 
 
@@ -173,8 +174,8 @@ void TIMER_statistics() {
       t_sum /= pe_size();
 #endif
 
-      info("%20s: %10f %10f %10f %10f", timer_name[n], t_min, t_max, t_sum,
-	   t_sum/(double) timer[n].nsteps);
+      info("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
+	   t_min, t_max, t_sum, t_sum/(double) timer[n].nsteps);
       info(" (%d call%s)\n", timer[n].nsteps, timer[n].nsteps > 1 ? "s" : ""); 
     }
   }
