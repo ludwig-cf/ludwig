@@ -4,7 +4,7 @@
  *
  *  D3Q15 definitions.
  *
- *  $Id: d3q15.h,v 1.4 2006-12-20 16:51:25 kevin Exp $
+ *  $Id: d3q15.h,v 1.5 2007-01-16 15:42:36 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -22,7 +22,5 @@ extern const double norm_[NVEL];
 extern const double ma_[NVEL][NVEL];
 extern const double mi_[NVEL][NVEL];
 
-void init_ghosts(const double);
-void get_ghosts(double []);
-
 #endif
+
