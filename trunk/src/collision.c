@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.2 2006-12-20 17:02:30 kevin Exp $
+ *  $Id: collision.c,v 1.3 2007-01-16 15:49:53 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -58,7 +58,53 @@ static double var_bulk;        /* Variance for bulk mode fluctuations */
 
 static double noise_var[NVEL]; /* Noise variances */
 
+void MODEL_collide_multirelaxation(void);
+void MODEL_collide_binary_lb(void);
+
+/*****************************************************************************
+ *
+ *  collide
+ *
+ *  Driver routine for the collision stage.
+ *
+ *****************************************************************************/
+
+void collide() {
+
 #ifdef _SINGLE_FLUID_
+
+  /* This is single fluid collision stage. */
+  MODEL_collide_multirelaxation();
+
+#else
+
+  void COLL_compute_phi_gradients(void);
+  int  get_N_colloid(void);
+  int  boundaries_present(void);
+
+  /* This is the binary LB collision. First, compute order parameter
+   * gradients, then Swift etal. collision stage. */
+
+  TIMER_start(TIMER_PHI_GRADIENTS);
+
+  MODEL_calc_phi();
+
+  if (get_N_colloid() > 0 || boundaries_present()) {
+    /* Must get gradients right so use this */ 
+    COLL_compute_phi_gradients();
+  }
+  else {
+    /* No solid objects (including cases with LE planes) use this */
+    MODEL_get_gradients();
+  }
+  TIMER_stop(TIMER_PHI_GRADIENTS);
+
+  MODEL_collide_binary_lb();
+
+#endif
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -233,80 +279,75 @@ void MODEL_collide_multirelaxation() {
   return;
 }
 
-#else
-
 /*****************************************************************************
  *
- *  MODEL_collide_multirelaxation
+ *  MODEL_collide_binary_lb
  *
- *  Collision with different relaxation for different modes.
+ *  Binary LB collision stage (here we are progressing toward
+ *  decoupled version).
  *
- *  Binary fluid version. This is currently being tested, but
- *  we think it's correct.
+ *  This follows the single fluid version above, with the addition
+ *  that the equilibrium stress includes the thermodynamic term
+ *  following Swift etal.
  *
- *  At each site, compute the denisty, order parameter, velocity,
- *  order parameter flux, and contribution to the stress tensor
- *  from the thermodynamic sector and the density. The stress is
- *  relaxed toward the equilibrium value, while the order parameter
- *  flux is also relaxed toward equilibrium.
+ *  We also have to update the second distribution g from the
+ *  order parameter modes phi, jphi[3], sphi[3][3].
  *
- *  The order parameter 'stress' is set to the equilibrium value
- *  following Ronojoy's suggestion. Note the order parameter
- *  mobility now only enters via the relaxation time for the
- *  order parameter.
+ *  There are two choices:
+ *    1. relax jphi[i] toward equilibrium phi*u[i] at rate rtau2
+ *       AND
+ *       fix sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j]
+ *       so the mobility enters through rtau2 (J. Stat. Phys. 2005).
+ *    2.
+ *       fix jphi[i] = phi*u[i] (i.e. relaxation time == 1.0)
+ *       AND
+ *       fix sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j]
+ *       so the mobility enters with chemical potential (Kendon etal 2001).
  *
- *  Body forces assume a single relaxation time at the moment.
+ *   As there seems to be little to choose between the two in terms of
+ *   results, I prefer 2, as it avoids the calculation of jphi[i] from
+ *   from the distributions g.
+ *
+ *   The reprojection of g moves phi (mostly) into the non-propagating
+ *   distribution following J. Stat. Phys. (2005).
  *
  *****************************************************************************/
 
-void MODEL_collide_multirelaxation() {
+void MODEL_collide_binary_lb() {
 
-  int      N[3];
-  int      ic, jc, kc, index;       /* site indices */
-  int      p;                       /* velocity index */
-  int      i, j;                    /* summed over indices ("alphabeta") */
-  int      xfac, yfac;
+  int       N[3];
+  int       ic, jc, kc, index;       /* site indices */
+  int       p, m;                    /* velocity index */
+  int       i, j;                    /* summed over indices ("alphabeta") */
+  int       xfac, yfac;
 
-  double    u[3];                    /* Velocity */
-  double    jphi[3];                 /* Order parameter flux */
-  double    s[3][3];                 /* Stress */
-  double   shat[3][3];              /* Random stress */
-  double    sth[3][3];               /* Equilibrium stress (thermodynamic) */
-  double    sphi[3][3];              /* Order parameter "stress" */
-  double    rho, rrho;               /* Density, reciprocal density */
-  double    rtau2;                   /* Reciprocal \tau \tau_2 */
-  double    tr_s, tr_seq;
   double *  f;
-  double *  g;
-
-  double    udotc;
-  double    jdotc;
-  double    sdotq, sphidotq;
+  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
+  double    rho, rrho;               /* Density, reciprocal density */
+  double    u[3];                    /* Velocity */
+  double    s[3][3];                 /* Stress */
+  double    shat[3][3];              /* random stress */
 
   double    force[3];                /* External force */
+  double    tr_s, tr_seq;
 
-  double    phi;                     /* Order parameter */
+  double * force_local;
+  double * u_field;
+  const double   r3     = (1.0/3.0);
+
+
+  double *  g;
+  double    phi, jdotc, sphidotq;    /* modes */
+  double    jphi[3];
+  double    sth[3][3], sphi[3][3];
   double    phi_x, phi_y, phi_z;     /* \nabla\phi */
   double    grad_phi_sq;
   double    mu;                      /* Chemical potential */
-  double    s1;                      /* Diagonal part of thermodynamic stress */
+  double    s1;                      /* Diagonal part thermodynamic stress */
   double    A, B, kappa;             /* Free energy parameters */
-
-  const double r2   = 0.5;
-  const double r3   = 1.0/3.0;
-  const double c3r2 = 1.5;
-
+  double    rtau2;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
-  double    fghost[NVEL];
-
-  double    dp0;
-
-  double * force_local;
-
-  void COLL_compute_phi_gradients(void);
-  int  get_N_colloid(void);
-  int  boundaries_present(void);
 
   TIMER_start(TIMER_COLLIDE);
 
@@ -317,26 +358,10 @@ void MODEL_collide_multirelaxation() {
 
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
 
-  /* Order parameter and order parameter gradients */
+  /* Free energy parameters */
   A = free_energy_A();
   B = free_energy_B();
   kappa = free_energy_K();
-
-  MODEL_calc_phi();
-
-  if (get_N_colloid() > 0 || boundaries_present()) {
-    /* Must get gradients right so use this */ 
-    COLL_compute_phi_gradients();
-  }
-  else {
-    /* No solid objects (including cases with LE planes) use this */
-    MODEL_get_gradients();
-  }
-
-  /* Initialise the ghost part of the distribution */
-  for (p = 0; p < NVEL; p++) {
-    fghost[p] = 0.0;
-  }
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
@@ -347,52 +372,62 @@ void MODEL_collide_multirelaxation() {
 	if (site_map[index] != FLUID) continue;
 
 	f = site[index].f;
-	g = site[index].g;
 
-	force_local = fl_force[index].c;
+	/* Compute all the modes */
 
-	rho  = f[0];
-	phi  = g[0];
-	u[0] = 0.0;
-	u[1] = 0.0;
-	u[2] = 0.0;
-	jphi[0] = 0.0;
-	jphi[1] = 0.0;
-	jphi[2] = 0.0;
-
-	for (p = 1; p < NVEL; p++) {
-	  rho  += f[p];
-	  phi  += g[p];
-	  u[0] += f[p]*cv[p][0];
-	  u[1] += f[p]*cv[p][1];
-	  u[2] += f[p]*cv[p][2];
-	  jphi[0] += g[p]*cv[p][0];
-	  jphi[1] += g[p]*cv[p][1];
-	  jphi[2] += g[p]*cv[p][2];
+	for (m = 0; m < nmodes_; m++) {
+	  mode[m] = 0.0;
+	  for (p = 0; p < NVEL; p++) {
+	    mode[m] += f[p]*ma_[m][p];
+	  }
 	}
 
-	/* Body force is added to the velocity going into collision;
-	 * the variable "force" holds 0.5 x actual force. */
+	/* For convenience, write out the physical modes. */
+
+	rho = mode[0];
+	for (i = 0; i < ND; i++) {
+	  u[i] = mode[1 + i];
+	}
+	s[X][X] = mode[4];
+	s[X][Y] = mode[5];
+	s[X][Z] = mode[6];
+	s[Y][X] = s[X][Y];
+	s[Y][Y] = mode[7];
+	s[Y][Z] = mode[8];
+	s[Z][X] = s[X][Z];
+	s[Z][Y] = s[Y][Z];
+	s[Z][Z] = mode[9];
+
+	rho_site[index] = rho;
+
+	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
+	force_local = fl_force[index].c;
+	u_field = fl_u[index].c;
 
 	for (i = 0; i < 3; i++) {
-	  force[i] = 0.5*(siteforce[i] + force_local[i]);
-	  u[i] = rrho*(u[i] + force[i]);
+	  force[i] = (siteforce[i] + force_local[i]);
+	  u[i] = rrho*(u[i] + 0.5*force[i]);  
+	  u_field[i] = u[i];
 	}
 
-	/* Chemical potential */
-	mu = phi*(A + B*phi*phi) - kappa*delsq_phi[index];
+	rho_site[index] = rho;
 
-	/* Thermodynamic part of the stress */
+
+	/* Compute the thermodynamic component of the stress */
+
+	/* Chemical potential */
+	phi = phi_site[index];
+	mu = phi*(A + B*phi*phi) - kappa*delsq_phi[index];
 
 	phi_x = (grad_phi + index)->x;
 	phi_y = (grad_phi + index)->y;
 	phi_z = (grad_phi + index)->z;
 
 	grad_phi_sq = phi_x*phi_x + phi_y*phi_y + phi_z*phi_z;
-	s1 = r2*phi*phi*(A + c3r2*B*phi*phi)
-	  - kappa*(phi*delsq_phi[index] + r2*grad_phi_sq);
+	s1 = 0.5*phi*phi*(A + (3.0/2.0)*B*phi*phi)
+	  - kappa*(phi*delsq_phi[index] + 0.5*grad_phi_sq);
 
 	sth[0][0] = s1 + kappa*phi_x*phi_x;
 	sth[0][1] =      kappa*phi_x*phi_y;
@@ -410,15 +445,6 @@ void MODEL_collide_multirelaxation() {
 	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
-	  for (j = 0; j < 3; j++) {
-	    /* Compute s */
-	    s[i][j] = 0.0;
-	    shat[i][j] = 0.0;
-
-	    for (p = 0; p < NVEL; p++) {
-	      s[i][j] += f[p]*q_[p][i][j];
-	    }
-	  }
 	  /* Compute trace */
 	  tr_s   += s[i][i];
 	  tr_seq += (rho*u[i]*u[i] + sth[i][i]);
@@ -441,41 +467,68 @@ void MODEL_collide_multirelaxation() {
 	    /* Correction from body force (assumes equal relaxation times) */
 
 	    s[i][j] += (2.0-rtau_shear)*(u[i]*force[j] + force[i]*u[j]);
-	    
-	    /* Order parameter stress is fixed to the equilibrium value
-	     * related to the chemical potential */
-
-	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
-	    /*sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
+	    shat[i][j] = 0.0;
 	  }
+	}
 
-	  /* Order parameter flux is relaxed toward equilibrium value */
+#ifdef _NOISE_
+	get_fluctuations_stress(shat);
+#endif
 
-	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
-	  /* jphi[i] = phi*u[i];*/
+	/* Now reset the hydrodynamic modes to post-collision values */
+
+	mode[1] = mode[1] + force[X];    /* Conserved if no force */
+	mode[2] = mode[2] + force[Y];    /* Conserved if no force */
+	mode[3] = mode[3] + force[Z];    /* Conserved if no force */
+	mode[4] = s[X][X] + shat[X][X];
+	mode[5] = s[X][Y] + shat[X][Y];
+	mode[6] = s[X][Z] + shat[X][Z];
+	mode[7] = s[Y][Y] + shat[Y][Y];
+	mode[8] = s[Y][Z] + shat[Y][Z];
+	mode[9] = s[Z][Z] + shat[Z][Z];
+
+	/* Ghost modes are relaxed toward zero equilibrium. */
+
+	for (m = NHYDRO; m < nmodes_; m++) {
+	  mode[m] = mode[m] - rtau_ghost*(mode[m] - 0.0);
+#ifdef _NOISE_
+	  mode[m] += noise_var[m]*ran_parallel_gaussian();
+#endif
+	}
+
+	/* Project post-collision modes back onto the distribution */
+
+	for (p = 0; p < NVEL; p++) {
+	  f[p] = 0.0;
+	  for (m = 0; m < nmodes_; m++) {
+	    f[p] += mi_[p][m]*mode[m];
+	  }
+	}
+
+	/* Now, the order parameter distribution */
+
+	g = site[index].g;
+
+	/* Relax order parameters modes. */
+
+	for (i = 0; i < 3; i++) {
+	  for (j = 0; j < 3; j++) {
+	    sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];
+	  }
+	  jphi[i] = phi*u[i];
 	}
 
 	/* Now update the distribution */
 
-#ifdef _NOISE_
-	get_fluctuations_stress(shat);
-	get_ghosts(fghost);
-#endif
-
 	for (p = 0; p < NVEL; p++) {
 
-	  dp0 = (p == 0);
-
-	  udotc    = 0.0;
+	  int dp0 = (p == 0);
 	  jdotc    = 0.0;
-	  sdotq    = 0.0;
 	  sphidotq = 0.0;
 
 	  for (i = 0; i < 3; i++) {
-	    udotc += (u[i] + rrho*force[i])*cv[p][i];
 	    jdotc += jphi[i]*cv[p][i];
 	    for (j = 0; j < 3; j++) {
-	      sdotq += (s[i][j] + shat[i][j])*q_[p][i][j];
 	      sphidotq += sphi[i][j]*q_[p][i][j];
 	    }
 	  }
@@ -483,9 +536,7 @@ void MODEL_collide_multirelaxation() {
 	  /* Project all this back to the distributions. The magic
 	   * here is to move phi into the non-propagating distribution. */
 
-	  f[p] = wv[p]*(rho + rho*udotc*rcs2 + sdotq*r2rcs4 + fghost[p]);
 	  g[p] = wv[p]*(          jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
-
 	}
 
 	/* Next site */
@@ -498,8 +549,6 @@ void MODEL_collide_multirelaxation() {
   return;
 }
 
-#endif /* _SINGLE_FLUID_ */
-
 /*----------------------------------------------------------------------------*/
 /*!
  * Initialise model (allocate buffers, initialise velocities, etc.)
@@ -510,8 +559,6 @@ void MODEL_collide_multirelaxation() {
  *- \c Version:   2.0b1
  *- \c Last \c updated: 01/03/2002 by JCD
  *- \c Authors:   P. Bladon and JC Desplat
- *- \c See \c also: COM_init(), LE_init(), MODEL_process_options(), 
- *                COM_read_link(), MODEL_read_site_data()
  *- \c Note:      none
  */
 /*----------------------------------------------------------------------------*/
@@ -523,8 +570,6 @@ void MODEL_init( void ) {
   int     offset[3];
   double   phi;
   double   phi0, rho0;
-
-  void le_init_transitional(void);
 
   rho0 = get_rho0();
   phi0 = get_phi0();
@@ -567,8 +612,6 @@ void MODEL_init( void ) {
   LATT_allocate_force(N_sites);
   latt_allocate_velocity(N_sites);
 
-  /* KS: should be called after MODEL_init() */
-  le_init_transitional();
   
   /*
    * A number of options are offered to start a simulation:
@@ -588,7 +631,6 @@ void MODEL_init( void ) {
     /* Read distribution functions - sets both */
     COM_read_site(get_input_config_filename(0),MODEL_read_site);
   } 
-  /* Option 6: set rho/phi to defaults */
   else {
       /* 
        * Provides same initial conditions for rho/phi regardless of the
@@ -622,13 +664,6 @@ void MODEL_init( void ) {
 	      }
 	  }
   }
-
-  /*
-   * Initialise Lees-Edwards buffers (if required): needs to be called *before*
-   * any call to MODEL_get_gradients() but can only take place *after* the
-   * distribution functions have been set
-   */
-  LE_update_buffers(SITE_AND_PHI);
 
 }
 
@@ -737,7 +772,7 @@ void RAND_init_fluctuations() {
   info("Relaxation time: %f\n", tau_s);
   info("Bulk viscosity : %f\n", get_eta_bulk());
   info("Relaxation time: %f\n", tau_b);
-  info("Isothermal kT:   %f\n", get_kT());
+  info("Isothermal kT:   %f\n", get_kT()/rcs2);
 
   /* Order parameter mobility (probably to move) */
 
@@ -746,7 +781,6 @@ void RAND_init_fluctuations() {
 
 
   /* Ghost modes */
-  init_ghosts(kt);
 
   p = RUN_get_string_parameter("ghost_modes", tmp);
   if (strcmp(tmp, "off") == 0) nmodes_ = NHYDRO;
