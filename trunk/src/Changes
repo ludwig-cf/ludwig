@@ -3,6 +3,27 @@ Changes
 Log file for changes to the code.
 =================================
 
+2007 Januaary 16th kevin
+
+* I've removed the ghost noise calculation from d3q15/d3q19
+  to collision.c as it is now model-independent.
+
+* In collision.c I have also replaced the binary fluid LB
+  with a slightly altered routine. This has one difference
+  from the previous version which is detailed in the comments
+  for the routine MODEL_collide_binary_lb().
+
+  There is now a driver routine collide() which should be
+  called from main.
+
+
+2006 December 21st kevin
+
+* I've updated the colloid-colloid interaction routine to
+  do a (more simple) search. This is more natural in parallel,
+  and allows the fluctuating part of the lubrication correction
+  to be computed uniquely.
+
 2006 December 20th kevin
 
 * Further ongoing refactoring:
