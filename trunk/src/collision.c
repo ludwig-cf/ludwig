@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.4 2007-02-01 17:31:24 kevin Exp $
+ *  $Id: collision.c,v 1.5 2007-02-01 17:41:23 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -303,7 +303,7 @@ void MODEL_collide_multirelaxation() {
  *
  *   As there seems to be little to choose between the two in terms of
  *   results, I prefer 2, as it avoids the calculation of jphi[i] from
- *   from the distributions g.
+ *   from the distributions g. However, keep 1 so tests don't break!
  *
  *   The reprojection of g moves phi (mostly) into the non-propagating
  *   distribution following J. Stat. Phys. (2005).
@@ -500,13 +500,24 @@ void MODEL_collide_binary_lb() {
 
 	/* Now, the order parameter distribution */
 
-	/* Relax order parameters modes. */
+	jphi[X] = 0.0;
+	jphi[Y] = 0.0;
+	jphi[Z] = 0.0;
+	for (p = 1; p < NVEL; p++) {
+	  for (i = 0; i < 3; i++) {
+	    jphi[i] += site[index].g[p]*cv[p][i];
+	  }
+	}
+
+	/* Relax order parameters modes. The comments above. */
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];
+	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
+	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
 	  }
-	  jphi[i] = phi*u[i];
+	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
+	  /* jphi[i] = phi*u[i];*/
 	}
 
 	/* Now update the distribution */
