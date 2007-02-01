@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.3 2007-01-16 15:49:53 kevin Exp $
+ *  $Id: collision.c,v 1.4 2007-02-01 17:31:24 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -133,7 +133,6 @@ void MODEL_collide_multirelaxation() {
   int       i, j;                    /* summed over indices ("alphabeta") */
   int       xfac, yfac;
 
-  double *  f;
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
   double    u[3];                    /* Velocity */
@@ -161,14 +160,12 @@ void MODEL_collide_multirelaxation() {
 
 	if (site_map[index] != FLUID) continue;
 
-	f = site[index].f;
-
 	/* Compute all the modes */
 
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += f[p]*ma_[m][p];
+	    mode[m] += site[index].f[p]*ma_[m][p];
 	  }
 	}
 
@@ -263,9 +260,9 @@ void MODEL_collide_multirelaxation() {
 	/* Project post-collision modes back onto the distribution */
 
 	for (p = 0; p < NVEL; p++) {
-	  f[p] = 0.0;
+	  site[index].f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    f[p] += mi_[p][m]*mode[m];
+	    site[index].f[p] += mi_[p][m]*mode[m];
 	  }
 	}
 
@@ -321,7 +318,6 @@ void MODEL_collide_binary_lb() {
   int       i, j;                    /* summed over indices ("alphabeta") */
   int       xfac, yfac;
 
-  double *  f;
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
   double    u[3];                    /* Velocity */
@@ -336,7 +332,6 @@ void MODEL_collide_binary_lb() {
   const double   r3     = (1.0/3.0);
 
 
-  double *  g;
   double    phi, jdotc, sphidotq;    /* modes */
   double    jphi[3];
   double    sth[3][3], sphi[3][3];
@@ -371,14 +366,12 @@ void MODEL_collide_binary_lb() {
 
 	if (site_map[index] != FLUID) continue;
 
-	f = site[index].f;
-
 	/* Compute all the modes */
 
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += f[p]*ma_[m][p];
+	    mode[m] += site[index].f[p]*ma_[m][p];
 	  }
 	}
 
@@ -499,15 +492,13 @@ void MODEL_collide_binary_lb() {
 	/* Project post-collision modes back onto the distribution */
 
 	for (p = 0; p < NVEL; p++) {
-	  f[p] = 0.0;
+	  site[index].f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    f[p] += mi_[p][m]*mode[m];
+	    site[index].f[p] += mi_[p][m]*mode[m];
 	  }
 	}
 
 	/* Now, the order parameter distribution */
-
-	g = site[index].g;
 
 	/* Relax order parameters modes. */
 
@@ -536,7 +527,7 @@ void MODEL_collide_binary_lb() {
 	  /* Project all this back to the distributions. The magic
 	   * here is to move phi into the non-propagating distribution. */
 
-	  g[p] = wv[p]*(          jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
+	  site[index].g[p] = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
 	}
 
 	/* Next site */
