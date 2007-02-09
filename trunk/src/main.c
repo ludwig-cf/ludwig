@@ -32,7 +32,7 @@
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.8 2006-12-20 17:05:46 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.9 2007-02-09 14:33:53 kevin Exp $";
 
 
 int main( int argc, char **argv )
@@ -68,6 +68,7 @@ int main( int argc, char **argv )
   ran_init();
   RAND_init_fluctuations();
   MODEL_init();
+  le_init_transitional();
   wall_init();
   COLL_init();
 
@@ -89,7 +90,8 @@ int main( int argc, char **argv )
     COLL_update();
     wall_update();
 
-    MODEL_collide_multirelaxation();
+    /* Collision stage */
+    collide();
 
     LE_apply_LEBC();
     halo_site();
