@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.5 2007-02-01 17:41:23 kevin Exp $
+ *  $Id: collision.c,v 1.6 2007-02-14 10:42:16 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -788,7 +788,7 @@ void RAND_init_fluctuations() {
   if (strcmp(tmp, "off") == 0) nmodes_ = NHYDRO;
 
   info("\nGhost modes\n");
-  if (p == 1) {
+  if (nmodes_ == NHYDRO) {
     info("[User   ] Ghost modes have been switched off.\n");
   }
   else {
