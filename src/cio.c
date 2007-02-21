@@ -235,6 +235,9 @@ void CIO_read_state(const char * filename) {
 	     1, filename_io));
   }
 
+  /* This is set here, as the total is not yet known. */
+  set_N_colloid(ntotal);
+
   return;
 }
 
