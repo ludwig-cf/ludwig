@@ -484,3 +484,71 @@ void TEST_fluid_temperature() {
 
   return;
 }
+
+
+/*****************************************************************************
+ *
+ *  test_ecm_stress_average
+ *
+ *  Temporary routine for Evans, Cohen, Morriss comparision.
+ *
+ *****************************************************************************/
+
+void test_ecm_stress_average() {
+
+  extern FVector * grad_phi;
+  int get_step(void);
+  double free_energy_K(void);
+
+  double pxy[3] = {0.0, 0.0, 0.0};
+  double s, kappa;
+  int N[3], xfac, yfac;
+  int ic, jc, kc, index, p;
+
+  get_N_local(N);
+  yfac = (N[Z] + 2);
+  xfac = (N[Y] + 2)*yfac;
+
+  kappa = free_energy_K();
+
+  for (ic = 1; ic <= N[X]; ic++) {
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+
+	index = ic*xfac + jc*yfac + kc;
+
+	s = 0.0;
+
+	for (p = 0; p < NVEL; p++) {
+	  s += site[index].f[p]*ma_[5][p];
+	}
+
+	pxy[0] += s;
+	pxy[2] += s;
+
+	s = kappa*(grad_phi + index)->x*(grad_phi + index)->y;
+
+	pxy[1] += s;
+	pxy[2] += s;
+
+      }
+    }
+  }
+
+#ifdef _MPI_
+  {
+    double g_sum[3];
+
+    MPI_Reduce(pxy, g_sum, 3, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+
+    pxy[0] = g_sum[0];
+    pxy[1] = g_sum[1];
+    pxy[2] = g_sum[2];
+  }
+#endif
+
+  info("stress average %d %16.10g %16.10g %16.10g\n",
+       get_step(), pxy[0], pxy[1], pxy[2]);
+
+  return;
+}
