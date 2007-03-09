@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.6 2006-10-12 14:09:18 kevin Exp $
+ *  $Id: colloids.c,v 1.7 2007-03-09 13:06:56 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -181,6 +181,8 @@ double get_colloid_rho0() {
  *  If the position is not in the local domain, then neither
  *  is the cell. The caller must handle this.
  *
+ *  09/01/07 floor() is problematic when colloid exactly on cell
+ *           boundary and r is negative, ie., cell goes to -1
  *****************************************************************************/
 
 IVector cell_coords(FVector r) {

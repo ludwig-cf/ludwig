@@ -8,7 +8,7 @@
  *  See Ludwig Technical Notes for a complete description
  *  of the colloid implementation.
  *
- *  $Id: colloids.h,v 1.5 2006-12-20 17:03:04 kevin Exp $
+ *  $Id: colloids.h,v 1.6 2007-03-09 13:06:56 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -49,6 +49,10 @@ struct colloid {
   Float     zeta[21];      /* Upper triangle of 6x6 drag matrix zeta */
   FVector   stats;         /* Particle statisitics */
 
+  /* Magnetic dipole */
+
+  double   s[3];   
+
   /* Active particle stuff */
 
   FVector  dir;            /* Currect direction of motion vector */
@@ -57,7 +61,6 @@ struct colloid {
   double   cosine_ca;      /* Cosine of the cone angle */
   int      n1_nodes;       /* Number of fluid nodes cone 1 ('front'?) */
   int      n2_nodes;       /* Number of fluid nodes cone 2 ('back'?) */
-  
 
   /* Pointers */
 
