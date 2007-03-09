@@ -4,7 +4,7 @@
  *
  *  Propagation schemes for the different models.
  *
- *  $Id: propagation.c,v 1.1 2006-10-12 13:56:45 kevin Exp $
+ *  $Id: propagation.c,v 1.2 2007-03-09 12:37:51 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -17,11 +17,6 @@
 
 extern Site * site;
 
-static void d3q15_propagate_single(void);
-static void d3q15_propagate_binary(void);
-static void d3q19_propagate_single(void);
-static void d3q19_propagate_binary(void);
-
 /*****************************************************************************
  *
  *  propagation
@@ -32,9 +27,11 @@ static void d3q19_propagate_binary(void);
 
 void propagation() {
 
-  TIMER_start(TIMER_PROPAGATE);
-
 #ifdef _D3Q19_
+  static void d3q19_propagate_single(void);
+  static void d3q19_propagate_binary(void);
+
+  TIMER_start(TIMER_PROPAGATE);
 
 #ifdef _SINGLE_FLUID_
   d3q19_propagate_single();
@@ -42,7 +39,15 @@ void propagation() {
   d3q19_propagate_binary();
 #endif
 
-#else
+  TIMER_stop(TIMER_PROPAGATE);
+
+#endif
+
+#ifdef _D3Q15_
+  static void d3q15_propagate_single(void);
+  static void d3q15_propagate_binary(void);
+
+  TIMER_start(TIMER_PROPAGATE);
 
 #ifdef _SINGLE_FLUID_
   d3q15_propagate_single();
@@ -50,12 +55,14 @@ void propagation() {
   d3q15_propagate_binary();
 #endif
 
-#endif
-
   TIMER_stop(TIMER_PROPAGATE);
+
+#endif
 
   return;
 }
+
+#ifdef _D3Q15_
 
 /*****************************************************************************
  *
@@ -63,7 +70,7 @@ void propagation() {
  *
  *****************************************************************************/
 
-void d3q15_propagate_single() {
+static void d3q15_propagate_single() {
 
   int i, j, k, ijk;
   int xfac, yfac;
@@ -125,7 +132,7 @@ void d3q15_propagate_single() {
  *
  *****************************************************************************/
 
-void d3q15_propagate_binary() {
+static void d3q15_propagate_binary() {
 
   int i, j, k, ijk;
   int xfac, yfac;
@@ -205,13 +212,17 @@ void d3q15_propagate_binary() {
   return;
 }
 
+#endif /* _D3Q15_ */
+
+#ifdef _D3Q19_
+
 /*****************************************************************************
  *
  *  d3q19_propagate_single
  *
  *****************************************************************************/
 
-void d3q19_propagate_single() {
+static void d3q19_propagate_single() {
 
   int i, j, k, ijk;
   int xfac, yfac;
@@ -275,7 +286,7 @@ void d3q19_propagate_single() {
  *
  *****************************************************************************/
 
-void d3q19_propagate_binary() {
+static void d3q19_propagate_binary() {
 
   int i, j, k, ijk;
   int xfac, yfac;
@@ -366,3 +377,5 @@ void d3q19_propagate_binary() {
 
   return;
 }
+
+#endif /* _D3Q19_ */
