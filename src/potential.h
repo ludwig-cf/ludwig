@@ -2,7 +2,7 @@
  *
  *  potential.h
  *
- *  $Id: potential.h,v 1.1 2006-10-18 17:47:02 kevin Exp $
+ *  $Id: potential.h,v 1.2 2007-03-09 13:09:17 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -14,9 +14,11 @@
 extern const double ENERGY_HARD_SPHERE;
 
 void soft_sphere_init(void);
+void leonard_jones_init(void);
 
 double soft_sphere_energy(const double);
 double soft_sphere_force(const double);
+double leonard_jones_energy(const double);
 double hard_sphere_energy(const double);
 double get_max_potential_range(void);
 
