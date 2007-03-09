@@ -6,7 +6,7 @@
  *
  *  Provides routines for pairwise energies and forces.
  *
- *  $Id: potential.c,v 1.2 2006-12-20 16:55:45 kevin Exp $
+ *  $Id: potential.c,v 1.3 2007-03-09 13:09:17 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -85,6 +85,47 @@ void soft_sphere_init() {
 
 /*****************************************************************************
  *
+ *  leonard_jones_init
+ *
+ *  Initialise the parameters for the Leonard-Jones interaction between
+ *  colloids.
+ *
+ *****************************************************************************/
+
+void leonard_jones_init() {
+
+  int n;
+
+  info("\nColloid-colloid Leonard Jones potential\n");
+
+  leonard_jones.on = 0;
+
+  n = RUN_get_int_parameter("leonard_jones_on", &leonard_jones.on);
+  info((n == 0) ? "[Default] " : "[User   ] ");
+  info("Leonard Jones potential is switched %s\n",
+       (leonard_jones.on == 0) ? "off" : "on");
+
+  if (leonard_jones.on) {
+    n = RUN_get_double_parameter("lj_epsilon", &leonard_jones.epsilon);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Leonard Jones energy (epsilon) is %f (%f kT)\n",
+	 leonard_jones.epsilon, leonard_jones.epsilon/get_kT());
+
+    n = RUN_get_double_parameter("lj_sigma", &leonard_jones.sigma);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Leonard Jones width (sigma) is %f\n", leonard_jones.sigma);
+
+    n = RUN_get_double_parameter("lj_cutoff", &leonard_jones.cutoff);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Leonard Jones cutoff range is %f (%3.2f x sigma)\n",
+	 leonard_jones.cutoff, leonard_jones.cutoff/leonard_jones.sigma);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  soft_sphere_energy
  *
  *  Return the energy of interaction between two particles with
@@ -137,6 +178,26 @@ double soft_sphere_force(const double h) {
 
 /*****************************************************************************
  *
+ *  leonard_jones_energy
+ *
+ *  Return the potential at centre-centre separation r.
+ *
+ *****************************************************************************/
+
+double leonard_jones_energy(const double r) {
+
+  double e = 0.0;
+
+  if (leonard_jones.on && r < leonard_jones.cutoff) {
+    double sigmar = pow(leonard_jones.sigma/r, 6.0);
+    e = 4.0*leonard_jones.epsilon*(sigmar*sigmar - sigmar);
+  }
+
+  return e;
+}
+
+/*****************************************************************************
+ *
  *  hard_sphere_energy
  *
  *  Return energy of hard-sphere interaction at separation h.
@@ -165,6 +226,7 @@ double get_max_potential_range() {
   double rmax = 0.0;
 
   rmax = dmax(rmax, soft_sphere.cutoff);
+  rmax = dmax(rmax, leonard_jones.cutoff);
 
   return rmax;
 }
