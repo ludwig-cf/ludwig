@@ -4,9 +4,10 @@
  *
  *  Basic physical quantities for fluid.
  *
- *  $Id: physics.c,v 1.1 2006-12-20 16:53:19 kevin Exp $
+ *  $Id: physics.c,v 1.2 2007-03-09 12:56:09 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -22,6 +23,7 @@ static double kT_ = 0.0;             /* Isothermal "temperature" */
 static double rho0 = 1.0;            /* Average simulation density */
 static double phi0 = 0.0;            /* Average order parameter    */
 
+static double g_[3] = {0.0, 0.0, 0.0}; /* External gravitational force */
 
 /*****************************************************************************
  *
@@ -41,6 +43,11 @@ void init_physics() {
   p = RUN_get_double_parameter("viscosity_bulk", &eta_bulk);
   p = RUN_get_double_parameter("phi0", &phi0);
   p = RUN_get_double_parameter("rho0", &rho0);
+
+  info("\nExternal gravitational force\n");
+  p = RUN_get_double_parameter_vector("colloid_gravity", g_);
+  info("[%s] gravity = %g %g %g\n", (p == 0) ? "Default" : "User   ",
+       g_[0], g_[1], g_[2]);
 
   return;
 }
@@ -123,4 +130,19 @@ double get_rho0() {
 double get_phi0() {
 
   return phi0;
+}
+
+/*****************************************************************************
+ *
+ *  get_gravity
+ *
+ *****************************************************************************/
+
+void get_gravity(double gravity[3]) {
+
+  int i;
+
+  for (i = 0; i < 3; i++) gravity[i] = g_[i];
+
+  return;
 }
