@@ -6,7 +6,10 @@
  *
  *  See Nash et al. (2007).
  *
+ *  $Id: subgrid.c,v 1.2 2007-03-09 12:51:06 kevin Exp $
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -17,6 +20,7 @@
 #include "coords.h"
 #include "timer.h"
 #include "physics.h"
+#include "model.h" /* only index_site() at the moment */
 #include "lattice.h"
 #include "colloids.h"
 #include "ccomms.h"
@@ -25,8 +29,6 @@
 static double d_peskin(double);
 static void   subgrid_interpolation(void);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
-
-extern FVector F;
 
 /*****************************************************************************
  *
@@ -43,9 +45,8 @@ void subgrid_force_from_particles() {
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
   int N[3], offset[3];
-  int xfac, yfac;
 
-  double r[3], r0[3], force[3];
+  double r[3], r0[3], force[3], g[3];
   double dr;
   Colloid * p_colloid;
 
@@ -53,8 +54,8 @@ void subgrid_force_from_particles() {
 
   get_N_local(N);
   get_N_offset(offset);
-  xfac = (N[Y] + 2)*(N[Z] + 2);
-  yfac = (N[Z] + 2);
+
+  get_gravity(g);
 
   /* Loop through all cells (including the halo cells) */
 
@@ -88,7 +89,7 @@ void subgrid_force_from_particles() {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = i*xfac + j*yfac + k;
+		index = index_site(i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */
@@ -99,9 +100,9 @@ void subgrid_force_from_particles() {
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 
-		force[X] = F.x*dr;
-		force[Y] = F.y*dr;
-		force[Z] = F.z*dr;
+		force[X] = g[X]*dr;
+		force[Y] = g[Y]*dr;
+		force[Z] = g[Z]*dr;
 		add_force_at_site(index, force);
 	      }
 	    }
@@ -135,6 +136,7 @@ void subgrid_update() {
 
   int ic, jc, kc;
   double drag, eta;
+  double g[3];
   Colloid * p_colloid;
 
   TIMER_start(TIMER_FREE1);
@@ -145,6 +147,7 @@ void subgrid_update() {
   /* Loop through all cells (including the halo cells) */
 
   eta = get_eta_shear();
+  get_gravity(g);
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
@@ -156,16 +159,16 @@ void subgrid_update() {
 
 	  drag = (1.0/(6.0*PI*eta))*(1.0/p_colloid->a0);
 
-	  p_colloid->r.x += (p_colloid->f0.x + drag*F.x);
-	  p_colloid->r.y += (p_colloid->f0.y + drag*F.y);
-	  p_colloid->r.z += (p_colloid->f0.z + drag*F.z);
+	  p_colloid->r.x += (p_colloid->f0.x + drag*g[X]);
+	  p_colloid->r.y += (p_colloid->f0.y + drag*g[Y]);
+	  p_colloid->r.z += (p_colloid->f0.z + drag*g[Z]);
 
 	  /* Store the effective velocity of the particle
 	   * (don't use the p->v as this shows up in the momentum) */
 
-	  p_colloid->stats.x = p_colloid->f0.x + drag*F.x;
-	  p_colloid->stats.y = p_colloid->f0.y + drag*F.y;
-	  p_colloid->stats.z = p_colloid->f0.z + drag*F.z;
+	  p_colloid->stats.x = p_colloid->f0.x + drag*g[X];
+	  p_colloid->stats.y = p_colloid->f0.y + drag*g[Y];
+	  p_colloid->stats.z = p_colloid->f0.z + drag*g[Z];
 
 	  p_colloid = p_colloid->next;
 	}
@@ -188,13 +191,12 @@ void subgrid_update() {
  *
  *****************************************************************************/
 
-void subgrid_interpolation() {
+static void subgrid_interpolation() {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
   int N[3], offset[3];
-  int xfac, yfac;
 
   double r0[3], r[3], u[3];
   double dr;
@@ -202,10 +204,9 @@ void subgrid_interpolation() {
 
   get_N_local(N);
   get_N_offset(offset);
-  xfac = (N[Y] + 2)*(N[Z] + 2);
-  yfac = (N[Z] + 2);
 
-  /* Loop through all cells (including the halo cells) */
+  /* Loop through all cells (including the halo cells) and set
+   * the velocity at each particle to zero for this step. */
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
@@ -255,7 +256,7 @@ void subgrid_interpolation() {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = i*xfac + j*yfac + k;
+		index = index_site(i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */
@@ -294,7 +295,7 @@ void subgrid_interpolation() {
  *
  *****************************************************************************/
 
-double d_peskin(double r) {
+static double d_peskin(double r) {
 
   double rmod;
   double delta = 0.0;
