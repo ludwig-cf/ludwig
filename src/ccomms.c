@@ -58,6 +58,7 @@ struct colloid_halo_message {
   double   dp;
   double   cosine_ca;
   double   random[6];
+  double   s[3];
 };
 
 struct colloid_sum_message_type1 {
@@ -132,31 +133,15 @@ static Colloid_sum_message_sev * _halo_recv_sev;
 
 void CCOM_init_halos() {
 
-  double vcell, vdomain;
-  int    ncell;
-  int    n;
+  /* This should reflect the maximum number of colloids expected,
+   * and the surface/volume ratio of the domains. The factor of
+   * eight allows for copies. */
 
-  /* Work out the volume of each halo region and take the
-   * largest. Then work out how many particles will fit
-   * in the volume. */
-
-  n = 2000; /* Maximum number of particles per process */
-  vdomain = L(X)*L(Y)*L(Z)/pe_size();
-
-  vcell = L(X)*L(Y)*L(Z)/(Ncell(X)*Ncell(Y)*Ncell(Z));
-  ncell = imax(Ncell(X), Ncell(Y));
-  ncell = imax(Ncell(Z), ncell);
-  ncell += 2; /* Add halo cells */
-  _halo_message_nmax = vcell*n*ncell*ncell / vdomain;
+  _halo_message_nmax = 8*imax(1, get_N_colloid()/pe_size());
 
   info("\nColloid message initiailisation...\n");
-  info("Mean number of colloids per process is %d\n", n);
-  info("Mean volume of subdomain: %f\n", vdomain);
-  info("Maximum cell number: %d\n", ncell);
   info("Allocating space for %d particles in halo buffers\n",
        _halo_message_nmax);
-
-  /* Computing this number is a problem */
 
   _halo_message_size[CHALO_TYPE1] = sizeof(Colloid_sum_message_one);
   _halo_message_size[CHALO_TYPE2] = sizeof(Colloid_sum_message_two);
@@ -468,6 +453,11 @@ void CMPI_accept_new(int nrecv) {
 	p_existing->random[3] = p_colloid->random[3];
 	p_existing->random[4] = p_colloid->random[4];
 	p_existing->random[5] = p_colloid->random[5];
+
+	p_existing->s[X] = p_colloid->s[X];
+	p_existing->s[Y] = p_colloid->s[Y];
+	p_existing->s[Z] = p_colloid->s[Z];
+
 	exists = 1;
       }
       p_existing = p_existing->next;
@@ -855,6 +845,10 @@ void CCOM_load_halo_buffer(Colloid * p_colloid, int n, FVector rperiod) {
   _halo_send[n].random[4] = p_colloid->random[4];
   _halo_send[n].random[5] = p_colloid->random[5];
 
+  _halo_send[n].s[X] = p_colloid->s[X];
+  _halo_send[n].s[Y] = p_colloid->s[Y];
+  _halo_send[n].s[Z] = p_colloid->s[Z];
+
   return;
 }
 
@@ -898,6 +892,10 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->random[3] = _halo_recv[nrecv].random[3];
   p_colloid->random[4] = _halo_recv[nrecv].random[4];
   p_colloid->random[5] = _halo_recv[nrecv].random[5];
+
+  p_colloid->s[X] = _halo_recv[nrecv].s[X];
+  p_colloid->s[Y] = _halo_recv[nrecv].s[Y];
+  p_colloid->s[Z] = _halo_recv[nrecv].s[Z];
 
   /* Additionally, must set all accumulated quantities to zero. */
   p_colloid->rebuild = 1;
