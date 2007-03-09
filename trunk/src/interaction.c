@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.8 2007-03-09 13:05:01 kevin Exp $
+ *  $Id: interaction.c,v 1.9 2007-03-09 13:14:46 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -141,7 +141,6 @@ void COLL_init() {
   void CMD_init_volume_fraction(void);
   void lubrication_init(void);
   void check_interactions(const double);
-  void monte_carlo(void);
 
   /* Default position: no colloids */
 
@@ -177,7 +176,10 @@ void COLL_init() {
   }
   else {
     /* Restart from previous configuration */
+
     sprintf(filename, "%s%6.6d", "config.cds", get_step());
+    info("Reading colloid information from files: %s\n", filename);
+
     CIO_read_state(filename);
   }
 
@@ -188,7 +190,6 @@ void COLL_init() {
   leonard_jones_init();
   check_interactions(ahmax);
 
-  monte_carlo();
 
   COLL_init_coordinates();
 
