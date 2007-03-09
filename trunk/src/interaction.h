@@ -17,7 +17,6 @@ void COLL_compute_phi_fluid(void);
 Colloid * COLL_add_colloid(int, Float, Float, FVector, FVector, FVector);
 void      COLL_add_colloid_no_halo(int, Float, Float, FVector, FVector,
 				   FVector);
-void      COLL_set_colloid_gravity(void);
 void      COLL_zero_forces(void);
 void      COLL_init(void);
 void      COLL_finish(void);
