@@ -3,6 +3,17 @@ Changes
 Log file for changes to the code.
 =================================
 
+2007 March 8th kevin
+
+* I've changed the way the interaction routine looks around
+  the cell list in a way which makes more sense in parallel.
+  It's also easier to follow, and requires less code.
+
+* There are a few other changes, e.g., the 'gravity' has been
+  moved to physics.c. I've also added back the term in the
+  lubrication corrections which accounts for fluctuation/dissipation
+  theorem.
+
 2007 Januaary 16th kevin
 
 * I've removed the ghost noise calculation from d3q15/d3q19
