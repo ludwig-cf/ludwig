@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.2 2007-03-09 12:51:06 kevin Exp $
+ *  $Id: subgrid.c,v 1.3 2007-03-15 18:36:51 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -157,7 +157,7 @@ void subgrid_update() {
 
 	while (p_colloid != NULL) {
 
-	  drag = (1.0/(6.0*PI*eta))*(1.0/p_colloid->a0);
+	  drag = (1.0/(6.0*PI*eta))*(1.0/p_colloid->a0 - 1.0/p_colloid->ah);
 
 	  p_colloid->r.x += (p_colloid->f0.x + drag*g[X]);
 	  p_colloid->r.y += (p_colloid->f0.y + drag*g[Y]);
