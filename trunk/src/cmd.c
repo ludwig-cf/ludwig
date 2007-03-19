@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.9 2006-12-20 17:00:51 kevin Exp $
+ *  $Id: cmd.c,v 1.10 2007-03-19 16:37:45 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -21,6 +21,7 @@
 #include "physics.h"
 #include "potential.h"
 
+#include "ewald.h"
 #include "colloids.h"
 #include "interaction.h"
 
@@ -42,6 +43,7 @@ static double mc_total_energy(void);
 static double vf_max_ = 0.60;
 static double mc_max_exp_ = 100.0;
 static double mc_drmax_;
+static double mc_max_ah_;
 
 /*****************************************************************************
  *
@@ -96,14 +98,28 @@ void CMD_init_volume_fraction() {
 
   set_N_colloid(n_global);
 
-  n = 0;
+  mc_max_ah_ = ah;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  monte_carlo
+ *
+ *****************************************************************************/
+
+void monte_carlo() {
+
+  int n = 0;
+
   RUN_get_int_parameter("colloid_mc_steps", &n);
 
   /* Set maximum Monte-Carlo move */
 
   mc_drmax_ = dmin(Lcell(X), Lcell(Y));
   mc_drmax_ = dmin(Lcell(Z), mc_drmax_);
-  mc_drmax_ = 0.5*(mc_drmax_ - 2.0*ah - get_max_potential_range());
+  mc_drmax_ = 0.5*(mc_drmax_ - 2.0*mc_max_ah_ - get_max_potential_range());
 
   if (n > 0) do_monte_carlo(n);
 
@@ -256,6 +272,8 @@ void mc_set_proposed_move(const double drmax) {
  *  mc_move
  *
  *  Actual Monte Carlo position update (all particles).
+ *  For MC moves which have been rejected, sign can be set
+ *  to -1 to move the particles back where they came from.
  *
  ****************************************************************************/
 
@@ -300,11 +318,11 @@ void mc_check_state() {
 
   e = mc_total_energy();
 
-  info("\nChecking colloid state... (total energy is %g kT)\n", e/get_kT());
-
+  info("\nChecking colloid state...\n");
+  info("Total energy / NkT: %g\n", e/(get_N_colloid()*get_kT()));
   mc_mean_square_displacement();
 
-  if (e >= ENERGY_HARD_SPHERE) {
+  if (e >= ENERGY_HARD_SPHERE/2.0) {
     info("This appears to include at least one hard sphere overlap.\n");
     info("Please check the volume fraction (for fixed numbers),\n");
     info("or try increasing the number of Monte Carlo steps.\n");
@@ -330,6 +348,7 @@ double mc_total_energy() {
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
   double etot = 0.0;
   double h;
+  double r12[3];
   double hard_sphere_energy(const double);
   double hard_wall_energy(const FVector, const double);
 
@@ -367,6 +386,8 @@ double mc_total_energy() {
 		    
 		    etot += hard_sphere_energy(h);
 		    etot += soft_sphere_energy(h);
+		    etot += leonard_jones_energy(h);
+
 		  }
 		  
 		  /* Next colloid */
@@ -496,8 +517,6 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
 
   n_max = ncx*ncy*ncz;
   vp = (double) n_request / (double) n_max;
-
-  info("dx = %f dy = %f dz = %f\n", dx, dy, dz);
 
   /* Allocate and initialise. */
 
