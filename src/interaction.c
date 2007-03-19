@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.9 2007-03-09 13:14:46 kevin Exp $
+ *  $Id: interaction.c,v 1.10 2007-03-19 16:37:00 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -323,13 +323,13 @@ void COLL_init_colloids_test() {
   Colloid * tmp;
 
   FVector r0, v0, omega0;
-  double    a0 = 2.3;
-  double    ah = 2.3;
+  double    a0 = 0.1171875;
+  double    ah = 1.546;
 
-  set_N_colloid(2);
+  set_N_colloid(1);
 
-  r0.x = 0.5*L(X);
-  r0.y = 0.5*L(Y);
+  r0.x = 0.5*L(X) + 0.25;
+  r0.y = 0.5*L(Y) + 0.5;
   r0.z = 0.5*L(Y) - 5.0;
 
   v0.x = 0.0;
@@ -341,25 +341,6 @@ void COLL_init_colloids_test() {
   omega0.z = 0.0;
 
   tmp = COLL_add_colloid(1, a0, ah, r0, v0, omega0);
-
-  tmp->s[X] = 0.0;
-  tmp->s[Y] = 0.0;
-  tmp->s[Z] = 1.0;
-
-  r0.x = 0.5*L(X);
-  r0.y = 0.5*L(Y);
-  r0.z = 0.5*L(Z) + 5.0;
-
-  v0.x = 0.0;
-  v0.y = 0.0;
-  v0.z = 0.0;
-
-  tmp = COLL_add_colloid(2, a0, ah, r0, v0, omega0);
-
-  tmp->s[X] = 0.0;
-  tmp->s[Y] = 0.0;
-  tmp->s[Z] = -1.0;
-
   info("Starting test of opportunity\n");
 #endif
 
@@ -396,15 +377,16 @@ void COLL_test_output() {
 		  p_colloid->dir.y);*/
 #endif
 #ifdef _COLLOIDS_TEST_OF_OPPORTUNITY_
-	  verbose("Spin: %g %g %g %g %g %g\n",
-		  p_colloid->r.x, p_colloid->r.y, p_colloid->r.z,
-		  p_colloid->s[X], p_colloid->s[Y], p_colloid->s[Z]);
+	  info("Position: %g %g %g %g %g %g\n",
+	       p_colloid->r.x, p_colloid->r.y, p_colloid->r.z,
+	       p_colloid->stats.x, p_colloid->stats.y, p_colloid->stats.z);
 #endif
 #ifdef _COLLOIDS_TEST_CALIBRATE_
 	  verbose("Calibrate: %g %g %g %g %g %g\n",
 		  p_colloid->v.x, p_colloid->v.y, p_colloid->v.z,
 		  p_colloid->force.x, p_colloid->force.y, p_colloid->force.z);
 #endif
+		  
 	  p_colloid = p_colloid->next;
 
 	}
