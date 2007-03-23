@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.10 2007-03-19 16:37:00 kevin Exp $
+ *  $Id: interaction.c,v 1.11 2007-03-23 18:40:07 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -141,6 +141,7 @@ void COLL_init() {
   void CMD_init_volume_fraction(void);
   void lubrication_init(void);
   void check_interactions(const double);
+  void monte_carlo();
 
   /* Default position: no colloids */
 
@@ -193,6 +194,7 @@ void COLL_init() {
 
   COLL_init_coordinates();
 
+  monte_carlo();
 
   /* Transfer any particles in the halo regions, initialise the
    * colloid map and build the particles for the first time. */
