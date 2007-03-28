@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.11 2007-03-23 18:40:07 kevin Exp $
+ *  $Id: interaction.c,v 1.12 2007-03-28 12:26:06 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -141,7 +141,7 @@ void COLL_init() {
   void CMD_init_volume_fraction(void);
   void lubrication_init(void);
   void check_interactions(const double);
-  void monte_carlo();
+  void monte_carlo(void);
 
   /* Default position: no colloids */
 
@@ -839,7 +839,7 @@ FVector COLL_lubrication(Colloid * p_i, Colloid * p_j, FVector r_ij, double h) {
 
 #ifdef _NOISE_
       /* Fluctuation/dissipation */
-      fmod += ran_parallel_gaussian()*sqrt(2.0*get_kT()*fmod);
+      fmod += ran_parallel_gaussian()*sqrt(-2.0*get_kT()*fmod);
 #endif
       force.x += fmod*rdotdu*runit.x;
       force.y += fmod*rdotdu*runit.y;
