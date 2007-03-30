@@ -4,7 +4,10 @@
  *
  *  Colloid I/O, serial and parallel.
  *
+ *  $Id: cio.c,v 1.5 2007-03-30 15:05:38 kevin Exp $
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -286,6 +289,9 @@ void CIO_read_header_ascii(FILE * fp) {
   fscanf(fp, "N_colloid: %22d\n",  &ntotal);
   fscanf(fp, "nlocal:    %22d\n",  &nlocal);
 
+  set_N_colloid(ntotal);
+  info("Reading information for %d particles\n", ntotal);
+
   return;
 }
 
@@ -327,12 +333,13 @@ void CIO_read_header_binary(FILE * fp) {
 
   int     read_int;
 
-  info("Colloid file header information has been filtered\n");
-
   fread(&(read_int), sizeof(int),     1, fp); /* n_io */
   fread(&(read_int), sizeof(int),     1, fp);
   fread(&ntotal,     sizeof(int),     1, fp);
   fread(&nlocal,     sizeof(int),     1, fp);
+
+  set_N_colloid(ntotal);
+  info("Reading information for %d particles\n", ntotal);
 
   return;
 }
