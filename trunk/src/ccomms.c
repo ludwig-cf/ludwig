@@ -9,7 +9,10 @@
  *
  *  MPI (or serial, with some overhead).
  *
+ *  $Id: ccomms.c,v 1.7 2007-04-02 11:19:58 kevin Exp $
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -97,6 +100,8 @@ static void CCOM_load_sum_message_buffer(Colloid *, int, int);
 static void CCOM_unload_sum_message_buffer(Colloid *, int, int);
 static void CCOM_exchange_halo_sum(int, int, int, int);
 
+static double colloid_min_ah(void);
+
 static void CMPI_accept_new(int);
 static int  CMPI_exchange_halo(int, int, int);
 static void CMPI_exchange_sum_type1(int, int, int);
@@ -133,11 +138,21 @@ static Colloid_sum_message_sev * _halo_recv_sev;
 
 void CCOM_init_halos() {
 
-  /* This should reflect the maximum number of colloids expected,
-   * and the surface/volume ratio of the domains. The factor of
-   * eight allows for copies. */
+  double ah, vcell;
+  int ncell;
 
-  _halo_message_nmax = 8*imax(1, get_N_colloid()/pe_size());
+  /* Work out the volume of each halo region and take the
+   * largest. Then work out how many particles will fit
+   * in the volume. */
+
+  vcell = L(X)*L(Y)*L(Z)/(Ncell(X)*Ncell(Y)*Ncell(Z));
+  ncell = imax(Ncell(X), Ncell(Y));
+  ncell = imax(Ncell(Z), ncell);
+  ncell += 2; /* Add halo cells */
+
+  ah = colloid_min_ah();
+
+  _halo_message_nmax = ncell*ncell*vcell/(ah*ah*ah);
 
   info("\nColloid message initiailisation...\n");
   info("Allocating space for %d particles in halo buffers\n",
@@ -1407,4 +1422,43 @@ void CMPI_anull_buffers() {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_min_ah
+ *
+ *  Return the smallest ah present along particles.
+ *
+ *****************************************************************************/
+
+double colloid_min_ah(void) {
+
+  double ahmin = 10.0;
+  int ic, jc, kc;
+  Colloid * p_colloid;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+
+	  ahmin = dmin(ahmin, p_colloid->ah);
+
+	  p_colloid = p_colloid->next;
+	}
+
+      }
+    }
+  }
+
+#ifdef _MPI_
+  double ahmin_local = ahmin;
+  MPI_Allreduce(&ahmin_local, &ahmin, 1, MPI_DOUBLE, MPI_MIN, cart_comm());
+#endif
+
+  return ahmin;
 }
