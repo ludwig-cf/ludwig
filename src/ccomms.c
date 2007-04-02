@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.7 2007-04-02 11:19:58 kevin Exp $
+ *  $Id: ccomms.c,v 1.8 2007-04-02 12:37:01 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -145,7 +145,8 @@ void CCOM_init_halos() {
    * largest. Then work out how many particles will fit
    * in the volume. */
 
-  vcell = L(X)*L(Y)*L(Z)/(Ncell(X)*Ncell(Y)*Ncell(Z));
+  vcell = L(X)*L(Y)*L(Z);
+  vcell /= (Ncell(X)*cart_size(X)*Ncell(Y)*cart_size(Y)*Ncell(Z)*cart_size(Z));
   ncell = imax(Ncell(X), Ncell(Y));
   ncell = imax(Ncell(Z), ncell);
   ncell += 2; /* Add halo cells */
@@ -155,6 +156,8 @@ void CCOM_init_halos() {
   _halo_message_nmax = ncell*ncell*vcell/(ah*ah*ah);
 
   info("\nColloid message initiailisation...\n");
+  info("Taking volume of halo region = %f x %d and ah = %f\n",
+       vcell, ncell*ncell, ah);
   info("Allocating space for %d particles in halo buffers\n",
        _halo_message_nmax);
 
