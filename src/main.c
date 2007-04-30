@@ -32,8 +32,7 @@
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.9 2007-02-09 14:33:53 kevin Exp $";
-
+static char rcsid[] = "$Id: main.c,v 1.10 2007-04-30 13:59:08 kevin Exp $";
 
 int main( int argc, char **argv )
 {
@@ -68,7 +67,7 @@ int main( int argc, char **argv )
   ran_init();
   RAND_init_fluctuations();
   MODEL_init();
-  le_init_transitional();
+  LE_init();
   wall_init();
   COLL_init();
 
@@ -123,6 +122,7 @@ int main( int argc, char **argv )
 
     /* Measurements */
 
+
     if (is_measurement_step()) {	  
       info("Wrting phi file at  at step %d!\n", step);
       /*COLL_compute_phi_missing();*/
@@ -172,4 +172,32 @@ int main( int argc, char **argv )
   REGS_finish();
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  print_shear_profile
+ *
+ *****************************************************************************/
+
+void print_shear_profile() {
+
+  int index;
+  int ic, jc = 1, kc = 1;
+  int N[ND];
+  double rho, u[ND];
+
+  info("Shear profile\n\n");
+  get_N_local(N);
+
+  for (ic = 1; ic <= N[X]; ic++) {
+
+    index = index_site(ic, jc, kc);
+    rho = get_rho_at_site(index);
+    get_momentum_at_site(index, u);
+
+    printf("%4d %10.8f %10.8f\n", ic, rho, u[Y]/rho);
+  }
+
+  return;
 }

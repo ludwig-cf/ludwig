@@ -52,6 +52,7 @@ static LE_Plane * LeesEdw = NULL;
 
 static int    LE_cmpLEBC( const void *, const void * );
 static void   LE_print_LEbuffers( void );
+static void   LE_init_original(void);
 static void   le_init_shear_profile(void);
 static double le_get_steady_uy(const int); 
 
@@ -68,7 +69,7 @@ static struct le_global_parameters {
 
 /*****************************************************************************
  *
- *  le_init_transitional
+ *  LE_init
  *
  *  We assume there are a given number of equally-spaced planes
  *  all with the same speed.
@@ -80,7 +81,7 @@ static struct le_global_parameters {
  *
  *****************************************************************************/
 
-void le_init_transitional() {
+void LE_init() {
 
   int n;
 
@@ -113,7 +114,7 @@ void le_init_transitional() {
     info("Overall shear rate = %f\n", le_params_.shear_rate);
   }
 
-  LE_init();
+  LE_init_original();
 
   /* Only allow initialisation at t = 0 */
 
@@ -408,7 +409,7 @@ void LE_apply_LEBC( void )
  */
 /*----------------------------------------------------------------------------*/
 
-void LE_init( void )
+void LE_init_original( void )
 {
   int     flag;
   int     plane, side, ind, xfac, yfac, integ, i, j, k, N_sites, ny2z2;
