@@ -22,4 +22,7 @@ FVector UTIL_fvector_subtract(FVector v1, FVector v2);
 FVector UTIL_cross_product(FVector v1, FVector v2);
 FVector UTIL_rotate_vector(FVector, FVector);
 
+double dot_product(const double [], const double []);
+void rotate_vector(double [], const double []);
+
 #endif /* _UTILITIES_H */

@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.10 2007-03-19 16:37:45 kevin Exp $
+ *  $Id: cmd.c,v 1.10.2.1 2007-04-30 15:05:03 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -26,8 +26,6 @@
 #include "interaction.h"
 
 static void CMD_reset_particles(const double);
-static void CMD_brownian_dynamics_step(void);
-static void CMD_brownian_set_random(void);
 static void CMD_test_particle_energy(const int);
 
 static void do_monte_carlo(const int);
@@ -237,7 +235,7 @@ void mc_set_proposed_move(const double drmax) {
   int       ic, jc, kc;
   Colloid * p_colloid;
 
-  double mc_move_prob_ = 0.05;
+  double mc_move_prob_ = 0.01;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -793,139 +791,6 @@ void CMD_test_particle_energy(const int step) {
   /* Can multiply by mass */
   info("Particle: %d %g %g %g %g\n", step, gsum[0], gsum[1], gsum[2],
        (gsum[0] + gsum[1] + gsum[2]));
-
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  CMD_brownian_dynamics_step
- *
- *  This updates the position an velocities of all particles.
- *  The algorithm is that of Ermak as described by Allen & Tildesley.
- *
- *  All the particles are assumed to have the same mass.
- *
- *****************************************************************************/
-
-void CMD_brownian_dynamics_step() {
-
-  int     ic, jc, kc;
-  Colloid * p_colloid;
-
-  double ranx, rany, ranz;
-  double cx, cy, cz;
-
-  double c0, c1, c2;
-  double xi, xidt;
-  double sigma_r, sigma_v;
-  double c12, c21;
-  double rmass, kT;
-  double dt;
-  double get_eta_shear(void);
-  double get_kT(void);
-
-  dt = 1.0;
-
-  kT = get_kT();
-
-  /* Update each particle */
-
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-
-	  rmass = 1.0/((4.0/3.0)*PI*pow(p_colloid->ah, 3.0));
-
-	  /* Friction coefficient is xi, and related quantities */
-
-	  xi = 6.0*PI*get_eta_shear()*p_colloid->ah*rmass;
-	  xidt = xi*dt;
-
-	  c0 = exp(-xidt);
-	  c1 = (1.0 - c0) / xidt;
-	  c2 = (1.0 - c1) / xidt;
-
-	  c1 *= dt;
-	  c2 *= dt*dt;
-
-	  /* Random variances */
-
-	  sigma_r = sqrt(dt*dt*rmass*kT*(2.0 - (3.0 - 4.0*c0 + c0*c0)/xidt)
-			 / xidt);
-	  sigma_v = sqrt(rmass*kT*(1.0 - c0*c0));
-
-	  c12 = dt*rmass*kT*(1.0 - c0)*(1.0 - c0) / (xidt*sigma_r*sigma_v);
-	  c21 = sqrt(1.0 - c12*c12);
-
-	  ranx = p_colloid->random[0];
-	  rany = p_colloid->random[1];
-	  ranz = p_colloid->random[2];
-
-	  cx = c1*p_colloid->v.x + rmass*c2*p_colloid->force.x + sigma_r*ranx;
-	  cy = c1*p_colloid->v.y + rmass*c2*p_colloid->force.y + sigma_r*rany;
-	  cz = c1*p_colloid->v.z + rmass*c2*p_colloid->force.z + sigma_r*ranz;
-
-	  p_colloid->r.x += cx;
-	  p_colloid->r.y += cy;
-	  p_colloid->r.z += cz;
-
-	  /* Generate correlated random pairs */
-
-	  ranx = (c12*ranx + c21*p_colloid->random[3]);
-	  rany = (c12*rany + c21*p_colloid->random[4]);
-	  ranz = (c12*ranz + c21*p_colloid->random[5]);
-
-	  cx = c0*p_colloid->v.x + rmass*c1*p_colloid->force.x + sigma_v*ranx;
-	  cy = c0*p_colloid->v.y + rmass*c1*p_colloid->force.y + sigma_v*rany;
-	  cz = c0*p_colloid->v.z + rmass*c1*p_colloid->force.z + sigma_v*ranz;
-
-	  p_colloid->v.x = cx;
-	  p_colloid->v.y = cy;
-	  p_colloid->v.z = cz;
-
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
-
-  return;
-}
-
-
-void CMD_brownian_set_random() {
-
-  int     ic, jc, kc;
-  Colloid * p_colloid;
-
-  /* Set random numbers for each particle */
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-
-	  p_colloid->random[0] = ran_parallel_gaussian();
-	  p_colloid->random[1] = ran_parallel_gaussian();
-	  p_colloid->random[2] = ran_parallel_gaussian();
-	  p_colloid->random[3] = ran_parallel_gaussian();
-	  p_colloid->random[4] = ran_parallel_gaussian();
-	  p_colloid->random[5] = ran_parallel_gaussian();
-
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
 
 
   return;

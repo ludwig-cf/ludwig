@@ -349,12 +349,14 @@ void COM_init() {
 
   switch (output_format) {
   case BINARY:
+    info("Output format is binary\n");
     MODEL_write_site     = MODEL_write_site_bin;
     MODEL_write_rho      = MODEL_write_rho_bin;
     MODEL_write_phi      = MODEL_write_phi_bin;
     MODEL_write_rho_phi  = MODEL_write_rho_phi_bin;	
     break;
   case ASCII:
+    info("Output format is ASCII\n");
     MODEL_write_site     = MODEL_write_site_asc;
     MODEL_write_rho      = MODEL_write_rho_asc;
     MODEL_write_phi      = MODEL_write_phi_asc;

@@ -8,7 +8,7 @@
  *  See Ludwig Technical Notes for a complete description
  *  of the colloid implementation.
  *
- *  $Id: colloids.h,v 1.6 2007-03-09 13:06:56 kevin Exp $
+ *  $Id: colloids.h,v 1.6.2.1 2007-04-30 15:05:03 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -34,6 +34,7 @@ struct colloid {
   Float     a0;            /* Input radius (lattice units) */
   Float     ah;            /* Hydrodynamic radius (from calibration) */
   FVector   r;             /* Position vector of centre of mass */
+  double    dr[3];         /* position update */
   FVector   v;             /* Linear velocity */
   FVector   omega;         /* Angular velocity */
   double    random[6];     /* Random numbers for MC/Brownian dynamics */

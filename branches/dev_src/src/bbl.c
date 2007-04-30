@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.2 2006-12-20 16:57:40 kevin Exp $
+ *  $Id: bbl.c,v 1.2.2.1 2007-04-30 15:05:03 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -370,7 +370,7 @@ static void bounce_back_pass2() {
 
 /*****************************************************************************
  *
- *  COLL_update_colloids
+ *  update_colloids
  *
  *  Update the velocity and position of each particle.
  *
@@ -537,11 +537,15 @@ static void update_colloids() {
 	    xb[iprow] = tmp;
 	  }
 
-	  /* Use mean of old and new velocity to update position */
+	  /* Set the position update, but don't actually move
+	   * the particles. This is deferred until the next
+	   * call to coll_update() and associated cell list
+	   * update.
+	   * We use mean of old and new velocity. */
 
-	  p_colloid->r.x += (0.5*(p_colloid->v.x + xb[0]));
-	  p_colloid->r.y += (0.5*(p_colloid->v.y + xb[1]));
-	  p_colloid->r.z += (0.5*(p_colloid->v.z + xb[2]));
+	  p_colloid->dr[X] = 0.5*(p_colloid->v.x + xb[0]);
+	  p_colloid->dr[Y] = 0.5*(p_colloid->v.y + xb[1]);
+	  p_colloid->dr[Z] = 0.5*(p_colloid->v.z + xb[2]);
 
 	  /* Unpack the solution vector. */
 
@@ -554,6 +558,7 @@ static void update_colloids() {
 	  p_colloid->omega.z = xb[5];
 
 	  p_colloid->dir =UTIL_rotate_vector(p_colloid->dir, p_colloid->omega);
+	  rotate_vector(p_colloid->s, &xb[3]);
 
 	  /* Record the actual hyrdrodynamic force on the particle */
 

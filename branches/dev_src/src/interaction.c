@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.12 2007-03-28 12:26:06 kevin Exp $
+ *  $Id: interaction.c,v 1.12.2.1 2007-04-30 15:05:03 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -40,6 +40,9 @@
 #include "subgrid.h"
 
 #include "ccomms.h"
+#ifdef _EWALD_TEST_
+#include "ewald.h"
+#endif
 
 extern char * site_map;
 extern int input_format;
@@ -63,6 +66,7 @@ static void    COLL_set_fluid_gravity(void);
 static FVector COLL_lubrication(Colloid *, Colloid *, FVector, Float);
 static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
+static void    coll_position_update(void);
 
 
 struct lubrication_struct {
@@ -93,6 +97,7 @@ void COLL_update() {
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
+  coll_position_update();
   cell_update();
   CCOM_halo_particles();
 
@@ -152,7 +157,7 @@ void COLL_init() {
   if (strcmp(tmp, "fixed_volume_fraction_monodisperse") == 0) nc = 1;
   if (strcmp(tmp, "fixed_number_monodisperse") == 0) nc = 1;
 
-#ifdef _COLLOIDS_TEST_AUTOCORRELATION_
+#ifdef _COLLOIDS_TEST_
   nc = 1;
 #endif
 
@@ -186,6 +191,7 @@ void COLL_init() {
 
   CCOM_init_halos();
 
+  ewald_init(16.0);
   lubrication_init();
   soft_sphere_init();
   leonard_jones_init();
@@ -346,6 +352,10 @@ void COLL_init_colloids_test() {
   info("Starting test of opportunity\n");
 #endif
 
+#ifdef _EWALD_TEST_
+  /* ewald_test();*/
+#endif
+
   return;
 }
 
@@ -409,19 +419,20 @@ void COLL_test_output() {
  *
  *****************************************************************************/
 
-void COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
+Colloid * COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
 			      FVector v0, FVector omega0) {
 
   IVector cell;
+  Colloid * p_c;
 
   cell = cell_coords(r0);
-  if (cell.x < 1 || cell.x > Ncell(X)) return;
-  if (cell.y < 1 || cell.y > Ncell(Y)) return;
-  if (cell.z < 1 || cell.z > Ncell(Z)) return;
+  if (cell.x < 1 || cell.x > Ncell(X)) return p_c;
+  if (cell.y < 1 || cell.y > Ncell(Y)) return p_c;
+  if (cell.z < 1 || cell.z > Ncell(Z)) return p_c;
 
-  COLL_add_colloid(index, a0, ah, r0, v0, omega0);
+  p_c = COLL_add_colloid(index, a0, ah, r0, v0, omega0);
 
-  return;
+  return p_c;
 }
 
 
@@ -477,6 +488,9 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
   tmp->omega.z = omega.z;
 
   ran_parallel_unit_vector(tmp->s);
+  tmp->dr[X] = 0.0;
+  tmp->dr[Y] = 0.0;
+  tmp->dr[Z] = 0.0;
 
   tmp->t0      = UTIL_fvector_zero();
   tmp->f0      = UTIL_fvector_zero();
@@ -537,6 +551,12 @@ void COLL_forces() {
   }
 
   COLL_set_fluid_gravity();
+
+#ifdef _EWALD_TEST_
+
+  ewald_sum();
+
+#endif
 
   return;
 }
@@ -1079,3 +1099,36 @@ void COLL_compute_phi_missing() {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  coll_position_update
+ *
+ *  Update the colloid positions (all cells).
+ *
+ *****************************************************************************/
+
+void coll_position_update(void) {
+
+  Colloid * p_colloid;
+  int ic, jc, kc;
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	  while (p_colloid) {
+
+	    p_colloid->r.x += p_colloid->dr[X];
+	    p_colloid->r.y += p_colloid->dr[Y];
+	    p_colloid->r.z += p_colloid->dr[Z];
+
+	    p_colloid = p_colloid->next;
+	  }
+      }
+    }
+  }
+
+  return;
+}

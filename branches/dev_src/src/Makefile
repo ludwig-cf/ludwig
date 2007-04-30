@@ -4,7 +4,10 @@
 #
 # Preprocessor flags.
 #
-# -D_D3Q19_              Use D3Q19 instead of D3Q15 (the default)
+#  One of:
+# _D_D3Q15_              Use D3Q15 or
+# -D_D3Q19_              Use D3Q19
+#
 # -D_NOISE_              Switch on fluctuations
 # -D_SINGLE_FLUID_       Use single fluid only
 #
@@ -25,7 +28,7 @@
 OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
       physics.o active.o cio.o cmd.o ccomms.o \
       colloids.o bbl.o build.o communicate.o coords.o control.o \
-      eigen3.o free_energy.o interaction.o potential.o \
+      eigen3.o ewald.o free_energy.o interaction.o potential.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
       subgrid.o test.o timer.o utilities.o wall.o main.o
 
@@ -42,7 +45,7 @@ MPICC= tmcc
 CXX = CC +w2 # -xwe
 
 LDFLAGS= -Xc -v -errwarn -xO3
-OPTS =
+OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
 
 # For Sun perflib use -xlic_lib=sunperf
 

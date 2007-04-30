@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.5 2007-03-30 15:05:38 kevin Exp $
+ *  $Id: cio.c,v 1.5.2.1 2007-04-30 15:05:03 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -240,6 +240,7 @@ void CIO_read_state(const char * filename) {
 
   /* This is set here, as the total is not yet known. */
   set_N_colloid(ntotal);
+  info("Reading information for %d particles\n", ntotal);
 
   return;
 }
@@ -289,9 +290,6 @@ void CIO_read_header_ascii(FILE * fp) {
   fscanf(fp, "N_colloid: %22d\n",  &ntotal);
   fscanf(fp, "nlocal:    %22d\n",  &nlocal);
 
-  set_N_colloid(ntotal);
-  info("Reading information for %d particles\n", ntotal);
-
   return;
 }
 
@@ -337,9 +335,6 @@ void CIO_read_header_binary(FILE * fp) {
   fread(&(read_int), sizeof(int),     1, fp);
   fread(&ntotal,     sizeof(int),     1, fp);
   fread(&nlocal,     sizeof(int),     1, fp);
-
-  set_N_colloid(ntotal);
-  info("Reading information for %d particles\n", ntotal);
 
   return;
 }
@@ -443,6 +438,7 @@ int CIO_write_list_binary(FILE * fp, int ic, int jc, int kc) {
     fwrite(&(p_colloid->r),        sizeof(FVector), 1, fp);
     fwrite(&(p_colloid->v),        sizeof(FVector), 1, fp);
     fwrite(&(p_colloid->omega),    sizeof(FVector), 1, fp);
+    fwrite(p_colloid->dr,          sizeof(double),  3, fp);
     fwrite(&(p_colloid->deltaphi), sizeof(double),  1, fp);
 
     /* Next colloid */
@@ -468,6 +464,7 @@ void CIO_read_list_binary(FILE * fp) {
   double    read_a0;
   double    read_ah;
   FVector   read_r, read_v, read_o;
+  double    read_dr[3];
   double    read_deltaphi;
   Colloid * p_colloid;
 
@@ -479,6 +476,7 @@ void CIO_read_list_binary(FILE * fp) {
     fread(&read_r,        sizeof(FVector), 1, fp);
     fread(&read_v,        sizeof(FVector), 1, fp);
     fread(&read_o,        sizeof(FVector), 1, fp);
+    fread(read_dr,        sizeof(double),  3, fp);
     fread(&read_deltaphi, sizeof(double),  1, fp);
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
@@ -486,6 +484,9 @@ void CIO_read_list_binary(FILE * fp) {
 
     if (p_colloid) {
       p_colloid->deltaphi = read_deltaphi;
+      p_colloid->dr[X] = read_dr[X];
+      p_colloid->dr[Y] = read_dr[Y];
+      p_colloid->dr[Z] = read_dr[Z];
     }
     else {
       /* This didn't go into the cell list */

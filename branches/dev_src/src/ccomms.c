@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.8 2007-04-02 12:37:01 kevin Exp $
+ *  $Id: ccomms.c,v 1.8.2.1 2007-04-30 15:05:03 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -62,6 +62,7 @@ struct colloid_halo_message {
   double   cosine_ca;
   double   random[6];
   double   s[3];
+  double   dr[3];
 };
 
 struct colloid_sum_message_type1 {
@@ -476,6 +477,10 @@ void CMPI_accept_new(int nrecv) {
 	p_existing->s[Y] = p_colloid->s[Y];
 	p_existing->s[Z] = p_colloid->s[Z];
 
+	p_existing->dr[X] = p_colloid->dr[X];
+	p_existing->dr[Y] = p_colloid->dr[Y];
+	p_existing->dr[Z] = p_colloid->dr[Z];
+
 	exists = 1;
       }
       p_existing = p_existing->next;
@@ -867,6 +872,10 @@ void CCOM_load_halo_buffer(Colloid * p_colloid, int n, FVector rperiod) {
   _halo_send[n].s[Y] = p_colloid->s[Y];
   _halo_send[n].s[Z] = p_colloid->s[Z];
 
+  _halo_send[n].dr[X] = p_colloid->dr[X];
+  _halo_send[n].dr[Y] = p_colloid->dr[Y];
+  _halo_send[n].dr[Z] = p_colloid->dr[Z];
+
   return;
 }
 
@@ -914,6 +923,10 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->s[X] = _halo_recv[nrecv].s[X];
   p_colloid->s[Y] = _halo_recv[nrecv].s[Y];
   p_colloid->s[Z] = _halo_recv[nrecv].s[Z];
+
+  p_colloid->dr[X] = _halo_recv[nrecv].dr[X];
+  p_colloid->dr[Y] = _halo_recv[nrecv].dr[Y];
+  p_colloid->dr[Z] = _halo_recv[nrecv].dr[Z];
 
   /* Additionally, must set all accumulated quantities to zero. */
   p_colloid->rebuild = 1;

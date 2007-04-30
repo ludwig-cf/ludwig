@@ -521,6 +521,7 @@ void test_ecm_stress_average() {
 
 	for (p = 0; p < NVEL; p++) {
 	  s += site[index].f[p]*ma_[5][p];
+	  /* s += site[index].f[p]*cv[p][X]*cv[p][Y];*/
 	}
 
 	pxy[0] += s;
