@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.7 2006-12-20 16:51:55 kevin Exp $
+ *  $Id: model.h,v 1.8 2007-04-30 14:23:21 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -22,6 +22,7 @@ typedef struct {
   double f[NVEL], g[NVEL];
 } Site;
 
+extern const double cs2;
 extern const double rcs2;
 extern const double d_[3][3];
 
