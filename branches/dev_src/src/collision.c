@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.5.2.1 2007-04-30 15:05:03 kevin Exp $
+ *  $Id: collision.c,v 1.5.2.2 2007-05-01 16:39:07 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -303,6 +303,8 @@ void MODEL_collide_multirelaxation() {
  *   results, I prefer 2, as it avoids the calculation of jphi[i] from
  *   from the distributions g. However, keep 1 so tests don't break!
  *
+ *   However, for asymmetric quenches version 1 may be preferred.
+ *
  *   The reprojection of g moves phi (mostly) into the non-propagating
  *   distribution following J. Stat. Phys. (2005).
  *
@@ -485,11 +487,11 @@ void MODEL_collide_binary_lb() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    /* sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];*/
-	    sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];
+	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
+	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
 	  }
-	  /* jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);*/
-	  jphi[i] = phi*u[i];
+	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
+	  /* jphi[i] = phi*u[i];*/
 	}
 
 	/* Now update the distribution */
