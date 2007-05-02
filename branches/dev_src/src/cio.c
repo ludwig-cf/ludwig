@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.5.2.1 2007-04-30 15:05:03 kevin Exp $
+ *  $Id: cio.c,v 1.5.2.2 2007-05-02 13:39:15 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -439,6 +439,7 @@ int CIO_write_list_binary(FILE * fp, int ic, int jc, int kc) {
     fwrite(&(p_colloid->v),        sizeof(FVector), 1, fp);
     fwrite(&(p_colloid->omega),    sizeof(FVector), 1, fp);
     fwrite(p_colloid->dr,          sizeof(double),  3, fp);
+    fwrite(p_colloid->s,           sizeof(double),  3, fp);
     fwrite(&(p_colloid->deltaphi), sizeof(double),  1, fp);
 
     /* Next colloid */
@@ -465,6 +466,7 @@ void CIO_read_list_binary(FILE * fp) {
   double    read_ah;
   FVector   read_r, read_v, read_o;
   double    read_dr[3];
+  double    read_s[3];
   double    read_deltaphi;
   Colloid * p_colloid;
 
@@ -477,16 +479,19 @@ void CIO_read_list_binary(FILE * fp) {
     fread(&read_v,        sizeof(FVector), 1, fp);
     fread(&read_o,        sizeof(FVector), 1, fp);
     fread(read_dr,        sizeof(double),  3, fp);
+    fread(read_s,         sizeof(double),  3, fp);
     fread(&read_deltaphi, sizeof(double),  1, fp);
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
 				 read_v, read_o);
 
     if (p_colloid) {
+      int i;
       p_colloid->deltaphi = read_deltaphi;
-      p_colloid->dr[X] = read_dr[X];
-      p_colloid->dr[Y] = read_dr[Y];
-      p_colloid->dr[Z] = read_dr[Z];
+      for (i = 0; i < 3; i++) {
+	p_colloid->dr[i] = read_dr[i];
+	p_colloid->s[i] = read_s[i];
+      }
     }
     else {
       /* This didn't go into the cell list */
