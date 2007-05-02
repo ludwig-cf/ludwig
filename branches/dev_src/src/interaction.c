@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.12.2.1 2007-04-30 15:05:03 kevin Exp $
+ *  $Id: interaction.c,v 1.12.2.2 2007-05-02 13:40:48 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -40,9 +40,7 @@
 #include "subgrid.h"
 
 #include "ccomms.h"
-#ifdef _EWALD_TEST_
 #include "ewald.h"
-#endif
 
 extern char * site_map;
 extern int input_format;
@@ -74,6 +72,8 @@ struct lubrication_struct {
   double cutoff_norm;  /* Normal */
   double cutoff_tang;  /* Tangential */
 } lubrication;
+
+static double epotential_;
 
 /*****************************************************************************
  *
@@ -191,7 +191,7 @@ void COLL_init() {
 
   CCOM_init_halos();
 
-  ewald_init(16.0);
+  ewald_init(0.285, 16.0);
   lubrication_init();
   soft_sphere_init();
   leonard_jones_init();
@@ -353,7 +353,7 @@ void COLL_init_colloids_test() {
 #endif
 
 #ifdef _EWALD_TEST_
-  /* ewald_test();*/
+  ewald_test();
 #endif
 
   return;
@@ -488,6 +488,7 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
   tmp->omega.z = omega.z;
 
   ran_parallel_unit_vector(tmp->s);
+
   tmp->dr[X] = 0.0;
   tmp->dr[Y] = 0.0;
   tmp->dr[Z] = 0.0;
@@ -535,28 +536,44 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
 
 void COLL_forces() {
 
+  int nc = get_N_colloid();
   double hmin;
 
-  COLL_zero_forces();
-  hmin = COLL_interactions();
+  if (nc > 0) {
 
-  if (is_statistics_step() && get_N_colloid() > 1) {
+    COLL_zero_forces();
+    hmin = COLL_interactions();
+    COLL_set_fluid_gravity();
+    ewald_sum();
+
+    if (is_statistics_step()) {
+
+      double ereal, efour, eself;
+      double rnkt = 1.0/(nc*get_kT());
+
+      /* Note Fourier space and self energy available on all processes */
+      ewald_total_energy(&ereal, &efour, &eself);
 #ifdef _MPI_
-    {
-      double hlocal = hmin;
-      MPI_Reduce(&hmin, &hlocal, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+      {
+	double hlocal = hmin;
+	double elocal[2], e[2];
+
+	elocal[0] = ereal;
+	elocal[1] = epotential_;
+	MPI_Reduce(&hlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+	MPI_Reduce(elocal, e, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	ereal = e[0];
+	epotential_ = e[1];
+      }
+#endif
+
+      info("\nParticle statistics:\n");
+      info("[Inter-particle gap minimum is: %f]\n", hmin);
+      info("[Energies (perNkT): %g %g %g %g %g]\n", rnkt*ereal, rnkt*efour,
+	   rnkt*eself, rnkt*epotential_,
+	   rnkt*(ereal + efour + eself + epotential_));
     }
-#endif
-    info("[Inter-particle gap minimum is: %f]\n", hmin);
   }
-
-  COLL_set_fluid_gravity();
-
-#ifdef _EWALD_TEST_
-
-  ewald_sum();
-
-#endif
 
   return;
 }
@@ -657,6 +674,8 @@ double COLL_interactions() {
   FVector COLL_fvector_separation(FVector, FVector);
   get_gravity(g);
 
+  epotential_ = 0.0;
+
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
@@ -712,6 +731,7 @@ double COLL_interactions() {
 		    p_c1->force = UTIL_fvector_add(p_c1->force, f);
 		    p_c2->force = UTIL_fvector_subtract(p_c2->force, f);
 
+		    epotential_ += soft_sphere_energy(h);
 		  }
 		  
 		  /* Next colloid */
@@ -777,26 +797,6 @@ void check_interactions(double ahmax) {
   else {
     info("The maximum interaction range is: %f\n", rmax);
     info("The minimum cell width is %f (ok)\n", lmin);
-  }
-
-  /* Check number of cells */
-
-  if (is_periodic(X) && Ncell(X) < 3) {
-    info("Please check number of cells in the X-direction (currrently %d)\n",
-	 Ncell(X));
-    fatal("Must be at least three in periodic directions.\n");
-  }
-
-  if (is_periodic(Y) && Ncell(Y) < 3) {
-    info("Please check number of cells in the Y-direction (currrently %d)\n",
-	 Ncell(Y));
-    fatal("Must be at least three in periodic directions.\n");
-  }
-
-  if (is_periodic(Z) && Ncell(Z) < 3) {
-    info("Please check number of cells in the Z-direction (currrently %d)\n",
-	 Ncell(Z));
-    fatal("Must be at least three in periodic directions.\n");
   }
 
   return;
