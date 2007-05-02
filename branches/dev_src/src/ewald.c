@@ -52,16 +52,19 @@ static void ewald_set_kr_table(double []);
  *  We always have metalic (conducting) boundary conditions at infinity.
  *  The system is assumed to be a cube.
  *
+ *  The dipole strength is mu_input.
+ *  The real space cut off is rc_input.
+ *
  *****************************************************************************/
 
-void ewald_init(double rc_input) {
+void ewald_init(double mu_input, double rc_input) {
 
   int nk;
 
   /* Set constants */
 
   rpi_      = 1.0/sqrt(PI);
-  mu_       = 0.285;
+  mu_       = mu_input;
   ewald_rc_ = rc_input;
   ewald_on_ = 1;
   kappa_    = 5.0/(2.0*ewald_rc_);
@@ -378,9 +381,16 @@ double ewald_self_energy() {
 
 void ewald_total_energy(double * ereal, double * efour, double * eself) {
 
-  *ereal = ereal_;
-  *efour = efourier_;
-  *eself = ewald_self_energy();
+  if (ewald_on_) {
+    *ereal = ereal_;
+    *efour = efourier_;
+    *eself = ewald_self_energy();
+  }
+  else {
+    *ereal = 0.0;
+    *efour = 0.0;
+    *eself = 0.0;
+  }
 
   return;
 }
@@ -747,7 +757,7 @@ void ewald_test() {
   FVector COLL_fvector_separation(FVector, FVector);
 
   /* First set of tests use rc = 32.0, which is L/2. */
-  ewald_init(32.0);
+  ewald_init(0.285, 32.0);
 
   set_N_colloid(2);
 
@@ -1008,7 +1018,7 @@ void ewald_test() {
 
   /* Now set cut-off = 8.0. */
 
-  ewald_init(8.0);
+  ewald_init(0.285, 8.0);
 
   e = ewald_real_space_energy(p_c1->s, p_c2->s, r12);
 
@@ -1027,7 +1037,7 @@ void ewald_test() {
 
   ewald_finish();
 
-  /* Temporary measure */
-  fatal("Ewald test exting\n");
+  /* Temporary measure: finish here */
+  fatal("Ewald test exiting\n");
   return;
 }
