@@ -74,6 +74,8 @@ void ewald_init(double mu_input, double rc_input) {
   info("\nThe Ewald sum:\n");
   info("Real space cut off is     %f\n", ewald_rc_);
   info("Ewald parameter kappa is  %f\n", kappa_);
+  info("Dipole strength mu is     %f\n", mu_);
+  info("Self energy (constant)    %f\n", ewald_self_energy());
   info("Max. term retained in Fourier space sum is %d\n", nk);
 
   nk_[X] = nk;
