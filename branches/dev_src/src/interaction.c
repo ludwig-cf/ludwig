@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.12.2.2 2007-05-02 13:40:48 kevin Exp $
+ *  $Id: interaction.c,v 1.12.2.3 2007-05-09 10:01:56 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -65,7 +65,8 @@ static FVector COLL_lubrication(Colloid *, Colloid *, FVector, Float);
 static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
 static void    coll_position_update(void);
-
+static double  coll_max_speed(void);
+static int     coll_count(void);
 
 struct lubrication_struct {
   int corrections_on;
@@ -141,6 +142,7 @@ void COLL_init() {
   char filename[FILENAME_MAX];
   char tmp[128];
   int nc = 0;
+  int ifrom_file = 0;
   double ahmax;
 
   void CMD_init_volume_fraction(void);
@@ -156,6 +158,11 @@ void COLL_init() {
   /* This is just to get past the start. */
   if (strcmp(tmp, "fixed_volume_fraction_monodisperse") == 0) nc = 1;
   if (strcmp(tmp, "fixed_number_monodisperse") == 0) nc = 1;
+  if (strcmp(tmp, "from_file") == 0) {
+    nc = 1;
+    ifrom_file = 1;
+  }
+
 
 #ifdef _COLLOIDS_TEST_
   nc = 1;
@@ -171,7 +178,7 @@ void COLL_init() {
   colloids_init();
   CIO_set_cio_format(input_format, output_format);
 
-  if (get_step() == 0) {
+  if (get_step() == 0 && ifrom_file == 0) {
 
 #ifdef _COLLOIDS_TEST_
     COLL_init_colloids_test();
@@ -183,7 +190,12 @@ void COLL_init() {
   else {
     /* Restart from previous configuration */
 
-    sprintf(filename, "%s%6.6d", "config.cds", get_step());
+    if (get_step() == 0) {
+      sprintf(filename, "%s", "config.cds.init");
+    }
+    else {
+      sprintf(filename, "%s%6.6d", "config.cds", get_step());
+    }
     info("Reading colloid information from files: %s\n", filename);
 
     CIO_read_state(filename);
@@ -200,7 +212,7 @@ void COLL_init() {
 
   COLL_init_coordinates();
 
-  monte_carlo();
+  if (get_step() == 0 && ifrom_file == 0) monte_carlo();
 
   /* Transfer any particles in the halo regions, initialise the
    * colloid map and build the particles for the first time. */
@@ -353,7 +365,7 @@ void COLL_init_colloids_test() {
 #endif
 
 #ifdef _EWALD_TEST_
-  ewald_test();
+  /* ewald_test();*/
 #endif
 
   return;
@@ -549,7 +561,7 @@ void COLL_forces() {
     if (is_statistics_step()) {
 
       double ereal, efour, eself;
-      double rnkt = 1.0/(nc*get_kT());
+      double rnkt = rcs2/(nc*get_kT()); /* Recover dreaded factor 3 in kT */
 
       /* Note Fourier space and self energy available on all processes */
       ewald_total_energy(&ereal, &efour, &eself);
@@ -572,6 +584,8 @@ void COLL_forces() {
       info("[Energies (perNkT): %g %g %g %g %g]\n", rnkt*ereal, rnkt*efour,
 	   rnkt*eself, rnkt*epotential_,
 	   rnkt*(ereal + efour + eself + epotential_));
+      info("[Max particle speed: %g]\n", coll_max_speed());
+      info("TEMPORARY: count = %d\n", coll_count());
     }
   }
 
@@ -1131,4 +1145,79 @@ void coll_position_update(void) {
   }
 
   return;
+}
+
+/****************************************************************************
+ *
+ *  coll_max_speed
+ *
+ *  Return the largest current colloid velocity.
+ *
+ ****************************************************************************/ 
+
+double coll_max_speed() {
+
+  Colloid * p_colloid;
+  int ic, jc, kc;
+  double vmax = 0.0;
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	  while (p_colloid) {
+
+	    vmax = dmax(vmax, UTIL_dot_product(p_colloid->v, p_colloid->v));
+
+	    p_colloid = p_colloid->next;
+	  }
+      }
+    }
+  }
+
+#ifdef _MPI_
+ {
+   double vmax_local = vmax;
+   MPI_Reduce(&vmax_local, &vmax, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+ }
+#endif
+
+  return sqrt(vmax);
+}
+
+/*****************************************************************************
+ *
+ *  coll_count
+ *
+ *****************************************************************************/
+
+int coll_count() {
+
+  int       ic, jc, kc;
+  Colloid * p_colloid;
+
+  int nlocal = 0, ntotal = 0;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+	  nlocal++;
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  ntotal = nlocal;
+
+#ifdef _MPI_
+  MPI_Reduce(&nlocal, &ntotal, 1, MPI_INT, MPI_SUM, 0, cart_comm());
+#endif
+
+  return ntotal;
 }
