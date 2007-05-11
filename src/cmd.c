@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.10 2007-03-19 16:37:45 kevin Exp $
+ *  $Id: cmd.c,v 1.11 2007-05-11 09:14:03 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -21,7 +21,6 @@
 #include "physics.h"
 #include "potential.h"
 
-#include "ewald.h"
 #include "colloids.h"
 #include "interaction.h"
 
