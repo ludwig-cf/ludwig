@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.10.2.1 2007-04-30 15:05:03 kevin Exp $
+ *  $Id: cmd.c,v 1.10.2.2 2007-05-11 09:04:56 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -126,6 +126,8 @@ void monte_carlo() {
 #ifdef _MPI_
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
+  CIO_write_state("config.cds.init");
 
   return;
 }
