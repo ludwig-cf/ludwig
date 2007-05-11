@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.12.2.3 2007-05-09 10:01:56 kevin Exp $
+ *  $Id: interaction.c,v 1.12.2.4 2007-05-11 09:05:51 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -585,7 +585,6 @@ void COLL_forces() {
 	   rnkt*eself, rnkt*epotential_,
 	   rnkt*(ereal + efour + eself + epotential_));
       info("[Max particle speed: %g]\n", coll_max_speed());
-      info("TEMPORARY: count = %d\n", coll_count());
     }
   }
 
