@@ -32,7 +32,7 @@
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.10 2007-04-30 13:59:08 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.10.2.1 2007-05-18 10:24:42 kevin Exp $";
 
 int main( int argc, char **argv )
 {
@@ -125,9 +125,9 @@ int main( int argc, char **argv )
 
     if (is_measurement_step()) {	  
       info("Wrting phi file at  at step %d!\n", step);
-      /*COLL_compute_phi_missing();*/
+      /*COLL_compute_phi_missing();
       sprintf(filename,"phi-%6.6d",step);
-      COM_write_site(filename, MODEL_write_phi);
+      COM_write_site(filename, MODEL_write_phi);*/
       TIMER_start(TIMER_IO);
       sprintf(filename, "%s%6.6d", "config.cds", step);
       CIO_write_state(filename);
