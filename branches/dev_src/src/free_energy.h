@@ -21,5 +21,6 @@ double interfacial_width(void);
 double chemical_potential(const double, const double);
 void   chemical_stress(double [3][3], const double, const double [],
 		       const double);
+double free_energy_density(const double, const double []);
 
 #endif

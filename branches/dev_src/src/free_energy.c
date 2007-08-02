@@ -10,7 +10,7 @@
  *  final term penalises curvature in the interface. For a complete
  *  description see Kendon et al., J. Fluid Mech., 440, 147 (2001).
  *
- *  $Id: free_energy.c,v 1.3.2.1 2007-04-30 15:05:03 kevin Exp $
+ *  $Id: free_energy.c,v 1.3.2.2 2007-08-02 17:08:23 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -152,4 +152,23 @@ void chemical_stress(double p[3][3], const double phi,
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  free_energy_density
+ *
+ *  Return the free energy density
+ *         E = = (1/2) A phi^2 + (1/4) B phi^4 + (1/2) kappa (\nabla phi)^2
+ *
+ *****************************************************************************/
+
+double free_energy_density(const double phi, const double grad_phi[3]) {
+
+  double e;
+  double bulk = 0.5*phi*phi*(A_ + 0.5*B_*phi*phi);
+
+  e = bulk + 0.5*kappa_*dot_product(grad_phi, grad_phi);
+
+  return e;
 }
