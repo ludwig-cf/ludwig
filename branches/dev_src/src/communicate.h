@@ -23,6 +23,7 @@ void    COM_write_site( char *, void (*func)( FILE *, int, int ));
 char *  get_input_config_filename(const int);
 char *  get_output_config_filename(const int);
 
+extern void (*MODEL_write_velocity)( FILE *, int, int );
 extern void (*MODEL_write_site)( FILE *, int, int );
 extern void (*MODEL_write_phi)( FILE *, int, int );
 extern void (*MODEL_read_site)( FILE * );

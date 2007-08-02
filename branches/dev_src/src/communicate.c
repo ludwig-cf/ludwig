@@ -27,7 +27,6 @@ char         output_config[256];
 
 /* Generic functions for output */
 
-static void (*MODEL_write_velocity)( FILE *, int, int );
 static void (*MODEL_write_rho)( FILE *, int, int );
 static void (*MODEL_write_rho_phi)( FILE *, int, int );
 
@@ -36,7 +35,7 @@ void (*MODEL_read_site)( FILE * );
 
 void (*MODEL_write_site)( FILE *, int, int );
 void (*MODEL_write_phi)( FILE *, int, int );
-
+void (*MODEL_write_velocity)( FILE *, int, int );
 
 static void    MODEL_read_site_asc( FILE * );
 static void    MODEL_read_site_bin( FILE * );
@@ -48,6 +47,8 @@ static void    MODEL_write_site_bin( FILE *, int, int );
 static void    MODEL_write_rho_bin( FILE *, int, int );
 static void    MODEL_write_phi_bin( FILE *, int, int );
 static void    MODEL_write_rho_phi_bin( FILE *, int, int );
+static void    MODEL_write_velocity_asc( FILE *, int, int );
+static void    MODEL_write_velocity_bin( FILE *, int, int );
 
 
 #ifdef _MPI_
@@ -354,6 +355,7 @@ void COM_init() {
     MODEL_write_rho      = MODEL_write_rho_bin;
     MODEL_write_phi      = MODEL_write_phi_bin;
     MODEL_write_rho_phi  = MODEL_write_rho_phi_bin;	
+    MODEL_write_velocity = MODEL_write_velocity_bin;
     break;
   case ASCII:
     info("Output format is ASCII\n");
@@ -361,6 +363,7 @@ void COM_init() {
     MODEL_write_rho      = MODEL_write_rho_asc;
     MODEL_write_phi      = MODEL_write_phi_asc;
     MODEL_write_rho_phi  = MODEL_write_rho_phi_asc;	
+    MODEL_write_velocity = MODEL_write_velocity_asc;
     break;
   default:
     fatal("Incorrect output format (%d)\n", output_format);
@@ -1014,6 +1017,44 @@ void MODEL_write_rho_phi_bin( FILE *fp, int ind, int g_ind )
       fatal("MODEL_write_rho_phi_bin(): couldn't write data\n");
     }
 }
+
+
+/*****************************************************************************
+ *
+ *  MODEL_write_velocity_asc
+ *
+ *****************************************************************************/
+
+void MODEL_write_velocity_asc( FILE *fp, int ind, int g_ind ) {
+
+  double u[3];
+  
+  get_velocity_at_lattice(ind, u);
+
+  fprintf(fp,"%d %lg %lg %lg\n", g_ind, u[X], u[Y], u[Z]);
+
+}
+
+/*****************************************************************************
+ *
+ *  MODEL_write_velocity_bin
+ *
+ *****************************************************************************/
+
+
+void MODEL_write_velocity_bin( FILE *fp, int ind, int g_ind ) {
+
+  double u[3];
+
+  get_velocity_at_lattice(ind, u);
+
+  fwrite(&g_ind, sizeof(int), 1, fp);
+  fwrite(u + X, sizeof(double), 1, fp);
+  fwrite(u + Y, sizeof(double), 1, fp);
+  fwrite(u + Z, sizeof(double), 1, fp);
+
+}
+
 
 /*****************************************************************************
  *
