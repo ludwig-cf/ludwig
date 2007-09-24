@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.8.2.1 2007-04-30 15:05:03 kevin Exp $
+ *  $Id: ccomms.c,v 1.8.2.2 2007-09-24 15:41:29 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -20,6 +20,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -240,7 +241,6 @@ void CCOM_halo_particles() {
   Colloid *   p_colloid;
   FVector     rperiod;
 
-
   /* Non-periodic system requires no halo exchanges */
   if (is_periodic(X) == 0) return;
 
@@ -271,7 +271,7 @@ void CCOM_halo_particles() {
 
       while (p_colloid) {
 
-	if (cart_coords(X) == 0) rperiod.x = L(X);
+	if (cart_coords(X) == 0) rperiod.x = L(X)*(1.0 - DBL_EPSILON);
 	CCOM_load_halo_buffer(p_colloid, nback, rperiod);
 	rperiod.x = 0.0;
 	++nback;
@@ -325,7 +325,7 @@ void CCOM_halo_particles() {
 
       while (p_colloid) {
 
-	if (cart_coords(Y) == 0) rperiod.y = +L(Y);
+	if (cart_coords(Y) == 0) rperiod.y = L(Y)*(1.0 - DBL_EPSILON);
 	CCOM_load_halo_buffer(p_colloid, nback, rperiod);
 	rperiod.y = 0.0;
 	++nback;
@@ -378,7 +378,7 @@ void CCOM_halo_particles() {
 
       while (p_colloid) {
 
-	if (cart_coords(Z) == 0) rperiod.z = +L(Z);
+	if (cart_coords(Z) == 0) rperiod.z = L(Z)*(1.0 - DBL_EPSILON);
 	CCOM_load_halo_buffer(p_colloid, nback, rperiod);
 	rperiod.z = 0.0;
 	++nback;
@@ -452,6 +452,13 @@ void CMPI_accept_new(int nrecv) {
      * the incoming particle does get added to the cell list. */
 
     exists = 0;
+
+    /* At this stage newc may actually be out of the domain, owing to
+     * round-off error in position of particles whose coords have
+     * changed crossing the periodic boundaries. Trap this here?
+     * The whole mechanism needs cleaning up. */
+
+
     p_existing = CELL_get_head_of_list(newc.x, newc.y, newc.z);
 
     while (p_existing) {
@@ -784,7 +791,6 @@ void CCOM_halo_sum(const int type) {
  *****************************************************************************/
 
 void CCOM_exchange_halo_sum(int dimension, int type, int nback, int nforw) {
-
 
   switch (type) {
   case CHALO_TYPE1:
