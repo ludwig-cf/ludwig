@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.7.2.1 2007-05-11 09:04:10 kevin Exp $
+ *  $Id: colloids.c,v 1.7.2.2 2007-09-24 16:18:38 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -246,6 +246,15 @@ void cell_insert_colloid(Colloid * p_new) {
 
   cell   = cell_coords(p_new->r);
   cindex = cell.x*cifac_ + cell.y*cjfac_ + cell.z;
+
+  if (cell.x < 0 || cell.x > (ncell[X] + 1) ||
+      cell.y < 0 || cell.y > (ncell[Y] + 1) ||
+      cell.z < 0 || cell.z > (ncell[Z] + 1)) {
+    verbose("*** Dubious cell index %d position %d %d %d\n", cindex,
+	   cell.x, cell.y, cell.z);
+    verbose("*** Particle %d position %g %g %g\n", p_new->index, p_new->r.x,
+	    p_new->r.y, p_new->r.z);
+  }
 
   p_current = cell_list_[cindex];
   p_previous = p_current;
