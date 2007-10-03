@@ -20,8 +20,8 @@ int     COM_local_index( int );
 void    COM_read_site( char *, void (*func)( FILE * ));
 void    COM_write_site( char *, void (*func)( FILE *, int, int ));
 
-char *  get_input_config_filename(const int);
-char *  get_output_config_filename(const int);
+void  get_input_config_filename(char *, const int);
+void  get_output_config_filename(char *, const int);
 
 extern void (*MODEL_write_velocity)( FILE *, int, int );
 extern void (*MODEL_write_site)( FILE *, int, int );

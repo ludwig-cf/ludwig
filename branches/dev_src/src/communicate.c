@@ -1064,13 +1064,11 @@ void MODEL_write_velocity_bin( FILE *fp, int ind, int g_ind ) {
  *
  *****************************************************************************/
 
-char * get_output_config_filename(const int step) {
+void get_output_config_filename(char * stub, const int step) {
 
-  char tmp[256];
+  sprintf(stub, "%s%8.8d", output_config, step);
 
-  sprintf(tmp, "%s%8.8d", output_config, step);
-
-  return tmp;
+  return;
 }
 
 /*****************************************************************************
@@ -1082,13 +1080,11 @@ char * get_output_config_filename(const int step) {
  *
  *****************************************************************************/
 
-char * get_input_config_filename(const int step) {
-
-  char tmp[256];
+void get_input_config_filename(char * stub, const int step) {
 
   /* But use this... */
-  sprintf(tmp, "%s", input_config);
+  sprintf(stub, "%s", input_config);
 
-  return tmp;
+  return;
 }
 
