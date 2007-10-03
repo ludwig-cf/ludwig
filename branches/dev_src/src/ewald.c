@@ -136,10 +136,12 @@ void ewald_finish() {
 void ewald_sum() {
 
   if (ewald_on_) {
-    TIMER_start(TIMER_FREE1);
-    ewald_real_space_sum();
+    TIMER_start(TIMER_EWALD_TOTAL);
+
     ewald_fourier_space_sum();
-    TIMER_stop(TIMER_FREE1);
+    ewald_real_space_sum();
+
+    TIMER_stop(TIMER_EWALD_TOTAL);
   }
 
   return;
@@ -418,6 +420,8 @@ void ewald_real_space_sum() {
   FVector COLL_fvector_separation(FVector, FVector);
   double erfc(double);
 
+  TIMER_start(TIMER_EWALD_REAL_SPACE);
+
   ereal_ = 0.0;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
@@ -529,6 +533,8 @@ void ewald_real_space_sum() {
     }
   }
 
+  TIMER_stop(TIMER_EWALD_REAL_SPACE);
+
   return;
 }
 
@@ -550,6 +556,8 @@ void ewald_fourier_space_sum() {
   int ic, jc, kc;
   int kx, ky, kz, kn = 0;
   int ncell[3];
+
+  TIMER_start(TIMER_EWALD_FOURIER_SPACE);
 
   ewald_sum_sin_cos_terms();
 
@@ -662,6 +670,8 @@ void ewald_fourier_space_sum() {
     }
   }
 
+  TIMER_stop(TIMER_EWALD_FOURIER_SPACE);
+
   return;
 }
 
@@ -768,6 +778,8 @@ void ewald_test() {
   assert(fabs(kappa_ - 0.078125) < TOLERANCE);
 
   r.x = 3.0; r.y = 3.0; r.z = 3.0;
+  v.x = 0.0; v.y = 0.0; v.z = 0.0;
+  omega.x = 0.0; omega.y = 0.0; omega.z = 0.0;
 
   p_c1 = COLL_add_colloid_no_halo(1, 2.3, 2.3, r, v, omega);
 

@@ -15,7 +15,7 @@
 #include "pe.h"
 #include "timer.h"
 
-#define NTIMERS  16
+#define NTIMERS  19
 
 struct timer_struct {
   double          t_start;
@@ -43,6 +43,9 @@ static const char * timer_name[] = {"Total",
 				    "Particle updates",
 				    "Particle halos",
 				    "Fluctuations",
+				    "Ewald Sum total",
+				    "Ewald Real",
+				    "Ewald_Fourier",
 				    "Free1",
 				    "Free2",
                                     "Free3"};
