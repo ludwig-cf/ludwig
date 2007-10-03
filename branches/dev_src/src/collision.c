@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.5.2.2 2007-05-01 16:39:07 kevin Exp $
+ *  $Id: collision.c,v 1.5.2.3 2007-10-03 15:32:44 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -546,6 +546,7 @@ void MODEL_init( void ) {
   int     offset[3];
   double   phi;
   double   phi0, rho0;
+  char     filename[FILENAME_MAX];
 
   rho0 = get_rho0();
   phi0 = get_phi0();
@@ -599,13 +600,14 @@ void MODEL_init( void ) {
   RUN_get_double_parameter("noise", &noise0);
 
   /* Option 1: read distribution functions from file */
-  if( strcmp(get_input_config_filename(0),"EMPTY") != 0 ) {
+  get_input_config_filename(filename, 0);
+  if( strcmp(filename, "EMPTY") != 0 ) {
 
     info("Re-starting simulation at step %d with data read from "
-	 "config\nfile(s) %s\n", get_step(), get_input_config_filename(0));
+	 "config\nfile(s) %s\n", get_step(), filename);
 
     /* Read distribution functions - sets both */
-    COM_read_site(get_input_config_filename(0),MODEL_read_site);
+    COM_read_site(filename, MODEL_read_site);
   } 
   else {
       /* 

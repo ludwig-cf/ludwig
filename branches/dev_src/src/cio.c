@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.5.2.2 2007-05-02 13:39:15 kevin Exp $
+ *  $Id: cio.c,v 1.5.2.3 2007-10-03 15:32:44 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -363,6 +363,8 @@ int CIO_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
 	    p_colloid->v.z);
     fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->omega.x,
 	    p_colloid->omega.y, p_colloid->omega.z);
+    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->s[X], p_colloid->s[Y],
+            p_colloid->s[Z]);
     fprintf(fp, "%22.15e\n", p_colloid->deltaphi);
  
     /* Next colloid */
@@ -389,6 +391,7 @@ void CIO_read_list_ascii(FILE * fp) {
   double    read_a0;
   double    read_ah;
   FVector   read_r, read_v, read_o;
+  double    read_s[3];
   double    read_deltaphi;
   Colloid * p_colloid;
 
@@ -398,6 +401,7 @@ void CIO_read_list_ascii(FILE * fp) {
     fscanf(fp, "%22le %22le %22le\n", &(read_r.x), &(read_r.y), &(read_r.z));
     fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
     fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
+    fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
     fscanf(fp, "%22le\n",             &(read_deltaphi));
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
@@ -405,6 +409,9 @@ void CIO_read_list_ascii(FILE * fp) {
 
     if (p_colloid) {
       p_colloid->deltaphi = read_deltaphi;
+      p_colloid->s[X] = read_s[X];
+      p_colloid->s[Y] = read_s[Y];
+      p_colloid->s[Z] = read_s[Z];
     }
     else {
       /* This didn't go into the cell list */

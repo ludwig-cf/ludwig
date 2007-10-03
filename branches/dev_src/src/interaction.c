@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.12.2.4 2007-05-11 09:05:51 kevin Exp $
+ *  $Id: interaction.c,v 1.12.2.5 2007-10-03 15:32:44 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -203,7 +203,8 @@ void COLL_init() {
 
   CCOM_init_halos();
 
-  ewald_init(0.285, 16.0);
+  /* ewald_init(0.285, 16.0);*/
+  ewald_init(0.062397, 16.0);
   lubrication_init();
   soft_sphere_init();
   leonard_jones_init();
@@ -435,7 +436,7 @@ Colloid * COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
 			      FVector v0, FVector omega0) {
 
   IVector cell;
-  Colloid * p_c;
+  Colloid * p_c = NULL;
 
   cell = cell_coords(r0);
   if (cell.x < 1 || cell.x > Ncell(X)) return p_c;
@@ -737,7 +738,15 @@ double COLL_interactions() {
 		    if (h < hmin) hmin = h;
 
 		    /* soft sphere */
+#ifdef _EWALD_TEST_
+		    /* Old soft sphere (temporary test) */
+		    fmod = 0.0;
+		    if (h < 0.25) {
+		      fmod = 0.0002*(h + p_c1->ah + p_c2->ah)*(pow(h,-2) - 16.0);
+		    }
+#else
 		    fmod = soft_sphere_force(h);
+#endif
 		    f.x = -fmod*r_12.x;
 		    f.y = -fmod*r_12.y;
 		    f.z = -fmod*r_12.z;
