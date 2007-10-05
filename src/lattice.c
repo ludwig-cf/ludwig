@@ -5,7 +5,7 @@
  *  Deals with the allocation, etc, of the large arrays holding the
  *  fluid distributions, force, etc.
  *
- *  $Id: lattice.c,v 1.6 2006-12-20 16:56:57 kevin Exp $
+ *  $Id: lattice.c,v 1.7 2007-10-05 15:30:20 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -92,7 +92,7 @@ void set_force_at_site(const int index, double force[3]) {
 
   int n;
 
-  assert(fl_force[index].c);
+  assert(fl_force[index].c != NULL);
   for (n = 0; n < 3; n++) fl_force[index].c[n] = force[n];
 
   return;
@@ -110,7 +110,7 @@ void add_force_at_site(const int index, double force[3]) {
 
   int n;
 
-  assert(fl_force[index].c);
+  assert(fl_force[index].c != NULL);
   for (n = 0; n < 3; n++) fl_force[index].c[n] += force[n];
 
   return;
@@ -153,7 +153,7 @@ void get_velocity_at_lattice(const int index, double u[3]) {
 
   int n;
 
-  assert(fl_u[index].c);
+  assert(fl_u[index].c != NULL);
   for (n = 0; n < 3; n++) u[n] = fl_u[index].c[n];
 
   return;
