@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.5.2.3 2007-10-03 15:32:44 kevin Exp $
+ *  $Id: collision.c,v 1.5.2.4 2007-11-09 15:39:20 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -487,11 +487,11 @@ void MODEL_collide_binary_lb() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
-	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
+	    /* sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];*/
+	    sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];
 	  }
-	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
-	  /* jphi[i] = phi*u[i];*/
+	  /* jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);*/
+	  jphi[i] = phi*u[i];
 	}
 
 	/* Now update the distribution */
@@ -699,6 +699,11 @@ void MODEL_calc_phi() {
  *
  *  Set variances for fluctuating lattice Boltzmann.
  *  Issues
+ *    The 'physical' temperature is taken from the input
+ *    and used throughout the code.
+ *    Note there is an extra normalisation in the lattice fluctuations
+ *    which would otherwise give effective kT = cs2
+ *
  *    IMPORTANT: Note that the noise generation is not decomposition-
  *               independent when run in parallel.
  *
@@ -711,8 +716,8 @@ void RAND_init_fluctuations() {
   double tau_s, tau_b, tau_g, kt;
 
   p = RUN_get_double_parameter("temperature", &kt);
-  kt = kt*rcs2; /* Without normalisation kT = cs^2 */
   set_kT(kt);
+  kt = kt*rcs2; /* Without normalisation kT = cs^2 */
 
   init_physics();
 
@@ -746,7 +751,7 @@ void RAND_init_fluctuations() {
   info("Relaxation time: %f\n", tau_s);
   info("Bulk viscosity : %f\n", get_eta_bulk());
   info("Relaxation time: %f\n", tau_b);
-  info("Isothermal kT:   %f\n", get_kT()/rcs2);
+  info("Isothermal kT:   %f\n", get_kT());
 
   /* Order parameter mobility (probably to move) */
 

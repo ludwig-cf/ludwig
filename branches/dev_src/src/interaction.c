@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.12.2.5 2007-10-03 15:32:44 kevin Exp $
+ *  $Id: interaction.c,v 1.12.2.6 2007-11-09 15:39:20 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -61,7 +61,7 @@ static int bs_cv[NGRAD][3] = {{ 0, 0, 0}, { 1,-1,-1}, { 1,-1, 1},
 static void    COLL_compute_phi_missing(void);
 static void    COLL_overlap(Colloid *, Colloid *);
 static void    COLL_set_fluid_gravity(void);
-static FVector COLL_lubrication(Colloid *, Colloid *, FVector, Float);
+static FVector COLL_lubrication(Colloid *, Colloid *, FVector, double);
 static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
 static void    coll_position_update(void);
@@ -204,7 +204,7 @@ void COLL_init() {
   CCOM_init_halos();
 
   /* ewald_init(0.285, 16.0);*/
-  ewald_init(0.062397, 16.0);
+
   lubrication_init();
   soft_sphere_init();
   leonard_jones_init();
@@ -349,9 +349,9 @@ void COLL_init_colloids_test() {
 
   set_N_colloid(1);
 
-  r0.x = 0.5*L(X) + 0.25;
-  r0.y = 0.5*L(Y) + 0.5;
-  r0.z = 0.5*L(Y) - 5.0;
+  r0.x = Lmin(X) + L(X) - 8.0;
+  r0.y = Lmin(Y) + 8.0;
+  r0.z = 0.5*L(Z);
 
   v0.x = 0.0;
   v0.y = 0.0;
@@ -361,7 +361,8 @@ void COLL_init_colloids_test() {
   omega0.y = 0.0;
   omega0.z = 0.0;
 
-  tmp = COLL_add_colloid(1, a0, ah, r0, v0, omega0);
+  tmp = COLL_add_colloid_no_halo(1, a0, ah, r0, v0, omega0);
+  if (tmp == NULL) verbose("*** not added\n");
   info("Starting test of opportunity\n");
 #endif
 
@@ -402,7 +403,7 @@ void COLL_test_output() {
 		  p_colloid->dir.y);*/
 #endif
 #ifdef _COLLOIDS_TEST_OF_OPPORTUNITY_
-	  info("Position: %g %g %g %g %g %g\n",
+	  verbose("Position: %g %g %g %g %g %g\n",
 	       p_colloid->r.x, p_colloid->r.y, p_colloid->r.z,
 	       p_colloid->stats.x, p_colloid->stats.y, p_colloid->stats.z);
 #endif
@@ -480,6 +481,8 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
   if (cell.z < 0 || cell.z > Ncell(Z) + 1) n++;
 
   if (n) {
+    verbose("Cell coords: %d %d %d position %g %g %g\n",
+	    cell.x, cell.y, cell.z, r.x, r.y, r.z);
     fatal("Trying to add colloid to no-existant cell [index %d]\n", index);
   }
 
@@ -562,7 +565,7 @@ void COLL_forces() {
     if (is_statistics_step()) {
 
       double ereal, efour, eself;
-      double rnkt = rcs2/(nc*get_kT()); /* Recover dreaded factor 3 in kT */
+      double rnkt = 1.0/(nc*get_kT());
 
       /* Note Fourier space and self energy available on all processes */
       ewald_total_energy(&ereal, &efour, &eself);
@@ -582,7 +585,8 @@ void COLL_forces() {
 
       info("\nParticle statistics:\n");
       info("[Inter-particle gap minimum is: %f]\n", hmin);
-      info("[Energies (perNkT): %g %g %g %g %g]\n", rnkt*ereal, rnkt*efour,
+      info("[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total\n");
+      info("Energy: %g %g %g %g %g]\n", rnkt*ereal, rnkt*efour,
 	   rnkt*eself, rnkt*epotential_,
 	   rnkt*(ereal + efour + eself + epotential_));
       info("[Max particle speed: %g]\n", coll_max_speed());
@@ -736,6 +740,7 @@ double COLL_interactions() {
 		    r_12.z /= h;
 		    h = h - p_c1->ah - p_c2->ah;
 		    if (h < hmin) hmin = h;
+		    if (h < 0.0) COLL_overlap(p_c1, p_c2);
 
 		    /* soft sphere */
 #ifdef _EWALD_TEST_
@@ -952,10 +957,10 @@ void COLL_compute_phi_gradients() {
 
   int     isite[NGRAD];
 
-  Float   r9  = 1.0/9.0;
-  Float   r18 = 1.0/18.0;
-  Float   dphi, phi_b, delsq;
-  Float   gradt[NGRAD];
+  double   r9  = 1.0/9.0;
+  double   r18 = 1.0/18.0;
+  double   dphi, phi_b, delsq;
+  double   gradt[NGRAD];
 
   FVector gradn;
 
@@ -1015,9 +1020,9 @@ void COLL_compute_phi_gradients() {
 	  count.z += bs_cv[p][2]*bs_cv[p][2];
 	}
 
-	if (count.x) gradn.x /= (Float) count.x;
-	if (count.y) gradn.y /= (Float) count.y;
-	if (count.z) gradn.z /= (Float) count.z;
+	if (count.x) gradn.x /= (double) count.x;
+	if (count.y) gradn.y /= (double) count.y;
+	if (count.z) gradn.z /= (double) count.z;
 
 	/* Estimate gradient at boundaries */
 
@@ -1083,7 +1088,7 @@ void COLL_compute_phi_missing() {
   int     xfac, yfac;
   int     N[3];
 
-  Float   phibar;
+  double   phibar;
 
   extern double * phi_site;
 
@@ -1114,7 +1119,7 @@ void COLL_compute_phi_missing() {
 	  }
 
 	  if (count > 0)
-	    phi_site[index] = phibar / (Float) count;
+	    phi_site[index] = phibar / (double) count;
 	}
       }
 
