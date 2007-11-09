@@ -389,7 +389,7 @@ void TEST_fluid_temperature() {
   info("  <v_x^2> = %g\n", uxvar);
   info("  <v_y^2> = %g\n", uyvar);
   info("  <v_z^2> = %g\n", uzvar);
-  info("   <mv^2> = %g (target: %g)\n", uvar, get_kT());
+  info("   <mv^2> = %g (target: %g)\n", uvar, get_kT()*ND);
   info(" <drho^2> = %g\n", rhovar);
   info("  <ghost> = %g\n", chi2var);
 
