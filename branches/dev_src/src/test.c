@@ -23,8 +23,6 @@
 extern char * site_map;
 extern Site * site;
 
-static FVector TEST_fluid_momentum(void);
-
 /*****************************************************************************
  *
  *  TEST_statistics
@@ -171,93 +169,6 @@ void TEST_statistics() {
        partmin[1], partmax[1]);
 
   return;
-}
-
-
-/*****************************************************************************
- *
- *  TEST_fluid_momentum
- *
- *  Utility routine to compute total fluid momentum considering only
- *  fluid sites. Model independent.
- *
- *  Returns the mean fluid velocity (rather than momentum) on the
- *  root process (other processes only get their subtotal).
- *
- *****************************************************************************/
-
-FVector TEST_fluid_momentum() {
-
-  FVector mv;
-  int     i, j, k, index, p;
-  int     xfac, yfac;
-  double   mvx, mvy, mvz;
-  double   rfluid;
-  double   *f;
-
-  int      N[3];
-
-  get_N_local(N);
-
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
-
-  mvx    = 0.0;
-  mvy    = 0.0;
-  mvz    = 0.0;
-  rfluid = 0.0;
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = i*xfac + j*yfac + k;
-
-	if (site_map[index] == FLUID) {
-	  f = site[index].f;
-	  rfluid += 1.0;
-
-	  for (p = 1; p < NVEL; p++) {
-	    mvx += cv[p][0]*f[p];
-	    mvy += cv[p][1]*f[p];
-	    mvz += cv[p][2]*f[p];
-	  }
-	  /* Check what is required here... */
-	  /*
-	  mvx += 0.5*gbl.force.x;
-	  mvy += 0.5*gbl.force.y;
-	  mvz += 0.5*gbl.force.z;
-	  */
-	}
-      }
-    }
-  }
-
-#ifdef _MPI_
-  {
-    double   partsum[4], g_sum[4];
-    
-    partsum[0] = mvx;
-    partsum[1] = mvy;
-    partsum[2] = mvz;
-    partsum[3] = rfluid;
-
-    MPI_Reduce(partsum, g_sum, 4, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
-
-    mvx    = g_sum[0];
-    mvy    = g_sum[1];
-    mvz    = g_sum[2];
-    rfluid = g_sum[3];
-  }
-#endif
-
-  rfluid = 1.0/rfluid;
-
-  mv.x = mvx*rfluid;
-  mv.y = mvy*rfluid;
-  mv.z = mvz*rfluid;
-
-  return mv;
 }
 
 
@@ -484,7 +395,6 @@ void TEST_fluid_temperature() {
 
   return;
 }
-
 
 /*****************************************************************************
  *
