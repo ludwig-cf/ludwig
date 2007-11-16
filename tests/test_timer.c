@@ -18,6 +18,8 @@ int main(int argc, char ** argv) {
   int i;
   double t;
 
+  pe_init(argc, argv);
+
   info("\nTesting timer routines...\n");
 
   info("sizeof(clock_t) is %d bytes\n", sizeof(clock_t));
@@ -30,6 +32,8 @@ int main(int argc, char ** argv) {
   TIMER_start(TIMER_TOTAL);
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
+
+  pe_finalise();
 
   return 0;
 }
