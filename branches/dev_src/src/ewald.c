@@ -1026,6 +1026,70 @@ void ewald_test() {
   assert(fabs(p_c2->torque.y - 5.08024e-06) < TOLERANCE);
   assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
 
+  /* New orientation (non-zero torques). */
+
+  info("\nNew orientation\n");
+
+  p_c1->r.x = 3.0;
+  p_c1->r.y = 3.0;
+  p_c1->r.z = 3.0;
+
+  p_c1->s[X] = 0.0;
+  p_c1->s[Y] = 0.0;
+  p_c1->s[Z] = 1.0;
+
+
+  p_c2->r.x = 3.0;
+  p_c2->r.y = 13.0;
+  p_c2->r.z = 3.0;
+
+  p_c2->s[X] =  0.0;
+  p_c2->s[Y] = 1.0;
+  p_c2->s[Z] = 0.0;
+
+  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
+  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
+  p_c1->torque.x = 0.0; p_c1->torque.y = 0.0; p_c1->torque.z = 0.0;
+  p_c2->torque.x = 0.0; p_c2->torque.y = 0.0; p_c2->torque.z = 0.0;
+
+  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r.x, p_c1->r.y, p_c1->r.z,
+       p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
+
+  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r.x, p_c2->r.y, p_c2->r.z,
+       p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
+
+  ewald_real_space_sum();
+  info("Real space energy: %g\n", ereal_);
+
+  info("Real space force on particle 1: %g %g %g\n",
+       p_c1->force.x, p_c1->force.y, p_c1->force.z);
+
+  info("Real space force on particle 2: %g %g %g\n",
+       p_c2->force.x, p_c2->force.y, p_c2->force.z);
+
+  info("Real space torque on particle 1: %g %g %g\n",
+       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
+
+  info("Real space torque on particle 2: %g %g %g\n",
+       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
+
+
+  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
+  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
+  ewald_fourier_space_sum();
+
+  info("Fourier space force on particle 1: %g %g %g\n",
+       p_c1->force.x, p_c1->force.y, p_c1->force.z);
+
+  info("Fourier space force on particle 2: %g %g %g\n",
+       p_c2->force.x, p_c2->force.y, p_c2->force.z);
+
+  info("Fourier space torque on particle 1: %g %g %g\n",
+       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
+
+  info("Fourier space torque on particle 2: %g %g %g\n",
+       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
+
   ewald_finish();
 
 
