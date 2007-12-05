@@ -9,7 +9,10 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.9 2007-12-05 16:25:48 kevin Exp $
+ *  $Id: ccomms.c,v 1.10 2007-12-05 17:56:12 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -20,6 +23,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -62,6 +66,7 @@ struct colloid_halo_message {
   double   cosine_ca;
   double   random[6];
   double   s[3];
+  double   dr[3];
 };
 
 struct colloid_sum_message_type1 {
@@ -239,7 +244,6 @@ void CCOM_halo_particles() {
   Colloid *   p_colloid;
   FVector     rperiod;
 
-
   /* Non-periodic system requires no halo exchanges */
   if (is_periodic(X) == 0) return;
 
@@ -270,7 +274,7 @@ void CCOM_halo_particles() {
 
       while (p_colloid) {
 
-	if (cart_coords(X) == 0) rperiod.x = L(X);
+	if (cart_coords(X) == 0) rperiod.x = L(X)*(1.0 - DBL_EPSILON);
 	CCOM_load_halo_buffer(p_colloid, nback, rperiod);
 	rperiod.x = 0.0;
 	++nback;
@@ -324,7 +328,7 @@ void CCOM_halo_particles() {
 
       while (p_colloid) {
 
-	if (cart_coords(Y) == 0) rperiod.y = +L(Y);
+	if (cart_coords(Y) == 0) rperiod.y = L(Y)*(1.0 - DBL_EPSILON);
 	CCOM_load_halo_buffer(p_colloid, nback, rperiod);
 	rperiod.y = 0.0;
 	++nback;
@@ -377,7 +381,7 @@ void CCOM_halo_particles() {
 
       while (p_colloid) {
 
-	if (cart_coords(Z) == 0) rperiod.z = +L(Z);
+	if (cart_coords(Z) == 0) rperiod.z = L(Z)*(1.0 - DBL_EPSILON);
 	CCOM_load_halo_buffer(p_colloid, nback, rperiod);
 	rperiod.z = 0.0;
 	++nback;
@@ -451,6 +455,13 @@ void CMPI_accept_new(int nrecv) {
      * the incoming particle does get added to the cell list. */
 
     exists = 0;
+
+    /* At this stage newc may actually be out of the domain, owing to
+     * round-off error in position of particles whose coords have
+     * changed crossing the periodic boundaries. Trap this here?
+     * The whole mechanism needs cleaning up. */
+
+
     p_existing = CELL_get_head_of_list(newc.x, newc.y, newc.z);
 
     while (p_existing) {
@@ -475,6 +486,10 @@ void CMPI_accept_new(int nrecv) {
 	p_existing->s[X] = p_colloid->s[X];
 	p_existing->s[Y] = p_colloid->s[Y];
 	p_existing->s[Z] = p_colloid->s[Z];
+
+	p_existing->dr[X] = p_colloid->dr[X];
+	p_existing->dr[Y] = p_colloid->dr[Y];
+	p_existing->dr[Z] = p_colloid->dr[Z];
 
 	exists = 1;
       }
@@ -780,7 +795,6 @@ void CCOM_halo_sum(const int type) {
 
 void CCOM_exchange_halo_sum(int dimension, int type, int nback, int nforw) {
 
-
   switch (type) {
   case CHALO_TYPE1:
     if (cart_size(dimension) > 1)
@@ -867,6 +881,10 @@ void CCOM_load_halo_buffer(Colloid * p_colloid, int n, FVector rperiod) {
   _halo_send[n].s[Y] = p_colloid->s[Y];
   _halo_send[n].s[Z] = p_colloid->s[Z];
 
+  _halo_send[n].dr[X] = p_colloid->dr[X];
+  _halo_send[n].dr[Y] = p_colloid->dr[Y];
+  _halo_send[n].dr[Z] = p_colloid->dr[Z];
+
   return;
 }
 
@@ -914,6 +932,10 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->s[X] = _halo_recv[nrecv].s[X];
   p_colloid->s[Y] = _halo_recv[nrecv].s[Y];
   p_colloid->s[Z] = _halo_recv[nrecv].s[Z];
+
+  p_colloid->dr[X] = _halo_recv[nrecv].dr[X];
+  p_colloid->dr[Y] = _halo_recv[nrecv].dr[Y];
+  p_colloid->dr[Z] = _halo_recv[nrecv].dr[Z];
 
   /* Additionally, must set all accumulated quantities to zero. */
   p_colloid->rebuild = 1;

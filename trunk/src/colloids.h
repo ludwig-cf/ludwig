@@ -8,7 +8,7 @@
  *  See Ludwig Technical Notes for a complete description
  *  of the colloid implementation.
  *
- *  $Id: colloids.h,v 1.6 2007-03-09 13:06:56 kevin Exp $
+ *  $Id: colloids.h,v 1.7 2007-12-05 17:56:12 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -31,9 +31,10 @@ struct colloid {
 
   int       index;         /* Unique global index for colloid */
   int       rebuild;       /* Rebuild flag */
-  Float     a0;            /* Input radius (lattice units) */
-  Float     ah;            /* Hydrodynamic radius (from calibration) */
+  double    a0;            /* Input radius (lattice units) */
+  double    ah;            /* Hydrodynamic radius (from calibration) */
   FVector   r;             /* Position vector of centre of mass */
+  double    dr[3];         /* position update */
   FVector   v;             /* Linear velocity */
   FVector   omega;         /* Angular velocity */
   double    random[6];     /* Random numbers for MC/Brownian dynamics */
@@ -43,10 +44,10 @@ struct colloid {
   FVector   t0;            /* Velocity independent torque */
   FVector   cbar;          /* Mean boundary link vector */
   FVector   rxcbar;        /* Mean r_b x c_b */
-  Float     deltam;        /* Mass difference owing to change in shape */
-  Float     deltaphi;      /* Order parameter deficit on bounce-back */
-  Float     sumw;          /* Sum of weights over links */
-  Float     zeta[21];      /* Upper triangle of 6x6 drag matrix zeta */
+  double    deltam;        /* Mass difference owing to change in shape */
+  double    deltaphi;      /* Order parameter deficit on bounce-back */
+  double    sumw;          /* Sum of weights over links */
+  double    zeta[21];      /* Upper triangle of 6x6 drag matrix zeta */
   FVector   stats;         /* Particle statisitics */
 
   /* Magnetic dipole */

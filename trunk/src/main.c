@@ -32,11 +32,12 @@
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.12 2007-12-05 17:38:12 kevin Exp $";
+
+static char rcsid[] = "$Id: main.c,v 1.13 2007-12-05 17:56:12 kevin Exp $";
 
 int main( int argc, char **argv )
 {
-  char    filename[256];
+  char    filename[FILENAME_MAX];
   int     step;
 
   /* Initialise the following:
@@ -115,7 +116,8 @@ int main( int argc, char **argv )
     /* Configuration dump */
 
     if (is_config_step()) {
-      COM_write_site(get_output_config_filename(step), MODEL_write_site);
+      get_output_config_filename(filename, step);
+      COM_write_site(filename, MODEL_write_site);
       sprintf(filename, "%s%6.6d", "config.cds", step);
       CIO_write_state(filename);
     }
@@ -153,7 +155,8 @@ int main( int argc, char **argv )
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
-    COM_write_site(get_output_config_filename(step), MODEL_write_site);
+    get_output_config_filename(filename, step);
+    COM_write_site(filename, MODEL_write_site);
     sprintf(filename, "%s%6.6d", "config.cds", step);
     CIO_write_state(filename);
   }

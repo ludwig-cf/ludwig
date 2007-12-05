@@ -4,7 +4,7 @@
  *
  *  Propagation schemes for the different models.
  *
- *  $Id: propagation.c,v 1.2 2007-03-09 12:37:51 kevin Exp $
+ *  $Id: propagation.c,v 1.3 2007-12-05 17:56:12 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -17,6 +17,16 @@
 
 extern Site * site;
 
+#ifdef _D3Q19_
+static void d3q19_propagate_single(void);
+static void d3q19_propagate_binary(void);
+#endif
+
+#ifdef _D3Q15_
+static void d3q15_propagate_single(void);
+static void d3q15_propagate_binary(void);
+#endif
+
 /*****************************************************************************
  *
  *  propagation
@@ -28,8 +38,6 @@ extern Site * site;
 void propagation() {
 
 #ifdef _D3Q19_
-  static void d3q19_propagate_single(void);
-  static void d3q19_propagate_binary(void);
 
   TIMER_start(TIMER_PROPAGATE);
 
@@ -44,8 +52,6 @@ void propagation() {
 #endif
 
 #ifdef _D3Q15_
-  static void d3q15_propagate_single(void);
-  static void d3q15_propagate_binary(void);
 
   TIMER_start(TIMER_PROPAGATE);
 

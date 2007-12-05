@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.7 2007-03-09 13:06:56 kevin Exp $
+ *  $Id: colloids.c,v 1.8 2007-12-05 17:56:12 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -70,10 +70,18 @@ void colloids_init() {
   lcell[Y] = L(Y) / (cart_size(Y)*ncell[Y]);
   lcell[Z] = L(Z) / (cart_size(Z)*ncell[Z]);
 
-  info("Actual local number of cells [%d,%d,%d]\n",
+  info("[       ] Actual local number of cells [%d,%d,%d]\n",
        ncell[X], ncell[Y], ncell[Z]);
-  info("Actual local cell width      [%.2f,%.2f,%.2f]\n",
+  info("[       ] Actual local cell width      [%.2f,%.2f,%.2f]\n",
        lcell[X], lcell[Y], lcell[Z]);
+
+  /* For particle halo swaps require at least one;
+   * for halo sums, require at least two, so two is the minimum. */
+
+  if (ncell[X] < 2 || ncell[Y] < 2 || ncell[Z] < 2) {
+    info("[Error  ] Please check the cell width (cell_list_lmin).\n");
+    fatal("[Stop] Must be at least two cells in each direction.\n");
+  }
 
   /* Set the total number of cells and allocate the cell list */
 
@@ -86,8 +94,6 @@ void colloids_init() {
 
   cjfac_ = (ncell[Z] + n_halo_);
   cifac_ = (ncell[Y] + n_halo_)*cjfac_;
-
-  assert(ncell[X] > 0 && ncell[Y] > 0 && ncell[Z] > 0);
 
   return;
 }
@@ -240,6 +246,15 @@ void cell_insert_colloid(Colloid * p_new) {
 
   cell   = cell_coords(p_new->r);
   cindex = cell.x*cifac_ + cell.y*cjfac_ + cell.z;
+
+  if (cell.x < 0 || cell.x > (ncell[X] + 1) ||
+      cell.y < 0 || cell.y > (ncell[Y] + 1) ||
+      cell.z < 0 || cell.z > (ncell[Z] + 1)) {
+    verbose("*** Dubious cell index %d position %d %d %d\n", cindex,
+	   cell.x, cell.y, cell.z);
+    verbose("*** Particle %d position %g %g %g\n", p_new->index, p_new->r.x,
+	    p_new->r.y, p_new->r.z);
+  }
 
   p_current = cell_list_[cindex];
   p_previous = p_current;

@@ -14,26 +14,6 @@
 
 /*****************************************************************************
  *
- *  UTIL_fdistance_sq
- *
- *  Distance between two points with position vectors r1 nad r2
- *  is returned. Squared.
- *
- *****************************************************************************/
-
-double UTIL_fdistance_sq(FVector r1, FVector r2) {
-
-  double sq = 0.0;
-
-  sq += (r1.x - r2.x)*(r1.x - r2.x);
-  sq += (r1.y - r2.y)*(r1.y - r2.y);
-  sq += (r1.z - r2.z)*(r1.z - r2.z);
-
-  return sq;
-}
-
-/*****************************************************************************
- *
  *  UTIL_fvector_mod
  *
  *  Return the length of a given vector.
@@ -188,4 +168,75 @@ FVector UTIL_rotate_vector(FVector v, FVector w) {
   }
 
   return vrot;
+}
+
+/*****************************************************************************
+ *
+ *  I'm trying to get rid of FVector, so here are alternatives.
+ *
+ *****************************************************************************/
+
+enum cartesian_directions {X, Y, Z};
+
+/*****************************************************************************
+ *
+ *  dot_product
+ *
+ *****************************************************************************/
+
+double dot_product(const double a[3], const double b[3]) {
+
+  return (a[X]*b[X] + a[Y]*b[Y] + a[Z]*b[Z]);
+}
+
+/*****************************************************************************
+ *
+ *  rotate_vector
+ *
+ *  Rotate the vector v around the unit axis of rotation \hat{w}
+ *  by an angle of \theta, where \theta = |w|. (For example, w
+ *  might be an angular velocity.)
+ *
+ *  The rotated vector is computed via
+ *      v' = (1 - cos \theta)(\hat{w}.v) \hat{w} + cos \theta v +
+ *           (\hat{w} x v) sin \theta      
+ *
+ *  For theta positive this gives rotations in the correct sense
+ *  in the right-handed coordinate system.
+ *
+ ****************************************************************************/
+
+void rotate_vector(double v[3], const double w[3]) {
+
+  double what[3], vrot[3];
+  double theta, ct, st;
+  double vdotw;
+
+  theta = sqrt(w[X]*w[X] + w[Y]*w[Y] + w[Z]*w[Z]);
+
+  if (theta == 0.0) {
+    /* There is no rotation. */
+   }
+  else {
+    /* Work out the unit axis of rotation */
+
+    what[X] = w[X] / theta;
+    what[Y] = w[Y] / theta;
+    what[Z] = w[Z] / theta;
+
+    /* Rotation */
+
+    st = sin(theta);
+    ct = cos(theta);
+    vdotw = v[X]*what[X] + v[Y]*what[Y] + v[Z]*what[Z];
+
+    vrot[X] = ct*v[X] + st*(what[Y]*v[Z] - what[Z]*v[Y]);
+    vrot[Y] = ct*v[Y] + st*(what[Z]*v[X] - what[X]*v[Z]);
+    vrot[Z] = ct*v[Z] + st*(what[X]*v[Y] - what[Y]*v[X]);
+    v[X] = (1.0 - ct)*vdotw*what[X] + vrot[X];
+    v[Y] = (1.0 - ct)*vdotw*what[Y] + vrot[Y];
+    v[Z] = (1.0 - ct)*vdotw*what[Z] + vrot[Z];
+  }
+
+  return;
 }

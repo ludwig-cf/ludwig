@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.5 2007-03-30 15:05:38 kevin Exp $
+ *  $Id: cio.c,v 1.6 2007-12-05 17:56:12 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -240,6 +240,7 @@ void CIO_read_state(const char * filename) {
 
   /* This is set here, as the total is not yet known. */
   set_N_colloid(ntotal);
+  info("Reading information for %d particles\n", ntotal);
 
   return;
 }
@@ -289,9 +290,6 @@ void CIO_read_header_ascii(FILE * fp) {
   fscanf(fp, "N_colloid: %22d\n",  &ntotal);
   fscanf(fp, "nlocal:    %22d\n",  &nlocal);
 
-  set_N_colloid(ntotal);
-  info("Reading information for %d particles\n", ntotal);
-
   return;
 }
 
@@ -338,9 +336,6 @@ void CIO_read_header_binary(FILE * fp) {
   fread(&ntotal,     sizeof(int),     1, fp);
   fread(&nlocal,     sizeof(int),     1, fp);
 
-  set_N_colloid(ntotal);
-  info("Reading information for %d particles\n", ntotal);
-
   return;
 }
 
@@ -368,6 +363,8 @@ int CIO_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
 	    p_colloid->v.z);
     fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->omega.x,
 	    p_colloid->omega.y, p_colloid->omega.z);
+    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->s[X], p_colloid->s[Y],
+            p_colloid->s[Z]);
     fprintf(fp, "%22.15e\n", p_colloid->deltaphi);
  
     /* Next colloid */
@@ -394,6 +391,7 @@ void CIO_read_list_ascii(FILE * fp) {
   double    read_a0;
   double    read_ah;
   FVector   read_r, read_v, read_o;
+  double    read_s[3];
   double    read_deltaphi;
   Colloid * p_colloid;
 
@@ -403,6 +401,7 @@ void CIO_read_list_ascii(FILE * fp) {
     fscanf(fp, "%22le %22le %22le\n", &(read_r.x), &(read_r.y), &(read_r.z));
     fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
     fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
+    fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
     fscanf(fp, "%22le\n",             &(read_deltaphi));
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
@@ -410,6 +409,9 @@ void CIO_read_list_ascii(FILE * fp) {
 
     if (p_colloid) {
       p_colloid->deltaphi = read_deltaphi;
+      p_colloid->s[X] = read_s[X];
+      p_colloid->s[Y] = read_s[Y];
+      p_colloid->s[Z] = read_s[Z];
     }
     else {
       /* This didn't go into the cell list */
@@ -443,6 +445,8 @@ int CIO_write_list_binary(FILE * fp, int ic, int jc, int kc) {
     fwrite(&(p_colloid->r),        sizeof(FVector), 1, fp);
     fwrite(&(p_colloid->v),        sizeof(FVector), 1, fp);
     fwrite(&(p_colloid->omega),    sizeof(FVector), 1, fp);
+    fwrite(p_colloid->dr,          sizeof(double),  3, fp);
+    fwrite(p_colloid->s,           sizeof(double),  3, fp);
     fwrite(&(p_colloid->deltaphi), sizeof(double),  1, fp);
 
     /* Next colloid */
@@ -468,6 +472,8 @@ void CIO_read_list_binary(FILE * fp) {
   double    read_a0;
   double    read_ah;
   FVector   read_r, read_v, read_o;
+  double    read_dr[3];
+  double    read_s[3];
   double    read_deltaphi;
   Colloid * p_colloid;
 
@@ -479,13 +485,20 @@ void CIO_read_list_binary(FILE * fp) {
     fread(&read_r,        sizeof(FVector), 1, fp);
     fread(&read_v,        sizeof(FVector), 1, fp);
     fread(&read_o,        sizeof(FVector), 1, fp);
+    fread(read_dr,        sizeof(double),  3, fp);
+    fread(read_s,         sizeof(double),  3, fp);
     fread(&read_deltaphi, sizeof(double),  1, fp);
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
 				 read_v, read_o);
 
     if (p_colloid) {
+      int i;
       p_colloid->deltaphi = read_deltaphi;
+      for (i = 0; i < 3; i++) {
+	p_colloid->dr[i] = read_dr[i];
+	p_colloid->s[i] = read_s[i];
+      }
     }
     else {
       /* This didn't go into the cell list */
