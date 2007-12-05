@@ -14,26 +14,6 @@
 
 /*****************************************************************************
  *
- *  UTIL_fdistance_sq
- *
- *  Distance between two points with position vectors r1 nad r2
- *  is returned. Squared.
- *
- *****************************************************************************/
-
-double UTIL_fdistance_sq(FVector r1, FVector r2) {
-
-  double sq = 0.0;
-
-  sq += (r1.x - r2.x)*(r1.x - r2.x);
-  sq += (r1.y - r2.y)*(r1.y - r2.y);
-  sq += (r1.z - r2.z)*(r1.z - r2.z);
-
-  return sq;
-}
-
-/*****************************************************************************
- *
  *  UTIL_fvector_mod
  *
  *  Return the length of a given vector.
