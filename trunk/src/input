@@ -7,17 +7,18 @@
 ##############################################################################
 
 N_cycles 100
-#t_start 5
-#input_config config.out000005
+#t_start 200
+#input_config config.out00000200
 
-size 32_32_32
-#grid 1_2_2
+size 128_128_1
+#grid 1_2_1
 
-random_seed 8361237
+#random_seed 7361237
+random_seed 8361235
 
-A -0.00125
-B 0.00125
-K 0.0008
+A -0.0625
+B 0.0625
+K 0.04
 C 0.0
 H 0.0
 temperature 0.0001
@@ -27,7 +28,7 @@ mobility 2.5
 
 # Default situation is for ghost modes on. Don't switch off unless
 # you're sure you know what you're doing.
-#ghost_modes off
+# ghost_modes off
 #ginzburg-dhumieres off
 
 ###############################################################################
@@ -40,7 +41,8 @@ mobility 2.5
 #
 ###############################################################################
 
-colloid_init        fixed_number_monodisperse
+
+colloid_init        no_colloids
 colloid_mc_steps    0
 colloid_a0          2.3
 colloid_ah          2.3
@@ -77,7 +79,8 @@ soft_sphere_cutoff 0.3
 
 # Cell list minimum allowable width
 
-cell_list_lmin 5.0
+cell_list_lmin 8.0
+
 
 ###############################################################################
 # Periodic conditions / boundaries
@@ -102,6 +105,9 @@ input_format  ASCII
 n_io_nodes 1
 
 # Lees-Edwards planes
-#N_LE_plane 8
-#LE_plane_vel 0.008
-
+# Set the number of planes (equally spaced) and their speed
+# Set LE_init_profile to set the initial (t = 0) velocity profile
+# to be consistent with the plane velocity
+# N_LE_plane 2
+# LE_plane_vel 0.008
+# LE_init_profile 1
