@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.8 2007-04-30 14:23:21 kevin Exp $
+ *  $Id: model.h,v 1.9 2007-12-05 17:56:12 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -13,6 +13,10 @@
 
 #include "d3q15.h"
 #include "d3q19.h"
+
+#if !defined (_D3Q15_) && !defined (_D3Q19_)
+#error "You must define either -D_D3Q15_ or -D_D3Q19_ in the Makeifle" 
+#endif
 
 /* Always three dimensions at the moment */
 enum {ND = 3};

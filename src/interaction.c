@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.12 2007-03-28 12:26:06 kevin Exp $
+ *  $Id: interaction.c,v 1.13 2007-12-05 17:56:12 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -40,6 +40,7 @@
 #include "subgrid.h"
 
 #include "ccomms.h"
+#include "ewald.h"
 
 extern char * site_map;
 extern int input_format;
@@ -60,16 +61,20 @@ static int bs_cv[NGRAD][3] = {{ 0, 0, 0}, { 1,-1,-1}, { 1,-1, 1},
 static void    COLL_compute_phi_missing(void);
 static void    COLL_overlap(Colloid *, Colloid *);
 static void    COLL_set_fluid_gravity(void);
-static FVector COLL_lubrication(Colloid *, Colloid *, FVector, Float);
+static FVector COLL_lubrication(Colloid *, Colloid *, FVector, double);
 static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
-
+static void    coll_position_update(void);
+static double  coll_max_speed(void);
+static int     coll_count(void);
 
 struct lubrication_struct {
   int corrections_on;
   double cutoff_norm;  /* Normal */
   double cutoff_tang;  /* Tangential */
 } lubrication;
+
+static double epotential_;
 
 /*****************************************************************************
  *
@@ -93,6 +98,7 @@ void COLL_update() {
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
+  coll_position_update();
   cell_update();
   CCOM_halo_particles();
 
@@ -136,6 +142,7 @@ void COLL_init() {
   char filename[FILENAME_MAX];
   char tmp[128];
   int nc = 0;
+  int ifrom_file = 0;
   double ahmax;
 
   void CMD_init_volume_fraction(void);
@@ -151,8 +158,13 @@ void COLL_init() {
   /* This is just to get past the start. */
   if (strcmp(tmp, "fixed_volume_fraction_monodisperse") == 0) nc = 1;
   if (strcmp(tmp, "fixed_number_monodisperse") == 0) nc = 1;
+  if (strcmp(tmp, "from_file") == 0) {
+    nc = 1;
+    ifrom_file = 1;
+  }
 
-#ifdef _COLLOIDS_TEST_AUTOCORRELATION_
+
+#ifdef _COLLOIDS_TEST_
   nc = 1;
 #endif
 
@@ -166,7 +178,7 @@ void COLL_init() {
   colloids_init();
   CIO_set_cio_format(input_format, output_format);
 
-  if (get_step() == 0) {
+  if (get_step() == 0 && ifrom_file == 0) {
 
 #ifdef _COLLOIDS_TEST_
     COLL_init_colloids_test();
@@ -178,13 +190,20 @@ void COLL_init() {
   else {
     /* Restart from previous configuration */
 
-    sprintf(filename, "%s%6.6d", "config.cds", get_step());
+    if (get_step() == 0) {
+      sprintf(filename, "%s", "config.cds.init");
+    }
+    else {
+      sprintf(filename, "%s%6.6d", "config.cds", get_step());
+    }
     info("Reading colloid information from files: %s\n", filename);
 
     CIO_read_state(filename);
   }
 
   CCOM_init_halos();
+
+  /* ewald_init(0.285, 16.0);*/
 
   lubrication_init();
   soft_sphere_init();
@@ -194,7 +213,7 @@ void COLL_init() {
 
   COLL_init_coordinates();
 
-  monte_carlo();
+  if (get_step() == 0 && ifrom_file == 0) monte_carlo();
 
   /* Transfer any particles in the halo regions, initialise the
    * colloid map and build the particles for the first time. */
@@ -330,9 +349,9 @@ void COLL_init_colloids_test() {
 
   set_N_colloid(1);
 
-  r0.x = 0.5*L(X) + 0.25;
-  r0.y = 0.5*L(Y) + 0.5;
-  r0.z = 0.5*L(Y) - 5.0;
+  r0.x = Lmin(X) + L(X) - 8.0;
+  r0.y = Lmin(Y) + 8.0;
+  r0.z = 0.5*L(Z);
 
   v0.x = 0.0;
   v0.y = 0.0;
@@ -342,8 +361,13 @@ void COLL_init_colloids_test() {
   omega0.y = 0.0;
   omega0.z = 0.0;
 
-  tmp = COLL_add_colloid(1, a0, ah, r0, v0, omega0);
+  tmp = COLL_add_colloid_no_halo(1, a0, ah, r0, v0, omega0);
+  if (tmp == NULL) verbose("*** not added\n");
   info("Starting test of opportunity\n");
+#endif
+
+#ifdef _EWALD_TEST_
+  /* ewald_test();*/
 #endif
 
   return;
@@ -379,7 +403,7 @@ void COLL_test_output() {
 		  p_colloid->dir.y);*/
 #endif
 #ifdef _COLLOIDS_TEST_OF_OPPORTUNITY_
-	  info("Position: %g %g %g %g %g %g\n",
+	  verbose("Position: %g %g %g %g %g %g\n",
 	       p_colloid->r.x, p_colloid->r.y, p_colloid->r.z,
 	       p_colloid->stats.x, p_colloid->stats.y, p_colloid->stats.z);
 #endif
@@ -409,19 +433,20 @@ void COLL_test_output() {
  *
  *****************************************************************************/
 
-void COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
+Colloid * COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
 			      FVector v0, FVector omega0) {
 
   IVector cell;
+  Colloid * p_c = NULL;
 
   cell = cell_coords(r0);
-  if (cell.x < 1 || cell.x > Ncell(X)) return;
-  if (cell.y < 1 || cell.y > Ncell(Y)) return;
-  if (cell.z < 1 || cell.z > Ncell(Z)) return;
+  if (cell.x < 1 || cell.x > Ncell(X)) return p_c;
+  if (cell.y < 1 || cell.y > Ncell(Y)) return p_c;
+  if (cell.z < 1 || cell.z > Ncell(Z)) return p_c;
 
-  COLL_add_colloid(index, a0, ah, r0, v0, omega0);
+  p_c = COLL_add_colloid(index, a0, ah, r0, v0, omega0);
 
-  return;
+  return p_c;
 }
 
 
@@ -456,6 +481,8 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
   if (cell.z < 0 || cell.z > Ncell(Z) + 1) n++;
 
   if (n) {
+    verbose("Cell coords: %d %d %d position %g %g %g\n",
+	    cell.x, cell.y, cell.z, r.x, r.y, r.z);
     fatal("Trying to add colloid to no-existant cell [index %d]\n", index);
   }
 
@@ -477,6 +504,10 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
   tmp->omega.z = omega.z;
 
   ran_parallel_unit_vector(tmp->s);
+
+  tmp->dr[X] = 0.0;
+  tmp->dr[Y] = 0.0;
+  tmp->dr[Z] = 0.0;
 
   tmp->t0      = UTIL_fvector_zero();
   tmp->f0      = UTIL_fvector_zero();
@@ -521,22 +552,46 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
 
 void COLL_forces() {
 
+  int nc = get_N_colloid();
   double hmin;
 
-  COLL_zero_forces();
-  hmin = COLL_interactions();
+  if (nc > 0) {
 
-  if (is_statistics_step() && get_N_colloid() > 1) {
+    COLL_zero_forces();
+    hmin = COLL_interactions();
+    COLL_set_fluid_gravity();
+    ewald_sum();
+
+    if (is_statistics_step()) {
+
+      double ereal, efour, eself;
+      double rnkt = 1.0/(nc*get_kT());
+
+      /* Note Fourier space and self energy available on all processes */
+      ewald_total_energy(&ereal, &efour, &eself);
 #ifdef _MPI_
-    {
-      double hlocal = hmin;
-      MPI_Reduce(&hmin, &hlocal, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
-    }
-#endif
-    info("[Inter-particle gap minimum is: %f]\n", hmin);
-  }
+      {
+	double hlocal = hmin;
+	double elocal[2], e[2];
 
-  COLL_set_fluid_gravity();
+	elocal[0] = ereal;
+	elocal[1] = epotential_;
+	MPI_Reduce(&hlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+	MPI_Reduce(elocal, e, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	ereal = e[0];
+	epotential_ = e[1];
+      }
+#endif
+
+      info("\nParticle statistics:\n");
+      info("[Inter-particle gap minimum is: %f]\n", hmin);
+      info("[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total\n");
+      info("Energy: %g %g %g %g %g]\n", rnkt*ereal, rnkt*efour,
+	   rnkt*eself, rnkt*epotential_,
+	   rnkt*(ereal + efour + eself + epotential_));
+      info("[Max particle speed: %g]\n", coll_max_speed());
+    }
+  }
 
   return;
 }
@@ -637,6 +692,8 @@ double COLL_interactions() {
   FVector COLL_fvector_separation(FVector, FVector);
   get_gravity(g);
 
+  epotential_ = 0.0;
+
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
@@ -683,15 +740,25 @@ double COLL_interactions() {
 		    r_12.z /= h;
 		    h = h - p_c1->ah - p_c2->ah;
 		    if (h < hmin) hmin = h;
+		    if (h < 0.0) COLL_overlap(p_c1, p_c2);
 
 		    /* soft sphere */
+#ifdef _EWALD_TEST_
+		    /* Old soft sphere (temporary test) */
+		    fmod = 0.0;
+		    if (h < 0.25) {
+		      fmod = 0.0002*(h + p_c1->ah + p_c2->ah)*(pow(h,-2) - 16.0);
+		    }
+#else
 		    fmod = soft_sphere_force(h);
+#endif
 		    f.x = -fmod*r_12.x;
 		    f.y = -fmod*r_12.y;
 		    f.z = -fmod*r_12.z;
 		    p_c1->force = UTIL_fvector_add(p_c1->force, f);
 		    p_c2->force = UTIL_fvector_subtract(p_c2->force, f);
 
+		    epotential_ += soft_sphere_energy(h);
 		  }
 		  
 		  /* Next colloid */
@@ -757,26 +824,6 @@ void check_interactions(double ahmax) {
   else {
     info("The maximum interaction range is: %f\n", rmax);
     info("The minimum cell width is %f (ok)\n", lmin);
-  }
-
-  /* Check number of cells */
-
-  if (is_periodic(X) && Ncell(X) < 3) {
-    info("Please check number of cells in the X-direction (currrently %d)\n",
-	 Ncell(X));
-    fatal("Must be at least three in periodic directions.\n");
-  }
-
-  if (is_periodic(Y) && Ncell(Y) < 3) {
-    info("Please check number of cells in the Y-direction (currrently %d)\n",
-	 Ncell(Y));
-    fatal("Must be at least three in periodic directions.\n");
-  }
-
-  if (is_periodic(Z) && Ncell(Z) < 3) {
-    info("Please check number of cells in the Z-direction (currrently %d)\n",
-	 Ncell(Z));
-    fatal("Must be at least three in periodic directions.\n");
   }
 
   return;
@@ -910,10 +957,10 @@ void COLL_compute_phi_gradients() {
 
   int     isite[NGRAD];
 
-  Float   r9  = 1.0/9.0;
-  Float   r18 = 1.0/18.0;
-  Float   dphi, phi_b, delsq;
-  Float   gradt[NGRAD];
+  double   r9  = 1.0/9.0;
+  double   r18 = 1.0/18.0;
+  double   dphi, phi_b, delsq;
+  double   gradt[NGRAD];
 
   FVector gradn;
 
@@ -973,9 +1020,9 @@ void COLL_compute_phi_gradients() {
 	  count.z += bs_cv[p][2]*bs_cv[p][2];
 	}
 
-	if (count.x) gradn.x /= (Float) count.x;
-	if (count.y) gradn.y /= (Float) count.y;
-	if (count.z) gradn.z /= (Float) count.z;
+	if (count.x) gradn.x /= (double) count.x;
+	if (count.y) gradn.y /= (double) count.y;
+	if (count.z) gradn.z /= (double) count.z;
 
 	/* Estimate gradient at boundaries */
 
@@ -1041,7 +1088,7 @@ void COLL_compute_phi_missing() {
   int     xfac, yfac;
   int     N[3];
 
-  Float   phibar;
+  double   phibar;
 
   extern double * phi_site;
 
@@ -1072,10 +1119,118 @@ void COLL_compute_phi_missing() {
 	  }
 
 	  if (count > 0)
-	    phi_site[index] = phibar / (Float) count;
+	    phi_site[index] = phibar / (double) count;
 	}
       }
 
   return;
 }
 
+/*****************************************************************************
+ *
+ *  coll_position_update
+ *
+ *  Update the colloid positions (all cells).
+ *
+ *****************************************************************************/
+
+void coll_position_update(void) {
+
+  Colloid * p_colloid;
+  int ic, jc, kc;
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	  while (p_colloid) {
+
+	    p_colloid->r.x += p_colloid->dr[X];
+	    p_colloid->r.y += p_colloid->dr[Y];
+	    p_colloid->r.z += p_colloid->dr[Z];
+
+	    p_colloid = p_colloid->next;
+	  }
+      }
+    }
+  }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  coll_max_speed
+ *
+ *  Return the largest current colloid velocity.
+ *
+ ****************************************************************************/ 
+
+double coll_max_speed() {
+
+  Colloid * p_colloid;
+  int ic, jc, kc;
+  double vmax = 0.0;
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	  while (p_colloid) {
+
+	    vmax = dmax(vmax, UTIL_dot_product(p_colloid->v, p_colloid->v));
+
+	    p_colloid = p_colloid->next;
+	  }
+      }
+    }
+  }
+
+#ifdef _MPI_
+ {
+   double vmax_local = vmax;
+   MPI_Reduce(&vmax_local, &vmax, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+ }
+#endif
+
+  return sqrt(vmax);
+}
+
+/*****************************************************************************
+ *
+ *  coll_count
+ *
+ *****************************************************************************/
+
+int coll_count() {
+
+  int       ic, jc, kc;
+  Colloid * p_colloid;
+
+  int nlocal = 0, ntotal = 0;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+	  nlocal++;
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  ntotal = nlocal;
+
+#ifdef _MPI_
+  MPI_Reduce(&nlocal, &ntotal, 1, MPI_INT, MPI_SUM, 0, cart_comm());
+#endif
+
+  return ntotal;
+}

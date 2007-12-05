@@ -38,13 +38,13 @@ static MPI_Win      LE_Float_Win;/* MPI window for LE buffering (Floats) */
 
 #endif /* _MPI_ */
 
-static Float      *LeesEdw_site;
+static double      *LeesEdw_site;
 static int        *LE_distrib;
 static int        *LE_ranks;
 
 
 static LE_Plane   *LeesEdw_plane;
-static Float      *LeesEdw_phi;
+static double      *LeesEdw_phi;
 
 static int        N_LE_plane;
 static int        N_LE_total = 0;
@@ -157,15 +157,15 @@ void LE_apply_LEBC( void )
   int     plane,xfac,yfac,xfac2,yfac2,zfac2,jj,kk,ind,ind0,ind1,integ;
   int     LE_loc;
   int     i,j;
-  Float   displ,LE_vel,LE_frac;
+  double   displ,LE_vel,LE_frac;
   int     N[3];
   char filename[256]; /* DBG */
 
-  Float *f, *g;
-  Float rho, phi, ds[3][3], dsphi[3][3], udotc, jdotc, sdotq, sphidotq;
+  double *f, *g;
+  double rho, phi, ds[3][3], dsphi[3][3], udotc, jdotc, sdotq, sphidotq;
   FVector u,du,jphi,djphi;
 
-  const Float r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
+  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   int p,side;
 
@@ -413,7 +413,7 @@ void LE_init_original( void )
 {
   int     flag;
   int     plane, side, ind, xfac, yfac, integ, i, j, k, N_sites, ny2z2;
-  Float   displ, frac, LE_vel;
+  double   displ, frac, LE_vel;
   int     N[3];
     
 #ifdef _MPI_ /* Parallel (MPI) implementation */
@@ -436,8 +436,8 @@ void LE_init_original( void )
   /* Set up Lees-Edwards specific MPI datatypes */
   
   /*
-   * (YZ) plane for Lees-Edwards: etype is Float instead of Site: one
-   * contiguous block of (N[Y]+2)*(N[Z]+2) Floats. No extra row here as
+   * (YZ) plane for Lees-Edwards: etype is double instead of Site: one
+   * contiguous block of (N[Y]+2)*(N[Z]+2) doubles. No extra row here as
    * interpolation is carried out before buffering 
    */
   MPI_Type_contiguous(ny2z2, MPI_DOUBLE,&DT_plane_LE_Float);
@@ -585,13 +585,13 @@ void LE_init_original( void )
        * * LE_N_VEL_XING (simply save components crossing the LE wall) 
        * * sizeof(Float) (because site components are Floats) 
        */
-      LeesEdw_site = (Float *)
-	malloc(2*N_LE_plane*ny2z2*2*LE_N_VEL_XING*sizeof(Float));
-      LeesEdw_phi = (Float *)malloc(2*N_LE_plane*ny2z2*sizeof(Float));
+      LeesEdw_site = (double *)
+	malloc(2*N_LE_plane*ny2z2*2*LE_N_VEL_XING*sizeof(double));
+      LeesEdw_phi = (double *)malloc(2*N_LE_plane*ny2z2*sizeof(double));
       if((LeesEdw_site==NULL) || (LeesEdw_phi==NULL))
 	{
 	  fatal("LE_Init(): failed to allocate %d bytes buffers\n",
-		(2*N_LE_plane*sizeof(Float)*ny2z2*(2*LE_N_VEL_XING+1)));
+		(2*N_LE_plane*sizeof(double)*ny2z2*(2*LE_N_VEL_XING+1)));
 	}
     }
   
@@ -637,19 +637,19 @@ void LE_init_original( void )
    *   * ny2z2         number of sites in a YZ plane, including halos
    *   * 2             because there are two distribution functions f and g
    *   * LE_N_VEL_XING simply save components crossing the LE wall 
-   *   * sizeof(Float) because site components are Floats
+   *   * sizeof(double) because site components are doubles
    */
 
   if (N_LE_plane > 0) {
-    LeesEdw_site = (Float *)
-      malloc(2*N_LE_plane*ny2z2*2*LE_N_VEL_XING*sizeof(Float));
-    LeesEdw_phi = (Float *)malloc(2*N_LE_plane*ny2z2*sizeof(Float));
+    LeesEdw_site = (double *)
+      malloc(2*N_LE_plane*ny2z2*2*LE_N_VEL_XING*sizeof(double));
+    LeesEdw_phi = (double *)malloc(2*N_LE_plane*ny2z2*sizeof(double));
   
     if((LeesEdw_site==NULL) || (LeesEdw_phi==NULL))
       {
 	fatal("LE_Init(): failed to allocate %d bytes for LE buffers\n",
-	      N_sites*sizeof(Float) +
-	      2*(2*LE_N_VEL_XING+1)*N_LE_plane*ny2z2*sizeof(Float));
+	      N_sites*sizeof(double) +
+	      2*(2*LE_N_VEL_XING+1)*N_LE_plane*ny2z2*sizeof(double));
       }
   }
 #endif /* _MPI_ */
@@ -688,11 +688,11 @@ void LE_init_original( void )
   
       /* Now, set RMA windows */
       size1 = (N[X]+2)*(N[Y]+2)*(N[Z]+2)*sizeof(Site);
-      size2 = (N[X]+2)*(N[Y]+2)*(N[Z]+2)*sizeof(Float);
+      size2 = (N[X]+2)*(N[Y]+2)*(N[Z]+2)*sizeof(double);
 #ifdef _MPI_2_
       MPI_Win_create(&site[0].f[0],size1,sizeof(Site),LeesEdw_Info,
 		     LeesEdw_Comm,&LE_Site_Win);
-      MPI_Win_create(&phi_site[0],size2,sizeof(Float),LeesEdw_Info,
+      MPI_Win_create(&phi_site[0],size2,sizeof(double),LeesEdw_Info,
 		     LeesEdw_Comm,&LE_Float_Win);
 #endif
     }
@@ -757,7 +757,7 @@ void LE_update_buffers( int target_buff )
   int     integ, LE_loc, plane, nsites, nsites1, nsites2, vel_ind;
   int     disp_j1,disp_j2;
   int     source_rank1, source_rank2;
-  Float   LE_frac, LE_vel, rho, phi, *buff_phi;
+  double   LE_frac, LE_vel, rho, phi, *buff_phi;
   int     N[3];
   int     offset[3];
   Site    *buff_site;
@@ -1019,10 +1019,10 @@ void LE_update_buffers( int target_buff )
       
       /* JCD: size of buffer could be brought down!!! CHECK!!!*/
       /* Allocate memory for buffering phis */
-      if((buff_phi = (Float *)malloc(2*nsites*sizeof(Float))) == NULL)
+      if((buff_phi = (double *)malloc(2*nsites*sizeof(double))) == NULL)
 	{
 	  fatal("LE_update_buffers(): could not allocate %d bytes\n",
-		2*nsites*sizeof(Float));
+		2*nsites*sizeof(double));
 	}
 
       for(i=0; i<N_LE_plane; i++)
@@ -1566,7 +1566,7 @@ void LE_print_LEbuffers()
 void MODEL_get_gradients( void )
 {
   int     i,i0,i1,i2,j,k,plane,ind,ind0,xfac,yfac,LE_loc;
-  Float   f1,f2,phi[9];
+  double   f1,f2,phi[9];
   int     N[3];
 
   extern double  * delsq_phi;

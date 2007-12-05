@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.2 2006-12-20 16:57:40 kevin Exp $
+ *  $Id: bbl.c,v 1.3 2007-12-05 17:56:12 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -28,7 +28,7 @@ extern double * phi_site;
 static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
 static void update_colloids(void);
-static FVector WALL_lubrication(FVector, double);
+static double WALL_lubrication(const int, FVector, double);
 
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
 
@@ -370,7 +370,7 @@ static void bounce_back_pass2() {
 
 /*****************************************************************************
  *
- *  COLL_update_colloids
+ *  update_colloids
  *
  *  Update the velocity and position of each particle.
  *
@@ -403,8 +403,6 @@ static void update_colloids() {
   double tmp;
   double rho0 = get_colloid_rho0();
 
-  FVector wl;
-
   /* Loop round cells and update each particle velocity */
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++)
@@ -415,30 +413,28 @@ static void update_colloids() {
 
 	while (p_colloid) {
 
-	  wl = WALL_lubrication(p_colloid->r, p_colloid->ah);
-
 	  /* Set up the matrix problem and solve it here. */
 
 	  /* Mass and moment of inertia are those of a hard sphere
-	  * with the input radius */
+	   * with the input radius */
 
 	  mass = (4.0/3.0)*PI*rho0*pow(p_colloid->a0, 3);
 	  moment = (2.0/5.0)*mass*pow(p_colloid->a0, 2);
 
 	  /* Add inertial terms to diagonal elements */
 
-	  a[0][0] = mass +   p_colloid->zeta[0]  - wl.x;
+	  a[0][0] = mass +   p_colloid->zeta[0];
 	  a[0][1] =          p_colloid->zeta[1];
 	  a[0][2] =          p_colloid->zeta[2];
 	  a[0][3] =          p_colloid->zeta[3];
 	  a[0][4] =          p_colloid->zeta[4];
 	  a[0][5] =          p_colloid->zeta[5];
-	  a[1][1] = mass +   p_colloid->zeta[6]  - wl.y;
+	  a[1][1] = mass +   p_colloid->zeta[6];
 	  a[1][2] =          p_colloid->zeta[7];
 	  a[1][3] =          p_colloid->zeta[8];
 	  a[1][4] =          p_colloid->zeta[9];
 	  a[1][5] =          p_colloid->zeta[10];
-	  a[2][2] = mass +   p_colloid->zeta[11] - wl.z;
+	  a[2][2] = mass +   p_colloid->zeta[11];
 	  a[2][3] =          p_colloid->zeta[12];
 	  a[2][4] =          p_colloid->zeta[13];
 	  a[2][5] =          p_colloid->zeta[14];
@@ -448,6 +444,10 @@ static void update_colloids() {
 	  a[4][4] = moment + p_colloid->zeta[18];
 	  a[4][5] =          p_colloid->zeta[19];
 	  a[5][5] = moment + p_colloid->zeta[20];
+
+	  for (k = 0; k < 3; k++) {
+	    a[k][k] -= WALL_lubrication(k, p_colloid->r, p_colloid->ah);
+	  }
 
 	  /* Lower triangle */
 
@@ -537,11 +537,15 @@ static void update_colloids() {
 	    xb[iprow] = tmp;
 	  }
 
-	  /* Use mean of old and new velocity to update position */
+	  /* Set the position update, but don't actually move
+	   * the particles. This is deferred until the next
+	   * call to coll_update() and associated cell list
+	   * update.
+	   * We use mean of old and new velocity. */
 
-	  p_colloid->r.x += (0.5*(p_colloid->v.x + xb[0]));
-	  p_colloid->r.y += (0.5*(p_colloid->v.y + xb[1]));
-	  p_colloid->r.z += (0.5*(p_colloid->v.z + xb[2]));
+	  p_colloid->dr[X] = 0.5*(p_colloid->v.x + xb[0]);
+	  p_colloid->dr[Y] = 0.5*(p_colloid->v.y + xb[1]);
+	  p_colloid->dr[Z] = 0.5*(p_colloid->v.z + xb[2]);
 
 	  /* Unpack the solution vector. */
 
@@ -554,6 +558,7 @@ static void update_colloids() {
 	  p_colloid->omega.z = xb[5];
 
 	  p_colloid->dir =UTIL_rotate_vector(p_colloid->dir, p_colloid->omega);
+	  rotate_vector(p_colloid->s, &xb[3]);
 
 	  /* Record the actual hyrdrodynamic force on the particle */
 
@@ -603,23 +608,24 @@ static void update_colloids() {
  *
  *****************************************************************************/
 
-FVector WALL_lubrication(FVector r, double ah) {
+double WALL_lubrication(int dim, FVector r, double ah) {
 
-  FVector fl = {0.0, 0.0, 0.0};
+  double force;
   double hlub;
   double h;
 
-  hlub = 0.5;
+  force = 0.0;  /* no force by default */
+  hlub = 0.5;   /* half a lattice spacing cut off */
 
-  if (is_periodic(Z) == 0) {
+  if (dim == Z && is_periodic(Z) == 0) {
     /* Lower, then upper */
     h = r.z - Lmin(Z) - ah; 
-    if (h < hlub) fl.z = -6.0*PI*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+    if (h < hlub) force = -6.0*PI*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
     h = Lmin(Z) + L(Z) - r.z - ah;
-    if (h < hlub) fl.z = -6.0*PI*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+    if (h < hlub) force = -6.0*PI*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
   }
 
-  return fl;
+  return force;
 }
 
 /*****************************************************************************

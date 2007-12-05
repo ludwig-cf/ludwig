@@ -6,6 +6,7 @@
 #
 ##############################################################################
 
+
 N_cycles 100
 #t_start 200
 #input_config config.out00000200
@@ -21,10 +22,11 @@ B 0.0625
 K 0.04
 C 0.0
 H 0.0
-temperature 0.0001
-viscosity 0.05
-mobility 2.5
-#noise 0.0
+temperature 0.00002133333
+viscosity 0.1
+mobility 0.150
+#noise 0.2
+#phi0 0.4
 
 # Default situation is for ghost modes on. Don't switch off unless
 # you're sure you know what you're doing.
@@ -41,13 +43,12 @@ mobility 2.5
 #
 ###############################################################################
 
-
 colloid_init        no_colloids
 colloid_mc_steps    0
 colloid_a0          2.3
 colloid_ah          2.3
-colloid_vf          0.0240
-colloid_no          1
+colloid_vf          0.061
+colloid_no          2000
 
 # Active particles
 #
@@ -55,13 +56,14 @@ colloid_no          1
 #                   active1_bipolar
 #                   active1_quadrupolar
 
-colloid_type        active2
+colloid_type        inactive
 colloid_cone_angle  90
 colloid_dp          0.2
 
 # Constant body force on all colloids ("gravity")
 
-colloid_gravity 0.000_0.0000_-0.00
+colloid_gravity 0.0_0.0_0.0
+#colloid_gravity 0.0001_0.00012_-0.0005
 
 # Colloid-colloid lubrication corrections
 
@@ -70,17 +72,23 @@ lubrication_normal_cutoff 0.3
 lubrication_tangential_cutoff 0.0
 
 # Colloid-colloid soft-sphere potential parameters
+# The soft sphere is always needed
 
 soft_sphere_on 1
-soft_sphere_epsilon 0.0002
+soft_sphere_epsilon 0.0004
 soft_sphere_sigma 0.1
-soft_sphere_nu 2.0
-soft_sphere_cutoff 0.3
+soft_sphere_nu 1.0
+soft_sphere_cutoff 0.25
+
+# Leonard Jones
+leonard_jones_on 0
+lj_sigma 2.3
+lj_cutoff 4.6
+lj_epsilon 0.0003
 
 # Cell list minimum allowable width
 
 cell_list_lmin 8.0
-
 
 ###############################################################################
 # Periodic conditions / boundaries
@@ -95,13 +103,13 @@ boundary_speed_top    0.0
 # Output frequency and type
 ###############################################################################
 
-freq_statistics 10
-freq_measure 2000
+freq_statistics 50
+freq_measure 200000
 freq_config 5000000
 config_at_end no
 
-output_format ASCII
-input_format  ASCII
+output_format BINARY
+input_format  BINARY
 n_io_nodes 1
 
 # Lees-Edwards planes

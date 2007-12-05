@@ -4,9 +4,13 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.6 2007-02-14 10:42:16 kevin Exp $
+ *  $Id: collision.c,v 1.7 2007-12-05 17:56:12 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -79,6 +83,7 @@ void collide() {
 #else
 
   void COLL_compute_phi_gradients(void);
+  void test_rheology(void);
   int  get_N_colloid(void);
   int  boundaries_present(void);
 
@@ -99,6 +104,7 @@ void collide() {
   }
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
+  if (get_step() % 10 == 0) test_rheology();
   MODEL_collide_binary_lb();
 
 #endif
@@ -131,7 +137,6 @@ void MODEL_collide_multirelaxation() {
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
-  int       xfac, yfac;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -149,14 +154,12 @@ void MODEL_collide_multirelaxation() {
   TIMER_start(TIMER_COLLIDE);
 
   get_N_local(N);
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = ic*xfac + jc*yfac + kc;
+	index = index_site(ic, jc, kc);
 
 	if (site_map[index] != FLUID) continue;
 
@@ -305,6 +308,8 @@ void MODEL_collide_multirelaxation() {
  *   results, I prefer 2, as it avoids the calculation of jphi[i] from
  *   from the distributions g. However, keep 1 so tests don't break!
  *
+ *   However, for asymmetric quenches version 1 may be preferred.
+ *
  *   The reprojection of g moves phi (mostly) into the non-propagating
  *   distribution following J. Stat. Phys. (2005).
  *
@@ -316,7 +321,6 @@ void MODEL_collide_binary_lb() {
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
-  int       xfac, yfac;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -335,11 +339,7 @@ void MODEL_collide_binary_lb() {
   double    phi, jdotc, sphidotq;    /* modes */
   double    jphi[3];
   double    sth[3][3], sphi[3][3];
-  double    phi_x, phi_y, phi_z;     /* \nabla\phi */
-  double    grad_phi_sq;
   double    mu;                      /* Chemical potential */
-  double    s1;                      /* Diagonal part thermodynamic stress */
-  double    A, B, kappa;             /* Free energy parameters */
   double    rtau2;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
@@ -348,21 +348,13 @@ void MODEL_collide_binary_lb() {
 
   get_N_local(N);
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
-
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
-
-  /* Free energy parameters */
-  A = free_energy_A();
-  B = free_energy_B();
-  kappa = free_energy_K();
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = ic*xfac + jc*yfac + kc;
+	index = index_site(ic, jc, kc);
 
 	if (site_map[index] != FLUID) continue;
 
@@ -410,27 +402,14 @@ void MODEL_collide_binary_lb() {
 
 	/* Compute the thermodynamic component of the stress */
 
-	/* Chemical potential */
 	phi = phi_site[index];
-	mu = phi*(A + B*phi*phi) - kappa*delsq_phi[index];
 
-	phi_x = (grad_phi + index)->x;
-	phi_y = (grad_phi + index)->y;
-	phi_z = (grad_phi + index)->z;
+	jphi[X] = (grad_phi + index)->x;
+	jphi[Y] = (grad_phi + index)->y;
+	jphi[Z] = (grad_phi + index)->z;
 
-	grad_phi_sq = phi_x*phi_x + phi_y*phi_y + phi_z*phi_z;
-	s1 = 0.5*phi*phi*(A + (3.0/2.0)*B*phi*phi)
-	  - kappa*(phi*delsq_phi[index] + 0.5*grad_phi_sq);
-
-	sth[0][0] = s1 + kappa*phi_x*phi_x;
-	sth[0][1] =      kappa*phi_x*phi_y;
-	sth[0][2] =      kappa*phi_x*phi_z;
-	sth[1][0] =      sth[0][1];
-	sth[1][1] = s1 + kappa*phi_y*phi_y;
-	sth[1][2] =      kappa*phi_y*phi_z;
-	sth[2][0] =      sth[0][2];
-	sth[2][1] =      sth[1][2];
-	sth[2][2] = s1 + kappa*phi_z*phi_z;
+	mu = chemical_potential(phi, delsq_phi[index]);
+	chemical_stress(sth, phi, jphi, delsq_phi[index]);
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -509,15 +488,15 @@ void MODEL_collide_binary_lb() {
 	  }
 	}
 
-	/* Relax order parameters modes. The comments above. */
+	/* Relax order parameters modes. See the comments above. */
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
-	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
+	    /* sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];*/
+	    sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];
 	  }
-	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
-	  /* jphi[i] = phi*u[i];*/
+	  /* jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);*/
+	  jphi[i] = phi*u[i];
 	}
 
 	/* Now update the distribution */
@@ -572,6 +551,7 @@ void MODEL_init( void ) {
   int     offset[3];
   double   phi;
   double   phi0, rho0;
+  char     filename[FILENAME_MAX];
 
   rho0 = get_rho0();
   phi0 = get_phi0();
@@ -625,13 +605,14 @@ void MODEL_init( void ) {
   RUN_get_double_parameter("noise", &noise0);
 
   /* Option 1: read distribution functions from file */
-  if( strcmp(get_input_config_filename(0),"EMPTY") != 0 ) {
+  get_input_config_filename(filename, 0);
+  if( strcmp(filename, "EMPTY") != 0 ) {
 
     info("Re-starting simulation at step %d with data read from "
-	 "config\nfile(s) %s\n", get_step(), get_input_config_filename(0));
+	 "config\nfile(s) %s\n", get_step(), filename);
 
     /* Read distribution functions - sets both */
-    COM_read_site(get_input_config_filename(0),MODEL_read_site);
+    COM_read_site(filename, MODEL_read_site);
   } 
   else {
       /* 
@@ -684,20 +665,16 @@ void MODEL_init( void ) {
 void MODEL_calc_phi() {
 
   int     i, j , k, index, p;
-  int     xfac, yfac;
   int     N[3];
   double  * g;
 
   get_N_local(N);
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
-
   for (i = 1; i <= N[X]; i++) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	index = i*xfac + j*yfac + k;
+	index = index_site(i, j, k);
 
 	if (site_map[index] != FLUID) {
 	  /* This is an undefined value... */
@@ -727,6 +704,11 @@ void MODEL_calc_phi() {
  *
  *  Set variances for fluctuating lattice Boltzmann.
  *  Issues
+ *    The 'physical' temperature is taken from the input
+ *    and used throughout the code.
+ *    Note there is an extra normalisation in the lattice fluctuations
+ *    which would otherwise give effective kT = cs2
+ *
  *    IMPORTANT: Note that the noise generation is not decomposition-
  *               independent when run in parallel.
  *
@@ -739,8 +721,8 @@ void RAND_init_fluctuations() {
   double tau_s, tau_b, tau_g, kt;
 
   p = RUN_get_double_parameter("temperature", &kt);
-  kt = kt*rcs2; /* Without normalisation kT = cs^2 */
   set_kT(kt);
+  kt = kt*rcs2; /* Without normalisation kT = cs^2 */
 
   init_physics();
 
@@ -774,7 +756,7 @@ void RAND_init_fluctuations() {
   info("Relaxation time: %f\n", tau_s);
   info("Bulk viscosity : %f\n", get_eta_bulk());
   info("Relaxation time: %f\n", tau_b);
-  info("Isothermal kT:   %f\n", get_kT()/rcs2);
+  info("Isothermal kT:   %f\n", get_kT());
 
   /* Order parameter mobility (probably to move) */
 
@@ -902,7 +884,6 @@ void get_fluctuations_stress(double shat[3][3]) {
 void MISC_set_mean_phi(double phi_global) {
 
   int     index, i, j, k, p;
-  int     xfac, yfac;
   int     nfluid = 0;
   int     N[3];
 
@@ -910,8 +891,6 @@ void MISC_set_mean_phi(double phi_global) {
   double  phibar =  0.0;
 
   get_N_local(N);
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   /* Compute the mean phi in the domain proper */
 
@@ -919,7 +898,7 @@ void MISC_set_mean_phi(double phi_global) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	index = xfac*i + yfac*j + k;
+	index = index_site(i, j, k);
 
 	if (site_map[index] != FLUID) continue;
 
@@ -962,7 +941,7 @@ void MISC_set_mean_phi(double phi_global) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	index = xfac*i + yfac*j + k;
+	index = index_site(i, j, k);
 	if (site_map[index] == FLUID) site[index].g[0] += phi;
       }
     }
@@ -981,12 +960,10 @@ void MISC_set_mean_phi(double phi_global) {
 
 void latt_zero_force() {
 
-  int ic, jc, kc, index, xfac, yfac;
+  int ic, jc, kc, index;
   int N[3];
 
   get_N_local(N);
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   /* Compute the mean phi in the domain proper */
 
@@ -994,7 +971,7 @@ void latt_zero_force() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = xfac*ic + yfac*jc + kc;
+	index = index_site(ic, jc, kc);
 
 	fl_force[index].c[X] = 0.0;
 	fl_force[index].c[Y] = 0.0;
@@ -1023,12 +1000,9 @@ double MISC_fluid_volume() {
   double  v = 0.0;
 
   int     index, i, j, k;
-  int     xfac, yfac;
   int     N[3];
 
   get_N_local(N);
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   /* Look for fluid nodes (not halo) */
 
@@ -1036,7 +1010,7 @@ double MISC_fluid_volume() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	index = xfac*i + yfac*j + k;
+	index = index_site(i, j, k);
 	if (site_map[index] == FLUID) v += 1.0;
       }
     }
@@ -1085,7 +1059,6 @@ void  MISC_curvature() {
   double L1, L2, L3;
 
   int i, j, k, index;
-  int xfac, yfac;
   int N[3];
 
   FVector dphi;
@@ -1098,8 +1071,6 @@ void  MISC_curvature() {
 	      double * , double * , double *, double *, double *, double *); 
 
   get_N_local(N);
-  xfac = (N[Y]+2)*(N[Z]+2);
-  yfac = (N[Z]+2);
 
   for (i = 0; i < 6; i++) {
     sum[i] = 0.0;
@@ -1109,7 +1080,7 @@ void  MISC_curvature() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1;k <= N[Z]; k++) {
 
-	index = i*xfac + j*yfac + k;
+	index = index_site(i, j, k);
             
 	dphi = grad_phi[index];
 	sum[0] += dphi.x*dphi.x;
