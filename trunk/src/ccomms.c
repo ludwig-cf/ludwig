@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.8 2007-04-02 12:37:01 kevin Exp $
+ *  $Id: ccomms.c,v 1.9 2007-12-05 16:25:48 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -834,7 +834,7 @@ void CCOM_exchange_halo_sum(int dimension, int type, int nback, int nforw) {
 
 void CCOM_load_halo_buffer(Colloid * p_colloid, int n, FVector rperiod) {
 
-  if (n >= _halo_message_nmax) fatal("_halo_send buffer too small\n");
+  if (n >= _halo_message_nmax) fatal("_halo_send buffer too small (%d)\n", n);
 
   VERBOSE(("Loading particle (index %d) (order = %d)\n", p_colloid->index, n));
 
@@ -950,7 +950,7 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
 
   int iz;
 
-  if (n >= _halo_message_nmax) fatal("_halo_send_one too small\n");
+  if (n >= _halo_message_nmax) fatal("_halo_send_one too small (%d)\n", n);
 
 #ifdef _VERY_VERBOSE_
   VERBOSE(("Loading sum message type%d [index %d] (order %d)\n", type,
