@@ -18,6 +18,7 @@
 #include "model.h"
 #include "physics.h"
 #include "bbl.h"
+#include "free_energy.h"
 #include "test.h"
 
 extern char * site_map;
@@ -488,48 +489,57 @@ void TEST_fluid_temperature() {
 
 /*****************************************************************************
  *
- *  test_ecm_stress_average
- *
- *  Temporary routine for Evans, Cohen, Morriss comparision.
+ *  test_rheology
  *
  *****************************************************************************/
 
-void test_ecm_stress_average() {
+void test_rheology() {
 
   extern FVector * grad_phi;
-  int get_step(void);
-  double free_energy_K(void);
+  extern double * phi_site;
+  extern double * delsq_phi;
 
-  double pxy[3] = {0.0, 0.0, 0.0};
-  double s, kappa;
-  int N[3], xfac, yfac;
+  int get_step(void);
+
+  double stress[3][3];
+  double pchem[3][3], plocal[3][3];
+  double dphi[3];
+  double rv;
+  int N[3];
   int ic, jc, kc, index, p;
 
   get_N_local(N);
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
-  kappa = free_energy_K();
+  for (ic = 0; ic < 3; ic++) {
+    for (jc = 0; jc < 3; jc++) {
+      stress[ic][jc] = 0.0;
+      pchem[ic][jc] = 0.0;
+    }
+  }
+
+  /* Accumulate contributions to the stress */
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = ic*xfac + jc*yfac + kc;
-
-	s = 0.0;
-
+	index = index_site(ic, jc, kc);
+	
 	for (p = 0; p < NVEL; p++) {
-	  s += site[index].f[p]*ma_[5][p];
+	  stress[X][X] += site[index].f[p]*ma_[4][p];
+	  stress[X][Y] += site[index].f[p]*ma_[5][p];
+	  stress[Y][Y] += site[index].f[p]*ma_[7][p];
 	}
 
-	pxy[0] += s;
-	pxy[2] += s;
+	dphi[X] = (grad_phi + index)->x;
+	dphi[Y] = (grad_phi + index)->y;
+	dphi[Z] = (grad_phi + index)->z;
 
-	s = kappa*(grad_phi + index)->x*(grad_phi + index)->y;
+	chemical_stress(plocal, phi_site[index], dphi, delsq_phi[index]);
 
-	pxy[1] += s;
-	pxy[2] += s;
+	pchem[X][X] += plocal[X][X];
+	pchem[X][Y] += plocal[X][Y];
+	pchem[Y][Y] += plocal[Y][Y];
 
       }
     }
@@ -537,18 +547,35 @@ void test_ecm_stress_average() {
 
 #ifdef _MPI_
   {
-    double g_sum[3];
+    double send[6];
+    double recv[6];
 
-    MPI_Reduce(pxy, g_sum, 3, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+    send[0] = stress[X][X];
+    send[1] = stress[X][Y];
+    send[2] = stress[Y][Y];
+    send[3] = pchem[X][X];
+    send[4] = pchem[X][Y];
+    send[5] = pchem[Y][Y];
 
-    pxy[0] = g_sum[0];
-    pxy[1] = g_sum[1];
-    pxy[2] = g_sum[2];
+    MPI_Reduce(send, recv, 6, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+
+    stress[X][X] = recv[0];
+    stress[X][Y] = recv[1];
+    stress[Y][Y] = recv[2];
+    pchem[X][X] = recv[3];
+    pchem[X][Y] = recv[4];
+    pchem[Y][Y] = recv[5];
+
   }
 #endif
 
-  info("stress average %d %16.10g %16.10g %16.10g\n",
-       get_step(), pxy[0], pxy[1], pxy[2]);
+  rv = 1.0/(L(X)*L(Y)*L(Z));
+
+  info("stress_hy %d %16.10g %16.10g %16.10g\n", get_step(),
+       rv*stress[X][X], rv*stress[X][Y], rv*stress[Y][Y]);
+
+  info("stress_th %d %16.10g %16.10g %16.10g\n", get_step(),
+       rv*pchem[X][X], rv*pchem[X][Y], rv*pchem[Y][Y]);
 
   return;
 }

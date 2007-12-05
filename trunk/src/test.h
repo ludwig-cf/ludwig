@@ -14,6 +14,6 @@
 void TEST_statistics(void);
 void TEST_momentum(void);
 void TEST_fluid_temperature(void);
-void test_ecm_stress_average(void);
+void test_rheology(void);
 
 #endif /* _TEST_H */
