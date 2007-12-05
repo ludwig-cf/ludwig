@@ -32,7 +32,7 @@
 #include "cio.h"
 #include "regsteer.h"
 
-static char rcsid[] = "$Id: main.c,v 1.11 2007-12-05 17:33:58 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.12 2007-12-05 17:38:12 kevin Exp $";
 
 int main( int argc, char **argv )
 {
@@ -130,7 +130,6 @@ int main( int argc, char **argv )
       COM_write_site(filename, MODEL_write_phi);
       sprintf(filename, "%s%6.6d", "config.cds", step);
       CIO_write_state(filename);
-      TIMER_stop(TIMER_IO);*/
     }
 
     /* Print progress report */
