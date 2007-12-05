@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.10.2.3 2007-10-03 15:32:44 kevin Exp $
+ *  $Id: cmd.c,v 1.10.2.4 2007-12-05 16:52:25 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -76,6 +76,8 @@ void CMD_init_volume_fraction() {
       fatal("Please check and try again\n");
     }
     info("[User   ] requested %d particles (monodisperse)\n", n_global);
+    info("[User   ] nominal radius a0 %f                 \n", a0);
+    info("[User   ] hydrodynamic radius %f               \n", ah);
     mc_init_random(n_global, a0, ah);
   }
 
@@ -602,7 +604,7 @@ void mc_mean_square_displacement() {
   dysq /= get_N_colloid();
   dzsq /= get_N_colloid();
 
-  info("Mean square displacements %f %f %f\n", dxsq, dysq, dzsq);
+  info("Mean square displacements (serial only) %f %f %f\n", dxsq, dysq, dzsq);
 
   return;
 }
