@@ -39,7 +39,7 @@ LINK    = $(CC) $(CLINK)
 
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_runtime.c test_random.c \
-              test_coords.c test_model.c test_halo.c
+              test_coords.c test_model.c test_halo.c test_prop.c
 TESTS = ${TESTSOURCES:.c=}
 
 TEST_PE_OBJ = tests.o $(SRC)/pe.o
@@ -49,6 +49,7 @@ TEST_RANDOM_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/ran.o
 TEST_COORDS_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o
 TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(SRC)/model.o \
 		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/ran.o $(SRC)/timer.o
+TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
 TEST_EWALD_OBJ  = tests.o $(SRC)/pe.o $(SRC)/coords.o $(SRC)/colloids.o \
                   $(SRC)/ewald.o
 
@@ -72,6 +73,8 @@ test_model:	$(TEST_MODEL_OBJ) test_model.o
 		$(LINK) -o $@ $(TEST_MODEL_OBJ) $@.o $(CLIBS)
 test_halo:	$(TEST_MODEL_OBJ) test_halo.o
 		$(LINK) -o $@ $(TEST_MODEL_OBJ) $@.o $(CLIBS)
+test_prop:	$(TEST_PROP_OBJ) test_prop.o
+		$(LINK) -o $@ $(TEST_PROP_OBJ) $@.o $(CLIBS)
 
 test_ewald:	$(TEST_EWALD_OBJ) test_ewald.o
 		$(LINK) -o $@ $(TEST_EWALD_OBJ) $@.o $(CLIBS)
