@@ -37,16 +37,28 @@ EXE= Ludwig.exe
 #
 ###############################################################################
 
-CC= cc
-MPICC= tmcc
-CXX = CC +w2 # -xwe
-
 LDFLAGS= -Xc -v -errwarn -xO3
 OPTS =
 
-# For Sun perflib use -xlic_lib=sunperf
+###############################################################################
+#
+# Bluegene
+#
+###############################################################################
 
-CFLAGS=  $(OPTS) $(LDFLAGS) -dalign
+KOJAK=#/bgl/local/packages/kojak/bin/kinst-pomp
+HPCT = /bgl/local/packages/hpct_all/hpct_bgl_20070116
+
+CC= xlc_r
+MPICC=  mpixlc  #-I$(HPCT)/include
+COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
+LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
+OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
+CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
+
+LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
+#-L/bgl/local/lib/mpitrace -lmpitrace_c
+
 
 ###############################################################################
 #
@@ -80,7 +92,7 @@ generic: $(OBJS)
 serial:
 	$(MAKE) generic
 mpi:
-	$(MAKE) generic "CC=$(MPICC)" "LIBS=-lmpi $(LIBS)" "CFLAGS=$(CFLAGS) \
+	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS)" "CFLAGS=$(CFLAGS) \
 		-D_MPI_"
 
 ###############################################################################
