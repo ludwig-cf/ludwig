@@ -14,8 +14,8 @@
 
 double *vector( int , int);
 double **matrix( int , int , int , int);
-void free_vector();
-void free_matrix();
+void free_vector(double *, int, int);
+void free_matrix(double **, int, int, int, int);
 
 double * vector(int nl, int nh)
 {
