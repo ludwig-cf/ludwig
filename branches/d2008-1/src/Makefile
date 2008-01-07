@@ -28,9 +28,10 @@
 OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
       physics.o active.o cio.o cmd.o ccomms.o \
       colloids.o bbl.o build.o communicate.o coords.o control.o \
-      eigen3.o ewald.o free_energy.o interaction.o potential.o \
+      eigen3.o ewald.o free_energy.o interaction.o io_harness.o\
+      potential.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
-      subgrid.o test.o timer.o utilities.o wall.o main.o
+      site_map.o subgrid.o test.o timer.o utilities.o wall.o main.o
 
 EXE= Ludwig.exe
 
@@ -40,8 +41,8 @@ EXE= Ludwig.exe
 #
 ###############################################################################
 
-LDFLAGS= -Xc -v -errwarn -xO3
-OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
+#LDFLAGS= -Xc -v -errwarn -xO3
+#OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
 
 ###############################################################################
 #
@@ -49,18 +50,22 @@ OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #
 #
 ###############################################################################
 
-KOJAK=#/bgl/local/packages/kojak/bin/kinst-pomp
-HPCT = /bgl/local/packages/hpct_all/hpct_bgl_20070116
+#KOJAK=#/bgl/local/packages/kojak/bin/kinst-pomp
+#HPCT = /bgl/local/packages/hpct_all/hpct_bgl_20070116
 
-CC= xlc_r
-MPICC=  mpixlc  #-I$(HPCT)/include
-COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
-LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
-OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
-CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
+#CC= xlc_r
+#MPICC=  mpixlc  #-I$(HPCT)/include
+#COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
+#LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
+#OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
+#CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
 
-LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
+#LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
 #-L/bgl/local/lib/mpitrace -lmpitrace_c
+
+CC = gcc
+OPTS = -D_D3Q15_
+CFLAGS = -Wall $(OPTS)
 
 
 ###############################################################################
@@ -93,7 +98,8 @@ generic: $(OBJS)
 	$(CC) $(LDFLAGS) -o $(EXE) $(OBJS) $(LIBS)
 
 serial:
-	$(MAKE) generic
+	$(MAKE) generic "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
+	-L../mpi_s -lmpi"
 mpi:
 	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS)" "CFLAGS=$(CFLAGS) \
 		-D_MPI_"

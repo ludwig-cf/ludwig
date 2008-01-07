@@ -4,9 +4,13 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.2 2006-10-12 14:09:18 kevin Exp $
+ *  $Id: coords.c,v 1.2.4.1 2008-01-07 17:32:29 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) The University of Edinburgh (2008)
  *
  *****************************************************************************/
 
@@ -33,9 +37,7 @@ static void cart_init(void);
 static void default_decomposition(void);
 static int  is_ok_decomposition(void);
 
-#ifdef _MPI_
-static MPI_Comm cartesian_communicator;
-#endif
+static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
 
 /*****************************************************************************
  *
@@ -86,9 +88,6 @@ void coords_init() {
 void cart_init() {
 
   int n;
-
-#ifdef _MPI_
-
   int reorder = 1;
   int periodic[3];
 
@@ -138,8 +137,6 @@ void cart_init() {
     MPI_Cart_shift(cartesian_communicator, n, +1, &reorder,
 		   &pe_cartesian_neighbours[FORWARD][n]);
   }
-
-#endif
 
   /* Set local number of lattice sites and offsets. */
 
@@ -198,7 +195,6 @@ int cart_neighb(const int dir, const int dim) {
   return pe_cartesian_neighbours[dir][dim];
 }
 
-#ifdef _MPI_
 /*****************************************************************************
  *
  *  Cartesian communicator
@@ -208,7 +204,6 @@ int cart_neighb(const int dir, const int dim) {
 MPI_Comm cart_comm() {
   return cartesian_communicator;
 }
-#endif
 
 /*****************************************************************************
  *
@@ -301,7 +296,6 @@ void get_N_offset(int n[]) {
 
 static void default_decomposition() {
 
-#ifdef _MPI_
   int pe0[3] = {0, 0, 0};
 
   /* Trap 2-d systems */
@@ -314,7 +308,6 @@ static void default_decomposition() {
   pe_cartesian_size[X] = pe0[X];
   pe_cartesian_size[Y] = pe0[Y];
   pe_cartesian_size[Z] = pe0[Z];
-#endif
   
   if (is_ok_decomposition() == 0) {
     fatal("No default decomposition available!\n");

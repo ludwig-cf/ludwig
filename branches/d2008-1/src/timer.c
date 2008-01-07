@@ -152,7 +152,14 @@ void TIMER_statistics() {
 
   int    n;
   double t_min, t_max, t_sum;
+  double r;
 
+#ifdef _MPI_
+  r = MPI_Wtick();
+#else
+  r = 1.0/CLOCKS_PER_SEC;
+#endif
+  info("\nTimer resolution: %g second\n", r);
   info("\nTimer statistics\n");
   info("%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
 
