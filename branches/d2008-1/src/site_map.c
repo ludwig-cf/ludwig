@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.1.2.1 2008-01-07 17:32:29 kevin Exp $
+ *  $Id: site_map.c,v 1.1.2.2 2008-01-21 12:23:44 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,19 +24,22 @@
 #include "site_map.h"
 
 char    * site_map;
-int       nhalo_ = 1; /* to be replaced */
+static struct io_info_t * io_info_site_map;
 
 static void site_map_init_mpi(void);
 static void site_map_init_io(void);
 static int site_map_read(FILE *, const int, const int, const int);
 static int site_map_write(FILE *, const int, const int, const int);
+static int site_index(const int, const int, const int);
 
 static int initialised_ = 0;
 static MPI_Datatype mpi_xy_t_;
 static MPI_Datatype mpi_xz_t_;
 static MPI_Datatype mpi_yz_t_;
-static struct io_info_t * io_info_site_map;
 
+static int nhalo_ = 1;
+static int nlocal_[3];
+static int xfac_, yfac_;
 
 /*****************************************************************************
  *
@@ -48,14 +51,18 @@ static struct io_info_t * io_info_site_map;
 
 void init_site_map() {
 
-  int n[3];
-  int nsites;
+  int nh[3];
 
-  get_N_local(n);
+  get_N_local(nlocal_);
 
-  nsites = (n[X] + 2*nhalo_)*(n[Y] + 2*nhalo_)*(n[Z] + 2*nhalo_);
+  nh[X] = nlocal_[X] + 2*nhalo_;
+  nh[Y] = nlocal_[Y] + 2*nhalo_;
+  nh[Z] = nlocal_[Z] + 2*nhalo_;
 
-  site_map = (char *) malloc(nsites*sizeof(char));
+  xfac_ = nh[Y]*nh[Z];
+  yfac_ = nh[Z];
+
+  site_map = (char *) malloc(nh[X]*nh[Y]*nh[Z]*sizeof(char));
 
   if (site_map == (char *) NULL) fatal("malloc(site_map) failed\n");
 
@@ -94,13 +101,11 @@ static void site_map_init_io() {
 
 static void site_map_init_mpi() {
 
-  int n[3], nh[3];
+  int nh[3];
 
-  get_N_local(n);
-
-  nh[X] = n[X] + 2*nhalo_;
-  nh[Y] = n[Y] + 2*nhalo_;
-  nh[Z] = n[Z] + 2*nhalo_;
+  nh[X] = nlocal_[X] + 2*nhalo_;
+  nh[Y] = nlocal_[Y] + 2*nhalo_;
+  nh[Z] = nlocal_[Z] + 2*nhalo_;
 
   /* YZ planes in the X direction */
   MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo_, 1, MPI_CHAR, &mpi_yz_t_);
@@ -141,7 +146,6 @@ void finish_site_map() {
   return;
 }
 
-
 /*****************************************************************************
  *
  *  site_map_set_all
@@ -152,18 +156,15 @@ void finish_site_map() {
 
 void site_map_set_all(char status) {
 
-  int n[3];
   int index, ic, jc, kc;
 
   assert(initialised_);
   assert(status >= FLUID && status <= BOUNDARY);
 
-  get_N_local(n);
-
-  for (ic = 1 - nhalo_; ic <= n[X] + nhalo_; ic++) {
-    for (jc = 1 - nhalo_; jc <= n[Y] + nhalo_; jc++) {
-      for (kc = 1 - nhalo_; kc <= n[Z] + nhalo_; kc++) {
-	index = index_site(ic, jc, kc);
+  for (ic = 1 - nhalo_; ic <= nlocal_[X] + nhalo_; ic++) {
+    for (jc = 1 - nhalo_; jc <= nlocal_[Y] + nhalo_; jc++) {
+      for (kc = 1 - nhalo_; kc <= nlocal_[Z] + nhalo_; kc++) {
+	index = site_index(ic, jc, kc);
 	site_map[index] = status;
       }
     }
@@ -171,7 +172,6 @@ void site_map_set_all(char status) {
 
   return;
 }
-
 
 /*****************************************************************************
  *
@@ -187,7 +187,7 @@ char site_map_get_status(int ic, int jc, int kc) {
 
   assert(initialised_);
 
-  index = index_site(ic, jc, kc);
+  index = site_index(ic, jc, kc);
 
   return site_map[index];
 }
@@ -207,7 +207,7 @@ void site_map_set_status(int ic, int jc, int kc, char status) {
   assert(initialised_);
   assert(status >= FLUID && status <= BOUNDARY);
 
-  index = index_site(ic, jc, kc);
+  index = site_index(ic, jc, kc);
   site_map[index] = status;
 
   return;
@@ -227,21 +227,19 @@ double site_map_volume(char status) {
 
   double  v_local, v_total;
   int     index, ic, jc, kc;
-  int     n[3];
 
   assert(initialised_);
   assert(status >= FLUID && status <= BOUNDARY);
 
-  get_N_local(n);
   v_local = 0.0;
 
   /* Look for fluid nodes (not halo) */
 
-  for (ic = 1; ic <= n[X]; ic++) {
-    for (jc = 1; jc <= n[Y]; jc++) {
-      for (kc = 1; kc <= n[Z]; kc++) {
+  for (ic = 1; ic <= nlocal_[X]; ic++) {
+    for (jc = 1; jc <= nlocal_[Y]; jc++) {
+      for (kc = 1; kc <= nlocal_[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
+	index = site_index(ic, jc, kc);
 	if (site_map[index] == status) v_local += 1.0;
       }
     }
@@ -264,7 +262,6 @@ double site_map_volume(char status) {
 
 void site_map_halo() {
 
-  int n[3];
   int ic, jc, kc, ihalo, ireal, nh;
   int back, forw;
   const int btag = 151;
@@ -275,20 +272,18 @@ void site_map_halo() {
 
   assert(initialised_);
 
-  get_N_local(n);
-
   /* YZ planes in X direction */
 
   if (cart_size(X) == 1) {
     for (nh = 0; nh < nhalo_; nh++) {
-      for (jc = 1; jc <= n[Y]; jc++) {
-	for (kc = 1 ; kc <= n[Z]; kc++) {
-	  ihalo = index_site(1-nh,    jc, kc);
-	  ireal = index_site(n[X]-nh, jc, kc);
+      for (jc = 1; jc <= nlocal_[Y]; jc++) {
+	for (kc = 1 ; kc <= nlocal_[Z]; kc++) {
+	  ihalo = site_index(1-nh, jc, kc);
+	  ireal = site_index(nlocal_[X]-nh, jc, kc);
 	  site_map[ihalo] = site_map[ireal];
 
-	  ihalo = index_site(n[X]+1+nh, jc, kc);
-	  ireal = index_site(     1+nh, jc, kc);
+	  ihalo = site_index(nlocal_[X]+1+nh, jc, kc);
+	  ireal = site_index(1+nh, jc, kc);
 	  site_map[ihalo] = site_map[ireal];
 	}
       }
@@ -299,14 +294,14 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, X);
     forw = cart_neighb(FORWARD, X);
 
-    ic = n[X] + nhalo_;
-    MPI_Irecv(site_map + ic*xfac,  1, mpi_yz_t_, forw, btag, comm, request);
-    ic = 0;
-    MPI_Irecv(site_map + ic*xfac,  1, mpi_yz_t_, back, ftag, comm, request+1);
-    ic = nhalo_;
-    MPI_Issend(site_map + ic*xfac, 1, mpi_yz_t_, back, btag, comm, request+2);
-    ic = n[X] - nhalo_ + 1;
-    MPI_Issend(site_map + ic*xfac, 1, mpi_yz_t_, forw, ftag, comm, request+3);
+    ihalo = site_index(nlocal_[X] + nhalo_, 1-nhalo_, 1-nhalo_);
+    MPI_Irecv(site_map + ihalo,  1, mpi_yz_t_, forw, btag, comm, request);
+    ihalo = site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    MPI_Irecv(site_map + ihalo,  1, mpi_yz_t_, back, ftag, comm, request+1);
+    ireal = site_index(1, 1-nhalo_, 1-nhalo_);
+    MPI_Issend(site_map + ireal, 1, mpi_yz_t_, back, btag, comm, request+2);
+    ireal = site_index(nlocal_[X] - nhalo_ + 1, 1-nhalo_, 1-nhalo_);
+    MPI_Issend(site_map + ireal, 1, mpi_yz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
 
@@ -314,14 +309,14 @@ void site_map_halo() {
 
   if (cart_size(Y) == 1) {
     for (nh = 0; nh < nhalo_; nh++) {
-      for (ic = 1-nhalo_; ic <= n[X] + nhalo_; ic++) {
-	for (kc = 1; kc <= n[Z]; kc++) {
-	  ihalo = index_site(ic,    1-nh, kc);
-	  ireal = index_site(ic, n[Y]-nh, kc);
+      for (ic = 1-nhalo_; ic <= nlocal_[X] + nhalo_; ic++) {
+	for (kc = 1; kc <= nlocal_[Z]; kc++) {
+	  ihalo = site_index(ic, 1-nh, kc);
+	  ireal = site_index(ic, nlocal_[Y]-nh, kc);
 	  site_map[ihalo] = site_map[ireal];
 
-	  ihalo = index_site(ic, n[Y]+1+nh, kc);
-	  ireal = index_site(ic,      1+nh, kc);
+	  ihalo = site_index(ic, nlocal_[Y]+1+nh, kc);
+	  ireal = site_index(ic, 1+nh, kc);
 	  site_map[ihalo] = site_map[ireal];
 	}
       }
@@ -332,14 +327,14 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, Y);
     forw = cart_neighb(FORWARD, Y);
 
-    jc = nhalo_ + n[Y];
-    MPI_Irecv(site_map + jc*yfac,  1, mpi_xz_t_, forw, btag, comm, request);
-    jc = 0;
-    MPI_Irecv(site_map + jc*yfac,  1, mpi_xz_t_, back, ftag, comm, request+1);
-    jc = nhalo_;
-    MPI_Issend(site_map + jc*yfac, 1, mpi_xz_t_, back, btag, comm, request+2);
-    jc = n[Y] - nhalo_ + 1;
-    MPI_Issend(site_map + jc*yfac, 1, mpi_xz_t_, forw, ftag, comm, request+3);
+    ihalo = site_index(1-nhalo_, nlocal_[Y] + nhalo_, 1-nhalo_);
+    MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, forw, btag, comm, request);
+    ihalo = (1-nhalo_, 1-nhalo_, 1-nhalo_);
+    MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, back, ftag, comm, request+1);
+    ireal = site_index(1-nhalo_, 1, 1-nhalo_);
+    MPI_Issend(site_map + ireal, 1, mpi_xz_t_, back, btag, comm, request+2);
+    ireal = site_index(1-nhalo_, nlocal_[Y] - nhalo_ + 1, 1-nhalo_);
+    MPI_Issend(site_map + ireal, 1, mpi_xz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
 
@@ -347,14 +342,14 @@ void site_map_halo() {
 
   if (cart_size(Z) == 1) {
     for (nh = 0; nh < nhalo_; nh++) {
-      for (ic = 1 - nhalo_; ic <= n[X] + nhalo_; ic++) {
-	for (jc = 1 - nhalo_; jc <= n[Y] + nhalo_; jc++) {
-	  ihalo = index_site(ic, jc,    1-nh);
-	  ireal = index_site(ic, jc, n[Z]-nh);
+      for (ic = 1 - nhalo_; ic <= nlocal_[X] + nhalo_; ic++) {
+	for (jc = 1 - nhalo_; jc <= nlocal_[Y] + nhalo_; jc++) {
+	  ihalo = site_index(ic, jc, 1-nh);
+	  ireal = site_index(ic, jc, nlocal_[Z]-nh);
 	  site_map[ihalo] = site_map[ireal];
 
-	  ihalo = index_site(ic, jc, n[Z]+1+nh);
-	  ireal = index_site(ic, jc,      1+nh);
+	  ihalo = site_index(ic, jc, nlocal_[Z]+1+nh);
+	  ireal = site_index(ic, jc,            1+nh);
 	  site_map[ihalo] = site_map[ireal];
 	}
       }
@@ -365,14 +360,14 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, Z);
     forw = cart_neighb(FORWARD, Z);
 
-    kc = nhalo_ + n[Z];
-    MPI_Irecv(site_map + kc,  1, mpi_xy_t_, forw, btag, comm, request);
-    kc = 0;
-    MPI_Irecv(site_map + kc,  1, mpi_xy_t_, back, ftag, comm, request+1);
-    kc = nhalo_;
-    MPI_Issend(site_map + kc, 1, mpi_xy_t_, back, btag, comm, request+2);
-    kc = n[Z] - nhalo_ + 1;
-    MPI_Issend(site_map + kc, 1, mpi_xy_t_, forw, ftag, comm, request+3);
+    ihalo = site_index(1-nhalo_, 1-nhalo_, nlocal_[Z] + nhalo_);
+    MPI_Irecv(site_map + ireal,  1, mpi_xy_t_, forw, btag, comm, request);
+    ihalo = site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    MPI_Irecv(site_map + ireal,  1, mpi_xy_t_, back, ftag, comm, request+1);
+    ireal = site_index(1-nhalo_, 1-nhalo_, 1);
+    MPI_Issend(site_map + ireal, 1, mpi_xy_t_, back, btag, comm, request+2);
+    ireal = site_index(1-nhalo_, 1-nhalo_, nlocal_[Z] - nhalo_ + 1);
+    MPI_Issend(site_map + ireal, 1, mpi_xy_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
 
@@ -391,9 +386,7 @@ static int site_map_write(FILE * fp, int ic, int jc, int kc) {
 
   int index, n;
 
-  assert(initialised_);
-
-  index = index_site(ic, jc, kc);
+  index = site_index(ic, jc, kc);
 
   n = fputc(site_map[index], fp);
   if (n == EOF) fatal("Failed to write site map at %d\n", index);
@@ -411,9 +404,7 @@ static int site_map_read(FILE * fp, int ic, int jc, int kc) {
 
   int index, n;
 
-  assert(initialised_);
-
-  index = index_site(ic, jc, kc);
+  index = site_index(ic, jc, kc);
 
   n = fgetc(fp);
   if (n == EOF) fatal("Failed to read site map at %d\n", index);
@@ -421,4 +412,24 @@ static int site_map_read(FILE * fp, int ic, int jc, int kc) {
   site_map[index] = n;
 
   return 1;
+}
+
+/*****************************************************************************
+ *
+ *  site_index
+ *
+ *  Compute the index from coordinates ic, jc, kc.
+ *
+ *****************************************************************************/
+
+static int site_index(const int ic, const int jc, const int kc) {
+
+  assert(ic >= 1-nhalo_);
+  assert(jc >= 1-nhalo_);
+  assert(kc >= 1-nhalo_);
+  assert(ic <= nlocal[X] + nhalo_);
+  assert(jc <= nlocal[Y] + nhalo_);
+  assert(kc <= nlocal[Z] = nhalo_);
+
+  return (xfac_*(nhalo_ + ic - 1) + yfac_*(nhalo_ + jc -1) + nhalo_ + kc - 1);
 }
