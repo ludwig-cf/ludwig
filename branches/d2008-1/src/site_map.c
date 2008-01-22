@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.1.2.2 2008-01-21 12:23:44 kevin Exp $
+ *  $Id: site_map.c,v 1.1.2.3 2008-01-22 14:38:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -79,16 +79,23 @@ void init_site_map() {
  *
  *  site_map_init_io
  *
+ *  The intention here is that the site map should will consist of
+ *  one processor-decomposition-independent file regardless
+ *  of I/O grid for other lattice quantities.
+ *
  *****************************************************************************/
 
 static void site_map_init_io() {
 
-  io_info_site_map = io_info_create();
+  int grid = {1, 1, 1};
+
+  io_info_site_map = io_info_create_with_grid(grid);
+
   io_info_set_name(io_info_site_map, "Site map information");
   io_info_set_read(io_info_site_map, site_map_read);
   io_info_set_write(io_info_site_map, site_map_write);
   io_info_set_bytesize(io_info_site_map, sizeof(char));
-  io_info_set_decomposition(io_info_site_map, 1);
+  io_info_set_processor_independent(io_info_site_map);
 
   return;
 }
@@ -329,7 +336,7 @@ void site_map_halo() {
 
     ihalo = site_index(1-nhalo_, nlocal_[Y] + nhalo_, 1-nhalo_);
     MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, forw, btag, comm, request);
-    ihalo = (1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, back, ftag, comm, request+1);
     ireal = site_index(1-nhalo_, 1, 1-nhalo_);
     MPI_Issend(site_map + ireal, 1, mpi_xz_t_, back, btag, comm, request+2);
@@ -427,9 +434,9 @@ static int site_index(const int ic, const int jc, const int kc) {
   assert(ic >= 1-nhalo_);
   assert(jc >= 1-nhalo_);
   assert(kc >= 1-nhalo_);
-  assert(ic <= nlocal[X] + nhalo_);
-  assert(jc <= nlocal[Y] + nhalo_);
-  assert(kc <= nlocal[Z] = nhalo_);
+  assert(ic <= nlocal_[X] + nhalo_);
+  assert(jc <= nlocal_[Y] + nhalo_);
+  assert(kc <= nlocal_[Z] + nhalo_);
 
   return (xfac_*(nhalo_ + ic - 1) + yfac_*(nhalo_ + jc -1) + nhalo_ + kc - 1);
 }

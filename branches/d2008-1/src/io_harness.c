@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.1.2.1 2008-01-07 17:32:29 kevin Exp $
+ *  $Id: io_harness.c,v 1.1.2.2 2008-01-22 14:38:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,6 +33,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "runtime.h"
 #include "io_harness.h"
 
 struct io_decomposition_t {
@@ -56,71 +57,94 @@ struct io_info_t {
   int (* read_function)  (FILE *, const int, const int, const int);
 };
 
-static struct io_decomposition_t * io_default_decomposition;
+static struct io_info_t * io_info_allocate(void);
 static void io_write_metadata(char *, struct io_info_t *);
 static void io_set_group_filename(char *, const char *, struct io_info_t *);
 static long int io_file_offset(int, int, struct io_info_t *);
+static struct io_decomposition_t * io_decomposition_allocate(void);
+static struct io_decomposition_t * io_decomposition_create(const int grid[3]);
+static void io_decomposition_destroy(struct io_decomposition_t *);
 
 /*****************************************************************************
  *
- *  io_init
+ *  io_info_create
  *
- *  Call once at start of execution to initialise.
- *  The I/O communicator is based on a further decomposition of the
- *  Cartesian communicator, so that must exist.
+ *  Return a pointer to an io_info object with default decomposition.
  *
  *****************************************************************************/
 
-void io_init() {
+struct io_info_t * io_info_create() {
 
-  int io_grid[3] = {1, 1, 1};
-  int i, colour;
-  int noffset[3];
-  struct io_decomposition_t * p;
+  int io_grid[3] = {1, 1, 1}; /* Default i/o grid */
+  struct io_info_t * p_info;
 
-  get_N_offset(noffset);
+  RUN_get_int_parameter_vector("io_grid", io_grid); /* User input grid */
+  p_info = io_info_create_with_grid(io_grid);
 
-  p = io_decomposition_create();
-
-  p->n_io = 1;
-
-  for (i = 0; i < 3; i++) {
-    if (cart_size(i) % io_grid[i] != 0) fatal("Bad I/O grid (dim %d)\n", i);
-    p->ngroup[i] = io_grid[i];
-    p->n_io *= io_grid[i];
-    p->coords[i] = io_grid[i]*cart_coords(i)/cart_size(i);
-    p->nsite[i] = N_total(i)/io_grid[i];
-    p->offset[i] = noffset[i] - p->coords[i]*p->nsite[i];
-  }
-
-  colour = p->coords[X]
-         + p->coords[Y]*io_grid[X]
-         + p->coords[Z]*io_grid[X]*io_grid[Y];
-
-  p->index = colour;
-
-  MPI_Comm_split(cart_comm(), colour, cart_rank(), &p->comm);
-  MPI_Comm_rank(p->comm, &p->rank);
-  MPI_Comm_size(p->comm, &p->size);
-
-  io_default_decomposition = p;
-
-  return;
+  return p_info;
 }
 
 /*****************************************************************************
  *
- *  io_finalise
+ *  io_info_create_with_grid
  *
- *  Clean up.
+ *  Retrun a pointer to a new io_info object with specified decomposition.
  *
  *****************************************************************************/
 
-void io_finalise() {
+struct io_info_t * io_info_create_with_grid(const int grid[3]) {
 
-  io_decomposition_destroy(io_default_decomposition);
+  struct io_info_t * p_info;
+  struct io_decomposition_t * p_decomp;
 
-  return;
+  p_info = io_info_allocate();
+  p_decomp = io_decomposition_create(grid);
+  p_info->io_comm = p_decomp;
+  io_info_set_processor_dependent(p_info);
+
+  return p_info;
+}
+
+/*****************************************************************************
+ *
+ *  io_decomposition_create
+ *
+ *  Set up an io_decomposition object using its size.
+ *
+ *****************************************************************************/
+
+static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
+
+  int i, colour;
+  int noffset[3];
+  struct io_decomposition_t * p = NULL;
+  MPI_Comm comm = cart_comm();
+
+  assert(comm != MPI_COMM_NULL);
+
+  p = io_decomposition_allocate();
+  p->n_io = 1;
+
+  for (i = 0; i < 3; i++) {
+    if (cart_size(i) % grid[i] != 0) fatal("Bad I/O grid (dim %d)\n", i);
+    p->ngroup[i] = grid[i];
+    p->n_io *= grid[i];
+    p->coords[i] = grid[i]*cart_coords(i)/cart_size(i);
+    p->nsite[i] = N_total(i)/grid[i];
+    p->offset[i] = noffset[i] - p->coords[i]*p->nsite[i];
+  }
+
+  colour = p->coords[X]
+         + p->coords[Y]*grid[X]
+         + p->coords[Z]*grid[X]*grid[Y];
+
+  p->index = colour;
+
+  MPI_Comm_split(comm, colour, cart_rank(), &p->comm);
+  MPI_Comm_rank(p->comm, &p->rank);
+  MPI_Comm_size(p->comm, &p->size);
+
+  return p;
 }
 
 /*****************************************************************************
@@ -304,18 +328,17 @@ static void io_set_group_filename(char * filename_io, const char * stub,
 
 /*****************************************************************************
  *
- *  io_decomposition_create
+ *  io_decomposition_allocate
  *
  *  Allocate an io_decomposition_t object or fail gracefully.
  *
  *****************************************************************************/
 
-struct io_decomposition_t * io_decomposition_create() {
+static struct io_decomposition_t * io_decomposition_allocate() {
 
   struct io_decomposition_t * p;
 
   p = (struct io_decomposition_t *) malloc(sizeof(struct io_decomposition_t));
-
   if (p == NULL) fatal("Failed to allocate io_decomposition_t\n");
 
   return p;
@@ -327,9 +350,10 @@ struct io_decomposition_t * io_decomposition_create() {
  *
  *****************************************************************************/
 
-void io_decomposition_destroy(struct io_decomposition_t * p) {
+static void io_decomposition_destroy(struct io_decomposition_t * p) {
 
   assert(p);
+  MPI_Comm_free(&p->comm);
   free(p);
  
   return;
@@ -337,23 +361,18 @@ void io_decomposition_destroy(struct io_decomposition_t * p) {
 
 /*****************************************************************************
  *
- *  io_info_create
+ *  io_info_allocate
  *
- *  Allocate an io_info_t struct. Every io_info_t object uses the
- *  default decomposition by, well, default.
+ *  Return a pointer to newly allocated io_info object.
  *
  *****************************************************************************/
 
-struct io_info_t * io_info_create() {
+struct io_info_t * io_info_allocate() {
 
   struct io_info_t * p;
 
   p = (struct io_info_t *) malloc(sizeof(struct io_info_t));
-
   if (p == NULL) fatal("Failed to allocate io_info_t struct\n");
-
-  p->io_comm = io_default_decomposition;
-  p->processor_independent = 0;
 
   return p;
 }
@@ -362,17 +381,14 @@ struct io_info_t * io_info_create() {
  *
  *  io_info_destroy
  *
- *  Deallocate io_info_t struct. We assert p is allocated to discourage
- *  careless use.
+ *  Deallocate io_info_t struct.
  *
  *****************************************************************************/
 
 void io_info_destroy(struct io_info_t * p) {
 
-  assert(p);
-  if (p->io_comm && p->io_comm != io_default_decomposition) {
-    fatal("Please deallocate io_info->io_comm before io_info\n");
-  }
+  assert(p != (struct io_info_t *) NULL);
+  io_decomposition_destroy(p->io_comm);
   free(p);
 
   return;
@@ -387,7 +403,7 @@ void io_info_destroy(struct io_info_t * p) {
 void io_info_set_write(struct io_info_t * p,
 		       int (* writer) (FILE *, int, int, int)) {
 
-  assert(p);
+  assert(p != (struct io_info_t *) NULL);
   p->write_function = writer;
 
   return;
@@ -425,14 +441,28 @@ void io_info_set_name(struct io_info_t * p, const char * name) {
 
 /*****************************************************************************
  *
- *  io_info_set_decomposition
+ *  io_info_set_processor_dependent
  *
  *****************************************************************************/
 
-void io_info_set_decomposition(struct io_info_t * p, const int flag) {
+void io_info_set_processor_dependent(struct io_info_t * p) {
 
   assert(p);
-  p->processor_independent = flag;
+  p->processor_independent = 0;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_set_processor_independent
+ *
+ *****************************************************************************/
+
+void io_info_set_processor_independent(struct io_info_t * p) {
+
+  assert(p);
+  p->processor_independent = 1;
 
   return;
 }
