@@ -4,7 +4,7 @@
  *
  *  Model control and time stepping.
  *
- *  $Id: control.c,v 1.2 2006-09-01 13:47:45 kevin Exp $
+ *  $Id: control.c,v 1.2.4.1 2008-01-22 14:39:10 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -44,7 +44,7 @@ void init_control() {
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
   n = RUN_get_int_parameter("freq_config", &freq_config);
 
-  n = RUN_get_string_parameter("config_at_end", tmp);
+  n = RUN_get_string_parameter("config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
 
   t_current = t_start;

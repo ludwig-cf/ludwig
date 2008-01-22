@@ -64,7 +64,7 @@ EXE= Ludwig.exe
 #-L/bgl/local/lib/mpitrace -lmpitrace_c
 
 CC = gcc
-OPTS = -D_D3Q15_
+OPTS = -D_D3Q19_
 CFLAGS = -Wall $(OPTS)
 
 

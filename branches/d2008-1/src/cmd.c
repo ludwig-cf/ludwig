@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.12 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: cmd.c,v 1.12.2.1 2008-01-22 14:39:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -69,7 +69,7 @@ void CMD_init_volume_fraction() {
   n = RUN_get_double_parameter("colloid_a0", &a0);
   n = RUN_get_double_parameter("colloid_ah", &ah);
 
-  RUN_get_string_parameter("colloid_init", cinit);
+  RUN_get_string_parameter("colloid_init", cinit, 128);
 
   if (strcmp(cinit, "fixed_number_monodisperse") == 0) {
     /* Look for colloid_no */

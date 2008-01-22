@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.1 2008-01-22 14:39:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -766,7 +766,7 @@ void RAND_init_fluctuations() {
 
   /* Ghost modes */
 
-  p = RUN_get_string_parameter("ghost_modes", tmp);
+  p = RUN_get_string_parameter("ghost_modes", tmp, 128);
   if (strcmp(tmp, "off") == 0) nmodes_ = NHYDRO;
 
   info("\nGhost modes\n");
@@ -779,7 +779,7 @@ void RAND_init_fluctuations() {
 
   /* Ginzburg / d'Humieres */
 
-  p = RUN_get_string_parameter("ginzburg-dhumieres", tmp);
+  p = RUN_get_string_parameter("ginzburg-dhumieres", tmp, 128);
   if (p == 1 && strcmp(tmp, "off") == 0) p = 0;
 
   if (p == 0) {
