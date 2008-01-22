@@ -16,19 +16,23 @@
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
-CC     = cc
+CC     = gcc
 MPICC  = tmcc
 MPIRUN = mprun -np
 NPROCS = 8
 
 SRC    = ../src
-INCLUDE = -I$(SRC)
-COPTS  = -Xc -v -errwarn -D_D3Q19_
+INCLUDE = -I$(SRC) $(MPI_INCLUDE)
+COPTS = -Wall -D_D3Q19_
+#COPTS  = -Xc -v -errwarn -D_D3Q19_
 
 CLINK  =
 CLIBS  = -lm
 MPILIB = -lmpi
 LAUNCH  =
+
+MPI_STUB_INCLUDE = -I../mpi_s
+MPI_STUB_LIB = -L../mpi_s -lmpi
 
 COMPILE = $(CC) $(INCLUDE) $(CLINK) $(COPTS)
 LINK    = $(CC) $(CLINK)
@@ -38,7 +42,7 @@ LINK    = $(CC) $(CLINK)
 #------------------------------------------------------------------------------
 
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
-              test_runtime.c test_random.c \
+              test_io.c test_runtime.c test_random.c \
               test_coords.c test_model.c test_halo.c test_prop.c
 TESTS = ${TESTSOURCES:.c=}
 
@@ -47,6 +51,8 @@ TEST_TIMER_OBJ = tests.o $(SRC)/pe.o $(SRC)/timer.o
 TEST_RUNTIME_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o
 TEST_RANDOM_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/ran.o
 TEST_COORDS_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o
+TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
+		$(SRC)/io_harness.o
 TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(SRC)/model.o \
 		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/ran.o $(SRC)/timer.o
 TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
@@ -69,6 +75,8 @@ test_random:	$(TEST_RANDOM_OBJ) test_random.o
 		$(LINK) -o $@ $(TEST_RANDOM_OBJ) $@.o $(CLIBS)
 test_coords:	$(TEST_COORDS_OBJ) test_coords.o
 		$(LINK) -o $@ $(TEST_COORDS_OBJ) $@.o $(CLIBS)
+test_io:	$(TEST_IO_OBJ) test_io.o
+		$(LINK) -o $@ $(TEST_IO_OBJ) $@.o $(CLIBS)
 test_model:	$(TEST_MODEL_OBJ) test_model.o
 		$(LINK) -o $@ $(TEST_MODEL_OBJ) $@.o $(CLIBS)
 test_halo:	$(TEST_MODEL_OBJ) test_halo.o
@@ -82,7 +90,8 @@ test_ewald:	$(TEST_EWALD_OBJ) test_ewald.o
 base: $(TESTS)
 
 tests:	
-	$(MAKE) base "CLIBS=$(CLIBS) $(LBLIBS)"
+	$(MAKE) base "INCLUDE = $(INCLUDE) $(MPI_STUB_INCLUDE)" \
+	"CLIBS=$(CLIBS) $(MPI_STUB_LIB) $(LBLIBS)"
 
 tests_mpi:
 	$(MAKE) base "CC=$(MPICC) -D_MPI_" \
