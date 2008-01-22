@@ -22,7 +22,7 @@ int main(int argc, char ** argv) {
   int    ivector[3];
   double dvalue;
   double dvector[3];
-  char   string[64];
+  char   string[256];
 
   pe_init(argc, argv);
 
@@ -128,7 +128,7 @@ int main(int argc, char ** argv) {
 
   /* Parameters specified in odd syntax */
 
-  n == 0;
+  n = 0;
   info("Checking 'int_multiple_space' is available...");
   n = RUN_get_int_parameter("int_multiple_space", &ivalue);
   test_assert(n == 1);
@@ -152,7 +152,7 @@ int main(int argc, char ** argv) {
 
   n = 0;
   info("Checking 'string_parameter' is available...");
-  n = RUN_get_string_parameter("string_parameter", string);
+  n = RUN_get_string_parameter("string_parameter", string, 256);
   test_assert(n == 1);
   info("yes\n");
 
@@ -162,7 +162,7 @@ int main(int argc, char ** argv) {
 
   n = 0;
   info("Checking 'input_config' is available...");
-  n = RUN_get_string_parameter("input_config", string);
+  n = RUN_get_string_parameter("input_config", string, 64);
   test_assert(n == 1);
   info("yes\n");
 
