@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.2 2006-12-20 16:58:24 kevin Exp $
+ *  $Id: build.c,v 1.2.4.1 2008-01-24 18:29:02 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -21,7 +21,7 @@
 #include "model.h"
 #include "timer.h"
 #include "colloids.h"
-#include "lattice.h"
+#include "site_map.h"
 #include "build.h"
 
 extern Site * site;

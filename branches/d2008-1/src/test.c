@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.10 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: test.c,v 1.10.2.1 2008-01-24 18:29:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,14 +20,13 @@
 #include "pe.h"
 #include "coords.h"
 #include "colloids.h"
-#include "lattice.h"
+#include "site_map.h"
 #include "model.h"
 #include "physics.h"
 #include "bbl.h"
 #include "free_energy.h"
 #include "test.h"
 
-extern char * site_map;
 extern Site * site;
 
 /*****************************************************************************
@@ -82,9 +81,8 @@ void TEST_statistics() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
+	if (site_map_get_status(i, j, k) != FLUID) continue;
 	index = xfac*i + yfac*j + k;
-
-	if (site_map[index] != FLUID) continue;
 
 	phi = site[index].g[0];
 	rho = site[index].f[0];
@@ -132,9 +130,8 @@ void TEST_statistics() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
+	if (site_map_get_status(i, j, k) != FLUID) continue;
 	index = xfac*i + yfac*j + k;
-
-	if (site_map[index] != FLUID) continue;
 
 	rho = site[index].f[0];
 	phi = site[index].g[0];
@@ -212,8 +209,8 @@ void TEST_momentum() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
+	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = ic*xfac + jc*yfac + kc;
-	if (site_map[index] != FLUID)  continue;
 
 	f = site[index].f;
 
@@ -325,9 +322,8 @@ void TEST_fluid_temperature() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	index = i*xfac + j*yfac + k;
-
-	if (site_map[index] == FLUID) {
+	if (site_map_get_status(i, j, k) == FLUID) {
+	  index = i*xfac + j*yfac + k;
 	  f = site[index].f;
 
 	  rho  = f[0];

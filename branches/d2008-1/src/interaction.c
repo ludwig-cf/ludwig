@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.13.2.1 2008-01-22 14:39:10 kevin Exp $
+ *  $Id: interaction.c,v 1.13.2.2 2008-01-24 18:29:02 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -33,7 +33,7 @@
 #include "interaction.h"
 #include "communicate.h"
 #include "model.h"
-#include "lattice.h"
+#include "site_map.h"
 #include "collision.h"
 #include "cio.h"
 #include "control.h"
@@ -647,10 +647,9 @@ void COLL_set_fluid_gravity() {
 
   double volume;
   double g[3];
-  extern double MISC_fluid_volume(void); /* Move me */
   extern double siteforce[3];
 
-  volume = MISC_fluid_volume();
+  volume = site_map_volume(FLUID);
   get_gravity(g);
 
   /* Size of force per fluid node */

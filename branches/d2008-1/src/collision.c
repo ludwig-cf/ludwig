@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.1 2008-01-22 14:39:10 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.2 2008-01-24 18:29:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,6 +35,9 @@
 #include "model.h"
 #include "collision.h"
 
+#include "site_map.h"
+#include "io_harness.h"
+
 extern Site * site;
 extern double * phi_site;
 extern struct vector * fl_force;
@@ -45,7 +48,6 @@ extern struct vector * fl_u;
 FVector * grad_phi;
 double  * delsq_phi;
 double  * rho_site;
-char    * site_map;
 double    siteforce[3];
 
 /* Variables concerned with the collision */
@@ -159,9 +161,8 @@ void MODEL_collide_multirelaxation() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
+	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = index_site(ic, jc, kc);
-
-	if (site_map[index] != FLUID) continue;
 
 	/* Compute all the modes */
 
@@ -354,9 +355,8 @@ void MODEL_collide_binary_lb() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
+	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = index_site(ic, jc, kc);
-
-	if (site_map[index] != FLUID) continue;
 
 	/* Compute all the modes */
 
@@ -492,11 +492,11 @@ void MODEL_collide_binary_lb() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    /* sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];*/
-	    sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];
+	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
+	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
 	  }
-	  /* jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);*/
-	  jphi[i] = phi*u[i];
+	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
+	  /* jphi[i] = phi*u[i];*/
 	}
 
 	/* Now update the distribution */
@@ -564,13 +564,6 @@ void MODEL_init( void ) {
 
   N_sites = (N[X]+2)*(N[Y]+2)*(N[Z]+2);
 
-  /* First allocate memory for site map */
-  if((site_map = (char*)calloc(N_sites,sizeof(char))) == NULL)
-    {
-      fatal("MODEL_init(): failed to allocate %d bytes for site_map[]\n",
-	    N_sites*sizeof(char));
-    }  
-  
   /* Now setup the rest of the simulation */
 
   /* Allocate memory */
@@ -636,7 +629,6 @@ void MODEL_init( void ) {
 	       (k>offset[Z]) && (k<=offset[Z] + N[Z]))
 	      {
 		ind = (i-offset[X])*xfac + (j-offset[Y])*yfac + (k-offset[Z]);
-		site_map[ind] = FLUID;
 #ifdef _SINGLE_FLUID_
 		set_rho(rho0, ind);
 		set_phi(phi0, ind);
@@ -676,7 +668,7 @@ void MODEL_calc_phi() {
 
 	index = index_site(i, j, k);
 
-	if (site_map[index] != FLUID) {
+	if (site_map_get_status(i, j, k) != FLUID) {
 	  /* This is an undefined value... */
 	  phi_site[index] = -1000.0;
 	}
@@ -898,9 +890,8 @@ void MISC_set_mean_phi(double phi_global) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
+	if (site_map_get_status(i, j, k) != FLUID) continue;
 	index = index_site(i, j, k);
-
-	if (site_map[index] != FLUID) continue;
 
 	phi = 0.0;
 
@@ -942,7 +933,7 @@ void MISC_set_mean_phi(double phi_global) {
       for (k = 1; k <= N[Z]; k++) {
 
 	index = index_site(i, j, k);
-	if (site_map[index] == FLUID) site[index].g[0] += phi;
+	if (site_map_get_status(i, j, k) == FLUID) site[index].g[0] += phi;
       }
     }
   }
@@ -981,53 +972,6 @@ void latt_zero_force() {
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  MISC_fluid_volume
- *
- *  What is the current fluid volume? This is useful when one has a
- *  gravitational force on moving particles and there is then a need
- *  to compute an equal and opposite force in the fluid.
- *
- *  The value is computed as a double.
- *
- *****************************************************************************/
-
-double MISC_fluid_volume() {
-
-  double  v = 0.0;
-
-  int     index, i, j, k;
-  int     N[3];
-
-  get_N_local(N);
-
-  /* Look for fluid nodes (not halo) */
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = index_site(i, j, k);
-	if (site_map[index] == FLUID) v += 1.0;
-      }
-    }
-  }
-
-#ifdef _MPI_
-  {
-    double v_total;
-
-    /* All processes need the total */
-
-    MPI_Allreduce(&v, &v_total, 1, MPI_DOUBLE, MPI_SUM, cart_comm());
-    v = v_total;
-  }
-#endif
-
-  return v;
 }
 
 /******************************************************************************

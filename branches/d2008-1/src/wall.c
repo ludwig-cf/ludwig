@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.7.4.1 2008-01-22 14:39:10 kevin Exp $
+ *  $Id: wall.c,v 1.7.4.2 2008-01-24 18:29:02 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -21,10 +21,8 @@
 #include "physics.h"
 #include "model.h"
 #include "wall.h"
-#include "lattice.h"
+#include "site_map.h"
 #include "runtime.h"
-
-extern char * site_map;
 
 typedef struct B_link_struct B_link;
 
@@ -116,16 +114,12 @@ void wall_finish() {
 
   p_link = link_list_;
 
-  info("\nReleasing boundary links...\n");
-
   while (p_link) {
     p_tmp = p_link->next;
     free(p_link);
     nalloc_links_--;
     p_link = p_tmp;
   }
-
-  report_boundary_memory();
 
   return;
 }
@@ -177,46 +171,42 @@ void wall_bounce_back() {
  *
  *  init_links
  *
- *  Look at the site_map[] to determine fluid (strictly, non-solid)
+ *  Look at the site map to determine fluid (strictly, non-solid)
  *  to solid links. Set once at the start of execution.
  *
  ****************************************************************************/
 
 static void init_links() {
 
-  int ic, jc, kc, index, index1;
-  int xfac, yfac;
-  int p;
+  int ic, jc, kc;
+  int ic1, jc1, kc1, p;
   int n[3];
 
   B_link * tmp;
 
   get_N_local(n);
 
-  yfac = (n[Z] + 2);
-  xfac = (n[Y] + 2)*yfac;
-
   for (ic = 1; ic <= n[X]; ic++) {
     for (jc = 1; jc <= n[Y]; jc++) {
       for (kc = 1; kc <= n[Z]; kc++) {
 
-	index = xfac*ic + yfac*jc + kc;
-
-	if (site_map[index] != FLUID) continue;
+	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 
 	/* Look for non-solid -> solid links */
 
 	for (p = 0; p < NVEL; p++) {
 
-	  index1 = index + xfac*cv[p][X] + yfac*cv[p][Y] + cv[p][Z];
+	  ic1 = ic + cv[p][X];
+	  jc1 = jc + cv[p][Y];
+	  kc1 = kc + cv[p][Z];
 
-	  if (site_map[index1] == BOUNDARY) {
+	  if (site_map_get_status(ic1, jc1, kc1) == BOUNDARY) {
 
 	    /* Add a link to head of the list */
 
 	    tmp = allocate_link();
-	    tmp->i = index;
-	    tmp->j = index1;
+	    tmp->i = index_site(ic, jc, kc);        /* fluid site */
+	    tmp->j = index_site(ic1, jc1, kc1);     /* solid site */
 	    tmp->p = p;
 	    tmp->ux = 0.0;
 
@@ -243,25 +233,19 @@ static void init_links() {
 
 static void init_boundary_site_map() {
 
-  int ic, jc, kc, index;
+  int ic, jc, kc;
   int ic_global, jc_global, kc_global;
-  int xfac, yfac;
   int nlocal[3];
   int noffset[3];
 
   get_N_local(nlocal);
   get_N_offset(noffset);
 
-  yfac = (nlocal[Z] + 2);
-  xfac = (nlocal[Y] + 2)*yfac;
-
   for (ic = 0; ic <= nlocal[X] + 1; ic++) {
     for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
       for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
 
 	/* If this is an appropriate periodic boundary, set to solid */
-
-	index = xfac*ic + yfac*jc + kc;
 
 	ic_global = ic + noffset[X];
 	jc_global = jc + noffset[Y];
@@ -270,17 +254,17 @@ static void init_boundary_site_map() {
 	if (is_periodic(Z)) continue;
 
 	if (kc_global == 0 || kc_global == N_total(Z) + 1)
-	  site_map[index] = BOUNDARY;
+	  site_map_set_status(ic, jc, kc, BOUNDARY);
 
 	if (is_periodic(Y)) continue;
 
 	if (jc_global == 0 || jc_global == N_total(Y) + 1)
-	  site_map[index] = BOUNDARY;
+	  site_map_set_status(ic, jc, kc, BOUNDARY);
 
 	if (is_periodic(X)) continue;
 
 	if (ic_global == 0 || ic_global == N_total(X) + 1)
-	  site_map[index] = BOUNDARY;
+	  site_map_set_status(ic, jc, kc, BOUNDARY);
       }
     }
   }
