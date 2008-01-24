@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.1.2.3 2008-01-22 14:38:03 kevin Exp $
+ *  $Id: site_map.c,v 1.1.2.4 2008-01-24 18:25:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,7 +24,7 @@
 #include "site_map.h"
 
 char    * site_map;
-static struct io_info_t * io_info_site_map;
+struct io_info_t * io_info_site_map;
 
 static void site_map_init_mpi(void);
 static void site_map_init_io(void);
@@ -43,13 +43,13 @@ static int xfac_, yfac_;
 
 /*****************************************************************************
  *
- *  init_site_map
+ *  site_map_init
  *
  *  Allocate, and read site information from file if required.
  *
  *****************************************************************************/
 
-void init_site_map() {
+void site_map_init() {
 
   int nh[3];
 
@@ -68,9 +68,9 @@ void init_site_map() {
 
   site_map_init_io();
   site_map_init_mpi();
-  site_map_set_all(FLUID);
 
   initialised_ = 1;
+  site_map_set_all(FLUID);
 
   return;
 }
@@ -87,7 +87,7 @@ void init_site_map() {
 
 static void site_map_init_io() {
 
-  int grid = {1, 1, 1};
+  int grid[3] = {1, 1, 1};
 
   io_info_site_map = io_info_create_with_grid(grid);
 
@@ -131,13 +131,13 @@ static void site_map_init_mpi() {
 
 /*****************************************************************************
  *
- *  finish_site_map
+ *  site_map_finish
  *
  *  Clean up.
  *
  *****************************************************************************/
 
-void finish_site_map() {
+void site_map_finish() {
 
   assert(initialised_);
 
@@ -285,7 +285,7 @@ void site_map_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (jc = 1; jc <= nlocal_[Y]; jc++) {
 	for (kc = 1 ; kc <= nlocal_[Z]; kc++) {
-	  ihalo = site_index(1-nh, jc, kc);
+	  ihalo = site_index(0-nh, jc, kc);
 	  ireal = site_index(nlocal_[X]-nh, jc, kc);
 	  site_map[ihalo] = site_map[ireal];
 
@@ -318,7 +318,7 @@ void site_map_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (ic = 1-nhalo_; ic <= nlocal_[X] + nhalo_; ic++) {
 	for (kc = 1; kc <= nlocal_[Z]; kc++) {
-	  ihalo = site_index(ic, 1-nh, kc);
+	  ihalo = site_index(ic, 0-nh, kc);
 	  ireal = site_index(ic, nlocal_[Y]-nh, kc);
 	  site_map[ihalo] = site_map[ireal];
 
@@ -351,7 +351,7 @@ void site_map_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (ic = 1 - nhalo_; ic <= nlocal_[X] + nhalo_; ic++) {
 	for (jc = 1 - nhalo_; jc <= nlocal_[Y] + nhalo_; jc++) {
-	  ihalo = site_index(ic, jc, 1-nh);
+	  ihalo = site_index(ic, jc, 0-nh);
 	  ireal = site_index(ic, jc, nlocal_[Z]-nh);
 	  site_map[ihalo] = site_map[ireal];
 
@@ -368,9 +368,9 @@ void site_map_halo() {
     forw = cart_neighb(FORWARD, Z);
 
     ihalo = site_index(1-nhalo_, 1-nhalo_, nlocal_[Z] + nhalo_);
-    MPI_Irecv(site_map + ireal,  1, mpi_xy_t_, forw, btag, comm, request);
+    MPI_Irecv(site_map + ihalo,  1, mpi_xy_t_, forw, btag, comm, request);
     ihalo = site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
-    MPI_Irecv(site_map + ireal,  1, mpi_xy_t_, back, ftag, comm, request+1);
+    MPI_Irecv(site_map + ihalo,  1, mpi_xy_t_, back, ftag, comm, request+1);
     ireal = site_index(1-nhalo_, 1-nhalo_, 1);
     MPI_Issend(site_map + ireal, 1, mpi_xy_t_, back, btag, comm, request+2);
     ireal = site_index(1-nhalo_, 1-nhalo_, nlocal_[Z] - nhalo_ + 1);
