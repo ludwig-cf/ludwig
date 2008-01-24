@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.1.2.2 2008-01-22 14:38:03 kevin Exp $
+ *  $Id: io_harness.c,v 1.1.2.3 2008-01-24 18:28:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -121,6 +121,7 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
   MPI_Comm comm = cart_comm();
 
   assert(comm != MPI_COMM_NULL);
+  get_N_offset(noffset);
 
   p = io_decomposition_allocate();
   p->n_io = 1;
@@ -154,6 +155,8 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
  *  This is the driver to write lattice quantities on the lattice.
  *  The arguments are the filename stub and the io_info struct
  *  describing which quantity we are dealing with.
+ *
+ *  All writes are processor decomposition dependent at the moment.
  *
  *****************************************************************************/
 
@@ -197,11 +200,6 @@ void io_write(char * filename_stub, struct io_info_t * io_info) {
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-
-      /* Work out where the write goes in the file if necessary */
-      offset = io_file_offset(ic, jc, io_info);
-      if (io_info->processor_independent) fseek(fp_state, offset, SEEK_SET);
-
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	io_info->write_function(fp_state, ic, jc, kc);
       }
@@ -264,10 +262,10 @@ void io_read(char * filename_stub, struct io_info_t * io_info) {
     MPI_Recv(&token, 1, MPI_LONG, io_info->io_comm->rank - 1, io_tag,
 	     io_info->io_comm->comm, &status);
     fp_state = fopen(filename_io, "r");
-    fseek(fp_state, token, SEEK_SET);
   }
 
   if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
+  fseek(fp_state, token, SEEK_SET);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -281,6 +279,10 @@ void io_read(char * filename_stub, struct io_info_t * io_info) {
       }
     }
   }
+
+  /* The token is the current offset for processor-dependent output */
+
+  token = ftell(fp_state);
 
   /* Check the error indicator on the stream and close */
 
