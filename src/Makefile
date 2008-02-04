@@ -22,6 +22,18 @@
 # make serial            for serial code
 # make mpi               for parallel code
 #
+# Compiler flags.
+#
+# You will need to set the appropriate compiler flags for your
+# local compiler/system of choice.
+#
+# CC        C compiler (make serial)
+# MPICC     C compiler (make mpi)
+# COPTS     C compile time flags e.g., optimisation
+# OPTS      Preprocessor options (as described above)
+# LDFLAGS   Link time flags [-lm included by default]
+# LIBS      External library flags
+#
 ###############################################################################
 
 
@@ -41,7 +53,7 @@ EXE= Ludwig.exe
 ###############################################################################
 
 LDFLAGS= -Xc -v -errwarn -xO3
-OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
+OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_
 
 ###############################################################################
 #
@@ -57,7 +69,6 @@ MPICC=  mpixlc  #-I$(HPCT)/include
 COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
 LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
 OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
-CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
 
 LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
 #-L/bgl/local/lib/mpitrace -lmpitrace_c
@@ -69,6 +80,7 @@ LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
 #
 ###############################################################################
 
+CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
 INC= -I.
 LIBS= -lm
 
