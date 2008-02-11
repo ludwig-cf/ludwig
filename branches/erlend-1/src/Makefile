@@ -49,18 +49,54 @@ OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #
 #
 ###############################################################################
 
+ifeq (bglfen1,$(HOSTNAME))
 KOJAK=#/bgl/local/packages/kojak/bin/kinst-pomp
 HPCT = /bgl/local/packages/hpct_all/hpct_bgl_20070116
 
 CC= gcc
 MPICC=  mpixlc  #-I$(HPCT)/include
-COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
+COPTS= -qhalt=w -O3 -qhot \
+         -qarch=440d \
+         -qtune=440
+
 LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
 OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
 CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
 
 LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
 #-L/bgl/local/lib/mpitrace -lmpitrace_c
+endif
+
+###############################################################################
+#
+# HPCx
+#
+###############################################################################
+
+ifneq(,$(findstring l1f4, $(HOSTNAME)))
+CC= xlc_r
+MPICC= mpcc_r
+COPTS= -qhalt=w -O3 -qhot
+LDFLAGS= -qipa -lm
+OPTS = -D_D3Q19_ -D_NOISE_
+CFLAGS= $(OPTS) $(COPTS) $(LDFLAGS)
+
+LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
+endif
+
+##############################################################################
+#
+# HECToR Section
+#
+##############################################################################
+
+ifneq(,$(findstring nid00, $(HOSTNAME)))
+MPICC=cc
+CC=cc
+OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
+CFLAGS = ${OPTS} -o3 -OPT:Ofast
+LDFLAGS= -ipa -Wl,-z,muldefs
+endif
 
 ###############################################################################
 #
@@ -68,7 +104,9 @@ LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
 #
 ###############################################################################
 
+ifeq (ermdpc, $(HOSTNAME))
 MPICC= mpicc
+endif
 
 ###############################################################################
 #
@@ -104,6 +142,8 @@ serial:
 mpi:
 	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS)" "CFLAGS=$(CFLAGS) \
 		-D_MPI_"
+
+$(OBJS): 
 
 ###############################################################################
 #
