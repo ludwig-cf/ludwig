@@ -41,8 +41,8 @@ EXE= Ludwig.exe
 #
 ###############################################################################
 
-LDFLAGS= -Xc -v -errwarn -xO3
-OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
+#LDFLAGS= -Xc -v -errwarn -xO3
+#OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
 
 ###############################################################################
 #
