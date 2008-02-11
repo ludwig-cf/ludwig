@@ -74,7 +74,7 @@ endif
 #
 ###############################################################################
 
-ifneq(,$(findstring l1f4, $(HOSTNAME)))
+ifneq (,$(findstring l1f4, $(HOSTNAME)))
 CC= xlc_r
 MPICC= mpcc_r
 COPTS= -qhalt=w -O3 -qhot
@@ -91,7 +91,7 @@ endif
 #
 ##############################################################################
 
-ifneq(,$(findstring nid00, $(HOSTNAME)))
+ifneq (,$(findstring nid00, $(HOSTNAME)))
 MPICC=cc
 CC=cc
 OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
