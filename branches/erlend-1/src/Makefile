@@ -144,8 +144,6 @@ mpi:
 	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS)" "CFLAGS=$(CFLAGS) \
 		-D_MPI_"
 
-$(OBJS): $(MF)
-
 ###############################################################################
 #
 #  Compilation rules
@@ -157,8 +155,9 @@ $(OBJS): $(MF)
 #  Default rule for compilation in the current directory.
 #
 .c.o :
-	$(CC) $(CFLAGS) $(INC) -c $?
+	$(CC) $(CFLAGS) $(INC) -c $? -o $@
 
+#$(OBJS): $(MF)
 
 .PHONY : clean
 clean:
