@@ -24,6 +24,7 @@
 #
 ###############################################################################
 
+MF= Makefile
 
 OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
       physics.o active.o cio.o cmd.o ccomms.o \
@@ -143,7 +144,7 @@ mpi:
 	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS)" "CFLAGS=$(CFLAGS) \
 		-D_MPI_"
 
-$(OBJS): 
+$(OBJS): $(MF)
 
 ###############################################################################
 #
