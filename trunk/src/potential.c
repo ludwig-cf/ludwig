@@ -6,7 +6,7 @@
  *
  *  Provides routines for pairwise energies and forces.
  *
- *  $Id: potential.c,v 1.3 2007-03-09 13:09:17 kevin Exp $
+ *  $Id: potential.c,v 1.4 2008-02-12 16:23:38 dmarendu Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -37,6 +37,12 @@ static struct leonard_jones_potential_struct {
   double cutoff;
 } leonard_jones;
 
+static struct yukawa_struct {
+  int on;
+  double epsilon;
+  double kappa;
+  double cutoff;
+} yukawa;
 
 /*****************************************************************************
  *
@@ -119,6 +125,44 @@ void leonard_jones_init() {
     info((n == 0) ? "[Default] " : "[User   ] ");
     info("Leonard Jones cutoff range is %f (%3.2f x sigma)\n",
 	 leonard_jones.cutoff, leonard_jones.cutoff/leonard_jones.sigma);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  yukawa_init
+ *
+ *****************************************************************************/
+
+void yukawa_init() {
+
+  int n;
+
+  info("\nColloid-colloid Yukawa potential\n");
+
+  yukawa.on = 0;
+
+  n = RUN_get_int_parameter("yukawa_on", &yukawa.on);
+  info((n == 0) ? "[Default] " : "[User   ] ");
+  info("Yukawa potential is switched %s\n",
+       (yukawa.on == 0) ? "off" : "on");
+
+  if (yukawa.on) {
+    n = RUN_get_double_parameter("yukawa_epsilon", &yukawa.epsilon);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Yukawa energy (epsilon) is %f (%f kT)\n",
+	 yukawa.epsilon, yukawa.epsilon/get_kT());
+
+    n = RUN_get_double_parameter("yukawa_kappa", &yukawa.kappa);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Yukawa width (kappa) is %f\n", yukawa.kappa);
+
+    n = RUN_get_double_parameter("yukawa_cutoff", &yukawa.cutoff);
+    info((n == 0) ? "[Default] " : "[User   ] ");
+    info("Yukawa cutoff range is %f (%3.2f x kappa)\n",
+	 yukawa.cutoff, yukawa.cutoff/yukawa.kappa);
   }
 
   return;
@@ -213,6 +257,54 @@ double hard_sphere_energy(const double h) {
   return e;
 }
 
+
+/*****************************************************************************
+ *
+ *  yukawa_potential
+ *
+ *  Return Yukawa potenial as function of centre-centre separation r.
+ *  u(r) = epsilon*exp(-kappa*r)/r
+ *
+ *****************************************************************************/
+
+double yukawa_potential(double r) {
+
+  double epsilon = yukawa.epsilon;
+  double kappa   = yukawa.kappa;
+  double rc      = yukawa.cutoff;
+  double u0, u0_rc, du0_rc, e;
+
+  u0 = epsilon*exp(-kappa*r)/r;
+  u0_rc = epsilon*exp(-kappa*rc)/rc;
+  du0_rc = -u0_rc*(kappa*rc + 1.0)/rc;
+
+  e = u0 - u0_rc - (r - rc)*du0_rc;
+
+  return e;
+}
+
+/*****************************************************************************
+ *
+ *  yukawa_force
+ *
+ *  Return magnitude of the force for centre-centre separation r.
+ *
+ *****************************************************************************/
+
+double yukawa_force(double r) {
+
+  double epsilon = yukawa.epsilon;
+  double kappa   = yukawa.kappa;
+  double rc      = yukawa.cutoff;
+  double u0, u0_rc, f;
+
+  u0 = epsilon*exp(-kappa*r)/r;
+  u0_rc = epsilon*exp(-kappa*rc)/rc;
+  f = (u0*(kappa*r + 1.0)/r - u0_rc*(kappa*rc + 1.0)/rc)/r;
+
+  return f;
+}
+
 /*****************************************************************************
  *
  *  get_max_potential_range
@@ -227,7 +319,7 @@ double get_max_potential_range() {
 
   rmax = dmax(rmax, soft_sphere.cutoff);
   rmax = dmax(rmax, leonard_jones.cutoff);
+  rmax = dmax(rmax, yukawa.cutoff);
 
   return rmax;
 }
-
