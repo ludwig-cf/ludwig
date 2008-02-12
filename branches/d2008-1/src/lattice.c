@@ -5,7 +5,7 @@
  *  Deals with the allocation, etc, of the large arrays holding the
  *  fluid distributions, force, etc.
  *
- *  $Id: lattice.c,v 1.7 2007-10-05 15:30:20 kevin Exp $
+ *  $Id: lattice.c,v 1.7.2.1 2008-02-12 17:15:47 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -18,43 +18,11 @@
 #include "pe.h"
 #include "lattice.h"
 
-double * phi_site;
-
 struct vector * fl_force; /* Force on fluid nodes at current time step. */
 struct vector * fl_u;     /* The fluid velocity field (at lattice sites). */
 
 
 static double total_bytes;     /* bytes currently allocated */
-
-/****************************************************************************
- *
- *  LATT_allocate_phi
- *
- *  Allocate memory for the order parameter arra. If MPI2 is used
- *  this must use MPI_Alloc_mem() to allow use of Windows in the
- *  LE code.
- *
- ****************************************************************************/
-
-void LATT_allocate_phi(const int nsites) {
-
-  info("Requesting %d bytes for phi_site\n", nsites*sizeof(double));
-
-#ifdef _MPI_2_
- {
-   int ifail;
-   ifail = MPI_Alloc_mem(nsites*sizeof(double), MPI_INFO_NULL, &phi_site);
-   if (ifail == MPI_ERR_NO_MEM) fatal("MPI_Alloc_mem(phi) failed\n");
- }
-#else
-
-  phi_site = (double *) calloc(nsites, sizeof(double));
-  if (phi_site == NULL) fatal("calloc(phi) failed\n");
-
-#endif
-
-  return;
-}
 
 /***************************************************************************
  *

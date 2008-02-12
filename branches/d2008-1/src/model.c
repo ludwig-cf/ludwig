@@ -9,8 +9,11 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9 2007-04-30 14:23:21 kevin Exp $
+ *  $Id: model.c,v 1.9.4.1 2008-02-12 17:15:47 kevin Exp $
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *  (c) 2008 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -28,7 +31,6 @@
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
 const double d_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
-const int nhalo_site_ = 1;
 
 Site  * site;
 
@@ -60,9 +62,9 @@ void init_site() {
 
   get_N_local(N);
 
-  nx = N[X] + 2*nhalo_site_;
-  ny = N[Y] + 2*nhalo_site_;
-  nz = N[Z] + 2*nhalo_site_;
+  nx = N[X] + 2*nhalo_;
+  ny = N[Y] + 2*nhalo_;
+  nz = N[Z] + 2*nhalo_;
   nsites_ = nx*ny*nz;
   yfac_   = nz;
   xfac_   = nz*ny;
@@ -93,7 +95,7 @@ void init_site() {
    * in XZ plane nx blocks of nz sites with stride ny*nz;
    * in YZ plane one contiguous block of ny*nz sites.
    *
-   * This is only confirmed for nhalo_site_ = 1. */
+   * This is only confirmed for nhalo_ = 1. */
 
   MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
   MPI_Type_commit(&DT_Site);
@@ -379,8 +381,8 @@ void halo_site() {
   TIMER_start(TIMER_HALO_LATTICE);
 
   get_N_local(N);
-  yfac =  N[Z] + 2*nhalo_site_;
-  xfac = (N[Y] + 2*nhalo_site_)*yfac;
+  yfac =  N[Z] + 2*nhalo_;
+  xfac = (N[Y] + 2*nhalo_)*yfac;
 
   /* The x-direction (YZ plane) */
 

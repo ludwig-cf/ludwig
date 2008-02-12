@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.2 2008-01-24 18:29:02 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.3 2008-02-12 17:15:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,6 +27,7 @@
 #include "runtime.h"
 #include "control.h"
 #include "free_energy.h"
+#include "phi.h"
 #include "lattice.h"
 
 #include "utilities.h"
@@ -94,7 +95,7 @@ void collide() {
 
   TIMER_start(TIMER_PHI_GRADIENTS);
 
-  MODEL_calc_phi();
+  phi_compute_phi_site();
 
   if (get_N_colloid() > 0 || boundaries_present()) {
     /* Must get gradients right so use this */ 
@@ -566,6 +567,8 @@ void MODEL_init( void ) {
 
   /* Now setup the rest of the simulation */
 
+  site_map_init();
+
   /* Allocate memory */
 
   info("Requesting %d bytes for grad_phi\n", N_sites*sizeof(FVector));
@@ -583,7 +586,7 @@ void MODEL_init( void ) {
     }
 
   init_site();
-  LATT_allocate_phi(N_sites);
+  phi_init();
   LATT_allocate_force(N_sites);
   latt_allocate_velocity(N_sites);
 
@@ -640,54 +643,6 @@ void MODEL_init( void ) {
 	  }
   }
 
-}
-
-/*****************************************************************************
- *
- *  MODEL_calc_phi
- *
- *  Recompute the value of the order parameter at all the current
- *  fluid sites (domain proper).
- *
- *  The halo regions are immediately updated to reflect the new
- *  values.
- *
- *****************************************************************************/
-
-void MODEL_calc_phi() {
-
-  int     i, j , k, index, p;
-  int     N[3];
-  double  * g;
-
-  get_N_local(N);
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = index_site(i, j, k);
-
-	if (site_map_get_status(i, j, k) != FLUID) {
-	  /* This is an undefined value... */
-	  phi_site[index] = -1000.0;
-	}
-	else {
-
-	  g = site[index].g;
-	  phi_site[index] = g[0];
-
-	  for (p = 1; p < NVEL; p++)
-	    phi_site[index] += g[p];
-
-	}
-      }
-    }
-  }
-
-  COM_halo_phi();
-
-  return;
 }
 
 /****************************************************************************
@@ -857,86 +812,6 @@ void get_fluctuations_stress(double shat[3][3]) {
   shat[X][X] += tr;
   shat[Y][Y] += tr;
   shat[Z][Z] += tr;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  MISC_set_mean_phi
- *
- *  Compute the current mean phi in the system and remove the excess
- *  so that the mean phi is phi_global (allowing for presence of any
- *  particles or, for that matter, other solids).
- *
- *  The value of phi_global is generally (but not necessilarily) zero.
- *
- *****************************************************************************/
-
-void MISC_set_mean_phi(double phi_global) {
-
-  int     index, i, j, k, p;
-  int     nfluid = 0;
-  int     N[3];
-
-  double  phi;
-  double  phibar =  0.0;
-
-  get_N_local(N);
-
-  /* Compute the mean phi in the domain proper */
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	if (site_map_get_status(i, j, k) != FLUID) continue;
-	index = index_site(i, j, k);
-
-	phi = 0.0;
-
-	for (p = 0; p < NVEL; p++) {
-	  phi += site[index].g[p];
-	}
-
-	phibar += phi;
-	nfluid += 1;
-      }
-    }
-  }
-
-#ifdef _MPI_
-  {
-    int    n_total;
-    double phi_total;
-
-    /* All processes need the total phi, and number of fluid sites
-     * to compute the mean */
-
-    MPI_Allreduce(&phibar, &phi_total, 1, MPI_DOUBLE, MPI_SUM, cart_comm());
-    MPI_Allreduce(&nfluid, &n_total,   1, MPI_INT,    MPI_SUM, cart_comm());
-
-    phibar = phi_total;
-    nfluid = n_total;
-  }
-#endif
-
-  /* The correction requied at each fluid site is then ... */
-  phi = phi_global - phibar / (double) nfluid;
-
-  /* The correction is added to the rest distribution g[0],
-   * which should be good approximation to where it should
-   * all end up if there were a full reprojection. */
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = index_site(i, j, k);
-	if (site_map_get_status(i, j, k) == FLUID) site[index].g[0] += phi;
-      }
-    }
-  }
 
   return;
 }

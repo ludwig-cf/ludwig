@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.2.4.1 2008-01-24 18:29:02 kevin Exp $
+ *  $Id: build.c,v 1.2.4.2 2008-02-12 17:15:47 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -56,8 +56,6 @@ void COLL_init_coordinates() {
 
   int n;
   int N[3];
-
-  void get_N_local(int []);
 
   /* Allocate space for the local colloid map */
 

@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.2.4.1 2008-01-07 17:32:29 kevin Exp $
+ *  $Id: coords.c,v 1.2.4.2 2008-02-12 17:15:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -20,9 +20,15 @@
 #include "runtime.h"
 #include "coords.h"
 
+/* Change in halo size requires recompilation. nhalo_ is public. */
+const int nhalo_ = 1;
+
 static int n_total[3] = {64, 64, 64};
 static int n_local[3];
 static int n_offset[3];
+
+static int xfac_;
+static int yfac_;
 
 static int periodic[3]                   = {1, 1, 1};
 static int pe_cartesian_rank             = 0;
@@ -144,6 +150,9 @@ void cart_init() {
     n_local[n] = N_total(n) / pe_cartesian_size[n];
     n_offset[n] = pe_cartesian_coordinates[n]*n_local[n];
   }
+
+  xfac_ = (n_local[Y] + 2*nhalo_)*(n_local[Z] + 2*nhalo_);
+  yfac_ = (n_local[Z] + 2*nhalo_);
 
   info("[Compute] local domain as (%d, %d, %d)\n",
        n_local[X], n_local[Y], n_local[Z]);
@@ -338,4 +347,24 @@ static int is_ok_decomposition() {
   if (nnodes != pe_size()) ok = 0;
 
   return ok;
+}
+
+/*****************************************************************************
+ *
+ *  get_site_index
+ *
+ *  Compute the one-dimensional index from coordinates ic, jc, kc.
+ *
+ *****************************************************************************/
+
+int get_site_index(const int ic, const int jc, const int kc) {
+
+  assert(ic >= 1-nhalo_);
+  assert(jc >= 1-nhalo_);
+  assert(kc >= 1-nhalo_);
+  assert(ic <= n_local[X] + nhalo_);
+  assert(jc <= n_local[Y] + nhalo_);
+  assert(kc <= n_local[Z] + nhalo_);
+
+  return (xfac_*(nhalo_ + ic - 1) + yfac_*(nhalo_ + jc -1) + nhalo_ + kc - 1);
 }
