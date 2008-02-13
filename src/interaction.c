@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.13 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: interaction.c,v 1.14 2008-02-13 10:56:10 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -208,6 +208,7 @@ void COLL_init() {
   lubrication_init();
   soft_sphere_init();
   leonard_jones_init();
+  yukawa_init();
   check_interactions(ahmax);
 
 
@@ -751,6 +752,7 @@ double COLL_interactions() {
 		    }
 #else
 		    fmod = soft_sphere_force(h);
+		    fmod += yukawa_force(h + p_c1->ah + p_c2->ah);
 #endif
 		    f.x = -fmod*r_12.x;
 		    f.y = -fmod*r_12.y;
@@ -759,6 +761,7 @@ double COLL_interactions() {
 		    p_c2->force = UTIL_fvector_subtract(p_c2->force, f);
 
 		    epotential_ += soft_sphere_energy(h);
+		    epotential_ += yukawa_potential(p_c1->ah + p_c2->ah + h);
 		  }
 		  
 		  /* Next colloid */

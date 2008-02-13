@@ -6,7 +6,7 @@
  *
  *  Provides routines for pairwise energies and forces.
  *
- *  $Id: potential.c,v 1.4 2008-02-12 16:23:38 dmarendu Exp $
+ *  $Id: potential.c,v 1.5 2008-02-13 10:56:10 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -272,13 +272,15 @@ double yukawa_potential(double r) {
   double epsilon = yukawa.epsilon;
   double kappa   = yukawa.kappa;
   double rc      = yukawa.cutoff;
-  double u0, u0_rc, du0_rc, e;
+  double u0, u0_rc, du0_rc, e = 0.0;
 
-  u0 = epsilon*exp(-kappa*r)/r;
-  u0_rc = epsilon*exp(-kappa*rc)/rc;
-  du0_rc = -u0_rc*(kappa*rc + 1.0)/rc;
+  if (yukawa.on && r < rc) {
+    u0 = epsilon*exp(-kappa*r)/r;
+    u0_rc = epsilon*exp(-kappa*rc)/rc;
+    du0_rc = -u0_rc*(kappa*rc + 1.0)/rc;
 
-  e = u0 - u0_rc - (r - rc)*du0_rc;
+    e = u0 - u0_rc - (r - rc)*du0_rc;
+  }
 
   return e;
 }
@@ -296,11 +298,13 @@ double yukawa_force(double r) {
   double epsilon = yukawa.epsilon;
   double kappa   = yukawa.kappa;
   double rc      = yukawa.cutoff;
-  double u0, u0_rc, f;
+  double u0, u0_rc, f = 0.0;
 
-  u0 = epsilon*exp(-kappa*r)/r;
-  u0_rc = epsilon*exp(-kappa*rc)/rc;
-  f = (u0*(kappa*r + 1.0)/r - u0_rc*(kappa*rc + 1.0)/rc)/r;
+  if (yukawa.on && r < rc) {
+    u0 = epsilon*exp(-kappa*r)/r;
+    u0_rc = epsilon*exp(-kappa*rc)/rc;
+    f = (u0*(kappa*r + 1.0)/r - u0_rc*(kappa*rc + 1.0)/rc)/r;
+  }
 
   return f;
 }

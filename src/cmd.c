@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.12 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: cmd.c,v 1.13 2008-02-13 10:56:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -392,6 +392,7 @@ double mc_total_energy() {
 		    
 		    etot += hard_sphere_energy(h);
 		    etot += soft_sphere_energy(h);
+		    etot += yukawa_potential(h + p_c1->ah + p_c2->ah);
 		    etot += leonard_jones_energy(h);
 
 		  }
