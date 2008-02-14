@@ -54,7 +54,7 @@ void phi_init() {
   int nlocal[3];
 
   get_N_local(nlocal);
-  nsites = (nlocal[X] + nhalo_)*(nlocal[Y] + nhalo_)*(nlocal[Z] + nhalo_);
+  nsites = (nlocal[X] + 2*nhalo_)*(nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
 
   info("Requesting %d bytes for phi_site\n", nsites*sizeof(double));
 
