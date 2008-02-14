@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.10 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: test.c,v 1.11 2008-02-14 17:42:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -417,12 +417,18 @@ void test_rheology() {
 
   int get_step(void);
 
-  double stress[3][3];
+  double rho, rrho;
+  double u[3];
+  double stress[3][3], s[3][3], rhouu[3][3];
   double pchem[3][3], plocal[3][3];
+  double extra[3][3];
   double dphi[3];
   double rv;
   int N[3];
-  int ic, jc, kc, index, p;
+  int ic, jc, kc, index, ia, ib, p;
+
+  /* MODEL_calc_phi();
+     MODEL_get_gradients();*/
 
   get_N_local(N);
 
@@ -430,6 +436,8 @@ void test_rheology() {
     for (jc = 0; jc < 3; jc++) {
       stress[ic][jc] = 0.0;
       pchem[ic][jc] = 0.0;
+      rhouu[ic][jc] = 0.0;
+      extra[ic][jc] = 0.0;
     }
   }
 
@@ -440,11 +448,27 @@ void test_rheology() {
       for (kc = 1; kc <= N[Z]; kc++) {
 
 	index = index_site(ic, jc, kc);
+
+	rho = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  u[ia] = 0.0;
+	  for (ib = 0; ib < 3; ib++) {
+	    s[ia][ib] = 0.0;
+	  }
+	}
 	
 	for (p = 0; p < NVEL; p++) {
-	  stress[X][X] += site[index].f[p]*ma_[4][p];
-	  stress[X][Y] += site[index].f[p]*ma_[5][p];
-	  stress[Y][Y] += site[index].f[p]*ma_[7][p];
+
+	  rho     += site[index].f[p]*ma_[MRHO][p];
+	  u[X]    += site[index].f[p]*ma_[MRUX][p];
+	  u[Y]    += site[index].f[p]*ma_[MRUY][p];
+	  u[Z]    += site[index].f[p]*ma_[MRUZ][p];
+	  s[X][X] += site[index].f[p]*ma_[MSXX][p];
+	  s[X][Y] += site[index].f[p]*ma_[MSXY][p];
+	  s[X][Z] += site[index].f[p]*ma_[MSXZ][p];
+	  s[Y][Y] += site[index].f[p]*ma_[MSYY][p];
+	  s[Y][Z] += site[index].f[p]*ma_[MSYZ][p];
+	  s[Z][Z] += site[index].f[p]*ma_[MSZZ][p];
 	}
 
 	dphi[X] = (grad_phi + index)->x;
@@ -455,43 +479,86 @@ void test_rheology() {
 
 	pchem[X][X] += plocal[X][X];
 	pchem[X][Y] += plocal[X][Y];
+	pchem[X][Z] += plocal[X][Z];
 	pchem[Y][Y] += plocal[Y][Y];
+	pchem[Y][Z] += plocal[Y][Z];
+	pchem[Z][Z] += plocal[Z][Z];
 
+	rrho = 1.0/rho;
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    rhouu[ia][ib] += rrho*u[ia]*u[ib];
+	    stress[ia][ib] += s[ia][ib];
+	    extra[ia][ib] += (s[ia][ib] - rrho*u[ia]*u[ib]);
+	  }
+	}
       }
     }
   }
 
 #ifdef _MPI_
   {
-    double send[6];
-    double recv[6];
+    double send[24];
+    double recv[24];
 
-    send[0] = stress[X][X];
-    send[1] = stress[X][Y];
-    send[2] = stress[Y][Y];
-    send[3] = pchem[X][X];
-    send[4] = pchem[X][Y];
-    send[5] = pchem[Y][Y];
+    kc = 0;
+    for (ic = 0; ic < 3; ic++) {
+      for (jc = 0; jc < 3; jc++) {
+	if (ic <= jc) {
+	  send[kc++] = stress[ic][jc];
+	  send[kc++] = pchem[ic][jc];
+	  send[kc++] = rhouu[ic][jc];
+	  send[kc++] = extra[ic][jc];
+	}
+      }
+    }
 
-    MPI_Reduce(send, recv, 6, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+    MPI_Reduce(send, recv, 24, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
 
-    stress[X][X] = recv[0];
-    stress[X][Y] = recv[1];
-    stress[Y][Y] = recv[2];
-    pchem[X][X] = recv[3];
-    pchem[X][Y] = recv[4];
-    pchem[Y][Y] = recv[5];
+    kc = 0;
+    for (ic = 0; ic < 3; ic++) {
+      for (jc = 0; jc < 3; jc++) {
+	if (ic <= jc) {
+	  stress[ic][jc] = recv[kc++];
+	  pchem[ic][jc] = recv[kc++];
+	  rhouu[ic][jc] = recv[kc++];
+	  extra[ic][jc] = recv[kc++];
+	}
+      }
+    }
 
   }
 #endif
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
-  info("stress_hy %d %16.10g %16.10g %16.10g\n", get_step(),
-       rv*stress[X][X], rv*stress[X][Y], rv*stress[Y][Y]);
+  info("stress_hy x %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*stress[X][X], rv*stress[X][Y], rv*stress[X][Z]);
+  info("stress_hy y %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*stress[X][Y], rv*stress[Y][Y], rv*stress[Y][Z]);
+  info("stress_hy z %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*stress[X][Z], rv*stress[Y][Z], rv*stress[Z][Z]);
 
-  info("stress_th %d %16.10g %16.10g %16.10g\n", get_step(),
-       rv*pchem[X][X], rv*pchem[X][Y], rv*pchem[Y][Y]);
+  info("stress_th x %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*pchem[X][X], rv*pchem[X][Y], rv*pchem[X][Z]);
+  info("stress_th y %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*pchem[X][Y], rv*pchem[Y][Y], rv*pchem[Y][Z]);
+  info("stress_th z %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*pchem[X][Z], rv*pchem[Y][Z], rv*pchem[Z][Z]);
+
+  info("stress_uu x %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*rhouu[X][X], rv*rhouu[X][Y], rv*rhouu[X][Z]);
+  info("stress_uu y %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*rhouu[X][Y], rv*rhouu[Y][Y], rv*rhouu[Y][Z]);
+  info("stress_uu z %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*rhouu[X][Z], rv*rhouu[Y][Z], rv*rhouu[Z][Z]);
+
+  info("stress_00 x %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*extra[X][X], rv*extra[X][Y], rv*extra[X][Z]);
+  info("stress_00 y %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*extra[X][Y], rv*extra[Y][Y], rv*extra[Y][Z]);
+  info("stress_00 z %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*extra[X][Z], rv*extra[Y][Z], rv*extra[Z][Z]);
 
   return;
 }
