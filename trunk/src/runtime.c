@@ -250,11 +250,12 @@ int RUN_get_int_parameter_vector(const char * key, int v[]) {
  *
  *  run_get_string_parameter
  *
- *  Query the key list for a string.
+ *  Query the key list for a string. Any truncation is treated as
+ *  fatal to prevent problems down the line.
  *
  *****************************************************************************/
 
-int RUN_get_string_parameter(const char * key, char * value) {
+int RUN_get_string_parameter(const char * key, char * value, const int len) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
@@ -263,7 +264,8 @@ int RUN_get_string_parameter(const char * key, char * value) {
 
   if (key_present) {
     /* Just copy the string across */
-    strncpy(value, str_value, NKEY_LENGTH);
+    if (strlen(str_value) >= len) fatal("truncated input string %s\n", key);
+    strncpy(value, str_value, len);
   }
 
   return key_present;

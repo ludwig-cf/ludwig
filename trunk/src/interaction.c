@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.14 2008-02-13 10:56:10 kevin Exp $
+ *  $Id: interaction.c,v 1.15 2008-02-15 14:35:26 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -152,7 +152,7 @@ void COLL_init() {
 
   /* Default position: no colloids */
 
-  RUN_get_string_parameter("colloid_init", tmp);
+  RUN_get_string_parameter("colloid_init", tmp, 128);
   if (strcmp(tmp, "no_colloids") == 0) nc = 0;
 
   /* This is just to get past the start. */

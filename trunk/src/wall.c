@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.7 2006-12-20 16:55:45 kevin Exp $
+ *  $Id: wall.c,v 1.8 2008-02-15 14:35:26 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -63,7 +63,7 @@ void wall_init() {
 
   RUN_get_double_parameter("boundary_speed_bottom", &ux_bottom);
   RUN_get_double_parameter("boundary_speed_top", &ux_top);
-  RUN_get_string_parameter("boundary_walls_on", tmp);
+  RUN_get_string_parameter("boundary_walls_on", tmp, 128);
 
   if (strcmp(tmp, "yes") == 0) is_boundary_wall_ = 1;
 
