@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: collision.c,v 1.8 2008-02-15 14:35:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -83,7 +83,6 @@ void collide() {
 #else
 
   void COLL_compute_phi_gradients(void);
-  void test_rheology(void);
   int  get_N_colloid(void);
   int  boundaries_present(void);
 
@@ -104,7 +103,6 @@ void collide() {
   }
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
-  if (get_step() % 10 == 0) test_rheology();
   MODEL_collide_binary_lb();
 
 #endif
@@ -766,7 +764,7 @@ void RAND_init_fluctuations() {
 
   /* Ghost modes */
 
-  p = RUN_get_string_parameter("ghost_modes", tmp);
+  p = RUN_get_string_parameter("ghost_modes", tmp, 128);
   if (strcmp(tmp, "off") == 0) nmodes_ = NHYDRO;
 
   info("\nGhost modes\n");
@@ -779,7 +777,7 @@ void RAND_init_fluctuations() {
 
   /* Ginzburg / d'Humieres */
 
-  p = RUN_get_string_parameter("ginzburg-dhumieres", tmp);
+  p = RUN_get_string_parameter("ginzburg-dhumieres", tmp, 128);
   if (p == 1 && strcmp(tmp, "off") == 0) p = 0;
 
   if (p == 0) {

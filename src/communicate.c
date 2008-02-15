@@ -318,14 +318,14 @@ void COM_init() {
   input_format = BINARY;
   output_format = BINARY;
 
-  RUN_get_string_parameter("input_config", input_config);
-  RUN_get_string_parameter("output_config", output_config);
+  RUN_get_string_parameter("input_config", input_config, 256);
+  RUN_get_string_parameter("output_config", output_config, 256);
 
-  RUN_get_string_parameter("input_format", tmp);
+  RUN_get_string_parameter("input_format", tmp, 256);
   if (strncmp("ASCII",  tmp, 5) == 0 ) input_format = ASCII;
   if (strncmp("BINARY", tmp, 6) == 0 ) input_format = BINARY;
 
-  RUN_get_string_parameter("output_format", tmp);
+  RUN_get_string_parameter("output_format", tmp, 256);
   if (strncmp("ASCII",  tmp, 5) == 0 ) output_format = ASCII;
   if (strncmp("BINARY", tmp, 6) == 0 ) output_format = BINARY;
 
