@@ -10,6 +10,8 @@
 #  -D_D3Q15_ or -D_D3Q19_ to be consistent with the choice in ../src
 #  in COPTS.
 #
+#  Compilers etc will depend on your platform
+#
 ###############################################################################
 
 #------------------------------------------------------------------------------
@@ -31,8 +33,8 @@ CLIBS  = -lm
 MPILIB = -lmpi
 LAUNCH  =
 
-MPI_STUB_INCLUDE = -I../mpi_s
-MPI_STUB_LIB = -L../mpi_s -lmpi
+MPI_STUB_INCLUDE = #-I../mpi_s
+MPI_STUB_LIB =# -L../mpi_s -lmpi
 
 COMPILE = $(CC) $(INCLUDE) $(CLINK) $(COPTS)
 LINK    = $(CC) $(CLINK)
@@ -42,7 +44,7 @@ LINK    = $(CC) $(CLINK)
 #------------------------------------------------------------------------------
 
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
-              test_io.c test_runtime.c test_random.c \
+              test_runtime.c test_random.c \
               test_coords.c test_model.c test_halo.c test_prop.c
 TESTS = ${TESTSOURCES:.c=}
 
