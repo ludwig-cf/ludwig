@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.9 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: model.h,v 1.10 2008-02-15 14:36:18 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -21,6 +21,10 @@
 /* Always three dimensions at the moment */
 enum {ND = 3};
 enum {NHYDRO = 10};
+/* Identify the hydrodynamic modes */
+enum {MRHO = 0,
+      MRUX = 1, MRUY = 2, MRUZ = 3,
+      MSXX = 4, MSXY = 5, MSXZ = 6, MSYY = 7, MSYZ = 8, MSZZ = 9};
 
 typedef struct {
   double f[NVEL], g[NVEL];
