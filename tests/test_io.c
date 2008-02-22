@@ -4,7 +4,7 @@
  *
  *  Test code for the lattice I/O harness code.
  *
- *  $Id: test_io.c,v 1.1 2008-01-22 14:49:34 kevin Exp $
+ *  $Id: test_io.c,v 1.2 2008-02-22 12:19:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -14,13 +14,14 @@
  *
  *****************************************************************************/
 
-#include <assert.h>
 #include <stdio.h>
 #include <math.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "io_harness.h"
+#include "runtime.h"
+#include "tests.h"
 
 static void test_io_info_struct(void);
 static void test_processor_independent(void);
@@ -36,9 +37,10 @@ int main (int argc, char ** argv) {
   /* Take default system size */
 
   pe_init(argc, argv);
+  if (argc > 1) RUN_read_input_file(argv[1]);
   coords_init();
 
-  test_io_info_struct();
+  /* test_io_info_struct();*/
   test_processor_independent();
 
   pe_finalise();
@@ -56,7 +58,6 @@ void test_io_info_struct() {
 
   struct io_info_t * io_info;
   char stub[FILENAME_MAX];
-  int ifail;
 
   sprintf(stub, "%s", "ztest_file");
 
@@ -64,37 +65,31 @@ void test_io_info_struct() {
   info("Allocating one io_info object...");
 
   io_info = io_info_create();
-  assert(io_info != (struct io_info_t *) NULL);
+  test_assert(io_info != (struct io_info_t *) NULL);
   info("ok\n");
+
+  info("Address of write function %p\n", test_write_1);
 
   io_info_set_name(io_info, "Test double data");
   io_info_set_bytesize(io_info, sizeof(double));
   io_info_set_write(io_info, test_write_1);
   io_info_set_read(io_info, test_read_1);
+  io_info_set_processor_dependent(io_info);
 
   info("Testing write to filename stub %s ...", stub);
   io_write(stub, io_info);
+
+  MPI_Barrier(MPI_COMM_WORLD);
   info("ok\n");
 
   info("Re-read test data...\n");
   io_read(stub, io_info);
 
+  MPI_Barrier(MPI_COMM_WORLD);
+
   info("Release io_info struct...");
   io_info_destroy(io_info);
   info("ok\n");
-
-  /* Assume 1 I/O group */
-
-  info("Removing data file %s...", stub);
-  ifail = remove(stub);
-  assert(ifail == 0);
-  info("ok\n\n");
-
-  sprintf(stub, "%s", "ztest_file.meta"); 
-  info("Removing metadata file %s...", stub);
-  ifail = remove(stub);
-  assert(ifail == 0);
-  info("ok\n\n");
 
   return;
 }
@@ -118,11 +113,11 @@ void test_processor_independent() {
   info("Allocating one io_info object...");
 
   io_info = io_info_create_with_grid(grid);
-  assert(io_info != (struct io_info_t *) NULL);
+  test_assert(io_info != (struct io_info_t *) NULL);
   info("ok\n");
 
   io_info_set_name(io_info, "Test int data");
-  io_info_set_bytesize(io_info, sizeof(double));
+  io_info_set_bytesize(io_info, sizeof(int));
   io_info_set_write(io_info, test_write_2);
   io_info_set_read(io_info, test_read_2);
 
@@ -133,25 +128,17 @@ void test_processor_independent() {
   io_write(stub, io_info);
   info("ok\n");
 
+  MPI_Barrier(MPI_COMM_WORLD);
+
   info("Re-read test data...\n");
   io_read(stub, io_info);
+  info("ok\n");
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   info("Release io_info struct...");
   io_info_destroy(io_info);
   info("ok\n");
-
-  /* Assume 1 I/O group */
-
-  info("Removing data file %s...", stub);
-  ifail = remove(stub);
-  assert(ifail == 0);
-  info("ok\n\n");
-
-  sprintf(stub, "%s", "ztest_file.meta"); 
-  info("Removing metadata file %s...", stub);
-  ifail = remove(stub);
-  assert(ifail == 0);
-  info("ok\n\n");
 
   return;
 }
@@ -159,6 +146,8 @@ void test_processor_independent() {
 /*****************************************************************************
  *
  *  test_write_1
+ *
+ *  NO BARRIERS ALLOWED
  *
  *****************************************************************************/
 
@@ -170,7 +159,7 @@ static int test_write_1(FILE * fp, const int ic, const int jc, const int kc) {
   dindex = test_index(ic, jc, kc);
 
   n = fwrite(&dindex, sizeof(double), 1, fp);
-  assert (n == 1);
+  test_assert (n == 1);
 
   return n;
 }
@@ -189,12 +178,13 @@ static int test_read_1(FILE * fp, const int ic, const int jc, const int kc) {
   dref = test_index(ic, jc, kc);
 
   n = fread(&dindex, sizeof(double), 1, fp);
-  assert(n == 1);
+  test_assert(n == 1);
 
   if (fabs(dref - dindex) > 0.5) {
     verbose("test_read_1 failed at %d %d %d\n", ic, jc, kc);
     verbose("Expecting %f but read %f\n", dref, dindex);
   }
+  test_assert(fabs(dref - dindex) < TEST_DOUBLE_TOLERANCE);
 
   if (jc == 1 && kc == 1 && ic % 8 == 0) {
     verbose("Test read ic = %d ok\n", ic);
@@ -218,7 +208,7 @@ int test_write_2(FILE * fp, const int ic, const int jc, const int kc) {
   index = test_index(ic, jc, kc);
 
   n = fwrite(&index, sizeof(int), 1, fp);
-  assert(n == 1);
+  test_assert(n == 1);
 
   return n;
 }
@@ -236,10 +226,15 @@ int test_read_2(FILE * fp, const int ic, const int jc, const int kc) {
   int index,  n;
 
   n = fread(&index, sizeof(int), 1, fp);
-  assert(n == 1);
+  test_assert(n == 1);
 
   n = (int) test_index(ic, jc, kc);
-  assert(index == n);
+
+  if (n != index) {
+    verbose("test_read_2 (%d,%d,%d) read %d expected %d\n", ic,jc,kc,index,n);
+  }
+
+  test_assert(index == n);
 
   return n;
 }
