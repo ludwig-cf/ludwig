@@ -28,9 +28,6 @@
 
 void test_assert(const int lvalue) {
 
-  /* Let everyone get here before producing any output... */
-  test_barrier();
-
   if (lvalue) {
     /* ok */
   }
@@ -41,7 +38,6 @@ void test_assert(const int lvalue) {
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     printf("[%d] Failed test assertion\n", rank);
-    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Abort(MPI_COMM_WORLD, 0);
 #else
     printf("\n** HALT!\n");
@@ -50,8 +46,6 @@ void test_assert(const int lvalue) {
 #endif
   }
 
-  /* Now continue ... */
-  test_barrier();
   return;
 }
 
