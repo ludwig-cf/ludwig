@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.7.4.2 2008-01-24 18:29:02 kevin Exp $
+ *  $Id: wall.c,v 1.7.4.3 2008-02-26 09:41:08 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -205,8 +205,8 @@ static void init_links() {
 	    /* Add a link to head of the list */
 
 	    tmp = allocate_link();
-	    tmp->i = index_site(ic, jc, kc);        /* fluid site */
-	    tmp->j = index_site(ic1, jc1, kc1);     /* solid site */
+	    tmp->i = get_site_index(ic, jc, kc);        /* fluid site */
+	    tmp->j = get_site_index(ic1, jc1, kc1);     /* solid site */
 	    tmp->p = p;
 	    tmp->ux = 0.0;
 

@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.1.2.5 2008-02-12 17:15:47 kevin Exp $
+ *  $Id: site_map.c,v 1.1.2.6 2008-02-26 09:41:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -304,7 +304,7 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, X);
     forw = cart_neighb(FORWARD, X);
 
-    ihalo = get_site_index(nlocal[X] + nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = get_site_index(nlocal[X] + 1, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(site_map + ihalo,  1, mpi_yz_t_, forw, btag, comm, request);
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(site_map + ihalo,  1, mpi_yz_t_, back, ftag, comm, request+1);
@@ -337,7 +337,7 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, Y);
     forw = cart_neighb(FORWARD, Y);
 
-    ihalo = get_site_index(1-nhalo_, nlocal[Y] + nhalo_, 1-nhalo_);
+    ihalo = get_site_index(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
     MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, forw, btag, comm, request);
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, back, ftag, comm, request+1);
@@ -370,7 +370,7 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, Z);
     forw = cart_neighb(FORWARD, Z);
 
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] + nhalo_);
+    ihalo = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
     MPI_Irecv(site_map + ihalo,  1, mpi_xy_t_, forw, btag, comm, request);
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(site_map + ihalo,  1, mpi_xy_t_, back, ftag, comm, request+1);

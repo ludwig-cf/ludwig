@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.9 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: model.h,v 1.9.2.1 2008-02-26 09:41:08 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -34,7 +34,6 @@ void   init_site(void);
 void   finish_site(void);
 void   halo_site(void);
 
-int    index_site(const int, const int, const int);
 double get_f_at_site(const int, const int);
 double get_g_at_site(const int, const int);
 double get_rho_at_site(const int);

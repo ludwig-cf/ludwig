@@ -15,6 +15,7 @@
 #include "lattice.h"
 #include "collision.h"
 #include "leesedwards.h"
+#include "phi.h"
 
 extern Site * site;
 extern double * phi_site;
@@ -92,6 +93,7 @@ void LE_init() {
 
   if (N_LE_total != 0) {
 
+    if (nhalo_ > 1) fatal("nahlo = %d in le code\n", nhalo_);
     LeesEdw = (LE_Plane *) malloc(N_LE_total*sizeof(LE_Plane));
     if (LeesEdw == NULL) fatal("malloc(LE_planes failed\n");
 
@@ -1551,7 +1553,7 @@ void LE_print_LEbuffers()
  *- \c Options:   _TRACE_
  *- \c Arguments: void
  *- \c Returns:   void
- *- \c Buffers:   uses .phi, sets .grad_phi
+ *- \c Buffers:   uses .phi
  *- \c Version:   2.0
  *- \c Last \c updated: 27/01/2002 by JCD
  *- \c Authors:   P. Bladon and JC Desplat
@@ -1567,10 +1569,8 @@ void MODEL_get_gradients( void )
 {
   int     i,i0,i1,i2,j,k,plane,ind,ind0,xfac,yfac,LE_loc;
   double   f1,f2,phi[9];
+  double delsq_phi, grad_phi[3];
   int     N[3];
-
-  extern double  * delsq_phi;
-  extern FVector * grad_phi;
 
   get_N_local(N);
   xfac = (N[Y]+2)*(N[Z]+2);
@@ -1597,7 +1597,7 @@ void MODEL_get_gradients( void )
       for(j=1; j<=N[Y]; j++)
 	for(k=1; k<=N[Z]; k++) {
 	  ind = i2*xfac + j*yfac + k;
-	  grad_phi[ind].x = 
+	  grad_phi[X] = 
 	    f1*(phi_site[ind+xfac       ]-phi_site[ind-xfac       ] +
 		phi_site[ind+xfac+yfac+1]-phi_site[ind-xfac+yfac+1] +
 		phi_site[ind+xfac-yfac+1]-phi_site[ind-xfac-yfac+1] +
@@ -1608,7 +1608,7 @@ void MODEL_get_gradients( void )
 		phi_site[ind+xfac     +1]-phi_site[ind-xfac     +1] +
 		phi_site[ind+xfac     -1]-phi_site[ind-xfac     -1]);
 		    
-	  grad_phi[ind].y = 
+	  grad_phi[Y] = 
 	    f1*(phi_site[ind     +yfac  ]-phi_site[ind     -yfac  ] +
 		phi_site[ind+xfac+yfac+1]-phi_site[ind+xfac-yfac+1] +
 		phi_site[ind-xfac+yfac+1]-phi_site[ind-xfac-yfac+1] +
@@ -1619,7 +1619,7 @@ void MODEL_get_gradients( void )
 		phi_site[ind     +yfac+1]-phi_site[ind     -yfac+1] +
 		phi_site[ind     +yfac-1]-phi_site[ind     -yfac-1]);
 		    
-	  grad_phi[ind].z = 
+	  grad_phi[Z] = 
 	    f1*(phi_site[ind          +1]-phi_site[ind          -1] +
 		phi_site[ind+xfac+yfac+1]-phi_site[ind+xfac+yfac-1] +
 		phi_site[ind-xfac+yfac+1]-phi_site[ind-xfac+yfac-1] +
@@ -1630,7 +1630,7 @@ void MODEL_get_gradients( void )
 		phi_site[ind     +yfac+1]-phi_site[ind     +yfac-1] +
 		phi_site[ind     -yfac+1]-phi_site[ind     -yfac-1]);
 		    
-	  delsq_phi[ind] = f2*(phi_site[ind+xfac       ] + 
+	  delsq_phi      = f2*(phi_site[ind+xfac       ] + 
 			       phi_site[ind-xfac       ] +
 			       phi_site[ind     +yfac  ] + 
 			       phi_site[ind     -yfac  ] +
@@ -1657,6 +1657,8 @@ void MODEL_get_gradients( void )
 			       phi_site[ind     -yfac+1] + 
 			       phi_site[ind     -yfac-1] -
 			       26.0*phi_site[ind]);
+	  phi_set_grad_phi_site(ind, grad_phi);
+	  phi_set_delsq_phi_site(ind, delsq_phi);
 	}
     }
   }
@@ -1688,7 +1690,7 @@ void MODEL_get_gradients( void )
 	    phi[7] =  LeesEdw_phi[ind0+yfac  ];
 	    phi[8] =  LeesEdw_phi[ind0+yfac+1];
 		  
-	    grad_phi[ind].x = 
+	    grad_phi[X] = 
 	      f1*(phi_site[ind+xfac-yfac-1] + phi_site[ind+xfac-yfac  ] +
 		  phi_site[ind+xfac-yfac+1] + phi_site[ind+xfac     -1] +
 		  phi_site[ind+xfac       ] + phi_site[ind+xfac     +1] +
@@ -1697,7 +1699,7 @@ void MODEL_get_gradients( void )
 		  (phi[0]+phi[1]+phi[2]+phi[3]+phi[4]+phi[5]+phi[6]+phi[7]+
 		   phi[8]));
 		  
-	    grad_phi[ind].y = 
+	    grad_phi[Y] = 
 	      f1*(phi_site[ind     +yfac  ] - phi_site[ind     -yfac  ] +
 		  phi_site[ind+xfac+yfac+1] - phi_site[ind+xfac-yfac+1] + 
 		  phi[6]                    - phi[0]                    + 
@@ -1708,7 +1710,7 @@ void MODEL_get_gradients( void )
 		  phi_site[ind     +yfac+1] - phi_site[ind     -yfac+1] + 
 		  phi_site[ind     +yfac-1] - phi_site[ind     -yfac-1]);
 		  
-	    grad_phi[ind].z = 
+	    grad_phi[Z] = 
 	      f1*(phi_site[ind          +1] - phi_site[ind          -1] +
 		  phi_site[ind+xfac+yfac+1] - phi_site[ind+xfac+yfac-1] + 
 		  phi[2]                    - phi[0]                    + 
@@ -1719,7 +1721,7 @@ void MODEL_get_gradients( void )
 		  phi_site[ind     +yfac+1] - phi_site[ind     +yfac-1] + 
 		  phi_site[ind     -yfac+1] - phi_site[ind     -yfac-1]); 
 		  
-	    delsq_phi[ind] = f2*(phi[0]+phi[1]+phi[2]+phi[3]+phi[4]+phi[5]
+	    delsq_phi = f2*(phi[0]+phi[1]+phi[2]+phi[3]+phi[4]+phi[5]
 				 +phi[6]+phi[7]+phi[8]+
 				 phi_site[ind     -yfac-1] + 
 				 phi_site[ind     -yfac  ] + 
@@ -1739,6 +1741,8 @@ void MODEL_get_gradients( void )
 				 phi_site[ind+xfac+yfac  ] + 
 				 phi_site[ind+xfac+yfac+1] -
 				 26.0*phi_site[ind]);
+	  phi_set_grad_phi_site(ind, grad_phi);
+	  phi_set_delsq_phi_site(ind, delsq_phi);
 	  }
 	  
       /* Last, compute gradients from plane `beneath' LE plane */
@@ -1759,7 +1763,7 @@ void MODEL_get_gradients( void )
 	    phi[7] =  LeesEdw_phi[ind0+yfac  ];
 	    phi[8] =  LeesEdw_phi[ind0+yfac+1];
 		  
-	    grad_phi[ind].x = 
+	    grad_phi[X] = 
 	      f1*(phi[0]+phi[1]+phi[2]+phi[3]+phi[4]+phi[5]+phi[6]+phi[7]+
 		  phi[8]-
 		  (phi_site[ind-xfac-yfac-1] + phi_site[ind-xfac-yfac  ] +
@@ -1768,7 +1772,7 @@ void MODEL_get_gradients( void )
 		   phi_site[ind-xfac+yfac-1] + phi_site[ind-xfac+yfac  ] +
 		   phi_site[ind-xfac+yfac+1]));
 		
-	    grad_phi[ind].y = 
+	    grad_phi[Y] = 
 	      f1*(phi_site[ind     +yfac  ] - phi_site[ind     -yfac  ] +
 		  phi[6]                    - phi[0]                    + 
 		  phi_site[ind-xfac+yfac+1] - phi_site[ind-xfac-yfac+1] + 
@@ -1779,7 +1783,7 @@ void MODEL_get_gradients( void )
 		  phi_site[ind     +yfac+1] - phi_site[ind     -yfac+1] + 
 		  phi_site[ind     +yfac-1] - phi_site[ind     -yfac-1]);
 		  
-	    grad_phi[ind].z = 
+	    grad_phi[Z] = 
 	      f1*(phi_site[ind          +1] - phi_site[ind          -1] +
 		  phi[2]                    - phi[0]                    + 
 		  phi_site[ind-xfac+yfac+1] - phi_site[ind-xfac+yfac-1] + 
@@ -1790,7 +1794,7 @@ void MODEL_get_gradients( void )
 		  phi_site[ind     +yfac+1] - phi_site[ind     +yfac-1] + 
 		  phi_site[ind     -yfac+1] - phi_site[ind     -yfac-1]); 
 		  
-	    delsq_phi[ind] = f2*(phi[0]+phi[1]+phi[2]+phi[3]+phi[4]+
+	    delsq_phi = f2*(phi[0]+phi[1]+phi[2]+phi[3]+phi[4]+
 				 phi[5]+
 				 phi[6]+phi[7]+phi[8]+
 				 phi_site[ind     -yfac-1] + 
@@ -1811,6 +1815,8 @@ void MODEL_get_gradients( void )
 				 phi_site[ind-xfac+yfac  ] + 
 				 phi_site[ind-xfac+yfac+1] -
 				 26.0*phi_site[ind]);
+	  phi_set_grad_phi_site(ind, grad_phi);
+	  phi_set_delsq_phi_site(ind, delsq_phi);
 	  }
     }
 
@@ -1824,7 +1830,7 @@ void MODEL_get_gradients( void )
 	    {
 	      ind = i*xfac + j*yfac + k;
 	      
-	      grad_phi[ind].x = 
+	      grad_phi[X] = 
 		f1*(phi_site[ind+xfac       ] - phi_site[ind-xfac       ] +
 		    phi_site[ind+xfac+yfac+1] - phi_site[ind-xfac+yfac+1] +
 		    phi_site[ind+xfac-yfac+1] - phi_site[ind-xfac-yfac+1] + 
@@ -1835,7 +1841,7 @@ void MODEL_get_gradients( void )
 		    phi_site[ind+xfac     +1] - phi_site[ind-xfac     +1] +
 		    phi_site[ind+xfac     -1] - phi_site[ind-xfac     -1]);
 	      
-	      grad_phi[ind].y = 
+	      grad_phi[Y] = 
 		f1*(phi_site[ind     +yfac  ] - phi_site[ind     -yfac  ] +
 		    phi_site[ind+xfac+yfac+1] - phi_site[ind+xfac-yfac+1] + 
 		    phi_site[ind-xfac+yfac+1] - phi_site[ind-xfac-yfac+1] + 
@@ -1846,7 +1852,7 @@ void MODEL_get_gradients( void )
 		    phi_site[ind     +yfac+1] - phi_site[ind     -yfac+1] + 
 		    phi_site[ind     +yfac-1] - phi_site[ind     -yfac-1]);
 	      
-	      grad_phi[ind].z = 
+	      grad_phi[Z] = 
 		f1*(phi_site[ind          +1] - phi_site[ind          -1] +
 		    phi_site[ind+xfac+yfac+1] - phi_site[ind+xfac+yfac-1] + 
 		    phi_site[ind-xfac+yfac+1] - phi_site[ind-xfac+yfac-1] + 
@@ -1857,7 +1863,7 @@ void MODEL_get_gradients( void )
 		    phi_site[ind     +yfac+1] - phi_site[ind     +yfac-1] + 
 		    phi_site[ind     -yfac+1] - phi_site[ind     -yfac-1]); 
 	      
-	      delsq_phi[ind] = f2*(phi_site[ind+xfac       ] + 
+	      delsq_phi = f2*(phi_site[ind+xfac       ] + 
 				   phi_site[ind-xfac       ] +
 				   phi_site[ind     +yfac  ] + 
 				   phi_site[ind     -yfac  ] +
@@ -1884,6 +1890,8 @@ void MODEL_get_gradients( void )
 				   phi_site[ind     -yfac+1] + 
 				   phi_site[ind     -yfac-1] -
 				   26.0*phi_site[ind]);
+	  phi_set_grad_phi_site(ind, grad_phi);
+	  phi_set_delsq_phi_site(ind, delsq_phi);
 	    }
     }
 
@@ -1932,7 +1940,7 @@ void le_init_shear_profile() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 
 	for (p = 0; p < NVEL; p++) {
 	  double f = 0.0;

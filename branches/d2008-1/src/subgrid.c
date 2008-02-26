@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.3 2007-03-15 18:36:51 kevin Exp $
+ *  $Id: subgrid.c,v 1.3.4.1 2008-02-26 09:41:08 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -20,7 +20,6 @@
 #include "coords.h"
 #include "timer.h"
 #include "physics.h"
-#include "model.h" /* only index_site() at the moment */
 #include "lattice.h"
 #include "colloids.h"
 #include "ccomms.h"
@@ -89,7 +88,7 @@ void subgrid_force_from_particles() {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = index_site(i, j, k);
+		index = get_site_index(i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */
@@ -256,7 +255,7 @@ static void subgrid_interpolation() {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = index_site(i, j, k);
+		index = get_site_index(i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */

@@ -4,7 +4,7 @@
  *
  *  Propagation schemes for the different models.
  *
- *  $Id: propagation.c,v 1.3 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: propagation.c,v 1.3.2.1 2008-02-26 09:41:08 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -84,8 +84,8 @@ static void d3q15_propagate_single() {
 
   get_N_local(N);
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
+  yfac = (N[Z]+2*nhalo_);
+  xfac = (N[Y]+2*nhalo_)*yfac;
 
   /* Forward moving distributions */
   
@@ -93,7 +93,7 @@ static void d3q15_propagate_single() {
     for (j = N[Y]; j >= 1; j--) {
       for (k = N[Z]; k >= 1; k--) {
 
-        ijk = xfac*i + yfac*j + k;
+        ijk = get_site_index(i, j, k);
 
         site[ijk].f[7] = site[ijk                         + (-1)].f[7];
         site[ijk].f[6] = site[ijk             + (-1)*yfac       ].f[6];
@@ -113,7 +113,7 @@ static void d3q15_propagate_single() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-        ijk = xfac*i + yfac*j + k;
+        ijk = get_site_index(i, j, k);
    
         site[ijk].f[ 8] = site[ijk                         + (+1)].f[ 8];
         site[ijk].f[ 9] = site[ijk             + (+1)*yfac       ].f[ 9];
@@ -146,8 +146,8 @@ static void d3q15_propagate_binary() {
 
   get_N_local(N);
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
+  yfac = (N[Z]+2*nhalo_);
+  xfac = (N[Y]+2*nhalo_)*yfac;
 
   /* Forward moving distributions */
   
@@ -155,7 +155,7 @@ static void d3q15_propagate_binary() {
     for (j = N[Y]; j >= 1; j--) {
       for (k = N[Z]; k >= 1; k--) {
 
-        ijk = xfac*i + yfac*j + k;
+        ijk = get_site_index(i, j, k);
 
         site[ijk].f[7] = site[ijk                         + (-1)].f[7];
         site[ijk].g[7] = site[ijk                         + (-1)].g[7];
@@ -188,7 +188,7 @@ static void d3q15_propagate_binary() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-        ijk = xfac*i + yfac*j + k;
+        ijk = get_site_index(i, j, k);
    
         site[ijk].f[ 8] = site[ijk                         + (+1)].f[ 8];
         site[ijk].g[ 8] = site[ijk                         + (+1)].g[ 8];
@@ -236,8 +236,8 @@ static void d3q19_propagate_single() {
 
   get_N_local(N);
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
+  yfac = (N[Z]+2*nhalo_);
+  xfac = (N[Y]+2*nhalo_)*yfac;
 
   /* Forward moving distributions */
   
@@ -245,7 +245,7 @@ static void d3q19_propagate_single() {
     for (j = N[Y]; j >= 1; j--) {
       for (k = N[Z]; k >= 1; k--) {
 
-	ijk = xfac*i + yfac*j + k;
+	ijk = get_site_index(i, j, k);
 
 	site[ijk].f[9] = site[ijk                         + (-1)].f[9];
 	site[ijk].f[8] = site[ijk             + (-1)*yfac + (+1)].f[8];
@@ -267,7 +267,7 @@ static void d3q19_propagate_single() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	ijk = xfac*i + yfac*j + k;
+	ijk = get_site_index(i, j, k);
 
 	site[ijk].f[10] = site[ijk                         + (+1)].f[10];
 	site[ijk].f[11] = site[ijk             + (+1)*yfac + (-1)].f[11];
@@ -300,8 +300,8 @@ static void d3q19_propagate_binary() {
 
   get_N_local(N);
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
+  yfac = (N[Z]+2*nhalo_);
+  xfac = (N[Y]+2*nhalo_)*yfac;
 
   /* Forward moving distributions */
   
@@ -309,7 +309,7 @@ static void d3q19_propagate_binary() {
     for (j = N[Y]; j >= 1; j--) {
       for (k = N[Z]; k >= 1; k--) {
 
-	ijk = xfac*i + yfac*j + k;
+	ijk = get_site_index(i, j, k);
 
 	site[ijk].f[9] = site[ijk                         + (-1)].f[9];
 	site[ijk].g[9] = site[ijk                         + (-1)].g[9];
@@ -348,7 +348,7 @@ static void d3q19_propagate_binary() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	ijk = xfac*i + yfac*j + k;
+	ijk = get_site_index(i, j, k);
 
 	site[ijk].f[10] = site[ijk                         + (+1)].f[10];
 	site[ijk].g[10] = site[ijk                         + (+1)].g[10];

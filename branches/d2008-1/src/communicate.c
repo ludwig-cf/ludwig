@@ -446,7 +446,7 @@ void COM_write_site( char *filename, void (*func)( FILE *, int, int ))
       for(k=1;k<=N[Z];k++)
 	{
 	  /* local index */
-	  ind = i*xfac + j*yfac + k;
+	  ind = get_site_index(i, j, k);
 	  
 	  /* global index */
 	  g_ind = ((i + offset[X])*gxfac + (j + offset[Y])*gyfac + 
@@ -481,17 +481,17 @@ void COM_write_site( char *filename, void (*func)( FILE *, int, int ))
     }
   
   /* Print header information */
-
+#ifdef _OLD_IO_  
   fprintf(fp,"%d %d %d %d %d %d %d %d\n\f",N[X],N[Y],N[Z],N[X],N[Y],N[Z],
 	  io_size, io_index);
-  
+#endif  
   /* Write all sites */
   for(i=1; i<=N[X]; i++)
     for(j=1; j<=N[Y]; j++)
       for(k=1; k<=N[Z]; k++)
 	{
 	  /* local (and global) index */
-	  ind = i*xfac + j*yfac + k;
+	  ind = get_site_index(i, j, k);
 	  
 	  /* in the serial implementation, local index == global index */
 	  func(fp,ind,ind);
@@ -828,15 +828,21 @@ void MODEL_write_rho_bin( FILE *fp, int ind, int g_ind )
 
 void MODEL_write_phi_bin( FILE *fp, int ind, int g_ind )
 {
-  double phi;    
+  double phi;
+  float phi4;
 
   phi = get_phi_at_site(ind);
+  phi4 = (float) phi;
 
+#ifdef _OLD_IO_
   if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
       fwrite(&phi,sizeof(double),1,fp) != 1 )
     {
       fatal("MODEL_write_phi_bin(): couldn't write data\n");
     }
+#else
+  fwrite(&phi4, sizeof(float),1,fp);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/

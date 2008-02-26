@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.3 2008-02-12 17:15:47 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.4 2008-02-26 09:41:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,7 +17,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h> /* Remove strcmp */
-#include <stdlib.h> /* Remove calloc */
 
 #include "pe.h"
 #include "ran.h"
@@ -46,9 +45,6 @@ extern struct vector * fl_u;
 
 /* Variables (not static) */
 
-FVector * grad_phi;
-double  * delsq_phi;
-double  * rho_site;
 double    siteforce[3];
 
 /* Variables concerned with the collision */
@@ -85,8 +81,8 @@ void collide() {
 
 #else
 
-  void COLL_compute_phi_gradients(void);
-  void test_rheology(void);
+  void phi_gradients_compute(void);
+  void phi_force_calculation_fluid(void);
   int  get_N_colloid(void);
   int  boundaries_present(void);
 
@@ -99,15 +95,16 @@ void collide() {
 
   if (get_N_colloid() > 0 || boundaries_present()) {
     /* Must get gradients right so use this */ 
-    COLL_compute_phi_gradients();
+    phi_gradients_compute();
   }
   else {
     /* No solid objects (including cases with LE planes) use this */
     MODEL_get_gradients();
+    /* phi_gradients_compute();
+       phi_force_calculation_fluid();*/
   }
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
-  if (get_step() % 10 == 0) test_rheology();
   MODEL_collide_binary_lb();
 
 #endif
@@ -163,7 +160,7 @@ void MODEL_collide_multirelaxation() {
       for (kc = 1; kc <= N[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 
 	/* Compute all the modes */
 
@@ -190,8 +187,6 @@ void MODEL_collide_multirelaxation() {
 	s[Z][Y] = s[Y][Z];
 	s[Z][Z] = mode[9];
 
-	rho_site[index] = rho;
-
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
@@ -203,8 +198,6 @@ void MODEL_collide_multirelaxation() {
 	  u[i] = rrho*(u[i] + 0.5*force[i]);  
 	  u_field[i] = u[i];
 	}
-
-	rho_site[index] = rho;
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -357,7 +350,7 @@ void MODEL_collide_binary_lb() {
       for (kc = 1; kc <= N[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 
 	/* Compute all the modes */
 
@@ -384,8 +377,6 @@ void MODEL_collide_binary_lb() {
 	s[Z][Y] = s[Y][Z];
 	s[Z][Z] = mode[9];
 
-	rho_site[index] = rho;
-
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
@@ -398,19 +389,9 @@ void MODEL_collide_binary_lb() {
 	  u_field[i] = u[i];
 	}
 
-	rho_site[index] = rho;
-
-
 	/* Compute the thermodynamic component of the stress */
 
-	phi = phi_site[index];
-
-	jphi[X] = (grad_phi + index)->x;
-	jphi[Y] = (grad_phi + index)->y;
-	jphi[Z] = (grad_phi + index)->z;
-
-	mu = chemical_potential(phi, delsq_phi[index]);
-	chemical_stress(sth, phi, jphi, delsq_phi[index]);
+	free_energy_get_chemical_stress(index, sth);
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -480,6 +461,9 @@ void MODEL_collide_binary_lb() {
 
 	/* Now, the order parameter distribution */
 
+	phi = phi_site[index];
+	mu = free_energy_get_chemical_potential(index);
+
 	jphi[X] = 0.0;
 	jphi[Y] = 0.0;
 	jphi[Z] = 0.0;
@@ -497,7 +481,7 @@ void MODEL_collide_binary_lb() {
 	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
 	  }
 	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
-	  /* jphi[i] = phi*u[i];*/
+	  /* jphi[i] = phi*u[i]; */
 	}
 
 	/* Now update the distribution */
@@ -537,7 +521,7 @@ void MODEL_collide_binary_lb() {
  *
  *- \c Arguments: void
  *- \c Returns:   void
- *- \c Buffers:   sets .halo, .rho, .phi, .grad_phi
+ *- \c Buffers:   sets .halo, .rho, .phi
  *- \c Version:   2.0b1
  *- \c Last \c updated: 01/03/2002 by JCD
  *- \c Authors:   P. Bladon and JC Desplat
@@ -547,7 +531,7 @@ void MODEL_collide_binary_lb() {
 
 void MODEL_init( void ) {
 
-  int     i,j,k,ind,xfac,yfac,N_sites;
+  int     i,j,k,ind, nsites;
   int     N[3];
   int     offset[3];
   double   phi;
@@ -560,35 +544,17 @@ void MODEL_init( void ) {
   get_N_local(N);
   get_N_offset(offset);
 
-  xfac = (N[Y]+2)*(N[Z]+2);
-  yfac = (N[Z]+2);
-
-  N_sites = (N[X]+2)*(N[Y]+2)*(N[Z]+2);
-
   /* Now setup the rest of the simulation */
 
   site_map_init();
 
   /* Allocate memory */
 
-  info("Requesting %d bytes for grad_phi\n", N_sites*sizeof(FVector));
-  info("Requesting %d bytes for delsq_phi\n", N_sites*sizeof(double));
-  info("Requesting %d bytes for rho_site\n", N_sites*sizeof(double));
-
-  grad_phi  = (FVector*)calloc(N_sites,sizeof(FVector));
-  delsq_phi = (double  *)calloc(N_sites,sizeof(double  ));
-  rho_site  = (double  *)calloc(N_sites,sizeof(double  ));
-
-  if(grad_phi==NULL || delsq_phi==NULL || rho_site==NULL)
-    {
-      fatal("MODEL_init(): failed to allocate %d bytes for vels\n",
-	    2*N_sites*(sizeof(FVector)+sizeof(double)));
-    }
-
+  nsites = (N[X] + 2*nhalo_)*(N[Y] + 2*nhalo_)*(N[Z] + 2*nhalo_);
   init_site();
   phi_init();
-  LATT_allocate_force(N_sites);
-  latt_allocate_velocity(N_sites);
+  LATT_allocate_force(nsites);
+  latt_allocate_velocity(nsites);
 
   
   /*
@@ -631,7 +597,7 @@ void MODEL_init( void ) {
 	       (j>offset[Y]) && (j<=offset[Y] + N[Y]) &&
 	       (k>offset[Z]) && (k<=offset[Z] + N[Z]))
 	      {
-		ind = (i-offset[X])*xfac + (j-offset[Y])*yfac + (k-offset[Z]);
+		ind = get_site_index(i-offset[X], j-offset[Y], k-offset[Z]);
 #ifdef _SINGLE_FLUID_
 		set_rho(rho0, ind);
 		set_phi(phi0, ind);
@@ -837,7 +803,7 @@ void latt_zero_force() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 
 	fl_force[index].c[X] = 0.0;
 	fl_force[index].c[Y] = 0.0;
@@ -880,7 +846,7 @@ void  MISC_curvature() {
   int i, j, k, index;
   int N[3];
 
-  FVector dphi;
+  double dphi[3];
 
   double eve1[3], eve2[3], eve3[3];
   double sum[6];
@@ -899,15 +865,15 @@ void  MISC_curvature() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1;k <= N[Z]; k++) {
 
-	index = index_site(i, j, k);
+	index = get_site_index(i, j, k);
             
-	dphi = grad_phi[index];
-	sum[0] += dphi.x*dphi.x;
-	sum[1] += dphi.x*dphi.y;
-	sum[2] += dphi.x*dphi.z;
-	sum[3] += dphi.y*dphi.y;
-	sum[4] += dphi.y*dphi.z;
-	sum[5] += dphi.z*dphi.z;
+	phi_get_grad_phi_site(index, dphi);
+	sum[0] += dphi[X]*dphi[X];
+	sum[1] += dphi[X]*dphi[Y];
+	sum[2] += dphi[X]*dphi[Z];
+	sum[3] += dphi[Y]*dphi[Y];
+	sum[4] += dphi[Y]*dphi[Z];
+	sum[5] += dphi[Z]*dphi[Z];
       }
     }
   }

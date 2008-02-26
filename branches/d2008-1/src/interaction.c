@@ -6,12 +6,13 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.13.2.2 2008-01-24 18:29:02 kevin Exp $
+ *  $Id: interaction.c,v 1.13.2.3 2008-02-26 09:41:08 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <float.h>
@@ -45,18 +46,6 @@
 extern char * site_map;
 extern int input_format;
 extern int output_format;
-
-enum { NGRAD = 27 };
-static int bs_cv[NGRAD][3] = {{ 0, 0, 0}, { 1,-1,-1}, { 1,-1, 1},
-			      { 1, 1,-1}, { 1, 1, 1}, { 0, 1, 0},
-			      { 1, 0, 0}, { 0, 0, 1}, {-1, 0, 0},
-			      { 0,-1, 0}, { 0, 0,-1}, {-1,-1,-1},
-			      {-1,-1, 1}, {-1, 1,-1}, {-1, 1, 1},
-			      { 1, 1, 0}, { 1,-1, 0}, {-1, 1, 0},
-			      {-1,-1, 0}, { 1, 0, 1}, { 1, 0,-1},
-			      {-1, 0, 1}, {-1, 0,-1}, { 0, 1, 1},
-			      { 0, 1,-1}, { 0,-1, 1}, { 0,-1,-1}};
-
 
 static void    COLL_compute_phi_missing(void);
 static void    COLL_overlap(Colloid *, Colloid *);
@@ -169,6 +158,8 @@ void COLL_init() {
 #endif
 
   if (nc == 0) return;
+  /* Particle code only with nhalo_ = 1 at moment */
+  assert(nhalo_ == 1);
 
   nc = RUN_get_double_parameter("colloid_ah", &ahmax);
   if (nc == 0) fatal("Please set colloids_ah in the input file\n");
@@ -930,142 +921,6 @@ void COLL_overlap(Colloid * p_c1, Colloid * p_c2) {
 
   return;
 }
-
-/****************************************************************************
- *
- *  COLL_compute_phi_gradients
- *
- *  Compute gradients of the order parameter phi (\nabla\phi and
- *  \nabla^2\phi) at fluid nodes only (not halo sites).
- *
- *  Neutral wetting properties are always assumed at the moment.
- *
- *  This takes account of the presence of local solid sites
- *  and uses the full 26 (NGRAD) neighbours. This function uses
- *  exactly the same method as the original gradient method
- *  in BS_fix_gradients but doesn't require boundary sites and
- *  is designed to be more efficient for high solid fractions.
- *
- ****************************************************************************/
-
-void COLL_compute_phi_gradients() {
-
-  int     i, j, k, index, indexn;
-  int     p;
-  int     xfac, yfac;
-
-  int     isite[NGRAD];
-
-  double   r9  = 1.0/9.0;
-  double   r18 = 1.0/18.0;
-  double   dphi, phi_b, delsq;
-  double   gradt[NGRAD];
-
-  FVector gradn;
-
-  IVector count;
-  int     N[3];
-  double  rk = 1.0 / free_energy_K();
-
-  extern double * phi_site;
-  extern double * delsq_phi;
-  extern FVector * grad_phi;
-
-  get_N_local(N);
-
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
-
-  for (i = 1; i <= N[X]; i++)
-    for (j = 1; j <= N[Y]; j++)
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = i*xfac + j*yfac + k;
-
-	/* Skip solid sites */
-	if (site_map[index] != FLUID) continue;
-
-	/* Set solid/fluid flag to index neighbours */
-
-	for (p = 1; p < NGRAD; p++) {
-	  indexn = index + xfac*bs_cv[p][0] + yfac*bs_cv[p][1] + bs_cv[p][2];
-	  isite[p] = -1;
-	  if (site_map[indexn] == FLUID) isite[p] = indexn;
-	}
-
-
-	/* Estimate gradients between fluid sites */
-
-	gradn.x = 0.0;
-	gradn.y = 0.0;
-	gradn.z = 0.0;
-	count.x = 0;
-	count.y = 0;
-	count.z = 0;
-
-	for (p = 1; p < NGRAD; p++) {
-
-	  if (isite[p] == -1) continue;
-
-	  dphi = phi_site[isite[p]] - phi_site[index];
-	  gradn.x += bs_cv[p][0]*dphi;
-	  gradn.y += bs_cv[p][1]*dphi;
-	  gradn.z += bs_cv[p][2]*dphi;
-
-	  gradt[p] = dphi;
-
-	  count.x += bs_cv[p][0]*bs_cv[p][0];
-	  count.y += bs_cv[p][1]*bs_cv[p][1];
-	  count.z += bs_cv[p][2]*bs_cv[p][2];
-	}
-
-	if (count.x) gradn.x /= (double) count.x;
-	if (count.y) gradn.y /= (double) count.y;
-	if (count.z) gradn.z /= (double) count.z;
-
-	/* Estimate gradient at boundaries */
-
-	for (p = 1; p < NGRAD; p++) {
-
-	  if (isite[p] == -1) {
-
-	    phi_b = phi_site[index] + 0.5*
-	    (bs_cv[p][0]*gradn.x + bs_cv[p][1]*gradn.y + bs_cv[p][2]*gradn.z);
-
-	    /* Set gradient of phi at boundary following wetting properties */
-	    /* C and H are always zero at the moment */
-
-	    gradt[p] = -(0.0*phi_b - 0.0)*rk;
-	  }
-	}
-
-	/* Accumulate the final gradients */
-
-	delsq = 0.0;
-	gradn.x = 0.0;
-	gradn.y = 0.0;
-	gradn.z = 0.0;
-
-	for (p = 1; p < NGRAD; p++) {
-	  delsq   += gradt[p];
-	  gradn.x += gradt[p]*bs_cv[p][0];
-	  gradn.y += gradt[p]*bs_cv[p][1];
-	  gradn.z += gradt[p]*bs_cv[p][2];
-	}
-
-	delsq   *= r9;
-	gradn.x *= r18;
-	gradn.y *= r18;
-	gradn.z *= r18;
-
-	delsq_phi[index] = delsq;
-	grad_phi[index]  = gradn;
-
-      }
-
-  return;
-}
-
 
 /*****************************************************************************
  *

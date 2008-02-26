@@ -18,9 +18,8 @@ double free_energy_B(void);
 double free_energy_K(void);
 double surface_tension(void);
 double interfacial_width(void);
-double chemical_potential(const double, const double);
-void   chemical_stress(double [3][3], const double, const double [],
-		       const double);
-double free_energy_density(const double, const double []);
+double free_energy_density(const int);
+double free_energy_get_chemical_potential(const int);
+void   free_energy_get_chemical_stress(const int, double [3][3]);
 
 #endif

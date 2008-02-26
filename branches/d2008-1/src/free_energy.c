@@ -10,7 +10,7 @@
  *  final term penalises curvature in the interface. For a complete
  *  description see Kendon et al., J. Fluid Mech., 440, 147 (2001).
  *
- *  $Id: free_energy.c,v 1.4 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: free_energy.c,v 1.4.2.1 2008-02-26 09:41:08 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -20,12 +20,14 @@
 #include <math.h>
 
 #include "pe.h"
+#include "phi.h"
 #include "runtime.h"
 #include "utilities.h"
 #include "free_energy.h"
 
 static double A_     = -1.0;
 static double B_     = +1.0;
+static double C_     =  0.0;
 static double kappa_ = +1.0;
 
 /*****************************************************************************
@@ -115,39 +117,54 @@ double interfacial_width() {
 
 /*****************************************************************************
  *
- *  chemical_potential
+ *  free_energy_get_chemical_potential
  *
- *  Return the chemical potential given \phi and \nabla^2 \phi.
+ *  Return the chemical potential at given position index.
  *
  *****************************************************************************/
 
-double chemical_potential(const double phi, const double delsq_phi) {
+double free_energy_get_chemical_potential(const int index) {
 
-  double mu = phi*(A_ + B_*phi*phi) - kappa_*delsq_phi;
+  double phi, delsq_phi, delsq_sq_phi, mu;
+
+  phi = phi_get_phi_site(index);
+  delsq_phi = phi_get_delsq_phi_site(index);
+  delsq_sq_phi = phi_get_delsq_sq_phi_site(index);
+
+  mu = phi*(A_ + B_*phi*phi) - kappa_*delsq_phi + C_*delsq_sq_phi;
 
   return mu;
 }
 
 /*****************************************************************************
  *
- *  chemical_stress
+ *  free_energy_get_chemical_stress
  *
- *  Return the chemical stress tensor given \phi and related quantities.
+ *  Return the chemical stress tensor for given position index.
+ *  P_ab = [1/2 A phi^2 + 3/4 B phi^4 - kappa phi \nabla^2 phi
+ *       -  1/2 kappa (\nbla phi)^2] \delta_ab
+ *       +  kappa \nalba_a phi \nabla_b phi
  *
  *****************************************************************************/
 
-void chemical_stress(double p[3][3], const double phi,
-		     const double grad_phi[3], const double delsq_phi) {
+void free_energy_get_chemical_stress(const int index, double p[3][3]) {
 
-  int i, j;
-  double bulk = 0.5*phi*phi*(A_ + 1.5*B_*phi*phi);
-  double grad_phi_sq = dot_product(grad_phi, grad_phi);
+  int ia, ib;
+  double phi, bulk, delsq_phi, grad_phi_sq;
+  double grad_phi[3];
   extern const double d_[3][3]; /* Pending Refactor util etc. */ 
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
-      p[i][j] = (bulk - kappa_*(phi*delsq_phi + 0.5*grad_phi_sq))*d_[i][j]
-	+ kappa_*grad_phi[i]*grad_phi[j];
+  phi = phi_get_phi_site(index);
+  phi_get_grad_phi_site(index, grad_phi);
+  delsq_phi = phi_get_delsq_phi_site(index);
+
+  bulk = 0.5*phi*phi*(A_ + 1.5*B_*phi*phi);
+  grad_phi_sq = dot_product(grad_phi, grad_phi);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      p[ia][ib] = (bulk - kappa_*(phi*delsq_phi + 0.5*grad_phi_sq))*d_[ia][ib]
+	+ kappa_*grad_phi[ia]*grad_phi[ib];
     }
   }
 
@@ -159,16 +176,22 @@ void chemical_stress(double p[3][3], const double phi,
  *  free_energy_density
  *
  *  Return the free energy density
- *         E = = (1/2) A phi^2 + (1/4) B phi^4 + (1/2) kappa (\nabla phi)^2
+ *  E = (1/2) A phi^2 + (1/4) B phi^4 + (1/2) kappa (\nabla phi)^2
+ *    + (1/2) C (\nabla^2 phi)^2 + (1/2) C (\nabla^2 phi)^2
  *
  *****************************************************************************/
 
-double free_energy_density(const double phi, const double grad_phi[3]) {
+double free_energy_density(const int index) {
 
-  double e;
-  double bulk = 0.5*phi*phi*(A_ + 0.5*B_*phi*phi);
+  double e, bulk;
+  double phi, dphi[3], delsq;
 
-  e = bulk + 0.5*kappa_*dot_product(grad_phi, grad_phi);
+  phi = phi_get_phi_site(index);
+  phi_get_grad_phi_site(index, dphi);
+  delsq = phi_get_delsq_phi_site(index);
+
+  bulk = phi*phi*(A_ + 0.5*B_*phi*phi);
+  e = 0.5*(bulk + kappa_*dot_product(dphi, dphi) + C_*delsq*delsq);
 
   return e;
 }

@@ -24,12 +24,12 @@
 #include "timer.h"
 #include "phi.h"
 
+/* These are to be considered static */
 double * phi_site;
-double * delsq_phi;
-double * grad_phi;   /* was FVector * grad_phi */
-
-/* Misc curvature from collision (?) */ 
-/* spinodal init */
+double * delsq_phi_site;
+double * grad_phi_site;
+double * delsq_delsq_phi_site;
+double * grad_delsq_phi_site;
 
 static int initialised_ = 0;
 static MPI_Datatype phi_xy_t_;
@@ -54,9 +54,7 @@ void phi_init() {
   int nlocal[3];
 
   get_N_local(nlocal);
-  nsites = (nlocal[X] + 2*nhalo_)*(nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
-
-  info("Requesting %d bytes for phi_site\n", nsites*sizeof(double));
+  nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
 
 #ifdef _MPI_2_
  {
@@ -70,6 +68,18 @@ void phi_init() {
   if (phi_site == NULL) fatal("calloc(phi) failed\n");
 
 #endif
+
+  /* Gradients */
+
+  delsq_phi_site = (double *) calloc(nsites, sizeof(double));
+  grad_phi_site = (double *) calloc(3*nsites, sizeof(double));
+  grad_delsq_phi_site = (double *) calloc(3*nsites, sizeof(double));
+  delsq_delsq_phi_site = (double *) calloc(nsites, sizeof(double));
+
+  if (delsq_phi_site == NULL) fatal("calloc(delsq_phi_site) failed\n");
+  if (grad_phi_site == NULL) fatal("calloc(grad_phi_site) failed\n");
+  if (grad_delsq_phi_site == NULL) fatal("calloc(grad_delsq_phi) failed\n");
+  if (delsq_delsq_phi_site == NULL) fatal("calloc(delsq_delsq_phi) failed\n");
 
   phi_init_mpi();
   initialised_ = 1;
@@ -119,6 +129,12 @@ void phi_finish() {
   MPI_Type_free(&phi_xy_t_);
   MPI_Type_free(&phi_xz_t_);
   MPI_Type_free(&phi_yz_t_);
+
+  free(phi_site);
+  free(delsq_phi_site);
+  free(grad_phi_site);
+  free(grad_delsq_phi_site);
+  free(delsq_delsq_phi_site);
 
   initialised_ = 0;
 
@@ -182,6 +198,7 @@ void phi_set_mean_phi(double phi_global) {
   double  vlocal = 0.0, vtotal;
 
   get_N_local(nlocal);
+  assert(initialised_);
 
   /* Compute the mean phi in the domain proper */
 
@@ -228,63 +245,6 @@ void phi_set_mean_phi(double phi_global) {
 
 /*****************************************************************************
  *
- *  phi_force_calculation
- *
- *  Compute force from thermodynamic sector via
- *    F_alpha = nalba_beta Pth_alphabeta
- *
- *****************************************************************************/
-
-void phi_force_calculation() {
-
-  int p, ia, ib;
-  double pth0[3][3];
-  double pth1[3][3];
-  double pdiffs[NVEL][3][3];
-  double gradpth[3][3];
-  double force[3];
-
-  assert(initialised_);
-
-  /* Compute pth at current point */
-
-  /* Compute differences */
-
-  for (p = 1; p < NVEL; p++) {
-
-    /* Compute pth1 at target point */
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	pdiffs[p][ia][ib] = pth1[ia][ib] - pth0[ia][ib];
-      }
-    }
-  }
-
-  /* Accumulate the differences */
-
-  for (p = 1; p < NVEL; p++) {
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	gradpth[ia][ib] += cv[p][ib]*pdiffs[p][ia][ib];
-      }
-    }
-  }
-
-  /* Compute the force */
-
-  for (ia = 0; ia < 3; ia++) {
-    force[ia] = 0.0;
-    for (ib = 0; ib < 3; ib++) {
-      force[ia] += gradpth[ia][ib];
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  phi_halo
  *
  *****************************************************************************/
@@ -294,8 +254,8 @@ void phi_halo() {
   int nlocal[3];
   int ic, jc, kc, ihalo, ireal, nh;
   int back, forw;
-  const int btag = 261;
-  const int ftag = 262;
+  const int btag = 2061;
+  const int ftag = 2062;
   MPI_Comm comm = cart_comm();
   MPI_Request request[4];
   MPI_Status status[4];
@@ -328,7 +288,7 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, X);
     forw = cart_neighb(FORWARD, X);
 
-    ihalo = get_site_index(nlocal[X] + nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = get_site_index(nlocal[X] + 1, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, forw, btag, comm, request);
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, back, ftag, comm, request+1);
@@ -361,7 +321,7 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Y);
     forw = cart_neighb(FORWARD, Y);
 
-    ihalo = get_site_index(1-nhalo_, nlocal[Y] + nhalo_, 1-nhalo_);
+    ihalo = get_site_index(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, forw, btag, comm, request);
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, back, ftag, comm, request+1);
@@ -394,7 +354,7 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Z);
     forw = cart_neighb(FORWARD, Z);
 
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] + nhalo_);
+    ihalo = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, forw, btag, comm, request);
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, back, ftag, comm, request+1);
@@ -408,4 +368,121 @@ void phi_halo() {
   TIMER_stop(TIMER_HALO_LATTICE);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_get_phi_site
+ *
+ *****************************************************************************/
+
+double phi_get_phi_site(const int index) {
+
+  assert(initialised_);
+  return phi_site[index];
+}
+
+/*****************************************************************************
+ *
+ *  phi_set_phi_site
+ *
+ *****************************************************************************/
+
+void phi_set_phi_site(const int index, const double phi) {
+
+  assert(initialised_);
+  phi_site[index] = phi;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_get_grad_phi_site
+ *
+ *****************************************************************************/
+
+void phi_get_grad_phi_site(const int index, double grad[3]) {
+
+  int ia;
+
+  assert(initialised_);
+  for (ia = 0; ia < 3; ia++) {
+    grad[ia] = grad_phi_site[3*index + ia];
+  }
+ 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_set_grad_phi_site
+ *
+ *****************************************************************************/
+
+void phi_set_grad_phi_site(const int index, const double grad[3]) {
+
+  int ia;
+
+  assert(initialised_);
+  for (ia = 0; ia < 3; ia++) {
+    grad_phi_site[3*index + ia] = grad[ia];
+  }
+ 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_get_delsq_phi_site
+ *
+ *****************************************************************************/
+
+double phi_get_delsq_phi_site(const int index) {
+
+  assert(initialised_);
+  return delsq_phi_site[index];
+}
+
+/*****************************************************************************
+ *
+ *  phi_set_delsq_phi_site
+ *
+ *****************************************************************************/
+
+void phi_set_delsq_phi_site(const int index, const double delsq) {
+
+  assert(initialised_);
+  delsq_phi_site[index] = delsq;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_get_grad_delsq_phi_site
+ *
+ *****************************************************************************/
+
+void phi_get_grad_delsq_phi_site(const int index, double grad[3]) {
+
+  int ia;
+
+  assert(initialised_);
+  for (ia = 0; ia < 3; ia++) {
+    grad[ia] = grad_delsq_phi_site[3*index + ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_get_delsq_sq_phi_site
+ *
+ *****************************************************************************/
+
+double phi_get_delsq_sq_phi_site(const int index) {
+
+  assert(initialised_);
+  return delsq_delsq_phi_site[index];
 }

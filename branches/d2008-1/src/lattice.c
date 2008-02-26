@@ -1,13 +1,17 @@
 /***************************************************************************
  *
- *  lattice.c
+ *  hydrodynamics.c
  *
- *  Deals with the allocation, etc, of the large arrays holding the
- *  fluid distributions, force, etc.
+ *  Deals with the hydrodynamic sector quantities one would expect
+ *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.7.2.1 2008-02-12 17:15:47 kevin Exp $
+ *  $Id: lattice.c,v 1.7.2.2 2008-02-26 09:41:08 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2007 The University of Edinburgh
  *
  ***************************************************************************/
 

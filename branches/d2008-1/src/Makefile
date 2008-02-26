@@ -26,10 +26,10 @@
 
 
 OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
-      physics.o active.o cio.o cmd.o ccomms.o \
+      physics.o active.o brownian.o cio.o cmd.o ccomms.o \
       colloids.o bbl.o build.o communicate.o coords.o control.o \
       eigen3.o ewald.o free_energy.o interaction.o io_harness.o\
-      potential.o \
+      potential.o phi.o phi_force.o phi_gradients.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
       site_map.o subgrid.o test.o timer.o utilities.o wall.o main.o
 
@@ -41,8 +41,13 @@ EXE= Ludwig.exe
 #
 ###############################################################################
 
-#LDFLAGS= -Xc -v -errwarn -xO3
-#OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
+
+CC=cc
+MPICC=tmcc
+OPTS = -D_D3Q19_ -D_SINGLE_FLUID_ -D_COLLOIDS_ -D_COLLOIDS_TEST_ -D_COLLOIDS_TEST_AUTOCORRELATION_ 
+CFLAGS=$(OPTS) -g -Xc -v -errwarn -xO3
+LDFLAGS=
+
 
 ###############################################################################
 #
@@ -62,10 +67,6 @@ EXE= Ludwig.exe
 
 #LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
 #-L/bgl/local/lib/mpitrace -lmpitrace_c
-
-CC = gcc
-OPTS = -D_D3Q19_
-CFLAGS = -Wall $(OPTS)
 
 
 ###############################################################################
@@ -101,7 +102,7 @@ serial:
 	$(MAKE) generic "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi"
 mpi:
-	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS)" "CFLAGS=$(CFLAGS) \
+	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS) -lmpi" "CFLAGS=$(CFLAGS) \
 		-D_MPI_"
 
 ###############################################################################

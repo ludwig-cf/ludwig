@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.10.2.1 2008-01-24 18:29:02 kevin Exp $
+ *  $Id: test.c,v 1.10.2.2 2008-02-26 09:41:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -51,7 +51,6 @@ void TEST_statistics() {
   double partsum[3], partmin[2], partmax[2];
 
   int     i, j, k, p, index;
-  int     xfac, yfac;
   int     N[3];
 
 #ifdef _MPI_
@@ -59,9 +58,6 @@ void TEST_statistics() {
 #endif
 
   get_N_local(N);
-
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
 
   partsum[0] =  0.0;
   partsum[1] =  bbl_order_parameter_deficit();
@@ -82,7 +78,7 @@ void TEST_statistics() {
       for (k = 1; k <= N[Z]; k++) {
 
 	if (site_map_get_status(i, j, k) != FLUID) continue;
-	index = xfac*i + yfac*j + k;
+	index = get_site_index(i, j, k);
 
 	phi = site[index].g[0];
 	rho = site[index].f[0];
@@ -131,7 +127,7 @@ void TEST_statistics() {
       for (k = 1; k <= N[Z]; k++) {
 
 	if (site_map_get_status(i, j, k) != FLUID) continue;
-	index = xfac*i + yfac*j + k;
+	index = get_site_index(i, j, k);
 
 	rho = site[index].f[0];
 	phi = site[index].g[0];
@@ -187,7 +183,6 @@ void TEST_statistics() {
 void TEST_momentum() {
 
   int       ic, jc, kc, index;
-  int       xfac, yfac;
   int       N[3];
   int       p;
 
@@ -202,15 +197,13 @@ void TEST_momentum() {
   gx = gy = gz = 0.0;
 
   get_N_local(N);
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = ic*xfac + jc*yfac + kc;
+	index = get_site_index(ic, jc, kc);
 
 	f = site[index].f;
 
@@ -297,14 +290,11 @@ void TEST_fluid_temperature() {
   double   rhovar, chi2var;
   double   rfluid;
   int      i, j, k, index, p;
-  int      xfac, yfac;
   int      N[3];
   double   rho, ux, uy, uz, chi2;
   double   *f;
 
   get_N_local(N);
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   uvar    = 0.0;   /* Total u variance */
   uxvar   = 0.0;   /* u_x variance */
@@ -323,7 +313,7 @@ void TEST_fluid_temperature() {
       for (k = 1; k <= N[Z]; k++) {
 
 	if (site_map_get_status(i, j, k) == FLUID) {
-	  index = i*xfac + j*yfac + k;
+	  index = get_site_index(i, j, k);
 	  f = site[index].f;
 
 	  rho  = f[0];
@@ -407,10 +397,6 @@ void TEST_fluid_temperature() {
 
 void test_rheology() {
 
-  extern FVector * grad_phi;
-  extern double * phi_site;
-  extern double * delsq_phi;
-
   int get_step(void);
 
   double stress[3][3];
@@ -435,7 +421,7 @@ void test_rheology() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 	
 	for (p = 0; p < NVEL; p++) {
 	  stress[X][X] += site[index].f[p]*ma_[4][p];
@@ -443,11 +429,7 @@ void test_rheology() {
 	  stress[Y][Y] += site[index].f[p]*ma_[7][p];
 	}
 
-	dphi[X] = (grad_phi + index)->x;
-	dphi[Y] = (grad_phi + index)->y;
-	dphi[Z] = (grad_phi + index)->z;
-
-	chemical_stress(plocal, phi_site[index], dphi, delsq_phi[index]);
+	free_energy_get_chemical_stress(index, plocal);
 
 	pchem[X][X] += plocal[X][X];
 	pchem[X][Y] += plocal[X][Y];
