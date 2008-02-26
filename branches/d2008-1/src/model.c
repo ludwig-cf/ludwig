@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.4.2 2008-02-26 09:41:08 kevin Exp $
+ *  $Id: model.c,v 1.9.4.3 2008-02-26 17:11:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -36,13 +36,12 @@ Site  * site;
 
 static int nsites_ = 0;
 
-#ifdef _MPI_
 static MPI_Datatype DT_plane_XY;
 static MPI_Datatype DT_plane_XZ;
 static MPI_Datatype DT_plane_YZ;
-MPI_Datatype DT_Site;
+MPI_Datatype DT_Site; /* currently referenced in leesedwards */
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
-#endif
+
 
 /***************************************************************************
  *
@@ -87,7 +86,6 @@ void init_site() {
 
 #endif
 
-#ifdef _MPI_
   /* Set up the MPI Datatypes used for site, and its corresponding
    * halo messages:
    *
@@ -109,8 +107,6 @@ void init_site() {
   MPI_Type_vector(1, ny*nz*nhalolocal, 1, DT_Site, &DT_plane_YZ);
   MPI_Type_commit(&DT_plane_XZ);
 
-#endif
-
   return;
 }
 
@@ -130,12 +126,10 @@ void finish_site() {
   free(site);
 #endif
 
-#ifdef _MPI_
   MPI_Type_free(&DT_Site);
   MPI_Type_free(&DT_plane_XY);
   MPI_Type_free(&DT_plane_XZ);
   MPI_Type_free(&DT_plane_YZ);
-#endif
 
   return;
 }
@@ -360,10 +354,8 @@ void halo_site() {
   int ihalo, ireal;
   int N[3];
 
-#ifdef _MPI_
   MPI_Request request[4];
   MPI_Status status[4];
-#endif
 
   TIMER_start(TIMER_HALO_LATTICE);
 
@@ -386,7 +378,6 @@ void halo_site() {
     }
   }
   else {
-#ifdef _MPI_
 
     ihalo = get_site_index(N[X] + 1, 1 - nhalo_, 1 - nhalo_);
     MPI_Irecv(&site[ihalo].f[0], 1, DT_plane_YZ,
@@ -401,7 +392,6 @@ void halo_site() {
     MPI_Issend(&site[ireal].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
 	       TAG_FWD, cart_comm(), &request[3]);
     MPI_Waitall(4, request, status);
-#endif
   }
   
   /* The y-direction (XZ plane) */
@@ -421,7 +411,6 @@ void halo_site() {
     }
   }
   else {
-#ifdef _MPI_
     ihalo = get_site_index(1-nhalo_, N[Y] + 1, 1-nhalo_);
     MPI_Irecv(site[ihalo].f, 1, DT_plane_XZ,
 	      cart_neighb(FORWARD,Y), TAG_BWD, cart_comm(), &request[0]);
@@ -435,7 +424,6 @@ void halo_site() {
     MPI_Issend(site[ireal].f, 1, DT_plane_XZ, cart_neighb(FORWARD,Y),
 	       TAG_FWD, cart_comm(), &request[3]);
     MPI_Waitall(4, request, status);
-#endif
   }
   
   /* Finally, z-direction (XY plane) */
@@ -455,7 +443,7 @@ void halo_site() {
     }
   }
   else {
-#ifdef _MPI_
+
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, N[Z] + 1);
     MPI_Irecv(site[ihalo].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
 	      TAG_BWD, cart_comm(), &request[0]);
@@ -469,7 +457,6 @@ void halo_site() {
     MPI_Issend(site[ireal].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
 	       TAG_FWD, cart_comm(), &request[3]);  
     MPI_Waitall(4, request, status);
-#endif
   }
  
   TIMER_stop(TIMER_HALO_LATTICE);

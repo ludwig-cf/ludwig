@@ -35,7 +35,7 @@
 #include "regsteer.h"
 
 
-static char rcsid[] = "$Id: main.c,v 1.13.2.1 2008-02-26 09:41:08 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.13.2.2 2008-02-26 17:11:09 kevin Exp $";
 
 int print_free_energy_profile(void);
 void set_block(void);
@@ -231,8 +231,7 @@ int print_free_energy_profile(void) {
   int index;
   int ic, jc = 1, kc = 1;
   int N[ND];
-  double phi, e, gradphi[ND];
-  extern FVector * grad_phi; 
+  double e;
 
   info("Free energy density profile\n\n");
   get_N_local(N);
@@ -243,7 +242,7 @@ int print_free_energy_profile(void) {
 
     e = free_energy_density(index);
 
-    printf("%4d %10.8f %10.8f\n", ic, phi, e);
+    printf("%4d %10.8f\n", ic, e);
   }
 
   return 0;

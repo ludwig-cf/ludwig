@@ -49,7 +49,6 @@ void do_brownian_dynamics() {
   double correlator_ur[ntime];
   double correlator_rr[ntime];
   double correlator_ss[ntime];
-  double f = 0.0;
   double mass, scaleu, scalex, beta;
   double dr[3];
 

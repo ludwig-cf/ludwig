@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.1.2.3 2008-01-24 18:28:15 kevin Exp $
+ *  $Id: io_harness.c,v 1.1.2.4 2008-02-26 17:11:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -167,7 +167,6 @@ void io_write(char * filename_stub, struct io_info_t * io_info) {
   int       token = 0;
   int       ic, jc, kc;
   int       nlocal[3];
-  long int  offset;
   const int io_tag = 140;
 
   MPI_Status status;

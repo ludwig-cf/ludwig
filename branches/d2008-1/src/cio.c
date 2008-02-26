@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.6 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: cio.c,v 1.6.2.1 2008-02-26 17:11:09 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -23,6 +23,7 @@
 #ifdef _MPI_
 #define         TAG_IO 2000
 extern MPI_Comm IO_Comm;
+static int ngroup;
 #endif
 
 extern IO_Param io_grp;                  /* From communicate.c */
@@ -45,7 +46,6 @@ static void (* CIO_read_list)(FILE *);
 static void CIO_count_colloids(void);
 
 static int nlocal;                       /* Local number of colloids. */
-static int ngroup;
 static int ntotal;
 
 /*****************************************************************************
