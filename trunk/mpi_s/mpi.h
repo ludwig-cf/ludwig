@@ -108,6 +108,7 @@ int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 	       MPI_Op op, int root, MPI_Comm comm);
 
 
+int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * new);
 int MPI_Type_vector(int count, int blocklength, int stride, MPI_Datatype old,
 		    MPI_Datatype * new);
 int MPI_Type_commit(MPI_Datatype * datatype);
