@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.2 2008-02-26 17:11:09 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.3 2008-03-20 18:16:00 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -63,7 +63,7 @@ void phi_gradients_compute() {
 
   /* General case with solid objects */
 
-  phi_gradients_with_solid();
+  phi_gradients_fluid();
 
   /* Special case for fluid only */
   /* phi_gradients_fluid();*/

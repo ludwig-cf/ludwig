@@ -21,15 +21,20 @@
 #include "coords.h"
 #include "model.h"
 #include "site_map.h"
+#include "io_harness.h"
 #include "timer.h"
 #include "phi.h"
 
-/* These are to be considered static */
+struct io_info_t * io_info_phi;
+
+/* Shift the gradients to phi-gradients */
 double * phi_site;
 double * delsq_phi_site;
 double * grad_phi_site;
 double * delsq_delsq_phi_site;
 double * grad_delsq_phi_site;
+
+const int phi_finite_difference_ = 1;
 
 static int initialised_ = 0;
 static MPI_Datatype phi_xy_t_;
@@ -37,6 +42,9 @@ static MPI_Datatype phi_xz_t_;
 static MPI_Datatype phi_yz_t_;
 
 static void phi_init_mpi(void);
+static void phi_init_io(void);
+static int  phi_read(FILE *, const int, const int, const int);
+static int  phi_write(FILE *, const int, const int, const int);
 
 /****************************************************************************
  *
@@ -82,6 +90,7 @@ void phi_init() {
   if (delsq_delsq_phi_site == NULL) fatal("calloc(delsq_delsq_phi) failed\n");
 
   phi_init_mpi();
+  phi_init_io();
   initialised_ = 1;
 
   return;
@@ -120,12 +129,32 @@ static void phi_init_mpi() {
 
 /*****************************************************************************
  *
+ *  phi_init_io
+ *
+ *****************************************************************************/
+
+static void phi_init_io() {
+
+  /* Take a default I/O struct */
+  io_info_phi = io_info_create();
+
+  io_info_set_name(io_info_phi, "Compositional order parameter");
+  io_info_set_read(io_info_phi, phi_read);
+  io_info_set_write(io_info_phi,phi_write);
+  io_info_set_bytesize(io_info_phi, sizeof(double));
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  phi_finish
  *
  *****************************************************************************/
 
 void phi_finish() {
 
+  io_info_destroy(io_info_phi);
   MPI_Type_free(&phi_xy_t_);
   MPI_Type_free(&phi_xz_t_);
   MPI_Type_free(&phi_yz_t_);
@@ -148,9 +177,6 @@ void phi_finish() {
  *  Recompute the value of the order parameter at all the current
  *  fluid sites (domain proper).
  *
- *  The halo regions are immediately updated to reflect the new
- *  values.
- *
  *****************************************************************************/
 
 void phi_compute_phi_site() {
@@ -159,6 +185,7 @@ void phi_compute_phi_site() {
   int     nlocal[3];
 
   assert(initialised_);
+  if (phi_finite_difference_) return;
 
   get_N_local(nlocal);
 
@@ -169,73 +196,6 @@ void phi_compute_phi_site() {
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = get_site_index(ic, jc, kc);
 	phi_site[index] = get_phi_at_site(index);
-      }
-    }
-  }
-
-  phi_halo();
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_set_mean_phi
- *
- *  Compute the current mean phi in the system and remove the excess
- *  so that the mean phi is phi_global (allowing for presence of any
- *  particles or, for that matter, other solids).
- *
- *  The value of phi_global is generally (but not necessilarily) zero.
- *
- *****************************************************************************/
-
-void phi_set_mean_phi(double phi_global) {
-
-  int     index, ic, jc, kc;
-  int     nlocal[3];
-  double  phi_local = 0.0, phi_total, phi_correction;
-  double  vlocal = 0.0, vtotal;
-
-  get_N_local(nlocal);
-  assert(initialised_);
-
-  /* Compute the mean phi in the domain proper */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = get_site_index(ic, jc, kc);
-	phi_local += get_phi_at_site(index);
-	vlocal += 1.0;
-      }
-    }
-  }
-
-  /* All processes need the total phi, and number of fluid sites
-   * to compute the mean */
-
-  MPI_Allreduce(&phi_local, &phi_total, 1, MPI_DOUBLE, MPI_SUM, cart_comm());
-  MPI_Allreduce(&vlocal, &vtotal,   1, MPI_DOUBLE,    MPI_SUM, cart_comm());
-
-  /* The correction requied at each fluid site is then ... */
-  phi_correction = phi_global - phi_total / vtotal;
-
-  /* The correction is added to the rest distribution g[0],
-   * which should be good approximation to where it should
-   * all end up if there were a full reprojection. */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	if (site_map_get_status(ic, jc, kc) == FLUID) {
-	  index = get_site_index(ic, jc, kc);
-	  phi_local = get_g_at_site(index, 0) + phi_correction;
-	  set_g_at_site(index, 0,  phi_local);
-	}
       }
     }
   }
@@ -485,4 +445,40 @@ double phi_get_delsq_sq_phi_site(const int index) {
 
   assert(initialised_);
   return delsq_delsq_phi_site[index];
+}
+
+/*****************************************************************************
+ *
+ *  phi_read
+ *
+ *****************************************************************************/
+
+static int phi_read(FILE * fp, const int ic, const int jc, const int kc) {
+
+  int index, n;
+
+  index = get_site_index(ic, jc, kc);
+  n = fread(phi_site + index, sizeof(double), 1, fp);
+
+  if (n != 1) fatal("fread(phi) failed at index %d", index);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  phi_write
+ *
+ *****************************************************************************/
+
+static int phi_write(FILE * fp, const int ic, const int jc, const int kc) {
+
+  int index, n;
+
+  index = get_site_index(ic, jc, kc);
+  n = fwrite(phi_site + index, sizeof(double), 1, fp);
+
+  if (n != 1) fatal("fwrite(phi) failed at index %d\n", index);
+ 
+  return n;
 }

@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.1.2.2 2008-02-26 17:11:09 kevin Exp $
+ *  $Id: phi_force.c,v 1.1.2.3 2008-03-20 18:16:00 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,6 +21,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
+#include "lattice.h"
 #include "phi.h"
 #include "free_energy.h"
 
@@ -33,7 +34,7 @@
  *
  *****************************************************************************/
 
-void phi_force_calculation_fluid_six() {
+void phi_force_calculation_fluid() {
 
   int ia, ic, jc, kc;
   int index, index1;
@@ -41,8 +42,6 @@ void phi_force_calculation_fluid_six() {
   double pth0[3][3];
   double pth1[3][3];
   double force[3];
-
-  void add_force_at_site(const int, double *);
 
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
@@ -94,7 +93,7 @@ void phi_force_calculation_fluid_six() {
 
 	/* Store the force on lattice */
 
-	add_force_at_site(index, force);
+	hydrodynamics_add_force_local(index, force);
 
 	/* Next site */
       }
@@ -113,7 +112,7 @@ void phi_force_calculation_fluid_six() {
  *
  *****************************************************************************/
 
-void phi_force_calculation_fluid() {
+void phi_force_calculation_fluid_nvel() {
 
   int p, ia, ib, ic, jc, kc, ic1, jc1, kc1;
   int index, index1;
@@ -124,8 +123,6 @@ void phi_force_calculation_fluid() {
   double gradpth[3][3];
   double force[3];
   double r10 = 0.1;
-
-  void add_force_at_site(const int, double *);
 
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
@@ -185,7 +182,7 @@ void phi_force_calculation_fluid() {
 
 	/* Store the force on lattice */
 
-	add_force_at_site(index, force);
+	hydrodynamics_add_force_local(index, force);
 
 	/* Next site */
       }
