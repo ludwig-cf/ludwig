@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.10.2.3 2008-02-26 17:11:10 kevin Exp $
+ *  $Id: test.c,v 1.10.2.4 2008-03-20 18:16:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,8 +24,10 @@
 #include "model.h"
 #include "physics.h"
 #include "bbl.h"
+#include "phi.h"
 #include "free_energy.h"
 #include "test.h"
+
 
 extern Site * site;
 
@@ -71,6 +73,8 @@ void TEST_statistics() {
   partmax[1] = -1.0;     /* phi_max */
   phivar     =  0.0;
 
+  phi_compute_phi_site();
+
   /* Accumulate the sums, minima, and maxima */
 
   for (i = 1; i <= N[X]; i++) {
@@ -80,18 +84,17 @@ void TEST_statistics() {
 	if (site_map_get_status(i, j, k) != FLUID) continue;
 	index = get_site_index(i, j, k);
 
-	phi = site[index].g[0];
 	rho = site[index].f[0];
 
 	for (p = 1; p < NVEL; p++) {
 	  rho += site[index].f[p];
-	  phi += site[index].g[p];
 	}
 
 	if (rho < partmin[0]) partmin[0] = rho;
 	if (rho > partmax[0]) partmax[0] = rho;
 	partsum[0] += rho;
 
+	phi = phi_get_phi_site(index);
 	if (phi < partmin[1]) partmin[1] = phi;
 	if (phi > partmax[1]) partmax[1] = phi;
 	partsum[1] += phi;
@@ -130,13 +133,12 @@ void TEST_statistics() {
 	index = get_site_index(i, j, k);
 
 	rho = site[index].f[0];
-	phi = site[index].g[0];
 
 	for (p = 1; p < NVEL; p++) {
 	  rho += site[index].f[p];
-	  phi += site[index].g[p];
 	}
 
+	phi = phi_get_phi_site(index);
 	partsum[0] += (rho - rhobar)*(rho - rhobar);
 	partsum[1] += (phi - phibar)*(phi - phibar);
 
