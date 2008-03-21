@@ -1,22 +1,28 @@
 /***************************************************************************
  *
- *  lattice.h
+ *  hydrodynamics.h
  *
- *  $Id: lattice.h,v 1.5.4.2 2008-02-12 17:15:47 kevin Exp $
+ *  $Id: lattice.h,v 1.5.4.3 2008-03-21 09:22:34 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2008 The University of Edinburgh
  *
  ***************************************************************************/
 
-#ifndef _LATTICE_H_
-#define _LATTICE_H_
+#ifndef HYDRODYNAMICS_H_
+#define HYDRODYNAMICS_H_
 
-void LATT_allocate_force(const int);
-void latt_allocate_velocity(const int);
-void set_force_at_site(const int, double []);
-void add_force_at_site(const int, double []);
-void get_velocity_at_lattice(const int, double []);
+void hydrodynamics_init(void);
+void hydrodynamics_halo_u(void);
+void hydrodynamics_finish(void);
+void hydrodynamics_set_force_local(const int, const double *);
+void hydrodynamics_add_force_local(const int, const double *);
+void hydrodynamics_get_force_local(const int, double *);
+void hydrodynamics_set_velocity(const int, const double *);
+void hydrodynamics_get_velocity(const int, double *);
+void hydrodynamics_zero_force(void);
 
-struct vector {double c[3];};
-
-#endif /* _LATTICE_H_ */
+#endif
