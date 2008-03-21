@@ -10,13 +10,14 @@
  *  final term penalises curvature in the interface. For a complete
  *  description see Kendon et al., J. Fluid Mech., 440, 147 (2001).
  *
- *  $Id: free_energy.c,v 1.4.2.1 2008-02-26 09:41:08 kevin Exp $
+ *  $Id: free_energy.c,v 1.4.2.2 2008-03-21 09:23:53 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 
 #include "pe.h"
@@ -25,10 +26,10 @@
 #include "utilities.h"
 #include "free_energy.h"
 
-static double A_     = -1.0;
-static double B_     = +1.0;
+static double A_     = -0.003125;
+static double B_     = +0.003125;
 static double C_     =  0.0;
-static double kappa_ = +1.0;
+static double kappa_ = +0.002;
 
 /*****************************************************************************
  *
@@ -85,6 +86,24 @@ double free_energy_B() {
 }
 double free_energy_K() {
   return kappa_;
+}
+
+void free_energy_set_A(double a) {
+  assert(a < 0.0);
+  A_ = a;
+  return;
+}
+
+void free_energy_set_B(double b) {
+  assert(b > 0.0);
+  B_ = b;
+  return;
+}
+
+void free_energy_set_kappa(double k) {
+  assert(k > 0.0);
+  kappa_ = k;
+  return;
 }
 
 /*****************************************************************************
@@ -173,11 +192,37 @@ void free_energy_get_chemical_stress(const int index, double p[3][3]) {
 
 /*****************************************************************************
  *
+ *  free_energy_get_isotropic_pressure
+ *
+ *  Return the isotrpoic part of the pressure tensor.
+ *  P_0 = [1/2 A phi^2 + 3/4 B phi^4 - kappa phi \nabla^2 phi
+ *       -  1/2 kappa (\nabla phi)^2]
+ *
+ *****************************************************************************/
+
+double free_energy_get_isotropic_pressure(const int index) {
+
+  double p0, phi, bulk, delsq_phi, grad_phi_sq;
+  double grad_phi[3];
+
+  phi = phi_get_phi_site(index);
+  phi_get_grad_phi_site(index, grad_phi);
+  delsq_phi = phi_get_delsq_phi_site(index);
+
+  bulk = 0.5*phi*phi*(A_ + 1.5*B_*phi*phi);
+  grad_phi_sq = dot_product(grad_phi, grad_phi);
+  p0 = bulk - kappa_*(phi*delsq_phi + 0.5*grad_phi_sq);
+
+  return p0;
+}
+
+/*****************************************************************************
+ *
  *  free_energy_density
  *
  *  Return the free energy density
  *  E = (1/2) A phi^2 + (1/4) B phi^4 + (1/2) kappa (\nabla phi)^2
- *    + (1/2) C (\nabla^2 phi)^2 + (1/2) C (\nabla^2 phi)^2
+ *    + (1/2) C (\nabla^2 phi)^2
  *
  *****************************************************************************/
 

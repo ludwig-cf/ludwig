@@ -20,6 +20,11 @@ double surface_tension(void);
 double interfacial_width(void);
 double free_energy_density(const int);
 double free_energy_get_chemical_potential(const int);
+double free_energy_get_isotropic_pressure(const int);
 void   free_energy_get_chemical_stress(const int, double [3][3]);
+
+void free_energy_set_A(const double);
+void free_energy_set_B(const double);
+void free_energy_set_kappa(const double);
 
 #endif
