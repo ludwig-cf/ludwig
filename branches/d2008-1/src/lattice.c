@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.7.2.3 2008-03-21 09:22:34 kevin Exp $
+ *  $Id: lattice.c,v 1.7.2.4 2008-03-21 15:07:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -82,13 +82,13 @@ static void hydrodynamics_init_mpi() {
   MPI_Type_contiguous(sizeof(struct vector), MPI_BYTE, &mpi_vector_t);
   MPI_Type_commit(&mpi_vector_t);
 
-  MPI_Type_vector(nx*ny, 3*nhalolocal, 3*nz, mpi_vector_t, &halo_xy_t);
+  MPI_Type_vector(nx*ny, nhalolocal, nz, mpi_vector_t, &halo_xy_t);
   MPI_Type_commit(&halo_xy_t);
 
-  MPI_Type_vector(nx, 3*nz*nhalolocal, 3*ny*nz, mpi_vector_t, &halo_xz_t);
+  MPI_Type_vector(nx, nz*nhalolocal, ny*nz, mpi_vector_t, &halo_xz_t);
   MPI_Type_commit(&halo_xz_t);
 
-  MPI_Type_vector(1, 3*nx*ny*nhalolocal, 1, mpi_vector_t, &halo_yz_t);
+  MPI_Type_vector(1, nx*ny*nhalolocal, 1, mpi_vector_t, &halo_yz_t);
   MPI_Type_commit(&halo_yz_t);
 
   return;
