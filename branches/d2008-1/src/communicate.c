@@ -20,34 +20,16 @@ IO_Param     io_grp;      /* Parameters of current IO group */
 int          input_format;     /* Default input format is ASCII */
 int          output_format;    /* Default output format is binary */
 
-char         input_config[256];
+char         input_config[256] = "EMPTY";
 char         output_config[256];
 
-
-/* Generic functions for output */
-
-static void (*MODEL_write_rho)( FILE *, int, int );
-static void (*MODEL_write_rho_phi)( FILE *, int, int );
-
-/* Generic functions for input */
 void (*MODEL_read_site)( FILE * );
-
 void (*MODEL_write_site)( FILE *, int, int );
-void (*MODEL_write_phi)( FILE *, int, int );
-void (*MODEL_write_velocity)( FILE *, int, int );
 
 static void    MODEL_read_site_asc( FILE * );
 static void    MODEL_read_site_bin( FILE * );
 static void    MODEL_write_site_asc( FILE *, int, int );
-static void    MODEL_write_rho_asc( FILE *, int, int );
-static void    MODEL_write_phi_asc( FILE *, int, int );
-static void    MODEL_write_rho_phi_asc( FILE *, int, int );
 static void    MODEL_write_site_bin( FILE *, int, int );
-static void    MODEL_write_rho_bin( FILE *, int, int );
-static void    MODEL_write_phi_bin( FILE *, int, int );
-static void    MODEL_write_rho_phi_bin( FILE *, int, int );
-static void    MODEL_write_velocity_asc( FILE *, int, int );
-static void    MODEL_write_velocity_bin( FILE *, int, int );
 
 
 #ifdef _MPI_
@@ -208,18 +190,10 @@ void COM_init() {
   case BINARY:
     info("Output format is binary\n");
     MODEL_write_site     = MODEL_write_site_bin;
-    MODEL_write_rho      = MODEL_write_rho_bin;
-    MODEL_write_phi      = MODEL_write_phi_bin;
-    MODEL_write_rho_phi  = MODEL_write_rho_phi_bin;	
-    MODEL_write_velocity = MODEL_write_velocity_bin;
     break;
   case ASCII:
     info("Output format is ASCII\n");
     MODEL_write_site     = MODEL_write_site_asc;
-    MODEL_write_rho      = MODEL_write_rho_asc;
-    MODEL_write_phi      = MODEL_write_phi_asc;
-    MODEL_write_rho_phi  = MODEL_write_rho_phi_asc;	
-    MODEL_write_velocity = MODEL_write_velocity_asc;
     break;
   default:
     fatal("Incorrect output format (%d)\n", output_format);
@@ -652,103 +626,6 @@ void MODEL_write_site_asc( FILE *fp, int ind, int g_ind )
 
 /*----------------------------------------------------------------------------*/
 /*!
- * Writes density (rho) from site s with index ind to stream fp (ASCII output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_rho(), MODEL_write_rho_bin(), COM_write_site()
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_rho_asc( FILE *fp, int ind, int g_ind )
-{
-  double rho;    
-
-  rho = get_rho_at_site(ind);
-
-  /* Write density information to stream */
-  if( fprintf(fp,"%d %lg\n",g_ind,rho) < 0 )
-    {
-      fatal("MODEL_write_rho_asc(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes composition (phi) from site s with index ind to stream fp (ASCII 
- * output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_phi(), MODEL_write_phi_bin(), COM_write_site()
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_phi_asc( FILE *fp, int ind, int g_ind )
-{
-  double phi;    
-
-  phi = get_phi_at_site(ind);
-
-  /* Write composition information to stream */
-  if( fprintf(fp,"%d %lg\n",g_ind,phi) < 0 )
-    {
-      fatal("MODEL_write_phi_asc(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes density (rho) and composition (phi) data from site s with index ind
- * to stream fp (ASCII output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_rho_phi(), MODEL_write_rho_phi_bin(), 
- *                COM_write_site()
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_rho_phi_asc( FILE *fp, int ind, int g_ind )
-{
-  double rho, phi;    
-
-  rho = get_rho_at_site(ind);
-  phi = get_phi_at_site(ind);
-
-  /* Write density and composition information to stream */
-  if( fprintf(fp,"%d %lg %lg\n",g_ind,rho,phi) < 0 )
-    {
-      fatal("MODEL_write_rho_phi_asc(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * Writes distribution function from site s with index ind to stream fp (binary
  * output)
  *
@@ -775,148 +652,6 @@ void MODEL_write_site_bin( FILE *fp, int ind, int g_ind )
       fatal("MODEL_write_site_bin(): couldn't write data\n");
     }
 }
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes density (rho) from site s with index ind to stream fp (binary output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_rho(), MODEL_write_rho_asc(), COM_write_site()
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_rho_bin( FILE *fp, int ind, int g_ind )
-{
-  double rho;    
-
-  rho = get_rho_at_site(ind);
-
-  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&rho,sizeof(double),1,fp) != 1 )
-    {
-      fatal("MODEL_write_rho_bin(): couldn't write data\n");
-    }
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes composition (phi) from site s with index ind to stream fp (binary
- * output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_phi(), MODEL_write_phi_asc(), COM_write_site()
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_phi_bin( FILE *fp, int ind, int g_ind )
-{
-  double phi;
-  float phi4;
-
-  phi = get_phi_at_site(ind);
-  phi4 = (float) phi;
-
-#ifdef _OLD_IO_
-  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&phi,sizeof(double),1,fp) != 1 )
-    {
-      fatal("MODEL_write_phi_bin(): couldn't write data\n");
-    }
-#else
-  fwrite(&phi4, sizeof(float),1,fp);
-#endif
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Writes density (rho) and composition (phi) data from site s with index ind
- * to stream fp (binary output)
- *
- *- \c Options:   _TRACE_
- *- \c Arguments: 
- *  -# \c FILE \c *fp: pointer for stream
- *  -# \c int \c ind: local index of site s
- *  -# \c int \c g_ind: global index of site s
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_write_rho_phi(), MODEL_write_rho_phi_asc(), 
- *                COM_write_site()
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_write_rho_phi_bin( FILE *fp, int ind, int g_ind )
-{
-  double rho,phi;    
-
-  rho = get_rho_at_site(ind);
-  phi = get_phi_at_site(ind);
-
-  if( fwrite(&g_ind,sizeof(int),1,fp) != 1 ||
-      fwrite(&rho,sizeof(double),1,fp) != 1 ||
-      fwrite(&phi,sizeof(double),1,fp) != 1 )
-    {
-      fatal("MODEL_write_rho_phi_bin(): couldn't write data\n");
-    }
-}
-
-
-/*****************************************************************************
- *
- *  MODEL_write_velocity_asc
- *
- *****************************************************************************/
-
-void MODEL_write_velocity_asc( FILE *fp, int ind, int g_ind ) {
-
-  double u[3];
-  
-  get_velocity_at_lattice(ind, u);
-
-  fprintf(fp,"%d %lg %lg %lg\n", g_ind, u[X], u[Y], u[Z]);
-
-}
-
-/*****************************************************************************
- *
- *  MODEL_write_velocity_bin
- *
- *****************************************************************************/
-
-
-void MODEL_write_velocity_bin( FILE *fp, int ind, int g_ind ) {
-
-  double u[3];
-
-  get_velocity_at_lattice(ind, u);
-
-  fwrite(&g_ind, sizeof(int), 1, fp);
-  fwrite(u + X, sizeof(double), 1, fp);
-  fwrite(u + Y, sizeof(double), 1, fp);
-  fwrite(u + Z, sizeof(double), 1, fp);
-
-}
-
 
 /*****************************************************************************
  *
@@ -949,4 +684,3 @@ void get_input_config_filename(char * stub, const int step) {
 
   return;
 }
-

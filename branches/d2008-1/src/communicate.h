@@ -14,8 +14,6 @@ typedef struct{
 } IO_Param;
 
 void    COM_init( void );
-void    COM_halo( void );
-void    COM_halo_phi( void );
 int     COM_local_index( int );
 void    COM_read_site( char *, void (*func)( FILE * ));
 void    COM_write_site( char *, void (*func)( FILE *, int, int ));
@@ -23,9 +21,7 @@ void    COM_write_site( char *, void (*func)( FILE *, int, int ));
 void  get_input_config_filename(char *, const int);
 void  get_output_config_filename(char *, const int);
 
-extern void (*MODEL_write_velocity)( FILE *, int, int );
 extern void (*MODEL_write_site)( FILE *, int, int );
-extern void (*MODEL_write_phi)( FILE *, int, int );
 extern void (*MODEL_read_site)( FILE * );
 
 #endif /* _COM_H */
