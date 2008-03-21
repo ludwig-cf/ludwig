@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.4.3 2008-02-26 17:11:09 kevin Exp $
+ *  $Id: model.c,v 1.9.4.4 2008-03-21 12:41:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,6 +35,7 @@ const double d_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
 Site  * site;
 
 static int nsites_ = 0;
+static int initialised_ = 0;
 
 static MPI_Datatype DT_plane_XY;
 static MPI_Datatype DT_plane_XZ;
@@ -105,7 +106,9 @@ void init_site() {
   MPI_Type_commit(&DT_plane_XZ);
 
   MPI_Type_vector(1, ny*nz*nhalolocal, 1, DT_Site, &DT_plane_YZ);
-  MPI_Type_commit(&DT_plane_XZ);
+  MPI_Type_commit(&DT_plane_YZ);
+
+  initialised_ = 1;
 
   return;
 }
@@ -357,6 +360,7 @@ void halo_site() {
   MPI_Request request[4];
   MPI_Status status[4];
 
+  assert(initialised_);
   TIMER_start(TIMER_HALO_LATTICE);
 
   get_N_local(N);
