@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.4 2008-02-26 09:41:08 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.5 2008-03-21 09:26:32 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,6 +27,7 @@
 #include "control.h"
 #include "free_energy.h"
 #include "phi.h"
+#include "phi_cahn_hilliard.h"
 #include "lattice.h"
 
 #include "utilities.h"
@@ -40,8 +41,6 @@
 
 extern Site * site;
 extern double * phi_site;
-extern struct vector * fl_force;
-extern struct vector * fl_u;
 
 /* Variables (not static) */
 
@@ -51,7 +50,6 @@ double    siteforce[3];
 
 static int    nmodes_ = NVEL;  /* Modes to use in collsion stage */
 
-static double  mobility;       /* Order parameter Mobility   */
 static double  noise0 = 0.1;   /* Initial noise amplitude    */
 static double rtau_shear;      /* Inverse relaxation time for shear modes */
 static double rtau_bulk;       /* Inverse relaxation time for bulk modes */
@@ -81,8 +79,10 @@ void collide() {
 
 #else
 
+  void MODEL_get_gradients(void);
   void phi_gradients_compute(void);
   void phi_force_calculation_fluid(void);
+  void TEST_statistics(void);
   int  get_N_colloid(void);
   int  boundaries_present(void);
 
@@ -92,6 +92,7 @@ void collide() {
   TIMER_start(TIMER_PHI_GRADIENTS);
 
   phi_compute_phi_site();
+  phi_halo();
 
   if (get_N_colloid() > 0 || boundaries_present()) {
     /* Must get gradients right so use this */ 
@@ -99,14 +100,21 @@ void collide() {
   }
   else {
     /* No solid objects (including cases with LE planes) use this */
-    MODEL_get_gradients();
-    /* phi_gradients_compute();
-       phi_force_calculation_fluid();*/
+    /* MODEL_get_gradients();*/
+    phi_gradients_compute();
+    phi_force_calculation_fluid();
   }
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
-  MODEL_collide_binary_lb();
+  if (phi_finite_difference_) {
+    MODEL_collide_multirelaxation();
+    phi_cahn_hilliard();
+  }
+  else {
+    MODEL_collide_binary_lb();
+  }
 
+  /* TEST_statistics();*/
 #endif
 
   return;
@@ -147,8 +155,7 @@ void MODEL_collide_multirelaxation() {
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
 
-  double * force_local;
-  double * u_field;
+  double    force_local[3];
   const double   r3     = (1.0/3.0);
 
   TIMER_start(TIMER_COLLIDE);
@@ -190,14 +197,13 @@ void MODEL_collide_multirelaxation() {
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
-	force_local = fl_force[index].c;
-	u_field = fl_u[index].c;
+	hydrodynamics_get_force_local(index, force_local);
 
 	for (i = 0; i < 3; i++) {
 	  force[i] = (siteforce[i] + force_local[i]);
 	  u[i] = rrho*(u[i] + 0.5*force[i]);  
-	  u_field[i] = u[i];
 	}
+	hydrodynamics_set_velocity(index, u);
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -326,8 +332,7 @@ void MODEL_collide_binary_lb() {
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
 
-  double * force_local;
-  double * u_field;
+  double    force_local[3];
   const double   r3     = (1.0/3.0);
 
 
@@ -336,6 +341,7 @@ void MODEL_collide_binary_lb() {
   double    sth[3][3], sphi[3][3];
   double    mu;                      /* Chemical potential */
   double    rtau2;
+  double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
 
@@ -343,6 +349,7 @@ void MODEL_collide_binary_lb() {
 
   get_N_local(N);
 
+  mobility = phi_ch_get_mobility();
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
 
   for (ic = 1; ic <= N[X]; ic++) {
@@ -380,14 +387,13 @@ void MODEL_collide_binary_lb() {
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
-	force_local = fl_force[index].c;
-	u_field = fl_u[index].c;
+	hydrodynamics_get_force_local(index, force_local);
 
 	for (i = 0; i < 3; i++) {
 	  force[i] = (siteforce[i] + force_local[i]);
 	  u[i] = rrho*(u[i] + 0.5*force[i]);  
-	  u_field[i] = u[i];
 	}
+	hydrodynamics_set_velocity(index, u);
 
 	/* Compute the thermodynamic component of the stress */
 
@@ -401,7 +407,7 @@ void MODEL_collide_binary_lb() {
 	for (i = 0; i < 3; i++) {
 	  /* Compute trace */
 	  tr_s   += s[i][i];
-	  tr_seq += (rho*u[i]*u[i] + sth[i][i]);
+	  tr_seq += (rho*u[i]*u[i] + 0.0*sth[i][i]);
 	}
 
 	/* Form traceless parts */
@@ -415,7 +421,7 @@ void MODEL_collide_binary_lb() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j] - sth[i][j]);
+	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j] - 0.0*sth[i][j]);
 	    s[i][j] += d_[i][j]*r3*tr_s;
 
 	    /* Correction from body force (assumes equal relaxation times) */
@@ -481,7 +487,7 @@ void MODEL_collide_binary_lb() {
 	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
 	  }
 	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
-	  /* jphi[i] = phi*u[i]; */
+	  /* jphi[i] = phi*u[i];*/
 	}
 
 	/* Now update the distribution */
@@ -531,7 +537,7 @@ void MODEL_collide_binary_lb() {
 
 void MODEL_init( void ) {
 
-  int     i,j,k,ind, nsites;
+  int     i,j,k,ind;
   int     N[3];
   int     offset[3];
   double   phi;
@@ -547,15 +553,9 @@ void MODEL_init( void ) {
   /* Now setup the rest of the simulation */
 
   site_map_init();
-
-  /* Allocate memory */
-
-  nsites = (N[X] + 2*nhalo_)*(N[Y] + 2*nhalo_)*(N[Z] + 2*nhalo_);
   init_site();
   phi_init();
-  LATT_allocate_force(nsites);
-  latt_allocate_velocity(nsites);
-
+  hydrodynamics_init();
   
   /*
    * A number of options are offered to start a simulation:
@@ -568,7 +568,7 @@ void MODEL_init( void ) {
 
   /* Option 1: read distribution functions from file */
   get_input_config_filename(filename, 0);
-  if( strcmp(filename, "EMPTY") != 0 ) {
+  if(strcmp(filename, "EMPTY") != 0 ) {
 
     info("Re-starting simulation at step %d with data read from "
 	 "config\nfile(s) %s\n", get_step(), filename);
@@ -604,6 +604,7 @@ void MODEL_init( void ) {
 #else
 		set_rho(rho0, ind); 
 		set_phi(phi,  ind);
+		phi_site[ind] = phi;
 #endif
 	      }
 	  }
@@ -632,6 +633,7 @@ void RAND_init_fluctuations() {
   int  p;
   char tmp[128];
   double tau_s, tau_b, tau_g, kt;
+  double mobility;
 
   p = RUN_get_double_parameter("temperature", &kt);
   set_kT(kt);
@@ -675,6 +677,7 @@ void RAND_init_fluctuations() {
 
   p = RUN_get_double_parameter("mobility", &mobility);
   info("\nOrder parameter mobility M: %f\n", mobility);
+  phi_ch_set_mobility(mobility);
 
 
   /* Ghost modes */
@@ -778,39 +781,6 @@ void get_fluctuations_stress(double shat[3][3]) {
   shat[X][X] += tr;
   shat[Y][Y] += tr;
   shat[Z][Z] += tr;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  latt_zero_force
- *
- *  Set the force on the lattice sites to zero.
- *
- *****************************************************************************/
-
-void latt_zero_force() {
-
-  int ic, jc, kc, index;
-  int N[3];
-
-  get_N_local(N);
-
-  /* Compute the mean phi in the domain proper */
-
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
-
-	index = get_site_index(ic, jc, kc);
-
-	fl_force[index].c[X] = 0.0;
-	fl_force[index].c[Y] = 0.0;
-	fl_force[index].c[Z] = 0.0;	
-      }
-    }
-  }
 
   return;
 }
