@@ -18,23 +18,23 @@
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
-CC     = gcc
+CC     = cc
 MPICC  = tmcc
 MPIRUN = mprun -np
 NPROCS = 8
 
 SRC    = ../src
 INCLUDE = -I$(SRC) $(MPI_INCLUDE)
-COPTS = -Wall -D_D3Q19_
-#COPTS  = -Xc -v -errwarn -D_D3Q19_
+#COPTS = -Wall -D_D3Q19_
+COPTS  = -Xc -v -errwarn -D_D3Q19_
+
+MPI_STUB_INCLUDE = -I../mpi_s
+MPI_STUB_LIB = -L../mpi_s -lmpi
 
 CLINK  =
-CLIBS  = -lm
+CLIBS  =  -lm
 MPILIB = -lmpi
 LAUNCH  =
-
-MPI_STUB_INCLUDE = #-I../mpi_s
-MPI_STUB_LIB =# -L../mpi_s -lmpi
 
 COMPILE = $(CC) $(INCLUDE) $(CLINK) $(COPTS)
 LINK    = $(CC) $(CLINK)
@@ -44,8 +44,10 @@ LINK    = $(CC) $(CLINK)
 #------------------------------------------------------------------------------
 
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
-              test_runtime.c test_random.c \
-              test_coords.c test_model.c test_halo.c test_prop.c
+              test_io.c test_runtime.c test_random.c \
+              test_coords.c test_model.c test_halo.c test_prop.c \
+              test_site_map.c test_phi.c
+
 TESTS = ${TESTSOURCES:.c=}
 
 TEST_PE_OBJ = tests.o $(SRC)/pe.o
@@ -60,6 +62,9 @@ TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(SRC)/model.o \
 TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
 TEST_EWALD_OBJ  = tests.o $(SRC)/pe.o $(SRC)/coords.o $(SRC)/colloids.o \
                   $(SRC)/ewald.o
+TEST_SITE_MAP_OBJ = $(TEST_IO_OBJ) $(SRC)/site_map.o
+TEST_PHI_OBJ      = $(TEST_MODEL_OBJ) $(SRC)/io_harness.o $(SRC)/site_map.o \
+		$(SRC)/phi.o
 
 #------------------------------------------------------------------------------
 #  Rules
@@ -85,6 +90,15 @@ test_halo:	$(TEST_MODEL_OBJ) test_halo.o
 		$(LINK) -o $@ $(TEST_MODEL_OBJ) $@.o $(CLIBS)
 test_prop:	$(TEST_PROP_OBJ) test_prop.o
 		$(LINK) -o $@ $(TEST_PROP_OBJ) $@.o $(CLIBS)
+test_site_map:	$(TEST_SITE_MAP_OBJ) test_site_map.o
+		$(LINK) -o $@ $(TEST_SITE_MAP_OBJ) $@.o $(CLIBS)
+test_phi:	$(TEST_PHI_OBJ) test_phi.o
+		$(LINK) -o $@ $(TEST_PHI_OBJ) $@.o $(CLIBS)
+
+test_sigma:     test_sigma.c
+		$(COMPILE) -I../mpi_s -c test_sigma.c
+		$(LINK)  \
+	test_sigma.o $(MPI_STUB_LIB) $(CLIBS)
 
 test_ewald:	$(TEST_EWALD_OBJ) test_ewald.o
 		$(LINK) -o $@ $(TEST_EWALD_OBJ) $@.o $(CLIBS)
