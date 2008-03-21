@@ -14,12 +14,14 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "lattice.h"
 #include "model.h"
 #include "collision.h"
 #include "utilities.h"
 #include "propagation.h"
 #include "free_energy.h"
 #include "phi.h"
+#include "phi_stats.h"
 #include "phi_gradients.h"
 #include "phi_cahn_hilliard.h"
 #include "physics.h"
@@ -88,6 +90,7 @@ double sigma(struct drop_t drop0) {
 
   phi_compute_phi_site();
   phi_halo();
+
   drop_locate_centre(&drop1);
   drop_locate_radius(&drop1);
 
@@ -99,6 +102,7 @@ double sigma(struct drop_t drop0) {
        drop0.centre[X], drop0.centre[Y], drop0.centre[Z], drop0.radius);
   info("Laplace drop: %f %f\n", drop1.laplace_in, drop1.laplace_out);
   info("Sigma: %6f\n", (drop1.laplace_in - drop1.laplace_out)*drop1.radius);
+  phi_stats_print_stats();
 
   drop_relax();
 
@@ -116,6 +120,7 @@ double sigma(struct drop_t drop0) {
        drop1.centre[X], drop1.centre[Y], drop1.centre[Z], drop1.radius);
   info("Sigma: %6f\n", (drop1.laplace_in - drop1.laplace_out)*drop1.radius);
   info("Sigma theory: %f\n", surface_tension());
+  phi_stats_print_stats();
 
   return value;
 }
