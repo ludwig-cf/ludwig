@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <assert.h>
 
 #include "pe.h"
 #include "runtime.h"
@@ -341,6 +342,7 @@ void LE_apply_LEBC( void )
   
   /* Stage 3: update buffers (pre-requisite to translation) */
 
+  halo_site();
   LE_update_buffers(SITE_AND_PHI);
 
   /* Stage 4: apply translation on fs and gs crossing LE planes */
@@ -1580,6 +1582,7 @@ void MODEL_get_gradients( void )
 
   /* Calculate phi everywhere */
   /* KS done in collision MODEL_calc_phi(); */
+  assert(nhalo_ == 1);
 
   /* WARNING: phi_site[] must be up-to-date! */
 
