@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.3.4.1 2008-02-26 09:41:08 kevin Exp $
+ *  $Id: subgrid.c,v 1.3.4.2 2008-03-21 09:19:15 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -102,7 +102,7 @@ void subgrid_force_from_particles() {
 		force[X] = g[X]*dr;
 		force[Y] = g[Y]*dr;
 		force[Z] = g[Z]*dr;
-		add_force_at_site(index, force);
+		hydrodynamics_add_force_local(index, force);
 	      }
 	    }
 	  }
@@ -265,7 +265,7 @@ static void subgrid_interpolation() {
 		r[Z] = r0[Z] - (double) k;
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
-		get_velocity_at_lattice(index, u);
+		hydrodynamics_get_velocity(index, u);
 
 		p_colloid->f0.x += u[X]*dr;
 		p_colloid->f0.y += u[Y]*dr;
