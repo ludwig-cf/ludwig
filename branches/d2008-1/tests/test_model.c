@@ -285,7 +285,7 @@ int main(int argc, char ** argv) {
   for (i = 1; i <= N[X]; i++) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
-	index = index_site(i, j, k);
+	index = get_site_index(i, j, k);
 
 	set_f_at_site(index, X, (double) (i));
 	set_f_at_site(index, Y, (double) (j));
@@ -303,7 +303,7 @@ int main(int argc, char ** argv) {
   for (i = 0; i <= N[X] + 1; i++) {
     for (j = 0; j <= N[Y] + 1; j++) {
       for (k = 0; k <= N[Z] + 1; k++) {
-	index = index_site(i, j, k);
+	index = get_site_index(i, j, k);
 
 	u[X] = get_f_at_site(index, X);
 	u[Y] = get_f_at_site(index, Y);

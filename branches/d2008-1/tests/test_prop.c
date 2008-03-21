@@ -65,7 +65,7 @@ void test_velocity() {
     for (jc = 1; jc <= n_local[Y]; jc++) {
       for (kc = 1; kc <= n_local[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 
 	for (p = 0; p < NVEL; p++) {
 	  set_f_at_site(index, p, (double) p);
@@ -84,7 +84,7 @@ void test_velocity() {
     for (jc = 1; jc <= n_local[Y]; jc++) {
       for (kc = 1; kc <= n_local[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 
 	for (p = 0; p < NVEL; p++) {
 	  f_actual = get_f_at_site(index, p);
@@ -125,7 +125,7 @@ void test_source_destination() {
     for (jc = 1; jc <= n_local[Y]; jc++) {
       for (kc = 1; kc <= n_local[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 
 	f_actual = L(Y)*L(Z)*(offset[X] + ic) + L(Z)*(offset[Y] + jc) +
 	  (offset[Z] + kc);
@@ -147,7 +147,7 @@ void test_source_destination() {
     for (jc = 1; jc <= n_local[Y]; jc++) {
       for (kc = 1; kc <= n_local[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
+	index = get_site_index(ic, jc, kc);
 
 	for (p = 0; p < NVEL; p++) {
 	  isource = offset[X] + ic - cv[p][X];

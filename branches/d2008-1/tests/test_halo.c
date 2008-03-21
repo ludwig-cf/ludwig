@@ -10,7 +10,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh (2007)
  *
- *  $Id: test_halo.c,v 1.1 2007-11-16 17:54:23 kevin Exp $
+ *  $Id: test_halo.c,v 1.1.4.1 2008-03-21 10:01:00 kevin Exp $
  *
  *****************************************************************************/
 
@@ -36,6 +36,7 @@ int main(int argc, char ** argv) {
   coords_init();
   init_site();
 
+  info("The halo width nhalo_ = %d\n", nhalo_);
   info("Test for null leakage...");
   test_halo_null();
   info("ok\n");
@@ -71,17 +72,18 @@ void test_halo_null() {
 
   int n_local[3], n[3];
   int index, p;
+  int nextra = nhalo_ - 1;
   double f_actual;
 
   get_N_local(n_local);
 
   /* Set entire distribution (all sites including halos) */
 
-  for (n[X] = 0; n[X] <= n_local[X] + 1; n[X]++) {
-    for (n[Y] = 0; n[Y] <= n_local[Y] + 1; n[Y]++) {
-      for (n[Z] = 0; n[Z] <= n_local[Z] + 1; n[Z]++) {
+  for (n[X] = 1 - nextra; n[X] <= n_local[X] + nextra; n[X]++) {
+    for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
+      for (n[Z] = 1 - nextra; n[Z] <= n_local[Z] + nextra; n[Z]++) {
 
-	index = index_site(n[X], n[Y], n[Z]);
+	index = get_site_index(n[X], n[Y], n[Z]);
 
 	for (p = 0; p < NVEL; p++) {
 	  set_f_at_site(index, p, 1.0);
@@ -97,7 +99,7 @@ void test_halo_null() {
     for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
       for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
 
-	index = index_site(n[X], n[Y], n[Z]);
+	index = get_site_index(n[X], n[Y], n[Z]);
 
 	for (p = 0; p < NVEL; p++) {
 	  set_f_at_site(index, p, 0.0);
@@ -113,11 +115,11 @@ void test_halo_null() {
 
   /* Check everywhere */
 
-  for (n[X] = 0; n[X] <= n_local[X] + 1; n[X]++) {
-    for (n[Y] = 0; n[Y] <= n_local[Y] + 1; n[Y]++) {
-      for (n[Z] = 0; n[Z] <= n_local[Z] + 1; n[Z]++) {
+  for (n[X] = 1 - nextra; n[X] <= n_local[X] + nextra; n[X]++) {
+    for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
+      for (n[Z] = 1 - nextra; n[Z] <= n_local[Z] + nextra; n[Z]++) {
 
-	index = index_site(n[X], n[Y], n[Z]);
+	index = get_site_index(n[X], n[Y], n[Z]);
 
 	for (p = 0; p < NVEL; p++) {
 	  f_actual = get_f_at_site(index, p);
@@ -143,6 +145,7 @@ void test_halo(int dim) {
 
   int n_local[3], n[3];
   int offset[3];
+  int nextra = nhalo_ - 1;
   int index, p, d;
 
   double f_expect, f_actual;
@@ -154,11 +157,11 @@ void test_halo(int dim) {
 
   /* Zero entire distribution (all sites including halos) */
 
-  for (n[X] = 0; n[X] <= n_local[X] + 1; n[X]++) {
-    for (n[Y] = 0; n[Y] <= n_local[Y] + 1; n[Y]++) {
-      for (n[Z] = 0; n[Z] <= n_local[Z] + 1; n[Z]++) {
+  for (n[X] = 1 - nextra; n[X] <= n_local[X] + nextra; n[X]++) {
+    for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
+      for (n[Z] = 1 - nextra; n[Z] <= n_local[Z] + nextra; n[Z]++) {
 
-	index = index_site(n[X], n[Y], n[Z]);
+	index = get_site_index(n[X], n[Y], n[Z]);
 
 	for (p = 0; p < NVEL; p++) {
 	  set_f_at_site(index, p, 0.0);
@@ -174,7 +177,7 @@ void test_halo(int dim) {
     for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
       for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
 
-	index = index_site(n[X], n[Y], n[Z]);
+	index = get_site_index(n[X], n[Y], n[Z]);
 
 	if (n[X] == 1 || n[X] == n_local[X] ||
 	    n[Y] == 1 || n[Y] == n_local[Y] ||
@@ -191,7 +194,7 @@ void test_halo(int dim) {
 
   halo_site();
 
-  /* Check the results (all sites).
+  /* Check the results (all sites for distribution halo).
    * The halo regions should contain a copy of the above, while the
    * interior sites are unchanged */
 
@@ -199,7 +202,7 @@ void test_halo(int dim) {
     for (n[Y] = 0; n[Y] <= n_local[Y] + 1; n[Y]++) {
       for (n[Z] = 0; n[Z] <= n_local[Z] + 1; n[Z]++) {
 
-	index = index_site(n[X], n[Y], n[Z]);
+	index = get_site_index(n[X], n[Y], n[Z]);
 
 	for (d = 0; d < 3; d++) {
 
