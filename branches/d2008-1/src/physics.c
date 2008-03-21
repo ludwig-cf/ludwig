@@ -4,7 +4,7 @@
  *
  *  Basic physical quantities for fluid.
  *
- *  $Id: physics.c,v 1.2 2007-03-09 12:56:09 kevin Exp $
+ *  $Id: physics.c,v 1.2.4.1 2008-03-21 09:20:18 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -64,6 +64,12 @@ void init_physics() {
 double get_eta_shear() {
 
   return eta_shear;
+}
+
+void set_eta(double eta) {
+  eta_shear = eta;
+  eta_bulk = eta;
+  return;
 }
 
 /*****************************************************************************
