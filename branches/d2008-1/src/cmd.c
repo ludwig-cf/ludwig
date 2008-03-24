@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.12.2.1 2008-01-22 14:39:10 kevin Exp $
+ *  $Id: cmd.c,v 1.12.2.2 2008-03-24 18:45:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -42,7 +42,6 @@ static int  mc_metropolis(double);
 static int  mc_init_bcc_lattice(const double, const double, const double);
 static double mc_total_energy(void);
 
-static double vf_max_ = 0.60;
 static double mc_max_exp_ = 100.0;
 static double mc_drmax_;
 static double mc_max_ah_;
@@ -354,7 +353,6 @@ double mc_total_energy() {
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
   double etot = 0.0;
   double h;
-  double r12[3];
   double hard_sphere_energy(const double);
   double hard_wall_energy(const FVector, const double);
 
