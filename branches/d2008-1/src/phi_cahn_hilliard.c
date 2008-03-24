@@ -8,7 +8,7 @@
  *
  *  The equation is solved here via finite difference.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.1.2.1 2008-03-20 18:08:56 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.1.2.2 2008-03-24 18:44:00 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,11 +28,17 @@
 #include "free_energy.h"
 #include "phi.h"
 
+#if (__STDC_VERSION__ < 199901)
+int signbit(double);
+#endif
+
 extern double * phi_site;
 static double * phi_flux;
 static void phi_ch_compute_fluxes_upwind(void);
 static void phi_ch_compute_fluxes_utopia(void);
 static void phi_ch_update_forward_step(void);
+
+static void (* phi_ch_compute_fluxes)(void) = phi_ch_compute_fluxes_utopia;
 
 static double mobility_; /* Order parameter mobility */
 
@@ -56,7 +62,7 @@ void phi_cahn_hilliard() {
   if (phi_flux == NULL) fatal("calloc(phi_fluxes) failed");
 
   hydrodynamics_halo_u();
-  phi_ch_compute_fluxes_utopia();
+  phi_ch_compute_fluxes();
   phi_ch_update_forward_step();
 
   free(phi_flux);
@@ -88,6 +94,28 @@ void phi_ch_set_mobility(const double m) {
 
 /*****************************************************************************
  *
+ *  phi_ch_set_utopia
+ *
+ *****************************************************************************/
+
+void phi_ch_set_utopia() {
+  phi_ch_compute_fluxes = phi_ch_compute_fluxes_utopia;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_set_upwind
+ *
+ ****************************************************************************/
+
+void phi_ch_set_upwind() {
+  phi_ch_compute_fluxes = phi_ch_compute_fluxes_upwind;
+  return;
+}
+
+/*****************************************************************************
+ *
  *  phi_ch_compute_fluxes_upwind
  *
  *  The fluxes (advective and diffusive) must be uniquely defined at
@@ -105,7 +133,7 @@ static void phi_ch_compute_fluxes_upwind() {
   int index0, index1;
   double u0[3], u1[3], u;
   double mu0, mu1;
-  double phi0, phi1, phi;
+  double phi0, phi;
 
   get_N_local(nlocal);
 
@@ -228,8 +256,6 @@ static void phi_ch_compute_fluxes_utopia() {
 
 	for (ia = 0; ia < 3; ia++) {
 	  u[ia] = r2*(u0[ia] + u1[ia]);
-	  /* s[ia] = 1;
-	     if (u[ia] < 0.0) s[ia] = -1;*/
 	  s[ia] = 1 - 2*signbit(u[ia]);
 	  assert(s[ia] == -1 || s[ia] == +1);
 	  c[ia] = u[ia]*s[ia];
@@ -283,8 +309,6 @@ static void phi_ch_compute_fluxes_utopia() {
 
 	for (ia = 0; ia < 3; ia++) {
 	  u[ia] = r2*(u0[ia] + u1[ia]);
-	  /* s[ia] = 1;
-	     if (u[ia] < 0.0) s[ia] = -1;*/
 	  s[ia] = 1 - 2*signbit(u[ia]);
 	  assert(s[ia] == -1 || s[ia] == +1);
 	  c[ia] = u[ia]*s[ia];
@@ -338,8 +362,6 @@ static void phi_ch_compute_fluxes_utopia() {
 
 	for (ia = 0; ia < 3; ia++) {
 	  u[ia] = r2*(u0[ia] + u1[ia]);
-	  /*s[ia] = 1;
-	    if (u[ia] < 0.0) s[ia] = -1;*/
 	  s[ia] = 1 - 2*signbit(u[ia]);
 	  assert(s[ia] == -1 || s[ia] == +1);
 	  c[ia] = u[ia]*s[ia];
