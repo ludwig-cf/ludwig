@@ -51,6 +51,17 @@ int main(int argc, char ** argv) {
   assert(FILENAME_MAX >= 128);
   printf("yes\n");
 
+  /* Information */
+  printf("Language\n");
+  printf("__STC__ = %d\n", __STDC__);
+#if (__STDC_VERSION__ >= 199901)
+  printf("__STDC_VERSION__ = %ld\n", __STDC_VERSION__);
+#endif
+  printf("__DATE__ is %s\n", __DATE__);
+  printf("__TIME__ is %s\n", __TIME__);
+  printf("__FILE__ is %s\n", __FILE__);
+  printf("__LINE__ is %d\n", __LINE__);
+
   printf("All assumptions ok!\n");
 
   return 0;
