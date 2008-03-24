@@ -38,11 +38,12 @@ static MPI_Win      LE_Site_Win; /* MPI window for LE buffering (Sites) */
 static MPI_Win      LE_Float_Win;/* MPI window for LE buffering (Floats) */
 #endif
 
+static int        * LE_ranks;
+static int        * LE_distrib;
+
 #endif /* _MPI_ */
 
 static double      *LeesEdw_site;
-static int        *LE_distrib;
-static int        *LE_ranks;
 
 
 static LE_Plane   *LeesEdw_plane;
@@ -52,8 +53,6 @@ static int        N_LE_plane;
 static int        N_LE_total = 0;
 static LE_Plane * LeesEdw = NULL;
 
-static int    LE_cmpLEBC( const void *, const void * );
-static void   LE_print_LEbuffers( void );
 static void   LE_init_original(void);
 static void   le_init_shear_profile(void);
 static double le_get_steady_uy(const int); 
@@ -162,7 +161,6 @@ void LE_apply_LEBC( void )
   int     i,j;
   double   displ,LE_vel,LE_frac;
   int     N[3];
-  char filename[256]; /* DBG */
 
   double *f, *g;
   double rho, phi, ds[3][3], dsphi[3][3], udotc, jdotc, sdotq, sphidotq;
@@ -415,9 +413,8 @@ void LE_apply_LEBC( void )
 
 void LE_init_original( void )
 {
-  int     flag;
-  int     plane, side, ind, xfac, yfac, integ, i, j, k, N_sites, ny2z2;
-  double   displ, frac, LE_vel;
+  int     plane, integ, i, N_sites, ny2z2;
+  double   displ, frac;
   int     N[3];
     
 #ifdef _MPI_ /* Parallel (MPI) implementation */
@@ -425,6 +422,8 @@ void LE_init_original( void )
   int     gblflag, rank, LE_rank, *intbuff, ny3z2;
   int     offset[3];
   int     gr_rank;
+  int     flag;
+  int     xfac, yfac;
 
   get_N_local(N);
   get_N_offset(offset);
@@ -756,17 +755,20 @@ void LE_init_original( void )
 
 void LE_update_buffers( int target_buff )
 {
-  int     i, jj, kk, ind, ind0, ind1, ind2, xfac, yfac, xfac2, yfac2, zfac2;
-  int     start_y, target_rank1, target_rank2, target_pe1[3], target_pe2[3];
-  int     integ, LE_loc, plane, nsites, nsites1, nsites2, vel_ind;
+  int     jj, kk, ind, ind0, ind1, ind2, xfac, yfac, xfac2, yfac2, zfac2;
+  int     integ, LE_loc, plane, vel_ind;
   int     disp_j1,disp_j2;
-  int     source_rank1, source_rank2;
-  double   LE_frac, LE_vel, rho, phi, *buff_phi;
+  double   LE_frac;
   int     N[3];
-  int     offset[3];
-  Site    *buff_site;
 
 #ifdef _MPI_
+  double  *buff_phi;
+  int      nsites, nsites1, nsites2;
+  int      source_rank1, source_rank2;
+  int      target_rank1, target_rank2, target_pe1[3], target_pe2[3];
+  int      i, start_y;
+  int      offset[3];
+  Site    *buff_site;
   MPI_Request req[4];
   MPI_Status status[4];
 #endif /* _MPI_ */
@@ -1472,82 +1474,6 @@ int LE_cmpLEBC(const void *le1, const void *le2)
   return (0);
 }
 
-
-/*--------------------------------------------------------------------------*/
-/* Utility routines for debugging */
-void LE_print_LEbuffers()
-{
-  int i,j,k,vel,gind,ind,LE_loc;
-  FILE *fp;
-  char fname[256];
-  int N[3];
-  int offset[3];
-
-  get_N_local(N);
-  get_N_offset(offset);
-
-#ifdef _MPI_
-  sprintf(fname, "LEbuffs_%6.6d.%2.2d", get_step(), cart_rank());
-#else
-  sprintf(fname, "LEbuffs_%6.6d", get_step());
-#endif
-  fp = fopen(fname,"w");
-
-  /* Start with phi (excluding halos) */
-  for(i=0; i< N_LE_plane; i++){
-    LE_loc = LeesEdw_plane[i].loc;
-    for(j=1; j<=N[Y]; j++){
-      for(k=1; k<=N[Z]; k++){
-	gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+offset[X])
-	  + (N_total(Z)+2)*(j+offset[Y]) 
-	  + (k+offset[Z]);
-	ind = (N[Y]+2)*(N[Z]+2)*(2*i) + (N[Z]+2)*j + k;
-	fprintf(fp, "DBG: LE_PHI STEP %5.5d buff[%6.6d] = %lg\n",
-	       get_step(), gind,LeesEdw_phi[ind]);fflush(NULL);
-	gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+1+offset[X])
-	  + (N_total(Z)+2)*(j+offset[Y]) 
-	  + (k+offset[Z]);
-	ind = (N[Y]+2)*(N[Z]+2)*(2*i+1) + (N[Z]+2)*j + k;
-	fprintf(fp, "DBG: LE_PHI STEP %5.5d buff[%6.6d] = %lg\n",
-	       get_step(), gind, LeesEdw_phi[ind]);
-	fflush(NULL);
-      }
-    }
-  }
-
-  /* Then, deal with sites (still excluding halos) */
-  for(i=0; i< N_LE_plane; i++){
-    LE_loc = LeesEdw_plane[i].loc;
-    for(j=1; j<=N[Y]; j++){
-      for(k=1; k<=N[Z]; k++){
-	for(vel=0; vel<2*LE_N_VEL_XING; vel++){
-	  gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+offset[X])
-	    + (N_total(Z)+2)*(j+offset[Y]) 
-	    + (k+offset[Z]);
-	  ind = (N[Y]+2)*(N[Z]+2)*(2*i)*LE_N_VEL_XING*2 
-	    + (N[Z]+2)*j*LE_N_VEL_XING*2
-	    + k*LE_N_VEL_XING*2
-	    + vel;
-	  fprintf(fp, "DBG: LE_SITE STEP %5.5d buff[%6.6d_%d] = %lg\n",
-		 get_step(), gind,vel,LeesEdw_site[ind]);fflush(NULL);
-	  gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+1+offset[X])
-	    + (N_total(Z)+2)*(j+offset[Y]) 
-	    + (k+offset[Z]);
-	  ind = (N[Y]+2)*(N[Z]+2)*(2*i+1)*LE_N_VEL_XING*2 
-	    + (N[Z]+2)*j*LE_N_VEL_XING*2
-	    + k*LE_N_VEL_XING*2
-	    + vel;
-	  fprintf(fp, "DBG: LE_SITE STEP %5.5d buff[%6.6d_%d] = %lg\n",
-		 get_step(), gind, vel, LeesEdw_site[ind]);
-	  fflush(NULL);
-	}
-      }
-    }
-  }
-  
-  fclose(fp);
-}
-
 /*----------------------------------------------------------------------------*/
 /*!
  * Computes and store gradients of phi
@@ -1996,3 +1922,86 @@ double le_get_steady_uy(int ic) {
  
   return uy;
 }
+
+#ifdef OLD_PENDING_DELETE
+
+static int    LE_cmpLEBC( const void *, const void * );
+static void   LE_print_LEbuffers( void );
+
+
+/*--------------------------------------------------------------------------*/
+/* Utility routines for debugging */
+void LE_print_LEbuffers()
+{
+  int i,j,k,vel,gind,ind,LE_loc;
+  FILE *fp;
+  char fname[256];
+  int N[3];
+  int offset[3];
+
+  get_N_local(N);
+  get_N_offset(offset);
+
+#ifdef _MPI_
+  sprintf(fname, "LEbuffs_%6.6d.%2.2d", get_step(), cart_rank());
+#else
+  sprintf(fname, "LEbuffs_%6.6d", get_step());
+#endif
+  fp = fopen(fname,"w");
+
+  /* Start with phi (excluding halos) */
+  for(i=0; i< N_LE_plane; i++){
+    LE_loc = LeesEdw_plane[i].loc;
+    for(j=1; j<=N[Y]; j++){
+      for(k=1; k<=N[Z]; k++){
+	gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+offset[X])
+	  + (N_total(Z)+2)*(j+offset[Y]) 
+	  + (k+offset[Z]);
+	ind = (N[Y]+2)*(N[Z]+2)*(2*i) + (N[Z]+2)*j + k;
+	fprintf(fp, "DBG: LE_PHI STEP %5.5d buff[%6.6d] = %lg\n",
+	       get_step(), gind,LeesEdw_phi[ind]);fflush(NULL);
+	gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+1+offset[X])
+	  + (N_total(Z)+2)*(j+offset[Y]) 
+	  + (k+offset[Z]);
+	ind = (N[Y]+2)*(N[Z]+2)*(2*i+1) + (N[Z]+2)*j + k;
+	fprintf(fp, "DBG: LE_PHI STEP %5.5d buff[%6.6d] = %lg\n",
+	       get_step(), gind, LeesEdw_phi[ind]);
+	fflush(NULL);
+      }
+    }
+  }
+
+  /* Then, deal with sites (still excluding halos) */
+  for(i=0; i< N_LE_plane; i++){
+    LE_loc = LeesEdw_plane[i].loc;
+    for(j=1; j<=N[Y]; j++){
+      for(k=1; k<=N[Z]; k++){
+	for(vel=0; vel<2*LE_N_VEL_XING; vel++){
+	  gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+offset[X])
+	    + (N_total(Z)+2)*(j+offset[Y]) 
+	    + (k+offset[Z]);
+	  ind = (N[Y]+2)*(N[Z]+2)*(2*i)*LE_N_VEL_XING*2 
+	    + (N[Z]+2)*j*LE_N_VEL_XING*2
+	    + k*LE_N_VEL_XING*2
+	    + vel;
+	  fprintf(fp, "DBG: LE_SITE STEP %5.5d buff[%6.6d_%d] = %lg\n",
+		 get_step(), gind,vel,LeesEdw_site[ind]);fflush(NULL);
+	  gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+1+offset[X])
+	    + (N_total(Z)+2)*(j+offset[Y]) 
+	    + (k+offset[Z]);
+	  ind = (N[Y]+2)*(N[Z]+2)*(2*i+1)*LE_N_VEL_XING*2 
+	    + (N[Z]+2)*j*LE_N_VEL_XING*2
+	    + k*LE_N_VEL_XING*2
+	    + vel;
+	  fprintf(fp, "DBG: LE_SITE STEP %5.5d buff[%6.6d_%d] = %lg\n",
+		 get_step(), gind, vel, LeesEdw_site[ind]);
+	  fflush(NULL);
+	}
+      }
+    }
+  }
+  
+  fclose(fp);
+}
+
+#endif
