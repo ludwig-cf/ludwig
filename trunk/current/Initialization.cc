@@ -1,0 +1,950 @@
+
+void randomizeQ(void)
+{
+  int i,j,k,l;
+  double phase,phase2,amplitude;
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=0; j<Ly; j++) {
+      for (k=0; k< Lz; k++) {
+
+	density[i][j][k]=densityinit;
+
+	amplitude=0.2;
+	if (O8MSTRUCT == 1) amplitude=-0.2;
+
+	if (TWIST == 1)
+	  phase=2.0*q0*k;
+
+	if (DTSTRUCT == 1) {
+
+          amplitude=0.3;
+
+	  Qxx[i][j][k]=amplitude*(-cos(2*q0*j));
+	  Qxxinit[i][j][k]=Qxx[i][j][k];
+	  Qxy[i][j][k]=0.0;
+	  Qxyinit[i][j][k]=Qxy[i][j][k];
+	  Qxz[i][j][k]=amplitude*sin(2.0*q0*j);
+	  Qxzinit[i][j][k]=Qxz[i][j][k];
+
+#ifdef PARALLEL
+	  Qyy[i][j][k]=amplitude*(-cos(2.0*q0*((i-1)+Lx/nbPE*myPE)));
+	  Qyz[i][j][k]=-amplitude*sin(2.0*q0*((i-1)+Lx/nbPE*myPE));
+	  Qyyinit[i][j][k]=Qyy[i][j][k];
+	  Qyzinit[i][j][k]=Qyz[i][j][k];
+#else
+	  Qyy[i][j][k]=amplitude*(-cos(2.0*q0*i));
+	  Qyz[i][j][k]=-amplitude*sin(2.0*q0*i);
+	  Qyyinit[i][j][k]=Qyy[i][j][k];
+	  Qyzinit[i][j][k]=Qyz[i][j][k];
+#endif
+
+
+	}
+
+
+	if (O2STRUCT == 1) {
+
+	  amplitude=0.3; 
+
+	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*k)-cos(2.0*q0*j));
+	  Qxxinit[i][j][k]=Qxx[i][j][k];
+	  Qxy[i][j][k]=amplitude*sin(2.0*q0*k);
+	  Qxyinit[i][j][k]=Qxy[i][j][k];
+	  Qxz[i][j][k]=amplitude*sin(2.0*q0*j);
+
+#ifdef PARALLEL
+	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*((i-1)+Lx/nbPE*myPE))-cos(2.0*q0*k));
+	  Qyyinit[i][j][k]=Qyy[i][j][k];
+	  Qyz[i][j][k]=amplitude*sin(2.0*q0*((i-1)+Lx/nbPE*myPE));
+ 	  Qyzinit[i][j][k]=Qyz[i][j][k];
+#else
+	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*i)-cos(2.0*q0*k));
+	  Qyyinit[i][j][k]=Qyy[i][j][k];
+	  Qyz[i][j][k]=amplitude*sin(2.0*q0*i);
+	  Qyzinit[i][j][k]=Qyz[i][j][k]; 
+#endif
+
+}
+
+
+
+
+
+	if (O5STRUCT == 1) {
+#ifdef PARALLEL
+
+	  Qxx[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)-
+		       cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*k)-
+		       cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*j));
+	  Qyy[i][j][k]=amplitude*
+	    (2.0*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*k)-
+	     cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))-
+            cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
+	  Qxy[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))
+	     *sin(sqrt(2.0)*q0*k)-
+            sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*sin(sqrt(2.0)*q0*j));
+	  Qxz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))
+	     *sin(sqrt(2.0)*q0*j)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*j)-
+	     sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*sin(sqrt(2.0)*q0*k));
+	  Qyz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*k)
+	     *sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*j)*
+	     sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))-
+	     sin(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k));
+#else
+	  Qxx[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)-
+		       cos(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)-
+		       cos(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*j));
+	  Qyy[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)-
+		       cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*i)-
+		       cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
+	  Qxy[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*k)-
+	     sin(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*j));
+	  Qxz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*j)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*j)-
+	     sin(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*k));
+	  Qyz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*i)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*i)-
+	     sin(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k));
+#endif
+	}
+
+	if ((O8STRUCT == 1) || (O8MSTRUCT == 1)) {
+#ifdef PARALLEL
+	  Qxx[i][j][k]=amplitude*(-2.0*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)+
+				  sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*k)+
+				  cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*sin(sqrt(2.0)*q0*j));
+	  Qyy[i][j][k]=amplitude*
+	    (-2.0*sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*k)+
+	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))+
+	     cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k));
+	  Qxy[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))
+	     *sin(sqrt(2.0)*q0*k)-
+	     sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*j));
+	  Qxz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))
+	     *cos(sqrt(2.0)*q0*j)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*j)-
+	     cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*sin(sqrt(2.0)*q0*k));
+	  Qyz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*k)
+	     *cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*j)*
+	     sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))-
+	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
+#else
+	  Qxx[i][j][k]=amplitude*(-2.0*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)+
+				  sin(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)+
+				  cos(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*j));
+	  Qyy[i][j][k]=amplitude*
+	    (-2.0*sin(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)+
+	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*i)+
+	     cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k));
+	  Qxy[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*i)
+	     *sin(sqrt(2.0)*q0*k)-
+	     sin(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*j));
+	  Qxz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*i)
+	     *cos(sqrt(2.0)*q0*j)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*j)-
+	     cos(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*k));
+	  Qyz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*k)
+	     *cos(sqrt(2.0)*q0*i)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*j)*
+	     sin(sqrt(2.0)*q0*i)-
+	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
+#endif
+//slabs
+/*
+if(j>Ly/2){
+	  amplitude=0.2; 
+
+	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*k)-cos(2.0*q0*j));
+	  Qxxinit[i][j][k]=Qxx[i][j][k];
+	  Qxy[i][j][k]=amplitude*sin(2.0*q0*k);
+	  Qxyinit[i][j][k]=Qxy[i][j][k];
+	  Qxz[i][j][k]=amplitude*sin(2.0*q0*j);
+
+#ifdef PARALLEL
+	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*((i-1)+Lx/nbPE*myPE))-cos(2.0*q0*k));
+	  Qyyinit[i][j][k]=Qyy[i][j][k];
+	  Qyz[i][j][k]=amplitude*sin(2.0*q0*((i-1)+Lx/nbPE*myPE));
+ 	  Qyzinit[i][j][k]=Qyz[i][j][k];
+#else
+	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*i)-cos(2.0*q0*k));
+	  Qyyinit[i][j][k]=Qyy[i][j][k];
+	  Qyz[i][j][k]=amplitude*sin(2.0*q0*i);
+	  Qyzinit[i][j][k]=Qyz[i][j][k]; 
+#endif
+
+
+}
+*/
+
+	}
+
+	if (RANDOM == 1) {
+		
+	  amplitude=1e-2;
+
+	  phase= 2.0/5.0*Pi*(0.5-drand48());  
+	  phase2= Pi/2.0+Pi/5.0*(0.5-drand48());
+
+	  Qxx[i][j][k]= amplitude*
+	    (3.0/2.0*sin(phase2)*sin(phase2)*cos(phase)*cos(phase)-1.0/2.0);
+	  Qxy[i][j][k]= 3.0*amplitude/2.0*
+	    (sin(phase2)*sin(phase2)*cos(phase)*sin(phase));
+	  Qyy[i][j][k]= amplitude*
+	    (3.0/2.0*sin(phase2)*sin(phase2)*sin(phase)*sin(phase)-1.0/2.0);
+	  Qxz[i][j][k]=
+	    3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*cos(phase));
+	  Qyz[i][j][k]=
+	    3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*sin(phase));
+
+	}
+
+
+	for (l=0; l<15; l++) {
+	  f[i][j][k][l]=density[i][j][k]/15.0;
+	}
+      }
+    }
+   }
+
+}
+
+void startDroplet(void)
+{
+  int i,j,k,l;
+  double phase,phase2,amplitude;
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=0; j<Ly; j++) {
+      for (k=0; k< Lz; k++) {
+
+	      int iactual;
+	      iactual=i;
+
+#ifdef PARALLEL
+
+	      iactual=(i-1)+Lx/nbPE*myPE;
+
+#endif
+
+//if( (j < ((3.0*Ly)/8.0) )||( j > ((5.0*Ly)/8.0))||( iactual < ((3.0*Lx)/8.0) )||( iactual > ( (5.0*Lx)/8.0 )) || ( k < ((3.0*Lz)/8.0) )||( k > ((5.0*Lz)/8.0) )) {
+if( (j < ((7.0*Ly)/16.0) )||( j > ((9.0*Ly)/16.0))||( iactual < ((7.0*Lx)/16.0) )||( iactual > ( (9.0*Lx)/16.0 )) || ( k < ((7.0*Lz)/16.0) )||( k > ((9.0*Lz)/16.0) )) {
+
+
+      amplitude=(0.546-0.2723/2.0);
+
+// droplet in cholesteric environment
+      
+      Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*j);
+      Qxy[i][j][k]= 0.0;
+      Qyy[i][j][k]= -0.2723;
+      Qxz[i][j][k]= -amplitude*(sin(2.0*q0*j));
+      Qyz[i][j][k]= 0.0;
+
+// allow for different definition of the pitch in O8 and O8M
+      if(O8MSTRUCT == 1 || O8STRUCT == 1){
+
+	 Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0/sqrt(2.0)*j);
+	 Qxy[i][j][k]= 0.0;
+	 Qyy[i][j][k]= -0.2723;
+	 Qxz[i][j][k]= -amplitude*(sin(2.0*q0/sqrt(2.0)*j));
+//sign change
+//	 Qxz[i][j][k]= amplitude*(sin(2.0*q0/sqrt(2.0)*j));
+	 Qyz[i][j][k]= 0.0;
+
+
+      }
+
+//  droplet in isotropic environment
+
+//      Qxx[i][j][k]= 1e-4/2.0;
+//     Qxy[i][j][k]= 0.0;
+//      Qyy[i][j][k]= -1e-4;
+//      Qxz[i][j][k]= 0.0;
+//      Qyz[i][j][k]= 0.0;
+
+
+                 }
+	
+      }
+    }
+  }
+}
+
+void reinit()
+{
+  gasdev(1);
+
+  f=fa;
+  fpr=fb;
+
+  oneplusdtover2tau1=1.0+0.5*dt/tau1;
+  oneplusdtover2tau2=1.0+0.5*dt/tau2;
+
+  wallamp=0.03;
+
+  if (gam > 2.7){
+    wallamp=(0.25+0.75*sqrt((1.0-8.0/(3.0*gam))));
+  }
+ 
+  Qxxtop= wallamp*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+     cos(angxytop/180.0*Pi)*cos(angxytop/180.0*Pi)-1.0/3.0); 
+  Qxytop= wallamp*sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+    cos(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi);
+  Qyytop= wallamp*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+     sin(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi)-1.0/3.0);
+  Qxztop= wallamp*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
+    cos(angxytop/180.0*Pi);
+  Qyztop= wallamp*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
+    sin(angxytop/180.0*Pi);
+	
+  Qxxbot= wallamp*(sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
+     cos(angxybot/180.0*Pi)*cos(angxybot/180.0*Pi)-1.0/3.0); 
+  Qxybot= wallamp*sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
+    cos(angxybot/180.0*Pi)*sin(angxybot/180.0*Pi);
+  Qyybot= wallamp*(sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
+     sin(angxybot/180.0*Pi)*sin(angxybot/180.0*Pi)-1.0/3.0);
+  Qxzbot= wallamp*sin(angzbot/180.0*Pi)*cos(angzbot/180.0*Pi)*
+    cos(angxybot/180.0*Pi);
+  Qyzbot= wallamp*sin(angzbot/180.0*Pi)*cos(angzbot/180.0*Pi)*
+    sin(angxybot/180.0*Pi);
+
+  randomizeQ();
+
+}
+
+void initialize(void)
+{
+
+#ifdef PARALLEL
+  Lx2=Lx/nbPE+2;
+  ix1=1;
+  ix2=Lx2-1;
+
+
+  tmpBuf= new double[Lz*Ly*5];
+
+
+#else
+  Lx2=Lx;
+  ix1=0;
+  ix2=Lx2;
+#endif
+
+  int ix,iy,iz;
+
+  fa=new double***[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    fa[ix]=new double**[Ly];
+    for (iy=0;iy<Ly;iy++) {
+      fa[ix][iy]=new double*[Lz];
+      for (iz=0;iz<Lz;iz++)
+	fa[ix][iy][iz]=new double[15];
+    }
+  }
+
+
+  fb=new double***[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    fb[ix]=new double**[Ly];
+    for (iy=0;iy<Ly;iy++) {
+      fb[ix][iy]=new double*[Lz];
+      for (iz=0;iz<Lz;iz++)
+	fb[ix][iy][iz]=new double[15];
+    }
+  }
+
+
+  Fc=new double***[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Fc[ix]=new double**[Ly];
+    for (iy=0;iy<Ly;iy++) {
+      Fc[ix][iy]=new double*[Lz];
+      for (iz=0;iz<Lz;iz++)
+	Fc[ix][iy][iz]=new double[15];
+    }
+  }
+
+
+  feq=new double***[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    feq[ix]=new double**[Ly];
+    for (iy=0;iy<Ly;iy++) {
+      feq[ix][iy]=new double*[Lz];
+      for (iz=0;iz<Lz;iz++)
+	feq[ix][iy][iz]=new double[15];
+    }
+  }
+
+  u=new double***[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    u[ix]=new double**[Ly];
+    for (iy=0;iy<Ly;iy++) {
+      u[ix][iy]=new double*[Lz];
+      for (iz=0;iz<Lz;iz++)
+	u[ix][iy][iz]=new double[3];
+    }
+  }
+
+  Fh=new double***[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Fh[ix]=new double**[Ly];
+    for (iy=0;iy<Ly;iy++) {
+      Fh[ix][iy]=new double*[Lz];
+      for (iz=0;iz<Lz;iz++)
+	Fh[ix][iy][iz]=new double[3];
+    }
+  }
+
+
+
+  density=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    density[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      density[ix][iy]=new double[Lz];
+  }
+  Qxx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxx[ix][iy]=new double[Lz];
+  }
+  Qxy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxy[ix][iy]=new double[Lz];
+  }
+  Qyy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qyy[ix][iy]=new double[Lz];
+  }
+  Qxz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxz[ix][iy]=new double[Lz];
+  }
+  Qyz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qyz[ix][iy]=new double[Lz];
+  }
+  Qxxold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxxold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxxold[ix][iy]=new double[Lz];
+  }
+  Qxyold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxyold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxyold[ix][iy]=new double[Lz];
+  }
+  Qyyold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyyold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qyyold[ix][iy]=new double[Lz];
+  }
+  Qxzold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxzold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxzold[ix][iy]=new double[Lz];
+  }
+  Qyzold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyzold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qyzold[ix][iy]=new double[Lz];
+  }
+  Qxxnew=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxxnew[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxxnew[ix][iy]=new double[Lz];
+  }
+  Qxynew=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxynew[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxynew[ix][iy]=new double[Lz];
+  }
+  Qyynew=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyynew[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qyynew[ix][iy]=new double[Lz];
+  }
+  Qxznew=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxznew[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxznew[ix][iy]=new double[Lz];
+  }
+  Qyznew=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyznew[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qyznew[ix][iy]=new double[Lz];
+  }
+  Qxxinit=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxxinit[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxxinit[ix][iy]=new double[Lz];
+  }
+  Qxyinit=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxyinit[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxyinit[ix][iy]=new double[Lz];
+  }
+  Qyyinit=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyyinit[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qyyinit[ix][iy]=new double[Lz];
+  }
+  Qxzinit=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxzinit[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qxzinit[ix][iy]=new double[Lz];
+  }
+  Qyzinit=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyzinit[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Qyzinit[ix][iy]=new double[Lz];
+  }
+  DEHxx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHxx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHxx[ix][iy]=new double[Lz];
+  }
+  DEHxy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHxy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHxy[ix][iy]=new double[Lz];
+  }
+  DEHyy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHyy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHyy[ix][iy]=new double[Lz];
+  }
+  DEHxz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHxz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHxz[ix][iy]=new double[Lz];
+  }
+  DEHyz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHyz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHyz[ix][iy]=new double[Lz];
+  }
+  DEHxxold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHxxold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHxxold[ix][iy]=new double[Lz];
+  }
+  DEHxyold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHxyold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHxyold[ix][iy]=new double[Lz];
+  }
+  DEHyyold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHyyold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHyyold[ix][iy]=new double[Lz];
+  }
+  DEHxzold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHxzold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHxzold[ix][iy]=new double[Lz];
+  }
+  DEHyzold=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEHyzold[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEHyzold[ix][iy]=new double[Lz];
+  }
+
+  DEH1xx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH1xx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH1xx[ix][iy]=new double[Lz];
+  }
+  DEH1xy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH1xy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH1xy[ix][iy]=new double[Lz];
+  }
+  DEH1yy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH1yy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH1yy[ix][iy]=new double[Lz];
+  }
+  DEH1xz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH1xz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH1xz[ix][iy]=new double[Lz];
+  }
+  DEH1yz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH1yz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH1yz[ix][iy]=new double[Lz];
+  }
+
+  DEH3xx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH3xx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH3xx[ix][iy]=new double[Lz];
+  }
+  DEH3xy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH3xy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH3xy[ix][iy]=new double[Lz];
+  }
+  DEH3yy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH3yy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH3yy[ix][iy]=new double[Lz];
+  }
+  DEH3xz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH3xz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH3xz[ix][iy]=new double[Lz];
+  }
+  DEH3yz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DEH3yz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DEH3yz[ix][iy]=new double[Lz];
+  }
+
+  molfieldxx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    molfieldxx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      molfieldxx[ix][iy]=new double[Lz];
+  }
+  molfieldxy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    molfieldxy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      molfieldxy[ix][iy]=new double[Lz];
+  }
+  molfieldyy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    molfieldyy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      molfieldyy[ix][iy]=new double[Lz];
+  }
+  molfieldxz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    molfieldxz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      molfieldxz[ix][iy]=new double[Lz];
+  }
+  molfieldyz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    molfieldyz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      molfieldyz[ix][iy]=new double[Lz];
+  }
+
+  DG2xx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2xx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2xx[ix][iy]=new double[Lz];
+  }
+  DG2xy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2xy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2xy[ix][iy]=new double[Lz];
+  }
+  DG2yy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2yy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2yy[ix][iy]=new double[Lz];
+  }
+  DG2xz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2xz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2xz[ix][iy]=new double[Lz];
+  }
+  DG2yz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2yz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2yz[ix][iy]=new double[Lz];
+  }
+  DG2zz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2zz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2zz[ix][iy]=new double[Lz];
+  }
+  DG2yx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2yx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2yx[ix][iy]=new double[Lz];
+  }
+  DG2zy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2zy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2zy[ix][iy]=new double[Lz];
+  }
+  DG2zx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    DG2zx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      DG2zx[ix][iy]=new double[Lz];
+  }
+  tauxy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    tauxy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      tauxy[ix][iy]=new double[Lz];
+  }
+  tauxz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    tauxz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      tauxz[ix][iy]=new double[Lz];
+  }
+  tauyz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    tauyz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      tauyz[ix][iy]=new double[Lz];
+  }
+  Stressxx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stressxx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stressxx[ix][iy]=new double[Lz];
+  }
+  Stressxy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stressxy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stressxy[ix][iy]=new double[Lz];
+  }
+  Stressyy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stressyy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stressyy[ix][iy]=new double[Lz];
+  }
+  Stressxz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stressxz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stressxz[ix][iy]=new double[Lz];
+  }
+  Stressyz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stressyz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stressyz[ix][iy]=new double[Lz];
+  }
+  Stresszz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stresszz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stresszz[ix][iy]=new double[Lz];
+  }
+  Stressyx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stressyx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stressyx[ix][iy]=new double[Lz];
+  }
+  Stresszx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stresszx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stresszx[ix][iy]=new double[Lz];
+  }
+  Stresszy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Stresszy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Stresszy[ix][iy]=new double[Lz];
+  }
+  Ex=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Ex[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Ex[ix][iy]=new double[Lz];
+  }
+  Ey=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Ey[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Ey[ix][iy]=new double[Lz];
+  }
+  Ez=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Ez[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Ez[ix][iy]=new double[Lz];
+  }
+  Pdx=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Pdx[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Pdx[ix][iy]=new double[Lz];
+  }
+  Pdy=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Pdy[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Pdy[ix][iy]=new double[Lz];
+  }
+  Pdz=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Pdz[ix]=new double*[Ly];
+    for (iy=0;iy<Ly;iy++)
+      Pdz[ix][iy]=new double[Lz];
+  }
+
+  e[0][0]= 0;
+  e[0][1]= 0;
+  e[0][2]= 0;
+
+  e[1][0]= 1;
+  e[1][1]= 0;
+  e[1][2]= 0;
+
+  e[2][0]= 0;
+  e[2][1]= 1;
+  e[2][2]= 0;
+
+  e[3][0]= -1;
+  e[3][1]= 0;
+  e[3][2]= 0;
+
+  e[4][0]= 0;
+  e[4][1]= -1;
+  e[4][2]= 0;
+
+  e[5][0]= 0;
+  e[5][1]= 0;
+  e[5][2]= 1;
+
+  e[6][0]= 0;
+  e[6][1]= 0;
+  e[6][2]= -1;
+
+  e[7][0]= 1;
+  e[7][1]= 1;
+  e[7][2]= 1;
+
+  e[8][0]= -1;
+  e[8][1]= 1;
+  e[8][2]= 1;
+
+  e[9][0]= -1;
+  e[9][1]= -1;
+  e[9][2]= 1;
+
+  e[10][0]= 1;
+  e[10][1]= -1;
+  e[10][2]= 1;
+
+  e[11][0]= 1;
+  e[11][1]= 1;
+  e[11][2]= -1;
+
+  e[12][0]= -1;
+  e[12][1]= 1;
+  e[12][2]= -1;
+
+  e[13][0]= -1;
+  e[13][1]= -1;
+  e[13][2]= -1;
+
+  e[14][0]= 1;
+  e[14][1]= -1;
+  e[14][2]= -1;
+
+#ifdef PARALLEL
+
+  // Creates a communication buffer
+/*  const long int bufSize=10000000;//LY*LZ*5*8+5000;
+
+  MPI_Buffer_attach(buff,bufSize);
+  */
+
+
+  int buffer_size;
+
+  buffer_size = 40*(Ly*Lz*sizeof(double) + MPI_BSEND_OVERHEAD);
+
+  buff=new char[buffer_size];
+
+  MPI_Buffer_attach(buff, buffer_size);
+
+
+  leftNeighbor=myPE-1;
+  if (leftNeighbor == -1) leftNeighbor=nbPE-1;
+
+  rightNeighbor=myPE+1;
+  if (rightNeighbor == nbPE) rightNeighbor=0;
+#endif
+
+}
+
+
