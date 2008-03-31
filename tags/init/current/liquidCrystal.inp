@@ -1,0 +1,42 @@
+128		% Lx  % cannot set = 1 without changing code
+128		% Ly
+128		% Lz 
+200000		% Nmax
+0    		% GRAPHICS
+1500		% stepskip
+2		% itimprov
+0.000000   	% bodyforce
+0		% RANDOM - this seems to be unstable??
+0		% TWIST
+0		% O2STRUCT
+0		% O5STRUCT
+0		% O8STRUCT
+1               % O8MSTRUCT
+0		% DTSTRUCT
+0.01		% L1 first elastic constant 
+0.01		% L2 second elastic constant (with only L1, L2 splay=bend)
+8	        % numuc - number of unit cells along pitch direction
+1.0             % numhftwist - number of half twists in unit cell
+0.3		% Gamma, diffusion constant
+2.80            % gam, gam > 2.7 => nematic 
+1               % BACKFLOW
+1.0 		% phivr, coupling of hydrodynamics to order parameter
+0.7 		% xi, related to effective aspect ratio, should be <= one
+2.5		% tau1, proportional to viscosity
+0.25		% tau2, magnitude of flow-induced diffusion
+0.0		% delVz, (voltage at z=Lz) - (voltage at z=0)
+41.4    	% epsa, dielectric anisotropy
+0.0 		% epsav, average dielectric constant
+0.0		% vwtp, top wall velocity
+0.0		% vwbt, bottom wall velocity;
+2.0             % bcstren  // amplitude of harmonic boundary potential
+0.0	 	% angztop: ang with z axis at top boundary
+0.0	 	% angzbot: ang with z axis at bottom boundary 
+0.0		% angxytop: ang with x at top boundary
+0.0		% angxybot: ang with x at bottom boundary
+0.03	     	% strength of the bulk term: ABulk
+0.19		% threshold to define a defect
+1500	     	% OVDPrintInt
+1500	     	% FePrintInt
+1	     	% SigPrintFac
+20		% numCase
