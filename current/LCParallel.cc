@@ -3,10 +3,17 @@
 
 #include "LCParallel.hh"
 #include "mpi.h"
+
+#ifndef _COMM_3D_
+/* See below for updated version */
   
 void exchangeMomentumAndQTensor()
 {
   int ix,iy,iz;
+  double t0, t1;
+  extern double total_exch_;
+
+  t0 = MPI_Wtime();
 
   // --------------------
   // Sends densities
@@ -241,11 +248,19 @@ void exchangeMomentumAndQTensor()
 //  MPI_Buffer_detach(&com, &buffer_size);
 //  free(com);
 
+  t1 = MPI_Wtime();
+  total_exch_ += (t1-t0);
+
 }
 
 void communicateOldDistributions(double ****fold)
 {
   int ix,iy,iz;
+  double t0, t1;
+  extern double total_comm_;
+
+  t0 = MPI_Wtime();
+
 
   // --------------------
   // Sends fold
@@ -296,6 +311,282 @@ void communicateOldDistributions(double ****fold)
       fold[ix][iy][iz][14]=tmpBuf[iy*Lz*5+iz*5+4];
     }
 
+  t1 = MPI_Wtime();
+  total_comm_ += (t1-t0);
+
 }
+
+#else /* COMM_3D */
+
+void exchangeMomentumAndQTensor() {
+
+    const int nquantity = 9;  /* density, Qxx, Qxy etc is 9 items */
+    double * buf_sendforw;    /* send data to 'forward' direction */
+    double * buf_sendback;    /* send data to 'backward' direction */
+    double * buf_recvforw;    /* receive data from 'forward' direction */
+    double * buf_recvback;    /* receive data from 'backward' direction */
+    double   t0, t1;
+    extern double total_exch_;
+
+    int ix, iy, iz;
+    int n, nforw, nback;
+
+    const int tagb = 1002;
+    const int tagf = 1003;
+
+    MPI_Request send_request[2];
+    MPI_Request recv_request[2];
+    MPI_Status  send_status[2];
+    MPI_Status  recv_status[2];
+    MPI_Comm    comm = MPI_COMM_WORLD;
+
+    t0 = MPI_Wtime();
+
+    /* allocate buffers */
+
+    buf_sendforw = new double[nquantity*Ly*Lz];
+    buf_sendback = new double[nquantity*Ly*Lz];
+    buf_recvforw = new double[nquantity*Ly*Lz];
+    buf_recvback = new double[nquantity*Ly*Lz];
+
+    /* X DIRECTION */
+
+    nforw = rightNeighbor;
+    nback = leftNeighbor;
+
+    /* post receives */
+
+    MPI_Irecv(buf_recvforw, nquantity*Ly*Lz, MPI_DOUBLE, nforw, tagb, comm,
+	      recv_request);
+    MPI_Irecv(buf_recvback, nquantity*Ly*Lz, MPI_DOUBLE, nback, tagf, comm,
+	      recv_request+1);
+
+    /* load send buffers and non-blocking sends */
+
+    ix = 1;
+    n  = 0;
+
+    for (iy = 0; iy < Ly; iy++) {
+	for (iz = 0; iz < Lz; iz++) {
+	    buf_sendback[n++] = density[ix][iy][iz];
+	    buf_sendback[n++] =     Qxx[ix][iy][iz];
+	    buf_sendback[n++] =     Qxy[ix][iy][iz];
+	    buf_sendback[n++] =     Qyy[ix][iy][iz];
+	    buf_sendback[n++] =     Qxz[ix][iy][iz];
+	    buf_sendback[n++] =     Qyz[ix][iy][iz];
+	    buf_sendback[n++] =       u[ix][iy][iz][0];
+	    buf_sendback[n++] =       u[ix][iy][iz][1];
+	    buf_sendback[n++] =       u[ix][iy][iz][2];
+	}
+    }
+
+    MPI_Issend(buf_sendback, nquantity*Ly*Lz, MPI_DOUBLE, nback, tagb, comm,
+	       send_request);
+
+    ix = Lx2-2;
+    n  = 0;
+
+    for (iy = 0; iy < Ly; iy++) {
+	for (iz = 0; iz < Lz; iz++) {
+	    buf_sendforw[n++] = density[ix][iy][iz];
+	    buf_sendforw[n++] =     Qxx[ix][iy][iz];
+	    buf_sendforw[n++] =     Qxy[ix][iy][iz];
+	    buf_sendforw[n++] =     Qyy[ix][iy][iz];
+	    buf_sendforw[n++] =     Qxz[ix][iy][iz];
+	    buf_sendforw[n++] =     Qyz[ix][iy][iz];
+	    buf_sendforw[n++] =       u[ix][iy][iz][0];
+	    buf_sendforw[n++] =       u[ix][iy][iz][1];
+	    buf_sendforw[n++] =       u[ix][iy][iz][2];
+	}
+    }
+
+    MPI_Issend(buf_sendforw, nquantity*Ly*Lz, MPI_DOUBLE, nforw, tagf, comm,
+	       send_request+1);
+
+    /* wait for receives to complete and unload buffers */
+
+    MPI_Waitall(2, recv_request, recv_status);
+
+    ix = Lx2-1;
+    n  = 0;
+
+    for (iy = 0; iy < Ly; iy++) {
+	for (iz = 0; iz < Lz; iz++) {
+	    density[ix][iy][iz] = buf_recvforw[n++];
+	    Qxx[ix][iy][iz]  = buf_recvforw[n++];
+	    Qxy[ix][iy][iz]  = buf_recvforw[n++];
+	    Qyy[ix][iy][iz]  = buf_recvforw[n++];
+	    Qxz[ix][iy][iz]  = buf_recvforw[n++];
+	    Qyz[ix][iy][iz]  = buf_recvforw[n++];
+	    u[ix][iy][iz][0] = buf_recvforw[n++];
+	    u[ix][iy][iz][1] = buf_recvforw[n++];
+	    u[ix][iy][iz][2] = buf_recvforw[n++];
+	}
+    }
+
+    ix = 0;
+    n  = 0;
+
+    for (iy = 0; iy < Ly; iy++) {
+	for (iz = 0; iz < Lz; iz++) {
+	    density[ix][iy][iz] = buf_recvback[n++];
+	    Qxx[ix][iy][iz]  = buf_recvback[n++];
+	    Qxy[ix][iy][iz]  = buf_recvback[n++];
+	    Qyy[ix][iy][iz]  = buf_recvback[n++];
+	    Qxz[ix][iy][iz]  = buf_recvback[n++];
+	    Qyz[ix][iy][iz]  = buf_recvback[n++];
+	    u[ix][iy][iz][0] = buf_recvback[n++];
+	    u[ix][iy][iz][1] = buf_recvback[n++];
+	    u[ix][iy][iz][2] = buf_recvback[n++];
+	}
+    }
+
+    /* mop up the sends */
+
+    MPI_Waitall(2, send_request, send_status);
+
+    delete buf_sendforw;
+    delete buf_sendback;
+    delete buf_recvforw;
+    delete buf_recvback;
+
+    /* REPEAT FOR Y */
+    /* REPEAT FOR Z */
+
+    t1 = MPI_Wtime();
+    total_exch_ += (t1-t0);
+
+    return;
+}
+
+void communicateOldDistributions(double **** fold) {
+
+
+    const int nquantity = 5;   /* 5 propagating distributionss */
+    double * buf_sendforw;     /* send data to 'forward' direction */
+    double * buf_sendback;     /* send data to 'backward' direction */
+    double * buf_recvforw;     /* receive data from 'forward' direction */
+    double * buf_recvback;     /* receive data from 'backward' direction */
+    double   t0, t1;
+    extern double total_comm_;
+
+    int ix, iy, iz;
+    int n, nforw, nback;
+
+    const int tagb = 1014;
+    const int tagf = 1015;
+
+    MPI_Request send_request[2];
+    MPI_Request recv_request[2];
+    MPI_Status  send_status[2];
+    MPI_Status  recv_status[2];
+    MPI_Comm    comm = MPI_COMM_WORLD;
+
+    t0 = MPI_Wtime();
+
+    /* Allocate buffers */
+
+    buf_sendforw = new double[nquantity*Ly*Lz];
+    buf_sendback = new double[nquantity*Ly*Lz];
+    buf_recvforw = new double[nquantity*Ly*Lz];
+    buf_recvback = new double[nquantity*Ly*Lz];
+
+    /* X DIRECTION */
+
+    nforw = rightNeighbor;
+    nback = leftNeighbor;
+
+    /* post receives */
+
+    MPI_Irecv(buf_recvforw, nquantity*Ly*Lz, MPI_DOUBLE, nforw, tagb, comm,
+	      recv_request);
+    MPI_Irecv(buf_recvback, nquantity*Ly*Lz, MPI_DOUBLE, nback, tagf, comm,
+	      recv_request+1);
+
+    /* load send buffers and non-blocking sends */
+
+    ix = 1;
+    n  = 0;
+
+    for (iy = 0; iy < Ly; iy++) {
+	for (iz = 0; iz < Lz; iz++) {
+	    buf_sendback[n++] = fold[ix][iy][iz][3];
+	    buf_sendback[n++] = fold[ix][iy][iz][8];
+	    buf_sendback[n++] = fold[ix][iy][iz][9];
+	    buf_sendback[n++] = fold[ix][iy][iz][12];
+	    buf_sendback[n++] = fold[ix][iy][iz][13];
+	}
+    }
+
+    MPI_Issend(buf_sendback, nquantity*Ly*Lz, MPI_DOUBLE, nback, tagb, comm,
+	       send_request);
+
+
+    ix = Lx2-2;
+    n  = 0;
+
+    for (iy = 0; iy < Ly; iy++) {
+	for (iz = 0; iz < Lz; iz++) {
+	    buf_sendforw[n++] = fold[ix][iy][iz][1];
+	    buf_sendforw[n++] = fold[ix][iy][iz][7];
+	    buf_sendforw[n++] = fold[ix][iy][iz][10];
+	    buf_sendforw[n++] = fold[ix][iy][iz][11];
+	    buf_sendforw[n++] = fold[ix][iy][iz][14];
+	}
+    }
+
+    MPI_Issend(buf_sendforw, nquantity*Ly*Lz, MPI_DOUBLE, nforw, tagf, comm,
+	       send_request+1);
+
+    /* wait for receives to complete and unload buffers */
+
+    MPI_Waitall(2, recv_request, recv_status);
+
+    ix = Lx2-1;
+    n  = 0;
+
+    for (iy = 0; iy < Ly; iy++) {
+	for (iz = 0; iz < Lz; iz++) {
+	    fold[ix][iy][iz][3]  = buf_recvforw[n++];
+	    fold[ix][iy][iz][8]  = buf_recvforw[n++];
+	    fold[ix][iy][iz][9]  = buf_recvforw[n++];
+	    fold[ix][iy][iz][12] = buf_recvforw[n++];
+	    fold[ix][iy][iz][13] = buf_recvforw[n++];
+	}
+    }
+
+    ix = 0;
+    n  = 0;
+
+    for (iy = 0; iy < Ly; iy++) {
+	for (iz = 0; iz < Lz; iz++) {
+	    fold[ix][iy][iz][1]  = buf_recvback[n++];
+	    fold[ix][iy][iz][7]  = buf_recvback[n++];
+	    fold[ix][iy][iz][10] = buf_recvback[n++];
+	    fold[ix][iy][iz][11] = buf_recvback[n++];
+	    fold[ix][iy][iz][14] = buf_recvback[n++];
+ 	}
+    }
+
+    /* mop up the sends */
+
+    MPI_Waitall(2, send_request, send_status);
+
+    delete buf_sendforw;
+    delete buf_sendback;
+    delete buf_recvforw;
+    delete buf_recvback;
+
+    /* REPEAT FOR Y */
+
+    /* REPEAT FOR Z */
+
+    t1 = MPI_Wtime();
+    total_comm_ += (t1-t0);
+
+    return;
+}
+
+#endif /* COMM_3D */
 
 #endif
