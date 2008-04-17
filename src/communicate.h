@@ -1,7 +1,7 @@
 #ifndef _COM_H
 #define _COM_H
 
-enum io_type { BINARY, ASCII };
+enum io_type { BINARY, ASCII, ASCII_SERIAL };
 
 /* struct for parallel IO */
 typedef struct{

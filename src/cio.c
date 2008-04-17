@@ -4,7 +4,10 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.6 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: cio.c,v 1.7 2008-04-17 09:50:49 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -28,6 +31,7 @@ extern MPI_Comm IO_Comm;
 extern IO_Param io_grp;                  /* From communicate.c */
 
 void CIO_read_list_ascii(FILE *);
+void CIO_read_list_ascii_serial(FILE *);
 void CIO_read_list_binary(FILE *);
 void CIO_read_header_ascii(FILE *);
 void CIO_read_header_binary(FILE *);
@@ -44,9 +48,8 @@ static void (* CIO_read_header)(FILE *);
 static void (* CIO_read_list)(FILE *);
 static void CIO_count_colloids(void);
 
-static int nlocal;                       /* Local number of colloids. */
-static int ngroup;
-static int ntotal;
+static int nlocal_;                       /* Local number of colloids. */
+static int ntotal_;
 
 /*****************************************************************************
  *
@@ -62,7 +65,7 @@ void CIO_count_colloids() {
   int       ic, jc, kc;
   Colloid * p_colloid;
 
-  nlocal = 0;
+  nlocal_ = 0;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -70,17 +73,17 @@ void CIO_count_colloids() {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
-	  nlocal++;
+	  nlocal_++;
 	  p_colloid = p_colloid->next;
 	}
       }
     }
   }
 
-  ntotal = nlocal;
+  ntotal_ = nlocal_;
 
 #ifdef _MPI_
-  MPI_Allreduce(&nlocal, &ntotal, 1, MPI_INT, MPI_SUM, cart_comm());
+  MPI_Allreduce(&nlocal_, &ntotal_, 1, MPI_INT, MPI_SUM, cart_comm());
 #endif
 
   return;
@@ -215,7 +218,10 @@ void CIO_read_state(const char * filename) {
     fp_state = fopen(filename_io, "r");
     if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
     rewind(fp_state);
-    fseek(fp_state, token, SEEK_SET);
+    /* This is a fix for reading serial files in parallel */
+    if (CIO_read_list != CIO_read_list_ascii_serial) {
+      fseek(fp_state, token, SEEK_SET);
+    }
   }
 
   /* Read the data */
@@ -239,8 +245,8 @@ void CIO_read_state(const char * filename) {
   }
 
   /* This is set here, as the total is not yet known. */
-  set_N_colloid(ntotal);
-  info("Reading information for %d particles\n", ntotal);
+  set_N_colloid(ntotal_);
+  info("Reading information for %d particles\n", ntotal_);
 
   return;
 }
@@ -258,8 +264,8 @@ void CIO_write_header_ascii(FILE * fp) {
 
   fprintf(fp, "I/O n_io:  %22d\n", io_grp.n_io);
   fprintf(fp, "I/O index: %22d\n", io_grp.index);
-  fprintf(fp, "N_colloid: %22d\n", ntotal);
-  fprintf(fp, "nlocal:    %22d\n", nlocal);
+  fprintf(fp, "N_colloid: %22d\n", ntotal_);
+  fprintf(fp, "nlocal:    %22d\n", nlocal_);
 
   return;
 }
@@ -287,8 +293,8 @@ void CIO_read_header_ascii(FILE * fp) {
 
   fscanf(fp, "I/O n_io:  %22d\n",  &read_int);
   fscanf(fp, "I/O index: %22d\n",  &read_int);
-  fscanf(fp, "N_colloid: %22d\n",  &ntotal);
-  fscanf(fp, "nlocal:    %22d\n",  &nlocal);
+  fscanf(fp, "N_colloid: %22d\n",  &ntotal_);
+  fscanf(fp, "nlocal:    %22d\n",  &nlocal_);
 
   return;
 }
@@ -306,15 +312,15 @@ void CIO_write_header_binary(FILE * fp) {
 
   fwrite(&(io_grp.n_io),   sizeof(int),     1, fp);
   fwrite(&(io_grp.index),  sizeof(int),     1, fp);
-  fwrite(&ntotal,          sizeof(int),     1, fp);
-  fwrite(&nlocal,          sizeof(int),     1, fp);
+  fwrite(&ntotal_,         sizeof(int),     1, fp);
+  fwrite(&nlocal_,         sizeof(int),     1, fp);
 
   return;
 }
 
 void CIO_write_header_null(FILE * fp) {
 
-  fwrite(&nlocal, sizeof(int), 1, fp);
+  fwrite(&nlocal_, sizeof(int), 1, fp);
 
   return;
 }
@@ -333,8 +339,8 @@ void CIO_read_header_binary(FILE * fp) {
 
   fread(&(read_int), sizeof(int),     1, fp); /* n_io */
   fread(&(read_int), sizeof(int),     1, fp);
-  fread(&ntotal,     sizeof(int),     1, fp);
-  fread(&nlocal,     sizeof(int),     1, fp);
+  fread(&ntotal_,    sizeof(int),     1, fp);
+  fread(&nlocal_,    sizeof(int),     1, fp);
 
   return;
 }
@@ -395,7 +401,7 @@ void CIO_read_list_ascii(FILE * fp) {
   double    read_deltaphi;
   Colloid * p_colloid;
 
-  for (nread = 0; nread < nlocal; nread++) {
+  for (nread = 0; nread < nlocal_; nread++) {
 
     fscanf(fp, "%22le %22le %22d\n",  &(read_a0), &(read_ah), &(read_index));
     fscanf(fp, "%22le %22le %22le\n", &(read_r.x), &(read_r.y), &(read_r.z));
@@ -416,6 +422,50 @@ void CIO_read_list_ascii(FILE * fp) {
     else {
       /* This didn't go into the cell list */
       fatal("Colloid information doesn't tally with read position\n");
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  CIO_read_list_ascii_serial
+ *
+ *  This is a solution to reading a serial file in parallel.
+ *  Each process reads all the particles, and throws away
+ *  those not in the local domain.
+ *
+ *****************************************************************************/
+
+void CIO_read_list_ascii_serial(FILE * fp) {
+
+  int       nread;
+  int       read_index;
+  double    read_a0;
+  double    read_ah;
+  FVector   read_r, read_v, read_o;
+  double    read_s[3];
+  double    read_deltaphi;
+  Colloid * p_colloid;
+
+  for (nread = 0; nread < ntotal_; nread++) {
+
+    fscanf(fp, "%22le %22le %22d\n",  &(read_a0), &(read_ah), &(read_index));
+    fscanf(fp, "%22le %22le %22le\n", &(read_r.x), &(read_r.y), &(read_r.z));
+    fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
+    fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
+    fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
+    fscanf(fp, "%22le\n",             &(read_deltaphi));
+
+    p_colloid = COLL_add_colloid_no_halo(read_index, read_a0, read_ah, read_r,
+					 read_v, read_o);
+
+    if (p_colloid) {
+      p_colloid->deltaphi = read_deltaphi;
+      p_colloid->s[X] = read_s[X];
+      p_colloid->s[Y] = read_s[Y];
+      p_colloid->s[Z] = read_s[Z];
     }
   }
 
@@ -477,7 +527,7 @@ void CIO_read_list_binary(FILE * fp) {
   double    read_deltaphi;
   Colloid * p_colloid;
 
-  for (nread = 0; nread < nlocal; nread++) {
+  for (nread = 0; nread < nlocal_; nread++) {
 
     fread(&read_a0,       sizeof(double),  1, fp);
     fread(&read_ah,       sizeof(double),  1, fp);
@@ -542,7 +592,7 @@ int CIO_write_xu_binary(FILE * fp, int ic, int jc, int kc) {
  *
  *  CIO_set_cio_format
  *
- *  Set the format for IO {BINARY|ASCII}.
+ *  Set the format for IO {BINARY|ASCII|ASCII_SERIAL}.
  *
  *****************************************************************************/
 
@@ -556,6 +606,10 @@ void CIO_set_cio_format(int io_intype, int io_outtype) {
   case ASCII:
     CIO_read_header  = CIO_read_header_ascii;
     CIO_read_list    = CIO_read_list_ascii;
+    break;
+  case ASCII_SERIAL:
+    CIO_read_header  = CIO_read_header_ascii;
+    CIO_read_list    = CIO_read_list_ascii_serial;
     break;
   default:
     fatal("Invalid colloid input format (value %d)\n", io_intype);
@@ -573,11 +627,6 @@ void CIO_set_cio_format(int io_intype, int io_outtype) {
   default:
     fatal("Invalid colloid output format (value %d)\n", io_outtype);
   }
-
-#ifdef _CONSORTIUM_
-  CIO_write_header = CIO_write_header_null;
-  CIO_write_list   = CIO_write_xu_binary;
-#endif
 
   return;
 }

@@ -323,6 +323,7 @@ void COM_init() {
 
   RUN_get_string_parameter("input_format", tmp, 256);
   if (strncmp("ASCII",  tmp, 5) == 0 ) input_format = ASCII;
+  if (strncmp("ASCII_SERIAL",  tmp, 12) == 0 ) input_format = ASCII_SERIAL;
   if (strncmp("BINARY", tmp, 6) == 0 ) input_format = BINARY;
 
   RUN_get_string_parameter("output_format", tmp, 256);
@@ -338,6 +339,7 @@ void COM_init() {
     info("Input format is binary\n");
     break;
   case ASCII:
+  case ASCII_SERIAL:
     MODEL_read_site     = MODEL_read_site_asc;
     info("Input format is ASCII\n");
     break;
