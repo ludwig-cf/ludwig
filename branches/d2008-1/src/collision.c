@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.6 2008-04-28 14:33:57 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.7 2008-04-28 15:49:40 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -553,6 +553,13 @@ void MODEL_init( void ) {
   /* Now setup the rest of the simulation */
 
   site_map_init();
+
+  /* If you want to read porous media information here you need e.g.,
+   the two lines... */
+
+  /*io_read("castlegate_site_map.dat", io_info_site_map); 
+    site_map_halo(); */
+
   init_site();
   phi_init();
   hydrodynamics_init();
