@@ -34,7 +34,7 @@ double * grad_phi_site;
 double * delsq_delsq_phi_site;
 double * grad_delsq_phi_site;
 
-const int phi_finite_difference_ = 1;
+const int phi_finite_difference_ = 0;
 
 static int initialised_ = 0;
 static MPI_Datatype phi_xy_t_;
