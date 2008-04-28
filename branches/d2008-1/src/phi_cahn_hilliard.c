@@ -8,7 +8,7 @@
  *
  *  The equation is solved here via finite difference.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.1.2.3 2008-04-15 18:06:29 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.1.2.4 2008-04-28 14:43:06 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -573,3 +573,22 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
 
   return;
 }
+
+#if (__STDC_VERSION__ < 199901)
+/*****************************************************************************
+ *
+ *  signbit function
+ *
+ *  Return 0 for +ve or zero argument, 1 for negative.
+ *
+ ****************************************************************************/
+
+int signbit(double u) {
+
+  int sign = 0;
+
+  if (u < 0.0) sign = +1;
+
+  return sign;
+}
+#endif
