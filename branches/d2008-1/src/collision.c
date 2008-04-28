@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.5 2008-03-21 09:26:32 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.6 2008-04-28 14:33:57 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -407,7 +407,7 @@ void MODEL_collide_binary_lb() {
 	for (i = 0; i < 3; i++) {
 	  /* Compute trace */
 	  tr_s   += s[i][i];
-	  tr_seq += (rho*u[i]*u[i] + 0.0*sth[i][i]);
+	  tr_seq += (rho*u[i]*u[i] + sth[i][i]);
 	}
 
 	/* Form traceless parts */
@@ -421,7 +421,7 @@ void MODEL_collide_binary_lb() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j] - 0.0*sth[i][j]);
+	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j] - sth[i][j]);
 	    s[i][j] += d_[i][j]*r3*tr_s;
 
 	    /* Correction from body force (assumes equal relaxation times) */

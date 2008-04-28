@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.3 2008-03-20 18:16:00 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.4 2008-04-28 14:30:56 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -63,11 +63,9 @@ void phi_gradients_compute() {
 
   /* General case with solid objects */
 
-  phi_gradients_fluid();
+  phi_gradients_with_solid();
 
-  /* Special case for fluid only */
-  /* phi_gradients_fluid();*/
-
+  /* Fluid only */
   /* Symmetric using div P_ab */
 
   /* Brazovskii using P_ab */
@@ -278,8 +276,8 @@ static void phi_gradients_fluid() {
   yfac = (nlocal[Z] + 2*nhalo_);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    /*icm1 = get_site_index
-      ic00 = (ic  )*xfac;*/
+    /*icm1 = le_lookaside_index(ic, -1);
+      icp1 = le_lookaside_index(ic, +1); */
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
