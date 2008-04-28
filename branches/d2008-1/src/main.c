@@ -34,8 +34,10 @@
 #include "cio.h"
 #include "regsteer.h"
 
+#include "io_harness.h"
+#include "phi.h"
 
-static char rcsid[] = "$Id: main.c,v 1.13.2.2 2008-02-26 17:11:09 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.13.2.3 2008-04-28 15:15:34 kevin Exp $";
 
 int print_free_energy_profile(void);
 void set_block(void);
@@ -98,7 +100,7 @@ int main( int argc, char **argv )
     brownian_step_no_inertia();
     cell_update();
 #else
-    latt_zero_force();
+    hydrodynamics_zero_force();
     COLL_update();
     wall_update();
 
@@ -142,7 +144,7 @@ int main( int argc, char **argv )
       info("Wrting phi file at  at step %d!\n", step);
       /*COLL_compute_phi_missing();*/
       sprintf(filename,"phi-%6.6d",step);
-      COM_write_site(filename, MODEL_write_phi);
+      io_write(filename, io_info_phi);
       sprintf(filename, "%s%6.6d", "config.cds", step);
       CIO_write_state(filename);
     }
