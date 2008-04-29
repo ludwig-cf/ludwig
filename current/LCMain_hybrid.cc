@@ -220,8 +220,8 @@ int main(int argc, char** argv)
 #endif
 
     for (i=ix1; i<ix2; i++) {
-      for (j=0; j<Ly; j++) {
-	  for (k=0; k<Lz; k++) {
+      for (j=jy1; j<jy2; j++) {
+	  for (k=kz1; k<kz2; k++) {
 	  	Qxxold[i][j][k]=Qxx[i][j][k];
 	  	Qxyold[i][j][k]=Qxy[i][j][k];
 	  	Qxzold[i][j][k]=Qxz[i][j][k];
@@ -242,8 +242,8 @@ int main(int argc, char** argv)
 #endif
 
     for (i=ix1; i<ix2; i++) {
-      for (j=0; j<Ly; j++) {
-	  for (k=0; k<Lz; k++) {
+      for (j=jy1; j<jy2; j++) {
+	  for (k=kz1; k<kz2; k++) {
 
 	  Qxxnew[i][j][k]=Qxxold[i][j][k]+dt*(DEHxx[i][j][k]);
 	  Qxynew[i][j][k]=Qxyold[i][j][k]+dt*(DEHxy[i][j][k]);
@@ -266,8 +266,8 @@ int main(int argc, char** argv)
 #endif
  
     for (i=ix1; i<ix2; i++) {
-      for (j=0; j<Ly; j++) {
-	 for (k=0; k<Lz; k++) {
+      for (j=jy1; j<jy2; j++) {
+	 for (k=kz1; k<kz2; k++) {
 
 	  Qxx[i][j][k]=Qxxnew[i][j][k];
 	  Qxy[i][j][k]=Qxynew[i][j][k];
@@ -294,8 +294,8 @@ int main(int argc, char** argv)
 #endif
        
       for (i=ix1; i<ix2; i++) {
-	 for (j=0; j<Ly; j++) {
-	  for (k=0; k<Lz; k++) {
+	 for (j=jy1; j<jy2; j++) {
+	  for (k=kz1; k<kz2; k++) {
 
 	    Qxxnew[i][j][k]=Qxxold[i][j][k]+0.5*dt*(DEHxx[i][j][k]+
 			  DEHxxold[i][j][k]);
@@ -318,8 +318,8 @@ int main(int argc, char** argv)
 
    
       for (i=ix1; i<ix2; i++) {
-	 for (j=0; j<Ly; j++) {
-	  for (k=0; k<Lz; k++) {
+	 for (j=jy1; j<jy2; j++) {
+	  for (k=kz1; k<kz2; k++) {
 
 	    Qxx[i][j][k]=Qxxnew[i][j][k];
 	    Qxy[i][j][k]=Qxynew[i][j][k];
@@ -443,7 +443,7 @@ if (BACKFLOW == 1){
 }
 
 
-void update0(double ****fnew,double ****fold)
+void update0(double ****fnew,double ****fold)//WARNING:NEED TO CHANGE FOR 3D DECOMPOSITION
 {
   int i,j,k,l,imod,jmod,kmod;
   double rb,Qxxb,Qyyb,Qxyb,Qxzb,Qyzb,tmp,eqrat,vzoutone;
@@ -479,15 +479,15 @@ void update0(double ****fnew,double ****fold)
 #endif
 
   for (i=ix1; i<ix2; i++)
-    for (j=0; j<Ly; j++)
-      for (k=0; k<Lz; k++)
+    for (j=jy1; j<jy2; j++)
+      for (k=kz1; k<kz2; k++)
 	for (l=0; l<15; l++) {
 
 	  imod=(i-e[l][0]+Lx2)%Lx2; 
-	  jmod=(j-e[l][1]+Ly)%Ly; 
-	  kmod=(k-e[l][2]+Lz)%Lz;
+	  jmod=(j-e[l][1]+Ly2)%Ly2; 
+	  kmod=(k-e[l][2]+Lz)%Lz2;
 #ifdef PARALLEL
-	  if ((imod == 0) || (imod == Lx2-1)) {
+	  if ((imod == 0) || (imod == Lx2-1) || (jmod==0) || (jmod==Ly2-1) || (kmod==0) || (kmod==Lz2-1) ) {
 	    fnew[i][j][k][l]=fold[imod][jmod][kmod][l];
 	  }
 	  else {
@@ -568,7 +568,7 @@ void update0(double ****fnew,double ****fold)
 }
 
 
-void update(double ****fnew,double ****fold)
+void update(double ****fnew,double ****fold)//WARNING:NEED TO CHANGE FOR 3D DECOMPOSITION
 {
   int i,j,k,l,imod,jmod,kmod;
   double rb,Qxxb,Qyyb,Qxyb,Qxzb,Qyzb,tmp,vzoutone;
@@ -605,16 +605,16 @@ void update(double ****fnew,double ****fold)
 #endif
 
   for (i=ix1; i<ix2; i++) {
-    for (j=0; j<Ly; j++) {
-      for (k=0; k<Lz; k++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
 
 	for (l=0; l<15; l++) {
 	  imod=(i-e[l][0]+Lx2)%Lx2; 
-	  jmod=(j-e[l][1]+Ly)%Ly; 
-	  kmod=(k-e[l][2]+Lz)%Lz;
+	  jmod=(j-e[l][1]+Ly2)%Ly2; 
+	  kmod=(k-e[l][2]+Lz2)%Lz2;
 
 #ifdef PARALLEL
-	  if ((imod == 0) || (imod == Lx2-1)) {
+	  if ((imod == 0) || (imod == Lx2-1) || (jmod==0) || (jmod==Ly2-1) || (kmod==0) || (kmod==Lz2-1)  ) {
 	    fnew[i][j][k][l]=fold[imod][jmod][kmod][l]+
 			      0.5*dt*feq[i][j][k][l]/tau1/oneplusdtover2tau1;
 	  }
@@ -705,8 +705,8 @@ void collisionop(void)
   int i,j,k,l;
 
   for (i=ix1; i<ix2; i++)
-    for (j=0; j<Ly; j++)
-      for (k=0; k<Lz; k++) 
+    for (j=jy1; j<jy2; j++)
+      for (k=kz1; k<kz2; k++) 
 	for (l=0; l<15; l++) {
 	  Fc[i][j][k][l]= (feq[i][j][k][l]-f[i][j][k][l])/tau1; 
           if (pouiseuille==1) {
@@ -740,12 +740,12 @@ void equilibriumdist(void)
   for (i=ix1; i<ix2; i++) {
     if (i==Lx2-1) iup=0; else iup=i+1;
     if (i==0) idwn=Lx2-1; else idwn=i-1;
-    for (j=0; j<Ly; j++) {
-      if (j==Ly-1) jup=0; else jup=j+1;
-      if (j==0) jdwn=Ly-1; else jdwn=j-1;
-      for (k=0; k<Lz; k++) {
-	if (k==Lz-1) kup=0; else kup=k+1;
-	if (k==0) kdwn=Lz-1; else kdwn=k-1;
+    for (j=jy1; j<jy2; j++) {
+      if (j==Ly2-1) jup=0; else jup=j+1;
+      if (j==0) jdwn=Ly2-1; else jdwn=j-1;
+      for (k=kz1; k<kz2; k++) {
+	if (k==Lz2-1) kup=0; else kup=k+1;
+	if (k==0) kdwn=Lz2-1; else kdwn=k-1;
 
 	rho=density[i][j][k];
 	Qxxl=Qxx[i][j][k];
@@ -921,8 +921,8 @@ void parametercalc(int n)
   double mDQ4xx,mDQ4xy,mDQ4yy,mDQ4xz,mDQ4yz,mDQ4zz,nnxxl,nnyyl;
 
   for (i=ix1; i<ix2; i++) {
-    for (j=0; j<Ly; j++) {
-      for (l=0; l<Lz; l++) {
+    for (j=jy1; j<jy2; j++) {
+      for (l=kz1; l<kz2; l++) {
 	density[i][j][l]=0.0;
         freeenergy=0.0;
         freeenergytwist=0.0;
@@ -948,12 +948,12 @@ void parametercalc(int n)
   for (i=ix1; i<ix2; i++) {
     if (i==Lx2-1) iup=0; else iup=i+1;
     if (i==0) idwn=Lx2-1; else idwn=i-1;
-    for (j=0; j<Ly; j++) {
-      if (j==Ly-1) jup=0; else jup=j+1;
-      if (j==0) jdwn=Ly-1; else jdwn=j-1;
-      for (k=0; k<Lz; k++) {
-	if (k==Lz-1) kup=0; else kup=k+1;
-	if (k==0) kdwn=Lz-1; else kdwn=k-1;
+    for (j=jy1; j<jy2; j++) {
+      if (j==Ly2-1) jup=0; else jup=j+1;
+      if (j==0) jdwn=Ly2-1; else jdwn=j-1;
+      for (k=kz1; k<kz2; k++) {
+	if (k==Lz2-1) kup=0; else kup=k+1;
+	if (k==0) kdwn=Lz2-1; else kdwn=k-1;
 
 /* first order derivative in the bulk */
 
@@ -1148,6 +1148,7 @@ void parametercalc(int n)
       /*B.C.; use one-sided derivatives*/
 	if(pouiseuille1==1){
 #if BC
+// WARNING !! The BC needs to be changed for parallelisation if BC != 0
 	if(k==0) {
 	  duydz= 0.0*(-3.0*u[i][j][k][1]+4.0*u[i][j][k+1][1]-u[i][j][k+2][1])/2.0;
 	}
@@ -1267,6 +1268,7 @@ void parametercalc(int n)
 	  -aa*L1*q0*q0*Qyzl+DEHyz[i][j][k];
 
 #if FIXEDQ
+// WARNING !! The BC needs to be changed for parallelisation if BC != 0
 	if(pouiseuille1==1){
 	if (k==0) {
 	  Hxx= -bcstren*(Qxxl-Qxxinit[i][j][0]);
@@ -1303,6 +1305,7 @@ void parametercalc(int n)
  
 
 #if FIXEDQ
+// WARNING !! The BC needs to be changed for parallelisation if BC != 0
 	if(pouiseuille1==1){
 	if (k==0) {
 	 Fh[i][j][k][0]=0.0;

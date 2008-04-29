@@ -1,5 +1,5 @@
-CCS = CC
-CCP = CC -O3
+CCS = xlc
+CCP = mpixlc
 
 INCS	=	
  
@@ -12,12 +12,13 @@ INCS	=
 
 DEFS    =	 -DBE -DEON -DCHOL \
                  -DMPICH_IGNORE_CXX_SEEK
+#-O3 -qarch=440d -qipa\
 
-LIBS	=	#-lstdc++ -libmc++ -lsupc++
+LIBS	=	-lstdc++ -libmc++ -lsupc++
 
 LIBPATH =
 
-NAME	= test
+NAME	= HLBLC08
 
 all: $(NAME)S $(NAME)P
 
@@ -46,18 +47,18 @@ depend:
 
 # DO NOT DELETE
 
-#String.o: String.hh Bool.hh
-#LCParallel.o: LCParallel.hh /usr/include/math.h /usr/include/features.h
-#LCParallel.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-#LCParallel.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-#LCParallel.o: /usr/include/bits/mathcalls.h /usr/include/stdlib.h
-#LCParallel.o: /usr/lib/gcc-lib/powerpc-suse-linux/3.3.3/include/stddef.h
-#LCParallel.o: /usr/include/sys/types.h /usr/include/bits/types.h
-#LCParallel.o: /usr/include/bits/wordsize.h /usr/include/bits/typesizes.h
-#LCParallel.o: /usr/include/time.h /usr/include/endian.h
-#LCParallel.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-#LCParallel.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-#LCParallel.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-#LCParallel.o: /usr/include/bits/pthreadtypes.h /usr/include/bits/sched.h
-#LCParallel.o: /usr/include/alloca.h LCMain_hybrid.hh String.hh Bool.hh
-#LCMain_h.o: LCMain_hybrid.hh String.hh Bool.hh
+String.o: String.hh Bool.hh
+LCParallel.o: LCParallel.hh /usr/include/math.h /usr/include/features.h
+LCParallel.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+LCParallel.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
+LCParallel.o: /usr/include/bits/mathcalls.h /usr/include/stdlib.h
+LCParallel.o: /usr/lib/gcc-lib/powerpc-suse-linux/3.3.3/include/stddef.h
+LCParallel.o: /usr/include/sys/types.h /usr/include/bits/types.h
+LCParallel.o: /usr/include/bits/wordsize.h /usr/include/bits/typesizes.h
+LCParallel.o: /usr/include/time.h /usr/include/endian.h
+LCParallel.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+LCParallel.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+LCParallel.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
+LCParallel.o: /usr/include/bits/pthreadtypes.h /usr/include/bits/sched.h
+LCParallel.o: /usr/include/alloca.h LCMain_hybrid.hh String.hh Bool.hh
+LCMain_h.o: LCMain_hybrid.hh String.hh Bool.hh
