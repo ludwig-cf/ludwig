@@ -5,7 +5,7 @@ void randomizeQ(void)
   double phase,phase2,amplitude;
 
   for (i=ix1; i<ix2; i++) {
-    for (j=0; j<Ly; j++) {
+    for (j=jy1; j<jy2; j++) {
       for (k=0; k< Lz; k++) {
 
 	density[i][j][k]=densityinit;
@@ -234,7 +234,7 @@ void startDroplet(void)
   double phase,phase2,amplitude;
 
   for (i=ix1; i<ix2; i++) {
-    for (j=0; j<Ly; j++) {
+    for (j=jy1; j<jy2; j++) {
       for (k=0; k< Lz; k++) {
 
 	      int iactual;
@@ -243,6 +243,7 @@ void startDroplet(void)
 #ifdef PARALLEL
 
 	      iactual=(i-1)+Lx/nbPE*myPE;
+	      //NEW GRID: need to change this with appropriate 2/3D counting
 
 #endif
 
@@ -336,28 +337,58 @@ void initialize(void)
 {
 
 #ifdef PARALLEL
-  Lx2=Lx/nbPE+2;
-  ix1=1;
-  ix2=Lx2-1;
+
+  int n,buffer_size;
+  int pe_cartesian_size[3],pe_cartesian_coordinates[3];
+  int periodic[3];
+  int pe_cartesian_rank;
+  int pe_cartesian_neighbours[2][3];
+  int reorder=1;
+ 
+  MPI_Comm cartesian_communicator;
+
+  MPI_Cart_create(MPI_COMM_WORLD, 3, pe_cartesian_size, periodic, reorder,
+		  &cartesian_communicator);
+
+  MPI_Comm_rank(cartesian_communicator, &pe_cartesian_rank);
+
+  MPI_Cart_coords(cartesian_communicator, pe_cartesian_rank, 3,
+		  pe_cartesian_coordinates);
 
 
-  tmpBuf= new double[Lz*Ly*5];
 
+    Lx2=Lx/pe_cartesian_size[0];
+    ix1=1;
+    ix2=Lx2-1;
 
+    Ly2=Ly/pe_cartesian_size[1];
+    jy1=1;
+    jy2=Ly2-1;
+
+    Lz2=Lz/pe_cartesian_size[2];
+    kz1=1;
+    kz2=Lz2-1;
+
+    tmpBuf= new double[Lz2*Ly2*5];
+
+    
 #else
   Lx2=Lx;
   ix1=0;
   ix2=Lx2;
+  Ly2=Ly;
+  jy1=0;
+  jy2=Ly2;
 #endif
 
   int ix,iy,iz;
 
   fa=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    fa[ix]=new double**[Ly];
-    for (iy=0;iy<Ly;iy++) {
-      fa[ix][iy]=new double*[Lz];
-      for (iz=0;iz<Lz;iz++)
+    fa[ix]=new double**[Ly2];
+    for (iy=0;iy<Ly2;iy++) {
+      fa[ix][iy]=new double*[Lz2];
+      for (iz=0;iz<Lz2;iz++)
 	fa[ix][iy][iz]=new double[15];
     }
   }
@@ -365,10 +396,10 @@ void initialize(void)
 
   fb=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    fb[ix]=new double**[Ly];
-    for (iy=0;iy<Ly;iy++) {
-      fb[ix][iy]=new double*[Lz];
-      for (iz=0;iz<Lz;iz++)
+    fb[ix]=new double**[Ly2];
+    for (iy=0;iy<Ly2;iy++) {
+      fb[ix][iy]=new double*[Lz2];
+      for (iz=0;iz<Lz2;iz++)
 	fb[ix][iy][iz]=new double[15];
     }
   }
@@ -376,10 +407,10 @@ void initialize(void)
 
   Fc=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Fc[ix]=new double**[Ly];
-    for (iy=0;iy<Ly;iy++) {
-      Fc[ix][iy]=new double*[Lz];
-      for (iz=0;iz<Lz;iz++)
+    Fc[ix]=new double**[Ly2];
+    for (iy=0;iy<Ly2;iy++) {
+      Fc[ix][iy]=new double*[Lz2];
+      for (iz=0;iz<Lz2;iz++)
 	Fc[ix][iy][iz]=new double[15];
     }
   }
@@ -387,30 +418,30 @@ void initialize(void)
 
   feq=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    feq[ix]=new double**[Ly];
-    for (iy=0;iy<Ly;iy++) {
-      feq[ix][iy]=new double*[Lz];
-      for (iz=0;iz<Lz;iz++)
+    feq[ix]=new double**[Ly2];
+    for (iy=0;iy<Ly2;iy++) {
+      feq[ix][iy]=new double*[Lz2];
+      for (iz=0;iz<Lz2;iz++)
 	feq[ix][iy][iz]=new double[15];
     }
   }
 
   u=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    u[ix]=new double**[Ly];
-    for (iy=0;iy<Ly;iy++) {
-      u[ix][iy]=new double*[Lz];
-      for (iz=0;iz<Lz;iz++)
+    u[ix]=new double**[Ly2];
+    for (iy=0;iy<Ly2;iy++) {
+      u[ix][iy]=new double*[Lz2];
+      for (iz=0;iz<Lz2;iz++)
 	u[ix][iy][iz]=new double[3];
     }
   }
 
   Fh=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Fh[ix]=new double**[Ly];
-    for (iy=0;iy<Ly;iy++) {
-      Fh[ix][iy]=new double*[Lz];
-      for (iz=0;iz<Lz;iz++)
+    Fh[ix]=new double**[Ly2];
+    for (iy=0;iy<Ly2;iy++) {
+      Fh[ix][iy]=new double*[Lz2];
+      for (iz=0;iz<Lz2;iz++)
 	Fh[ix][iy][iz]=new double[3];
     }
   }
@@ -419,445 +450,445 @@ void initialize(void)
 
   density=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    density[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      density[ix][iy]=new double[Lz];
+    density[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      density[ix][iy]=new double[Lz2];
   }
   Qxx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxx[ix][iy]=new double[Lz];
+    Qxx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxx[ix][iy]=new double[Lz2];
   }
   Qxy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
     Qxy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
+    for (iy=0;iy<Ly2;iy++)
       Qxy[ix][iy]=new double[Lz];
   }
   Qyy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qyy[ix][iy]=new double[Lz];
+    Qyy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qyy[ix][iy]=new double[Lz2];
   }
   Qxz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxz[ix][iy]=new double[Lz];
+    Qxz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxz[ix][iy]=new double[Lz2];
   }
   Qyz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qyz[ix][iy]=new double[Lz];
+    Qyz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qyz[ix][iy]=new double[Lz2];
   }
   Qxxold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxxold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxxold[ix][iy]=new double[Lz];
+    Qxxold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxxold[ix][iy]=new double[Lz2];
   }
   Qxyold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxyold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxyold[ix][iy]=new double[Lz];
+    Qxyold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxyold[ix][iy]=new double[Lz2];
   }
   Qyyold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyyold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qyyold[ix][iy]=new double[Lz];
+    Qyyold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qyyold[ix][iy]=new double[Lz2];
   }
   Qxzold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxzold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxzold[ix][iy]=new double[Lz];
+    Qxzold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxzold[ix][iy]=new double[Lz2];
   }
   Qyzold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyzold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qyzold[ix][iy]=new double[Lz];
+    Qyzold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qyzold[ix][iy]=new double[Lz2];
   }
   Qxxnew=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxxnew[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxxnew[ix][iy]=new double[Lz];
+    Qxxnew[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxxnew[ix][iy]=new double[Lz2];
   }
   Qxynew=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxynew[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxynew[ix][iy]=new double[Lz];
+    Qxynew[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxynew[ix][iy]=new double[Lz2];
   }
   Qyynew=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyynew[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qyynew[ix][iy]=new double[Lz];
+    Qyynew[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qyynew[ix][iy]=new double[Lz2];
   }
   Qxznew=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxznew[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxznew[ix][iy]=new double[Lz];
+    Qxznew[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxznew[ix][iy]=new double[Lz2];
   }
   Qyznew=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyznew[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qyznew[ix][iy]=new double[Lz];
+    Qyznew[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qyznew[ix][iy]=new double[Lz2];
   }
   Qxxinit=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxxinit[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxxinit[ix][iy]=new double[Lz];
+    Qxxinit[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxxinit[ix][iy]=new double[Lz2];
   }
   Qxyinit=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
     Qxyinit[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
+    for (iy=0;iy<Ly2;iy++)
       Qxyinit[ix][iy]=new double[Lz];
   }
   Qyyinit=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyyinit[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qyyinit[ix][iy]=new double[Lz];
+    Qyyinit[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qyyinit[ix][iy]=new double[Lz2];
   }
   Qxzinit=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxzinit[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qxzinit[ix][iy]=new double[Lz];
+    Qxzinit[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qxzinit[ix][iy]=new double[Lz2];
   }
   Qyzinit=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyzinit[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Qyzinit[ix][iy]=new double[Lz];
+    Qyzinit[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Qyzinit[ix][iy]=new double[Lz2];
   }
   DEHxx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHxx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHxx[ix][iy]=new double[Lz];
+    DEHxx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHxx[ix][iy]=new double[Lz2];
   }
   DEHxy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHxy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHxy[ix][iy]=new double[Lz];
+    DEHxy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHxy[ix][iy]=new double[Lz2];
   }
   DEHyy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHyy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHyy[ix][iy]=new double[Lz];
+    DEHyy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHyy[ix][iy]=new double[Lz2];
   }
   DEHxz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHxz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHxz[ix][iy]=new double[Lz];
+    DEHxz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHxz[ix][iy]=new double[Lz2];
   }
   DEHyz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHyz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHyz[ix][iy]=new double[Lz];
+    DEHyz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHyz[ix][iy]=new double[Lz2];
   }
   DEHxxold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHxxold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHxxold[ix][iy]=new double[Lz];
+    DEHxxold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHxxold[ix][iy]=new double[Lz2];
   }
   DEHxyold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHxyold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHxyold[ix][iy]=new double[Lz];
+    DEHxyold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHxyold[ix][iy]=new double[Lz2];
   }
   DEHyyold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHyyold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHyyold[ix][iy]=new double[Lz];
+    DEHyyold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHyyold[ix][iy]=new double[Lz2];
   }
   DEHxzold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHxzold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHxzold[ix][iy]=new double[Lz];
+    DEHxzold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHxzold[ix][iy]=new double[Lz2];
   }
   DEHyzold=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEHyzold[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEHyzold[ix][iy]=new double[Lz];
+    DEHyzold[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEHyzold[ix][iy]=new double[Lz2];
   }
 
   DEH1xx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH1xx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH1xx[ix][iy]=new double[Lz];
+    DEH1xx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH1xx[ix][iy]=new double[Lz2];
   }
   DEH1xy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH1xy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH1xy[ix][iy]=new double[Lz];
+    DEH1xy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH1xy[ix][iy]=new double[Lz2];
   }
   DEH1yy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH1yy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH1yy[ix][iy]=new double[Lz];
+    DEH1yy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH1yy[ix][iy]=new double[Lz2];
   }
   DEH1xz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH1xz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH1xz[ix][iy]=new double[Lz];
+    DEH1xz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH1xz[ix][iy]=new double[Lz2];
   }
   DEH1yz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH1yz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH1yz[ix][iy]=new double[Lz];
+    DEH1yz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH1yz[ix][iy]=new double[Lz2];
   }
 
   DEH3xx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH3xx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH3xx[ix][iy]=new double[Lz];
+    DEH3xx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH3xx[ix][iy]=new double[Lz2];
   }
   DEH3xy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH3xy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH3xy[ix][iy]=new double[Lz];
+    DEH3xy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH3xy[ix][iy]=new double[Lz2];
   }
   DEH3yy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH3yy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH3yy[ix][iy]=new double[Lz];
+    DEH3yy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH3yy[ix][iy]=new double[Lz2];
   }
   DEH3xz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH3xz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH3xz[ix][iy]=new double[Lz];
+    DEH3xz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH3xz[ix][iy]=new double[Lz2];
   }
   DEH3yz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DEH3yz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DEH3yz[ix][iy]=new double[Lz];
+    DEH3yz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DEH3yz[ix][iy]=new double[Lz2];
   }
 
   molfieldxx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    molfieldxx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      molfieldxx[ix][iy]=new double[Lz];
+    molfieldxx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      molfieldxx[ix][iy]=new double[Lz2];
   }
   molfieldxy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    molfieldxy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      molfieldxy[ix][iy]=new double[Lz];
+    molfieldxy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      molfieldxy[ix][iy]=new double[Lz2];
   }
   molfieldyy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    molfieldyy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      molfieldyy[ix][iy]=new double[Lz];
+    molfieldyy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      molfieldyy[ix][iy]=new double[Lz2];
   }
   molfieldxz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    molfieldxz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      molfieldxz[ix][iy]=new double[Lz];
+    molfieldxz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      molfieldxz[ix][iy]=new double[Lz2];
   }
   molfieldyz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    molfieldyz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      molfieldyz[ix][iy]=new double[Lz];
+    molfieldyz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      molfieldyz[ix][iy]=new double[Lz2];
   }
 
   DG2xx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2xx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2xx[ix][iy]=new double[Lz];
+    DG2xx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2xx[ix][iy]=new double[Lz2];
   }
   DG2xy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2xy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2xy[ix][iy]=new double[Lz];
+    DG2xy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2xy[ix][iy]=new double[Lz2];
   }
   DG2yy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2yy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2yy[ix][iy]=new double[Lz];
+    DG2yy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2yy[ix][iy]=new double[Lz2];
   }
   DG2xz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2xz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2xz[ix][iy]=new double[Lz];
+    DG2xz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2xz[ix][iy]=new double[Lz2];
   }
   DG2yz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2yz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2yz[ix][iy]=new double[Lz];
+    DG2yz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2yz[ix][iy]=new double[Lz2];
   }
   DG2zz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2zz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2zz[ix][iy]=new double[Lz];
+    DG2zz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2zz[ix][iy]=new double[Lz2];
   }
   DG2yx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2yx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2yx[ix][iy]=new double[Lz];
+    DG2yx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2yx[ix][iy]=new double[Lz2];
   }
   DG2zy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2zy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2zy[ix][iy]=new double[Lz];
+    DG2zy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2zy[ix][iy]=new double[Lz2];
   }
   DG2zx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    DG2zx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      DG2zx[ix][iy]=new double[Lz];
+    DG2zx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      DG2zx[ix][iy]=new double[Lz2];
   }
   tauxy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    tauxy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      tauxy[ix][iy]=new double[Lz];
+    tauxy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      tauxy[ix][iy]=new double[Lz2];
   }
   tauxz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    tauxz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      tauxz[ix][iy]=new double[Lz];
+    tauxz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      tauxz[ix][iy]=new double[Lz2];
   }
   tauyz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    tauyz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      tauyz[ix][iy]=new double[Lz];
+    tauyz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      tauyz[ix][iy]=new double[Lz2];
   }
   Stressxx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stressxx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stressxx[ix][iy]=new double[Lz];
+    Stressxx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stressxx[ix][iy]=new double[Lz2];
   }
   Stressxy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stressxy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stressxy[ix][iy]=new double[Lz];
+    Stressxy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stressxy[ix][iy]=new double[Lz2];
   }
   Stressyy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stressyy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stressyy[ix][iy]=new double[Lz];
+    Stressyy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stressyy[ix][iy]=new double[Lz2];
   }
   Stressxz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stressxz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stressxz[ix][iy]=new double[Lz];
+    Stressxz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stressxz[ix][iy]=new double[Lz2];
   }
   Stressyz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stressyz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stressyz[ix][iy]=new double[Lz];
+    Stressyz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stressyz[ix][iy]=new double[Lz2];
   }
   Stresszz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stresszz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stresszz[ix][iy]=new double[Lz];
+    Stresszz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stresszz[ix][iy]=new double[Lz2];
   }
   Stressyx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stressyx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stressyx[ix][iy]=new double[Lz];
+    Stressyx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stressyx[ix][iy]=new double[Lz2];
   }
   Stresszx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stresszx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stresszx[ix][iy]=new double[Lz];
+    Stresszx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stresszx[ix][iy]=new double[Lz2];
   }
   Stresszy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Stresszy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Stresszy[ix][iy]=new double[Lz];
+    Stresszy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Stresszy[ix][iy]=new double[Lz2];
   }
   Ex=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Ex[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Ex[ix][iy]=new double[Lz];
+    Ex[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Ex[ix][iy]=new double[Lz2];
   }
   Ey=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Ey[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Ey[ix][iy]=new double[Lz];
+    Ey[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Ey[ix][iy]=new double[Lz2];
   }
   Ez=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Ez[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Ez[ix][iy]=new double[Lz];
+    Ez[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Ez[ix][iy]=new double[Lz2];
   }
   Pdx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Pdx[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Pdx[ix][iy]=new double[Lz];
+    Pdx[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Pdx[ix][iy]=new double[Lz2];
   }
   Pdy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Pdy[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Pdy[ix][iy]=new double[Lz];
+    Pdy[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Pdy[ix][iy]=new double[Lz2];
   }
   Pdz=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Pdz[ix]=new double*[Ly];
-    for (iy=0;iy<Ly;iy++)
-      Pdz[ix][iy]=new double[Lz];
+    Pdz[ix]=new double*[Ly2];
+    for (iy=0;iy<Ly2;iy++)
+      Pdz[ix][iy]=new double[Lz2];
   }
 
   e[0][0]= 0;
@@ -920,16 +951,10 @@ void initialize(void)
   e[14][1]= -1;
   e[14][2]= -1;
 
-#ifdef PARALLEL
+#ifdef PARALLEL //COMM_3D CHANGED
 
   // Creates a communication buffer
-/*  const long int bufSize=10000000;//LY*LZ*5*8+5000;
 
-  MPI_Buffer_attach(buff,bufSize);
-  */
-
-
-  int buffer_size;
 
   buffer_size = 40*(Ly*Lz*sizeof(double) + MPI_BSEND_OVERHEAD);
 
@@ -937,12 +962,19 @@ void initialize(void)
 
   MPI_Buffer_attach(buff, buffer_size);
 
+  /* We use reorder as a temporary here, as MPI_Cart_shift can
+   * change the actual argument for the rank of the source of
+   * the recieve, but we only want destination of send. */
 
-  leftNeighbor=myPE-1;
-  if (leftNeighbor == -1) leftNeighbor=nbPE-1;
+  for (n = 0; n < 3; n++) {
+    reorder = pe_cartesian_coordinates[n];
+    MPI_Cart_shift(cartesian_communicator, n, -1, &reorder,
+		   &pe_cartesian_neighbours[0][n]);
+    reorder = pe_cartesian_coordinates[n];
+    MPI_Cart_shift(cartesian_communicator, n, +1, &reorder,
+		   &pe_cartesian_neighbours[1][n]);
+  }
 
-  rightNeighbor=myPE+1;
-  if (rightNeighbor == nbPE) rightNeighbor=0;
 #endif
 
 }

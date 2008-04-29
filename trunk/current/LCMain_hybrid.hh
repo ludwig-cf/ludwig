@@ -16,8 +16,8 @@
 // ----------------------------------------
 // pameters
 
-int Lx,Lx2,Ly,Lz,Nmax,GRAPHICS,stepskip,itimprov;
-int ix1,ix2;
+int Lx,Lx2,Ly,Ly2,Lz,Lz2,Nmax,GRAPHICS,stepskip,itimprov;
+int ix1,ix2,jy1,jy2,kz1,kz2;
 int FePrintInt, SigPrintFac, OVDPrintInt;
 
 float temperature=0.5;
@@ -204,7 +204,7 @@ ofstream output;
 ofstream output1;
 ofstream fp;
 
-int myPE,nbPE;
+int myPE,nbPE,nbPErow;
 
 #ifdef PARALLEL
 
@@ -214,7 +214,7 @@ MPI_Request reqBsend;
 
 MPI_Datatype leftFieldsType,rightFieldsType;
 
-int leftNeighbor, rightNeighbor;
+int leftNeighbor, rightNeighbor,upNeighbor,downNeighbor;
 
 double *tmpBuf;
 char *buff;
@@ -227,8 +227,8 @@ char *buff;
 // pameters
 
 extern int FePrintInt;
-extern int Lx,Lx2,Ly,Lz,Nmax,GRAPHICS,stepskip,itimprov;
-extern int ix1,ix2;
+extern int Lx,Lx2,Ly,Ly2,Lz,Lz2,Nmax,GRAPHICS,stepskip,itimprov;
+extern int ix1,ix2,jy1,jy2,kz1,kz2;
 
 extern float temperature;
 extern float Abulk;
@@ -388,7 +388,7 @@ extern ofstream output;
 extern ofstream output1;
 extern ofstream fp;
 
-extern int myPE,nbPE;
+extern int myPE,nbPE,nbPErow;
 
 #ifdef PARALLEL
 
@@ -398,7 +398,7 @@ extern MPI_Request reqBsend;
 
 extern MPI_Datatype leftFieldsType,rightFieldsType;
 
-extern int leftNeighbor, rightNeighbor;
+extern int leftNeighbor, rightNeighbor,upNeighbor,downNeighbor;
 
 
 extern double *tmpBuf;
