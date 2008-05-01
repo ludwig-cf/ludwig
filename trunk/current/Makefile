@@ -1,5 +1,5 @@
-CCS = xlc
-CCP = mpixlc
+CCS = CC
+CCP = CC -V -O3 -OPT:Ofast
 
 INCS	=	
  
@@ -10,15 +10,15 @@ INCS	=
 # FIXEDQ: fixed or free boundary conditions for Q
  
 
-DEFS    =	 -DBE -DEON -DCHOL \
-                 -DMPICH_IGNORE_CXX_SEEK
-#-O3 -qarch=440d -qipa\
+DEFS    =	 -DBE -DEON -DCHOL\
+                 -DMPICH_IGNORE_CXX_SEEK -D_COMM_3D_
 
-LIBS	=	-lstdc++ -libmc++ -lsupc++
+
+LIBS	=
 
 LIBPATH =
 
-NAME	= HLBLC08
+NAME	= test
 
 all: $(NAME)S $(NAME)P
 
@@ -26,7 +26,7 @@ String.o: String.cc
 	$(CCP) -c String.cc $(DEFS)
 
 LCParallel.o: LCParallel.cc
-	$(CCP) -c LCParallel.cc -DPARALLEL
+	$(CCP) -c LCParallel.cc -DPARALLEL -D_COMM_3D_
 
 $(NAME)S: String.o Initialization.cc Output.cc LCMain_hybrid.cc
 	$(CCS) LCMain_hybrid.cc String.o -o $(NAME)S $(INCS) $(DEFS) \
@@ -45,20 +45,3 @@ out-clean:
 depend:
 	makedepend $(INCS) $(DEFS) $(NAME).cc String.cc LCParallel.cc LCMain_h.cc
 
-# DO NOT DELETE
-
-String.o: String.hh Bool.hh
-LCParallel.o: LCParallel.hh /usr/include/math.h /usr/include/features.h
-LCParallel.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-LCParallel.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-LCParallel.o: /usr/include/bits/mathcalls.h /usr/include/stdlib.h
-LCParallel.o: /usr/lib/gcc-lib/powerpc-suse-linux/3.3.3/include/stddef.h
-LCParallel.o: /usr/include/sys/types.h /usr/include/bits/types.h
-LCParallel.o: /usr/include/bits/wordsize.h /usr/include/bits/typesizes.h
-LCParallel.o: /usr/include/time.h /usr/include/endian.h
-LCParallel.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-LCParallel.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-LCParallel.o: /usr/include/bits/time.h /usr/include/sys/sysmacros.h
-LCParallel.o: /usr/include/bits/pthreadtypes.h /usr/include/bits/sched.h
-LCParallel.o: /usr/include/alloca.h LCMain_hybrid.hh String.hh Bool.hh
-LCMain_h.o: LCMain_hybrid.hh String.hh Bool.hh
