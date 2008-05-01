@@ -4,9 +4,23 @@ void randomizeQ(void)
   int i,j,k,l;
   double phase,phase2,amplitude;
 
+  // Global position (double)
+  double ic, jc, kc;
+
+#ifdef PARALLEL
+  double ioff, joff, koff;
+  ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
+  joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
+  koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
+#endif
+
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
-      for (k=0; k< Lz; k++) {
+      for (k=kz1; k<kz2; k++) {
+
+	  ic = i-1 + ioff;
+	  jc = j-1 + joff;
+	  kc = k-1 + koff;
 
 	density[i][j][k]=densityinit;
 
@@ -20,16 +34,25 @@ void randomizeQ(void)
 
           amplitude=0.3;
 
+#ifdef PARALLEL
+	  Qxx[i][j][k]=amplitude*(-cos(2*q0*jc));
+	  Qxxinit[i][j][k]=Qxx[i][j][k];
+	  Qxy[i][j][k]=0.0;
+	  Qxyinit[i][j][k]=Qxy[i][j][k];
+	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
+	  Qxzinit[i][j][k]=Qxz[i][j][k];
+#else
 	  Qxx[i][j][k]=amplitude*(-cos(2*q0*j));
 	  Qxxinit[i][j][k]=Qxx[i][j][k];
 	  Qxy[i][j][k]=0.0;
 	  Qxyinit[i][j][k]=Qxy[i][j][k];
 	  Qxz[i][j][k]=amplitude*sin(2.0*q0*j);
 	  Qxzinit[i][j][k]=Qxz[i][j][k];
+#endif
 
 #ifdef PARALLEL
-	  Qyy[i][j][k]=amplitude*(-cos(2.0*q0*((i-1)+Lx/nbPE*myPE)));
-	  Qyz[i][j][k]=-amplitude*sin(2.0*q0*((i-1)+Lx/nbPE*myPE));
+	  Qyy[i][j][k]=amplitude*(-cos(2.0*q0*ic));
+	  Qyz[i][j][k]=-amplitude*sin(2.0*q0*ic);
 	  Qyyinit[i][j][k]=Qyy[i][j][k];
 	  Qyzinit[i][j][k]=Qyz[i][j][k];
 #else
@@ -54,9 +77,9 @@ void randomizeQ(void)
 	  Qxz[i][j][k]=amplitude*sin(2.0*q0*j);
 
 #ifdef PARALLEL
-	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*((i-1)+Lx/nbPE*myPE))-cos(2.0*q0*k));
+	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)-cos(2.0*q0*kc));
 	  Qyyinit[i][j][k]=Qyy[i][j][k];
-	  Qyz[i][j][k]=amplitude*sin(2.0*q0*((i-1)+Lx/nbPE*myPE));
+	  Qyz[i][j][k]=amplitude*sin(2.0*q0*ic);
  	  Qyzinit[i][j][k]=Qyz[i][j][k];
 #else
 	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*i)-cos(2.0*q0*k));
@@ -121,29 +144,26 @@ void randomizeQ(void)
 
 	if ((O8STRUCT == 1) || (O8MSTRUCT == 1)) {
 #ifdef PARALLEL
-	  Qxx[i][j][k]=amplitude*(-2.0*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)+
-				  sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*k)+
-				  cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*sin(sqrt(2.0)*q0*j));
+	    Qxx[i][j][k]=amplitude*
+		(-2.0*cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc)+
+		 sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)+
+		 cos(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*jc));
 	  Qyy[i][j][k]=amplitude*
-	    (-2.0*sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*k)+
-	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))+
-	     cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k));
+	    (-2.0*sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)+
+	     sin(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*ic)+
+	     cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc));
 	  Qxy[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)+
-	     sqrt(2.0)*sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))
-	     *sin(sqrt(2.0)*q0*k)-
-	     sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*j));
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc)-
+	     sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc));
 	  Qxz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))
-	     *cos(sqrt(2.0)*q0*j)+
-	     sqrt(2.0)*sin(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*j)-
-	     cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*sin(sqrt(2.0)*q0*k));
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*kc)*sin(sqrt(2.0)*q0*jc)-
+	     cos(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc));
 	  Qyz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*k)
-	     *cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))+
-	     sqrt(2.0)*sin(sqrt(2.0)*q0*j)*
-	     sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))-
-	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*kc)*cos(sqrt(2.0)*q0*ic)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*ic)-
+	     sin(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc));
 #else
 	  Qxx[i][j][k]=amplitude*(-2.0*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)+
 				  sin(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)+
@@ -338,40 +358,47 @@ void initialize(void)
 
 #ifdef PARALLEL
 
-  int n,buffer_size;
-  int pe_cartesian_size[3],pe_cartesian_coordinates[3];
-  int periodic[3];
+  int n;
+  int periodic[3] = {1, 1, 1};
   int pe_cartesian_rank;
-  int pe_cartesian_neighbours[2][3];
   int reorder=1;
  
-  MPI_Comm cartesian_communicator;
+  MPI_Cart_create(MPI_COMM_WORLD, 3, pe_cartesian_size_, periodic, reorder,
+		  &cartesian_communicator_);
 
-  MPI_Cart_create(MPI_COMM_WORLD, 3, pe_cartesian_size, periodic, reorder,
-		  &cartesian_communicator);
+  MPI_Comm_rank(cartesian_communicator_, &pe_cartesian_rank);
 
-  MPI_Comm_rank(cartesian_communicator, &pe_cartesian_rank);
+  MPI_Cart_coords(cartesian_communicator_, pe_cartesian_rank, 3,
+		  pe_cartesian_coordinates_);
 
-  MPI_Cart_coords(cartesian_communicator, pe_cartesian_rank, 3,
-		  pe_cartesian_coordinates);
+  /* Add 2 to the lattice size in each direction to accomodate halo regions,
+   * which are located at L=0 and L=L-1 */
 
+  Lx2 = 2 + Lx/pe_cartesian_size_[0];
+  ix1=1;
+  ix2=Lx2-1;
 
+  Ly2 = 2 + Ly/pe_cartesian_size_[1];
+  jy1=1;
+  jy2=Ly2-1;
 
-    Lx2=Lx/pe_cartesian_size[0];
-    ix1=1;
-    ix2=Lx2-1;
+  Lz2 = 2 + Lz/pe_cartesian_size_[2];
+  kz1=1;
+  kz2=Lz2-1;
 
-    Ly2=Ly/pe_cartesian_size[1];
-    jy1=1;
-    jy2=Ly2-1;
+  /* We use reorder as a temporary here, as MPI_Cart_shift can
+   * change the actual argument for the rank of the source of
+   * the recieve, but we only want destination of send. */
 
-    Lz2=Lz/pe_cartesian_size[2];
-    kz1=1;
-    kz2=Lz2-1;
+  for (n = 0; n < 3; n++) {
+    reorder = pe_cartesian_coordinates_[n];
+    MPI_Cart_shift(cartesian_communicator_, n, -1, &reorder,
+		   &pe_cartesian_neighbour_[0][n]);
+    reorder = pe_cartesian_coordinates_[n];
+    MPI_Cart_shift(cartesian_communicator_, n, +1, &reorder,
+		   &pe_cartesian_neighbour_[1][n]);
+  }
 
-    tmpBuf= new double[Lz2*Ly2*5];
-
-    
 #else
   Lx2=Lx;
   ix1=0;
@@ -950,32 +977,6 @@ void initialize(void)
   e[14][0]= 1;
   e[14][1]= -1;
   e[14][2]= -1;
-
-#ifdef PARALLEL //COMM_3D CHANGED
-
-  // Creates a communication buffer
-
-
-  buffer_size = 40*(Ly*Lz*sizeof(double) + MPI_BSEND_OVERHEAD);
-
-  buff=new char[buffer_size];
-
-  MPI_Buffer_attach(buff, buffer_size);
-
-  /* We use reorder as a temporary here, as MPI_Cart_shift can
-   * change the actual argument for the rank of the source of
-   * the recieve, but we only want destination of send. */
-
-  for (n = 0; n < 3; n++) {
-    reorder = pe_cartesian_coordinates[n];
-    MPI_Cart_shift(cartesian_communicator, n, -1, &reorder,
-		   &pe_cartesian_neighbours[0][n]);
-    reorder = pe_cartesian_coordinates[n];
-    MPI_Cart_shift(cartesian_communicator, n, +1, &reorder,
-		   &pe_cartesian_neighbours[1][n]);
-  }
-
-#endif
 
 }
 

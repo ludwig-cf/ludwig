@@ -1,7 +1,7 @@
-128		% Lx  % cannot set = 1 without changing code
-128		% Ly
-128		% Lz 
-200000		% Nmax
+32		% Lx  % cannot set = 1 without changing code
+32		% Ly
+32		% Lz 
+20		% Nmax
 0    		% GRAPHICS
 1500		% stepskip
 2		% itimprov

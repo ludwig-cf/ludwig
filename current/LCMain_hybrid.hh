@@ -1,4 +1,5 @@
 
+
 // ----------------------------------------
 // useful constants
 
@@ -209,15 +210,23 @@ int myPE,nbPE,nbPErow;
 #ifdef PARALLEL
 
 MPI_Status status;
-MPI_Request req[10];
-MPI_Request reqBsend;
+//MPI_Request req[10];
+//MPI_Request reqBsend;
 
-MPI_Datatype leftFieldsType,rightFieldsType;
+//MPI_Datatype leftFieldsType,rightFieldsType;
 
 int leftNeighbor, rightNeighbor,upNeighbor,downNeighbor;
 
-double *tmpBuf;
-char *buff;
+/* KS timers */
+double total_exch_ = 0.0;
+double total_comm_ = 0.0;
+double total_io_   = 0.0;
+double total_time_ = 0.0;
+
+MPI_Comm cartesian_communicator_;
+int pe_cartesian_size_[3];
+int pe_cartesian_coordinates_[3];
+int pe_cartesian_neighbour_[2][3];
 
 #endif
 

@@ -24,7 +24,6 @@ void computeStressFreeEnergy(int n)
   double duxdx,duxdy,duxdz,duydx,duydy,duydz,duzdx,duzdy,duzdz,Gammap;
   double mDQ4xx,mDQ4xy,mDQ4yy,mDQ4xz,mDQ4yz,mDQ4zz,nnxxl,nnyyl;
 
-
   for (i=ix1; i<ix2; i++) {
     for (j=0; j<Ly; j++) {
       for (l=0; l<Lz; l++) {
@@ -797,4 +796,209 @@ void writeDiscFile(const int iter)
 
 }
 
+/****************************************************************************
+ *
+ *  Version of above for 3D.
+ *  Don't care which order the output comes in!
+ *
+ ****************************************************************************/
 
+void streamfile_ks(const int iter) {
+
+  int i,j,k;  
+  int nrots,emax,enxt;
+  double m[3][3],d[3],v[3][3];
+  double t0, t1;
+
+  String oname("order_velo.");
+  oname.concat(numCase);
+  oname.concat(".");
+  oname.concat(iter);
+  oname.concat(".dat");
+
+  String sname("dir.");
+  sname.concat(numCase);
+  sname.concat(".");
+  sname.concat(iter);
+  sname.concat(".dat");
+
+
+#ifdef PARALLEL
+  int token=0;
+  int ioff, joff, koff;
+  const int tag = 986;
+
+  ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
+  joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
+  koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
+
+  t0 = MPI_Wtime();
+
+  if (myPE == 0) {
+    output.open(oname.get());
+    output1.open(sname.get());
+  }
+  else {
+    MPI_Recv(&token, 1, MPI_INT, myPE-1, tag, MPI_COMM_WORLD, &status);
+    output.open(oname.get(),ios::app);
+    output1.open(sname.get(),ios::app);
+  }
+#endif
+
+  output.precision(5);
+       
+  for(i=ix1; i<ix2; i++) { 
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+    
+      m[0][0]=Qxx[i][j][k];
+      m[0][1]=Qxy[i][j][k];
+      m[0][2]=Qxz[i][j][k];
+      m[1][0]=Qxy[i][j][k];
+      m[1][1]=Qyy[i][j][k];
+      m[1][2]=Qyz[i][j][k];
+      m[2][0]=Qxz[i][j][k];
+      m[2][1]=Qyz[i][j][k];
+      m[2][2]= -(m[0][0]+m[1][1]);
+      jacobi(m,d,v,&nrots);
+
+      if (d[0] > d[1]) {
+	emax=0;
+	enxt=1;
+      }
+      else {
+	emax=1;
+	enxt=0;
+      }
+      if (d[2] > d[emax]) {
+	emax=2;
+      }
+      else if (d[2] > d[enxt]) {
+	enxt=2;
+      }
+
+      /*
+      output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff << " " 
+	     << Qxx[i][j][k] << " " << Qxy[i][j][k] << " " 
+	     << Qxz[i][j][k]<< " " << Qyy[i][j][k]<< " " 
+	     << Qyz[i][j][k]<< " " << u[i][j][k][0]<< " " 
+	     << u[i][j][k][1]<< " " << u[i][j][k][2] << " "
+ 	     << d[emax]<< " " << molfieldxx[i][j][k] << endl;
+      */
+
+      output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff << " " 
+	     << feq[i][j][k][0] << " " << feq[i][j][k][1] << " " 
+	     << feq[i][j][k][7]<< " " << Qyy[i][j][k]<< " " 
+	     << Qyz[i][j][k]<< " " << u[i][j][k][0]<< " " 
+	     << u[i][j][k][1]<< " " << u[i][j][k][2] << " "
+ 	     << d[emax]<< " " << molfieldxx[i][j][k] << endl;
+
+      output1 << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff
+	      << " " << v[0][emax]
+	      << " " << v[1][emax]<< " " << v[2][emax] << endl;
+       } 
+    }
+  }
+  output.close();
+  output1.close();
+
+#ifdef PARALLEL
+  if (myPE != nbPE-1)
+    MPI_Send(&token, 1, MPI_INT, myPE+1, tag, MPI_COMM_WORLD);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  t1 = MPI_Wtime();
+  total_io_ += (t1-t0);
+#endif
+
+  return;
+}
+
+
+void writeDiscFile_ks(const int iter) {
+
+  int i,j,k;
+  int nrots,emax,enxt;
+  double m[3][3],d[3],v[3][3];
+  double t0, t1;
+
+  String oname("disc.");
+  oname.concat(numCase);
+  oname.concat(".");
+  oname.concat(iter);
+  oname.concat(".dat");
+
+#ifdef PARALLEL
+  int token=0;
+  int ioff, joff, koff;
+  const int tag = 987;
+
+  ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
+  joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
+  koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
+
+  t0 = MPI_Wtime();
+
+  if (myPE == 0)
+    output.open(oname.get());
+  else {
+    MPI_Recv(&token, 1, MPI_INT, myPE-1, tag, MPI_COMM_WORLD, &status);
+    output.open(oname.get(),ios::app);
+  }
+#else
+    output.open(oname.get());
+#endif
+
+  output.precision(4);
+       
+  for(i=ix1; i<ix2; i++) { 
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+    
+      m[0][0]=Qxx[i][j][k];
+      m[0][1]=Qxy[i][j][k];
+      m[0][2]=Qxz[i][j][k];
+      m[1][0]=Qxy[i][j][k];
+      m[1][1]=Qyy[i][j][k];
+      m[1][2]=Qyz[i][j][k];
+      m[2][0]=Qxz[i][j][k];
+      m[2][1]=Qyz[i][j][k];
+      m[2][2]= -(m[0][0]+m[1][1]);
+      jacobi(m,d,v,&nrots);
+
+      if (d[0] > d[1]) {
+	emax=0;
+	enxt=1;
+      }
+      else {
+	emax=1;
+	enxt=0;
+      }
+      if (d[2] > d[emax]) {
+	emax=2;
+      }
+      else if (d[2] > d[enxt]) {
+	enxt=2;
+      }
+
+      if (d[emax] < threshold) {
+	output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff
+	       << endl;
+      }
+      } 
+    }
+  }
+  output.close();
+
+#ifdef PARALLEL
+  if (myPE != nbPE-1)
+    MPI_Send(&token, 1, MPI_INT, myPE+1, tag, MPI_COMM_WORLD);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  t1 = MPI_Wtime();
+
+  total_io_ += (t1-t0);
+#endif
+
+  return;
+}

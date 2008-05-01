@@ -257,7 +257,6 @@ void communicateOldDistributions(double ****fold)
 {
   int ix,iy,iz;
   double t0, t1;
-  //extern double total_comm_;
 
   t0 = MPI_Wtime();
 
@@ -318,7 +317,27 @@ void communicateOldDistributions(double ****fold)
 
 #else /* COMM_3D */
 
+/****************************************************************************
+ *
+ *  exchangeMomentumAndQTensor
+ *
+ *  Three-dimensional communication
+ *
+ ****************************************************************************/ 
+
 void exchangeMomentumAndQTensor() {
+
+    extern double total_exch_;
+    extern int pe_cartesian_neighbour_[2][3];
+    extern MPI_Comm cartesian_communicator_;
+    extern int Lx2, Ly2, Lz2;
+    extern double *** density;
+    extern double *** Qxx;
+    extern double *** Qxy;
+    extern double *** Qxz;
+    extern double *** Qyy;
+    extern double *** Qyz;
+    extern double **** u;
 
     const int nquantity = 9;  /* density, Qxx, Qxy etc is 9 items */
     double * buf_sendforw;    /* send data to 'forward' direction */
@@ -326,8 +345,8 @@ void exchangeMomentumAndQTensor() {
     double * buf_recvforw;    /* receive data from 'forward' direction */
     double * buf_recvback;    /* receive data from 'backward' direction */
     double   t0, t1;
-    //extern double total_exch_;
 
+    int ncount;
     int ix, iy, iz;
     int n, nforw, nback;
 
@@ -338,28 +357,29 @@ void exchangeMomentumAndQTensor() {
     MPI_Request recv_request[2];
     MPI_Status  send_status[2];
     MPI_Status  recv_status[2];
-    MPI_Comm    comm = MPI_COMM_WORLD;
+    MPI_Comm comm = cartesian_communicator_;
 
     t0 = MPI_Wtime();
 
-
     /* allocate buffers */
 
-    buf_sendforw = new double[nquantity*Ly2*Lz2];
-    buf_sendback = new double[nquantity*Ly2*Lz2];
-    buf_recvforw = new double[nquantity*Ly2*Lz2];
-    buf_recvback = new double[nquantity*Ly2*Lz2];
+    ncount = nquantity*Ly2*Lz2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
 
     /* X DIRECTION */
 
-    nforw = rightNeighbor;
-    nback = leftNeighbor;
+
+    nforw = pe_cartesian_neighbour_[1][0];
+    nback = pe_cartesian_neighbour_[0][0];
 
     /* post receives */
 
-    MPI_Irecv(buf_recvforw, nquantity*Ly2*Lz2, MPI_DOUBLE, nforw, tagb, comm,
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
               recv_request);
-    MPI_Irecv(buf_recvback, nquantity*Ly2*Lz2, MPI_DOUBLE, nback, tagf, comm,
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
               recv_request+1);
 
     /* load send buffers and non-blocking sends */
@@ -381,7 +401,7 @@ void exchangeMomentumAndQTensor() {
         }
     }
 
-    MPI_Issend(buf_sendback, nquantity*Ly*Lz, MPI_DOUBLE, nback, tagb, comm,
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
                send_request);
 
     ix = Lx2-2;
@@ -401,7 +421,7 @@ void exchangeMomentumAndQTensor() {
         }
     }
 
-    MPI_Issend(buf_sendforw, nquantity*Ly2*Lz2, MPI_DOUBLE, nforw, tagf, comm,
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
                send_request+1);
 
     /* wait for receives to complete and unload buffers */
@@ -455,20 +475,21 @@ void exchangeMomentumAndQTensor() {
 
     /* allocate buffers */
 
-    buf_sendforw = new double[nquantity*Lx2*Lz2];
-    buf_sendback = new double[nquantity*Lx2*Lz2];
-    buf_recvforw = new double[nquantity*Lx2*Lz2];
-    buf_recvback = new double[nquantity*Lx2*Lz2];
+    ncount = nquantity*Lx2*Lz2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
 
 
-    nforw = pe_cartesian_neighbour[1][1];
-    nback = pe_cartesian_neighbour[0][1];
+    nforw = pe_cartesian_neighbour_[1][1];
+    nback = pe_cartesian_neighbour_[0][1];
 
     /* post receives */
 
-    MPI_Irecv(buf_recvforw, nquantity*Lx2*Lz2, MPI_DOUBLE, nforw, tagb, comm,
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
               recv_request);
-    MPI_Irecv(buf_recvback, nquantity*Lx2*Lz2, MPI_DOUBLE, nback, tagf, comm,
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
               recv_request+1);
 
     /* load send buffers and non-blocking sends */
@@ -490,7 +511,7 @@ void exchangeMomentumAndQTensor() {
         }
     }
 
-    MPI_Issend(buf_sendback, nquantity*Lx2*Lz2, MPI_DOUBLE, nback, tagb, comm,
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
                send_request);
 
     iy = Ly2-2;
@@ -510,7 +531,7 @@ void exchangeMomentumAndQTensor() {
         }
     }
 
-    MPI_Issend(buf_sendforw, nquantity*Lx2*Lz2, MPI_DOUBLE, nforw, tagf, comm,
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
                send_request+1);
 
     /* wait for receives to complete and unload buffers */
@@ -564,19 +585,20 @@ void exchangeMomentumAndQTensor() {
 
     /* allocate buffers */
 
-    buf_sendforw = new double[nquantity*Ly2*Lz2];
-    buf_sendback = new double[nquantity*Ly2*Lz2];
-    buf_recvforw = new double[nquantity*Ly2*Lz2];
-    buf_recvback = new double[nquantity*Ly2*Lz2];
+    ncount = nquantity*Lx2*Ly2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
 
-    nforw = pe_cartesian_neighbour[1][2];
-    nback = pe_cartesian_neighbour[0][2];
+    nforw = pe_cartesian_neighbour_[1][2];
+    nback = pe_cartesian_neighbour_[0][2];
 
     /* post receives */
 
-    MPI_Irecv(buf_recvforw, nquantity*Lx2*Ly2, MPI_DOUBLE, nforw, tagb, comm,
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
               recv_request);
-    MPI_Irecv(buf_recvback, nquantity*Lx2*Ly2, MPI_DOUBLE, nback, tagf, comm,
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
               recv_request+1);
 
     /* load send buffers and non-blocking sends */
@@ -598,14 +620,14 @@ void exchangeMomentumAndQTensor() {
         }
     }
 
-    MPI_Issend(buf_sendback, nquantity*Lx2*Ly2, MPI_DOUBLE, nback, tagb, comm,
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
                send_request);
 
     iz = Lz2-2;
     n  = 0;
 
     for (ix = 0; ix < Lx2; ix++) {
-        for (iz = 0; iz < Lz2; iz++) {
+        for (iy = 0; iy < Ly2; iy++) {
             buf_sendforw[n++] = density[ix][iy][iz];
             buf_sendforw[n++] =     Qxx[ix][iy][iz];
             buf_sendforw[n++] =     Qxy[ix][iy][iz];
@@ -618,7 +640,7 @@ void exchangeMomentumAndQTensor() {
         }
     }
 
-    MPI_Issend(buf_sendforw, nquantity*Lx2*Ly2, MPI_DOUBLE, nforw, tagf, comm,
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
                send_request+1);
 
     /* wait for receives to complete and unload buffers */
@@ -668,16 +690,24 @@ void exchangeMomentumAndQTensor() {
     delete buf_recvforw;
     delete buf_recvback;
 
-
-
     t1 = MPI_Wtime();
-    //total_exch_ += (t1-t0);
+    total_exch_ += (t1-t0);
 
     return;
 }
 
+/*****************************************************************************
+ *
+ *  communicateOldDistributions
+ *
+ *****************************************************************************/
+
 void communicateOldDistributions(double **** fold) {
 
+    extern double total_comm_;
+    extern int pe_cartesian_neighbour_[2][3];
+    extern MPI_Comm cartesian_communicator_;
+    extern int Lx2, Ly2, Lz2;
 
     const int nquantity = 5;   /* 5 propagating distributionss */
     double * buf_sendforw;     /* send data to 'forward' direction */
@@ -687,6 +717,7 @@ void communicateOldDistributions(double **** fold) {
     double   t0, t1;
     //extern double total_comm_;
 
+    int ncount;
     int ix, iy, iz;
     int n, nforw, nback;
 
@@ -697,27 +728,27 @@ void communicateOldDistributions(double **** fold) {
     MPI_Request recv_request[2];
     MPI_Status  send_status[2];
     MPI_Status  recv_status[2];
-    MPI_Comm    comm = MPI_COMM_WORLD;
+    MPI_Comm    comm = cartesian_communicator_;
 
     t0 = MPI_Wtime();
 
+    /* X DIRECTION */
     /* Allocate buffers */
 
-    buf_sendforw = new double[nquantity*Ly2*Lz2];
-    buf_sendback = new double[nquantity*Ly2*Lz2];
-    buf_recvforw = new double[nquantity*Ly2*Lz2];
-    buf_recvback = new double[nquantity*Ly2*Lz2];
+    ncount = nquantity*Ly2*Lz2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
 
-    /* X DIRECTION */
-
-    nforw = rightNeighbor;
-    nback = leftNeighbor;
+    nforw = pe_cartesian_neighbour_[1][0];
+    nback = pe_cartesian_neighbour_[0][0];
 
     /* post receives */
 
-    MPI_Irecv(buf_recvforw, nquantity*Ly*Lz, MPI_DOUBLE, nforw, tagb, comm,
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
               recv_request);
-    MPI_Irecv(buf_recvback, nquantity*Ly*Lz, MPI_DOUBLE, nback, tagf, comm,
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
               recv_request+1);
 
     /* load send buffers and non-blocking sends */
@@ -735,7 +766,7 @@ void communicateOldDistributions(double **** fold) {
         }
     }
 
-    MPI_Issend(buf_sendback, nquantity*Ly*Lz, MPI_DOUBLE, nback, tagb, comm,
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
                send_request);
 
 
@@ -752,7 +783,7 @@ void communicateOldDistributions(double **** fold) {
         }
     }
 
-    MPI_Issend(buf_sendforw, nquantity*Ly2*Lz2, MPI_DOUBLE, nforw, tagf, comm,
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
                send_request+1);
 
     /* wait for receives to complete and unload buffers */
@@ -794,23 +825,26 @@ void communicateOldDistributions(double **** fold) {
     delete buf_recvforw;
     delete buf_recvback;
 
+
+    /* Y DIRECTION */
     /* Allocate buffers */
 
-    buf_sendforw = new double[nquantity*Lx2*Lz2];
-    buf_sendback = new double[nquantity*Lx2*Lz2];
-    buf_recvforw = new double[nquantity*Lx2*Lz2];
-    buf_recvback = new double[nquantity*Lx2*Lz2];
+    ncount = nquantity*Lx2*Lz2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
 
     /* Y DIRECTION */
 
-    nforw = pe_cartesian_neighbour[1][1];
-    nback = pe_cartesian_neighbour[0][1];
+    nforw = pe_cartesian_neighbour_[1][1];
+    nback = pe_cartesian_neighbour_[0][1];
 
     /* post receives */
 
-    MPI_Irecv(buf_recvforw, nquantity*Lx2*Lz2, MPI_DOUBLE, nforw, tagb, comm,
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
               recv_request);
-    MPI_Irecv(buf_recvback, nquantity*Lx2*Lz2, MPI_DOUBLE, nback, tagf, comm,
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
               recv_request+1);
 
     /* load send buffers and non-blocking sends */
@@ -828,7 +862,7 @@ void communicateOldDistributions(double **** fold) {
         }
     }
 
-    MPI_Issend(buf_sendback, nquantity*Lx2*Lz2, MPI_DOUBLE, nback, tagb, comm,
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
                send_request);
 
 
@@ -845,7 +879,7 @@ void communicateOldDistributions(double **** fold) {
         }
     }
 
-    MPI_Issend(buf_sendforw, nquantity*Lx2*Lz2, MPI_DOUBLE, nforw, tagf, comm,
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
                send_request+1);
 
     /* wait for receives to complete and unload buffers */
@@ -887,23 +921,24 @@ void communicateOldDistributions(double **** fold) {
     delete buf_recvforw;
     delete buf_recvback;
 
-    /* Allocate buffers */
-
-    buf_sendforw = new double[nquantity*Lx2*Ly2];
-    buf_sendback = new double[nquantity*Lx2*Ly2];
-    buf_recvforw = new double[nquantity*Lx2*Ly2];
-    buf_recvback = new double[nquantity*Lx2*Ly2];
 
     /* Z DIRECTION */
+    /* Allocate buffers */
 
-    nforw = pe_cartesian_neighbour[1][2];
-    nback = pe_cartesian_neighbour[0][2];
+    ncount = nquantity*Lx2*Ly2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
+
+    nforw = pe_cartesian_neighbour_[1][2];
+    nback = pe_cartesian_neighbour_[0][2];
 
     /* post receives */
 
-    MPI_Irecv(buf_recvforw, nquantity*Lx2*Ly2, MPI_DOUBLE, nforw, tagb, comm,
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
               recv_request);
-    MPI_Irecv(buf_recvback, nquantity*Lx2*Ly2, MPI_DOUBLE, nback, tagf, comm,
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
               recv_request+1);
 
     /* load send buffers and non-blocking sends */
@@ -921,7 +956,7 @@ void communicateOldDistributions(double **** fold) {
         }
     }
 
-    MPI_Issend(buf_sendback, nquantity*Lx2*Ly2, MPI_DOUBLE, nback, tagb, comm,
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
                send_request);
 
 
@@ -938,7 +973,7 @@ void communicateOldDistributions(double **** fold) {
         }
     }
 
-    MPI_Issend(buf_sendforw, nquantity*Lx2*Ly2, MPI_DOUBLE, nforw, tagf, comm,
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
                send_request+1);
 
     /* wait for receives to complete and unload buffers */
@@ -980,12 +1015,294 @@ void communicateOldDistributions(double **** fold) {
     delete buf_recvforw;
     delete buf_recvback;
 
-
-
     t1 = MPI_Wtime();
-    //total_comm_ += (t1-t0);
+    total_comm_ += (t1-t0);
 
     return;
+}
+
+/*****************************************************************************
+ *
+ *  exchangeTau
+ *
+ *****************************************************************************/
+
+void exchangeTau() {
+
+    extern double total_comm_;
+    extern int pe_cartesian_neighbour_[2][3];
+    extern MPI_Comm cartesian_communicator_;
+    extern int Lx2, Ly2, Lz2;
+
+    extern double *** tauxy;  /* X and Y exchange required */
+    extern double *** tauxz;  /* X and Z exchange required */
+    extern double *** tauyz;  /* Y and Z exchange required */
+
+    const int nquantity = 2;   /* 2 components tau each direction */
+    double * buf_sendforw;     /* send data to 'forward' direction */
+    double * buf_sendback;     /* send data to 'backward' direction */
+    double * buf_recvforw;     /* receive data from 'forward' direction */
+    double * buf_recvback;     /* receive data from 'backward' direction */
+
+    int ncount;
+    int ix, iy, iz;
+    int n, nforw, nback;
+
+    const int tagb = 1016;
+    const int tagf = 1017;
+
+    MPI_Request send_request[2];
+    MPI_Request recv_request[2];
+    MPI_Status  send_status[2];
+    MPI_Status  recv_status[2];
+    MPI_Comm    comm = cartesian_communicator_;
+
+    /* X direction - tauxy and tauxz */
+    /* Allocate buffers */
+
+    ncount = nquantity*Ly2*Lz2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
+
+    nforw = pe_cartesian_neighbour_[1][0];
+    nback = pe_cartesian_neighbour_[0][0];
+
+    /* post receives */
+
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
+              recv_request);
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
+              recv_request+1);
+
+    /* load send buffers and non-blocking sends */
+
+    ix = 1;
+    n  = 0;
+
+    for (iy = 0; iy < Ly2; iy++) {
+        for (iz = 0; iz < Lz2; iz++) {
+            buf_sendback[n++] = tauxy[ix][iy][iz];
+            buf_sendback[n++] = tauxz[ix][iy][iz];
+        }
+    }
+
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
+               send_request);
+
+
+    ix = Lx2-2;
+    n  = 0;
+
+    for (iy = 0; iy < Ly2; iy++) {
+        for (iz = 0; iz < Lz2; iz++) {
+            buf_sendforw[n++] = tauxy[ix][iy][iz];
+            buf_sendforw[n++] = tauxz[ix][iy][iz];
+        }
+    }
+
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
+               send_request+1);
+
+    /* wait for receives to complete and unload buffers */
+
+    MPI_Waitall(2, recv_request, recv_status);
+
+    ix = Lx2-1;
+    n  = 0;
+
+    for (iy = 0; iy < Ly2; iy++) {
+        for (iz = 0; iz < Lz2; iz++) {
+            tauxy[ix][iy][iz]  = buf_recvforw[n++];
+            tauxz[ix][iy][iz]  = buf_recvforw[n++];
+        }
+    }
+
+    ix = 0;
+    n  = 0;
+
+    for (iy = 0; iy < Ly2; iy++) {
+        for (iz = 0; iz < Lz2; iz++) {
+            tauxy[ix][iy][iz]  = buf_recvback[n++];
+            tauxz[ix][iy][iz]  = buf_recvback[n++];
+        }
+    }
+
+    /* mop up the sends */
+
+    MPI_Waitall(2, send_request, send_status);
+
+    delete buf_sendforw;
+    delete buf_sendback;
+    delete buf_recvforw;
+    delete buf_recvback;
+
+
+    /* Y DIRECTION - tauxy and tauyz */
+    /* Allocate buffers */
+
+    ncount = nquantity*Lx2*Lz2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
+
+    nforw = pe_cartesian_neighbour_[1][1];
+    nback = pe_cartesian_neighbour_[0][1];
+
+    /* post receives */
+
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
+              recv_request);
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
+              recv_request+1);
+
+    /* load send buffers and non-blocking sends */
+
+    iy = 1;
+    n  = 0;
+
+    for (ix = 0; ix < Lx2; ix++) {
+        for (iz = 0; iz < Lz2; iz++) {
+            buf_sendback[n++] = tauxy[ix][iy][iz];
+            buf_sendback[n++] = tauyz[ix][iy][iz];
+        }
+    }
+
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
+               send_request);
+
+
+    iy = Ly2-2;
+    n  = 0;
+
+    for (ix = 0; ix < Lx2; ix++) {
+        for (iz = 0; iz < Lz2; iz++) {
+            buf_sendforw[n++] = tauxy[ix][iy][iz];
+            buf_sendforw[n++] = tauyz[ix][iy][iz];
+        }
+    }
+
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
+               send_request+1);
+
+    /* wait for receives to complete and unload buffers */
+
+    MPI_Waitall(2, recv_request, recv_status);
+
+    iy = Ly2-1;
+    n  = 0;
+
+    for (ix = 0; ix < Lx2; ix++) {
+        for (iz = 0; iz < Lz2; iz++) {
+            tauxy[ix][iy][iz]  = buf_recvforw[n++];
+            tauyz[ix][iy][iz]  = buf_recvforw[n++];
+        }
+    }
+
+    iy = 0;
+    n  = 0;
+
+    for (ix = 0; ix < Lx2; ix++) {
+        for (iz = 0; iz < Lz2; iz++) {
+            tauxy[ix][iy][iz]  = buf_recvback[n++];
+            tauyz[ix][iy][iz]  = buf_recvback[n++];
+        }
+    }
+
+    /* mop up the sends */
+
+    MPI_Waitall(2, send_request, send_status);
+
+    delete buf_sendforw;
+    delete buf_sendback;
+    delete buf_recvforw;
+    delete buf_recvback;
+
+    /* Z DIRECTION - tauxz and tauyz */
+    /* Allocate buffers */
+
+    ncount = nquantity*Lx2*Ly2;
+    buf_sendforw = new double[ncount];
+    buf_sendback = new double[ncount];
+    buf_recvforw = new double[ncount];
+    buf_recvback = new double[ncount];
+
+    nforw = pe_cartesian_neighbour_[1][2];
+    nback = pe_cartesian_neighbour_[0][2];
+
+    /* post receives */
+
+    MPI_Irecv(buf_recvforw, ncount, MPI_DOUBLE, nforw, tagb, comm,
+              recv_request);
+    MPI_Irecv(buf_recvback, ncount, MPI_DOUBLE, nback, tagf, comm,
+              recv_request+1);
+
+    /* load send buffers and non-blocking sends */
+
+    iz = 1;
+    n  = 0;
+
+    for (ix = 0; ix < Lx2; ix++) {
+        for (iy = 0; iy < Ly2; iy++) {
+            buf_sendback[n++] = tauxz[ix][iy][iz];
+            buf_sendback[n++] = tauyz[ix][iy][iz];
+        }
+    }
+
+    MPI_Issend(buf_sendback, ncount, MPI_DOUBLE, nback, tagb, comm,
+               send_request);
+
+
+    iz = Lz2-2;
+    n  = 0;
+
+    for (ix = 0; ix < Lx2; ix++) {
+        for (iy = 0; iy < Ly2; iy++) {
+            buf_sendforw[n++] = tauxz[ix][iy][iz];
+            buf_sendforw[n++] = tauyz[ix][iy][iz];
+        }
+    }
+
+    MPI_Issend(buf_sendforw, ncount, MPI_DOUBLE, nforw, tagf, comm,
+               send_request+1);
+
+    /* wait for receives to complete and unload buffers */
+
+    MPI_Waitall(2, recv_request, recv_status);
+
+    iz = Lz2-1;
+    n  = 0;
+
+    for (ix = 0; ix < Lx2; ix++) {
+        for (iy = 0; iy < Ly2; iy++) {
+            tauxz[ix][iy][iz] = buf_recvforw[n++];
+            tauyz[ix][iy][iz] = buf_recvforw[n++];
+        }
+    }
+
+    iz = 0;
+    n  = 0;
+
+    for (ix = 0; ix < Lx2; ix++) {
+        for (iy = 0; iy < Ly2; iy++) {
+            tauxz[ix][iy][iz] = buf_recvback[n++];
+            tauyz[ix][iy][iz] = buf_recvback[n++];
+        }
+    }
+
+    /* mop up the sends */
+
+    MPI_Waitall(2, send_request, send_status);
+
+    delete buf_sendforw;
+    delete buf_sendback;
+    delete buf_recvforw;
+    delete buf_recvback;
+
+
+  return;
 }
 
 #endif /* COMM_3D */

@@ -10,9 +10,10 @@
 #include <stdlib.h>
 #include <iomanip.h>
 
-#define LCMAIN_HH
-#include "LCMain_hybrid.hh"
-#include "String.hh"
+// KS AVOID HEADER WEIRDNESS! Declare variables extern where required 
+//#define LCMAIN_HH
+//#include "LCMain_hybrid.hh"
+//#include "String.hh"
 
 void exchangeMomentumAndQTensor();
 void communicateOldDistributions(double ****fold);

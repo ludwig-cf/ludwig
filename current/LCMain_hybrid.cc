@@ -23,11 +23,17 @@ using namespace std;
 #include "LCParallel.hh"
 #endif
 
-
+void message(const char *);
+void update0_ks(double ****, double ****); 
+void update_ks(double ****, double ****);
+void streamfile_ks(const int);
+void writeDiscFile_ks(const int);
 
 // ============================================================
 int main(int argc, char** argv) 
 {
+
+    double t0, t1;
 
 #ifdef PARALLEL
   MPI_Init(&argc,&argv);
@@ -93,6 +99,9 @@ int main(int argc, char** argv)
   inputFile >> FePrintInt >> endOfLine;
   inputFile >> SigPrintFac >> endOfLine;
   inputFile >> numCase >> endOfLine;
+  inputFile >> pe_cartesian_size_[0] >> endOfLine;
+  inputFile >> pe_cartesian_size_[1] >> endOfLine;
+  inputFile >> pe_cartesian_size_[2] >> endOfLine;
 
   String logFileName("liquidCrystal.");
   logFileName.concat((int) numCase);
@@ -141,6 +150,9 @@ int main(int argc, char** argv)
   logFile << FePrintInt << "\t\t# FePrintInt"<< endl;
   logFile << SigPrintFac << "\t\t# SigPrintFac"<< endl;
   logFile << numCase << "\t\t# numCase"<< endl;
+  logFile << pe_cartesian_size_[0] << "\t\t# x proc decomposition" << endl;
+  logFile << pe_cartesian_size_[1] << "\t\t# y proc decomposition" << endl;
+  logFile << pe_cartesian_size_[2] << "\t\t# z proc decomposition" << endl;
 
    logFile.close();
 
@@ -153,6 +165,7 @@ int main(int argc, char** argv)
 
 #ifdef PARALLEL
     MPI_Barrier(MPI_COMM_WORLD);
+    t0 = MPI_Wtime();
 #endif
 
     q0=numhftwist*numuc*sqrt(2.0)*Pi/Ly;
@@ -206,6 +219,11 @@ int main(int argc, char** argv)
   else
     aa=4.0;
 
+#ifdef _COMM_3D_
+  writeDiscFile_ks(0);
+  streamfile_ks(0);
+#endif
+
   for (n=1; n<=Nmax; n++) {
 
 
@@ -215,9 +233,6 @@ int main(int argc, char** argv)
 
       if (n % FePrintInt == 0) computeStressFreeEnergy(n);
 
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
 
     for (i=ix1; i<ix2; i++) {
       for (j=jy1; j<jy2; j++) {
@@ -231,15 +246,7 @@ int main(int argc, char** argv)
       }
     }
 
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
     parametercalc(n);
-
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
 
     for (i=ix1; i<ix2; i++) {
       for (j=jy1; j<jy2; j++) {
@@ -260,10 +267,6 @@ int main(int argc, char** argv)
       }
     }
   }
-
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
  
     for (i=ix1; i<ix2; i++) {
       for (j=jy1; j<jy2; j++) {
@@ -283,15 +286,7 @@ int main(int argc, char** argv)
 
     for (improv=0; improv<itimprov; improv++) {
 
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
       parametercalc(n);
-
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
        
       for (i=ix1; i<ix2; i++) {
 	 for (j=jy1; j<jy2; j++) {
@@ -312,10 +307,6 @@ int main(int argc, char** argv)
 	 }
       }
 
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
    
       for (i=ix1; i<ix2; i++) {
 	 for (j=jy1; j<jy2; j++) {
@@ -330,30 +321,18 @@ int main(int argc, char** argv)
 	  }
 	 }
       }   
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
 
     }
 
     graphstp++;
-      
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
- 
-    parametercalc(n);    
 
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
+    parametercalc(n);    
 
     equilibriumdist();
 
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
+  if (n==1) {
+      streamfile_ks(n);
+  }
 
   if (n % OVDPrintInt == 0) {
       streamfile(n);
@@ -361,89 +340,85 @@ int main(int argc, char** argv)
       graphstp=0;
     }
    
-    if(n==1) {
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-    pouiseuille1=1;
-    }
+  if(n==1) {
+      pouiseuille1=1;
+  }
 
-    if(n==400) {
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-    pouiseuille=1;
-    }
-     if(n==120000) {
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-    delVz=0.0;
-    }   
+  if(n==400) {
+      pouiseuille=1;
+  }
+  if(n==120000) {
+      delVz=0.0;
+  }   
 
-if (BACKFLOW == 1){
-     if (n==1) {
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-       phivr=1.0;
-     }
-}
+  if (BACKFLOW == 1){
+      if (n==1) {
+	  phivr=1.0;
+      }
+  }
 
 
-    collisionop();
-
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
+  collisionop();
 
     /*predictor*/
+#ifdef _COMM_3D_
+     update0_ks(fpr, f);
+#else
     update0(fpr,f);
-    
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
 #endif
-
+   
     tmp=f;
     f=fpr;
     fpr=tmp;
 
     /*corrector*/
     for (improv=0; improv<itimprov; improv++) {
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
 
       parametercalc(n);
 
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
       equilibriumdist();
 
-#ifdef PARALLEL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-      
+#ifdef _COMM_3D_
+      update_ks(f, fpr);
+#else
       update(f,fpr);
-
+#endif
     }
 
+#ifdef _COMM_3D_
+    if (n % stepskip == 0) {
+	writeDiscFile_ks(n);
+	streamfile_ks(n);
+    }
+#else
     if (n % stepskip == 0||n==1) writeDiscFile(n);
-
+#endif
   }
 
 #ifdef PARALLEL
+  t1 = MPI_Wtime();
+  total_time_ = t1 - t0;
+
+  if (myPE == 0) {
+      cout << "Decomposition: " << pe_cartesian_size_[0] << "," <<
+	  pe_cartesian_size_[1] << "," << pe_cartesian_size_[2] << endl;
+  }
+
+  cout << endl;
+  cout << "[" << myPE << "]" << " Total is " << total_time_ << endl;
+  cout << "[" << myPE << "]" << " Exch  is " << total_exch_ << endl;
+  cout << "[" << myPE << "]" << " Comm is  " << total_comm_ << endl;
+  cout << "[" << myPE << "]" << " I/O is   " << total_io_ << endl;
+
+
   MPI_Finalize();
 #endif
   
 }
 
+//WARNING:NEED TO CHANGE FOR 3D DECOMPOSITION
 
-void update0(double ****fnew,double ****fold)//WARNING:NEED TO CHANGE FOR 3D DECOMPOSITION
+void update0(double ****fnew,double ****fold)
 {
   int i,j,k,l,imod,jmod,kmod;
   double rb,Qxxb,Qyyb,Qxyb,Qxzb,Qyzb,tmp,eqrat,vzoutone;
@@ -567,8 +542,59 @@ void update0(double ****fnew,double ****fold)//WARNING:NEED TO CHANGE FOR 3D DEC
 
 }
 
+/****************************************************************************
+ *
+ *  Quick 3D version of above. Causes both fnew and fold to be
+ *  updated, so need to check nothing depends on fold.
+ *
+ *  Pouiseuille boundaries excluded. Not serial.
+ *
+ ****************************************************************************/
 
-void update(double ****fnew,double ****fold)//WARNING:NEED TO CHANGE FOR 3D DECOMPOSITION
+
+void update0_ks(double ****fnew, double ****fold) {
+
+  int i,j,k,l,imod,jmod,kmod;
+
+  // Add collision tendency terms
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+	for (l=0; l<15; l++) {
+	  fold[i][j][k][l] += dt*Fc[i][j][k][l];
+	}
+      }
+    }
+  }
+
+#ifdef PARALLEL
+  communicateOldDistributions(fold);
+#endif
+
+  // 'Pull' propagation
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+	for (l=0; l<15; l++) {
+
+	  imod = i - e[l][0]; 
+	  jmod = j - e[l][1];
+	  kmod = k - e[l][2];
+	  fnew[i][j][k][l] = fold[imod][jmod][kmod][l];
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+
+//WARNING:NEED TO CHANGE FOR 3D DECOMPOSITION
+
+void update(double ****fnew,double ****fold)
 {
   int i,j,k,l,imod,jmod,kmod;
   double rb,Qxxb,Qyyb,Qxyb,Qxzb,Qyzb,tmp,vzoutone;
@@ -699,6 +725,53 @@ void update(double ****fnew,double ****fold)//WARNING:NEED TO CHANGE FOR 3D DECO
 
 }
 
+/****************************************************************************
+ *
+ *  Again, quick 3D version of above.
+ *
+ ****************************************************************************/
+
+void update_ks(double **** fnew, double **** fold) {
+
+  int i,j,k,l,imod,jmod,kmod;
+  double rtau1 = 1.0/tau1;
+  double rfac1 = 1.0/oneplusdtover2tau1;
+
+  // Add collision tendency terms
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+	for (l=0; l<15; l++) {
+	  fold[i][j][k][l] += 0.5*dt*Fc[i][j][k][l];
+	}
+      }
+    }
+  }
+
+#ifdef PARALLEL
+  communicateOldDistributions(fold);
+#endif
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+	for (l=0; l<15; l++) {
+
+	  imod = i - e[l][0]; 
+	  jmod = j - e[l][1]; 
+	  kmod = k - e[l][2];
+
+	  fnew[i][j][k][l] = rfac1*(fold[imod][jmod][kmod][l] +
+				    0.5*dt*rtau1*feq[i][j][k][l]);
+	}
+      }
+    }
+  }
+
+  return;
+}
+
 
 void collisionop(void)
 {
@@ -710,9 +783,9 @@ void collisionop(void)
 	for (l=0; l<15; l++) {
 	  Fc[i][j][k][l]= (feq[i][j][k][l]-f[i][j][k][l])/tau1; 
           if (pouiseuille==1) {
-	   if(j==0) { 
-          Fc[i][j][k][l]+=e[l][1]*bodyforce*density[i][j][k];
-	    }
+	      if(j==0) { 
+		  Fc[i][j][k][l]+=e[l][1]*bodyforce*density[i][j][k];
+	      }
 	  }
 	}
 }
@@ -738,14 +811,14 @@ void equilibriumdist(void)
   int i,j,k,l,iup,idwn,jup,jdwn,kup,kdwn,k1;
 
   for (i=ix1; i<ix2; i++) {
-    if (i==Lx2-1) iup=0; else iup=i+1;
-    if (i==0) idwn=Lx2-1; else idwn=i-1;
+    iup=i+1;
+    idwn=i-1;
     for (j=jy1; j<jy2; j++) {
-      if (j==Ly2-1) jup=0; else jup=j+1;
-      if (j==0) jdwn=Ly2-1; else jdwn=j-1;
+      jup=j+1;
+      jdwn=j-1;
       for (k=kz1; k<kz2; k++) {
-	if (k==Lz2-1) kup=0; else kup=k+1;
-	if (k==0) kdwn=Lz2-1; else kdwn=k-1;
+	kup=k+1;
+	kdwn=k-1;
 
 	rho=density[i][j][k];
 	Qxxl=Qxx[i][j][k];
@@ -946,50 +1019,50 @@ void parametercalc(int n)
 #endif  
 
   for (i=ix1; i<ix2; i++) {
-    if (i==Lx2-1) iup=0; else iup=i+1;
-    if (i==0) idwn=Lx2-1; else idwn=i-1;
+    iup=i+1;
+    idwn=i-1;
     for (j=jy1; j<jy2; j++) {
-      if (j==Ly2-1) jup=0; else jup=j+1;
-      if (j==0) jdwn=Ly2-1; else jdwn=j-1;
+      jup=j+1;
+      jdwn=j-1;
       for (k=kz1; k<kz2; k++) {
-	if (k==Lz2-1) kup=0; else kup=k+1;
-	if (k==0) kdwn=Lz2-1; else kdwn=k-1;
+	kup=k+1;
+	kdwn=k-1;
 
 /* first order derivative in the bulk */
 
-	dQxxdx=(Qxx[iup][j][k]-Qxx[idwn][j][k])/2.0;
-	dQxydx=(Qxy[iup][j][k]-Qxy[idwn][j][k])/2.0;
-	dQxzdx=(Qxz[iup][j][k]-Qxz[idwn][j][k])/2.0;
+	dQxxdx=(Qxx[iup][j][k]-Qxx[idwn][j][k])*0.5;
+	dQxydx=(Qxy[iup][j][k]-Qxy[idwn][j][k])*0.5;
+	dQxzdx=(Qxz[iup][j][k]-Qxz[idwn][j][k])*0.5;
 
 	dQyxdx=dQxydx;
-	dQyydx=(Qyy[iup][j][k]-Qyy[idwn][j][k])/2.0;
-	dQyzdx=(Qyz[iup][j][k]-Qyz[idwn][j][k])/2.0;
+	dQyydx=(Qyy[iup][j][k]-Qyy[idwn][j][k])*0.5;
+	dQyzdx=(Qyz[iup][j][k]-Qyz[idwn][j][k])*0.5;
 
 	dQzxdx=dQxzdx;
 	dQzydx=dQyzdx;
 	dQzzdx=-(dQxxdx+dQyydx);
 
 
-	dQxxdy=(Qxx[i][jup][k]-Qxx[i][jdwn][k])/2.0;
-	dQxydy=(Qxy[i][jup][k]-Qxy[i][jdwn][k])/2.0;
-	dQxzdy=(Qxz[i][jup][k]-Qxz[i][jdwn][k])/2.0;
+	dQxxdy=(Qxx[i][jup][k]-Qxx[i][jdwn][k])*0.5;
+	dQxydy=(Qxy[i][jup][k]-Qxy[i][jdwn][k])*0.5;
+	dQxzdy=(Qxz[i][jup][k]-Qxz[i][jdwn][k])*0.5;
 
 	dQyxdy=dQxydy;
-	dQyydy=(Qyy[i][jup][k]-Qyy[i][jdwn][k])/2.0;
-	dQyzdy=(Qyz[i][jup][k]-Qyz[i][jdwn][k])/2.0;
+	dQyydy=(Qyy[i][jup][k]-Qyy[i][jdwn][k])*0.5;
+	dQyzdy=(Qyz[i][jup][k]-Qyz[i][jdwn][k])*0.5;
 
 	dQzxdy=dQxzdy;
 	dQzydy=dQyzdy;
 	dQzzdy=-(dQxxdy+dQyydy);
 
 
-	dQxxdz=(Qxx[i][j][kup]-Qxx[i][j][kdwn])/2.0;
-	dQxydz=(Qxy[i][j][kup]-Qxy[i][j][kdwn])/2.0;
-	dQxzdz=(Qxz[i][j][kup]-Qxz[i][j][kdwn])/2.0;
+	dQxxdz=(Qxx[i][j][kup]-Qxx[i][j][kdwn])*0.5;
+	dQxydz=(Qxy[i][j][kup]-Qxy[i][j][kdwn])*0.5;
+	dQxzdz=(Qxz[i][j][kup]-Qxz[i][j][kdwn])*0.5;
 
 	dQyxdz=dQxydz;
-	dQyydz=(Qyy[i][j][kup]-Qyy[i][j][kdwn])/2.0;
-	dQyzdz=(Qyz[i][j][kup]-Qyz[i][j][kdwn])/2.0;
+	dQyydz=(Qyy[i][j][kup]-Qyy[i][j][kdwn])*0.5;
+	dQyzdz=(Qyz[i][j][kup]-Qyz[i][j][kdwn])*0.5;
 
 	dQzxdz=dQxzdz;
 	dQzydz=dQyzdz;
@@ -1002,22 +1075,22 @@ void parametercalc(int n)
 	d2Qxxdydy=Qxx[i][jup][k]-2.0*Qxx[i][j][k]+Qxx[i][jdwn][k];
 	d2Qxxdzdz=Qxx[i][j][kup]-2.0*Qxx[i][j][k]+Qxx[i][j][kdwn];
 	d2Qxxdxdy=(Qxx[iup][jup][k]-Qxx[iup][jdwn][k]-
-		   Qxx[idwn][jup][k]+Qxx[idwn][jdwn][k])/4.0;
+		   Qxx[idwn][jup][k]+Qxx[idwn][jdwn][k])*0.25;
 	d2Qxxdxdz=(Qxx[iup][j][kup]-Qxx[iup][j][kdwn]-
-		   Qxx[idwn][j][kup]+Qxx[idwn][j][kdwn])/4.0;
+		   Qxx[idwn][j][kup]+Qxx[idwn][j][kdwn])*0.25;
 	d2Qxxdydz=(Qxx[i][jup][kup]-Qxx[i][jup][kdwn]-
-		   Qxx[i][jdwn][kup]+Qxx[i][jdwn][kdwn])/4.0;
+		   Qxx[i][jdwn][kup]+Qxx[i][jdwn][kdwn])*0.25;
 	
 
 	d2Qyydxdx=Qyy[iup][j][k]-2.0*Qyy[i][j][k]+Qyy[idwn][j][k];
 	d2Qyydydy=Qyy[i][jup][k]-2.0*Qyy[i][j][k]+Qyy[i][jdwn][k];
 	d2Qyydzdz=Qyy[i][j][kup]-2.0*Qyy[i][j][k]+Qyy[i][j][kdwn];
 	d2Qyydxdy=(Qyy[iup][jup][k]-Qyy[iup][jdwn][k]-
-		   Qyy[idwn][jup][k]+Qyy[idwn][jdwn][k])/4.0;
+		   Qyy[idwn][jup][k]+Qyy[idwn][jdwn][k])*0.25;
 	d2Qyydxdz=(Qyy[iup][j][kup]-Qyy[iup][j][kdwn]-
-		   Qyy[idwn][j][kup]+Qyy[idwn][j][kdwn])/4.0;
+		   Qyy[idwn][j][kup]+Qyy[idwn][j][kdwn])*0.25;
 	d2Qyydydz=(Qyy[i][jup][kup]-Qyy[i][jup][kdwn]-
-		   Qyy[i][jdwn][kup]+Qyy[i][jdwn][kdwn])/4.0;
+		   Qyy[i][jdwn][kup]+Qyy[i][jdwn][kdwn])*0.25;
 	
 
 
@@ -1025,44 +1098,44 @@ void parametercalc(int n)
 	d2Qxydydy=Qxy[i][jup][k]-2.0*Qxy[i][j][k]+Qxy[i][jdwn][k];
 	d2Qxydzdz=Qxy[i][j][kup]-2.0*Qxy[i][j][k]+Qxy[i][j][kdwn];
 	d2Qxydxdy=(Qxy[iup][jup][k]-Qxy[iup][jdwn][k]-
-		   Qxy[idwn][jup][k]+Qxy[idwn][jdwn][k])/4.0;
+		   Qxy[idwn][jup][k]+Qxy[idwn][jdwn][k])*0.25;
 	d2Qxydxdz=(Qxy[iup][j][kup]-Qxy[iup][j][kdwn]-
-		   Qxy[idwn][j][kup]+Qxy[idwn][j][kdwn])/4.0;
+		   Qxy[idwn][j][kup]+Qxy[idwn][j][kdwn])*0.25;
 	d2Qxydydz=(Qxy[i][jup][kup]-Qxy[i][jup][kdwn]-
-		   Qxy[i][jdwn][kup]+Qxy[i][jdwn][kdwn])/4.0;
+		   Qxy[i][jdwn][kup]+Qxy[i][jdwn][kdwn])*0.25;
 	
 
 	d2Qxzdxdx=Qxz[iup][j][k]-2.0*Qxz[i][j][k]+Qxz[idwn][j][k];
 	d2Qxzdydy=Qxz[i][jup][k]-2.0*Qxz[i][j][k]+Qxz[i][jdwn][k];
 	d2Qxzdzdz=Qxz[i][j][kup]-2.0*Qxz[i][j][k]+Qxz[i][j][kdwn];
 	d2Qxzdxdy=(Qxz[iup][jup][k]-Qxz[iup][jdwn][k]-
-		   Qxz[idwn][jup][k]+Qxz[idwn][jdwn][k])/4.0;
+		   Qxz[idwn][jup][k]+Qxz[idwn][jdwn][k])*0.25;
 	d2Qxzdxdz=(Qxz[iup][j][kup]-Qxz[iup][j][kdwn]-
-		   Qxz[idwn][j][kup]+Qxz[idwn][j][kdwn])/4.0;
+		   Qxz[idwn][j][kup]+Qxz[idwn][j][kdwn])*0.25;
 	d2Qxzdydz=(Qxz[i][jup][kup]-Qxz[i][jup][kdwn]-
-		   Qxz[i][jdwn][kup]+Qxz[i][jdwn][kdwn])/4.0;
+		   Qxz[i][jdwn][kup]+Qxz[i][jdwn][kdwn])*0.25;
 	
 
 	d2Qyzdxdx=Qyz[iup][j][k]-2.0*Qyz[i][j][k]+Qyz[idwn][j][k];
 	d2Qyzdydy=Qyz[i][jup][k]-2.0*Qyz[i][j][k]+Qyz[i][jdwn][k];
 	d2Qyzdzdz=Qyz[i][j][kup]-2.0*Qyz[i][j][k]+Qyz[i][j][kdwn];
 	d2Qyzdxdy=(Qyz[iup][jup][k]-Qyz[iup][jdwn][k]-
-		   Qyz[idwn][jup][k]+Qyz[idwn][jdwn][k])/4.0;
+		   Qyz[idwn][jup][k]+Qyz[idwn][jdwn][k])*0.25;
 	d2Qyzdxdz=(Qyz[iup][j][kup]-Qyz[iup][j][kdwn]-
-		   Qyz[idwn][j][kup]+Qyz[idwn][j][kdwn])/4.0;
+		   Qyz[idwn][j][kup]+Qyz[idwn][j][kdwn])*0.25;
 	d2Qyzdydz=(Qyz[i][jup][kup]-Qyz[i][jup][kdwn]-
-		   Qyz[i][jdwn][kup]+Qyz[i][jdwn][kdwn])/4.0;
+		   Qyz[i][jdwn][kup]+Qyz[i][jdwn][kdwn])*0.25;
 
 
 	/*B.C.; use one-sided derivatives*/
 	if(pouiseuille1==2){
 #if BC
 	if(k==0) {
-	  dQxxdz= (-3.0*Qxx[i][j][k]+4.0*Qxx[i][j][k+1]-Qxx[i][j][k+2])/2.0;
-	  dQxydz= (-3.0*Qxy[i][j][k]+4.0*Qxy[i][j][k+1]-Qxy[i][j][k+2])/2.0; 
-	  dQyydz= (-3.0*Qyy[i][j][k]+4.0*Qyy[i][j][k+1]-Qyy[i][j][k+2])/2.0;
-	  dQxzdz= (-3.0*Qxz[i][j][k]+4.0*Qxz[i][j][k+1]-Qxz[i][j][k+2])/2.0; 
-	  dQyzdz= (-3.0*Qyz[i][j][k]+4.0*Qyz[i][j][k+1]-Qyz[i][j][k+2])/2.0;
+	  dQxxdz= (-3.0*Qxx[i][j][k]+4.0*Qxx[i][j][k+1]-Qxx[i][j][k+2])*0.5;
+	  dQxydz= (-3.0*Qxy[i][j][k]+4.0*Qxy[i][j][k+1]-Qxy[i][j][k+2])*0.5; 
+	  dQyydz= (-3.0*Qyy[i][j][k]+4.0*Qyy[i][j][k+1]-Qyy[i][j][k+2])*0.5;
+	  dQxzdz= (-3.0*Qxz[i][j][k]+4.0*Qxz[i][j][k+1]-Qxz[i][j][k+2])*0.5; 
+	  dQyzdz= (-3.0*Qyz[i][j][k]+4.0*Qyz[i][j][k+1]-Qyz[i][j][k+2])*0.5;
 
 	  d2Qxxdzdz= -Qxx[i][j][k+3]+4.0*Qxx[i][j][k+2]-
 	    5.0*Qxx[i][j][kup]+2.0*Qxx[i][j][k];
@@ -1076,34 +1149,34 @@ void parametercalc(int n)
 	    5.0*Qyz[i][j][kup]+2.0*Qyz[i][j][k];
 
 	  d2Qxxdxdz=(-3.0*Qxx[iup][j][k]+4.0*Qxx[iup][j][k+1]-Qxx[iup][j][k+2]+
-	      3.0*Qxx[idwn][j][k]-4.0*Qxx[idwn][j][k+1]+Qxx[idwn][j][k+2])/4.0;
+	      3.0*Qxx[idwn][j][k]-4.0*Qxx[idwn][j][k+1]+Qxx[idwn][j][k+2])*0.25;
 	  d2Qxydxdz=(-3.0*Qxy[iup][j][k]+4.0*Qxy[iup][j][k+1]-Qxy[iup][j][k+2]+
-	      3.0*Qxy[idwn][j][k]-4.0*Qxy[idwn][j][k+1]+Qxy[idwn][j][k+2])/4.0;
+	      3.0*Qxy[idwn][j][k]-4.0*Qxy[idwn][j][k+1]+Qxy[idwn][j][k+2])*0.25;
 	  d2Qyydxdz=(-3.0*Qyy[iup][j][k]+4.0*Qyy[iup][j][k+1]-Qyy[iup][j][k+2]+
-	      3.0*Qyy[idwn][j][k]-4.0*Qyy[idwn][j][k+1]+Qyy[idwn][j][k+2])/4.0;
+	      3.0*Qyy[idwn][j][k]-4.0*Qyy[idwn][j][k+1]+Qyy[idwn][j][k+2])*0.25;
 	  d2Qxzdxdz=(-3.0*Qxz[iup][j][k]+4.0*Qxz[iup][j][k+1]-Qxz[iup][j][k+2]+
-	      3.0*Qxz[idwn][j][k]-4.0*Qxz[idwn][j][k+1]+Qxz[idwn][j][k+2])/4.0;
+	      3.0*Qxz[idwn][j][k]-4.0*Qxz[idwn][j][k+1]+Qxz[idwn][j][k+2])*0.25;
 	  d2Qyzdxdz=(-3.0*Qyz[iup][j][k]+4.0*Qyz[iup][j][k+1]-Qyz[iup][j][k+2]+
-	      3.0*Qyz[idwn][j][k]-4.0*Qyz[idwn][j][k+1]+Qyz[idwn][j][k+2])/4.0;
+	      3.0*Qyz[idwn][j][k]-4.0*Qyz[idwn][j][k+1]+Qyz[idwn][j][k+2])*0.25;
 
 	  d2Qxxdydz=(-3.0*Qxx[i][jup][k]+4.0*Qxx[i][jup][k+1]-Qxx[i][jup][k+2]+
-	      3.0*Qxx[i][jdwn][k]-4.0*Qxx[i][jdwn][k+1]+Qxx[i][jdwn][k+2])/4.0;
+	      3.0*Qxx[i][jdwn][k]-4.0*Qxx[i][jdwn][k+1]+Qxx[i][jdwn][k+2])*0.25;
 	  d2Qxydydz=(-3.0*Qxy[i][jup][k]+4.0*Qxy[i][jup][k+1]-Qxy[i][jup][k+2]+
-	      3.0*Qxy[i][jdwn][k]-4.0*Qxy[i][jdwn][k+1]+Qxy[i][jdwn][k+2])/4.0;
+	      3.0*Qxy[i][jdwn][k]-4.0*Qxy[i][jdwn][k+1]+Qxy[i][jdwn][k+2])*0.25;
 	  d2Qyydydz=(-3.0*Qyy[i][jup][k]+4.0*Qyy[i][jup][k+1]-Qyy[i][jup][k+2]+
-	      3.0*Qyy[i][jdwn][k]-4.0*Qyy[i][jdwn][k+1]+Qyy[i][jdwn][k+2])/4.0;
+	      3.0*Qyy[i][jdwn][k]-4.0*Qyy[i][jdwn][k+1]+Qyy[i][jdwn][k+2])*0.25;
 	  d2Qxzdydz=(-3.0*Qxz[i][jup][k]+4.0*Qxz[i][jup][k+1]-Qxz[i][jup][k+2]+
-	      3.0*Qxz[i][jdwn][k]-4.0*Qxz[i][jdwn][k+1]+Qxz[i][jdwn][k+2])/4.0;
+	      3.0*Qxz[i][jdwn][k]-4.0*Qxz[i][jdwn][k+1]+Qxz[i][jdwn][k+2])*0.25;
 	  d2Qyzdydz=(-3.0*Qyz[i][jup][k]+4.0*Qyz[i][jup][k+1]-Qyz[i][jup][k+2]+
-	      3.0*Qyz[i][jdwn][k]-4.0*Qyz[i][jdwn][k+1]+Qyz[i][jdwn][k+2])/4.0;
+	      3.0*Qyz[i][jdwn][k]-4.0*Qyz[i][jdwn][k+1]+Qyz[i][jdwn][k+2])*0.25;
 
 	}
 	else if(k==Lz-1) {
-	  dQxxdz=(3.0*Qxx[i][j][k]-4.0*Qxx[i][j][k-1]+Qxx[i][j][k-2])/2.0;
-	  dQxydz=(3.0*Qxy[i][j][k]-4.0*Qxy[i][j][k-1]+Qxy[i][j][k-2])/2.0; 
-	  dQyydz=(3.0*Qyy[i][j][k]-4.0*Qyy[i][j][k-1]+Qyy[i][j][k-2])/2.0;
-	  dQxzdz=(3.0*Qxz[i][j][k]-4.0*Qxz[i][j][k-1]+Qxz[i][j][k-2])/2.0; 
-	  dQyzdz=(3.0*Qyz[i][j][k]-4.0*Qyz[i][j][k-1]+Qyz[i][j][k-2])/2.0;
+	  dQxxdz=(3.0*Qxx[i][j][k]-4.0*Qxx[i][j][k-1]+Qxx[i][j][k-2])*0.5;
+	  dQxydz=(3.0*Qxy[i][j][k]-4.0*Qxy[i][j][k-1]+Qxy[i][j][k-2])*0.5; 
+	  dQyydz=(3.0*Qyy[i][j][k]-4.0*Qyy[i][j][k-1]+Qyy[i][j][k-2])*0.5;
+	  dQxzdz=(3.0*Qxz[i][j][k]-4.0*Qxz[i][j][k-1]+Qxz[i][j][k-2])*0.5; 
+	  dQyzdz=(3.0*Qyz[i][j][k]-4.0*Qyz[i][j][k-1]+Qyz[i][j][k-2])*0.5;
 
 	  d2Qxxdzdz= -Qxx[i][j][k-3]+4.0*Qxx[i][j][k-2]-
 	    5.0*Qxx[i][j][kdwn]+2.0*Qxx[i][j][k];
@@ -1117,32 +1190,32 @@ void parametercalc(int n)
 	    5.0*Qyz[i][j][kdwn]+2.0*Qyz[i][j][k];
 
 	  d2Qxxdxdz=(3.0*Qxx[iup][j][k]-4.0*Qxx[iup][j][k-1]+Qxx[iup][j][k-2]-
-	      3.0*Qxx[idwn][j][k]+4.0*Qxx[idwn][j][k-1]-Qxx[idwn][j][k-2])/4.0;
+	      3.0*Qxx[idwn][j][k]+4.0*Qxx[idwn][j][k-1]-Qxx[idwn][j][k-2])*0.25;
 	  d2Qxydxdz=(3.0*Qxy[iup][j][k]-4.0*Qxy[iup][j][k-1]+Qxy[iup][j][k-2]-
-	      3.0*Qxy[idwn][j][k]+4.0*Qxy[idwn][j][k-1]-Qxy[idwn][j][k-2])/4.0;
+	      3.0*Qxy[idwn][j][k]+4.0*Qxy[idwn][j][k-1]-Qxy[idwn][j][k-2])*0.25;
 	  d2Qyydxdz=(3.0*Qyy[iup][j][k]-4.0*Qyy[iup][j][k-1]+Qyy[iup][j][k-2]-
-	      3.0*Qyy[idwn][j][k]+4.0*Qyy[idwn][j][k-1]-Qyy[idwn][j][k-2])/4.0;
+	      3.0*Qyy[idwn][j][k]+4.0*Qyy[idwn][j][k-1]-Qyy[idwn][j][k-2])*0.25;
 	  d2Qxzdxdz=(3.0*Qxz[iup][j][k]-4.0*Qxz[iup][j][k-1]+Qxz[iup][j][k-2]-
-	      3.0*Qxz[idwn][j][k]+4.0*Qxz[idwn][j][k-1]-Qxz[idwn][j][k-2])/4.0;
+	      3.0*Qxz[idwn][j][k]+4.0*Qxz[idwn][j][k-1]-Qxz[idwn][j][k-2])*0.25;
 	  d2Qyzdxdz=(3.0*Qyz[iup][j][k]-4.0*Qyz[iup][j][k-1]+Qyz[iup][j][k-2]-
-	      3.0*Qyz[idwn][j][k]+4.0*Qyz[idwn][j][k-1]-Qyz[idwn][j][k-2])/4.0;
+	      3.0*Qyz[idwn][j][k]+4.0*Qyz[idwn][j][k-1]-Qyz[idwn][j][k-2])*0.25;
 
 	  d2Qxxdydz=(3.0*Qxx[i][jup][k]-4.0*Qxx[i][jup][k-1]+Qxx[i][jup][k-2]-
-	      3.0*Qxx[i][jdwn][k]+4.0*Qxx[i][jdwn][k-1]-Qxx[i][jdwn][k-2])/4.0;
+	      3.0*Qxx[i][jdwn][k]+4.0*Qxx[i][jdwn][k-1]-Qxx[i][jdwn][k-2])*0.25;
 	  d2Qxydydz=(3.0*Qxy[i][jup][k]-4.0*Qxy[i][jup][k-1]+Qxy[i][jup][k-2]-
-	      3.0*Qxy[i][jdwn][k]+4.0*Qxy[i][jdwn][k-1]-Qxy[i][jdwn][k-2])/4.0;
+	      3.0*Qxy[i][jdwn][k]+4.0*Qxy[i][jdwn][k-1]-Qxy[i][jdwn][k-2])*0.25;
 	  d2Qyydydz=(3.0*Qyy[i][jup][k]-4.0*Qyy[i][jup][k-1]+Qyy[i][jup][k-2]-
-	      3.0*Qyy[i][jdwn][k]+4.0*Qyy[i][jdwn][k-1]-Qyy[i][jdwn][k-2])/4.0;
+	      3.0*Qyy[i][jdwn][k]+4.0*Qyy[i][jdwn][k-1]-Qyy[i][jdwn][k-2])*0.25;
 	  d2Qxzdydz=(3.0*Qxz[i][jup][k]-4.0*Qxz[i][jup][k-1]+Qxz[i][jup][k-2]-
-	      3.0*Qxz[i][jdwn][k]+4.0*Qxz[i][jdwn][k-1]-Qxz[i][jdwn][k-2])/4.0;
+	      3.0*Qxz[i][jdwn][k]+4.0*Qxz[i][jdwn][k-1]-Qxz[i][jdwn][k-2])*0.25;
 	  d2Qyzdydz=(3.0*Qyz[i][jup][k]-4.0*Qyz[i][jup][k-1]+Qyz[i][jup][k-2]-
-	      3.0*Qyz[i][jdwn][k]+4.0*Qyz[i][jdwn][k-1]-Qyz[i][jdwn][k-2])/4.0;
+	      3.0*Qyz[i][jdwn][k]+4.0*Qyz[i][jdwn][k-1]-Qyz[i][jdwn][k-2])*0.25;
 
 	}
 #endif
 	}
 
-	duydz=(u[i][j][kup][1]-u[i][j][kdwn][1])/2.0;
+	duydz=(u[i][j][kup][1]-u[i][j][kdwn][1])*0.5;
 	
 /* boundary corrections */
       /*B.C.; use one-sided derivatives*/
@@ -1150,10 +1223,10 @@ void parametercalc(int n)
 #if BC
 // WARNING !! The BC needs to be changed for parallelisation if BC != 0
 	if(k==0) {
-	  duydz= 0.0*(-3.0*u[i][j][k][1]+4.0*u[i][j][k+1][1]-u[i][j][k+2][1])/2.0;
+	  duydz= 0.0*(-3.0*u[i][j][k][1]+4.0*u[i][j][k+1][1]-u[i][j][k+2][1])*0.5;
 	}
 	else if(k==Lz-1) {
-	  duydz= 0.0*(3.0*u[i][j][k][1]-4.0*u[i][j][k-1][1]+u[i][j][k-2][1])/2.0;	  
+	  duydz= 0.0*(3.0*u[i][j][k][1]-4.0*u[i][j][k-1][1]+u[i][j][k-2][1])*0.5;	  
 	}
 #endif
 	}
@@ -1192,12 +1265,12 @@ void parametercalc(int n)
 	DEHxy[i][j][k] = L1 * (d2Qxydxdx+d2Qxydydy+d2Qxydzdz)
           + (L2 - L1)/2.0 * (d2Qxydxdx+d2Qyydxdy+d2Qyzdxdz
           +d2Qxxdxdy+d2Qxydydy+d2Qxzdydz)
-          + (txy + tyx)/2.0 ;
+          + (txy + tyx)*0.5 ;
 
 	DEHxz[i][j][k] = (L2-L1)/2.0 * (d2Qxzdxdx+d2Qyzdxdy-d2Qxxdxdz
           -d2Qyydxdz+d2Qxxdxdz+d2Qxydydz+d2Qxzdzdz)
           + L1 * (d2Qxzdxdx+d2Qxzdydy+d2Qxzdzdz)
-          + (txz + tzx)/2.0;
+          + (txz + tzx)*0.5;
 
 	DEHyy[i][j][k]= L1 * (d2Qyydxdx+d2Qyydydy+d2Qyydzdz)
           + (L2 - L1)/2.0 * (2.0*(d2Qxydxdy+d2Qyydydy+d2Qyzdydz)
@@ -1207,7 +1280,7 @@ void parametercalc(int n)
 	DEHyz[i][j][k] = L1 * (d2Qyzdxdx+d2Qyzdydy+d2Qyzdzdz)
           + (L2 - L1)/2.0 * (d2Qxzdxdy+d2Qyzdydy-d2Qxxdydz
           -d2Qyydydz+d2Qxydxdz+d2Qyydydz+d2Qyzdzdz) 
-          + (tyz + tzy)/2.0;
+          + (tyz + tzy)*0.5;
 
 	divQx=dQxxdx+dQxydy+dQxzdz;
 	divQy=dQxydx+dQyydy+dQyzdz;
@@ -1335,29 +1408,29 @@ void parametercalc(int n)
 	   Hyz*(2.0*Qyy[i][j][k]+Qxx[i][j][k])+
 	   Hxy*Qxz[i][j][k]-Hxz*Qxy[i][j][k]);
 
-	duxdx=(u[iup][j][k][0]-u[idwn][j][k][0])/2.0;
-	duxdy=(u[i][jup][k][0]-u[i][jdwn][k][0])/2.0;
-	duxdz=(u[i][j][kup][0]-u[i][j][kdwn][0])/2.0;
-	duydx=(u[iup][j][k][1]-u[idwn][j][k][1])/2.0;
-	duydy=(u[i][jup][k][1]-u[i][jdwn][k][1])/2.0;
-	duydz=(u[i][j][kup][1]-u[i][j][kdwn][1])/2.0;
-	duzdx=(u[iup][j][k][2]-u[idwn][j][k][2])/2.0;
-	duzdy=(u[i][jup][k][2]-u[i][jdwn][k][2])/2.0;
-	duzdz=(u[i][j][kup][2]-u[i][j][kdwn][2])/2.0;
+	duxdx=(u[iup][j][k][0]-u[idwn][j][k][0])*0.5;
+	duxdy=(u[i][jup][k][0]-u[i][jdwn][k][0])*0.5;
+	duxdz=(u[i][j][kup][0]-u[i][j][kdwn][0])*0.5;
+	duydx=(u[iup][j][k][1]-u[idwn][j][k][1])*0.5;
+	duydy=(u[i][jup][k][1]-u[i][jdwn][k][1])*0.5;
+	duydz=(u[i][j][kup][1]-u[i][j][kdwn][1])*0.5;
+	duzdx=(u[iup][j][k][2]-u[idwn][j][k][2])*0.5;
+	duzdy=(u[i][jup][k][2]-u[i][jdwn][k][2])*0.5;
+	duzdz=(u[i][j][kup][2]-u[i][j][kdwn][2])*0.5;
 
       /*B.C.; use one-sided derivatives*/
 	if(pouiseuille1==1){
 #if BC
 	if(k==0) {
-	  duxdz= (-3.0*u[i][j][k][0]+4.0*u[i][j][k+1][0]-u[i][j][k+2][0])/2.0;
-	  duydz= (-3.0*u[i][j][k][1]+4.0*u[i][j][k+1][1]-u[i][j][k+2][1])/2.0;
-	  duzdz= (-3.0*u[i][j][k][2]+4.0*u[i][j][k+1][2]-u[i][j][k+2][2])/2.0;
+	  duxdz= (-3.0*u[i][j][k][0]+4.0*u[i][j][k+1][0]-u[i][j][k+2][0])*0.5;
+	  duydz= (-3.0*u[i][j][k][1]+4.0*u[i][j][k+1][1]-u[i][j][k+2][1])*0.5;
+	  duzdz= (-3.0*u[i][j][k][2]+4.0*u[i][j][k+1][2]-u[i][j][k+2][2])*0.5;
 
 	}
 	else if(k==Lz-1) {
-	  duxdz= (3.0*u[i][j][k][0]-4.0*u[i][j][k-1][0]+u[i][j][k-2][0])/2.0;
-	  duydz= (3.0*u[i][j][k][1]-4.0*u[i][j][k-1][1]+u[i][j][k-2][1])/2.0;
-	  duzdz= (3.0*u[i][j][k][2]-4.0*u[i][j][k-1][2]+u[i][j][k-2][2])/2.0;
+	  duxdz= (3.0*u[i][j][k][0]-4.0*u[i][j][k-1][0]+u[i][j][k-2][0])*0.5;
+	  duydz= (3.0*u[i][j][k][1]-4.0*u[i][j][k-1][1]+u[i][j][k-2][1])*0.5;
+	  duzdz= (3.0*u[i][j][k][2]-4.0*u[i][j][k-1][2]+u[i][j][k-2][2])*0.5;
 
 	}
 #endif
@@ -1417,5 +1490,11 @@ void parametercalc(int n)
 #include "Output.cc"
 #include "nr.cc"
 
+void message(const char * s) {
+
+    if (myPE == 0) {
+	cout << s << endl;
+    }
+}
 
 #endif
