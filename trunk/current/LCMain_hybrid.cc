@@ -28,6 +28,7 @@ void update0_ks(double ****, double ****);
 void update_ks(double ****, double ****);
 void streamfile_ks(const int);
 void writeDiscFile_ks(const int);
+void exchangeTau(void);
 
 // ============================================================
 int main(int argc, char** argv) 
@@ -219,11 +220,6 @@ int main(int argc, char** argv)
   else
     aa=4.0;
 
-#ifdef _COMM_3D_
-  writeDiscFile_ks(0);
-  streamfile_ks(0);
-#endif
-
   for (n=1; n<=Nmax; n++) {
 
 
@@ -330,12 +326,12 @@ int main(int argc, char** argv)
 
     equilibriumdist();
 
-  if (n==1) {
-      streamfile_ks(n);
-  }
-
   if (n % OVDPrintInt == 0) {
+#ifdef _COMM_3D_
+      streamfile_ks(n);
+#else
       streamfile(n);
+#endif
       cout << n << endl;
       graphstp=0;
     }
@@ -362,7 +358,7 @@ int main(int argc, char** argv)
 
     /*predictor*/
 #ifdef _COMM_3D_
-     update0_ks(fpr, f);
+  update0_ks(fpr, f);
 #else
     update0(fpr,f);
 #endif
@@ -384,6 +380,7 @@ int main(int argc, char** argv)
       update(f,fpr);
 #endif
     }
+
 
 #ifdef _COMM_3D_
     if (n % stepskip == 0) {
@@ -544,8 +541,9 @@ void update0(double ****fnew,double ****fold)
 
 /****************************************************************************
  *
- *  Quick 3D version of above. Causes both fnew and fold to be
- *  updated, so need to check nothing depends on fold.
+ *  Quick 3D version of above.
+ *
+ *  fold must be unchanged on exit, hence the subtraction at the end. 
  *
  *  Pouiseuille boundaries excluded. Not serial.
  *
@@ -583,6 +581,18 @@ void update0_ks(double ****fnew, double ****fold) {
 	  jmod = j - e[l][1];
 	  kmod = k - e[l][2];
 	  fnew[i][j][k][l] = fold[imod][jmod][kmod][l];
+	}
+      }
+    }
+  }
+
+  // Rest fold
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+	for (l=0; l<15; l++) {
+	  fold[i][j][k][l] -= dt*Fc[i][j][k][l];
 	}
       }
     }
@@ -727,7 +737,10 @@ void update(double ****fnew,double ****fold)
 
 /****************************************************************************
  *
- *  Again, quick 3D version of above.
+ *  update_ks
+ *
+ *  Again, quick 3D version of above. Again, fold must be unchanged
+ *  on exit.
  *
  ****************************************************************************/
 
@@ -764,6 +777,16 @@ void update_ks(double **** fnew, double **** fold) {
 
 	  fnew[i][j][k][l] = rfac1*(fold[imod][jmod][kmod][l] +
 				    0.5*dt*rtau1*feq[i][j][k][l]);
+	}
+      }
+    }
+  }
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+	for (l=0; l<15; l++) {
+	  fold[i][j][k][l] -= 0.5*dt*Fc[i][j][k][l];
 	}
       }
     }
@@ -809,6 +832,11 @@ void equilibriumdist(void)
   double mDQ4xx,mDQ4xy,mDQ4yy,mDQ4xz,mDQ4yz,mDQ4zz,TrDQI;
   double DQpQDxx,DQpQDxy,DQpQDyy,DQpQDxz,DQpQDyz,DQpQDzz,TrDQpQD;
   int i,j,k,l,iup,idwn,jup,jdwn,kup,kdwn,k1;
+
+#ifdef _COMM_3D_
+  /* Communication of tau required here */
+  exchangeTau();
+#endif
 
   for (i=ix1; i<ix2; i++) {
     iup=i+1;
