@@ -1,6 +1,6 @@
 void computeStressFreeEnergy(int n)
 {
-  int i,j,k,l,iup,idwn,jup,jdwn,kup,kdwn;
+  int i,j,k,p,iup,idwn,jup,jdwn,kup,kdwn;
   double dQxxdx,dQxxdy,dQxxdz,dQxydx,dQxydy,dQxydz,dQyydx,dQyydy,dQyydz;
   double dQxzdx,dQxzdy,dQxzdz,dQyzdx,dQyzdy,dQyzdz;
   double dQyxdx,dQyxdy,dQyxdz;
@@ -24,18 +24,26 @@ void computeStressFreeEnergy(int n)
   double duxdx,duxdy,duxdz,duydx,duydy,duydz,duzdx,duzdy,duzdz,Gammap;
   double mDQ4xx,mDQ4xy,mDQ4yy,mDQ4xz,mDQ4yz,mDQ4zz,nnxxl,nnyyl;
 
+  int ioff = 0, joff = 0, koff = 0;
+
+#ifdef PARALLEL
+  ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
+  joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
+  koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
+#endif
+
   for (i=ix1; i<ix2; i++) {
-    for (j=0; j<Ly; j++) {
-      for (l=0; l<Lz; l++) {
-	density[i][j][l]=0.0;
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+	density[i][j][k]=0.0;
         freeenergy=0.0;
         freeenergytwist=0.0;
 	avestress=0.0;
-	for (k=0; k<15; k++) {
-	  density[i][j][l] += f[i][j][l][k];
-	  u[i][j][l][0] += f[i][j][l][k]*e[k][0];
-	  u[i][j][l][1] += f[i][j][l][k]*e[k][1];
-	  u[i][j][l][2] += f[i][j][l][k]*e[k][2];
+	for (p=0; p<15; p++) {
+	  density[i][j][k] += f[i][j][k][p];
+	  u[i][j][k][0] += f[i][j][k][p]*e[p][0];
+	  u[i][j][k][1] += f[i][j][k][p]*e[p][1];
+	  u[i][j][k][2] += f[i][j][k][p]*e[p][2];
 	}
       }
     }
@@ -46,14 +54,14 @@ void computeStressFreeEnergy(int n)
 #endif  
 
   for (i=ix1; i<ix2; i++) {
-    if (i==Lx2-1) iup=0; else iup=i+1;
-    if (i==0) idwn=Lx2-1; else idwn=i-1;
-    for (j=0; j<Ly; j++) {
-      if (j==Ly-1) jup=0; else jup=j+1;
-      if (j==0) jdwn=Ly-1; else jdwn=j-1;
-      for (k=0; k<Lz; k++) {
-	if (k==Lz-1) kup=0; else kup=k+1;
-	if (k==0) kdwn=Lz-1; else kdwn=k-1;
+    iup=i+1;
+    idwn=i-1;
+    for (j=jy1; j<jy2; j++) {
+      jup=j+1;
+      jdwn=j-1;
+      for (k=kz1; k<kz2; k++) {
+	kup=k+1;
+	kdwn=k-1;
 
 /* first order derivative in the bulk */
 
@@ -542,7 +550,7 @@ if (n % (FePrintInt*SigPrintFac) == 0){
     output.open(signame.get());
   }
   else {
-    MPI_Recv(&token,1,MPI_INT,leftNeighbor,0,MPI_COMM_WORLD,&status);
+    MPI_Recv(&token,1,MPI_INT,myPE-1,0,MPI_COMM_WORLD,&status);
     output.open(signame.get(),ios::app);
   }
 #else
@@ -552,11 +560,11 @@ if (n % (FePrintInt*SigPrintFac) == 0){
   output.precision(5);
 
   for (i=ix1; i<ix2; i++) {
-    for (j=0; j<Ly; j++) {
-      for (k=0; k<Lz; k++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
 
      
-      output << i-ix1+Lx/nbPE*myPE << " " << j << " " << k << " " 
+      output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff << " " 
 	     << Stressxx[i][j][k] << " " << Stressxy[i][j][k] << " " << Stressxz[i][j][k]<< " " 
 	     << Stressyx[i][j][k] << " " << Stressyy[i][j][k] << " " << Stressyz[i][j][k]<< " " 
 	     << Stresszx[i][j][k] << " " << Stresszy[i][j][k] << " " << Stresszz[i][j][k] << endl;
@@ -571,7 +579,7 @@ output.close();
 
 #ifdef PARALLEL
   if (myPE != nbPE-1)
-    MPI_Send(&token,1,MPI_INT,rightNeighbor,0,MPI_COMM_WORLD);
+    MPI_Send(&token,1,MPI_INT,myPE+1,0,MPI_COMM_WORLD);
 
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
@@ -877,18 +885,9 @@ void streamfile_ks(const int iter) {
 	enxt=2;
       }
 
-      /*
       output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff << " " 
 	     << Qxx[i][j][k] << " " << Qxy[i][j][k] << " " 
 	     << Qxz[i][j][k]<< " " << Qyy[i][j][k]<< " " 
-	     << Qyz[i][j][k]<< " " << u[i][j][k][0]<< " " 
-	     << u[i][j][k][1]<< " " << u[i][j][k][2] << " "
- 	     << d[emax]<< " " << molfieldxx[i][j][k] << endl;
-      */
-
-      output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff << " " 
-	     << feq[i][j][k][0] << " " << feq[i][j][k][1] << " " 
-	     << feq[i][j][k][7]<< " " << Qyy[i][j][k]<< " " 
 	     << Qyz[i][j][k]<< " " << u[i][j][k][0]<< " " 
 	     << u[i][j][k][1]<< " " << u[i][j][k][2] << " "
  	     << d[emax]<< " " << molfieldxx[i][j][k] << endl;
