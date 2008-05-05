@@ -70,11 +70,11 @@ void randomizeQ(void)
 
 	  amplitude=0.3; 
 
-	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*k)-cos(2.0*q0*j));
+	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*kc)-cos(2.0*q0*jc));
 	  Qxxinit[i][j][k]=Qxx[i][j][k];
-	  Qxy[i][j][k]=amplitude*sin(2.0*q0*k);
+	  Qxy[i][j][k]=amplitude*sin(2.0*q0*kc);
 	  Qxyinit[i][j][k]=Qxy[i][j][k];
-	  Qxz[i][j][k]=amplitude*sin(2.0*q0*j);
+	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
 
 #ifdef PARALLEL
 	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)-cos(2.0*q0*kc));
@@ -363,6 +363,14 @@ void initialize(void)
   int pe_cartesian_rank;
   int reorder=1;
  
+  /* Basic run time check */
+
+  n = pe_cartesian_size_[0]*pe_cartesian_size_[1]*pe_cartesian_size_[2];
+  if (n != nbPE) {
+    cout << "Incorrect decomposition " << endl;
+    MPI_Abort(MPI_COMM_WORLD, 0);
+  }
+
   MPI_Cart_create(MPI_COMM_WORLD, 3, pe_cartesian_size_, periodic, reorder,
 		  &cartesian_communicator_);
 
