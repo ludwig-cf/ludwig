@@ -252,60 +252,71 @@ void startDroplet(void)
 {
   int i,j,k,l;
   double phase,phase2,amplitude;
+  double fracmin, fracmax;
+
+  int ic, jc, kc;
+  int ioff = 0, joff = 0, koff = 0;
+
+#ifdef PARALLEL
+  ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
+  joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
+  koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
+#endif
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
-      for (k=0; k< Lz; k++) {
+      for (k=kz1; k<kz2; k++) {
 
-	      int iactual;
-	      iactual=i;
+	ic = i - ix1 + ioff;
+	jc = j - jy1 + joff;
+	kc = k - kz1 + koff;
 
-#ifdef PARALLEL
+	// For 128^3 the unaltered position is 3/8 L -> 5/8 L
+	// For 256^3 the unaltered position is 7/16 L -> 9/16 L
+	// Assume Lx = Ly = Lz
+ 
+	fracmin = 0.5 - 16.0/Lx;
+	fracmax = 0.5 + 16.0/Lx;
 
-	      iactual=(i-1)+Lx/nbPE*myPE;
-	      //NEW GRID: need to change this with appropriate 2/3D counting
-
-#endif
-
-//if( (j < ((3.0*Ly)/8.0) )||( j > ((5.0*Ly)/8.0))||( iactual < ((3.0*Lx)/8.0) )||( iactual > ( (5.0*Lx)/8.0 )) || ( k < ((3.0*Lz)/8.0) )||( k > ((5.0*Lz)/8.0) )) {
-if( (j < ((7.0*Ly)/16.0) )||( j > ((9.0*Ly)/16.0))||( iactual < ((7.0*Lx)/16.0) )||( iactual > ( (9.0*Lx)/16.0 )) || ( k < ((7.0*Lz)/16.0) )||( k > ((9.0*Lz)/16.0) )) {
+	if ( (jc < (fracmin*Ly) )||( jc > (fracmax*Ly))||
+	     (ic < (fracmin*Lx) )||( ic > (fracmax*Lx))||
+	     (kc < (fracmin*Lz) )||( kc > (fracmax*Lz))) {
 
 
-      amplitude=(0.546-0.2723/2.0);
+	  amplitude=(0.546-0.2723/2.0);
 
-// droplet in cholesteric environment
+	  // droplet in cholesteric environment
       
-      Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*j);
-      Qxy[i][j][k]= 0.0;
-      Qyy[i][j][k]= -0.2723;
-      Qxz[i][j][k]= -amplitude*(sin(2.0*q0*j));
-      Qyz[i][j][k]= 0.0;
+	  Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
+	  Qxy[i][j][k]= 0.0;
+	  Qyy[i][j][k]= -0.2723;
+	  Qxz[i][j][k]= -amplitude*(sin(2.0*q0*jc));
+	  Qyz[i][j][k]= 0.0;
 
-// allow for different definition of the pitch in O8 and O8M
-      if(O8MSTRUCT == 1 || O8STRUCT == 1){
+	  // allow for different definition of the pitch in O8 and O8M
+	  if(O8MSTRUCT == 1 || O8STRUCT == 1){
 
-	 Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0/sqrt(2.0)*j);
-	 Qxy[i][j][k]= 0.0;
-	 Qyy[i][j][k]= -0.2723;
-	 Qxz[i][j][k]= -amplitude*(sin(2.0*q0/sqrt(2.0)*j));
-//sign change
-//	 Qxz[i][j][k]= amplitude*(sin(2.0*q0/sqrt(2.0)*j));
-	 Qyz[i][j][k]= 0.0;
-
-
-      }
-
-//  droplet in isotropic environment
-
-//      Qxx[i][j][k]= 1e-4/2.0;
-//     Qxy[i][j][k]= 0.0;
-//      Qyy[i][j][k]= -1e-4;
-//      Qxz[i][j][k]= 0.0;
-//      Qyz[i][j][k]= 0.0;
+	    Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0/sqrt(2.0)*jc);
+	    Qxy[i][j][k]= 0.0;
+	    Qyy[i][j][k]= -0.2723;
+	    Qxz[i][j][k]= -amplitude*(sin(2.0*q0/sqrt(2.0)*jc));
+	    //sign change
+	    //	 Qxz[i][j][k]= amplitude*(sin(2.0*q0/sqrt(2.0)*jc));
+	    Qyz[i][j][k]= 0.0;
 
 
-                 }
-	
+	  }
+
+	  //  droplet in isotropic environment
+
+	  //      Qxx[i][j][k]= 1e-4/2.0;
+	  //     Qxy[i][j][k]= 0.0;
+	  //      Qyy[i][j][k]= -1e-4;
+	  //      Qxz[i][j][k]= 0.0;
+	  //      Qyz[i][j][k]= 0.0;
+
+
+	}
       }
     }
   }
@@ -361,6 +372,7 @@ void initialize(void)
   int n;
   int periodic[3] = {1, 1, 1};
   int pe_cartesian_rank;
+  int colour, key;
   int reorder=1;
  
   /* Basic run time check */
@@ -406,6 +418,22 @@ void initialize(void)
     MPI_Cart_shift(cartesian_communicator_, n, +1, &reorder,
 		   &pe_cartesian_neighbour_[1][n]);
   }
+
+  /* I/O communciation */
+
+  io_group_size_ = nbPE / io_ngroups_;
+
+  colour = pe_cartesian_rank / io_group_size_;
+  key = pe_cartesian_rank;
+  io_group_id_ = colour;
+
+  MPI_Comm_split(cartesian_communicator_, colour, key, &io_communicator_);
+  MPI_Comm_rank(io_communicator_, &io_rank_);
+
+  cout << "World rank " << myPE << " Cart rank " << pe_cartesian_rank <<
+    " io_group " << io_group_id_ << " io rank " << io_rank_ << endl;
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
 #else
   Lx2=Lx;
