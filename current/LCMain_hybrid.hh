@@ -228,6 +228,12 @@ int pe_cartesian_size_[3];
 int pe_cartesian_coordinates_[3];
 int pe_cartesian_neighbour_[2][3];
 
+MPI_Comm io_communicator_;
+int io_ngroups_ = 1; /* Default to 1 file for output */
+int io_group_id_;
+int io_group_size_;
+int io_rank_;
+
 #endif
 
 #else
