@@ -103,6 +103,7 @@ int main(int argc, char** argv)
   inputFile >> pe_cartesian_size_[0] >> endOfLine;
   inputFile >> pe_cartesian_size_[1] >> endOfLine;
   inputFile >> pe_cartesian_size_[2] >> endOfLine;
+  inputFile >> io_ngroups_ >> endOfLine;
 
   String logFileName("liquidCrystal.");
   logFileName.concat((int) numCase);
@@ -154,6 +155,7 @@ int main(int argc, char** argv)
   logFile << pe_cartesian_size_[0] << "\t\t# x proc decomposition" << endl;
   logFile << pe_cartesian_size_[1] << "\t\t# y proc decomposition" << endl;
   logFile << pe_cartesian_size_[2] << "\t\t# z proc decomposition" << endl;
+  logFile << io_ngroups_ << "\t\t# number io groups (files)" << endl;
 
    logFile.close();
 
@@ -374,22 +376,14 @@ int main(int argc, char** argv)
 
       equilibriumdist();
 
-#ifdef _COMM_3D_
       update_ks(f, fpr);
-#else
-      update(f,fpr);
-#endif
     }
 
 
-#ifdef _COMM_3D_
     if (n % stepskip == 0) {
 	writeDiscFile_ks(n);
 	streamfile_ks(n);
     }
-#else
-    if (n % stepskip == 0||n==1) writeDiscFile(n);
-#endif
   }
 
 #ifdef PARALLEL
@@ -586,7 +580,7 @@ void update0_ks(double ****fnew, double ****fold) {
     }
   }
 
-  // Rest fold
+  // Reset fold
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {

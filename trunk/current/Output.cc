@@ -23,6 +23,12 @@ void computeStressFreeEnergy(int n)
   double Hxx,Hyy,Hxy,Hxz,Hyz,TrDQI;
   double duxdx,duxdy,duxdz,duydx,duydy,duydz,duzdx,duzdy,duzdz,Gammap;
   double mDQ4xx,mDQ4xy,mDQ4yy,mDQ4xz,mDQ4yz,mDQ4zz,nnxxl,nnyyl;
+  double t1, t2;
+
+#ifdef _BINARY_IO_
+  int ibuf[3];     /* For convenvient output of stress information */
+  double rbuf[9];
+#endif
 
   int ioff = 0, joff = 0, koff = 0;
 
@@ -510,22 +516,30 @@ void computeStressFreeEnergy(int n)
 /* free energy output */
 
 #ifdef PARALLEL
+
+  t1 = MPI_Wtime();
+
+  /* KS. Could replace with single MPI_Reduce(). Not particularly important.*/
+
     double reducedF,reducedstress;
     MPI_Allreduce(&freeenergy,&reducedF, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     freeenergy=reducedF;
     MPI_Allreduce(&freeenergytwist,&reducedF, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     freeenergytwist=reducedF;
+
+    /* KS not required? */
     MPI_Allreduce(&avestress,&reducedstress, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     avestress=reducedstress;
 #endif
 
 
+    /* Make sure this output comes from the process consistent with
+     * the above MPI_Reduce */
 
     if (myPE == 0) {
       String fileName("fe.");
       fileName.concat((int) numCase);
       fileName.concat(".dat");
-//      file.open(fileName.get(),ios::app);
       ofstream file(fileName.get(),ios::app);
       file << n << "\t" << freeenergy << " " << freeenergytwist << " " << avestress/(32.0*32.0*32.0) <<"\t" << phivr << endl;
       file.close();
@@ -534,280 +548,94 @@ void computeStressFreeEnergy(int n)
 
 /* stress output */
 
-if (n % (FePrintInt*SigPrintFac) == 0){
+    if (n % (FePrintInt*SigPrintFac) == 0){
 
-  String signame("sig.");
-  signame.concat(numCase);
-  signame.concat(".");
-  signame.concat(n);
-  signame.concat(".dat");
+      String signame("sig.");
+      signame.concat(numCase);
+      signame.concat(".");
+      signame.concat(n);
+      signame.concat(".dat-");
+      signame.concat(io_group_id_);
+      signame.concat("-");
+      signame.concat(io_ngroups_);
 
 
 #ifdef PARALLEL
 
-  int token=0;
-  if (myPE == 0) {
-    output.open(signame.get());
-  }
-  else {
-    MPI_Recv(&token,1,MPI_INT,myPE-1,0,MPI_COMM_WORLD,&status);
-    output.open(signame.get(),ios::app);
-  }
+      int token=0;
+      if (io_rank_ == 0) {
+	output.open(signame.get());
+      }
+      else {
+	MPI_Recv(&token, 1, MPI_INT, io_rank_ - 1, 0, io_communicator_,
+		 &status);
+	output.open(signame.get(),ios::app);
+      }
 #else
-    output.open(signame.get());
+      output.open(signame.get());
 #endif
 
-  output.precision(5);
+      output.precision(5);
 
-  for (i=ix1; i<ix2; i++) {
-    for (j=jy1; j<jy2; j++) {
-      for (k=kz1; k<kz2; k++) {
+      for (i=ix1; i<ix2; i++) {
+	for (j=jy1; j<jy2; j++) {
+	  for (k=kz1; k<kz2; k++) {
 
-     
-      output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff << " " 
-	     << Stressxx[i][j][k] << " " << Stressxy[i][j][k] << " " << Stressxz[i][j][k]<< " " 
-	     << Stressyx[i][j][k] << " " << Stressyy[i][j][k] << " " << Stressyz[i][j][k]<< " " 
-	     << Stresszx[i][j][k] << " " << Stresszy[i][j][k] << " " << Stresszz[i][j][k] << endl;
+#ifdef _BINARY_IO_
+	    ibuf[0] = i-ix1+ioff;
+	    ibuf[1] = j-jy1+joff;
+	    ibuf[2] = k-kz1+koff;
+	    rbuf[0] = Stressxx[i][j][k];
+	    rbuf[1] = Stressxy[i][j][k];
+	    rbuf[2] = Stressxz[i][j][k];
+	    rbuf[3] = Stressyx[i][j][k];
+	    rbuf[4] = Stressyy[i][j][k];
+	    rbuf[5] = Stressyz[i][j][k];
+	    rbuf[6] = Stresszx[i][j][k];
+	    rbuf[7] = Stresszy[i][j][k];
+	    rbuf[8] = Stresszz[i][j][k];
+	    output.write((char *) ibuf, 3*sizeof(int));
+	    output.write((char *) rbuf, 9*sizeof(double));
 
+#else
+	    /* Use usual ASCII */
+	    output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff
+		   << " " << Stressxx[i][j][k] << " " << Stressxy[i][j][k]
+		   << " " << Stressxz[i][j][k]<<  " " << Stressyx[i][j][k]
+		   << " " << Stressyy[i][j][k] << " " << Stressyz[i][j][k]
+		   << " " << Stresszx[i][j][k] << " " << Stresszy[i][j][k]
+		   << " " << Stresszz[i][j][k] << endl;
+#endif
 
       } 
     }
   }
 
-output.close();
+      output.close();
 
 
 #ifdef PARALLEL
-  if (myPE != nbPE-1)
-    MPI_Send(&token,1,MPI_INT,myPE+1,0,MPI_COMM_WORLD);
-
-  MPI_Barrier(MPI_COMM_WORLD);
+      if (io_rank_ < io_group_size_ - 1) {
+	MPI_Send(&token, 1, MPI_INT, io_rank_ + 1, 0, io_communicator_);
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
+      t2 = MPI_Wtime();
+      total_io_ += (t2-t1);
 #endif
 
-}
-
-
-}
-
-void streamfile(const int iter)
-{
-  int i,j,k;
-  double sch;
-  double eig1,eig2,duydz,stress,visc;  
-  double Qxxl,Qxyl,Qyyl,Qxzl,Qyzl,Qsqxx,Qsqxy,Qsqyy,Qsqzz,Qsqxz,Qsqyz,TrQ2;
-  double Hxx,Hxy,Hyy,Hxz,Hyz,sigxx,sigxy,sigyy,sigxz,sigyz,mDQ4yz,DQpQDyz;
-  double dQxxdx,dQxxdy,dQxydx,dQxydy,dQyydx,dQyydy,dQxzdx,dQyzdx,dQxzdy,dQyzdy;
-  
-  int nrots,emax,enxt;
-  double m[3][3],d[3],v[3][3];
-
-
-  String oname("order_velo.");
-  oname.concat(numCase);
-  oname.concat(".");
-  oname.concat(iter);
-  oname.concat(".dat");
-
-  String sname("dir.");
-  sname.concat(numCase);
-  sname.concat(".");
-  sname.concat(iter);
-  sname.concat(".dat");
-
-
-#ifdef PARALLEL
-  int token=0;
-  if (myPE == 0) {
-    output.open(oname.get());
-    output1.open(sname.get());
-  }
-  else {
-    MPI_Recv(&token,1,MPI_INT,leftNeighbor,0,MPI_COMM_WORLD,&status);
-    output.open(oname.get(),ios::app);
-    output1.open(sname.get(),ios::app);
-  }
-#else
-    output.open(oname.get());
-    output1.open(sname.get());
-#endif
-
-  output.precision(5);
-       
-  for(i=ix1; i<ix2; i++) { 
-    for (j=0; j<Ly; j++) {
-      for (k=0; k<Lz; k++) {
-    
-      m[0][0]=Qxx[i][j][k];
-      m[0][1]=Qxy[i][j][k];
-      m[0][2]=Qxz[i][j][k];
-      m[1][0]=Qxy[i][j][k];
-      m[1][1]=Qyy[i][j][k];
-      m[1][2]=Qyz[i][j][k];
-      m[2][0]=Qxz[i][j][k];
-      m[2][1]=Qyz[i][j][k];
-      m[2][2]= -(m[0][0]+m[1][1]);
-      jacobi(m,d,v,&nrots);
-
-      if (d[0] > d[1]) {
-	emax=0;
-	enxt=1;
-      }
-      else {
-	emax=1;
-	enxt=0;
-      }
-      if (d[2] > d[emax]) {
-	emax=2;
-      }
-      else if (d[2] > d[enxt]) {
-	enxt=2;
-      }
-
-      output << i-ix1+Lx/nbPE*myPE << " " << j << " " << k << " " 
-	     << Qxx[i][j][k] << " " << Qxy[i][j][k] << " " 
-	     << Qxz[i][j][k]<< " " << Qyy[i][j][k]<< " " 
-	     << Qyz[i][j][k]<< " " << u[i][j][k][0]<< " " 
-	     << u[i][j][k][1]<< " " << u[i][j][k][2] << " "
- 	     << d[emax]<< " " << molfieldxx[i][j][k] << endl;
-       } 
     }
-  }
-  output.close();
-
-      
-  //output1 << "# kappa = " << kappa << " tauc = " << tauc << endl;
-
-  for (i=ix1; i<ix2; i++) {   
-    for (j=0; j<Ly; j++) {
-      for (k=0; k<Lz; k++) {
-	m[0][0]=Qxx[i][j][k];
-	m[0][1]=Qxy[i][j][k];
-	m[0][2]=Qxz[i][j][k];
-	m[1][0]=Qxy[i][j][k];
-	m[1][1]=Qyy[i][j][k];
-	m[1][2]=Qyz[i][j][k];
-	m[2][0]=Qxz[i][j][k];
-	m[2][1]=Qyz[i][j][k];
-	m[2][2]= -(m[0][0]+m[1][1]);
-	jacobi(m,d,v,&nrots);
-
-	if (d[0] > d[1]) {
-	  emax=0;
-	  enxt=1;
-	}
-	else {
-	  emax=1;
-	  enxt=0;
-	}
-	if (d[2] > d[emax]) {
-	  emax=2;
-	}
-	else if (d[2] > d[enxt]) {
-	  enxt=2;
-	}
-
-
-	output1 << i-ix1+Lx/nbPE*myPE << " " << j<< " " << k<< " " << v[0][emax]
-		<< " " << v[1][emax]<< " " << v[2][emax] << endl;
-
-      }
-    }
-  } 
-  output1.close();
-
-#ifdef PARALLEL
-  if (myPE != nbPE-1)
-    MPI_Send(&token,1,MPI_INT,rightNeighbor,0,MPI_COMM_WORLD);
-
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-
-}
-
-
-void writeDiscFile(const int iter)
-{
-  int i,j,k;
-  double sch;
-  double eig1,eig2,duydz,stress,visc;  
-  double Qxxl,Qxyl,Qyyl,Qxzl,Qyzl,Qsqxx,Qsqxy,Qsqyy,Qsqzz,Qsqxz,Qsqyz,TrQ2;
-  double Hxx,Hxy,Hyy,Hxz,Hyz,sigxx,sigxy,sigyy,sigxz,sigyz,mDQ4yz,DQpQDyz;
-  double dQxxdx,dQxxdy,dQxydx,dQxydy,dQyydx,dQyydy,dQxzdx,dQyzdx,dQxzdy,dQyzdy;
-   
-  int nrots,emax,enxt;
-  double m[3][3],d[3],v[3][3];
-
-  String oname("disc.");
-  oname.concat(numCase);
-  oname.concat(".");
-  oname.concat(iter);
-  oname.concat(".dat");
-#ifdef PARALLEL
-  int token=0;
-  if (myPE == 0)
-    output.open(oname.get());
-  else {
-    MPI_Recv(&token,1,MPI_INT,leftNeighbor,0,MPI_COMM_WORLD,&status);
-    output.open(oname.get(),ios::app);
-  }
-#else
-    output.open(oname.get());
-#endif
-
-  output.precision(4);
-       
-  for(i=ix1; i<ix2; i++) { 
-    for (j=0; j<Ly; j++) {
-      for (k=0; k<Lz; k++) {
-    
-      m[0][0]=Qxx[i][j][k];
-      m[0][1]=Qxy[i][j][k];
-      m[0][2]=Qxz[i][j][k];
-      m[1][0]=Qxy[i][j][k];
-      m[1][1]=Qyy[i][j][k];
-      m[1][2]=Qyz[i][j][k];
-      m[2][0]=Qxz[i][j][k];
-      m[2][1]=Qyz[i][j][k];
-      m[2][2]= -(m[0][0]+m[1][1]);
-      jacobi(m,d,v,&nrots);
-
-      if (d[0] > d[1]) {
-	emax=0;
-	enxt=1;
-      }
-      else {
-	emax=1;
-	enxt=0;
-      }
-      if (d[2] > d[emax]) {
-	emax=2;
-      }
-      else if (d[2] > d[enxt]) {
-	enxt=2;
-      }
-
-      if (d[emax] < threshold)
-	output << i-ix1+Lx/nbPE*myPE << " " << j << " " << k << endl;
-      } 
-    }
-  }
-  output.close();
-
-#ifdef PARALLEL
-  if (myPE != nbPE-1)
-    MPI_Send(&token,1,MPI_INT,rightNeighbor,0,MPI_COMM_WORLD);
-
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
 
 }
 
 /****************************************************************************
  *
- *  Version of above for 3D.
- *  Don't care which order the output comes in!
+ *  3D streamfile I/O outputs: stress, velocity, and molfield
+ *
+ *  Each I/O communicator opens its own file and writes the
+ *  appropriate local lattice information as output.
+ *
+ *  Within each communicator, processes block until they receive
+ *  the token to procede.
  *
  ****************************************************************************/
 
@@ -817,23 +645,36 @@ void streamfile_ks(const int iter) {
   int nrots,emax,enxt;
   double m[3][3],d[3],v[3][3];
   double t0, t1;
+  int ioff = 0, joff = 0, koff = 0;
+
+#ifdef _BINARY_IO_
+  int ibuf[3];
+  double rbuf[10];
+#endif
+
+  /* Build the filename for this communicator stub.case.iteration.dat-id-n */
 
   String oname("order_velo.");
   oname.concat(numCase);
   oname.concat(".");
   oname.concat(iter);
-  oname.concat(".dat");
+  oname.concat(".dat-");
+  oname.concat(io_group_id_);
+  oname.concat("-");
+  oname.concat(io_ngroups_);
 
   String sname("dir.");
   sname.concat(numCase);
   sname.concat(".");
   sname.concat(iter);
-  sname.concat(".dat");
+  sname.concat(".dat-");
+  sname.concat(io_group_id_);
+  sname.concat("-");
+  sname.concat(io_ngroups_);
 
 
 #ifdef PARALLEL
   int token=0;
-  int ioff, joff, koff;
   const int tag = 986;
 
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
@@ -842,12 +683,13 @@ void streamfile_ks(const int iter) {
 
   t0 = MPI_Wtime();
 
-  if (myPE == 0) {
+  if (io_rank_ == 0) {
     output.open(oname.get());
     output1.open(sname.get());
   }
   else {
-    MPI_Recv(&token, 1, MPI_INT, myPE-1, tag, MPI_COMM_WORLD, &status);
+    MPI_Recv(&token, 1, MPI_INT, io_rank_ - 1, tag, io_communicator_,
+	     &status);
     output.open(oname.get(),ios::app);
     output1.open(sname.get(),ios::app);
   }
@@ -885,6 +727,32 @@ void streamfile_ks(const int iter) {
 	enxt=2;
       }
 
+#ifdef _BINARY_IO_
+      ibuf[0] = i-ix1+ioff;
+      ibuf[1] = j-jy1+joff;
+      ibuf[2] = k-kz1+koff;
+      rbuf[0] = Qxx[i][j][k];
+      rbuf[1] = Qxy[i][j][k];
+      rbuf[2] = Qxz[i][j][k];
+      rbuf[3] = Qyy[i][j][k];
+      rbuf[4] = Qyz[i][j][k];
+      rbuf[5] = u[i][j][k][0];
+      rbuf[6] = u[i][j][k][1];
+      rbuf[7] = u[i][j][k][2];
+      rbuf[8] = d[emax];
+      rbuf[9] = molfieldxx[i][j][k];
+
+      output.write((char *) ibuf, 3*sizeof(int));
+      output.write((char *) rbuf, 10*sizeof(double));
+
+      rbuf[0] = v[0][emax];
+      rbuf[1] = v[1][emax];
+      rbuf[2] = v[2][emax];
+
+      output1.write((char *) ibuf, 3*sizeof(int));
+      output1.write((char *) rbuf, 3*sizeof(double));
+#else
+      /* Usual ascii form */
       output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff << " " 
 	     << Qxx[i][j][k] << " " << Qxy[i][j][k] << " " 
 	     << Qxz[i][j][k]<< " " << Qyy[i][j][k]<< " " 
@@ -895,6 +763,7 @@ void streamfile_ks(const int iter) {
       output1 << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff
 	      << " " << v[0][emax]
 	      << " " << v[1][emax]<< " " << v[2][emax] << endl;
+#endif
        } 
     }
   }
@@ -902,8 +771,9 @@ void streamfile_ks(const int iter) {
   output1.close();
 
 #ifdef PARALLEL
-  if (myPE != nbPE-1)
-    MPI_Send(&token, 1, MPI_INT, myPE+1, tag, MPI_COMM_WORLD);
+  if (io_rank_ < io_group_size_ - 1) {
+    MPI_Send(&token, 1, MPI_INT, io_rank_ + 1, tag, io_communicator_);
+  }
 
   MPI_Barrier(MPI_COMM_WORLD);
   t1 = MPI_Wtime();
@@ -920,16 +790,24 @@ void writeDiscFile_ks(const int iter) {
   int nrots,emax,enxt;
   double m[3][3],d[3],v[3][3];
   double t0, t1;
+  int ioff = 0, joff = 0, koff = 0;   /* lattice offsets */
+  int ic, jc, kc;                     /* global lattice positions */
+
+#ifdef _BINARY_IO_
+  int ibuf[3];
+#endif
 
   String oname("disc.");
   oname.concat(numCase);
   oname.concat(".");
   oname.concat(iter);
-  oname.concat(".dat");
+  oname.concat(".dat-");
+  oname.concat(io_group_id_);
+  oname.concat("-");
+  oname.concat(io_ngroups_);
 
 #ifdef PARALLEL
   int token=0;
-  int ioff, joff, koff;
   const int tag = 987;
 
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
@@ -938,10 +816,11 @@ void writeDiscFile_ks(const int iter) {
 
   t0 = MPI_Wtime();
 
-  if (myPE == 0)
+  if (io_rank_ == 0)
     output.open(oname.get());
   else {
-    MPI_Recv(&token, 1, MPI_INT, myPE-1, tag, MPI_COMM_WORLD, &status);
+    MPI_Recv(&token, 1, MPI_INT, io_rank_ - 1, tag, io_communicator_,
+	     &status);
     output.open(oname.get(),ios::app);
   }
 #else
@@ -954,6 +833,10 @@ void writeDiscFile_ks(const int iter) {
     for (j=jy1; j<jy2; j++) {
       for (k=kz1; k<kz2; k++) {
     
+	ic = i - ix1 + ioff;
+	jc = j - jy1 + joff;
+	kc = k - kz1 + koff;
+
       m[0][0]=Qxx[i][j][k];
       m[0][1]=Qxy[i][j][k];
       m[0][2]=Qxz[i][j][k];
@@ -981,8 +864,14 @@ void writeDiscFile_ks(const int iter) {
       }
 
       if (d[emax] < threshold) {
-	output << i-ix1+ioff << " " << j-jy1+joff << " " << k-kz1+koff
-	       << endl;
+#ifdef _BINARY_IO_
+	ibuf[0] = ic;
+	ibuf[1] = jc;
+	ibuf[2] = kc;
+	output.write((char *) ibuf, 3*sizeof(int));
+#else
+	output << ic << " " << jc << " " << kc << endl;
+#endif
       }
       } 
     }
@@ -990,9 +879,9 @@ void writeDiscFile_ks(const int iter) {
   output.close();
 
 #ifdef PARALLEL
-  if (myPE != nbPE-1)
-    MPI_Send(&token, 1, MPI_INT, myPE+1, tag, MPI_COMM_WORLD);
-
+  if (io_rank_ < io_group_size_ - 1) {
+    MPI_Send(&token, 1, MPI_INT, io_rank_ + 1, tag, io_communicator_);
+  }
   MPI_Barrier(MPI_COMM_WORLD);
   t1 = MPI_Wtime();
 
