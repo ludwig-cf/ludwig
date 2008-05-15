@@ -40,7 +40,7 @@
 1500	     	% FePrintInt
 1	     	% SigPrintFac
 1		% numCase
-2
-2
-2
-2
+2		% x proc decomp
+2		% y proc decomp
+2		% z proc decomp
+2		% file grouping
