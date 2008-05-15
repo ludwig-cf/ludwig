@@ -1,6 +1,9 @@
 CCS = CC
 CCP = CC -V -O3 -OPT:Ofast
 
+# issue the following on hector at the command line (redirects compiler)
+# module swap PrgEnv-pgi PrgEnv-pathscale
+
 INCS	=	
  
 # BE:     "undef" is Doi-Olmsted, "def" is Beris-Edwards
