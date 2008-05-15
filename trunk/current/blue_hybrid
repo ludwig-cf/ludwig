@@ -1,23 +1,11 @@
 #!/bin/bash
-#
-#@ job_type = bluegene
-#@ environment = $MMCS_SERVER_IP;$BACKEND_MPIRUN_PATH
-#@ job_name = qscript_a
-#@ chips = 128 
-#@ bg_size = $(chips)
-#@ bg_connection = prefer_torus
-#
-#@ executable = /bgl/BlueLight/ppcfloor/bglsys/bin/mpirun
-#@ arguments = -np $(chips) -mode CO -verbose 2 \
-               -exe  /work/b07/ohenrich/calc14/HLBLC08P\
-               -cwd  /work/b07/ohenrich/calc14/\
-               -args /work/b07/ohenrich/calc14/liquidCrystal.inp
-#
-#@ output = $(job_name).$(jobid).out
-#@ error  = $(job_name).$(jobid).err
-#@ account_no = b07-oh
-#
-#@ class = BGL
-#@ wall_clock_limit = 48:00:00
-#
-#@ queue
+#PBS -l mppwidth=8
+#PBS -l mppnppn=2
+#PBS -l walltime=00:20:00
+#PBS -A e73-oh
+
+cd $PBS_O_WORKDIR
+export NPROC=`qstat -f $PBS_JOBID | grep mppwidth | awk '{print $3}'`
+export NTASK=`qstat -f $PBS_JOBID | grep mppnppn  | awk '{print $3}'`
+
+aprun -n $NPROC -N $NTASK ./HLBLC08P > standard_out

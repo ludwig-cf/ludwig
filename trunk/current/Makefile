@@ -11,16 +11,17 @@ INCS	=
  
 
 DEFS    =	 -DBE -DEON -DCHOL\
-                 -DMPICH_IGNORE_CXX_SEEK -D_COMM_3D_
+                 -DMPICH_IGNORE_CXX_SEEK -D_COMM_3D_\
+		 -D_BINARY_IO_
 
 
 LIBS	=
 
 LIBPATH =
 
-NAME	= test
+NAME	= HLBLC08
 
-all: $(NAME)S $(NAME)P
+all: $(NAME)P
 
 String.o: String.cc
 	$(CCP) -c String.cc $(DEFS)

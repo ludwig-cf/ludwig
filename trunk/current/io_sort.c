@@ -16,6 +16,9 @@
  *
  *  Type 3 Stress on lattice
  *         3*int + 9*double (being ic jc kc Sxx Sxy ... Szz)
+
+ *  Type 4 Director on lattice
+ *         3*int + 3*double (being ic jc kc dx dy dz)
  *
  *  Expected file names e.g.,: file_stub-n-nio
  *         n = current io group
@@ -44,6 +47,8 @@ void read_order_velo(const char *);
 void write_order_velo(const char *);
 void read_stress(const char *);
 void write_stress(const char *);
+void read_director(const char *);
+void write_director(const char *);
 
 int main (int argc, char ** argv) {
 
@@ -72,7 +77,7 @@ int main (int argc, char ** argv) {
   printf("Input file stub is %s\n", file_stub);
 
   if (id_type == 1) {
-    printf("Disclincation file\n");
+    printf("disclincation file\n");
     nbuffer = 1;
     read_function = read_disclination;
     write_function = write_disclination;
@@ -92,7 +97,14 @@ int main (int argc, char ** argv) {
     write_function = write_stress;
   }
 
-  if (id_type < 1 || id_type > 3) {
+  if (id_type == 4) {
+    printf("director file\n");
+    nbuffer = 9;
+    read_function = read_director;
+    write_function = write_director;
+  }
+
+  if (id_type < 1 || id_type > 4) {
     printf("Unknown type\n");
     exit(-1);
   }
@@ -351,6 +363,82 @@ void write_stress(const char * file_name) {
 }
 
 
+/****************************************************************************
+ *
+ *  read_director
+ *
+ *  Read
+ *  ic jc kc dx dy dz
+ *
+ *  as 3*int 3*double
+ *  and store the doubles in the data_out_ array as float.
+ *
+ ***************************************************************************/
+
+void read_director(const char * file_name) {
+
+  int ic, jc, kc, p;
+  int ibuf[3];
+  int index;
+  double rbuf[3];
+
+  FILE * fp;
+
+  fp = fopen(file_name, "r");
+  if (fp == NULL) printf("fopen(%s) failed\n");
+
+  for (ic = 0; ic < lx_; ic++) {
+    for (jc = 0; jc < ly_; jc++) {
+      for (kc = 0; kc < lz_; kc++) {
+
+	fread(ibuf, sizeof(int), 3, fp);
+	fread(rbuf, sizeof(double), 3, fp);
+	index = 3*get_global_index(ibuf[0], ibuf[1], ibuf[2]);
+
+	for (p = 0; p < 3; p++) {
+	  data_out_[index+p] = (float) rbuf[p];
+	}
+      }
+    }
+  }
+
+  fclose(fp);
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  write_director
+ *
+ *  Write the global output.
+ *
+ ****************************************************************************/
+
+void write_director(const char * file_name) {
+
+  int ic, jc, kc, index;
+  FILE * fp;
+
+  fp = fopen(file_name, "w");
+  if (fp == NULL) printf("fopen(stress file) failed\n");
+
+  for (ic = 0; ic < lx_; ic++) {
+    for (jc = 0; jc < ly_; jc++) {
+      for (kc = 0; kc < lz_; kc++) {
+
+	index = 3*get_global_index(ic, jc, kc);
+
+	fprintf(fp, "%d %d %d %g %g %g\n", ic, jc, kc, data_out_[index],
+		 data_out_[index+1], data_out_[index+2]);
+      }
+    }
+  }
+
+  fclose(fp);  
+
+  return;
+}
 /****************************************************************************
  *
  *  get_global_index

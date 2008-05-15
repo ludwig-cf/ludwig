@@ -382,7 +382,6 @@ int main(int argc, char** argv)
 
     if (n % stepskip == 0) {
 	writeDiscFile_ks(n);
-	streamfile_ks(n);
     }
   }
 

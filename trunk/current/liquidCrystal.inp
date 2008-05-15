@@ -1,9 +1,9 @@
-32		% Lx  % cannot set = 1 without changing code
-32		% Ly
-32		% Lz 
+128		% Lx  % cannot set = 1 without changing code
+128		% Ly
+128		% Lz 
 20		% Nmax
 0    		% GRAPHICS
-1500		% stepskip
+10		% stepskip
 2		% itimprov
 0.000000   	% bodyforce
 0		% RANDOM - this seems to be unstable??
@@ -18,7 +18,7 @@
 8	        % numuc - number of unit cells along pitch direction
 1.0             % numhftwist - number of half twists in unit cell
 0.3		% Gamma, diffusion constant
-2.80            % gam, gam > 2.7 => nematic 
+3.00            % gam, gam > 2.7 => nematic 
 1               % BACKFLOW
 1.0 		% phivr, coupling of hydrodynamics to order parameter
 0.7 		% xi, related to effective aspect ratio, should be <= one
@@ -34,9 +34,13 @@
 0.0	 	% angzbot: ang with z axis at bottom boundary 
 0.0		% angxytop: ang with x at top boundary
 0.0		% angxybot: ang with x at bottom boundary
-0.03	     	% strength of the bulk term: ABulk
+0.007	     	% strength of the bulk term: ABulk
 0.19		% threshold to define a defect
-1500	     	% OVDPrintInt
+10	     	% OVDPrintInt
 1500	     	% FePrintInt
 1	     	% SigPrintFac
-20		% numCase
+1		% numCase
+2
+2
+2
+2
