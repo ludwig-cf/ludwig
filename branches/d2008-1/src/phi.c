@@ -437,11 +437,11 @@ void phi_get_grad_delsq_phi_site(const int index, double grad[3]) {
 
 /*****************************************************************************
  *
- *  phi_get_delsq_sq_phi_site
+ *  phi_get_delsq_delsq_phi_site
  *
  *****************************************************************************/
 
-double phi_get_delsq_sq_phi_site(const int index) {
+double phi_get_delsq_delsq_phi_site(const int index) {
 
   assert(initialised_);
   return delsq_delsq_phi_site[index];
