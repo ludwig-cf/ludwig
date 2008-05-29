@@ -10,7 +10,13 @@
  *  final term penalises curvature in the interface. For a complete
  *  description see Kendon et al., J. Fluid Mech., 440, 147 (2001).
  *
- *  $Id: free_energy.c,v 1.4.2.2 2008-03-21 09:23:53 kevin Exp $
+ *  An option for free energy owing to Brazovskii is in the process
+ *  of testing.
+ *
+ *  $Id: free_energy.c,v 1.4.2.3 2008-05-29 15:07:01 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group
+ *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -30,6 +36,11 @@ static double A_     = -0.003125;
 static double B_     = +0.003125;
 static double C_     =  0.0;
 static double kappa_ = +0.002;
+
+/* The choice of free energy is currently determined by the value of C_ */ 
+static void (* fe_chemical_stress)(const int, double [3][3]);
+static void fe_chemical_stress_symmetric(const int, double [3][3]);
+static void fe_chemical_stress_brazovskii(const int, double [3][3]);
 
 /*****************************************************************************
  *
@@ -59,12 +70,19 @@ void init_free_energy() {
     fatal("The free energy parameter kappa must be positive\n");
   }
 
-  info("\nSymmetric phi^4 free energy:\n");
-  info("Bulk parameter A      = %f\n", A_);
-  info("Bulk parameter B      = %f\n", B_);
-  info("Surface penalty kappa = %f\n", kappa_);
-  info("Surface tension       = %f\n", surface_tension());
-  info("Interfacial width     = %f\n", interfacial_width());
+  if (C_ <= 0.0) {
+    info("\nSymmetric phi^4 free energy:\n");
+    info("Bulk parameter A      = %f\n", A_);
+    info("Bulk parameter B      = %f\n", B_);
+    info("Surface penalty kappa = %f\n", kappa_);
+    info("Surface tension       = %f\n", surface_tension());
+    info("Interfacial width     = %f\n", interfacial_width());
+    fe_chemical_stress = fe_chemical_stress_symmetric;
+  }
+  else {
+    info("\nBrazovskii free energy:\n");
+    fe_chemical_stress = fe_chemical_stress_brazovskii;
+  }
 #endif
 
   return;
@@ -148,7 +166,7 @@ double free_energy_get_chemical_potential(const int index) {
 
   phi = phi_get_phi_site(index);
   delsq_phi = phi_get_delsq_phi_site(index);
-  delsq_sq_phi = phi_get_delsq_sq_phi_site(index);
+  delsq_sq_phi = phi_get_delsq_delsq_phi_site(index);
 
   mu = phi*(A_ + B_*phi*phi) - kappa_*delsq_phi + C_*delsq_sq_phi;
 
@@ -159,6 +177,23 @@ double free_energy_get_chemical_potential(const int index) {
  *
  *  free_energy_get_chemical_stress
  *
+ *  Driver function to return the chemical stress tensor for given
+ *  position index.
+ *
+ *****************************************************************************/
+
+void free_energy_get_chemical_stress(const int index, double p[3][3]) {
+
+  assert(fe_chemical_stress);
+  fe_chemical_stress(index, p);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  fe_chemical_stress_symmetric
+ *
  *  Return the chemical stress tensor for given position index.
  *  P_ab = [1/2 A phi^2 + 3/4 B phi^4 - kappa phi \nabla^2 phi
  *       -  1/2 kappa (\nbla phi)^2] \delta_ab
@@ -166,7 +201,7 @@ double free_energy_get_chemical_potential(const int index) {
  *
  *****************************************************************************/
 
-void free_energy_get_chemical_stress(const int index, double p[3][3]) {
+static void fe_chemical_stress_symmetric(const int index, double p[3][3]) {
 
   int ia, ib;
   double phi, bulk, delsq_phi, grad_phi_sq;
@@ -192,9 +227,56 @@ void free_energy_get_chemical_stress(const int index, double p[3][3]) {
 
 /*****************************************************************************
  *
+ *  fe_chemical_stress_brazovskii
+ *
+ *  Return the chemical stress tensor for given position index.
+ *  P_ab = [1/2 A phi^2 + 3/4 B phi^4 - kappa phi \nabla^2 phi
+ *       -  1/2 kappa (\nbla phi)^2] \delta_ab
+ *       +  kappa \nalba_a phi \nabla_b phi
+ *
+ *****************************************************************************/
+
+static void fe_chemical_stress_brazovskii(const int index, double p[3][3]) {
+
+  int ia, ib;
+  double phi, delsq_phi, grad_phi_sq;
+  double delsq_delsq_phi;
+  double bulk_symmetric, brazovskii;
+  double grad_phi[3];
+  double grad_delsq_phi[3];
+  extern const double d_[3][3]; /* Pending Refactor util etc. */ 
+
+  phi = phi_get_phi_site(index);
+  phi_get_grad_phi_site(index, grad_phi);
+  delsq_phi = phi_get_delsq_phi_site(index);
+
+  grad_phi_sq = dot_product(grad_phi, grad_phi);
+  bulk_symmetric = 0.5*phi*phi*(A_ + 1.5*B_*phi*phi)
+    - kappa_*(phi*delsq_phi + 0.5*grad_phi_sq);
+
+  /* Extra terms in Brazovskii */
+  delsq_delsq_phi = phi_get_delsq_delsq_phi_site(index);
+  phi_get_grad_delsq_phi_site(index, grad_delsq_phi);
+
+  brazovskii = phi*delsq_delsq_phi + 0.5*delsq_phi*delsq_phi
+    + dot_product(grad_phi, grad_delsq_phi);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      p[ia][ib] = (bulk_symmetric + C_*brazovskii)*d_[ia][ib]
+	        + kappa_*grad_phi[ia]*grad_phi[ib]
+      - C_*(grad_phi[ia]*grad_delsq_phi[ib] + grad_phi[ib]*grad_delsq_phi[ia]);
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  free_energy_get_isotropic_pressure
  *
- *  Return the isotrpoic part of the pressure tensor.
+ *  Return the isotropic part of the pressure tensor.
  *  P_0 = [1/2 A phi^2 + 3/4 B phi^4 - kappa phi \nabla^2 phi
  *       -  1/2 kappa (\nabla phi)^2]
  *
