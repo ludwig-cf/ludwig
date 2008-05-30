@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.4 2008-04-28 14:30:56 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.5 2008-05-30 17:35:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -45,6 +45,7 @@ static const int bs_cv[27][3] = {{ 0, 0, 0},
 				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
 
 
+static void (* phi_gradient_function)(void);
 static void phi_gradients_with_solid(void);
 static void phi_gradients_fluid(void);
 static void phi_gradients_fluid_compact(void);
@@ -52,24 +53,49 @@ static void phi_gradients_double_fluid(void);
 
 /****************************************************************************
  *
+ *  phi_gradients_set_fluid
+ *
+ *  Set the gradient calculation for fluid only.
+ *
+ ****************************************************************************/
+
+void phi_gradient_set_fluid() {
+
+  phi_gradient_function = phi_gradients_fluid;
+  return;
+}
+
+/****************************************************************************
+ *
+ *  phi_gradients_set_solid() {
+ *
+ *  Set the gradient calculation to allow for solids.
+ *
+ ****************************************************************************/
+
+void phi_gradients_set_solid() {
+
+  phi_gradient_function = phi_gradients_with_solid;
+  return;
+}
+
+/****************************************************************************
+ *
  *  phi_gradients_compute
  *
  *  Depending on the free energy, we may need gradients of the order
- *  parameter...
+ *  parameter up to a certain order...
  *
  ****************************************************************************/
 
 void phi_gradients_compute() {
 
-  /* General case with solid objects */
+  assert(phi_gradient_function);
+  phi_gradient_function();
 
-  phi_gradients_with_solid();
+  /* At the moment, the double gradient is swithed on via nhalo_ */
 
-  /* Fluid only */
-  /* Symmetric using div P_ab */
-
-  /* Brazovskii using P_ab */
-  /* Brazovskii using div P_ab */
+  if (nhalo_ >= 2) phi_gradients_double_fluid();
 
   return;
 }
