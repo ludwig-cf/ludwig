@@ -24,28 +24,23 @@ extern double * phi_site;
 
 #ifdef _MPI_
 
-extern MPI_Datatype DT_FVector;
 extern MPI_Datatype DT_Site;
 
 static MPI_Comm     LeesEdw_Comm;/* Communicator for Lees-Edwards (LE) RMA */
 static MPI_Comm     X_PEs_Comm;  /* Communicator for Lees-Edwards (X row) */
 static MPI_Info     LeesEdw_Info;/* Information for RMAs (LE) */
-static MPI_Datatype DT_plane_LE_Float;/* MPI datatype defining LE plane */
-static MPI_Datatype DT_plane_LE_Float_exclhalo; /* For unwrapping phi (LE) */
+
+static int        * LE_ranks;
+static int        * LE_distrib;
 
 #ifdef _MPI_2_
 static MPI_Win      LE_Site_Win; /* MPI window for LE buffering (Sites) */
 static MPI_Win      LE_Float_Win;/* MPI window for LE buffering (Floats) */
 #endif
 
-static int        * LE_ranks;
-static int        * LE_distrib;
-
 #endif /* _MPI_ */
 
 static double      *LeesEdw_site;
-
-
 static LE_Plane   *LeesEdw_plane;
 static double      *LeesEdw_phi;
 
@@ -93,7 +88,7 @@ void LE_init() {
 
   if (N_LE_total != 0) {
 
-    if (nhalo_ > 1) fatal("nahlo = %d in le code\n", nhalo_);
+    if (nhalo_ > 1) fatal("nhalo = %d in le code\n", nhalo_);
     LeesEdw = (LE_Plane *) malloc(N_LE_total*sizeof(LE_Plane));
     if (LeesEdw == NULL) fatal("malloc(LE_planes failed\n");
 
@@ -438,21 +433,6 @@ void LE_init_original( void )
   
   /* Set up Lees-Edwards specific MPI datatypes */
   
-  /*
-   * (YZ) plane for Lees-Edwards: etype is double instead of Site: one
-   * contiguous block of (N[Y]+2)*(N[Z]+2) doubles. No extra row here as
-   * interpolation is carried out before buffering 
-   */
-  MPI_Type_contiguous(ny2z2, MPI_DOUBLE,&DT_plane_LE_Float);
-  MPI_Type_commit(&DT_plane_LE_Float);
-
-  /* 
-   * (YZ) plane for Lees-Edwards (unrolling): N[Y] blocks of N[Z] Floats with 
-   * stride (yfac=N[Z]+2)
-   */
-  MPI_Type_vector(N[Y],N[Z],(N[Z]+2), MPI_DOUBLE,&DT_plane_LE_Float_exclhalo);
-  MPI_Type_commit(&DT_plane_LE_Float_exclhalo);
-  
   /* 
    * Build list of local LE planes from global list: unset flag (set to FALSE)
    * if a plane is located at the edge of the local box (i.e., X==0 or X==N[X]):
@@ -526,10 +506,6 @@ void LE_init_original( void )
 
   if(N_LE_plane)
     {
-      /* Sort list of local LE planes by increasing (X) position */
-      qsort((LE_Plane *) LeesEdw_plane, N_LE_plane, sizeof(LE_Plane),
-	    LE_cmpLEBC);
-
       /* Initialise (global) rank of LE walls (local list) */
       for (i=0; i < N_LE_total; i++){
 	/* Get global rank of first local LE wall */
@@ -1347,135 +1323,6 @@ void LE_update_buffers( int target_buff )
 
 /*----------------------------------------------------------------------------*/
 /*!
- * Print LE parameters to STDOUT for monitoring or restart. The format used 
- * follows that used in the input file, e.g., loc_vel_disp
- *
- *- \c Options:   _TRACE_, _MPI_
- *- \c Arguments: void
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 14/01/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also:
- *- \c Note:      typically called at the end of a run (or whenever doing a
- *                checkpointing) to print out the status of the LE walls to
- *                set a potential re-start
- */
-/*----------------------------------------------------------------------------*/
-
-void LE_print_params( void )
-{
-#ifdef _MPI_ /* Parallel (MPI) section */
-  int rank, colour, *displ;
-  int nplanes, i, j;
-
-  /* Abort if no LE walls are present */
-  if (N_LE_total==0) {
-    VERBOSE(("LE_print_params(): no walls present\n"));
-    return;
-  }
-  
-  if((displ = (int *)malloc(cart_size(X)*sizeof(int))) == NULL)
-    {
-      fatal("LE_print_params(): failed to allocate %d bytes\n",
-	    cart_size(X)*sizeof(int));
-    }
-
-  /* displ[i] contains the total number of planes on the LHS of any PE
-     located at cart_coords(X) == i */
-  displ[0] = 0;
-  for(i=1; i<cart_size(X); i++){
-    displ[i] = displ[i-1] + LE_distrib[i-1];
-  }
-  
-  /* X_PEs_Comm is a communicator spanning the X row (only 1 PE per cart_coords(X)). See
-     LE_init(). Note: cart_coords(X) and rank in X_PEs_Comm should be identical! */
-  MPI_Comm_rank(X_PEs_Comm, &rank);
-  
-  /* Only get local values from one row (minimise communications) */
-  colour = ((cart_coords(Y)==0) && (cart_coords(Z)==0)) ? 0 : 1;
-
-  if(colour == 0)
-    {
-#ifdef KS_TO_SORT
-      MPI_Gatherv(&LeesEdw_plane[0], N_LE_plane, DT_LE_GBL, &LeesEdw[0],
-		  &LE_distrib[0], &displ[0], DT_LE_GBL, 0, X_PEs_Comm);
-#endif
-      /* Correct gbl.LeesEdw.loc (local -> global co-ordinates) */
-      if(rank == 0)
-	{
-#ifdef KS_TO_SORT
-	  for(i=0; i < N_LE_total; i++){
-	    LeesEdw[i].loc += LeesEdw[i].peX*gbl.N[X];
-	  }
-#endif	  
-	  /* Now, print current LE parameters in a form suitable for input,
-	     i.e., Lees_Edwards location_velocity_displacement */
-	  printf("Lees-Edwards parameters at step %d are "
-		 "(location_velocity_displacement):\n", (get_step()-1));
-	  for(i=0; i < N_LE_total; i++){
-	    printf("\tLees_Edwards %d_%lg_%lg\n", LeesEdw[i].loc,
-		   (double) LeesEdw[i].vel, (double) LeesEdw[i].disp);
-	  }
-
-	}
-    }
-  
-  free(displ);
-
-#else /* Serial */
-
-  int i;
-
-  /* No walls, no output */
-  if (N_LE_total == 0){
-    return;
-  }
-
-  printf("Lees Edwards parameters at step %d are "
-	 "(location_velocity_displacement):\n", get_step());
-  for(i=0; i< N_LE_total; i++){
-    printf("\tLees_Edwards %d_%lg_%lg\n",LeesEdw_plane[i].loc,
-	   (double)LeesEdw_plane[i].vel,(double)LeesEdw_plane[i].disp);
-  }
-#endif /* _MPI_ */
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Comparison function for qsort() (see sorting of LE planes in LE_init())
- * This function return an integer less than, equal to, or greater than zero
- * if the first argument is considered to be respectively less than, equal to,
- * or greater than the second.
- *
- *- \c Options:   none
- *- \c Arguments:
- *  -# \c void \c *le1: first LE wall for comparison
- *  -# \c void \c *le2: second LE wall for comparison
- *- \c Returns:   int: see description above (1, -1, or 0)
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 14/01/2003 by JCD
- *- \C Authors:   JC Desplat
- *- \c See \c also: LE_init()
- *- \c Note:      none
- */
-/*----------------------------------------------------------------------------*/
-
-int LE_cmpLEBC(const void *le1, const void *le2)
-{
-  if (((LE_Plane *)le1)->loc > ((LE_Plane *)le2)->loc){
-    return (1);
-  }
-  if (((LE_Plane *)le1)->loc < ((LE_Plane *)le2)->loc){
-    return (-1);
-  }
-  return (0);
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * Computes and store gradients of phi
  *
  *- \c Options:   _TRACE_
@@ -2003,5 +1850,27 @@ void LE_print_LEbuffers()
   
   fclose(fp);
 }
+
+#endif
+
+#ifdef _KS_PENDING_DELETE
+
+static MPI_Datatype DT_plane_LE_Float;/* MPI datatype defining LE plane */
+static MPI_Datatype DT_plane_LE_Float_exclhalo; /* For unwrapping phi (LE) */
+  
+  /*
+   * (YZ) plane for Lees-Edwards: etype is double instead of Site: one
+   * contiguous block of (N[Y]+2)*(N[Z]+2) doubles. No extra row here as
+   * interpolation is carried out before buffering 
+   */
+  MPI_Type_contiguous(ny2z2, MPI_DOUBLE,&DT_plane_LE_Float);
+  MPI_Type_commit(&DT_plane_LE_Float);
+
+  /* 
+   * (YZ) plane for Lees-Edwards (unrolling): N[Y] blocks of N[Z] Floats with 
+   * stride (yfac=N[Z]+2)
+   */
+  MPI_Type_vector(N[Y],N[Z],(N[Z]+2), MPI_DOUBLE,&DT_plane_LE_Float_exclhalo);
+  MPI_Type_commit(&DT_plane_LE_Float_exclhalo);
 
 #endif
