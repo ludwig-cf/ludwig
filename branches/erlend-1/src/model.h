@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.9 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: model.h,v 1.9.4.1 2008-06-04 19:21:11 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -15,7 +15,7 @@
 #include "d3q19.h"
 
 #if !defined (_D3Q15_) && !defined (_D3Q19_)
-#error "You must define either -D_D3Q15_ or -D_D3Q19_ in the Makeifle" 
+#error "You must define either -D_D3Q15_ or -D_D3Q19_ in the Makefile" 
 #endif
 
 /* Always three dimensions at the moment */

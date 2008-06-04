@@ -11,7 +11,7 @@ N_cycles 200
 #t_start 200
 #input_config config.out00000200
 
-size 128_128_128
+size 64_64_64
 grid 4_4_4
 
 #random_seed 7361237

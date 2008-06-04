@@ -35,6 +35,15 @@ OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
 
 EXE= Ludwig.exe
 
+###
+#
+#  Defaults
+#
+###
+MPICC= mpicc
+OPTS= -D_D3Q15_  #-D_SINGLE_FLUID_ -D_NOISE_
+CFLAGS= $(OPTS) -o3
+
 ###############################################################################
 #
 #  SUN HPC section
@@ -61,7 +70,7 @@ COPTS= -qhalt=w -O3 -qhot \
          -qtune=440
 
 LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
-OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
+#OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
 CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
 
 LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
@@ -79,7 +88,7 @@ CC= xlc_r
 MPICC= mpcc_r
 COPTS= -qhalt=w -O3 -qhot
 LDFLAGS= -qipa -lm
-OPTS = -D_D3Q19_ -D_NOISE_
+#OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
 CFLAGS= $(OPTS) $(COPTS) $(LDFLAGS)
 
 LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
@@ -94,7 +103,7 @@ endif
 ifneq (,$(findstring nid00, $(HOSTNAME)))
 MPICC=cc
 CC=cc
-OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
+#OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
 CFLAGS = ${OPTS} -o3 -OPT:Ofast
 LDFLAGS= -ipa -Wl,-z,muldefs
 endif
@@ -105,7 +114,8 @@ endif
 #
 ###############################################################################
 
-ifeq (ermdpc, $(HOSTNAME))
+ifeq (ermdpc,`hostname`)
+echo "Home Computer"
 MPICC= mpicc
 endif
 
@@ -143,6 +153,11 @@ serial:
 mpi:
 	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS)" "CFLAGS=$(CFLAGS) \
 		-D_MPI_"
+test:
+	echo -e $(HOSTNAME)\
+	echo -e $(EXE)\
+	echo -e $(HOSTNAME)
+	echo -e `hostname`
 
 ###############################################################################
 #

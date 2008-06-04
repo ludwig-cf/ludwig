@@ -4,7 +4,7 @@
  *
  *  D3Q15 model definitions.
  *
- *  $Id: d3q15.c,v 1.6 2007-01-16 15:42:36 kevin Exp $
+ *  $Id: d3q15.c,v 1.6.6.1 2008-06-04 19:21:11 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -127,5 +127,14 @@ const double mi_[NVEL][NVEL] =
    { w1,-r3, c0, c0, r3, c0, c0,-r6, c0,-r6, wc,-r6, c0, c0, c0},
    { w3,-wa,-wa, wa, wa, wb,-wb, wa,-wb, wa,-w3, wa, wa,-wa, wb},
    { w3,-wa,-wa,-wa, wa, wb, wb, wa, wb, wa,-w3, wa, wa, wa,-wb}};
+
+/**
+ * xcount_{direction} is the number of blocks to send/recv in x-dim
+ */  
+//enum {xcount_right = 1}; // now in header.
+MPI_Datatype types[xcount_right] = {MPI_DOUBLE};
+int xblocklens_right[xcount_right] = {2*NVEL};
+MPI_Aint xdisp_right_send[xcount_right] = {0};
+MPI_Aint xdisp_right_recv[xcount_right] = {0}; 
 
 #endif

@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.1 2008-05-23 12:52:38 erlend Exp $
+ *  $Id: model.c,v 1.9.6.2 2008-06-04 19:21:11 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -95,7 +95,8 @@ void init_site() {
    *
    * This is only confirmed for nhalo_site_ = 1. */
 
-  MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
+  //MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
+  MPI_Type_struct(xcount_right, xblocklens_right, xdisp_right_send, types, &DT_Site);
   MPI_Type_commit(&DT_Site);
 
   MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
@@ -107,14 +108,7 @@ void init_site() {
   MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
   MPI_Type_commit(&DT_plane_YZ);
 
-  /* Moving in the X-Direction. */
-  int xcount_right = 1;
-  int xblocklens_right[xcount_right] = {2*NVEL};
-  int xdisp_right[xcount_right] = {0}; // ?
-  MPI_Datatype x_right;
-  MPI_Type_struct(xcount_right, xblocklens_right, xdisp_right, MPI_Double, &x_right);
-
-#endif
+ #endif
 
   return;
 }
@@ -400,17 +394,13 @@ void halo_site() {
     }
   }
   else {
-#ifdef _MPI_
-    // x_right is a struct (fixed type) => this should break.
-    MPI_Issend(&site[N[X}*xfac].f[0], 1, x_right, cart_neighb(FORWARD,X),
-	       TAG_FWD, cart_comm(), &request[2]);
-   
+#ifdef _MPI_   
     MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
 	       TAG_BWD, cart_comm(), &request[0]);
     MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ,
 	      cart_neighb(FORWARD,X), TAG_BWD, cart_comm(), &request[1]);
-    //MPI_Issend(&site[N[X]*xfac].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
-    //	       TAG_FWD, cart_comm(), &request[2]);
+    MPI_Issend(&site[N[X]*xfac].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
+    	       TAG_FWD, cart_comm(), &request[2]);
     MPI_Irecv(&site[0].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
 	      TAG_FWD, cart_comm(), &request[3]);
     MPI_Waitall(4, request, status);
