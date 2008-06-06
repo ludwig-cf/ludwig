@@ -37,7 +37,7 @@
 #include "io_harness.h"
 #include "phi.h"
 
-static char rcsid[] = "$Id: main.c,v 1.13.2.3 2008-04-28 15:15:34 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.13.2.4 2008-06-06 18:19:39 kevin Exp $";
 
 int print_free_energy_profile(void);
 void set_block(void);
@@ -74,8 +74,9 @@ int main( int argc, char **argv )
 
   ran_init();
   RAND_init_fluctuations();
-  MODEL_init();
   LE_init();
+
+  MODEL_init();
   wall_init();
   COLL_init();
 
