@@ -391,6 +391,23 @@ int MPI_Cart_coords(MPI_Comm comm, int rank, int maxdims, int * coords) {
 
 /*****************************************************************************
  *
+ *  MPI_Cart_rank
+ *
+ *  Set the Cartesian rank to zero.
+ *
+ *****************************************************************************/
+
+int MPI_Cart_rank(MPI_Comm comm, int * coords, int * rank) {
+
+  assert(mpi_initialised_flag_);
+  assert(comm != MPI_COMM_NULL);
+  *rank = 0;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Cart_shift
  *
  *  No attempt is made to deal with non-periodic boundaries.
