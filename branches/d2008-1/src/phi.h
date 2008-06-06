@@ -2,7 +2,7 @@
  *
  *  phi.h
  *
- *  $Id: phi.h,v 1.1.2.4 2008-05-29 15:07:47 kevin Exp $
+ *  $Id: phi.h,v 1.1.2.5 2008-06-06 17:49:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -28,6 +28,7 @@ void   phi_get_grad_phi_site(const int, double *);
 void   phi_set_grad_phi_site(const int, const double *);
 void   phi_get_grad_delsq_phi_site(const int, double *);
 double phi_get_delsq_delsq_phi_site(const int);
+void   phi_leesedwards_transformation(void);
 
 extern struct io_info_t * io_info_phi;
 extern const int phi_finite_difference_;

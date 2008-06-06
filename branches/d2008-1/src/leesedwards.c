@@ -21,16 +21,16 @@
 extern Site * site;
 extern double * phi_site;
 
+static MPI_Comm     LeesEdw_Comm;/* Communicator for Lees-Edwards (LE) RMA */
+static int        * LE_ranks;
 
 #ifdef _MPI_
 
 extern MPI_Datatype DT_Site;
 
-static MPI_Comm     LeesEdw_Comm;/* Communicator for Lees-Edwards (LE) RMA */
 static MPI_Comm     X_PEs_Comm;  /* Communicator for Lees-Edwards (X row) */
 static MPI_Info     LeesEdw_Info;/* Information for RMAs (LE) */
 
-static int        * LE_ranks;
 static int        * LE_distrib;
 
 #ifdef _MPI_2_
@@ -49,8 +49,10 @@ static int        N_LE_total = 0;
 static LE_Plane * LeesEdw = NULL;
 
 static void   LE_init_original(void);
+static void   le_init_tables(void);
 static void   le_init_shear_profile(void);
 static double le_get_steady_uy(const int); 
+
 
 /* KS TODO: replace global LE_plane structure with... */
 /* Global Lees Edwards plane parameters */
@@ -60,8 +62,16 @@ static struct le_global_parameters {
   double uy_plane;    /* u[Y] for all planes */
   double shear_rate;  /* Overall shear rate */
   double dx_min;      /* Position first plane */
-  double dx_sep;      /* Plane separation */ 
+  double dx_sep;      /* Plane separation */
+  /* Here for the time being, actually local. */
+  int    nxbuffer;
+  int *  index_buffer_to_real;
+  int    index_real_nbuffer;
+  int *  index_real_to_buffer;
+  double * buffer_duy;
 } le_params_;
+
+static int initialised_ = 0;
 
 /*****************************************************************************
  *
@@ -125,9 +135,127 @@ void LE_init() {
     }
   }
 
+  le_init_tables();
+
+  initialised_ = 1;
+
   return;
 }
 
+/*****************************************************************************
+ *
+ *  le_init_tables
+ *
+ *  Initialise the buffer look up tables.
+ *
+ *****************************************************************************/
+
+static void le_init_tables() {
+
+  int ib, ic, ip, n, nh, np;
+  int nlocal[3];
+
+  get_N_local(nlocal);
+
+  /* Look up table for buffer -> real index */
+
+  /* For each 'x' location in the buffer region, work out the corresponding
+   * x index in the real system:
+   *   - for each boundary there are 2*nhalo_ buffer planes
+   *   - the locations extend nhalo_ points either side of the boundary.
+   */
+
+  n = 2*nhalo_*N_LE_plane;
+  le_params_.nxbuffer = n;
+  le_params_.index_buffer_to_real = (int *) malloc(n*sizeof(int));
+  if (le_params_.index_buffer_to_real == NULL) fatal("malloc(le) failed\n");
+
+  ib = 0;
+  for (n = 0; n < N_LE_plane; n++) {
+    ic = LeesEdw_plane[n].loc - (nhalo_ - 1);
+    for (nh = 0; nh < 2*nhalo_; nh++) {
+      le_params_.index_buffer_to_real[ib] = ic + nh;
+      ib++;
+    }
+  }
+
+  /* Look up table for real -> buffer index */
+  /* For each x location in the real system, work out the index of
+   * the appropriate index in the buffer region. This is more
+   * complex, as it depends on whether you are looking across an
+   * LE boundary, and if so, in which direction.
+   * ie., we need a look up table = function(x, +/- dx).
+   * Note that this table exists when no planes are present, ie.,
+   * there is no transformation, ie., f(x, dx) = x always.
+   */
+
+  n = (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1);
+  le_params_.index_real_nbuffer = n;
+  le_params_.index_real_to_buffer = (int *) malloc(n*sizeof(int));
+  if (le_params_.index_real_to_buffer == NULL) fatal("malloc(le) failed\n");
+
+  /* Set table in abscence of planes. */
+  /* Note the elements of the table at the extreme edges of the local
+   * system point outside the system. Accesses must take care. */
+
+   for (ic = 1 - nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
+     for (nh = -nhalo_; nh <= nhalo_; nh++) {
+       n = ic*(2*nhalo_+1) + (nh + nhalo_);
+       le_params_.index_real_to_buffer[n] = ic + nh;
+     }
+     n = ic*(2*nhalo_+1);
+   }
+
+   /* Correct the table to account for any local planes. */
+
+   ib = nlocal[X] + nhalo_ + 1;
+
+   for (np = 0; np < N_LE_plane; np++) {
+     ip = LeesEdw_plane[np].loc;
+
+     /* looking across the boundary in -ve x direction */
+     for (ic = ip + 1; ic <= ip + nhalo_; ic++) {
+       for (nh = -nhalo_; nh < 0; nh++) {
+	 if (ic+nh <= ip) {
+	   n = ic*(2*nhalo_+1) + (nh + nhalo_);
+	   le_params_.index_real_to_buffer[n] = ib++;
+	 }
+       }
+     }
+
+     /* looking across the boundary in +ve x direction */
+     for (ic = ip - (nhalo_ - 1); ic <= ip; ic++) {
+       for (nh = 1; nh <= nhalo_; nh++) {
+	 if (ic+nh > ip) {
+	   n = ic*(2*nhalo_+1) + (nh + nhalo_);
+	   le_params_.index_real_to_buffer[n] = ib++;	   
+	 }
+       }
+     }
+   }
+
+   /* Buffer velocity jumps. When looking from the real system across
+    * a boundary into a given buffer, what is the associated velocity
+    * jump? The boundary velocitoes are constant in time. */
+
+   n = le_params_.nxbuffer;
+   le_params_.buffer_duy = (double *) malloc(n*sizeof(double));
+   if (le_params_.buffer_duy == NULL) fatal("malloc(buffer_duy) failed\n");
+
+  ib = 0;
+  for (n = 0; n < N_LE_plane; n++) {
+    for (nh = 0; nh < nhalo_; nh++) {
+      le_params_.buffer_duy[ib] = -LeesEdw_plane[n].vel;
+      ib++;
+    }
+    for (nh = 0; nh < nhalo_; nh++) {
+      le_params_.buffer_duy[ib] = +LeesEdw_plane[n].vel;
+      ib++;
+    }
+  }
+
+  return;
+}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -217,8 +345,10 @@ void LE_apply_LEBC( void )
 	LE_loc = LeesEdw_plane[plane].loc;
       }
       else {       /* Finally, deal with plane above LEBC */
-	LE_vel = -LE_vel;
-	LE_loc++;
+	/*LE_vel = -LE_vel;
+	  LE_loc++; */
+	LE_vel =+LeesEdw_plane[plane].vel;
+	LE_loc = LeesEdw_plane[plane].loc + 1;
       }      
 
       /* First, for plane `below' LE plane, ie, crossing LE plane going up */
@@ -414,7 +544,7 @@ void LE_init_original( void )
     
 #ifdef _MPI_ /* Parallel (MPI) implementation */
   int     size1, size2, colour;
-  int     gblflag, rank, LE_rank, *intbuff, ny3z2;
+  int     gblflag,  LE_rank, *intbuff, ny3z2;
   int     offset[3];
   int     gr_rank;
   int     flag;
@@ -1065,6 +1195,9 @@ void LE_update_buffers( int target_buff )
           MPI_Cart_rank(cart_comm(), target_pe2, &target_rank2);
           target_rank1 = LE_ranks[target_rank1];
           target_rank2 = LE_ranks[target_rank2];
+
+	  /*verbose("dy = %f, r0 = %d r1 = %d s0 = %d s1 = %d\n",
+	    (float)integ, source_rank1, source_rank2, target_rank1, target_rank2);*/
 
           MPI_Irecv(&buff_phi[0],nsites1, MPI_DOUBLE, source_rank1,
                     TAG_LE_START, LeesEdw_Comm, &req[0]);
@@ -1770,107 +1903,149 @@ double le_get_steady_uy(int ic) {
   return uy;
 }
 
-#ifdef OLD_PENDING_DELETE
+/*****************************************************************************
+ *
+ *  le_get_nplane
+ *
+ *  Return the local number of planes (block boundaries).
+ *
+ *****************************************************************************/
 
-static int    LE_cmpLEBC( const void *, const void * );
-static void   LE_print_LEbuffers( void );
+int le_get_nplane() {
 
-
-/*--------------------------------------------------------------------------*/
-/* Utility routines for debugging */
-void LE_print_LEbuffers()
-{
-  int i,j,k,vel,gind,ind,LE_loc;
-  FILE *fp;
-  char fname[256];
-  int N[3];
-  int offset[3];
-
-  get_N_local(N);
-  get_N_offset(offset);
-
-#ifdef _MPI_
-  sprintf(fname, "LEbuffs_%6.6d.%2.2d", get_step(), cart_rank());
-#else
-  sprintf(fname, "LEbuffs_%6.6d", get_step());
-#endif
-  fp = fopen(fname,"w");
-
-  /* Start with phi (excluding halos) */
-  for(i=0; i< N_LE_plane; i++){
-    LE_loc = LeesEdw_plane[i].loc;
-    for(j=1; j<=N[Y]; j++){
-      for(k=1; k<=N[Z]; k++){
-	gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+offset[X])
-	  + (N_total(Z)+2)*(j+offset[Y]) 
-	  + (k+offset[Z]);
-	ind = (N[Y]+2)*(N[Z]+2)*(2*i) + (N[Z]+2)*j + k;
-	fprintf(fp, "DBG: LE_PHI STEP %5.5d buff[%6.6d] = %lg\n",
-	       get_step(), gind,LeesEdw_phi[ind]);fflush(NULL);
-	gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+1+offset[X])
-	  + (N_total(Z)+2)*(j+offset[Y]) 
-	  + (k+offset[Z]);
-	ind = (N[Y]+2)*(N[Z]+2)*(2*i+1) + (N[Z]+2)*j + k;
-	fprintf(fp, "DBG: LE_PHI STEP %5.5d buff[%6.6d] = %lg\n",
-	       get_step(), gind, LeesEdw_phi[ind]);
-	fflush(NULL);
-      }
-    }
-  }
-
-  /* Then, deal with sites (still excluding halos) */
-  for(i=0; i< N_LE_plane; i++){
-    LE_loc = LeesEdw_plane[i].loc;
-    for(j=1; j<=N[Y]; j++){
-      for(k=1; k<=N[Z]; k++){
-	for(vel=0; vel<2*LE_N_VEL_XING; vel++){
-	  gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+offset[X])
-	    + (N_total(Z)+2)*(j+offset[Y]) 
-	    + (k+offset[Z]);
-	  ind = (N[Y]+2)*(N[Z]+2)*(2*i)*LE_N_VEL_XING*2 
-	    + (N[Z]+2)*j*LE_N_VEL_XING*2
-	    + k*LE_N_VEL_XING*2
-	    + vel;
-	  fprintf(fp, "DBG: LE_SITE STEP %5.5d buff[%6.6d_%d] = %lg\n",
-		 get_step(), gind,vel,LeesEdw_site[ind]);fflush(NULL);
-	  gind = (N_total(Y)+2)*(N_total(Z)+2)*(LE_loc+1+offset[X])
-	    + (N_total(Z)+2)*(j+offset[Y]) 
-	    + (k+offset[Z]);
-	  ind = (N[Y]+2)*(N[Z]+2)*(2*i+1)*LE_N_VEL_XING*2 
-	    + (N[Z]+2)*j*LE_N_VEL_XING*2
-	    + k*LE_N_VEL_XING*2
-	    + vel;
-	  fprintf(fp, "DBG: LE_SITE STEP %5.5d buff[%6.6d_%d] = %lg\n",
-		 get_step(), gind, vel, LeesEdw_site[ind]);
-	  fflush(NULL);
-	}
-      }
-    }
-  }
-  
-  fclose(fp);
+  return N_LE_plane;
 }
 
-#endif
+/*****************************************************************************
+ *
+ *  le_get_nxbuffer
+ *
+ *  Return the size (x-direction) of the buffer required to hold
+ *  cross-boundary interpolated quantities.
+ *
+ *****************************************************************************/
 
-#ifdef _KS_PENDING_DELETE
+int le_get_nxbuffer() {
 
-static MPI_Datatype DT_plane_LE_Float;/* MPI datatype defining LE plane */
-static MPI_Datatype DT_plane_LE_Float_exclhalo; /* For unwrapping phi (LE) */
-  
-  /*
-   * (YZ) plane for Lees-Edwards: etype is double instead of Site: one
-   * contiguous block of (N[Y]+2)*(N[Z]+2) doubles. No extra row here as
-   * interpolation is carried out before buffering 
-   */
-  MPI_Type_contiguous(ny2z2, MPI_DOUBLE,&DT_plane_LE_Float);
-  MPI_Type_commit(&DT_plane_LE_Float);
+  assert(initialised_);
 
-  /* 
-   * (YZ) plane for Lees-Edwards (unrolling): N[Y] blocks of N[Z] Floats with 
-   * stride (yfac=N[Z]+2)
-   */
-  MPI_Type_vector(N[Y],N[Z],(N[Z]+2), MPI_DOUBLE,&DT_plane_LE_Float_exclhalo);
-  MPI_Type_commit(&DT_plane_LE_Float_exclhalo);
+  return le_params_.nxbuffer;
+}
 
-#endif
+/*****************************************************************************
+ *
+ *  le_index_real_to_buffer
+ *
+ *  For x index and step size di, return the x index of the translated
+ *  buffer.
+ *
+ *****************************************************************************/
+
+int le_index_real_to_buffer(const int ic, const int di) {
+
+  int ib;
+
+  assert(initialised_);
+  assert(di >= -nhalo_ && di <= +nhalo_);
+
+  ib = ic*(2*nhalo_ + 1) + di + nhalo_;
+
+  assert(ib >= 0 && ib < le_params_.index_real_nbuffer);
+
+  return le_params_.index_real_to_buffer[ib];
+}
+
+/*****************************************************************************
+ *
+ *  le_index_buffer_to_real
+ *
+ *  For x index in the buffer region, return the corresponding
+ *  x index in the real system.
+ *
+ *****************************************************************************/
+
+int le_index_buffer_to_real(int ib) {
+
+  assert(initialised_);
+  assert(ib >=0 && ib < le_params_.nxbuffer);
+
+  return le_params_.index_buffer_to_real[ib];
+}
+
+/*****************************************************************************
+ *
+ *  le_buffer_displacement
+ *
+ *  Return the current displacement dy = du_y t for the buffer plane
+ *  with x location ib.
+ *
+ *****************************************************************************/
+
+double le_buffer_displacement(int ib) {
+
+  /* The minus one is to ensure the regression test doesn't fail. The
+   * displacement oringally updated between the phi and f_i
+   * transformations */
+  double dt = get_step() - 1.0;
+
+  assert(initialised_);
+  assert(ib >= 0 && ib < le_params_.nxbuffer);
+
+  return dt*le_params_.buffer_duy[ib];
+}
+
+/*****************************************************************************
+ *
+ *  le_communicator
+ *
+ *  Return the handle to the Lees Edwards communicator.
+ *
+ *****************************************************************************/
+
+MPI_Comm le_communicator() {
+
+  assert(initialised_);
+  return LeesEdw_Comm;
+}
+
+/*****************************************************************************
+ *
+ *  le_displacement_ranks
+ *
+ *  For a given  displacement, work out which two LE ranks
+ *  are required for communication.
+ *
+ *****************************************************************************/
+
+void le_displacement_ranks(const double dy, int nrank[2]) {
+
+  int nlocal[3];
+  int noffset[3];
+  int pe1_cart[3];
+  int pe2_cart[3];
+  MPI_Comm cartesian = cart_comm();
+  int jdy, j1;
+
+  assert(initialised_);
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+
+  jdy = floor(dy);
+  j1 = 1 + (noffset[Y] + 1 - nhalo_ - jdy - 1 + 2*N_total(Y)) % N_total(Y);
+
+  pe1_cart[X] = cart_coords(X);
+  pe1_cart[Y] = j1 / nlocal[Y];
+  pe1_cart[Z] = cart_coords(Z);
+  pe2_cart[X] = pe1_cart[X];
+  pe2_cart[Y] = pe1_cart[Y] + 1;
+  pe2_cart[Z] = pe1_cart[Z];
+
+  MPI_Cart_rank(cartesian, pe1_cart, nrank);
+  MPI_Cart_rank(cartesian, pe2_cart, nrank + 1);
+  assert(LE_ranks);
+  nrank[0] = LE_ranks[nrank[0]];
+  nrank[1] = LE_ranks[nrank[1]];
+
+  return;
+}

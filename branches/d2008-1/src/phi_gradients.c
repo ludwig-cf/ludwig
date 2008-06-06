@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.5 2008-05-30 17:35:13 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.6 2008-06-06 17:49:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,6 +20,8 @@
 #include "pe.h"
 #include "coords.h"
 #include "site_map.h"
+#include "leesedwards.h"
+#include "phi.h"
 #include "phi_gradients.h"
 
 extern double * phi_site;
@@ -59,7 +61,7 @@ static void phi_gradients_double_fluid(void);
  *
  ****************************************************************************/
 
-void phi_gradient_set_fluid() {
+void phi_gradients_set_fluid() {
 
   phi_gradient_function = phi_gradients_fluid;
   return;
@@ -91,6 +93,8 @@ void phi_gradients_set_solid() {
 void phi_gradients_compute() {
 
   assert(phi_gradient_function);
+
+  phi_leesedwards_transformation();
   phi_gradient_function();
 
   /* At the moment, the double gradient is swithed on via nhalo_ */
@@ -279,97 +283,91 @@ static void phi_gradients_fluid_compact() {
  *  phi_gradients_fluid
  *
  *  Fluid-only gradient calculation. This is an unrolled version.
- *  Ugly, but quick.
+ *  It is much faster than the compact version.
  *
  *****************************************************************************/
+
+#define ADDR get_site_index
 
 static void phi_gradients_fluid() {
 
   int nlocal[3];
   int ic, jc, kc;
-  int index;
+  int icp1, icm1;
   int nextra = nhalo_ - 1;
-  int xfac, yfac;
 
-  double phi0;
   const double r9 = (1.0/9.0);
   const double r18 = (1.0/18.0);
 
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
 
-  xfac = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
-  yfac = (nlocal[Z] + 2*nhalo_);
-
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    /*icm1 = le_lookaside_index(ic, -1);
-      icp1 = le_lookaside_index(ic, +1); */
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = get_site_index(ic, jc, kc);
-	phi0 = phi_site[index];
-
-	grad_phi_site[3*index + X] =
-	  r18*(phi_site[index+xfac       ]-phi_site[index-xfac       ] +
-	       phi_site[index+xfac+yfac+1]-phi_site[index-xfac+yfac+1] +
-	       phi_site[index+xfac-yfac+1]-phi_site[index-xfac-yfac+1] +
-	       phi_site[index+xfac+yfac-1]-phi_site[index-xfac+yfac-1] +
-	       phi_site[index+xfac-yfac-1]-phi_site[index-xfac-yfac-1] +
-	       phi_site[index+xfac+yfac  ]-phi_site[index-xfac+yfac  ] +
-	       phi_site[index+xfac-yfac  ]-phi_site[index-xfac-yfac  ] +
-	       phi_site[index+xfac     +1]-phi_site[index-xfac     +1] +
-	       phi_site[index+xfac     -1]-phi_site[index-xfac     -1]);
+	grad_phi_site[3*ADDR(ic,jc,kc) + X] =
+	  r18*(phi_site[ADDR(icp1,jc,  kc  )]-phi_site[ADDR(icm1,jc,  kc  )] +
+	       phi_site[ADDR(icp1,jc+1,kc+1)]-phi_site[ADDR(icm1,jc+1,kc+1)] +
+	       phi_site[ADDR(icp1,jc-1,kc+1)]-phi_site[ADDR(icm1,jc-1,kc+1)] +
+	       phi_site[ADDR(icp1,jc+1,kc-1)]-phi_site[ADDR(icm1,jc+1,kc-1)] +
+	       phi_site[ADDR(icp1,jc-1,kc-1)]-phi_site[ADDR(icm1,jc-1,kc-1)] +
+	       phi_site[ADDR(icp1,jc+1,kc  )]-phi_site[ADDR(icm1,jc+1,kc  )] +
+	       phi_site[ADDR(icp1,jc-1,kc  )]-phi_site[ADDR(icm1,jc-1,kc  )] +
+	       phi_site[ADDR(icp1,jc,  kc+1)]-phi_site[ADDR(icm1,jc,  kc+1)] +
+	       phi_site[ADDR(icp1,jc,  kc-1)]-phi_site[ADDR(icm1,jc,  kc-1)]);
 		    
-	grad_phi_site[3*index + Y] = 
-	  r18*(phi_site[index     +yfac  ]-phi_site[index     -yfac  ] +
-	       phi_site[index+xfac+yfac+1]-phi_site[index+xfac-yfac+1] +
-	       phi_site[index-xfac+yfac+1]-phi_site[index-xfac-yfac+1] +
-	       phi_site[index+xfac+yfac-1]-phi_site[index+xfac-yfac-1] +
-	       phi_site[index-xfac+yfac-1]-phi_site[index-xfac-yfac-1] +
-	       phi_site[index+xfac+yfac  ]-phi_site[index+xfac-yfac  ] +
-	       phi_site[index-xfac+yfac  ]-phi_site[index-xfac-yfac  ] +
-	       phi_site[index     +yfac+1]-phi_site[index     -yfac+1] +
-	       phi_site[index     +yfac-1]-phi_site[index     -yfac-1]);
+	grad_phi_site[3*ADDR(ic,jc,kc) + Y] = 
+	  r18*(phi_site[ADDR(ic  ,jc+1,kc  )]-phi_site[ADDR(ic,  jc-1,kc  )] +
+	       phi_site[ADDR(icp1,jc+1,kc+1)]-phi_site[ADDR(icp1,jc-1,kc+1)] +
+	       phi_site[ADDR(icm1,jc+1,kc+1)]-phi_site[ADDR(icm1,jc-1,kc+1)] +
+	       phi_site[ADDR(icp1,jc+1,kc-1)]-phi_site[ADDR(icp1,jc-1,kc-1)] +
+	       phi_site[ADDR(icm1,jc+1,kc-1)]-phi_site[ADDR(icm1,jc-1,kc-1)] +
+	       phi_site[ADDR(icp1,jc+1,kc  )]-phi_site[ADDR(icp1,jc-1,kc  )] +
+	       phi_site[ADDR(icm1,jc+1,kc  )]-phi_site[ADDR(icm1,jc-1,kc  )] +
+	       phi_site[ADDR(ic,  jc+1,kc+1)]-phi_site[ADDR(ic,  jc-1,kc+1)] +
+	       phi_site[ADDR(ic,  jc+1,kc-1)]-phi_site[ADDR(ic,  jc-1,kc-1)]);
 		    
-	grad_phi_site[3*index + Z] = 
-	  r18*(phi_site[index          +1]-phi_site[index          -1] +
-	       phi_site[index+xfac+yfac+1]-phi_site[index+xfac+yfac-1] +
-	       phi_site[index-xfac+yfac+1]-phi_site[index-xfac+yfac-1] +
-	       phi_site[index+xfac-yfac+1]-phi_site[index+xfac-yfac-1] +
-	       phi_site[index-xfac-yfac+1]-phi_site[index-xfac-yfac-1] +
-	       phi_site[index+xfac     +1]-phi_site[index+xfac     -1] +
-	       phi_site[index-xfac     +1]-phi_site[index-xfac     -1] +
-	       phi_site[index     +yfac+1]-phi_site[index     +yfac-1] +
-	       phi_site[index     -yfac+1]-phi_site[index     -yfac-1]);
+	grad_phi_site[3*ADDR(ic,jc,kc) + Z] = 
+	  r18*(phi_site[ADDR(ic,  jc,  kc+1)]-phi_site[ADDR(ic,  jc,  kc-1)] +
+	       phi_site[ADDR(icp1,jc+1,kc+1)]-phi_site[ADDR(icp1,jc+1,kc-1)] +
+	       phi_site[ADDR(icm1,jc+1,kc+1)]-phi_site[ADDR(icm1,jc+1,kc-1)] +
+	       phi_site[ADDR(icp1,jc-1,kc+1)]-phi_site[ADDR(icp1,jc-1,kc-1)] +
+	       phi_site[ADDR(icm1,jc-1,kc+1)]-phi_site[ADDR(icm1,jc-1,kc-1)] +
+	       phi_site[ADDR(icp1,jc,  kc+1)]-phi_site[ADDR(icp1,jc,  kc-1)] +
+	       phi_site[ADDR(icm1,jc,  kc+1)]-phi_site[ADDR(icm1,jc,  kc-1)] +
+	       phi_site[ADDR(ic,  jc+1,kc+1)]-phi_site[ADDR(ic,  jc+1,kc-1)] +
+	       phi_site[ADDR(ic,  jc-1,kc+1)]-phi_site[ADDR(ic,  jc-1,kc-1)]);
 		    
-	delsq_phi_site[index]      = r9*(phi_site[index+xfac       ] + 
-					 phi_site[index-xfac       ] +
-					 phi_site[index     +yfac  ] + 
-					 phi_site[index     -yfac  ] +
-					 phi_site[index          +1] + 
-					 phi_site[index          -1] +
-					 phi_site[index+xfac+yfac+1] + 
-					 phi_site[index+xfac+yfac-1] + 
-					 phi_site[index+xfac-yfac+1] + 
-					 phi_site[index+xfac-yfac-1] + 
-					 phi_site[index-xfac+yfac+1] + 
-					 phi_site[index-xfac+yfac-1] + 
-					 phi_site[index-xfac-yfac+1] + 
-					 phi_site[index-xfac-yfac-1] +
-					 phi_site[index+xfac+yfac  ] + 
-					 phi_site[index+xfac-yfac  ] + 
-					 phi_site[index-xfac+yfac  ] + 
-					 phi_site[index-xfac-yfac  ] + 
-					 phi_site[index+xfac     +1] + 
-					 phi_site[index+xfac     -1] + 
-					 phi_site[index-xfac     +1] + 
-					 phi_site[index-xfac     -1] +
-					 phi_site[index     +yfac+1] + 
-					 phi_site[index     +yfac-1] + 
-					 phi_site[index     -yfac+1] + 
-					 phi_site[index     -yfac-1] -
-					 26.0*phi0);
+	delsq_phi_site[ADDR(ic,jc,kc)] = r9*(phi_site[ADDR(icp1,jc,  kc  )] + 
+					     phi_site[ADDR(icm1,jc,  kc  )] +
+					     phi_site[ADDR(ic,  jc+1,kc  )] + 
+					     phi_site[ADDR(ic,  jc-1,kc  )] +
+					     phi_site[ADDR(ic,  jc,  kc+1)] + 
+					     phi_site[ADDR(ic,  jc,  kc-1)] +
+					     phi_site[ADDR(icp1,jc+1,kc+1)] + 
+					     phi_site[ADDR(icp1,jc+1,kc-1)] + 
+					     phi_site[ADDR(icp1,jc-1,kc+1)] + 
+					     phi_site[ADDR(icp1,jc-1,kc-1)] + 
+					     phi_site[ADDR(icm1,jc+1,kc+1)] + 
+					     phi_site[ADDR(icm1,jc+1,kc-1)] + 
+					     phi_site[ADDR(icm1,jc-1,kc+1)] + 
+					     phi_site[ADDR(icm1,jc-1,kc-1)] +
+					     phi_site[ADDR(icp1,jc+1,kc  )] + 
+					     phi_site[ADDR(icp1,jc-1,kc  )] + 
+					     phi_site[ADDR(icm1,jc+1,kc  )] + 
+					     phi_site[ADDR(icm1,jc-1,kc  )] + 
+					     phi_site[ADDR(icp1,jc,  kc+1)] + 
+					     phi_site[ADDR(icp1,jc,  kc-1)] + 
+					     phi_site[ADDR(icm1,jc,  kc+1)] + 
+					     phi_site[ADDR(icm1,jc,  kc-1)] +
+					     phi_site[ADDR(ic,  jc+1,kc+1)] + 
+					     phi_site[ADDR(ic,  jc+1,kc-1)] + 
+					     phi_site[ADDR(ic,  jc-1,kc+1)] + 
+					     phi_site[ADDR(ic,  jc-1,kc-1)] -
+					     26.0*phi_site[ADDR(ic,jc,kc)]);
 
  
 	/* Next site */

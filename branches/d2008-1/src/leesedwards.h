@@ -3,8 +3,6 @@
 
 enum { PHI_ONLY, SITE_AND_PHI };
 
-enum { INTERP_SITE_F, INTERP_SITE_G, INTERP_PHI };
-
 
 /* struct for Lees-Edwards */
 typedef struct{
@@ -21,5 +19,14 @@ void LE_init( void );
 void LE_apply_LEBC( void );
 void LE_print_params( void );
 void LE_update_buffers( int );
+
+int le_get_nplane(void);
+int le_get_nxbuffer(void);
+int le_index_real_to_buffer(const int, const int);
+int le_index_buffer_to_real(const int);
+
+double    le_buffer_displacement(const int);
+MPI_Comm  le_communicator(void);
+void      le_displacement_ranks(const double, int[2]);
 
 #endif /* _LEESEDWARDS_H */

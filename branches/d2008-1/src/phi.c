@@ -16,12 +16,14 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
 #include "site_map.h"
 #include "io_harness.h"
+#include "leesedwards.h"
 #include "timer.h"
 #include "phi.h"
 
@@ -45,6 +47,8 @@ static void phi_init_mpi(void);
 static void phi_init_io(void);
 static int  phi_read(FILE *, const int, const int, const int);
 static int  phi_write(FILE *, const int, const int, const int);
+static void phi_leesedwards_parallel(void);
+
 
 /****************************************************************************
  *
@@ -54,15 +58,23 @@ static int  phi_write(FILE *, const int, const int, const int);
  *  this must use MPI_Alloc_mem() to allow use of Windows in the
  *  LE code.
  *
+ *  Space for buffers to hold Lees Edwards interpolated quantities
+ *  is added to the main array for convenince. It has no effect on
+ *  the halo regions.
+ *
  ****************************************************************************/
 
 void phi_init() {
 
   int nsites;
+  int nbuffer;
   int nlocal[3];
 
   get_N_local(nlocal);
-  nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
+  nbuffer = le_get_nxbuffer();
+
+  nsites = (nlocal[X]+2*nhalo_ + nbuffer)
+    *(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
 
 #ifdef _MPI_2_
  {
@@ -481,4 +493,182 @@ static int phi_write(FILE * fp, const int ic, const int jc, const int kc) {
   if (n != 1) fatal("fwrite(phi) failed at index %d\n", index);
  
   return n;
+}
+
+/*****************************************************************************
+ *
+ *  phi_leesedwards_transformation
+ *
+ *  Interpolate the phi field to take account of any local
+ *  Lees Edwards boundaries.
+ *
+ *  Effect:
+ *    The buffer region of phi_site[] is updated with the interpolated
+ *    values.
+ *
+ *****************************************************************************/
+
+#define ADDR get_site_index
+
+void phi_leesedwards_transformation() {
+
+  int nlocal[3]; /* Local system size */
+  int ib;        /* Index in buffer region */
+  int ib0;       /* buffer region offset */
+  int ic;        /* Index corresponding x location in real system */
+  int jc, kc;
+
+  double dy;     /* Displacement for current ic->ib pair */
+  double fr;     /* Fractional displacement */
+  int jdy;       /* Integral part of displacement */
+  int j1, j2;    /* j values in real system to interpolate between */
+
+  if (cart_size(Y) > 1) {
+    /* This has its own routine. */
+    phi_leesedwards_parallel();
+  }
+  else {
+    /* If no messages are required... */
+
+    get_N_local(nlocal);
+    ib0 = nlocal[X] + nhalo_ + 1;
+
+    for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+
+      ic = le_index_buffer_to_real(ib);
+      dy = le_buffer_displacement(ib);
+      dy = fmod(dy, L(Y));
+      jdy = floor(dy);
+      fr  = dy - jdy;
+
+      for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
+	/* Actually required here is j1 = jc - jdy - 1, but there's
+	 * horrible modular arithmetic for the periodic boundaries
+	 * to ensure 1 <= j1,j2 <= nlocal[Y] */
+	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
+	j2 = 1 + j1 % nlocal[Y];
+	for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+	  phi_site[ADDR(ib0+ib,jc,kc)] =
+	    fr*phi_site[ADDR(ic,j1,kc)] + (1.0-fr)*phi_site[ADDR(ic,j2,kc)];
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_leesedwards_parallel
+ *
+ *  The Lees Edwards transformation requires a certain amount of
+ *  communication in parallel.
+ *
+ *  Each process may require communication with at most 4 others
+ *  (and at least 2 others) to specify completely the interpolated
+ *  buffer region (extending into the halo). The direction of the
+ *  communcation in the cartesian communicator depends on the
+ *  velocity jump at a given boundary. 
+ *
+ *  Effect:
+ *    Buffer region of phi_site[] is updated with the interpolated
+ *    values.
+ *
+ *****************************************************************************/
+
+static void phi_leesedwards_parallel() {
+
+  int      nlocal[3];      /* Local system size */
+  int      noffset[3];     /* Local starting offset */
+  double * buffer;         /* Interpolation buffer */
+  int ib;                  /* Index in buffer region */
+  int ib0;                 /* buffer region offset */
+  int ic;                  /* Index corresponding x location in real system */
+  int jc, kc, j1, j2;
+  int n, n1, n2;
+  double dy;               /* Displacement for current ic->ib pair */
+  double fr;               /* Fractional displacement */
+  int jdy;                 /* Integral part of displacement */
+
+  MPI_Comm le_comm = le_communicator();
+  int      nrank_s[2];     /* send ranks */
+  int      nrank_r[2];     /* recv ranks */
+  const int tag0 = 1254;
+  const int tag1 = 1255;
+
+  MPI_Request request[4];
+  MPI_Status  status[4];
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+  ib0 = nlocal[X] + nhalo_ + 1;
+
+  /* Allocate the temporary buffer */
+
+  n = (nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+  buffer = (double *) malloc(n*sizeof(double));
+  if (buffer == NULL) fatal("malloc(buffer) failed\n");
+
+  /* One round of communication for each buffer plane */
+
+  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+
+    ic = le_index_buffer_to_real(ib);
+    kc = 1 - nhalo_;
+
+    /* Work out the displacement-dependent quantities */
+
+    dy = le_buffer_displacement(ib);
+    dy = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fr  = dy - jdy;
+
+    /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo_.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+
+    jc = noffset[Y] + 1 - nhalo_;
+    j1 = 1 + (jc - jdy - 1 + 2*N_total(Y)) % N_total(Y);
+
+    le_displacement_ranks(+dy, nrank_r);
+    le_displacement_ranks(-dy, nrank_s);
+
+    /* Local quantities: given a local starting index j2, we receive
+     * n1 + n2 sites into the buffer, and send n1 sites starting with
+     * j2, and the remaining n2 sites from starting position nhalo_. */
+
+    j2 = j1 % nlocal[Y];
+
+    n1 = (nlocal[Y] - j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
+    n2 = (j2 + nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+    if (ib == 0) verbose("ib %d dy = %f r = %d %d s0 = %d %d j12 = %d %d n = %d %d jdy %d\n", ib, dy, nrank_r[0],
+		      nrank_r[1], nrank_r[0], nrank_r[1], j1, j2, n1/3, n2/3, jdy);
+
+    /* Post receives, sends and wait. */
+    MPI_Irecv(buffer,      n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(buffer + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
+    MPI_Issend(phi_site + ADDR(ic,j2,kc), n1, MPI_DOUBLE, nrank_s[0], tag0,
+	       le_comm, request+2);
+    MPI_Issend(phi_site + ADDR(ic,nhalo_,kc), n2, MPI_DOUBLE, nrank_s[1], tag1,
+	       le_comm, request+3);
+
+    MPI_Waitall(4, request, status);
+
+    /* Perform the actual interpolation from temporary buffer to
+     * phi_site[] buffer region. */
+
+    for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
+      j1 = (jc + nhalo_    )*(nlocal[Z] + 2*nhalo_);
+      j2 = (jc + nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+      for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+	phi_site[ADDR(ib0+ib,jc,kc)] =
+	  fr*buffer[j1+kc] + (1.0-fr)*buffer[j2+kc];
+      }
+    }
+
+  }
+
+  free(buffer);
+
+  return;
 }
