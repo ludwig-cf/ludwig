@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.1.2.4 2008-02-26 17:11:09 kevin Exp $
+ *  $Id: io_harness.c,v 1.1.2.5 2008-06-06 17:47:17 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -538,7 +538,7 @@ static void io_write_metadata(char * filename_stub, struct io_info_t * info) {
 
   fprintf(fp_meta, "Metadata for file set prefix:    %s\n", filename_stub);
   fprintf(fp_meta, "Data description:                %s\n", info->name);
-  fprintf(fp_meta, "Data size per site (bytes):      %d\n", info->bytesize);
+  fprintf(fp_meta, "Data size per site (bytes):      %d\n", (int)info->bytesize);
   fprintf(fp_meta, "Number of processors:            %d\n", pe_size());
   fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
 	 cart_size(X), cart_size(Y), cart_size(Z));
