@@ -76,7 +76,7 @@ void COM_init() {
 #ifdef _MPI_ /* Parallel (MPI) section */
 
   int nx2, ny2, nz2, nx2y2, ny2z2;
-  int N_sites, colour;
+  int N_sites;
   int N[3];
 
   get_N_local(N);
@@ -143,7 +143,7 @@ void COM_init() {
   io_grp.rank  = 0;
   io_grp.file_ext = (char *) malloc(16*sizeof(char));
   if (io_grp.file_ext == NULL) fatal("malloc(io_grp.file_ext) failed\n");
-  sprintf(io_grp.file_ext, ""); /* Nothing required in serial*/
+  sprintf(io_grp.file_ext, "%s", ""); /* Nothing required in serial*/
 
 #endif /* _MPI_ */
 
