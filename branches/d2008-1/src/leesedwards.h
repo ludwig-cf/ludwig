@@ -27,6 +27,6 @@ int le_index_buffer_to_real(const int);
 
 double    le_buffer_displacement(const int);
 MPI_Comm  le_communicator(void);
-void      le_displacement_ranks(const double, int[2]);
+void      le_displacement_ranks(const double, int[2], int[2]);
 
 #endif /* _LEESEDWARDS_H */

@@ -465,7 +465,7 @@ void LE_apply_LEBC( void )
   
   /* Stage 3: update buffers (pre-requisite to translation) */
 
-  halo_site();
+  /* halo_site();*/
   LE_update_buffers(SITE_AND_PHI);
 
   /* Stage 4: apply translation on fs and gs crossing LE planes */
@@ -1196,8 +1196,10 @@ void LE_update_buffers( int target_buff )
           target_rank1 = LE_ranks[target_rank1];
           target_rank2 = LE_ranks[target_rank2];
 
-	  /*verbose("dy = %f, r0 = %d r1 = %d s0 = %d s1 = %d\n",
-	    (float)integ, source_rank1, source_rank2, target_rank1, target_rank2);*/
+
+	  /* info("dy = %f, r0 = %d r1 = %d s0 = %d s1 = %d\n",
+		  LeesEdw_plane[i].disp, source_rank1, source_rank2,
+		  target_rank1, target_rank2);*/
 
           MPI_Irecv(&buff_phi[0],nsites1, MPI_DOUBLE, source_rank1,
                     TAG_LE_START, LeesEdw_Comm, &req[0]);
@@ -1260,6 +1262,11 @@ void LE_update_buffers( int target_buff )
           MPI_Cart_rank(cart_comm(), target_pe2, &target_rank2);
           target_rank1 = LE_ranks[target_rank1];
           target_rank2 = LE_ranks[target_rank2];
+
+	  /* info("dy = %f, r0 = %d r1 = %d s0 = %d s1 = %d\n",
+		  LeesEdw_plane[i].disp, source_rank1, source_rank2,
+		  target_rank1, target_rank2);*/
+
           MPI_Irecv(&buff_phi[nsites],nsites1, MPI_DOUBLE, source_rank1,
                     TAG_LE_START,LeesEdw_Comm,&req[0]);
           MPI_Irecv(&buff_phi[nsites+nsites1],nsites2, MPI_DOUBLE,
@@ -2017,7 +2024,7 @@ MPI_Comm le_communicator() {
  *
  *****************************************************************************/
 
-void le_displacement_ranks(const double dy, int nrank[2]) {
+void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
 
   int nlocal[3];
   int noffset[3];
@@ -2027,12 +2034,13 @@ void le_displacement_ranks(const double dy, int nrank[2]) {
   int jdy, j1;
 
   assert(initialised_);
+  assert(LE_ranks);
 
   get_N_local(nlocal);
   get_N_offset(noffset);
 
-  jdy = floor(dy);
-  j1 = 1 + (noffset[Y] + 1 - nhalo_ - jdy - 1 + 2*N_total(Y)) % N_total(Y);
+  jdy = floor(fmod(dy, L(Y)));
+  j1 = 1 + (noffset[Y] + 1 - nhalo_ - jdy - 2 + 2*N_total(Y)) % N_total(Y);
 
   pe1_cart[X] = cart_coords(X);
   pe1_cart[Y] = j1 / nlocal[Y];
@@ -2041,11 +2049,23 @@ void le_displacement_ranks(const double dy, int nrank[2]) {
   pe2_cart[Y] = pe1_cart[Y] + 1;
   pe2_cart[Z] = pe1_cart[Z];
 
-  MPI_Cart_rank(cartesian, pe1_cart, nrank);
-  MPI_Cart_rank(cartesian, pe2_cart, nrank + 1);
-  assert(LE_ranks);
-  nrank[0] = LE_ranks[nrank[0]];
-  nrank[1] = LE_ranks[nrank[1]];
+  MPI_Cart_rank(cartesian, pe1_cart, recv);
+  MPI_Cart_rank(cartesian, pe2_cart, recv + 1);
+
+  recv[0] = LE_ranks[recv[0]];
+  recv[1] = LE_ranks[recv[1]];
+
+  /* Send to ... */
+
+  pe1_cart[Y] = cart_coords(Y) - (pe1_cart[Y] - cart_coords(Y));
+  pe2_cart[Y] = pe1_cart[Y] - 1;
+
+  MPI_Cart_rank(cartesian, pe1_cart, send);
+  MPI_Cart_rank(cartesian, pe2_cart, send + 1);
+
+  send[0] = LE_ranks[send[0]];
+  send[1] = LE_ranks[send[1]];
 
   return;
 }
+
