@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.6 2008-06-06 17:49:51 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.7 2008-06-09 18:27:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,6 +23,16 @@
 #include "leesedwards.h"
 #include "phi.h"
 #include "phi_gradients.h"
+
+/* Address macro: the local system size must be avilable as "nlocal" */
+#ifdef NDEBUG
+#define ADDR(ic,jc,kc) \
+((nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_)*(nhalo_+(ic)-1) + \
+                      (nlocal[Z]+2*nhalo_)*(nhalo_+(jc)-1) + \
+                                           (nhalo_+(kc)-1))
+#else
+#define ADDR get_site_index
+#endif
 
 extern double * phi_site;
 extern double * delsq_phi_site;
@@ -286,8 +296,6 @@ static void phi_gradients_fluid_compact() {
  *  It is much faster than the compact version.
  *
  *****************************************************************************/
-
-#define ADDR get_site_index
 
 static void phi_gradients_fluid() {
 

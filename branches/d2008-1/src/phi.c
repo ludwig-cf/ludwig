@@ -508,7 +508,11 @@ static int phi_write(FILE * fp, const int ic, const int jc, const int kc) {
  *
  *****************************************************************************/
 
-#define ADDR get_site_index
+/* #define ADDR get_site_index*/
+#define ADDR(ic,jc,kc) \
+((nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_)*(nhalo_+(ic)-1) + \
+                      (nlocal[Z]+2*nhalo_)*(nhalo_+(jc)-1) + \
+                                           (nhalo_+(kc)-1))
 
 void phi_leesedwards_transformation() {
 
@@ -628,10 +632,9 @@ static void phi_leesedwards_parallel() {
      * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
 
     jc = noffset[Y] + 1 - nhalo_;
-    j1 = 1 + (jc - jdy - 1 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
 
-    le_displacement_ranks(+dy, nrank_r);
-    le_displacement_ranks(-dy, nrank_s);
+    le_displacement_ranks(dy, nrank_r, nrank_s);
 
     /* Local quantities: given a local starting index j2, we receive
      * n1 + n2 sites into the buffer, and send n1 sites starting with
@@ -641,12 +644,11 @@ static void phi_leesedwards_parallel() {
 
     n1 = (nlocal[Y] - j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
     n2 = (j2 + nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
-    if (ib == 0) verbose("ib %d dy = %f r = %d %d s0 = %d %d j12 = %d %d n = %d %d jdy %d\n", ib, dy, nrank_r[0],
-		      nrank_r[1], nrank_r[0], nrank_r[1], j1, j2, n1/3, n2/3, jdy);
 
     /* Post receives, sends and wait. */
-    MPI_Irecv(buffer,      n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
-    MPI_Irecv(buffer + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
+
+    MPI_Irecv(buffer,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(buffer+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
     MPI_Issend(phi_site + ADDR(ic,j2,kc), n1, MPI_DOUBLE, nrank_s[0], tag0,
 	       le_comm, request+2);
     MPI_Issend(phi_site + ADDR(ic,nhalo_,kc), n2, MPI_DOUBLE, nrank_s[1], tag1,
@@ -658,14 +660,13 @@ static void phi_leesedwards_parallel() {
      * phi_site[] buffer region. */
 
     for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-      j1 = (jc + nhalo_    )*(nlocal[Z] + 2*nhalo_);
-      j2 = (jc + nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+      j1 = (jc + nhalo_ - 1    )*(nlocal[Z] + 2*nhalo_);
+      j2 = (jc + nhalo_ - 1 + 1)*(nlocal[Z] + 2*nhalo_);
       for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
 	phi_site[ADDR(ib0+ib,jc,kc)] =
 	  fr*buffer[j1+kc] + (1.0-fr)*buffer[j2+kc];
       }
     }
-
   }
 
   free(buffer);
