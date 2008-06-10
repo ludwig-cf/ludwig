@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.2 2008-06-04 19:21:11 erlend Exp $
+ *  $Id: model.c,v 1.9.6.3 2008-06-10 23:09:36 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -38,9 +38,21 @@ static int yfac_;
 
 #ifdef _MPI_
 static MPI_Datatype DT_plane_XY;
-static MPI_Datatype DT_plane_XZ;
 static MPI_Datatype DT_plane_YZ;
+static MPI_Datatype DT_plane_XZ;
+static MPI_Datatype DT_plane_XY_right;
+static MPI_Datatype DT_plane_XY_left;
+static MPI_Datatype DT_plane_XZ_right;
+static MPI_Datatype DT_plane_XZ_left;
+static MPI_Datatype DT_plane_YZ_right;
+static MPI_Datatype DT_plane_YZ_left;
 MPI_Datatype DT_Site;
+MPI_Datatype DT_Site_xright;
+MPI_Datatype DT_Site_xleft;
+MPI_Datatype DT_Site_yright;
+MPI_Datatype DT_Site_yleft;
+MPI_Datatype DT_Site_zright;
+MPI_Datatype DT_Site_zleft;
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
 #endif
 
@@ -95,18 +107,41 @@ void init_site() {
    *
    * This is only confirmed for nhalo_site_ = 1. */
 
-  //MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
-  MPI_Type_struct(xcount_right, xblocklens_right, xdisp_right_send, types, &DT_Site);
+  // OLDCODE
+  MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
   MPI_Type_commit(&DT_Site);
 
-  MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
-  MPI_Type_commit(&DT_plane_XY);
+  MPI_Type_struct(xcount, xblocklens, xdisp_right, xtypes, &DT_Site_xright);
+  MPI_Type_struct(xcount, xblocklens, xdisp_left, xtypes, &DT_Site_xleft);
+  MPI_Type_struct(ycount, yblocklens, ydisp_right, ytypes, &DT_Site_yright);
+  MPI_Type_struct(ycount, yblocklens, ydisp_left, ytypes, &DT_Site_yleft);
+  MPI_Type_struct(zcount, zblocklens, zdisp_right, ztypes, &DT_Site_zright);
+  MPI_Type_struct(zcount, zblocklens, zdisp_left, ztypes, &DT_Site_zleft);
+  MPI_Type_commit(&DT_Site_xright);
+  MPI_Type_commit(&DT_Site_xleft);
+  MPI_Type_commit(&DT_Site_yright);
+  MPI_Type_commit(&DT_Site_yleft);
+  MPI_Type_commit(&DT_Site_zright);
+  MPI_Type_commit(&DT_Site_zleft);
 
-  MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site, &DT_plane_XZ);
-  MPI_Type_commit(&DT_plane_XZ);
+  MPI_Type_vector(nx*ny, 1, nz, DT_Site_zright, &DT_plane_XY_right);
+  MPI_Type_commit(&DT_plane_XY_right);
+  MPI_Type_vector(nx*ny, 1, nz, DT_Site_zleft, &DT_plane_XY_left);
+  MPI_Type_commit(&DT_plane_XY_left);
 
+  MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site_yright, &DT_plane_XZ_right);
+  MPI_Type_commit(&DT_plane_XZ_right);
+  MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site_yleft, &DT_plane_XZ_left);
+  MPI_Type_commit(&DT_plane_XZ_left);
+
+  // OLDCODE
   MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
   MPI_Type_commit(&DT_plane_YZ);
+
+  MPI_Type_contiguous(ny*nz, DT_Site_zright, &DT_plane_YZ_right);
+  MPI_Type_commit(&DT_plane_YZ_right);
+  MPI_Type_contiguous(ny*nz, DT_Site_zleft, &DT_plane_YZ_left);
+  MPI_Type_commit(&DT_plane_YZ_left);
 
  #endif
 
@@ -130,10 +165,13 @@ void finish_site() {
 #endif
 
 #ifdef _MPI_
+/*
   MPI_Type_free(&DT_Site);
   MPI_Type_free(&DT_plane_XY);
   MPI_Type_free(&DT_plane_XZ);
   MPI_Type_free(&DT_plane_YZ);
+*/
+  MPI_Type_free(&DT_Site_xright);
 #endif
 
   return;
@@ -395,6 +433,7 @@ void halo_site() {
   }
   else {
 #ifdef _MPI_   
+/* OLDCODE
     MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
 	       TAG_BWD, cart_comm(), &request[0]);
     MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ,
@@ -403,6 +442,26 @@ void halo_site() {
     	       TAG_FWD, cart_comm(), &request[2]);
     MPI_Irecv(&site[0].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
 	      TAG_FWD, cart_comm(), &request[3]);
+*/
+/*
+    MPI_Issend(&site, 1, DT_plane_YZ_left, cart_neighb(BACKWARD,X),
+	      TAG_BWD, cart_comm(), &request[0]);
+    MPI_Irecv(&site, 1, DT_plane_YZ_right, cart_neighb(FORWARD,X), 
+	      TAG_BWD, cart_comm(), &request[1]);
+    MPI_Issend(&site, 1, DT_plane_YZ_right, cart_neighb(FORWARD,X),
+              TAG_BWD, cart_comm(), &request[2]);
+    MPI_Irecv(&site, 1, DT_plane_YZ_left, cart_neighb(BACKWARD,X),
+	      TAG_BWD, cart_comm(), &request[3]);
+*/
+    MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ_left, cart_neighb(BACKWARD,X),
+	       TAG_BWD, cart_comm(), &request[0]);
+    MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ_left, cart_neighb(FORWARD,X), 
+	       TAG_BWD, cart_comm(), &request[1]);
+    MPI_Issend(&site[N[X]*xfac].f[0], 1, DT_plane_YZ_right, cart_neighb(FORWARD,X),
+               TAG_FWD, cart_comm(), &request[2]);
+    MPI_Irecv(&site[0].f[0], 1, DT_plane_YZ_right, cart_neighb(BACKWARD,X),
+               TAG_FWD, cart_comm(), &request[3]);
+
     MPI_Waitall(4, request, status);
 #endif
   }

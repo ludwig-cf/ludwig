@@ -4,7 +4,7 @@
  *
  *  D3Q15 model definitions.
  *
- *  $Id: d3q15.c,v 1.6.6.1 2008-06-04 19:21:11 erlend Exp $
+ *  $Id: d3q15.c,v 1.6.6.2 2008-06-10 23:09:36 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -131,10 +131,23 @@ const double mi_[NVEL][NVEL] =
 /**
  * xcount_{direction} is the number of blocks to send/recv in x-dim
  */  
-//enum {xcount_right = 1}; // now in header.
-MPI_Datatype types[xcount_right] = {MPI_DOUBLE};
-int xblocklens_right[xcount_right] = {2*NVEL};
-MPI_Aint xdisp_right_send[xcount_right] = {0};
-MPI_Aint xdisp_right_recv[xcount_right] = {0}; 
+MPI_Datatype xtypes[xcount] = {MPI_DOUBLE};
+int xblocklens[xcount] = {2*NVEL};
+MPI_Aint xdisp_right[xcount] = {0};
+MPI_Aint xdisp_left[xcount] = {0};
+//MPI_Aint xdisp_right[xcount] = {0}; 
+
+MPI_Datatype ytypes[ycount] = {MPI_DOUBLE};
+int yblocklens[ycount] = {2*NVEL};
+MPI_Aint ydisp_right[ycount] = {0};
+MPI_Aint ydisp_left[ycount] = {0};
+//MPI_Aint ydisp_right[ycount] = {0};
+
+MPI_Datatype ztypes[zcount] = {MPI_DOUBLE};
+int zblocklens[zcount] = {2*NVEL};
+MPI_Aint zdisp_right[zcount] = {0};
+MPI_Aint zdisp_left[zcount] = {0};
+//MPI_Aint zdisp_right[zcount] = {0};
+
 
 #endif

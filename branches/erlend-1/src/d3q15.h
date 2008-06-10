@@ -4,7 +4,7 @@
  *
  *  D3Q15 definitions.
  *
- *  $Id: d3q15.h,v 1.5.6.1 2008-06-04 19:21:11 erlend Exp $
+ *  $Id: d3q15.h,v 1.5.6.2 2008-06-10 23:09:36 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -22,11 +22,26 @@ extern const double norm_[NVEL];
 extern const double ma_[NVEL][NVEL];
 extern const double mi_[NVEL][NVEL];
 
-enum {xcount_right = 1};
-extern MPI_Datatype types[xcount_right];
-extern int xblocklens_right[xcount_right];
-extern MPI_Aint xdisp_right_send[xcount_right];
-extern MPI_Aint xdisp_right_recv[xcount_right]; 
+enum {xcount = 1};
+extern MPI_Datatype xtypes[xcount];
+extern int xblocklens[xcount];
+extern MPI_Aint xdisp_right[xcount];
+extern MPI_Aint xdisp_left[xcount];
+//extern MPI_Aint xdisp_right_recv[xcount]; 
+
+enum {ycount = 1};
+extern MPI_Datatype ytypes[ycount];
+extern int yblocklens[ycount];
+extern MPI_Aint ydisp_right[ycount];
+extern MPI_Aint ydisp_left[ycount];
+//extern MPI_Aint ydisp_right_recv[ycount];
+
+enum {zcount = 1};
+extern MPI_Datatype ztypes[zcount];
+extern int zblocklens[zcount];
+extern MPI_Aint zdisp_right[zcount];
+extern MPI_Aint zdisp_left[zcount];
+//extern MPI_Aint zdisp_right_recv[zcount];
 
 #endif
 
