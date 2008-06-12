@@ -41,7 +41,7 @@ EXE= Ludwig.exe
 #
 ###
 MPICC= mpicc
-OPTS= -D_D3Q15_  #-D_SINGLE_FLUID_ -D_NOISE_
+OPTS= -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
 CFLAGS= $(OPTS) -o3
 
 ###############################################################################
@@ -100,10 +100,10 @@ endif
 #
 ##############################################################################
 
-ifneq (,$(findstring nid00, $(HOSTNAME)))
+ifneq (,$(findstring nid, $(HOSTNAME)))
 MPICC=cc
 CC=cc
-#OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
+OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_ -D_EWALD_TEST_ -D_NOISE_ #-D_COLLOIDS_TEST_ #-D_COLLOIDS_TEST_AUTOCORRELATION_
 CFLAGS = ${OPTS} -o3 -OPT:Ofast
 LDFLAGS= -ipa -Wl,-z,muldefs
 endif
