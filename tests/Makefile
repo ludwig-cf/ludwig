@@ -19,7 +19,7 @@
 #------------------------------------------------------------------------------
 
 CC     = gcc
-MPICC  = tmcc
+MPICC  = cc
 MPIRUN = mprun -np
 NPROCS = 8
 
@@ -30,7 +30,7 @@ COPTS = -Wall -D_D3Q19_
 
 CLINK  =
 CLIBS  = -lm
-MPILIB = -lmpi
+MPILIB = #-lmpi
 LAUNCH  =
 
 MPI_STUB_INCLUDE = #-I../mpi_s
@@ -53,8 +53,8 @@ TEST_TIMER_OBJ = tests.o $(SRC)/pe.o $(SRC)/timer.o
 TEST_RUNTIME_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o
 TEST_RANDOM_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/ran.o
 TEST_COORDS_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o
-TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
-		$(SRC)/io_harness.o
+#TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
+#		$(SRC)/io_harness.o
 TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(SRC)/model.o \
 		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/ran.o $(SRC)/timer.o
 TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
@@ -77,8 +77,8 @@ test_random:	$(TEST_RANDOM_OBJ) test_random.o
 		$(LINK) -o $@ $(TEST_RANDOM_OBJ) $@.o $(CLIBS)
 test_coords:	$(TEST_COORDS_OBJ) test_coords.o
 		$(LINK) -o $@ $(TEST_COORDS_OBJ) $@.o $(CLIBS)
-test_io:	$(TEST_IO_OBJ) test_io.o
-		$(LINK) -o $@ $(TEST_IO_OBJ) $@.o $(CLIBS)
+#test_io:	$(TEST_IO_OBJ) test_io.o
+#		$(LINK) -o $@ $(TEST_IO_OBJ) $@.o $(CLIBS)
 test_model:	$(TEST_MODEL_OBJ) test_model.o
 		$(LINK) -o $@ $(TEST_MODEL_OBJ) $@.o $(CLIBS)
 test_halo:	$(TEST_MODEL_OBJ) test_halo.o
