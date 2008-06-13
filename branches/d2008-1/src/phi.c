@@ -76,18 +76,8 @@ void phi_init() {
   nsites = (nlocal[X]+2*nhalo_ + nbuffer)
     *(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
 
-#ifdef _MPI_2_
- {
-   int ifail;
-   ifail = MPI_Alloc_mem(nsites*sizeof(double), MPI_INFO_NULL, &phi_site);
-   if (ifail == MPI_ERR_NO_MEM) fatal("MPI_Alloc_mem(phi) failed\n");
- }
-#else
-
   phi_site = (double *) calloc(nsites, sizeof(double));
   if (phi_site == NULL) fatal("calloc(phi) failed\n");
-
-#endif
 
   /* Gradients */
 
@@ -206,7 +196,7 @@ void phi_compute_phi_site() {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = get_site_index(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 	phi_site[index] = get_phi_at_site(index);
       }
     }
@@ -244,13 +234,8 @@ void phi_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
         for (kc = 1 ; kc <= nlocal[Z]; kc++) {
-          ihalo = get_site_index(0-nh, jc, kc);
-          ireal = get_site_index(nlocal[X]-nh, jc, kc);
-          phi_site[ihalo] = phi_site[ireal];
-
-          ihalo = get_site_index(nlocal[X]+1+nh, jc, kc);
-          ireal = get_site_index(1+nh, jc, kc);
-          phi_site[ihalo] = phi_site[ireal];
+          phi_site[ADDR(0-nh, jc,kc)] = phi_site[ADDR(nlocal[X]-nh, jc, kc)];
+          phi_site[ADDR(nlocal[X]+1+nh, jc,kc)] = phi_site[ADDR(1+nh, jc, kc)];
         }
       }
     }
@@ -260,13 +245,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, X);
     forw = cart_neighb(FORWARD, X);
 
-    ihalo = get_site_index(nlocal[X] + 1, 1-nhalo_, 1-nhalo_);
+    ihalo = ADDR(nlocal[X] + 1, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, forw, btag, comm, request);
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, back, ftag, comm, request+1);
-    ireal = get_site_index(1, 1-nhalo_, 1-nhalo_);
+    ireal = ADDR(1, 1-nhalo_, 1-nhalo_);
     MPI_Issend(phi_site + ireal, 1, phi_yz_t_, back, btag, comm, request+2);
-    ireal = get_site_index(nlocal[X] - nhalo_ + 1, 1-nhalo_, 1-nhalo_);
+    ireal = ADDR(nlocal[X] - nhalo_ + 1, 1-nhalo_, 1-nhalo_);
     MPI_Issend(phi_site + ireal, 1, phi_yz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -277,13 +262,8 @@ void phi_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (ic = 1-nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
         for (kc = 1; kc <= nlocal[Z]; kc++) {
-          ihalo = get_site_index(ic, 0-nh, kc);
-          ireal = get_site_index(ic, nlocal[Y]-nh, kc);
-          phi_site[ihalo] = phi_site[ireal];
-
-          ihalo = get_site_index(ic, nlocal[Y]+1+nh, kc);
-          ireal = get_site_index(ic, 1+nh, kc);
-          phi_site[ihalo] = phi_site[ireal];
+          phi_site[ADDR(ic,0-nh, kc)] = phi_site[ADDR(ic, nlocal[Y]-nh, kc)];
+	  phi_site[ADDR(ic,nlocal[Y]+1+nh, kc)] = phi_site[ADDR(ic, 1+nh, kc)];
         }
       }
     }
@@ -293,13 +273,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Y);
     forw = cart_neighb(FORWARD, Y);
 
-    ihalo = get_site_index(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
+    ihalo = ADDR(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, forw, btag, comm, request);
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, back, ftag, comm, request+1);
-    ireal = get_site_index(1-nhalo_, 1, 1-nhalo_);
+    ireal = ADDR(1-nhalo_, 1, 1-nhalo_);
     MPI_Issend(phi_site + ireal, 1, phi_xz_t_, back, btag, comm, request+2);
-    ireal = get_site_index(1-nhalo_, nlocal[Y] - nhalo_ + 1, 1-nhalo_);
+    ireal = ADDR(1-nhalo_, nlocal[Y] - nhalo_ + 1, 1-nhalo_);
     MPI_Issend(phi_site + ireal, 1, phi_xz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -310,13 +290,8 @@ void phi_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (ic = 1 - nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
         for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-          ihalo = get_site_index(ic, jc, 0-nh);
-          ireal = get_site_index(ic, jc, nlocal[Z]-nh);
-          phi_site[ihalo] = phi_site[ireal];
-
-          ihalo = get_site_index(ic, jc, nlocal[Z]+1+nh);
-          ireal = get_site_index(ic, jc,            1+nh);
-          phi_site[ihalo] = phi_site[ireal];
+          phi_site[ADDR(ic,jc, 0-nh)] = phi_site[ADDR(ic, jc, nlocal[Z]-nh)];
+	  phi_site[ADDR(ic,jc, nlocal[Z]+1+nh)] = phi_site[ADDR(ic, jc, 1+nh)];
         }
       }
     }
@@ -326,13 +301,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Z);
     forw = cart_neighb(FORWARD, Z);
 
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
+    ihalo = ADDR(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, forw, btag, comm, request);
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, back, ftag, comm, request+1);
-    ireal = get_site_index(1-nhalo_, 1-nhalo_, 1);
+    ireal = ADDR(1-nhalo_, 1-nhalo_, 1);
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, back, btag, comm, request+2);
-    ireal = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] - nhalo_ + 1);
+    ireal = ADDR(1-nhalo_, 1-nhalo_, nlocal[Z] - nhalo_ + 1);
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -469,7 +444,7 @@ static int phi_read(FILE * fp, const int ic, const int jc, const int kc) {
 
   int index, n;
 
-  index = get_site_index(ic, jc, kc);
+  index = le_site_index(ic, jc, kc);
   n = fread(phi_site + index, sizeof(double), 1, fp);
 
   if (n != 1) fatal("fread(phi) failed at index %d", index);
@@ -487,7 +462,7 @@ static int phi_write(FILE * fp, const int ic, const int jc, const int kc) {
 
   int index, n;
 
-  index = get_site_index(ic, jc, kc);
+  index = le_site_index(ic, jc, kc);
   n = fwrite(phi_site + index, sizeof(double), 1, fp);
 
   if (n != 1) fatal("fwrite(phi) failed at index %d\n", index);
@@ -507,12 +482,6 @@ static int phi_write(FILE * fp, const int ic, const int jc, const int kc) {
  *    values.
  *
  *****************************************************************************/
-
-/* #define ADDR get_site_index*/
-#define ADDR(ic,jc,kc) \
-((nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_)*(nhalo_+(ic)-1) + \
-                      (nlocal[Z]+2*nhalo_)*(nhalo_+(jc)-1) + \
-                                           (nhalo_+(kc)-1))
 
 void phi_leesedwards_transformation() {
 
