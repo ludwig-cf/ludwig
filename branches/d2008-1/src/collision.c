@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.7 2008-04-28 15:49:40 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.8 2008-06-13 19:13:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,6 +27,7 @@
 #include "control.h"
 #include "free_energy.h"
 #include "phi.h"
+#include "phi_gradients.h"
 #include "phi_cahn_hilliard.h"
 #include "lattice.h"
 
@@ -79,34 +80,22 @@ void collide() {
 
 #else
 
-  void MODEL_get_gradients(void);
-  void phi_gradients_compute(void);
   void phi_force_calculation_fluid(void);
-  void TEST_statistics(void);
-  int  get_N_colloid(void);
-  int  boundaries_present(void);
 
   /* This is the binary LB collision. First, compute order parameter
-   * gradients, then Swift etal. collision stage. */
+   * gradients, then collision stage. The order of these calls is
+   * important. */
 
   TIMER_start(TIMER_PHI_GRADIENTS);
 
   phi_compute_phi_site();
   phi_halo();
+  phi_gradients_compute();
 
-  if (get_N_colloid() > 0 || boundaries_present()) {
-    /* Must get gradients right so use this */ 
-    phi_gradients_compute();
-  }
-  else {
-    /* No solid objects (including cases with LE planes) use this */
-    /* MODEL_get_gradients();*/
-    phi_gradients_compute();
-    phi_force_calculation_fluid();
-  }
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
   if (phi_finite_difference_) {
+    phi_force_calculation_fluid();
     MODEL_collide_multirelaxation();
     phi_cahn_hilliard();
   }
@@ -114,7 +103,6 @@ void collide() {
     MODEL_collide_binary_lb();
   }
 
-  /* TEST_statistics();*/
 #endif
 
   return;
@@ -561,8 +549,11 @@ void MODEL_init( void ) {
     site_map_halo(); */
 
   init_site();
+  info("phi_init\n");
   phi_init();
+  phi_gradients_set_fluid();
   hydrodynamics_init();
+  info("done various\n");
   
   /*
    * A number of options are offered to start a simulation:
