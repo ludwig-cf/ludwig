@@ -34,14 +34,9 @@ static void    MODEL_write_site_bin( FILE *, int, int );
 
 #ifdef _MPI_
 
-/* MPI-specific functions and variables */
-
-static MPI_Datatype DT_Float_plane_XY;/* MPI Datatype: XY plane of Floats */
-static MPI_Datatype DT_Float_plane_XZ;/* MPI Datatype: XZ plane of Floats */
-static MPI_Datatype DT_Float_plane_YZ;/* MPI Datatype: YZ plane of Floats */
-
 MPI_Comm     IO_Comm;     /* Communicator for parallel IO groups */
-/* MPI tags */
+
+
 enum{                            
   TAG_HALO_SWP_X_BWD = 100,
   TAG_HALO_SWP_X_FWD,
@@ -75,22 +70,6 @@ void COM_init() {
 
 #ifdef _MPI_ /* Parallel (MPI) section */
 
-  int nx2, ny2, nz2, nx2y2, ny2z2;
-  int N_sites;
-  int N[3];
-
-  get_N_local(N);
-
-  /* Compute extents to define new datatypes */
-
-  nx2 = N[X]+2;
-  ny2 = N[Y]+2;
-  nz2 = N[Z]+2;
-  nx2y2 = nx2*ny2;
-  ny2z2 = ny2*nz2;
-  N_sites = (N[X]+2)*(N[Y]+2)*(N[Z]+2);
-
-
   /* Set-up parallel IO parameters (rank and root) */
 
   io_grp.n_io = 1; /* Default */
@@ -117,19 +96,6 @@ void COM_init() {
   /* Create communicator for each IO group, and get rank within IO group */
   MPI_Comm_split(cart_comm(), io_grp.index, cart_rank(), &IO_Comm);
   MPI_Comm_rank(IO_Comm, &io_grp.rank);
-
-  /* Set-up datatypes for XY, XZ and YZ planes of Floats (including halos) */
-  /* (XY) plane: (N[X]+2)*(N[Y]+2) blocks of 1 Float (stride=N[Z]+2) */
-  MPI_Type_vector(nx2y2,1,nz2, MPI_DOUBLE, &DT_Float_plane_XY);
-  MPI_Type_commit(&DT_Float_plane_XY);
-
-  /* (XZ) plane: N[X]+2 blocks of N[Z]+2 Floats (stride=(N[Y]+2)*(N[Z]+2)) */
-  MPI_Type_hvector(nx2,nz2,ny2z2*sizeof(double),MPI_DOUBLE,&DT_Float_plane_XZ);
-  MPI_Type_commit(&DT_Float_plane_XZ);
-
-  /* (YZ) plane: one contiguous block of (N[Y]+2)*(N[Z]+2) Floats */
-  MPI_Type_contiguous(ny2z2, MPI_DOUBLE,&DT_Float_plane_YZ);
-  MPI_Type_commit(&DT_Float_plane_YZ);
 
   MPI_Barrier(cart_comm());
 
