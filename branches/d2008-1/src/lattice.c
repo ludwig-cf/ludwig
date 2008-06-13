@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.7.2.5 2008-03-24 15:49:35 kevin Exp $
+ *  $Id: lattice.c,v 1.7.2.6 2008-06-13 19:11:53 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -16,11 +16,13 @@
  ***************************************************************************/
 
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "pe.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "lattice.h"
 
 struct vector {double c[3];};
@@ -35,6 +37,7 @@ static MPI_Datatype    halo_yz_t;
 
 static int             initialised_ = 0;
 static void hydrodynamics_init_mpi(void);
+static void hydrodynamics_leesedwards_parallel(void);
 
 /****************************************************************************
  *
@@ -47,10 +50,13 @@ static void hydrodynamics_init_mpi(void);
 void hydrodynamics_init() {
 
   int nlocal[3];
-  int nsites;
+  int nsites, nbuffer;
 
   get_N_local(nlocal);
-  nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
+  nbuffer = le_get_nxbuffer();
+
+  nsites = (nlocal[X]+2*nhalo_ + nbuffer)
+    *(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
 
   u = (struct vector *) calloc(nsites, sizeof(struct vector));
   f = (struct vector *) calloc(nsites, sizeof(struct vector));
@@ -366,6 +372,165 @@ void hydrodynamics_zero_force() {
       }
     }
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  hydrodynamics_lees_edwards_transformation
+ *
+ *
+ *****************************************************************************/
+
+void hydrodynamics_leesedwards_transformation() {
+
+  int nlocal[3]; /* Local system size */
+  int ib;        /* Index in buffer region */
+  int ib0;       /* buffer region offset */
+  int ic;        /* Index corresponding x location in real system */
+  int jc, kc, ia;
+
+  double dy;     /* Displacement for current ic->ib pair */
+  double fr;     /* Fractional displacement */
+  int jdy;       /* Integral part of displacement */
+  int j1, j2;    /* j values in real system to interpolate between */
+
+  assert(initialised_);
+
+  if (cart_size(Y) > 1) {
+    hydrodynamics_leesedwards_parallel();
+  }
+  else {
+
+    get_N_local(nlocal);
+    ib0 = nlocal[X] + nhalo_ + 1;
+
+    for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+
+      ic = le_index_buffer_to_real(ib);
+      dy = le_buffer_displacement(ib);
+      dy = fmod(dy, L(Y));
+      jdy = floor(dy);
+      fr  = dy - jdy;
+
+      for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
+	/* Actually required here is j1 = jc - jdy - 1, but there's
+	 * horrible modular arithmetic for the periodic boundaries
+	 * to ensure 1 <= j1,j2 <= nlocal[Y] */
+	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
+	j2 = 1 + j1 % nlocal[Y];
+	for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+	  for (ia = 0; ia < 3; ia++) {
+	  u[ADDR(ib0+ib,jc,kc)].c[ia] =
+	    fr*u[ADDR(ic,j1,kc)].c[ia] + (1.0-fr)*u[ADDR(ic,j2,kc)].c[ia];
+	  }
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  hydrodynamics_leesedwards_parallel
+ *
+ *  The Lees Edwards transformation for the velocity field in parallel.
+ *
+ *****************************************************************************/
+
+static void hydrodynamics_leesedwards_parallel() {
+
+  int      nlocal[3];      /* Local system size */
+  int      noffset[3];     /* Local starting offset */
+  double * buffer;         /* Interpolation buffer */
+  int ib;                  /* Index in buffer region */
+  int ib0;                 /* buffer region offset */
+  int ic;                  /* Index corresponding x location in real system */
+  int jc, kc, j1, j2;
+  int n, n1, n2;
+  double dy;               /* Displacement for current ic->ib pair */
+  double fr;               /* Fractional displacement */
+  int jdy;                 /* Integral part of displacement */
+
+  MPI_Comm le_comm = le_communicator();
+  int      nrank_s[2];     /* send ranks */
+  int      nrank_r[2];     /* recv ranks */
+  const int tag0 = 1256;
+  const int tag1 = 1257;
+
+  MPI_Request request[4];
+  MPI_Status  status[4];
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+  ib0 = nlocal[X] + nhalo_ + 1;
+
+  /* Allocate the temporary buffer */
+
+  n = 3*(nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+  buffer = (double *) malloc(n*sizeof(double));
+  if (buffer == NULL) fatal("hydrodynamics: malloc(le buffer) failed\n");
+
+  /* One round of communication for each buffer plane */
+
+  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+
+    ic = le_index_buffer_to_real(ib);
+    kc = 1 - nhalo_;
+
+    /* Work out the displacement-dependent quantities */
+
+    dy = le_buffer_displacement(ib);
+    dy = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fr  = dy - jdy;
+
+    /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo_.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+
+    jc = noffset[Y] + 1 - nhalo_;
+    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+
+    le_displacement_ranks(dy, nrank_r, nrank_s);
+
+    /* Local quantities: given a local starting index j2, we receive
+     * n1 + n2 sites into the buffer, and send n1 sites starting with
+     * j2, and the remaining n2 sites from starting position nhalo_. */
+
+    j2 = j1 % nlocal[Y];
+
+    n1 = (nlocal[Y] - j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
+    n2 = (j2 + nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+
+    /* Post receives, sends and wait. */
+#ifdef OPERATIONAL
+    MPI_Irecv(buffer,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(buffer+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
+    MPI_Issend(u + 3*ADDR(ic,j2,kc), n1, MPI_DOUBLE, nrank_s[0], tag0,
+	       le_comm, request+2);
+    MPI_Issend(u + 3*ADDR(ic,nhalo_,kc), n2, MPI_DOUBLE, nrank_s[1], tag1,
+	       le_comm, request+3);
+
+    MPI_Waitall(4, request, status);
+
+    /* Perform the actual interpolation from temporary buffer to
+     * phi_site[] buffer region. */
+
+    for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
+      j1 = (jc + nhalo_ - 1    )*(nlocal[Z] + 2*nhalo_);
+      j2 = (jc + nhalo_ - 1 + 1)*(nlocal[Z] + 2*nhalo_);
+      for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+	u[ADDR(ib0+ib,jc,kc)] =
+	  fr*buffer[j1+kc] + (1.0-fr)*buffer[j2+kc];
+      }
+    }
+#endif
+  }
+
+  free(buffer);
 
   return;
 }
