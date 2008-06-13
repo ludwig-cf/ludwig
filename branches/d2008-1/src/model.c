@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.4.4 2008-03-21 12:41:27 kevin Exp $
+ *  $Id: model.c,v 1.9.4.5 2008-06-13 19:15:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -71,21 +71,8 @@ void init_site() {
 
   info("Requesting %d bytes for site data\n", nsites_*sizeof(Site));
 
-#ifdef _MPI_2_
- {
-   int ifail;
-
-   ifail = MPI_Alloc_mem(nsites_*sizeof(Site), MPI_INFO_NULL, &site);
-   if (ifail == MPI_ERR_NO_MEM) fatal("MPI_Alloc_mem(site) failed\n");
- }
-#else
-
-  /* Use calloc. */
-
   site = (Site  *) calloc(nsites_, sizeof(Site));
   if (site == NULL) fatal("calloc(site) failed\n");
-
-#endif
 
   /* Set up the MPI Datatypes used for site, and its corresponding
    * halo messages:
