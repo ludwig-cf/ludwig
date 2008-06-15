@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.4 2008-06-11 14:22:10 erlend Exp $
+ *  $Id: model.c,v 1.9.6.5 2008-06-15 22:54:59 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -111,43 +111,46 @@ void init_site() {
   printf("   nx=%d, ny=%d, nz=%d \n", nx, ny, nz);
   printf(" -- \n");*/
 
-  // OLDCODE
-  MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
-  MPI_Type_commit(&DT_Site);
+  int reduced_halos = 1;
+  if(!reduced_halos) {
+    MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
+    MPI_Type_commit(&DT_Site);
+    MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
+    MPI_Type_commit(&DT_plane_YZ);
+    MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site, &DT_plane_XZ);
+    MPI_Type_commit(&DT_plane_XZ);
+    MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
+    MPI_Type_commit(&DT_plane_XY);
 
-  MPI_Type_struct(xcount, xblocklens, xdisp_right, xtypes, &DT_Site_xright);
-  MPI_Type_struct(xcount, xblocklens, xdisp_left, xtypes, &DT_Site_xleft);
-  MPI_Type_struct(ycount, yblocklens, ydisp_right, ytypes, &DT_Site_yright);
-  MPI_Type_struct(ycount, yblocklens, ydisp_left, ytypes, &DT_Site_yleft);
-  MPI_Type_struct(zcount, zblocklens, zdisp_right, ztypes, &DT_Site_zright);
-  MPI_Type_struct(zcount, zblocklens, zdisp_left, ztypes, &DT_Site_zleft);
-  MPI_Type_commit(&DT_Site_xright);
-  MPI_Type_commit(&DT_Site_xleft);
-  MPI_Type_commit(&DT_Site_yright);
-  MPI_Type_commit(&DT_Site_yleft);
-  MPI_Type_commit(&DT_Site_zright);
-  MPI_Type_commit(&DT_Site_zleft);
+  } else {
+    MPI_Type_struct(xcount, xblocklens, xdisp_right, xtypes, &DT_Site_xright);
+    MPI_Type_struct(xcount, xblocklens, xdisp_left, xtypes, &DT_Site_xleft);
+    MPI_Type_struct(ycount, yblocklens, ydisp_right, ytypes, &DT_Site_yright);
+    MPI_Type_struct(ycount, yblocklens, ydisp_left, ytypes, &DT_Site_yleft);
+    MPI_Type_struct(zcount, zblocklens, zdisp_right, ztypes, &DT_Site_zright);
+    MPI_Type_struct(zcount, zblocklens, zdisp_left, ztypes, &DT_Site_zleft);
+    MPI_Type_commit(&DT_Site_xright);
+    MPI_Type_commit(&DT_Site_xleft);
+    MPI_Type_commit(&DT_Site_yright);
+    MPI_Type_commit(&DT_Site_yleft);
+    MPI_Type_commit(&DT_Site_zright);
+    MPI_Type_commit(&DT_Site_zleft);
 
-  MPI_Type_vector(nx*ny, 1, nz, DT_Site_zright, &DT_plane_XY_right);
-  MPI_Type_commit(&DT_plane_XY_right);
-  MPI_Type_vector(nx*ny, 1, nz, DT_Site_zleft, &DT_plane_XY_left);
-  MPI_Type_commit(&DT_plane_XY_left);
+    MPI_Type_vector(nx*ny, 1, nz, DT_Site_zright, &DT_plane_XY_right);
+    MPI_Type_commit(&DT_plane_XY_right);
+    MPI_Type_vector(nx*ny, 1, nz, DT_Site_zleft, &DT_plane_XY_left);
+    MPI_Type_commit(&DT_plane_XY_left);
 
-  MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site_yright, &DT_plane_XZ_right);
-  MPI_Type_commit(&DT_plane_XZ_right);
-  MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site_yleft, &DT_plane_XZ_left);
-  MPI_Type_commit(&DT_plane_XZ_left);
+    MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site_yright, &DT_plane_XZ_right);
+    MPI_Type_commit(&DT_plane_XZ_right);
+    MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site_yleft, &DT_plane_XZ_left);
+    MPI_Type_commit(&DT_plane_XZ_left);
 
-  // OLDCODE
-  MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
-  MPI_Type_commit(&DT_plane_YZ);
-  MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site, &DT_plane_XZ);
-  MPI_Type_commit(&DT_plane_XZ);
-
-  MPI_Type_contiguous(ny*nz, DT_Site_xright, &DT_plane_YZ_right);
-  MPI_Type_commit(&DT_plane_YZ_right);
-  MPI_Type_contiguous(ny*nz, DT_Site_xleft, &DT_plane_YZ_left);
-  MPI_Type_commit(&DT_plane_YZ_left);
+    MPI_Type_contiguous(ny*nz, DT_Site_xright, &DT_plane_YZ_right);
+    MPI_Type_commit(&DT_plane_YZ_right);
+    MPI_Type_contiguous(ny*nz, DT_Site_xleft, &DT_plane_YZ_left);
+    MPI_Type_commit(&DT_plane_YZ_left);
+  }
 
  #endif
 
