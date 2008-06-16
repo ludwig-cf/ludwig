@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.5 2008-06-15 22:54:59 erlend Exp $
+ *  $Id: model.c,v 1.9.6.6 2008-06-16 13:24:47 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -106,23 +106,9 @@ void init_site() {
    * in YZ plane one contiguous block of ny*nz sites.
    *
    * This is only confirmed for nhalo_site_ = 1. */
-  /*
-  printf(" -- init_site() -- \n");
-  printf("   nx=%d, ny=%d, nz=%d \n", nx, ny, nz);
-  printf(" -- \n");*/
-
-  int reduced_halos = 1;
-  if(!reduced_halos) {
-    MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
-    MPI_Type_commit(&DT_Site);
-    MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
-    MPI_Type_commit(&DT_plane_YZ);
-    MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site, &DT_plane_XZ);
-    MPI_Type_commit(&DT_plane_XZ);
-    MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
-    MPI_Type_commit(&DT_plane_XY);
-
-  } else {
+  
+  if(use_reduced_halos()) {
+    printf("Using reduced halos. \n");
     MPI_Type_struct(xcount, xblocklens, xdisp_right, xtypes, &DT_Site_xright);
     MPI_Type_struct(xcount, xblocklens, xdisp_left, xtypes, &DT_Site_xleft);
     MPI_Type_struct(ycount, yblocklens, ydisp_right, ytypes, &DT_Site_yright);
@@ -150,6 +136,16 @@ void init_site() {
     MPI_Type_commit(&DT_plane_YZ_right);
     MPI_Type_contiguous(ny*nz, DT_Site_xleft, &DT_plane_YZ_left);
     MPI_Type_commit(&DT_plane_YZ_left);
+  } else {
+    printf("Using full halos. \n");
+    MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
+    MPI_Type_commit(&DT_Site);
+    MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
+    MPI_Type_commit(&DT_plane_YZ);
+    MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site, &DT_plane_XZ);
+    MPI_Type_commit(&DT_plane_XZ);
+    MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
+    MPI_Type_commit(&DT_plane_XY);
   }
 
  #endif
