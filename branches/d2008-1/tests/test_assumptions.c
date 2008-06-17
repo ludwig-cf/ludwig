@@ -10,9 +10,13 @@
  *****************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 int main(int argc, char ** argv) {
+
+  int n;
+  int * p_int;
 
   printf("Testing assumptions...\n");
 
@@ -23,18 +27,9 @@ int main(int argc, char ** argv) {
   assert(sizeof(int) == 4);
   printf("yes\n");
 
-  printf("Checking sizeof(long int) is 4 bytes... ");
-  assert(sizeof(long int) == 4);
-  printf("yes\n");
-
-#ifdef _TESTS_PLUS_KR_
-  /* Note that long long requires K&R extensions to ANSI,
-   * so this might break under strictly conformant ANSI
-   * compiler. However, there are no long long in the code. */
-  printf("Checking sizeof(long long int) is 8 bytes... ");
-  assert(sizeof(long long int) == 8);
-  printf("yes\n");
-#endif
+  printf("Checking sizeof(long int) is >= 4 bytes... ");
+  assert(sizeof(long int) >= 4);
+  printf("yes (%ld bytes)\n", sizeof(long int));
 
   /* All floating point types in the code should be double,
    * which must be 8 bytes. */
@@ -49,7 +44,21 @@ int main(int argc, char ** argv) {
 
   printf("Checking FILENAME_MAX >= 128 characters ... ");
   assert(FILENAME_MAX >= 128);
-  printf("yes\n");
+  printf("yes (%d characters)\n", FILENAME_MAX);
+
+  /* See what happens to zero size allocation */
+
+  n = 0;
+  p_int = (int *) malloc(n*sizeof(int));
+
+  if (p_int == NULL) {
+    printf("malloc(0) returns a NULL pointer\n");
+  }
+  else {
+    printf("malloc(0) returns non NULL pointer\n");
+    free(p_int);
+  }
+
 
   /* Information */
   printf("Language\n");
