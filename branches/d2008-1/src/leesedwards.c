@@ -134,7 +134,7 @@ void LE_init() {
 
 static void le_init_tables() {
 
-  int ib, ic, ip, n, nh, np;
+  int ib, ic, ip, n, nb, nh, np;
   int nlocal[3];
 
   get_N_local(nlocal);
@@ -156,6 +156,7 @@ static void le_init_tables() {
   for (n = 0; n < N_LE_plane; n++) {
     ic = LeesEdw_plane[n].loc - (nhalo_ - 1);
     for (nh = 0; nh < 2*nhalo_; nh++) {
+      assert(ib < 2*nhalo_*N_LE_plane);
       le_params_.index_buffer_to_real[ib] = ic + nh;
       ib++;
     }
@@ -169,7 +170,7 @@ static void le_init_tables() {
    * LE boundary, and if so, in which direction.
    * ie., we need a look up table = function(x, +/- dx).
    * Note that this table exists when no planes are present, ie.,
-   * there is no transformation, ie., f(x, dx) = x always.
+   * there is no transformation, ie., f(x, dx) = x + dx for all dx.
    */
 
   n = (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1);
@@ -183,40 +184,55 @@ static void le_init_tables() {
 
    for (ic = 1 - nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
      for (nh = -nhalo_; nh <= nhalo_; nh++) {
-       n = ic*(2*nhalo_+1) + (nh + nhalo_);
+       n = (ic + nhalo_ - 1)*(2*nhalo_+1) + (nh + nhalo_);
+       assert(n >= 0 && n < (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1));
        le_params_.index_real_to_buffer[n] = ic + nh;
      }
-     n = ic*(2*nhalo_+1);
    }
 
-   /* Correct the table to account for any local planes. */
+   /* For each position in the buffer, add appropriate
+    * corrections in the table. */
 
-   ib = nlocal[X] + nhalo_ + 1;
+   nb = nlocal[X] + nhalo_ + 1;
 
-   for (np = 0; np < N_LE_plane; np++) {
+   for (ib = 0; ib < le_params_.nxbuffer; ib++) {
+     np = ib / (2*nhalo_);
      ip = LeesEdw_plane[np].loc;
 
-     /* looking across the boundary in -ve x direction */
-     for (ic = ip + 1; ic <= ip + nhalo_; ic++) {
-       for (nh = -nhalo_; nh < 0; nh++) {
-	 if (ic+nh <= ip) {
-	   n = ic*(2*nhalo_+1) + (nh + nhalo_);
-	   le_params_.index_real_to_buffer[n] = ib++;
-	 }
-       }
-     }
+     /* This bit of logical chooses the first nhalo_ points of the
+      * buffer region for each plane as the 'downward' looking part */
 
-     /* looking across the boundary in +ve x direction */
-     for (ic = ip - (nhalo_ - 1); ic <= ip; ic++) {
-       for (nh = 1; nh <= nhalo_; nh++) {
-	 if (ic+nh > ip) {
-	   n = ic*(2*nhalo_+1) + (nh + nhalo_);
-	   le_params_.index_real_to_buffer[n] = ib++;	   
+     if ((ib - np*2*nhalo_) < nhalo_) {
+
+       /* Looking across the plane in the -ve x-direction */
+
+       for (ic = ip + 1; ic <= ip + nhalo_; ic++) {
+	 for (nh = -nhalo_; nh <= -1; nh++) {
+	   if (ic + nh == le_params_.index_buffer_to_real[ib]) {
+	     n = (ic + nhalo_ - 1)*(2*nhalo_+1) + (nh + nhalo_);
+	     assert(n >= 0 && n < (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1));
+	     le_params_.index_real_to_buffer[n] = nb+ib;
+	   }
 	 }
        }
      }
+     else {
+       /* looking across the plane in the +ve x-direction */
+
+       for (ic = ip - (nhalo_ - 1); ic <= ip; ic++) {
+	 for (nh = 1; nh <= nhalo_; nh++) {
+	   if (ic + nh == le_params_.index_buffer_to_real[ib]) {
+	     n = (ic + nhalo_ - 1)*(2*nhalo_+1) + (nh + nhalo_);
+	     assert(n >= 0 && n < (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1));
+	     le_params_.index_real_to_buffer[n] = nb+ib;	   
+	   }
+	 }
+       }
+     }
+     /* Next buffer point */
    }
 
+   
    /* Buffer velocity jumps. When looking from the real system across
     * a boundary into a given buffer, what is the associated velocity
     * jump? The boundary velocities are constant in time. */
@@ -228,10 +244,12 @@ static void le_init_tables() {
   ib = 0;
   for (n = 0; n < N_LE_plane; n++) {
     for (nh = 0; nh < nhalo_; nh++) {
+      assert(ib < le_params_.nxbuffer);
       le_params_.buffer_duy[ib] = -LeesEdw_plane[n].vel;
       ib++;
     }
     for (nh = 0; nh < nhalo_; nh++) {
+      assert(ib < le_params_.nxbuffer);
       le_params_.buffer_duy[ib] = +LeesEdw_plane[n].vel;
       ib++;
     }
@@ -505,7 +523,7 @@ void LE_apply_LEBC( void )
 
 void LE_init_original( void )
 {
-  int     plane, integ, i, N_sites, ny2z2;
+  int     plane, integ, i, ny2z2;
   double   displ, frac;
   int     N[3];
     
@@ -523,8 +541,6 @@ void LE_init_original( void )
   ny2z2 = (N[Y]+2*nhalo_)*(N[Z]+2*nhalo_);
   ny3z2 = (N[Y]+2*nhalo_+1)*(N[Z]+2*nhalo_);
 
-  N_sites = (N[X]+2*nhalo_)*(N[Y]+2*nhalo_)*(N[Z]+2*nhalo_);
-  
   /* Set up Lees-Edwards specific MPI datatypes */
   
   /* 
@@ -661,7 +677,6 @@ void LE_init_original( void )
 
   get_N_local(N);
   
-  N_sites = (N[X]+2*nhalo_)*(N[Y]+2*nhalo_)*(N[Z]+2*nhalo_);
   ny2z2 = (N[Y]+2*nhalo_)*(N[Z]+2*nhalo_);
   N_LE_plane = N_LE_total;
 
@@ -709,7 +724,6 @@ void LE_init_original( void )
     if(LeesEdw_site==NULL)
       {
 	fatal("LE_Init(): failed to allocate %d bytes for LE buffers\n",
-	      N_sites*sizeof(double) +
 	      2*(2*LE_N_VEL_XING+1)*N_LE_plane*ny2z2*sizeof(double));
       }
   }
@@ -1239,7 +1253,7 @@ int le_index_real_to_buffer(const int ic, const int di) {
   assert(initialised_);
   assert(di >= -nhalo_ && di <= +nhalo_);
 
-  ib = ic*(2*nhalo_ + 1) + di + nhalo_;
+  ib = (ic + nhalo_ - 1)*(2*nhalo_ + 1) + di + nhalo_;
 
   assert(ib >= 0 && ib < le_params_.index_real_nbuffer);
 
