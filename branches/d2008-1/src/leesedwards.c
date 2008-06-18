@@ -450,6 +450,7 @@ void LE_apply_LEBC( void )
   
   /* Stage 3: update buffers (pre-requisite to translation) */
 
+  halo_site();
   LE_update_buffers(SITE_AND_PHI);
 
   /* Stage 4: apply translation on fs and gs crossing LE planes */
@@ -845,7 +846,7 @@ void LE_update_buffers( int target_buff )
 	   */
 
 	  /* Starting y coordinate (global address): range 1->N_total.y */
-	  start_y = ((offset[Y]+integ+2*N_total(Y)-1) % N_total(Y)) + 1;
+	  start_y = ((offset[Y]+(1-nhalo_)+integ+2*N_total(Y)-1) % N_total(Y)) + 1;
       
 	  /* Get ranks of both target PEs (target_rank1 and target_rank2) */
 	  /* Note PEi responsible for start_y in (local) range 0->N[Y]-1 */
@@ -866,7 +867,7 @@ void LE_update_buffers( int target_buff )
 	  /* Number of sites to fetch from target_rank1 and target_rank2 */
 	  /* Note that nsites = nsites1+nsites2 = (N[Y]+3)*(N[Z]+2) */
 	  nsites1 = (N[Y]-start_y+1)*(N[Z]+2*nhalo_);
-	  nsites2 =     (start_y+2)*(N[Z]+2*nhalo_);
+	  nsites2 =     (start_y+1+1)*(N[Z]+2*nhalo_);
       
         /* Use point-to-point communication */
 
@@ -888,9 +889,15 @@ void LE_update_buffers( int target_buff )
                   TAG_LE_START, LeesEdw_Comm, &req[0]);
         MPI_Irecv(&buff_site[nsites1].f[0], nsites2, DT_Site, source_rank2,
                   TAG_LE_END, LeesEdw_Comm, &req[1]);
+	/*
         MPI_Issend(&site[LE_loc*xfac+start_y*yfac].f[0], nsites1, DT_Site,
                    target_rank1, TAG_LE_START, LeesEdw_Comm, &req[2]);
-        MPI_Issend(&site[LE_loc*xfac+yfac].f[0], nsites2, DT_Site,
+        MPI_Issend(&site[LE_loc*xfac+nhalo_*yfac].f[0], nsites2, DT_Site,
+                   target_rank2, TAG_LE_END, LeesEdw_Comm, &req[3]);
+	*/
+        MPI_Issend(&site[ADDR(LE_loc,start_y,1-nhalo_)].f[0], nsites1, DT_Site,
+                   target_rank1, TAG_LE_START, LeesEdw_Comm, &req[2]);
+        MPI_Issend(&site[ADDR(LE_loc,1,1-nhalo_)].f[0], nsites2, DT_Site,
                    target_rank2, TAG_LE_END, LeesEdw_Comm, &req[3]);
         MPI_Waitall(4,req,status);
 
@@ -898,7 +905,7 @@ void LE_update_buffers( int target_buff )
 	  /* buff[i] = (1-frac)*phi[i-(integ+1)] + frac*phi[i-integ] */
       
 	  /* Starting y coordinate (global address): range 1->N_total.y */
-	  start_y = ((offset[Y]-integ+2*N_total(Y)-2) % N_total(Y)) + 1;
+	start_y = ((offset[Y]+(1-nhalo_)-integ+2*N_total(Y)-2) % N_total(Y)) + 1;
       
 	  /* Get ranks of both target PEs (target_rank1 and target_rank2) */
 	  /* Note PEi responsible for start_y in (local) range 0->N[Y]-1 */
@@ -919,7 +926,7 @@ void LE_update_buffers( int target_buff )
 	  /* Number of sites to fetch from target_rank1 and target_rank2 */
 	  /* Note that nsites = nsites1+nsites2 = (N[Y]+3)*(N[Z]+2) */
 	  nsites1 = (N[Y]-start_y+1)*(N[Z]+2*nhalo_);
-	  nsites2 =     (start_y+2)*(N[Z]+2*nhalo_);
+	  nsites2 =     (start_y+1+1)*(N[Z]+2*nhalo_);
 	  
         /* Use point-to-point communication */
 
@@ -941,10 +948,17 @@ void LE_update_buffers( int target_buff )
                   TAG_LE_START, LeesEdw_Comm, &req[0]);
         MPI_Irecv(&buff_site[nsites+nsites1].f[0], nsites2, DT_Site,
                   source_rank2, TAG_LE_END, LeesEdw_Comm, &req[1]);
+	/*
         MPI_Issend(&site[(LE_loc+1)*xfac+start_y*yfac].f[0], nsites1,
                    DT_Site,
                    target_rank1, TAG_LE_START, LeesEdw_Comm, &req[2]);
-        MPI_Issend(&site[(LE_loc+1)*xfac+yfac].f[0], nsites2, DT_Site,
+        MPI_Issend(&site[(LE_loc+1)*xfac+nhalo_*yfac].f[0], nsites2, DT_Site,
+                   target_rank2, TAG_LE_END, LeesEdw_Comm, &req[3]);
+	*/
+        MPI_Issend(&site[ADDR(LE_loc+1,start_y,1-nhalo_)].f[0], nsites1,
+                   DT_Site,
+                   target_rank1, TAG_LE_START, LeesEdw_Comm, &req[2]);
+        MPI_Issend(&site[ADDR(LE_loc+1,1,1-nhalo_)].f[0], nsites2, DT_Site,
                    target_rank2, TAG_LE_END, LeesEdw_Comm, &req[3]);
         MPI_Waitall(4,req,status);
 
@@ -959,12 +973,12 @@ void LE_update_buffers( int target_buff )
 	   */
 
 	  /* Plane below */
-	  for(jj=0; jj<=N[Y]+1; jj++)
-	    for(kk=0; kk<=N[Z]+1; kk++)
+	  for(jj=1; jj<=N[Y]; jj++)
+	    for(kk=1; kk<=N[Z]; kk++)
 	      {
 		ind = 2*i*xfac2 + jj*yfac2 + kk*zfac2;
-		ind0 =            jj*yfac  + kk;
-		ind1 =        (jj+1)*yfac  + kk;
+		ind0 =            (jj+nhalo_-1)*yfac  + kk + nhalo_-1;
+		ind1 =        (jj+nhalo_-1+1)*yfac  + kk + nhalo_-1;
 		ind2 = 0; 
 		for(vel_ind=0; vel_ind<NVEL; vel_ind++)	      
 		  if(cv[vel_ind][X]==1)
@@ -980,12 +994,12 @@ void LE_update_buffers( int target_buff )
 	      }
 	  
 	  /* Plane above */
-	  for(jj=0; jj<=N[Y]+1; jj++)
-	    for(kk=0; kk<=N[Z]+1; kk++)
+	  for(jj=1; jj<=N[Y]; jj++)
+	    for(kk=1; kk<=N[Z]; kk++)
 	      {
 		ind = (2*i+1)*xfac2 +  jj   *yfac2 + kk*zfac2;
-		ind0 =       nsites +  jj   *yfac  + kk;
-		ind1 =       nsites + (jj+1)*yfac  + kk;
+		ind0 =       nsites +  (jj+nhalo_-1)   *yfac  + kk+nhalo_-1;
+		ind1 =       nsites + (jj+nhalo_-1+1)*yfac  + kk+nhalo_-1;
 		ind2 = 0;
 		for(vel_ind=0; vel_ind<NVEL; vel_ind++)	      
 		  if(cv[vel_ind][X]==-1)
