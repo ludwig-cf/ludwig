@@ -1,21 +1,21 @@
-128		% Lx  % cannot set = 1 without changing code
-128		% Ly
-128		% Lz 
-20		% Nmax
+256		% Lx  % cannot set = 1 without changing code
+256		% Ly
+256		% Lz 
+300000		% Nmax
 0    		% GRAPHICS
-10		% stepskip
+1500		% stepskip
 2		% itimprov
 0.000000   	% bodyforce
 0		% RANDOM - this seems to be unstable??
 0		% TWIST
-0		% O2STRUCT
+1		% O2STRUCT
 0		% O5STRUCT
 0		% O8STRUCT
-1               % O8MSTRUCT
+0               % O8MSTRUCT
 0		% DTSTRUCT
 0.01		% L1 first elastic constant 
 0.01		% L2 second elastic constant (with only L1, L2 splay=bend)
-8	        % numuc - number of unit cells along pitch direction
+16	        % numuc - number of unit cells along pitch direction
 1.0             % numhftwist - number of half twists in unit cell
 0.3		% Gamma, diffusion constant
 3.00            % gam, gam > 2.7 => nematic 
@@ -36,11 +36,11 @@
 0.0		% angxybot: ang with x at bottom boundary
 0.007	     	% strength of the bulk term: ABulk
 0.19		% threshold to define a defect
-10	     	% OVDPrintInt
+1500	     	% OVDPrintInt
 1500	     	% FePrintInt
-1	     	% SigPrintFac
-1		% numCase
-2		% x proc decomp
-2		% y proc decomp
-2		% z proc decomp
-2		% file grouping
+1500	     	% SigPrintFac
+2		% numCase
+4		% x proc decomp
+4		% y proc decomp
+8		% z proc decomp
+4		% file grouping
