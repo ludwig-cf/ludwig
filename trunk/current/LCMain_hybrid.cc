@@ -380,7 +380,7 @@ int main(int argc, char** argv)
     }
 
 
-    if (n % stepskip == 0) {
+    if (n % stepskip == 0 || n ==1) {
 	writeDiscFile_ks(n);
     }
   }
