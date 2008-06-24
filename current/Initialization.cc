@@ -274,9 +274,13 @@ void startDroplet(void)
 	// For 128^3 the unaltered position is 3/8 L -> 5/8 L
 	// For 256^3 the unaltered position is 7/16 L -> 9/16 L
 	// Assume Lx = Ly = Lz
+
+      /**********************************************/
+      /* NOTE: the number of unit cells enters here */
+      /**********************************************/
  
-	fracmin = 0.5 - 16.0/Lx;
-	fracmax = 0.5 + 16.0/Lx;
+	fracmin = 0.5 - 1.0/numuc;
+	fracmax = 0.5 + 1.0/numuc;
 
 	if ( (jc < (fracmin*Ly) )||( jc > (fracmax*Ly))||
 	     (ic < (fracmin*Lx) )||( ic > (fracmax*Lx))||
@@ -309,18 +313,90 @@ void startDroplet(void)
 
 	  //  droplet in isotropic environment
 
-	  //      Qxx[i][j][k]= 1e-4/2.0;
-	  //     Qxy[i][j][k]= 0.0;
-	  //      Qyy[i][j][k]= -1e-4;
-	  //      Qxz[i][j][k]= 0.0;
-	  //      Qyz[i][j][k]= 0.0;
-
+	  /*
+	        Qxx[i][j][k]= 1e-4/2.0;
+	        Qxy[i][j][k]= 0.0;
+	        Qyy[i][j][k]= -1e-4;
+	        Qxz[i][j][k]= 0.0;
+	        Qyz[i][j][k]= 0.0;
+	 */
 
 	}
       }
     }
   }
 }
+
+
+void startSlab(void)
+{
+  int i,j,k,l;
+  double phase,phase2,amplitude;
+  double fracmin, fracmax;
+
+  int ic, jc, kc;
+  int ioff = 0, joff = 0, koff = 0;
+
+#ifdef PARALLEL
+  ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
+  joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
+  koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
+#endif
+
+  for (i=ix1; i<ix2; i++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+
+	ic = i - ix1 + ioff;
+	jc = j - jy1 + joff;
+	kc = k - kz1 + koff;
+
+	fracmin = 0.5;
+	fracmax = 1.0;
+
+	if ((jc < (fracmin*Ly)) || (jc > (fracmax*Ly))) {
+
+
+	  amplitude=(0.546-0.2723/2.0);
+
+	  // slab in cholesteric environment
+      
+	  Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
+	  Qxy[i][j][k]= 0.0;
+	  Qyy[i][j][k]= -0.2723;
+	  Qxz[i][j][k]= -amplitude*(sin(2.0*q0*jc));
+	  Qyz[i][j][k]= 0.0;
+
+	  // allow for different definition of the pitch in O8 and O8M
+	  if(O8MSTRUCT == 1 || O8STRUCT == 1){
+
+	    Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0/sqrt(2.0)*jc);
+	    Qxy[i][j][k]= 0.0;
+	    Qyy[i][j][k]= -0.2723;
+	    Qxz[i][j][k]= -amplitude*(sin(2.0*q0/sqrt(2.0)*jc));
+	    //sign change
+	    //	 Qxz[i][j][k]= amplitude*(sin(2.0*q0/sqrt(2.0)*jc));
+	    Qyz[i][j][k]= 0.0;
+
+
+	  }
+
+	  //  slab in isotropic environment
+
+	  /*
+	        Qxx[i][j][k]= 1e-4/2.0;
+	        Qxy[i][j][k]= 0.0;
+	        Qyy[i][j][k]= -1e-4;
+	        Qxz[i][j][k]= 0.0;
+	        Qyz[i][j][k]= 0.0;
+	 */
+
+	}
+      }
+    }
+  }
+}
+
 
 void reinit()
 {
