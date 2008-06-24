@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.6 2008-06-16 13:24:47 erlend Exp $
+ *  $Id: model.c,v 1.9.6.7 2008-06-24 17:58:38 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -107,6 +107,7 @@ void init_site() {
    *
    * This is only confirmed for nhalo_site_ = 1. */
   
+
   if(use_reduced_halos()) {
     printf("Using reduced halos. \n");
     MPI_Type_struct(xcount, xblocklens, xdisp_right, xtypes, &DT_Site_xright);

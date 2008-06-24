@@ -41,7 +41,7 @@ EXE= Ludwig.exe
 #
 ###
 MPICC= mpicc
-OPTS= -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
+OPTS= -D_D3Q15_  #-D_SINGLE_FLUID_ -D_NOISE_
 CFLAGS= $(OPTS) -o3
 
 ###############################################################################

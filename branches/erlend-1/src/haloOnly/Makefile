@@ -52,8 +52,10 @@ EXE= Ludwig.exe
 #
 ###############################################################################
 
-LDFLAGS= -Xc -v -errwarn -xO3
+#LDFLAGS= -Xc -v -errwarn -xO3
 OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_
+COPTS = -O3
+MPICC= mpicc
 
 ###############################################################################
 #
@@ -64,14 +66,14 @@ OPTS =  -D_D3Q15_ -D_SINGLE_FLUID_
 KOJAK=#/bgl/local/packages/kojak/bin/kinst-pomp
 HPCT = /bgl/local/packages/hpct_all/hpct_bgl_20070116
 
-CC= gcc
-MPICC=  mpixlc  #-I$(HPCT)/include
-COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
-LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
-OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
+#CC= gcc
+#MPICC=  mpixlc  #-I$(HPCT)/include
+#COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
+#LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
+#OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
 
-LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
-#-L/bgl/local/lib/mpitrace -lmpitrace_c
+#LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
+##-L/bgl/local/lib/mpitrace -lmpitrace_c
 
 ###############################################################################
 #
