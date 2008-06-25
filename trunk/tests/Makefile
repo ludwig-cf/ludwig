@@ -18,14 +18,14 @@
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
-CC     = gcc
-MPICC  = cc
+CC     = pgcc
+MPICC  = mpicc
 MPIRUN = mprun -np
 NPROCS = 8
 
 SRC    = ../src
 INCLUDE = -I$(SRC) $(MPI_INCLUDE)
-COPTS = -Wall -D_D3Q19_
+COPTS = -D_D3Q15_
 #COPTS  = -Xc -v -errwarn -D_D3Q19_
 
 CLINK  =
@@ -55,7 +55,8 @@ TEST_RANDOM_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/ran.o
 TEST_COORDS_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o
 #TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
 #		$(SRC)/io_harness.o
-TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(SRC)/model.o \
+TEST_CONTROL_OBJ = $(SRC)/control.o
+TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(TEST_CONTROL_OBJ) $(SRC)/model.o \
 		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/ran.o $(SRC)/timer.o
 TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
 TEST_EWALD_OBJ  = tests.o $(SRC)/pe.o $(SRC)/coords.o $(SRC)/colloids.o \

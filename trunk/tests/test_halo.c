@@ -10,7 +10,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh (2007)
  *
- *  $Id: test_halo.c,v 1.1 2007-11-16 17:54:23 kevin Exp $
+ *  $Id: test_halo.c,v 1.2 2008-06-25 17:17:48 erlend Exp $
  *
  *****************************************************************************/
 
@@ -20,6 +20,7 @@
 #include "coords.h"
 #include "model.h"
 #include "tests.h"
+#include "control.h"
 
 static void test_halo_null(void);
 static void test_halo(const int dim);
@@ -31,10 +32,16 @@ int main(int argc, char ** argv) {
 
   info("Checking distribution halo swaps...\n\n");
 
-  /* Take defaults for everything, so no input. */
-
+  RUN_read_input_file("input");
+  init_control();
   coords_init();
   init_site();
+
+  if(use_reduced_halos()) {
+    info("Using reduced halos.\n");
+  } else {
+    info("Using full halos \n");
+  }
 
   info("Test for null leakage...");
   test_halo_null();

@@ -1,3 +1,4 @@
+
 /*****************************************************************************
  *
  *  test_prop
@@ -26,6 +27,8 @@ static void test_source_destination(void);
 int main(int argc, char ** argv) {
 
   pe_init(argc, argv);
+  RUN_read_input_file("input");
+  init_control();
   coords_init();
   init_site();
 
