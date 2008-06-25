@@ -1,5 +1,9 @@
-CCS = CC
-CCP = CC -V -O3 -OPT:Ofast
+CCS = xlc 
+CCP = mpixlc
+
+# issue the following on hector at the command line (redirects compiler)
+# module swap PrgEnv-pgi PrgEnv-pathscale
+
 
 # issue the following on hector at the command line (redirects compiler)
 # module swap PrgEnv-pgi PrgEnv-pathscale
@@ -18,7 +22,7 @@ DEFS    =	 -DBE -DEON -DCHOL\
 		 -D_BINARY_IO_
 
 
-LIBS	=
+LIBS	=        -lstdc++ -libmc++ -lsupc++
 
 LIBPATH =
 
