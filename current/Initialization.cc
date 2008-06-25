@@ -354,7 +354,7 @@ void startSlab(void)
 	fracmin = 0.5;
 	fracmax = 1.0;
 
-	if ((jc < (fracmin*Ly)) || (jc > (fracmax*Ly))) {
+	if ((jc > (fracmin*Ly)) || (jc < (fracmax*Ly))) {
 
 
 	  amplitude=(0.546-0.2723/2.0);
