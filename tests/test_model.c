@@ -22,6 +22,8 @@ int main(int argc, char ** argv) {
   double u[ND];
 
   pe_init(argc, argv);
+  RUN_read_input_file("input");
+  init_control();
 
   info("Checking model.c objects...\n\n");
 
