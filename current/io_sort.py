@@ -6,9 +6,9 @@ import sys, os, re, math
 
 # command line input is
 
-# 1 number of files in grouping
-# 2 list of file stubs to process
 
+# 1 list of file stubs to process
+# 2 number of files in grouping
 
 
 filelist=sys.argv[1]
