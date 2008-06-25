@@ -148,7 +148,7 @@ int main (int argc, char ** argv) {
 void read_disclination(const char * file_name) {
 
   int ibuf[3];
-  int index;
+  int index, iread;
 
   FILE * fp;
 
@@ -156,9 +156,12 @@ void read_disclination(const char * file_name) {
   if (fp == NULL) printf("fopen(%s) failed\n");
 
   while (!feof(fp)) {
-    fread(ibuf, sizeof(int), 3, fp);
-    index = get_global_index(ibuf[0], ibuf[1], ibuf[2]);
-    data_out_[index] = 1.0;
+    /* Check the number of data items read in case the file is empty... */
+    iread = fread(ibuf, sizeof(int), 3, fp);
+    if (iread == 3) {
+      index = get_global_index(ibuf[0], ibuf[1], ibuf[2]);
+      data_out_[index] = 1.0;
+    }
   }
 
   fclose(fp);
