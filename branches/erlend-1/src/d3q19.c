@@ -4,7 +4,7 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.c,v 1.7.6.1 2008-06-12 14:21:59 erlend Exp $
+ *  $Id: d3q19.c,v 1.7.6.2 2008-06-25 18:19:50 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -177,23 +177,24 @@ const double mi_[NVEL][NVEL] = {
 };
 
 
+#ifdef _MPI_
+
 MPI_Datatype xtypes[xcount] = {MPI_DOUBLE};
 int xblocklens[xcount] = {2*NVEL};
 MPI_Aint xdisp_right[xcount] = {0};
 MPI_Aint xdisp_left[xcount] = {0};
-//MPI_Aint xdisp_right[xcount] = {0}; 
 
 MPI_Datatype ytypes[ycount] = {MPI_DOUBLE};
 int yblocklens[ycount] = {2*NVEL};
 MPI_Aint ydisp_right[ycount] = {0};
 MPI_Aint ydisp_left[ycount] = {0};
-//MPI_Aint ydisp_right[ycount] = {0};
 
 MPI_Datatype ztypes[zcount] = {MPI_DOUBLE};
 int zblocklens[zcount] = {2*NVEL};
 MPI_Aint zdisp_right[zcount] = {0};
 MPI_Aint zdisp_left[zcount] = {0};
-//MPI_Aint zdisp_right[zcount] = {0};
+
+#endif
 
 #endif
 

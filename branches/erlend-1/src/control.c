@@ -4,12 +4,12 @@
  *
  *  Model control and time stepping.
  *
- *  $Id: control.c,v 1.2.6.1 2008-06-16 13:24:47 erlend Exp $
+ *  $Id: control.c,v 1.2.6.2 2008-06-25 18:19:50 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
-
+#include <stdio.h>
 #include <string.h>
 
 #include "pe.h"
