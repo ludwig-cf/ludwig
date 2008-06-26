@@ -4,7 +4,7 @@
  *
  *  D3Q15 definitions.
  *
- *  $Id: d3q15.h,v 1.5.6.3 2008-06-25 18:19:50 erlend Exp $
+ *  $Id: d3q15.h,v 1.5.6.4 2008-06-26 19:11:21 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -27,8 +27,8 @@ extern const double mi_[NVEL][NVEL];
 enum {xcount = 1};
 extern MPI_Datatype xtypes[xcount];
 extern int xblocklens[xcount];
-extern MPI_Aint xdisp_right[xcount];
-extern MPI_Aint xdisp_left[xcount];
+extern int xdisp_right[xcount];
+extern int xdisp_left[xcount];
 
 enum {ycount = 1};
 extern MPI_Datatype ytypes[ycount];

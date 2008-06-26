@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.7 2008-06-24 17:58:38 erlend Exp $
+ *  $Id: model.c,v 1.9.6.8 2008-06-26 19:11:21 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -55,6 +55,24 @@ MPI_Datatype DT_Site_zright;
 MPI_Datatype DT_Site_zleft;
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
 #endif
+
+/* The xcount*2 means xcount(foreach dist) 2(num dists) */
+void getAintDisp(int indexDisp[xcount], MPI_Aint dispArray[xcount*2]) {
+  /* ndist: num distributions (currently two) */
+  int ndist = 2;
+  MPI_Aint site_addresses[xcount*2 + 1];
+  MPI_Address(&site[0].f[0], &site_addresses[0]);
+  int i, j;
+  for(i=0; i<xcount; i++) {
+    MPI_Address(&site[0].f[indexDisp[i]], &site_addresses[i+1]);
+    MPI_Address(&site[0].g[indexDisp[i]], &site_addresses[xcount+1+i]);
+  }
+  
+  for(i=0; i<xcount*ndist; i++) {
+    dispArray[i] = site_addresses[i+1] - site_addresses[0];
+    info("  xdisp_right[%d] = %d \n", i, dispArray[i]);
+  }
+}
 
 /***************************************************************************
  *
@@ -109,9 +127,18 @@ void init_site() {
   
 
   if(use_reduced_halos()) {
-    printf("Using reduced halos. \n");
-    MPI_Type_struct(xcount, xblocklens, xdisp_right, xtypes, &DT_Site_xright);
-    MPI_Type_struct(xcount, xblocklens, xdisp_left, xtypes, &DT_Site_xleft);
+    info("Using reduced halos. \n");
+
+    MPI_Aint xdisp_fwd[xcount*2];
+    MPI_Aint xdisp_bwd[xcount*2];
+    getAintDisp(xdisp_right, xdisp_fwd);
+    getAintDisp(xdisp_left, xdisp_bwd);
+
+    int xnblocks[] = {5,5};
+    MPI_Datatype tmpxtypes[] = {MPI_DOUBLE,MPI_DOUBLE};
+
+    MPI_Type_struct(xcount*2, xnblocks, xdisp_fwd, tmpxtypes, &DT_Site_xright);
+    MPI_Type_struct(xcount*2, xnblocks, xdisp_bwd, tmpxtypes, &DT_Site_xleft);
     MPI_Type_struct(ycount, yblocklens, ydisp_right, ytypes, &DT_Site_yright);
     MPI_Type_struct(ycount, yblocklens, ydisp_left, ytypes, &DT_Site_yleft);
     MPI_Type_struct(zcount, zblocklens, zdisp_right, ztypes, &DT_Site_zright);
@@ -138,7 +165,7 @@ void init_site() {
     MPI_Type_contiguous(ny*nz, DT_Site_xleft, &DT_plane_YZ_left);
     MPI_Type_commit(&DT_plane_YZ_left);
   } else {
-    printf("Using full halos. \n");
+    info("Using full halos. \n");
     MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
     MPI_Type_commit(&DT_Site);
     MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
