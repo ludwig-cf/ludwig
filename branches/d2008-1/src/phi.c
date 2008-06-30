@@ -36,7 +36,7 @@ double * grad_phi_site;
 double * delsq_delsq_phi_site;
 double * grad_delsq_phi_site;
 
-const int phi_finite_difference_ = 0;
+const int phi_finite_difference_ = 1;
 
 static int initialised_ = 0;
 static MPI_Datatype phi_xy_t_;
@@ -142,8 +142,10 @@ static void phi_init_io() {
 
   io_info_set_name(io_info_phi, "Compositional order parameter");
   io_info_set_read(io_info_phi, phi_read);
-  io_info_set_write(io_info_phi,phi_write);
+  io_info_set_write(io_info_phi, phi_write);
   io_info_set_bytesize(io_info_phi, sizeof(double));
+
+  io_write_metadata("phi", io_info_phi);
 
   return;
 }
@@ -633,7 +635,7 @@ static void phi_leesedwards_parallel() {
       j2 = (jc + nhalo_ - 1 + 1)*(nlocal[Z] + 2*nhalo_);
       for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
 	phi_site[ADDR(ib0+ib,jc,kc)] =
-	  fr*buffer[j1+kc] + (1.0-fr)*buffer[j2+kc];
+	  fr*buffer[j1 + kc+nhalo_-1] + (1.0-fr)*buffer[j2 + kc+nhalo_-1];
       }
     }
   }
