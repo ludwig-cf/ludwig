@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+int is_bigendean(void);
+
 int main(int argc, char ** argv) {
 
   int n;
@@ -71,7 +73,24 @@ int main(int argc, char ** argv) {
   printf("__FILE__ is %s\n", __FILE__);
   printf("__LINE__ is %d\n", __LINE__);
 
+  printf("The machine is %s-endean\n", is_bigendean() ? "big" : "little");
+
   printf("All assumptions ok!\n");
 
   return 0;
+}
+
+/***************************************************************************
+ *
+ *  is_bigendean
+ *
+ *  Have a look to see if we are bigendean. From Harsha S. Adiga at IBM.
+ *
+ ***************************************************************************/
+
+int is_bigendean() {
+
+  const int i = 1;
+
+  return (*(char *) &i == 0);
 }
