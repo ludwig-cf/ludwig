@@ -8,7 +8,7 @@
  *
  *  The equation is solved here via finite difference.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.1.2.4 2008-04-28 14:43:06 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.1.2.5 2008-06-30 17:49:37 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,6 +24,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "lattice.h"
 #include "free_energy.h"
 #include "phi.h"
@@ -33,9 +34,12 @@ int signbit(double);
 #endif
 
 extern double * phi_site;
-static double * phi_flux;
+static double * fluxe;
+static double * fluxw;
+static double * fluxy;
+static double * fluxz;
+
 static void phi_ch_compute_fluxes_upwind(void);
-static void phi_ch_compute_fluxes_utopia(void);
 static void phi_ch_compute_fluxes_upwind_seventh_order(void);
 static void phi_ch_update_forward_step(void);
 
@@ -47,7 +51,13 @@ static double mobility_; /* Order parameter mobility */
  *
  *  phi_cahn_hilliard
  *
- *  Driver routine.
+ *  Compute the fluxes (advective/diffusive) and compute the update
+ *  to phi_site[].
+ *
+ *  Conservation is ensured by face-flux uniqueness. However, in the
+ *  x-direction, the fluxes at the east face and west face of a given
+ *  cell must be handled spearately to take account of Lees Edwards
+ *  boundaries.
  *
  *****************************************************************************/
 
@@ -59,15 +69,27 @@ void phi_cahn_hilliard() {
   get_N_local(nlocal);
   nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
 
-  phi_flux = (double *) calloc(3*nsites, sizeof(double));
-  if (phi_flux == NULL) fatal("calloc(phi_fluxes) failed");
+  fluxe = (double *) calloc(nsites, sizeof(double));
+  fluxw = (double *) calloc(nsites, sizeof(double));
+  fluxy = (double *) calloc(nsites, sizeof(double));
+  fluxz = (double *) calloc(nsites, sizeof(double));
+  if (fluxe == NULL) fatal("calloc(fluxe) failed");
+  if (fluxw == NULL) fatal("calloc(fluxw) failed");
+  if (fluxy == NULL) fatal("calloc(fluxy) failed");
+  if (fluxz == NULL) fatal("calloc(fluxz) failed");
+
 
   hydrodynamics_halo_u();
-  phi_ch_compute_fluxes_upwind_seventh_order();
-  /* phi_ch_compute_fluxes();*/
+  hydrodynamics_leesedwards_transformation();
+
+  /* phi_ch_compute_fluxes_upwind_seventh_order();*/
+  phi_ch_compute_fluxes();
   phi_ch_update_forward_step();
 
-  free(phi_flux);
+  free(fluxe);
+  free(fluxw);
+  free(fluxy);
+  free(fluxz);
 
   return;
 }
@@ -91,17 +113,6 @@ double phi_ch_get_mobility() {
 void phi_ch_set_mobility(const double m) {
   assert(m >= 0.0);
   mobility_ = m;
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_ch_set_utopia
- *
- *****************************************************************************/
-
-void phi_ch_set_utopia() {
-  phi_ch_compute_fluxes = phi_ch_compute_fluxes_utopia;
   return;
 }
 
@@ -133,23 +144,42 @@ static void phi_ch_compute_fluxes_upwind() {
   int nlocal[3];
   int ic, jc, kc;            /* Counters over faces */
   int index0, index1;
+  int icm1, icp1;
   double u0[3], u1[3], u;
   double mu0, mu1;
   double phi0, phi;
 
   get_N_local(nlocal);
 
-  for (ic = 0; ic <= nlocal[X]; ic++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = get_site_index(ic, jc, kc);
+	index0 = ADDR(ic, jc, kc);
 	phi0 = phi_site[index0];
+
 	mu0 = free_energy_get_chemical_potential(index0);
 	hydrodynamics_get_velocity(index0, u0);
- 
-	/* x direction */
-	index1 = get_site_index(ic+1, jc, kc);
+
+	/* west face (icm1 and ic) */
+	index1 = ADDR(icm1, jc, kc);
+	hydrodynamics_get_velocity(index1, u1);
+
+	u = 0.5*(u0[X] + u1[X]);
+	if (u > 0.0) {
+	  phi = phi_site[index1];
+	}
+	else {
+	  phi = phi0;
+	}
+
+	mu1 = free_energy_get_chemical_potential(index1);
+	fluxw[index0] = u*phi - mobility_*(mu0 - mu1);
+
+	/* east face (ic and icp1) */
+	index1 = ADDR(icp1, jc, kc);
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = 0.5*(u0[X] + u1[X]);
@@ -161,10 +191,12 @@ static void phi_ch_compute_fluxes_upwind() {
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + X] = u*phi - mobility_*(mu1 - mu0);
+	fluxe[index0] = u*phi - mobility_*(mu1 - mu0);
+
+
 
 	/* y direction */
-	index1 = get_site_index(ic, jc+1, kc);
+	index1 = le_site_index(ic, jc+1, kc);
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = 0.5*(u0[Y] + u1[Y]);
@@ -176,10 +208,10 @@ static void phi_ch_compute_fluxes_upwind() {
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + Y] = u*phi - mobility_*(mu1 - mu0);
+	fluxy[index0] = u*phi - mobility_*(mu1 - mu0);
 
 	/* z direction */
-	index1 = get_site_index(ic, jc, kc+1);
+	index1 = ADDR(ic, jc, kc+1);
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = 0.5*(u0[Z] + u1[Z]);
@@ -191,225 +223,7 @@ static void phi_ch_compute_fluxes_upwind() {
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + Z] = u*phi - mobility_*(mu1 - mu0);
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_ch_compute_fluxes_utopia
- *
- *  The fluxes (advective and diffusive) must be uniquely defined at
- *  the interfaces between the LB cells.
- *
- *  The faces are offset compared with the lattice, so care is needed
- *  with the indexing. In -d the flux[i] is the flux at east face of
- *  cell i.
- *
- *****************************************************************************/
-
-static void phi_ch_compute_fluxes_utopia() {
-
-  int nlocal[3];
-  int ic, jc, kc;            /* Counters over faces */
-  int index0, index1;
-  int ia;
-  double u0[3], u1[3], u[3];
-  double mu0, mu1;
-  double phi;
-  double phi_w;
-  double phi_ww;
-  double phi_c;
-  double phi_s, phi_sw, phi_se, phi_nw;
-  double phi_wd, phi_cd, phi_wu;
-  double phi_sd, phi_nwd, phi_swd, phi_swu;
-  double phi_ss, phi_su, phi_sed, phi_cdd, phi_ed, phi_nd;
-
-  double c[3];               /* |Courant numbers| */
-  int    s[3];
-  int    iup1, iup2, ido1;
-  int    jup1, jup2, jdo1;
-  int    kup1, kup2, kdo1;
-
-  const double r2 = 1.0/2.0;
-  const double r3 = 1.0/3.0;
-  const double r4 = 1.0/4.0;
-  const double r6 = 1.0/6.0;
-  const double r8 = 1.0/8.0;
-
-  get_N_local(nlocal);
-  assert(nhalo_ >= 2);
-
-  for (ic = 0; ic <= nlocal[X]; ic++) {
-    for (jc = 0; jc <= nlocal[Y]; jc++) {
-      for (kc = 0; kc <= nlocal[Z]; kc++) {
-
-	index0 = get_site_index(ic, jc, kc);
-	mu0 = free_energy_get_chemical_potential(index0);
-	hydrodynamics_get_velocity(index0, u0);
- 
-	/* x direction */
-	index1 = get_site_index(ic+1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
-
-	for (ia = 0; ia < 3; ia++) {
-	  u[ia] = r2*(u0[ia] + u1[ia]);
-	  s[ia] = 1 - 2*signbit(u[ia]);
-	  assert(s[ia] == -1 || s[ia] == +1);
-	  c[ia] = u[ia]*s[ia];
-	}
-
-	ido1 = ic + (s[X]+1)/2;
-	iup1 = ido1 - s[X];
-	iup2 = iup1 - s[X];
-
-	phi_c   = phi_site[get_site_index(ido1, jc, kc)];
-	phi_w   = phi_site[get_site_index(iup1, jc, kc)];
-	phi_ww  = phi_site[get_site_index(iup2, jc, kc)];
-
-	phi_s   = phi_site[get_site_index(ido1, jc - s[Y], kc)];
-	phi_sw  = phi_site[get_site_index(iup1, jc - s[Y], kc)];
-	phi_nw  = phi_site[get_site_index(iup1, jc + s[Y], kc)];
-
-	phi_wd  = phi_site[get_site_index(iup1, jc, kc - s[Z])];
-	phi_cd  = phi_site[get_site_index(ido1, jc, kc - s[Z])];
-	phi_wu  = phi_site[get_site_index(iup1, jc, kc + s[Z])];
-
-	phi_sd  = phi_site[get_site_index(ido1, jc - s[Y], kc - s[Z])];
-	phi_nwd = phi_site[get_site_index(iup1, jc + s[Y], kc - s[Z])];
-	phi_swd = phi_site[get_site_index(iup1, jc - s[Y], kc - s[Z])];
-	phi_swu = phi_site[get_site_index(iup1, jc - s[Y], kc + s[Z])];
-
-	phi = r2*((phi_w + phi_c)
-		  - c[X]*(phi_c - phi_w)
-		  - r3*(1.0 - c[X]*c[X])*(phi_c - 2.0*phi_w + phi_ww))
-	  - c[Y]*(r2*(phi_w - phi_sw)
-		  + (r4 - r3*c[X])*(phi_c - phi_w - phi_s + phi_sw)
-		  + (r4 - r6*c[Y])*(phi_nw - 2.0*phi_w + phi_sw))
-	  - c[Z]*(r2*(phi_w - phi_wd)
-		  + (r4 - r3*c[X])*(phi_c - phi_w - phi_cd + phi_wd)
-		  + (r4 - r6*c[Y])*(phi_wu - 2.0*phi_w + phi_wd))
-	  + c[Y]*c[Z]*
-	  (r3*(phi_w - phi_wd) - r3*(phi_sw - phi_swd)
-	   + (r6 - r4*c[X])*(phi_c - phi_w - phi_s + phi_sw
-			     - (phi_cd - phi_wd - phi_sd + phi_swd))
-	   + (r6 - r8*c[Y])*(phi_nw - 2.0*phi_w + phi_sw
-			     - (phi_nwd - 2.0*phi_wd + phi_swd))
-	   + (r6 - r8*c[Z])*(phi_wu - 2.0*phi_w + phi_wd
-			     - (phi_swu - 2.0*phi_sw + phi_swd)));
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + X] = u[X]*phi - mobility_*(mu1 - mu0);
-
-	/* y direction */
-	index1 = get_site_index(ic, jc+1, kc);
-	hydrodynamics_get_velocity(index1, u1);
-
-	for (ia = 0; ia < 3; ia++) {
-	  u[ia] = r2*(u0[ia] + u1[ia]);
-	  s[ia] = 1 - 2*signbit(u[ia]);
-	  assert(s[ia] == -1 || s[ia] == +1);
-	  c[ia] = u[ia]*s[ia];
-	}
-
-	jdo1 = jc + (s[Y]+1)/2;
-	jup1 = jdo1 - s[Y];
-	jup2 = jup1 - s[Y];
-
-	phi_c   = phi_site[get_site_index(ic, jdo1, kc)];
-	phi_s   = phi_site[get_site_index(ic, jup1, kc)];
-	phi_ss  = phi_site[get_site_index(ic, jup2, kc)];
-
-	phi_w   = phi_site[get_site_index(ic - s[X], jdo1, kc)];
-	phi_sw  = phi_site[get_site_index(ic - s[X], jup1, kc)];
-	phi_se  = phi_site[get_site_index(ic + s[X], jup1, kc)];
-
-	phi_cd  = phi_site[get_site_index(ic, jdo1, kc - s[Z])];
-	phi_sd  = phi_site[get_site_index(ic, jup1, kc - s[Z])];
-	phi_su  = phi_site[get_site_index(ic, jup1, kc + s[Z])];
-
-	phi_swd = phi_site[get_site_index(ic - s[X], jup1, kc - s[Z])];
-	phi_swu = phi_site[get_site_index(ic - s[X], jup1, kc + s[Z])];
-	phi_wd  = phi_site[get_site_index(ic - s[X], jdo1, kc - s[Z])];
-	phi_sed = phi_site[get_site_index(ic + s[X], jup1, kc - s[Z])];
-
-	phi = r2*((phi_c + phi_s)
-		  - c[Y]*(phi_c - phi_s)
-		  - r3*(1.0 - c[Y]*c[Y])*(phi_c - 2.0*phi_s + phi_ss))
-	  - c[X]*(r2*(phi_s - phi_sw)
-		  + (r4 - r3*c[Y])*(phi_c - phi_s - phi_w + phi_sw)
-		  + (r4 - r3*c[X])*(phi_se - 2.0*phi_s + phi_sw))
-	  - c[Z]*(r2*(phi_s - phi_sd)
-		  + (r4 - r3*c[Y])*(phi_c - phi_s - phi_cd + phi_sd)
-		  + (r4 - r3*c[Z])*(phi_su - 2.0*phi_s + phi_sd))
-	  + c[X]*c[Z]*
-	  (r3*(phi_s - phi_sd) - r3*(phi_sw - phi_swd)
-	   + (r6 - r8*c[X])*(phi_se - 2.0*phi_s + phi_sw
-			     - (phi_sed - 2.0*phi_sd + phi_swd))
-	   + (r6 - r4*c[Y])*(phi_c - phi_s - phi_w + phi_sw
-			     - (phi_cd - phi_sd - phi_wd + phi_swd))
-	   + (r6 - r8*c[Z])*(phi_su - 2.0*phi_s + phi_sd
-			     - (phi_swu - 2.0*phi_sw + phi_swd)));
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + Y] = u[Y]*phi - mobility_*(mu1 - mu0);
-
-	/* z direction */
-	index1 = get_site_index(ic, jc, kc+1);
-	hydrodynamics_get_velocity(index1, u1);
-
-	for (ia = 0; ia < 3; ia++) {
-	  u[ia] = r2*(u0[ia] + u1[ia]);
-	  s[ia] = 1 - 2*signbit(u[ia]);
-	  assert(s[ia] == -1 || s[ia] == +1);
-	  c[ia] = u[ia]*s[ia];
-	}
-
-	kdo1 = kc + (s[Z]+1)/2;
-	kup1 = kdo1 - s[Z];
-	kup2 = kup1 - s[Z];
-
-	phi_c   = phi_site[get_site_index(ic, jc, kdo1)];
-	phi_cd  = phi_site[get_site_index(ic, jc, kup1)];
-	phi_cdd = phi_site[get_site_index(ic, jc, kup2)];
-
-	phi_wd  = phi_site[get_site_index(ic - s[X], jc, kup1)];
-	phi_w   = phi_site[get_site_index(ic - s[X], jc, kdo1)];
-	phi_ed  = phi_site[get_site_index(ic + s[X], jc, kdo1)];
-
-	phi_s   = phi_site[get_site_index(ic, jc - s[Y], kdo1)];
-	phi_sd  = phi_site[get_site_index(ic, jc - s[Y], kup1)];
-	phi_nd  = phi_site[get_site_index(ic, jc + s[Y], kup1)];
-
-	phi_swd = phi_site[get_site_index(ic - s[X], jc - s[Y], kup1)];
-	phi_sed = phi_site[get_site_index(ic + s[X], jc - s[Y], kup1)];
-	phi_nwd = phi_site[get_site_index(ic - s[X], jc + s[Y], kup1)];
-	phi_sw  = phi_site[get_site_index(ic - s[X], jc - s[Y], kdo1)];
-
-	phi = r2*((phi_c + phi_cd)
-		  - c[Z]*(phi_c - phi_cd)
-		  - r3*(1.0 - c[Z]*c[Z])*(phi_c - 2.0*phi_cd + phi_cdd))
-	  - c[X]*(r2*(phi_cd - phi_wd)
-		  + (r4 - r6*c[Z])*(phi_c - phi_cd - phi_w + phi_wd)
-		  + (r4 - r6*c[X])*(phi_ed - 2.0*phi_cd + phi_wd))
-	  - c[Y]*(r2*(phi_cd - phi_sd)
-		  + (r4 - r6*c[Z])*(phi_c - phi_cd - phi_s + phi_sd)
-		  + (r4 - r6*c[Y])*(phi_nd - 2.0*phi_cd + phi_sd))
-	  + c[X]*c[Y]*
-		  (r3*(phi_cd - phi_sd) - r3*(phi_wd - phi_swd)
-		   + (r6 - r8*c[X])*(phi_ed - 2.0*phi_cd + phi_wd
-				     - (phi_sed - 2.0*phi_sd + phi_swd))
-		   + (r6 - r8*c[Y])*(phi_nd - 2.0*phi_cd + phi_sd
-				     - (phi_nwd - 2.0*phi_wd + phi_swd))
-		   + (r6 - r4*c[Z])*(phi_c - phi_cd - phi_w + phi_wd
-				     - (phi_s - phi_sd - phi_sw + phi_swd)));
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + Z] = u[Z]*phi - mobility_*(mu1 - mu0);
+	fluxz[index0] = u*phi - mobility_*(mu1 - mu0);
       }
     }
   }
@@ -433,29 +247,36 @@ static void phi_ch_compute_fluxes_utopia() {
 static void phi_ch_update_forward_step() {
 
   int nlocal[3];
-  int ic, jc, kc, index;
-  int xfac, yfac, zfac;
+  int ic, jc, kc;
   double dphi;
 
+  double te, tw;
   get_N_local(nlocal);
-  xfac = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
-  yfac = (nlocal[Z] + 2*nhalo_);
-  zfac = 1;
+
+  te = 0.0;
+  tw = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	dphi = fluxe[ADDR(ic,jc,kc)] - fluxw[ADDR(ic,jc,kc)]
+	  + fluxy[ADDR(ic,jc,kc)] - fluxy[ADDR(ic,jc-1,kc)]
+	  + fluxz[ADDR(ic,jc,kc)] - fluxz[ADDR(ic,jc,kc-1)];
 
-	dphi = phi_flux[3*index + X] - phi_flux[3*(index-xfac) + X]
-	     + phi_flux[3*index + Y] - phi_flux[3*(index-yfac) + Y]
-	     + phi_flux[3*index + Z] - phi_flux[3*(index-zfac) + Z];
+	if (ic == 16) {
+	  te += fluxe[ADDR(ic,jc,kc)];
+	}
+	if (ic == 17) {
+	  tw += fluxw[ADDR(ic,jc,kc)];
+	}
 
-	phi_site[index] -= dphi;
+	phi_site[ADDR(ic,jc,kc)] -= dphi;
       }
     }
   }
+
+  /* info("Flux totals: %g %g\n", te, tw);*/
 
   return;
 }
@@ -501,12 +322,12 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = get_site_index(ic, jc, kc);
+	index0 = ADDR(ic, jc, kc);
 	mu0 = free_energy_get_chemical_potential(index0);
 	hydrodynamics_get_velocity(index0, u0);
  
 	/* x direction */
-	index1 = get_site_index(ic+1, jc, kc);
+	index1 = ADDR(ic+1, jc, kc);
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = r2*(u0[X] + u1[X]);
@@ -515,19 +336,19 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
 	up = ic + (s+1)/2;
 
 	phi = rfactorial7*(
-	    am4*phi_site[get_site_index(up - 4*s, jc, kc)]
-	  + am3*phi_site[get_site_index(up - 3*s, jc, kc)]
-	  + am2*phi_site[get_site_index(up - 2*s, jc, kc)]
-	  + am1*phi_site[get_site_index(up - 1*s, jc, kc)]
-	  + ap0*phi_site[get_site_index(up      , jc, kc)]
-	  + ap1*phi_site[get_site_index(up + 1*s, jc, kc)]
-	  + ap2*phi_site[get_site_index(up + 2*s, jc, kc)]);
+	    am4*phi_site[ADDR(up - 4*s, jc, kc)]
+	  + am3*phi_site[ADDR(up - 3*s, jc, kc)]
+	  + am2*phi_site[ADDR(up - 2*s, jc, kc)]
+	  + am1*phi_site[ADDR(up - 1*s, jc, kc)]
+	  + ap0*phi_site[ADDR(up      , jc, kc)]
+	  + ap1*phi_site[ADDR(up + 1*s, jc, kc)]
+	  + ap2*phi_site[ADDR(up + 2*s, jc, kc)]);
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + X] = u*phi - mobility_*(mu1 - mu0);
+	fluxe[index0] = u*phi - mobility_*(mu1 - mu0);
 
 	/* y direction */
-	index1 = get_site_index(ic, jc+1, kc);
+	index1 = ADDR(ic, jc+1, kc);
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = r2*(u0[Y] + u1[Y]);
@@ -536,19 +357,19 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
 	up = jc + (s+1)/2;
 
 	phi = rfactorial7*(
-	    am4*phi_site[get_site_index(ic, up - 4*s, kc)]
-	  + am3*phi_site[get_site_index(ic, up - 3*s, kc)]
-	  + am2*phi_site[get_site_index(ic, up - 2*s, kc)]
-	  + am1*phi_site[get_site_index(ic, up - 1*s, kc)]
-	  + ap0*phi_site[get_site_index(ic, up      , kc)]
-	  + ap1*phi_site[get_site_index(ic, up + 1*s, kc)]
-	  + ap2*phi_site[get_site_index(ic, up + 2*s, kc)]);
+	    am4*phi_site[ADDR(ic, up - 4*s, kc)]
+	  + am3*phi_site[ADDR(ic, up - 3*s, kc)]
+	  + am2*phi_site[ADDR(ic, up - 2*s, kc)]
+	  + am1*phi_site[ADDR(ic, up - 1*s, kc)]
+	  + ap0*phi_site[ADDR(ic, up      , kc)]
+	  + ap1*phi_site[ADDR(ic, up + 1*s, kc)]
+	  + ap2*phi_site[ADDR(ic, up + 2*s, kc)]);
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + Y] = u*phi - mobility_*(mu1 - mu0);
+	fluxy[index0] = u*phi - mobility_*(mu1 - mu0);
 
 	/* z direction */
-	index1 = get_site_index(ic, jc, kc+1);
+	index1 = ADDR(ic, jc, kc+1);
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = r2*(u0[Z] + u1[Z]);
@@ -557,16 +378,16 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
 	up = kc + (s+1)/2;
 
 	phi = rfactorial7*(
-	    am4*phi_site[get_site_index(ic, jc, up - 4*s)]
-	  + am3*phi_site[get_site_index(ic, jc, up - 3*s)]
-	  + am2*phi_site[get_site_index(ic, jc, up - 2*s)]
-	  + am1*phi_site[get_site_index(ic, jc, up - 1*s)]
-	  + ap0*phi_site[get_site_index(ic, jc, up      )]
-	  + ap1*phi_site[get_site_index(ic, jc, up + 1*s)]
-	  + ap2*phi_site[get_site_index(ic, jc, up + 2*s)]);
+	    am4*phi_site[ADDR(ic, jc, up - 4*s)]
+	  + am3*phi_site[ADDR(ic, jc, up - 3*s)]
+	  + am2*phi_site[ADDR(ic, jc, up - 2*s)]
+	  + am1*phi_site[ADDR(ic, jc, up - 1*s)]
+	  + ap0*phi_site[ADDR(ic, jc, up      )]
+	  + ap1*phi_site[ADDR(ic, jc, up + 1*s)]
+	  + ap2*phi_site[ADDR(ic, jc, up + 2*s)]);
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	phi_flux[3*index0 + Z] = u*phi - mobility_*(mu1 - mu0);
+	fluxz[index0] = u*phi - mobility_*(mu1 - mu0);
       }
     }
   }
