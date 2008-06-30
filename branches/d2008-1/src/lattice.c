@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.7.2.6 2008-06-13 19:11:53 kevin Exp $
+ *  $Id: lattice.c,v 1.7.2.7 2008-06-30 17:45:21 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -380,6 +380,7 @@ void hydrodynamics_zero_force() {
  *
  *  hydrodynamics_lees_edwards_transformation
  *
+ *  Compute the 'look-across-the-boundary' values of the velocity field.
  *
  *****************************************************************************/
 
@@ -445,7 +446,7 @@ static void hydrodynamics_leesedwards_parallel() {
 
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
-  double * buffer;         /* Interpolation buffer */
+  struct vector * buffer;  /* Interpolation buffer */
   int ib;                  /* Index in buffer region */
   int ib0;                 /* buffer region offset */
   int ic;                  /* Index corresponding x location in real system */
@@ -454,6 +455,7 @@ static void hydrodynamics_leesedwards_parallel() {
   double dy;               /* Displacement for current ic->ib pair */
   double fr;               /* Fractional displacement */
   int jdy;                 /* Integral part of displacement */
+  int ia;
 
   MPI_Comm le_comm = le_communicator();
   int      nrank_s[2];     /* send ranks */
@@ -470,8 +472,8 @@ static void hydrodynamics_leesedwards_parallel() {
 
   /* Allocate the temporary buffer */
 
-  n = 3*(nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
-  buffer = (double *) malloc(n*sizeof(double));
+  n = (nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+  buffer = (struct vector *) malloc(n*sizeof(struct vector));
   if (buffer == NULL) fatal("hydrodynamics: malloc(le buffer) failed\n");
 
   /* One round of communication for each buffer plane */
@@ -506,12 +508,14 @@ static void hydrodynamics_leesedwards_parallel() {
     n2 = (j2 + nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
 
     /* Post receives, sends and wait. */
-#ifdef OPERATIONAL
-    MPI_Irecv(buffer,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
-    MPI_Irecv(buffer+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
-    MPI_Issend(u + 3*ADDR(ic,j2,kc), n1, MPI_DOUBLE, nrank_s[0], tag0,
+
+    MPI_Irecv(buffer[0].c, n1, mpi_vector_t, nrank_r[0], tag0,
+	      le_comm, request);
+    MPI_Irecv(buffer[n1].c, n2, mpi_vector_t, nrank_r[1], tag1,
+	      le_comm, request+1);
+    MPI_Issend(u[ADDR(ic,j2,kc)].c, n1, mpi_vector_t, nrank_s[0], tag0,
 	       le_comm, request+2);
-    MPI_Issend(u + 3*ADDR(ic,nhalo_,kc), n2, MPI_DOUBLE, nrank_s[1], tag1,
+    MPI_Issend(u[ADDR(ic,nhalo_,kc)].c, n2, mpi_vector_t, nrank_s[1], tag1,
 	       le_comm, request+3);
 
     MPI_Waitall(4, request, status);
@@ -523,11 +527,12 @@ static void hydrodynamics_leesedwards_parallel() {
       j1 = (jc + nhalo_ - 1    )*(nlocal[Z] + 2*nhalo_);
       j2 = (jc + nhalo_ - 1 + 1)*(nlocal[Z] + 2*nhalo_);
       for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
-	u[ADDR(ib0+ib,jc,kc)] =
-	  fr*buffer[j1+kc] + (1.0-fr)*buffer[j2+kc];
+	for (ia = 0; ia < 3; ia++) {
+	  u[ADDR(ib0+ib,jc,kc)].c[ia] = fr*buffer[j1+kc+nhalo_-1].c[ia]
+	    + (1.0-fr)*buffer[j2+kc+nhalo_-1].c[ia];
+	}
       }
     }
-#endif
   }
 
   free(buffer);
