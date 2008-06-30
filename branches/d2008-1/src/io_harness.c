@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.1.2.5 2008-06-06 17:47:17 kevin Exp $
+ *  $Id: io_harness.c,v 1.1.2.6 2008-06-30 17:44:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -58,7 +58,6 @@ struct io_info_t {
 };
 
 static struct io_info_t * io_info_allocate(void);
-static void io_write_metadata(char *, struct io_info_t *);
 static void io_set_group_filename(char *, const char *, struct io_info_t *);
 static long int io_file_offset(int, int, struct io_info_t *);
 static struct io_decomposition_t * io_decomposition_allocate(void);
@@ -174,10 +173,6 @@ void io_write(char * filename_stub, struct io_info_t * io_info) {
   assert(io_info);
 
   get_N_local(nlocal);
-
-  /* Write some meta information */
-  io_write_metadata(filename_stub, io_info);
-
   io_set_group_filename(filename_io, filename_stub, io_info);
 
   if (io_info->io_comm->rank == 0) {
@@ -315,14 +310,10 @@ static void io_set_group_filename(char * filename_io, const char * stub,
   assert(stub);
   assert(strlen(stub) < FILENAME_MAX/2);  /* stub should not be too long */
   assert(info);
+  assert(info->io_comm->n_io < 1000);     /* format restriction ... */
 
-  if (info->io_comm->n_io == 1) {
-    sprintf(filename_io, "%s", stub); /* No extension in serial */
-  }
-  else {
-    sprintf(filename_io, "%s.%3.3d-%3.3d", stub, info->io_comm->n_io,
-	    info->io_comm->index + 1);
-  }
+  sprintf(filename_io, "%s.%3.3d-%3.3d", stub, info->io_comm->n_io,
+	  info->io_comm->index + 1);
 
   return;
 }
@@ -517,39 +508,77 @@ static long int io_file_offset(int ic, int jc, struct io_info_t * info) {
  *
  *****************************************************************************/
 
-static void io_write_metadata(char * filename_stub, struct io_info_t * info) {
+void io_write_metadata(char * filename_stub, struct io_info_t * info) {
 
   FILE * fp_meta;
   char filename_io[FILENAME_MAX];
   int  nx, ny, nz;
+  int n[3], noff[3];
 
-  /* The root process only writes at the moment */
+  int token = 0;
+  const int tag = 1293;
+  MPI_Status status;
 
-  if (pe_rank() != 0) return;
+  /* Every group writes a file, ie., the information stub and
+   * the details of the local group which allow the output to
+   * be unmanaged. */
 
-  sprintf(filename_io, "%s.meta", filename_stub);
+  assert(info);
+  get_N_offset(noff);
+  
+  io_set_group_filename(filename_io, filename_stub, info);
+  sprintf(filename_io, "%s.meta", filename_io);
 
-  nx = info->io_comm->ngroup[X];
-  ny = info->io_comm->ngroup[Y];
-  nz = info->io_comm->ngroup[Z];
 
-  fp_meta = fopen(filename_io, "w");
-  if (fp_meta == NULL) fatal("fopen(%s) failed\n", filename_io);
+  if(info->io_comm->rank == 0) {
+    /* Write the information stub */
 
-  fprintf(fp_meta, "Metadata for file set prefix:    %s\n", filename_stub);
-  fprintf(fp_meta, "Data description:                %s\n", info->name);
-  fprintf(fp_meta, "Data size per site (bytes):      %d\n", (int)info->bytesize);
-  fprintf(fp_meta, "Number of processors:            %d\n", pe_size());
-  fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
-	 cart_size(X), cart_size(Y), cart_size(Z));
-  fprintf(fp_meta, "Number of I/O groups (files):    %d\n", nx*ny*nz);
-  fprintf(fp_meta, "I/O communicator topology:       %d %d %d\n", nx, ny, nz);
+    nx = info->io_comm->ngroup[X];
+    ny = info->io_comm->ngroup[Y];
+    nz = info->io_comm->ngroup[Z];
+
+    fp_meta = fopen(filename_io, "w");
+    if (fp_meta == NULL) fatal("fopen(%s) failed\n", filename_io);
+
+    fprintf(fp_meta, "Metadata for file set prefix:    %s\n", filename_stub);
+    fprintf(fp_meta, "Data description:                %s\n", info->name);
+    fprintf(fp_meta, "Data size per site (bytes):      %d\n",
+	    (int) info->bytesize);
+    fprintf(fp_meta, "Number of processors:            %d\n", pe_size());
+    fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
+	    cart_size(X), cart_size(Y), cart_size(Z));
+    fprintf(fp_meta, "Total system size:               %d %d %d\n",
+	    N_total(X), N_total(Y), N_total(Z));
+    fprintf(fp_meta, "Number of I/O groups (files):    %d\n", nx*ny*nz);
+    fprintf(fp_meta, "I/O communicator topology:       %d %d %d\n",
+	    nx, ny, nz);
+    fprintf(fp_meta, "Write order:\n");
+
+  }
+  else {
+    MPI_Recv(&token, 1, MPI_INT, info->io_comm->rank - 1, tag,
+	     info->io_comm->comm, &status);
+    fp_meta = fopen(filename_io, "a");
+    if (fp_meta == NULL) fatal("fopen(%s) failed\n", filename_io);
+  }
+
+  /* Local decomposition information */
+
+  get_N_local(n);
+  fprintf(fp_meta, "%3d %3d %3d %3d %d %d %d %d %d %d\n", info->io_comm->rank,
+          cart_coords(X), cart_coords(Y), cart_coords(Z),
+          n[X], n[Y], n[Z], noff[X], noff[Y], noff[Z]);
 
   if (ferror(fp_meta)) {
     perror("perror: ");
     fatal("File error on writing %s\n", filename_io);
   }
   fclose(fp_meta);
+
+ if(info->io_comm->rank < info->io_comm->size - 1) {
+   MPI_Ssend(&token, 1, MPI_INT, info->io_comm->rank + 1, tag,
+	     info->io_comm->comm);
+ }
 
   return;
 }
