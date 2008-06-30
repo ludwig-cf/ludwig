@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.8 2008-06-26 19:11:21 erlend Exp $
+ *  $Id: model.c,v 1.9.6.9 2008-06-30 11:11:13 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -54,7 +54,6 @@ MPI_Datatype DT_Site_yleft;
 MPI_Datatype DT_Site_zright;
 MPI_Datatype DT_Site_zleft;
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
-#endif
 
 /* The xcount*2 means xcount(foreach dist) 2(num dists) */
 void getAintDisp(int indexDisp[xcount], MPI_Aint dispArray[xcount*2]) {
@@ -73,6 +72,8 @@ void getAintDisp(int indexDisp[xcount], MPI_Aint dispArray[xcount*2]) {
     info("  xdisp_right[%d] = %d \n", i, dispArray[i]);
   }
 }
+
+#endif
 
 /***************************************************************************
  *
@@ -134,11 +135,14 @@ void init_site() {
     getAintDisp(xdisp_right, xdisp_fwd);
     getAintDisp(xdisp_left, xdisp_bwd);
 
-    int xnblocks[] = {5,5};
+    int xnblocks[] = {NVEL-5-4,NVEL-5+5};
     MPI_Datatype tmpxtypes[] = {MPI_DOUBLE,MPI_DOUBLE};
+    MPI_Aint xdisp_tmpbwd[] = {0};
+    MPI_Aint xdisp_tmpfwd[] = {0, (NVEL)*8};    
 
-    MPI_Type_struct(xcount*2, xnblocks, xdisp_fwd, tmpxtypes, &DT_Site_xright);
-    MPI_Type_struct(xcount*2, xnblocks, xdisp_bwd, tmpxtypes, &DT_Site_xleft);
+    printf("NVEL*8 = %d \n",NVEL*8);
+    MPI_Type_struct(xcount*2, xnblocks, xdisp_tmpfwd, tmpxtypes, &DT_Site_xright);
+    MPI_Type_struct(xcount/**2*/, xblocklens, xdisp_tmpbwd, xtypes, &DT_Site_xleft);
     MPI_Type_struct(ycount, yblocklens, ydisp_right, ytypes, &DT_Site_yright);
     MPI_Type_struct(ycount, yblocklens, ydisp_left, ytypes, &DT_Site_yleft);
     MPI_Type_struct(zcount, zblocklens, zdisp_right, ztypes, &DT_Site_zright);
