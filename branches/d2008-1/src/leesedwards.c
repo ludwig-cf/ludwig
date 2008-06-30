@@ -32,7 +32,6 @@ static LE_Plane * LeesEdw = NULL;
 
 static void   LE_init_original(void);
 static void   le_init_tables(void);
-static void   le_init_shear_profile(void);
 static double le_get_steady_uy(const int); 
 
 
@@ -104,18 +103,6 @@ void LE_init() {
   }
 
   LE_init_original();
-
-  /* Only allow initialisation at t = 0 */
-
-  if (get_step() == 0) {
-
-    RUN_get_int_parameter("LE_init_profile", &n);
-
-    if (n == 1) {
-      info("Initialising shear profile\n");
-      le_init_shear_profile();
-    }
-  }
 
   le_init_tables();
 
@@ -783,7 +770,7 @@ void LE_update_buffers( int target_buff )
   int     integ, LE_loc, plane, vel_ind;
   int     disp_j1,disp_j2;
   double   LE_frac;
-  int     N[3];
+  int     nlocal[3];
 
 #ifdef _MPI_
 
@@ -807,15 +794,15 @@ void LE_update_buffers( int target_buff )
   
 #ifdef _MPI_ /* Parallel (MPI) section */
 
-    get_N_local(N);
+    get_N_local(nlocal);
     get_N_offset(offset);
-    yfac = N[Z]+2*nhalo_;
-    xfac = (N[Y]+2*nhalo_)*(N[Z]+2*nhalo_);
-    nsites = (N[Y]+2*nhalo_+1)*(N[Z]+2*nhalo_);
+    yfac = nlocal[Z]+2*nhalo_;
+    xfac = (nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
+    nsites = (nlocal[Y]+2*nhalo_+1)*(nlocal[Z]+2*nhalo_);
 
     /* 
      * Set up buffer of translated sites (by linear interpolation):
-     * 1. Copy (N[Y]+3)*(N[Z]+2) translated sites in buff_site[]
+     * 1. Copy (nlocal[Y]+3)*(nlocal[Z]+2) translated sites in buff_site[]
      * 2. Perform linear interpolation and copy to LeesEdw_site[]
      */
 
@@ -849,8 +836,8 @@ void LE_update_buffers( int target_buff )
 	  start_y = ((offset[Y]+(1-nhalo_)+integ+2*N_total(Y)-1) % N_total(Y)) + 1;
       
 	  /* Get ranks of both target PEs (target_rank1 and target_rank2) */
-	  /* Note PEi responsible for start_y in (local) range 0->N[Y]-1 */
-	  target_pe1[Y] = (start_y / N[Y]) % cart_size(Y);
+	  /* Note PEi responsible for start_y in (local) range 0->nlocal[Y]-1 */
+	  target_pe1[Y] = (start_y / nlocal[Y]) % cart_size(Y);
 	  target_pe2[Y] = (target_pe1[Y]+1) % cart_size(Y);
 	  target_pe1[X] = target_pe2[X] = cart_coords(X);
 	  target_pe1[Z] = target_pe2[Z] = cart_coords(Z);
@@ -860,14 +847,14 @@ void LE_update_buffers( int target_buff )
 	  target_rank2 = LE_ranks[target_rank2];
       
 	  /* Starting y coordinate (now local address on PE target_rank1) */
-	  /* Valid values for start_y are in the range 0->N[Y]-1 */
+	  /* Valid values for start_y are in the range 0->nlocal[Y]-1 */
 	  /* Obviously remainder starts at y=1 on PE target_rank2 */
-	  start_y = start_y % N[Y];
+	  start_y = start_y % nlocal[Y];
       
 	  /* Number of sites to fetch from target_rank1 and target_rank2 */
-	  /* Note that nsites = nsites1+nsites2 = (N[Y]+3)*(N[Z]+2) */
-	  nsites1 = (N[Y]-start_y+1)*(N[Z]+2*nhalo_);
-	  nsites2 =     (start_y+1+1)*(N[Z]+2*nhalo_);
+	  /* Note that nsites = nsites1+nsites2 = (nlocal[Y]+3)*(nlocal[Z]+2) */
+	  nsites1 = (nlocal[Y]-start_y+1)*(nlocal[Z]+2*nhalo_);
+	  nsites2 =     (start_y+1+1)*(nlocal[Z]+2*nhalo_);
       
         /* Use point-to-point communication */
 
@@ -908,8 +895,8 @@ void LE_update_buffers( int target_buff )
 	start_y = ((offset[Y]+(1-nhalo_)-integ+2*N_total(Y)-2) % N_total(Y)) + 1;
       
 	  /* Get ranks of both target PEs (target_rank1 and target_rank2) */
-	  /* Note PEi responsible for start_y in (local) range 0->N[Y]-1 */
-	  target_pe1[Y] = (start_y / N[Y]) % cart_size(Y);
+	  /* Note PEi responsible for start_y in (local) range 0->nlocal[Y]-1 */
+	  target_pe1[Y] = (start_y / nlocal[Y]) % cart_size(Y);
 	  target_pe2[Y] = (target_pe1[Y]+1) % cart_size(Y);
 	  target_pe1[X] = target_pe2[X] = cart_coords(X);
 	  target_pe1[Z] = target_pe2[Z] = cart_coords(Z);
@@ -919,14 +906,14 @@ void LE_update_buffers( int target_buff )
 	  target_rank2 = LE_ranks[target_rank2];
 	  
 	  /* Starting y coordinate (now local address on PE target_rank1) */
-	  /* Valid values for start_y are in the range 0->N[Y]-1 */
+	  /* Valid values for start_y are in the range 0->nlocal[Y]-1 */
 	  /* Obviously remainder starts at y=1 on PE target_rank2 */
-	  start_y = start_y % N[Y];
+	  start_y = start_y % nlocal[Y];
 	  
 	  /* Number of sites to fetch from target_rank1 and target_rank2 */
-	  /* Note that nsites = nsites1+nsites2 = (N[Y]+3)*(N[Z]+2) */
-	  nsites1 = (N[Y]-start_y+1)*(N[Z]+2*nhalo_);
-	  nsites2 =     (start_y+1+1)*(N[Z]+2*nhalo_);
+	  /* Note that nsites = nsites1+nsites2 = (nlocal[Y]+3)*(nlocal[Z]+2) */
+	  nsites1 = (nlocal[Y]-start_y+1)*(nlocal[Z]+2*nhalo_);
+	  nsites2 =     (start_y+1+1)*(nlocal[Z]+2*nhalo_);
 	  
         /* Use point-to-point communication */
 
@@ -973,8 +960,8 @@ void LE_update_buffers( int target_buff )
 	   */
 
 	  /* Plane below */
-	  for(jj=1; jj<=N[Y]; jj++)
-	    for(kk=1; kk<=N[Z]; kk++)
+	  for(jj=1; jj<=nlocal[Y]; jj++)
+	    for(kk=1; kk<=nlocal[Z]; kk++)
 	      {
 		ind = 2*i*xfac2 + jj*yfac2 + kk*zfac2;
 		ind0 =            (jj+nhalo_-1)*yfac  + kk + nhalo_-1;
@@ -994,8 +981,8 @@ void LE_update_buffers( int target_buff )
 	      }
 	  
 	  /* Plane above */
-	  for(jj=1; jj<=N[Y]; jj++)
-	    for(kk=1; kk<=N[Z]; kk++)
+	  for(jj=1; jj<=nlocal[Y]; jj++)
+	    for(kk=1; kk<=nlocal[Z]; kk++)
 	      {
 		ind = (2*i+1)*xfac2 +  jj   *yfac2 + kk*zfac2;
 		ind0 =       nsites +  (jj+nhalo_-1)   *yfac  + kk+nhalo_-1;
@@ -1022,9 +1009,9 @@ void LE_update_buffers( int target_buff )
   else {
     /* Serial, or MPI with cart_size(Y) = 1 */
 
-    get_N_local(N);
-    yfac  =  N[Z]+2*nhalo_;
-    xfac  = (N[Y]+2*nhalo_) * (N[Z]+2*nhalo_);
+    get_N_local(nlocal);
+    yfac  =  nlocal[Z]+2*nhalo_;
+    xfac  = (nlocal[Y]+2*nhalo_) * (nlocal[Z]+2*nhalo_);
     zfac2 = LE_N_VEL_XING * 2;  /* final x2 because fs and gs as well! */
     yfac2 = yfac * zfac2;
     xfac2 = xfac * zfac2; 
@@ -1036,15 +1023,15 @@ void LE_update_buffers( int target_buff )
 	  LE_frac =     LeesEdw_plane[plane].frac;
 	  LE_loc  =     LeesEdw_plane[plane].loc;
 	  integ = floor(LeesEdw_plane[plane].disp);
-	  integ = integ%N[Y];
+	  integ = integ%nlocal[Y];
 
 	  /* Plane below (going down): +ve displacement */
 	  /* site_buff[i] = frac*site[i+integ] + (1-frac)*site[i+(integ+1)] */
-	  for(jj=1; jj<=N[Y]; jj++)
+	  for(jj=1; jj<=nlocal[Y]; jj++)
 	    {
-	      disp_j1 = ((jj+integ+2*N[Y]-1) % N[Y]) + 1;
-	      disp_j2 = (disp_j1 % N[Y]) + 1;
-	      for(kk=1; kk<=N[Z]; kk++)
+	      disp_j1 = ((jj+integ+2*nlocal[Y]-1) % nlocal[Y]) + 1;
+	      disp_j2 = (disp_j1 % nlocal[Y]) + 1;
+	      for(kk=1; kk<=nlocal[Z]; kk++)
 		{
 		  ind  = 2*plane*xfac2 +      jj*yfac2 + kk*zfac2;
 		  ind0 = LE_loc *xfac  + disp_j1*yfac  + kk;
@@ -1073,11 +1060,11 @@ void LE_update_buffers( int target_buff )
 	  /* Plane above: -ve displacement */
 	  /* site[i] = frac*site[i-integ] + (1-frac)*site[i-(integ+1)] */
 	  /* buff[i] = site[i-(integ+1)] */
-	  for(jj=1; jj<=N[Y]; jj++)
+	  for(jj=1; jj<=nlocal[Y]; jj++)
 	    {
-	      disp_j1 = ((jj-integ+2*N[Y]-2) % N[Y]) + 1;
-	      disp_j2 = ((disp_j1+N[Y]) % N[Y]) + 1;
-	      for(kk=1; kk<=N[Z]; kk++)
+	      disp_j1 = ((jj-integ+2*nlocal[Y]-2) % nlocal[Y]) + 1;
+	      disp_j2 = ((disp_j1+nlocal[Y]) % nlocal[Y]) + 1;
+	      for(kk=1; kk<=nlocal[Z]; kk++)
 		{
 		  ind = (2*plane+1)*xfac2 +      jj*yfac2 + kk*zfac2;
 		  ind0 = (LE_loc+1)*xfac  + disp_j1*yfac  + kk;
@@ -1120,54 +1107,67 @@ void LE_update_buffers( int target_buff )
 void le_init_shear_profile() {
 
   int ic, jc, kc, index;
-  int i, j, p;
+  int i, j, n, p;
   int N[3];
   double rho, u[ND], gradu[ND][ND];
   double eta;
 
-  /* Initialise the density, velocity, gradu; ghost modes are zero */
+  /* Only allow initialisation if the flag is set */
 
-  rho = get_rho0();
-  eta = get_eta_shear();
-  get_N_local(N);
+  n = 0;
+  RUN_get_int_parameter("LE_init_profile", &n);
 
-  for (i = 0; i< ND; i++) {
-    u[i] = 0.0;
-    for (j = 0; j < ND; j++) {
-      gradu[i][j] = 0.0;
-    }
+  if (n != 1) {
+    /* do nothing */
   }
+  else {
+    info("Initialising shear profile\n");
 
-  gradu[X][Y] = le_params_.shear_rate;
+    /* Initialise the density, velocity, gradu; ghost modes are zero */
 
-  /* Loop trough the sites */
+    rho = get_rho0();
+    eta = get_eta_shear();
+    get_N_local(N);
 
-  for (ic = 1; ic <= N[X]; ic++) {
+    for (i = 0; i< ND; i++) {
+      u[i] = 0.0;
+      for (j = 0; j < ND; j++) {
+	gradu[i][j] = 0.0;
+      }
+    }
 
-    u[Y] = le_get_steady_uy(ic);
+    gradu[X][Y] = le_params_.shear_rate;
 
-    /* We can now project the physical quantities to the distribution */
+    /* Loop trough the sites */
 
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
+    for (ic = 1; ic <= N[X]; ic++) {
+      
+      u[Y] = le_get_steady_uy(ic);
 
-	index = get_site_index(ic, jc, kc);
+      /* We can now project the physical quantities to the distribution */
 
-	for (p = 0; p < NVEL; p++) {
-	  double f = 0.0;
-	  double cdotu = 0.0;
-	  double sdotq = 0.0;
+      for (jc = 1; jc <= N[Y]; jc++) {
+	for (kc = 1; kc <= N[Z]; kc++) {
 
-	  for (i = 0; i < ND; i++) {
-	    cdotu += cv[p][i]*u[i];
-	    for (j = 0; j < ND; j++) {
-	      sdotq += (rho*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
+	  index = get_site_index(ic, jc, kc);
+	  info("ic = %d jc = %d kc = %d index = %d\n", ic, jc, kc, index);
+
+	  for (p = 0; p < NVEL; p++) {
+	    double f = 0.0;
+	    double cdotu = 0.0;
+	    double sdotq = 0.0;
+
+	    for (i = 0; i < ND; i++) {
+	      cdotu += cv[p][i]*u[i];
+	      for (j = 0; j < ND; j++) {
+		sdotq += (rho*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
+	      }
 	    }
+	    f = wv[p]*(rho + rcs2*rho*cdotu + 0.5*rcs2*rcs2*sdotq);
+	    set_f_at_site(index, p, f);
 	  }
-	  f = wv[p]*(rho + rcs2*rho*cdotu + 0.5*rcs2*rcs2*sdotq);
-	  set_f_at_site(index, p, f);
+	  /* Next site */
 	}
-	/* Next site */
       }
     }
   }

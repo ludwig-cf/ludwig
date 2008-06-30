@@ -30,6 +30,7 @@ int le_plane_location(const int);
 double    le_buffer_displacement(const int);
 MPI_Comm  le_communicator(void);
 void      le_displacement_ranks(const double, int[2], int[2]);
+void      le_init_shear_profile(void);
 
 
 /* Address macro. For performance purposes, -DNDEBUG replaces
