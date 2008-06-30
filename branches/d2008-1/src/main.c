@@ -37,7 +37,7 @@
 #include "io_harness.h"
 #include "phi.h"
 
-static char rcsid[] = "$Id: main.c,v 1.13.2.4 2008-06-06 18:19:39 kevin Exp $";
+static char rcsid[] = "$Id: main.c,v 1.13.2.5 2008-06-30 17:48:28 kevin Exp $";
 
 int print_free_energy_profile(void);
 void set_block(void);
@@ -81,6 +81,7 @@ int main( int argc, char **argv )
   COLL_init();
 
   init_free_energy();
+  if (get_step == 0) le_init_shear_profile();
 
   /* Report initial statistics */
 
