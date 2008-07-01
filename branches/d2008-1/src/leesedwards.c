@@ -136,8 +136,11 @@ static void le_init_tables() {
 
   n = 2*nhalo_*N_LE_plane;
   le_params_.nxbuffer = n;
-  le_params_.index_buffer_to_real = (int *) malloc(n*sizeof(int));
-  if (le_params_.index_buffer_to_real == NULL) fatal("malloc(le) failed\n");
+
+  if (n > 0) {
+    le_params_.index_buffer_to_real = (int *) malloc(n*sizeof(int));
+    if (le_params_.index_buffer_to_real == NULL) fatal("malloc(le) failed\n");
+  }
 
   ib = 0;
   for (n = 0; n < N_LE_plane; n++) {
@@ -162,6 +165,7 @@ static void le_init_tables() {
 
   n = (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1);
   le_params_.index_real_nbuffer = n;
+
   le_params_.index_real_to_buffer = (int *) malloc(n*sizeof(int));
   if (le_params_.index_real_to_buffer == NULL) fatal("malloc(le) failed\n");
 
@@ -225,8 +229,10 @@ static void le_init_tables() {
     * jump? The boundary velocities are constant in time. */
 
    n = le_params_.nxbuffer;
-   le_params_.buffer_duy = (double *) malloc(n*sizeof(double));
-   if (le_params_.buffer_duy == NULL) fatal("malloc(buffer_duy) failed\n");
+   if (n > 0) {
+     le_params_.buffer_duy = (double *) malloc(n*sizeof(double));
+     if (le_params_.buffer_duy == NULL) fatal("malloc(buffer_duy) failed\n");
+   }
 
   ib = 0;
   for (n = 0; n < N_LE_plane; n++) {
