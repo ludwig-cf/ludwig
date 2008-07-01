@@ -1150,7 +1150,6 @@ void le_init_shear_profile() {
 	for (kc = 1; kc <= N[Z]; kc++) {
 
 	  index = get_site_index(ic, jc, kc);
-	  info("ic = %d jc = %d kc = %d index = %d\n", ic, jc, kc, index);
 
 	  for (p = 0; p < NVEL; p++) {
 	    double f = 0.0;
