@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.9 2008-06-30 17:52:53 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.10 2008-07-01 14:37:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -34,8 +34,8 @@ extern double * grad_delsq_phi_site;
  * parameter at solid/fluid boundaries. The order could be
  * optimised */
 
-static const int ngrad_ = 27;
-static const int bs_cv[27][3] = {{ 0, 0, 0},
+#define NGRAD_ 27
+static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 {-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1},
                                  {-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1},
                                  {-1, 1,-1}, {-1, 1, 0}, {-1, 1, 1},
@@ -129,9 +129,9 @@ static void phi_gradients_with_solid() {
   int ia, index, p;
   int nextra = nhalo_ - 1; /* Gradients not computed at last point locally */
 
-  int isite[ngrad_];
-  double count[ngrad_];
-  double gradt[ngrad_];
+  int isite[NGRAD_];
+  double count[NGRAD_];
+  double gradt[NGRAD_];
   double gradn[3];
   double dphi;
   double rk = 1.0;         /* 1 / free energy penalty parameter kappa */
@@ -151,7 +151,7 @@ static void phi_gradients_with_solid() {
 
 	/* Set solid/fluid flag to index neighbours */
 
-	for (p = 1; p < ngrad_; p++) {
+	for (p = 1; p < NGRAD_; p++) {
 	  ic1 = ic + bs_cv[p][X];
 	  jc1 = jc + bs_cv[p][Y];
 	  kc1 = kc + bs_cv[p][Z];
@@ -165,7 +165,7 @@ static void phi_gradients_with_solid() {
 	  gradn[ia] = 0.0;
 	}
 
-	for (p = 1; p < ngrad_; p++) {
+	for (p = 1; p < NGRAD_; p++) {
 
 	  if (isite[p] == -1) continue;
 	  dphi = phi_site[isite[p]] - phi_site[index];
@@ -183,7 +183,7 @@ static void phi_gradients_with_solid() {
 
 	/* Estimate gradient at boundaries */
 
-	for (p = 1; p < ngrad_; p++) {
+	for (p = 1; p < NGRAD_; p++) {
 
 	  if (isite[p] == -1) {
 	    double c, h, phi_b;
@@ -208,7 +208,7 @@ static void phi_gradients_with_solid() {
 	  gradn[ia] = 0.0;
 	}
 
-	for (p = 1; p < ngrad_; p++) {
+	for (p = 1; p < NGRAD_; p++) {
 	  dphi += gradt[p];
 	  for (ia = 0; ia < 3; ia++) {
 	    gradn[ia] += gradt[p]*bs_cv[p][ia];
@@ -264,7 +264,7 @@ static void phi_gradients_fluid_compact() {
 	}
 	delsq_phi_site[index] = 0.0;
 
-	for (p = 1; p < ngrad_; p++) {
+	for (p = 1; p < NGRAD_; p++) {
 	  ic1 = ic + bs_cv[p][X];
 	  jc1 = jc + bs_cv[p][Y];
 	  kc1 = kc + bs_cv[p][Z];
@@ -361,7 +361,7 @@ static void phi_gradients_double_fluid() {
 	}
 	delsq_delsq_phi_site[index] = 0.0;
 
-	for (p = 1; p < ngrad_; p++) {
+	for (p = 1; p < NGRAD_; p++) {
 	  ic1 = ic + bs_cv[p][X];
 	  jc1 = jc + bs_cv[p][Y];
 	  kc1 = kc + bs_cv[p][Z];
