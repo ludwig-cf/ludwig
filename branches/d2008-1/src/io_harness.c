@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.1.2.6 2008-06-30 17:44:13 kevin Exp $
+ *  $Id: io_harness.c,v 1.1.2.7 2008-07-01 13:53:32 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -310,7 +310,9 @@ static void io_set_group_filename(char * filename_io, const char * stub,
   assert(stub);
   assert(strlen(stub) < FILENAME_MAX/2);  /* stub should not be too long */
   assert(info);
+  assert(info->io_comm);
   assert(info->io_comm->n_io < 1000);     /* format restriction ... */
+
 
   sprintf(filename_io, "%s.%3.3d-%3.3d", stub, info->io_comm->n_io,
 	  info->io_comm->index + 1);
