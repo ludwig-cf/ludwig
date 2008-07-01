@@ -4,7 +4,7 @@
  *
  *  D3Q15 model definitions.
  *
- *  $Id: d3q15.c,v 1.6.6.6 2008-06-30 11:11:13 erlend Exp $
+ *  $Id: d3q15.c,v 1.6.6.7 2008-07-01 18:42:26 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -131,8 +131,8 @@ const double mi_[NVEL][NVEL] =
 
 #ifdef _MPI_
 
-MPI_Datatype xtypes[xcount] = {MPI_DOUBLE};
-int xblocklens[xcount] = {2*NVEL};
+MPI_Datatype xtypes_cv[xcount] = {MPI_DOUBLE};
+int xblocklens[xcount] = {5};
 int xdisp_right[xcount] = {1};
 int xdisp_left[xcount] = {10};
 

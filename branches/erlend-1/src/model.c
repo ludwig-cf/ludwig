@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.9 2008-06-30 11:11:13 erlend Exp $
+ *  $Id: model.c,v 1.9.6.10 2008-07-01 18:42:26 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -56,7 +56,7 @@ MPI_Datatype DT_Site_zleft;
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
 
 /* The xcount*2 means xcount(foreach dist) 2(num dists) */
-void getAintDisp(int indexDisp[xcount], MPI_Aint dispArray[xcount*2]) {
+void getAintDisp(int indexDisp[xcount], MPI_Aint dispArray[xcount*2+1]) {
   /* ndist: num distributions (currently two) */
   int ndist = 2;
   MPI_Aint site_addresses[xcount*2 + 1];
@@ -66,11 +66,14 @@ void getAintDisp(int indexDisp[xcount], MPI_Aint dispArray[xcount*2]) {
     MPI_Address(&site[0].f[indexDisp[i]], &site_addresses[i+1]);
     MPI_Address(&site[0].g[indexDisp[i]], &site_addresses[xcount+1+i]);
   }
-  
+
+  dispArray[xcount*2] = sizeof(site[0]);
+
   for(i=0; i<xcount*ndist; i++) {
     dispArray[i] = site_addresses[i+1] - site_addresses[0];
     info("  xdisp_right[%d] = %d \n", i, dispArray[i]);
   }
+  info("  xdisp_right[%d] = %d \n", xcount*2, dispArray[xcount*2]);
 }
 
 #endif
@@ -126,22 +129,38 @@ void init_site() {
    *
    * This is only confirmed for nhalo_site_ = 1. */
   
-
   if(use_reduced_halos()) {
     info("Using reduced halos. \n");
 
-    MPI_Aint xdisp_fwd[xcount*2];
-    MPI_Aint xdisp_bwd[xcount*2];
+    MPI_Aint xdisp_fwd[xcount*2+2];
+    MPI_Aint xdisp_bwd[xcount*2+2];
     getAintDisp(xdisp_right, xdisp_fwd);
     getAintDisp(xdisp_left, xdisp_bwd);
 
-    int xnblocks[] = {NVEL-5-4,NVEL-5+5};
-    MPI_Datatype tmpxtypes[] = {MPI_DOUBLE,MPI_DOUBLE};
-    MPI_Aint xdisp_tmpbwd[] = {0};
-    MPI_Aint xdisp_tmpfwd[] = {0, (NVEL)*8};    
+    int xcount_ = xcount*2+2;
+    int xblocks[xcount*2+1];
+    xblocks[0] = 1; /* MPI_LB */
+    xblocks[xcount*2+1] = 1; /* MPI_UB */
+    int i,j;
+    for(i=0; i<2; i++) {
+      for(j=1; j<xcount+1; j++) {
+	xblocks[i*xcount + j] = xblocklens[j];
+      }
+    }
+    
+    for(i=0; i<xcount*2+1; i++) {
+      printf("xblocks[%d] = %d \n", i, xblocks[i]);
+    }
 
-    printf("NVEL*8 = %d \n",NVEL*8);
-    MPI_Type_struct(xcount*2, xnblocks, xdisp_tmpfwd, tmpxtypes, &DT_Site_xright);
+    MPI_Datatype xtypes[xcount*2+1] = {MPI_DOUBLE, MPI_DOUBLE, MPI_UB};
+    
+    int xnblocks[] = {1, /*NVEL*/5, /*NVEL*/5, 1};
+    MPI_Datatype tmpxtypes[] = {MPI_LB, MPI_DOUBLE, MPI_DOUBLE, MPI_UB};
+    MPI_Aint xdisp_tmpfwd[] = {0+8, (NVEL)*8};
+    MPI_Aint xdisp_tmpbwd[] = {0, 0+8, 120+8, 8*30};
+
+    //    MPI_Type_struct(3, xblocks, xdisp_fwd, xtypes, &DT_Site_xright);
+    MPI_Type_struct(4, xnblocks, xdisp_tmpbwd, tmpxtypes, &DT_Site_xright);
     MPI_Type_struct(xcount/**2*/, xblocklens, xdisp_tmpbwd, xtypes, &DT_Site_xleft);
     MPI_Type_struct(ycount, yblocklens, ydisp_right, ytypes, &DT_Site_yright);
     MPI_Type_struct(ycount, yblocklens, ydisp_left, ytypes, &DT_Site_yleft);
@@ -178,6 +197,8 @@ void init_site() {
     MPI_Type_commit(&DT_plane_XZ);
     MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
     MPI_Type_commit(&DT_plane_XY);
+    // now introduce pointers to these, with the names of the reduced halos
+    // TODO: ask kevin if this is a sane approach (alt. is to have a conditional on sends).
   }
 
  #endif
@@ -482,30 +503,16 @@ void halo_site() {
 	      TAG_FWD, cart_comm(), &request[3]);
     */
 
-/*
-    MPI_Issend(&site, 1, DT_plane_YZ_left, cart_neighb(BACKWARD,X),
-	      TAG_BWD, cart_comm(), &request[0]);
-    MPI_Irecv(&site, 1, DT_plane_YZ_right, cart_neighb(FORWARD,X), 
-	      TAG_BWD, cart_comm(), &request[1]);
-    MPI_Issend(&site, 1, DT_plane_YZ_right, cart_neighb(FORWARD,X),
-              TAG_BWD, cart_comm(), &request[2]);
-    MPI_Irecv(&site, 1, DT_plane_YZ_left, cart_neighb(BACKWARD,X),
-	      TAG_BWD, cart_comm(), &request[3]);
-*/
-    
-//    printf(" -- Sending left --  \n");
     MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ_left, cart_neighb(BACKWARD,X),
 	       TAG_BWD, cart_comm(), &request[0]);
     MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ_left, cart_neighb(FORWARD,X), 
 	       TAG_BWD, cart_comm(), &request[1]);
-    //    printf(" -- Sending right -- \n");
     MPI_Issend(&site[N[X]*xfac].f[0], 1, DT_plane_YZ_right, cart_neighb(FORWARD,X),
                TAG_FWD, cart_comm(), &request[2]);
     MPI_Irecv(&site[0].f[0], 1, DT_plane_YZ_right, cart_neighb(BACKWARD,X),
                TAG_FWD, cart_comm(), &request[3]);
 
     MPI_Waitall(4, request, status);
-    //    printf(" -- finished x-direction -- \n");
 #endif
   }
   
