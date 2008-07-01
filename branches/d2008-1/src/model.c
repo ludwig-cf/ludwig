@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.4.5 2008-06-13 19:15:31 kevin Exp $
+ *  $Id: model.c,v 1.9.4.6 2008-07-01 13:55:34 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,12 +26,14 @@
 #include "runtime.h"
 #include "coords.h"
 #include "model.h"
+#include "io_harness.h"
 #include "timer.h"
 
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
 const double d_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
 
+struct io_info_t * io_info_distribution_; 
 Site  * site;
 
 static int nsites_ = 0;
@@ -43,6 +45,9 @@ static MPI_Datatype DT_plane_YZ;
 MPI_Datatype DT_Site; /* currently referenced in leesedwards */
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
 
+static void distribution_io_info_init(void);
+static int distributions_read(FILE *, const int, const int, const int);
+static int distributions_write(FILE *, const int, const int, const int);
 
 /***************************************************************************
  *
@@ -95,6 +100,8 @@ void init_site() {
   MPI_Type_vector(1, ny*nz*nhalolocal, 1, DT_Site, &DT_plane_YZ);
   MPI_Type_commit(&DT_plane_YZ);
 
+
+  distribution_io_info_init();
   initialised_ = 1;
 
   return;
@@ -110,16 +117,42 @@ void init_site() {
 
 void finish_site() {
 
-#ifdef _MPI_2_
-  MPI_Free_mem(site);
-#else
+  io_info_destroy(io_info_distribution_);
   free(site);
-#endif
 
   MPI_Type_free(&DT_Site);
   MPI_Type_free(&DT_plane_XY);
   MPI_Type_free(&DT_plane_XZ);
   MPI_Type_free(&DT_plane_YZ);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_io_info_init
+ *
+ *  Initialise the io_info struct for the distributions.
+ *
+ *****************************************************************************/
+
+static void distribution_io_info_init() {
+
+  int io_grid[3] = {1, 1, 1};
+  char string[FILENAME_MAX];
+
+  RUN_get_int_parameter_vector("distribution_io_grid", io_grid);
+
+  io_info_distribution_ = io_info_create_with_grid(io_grid);
+
+  sprintf(string, "2 x Distribution: d%dq%d", ND, NVEL);
+
+  io_info_set_name(io_info_distribution_, string);
+  io_info_set_read(io_info_distribution_, distributions_read);
+  io_info_set_write(io_info_distribution_, distributions_write);
+  io_info_set_bytesize(io_info_distribution_, sizeof(Site));
+
+  io_write_metadata("config", io_info_distribution_);
 
   return;
 }
@@ -453,4 +486,48 @@ void halo_site() {
   TIMER_stop(TIMER_HALO_LATTICE);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  read_distributions
+ *
+ *  Read one lattice site (ic, jc, kc) worth of distributions.
+ *
+ *****************************************************************************/
+
+static int distributions_read(FILE * fp, const int ic, const int jc,
+			      const int kc) {
+
+  int index, n;
+
+  index = get_site_index(ic, jc, kc);
+
+  n = fread(site + index, sizeof(Site), 1, fp);
+
+  if (n != 1) fatal("fread(distribution) failed at %d %d %d\n", ic, jc,kc);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  distributions_write
+ *
+ *  Write one lattice site (ic, jc, kc) worth of distributions.
+ *
+ *****************************************************************************/
+
+static int distributions_write(FILE * fp, const int ic , const int jc,
+			       const int kc) {
+
+  int index, n;
+
+  index = get_site_index(ic, jc, kc);
+
+  n = fwrite(site + index, sizeof(Site), 1, fp);
+
+  if (n != 1) fatal("fwrite(distribution) failde at %d %d %d\n", ic, jc, kc);
+
+  return n;
 }

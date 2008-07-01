@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.9.2.1 2008-02-26 09:41:08 kevin Exp $
+ *  $Id: model.h,v 1.9.2.2 2008-07-01 13:55:34 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -29,6 +29,7 @@ typedef struct {
 extern const double cs2;
 extern const double rcs2;
 extern const double d_[3][3];
+extern struct io_info_t * io_info_distribution_;
 
 void   init_site(void);
 void   finish_site(void);

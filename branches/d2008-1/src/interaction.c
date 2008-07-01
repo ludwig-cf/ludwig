@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.13.2.3 2008-02-26 09:41:08 kevin Exp $
+ *  $Id: interaction.c,v 1.13.2.4 2008-07-01 13:55:34 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -160,6 +160,8 @@ void COLL_init() {
   if (nc == 0) return;
   /* Particle code only with nhalo_ = 1 at moment */
   assert(nhalo_ == 1);
+  /* Still require old COM_init() at the moment */
+  COM_init();
 
   nc = RUN_get_double_parameter("colloid_ah", &ahmax);
   if (nc == 0) fatal("Please set colloids_ah in the input file\n");

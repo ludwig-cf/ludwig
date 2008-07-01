@@ -37,15 +37,13 @@
 #include "io_harness.h"
 #include "phi.h"
 
-static char rcsid[] = "$Id: main.c,v 1.13.2.5 2008-06-30 17:48:28 kevin Exp $";
-
 int print_free_energy_profile(void);
 void set_block(void);
 
 int main( int argc, char **argv )
 {
   char    filename[FILENAME_MAX];
-  int     step;
+  int     step = 0;
 
   /* Initialise the following:
    *    - RealityGrid steering (if required)
@@ -67,8 +65,6 @@ int main( int argc, char **argv )
   coords_init();
   init_control();
 
-  COM_init();
-
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
 
@@ -81,7 +77,17 @@ int main( int argc, char **argv )
   COLL_init();
 
   init_free_energy();
-  if (get_step == 0) le_init_shear_profile();
+
+  if (get_step() == 0) {
+    le_init_shear_profile();
+  }
+  else {
+    if (phi_finite_difference_) {
+      sprintf(filename,"phi-%6.6d", get_step());
+      info("Reading phi state from %s\n", filename);
+      io_read(filename, io_info_phi);
+    }
+  }
 
   /* Report initial statistics */
 
@@ -134,7 +140,7 @@ int main( int argc, char **argv )
 
     if (is_config_step()) {
       get_output_config_filename(filename, step);
-      COM_write_site(filename, MODEL_write_site);
+      io_write(filename, io_info_distribution_);
       sprintf(filename, "%s%6.6d", "config.cds", step);
       CIO_write_state(filename);
     }
@@ -170,15 +176,16 @@ int main( int argc, char **argv )
     /* Next time step */
   }
 
-  /* print_free_energy_profile();*/
 
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
     get_output_config_filename(filename, step);
-    COM_write_site(filename, MODEL_write_site);
+    io_write(filename, io_info_distribution_);
     sprintf(filename, "%s%6.6d", "config.cds", step);
     CIO_write_state(filename);
+    sprintf(filename,"phi-%6.6d",step);
+    io_write(filename, io_info_phi);
   }
 
 

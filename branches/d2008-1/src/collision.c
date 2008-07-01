@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.8 2008-06-13 19:13:29 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.9 2008-07-01 13:55:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -549,11 +549,9 @@ void MODEL_init( void ) {
     site_map_halo(); */
 
   init_site();
-  info("phi_init\n");
   phi_init();
   phi_gradients_set_fluid();
   hydrodynamics_init();
-  info("done various\n");
   
   /*
    * A number of options are offered to start a simulation:
@@ -565,14 +563,16 @@ void MODEL_init( void ) {
   RUN_get_double_parameter("noise", &noise0);
 
   /* Option 1: read distribution functions from file */
-  get_input_config_filename(filename, 0);
-  if(strcmp(filename, "EMPTY") != 0 ) {
+
+  ind = RUN_get_string_parameter("input_config", filename, FILENAME_MAX);
+
+  if (ind != 0) {
 
     info("Re-starting simulation at step %d with data read from "
 	 "config\nfile(s) %s\n", get_step(), filename);
 
     /* Read distribution functions - sets both */
-    COM_read_site(filename, MODEL_read_site);
+    io_read(filename, io_info_distribution_);
   } 
   else {
       /* 
