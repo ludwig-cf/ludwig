@@ -26,6 +26,7 @@ void brownian_step_no_inertia_test(void);
 void brownian_set_random(void);
 
 static double dt_ = 1.0;  /* Time step; fixed here to be 1 LB step */
+#define NTIME 16
 
 /*****************************************************************************
  *
@@ -37,18 +38,16 @@ static double dt_ = 1.0;  /* Time step; fixed here to be 1 LB step */
 
 void do_brownian_dynamics() {
 
-  const int ntime = 16;
-
   int     ic, jc, kc;
   Colloid * p_colloid;
   int i, n, nt, nmax = 100000;
-  double u[3][ntime];
-  double r[3][ntime];
-  double s[3][ntime];
-  double correlator_uu[ntime];
-  double correlator_ur[ntime];
-  double correlator_rr[ntime];
-  double correlator_ss[ntime];
+  double u[3][NTIME];
+  double r[3][NTIME];
+  double s[3][NTIME];
+  double correlator_uu[NTIME];
+  double correlator_ur[NTIME];
+  double correlator_rr[NTIME];
+  double correlator_ss[NTIME];
   double mass, scaleu, scalex, beta;
   double dr[3];
 
@@ -67,7 +66,7 @@ void do_brownian_dynamics() {
   info("scale u is %f\n", scaleu);
   info("scale x is %f\n", scalex);
 
-  for (nt = 0; nt < ntime; nt++) {
+  for (nt = 0; nt < NTIME; nt++) {
     for (i = 0; i < 3; i++) {
       u[i][nt] = 0.0;
       r[i][nt] = 0.0;
@@ -89,7 +88,7 @@ void do_brownian_dynamics() {
 
     /* diagnostics */
 
-    for (nt = ntime-1; nt >= 1; nt--) {
+    for (nt = NTIME-1; nt >= 1; nt--) {
       for (i = 0; i < 3; i++) {
 	u[i][nt] = u[i][nt-1];
 	r[i][nt] = r[i][nt-1];
@@ -120,8 +119,8 @@ void do_brownian_dynamics() {
       }
     }
 
-    if ( n > ntime) {
-      for (nt = 0; nt < ntime; nt++) {
+    if ( n > NTIME) {
+      for (nt = 0; nt < NTIME; nt++) {
 	for (i = 0; i < 3; i++) {
 	  correlator_uu[nt] += scaleu*scaleu*u[i][nt]*u[i][0];
 	  /* -ve sign here because r[0] is current step and nt previous */
@@ -139,7 +138,7 @@ void do_brownian_dynamics() {
   }
 
   info("\nResults Ermak and Buckholz \n");
-  for (n = 0; n < ntime; n++) {
+  for (n = 0; n < NTIME; n++) {
     double tau = n*beta*dt_;
     info("%6.3f %6.3f %6.3f ", tau, exp(-tau), correlator_uu[n]/nmax);
     info("%6.3f %6.3f ", 1.0 -  exp(-tau), sqrt(3.0)*correlator_ur[n]/nmax);
@@ -148,7 +147,7 @@ void do_brownian_dynamics() {
   }
 
   /* No inertia test */
-  for (n = 0; n < ntime; n++) {
+  for (n = 0; n < NTIME; n++) {
     double tau = n*dt_;
     double difft = get_kT() / (6.0*PI*get_eta_shear()*2.3);
     double diffr = get_kT() / (8.0*PI*get_eta_shear()*2.3*2.3*2.3);
@@ -401,7 +400,6 @@ void brownian_set_random() {
 
 void brownian_step_no_inertia_test() {
 
-  const int ntime = 16;
   const int nmax  = 10000;
 
   int     ic, jc, kc;
@@ -409,10 +407,10 @@ void brownian_step_no_inertia_test() {
   int     i, n, nt;
   int     ncell[3];
   double  diffr, difft;
-  double  r[3][ntime];
-  double  s[3][ntime];
-  double  correlator_rr[3][ntime];
-  double  correlator_ss[ntime];
+  double  r[3][NTIME];
+  double  s[3][NTIME];
+  double  correlator_rr[3][NTIME];
+  double  correlator_ss[NTIME];
   double  dr[3];
 
 
@@ -423,7 +421,7 @@ void brownian_step_no_inertia_test() {
 
   for (i = 0; i < 3; i++) ncell[i] = Ncell(i);
 
-  for (nt = 0; nt < ntime; nt++) {
+  for (nt = 0; nt < NTIME; nt++) {
     for (i = 0; i < 3; i++) {
       correlator_rr[i][nt] = 0.0;
     }
@@ -443,7 +441,7 @@ void brownian_step_no_inertia_test() {
     /* Rotate the tables of position and orientation backwards
      * and store the current values */
 
-    for (nt = ntime-1; nt >= 1; nt--) {
+    for (nt = NTIME-1; nt >= 1; nt--) {
       for (i = 0; i < 3; i++) {
 	r[i][nt] = r[i][nt-1];
 	s[i][nt] = s[i][nt-1];
@@ -472,8 +470,8 @@ void brownian_step_no_inertia_test() {
 
     /* Work out the contribution to the correlators */
 
-    if ( n > ntime) {
-      for (nt = 0; nt < ntime; nt++) {
+    if ( n > NTIME) {
+      for (nt = 0; nt < NTIME; nt++) {
 	for (i = 0; i < 3; i++) {
 	  /* correct for periodic boundaries */
 	  dr[i] = (r[i][nt] - r[i][0]);
@@ -494,7 +492,7 @@ void brownian_step_no_inertia_test() {
   info("    Time   theory     <rx>     <ry>     <rz>   ");
   info("theory     <ss>\n");
   
-  for (n = 0; n < ntime; n++) {
+  for (n = 0; n < NTIME; n++) {
     double tau = n*dt_;
     info("%8.3f %8.3f ",  tau, 2.0*tau);
     info("%8.3f ", correlator_rr[X][n]/(difft*nmax));
