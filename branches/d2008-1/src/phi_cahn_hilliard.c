@@ -8,7 +8,7 @@
  *
  *  The equation is solved here via finite difference.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.1.2.5 2008-06-30 17:49:37 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.1.2.6 2008-07-01 14:36:18 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -29,10 +29,6 @@
 #include "free_energy.h"
 #include "phi.h"
 
-#if (__STDC_VERSION__ < 199901)
-int signbit(double);
-#endif
-
 extern double * phi_site;
 static double * fluxe;
 static double * fluxw;
@@ -44,6 +40,7 @@ static void phi_ch_compute_fluxes_upwind_seventh_order(void);
 static void phi_ch_update_forward_step(void);
 
 static void (* phi_ch_compute_fluxes)(void) = phi_ch_compute_fluxes_upwind;
+static int signbit_double(double);
 
 static double mobility_; /* Order parameter mobility */
 
@@ -331,7 +328,7 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = r2*(u0[X] + u1[X]);
-	s = 1 - 2*signbit(u);
+	s = 1 - 2*signbit_double(u);
 	assert(s == -1 || s == +1);
 	up = ic + (s+1)/2;
 
@@ -352,7 +349,7 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = r2*(u0[Y] + u1[Y]);
-	s = 1 - 2*signbit(u);
+	s = 1 - 2*signbit_double(u);
 	assert(s == -1 || s == +1);
 	up = jc + (s+1)/2;
 
@@ -373,7 +370,7 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
 	hydrodynamics_get_velocity(index1, u1);
 
 	u = r2*(u0[Z] + u1[Z]);
-	s = 1 - 2*signbit(u);
+	s = 1 - 2*signbit_double(u);
 	assert(s == -1 || s == +1);
 	up = kc + (s+1)/2;
 
@@ -395,16 +392,15 @@ static void phi_ch_compute_fluxes_upwind_seventh_order() {
   return;
 }
 
-#if (__STDC_VERSION__ < 199901)
 /*****************************************************************************
  *
- *  signbit function
+ *  signbit_double function
  *
  *  Return 0 for +ve or zero argument, 1 for negative.
  *
  ****************************************************************************/
 
-int signbit(double u) {
+int signbit_double(double u) {
 
   int sign = 0;
 
@@ -412,4 +408,3 @@ int signbit(double u) {
 
   return sign;
 }
-#endif
