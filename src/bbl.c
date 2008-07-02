@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.3 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: bbl.c,v 1.4 2008-07-02 16:10:22 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -31,6 +31,7 @@ static void update_colloids(void);
 static double WALL_lubrication(const int, FVector, double);
 
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
+static double stress_[3][3]; /* Surface stress */
 
 /*****************************************************************************
  *
@@ -251,6 +252,10 @@ static void bounce_back_pass1() {
  *  Implement bounce-back on links having updated the colloid
  *  velocities via the implicit method.
  *
+ *  The surface stress is also accumulated here (and it really must
+ *  done between the colloid velcoity update and the actual bbl).
+ *  There's a separate routine to access it below.
+ *
  *****************************************************************************/
 
 static void bounce_back_pass2() {
@@ -271,9 +276,18 @@ static void bounce_back_pass2() {
   double rho0 = get_colloid_rho0();
 
   int       ic, jc, kc;
+  int ia;
 
   /* Account the current phi deficit */
   deltag_ = 0.0;
+
+  /* Zero the surface stress */
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      stress_[i][j] = 0.0;
+    }
+  }
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++)
     for (jc = 0; jc <= Ncell(Y) + 1; jc++)
@@ -345,6 +359,12 @@ static void bounce_back_pass2() {
 #ifndef _SINGLE_FLUID_
 	      site[j].g[ji] = site[i].g[ij] - dg;
 #endif
+	      /* The stress is r_b f_b */
+	      for (ia = 0; ia < 3; ia++) {
+		stress_[ia][0] += p_link->rb.x*(dm - df)*cv[ij][ia];
+		stress_[ia][1] += p_link->rb.y*(dm - df)*cv[ij][ia];
+		stress_[ia][2] += p_link->rb.z*(dm - df)*cv[ij][ia];
+	      }
 	    }
 
 	    /* Next link */
@@ -638,4 +658,48 @@ double WALL_lubrication(int dim, FVector r, double ah) {
 
 double bbl_order_parameter_deficit() {
   return deltag_;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_surface_stress
+ *
+ *  Report the current surface stress total.
+ *
+ *****************************************************************************/
+
+void bbl_surface_stress() {
+
+  double rv;
+
+#ifdef _MPI_
+  double send[9];
+  double recv[9];
+  int    ia, ib;
+  
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      send[ia*3+ib] = stress_[ia][ib];
+    }
+  }
+
+  MPI_Reduce(send, recv, 9, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+
+  for (ia = 0; ia < 3; ia++) {
+    for (jc = 0; jc < 3; jc++) {
+      stress_[ia][ib] = recv[ia*3+ib];
+    }
+  }
+#endif
+
+  rv = 1.0/(L(X)*L(Y)*L(Z));
+
+  info("stress_s x %12.6g %12.6g %12.6g\n",
+       rv*stress_[X][X], rv*stress_[X][Y], rv*stress_[X][Z]);
+  info("stress_s y %12.6g %12.6g %12.6g\n",
+       rv*stress_[X][Y], rv*stress_[Y][Y], rv*stress_[Y][Z]);
+  info("stress_s z %12.6g %12.6g %12.6g\n",
+       rv*stress_[X][Z], rv*stress_[Y][Z], rv*stress_[Z][Z]);
+
+  return;
 }

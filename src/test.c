@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.11 2008-02-14 17:42:27 kevin Exp $
+ *  $Id: test.c,v 1.12 2008-07-02 16:10:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -423,7 +423,7 @@ void test_rheology() {
   double pchem[3][3], plocal[3][3];
   double extra[3][3];
   double dphi[3];
-  double rv;
+  double v, rv;
   int N[3];
   int ic, jc, kc, index, ia, ib, p;
 
@@ -443,11 +443,16 @@ void test_rheology() {
 
   /* Accumulate contributions to the stress */
 
+  v = 0.0;
+
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
 	index = index_site(ic, jc, kc);
+	if (site_map[index] != FLUID) continue;
+
+	v += 1.0;
 
 	rho = 0.0;
 	for (ia = 0; ia < 3; ia++) {
@@ -498,8 +503,8 @@ void test_rheology() {
 
 #ifdef _MPI_
   {
-    double send[24];
-    double recv[24];
+    double send[25];
+    double recv[25];
 
     kc = 0;
     for (ic = 0; ic < 3; ic++) {
@@ -513,7 +518,9 @@ void test_rheology() {
       }
     }
 
-    MPI_Reduce(send, recv, 24, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+    send[kc] = v;
+
+    MPI_Reduce(send, recv, 25, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
 
     kc = 0;
     for (ic = 0; ic < 3; ic++) {
@@ -526,6 +533,8 @@ void test_rheology() {
 	}
       }
     }
+
+    v = recv[kc];
 
   }
 #endif
