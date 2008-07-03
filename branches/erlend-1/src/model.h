@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.9.4.1 2008-06-04 19:21:11 erlend Exp $
+ *  $Id: model.h,v 1.9.4.2 2008-07-03 10:38:00 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -25,6 +25,10 @@ enum {NHYDRO = 10};
 typedef struct {
   double f[NVEL], g[NVEL];
 } Site;
+enum {ndist = 2};
+enum {xcount = xcountcv*ndist+2};
+enum {ycount = ycountcv*ndist+2};
+enum {zcount = zcountcv*ndist+2};
 
 extern const double cs2;
 extern const double rcs2;

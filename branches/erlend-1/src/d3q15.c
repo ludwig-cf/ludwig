@@ -4,7 +4,7 @@
  *
  *  D3Q15 model definitions.
  *
- *  $Id: d3q15.c,v 1.6.6.7 2008-07-01 18:42:26 erlend Exp $
+ *  $Id: d3q15.c,v 1.6.6.8 2008-07-03 10:38:00 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -131,20 +131,20 @@ const double mi_[NVEL][NVEL] =
 
 #ifdef _MPI_
 
-MPI_Datatype xtypes_cv[xcount] = {MPI_DOUBLE};
-int xblocklens[xcount] = {5};
-int xdisp_right[xcount] = {1};
-int xdisp_left[xcount] = {10};
+//MPI_Datatype xtypescv[xcountcv] = {MPI_DOUBLE};
+int xblocklens_cv[xcountcv] = {5};
+int xdisp_fwd_cv[xcountcv] = {1};
+int xdisp_bwd_cv[xcountcv] = {10};
 
-MPI_Datatype ytypes[ycount] = {MPI_DOUBLE};
-int yblocklens[ycount] = {2*NVEL};
-MPI_Aint ydisp_right[ycount] = {0};
-MPI_Aint ydisp_left[ycount] = {0};
+//MPI_Datatype ytypes[ycountcv] = {MPI_DOUBLE};
+int yblocklens_cv[ycountcv] = {2, 1, 2};
+int ydisp_fwd_cv[ycountcv] = {1, 6, 10};
+int ydisp_bwd_cv[ycountcv] = {4, 9, 13};
 
-MPI_Datatype ztypes[zcount] = {MPI_DOUBLE};
-int zblocklens[zcount] = {2*NVEL};
-MPI_Aint zdisp_right[zcount] = {0};
-MPI_Aint zdisp_left[zcount] = {0};
+//MPI_Datatype ztypes[zcountcv] = {MPI_DOUBLE};
+int zblocklens_cv[zcountcv] = {1, 1, 1, 1, 1};
+int zdisp_fwd_cv[zcountcv] = {1, 4, 7, 10, 13};
+int zdisp_bwd_cv[zcountcv] = {2, 5, 8, 11, 14};
 
 #endif
 

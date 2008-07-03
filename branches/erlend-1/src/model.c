@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.10 2008-07-01 18:42:26 erlend Exp $
+ *  $Id: model.c,v 1.9.6.11 2008-07-03 10:38:00 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -55,25 +55,50 @@ MPI_Datatype DT_Site_zright;
 MPI_Datatype DT_Site_zleft;
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
 
-/* The xcount*2 means xcount(foreach dist) 2(num dists) */
-void getAintDisp(int indexDisp[xcount], MPI_Aint dispArray[xcount*2+1]) {
-  /* ndist: num distributions (currently two) */
-  int ndist = 2;
-  MPI_Aint site_addresses[xcount*2 + 1];
+
+void getAintDisp(int indexDisp[], MPI_Aint dispArray[], int count) {
+  int countcv = (count-2)/ndist;
+  MPI_Aint site_addresses[count-1];
+  /* site_addresses[0] is the base, from which offsets are calculated. */
   MPI_Address(&site[0].f[0], &site_addresses[0]);
   int i, j;
-  for(i=0; i<xcount; i++) {
+  /* Get the addresses of start blocks into site_addresses. */
+  for(i=0; i<countcv; i++) {
     MPI_Address(&site[0].f[indexDisp[i]], &site_addresses[i+1]);
-    MPI_Address(&site[0].g[indexDisp[i]], &site_addresses[xcount+1+i]);
+    MPI_Address(&site[0].g[indexDisp[i]], &site_addresses[countcv+1+i]);
   }
+  /* Tell MPI_Type_struct about the start and finish of the whole array */
+  dispArray[0] = 0;
+  dispArray[count-1] = sizeof(site[0]);
 
-  dispArray[xcount*2] = sizeof(site[0]);
-
-  for(i=0; i<xcount*ndist; i++) {
-    dispArray[i] = site_addresses[i+1] - site_addresses[0];
-    info("  xdisp_right[%d] = %d \n", i, dispArray[i]);
+  for(i=1; i<count-1; i++) {
+    dispArray[i] = site_addresses[i] - site_addresses[0];
+    //    info("  xdisp_right[%d] = %d \n", i, dispArray[i]);
   }
-  info("  xdisp_right[%d] = %d \n", xcount*2, dispArray[xcount*2]);
+  //  info("  xdisp_right[%d] = %d \n", 0, dispArray[0]);
+  //  info("  xdisp_right[%d] = %d \n", count-1, dispArray[count-1]);
+}
+
+void getblocklens(int blocklens_cv[], int blocklens[], int count) {
+  int countcv = (count-2)/ndist;
+  blocklens[0] = 1; /* MPI_LB */
+  blocklens[count-1] = 1; /* MPI_UB */
+  int i,j;
+  for(i=0; i<ndist; i++) {
+    for(j=1; j<countcv+1; j++) {
+      //      info(" i*countcv+j = %d \n",i*countcv+j);
+      blocklens[i*countcv + j] = blocklens_cv[j-1];
+    }
+  }
+}
+
+void gettypes(MPI_Datatype types[], int count) {
+  types[0] = MPI_LB;
+  types[count-1] = MPI_UB;
+  int i;
+  for(i=1; i<count-1; i++) {
+    types[i] = MPI_DOUBLE;
+  }
 }
 
 #endif
@@ -132,40 +157,59 @@ void init_site() {
   if(use_reduced_halos()) {
     info("Using reduced halos. \n");
 
-    MPI_Aint xdisp_fwd[xcount*2+2];
-    MPI_Aint xdisp_bwd[xcount*2+2];
-    getAintDisp(xdisp_right, xdisp_fwd);
-    getAintDisp(xdisp_left, xdisp_bwd);
+    MPI_Aint xdisp_fwd[xcount];
+    MPI_Aint xdisp_bwd[xcount];
+    getAintDisp(xdisp_fwd_cv, xdisp_fwd, xcount);
+    getAintDisp(xdisp_bwd_cv, xdisp_bwd, xcount);
+    int xblocklens[xcount];
+    getblocklens(xblocklens_cv, xblocklens, xcount);
+    MPI_Datatype xtypes[xcount];
+    gettypes(xtypes, xcount);
 
-    int xcount_ = xcount*2+2;
-    int xblocks[xcount*2+1];
-    xblocks[0] = 1; /* MPI_LB */
-    xblocks[xcount*2+1] = 1; /* MPI_UB */
-    int i,j;
-    for(i=0; i<2; i++) {
-      for(j=1; j<xcount+1; j++) {
-	xblocks[i*xcount + j] = xblocklens[j];
-      }
+    MPI_Aint ydisp_fwd[ycount];
+    MPI_Aint ydisp_bwd[ycount];
+    getAintDisp(ydisp_fwd_cv, ydisp_fwd, ycount);
+    getAintDisp(ydisp_bwd_cv, ydisp_bwd, ycount);
+    int yblocklens[ycount];
+    getblocklens(yblocklens_cv, yblocklens, ycount);
+    MPI_Datatype ytypes[ycount];
+    gettypes(ytypes, ycount);
+    int j;
+    for(j=0; j<ycount; j++) {
+      printf(" yblocklens[%d] = %d \n", j, yblocklens[j]);
+      printf(" ytypes[%d] = %d \n",j, ytypes[j]);
+      printf(" ydisp_fwd[%d] = %d \n", j, ydisp_fwd[j]);
+      //printf(" ydisp_bwd[%d] = %d \n", j, ydisp_bwd[j]);
     }
-    
-    for(i=0; i<xcount*2+1; i++) {
-      printf("xblocks[%d] = %d \n", i, xblocks[i]);
-    }
+    ytypes[0]=MPI_LB;
+    ytypes[1]=MPI_DOUBLE;
+    ytypes[2]=MPI_DOUBLE;
+    ytypes[3]=MPI_DOUBLE;
+    ytypes[4]=MPI_DOUBLE;
+    ytypes[5]=MPI_DOUBLE;
+    ytypes[6]=MPI_DOUBLE;
+    ytypes[7]=MPI_UB;
 
-    MPI_Datatype xtypes[xcount*2+1] = {MPI_DOUBLE, MPI_DOUBLE, MPI_UB};
-    
-    int xnblocks[] = {1, /*NVEL*/5, /*NVEL*/5, 1};
-    MPI_Datatype tmpxtypes[] = {MPI_LB, MPI_DOUBLE, MPI_DOUBLE, MPI_UB};
-    MPI_Aint xdisp_tmpfwd[] = {0+8, (NVEL)*8};
-    MPI_Aint xdisp_tmpbwd[] = {0, 0+8, 120+8, 8*30};
+    MPI_Aint zdisp_fwd[ycount];
+    MPI_Aint zdisp_bwd[ycount];
+    getAintDisp(zdisp_fwd_cv, zdisp_fwd, zcount);
+    getAintDisp(zdisp_bwd_cv, zdisp_bwd, zcount);
+    int zblocklens[zcount];
+    getblocklens(zblocklens_cv, zblocklens, zcount);
+    MPI_Datatype ztypes[zcount];
+    gettypes(ztypes, zcount);
 
-    //    MPI_Type_struct(3, xblocks, xdisp_fwd, xtypes, &DT_Site_xright);
-    MPI_Type_struct(4, xnblocks, xdisp_tmpbwd, tmpxtypes, &DT_Site_xright);
-    MPI_Type_struct(xcount/**2*/, xblocklens, xdisp_tmpbwd, xtypes, &DT_Site_xleft);
-    MPI_Type_struct(ycount, yblocklens, ydisp_right, ytypes, &DT_Site_yright);
-    MPI_Type_struct(ycount, yblocklens, ydisp_left, ytypes, &DT_Site_yleft);
-    MPI_Type_struct(zcount, zblocklens, zdisp_right, ztypes, &DT_Site_zright);
-    MPI_Type_struct(zcount, zblocklens, zdisp_left, ztypes, &DT_Site_zleft);
+    MPI_Type_struct(xcount, xblocklens, xdisp_fwd, xtypes, &DT_Site_xright);
+    printf("1\n");
+    MPI_Type_struct(xcount, xblocklens, xdisp_bwd, xtypes, &DT_Site_xleft);
+    printf("2\n");
+    MPI_Type_struct(ycount-7, yblocklens, ydisp_fwd, ytypes, &DT_Site_yright);
+    printf("3\n");
+    MPI_Type_struct(ycount, yblocklens, ydisp_bwd, ytypes, &DT_Site_yleft);
+    printf("4\n");
+    MPI_Type_struct(zcount, zblocklens, zdisp_fwd, ztypes, &DT_Site_zright);
+    printf("5\n");
+    MPI_Type_struct(zcount, zblocklens, zdisp_bwd, ztypes, &DT_Site_zleft);
     MPI_Type_commit(&DT_Site_xright);
     MPI_Type_commit(&DT_Site_xleft);
     MPI_Type_commit(&DT_Site_yright);

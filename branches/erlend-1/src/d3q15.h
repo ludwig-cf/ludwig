@@ -4,7 +4,7 @@
  *
  *  D3Q15 definitions.
  *
- *  $Id: d3q15.h,v 1.5.6.4 2008-06-26 19:11:21 erlend Exp $
+ *  $Id: d3q15.h,v 1.5.6.5 2008-07-03 10:38:00 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -24,23 +24,23 @@ extern const double mi_[NVEL][NVEL];
 
 #ifdef _MPI_
 
-enum {xcount = 1};
-extern MPI_Datatype xtypes[xcount];
-extern int xblocklens[xcount];
-extern int xdisp_right[xcount];
-extern int xdisp_left[xcount];
+enum {xcountcv = 1};
+//extern MPI_Datatype xtypescv[xcountcv];
+extern int xblocklens_cv[xcountcv];
+extern int xdisp_fwd_cv[xcountcv];
+extern int xdisp_bwd_cv[xcountcv];
 
-enum {ycount = 1};
-extern MPI_Datatype ytypes[ycount];
-extern int yblocklens[ycount];
-extern MPI_Aint ydisp_right[ycount];
-extern MPI_Aint ydisp_left[ycount];
+enum {ycountcv = 3};
+//extern MPI_Datatype ytypescv[ycountcv];
+extern int yblocklens_cv[ycountcv];
+extern int ydisp_fwd_cv[ycountcv];
+extern int ydisp_bwd_cv[ycountcv];
 
-enum {zcount = 1};
-extern MPI_Datatype ztypes[zcount];
-extern int zblocklens[zcount];
-extern MPI_Aint zdisp_right[zcount];
-extern MPI_Aint zdisp_left[zcount];
+enum {zcountcv = 5};
+//extern MPI_Datatype ztypes[zcountcv];
+extern int zblocklens_cv[zcountcv];
+extern int zdisp_fwd_cv[zcountcv];
+extern int zdisp_bwd_cv[zcountcv];
 
 #endif
 
