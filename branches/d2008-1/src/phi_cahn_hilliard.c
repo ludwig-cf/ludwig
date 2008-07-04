@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.1.2.7 2008-07-04 10:40:54 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.1.2.8 2008-07-04 12:04:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -262,7 +262,9 @@ static void phi_ch_upwind_third_order() {
   double mu0, mu1;
   double phi0, phi;
 
-  const double r6 = (1.0/6.0);
+  const double a1 = -0.213933;
+  const double a2 =  0.927865;
+  const double a3 =  0.286067;
 
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
@@ -287,12 +289,10 @@ static void phi_ch_upwind_third_order() {
 
 	u = 0.5*(u0[X] + u1[X]);
 	if (u > 0.0) {
-	  phi = r6*(-phi_site[ADDR(icm2,jc,kc)] + 5.0*phi_site[index1]
-		    + 2.0*phi0);
+	  phi = a1*phi_site[ADDR(icm2,jc,kc)] + a2*phi_site[index1] + a3*phi0;
 	}
 	else {
-	  phi = r6*(-phi_site[ADDR(icp1,jc,kc)] + 5.0*phi0
-		    + 2.0*phi_site[index1]);
+	  phi = a1*phi_site[ADDR(icp1,jc,kc)] + a2*phi0 + a3*phi_site[index1];
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
@@ -304,12 +304,10 @@ static void phi_ch_upwind_third_order() {
 
 	u = 0.5*(u0[X] + u1[X]);
 	if (u < 0.0) {
-	  phi = r6*(-phi_site[ADDR(icp2,jc,kc)] + 5.0*phi_site[index1]
-		    + 2.0*phi0);
+	  phi = a1*phi_site[ADDR(icp2,jc,kc)] + a2*phi_site[index1] + a3*phi0;
 	}
 	else {
-	  phi = r6*(-phi_site[ADDR(icm1,jc,kc)] + 5.0*phi0
-		    + 2.0*phi_site[index1]);
+	  phi = a1*phi_site[ADDR(icm1,jc,kc)] + a2*phi0 + a3*phi_site[index1];
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
@@ -323,12 +321,10 @@ static void phi_ch_upwind_third_order() {
 
 	u = 0.5*(u0[Y] + u1[Y]);
 	if (u < 0.0) {
-	  phi = r6*(-phi_site[ADDR(ic,jc+2,kc)] + 5.0*phi_site[index1]
-		    + 2.0*phi0);
+	  phi = a1*phi_site[ADDR(ic,jc+2,kc)] + a2*phi_site[index1] + a3*phi0;
 	}
 	else {
-	  phi = r6*(-phi_site[ADDR(ic,jc-1,kc)] + 5.0*phi0
-		    + 2.0*phi_site[index1]);
+	  phi = a1*phi_site[ADDR(ic,jc-1,kc)] + a2*phi0 + a3*phi_site[index1];
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
@@ -340,12 +336,10 @@ static void phi_ch_upwind_third_order() {
 
 	u = 0.5*(u0[Z] + u1[Z]);
 	if (u < 0.0) {
-	  phi = r6*(-phi_site[ADDR(ic,jc,kc+2)] + 5.0*phi_site[index1]
-		    + 2.0*phi0);
+	  phi = a1*phi_site[ADDR(ic,jc,kc+2)] + a2*phi_site[index1] + a3*phi0;
 	}
 	else {
-	  phi = r6*(-phi_site[ADDR(ic,jc,kc-1)] + 5.0*phi0
-		    + 2.0*phi_site[index1]);
+	  phi = a1*phi_site[ADDR(ic,jc,kc-1)] + a2*phi0 + a3*phi_site[index1];
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
@@ -377,11 +371,7 @@ static void phi_ch_update_forward_step() {
   int ic, jc, kc;
   double dphi;
 
-  double te, tw;
   get_N_local(nlocal);
-
-  te = 0.0;
-  tw = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -391,19 +381,10 @@ static void phi_ch_update_forward_step() {
 	  + fluxy[ADDR(ic,jc,kc)] - fluxy[ADDR(ic,jc-1,kc)]
 	  + fluxz[ADDR(ic,jc,kc)] - fluxz[ADDR(ic,jc,kc-1)];
 
-	if (ic == 16) {
-	  te += fluxe[ADDR(ic,jc,kc)];
-	}
-	if (ic == 17) {
-	  tw += fluxw[ADDR(ic,jc,kc)];
-	}
-
 	phi_site[ADDR(ic,jc,kc)] -= dphi;
       }
     }
   }
-
-  /* info("Flux totals: %g %g\n", te, tw);*/
 
   return;
 }
