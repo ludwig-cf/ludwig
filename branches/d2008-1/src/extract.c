@@ -11,25 +11,26 @@
 int nlocal[3];
 int rank, cx, cy, cz, nlx, nly, nlz, nox, noy, noz;
 
-int ntotal[3]  = {512, 1024, 1};
-int ntargets[3] = {512, 1024, 1}; /* Output target */
-int nplanes_ = 32;
-double le_speed_ = 0.008;
-int le_displace_ = 0;
-int * le_displacements_;
+int ntotal[3]  = {512, 1024, 512};
+int ntargets[3] = {512, 1024, 512}; /* Output target */
 
-int site_index_local(int,int,int);
-int index_section(int, int, int);
+/* Lees Edwards */
+int      nplanes_ = 32;
+double   le_speed_ = 0.008;
+double   le_displace_ = 0;
+double * le_displacements_;
+
+int site_index(int,int,int, const int *);
 void read_data(FILE *, int *, double *);
 void write_data(FILE *, int *, double *);
 int copy_data(double *, double *);
-int le_displacement(int, int);
 void set_displacements(void);
+void le_unroll(double *);
 
 int main(int argc, char ** argv) {
 
-    int pe[3]      = {2, 4, 1};
-    int nio        = 1;
+    int pe[3]      = {16, 16, 16};
+    int nio        = 512;
     int ntime;
 
     int i, n, p, pe_per_io;
@@ -53,8 +54,7 @@ int main(int argc, char ** argv) {
 
     ntime = atoi(argv[1]);
     le_displace_ = ntime*le_speed_;
-    printf("Time: %d displacement: %d\n", ntime, le_displace_);
-
+    printf("Time: %d displacement: %f\n", ntime, le_displace_);
 
     for (i = 0; i < 3; i++) {
 	nlocal[i] = ntotal[i]/pe[i];
@@ -73,7 +73,7 @@ int main(int argc, char ** argv) {
     if (datasection == NULL) printf("malloc(datasection) failed\n");
 
     /* LE displacements */
-    le_displacements_ = (int *) malloc(ntotal[0]*sizeof(int));
+    le_displacements_ = (double *) malloc(ntotal[0]*sizeof(double));
     if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
     set_displacements();
 
@@ -81,6 +81,14 @@ int main(int argc, char ** argv) {
     for (n = 1; n <= nio; n++) {
 
 	/* open metadata file */
+
+        sprintf(io_metadata, "%s.%d-%d", "io-metadata", nio, n);
+        printf("Reading metadata file ... %s ", io_metadata);
+
+	fp_metadata = fopen(io_metadata, "r");
+	if (fp_metadata == NULL) printf("fopen(%s) failed\n", io_metadata);
+
+#ifdef _NEW_
 	sprintf(io_metadata, "phi.%3.3d-%3.3d.meta", nio, n);
 	printf("Reading metadata file ... %s ", io_metadata);
 
@@ -91,11 +99,16 @@ int main(int argc, char ** argv) {
 	  fgets(line, FILENAME_MAX, fp_metadata);
 	  printf("%s", line);
 	}
-
+#endif
 	/* open data file */
+
+        sprintf(io_data, "phi-%6.6d.%d-%d", ntime, nio, n);
+        printf("-> %s\n", io_data);
+
+#ifdef _NEW_
 	sprintf(io_data, "phi-%6.6d.%3.3d-%3.3d", ntime, nio, n);
 	printf("-> %s\n", io_data);
-
+#endif
 	fp_data = fopen(io_data, "r+b");
 	if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
 
@@ -103,6 +116,7 @@ int main(int argc, char ** argv) {
 	for (p = 0; p < pe_per_io; p++) {
 
 	  /* read metadata for this pe */
+
 	  fscanf(fp_metadata, "%d %d %d %d %d %d %d %d %d %d",
 		 &rank, &cx, &cy, &cz, &nlx, &nly, &nlz, &nox, &noy, &noz);
 
@@ -119,6 +133,8 @@ int main(int argc, char ** argv) {
 	fclose(fp_data);
 	fclose(fp_metadata);
     }
+
+    le_unroll(datasection);
 
     /* Write a single file with the final section */
 
@@ -141,8 +157,7 @@ int main(int argc, char ** argv) {
  *
  *  copy_data
  *
- *  Fill the required section with data from the current pe, if
- *  they intersect.
+ *  Fill the global section with data from the current pe.
  *
  ****************************************************************************/
 
@@ -159,12 +174,10 @@ int copy_data(double * datalocal, double * datasection) {
 	    jc_g = noy + jc;
 	    for (kc = 1; kc <= nlocal[2]; kc++) {
 		kc_g = noz + kc;
-		index_s = index_section(ic_g, jc_g, kc_g);
+		index_s = site_index(ic_g, jc_g, kc_g, ntotal);
 
-		if (index_s >= 0) {
-		    index_l = site_index_local(ic, jc, kc);
-		    *(datasection + index_s) = *(datalocal + index_l);
-		}
+		index_l = site_index(ic, jc, kc, nlocal);
+		*(datasection + index_s) = *(datalocal + index_l);
 	    }
 	}
     }
@@ -183,19 +196,20 @@ int copy_data(double * datalocal, double * datasection) {
 void read_data(FILE * fp_data, int n[3], double * data) {
 
     int ic, jc, kc, local, index;
+    float phi_f;
     double phi;
 
     for (ic = 1; ic <= n[0]; ic++) {
 	for (jc = 1; jc <= n[1]; jc++) {
 	    for (kc = 1; kc <= n[2]; kc++) {
-		index = site_index_local(ic, jc, kc);
+		index = site_index(ic, jc, kc, nlocal);
 
 		/* index, double (old format)
 		fread(&local, sizeof(int), 1, fp_data);
 		fread(data + index, sizeof(double), 1, fp_data); */
 
-		fread(&phi, sizeof(double), 1, fp_data);
-		*(data + index) = phi;
+		fread(&phi_f, sizeof(float), 1, fp_data);
+		*(data + index) = (double) phi_f;
 	    }
 	}
     }
@@ -207,18 +221,20 @@ void read_data(FILE * fp_data, int n[3], double * data) {
  *
  *  write_data
  *
- *  Write contiguous block of (float) data.
+ *  Write contiguous block of data.
  *
  ****************************************************************************/
 
 void write_data(FILE * fp_data, int n[3], double * data) {
 
     int ic, jc, kc, index = 0;
+    float phi_f;
 
     for (ic = 0; ic < n[0]; ic++) {
 	for (jc = 0; jc < n[1]; jc++) {
 	    for (kc = 0; kc < n[2]; kc++) {
-		fwrite(data + index, sizeof(double), 1, fp_data);
+		phi_f = (float) data[index];
+		fwrite(&phi_f, sizeof(float), 1, fp_data);
 		index++;
 	    }
 	}
@@ -229,69 +245,18 @@ void write_data(FILE * fp_data, int n[3], double * data) {
 
 /****************************************************************************
  *
- *  index_section
- *
- *  For given global lattice index (ic, jc, kc), return the index
- *  in the final section. -1 is returned if it's not in the section.
- *
- *  When LE planes are present, global index jc is adjusted as a
- *  function of ic to take account of the planes. We assume an
- *  integer plane displacement.
- *
- ****************************************************************************/
-
-int index_section(int ic, int jc, int kc) {
-
-    int index = -1;
-    int djc;
-
-    /* assume section origin is (1,1,1) */
-    /* (ic,jc,kc) must be in doamin, so */
-
-    if (nplanes_ > 0) {
-	djc = le_displacement(ic, jc);
-    }
-
-    if (ic <= ntargets[0] && djc <= ntargets[1] && kc <= ntargets[2]) {
-	/* work out index */
-	index = ntargets[1]*ntargets[2]*(ic-1) + ntargets[2]*(djc-1) + kc-1;
-    }
-
-    return index;
-}
-
-/****************************************************************************
- *
- *  le_displacement
- *
- ****************************************************************************/
-
-int le_displacement(int ic, int jc) {
-
-    int dj;
-
-    dj = jc + le_displacements_[ic-1];
-
-    dj = dj % ntotal[1];
-    if (dj > ntargets[1]) dj -= ntargets[1];
-    if (dj < 1) dj += ntargets[1];
-
-    return dj;
-}
-
-/****************************************************************************
- *
  *  set_displacements
  *
  ****************************************************************************/
 
 void set_displacements() {
 
-    int ic, dy;
+    int ic;
     int di;
+    double dy;
 
     di = ntotal[0] / nplanes_;
-    dy = -(nplanes_/2)*le_displace_;
+    dy = -(nplanes_/2.0)*le_displace_;
 
     /* Fist half block */
     for (ic = 1; ic <= di/2; ic++) {
@@ -318,11 +283,67 @@ void set_displacements() {
  *
  ****************************************************************************/
 
-int site_index_local(int ic, int jc, int kc) {
+int site_index(int ic, int jc, int kc, const int n[3]) {
 
     int index;
 
-    index = (nlocal[1]*nlocal[2]*(ic-1) + nlocal[2]*(jc-1) + kc-1);
+    index = (n[1]*n[2]*(ic-1) + n[2]*(jc-1) + kc-1);
 
     return index;
+}
+
+/*****************************************************************************
+ *
+ *  le_unroll
+ *
+ *  Unroll the data in the presence of planes.
+ *  This is always done relative to the middle of the system (as defined
+ *  in le_displacements_[]).
+ *
+ *****************************************************************************/
+
+void le_unroll(double * data) {
+
+    int ic, jc, kc;
+    int j1, j2, jdy;
+    double * buffer;
+    double dy, fr;
+    
+    buffer = (double *) malloc(ntotal[1]*ntotal[2]*sizeof(double));
+    if (buffer == NULL) {
+	printf("malloc(buffer) failed\n");
+	exit(-1);
+    }
+
+    /* Allocate the temporary buffer */
+
+    for (ic = 1; ic <= ntotal[0]; ic++) {
+	dy = le_displacements_[ic-1];
+	jdy = floor(dy);
+	fr = dy - jdy;
+
+	for (jc = 1; jc <= ntotal[1]; jc++) {
+	    j1 = 1 + (jc - jdy - 2 + 100*ntotal[1]) % ntotal[1];
+	    j2 = 1 + j1 % ntotal[1];
+
+	    for (kc = 1; kc <= ntotal[2]; kc++) {
+		buffer[site_index(1,jc,kc,ntotal)] = 
+		    fr*data[site_index(ic,j1,kc,ntotal)] +
+		    (1.0 - fr)*data[site_index(ic,j2,kc,ntotal)];
+	    }
+	}
+	/* Put the whole buffer plane back in place */
+
+	for (jc = 1; jc <= ntotal[1]; jc++) {
+	    for (kc = 1; kc <= ntotal[2]; kc++) {
+		data[site_index(ic,jc,kc,ntotal)] =
+		    buffer[site_index(1,jc,kc,ntotal)];
+	    }
+	}
+
+    }
+
+    free(buffer);
+
+    return;
 }
