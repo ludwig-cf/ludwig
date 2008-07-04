@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.11 2008-07-03 10:38:00 erlend Exp $
+ *  $Id: model.c,v 1.9.6.12 2008-07-04 11:31:28 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -159,51 +159,36 @@ void init_site() {
 
     MPI_Aint xdisp_fwd[xcount];
     MPI_Aint xdisp_bwd[xcount];
+    int xblocklens[xcount];
+    MPI_Datatype xtypes[xcount];
     getAintDisp(xdisp_fwd_cv, xdisp_fwd, xcount);
     getAintDisp(xdisp_bwd_cv, xdisp_bwd, xcount);
-    int xblocklens[xcount];
     getblocklens(xblocklens_cv, xblocklens, xcount);
-    MPI_Datatype xtypes[xcount];
     gettypes(xtypes, xcount);
 
     MPI_Aint ydisp_fwd[ycount];
     MPI_Aint ydisp_bwd[ycount];
+    int yblocklens[ycount];
+    MPI_Datatype ytypes[ycount];
     getAintDisp(ydisp_fwd_cv, ydisp_fwd, ycount);
     getAintDisp(ydisp_bwd_cv, ydisp_bwd, ycount);
-    int yblocklens[ycount];
     getblocklens(yblocklens_cv, yblocklens, ycount);
-    MPI_Datatype ytypes[ycount];
     gettypes(ytypes, ycount);
-    int j;
-    for(j=0; j<ycount; j++) {
-      printf(" yblocklens[%d] = %d \n", j, yblocklens[j]);
-      printf(" ytypes[%d] = %d \n",j, ytypes[j]);
-      printf(" ydisp_fwd[%d] = %d \n", j, ydisp_fwd[j]);
-      //printf(" ydisp_bwd[%d] = %d \n", j, ydisp_bwd[j]);
-    }
-    ytypes[0]=MPI_LB;
-    ytypes[1]=MPI_DOUBLE;
-    ytypes[2]=MPI_DOUBLE;
-    ytypes[3]=MPI_DOUBLE;
-    ytypes[4]=MPI_DOUBLE;
-    ytypes[5]=MPI_DOUBLE;
-    ytypes[6]=MPI_DOUBLE;
-    ytypes[7]=MPI_UB;
 
-    MPI_Aint zdisp_fwd[ycount];
-    MPI_Aint zdisp_bwd[ycount];
+    MPI_Aint zdisp_fwd[zcount];
+    MPI_Aint zdisp_bwd[zcount];
+    int zblocklens[zcount];
+    MPI_Datatype ztypes[zcount];
     getAintDisp(zdisp_fwd_cv, zdisp_fwd, zcount);
     getAintDisp(zdisp_bwd_cv, zdisp_bwd, zcount);
-    int zblocklens[zcount];
     getblocklens(zblocklens_cv, zblocklens, zcount);
-    MPI_Datatype ztypes[zcount];
     gettypes(ztypes, zcount);
 
     MPI_Type_struct(xcount, xblocklens, xdisp_fwd, xtypes, &DT_Site_xright);
     printf("1\n");
     MPI_Type_struct(xcount, xblocklens, xdisp_bwd, xtypes, &DT_Site_xleft);
     printf("2\n");
-    MPI_Type_struct(ycount-7, yblocklens, ydisp_fwd, ytypes, &DT_Site_yright);
+    MPI_Type_struct(ycount, yblocklens, ydisp_fwd, ytypes, &DT_Site_yright);
     printf("3\n");
     MPI_Type_struct(ycount, yblocklens, ydisp_bwd, ytypes, &DT_Site_yleft);
     printf("4\n");
