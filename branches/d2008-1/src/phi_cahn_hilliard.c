@@ -6,9 +6,12 @@
  *  by the Cahn Hilliard equation
  *     d_t phi + div (u phi - M grad mu) = 0.
  *
- *  The equation is solved here via finite difference.
+ *  The equation is solved here via finite difference. The velocity
+ *  field u is assumed known from the hydrodynamic sector. M is the
+ *  order parameter mobility. The chemical potential mu is set via
+ *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.1.2.6 2008-07-01 14:36:18 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.1.2.7 2008-07-04 10:40:54 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,11 +38,12 @@ static double * fluxw;
 static double * fluxy;
 static double * fluxz;
 
-static void phi_ch_compute_fluxes_upwind(void);
-static void phi_ch_compute_fluxes_upwind_seventh_order(void);
+static void phi_ch_upwind(void);
+static void phi_ch_upwind_third_order(void);
+static void phi_ch_upwind_seventh_order(void);
 static void phi_ch_update_forward_step(void);
 
-static void (* phi_ch_compute_fluxes)(void) = phi_ch_compute_fluxes_upwind;
+static void (* phi_ch_compute_fluxes)(void) = phi_ch_upwind;
 static int signbit_double(double);
 
 static double mobility_; /* Order parameter mobility */
@@ -79,8 +83,9 @@ void phi_cahn_hilliard() {
   hydrodynamics_halo_u();
   hydrodynamics_leesedwards_transformation();
 
-  /* phi_ch_compute_fluxes_upwind_seventh_order();*/
-  phi_ch_compute_fluxes();
+  /* phi_ch_upwind_seventh_order();*/
+  /* phi_ch_compute_fluxes();*/
+  phi_ch_upwind_third_order();
   phi_ch_update_forward_step();
 
   free(fluxe);
@@ -115,18 +120,29 @@ void phi_ch_set_mobility(const double m) {
 
 /*****************************************************************************
  *
- *  phi_ch_set_upwind
+ *  phi_ch_set_upwind_order
  *
  ****************************************************************************/
 
-void phi_ch_set_upwind() {
-  phi_ch_compute_fluxes = phi_ch_compute_fluxes_upwind;
+void phi_ch_set_upwind_order(int n) {
+
+  switch (n) {
+  case 3:
+    phi_ch_compute_fluxes = phi_ch_upwind_third_order;
+    break;
+  case 7:
+    phi_ch_compute_fluxes = phi_ch_upwind_seventh_order;
+    break;
+  default:
+    phi_ch_compute_fluxes = phi_ch_upwind;
+  }
+
   return;
 }
 
 /*****************************************************************************
  *
- *  phi_ch_compute_fluxes_upwind
+ *  phi_ch_upwind
  *
  *  The fluxes (advective and diffusive) must be uniquely defined at
  *  the interfaces between the LB cells.
@@ -136,7 +152,7 @@ void phi_ch_set_upwind() {
  *
  *****************************************************************************/
 
-static void phi_ch_compute_fluxes_upwind() {
+static void phi_ch_upwind() {
 
   int nlocal[3];
   int ic, jc, kc;            /* Counters over faces */
@@ -230,6 +246,120 @@ static void phi_ch_compute_fluxes_upwind() {
 
 /*****************************************************************************
  *
+ *  phi_get_fluxes_upwind_third_order
+ *
+ *  Compute third order advective fluxes.
+ *
+ *****************************************************************************/
+
+static void phi_ch_upwind_third_order() {
+
+  int nlocal[3];
+  int ic, jc, kc;            /* Counters over faces */
+  int index0, index1;
+  int icm2, icm1, icp1, icp2;
+  double u0[3], u1[3], u;
+  double mu0, mu1;
+  double phi0, phi;
+
+  const double r6 = (1.0/6.0);
+
+  get_N_local(nlocal);
+  assert(nhalo_ >= 2);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm2 = le_index_real_to_buffer(ic, -2);
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    icp2 = le_index_real_to_buffer(ic, +2);
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = ADDR(ic, jc, kc);
+	phi0 = phi_site[index0];
+
+	mu0 = free_energy_get_chemical_potential(index0);
+	hydrodynamics_get_velocity(index0, u0);
+
+	/* west face (icm1 and ic) */
+	index1 = ADDR(icm1, jc, kc);
+	hydrodynamics_get_velocity(index1, u1);
+
+	u = 0.5*(u0[X] + u1[X]);
+	if (u > 0.0) {
+	  phi = r6*(-phi_site[ADDR(icm2,jc,kc)] + 5.0*phi_site[index1]
+		    + 2.0*phi0);
+	}
+	else {
+	  phi = r6*(-phi_site[ADDR(icp1,jc,kc)] + 5.0*phi0
+		    + 2.0*phi_site[index1]);
+	}
+
+	mu1 = free_energy_get_chemical_potential(index1);
+	fluxw[index0] = u*phi - mobility_*(mu0 - mu1);
+
+	/* east face (ic and icp1) */
+	index1 = ADDR(icp1, jc, kc);
+	hydrodynamics_get_velocity(index1, u1);
+
+	u = 0.5*(u0[X] + u1[X]);
+	if (u < 0.0) {
+	  phi = r6*(-phi_site[ADDR(icp2,jc,kc)] + 5.0*phi_site[index1]
+		    + 2.0*phi0);
+	}
+	else {
+	  phi = r6*(-phi_site[ADDR(icm1,jc,kc)] + 5.0*phi0
+		    + 2.0*phi_site[index1]);
+	}
+
+	mu1 = free_energy_get_chemical_potential(index1);
+	fluxe[index0] = u*phi - mobility_*(mu1 - mu0);
+
+
+
+	/* y direction */
+	index1 = le_site_index(ic, jc+1, kc);
+	hydrodynamics_get_velocity(index1, u1);
+
+	u = 0.5*(u0[Y] + u1[Y]);
+	if (u < 0.0) {
+	  phi = r6*(-phi_site[ADDR(ic,jc+2,kc)] + 5.0*phi_site[index1]
+		    + 2.0*phi0);
+	}
+	else {
+	  phi = r6*(-phi_site[ADDR(ic,jc-1,kc)] + 5.0*phi0
+		    + 2.0*phi_site[index1]);
+	}
+
+	mu1 = free_energy_get_chemical_potential(index1);
+	fluxy[index0] = u*phi - mobility_*(mu1 - mu0);
+
+	/* z direction */
+	index1 = ADDR(ic, jc, kc+1);
+	hydrodynamics_get_velocity(index1, u1);
+
+	u = 0.5*(u0[Z] + u1[Z]);
+	if (u < 0.0) {
+	  phi = r6*(-phi_site[ADDR(ic,jc,kc+2)] + 5.0*phi_site[index1]
+		    + 2.0*phi0);
+	}
+	else {
+	  phi = r6*(-phi_site[ADDR(ic,jc,kc-1)] + 5.0*phi0
+		    + 2.0*phi_site[index1]);
+	}
+
+	mu1 = free_energy_get_chemical_potential(index1);
+	fluxz[index0] = u*phi - mobility_*(mu1 - mu0);
+      }
+    }
+  }
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
  *  phi_ch_update_forward_step
  *
  *  Update phi_site at each site in turn via the divergence of the
@@ -280,7 +410,7 @@ static void phi_ch_update_forward_step() {
 
 /*****************************************************************************
  *
- *  phi_ch_compute_fluxes_upwind_seventh_order
+ *  phi_ch_upwind_seventh_order
  *
  *  Seventh order upwind advective fluxes require a halo of at
  *  least 4 points.
@@ -290,7 +420,7 @@ static void phi_ch_update_forward_step() {
  *
  *****************************************************************************/
 
-static void phi_ch_compute_fluxes_upwind_seventh_order() {
+static void phi_ch_upwind_seventh_order() {
 
   int nlocal[3];
   int ic, jc, kc;            /* Counters over faces */
