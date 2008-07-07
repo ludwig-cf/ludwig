@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.4 2008-07-02 16:10:22 kevin Exp $
+ *  $Id: bbl.c,v 1.5 2008-07-07 15:42:16 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -318,12 +318,12 @@ static void bounce_back_pass2() {
 
 	  while (p_link != NULL) {
 
-	    if (p_link->status == LINK_FLUID) {
+	    i = p_link->i;       /* index site i (outside) */
+	    j = p_link->j;       /* index site j (inside) */
+	    ij = p_link->v;      /* link velocity index i->j */
+	    ji = NVEL - ij;      /* link velocity index j->i */
 
-	      i = p_link->i;       /* index site i (outside) */
-	      j = p_link->j;       /* index site j (inside) */
-	      ij = p_link->v;      /* link velocity index i->j */
-	      ji = NVEL - ij;      /* link velocity index j->i */
+	    if (p_link->status == LINK_FLUID) {
 
 	      ci.x = (double) cv[ij][0];
 	      ci.y = (double) cv[ij][1];
@@ -350,9 +350,7 @@ static void bounce_back_pass2() {
 
 	      df -= wv[ij]*dms;
 
-	      /* The outside site actually undergoes BBL. However,
-	       * the inside site also gets treated to fool the
-	       * propagation stage (not really necessary). */
+	      /* The outside site actually undergoes BBL. */
 
 	      site[j].f[ji] = site[i].f[ij] - df;
 
@@ -364,6 +362,18 @@ static void bounce_back_pass2() {
 		stress_[ia][0] += p_link->rb.x*(dm - df)*cv[ij][ia];
 		stress_[ia][1] += p_link->rb.y*(dm - df)*cv[ij][ia];
 		stress_[ia][2] += p_link->rb.z*(dm - df)*cv[ij][ia];
+	      }
+	    }
+	    else if (p_link->status == LINK_COLLOID) {
+
+	      /* The stress should include the solid->solid term */
+
+	      dm = site[i].f[ij] + site[j].f[ji];
+
+	      for (ia = 0; ia < 3; ia++) {
+		stress_[ia][0] += p_link->rb.x*dm*cv[ij][ia];
+		stress_[ia][1] += p_link->rb.y*dm*cv[ij][ia];
+		stress_[ia][2] += p_link->rb.z*dm*cv[ij][ia];
 	      }
 	    }
 
