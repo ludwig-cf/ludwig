@@ -33,11 +33,12 @@
 
 /* System size (could be read at run time) */
 
-int lx_ = 128;
-int ly_ = 128;
-int lz_ = 128;
+int lx_ = 256;
+int ly_ = 256;
+int lz_ = 256;
 
 float * data_out_;
+int nio_;
 
 
 int get_global_index(int, int, int);
@@ -52,7 +53,7 @@ void write_director(const char *);
 
 int main (int argc, char ** argv) {
 
-  int n, nio;
+  int n;
   int nbuffer;
   int id_type;
   char file_name[FILENAME_MAX];
@@ -69,12 +70,19 @@ int main (int argc, char ** argv) {
   }
 
   id_type = atoi(argv[1]);
-  nio     = atoi(argv[2]);
+  nio_     = atoi(argv[2]);
   sprintf(file_stub, argv[3]);
 
   printf("Input type is %d\n", id_type);
-  printf("Input number I/O groups is %d\n", nio);
+  printf("Input number I/O groups is %d\n", nio_);
   printf("Input file stub is %s\n", file_stub);
+
+  /* nio must divide lx_ here, i.e., each parallel file contains
+   * 1/nio of the total data (disclinations excluded) */
+  if (lx_ % nio_) {
+      printf("lx_ % nio is not zero\n");
+      exit(-1);
+  }
 
   if (id_type == 1) {
     printf("disclincation file\n");
@@ -120,8 +128,8 @@ int main (int argc, char ** argv) {
 
   /* Read parallel output files in turn */
 
-  for (n = 0; n < nio; n++) {
-    sprintf(file_name, "%s-%d-%d", file_stub, n, nio);
+  for (n = 0; n < nio_; n++) {
+    sprintf(file_name, "%s-%d-%d", file_stub, n, nio_);
     printf("Reading from %s\n", file_name);
     read_function(file_name);
   }
@@ -228,22 +236,26 @@ void read_order_velo(const char * file_name) {
   fp = fopen(file_name, "r");
   if (fp == NULL) printf("fopen(%s) failed\n", file_name);
 
-  for (ic = 0; ic < lx_; ic++) {
+
+  for (ic = 0; ic < lx_/nio_; ic++) {
     for (jc = 0; jc < ly_; jc++) {
       for (kc = 0; kc < lz_; kc++) {
 
 	fread(ibuf, sizeof(int), 3, fp);
 	fread(rbuf, sizeof(double), 10, fp);
+
 	index = 10*get_global_index(ibuf[0], ibuf[1], ibuf[2]);
 
 	for (p = 0; p < 10; p++) {
 	  data_out_[index+p] = (float) rbuf[p];
 	}
+
       }
     }
   }
 
   fclose(fp);
+
 
   return;
 }
@@ -309,7 +321,7 @@ void read_stress(const char * file_name) {
   fp = fopen(file_name, "r");
   if (fp == NULL) printf("fopen(%s) failed\n");
 
-  for (ic = 0; ic < lx_; ic++) {
+  for (ic = 0; ic < lx_/nio_; ic++) {
     for (jc = 0; jc < ly_; jc++) {
       for (kc = 0; kc < lz_; kc++) {
 
@@ -390,7 +402,7 @@ void read_director(const char * file_name) {
   fp = fopen(file_name, "r");
   if (fp == NULL) printf("fopen(%s) failed\n");
 
-  for (ic = 0; ic < lx_; ic++) {
+  for (ic = 0; ic < lx_/nio_; ic++) {
     for (jc = 0; jc < ly_; jc++) {
       for (kc = 0; kc < lz_; kc++) {
 
