@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.12 2008-07-04 11:31:28 erlend Exp $
+ *  $Id: model.c,v 1.9.6.13 2008-07-09 14:57:30 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -73,10 +73,7 @@ void getAintDisp(int indexDisp[], MPI_Aint dispArray[], int count) {
 
   for(i=1; i<count-1; i++) {
     dispArray[i] = site_addresses[i] - site_addresses[0];
-    //    info("  xdisp_right[%d] = %d \n", i, dispArray[i]);
   }
-  //  info("  xdisp_right[%d] = %d \n", 0, dispArray[0]);
-  //  info("  xdisp_right[%d] = %d \n", count-1, dispArray[count-1]);
 }
 
 void getblocklens(int blocklens_cv[], int blocklens[], int count) {
@@ -86,7 +83,6 @@ void getblocklens(int blocklens_cv[], int blocklens[], int count) {
   int i,j;
   for(i=0; i<ndist; i++) {
     for(j=1; j<countcv+1; j++) {
-      //      info(" i*countcv+j = %d \n",i*countcv+j);
       blocklens[i*countcv + j] = blocklens_cv[j-1];
     }
   }
@@ -185,15 +181,10 @@ void init_site() {
     gettypes(ztypes, zcount);
 
     MPI_Type_struct(xcount, xblocklens, xdisp_fwd, xtypes, &DT_Site_xright);
-    printf("1\n");
     MPI_Type_struct(xcount, xblocklens, xdisp_bwd, xtypes, &DT_Site_xleft);
-    printf("2\n");
     MPI_Type_struct(ycount, yblocklens, ydisp_fwd, ytypes, &DT_Site_yright);
-    printf("3\n");
     MPI_Type_struct(ycount, yblocklens, ydisp_bwd, ytypes, &DT_Site_yleft);
-    printf("4\n");
     MPI_Type_struct(zcount, zblocklens, zdisp_fwd, ztypes, &DT_Site_zright);
-    printf("5\n");
     MPI_Type_struct(zcount, zblocklens, zdisp_bwd, ztypes, &DT_Site_zleft);
     MPI_Type_commit(&DT_Site_xright);
     MPI_Type_commit(&DT_Site_xleft);
@@ -206,10 +197,9 @@ void init_site() {
     MPI_Type_commit(&DT_plane_XY_right);
     MPI_Type_vector(nx*ny, 1, nz, DT_Site_zleft, &DT_plane_XY_left);
     MPI_Type_commit(&DT_plane_XY_left);
-
-    MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site_yright, &DT_plane_XZ_right);
+    MPI_Type_vector(nx, nz, ny*nz, DT_Site_yright, &DT_plane_XZ_right);
     MPI_Type_commit(&DT_plane_XZ_right);
-    MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site_yleft, &DT_plane_XZ_left);
+    MPI_Type_vector(nx, nz, ny*nz, DT_Site_yleft, &DT_plane_XZ_left);
     MPI_Type_commit(&DT_plane_XZ_left);
 
     MPI_Type_contiguous(ny*nz, DT_Site_xright, &DT_plane_YZ_right);
@@ -220,14 +210,20 @@ void init_site() {
     info("Using full halos. \n");
     MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
     MPI_Type_commit(&DT_Site);
+
     MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
     MPI_Type_commit(&DT_plane_YZ);
     MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site, &DT_plane_XZ);
     MPI_Type_commit(&DT_plane_XZ);
     MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
     MPI_Type_commit(&DT_plane_XY);
-    // now introduce pointers to these, with the names of the reduced halos
-    // TODO: ask kevin if this is a sane approach (alt. is to have a conditional on sends).
+    // use the reduced datatypes names...
+    DT_plane_YZ_right = DT_plane_YZ;
+    DT_plane_YZ_left = DT_plane_YZ;
+    DT_plane_XZ_right = DT_plane_XZ;
+    DT_plane_XZ_left = DT_plane_XZ;
+    DT_plane_XY_right = DT_plane_XY;
+    DT_plane_XY_left = DT_plane_XY;
   }
 
  #endif
@@ -509,7 +505,7 @@ void halo_site() {
   xfac = (N[Y] + 2*nhalo_site_)*yfac;
 
   /* The x-direction (YZ plane) */
-
+  
   if (cart_size(X) == 1) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
@@ -520,18 +516,6 @@ void halo_site() {
   }
   else {
 #ifdef _MPI_   
- // OLDCODE
-    /*
-    MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
-	       TAG_BWD, cart_comm(), &request[0]);
-    MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ,
-	      cart_neighb(FORWARD,X), TAG_BWD, cart_comm(), &request[1]);
-    MPI_Issend(&site[N[X]*xfac].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
-    	       TAG_FWD, cart_comm(), &request[2]);
-    MPI_Irecv(&site[0].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
-	      TAG_FWD, cart_comm(), &request[3]);
-    */
-
     MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ_left, cart_neighb(BACKWARD,X),
 	       TAG_BWD, cart_comm(), &request[0]);
     MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ_left, cart_neighb(FORWARD,X), 
@@ -546,7 +530,7 @@ void halo_site() {
   }
   
   /* The y-direction (XZ plane) */
-
+  
   if (cart_size(Y) == 1) {
     for (i = 0; i <= N[X]+1; i++) {
       for (k = 1; k <= N[Z]; k++) {
@@ -570,7 +554,7 @@ void halo_site() {
   }
   
   /* Finally, z-direction (XY plane) */
-
+  
   if (cart_size(Z) == 1) {
     for (i = 0; i<= N[X]+1; i++) {
       for (j = 0; j <= N[Y]+1; j++) {
@@ -585,13 +569,13 @@ void halo_site() {
 	       TAG_BWD, cart_comm(), &request[0]);
     MPI_Irecv(&site[N[Z]+1].f[0], 1, DT_plane_XY_left, cart_neighb(FORWARD,Z),
 	      TAG_BWD, cart_comm(), &request[1]);
-    MPI_Issend(&site[N[Z]].f[0], 1, DT_plane_XY_left, cart_neighb(FORWARD,Z),
+    MPI_Issend(&site[N[Z]].f[0], 1, DT_plane_XY_right, cart_neighb(FORWARD,Z),
 	       TAG_FWD, cart_comm(), &request[2]);  
-    MPI_Irecv(&site[0].f[0], 1, DT_plane_XY_left, cart_neighb(BACKWARD,Z),
+    MPI_Irecv(&site[0].f[0], 1, DT_plane_XY_right, cart_neighb(BACKWARD,Z),
 	      TAG_FWD, cart_comm(), &request[3]);
     MPI_Waitall(4, request, status);
 #endif
-  }
+    }
  
   TIMER_stop(TIMER_HALO_LATTICE);
 

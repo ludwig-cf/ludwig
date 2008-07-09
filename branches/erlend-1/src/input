@@ -12,7 +12,7 @@ N_cycles 200
 #input_config config.out00000200
 
 size 64_64_64
-grid 4_4_4
+grid 2_2_2
 
 reduced_halos yes
 
