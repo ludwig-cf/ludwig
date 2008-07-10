@@ -14,7 +14,7 @@ N_cycles 200
 size 64_64_64
 grid 2_2_2
 
-reduced_halos yes
+reduced_halos no
 
 #random_seed 7361237
 random_seed 8361235

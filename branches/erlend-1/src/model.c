@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.13 2008-07-09 14:57:30 erlend Exp $
+ *  $Id: model.c,v 1.9.6.14 2008-07-10 16:38:41 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -97,6 +97,16 @@ void gettypes(MPI_Datatype types[], int count) {
   }
 }
 
+void getDerivedDTParms(int count, MPI_Datatype types, \
+		       int indexDisp_fwd[], int indexDisp_bwd[],	\
+		       MPI_Aint dispArray_fwd[], MPI_Aint dispArray_bwd[],\
+		       int blocklens_cv[], int blocklens[]) {
+  getAintDisp(indexDisp_fwd, dispArray_fwd, count);
+  getAintDisp(indexDisp_bwd, dispArray_bwd, count);
+  getblocklens(blocklens_cv, blocklens, count);
+  gettypes(types, count);
+}
+
 #endif
 
 /***************************************************************************
@@ -149,7 +159,14 @@ void init_site() {
    * in YZ plane one contiguous block of ny*nz sites.
    *
    * This is only confirmed for nhalo_site_ = 1. */
-  
+
+#ifdef _D3Q15_
+  info("Using model: d3q15 \n");
+#endif  
+#ifdef _D3Q19_
+  info("Using model: d3q19 \n");
+#endif
+
   if(use_reduced_halos()) {
     info("Using reduced halos. \n");
 
@@ -157,28 +174,40 @@ void init_site() {
     MPI_Aint xdisp_bwd[xcount];
     int xblocklens[xcount];
     MPI_Datatype xtypes[xcount];
-    getAintDisp(xdisp_fwd_cv, xdisp_fwd, xcount);
+    /*getAintDisp(xdisp_fwd_cv, xdisp_fwd, xcount);
     getAintDisp(xdisp_bwd_cv, xdisp_bwd, xcount);
     getblocklens(xblocklens_cv, xblocklens, xcount);
-    gettypes(xtypes, xcount);
+    gettypes(xtypes, xcount);*/
+    getDerivedDTParms(xcount, xtypes,		  \
+		      xdisp_fwd_cv, xdisp_bwd_cv, \
+		      xdisp_fwd, xdisp_bwd,	  \
+		      xblocklens_cv, xblocklens);
 
     MPI_Aint ydisp_fwd[ycount];
     MPI_Aint ydisp_bwd[ycount];
     int yblocklens[ycount];
     MPI_Datatype ytypes[ycount];
-    getAintDisp(ydisp_fwd_cv, ydisp_fwd, ycount);
+    /*getAintDisp(ydisp_fwd_cv, ydisp_fwd, ycount);
     getAintDisp(ydisp_bwd_cv, ydisp_bwd, ycount);
     getblocklens(yblocklens_cv, yblocklens, ycount);
-    gettypes(ytypes, ycount);
+    gettypes(ytypes, ycount);*/
+    getDerivedDTParms(ycount, ytypes,		  \
+		      ydisp_fwd_cv, ydisp_bwd_cv, \
+		      ydisp_fwd, ydisp_bwd,	  \
+		      yblocklens_cv, yblocklens);
 
     MPI_Aint zdisp_fwd[zcount];
     MPI_Aint zdisp_bwd[zcount];
     int zblocklens[zcount];
     MPI_Datatype ztypes[zcount];
-    getAintDisp(zdisp_fwd_cv, zdisp_fwd, zcount);
+    /*getAintDisp(zdisp_fwd_cv, zdisp_fwd, zcount);
     getAintDisp(zdisp_bwd_cv, zdisp_bwd, zcount);
     getblocklens(zblocklens_cv, zblocklens, zcount);
-    gettypes(ztypes, zcount);
+    gettypes(ztypes, zcount);*/
+    getDerivedDTParms(zcount, ztypes,		  \
+		      zdisp_fwd_cv, zdisp_bwd_cv, \
+		      zdisp_fwd, zdisp_bwd,	  \
+		      zblocklens_cv, zblocklens);
 
     MPI_Type_struct(xcount, xblocklens, xdisp_fwd, xtypes, &DT_Site_xright);
     MPI_Type_struct(xcount, xblocklens, xdisp_bwd, xtypes, &DT_Site_xleft);
