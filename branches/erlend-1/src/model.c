@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.14 2008-07-10 16:38:41 erlend Exp $
+ *  $Id: model.c,v 1.9.6.15 2008-07-14 15:21:24 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -97,7 +97,7 @@ void gettypes(MPI_Datatype types[], int count) {
   }
 }
 
-void getDerivedDTParms(int count, MPI_Datatype types, \
+void getDerivedDTParms(int count, MPI_Datatype types[], \
 		       int indexDisp_fwd[], int indexDisp_bwd[],	\
 		       MPI_Aint dispArray_fwd[], MPI_Aint dispArray_bwd[],\
 		       int blocklens_cv[], int blocklens[]) {
