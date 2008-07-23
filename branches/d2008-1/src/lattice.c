@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.7.2.7 2008-06-30 17:45:21 kevin Exp $
+ *  $Id: lattice.c,v 1.7.2.8 2008-07-23 10:09:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,6 +17,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -372,6 +373,64 @@ void hydrodynamics_zero_force() {
       }
     }
   }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  hydrodynamics_stats
+ *
+ *  Report some velocity statistics, principally to check for Courant
+ *  number violations.
+ *
+ ****************************************************************************/
+
+void hydrodynamics_stats() {
+
+  int ic, jc, kc, ia, index;
+  int nlocal[3];
+  double umin[3];
+  double umax[3];
+  double utmp[3];
+  MPI_Comm comm = cart_comm();
+
+  get_N_local(nlocal);
+
+  for (ia = 0; ia < 3; ia++) {
+    umin[ia] = FLT_MAX;
+    umax[ia] = FLT_MIN;
+  }
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = get_site_index(ic, jc, kc);
+
+	for (ia = 0; ia < 3; ia++) {
+	  umin[ia] = dmin(umin[ia], u[index].c[ia]);
+	  umax[ia] = dmax(umax[ia], u[index].c[ia]);
+	}
+      }
+    }
+  }
+
+  MPI_Reduce(umin, utmp, 3, MPI_DOUBLE, MPI_MIN, 0, comm);
+
+  for (ia = 0; ia < 3; ia++) {
+    umin[ia] = utmp[ia];
+  }
+
+  MPI_Reduce(umax, utmp, 3, MPI_DOUBLE, MPI_MAX, 0, comm);
+
+  for (ia = 0; ia < 3; ia++) {
+    umax[ia] = utmp[ia];
+  }
+
+  info("Velocity stats:\n");
+  info("[ umin ][ %g %g %g ]\n", umin[X], umin[Y], umin[Z]);
+  info("[ umax ][ %g %g %g ]\n", umax[X], umax[Y], umax[Z]);
 
   return;
 }
