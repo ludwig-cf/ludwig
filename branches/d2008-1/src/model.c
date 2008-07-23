@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.4.6 2008-07-01 13:55:34 kevin Exp $
+ *  $Id: model.c,v 1.9.4.7 2008-07-23 10:22:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -138,12 +138,18 @@ void finish_site() {
 
 static void distribution_io_info_init() {
 
-  int io_grid[3] = {1, 1, 1};
+  int n;
+  int io_grid[3];
   char string[FILENAME_MAX];
 
-  RUN_get_int_parameter_vector("distribution_io_grid", io_grid);
+  n = RUN_get_int_parameter_vector("io_grid_distribution", io_grid);
 
-  io_info_distribution_ = io_info_create_with_grid(io_grid);
+  if (n == 1) {
+    io_info_distribution_ = io_info_create_with_grid(io_grid);
+  }
+  else {
+    io_info_distribution_ = io_info_create();
+  }
 
   sprintf(string, "2 x Distribution: d%dq%d", ND, NVEL);
 
