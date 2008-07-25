@@ -4,7 +4,7 @@
  *
  *  D3Q15 model definitions.
  *
- *  $Id: d3q15.c,v 1.6.6.8 2008-07-03 10:38:00 erlend Exp $
+ *  $Id: d3q15.c,v 1.6.6.9 2008-07-25 17:08:35 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -131,17 +131,14 @@ const double mi_[NVEL][NVEL] =
 
 #ifdef _MPI_
 
-//MPI_Datatype xtypescv[xcountcv] = {MPI_DOUBLE};
 int xblocklens_cv[xcountcv] = {5};
 int xdisp_fwd_cv[xcountcv] = {1};
 int xdisp_bwd_cv[xcountcv] = {10};
 
-//MPI_Datatype ytypes[ycountcv] = {MPI_DOUBLE};
 int yblocklens_cv[ycountcv] = {2, 1, 2};
 int ydisp_fwd_cv[ycountcv] = {1, 6, 10};
 int ydisp_bwd_cv[ycountcv] = {4, 9, 13};
 
-//MPI_Datatype ztypes[zcountcv] = {MPI_DOUBLE};
 int zblocklens_cv[zcountcv] = {1, 1, 1, 1, 1};
 int zdisp_fwd_cv[zcountcv] = {1, 4, 7, 10, 13};
 int zdisp_bwd_cv[zcountcv] = {2, 5, 8, 11, 14};

@@ -4,7 +4,7 @@
  *
  *  D3Q15 definitions.
  *
- *  $Id: d3q15.h,v 1.5.6.5 2008-07-03 10:38:00 erlend Exp $
+ *  $Id: d3q15.h,v 1.5.6.6 2008-07-25 17:08:35 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -25,19 +25,16 @@ extern const double mi_[NVEL][NVEL];
 #ifdef _MPI_
 
 enum {xcountcv = 1};
-//extern MPI_Datatype xtypescv[xcountcv];
 extern int xblocklens_cv[xcountcv];
 extern int xdisp_fwd_cv[xcountcv];
 extern int xdisp_bwd_cv[xcountcv];
 
 enum {ycountcv = 3};
-//extern MPI_Datatype ytypescv[ycountcv];
 extern int yblocklens_cv[ycountcv];
 extern int ydisp_fwd_cv[ycountcv];
 extern int ydisp_bwd_cv[ycountcv];
 
 enum {zcountcv = 5};
-//extern MPI_Datatype ztypes[zcountcv];
 extern int zblocklens_cv[zcountcv];
 extern int zdisp_fwd_cv[zcountcv];
 extern int zdisp_bwd_cv[zcountcv];

@@ -4,7 +4,7 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.c,v 1.7.6.2 2008-06-25 18:19:50 erlend Exp $
+ *  $Id: d3q19.c,v 1.7.6.3 2008-07-25 17:08:35 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -179,20 +179,17 @@ const double mi_[NVEL][NVEL] = {
 
 #ifdef _MPI_
 
-MPI_Datatype xtypes[xcount] = {MPI_DOUBLE};
-int xblocklens[xcount] = {2*NVEL};
-MPI_Aint xdisp_right[xcount] = {0};
-MPI_Aint xdisp_left[xcount] = {0};
+int xblocklens_cv[xcountcv] = {5};
+int xdisp_fwd_cv[xcountcv] = {1};
+int xdisp_bwd_cv[xcountcv] = {14};
 
-MPI_Datatype ytypes[ycount] = {MPI_DOUBLE};
-int yblocklens[ycount] = {2*NVEL};
-MPI_Aint ydisp_right[ycount] = {0};
-MPI_Aint ydisp_left[ycount] = {0};
+int yblocklens_cv[ycountcv] = {1, 3, 1};
+int ydisp_fwd_cv[ycountcv] = {1, 6, 14};
+int ydisp_bwd_cv[ycountcv] = {5, 11, 18};
 
-MPI_Datatype ztypes[zcount] = {MPI_DOUBLE};
-int zblocklens[zcount] = {2*NVEL};
-MPI_Aint zdisp_right[zcount] = {0};
-MPI_Aint zdisp_left[zcount] = {0};
+int zblocklens_cv[zcountcv] = {1, 1, 1, 1, 1};
+int zdisp_fwd_cv[zcountcv] = {2, 6, 9, 11, 15};
+int zdisp_bwd_cv[zcountcv] = {4, 8, 10, 13, 17};
 
 #endif
 
