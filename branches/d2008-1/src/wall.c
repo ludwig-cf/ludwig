@@ -6,9 +6,13 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.7.4.3 2008-02-26 09:41:08 kevin Exp $
+ *  $Id: wall.c,v 1.7.4.4 2008-07-25 09:43:06 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -194,7 +198,7 @@ static void init_links() {
 
 	/* Look for non-solid -> solid links */
 
-	for (p = 0; p < NVEL; p++) {
+	for (p = 1; p < NVEL; p++) {
 
 	  ic1 = ic + cv[p][X];
 	  jc1 = jc + cv[p][Y];
@@ -227,7 +231,7 @@ static void init_links() {
  *
  *  init_boundary_site_map
  *
- *  Set the site map to SOLID for the boundary walls.
+ *  Set the site map to BOUNDARY for the boundary walls.
  *
  *****************************************************************************/
 
@@ -253,18 +257,21 @@ static void init_boundary_site_map() {
 
 	if (is_periodic(Z)) continue;
 
-	if (kc_global == 0 || kc_global == N_total(Z) + 1)
+	if (kc_global == 0 || kc_global == N_total(Z) + 1) {
 	  site_map_set_status(ic, jc, kc, BOUNDARY);
+	}
 
 	if (is_periodic(Y)) continue;
 
-	if (jc_global == 0 || jc_global == N_total(Y) + 1)
+	if (jc_global == 0 || jc_global == N_total(Y) + 1) {
 	  site_map_set_status(ic, jc, kc, BOUNDARY);
+	}
 
 	if (is_periodic(X)) continue;
 
-	if (ic_global == 0 || ic_global == N_total(X) + 1)
+	if (ic_global == 0 || ic_global == N_total(X) + 1) {
 	  site_map_set_status(ic, jc, kc, BOUNDARY);
+	}
       }
     }
   }
