@@ -1212,6 +1212,43 @@ double le_get_steady_uy(int ic) {
 
 /*****************************************************************************
  *
+ *  le_get_block_uy
+ *
+ *  Return the velocity of the LE 'block' at ic relative to the
+ *  centre of the system.
+ *
+ *  This is useful to output y velocities corrected for the planes.
+ *  We always consider the central LE block to be stationary, i.e.,
+ *  'unroll' from the centre.
+ *
+ *****************************************************************************/
+
+double le_get_block_uy(int ic) {
+
+  int offset[3];
+  int n;
+  double xh, uy;
+
+  assert(initialised_);
+  get_N_offset(offset);
+
+  /* So, just count the number of blocks from the centre L(X)/2
+   * and mutliply by the plane speed. */
+
+  xh = offset[X] + (double) ic - Lmin(X) - 0.5*L(X);
+  if (xh > 0.0) {
+    n = (0.5 + xh/le_params_.dx_sep);
+  }
+  else {
+    n = (-0.5 + xh/le_params_.dx_sep);
+  }
+  uy = le_params_.uy_plane*n;
+
+  return uy;
+}
+
+/*****************************************************************************
+ *
  *  le_get_nplane
  *
  *  Return the local number of planes (block boundaries).
