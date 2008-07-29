@@ -244,6 +244,25 @@ int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 
 /*****************************************************************************
  *
+ *  MPI_Gather
+ *
+ ****************************************************************************/
+
+int MPI_Gather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
+	       void * recvbuf, int recvcount, MPI_Datatype recvtype,
+	       int root, MPI_Comm comm) {
+
+  assert(mpi_initialised_flag_);
+  assert(sendcount == recvcount);
+  assert(sendtype == recvtype);
+  
+  mpi_copy(sendbuf, recvbuf, sendcount, sendtype);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Allreduce
  *
  *****************************************************************************/
@@ -422,6 +441,22 @@ int MPI_Cart_shift(MPI_Comm comm, int direction, int disp, int * rank_source,
 
   *rank_source = 0;
   *rank_dest = 0;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Cart_sub
+ *
+ *****************************************************************************/
+
+int MPI_Cart_sub(MPI_Comm comm, int * remain_dims, MPI_Comm * new_comm) {
+
+  assert(mpi_initialised_flag_);
+  assert(comm != MPI_COMM_NULL);
+
+  *new_comm = comm;
 
   return MPI_SUCCESS;
 }
