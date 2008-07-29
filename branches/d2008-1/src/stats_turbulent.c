@@ -4,7 +4,7 @@
  *
  *  Statistics to probe turbulent flow.
  *
- *  $Id: stats_turbulent.c,v 1.1.2.1 2008-07-29 14:23:08 kevin Exp $
+ *  $Id: stats_turbulent.c,v 1.1.2.2 2008-07-29 15:55:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -240,7 +240,6 @@ void stats_turbulent_ubar_output(const char * filename) {
     if (cart_coords(X) == 0) {
       /* Open the file */
       if (is_writing) fp_output = fopen(filename, "w");
-      verbose("root x opens file\n");
     }
     else {
       /* Block until we get the token from the previous process and
