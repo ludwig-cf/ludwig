@@ -115,6 +115,9 @@ int MPI_Type_commit(MPI_Datatype * datatype);
 int MPI_Type_free(MPI_Datatype * datatype);
 int MPI_Waitall(int count, MPI_Request * array_of_requests,
 		MPI_Status * array_of_statuses);
+int MPI_Gather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
+	       void * recvbuf, int recvcount, MPI_Datatype recvtype,
+	       int root, MPI_Comm comm);
 int MPI_Allreduce(void * send, void * recv, int count, MPI_Datatype type,
 		  MPI_Op op, MPI_Comm comm);
 
@@ -131,6 +134,7 @@ int MPI_Cart_rank(MPI_Comm comm, int * coords, int * rank);
 int MPI_Cart_coords(MPI_Comm comm, int rank, int maxdims, int * coords);
 int MPI_Cart_shift(MPI_Comm comm, int direction, int disp, int * rank_source,
 		   int * rank_dest);
+int MPI_Cart_sub(MPI_Comm comm, int * remain_dims, MPI_Comm * new_comm);
 
 /* Bindings for environmental inquiry */
 
