@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.7.2.8 2008-07-23 10:09:47 kevin Exp $
+ *  $Id: lattice.c,v 1.7.2.9 2008-07-29 14:25:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,7 +24,11 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
+#include "io_harness.h"
 #include "lattice.h"
+
+
+struct io_info_t * io_info_velocity_;
 
 struct vector {double c[3];};
 
@@ -39,6 +43,9 @@ static MPI_Datatype    halo_yz_t;
 static int             initialised_ = 0;
 static void hydrodynamics_init_mpi(void);
 static void hydrodynamics_leesedwards_parallel(void);
+static void hydrodynamics_init_io(void);
+static int  hydrodynamics_u_read(FILE *, const int, const int, const int);
+static int  hydrodynamics_u_write(FILE *, const int, const int, const int);
 
 /****************************************************************************
  *
@@ -66,6 +73,7 @@ void hydrodynamics_init() {
   if (f == NULL) fatal("calloc(f) failed\n");
 
   hydrodynamics_init_mpi();
+  hydrodynamics_init_io();
   initialised_ = 1;
 
   return;
@@ -97,6 +105,26 @@ static void hydrodynamics_init_mpi() {
 
   MPI_Type_vector(1, ny*nz*nhalolocal, 1, mpi_vector_t, &halo_yz_t);
   MPI_Type_commit(&halo_yz_t);
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  hydrodynamics_init_io
+ *
+ ****************************************************************************/
+
+static void hydrodynamics_init_io() {
+
+  io_info_velocity_ = io_info_create();
+
+  io_info_set_name(io_info_velocity_, "Velocity field");
+  io_info_set_read(io_info_velocity_, hydrodynamics_u_read);
+  io_info_set_write(io_info_velocity_, hydrodynamics_u_write);
+  io_info_set_bytesize(io_info_velocity_, 3*sizeof(double));
+
+  io_write_metadata("phi", io_info_velocity_);
 
   return;
 }
@@ -598,3 +626,38 @@ static void hydrodynamics_leesedwards_parallel() {
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  hydrodynamics_u_write
+ *
+ *****************************************************************************/
+
+static int hydrodynamics_u_write(FILE * fp, const int ic, const int jc,
+				 const int kc) {
+
+  int index, n;
+
+  index = le_site_index(ic, jc, kc);
+  n = fwrite(u[index].c, sizeof(double), 3, fp);
+
+  if (n != 3) fatal("fwrite(velocity) failed at %d %d %d\n", ic, jc, kc);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  hydrodynamics_u_read
+ *
+ *  Should not need to read u, as it is not strictly state.
+ *  So it's a no op at the moment.
+ *
+ *****************************************************************************/
+
+static int hydrodynamics_u_read(FILE * fp, const int ic, const int jc,
+				const int kc) {
+
+  return 0;
+}
+
