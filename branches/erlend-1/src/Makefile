@@ -85,8 +85,8 @@ endif
 ifneq (,$(findstring l1f4, $(HOSTNAME)))
 CC= xlc_r
 MPICC= mpcc_r
-COPTS= -qhalt=w -O3 -qhot
-LDFLAGS= -qipa -lm
+COPTS= -q64 -qhalt=w -O3 -qhot
+LDFLAGS= -q64 -qipa -lm
 CFLAGS= $(OPTS) $(COPTS) $(LDFLAGS)
 
 LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass

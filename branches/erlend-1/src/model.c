@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.15 2008-07-14 15:21:24 erlend Exp $
+ *  $Id: model.c,v 1.9.6.16 2008-07-30 20:12:13 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -246,7 +246,7 @@ void init_site() {
     MPI_Type_commit(&DT_plane_XZ);
     MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
     MPI_Type_commit(&DT_plane_XY);
-    // use the reduced datatypes names...
+    /* use the reduced datatypes names... */
     DT_plane_YZ_right = DT_plane_YZ;
     DT_plane_YZ_left = DT_plane_YZ;
     DT_plane_XZ_right = DT_plane_XZ;
