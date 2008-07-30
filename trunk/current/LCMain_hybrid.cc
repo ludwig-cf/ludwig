@@ -1,12 +1,11 @@
 #ifndef LCMAIN_CC
 #define LCMAIN_CC
 
-#include <ostream>
-#include <fstream>
-
-#include <cmath>
-#include <cstdlib>
-#include <iomanip>
+#include <iostream.h>
+#include <fstream.h>
+#include <math.h>
+#include <stdlib.h>
+#include <iomanip.h>
 
 using namespace std;
 
@@ -227,8 +226,8 @@ int main(int argc, char** argv)
 
   /* BP equilibration (assuming 1500 steps, change if inappropriate) */
 
-      if(n==1500) startDroplet();
-//      if(n==1500) startSlab();
+//      if(n==1500) startDroplet();
+      if(n==1500) startSlab();
 
       if (n % FePrintInt == 0) computeStressFreeEnergy(n);
 
@@ -335,7 +334,7 @@ int main(int argc, char** argv)
 #else
       streamfile(n);
 #endif
-      cout << n << endl;
+//      cout << n << endl;
       graphstp=0;
     }
    

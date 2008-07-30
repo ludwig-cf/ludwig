@@ -13,10 +13,10 @@
 //     Alexandre Dupuis
 //
 // = VERSION
-//     $Revision: 1.1.1.1 $
+//     $Revision: 1.2 $
 //
 // = DATE RELEASED
-//     $Date: 2008-03-31 08:18:40 $
+//     $Date: 2008-07-30 16:06:30 $
 //
 // = COPYRIGHT
 //     University of Geneva, Switzerland
@@ -25,7 +25,8 @@
 
 #include "Bool.hh"
 
-#include <iostream>
+//#include <iostream>
+#include <iostream.h>
 using namespace std;
 
 class String
