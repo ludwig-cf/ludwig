@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.8 2008-02-15 14:35:26 kevin Exp $
+ *  $Id: collision.c,v 1.9 2008-08-07 08:27:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -140,6 +140,7 @@ void MODEL_collide_multirelaxation() {
   double    rho, rrho;               /* Density, reciprocal density */
   double    u[3];                    /* Velocity */
   double    s[3][3];                 /* Stress */
+  double    seq[3][3];               /* Equilibrium stress */
   double    shat[3][3];              /* random stress */
 
   double    force[3];                /* External force */
@@ -208,6 +209,10 @@ void MODEL_collide_multirelaxation() {
 	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
+          /* Set equilibrium stress */
+          for (j = 0; j < 3; j++) {
+            seq[i][j] = rho*u[i]*u[j];
+          }
 	  /* Compute trace */
 	  tr_s   += s[i][i];
 	  tr_seq += (rho*u[i]*u[i]);
@@ -216,6 +221,7 @@ void MODEL_collide_multirelaxation() {
 	/* Form traceless parts */
 	for (i = 0; i < 3; i++) {
 	  s[i][i]   -= r3*tr_s;
+          seq[i][i] -= r3*tr_seq;
 	}
 
 	/* Relax each mode */
@@ -223,7 +229,7 @@ void MODEL_collide_multirelaxation() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j]);
+	    s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
 	    s[i][j] += d_[i][j]*r3*tr_s;
 
 	    /* Correction from body force (assumes equal relaxation times) */
@@ -324,6 +330,7 @@ void MODEL_collide_binary_lb() {
   double    rho, rrho;               /* Density, reciprocal density */
   double    u[3];                    /* Velocity */
   double    s[3][3];                 /* Stress */
+  double    seq[3][3];               /* equilibrium stress */
   double    shat[3][3];              /* random stress */
 
   double    force[3];                /* External force */
@@ -415,15 +422,19 @@ void MODEL_collide_binary_lb() {
 	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
+          /* Set equilibrium stress, which includes thermodynamic part */
+          for (j = 0; j < 3; j++) {
+            seq[i][j] = rho*u[i]*u[j] + sth[i][j];
+          }
 	  /* Compute trace */
 	  tr_s   += s[i][i];
-	  tr_seq += (rho*u[i]*u[i] + sth[i][i]);
+	  tr_seq += seq[i][i];
 	}
 
 	/* Form traceless parts */
 	for (i = 0; i < 3; i++) {
 	  s[i][i]   -= r3*tr_s;
-	  sth[i][i] -= r3*tr_seq;
+	  seq[i][i] -= r3*tr_seq;
 	}
 
 	/* Relax each mode */
@@ -431,7 +442,7 @@ void MODEL_collide_binary_lb() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j] - sth[i][j]);
+	    s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
 	    s[i][j] += d_[i][j]*r3*tr_s;
 
 	    /* Correction from body force (assumes equal relaxation times) */
