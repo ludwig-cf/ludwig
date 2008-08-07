@@ -63,3 +63,4 @@ void test_barrier() {
 
   return;
 }
+

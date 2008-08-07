@@ -18,7 +18,7 @@
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
-CC     = pgcc
+CC     = gcc
 MPICC  = mpicc
 MPIRUN = mprun -np
 NPROCS = 8

@@ -12,10 +12,22 @@
 #include "model.h"
 #include "tests.h"
 
+void test_halo_swap();
+void test_reduced_halo_swap();
+int on_corner(int x, int y, int z, int mx, int my, int mz);
+
+
+int* xfwd;
+int* xbwd;
+int* yfwd;
+int* ybwd;
+int* zfwd;
+int* zbwd;
+
 int main(int argc, char ** argv) {
 
   int i, j, k, p;
-  int index, N[ND];
+  //  int index, N[ND]; // now in test_halo_swap();
   double sum, sumx, sumy, sumz;
   double dij;
   double rho;
@@ -24,6 +36,63 @@ int main(int argc, char ** argv) {
   pe_init(argc, argv);
   RUN_read_input_file("input");
   init_control();
+
+  if(use_reduced_halos()) {
+    xfwd = calloc(NVEL, sizeof(int));
+    xbwd = calloc(NVEL, sizeof(int));
+    yfwd = calloc(NVEL, sizeof(int));
+    ybwd = calloc(NVEL, sizeof(int));
+    zfwd = calloc(NVEL, sizeof(int));
+    zbwd = calloc(NVEL, sizeof(int));
+    
+    for(i=0; i<xcountcv; i++) {
+      for(j=0; j<xdisp_fwd_cv[i]; j++) {
+	for(k=0; k<xblocklens_cv[i]; k++) {
+	  xfwd[xdisp_fwd_cv[i]+k] = 1;
+	}
+      }
+    }
+    
+    for(i=0; i<xcountcv; i++) {
+      for(j=0; j<xdisp_bwd_cv[i]; j++) {
+	for(k=0; k<xblocklens_cv[i]; k++) {
+	  xbwd[xdisp_bwd_cv[i]+k] = 1;
+	}
+      }
+    }
+
+    for(i=0; i<ycountcv; i++) {
+      for(j=0; j<ydisp_fwd_cv[i]; j++) {
+	for(k=0; k<yblocklens_cv[i]; k++) {
+	  yfwd[ydisp_fwd_cv[i]+k] = 1;
+	}
+      }
+    }
+
+    for(i=0; i<ycountcv; i++) {
+      for(j=0; j<ydisp_bwd_cv[i]; j++) {
+	for(k=0; k<yblocklens_cv[i]; k++) {
+	  ybwd[ydisp_bwd_cv[i]+k] = 1;
+	}
+      }
+    }
+
+    for(i=0; i<zcountcv; i++) {
+      for(j=0; j<zdisp_fwd_cv[i]; j++) {
+	for(k=0; k<zblocklens_cv[i]; k++) {
+	  zfwd[zdisp_fwd_cv[i]+k] = 1;
+	}
+      }
+    }
+
+    for(i=0; i<zcountcv; i++) {
+      for(j=0; j<zdisp_bwd_cv[i]; j++) {
+	for(k=0; k<zblocklens_cv[i]; k++) {
+	  zbwd[zdisp_bwd_cv[i]+k] = 1;
+	}
+      }
+    }
+  }
 
   info("Checking model.c objects...\n\n");
 
@@ -272,7 +341,24 @@ int main(int argc, char ** argv) {
   finish_site();
   info("ok\n");
 
+  if(use_reduced_halos()) {
+    test_reduced_halo_swap();
+  } else {
+    test_halo_swap();
+  }
 
+  info("\nModel tests passed ok.\n\n");
+
+  pe_finalise();
+
+  return 0;
+}
+
+void test_halo_swap() {
+  int i, j, k, p;
+  int index, N[ND];
+  double u[ND];
+  double rho;
   /* Test the periodic/processor halo swap:
    * (1) load f[0] at each site with the index,
    * (2) swap
@@ -310,7 +396,7 @@ int main(int argc, char ** argv) {
 	u[X] = get_f_at_site(index, X);
 	u[Y] = get_f_at_site(index, Y);
 	u[Z] = get_f_at_site(index, Z);
-
+	
 	if (i == 0) {
 	  test_assert(fabs(u[X] - (double) N[X]) < TEST_DOUBLE_TOLERANCE);
 	}
@@ -341,12 +427,124 @@ int main(int argc, char ** argv) {
   }
 
   info("Halo swap ok\n");
-
   finish_site();
+}
 
-  info("\nModel tests passed ok.\n\n");
+void test_reduced_halo_swap() {  
+  int index, N[ND];
+  double f;  
+  int i, j, k, p;
+  info("\nHalo swap (reduced)...\n\n");
 
-  pe_finalise();
+  coords_init();
+  init_site();
+  get_N_local(N);
+  
+  /* Set everything which is NOT in a halo */
+  for (i = 1; i <= N[X]; i++) {
+    for (j = 1; j <= N[Y]; j++) {
+      for (k = 1; k <= N[Z]; k++) {
+	index = index_site(i, j, k);
+	for (p = 0; p < NVEL; p++) {
+	  set_f_at_site(index, p, (double) p);
+	}
+      }
+    }
+  }
+
+  /* do swap */
+  halo_site();
+
+  /* Now check that the sites are right still
+   * Also check the halos sites now
+   */
+  for (i = 0; i <= N[X]+1; i++) {
+    for (j = 0; j <= N[Y]+1; j++) {
+      for (k = 0; k <= N[Z]+1; k++) {
+	index = index_site(i, j, k);
+
+	for(p = 0; p < NVEL; p++) {
+	  f = get_f_at_site(index, p);
+	  if(i == 0 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
+	    if(xfwd[p] > 0) {
+	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);
+	    }
+	  }
+	  if(i == N[X]+1 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
+	    if(xbwd[p] > 0) {
+	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);  
+	    }
+	  }
+	  if(j == 0 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
+	    if(yfwd[p] > 0) {
+	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);
+	    }
+	  }
+	  if(j == N[Y]+1 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
+	    if(ybwd[p] > 0) {
+	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);  
+	    }
+	  }
+	  if(k == 0 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
+	    if(zfwd[p] > 0) {
+	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);
+	    }
+	  }
+	  if(k == N[Z]+1 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
+	    if(zbwd[p] > 0) {
+	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);  
+	    }
+	  }
+	  
+	  /* Check the interior is still the same. */
+	  if(i > 0 && j > 0 && k > 0 &&
+	     i < N[X]+1 && j < N[Y]+1 && k < N[Z]+1) {
+	    test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);
+	  }
+	}
+
+      }
+    }
+  }
+
+  info("Reduced halo swapping... ok");
+
+}
+
+
+/*************************************
+ *
+ * Returns 0(false) if on a corner,
+ *         1(true)  otherwise.
+ *
+ *************************************/
+int on_corner(int x, int y, int z, \
+	      int mx, int my, int mz) {
+  /* on the axes */
+  if( abs(x) + abs(y) == 0 || \
+      abs(x) + abs(z) == 0 || \
+      abs(y) + abs(z) == 0 )
+    {
+      return 1;
+    }
+
+  /* opposite corners from axes */
+  if( x == mx && y == my ||
+      x == mx && z == mz ||
+      y == my && z == mz)
+    {
+      return 1;
+    }
+  
+  if( x == 0 && y == my ||
+      x == 0 && z == mz ||
+      y == 0 && x == mx ||
+      y == 0 && z == mz ||
+      z == 0 && x == mx ||
+      z == 0 && y == my)
+    {
+      return 1;
+    }
 
   return 0;
 }
