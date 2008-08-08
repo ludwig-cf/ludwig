@@ -13,10 +13,10 @@
 //     Alexandre Dupuis
 //
 // = VERSION
-//     $Revision: 1.1.1.1 $
+//     $Revision: 1.2 $
 //
 // = DATE RELEASED
-//     $Date: 2008-03-31 08:18:40 $
+//     $Date: 2008-08-08 13:08:57 $
 //
 // = COPYRIGHT
 //     University of Geneva, Switzerland
