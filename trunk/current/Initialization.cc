@@ -90,36 +90,32 @@ void randomizeQ(void)
 
 }
 
-
-
-
-
 	if (O5STRUCT == 1) {
 #ifdef PARALLEL
 
-	  Qxx[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)-
-		       cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*k)-
-		       cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*j));
+	  Qxx[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc)-
+		       cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)-
+		       cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc));
 	  Qyy[i][j][k]=amplitude*
-	    (2.0*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*cos(sqrt(2.0)*q0*k)-
-	     cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))-
-            cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
+	    (2.0*cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)-
+	     cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*ic)-
+            cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc));
 	  Qxy[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)-
-	     sqrt(2.0)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))
-	     *sin(sqrt(2.0)*q0*k)-
-            sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*sin(sqrt(2.0)*q0*j));
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*ic)
+	     *sin(sqrt(2.0)*q0*kc)-
+            sin(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*jc));
 	  Qxz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))
-	     *sin(sqrt(2.0)*q0*j)-
-	     sqrt(2.0)*cos(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*j)-
-	     sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))*sin(sqrt(2.0)*q0*k));
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*ic)
+	     *sin(sqrt(2.0)*q0*jc)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*kc)*sin(sqrt(2.0)*q0*jc)-
+	     sin(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc));
 	  Qyz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*k)
-	     *sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))-
-	     sqrt(2.0)*cos(sqrt(2.0)*q0*j)*
-	     sin(sqrt(2.0)*q0*((i-1)+Lx/nbPE*myPE))-
-	     sin(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k));
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*kc)
+	     *sin(sqrt(2.0)*q0*ic)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*jc)*
+	     sin(sqrt(2.0)*q0*ic)-
+	     sin(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc));
 #else
 	  Qxx[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)-
 		       cos(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)-
@@ -189,34 +185,61 @@ void randomizeQ(void)
 	     sin(sqrt(2.0)*q0*i)-
 	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
 #endif
-//slabs
-/*
-if(j>Ly/2){
-	  amplitude=0.2; 
 
-	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*k)-cos(2.0*q0*j));
-	  Qxxinit[i][j][k]=Qxx[i][j][k];
-	  Qxy[i][j][k]=amplitude*sin(2.0*q0*k);
-	  Qxyinit[i][j][k]=Qxy[i][j][k];
-	  Qxz[i][j][k]=amplitude*sin(2.0*q0*j);
+
+	}
+
+
+   if (HEXPLANAR == 1) {
+
+/* twist should be along z-direction */
+#ifdef PARALLEL
+          Qxx[i][j][k]=amplitude*(-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc));
+          Qxy[i][j][k]=amplitude*(-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc));
+          Qxz[i][j][k]=amplitude*(sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
+          Qyy[i][j][k]=amplitude*(-cos(2.0*q0*ic)-0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc));
+          Qyz[i][j][k]=amplitude*(-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
+#else
+          Qxx[i][j][k]=amplitude*(-1.5*cos(q0*i)*cos(q0*sqrt(3.0)*j));
+          Qxy[i][j][k]=amplitude*(-0.5*sqrt(3.0)*sin(q0*i)*sin(q0*sqrt(3.0)*j));
+          Qxz[i][j][k]=amplitude*(sqrt(3.0)*cos(q0*i)*sin(q0*sqrt(3.0)*j));
+          Qyy[i][j][k]=amplitude*(-cos(2.0*q0*i)-0.5*cos(q0*i)*cos(q0*sqrt(3.0)*j));
+          Qyz[i][j][k]=amplitude*(-sin(2.0*q0*i)-sin(q0*i)*cos(q0*sqrt(3.0)*j));
+#endif
+
+   }
+
+
+
+   if(HEX3D == 1) {
 
 #ifdef PARALLEL
-	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*((i-1)+Lx/nbPE*myPE))-cos(2.0*q0*k));
-	  Qyyinit[i][j][k]=Qyy[i][j][k];
-	  Qyz[i][j][k]=amplitude*sin(2.0*q0*((i-1)+Lx/nbPE*myPE));
- 	  Qyzinit[i][j][k]=Qyz[i][j][k];
+          Qxx[i][j][k]=amplitude*
+		(-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)+0.25*cos(q0*Lx/Lz*kc));
+          Qxy[i][j][k]=amplitude*
+		(-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc)+0.25*sin(q0*Lx/Lz*kc));
+          Qxz[i][j][k]=amplitude*
+		(sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
+          Qyy[i][j][k]=amplitude*
+		(-cos(2.0*q0*ic)-0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)-
+                                  0.25*cos(q0*Lx/Lz*kc));
+          Qyz[i][j][k]=amplitude*
+		(-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
 #else
-	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*i)-cos(2.0*q0*k));
-	  Qyyinit[i][j][k]=Qyy[i][j][k];
-	  Qyz[i][j][k]=amplitude*sin(2.0*q0*i);
-	  Qyzinit[i][j][k]=Qyz[i][j][k]; 
+          Qxx[i][j][k]=amplitude*
+		(-1.5*cos(q0*i)*cos(q0*sqrt(3.0)*j)+0.25*cos(q0*Lx/Lz*k));
+          Qxy[i][j][k]=amplitude*
+		(-0.5*sqrt(3.0)*sin(q0*i)*sin(q0*sqrt(3.0)*j)+0.25*sin(q0*Lx/Lz*k));
+          Qxz[i][j][k]=amplitude*
+		(sqrt(3.0)*cos(q0*i)*sin(q0*sqrt(3.0)*j));
+          Qyy[i][j][k]=amplitude*
+		(-cos(2.0*q0*i)-0.5*cos(q0*i)*cos(q0*sqrt(3.0)*j)-0.25*cos(q0*Lx/Lz*k));
+          Qyz[i][j][k]=amplitude*(-sin(2.0*q0*i)-sin(q0*i)*cos(q0*sqrt(3.0)*j));
 #endif
 
 
-}
-*/
+   }
 
-	}
 
 	if (RANDOM == 1) {
 		

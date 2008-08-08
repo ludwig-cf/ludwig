@@ -24,6 +24,7 @@ void computeStressFreeEnergy(int n)
   double duxdx,duxdy,duxdz,duydx,duydy,duydz,duzdx,duzdy,duzdz,Gammap;
   double mDQ4xx,mDQ4xy,mDQ4yy,mDQ4xz,mDQ4yz,mDQ4zz,nnxxl,nnyyl;
   double t1, t2;
+  double one_gradient,two_gradient;
 
 #ifdef _BINARY_IO_
   int ibuf[3];     /* For convenvient output of stress information */
@@ -58,6 +59,9 @@ void computeStressFreeEnergy(int n)
 #ifdef PARALLEL
   exchangeMomentumAndQTensor();
 #endif  
+
+ one_gradient=0.0;
+ two_gradient=0.0;
 
   for (i=ix1; i<ix2; i++) {
     iup=i+1;
@@ -491,6 +495,13 @@ void computeStressFreeEnergy(int n)
 	Stresszy[i][j][k]-=tauyz[i][j][k];
 
 
+// NOTE: the cubic redshift is calculted with L1init, L2init and q0init in contrary to the FE functional. The redshift minimization has the meaning of a partial derivative with respect to the cell size
+
+        two_gradient+=L1init/2.0*(-DGchol1xx+DGxx-DGchol1yy+DGyy-DGchol1zz+DGzz)
+          +L2init/2.0*(divQx*divQx+divQy*divQy+divQz*divQz);
+        one_gradient+=L1init*q0init*(DGchol2xx+DGchol2yy+DGchol2zz);
+
+
         freeenergy+=L1/2.0*(-DGchol1xx+DGxx-DGchol1yy+DGyy-DGchol1zz+DGzz)
         +L2/2.0*(divQx*divQx+divQy*divQy+divQz*divQz)
         +L1*q0*(DGchol2xx+DGchol2yy+DGchol2zz);
@@ -521,11 +532,17 @@ void computeStressFreeEnergy(int n)
 
   /* KS. Could replace with single MPI_Reduce(). Not particularly important.*/
 
-    double reducedF,reducedstress;
+    double reducedF,reducedstress,reduced_one_gradient,reduced_two_gradient;
+
     MPI_Allreduce(&freeenergy,&reducedF, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     freeenergy=reducedF;
     MPI_Allreduce(&freeenergytwist,&reducedF, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     freeenergytwist=reducedF;
+
+    MPI_Allreduce(&one_gradient,&reduced_one_gradient, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    one_gradient=reduced_one_gradient;
+    MPI_Allreduce(&two_gradient,&reduced_two_gradient, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    two_gradient=reduced_two_gradient;
 
     /* KS not required? */
     MPI_Allreduce(&avestress,&reducedstress, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
@@ -533,18 +550,28 @@ void computeStressFreeEnergy(int n)
 #endif
 
 
+// redshift
+
+  rr=-0.5*one_gradient/two_gradient;
+
+
     /* Make sure this output comes from the process consistent with
      * the above MPI_Reduce */
 
-    if (myPE == 0) {
-      String fileName("fe.");
-      fileName.concat((int) numCase);
-      fileName.concat(".dat");
-      ofstream file(fileName.get(),ios::app);
-      file << n << "\t" << freeenergy << " " << freeenergytwist << " " << avestress/(32.0*32.0*32.0) <<"\t" << phivr << endl;
-      file.close();
-    }
+/* free energy and redshift output */
 
+   if (n % (FePrintInt) == 0){
+       if (myPE == 0) {
+	 String fileName("fe.");
+	 fileName.concat((int) numCase);
+	 fileName.concat(".dat");
+	 ofstream file(fileName.get(),ios::app);
+	 file.precision(6);
+	 file.setf(ios::scientific);
+	 file << n << "\t" << freeenergy/Lx/Ly/Lz << " " << freeenergytwist/Lx/Ly/Lz << " " << rr <<"\t" << phivr << endl;
+	 file.close();
+       }
+   }
 
 /* stress output */
 

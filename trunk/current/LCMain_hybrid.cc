@@ -67,15 +67,14 @@ int main(int argc, char** argv)
   inputFile >> O5STRUCT >> endOfLine;
   inputFile >> O8STRUCT >> endOfLine;
   inputFile >> O8MSTRUCT >> endOfLine;
+  inputFile >> HEXPLANAR >> endOfLine;
+  inputFile >> HEX3D >> endOfLine;
   inputFile >> DTSTRUCT >> endOfLine;
-  inputFile >> L1 >> endOfLine;
-  inputFile >> L2 >> endOfLine;
+  inputFile >> L1init >> endOfLine;
+  inputFile >> L2init >> endOfLine;
   inputFile >> numuc >> endOfLine;
   inputFile >> numhftwist >> endOfLine;
  
-  double oldL1=L1;
-  double oldL2=L2;
-
   inputFile >> Gamma >> endOfLine;
   inputFile >> gam >> endOfLine;
   inputFile >> BACKFLOW >> endOfLine;
@@ -123,9 +122,11 @@ int main(int argc, char** argv)
   logFile << O5STRUCT << "\t\t# O5STRUCT" << endl;
   logFile << O8STRUCT << "\t\t# O8STRUCT"<< endl;
   logFile << O8MSTRUCT << "\t\t# O8MSTRUCT"<< endl;
+  logFile << HEXPLANAR << "\t\t# HEXPLANAR"<< endl;
+  logFile << HEX3D << "\t\t# HEX3D"<< endl;
   logFile << DTSTRUCT << "\t\t# DTSTRUCT"<< endl;
-  logFile << L1 << "\t\t# L1"<< endl;
-  logFile << L2 << "\t\t# L2"<< endl;
+  logFile << L1init << "\t\t# L1"<< endl;
+  logFile << L2init << "\t\t# L2"<< endl;
   logFile << numuc << "\t\t# numuc"<< endl;
   logFile << numhftwist << "\t\t# numhftwist"<< endl;
   logFile << Gamma << "\t\t# Gamma"<< endl;
@@ -170,19 +171,18 @@ int main(int argc, char** argv)
     t0 = MPI_Wtime();
 #endif
 
-    q0=numhftwist*numuc*sqrt(2.0)*Pi/Ly;
-    L1=oldL1;
-    L2=oldL2;
-    if (O2STRUCT) {
-      q0=numhftwist*numuc*Pi/Ly;
-      L1=2*oldL1;
-      L2=2*oldL2;
+
+    q0init=numhftwist*numuc*sqrt(2.0)*Pi/Ly;
+
+    if (O2STRUCT || TWIST || HEXPLANAR || HEX3D || DTSTRUCT) {
+      q0init=numhftwist*numuc*Pi/Ly;
+      L1init=2.0*L1init;
+      L2init=2.0*L2init;
     }
-    if(DTSTRUCT) {
-      q0=numhftwist*numuc*Pi/Ly;
-      L1=2*oldL1;
-      L2=2*oldL2;
-    }
+
+  q0=q0init;
+
+  reinit();
 
 /* truncating free energy file for new run */
 
@@ -194,20 +194,19 @@ int main(int argc, char** argv)
  
    lastFreeenergy=-1000000;
 
-  reinit();
-
-  double rr;
 
   rr=1.0;
 
+/*
   if(O2STRUCT) rr=0.89;
   if(O5STRUCT) rr=0.97;
   if(O8STRUCT) rr=0.82;
   if(O8MSTRUCT) rr=0.775;
+*/
 
-  q0=q0/rr;
-  L1=L1*rr*rr;
-  L2=L2*rr*rr;
+  q0=q0init/rr;
+  L1=L1init*rr*rr;
+  L2=L2init*rr*rr;
  
   graphstp=0;
   pouiseuille = 0;
@@ -226,11 +225,14 @@ int main(int argc, char** argv)
 
   /* BP equilibration (assuming 1500 steps, change if inappropriate) */
 
-//      if(n==1500) startDroplet();
-      if(n==1500) startSlab();
+      if(n==1500) startDroplet();
+//      if(n==1500) startSlab();
 
-      if (n % FePrintInt == 0) computeStressFreeEnergy(n);
+	computeStressFreeEnergy(n);
 
+	q0=q0init/rr;
+	L1=L1init*rr*rr;
+	L2=L2init*rr*rr;
 
     for (i=ix1; i<ix2; i++) {
       for (j=jy1; j<jy2; j++) {

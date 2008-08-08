@@ -23,10 +23,12 @@ int FePrintInt, SigPrintFac, OVDPrintInt;
 
 float temperature=0.5;
 float Abulk=1.0;
-float L1=0.1;
-float L2=0.1;
+float L1init,L1;
+float L2init,L2;
 
-double q0=0.5*sin(Pi/50.);
+double q0init,q0;
+double rr;
+
 int numuc;
 double numhftwist;
 double threshold;
@@ -68,7 +70,7 @@ double vwbt=-0.0;
 // ----------------------------------------
 // Inital configuration 
 
-int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,BACKFLOW;
+int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,BACKFLOW,HEX3D,HEXPLANAR;
 
 float bcstren=10.0;  // amplitude of harmonic boundary potential
 double wallamp;
@@ -248,10 +250,12 @@ extern int ix1,ix2,jy1,jy2,kz1,kz2;
 
 extern float temperature;
 extern float Abulk;
-extern float L1;
-extern float L2;
+extern float L1init,L1;
+extern float L2init,L2;
 
-extern double q0;
+extern double q0init,q0;
+extern double rr;
+
 extern int numuc;
 extern double numhftwist;
 extern double threshold;
@@ -293,7 +297,7 @@ extern double vwbt;
 // ----------------------------------------
 // Inital configuration 
 
-extern int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,BACKFLOW,DROPLETBP2,DROPLETCHOL;
+extern int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,BACKFLOW,HEX3D,HEXPLANAR;
 
 extern float bcstren;  // amplitude of harmonic boundary potential
 extern double wallamp;
