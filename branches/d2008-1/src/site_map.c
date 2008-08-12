@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.1.2.6 2008-02-26 09:41:08 kevin Exp $
+ *  $Id: site_map.c,v 1.1.2.7 2008-08-12 18:51:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -195,6 +195,20 @@ char site_map_get_status(int ic, int jc, int kc) {
 
   index = get_site_index(ic, jc, kc);
 
+  return site_map[index];
+}
+
+/*****************************************************************************
+ *
+ *  site_map_get_status_index
+ *
+ *  Return the site status at index.
+ *
+ *****************************************************************************/
+
+char site_map_get_status_index(int index) {
+
+  assert(initialised_);
   return site_map[index];
 }
 

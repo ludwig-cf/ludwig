@@ -6,9 +6,13 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.13.2.4 2008-07-01 13:55:34 kevin Exp $
+ *  $Id: interaction.c,v 1.13.2.5 2008-08-12 18:51:27 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -43,11 +47,9 @@
 #include "ccomms.h"
 #include "ewald.h"
 
-extern char * site_map;
 extern int input_format;
 extern int output_format;
 
-static void    COLL_compute_phi_missing(void);
 static void    COLL_overlap(Colloid *, Colloid *);
 static void    COLL_set_fluid_gravity(void);
 static FVector COLL_lubrication(Colloid *, Colloid *, FVector, double);
@@ -55,7 +57,6 @@ static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
 static void    coll_position_update(void);
 static double  coll_max_speed(void);
-static int     coll_count(void);
 
 struct lubrication_struct {
   int corrections_on;
@@ -926,64 +927,6 @@ void COLL_overlap(Colloid * p_c1, Colloid * p_c2) {
 
 /*****************************************************************************
  *
- *  COLL_compute_phi_missing
- *
- *  Extrapolate (actually average) phi values to sites inside
- *  solid particles. This is done by looking at nearby sites
- *  (connected via a basis vector).
- *
- *  This has no physical meaning; it is used to avoid rubbish
- *  values in the phi field for visualisation purposes.
- *
- ****************************************************************************/
-
-void COLL_compute_phi_missing() {
-
-  int     i, j , k, index, indexn, p;
-  int     count;
-  int     xfac, yfac;
-  int     N[3];
-
-  double   phibar;
-
-  extern double * phi_site;
-
-  get_N_local(N);
-
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
-
-
-   for (i = 1; i <= N[X]; i++)
-    for (j = 1; j <= N[Y]; j++)
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = i*xfac + j*yfac + k;
-
-	if (site_map[index] != FLUID) {
-
-	  /* Look at the neigbours and take the average */
-	  count = 0;
-	  phibar = 0.0;
-
-	  for (p = 1; p < NVEL; p++) {
-	    indexn = index + xfac*cv[p][0] + yfac*cv[p][1] + cv[p][2];
-	    if (site_map[indexn] == FLUID) {
-	      count += 1;
-	      phibar += phi_site[indexn];
-	    }
-	  }
-
-	  if (count > 0)
-	    phi_site[index] = phibar / (double) count;
-	}
-      }
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  coll_position_update
  *
  *  Update the colloid positions (all cells).
@@ -1054,39 +997,4 @@ double coll_max_speed() {
 #endif
 
   return sqrt(vmax);
-}
-
-/*****************************************************************************
- *
- *  coll_count
- *
- *****************************************************************************/
-
-int coll_count() {
-
-  int       ic, jc, kc;
-  Colloid * p_colloid;
-
-  int nlocal = 0, ntotal = 0;
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-	  nlocal++;
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
-
-  ntotal = nlocal;
-
-#ifdef _MPI_
-  MPI_Reduce(&nlocal, &ntotal, 1, MPI_INT, MPI_SUM, 0, cart_comm());
-#endif
-
-  return ntotal;
 }
