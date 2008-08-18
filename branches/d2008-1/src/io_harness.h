@@ -2,7 +2,7 @@
  *
  *  io_harness.h
  *
- *  $Id: io_harness.h,v 1.1.2.3 2008-06-30 17:44:13 kevin Exp $
+ *  $Id: io_harness.h,v 1.1.2.4 2008-08-18 15:59:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,6 +25,13 @@ void io_info_set_read(struct io_info_t *, int (*) (FILE *, int, int, int));
 void io_info_set_bytesize(struct io_info_t * p, size_t);
 void io_info_set_processor_independent(struct io_info_t *);
 void io_info_set_processor_dependent(struct io_info_t *);
+
+void io_info_set_read_ascii(struct io_info_t *, int(*)(FILE *,int,int,int));
+void io_info_set_read_binary(struct io_info_t *, int(*)(FILE *,int,int,int));
+void io_info_set_write_ascii(struct io_info_t *, int(*)(FILE *,int,int,int));
+void io_info_set_write_binary(struct io_info_t *, int(*)(FILE *,int,int,int));
+void io_info_set_format_ascii(struct io_info_t *);
+void io_info_set_format_binary(struct io_info_t *);
 
 void io_read(char *, struct io_info_t *);
 void io_write(char *, struct io_info_t *);

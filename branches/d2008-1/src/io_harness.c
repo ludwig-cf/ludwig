@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.1.2.7 2008-07-01 13:53:32 kevin Exp $
+ *  $Id: io_harness.c,v 1.1.2.8 2008-08-18 15:59:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -53,8 +53,12 @@ struct io_info_t {
   size_t bytesize;
   int processor_independent;
   char name[FILENAME_MAX];
-  int (* write_function) (FILE *, const int, const int, const int);
-  int (* read_function)  (FILE *, const int, const int, const int);
+  int (* write_function)   (FILE *, const int, const int, const int);
+  int (* read_function)    (FILE *, const int, const int, const int);
+  int (* write_function_a) (FILE *, const int, const int, const int);
+  int (* read_function_a)  (FILE *, const int, const int, const int);
+  int (* write_function_b) (FILE *, const int, const int, const int);
+  int (* read_function_b)  (FILE *, const int, const int, const int);
 };
 
 static struct io_info_t * io_info_allocate(void);
@@ -171,6 +175,7 @@ void io_write(char * filename_stub, struct io_info_t * io_info) {
   MPI_Status status;
 
   assert(io_info);
+  assert(io_info->write_function);
 
   get_N_local(nlocal);
   io_set_group_filename(filename_io, filename_stub, io_info);
@@ -414,6 +419,97 @@ void io_info_set_read(struct io_info_t * p,
 
   assert(p);
   p->read_function = reader;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_set_write_ascii
+ *
+ *****************************************************************************/
+
+void io_info_set_write_ascii(struct io_info_t * p,
+			     int (* writer) (FILE *, int, int, int)) {
+
+  assert(p);
+  p->write_function_a = writer;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_set_read_ascii
+ *
+ *****************************************************************************/
+
+void io_info_set_read_ascii(struct io_info_t * p,
+			    int (* reader) (FILE *, int, int, int)) {
+
+  assert(p);
+  p->read_function_a = reader;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_set_write_binary
+ *
+ *****************************************************************************/
+
+void io_info_set_write_binary(struct io_info_t * p,
+			      int (* writer) (FILE *, int, int, int)) {
+
+  assert(p);
+  p->write_function_b = writer;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_set_read_binary
+ *
+ *****************************************************************************/
+
+void io_info_set_read_binary(struct io_info_t * p,
+			     int (* reader) (FILE *, int, int, int)) {
+  assert(p);
+  p->read_function_b = reader;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_set_format_ascii
+ *
+ *****************************************************************************/
+
+void io_info_set_format_ascii(struct io_info_t * p) {
+
+  assert(p);
+  assert(p->processor_independent == 0);
+
+  p->read_function = p->read_function_a;
+  p->write_function = p->write_function_a;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_set_format_binary
+ *
+ *****************************************************************************/
+
+void io_info_set_format_binary(struct io_info_t * p) {
+
+  assert(p);
+  p->read_function = p->read_function_b;
+  p->write_function = p->write_function_b;
 
   return;
 }
