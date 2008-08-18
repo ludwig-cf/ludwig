@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.1.2.7 2008-08-12 18:51:27 kevin Exp $
+ *  $Id: site_map.c,v 1.1.2.8 2008-08-18 15:59:58 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,15 +23,24 @@
 #include "io_harness.h"
 #include "site_map.h"
 
-char    * site_map;
 struct io_info_t * io_info_site_map;
 
 static void site_map_init_mpi(void);
 static void site_map_init_io(void);
 static int site_map_read(FILE *, const int, const int, const int);
 static int site_map_write(FILE *, const int, const int, const int);
+static int site_map_read_ascii(FILE *, const int, const int, const int);
+static int site_map_write_ascii(FILE *, const int, const int, const int);
 
+struct site_info_t {
+  char status;       /* Solid / fluid etc status flag */
+  double h;          /* Wetting free energy parameter H */
+                     /* Wetting free energy parameter C = 0 always */
+};
+
+static struct site_info_t * site_map;
 static int initialised_ = 0;
+static MPI_Datatype mpi_site_t_;
 static MPI_Datatype mpi_xy_t_;
 static MPI_Datatype mpi_xz_t_;
 static MPI_Datatype mpi_yz_t_;
@@ -47,17 +56,14 @@ static MPI_Datatype mpi_yz_t_;
 void site_map_init() {
 
   int nlocal[3];
-  int nh[3];
+  int n;
 
   get_N_local(nlocal);
 
-  nh[X] = nlocal[X] + 2*nhalo_;
-  nh[Y] = nlocal[Y] + 2*nhalo_;
-  nh[Z] = nlocal[Z] + 2*nhalo_;
+  n = (nlocal[X] + 2*nhalo_)*(nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
 
-  site_map = (char *) malloc(nh[X]*nh[Y]*nh[Z]*sizeof(char));
-
-  if (site_map == (char *) NULL) fatal("malloc(site_map) failed\n");
+  site_map = (struct site_info_t *) malloc(n*sizeof(struct site_info_t));
+  if (site_map == NULL) fatal("malloc(site_map) failed\n");
 
   site_map_init_io();
   site_map_init_mpi();
@@ -85,9 +91,12 @@ static void site_map_init_io() {
   io_info_site_map = io_info_create_with_grid(grid);
 
   io_info_set_name(io_info_site_map, "Site map information");
-  io_info_set_read(io_info_site_map, site_map_read);
-  io_info_set_write(io_info_site_map, site_map_write);
-  io_info_set_bytesize(io_info_site_map, sizeof(char));
+  io_info_set_read_binary(io_info_site_map, site_map_read);
+  io_info_set_write_binary(io_info_site_map, site_map_write);
+  io_info_set_read_ascii(io_info_site_map, site_map_read_ascii);
+  io_info_set_write_ascii(io_info_site_map, site_map_write_ascii);
+  io_info_set_format_binary(io_info_site_map);
+  io_info_set_bytesize(io_info_site_map, sizeof(struct site_info_t));
   io_info_set_processor_independent(io_info_site_map);
 
   return;
@@ -110,16 +119,19 @@ static void site_map_init_mpi() {
   nh[Y] = nlocal[Y] + 2*nhalo_;
   nh[Z] = nlocal[Z] + 2*nhalo_;
 
+  MPI_Type_contiguous(sizeof(struct site_info_t), MPI_BYTE, &mpi_site_t_);
+  MPI_Type_commit(&mpi_site_t_);
+
   /* YZ planes in the X direction */
-  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo_, 1, MPI_CHAR, &mpi_yz_t_);
+  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo_, 1, mpi_site_t_, &mpi_yz_t_);
   MPI_Type_commit(&mpi_yz_t_);
 
   /* XZ planes in the Y direction */
-  MPI_Type_vector(nh[X], nh[Z]*nhalo_, nh[Y]*nh[Z], MPI_CHAR, &mpi_xz_t_);
+  MPI_Type_vector(nh[X], nh[Z]*nhalo_, nh[Y]*nh[Z], mpi_site_t_, &mpi_xz_t_);
   MPI_Type_commit(&mpi_xz_t_);
 
   /* XY planes in Z direction */
-  MPI_Type_vector(nh[X]*nh[Y], nhalo_, nh[Z], MPI_CHAR, &mpi_xy_t_);
+  MPI_Type_vector(nh[X]*nh[Y], nhalo_, nh[Z], mpi_site_t_, &mpi_xy_t_);
   MPI_Type_commit(&mpi_xy_t_);
 
   return;
@@ -140,6 +152,7 @@ void site_map_finish() {
   free(site_map);
   io_info_destroy(io_info_site_map);
 
+  MPI_Type_free(&mpi_site_t_);
   MPI_Type_free(&mpi_xy_t_);
   MPI_Type_free(&mpi_xz_t_);
   MPI_Type_free(&mpi_yz_t_);
@@ -171,7 +184,7 @@ void site_map_set_all(char status) {
     for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
       for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
 	index = get_site_index(ic, jc, kc);
-	site_map[index] = status;
+	site_map[index].status = status;
       }
     }
   }
@@ -195,7 +208,7 @@ char site_map_get_status(int ic, int jc, int kc) {
 
   index = get_site_index(ic, jc, kc);
 
-  return site_map[index];
+  return site_map[index].status;
 }
 
 /*****************************************************************************
@@ -209,7 +222,7 @@ char site_map_get_status(int ic, int jc, int kc) {
 char site_map_get_status_index(int index) {
 
   assert(initialised_);
-  return site_map[index];
+  return site_map[index].status;
 }
 
 /*****************************************************************************
@@ -228,7 +241,7 @@ void site_map_set_status(int ic, int jc, int kc, char status) {
   assert(status >= FLUID && status <= BOUNDARY);
 
   index = get_site_index(ic, jc, kc);
-  site_map[index] = status;
+  site_map[index].status = status;
 
   return;
 }
@@ -262,7 +275,7 @@ double site_map_volume(char status) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = get_site_index(ic, jc, kc);
-	if (site_map[index] == status) v_local += 1.0;
+	if (site_map[index].status == status) v_local += 1.0;
       }
     }
   }
@@ -412,7 +425,7 @@ static int site_map_write(FILE * fp, int ic, int jc, int kc) {
 
   index = get_site_index(ic, jc, kc);
 
-  n = fputc(site_map[index], fp);
+  n = fputc(site_map[index].status, fp);
   if (n == EOF) fatal("Failed to write site map at %d\n", index);
 
   return 1;
@@ -433,7 +446,41 @@ static int site_map_read(FILE * fp, int ic, int jc, int kc) {
   n = fgetc(fp);
   if (n == EOF) fatal("Failed to read site map at %d\n", index);
 
-  site_map[index] = n;
+  site_map[index].status = n;
+
+  return 1;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_write_ascii
+ *
+ *****************************************************************************/
+
+static int site_map_write_ascii(FILE * fp, int ic, int jc, int kc) {
+
+  int index, n;
+
+  index = get_site_index(ic, jc, kc);
+  n = fprintf(fp, "%c\n", site_map[index].status);
+  if (n != 1) fatal("Failed to write site map ascii at %d\n", index);
+
+  return 1;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_read_ascii
+ *
+ *****************************************************************************/
+
+static int site_map_read_ascii(FILE * fp, int ic, int jc, int kc) {
+
+  int index, n;
+
+  index = get_site_index(ic, jc, kc);
+  n = fscanf(fp, "%c\n", &(site_map[index].status));
+  if (n != 1) fatal("Failed to read site map ascii at %d\n", index);
 
   return 1;
 }
