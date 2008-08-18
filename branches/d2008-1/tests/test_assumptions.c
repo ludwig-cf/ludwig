@@ -47,6 +47,7 @@ int main(int argc, char ** argv) {
   printf("Checking FILENAME_MAX >= 128 characters ... ");
   assert(FILENAME_MAX >= 128);
   printf("yes (%d characters)\n", FILENAME_MAX);
+  printf("Checking BUFSIZ... (%d bytes)\n", BUFSIZ);
 
   /* See what happens to zero size allocation */
 
@@ -73,7 +74,7 @@ int main(int argc, char ** argv) {
   printf("__FILE__ is %s\n", __FILE__);
   printf("__LINE__ is %d\n", __LINE__);
 
-  printf("The machine is %s-endean\n", is_bigendean() ? "big" : "little");
+  printf("The machine is %s-endian\n", is_bigendean() ? "big" : "little");
 
   printf("All assumptions ok!\n");
 
