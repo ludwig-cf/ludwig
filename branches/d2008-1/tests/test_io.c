@@ -4,7 +4,7 @@
  *
  *  Test code for the lattice I/O harness code.
  *
- *  $Id: test_io.c,v 1.2 2008-02-22 12:19:48 kevin Exp $
+ *  $Id: test_io.c,v 1.2.2.1 2008-08-18 16:01:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,10 +25,13 @@
 
 static void test_io_info_struct(void);
 static void test_processor_independent(void);
+static void test_ascii(void);
 static int  test_read_1(FILE *, const int, const int, const int);
 static int  test_write_1(FILE *, const int, const int, const int);
 static int  test_read_2(FILE *, const int, const int, const int);
 static int  test_write_2(FILE *, const int, const int, const int);
+static int  test_read_3(FILE *, const int, const int, const int);
+static int  test_write_3(FILE *, const int, const int, const int);
 
 static double test_index(int, int, int);
 
@@ -40,8 +43,9 @@ int main (int argc, char ** argv) {
   if (argc > 1) RUN_read_input_file(argv[1]);
   coords_init();
 
-  /* test_io_info_struct();*/
+  test_io_info_struct();
   test_processor_independent();
+  test_ascii();
 
   pe_finalise();
 
@@ -104,7 +108,6 @@ void test_processor_independent() {
 
   struct io_info_t * io_info;
   char stub[FILENAME_MAX];
-  int ifail;
   int grid[3] = {1, 1, 1};
 
   sprintf(stub, "%s", "ztest_file");
@@ -145,9 +148,43 @@ void test_processor_independent() {
 
 /*****************************************************************************
  *
- *  test_write_1
+ *  test_ascii
  *
- *  NO BARRIERS ALLOWED
+ *****************************************************************************/
+
+void test_ascii() {
+
+  struct io_info_t * io_info;
+  char filestub[FILENAME_MAX];
+  int grid[3] = {1, 1, 1};
+
+  info("Switching to ASCII format...\n");
+
+  io_info = io_info_create_with_grid(grid);
+
+  io_info_set_write_ascii(io_info, test_write_3);
+  io_info_set_read_ascii(io_info, test_read_3);
+  io_info_set_processor_dependent(io_info);
+  io_info_set_format_ascii(io_info);
+
+  sprintf(filestub, "ztest_ascii");
+
+  info("ASCII write...\n");
+  io_write(filestub, io_info);
+  info("ASCII write ok\n");
+
+  info("ASCII read...\n");
+  io_read(filestub, io_info);
+  info("ASCII read ok\n");
+
+  io_info_destroy(io_info);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_write_1
  *
  *****************************************************************************/
 
@@ -235,6 +272,45 @@ int test_read_2(FILE * fp, const int ic, const int jc, const int kc) {
   }
 
   test_assert(index == n);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  test_read_3
+ *
+ *  ASCII read (char data)
+ *
+ *****************************************************************************/
+
+int test_read_3(FILE * fp, const int ic, const int jc, const int kc) {
+
+  int n;
+  int indata;
+
+  n = fscanf(fp, "%d\n", &indata);
+
+  test_assert(n == 1);
+  test_assert(indata == (ic + jc + kc));
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  test_write_3
+ *
+ *  ASCII write (int data)
+ *
+ *****************************************************************************/
+
+int test_write_3(FILE * fp, const int ic, const int jc, const int kc) {
+
+  int n;
+
+  n = fprintf(fp, "%d\n", (ic + jc + kc));
+  test_assert(n >= 2);
 
   return n;
 }
