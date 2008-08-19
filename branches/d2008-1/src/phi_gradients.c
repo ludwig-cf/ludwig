@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.11 2008-08-19 10:22:09 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.12 2008-08-19 13:26:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -50,7 +50,6 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 
 static void phi_gradients_with_solid(void);
 static void phi_gradients_fluid(void);
-static void phi_gradients_fluid_compact(void);
 static void phi_gradients_double_fluid(void);
 static void phi_gradients_leesedwards(void);
 static void (* phi_gradient_function)(void) = phi_gradients_fluid;
@@ -135,9 +134,9 @@ static void phi_gradients_with_solid() {
   double gradt[NGRAD_];
   double gradn[3];
   double dphi;
-  double rk = 1.0;         /* 1 / free energy penalty parameter kappa */
-  const double r9 = (1.0/9.0);
-  const double r18 = (1.0/18.0);
+  double rk = 1.0/free_energy_K();
+  const double r9 = (1.0/9.0);     /* normaliser for cv_bs */
+  const double r18 = (1.0/18.0);   /* ditto */
 
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
@@ -193,10 +192,11 @@ static void phi_gradients_with_solid() {
 		     + bs_cv[p][Z]*gradn[Z]);
 
 	    /* Set gradient of phi at boundary following wetting properties */
-	    /* C and H are always zero at the moment */
+	    /* C is always zero at the moment */
 
-	    c = 0.0; /* site_map_get_H() */
-	    h = 0.0; /* site_map_get_C() */
+	    ia = le_site_index(ic+bs_cv[p][X], jc+bs_cv[p][Y], kc+bs_cv[p][Z]);
+	    c = 0.0; /* site_map_get_C() */
+	    h = site_map_get_H(ia);
 
 	    gradt[p] = -(c*phi_b + h)*rk;
 	  }
@@ -221,63 +221,6 @@ static void phi_gradients_with_solid() {
 	  grad_phi_site[3*index+ia]  = r18*gradn[ia];
 	}
 
-	/* Next site */
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_gradients_fluid_compact
- *
- *  Fluid-only gradient calculation. This is a relatively compact
- *  version which can be compared with the above.
- *
- *****************************************************************************/
-
-static void phi_gradients_fluid_compact() {
-
-  int nlocal[3];
-  int ic, jc, kc, ic1, jc1, kc1;
-  int ia, index, index1, p;
-  int nextra = nhalo_ - 1;
-
-  double phi0, phi1;
-  const double r9 = (1.0/9.0);
-  const double r18 = (1.0/18.0);
-
-  get_N_local(nlocal);
-  assert(nhalo_ >= 1);
-  assert(le_get_nplane() == 0);
-
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-
-	index = le_site_index(ic, jc, kc);
-	phi0 = phi_site[index];
-
-	for (ia = 0; ia < 3; ia++) {
-	  grad_phi_site[3*index + ia] = 0.0;
-	}
-	delsq_phi_site[index] = 0.0;
-
-	for (p = 1; p < NGRAD_; p++) {
-	  ic1 = ic + bs_cv[p][X];
-	  jc1 = jc + bs_cv[p][Y];
-	  kc1 = kc + bs_cv[p][Z];
-	  index1 = le_site_index(ic1, jc1, kc1);
-	  phi1 = phi_site[index1];
-
-	  for (ia = 0; ia < 3; ia++) {
-	    grad_phi_site[3*index + ia] += r18*bs_cv[p][ia]*phi1;
-	  }
-	  delsq_phi_site[index] += r9*(phi1 - phi0);
-	}
- 
 	/* Next site */
       }
     }

@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.1.2.8 2008-08-18 15:59:58 kevin Exp $
+ *  $Id: site_map.c,v 1.1.2.9 2008-08-19 13:26:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -167,6 +167,7 @@ void site_map_finish() {
  *  site_map_set_all
  *
  *  Set all sites to the given status.
+ *  The wetting parameters are set to zero.
  *
  *****************************************************************************/
 
@@ -185,6 +186,7 @@ void site_map_set_all(char status) {
       for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
 	index = get_site_index(ic, jc, kc);
 	site_map[index].status = status;
+	site_map[index].h = 0.0;
       }
     }
   }
@@ -244,6 +246,35 @@ void site_map_set_status(int ic, int jc, int kc, char status) {
   site_map[index].status = status;
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_get_C
+ *
+ *  Wetting paramater C cf. Desplat et al. 2001.
+ *  Always zero at the moment.
+ *
+ *****************************************************************************/
+
+double site_map_get_C(int index) {
+
+  assert(initialised_);
+  return 0.0;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_get_H
+ *
+ *  Wetting parameter H cf. Desplat et al. 2001.
+ *
+ *****************************************************************************/
+
+double site_map_get_H(int index) {
+
+  assert(initialised_);
+  return site_map[index].h;
 }
 
 /*****************************************************************************
