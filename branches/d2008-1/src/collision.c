@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.9 2008-07-01 13:55:33 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.10 2008-08-19 10:20:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -94,7 +94,7 @@ void collide() {
 
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
-  if (phi_finite_difference_) {
+  if (phi_is_finite_difference()) {
     phi_force_calculation_fluid();
     MODEL_collide_multirelaxation();
     phi_cahn_hilliard();
@@ -549,8 +549,20 @@ void MODEL_init( void ) {
     site_map_halo(); */
 
   init_site();
+
+  /* Order parameter */
+
+  ind = RUN_get_string_parameter("phi_finite_difference", filename,
+				 FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "yes") == 0) {
+    phi_set_finite_difference();
+    info("Switching order parameter to finite difference\n");
+  }
+  else {
+    info("Order parameter is via lattice Boltzmann\n");
+  }
+
   phi_init();
-  phi_gradients_set_fluid();
   hydrodynamics_init();
   
   /*

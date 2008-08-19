@@ -2,8 +2,9 @@
  *
  *  phi.c
  *
- *  Scalar order parameter(s).
+ *  Scalar order parameter.
  *
+ *  $Id: phi.c,v 1.1.2.11 2008-08-19 10:20:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -36,9 +37,9 @@ double * grad_phi_site;
 double * delsq_delsq_phi_site;
 double * grad_delsq_phi_site;
 
-const int phi_finite_difference_ = 1;
 
 static int initialised_ = 0;
+static int phi_finite_difference_ = 0;  /* Default is LB for order parameter */
 static MPI_Datatype phi_xy_t_;
 static MPI_Datatype phi_xz_t_;
 static MPI_Datatype phi_yz_t_;
@@ -642,5 +643,28 @@ static void phi_leesedwards_parallel() {
 
   free(buffer);
 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_is_finite_difference
+ *
+ *****************************************************************************/
+
+int phi_is_finite_difference() {
+
+  return phi_finite_difference_;
+}
+
+/*****************************************************************************
+ *
+ *  phi_set_finite_difference
+ *
+ *****************************************************************************/
+
+void phi_set_finite_difference() {
+
+  phi_finite_difference_ = 1;
   return;
 }
