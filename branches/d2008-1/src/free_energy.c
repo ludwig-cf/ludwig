@@ -11,9 +11,11 @@
  *  description see Kendon et al., J. Fluid Mech., 440, 147 (2001).
  *
  *  An option for free energy owing to Brazovskii is in the process
- *  of testing.
+ *  of testing. This adds one term to the above:
  *
- *  $Id: free_energy.c,v 1.4.2.3 2008-05-29 15:07:01 kevin Exp $
+ *             (1/2) C (\nabla^2 \phi)^2 
+ *
+ *  $Id: free_energy.c,v 1.4.2.4 2008-08-19 10:22:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -25,6 +27,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <string.h>
 
 #include "pe.h"
 #include "phi.h"
@@ -36,6 +39,7 @@ static double A_     = -0.003125;
 static double B_     = +0.003125;
 static double C_     =  0.0;
 static double kappa_ = +0.002;
+static int    is_brazovskii_ = 0;
 
 /* The choice of free energy is currently determined by the value of C_ */ 
 static void (* fe_chemical_stress)(const int, double [3][3]);
@@ -53,24 +57,35 @@ static void fe_chemical_stress_brazovskii(const int, double [3][3]);
 void init_free_energy() {
 
   int n;
+  char description[128];
 
   n = RUN_get_double_parameter("A", &A_);
   n = RUN_get_double_parameter("B", &B_);
   n = RUN_get_double_parameter("K", &kappa_);
 
+  n = RUN_get_string_parameter("free_energy", description, 128);
+
 #ifdef _SINGLE_FLUID_
 #else
-  if (A_ > 0.0) {
-    fatal("The free energy parameter A must be negative\n");
+  if (n == 0) {
+    info("[Default] Free energy: symmetric\n");
+    strcpy(description, "symmetric");
   }
-  if (B_ < 0.0) {
-    fatal("The free energy parameter B must be positive\n");
-  }
-  if (kappa_ < 0.0) {
-    fatal("The free energy parameter kappa must be positive\n");
+  else {
+    info("[User   ] Free energy: %s\n", description);
   }
 
-  if (C_ <= 0.0) {
+  if (strcmp(description, "symmetric") == 0) {
+    if (A_ > 0.0) {
+      fatal("The free energy parameter A must be negative\n");
+    }
+    if (B_ < 0.0) {
+      fatal("The free energy parameter B must be positive\n");
+    }
+    if (kappa_ < 0.0) {
+      fatal("The free energy parameter kappa must be positive\n");
+    }
+
     info("\nSymmetric phi^4 free energy:\n");
     info("Bulk parameter A      = %f\n", A_);
     info("Bulk parameter B      = %f\n", B_);
@@ -79,9 +94,19 @@ void init_free_energy() {
     info("Interfacial width     = %f\n", interfacial_width());
     fe_chemical_stress = fe_chemical_stress_symmetric;
   }
-  else {
+  else if (strcmp(description, "brazovskii") == 0) {
     info("\nBrazovskii free energy:\n");
+    info("Bulk parameter A      = %f\n", A_);
+    info("Bulk parameter B      = %f\n", B_);
+    info("Ext. parameter C      = %f\n", C_);
+    info("Surface penalty kappa = %f\n", kappa_);
+    info("Surface tension       = %f\n", surface_tension());
+    info("Interfacial width     = %f\n", interfacial_width());
     fe_chemical_stress = fe_chemical_stress_brazovskii;
+    is_brazovskii_ = 1;
+  }
+  else {
+    fatal("Unrecognised free energy\n");
   }
 #endif
 
@@ -122,6 +147,17 @@ void free_energy_set_kappa(double k) {
   assert(k > 0.0);
   kappa_ = k;
   return;
+}
+
+/*****************************************************************************
+ *
+ *  free_energy_is_brazovskii
+ *
+ *****************************************************************************/
+
+int free_energy_is_brazovskii() {
+
+  return is_brazovskii_;
 }
 
 /*****************************************************************************

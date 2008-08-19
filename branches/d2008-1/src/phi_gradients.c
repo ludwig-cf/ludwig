@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.10 2008-07-01 14:37:16 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.11 2008-08-19 10:22:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,6 +20,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "site_map.h"
+#include "free_energy.h"
 #include "leesedwards.h"
 #include "phi.h"
 #include "phi_gradients.h"
@@ -47,12 +48,12 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
 
 
-static void (* phi_gradient_function)(void);
 static void phi_gradients_with_solid(void);
 static void phi_gradients_fluid(void);
 static void phi_gradients_fluid_compact(void);
 static void phi_gradients_double_fluid(void);
 static void phi_gradients_leesedwards(void);
+static void (* phi_gradient_function)(void) = phi_gradients_fluid;
 static void f_grad_phi(int, int, int, int, int, const int *);
 static void f_delsq_phi(int, int, int, int, int, const int *);
 
@@ -101,10 +102,10 @@ void phi_gradients_compute() {
   phi_gradient_function();
   phi_gradients_leesedwards();
 
-  /* At the moment, the double gradient is swithed on via nhalo_,
-   * but really depends on choice of free energy */
+  /* Brazovskii requires gradients up to nabla^2(\nabla^2) phi */
+  /* There also needs to be the appropriate correction if LE is required */
 
-  /* if (nhalo_ >= 2) phi_gradients_double_fluid();*/
+  if (free_energy_is_brazovskii()) phi_gradients_double_fluid();
 
   return;
 }

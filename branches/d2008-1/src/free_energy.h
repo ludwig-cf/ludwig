@@ -4,7 +4,13 @@
  *
  *  The free energy.
  *
+ *  $Id: free_energy.h,v 1.2.2.3 2008-08-19 10:22:09 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,5 +32,6 @@ void   free_energy_get_chemical_stress(const int, double [3][3]);
 void free_energy_set_A(const double);
 void free_energy_set_B(const double);
 void free_energy_set_kappa(const double);
+int  free_energy_is_brazovskii(void);
 
 #endif
