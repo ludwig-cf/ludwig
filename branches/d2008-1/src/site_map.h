@@ -2,7 +2,7 @@
  *
  *  site_map.h
  *
- *  $Id: site_map.h,v 1.1.2.3 2008-08-12 18:51:27 kevin Exp $
+ *  $Id: site_map.h,v 1.1.2.4 2008-08-19 13:31:19 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,7 +20,8 @@ void site_map_finish(void);
 void site_map_set_all(char);
 void site_map_halo(void);
 double site_map_volume(char);
-
+double site_map_get_C(int);
+double site_map_get_H(int);
 
 char site_map_get_status(int, int, int);
 char site_map_get_status_index(int);
