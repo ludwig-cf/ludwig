@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.1.2.8 2008-07-04 12:04:03 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.1.2.9 2008-08-19 17:04:21 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,6 +28,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
+#include "site_map.h"
 #include "lattice.h"
 #include "free_energy.h"
 #include "phi.h"
@@ -42,6 +43,7 @@ static void phi_ch_upwind(void);
 static void phi_ch_upwind_third_order(void);
 static void phi_ch_upwind_seventh_order(void);
 static void phi_ch_update_forward_step(void);
+static void phi_ch_update_forward_step_with_solid(void);
 
 static void (* phi_ch_compute_fluxes)(void) = phi_ch_upwind;
 static int signbit_double(double);
@@ -388,6 +390,52 @@ static void phi_ch_update_forward_step() {
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *****************************************************************************/
+static void phi_ch_update_forward_step_with_solid() {
+
+  int nlocal[3];
+  int ic, jc, kc, index;
+  double mask;
+  double dphi;
+
+  get_N_local(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = ADDR(ic, jc, kc);
+
+	if (site_map_get_status_index(index) != FLUID) continue;
+
+	dphi = 0.0;
+	mask = (site_map_get_status(ic+1, jc, kc) == FLUID);
+	dphi += mask*fluxe[index];
+	mask = (site_map_get_status(ic-1, jc, kc) == FLUID);
+	dphi -= mask*fluxw[index];
+
+	mask = (site_map_get_status(ic, jc+1, kc) == FLUID);
+	dphi += mask*fluxy[index];
+	mask = (site_map_get_status(ic, jc-1, kc) == FLUID);
+	dphi -= mask*fluxy[ADDR(ic, jc-1, kc)];
+
+	mask = (site_map_get_status(ic, jc, kc+1) == FLUID);
+	dphi += mask*fluxz[index];
+	mask = (site_map_get_status(ic, jc, kc-1) == FLUID);
+	dphi -= mask*fluxz[ADDR(ic, jc, kc-1)];
+
+	phi_site[index] -= dphi;
+      }
+    }
+  }
+
+  return;
+}
+
+
 
 /*****************************************************************************
  *
