@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.10 2008-08-19 10:20:11 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.11 2008-08-19 13:26:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -542,11 +542,26 @@ void MODEL_init( void ) {
 
   site_map_init();
 
-  /* If you want to read porous media information here you need e.g.,
-   the two lines... */
+  /* If you want to read porous media information here you need this. */
 
-  /*io_read("castlegate_site_map.dat", io_info_site_map); 
-    site_map_halo(); */
+  i = RUN_get_string_parameter("porous_media_format", filename, FILENAME_MAX);
+  if (strcmp(filename, "ASCII") == 0) {
+    info("Expecting porous media file format in ascii\n");
+    io_info_set_format_ascii(io_info_site_map);
+  }
+  if (strcmp(filename, "BINARY") == 0) {
+    info("Expecting porous media file format in binary\n");
+    io_info_set_format_binary(io_info_site_map);
+  }
+
+  i = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
+  if (i == 1) {
+    io_read(filename, io_info_site_map); 
+    site_map_halo();
+    phi_gradients_set_solid();
+  }
+
+  /* Distributions */
 
   init_site();
 
