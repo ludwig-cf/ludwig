@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.9.4.2 2008-07-03 10:38:00 erlend Exp $
+ *  $Id: model.h,v 1.9.4.3 2008-08-22 00:43:20 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -25,14 +25,30 @@ enum {NHYDRO = 10};
 typedef struct {
   double f[NVEL], g[NVEL];
 } Site;
+
+/* Two distributions: f and g (may change in the future) */
 enum {ndist = 2};
-enum {xcount = xcountcv*ndist+2};
-enum {ycount = ycountcv*ndist+2};
-enum {zcount = zcountcv*ndist+2};
+
+/* The count for all the distributions in Site.
+ * The +2 accounts for the lower and upper bounds
+ * of the element of Site.
+ */
+enum {xcount = xcountcv*ndist + 2};
+enum {ycount = ycountcv*ndist + 2};
+enum {zcount = zcountcv*ndist + 2};
 
 extern const double cs2;
 extern const double rcs2;
 extern const double d_[3][3];
+
+void   getAintDisp(int indexDisp[], MPI_Aint dispArray[], int count);
+void   getblocklens(int blocklens_cv[], int blocklens[], int count);
+void   gettypes(MPI_Datatype types[], int count);
+
+void   getDerivedDTParms(int count, MPI_Datatype types[], \
+			 int indexDisp_fwd[], int indexDisp_bwd[],	\
+			 MPI_Aint dispArray_fwd[], MPI_Aint dispArray_bwd[], \
+			 int blocklens_cv[], int blocklens[]);
 
 void   init_site(void);
 void   finish_site(void);

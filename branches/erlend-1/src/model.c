@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9.6.16 2008-07-30 20:12:13 erlend Exp $
+ *  $Id: model.c,v 1.9.6.17 2008-08-22 00:43:20 erlend Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -56,14 +56,23 @@ MPI_Datatype DT_Site_zleft;
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
 
 
+/* Takes the indices of blocks in cv (given by e.g. xfwd_disp_cv[])
+ * and extends this to the whole of Site[i] (i.e. for all distributions).
+ *
+ * (in)  count:       the number of blocks to send in this dimension,
+ *                    and the size of dispArray[] (countcv*ndist+2);
+ * (in)  indexDisp[]: the index in cv of a block of data;
+ * (out) dispArray[]: the displacement (in bytes) in Site[i] 
+ *                    of a block of data;
+ */
 void getAintDisp(int indexDisp[], MPI_Aint dispArray[], int count) {
+  int i;
   int countcv = (count-2)/ndist;
   MPI_Aint site_addresses[count-1];
   /* site_addresses[0] is the base, from which offsets are calculated. */
   MPI_Address(&site[0].f[0], &site_addresses[0]);
-  int i, j;
   /* Get the addresses of start blocks into site_addresses. */
-  for(i=0; i<countcv; i++) {
+  for (i = 0; i < countcv; i++) {
     MPI_Address(&site[0].f[indexDisp[i]], &site_addresses[i+1]);
     MPI_Address(&site[0].g[indexDisp[i]], &site_addresses[countcv+1+i]);
   }
@@ -71,32 +80,57 @@ void getAintDisp(int indexDisp[], MPI_Aint dispArray[], int count) {
   dispArray[0] = 0;
   dispArray[count-1] = sizeof(site[0]);
 
-  for(i=1; i<count-1; i++) {
+  for (i = 1; i < count - 1; i++) {
     dispArray[i] = site_addresses[i] - site_addresses[0];
   }
 }
 
+/* Takes the block lengths in cv (given by e.g. xblocklens_cv[])
+ * and extends this to the whole of Site[i] (i.e. for all distributions).
+ *
+ * (in)  count:          the number of blocks to send in this dimension,
+ *                       and the size of blocklens[] (countcv*ndist+2);
+ * (in)  blocklens_cv[]: the length of each block of data to send in 
+ *                       this dimension in cv;
+ * (out) blocklens[]:    the length of each block of data to send in 
+ *                       this dimension, in Site[i];
+ */
 void getblocklens(int blocklens_cv[], int blocklens[], int count) {
   int countcv = (count-2)/ndist;
   blocklens[0] = 1; /* MPI_LB */
   blocklens[count-1] = 1; /* MPI_UB */
   int i,j;
-  for(i=0; i<ndist; i++) {
-    for(j=1; j<countcv+1; j++) {
+  for (i = 0; i < ndist; i++) {
+    for (j = 1; j < countcv + 1; j++) {
       blocklens[i*countcv + j] = blocklens_cv[j-1];
     }
   }
 }
 
+/* Generates an array of MPI_DOUBLEs for use with MPI_Type_struct.
+ * The array is of length count, where count = countcv*ndist + 2,
+ * i.e. it extends the count for cv to a count for Site[i]
+ *      so that it includes all distributions.  The +2 is for the
+ *      lower and upper bounds.
+ *
+ * (in)  count:  the number of blocks to send in this dimension,
+ *               and the size of types[] (countcv*ndist+2);
+ * (out) types:  an array of MPI_DOUBLE, but with the first and last
+ *               elements always MPI_LB (lower bound) and MPI_UB
+ *               (upper bound) respectively.
+ */
 void gettypes(MPI_Datatype types[], int count) {
   types[0] = MPI_LB;
   types[count-1] = MPI_UB;
   int i;
-  for(i=1; i<count-1; i++) {
+  for (i = 1; i < count - 1; i++) {
     types[i] = MPI_DOUBLE;
   }
 }
 
+/*
+ * A convenient method to call all of the above for a particular dimension.
+ */
 void getDerivedDTParms(int count, MPI_Datatype types[], \
 		       int indexDisp_fwd[], int indexDisp_bwd[],	\
 		       MPI_Aint dispArray_fwd[], MPI_Aint dispArray_bwd[],\
@@ -133,6 +167,7 @@ void init_site() {
   xfac_   = nz*ny;
 
   info("Requesting %d bytes for site data\n", nsites_*sizeof(Site));
+  info(" sizeof(site)=%d\n", sizeof(Site));
 
 #ifdef _MPI_2_
  {
@@ -167,17 +202,16 @@ void init_site() {
   info("Using model: d3q19 \n");
 #endif
 
-  if(use_reduced_halos()) {
+  if (use_reduced_halos()) {
     info("Using reduced halos. \n");
 
+    /* Set up the reduced datatypes.
+     * First get the parameters for MPI_Type_struct
+     */
     MPI_Aint xdisp_fwd[xcount];
     MPI_Aint xdisp_bwd[xcount];
     int xblocklens[xcount];
     MPI_Datatype xtypes[xcount];
-    /*getAintDisp(xdisp_fwd_cv, xdisp_fwd, xcount);
-    getAintDisp(xdisp_bwd_cv, xdisp_bwd, xcount);
-    getblocklens(xblocklens_cv, xblocklens, xcount);
-    gettypes(xtypes, xcount);*/
     getDerivedDTParms(xcount, xtypes,		  \
 		      xdisp_fwd_cv, xdisp_bwd_cv, \
 		      xdisp_fwd, xdisp_bwd,	  \
@@ -187,10 +221,6 @@ void init_site() {
     MPI_Aint ydisp_bwd[ycount];
     int yblocklens[ycount];
     MPI_Datatype ytypes[ycount];
-    /*getAintDisp(ydisp_fwd_cv, ydisp_fwd, ycount);
-    getAintDisp(ydisp_bwd_cv, ydisp_bwd, ycount);
-    getblocklens(yblocklens_cv, yblocklens, ycount);
-    gettypes(ytypes, ycount);*/
     getDerivedDTParms(ycount, ytypes,		  \
 		      ydisp_fwd_cv, ydisp_bwd_cv, \
 		      ydisp_fwd, ydisp_bwd,	  \
@@ -200,15 +230,12 @@ void init_site() {
     MPI_Aint zdisp_bwd[zcount];
     int zblocklens[zcount];
     MPI_Datatype ztypes[zcount];
-    /*getAintDisp(zdisp_fwd_cv, zdisp_fwd, zcount);
-    getAintDisp(zdisp_bwd_cv, zdisp_bwd, zcount);
-    getblocklens(zblocklens_cv, zblocklens, zcount);
-    gettypes(ztypes, zcount);*/
     getDerivedDTParms(zcount, ztypes,		  \
 		      zdisp_fwd_cv, zdisp_bwd_cv, \
 		      zdisp_fwd, zdisp_bwd,	  \
 		      zblocklens_cv, zblocklens);
 
+    /* Create a reduced representation of Site in each direction */
     MPI_Type_struct(xcount, xblocklens, xdisp_fwd, xtypes, &DT_Site_xright);
     MPI_Type_struct(xcount, xblocklens, xdisp_bwd, xtypes, &DT_Site_xleft);
     MPI_Type_struct(ycount, yblocklens, ydisp_fwd, ytypes, &DT_Site_yright);
@@ -222,6 +249,7 @@ void init_site() {
     MPI_Type_commit(&DT_Site_zright);
     MPI_Type_commit(&DT_Site_zleft);
 
+    /* Create the planes of Sites that will be sent to the halos. */
     MPI_Type_vector(nx*ny, 1, nz, DT_Site_zright, &DT_plane_XY_right);
     MPI_Type_commit(&DT_plane_XY_right);
     MPI_Type_vector(nx*ny, 1, nz, DT_Site_zleft, &DT_plane_XY_left);
@@ -235,7 +263,9 @@ void init_site() {
     MPI_Type_commit(&DT_plane_YZ_right);
     MPI_Type_contiguous(ny*nz, DT_Site_xleft, &DT_plane_YZ_left);
     MPI_Type_commit(&DT_plane_YZ_left);
+
   } else {
+
     info("Using full halos. \n");
     MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
     MPI_Type_commit(&DT_Site);
@@ -253,6 +283,7 @@ void init_site() {
     DT_plane_XZ_left = DT_plane_XZ;
     DT_plane_XY_right = DT_plane_XY;
     DT_plane_XY_left = DT_plane_XY;
+
   }
 
  #endif
