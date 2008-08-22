@@ -22,6 +22,7 @@ int main(int argc, char ** argv) {
   double u[ND];
 
   pe_init(argc, argv);
+  coords_init();
 
   info("Checking model.c objects...\n\n");
 
@@ -278,7 +279,6 @@ int main(int argc, char ** argv) {
 
   info("\nHalo swap...\n\n");
 
-  coords_init();
   init_site();
   get_N_local(N);
 
