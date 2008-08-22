@@ -10,12 +10,12 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh (2007)
  *
- *  $Id: test_halo.c,v 1.3 2008-08-07 01:53:39 erlend Exp $
+ *  $Id: test_halo.c,v 1.4 2008-08-22 01:05:34 erlend Exp $
  *
  *****************************************************************************/
 
 #include <math.h>
-#include <stdio.h> // for printf in test_halo_null
+#include <stdio.h> /* for printf in test_halo_null */
 
 #include "pe.h"
 #include "coords.h"

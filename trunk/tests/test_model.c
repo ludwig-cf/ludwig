@@ -27,7 +27,6 @@ int* zbwd;
 int main(int argc, char ** argv) {
 
   int i, j, k, p;
-  //  int index, N[ND]; // now in test_halo_swap();
   double sum, sumx, sumy, sumz;
   double dij;
   double rho;
