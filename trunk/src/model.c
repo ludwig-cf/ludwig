@@ -9,8 +9,11 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.9 2007-04-30 14:23:21 kevin Exp $
+ *  $Id: model.c,v 1.10 2008-08-24 18:02:28 kevin Exp $
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *  (c) 2008 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -23,26 +26,28 @@
 #include "runtime.h"
 #include "coords.h"
 #include "model.h"
+#include "io_harness.h"
 #include "timer.h"
 
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
 const double d_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
-const int nhalo_site_ = 1;
 
+struct io_info_t * io_info_distribution_; 
 Site  * site;
 
 static int nsites_ = 0;
-static int xfac_;
-static int yfac_;
+static int initialised_ = 0;
 
-#ifdef _MPI_
 static MPI_Datatype DT_plane_XY;
 static MPI_Datatype DT_plane_XZ;
 static MPI_Datatype DT_plane_YZ;
-MPI_Datatype DT_Site;
+MPI_Datatype DT_Site; /* currently referenced in leesedwards */
 enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
-#endif
+
+static void distribution_io_info_init(void);
+static int distributions_read(FILE *, const int, const int, const int);
+static int distributions_write(FILE *, const int, const int, const int);
 
 /***************************************************************************
  *
@@ -51,41 +56,29 @@ enum mpi_tags {TAG_FWD = 900, TAG_BWD};
  *  Allocate memory for the distributions. If MPI2 is used, then
  *  this must use the appropriate utility to accomodate LE planes.
  *
+ *  Irrespective of the value of nhalo_, we only ever at the moment
+ *  pass one plane worth of distribution values (ie., nhalo = 1).
+ *
  ***************************************************************************/
  
 void init_site() {
 
   int N[3];
   int nx, ny, nz;
+  int nhalolocal = 1;
 
   get_N_local(N);
 
-  nx = N[X] + 2*nhalo_site_;
-  ny = N[Y] + 2*nhalo_site_;
-  nz = N[Z] + 2*nhalo_site_;
+  nx = N[X] + 2*nhalo_;
+  ny = N[Y] + 2*nhalo_;
+  nz = N[Z] + 2*nhalo_;
   nsites_ = nx*ny*nz;
-  yfac_   = nz;
-  xfac_   = nz*ny;
 
   info("Requesting %d bytes for site data\n", nsites_*sizeof(Site));
-
-#ifdef _MPI_2_
- {
-   int ifail;
-
-   ifail = MPI_Alloc_mem(nsites_*sizeof(Site), MPI_INFO_NULL, &site);
-   if (ifail == MPI_ERR_NO_MEM) fatal("MPI_Alloc_mem(site) failed\n");
- }
-#else
-
-  /* Use calloc. */
 
   site = (Site  *) calloc(nsites_, sizeof(Site));
   if (site == NULL) fatal("calloc(site) failed\n");
 
-#endif
-
-#ifdef _MPI_
   /* Set up the MPI Datatypes used for site, and its corresponding
    * halo messages:
    *
@@ -93,21 +86,23 @@ void init_site() {
    * in XZ plane nx blocks of nz sites with stride ny*nz;
    * in YZ plane one contiguous block of ny*nz sites.
    *
-   * This is only confirmed for nhalo_site_ = 1. */
+   * This is only confirmed for nhalo_ = 1. */
 
   MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
   MPI_Type_commit(&DT_Site);
 
-  MPI_Type_vector(nx*ny, 1, nz, DT_Site, &DT_plane_XY);
+  MPI_Type_vector(nx*ny, nhalolocal, nz, DT_Site, &DT_plane_XY);
   MPI_Type_commit(&DT_plane_XY);
 
-  MPI_Type_hvector(nx, nz, ny*nz*sizeof(Site), DT_Site, &DT_plane_XZ);
+  MPI_Type_vector(nx, nz*nhalolocal, ny*nz, DT_Site, &DT_plane_XZ);
   MPI_Type_commit(&DT_plane_XZ);
 
-  MPI_Type_contiguous(ny*nz, DT_Site, &DT_plane_YZ);
+  MPI_Type_vector(1, ny*nz*nhalolocal, 1, DT_Site, &DT_plane_YZ);
   MPI_Type_commit(&DT_plane_YZ);
 
-#endif
+
+  distribution_io_info_init();
+  initialised_ = 1;
 
   return;
 }
@@ -122,33 +117,50 @@ void init_site() {
 
 void finish_site() {
 
-#ifdef _MPI_2_
-  MPI_Free_mem(site);
-#else
+  io_info_destroy(io_info_distribution_);
   free(site);
-#endif
 
-#ifdef _MPI_
   MPI_Type_free(&DT_Site);
   MPI_Type_free(&DT_plane_XY);
   MPI_Type_free(&DT_plane_XZ);
   MPI_Type_free(&DT_plane_YZ);
-#endif
 
   return;
 }
 
 /*****************************************************************************
  *
- *  index_site
+ *  distribution_io_info_init
  *
- *  Map the Cartesian coordinates (i, j, k) to index in site.
+ *  Initialise the io_info struct for the distributions.
  *
  *****************************************************************************/
 
-int index_site(const int i, const int j, const int k) {
+static void distribution_io_info_init() {
 
-  return (i*xfac_ + j*yfac_ + k);
+  int n;
+  int io_grid[3];
+  char string[FILENAME_MAX];
+
+  n = RUN_get_int_parameter_vector("io_grid_distribution", io_grid);
+
+  if (n == 1) {
+    io_info_distribution_ = io_info_create_with_grid(io_grid);
+  }
+  else {
+    io_info_distribution_ = io_info_create();
+  }
+
+  sprintf(string, "2 x Distribution: d%dq%d", ND, NVEL);
+
+  io_info_set_name(io_info_distribution_, string);
+  io_info_set_read(io_info_distribution_, distributions_read);
+  io_info_set_write(io_info_distribution_, distributions_write);
+  io_info_set_bytesize(io_info_distribution_, sizeof(Site));
+
+  io_write_metadata("config", io_info_distribution_);
+
+  return;
 }
 
 /*****************************************************************************
@@ -368,42 +380,48 @@ void get_momentum_at_site(const int index, double rhou[ND]) {
 void halo_site() {
 
   int i, j, k;
-  int xfac, yfac;
+  int ihalo, ireal;
   int N[3];
 
-#ifdef _MPI_
   MPI_Request request[4];
   MPI_Status status[4];
-#endif
 
+  assert(initialised_);
   TIMER_start(TIMER_HALO_LATTICE);
 
   get_N_local(N);
-  yfac =  N[Z] + 2*nhalo_site_;
-  xfac = (N[Y] + 2*nhalo_site_)*yfac;
 
   /* The x-direction (YZ plane) */
 
   if (cart_size(X) == 1) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
-	site[                j*yfac + k] = site[N[X]*xfac + j*yfac + k];
-	site[(N[X]+1)*xfac + j*yfac + k] = site[     xfac + j*yfac + k];
+
+	ihalo = get_site_index(0, j, k);
+	ireal = get_site_index(N[X], j, k);
+	site[ihalo] = site[ireal];
+
+	ihalo = get_site_index(N[X]+1, j, k);
+	ireal = get_site_index(1, j, k);
+	site[ihalo] = site[ireal];
       }
     }
   }
   else {
-#ifdef _MPI_   
-    MPI_Issend(&site[xfac].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
-	       TAG_BWD, cart_comm(), &request[0]);
-    MPI_Irecv(&site[(N[X]+1)*xfac].f[0], 1, DT_plane_YZ,
-	      cart_neighb(FORWARD,X), TAG_BWD, cart_comm(), &request[1]);
-    MPI_Issend(&site[N[X]*xfac].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
-	       TAG_FWD, cart_comm(), &request[2]);
-    MPI_Irecv(&site[0].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
-	      TAG_FWD, cart_comm(), &request[3]);
+
+    ihalo = get_site_index(N[X] + 1, 1 - nhalo_, 1 - nhalo_);
+    MPI_Irecv(&site[ihalo].f[0], 1, DT_plane_YZ,
+	      cart_neighb(FORWARD,X), TAG_BWD, cart_comm(), &request[0]);
+    ihalo = get_site_index(0, 1-nhalo_, 1-nhalo_);
+    MPI_Irecv(&site[ihalo].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
+	      TAG_FWD, cart_comm(), &request[1]);
+    ireal = get_site_index(1, 1-nhalo_, 1-nhalo_);
+    MPI_Issend(&site[ireal].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
+	       TAG_BWD, cart_comm(), &request[2]);
+    ireal = get_site_index(N[X], 1-nhalo_, 1-nhalo_);
+    MPI_Issend(&site[ireal].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
+	       TAG_FWD, cart_comm(), &request[3]);
     MPI_Waitall(4, request, status);
-#endif
   }
   
   /* The y-direction (XZ plane) */
@@ -411,23 +429,31 @@ void halo_site() {
   if (cart_size(Y) == 1) {
     for (i = 0; i <= N[X]+1; i++) {
       for (k = 1; k <= N[Z]; k++) {
-	site[i*xfac                 + k] = site[i*xfac + N[Y]*yfac + k];
-	site[i*xfac + (N[Y]+1)*yfac + k] = site[i*xfac +      yfac + k];
+
+	ihalo = get_site_index(i, 0, k);
+	ireal = get_site_index(i, N[Y], k);
+	site[ihalo] = site[ireal];
+
+	ihalo = get_site_index(i, N[Y]+1, k);
+	ireal = get_site_index(i, 1, k);
+	site[ihalo] = site[ireal];
       }
     }
   }
   else {
-#ifdef _MPI_
-    MPI_Issend(&site[yfac].f[0], 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
-	       TAG_BWD, cart_comm(), &request[0]);
-    MPI_Irecv(&site[(N[Y]+1)*yfac].f[0], 1, DT_plane_XZ,
-	      cart_neighb(FORWARD,Y), TAG_BWD, cart_comm(), &request[1]);
-    MPI_Issend(&site[N[Y]*yfac].f[0], 1, DT_plane_XZ, cart_neighb(FORWARD,Y),
-	       TAG_FWD, cart_comm(), &request[2]);
-    MPI_Irecv(&site[0].f[0], 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
-	      TAG_FWD, cart_comm(), &request[3]);
+    ihalo = get_site_index(1-nhalo_, N[Y] + 1, 1-nhalo_);
+    MPI_Irecv(site[ihalo].f, 1, DT_plane_XZ,
+	      cart_neighb(FORWARD,Y), TAG_BWD, cart_comm(), &request[0]);
+    ihalo = get_site_index(1-nhalo_, 0, 1-nhalo_);
+    MPI_Irecv(site[ihalo].f, 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
+	      TAG_FWD, cart_comm(), &request[1]);
+    ireal = get_site_index(1-nhalo_, 1, 1-nhalo_);
+    MPI_Issend(site[ireal].f, 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
+	       TAG_BWD, cart_comm(), &request[2]);
+    ireal = get_site_index(1-nhalo_, N[Y], 1-nhalo_);
+    MPI_Issend(site[ireal].f, 1, DT_plane_XZ, cart_neighb(FORWARD,Y),
+	       TAG_FWD, cart_comm(), &request[3]);
     MPI_Waitall(4, request, status);
-#endif
   }
   
   /* Finally, z-direction (XY plane) */
@@ -435,26 +461,79 @@ void halo_site() {
   if (cart_size(Z) == 1) {
     for (i = 0; i<= N[X]+1; i++) {
       for (j = 0; j <= N[Y]+1; j++) {
-	site[i*xfac + j*yfac           ] = site[i*xfac + j*yfac + N[Z]];
-	site[i*xfac + j*yfac + N[Z] + 1] = site[i*xfac + j*yfac + 1   ];
+
+	ihalo = get_site_index(i, j, 0);
+	ireal = get_site_index(i, j, N[Z]);
+	site[ihalo] = site[ireal];
+
+	ihalo = get_site_index(i, j, N[Z]+1);
+	ireal = get_site_index(i, j, 1);
+	site[ihalo] = site[ireal];
       }
     }
   }
   else {
-#ifdef _MPI_
-    MPI_Issend(site[1].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
-	       TAG_BWD, cart_comm(), &request[0]);
-    MPI_Irecv(site[N[Z]+1].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
-	      TAG_BWD, cart_comm(), &request[1]);
-    MPI_Issend(site[N[Z]].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
-	       TAG_FWD, cart_comm(), &request[2]);  
-    MPI_Irecv(site[0].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
-	      TAG_FWD, cart_comm(), &request[3]);
+
+    ihalo = get_site_index(1-nhalo_, 1-nhalo_, N[Z] + 1);
+    MPI_Irecv(site[ihalo].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
+	      TAG_BWD, cart_comm(), &request[0]);
+    ihalo = get_site_index(1-nhalo_, 1-nhalo_, 0);
+    MPI_Irecv(site[ihalo].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
+	      TAG_FWD, cart_comm(), &request[1]);
+    ireal = get_site_index(1-nhalo_, 1-nhalo_, 1);
+    MPI_Issend(site[ireal].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
+	       TAG_BWD, cart_comm(), &request[2]);
+    ireal = get_site_index(1-nhalo_, 1-nhalo_, N[Z]);
+    MPI_Issend(site[ireal].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
+	       TAG_FWD, cart_comm(), &request[3]);  
     MPI_Waitall(4, request, status);
-#endif
   }
  
   TIMER_stop(TIMER_HALO_LATTICE);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  read_distributions
+ *
+ *  Read one lattice site (ic, jc, kc) worth of distributions.
+ *
+ *****************************************************************************/
+
+static int distributions_read(FILE * fp, const int ic, const int jc,
+			      const int kc) {
+
+  int index, n;
+
+  index = get_site_index(ic, jc, kc);
+
+  n = fread(site + index, sizeof(Site), 1, fp);
+
+  if (n != 1) fatal("fread(distribution) failed at %d %d %d\n", ic, jc,kc);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  distributions_write
+ *
+ *  Write one lattice site (ic, jc, kc) worth of distributions.
+ *
+ *****************************************************************************/
+
+static int distributions_write(FILE * fp, const int ic , const int jc,
+			       const int kc) {
+
+  int index, n;
+
+  index = get_site_index(ic, jc, kc);
+
+  n = fwrite(site + index, sizeof(Site), 1, fp);
+
+  if (n != 1) fatal("fwrite(distribution) failde at %d %d %d\n", ic, jc, kc);
+
+  return n;
 }
