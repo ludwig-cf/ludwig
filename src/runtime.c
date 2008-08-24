@@ -109,7 +109,7 @@ void RUN_read_input_file(const char * input_file_name) {
  *
  *****************************************************************************/
 
-void key_broadcast(int nkeys) {
+static void key_broadcast(int nkeys) {
 
 #ifdef _MPI_
 
@@ -303,7 +303,7 @@ int RUN_get_active_keys() {
  *
  *****************************************************************************/
 
-int is_valid_key_pair(const char * line) {
+static int is_valid_key_pair(const char * line) {
 
   char a[NKEY_LENGTH];
   char b[NKEY_LENGTH];
@@ -342,7 +342,7 @@ int is_valid_key_pair(const char * line) {
  *
  *****************************************************************************/
 
-void add_key_pair(const char * key) {
+static void add_key_pair(const char * key) {
 
   struct key_pair * p_new;
 
@@ -373,7 +373,7 @@ void add_key_pair(const char * key) {
  *
  *****************************************************************************/
 
-int look_up_key(const char * key, char * value) {
+static int look_up_key(const char * key, char * value) {
 
   int key_present = 0;
   struct key_pair * p_key = p_keylist;
