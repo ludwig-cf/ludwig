@@ -245,7 +245,6 @@ double ewald_fourier_space_energy() {
 static void ewald_sum_sin_cos_terms() {
 
   double k[3], ksq;
-  double b0, b;
   double fkx, fky, fkz;
   int kx, ky, kz, kn = 0;
   int ic, jc, kc;
@@ -763,7 +762,6 @@ void ewald_test() {
   FVector r, v, omega;
   double r12[3];
   double e;
-  int n;
 
   Colloid * COLL_add_colloid_no_halo(int, double, double, FVector,FVector,FVector);
   FVector COLL_fvector_separation(FVector, FVector);
