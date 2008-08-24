@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.1.2.1 2008-03-20 18:09:37 kevin Exp $
+ *  $Id: phi_stats.c,v 1.1.2.2 2008-08-24 15:08:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -145,6 +145,46 @@ void phi_stats_print_stats() {
 
   info("[phi][%.8g, %.8g, %.8g, %.8g, %.8g]\n", phi_total[1], phi0, phi1,
        phi_total[3], phi_total[4]);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_init_block
+ *
+ *  Initialise two blocks with interfaces at z = Lz/4 and z = 3Lz/4.
+ *
+ *****************************************************************************/
+
+void phi_init_block() {
+
+  int nlocal[3];
+  int noffset[3];
+  int ic, jc, kc, index;
+  int k1, k2;
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+
+  k1 = 0.25*L(Z);
+  k2 = 0.75*L(Z);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = get_site_index(ic, jc, kc);
+
+	if (noffset[Z] + kc > k1 && noffset[Z] + kc <= k2) {
+	  phi_set_phi_site(index, -1.0);
+	}
+	else {
+	  phi_set_phi_site(index, +1.0);
+	}
+      }
+    }
+  }
 
   return;
 }
