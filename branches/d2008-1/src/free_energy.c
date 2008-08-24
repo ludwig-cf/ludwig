@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.4.2.4 2008-08-19 10:22:09 kevin Exp $
+ *  $Id: free_energy.c,v 1.4.2.5 2008-08-24 15:05:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -37,12 +37,13 @@
 
 static double A_     = -0.003125;
 static double B_     = +0.003125;
-static double C_     =  0.0;
+static double C_     =  0.000;
 static double kappa_ = +0.002;
 static int    is_brazovskii_ = 0;
 
 /* The choice of free energy is currently determined by the value of C_ */ 
 static void (* fe_chemical_stress)(const int, double [3][3]);
+static void fe_chemical_stress_zero(const int, double [3][3]);
 static void fe_chemical_stress_symmetric(const int, double [3][3]);
 static void fe_chemical_stress_brazovskii(const int, double [3][3]);
 
@@ -66,6 +67,7 @@ void init_free_energy() {
   n = RUN_get_string_parameter("free_energy", description, 128);
 
 #ifdef _SINGLE_FLUID_
+  fe_chemical_stress = fe_chemical_stress_zero;
 #else
   if (n == 0) {
     info("[Default] Free energy: symmetric\n");
@@ -302,6 +304,27 @@ static void fe_chemical_stress_brazovskii(const int index, double p[3][3]) {
       p[ia][ib] = (bulk_symmetric + C_*brazovskii)*d_[ia][ib]
 	        + kappa_*grad_phi[ia]*grad_phi[ib]
       - C_*(grad_phi[ia]*grad_delsq_phi[ib] + grad_phi[ib]*grad_delsq_phi[ia]);
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  fe_chemical_stress_zero
+ *
+ *  No free version.
+ *
+ *****************************************************************************/
+
+void fe_chemical_stress_zero(const int index, double pchem[3][3]) {
+
+  int ia, ib;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      pchem[ia][ib] = 0.0;
     }
   }
 
