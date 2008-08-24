@@ -78,12 +78,26 @@ int test_mpi_allreduce() {
 
   int ireturn;
   double dsend, drecv;
+  int isend[3], irecv[3];
 
   dsend = 1.0; drecv = 0.0;
   ireturn = MPI_Allreduce(&dsend, &drecv, 1, MPI_DOUBLE, MPI_SUM, comm_);
   assert(ireturn == MPI_SUCCESS);
   assert(dsend == 1.0);
   assert(drecv == dsend);
+
+  isend[0] = -1;
+  isend[1] = 0;
+  isend[2] = +1;
+
+  ireturn = MPI_Allreduce(isend, irecv, 3, MPI_INT, MPI_SUM, comm_);
+  assert(ireturn == MPI_SUCCESS);
+  assert(isend[0] == -1);
+  assert(isend[1] == 0);
+  assert(isend[2] == +1);
+  assert(irecv[0] == -1);
+  assert(irecv[1] == 0);
+  assert(irecv[2] == +1);
 
   return MPI_SUCCESS;
 }
