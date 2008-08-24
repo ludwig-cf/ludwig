@@ -10,7 +10,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh (2007)
  *
- *  $Id: test_halo.c,v 1.1.4.1 2008-03-21 10:01:00 kevin Exp $
+ *  $Id: test_halo.c,v 1.1.4.2 2008-08-24 15:48:45 kevin Exp $
  *
  *****************************************************************************/
 
@@ -113,11 +113,11 @@ void test_halo_null() {
 
   halo_site();
 
-  /* Check everywhere */
+  /* Check everywhere in the interior */
 
-  for (n[X] = 1 - nextra; n[X] <= n_local[X] + nextra; n[X]++) {
-    for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
-      for (n[Z] = 1 - nextra; n[Z] <= n_local[Z] + nextra; n[Z]++) {
+  for (n[X] = 1; n[X] <= n_local[X]; n[X]++) {
+    for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
+      for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
 
 	index = get_site_index(n[X], n[Y], n[Z]);
 
