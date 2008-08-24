@@ -4,7 +4,7 @@
  *
  *  Test code for the lattice I/O harness code.
  *
- *  $Id: test_io.c,v 1.2.2.1 2008-08-18 16:01:08 kevin Exp $
+ *  $Id: test_io.c,v 1.2.2.2 2008-08-24 14:48:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -44,7 +44,7 @@ int main (int argc, char ** argv) {
   coords_init();
 
   test_io_info_struct();
-  test_processor_independent();
+  if (pe_size() == cart_size(X)) test_processor_independent();
   test_ascii();
 
   pe_finalise();
