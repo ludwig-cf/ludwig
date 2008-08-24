@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.1.2.12 2008-08-19 13:26:01 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.1.2.13 2008-08-24 15:08:57 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -309,7 +309,7 @@ static void phi_gradients_double_fluid() {
 	  ic1 = ic + bs_cv[p][X];
 	  jc1 = jc + bs_cv[p][Y];
 	  kc1 = kc + bs_cv[p][Z];
-	  index1 = le_site_index(ic1, jc1, kc1);
+	  index1 = ADDR(ic1, jc1, kc1);
 	  phi1 = delsq_phi_site[index1];
 
 	  for (ia = 0; ia < 3; ia++) {
