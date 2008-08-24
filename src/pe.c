@@ -7,9 +7,15 @@
  *  This is responsible for initialisation and finalisation of
  *  the parallel environment (or a logically consistent picture
  *  in serial). Functions to get the current rank and size in
- *  MPI_COMM_WORLD are provided.
+ *  MPI_COMM_WORLD are provided via the MPI stub library.
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) The University of Edinburgh (2008)
+ *
+ *  $Id: pe.c,v 1.2 2008-08-24 17:56:22 kevin Exp $
  *
  *****************************************************************************/
 
@@ -19,8 +25,8 @@
 
 #include "pe.h"
 
-static int pe_world_rank = 0;
-static int pe_world_size = 1;
+static int pe_world_rank;
+static int pe_world_size;
 
 /*****************************************************************************
  *
@@ -33,14 +39,12 @@ static int pe_world_size = 1;
 
 void pe_init(int argc, char ** argv) {
 
-#ifdef _MPI_
   MPI_Init(&argc, &argv);
 
   MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL);
 
   MPI_Comm_size(MPI_COMM_WORLD, &pe_world_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &pe_world_rank);
-#endif
 
   info("Welcome to Ludwig (%s version running on %d process%s)\n\n",
        (pe_world_size > 1) ? "MPI" : "Serial",
@@ -62,9 +66,7 @@ void pe_finalise() {
 
   info("Ludwig finished normally.\n");
 
-#ifdef _MPI_
   MPI_Finalize();
-#endif
 
   return;
 }
@@ -124,11 +126,8 @@ void fatal(const char * fmt, ...) {
   va_end(args);
 
   /* Considered a successful exit (code 0). */
-#ifdef _MPI_
+
   MPI_Abort(MPI_COMM_WORLD, 0);
-#else
-  exit(0);
-#endif
 
   return;
 }
@@ -145,9 +144,8 @@ void verbose(const char * fmt, ...) {
 
   va_list args;
 
-#ifdef _MPI_
   printf("[%d] ", pe_world_rank);
-#endif
+
   va_start(args, fmt);
   vprintf(fmt, args);
   va_end(args);
