@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.1.2.9 2008-08-19 17:04:21 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.1.2.10 2008-08-24 15:13:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -43,7 +43,6 @@ static void phi_ch_upwind(void);
 static void phi_ch_upwind_third_order(void);
 static void phi_ch_upwind_seventh_order(void);
 static void phi_ch_update_forward_step(void);
-static void phi_ch_update_forward_step_with_solid(void);
 
 static void (* phi_ch_compute_fluxes)(void) = phi_ch_upwind;
 static int signbit_double(double);
@@ -85,9 +84,7 @@ void phi_cahn_hilliard() {
   hydrodynamics_halo_u();
   hydrodynamics_leesedwards_transformation();
 
-  /* phi_ch_upwind_seventh_order();*/
-  /* phi_ch_compute_fluxes();*/
-  phi_ch_upwind_third_order();
+  phi_ch_compute_fluxes();
   phi_ch_update_forward_step();
 
   free(fluxe);
@@ -363,38 +360,14 @@ static void phi_ch_upwind_third_order() {
  *
  *  phi new = phi old - dt*(flux_out - flux_in)
  *
+ *  No normal flux at solid-fluid boundaries is imposed via a mask
+ *  mechanism, irrespective of what has been computed for the flux.
+ *
  *  The time step is the LB time step dt = 1.
  *
  *****************************************************************************/
 
 static void phi_ch_update_forward_step() {
-
-  int nlocal[3];
-  int ic, jc, kc;
-  double dphi;
-
-  get_N_local(nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	dphi = fluxe[ADDR(ic,jc,kc)] - fluxw[ADDR(ic,jc,kc)]
-	  + fluxy[ADDR(ic,jc,kc)] - fluxy[ADDR(ic,jc-1,kc)]
-	  + fluxz[ADDR(ic,jc,kc)] - fluxz[ADDR(ic,jc,kc-1)];
-
-	phi_site[ADDR(ic,jc,kc)] -= dphi;
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *****************************************************************************/
-static void phi_ch_update_forward_step_with_solid() {
 
   int nlocal[3];
   int ic, jc, kc, index;
