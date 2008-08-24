@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.7.2.11 2008-08-19 13:26:26 kevin Exp $
+ *  $Id: collision.c,v 1.7.2.12 2008-08-24 15:18:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,7 +28,9 @@
 #include "free_energy.h"
 #include "phi.h"
 #include "phi_gradients.h"
+#include "phi_force.h"
 #include "phi_cahn_hilliard.h"
+#include "phi_stats.h"
 #include "lattice.h"
 
 #include "utilities.h"
@@ -80,8 +82,6 @@ void collide() {
 
 #else
 
-  void phi_force_calculation_fluid(void);
-
   /* This is the binary LB collision. First, compute order parameter
    * gradients, then collision stage. The order of these calls is
    * important. */
@@ -95,7 +95,7 @@ void collide() {
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
   if (phi_is_finite_difference()) {
-    phi_force_calculation_fluid();
+    phi_force_calculation();
     MODEL_collide_multirelaxation();
     phi_cahn_hilliard();
   }
@@ -138,6 +138,7 @@ void MODEL_collide_multirelaxation() {
   double    rho, rrho;               /* Density, reciprocal density */
   double    u[3];                    /* Velocity */
   double    s[3][3];                 /* Stress */
+  double    seq[3][3];               /* Equilibrium stress */
   double    shat[3][3];              /* random stress */
 
   double    force[3];                /* External force */
@@ -199,14 +200,19 @@ void MODEL_collide_multirelaxation() {
 	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
+	  /* Set equilibrium stress */
+	  for (j = 0; j < 3; j++) {
+	    seq[i][j] = rho*u[i]*u[j];
+	  }
 	  /* Compute trace */
 	  tr_s   += s[i][i];
-	  tr_seq += (rho*u[i]*u[i]);
+	  tr_seq += seq[i][j];
 	}
 
 	/* Form traceless parts */
 	for (i = 0; i < 3; i++) {
 	  s[i][i]   -= r3*tr_s;
+	  seq[i][i] -= r3*tr_seq;
 	}
 
 	/* Relax each mode */
@@ -214,7 +220,7 @@ void MODEL_collide_multirelaxation() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j]);
+	    s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
 	    s[i][j] += d_[i][j]*r3*tr_s;
 
 	    /* Correction from body force (assumes equal relaxation times) */
@@ -315,6 +321,7 @@ void MODEL_collide_binary_lb() {
   double    rho, rrho;               /* Density, reciprocal density */
   double    u[3];                    /* Velocity */
   double    s[3][3];                 /* Stress */
+  double    seq[3][3];               /* equilibrium stress */
   double    shat[3][3];              /* random stress */
 
   double    force[3];                /* External force */
@@ -393,15 +400,19 @@ void MODEL_collide_binary_lb() {
 	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
+	  /* Set equilibrium stress, which includes thermodynamic part */
+	  for (j = 0; j < 3; j++) {
+	    seq[i][j] = rho*u[i]*u[j] + sth[i][j];
+	  }
 	  /* Compute trace */
 	  tr_s   += s[i][i];
-	  tr_seq += (rho*u[i]*u[i] + sth[i][i]);
+	  tr_seq += seq[i][i];
 	}
 
 	/* Form traceless parts */
 	for (i = 0; i < 3; i++) {
 	  s[i][i]   -= r3*tr_s;
-	  sth[i][i] -= r3*tr_seq;
+	  seq[i][i] -= r3*tr_seq;
 	}
 
 	/* Relax each mode */
@@ -409,7 +420,7 @@ void MODEL_collide_binary_lb() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    s[i][j] -= rtau_shear*(s[i][j] - rho*u[i]*u[j] - sth[i][j]);
+	    s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
 	    s[i][j] += d_[i][j]*r3*tr_s;
 
 	    /* Correction from body force (assumes equal relaxation times) */
@@ -547,11 +558,13 @@ void MODEL_init( void ) {
   i = RUN_get_string_parameter("porous_media_format", filename, FILENAME_MAX);
   if (strcmp(filename, "ASCII") == 0) {
     info("Expecting porous media file format in ascii\n");
+    io_info_set_processor_dependent(io_info_site_map);
     io_info_set_format_ascii(io_info_site_map);
   }
+
   if (strcmp(filename, "BINARY") == 0) {
     info("Expecting porous media file format in binary\n");
-    io_info_set_format_binary(io_info_site_map);
+    /* ...is the defualt */
   }
 
   i = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
@@ -559,6 +572,13 @@ void MODEL_init( void ) {
     io_read(filename, io_info_site_map); 
     site_map_halo();
     phi_gradients_set_solid();
+  }
+
+  /* Default is "status_only" */
+  i = RUN_get_string_parameter("porous_media_type", filename, FILENAME_MAX);
+  if (strcmp(filename, "status_with_h") == 0) {
+    info("Expecting site data to include wetting parameter h\n");
+    site_map_io_status_with_h();
   }
 
   /* Distributions */
@@ -635,6 +655,7 @@ void MODEL_init( void ) {
 	  }
   }
 
+  return;
 }
 
 /****************************************************************************
