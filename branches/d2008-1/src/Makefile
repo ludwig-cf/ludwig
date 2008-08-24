@@ -32,7 +32,8 @@ OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
       potential.o \
       phi.o phi_cahn_hilliard.o phi_force.o phi_gradients.o phi_stats.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
-      site_map.o subgrid.o test.o timer.o utilities.o wall.o main.o
+      site_map.o subgrid.o stats_turbulent.o \
+      test.o timer.o utilities.o wall.o main.o
 
 EXE= Ludwig.exe
 
@@ -46,11 +47,13 @@ EXE= Ludwig.exe
 CC=cc
 MPICC=tmcc
 OPTS = -D_D3Q19_
-CFLAGS=$(OPTS) -g -Xc -v -errwarn -xO3
+CFLAGS=$(OPTS)  -Xc -v -errwarn -xO3
 LDFLAGS=
 
+
 CC=gcc
-CFLAGS=$(OPTS) -Wall
+MPICC=mpicc
+CFLAGS=$(OPTS) -g -Wall -O3
 
 ###############################################################################
 #
@@ -105,7 +108,7 @@ serial:
 	$(MAKE) generic "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi"
 mpi:
-	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(LIBS) -lmpi" "CFLAGS=$(CFLAGS) \
+	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(MPILIB) $(LIBS)" "CFLAGS=$(CFLAGS) \
 		-D_MPI_"
 
 ###############################################################################
