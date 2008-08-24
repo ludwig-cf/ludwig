@@ -4,9 +4,13 @@
  *
  *  Model control and time stepping.
  *
- *  $Id: control.c,v 1.3 2008-02-15 14:35:26 kevin Exp $
+ *  $Id: control.c,v 1.4 2008-08-24 16:47:31 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group
+ *  end Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 

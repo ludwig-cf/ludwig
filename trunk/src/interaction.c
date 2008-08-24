@@ -6,12 +6,17 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.15 2008-02-15 14:35:26 kevin Exp $
+ *  $Id: interaction.c,v 1.16 2008-08-24 16:47:31 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <float.h>
@@ -33,7 +38,7 @@
 #include "interaction.h"
 #include "communicate.h"
 #include "model.h"
-#include "lattice.h"
+#include "site_map.h"
 #include "collision.h"
 #include "cio.h"
 #include "control.h"
@@ -42,23 +47,9 @@
 #include "ccomms.h"
 #include "ewald.h"
 
-extern char * site_map;
 extern int input_format;
 extern int output_format;
 
-enum { NGRAD = 27 };
-static int bs_cv[NGRAD][3] = {{ 0, 0, 0}, { 1,-1,-1}, { 1,-1, 1},
-			      { 1, 1,-1}, { 1, 1, 1}, { 0, 1, 0},
-			      { 1, 0, 0}, { 0, 0, 1}, {-1, 0, 0},
-			      { 0,-1, 0}, { 0, 0,-1}, {-1,-1,-1},
-			      {-1,-1, 1}, {-1, 1,-1}, {-1, 1, 1},
-			      { 1, 1, 0}, { 1,-1, 0}, {-1, 1, 0},
-			      {-1,-1, 0}, { 1, 0, 1}, { 1, 0,-1},
-			      {-1, 0, 1}, {-1, 0,-1}, { 0, 1, 1},
-			      { 0, 1,-1}, { 0,-1, 1}, { 0,-1,-1}};
-
-
-static void    COLL_compute_phi_missing(void);
 static void    COLL_overlap(Colloid *, Colloid *);
 static void    COLL_set_fluid_gravity(void);
 static FVector COLL_lubrication(Colloid *, Colloid *, FVector, double);
@@ -66,7 +57,6 @@ static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
 static void    coll_position_update(void);
 static double  coll_max_speed(void);
-static int     coll_count(void);
 
 struct lubrication_struct {
   int corrections_on;
@@ -169,6 +159,10 @@ void COLL_init() {
 #endif
 
   if (nc == 0) return;
+  /* Particle code only with nhalo_ = 1 at moment */
+  assert(nhalo_ == 1);
+  /* Still require old COM_init() at the moment */
+  COM_init();
 
   nc = RUN_get_double_parameter("colloid_ah", &ahmax);
   if (nc == 0) fatal("Please set colloids_ah in the input file\n");
@@ -648,10 +642,9 @@ void COLL_set_fluid_gravity() {
 
   double volume;
   double g[3];
-  extern double MISC_fluid_volume(void); /* Move me */
   extern double siteforce[3];
 
-  volume = MISC_fluid_volume();
+  volume = site_map_volume(FLUID);
   get_gravity(g);
 
   /* Size of force per fluid node */
@@ -935,200 +928,6 @@ void COLL_overlap(Colloid * p_c1, Colloid * p_c2) {
   return;
 }
 
-/****************************************************************************
- *
- *  COLL_compute_phi_gradients
- *
- *  Compute gradients of the order parameter phi (\nabla\phi and
- *  \nabla^2\phi) at fluid nodes only (not halo sites).
- *
- *  Neutral wetting properties are always assumed at the moment.
- *
- *  This takes account of the presence of local solid sites
- *  and uses the full 26 (NGRAD) neighbours. This function uses
- *  exactly the same method as the original gradient method
- *  in BS_fix_gradients but doesn't require boundary sites and
- *  is designed to be more efficient for high solid fractions.
- *
- ****************************************************************************/
-
-void COLL_compute_phi_gradients() {
-
-  int     i, j, k, index, indexn;
-  int     p;
-  int     xfac, yfac;
-
-  int     isite[NGRAD];
-
-  double   r9  = 1.0/9.0;
-  double   r18 = 1.0/18.0;
-  double   dphi, phi_b, delsq;
-  double   gradt[NGRAD];
-
-  FVector gradn;
-
-  IVector count;
-  int     N[3];
-  double  rk = 1.0 / free_energy_K();
-
-  extern double * phi_site;
-  extern double * delsq_phi;
-  extern FVector * grad_phi;
-
-  get_N_local(N);
-
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
-
-  for (i = 1; i <= N[X]; i++)
-    for (j = 1; j <= N[Y]; j++)
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = i*xfac + j*yfac + k;
-
-	/* Skip solid sites */
-	if (site_map[index] != FLUID) continue;
-
-	/* Set solid/fluid flag to index neighbours */
-
-	for (p = 1; p < NGRAD; p++) {
-	  indexn = index + xfac*bs_cv[p][0] + yfac*bs_cv[p][1] + bs_cv[p][2];
-	  isite[p] = -1;
-	  if (site_map[indexn] == FLUID) isite[p] = indexn;
-	}
-
-
-	/* Estimate gradients between fluid sites */
-
-	gradn.x = 0.0;
-	gradn.y = 0.0;
-	gradn.z = 0.0;
-	count.x = 0;
-	count.y = 0;
-	count.z = 0;
-
-	for (p = 1; p < NGRAD; p++) {
-
-	  if (isite[p] == -1) continue;
-
-	  dphi = phi_site[isite[p]] - phi_site[index];
-	  gradn.x += bs_cv[p][0]*dphi;
-	  gradn.y += bs_cv[p][1]*dphi;
-	  gradn.z += bs_cv[p][2]*dphi;
-
-	  gradt[p] = dphi;
-
-	  count.x += bs_cv[p][0]*bs_cv[p][0];
-	  count.y += bs_cv[p][1]*bs_cv[p][1];
-	  count.z += bs_cv[p][2]*bs_cv[p][2];
-	}
-
-	if (count.x) gradn.x /= (double) count.x;
-	if (count.y) gradn.y /= (double) count.y;
-	if (count.z) gradn.z /= (double) count.z;
-
-	/* Estimate gradient at boundaries */
-
-	for (p = 1; p < NGRAD; p++) {
-
-	  if (isite[p] == -1) {
-
-	    phi_b = phi_site[index] + 0.5*
-	    (bs_cv[p][0]*gradn.x + bs_cv[p][1]*gradn.y + bs_cv[p][2]*gradn.z);
-
-	    /* Set gradient of phi at boundary following wetting properties */
-	    /* C and H are always zero at the moment */
-
-	    gradt[p] = -(0.0*phi_b - 0.0)*rk;
-	  }
-	}
-
-	/* Accumulate the final gradients */
-
-	delsq = 0.0;
-	gradn.x = 0.0;
-	gradn.y = 0.0;
-	gradn.z = 0.0;
-
-	for (p = 1; p < NGRAD; p++) {
-	  delsq   += gradt[p];
-	  gradn.x += gradt[p]*bs_cv[p][0];
-	  gradn.y += gradt[p]*bs_cv[p][1];
-	  gradn.z += gradt[p]*bs_cv[p][2];
-	}
-
-	delsq   *= r9;
-	gradn.x *= r18;
-	gradn.y *= r18;
-	gradn.z *= r18;
-
-	delsq_phi[index] = delsq;
-	grad_phi[index]  = gradn;
-
-      }
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  COLL_compute_phi_missing
- *
- *  Extrapolate (actually average) phi values to sites inside
- *  solid particles. This is done by looking at nearby sites
- *  (connected via a basis vector).
- *
- *  This has no physical meaning; it is used to avoid rubbish
- *  values in the phi field for visualisation purposes.
- *
- ****************************************************************************/
-
-void COLL_compute_phi_missing() {
-
-  int     i, j , k, index, indexn, p;
-  int     count;
-  int     xfac, yfac;
-  int     N[3];
-
-  double   phibar;
-
-  extern double * phi_site;
-
-  get_N_local(N);
-
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
-
-
-   for (i = 1; i <= N[X]; i++)
-    for (j = 1; j <= N[Y]; j++)
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = i*xfac + j*yfac + k;
-
-	if (site_map[index] != FLUID) {
-
-	  /* Look at the neigbours and take the average */
-	  count = 0;
-	  phibar = 0.0;
-
-	  for (p = 1; p < NVEL; p++) {
-	    indexn = index + xfac*cv[p][0] + yfac*cv[p][1] + cv[p][2];
-	    if (site_map[indexn] == FLUID) {
-	      count += 1;
-	      phibar += phi_site[indexn];
-	    }
-	  }
-
-	  if (count > 0)
-	    phi_site[index] = phibar / (double) count;
-	}
-      }
-
-  return;
-}
-
 /*****************************************************************************
  *
  *  coll_position_update
@@ -1201,39 +1000,4 @@ double coll_max_speed() {
 #endif
 
   return sqrt(vmax);
-}
-
-/*****************************************************************************
- *
- *  coll_count
- *
- *****************************************************************************/
-
-int coll_count() {
-
-  int       ic, jc, kc;
-  Colloid * p_colloid;
-
-  int nlocal = 0, ntotal = 0;
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-	  nlocal++;
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
-
-  ntotal = nlocal;
-
-#ifdef _MPI_
-  MPI_Reduce(&nlocal, &ntotal, 1, MPI_INT, MPI_SUM, 0, cart_comm());
-#endif
-
-  return ntotal;
 }
