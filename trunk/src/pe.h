@@ -2,18 +2,20 @@
  *
  *  pe.h
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) The University of Edinburgh (2008)
+ *
+ *  $Id: pe.h,v 1.2 2008-08-24 17:56:22 kevin Exp $
  *
  *****************************************************************************/
 
 #ifndef _MESSAGES_H
 #define _MESSAGES_H
 
-
-#ifdef _MPI_
 #include <mpi.h>
-#endif
-
 
 void pe_init(int , char **);
 void pe_finalise(void);
