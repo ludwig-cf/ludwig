@@ -4,7 +4,13 @@
  *
  *  The free energy.
  *
+ *  $Id: free_energy.h,v 1.3 2008-08-24 17:53:40 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,9 +24,14 @@ double free_energy_B(void);
 double free_energy_K(void);
 double surface_tension(void);
 double interfacial_width(void);
-double chemical_potential(const double, const double);
-void   chemical_stress(double [3][3], const double, const double [],
-		       const double);
-double free_energy_density(const double, const double []);
+double free_energy_density(const int);
+double free_energy_get_chemical_potential(const int);
+double free_energy_get_isotropic_pressure(const int);
+void   free_energy_get_chemical_stress(const int, double [3][3]);
+
+void free_energy_set_A(const double);
+void free_energy_set_B(const double);
+void free_energy_set_kappa(const double);
+int  free_energy_is_brazovskii(void);
 
 #endif
