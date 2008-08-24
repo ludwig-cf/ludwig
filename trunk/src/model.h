@@ -2,8 +2,12 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.10 2008-02-15 14:36:18 kevin Exp $
+ *  $Id: model.h,v 1.11 2008-08-24 16:12:44 kevin Exp $
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2008 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -21,6 +25,7 @@
 /* Always three dimensions at the moment */
 enum {ND = 3};
 enum {NHYDRO = 10};
+
 /* Identify the hydrodynamic modes */
 enum {MRHO = 0,
       MRUX = 1, MRUY = 2, MRUZ = 3,
@@ -33,12 +38,12 @@ typedef struct {
 extern const double cs2;
 extern const double rcs2;
 extern const double d_[3][3];
+extern struct io_info_t * io_info_distribution_;
 
 void   init_site(void);
 void   finish_site(void);
 void   halo_site(void);
 
-int    index_site(const int, const int, const int);
 double get_f_at_site(const int, const int);
 double get_g_at_site(const int, const int);
 double get_rho_at_site(const int);
