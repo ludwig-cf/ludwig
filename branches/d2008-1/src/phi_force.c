@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.1.2.4 2008-06-30 17:50:41 kevin Exp $
+ *  $Id: phi_force.c,v 1.1.2.5 2008-08-24 15:11:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,8 +23,27 @@
 #include "model.h"
 #include "lattice.h"
 #include "phi.h"
+#include "site_map.h"
 #include "leesedwards.h"
 #include "free_energy.h"
+
+static void phi_force_calculation_fluid(void);
+static void phi_force_calculation_fluid_solid(void);
+
+/*****************************************************************************
+ *
+ *  phi_force_calculation
+ *
+ *  Driver routine to compute the body force on fluid from phi sector.
+ *
+ *****************************************************************************/
+
+void phi_force_calculation() {
+
+  phi_force_calculation_fluid_solid();
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -39,7 +58,7 @@
  *
  *****************************************************************************/
 
-void phi_force_calculation_fluid() {
+static void phi_force_calculation_fluid() {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
@@ -112,6 +131,97 @@ void phi_force_calculation_fluid() {
 
 /*****************************************************************************
  *
+ *  phi_force_calculation_fluid_solid
+ *
+ *  Compute force from thermodynamic sector via
+ *    F_alpha = nalba_beta Pth_alphabeta
+ *  using a simple six-point stencil.
+ *
+ *  Side effect: increments the force at each local lattice site in
+ *  preparation for the collision stage.
+ *
+ *****************************************************************************/
+
+static void phi_force_calculation_fluid_solid() {
+
+  int ia, ic, jc, kc, icm1, icp1;
+  int index, index1;
+  int nlocal[3];
+  int mask;
+  double pth0[3][3];
+  double pth1[3][3];
+  double force[3];
+
+  get_N_local(nlocal);
+  assert(nhalo_ >= 2);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = ADDR(ic, jc, kc);
+
+	/* Compute pth at current point */
+	free_energy_get_chemical_stress(index, pth0);
+
+	/* Compute differences */
+	
+	index1 = ADDR(icp1, jc, kc);
+	free_energy_get_chemical_stress(index1, pth1);
+	mask = (site_map_get_status_index(index1) == FLUID);
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] = -0.5*(mask*pth1[X][ia] + pth0[X][ia]);
+	}
+	index1 = ADDR(icm1, jc, kc);
+	free_energy_get_chemical_stress(index1, pth1);
+	mask = (site_map_get_status_index(index1) == FLUID);
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += 0.5*(mask*pth1[X][ia] + pth0[X][ia]);
+	}
+
+	
+	index1 = ADDR(ic, jc+1, kc);
+	free_energy_get_chemical_stress(index1, pth1);
+	mask = (site_map_get_status_index(index1) == FLUID);
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] -= 0.5*(mask*pth1[Y][ia] + pth0[Y][ia]);
+	}
+	index1 = ADDR(ic, jc-1, kc);
+	free_energy_get_chemical_stress(index1, pth1);
+	mask = (site_map_get_status_index(index1) == FLUID);
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += 0.5*(mask*pth1[Y][ia] + pth0[Y][ia]);
+	}
+	
+	index1 = ADDR(ic, jc, kc+1);
+	free_energy_get_chemical_stress(index1, pth1);
+	mask = (site_map_get_status_index(index1) == FLUID);
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] -= 0.5*(mask*pth1[Z][ia] + pth0[Z][ia]);
+	}
+	index1 = ADDR(ic, jc, kc-1);
+	free_energy_get_chemical_stress(index1, pth1);
+	mask = (site_map_get_status_index(index1) == FLUID);
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += 0.5*(mask*pth1[Z][ia] + pth0[Z][ia]);
+	}
+
+	/* Store the force on lattice */
+
+	hydrodynamics_add_force_local(index, force);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  phi_force_calculation_fluid
  *
  *  Compute force from thermodynamic sector via
@@ -119,7 +229,7 @@ void phi_force_calculation_fluid() {
  *
  *****************************************************************************/
 
-void phi_force_calculation_fluid_nvel() {
+static void phi_force_calculation_fluid_nvel() {
 
   int p, ia, ib, ic, jc, kc, ic1, jc1, kc1;
   int index, index1;
