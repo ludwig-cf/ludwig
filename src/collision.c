@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.9 2008-08-07 08:27:01 kevin Exp $
+ *  $Id: collision.c,v 1.10 2008-08-24 16:18:55 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,7 +17,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h> /* Remove strcmp */
-#include <stdlib.h> /* Remove calloc */
 
 #include "pe.h"
 #include "ran.h"
@@ -27,6 +26,11 @@
 #include "runtime.h"
 #include "control.h"
 #include "free_energy.h"
+#include "phi.h"
+#include "phi_gradients.h"
+#include "phi_force.h"
+#include "phi_cahn_hilliard.h"
+#include "phi_stats.h"
 #include "lattice.h"
 
 #include "utilities.h"
@@ -35,24 +39,20 @@
 #include "model.h"
 #include "collision.h"
 
+#include "site_map.h"
+#include "io_harness.h"
+
 extern Site * site;
 extern double * phi_site;
-extern struct vector * fl_force;
-extern struct vector * fl_u;
 
 /* Variables (not static) */
 
-FVector * grad_phi;
-double  * delsq_phi;
-double  * rho_site;
-char    * site_map;
 double    siteforce[3];
 
 /* Variables concerned with the collision */
 
 static int    nmodes_ = NVEL;  /* Modes to use in collsion stage */
 
-static double  mobility;       /* Order parameter Mobility   */
 static double  noise0 = 0.1;   /* Initial noise amplitude    */
 static double rtau_shear;      /* Inverse relaxation time for shear modes */
 static double rtau_bulk;       /* Inverse relaxation time for bulk modes */
@@ -82,28 +82,28 @@ void collide() {
 
 #else
 
-  void COLL_compute_phi_gradients(void);
-  int  get_N_colloid(void);
-  int  boundaries_present(void);
-
   /* This is the binary LB collision. First, compute order parameter
-   * gradients, then Swift etal. collision stage. */
+   * gradients, then collision stage. The order of these calls is
+   * important. */
 
   TIMER_start(TIMER_PHI_GRADIENTS);
 
-  MODEL_calc_phi();
+  phi_compute_phi_site();
+  phi_halo();
+  phi_gradients_compute();
 
-  if (get_N_colloid() > 0 || boundaries_present()) {
-    /* Must get gradients right so use this */ 
-    COLL_compute_phi_gradients();
-  }
-  else {
-    /* No solid objects (including cases with LE planes) use this */
-    MODEL_get_gradients();
-  }
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
-  MODEL_collide_binary_lb();
+  if (phi_is_finite_difference()) {
+    phi_force_calculation();
+    MODEL_collide_multirelaxation();
+    phi_cahn_hilliard();
+  }
+  else {
+    MODEL_collide_binary_lb();
+  }
+
+  TIMER_stop(TIMER_PHI_GRADIENTS);
 
 #endif
 
@@ -146,8 +146,7 @@ void MODEL_collide_multirelaxation() {
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
 
-  double * force_local;
-  double * u_field;
+  double    force_local[3];
   const double   r3     = (1.0/3.0);
 
   TIMER_start(TIMER_COLLIDE);
@@ -158,9 +157,8 @@ void MODEL_collide_multirelaxation() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
-
-	if (site_map[index] != FLUID) continue;
+	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
+	index = get_site_index(ic, jc, kc);
 
 	/* Compute all the modes */
 
@@ -187,21 +185,16 @@ void MODEL_collide_multirelaxation() {
 	s[Z][Y] = s[Y][Z];
 	s[Z][Z] = mode[9];
 
-	rho_site[index] = rho;
-
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
-	force_local = fl_force[index].c;
-	u_field = fl_u[index].c;
+	hydrodynamics_get_force_local(index, force_local);
 
 	for (i = 0; i < 3; i++) {
 	  force[i] = (siteforce[i] + force_local[i]);
 	  u[i] = rrho*(u[i] + 0.5*force[i]);  
-	  u_field[i] = u[i];
 	}
-
-	rho_site[index] = rho;
+	hydrodynamics_set_velocity(index, u);
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -209,19 +202,19 @@ void MODEL_collide_multirelaxation() {
 	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
-          /* Set equilibrium stress */
-          for (j = 0; j < 3; j++) {
-            seq[i][j] = rho*u[i]*u[j];
-          }
+	  /* Set equilibrium stress */
+	  for (j = 0; j < 3; j++) {
+	    seq[i][j] = rho*u[i]*u[j];
+	  }
 	  /* Compute trace */
 	  tr_s   += s[i][i];
-	  tr_seq += (rho*u[i]*u[i]);
+	  tr_seq += seq[i][j];
 	}
 
 	/* Form traceless parts */
 	for (i = 0; i < 3; i++) {
 	  s[i][i]   -= r3*tr_s;
-          seq[i][i] -= r3*tr_seq;
+	  seq[i][i] -= r3*tr_seq;
 	}
 
 	/* Relax each mode */
@@ -336,8 +329,7 @@ void MODEL_collide_binary_lb() {
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
 
-  double * force_local;
-  double * u_field;
+  double    force_local[3];
   const double   r3     = (1.0/3.0);
 
 
@@ -346,6 +338,7 @@ void MODEL_collide_binary_lb() {
   double    sth[3][3], sphi[3][3];
   double    mu;                      /* Chemical potential */
   double    rtau2;
+  double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
 
@@ -353,15 +346,15 @@ void MODEL_collide_binary_lb() {
 
   get_N_local(N);
 
+  mobility = phi_ch_get_mobility();
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = index_site(ic, jc, kc);
-
-	if (site_map[index] != FLUID) continue;
+	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
+	index = get_site_index(ic, jc, kc);
 
 	/* Compute all the modes */
 
@@ -388,33 +381,20 @@ void MODEL_collide_binary_lb() {
 	s[Z][Y] = s[Y][Z];
 	s[Z][Z] = mode[9];
 
-	rho_site[index] = rho;
-
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
-	force_local = fl_force[index].c;
-	u_field = fl_u[index].c;
+	hydrodynamics_get_force_local(index, force_local);
 
 	for (i = 0; i < 3; i++) {
 	  force[i] = (siteforce[i] + force_local[i]);
 	  u[i] = rrho*(u[i] + 0.5*force[i]);  
-	  u_field[i] = u[i];
 	}
-
-	rho_site[index] = rho;
-
+	hydrodynamics_set_velocity(index, u);
 
 	/* Compute the thermodynamic component of the stress */
 
-	phi = phi_site[index];
-
-	jphi[X] = (grad_phi + index)->x;
-	jphi[Y] = (grad_phi + index)->y;
-	jphi[Z] = (grad_phi + index)->z;
-
-	mu = chemical_potential(phi, delsq_phi[index]);
-	chemical_stress(sth, phi, jphi, delsq_phi[index]);
+	free_energy_get_chemical_stress(index, sth);
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -422,10 +402,10 @@ void MODEL_collide_binary_lb() {
 	tr_seq = 0.0;
 
 	for (i = 0; i < 3; i++) {
-          /* Set equilibrium stress, which includes thermodynamic part */
-          for (j = 0; j < 3; j++) {
-            seq[i][j] = rho*u[i]*u[j] + sth[i][j];
-          }
+	  /* Set equilibrium stress, which includes thermodynamic part */
+	  for (j = 0; j < 3; j++) {
+	    seq[i][j] = rho*u[i]*u[j] + sth[i][j];
+	  }
 	  /* Compute trace */
 	  tr_s   += s[i][i];
 	  tr_seq += seq[i][i];
@@ -488,6 +468,9 @@ void MODEL_collide_binary_lb() {
 
 	/* Now, the order parameter distribution */
 
+	phi = phi_site[index];
+	mu = free_energy_get_chemical_potential(index);
+
 	jphi[X] = 0.0;
 	jphi[Y] = 0.0;
 	jphi[Z] = 0.0;
@@ -501,11 +484,11 @@ void MODEL_collide_binary_lb() {
 
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    /* sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];*/
-	    sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];
+	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
+	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
 	  }
-	  /* jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);*/
-	  jphi[i] = phi*u[i];
+	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
+	  /* jphi[i] = phi*u[i];*/
 	}
 
 	/* Now update the distribution */
@@ -545,7 +528,7 @@ void MODEL_collide_binary_lb() {
  *
  *- \c Arguments: void
  *- \c Returns:   void
- *- \c Buffers:   sets .halo, .rho, .phi, .grad_phi
+ *- \c Buffers:   sets .halo, .rho, .phi
  *- \c Version:   2.0b1
  *- \c Last \c updated: 01/03/2002 by JCD
  *- \c Authors:   P. Bladon and JC Desplat
@@ -555,7 +538,7 @@ void MODEL_collide_binary_lb() {
 
 void MODEL_init( void ) {
 
-  int     i,j,k,ind,xfac,yfac,N_sites;
+  int     i,j,k,ind;
   int     N[3];
   int     offset[3];
   double   phi;
@@ -568,41 +551,56 @@ void MODEL_init( void ) {
   get_N_local(N);
   get_N_offset(offset);
 
-  xfac = (N[Y]+2)*(N[Z]+2);
-  yfac = (N[Z]+2);
-
-  N_sites = (N[X]+2)*(N[Y]+2)*(N[Z]+2);
-
-  /* First allocate memory for site map */
-  if((site_map = (char*)calloc(N_sites,sizeof(char))) == NULL)
-    {
-      fatal("MODEL_init(): failed to allocate %d bytes for site_map[]\n",
-	    N_sites*sizeof(char));
-    }  
-  
   /* Now setup the rest of the simulation */
 
-  /* Allocate memory */
+  site_map_init();
 
-  info("Requesting %d bytes for grad_phi\n", N_sites*sizeof(FVector));
-  info("Requesting %d bytes for delsq_phi\n", N_sites*sizeof(double));
-  info("Requesting %d bytes for rho_site\n", N_sites*sizeof(double));
+  /* If you want to read porous media information here you need this. */
 
-  grad_phi  = (FVector*)calloc(N_sites,sizeof(FVector));
-  delsq_phi = (double  *)calloc(N_sites,sizeof(double  ));
-  rho_site  = (double  *)calloc(N_sites,sizeof(double  ));
+  i = RUN_get_string_parameter("porous_media_format", filename, FILENAME_MAX);
+  if (strcmp(filename, "ASCII") == 0) {
+    info("Expecting porous media file format in ascii\n");
+    io_info_set_processor_dependent(io_info_site_map);
+    io_info_set_format_ascii(io_info_site_map);
+  }
 
-  if(grad_phi==NULL || delsq_phi==NULL || rho_site==NULL)
-    {
-      fatal("MODEL_init(): failed to allocate %d bytes for vels\n",
-	    2*N_sites*(sizeof(FVector)+sizeof(double)));
-    }
+  if (strcmp(filename, "BINARY") == 0) {
+    info("Expecting porous media file format in binary\n");
+    /* ...is the defualt */
+  }
+
+  i = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
+  if (i == 1) {
+    io_read(filename, io_info_site_map); 
+    site_map_halo();
+    phi_gradients_set_solid();
+  }
+
+  /* Default is "status_only" */
+  i = RUN_get_string_parameter("porous_media_type", filename, FILENAME_MAX);
+  if (strcmp(filename, "status_with_h") == 0) {
+    info("Expecting site data to include wetting parameter h\n");
+    site_map_io_status_with_h();
+  }
+
+  /* Distributions */
 
   init_site();
-  LATT_allocate_phi(N_sites);
-  LATT_allocate_force(N_sites);
-  latt_allocate_velocity(N_sites);
 
+  /* Order parameter */
+
+  ind = RUN_get_string_parameter("phi_finite_difference", filename,
+				 FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "yes") == 0) {
+    phi_set_finite_difference();
+    info("Switching order parameter to finite difference\n");
+  }
+  else {
+    info("Order parameter is via lattice Boltzmann\n");
+  }
+
+  phi_init();
+  hydrodynamics_init();
   
   /*
    * A number of options are offered to start a simulation:
@@ -614,14 +612,16 @@ void MODEL_init( void ) {
   RUN_get_double_parameter("noise", &noise0);
 
   /* Option 1: read distribution functions from file */
-  get_input_config_filename(filename, 0);
-  if( strcmp(filename, "EMPTY") != 0 ) {
+
+  ind = RUN_get_string_parameter("input_config", filename, FILENAME_MAX);
+
+  if (ind != 0) {
 
     info("Re-starting simulation at step %d with data read from "
 	 "config\nfile(s) %s\n", get_step(), filename);
 
     /* Read distribution functions - sets both */
-    COM_read_site(filename, MODEL_read_site);
+    io_read(filename, io_info_distribution_);
   } 
   else {
       /* 
@@ -644,65 +644,18 @@ void MODEL_init( void ) {
 	       (j>offset[Y]) && (j<=offset[Y] + N[Y]) &&
 	       (k>offset[Z]) && (k<=offset[Z] + N[Z]))
 	      {
-		ind = (i-offset[X])*xfac + (j-offset[Y])*yfac + (k-offset[Z]);
-		site_map[ind] = FLUID;
+		ind = get_site_index(i-offset[X], j-offset[Y], k-offset[Z]);
 #ifdef _SINGLE_FLUID_
 		set_rho(rho0, ind);
 		set_phi(phi0, ind);
 #else
 		set_rho(rho0, ind); 
 		set_phi(phi,  ind);
+		phi_site[ind] = phi;
 #endif
 	      }
 	  }
   }
-
-}
-
-/*****************************************************************************
- *
- *  MODEL_calc_phi
- *
- *  Recompute the value of the order parameter at all the current
- *  fluid sites (domain proper).
- *
- *  The halo regions are immediately updated to reflect the new
- *  values.
- *
- *****************************************************************************/
-
-void MODEL_calc_phi() {
-
-  int     i, j , k, index, p;
-  int     N[3];
-  double  * g;
-
-  get_N_local(N);
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = index_site(i, j, k);
-
-	if (site_map[index] != FLUID) {
-	  /* This is an undefined value... */
-	  phi_site[index] = -1000.0;
-	}
-	else {
-
-	  g = site[index].g;
-	  phi_site[index] = g[0];
-
-	  for (p = 1; p < NVEL; p++)
-	    phi_site[index] += g[p];
-
-	}
-      }
-    }
-  }
-
-  COM_halo_phi();
 
   return;
 }
@@ -728,6 +681,7 @@ void RAND_init_fluctuations() {
   int  p;
   char tmp[128];
   double tau_s, tau_b, tau_g, kt;
+  double mobility;
 
   p = RUN_get_double_parameter("temperature", &kt);
   set_kT(kt);
@@ -771,6 +725,7 @@ void RAND_init_fluctuations() {
 
   p = RUN_get_double_parameter("mobility", &mobility);
   info("\nOrder parameter mobility M: %f\n", mobility);
+  phi_ch_set_mobility(mobility);
 
 
   /* Ghost modes */
@@ -878,167 +833,6 @@ void get_fluctuations_stress(double shat[3][3]) {
   return;
 }
 
-/*****************************************************************************
- *
- *  MISC_set_mean_phi
- *
- *  Compute the current mean phi in the system and remove the excess
- *  so that the mean phi is phi_global (allowing for presence of any
- *  particles or, for that matter, other solids).
- *
- *  The value of phi_global is generally (but not necessilarily) zero.
- *
- *****************************************************************************/
-
-void MISC_set_mean_phi(double phi_global) {
-
-  int     index, i, j, k, p;
-  int     nfluid = 0;
-  int     N[3];
-
-  double  phi;
-  double  phibar =  0.0;
-
-  get_N_local(N);
-
-  /* Compute the mean phi in the domain proper */
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = index_site(i, j, k);
-
-	if (site_map[index] != FLUID) continue;
-
-	phi = 0.0;
-
-	for (p = 0; p < NVEL; p++) {
-	  phi += site[index].g[p];
-	}
-
-	phibar += phi;
-	nfluid += 1;
-      }
-    }
-  }
-
-#ifdef _MPI_
-  {
-    int    n_total;
-    double phi_total;
-
-    /* All processes need the total phi, and number of fluid sites
-     * to compute the mean */
-
-    MPI_Allreduce(&phibar, &phi_total, 1, MPI_DOUBLE, MPI_SUM, cart_comm());
-    MPI_Allreduce(&nfluid, &n_total,   1, MPI_INT,    MPI_SUM, cart_comm());
-
-    phibar = phi_total;
-    nfluid = n_total;
-  }
-#endif
-
-  /* The correction requied at each fluid site is then ... */
-  phi = phi_global - phibar / (double) nfluid;
-
-  /* The correction is added to the rest distribution g[0],
-   * which should be good approximation to where it should
-   * all end up if there were a full reprojection. */
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = index_site(i, j, k);
-	if (site_map[index] == FLUID) site[index].g[0] += phi;
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  latt_zero_force
- *
- *  Set the force on the lattice sites to zero.
- *
- *****************************************************************************/
-
-void latt_zero_force() {
-
-  int ic, jc, kc, index;
-  int N[3];
-
-  get_N_local(N);
-
-  /* Compute the mean phi in the domain proper */
-
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
-
-	index = index_site(ic, jc, kc);
-
-	fl_force[index].c[X] = 0.0;
-	fl_force[index].c[Y] = 0.0;
-	fl_force[index].c[Z] = 0.0;	
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  MISC_fluid_volume
- *
- *  What is the current fluid volume? This is useful when one has a
- *  gravitational force on moving particles and there is then a need
- *  to compute an equal and opposite force in the fluid.
- *
- *  The value is computed as a double.
- *
- *****************************************************************************/
-
-double MISC_fluid_volume() {
-
-  double  v = 0.0;
-
-  int     index, i, j, k;
-  int     N[3];
-
-  get_N_local(N);
-
-  /* Look for fluid nodes (not halo) */
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-
-	index = index_site(i, j, k);
-	if (site_map[index] == FLUID) v += 1.0;
-      }
-    }
-  }
-
-#ifdef _MPI_
-  {
-    double v_total;
-
-    /* All processes need the total */
-
-    MPI_Allreduce(&v, &v_total, 1, MPI_DOUBLE, MPI_SUM, cart_comm());
-    v = v_total;
-  }
-#endif
-
-  return v;
-}
-
 /******************************************************************************
  *
  *  MISC_curvature
@@ -1070,7 +864,7 @@ void  MISC_curvature() {
   int i, j, k, index;
   int N[3];
 
-  FVector dphi;
+  double dphi[3];
 
   double eve1[3], eve2[3], eve3[3];
   double sum[6];
@@ -1089,15 +883,15 @@ void  MISC_curvature() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1;k <= N[Z]; k++) {
 
-	index = index_site(i, j, k);
+	index = get_site_index(i, j, k);
             
-	dphi = grad_phi[index];
-	sum[0] += dphi.x*dphi.x;
-	sum[1] += dphi.x*dphi.y;
-	sum[2] += dphi.x*dphi.z;
-	sum[3] += dphi.y*dphi.y;
-	sum[4] += dphi.y*dphi.z;
-	sum[5] += dphi.z*dphi.z;
+	phi_get_grad_phi_site(index, dphi);
+	sum[0] += dphi[X]*dphi[X];
+	sum[1] += dphi[X]*dphi[Y];
+	sum[2] += dphi[X]*dphi[Z];
+	sum[3] += dphi[Y]*dphi[Y];
+	sum[4] += dphi[Y]*dphi[Z];
+	sum[5] += dphi[Z]*dphi[Z];
       }
     }
   }
