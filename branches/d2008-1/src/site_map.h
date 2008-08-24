@@ -2,7 +2,7 @@
  *
  *  site_map.h
  *
- *  $Id: site_map.h,v 1.1.2.4 2008-08-19 13:31:19 kevin Exp $
+ *  $Id: site_map.h,v 1.1.2.5 2008-08-24 15:07:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,7 +26,8 @@ double site_map_get_H(int);
 char site_map_get_status(int, int, int);
 char site_map_get_status_index(int);
 void site_map_set_status(int, int, int, char);
+void site_map_io_status_with_h(void);
 
-enum lattice_type { FLUID, SOLID, COLLOID, BOUNDARY };
+enum lattice_type { FLUID, BOUNDARY, SOLID, COLLOID };
 extern struct io_info_t * io_info_site_map;
 #endif
