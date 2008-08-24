@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.12 2008-07-02 16:10:22 kevin Exp $
+ *  $Id: test.c,v 1.13 2008-08-24 16:36:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,14 +20,15 @@
 #include "pe.h"
 #include "coords.h"
 #include "colloids.h"
-#include "lattice.h"
+#include "site_map.h"
 #include "model.h"
 #include "physics.h"
 #include "bbl.h"
+#include "phi.h"
 #include "free_energy.h"
 #include "test.h"
 
-extern char * site_map;
+
 extern Site * site;
 
 /*****************************************************************************
@@ -52,7 +53,6 @@ void TEST_statistics() {
   double partsum[3], partmin[2], partmax[2];
 
   int     i, j, k, p, index;
-  int     xfac, yfac;
   int     N[3];
 
 #ifdef _MPI_
@@ -60,9 +60,6 @@ void TEST_statistics() {
 #endif
 
   get_N_local(N);
-
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
 
   partsum[0] =  0.0;
   partsum[1] =  bbl_order_parameter_deficit();
@@ -76,28 +73,28 @@ void TEST_statistics() {
   partmax[1] = -1.0;     /* phi_max */
   phivar     =  0.0;
 
+  phi_compute_phi_site();
+
   /* Accumulate the sums, minima, and maxima */
 
   for (i = 1; i <= N[X]; i++) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	index = xfac*i + yfac*j + k;
+	if (site_map_get_status(i, j, k) != FLUID) continue;
+	index = get_site_index(i, j, k);
 
-	if (site_map[index] != FLUID) continue;
-
-	phi = site[index].g[0];
 	rho = site[index].f[0];
 
 	for (p = 1; p < NVEL; p++) {
 	  rho += site[index].f[p];
-	  phi += site[index].g[p];
 	}
 
 	if (rho < partmin[0]) partmin[0] = rho;
 	if (rho > partmax[0]) partmax[0] = rho;
 	partsum[0] += rho;
 
+	phi = phi_get_phi_site(index);
 	if (phi < partmin[1]) partmin[1] = phi;
 	if (phi > partmax[1]) partmax[1] = phi;
 	partsum[1] += phi;
@@ -132,18 +129,16 @@ void TEST_statistics() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	index = xfac*i + yfac*j + k;
-
-	if (site_map[index] != FLUID) continue;
+	if (site_map_get_status(i, j, k) != FLUID) continue;
+	index = get_site_index(i, j, k);
 
 	rho = site[index].f[0];
-	phi = site[index].g[0];
 
 	for (p = 1; p < NVEL; p++) {
 	  rho += site[index].f[p];
-	  phi += site[index].g[p];
 	}
 
+	phi = phi_get_phi_site(index);
 	partsum[0] += (rho - rhobar)*(rho - rhobar);
 	partsum[1] += (phi - phibar)*(phi - phibar);
 
@@ -190,7 +185,6 @@ void TEST_statistics() {
 void TEST_momentum() {
 
   int       ic, jc, kc, index;
-  int       xfac, yfac;
   int       N[3];
   int       p;
 
@@ -205,15 +199,13 @@ void TEST_momentum() {
   gx = gy = gz = 0.0;
 
   get_N_local(N);
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = ic*xfac + jc*yfac + kc;
-	if (site_map[index] != FLUID)  continue;
+	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
+	index = get_site_index(ic, jc, kc);
 
 	f = site[index].f;
 
@@ -300,14 +292,11 @@ void TEST_fluid_temperature() {
   double   rhovar, chi2var;
   double   rfluid;
   int      i, j, k, index, p;
-  int      xfac, yfac;
   int      N[3];
   double   rho, ux, uy, uz, chi2;
   double   *f;
 
   get_N_local(N);
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   uvar    = 0.0;   /* Total u variance */
   uxvar   = 0.0;   /* u_x variance */
@@ -325,9 +314,8 @@ void TEST_fluid_temperature() {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
 
-	index = i*xfac + j*yfac + k;
-
-	if (site_map[index] == FLUID) {
+	if (site_map_get_status(i, j, k) == FLUID) {
+	  index = get_site_index(i, j, k);
 	  f = site[index].f;
 
 	  rho  = f[0];
@@ -411,136 +399,119 @@ void TEST_fluid_temperature() {
 
 void test_rheology() {
 
-  extern FVector * grad_phi;
-  extern double * phi_site;
-  extern double * delsq_phi;
-
   int get_step(void);
 
-  double rho, rrho;
-  double u[3];
-  double stress[3][3], s[3][3], rhouu[3][3];
+  double stress[3][3];
+  double sneq[3][3];
+  double rhouu[3][3];
   double pchem[3][3], plocal[3][3];
-  double extra[3][3];
-  double dphi[3];
-  double v, rv;
-  int N[3];
-  int ic, jc, kc, index, ia, ib, p;
+  double s[3][3];
+  double u[3];
+  double rho, rrho, rv;
+  int nlocal[3];
+  int ic, jc, kc, index, p, ia, ib;
 
-  /* MODEL_calc_phi();
-     MODEL_get_gradients();*/
+  get_N_local(nlocal);
 
-  get_N_local(N);
-
-  for (ic = 0; ic < 3; ic++) {
-    for (jc = 0; jc < 3; jc++) {
-      stress[ic][jc] = 0.0;
-      pchem[ic][jc] = 0.0;
-      rhouu[ic][jc] = 0.0;
-      extra[ic][jc] = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      stress[ia][ib] = 0.0;
+      plocal[ia][ib] = 0.0;
+      pchem[ia][ib] = 0.0;
+      rhouu[ia][ib] = 0.0;
+      sneq[ia][ib] = 0.0;
     }
   }
 
   /* Accumulate contributions to the stress */
 
-  v = 0.0;
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
+	index = get_site_index(ic, jc, kc);
 
-	index = index_site(ic, jc, kc);
-	if (site_map[index] != FLUID) continue;
+        rho = 0.0;
+        for (ia = 0; ia < 3; ia++) {
+          u[ia] = 0.0;
+          for (ib = 0; ib < 3; ib++) {
+            s[ia][ib] = 0.0;
+          }
+        }
+        
+        for (p = 0; p < NVEL; p++) {
+          rho     += site[index].f[p]*ma_[MRHO][p];
+          u[X]    += site[index].f[p]*ma_[MRUX][p];
+          u[Y]    += site[index].f[p]*ma_[MRUY][p];
+          u[Z]    += site[index].f[p]*ma_[MRUZ][p];
+          s[X][X] += site[index].f[p]*ma_[MSXX][p];
+          s[X][Y] += site[index].f[p]*ma_[MSXY][p];
+          s[X][Z] += site[index].f[p]*ma_[MSXZ][p];
+          s[Y][Y] += site[index].f[p]*ma_[MSYY][p];
+          s[Y][Z] += site[index].f[p]*ma_[MSYZ][p];
+          s[Z][Z] += site[index].f[p]*ma_[MSZZ][p];
+        }
 
-	v += 1.0;
+#ifdef _SINGLE_FLUID_
+#else
+	free_energy_get_chemical_stress(index, plocal);
+#endif
 
-	rho = 0.0;
-	for (ia = 0; ia < 3; ia++) {
-	  u[ia] = 0.0;
-	  for (ib = 0; ib < 3; ib++) {
-	    s[ia][ib] = 0.0;
-	  }
-	}
-	
-	for (p = 0; p < NVEL; p++) {
+        pchem[X][X] += plocal[X][X];
+        pchem[X][Y] += plocal[X][Y];
+        pchem[X][Z] += plocal[X][Z];
+        pchem[Y][Y] += plocal[Y][Y];
+        pchem[Y][Z] += plocal[Y][Z];
+        pchem[Z][Z] += plocal[Z][Z];
 
-	  rho     += site[index].f[p]*ma_[MRHO][p];
-	  u[X]    += site[index].f[p]*ma_[MRUX][p];
-	  u[Y]    += site[index].f[p]*ma_[MRUY][p];
-	  u[Z]    += site[index].f[p]*ma_[MRUZ][p];
-	  s[X][X] += site[index].f[p]*ma_[MSXX][p];
-	  s[X][Y] += site[index].f[p]*ma_[MSXY][p];
-	  s[X][Z] += site[index].f[p]*ma_[MSXZ][p];
-	  s[Y][Y] += site[index].f[p]*ma_[MSYY][p];
-	  s[Y][Z] += site[index].f[p]*ma_[MSYZ][p];
-	  s[Z][Z] += site[index].f[p]*ma_[MSZZ][p];
-	}
+        rrho = 1.0/rho;
+        for (ia = 0; ia < 3; ia++) {
+          for (ib = 0; ib < 3; ib++) {
+            rhouu[ia][ib] += rrho*u[ia]*u[ib];
+            stress[ia][ib] += s[ia][ib];
+            sneq[ia][ib] += (s[ia][ib] - rrho*u[ia]*u[ib]);
+          }
+        }
 
-	dphi[X] = (grad_phi + index)->x;
-	dphi[Y] = (grad_phi + index)->y;
-	dphi[Z] = (grad_phi + index)->z;
-
-	chemical_stress(plocal, phi_site[index], dphi, delsq_phi[index]);
-
-	pchem[X][X] += plocal[X][X];
-	pchem[X][Y] += plocal[X][Y];
-	pchem[X][Z] += plocal[X][Z];
-	pchem[Y][Y] += plocal[Y][Y];
-	pchem[Y][Z] += plocal[Y][Z];
-	pchem[Z][Z] += plocal[Z][Z];
-
-	rrho = 1.0/rho;
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    rhouu[ia][ib] += rrho*u[ia]*u[ib];
-	    stress[ia][ib] += s[ia][ib];
-	    extra[ia][ib] += (s[ia][ib] - rrho*u[ia]*u[ib]);
-	  }
-	}
       }
     }
   }
 
 #ifdef _MPI_
   {
-    double send[25];
-    double recv[25];
+    double send[24];
+    double recv[24];
 
     kc = 0;
     for (ic = 0; ic < 3; ic++) {
       for (jc = 0; jc < 3; jc++) {
-	if (ic <= jc) {
-	  send[kc++] = stress[ic][jc];
-	  send[kc++] = pchem[ic][jc];
-	  send[kc++] = rhouu[ic][jc];
-	  send[kc++] = extra[ic][jc];
-	}
+        if (ic <= jc) {
+          send[kc++] = stress[ic][jc];
+          send[kc++] = pchem[ic][jc];
+          send[kc++] = rhouu[ic][jc];
+          send[kc++] = sneq[ic][jc];
+        }
       }
     }
 
-    send[kc] = v;
-
-    MPI_Reduce(send, recv, 25, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+    MPI_Reduce(send, recv, 24, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
 
     kc = 0;
     for (ic = 0; ic < 3; ic++) {
       for (jc = 0; jc < 3; jc++) {
-	if (ic <= jc) {
-	  stress[ic][jc] = recv[kc++];
-	  pchem[ic][jc] = recv[kc++];
-	  rhouu[ic][jc] = recv[kc++];
-	  extra[ic][jc] = recv[kc++];
-	}
+        if (ic <= jc) {
+          stress[ic][jc] = recv[kc++];
+          pchem[ic][jc] = recv[kc++];
+          rhouu[ic][jc] = recv[kc++];
+          sneq[ic][jc] = recv[kc++];
+        }
       }
     }
-
-    v = recv[kc];
 
   }
 #endif
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
-
   info("stress_hy x %d %12.6g %12.6g %12.6g\n", get_step(),
        rv*stress[X][X], rv*stress[X][Y], rv*stress[X][Z]);
   info("stress_hy y %d %12.6g %12.6g %12.6g\n", get_step(),
@@ -562,12 +533,12 @@ void test_rheology() {
   info("stress_uu z %d %12.6g %12.6g %12.6g\n", get_step(),
        rv*rhouu[X][Z], rv*rhouu[Y][Z], rv*rhouu[Z][Z]);
 
-  info("stress_00 x %d %12.6g %12.6g %12.6g\n", get_step(),
-       rv*extra[X][X], rv*extra[X][Y], rv*extra[X][Z]);
-  info("stress_00 y %d %12.6g %12.6g %12.6g\n", get_step(),
-       rv*extra[X][Y], rv*extra[Y][Y], rv*extra[Y][Z]);
-  info("stress_00 z %d %12.6g %12.6g %12.6g\n", get_step(),
-       rv*extra[X][Z], rv*extra[Y][Z], rv*extra[Z][Z]);
+  info("stress_ne x %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*sneq[X][X], rv*sneq[X][Y], rv*sneq[X][Z]);
+  info("stress_ne y %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*sneq[X][Y], rv*sneq[Y][Y], rv*sneq[Y][Z]);
+  info("stress_ne z %d %12.6g %12.6g %12.6g\n", get_step(),
+       rv*sneq[X][Z], rv*sneq[Y][Z], rv*sneq[Z][Z]);
 
   return;
 }
