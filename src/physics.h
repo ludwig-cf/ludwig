@@ -2,7 +2,7 @@
  *
  *  physics.h
  *
- *  $Id: physics.h,v 1.2 2007-03-09 12:56:09 kevin Exp $
+ *  $Id: physics.h,v 1.3 2008-08-24 17:42:54 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -20,5 +20,7 @@ void   set_kT(const double);
 double get_rho0(void);
 double get_phi0(void);
 void   get_gravity(double []);
+
+void set_eta(const double);
 
 #endif
