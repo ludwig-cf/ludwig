@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.10 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: ccomms.c,v 1.11 2008-08-24 17:32:34 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -1481,8 +1481,10 @@ double colloid_min_ah(void) {
   }
 
 #ifdef _MPI_
-  double ahmin_local = ahmin;
-  MPI_Allreduce(&ahmin_local, &ahmin, 1, MPI_DOUBLE, MPI_MIN, cart_comm());
+ {
+   double ahmin_local = ahmin;
+   MPI_Allreduce(&ahmin_local, &ahmin, 1, MPI_DOUBLE, MPI_MIN, cart_comm());
+ }
 #endif
 
   return ahmin;
