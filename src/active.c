@@ -4,9 +4,15 @@
  *
  *  Routines dealing with bounce-back on links for active particles.
  *
- *  $Id: active.c,v 1.3 2008-02-15 14:35:26 kevin Exp $
+ *  $Id: active.c,v 1.4 2008-08-24 16:47:31 kevin Exp $
  *
  *  Isaac Llopis (Barcelona) developed the active particles.
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group
+ *  and Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -229,14 +235,14 @@ static void active1_prepass() {
 		force[X] = -deltap[X] / p_colloid->n1_nodes;
 		force[Y] = -deltap[Y] / p_colloid->n1_nodes;
 		force[Z] = -deltap[Z] / p_colloid->n1_nodes;    
-		add_force_at_site(p_link->i, force);
+		hydrodynamics_add_force_local(p_link->i, force);
 	      }
 
 	      if (rdots < -p_colloid->cosine_ca) {
 		force[X] = -is_quad_*(deltap[X] / p_colloid->n2_nodes);
 		force[Y] = -is_quad_*(deltap[Y] / p_colloid->n2_nodes);
 		force[Z] = -is_quad_*(deltap[Z] / p_colloid->n2_nodes);
-		add_force_at_site(p_link->i, force);
+		hydrodynamics_add_force_local(p_link->i, force);
 	      }
 	    }
 
