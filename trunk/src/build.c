@@ -5,12 +5,13 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.2 2006-12-20 16:58:24 kevin Exp $
+ *  $Id: build.c,v 1.3 2008-08-24 17:30:44 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -21,11 +22,10 @@
 #include "model.h"
 #include "timer.h"
 #include "colloids.h"
-#include "lattice.h"
+#include "site_map.h"
 #include "build.h"
 
 extern Site * site;
-extern char * site_map;
 extern int     boundaries_present(void);
 
 
@@ -57,11 +57,10 @@ void COLL_init_coordinates() {
   int n;
   int N[3];
 
-  void get_N_local(int []);
-
   /* Allocate space for the local colloid map */
 
   get_N_local(N);
+  assert(nhalo_ == 1); /* all following require refactoring */
   n = (N[X] + 2)*(N[Y] + 2)*(N[Z] + 2);
 
   info("Requesting %d bytes for colloid maps\n", 2*n*sizeof(Colloid*));
@@ -115,8 +114,18 @@ void COLL_update_map() {
 
   nsites = (N[X] + 2)*(N[Y] + 2)*(N[Z] + 2);
 
+  for (ic = 1 - nhalo_; ic <= N[X] + nhalo_; ic++) {
+    for (jc = 1 - nhalo_; jc <= N[Y] + nhalo_; jc++) {
+      for (kc = 1 - nhalo_; kc <= N[Z] + nhalo_; kc++) {
+	/* This avoids setting BOUNDARY to FLUID */
+	if (site_map_get_status(ic, jc, kc) == COLLOID) {
+	  site_map_set_status(ic, jc, kc, FLUID);
+	}
+      }
+    }
+  }
+
   for (n = 0; n < nsites; n++) {
-    if (site_map[n] == COLLOID) site_map[n] = FLUID;
     coll_old[n] = coll_map[n];
     coll_map[n] = NULL;
   }
@@ -180,7 +189,7 @@ void COLL_update_map() {
 		  index = i*xfac + j*yfac + k;
 
 		  coll_map[index] = p_colloid;
-		  site_map[index] = COLLOID;
+		  site_map_set_status(i, j, k, COLLOID);
 		}
 		/* Next site */
 	      }
@@ -358,7 +367,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	    p_link->j = index0;
 	    p_link->v = p;
 
-	    if (site_map[index1] == FLUID) {
+	    if (site_map_get_status_index(index1) == FLUID) {
 	      p_link->status = LINK_FLUID;
 	      COLL_link_mean_contrib(p_colloid, p, p_link->rb);
 	    }
@@ -389,7 +398,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	    p_link->j = index0;
 	    p_link->v = p;
 
-	    if (site_map[index1] == FLUID) {
+	    if (site_map_get_status_index(index1) == FLUID) {
 	      p_link->status = LINK_FLUID;
 	      COLL_link_mean_contrib(p_colloid, p, p_link->rb);
 	    }
@@ -495,7 +504,7 @@ void COLL_reset_links(Colloid * p_colloid) {
       p_link->rb.y = rsep.y + lambda*cv[p_link->v][Y];
       p_link->rb.z = rsep.z + lambda*cv[p_link->v][Z];
 
-      if (site_map[p_link->i] == FLUID) {
+      if (site_map_get_status_index(p_link->i) == FLUID) {
 	p_link->status = LINK_FLUID;
 	COLL_link_mean_contrib(p_colloid, p_link->v, p_link->rb);
       }
@@ -698,7 +707,7 @@ void COLL_replace_binary_fluid(int inode, Colloid * p_colloid) {
     indexn = inode + xfac*cv[p][0] + yfac*cv[p][1] + cv[p][2];
 
     /* Site must have been fluid before position update */
-    if (coll_old[indexn] || site_map[indexn] == SOLID) continue;
+    if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID) continue;
 
     for (pdash = 0; pdash < NVEL; pdash++) {
       newf[pdash] += wv[p]*site[indexn].f[pdash];
@@ -966,7 +975,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 
 	  index0 = ii*xfac + jj*yfac + kk;
 
-	  if (site_map[index0] != BOUNDARY) continue;
+	  if (site_map_get_status_index(index0) != BOUNDARY) continue;
 
 	  /* Add a link */
 
