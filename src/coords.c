@@ -4,9 +4,13 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.2 2006-10-12 14:09:18 kevin Exp $
+ *  $Id: coords.c,v 1.3 2008-08-24 17:37:59 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) The University of Edinburgh (2008)
  *
  *****************************************************************************/
 
@@ -16,9 +20,15 @@
 #include "runtime.h"
 #include "coords.h"
 
+/* Change in halo size requires recompilation. nhalo_ is public. */
+const int nhalo_ = 1;
+
 static int n_total[3] = {64, 64, 64};
 static int n_local[3];
 static int n_offset[3];
+
+static int xfac_;
+static int yfac_;
 
 static int periodic[3]                   = {1, 1, 1};
 static int pe_cartesian_rank             = 0;
@@ -33,9 +43,7 @@ static void cart_init(void);
 static void default_decomposition(void);
 static int  is_ok_decomposition(void);
 
-#ifdef _MPI_
-static MPI_Comm cartesian_communicator;
-#endif
+static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
 
 /*****************************************************************************
  *
@@ -86,9 +94,6 @@ void coords_init() {
 void cart_init() {
 
   int n;
-
-#ifdef _MPI_
-
   int reorder = 1;
   int periodic[3];
 
@@ -139,14 +144,15 @@ void cart_init() {
 		   &pe_cartesian_neighbours[FORWARD][n]);
   }
 
-#endif
-
   /* Set local number of lattice sites and offsets. */
 
   for (n = 0; n < 3; n++) {
     n_local[n] = N_total(n) / pe_cartesian_size[n];
     n_offset[n] = pe_cartesian_coordinates[n]*n_local[n];
   }
+
+  xfac_ = (n_local[Y] + 2*nhalo_)*(n_local[Z] + 2*nhalo_);
+  yfac_ = (n_local[Z] + 2*nhalo_);
 
   info("[Compute] local domain as (%d, %d, %d)\n",
        n_local[X], n_local[Y], n_local[Z]);
@@ -198,7 +204,6 @@ int cart_neighb(const int dir, const int dim) {
   return pe_cartesian_neighbours[dir][dim];
 }
 
-#ifdef _MPI_
 /*****************************************************************************
  *
  *  Cartesian communicator
@@ -208,7 +213,6 @@ int cart_neighb(const int dir, const int dim) {
 MPI_Comm cart_comm() {
   return cartesian_communicator;
 }
-#endif
 
 /*****************************************************************************
  *
@@ -301,7 +305,6 @@ void get_N_offset(int n[]) {
 
 static void default_decomposition() {
 
-#ifdef _MPI_
   int pe0[3] = {0, 0, 0};
 
   /* Trap 2-d systems */
@@ -314,7 +317,6 @@ static void default_decomposition() {
   pe_cartesian_size[X] = pe0[X];
   pe_cartesian_size[Y] = pe0[Y];
   pe_cartesian_size[Z] = pe0[Z];
-#endif
   
   if (is_ok_decomposition() == 0) {
     fatal("No default decomposition available!\n");
@@ -345,4 +347,24 @@ static int is_ok_decomposition() {
   if (nnodes != pe_size()) ok = 0;
 
   return ok;
+}
+
+/*****************************************************************************
+ *
+ *  get_site_index
+ *
+ *  Compute the one-dimensional index from coordinates ic, jc, kc.
+ *
+ *****************************************************************************/
+
+int get_site_index(const int ic, const int jc, const int kc) {
+
+  assert(ic >= 1-nhalo_);
+  assert(jc >= 1-nhalo_);
+  assert(kc >= 1-nhalo_);
+  assert(ic <= n_local[X] + nhalo_);
+  assert(jc <= n_local[Y] + nhalo_);
+  assert(kc <= n_local[Z] + nhalo_);
+
+  return (xfac_*(nhalo_ + ic - 1) + yfac_*(nhalo_ + jc -1) + nhalo_ + kc - 1);
 }
