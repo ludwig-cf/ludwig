@@ -4,9 +4,13 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.c,v 1.7 2007-01-16 15:42:59 kevin Exp $
+ *  $Id: d3q19.c,v 1.8 2008-08-25 18:13:55 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -49,6 +53,10 @@
  *
  *  ma_[NVEL][NVEL]  full matrix of eigenvectors (doubles)
  *  mi_[NVEL][NVEL]  inverse of ma_[][]
+ *
+ *  blocklens        reduced halo datatype blocklengths
+ *  disp_fwd         reduced halo datatype displacements
+ *  disp_bwd         reduced halo datatype displacements
  *
  *****************************************************************************/
 
@@ -176,4 +184,18 @@ const double mi_[NVEL][NVEL] = {
 {w2,-wa,-wa, c0, wa, r4, c0, wa, c0,-wb,-wb, wa, wa, c0, c0, c0, c0, c0, wc}
 };
 
+
+const int xblocklens_cv[xcountcv] = {5};
+const int xdisp_fwd_cv[xcountcv] = {1};
+const int xdisp_bwd_cv[xcountcv] = {14};
+
+const int yblocklens_cv[ycountcv] = {1, 3, 1};
+const int ydisp_fwd_cv[ycountcv] = {1, 6, 14};
+const int ydisp_bwd_cv[ycountcv] = {5, 11, 18};
+
+const int zblocklens_cv[zcountcv] = {1, 1, 1, 1, 1};
+const int zdisp_fwd_cv[zcountcv] = {2, 6, 9, 11, 15};
+const int zdisp_bwd_cv[zcountcv] = {4, 8, 10, 13, 17};
+
 #endif
+
