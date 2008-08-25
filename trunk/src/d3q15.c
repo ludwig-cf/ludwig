@@ -4,7 +4,7 @@
  *
  *  D3Q15 model definitions.
  *
- *  $Id: d3q15.c,v 1.6 2007-01-16 15:42:36 kevin Exp $
+ *  $Id: d3q15.c,v 1.7 2008-08-25 18:13:55 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -46,6 +46,10 @@
  *  mi_[NVEL][NVEL]  inverse of ma_[][]
  *
  *  The eigenvectors are the rows of the matrix ma_[NVEL][NVEL].
+ *
+ *  blocklens        reduced halo datatype block lengths
+ *  disp_fwd         reduced halo datatype displacements
+ *  disp_bwd         reduced halo datatype displacements
  *
  *****************************************************************************/
 
@@ -127,5 +131,18 @@ const double mi_[NVEL][NVEL] =
    { w1,-r3, c0, c0, r3, c0, c0,-r6, c0,-r6, wc,-r6, c0, c0, c0},
    { w3,-wa,-wa, wa, wa, wb,-wb, wa,-wb, wa,-w3, wa, wa,-wa, wb},
    { w3,-wa,-wa,-wa, wa, wb, wb, wa, wb, wa,-w3, wa, wa, wa,-wb}};
+
+
+const int xblocklens_cv[xcountcv] = {5};
+const int xdisp_fwd_cv[xcountcv] = {1};
+const int xdisp_bwd_cv[xcountcv] = {10};
+
+const int yblocklens_cv[ycountcv] = {2, 1, 2};
+const int ydisp_fwd_cv[ycountcv] = {1, 6, 10};
+const int ydisp_bwd_cv[ycountcv] = {4, 9, 13};
+
+const int zblocklens_cv[zcountcv] = {1, 1, 1, 1, 1};
+const int zdisp_fwd_cv[zcountcv] = {1, 4, 7, 10, 13};
+const int zdisp_bwd_cv[zcountcv] = {2, 5, 8, 11, 14};
 
 #endif
