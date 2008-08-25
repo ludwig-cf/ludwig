@@ -30,6 +30,8 @@ typedef struct {
   int MPI_TAG;
 } MPI_Status;
 
+typedef MPI_Handle MPI_Aint;
+
 /* Defined constants (see Annex A.2) */
 
 /* Return codes */
@@ -38,7 +40,8 @@ enum return_codes {MPI_SUCCESS};
 
 /* Assorted constants */
 
-#define MPI_PROC_NULL     -9;
+#define MPI_PROC_NULL     -9
+#define MPI_BOTTOM         0x0000
 #define MPI_UNDEFINED     -999
 
 /* Error-handling specifiers */
@@ -71,6 +74,11 @@ enum collective_operations {MPI_MAX,
 			    MPI_LAND,
 			    MPI_LOR,
 			    MPI_LXOR};
+
+/* special datatypes for constructing derived datatypes */
+
+#define MPI_UB 0 
+#define MPI_LB 0
 
 /* reserved communicators */
 
@@ -111,6 +119,10 @@ int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * new);
 int MPI_Type_vector(int count, int blocklength, int stride, MPI_Datatype old,
 		    MPI_Datatype * new);
+int MPI_Type_struct(int count, int * array_of_blocklengths,
+		    MPI_Aint * array_of_displacements,
+		    MPI_Datatype * array_of_types, MPI_Datatype * newtype);
+int MPI_Address(void * location, MPI_Aint * address);
 int MPI_Type_commit(MPI_Datatype * datatype);
 int MPI_Type_free(MPI_Datatype * datatype);
 int MPI_Waitall(int count, MPI_Request * array_of_requests,
