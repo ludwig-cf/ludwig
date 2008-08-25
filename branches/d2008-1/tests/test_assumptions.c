@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-int is_bigendean(void);
+int is_bigendian(void);
 
 int main(int argc, char ** argv) {
 
@@ -74,8 +74,7 @@ int main(int argc, char ** argv) {
   printf("__FILE__ is %s\n", __FILE__);
   printf("__LINE__ is %d\n", __LINE__);
 
-  printf("The machine is %s-endian\n", is_bigendean() ? "big" : "little");
-
+  printf("Host appears to be %s-endian\n", is_bigendian() ? "big" : "little");
   printf("All assumptions ok!\n");
 
   return 0;
@@ -83,13 +82,14 @@ int main(int argc, char ** argv) {
 
 /***************************************************************************
  *
- *  is_bigendean
+ *  is_bigendian
  *
- *  Have a look to see if we are bigendean. From Harsha S. Adiga at IBM.
+ *  Byte order for this 4-byte int is 00 00 00 01 for big endian (most
+ *  significant byte stored first).
  *
  ***************************************************************************/
 
-int is_bigendean() {
+int is_bigendian() {
 
   const int i = 1;
 
