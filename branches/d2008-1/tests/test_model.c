@@ -157,6 +157,22 @@ int main(int argc, char ** argv) {
   }
   info("ok\n");
 
+  /* No actual test here yet. Requires a theoretical answer. */
+  info("Checking d_[i][j]*q_[p][i][j]...\n");
+
+  for (p = 0; p < NVEL; p++) {
+    sum = 0.0;
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+	sum += d_[i][j]*q_[p][i][j];
+      }
+    }
+    /* test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);*/
+    /* info("p = %d sum = %f\n", p, sum);*/
+  }
+  info("ok\n");
+
+
   info("Check ma_ against rho, cv ... ");
 
   for (p = 0; p < NVEL; p++) {
