@@ -15,9 +15,6 @@
 
 int main(int argc, char ** argv) {
 
-  int i;
-  double t;
-
   pe_init(argc, argv);
 
   info("\nTesting timer routines...\n");
