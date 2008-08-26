@@ -18,6 +18,7 @@
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
+
 CC     = gcc
 MPICC  = mpicc
 MPIRUN = mprun -np
@@ -25,16 +26,17 @@ NPROCS = 8
 
 SRC    = ../src
 INCLUDE = -I$(SRC) $(MPI_INCLUDE)
-COPTS = -D_D3Q15_
 #COPTS  = -Xc -v -errwarn -D_D3Q19_
+COPTS = -Wall -D_D3Q19_
+
+MPI_STUB_INCLUDE = -I../mpi_s
+MPI_STUB_LIB = -L../mpi_s -lmpi
+
 
 CLINK  =
 CLIBS  = -lm
-MPILIB = #-lmpi
+MPILIB = -lmpi
 LAUNCH  =
-
-MPI_STUB_INCLUDE = #-I../mpi_s
-MPI_STUB_LIB =# -L../mpi_s -lmpi
 
 COMPILE = $(CC) $(INCLUDE) $(CLINK) $(COPTS)
 LINK    = $(CC) $(CLINK)
@@ -44,8 +46,10 @@ LINK    = $(CC) $(CLINK)
 #------------------------------------------------------------------------------
 
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
-              test_runtime.c test_random.c \
-              test_coords.c test_model.c test_halo.c test_prop.c
+              test_io.c test_runtime.c test_random.c \
+              test_coords.c test_model.c test_halo.c test_prop.c \
+              test_site_map.c #test_phi.c
+
 TESTS = ${TESTSOURCES:.c=}
 
 TEST_PE_OBJ = tests.o $(SRC)/pe.o
@@ -53,14 +57,18 @@ TEST_TIMER_OBJ = tests.o $(SRC)/pe.o $(SRC)/timer.o
 TEST_RUNTIME_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o
 TEST_RANDOM_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/ran.o
 TEST_COORDS_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o
-#TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
-#		$(SRC)/io_harness.o
+TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
+		$(SRC)/io_harness.o
 TEST_CONTROL_OBJ = $(SRC)/control.o
 TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(TEST_CONTROL_OBJ) $(SRC)/model.o \
-		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/ran.o $(SRC)/timer.o
+		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/ran.o $(SRC)/timer.o \
+                $(SRC)/io_harness.o
 TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
 TEST_EWALD_OBJ  = tests.o $(SRC)/pe.o $(SRC)/coords.o $(SRC)/colloids.o \
                   $(SRC)/ewald.o
+TEST_SITE_MAP_OBJ = $(TEST_IO_OBJ) $(SRC)/site_map.o
+TEST_PHI_OBJ      = $(TEST_MODEL_OBJ) $(SRC)/io_harness.o $(SRC)/site_map.o \
+		$(SRC)/phi.o
 
 #------------------------------------------------------------------------------
 #  Rules
@@ -78,14 +86,23 @@ test_random:	$(TEST_RANDOM_OBJ) test_random.o
 		$(LINK) -o $@ $(TEST_RANDOM_OBJ) $@.o $(CLIBS)
 test_coords:	$(TEST_COORDS_OBJ) test_coords.o
 		$(LINK) -o $@ $(TEST_COORDS_OBJ) $@.o $(CLIBS)
-#test_io:	$(TEST_IO_OBJ) test_io.o
-#		$(LINK) -o $@ $(TEST_IO_OBJ) $@.o $(CLIBS)
+test_io:	$(TEST_IO_OBJ) test_io.o
+		$(LINK) -o $@ $(TEST_IO_OBJ) $@.o $(CLIBS)
 test_model:	$(TEST_MODEL_OBJ) test_model.o
 		$(LINK) -o $@ $(TEST_MODEL_OBJ) $@.o $(CLIBS)
 test_halo:	$(TEST_MODEL_OBJ) test_halo.o
 		$(LINK) -o $@ $(TEST_MODEL_OBJ) $@.o $(CLIBS)
 test_prop:	$(TEST_PROP_OBJ) test_prop.o
 		$(LINK) -o $@ $(TEST_PROP_OBJ) $@.o $(CLIBS)
+test_site_map:	$(TEST_SITE_MAP_OBJ) test_site_map.o
+		$(LINK) -o $@ $(TEST_SITE_MAP_OBJ) $@.o $(CLIBS)
+test_phi:	$(TEST_PHI_OBJ) test_phi.o
+		$(LINK) -o $@ $(TEST_PHI_OBJ) $@.o $(CLIBS)
+
+test_sigma:     test_sigma.c
+		$(COMPILE) -I../mpi_s -c test_sigma.c
+		$(LINK)  \
+	test_sigma.o $(MPI_STUB_LIB) $(CLIBS)
 
 test_ewald:	$(TEST_EWALD_OBJ) test_ewald.o
 		$(LINK) -o $@ $(TEST_EWALD_OBJ) $@.o $(CLIBS)
