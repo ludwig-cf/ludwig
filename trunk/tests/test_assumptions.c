@@ -1,10 +1,15 @@
 /*****************************************************************************
  *
+ *  test_assumptions.c
+ *
  *  Test basic model assumptions, portability issues.
  *
- *  Look to include stuff which is possibly machine-dependent
+ *  $Id: test_assumptions.c,v 1.3 2008-08-26 09:08:28 kevin Exp $
  *
- * 
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2008 The University of Edinburgh 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -31,7 +36,7 @@ int main(int argc, char ** argv) {
 
   printf("Checking sizeof(long int) is >= 4 bytes... ");
   assert(sizeof(long int) >= 4);
-  printf("yes (%ld bytes)\n", sizeof(long int));
+  printf("yes (%d bytes)\n", sizeof(long int));
 
   /* All floating point types in the code should be double,
    * which must be 8 bytes. */
