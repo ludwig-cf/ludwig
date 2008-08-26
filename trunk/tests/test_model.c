@@ -5,9 +5,11 @@
  *****************************************************************************/
 
 #include <math.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "runtime.h"
+#include "control.h"
 #include "coords.h"
 #include "model.h"
 #include "tests.h"
@@ -92,6 +94,9 @@ int main(int argc, char ** argv) {
       }
     }
   }
+
+  coords_init();
+
 
   info("Checking model.c objects...\n\n");
 
@@ -225,6 +230,22 @@ int main(int argc, char ** argv) {
     }
   }
   info("ok\n");
+
+  /* No actual test here yet. Requires a theoretical answer. */
+  info("Checking d_[i][j]*q_[p][i][j]...\n");
+
+  for (p = 0; p < NVEL; p++) {
+    sum = 0.0;
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+	sum += d_[i][j]*q_[p][i][j];
+      }
+    }
+    /* test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);*/
+    /* info("p = %d sum = %f\n", p, sum);*/
+  }
+  info("ok\n");
+
 
   info("Check ma_ against rho, cv ... ");
 
@@ -365,14 +386,13 @@ void test_halo_swap() {
 
   info("\nHalo swap...\n\n");
 
-  coords_init();
   init_site();
   get_N_local(N);
 
   for (i = 1; i <= N[X]; i++) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
-	index = index_site(i, j, k);
+	index = get_site_index(i, j, k);
 
 	set_f_at_site(index, X, (double) (i));
 	set_f_at_site(index, Y, (double) (j));
@@ -390,7 +410,7 @@ void test_halo_swap() {
   for (i = 0; i <= N[X] + 1; i++) {
     for (j = 0; j <= N[Y] + 1; j++) {
       for (k = 0; k <= N[Z] + 1; k++) {
-	index = index_site(i, j, k);
+	index = get_site_index(i, j, k);
 
 	u[X] = get_f_at_site(index, X);
 	u[Y] = get_f_at_site(index, Y);
@@ -443,7 +463,7 @@ void test_reduced_halo_swap() {
   for (i = 1; i <= N[X]; i++) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
-	index = index_site(i, j, k);
+	index = get_site_index(i, j, k);
 	for (p = 0; p < NVEL; p++) {
 	  set_f_at_site(index, p, (double) p);
 	}
@@ -460,7 +480,7 @@ void test_reduced_halo_swap() {
   for (i = 0; i <= N[X]+1; i++) {
     for (j = 0; j <= N[Y]+1; j++) {
       for (k = 0; k <= N[Z]+1; k++) {
-	index = index_site(i, j, k);
+	index = get_site_index(i, j, k);
 
 	for(p = 0; p < NVEL; p++) {
 	  f = get_f_at_site(index, p);
@@ -520,9 +540,9 @@ void test_reduced_halo_swap() {
 int on_corner(int x, int y, int z, \
 	      int mx, int my, int mz) {
   /* on the axes */
-  if( abs(x) + abs(y) == 0 || \
-      abs(x) + abs(z) == 0 || \
-      abs(y) + abs(z) == 0 )
+  if( fabs(x) + fabs(y) == 0 || \
+      fabs(x) + fabs(z) == 0 || \
+      fabs(y) + fabs(z) == 0 )
     {
       return 1;
     }
