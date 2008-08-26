@@ -2,6 +2,12 @@
  *
  *  control.h
  *
+ *  $Id: control.h,v 1.3 2008-08-26 08:07:40 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2008 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -16,5 +22,6 @@ int  is_statistics_step(void);
 int  is_measurement_step(void);
 int  is_config_step(void);
 int  is_config_at_end(void);
+int  use_reduced_halos(void);
 
 #endif
