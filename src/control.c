@@ -4,7 +4,7 @@
  *
  *  Model control and time stepping.
  *
- *  $Id: control.c,v 1.4 2008-08-24 16:47:31 kevin Exp $
+ *  $Id: control.c,v 1.5 2008-08-26 08:07:40 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  end Edinburgh Parallel Computing Centre
@@ -13,7 +13,7 @@
  *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
-
+#include <stdio.h>
 #include <string.h>
 
 #include "pe.h"
@@ -28,6 +28,7 @@ static int freq_statistics = 100;
 static int freq_measure    = 1000;
 static int freq_config     = 10000;
 static int config_at_end   = 1;
+static int reduced_halos   = 0;
 
 /*****************************************************************************
  *
@@ -50,6 +51,9 @@ void init_control() {
 
   n = RUN_get_string_parameter("config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
+
+  n = RUN_get_string_parameter("reduced_halos", tmp);
+  if (strcmp(tmp, "yes") == 0) reduced_halos = 1;
 
   t_current = t_start;
 
@@ -103,4 +107,14 @@ int is_config_step() {
 
 int is_config_at_end() {
   return config_at_end;
+}
+
+/*****************************************************************************
+ *
+ *  use_reduced_halos
+ *
+ *****************************************************************************/
+
+int use_reduced_halos() {
+  return reduced_halos;
 }
