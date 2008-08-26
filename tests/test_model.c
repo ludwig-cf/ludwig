@@ -8,7 +8,6 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "runtime.h"
 #include "control.h"
 #include "coords.h"
 #include "model.h"
@@ -35,7 +34,6 @@ int main(int argc, char ** argv) {
   double u[ND];
 
   pe_init(argc, argv);
-  RUN_read_input_file("input");
   init_control();
 
   if(use_reduced_halos()) {
@@ -537,33 +535,28 @@ void test_reduced_halo_swap() {
  *         1(true)  otherwise.
  *
  *************************************/
-int on_corner(int x, int y, int z, \
-	      int mx, int my, int mz) {
+
+int on_corner(int x, int y, int z, int mx, int my, int mz) {
+
+  int iscorner = 0;
+
   /* on the axes */
-  if( fabs(x) + fabs(y) == 0 || \
-      fabs(x) + fabs(z) == 0 || \
-      fabs(y) + fabs(z) == 0 )
-    {
-      return 1;
-    }
+
+  if (fabs(x) + fabs(y) == 0 || fabs(x) + fabs(z) == 0 ||
+      fabs(y) + fabs(z) == 0 ) {
+    iscorner = 1;
+  }
 
   /* opposite corners from axes */
-  if( x == mx && y == my ||
-      x == mx && z == mz ||
-      y == my && z == mz)
-    {
-      return 1;
-    }
-  
-  if( x == 0 && y == my ||
-      x == 0 && z == mz ||
-      y == 0 && x == mx ||
-      y == 0 && z == mz ||
-      z == 0 && x == mx ||
-      z == 0 && y == my)
-    {
-      return 1;
-    }
 
-  return 0;
+  if ((x == mx && y == my) || (x == mx && z == mz) || (y == my && z == mz)) {
+    iscorner = 1;
+  }
+  
+  if ((x == 0 && y == my) || (x == 0 && z == mz) || (y == 0 && x == mx) ||
+      (y == 0 && z == mz) || (z == 0 && x == mx) || (z == 0 && y == my)) {
+    iscorner = 1;
+  }
+
+  return iscorner;
 }
