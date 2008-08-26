@@ -152,7 +152,7 @@ int main(int argc, char ** argv) {
 
   n = 0;
   info("Checking 'string_parameter' is available...");
-  n = RUN_get_string_parameter("string_parameter", string/*, 256*/);
+  n = RUN_get_string_parameter("string_parameter", string, 256);
   test_assert(n == 1);
   info("yes\n");
 
@@ -162,7 +162,7 @@ int main(int argc, char ** argv) {
 
   n = 0;
   info("Checking 'input_config' is available...");
-  n = RUN_get_string_parameter("input_config", string/*, 64*/);
+  n = RUN_get_string_parameter("input_config", string, 256);
   test_assert(n == 1);
   info("yes\n");
 
