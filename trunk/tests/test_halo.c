@@ -5,7 +5,7 @@
  *  This is a more rigourous test of the halo swap code for the
  *  distributions than appears in test model.
  *
- *  $Id: test_halo.c,v 1.5 2008-08-26 08:41:31 kevin Exp $
+ *  $Id: test_halo.c,v 1.6 2008-08-26 09:09:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -27,8 +27,7 @@
 
 static void test_halo_null(void);
 static void test_halo(const int dim);
-static void test_propagation();
-int on_corner(int x, int y, int z, int mx, int my, int mz);
+static int on_corner(int x, int y, int z, int mx, int my, int mz);
 
 int* xfwd;
 int* xbwd;
@@ -463,33 +462,27 @@ void test_halo(int dim) {
  *         1(true)  otherwise.
  *
  *************************************/
-int on_corner(int x, int y, int z, \
-	      int mx, int my, int mz) {
+
+static int on_corner(int x, int y, int z, int mx, int my, int mz) {
+
+  int iscorner = 0;
+
   /* on the axes */
-  if( abs(x) + abs(y) == 0 || \
-      abs(x) + abs(z) == 0 || \
-      abs(y) + abs(z) == 0 )
-    {
-      return 1;
-    }
+  if (fabs(x) + fabs(y) == 0 || fabs(x) + fabs(z) == 0 ||
+      fabs(y) + fabs(z) == 0 ) {
+    iscorner = 1;
+  }
 
   /* opposite corners from axes */
-  if( x == mx && y == my ||
-      x == mx && z == mz ||
-      y == my && z == mz)
-    {
-      return 1;
-    }
-  
-  if( x == 0 && y == my ||
-      x == 0 && z == mz ||
-      y == 0 && x == mx ||
-      y == 0 && z == mz ||
-      z == 0 && x == mx ||
-      z == 0 && y == my)
-    {
-      return 1;
-    }
 
-  return 0;
+  if ((x == mx && y == my) || (x == mx && z == mz) || (y == my && z == mz)) {
+      iscorner = 1;
+  }
+  
+  if ((x == 0 && y == my) || (x == 0 && z == mz) || (y == 0 && x == mx) ||
+      (y == 0 && z == mz) || (z == 0 && x == mx) || (z == 0 && y == my)) {
+    iscorner = 1;
+  }
+
+  return iscorner;
 }
