@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.2 2008-02-25 09:53:37 kevin Exp $
+%  $Id: sections.tex,v 1.3 2008-08-29 09:28:08 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -49,42 +49,7 @@ move to a single supported version.
 The NeSCForge CVS is not available to the public.
 
 
-\subsection{Ongoing Development}
-
-\subsubsection{Some notes}
-
-\begin{enumerate}
-
-\item
-Serial timer is exhausted at about 35 minutes.
-
-\item
-Size of the colloid message buffers needs to be computed robustly
-at run time, or, allocated on a just-in-time basis with knowledge
-of exact size required. The former would mean knowing the number
-of particles before the call to CCOM\_init\_halo.
-
-\end{enumerate}
-
-\subsubsection{Other Agenda Items}
-\begin{enumerate}
-
-
-\item
-The particle code needs a critic from someone other than myself.
-Again we need to abstract it away a bit more.
-
-\item
-Two-dimensional model (D2Q9).
-
-\item
-Finite Difference for order parameter.
-
-\item
-I/O via XML/HDF5.
-
-
-\end{enumerate}
+\subsection{Download}
 
 
 \section{User Input}
@@ -301,7 +266,6 @@ Not in general use yet.
 \subsection{Particle-particle interactions}
 
 
-
 \subsection{Boundary conditions}
 
 Solid planar boundary walls can be added at the extremities of the
@@ -376,6 +340,92 @@ if set to 1, the fluid velocity is initialise to reflect a steady
 state shear flow appropriate for the number of planes at the
 given velocity. If set to zero, the fluid is initialised with
 zero velocity.
+
+
+\subsection{Porous Media}
+
+Porous media calculations can be undertaken when appropriate
+solid/fluid status information is supplied. The are a number
+of switches available in the input file:
+
+\inputkey{porous\_media\_file}
+
+specifies the file stub name to be read at the start of execution.
+(If the stub name is \texttt{file} then the code will expect to
+find \texttt{file.001-001} in the current directory.
+
+\inputkey{porous\_media\_format}
+
+is either \texttt{ASCII} or \texttt{BINARY} as appropriate. Note that
+in parallel, a single data file can be supplied, but it must be binary.
+The default is \texttt{BINARY}.
+
+\inputkey{porous\_media\_type}
+
+is either \texttt{status\_only} (the default) or \texttt{status\_with\_h}.
+
+\subsubsection{File format}
+
+In all cases the status (fluid/solid) information is represented by a
+single \texttt{char} (or integer), which must be supplied via the
+porous media file. A single file should contain data matching the
+current system size, and have the $z-$direction running fastest,
+followed by the $y-$direction. Note that in non-periodic directions,
+the structure must be 'closed', i.e., all the points at the edge
+should be solid.
+
+Fluid sites are designated by \texttt{0} and boundary or solid sites
+by \texttt{1}. These data should be of type \texttt{char} in binary,
+and may be integer in ASCII.
+
+Where wetting information is required, the free energy parameter $H$
+can be supplied by using the \texttt{status\_with\_h} switch. In this
+case, the \texttt{char} status is augmented by a single \texttt{double}
+value which is the local value of $H$. The order is then
+$s_1,h_1, s_2, h_2, \ldots$.
+
+
+\subsubsection{Permeability calculations}
+
+Single fluid permeability calculations for a given proous structure
+can be undertaken by driving a flow via the fluid body force. Note
+that the structure must be periodic in the direction of the force
+(this may mean duplicating a 'reflected' version of a given sample
+to create the correct input). The body force can be specified so
+that, e.g., to drive a flow in the $x-$direction
+
+\texttt{force 0.001\_0.000\_0.000}
+
+The force should not be so large that the maximum velocity generated
+threatens the Mach number constraint. To get a measurement of the
+flow at equilibrium, the calculation should be run at least the
+momentum diffusion time for the system ($L^2/\eta$ in LB time steps).
+
+The net flow can be measured by combining the statistics for the
+total momemtum and the total density (which is equal to the volume
+with $\rho_0 = 1$).
+
+Note that in the case of porous media with narrow channels at the grid
+scale, the wall velocity can be dependent on the viscosity of the fluid.
+This is an artefact of the bounce-back on links and will result in a
+viscosity-dependent permeability (see, e.g., \cite{lipanmiller}). To minimise
+this effect, it is recommended to to on the correction to the ghost
+mode relaxation time proposed by Ginzburg and d'Humi\`eres \cite{ginzburg}
+which corrects the viscosity-dependence of the apparent boundary
+position. This is done via the input switches
+
+\texttt{ghost\_modes on\\
+ginzburg\_dhumieres on}
+
+and should recover a viscosity-independent premeability measurement
+\cite{lipanmiller,chunladd}.
+
+
+\subsubsection{Capillaries}
+
+The utility \texttt{capillary.c} can be used to generate various
+porous media input files corresponding to various simple square
+or circular capillaries.
 
 
 \subsection{Miscellaneous}
@@ -1797,6 +1847,12 @@ Direct analysis of particulate suspensions with inertia using the
 discrete Boltzmann equation,
 \textit{J. Fluid Mech.}, \textbf{373}, 287, 1998.
 
+\bibitem{chunladd}
+B. Chun and A.J.C. Ladd,
+Interpolated boundary condition for lattice Boltzmann simulations in
+narrow gaps,
+\textit{Phys. Rev. E}, \textbf{75}, 066705, 2007.
+
 \bibitem{cj98}
 Cichocki, B., and R.B. Jones,
 Image representation of a spherical particle near a hard wall,
@@ -1806,6 +1862,11 @@ Image representation of a spherical particle near a hard wall,
 Desplat, J.-C., I. Pagonabarraga, and P. Bladon,
 LUDWIG: A parallel lattice-Boltzmann code for complex fluids.
 \textit{Comput. Phys. Comms.}, \textbf{134}, 273, 2001.
+
+\bibitem{ginzburg}
+I. Ginzburg and D. d'Humi\`eres,
+Multireflection boundary conditions for lattice Boltzmann models,
+\textit{Phys. Rev. E}, \textbf{68}, 066614, 2003.
 
 \bibitem{h59}
 Hasimoto, H., On the periodic fundamental solutions of the Stokes
@@ -1854,7 +1915,13 @@ of non-Brownian spheres,
 \bibitem{lv01}
 Ladd, A.J.C., and R. Verberg,
 Lattice-Boltzmann simulations of particle-fluid suspensions,
-\textit{J. Stat. Phys.}, \textbf{104}, 1191, 2001
+\textit{J. Stat. Phys.}, \textbf{104}, 1191, 2001.
+
+\bibitem{lipanmiller}
+H. Li, C. Pan, and C.T. Miller,
+Pore-scale investigation of viscous coupling effects for two-phase
+flow in porous media,
+\textit{Phys. Rev. E}, \textbf{72}, 026705, 2005.
 
 \bibitem{nl02}
 Nguyen, N.-Q., and A.J.C. Ladd, Lubrication corrections for
