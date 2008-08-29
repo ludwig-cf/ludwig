@@ -165,6 +165,7 @@ int main( int argc, char **argv )
       MISC_curvature();
       TEST_statistics();
       TEST_momentum();
+      hydrodynamics_stats();
 #endif
 #ifdef _NOISE_
       TEST_fluid_temperature();
