@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.3 2008-08-29 09:28:08 kevin Exp $
+%  $Id: sections.tex,v 1.4 2008-08-29 09:32:59 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -392,7 +392,7 @@ can be undertaken by driving a flow via the fluid body force. Note
 that the structure must be periodic in the direction of the force
 (this may mean duplicating a 'reflected' version of a given sample
 to create the correct input). The body force can be specified so
-that, e.g., to drive a flow in the $x-$direction
+that, e.g., to drive a flow in the positive $x-$direction
 
 \texttt{force 0.001\_0.000\_0.000}
 
@@ -409,7 +409,7 @@ Note that in the case of porous media with narrow channels at the grid
 scale, the wall velocity can be dependent on the viscosity of the fluid.
 This is an artefact of the bounce-back on links and will result in a
 viscosity-dependent permeability (see, e.g., \cite{lipanmiller}). To minimise
-this effect, it is recommended to to on the correction to the ghost
+this effect, it is recommended to switch on the correction to the ghost
 mode relaxation time proposed by Ginzburg and d'Humi\`eres \cite{ginzburg}
 which corrects the viscosity-dependence of the apparent boundary
 position. This is done via the input switches
@@ -417,7 +417,7 @@ position. This is done via the input switches
 \texttt{ghost\_modes on\\
 ginzburg\_dhumieres on}
 
-and should recover a viscosity-independent premeability measurement
+and should recover a viscosity-independent permeability measurement
 \cite{lipanmiller,chunladd}.
 
 
