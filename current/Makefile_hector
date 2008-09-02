@@ -1,6 +1,9 @@
 CCS = CC
 CCP = CC -V -O3 -OPT:Ofast
 
+# issue the following on hector at the command line (redirects compiler)
+# module swap PrgEnv-pgi PrgEnv-pathscale
+
 INCS	=	
  
 # BE:     "undef" is Doi-Olmsted, "def" is Beris-Edwards
@@ -12,13 +15,14 @@ INCS	=
 
 DEFS    =	 -DBE -DEON -DCHOL\
                  -DMPICH_IGNORE_CXX_SEEK -D_COMM_3D_\
-                 -D_BINARY_IO_
+		 -D_BINARY_IO_
+
 
 LIBS	=
 
 LIBPATH =
 
-NAME	= HLBLC08 
+NAME	= HLBLC08
 
 all: $(NAME)P
 

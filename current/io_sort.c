@@ -33,9 +33,9 @@
 
 /* System size (could be read at run time) */
 
-int lx_ = 256;
-int ly_ = 256;
-int lz_ = 256;
+int lx_ = 32;
+int ly_ = 32;
+int lz_ = 32;
 
 float * data_out_;
 int nio_;
@@ -85,7 +85,7 @@ int main (int argc, char ** argv) {
   }
 
   if (id_type == 1) {
-    printf("disclincation file\n");
+    printf("disclination file\n");
     nbuffer = 1;
     read_function = read_disclination;
     write_function = write_disclination;
