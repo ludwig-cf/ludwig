@@ -624,9 +624,9 @@ void initialize(void)
   }
   Qxy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxy[ix]=new double*[Ly];
+    Qxy[ix]=new double*[Ly2];
     for (iy=0;iy<Ly2;iy++)
-      Qxy[ix][iy]=new double[Lz];
+      Qxy[ix][iy]=new double[Lz2];
   }
   Qyy=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
@@ -714,9 +714,9 @@ void initialize(void)
   }
   Qxyinit=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxyinit[ix]=new double*[Ly];
+    Qxyinit[ix]=new double*[Ly2];
     for (iy=0;iy<Ly2;iy++)
-      Qxyinit[ix][iy]=new double[Lz];
+      Qxyinit[ix][iy]=new double[Lz2];
   }
   Qyyinit=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
