@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.8 2008-08-24 17:57:55 kevin Exp $
+ *  $Id: lattice.c,v 1.9 2008-09-05 17:37:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -124,7 +124,7 @@ static void hydrodynamics_init_io() {
   io_info_set_write(io_info_velocity_, hydrodynamics_u_write);
   io_info_set_bytesize(io_info_velocity_, 3*sizeof(double));
 
-  io_write_metadata("phi", io_info_velocity_);
+  io_write_metadata("vel", io_info_velocity_);
 
   return;
 }
@@ -608,7 +608,7 @@ static void hydrodynamics_leesedwards_parallel() {
     MPI_Waitall(4, request, status);
 
     /* Perform the actual interpolation from temporary buffer to
-     * phi_site[] buffer region. */
+     * buffer region. */
 
     for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
       j1 = (jc + nhalo_ - 1    )*(nlocal[Z] + 2*nhalo_);
