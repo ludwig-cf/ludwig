@@ -4,7 +4,7 @@
  *
  *  Model control and time stepping.
  *
- *  $Id: control.c,v 1.6 2008-08-26 08:10:47 kevin Exp $
+ *  $Id: control.c,v 1.7 2008-09-20 15:35:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  end Edinburgh Parallel Computing Centre
@@ -27,6 +27,8 @@ static int t_current = 0;
 static int freq_statistics = 100;
 static int freq_measure    = 1000;
 static int freq_config     = 10000;
+static int freq_phi        = 100000000;
+static int freq_vel        = 100000000;
 static int config_at_end   = 1;
 static int reduced_halos   = 0;
 
@@ -48,6 +50,8 @@ void init_control() {
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
   n = RUN_get_int_parameter("freq_config", &freq_config);
+  n = RUN_get_int_parameter("freq_phi", &freq_phi);
+  n = RUN_get_int_parameter("freq_vel", &freq_vel);
 
   n = RUN_get_string_parameter("config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
@@ -97,6 +101,26 @@ int is_measurement_step() {
 
 int is_config_step() {
   return ((t_current % freq_config) == 0);
+}
+
+/*****************************************************************************
+ *
+ *  is_phi_output_step
+ *
+ *****************************************************************************/
+
+int is_phi_output_step() {
+  return ((t_current % freq_phi) == 0);
+}
+
+/*****************************************************************************
+ *
+ *  is_vel_output_step
+ *
+ *****************************************************************************/
+
+int is_vel_output_step() {
+  return ((t_current % freq_vel) == 0);
 }
 
 /*****************************************************************************
