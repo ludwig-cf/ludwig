@@ -89,6 +89,7 @@ temperature 0.00002133333
 #
 #  phi_finite_difference  Use finite difference for the order parameter
 #                         [no|yes] default is lattice Boltzmann [no]
+#  phi_initialisation     spinodal or block [spinodal] 
 #  mobility               Order parameter mobility M
 #
 ###############################################################################
@@ -103,6 +104,7 @@ C 0.0
 #noise 0.2
 phi0 0.0
 phi_finite_difference no
+phi_initialisation    spinodal
 mobility 0.15
 
 ###############################################################################
@@ -202,6 +204,8 @@ boundary_speed_top    0.0
 #  freq_output     N        Output field state every N steps
 #  freq_config     N        Output full configuration (for restart) every
 #                           N steps (can be large!)
+#  freq_phi        N        phi data output frequency
+#  freq_vel        N        velocity data output frequency
 #  config_at_end            [yes|no] write full configuration at end of run
 #                           [default is yes]
 #
@@ -216,6 +220,8 @@ boundary_speed_top    0.0
 freq_statistics 50
 freq_measure 200000
 freq_config 5000000
+freq_phi    100000
+freq_vel    100000
 config_at_end no
 
 output_format BINARY
