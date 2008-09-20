@@ -151,7 +151,6 @@ int main( int argc, char **argv )
       sprintf(filename, "%s%6.6d", "config.cds", step);
       CIO_write_state(filename);
       sprintf(filename, "vav-%6.6d.dat", step);
-      stats_turbulent_ubar_output(filename);
     }
 
     if (is_phi_output_step()) {
