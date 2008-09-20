@@ -147,14 +147,23 @@ int main( int argc, char **argv )
 
     /* Measurements */
 
-
     if (is_measurement_step()) {	  
-      info("Wrting phi file at  at step %d!\n", step);
-      /*COLL_compute_phi_missing();*/
-      sprintf(filename,"phi-%6.6d",step);
-      io_write(filename, io_info_phi);
       sprintf(filename, "%s%6.6d", "config.cds", step);
       CIO_write_state(filename);
+      sprintf(filename, "vav-%6.6d.dat", step);
+      stats_turbulent_ubar_output(filename);
+    }
+
+    if (is_phi_output_step()) {
+      info("Writing phi file at step %d!\n", step);
+      sprintf(filename,"phi-%6.6d",step);
+      io_write(filename, io_info_phi);
+    }
+
+    if (is_vel_output_step()) {
+      info("Writing velocity output at step %d!\n", step);
+      sprintf(filename, "vel-%6.6d", step);
+      io_write(filename, io_info_velocity_);
     }
 
     /* Print progress report */
