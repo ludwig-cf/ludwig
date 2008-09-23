@@ -1,7 +1,8 @@
+//#define BLUEHAAR
 
 void randomizeQ(void)
 {
-  int i,j,k,l;
+  int i,j,k,l,u;
   double phase,phase2,amplitude;
 
   // Global position (double)
@@ -13,6 +14,185 @@ void randomizeQ(void)
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
 #endif
+
+
+//========================//
+// BLUEHAAR configuration //
+//========================//
+
+#ifdef BLUEHAAR
+
+
+   // number and radius of DTCs	
+   int Ndt=64;
+   double Rdt=3;
+   // rotation angles
+   double *theta,*phi,di,dj,dk;
+   // center coordinates of DTC
+   double *idt,*jdt,*kdt;
+   // rotated coordinate indices
+   int ir,jr,kr;
+
+   theta=new double[Ndt];
+   phi=new double[Ndt];
+
+   idt=new double[Ndt];
+   jdt=new double[Ndt];
+   kdt=new double[Ndt];
+
+
+// DTC centers and rotation angles are set
+
+   for(u=0; u<Ndt; u++){
+
+      theta[u]=TwoPi*drand48();
+      phi[u]=TwoPi*drand48();
+      idt[u]=Lx*drand48();
+      jdt[u]=Ly*drand48();
+      kdt[u]=Lz*drand48();
+
+/*
+      idt[u]=Lx*0.25;
+      jdt[u]=Ly*0.25;
+      kdt[u]=Lz*0.25;
+      theta[u]=Pi;
+      phi[u]=Pi;
+*/
+
+   }
+
+
+     for (i=ix1; i<ix2; i++) {
+       for (j=jy1; j<jy2; j++) {
+	 for (k=kz1; k<kz2; k++) {
+
+	    Qxx[i][j][k]= 0.0;
+	    Qxy[i][j][k]= 0.0;
+	    Qyy[i][j][k]= 0.0;
+	    Qxz[i][j][k]= 0.0;
+	    Qyz[i][j][k]= 0.0;
+
+	    ic = i-1 + ioff;
+	    jc = j-1 + joff;
+	    kc = k-1 + koff;
+
+	    density[i][j][k]=densityinit;
+
+	    amplitude=0.3;
+
+
+	    for(u=0; u<Ndt; u++){
+
+		di=ic-idt[u];
+		dj=jc-jdt[u];
+		dk=kc-kdt[u];
+
+// If the current site is in an ROI
+
+		if(di*di+dj*dj+dk*dk<Rdt*Rdt){
+
+// a double rotation around DTC centers is performed.
+
+		  ir = (int)floor(idt[u]+1-ioff + \
+			di*cos(phi[u])-dj*cos(theta[u])*sin(phi[u])+dk*sin(theta[u])*sin(phi[u]));
+		  jr = (int)floor(jdt[u]+1-joff + \
+			di*sin(phi[u])+dj*cos(theta[u])*cos(phi[u])-dk*sin(theta[u])*cos(phi[u]));
+		  kr = (int)floor(kdt[u]+1-koff + \
+			dj*sin(theta[u])+dk*cos(theta[u]));
+
+
+		     if((0<=ir && ir<Lx2) && (0<=jr && jr<Ly2) && (0<=kr && kr<Lz2)){  
+
+	 #ifdef PARALLEL
+		      Qxx[ir][jr][kr]=amplitude*(-cos(2*q0*jc));
+		      Qxxinit[ir][jr][kr]=Qxx[ir][jr][kr];
+		      Qxy[ir][jr][kr]=0.0;
+		      Qxyinit[ir][jr][kr]=Qxy[ir][jr][kr];
+		      Qxz[ir][jr][kr]=amplitude*sin(2.0*q0*jc);
+		      Qxzinit[ir][jr][kr]=Qxz[ir][jr][kr];
+	 #else
+		      Qxx[ir][jr][kr]=amplitude*(-cos(2*q0*j));
+		      Qxxinit[ir][jr][kr]=Qxx[ir][jr][kr];
+		      Qxy[ir][jr][kr]=0.0;
+		      Qxyinit[ir][jr][kr]=Qxy[ir][jr][kr];
+		      Qxz[ir][jr][kr]=amplitude*sin(2.0*q0*j);
+		      Qxzinit[ir][jr][kr]=Qxz[ir][jr][kr];
+	 #endif
+
+	 #ifdef PARALLEL
+		      Qyy[ir][jr][kr]=amplitude*(-cos(2.0*q0*ic));
+		      Qyz[ir][jr][kr]=-amplitude*sin(2.0*q0*ic);
+		      Qyyinit[ir][jr][kr]=Qyy[ir][jr][kr];
+		      Qyzinit[ir][jr][kr]=Qyz[ir][jr][kr];
+	 #else
+		      Qyy[ir][jr][kr]=amplitude*(-cos(2.0*q0*i));
+		      Qyz[ir][jr][kr]=-amplitude*sin(2.0*q0*i);
+		      Qyyinit[ir][jr][kr]=Qyy[ir][jr][kr];
+		      Qyzinit[ir][jr][kr]=Qyz[ir][jr][kr];
+	 #endif
+
+		     }
+
+		  }
+
+	       }
+
+	    for (l=0; l<15; l++) {
+		 f[i][j][k][l]=density[i][j][k]/15.0;
+	    }
+
+	    }
+	 }
+     }
+
+#ifdef PARALLEL
+  exchangeMomentumAndQTensor();
+#endif
+
+
+// All other lattice sites are set to either isotropic liquid or cholesteric LC
+
+     for (i=ix1; i<ix2; i++) {
+       for (j=jy1; j<jy2; j++) {
+	 for (k=kz1; k<kz2; k++) {
+
+	    if(Qxx[i][j][k]<1e-9 && Qxy[i][j][k]<1e-9 && Qxz[i][j][k]<1e-9 && Qyy[i][j][k]<1e-9 && Qyz[i][j][k]<1e-9){
+
+	    ic = i-1 + ioff;
+	    jc = j-1 + joff;
+	    kc = k-1 + koff;
+
+	    amplitude=0.3;
+
+
+// isotropic liquid
+
+/*
+		   Qxx[i][j][k]= 1e-4/2.0;
+		   Qxy[i][j][k]= 0.0;
+		   Qyy[i][j][k]= -1e-4;
+		   Qxz[i][j][k]= 0.0;
+		   Qyz[i][j][k]= 0.0;
+*/
+// cholesteric environment
+
+		   Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
+		   Qxy[i][j][k]= 0.0;
+		   Qyy[i][j][k]= -0.2723;
+		   Qxz[i][j][k]= -amplitude*(sin(2.0*q0*jc));
+		   Qyz[i][j][k]= 0.0;
+
+	       }
+
+	    }
+	 }
+     }
+
+
+//================================================//
+// initial configurations different from BLUEHAAR //
+//================================================//
+#else
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -30,8 +210,8 @@ void randomizeQ(void)
 	if (TWIST == 1)
 	  phase=2.0*q0*k;
 
-	if (DTSTRUCT == 1) {
 
+	if (DTSTRUCT == 1) {
           amplitude=0.3;
 
 #ifdef PARALLEL
@@ -262,12 +442,17 @@ void randomizeQ(void)
 	}
 
 
+
 	for (l=0; l<15; l++) {
 	  f[i][j][k][l]=density[i][j][k]/15.0;
 	}
       }
     }
    }
+#endif
+//================================//
+// end alternative configurations //
+//================================//
 
 }
 
@@ -374,12 +559,12 @@ void startSlab(void)
 	jc = j - jy1 + joff;
 	kc = k - kz1 + koff;
 
-	fracmin = 0.5;
+	fracmin = 0.25;
 	fracmax = 1.0;
 
-	if ((jc > (fracmin*Ly)) || (jc < (fracmax*Ly))) {
+	if ((jc > (fracmin*Ly)) && (jc < (fracmax*Ly))) {
 
-
+/*
 	  amplitude=(0.546-0.2723/2.0);
 
 	  // slab in cholesteric environment
@@ -403,16 +588,17 @@ void startSlab(void)
 
 
 	  }
+*/
 
 	  //  slab in isotropic environment
 
-	  /*
+//	  /*
 	        Qxx[i][j][k]= 1e-4/2.0;
 	        Qxy[i][j][k]= 0.0;
 	        Qyy[i][j][k]= -1e-4;
 	        Qxz[i][j][k]= 0.0;
 	        Qyz[i][j][k]= 0.0;
-	 */
+//	 */
 
 	}
       }
