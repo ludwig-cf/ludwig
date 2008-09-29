@@ -22,7 +22,7 @@
  *   Usage:
  *      ./a.out input_file output_file
  *
- *  $Id: process.c,v 1.1 2008-09-15 14:53:39 kevin Exp $
+ *  $Id: process.c,v 1.2 2008-09-29 11:27:09 kevin Exp $
  *  
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -42,24 +42,25 @@
 /* SYSTEM SIZE */
 /* This is the size of the original data to be read. */
 
-const int xinput = 64;
-const int yinput = 64;
-const int zinput = 64;
+const int xinput = 254;
+const int yinput = 128;
+const int zinput = 128;
 
 /* REFLECTION */
 /* Set this flag is a reflection of the data in the x-direction is
  * required. */
 
 enum {REFLECTION, NO_REFLECTION};
-const int reflect = REFLECTION;
+const int reflect = NO_REFLECTION;
 
 /* PADDING */
-/* PAD_OVERWRITE overwrites whatever is at the edge with solid value,
+/* PAD_NONE keeps the original boundaries.
+ * PAD_OVERWRITE overwrites whatever is at the edge with solid value,
  * so it keeps the same system size.
  * PAD_ADD appends one solid site at each edge, so the system is 2 sites
  * wider in the y-direction and z-direction on output. */
 
-enum {PAD_OVERWRITE, PAD_ADD};
+enum {PAD_NONE, PAD_OVERWRITE, PAD_ADD};
 const int pad = PAD_OVERWRITE;
 
 int main (int argc, char ** argv) {
@@ -140,6 +141,11 @@ int main (int argc, char ** argv) {
     printf("The system will be reflected.\n");
   }
 
+  if (pad == PAD_NONE) {
+    yout = yinput;
+    zout = zinput;
+    printf("No padding\n");
+  }
   if (pad == PAD_OVERWRITE) {
     yout = yinput;
     zout = zinput;
@@ -168,6 +174,17 @@ int main (int argc, char ** argv) {
       for (kc = 0; kc < zout; kc++) {
 	index1 = yout*zout*ic + zout*jc + kc;
 	data_out[index1] = BOUNDARY;
+      }
+    }
+  }
+
+  if (pad == PAD_NONE) {
+    for (ic = 0; ic < xinput; ic++) {
+      for (jc = 0; jc < yout; jc++) {
+	for (kc = 0; kc < zout; kc++) {
+	  index1 = yout*zout*ic + zout*jc + kc;
+	  data_out[index1] = data_in[index1];
+	}
       }
     }
   }
