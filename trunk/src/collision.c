@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.11 2008-09-20 15:38:17 kevin Exp $
+ *  $Id: collision.c,v 1.12 2008-10-03 12:14:41 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -569,18 +569,18 @@ void MODEL_init( void ) {
     /* ...is the defualt */
   }
 
-  i = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
-  if (i == 1) {
-    io_read(filename, io_info_site_map); 
-    site_map_halo();
-    phi_gradients_set_solid();
-  }
-
   /* Default is "status_only" */
   i = RUN_get_string_parameter("porous_media_type", filename, FILENAME_MAX);
   if (strcmp(filename, "status_with_h") == 0) {
     info("Expecting site data to include wetting parameter h\n");
     site_map_io_status_with_h();
+  }
+
+  i = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
+  if (i == 1) {
+    io_read(filename, io_info_site_map); 
+    site_map_halo();
+    phi_gradients_set_solid();
   }
 
   /* Distributions */
