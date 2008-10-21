@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.12 2008-10-03 12:14:41 kevin Exp $
+ *  $Id: collision.c,v 1.13 2008-10-21 17:19:18 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -659,8 +659,15 @@ void MODEL_init( void ) {
 
   ind = RUN_get_string_parameter("phi_initialisation", filename,
 				 FILENAME_MAX);
+
   if (ind != 0 && strcmp(filename, "block") == 0) {
+    info("Initialisng phi as block\n");
     phi_init_block();
+  }
+
+  if (ind != 0 && strcmp(filename, "bath") == 0) {
+    info("Initialising phi for bath\n");
+    phi_init_bath();
   }
 
   return;

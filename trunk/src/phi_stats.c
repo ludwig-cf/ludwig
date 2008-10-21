@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.2 2008-08-24 16:58:10 kevin Exp $
+ *  $Id: phi_stats.c,v 1.3 2008-10-21 17:19:18 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -182,6 +182,45 @@ void phi_init_block() {
 	else {
 	  phi_set_phi_site(index, +1.0);
 	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_init_bath
+ *
+ *  Initialise one interface at z = Lz/8. This is inended for
+ *  capillary rise in systems with z not periodic.
+ *
+ *****************************************************************************/
+
+void phi_init_bath() {
+
+  int nlocal[3];
+  int noffset[3];
+  int ic, jc, kc, index;
+  double z, z0;
+  double phi, xi0;
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+
+  z0 = 0.25*L(Z);
+  xi0 = 1.13;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = get_site_index(ic, jc, kc);
+	z = noffset[Z] + kc;
+	phi = tanh((z-z0)/xi0);
+	phi_set_phi_site(index, phi);
+
       }
     }
   }
