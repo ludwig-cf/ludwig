@@ -3,6 +3,11 @@ Changes
 Log file for changes to the code.
 =================================
 
+2008 October kevin
+
+* Added option for ASCII I/O format for phi and velocity
+  see input.ref for appropriate tags (phi_format, vel_format).
+
 2008 August kevin
 
 * There are a lot of changes since the last note in here.
