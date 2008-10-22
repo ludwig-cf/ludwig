@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.13 2008-10-21 17:19:18 kevin Exp $
+ *  $Id: collision.c,v 1.14 2008-10-22 08:51:30 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -600,8 +600,21 @@ void MODEL_init( void ) {
   }
 
   phi_init();
+
+  ind = RUN_get_string_parameter("phi_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_phi);
+    info("Setting phi I/O format to ASCII\n");
+  }
+
   hydrodynamics_init();
   
+  ind = RUN_get_string_parameter("vel_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_velocity_);
+    info("Setting velocity I/O format to ASCII\n"); 
+  }
+
   /*
    * A number of options are offered to start a simulation:
    * 1. Read distribution functions site from file, then simply calculate

@@ -215,6 +215,9 @@ boundary_speed_top    0.0
 #  output_format            [ASCII|BINARY] default output format
 #  input_format             [ASCII|BINARY] default input format
 #
+#  phi_format               Override default format for particular quantities
+#  etc...                   (both input and output)
+#
 ###############################################################################
 
 freq_statistics 50
@@ -226,6 +229,8 @@ config_at_end no
 
 output_format BINARY
 input_format  BINARY
+phi_format    ASCII
+vel_format    ASCII
 n_io_nodes 8
 #io_grid 2_2_2
 #io_grid_distribution 2_2_2

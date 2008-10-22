@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.2 2008-08-24 16:58:10 kevin Exp $
+ *  $Id: phi.c,v 1.3 2008-10-22 08:51:30 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -37,7 +37,6 @@ double * grad_phi_site;
 double * delsq_delsq_phi_site;
 double * grad_delsq_phi_site;
 
-
 static int initialised_ = 0;
 static int phi_finite_difference_ = 0;  /* Default is LB for order parameter */
 static MPI_Datatype phi_xy_t_;
@@ -48,6 +47,8 @@ static void phi_init_mpi(void);
 static void phi_init_io(void);
 static int  phi_read(FILE *, const int, const int, const int);
 static int  phi_write(FILE *, const int, const int, const int);
+static int  phi_read_ascii(FILE *, const int, const int, const int);
+static int  phi_write_ascii(FILE *, const int, const int, const int);
 static void phi_leesedwards_parallel(void);
 
 
@@ -142,10 +143,13 @@ static void phi_init_io() {
   io_info_phi = io_info_create();
 
   io_info_set_name(io_info_phi, "Compositional order parameter");
-  io_info_set_read(io_info_phi, phi_read);
-  io_info_set_write(io_info_phi, phi_write);
+  io_info_set_read_binary(io_info_phi, phi_read);
+  io_info_set_write_binary(io_info_phi, phi_write);
+  io_info_set_read_ascii(io_info_phi, phi_read_ascii);
+  io_info_set_write_ascii(io_info_phi, phi_write_ascii);
   io_info_set_bytesize(io_info_phi, sizeof(double));
 
+  io_info_set_format_binary(io_info_phi);
   io_write_metadata("phi", io_info_phi);
 
   return;
@@ -470,6 +474,42 @@ static int phi_write(FILE * fp, const int ic, const int jc, const int kc) {
 
   if (n != 1) fatal("fwrite(phi) failed at index %d\n", index);
  
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  phi_read_ascii
+ *
+ *****************************************************************************/
+
+static int phi_read_ascii(FILE * fp, const int ic, const int jc,
+			  const int kc) {
+  int index, n;
+
+  index = le_site_index(ic, jc, kc);
+  n = fscanf(fp, "%22le", phi_site + index);
+
+  if (n != 1) fatal("fscanf(phi) failed at index %d", index);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  phi_write_ascii
+ *
+ ****************************************************************************/
+
+static int phi_write_ascii(FILE * fp, const int ic, const int jc,
+			   const int kc) {
+  int index, n;
+
+  index = le_site_index(ic, jc, kc);
+  n = fprintf(fp, "%22.15e\n", phi_site[index]);
+
+  if (n != 23) fatal("fprintf(phi) failed at index %d\n", index);
+
   return n;
 }
 
