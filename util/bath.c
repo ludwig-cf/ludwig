@@ -1,24 +1,17 @@
 /*****************************************************************************
  *
- *  capillary.c
+ *  bath.c
  *
  *  Compile and link with -lm for the maths library. 
  *
  *  This utility produces an output file suitable for initialising
- *  a capillary structure in Ludwig. 
+ *  a capillary structure within a bath in Ludwig. 
  *
- *  It is assumed the periodic dimension is z, and that the system
- *  is square in the x-y directions. No 'leakage' in the x-y
- *  directions is ensured by making the last site in each direction
- *  solid.
+ *  See also capillary.c
  *
- *  The various system parameters should be set at comiple time,
- *  and are described below. The output file is always in BINARY
- *  format.
+ *  $Id: bath.c,v 1.1 2008-10-22 16:16:23 kevin Exp $
  *
- *  $Id: capillary.c,v 1.2 2008-10-22 16:16:23 kevin Exp $
- *
- *  Edinburgh Soft Matter and Statistcal Physics Group and
+ *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -37,31 +30,32 @@
 /* Set the system size as desired. Clearly, this must match the system
  * set in the main input file for Ludwig. */
 
-const int xmax = 10;
-const int ymax = 10;
-const int zmax = 32;
+const int xmax = 32;
+const int ymax = 32;
+const int zmax = 64;
 
-/* CROSS SECTION */
+/* CROSS SECTION and DIAMETER */
 /* You can choose a square or circular cross section */
 
 enum {CIRCLE, SQUARE};
 const int xsection = CIRCLE;
+const int diameter = 4;
 
-/* FREE ENRGY PARAMETERS */
+/* FREE ENERGY PARAMETERS */
 /* Set the fluid and solid free energy parameters. The fluid parameters
  * must match those used in the main calculation. See Desplat et al.
  * Comp. Phys. Comm. (2001) for details. */
 
-const double kappa = 0.04;
-const double B = 0.0625;
-const double H = 0.01;
+const double kappa = 0.004;
+const double B = 0.00625;
+const double H = 0.0008;
 
-/* WETTING. */
-/* A section of capillary between z1 and z2 (inclusive) will have
- * wetting property H = H, the remainder H = 0 */
+/* CAPILLARY IMMERSED IN BATH. */
+/* Sets the extent of the capillary section. There is a gap at
+ * each end. All the tube wets in the same way, inside and outside. */
 
-const int z1 = 1;
-const int z2 = 16;
+const int z1 = 4;    /* both inclusive */
+const int z2 = 59;
 
 /* OUTPUT */
 /* You can generate a file with solid/fluid status information only,
@@ -72,7 +66,7 @@ const int output_type = STATUS_WITH_H;
 
 /* OUTPUT FILENAME */
 
-const char * filename = "capillary.001-001";
+const char * filename = "bath.001-001";
 
 /*****************************************************************************
  *
@@ -85,10 +79,11 @@ int main(int argc, char ** argv) {
   char * map_in;
   FILE * fp_orig;
   int i, j, k, n;
+  int i0, j0;
   int nsolid = 0;
 
-  double * map_h;
-  double rc = 0.5*(xmax-2);
+  double map_h;
+  double rc = 0.5*diameter;
   double x0 = 0.5*xmax + 0.5;
   double y0 = 0.5*ymax + 0.5;
   double x, y, r;
@@ -109,32 +104,31 @@ int main(int argc, char ** argv) {
   map_in = (char *) malloc(xmax*ymax*zmax*sizeof(char));
   if (map_in == NULL) exit(-1);
 
-  map_h = (double *) malloc(xmax*ymax*zmax*sizeof(double));
-  if (map_h == NULL) exit(-1);
+  /* Initialise all points fluid */
+
+  for (i = 0; i < xmax; i++) {
+    for (j = 0; j < ymax; j++) {
+      for (k = 0; k < zmax; k++) {
+	n = ymax*zmax*i + zmax*j + k;
+	map_in[n] = FLUID;
+      }
+    }
+  }
 
   if (xsection == CIRCLE) {
 
     for (i = 0; i < xmax; i++) {
       x = 1.0 + i - x0;
       for (j = 0; j < ymax; j++) {
-	y = 1.0 + j - y0;
-	for (k = 0; k < zmax; k++) {
-	  n = ymax*zmax*i + zmax*j + k;
+        y = 1.0 + j - y0;
+        for (k = z1; k <= z2; k++) {
+          n = ymax*zmax*i + zmax*j + k;
 
-	  map_in[n] = BOUNDARY;
-	  map_h[n] = 0.0;
-	  /* Fluid if r(x,y) <= capillary width (L/2) */
-	  r = sqrt(x*x + y*y);
-	  if (r <= rc) {
-	    map_in[n] = FLUID;
-	  }
-
-	  if (map_in[n] == BOUNDARY) {
-	    nsolid++;
-	    if (k >= z1 && k <= z2) {
-	      map_h[n] = H;
-	    }
-	  }
+          map_in[n] = BOUNDARY;
+          r = sqrt(x*x + y*y);
+          if (r <= rc || r > (rc + sqrt(2.0))) {
+            map_in[n] = FLUID;
+          }
 	}
       }
     }
@@ -143,34 +137,38 @@ int main(int argc, char ** argv) {
   else {
     /* Square */
 
-    for (i = 0; i < xmax; i++) {
-      for (j = 0; j < ymax; j++) {
-	for (k = 0; k < zmax; k++) {
+    i0 = (xmax - diameter - 2) / 2;
+    j0 = (ymax - diameter - 2) / 2;
 
-	  n = ymax*zmax*i + zmax*j + k;
-
-	  map_in[n] = FLUID;
-	  
-	  if (i == 0 || j == 0 || i == xmax - 1 || j == ymax - 1) {
-	    map_in[n] = BOUNDARY;
-	  }
-
-	  if (map_in[n] == BOUNDARY) {
-	    nsolid++;
-	    if (k >= z1 && k <= z2) {
-	      map_h[n] = H;
-	    }
-	  }
-	}
+    /* i = i0 and i = i0 + diameter + 1 */
+ 
+    for (j = j0; j <= j0 + diameter + 1; j++) {
+      for (k = z1; k <= z2; k++) {
+	n = ymax*zmax*i0 + zmax*j + k;
+	map_in[n] = BOUNDARY;
+	n = ymax*zmax*(i0 + diameter + 1) + zmax*j + k;
+	map_in[n] = BOUNDARY;
       }
     }
+
+    /* j = j0 and j = j0 + diameter + 1 */
+
+    for (i = i0; i <= i0 + diameter + 1; i++) {
+      for (k = z1; k <= z2; k++) {
+	n = ymax*zmax*i + zmax*j0 + k;
+	map_in[n] = BOUNDARY;
+	n = ymax*zmax*i + zmax*(j0 + diameter + 1) + k;
+	map_in[n] = BOUNDARY;
+      }
+    }
+
   }
 
   /* picture */
 
   printf("\nCross section (%d = fluid, %d = solid)\n", FLUID, BOUNDARY);
 
-  k = 0;
+  k = z1;
   for (i = 0; i < xmax; i++) {
     for (j = 0; j < ymax; j++) {
 	n = ymax*zmax*i + zmax*j + k;
@@ -181,9 +179,18 @@ int main(int argc, char ** argv) {
     printf("\n");
   }
 
+  printf("Upways:\n");
 
-  printf("n = %d nsolid = %d nfluid = %d\n", xmax*ymax*zmax, nsolid,
-	 xmax*ymax*zmax - nsolid);
+  i0 = xmax/2;
+  for (k = zmax-1; k >= 0; k--) {
+    for (j = 0; j < ymax; j++) {
+	n = ymax*zmax*i0 + zmax*j + k;
+      
+	if (map_in[n] == BOUNDARY) printf(" %d", BOUNDARY);
+	if (map_in[n] == FLUID)    printf(" %d", FLUID);
+    }
+    printf("\n");
+  }
 
   /* Write new data as char */
 
@@ -198,15 +205,27 @@ int main(int argc, char ** argv) {
       for (k = 0; k < zmax; k++) {
 	n = ymax*zmax*i + zmax*j + k;
 
+	map_h = 0.0;
+	if (map_in[n] == BOUNDARY) {
+	  map_h = H;
+	  nsolid++;
+	}
+
+	/* Put in non-wetting bottom wall */
+	if (k == 0) map_in[n] = BOUNDARY;
 	fputc(map_in[n], fp_orig);
+
 	if (output_type == STATUS_WITH_H) {
-	  fwrite(map_h + n, sizeof(double), 1, fp_orig);
+	  fwrite(&map_h, sizeof(double), 1, fp_orig);
 	}
       }
     }
   }
 
   fclose(fp_orig);
+
+  printf("n = %d nsolid = %d nfluid = %d\n", xmax*ymax*zmax, nsolid,
+	 xmax*ymax*zmax - nsolid);
 
   free(map_in);
 
