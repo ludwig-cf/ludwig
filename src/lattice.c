@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.9 2008-09-05 17:37:16 kevin Exp $
+ *  $Id: lattice.c,v 1.10 2008-10-22 08:51:30 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -46,6 +46,10 @@ static void hydrodynamics_leesedwards_parallel(void);
 static void hydrodynamics_init_io(void);
 static int  hydrodynamics_u_read(FILE *, const int, const int, const int);
 static int  hydrodynamics_u_write(FILE *, const int, const int, const int);
+static int  hydrodynamics_u_read_ascii(FILE *, const int, const int,
+				       const int);
+static int  hydrodynamics_u_write_ascii(FILE *, const int, const int,
+					const int);
 
 /****************************************************************************
  *
@@ -120,10 +124,13 @@ static void hydrodynamics_init_io() {
   io_info_velocity_ = io_info_create();
 
   io_info_set_name(io_info_velocity_, "Velocity field");
-  io_info_set_read(io_info_velocity_, hydrodynamics_u_read);
-  io_info_set_write(io_info_velocity_, hydrodynamics_u_write);
+  io_info_set_read_binary(io_info_velocity_, hydrodynamics_u_read);
+  io_info_set_write_binary(io_info_velocity_, hydrodynamics_u_write);
+  io_info_set_read_ascii(io_info_velocity_, hydrodynamics_u_read_ascii);
+  io_info_set_write_ascii(io_info_velocity_, hydrodynamics_u_write_ascii);
   io_info_set_bytesize(io_info_velocity_, 3*sizeof(double));
 
+  io_info_set_format_binary(io_info_velocity_);
   io_write_metadata("vel", io_info_velocity_);
 
   return;
@@ -661,3 +668,35 @@ static int hydrodynamics_u_read(FILE * fp, const int ic, const int jc,
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  hydrodynamics_u_write_ascii
+ *
+ *****************************************************************************/
+
+static int hydrodynamics_u_write_ascii(FILE * fp, const int ic, const int jc,
+				       const int kc) {
+  int index, n;
+
+  index = le_site_index(ic, jc, kc);
+  n = fprintf(fp, "%22.15e %22.15e %22.15e\n", u[index].c[X], u[index].c[Y],
+	      u[index].c[Z]);
+
+  if (n != 69) fatal("fprintf(phi) failed at index %d\n", index);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  hydrodynamics_u_read_ascii
+ *
+ *  Again, should never be here, as u is not currently state.
+ *
+ *****************************************************************************/
+
+static int hydrodynamics_u_read_ascii(FILE * fp, const int ic, const int jc,
+				      const int kc) {
+
+  return 0;
+}
