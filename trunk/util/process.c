@@ -22,7 +22,7 @@
  *   Usage:
  *      ./a.out input_file output_file
  *
- *  $Id: process.c,v 1.2 2008-09-29 11:27:09 kevin Exp $
+ *  $Id: process.c,v 1.3 2008-10-22 16:16:23 kevin Exp $
  *  
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -42,9 +42,9 @@
 /* SYSTEM SIZE */
 /* This is the size of the original data to be read. */
 
-const int xinput = 254;
-const int yinput = 128;
-const int zinput = 128;
+const int xinput = 64;
+const int yinput = 64;
+const int zinput = 64;
 
 /* REFLECTION */
 /* Set this flag is a reflection of the data in the x-direction is
@@ -61,7 +61,7 @@ const int reflect = NO_REFLECTION;
  * wider in the y-direction and z-direction on output. */
 
 enum {PAD_NONE, PAD_OVERWRITE, PAD_ADD};
-const int pad = PAD_OVERWRITE;
+const int pad = PAD_NONE;
 
 int main (int argc, char ** argv) {
 
