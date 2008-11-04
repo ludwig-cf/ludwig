@@ -18,7 +18,6 @@
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
-
 CC     = gcc
 MPICC  = mpicc
 MPIRUN = mprun -np
@@ -48,7 +47,7 @@ LINK    = $(CC) $(CLINK)
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_io.c test_runtime.c test_random.c \
               test_coords.c test_model.c test_halo.c test_prop.c \
-              test_site_map.c #test_phi.c
+              test_site_map.c # requires lees edwards  test_phi.c
 
 TESTS = ${TESTSOURCES:.c=}
 
@@ -59,8 +58,7 @@ TEST_RANDOM_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/ran.o
 TEST_COORDS_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o
 TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
 		$(SRC)/io_harness.o
-TEST_CONTROL_OBJ = $(SRC)/control.o
-TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(TEST_CONTROL_OBJ) $(SRC)/model.o \
+TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(SRC)/model.o $(SRC)/control.o \
 		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/ran.o $(SRC)/timer.o \
                 $(SRC)/io_harness.o
 TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
@@ -74,8 +72,8 @@ TEST_PHI_OBJ      = $(TEST_MODEL_OBJ) $(SRC)/io_harness.o $(SRC)/site_map.o \
 #  Rules
 #------------------------------------------------------------------------------
 
-test_assumptions: test_assumptions.o
-		$(LINK) -o $@ $@.o $(CLIBS)
+test_assumptions: ../src/util.o test_assumptions.o
+		$(LINK) -o $@ ../src/util.o $@.o $(CLIBS)
 test_pe:	$(TEST_PE_OBJ) test_pe.o
 		$(LINK) -o $@ $(TEST_PE_OBJ) $@.o $(CLIBS)
 test_timer:	$(TEST_TIMER_OBJ) test_timer.o
