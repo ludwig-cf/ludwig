@@ -4,7 +4,7 @@
  *
  *  Test basic model assumptions, portability issues.
  *
- *  $Id: test_assumptions.c,v 1.3 2008-08-26 09:08:28 kevin Exp $
+ *  $Id: test_assumptions.c,v 1.4 2008-11-04 16:47:56 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-int is_bigendian(void);
+#include "util.h"
 
 int main(int argc, char ** argv) {
 
@@ -36,7 +36,7 @@ int main(int argc, char ** argv) {
 
   printf("Checking sizeof(long int) is >= 4 bytes... ");
   assert(sizeof(long int) >= 4);
-  printf("yes (%d bytes)\n", sizeof(long int));
+  printf("yes (%ld bytes)\n", sizeof(long int));
 
   /* All floating point types in the code should be double,
    * which must be 8 bytes. */
@@ -80,23 +80,8 @@ int main(int argc, char ** argv) {
   printf("__LINE__ is %d\n", __LINE__);
 
   printf("Host appears to be %s-endian\n", is_bigendian() ? "big" : "little");
+
   printf("All assumptions ok!\n");
 
   return 0;
-}
-
-/***************************************************************************
- *
- *  is_bigendian
- *
- *  Byte order for this 4-byte int is 00 00 00 01 for big endian (most
- *  significant byte stored first).
- *
- ***************************************************************************/
-
-int is_bigendian() {
-
-  const int i = 1;
-
-  return (*(char *) &i == 0);
 }
