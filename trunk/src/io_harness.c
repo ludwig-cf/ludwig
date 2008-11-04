@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.2 2008-08-24 16:55:42 kevin Exp $
+ *  $Id: io_harness.c,v 1.3 2008-11-04 16:46:44 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "pe.h"
+#include "util.h"
 #include "coords.h"
 #include "runtime.h"
 #include "io_harness.h"
@@ -619,7 +620,7 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
 
   /* Every group writes a file, ie., the information stub and
    * the details of the local group which allow the output to
-   * be unmanaged. */
+   * be unmangled. */
 
   assert(info);
   get_N_offset(noff);
@@ -642,11 +643,15 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
     fprintf(fp_meta, "Data description:                %s\n", info->name);
     fprintf(fp_meta, "Data size per site (bytes):      %d\n",
 	    (int) info->bytesize);
+    fprintf(fp_meta, "is_bigendian():                  %d\n", is_bigendian());
     fprintf(fp_meta, "Number of processors:            %d\n", pe_size());
     fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
 	    cart_size(X), cart_size(Y), cart_size(Z));
     fprintf(fp_meta, "Total system size:               %d %d %d\n",
 	    N_total(X), N_total(Y), N_total(Z));
+    /* Lees Edwards hardwired until refactor LE code dependencies */
+    fprintf(fp_meta, "Lees-Edwards planes:             %d\n", 0);
+    fprintf(fp_meta, "Lees-Edwards plane speed         %16.14f\n", 0.0);
     fprintf(fp_meta, "Number of I/O groups (files):    %d\n", nx*ny*nz);
     fprintf(fp_meta, "I/O communicator topology:       %d %d %d\n",
 	    nx, ny, nz);

@@ -45,7 +45,7 @@ OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
       phi.o phi_cahn_hilliard.o phi_force.o phi_gradients.o phi_stats.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
       site_map.o subgrid.o stats_turbulent.o \
-      test.o timer.o utilities.o wall.o main.o
+      test.o timer.o util.o utilities.o wall.o main.o
 
 EXE= Ludwig.exe
 
