@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.5 2008-09-20 10:39:58 kevin Exp $
+%  $Id: sections.tex,v 1.6 2008-11-10 11:23:58 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -300,7 +300,8 @@ These values set the $x-$component of the wall velocity at
 $z = z_{min}$ and $z = z_{max}$, respectively. Like all
 velocities, these values must respect the low Mach number
 constraint $u_x < c_s$.
-\subsection{Input/Output}
+
+\subsection{Input/Output and Parallel I/O}
 
 \inputkey{freq\_statistics}
 
@@ -319,20 +320,42 @@ true at this frequency.)
 set frequency of full configuration (checkpoint) dumps suitable
 for restart.
 
+\inputkey{freq\_phi}
+
+set frequency of order parameter output.
+
+\inputkey{phi\_format}
+
+either \texttt{ASCII} or \texttt{BINARY}. Default is \texttt{BINARY}.
+
+\inputkey{freq\_vel}
+
+set frequancy of velocity output.
+
+\inputkey{vel\_format}
+
+either \texttt{ASCII} or \texttt{BINARY}. Default is \texttt{BINARY}.
+
 \inputkey{config\_at\_end}
 
 enforces full configuration dump at the end of execution. The
 default is 'yes'.
+
+
 
 \subsection{Lees-Edwards planes}
 
 \inputkey{N\_LE\_plane}
 
 sets the total number of Lees-Edwards planes. Default is zero.
+The placing is as followings. The number of planes $n$ must
+divide the lattice size in the $x$-direction to give an integer
+$\delta x$. Planes are then placed at $\delta x / 2, 3\delta x/2, \ldots$.
 
 \inputkey{LE\_plane\_vel}
 
-sets the velocity of each plane relative to the lattice.
+sets the velocity of each plane relative to the lattice. All planes
+have the same, constant, velocity.
 
 \inputkey{LE\_init\_profile}
 
@@ -475,6 +498,43 @@ $J = C\rho g / \eta$. The calculation procedes as above.
 sets the random number generator seed.
 
 
+\subsection{Dealing with the Parallel I/O files}
+
+When running in parallel, output of lattice-based (and particle)
+quantities takes place in parallel. As a consequence, the order
+of the output in the files is not in the same order as would be
+the case in serial. This means the parallel output must be
+manipulated into the correct order before any analysis.
+
+Parallel I/O subdivides the processors into one or more groups,
+each of which write data to a separate file. Infomation on the
+content of each of these files is contained in `meta-data' file
+for each quantity, which are produced automatically at the start
+of each run. The files are called, e.g., \texttt{phi.001-001.meta}.
+If there are 8 I/O groups, the files will be named \texttt{008-001}
+to \texttt{008-008} for the different groups.
+
+The actual data is stored for each relevant time step as, e.g.,
+\texttt{phi-000100.001-001} where the extention refers to the
+I/O. To recombined a single, or multiple, data files into a
+single file in the correct order, a utility program
+\texttt{extract.c} is provided.
+
+The exectutable takes two arguments, e.g.,
+
+\inputkey{./extract phi.001-001.meta phi-000100.001-001}
+
+where  the first is the first meta-data file in the relevant series,
+and the second is the first daa file for the relevant time step. The
+program will combine the relevant quantities in the correct order
+and produce a singel new file \texttt{phi-000100} (in the above case).
+
+\subsection{Restarting}
+
+When restarting in parallel, the processor decomposition must be
+preserved. An attempt to change the processor decomposition will
+cause the configuration files to be read in the incorrect order,
+and results will be wrong.
 
 
 \section{The Lattice Boltzmann Method}
