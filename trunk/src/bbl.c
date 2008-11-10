@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.6 2008-08-24 15:57:10 kevin Exp $
+ *  $Id: bbl.c,v 1.7 2008-11-10 17:44:00 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -20,10 +20,10 @@
 #include "ccomms.h"
 #include "model.h"
 #include "timer.h"
+#include "phi.h"
 #include "bbl.h"
 
 extern Site * site;
-extern double * phi_site;
 
 static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
@@ -342,7 +342,7 @@ static void bounce_back_pass2() {
 
 	      df = rho0*vdotc + wv[ij]*p_colloid->deltam;
 
-	      dg = phi_site[i]*vdotc;
+	      dg = phi_get_phi_site(i)*vdotc;
 	      p_colloid->deltaphi += dg;
 	      dg -= wv[ij]*dgtm1;
 
