@@ -20,7 +20,7 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.2 2008-11-10 11:21:14 kevin Exp $
+ *  $Id: extract.c,v 1.3 2008-11-12 15:12:39 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Grouand and
  *  Edinburgh Parallel Computing Centre
@@ -48,6 +48,7 @@ int input_isbigendian_ = -1;
 double le_speed_ = 0.0;
 int le_displace_ = 0;
 int * le_displacements_;
+int output_binary_ = 0;
 
 char stub_[FILENAME_MAX];
 
@@ -354,11 +355,28 @@ void write_data(FILE * fp_data, int n[3], double * data) {
   int ic, jc, kc, index, nr;
 
   index = 0;
-  for (ic = 0; ic < n[0]; ic++) {
-    for (jc = 0; jc < n[1]; jc++) {
-      for (kc = 0; kc < n[2]; kc++) {
-	for (nr = 0; nr < nrec_; nr++) {
-	  fwrite(data + index, sizeof(double), 1, fp_data);
+
+  if (output_binary_) {
+    for (ic = 0; ic < n[0]; ic++) {
+      for (jc = 0; jc < n[1]; jc++) {
+	for (kc = 0; kc < n[2]; kc++) {
+	  for (nr = 0; nr < nrec_; nr++) {
+	    fwrite(data + index, sizeof(double), 1, fp_data);
+	    index++;
+	  }
+	}
+      }
+    }
+  }
+  else {
+    for (ic = 0; ic < n[0]; ic++) {
+      for (jc = 0; jc < n[1]; jc++) {
+	for (kc = 0; kc < n[2]; kc++) {
+	  for (nr = 0; nr < nrec_ - 1; nr++) {
+	    fprintf(fp_data, "%13.6e ", *(data + index));
+	    index++;
+	  }
+	  fprintf(fp_data, "%13.6e\n", *(data + index));
 	  index++;
 	}
       }
