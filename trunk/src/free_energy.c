@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.5 2008-08-24 17:53:40 kevin Exp $
+ *  $Id: free_energy.c,v 1.6 2008-11-12 17:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -63,6 +63,7 @@ void init_free_energy() {
   n = RUN_get_double_parameter("A", &A_);
   n = RUN_get_double_parameter("B", &B_);
   n = RUN_get_double_parameter("K", &kappa_);
+  n = RUN_get_double_parameter("C", &C_);
 
   n = RUN_get_string_parameter("free_energy", description, 128);
 
