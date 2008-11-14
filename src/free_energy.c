@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.6 2008-11-12 17:40:03 kevin Exp $
+ *  $Id: free_energy.c,v 1.7 2008-11-14 14:42:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -41,11 +41,23 @@ static double C_     =  0.000;
 static double kappa_ = +0.002;
 static int    is_brazovskii_ = 0;
 
+/* Surfactant model of van der Sman and van der Graaf in development */
+
+static double kT_ = 0.0;
+static double epsilon_ = 0.0;
+static double W_ = 0.0;
+
 /* The choice of free energy is currently determined by the value of C_ */ 
 static void (* fe_chemical_stress)(const int, double [3][3]);
 static void fe_chemical_stress_zero(const int, double [3][3]);
 static void fe_chemical_stress_symmetric(const int, double [3][3]);
 static void fe_chemical_stress_brazovskii(const int, double [3][3]);
+
+static double (** fe_chemical_potential)(const int);
+static double fe_chemical_potential_brazovskii(const int);
+static double fe_chemical_potential_sman_phi(const int);
+static double fe_chemical_potential_sman_psi(const int);
+static void fe_chemical_stress_sman(const int, double [3][3]);
 
 /*****************************************************************************
  *
@@ -66,6 +78,13 @@ void init_free_energy() {
   n = RUN_get_double_parameter("C", &C_);
 
   n = RUN_get_string_parameter("free_energy", description, 128);
+
+  if (nop_ > 0) {
+    fe_chemical_potential = malloc(nop_*sizeof(void *));
+    if (fe_chemical_potential == NULL) {
+      fatal("malloc(fe_chemical_potential failed\n");
+    }
+  }
 
 #ifdef _SINGLE_FLUID_
   fe_chemical_stress = fe_chemical_stress_zero;
@@ -89,6 +108,7 @@ void init_free_energy() {
       fatal("The free energy parameter kappa must be positive\n");
     }
 
+    assert(nop_ == 1);
     info("\nSymmetric phi^4 free energy:\n");
     info("Bulk parameter A      = %f\n", A_);
     info("Bulk parameter B      = %f\n", B_);
@@ -96,6 +116,7 @@ void init_free_energy() {
     info("Surface tension       = %f\n", surface_tension());
     info("Interfacial width     = %f\n", interfacial_width());
     fe_chemical_stress = fe_chemical_stress_symmetric;
+    fe_chemical_potential[0] = fe_chemical_potential_brazovskii;
   }
   else if (strcmp(description, "brazovskii") == 0) {
     info("\nBrazovskii free energy:\n");
@@ -106,7 +127,29 @@ void init_free_energy() {
     info("Surface tension       = %f\n", surface_tension());
     info("Interfacial width     = %f\n", interfacial_width());
     fe_chemical_stress = fe_chemical_stress_brazovskii;
+    fe_chemical_potential[0] = fe_chemical_potential_brazovskii;
     is_brazovskii_ = 1;
+  }
+  else if (strcmp(description, "sman_surfactant") == 0) {
+
+    n = RUN_get_double_parameter("epsilon", &epsilon_);
+    n = RUN_get_double_parameter("W", &W_);
+    n = RUN_get_double_parameter("kT", &kT_);
+
+    info("Surfactant model free energy (van der Sman)\n");
+    info("Bulk parameter A      = %f\n", A_);
+    info("Bulk parameter B      = %f\n", B_);
+    info("Ext. parameter C      = %f\n", C_);
+    info("Surface penalty kappa = %f\n", kappa_);
+    info("Surface tension       = %f\n", surface_tension());
+    info("Interfacial width     = %f\n", interfacial_width());
+    info("Scale energy kT       = %f\n", kT_);
+    info("Surface adsorption e  = %f\n", epsilon_);
+    info("Enthalpic term W      = %f\n", W_);
+    assert(nop_ == 2);
+    fe_chemical_stress = fe_chemical_stress_sman;
+    fe_chemical_potential[0] = fe_chemical_potential_sman_phi;
+    fe_chemical_potential[1] = fe_chemical_potential_sman_psi;
   }
   else {
     fatal("Unrecognised free energy\n");
@@ -201,15 +244,22 @@ double interfacial_width() {
 
 double free_energy_get_chemical_potential(const int index) {
 
-  double phi, delsq_phi, delsq_sq_phi, mu;
+  assert(nop_ >= 1);
+  return fe_chemical_potential[0](index);
+}
 
-  phi = phi_get_phi_site(index);
-  delsq_phi = phi_get_delsq_phi_site(index);
-  delsq_sq_phi = phi_get_delsq_delsq_phi_site(index);
+/*****************************************************************************
+ *
+ *  free_energy_chemical_potential
+ *
+ *  As above, but allows for multiple order parameters.
+ *
+ *****************************************************************************/
 
-  mu = phi*(A_ + B_*phi*phi) - kappa_*delsq_phi + C_*delsq_sq_phi;
+double free_energy_chemical_potential(const int index, const int nop) {
 
-  return mu;
+  assert(nop <= nop_);
+  return fe_chemical_potential[nop](index);
 }
 
 /*****************************************************************************
@@ -381,4 +431,130 @@ double free_energy_density(const int index) {
   e = 0.5*(bulk + kappa_*dot_product(dphi, dphi) + C_*delsq*delsq);
 
   return e;
+}
+
+/*****************************************************************************
+ *
+ *  fe_chemical_potential_brazovskii
+ *
+ *  Return the chemical potential at given position index.
+ *  The symmetric is a special case of the Brazovskii with C = 0.
+ *
+ *****************************************************************************/
+
+double fe_chemical_potential_brazovskii(const int index) {
+
+  double phi, delsq_phi, delsq_sq_phi, mu;
+
+  phi = phi_get_phi_site(index);
+  delsq_phi = phi_get_delsq_phi_site(index);
+  delsq_sq_phi = phi_get_delsq_delsq_phi_site(index);
+
+  mu = phi*(A_ + B_*phi*phi) - kappa_*delsq_phi + C_*delsq_sq_phi;
+
+  return mu;
+}
+
+/*****************************************************************************
+ *
+ *  fe_chemical_potential_sman_phi
+ *
+ *  Chemical potential for compositional part of surfactant model of
+ *  van der Sman and van der Graaf.
+ *
+ *****************************************************************************/
+
+static double fe_chemical_potential_sman_phi(const int index) {
+
+  double mu;
+  double phi, psi, delsq_phi;
+  double dphi[3];
+  double dpsi[3];
+
+  phi = phi_op_get_phi_site(index, 0);
+  psi = phi_op_get_phi_site(index, 1);
+  delsq_phi = phi_op_get_delsq_phi_site(index, 0);
+  phi_op_get_grad_phi_site(index, 0, dphi);
+  phi_op_get_grad_phi_site(index, 1, dpsi);
+
+  mu = phi*(A_ + B_*phi*phi) - kappa_*delsq_phi + W_*phi*psi
+    + epsilon_*(psi*delsq_phi + dot_product(dphi, dpsi));
+
+  return mu;
+}
+
+/*****************************************************************************
+ *
+ *  fe_chemical_potential_sman_psi
+ *
+ *  Surfactant part of the chemical potentail for the surfactant model
+ *  of van der Sman and van der Graaf.
+ * 
+ *  mu_\psi = kT (ln \psi - ln (1 - \psi) + (1/2) W \phi^2
+ *          - (1/2) \epsilon (\nabla \phi)^2
+ *
+ *****************************************************************************/
+
+static double fe_chemical_potential_sman_psi(const int index) {
+
+  double mu;
+  double phi, psi;
+  double dphi[3];
+
+  phi = phi_op_get_phi_site(index, 0);
+  psi = phi_op_get_phi_site(index, 1);
+  phi_op_get_grad_phi_site(index, 0, dphi);
+
+  assert(psi > 0.0);
+  assert(psi < 1.0);
+
+  mu = kT_*(log(psi) - log(1.0-psi)) + 0.5*W_*phi*phi
+    - 0.5*epsilon_*dot_product(dphi, dphi);
+
+  return mu;
+}
+
+/*****************************************************************************
+ *
+ *  fe_chemical_stress_sman
+ *
+ *  The chemical stress of the van der Sman and van der Graaf model.
+ *
+ *  P_ab = (1/2) A \phi^2 + (3/4) B \phi^4 - (1/2) \kappa \nabla^2 \phi
+ *       - kT ln(1 - \psi) + W \psi \phi^2
+ *       + \epsilon \phi \nabla_a \phi \nabla_b \psi
+ *       + \epsilon \phi \psi \nabla^2 \phi
+ *       + (\kappa - \epsilon\psi) \nabla_a \phi \nabla_b \phi
+ *
+ *****************************************************************************/
+
+static void fe_chemical_stress_sman(const int index, double p[3][3]) {
+
+  int ia, ib;
+  double phi, psi, delsq_phi, p0;
+  double dphi[3];
+  double dpsi[3];
+  extern const double d_[3][3]; /* Pending Refactor util etc. */ 
+
+  phi = phi_op_get_phi_site(index, 0);
+  psi = phi_op_get_phi_site(index, 1);
+  delsq_phi = phi_op_get_delsq_phi_site(index, 0);
+  phi_op_get_grad_phi_site(index, 0, dphi);
+  phi_op_get_grad_phi_site(index, 1, dpsi);
+
+  assert(psi < 1.0);
+
+  p0 = 0.5*phi*phi*(A_ + 1.5*B_*phi*phi)
+    - kappa_*(phi*delsq_phi + 0.5*dot_product(dphi, dphi))
+    - kT_*log(1.0 - psi) + W_*psi*phi*phi
+    + epsilon_*(dot_product(dphi, dpsi) + phi*psi*delsq_phi);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      p[ia][ib] = p0*d_[ia][ib]
+	+ (kappa_ - epsilon_*psi)*dphi[ia]*dphi[ib];
+    }
+  }
+
+  return;
 }
