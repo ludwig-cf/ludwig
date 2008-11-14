@@ -20,7 +20,7 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.4 2008-11-14 16:37:05 kevin Exp $
+ *  $Id: extract.c,v 1.5 2008-11-14 16:38:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Grouand and
  *  Edinburgh Parallel Computing Centre
@@ -48,7 +48,7 @@ int input_isbigendian_ = -1;
 double le_speed_ = 0.0;
 int le_displace_ = 0;
 int * le_displacements_;
-int output_binary_ = 1;
+int output_binary_ = 0;
 
 char stub_[FILENAME_MAX];
 
