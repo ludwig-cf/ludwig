@@ -20,7 +20,7 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.3 2008-11-12 15:12:39 kevin Exp $
+ *  $Id: extract.c,v 1.4 2008-11-14 16:37:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Grouand and
  *  Edinburgh Parallel Computing Centre
@@ -48,7 +48,7 @@ int input_isbigendian_ = -1;
 double le_speed_ = 0.0;
 int le_displace_ = 0;
 int * le_displacements_;
-int output_binary_ = 0;
+int output_binary_ = 1;
 
 char stub_[FILENAME_MAX];
 
@@ -116,6 +116,7 @@ int main(int argc, char ** argv) {
   if (datasection == NULL) printf("calloc(datasection) failed\n");
 
   /* LE displacements as function of x */
+  le_displace_ = le_speed_*ntime;
   le_displacements_ = (int *) malloc(ntotal[0]*sizeof(int));
   if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
   le_set_displacements();
@@ -162,6 +163,13 @@ int main(int argc, char ** argv) {
 
     fclose(fp_data);
     fclose(fp_metadata);
+  }
+
+  /* Unroll the data if Lees Edwards planes are present */
+
+  if (nplanes_ > 0) {
+    printf("Unrolling LE planes from centre\n");
+    le_unroll(datasection);
   }
 
   /* Write a single file with the final section */
@@ -473,7 +481,7 @@ int site_index(int ic, int jc, int kc, const int n[3]) {
 
 void le_unroll(double * data) {
 
-  int ic, jc, kc;
+  int ic, jc, kc, n;
   int j1, j2, jdy;
   double * buffer;
   double dy, fr;
@@ -498,17 +506,21 @@ void le_unroll(double * data) {
       j2 = 1 + j1 % ntotal[1];
 
       for (kc = 1; kc <= ntargets[2]; kc++) {
-	buffer[site_index(1,jc,kc,ntargets)] = 
-	  fr*data[site_index(ic,j1,kc,ntargets)] +
-	  (1.0 - fr)*data[site_index(ic,j2,kc,ntargets)];
+	for (n = 0; n < nrec_; n++) {
+	  buffer[nrec_*site_index(1,jc,kc,ntargets) + n] = 
+	    fr*data[nrec_*site_index(ic,j1,kc,ntargets) + n] +
+	    (1.0 - fr)*data[nrec_*site_index(ic,j2,kc,ntargets) + n];
+	}
       }
     }
     /* Put the whole buffer plane back in place */
 
     for (jc = 1; jc <= ntargets[1]; jc++) {
       for (kc = 1; kc <= ntargets[2]; kc++) {
-	data[site_index(ic,jc,kc,ntargets)] =
-	  buffer[site_index(1,jc,kc,ntargets)];
+	for (n = 0; n < nrec_; n++) {
+	  data[nrec_*site_index(ic,jc,kc,ntargets) + n] =
+	    buffer[nrec_*site_index(1,jc,kc,ntargets) + n];
+	}
       }
     }
 
