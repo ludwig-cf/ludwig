@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.9 2008-08-24 16:47:31 kevin Exp $
+ *  $Id: wall.c,v 1.10 2008-11-14 14:25:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -255,23 +255,24 @@ static void init_boundary_site_map() {
 	jc_global = jc + noffset[Y];
 	kc_global = kc + noffset[Z];
 
-	if (is_periodic(Z)) continue;
-
-	if (kc_global == 0 || kc_global == N_total(Z) + 1) {
-	  site_map_set_status(ic, jc, kc, BOUNDARY);
+	if (!is_periodic(Z)) {
+	  if (kc_global == 0 || kc_global == N_total(Z) + 1) {
+	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	  }
 	}
 
-	if (is_periodic(Y)) continue;
-
-	if (jc_global == 0 || jc_global == N_total(Y) + 1) {
-	  site_map_set_status(ic, jc, kc, BOUNDARY);
+	if (!is_periodic(Y)) {
+	  if (jc_global == 0 || jc_global == N_total(Y) + 1) {
+	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	  }
 	}
 
-	if (is_periodic(X)) continue;
-
-	if (ic_global == 0 || ic_global == N_total(X) + 1) {
-	  site_map_set_status(ic, jc, kc, BOUNDARY);
+	if (!is_periodic(X)) {
+	  if (ic_global == 0 || ic_global == N_total(X) + 1) {
+	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	  }
 	}
+	/* next site */
       }
     }
   }
