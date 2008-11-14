@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.3 2008-10-22 08:51:30 kevin Exp $
+ *  $Id: phi.c,v 1.4 2008-11-14 14:42:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -29,6 +29,7 @@
 #include "phi.h"
 
 struct io_info_t * io_info_phi;
+const int nop_ = 1;
 
 /* Shift the gradients to phi-gradients */
 double * phi_site;
@@ -64,6 +65,11 @@ static void phi_leesedwards_parallel(void);
  *  is added to the main array for convenince. It has no effect on
  *  the halo regions.
  *
+ *  Note that only the first derivatives of the order parameters
+ *  grad_phi_site, and delsq_phi_site are required for nop_ > 1.
+ *  Storage is arranged as phi[nx][ny][nz][nop]
+ *                         grad_phi[nx][ny[nz][nop][3] 
+ *
  ****************************************************************************/
 
 void phi_init() {
@@ -78,13 +84,13 @@ void phi_init() {
   nsites = (nlocal[X]+2*nhalo_ + nbuffer)
     *(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
 
-  phi_site = (double *) calloc(nsites, sizeof(double));
+  phi_site = (double *) calloc(nop_*nsites, sizeof(double));
   if (phi_site == NULL) fatal("calloc(phi) failed\n");
 
   /* Gradients */
 
-  delsq_phi_site = (double *) calloc(nsites, sizeof(double));
-  grad_phi_site = (double *) calloc(3*nsites, sizeof(double));
+  delsq_phi_site = (double *) calloc(nop_*nsites, sizeof(double));
+  grad_phi_site = (double *) calloc(3*nop_*nsites, sizeof(double));
   grad_delsq_phi_site = (double *) calloc(3*nsites, sizeof(double));
   delsq_delsq_phi_site = (double *) calloc(nsites, sizeof(double));
 
@@ -117,15 +123,17 @@ static void phi_init_mpi() {
   nh[Z] = nlocal[Z] + 2*nhalo_;
 
   /* YZ planes in the X direction */
-  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo_, 1, MPI_DOUBLE, &phi_yz_t_);
+  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo_*nop_, 1, MPI_DOUBLE, &phi_yz_t_);
   MPI_Type_commit(&phi_yz_t_);
 
   /* XZ planes in the Y direction */
-  MPI_Type_vector(nh[X], nh[Z]*nhalo_, nh[Y]*nh[Z], MPI_DOUBLE, &phi_xz_t_);
+  MPI_Type_vector(nh[X], nh[Z]*nhalo_*nop_, nh[Y]*nh[Z]*nop_, MPI_DOUBLE,
+		  &phi_xz_t_);
   MPI_Type_commit(&phi_xz_t_);
 
   /* XY planes in Z direction */
-  MPI_Type_vector(nh[X]*nh[Y], nhalo_, nh[Z], MPI_DOUBLE, &phi_xy_t_);
+  MPI_Type_vector(nh[X]*nh[Y], nhalo_*nop_, nh[Z]*nop_, MPI_DOUBLE,
+		  &phi_xy_t_);
   MPI_Type_commit(&phi_xy_t_);
 
   return;
@@ -147,7 +155,7 @@ static void phi_init_io() {
   io_info_set_write_binary(io_info_phi, phi_write);
   io_info_set_read_ascii(io_info_phi, phi_read_ascii);
   io_info_set_write_ascii(io_info_phi, phi_write_ascii);
-  io_info_set_bytesize(io_info_phi, sizeof(double));
+  io_info_set_bytesize(io_info_phi, nop_*sizeof(double));
 
   io_info_set_format_binary(io_info_phi);
   io_write_metadata("phi", io_info_phi);
@@ -181,10 +189,14 @@ void phi_finish() {
 
 /*****************************************************************************
  *
- *  phi_compute_phi_site
+ *  phi_compute_phi_sites 
  *
  *  Recompute the value of the order parameter at all the current
  *  fluid sites (domain proper).
+ *
+ *  This couples the scalar order parameter phi to the LB distribution
+ *  in the case of binary LB. This dependency on model.h and site_map.h
+ *  could (should) be removed to a separate file ('coupler').
  *
  *****************************************************************************/
 
@@ -204,7 +216,7 @@ void phi_compute_phi_site() {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = le_site_index(ic, jc, kc);
-	phi_site[index] = get_phi_at_site(index);
+	phi_site[nop_*index] = get_phi_at_site(index);
       }
     }
   }
@@ -221,7 +233,7 @@ void phi_compute_phi_site() {
 void phi_halo() {
 
   int nlocal[3];
-  int ic, jc, kc, ihalo, ireal, nh;
+  int ic, jc, kc, ihalo, ireal, nh, n;
   int back, forw;
   const int btag = 2061;
   const int ftag = 2062;
@@ -241,8 +253,12 @@ void phi_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
         for (kc = 1 ; kc <= nlocal[Z]; kc++) {
-          phi_site[ADDR(0-nh, jc,kc)] = phi_site[ADDR(nlocal[X]-nh, jc, kc)];
-          phi_site[ADDR(nlocal[X]+1+nh, jc,kc)] = phi_site[ADDR(1+nh, jc, kc)];
+	  for (n = 0; n < nop_; n++) {
+	    phi_site[nop_*ADDR(0-nh, jc,kc) + n]
+	      = phi_site[nop_*ADDR(nlocal[X]-nh, jc, kc) + n];
+	    phi_site[nop_*ADDR(nlocal[X]+1+nh, jc,kc) + n]
+	      = phi_site[nop_*ADDR(1+nh, jc, kc) + n];
+	  }
         }
       }
     }
@@ -269,8 +285,12 @@ void phi_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (ic = 1-nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
         for (kc = 1; kc <= nlocal[Z]; kc++) {
-          phi_site[ADDR(ic,0-nh, kc)] = phi_site[ADDR(ic, nlocal[Y]-nh, kc)];
-	  phi_site[ADDR(ic,nlocal[Y]+1+nh, kc)] = phi_site[ADDR(ic, 1+nh, kc)];
+	  for (n = 0; n < nop_; n++) {
+	    phi_site[nop_*ADDR(ic,0-nh, kc) + n]
+	      = phi_site[nop_*ADDR(ic, nlocal[Y]-nh, kc) + n];
+	    phi_site[nop_*ADDR(ic,nlocal[Y]+1+nh, kc) + n]
+	      = phi_site[nop_*ADDR(ic, 1+nh, kc) + n];
+	  }
         }
       }
     }
@@ -297,8 +317,12 @@ void phi_halo() {
     for (nh = 0; nh < nhalo_; nh++) {
       for (ic = 1 - nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
         for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-          phi_site[ADDR(ic,jc, 0-nh)] = phi_site[ADDR(ic, jc, nlocal[Z]-nh)];
-	  phi_site[ADDR(ic,jc, nlocal[Z]+1+nh)] = phi_site[ADDR(ic, jc, 1+nh)];
+	  for (n = 0; n < nop_; n++) {
+	    phi_site[nop_*ADDR(ic,jc, 0-nh) + n]
+	      = phi_site[nop_*ADDR(ic, jc, nlocal[Z]-nh) + n];
+	    phi_site[nop_*ADDR(ic,jc, nlocal[Z]+1+nh) + n]
+	      = phi_site[nop_*ADDR(ic, jc, 1+nh) + n];
+	  }
         }
       }
     }
@@ -333,7 +357,7 @@ void phi_halo() {
 double phi_get_phi_site(const int index) {
 
   assert(initialised_);
-  return phi_site[index];
+  return phi_site[nop_*index];
 }
 
 /*****************************************************************************
@@ -345,7 +369,7 @@ double phi_get_phi_site(const int index) {
 void phi_set_phi_site(const int index, const double phi) {
 
   assert(initialised_);
-  phi_site[index] = phi;
+  phi_site[nop_*index] = phi;
   return;
 }
 
@@ -361,7 +385,7 @@ void phi_get_grad_phi_site(const int index, double grad[3]) {
 
   assert(initialised_);
   for (ia = 0; ia < 3; ia++) {
-    grad[ia] = grad_phi_site[3*index + ia];
+    grad[ia] = grad_phi_site[3*nop_*index + ia];
   }
  
   return;
@@ -379,7 +403,7 @@ void phi_set_grad_phi_site(const int index, const double grad[3]) {
 
   assert(initialised_);
   for (ia = 0; ia < 3; ia++) {
-    grad_phi_site[3*index + ia] = grad[ia];
+    grad_phi_site[3*nop_*index + ia] = grad[ia];
   }
  
   return;
@@ -394,7 +418,7 @@ void phi_set_grad_phi_site(const int index, const double grad[3]) {
 double phi_get_delsq_phi_site(const int index) {
 
   assert(initialised_);
-  return delsq_phi_site[index];
+  return delsq_phi_site[nop_*index];
 }
 
 /*****************************************************************************
@@ -406,7 +430,7 @@ double phi_get_delsq_phi_site(const int index) {
 void phi_set_delsq_phi_site(const int index, const double delsq) {
 
   assert(initialised_);
-  delsq_phi_site[index] = delsq;
+  delsq_phi_site[nop_*index] = delsq;
 
   return;
 }
@@ -452,9 +476,9 @@ static int phi_read(FILE * fp, const int ic, const int jc, const int kc) {
   int index, n;
 
   index = le_site_index(ic, jc, kc);
-  n = fread(phi_site + index, sizeof(double), 1, fp);
+  n = fread(phi_site + nop_*index, sizeof(double), nop_, fp);
 
-  if (n != 1) fatal("fread(phi) failed at index %d", index);
+  if (n != nop_) fatal("fread(phi) failed at index %d", index);
 
   return n;
 }
@@ -470,9 +494,9 @@ static int phi_write(FILE * fp, const int ic, const int jc, const int kc) {
   int index, n;
 
   index = le_site_index(ic, jc, kc);
-  n = fwrite(phi_site + index, sizeof(double), 1, fp);
+  n = fwrite(phi_site + nop_*index, sizeof(double), nop_, fp);
 
-  if (n != 1) fatal("fwrite(phi) failed at index %d\n", index);
+  if (n != nop_) fatal("fwrite(phi) failed at index %d\n", index);
  
   return n;
 }
@@ -487,6 +511,7 @@ static int phi_read_ascii(FILE * fp, const int ic, const int jc,
 			  const int kc) {
   int index, n;
 
+  assert(nop_ == 1);
   index = le_site_index(ic, jc, kc);
   n = fscanf(fp, "%22le", phi_site + index);
 
@@ -505,6 +530,7 @@ static int phi_write_ascii(FILE * fp, const int ic, const int jc,
 			   const int kc) {
   int index, n;
 
+  assert(nop_ == 1);
   index = le_site_index(ic, jc, kc);
   n = fprintf(fp, "%22.15e\n", phi_site[index]);
 
@@ -532,7 +558,7 @@ void phi_leesedwards_transformation() {
   int ib;        /* Index in buffer region */
   int ib0;       /* buffer region offset */
   int ic;        /* Index corresponding x location in real system */
-  int jc, kc;
+  int jc, kc, n;
 
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
@@ -541,6 +567,7 @@ void phi_leesedwards_transformation() {
 
   if (cart_size(Y) > 1) {
     /* This has its own routine. */
+    assert(nop_ == 1);
     phi_leesedwards_parallel();
   }
   else {
@@ -564,8 +591,11 @@ void phi_leesedwards_transformation() {
 	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
 	j2 = 1 + j1 % nlocal[Y];
 	for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
-	  phi_site[ADDR(ib0+ib,jc,kc)] =
-	    fr*phi_site[ADDR(ic,j1,kc)] + (1.0-fr)*phi_site[ADDR(ic,j2,kc)];
+	  for (n = 0; n < nop_; n++) {
+	    phi_site[nop_*ADDR(ib0+ib,jc,kc) + n] =
+	      fr*phi_site[nop_*ADDR(ic,j1,kc) + n]
+	      + (1.0-fr)*phi_site[nop_*ADDR(ic,j2,kc) + n];
+	  }
 	}
       }
     }
@@ -706,5 +736,62 @@ int phi_is_finite_difference() {
 void phi_set_finite_difference() {
 
   phi_finite_difference_ = 1;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_op_get_phi_site
+ *
+ *****************************************************************************/
+
+double phi_op_get_phi_site(const int index, const int nop) {
+
+  assert(nop < nop_);
+  return phi_site[nop_*index + nop];
+}
+
+/*****************************************************************************
+ *
+ *  phi_op_set_phi_site
+ *
+ *****************************************************************************/
+
+void phi_op_set_phi_site(const int index, const int nop, const double value) {
+
+  assert(nop < nop_);
+  phi_site[nop_*index + nop] = value;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_op_get_delsq_phi_site
+ *
+ *****************************************************************************/
+
+double phi_op_get_delsq_phi_site(const int index, const int nop) {
+
+  assert(nop < nop_);
+  return delsq_phi_site[nop_*index + nop];
+}
+
+/*****************************************************************************
+ *
+ *  phi_op_get_grad_phi_site
+ *
+ *****************************************************************************/
+
+void phi_op_get_grad_phi_site(const int index, const int nop, double * grad) {
+
+  int ia;
+
+  assert(nop < nop_);
+
+  for (ia = 0; ia < 3; ia++) {
+    grad[ia] = grad_phi_site[3*(nop_*index + nop) + ia];
+  }
+
   return;
 }

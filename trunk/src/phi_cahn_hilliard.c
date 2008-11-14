@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.2 2008-08-24 16:58:10 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.3 2008-11-14 14:42:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -71,10 +71,10 @@ void phi_cahn_hilliard() {
   get_N_local(nlocal);
   nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
 
-  fluxe = (double *) calloc(nsites, sizeof(double));
-  fluxw = (double *) calloc(nsites, sizeof(double));
-  fluxy = (double *) calloc(nsites, sizeof(double));
-  fluxz = (double *) calloc(nsites, sizeof(double));
+  fluxe = (double *) calloc(nop_*nsites, sizeof(double));
+  fluxw = (double *) calloc(nop_*nsites, sizeof(double));
+  fluxy = (double *) calloc(nop_*nsites, sizeof(double));
+  fluxz = (double *) calloc(nop_*nsites, sizeof(double));
   if (fluxe == NULL) fatal("calloc(fluxe) failed");
   if (fluxw == NULL) fatal("calloc(fluxw) failed");
   if (fluxy == NULL) fatal("calloc(fluxy) failed");
@@ -155,7 +155,7 @@ static void phi_ch_upwind() {
 
   int nlocal[3];
   int ic, jc, kc;            /* Counters over faces */
-  int index0, index1;
+  int index0, index1, n;
   int icm1, icp1;
   double u0[3], u1[3], u;
   double mu0, mu1;
@@ -170,72 +170,75 @@ static void phi_ch_upwind() {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = ADDR(ic, jc, kc);
-	phi0 = phi_site[index0];
 
-	mu0 = free_energy_get_chemical_potential(index0);
-	hydrodynamics_get_velocity(index0, u0);
+	for (n = 0; n < nop_; n++) {
+	  phi0 = phi_site[nop_*index0 + n];
 
-	/* west face (icm1 and ic) */
-	index1 = ADDR(icm1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	  mu0 = free_energy_chemical_potential(index0, n);
+	  hydrodynamics_get_velocity(index0, u0);
 
-	u = 0.5*(u0[X] + u1[X]);
-	if (u > 0.0) {
-	  phi = phi_site[index1];
+	  /* west face (icm1 and ic) */
+	  index1 = ADDR(icm1, jc, kc);
+	  hydrodynamics_get_velocity(index1, u1);
+
+	  u = 0.5*(u0[X] + u1[X]);
+	  if (u > 0.0) {
+	    phi = phi_site[nop_*index1 + n];
+	  }
+	  else {
+	    phi = phi0;
+	  }
+
+	  mu1 = free_energy_chemical_potential(index1, n);
+	  fluxw[nop_*index0 + n] = u*phi - mobility_*(mu0 - mu1);
+
+	  /* east face (ic and icp1) */
+	  index1 = ADDR(icp1, jc, kc);
+	  hydrodynamics_get_velocity(index1, u1);
+
+	  u = 0.5*(u0[X] + u1[X]);
+	  if (u < 0.0) {
+	    phi = phi_site[nop_*index1 + n];
+	  }
+	  else {
+	    phi = phi0;
+	  }
+
+	  mu1 = free_energy_chemical_potential(index1, n);
+	  fluxe[nop_*index0 + n] = u*phi - mobility_*(mu1 - mu0);
+
+
+
+	  /* y direction */
+	  index1 = le_site_index(ic, jc+1, kc);
+	  hydrodynamics_get_velocity(index1, u1);
+
+	  u = 0.5*(u0[Y] + u1[Y]);
+	  if (u < 0.0) {
+	    phi = phi_site[nop_*index1 + n];
+	  }
+	  else {
+	    phi = phi0;
+	  }
+
+	  mu1 = free_energy_chemical_potential(index1, n);
+	  fluxy[nop_*index0 + n] = u*phi - mobility_*(mu1 - mu0);
+
+	  /* z direction */
+	  index1 = ADDR(ic, jc, kc+1);
+	  hydrodynamics_get_velocity(index1, u1);
+
+	  u = 0.5*(u0[Z] + u1[Z]);
+	  if (u < 0.0) {
+	    phi = phi_site[nop_*index1 + n];
+	  }
+	  else {
+	    phi = phi0;
+	  }
+
+	  mu1 = free_energy_chemical_potential(index1, n);
+	  fluxz[nop_*index0 + n] = u*phi - mobility_*(mu1 - mu0);
 	}
-	else {
-	  phi = phi0;
-	}
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxw[index0] = u*phi - mobility_*(mu0 - mu1);
-
-	/* east face (ic and icp1) */
-	index1 = ADDR(icp1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
-
-	u = 0.5*(u0[X] + u1[X]);
-	if (u < 0.0) {
-	  phi = phi_site[index1];
-	}
-	else {
-	  phi = phi0;
-	}
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxe[index0] = u*phi - mobility_*(mu1 - mu0);
-
-
-
-	/* y direction */
-	index1 = le_site_index(ic, jc+1, kc);
-	hydrodynamics_get_velocity(index1, u1);
-
-	u = 0.5*(u0[Y] + u1[Y]);
-	if (u < 0.0) {
-	  phi = phi_site[index1];
-	}
-	else {
-	  phi = phi0;
-	}
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxy[index0] = u*phi - mobility_*(mu1 - mu0);
-
-	/* z direction */
-	index1 = ADDR(ic, jc, kc+1);
-	hydrodynamics_get_velocity(index1, u1);
-
-	u = 0.5*(u0[Z] + u1[Z]);
-	if (u < 0.0) {
-	  phi = phi_site[index1];
-	}
-	else {
-	  phi = phi0;
-	}
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxz[index0] = u*phi - mobility_*(mu1 - mu0);
       }
     }
   }
@@ -370,8 +373,8 @@ static void phi_ch_upwind_third_order() {
 static void phi_ch_update_forward_step() {
 
   int nlocal[3];
-  int ic, jc, kc, index;
-  double mask;
+  int ic, jc, kc, index, n;
+  double maskw, maske, maskn, masks, masku, maskd;
   double dphi;
 
   get_N_local(nlocal);
@@ -384,23 +387,25 @@ static void phi_ch_update_forward_step() {
 
 	if (site_map_get_status_index(index) != FLUID) continue;
 
-	dphi = 0.0;
-	mask = (site_map_get_status(ic+1, jc, kc) == FLUID);
-	dphi += mask*fluxe[index];
-	mask = (site_map_get_status(ic-1, jc, kc) == FLUID);
-	dphi -= mask*fluxw[index];
+	maske = (site_map_get_status(ic+1, jc, kc) == FLUID);
+	maskw = (site_map_get_status(ic-1, jc, kc) == FLUID);
+	maskn = (site_map_get_status(ic, jc+1, kc) == FLUID);
+	masks = (site_map_get_status(ic, jc-1, kc) == FLUID);
+	masku = (site_map_get_status(ic, jc, kc+1) == FLUID);
+	maskd = (site_map_get_status(ic, jc, kc-1) == FLUID);
 
-	mask = (site_map_get_status(ic, jc+1, kc) == FLUID);
-	dphi += mask*fluxy[index];
-	mask = (site_map_get_status(ic, jc-1, kc) == FLUID);
-	dphi -= mask*fluxy[ADDR(ic, jc-1, kc)];
+	for (n = 0; n < nop_; n++) {
+	  dphi = 0.0;
+	  dphi += maske*fluxe[nop_*index + n];
+	  dphi -= maskw*fluxw[nop_*index + n];
+	  dphi += maskn*fluxy[nop_*index + n];
+	  dphi -= masks*fluxy[nop_*ADDR(ic, jc-1, kc) + n];
+	  dphi += masku*fluxz[nop_*index + n];
+	  dphi -= maskd*fluxz[nop_*ADDR(ic, jc, kc-1) + n];
 
-	mask = (site_map_get_status(ic, jc, kc+1) == FLUID);
-	dphi += mask*fluxz[index];
-	mask = (site_map_get_status(ic, jc, kc-1) == FLUID);
-	dphi -= mask*fluxz[ADDR(ic, jc, kc-1)];
+	  phi_site[nop_*index + n] -= dphi;
+	}
 
-	phi_site[index] -= dphi;
       }
     }
   }

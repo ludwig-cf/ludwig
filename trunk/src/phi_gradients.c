@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.2 2008-08-24 16:58:10 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.3 2008-11-14 14:42:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -49,6 +49,7 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 
 
 static void phi_gradients_with_solid(void);
+static void phi_gradients_walls(void);
 static void phi_gradients_fluid(void);
 static void phi_gradients_double_fluid(void);
 static void phi_gradients_leesedwards(void);
@@ -101,6 +102,10 @@ void phi_gradients_compute() {
   phi_gradient_function();
   phi_gradients_leesedwards();
 
+  /* Non-periodic x-direction requires corrections */
+
+  if (!is_periodic(X)) phi_gradients_walls();
+
   /* Brazovskii requires gradients up to nabla^2(\nabla^2) phi */
   /* There also needs to be the appropriate correction if LE is required */
 
@@ -126,7 +131,7 @@ static void phi_gradients_with_solid() {
 
   int nlocal[3];
   int ic, jc, kc, ic1, jc1, kc1;
-  int ia, index, p;
+  int ia, index, n, p;
   int nextra = nhalo_ - 1; /* Gradients not computed at last point locally */
 
   int isite[NGRAD_];
@@ -160,67 +165,198 @@ static void phi_gradients_with_solid() {
 	  if (site_map_get_status(ic1, jc1, kc1) != FLUID) isite[p] = -1;
 	}
 
-	for (ia = 0; ia < 3; ia++) {
-	  count[ia] = 0.0;
-	  gradn[ia] = 0.0;
-	}
-
-	for (p = 1; p < NGRAD_; p++) {
-
-	  if (isite[p] == -1) continue;
-	  dphi = phi_site[isite[p]] - phi_site[index];
-	  gradt[p] = dphi;
+	for (n = 0; n < nop_; n++) {
 
 	  for (ia = 0; ia < 3; ia++) {
-	    gradn[ia] += bs_cv[p][ia]*dphi;
-	    count[ia] += bs_cv[p][ia]*bs_cv[p][ia];
+	    count[ia] = 0.0;
+	    gradn[ia] = 0.0;
 	  }
-	}
+	  
+	  for (p = 1; p < NGRAD_; p++) {
 
-	for (ia = 0; ia < 3; ia++) {
-	  if (count[ia] > 0.0) gradn[ia] /= count[ia];
-	}
+	    if (isite[p] == -1) continue;
+	    dphi = phi_site[nop_*isite[p] + n] - phi_site[nop_*index + n];
+	    gradt[p] = dphi;
 
-	/* Estimate gradient at boundaries */
-
-	for (p = 1; p < NGRAD_; p++) {
-
-	  if (isite[p] == -1) {
-	    double c, h, phi_b;
-	    phi_b = phi_site[index]
-	      + 0.5*(bs_cv[p][X]*gradn[X] + bs_cv[p][Y]*gradn[Y]
-		     + bs_cv[p][Z]*gradn[Z]);
-
-	    /* Set gradient of phi at boundary following wetting properties */
-	    /* C is always zero at the moment */
-
-	    ia = le_site_index(ic+bs_cv[p][X], jc+bs_cv[p][Y], kc+bs_cv[p][Z]);
-	    c = 0.0; /* site_map_get_C() */
-	    h = site_map_get_H(ia);
-
-	    gradt[p] = -(c*phi_b + h)*rk;
+	    for (ia = 0; ia < 3; ia++) {
+	      gradn[ia] += bs_cv[p][ia]*dphi;
+	      count[ia] += bs_cv[p][ia]*bs_cv[p][ia];
+	    }
 	  }
-	}
+
+	  for (ia = 0; ia < 3; ia++) {
+	    if (count[ia] > 0.0) gradn[ia] /= count[ia];
+	  }
+
+	  /* Estimate gradient at boundaries */
+
+	  for (p = 1; p < NGRAD_; p++) {
+
+	    if (isite[p] == -1) {
+	      double c, h, phi_b;
+	      phi_b = phi_site[nop_*index + n]
+		+ 0.5*(bs_cv[p][X]*gradn[X] + bs_cv[p][Y]*gradn[Y]
+		       + bs_cv[p][Z]*gradn[Z]);
+
+	      /* Set gradient phi at boundary following wetting properties */
+	      /* C is always zero at the moment */
+
+	      ia = le_site_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
+				 kc + bs_cv[p][Z]);
+	      c = 0.0; /* could be site_map_get_C() */
+	      h = site_map_get_H(ia);
+
+	      /* kludge: if nop_ is 2, set h[1] = 0 */
+	      h = (1 - n)*h;
+
+	      gradt[p] = -(c*phi_b + h)*rk;
+	    }
+	  }
  
-	/* Accumulate the final gradients */
+	  /* Accumulate the final gradients */
 
-	dphi = 0.0;
-	for (ia = 0; ia < 3; ia++) {
-	  gradn[ia] = 0.0;
-	}
-
-	for (p = 1; p < NGRAD_; p++) {
-	  dphi += gradt[p];
+	  dphi = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
-	    gradn[ia] += gradt[p]*bs_cv[p][ia];
+	    gradn[ia] = 0.0;
+	  }
+
+	  for (p = 1; p < NGRAD_; p++) {
+	    dphi += gradt[p];
+	    for (ia = 0; ia < 3; ia++) {
+	      gradn[ia] += gradt[p]*bs_cv[p][ia];
+	    }
+	  }
+
+	  delsq_phi_site[nop_*index + n] = r9*dphi;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad_phi_site[3*(nop_*index + n) + ia]  = r18*gradn[ia];
 	  }
 	}
 
-	delsq_phi_site[index] = r9*dphi;
-	for (ia = 0; ia < 3; ia++) {
-	  grad_phi_site[3*index+ia]  = r18*gradn[ia];
-	}
+	/* Next site */
+      }
+    }
+  }
 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_gradients_walls
+ *
+ *  This is a special case where solid walls are required at x = 0
+ *  and x = L_x to run with the Lees-Edwards planes. It is called
+ *  after phi_gradients_fluid to correct the gradients at the
+ *  edges of the system.
+ *
+ *  This is done in preference to phi_gradients_solid, which is much
+ *  slower. Always neutral wetting.
+ *
+ *****************************************************************************/
+
+static void phi_gradients_walls() {
+
+  int nlocal[3];
+  int ic, jc, kc;
+  int ia, index, index1, n, p;
+  int nextra = nhalo_ - 1; /* Gradients not computed at last point locally */
+
+  double gradt[NGRAD_];
+  double gradn[3];
+  double dphi;
+  const double r9 = (1.0/9.0);     /* normaliser for cv_bs */
+  const double r18 = (1.0/18.0);   /* ditto */
+
+  get_N_local(nlocal);
+  assert(nhalo_ >= 1);
+
+  if (cart_coords(X) == 0) {
+    ic = 1;
+
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	index = le_site_index(ic, jc, kc);
+
+	for (n = 0; n < nop_; n++) {
+	  
+	  /* This loop is hardwired to pick up bs_cv[p][X] >= 0
+	   * without a conditional */
+	  for (p = 1; p < 10; p++) {
+	    gradt[p] = 0.0;
+	  }
+	  for (p = 10; p < NGRAD_; p++) {
+	    index1 = le_site_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
+				   kc + bs_cv[p][Z]);
+	    dphi = phi_site[nop_*index1 + n] - phi_site[nop_*index + n];
+	    gradt[p] = dphi;
+	  }
+ 
+	  /* Accumulate the final gradients */
+
+	  dphi = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[ia] = 0.0;
+	  }
+
+	  for (p = 1; p < NGRAD_; p++) {
+	    dphi += gradt[p];
+	    for (ia = 0; ia < 3; ia++) {
+	      gradn[ia] += gradt[p]*bs_cv[p][ia];
+	    }
+	  }
+
+	  delsq_phi_site[nop_*index + n] = r9*dphi;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad_phi_site[3*(nop_*index + n) + ia]  = r18*gradn[ia];
+	  }
+	}
+	/* Next site */
+      }
+    }
+  }
+
+  if (cart_coords(X) == cart_size(X) - 1) {
+    ic = nlocal[X];
+
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	index = le_site_index(ic, jc, kc);
+
+	for (n = 0; n < nop_; n++) {
+
+	  /* Again, need to pick up only bs_cv[p][X] <= 0 */
+	  for (p = 1; p < 18; p++) {
+	    index1 = le_site_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
+				   kc + bs_cv[p][Z]);
+	    dphi = phi_site[nop_*index1 + n] - phi_site[nop_*index + n];
+	    gradt[p] = dphi;
+	  }
+	  for (p = 18; p < NGRAD_; p++) {
+	    gradt[p] = 0.0;
+	  }
+ 
+	  /* Accumulate the final gradients */
+
+	  dphi = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[ia] = 0.0;
+	  }
+
+	  for (p = 1; p < NGRAD_; p++) {
+	    dphi += gradt[p];
+	    for (ia = 0; ia < 3; ia++) {
+	      gradn[ia] += gradt[p]*bs_cv[p][ia];
+	    }
+	  }
+
+	  delsq_phi_site[nop_*index + n] = r9*dphi;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad_phi_site[3*(nop_*index + n) + ia]  = r18*gradn[ia];
+	  }
+	}
 	/* Next site */
       }
     }
@@ -292,6 +428,7 @@ static void phi_gradients_double_fluid() {
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
   assert(le_get_nplane() == 0);
+  assert(nop_ == 1);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -399,39 +536,70 @@ static void f_grad_phi(int icm1, int ic, int icp1, int jc, int kc,
 		       const int nlocal[3]) {
 
   const double r18 = 1.0/18.0;
+  int n;
 
-  grad_phi_site[3*ADDR(ic,jc,kc) + X] =
-    r18*(phi_site[ADDR(icp1,jc,  kc  )]-phi_site[ADDR(icm1,jc,  kc  )] +
-	 phi_site[ADDR(icp1,jc+1,kc+1)]-phi_site[ADDR(icm1,jc+1,kc+1)] +
-	 phi_site[ADDR(icp1,jc-1,kc+1)]-phi_site[ADDR(icm1,jc-1,kc+1)] +
-	 phi_site[ADDR(icp1,jc+1,kc-1)]-phi_site[ADDR(icm1,jc+1,kc-1)] +
-	 phi_site[ADDR(icp1,jc-1,kc-1)]-phi_site[ADDR(icm1,jc-1,kc-1)] +
-	 phi_site[ADDR(icp1,jc+1,kc  )]-phi_site[ADDR(icm1,jc+1,kc  )] +
-	 phi_site[ADDR(icp1,jc-1,kc  )]-phi_site[ADDR(icm1,jc-1,kc  )] +
-	 phi_site[ADDR(icp1,jc,  kc+1)]-phi_site[ADDR(icm1,jc,  kc+1)] +
-	 phi_site[ADDR(icp1,jc,  kc-1)]-phi_site[ADDR(icm1,jc,  kc-1)]);
+  for (n = 0; n < nop_; n++) {
+
+    grad_phi_site[3*(nop_*ADDR(ic,jc,kc) + n) + X] =
+      r18*(phi_site[nop_*ADDR(icp1,jc,  kc  ) + n]
+	 - phi_site[nop_*ADDR(icm1,jc,  kc  ) + n]
+	 + phi_site[nop_*ADDR(icp1,jc+1,kc+1) + n]
+	 - phi_site[nop_*ADDR(icm1,jc+1,kc+1) + n]
+	 + phi_site[nop_*ADDR(icp1,jc-1,kc+1) + n]
+	 - phi_site[nop_*ADDR(icm1,jc-1,kc+1) + n]
+	 + phi_site[nop_*ADDR(icp1,jc+1,kc-1) + n]
+	 - phi_site[nop_*ADDR(icm1,jc+1,kc-1) + n]
+	 + phi_site[nop_*ADDR(icp1,jc-1,kc-1) + n]
+	 - phi_site[nop_*ADDR(icm1,jc-1,kc-1) + n]
+	 + phi_site[nop_*ADDR(icp1,jc+1,kc  ) + n]
+	 - phi_site[nop_*ADDR(icm1,jc+1,kc  ) + n]
+	 + phi_site[nop_*ADDR(icp1,jc-1,kc  ) + n]
+	 - phi_site[nop_*ADDR(icm1,jc-1,kc  ) + n]
+	 + phi_site[nop_*ADDR(icp1,jc,  kc+1) + n]
+	 - phi_site[nop_*ADDR(icm1,jc,  kc+1) + n]
+	 + phi_site[nop_*ADDR(icp1,jc,  kc-1) + n]
+	 - phi_site[nop_*ADDR(icm1,jc,  kc-1) + n]);
 		    
-  grad_phi_site[3*ADDR(ic,jc,kc) + Y] = 
-    r18*(phi_site[ADDR(ic  ,jc+1,kc  )]-phi_site[ADDR(ic,  jc-1,kc  )] +
-	 phi_site[ADDR(icp1,jc+1,kc+1)]-phi_site[ADDR(icp1,jc-1,kc+1)] +
-	 phi_site[ADDR(icm1,jc+1,kc+1)]-phi_site[ADDR(icm1,jc-1,kc+1)] +
-	 phi_site[ADDR(icp1,jc+1,kc-1)]-phi_site[ADDR(icp1,jc-1,kc-1)] +
-	 phi_site[ADDR(icm1,jc+1,kc-1)]-phi_site[ADDR(icm1,jc-1,kc-1)] +
-	 phi_site[ADDR(icp1,jc+1,kc  )]-phi_site[ADDR(icp1,jc-1,kc  )] +
-	 phi_site[ADDR(icm1,jc+1,kc  )]-phi_site[ADDR(icm1,jc-1,kc  )] +
-	 phi_site[ADDR(ic,  jc+1,kc+1)]-phi_site[ADDR(ic,  jc-1,kc+1)] +
-	 phi_site[ADDR(ic,  jc+1,kc-1)]-phi_site[ADDR(ic,  jc-1,kc-1)]);
+    grad_phi_site[3*(nop_*ADDR(ic,jc,kc) + n) + Y] = 
+      r18*(phi_site[nop_*ADDR(ic  ,jc+1,kc  ) + n]
+	   - phi_site[nop_*ADDR(ic,  jc-1,kc  ) + n]
+	   + phi_site[nop_*ADDR(icp1,jc+1,kc+1) + n]
+	   - phi_site[nop_*ADDR(icp1,jc-1,kc+1) + n]
+	   + phi_site[nop_*ADDR(icm1,jc+1,kc+1) + n]
+	   - phi_site[nop_*ADDR(icm1,jc-1,kc+1) + n]
+	   + phi_site[nop_*ADDR(icp1,jc+1,kc-1) + n]
+	   - phi_site[nop_*ADDR(icp1,jc-1,kc-1) + n]
+	   + phi_site[nop_*ADDR(icm1,jc+1,kc-1) + n]
+	   - phi_site[nop_*ADDR(icm1,jc-1,kc-1) + n]
+	   + phi_site[nop_*ADDR(icp1,jc+1,kc  ) + n]
+	   - phi_site[nop_*ADDR(icp1,jc-1,kc  ) + n]
+	   + phi_site[nop_*ADDR(icm1,jc+1,kc  ) + n]
+	   - phi_site[nop_*ADDR(icm1,jc-1,kc  ) + n]
+	   + phi_site[nop_*ADDR(ic,  jc+1,kc+1) + n]
+	   - phi_site[nop_*ADDR(ic,  jc-1,kc+1) + n]
+	   + phi_site[nop_*ADDR(ic,  jc+1,kc-1) + n]
+	   - phi_site[nop_*ADDR(ic,  jc-1,kc-1) + n]);
 		    
-  grad_phi_site[3*ADDR(ic,jc,kc) + Z] = 
-    r18*(phi_site[ADDR(ic,  jc,  kc+1)]-phi_site[ADDR(ic,  jc,  kc-1)] +
-	 phi_site[ADDR(icp1,jc+1,kc+1)]-phi_site[ADDR(icp1,jc+1,kc-1)] +
-	 phi_site[ADDR(icm1,jc+1,kc+1)]-phi_site[ADDR(icm1,jc+1,kc-1)] +
-	 phi_site[ADDR(icp1,jc-1,kc+1)]-phi_site[ADDR(icp1,jc-1,kc-1)] +
-	 phi_site[ADDR(icm1,jc-1,kc+1)]-phi_site[ADDR(icm1,jc-1,kc-1)] +
-	 phi_site[ADDR(icp1,jc,  kc+1)]-phi_site[ADDR(icp1,jc,  kc-1)] +
-	 phi_site[ADDR(icm1,jc,  kc+1)]-phi_site[ADDR(icm1,jc,  kc-1)] +
-	 phi_site[ADDR(ic,  jc+1,kc+1)]-phi_site[ADDR(ic,  jc+1,kc-1)] +
-	 phi_site[ADDR(ic,  jc-1,kc+1)]-phi_site[ADDR(ic,  jc-1,kc-1)]);
+    grad_phi_site[3*(nop_*ADDR(ic,jc,kc) + n) + Z] = 
+      r18*(phi_site[nop_*ADDR(ic,  jc,  kc+1) + n]
+	   - phi_site[nop_*ADDR(ic,  jc,  kc-1) + n]
+	   + phi_site[nop_*ADDR(icp1,jc+1,kc+1) + n]
+	   - phi_site[nop_*ADDR(icp1,jc+1,kc-1) + n]
+	   + phi_site[nop_*ADDR(icm1,jc+1,kc+1) + n]
+	   - phi_site[nop_*ADDR(icm1,jc+1,kc-1) + n]
+	   + phi_site[nop_*ADDR(icp1,jc-1,kc+1) + n]
+	   - phi_site[nop_*ADDR(icp1,jc-1,kc-1) + n]
+	   + phi_site[nop_*ADDR(icm1,jc-1,kc+1) + n]
+	   - phi_site[nop_*ADDR(icm1,jc-1,kc-1) + n]
+	   + phi_site[nop_*ADDR(icp1,jc,  kc+1) + n]
+	   - phi_site[nop_*ADDR(icp1,jc,  kc-1) + n]
+	   + phi_site[nop_*ADDR(icm1,jc,  kc+1) + n]
+	   - phi_site[nop_*ADDR(icm1,jc,  kc-1) + n]
+	   + phi_site[nop_*ADDR(ic,  jc+1,kc+1) + n]
+	   - phi_site[nop_*ADDR(ic,  jc+1,kc-1) + n]
+	   + phi_site[nop_*ADDR(ic,  jc-1,kc+1) + n]
+	   - phi_site[nop_*ADDR(ic,  jc-1,kc-1) + n]);
+  }
 
   return;
 }
@@ -448,34 +616,39 @@ static void f_delsq_phi(int icm1, int ic, int icp1, int jc, int kc,
 			const int nlocal[3]) {
 
   const double r9 = 1.0/9.0;
+  int n;
 
-  delsq_phi_site[ADDR(ic,jc,kc)] = r9*(phi_site[ADDR(icp1,jc,  kc  )] + 
-				       phi_site[ADDR(icm1,jc,  kc  )] +
-				       phi_site[ADDR(ic,  jc+1,kc  )] + 
-				       phi_site[ADDR(ic,  jc-1,kc  )] +
-				       phi_site[ADDR(ic,  jc,  kc+1)] + 
-				       phi_site[ADDR(ic,  jc,  kc-1)] +
-				       phi_site[ADDR(icp1,jc+1,kc+1)] + 
-				       phi_site[ADDR(icp1,jc+1,kc-1)] + 
-				       phi_site[ADDR(icp1,jc-1,kc+1)] + 
-				       phi_site[ADDR(icp1,jc-1,kc-1)] + 
-				       phi_site[ADDR(icm1,jc+1,kc+1)] + 
-				       phi_site[ADDR(icm1,jc+1,kc-1)] + 
-				       phi_site[ADDR(icm1,jc-1,kc+1)] + 
-				       phi_site[ADDR(icm1,jc-1,kc-1)] +
-				       phi_site[ADDR(icp1,jc+1,kc  )] + 
-				       phi_site[ADDR(icp1,jc-1,kc  )] + 
-				       phi_site[ADDR(icm1,jc+1,kc  )] + 
-				       phi_site[ADDR(icm1,jc-1,kc  )] + 
-				       phi_site[ADDR(icp1,jc,  kc+1)] + 
-				       phi_site[ADDR(icp1,jc,  kc-1)] + 
-				       phi_site[ADDR(icm1,jc,  kc+1)] + 
-				       phi_site[ADDR(icm1,jc,  kc-1)] +
-				       phi_site[ADDR(ic,  jc+1,kc+1)] + 
-				       phi_site[ADDR(ic,  jc+1,kc-1)] + 
-				       phi_site[ADDR(ic,  jc-1,kc+1)] + 
-				       phi_site[ADDR(ic,  jc-1,kc-1)] -
-				       26.0*phi_site[ADDR(ic,jc,kc)]);
-  
+  for (n = 0; n < nop_; n++) {
+
+    delsq_phi_site[nop_*ADDR(ic,jc,kc) + n] =
+      r9*(phi_site[nop_*ADDR(icp1,jc,  kc  ) + n]
+	  + phi_site[nop_*ADDR(icm1,jc,  kc  ) + n]
+	  + phi_site[nop_*ADDR(ic,  jc+1,kc  ) + n]
+	  + phi_site[nop_*ADDR(ic,  jc-1,kc  ) + n]
+	  + phi_site[nop_*ADDR(ic,  jc,  kc+1) + n]
+	  + phi_site[nop_*ADDR(ic,  jc,  kc-1) + n]
+	  + phi_site[nop_*ADDR(icp1,jc+1,kc+1) + n]
+	  + phi_site[nop_*ADDR(icp1,jc+1,kc-1) + n]
+	  + phi_site[nop_*ADDR(icp1,jc-1,kc+1) + n]
+	  + phi_site[nop_*ADDR(icp1,jc-1,kc-1) + n]
+	  + phi_site[nop_*ADDR(icm1,jc+1,kc+1) + n]
+	  + phi_site[nop_*ADDR(icm1,jc+1,kc-1) + n]
+	  + phi_site[nop_*ADDR(icm1,jc-1,kc+1) + n]
+	  + phi_site[nop_*ADDR(icm1,jc-1,kc-1) + n]
+	  + phi_site[nop_*ADDR(icp1,jc+1,kc  ) + n]
+	  + phi_site[nop_*ADDR(icp1,jc-1,kc  ) + n]
+	  + phi_site[nop_*ADDR(icm1,jc+1,kc  ) + n]
+	  + phi_site[nop_*ADDR(icm1,jc-1,kc  ) + n]
+	  + phi_site[nop_*ADDR(icp1,jc,  kc+1) + n]
+	  + phi_site[nop_*ADDR(icp1,jc,  kc-1) + n]
+	  + phi_site[nop_*ADDR(icm1,jc,  kc+1) + n]
+	  + phi_site[nop_*ADDR(icm1,jc,  kc-1) + n]
+	  + phi_site[nop_*ADDR(ic,  jc+1,kc+1) + n]
+	  + phi_site[nop_*ADDR(ic,  jc+1,kc-1) + n]
+	  + phi_site[nop_*ADDR(ic,  jc-1,kc+1) + n]
+	  + phi_site[nop_*ADDR(ic,  jc-1,kc-1) + n]
+	  - 26.0*phi_site[nop_*ADDR(ic,jc,kc) + n]);
+  }
+
   return;
 }

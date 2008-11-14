@@ -4,7 +4,7 @@
  *
  *  The free energy.
  *
- *  $Id: free_energy.h,v 1.3 2008-08-24 17:53:40 kevin Exp $
+ *  $Id: free_energy.h,v 1.4 2008-11-14 14:42:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,6 +25,7 @@ double free_energy_K(void);
 double surface_tension(void);
 double interfacial_width(void);
 double free_energy_density(const int);
+double free_energy_chemical_potential(const int, const int);
 double free_energy_get_chemical_potential(const int);
 double free_energy_get_isotropic_pressure(const int);
 void   free_energy_get_chemical_stress(const int, double [3][3]);
