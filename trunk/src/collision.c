@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.14 2008-10-22 08:51:30 kevin Exp $
+ *  $Id: collision.c,v 1.15 2008-11-14 14:38:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -43,7 +43,6 @@
 #include "io_harness.h"
 
 extern Site * site;
-extern double * phi_site;
 
 /* Variables (not static) */
 
@@ -468,7 +467,7 @@ void MODEL_collide_binary_lb() {
 
 	/* Now, the order parameter distribution */
 
-	phi = phi_site[index];
+	phi = phi_get_phi_site(index);
 	mu = free_energy_get_chemical_potential(index);
 
 	jphi[X] = 0.0;
@@ -664,7 +663,7 @@ void MODEL_init( void ) {
 #else
 		set_rho(rho0, ind); 
 		set_phi(phi,  ind);
-		phi_site[ind] = phi;
+		phi_set_phi_site(ind, phi);
 #endif
 	      }
 	  }
