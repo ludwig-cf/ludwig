@@ -20,7 +20,7 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.5 2008-11-14 16:38:16 kevin Exp $
+ *  $Id: extract.c,v 1.6 2008-11-17 15:37:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Grouand and
  *  Edinburgh Parallel Computing Centre
@@ -46,8 +46,8 @@ int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;
 double le_speed_ = 0.0;
-int le_displace_ = 0;
-int * le_displacements_;
+double le_displace_ = 0.0;
+double * le_displacements_;
 int output_binary_ = 0;
 
 char stub_[FILENAME_MAX];
@@ -116,8 +116,8 @@ int main(int argc, char ** argv) {
   if (datasection == NULL) printf("calloc(datasection) failed\n");
 
   /* LE displacements as function of x */
-  le_displace_ = le_speed_*ntime;
-  le_displacements_ = (int *) malloc(ntotal[0]*sizeof(int));
+  le_displace_ = le_speed_*(double) ntime;
+  le_displacements_ = (double *) malloc(ntotal[0]*sizeof(double));
   if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
   le_set_displacements();
 
@@ -421,8 +421,9 @@ int le_displacement(int ic, int jc) {
 
 void le_set_displacements() {
 
-  int ic, dy;
+  int ic;
   int di;
+  double dy;
 
   for (ic = 0; ic < ntotal[0]; ic++) {
     le_displacements_[ic] = 0.0;
@@ -431,7 +432,7 @@ void le_set_displacements() {
   if (nplanes_ > 0) {
 
     di = ntotal[0] / nplanes_;
-    dy = -(nplanes_/2)*le_displace_;
+    dy = -(nplanes_/2.0)*le_displace_;
 
     /* Fist half block */
     for (ic = 1; ic <= di/2; ic++) {
@@ -489,7 +490,7 @@ void le_unroll(double * data) {
   assert(nrec_ <= 1);
 
   /* Allocate the temporary buffer */
-    
+
   buffer = (double *) malloc(ntargets[1]*ntargets[2]*sizeof(double));
   if (buffer == NULL) {
     printf("malloc(buffer) failed\n");
