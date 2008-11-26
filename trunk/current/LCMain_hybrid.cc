@@ -28,11 +28,15 @@ void update_ks(double ****, double ****);
 void streamfile_ks(const int);
 void writeDiscFile_ks(const int);
 void exchangeTau(void);
+void writeRestart(const int);
+void readRestart(const int);
+
 
 // ============================================================
 int main(int argc, char** argv) 
 {
 
+    int Nstart;
     double t0, t1;
 
 #ifdef PARALLEL
@@ -56,6 +60,7 @@ int main(int argc, char** argv)
   inputFile >> Lx >> endOfLine;
   inputFile >> Ly >> endOfLine;
   inputFile >> Lz >> endOfLine;
+  inputFile >> Nstart >> endOfLine;
   inputFile >> Nmax >> endOfLine;
   inputFile >> GRAPHICS >> endOfLine;
   inputFile >> stepskip >> endOfLine;
@@ -111,6 +116,7 @@ int main(int argc, char** argv)
   logFile << Lx << "\t\t# Lx" << endl;
   logFile << Ly << "\t\t# Ly" << endl;
   logFile << Lz << "\t\t# Lz" << endl;
+  logFile << Nstart << "\t\t# Nstart" << endl;
   logFile << Nmax << "\t\t# Nmax" << endl;
   logFile << GRAPHICS << "\t\t# GRAPHICS" << endl;
   logFile << stepskip << "\t\t# stepskip" << endl;
@@ -220,7 +226,13 @@ int main(int argc, char** argv)
   else
     aa=4.0;
 
-  for (n=1; n<=Nmax; n++) {
+
+  if (Nstart > 0) {
+    message("Reading restart files...");
+    readRestart(Nstart);
+  }
+
+  for (n=1+Nstart; n<=Nmax; n++) {
 
 
   /* BP equilibration (assuming 1500 steps, change if inappropriate) */
@@ -386,6 +398,10 @@ int main(int argc, char** argv)
 	writeDiscFile_ks(n);
     }
   }
+
+  /* Write  restart */
+
+  writeRestart(Nmax);
 
 #ifdef PARALLEL
   t1 = MPI_Wtime();

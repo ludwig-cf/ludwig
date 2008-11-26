@@ -917,3 +917,171 @@ void writeDiscFile_ks(const int iter) {
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  writeRestart
+ *
+ *  Write out the entire state (distributions f, five components
+ *  of Q tensor) to file, suitable to reading in again for a
+ *  restart.
+ *
+ *  The argument is the time step.
+ *
+ *  This is always binary.
+ *
+ *****************************************************************************/
+
+void writeRestart(const int iter) {
+
+  int i, j, k, p;  
+  double t0, t1;
+  double buffer[20];
+
+  /* Build the filename for this communicator stub.case.iteration.dat-id-n */
+
+  String oname("config.");
+  oname.concat(numCase);
+  oname.concat(".");
+  oname.concat(iter);
+  oname.concat(".");
+  oname.concat(io_group_id_);
+  oname.concat("-");
+  oname.concat(io_ngroups_);
+
+#ifdef PARALLEL
+  int token=0;
+  const int tag = 989;
+
+  t0 = MPI_Wtime();
+
+  if (io_rank_ == 0) {
+    output.open(oname.get());
+  }
+  else {
+    MPI_Recv(&token, 1, MPI_INT, io_rank_ - 1, tag, io_communicator_,
+	     &status);
+    output.open(oname.get(),ios::app);
+  }
+#endif
+       
+  for(i=ix1; i<ix2; i++) { 
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+	
+	for (p = 0; p < 15; p++) {
+	  buffer[p] = f[i][j][k][p];
+	}
+	buffer[15] = Qxx[i][j][k];
+	buffer[16] = Qxy[i][j][k];
+	buffer[17] = Qxz[i][j][k];
+	buffer[18] = Qyy[i][j][k];
+	buffer[19] = Qyz[i][j][k];
+	output.write((char *) buffer, 20*sizeof(double));
+      }
+    }
+  }
+
+  output.close();
+
+#ifdef PARALLEL
+  if (io_rank_ < io_group_size_ - 1) {
+    MPI_Send(&token, 1, MPI_INT, io_rank_ + 1, tag, io_communicator_);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+  t1 = MPI_Wtime();
+
+  total_io_ += (t1-t0);
+#endif
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  readRestart
+ *
+ *  Read configuration (distributions f, five components of
+ *  the Q tensor) from file.
+ *
+ *  The argument is the time step.
+ *
+ *  Binary is always expected.
+ *
+ *****************************************************************************/
+
+void readRestart(const int iter) {
+
+  int i, j, k, p;
+  double t0, t1;
+  double buffer[20];
+  ifstream input;
+
+  /* Build the filename for this communicator stub.case.iteration.dat-id-n */
+
+  String iname("config.");
+  iname.concat(numCase);
+  iname.concat(".");
+  iname.concat(iter);
+  iname.concat(".");
+  iname.concat(io_group_id_);
+  iname.concat("-");
+  iname.concat(io_ngroups_);
+
+#ifdef PARALLEL
+  int token=0;
+  const int tag = 990;
+
+  t0 = MPI_Wtime();
+
+  if (io_rank_ == 0) {
+    input.open(iname.get());
+  }
+  else {
+    /* Block until we get the token */
+    MPI_Recv(&token, 1, MPI_INT, io_rank_ - 1, tag, io_communicator_,
+	     &status);
+    input.open(iname.get(),ios::in);
+  }
+#endif
+       
+  for(i=ix1; i<ix2; i++) { 
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
+
+	input.read((char *) buffer, 20*sizeof(double));
+	
+	for (p = 0; p < 15; p++) {
+	  f[i][j][k][p] = buffer[p];
+	}
+	Qxx[i][j][k] = buffer[15];
+	Qxy[i][j][k] = buffer[16];
+	Qxz[i][j][k] = buffer[17];
+	Qyy[i][j][k] = buffer[18];
+	Qyz[i][j][k] = buffer[19];
+      }
+    }
+  }
+
+  if (input.good()) {
+  }
+  else {
+    cout << "Error on read" << endl;
+    MPI_Abort(MPI_COMM_WORLD, 0);
+  }
+
+  input.close();
+
+#ifdef PARALLEL
+  if (io_rank_ < io_group_size_ - 1) {
+    /* Send the token on to the next process */
+    MPI_Send(&token, 1, MPI_INT, io_rank_ + 1, tag, io_communicator_);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+  t1 = MPI_Wtime();
+
+  total_io_ += (t1-t0);
+#endif
+
+  return;
+}
