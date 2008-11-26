@@ -1,6 +1,7 @@
 64		% Lx  % cannot set = 1 without changing code
 64		% Ly
 64		% Lz 
+0		% Nstart
 300000		% Nmax
 0    		% GRAPHICS
 1500		% stepskip

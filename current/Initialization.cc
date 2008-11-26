@@ -664,6 +664,10 @@ void initialize(void)
 
   n = pe_cartesian_size_[0]*pe_cartesian_size_[1]*pe_cartesian_size_[2];
   if (n != nbPE) {
+    cout << "nbPE = " << nbPE << endl;
+    cout << "x size: " << pe_cartesian_size_[0] << endl;
+    cout << "y size: " << pe_cartesian_size_[1] << endl;
+    cout << "z size: " << pe_cartesian_size_[2] << endl;
     cout << "Incorrect decomposition " << endl;
     MPI_Abort(MPI_COMM_WORLD, 0);
   }
