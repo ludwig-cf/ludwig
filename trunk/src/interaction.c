@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.16 2008-08-24 16:47:31 kevin Exp $
+ *  $Id: interaction.c,v 1.17 2008-11-27 16:18:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -139,6 +139,7 @@ void COLL_init() {
   void lubrication_init(void);
   void check_interactions(const double);
   void monte_carlo(void);
+  void phi_gradients_set_solid(void);
 
   /* Default position: no colloids */
 
@@ -213,7 +214,8 @@ void COLL_init() {
   /* Transfer any particles in the halo regions, initialise the
    * colloid map and build the particles for the first time. */
 
-  CCOM_halo_particles(); 
+  CCOM_halo_particles();
+  phi_gradients_set_solid();
 
 #ifndef _SUBGRID_
   COLL_update_map();
