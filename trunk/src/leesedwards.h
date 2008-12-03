@@ -26,9 +26,11 @@ int le_index_real_to_buffer(const int, const int);
 int le_index_buffer_to_real(const int);
 int le_site_index(const int, const int, const int);
 int le_plane_location(const int);
+int le_get_nplane_total(void);
 
 double    le_buffer_displacement(const int);
 double    le_get_block_uy(int);
+double    le_get_plane_uy();
 MPI_Comm  le_communicator(void);
 void      le_displacement_ranks(const double, int[2], int[2]);
 void      le_init_shear_profile(void);
