@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.7 2008-11-14 14:42:50 kevin Exp $
+ *  $Id: free_energy.c,v 1.8 2008-12-03 20:31:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -43,7 +43,7 @@ static int    is_brazovskii_ = 0;
 
 /* Surfactant model of van der Sman and van der Graaf in development */
 
-static double kT_ = 0.0;
+static double D_ = 0.0;
 static double epsilon_ = 0.0;
 static double W_ = 0.0;
 
@@ -130,20 +130,22 @@ void init_free_energy() {
     fe_chemical_potential[0] = fe_chemical_potential_brazovskii;
     is_brazovskii_ = 1;
   }
-  else if (strcmp(description, "sman_surfactant") == 0) {
+  else if (strcmp(description, "surfactant") == 0) {
+
+    assert(nop_ == 2);
 
     n = RUN_get_double_parameter("epsilon", &epsilon_);
     n = RUN_get_double_parameter("W", &W_);
-    n = RUN_get_double_parameter("kT", &kT_);
+    n = RUN_get_double_parameter("D", &D_);
 
-    info("Surfactant model free energy (van der Sman)\n");
+    info("Surfactant model free energy\n");
     info("Bulk parameter A      = %f\n", A_);
     info("Bulk parameter B      = %f\n", B_);
     info("Ext. parameter C      = %f\n", C_);
     info("Surface penalty kappa = %f\n", kappa_);
     info("Surface tension       = %f\n", surface_tension());
     info("Interfacial width     = %f\n", interfacial_width());
-    info("Scale energy kT       = %f\n", kT_);
+    info("Scale energy D        = %f\n", D_);
     info("Surface adsorption e  = %f\n", epsilon_);
     info("Enthalpic term W      = %f\n", W_);
     assert(nop_ == 2);
@@ -490,7 +492,7 @@ static double fe_chemical_potential_sman_phi(const int index) {
  *  Surfactant part of the chemical potentail for the surfactant model
  *  of van der Sman and van der Graaf.
  * 
- *  mu_\psi = kT (ln \psi - ln (1 - \psi) + (1/2) W \phi^2
+ *  mu_\psi = D (ln \psi - ln (1 - \psi) + (1/2) W \phi^2
  *          - (1/2) \epsilon (\nabla \phi)^2
  *
  *****************************************************************************/
@@ -508,7 +510,7 @@ static double fe_chemical_potential_sman_psi(const int index) {
   assert(psi > 0.0);
   assert(psi < 1.0);
 
-  mu = kT_*(log(psi) - log(1.0-psi)) + 0.5*W_*phi*phi
+  mu = D_*(log(psi) - log(1.0-psi)) + 0.5*W_*phi*phi
     - 0.5*epsilon_*dot_product(dphi, dphi);
 
   return mu;
@@ -521,7 +523,7 @@ static double fe_chemical_potential_sman_psi(const int index) {
  *  The chemical stress of the van der Sman and van der Graaf model.
  *
  *  P_ab = (1/2) A \phi^2 + (3/4) B \phi^4 - (1/2) \kappa \nabla^2 \phi
- *       - kT ln(1 - \psi) + W \psi \phi^2
+ *       - D ln(1 - \psi) + W \psi \phi^2
  *       + \epsilon \phi \nabla_a \phi \nabla_b \psi
  *       + \epsilon \phi \psi \nabla^2 \phi
  *       + (\kappa - \epsilon\psi) \nabla_a \phi \nabla_b \phi
@@ -546,7 +548,7 @@ static void fe_chemical_stress_sman(const int index, double p[3][3]) {
 
   p0 = 0.5*phi*phi*(A_ + 1.5*B_*phi*phi)
     - kappa_*(phi*delsq_phi + 0.5*dot_product(dphi, dphi))
-    - kT_*log(1.0 - psi) + W_*psi*phi*phi
+    - D_*log(1.0 - psi) + W_*psi*phi*phi
     + epsilon_*(dot_product(dphi, dpsi) + phi*psi*delsq_phi);
 
   for (ia = 0; ia < 3; ia++) {
