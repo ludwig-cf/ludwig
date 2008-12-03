@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.4 2008-11-14 14:42:50 kevin Exp $
+ *  $Id: phi.c,v 1.5 2008-12-03 20:35:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -528,13 +528,17 @@ static int phi_read_ascii(FILE * fp, const int ic, const int jc,
 
 static int phi_write_ascii(FILE * fp, const int ic, const int jc,
 			   const int kc) {
-  int index, n;
+  int index, n, nwrite;
 
-  assert(nop_ == 1);
   index = le_site_index(ic, jc, kc);
-  n = fprintf(fp, "%22.15e\n", phi_site[index]);
 
-  if (n != 23) fatal("fprintf(phi) failed at index %d\n", index);
+  for (n = 0; n < nop_; n++) {
+    nwrite = fprintf(fp, "%22.15e ", phi_site[nop_*index + n]);
+    if (nwrite != 23) fatal("fprintf(phi) failed at index %d\n", index);
+  }
+
+  nwrite = fprintf(fp, "\n");
+  if (nwrite != 1) fatal("fprintf(phi) failed at index %d\n", index);
 
   return n;
 }
