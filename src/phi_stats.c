@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.4 2008-11-14 14:42:50 kevin Exp $
+ *  $Id: phi_stats.c,v 1.5 2008-12-03 20:41:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -198,7 +198,9 @@ void phi_init_block() {
 
   z1 = 0.25*L(Z);
   z2 = 0.75*L(Z);
-  xi0 = 3.0;
+  /* This is currently hardwired as the value that is generally
+   * used, but may want to change. */
+  xi0 = 1.13;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
@@ -277,6 +279,8 @@ void phi_init_surfactant(double psi) {
   get_N_local(nlocal);
 
   if (nop_ == 2) {
+
+    info("Initialising surfactant concentration to %f\n", psi);
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
