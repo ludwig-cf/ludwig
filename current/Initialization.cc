@@ -207,8 +207,25 @@ void randomizeQ(void)
 	amplitude=0.2;
 	if (O8MSTRUCT == 1) amplitude=-0.2;
 
-	if (TWIST == 1)
-	  phase=2.0*q0*k;
+        if (TWIST == 1){
+
+      amplitude=(0.546-0.2723/2.0);
+//      amplitude=0.40985;
+
+// cholesteric LC
+
+      Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*j);
+//      Qxx[i][j][k]=amplitude/3.0+amplitude*cos(2.0*q0*j);
+      Qxy[i][j][k]= 0.0;
+//      Qyy[i][j][k]= -2.0*amplitude/3.0;
+      Qyy[i][j][k]= -0.2723;
+      Qxz[i][j][k]= -amplitude*(sin(2.0*q0*j));
+      Qyz[i][j][k]= 0.0;
+
+         }
+
+
+ // phase=2.0*q0*k;
 
 
 	if (DTSTRUCT == 1) {
