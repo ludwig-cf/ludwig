@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.15 2008-11-14 14:38:25 kevin Exp $
+ *  $Id: collision.c,v 1.16 2008-12-03 20:42:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -682,6 +682,12 @@ void MODEL_init( void ) {
     phi_init_bath();
   }
 
+  ind = RUN_get_double_parameter("psi_b", &rho0);
+
+  if (ind != 0) {
+    phi_init_surfactant(rho0);
+  }
+
   return;
 }
 
@@ -751,6 +757,12 @@ void RAND_init_fluctuations() {
   p = RUN_get_double_parameter("mobility", &mobility);
   info("\nOrder parameter mobility M: %f\n", mobility);
   phi_ch_set_mobility(mobility);
+
+  if (nop_ == 2) {
+    p = RUN_get_double_parameter("mobility_psi", &mobility);
+    info("\nSurfactant mobility M: %f\n", mobility);
+    phi_ch_op_set_mobility(mobility, 1);
+  }
 
 
   /* Ghost modes */
