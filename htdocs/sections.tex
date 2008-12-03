@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.6 2008-11-10 11:23:58 kevin Exp $
+%  $Id: sections.tex,v 1.7 2008-12-03 20:19:27 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -149,17 +149,31 @@ Sets the mean density of the fluid. The default value is unity, and
 it is recommended that the value should not be changed.
 
 
+
 \subsection{Binary fluid parameters}
 
-The following apply for the symmetric binary fluid problem with
-order parameter $\phi$ and free energy (see section X) \cite{viv}
+The are currently three choices of free energy relating to
+various systems.
+
+\subsubsection{Symmetric binary fluid}
+
+\inputkey{free\_energy symmetric}
+
+The following applies for the binary fluid problem with
+compositional order parameter $\phi$ and free energy
+(excluding the term in the density $\rho$):
 \begin{equation}
  F[\phi] = 
 \int dr \left(
-{\scriptstyle \frac{1}{2}}A\phi^2
-+ {\scriptstyle \frac{1}{4}}B\phi^4
-+ {\scriptstyle \frac{1}{2}}\kappa (\mathbf{\nabla}\phi)^2 \right)
+{\textstyle \frac{1}{2}}A\phi^2
++ {\textstyle \frac{1}{4}}B\phi^4
++ {\textstyle \frac{1}{2}}\kappa (\mathbf{\nabla}\phi)^2 \right).
 \end{equation}
+
+This is described in some detail
+by Kendon et al \cite{viv}. The first two terms represent the bulk
+contribution, whereas the term in $\kappa$ penalisies curvature in
+the interface.
 
 \inputkey{A}
 
@@ -172,24 +186,121 @@ not enforced.
 
 \inputkey{K}
 
-The parameter $\kappa$
+The parameter $\kappa$, which is positive.
 
-\inputkey{C}
 
-The surface free energy parameter {C}. Currently unused.
+\subsubsection{Brazovskii free energy}
 
-\inputkey{H}
+This is similar to the symetric, but with one extra term which
+requires description.
+\begin{equation}
+ F[\phi] = 
+\int dr \left(
+{\textstyle \frac{1}{2}}A\phi^2
++ {\textstyle \frac{1}{4}}B\phi^4
++ {\textstyle \frac{1}{2}}\kappa (\mathbf{\nabla}\phi)^2
++ {\textstyle \frac{1}{2}} C (\nabla^2 \phi)^2 \right).
+\end{equation}
 
-The surface free energy parameter {H}. Currently unused.
+\subsubsection{Surfactant model free energy}
+
+\inputkey{free\_energy surfactant}
+
+This is for use with a two order parameter model the first of
+which is the composition, as for the symmetric free energy,
+while the second $\psi$ represents surfactant concentration.
+The free energy density is made up of a number of terms:
+
+\begin{equation}
+{\textstyle \frac{1}{2}}A\phi^2
++ {\textstyle \frac{1}{4}}B\phi^4
++ {\textstyle \frac{1}{2}}\kappa (\mathbf{\nabla}\phi)^2
+\end{equation}
+is the standard symmetric term related to the composition as above;
+
+\begin{equation}
+D \left(\psi \ln\psi + (1 - \psi) \ln(1-\psi)\right)
+\end{equation}
+represents the energy of surfactant in the bluk phase with surfactant
+concentration $0 < \psi < 1$ with a single parameter $D$;
+\begin{equation}
+-{\textstyle \frac{1}{2}} \epsilon \psi (\mathbf{\nabla} \phi)^2
+-{\textstyle \frac{1}{2}} \beta \psi^2  (\mathbf{\nabla} \phi)^2
+\end{equation}
+where the term in $\epsilon$ represents the energy reduction by
+adsorbing surfactant at the interface and the term in $\beta$
+provides [TO BE ACCOUNTED FOR]; finally, there is an extra term
+\begin{equation}
++{\textstyle \frac{1}{2}} W \psi \phi^2
+\end{equation}
+which is included to stabilise the interface \cite{theissen}.
+
+The corresponding keys for the input file are:
+
+\inputkey{D}
+
+is the bulk surfactant contribution parameter
+
+\inputkey{epsilon}
+
+is the parameter $\epsilon$
+
+\inputkey{W}
+
+is the parameter $W$
+
+\inputkey{beta}
+
+is the value of the parameter $\beta$ (not implemented yet).
+
+\inputkey{phi\_b}
+
+the initial, uniform, background surfactant concentration $\psi_b$.
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+\hline
+Name & $\eta$ & $-A,B$ & $\kappa$ & $D$ & $\epsilon$ & $W$
+     & $M$ & $M_\psi$ \\
+\hline
+Run001 & 0.025 & 0.000625 & 0.004 & 0.0001 & 0.004 & 0.0003  & 2.0 & 0.1\\
+\hline
+\end{tabular}
+\caption{Acceptable parameters for the surfactant free energy model.
+Note that $\epsilon = \kappa$.}
+\end{center}
+\end{table}
+
+
+\subsection{Other Binary Fluid Parameters}
 
 \inputkey{mobility}
 
-Sets the order parameter mobility in the LB framework.
+Sets the compositional order parameter mobility $M$ (uniform in space)
+which appears in the Cahn-Hilliard equation. 
+
+\inputkey{mobilty\_psi}
+
+Sets the (uniform) mobility for the surfactant as appropriate for
+the Cahn-Hilliard equation.
 
 \inputkey{phi0}
 
-The mean compositional order parameter roughly $-0.5 < \phi < 0.5$.
+The mean compositional order parameter roughly $-0.5 < \phi_0 < 0.5$.
 The default value is zero, i.e., a symmetric 50:50 mixture by volume.
+
+\inputkey{phi\_initialisation}
+
+Determines how the compositional order parameter is initialisated
+at the start of the run. If set to \texttt{spinodal} the value
+is set to $\phi_0$ as set above plus or minus a random noise, the
+magnitude of which is set by the value of the \texttt{noise} key.
+If set to \texttt{block} a one-dimensional profile is set up in
+the $z$-direction representing two blocks of fluid with
+$\phi = \pm 1$. The two interfaces are set at $z = L_z/4$ and
+$z = 3L_z/4$ with the equilibrium $\tanh(z/\xi_0)$ profile having 
+appropriate width. The $\phi = -1$ section is in the middle.
 
 \inputkey{noise}
 
@@ -477,7 +588,8 @@ to give the conductance.
 
 An analtyical expression is also available for the conductance
 of a square or rectugular capillary. For an infinite capillary
-of square cross section width $w \times h$ [WHICH IS LONGER?],
+of square cross section width $w \times h$ (where $h$ is the
+longer),
 the volume flux per unit area $J$ is expected to be
 \cite{papanastasiou,edo1}
 \begin{equation}
