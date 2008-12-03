@@ -178,13 +178,12 @@ int main( int argc, char **argv )
 #ifdef _NOISE_
       TEST_fluid_temperature();
 #endif
-
+      phi_stats_print_stats();
       info("\nCompleted cycle %d\n", step);
     }
 
     /* Next time step */
   }
-
 
   /* Dump the final configuration if required. */
 
