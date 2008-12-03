@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.3 2008-11-14 14:42:50 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.4 2008-12-03 20:36:45 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -47,7 +47,7 @@ static void phi_ch_update_forward_step(void);
 static void (* phi_ch_compute_fluxes)(void) = phi_ch_upwind;
 static int signbit_double(double);
 
-static double mobility_; /* Order parameter mobility */
+static double * mobility_; /* Order parameter mobilities */
 
 /*****************************************************************************
  *
@@ -102,7 +102,8 @@ void phi_cahn_hilliard() {
  *****************************************************************************/
 
 double phi_ch_get_mobility() {
-  return mobility_;
+  assert(mobility_);
+  return mobility_[0];
 }
 
 /*****************************************************************************
@@ -112,8 +113,39 @@ double phi_ch_get_mobility() {
  *****************************************************************************/
 
 void phi_ch_set_mobility(const double m) {
+
+  if (mobility_ == NULL) {
+    mobility_ = (double *) malloc(nop_*sizeof(double));
+    if (mobility_ == NULL) fatal("malloc(mobility) failed\n");
+  }
+
   assert(m >= 0.0);
-  mobility_ = m;
+  mobility_[0] = m;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_set_op_mobility
+ *
+ *  As above, but for general order parameter.
+ *
+ *****************************************************************************/
+
+void phi_ch_op_set_mobility(const double m, const int nop) {
+
+  assert(m >= 0);
+  assert(nop < nop_);
+
+  if (mobility_ == NULL) {
+    mobility_ = (double *) malloc(nop_*sizeof(double));
+    if (mobility_ == NULL) fatal("malloc(mobility) failed\n");
+  }
+
+  assert(m >= 0.0);
+  mobility_[nop] = m;
+
   return;
 }
 
@@ -160,6 +192,7 @@ static void phi_ch_upwind() {
   double u0[3], u1[3], u;
   double mu0, mu1;
   double phi0, phi;
+  double mobility;
 
   get_N_local(nlocal);
 
@@ -173,6 +206,7 @@ static void phi_ch_upwind() {
 
 	for (n = 0; n < nop_; n++) {
 	  phi0 = phi_site[nop_*index0 + n];
+	  mobility = mobility_[n];
 
 	  mu0 = free_energy_chemical_potential(index0, n);
 	  hydrodynamics_get_velocity(index0, u0);
@@ -190,7 +224,7 @@ static void phi_ch_upwind() {
 	  }
 
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  fluxw[nop_*index0 + n] = u*phi - mobility_*(mu0 - mu1);
+	  fluxw[nop_*index0 + n] = u*phi - mobility*(mu0 - mu1);
 
 	  /* east face (ic and icp1) */
 	  index1 = ADDR(icp1, jc, kc);
@@ -205,7 +239,7 @@ static void phi_ch_upwind() {
 	  }
 
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  fluxe[nop_*index0 + n] = u*phi - mobility_*(mu1 - mu0);
+	  fluxe[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
 
 
 
@@ -222,7 +256,7 @@ static void phi_ch_upwind() {
 	  }
 
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  fluxy[nop_*index0 + n] = u*phi - mobility_*(mu1 - mu0);
+	  fluxy[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
 
 	  /* z direction */
 	  index1 = ADDR(ic, jc, kc+1);
@@ -237,7 +271,7 @@ static void phi_ch_upwind() {
 	  }
 
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  fluxz[nop_*index0 + n] = u*phi - mobility_*(mu1 - mu0);
+	  fluxz[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
 	}
       }
     }
@@ -270,6 +304,8 @@ static void phi_ch_upwind_third_order() {
 
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
+  assert(nop_ == 1);
+  assert(mobility_);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm2 = le_index_real_to_buffer(ic, -2);
@@ -298,7 +334,7 @@ static void phi_ch_upwind_third_order() {
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	fluxw[index0] = u*phi - mobility_*(mu0 - mu1);
+	fluxw[index0] = u*phi - mobility_[0]*(mu0 - mu1);
 
 	/* east face (ic and icp1) */
 	index1 = ADDR(icp1, jc, kc);
@@ -313,7 +349,7 @@ static void phi_ch_upwind_third_order() {
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	fluxe[index0] = u*phi - mobility_*(mu1 - mu0);
+	fluxe[index0] = u*phi - mobility_[0]*(mu1 - mu0);
 
 
 
@@ -330,7 +366,7 @@ static void phi_ch_upwind_third_order() {
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	fluxy[index0] = u*phi - mobility_*(mu1 - mu0);
+	fluxy[index0] = u*phi - mobility_[0]*(mu1 - mu0);
 
 	/* z direction */
 	index1 = ADDR(ic, jc, kc+1);
@@ -345,7 +381,7 @@ static void phi_ch_upwind_third_order() {
 	}
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	fluxz[index0] = u*phi - mobility_*(mu1 - mu0);
+	fluxz[index0] = u*phi - mobility_[0]*(mu1 - mu0);
       }
     }
   }
@@ -451,6 +487,8 @@ static void phi_ch_upwind_seventh_order() {
 
   get_N_local(nlocal);
   assert(nhalo_ >= 4);
+  assert(nop_ == 1);
+  assert(mobility_);
 
   for (ic = 0; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
@@ -479,7 +517,7 @@ static void phi_ch_upwind_seventh_order() {
 	  + ap2*phi_site[ADDR(up + 2*s, jc, kc)]);
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	fluxe[index0] = u*phi - mobility_*(mu1 - mu0);
+	fluxe[index0] = u*phi - mobility_[0]*(mu1 - mu0);
 
 	/* y direction */
 	index1 = ADDR(ic, jc+1, kc);
@@ -500,7 +538,7 @@ static void phi_ch_upwind_seventh_order() {
 	  + ap2*phi_site[ADDR(ic, up + 2*s, kc)]);
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	fluxy[index0] = u*phi - mobility_*(mu1 - mu0);
+	fluxy[index0] = u*phi - mobility_[0]*(mu1 - mu0);
 
 	/* z direction */
 	index1 = ADDR(ic, jc, kc+1);
@@ -521,7 +559,7 @@ static void phi_ch_upwind_seventh_order() {
 	  + ap2*phi_site[ADDR(ic, jc, up + 2*s)]);
 
 	mu1 = free_energy_get_chemical_potential(index1);
-	fluxz[index0] = u*phi - mobility_*(mu1 - mu0);
+	fluxz[index0] = u*phi - mobility_[0]*(mu1 - mu0);
       }
     }
   }
