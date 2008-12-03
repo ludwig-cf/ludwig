@@ -8,7 +8,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh 2008
  *
- *  $Id: phi_cahn_hilliard.h,v 1.2 2008-08-24 16:58:10 kevin Exp $
+ *  $Id: phi_cahn_hilliard.h,v 1.3 2008-12-03 20:36:45 kevin Exp $
  *
  *****************************************************************************/
 
@@ -20,5 +20,6 @@ void phi_ch_set_upwind_order(int);
 
 double phi_ch_get_mobility(void);
 void   phi_ch_set_mobility(const double);
+void   phi_ch_op_set_mobility(const double, const int);
 
 #endif
