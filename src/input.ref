@@ -93,6 +93,22 @@ temperature 0.00002133333
 #  mobility               Order parameter mobility M
 #
 ###############################################################################
+#
+#  Surfactant free energy; set
+#
+#  free_energy              surfactant
+#  phi_finite_difference    yes
+#
+#  In addition to A, B, K, there are the extra parameters
+#
+#  D              bulk surfactant parameter
+#  epsilon        surface term
+#  W              entropy term
+#  beta           [not implemented yet]
+#  psi_b          initial uniform (background) concentration
+#  mobility_psi   surfactant mobility
+#             
+###############################################################################
 
 free_energy symmetric
 
@@ -101,11 +117,18 @@ B 0.0625
 K 0.04
 C 0.0
 
+#D 0.0001
+#epsilon 0.004
+#W 0.0003
+#beta 0.0
+#psi_b 0.001
+
 #noise 0.2
 phi0 0.0
 phi_finite_difference no
 phi_initialisation    spinodal
 mobility 0.15
+#mobility_psi 0.1
 
 ###############################################################################
 #
