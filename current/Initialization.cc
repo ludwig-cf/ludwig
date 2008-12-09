@@ -213,14 +213,20 @@ void randomizeQ(void)
 //      amplitude=0.40985;
 
 // cholesteric LC
+#ifdef PARALLEL
+      Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
+      Qxy[i][j][k]= 0.0;
+      Qyy[i][j][k]= -0.2723;
+      Qxz[i][j][k]= -amplitude*(sin(2.0*q0*jc));
+      Qyz[i][j][k]= 0.0;
+#else
 
       Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*j);
-//      Qxx[i][j][k]=amplitude/3.0+amplitude*cos(2.0*q0*j);
       Qxy[i][j][k]= 0.0;
-//      Qyy[i][j][k]= -2.0*amplitude/3.0;
       Qyy[i][j][k]= -0.2723;
       Qxz[i][j][k]= -amplitude*(sin(2.0*q0*j));
       Qyz[i][j][k]= 0.0;
+#endif
 
          }
 
