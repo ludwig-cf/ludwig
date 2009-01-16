@@ -75,6 +75,7 @@ int main(int argc, char** argv)
   inputFile >> HEXPLANAR >> endOfLine;
   inputFile >> HEX3D >> endOfLine;
   inputFile >> DTSTRUCT >> endOfLine;
+  inputFile >> BLUEHAAR >> endOfLine;
   inputFile >> L1init >> endOfLine;
   inputFile >> L2init >> endOfLine;
   inputFile >> numuc >> endOfLine;
@@ -131,6 +132,7 @@ int main(int argc, char** argv)
   logFile << HEXPLANAR << "\t\t# HEXPLANAR"<< endl;
   logFile << HEX3D << "\t\t# HEX3D"<< endl;
   logFile << DTSTRUCT << "\t\t# DTSTRUCT"<< endl;
+  logFile << BLUEHAAR << "\t\t# BLUEHAAR"<< endl;
   logFile << L1init << "\t\t# L1"<< endl;
   logFile << L2init << "\t\t# L2"<< endl;
   logFile << numuc << "\t\t# numuc"<< endl;
@@ -180,8 +182,14 @@ int main(int argc, char** argv)
 
     q0init=numhftwist*numuc*sqrt(2.0)*Pi/Ly;
 
-    if (O2STRUCT || TWIST || HEXPLANAR || HEX3D || DTSTRUCT) {
+    if (O2STRUCT || TWIST || DTSTRUCT || BLUEHAAR) {
       q0init=numhftwist*numuc*Pi/Ly;
+      L1init=2.0*L1init;
+      L2init=2.0*L2init;
+    }
+
+    if (HEXPLANAR || HEX3D) {
+      q0init=numhftwist*numuc*Pi/Lx;
       L1init=2.0*L1init;
       L2init=2.0*L2init;
     }
@@ -237,7 +245,7 @@ int main(int argc, char** argv)
 
   /* BP equilibration (assuming 1500 steps, change if inappropriate) */
 
-      if(n==1500) startDroplet();
+//      if(n==1500) startDroplet();
 //      if(n==1500) startSlab();
 
 	computeStressFreeEnergy(n);

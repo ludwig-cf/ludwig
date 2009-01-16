@@ -1,5 +1,3 @@
-//#define BLUEHAAR
-
 void randomizeQ(void)
 {
   int i,j,k,l,u;
@@ -16,15 +14,14 @@ void randomizeQ(void)
 #endif
 
 
+
 //========================//
 // BLUEHAAR configuration //
 //========================//
-
-#ifdef BLUEHAAR
-
+if(BLUEHAAR==1){
 
    // number and radius of DTCs	
-   int Ndt=64;
+   int Ndt=256;
    double Rdt=3;
    // rotation angles
    double *theta,*phi,di,dj,dk;
@@ -188,11 +185,11 @@ void randomizeQ(void)
 	 }
      }
 
-
+}
 //================================================//
 // initial configurations different from BLUEHAAR //
 //================================================//
-#else
+if(BLUEHAAR!=1){
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -395,7 +392,7 @@ void randomizeQ(void)
 
    if (HEXPLANAR == 1) {
 
-/* twist should be along z-direction */
+/* twist is along z-direction */
 #ifdef PARALLEL
           Qxx[i][j][k]=amplitude*(-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc));
           Qxy[i][j][k]=amplitude*(-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc));
@@ -472,7 +469,7 @@ void randomizeQ(void)
       }
     }
    }
-#endif
+}
 //================================//
 // end alternative configurations //
 //================================//
@@ -521,7 +518,7 @@ void startDroplet(void)
 	  amplitude=(0.546-0.2723/2.0);
 
 	  // droplet in cholesteric environment
-      
+//       /* 
 	  Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
 	  Qxy[i][j][k]= 0.0;
 	  Qyy[i][j][k]= -0.2723;
@@ -541,6 +538,7 @@ void startDroplet(void)
 
 
 	  }
+//       */
 
 	  //  droplet in isotropic environment
 
