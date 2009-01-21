@@ -245,7 +245,7 @@ int main(int argc, char** argv)
 
   /* BP equilibration (assuming 1500 steps, change if inappropriate) */
 
-//      if(n==1500) startDroplet();
+      if(n==1500) startDroplet();
 //      if(n==1500) startSlab();
 
 	computeStressFreeEnergy(n);
