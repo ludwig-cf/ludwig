@@ -27,7 +27,7 @@ float L1init,L1;
 float L2init,L2;
 
 double q0init,q0;
-double rr;
+double rr,rr_old;
 
 int numuc;
 double numhftwist;
@@ -254,7 +254,7 @@ extern float L1init,L1;
 extern float L2init,L2;
 
 extern double q0init,q0;
-extern double rr;
+extern double rr,rr_old;
 
 extern int numuc;
 extern double numhftwist;
