@@ -518,6 +518,15 @@ void computeStressFreeEnergy(int n)
          2.0*Qxzl*Qxzl+Qyyl*Qyyl+2.0*Qyzl*Qyzl+Qzzl*Qzzl);
 
 
+	 // electric field contribution
+#ifdef EON
+
+	 freeenergy+= -Inv12Pi*epsa*(Qxxl*Ex[i][j][k]*Ex[i][j][k]+2.0*Qxyl*Ex[i][j][k]*Ey[i][j][k]+ 
+	    2.0*Qxzl*Ex[i][j][k]*Ez[i][j][k]+Qyyl*Ey[i][j][k]*Ey[i][j][k]+
+	    2.0*Qyzl*Ey[i][j][k]*Ez[i][j][k]+Qzzl*Ez[i][j][k]*Ez[i][j][k]);
+
+#endif
+
 
 	 }
       }
@@ -532,12 +541,12 @@ void computeStressFreeEnergy(int n)
 
   /* KS. Could replace with single MPI_Reduce(). Not particularly important.*/
 
-    double reducedF,reducedstress,reduced_one_gradient,reduced_two_gradient;
+    double reducedF,reducedFtwist,reducedstress,reduced_one_gradient,reduced_two_gradient;
 
     MPI_Allreduce(&freeenergy,&reducedF, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     freeenergy=reducedF;
-    MPI_Allreduce(&freeenergytwist,&reducedF, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-    freeenergytwist=reducedF;
+    MPI_Allreduce(&freeenergytwist,&reducedFtwist, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    freeenergytwist=reducedFtwist;
 
     MPI_Allreduce(&one_gradient,&reduced_one_gradient, 1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
     one_gradient=reduced_one_gradient;
@@ -550,9 +559,14 @@ void computeStressFreeEnergy(int n)
 #endif
 
 
-// redshift
+// redshift: threshold set to 1e-9 as too small redshift cause program crash
 
-  rr=-0.5*one_gradient/two_gradient;
+   rr_old=rr;
+   rr=-0.5*one_gradient/two_gradient;
+
+   if(fabs(rr)<1e-9){rr=rr_old;}
+
+//  rr=1.0;
 
 
     /* Make sure this output comes from the process consistent with
