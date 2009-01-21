@@ -518,7 +518,7 @@ void startDroplet(void)
 	  amplitude=(0.546-0.2723/2.0);
 
 	  // droplet in cholesteric environment
-//       /* 
+       /* 
 	  Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
 	  Qxy[i][j][k]= 0.0;
 	  Qyy[i][j][k]= -0.2723;
@@ -538,17 +538,17 @@ void startDroplet(void)
 
 
 	  }
-//       */
+       */
 
 	  //  droplet in isotropic environment
 
-	  /*
+//	  /*
 	        Qxx[i][j][k]= 1e-4/2.0;
 	        Qxy[i][j][k]= 0.0;
 	        Qyy[i][j][k]= -1e-4;
 	        Qxz[i][j][k]= 0.0;
 	        Qyz[i][j][k]= 0.0;
-	 */
+//	 */
 
 	}
       }
