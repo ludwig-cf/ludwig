@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.7 2008-12-03 20:19:27 kevin Exp $
+%  $Id: sections.tex,v 1.8 2009-01-29 12:25:43 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -1354,9 +1354,127 @@ particle $i$ to the centre of $j$.
 \subsection{Bounce-Back on Links}
 
 
+\section{Surfactants}
 
+This section describes the approach taken to study surfactants. Here,
+we always adopt the hydrid method, i.e., LB for the hydrodynmic
+equations and finite difference for the associated Cahn-Hilliard
+equations. Coupling between the two sectors is via the velocity
+field and the external force on the fluid computed via the
+divergence of the `chemical stress'.
 
+In this model the surfactant appears as a concentration field
+$\psi(\mathbf{r};t)$, alongside the compositional order parameter
+$\phi(\mathbf{r};t)$ as appears in the binary fluid. There are
+two corresponding Cahn-Hilliard equations: first,
 
+\begin{equation}
+\partial_t \phi + \partial_\alpha \phi u_\alpha = 
+\partial_\alpha M_\phi \partial_\alpha \mu_\phi,
+\end{equation}
+and second
+\begin{equation}
+\partial_t \psi + \partial_\alpha \psi u_\alpha = 
+\partial_\alpha M_\psi \partial_\alpha \mu_\psi.
+\end{equation}
+
+\subsection{Free Energy}
+
+A number of different free energies have been used to study
+surfactants [cite Yeomans]. Here, the free energy is based on
+that used by van der Graff and van der Sman and others [cite].
+There are a number of different contributions to the free
+energy density:
+\begin{equation}
+f = f_\phi + f_\psi +f_1 + f_{ex}.
+\end{equation}
+The first is exactly that used for the binary fluid, i.e.,
+\begin{equation}
+f_\phi (\phi, \partial_\alpha\phi) =
+{\textstyle \frac{1}{2}} A \phi^2 + {\textstyle \frac{1}{4}} B \phi^4
++ {\textstyle \frac{1}{2}} \kappa (\partial_\alpha \phi)^2.
+\end{equation}
+The surface tension and the interfacial width are determined from the
+choice of parameters $A,B,\kappa$ as before.
+The second term in the free energu density represents the entropic
+energy of mixing of the surfactant with the bulk phases
+\begin{equation}
+f_\psi (\psi) = kT \left[ \psi \ln\psi + (1 - \psi)\ln(1-\psi) \right]
+\end{equation}
+where the parameter $kT$ sets the energy scale for the whole system.
+The surfactant order parameter, $\psi$, is unity for a saturated
+interface and zero for a plain interface.
+
+The surfactant lowers the energy of the interface where it is adsorbed
+there, represented by the term
+\begin{equation}
+F_1(\psi, \partial_\alpha \phi) 
+= -{\textstyle \frac{1}{2}} \epsilon \psi (\partial_\alpha \phi)^2
+  -{\textstyle \frac{1}{2}} \beta  \psi^2 (\partial_\alpha \phi)^2
+\end{equation}
+where $\epsilon$ and $\beta$ are parameters. Note that only the
+first term appears in \cite{vandergraaf}, while the second term is
+based on that appearing in, e.g., \cite{diamant}. If $\beta = 0$,
+the surfactant profile at the interface is symmetric (so-called
+Langmuir adsoption) whereas the term in $\beta$ induces an
+asymmetry (Frumpkin adsorption).
+Finally,  $f_{ex}$ is an enthalpic contribution introduced 
+to stabilise the interface \cite{theissengompper}
+\begin{equation}
+f_{ex} (\psi, \partial_\alpha \phi) = {\textstyle\frac{1}{2}} W \psi \phi^2,
+\end{equation}
+with $W$ a parameter.
+
+\subsection{Chemical potentials}
+
+The respective chemical potentials are obtained from the functional
+derivatives of the free energy $\mu_\phi = \delta F / \delta \phi$ and
+$\mu_\psi = \delta F / \delta \psi$. We obtain:
+\begin{equation}
+\mu_\phi =
+A\phi + B\phi^3 -\kappa \partial_\alpha^2 \phi
++ W\psi\phi + \epsilon\psi\partial_\alpha^2 \phi
++ \epsilon \partial_\alpha \phi \partial_\alpha \psi
++ 2\beta \psi\partial_\alpha\phi \partial_\alpha \psi
++ \beta \psi^2 \partial_\alpha^2 \phi,
+\end{equation}
+and
+\begin{equation}
+\mu_\psi = kT \left[ \ln\psi - \ln(1-\psi) \right]
++ {\textstyle \frac{1}{2}}W\phi^2
+- {\textstyle \frac{1}{2}}\epsilon (\partial_\alpha \phi)^2
+- \beta\psi (\partial_\alpha \phi)^2.
+\end{equation}
+As before, the pressure tensor is $P_{\alpha\beta} = p_0\delta_{\alpha\beta}
++ \tilde{P}_{\alpha\beta}$ with the isotrpic part being determined as (e.g.,
+\cite{theissengompper})
+\begin{equation}
+p_0 = \phi \mu_\phi + \psi \mu_\psi - f(\phi, \psi, \partial_\alpha \phi).
+\end{equation}
+There is no closed form for the tensor part, which must be choosen to
+comply with the constraint that in mechanical equilibrium
+\begin{equation}
+\partial_\alpha P_{\alpha\beta} = \phi\partial_\alpha\mu_\phi +
+\psi\partial_\alpha\mu_\psi.
+\end{equation}
+In this way we obtain for the isotropic contribution
+\begin{eqnarray}
+p_0 = {\textstyle \frac{1}{2}}A\phi^2 + {\textstyle \frac{3}{4}}B\phi^4 
+- {\textstyle\frac{1}{2}}\kappa (\partial_\alpha\phi)^2 
+- \kappa \phi \partial_\alpha^2 \phi
+- kT \ln(1-\psi) + W\psi\phi^2
++ \epsilon \phi \partial_\alpha \phi \partial_\alpha \psi
+\nonumber\\
++ 2 \beta\phi\psi \partial_\alpha \phi \partial_\alpha\psi
++ \beta \phi \psi^2 \partial_\alpha^2 \phi
+- {\textstyle\frac{1}{2}} \beta \psi^2 (\partial_\alpha \phi)^2
+\end{eqnarray}
+and for the tensor part
+\begin{equation}
+\tilde{P}_{\alpha\beta} =
+(\kappa - \epsilon \psi - \beta\psi^2) 
+\partial_\alpha \phi \partial_\beta \phi.
+\end{equation}
 
 \section{Code Design}
 
@@ -2159,6 +2277,22 @@ Two-dimensional lattice-Boltzmann simulations of single phase
 flow in a pseudo two-dimensional micromodel,
 \textit{Physica A}, \textbf{362}, 23, 2006.
 
+\bibitem{vandergraaf}
+R.G.M. van der Sman and S. van der Graaf,
+Diffuse interface model of surfactant adsorption onto flat and
+droplet interfaces,
+\textit{Rheol. Acta} \textbf{46} 3 (2006).
+
+\bibitem{diamant}
+H. Diamant and D. Andelman,
+Kinetics of surfactant adsorption at fluid/fluid
+interfaces: non-ionic surfactants,
+\textit{Europhys. Lett.} \textbf{34}, 575 (1996).
+
+\bibitem{theissengompper}
+O. theissen and G. Gompper,
+Lattice Boltzmann study of spontaneous emulsification,
+\textit{Eur. Phys. J. B}, \textbf{11} 91 (1999).
 
 \end{thebibliography}
 
