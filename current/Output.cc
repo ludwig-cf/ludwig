@@ -497,10 +497,11 @@ void computeStressFreeEnergy(int n)
 
 // NOTE: the cubic redshift is calculted with L1init, L2init and q0init in contrary to the FE functional. The redshift minimization has the meaning of a partial derivative with respect to the cell size
 
-        two_gradient+=L1init/2.0*(-DGchol1xx+DGxx-DGchol1yy+DGyy-DGchol1zz+DGzz)
-          +L2init/2.0*(divQx*divQx+divQy*divQy+divQz*divQz);
-        one_gradient+=L1init*q0init*(DGchol2xx+DGchol2yy+DGchol2zz);
-
+      if (REDSHIFT==1){
+	   two_gradient+=L1init/2.0*(-DGchol1xx+DGxx-DGchol1yy+DGyy-DGchol1zz+DGzz)
+	     +L2init/2.0*(divQx*divQx+divQy*divQy+divQz*divQz);
+	   one_gradient+=L1init*q0init*(DGchol2xx+DGchol2yy+DGchol2zz);
+      }
 
         freeenergy+=L1/2.0*(-DGchol1xx+DGxx-DGchol1yy+DGyy-DGchol1zz+DGzz)
         +L2/2.0*(divQx*divQx+divQy*divQy+divQz*divQz)
@@ -560,14 +561,14 @@ void computeStressFreeEnergy(int n)
 
 
 // redshift: threshold set to 1e-9 as too small redshift cause program crash
+   if (REDSHIFT==1){
 
-   rr_old=rr;
-   rr=-0.5*one_gradient/two_gradient;
+      rr_old=rr;
+      rr=-0.5*one_gradient/two_gradient;
 
-   if(fabs(rr)<1e-9){rr=rr_old;}
+      if(fabs(rr)<1e-9){rr=rr_old;}
 
-//  rr=1.0;
-
+   }
 
     /* Make sure this output comes from the process consistent with
      * the above MPI_Reduce */
