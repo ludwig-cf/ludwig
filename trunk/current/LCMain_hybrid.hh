@@ -70,8 +70,9 @@ double vwbt=-0.0;
 // ----------------------------------------
 // Inital configuration 
 
-int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,BACKFLOW,HEX3D,HEXPLANAR,BLUEHAAR;
-
+int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,HEX3D,HEXPLANAR,BLUEHAAR;
+int REDSHIFT,BACKFLOW;
+ 
 float bcstren=10.0;  // amplitude of harmonic boundary potential
 double wallamp;
 
@@ -297,7 +298,8 @@ extern double vwbt;
 // ----------------------------------------
 // Inital configuration 
 
-extern int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,BACKFLOW,HEX3D,HEXPLANAR,BLUEHAAR;
+extern int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,HEX3D,HEXPLANAR,BLUEHAAR;
+extern int REDSHIFT,BACKFLOW; 
 
 extern float bcstren;  // amplitude of harmonic boundary potential
 extern double wallamp;

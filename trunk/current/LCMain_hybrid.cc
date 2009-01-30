@@ -83,6 +83,7 @@ int main(int argc, char** argv)
  
   inputFile >> Gamma >> endOfLine;
   inputFile >> gam >> endOfLine;
+  inputFile >> REDSHIFT >> endOfLine;
   inputFile >> BACKFLOW >> endOfLine;
   inputFile >> phivr >> endOfLine;
   inputFile >> xi >> endOfLine;
@@ -139,6 +140,7 @@ int main(int argc, char** argv)
   logFile << numhftwist << "\t\t# numhftwist"<< endl;
   logFile << Gamma << "\t\t# Gamma"<< endl;
   logFile << gam << "\t\t# gam"<< endl;
+  logFile << REDSHIFT << "\t\t# REDSHIFT"<< endl;
   logFile << BACKFLOW << "\t\t# BACKFLOW"<< endl;
   logFile << phivr << "\t\t# phivr"<< endl;
   logFile << xi << "\t\t# xi"<< endl;
@@ -208,15 +210,15 @@ int main(int argc, char** argv)
  
    lastFreeenergy=-1000000;
 
-
-  rr=1.0;
-
-/*
-  if(O2STRUCT) rr=0.89;
-  if(O5STRUCT) rr=0.97;
-  if(O8STRUCT) rr=0.82;
-  if(O8MSTRUCT) rr=0.775;
-*/
+   if (REDSHIFT==1){
+      rr=1.0;
+   }
+   else{
+     if(O2STRUCT) rr=0.91;
+     if(O5STRUCT) rr=0.97;
+     if(O8STRUCT) rr=0.82;
+     if(O8MSTRUCT) rr=0.83;
+   }
 
   q0=q0init/rr;
   L1=L1init*rr*rr;
@@ -245,7 +247,7 @@ int main(int argc, char** argv)
 
   /* BP equilibration (assuming 1500 steps, change if inappropriate) */
 
-      if(n==1500) startDroplet();
+//      if(n==1500) startDroplet();
 //      if(n==1500) startSlab();
 
 	computeStressFreeEnergy(n);
