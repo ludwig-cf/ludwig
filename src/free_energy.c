@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.8 2008-12-03 20:31:13 kevin Exp $
+ *  $Id: free_energy.c,v 1.9 2009-02-02 19:42:24 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "phi.h"
