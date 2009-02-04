@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.3 2008-11-14 14:42:50 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.4 2009-02-04 11:20:18 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -412,6 +412,13 @@ static void phi_gradients_fluid() {
  *  This calculation can be extended (nhalo_ - 2) points beyond the
  *  local system.
  *
+ *  Brazovskii: at the moment this will operate successfully to
+ *  produce the higher derivatives in the domain proper for
+ *  nhalo_ = 2, i.e., ok using the relaxation toward the chemical
+ *  stress to force the two-distribution LB approach. Can't use
+ *  finite difference yet as this would require the extra
+ *  derivatives in the halo / Lees Edwards buffer regions.
+ *
  *****************************************************************************/
  
 static void phi_gradients_double_fluid() {
@@ -427,7 +434,6 @@ static void phi_gradients_double_fluid() {
 
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
-  assert(le_get_nplane() == 0);
   assert(nop_ == 1);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
@@ -443,7 +449,7 @@ static void phi_gradients_double_fluid() {
 	delsq_delsq_phi_site[index] = 0.0;
 
 	for (p = 1; p < NGRAD_; p++) {
-	  ic1 = ic + bs_cv[p][X];
+	  ic1 = le_index_real_to_buffer(ic, bs_cv[p][X]);
 	  jc1 = jc + bs_cv[p][Y];
 	  kc1 = kc + bs_cv[p][Z];
 	  index1 = ADDR(ic1, jc1, kc1);
