@@ -1053,10 +1053,11 @@ void readRestart(const int iter) {
     input.open(iname.get());
   }
   else {
-    /* Block until we get the token */
+    /* Block until we get the token, which is the position to read from... */
     MPI_Recv(&token, 1, MPI_INT, io_rank_ - 1, tag, io_communicator_,
 	     &status);
     input.open(iname.get(),ios::in);
+    input.seekg(token, ios::beg);
   }
 #endif
        
@@ -1079,6 +1080,7 @@ void readRestart(const int iter) {
   }
 
   if (input.good()) {
+    token = input.tellg();
   }
   else {
     cout << "Error on read" << endl;
