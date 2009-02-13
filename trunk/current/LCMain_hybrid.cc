@@ -220,6 +220,13 @@ int main(int argc, char** argv)
      if(O8MSTRUCT) rr=0.83;
    }
 
+   // KS. Note the value of redshift 'rr' also comes from the restart
+   // i.e., the read must be here.
+   if (Nstart > 0) {
+     message("Reading restart files...");
+     readRestart(Nstart);
+   }
+
   q0=q0init/rr;
   L1=L1init*rr*rr;
   L2=L2init*rr*rr;
@@ -236,11 +243,6 @@ int main(int argc, char** argv)
   else
     aa=4.0;
 
-
-  if (Nstart > 0) {
-    message("Reading restart files...");
-    readRestart(Nstart);
-  }
 
   for (n=1+Nstart; n<=Nmax; n++) {
 
