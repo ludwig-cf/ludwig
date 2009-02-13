@@ -941,6 +941,8 @@ void writeDiscFile_ks(const int iter) {
  *  of Q tensor) to file, suitable to reading in again for a
  *  restart.
  *
+ *  The current value of the redshift 'rr' is also required.
+ *
  *  The argument is the time step.
  *
  *  This is always binary.
@@ -997,6 +999,10 @@ void writeRestart(const int iter) {
     }
   }
 
+  // Redshift
+  buffer[0] = rr;
+  output.write((char *) buffer, sizeof(double));
+
   output.close();
 
 #ifdef PARALLEL
@@ -1017,7 +1023,7 @@ void writeRestart(const int iter) {
  *  readRestart
  *
  *  Read configuration (distributions f, five components of
- *  the Q tensor) from file.
+ *  the Q tensor, a single value of redshift) from file.
  *
  *  The argument is the time step.
  *
@@ -1078,6 +1084,8 @@ void readRestart(const int iter) {
       }
     }
   }
+  input.read((char *) buffer, sizeof(double));
+  rr = buffer[0];
 
   if (input.good()) {
     token = input.tellg();
