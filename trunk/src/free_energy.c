@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.9 2009-02-02 19:42:24 kevin Exp $
+ *  $Id: free_energy.c,v 1.10 2009-02-23 18:52:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -42,11 +42,24 @@ static double C_     =  0.000;
 static double kappa_ = +0.002;
 static int    is_brazovskii_ = 0;
 
-/* Surfactant model of van der Sman and van der Graaf in development */
+/* Surfactant model in development*/
+/* \phi is compositional order parameter as usual
+ * \psi is surfactant concentration
+ * Free energy is: F = F_\phi + F_\psi + F_surf + F_add
+ *                 F_phi  = summetric free energy as above (C = 0)
+ *                 F_psi  = kT [\psi ln \psi + (1 - \psi) ln (1 - \psi)] 
+ *                 F_surf = - (1/2)\epsilon\psi (grad \phi)^2
+ *                          - (1/2)\beta \psi^2 (grad \phi)^2
+ *                 F_add  = + (1/2) W \psi \phi^2
+ * with checical potentials
+ *     \mu_\phi
+ *     \mu_\psi
+ */
 
 static double D_ = 0.0;
 static double epsilon_ = 0.0;
 static double W_ = 0.0;
+static double beta_ = 0.0;
 
 /* The choice of free energy is currently determined by the value of C_ */ 
 static void (* fe_chemical_stress)(const int, double [3][3]);
@@ -138,6 +151,7 @@ void init_free_energy() {
     n = RUN_get_double_parameter("epsilon", &epsilon_);
     n = RUN_get_double_parameter("W", &W_);
     n = RUN_get_double_parameter("D", &D_);
+    n = RUN_get_double_parameter("beta", &beta_);
 
     info("Surfactant model free energy\n");
     info("Bulk parameter A      = %f\n", A_);
@@ -148,6 +162,7 @@ void init_free_energy() {
     info("Interfacial width     = %f\n", interfacial_width());
     info("Scale energy D        = %f\n", D_);
     info("Surface adsorption e  = %f\n", epsilon_);
+    info("Surface psi^2 beta    = %f\n", beta_);
     info("Enthalpic term W      = %f\n", W_);
     assert(nop_ == 2);
     fe_chemical_stress = fe_chemical_stress_sman;
@@ -465,6 +480,11 @@ double fe_chemical_potential_brazovskii(const int index) {
  *  Chemical potential for compositional part of surfactant model of
  *  van der Sman and van der Graaf.
  *
+ *  \mu_\phi = A\phi + B\phi^3 - kappa \nabla^2 \phi
+ *           + W\phi \psi
+ *           + \epsilon (\psi \nabla^2\phi + \nabla\phi . \nabla\psi)
+ *           + \beta (\psi^2 \nabla^2\phi + 2\psi \nabla\phi . \nabla\psi) 
+ *
  *****************************************************************************/
 
 static double fe_chemical_potential_sman_phi(const int index) {
@@ -481,7 +501,8 @@ static double fe_chemical_potential_sman_phi(const int index) {
   phi_op_get_grad_phi_site(index, 1, dpsi);
 
   mu = phi*(A_ + B_*phi*phi) - kappa_*delsq_phi + W_*phi*psi
-    + epsilon_*(psi*delsq_phi + dot_product(dphi, dpsi));
+    + epsilon_*(psi*delsq_phi + dot_product(dphi, dpsi))
+    + beta_*psi*(psi*delsq_phi + 2.0*dot_product(dphi, dpsi));
 
   return mu;
 }
@@ -495,6 +516,7 @@ static double fe_chemical_potential_sman_phi(const int index) {
  * 
  *  mu_\psi = D (ln \psi - ln (1 - \psi) + (1/2) W \phi^2
  *          - (1/2) \epsilon (\nabla \phi)^2
+ *          - \beta \psi (\nabla \phi)^2
  *
  *****************************************************************************/
 
@@ -512,7 +534,7 @@ static double fe_chemical_potential_sman_psi(const int index) {
   assert(psi < 1.0);
 
   mu = D_*(log(psi) - log(1.0-psi)) + 0.5*W_*phi*phi
-    - 0.5*epsilon_*dot_product(dphi, dphi);
+    - 0.5*epsilon_*dot_product(dphi, dphi) - beta_*dot_product(dphi, dphi);
 
   return mu;
 }
@@ -525,8 +547,10 @@ static double fe_chemical_potential_sman_psi(const int index) {
  *
  *  P_ab = (1/2) A \phi^2 + (3/4) B \phi^4 - (1/2) \kappa \nabla^2 \phi
  *       - D ln(1 - \psi) + W \psi \phi^2
- *       + \epsilon \phi \nabla_a \phi \nabla_b \psi
+ *       + \epsilon \phi \nabla_a \phi \nabla_a \psi
  *       + \epsilon \phi \psi \nabla^2 \phi
+ *       + 2\beta \phi \psi \nabla_a\phi \nabla_a\psi
+ *       + \beta\phi\psi^2 \nabla^2 \phi - (1/2)\beta\psi^2 (\nabla\phi)^2  
  *       + (\kappa - \epsilon\psi) \nabla_a \phi \nabla_b \phi
  *
  *****************************************************************************/
@@ -550,12 +574,14 @@ static void fe_chemical_stress_sman(const int index, double p[3][3]) {
   p0 = 0.5*phi*phi*(A_ + 1.5*B_*phi*phi)
     - kappa_*(phi*delsq_phi + 0.5*dot_product(dphi, dphi))
     - D_*log(1.0 - psi) + W_*psi*phi*phi
-    + epsilon_*(dot_product(dphi, dpsi) + phi*psi*delsq_phi);
+    + epsilon_*(dot_product(dphi, dpsi) + phi*psi*delsq_phi)
+    + beta_*psi*(2.0*phi*dot_product(dphi, dpsi) + phi*psi*delsq_phi
+		 - 0.5*psi*dot_product(dphi, dphi));
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       p[ia][ib] = p0*d_[ia][ib]
-	+ (kappa_ - epsilon_*psi)*dphi[ia]*dphi[ib];
+	+ (kappa_ - epsilon_*psi - beta_*psi*psi)*dphi[ia]*dphi[ib];
     }
   }
 
