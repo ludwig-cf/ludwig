@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.8 2009-01-29 12:25:43 kevin Exp $
+%  $Id: sections.tex,v 1.9 2009-02-23 18:54:09 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -808,6 +808,8 @@ the matrix are given by
 
 \subsection{The Propagation}
 
+
+
 \subsection{Solid bodies and Bounce-Back on Links}
 
 A very general method for the representation of solid objects
@@ -1354,6 +1356,8 @@ particle $i$ to the centre of $j$.
 \subsection{Bounce-Back on Links}
 
 
+
+
 \section{Surfactants}
 
 This section describes the approach taken to study surfactants. Here,
@@ -1396,7 +1400,8 @@ f_\phi (\phi, \partial_\alpha\phi) =
 \end{equation}
 The surface tension and the interfacial width are determined from the
 choice of parameters $A,B,\kappa$ as before.
-The second term in the free energu density represents the entropic
+The second term in the free energy density
+represents the entropic
 energy of mixing of the surfactant with the bulk phases
 \begin{equation}
 f_\psi (\psi) = kT \left[ \psi \ln\psi + (1 - \psi)\ln(1-\psi) \right]
@@ -1408,7 +1413,7 @@ interface and zero for a plain interface.
 The surfactant lowers the energy of the interface where it is adsorbed
 there, represented by the term
 \begin{equation}
-F_1(\psi, \partial_\alpha \phi) 
+f_1(\psi, \partial_\alpha \phi) 
 = -{\textstyle \frac{1}{2}} \epsilon \psi (\partial_\alpha \phi)^2
   -{\textstyle \frac{1}{2}} \beta  \psi^2 (\partial_\alpha \phi)^2
 \end{equation}
@@ -1418,7 +1423,8 @@ based on that appearing in, e.g., \cite{diamant}. If $\beta = 0$,
 the surfactant profile at the interface is symmetric (so-called
 Langmuir adsoption) whereas the term in $\beta$ induces an
 asymmetry (Frumpkin adsorption).
-Finally,  $f_{ex}$ is an enthalpic contribution introduced 
+Finally,  $f_{ex}$ is [van der Sman claims]
+an enthalpic contribution introduced 
 to stabilise the interface \cite{theissengompper}
 \begin{equation}
 f_{ex} (\psi, \partial_\alpha \phi) = {\textstyle\frac{1}{2}} W \psi \phi^2,
@@ -1446,16 +1452,16 @@ and
 - \beta\psi (\partial_\alpha \phi)^2.
 \end{equation}
 As before, the pressure tensor is $P_{\alpha\beta} = p_0\delta_{\alpha\beta}
-+ \tilde{P}_{\alpha\beta}$ with the isotrpic part being determined as (e.g.,
++ \tilde{P}_{\alpha\beta}$ with the isotropic part being determined as (e.g.,
 \cite{theissengompper})
 \begin{equation}
 p_0 = \phi \mu_\phi + \psi \mu_\psi - f(\phi, \psi, \partial_\alpha \phi).
 \end{equation}
-There is no closed form for the tensor part, which must be choosen to
+There is no closed form for the tensor part, which must be chosen to
 comply with the constraint that in mechanical equilibrium
 \begin{equation}
-\partial_\alpha P_{\alpha\beta} = \phi\partial_\alpha\mu_\phi +
-\psi\partial_\alpha\mu_\psi.
+\partial_\alpha P_{\alpha\beta} = (\phi\partial_\alpha\mu_\phi +
+\psi\partial_\alpha\mu_\psi)\delta_{\alpha\beta}.
 \end{equation}
 In this way we obtain for the isotropic contribution
 \begin{eqnarray}
@@ -1463,18 +1469,22 @@ p_0 = {\textstyle \frac{1}{2}}A\phi^2 + {\textstyle \frac{3}{4}}B\phi^4
 - {\textstyle\frac{1}{2}}\kappa (\partial_\alpha\phi)^2 
 - \kappa \phi \partial_\alpha^2 \phi
 - kT \ln(1-\psi) + W\psi\phi^2
-+ \epsilon \phi \partial_\alpha \phi \partial_\alpha \psi
 \nonumber\\
++ \epsilon \phi \partial_\alpha \phi \partial_\alpha \psi
++ \epsilon\phi\psi \partial_\alpha^2 \phi
 + 2 \beta\phi\psi \partial_\alpha \phi \partial_\alpha\psi
 + \beta \phi \psi^2 \partial_\alpha^2 \phi
 - {\textstyle\frac{1}{2}} \beta \psi^2 (\partial_\alpha \phi)^2
 \end{eqnarray}
-and for the tensor part
+and for the tensor part we can have
 \begin{equation}
 \tilde{P}_{\alpha\beta} =
 (\kappa - \epsilon \psi - \beta\psi^2) 
 \partial_\alpha \phi \partial_\beta \phi.
 \end{equation}
+
+
+
 
 \section{Code Design}
 
