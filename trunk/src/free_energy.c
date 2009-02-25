@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.10 2009-02-23 18:52:25 kevin Exp $
+ *  $Id: free_energy.c,v 1.11 2009-02-25 09:00:34 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -42,8 +42,8 @@ static double C_     =  0.000;
 static double kappa_ = +0.002;
 static int    is_brazovskii_ = 0;
 
-/* Surfactant model in development*/
-/* \phi is compositional order parameter as usual
+/* Surfactant model 
+ * \phi is compositional order parameter as usual
  * \psi is surfactant concentration
  * Free energy is: F = F_\phi + F_\psi + F_surf + F_add
  *                 F_phi  = summetric free energy as above (C = 0)
@@ -534,7 +534,7 @@ static double fe_chemical_potential_sman_psi(const int index) {
   assert(psi < 1.0);
 
   mu = D_*(log(psi) - log(1.0-psi)) + 0.5*W_*phi*phi
-    - 0.5*epsilon_*dot_product(dphi, dphi) - beta_*dot_product(dphi, dphi);
+    - 0.5*epsilon_*dot_product(dphi, dphi) - beta_*psi*dot_product(dphi, dphi);
 
   return mu;
 }
