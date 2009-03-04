@@ -1,321 +1,10 @@
-#ifndef LCPARALLEL_CC
-#define LCPARALLEL_CC
 
 #include "LCParallel.hh"
-#include "mpi.h"
 
-#ifndef _COMM_3D_
-/* See below for updated version */
-  
-void exchangeMomentumAndQTensor()
-{
-  int ix,iy,iz;
-  double t0, t1;
-  //extern double total_exch_;
+// Parallel, and then serial, code to deal with the exchange of
+// information at the periodic and processor boundaries.
 
-  t0 = MPI_Wtime();
-
-  // --------------------
-  // Sends densities
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=density[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=density[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-  // --------------------
-  // Sends Qxx
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qxx[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qxx[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-  // --------------------
-  // Sends Qxy
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qxy[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qxy[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-  // --------------------
-  // Sends Qyy
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qyy[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qyy[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-  // --------------------
-  // Sends Qxz
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qxz[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qxz[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-  // --------------------
-  // Sends Qyz
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qyz[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=Qyz[ix][iy][iz];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-  // --------------------
-  // Sends ux
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=u[ix][iy][iz][0];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=u[ix][iy][iz][0];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-  // --------------------
-  // Sends uy
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=u[ix][iy][iz][1];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=u[ix][iy][iz][1];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-  // --------------------
-  // Sends uz
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=u[ix][iy][iz][2];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      tmpBuf[iy*Lz+iz]=u[ix][iy][iz][2];
-  MPI_Bsend(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-
-
-  // --------------------
-  // Receives densities
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      density[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      density[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  // --------------------
-  // Receives Qxx
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qxx[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qxx[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  // --------------------
-  // Receives Qxy
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qxy[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qxy[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  // --------------------
-  // Receives Qyy
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qyy[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qyy[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  // --------------------
-  // Receives Qxz
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qxz[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qxz[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  // --------------------
-  // Receives Qyz
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qyz[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      Qyz[ix][iy][iz]=tmpBuf[iy*Lz+iz];
-
-  // --------------------
-  // Receives ux
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      u[ix][iy][iz][0]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      u[ix][iy][iz][0]=tmpBuf[iy*Lz+iz];
-  // --------------------
-  // Receives uy
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      u[ix][iy][iz][1]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      u[ix][iy][iz][1]=tmpBuf[iy*Lz+iz];
-  // --------------------
-  // Receives uz
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      u[ix][iy][iz][2]=tmpBuf[iy*Lz+iz];
-  MPI_Recv(tmpBuf,Lz*Ly,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++)
-      u[ix][iy][iz][2]=tmpBuf[iy*Lz+iz];
-
-
-//  MPI_Buffer_detach(&com, &buffer_size);
-//  free(com);
-
-  t1 = MPI_Wtime();
-  //total_exch_ += (t1-t0);
-
-}
-
-void communicateOldDistributions(double ****fold)
-{
-  int ix,iy,iz;
-  double t0, t1;
-
-  t0 = MPI_Wtime();
-
-
-  // --------------------
-  // Sends fold
-  ix=1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++) {
-      tmpBuf[iy*Lz*5+iz*5]=fold[ix][iy][iz][3];
-      tmpBuf[iy*Lz*5+iz*5+1]=fold[ix][iy][iz][8];
-      tmpBuf[iy*Lz*5+iz*5+2]=fold[ix][iy][iz][9];
-      tmpBuf[iy*Lz*5+iz*5+3]=fold[ix][iy][iz][12];
-      tmpBuf[iy*Lz*5+iz*5+4]=fold[ix][iy][iz][13];
-    }
-  MPI_Bsend(tmpBuf,Lz*Ly*5,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD);
-  ix=Lx2-2;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++) {
-      tmpBuf[iy*Lz*5+iz*5]=fold[ix][iy][iz][1];
-      tmpBuf[iy*Lz*5+iz*5+1]=fold[ix][iy][iz][7];
-      tmpBuf[iy*Lz*5+iz*5+2]=fold[ix][iy][iz][10];
-      tmpBuf[iy*Lz*5+iz*5+3]=fold[ix][iy][iz][11];
-      tmpBuf[iy*Lz*5+iz*5+4]=fold[ix][iy][iz][14];
-    }
-  MPI_Bsend(tmpBuf,Lz*Ly*5,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD);
-
-
-  // ========================================
-
-  // --------------------
-  // Receives fold
-  MPI_Recv(tmpBuf,Lz*Ly*5,MPI_DOUBLE,rightNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=Lx2-1;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++) {
-      fold[ix][iy][iz][3]=tmpBuf[iy*Lz*5+iz*5];
-      fold[ix][iy][iz][8]=tmpBuf[iy*Lz*5+iz*5+1];
-      fold[ix][iy][iz][9]=tmpBuf[iy*Lz*5+iz*5+2];
-      fold[ix][iy][iz][12]=tmpBuf[iy*Lz*5+iz*5+3];
-      fold[ix][iy][iz][13]=tmpBuf[iy*Lz*5+iz*5+4];
-    }
-  MPI_Recv(tmpBuf,Lz*Ly*5,MPI_DOUBLE,leftNeighbor,0,MPI_COMM_WORLD,&status);
-  ix=0;
-  for (iy=0;iy<Ly;iy++)
-    for (iz=0;iz<Lz;iz++) {
-      fold[ix][iy][iz][1]=tmpBuf[iy*Lz*5+iz*5];
-      fold[ix][iy][iz][7]=tmpBuf[iy*Lz*5+iz*5+1];
-      fold[ix][iy][iz][10]=tmpBuf[iy*Lz*5+iz*5+2];
-      fold[ix][iy][iz][11]=tmpBuf[iy*Lz*5+iz*5+3];
-      fold[ix][iy][iz][14]=tmpBuf[iy*Lz*5+iz*5+4];
-    }
-
-  t1 = MPI_Wtime();
-  //total_comm_ += (t1-t0);
-
-}
-
-#else /* COMM_3D */
+#ifdef PARALLEL
 
 /****************************************************************************
  *
@@ -709,7 +398,7 @@ void communicateOldDistributions(double **** fold) {
     extern MPI_Comm cartesian_communicator_;
     extern int Lx2, Ly2, Lz2;
 
-    const int nquantity = 5;   /* 5 propagating distributionss */
+    const int nquantity = 5;   /* 5 propagating distributions */
     double * buf_sendforw;     /* send data to 'forward' direction */
     double * buf_sendback;     /* send data to 'backward' direction */
     double * buf_recvforw;     /* receive data from 'forward' direction */
@@ -1305,6 +994,235 @@ void exchangeTau() {
   return;
 }
 
-#endif /* COMM_3D */
+#else /* PARALLEL; below are serial equivalents */
+
+/****************************************************************************
+ *
+ *  exchangeMomentumAndQTensor
+ *
+ *  Serial version: copy density, five components of Q, and three of u.
+ *
+ ****************************************************************************/
+
+void exchangeMomentumAndQTensor() {
+
+  extern int Lx2, Ly2, Lz2;
+  extern double *** density;
+  extern double *** Qxx;
+  extern double *** Qxy;
+  extern double *** Qxz;
+  extern double *** Qyy;
+  extern double *** Qyz;
+  extern double **** u;
+
+  int ix, iy, iz;
+
+  /* X DIRECTION */
+
+  for (iy = 0; iy < Ly2; iy++) {
+    for (iz = 0; iz < Lz2; iz++) {
+      density[Lx2-1][iy][iz] = density[1][iy][iz];
+          Qxx[Lx2-1][iy][iz]     = Qxx[1][iy][iz];
+          Qxy[Lx2-1][iy][iz]     = Qxy[1][iy][iz];
+          Qyy[Lx2-1][iy][iz]     = Qyy[1][iy][iz];
+          Qxz[Lx2-1][iy][iz]     = Qxz[1][iy][iz];
+          Qyz[Lx2-1][iy][iz]     = Qyz[1][iy][iz];
+            u[Lx2-1][iy][iz][0]  =   u[1][iy][iz][0];
+            u[Lx2-1][iy][iz][1]  =   u[1][iy][iz][1];
+            u[Lx2-1][iy][iz][2]  =   u[1][iy][iz][2];
+
+      density[0][iy][iz] = density[Lx2-2][iy][iz];
+          Qxx[0][iy][iz]     = Qxx[Lx2-2][iy][iz];
+          Qxy[0][iy][iz]     = Qxy[Lx2-2][iy][iz];
+          Qyy[0][iy][iz]     = Qyy[Lx2-2][iy][iz];
+          Qxz[0][iy][iz]     = Qxz[Lx2-2][iy][iz];
+          Qyz[0][iy][iz]     = Qyz[Lx2-2][iy][iz];
+            u[0][iy][iz][0]  =   u[Lx2-2][iy][iz][0];
+            u[0][iy][iz][1]  =   u[Lx2-2][iy][iz][1];
+            u[0][iy][iz][2]  =   u[Lx2-2][iy][iz][2];
+    }
+  }
+
+  /* Y DIRECTION */
+
+  for (ix = 0; ix < Lx2; ix++) {
+    for (iz = 0; iz < Lz2; iz++) {
+      density[ix][Ly2-1][iz] = density[ix][1][iz];
+          Qxx[ix][Ly2-1][iz]    =  Qxx[ix][1][iz];
+          Qxy[ix][Ly2-1][iz]    =  Qxy[ix][1][iz];
+          Qyy[ix][Ly2-1][iz]    =  Qyy[ix][1][iz];
+          Qxz[ix][Ly2-1][iz]    =  Qxz[ix][1][iz];
+          Qyz[ix][Ly2-1][iz]    =  Qyz[ix][1][iz];
+            u[ix][Ly2-1][iz][0] =    u[ix][1][iz][0];
+            u[ix][Ly2-1][iz][1] =    u[ix][1][iz][1];
+            u[ix][Ly2-1][iz][2] =    u[ix][1][iz][2];
+
+      density[ix][0][iz] = density[ix][Ly2-2][iz];
+          Qxx[ix][0][iz]     = Qxx[ix][Ly2-2][iz];
+          Qxy[ix][0][iz]     = Qxy[ix][Ly2-2][iz];
+          Qyy[ix][0][iz]     = Qyy[ix][Ly2-2][iz];
+          Qxz[ix][0][iz]     = Qxz[ix][Ly2-2][iz];
+          Qyz[ix][0][iz]     = Qyz[ix][Ly2-2][iz];
+            u[ix][0][iz][0]  =   u[ix][Ly2-2][iz][0];
+            u[ix][0][iz][1]  =   u[ix][Ly2-2][iz][1];
+            u[ix][0][iz][2]  =   u[ix][Ly2-2][iz][2];
+    }
+  }
+
+  /* Z DIRECTION */
+
+  for (ix = 0; ix < Lx2; ix++) {
+    for (iy = 0; iy < Ly2; iy++) {
+      density[ix][iy][Lz2-1] = density[ix][iy][1];
+          Qxx[ix][iy][Lz2-1]    =  Qxx[ix][iy][1];
+          Qxy[ix][iy][Lz2-1]    =  Qxy[ix][iy][1];
+          Qyy[ix][iy][Lz2-1]    =  Qyy[ix][iy][1];
+          Qxz[ix][iy][Lz2-1]    =  Qxz[ix][iy][1];
+          Qyz[ix][iy][Lz2-1]    =  Qyz[ix][iy][1];
+            u[ix][iy][Lz2-1][0] =    u[ix][iy][1][0];
+            u[ix][iy][Lz2-1][1] =    u[ix][iy][1][1];
+            u[ix][iy][Lz2-1][2] =    u[ix][iy][1][2];
+
+      density[ix][iy][0] = density[ix][iy][Lz2-2];
+          Qxx[ix][iy][0]     = Qxx[ix][iy][Lz2-2];
+          Qxy[ix][iy][0]     = Qxy[ix][iy][Lz2-2];
+          Qyy[ix][iy][0]     = Qyy[ix][iy][Lz2-2];
+          Qxz[ix][iy][0]     = Qxz[ix][iy][Lz2-2];
+          Qyz[ix][iy][0]     = Qyz[ix][iy][Lz2-2];
+            u[ix][iy][0][0]  =   u[ix][iy][Lz2-2][0];
+            u[ix][iy][0][1]  =   u[ix][iy][Lz2-2][1];
+            u[ix][iy][0][2]  =   u[ix][iy][Lz2-2][2];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  communicateOldDistributions
+ *
+ *****************************************************************************/
+
+void communicateOldDistributions(double **** fold) {
+
+  extern int Lx2, Ly2, Lz2;
+  int ix, iy, iz;
+
+  /* X DIRECTION */
+
+  for (iy = 0; iy < Ly2; iy++) {
+    for (iz = 0; iz < Lz2; iz++) {
+      /* backwards-going distributions e[*][0] = -1 */
+      fold[Lx2-1][iy][iz][3]  = fold[1][iy][iz][3];
+      fold[Lx2-1][iy][iz][8]  = fold[1][iy][iz][8];
+      fold[Lx2-1][iy][iz][9]  = fold[1][iy][iz][9];
+      fold[Lx2-1][iy][iz][12] = fold[1][iy][iz][12];
+      fold[Lx2-1][iy][iz][13] = fold[1][iy][iz][13];
+      /* forwards-going distributions e[*][0] = +1 */
+      fold[0][iy][iz][1]  = fold[Lx2-2][iy][iz][1];
+      fold[0][iy][iz][7]  = fold[Lx2-2][iy][iz][7];
+      fold[0][iy][iz][10] = fold[Lx2-2][iy][iz][10];
+      fold[0][iy][iz][11] = fold[Lx2-2][iy][iz][11];
+      fold[0][iy][iz][14] = fold[Lx2-2][iy][iz][14];
+    }
+  }
+
+  /* Y DIRECTION */
+
+  for (ix = 0; ix < Lx2; ix++) {
+    for (iz = 0; iz < Lz2; iz++) {
+      /* backwards e[*][1] = -1 */
+      fold[ix][Ly2-1][iz][4]  = fold[ix][1][iz][4];
+      fold[ix][Ly2-1][iz][9]  = fold[ix][1][iz][9];
+      fold[ix][Ly2-1][iz][10] = fold[ix][1][iz][10];
+      fold[ix][Ly2-1][iz][13] = fold[ix][1][iz][13];
+      fold[ix][Ly2-1][iz][14] = fold[ix][1][iz][14];
+      /* forwards e[*][1] = +1 */
+      fold[ix][0][iz][2]  = fold[ix][Ly2-2][iz][2];
+      fold[ix][0][iz][7]  = fold[ix][Ly2-2][iz][7];
+      fold[ix][0][iz][8]  = fold[ix][Ly2-2][iz][8];
+      fold[ix][0][iz][11] = fold[ix][Ly2-2][iz][11];
+      fold[ix][0][iz][12] = fold[ix][Ly2-2][iz][12];
+    }
+  }
+
+  /* Z DIRECTION */
+
+  for (ix = 0; ix < Lx2; ix++) {
+    for (iy = 0; iy < Ly2; iy++) {
+      /* backwards e[*][2] = -1 */
+      fold[ix][iy][Lz2-1][6]  = fold[ix][iy][1][6];
+      fold[ix][iy][Lz2-1][11] = fold[ix][iy][1][11];
+      fold[ix][iy][Lz2-1][12] = fold[ix][iy][1][12];
+      fold[ix][iy][Lz2-1][13] = fold[ix][iy][1][13];
+      fold[ix][iy][Lz2-1][14] = fold[ix][iy][1][14];
+      /* forwards e[*][2] = +1 */
+      fold[ix][iy][0][5]  = fold[ix][iy][Lz2-2][5];
+      fold[ix][iy][0][7]  = fold[ix][iy][Lz2-2][7];
+      fold[ix][iy][0][8]  = fold[ix][iy][Lz2-2][8];
+      fold[ix][iy][0][9]  = fold[ix][iy][Lz2-2][9];
+      fold[ix][iy][0][10] = fold[ix][iy][Lz2-2][10];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  exchangeTau
+ *
+ *  Exchange two components in each direction.
+ *
+ *****************************************************************************/
+
+void exchangeTau() {
+
+  extern int Lx2, Ly2, Lz2;
+  extern double *** tauxy;
+  extern double *** tauxz;
+  extern double *** tauyz;
+
+  int ix, iy, iz;
+
+  /* X DIRECTION: tauxy and tauxz */
+
+  for (iy = 0; iy < Ly2; iy++) {
+    for (iz = 0; iz < Lz2; iz++) {
+      tauxy[Lx2-1][iy][iz] = tauxy[1][iy][iz];
+      tauxz[Lx2-1][iy][iz] = tauxz[1][iy][iz];
+
+      tauxy[0][iy][iz] = tauxy[Lx2-2][iy][iz];
+      tauxz[0][iy][iz] = tauxz[Lx2-2][iy][iz];
+    }
+  }
+
+  /* Y DIRECTION: tauxy and tauyz */
+
+  for (ix = 0; ix < Lx2; ix++) {
+    for (iz = 0; iz < Lz2; iz++) {
+      tauxy[ix][Ly2-1][iz] = tauxy[ix][1][iz];
+      tauyz[ix][Ly2-1][iz] = tauyz[ix][1][iz];
+
+      tauxy[ix][0][iz] = tauxy[ix][Ly2-2][iz];
+      tauyz[ix][0][iz] = tauyz[ix][Ly2-2][iz];
+    }
+  }
+
+  /* Z DIRECTION: tauxz and tauyz */
+
+  for (ix = 0; ix < Lx2; ix++) {
+    for (iy = 0; iy < Ly2; iy++) {
+      tauxz[ix][iy][Lz2-1] = tauxz[ix][iy][1];
+      tauyz[ix][iy][Lz2-1] = tauyz[ix][iy][1];
+
+      tauxz[ix][iy][0] = tauxz[ix][iy][Lz2-2];
+      tauyz[ix][iy][0] = tauyz[ix][iy][Lz2-2];
+    }
+  }
+
+  return;
+}
 
 #endif
