@@ -5,9 +5,9 @@ void randomizeQ(void)
 
   // Global position (double)
   double ic, jc, kc;
+  double ioff, joff, koff;
 
 #ifdef PARALLEL
-  double ioff, joff, koff;
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
@@ -480,8 +480,8 @@ if(BLUEHAAR!=1){
 
 void startDroplet(void)
 {
-  int i,j,k,l;
-  double phase,phase2,amplitude;
+  int i,j,k;
+  double amplitude;
   double fracmin, fracmax;
 
   int ic, jc, kc;
@@ -562,8 +562,7 @@ void startDroplet(void)
 
 void startSlab(void)
 {
-  int i,j,k,l;
-  double phase,phase2,amplitude;
+  int i,j,k;
   double fracmin, fracmax;
 
   int ic, jc, kc;
@@ -749,12 +748,15 @@ void initialize(void)
   MPI_Barrier(MPI_COMM_WORLD);
 
 #else
-  Lx2=Lx;
-  ix1=0;
-  ix2=Lx2;
-  Ly2=Ly;
-  jy1=0;
-  jy2=Ly2;
+  Lx2=Lx+2;
+  ix1=1;
+  ix2=Lx2-1;
+  Ly2=Ly+2;
+  jy1=1;
+  jy2=Ly2-1;
+  Lz2=Lz+2;
+  kz1=1;
+  kz2=Lz2-1;
 #endif
 
   int ix,iy,iz;
