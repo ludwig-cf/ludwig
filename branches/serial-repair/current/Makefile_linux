@@ -1,8 +1,5 @@
-CCS = g++ -Wall
-CCP = g++ -Wall
-
-# issue the following on hector at the command line (redirects compiler)
-# module swap PrgEnv-pgi PrgEnv-pathscale
+CCS = g++ -O3 -Wall
+CCP = mpiCC -O3 -Wall
 
 INCS	=	
  
@@ -13,8 +10,7 @@ INCS	=
 # FIXEDQ: fixed or free boundary conditions for Q
  
 
-DEFS    =	 -DBE -DEON -DCHOL\
-		 -D_BINARY_IO_
+DEFS    =	 -DBE -DEON -DCHOL -D_BINARY_IO_
 
 
 LIBS	=
@@ -25,15 +21,12 @@ NAME	= test
 
 all: $(NAME)P
 
-String.o: String.cc
-	$(CCP) -c String.cc $(DEFS)
-
-$(NAME)S: String.o Initialization.cc Output.cc LCParallel.o LCMain_hybrid.cc
-	$(CCS) LCMain_hybrid.cc LCParallel.o String.o -o $(NAME)S $(INCS) \
+$(NAME)S: Makefile
+	$(CCS) LCMain_hybrid.cc LCParallel.cc String.cc -o $(NAME)S $(INCS) \
 	$(DEFS) $(LIBPATH) $(LIBS)
 
-$(NAME)P: String.o Initialization.cc Output.cc LCParallel.o LCMain_hybrid.cc
-	$(CCP) LCMain_hybrid.cc String.o LCParallel.o -o $(NAME)P $(INCS) \
+$(NAME)P: Makefile
+	$(CCP) LCMain_hybrid.cc String.cc LCParallel.cc -o $(NAME)P $(INCS) \
 	$(DEFS) -DPARALLEL $(LIBPATH) $(LIBS)
 
 clean:
