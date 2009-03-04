@@ -1,4 +1,7 @@
 
+#ifdef PARALLEL
+#include <mpi.h>
+#endif
 
 // ----------------------------------------
 // useful constants
@@ -185,14 +188,10 @@ ofstream fp;
 int myPE,nbPE,nbPErow;
 
 // Appropriate for serial version
-// The default situation for the serial version is:
-//    cartesian size = {1, 1, 1}
-//    cartesian coords = {0, 0, 0}
-//    io_ngroups = 1
 
-int pe_cartesian_size_[3] = {1, 1, 1};
-int pe_cartesian_coordinates_[3] = {0, 0, 0};
-int io_ngroups_ = 1;
+int pe_cartesian_size_[3];
+int pe_cartesian_coordinates_[3];
+int io_ngroups_;
 int io_group_id_;
 
 #ifdef PARALLEL
@@ -214,6 +213,6 @@ MPI_Comm io_communicator_;
 int io_group_size_;
 int io_rank_;
 
-#endif
+#endif /* PARALLEL */
 
 #endif

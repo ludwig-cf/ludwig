@@ -1,11 +1,12 @@
 #ifndef LCMAIN_CC
 #define LCMAIN_CC
 
-#include <iostream.h>
-#include <fstream.h>
 #include <math.h>
 #include <stdlib.h>
-#include <iomanip.h>
+
+#include <iostream>
+#include <fstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -242,6 +243,7 @@ int main(int argc, char** argv)
 
 //      if(n==1500) startDroplet();
 //      if(n==1500) startSlab();
+
 
 	computeStressFreeEnergy(n);
 
@@ -557,6 +559,8 @@ void update_ks(double **** fnew, double **** fold) {
 
 void do_pouiseuille_distributions(double **** f) {
 
+#ifdef BC
+
   extern int pe_cartesian_coordinates_[3];
 
   int ix, iy, iz;
@@ -650,6 +654,8 @@ void do_pouiseuille_distributions(double **** f) {
     }
 
   }
+
+#endif
 
   return;
 }
