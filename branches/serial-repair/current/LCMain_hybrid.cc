@@ -9,18 +9,9 @@
 
 using namespace std;
 
-#ifdef PARALLEL
-#include <mpi.h>
-#endif
-
 #include "LCMain_hybrid.hh"
 #include "String.hh"
-
-
-
-#ifdef PARALLEL
 #include "LCParallel.hh"
-#endif
 
 void message(const char *);
 void update0_ks(double ****, double ****); 
@@ -30,16 +21,16 @@ void writeDiscFile_ks(const int);
 void exchangeTau(void);
 void writeRestart(const int);
 void readRestart(const int);
-
+void do_pouiseuille_distributions(double ****);
 
 // ============================================================
 int main(int argc, char** argv) 
 {
 
     int Nstart;
-    double t0, t1;
 
 #ifdef PARALLEL
+    double t0, t1;
   MPI_Init(&argc,&argv);
   MPI_Comm_size(MPI_COMM_WORLD,&nbPE);
   MPI_Comm_rank(MPI_COMM_WORLD,&myPE);
@@ -169,8 +160,8 @@ int main(int argc, char** argv)
 
    logFile.close();
 
-  int n,s,graphstp,improv;
-  double ****tmp,nextdata;
+  int n,graphstp,improv;
+  double ****tmp;
 
   int i,j,k;
 
@@ -355,14 +346,10 @@ int main(int argc, char** argv)
     equilibriumdist();
 
   if (n % OVDPrintInt == 0) {
-#ifdef _COMM_3D_
-      streamfile_ks(n);
-#else
-      streamfile(n);
-#endif
-//      cout << n << endl;
-      graphstp=0;
-    }
+
+    streamfile_ks(n);
+    graphstp=0;
+  }
    
   if(n==1) {
       pouiseuille1=1;
@@ -385,11 +372,8 @@ int main(int argc, char** argv)
   collisionop();
 
     /*predictor*/
-#ifdef _COMM_3D_
+
   update0_ks(fpr, f);
-#else
-    update0(fpr,f);
-#endif
    
     tmp=f;
     f=fpr;
@@ -436,139 +420,18 @@ int main(int argc, char** argv)
   
 }
 
-//WARNING:NEED TO CHANGE FOR 3D DECOMPOSITION
-
-void update0(double ****fnew,double ****fold)
-{
-  int i,j,k,l,imod,jmod,kmod;
-  double rb,Qxxb,Qyyb,Qxyb,Qxzb,Qyzb,tmp,eqrat,vzoutone;
-
-#ifdef PARALLEL
-  for (j=0; j<Ly; j++) 
-    for (k=0; k<Lz; k++)
-      for (l=0; l<15; l++) {
-	if (e[l][0] == -1) {
-	  i=1;
-	  fold[i][j][k][l]+=dt*Fc[i][j][k][l];
-	}
-	if (e[l][0] == 1) {
-	  i=Lx2-2;
-	  fold[i][j][k][l]+=dt*Fc[i][j][k][l];
-	}
-      }
-
-  communicateOldDistributions(fold);
-
-  for (j=0; j<Ly; j++) 
-    for (k=0; k<Lz; k++)
-      for (l=0; l<15; l++) {
-	i=1;
-	if (e[l][0] == -1) {
-	  fold[i][j][k][l]-=dt*Fc[i][j][k][l];
-	}
-	if (e[l][0] == 1) {
-	  i=Lx2-2;
-	  fold[i][j][k][l]-=dt*Fc[i][j][k][l];
-	}
-      }
-#endif
-
-  for (i=ix1; i<ix2; i++)
-    for (j=jy1; j<jy2; j++)
-      for (k=kz1; k<kz2; k++)
-	for (l=0; l<15; l++) {
-
-	  imod=(i-e[l][0]+Lx2)%Lx2; 
-	  jmod=(j-e[l][1]+Ly2)%Ly2; 
-	  kmod=(k-e[l][2]+Lz)%Lz2;
-#ifdef PARALLEL
-	  if ((imod == 0) || (imod == Lx2-1) || (jmod==0) || (jmod==Ly2-1) || (kmod==0) || (kmod==Lz2-1) ) {
-	    fnew[i][j][k][l]=fold[imod][jmod][kmod][l];
-	  }
-	  else {
-#endif
-	    fnew[i][j][k][l]=
-	      fold[imod][jmod][kmod][l]+dt*Fc[imod][jmod][kmod][l];
-#ifdef PARALLEL
-	  }
-#endif
-
-	}
-
-	/*B.C.'s*/
-	if(pouiseuille1==1){
-#if BC
-	if(k==1){
-	  /* f's */
-            fnew[i][j][0][5]= fnew[i][j][0][6]; 
-	  rb=fnew[i][j][0][0]+fnew[i][j][0][1]+fnew[i][j][0][2]+
-	    fnew[i][j][0][3]+fnew[i][j][0][4]+
-	    2.0*(fnew[i][j][0][6]+fnew[i][j][0][11]+fnew[i][j][0][12]+
-	    fnew[i][j][0][13]+fnew[i][j][0][14]);
-	  fnew[i][j][0][7]=
-	    0.25*(-fnew[i][j][0][1]-fnew[i][j][0][2]+
-		 fnew[i][j][0][3]+fnew[i][j][0][4])+
-	    0.25*(-fnew[i][j][0][11]+fnew[i][j][0][12]+
-		  fnew[i][j][0][14]+rb*vwbt)+0.75*fnew[i][j][0][13];
-	  fnew[i][j][0][8]=
-	    0.25*(fnew[i][j][0][1]-fnew[i][j][0][2]-
-		 fnew[i][j][0][3]+fnew[i][j][0][4])+
-	    0.25*(fnew[i][j][0][11]-fnew[i][j][0][12]+
-		  fnew[i][j][0][13]+rb*vwbt)+0.75*fnew[i][j][0][14];
-	  fnew[i][j][0][9]=
-	    0.25*(fnew[i][j][0][1]+fnew[i][j][0][2]-
-		 fnew[i][j][0][3]-fnew[i][j][0][4])+
-	    0.25*(-fnew[i][j][0][13]+fnew[i][j][0][14]+
-		  fnew[i][j][0][12]-rb*vwbt)+0.75*fnew[i][j][0][11];
-	  fnew[i][j][0][10]=
-	    0.25*(-fnew[i][j][0][1]+fnew[i][j][0][2]+
-		 fnew[i][j][0][3]-fnew[i][j][0][4])+
-	    0.25*(fnew[i][j][0][11]+fnew[i][j][0][13]-
-		  fnew[i][j][0][14]-rb*vwbt)+0.75*fnew[i][j][0][12];
-	  
-	}
-	else if(k==Lz-1){
-	  /* f's */
-          fnew[i][j][k][6]=fnew[i][j][k][5];
-	  rb=fnew[i][j][k][0]+fnew[i][j][k][1]+fnew[i][j][k][2]+
-	    fnew[i][j][k][3]+fnew[i][j][k][4]+
-	    2.0*(fnew[i][j][k][5]+fnew[i][j][k][7]+fnew[i][j][k][8]+
-	    fnew[i][j][k][9]+fnew[i][j][k][10]);
-	  fnew[i][j][k][11]=
-	    0.25*(-fnew[i][j][k][1]-fnew[i][j][k][2]+
-		 fnew[i][j][k][3]+fnew[i][j][k][4])+
-	    0.25*(-fnew[i][j][k][7]+fnew[i][j][k][8]+
-		  fnew[i][j][k][10]+rb*vwtp)+0.75*fnew[i][j][k][9];
-	  fnew[i][j][k][12]=
-	    0.25*(fnew[i][j][k][1]-fnew[i][j][k][2]-
-		 fnew[i][j][k][3]+fnew[i][j][k][4])+
-	    0.25*(fnew[i][j][k][7]-fnew[i][j][k][8]+
-		  fnew[i][j][k][9]+rb*vwtp)+0.75*fnew[i][j][k][10];
-	  fnew[i][j][k][13]=
-	    0.25*(fnew[i][j][k][1]+fnew[i][j][k][2]-
-		 fnew[i][j][k][3]-fnew[i][j][k][4])+
-	    0.25*(-fnew[i][j][k][9]+fnew[i][j][k][10]+
-		  fnew[i][j][k][8]-rb*vwtp)+0.75*fnew[i][j][k][7];
-	  fnew[i][j][k][14]=
-	    0.25*(-fnew[i][j][k][1]+fnew[i][j][k][2]+
-		 fnew[i][j][k][3]-fnew[i][j][k][4])+
-	    0.25*(fnew[i][j][k][7]+fnew[i][j][k][9]-
-		  fnew[i][j][k][10]-rb*vwtp)+0.75*fnew[i][j][k][8];
-
-	}   
-#endif
-	} 
-
-
-}
-
 /****************************************************************************
  *
- *  Quick 3D version of above.
+ *  Update the distributions.
  *
- *  fold must be unchanged on exit, hence the subtraction at the end. 
+ *  The tendency terms from the collision are added to the
+ *  distributions, and a halo exchange preceeds the
+ *  propagation.
  *
- *  Pouiseuille boundaries excluded. Not serial.
+ *  Note that fold must be unchanged on exit, hence the subtraction
+ *  at the end. 
+ *
+ *  Pouiseuille boundaries are now in do_pouisuille_distributions().
  *
  ****************************************************************************/
 
@@ -589,9 +452,7 @@ void update0_ks(double ****fnew, double ****fold) {
     }
   }
 
-#ifdef PARALLEL
   communicateOldDistributions(fold);
-#endif
 
   // 'Pull' propagation
 
@@ -609,6 +470,8 @@ void update0_ks(double ****fnew, double ****fold) {
     }
   }
 
+  if (pouiseuille1 == 1) do_pouiseuille_distributions(fnew);
+
   // Reset fold
 
   for (i=ix1; i<ix2; i++) {
@@ -622,140 +485,6 @@ void update0_ks(double ****fnew, double ****fold) {
   }
 
   return;
-}
-
-
-//WARNING:NEED TO CHANGE FOR 3D DECOMPOSITION
-
-void update(double ****fnew,double ****fold)
-{
-  int i,j,k,l,imod,jmod,kmod;
-  double rb,Qxxb,Qyyb,Qxyb,Qxzb,Qyzb,tmp,vzoutone;
-
-#ifdef PARALLEL
-  for (j=0; j<Ly; j++) 
-    for (k=0; k<Lz; k++)
-      for (l=0; l<15; l++) {	
-	if (e[l][0] == -1) {
-	  i=1;
-	  fold[i][j][k][l]=(fold[i][j][k][l]+0.5*dt*Fc[i][j][k][l])/oneplusdtover2tau1;
-	}
-	if (e[l][0] == 1) {
-	  i=Lx2-2;
-	  fold[i][j][k][l]=(fold[i][j][k][l]+0.5*dt*Fc[i][j][k][l])/oneplusdtover2tau1;
-	}
-      }
-
-  communicateOldDistributions(fold);
-
-  for (j=0; j<Ly; j++) 
-    for (k=0; k<Lz; k++)
-      for (l=0; l<15; l++) {	
-	if (e[l][0] == -1) {
-	  i=1;
-	  fold[i][j][k][l]=fold[i][j][k][l]*oneplusdtover2tau1-0.5*dt*Fc[i][j][k][l];
-	}
-	if (e[l][0] == 1) {
-	  i=Lx2-2;
-	  fold[i][j][k][l]=fold[i][j][k][l]*oneplusdtover2tau1-0.5*dt*Fc[i][j][k][l];
-	}
-      }
-
-#endif
-
-  for (i=ix1; i<ix2; i++) {
-    for (j=jy1; j<jy2; j++) {
-      for (k=kz1; k<kz2; k++) {
-
-	for (l=0; l<15; l++) {
-	  imod=(i-e[l][0]+Lx2)%Lx2; 
-	  jmod=(j-e[l][1]+Ly2)%Ly2; 
-	  kmod=(k-e[l][2]+Lz2)%Lz2;
-
-#ifdef PARALLEL
-	  if ((imod == 0) || (imod == Lx2-1) || (jmod==0) || (jmod==Ly2-1) || (kmod==0) || (kmod==Lz2-1)  ) {
-	    fnew[i][j][k][l]=fold[imod][jmod][kmod][l]+
-			      0.5*dt*feq[i][j][k][l]/tau1/oneplusdtover2tau1;
-	  }
-	  else {
-#endif
-	    fnew[i][j][k][l]=(fold[imod][jmod][kmod][l]+
-			      0.5*dt*(Fc[imod][jmod][kmod][l]+
-				      feq[i][j][k][l]/tau1))/oneplusdtover2tau1;
-#ifdef PARALLEL
-	  }
-#endif
-	}
-
-	/*B.C.'s*/
-       if(pouiseuille1==1){
-#if BC
-	if(k==1){
-	  /* f's */
-
-          fnew[i][j][0][5]=fnew[i][j][0][6];
-	  rb=fnew[i][j][0][0]+fnew[i][j][0][1]+fnew[i][j][0][2]+
-	    fnew[i][j][0][3]+fnew[i][j][0][4]+
-	    2.0*(fnew[i][j][0][6]+fnew[i][j][0][11]+fnew[i][j][0][12]+
-	    fnew[i][j][0][13]+fnew[i][j][0][14]);
-	  fnew[i][j][0][7]=
-	    0.25*(-fnew[i][j][0][1]-fnew[i][j][0][2]+
-		 fnew[i][j][0][3]+fnew[i][j][0][4])+
-	    0.25*(-fnew[i][j][0][11]+fnew[i][j][0][12]+
-		  fnew[i][j][0][14]+rb*vwbt)+0.75*fnew[i][j][0][13];
-	  fnew[i][j][0][8]=
-	    0.25*(fnew[i][j][0][1]-fnew[i][j][0][2]-
-		 fnew[i][j][0][3]+fnew[i][j][0][4])+
-	    0.25*(fnew[i][j][0][11]-fnew[i][j][0][12]+
-		  fnew[i][j][0][13]+rb*vwbt)+0.75*fnew[i][j][0][14];
-	  fnew[i][j][0][9]=
-	    0.25*(fnew[i][j][0][1]+fnew[i][j][0][2]-
-		 fnew[i][j][0][3]-fnew[i][j][0][4])+
-	    0.25*(-fnew[i][j][0][13]+fnew[i][j][0][14]+
-		  fnew[i][j][0][12]-rb*vwbt)+0.75*fnew[i][j][0][11];
-	  fnew[i][j][0][10]=
-	    0.25*(-fnew[i][j][0][1]+fnew[i][j][0][2]+
-		 fnew[i][j][0][3]-fnew[i][j][0][4])+
-	    0.25*(fnew[i][j][0][11]+fnew[i][j][0][13]-
-		  fnew[i][j][0][14]-rb*vwbt)+0.75*fnew[i][j][0][12];
-
-	}
-	else if(k==Lz-1){
-	  /* f's */
-
-          fnew[i][j][k][6]=fnew[i][j][k][5];
-	  rb=fnew[i][j][k][0]+fnew[i][j][k][1]+fnew[i][j][k][2]+
-	    fnew[i][j][k][3]+fnew[i][j][k][4]+
-	    2.0*(fnew[i][j][k][5]+fnew[i][j][k][7]+fnew[i][j][k][8]+
-	    fnew[i][j][k][9]+fnew[i][j][k][10]);
-	  fnew[i][j][k][11]=
-	    0.25*(-fnew[i][j][k][1]-fnew[i][j][k][2]+
-		 fnew[i][j][k][3]+fnew[i][j][k][4])+
-	    0.25*(-fnew[i][j][k][7]+fnew[i][j][k][8]+
-		  fnew[i][j][k][10]+rb*vwtp)+0.75*fnew[i][j][k][9];
-	  fnew[i][j][k][12]=
-	    0.25*(fnew[i][j][k][1]-fnew[i][j][k][2]-
-		 fnew[i][j][k][3]+fnew[i][j][k][4])+
-	    0.25*(fnew[i][j][k][7]-fnew[i][j][k][8]+
-		  fnew[i][j][k][9]+rb*vwtp)+0.75*fnew[i][j][k][10];
-	  fnew[i][j][k][13]=
-	    0.25*(fnew[i][j][k][1]+fnew[i][j][k][2]-
-		 fnew[i][j][k][3]-fnew[i][j][k][4])+
-	    0.25*(-fnew[i][j][k][9]+fnew[i][j][k][10]+
-		  fnew[i][j][k][8]-rb*vwtp)+0.75*fnew[i][j][k][7];
-	  fnew[i][j][k][14]=
-	    0.25*(-fnew[i][j][k][1]+fnew[i][j][k][2]+
-		 fnew[i][j][k][3]-fnew[i][j][k][4])+
-	    0.25*(fnew[i][j][k][7]+fnew[i][j][k][9]-
-		  fnew[i][j][k][10]-rb*vwtp)+0.75*fnew[i][j][k][8];
-
-	}   
-#endif
-       }
-      }
-    }
-  }
-
 }
 
 /****************************************************************************
@@ -785,9 +514,7 @@ void update_ks(double **** fnew, double **** fold) {
     }
   }
 
-#ifdef PARALLEL
   communicateOldDistributions(fold);
-#endif
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -805,6 +532,8 @@ void update_ks(double **** fnew, double **** fold) {
     }
   }
 
+  if (pouiseuille1 == 1) do_pouiseuille_distributions(fnew);
+
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
       for (k=kz1; k<kz2; k++) {
@@ -818,22 +547,139 @@ void update_ks(double **** fnew, double **** fold) {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  do_pouiseuille_distributions
+ *
+ *  Pouiseuille boundary conditions for distributions.
+ *
+ *****************************************************************************/
+
+void do_pouiseuille_distributions(double **** f) {
+
+  extern int pe_cartesian_coordinates_[3];
+
+  int ix, iy, iz;
+  double rb;
+
+  if (pe_cartesian_coordinates_[2] == 0) {
+
+    /* Only at absolute z = 0 */
+
+    iz = 0;
+
+    for (ix = ix1; ix < ix2; ix++) {
+      for (iy = jy1; iy < jy2; iy++) {
+
+	f[ix][iy][iz][5] = f[ix][iy][iz][6];
+
+	rb = f[ix][iy][iz][0] + f[ix][iy][iz][1] + f[ix][iy][iz][2] +
+	  f[ix][iy][iz][3] + f[ix][iy][iz][4] +
+	  2.0*(f[ix][iy][iz][6] + f[ix][iy][iz][11] + f[ix][iy][iz][12] +
+	       f[ix][iy][iz][13] + f[ix][iy][iz][14]);
+
+	f[ix][iy][iz][7] =
+	  0.25*(-f[ix][iy][iz][1] - f[ix][iy][iz][2] +
+		f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
+	  0.25*(-f[ix][iy][iz][11] + f[ix][iy][iz][12] +
+		f[ix][iy][iz][14] + rb*vwbt) + 0.75*f[ix][iy][iz][13];
+
+	f[ix][iy][iz][8] =
+	  0.25*(f[ix][iy][iz][1] - f[ix][iy][iz][2] -
+		f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
+	  0.25*(f[ix][iy][iz][11] - f[ix][iy][iz][12] +
+		f[ix][iy][iz][13] + rb*vwbt) + 0.75*f[ix][iy][iz][14];
+
+	f[ix][iy][iz][9] =
+	  0.25*(f[ix][iy][iz][1] + f[ix][iy][iz][2] -
+		f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
+	  0.25*(-f[ix][iy][iz][13] + f[ix][iy][iz][14] +
+		f[ix][iy][iz][12] - rb*vwbt) + 0.75*f[ix][iy][iz][11];
+
+	f[ix][iy][iz][10] =
+	  0.25*(-f[ix][iy][iz][1] + f[ix][iy][iz][2] +
+		f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
+	  0.25*(f[ix][iy][iz][11] + f[ix][iy][iz][13] -
+		f[ix][iy][iz][14] - rb*vwbt) + 0.75*f[ix][iy][iz][12];
+
+      }
+    }
+
+  }
+
+  if (pe_cartesian_coordinates_[2] == pe_cartesian_size_[2] - 1) {
+
+    /* Only at absolute z = Lz do we have a boundary */
+
+    iz = Lz2-1;
+
+    for (ix = ix1; ix < ix2; ix++) {
+      for (iy = jy1; iy < jy2; iy++) {
+
+	f[ix][iy][iz][6] = f[ix][iy][iz][5];
+
+	rb = f[ix][iy][iz][0] + f[ix][iy][iz][1] + f[ix][iy][iz][2] +
+	  f[ix][iy][iz][3] + f[ix][iy][iz][4] +
+	  2.0*(f[ix][iy][iz][5] + f[ix][iy][iz][7] + f[ix][iy][iz][8] +
+	       f[ix][iy][iz][9] + f[ix][iy][iz][10]);
+
+	f[ix][iy][iz][11] =
+	  0.25*(-f[ix][iy][iz][1] - f[ix][iy][iz][2] +
+		f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
+	  0.25*(-f[ix][iy][iz][7] + f[ix][iy][iz][8] +
+		f[ix][iy][iz][10] + rb*vwtp) + 0.75*f[ix][iy][iz][9];
+
+	f[ix][iy][iz][12] =
+	  0.25*(f[ix][iy][iz][1] - f[ix][iy][iz][2] -
+		f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
+	  0.25*(f[ix][iy][iz][7] - f[ix][iy][iz][8] +
+		f[ix][iy][iz][9] + rb*vwtp) + 0.75*f[ix][iy][iz][10];
+
+	f[ix][iy][iz][13] =
+	  0.25*(f[ix][iy][iz][1] + f[ix][iy][iz][2] -
+		f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
+	  0.25*(-f[ix][iy][iz][9] + f[ix][iy][iz][10] +
+		f[ix][iy][iz][8] - rb*vwtp) + 0.75*f[ix][iy][iz][7];
+
+	f[ix][iy][iz][14] =
+	  0.25*(-f[ix][iy][iz][1] + f[ix][iy][iz][2] +
+		f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
+	  0.25*( f[ix][iy][iz][7] + f[ix][iy][iz][9] -
+	       f[ix][iy][iz][10] - rb*vwtp) + 0.75*f[ix][iy][iz][8];
+      }
+    }
+
+  }
+
+  return;
+}
 
 void collisionop(void)
 {
   int i,j,k,l;
 
-  for (i=ix1; i<ix2; i++)
-    for (j=jy1; j<jy2; j++)
-      for (k=kz1; k<kz2; k++) 
+  for (i=ix1; i<ix2; i++) {
+    for (j=jy1; j<jy2; j++) {
+      for (k=kz1; k<kz2; k++) {
 	for (l=0; l<15; l++) {
 	  Fc[i][j][k][l]= (feq[i][j][k][l]-f[i][j][k][l])/tau1; 
-          if (pouiseuille==1) {
-	      if(j==0) { 
-		  Fc[i][j][k][l]+=e[l][1]*bodyforce*density[i][j][k];
-	      }
-	  }
 	}
+      }
+    }
+  }
+
+  if (pouiseuille == 1) {
+    j = 0;
+    for (i=ix1; i<ix2; i++) {
+      for (k=kz1; k<kz2; k++) {
+	for (l=0; l<15; l++) {
+	  Fc[i][j][k][l] += e[l][1]*bodyforce*density[i][j][k];
+	}
+      }
+    }
+  }
+
+  return;
 }
 
 
@@ -841,25 +687,18 @@ void equilibriumdist(void)
 {
   double A0,A1,A2,B1,B2,C0,C1,C2,D1,D2;
   double G1xx,G2xx,G2xy,G2xz,G2yz,G1yy,G2yy,G1zz,G2zz;
-  double H0xx,K1xx,K2xx,J0xx,J1xx,J2xx,Q1xx,Q2xx;
-  double H0xy,K1xy,K2xy,J0xy,J1xy,J2xy,Q1xy,Q2xy;
-  double H0yy,K1yy,K2yy,J0yy,J1yy,J2yy,Q1yy,Q2yy;
-  double H0xz,K1xz,K2xz,J0xz,J1xz,J2xz,Q1xz,Q2xz;
-  double H0yz,K1yz,K2yz,J0yz,J1yz,J2yz,Q1yz,Q2yz;
   double dbdtauxb,dbdtauyb,dbdtauzb;
   double rho,Qxxl,Qxyl,Qyyl,Qxzl,Qyzl,usq,udote,omdote;
   double nnxxl,nnyyl;
   double Hxx,Hyy,Hxy,Hxz,Hyz,Qsqxx,Qsqxy,Qsqyy,Qsqzz,Qsqxz,Qsqyz,TrQ2;
-  double sigxx,sigyy,sigxy,sigxz,sigyz,sigzz;
+  double sigxx,sigyy,sigxy,sigxz,sigyz;
   double duxdx,duxdy,duxdz,duydx,duydy,duydz,duzdx,duzdy,duzdz,Gammap;
-  double mDQ4xx,mDQ4xy,mDQ4yy,mDQ4xz,mDQ4yz,mDQ4zz,TrDQI;
-  double DQpQDxx,DQpQDxy,DQpQDyy,DQpQDxz,DQpQDyz,DQpQDzz,TrDQpQD;
-  int i,j,k,l,iup,idwn,jup,jdwn,kup,kdwn,k1;
+  int i,j,k,l,iup,idwn,jup,jdwn,kup,kdwn;
 
-#ifdef _COMM_3D_
+
   /* Communication of tau required here */
   exchangeTau();
-#endif
+
 
   for (i=ix1; i<ix2; i++) {
     iup=i+1;
@@ -1037,8 +876,7 @@ void parametercalc(int n)
   double d2Qyzdxdx,d2Qyzdydy,d2Qyzdxdy,d2Qyzdzdz,d2Qyzdxdz,d2Qyzdydz;
   double divQx,divQy,divQz;
   double txx,tyy,txy,tyx,tzz,txz,tzx,tyz,tzy;
-  double TrQE2,avestress,stressyz,sigyz;
-  double dEzdx,dEzdy,dEzdz;
+  double avestress;
   double Qsqxx,Qsqxy,Qsqxz,Qsqyy,Qsqyz,Qsqzz,Qxxl,Qxyl,Qxzl,Qyyl,Qyzl,Qzzl;
   double Hxx,Hyy,Hxy,Hxz,Hyz,TrDQI;
   double duxdx,duxdy,duxdz,duydx,duydy,duydz,duzdx,duzdy,duzdz,Gammap;
@@ -1065,9 +903,7 @@ void parametercalc(int n)
     }
   }
 
-#ifdef PARALLEL
   exchangeMomentumAndQTensor();
-#endif  
 
   for (i=ix1; i<ix2; i++) {
     iup=i+1;
