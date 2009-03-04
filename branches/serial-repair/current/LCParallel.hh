@@ -5,10 +5,11 @@
 #include <mpi.h>
 #endif
 
-#include <fstream.h>
 #include <math.h>
 #include <stdlib.h>
-#include <iomanip.h>
+
+#include <fstream>
+#include <iomanip>
 
 void exchangeMomentumAndQTensor(void);
 void exchangeTau(void);

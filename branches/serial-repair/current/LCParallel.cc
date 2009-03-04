@@ -732,6 +732,7 @@ void exchangeTau() {
     double * buf_sendback;     /* send data to 'backward' direction */
     double * buf_recvforw;     /* receive data from 'forward' direction */
     double * buf_recvback;     /* receive data from 'backward' direction */
+    double t0, t1;
 
     int ncount;
     int ix, iy, iz;
@@ -745,6 +746,8 @@ void exchangeTau() {
     MPI_Status  send_status[2];
     MPI_Status  recv_status[2];
     MPI_Comm    comm = cartesian_communicator_;
+
+    t0 = MPI_Wtime();
 
     /* X direction - tauxy and tauxz */
     /* Allocate buffers */
@@ -990,6 +993,9 @@ void exchangeTau() {
     delete buf_recvforw;
     delete buf_recvback;
 
+    t1 = MPI_Wtime();
+
+    total_comm_ += (t1 - t0);
 
   return;
 }
