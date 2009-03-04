@@ -53,9 +53,9 @@ void computeStressFreeEnergy(int n)
     }
   }
 
-#ifdef PARALLEL
+
   exchangeMomentumAndQTensor();
-#endif  
+
 
  one_gradient=0.0;
  two_gradient=0.0;
