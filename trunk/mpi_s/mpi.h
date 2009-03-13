@@ -96,6 +96,8 @@ enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 /* Interface */
 
 int MPI_Barrier(MPI_Comm comm);
+int MPI_Bcast(void * buffer, int count, MPI_Datatype datatype, int root,
+	      MPI_Comm comm);
 int MPI_Comm_rank(MPI_Comm comm, int * rank);
 int MPI_Comm_size(MPI_Comm comm, int * size);
 
