@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.11 2009-02-25 09:00:34 kevin Exp $
+ *  $Id: free_energy.c,v 1.12 2009-03-20 09:59:49 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -72,6 +72,10 @@ static double fe_chemical_potential_brazovskii(const int);
 static double fe_chemical_potential_sman_phi(const int);
 static double fe_chemical_potential_sman_psi(const int);
 static void fe_chemical_stress_sman(const int, double [3][3]);
+
+static double (* fe_density)(const int);
+static double free_energy_density_surfactant(const int);
+static double free_energy_density_brazovskii(const int);
 
 /*****************************************************************************
  *
@@ -131,6 +135,7 @@ void init_free_energy() {
     info("Interfacial width     = %f\n", interfacial_width());
     fe_chemical_stress = fe_chemical_stress_symmetric;
     fe_chemical_potential[0] = fe_chemical_potential_brazovskii;
+    fe_density = free_energy_density_brazovskii;
   }
   else if (strcmp(description, "brazovskii") == 0) {
     info("\nBrazovskii free energy:\n");
@@ -142,6 +147,7 @@ void init_free_energy() {
     info("Interfacial width     = %f\n", interfacial_width());
     fe_chemical_stress = fe_chemical_stress_brazovskii;
     fe_chemical_potential[0] = fe_chemical_potential_brazovskii;
+    fe_density = free_energy_density_brazovskii;
     is_brazovskii_ = 1;
   }
   else if (strcmp(description, "surfactant") == 0) {
@@ -168,6 +174,7 @@ void init_free_energy() {
     fe_chemical_stress = fe_chemical_stress_sman;
     fe_chemical_potential[0] = fe_chemical_potential_sman_phi;
     fe_chemical_potential[1] = fe_chemical_potential_sman_psi;
+    fe_density = free_energy_density_surfactant;
   }
   else {
     fatal("Unrecognised free energy\n");
@@ -295,6 +302,23 @@ void free_energy_get_chemical_stress(const int index, double p[3][3]) {
   fe_chemical_stress(index, p);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  free_energy_density
+ *
+ *  Return the free energy density
+ *  E = (1/2) A phi^2 + (1/4) B phi^4 + (1/2) kappa (\nabla phi)^2
+ *    + (1/2) C (\nabla^2 phi)^2
+ *
+ *****************************************************************************/
+
+double free_energy_density(const int index) {
+
+  assert(fe_density);
+
+  return fe_density(index);
 }
 
 /*****************************************************************************
@@ -428,7 +452,7 @@ double free_energy_get_isotropic_pressure(const int index) {
 
 /*****************************************************************************
  *
- *  free_energy_density
+ *  free_energy_density_brazovskii
  *
  *  Return the free energy density
  *  E = (1/2) A phi^2 + (1/4) B phi^4 + (1/2) kappa (\nabla phi)^2
@@ -436,7 +460,7 @@ double free_energy_get_isotropic_pressure(const int index) {
  *
  *****************************************************************************/
 
-double free_energy_density(const int index) {
+static double free_energy_density_brazovskii(const int index) {
 
   double e, bulk;
   double phi, dphi[3], delsq;
@@ -586,4 +610,39 @@ static void fe_chemical_stress_sman(const int index, double p[3][3]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  free_energy_density_surfactant
+ *
+ *  This is:
+ *     (1/2)A \phi^2 + (1/4)B \phi^4 + (1/2) kappa (\nabla\phi)^2
+ *   + kT [ \psi ln \psi + (1 - \psi) ln (1 - \psi) ]
+ *   - (1/2) \epsilon\psi (\nabla\phi)^2 - (1/2) \beta \psi^2 (\nabla\phi)^2
+ *   + (1/2)W\psi\phi^2
+ *
+ *****************************************************************************/
+
+static double free_energy_density_surfactant(const int index) {
+
+  double e;
+  double phi, psi, dphi[3], dphisq;
+
+  phi = phi_op_get_phi_site(index, 0);
+  psi = phi_op_get_phi_site(index, 1);
+  phi_get_grad_phi_site(index, dphi);
+
+  dphisq = dot_product(dphi, dphi);
+
+  e = 0.5*phi*phi*(A_ + 0.5*B_*phi*phi) + 0.5*kappa_*dphisq;
+
+  assert(psi > 0.0);
+  assert(psi < 1.0);
+
+  e += D_*(psi*log(psi) + (1.0 - psi)*log(1.0 - psi));
+  e += -0.5*epsilon_*psi*dphisq - 0.5*beta_*psi*psi*dphisq;
+  e += 0.5*W_*psi*phi*phi;
+
+  return e;
 }
