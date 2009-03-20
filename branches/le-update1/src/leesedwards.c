@@ -1,38 +1,38 @@
+/*****************************************************************************
+ *
+ *  leesedwards.c
+ *
+ *  This sits on top of coords.c and provides a way to deal with
+ *  the coordinate transformations required by the Lees Edwards
+ *  sliding periodic boundaries.
+ *
+ *  $Id: leesedwards.c,v 1.12.4.2 2009-03-20 16:09:46 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *  (c) The University of Edinburgh (2009)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <assert.h>
 
 #include "pe.h"
-#include "runtime.h"
-#include "timer.h"
 #include "coords.h"
+#include "runtime.h"
 #include "control.h"
-#include "model.h"
-#include "physics.h"
-
 #include "leesedwards.h"
 
-
-extern Site * site;
-extern MPI_Datatype DT_Site;
-
-static MPI_Comm     LeesEdw_Comm;
-static int        * LE_ranks;
-static double      *LeesEdw_site;
-
-static void   LE_init_original(void);
-static void   le_init_tables(void);
-static double le_get_steady_uy(const int); 
-static void LE_update_buffers(void );
-
+static void le_checks(void);
+static void le_init_tables(void);
 
 static struct le_parameters {
   /* Global parameters */
   int    n_plane_total;     /* Total number of planes */
   double uy_plane;          /* u[Y] for all planes */
-  double shear_rate;        /* Overall shear rate */
   double dx_min;            /* Position first plane */
   double dx_sep;            /* Plane separation */
 
@@ -48,7 +48,7 @@ static int initialised_ = 0;
 
 /*****************************************************************************
  *
- *  LE_init
+ *  le_init
  *
  *  We assume there are a given number of equally-spaced planes
  *  all with the same speed.
@@ -56,11 +56,10 @@ static int initialised_ = 0;
  *  Pending (KS):
  *   - dx should be integers, i.e, N_total(X) % ntotal must be zero
  *   - look at displacement issue
- *   - add runtime checks
  *
  *****************************************************************************/
 
-void LE_init() {
+void le_init() {
 
   int n;
   int ntotal;
@@ -71,12 +70,17 @@ void LE_init() {
   if (n != 0) le_params_.n_plane_total = ntotal;
 
   n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
-
-  /* Initialise the global Lees-Edwards structure. */
+  initialised_ = 1;
 
   if (le_get_nplane_total() != 0) {
 
     info("\nLees-Edwards boundary conditions are active:\n");
+
+    if (N_total(X) % ntotal) {
+      info("System size x-direction: %d\n", N_total(X));
+      info("Number of LE planes requested: %d\n", ntotal);
+      fatal("Number of planes must divide system size\n");
+    }
 
     le_params_.dx_sep = L(X) / ntotal;
     le_params_.dx_min = 0.5*le_params_.dx_sep;
@@ -87,13 +91,10 @@ void LE_init() {
 	   le_params_.uy_plane);
     }
 
-    le_params_.shear_rate = le_params_.uy_plane*ntotal/L(X);
-    info("Overall shear rate = %f\n", le_params_.shear_rate);
+    info("Overall shear rate = %f\n", le_shear_rate());
   }
 
-  LE_init_original();
-
-  initialised_ = 1;
+  le_checks();
   le_init_tables();
 
   return;
@@ -244,761 +245,48 @@ static void le_init_tables() {
   rdims[X] = 0;
   rdims[Y] = 1;
   rdims[Z] = 0;
-  MPI_Cart_sub(cart_comm(), rdims, &le_params_.le_comm);
+  MPI_Cart_sub(cart_comm(), rdims, &(le_params_.le_comm));
+
+  MPI_Comm_rank(le_params_.le_comm, &n);
 
   return;
 }
 
-/*----------------------------------------------------------------------------*/
-/*!
- * Applies Lees-Edwards: transformation of site contents across LE walls: 
- * and the components of the distribution functions which cross LE walls
+/****************************************************************************
  *
- *- \c Options:   _TRACE_
- *- \c Arguments: void
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0
- *- \c Last \c updated: 04/01/2003 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: LE_update_buffers()
- *                  LE_init(), MODEL_get_gradients()
- *- \c Note:      this routine is compatible with the serial and MPI
- *                implementations. 
- */
-/*----------------------------------------------------------------------------*/
-
-void LE_apply_LEBC( void )
-{
-  int     plane,xfac,yfac,xfac2,yfac2,zfac2,jj,kk,ind,ind0,ind1;
-  int     LE_loc;
-  int     i,j;
-  double  LE_vel;
-  int     N[3];
-
-  double *f, *g;
-  double rho, phi, ds[3][3], dsphi[3][3], udotc, jdotc, sdotq, sphidotq;
-  double u[3], jphi[3], du[3], djphi[3];
-  int ia, ib;
-
-  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
-
-  int p,side;
-  int nplane;
-
-  nplane = le_get_nplane_local();
-  if (nplane == 0) return;
-
-  TIMER_start(TIMER_LE);
-
-  get_N_local(N);
-  yfac  =  N[Z]+2*nhalo_;
-  xfac  = (N[Y]+2*nhalo_) * (N[Z]+2*nhalo_);
-  zfac2 = LE_N_VEL_XING * 2;  /* final x2 because 2 dist functions (f and g) */
-  yfac2 = yfac * zfac2;
-  xfac2 = xfac * zfac2; 
-
-  /* Stage 2: use Ronojoy's scheme to update fs and gs */
-
-  for (plane = 0; plane < nplane; plane++) {
-    for (side = 0; side < 2; side++) {
-
-      /* Start with plane below Lees-Edwards BC */
-
-      if (side == 0) {
-	LE_vel =-le_get_plane_uy();
-	LE_loc = le_plane_location(plane);
-      }
-      else {       /* Finally, deal with plane above LEBC */
-	LE_vel =+le_get_plane_uy();
-	LE_loc = le_plane_location(plane) + 1;
-      }      
-
-      /* First, for plane `below' LE plane, ie, crossing LE plane going up */
-
-      for (jj = 1; jj <= N[Y]; jj++) {
-	for (kk = 1; kk <= N[Z]; kk++) {
-	  
-	  /* ind = LE_loc*xfac + jj*yfac + kk;*/
-	  ind = get_site_index(LE_loc, jj, kk);
-	    	  
-	  /* For fi: M0 = rho; M1 = rho.u[]; M2 = s[][] */
-	  /* Corrected expressions for Lees-Edwards are as follows: */
-	  /* M0   -> M0 */
-	  /* M1i  -> M1i + u_LE_i*M0 */
-	  /* M2ij -> M2ij + u_LE_i*M1j + u_LE_j*M1i + u_LE_i.u_LE_j*M0 */
-	  /* (where u_LE[X]=u_LE[Z]=0; u_LE[Y] = plane speed uy) */
-	  
-	  f = site[ind].f;
-	  g = site[ind].g;
-
-	  /* Compute 0th and 1st moments */
-
-	  rho = f[0];
-	  phi = g[0];
-
-	  for (ia = 0; ia < 3; ia++) {
-	    u[ia] = 0.0;
-	    jphi[ia] = 0.0;
-	    du[ia] = 0.0;
-	    djphi[ia] = 0.0;
-	  }
-
-	  for (p = 1; p < NVEL; p++) {
-	    rho    += f[p];
-	    phi    += g[p];
-	    for (ia = 0; ia < 3; ia++) {
-	      u[ia] += f[p]*cv[p][ia];
-	      jphi[ia] += g[p]*cv[p][ia];
-	    }
-	  }
-
-	  /* ... then for the momentum (note that whilst jphi[] represents */
-	  /* the moment, u only represents the momentum) */
-
-	  du[Y] = LE_vel; 
-	  djphi[Y] = phi*LE_vel;
+ *  le_checks
+ *
+ *  We check that there are no planes within range of the processor or
+ *  periodic halo regions.
+ *
+ ****************************************************************************/
  
-	  /* Include correction for Lees-Edwards BC: first for the stress */
-	  /* NOTE: use the original u.y and jphi[1], i.e., befoer LE fix */
+void le_checks(void) {
 
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      ds[ia][ib] = rho*(u[ia]*du[ib] + du[ia]*u[ib] + du[ia]*du[ib]);
-	      dsphi[ia][ib] =
-		du[ia]*jphi[ib] + jphi[ia]*du[ib] + phi*du[ia]*du[ib];
-	    }
-	  }
-
-	  /* Now update the distribution */
-	  for (p = 0; p < NVEL; p++) {
-	      
-	    udotc =    du[Y] * cv[p][1];
-	    jdotc = djphi[Y] * cv[p][1];
-	      
-	    sdotq    = 0.0;
-	    sphidotq = 0.0;
-	      
-	    for (i = 0; i < 3; i++) {
-	      for (j = 0; j < 3; j++) {
-		sdotq += ds[i][j]*q_[p][i][j];
-		sphidotq += dsphi[i][j]*q_[p][i][j];
-	      }
-	    }
-	      
-	    /* Project all this back to the distributions. */
-	    /* First case: the plane below Lees-Edwards BC */
-
-	    if (side == 0) {
-
-	      /* For each velocity intersecting the LE plane (up, ie X+1) */
-	      if (cv[p][X] == 1) {
-		f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
-		g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
-	      }
-	    }
-	    /* Now consider the case when above the LE plane */
-	    else {
-
-	      /* For each velocity intersecting the LE plane (down, ie X-1) */
-	      if (cv[p][X] == -1) {
-		f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
-		g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
-	      }
-	    }
-	  }
-	}
-      }
-    }
-  }
-  
-  /* Stage 3: update buffers (pre-requisite to translation) */
-
-  halo_site();
-  LE_update_buffers();
-
-  /* Stage 4: apply translation on fs and gs crossing LE planes */
-
-  for (plane = 0; plane < nplane; plane++) {
-    LE_loc  = le_plane_location(plane);
-      
-    /* First, for plane 'below' LE plane: displacement = +displ */
-    for (jj = 1; jj <= N[Y]; jj++) {
-      for (kk = 1; kk <= N[Z]; kk++) {
-	/* ind  =  LE_loc*xfac  + jj*yfac  + kk;*/
-	ind = get_site_index(LE_loc, jj, kk);
-	ind0 = 2*plane*xfac2 + jj*yfac2 + kk*zfac2;
-	    
-	/* For each velocity intersecting the LE plane (up, ie X+1) */
-	ind1 = 0; 
-	for (p = 0; p < NVEL; p++) {	      
-	  if (cv[p][X] == 1) {
-	    site[ind].f[p] = LeesEdw_site[ind0+2*ind1];
-	    site[ind].g[p] = LeesEdw_site[ind0+2*ind1+1];
-	    ind1++;
-	  }
-	}
-      }
-    }
-      
-    /* Then, for plane 'above' LE plane, ie, crossing LE plane going down */
-
-    for (jj = 1; jj <= N[Y]; jj++) {
-      for (kk = 1; kk <= N[Z]; kk++) {
-	/* ind  =  (LE_loc+1)*xfac  + jj*yfac  + kk;*/
-	ind = get_site_index(LE_loc+1, jj, kk);
-	ind0 = (2*plane+1)*xfac2 + jj*yfac2 + kk*zfac2;
-	
-	/* For each velocity intersecting the LE plane (down, ie X-1) */
-
-	ind1 = 0;
-
-	for (p = 0; p < NVEL; p++) {
-	  if(cv[p][X] == -1) {
-	    site[ind].f[p] = LeesEdw_site[ind0+2*ind1];
-	    site[ind].g[p] = LeesEdw_site[ind0+2*ind1+1];
-	    ind1++;
-	  }
-	}
-	
-      }
-    }
-    /* Next side of plane */
-  }
-
-  TIMER_stop(TIMER_LE);
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Initialise Lees-Edwards boundary conditions
- *
- *- \c Options:   _TRACE_, _MPI_
- *- \c Arguments: void
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0b1
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: MODEL_init(), LE_update_buffers(), LE_apply_LEBC() 
- */
-/*----------------------------------------------------------------------------*/
-
-void LE_init_original( void )
-{
-  int     i, ny2z2;
   int     nlocal[3];
-  int     nplane;
-
-  int     gblflag,  LE_rank, *intbuff;
-  int     offset[3];
-  int     gr_rank;
-  int     flag = 1;
+  int     nplane, n;
+  int ifail_local = 0;
+  int ifail_global;
 
   get_N_local(nlocal);
-  get_N_offset(offset);
+
+  /* From the local viewpoint, there must be no planes at either
+   * x = 1 or x = nlocal[X] (or indeed, within nhalo_ points of
+   * a processor or periodic boundary). */
 
   nplane = le_get_nplane_local();
 
-  /* Abort if any of the PEs has one or more walls at its domain boundary */
+  for (n = 0; n < nplane; n++) {
+    if (le_plane_location(n) <= nhalo_) ifail_local = 1;
+    if (le_plane_location(n) > nlocal[X] - nhalo_) ifail_local = 1;
+  }
 
-  flag = 0;
+  MPI_Allreduce(&ifail_local, &ifail_global, 1, MPI_INT, MPI_LOR, cart_comm());
 
-  MPI_Allreduce(&flag, &gblflag, 1, MPI_INT, MPI_LAND, cart_comm());
-
-  if (pe_size() > 1 && gblflag == 0){
+  if (ifail_global) {
     fatal("LE_init(): wall at domain boundary\n");
   }
-  
-  /* 
-   * Set communicator for Lees-Edwards communications: all LE planes have a
-   * fixed X location and therefore span all the PEs for a given
-   * cart_coords(X).
-   * Create look-up table to translate global ranks (in cart_comm()) into
-   * local ranks (in LeesEdw_Comm), i.e.:
-   * LE_rank[<rank in cart_comm()>] = <rank in LeesEdw_Comm> 
-   */
 
-  MPI_Comm_split(cart_comm(), cart_coords(X), cart_rank(), &LeesEdw_Comm);
-  MPI_Comm_rank(LeesEdw_Comm, &LE_rank);
-
-  LE_ranks = (int *) malloc(pe_size()*sizeof(int));
-  intbuff  = (int *)malloc(cart_size(Y)*cart_size(Z)*sizeof(int));
-  if (LE_ranks == NULL) fatal("malloc(LE_ranks) failed\n");
-  if (intbuff == NULL) fatal("malloc(intbuff) failed\n");
-
-  /* -1 denotes cartesian ranks belonging to external LE communicators */
-  for(i=0; i<pe_size(); i++){
-    LE_ranks[i] = -1;
-  }
-
-  /* For any given LE communicator, gather all cartesian ranks (in order) */
-  /* Then set up the look-up table on each LE root PE */
-  /* Broadcast look-up table to other PEs in LE communicator
-     (same cart_coords(X)) */
-
-  gr_rank = cart_rank();
-  MPI_Gather(&gr_rank, 1, MPI_INT, intbuff, 1, MPI_INT, 0, LeesEdw_Comm);
-
-  if (LE_rank == 0){
-    for(i=0; i<(cart_size(Y)*cart_size(Z)); i++){
-      LE_ranks[intbuff[i]] = i;
-    }
-  }
-
-  MPI_Bcast(LE_ranks, pe_size(), MPI_INT, 0, LeesEdw_Comm);
-  free(intbuff);
-  
-  /* 
-   * Allocate memory for Lees-Edwards buffers ("translated" values) and 
-   * "unrolled" phis: see LE_update_buffers() and LE_unroll_phi().
-   * Storage required for LeesEdw_site[] is:
-   *   2*N_LE_planes   one plane on each side of LE wall
-   *   * ny2z2         number of sites in a YZ plane, including halos
-   *   * 2             because there are two distribution functions f and g
-   *   * LE_N_VEL_XING simply save components crossing the LE wall 
-   *   * sizeof(double) because site components are doubles
-   */
-
-  if (nplane > 0) {
-    ny2z2 = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
-    LeesEdw_site = (double *)
-      malloc(2*nplane*ny2z2*2*LE_N_VEL_XING*sizeof(double));
-  
-    if(LeesEdw_site==NULL) {
-      fatal("LE_Init(): failed to allocate %d bytes for LE buffers\n",
-	    2*(2*LE_N_VEL_XING+1)*nplane*ny2z2*sizeof(double));
-    }
-  }
-
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Copy (remote) shifted YZ LE plane into local buffers LeesEdw_phi[] and
- * LeesEdw_site[] for use by LE_apply_LEBC(). This routine uses linear
- * interpolation
- *
- *- \c Options:   _TRACE_, _VERBOSE_, _MPI_
- *- \c Arguments: void
- *- \c Returns:   void
- *- \c Buffers:   no dependence
- *- \c Version:   2.0b1
- *- \c Last \c updated: 03/03/2002 by JCD
- *- \c Authors:   JC Desplat
- *- \c See \c also: LE_update_buffers(), LE_update_buffers_cubic(), 
- *                LE_apply_LEBC() 
- *- \c Note:      compatible with serial and MPI implementations with no
- *                particular restrictions. 
- */
-/*----------------------------------------------------------------------------*/
-#define TAG_LE_START 3102
-#define TAG_LE_END   3103
-
-
-void LE_update_buffers()
-{
-  int     jj, kk, ind, ind0, ind1, ind2, xfac, yfac, xfac2, yfac2, zfac2;
-  int     integ, LE_loc, plane, p;
-  int     disp_j1,disp_j2;
-  double   displ, LE_frac;
-  int     nlocal[3];
-  int     nplane;
-
-#ifdef _MPI_
-
-  int      nsites, nsites1, nsites2;
-  int      source_rank1, source_rank2;
-  int      target_rank1, target_rank2, target_pe1[3], target_pe2[3];
-  int      i, start_y;
-  int      offset[3];
-  Site    *buff_site;
-  MPI_Request req[4];
-  MPI_Status status[4];
-#endif /* _MPI_ */
-
-  nplane = le_get_nplane_local();
-  if (nplane == 0) return;
-
-  /* Only requires communications if the Y axis is distributed in the PE grid */
-  if (cart_size(Y) > 1) {
-  
-#ifdef _MPI_ /* Parallel (MPI) section */
-
-    get_N_local(nlocal);
-    get_N_offset(offset);
-    yfac = nlocal[Z]+2*nhalo_;
-    xfac = (nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
-    nsites = (nlocal[Y]+2*nhalo_+1)*(nlocal[Z]+2*nhalo_);
-
-    /* 
-     * Set up buffer of translated sites (by linear interpolation):
-     * 1. Copy (nlocal[Y]+3)*(nlocal[Z]+2) translated sites in buff_site[]
-     * 2. Perform linear interpolation and copy to LeesEdw_site[]
-     */
-
-    /* Strides for LeesEdw_site[] */
-    zfac2 = LE_N_VEL_XING * 2;  /* x2 because 2 distrib funcs (f and g) */
-    yfac2 = yfac * zfac2;
-    xfac2 = xfac * zfac2; 
-
-      /* JCD: the space of the buffer looks wrongly set !!! CHECK !!!*/
-      /* Allocate memory for buffering sites */
-      if((buff_site = (Site *)malloc(2*nsites*sizeof(Site))) == NULL)
-	{
-	  fatal("LE_update_buffers(): could not allocate %d bytes\n",
-		2*nsites*sizeof(Site));
-	}
-
-      for(i=0; i< nplane; i++)
-	{
-	  LE_loc  = le_plane_location(i);
-
-	  displ = fmod(le_get_plane_uy()*get_step(), L(Y));
-	  integ = floor(displ);
-	  LE_frac = 1.0 - (displ - integ);
-
-	  /*
-	   * Plane below (going down): +ve displacement:
-	   * LeesEdw_site[i] =
-	   *            frac*buff_site[i+integ] + (1-frac)*buff_site[i+integ+1]
-	   */
-
-	  /* Starting y coordinate (global address): range 1->N_total.y */
-	  start_y = ((offset[Y]+(1-nhalo_)+integ+2*N_total(Y)-1) % N_total(Y)) + 1;
-      
-	  /* Get ranks of both target PEs (target_rank1 and target_rank2) */
-	  /* Note PEi responsible for start_y in (local) range 0->nlocal[Y]-1 */
-	  target_pe1[Y] = (start_y / nlocal[Y]) % cart_size(Y);
-	  target_pe2[Y] = (target_pe1[Y]+1) % cart_size(Y);
-	  target_pe1[X] = target_pe2[X] = cart_coords(X);
-	  target_pe1[Z] = target_pe2[Z] = cart_coords(Z);
-	  MPI_Cart_rank(cart_comm(),target_pe1,&target_rank1);
-	  MPI_Cart_rank(cart_comm(),target_pe2,&target_rank2);
-	  target_rank1 = LE_ranks[target_rank1];
-	  target_rank2 = LE_ranks[target_rank2];
-      
-	  /* Starting y coordinate (now local address on PE target_rank1) */
-	  /* Valid values for start_y are in the range 0->nlocal[Y]-1 */
-	  /* Obviously remainder starts at y=1 on PE target_rank2 */
-	  start_y = start_y % nlocal[Y];
-      
-	  /* Number of sites to fetch from target_rank1 and target_rank2 */
-	  /* Note that nsites = nsites1+nsites2 = (nlocal[Y]+3)*(nlocal[Z]+2) */
-	  nsites1 = (nlocal[Y]-start_y+1)*(nlocal[Z]+2*nhalo_);
-	  nsites2 =     (start_y+1+1)*(nlocal[Z]+2*nhalo_);
-      
-        /* Use point-to-point communication */
-
-        source_rank1 = target_rank1;
-        source_rank2 = target_rank2;
-        target_pe1[Y] = (cart_coords(Y) -
-                         ((target_pe1[Y]-cart_coords(Y) + cart_size(Y)) 
-                          % cart_size(Y))
-                         + cart_size(Y)) % cart_size(Y);
-        target_pe2[Y] = (target_pe1[Y] - 1 + cart_size(Y)) % cart_size(Y);
-        target_pe1[X] = target_pe2[X] = cart_coords(X);
-        target_pe1[Z] = target_pe2[Z] = cart_coords(Z);
-        MPI_Cart_rank(cart_comm(), target_pe1, &target_rank1);
-        MPI_Cart_rank(cart_comm(), target_pe2, &target_rank2);
-        target_rank1 = LE_ranks[target_rank1];
-        target_rank2 = LE_ranks[target_rank2];
-
-        MPI_Irecv(&buff_site[0].f[0], nsites1, DT_Site, source_rank1,
-                  TAG_LE_START, LeesEdw_Comm, &req[0]);
-        MPI_Irecv(&buff_site[nsites1].f[0], nsites2, DT_Site, source_rank2,
-                  TAG_LE_END, LeesEdw_Comm, &req[1]);
-	/*
-        MPI_Issend(&site[LE_loc*xfac+start_y*yfac].f[0], nsites1, DT_Site,
-                   target_rank1, TAG_LE_START, LeesEdw_Comm, &req[2]);
-        MPI_Issend(&site[LE_loc*xfac+nhalo_*yfac].f[0], nsites2, DT_Site,
-                   target_rank2, TAG_LE_END, LeesEdw_Comm, &req[3]);
-	*/
-        MPI_Issend(&site[ADDR(LE_loc,start_y,1-nhalo_)].f[0], nsites1, DT_Site,
-                   target_rank1, TAG_LE_START, LeesEdw_Comm, &req[2]);
-        MPI_Issend(&site[ADDR(LE_loc,1,1-nhalo_)].f[0], nsites2, DT_Site,
-                   target_rank2, TAG_LE_END, LeesEdw_Comm, &req[3]);
-        MPI_Waitall(4,req,status);
-
-	  /* Plane above (going up): -ve displacement */
-	  /* buff[i] = (1-frac)*phi[i-(integ+1)] + frac*phi[i-integ] */
-      
-	  /* Starting y coordinate (global address): range 1->N_total.y */
-	start_y = ((offset[Y]+(1-nhalo_)-integ+2*N_total(Y)-2) % N_total(Y)) + 1;
-      
-	  /* Get ranks of both target PEs (target_rank1 and target_rank2) */
-	  /* Note PEi responsible for start_y in (local) range 0->nlocal[Y]-1 */
-	  target_pe1[Y] = (start_y / nlocal[Y]) % cart_size(Y);
-	  target_pe2[Y] = (target_pe1[Y]+1) % cart_size(Y);
-	  target_pe1[X] = target_pe2[X] = cart_coords(X);
-	  target_pe1[Z] = target_pe2[Z] = cart_coords(Z);
-	  MPI_Cart_rank(cart_comm(),target_pe1,&target_rank1);
-	  MPI_Cart_rank(cart_comm(),target_pe2,&target_rank2);
-	  target_rank1 = LE_ranks[target_rank1];
-	  target_rank2 = LE_ranks[target_rank2];
-	  
-	  /* Starting y coordinate (now local address on PE target_rank1) */
-	  /* Valid values for start_y are in the range 0->nlocal[Y]-1 */
-	  /* Obviously remainder starts at y=1 on PE target_rank2 */
-	  start_y = start_y % nlocal[Y];
-	  
-	  /* Number of sites to fetch from target_rank1 and target_rank2 */
-	  /* Note that nsites = nsites1+nsites2 = (nlocal[Y]+3)*(nlocal[Z]+2) */
-	  nsites1 = (nlocal[Y]-start_y+1)*(nlocal[Z]+2*nhalo_);
-	  nsites2 =     (start_y+1+1)*(nlocal[Z]+2*nhalo_);
-	  
-        /* Use point-to-point communication */
-
-        source_rank1 = target_rank1;
-        source_rank2 = target_rank2;
-        target_pe1[Y] = (cart_coords(Y) -
-                         ((target_pe1[Y]-cart_coords(Y) + cart_size(Y))
-                          % cart_size(Y))
-                         + cart_size(Y)) % cart_size(Y);
-        target_pe2[Y] = (target_pe1[Y] - 1 + cart_size(Y)) % cart_size(Y);
-        target_pe1[X] = target_pe2[X] = cart_coords(X);
-        target_pe1[Z] = target_pe2[Z] = cart_coords(Z);
-        MPI_Cart_rank(cart_comm(), target_pe1, &target_rank1);
-        MPI_Cart_rank(cart_comm(), target_pe2, &target_rank2);
-        target_rank1 = LE_ranks[target_rank1];
-        target_rank2 = LE_ranks[target_rank2];
-
-        MPI_Irecv(&buff_site[nsites].f[0], nsites1, DT_Site, source_rank1,
-                  TAG_LE_START, LeesEdw_Comm, &req[0]);
-        MPI_Irecv(&buff_site[nsites+nsites1].f[0], nsites2, DT_Site,
-                  source_rank2, TAG_LE_END, LeesEdw_Comm, &req[1]);
-	/*
-        MPI_Issend(&site[(LE_loc+1)*xfac+start_y*yfac].f[0], nsites1,
-                   DT_Site,
-                   target_rank1, TAG_LE_START, LeesEdw_Comm, &req[2]);
-        MPI_Issend(&site[(LE_loc+1)*xfac+nhalo_*yfac].f[0], nsites2, DT_Site,
-                   target_rank2, TAG_LE_END, LeesEdw_Comm, &req[3]);
-	*/
-        MPI_Issend(&site[ADDR(LE_loc+1,start_y,1-nhalo_)].f[0], nsites1,
-                   DT_Site,
-                   target_rank1, TAG_LE_START, LeesEdw_Comm, &req[2]);
-        MPI_Issend(&site[ADDR(LE_loc+1,1,1-nhalo_)].f[0], nsites2, DT_Site,
-                   target_rank2, TAG_LE_END, LeesEdw_Comm, &req[3]);
-        MPI_Waitall(4,req,status);
-
-	  /* 
-	   * Perform linear interpolation on buffer of sites:
-	   * Note that although all the the 30 components of each site has been
-	   * copied in site_buff[], LeesEdw_buff[] will only store the
-	   * components crossing the LE walls: favour low latency from 
-	   * transferring a single large block rather than a complicated data
-	   * structure vs. increased required bandwidth as only a third of the
-	   * data transferred will be used (to be investigated further!)
-	   */
-
-	  /* Plane below */
-	  for(jj=1; jj<=nlocal[Y]; jj++)
-	    for(kk=1; kk<=nlocal[Z]; kk++)
-	      {
-		ind = 2*i*xfac2 + jj*yfac2 + kk*zfac2;
-		ind0 =            (jj+nhalo_-1)*yfac  + kk + nhalo_-1;
-		ind1 =        (jj+nhalo_-1+1)*yfac  + kk + nhalo_-1;
-		ind2 = 0; 
-		for(p=0; p<NVEL; p++)	      
-		  if(cv[p][X]==1)
-		    {
-		      LeesEdw_site[ind+2*ind2] =
-			LE_frac       * buff_site[ind0].f[p] + 
-			(1.0-LE_frac) * buff_site[ind1].f[p];
-		      LeesEdw_site[ind+2*ind2+1] =
-			LE_frac       * buff_site[ind0].g[p] + 
-			(1.0-LE_frac) * buff_site[ind1].g[p];
-		      ind2++;
-		    }
-	      }
-	  
-	  /* Plane above */
-	  for(jj=1; jj<=nlocal[Y]; jj++)
-	    for(kk=1; kk<=nlocal[Z]; kk++)
-	      {
-		ind = (2*i+1)*xfac2 +  jj   *yfac2 + kk*zfac2;
-		ind0 =       nsites +  (jj+nhalo_-1)   *yfac  + kk+nhalo_-1;
-		ind1 =       nsites + (jj+nhalo_-1+1)*yfac  + kk+nhalo_-1;
-		ind2 = 0;
-		for(p=0; p<NVEL; p++)	      
-		  if(cv[p][X]==-1)
-		    {
-		      LeesEdw_site[ind+2*ind2] =
-			LE_frac       * buff_site[ind1].f[p] + 
-			(1.0-LE_frac) * buff_site[ind0].f[p];
-		      LeesEdw_site[ind+2*ind2+1] =
-			LE_frac       * buff_site[ind1].g[p] + 
-			(1.0-LE_frac) * buff_site[ind0].g[p];
-		      ind2++;
-		    }
-	      }
-	}
-
-      free(buff_site);
-
-#endif /* _MPI_ */
-  }
-  else {
-
-    /* Serial, or MPI with cart_size(Y) = 1 */
-
-    get_N_local(nlocal);
-    nplane = le_get_nplane_local();
-
-    yfac  =  nlocal[Z]+2*nhalo_;
-    xfac  = (nlocal[Y]+2*nhalo_) * (nlocal[Z]+2*nhalo_);
-    zfac2 = LE_N_VEL_XING * 2;  /* final x2 because fs and gs as well! */
-    yfac2 = yfac * zfac2;
-    xfac2 = xfac * zfac2; 
-
-    for(plane=0; plane < nplane; plane++) {
-      LE_loc  = le_plane_location(plane);
-
-      displ = fmod(le_get_plane_uy()*get_step(), L(Y));
-      integ = floor(displ);
-      LE_frac = 1.0 - (displ - integ);
-
-      /* Plane below (going down): +ve displacement */
-      /* site_buff[i] = frac*site[i+integ] + (1-frac)*site[i+(integ+1)] */
-
-      for(jj=1; jj<=nlocal[Y]; jj++) {
-	disp_j1 = ((jj+integ+2*nlocal[Y]-1) % nlocal[Y]) + 1;
-	disp_j2 = (disp_j1 % nlocal[Y]) + 1;
-	for(kk=1; kk<=nlocal[Z]; kk++) {
-	  ind  = 2*plane*xfac2 +      jj*yfac2 + kk*zfac2;
-	  ind0 = LE_loc *xfac  + disp_j1*yfac  + kk;
-	  ind1 = LE_loc *xfac  + disp_j2*yfac  + kk;
-
-	  ind0 = ADDR(LE_loc, disp_j1, kk);
-	  ind1 = ADDR(LE_loc, disp_j2, kk);
-		  
-	  /* For each velocity intersecting the LE plane (up, ie X+1) */
-	  ind2 = 0; 
-	  for(p=0; p<NVEL; p++)
-	    if(cv[p][X]==1) {
-	      LeesEdw_site[ind+2*ind2] = 
-		LE_frac*site[ind0].f[p] + (1.0-LE_frac)*site[ind1].f[p];
-	      LeesEdw_site[ind+2*ind2+1] = 
-		LE_frac*site[ind0].g[p] + (1.0-LE_frac)*site[ind1].g[p];
-	      ind2++;
-	    }
-	}
-      }
-	  
-      /* Plane above: -ve displacement */
-      /* site[i] = frac*site[i-integ] + (1-frac)*site[i-(integ+1)] */
-      /* buff[i] = site[i-(integ+1)] */
-
-      for(jj=1; jj<=nlocal[Y]; jj++) {
-
-	disp_j1 = ((jj-integ+2*nlocal[Y]-2) % nlocal[Y]) + 1;
-	disp_j2 = ((disp_j1+nlocal[Y]) % nlocal[Y]) + 1;
-
-	for(kk=1; kk<=nlocal[Z]; kk++) {
-	  ind = (2*plane+1)*xfac2 +      jj*yfac2 + kk*zfac2;
-	  ind0 = (LE_loc+1)*xfac  + disp_j1*yfac  + kk;
-	  ind1 = (LE_loc+1)*xfac  + disp_j2*yfac  + kk;
-
-	  ind0 = ADDR(LE_loc+1, disp_j1, kk);
-	  ind1 = ADDR(LE_loc+1, disp_j2, kk);
-		  
-	  /* For each velocity intersecting the LE plane (up, ie X-1) */
-	  ind2 = 0;
-	  for(p=0; p<NVEL; p++)
-	    if(cv[p][X]==-1) {
-	      LeesEdw_site[ind+2*ind2] = 
-		LE_frac*site[ind1].f[p] + (1.0-LE_frac)*site[ind0].f[p];
-	      LeesEdw_site[ind+2*ind2+1] = 
-		LE_frac*site[ind1].g[p] + (1.0-LE_frac)*site[ind0].g[p];
-	      ind2++;
-	    }
-	}
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  le_init_shear_profile
- *
- *  Initialise the distributions to be consistent with a steady-state
- *  linear shear profile, consistent with plane velocity.
- *
- *****************************************************************************/
-
-void le_init_shear_profile() {
-
-  int ic, jc, kc, index;
-  int i, j, n, p;
-  int N[3];
-  double rho, u[ND], gradu[ND][ND];
-  double eta;
-
-  /* Only allow initialisation if the flag is set */
-
-  n = 0;
-  RUN_get_int_parameter("LE_init_profile", &n);
-
-  if (n != 1) {
-    /* do nothing */
-  }
-  else {
-    info("Initialising shear profile\n");
-
-    /* Initialise the density, velocity, gradu; ghost modes are zero */
-
-    rho = get_rho0();
-    eta = get_eta_shear();
-    get_N_local(N);
-
-    for (i = 0; i< ND; i++) {
-      u[i] = 0.0;
-      for (j = 0; j < ND; j++) {
-	gradu[i][j] = 0.0;
-      }
-    }
-
-    gradu[X][Y] = le_params_.shear_rate;
-
-    /* Loop trough the sites */
-
-    for (ic = 1; ic <= N[X]; ic++) {
-      
-      u[Y] = le_get_steady_uy(ic);
-
-      /* We can now project the physical quantities to the distribution */
-
-      for (jc = 1; jc <= N[Y]; jc++) {
-	for (kc = 1; kc <= N[Z]; kc++) {
-
-	  index = get_site_index(ic, jc, kc);
-
-	  for (p = 0; p < NVEL; p++) {
-	    double f = 0.0;
-	    double cdotu = 0.0;
-	    double sdotq = 0.0;
-
-	    for (i = 0; i < ND; i++) {
-	      cdotu += cv[p][i]*u[i];
-	      for (j = 0; j < ND; j++) {
-		sdotq += (rho*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
-	      }
-	    }
-	    f = wv[p]*(rho + rcs2*rho*cdotu + 0.5*rcs2*rcs2*sdotq);
-	    set_f_at_site(index, p, f);
-	  }
-	  /* Next site */
-	}
-      }
-    }
-  }
-
-  return;
 }
 
 /*****************************************************************************
@@ -1026,7 +314,7 @@ double le_get_steady_uy(int ic) {
   xglobal = offset[X] + (double) ic - 0.5;
   nplane = (int) ((le_params_.dx_min + xglobal)/le_params_.dx_sep);
 
-  uy = xglobal*le_params_.shear_rate - le_params_.uy_plane*nplane;
+  uy = xglobal*le_shear_rate() - le_params_.uy_plane*nplane;
  
   return uy;
 }
@@ -1220,15 +508,15 @@ double le_buffer_displacement(int ib) {
 MPI_Comm le_communicator() {
 
   assert(initialised_);
-  return LeesEdw_Comm;
+  return le_params_.le_comm;
 }
 
 /*****************************************************************************
  *
  *  le_displacement_ranks
  *
- *  For a given  displacement, work out which two LE ranks
- *  are required for communication.
+ *  For a given  displacement, work out which two ranks in the
+ *  one-diemnsional LE communicator are required for communication.
  *
  *****************************************************************************/
 
@@ -1236,47 +524,47 @@ void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
 
   int nlocal[3];
   int noffset[3];
-  int pe1_cart[3];
-  int pe2_cart[3];
-  MPI_Comm cartesian = cart_comm();
-  int jdy, j1;
+  int j1, jdy;
+  int pe_carty1, pe_carty2;
 
   assert(initialised_);
-  assert(LE_ranks);
-
   get_N_local(nlocal);
   get_N_offset(noffset);
 
   jdy = floor(fmod(dy, L(Y)));
   j1 = 1 + (noffset[Y] + 1 - nhalo_ - jdy - 2 + 2*N_total(Y)) % N_total(Y);
 
-  pe1_cart[X] = cart_coords(X);
-  pe1_cart[Y] = j1 / nlocal[Y];
-  pe1_cart[Z] = cart_coords(Z);
-  pe2_cart[X] = pe1_cart[X];
-  pe2_cart[Y] = pe1_cart[Y] + 1;
-  pe2_cart[Z] = pe1_cart[Z];
+  /* Receive from ... */
 
-  MPI_Cart_rank(cartesian, pe1_cart, recv);
-  MPI_Cart_rank(cartesian, pe2_cart, recv + 1);
+  pe_carty1 = j1 / nlocal[Y];
+  pe_carty2 = pe_carty1 + 1;
 
-  recv[0] = LE_ranks[recv[0]];
-  recv[1] = LE_ranks[recv[1]];
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty1, recv);
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty2, recv + 1);
 
   /* Send to ... */
 
-  pe1_cart[Y] = cart_coords(Y) - (pe1_cart[Y] - cart_coords(Y));
-  pe2_cart[Y] = pe1_cart[Y] - 1;
+  pe_carty1 = cart_coords(Y) - ((j1/nlocal[Y]) - cart_coords(Y));
+  pe_carty2 = pe_carty1 - 1;
 
-  MPI_Cart_rank(cartesian, pe1_cart, send);
-  MPI_Cart_rank(cartesian, pe2_cart, send + 1);
-
-  send[0] = LE_ranks[send[0]];
-  send[1] = LE_ranks[send[1]];
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty1, send);
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty2, send + 1);
 
   return;
 }
 
+/*****************************************************************************
+ *
+ *  le_shear_rate
+ *
+ *  Return the steady shear rate.
+ *
+ *****************************************************************************/
+
+double le_shear_rate() {
+
+  return (le_params_.uy_plane*le_params_.n_plane_total/L(X));
+}
 
 /*****************************************************************************
  *

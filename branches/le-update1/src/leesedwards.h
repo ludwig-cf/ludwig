@@ -1,9 +1,20 @@
+/*****************************************************************************
+ *
+ *  leesedwards.h
+ *
+ *  $Id: leesedwards.h,v 1.3.4.2 2009-03-20 16:09:46 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *  (c) The University of Edinburgh (2009)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *****************************************************************************/
+
 #ifndef _LEESEDWARDS_H
 #define _LEESEDWARDS_H
 
-void LE_init( void );
-void LE_apply_LEBC( void );
-void LE_print_params( void );
+void le_init(void);
 
 int le_get_nxbuffer(void);
 int le_index_real_to_buffer(const int, const int);
@@ -15,11 +26,11 @@ int le_get_nplane_local(void);
 
 double    le_buffer_displacement(const int);
 double    le_get_block_uy(int);
-double    le_get_plane_uy();
+double    le_get_steady_uy(const int); 
+double    le_get_plane_uy(void);
+double    le_shear_rate(void);
 MPI_Comm  le_communicator(void);
 void      le_displacement_ranks(const double, int[2], int[2]);
-void      le_init_shear_profile(void);
-
 
 /* Address macro. For performance purposes, -DNDEBUG replaces
  * calls to ADDR, ie., le_site_index() with a macro, which requires that
@@ -35,4 +46,4 @@ void      le_init_shear_profile(void);
 #define ADDR le_site_index
 #endif
 
-#endif /* _LEESEDWARDS_H */
+#endif
