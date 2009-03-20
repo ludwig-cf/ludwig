@@ -6,7 +6,7 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id: leesedwards.c,v 1.12.4.2 2009-03-20 16:09:46 kevin Exp $
+ *  $Id: leesedwards.c,v 1.12.4.3 2009-03-20 17:52:32 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -31,7 +31,6 @@ static void le_init_tables(void);
 
 static struct le_parameters {
   /* Global parameters */
-  int    n_plane_total;     /* Total number of planes */
   double uy_plane;          /* u[Y] for all planes */
   double dx_min;            /* Position first plane */
   double dx_sep;            /* Plane separation */
@@ -44,6 +43,7 @@ static struct le_parameters {
   double *  buffer_duy;
 } le_params_;
 
+static int nplane_total_ = 0;     /* Total number of planes */
 static int initialised_ = 0;
 
 /*****************************************************************************
@@ -65,9 +65,7 @@ void le_init() {
   int ntotal;
 
   n = RUN_get_int_parameter("N_LE_plane", &ntotal);
-
-  le_params_.n_plane_total = 0;
-  if (n != 0) le_params_.n_plane_total = ntotal;
+  if (n != 0) nplane_total_ = ntotal;
 
   n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
   initialised_ = 1;
@@ -366,7 +364,7 @@ double le_get_block_uy(int ic) {
 
 int le_get_nplane_local() {
 
-  return le_params_.n_plane_total/cart_size(X);
+  return nplane_total_/cart_size(X);
 }
 
 /*****************************************************************************
@@ -379,7 +377,7 @@ int le_get_nplane_local() {
 
 int le_get_nplane_total() {
 
-  return le_params_.n_plane_total;
+  return nplane_total_;
 }
 
 /*****************************************************************************
@@ -429,8 +427,6 @@ int le_plane_location(const int n) {
  *****************************************************************************/
 
 int le_get_nxbuffer() {
-
-  assert(initialised_);
 
   return (2*nhalo_*le_get_nplane_local());
 }
@@ -563,7 +559,7 @@ void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
 
 double le_shear_rate() {
 
-  return (le_params_.uy_plane*le_params_.n_plane_total/L(X));
+  return (le_params_.uy_plane*nplane_total_/L(X));
 }
 
 /*****************************************************************************
@@ -584,7 +580,6 @@ int le_site_index(const int ic, const int jc, const int kc) {
 
   get_N_local(nlocal);
 
-  assert(initialised_);
   assert(ic >= 1-nhalo_);
   assert(jc >= 1-nhalo_);
   assert(kc >= 1-nhalo_);
