@@ -12,44 +12,36 @@
 #include "model.h"
 #include "physics.h"
 
-#include "utilities.h"
-#include "lattice.h"
-#include "collision.h"
 #include "leesedwards.h"
 
-extern Site * site;
 
-static MPI_Comm     LeesEdw_Comm;/* Communicator for Lees-Edwards (LE) RMA */
-static int        * LE_ranks;
+extern Site * site;
 extern MPI_Datatype DT_Site;
 
+static MPI_Comm     LeesEdw_Comm;
+static int        * LE_ranks;
 static double      *LeesEdw_site;
-static LE_Plane   *LeesEdw_plane;
-
-static int        N_LE_plane;
-static int        N_LE_total = 0;
-static LE_Plane * LeesEdw = NULL;
 
 static void   LE_init_original(void);
 static void   le_init_tables(void);
 static double le_get_steady_uy(const int); 
+static void LE_update_buffers(void );
 
 
-/* KS TODO: replace global LE_plane structure with... */
-/* Global Lees Edwards plane parameters */
+static struct le_parameters {
+  /* Global parameters */
+  int    n_plane_total;     /* Total number of planes */
+  double uy_plane;          /* u[Y] for all planes */
+  double shear_rate;        /* Overall shear rate */
+  double dx_min;            /* Position first plane */
+  double dx_sep;            /* Plane separation */
 
-static struct le_global_parameters {
-  int    n_plane;     /* Total number of planes */
-  double uy_plane;    /* u[Y] for all planes */
-  double shear_rate;  /* Overall shear rate */
-  double dx_min;      /* Position first plane */
-  double dx_sep;      /* Plane separation */
-  /* Here for the time being, actually local. */
-  int    nxbuffer;
-  int *  index_buffer_to_real;
-  int    index_real_nbuffer;
-  int *  index_real_to_buffer;
-  double * buffer_duy;
+  /* Local parameters */
+  MPI_Comm  le_comm;
+  int *     index_buffer_to_real;
+  int       index_real_nbuffer;
+  int *     index_real_to_buffer;
+  double *  buffer_duy;
 } le_params_;
 
 static int initialised_ = 0;
@@ -62,7 +54,7 @@ static int initialised_ = 0;
  *  all with the same speed.
  *
  *  Pending (KS):
- *   - do really need two LE_Plane lists?
+ *   - dx should be integers, i.e, N_total(X) % ntotal must be zero
  *   - look at displacement issue
  *   - add runtime checks
  *
@@ -71,42 +63,38 @@ static int initialised_ = 0;
 void LE_init() {
 
   int n;
+  int ntotal;
 
-  n = RUN_get_int_parameter("N_LE_plane", &N_LE_total);
+  n = RUN_get_int_parameter("N_LE_plane", &ntotal);
+
+  le_params_.n_plane_total = 0;
+  if (n != 0) le_params_.n_plane_total = ntotal;
+
   n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
 
   /* Initialise the global Lees-Edwards structure. */
 
-  if (N_LE_total != 0) {
-
-
-    LeesEdw = (LE_Plane *) malloc(N_LE_total*sizeof(LE_Plane));
-    if (LeesEdw == NULL) fatal("malloc(LE_planes failed\n");
+  if (le_get_nplane_total() != 0) {
 
     info("\nLees-Edwards boundary conditions are active:\n");
 
-    le_params_.dx_sep = L(X) / N_LE_total;
+    le_params_.dx_sep = L(X) / ntotal;
     le_params_.dx_min = 0.5*le_params_.dx_sep;
 
-    for (n = 0; n < N_LE_total; n++) {
-      LeesEdw[n].loc = le_params_.dx_min + n*le_params_.dx_sep;
-      LeesEdw[n].vel = le_params_.uy_plane;
-      LeesEdw[n].disp = 0.0;
-      LeesEdw[n].frac = 0.0;
-      LeesEdw[n].rank = n;
-      info("LE plane %d is at x = %d with speed %f\n", n+1, LeesEdw[n].loc,
-	   LeesEdw[n].vel);
+    for (n = 0; n < ntotal; n++) {
+      info("LE plane %d is at x = %d with speed %f\n", n+1,
+	   (int)(le_params_.dx_min + n*le_params_.dx_sep),
+	   le_params_.uy_plane);
     }
 
-    le_params_.shear_rate = le_params_.uy_plane*N_LE_total/L(X);
+    le_params_.shear_rate = le_params_.uy_plane*ntotal/L(X);
     info("Overall shear rate = %f\n", le_params_.shear_rate);
   }
 
   LE_init_original();
 
-  le_init_tables();
-
   initialised_ = 1;
+  le_init_tables();
 
   return;
 }
@@ -123,8 +111,11 @@ static void le_init_tables() {
 
   int ib, ic, ip, n, nb, nh, np;
   int nlocal[3];
+  int nplane;
+  int rdims[3];
 
   get_N_local(nlocal);
+  nplane = le_get_nplane_local();
 
   /* Look up table for buffer -> real index */
 
@@ -134,8 +125,7 @@ static void le_init_tables() {
    *   - the locations extend nhalo_ points either side of the boundary.
    */
 
-  n = 2*nhalo_*N_LE_plane;
-  le_params_.nxbuffer = n;
+  n = le_get_nxbuffer();
 
   if (n > 0) {
     le_params_.index_buffer_to_real = (int *) malloc(n*sizeof(int));
@@ -143,10 +133,10 @@ static void le_init_tables() {
   }
 
   ib = 0;
-  for (n = 0; n < N_LE_plane; n++) {
-    ic = LeesEdw_plane[n].loc - (nhalo_ - 1);
+  for (n = 0; n < nplane; n++) {
+    ic = le_plane_location(n) - (nhalo_ - 1);
     for (nh = 0; nh < 2*nhalo_; nh++) {
-      assert(ib < 2*nhalo_*N_LE_plane);
+      assert(ib < 2*nhalo_*nplane);
       le_params_.index_buffer_to_real[ib] = ic + nh;
       ib++;
     }
@@ -186,9 +176,9 @@ static void le_init_tables() {
 
    nb = nlocal[X] + nhalo_ + 1;
 
-   for (ib = 0; ib < le_params_.nxbuffer; ib++) {
+   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
      np = ib / (2*nhalo_);
-     ip = LeesEdw_plane[np].loc;
+     ip = le_plane_location(np);
 
      /* This bit of logical chooses the first nhalo_ points of the
       * buffer region for each plane as the 'downward' looking part */
@@ -228,25 +218,33 @@ static void le_init_tables() {
     * a boundary into a given buffer, what is the associated velocity
     * jump? The boundary velocities are constant in time. */
 
-   n = le_params_.nxbuffer;
+   n = le_get_nxbuffer();
    if (n > 0) {
      le_params_.buffer_duy = (double *) malloc(n*sizeof(double));
      if (le_params_.buffer_duy == NULL) fatal("malloc(buffer_duy) failed\n");
    }
 
   ib = 0;
-  for (n = 0; n < N_LE_plane; n++) {
+  for (n = 0; n < nplane; n++) {
     for (nh = 0; nh < nhalo_; nh++) {
-      assert(ib < le_params_.nxbuffer);
-      le_params_.buffer_duy[ib] = -LeesEdw_plane[n].vel;
+      assert(ib < le_get_nxbuffer());
+      le_params_.buffer_duy[ib] = -le_params_.uy_plane;
       ib++;
     }
     for (nh = 0; nh < nhalo_; nh++) {
-      assert(ib < le_params_.nxbuffer);
-      le_params_.buffer_duy[ib] = +LeesEdw_plane[n].vel;
+      assert(ib < le_get_nxbuffer());
+      le_params_.buffer_duy[ib] = +le_params_.uy_plane;
       ib++;
     }
   }
+
+  /* Set up a 1-dimensional communicator for transfer of data
+   * along the y-direction. */
+
+  rdims[X] = 0;
+  rdims[Y] = 1;
+  rdims[Z] = 0;
+  MPI_Cart_sub(cart_comm(), rdims, &le_params_.le_comm);
 
   return;
 }
@@ -272,10 +270,10 @@ static void le_init_tables() {
 
 void LE_apply_LEBC( void )
 {
-  int     plane,xfac,yfac,xfac2,yfac2,zfac2,jj,kk,ind,ind0,ind1,integ;
+  int     plane,xfac,yfac,xfac2,yfac2,zfac2,jj,kk,ind,ind0,ind1;
   int     LE_loc;
   int     i,j;
-  double   displ,LE_vel,LE_frac;
+  double  LE_vel;
   int     N[3];
 
   double *f, *g;
@@ -286,11 +284,10 @@ void LE_apply_LEBC( void )
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   int p,side;
+  int nplane;
 
-  if (N_LE_plane == 0) {
-    VERBOSE(("LE_apply_LEBC(): no walls present\n"));
-    return;
-  }
+  nplane = le_get_nplane_local();
+  if (nplane == 0) return;
 
   TIMER_start(TIMER_LE);
 
@@ -301,46 +298,20 @@ void LE_apply_LEBC( void )
   yfac2 = yfac * zfac2;
   xfac2 = xfac * zfac2; 
 
-  /* Stage 1: update LE displacement and weights for linear interpolation */
-
-  for (plane = 0; plane < N_LE_plane; plane++) {
-    /* 
-     * Note that this summation is prone to numerical round-offs. However, we
-     * cannot use disp = disp0 + step*vel as this would preclude the use of
-     * non-constant LE velocities (not currently supported by might be in a
-     * future release)
-     */
-    LeesEdw_plane[plane].disp += LeesEdw_plane[plane].vel;
-
-    /* No. The plane velocities are constant... */
-    LeesEdw_plane[plane].disp = LeesEdw_plane[plane].vel*get_step();
-
-    /* -gbl.N_total.y < displ < gbl.N_total.y */
-    displ = fmod(LeesEdw_plane[plane].disp,1.0*N_total(Y));
-    /* -gbl.N_total.y <= integ <= gbl.N_total.y-1 */
-    integ = (int)floor(displ); 
-    /* 0 <= displ < 1 */
-    displ -= integ;
-    /* 0 < LE_frac <= 1 */
-    LE_frac = 1.0-displ;
-    LeesEdw_plane[plane].frac = LE_frac;
-  }
-
-
   /* Stage 2: use Ronojoy's scheme to update fs and gs */
 
-  for (plane = 0; plane < N_LE_plane; plane++) {
+  for (plane = 0; plane < nplane; plane++) {
     for (side = 0; side < 2; side++) {
 
       /* Start with plane below Lees-Edwards BC */
 
       if (side == 0) {
-	LE_vel =-LeesEdw_plane[plane].vel;
-	LE_loc = LeesEdw_plane[plane].loc;
+	LE_vel =-le_get_plane_uy();
+	LE_loc = le_plane_location(plane);
       }
       else {       /* Finally, deal with plane above LEBC */
-	LE_vel =+LeesEdw_plane[plane].vel;
-	LE_loc = LeesEdw_plane[plane].loc + 1;
+	LE_vel =+le_get_plane_uy();
+	LE_loc = le_plane_location(plane) + 1;
       }      
 
       /* First, for plane `below' LE plane, ie, crossing LE plane going up */
@@ -356,7 +327,7 @@ void LE_apply_LEBC( void )
 	  /* M0   -> M0 */
 	  /* M1i  -> M1i + u_LE_i*M0 */
 	  /* M2ij -> M2ij + u_LE_i*M1j + u_LE_j*M1i + u_LE_i.u_LE_j*M0 */
-	  /* (where u_LE[X]=u_LE[Z]=0; u_LE[Y]=LeesEdw_plane[plane].vel) */
+	  /* (where u_LE[X]=u_LE[Z]=0; u_LE[Y] = plane speed uy) */
 	  
 	  f = site[ind].f;
 	  g = site[ind].g;
@@ -444,12 +415,12 @@ void LE_apply_LEBC( void )
   /* Stage 3: update buffers (pre-requisite to translation) */
 
   halo_site();
-  LE_update_buffers(SITE_AND_PHI);
+  LE_update_buffers();
 
   /* Stage 4: apply translation on fs and gs crossing LE planes */
 
-  for (plane = 0; plane < N_LE_plane; plane++) {
-    LE_loc  = LeesEdw_plane[plane].loc;
+  for (plane = 0; plane < nplane; plane++) {
+    LE_loc  = le_plane_location(plane);
       
     /* First, for plane 'below' LE plane: displacement = +displ */
     for (jj = 1; jj <= N[Y]; jj++) {
@@ -517,188 +488,68 @@ void LE_apply_LEBC( void )
 
 void LE_init_original( void )
 {
-  int     plane, integ, i, ny2z2;
-  double   displ, frac;
-  int     N[3];
-    
-#ifdef _MPI_ /* Parallel (MPI) implementation */
+  int     i, ny2z2;
+  int     nlocal[3];
+  int     nplane;
 
-  int     gblflag,  LE_rank, *intbuff, ny3z2;
+  int     gblflag,  LE_rank, *intbuff;
   int     offset[3];
   int     gr_rank;
-  int     flag;
+  int     flag = 1;
 
-  get_N_local(N);
+  get_N_local(nlocal);
   get_N_offset(offset);
-  gr_rank = cart_rank();
 
-  ny2z2 = (N[Y]+2*nhalo_)*(N[Z]+2*nhalo_);
-  ny3z2 = (N[Y]+2*nhalo_+1)*(N[Z]+2*nhalo_);
-
-  /* Set up Lees-Edwards specific MPI datatypes */
-  
-  /* 
-   * Build list of local LE planes from global list: unset flag (set to FALSE)
-   * if a plane is located at the edge of the local box (i.e., X==0 or X==N[X]):
-   * not allowed!
-   */
-  flag = 1;
-
-  N_LE_plane = 0;
-  LeesEdw_plane = (LE_Plane *)NULL;
-
-  for(i=0; i < N_LE_total; i++) {
-       
-    /* 
-     * Ignore the LE walls placed outside of the local box (but include those
-     * placed at the PE boundary even if not allowed: abort later) 
-     */
- 
-    if ((offset[X] <= LeesEdw[i].loc) && (LeesEdw[i].loc <= (offset[X]+N[X])))
-      {
-	N_LE_plane++;
-	if((LeesEdw_plane = (LE_Plane *)
-	    realloc(LeesEdw_plane,N_LE_plane*sizeof(LE_Plane))) == NULL)
-	  {
-	    fatal("LE_init(): failed to (re)allocate %d bytes for LE\n",
-		  N_LE_plane*sizeof(LE_Plane));
-	  }
-	  
-	  /* 
-	   * Now simply copy/set all the attributes to the local list. Note
-	   * that the location is now expressed in local co-ordinates
-	   * The LE (global) rank will be set later 
-	   */
-	  (LeesEdw_plane+N_LE_plane-1)->loc  = LeesEdw[i].loc-offset[X];
-	  (LeesEdw_plane+N_LE_plane-1)->vel  = LeesEdw[i].vel;
-	  (LeesEdw_plane+N_LE_plane-1)->frac = LeesEdw[i].frac;
-	  (LeesEdw_plane+N_LE_plane-1)->disp = LeesEdw[i].disp;
-	  (LeesEdw_plane+N_LE_plane-1)->peX  = cart_coords(X);
-	  
-	  /* Unset flag if LE Plane located at a PE boundary */
-	  if( (LeesEdw[i].loc == offset[X]) ||
-	      (LeesEdw[i].loc == (offset[X]+N[X])))
-	    {
-	      flag = 0;
-	      /* One warning per offending wall is sufficient! */
-	      if( (cart_coords(Y)==0) && (cart_coords(Z)==0) ){
-		verbose("LE_init(): Lees-Edwards plane at a PE boundary!\n");
-		verbose("Offending wall located at X = %d\n", 
-			LeesEdw[i].loc);
-	      }
-	    }
-	}
-    }  
+  nplane = le_get_nplane_local();
 
   /* Abort if any of the PEs has one or more walls at its domain boundary */
+
+  flag = 0;
+
   MPI_Allreduce(&flag, &gblflag, 1, MPI_INT, MPI_LAND, cart_comm());
-  if(gblflag == 0){
+
+  if (pe_size() > 1 && gblflag == 0){
     fatal("LE_init(): wall at domain boundary\n");
   }
   
   /* 
    * Set communicator for Lees-Edwards communications: all LE planes have a
-   * fixed X location and therefore span all the PEs for a given cart_coords(X) 
+   * fixed X location and therefore span all the PEs for a given
+   * cart_coords(X).
+   * Create look-up table to translate global ranks (in cart_comm()) into
+   * local ranks (in LeesEdw_Comm), i.e.:
+   * LE_rank[<rank in cart_comm()>] = <rank in LeesEdw_Comm> 
    */
+
   MPI_Comm_split(cart_comm(), cart_coords(X), cart_rank(), &LeesEdw_Comm);
+  MPI_Comm_rank(LeesEdw_Comm, &LE_rank);
 
-  if(N_LE_plane)
-    {
-      /* Initialise (global) rank of LE walls (local list) */
-      for (i=0; i < N_LE_total; i++){
-	/* Get global rank of first local LE wall */
-	if((LeesEdw_plane[0].loc+offset[X]) == LeesEdw[i].loc){
-	  LeesEdw_plane[0].rank = LeesEdw[i].rank;
-	  break;
-	}
-      }
-      /* Then, simply increment (LE walls have been sorted earlier) */
-      for(i=1; i<N_LE_plane; i++){
-	LeesEdw_plane[i].rank = LeesEdw_plane[0].rank+i;
-      }
-           
-      /* 
-       * Create look-up table to translate global ranks (in cart_comm()) into
-       * local ranks (in LeesEdw_Comm), i.e.:
-       * LE_rank[<rank in cart_comm()>] = <rank in LeesEdw_Comm> 
-       */
-      MPI_Comm_rank(LeesEdw_Comm,&LE_rank);
+  LE_ranks = (int *) malloc(pe_size()*sizeof(int));
+  intbuff  = (int *)malloc(cart_size(Y)*cart_size(Z)*sizeof(int));
+  if (LE_ranks == NULL) fatal("malloc(LE_ranks) failed\n");
+  if (intbuff == NULL) fatal("malloc(intbuff) failed\n");
 
-      LE_ranks = (int *)malloc(pe_size()*sizeof(int));
-      intbuff  = (int *)malloc(cart_size(Y)*cart_size(Z)*sizeof(int));
-      if((LE_ranks==NULL) || (intbuff==NULL))
-	{
-	  fatal("COM_Init(): failed to allocate %d bytes ranks of LE walls\n",
-		(pe_size() + cart_size(Y)*cart_size(Z))*sizeof(int));
-	}
-      
-      /* -1 denotes cartesian ranks belonging to external LE communicators */
-      for(i=0; i<pe_size(); i++){
-	LE_ranks[i] = -1;
-      }
-      
-      /* For any given LE communicator, gather all cartesian ranks (in order) */
-      MPI_Gather(&gr_rank,1,MPI_INT,&intbuff[0],1,MPI_INT,0,LeesEdw_Comm);
-      /* Then set up the look-up table on each LE root PE */
-      if(LE_rank == 0){
-	for(i=0; i<(cart_size(Y)*cart_size(Z)); i++){
-	  LE_ranks[intbuff[i]] = i;
-	}
-      }
-      /* Broadcast look-up table to other PEs in LE communicator (same cart_coords(X)) */
-      MPI_Bcast(LE_ranks,pe_size(),MPI_INT,0,LeesEdw_Comm);
-      free(intbuff);
-      
-      /* 
-       * Allocate memory for Lees-Edwards buffers ("translated" values): see 
-       * LE_update_buffers(). Storage required for LeesEdw_site[] is 
-       * 2*N_LE_planes (one plane on each side of LE wall) 
-       * * ny2z2 (number of sites in a YZ plane, including halos)
-       * * 2 (because there are two distribution functions f and g) 
-       * * LE_N_VEL_XING (simply save components crossing the LE wall) 
-       */
-      LeesEdw_site = (double *)
-	malloc(2*N_LE_plane*ny2z2*2*LE_N_VEL_XING*sizeof(double));
+  /* -1 denotes cartesian ranks belonging to external LE communicators */
+  for(i=0; i<pe_size(); i++){
+    LE_ranks[i] = -1;
+  }
 
-      if(LeesEdw_site==NULL)
-	{
-	  fatal("LE_Init(): failed to allocate %d bytes buffers\n",
-		(2*N_LE_plane*sizeof(double)*ny2z2*(2*LE_N_VEL_XING+1)));
-	}
+  /* For any given LE communicator, gather all cartesian ranks (in order) */
+  /* Then set up the look-up table on each LE root PE */
+  /* Broadcast look-up table to other PEs in LE communicator
+     (same cart_coords(X)) */
+
+  gr_rank = cart_rank();
+  MPI_Gather(&gr_rank, 1, MPI_INT, intbuff, 1, MPI_INT, 0, LeesEdw_Comm);
+
+  if (LE_rank == 0){
+    for(i=0; i<(cart_size(Y)*cart_size(Z)); i++){
+      LE_ranks[intbuff[i]] = i;
     }
-  
-#else  /* Serial */
-
-  get_N_local(N);
-  
-  ny2z2 = (N[Y]+2*nhalo_)*(N[Z]+2*nhalo_);
-  N_LE_plane = N_LE_total;
-
-  /* LEBC parameters/properties will be stored in LeesEdw_plane */
-  if(N_LE_plane > 0){
-    if((LeesEdw_plane = (LE_Plane *)
-	realloc(LeesEdw_plane,N_LE_plane*sizeof(LE_Plane))) == NULL)
-      {
-	fatal("LE_init(): failed to allocate %d bytes for LE parameters\n",
-	      N_LE_plane*sizeof(LE_Plane));
-      }
-  }
-  else{
-    LeesEdw_plane = (LE_Plane *)NULL;
   }
 
-  for(i = 0; i < N_LE_total; i++) {
-    (LeesEdw_plane+i)->loc  = LeesEdw[i].loc;
-    (LeesEdw_plane+i)->vel  = LeesEdw[i].vel;
-    (LeesEdw_plane+i)->frac = LeesEdw[i].frac;
-    (LeesEdw_plane+i)->disp = LeesEdw[i].disp;
-    (LeesEdw_plane+i)->peX  = 0;
-  }
-  
-  /* Initialise rank of LE walls */
-  for(i=0; i< N_LE_total; i++){
-    (LeesEdw_plane+i)->rank  =  LeesEdw[i].rank = i;
-  }
+  MPI_Bcast(LE_ranks, pe_size(), MPI_INT, 0, LeesEdw_Comm);
+  free(intbuff);
   
   /* 
    * Allocate memory for Lees-Edwards buffers ("translated" values) and 
@@ -711,39 +562,16 @@ void LE_init_original( void )
    *   * sizeof(double) because site components are doubles
    */
 
-  if (N_LE_plane > 0) {
+  if (nplane > 0) {
+    ny2z2 = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
     LeesEdw_site = (double *)
-      malloc(2*N_LE_plane*ny2z2*2*LE_N_VEL_XING*sizeof(double));
+      malloc(2*nplane*ny2z2*2*LE_N_VEL_XING*sizeof(double));
   
-    if(LeesEdw_site==NULL)
-      {
-	fatal("LE_Init(): failed to allocate %d bytes for LE buffers\n",
-	      2*(2*LE_N_VEL_XING+1)*N_LE_plane*ny2z2*sizeof(double));
-      }
-  }
-#endif /* _MPI_ */
-  
-  /* Not executed if there are no LE walls */
-  for(plane=0; plane<N_LE_plane; plane++)
-    {
-      /* 
-       * Sets initial Lees-Edwards struct members (displacement, weight, etc).
-       * Note that the following bounds:
-       * -gbl.N_total.y < displ < gbl.N_total.y
-       * -gbl.N_total.y <=integ <=gbl.N_total.y-1
-       *  and       0.0 < LeesEdw_plane[plane].frac <= 1.0
-       */
-      displ = fmod(LeesEdw_plane[plane].disp,1.0*N_total(Y));
-      integ = (int)floor(displ);
-      displ -= integ;                            /* now   0.0 <= displ < 1.0 */
-      frac = 1.0 - displ;                        /* hence 0.0 <  frac  <=1.0 */
-      
-      /* 
-       * LeesEdw_plane[plane].frac contains the weight of the left-hand site,
-       * i.e., the site corresponding to floor(LeesEdw_plane[plane].disp)
-       */
-      LeesEdw_plane[plane].frac = frac;
+    if(LeesEdw_site==NULL) {
+      fatal("LE_Init(): failed to allocate %d bytes for LE buffers\n",
+	    2*(2*LE_N_VEL_XING+1)*nplane*ny2z2*sizeof(double));
     }
+  }
 
 }
 
@@ -770,13 +598,14 @@ void LE_init_original( void )
 #define TAG_LE_END   3103
 
 
-void LE_update_buffers( int target_buff )
+void LE_update_buffers()
 {
   int     jj, kk, ind, ind0, ind1, ind2, xfac, yfac, xfac2, yfac2, zfac2;
-  int     integ, LE_loc, plane, vel_ind;
+  int     integ, LE_loc, plane, p;
   int     disp_j1,disp_j2;
-  double   LE_frac;
+  double   displ, LE_frac;
   int     nlocal[3];
+  int     nplane;
 
 #ifdef _MPI_
 
@@ -790,10 +619,8 @@ void LE_update_buffers( int target_buff )
   MPI_Status status[4];
 #endif /* _MPI_ */
 
-  if (N_LE_total == 0) {
-    VERBOSE(("LE_update_buffers(): no planes present\n"));
-    return;
-  }
+  nplane = le_get_nplane_local();
+  if (nplane == 0) return;
 
   /* Only requires communications if the Y axis is distributed in the PE grid */
   if (cart_size(Y) > 1) {
@@ -825,12 +652,13 @@ void LE_update_buffers( int target_buff )
 		2*nsites*sizeof(Site));
 	}
 
-      for(i=0; i<N_LE_plane; i++)
+      for(i=0; i< nplane; i++)
 	{
-	  LE_frac =     LeesEdw_plane[i].frac;
-	  LE_loc  =     LeesEdw_plane[i].loc;
-	  integ = floor(LeesEdw_plane[i].disp);
-	  integ = integ%N_total(Y);
+	  LE_loc  = le_plane_location(i);
+
+	  displ = fmod(le_get_plane_uy()*get_step(), L(Y));
+	  integ = floor(displ);
+	  LE_frac = 1.0 - (displ - integ);
 
 	  /*
 	   * Plane below (going down): +ve displacement:
@@ -973,15 +801,15 @@ void LE_update_buffers( int target_buff )
 		ind0 =            (jj+nhalo_-1)*yfac  + kk + nhalo_-1;
 		ind1 =        (jj+nhalo_-1+1)*yfac  + kk + nhalo_-1;
 		ind2 = 0; 
-		for(vel_ind=0; vel_ind<NVEL; vel_ind++)	      
-		  if(cv[vel_ind][X]==1)
+		for(p=0; p<NVEL; p++)	      
+		  if(cv[p][X]==1)
 		    {
 		      LeesEdw_site[ind+2*ind2] =
-			LE_frac       * buff_site[ind0].f[vel_ind] + 
-			(1.0-LE_frac) * buff_site[ind1].f[vel_ind];
+			LE_frac       * buff_site[ind0].f[p] + 
+			(1.0-LE_frac) * buff_site[ind1].f[p];
 		      LeesEdw_site[ind+2*ind2+1] =
-			LE_frac       * buff_site[ind0].g[vel_ind] + 
-			(1.0-LE_frac) * buff_site[ind1].g[vel_ind];
+			LE_frac       * buff_site[ind0].g[p] + 
+			(1.0-LE_frac) * buff_site[ind1].g[p];
 		      ind2++;
 		    }
 	      }
@@ -994,108 +822,101 @@ void LE_update_buffers( int target_buff )
 		ind0 =       nsites +  (jj+nhalo_-1)   *yfac  + kk+nhalo_-1;
 		ind1 =       nsites + (jj+nhalo_-1+1)*yfac  + kk+nhalo_-1;
 		ind2 = 0;
-		for(vel_ind=0; vel_ind<NVEL; vel_ind++)	      
-		  if(cv[vel_ind][X]==-1)
+		for(p=0; p<NVEL; p++)	      
+		  if(cv[p][X]==-1)
 		    {
 		      LeesEdw_site[ind+2*ind2] =
-			LE_frac       * buff_site[ind1].f[vel_ind] + 
-			(1.0-LE_frac) * buff_site[ind0].f[vel_ind];
+			LE_frac       * buff_site[ind1].f[p] + 
+			(1.0-LE_frac) * buff_site[ind0].f[p];
 		      LeesEdw_site[ind+2*ind2+1] =
-			LE_frac       * buff_site[ind1].g[vel_ind] + 
-			(1.0-LE_frac) * buff_site[ind0].g[vel_ind];
+			LE_frac       * buff_site[ind1].g[p] + 
+			(1.0-LE_frac) * buff_site[ind0].g[p];
 		      ind2++;
 		    }
 	      }
 	}
-      
+
       free(buff_site);
 
 #endif /* _MPI_ */
   }
   else {
+
     /* Serial, or MPI with cart_size(Y) = 1 */
 
     get_N_local(nlocal);
+    nplane = le_get_nplane_local();
+
     yfac  =  nlocal[Z]+2*nhalo_;
     xfac  = (nlocal[Y]+2*nhalo_) * (nlocal[Z]+2*nhalo_);
     zfac2 = LE_N_VEL_XING * 2;  /* final x2 because fs and gs as well! */
     yfac2 = yfac * zfac2;
     xfac2 = xfac * zfac2; 
 
-    /* Set up buffer of translated sites (only include velocities crossing the
-	 LE walls) */
-      for(plane=0; plane<N_LE_plane; plane++)
-	{
-	  LE_frac =     LeesEdw_plane[plane].frac;
-	  LE_loc  =     LeesEdw_plane[plane].loc;
-	  integ = floor(LeesEdw_plane[plane].disp);
-	  integ = integ%nlocal[Y];
+    for(plane=0; plane < nplane; plane++) {
+      LE_loc  = le_plane_location(plane);
 
-	  /* Plane below (going down): +ve displacement */
-	  /* site_buff[i] = frac*site[i+integ] + (1-frac)*site[i+(integ+1)] */
-	  for(jj=1; jj<=nlocal[Y]; jj++)
-	    {
-	      disp_j1 = ((jj+integ+2*nlocal[Y]-1) % nlocal[Y]) + 1;
-	      disp_j2 = (disp_j1 % nlocal[Y]) + 1;
-	      for(kk=1; kk<=nlocal[Z]; kk++)
-		{
-		  ind  = 2*plane*xfac2 +      jj*yfac2 + kk*zfac2;
-		  ind0 = LE_loc *xfac  + disp_j1*yfac  + kk;
-		  ind1 = LE_loc *xfac  + disp_j2*yfac  + kk;
+      displ = fmod(le_get_plane_uy()*get_step(), L(Y));
+      integ = floor(displ);
+      LE_frac = 1.0 - (displ - integ);
 
-		  ind0 = ADDR(LE_loc, disp_j1, kk);
-		  ind1 = ADDR(LE_loc, disp_j2, kk);
+      /* Plane below (going down): +ve displacement */
+      /* site_buff[i] = frac*site[i+integ] + (1-frac)*site[i+(integ+1)] */
+
+      for(jj=1; jj<=nlocal[Y]; jj++) {
+	disp_j1 = ((jj+integ+2*nlocal[Y]-1) % nlocal[Y]) + 1;
+	disp_j2 = (disp_j1 % nlocal[Y]) + 1;
+	for(kk=1; kk<=nlocal[Z]; kk++) {
+	  ind  = 2*plane*xfac2 +      jj*yfac2 + kk*zfac2;
+	  ind0 = LE_loc *xfac  + disp_j1*yfac  + kk;
+	  ind1 = LE_loc *xfac  + disp_j2*yfac  + kk;
+
+	  ind0 = ADDR(LE_loc, disp_j1, kk);
+	  ind1 = ADDR(LE_loc, disp_j2, kk);
 		  
-		  /* For each velocity intersecting the LE plane (up, ie X+1) */
-		  /* [JCD] Not very smart... could be seriously optimised */
-		  ind2 = 0; 
-		  for(vel_ind=0; vel_ind<NVEL; vel_ind++)
-		    if(cv[vel_ind][X]==1)
-		      {
-			LeesEdw_site[ind+2*ind2] = 
-			        LE_frac*site[ind0].f[vel_ind] +
-			  (1.0-LE_frac)*site[ind1].f[vel_ind];
-			LeesEdw_site[ind+2*ind2+1] = 
-			        LE_frac*site[ind0].g[vel_ind] +
-			  (1.0-LE_frac)*site[ind1].g[vel_ind];
-			ind2++;
-		      }
-		}
-	    }
-	  
-	  /* Plane above: -ve displacement */
-	  /* site[i] = frac*site[i-integ] + (1-frac)*site[i-(integ+1)] */
-	  /* buff[i] = site[i-(integ+1)] */
-	  for(jj=1; jj<=nlocal[Y]; jj++)
-	    {
-	      disp_j1 = ((jj-integ+2*nlocal[Y]-2) % nlocal[Y]) + 1;
-	      disp_j2 = ((disp_j1+nlocal[Y]) % nlocal[Y]) + 1;
-	      for(kk=1; kk<=nlocal[Z]; kk++)
-		{
-		  ind = (2*plane+1)*xfac2 +      jj*yfac2 + kk*zfac2;
-		  ind0 = (LE_loc+1)*xfac  + disp_j1*yfac  + kk;
-		  ind1 = (LE_loc+1)*xfac  + disp_j2*yfac  + kk;
-
-		  ind0 = ADDR(LE_loc+1, disp_j1, kk);
-		  ind1 = ADDR(LE_loc+1, disp_j2, kk);
-		  
-		  /* For each velocity intersecting the LE plane (up, ie X-1) */
-		  /* [JCD] Not very smart... could be seriously optimised */
-		  ind2 = 0;
-		  for(vel_ind=0; vel_ind<NVEL; vel_ind++)	      
-		    if(cv[vel_ind][X]==-1)
-		      {
-			LeesEdw_site[ind+2*ind2] = 
-			        LE_frac*site[ind1].f[vel_ind] +
-			  (1.0-LE_frac)*site[ind0].f[vel_ind];
-			LeesEdw_site[ind+2*ind2+1] = 
-                                LE_frac*site[ind1].g[vel_ind] +
-			  (1.0-LE_frac)*site[ind0].g[vel_ind];
-			ind2++;
-		      }
-		}
+	  /* For each velocity intersecting the LE plane (up, ie X+1) */
+	  ind2 = 0; 
+	  for(p=0; p<NVEL; p++)
+	    if(cv[p][X]==1) {
+	      LeesEdw_site[ind+2*ind2] = 
+		LE_frac*site[ind0].f[p] + (1.0-LE_frac)*site[ind1].f[p];
+	      LeesEdw_site[ind+2*ind2+1] = 
+		LE_frac*site[ind0].g[p] + (1.0-LE_frac)*site[ind1].g[p];
+	      ind2++;
 	    }
 	}
+      }
+	  
+      /* Plane above: -ve displacement */
+      /* site[i] = frac*site[i-integ] + (1-frac)*site[i-(integ+1)] */
+      /* buff[i] = site[i-(integ+1)] */
+
+      for(jj=1; jj<=nlocal[Y]; jj++) {
+
+	disp_j1 = ((jj-integ+2*nlocal[Y]-2) % nlocal[Y]) + 1;
+	disp_j2 = ((disp_j1+nlocal[Y]) % nlocal[Y]) + 1;
+
+	for(kk=1; kk<=nlocal[Z]; kk++) {
+	  ind = (2*plane+1)*xfac2 +      jj*yfac2 + kk*zfac2;
+	  ind0 = (LE_loc+1)*xfac  + disp_j1*yfac  + kk;
+	  ind1 = (LE_loc+1)*xfac  + disp_j2*yfac  + kk;
+
+	  ind0 = ADDR(LE_loc+1, disp_j1, kk);
+	  ind1 = ADDR(LE_loc+1, disp_j2, kk);
+		  
+	  /* For each velocity intersecting the LE plane (up, ie X-1) */
+	  ind2 = 0;
+	  for(p=0; p<NVEL; p++)
+	    if(cv[p][X]==-1) {
+	      LeesEdw_site[ind+2*ind2] = 
+		LE_frac*site[ind1].f[p] + (1.0-LE_frac)*site[ind0].f[p];
+	      LeesEdw_site[ind+2*ind2+1] = 
+		LE_frac*site[ind1].g[p] + (1.0-LE_frac)*site[ind0].g[p];
+	      ind2++;
+	    }
+	}
+      }
+    }
   }
 
   return;
@@ -1249,15 +1070,15 @@ double le_get_block_uy(int ic) {
 
 /*****************************************************************************
  *
- *  le_get_nplane
+ *  le_get_nplane_local
  *
- *  Return the local number of planes (block boundaries).
+ *  Return the local number of planes.
  *
  *****************************************************************************/
 
-int le_get_nplane() {
+int le_get_nplane_local() {
 
-  return N_LE_plane;
+  return le_params_.n_plane_total/cart_size(X);
 }
 
 /*****************************************************************************
@@ -1270,7 +1091,7 @@ int le_get_nplane() {
 
 int le_get_nplane_total() {
 
-  return N_LE_total;
+  return le_params_.n_plane_total;
 }
 
 /*****************************************************************************
@@ -1288,17 +1109,26 @@ double le_get_plane_uy() {
  *
  *  le_plane_location
  *
- *  Return location (x-coordinte - 0.5) of plane n.
+ *  Return location (local x-coordinte - 0.5) of local plane n.
  *  It is erroneous to call this if no planes.
  *
  *****************************************************************************/
 
 int le_plane_location(const int n) {
 
-  assert(initialised_);
-  assert(n >= 0 && n < N_LE_plane);
+  int offset[3];
+  int nplane_offset;
+  int ix;
 
-  return LeesEdw_plane[n].loc;
+  assert(initialised_);
+  assert(n >= 0 && n < le_get_nplane_local());
+
+  get_N_offset(offset);
+  nplane_offset = cart_coords(X)*le_get_nplane_local();
+
+  ix = le_params_.dx_min + (n + nplane_offset)*le_params_.dx_sep - offset[X];
+
+  return ix;
 }
 
 /*****************************************************************************
@@ -1314,7 +1144,7 @@ int le_get_nxbuffer() {
 
   assert(initialised_);
 
-  return le_params_.nxbuffer;
+  return (2*nhalo_*le_get_nplane_local());
 }
 
 /*****************************************************************************
@@ -1352,7 +1182,7 @@ int le_index_real_to_buffer(const int ic, const int di) {
 int le_index_buffer_to_real(int ib) {
 
   assert(initialised_);
-  assert(ib >=0 && ib < le_params_.nxbuffer);
+  assert(ib >=0 && ib < le_get_nxbuffer());
 
   return le_params_.index_buffer_to_real[ib];
 }
@@ -1374,7 +1204,7 @@ double le_buffer_displacement(int ib) {
   double dt = get_step() - 1.0;
 
   assert(initialised_);
-  assert(ib >= 0 && ib < le_params_.nxbuffer);
+  assert(ib >= 0 && ib < le_get_nxbuffer());
 
   return dt*le_params_.buffer_duy[ib];
 }
@@ -1470,7 +1300,7 @@ int le_site_index(const int ic, const int jc, const int kc) {
   assert(ic >= 1-nhalo_);
   assert(jc >= 1-nhalo_);
   assert(kc >= 1-nhalo_);
-  assert(ic <= nlocal[X] + nhalo_ + le_params_.nxbuffer);
+  assert(ic <= nlocal[X] + nhalo_ + le_get_nxbuffer());
   assert(jc <= nlocal[Y] + nhalo_);
   assert(kc <= nlocal[Z] + nhalo_);
 
