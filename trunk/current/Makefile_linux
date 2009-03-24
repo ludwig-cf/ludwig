@@ -1,5 +1,5 @@
-CCS = xlC_r -O3 -qhot
-CCP = mpixlC -O3 -qhot
+CCS = g++ -O3 -Wall
+CCP = mpiCC -O3 -Wall
 
 INCS	=	
  
@@ -8,26 +8,24 @@ INCS	=
 # EON:    "undef" electric field off, "def" electric field on
 # BC:     boundary conditions on/off
 # FIXEDQ: fixed or free boundary conditions for Q
+ 
 
-# Note BG/L requires the MPICH_IGNORE_CXX_SEEK
-# with C++
-
-DEFS    =	 -DBE -DEON -DCHOL -DMPICH_IGNORE_CXX_SEEK -D_BINARY_IO_
+DEFS    =	 -DBE -DEON -DCHOL -D_BINARY_IO_
 
 
-LIBS	=        -lstdc++ -libmc++ -lsupc++
+LIBS	=
 
 LIBPATH =
 
-NAME	= HLBLC08
+NAME	= test
 
 all: $(NAME)P
 
-$(NAME)S:
-	$(CCS) LCMain_hybrid.cc String.cc LCParallel.cc -o $(NAME)S \
-	$(INCS) $(DEFS) $(LIBPATH) $(LIBS)
+$(NAME)S: Makefile
+	$(CCS) LCMain_hybrid.cc LCParallel.cc String.cc -o $(NAME)S $(INCS) \
+	$(DEFS) $(LIBPATH) $(LIBS)
 
-$(NAME)P:
+$(NAME)P: Makefile
 	$(CCP) LCMain_hybrid.cc String.cc LCParallel.cc -o $(NAME)P $(INCS) \
 	$(DEFS) -DPARALLEL $(LIBPATH) $(LIBS)
 

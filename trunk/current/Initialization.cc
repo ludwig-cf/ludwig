@@ -5,13 +5,11 @@ void randomizeQ(void)
 
   // Global position (double)
   double ic, jc, kc;
-
-#ifdef PARALLEL
   double ioff, joff, koff;
+
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
-#endif
 
 
 
@@ -100,33 +98,17 @@ if(BLUEHAAR==1){
 
 		     if((0<=ir && ir<Lx2) && (0<=jr && jr<Ly2) && (0<=kr && kr<Lz2)){  
 
-	 #ifdef PARALLEL
 		      Qxx[ir][jr][kr]=amplitude*(-cos(2*q0*jc));
 		      Qxxinit[ir][jr][kr]=Qxx[ir][jr][kr];
 		      Qxy[ir][jr][kr]=0.0;
 		      Qxyinit[ir][jr][kr]=Qxy[ir][jr][kr];
 		      Qxz[ir][jr][kr]=amplitude*sin(2.0*q0*jc);
 		      Qxzinit[ir][jr][kr]=Qxz[ir][jr][kr];
-	 #else
-		      Qxx[ir][jr][kr]=amplitude*(-cos(2*q0*j));
-		      Qxxinit[ir][jr][kr]=Qxx[ir][jr][kr];
-		      Qxy[ir][jr][kr]=0.0;
-		      Qxyinit[ir][jr][kr]=Qxy[ir][jr][kr];
-		      Qxz[ir][jr][kr]=amplitude*sin(2.0*q0*j);
-		      Qxzinit[ir][jr][kr]=Qxz[ir][jr][kr];
-	 #endif
 
-	 #ifdef PARALLEL
 		      Qyy[ir][jr][kr]=amplitude*(-cos(2.0*q0*ic));
 		      Qyz[ir][jr][kr]=-amplitude*sin(2.0*q0*ic);
 		      Qyyinit[ir][jr][kr]=Qyy[ir][jr][kr];
 		      Qyzinit[ir][jr][kr]=Qyz[ir][jr][kr];
-	 #else
-		      Qyy[ir][jr][kr]=amplitude*(-cos(2.0*q0*i));
-		      Qyz[ir][jr][kr]=-amplitude*sin(2.0*q0*i);
-		      Qyyinit[ir][jr][kr]=Qyy[ir][jr][kr];
-		      Qyzinit[ir][jr][kr]=Qyz[ir][jr][kr];
-	 #endif
 
 		     }
 
@@ -142,9 +124,9 @@ if(BLUEHAAR==1){
 	 }
      }
 
-#ifdef PARALLEL
+
   exchangeMomentumAndQTensor();
-#endif
+
 
 
 // All other lattice sites are set to either isotropic liquid or cholesteric LC
@@ -185,7 +167,7 @@ if(BLUEHAAR==1){
 	 }
      }
 
-}
+ }
 //================================================//
 // initial configurations different from BLUEHAAR //
 //================================================//
@@ -212,20 +194,12 @@ if(BLUEHAAR!=1){
 // cholesteric LC
 
 
-#ifdef PARALLEL
+
       Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
       Qxy[i][j][k]= 0.0;
       Qyy[i][j][k]= -0.2723;
       Qxz[i][j][k]= -amplitude*(sin(2.0*q0*jc));
       Qyz[i][j][k]= 0.0;
-#else
-
-      Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*j);
-      Qxy[i][j][k]= 0.0;
-      Qyy[i][j][k]= -0.2723;
-      Qxz[i][j][k]= -amplitude*(sin(2.0*q0*j));
-      Qyz[i][j][k]= 0.0;
-#endif
 
          }
 
@@ -236,34 +210,17 @@ if(BLUEHAAR!=1){
 	if (DTSTRUCT == 1) {
           amplitude=0.3;
 
-#ifdef PARALLEL
 	  Qxx[i][j][k]=amplitude*(-cos(2*q0*jc));
 	  Qxxinit[i][j][k]=Qxx[i][j][k];
 	  Qxy[i][j][k]=0.0;
 	  Qxyinit[i][j][k]=Qxy[i][j][k];
 	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
 	  Qxzinit[i][j][k]=Qxz[i][j][k];
-#else
-	  Qxx[i][j][k]=amplitude*(-cos(2*q0*j));
-	  Qxxinit[i][j][k]=Qxx[i][j][k];
-	  Qxy[i][j][k]=0.0;
-	  Qxyinit[i][j][k]=Qxy[i][j][k];
-	  Qxz[i][j][k]=amplitude*sin(2.0*q0*j);
-	  Qxzinit[i][j][k]=Qxz[i][j][k];
-#endif
 
-#ifdef PARALLEL
 	  Qyy[i][j][k]=amplitude*(-cos(2.0*q0*ic));
 	  Qyz[i][j][k]=-amplitude*sin(2.0*q0*ic);
 	  Qyyinit[i][j][k]=Qyy[i][j][k];
 	  Qyzinit[i][j][k]=Qyz[i][j][k];
-#else
-	  Qyy[i][j][k]=amplitude*(-cos(2.0*q0*i));
-	  Qyz[i][j][k]=-amplitude*sin(2.0*q0*i);
-	  Qyyinit[i][j][k]=Qyy[i][j][k];
-	  Qyzinit[i][j][k]=Qyz[i][j][k];
-#endif
-
 
 	}
 
@@ -278,70 +235,38 @@ if(BLUEHAAR!=1){
 	  Qxyinit[i][j][k]=Qxy[i][j][k];
 	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
 
-#ifdef PARALLEL
 	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)-cos(2.0*q0*kc));
 	  Qyyinit[i][j][k]=Qyy[i][j][k];
 	  Qyz[i][j][k]=amplitude*sin(2.0*q0*ic);
  	  Qyzinit[i][j][k]=Qyz[i][j][k];
-#else
-	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*i)-cos(2.0*q0*k));
-	  Qyyinit[i][j][k]=Qyy[i][j][k];
-	  Qyz[i][j][k]=amplitude*sin(2.0*q0*i);
-	  Qyzinit[i][j][k]=Qyz[i][j][k]; 
-#endif
 
 }
 
 	if (O5STRUCT == 1) {
-#ifdef PARALLEL
 
-	  Qxx[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc)-
-		       cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)-
-		       cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc));
+	  Qxx[i][j][k]=amplitude*
+	    (2.0*cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc)-
+	         cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)-
+	         cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc));
 	  Qyy[i][j][k]=amplitude*
 	    (2.0*cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)-
-	     cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*ic)-
-            cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc));
+	         cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*ic)-
+	         cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc));
 	  Qxy[i][j][k]=amplitude*
 	    (sqrt(2.0)*cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc)-
-	     sqrt(2.0)*cos(sqrt(2.0)*q0*ic)
-	     *sin(sqrt(2.0)*q0*kc)-
-            sin(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*jc));
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc)-
+	     sin(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*jc));
 	  Qxz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*ic)
-	     *sin(sqrt(2.0)*q0*jc)-
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*jc)-
 	     sqrt(2.0)*cos(sqrt(2.0)*q0*kc)*sin(sqrt(2.0)*q0*jc)-
 	     sin(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc));
 	  Qyz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*kc)
-	     *sin(sqrt(2.0)*q0*ic)-
-	     sqrt(2.0)*cos(sqrt(2.0)*q0*jc)*
-	     sin(sqrt(2.0)*q0*ic)-
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*kc)*sin(sqrt(2.0)*q0*ic)-
+	     sqrt(2.0)*cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*ic)-
 	     sin(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc));
-#else
-	  Qxx[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)-
-		       cos(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)-
-		       cos(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*j));
-	  Qyy[i][j][k]=amplitude*(2.0*cos(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)-
-		       cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*i)-
-		       cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
-	  Qxy[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)-
-	     sqrt(2.0)*cos(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*k)-
-	     sin(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*j));
-	  Qxz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*j)-
-	     sqrt(2.0)*cos(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*j)-
-	     sin(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*k));
-	  Qyz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*i)-
-	     sqrt(2.0)*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*i)-
-	     sin(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k));
-#endif
 	}
 
 	if ((O8STRUCT == 1) || (O8MSTRUCT == 1)) {
-#ifdef PARALLEL
 	    Qxx[i][j][k]=amplitude*
 		(-2.0*cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc)+
 		 sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)+
@@ -362,31 +287,6 @@ if(BLUEHAAR!=1){
 	    (sqrt(2.0)*cos(sqrt(2.0)*q0*kc)*cos(sqrt(2.0)*q0*ic)+
 	     sqrt(2.0)*sin(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*ic)-
 	     sin(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc));
-#else
-	  Qxx[i][j][k]=amplitude*(-2.0*cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k)+
-				  sin(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)+
-				  cos(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*j));
-	  Qyy[i][j][k]=amplitude*
-	    (-2.0*sin(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*k)+
-	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*i)+
-	     cos(sqrt(2.0)*q0*j)*sin(sqrt(2.0)*q0*k));
-	  Qxy[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k)+
-	     sqrt(2.0)*sin(sqrt(2.0)*q0*i)
-	     *sin(sqrt(2.0)*q0*k)-
-	     sin(sqrt(2.0)*q0*i)*cos(sqrt(2.0)*q0*j));
-	  Qxz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*i)
-	     *cos(sqrt(2.0)*q0*j)+
-	     sqrt(2.0)*sin(sqrt(2.0)*q0*k)*sin(sqrt(2.0)*q0*j)-
-	     cos(sqrt(2.0)*q0*i)*sin(sqrt(2.0)*q0*k));
-	  Qyz[i][j][k]=amplitude*
-	    (sqrt(2.0)*cos(sqrt(2.0)*q0*k)
-	     *cos(sqrt(2.0)*q0*i)+
-	     sqrt(2.0)*sin(sqrt(2.0)*q0*j)*
-	     sin(sqrt(2.0)*q0*i)-
-	     sin(sqrt(2.0)*q0*j)*cos(sqrt(2.0)*q0*k));
-#endif
 
 
 	}
@@ -395,19 +295,12 @@ if(BLUEHAAR!=1){
    if (HEXPLANAR == 1) {
 
 /* twist is along z-direction */
-#ifdef PARALLEL
-          Qxx[i][j][k]=amplitude*(-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc));
-          Qxy[i][j][k]=amplitude*(-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc));
-          Qxz[i][j][k]=amplitude*(sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
-          Qyy[i][j][k]=amplitude*(-cos(2.0*q0*ic)-0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc));
-          Qyz[i][j][k]=amplitude*(-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
-#else
-          Qxx[i][j][k]=amplitude*(-1.5*cos(q0*i)*cos(q0*sqrt(3.0)*j));
-          Qxy[i][j][k]=amplitude*(-0.5*sqrt(3.0)*sin(q0*i)*sin(q0*sqrt(3.0)*j));
-          Qxz[i][j][k]=amplitude*(sqrt(3.0)*cos(q0*i)*sin(q0*sqrt(3.0)*j));
-          Qyy[i][j][k]=amplitude*(-cos(2.0*q0*i)-0.5*cos(q0*i)*cos(q0*sqrt(3.0)*j));
-          Qyz[i][j][k]=amplitude*(-sin(2.0*q0*i)-sin(q0*i)*cos(q0*sqrt(3.0)*j));
-#endif
+
+     Qxx[i][j][k]=amplitude*(-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc));
+     Qxy[i][j][k]=amplitude*(-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc));
+     Qxz[i][j][k]=amplitude*(sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
+     Qyy[i][j][k]=amplitude*(-cos(2.0*q0*ic)-0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc));
+     Qyz[i][j][k]=amplitude*(-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
 
    }
 
@@ -415,30 +308,17 @@ if(BLUEHAAR!=1){
 
    if(HEX3D == 1) {
 
-#ifdef PARALLEL
-          Qxx[i][j][k]=amplitude*
-		(-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)+0.25*cos(q0*Lx/Lz*kc));
-          Qxy[i][j][k]=amplitude*
-		(-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc)+0.25*sin(q0*Lx/Lz*kc));
-          Qxz[i][j][k]=amplitude*
-		(sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
-          Qyy[i][j][k]=amplitude*
-		(-cos(2.0*q0*ic)-0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)-
-                                  0.25*cos(q0*Lx/Lz*kc));
-          Qyz[i][j][k]=amplitude*
-		(-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
-#else
-          Qxx[i][j][k]=amplitude*
-		(-1.5*cos(q0*i)*cos(q0*sqrt(3.0)*j)+0.25*cos(q0*Lx/Lz*k));
-          Qxy[i][j][k]=amplitude*
-		(-0.5*sqrt(3.0)*sin(q0*i)*sin(q0*sqrt(3.0)*j)+0.25*sin(q0*Lx/Lz*k));
-          Qxz[i][j][k]=amplitude*
-		(sqrt(3.0)*cos(q0*i)*sin(q0*sqrt(3.0)*j));
-          Qyy[i][j][k]=amplitude*
-		(-cos(2.0*q0*i)-0.5*cos(q0*i)*cos(q0*sqrt(3.0)*j)-0.25*cos(q0*Lx/Lz*k));
-          Qyz[i][j][k]=amplitude*(-sin(2.0*q0*i)-sin(q0*i)*cos(q0*sqrt(3.0)*j));
-#endif
-
+     Qxx[i][j][k]=amplitude*
+       (-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)+0.25*cos(q0*Lx/Lz*kc));
+     Qxy[i][j][k]=amplitude*
+       (-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc)+0.25*sin(q0*Lx/Lz*kc));
+     Qxz[i][j][k]=amplitude*
+       (sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
+     Qyy[i][j][k]=amplitude*
+       (-cos(2.0*q0*ic)-0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)-
+	0.25*cos(q0*Lx/Lz*kc));
+     Qyz[i][j][k]=amplitude*
+       (-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
 
    }
 
@@ -480,18 +360,17 @@ if(BLUEHAAR!=1){
 
 void startDroplet(void)
 {
-  int i,j,k,l;
-  double phase,phase2,amplitude;
+  int i,j,k;
+  double amplitude;
   double fracmin, fracmax;
 
   int ic, jc, kc;
   int ioff = 0, joff = 0, koff = 0;
 
-#ifdef PARALLEL
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
-#endif
+
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -562,18 +441,17 @@ void startDroplet(void)
 
 void startSlab(void)
 {
-  int i,j,k,l;
-  double phase,phase2,amplitude;
+  int i,j,k;
   double fracmin, fracmax;
 
   int ic, jc, kc;
   int ioff = 0, joff = 0, koff = 0;
 
-#ifdef PARALLEL
+
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
-#endif
+
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -675,10 +553,10 @@ void reinit()
 
 void initialize(void)
 {
+  int n;
 
 #ifdef PARALLEL
 
-  int n;
   int periodic[3] = {1, 1, 1};
   int pe_cartesian_rank;
   int colour, key;
@@ -749,12 +627,33 @@ void initialize(void)
   MPI_Barrier(MPI_COMM_WORLD);
 
 #else
-  Lx2=Lx;
-  ix1=0;
-  ix2=Lx2;
-  Ly2=Ly;
-  jy1=0;
-  jy2=Ly2;
+
+  // Serial version
+  // Check the input was appropriate
+  n = pe_cartesian_size_[0]*pe_cartesian_size_[1]*pe_cartesian_size_[2];
+  if (n != 1) {
+    cout << " Check input decomposition is {1, 1, 1}!" << endl;
+    cout << " Setting correct values for serial run..." << endl;
+  }
+  // Whatever was in the input, we must have...
+  pe_cartesian_coordinates_[0] = 0;
+  pe_cartesian_coordinates_[1] = 0;
+  pe_cartesian_coordinates_[2] = 0;
+  pe_cartesian_size_[0] = 1;
+  pe_cartesian_size_[1] = 1;
+  pe_cartesian_size_[2] = 1;
+  io_ngroups_ = 1;
+  io_group_id_ = 0;
+
+  Lx2=Lx+2;
+  ix1=1;
+  ix2=Lx2-1;
+  Ly2=Ly+2;
+  jy1=1;
+  jy2=Ly2-1;
+  Lz2=Lz+2;
+  kz1=1;
+  kz2=Lz2-1;
 #endif
 
   int ix,iy,iz;

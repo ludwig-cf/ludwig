@@ -6,7 +6,6 @@ void computeStressFreeEnergy(int n)
   double dQyxdx,dQyxdy,dQyxdz;
   double dQzxdx,dQzxdy,dQzxdz,dQzydx,dQzydy,dQzydz;
   double dQzzdx,dQzzdy,dQzzdz;
-  double trt,trd2Q,TrQ2;
   double d2Qxxdxdx,d2Qxxdydy,d2Qxxdxdy,d2Qxxdzdz,d2Qxxdxdz,d2Qxxdydz;
   double d2Qyydxdx,d2Qyydydy,d2Qyydxdy,d2Qyydzdz,d2Qyydxdz,d2Qyydydz;
   double d2Qxydxdx,d2Qxydydy,d2Qxydxdy,d2Qxydzdz,d2Qxydxdz,d2Qxydydz;
@@ -16,14 +15,11 @@ void computeStressFreeEnergy(int n)
   double DGchol1xx,DGchol1xy,DGchol1xz,DGchol1yx,DGchol1yy,DGchol1yz;
   double DGchol1zx,DGchol1zy,DGchol1zz,DGchol2xx,DGchol2xy,DGchol2xz;
   double DGchol2yx,DGchol2yy,DGchol2yz,DGchol2zx,DGchol2zy,DGchol2zz;
-  double sigxx,sigyy,sigxy,sigxz,sigyz,sigzz;
-  double TrQE2,avestress;
-  double dEzdx,dEzdy,dEzdz;
+  double sigxx,sigyy,sigxy,sigxz,sigyz;
+  double avestress;
   double Qsqxx,Qsqxy,Qsqxz,Qsqyy,Qsqyz,Qsqzz,Qxxl,Qxyl,Qxzl,Qyyl,Qyzl,Qzzl;
-  double Hxx,Hyy,Hxy,Hxz,Hyz,TrDQI;
-  double duxdx,duxdy,duxdz,duydx,duydy,duydz,duzdx,duzdy,duzdz,Gammap;
-  double mDQ4xx,mDQ4xy,mDQ4yy,mDQ4xz,mDQ4yz,mDQ4zz,nnxxl,nnyyl;
-  double t1, t2;
+  double Hxx,Hyy,Hxy,Hxz,Hyz;
+  double nnxxl,nnyyl;
   double one_gradient,two_gradient;
 
 #ifdef _BINARY_IO_
@@ -34,6 +30,7 @@ void computeStressFreeEnergy(int n)
   int ioff = 0, joff = 0, koff = 0;
 
 #ifdef PARALLEL
+  double t1, t2;
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
@@ -56,9 +53,9 @@ void computeStressFreeEnergy(int n)
     }
   }
 
-#ifdef PARALLEL
+
   exchangeMomentumAndQTensor();
-#endif  
+
 
  one_gradient=0.0;
  two_gradient=0.0;
@@ -257,20 +254,6 @@ void computeStressFreeEnergy(int n)
 #endif
 	}
 
-	duydz=(u[i][j][kup][1]-u[i][j][kdwn][1])/2.0;
-	
-      /*B.C.; use one-sided derivatives*/
-	if(pouiseuille1==1){
-#if BC
-	if(k==0) {
-	  duydz= 0.0*(-3.0*u[i][j][k][1]+4.0*u[i][j][k+1][1]-u[i][j][k+2][1])/2.0;
-	}
-	else if(k==Lz-1) {
-	  duydz= 0.0*(3.0*u[i][j][k][1]-4.0*u[i][j][k-1][1]+u[i][j][k-2][1])/2.0;
-	  
-	}
-#endif
-	}
 
 /* \parial F / \partial dQ * dQ */
 
@@ -686,7 +669,6 @@ void streamfile_ks(const int iter) {
   int i,j,k;  
   int nrots,emax,enxt;
   double m[3][3],d[3],v[3][3];
-  double t0, t1;
   int ioff = 0, joff = 0, koff = 0;
 
 #ifdef _BINARY_IO_
@@ -718,6 +700,7 @@ void streamfile_ks(const int iter) {
 #ifdef PARALLEL
   int token=0;
   const int tag = 986;
+  double t0, t1;
 
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
@@ -735,6 +718,10 @@ void streamfile_ks(const int iter) {
     output.open(oname.get(),ios::app);
     output1.open(sname.get(),ios::app);
   }
+#else
+  // Serial
+  output.open(oname.get());
+  output1.open(sname.get());
 #endif
 
   output.precision(5);
@@ -831,7 +818,6 @@ void writeDiscFile_ks(const int iter) {
   int i,j,k;
   int nrots,emax,enxt;
   double m[3][3],d[3],v[3][3];
-  double t0, t1;
   int ioff = 0, joff = 0, koff = 0;   /* lattice offsets */
   int ic, jc, kc;                     /* global lattice positions */
 
@@ -851,6 +837,7 @@ void writeDiscFile_ks(const int iter) {
 #ifdef PARALLEL
   int token=0;
   const int tag = 987;
+  double t0, t1;
 
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
@@ -952,7 +939,6 @@ void writeDiscFile_ks(const int iter) {
 void writeRestart(const int iter) {
 
   int i, j, k, p;  
-  double t0, t1;
   double buffer[20];
 
   /* Build the filename for this communicator stub.case.iteration.dat-id-n */
@@ -969,6 +955,7 @@ void writeRestart(const int iter) {
 #ifdef PARALLEL
   int token=0;
   const int tag = 989;
+  double t0, t1;
 
   t0 = MPI_Wtime();
 
@@ -980,6 +967,9 @@ void writeRestart(const int iter) {
 	     &status);
     output.open(oname.get(),ios::app);
   }
+#else
+  // Serial
+  output.open(oname.get());
 #endif
        
   for(i=ix1; i<ix2; i++) { 
@@ -1034,7 +1024,6 @@ void writeRestart(const int iter) {
 void readRestart(const int iter) {
 
   int i, j, k, p;
-  double t0, t1;
   double buffer[20];
   ifstream input;
 
@@ -1048,10 +1037,11 @@ void readRestart(const int iter) {
   iname.concat(io_group_id_);
   iname.concat("-");
   iname.concat(io_ngroups_);
+  int token=0;
 
 #ifdef PARALLEL
-  int token=0;
   const int tag = 990;
+  double t0, t1;
 
   t0 = MPI_Wtime();
 
@@ -1065,6 +1055,9 @@ void readRestart(const int iter) {
     input.open(iname.get(),ios::in);
     input.seekg(token, ios::beg);
   }
+#else
+  // Serial
+  input.open(iname.get());
 #endif
        
   for(i=ix1; i<ix2; i++) { 
@@ -1092,7 +1085,9 @@ void readRestart(const int iter) {
   }
   else {
     cout << "Error on read" << endl;
+#ifdef _PARALLEL_
     MPI_Abort(MPI_COMM_WORLD, 0);
+#endif
   }
 
   input.close();
