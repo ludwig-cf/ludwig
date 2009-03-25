@@ -70,7 +70,7 @@ int main( int argc, char **argv )
 
   ran_init();
   RAND_init_fluctuations();
-  LE_init();
+  le_init();
 
   MODEL_init();
   wall_init();
