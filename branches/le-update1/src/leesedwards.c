@@ -6,7 +6,7 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id: leesedwards.c,v 1.12.4.3 2009-03-20 17:52:32 kevin Exp $
+ *  $Id: leesedwards.c,v 1.12.4.4 2009-03-25 17:11:57 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,6 +26,7 @@
 #include "control.h"
 #include "leesedwards.h"
 
+static enum shear_type{LINEAR, OSCILLATORY};
 static void le_checks(void);
 static void le_init_tables(void);
 
@@ -34,16 +35,18 @@ static struct le_parameters {
   double uy_plane;          /* u[Y] for all planes */
   double dx_min;            /* Position first plane */
   double dx_sep;            /* Plane separation */
+  double omega;             /* u_y = u_le cos (omega t) for oscillatory */  
 
   /* Local parameters */
   MPI_Comm  le_comm;
   int *     index_buffer_to_real;
   int       index_real_nbuffer;
   int *     index_real_to_buffer;
-  double *  buffer_duy;
+  int *     buffer_duy;
 } le_params_;
 
 static int nplane_total_ = 0;     /* Total number of planes */
+static int le_type_ = LINEAR;
 static int initialised_ = 0;
 
 /*****************************************************************************
@@ -86,7 +89,7 @@ void le_init() {
     for (n = 0; n < ntotal; n++) {
       info("LE plane %d is at x = %d with speed %f\n", n+1,
 	   (int)(le_params_.dx_min + n*le_params_.dx_sep),
-	   le_params_.uy_plane);
+	   le_get_plane_uy());
     }
 
     info("Overall shear rate = %f\n", le_shear_rate());
@@ -94,6 +97,27 @@ void le_init() {
 
   le_checks();
   le_init_tables();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  le_finish
+ *
+ *****************************************************************************/
+
+void le_finish() {
+
+  if (initialised_ == 0) fatal("Calling le_finish() without init\n");
+
+  free(le_params_.index_buffer_to_real);
+  free(le_params_.index_real_to_buffer);
+  free(le_params_.buffer_duy);
+
+  nplane_total_ = 0;
+  le_type_ = LINEAR;
+  initialised_ = 0;
 
   return;
 }
@@ -215,11 +239,11 @@ static void le_init_tables() {
    
    /* Buffer velocity jumps. When looking from the real system across
     * a boundary into a given buffer, what is the associated velocity
-    * jump? The boundary velocities are constant in time. */
+    * jump? This is +1 for 'looking up' and -1 for 'looking down'.*/
 
    n = le_get_nxbuffer();
    if (n > 0) {
-     le_params_.buffer_duy = (double *) malloc(n*sizeof(double));
+     le_params_.buffer_duy = (int *) malloc(n*sizeof(double));
      if (le_params_.buffer_duy == NULL) fatal("malloc(buffer_duy) failed\n");
    }
 
@@ -227,12 +251,12 @@ static void le_init_tables() {
   for (n = 0; n < nplane; n++) {
     for (nh = 0; nh < nhalo_; nh++) {
       assert(ib < le_get_nxbuffer());
-      le_params_.buffer_duy[ib] = -le_params_.uy_plane;
+      le_params_.buffer_duy[ib] = -1;
       ib++;
     }
     for (nh = 0; nh < nhalo_; nh++) {
       assert(ib < le_get_nxbuffer());
-      le_params_.buffer_duy[ib] = +le_params_.uy_plane;
+      le_params_.buffer_duy[ib] = +1;
       ib++;
     }
   }
@@ -259,7 +283,7 @@ static void le_init_tables() {
  *
  ****************************************************************************/
  
-void le_checks(void) {
+static void le_checks(void) {
 
   int     nlocal[3];
   int     nplane, n;
@@ -302,6 +326,7 @@ double le_get_steady_uy(int ic) {
   int nplane;
   double xglobal, uy;
 
+  assert(initialised_);
   get_N_offset(offset);
 
   /* The shear profile is linear, so the local velocity is just a
@@ -312,7 +337,7 @@ double le_get_steady_uy(int ic) {
   xglobal = offset[X] + (double) ic - 0.5;
   nplane = (int) ((le_params_.dx_min + xglobal)/le_params_.dx_sep);
 
-  uy = xglobal*le_shear_rate() - le_params_.uy_plane*nplane;
+  uy = xglobal*le_shear_rate() - le_get_plane_uy()*nplane;
  
   return uy;
 }
@@ -349,7 +374,7 @@ double le_get_block_uy(int ic) {
   else {
     n = (-0.5 + xh/le_params_.dx_sep);
   }
-  uy = le_params_.uy_plane*n;
+  uy = le_get_plane_uy()*n;
 
   return uy;
 }
@@ -364,6 +389,7 @@ double le_get_block_uy(int ic) {
 
 int le_get_nplane_local() {
 
+  assert(initialised_);
   return nplane_total_/cart_size(X);
 }
 
@@ -377,6 +403,7 @@ int le_get_nplane_local() {
 
 int le_get_nplane_total() {
 
+  assert(initialised_);
   return nplane_total_;
 }
 
@@ -387,6 +414,16 @@ int le_get_nplane_total() {
  *****************************************************************************/
 
 double le_get_plane_uy() {
+
+  double uy;
+
+  assert(initialised_);
+  if (le_type_ == LINEAR) uy = le_params_.uy_plane;
+  if (le_type_ == OSCILLATORY) {
+    /* The -1 is for backwards compatability... */
+    double t = get_step() - 1.0;
+    uy = le_params_.uy_plane*cos(le_params_.omega*t);
+  }
 
   return le_params_.uy_plane;
 }
@@ -482,6 +519,8 @@ int le_index_buffer_to_real(int ib) {
 
 double le_buffer_displacement(int ib) {
 
+  double dy = 0.0;
+
   /* The minus one is to ensure the regression test doesn't fail. The
    * displacement oringally updated between the phi and f_i
    * transformations */
@@ -490,7 +529,12 @@ double le_buffer_displacement(int ib) {
   assert(initialised_);
   assert(ib >= 0 && ib < le_get_nxbuffer());
 
-  return dt*le_params_.buffer_duy[ib];
+  if (le_type_ == LINEAR) dy = dt*le_get_plane_uy()*le_params_.buffer_duy[ib];
+  if (le_type_ == OSCILLATORY) {
+    dy = le_params_.uy_plane*sin(le_params_.omega*dt)/le_params_.omega;
+  }
+
+  return dy;
 }
 
 /*****************************************************************************
@@ -559,7 +603,21 @@ void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
 
 double le_shear_rate() {
 
-  return (le_params_.uy_plane*nplane_total_/L(X));
+  return (le_get_plane_uy()*nplane_total_/L(X));
+}
+
+/*****************************************************************************
+ *
+ *  le_set_oscillatory
+ *
+ *****************************************************************************/
+
+void le_set_oscillatory(double period) {
+
+  le_type_ = OSCILLATORY;
+  le_params_.omega = 2.0*4.0*atan(1.0)/period;
+
+  return;
 }
 
 /*****************************************************************************
