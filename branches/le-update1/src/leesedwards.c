@@ -6,7 +6,7 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id: leesedwards.c,v 1.12.4.4 2009-03-25 17:11:57 kevin Exp $
+ *  $Id: leesedwards.c,v 1.12.4.5 2009-03-25 18:11:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,7 +26,8 @@
 #include "control.h"
 #include "leesedwards.h"
 
-static enum shear_type{LINEAR, OSCILLATORY};
+enum shear_type {LINEAR, OSCILLATORY};
+
 static void le_checks(void);
 static void le_init_tables(void);
 
@@ -389,7 +390,6 @@ double le_get_block_uy(int ic) {
 
 int le_get_nplane_local() {
 
-  assert(initialised_);
   return nplane_total_/cart_size(X);
 }
 
@@ -403,7 +403,6 @@ int le_get_nplane_local() {
 
 int le_get_nplane_total() {
 
-  assert(initialised_);
   return nplane_total_;
 }
 
@@ -417,7 +416,6 @@ double le_get_plane_uy() {
 
   double uy;
 
-  assert(initialised_);
   if (le_type_ == LINEAR) uy = le_params_.uy_plane;
   if (le_type_ == OSCILLATORY) {
     /* The -1 is for backwards compatability... */
