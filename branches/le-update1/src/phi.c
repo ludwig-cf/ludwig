@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.5 2008-12-03 20:35:50 kevin Exp $
+ *  $Id: phi.c,v 1.5.2.1 2009-03-27 16:35:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,6 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
+#include "control.h"
 #include "site_map.h"
 #include "io_harness.h"
 #include "leesedwards.h"
@@ -566,6 +567,7 @@ void phi_leesedwards_transformation() {
 
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
+  double t;      /* Time */
   int jdy;       /* Integral part of displacement */
   int j1, j2;    /* j values in real system to interpolate between */
 
@@ -580,10 +582,14 @@ void phi_leesedwards_transformation() {
     get_N_local(nlocal);
     ib0 = nlocal[X] + nhalo_ + 1;
 
+    /* -1.0 as zero required for first step; a 'feature' to
+     * maintain the regression tests */
+    t = 1.0*get_step() - 1.0;
+
     for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
       ic = le_index_buffer_to_real(ib);
-      dy = le_buffer_displacement(ib);
+      dy = le_buffer_displacement(ib, t);
       dy = fmod(dy, L(Y));
       jdy = floor(dy);
       fr  = dy - jdy;
@@ -639,6 +645,7 @@ static void phi_leesedwards_parallel() {
   int n, n1, n2;
   double dy;               /* Displacement for current ic->ib pair */
   double fr;               /* Fractional displacement */
+  double t;                /* Time */
   int jdy;                 /* Integral part of displacement */
 
   MPI_Comm le_comm = le_communicator();
@@ -660,6 +667,11 @@ static void phi_leesedwards_parallel() {
   buffer = (double *) malloc(n*sizeof(double));
   if (buffer == NULL) fatal("malloc(buffer) failed\n");
 
+  /* -1.0 as zero required for fisrt step; this is a 'feature'
+   * to ensure the regression tests stay te same */
+
+  t = 1.0*get_step() - 1.0;
+
   /* One round of communication for each buffer plane */
 
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
@@ -669,7 +681,7 @@ static void phi_leesedwards_parallel() {
 
     /* Work out the displacement-dependent quantities */
 
-    dy = le_buffer_displacement(ib);
+    dy = le_buffer_displacement(ib, t);
     dy = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = dy - jdy;

@@ -23,7 +23,7 @@
 extern Site * site;
 extern MPI_Datatype DT_Site;
 
-static double      *LeesEdw_site;
+static double * LeesEdw_site;
 static void LE_update_buffers(void);
 static void le_update_parallel(void);
 
@@ -45,6 +45,7 @@ void LE_apply_LEBC(void) {
   double *f, *g;
   double rho, phi, ds[3][3], dsphi[3][3], udotc, jdotc, sdotq, sphidotq;
   double u[3], jphi[3], du[3], djphi[3];
+  double t;
   int ia, ib;
 
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
@@ -82,6 +83,8 @@ void LE_apply_LEBC(void) {
 	  2*(2*LE_N_VEL_XING+1)*nplane*xfac*sizeof(double));
   }
 
+  t = 1.0*get_step();
+
   /* Stage 2: use Ronojoy's scheme to update fs and gs */
 
   for (plane = 0; plane < nplane; plane++) {
@@ -90,12 +93,12 @@ void LE_apply_LEBC(void) {
       /* Start with plane below Lees-Edwards BC */
 
       if (side == 0) {
-	LE_vel =-le_get_plane_uy();
+	LE_vel =-le_plane_uy(t);
 	LE_loc = le_plane_location(plane);
       }
       else {
 	/* Finally, deal with plane above LEBC */
-	LE_vel =+le_get_plane_uy();
+	LE_vel =+le_plane_uy(t);
 	LE_loc = le_plane_location(plane) + 1;
       }
 
@@ -272,6 +275,7 @@ void LE_update_buffers() {
   int    integ, LE_loc, p;
   int    disp_j1,disp_j2;
   double displ, LE_frac;
+  double t;
 
   nplane = le_get_nplane_local();
   if (nplane == 0) return;
@@ -284,6 +288,8 @@ void LE_update_buffers() {
     get_N_local(nlocal);
     nplane = le_get_nplane_local();
 
+    t = 1.0*get_step();
+
     yfac  =  nlocal[Z]+2*nhalo_;
     xfac  = (nlocal[Y]+2*nhalo_) * (nlocal[Z]+2*nhalo_);
     zfac2 = LE_N_VEL_XING * 2;  /* final x2 because fs and gs as well! */
@@ -294,9 +300,10 @@ void LE_update_buffers() {
  
       LE_loc  = le_plane_location(n);
 
-      displ = fmod(le_get_plane_uy()*get_step(), L(Y));
+      displ = fmod(le_buffer_displacement(nhalo_, t), L(Y));
       integ = floor(displ);
       LE_frac = 1.0 - (displ - integ);
+      info("***** step %d displacemant: %f\n", get_step(), displ); 
 
       /* Plane below (going down): +ve displacement */
       /* site_buff[i] = frac*site[i+integ] + (1-frac)*site[i+(integ+1)] */
@@ -384,6 +391,7 @@ static void le_update_parallel() {
   int xfac, yfac, xfac2, yfac2, zfac2;
   int LE_loc, integ;
   double LE_frac, displ;
+  double t;
 
   int  send[2], recv[2];
 
@@ -398,6 +406,8 @@ static void le_update_parallel() {
   get_N_local(nlocal);
   get_N_offset(offset);
   nplane = le_get_nplane_local();
+
+  t = 1.0*get_step();
 
   yfac = nlocal[Z]+2*nhalo_;
   xfac = (nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
@@ -424,7 +434,7 @@ static void le_update_parallel() {
 
     LE_loc  = le_plane_location(n);
 
-    displ = fmod(le_get_plane_uy()*get_step(), L(Y));
+    displ = fmod(le_buffer_displacement(nhalo_, t), L(Y));
     integ = floor(displ);
     LE_frac = 1.0 - (displ - integ);
 

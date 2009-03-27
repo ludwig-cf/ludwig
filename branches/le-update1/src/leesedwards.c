@@ -6,7 +6,7 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id: leesedwards.c,v 1.12.4.5 2009-03-25 18:11:35 kevin Exp $
+ *  $Id: leesedwards.c,v 1.12.4.6 2009-03-27 16:35:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -67,12 +67,24 @@ void le_init() {
 
   int n;
   int ntotal;
+  int period;
+
+  /* initialise the state from input */
 
   n = RUN_get_int_parameter("N_LE_plane", &ntotal);
   if (n != 0) nplane_total_ = ntotal;
 
   n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
+
+  n = RUN_get_int_parameter("LE_oscillation_period", &period);
+
+  if (n == 1 && period > 0) {
+    le_type_ = OSCILLATORY;
+    le_params_.omega = 2.0*4.0*atan(1.0)/period;
+  }
+
   initialised_ = 1;
+
 
   if (le_get_nplane_total() != 0) {
 
@@ -90,10 +102,16 @@ void le_init() {
     for (n = 0; n < ntotal; n++) {
       info("LE plane %d is at x = %d with speed %f\n", n+1,
 	   (int)(le_params_.dx_min + n*le_params_.dx_sep),
-	   le_get_plane_uy());
+	   le_plane_uy_max());
     }
 
-    info("Overall shear rate = %f\n", le_shear_rate());
+    if (le_type_ == LINEAR) {
+      info("Overall shear rate = %f\n", le_shear_rate());
+    }
+    else {
+      info("Oscillation period: %d time steps\n", period);
+      info("Maximum shear rate = %f\n", le_shear_rate());
+    }
   }
 
   le_checks();
@@ -319,6 +337,8 @@ static void le_checks(void) {
  *  Return the velocity expected for steady shear profile at
  *  position x (dependent on x-direction only). Takes a local index.
  *
+ *  Should do something sensible for oscillatory shear.
+ *
  *****************************************************************************/
 
 double le_get_steady_uy(int ic) {
@@ -328,6 +348,7 @@ double le_get_steady_uy(int ic) {
   double xglobal, uy;
 
   assert(initialised_);
+  assert(le_type_ == LINEAR);
   get_N_offset(offset);
 
   /* The shear profile is linear, so the local velocity is just a
@@ -338,7 +359,7 @@ double le_get_steady_uy(int ic) {
   xglobal = offset[X] + (double) ic - 0.5;
   nplane = (int) ((le_params_.dx_min + xglobal)/le_params_.dx_sep);
 
-  uy = xglobal*le_shear_rate() - le_get_plane_uy()*nplane;
+  uy = xglobal*le_shear_rate() - le_plane_uy_max()*nplane;
  
   return uy;
 }
@@ -363,6 +384,7 @@ double le_get_block_uy(int ic) {
   double xh, uy;
 
   assert(initialised_);
+  assert(le_type_ == LINEAR);
   get_N_offset(offset);
 
   /* So, just count the number of blocks from the centre L(X)/2
@@ -375,7 +397,7 @@ double le_get_block_uy(int ic) {
   else {
     n = (-0.5 + xh/le_params_.dx_sep);
   }
-  uy = le_get_plane_uy()*n;
+  uy = le_plane_uy_max()*n;
 
   return uy;
 }
@@ -408,20 +430,31 @@ int le_get_nplane_total() {
 
 /*****************************************************************************
  *
- *  le_get_plane_uy
+ *  le_plane_uy
+ *
+ *  Return the current plane velocity for time t.
  *
  *****************************************************************************/
 
-double le_get_plane_uy() {
+double le_plane_uy(double t) {
 
   double uy;
 
-  if (le_type_ == LINEAR) uy = le_params_.uy_plane;
-  if (le_type_ == OSCILLATORY) {
-    /* The -1 is for backwards compatability... */
-    double t = get_step() - 1.0;
-    uy = le_params_.uy_plane*cos(le_params_.omega*t);
-  }
+  uy = le_params_.uy_plane;
+  if (le_type_ == OSCILLATORY) uy *= cos(le_params_.omega*t);
+
+  return uy;
+}
+
+/*****************************************************************************
+ *
+ *  le_plane_uy_max
+ *
+ *  Return the maximum plane velocity.
+ *
+ *****************************************************************************/
+
+double le_plane_uy_max() {
 
   return le_params_.uy_plane;
 }
@@ -510,26 +543,25 @@ int le_index_buffer_to_real(int ib) {
  *
  *  le_buffer_displacement
  *
- *  Return the current displacement dy = du_y t for the buffer plane
- *  with x location ib.
+ *  Return the current displacement
+ *
+ *    dy = u_y t                     in the linear case
+ *    dy = (u_y/omega) sin(omega t)  in the oscillatory case
+ *
+ *  for the buffer planewith x location ib.
  *
  *****************************************************************************/
 
-double le_buffer_displacement(int ib) {
+double le_buffer_displacement(int ib, double t) {
 
   double dy = 0.0;
-
-  /* The minus one is to ensure the regression test doesn't fail. The
-   * displacement oringally updated between the phi and f_i
-   * transformations */
-  double dt = get_step() - 1.0;
 
   assert(initialised_);
   assert(ib >= 0 && ib < le_get_nxbuffer());
 
-  if (le_type_ == LINEAR) dy = dt*le_get_plane_uy()*le_params_.buffer_duy[ib];
+  if (le_type_ == LINEAR) dy = t*le_plane_uy_max()*le_params_.buffer_duy[ib];
   if (le_type_ == OSCILLATORY) {
-    dy = le_params_.uy_plane*sin(le_params_.omega*dt)/le_params_.omega;
+    dy = le_params_.uy_plane*sin(le_params_.omega*t)/le_params_.omega;
   }
 
   return dy;
@@ -595,13 +627,13 @@ void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
  *
  *  le_shear_rate
  *
- *  Return the steady shear rate.
+ *  Return the maximum steady shear rate.
  *
  *****************************************************************************/
 
 double le_shear_rate() {
 
-  return (le_get_plane_uy()*nplane_total_/L(X));
+  return (le_plane_uy_max()*nplane_total_/L(X));
 }
 
 /*****************************************************************************
