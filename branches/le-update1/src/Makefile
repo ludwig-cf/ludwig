@@ -41,7 +41,7 @@ OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
       physics.o active.o brownian.o cio.o cmd.o ccomms.o \
       colloids.o bbl.o build.o communicate.o coords.o control.o \
       eigen3.o ewald.o free_energy.o interaction.o io_harness.o\
-      potential.o \
+      model_le.o potential.o \
       phi.o phi_cahn_hilliard.o phi_force.o phi_gradients.o phi_stats.o \
       lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
       site_map.o subgrid.o stats_turbulent.o \
