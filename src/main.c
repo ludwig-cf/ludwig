@@ -70,7 +70,7 @@ int main( int argc, char **argv )
 
   ran_init();
   RAND_init_fluctuations();
-  LE_init();
+  le_init();
 
   MODEL_init();
   wall_init();
@@ -93,6 +93,7 @@ int main( int argc, char **argv )
 
   TEST_statistics();
   TEST_momentum();
+  phi_stats_print_stats();
 
   /* Main time stepping loop */
 
@@ -196,6 +197,7 @@ int main( int argc, char **argv )
     io_write(filename, io_info_phi);
   }
 
+  /* print_free_energy_profile();*/
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 
@@ -248,20 +250,20 @@ void print_shear_profile() {
 int print_free_energy_profile(void) {
 
   int index;
-  int ic, jc = 1, kc = 1;
+  int ic = 1, jc = 1, kc;
   int N[ND];
   double e;
 
   info("Free energy density profile\n\n");
   get_N_local(N);
 
-  for (ic = 1; ic <= N[X]; ic++) {
+  for (kc = 1; kc <= N[Z]; kc++) {
 
     index = get_site_index(ic, jc, kc);
 
     e = free_energy_density(index);
 
-    printf("%4d %10.8f\n", ic, e);
+    printf("%4d %10.8f\n", kc, e);
   }
 
   return 0;
