@@ -303,7 +303,6 @@ void LE_update_buffers() {
       displ = fmod(le_buffer_displacement(nhalo_, t), L(Y));
       integ = floor(displ);
       LE_frac = 1.0 - (displ - integ);
-      info("***** step %d displacemant: %f\n", get_step(), displ); 
 
       /* Plane below (going down): +ve displacement */
       /* site_buff[i] = frac*site[i+integ] + (1-frac)*site[i+(integ+1)] */
