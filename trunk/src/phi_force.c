@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.2 2008-08-24 16:58:10 kevin Exp $
+ *  $Id: phi_force.c,v 1.3 2009-03-27 17:09:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -243,7 +243,7 @@ static void phi_force_calculation_fluid_nvel() {
 
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
-  assert(le_get_nplane() == 0);
+  assert(le_get_nplane_total() == 0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {

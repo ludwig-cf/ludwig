@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.4 2009-02-04 11:20:18 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.5 2009-03-27 17:09:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -145,7 +145,7 @@ static void phi_gradients_with_solid() {
 
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
-  assert(le_get_nplane() == 0);
+  assert(le_get_nplane_total() == 0);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -488,7 +488,7 @@ static void phi_gradients_leesedwards() {
 
   get_N_local(nlocal);
 
-  for (n = 0; n < le_get_nplane(); n++) {
+  for (n = 0; n < le_get_nplane_local(); n++) {
 
     ic = le_plane_location(n);
 

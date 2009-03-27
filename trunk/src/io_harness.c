@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.4 2008-12-03 20:33:49 kevin Exp $
+ *  $Id: io_harness.c,v 1.5 2009-03-27 17:09:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -654,7 +654,7 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
     fprintf(fp_meta, "Lees-Edwards planes:             %d\n",
 	    le_get_nplane_total());
     fprintf(fp_meta, "Lees-Edwards plane speed         %16.14f\n",
-	    le_get_plane_uy());
+	    le_plane_uy_max());
     fprintf(fp_meta, "Number of I/O groups (files):    %d\n", nx*ny*nz);
     fprintf(fp_meta, "I/O communicator topology:       %d %d %d\n",
 	    nx, ny, nz);
