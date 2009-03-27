@@ -92,6 +92,13 @@ temperature 0.00002133333
 #  phi_initialisation     spinodal or block [spinodal] 
 #  mobility               Order parameter mobility M
 #
+#  Under development:
+#
+#  free_energy sman_surfactant    Ternary surfactant model
+#  W                              Free energy parameter
+#  kT                             Free energy parameter
+#  epsilon                        Free energy parameter
+#
 ###############################################################################
 #
 #  Surfactant free energy; set
@@ -270,11 +277,17 @@ n_io_nodes 8
 #  LE_init_profile  set the initial velocity profile to be consistent with
 #                   desired shear rate. (Only valid at t = 0). [0|1]
 #
+#  LE_oscillation_period
+#                   Integer > 1, switches on u = u_0 cos(2\pi t/T) where
+#                   u_0 is maximum plane velocity set via LE_plane_vel,
+#                   and T is the oscillation period
+#
 ###############################################################################
 
 #N_LE_plane 2
 #LE_plane_vel 0.008
 #LE_init_profile 1
+#LE_oscillation_period 0
 
 ###############################################################################
 #

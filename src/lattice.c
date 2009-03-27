@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.11 2008-12-04 17:32:09 kevin Exp $
+ *  $Id: lattice.c,v 1.12 2009-03-27 17:09:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,6 +24,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
+#include "control.h"
 #include "io_harness.h"
 #include "lattice.h"
 
@@ -487,6 +488,7 @@ void hydrodynamics_leesedwards_transformation() {
 
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
+  double t;      /* Time */
   int jdy;       /* Integral part of displacement */
   int j1, j2;    /* j values in real system to interpolate between */
 
@@ -500,10 +502,12 @@ void hydrodynamics_leesedwards_transformation() {
     get_N_local(nlocal);
     ib0 = nlocal[X] + nhalo_ + 1;
 
+    t = 1.0*get_step();
+
     for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
       ic = le_index_buffer_to_real(ib);
-      dy = le_buffer_displacement(ib);
+      dy = le_buffer_displacement(ib, t);
       dy = fmod(dy, L(Y));
       jdy = floor(dy);
       fr  = dy - jdy;
@@ -547,6 +551,7 @@ static void hydrodynamics_leesedwards_parallel() {
   int n, n1, n2;
   double dy;               /* Displacement for current ic->ib pair */
   double fr;               /* Fractional displacement */
+  double t;                /* time */
   int jdy;                 /* Integral part of displacement */
   int ia;
 
@@ -569,6 +574,8 @@ static void hydrodynamics_leesedwards_parallel() {
   buffer = (struct vector *) malloc(n*sizeof(struct vector));
   if (buffer == NULL) fatal("hydrodynamics: malloc(le buffer) failed\n");
 
+  t = 1.0*get_step();
+
   /* One round of communication for each buffer plane */
 
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
@@ -578,7 +585,7 @@ static void hydrodynamics_leesedwards_parallel() {
 
     /* Work out the displacement-dependent quantities */
 
-    dy = le_buffer_displacement(ib);
+    dy = le_buffer_displacement(ib, t);
     dy = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = dy - jdy;
