@@ -35,6 +35,7 @@ double rr,rr_old;
 int numuc;
 double numhftwist;
 double threshold;
+double noise_strength;
 
 float bodyforce;
 

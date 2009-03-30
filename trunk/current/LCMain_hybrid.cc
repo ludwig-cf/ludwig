@@ -158,19 +158,30 @@ int main(int argc, char** argv)
   logFile << pe_cartesian_size_[1] << "\t\t# y proc decomposition" << endl;
   logFile << pe_cartesian_size_[2] << "\t\t# z proc decomposition" << endl;
   logFile << io_ngroups_ << "\t\t# number io groups (files)" << endl;
+  logFile << noise_strength << "\t\t# noise strength" << endl;
 
    logFile.close();
 
   int n,graphstp,improv;
-  double ****tmp;
-
   int i,j,k;
+  int seed;
+  double ****tmp;
+  double noise_strength=0.00001;
+
 
   initialize();
 
 #ifdef PARALLEL
     MPI_Barrier(MPI_COMM_WORLD);
     t0 = MPI_Wtime();
+#endif
+
+    seed=1;
+    srand48(seed);
+
+#ifdef PARALLEL
+    MPI_Comm_rank(MPI_COMM_WORLD, &seed);
+    srand48(seed);
 #endif
 
 
@@ -269,6 +280,14 @@ int main(int argc, char** argv)
       for (j=jy1; j<jy2; j++) {
 	  for (k=kz1; k<kz2; k++) {
 
+#if NOISE
+	    DEHxx[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    DEHxy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    DEHxz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    DEHyy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    DEHyz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+#endif
+
 	  Qxxnew[i][j][k]=Qxxold[i][j][k]+dt*(DEHxx[i][j][k]);
 	  Qxynew[i][j][k]=Qxyold[i][j][k]+dt*(DEHxy[i][j][k]);
 	  Qxznew[i][j][k]=Qxzold[i][j][k]+dt*(DEHxz[i][j][k]);
@@ -308,6 +327,14 @@ int main(int argc, char** argv)
       for (i=ix1; i<ix2; i++) {
 	 for (j=jy1; j<jy2; j++) {
 	  for (k=kz1; k<kz2; k++) {
+
+#if NOISE
+	    DEHxx[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    DEHxy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    DEHxz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    DEHyy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    DEHyz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+#endif
 
 	    Qxxnew[i][j][k]=Qxxold[i][j][k]+0.5*dt*(DEHxx[i][j][k]+
 			  DEHxxold[i][j][k]);
