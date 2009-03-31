@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.5 2008-12-03 20:41:13 kevin Exp $
+ *  $Id: phi_stats.c,v 1.6 2009-03-31 10:20:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -109,7 +109,6 @@ void phi_stats_print_stats() {
   double   phi0, phi1;
   double * phi_local;
   double * phi_total;
-  MPI_Comm comm = cart_comm();
 
   phi_local = (double *) malloc(5*nop_*sizeof(double));
   phi_total = (double *) malloc(5*nop_*sizeof(double));
@@ -147,11 +146,12 @@ void phi_stats_print_stats() {
     }
   }
 
-  MPI_Reduce(phi_local, phi_total, 3*nop_, MPI_DOUBLE, MPI_SUM, 0, comm);
+  MPI_Reduce(phi_local, phi_total, 3*nop_, MPI_DOUBLE, MPI_SUM, 0,
+	     MPI_COMM_WORLD);
   MPI_Reduce(phi_local + 3*nop_, phi_total + 3*nop_, nop_, MPI_DOUBLE,
-	     MPI_MIN, 0, comm);
+	     MPI_MIN, 0, MPI_COMM_WORLD);
   MPI_Reduce(phi_local + 4*nop_, phi_total + 4*nop_, nop_, MPI_DOUBLE,
-	     MPI_MAX, 0, comm);
+	     MPI_MAX, 0, MPI_COMM_WORLD);
 
   /* Mean and variance */
 
@@ -167,7 +167,7 @@ void phi_stats_print_stats() {
       info("[psi]");
     }
 
-    info("[%14.7e%14.7e%14.7e %14.7e%14.7e ]\n", phi_total[1*nop_ + n],
+    info(" %14.7e %14.7e%14.7e %14.7e%14.7e\n", phi_total[1*nop_ + n],
 	 phi0, phi1, phi_total[3*nop_ + n], phi_total[4*nop_ + n]);
   }
 

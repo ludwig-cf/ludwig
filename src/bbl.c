@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.7 2008-11-10 17:44:00 kevin Exp $
+ *  $Id: bbl.c,v 1.8 2009-03-31 10:20:13 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -693,7 +693,7 @@ void bbl_surface_stress() {
     }
   }
 
-  MPI_Reduce(send, recv, 9, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+  MPI_Reduce(send, recv, 9, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
