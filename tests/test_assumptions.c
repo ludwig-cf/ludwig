@@ -4,7 +4,7 @@
  *
  *  Test basic model assumptions, portability issues.
  *
- *  $Id: test_assumptions.c,v 1.4 2008-11-04 16:47:56 kevin Exp $
+ *  $Id: test_assumptions.c,v 1.5 2009-04-01 08:33:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -48,6 +48,9 @@ int main(int argc, char ** argv) {
   printf("Checking sizeof(double) is 8 bytes... ");
   assert(sizeof(double) == 8);
   printf("yes\n");
+
+  printf("Checking sizeof(void *) ...\n");
+  printf("%d\n", sizeof(void *));
 
   printf("Checking FILENAME_MAX >= 128 characters ... ");
   assert(FILENAME_MAX >= 128);
