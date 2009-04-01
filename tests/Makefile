@@ -45,9 +45,10 @@ LINK    = $(CC) $(CLINK)
 #------------------------------------------------------------------------------
 
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
-              test_io.c test_runtime.c test_random.c \
-              test_coords.c test_model.c test_halo.c test_prop.c \
-              test_site_map.c # requires lees edwards  test_phi.c
+              test_runtime.c test_random.c \
+              test_coords.c test_io.c test_prop.c \
+              test_model.c test_halo.c test_site_map.c \
+	      test_phi.c
 
 TESTS = ${TESTSOURCES:.c=}
 
@@ -57,16 +58,16 @@ TEST_RUNTIME_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o
 TEST_RANDOM_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/ran.o
 TEST_COORDS_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o
 TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
-		$(SRC)/io_harness.o
+		$(SRC)/io_harness.o $(SRC)/util.o $(SRC)/leesedwards.o \
+		$(SRC)/control.o
 TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(SRC)/model.o $(SRC)/control.o \
-		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/ran.o $(SRC)/timer.o \
-                $(SRC)/io_harness.o
+		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/timer.o \
+                $(SRC)/io_harness.o $(SRC)/util.o $(SRC)/leesedwards.o
 TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
 TEST_EWALD_OBJ  = tests.o $(SRC)/pe.o $(SRC)/coords.o $(SRC)/colloids.o \
                   $(SRC)/ewald.o
 TEST_SITE_MAP_OBJ = $(TEST_IO_OBJ) $(SRC)/site_map.o
-TEST_PHI_OBJ      = $(TEST_MODEL_OBJ) $(SRC)/io_harness.o $(SRC)/site_map.o \
-		$(SRC)/phi.o
+TEST_PHI_OBJ      = $(TEST_MODEL_OBJ) $(SRC)/site_map.o $(SRC)/phi.o
 
 #------------------------------------------------------------------------------
 #  Rules
