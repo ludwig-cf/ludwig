@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.8 2009-03-31 10:20:13 kevin Exp $
+ *  $Id: bbl.c,v 1.9 2009-04-09 17:07:12 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -681,8 +681,6 @@ double bbl_order_parameter_deficit() {
 void bbl_surface_stress() {
 
   double rv;
-
-#ifdef _MPI_
   double send[9];
   double recv[9];
   int    ia, ib;
@@ -700,7 +698,6 @@ void bbl_surface_stress() {
       stress_[ia][ib] = recv[ia*3+ib];
     }
   }
-#endif
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
