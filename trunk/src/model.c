@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.11 2009-04-09 14:53:29 kevin Exp $
+ *  $Id: model.c,v 1.12 2009-04-09 15:54:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -350,13 +350,18 @@ void finish_site() {
   MPI_Type_free(&plane_yz_full_);
 
   for (n = 0; n < 2; n++) {
-    MPI_Type_free(plane_xy_ + n);
-    MPI_Type_free(plane_xz_ + n);
-    MPI_Type_free(plane_yz_ + n);
+    MPI_Type_free(plane_xy_reduced_ + n);
+    MPI_Type_free(plane_xz_reduced_ + n);
+    MPI_Type_free(plane_yz_reduced_ + n);
     MPI_Type_free(site_x_ + n);
     MPI_Type_free(site_y_ + n);
     MPI_Type_free(site_z_ + n);
+    plane_xy_[n] = MPI_DATATYPE_NULL;
+    plane_xz_[n] = MPI_DATATYPE_NULL;
+    plane_yz_[n] = MPI_DATATYPE_NULL;
   }
+
+  initialised_ = 0;
 
   return;
 }
