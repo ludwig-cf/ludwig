@@ -5,7 +5,7 @@
  *  This is a more rigourous test of the halo swap code for the
  *  distributions than appears in test model.
  *
- *  $Id: test_halo.c,v 1.6 2008-08-26 09:09:27 kevin Exp $
+ *  $Id: test_halo.c,v 1.7 2009-04-09 14:54:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -47,84 +47,86 @@ int main(int argc, char ** argv) {
   coords_init();
   init_site();
 
-  if (use_reduced_halos()) {
-    info("Using reduced halos.\n");
+  xfwd = calloc(NVEL, sizeof(int));
+  xbwd = calloc(NVEL, sizeof(int));
+  yfwd = calloc(NVEL, sizeof(int));
+  ybwd = calloc(NVEL, sizeof(int));
+  zfwd = calloc(NVEL, sizeof(int));
+  zbwd = calloc(NVEL, sizeof(int));
     
-    xfwd = calloc(NVEL, sizeof(int));
-    xbwd = calloc(NVEL, sizeof(int));
-    yfwd = calloc(NVEL, sizeof(int));
-    ybwd = calloc(NVEL, sizeof(int));
-    zfwd = calloc(NVEL, sizeof(int));
-    zbwd = calloc(NVEL, sizeof(int));
-    
-    for(i=0; i<xcountcv; i++) {
-      for(j=0; j<xdisp_fwd_cv[i]; j++) {
-	for(k=0; k<xblocklens_cv[i]; k++) {
-	  xfwd[xdisp_fwd_cv[i]+k] = 1;
-	}
-      }
+  for (i = 0; i < CVXBLOCK; i++) {
+    for (k = 0; k < xblocklen_cv[i]; k++) {
+      xfwd[xdisp_fwd_cv[i]+k] = 1;
+      xbwd[xdisp_bwd_cv[i]+k] = 1;
     }
-    
-    for(i=0; i<xcountcv; i++) {
-      for(j=0; j<xdisp_bwd_cv[i]; j++) {
-	for(k=0; k<xblocklens_cv[i]; k++) {
-	  xbwd[xdisp_bwd_cv[i]+k] = 1;
-	}
-      }
-    }
-
-    for(i=0; i<ycountcv; i++) {
-      for(j=0; j<ydisp_fwd_cv[i]; j++) {
-	for(k=0; k<yblocklens_cv[i]; k++) {
-	  yfwd[ydisp_fwd_cv[i]+k] = 1;
-	}
-      }
-    }
-
-    for(i=0; i<ycountcv; i++) {
-      for(j=0; j<ydisp_bwd_cv[i]; j++) {
-	for(k=0; k<yblocklens_cv[i]; k++) {
-	  ybwd[ydisp_bwd_cv[i]+k] = 1;
-	}
-      }
-    }
-
-    for(i=0; i<zcountcv; i++) {
-      for(j=0; j<zdisp_fwd_cv[i]; j++) {
-	for(k=0; k<zblocklens_cv[i]; k++) {
-	  zfwd[zdisp_fwd_cv[i]+k] = 1;
-	}
-      }
-    }
-
-    for(i=0; i<zcountcv; i++) {
-      for(j=0; j<zdisp_bwd_cv[i]; j++) {
-	for(k=0; k<zblocklens_cv[i]; k++) {
-	  zbwd[zdisp_bwd_cv[i]+k] = 1;
-	}
-      }
-    }
-  } else {
-    info("Using full halos \n");
   }
 
+  for (i = 0; i < CVYBLOCK; i++) {
+    for (k = 0; k < yblocklen_cv[i]; k++) {
+      yfwd[ydisp_fwd_cv[i]+k] = 1;
+      ybwd[ydisp_bwd_cv[i]+k] = 1;
+    }
+  }
+
+  for (i = 0; i < CVZBLOCK; i++) {
+    for (k = 0; k < zblocklen_cv[i]; k++) {
+      zfwd[zdisp_fwd_cv[i]+k] = 1;
+      zbwd[zdisp_bwd_cv[i]+k] = 1;
+    }
+  }
 
   info("The halo width nhalo_ = %d\n", nhalo_);
-  info("Test for null leakage...");
+  info("Test for null leakage...\n");
+
+  distribution_halo_set_complete();
+  info("Full halo...");
   test_halo_null();
   info("ok\n");
 
-  info("Testing x-direction swap...");
+  info("Reduced halo...");
+  distribution_halo_set_reduced();
+  test_halo_null();
+  info("ok\n");
+
+
+  info("Testing x-direction swap...\n");
+
+  distribution_halo_set_complete();
+  info("Full halo...");
   test_halo(X);
   info("ok\n");
 
-  info("Testing y-direction swap...");
+  distribution_halo_set_reduced();
+  info("Reduced halo...");
+  test_halo(X);
+  info("ok\n");
+
+
+  info("Testing y-direction swap...\n");
+
+  distribution_halo_set_complete();
+  info("Full halo...");
   test_halo(Y);
   info("ok\n");
 
-  info("Testing z-direction swap...");
+  distribution_halo_set_reduced();
+  info("Reduced halo...");
+  test_halo(Y);
+  info("ok\n");
+
+
+  info("Testing z-direction swap...\n");
+
+  distribution_halo_set_complete();
+  info("Full halo...");
   test_halo(Z);
   info("ok\n");
+
+  distribution_halo_set_reduced();
+  info("Reduced halo...");
+  test_halo(Z);
+  info("ok\n");
+
   
   finish_site();
   pe_finalise();
@@ -154,7 +156,7 @@ void test_halo_null() {
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Comm_rank(comm, &rank);
 
-  /* Set entire distribution (all sites including halos) */
+  /* Set entire distribution (all sites including halos) to 1.0 */
 
   for (n[X] = 1 - nextra; n[X] <= n_local[X] + nextra; n[X]++) {
     for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
@@ -192,7 +194,7 @@ void test_halo_null() {
 
   halo_site();
 
-  /* Check everywhere in the interior */
+  /* Check everywhere in the interior still zero */
 
   for (n[X] = 1; n[X] <= n_local[X]; n[X]++) {
     for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
@@ -203,101 +205,10 @@ void test_halo_null() {
 	for (p = 0; p < NVEL; p++) {
 	  f_actual = get_f_at_site(index, p);
 	  g_actual = get_g_at_site(index, p);
-	  if (n[X] >= 1 && n[Y] >= 1 && n[Z] >= 1 &&
-	      n[X] <= n_local[X] && n[Y] <= n_local[Y] && n[Z] <= n_local[Z]) {
 
-	    /* everything should still be zero inside the lattice */
-	    test_assert(fabs(f_actual - 0.0) < TEST_DOUBLE_TOLERANCE);
-	  }
-	  else {
-	    if (!use_reduced_halos()) {
-	      /* everything should be zero on the halo */
-	      test_assert(fabs(f_actual - 0.0) < TEST_DOUBLE_TOLERANCE);
-	    }
-	    else {
-
-	      /* reduced: some velocities will be non-zero */
-	      if (n[X] == 0 && !on_corner(n[X], n[Y], n[Z], n_local[X]+1,
-					  n_local[Y]+1, n_local[Z]+1)) {
-		/* fwd */
-		if (fabs(f_actual-0.0) > TEST_DOUBLE_TOLERANCE) {
-		  /* it's a one, should it be? 
-		     NB: this means nothing got swapped for this vel */
-		  if (xfwd[p] > 0) { /* check that */
-		    printf("Error n[X]=%d, n[Y]=%d, n[Z]=%d, p=%d\n",
-			   n[X], n[Y], n[Z], p);
-		  }
-		}
-	      }
-
-	      if (n[X] > n_local[X] && !on_corner(n[X], n[Y], n[Z],
-			       n_local[X]+1, n_local[Y]+1, n_local[Z]+1)) {
-		/* bwd*/
-		if (fabs(f_actual-0.0) > TEST_DOUBLE_TOLERANCE) {
-		  /* it's a one, should it be? 
-		     NB: this means nothing got swapped for this vel */
-		  if (xbwd[p] > 0) { /* check that */
-		    printf("Error n[X]=%d, n[Y]=%d, n[Z]=%d, p=%d\n",
-			   n[X], n[Y], n[Z], p);
-		  }
-		}
-	      }
-	      
-	      if (n[Y] == 0 && !on_corner(n[X], n[Y], n[Z], n_local[X]+1,
-					  n_local[Y]+1, n_local[Z]+1)) {
-		/* fwd */
-		if (fabs(f_actual-0.0) > TEST_DOUBLE_TOLERANCE) {
-		  /* it's a one, should it be? 
-		     NB: this means nothing got swapped for this vel */
-		  if (yfwd[p] > 0) { /* check that */
-		    printf("Error n[X]=%d, n[Y]=%d, n[Z]=%d, p=%d\n",
-			   n[X], n[Y], n[Z], p);
-		  }
-		}
-	      }
-
-	      if (n[Y] > n_local[Y] && !on_corner(n[X], n[Y], n[Z],
-			   n_local[X]+1, n_local[Y]+1, n_local[Z]+1)) {
-		/* fwd */
-		if (fabs(f_actual-0.0) > TEST_DOUBLE_TOLERANCE) {
-		  /* it's a one, should it be? 
-		   NB: this means nothing got swapped for this vel */
-		  if (ybwd[p] > 0) { /* check that */
-		    printf("Error n[X]=%d, n[Y]=%d, n[Z]=%d, p=%d\n",
-			   n[X], n[Y], n[Z], p);
-		  }
-		}
-	      }
-	      
-	      if( n[Z] == 0 && !on_corner(n[X], n[Y], n[Z], n_local[X]+1,
-					  n_local[Y]+1, n_local[Z]+1)) {
-		/* fwd */
-		if (fabs(f_actual-0.0) > TEST_DOUBLE_TOLERANCE) {
-		  /* it's a one, should it be? 
-		   NB: this means nothing got swapped for this vel */
-		  if (zfwd[p] > 0) { /* check that */
-		    printf("Error n[X]=%d, n[Y]=%d, n[Z]=%d, p=%d\n",
-			   n[X], n[Y], n[Z], p);
-		  }
-		}
-	      }
-
-	      if (n[Z] > n_local[Z] && !on_corner(n[X], n[Y], n[Z],
-			     n_local[X]+1, n_local[Y]+1, n_local[Z]+1)) {
-		/* fwd */
-		if (fabs(f_actual-0.0) > TEST_DOUBLE_TOLERANCE) {
-		  /* it's a one, should it be? 
-		   NB: this means nothing got swapped for this vel */
-		  if (zbwd[p] > 0) { /* check that */
-		    printf("Error n[X]=%d, n[Y]=%d, n[Z]=%d, p=%d\n",
-			   n[X], n[Y], n[Z], p);
-		  }
-		}
-	      }
-
-	    }
-	    
-	  }
+	  /* everything should still be zero inside the lattice */
+	  test_assert(fabs(f_actual - 0.0) < TEST_DOUBLE_TOLERANCE);
+	  test_assert(fabs(g_actual - 0.0) < TEST_DOUBLE_TOLERANCE);
 	}
 
       }
@@ -319,7 +230,7 @@ void test_halo(int dim) {
 
   int n_local[3], n[3];
   int offset[3];
-  int nextra = nhalo_ - 1;
+  int nextra = nhalo_;
   int index, p, d;
   int * fwd;
   int * bwd;
@@ -353,14 +264,16 @@ void test_halo(int dim) {
 	index = get_site_index(n[X], n[Y], n[Z]);
 
 	for (p = 0; p < NVEL; p++) {
-	  set_f_at_site(index, p, 0.0);
+	  set_f_at_site(index, p, -1.0);
+	  set_g_at_site(index, p, -1.0);
 	}
 
       }
     }
   }
 
-  /* Check neighbours in the given direction */
+  /* Set the interior sites to get swapped with a value related to
+   * absolute position */
 
   for (n[X] = 1; n[X] <= n_local[X]; n[X]++) {
     for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
@@ -368,12 +281,13 @@ void test_halo(int dim) {
 
 	index = get_site_index(n[X], n[Y], n[Z]);
 
-	if (n[X] == 1 || n[X] == n_local[X] ||
-	    n[Y] == 1 || n[Y] == n_local[Y] ||
-	    n[Z] == 1 || n[Z] == n_local[Z]) {
+	if (n[X] <= nhalo_ || n[X] > n_local[X] - nhalo_ ||
+	    n[Y] <= nhalo_ || n[Y] > n_local[Y] - nhalo_ ||
+	    n[Z] <= nhalo_ || n[Z] > n_local[Z] - nhalo_) {
 
 	  for (p = 0; p < NVEL; p++) {
 	    set_f_at_site(index, p, offset[dim] + n[dim]);
+	    set_g_at_site(index, p, offset[dim] + n[dim]);
 	  }
 	}
 
@@ -386,6 +300,9 @@ void test_halo(int dim) {
   /* Check the results (all sites for distribution halo).
    * The halo regions should contain a copy of the above, while the
    * interior sites are unchanged */
+
+  /* Note the distribution halo swaps are always width 1, irrespective
+   * of nhalo_ */
 
   for (n[X] = 0; n[X] <= n_local[X] + 1; n[X]++) {
     for (n[Y] = 0; n[Y] <= n_local[Y] + 1; n[Y]++) {
@@ -402,24 +319,8 @@ void test_halo(int dim) {
 	    if (cart_coords(dim) == 0) f_expect = L(dim);
 
 	    for (p = 0; p < NVEL; p++) {
-	      if(!use_reduced_halos()) {
-
-		f_actual = get_f_at_site(index, p);
-		test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-
-	      }
-	      else {
-
-		if(fwd[p] > 0 && !on_corner(n[X], n[Y], n[Z], n_local[X]+1,
-					    n_local[Y]+1, n_local[Z]+1)) {
-		  f_actual = get_f_at_site(index, p);
-		  if (fabs(f_actual-f_expect) > TEST_DOUBLE_TOLERANCE) {
-		    printf("ERROR: dim = %d, fwd[%d]=%d, x=%d,y=%d,z=%d\n",
-			   dim, p, fwd[p], n[X], n[Y], n[Z]);
-		  }
-		  test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-		}
-	      }
+	      f_actual = get_f_at_site(index, p);
+	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
 	    }
 	  }
 
@@ -430,24 +331,12 @@ void test_halo(int dim) {
 	    if (cart_coords(dim) == cart_size(dim) - 1) f_expect = 1.0;
 
 	    for (p = 0; p < NVEL; p++) {
-	      if (!use_reduced_halos()) {
-		f_actual = get_f_at_site(index, p);
-		test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-	      }
-	      else {
-		if(bwd[p] > 0 && !on_corner(n[X], n[Y], n[Z], n_local[X]+1,
-					    n_local[Y]+1, n_local[Z]+1)) {
-		  f_actual = get_f_at_site(index, p);
-		  if (fabs(f_actual-f_expect) > TEST_DOUBLE_TOLERANCE) {
-		    printf("ERROR: dim = %d, bwd[%d]=%d, x=%d,y=%d,z=%d\n",
-			   dim, p, bwd[p], n[X], n[Y], n[Z]);
-		  }
-		  test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-		}
-	      }
+	      f_actual = get_f_at_site(index, p);
+	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
 	    }
 	  }
 	}
+	/* Next site */
       }
     }
   }
