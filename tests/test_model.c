@@ -33,7 +33,6 @@ int main(int argc, char ** argv) {
   double u[ND];
 
   pe_init(argc, argv);
-  init_control();
 
   for (p = 0; p < NVEL; p++) {
     xfwd[p] = 0;
@@ -349,6 +348,7 @@ int main(int argc, char ** argv) {
 
   finish_site();
   info("ok\n");
+  MPI_Barrier(MPI_COMM_WORLD);
 
   test_halo_swap();
   test_reduced_halo_swap();
@@ -369,24 +369,27 @@ int main(int argc, char ** argv) {
  *****************************************************************************/
 
 void test_halo_swap() {
+
   int i, j, k, p;
   int index, N[ND];
   double u[ND];
   double rho;
+
   /* Test the periodic/processor halo swap:
    * (1) load f[0] at each site with the index,
    * (2) swap
    * (3) check halos. */
 
   info("\nHalo swap (full distributions)...\n\n");
-  distribution_halo_set_complete();
 
   init_site();
+  distribution_halo_set_complete();
   get_N_local(N);
 
   for (i = 1; i <= N[X]; i++) {
     for (j = 1; j <= N[Y]; j++) {
       for (k = 1; k <= N[Z]; k++) {
+
 	index = get_site_index(i, j, k);
 
 	set_f_at_site(index, X, (double) (i));
@@ -456,10 +459,10 @@ void test_reduced_halo_swap() {
   int i, j, k, p;
 
   info("\nHalo swap (reduced)...\n\n");
-  distribution_halo_set_reduced();
 
   coords_init();
   init_site();
+  distribution_halo_set_reduced();
   get_N_local(N);
   
   /* Set everything which is NOT in a halo */
