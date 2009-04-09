@@ -1,0 +1,71 @@
+N_cycles 40
+#t_start 5
+#input_config config.out000005
+ghost_modes off
+size 64_64_64
+#grid 2_1_1
+#grid 4_1_1
+
+random_seed -7361237
+
+A -0.0625
+B 0.0625
+K 0.04
+C 0.0
+H 0.0
+temperature 0.01
+viscosity 0.1
+mobility 2.0
+#altvisc 0.01
+#noise 0.0
+
+colloid_a0       2.30
+colloid_ah       2.30
+colloid_vf       0.20
+colloid_r_lu_n   0.25
+colloid_r_lu_t   0.00
+colloid_r_lu_r   0.00
+colloid_r_ssph   0.25
+colloid_r_clus   0.00
+
+colloid_drop_in_p1 0.0004
+colloid_drop_in_p2 -2.0
+colloid_gravity 0.0_0.0_0.0
+
+wall_present 0
+wall_r_lu_n  0.7
+wall_sheer_uxmax 0.001
+wall_sheer_uymax 0.000
+wall_sheer_diff 0.0
+wall_sheer_period 0.0
+
+freq_statistics 4
+freq_measure 2000
+freq_config 5000000
+#freq_graphics 150
+
+output_format BINARY
+input_format  BINARY
+
+#output_config outconf_noLE
+#input_config outconf_noLE00500
+#n_io_nodes 1
+
+N_LE_plane 2
+LE_plane_vel 0.005
+#Lees_Edwards 16_0.005_0.0
+#Lees_Edwards 48_-0.005_0.0
+
+#Lees_Edwards 4_0.02_0.0
+#Lees_Edwards 12_0.02_0.0
+#Lees_Edwards 4_0.05_0.0
+#Lees_Edwards 14_-0.05_-2.0
+#Lees_Edwards 60_0.1_0.0
+#Lees_Edwards 40_0.05_0.0
+#Lees_Edwards 40_0.05_25.0
+
+#LE_interp_method linear
+#LE_interp_method cubic
+
+#graphics 1
+#input_site_data small-walls.sd
