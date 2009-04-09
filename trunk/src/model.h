@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.11 2008-08-24 16:12:44 kevin Exp $
+ *  $Id: model.h,v 1.12 2009-04-09 14:53:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -54,5 +54,8 @@ void   set_f_at_site(const int, const int, const double);
 void   set_g_at_site(const int, const int, const double);
 void   set_rho_u_at_site(const double, const double [], const int);
 void   get_momentum_at_site(const int, double[ND]);
+
+void distribution_halo_set_complete(void);
+void distribution_halo_set_reduced(void);
 
 #endif

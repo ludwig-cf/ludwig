@@ -4,7 +4,7 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.c,v 1.8 2008-08-25 18:13:55 kevin Exp $
+ *  $Id: d3q19.c,v 1.9 2009-04-09 14:53:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -57,6 +57,18 @@
  *  blocklens        reduced halo datatype blocklengths
  *  disp_fwd         reduced halo datatype displacements
  *  disp_bwd         reduced halo datatype displacements
+ *
+ *  Reduced halo swap information
+ *  CVXBLOCK         number of separate blocks to send in x-direction
+ *  CVYBLOCK         ditto                            ... y-direction
+ *  CVZBLOCK         ditto                            ... z-direction
+ *
+ *  For each direction there is then an array of ...
+ *
+ *  blocklen         block lengths
+ *  disp_fwd         displacements of block from start (forward direction)
+ *  disp_bwd         displacements of block from start (backward direction)
+ *
  *
  *****************************************************************************/
 
@@ -185,17 +197,17 @@ const double mi_[NVEL][NVEL] = {
 };
 
 
-const int xblocklens_cv[xcountcv] = {5};
-const int xdisp_fwd_cv[xcountcv] = {1};
-const int xdisp_bwd_cv[xcountcv] = {14};
+const int xblocklen_cv[CVXBLOCK] = {5};
+const int xdisp_fwd_cv[CVXBLOCK] = {1};
+const int xdisp_bwd_cv[CVXBLOCK] = {14};
 
-const int yblocklens_cv[ycountcv] = {1, 3, 1};
-const int ydisp_fwd_cv[ycountcv] = {1, 6, 14};
-const int ydisp_bwd_cv[ycountcv] = {5, 11, 18};
+const int yblocklen_cv[CVYBLOCK] = {1, 3, 1};
+const int ydisp_fwd_cv[CVYBLOCK] = {1, 6, 14};
+const int ydisp_bwd_cv[CVYBLOCK] = {5, 11, 18};
 
-const int zblocklens_cv[zcountcv] = {1, 1, 1, 1, 1};
-const int zdisp_fwd_cv[zcountcv] = {2, 6, 9, 11, 15};
-const int zdisp_bwd_cv[zcountcv] = {4, 8, 10, 13, 17};
+const int zblocklen_cv[CVZBLOCK] = {1, 1, 1, 1, 1};
+const int zdisp_fwd_cv[CVZBLOCK] = {2, 6, 9, 11, 15};
+const int zdisp_bwd_cv[CVZBLOCK] = {4, 8, 10, 13, 17};
 
 #endif
 

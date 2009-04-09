@@ -2,7 +2,7 @@
  *
  *  control.h
  *
- *  $Id: control.h,v 1.4 2008-09-20 15:35:14 kevin Exp $
+ *  $Id: control.h,v 1.5 2009-04-09 14:53:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,7 +22,6 @@ int  is_statistics_step(void);
 int  is_measurement_step(void);
 int  is_config_step(void);
 int  is_config_at_end(void);
-int  use_reduced_halos(void);
 
 int  is_phi_output_step(void);
 int  is_vel_output_step(void);
