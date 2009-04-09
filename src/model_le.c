@@ -42,7 +42,6 @@ void LE_apply_LEBC(void) {
   double  LE_vel;
   int     N[3];
 
-  double *f, *g;
   double rho, phi, ds[3][3], dsphi[3][3], udotc, jdotc, sdotq, sphidotq;
   double u[3], jphi[3], du[3], djphi[3];
   double t;
@@ -117,13 +116,10 @@ void LE_apply_LEBC(void) {
 	  /* M2ij -> M2ij + u_LE_i*M1j + u_LE_j*M1i + u_LE_i.u_LE_j*M0 */
 	  /* (where u_LE[X]=u_LE[Z]=0; u_LE[Y] = plane speed uy) */
 	  
-	  f = site[ind].f;
-	  g = site[ind].g;
-
 	  /* Compute 0th and 1st moments */
 
-	  rho = f[0];
-	  phi = g[0];
+	  rho = site[ind].f[0];
+	  phi = site[ind].g[0];
 
 	  for (ia = 0; ia < 3; ia++) {
 	    u[ia] = 0.0;
@@ -133,11 +129,11 @@ void LE_apply_LEBC(void) {
 	  }
 
 	  for (p = 1; p < NVEL; p++) {
-	    rho    += f[p];
-	    phi    += g[p];
+	    rho    += site[ind].f[p];
+	    phi    += site[ind].g[p];
 	    for (ia = 0; ia < 3; ia++) {
-	      u[ia] += f[p]*cv[p][ia];
-	      jphi[ia] += g[p]*cv[p][ia];
+	      u[ia] += site[ind].f[p]*cv[p][ia];
+	      jphi[ia] += site[ind].g[p]*cv[p][ia];
 	    }
 	  }
 
@@ -181,8 +177,8 @@ void LE_apply_LEBC(void) {
 
 	      /* For each velocity intersecting the LE plane (up, ie X+1) */
 	      if (cv[p][X] == 1) {
-		f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
-		g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
+		site[ind].f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
+		site[ind].g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
 	      }
 	    }
 	    /* Now consider the case when above the LE plane */
@@ -190,8 +186,8 @@ void LE_apply_LEBC(void) {
 
 	      /* For each velocity intersecting the LE plane (down, ie X-1) */
 	      if (cv[p][X] == -1) {
-		f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
-		g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
+		site[ind].f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
+		site[ind].g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
 	      }
 	    }
 	  }
