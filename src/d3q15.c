@@ -4,7 +4,7 @@
  *
  *  D3Q15 model definitions.
  *
- *  $Id: d3q15.c,v 1.7 2008-08-25 18:13:55 kevin Exp $
+ *  $Id: d3q15.c,v 1.8 2009-04-09 14:53:29 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -47,9 +47,16 @@
  *
  *  The eigenvectors are the rows of the matrix ma_[NVEL][NVEL].
  *
- *  blocklens        reduced halo datatype block lengths
- *  disp_fwd         reduced halo datatype displacements
- *  disp_bwd         reduced halo datatype displacements
+ *  Reduced halo swap information
+ *  CVXBLOCK         number of separate blocks to send in x-direction
+ *  CVYBLOCK         ditto                            ... y-direction
+ *  CVZBLOCK         ditto                            ... z-direction
+ *
+ *  For each direction there is then an array of ...
+ *
+ *  blocklen         block lengths
+ *  disp_fwd         displacements of block from start (forward direction)
+ *  disp_bwd         displacements of block from start (backward direction)
  *
  *****************************************************************************/
 
@@ -133,16 +140,16 @@ const double mi_[NVEL][NVEL] =
    { w3,-wa,-wa,-wa, wa, wb, wb, wa, wb, wa,-w3, wa, wa, wa,-wb}};
 
 
-const int xblocklens_cv[xcountcv] = {5};
-const int xdisp_fwd_cv[xcountcv] = {1};
-const int xdisp_bwd_cv[xcountcv] = {10};
+const int xblocklen_cv[CVXBLOCK] = {5};
+const int xdisp_fwd_cv[CVXBLOCK] = {1};
+const int xdisp_bwd_cv[CVXBLOCK] = {10};
 
-const int yblocklens_cv[ycountcv] = {2, 1, 2};
-const int ydisp_fwd_cv[ycountcv] = {1, 6, 10};
-const int ydisp_bwd_cv[ycountcv] = {4, 9, 13};
+const int yblocklen_cv[CVYBLOCK] = {2, 1, 2};
+const int ydisp_fwd_cv[CVYBLOCK] = {1, 6, 10};
+const int ydisp_bwd_cv[CVYBLOCK] = {4, 9, 13};
 
-const int zblocklens_cv[zcountcv] = {1, 1, 1, 1, 1};
-const int zdisp_fwd_cv[zcountcv] = {1, 4, 7, 10, 13};
-const int zdisp_bwd_cv[zcountcv] = {2, 5, 8, 11, 14};
+const int zblocklen_cv[CVZBLOCK] = {1, 1, 1, 1, 1};
+const int zdisp_fwd_cv[CVZBLOCK] = {1, 4, 7, 10, 13};
+const int zdisp_bwd_cv[CVZBLOCK] = {2, 5, 8, 11, 14};
 
 #endif

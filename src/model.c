@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.10 2008-08-24 18:02:28 kevin Exp $
+ *  $Id: model.c,v 1.11 2009-04-09 14:53:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -39,13 +39,27 @@ Site  * site;
 static int nsites_ = 0;
 static int initialised_ = 0;
 
-static MPI_Datatype DT_plane_XY;
-static MPI_Datatype DT_plane_XZ;
-static MPI_Datatype DT_plane_YZ;
-MPI_Datatype DT_Site; /* currently referenced in leesedwards */
-enum mpi_tags {TAG_FWD = 900, TAG_BWD}; 
+static MPI_Datatype plane_xy_full_;
+static MPI_Datatype plane_xz_full_;
+static MPI_Datatype plane_yz_full_;
+static MPI_Datatype plane_xy_reduced_[2];
+static MPI_Datatype plane_xz_reduced_[2];
+static MPI_Datatype plane_yz_reduced_[2];
+static MPI_Datatype plane_xy_[2];
+static MPI_Datatype plane_xz_[2];
+static MPI_Datatype plane_yz_[2];
+
+MPI_Datatype DT_Site; /* currently referenced in model_le.c */
+static MPI_Datatype site_x_[2];
+static MPI_Datatype site_y_[2];
+static MPI_Datatype site_z_[2];
 
 static void distribution_io_info_init(void);
+static void distribution_mpi_init(void);
+static void distribution_set_types(const int, MPI_Datatype *);
+static void distribution_set_blocks(const int, int *, const int, const int *);
+static void distribution_set_displacements(const int, MPI_Aint *, const int,
+					   const int *);
 static int distributions_read(FILE *, const int, const int, const int);
 static int distributions_write(FILE *, const int, const int, const int);
 
@@ -91,18 +105,226 @@ void init_site() {
   MPI_Type_contiguous(sizeof(Site), MPI_BYTE, &DT_Site);
   MPI_Type_commit(&DT_Site);
 
-  MPI_Type_vector(nx*ny, nhalolocal, nz, DT_Site, &DT_plane_XY);
-  MPI_Type_commit(&DT_plane_XY);
+  MPI_Type_vector(nx*ny, nhalolocal, nz, DT_Site, &plane_xy_full_);
+  MPI_Type_commit(&plane_xy_full_);
 
-  MPI_Type_vector(nx, nz*nhalolocal, ny*nz, DT_Site, &DT_plane_XZ);
-  MPI_Type_commit(&DT_plane_XZ);
+  MPI_Type_vector(nx, nz*nhalolocal, ny*nz, DT_Site, &plane_xz_full_);
+  MPI_Type_commit(&plane_xz_full_);
 
-  MPI_Type_vector(1, ny*nz*nhalolocal, 1, DT_Site, &DT_plane_YZ);
-  MPI_Type_commit(&DT_plane_YZ);
+  MPI_Type_vector(1, ny*nz*nhalolocal, 1, DT_Site, &plane_yz_full_);
+  MPI_Type_commit(&plane_yz_full_);
 
 
+  distribution_mpi_init();
   distribution_io_info_init();
   initialised_ = 1;
+
+  distribution_halo_set_complete();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_mpi_init
+ *
+ *  Commit the various datatypes required for halo swaps.
+ *
+ *****************************************************************************/
+
+static void distribution_mpi_init() {
+
+  int count;
+  int ndist = 2;
+  int nlocal[3];
+  int nx, ny, nz;
+  int * blocklen;
+  MPI_Aint * disp_fwd;
+  MPI_Aint * disp_bwd;
+  MPI_Datatype * types;
+
+  assert(ndist == 2);
+  assert(nhalo_ == 1);
+
+  get_N_local(nlocal);
+  nx = nlocal[X] + 2*nhalo_;
+  ny = nlocal[Y] + 2*nhalo_;
+  nz = nlocal[Z] + 2*nhalo_;
+
+  /* X direction */
+
+  count = ndist*CVXBLOCK + 2;
+
+  blocklen = (int *) malloc(count*sizeof(int));
+  disp_fwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
+  disp_bwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
+  types    = (MPI_Datatype *) malloc(count*sizeof(MPI_Datatype));
+
+  distribution_set_types(count, types);
+  distribution_set_blocks(count, blocklen, CVXBLOCK, xblocklen_cv);
+  distribution_set_displacements(count, disp_fwd, CVXBLOCK, xdisp_fwd_cv);
+  distribution_set_displacements(count, disp_bwd, CVXBLOCK, xdisp_bwd_cv);
+
+  MPI_Type_struct(count, blocklen, disp_fwd, types, &site_x_[FORWARD]);
+  MPI_Type_struct(count, blocklen, disp_bwd, types, &site_x_[BACKWARD]);
+  MPI_Type_commit(&site_x_[FORWARD]);
+  MPI_Type_commit(&site_x_[BACKWARD]);
+
+  MPI_Type_contiguous(ny*nz, site_x_[FORWARD], &plane_yz_reduced_[FORWARD]);
+  MPI_Type_contiguous(ny*nz, site_x_[BACKWARD], &plane_yz_reduced_[BACKWARD]);
+  MPI_Type_commit(&plane_yz_reduced_[FORWARD]);
+  MPI_Type_commit(&plane_yz_reduced_[BACKWARD]);
+
+  free(blocklen);
+  free(disp_fwd);
+  free(disp_bwd);
+  free(types);
+
+  /* Y direction */
+
+  count = ndist*CVYBLOCK + 2;
+
+  blocklen = (int *) malloc(count*sizeof(int));
+  disp_fwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
+  disp_bwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
+  types    = (MPI_Datatype *) malloc(count*sizeof(MPI_Datatype));
+
+  distribution_set_types(count, types);
+  distribution_set_blocks(count, blocklen, CVYBLOCK, yblocklen_cv);
+  distribution_set_displacements(count, disp_fwd, CVYBLOCK, ydisp_fwd_cv);
+  distribution_set_displacements(count, disp_bwd, CVYBLOCK, ydisp_bwd_cv);
+
+  MPI_Type_struct(count, blocklen, disp_fwd, types, &site_y_[FORWARD]);
+  MPI_Type_struct(count, blocklen, disp_bwd, types, &site_y_[BACKWARD]);
+  MPI_Type_commit(&site_y_[FORWARD]);
+  MPI_Type_commit(&site_y_[BACKWARD]);
+
+  MPI_Type_vector(nx, nz, ny*nz, site_y_[FORWARD],
+		  &plane_xz_reduced_[FORWARD]);
+  MPI_Type_vector(nx, nz, ny*nz, site_y_[BACKWARD],
+		  &plane_xz_reduced_[BACKWARD]);
+  MPI_Type_commit(&plane_xz_reduced_[FORWARD]);
+  MPI_Type_commit(&plane_xz_reduced_[BACKWARD]);
+
+  free(blocklen);
+  free(disp_fwd);
+  free(disp_bwd);
+  free(types);
+
+  /* Z direction */
+
+  count = ndist*CVZBLOCK + 2;
+
+  blocklen = (int *) malloc(count*sizeof(int));
+  disp_fwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
+  disp_bwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
+  types    = (MPI_Datatype *) malloc(count*sizeof(MPI_Datatype));
+
+  distribution_set_types(count, types);
+  distribution_set_blocks(count, blocklen, CVZBLOCK, zblocklen_cv);
+  distribution_set_displacements(count, disp_fwd, CVZBLOCK, zdisp_fwd_cv);
+  distribution_set_displacements(count, disp_bwd, CVZBLOCK, zdisp_bwd_cv);
+
+  MPI_Type_struct(count, blocklen, disp_fwd, types, &site_z_[FORWARD]);
+  MPI_Type_struct(count, blocklen, disp_bwd, types, &site_z_[BACKWARD]);
+  MPI_Type_commit(&site_z_[FORWARD]);
+  MPI_Type_commit(&site_z_[BACKWARD]);
+
+  MPI_Type_vector(nx*ny, 1, nz, site_z_[FORWARD], &plane_xy_reduced_[FORWARD]);
+  MPI_Type_vector(nx*ny, 1, nz, site_z_[BACKWARD],
+		  &plane_xy_reduced_[BACKWARD]);
+  MPI_Type_commit(&plane_xy_reduced_[FORWARD]);
+  MPI_Type_commit(&plane_xy_reduced_[BACKWARD]);
+
+  free(blocklen);
+  free(disp_fwd);
+  free(disp_bwd);
+  free(types);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_set_types
+ *
+ *  Set the type signature for reduced halo struct.
+ *
+ *****************************************************************************/
+
+static void distribution_set_types(const int ntype, MPI_Datatype * type) {
+
+  int n;
+
+  type[0] = MPI_LB;
+  for (n = 1; n < ntype - 1; n++) {
+    type[n] = MPI_DOUBLE;
+  }
+  type[ntype - 1] = MPI_UB;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_set_blocks
+ *
+ *  Set the blocklengths for the reduced halo struct.
+ *  This means 'expanding' the basic blocks for the current DdQn model
+ *  to the current number of distributions.
+ *
+ *****************************************************************************/
+
+static void distribution_set_blocks(const int nblock, int * block,
+				    const int nbasic,
+				    const int * basic_block){
+
+  int n, p;
+  const int ndist = 2;
+
+  assert(ndist == 2);
+
+  block[0] = 1; /* For MPI_LB */
+
+  for (n = 0; n < ndist; n++) {
+    for (p = 0; p < nbasic; p++) {
+      block[1 + n*nbasic + p] = basic_block[p];
+    }
+  }
+
+  block[nblock - 1] = 1; /* For MPI_UB */
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_set_displacements
+ *
+ *  Set the displacements for the reduced halo struct.
+ *  This must handle the number of distributions (currently f, g)
+ *
+ *****************************************************************************/
+
+static void distribution_set_displacements(const int ndisp,
+					   MPI_Aint * disp,
+					   const int nbasic,
+					   const int * disp_basic) {
+  int p;
+  MPI_Aint disp0, disp1;
+
+  MPI_Address(&site[0].f[0], &disp0);
+
+  disp[0] = 0; /* For MPI_LB */
+
+  for (p = 0; p < nbasic; p++) {
+    MPI_Address(&site[0].f[disp_basic[p]], &disp1);
+    disp[1 + p] = disp1 - disp0;
+    MPI_Address(&site[0].g[disp_basic[p]], &disp1);
+    disp[1 + nbasic + p] = disp1 - disp0;
+  }
+
+  disp[ndisp - 1] = sizeof(Site); /* For MPI_UB */
 
   return;
 }
@@ -117,13 +339,24 @@ void init_site() {
 
 void finish_site() {
 
+  int n;
+
   io_info_destroy(io_info_distribution_);
   free(site);
 
   MPI_Type_free(&DT_Site);
-  MPI_Type_free(&DT_plane_XY);
-  MPI_Type_free(&DT_plane_XZ);
-  MPI_Type_free(&DT_plane_YZ);
+  MPI_Type_free(&plane_xy_full_);
+  MPI_Type_free(&plane_xz_full_);
+  MPI_Type_free(&plane_yz_full_);
+
+  for (n = 0; n < 2; n++) {
+    MPI_Type_free(plane_xy_ + n);
+    MPI_Type_free(plane_xz_ + n);
+    MPI_Type_free(plane_yz_ + n);
+    MPI_Type_free(site_x_ + n);
+    MPI_Type_free(site_y_ + n);
+    MPI_Type_free(site_z_ + n);
+  }
 
   return;
 }
@@ -298,16 +531,15 @@ double get_g_at_site(const int index, const int p) {
 double get_rho_at_site(const int index) {
 
   double rho;
-  double * f;
-  int   p;
+  int    p;
 
   assert(index >= 0 || index < nsites_);
 
   rho = 0.0;
-  f = site[index].f;
 
-  for (p = 0; p < NVEL; p++)
-    rho += f[p];
+  for (p = 0; p < NVEL; p++) {
+    rho += site[index].f[p];
+  }
 
   return rho;
 }
@@ -322,17 +554,15 @@ double get_rho_at_site(const int index) {
 
 double get_phi_at_site(const int index) {
 
-  double   phi;
-  double * g;
-  int     p;
+  double phi;
+  int    p;
 
   assert(index >= 0 || index < nsites_);
 
   phi = 0.0;
-  g = site[index].g;
 
   for (p = 0; p < NVEL; p++) {
-    phi += g[p];
+    phi += site[index].g[p];
   }
 
   return phi;
@@ -348,8 +578,7 @@ double get_phi_at_site(const int index) {
 
 void get_momentum_at_site(const int index, double rhou[ND]) {
 
-  double  * f;
-  int       i, p;
+  int i, p;
 
   assert(index >= 0 || index < nsites_);
 
@@ -357,11 +586,9 @@ void get_momentum_at_site(const int index, double rhou[ND]) {
     rhou[i] = 0.0;
   }
 
-  f  = site[index].f;
-
   for (p = 0; p < NVEL; p++) {
     for (i = 0; i < ND; i++) {
-      rhou[i] += f[p]*cv[p][i];
+      rhou[i] += site[index].f[p]*cv[p][i];
     }
   }
 
@@ -383,8 +610,12 @@ void halo_site() {
   int ihalo, ireal;
   int N[3];
 
+  const int tagf = 900;
+  const int tagb = 901;
+
   MPI_Request request[4];
   MPI_Status status[4];
+  MPI_Comm comm = cart_comm();
 
   assert(initialised_);
   TIMER_start(TIMER_HALO_LATTICE);
@@ -408,19 +639,18 @@ void halo_site() {
     }
   }
   else {
-
     ihalo = get_site_index(N[X] + 1, 1 - nhalo_, 1 - nhalo_);
-    MPI_Irecv(&site[ihalo].f[0], 1, DT_plane_YZ,
-	      cart_neighb(FORWARD,X), TAG_BWD, cart_comm(), &request[0]);
+    MPI_Irecv(&site[ihalo].f[0], 1, plane_yz_[BACKWARD],
+	      cart_neighb(FORWARD,X), tagb, comm, &request[0]);
     ihalo = get_site_index(0, 1-nhalo_, 1-nhalo_);
-    MPI_Irecv(&site[ihalo].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
-	      TAG_FWD, cart_comm(), &request[1]);
+    MPI_Irecv(&site[ihalo].f[0], 1, plane_yz_[FORWARD],
+	      cart_neighb(BACKWARD,X), tagf, comm, &request[1]);
     ireal = get_site_index(1, 1-nhalo_, 1-nhalo_);
-    MPI_Issend(&site[ireal].f[0], 1, DT_plane_YZ, cart_neighb(BACKWARD,X),
-	       TAG_BWD, cart_comm(), &request[2]);
+    MPI_Issend(&site[ireal].f[0], 1, plane_yz_[BACKWARD],
+	       cart_neighb(BACKWARD,X), tagb, comm, &request[2]);
     ireal = get_site_index(N[X], 1-nhalo_, 1-nhalo_);
-    MPI_Issend(&site[ireal].f[0], 1, DT_plane_YZ, cart_neighb(FORWARD,X),
-	       TAG_FWD, cart_comm(), &request[3]);
+    MPI_Issend(&site[ireal].f[0], 1, plane_yz_[FORWARD],
+	       cart_neighb(FORWARD,X), tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
   }
   
@@ -442,17 +672,17 @@ void halo_site() {
   }
   else {
     ihalo = get_site_index(1-nhalo_, N[Y] + 1, 1-nhalo_);
-    MPI_Irecv(site[ihalo].f, 1, DT_plane_XZ,
-	      cart_neighb(FORWARD,Y), TAG_BWD, cart_comm(), &request[0]);
+    MPI_Irecv(site[ihalo].f, 1, plane_xz_[BACKWARD],
+	      cart_neighb(FORWARD,Y), tagb, comm, &request[0]);
     ihalo = get_site_index(1-nhalo_, 0, 1-nhalo_);
-    MPI_Irecv(site[ihalo].f, 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
-	      TAG_FWD, cart_comm(), &request[1]);
+    MPI_Irecv(site[ihalo].f, 1, plane_xz_[FORWARD], cart_neighb(BACKWARD,Y),
+	      tagf, comm, &request[1]);
     ireal = get_site_index(1-nhalo_, 1, 1-nhalo_);
-    MPI_Issend(site[ireal].f, 1, DT_plane_XZ, cart_neighb(BACKWARD,Y),
-	       TAG_BWD, cart_comm(), &request[2]);
+    MPI_Issend(site[ireal].f, 1, plane_xz_[BACKWARD], cart_neighb(BACKWARD,Y),
+	       tagb, comm, &request[2]);
     ireal = get_site_index(1-nhalo_, N[Y], 1-nhalo_);
-    MPI_Issend(site[ireal].f, 1, DT_plane_XZ, cart_neighb(FORWARD,Y),
-	       TAG_FWD, cart_comm(), &request[3]);
+    MPI_Issend(site[ireal].f, 1, plane_xz_[FORWARD], cart_neighb(FORWARD,Y),
+	       tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
   }
   
@@ -475,17 +705,17 @@ void halo_site() {
   else {
 
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, N[Z] + 1);
-    MPI_Irecv(site[ihalo].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
-	      TAG_BWD, cart_comm(), &request[0]);
+    MPI_Irecv(site[ihalo].f, 1, plane_xy_[BACKWARD], cart_neighb(FORWARD,Z),
+	      tagb, comm, &request[0]);
     ihalo = get_site_index(1-nhalo_, 1-nhalo_, 0);
-    MPI_Irecv(site[ihalo].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
-	      TAG_FWD, cart_comm(), &request[1]);
+    MPI_Irecv(site[ihalo].f, 1, plane_xy_[FORWARD], cart_neighb(BACKWARD,Z),
+	      tagf, comm, &request[1]);
     ireal = get_site_index(1-nhalo_, 1-nhalo_, 1);
-    MPI_Issend(site[ireal].f, 1, DT_plane_XY, cart_neighb(BACKWARD,Z),
-	       TAG_BWD, cart_comm(), &request[2]);
+    MPI_Issend(site[ireal].f, 1, plane_xy_[BACKWARD], cart_neighb(BACKWARD,Z),
+	       tagb, comm, &request[2]);
     ireal = get_site_index(1-nhalo_, 1-nhalo_, N[Z]);
-    MPI_Issend(site[ireal].f, 1, DT_plane_XY, cart_neighb(FORWARD,Z),
-	       TAG_FWD, cart_comm(), &request[3]);  
+    MPI_Issend(site[ireal].f, 1, plane_xy_[FORWARD], cart_neighb(FORWARD,Z),
+	       tagf, comm, &request[3]);  
     MPI_Waitall(4, request, status);
   }
  
@@ -536,4 +766,50 @@ static int distributions_write(FILE * fp, const int ic , const int jc,
   if (n != 1) fatal("fwrite(distribution) failde at %d %d %d\n", ic, jc, kc);
 
   return n;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_halo_set_complete
+ *
+ *  Set the actual halo datatype to the full type to swap
+ *  all NVEL distributions.
+ *
+ *****************************************************************************/
+
+void distribution_halo_set_complete(void) {
+
+  assert(initialised_);
+
+  plane_xy_[FORWARD]  = plane_xy_full_;
+  plane_xy_[BACKWARD] = plane_xy_full_;
+  plane_xz_[FORWARD]  = plane_xz_full_;
+  plane_xz_[BACKWARD] = plane_xz_full_;
+  plane_yz_[FORWARD]  = plane_yz_full_;
+  plane_yz_[BACKWARD] = plane_yz_full_;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_halo_set_reduced
+ *
+ *  Set the actual halo datatype to the reduced type to send only the
+ *  propagating elements of the distribution in a given direction.
+ *
+ *****************************************************************************/
+
+void distribution_halo_set_reduced(void) {
+
+  assert(initialised_);
+
+  plane_xy_[FORWARD]  = plane_xy_reduced_[FORWARD];
+  plane_xy_[BACKWARD] = plane_xy_reduced_[BACKWARD];
+  plane_xz_[FORWARD]  = plane_xz_reduced_[FORWARD];
+  plane_xz_[BACKWARD] = plane_xz_reduced_[BACKWARD];
+  plane_yz_[FORWARD]  = plane_yz_reduced_[FORWARD];
+  plane_yz_[BACKWARD] = plane_yz_reduced_[BACKWARD];
+
+  return;
 }
