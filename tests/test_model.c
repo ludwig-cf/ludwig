@@ -8,7 +8,6 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "control.h"
 #include "coords.h"
 #include "model.h"
 #include "tests.h"
@@ -18,12 +17,12 @@ void test_reduced_halo_swap();
 int on_corner(int x, int y, int z, int mx, int my, int mz);
 
 
-int* xfwd;
-int* xbwd;
-int* yfwd;
-int* ybwd;
-int* zfwd;
-int* zbwd;
+int xfwd[NVEL];
+int xbwd[NVEL];
+int yfwd[NVEL];
+int ybwd[NVEL];
+int zfwd[NVEL];
+int zbwd[NVEL];
 
 int main(int argc, char ** argv) {
 
@@ -36,62 +35,54 @@ int main(int argc, char ** argv) {
   pe_init(argc, argv);
   init_control();
 
-  if(use_reduced_halos()) {
-    xfwd = calloc(NVEL, sizeof(int));
-    xbwd = calloc(NVEL, sizeof(int));
-    yfwd = calloc(NVEL, sizeof(int));
-    ybwd = calloc(NVEL, sizeof(int));
-    zfwd = calloc(NVEL, sizeof(int));
-    zbwd = calloc(NVEL, sizeof(int));
+  for (p = 0; p < NVEL; p++) {
+    xfwd[p] = 0;
+    xbwd[p] = 0;
+    yfwd[p] = 0;
+    ybwd[p] = 0;
+    zfwd[p] = 0;
+    zbwd[p] = 0;
+  }
     
-    for(i=0; i<xcountcv; i++) {
-      for(j=0; j<xdisp_fwd_cv[i]; j++) {
-	for(k=0; k<xblocklens_cv[i]; k++) {
-	  xfwd[xdisp_fwd_cv[i]+k] = 1;
-	}
-      }
-    }
-    
-    for(i=0; i<xcountcv; i++) {
-      for(j=0; j<xdisp_bwd_cv[i]; j++) {
-	for(k=0; k<xblocklens_cv[i]; k++) {
-	  xbwd[xdisp_bwd_cv[i]+k] = 1;
-	}
-      }
-    }
-
-    for(i=0; i<ycountcv; i++) {
-      for(j=0; j<ydisp_fwd_cv[i]; j++) {
-	for(k=0; k<yblocklens_cv[i]; k++) {
-	  yfwd[ydisp_fwd_cv[i]+k] = 1;
-	}
-      }
-    }
-
-    for(i=0; i<ycountcv; i++) {
-      for(j=0; j<ydisp_bwd_cv[i]; j++) {
-	for(k=0; k<yblocklens_cv[i]; k++) {
-	  ybwd[ydisp_bwd_cv[i]+k] = 1;
-	}
-      }
-    }
-
-    for(i=0; i<zcountcv; i++) {
-      for(j=0; j<zdisp_fwd_cv[i]; j++) {
-	for(k=0; k<zblocklens_cv[i]; k++) {
-	  zfwd[zdisp_fwd_cv[i]+k] = 1;
-	}
-      }
-    }
-
-    for(i=0; i<zcountcv; i++) {
-      for(j=0; j<zdisp_bwd_cv[i]; j++) {
-	for(k=0; k<zblocklens_cv[i]; k++) {
-	  zbwd[zdisp_bwd_cv[i]+k] = 1;
-	}
-      }
+  for (i = 0; i < CVXBLOCK; i++) {
+    for (k = 0; k < xblocklen_cv[i]; k++) {
+      p = xdisp_fwd_cv[i] + k;
+      test_assert(p >= 0 && p < NVEL);
+      test_assert(cv[p][X] == +1);
+      xfwd[p] = 1;
+      p = xdisp_bwd_cv[i] + k;
+      test_assert(p >= 0 && p < NVEL);
+      test_assert(cv[p][X] == -1);
+      xbwd[p] = 1;
     }
   }
+
+  for (i = 0; i < CVYBLOCK; i++) {
+    for (k = 0; k < yblocklen_cv[i]; k++) {
+      p = ydisp_fwd_cv[i] + k;
+      test_assert(p >= 0 && p < NVEL);
+      test_assert(cv[p][Y] == +1);
+      yfwd[p] = 1;
+      p = ydisp_bwd_cv[i] + k;
+      test_assert(p >= 0 && p < NVEL);
+      test_assert(cv[p][Y] == -1);
+      ybwd[p] = 1;
+    }
+  }
+
+  for (i = 0; i < CVZBLOCK; i++) {
+    for (k = 0; k < zblocklen_cv[i]; k++) {
+      p = zdisp_fwd_cv[i] + k;
+      test_assert(p >= 0 && p < NVEL);
+      test_assert(cv[p][Z] == +1);
+      zfwd[p] = 1;
+      p = zdisp_bwd_cv[i] + k;
+      test_assert(p >= 0 && p < NVEL);
+      test_assert(cv[p][Z] == -1);
+      zbwd[p] = 1;
+    }
+  }
+
 
   coords_init();
 
@@ -359,11 +350,8 @@ int main(int argc, char ** argv) {
   finish_site();
   info("ok\n");
 
-  if(use_reduced_halos()) {
-    test_reduced_halo_swap();
-  } else {
-    test_halo_swap();
-  }
+  test_halo_swap();
+  test_reduced_halo_swap();
 
   info("\nModel tests passed ok.\n\n");
 
@@ -371,6 +359,14 @@ int main(int argc, char ** argv) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  test_halo_swap
+ *
+ *  Test full halo swap.
+ *
+ *****************************************************************************/
 
 void test_halo_swap() {
   int i, j, k, p;
@@ -382,7 +378,8 @@ void test_halo_swap() {
    * (2) swap
    * (3) check halos. */
 
-  info("\nHalo swap...\n\n");
+  info("\nHalo swap (full distributions)...\n\n");
+  distribution_halo_set_complete();
 
   init_site();
   get_N_local(N);
@@ -447,11 +444,19 @@ void test_halo_swap() {
   finish_site();
 }
 
+/*****************************************************************************
+ *
+ *  test_reduced_halo_swap
+ *
+ *****************************************************************************/
+
 void test_reduced_halo_swap() {  
   int index, N[ND];
   double f;  
   int i, j, k, p;
+
   info("\nHalo swap (reduced)...\n\n");
+  distribution_halo_set_reduced();
 
   coords_init();
   init_site();
