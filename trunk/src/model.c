@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.12 2009-04-09 15:54:22 kevin Exp $
+ *  $Id: model.c,v 1.13 2009-04-15 10:51:14 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -144,7 +144,6 @@ static void distribution_mpi_init() {
   MPI_Datatype * types;
 
   assert(ndist == 2);
-  assert(nhalo_ == 1);
 
   get_N_local(nlocal);
   nx = nlocal[X] + 2*nhalo_;
@@ -808,6 +807,7 @@ void distribution_halo_set_complete(void) {
 void distribution_halo_set_reduced(void) {
 
   assert(initialised_);
+  assert(nhalo_ == 1); /* Need to test with nhalo_ > 1 */
 
   plane_xy_[FORWARD]  = plane_xy_reduced_[FORWARD];
   plane_xy_[BACKWARD] = plane_xy_reduced_[BACKWARD];
