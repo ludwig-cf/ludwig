@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.12 2009-03-20 09:59:49 kevin Exp $
+ *  $Id: free_energy.c,v 1.13 2009-05-05 14:33:58 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -166,10 +166,12 @@ void init_free_energy() {
     info("Surface penalty kappa = %f\n", kappa_);
     info("Surface tension       = %f\n", surface_tension());
     info("Interfacial width     = %f\n", interfacial_width());
-    info("Scale energy D        = %f\n", D_);
     info("Surface adsorption e  = %f\n", epsilon_);
     info("Surface psi^2 beta    = %f\n", beta_);
     info("Enthalpic term W      = %f\n", W_);
+    info("Scale energy kT (D)   = %12.5e\n", D_);
+    info("Langmuir isotherm     = %12.5e\n",
+	 exp(-0.5*epsilon_/(-2.0*kappa_*D_/A_)));
     assert(nop_ == 2);
     fe_chemical_stress = fe_chemical_stress_sman;
     fe_chemical_potential[0] = fe_chemical_potential_sman_phi;
@@ -598,7 +600,7 @@ static void fe_chemical_stress_sman(const int index, double p[3][3]) {
   p0 = 0.5*phi*phi*(A_ + 1.5*B_*phi*phi)
     - kappa_*(phi*delsq_phi + 0.5*dot_product(dphi, dphi))
     - D_*log(1.0 - psi) + W_*psi*phi*phi
-    + epsilon_*(dot_product(dphi, dpsi) + phi*psi*delsq_phi)
+    + epsilon_*phi*(dot_product(dphi, dpsi) + psi*delsq_phi)
     + beta_*psi*(2.0*phi*dot_product(dphi, dpsi) + phi*psi*delsq_phi
 		 - 0.5*psi*dot_product(dphi, dphi));
 
