@@ -1,0 +1,484 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  surfactant.tex
+%
+%  Some notes on surfactant work
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Surfactants}
+
+\subsection{Note on Experimental Measurements}
+
+Experimental measurements have generally been based on mechanical
+methods which allow the determination of an interfacial tension
+(for recent reviews, see \cite{chang,eastoe}). The degree of surface
+activity is then accessed by measuring the the interfacial tension
+$\sigma$ as a function of the bulk concentration $\psi_b$, and then
+using the Gibbs equation
+\begin{equation}
+\psi_{0,\mathrm{eq}} = -\frac{1}{nRT}
+\left( \frac{\partial \sigma}{\partial \ln \psi_b} \right)_T
+\end{equation}
+where $\psi_{0,\mathrm{eq}}$ is the equilibrium surface excess
+concentration. The curve of $\psi_{0,\mathrm{eq}}$ against $\psi_b$
+so obtained is thus relevant for a fixed temperature and is generally
+refered to as the \textit{adsorption isotherm}. More recently, the
+method of neutron reflection has been used to to access the interfacial
+concentration directly (with good agreement with the mechanical
+methods).
+
+\subsubsection{Dynamic surface tension}
+
+A newly formed interface (e.g., after shaking) in a surfactant
+solution will have interfacial tension close to the bare value
+$\sigma_0$. As the surfactant concentration at the interface
+approaches its equilibrium value, the interfacial tension is
+reduced. The quantity of interest is then the \textit{dynamical
+surface tension} $\sigma(t)$. This process takes place on
+timescales typically 10$^{-3}$--1 second, and is important in
+many industrial processes such as coatings and formation of
+soap lather.
+
+At equilibrium, the final change in interfacial tension can
+be obtained from Gibbs' equation together with a suitable
+isotherm relating $\psi_0$ and $\psi_b$. 
+
+\subsubsection{Adsorption isotherms}
+
+A simple choice of isotherm is Henry's law:
+\begin{equation}
+\psi_{0,\mathrm{eq}} = K_H \psi_b
+\label{eq:iso:henry}
+\end{equation}
+where $K_H$ is the equilibrium adsorption constant. Note this has the
+dimensions of length, and represents the thickness of bulk solution
+holding the same quantity of surfactant as an interface with
+concentration $\psi_{0,\mathrm{eq}}$. In this way it is also a
+measure of the strength of surface activity for a given surfactant.
+Henry's law has a number of drawbacks: there is no upper limit
+on $\psi_0$, and is only valid at low concentrations.
+
+A more practical choice is the Langmuir equilibrium isotherm
+\begin{equation}
+\psi_{0,\mathrm{eq}} = \psi^\star \frac{K_L \psi_b}{1 + K_L \psi_b}
+\label{eq:iso:langmuir}
+\end{equation}
+where $\psi^\star$ is the maximum concentration supported at the
+interface and the Langmuir equilibrium adsorption constant is $K_L$
+(with units mol$^{-1}$~m$^3$). At low concentrations $ K_L\psi_b << 1$,
+the Langmuir isotherm reduces to the Henry isotherm with
+$K_H = \psi^\star K_L$.
+
+One further case of interest here is the Frumkin isotherm
+\begin{equation}
+\psi_{0, \mathrm{eq}} = \psi^\star
+\frac{K_F \psi_b}{K_F\psi_b + e^{-B\psi_{0,\mathrm{eq}} / \psi^\star}}
+\label{eq:iso:frumkin}
+\end{equation}
+where the Frumkin equilibrium adsorption constant $K_F$ again
+has units of mol$^{-1}$~m$^3$. The dimensionless parameter $B$
+ is a measure of the degree to which the surfactant behaviour
+at the interface is non-ideal. For $B=0$, the Frumkin isotherm
+reduces to that of Langmuir.
+
+\subsection{Note on the Theory of Diamant and Andelman 1996}
+
+As we ultimately adopt a free energy approach, we first review one
+free energy based work --- that of Diamant and Andelman
+\cite{diamant96}. This introduces a uniform system with interface
+of zero thickness at $z = 0$. A uniform dilute solution of
+surfactant occupies $z > 0$. The excess free energy per unit area
+of interface is then written
+\begin{equation}
+\Delta\sigma [\psi] = \int_0^\infty  \big\{ \Delta f[\psi (z)] +
+f_0 [\psi (z) ] \delta(z)  \big\} \mathrm{d}z. 
+\end{equation}
+The first term here is a contribution from the bulk while the
+second is that from the interface. 
+
+The uniform bulk solution has an ideal entropy of mixing
+\begin{equation}
+\Delta f(\psi) = (1/a^3)
+\big\{ kT[\psi \ln\psi - \psi - (\psi_b \ln\psi_b - \psi_b)]
+- \mu_b (\psi - \psi_b) \big\}.
+\label{eq:da2}
+\end{equation}
+Here, $a$ is the characteristic size of the surfactant molecules.
+The chemical potential $\mu_b$ and volume fraction of surfactant
+in the bulk are fixed (with $\psi_b < 1$). The final term in
+Eq.~\ref{eq:da2} is a contact term with a reservoir at $z = \infty$.
+
+At the interface, we have a surfactant concentration $\psi_0$, which
+is no longer small:
+\begin{equation}
+f_0 (\psi_0) = (1/a^2) \big\{
+kT [ \psi_0 \ln\psi_0 + (1 - \psi_0) \ln(1 - \psi_0)]
+- \alpha\psi_0 - {\textstyle\frac{1}{2}}\beta\psi_0^2 - \mu_1\psi_0 \big\}.
+\end{equation} 
+The first term is the full entropy of mixing. The second term represents
+the reduction ($\alpha$ is positive) in surface energy owing to the
+presence of surfactant. The third term represents an attractive
+interaction between surfactants at the interface ($beta$ again positive).
+The final term is a contact term between the interface and the adjacent
+solution (at $z\rightarrow 0$).
+
+\subsubsection{Equilibrium}
+
+At equilibrium, where the chemical potential is the same throughout
+the system $\mu (z) = \mu_b$, the DA recover the adsorption isotherm
+\begin{equation}
+\psi_{0,\mathrm{eq}} = \frac{\psi_b}{\psi_b
++ e^{-(\alpha + \beta\psi_{0,\mathrm{eq}})/kT}}.
+\label{eq:iso:diamant}
+\end{equation}
+Comparison with the experiment forms Eq.~\ref{eq:iso:langmuir} and
+Eq.~\ref{eq:iso:frumkin} reveals that $K_F$ is equivalent to
+$e^{\alpha /kT}$ in the Frumkin isotherm. In addition, the equilibrium
+equation of state is
+\begin{equation}
+\Delta \gamma_{\mathrm{eq}} = (1/a^2) [ kT \ln (1 - \psi_0) 
++ {\textstyle\frac{1}{2}}\beta \psi_0^2 ].
+\end{equation}
+
+\subsubsection{Out of Equilibrium}
+
+DA96 go on to derive a variant of the Ward-Tordai equation \cite{wardtordai}
+which describes the time evolution of the concentration of surfactant
+at the interface:
+\begin{equation}
+\psi_0 (t) = \sqrt{D/\pi a^2}
+\Bigg[ 2\psi_b \sqrt{t} 
+- \int_0^\infty \frac{\psi_1 (\tau)}{\sqrt{t - \tau}} \mathrm{d}\tau \Bigg]
++ 2\psi_b - \psi_1.
+\label{eq:wardtordai}
+\end{equation}
+When the time-scale for equilibration at the interface is fast compared
+with that in the bulk, $\psi_0$ responds immediately to changes in
+$\psi_1$. This is the case of \textit{diffusion limited adsorption} (DLA).
+Here, the diffusive problem Eq.~\ref{eq:wardtordai} can be closed
+using the isotherm Eq.~\ref{eq:iso:diamant} with $\psi_b$ replaced by
+$\psi_1$. This can be solved numerically for $\psi_0 (t)$. If one further
+makes the assumption that the equilibrium equation of state holds
+approximately out of equililbrium, then one can also recover
+$\Delta\gamma (t)$, that is, the dynamic surface tension.
+
+\subsection{Current Model}
+
+The current model is based the standard symmetric binary fluid
+free energy to represent two fluids separated by a finite
+interface of thickness $\xi_0$. This free energy is the usual
+functional of the compositional order parameter $\phi$. This is
+referred to as
+\begin{equation}
+f_\phi = {\textstyle\frac{1}{2}}A\phi^2
++ {\textstyle\frac{1}{4}}B\phi^4
++ {\textstyle\frac{1}{2}}\kappa (\partial_\alpha \phi)^2.
+\end{equation}
+Note that here, the excess free energy related to $f_\phi$ may
+be integrated analytically to provide an expression for the
+intefacial tension $\sigma_0 = 4\kappa\phi^\star/3\xi_0$ at
+equilibrium.
+(In one dimension the equiibrium profile
+is $\phi(z) = \phi^\star \tanh(z/\xi_0)$ with $\phi^\star = \sqrt{-A/B}$
+and $\xi_0^2 = -2\kappa/A$.)
+
+To this we add a separate order parameter to represent the
+surfactant $\psi$ \cite{smangraaf}. The free energy density
+is made up of two parts following DA96:
+\begin{equation}
+f_{\psi} = kT[\psi\ln\psi  + (1 - \psi) \ln (1 - \psi)]
+\end{equation}
+represents the entropy of mixing, valid in both the bulk and at
+the interface. The interfacial part of the free energy density is
+\begin{equation}
+f_{\psi,i} = -{\textstyle\frac{1}{2}}\epsilon\psi (\partial_\alpha \phi)^2
+- {\textstyle\frac{1}{2}} \beta \psi^2 (\partial_\alpha \phi)^2.
+\end{equation}
+
+We note that the excess free energy can no longer be integrated
+exactly. However, it can be integrated numerically for a
+given profile $\psi(z)$ (see below).
+
+\subsubsection{Equilibrium}
+
+We can compute the chemical potential associated with each order
+parameter by taking the functional derivative with respect to
+$\phi$ and $\psi$ respectively:
+\begin{equation}
+\mu_\phi = A\phi + B\phi^3 - \kappa \partial_\alpha^2 \phi
++ \epsilon \partial_\alpha \phi \partial_\alpha \psi
++ \epsilon \psi \partial_\alpha^2 \phi
++ 2\beta\psi \partial_\alpha \phi \partial_\alpha \psi
++ \beta\psi^2 \partial_\alpha^2 \phi,
+\label{eq:mu:phi}
+\end{equation}
+and
+\begin{equation}
+\mu_\psi = kT[\ln\psi - \ln(1 - \psi)]
+- {\textstyle \frac{1}{2}} \epsilon (\partial_\alpha \phi)^2
+- \beta\psi (\partial_\alpha \phi)^2.
+\label{eq:mu:psi}
+\end{equation}
+
+At equilibrium, we can set the chemical potential in the bulk and
+at the interface to be equal. We assume that the presence of
+surfactant does not affect the form of the equilibrium
+composition profile so that in one dimension
+$\phi(z) = \phi^\star \tanh(z/\xi_0)$ as before.
+In the bulk we assume the concentration $\psi_b << 1$ so that
+Eq.~\ref{eq:mu:psi} gives $\mu_{\psi,b} = kT\ln \psi_b$. At
+the interface we ahve $\mu_{\phi,i} = kT[\ln\psi_0 - \ln(1 - \psi_0)]
+- (1/2)\epsilon(\partial_\alpha \phi)^2
+- \beta\psi_0 (\partial_\alpha \phi)^2$.
+If we equate $\mu_{\psi, b}$ and $\mu_{\psi,i}$ we can recover the
+Frumkin isotherm
+\begin{equation}
+\psi_{0,\mathrm{eq}} = \frac{\psi_b}{\psi_b +
+e^{-({\scriptscriptstyle \frac{1}{2}}\epsilon + \beta\psi_{0,\mathrm{eq}})
+(\phi^\star)^2 / \xi_0^2 kT}}.
+\end{equation}
+This is equivalent to Eq.~\ref{eq:iso:diamant} of DA96, where the
+interfacial width has has appeared in place of $a$ (absorped into
+the definition of the free energy density by DA96).
+
+
+In the following we have $D = M_\psi \psi ( 1 - \psi)$. The
+initial interfacial width is $\xi = 1.13$ (narrower than the
+equilibrium value). This is a one-dimensional system of
+length 100 lattice units. We choose to fix the binary fluid
+parameters, and fix $\epsilon$ in relation to $\kappa$. The
+isotherm is then varied by adjusting the value of $kT$.
+
+\subsubsection{Parameters with $\mathbf{\xi_0 = 1.13}$, $\epsilon = \kappa/4$}
+
+Here we keep the standard binary fluid parameters, having interfacial
+width $\xi_0 = 1.13$.
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+\hline
+Name & $\eta$ & $-A,B$ & $\kappa$ & $kT$ & $\epsilon$ & $\beta$ & $W$
+     & $M$ & $M_\psi$\\
+\hline
+R008a & 1/6 & 0.0625 & 0.04 & 1.6965$\times 10^{-3}$ & 0.01 & 0.0000 & 0.0 
+      & 0.15 & 1.0 \\
+R008d &  &  &  & & & 0.0025 &  &  &  \\
+R008f &  &  &  & & & 0.0050 &  &  &  \\
+\hline
+R006a & 1/6 & 0.0625 & 0.04 & 8.48231$\times 10^{-4}$ & 0.01 & 0.0000 & 0.0 
+      & 0.15 & 1.0 \\
+R006d & &  &  &  & & 0.0025 &  &  &  \\
+R006f & &  &  &  & & 0.0050 &  &  &  \\
+\hline
+\end{tabular}
+\caption{Parameters}
+\end{center}
+\end{table}
+
+
+
+
+\subsubsection{Parameters with $\mathbf{\xi_0 = 2.26}$, $\epsilon = \kappa/4$}
+
+Here we relax the interfaical width by a factor of 2, but
+keep $A,-B$ as before so that the surface tension is increased
+by a factor of $\sqrt{2}$.
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+\hline
+Name & $\eta$ & $-A,B$ & $\kappa$ & $kT$ & $\epsilon$ & $\beta$ & $W$
+     & $M$ & $M_\psi$\\
+\hline
+R002a & 1/6 & 0.0625 & 0.16 & 1.6965$\times 10^{-3}$ & 0.04 & 0.00 & 0.0 
+      & 0.15 & 1.0 \\
+R002d &  &  &  & & & 0.01 &  &  &  \\
+R002f &  &  &  & & & 0.02 &  &  &  \\
+\hline
+R003a & 1/6 & 0.0625 & 0.16 & 5.6549$\times 10^{-4}$ & 0.04 & 0.00 & 0.0 
+      & 0.15 & 1.0 \\
+
+R003d & &  & &  &  & 0.01 &  &  & 1.0\\
+R003e & &  & &  &  & 0.01 &  &  & 0.5\\
+R003f & &  & &  &  & 0.02 &  &  & 1.0\\
+\hline
+R004a & 1/6 & 0.0625 & 0.16 & 8.48231$\times 10^{-4}$ & 0.04 & 0.00 & 0.0 
+      & 0.15 & 1.0 \\
+R004d & &  &  &  & & 0.01 &  &  &  \\
+R004f & &  &  &  & & 0.02 &  &  &  \\
+
+\hline
+\end{tabular}
+\caption{Parameters for the surfactant free energy model. There are
+three values of the (Langmuir) isotherm $(1/K_L) = 0.1$ (R002a),
+0.01 (R004a) and 0.001 (R003a).
+See section X for notes on $W$.}
+\end{center}
+\end{table}
+
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+Name & $\bar{\psi}$ & $\psi_b$ & $\psi_{0\mathrm{eq}}$
+     & $\sigma / \sigma_0$  & Comment \\
+\hline
+R008a &  $2.0\times 10^{-1}$ & $1.859\times 10^{-1}$ & $5.143\times10^{-1}$
+      & 0.76 & ok\\
+R008a &  $1.0\times 10^{-1}$ & $9.093\times 10^{-2}$ & $3.033\times10^{-1}$
+      & 0.80 & ok\\
+R008a &  $5.0\times 10^{-2}$ & $4.490\times 10^{-2}$ & $1.643\times10^{-1}$
+      & 0.82 & ok\\
+R008a &  $2.5\times 10^{-2}$ & $2.231\times 10^{-2}$ & $8.540\times10^{-2}$
+      & 0.84 & ok\\
+R008a &  $1.0\times 10^{-2}$ & $8.888\times 10^{-3}$ & $3.494\times10^{-2}$
+      & 0.86 & ok\\
+R008a &  $1.0\times 10^{-3}$ & $8.867\times 10^{-4}$ & $3.540\times10^{-3}$
+      & 0.87 & ok\\
+\hline
+R008d &  $2.0\times 10^{-1}$ &  &  &  & unstable \\
+R008d &  $1.0\times 10^{-1}$ &  &  &  & unstable \\
+R008d &  $5.0\times 10^{-2}$ &  &  &  & unstable \\
+R008d &  $2.5\times 10^{-2}$ &  &  &  & no equilibrium \\
+R008d &  $1.0\times 10^{-2}$ & $8.455\times 10^{-3}$ & $4.535\times10^{-2}$
+      & 0.85 & ok \\
+R008d &  $1.0\times 10^{-3}$ & $8.835\times 10^{-4}$ & $3.617\times10^{-3}$
+      & 0.87 & ok \\
+\hline
+R006a &  $2.0\times 10^{-1}$ & $1.713\times 10^{-1}$ & $8.510\times10^{-1}$
+      & 0.71 & ok\\
+R006a &  $1.0\times 10^{-1}$ & $7.556\times 10^{-2}$ & $6.657\times10^{-1}$
+      & 0.74 & ok\\
+R006a &  $5.0\times 10^{-2}$ & $3.406\times 10^{-2}$ & $4.211\times10^{-1}$
+      & 0.78 & ok\\
+R006a &  $2.5\times 10^{-2}$ & $1.616\times 10^{-2}$ & $2.310\times10^{-1}$
+      & 0.81 & ok\\
+R006a &  $1.0\times 10^{-2}$ & $6.286\times 10^{-3}$ & $9.653\times10^{-2}$
+      & 0.84 & ok\\
+R006a &  $1.0\times 10^{-3}$ & $6.192\times 10^{-4}$ & $9.868\times10^{-3}$
+      & 0.87 & ok\\
+\hline
+R006d &  $2.0\times 10^{-1}$ & $1.664\times 10^{-1}$ & $9.791\times10^{-1}$
+      & 0.64 & ok\\
+R006d &  $1.0\times 10^{-1}$ &  & &  & unstable\\
+R006d &  $5.0\times 10^{-2}$ &  & &  & unstable\\
+R006d &  $2.5\times 10^{-2}$ &  & &  & unstable\\
+R006d &  $1.0\times 10^{-2}$ & $2.9\times 10^{-4}$ & $4.75\times10^{-1}$
+      & 0.80 & unsymmetric\\
+R006d &  $1.0\times 10^{-3}$ & $5.822\times 10^{-4}$ & $1.077\times10^{-2}$
+      & 0.87 & ok \\
+\hline
+\end{tabular}
+\label{table:xi113}
+\caption{Equilibrium results for $\xi_0 = 1.13$, $\epsilon = \kappa/4$.}
+\end{center}
+\end{table}
+
+
+
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+Name & $\bar{\psi}$ & $\psi_b$ & $\psi_{0\mathrm{eq}}$
+     & $\sigma / \sigma_0$  & Comment \\
+\hline
+R002a &  $2.0\times 10^{-1}$ & $1.701\times 10^{-1}$ & $7.423\times10^{-1}$
+      & 0.88 & ok\\
+R002a &  $1.0\times 10^{-1}$ & $8.008\times 10^{-2}$ & $5.023\times10^{-1}$
+      & 0.90 & ok\\
+R002a &  $5.0\times 10^{-2}$ & $3.871\times 10^{-2}$ & $2.886\times10^{-1}$
+      & 0.93 & ok\\
+R002a &  $2.5\times 10^{-2}$ & $1.904\times 10^{-2}$ & $1.530\times10^{-1}$
+      & 0.95 & ok\\
+R002a &  $1.0\times 10^{-2}$ & $7.456\times 10^{-2}$ & $6.305\times10^{-2}$
+      & 0.96 & ok \\
+R002a &  $1.0\times 10^{-3}$ & $7.506\times 10^{-3}$ & $6.407\times10^{-3}$
+      & 0.97 & ok \\
+\hline
+R002d &  $2.0\times 10^{-1}$ & $1.598\times 10^{-1}$ & $9.443\times10^{-1}$
+      & 0.85 & ok \\
+R002d &  $1.0\times 10^{-1}$ & $7.267\times 10^{-2}$ & $7.540\times10^{-1}$
+      & 0.88 & ok \\
+R002d &  $5.0\times 10^{-2}$ & $3.615\times 10^{-2}$ & $3.894\times10^{-1}$
+      & 0.92 & ok \\
+R002d &  $2.5\times 10^{-2}$ & $1.841\times 10^{-2}$ & $1.776\times10^{-1}$
+      & 0.94 & ok \\
+R002d &  $1.0\times 10^{-2}$ & $7.449\times 10^{-3}$ & $6.680\times10^{-2}$
+      & 0.96 & ok \\
+R002d &  $1.0\times 10^{-3}$ & $7.497\times 10^{-4}$ & $6.444\times10^{-3}$
+      & 0.97 & ok \\
+\hline
+R002f &  $2.0\times 10^{-1}$ & $1.512\times 10^{-1}$ & $9.972\times10^{-1}$
+      & 0.80 &  ok\\
+R002f &  $1.0\times 10^{-1}$ & $5.994\times 10^{-2}$ & $9.751\times10^{-1}$
+      & 0.80 & ok \\
+R002f &  $5.0\times 10^{-2}$ & $3.002\times 10^{-2}$ & $6.947\times10^{-1}$
+      & 0.90 & ok \\
+R002f &  $2.5\times 10^{-2}$ & $1.746\times 10^{-2}$ & $2.202\times10^{-1}$
+      & 0.95 & ok \\
+R002f &  $1.0\times 10^{-2}$ & $7.338\times 10^{-3}$ & $7.132\times10^{-2}$
+      & 0.96 & ok \\
+R002f &  $1.0\times 10^{-3}$ & $7.487\times 10^{-4}$ & $6.480\times10^{-3}$
+      & 0.97 &  ok\\
+\hline
+R003a &  $1.0\times 10^{-1}$ & $4.168\times 10^{-2}$ & $9.979\times10^{-1}$
+      & 0.85 & ok\\
+R003a &  $1.0\times 10^{-2}$ & $5.7\times 10^{-4}$ & $3.563\times10^{-1}$
+      & 0.95 & ok\\
+R003a &  $1.0\times 10^{-3}$ & $5.7\times 10^{-5}$ & $3.590\times10^{-2}$
+      & 0.97 & ok\\
+\hline
+R003d & $1.0\times 10^{-1}$& & & & unstable\\
+R003e & $1.0\times 10^{-1}$& & & & unstable\\
+R003f & $1.0\times 10^{-1}$& & & & unstable\\
+\hline
+R004a &  $1.0\times 10^{-1}$ & $5.475\times 10^{-2}$ & $9.476\times10^{-1}$
+      & 0.87 & ok\\
+R004a &  $5.0\times 10^{-2}$ & $1.960\times 10^{-2}$ & $7.935\times10^{-1}$
+      & 0.89 & ok\\
+R004a &  $2.5\times 10^{-2}$ & $8.113\times 10^{-3}$ & $5.029\times10^{-1}$
+      & 0.93 & ok\\
+R004a &  $1.0\times 10^{-2}$ & $3.043\times 10^{-3}$ & $2.160\times10^{-1}$
+      & 0.95 & ok\\
+R004a &  $1.0\times 10^{-3}$ & $2.999\times 10^{-4}$ & $2.191\times10^{-2}$
+      & 0.97 & ok\\
+\hline
+R004d &  $1.0\times 10^{-1}$ & $4.365\times 10^{-2}$ & $9.995\times10^{-1}$
+      & 0.82 & ok\\
+R004d &  $5.0\times 10^{-2}$ & $9.260\times 10^{-3}$ & $9.829\times10^{-1}$
+      & 0.84 & ok\\
+R004d &  $2.5\times 10^{-2}$ & $3.896\times 10^{-3}$ & $8.405\times10^{-1}$
+      & 0.91 & ok\\
+R004d &  $1.0\times 10^{-2}$ & $2.198\times 10^{-3}$ & $2.854\times10^{-1}$
+      & 0.95 & ok\\
+R004d &  $1.0\times 10^{-3}$ & $2.927\times 10^{-4}$ & $2.246\times10^{-2}$
+      & 0.97 & ok\\
+\hline
+R004f &  $1.0\times 10^{-1}$ &  &    &  & unstable\\
+R004f &  $5.0\times 10^{-2}$ & $9.183\times 10^{-3}$ & $1.000\times10^{0}$
+      & 0.80 & ok\\
+R004f &  $2.5\times 10^{-2}$ & &   &  & no equilibrium\\
+R004f &  $1.0\times 10^{-2}$ & $1.045\times 10^{-3}$ & $3.965\times10^{-1}$
+      & 0.94 & ok\\
+\hline
+\end{tabular}
+\label{table:xi226}
+\caption{Equilibrium results for $\xi_0 = 2.26$, $\epsilon = \kappa/4$.}
+\end{center}
+\end{table}
+
+
+\subsubsection{Dynamics}
+
+Solve the Ward-Tordai equation.
+
+
+
+\vfill
+\pagebreak
