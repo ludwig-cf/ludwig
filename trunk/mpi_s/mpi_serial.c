@@ -257,6 +257,22 @@ int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
   return MPI_SUCCESS;
 }
 
+/****************************************************************************
+ *
+ *  MPI_Allgather
+ *
+ ****************************************************************************/
+
+int MPI_Allgather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
+		  void * recvbuf, int recvcount, MPI_Datatype recvtype,
+		  MPI_Comm comm) {
+
+  assert(mpi_initialised_flag_);
+  assert(0); /* not implemented */
+
+  return MPI_SUCCESS;
+}
+
 /*****************************************************************************
  *
  *  MPI_Gather
