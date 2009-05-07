@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.9 2009-02-23 18:54:09 kevin Exp $
+%  $Id: sections.tex,v 1.10 2009-05-07 15:29:05 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -233,7 +233,7 @@ provides [TO BE ACCOUNTED FOR]; finally, there is an extra term
 \begin{equation}
 +{\textstyle \frac{1}{2}} W \psi \phi^2
 \end{equation}
-which is included to stabilise the interface \cite{theissen}.
+which is included to stabilise the interface \cite{theissengompper}.
 
 The corresponding keys for the input file are:
 
@@ -256,21 +256,6 @@ is the value of the parameter $\beta$ (not implemented yet).
 \inputkey{phi\_b}
 
 the initial, uniform, background surfactant concentration $\psi_b$.
-
-\begin{table}[h]
-\begin{center}
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
-\hline
-Name & $\eta$ & $-A,B$ & $\kappa$ & $D$ & $\epsilon$ & $W$
-     & $M$ & $M_\psi$ \\
-\hline
-Run001 & 0.025 & 0.000625 & 0.004 & 0.0001 & 0.004 & 0.0003  & 2.0 & 0.1\\
-\hline
-\end{tabular}
-\caption{Acceptable parameters for the surfactant free energy model.
-Note that $\epsilon = \kappa$.}
-\end{center}
-\end{table}
 
 
 \subsection{Other Binary Fluid Parameters}
@@ -917,6 +902,7 @@ single link is
 t + {\scriptstyle\frac{1}{2}}\Delta t) = \frac{\Delta x^3}{\Delta t}
 \Big[ 2f_b^\ast(\mathbf{r}; t) - \frac{2w_{c_b}\rho_0 \mathbf{u}_b .
 \mathbf{c}_b}{c_s^2} \Big] \mathbf{c}_b,
+\label{eq:fb}
 \end{equation}
 with corresponding torque $\mathbf{T}_b = \mathbf{r}_b \times \mathbf{F}_b$.
 
@@ -2198,10 +2184,34 @@ Cichocki, B., and R.B. Jones,
 Image representation of a spherical particle near a hard wall,
 \textit{Physica A}, \textbf{258}, 273, 1998.
 
+\bibitem{chang}
+C.-H. Chang and E.I. Franses,
+Adsorption dynamics of surfactants at the air/water interface:
+a critical review of mathematical models, data, and mechanisms,
+\textit{Colloids and Surfaces A}, \textbf{100} 1, 1995.
+
 \bibitem{cpc}
 Desplat, J.-C., I. Pagonabarraga, and P. Bladon,
 LUDWIG: A parallel lattice-Boltzmann code for complex fluids.
 \textit{Comput. Phys. Comms.}, \textbf{134}, 273, 2001.
+
+\bibitem{diamant}
+H. Diamant and D. Andelman,
+Kinetics of surfactant adsorption at fluid/fluid
+interfaces: non-ionic surfactants,
+\textit{Europhys. Lett.} \textbf{34}, 575 (1996).
+
+\bibitem{diamant96}
+H. Diamant and D. Andelman,
+Kinetics of surfactant adsorption at fluid-fluid interfaces,
+\textit{J. Phys. Chem.}, \textbf{100} 13732, 1996.
+
+\bibitem{eastoe}
+J. Eastoe and J.S. Dalton,
+Dynamic surface tension and adsorption mechanims of surfactants
+at the air-water interface,
+\textit{Advances in Colloid and Interface Science}, \textbf{85}
+13, 2000.
 
 \bibitem{ginzburg}
 I. Ginzburg and D. d'Humi\`eres,
@@ -2293,16 +2303,14 @@ Diffuse interface model of surfactant adsorption onto flat and
 droplet interfaces,
 \textit{Rheol. Acta} \textbf{46} 3 (2006).
 
-\bibitem{diamant}
-H. Diamant and D. Andelman,
-Kinetics of surfactant adsorption at fluid/fluid
-interfaces: non-ionic surfactants,
-\textit{Europhys. Lett.} \textbf{34}, 575 (1996).
-
 \bibitem{theissengompper}
-O. theissen and G. Gompper,
+O. Theissen and G. Gompper,
 Lattice Boltzmann study of spontaneous emulsification,
 \textit{Eur. Phys. J. B}, \textbf{11} 91 (1999).
+
+\bibitem{wardtordai}
+A.F.H. Ward and L. Tordai,
+\textit{J. Chem. Phys.} \textbf{14} 453, 1946.
 
 \end{thebibliography}
 

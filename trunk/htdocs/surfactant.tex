@@ -184,7 +184,7 @@ is $\phi(z) = \phi^\star \tanh(z/\xi_0)$ with $\phi^\star = \sqrt{-A/B}$
 and $\xi_0^2 = -2\kappa/A$.)
 
 To this we add a separate order parameter to represent the
-surfactant $\psi$ \cite{smangraaf}. The free energy density
+surfactant $\psi$ \cite{vandergraaf}. The free energy density
 is made up of two parts following DA96:
 \begin{equation}
 f_{\psi} = kT[\psi\ln\psi  + (1 - \psi) \ln (1 - \psi)]
@@ -265,18 +265,23 @@ Name & $\eta$ & $-A,B$ & $\kappa$ & $kT$ & $\epsilon$ & $\beta$ & $W$
 R008a & 1/6 & 0.0625 & 0.04 & 1.6965$\times 10^{-3}$ & 0.01 & 0.0000 & 0.0 
       & 0.15 & 1.0 \\
 R008d &  &  &  & & & 0.0025 &  &  &  \\
-R008f &  &  &  & & & 0.0050 &  &  &  \\
 \hline
 R006a & 1/6 & 0.0625 & 0.04 & 8.48231$\times 10^{-4}$ & 0.01 & 0.0000 & 0.0 
       & 0.15 & 1.0 \\
 R006d & &  &  &  & & 0.0025 &  &  &  \\
-R006f & &  &  &  & & 0.0050 &  &  &  \\
+\hline
+R010a & 0.025 & 0.00625 & 0.004 & 1.6965$\times 10^{-4}$ & 0.001
+      & 0.0000 & 0.0 & 2.0 & 2.0 \\
+R010d & &  &  &  & & 0.0005 &  &  &  \\
+\hline
+R012a & 0.025 & 0.00625 & 0.004 & 8.48231$\times 10^{-5}$ & 0.001
+      & 0.0000 & 0.0 & 2.0 & 2.0 \\
+R012d & &  &  &  & & 0.0005 &  &  &  \\
 \hline
 \end{tabular}
-\caption{Parameters}
+\caption{Parameters for $\xi_0 = 1.13$ and $\epsilon = \kappa/4$.}
 \end{center}
 \end{table}
-
 
 
 
@@ -372,13 +377,53 @@ R006d &  $1.0\times 10^{-2}$ & $2.9\times 10^{-4}$ & $4.75\times10^{-1}$
 R006d &  $1.0\times 10^{-3}$ & $5.822\times 10^{-4}$ & $1.077\times10^{-2}$
       & 0.87 & ok \\
 \hline
+R010a & $2.0\times 10^{-1}$ & $1.859\times 10^{-1}$ & $5.143\times10^{-1}$
+      & 0.76 & ok \\
+R010a & $1.0\times 10^{-1}$ & $9.093\times 10^{-2}$ & $3.033\times10^{-1}$
+      & 0.80 &  ok\\
+R010a & $5.0\times 10^{-2}$ & $4.490\times 10^{-2}$ & $1.643\times10^{-1}$
+      & 0.82 & ok \\
+R010a & $2.5\times 10^{-2}$ & $2.231\times 10^{-2}$ & $8.540\times10^{-2}$
+      & 0.84 & ok \\
+R010a & $1.0\times 10^{-2}$ & $8.888\times 10^{-3}$ & $3.494\times10^{-2}$
+      & 0.86 & ok \\
+R010a & $1.0\times 10^{-3}$ & $8.867\times 10^{-4}$ & $3.540\times10^{-3}$
+      & 0.87 & ok \\
+\hline
+R010d & $2.0\times 10^{-1}$ & $1.715\times 10^{-1}$ & $8.685\times10^{-1}$
+      & 0.62 & ok \\
+R010d & $1.0\times 10^{-1}$ & $8.327\times 10^{-2}$ & $4.893\times10^{-1}$
+      & 0.73 & ok \\
+R010d & $5.0\times 10^{-2}$ & $4.317\times 10^{-2}$ & $2.061\times10^{-1}$
+      & 0.81 & ok \\
+R010d & $2.5\times 10^{-2}$ & $2.190\times 10^{-2}$ & $9.524\times10^{-2}$
+      & 0.84 & ok \\
+R010d & $1.0\times 10^{-2}$ & $8.824\times 10^{-3}$ & $3.646\times10^{-2}$
+      & 0.86 & ok \\
+R010d & $1.0\times 10^{-3}$ & $8.861\times 10^{-4}$ & $3.555\times10^{-3}$
+      & 0.87 & ok \\
+\hline
+R012a & $2.0\times 10^{-1}$ & $1.72\times 10^{-1}$ & $8.51\times10^{-1}$
+      & 0.71 &  not quite at eqbm.\\
+R012a & $1.0\times 10^{-1}$ & $7.5\times 10^{-2}$ & $6.63\times10^{-1}$
+      & 0.74 &  not quite at eqbm.\\
+R012a & $5.0\times 10^{-2}$ & $3.4\times 10^{-2}$ & $4.15\times10^{-1}$
+      & 0.78 &  not quite\\
+R012a & $2.5\times 10^{-2}$ & $1.6\times 10^{-2}$ & $2.26\times10^{-1}$
+      & 0.82 &  not quite\\
+R012a & $1.0\times 10^{-2}$ & $6.4\times 10^{-3}$ & $9.4\times10^{-2}$
+      & 0.85 & not quite \\
+R012a & $1.0\times 10^{-3}$ & $6.3\times 10^{-4}$ & $9.6\times10^{-3}$
+      & 0.87 &  not quite\\
+\hline
 \end{tabular}
 \label{table:xi113}
-\caption{Equilibrium results for $\xi_0 = 1.13$, $\epsilon = \kappa/4$.}
+\caption{Equilibrium results for $\xi_0 = 1.13$, $\epsilon = \kappa/4$
+at 2 million time steps.
+Sets R006 and R008 have viscosity $\eta = 1/6$, while R010 and R012
+have $\eta = 0.025$, showing very little sensitivity to viscosity.}
 \end{center}
 \end{table}
-
-
 
 
 \begin{table}
@@ -472,6 +517,39 @@ R004f &  $1.0\times 10^{-2}$ & $1.045\times 10^{-3}$ & $3.965\times10^{-1}$
 \caption{Equilibrium results for $\xi_0 = 2.26$, $\epsilon = \kappa/4$.}
 \end{center}
 \end{table}
+
+
+\subsubsection{Parameters with $\xi_0 = 3.39$, $\epsilon = kappa/4$}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+\hline
+Name & $\eta$ & $-A,B$ & $\kappa$ & $kT$ & $\epsilon$ & $\beta$ & $W$
+     & $M$ & $M_\psi$\\
+\hline
+R014a & 1/6 & 0.020833 & 0.12 & 5.6587$\times 10^{-4}$ & 0.03 & 0.0000 & 0.0 
+      & 0.15 & 2.0 \\
+R014d &  &  &  & & & 0.0075 &  &  &  \\
+\hline
+R016a & 1/6 & 0.020833 & 0.12 & $2.82743\times 10^{-4}$ & 0.03 & 0.0000 & 0.0 
+      & 0.15 & 2.0 \\
+R016d & &  &  &  & & 0.0075 &  &  &  \\
+\hline
+R018a & 0.025 & 0.0020833 & 0.012 & 5.6587$\times 10^{-5}$ & 0.003
+      & 0.0000 & 0.0 & 2.0 & 2.0 \\
+R018d & &  &  &  & & 0.00075 &  &  &  \\
+\hline
+R020a & 0.025 & 0.0020833 & 0.012 & 2.82743$\times 10^{-5}$ & 0.003
+      & 0.0000 & 0.0 & 2.0 & 2.0 \\
+R020d & &  &  &  & & 0.0075 &  &  &  \\
+\hline
+\end{tabular}
+\caption{Parameters for $\xi_0 = 3.39$ and $\epsilon = \kappa/4$.}
+\end{center}
+\end{table}
+
+
 
 
 \subsubsection{Dynamics}
