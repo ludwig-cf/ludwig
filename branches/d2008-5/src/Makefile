@@ -2,38 +2,10 @@
 #
 # Makefile for LUDWIG
 #
-# Preprocessor flags.
-#
-#  One of:
-# _D_D3Q15_              Use D3Q15 or
-# -D_D3Q19_              Use D3Q19
-#
-# -D_NOISE_              Switch on fluctuations
-# -D_SINGLE_FLUID_       Use single fluid only
-#
-# Temporary (to be replaced by run-time options)
-# -D_SUBGRID_            Sub-grid particles
-# -D_ACTIVE2_            "Active2" particles
-#
-# Please use the following for any production run
-#
-# -DNDEBUG               Switch off standard C assert()
-#
-# make serial            for serial code
-# make mpi               for parallel code
-#
-# Compiler flags.
-#
-# You will need to set the appropriate compiler flags for your
-# local compiler/system of choice.
-#
-# CC        C compiler (make serial)
-# MPICC     C compiler (make mpi)
-# COPTS     C compile time flags e.g., optimisation
-# OPTS      Preprocessor options (as described above)
-# LDFLAGS   Link time flags [-lm included by default]
-# LIBS      External library flags
-#
+###############################################################################
+# retireve machine and run specific compile configuration 
+include config.mk
+
 ###############################################################################
 
 
@@ -49,56 +21,12 @@ OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
 
 EXE= Ludwig.exe
 
-###############################################################################
-#
-#  SUN HPC section
-#
-###############################################################################
-
-
-CC=cc
-MPICC=tmcc
-OPTS = -D_D3Q19_
-CFLAGS=$(OPTS)  -Xc -v -errwarn -xO3
-LDFLAGS=
-
-###############################################################################
-#
-#  Linux
-#
-###############################################################################
-
-CC=gcc
-MPICC=mpicc
-OPTS = -D_D3Q19_
-CFLAGS=$(OPTS) -Wall -O3
-
-###############################################################################
-#
-# Bluegene
-#
-###############################################################################
-
-#KOJAK=#/bgl/local/packages/kojak/bin/kinst-pomp
-#HPCT = /bgl/local/packages/hpct_all/hpct_bgl_20070116
-
-#CC= xlc_r
-#MPICC=  mpixlc  #-I$(HPCT)/include
-#COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
-#LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
-#OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
-#CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
-
-#LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
-#-L/bgl/local/lib/mpitrace -lmpitrace_c
-
 
 ###############################################################################
 #
 #  Generic section
 #
 ###############################################################################
-
 
 INC= -I.
 LIBS= -lm
