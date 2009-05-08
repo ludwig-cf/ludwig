@@ -1,10 +1,17 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-Read 33 user parameters from /home/kevin/src/lb/transitional/Model_H/test_auto1_input
-Lattice size is (64, 64, 64)
-The local domain is (64, 64, 64)
-Input format is binary
+Read 33 user parameters from ../tests/regression/test_auto1_input
+[User   ] Lattice size is (64, 64, 64)
+[Default] periodic boundaries set to (1, 1, 1)
+[Default] Processor decomposition is (1, 1, 1)
+Cartesian Communicator:
+Periodic = (1, 1, 1)
+Reorder is true
+[Compute] local domain as (64, 64, 64)
 [User   ] Random number seed: 7361237
+
+External gravitational force
+[User   ] gravity = 0 0 0
 
 Model physics:
 Shear viscosity: 0.100000
@@ -14,304 +21,315 @@ Relaxation time: 0.800000
 Isothermal kT:   0.050000
 
 Order parameter mobility M: 2.000000
-Requesting 6899904 bytes for grad_phi
-Requesting 2299968 bytes for delsq_phi
-Requesting 2299968 bytes for rho_site
+
+Ghost modes
+[Default] All modes (hydrodynamic and ghost) are active
+[Default] Ghost mode relaxation time: 1.000000
+
 Requesting 87398784 bytes for site data
-Requesting 2299968 bytes for phi_site
-Requesting 6.899904 Mb for force array
+Order parameter is via lattice Boltzmann
+[Boundary links: 0 (0 bytes)]
+
+Colloid cell list
+[Default] Requested minimum cell width is 6.000000
+[       ] Actual local number of cells [10,10,10]
+[       ] Actual local cell width      [6.40,6.40,6.40]
+Requesting 6912 bytes for the cell list
+
+Colloid message initiailisation...
+Taking volume of halo region = 262.144000 x 144 and ah = 2.300000
+Allocating space for 3102 particles in halo buffers
+Requesting 1414512 bytes for halo messages
+Requesting 769296 bytes for type one messages
+Requesting 1364880 bytes for type two messages
+Requesting 223344 bytes for type six messages
+
+Colloid-colloid lubrication corrections
+[Default] Lubrication corrections are switched off
+
+Colloid-colloid soft-sphere potential
+[Default] Soft sphere potential is switched off
+
+Colloid-colloid Leonard Jones potential
+[Default] Leonard Jones potential is switched off
+
+Colloid-colloid Yukawa potential
+[Default] Yukawa potential is switched off
+
+Checking cell list against specified interactions
+The maximum interaction range is: 4.600000
+The minimum cell width is 6.400000 (ok)
 Requesting 2299968 bytes for colloid maps
 
-CELL_init_cells:
-Colloid default radius a0:        2.300000
-Default hydrodynamic radius ah:   2.300000
-Normal lubrication breakdown:     0.700000
-Tangential lubrication breakdown: 0.000000
-Implicit scheme cut off:          0.000000
-Minimum cell width:               5.300000
-
-Local number of cells             [12,12,12]
-Local cell width                  [5.33,5.33,5.33]
-Requesting 10976 bytes for the cell list
-
-CCOM_init
-Allocating space for 2443 particles in halo buffers
-Requesting 899024 bytes for halo messages
-Requesting 625408 bytes for type one messages
-Requesting 1094464 bytes for type two messages
-Requesting 58632 bytes for type six messages
-
-Symmetric phi^4 free energy:
-Bulk parameter A      = -0.062500
-Bulk parameter B      = 0.062500
-Surface penalty kappa = 0.040000
-Surface tension       = 0.047140
-Interfacial width     = 1.131371
+Checking colloid state...
+Total energy / NkT: 0
+Mean square displacements (serial only) 4090.436673 0.000000 0.000000
+State appears to have no overlaps
+CIO_write_state
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262087, 1, 1.2325952e-32, 1, 1]
+[rho][262087, 1, 1.1093356e-31, 1, 1]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
 [total][2.21587, 0, 0]
 [fluid][1.38778e-17, 0, 0]
-Autocorrelation test output: 32.000000000 1.000000000
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.033324570 0.532930217
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.054386578 0.435922142
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.070719720 0.315402398
-[Inter-particle gap minimum is: 64.000000]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[0] Autocorrelation test output: 64.000000000 1.000000000
+[0] Autocorrelation test output: 64.033324570 0.532930217
+[0] Autocorrelation test output: 64.053747769 0.406536945
+[0] Autocorrelation test output: 64.069118275 0.300506304
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-4      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.0130655]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262087, 1, 6.2460894e-08, 0.98988879, 1.0099251]
+[rho][262087, 1, 4.5912572e-08, 0.99268496, 1.0072034]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -4.4213e-15, -2.81027e-16]
-[fluid][1.63798, -4.42008e-15, -1.31839e-16]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -4.03326e-15, 3.69541e-16]
+[fluid][1.65339, 2.75784e-06, 9.23406e-07]
+Velocity stats:
+[ umin ][ -0.0013676 -0.00577457 -0.00577188 ]
+[ umax ][ 0.0141999 0.00575839 0.00576694 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 4
-Autocorrelation test output: 32.083245738 0.260794445
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.093320505 0.202644823
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.101647090 0.180378112
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.109102106 0.162552601
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.081169325 0.253842023
+[0] Autocorrelation test output: 64.091137374 0.204688225
+[0] Autocorrelation test output: 64.099654045 0.187078634
+[0] Autocorrelation test output: 64.107436993 0.170936988
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-8      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00743204]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262091, 1, 3.1414597e-08, 0.99573232, 1.0043421]
+[rho][262091, 1, 2.6784187e-08, 0.99703712, 1.0027973]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -2.52385e-14, 3.62561e-16]
-[fluid][1.87569, -2.56253e-14, 4.57967e-16]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -2.46802e-14, 2.76534e-15]
+[fluid][1.85864, -1.97195e-05, -1.0838e-05]
+Velocity stats:
+[ umin ][ -0.0017433 -0.00304958 -0.00305236 ]
+[ umax ][ 0.00745761 0.0030568 0.00305256 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 8
-Autocorrelation test output: 32.115973245 0.153519783
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.122475092 0.145565200
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.128695350 0.140566639
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.134693129 0.135331203
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.114657665 0.161213919
+[0] Autocorrelation test output: 64.121467821 0.152053232
+[0] Autocorrelation test output: 64.127935158 0.145444311
+[0] Autocorrelation test output: 64.134115209 0.138838008
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-12      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00603644]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262091, 1, 2.1927616e-08, 0.99769258, 1.0023075]
+[rho][262091, 1, 1.7814807e-08, 0.99752111, 1.0025016]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -5.98271e-14, 3.93011e-16]
-[fluid][1.92561, -5.95426e-14, 5.13478e-16]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -7.64592e-14, 6.63505e-16]
+[fluid][1.92041, -9.67716e-06, -6.51066e-06]
+Velocity stats:
+[ umin ][ -0.00132083 -0.00161834 -0.00161907 ]
+[ umax ][ 0.00568528 0.00162032 0.00162103 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 12
-Autocorrelation test output: 32.140482720 0.130989998
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.145981799 0.121967643
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.151232226 0.119551967
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.156344107 0.115594594
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.140032045 0.133336458
+[0] Autocorrelation test output: 64.145615622 0.123508078
+[0] Autocorrelation test output: 64.150925230 0.120733873
+[0] Autocorrelation test output: 64.156081502 0.116454654
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-16      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00506325]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262095, 1, 1.7178105e-08, 0.99848337, 1.0015296]
+[rho][262095, 1, 1.2604594e-08, 0.99831206, 1.0016471]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -1.36696e-13, -3.11846e-15]
-[fluid][1.96693, -1.36065e-13, -2.44249e-15]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -1.45595e-13, 3.31265e-15]
+[fluid][1.96597, -1.94138e-06, -2.65539e-06]
+Velocity stats:
+[ umin ][ -0.00085589 -0.00114671 -0.00114682 ]
+[ umax ][ 0.00492272 0.00114752 0.00114735 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 16
-Autocorrelation test output: 32.161299338 0.112346028
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.166089778 0.108014187
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.170709185 0.104478562
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.175159394 0.100231020
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.161064778 0.112776070
+[0] Autocorrelation test output: 64.165871231 0.108320768
+[0] Autocorrelation test output: 64.170500188 0.104611229
+[0] Autocorrelation test output: 64.174957098 0.100406629
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-20      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00436551]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262095, 1, 1.3909907e-08, 0.99897038, 1.0010351]
+[rho][262095, 1, 9.2478295e-09, 0.99896238, 1.0009863]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -2.27755e-13, -3.93711e-15]
-[fluid][2.00136, -2.26992e-13, -4.19803e-15]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -2.65359e-13, 2.3395e-15]
+[fluid][2.00107, -3.47844e-07, -6.88082e-07]
+Velocity stats:
+[ umin ][ -0.000546632 -0.000943309 -0.000943055 ]
+[ umax ][ 0.00416613 0.000943307 0.000943292 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 20
-Autocorrelation test output: 32.179442777 0.096804602
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.183566241 0.092874766
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.187536141 0.089740630
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.191422922 0.089051277
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.179247167 0.096936543
+[0] Autocorrelation test output: 64.183378471 0.093103459
+[0] Autocorrelation test output: 64.187358059 0.089957583
+[0] Autocorrelation test output: 64.191256088 0.089351757
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-24      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00388486]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262091, 1, 1.1579747e-08, 0.99922399, 1.0007858]
+[rho][262091, 1, 7.1573842e-09, 0.99931944, 1.0006257]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -3.67499e-13, -6.7836e-15]
-[fluid][2.02559, -3.67158e-13, -6.83481e-15]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -4.31915e-13, 1.20993e-14]
+[fluid][2.02559, -9.07095e-07, -6.41786e-07]
+Velocity stats:
+[ umin ][ -0.000368722 -0.000806236 -0.00080608 ]
+[ umax ][ 0.00371844 0.000805993 0.000806064 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 24
-Autocorrelation test output: 32.195225581 0.085871038
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.198864237 0.081507147
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.202350988 0.078883388
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.205706639 0.075476561
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.195065301 0.085872040
+[0] Autocorrelation test output: 64.198709043 0.081740106
+[0] Autocorrelation test output: 64.202205502 0.079096988
+[0] Autocorrelation test output: 64.205573766 0.075843153
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-28      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00329753]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262091, 1, 9.8345627e-09, 0.99941369, 1.0005911]
+[rho][262091, 1, 5.8201334e-09, 0.99947821, 1.0004774]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -5.51723e-13, -7.23421e-15]
-[fluid][2.0534, -5.51316e-13, -7.07767e-15]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -6.55621e-13, 2.98081e-15]
+[fluid][2.05271, -7.63494e-07, -5.967e-07]
+Velocity stats:
+[ umin ][ -0.00028152 -0.000726594 -0.00072657 ]
+[ umax ][ 0.00362554 0.000726392 0.000726439 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 28
-Autocorrelation test output: 32.208941374 0.073321244
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.212067073 0.070460936
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.215090538 0.068618450
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.218019610 0.066118869
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.208823282 0.073634573
+[0] Autocorrelation test output: 64.211964444 0.070858875
+[0] Autocorrelation test output: 64.215003527 0.068938936
+[0] Autocorrelation test output: 64.217947656 0.066491003
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-32      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00289091]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262091, 1, 8.4861626e-09, 0.99952709, 1.000476]
+[rho][262091, 1, 4.8847158e-09, 0.99954982, 1.0004118]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -7.34263e-13, 3.59107e-15]
-[fluid][2.07295, -7.34197e-13, 3.55271e-15]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -8.25882e-13, 1.29561e-15]
+[fluid][2.07231, -5.18176e-07, -3.81158e-07]
+Velocity stats:
+[ umin ][ -0.000230692 -0.00063568 -0.000635672 ]
+[ umax ][ 0.00362554 0.000635554 0.000635584 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 32
-Autocorrelation test output: 32.220859100 0.064497668
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.223614772 0.062263236
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.226290348 0.060813259
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.228890432 0.058790582
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.220801555 0.064788373
+[0] Autocorrelation test output: 64.223570719 0.062593178
+[0] Autocorrelation test output: 64.226258988 0.061067192
+[0] Autocorrelation test output: 64.228870883 0.059079981
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-36      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00256869]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262091, 1, 7.4189219e-09, 0.99961211, 1.0003884]
+[rho][262091, 1, 4.1703781e-09, 0.99963336, 1.0003431]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -8.66728e-13, 1.56981e-14]
-[fluid][2.0885, -8.66675e-13, 1.5668e-14]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -8.8456e-13, 2.83881e-15]
+[fluid][2.08801, -4.16056e-07, -3.24992e-07]
+Velocity stats:
+[ umin ][ -0.00019994 -0.000550315 -0.000550319 ]
+[ umax ][ 0.00362554 0.000550268 0.000550288 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 36
-Autocorrelation test output: 32.231418108 0.057482545
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.233877255 0.055638200
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.236270534 0.054452633
-[Inter-particle gap minimum is: 64.000000]
-Autocorrelation test output: 32.238601307 0.052762953
-[Inter-particle gap minimum is: 64.000000]
+[0] Autocorrelation test output: 64.231409660 0.057703738
+[0] Autocorrelation test output: 64.233879173 0.055893887
+[0] Autocorrelation test output: 64.236282246 0.054647463
+[0] Autocorrelation test output: 64.238622231 0.052991815
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-40      Inf     Inf     Inf       0       0       0  1.5708  1.5708
+Particle statistics:
+[Inter-particle gap minimum is: 64.000000]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 0 0 0 0 0]
+[Max particle speed: 0.00230399]
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262091, 1, 6.5552221e-09, 0.99967846, 1.0003205]
+[rho][262091, 1, 3.5748624e-09, 0.99968934, 1.0002896]
 [phi][0, 0, 0, 0, 0]
 
 TEST_momentum [x, y, z]
-[total][2.21587, -9.35505e-13, 1.75453e-14]
-[fluid][2.10134, -9.36119e-13, 1.74999e-14]
-
-CMEM_report_memory
-[colloids: 1 (0.000560 Mb) links: 402 (0.019296 Mb)]
+[total][2.21587, -9.44843e-13, 2.60441e-15]
+[fluid][2.10096, -3.48876e-07, -2.87128e-07]
+Velocity stats:
+[ umin ][ -0.000172861 -0.000482104 -0.00048211 ]
+[ umax ][ 0.00362554 0.000482091 0.000482105 ]
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
 
 Completed cycle 40
 CIO_write_state
 
-COLL_finish releasing memory ...
+Releasing colloids...
+[colloids: 0 (0 bytes) links: 0 (0 bytes)]
 
-CMEM_report_memory
-[colloids: 0 (0.000000 Mb) links: 0 (0.000000 Mb)]
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total: 125.320000 125.320000 125.320000 125.320000 (1 call)
-      Time step loop:   2.780000   2.810000 112.290000   2.807250 (40 calls)
-         Propagation:   0.630000   0.650000  25.620000   0.640500 (40 calls)
-           Collision:   1.940000   1.960000  78.050000   1.951250 (40 calls)
-       Lattice halos:   0.070000   0.090000   6.500000   0.081250 (80 calls)
-              Forces:   0.000000   0.010000   0.170000   0.004250 (40 calls)
-             Rebuild:   0.030000   0.050000   1.640000   0.041000 (40 calls)
-                 BBL:   0.000000   0.010000   0.060000   0.000750 (80 calls)
-    Particle updates:   0.000000   0.010000   0.010000   0.000250 (40 calls)
-      Particle halos:   0.000000   0.010000   0.210000   0.001750 (120 calls)
+               Total:     63.550     63.550     63.550  63.550000 (1 call)
+      Time step loop:      1.240      2.180     58.120   1.453000 (40 calls)
+         Propagation:      0.080      0.160      4.100   0.102500 (40 calls)
+           Collision:      1.120      1.900     52.120   1.303000 (40 calls)
+       Lattice halos:     -0.000      0.060      0.510   0.006375 (80 calls)
+             Rebuild:      0.010      0.060      0.600   0.015000 (40 calls)
+                 BBL:     -0.000      0.010      0.010   0.000250 (40 calls)
+      Particle halos:     -0.000      0.010      0.020   0.000500 (40 calls)
 Ludwig finished normally.
