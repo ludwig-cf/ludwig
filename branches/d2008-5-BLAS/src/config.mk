@@ -5,23 +5,24 @@
 #Define Machine.
 #
 #MACHINE = HPCX
-#MACHINE = Ness
+MACHINE = Ness
 #MACHINE = HecToR
-MACHINE = ECDF
+#MACHINE = ECDF
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)
 	CC=xlc_r
 	MPICC=mpcc_r
-	OPTS = -D_D3Q19_ #-DACML
+	OPTS = -D_D3Q19_ 
 	CFLAGS=$(OPTS) -q32
 	LDFLAGS=
 else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
-		MPICC=mpicc
-		OPTS = -D_D3Q19_
-		CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG -D_SINGLE_FLUID_
+		MPICC=mpicc 
+		OPTS = -D_D3Q19_ -DACML 
+		CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG -D_SINGLE_FLUID_ 
+		LIBS= -lm -lacml -lpgftnrtl -lrt
 	else
 		ifeq ($(MACHINE),HecToR)
 			CC=gcc
