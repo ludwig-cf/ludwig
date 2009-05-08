@@ -2,7 +2,7 @@
  *
  *  collision.h
  *
- *  $Id: collision.h,v 1.4 2008-08-24 17:34:26 kevin Exp $
+ *  $Id: collision.h,v 1.4.8.1 2009-05-08 15:28:38 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre

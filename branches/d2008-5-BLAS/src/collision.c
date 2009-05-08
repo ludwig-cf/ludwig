@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16 2008-12-03 20:42:10 kevin Exp $
+ *  $Id: collision.c,v 1.16.6.1 2009-05-08 15:28:38 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -41,6 +41,15 @@
 
 #include "site_map.h"
 #include "io_harness.h"
+
+
+#ifdef ACML
+#include <acml.h>
+#endif
+
+#ifdef MKL
+#include "/exports/applications/apps/intel/mkl/10.0.1.014/include/mkl.h"
+#endif
 
 extern Site * site;
 
@@ -148,6 +157,16 @@ void MODEL_collide_multirelaxation() {
   double    force_local[3];
   const double   r3     = (1.0/3.0);
 
+  /* dgemv parameters */
+  char T = 'T';
+  double alpha = 1.f;
+  int lda = NVEL;
+  int incx = 1;
+  double beta = 0.f;
+  int incy = 1;
+  int mdim = NVEL;
+  int ndim = NVEL;
+
   TIMER_start(TIMER_COLLIDE);
 
   get_N_local(N);
@@ -161,12 +180,8 @@ void MODEL_collide_multirelaxation() {
 
 	/* Compute all the modes */
 
-	for (m = 0; m < nmodes_; m++) {
-	  mode[m] = 0.0;
-	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += site[index].f[p]*ma_[m][p];
-	  }
-	}
+	    dgemv(T, mdim, ndim, alpha, ma_, lda, site[index].f, incx, 
+			     beta, mode, incy);
 
 	/* For convenience, write out the physical modes. */
 
@@ -258,12 +273,8 @@ void MODEL_collide_multirelaxation() {
 
 	/* Project post-collision modes back onto the distribution */
 
-	for (p = 0; p < NVEL; p++) {
-	  site[index].f[p] = 0.0;
-	  for (m = 0; m < nmodes_; m++) {
-	    site[index].f[p] += mi_[p][m]*mode[m];
-	  }
-	}
+	dgemv(T, mdim, ndim, alpha, mi_, lda, mode, incx, 
+	      beta, site[index].f, incy);
 
 	/* Next site */
       }
@@ -339,6 +350,16 @@ void MODEL_collide_binary_lb() {
   double    rtau2;
   double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
+  
+  // dgemv parameters
+  char T = 'T';
+  double alpha = 1.f;
+  int lda = NVEL;
+  int incx = 1;
+  double beta = 0.f;
+  int incy = 1.f;
+  int mdim = NVEL;
+  int ndim = NVEL;
 
 
   TIMER_start(TIMER_COLLIDE);
@@ -357,12 +378,8 @@ void MODEL_collide_binary_lb() {
 
 	/* Compute all the modes */
 
-	for (m = 0; m < nmodes_; m++) {
-	  mode[m] = 0.0;
-	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += site[index].f[p]*ma_[m][p];
-	  }
-	}
+	dgemv(T, mdim, ndim, alpha, ma_, lda, site[index].f, incx,
+	      beta, mode, incy);
 
 	/* For convenience, write out the physical modes. */
 
@@ -458,12 +475,10 @@ void MODEL_collide_binary_lb() {
 
 	/* Project post-collision modes back onto the distribution */
 
-	for (p = 0; p < NVEL; p++) {
-	  site[index].f[p] = 0.0;
-	  for (m = 0; m < nmodes_; m++) {
-	    site[index].f[p] += mi_[p][m]*mode[m];
-	  }
-	}
+
+	dgemv(T, mdim, ndim, alpha, mi_, lda, mode, incx,
+	      beta, site[index].f, incy);
+
 
 	/* Now, the order parameter distribution */
 
@@ -473,11 +488,13 @@ void MODEL_collide_binary_lb() {
 	jphi[X] = 0.0;
 	jphi[Y] = 0.0;
 	jphi[Z] = 0.0;
-	for (p = 1; p < NVEL; p++) {
-	  for (i = 0; i < 3; i++) {
-	    jphi[i] += site[index].g[p]*cv[p][i];
-	  }
-	}
+		for (p = 1; p < NVEL; p++) {
+		  for (i = 0; i < 3; i++) {
+		    jphi[i] += site[index].g[p]*cv[p][i];
+	    	  }
+		}
+	//	dgemv(T, 3, ndim, alpha, cv, 3, site[index].g, incx,
+	//	      beta, jphi, incy);
 
 	/* Relax order parameters modes. See the comments above. */
 
