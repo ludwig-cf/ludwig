@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.3 2009-05-09 15:50:15 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.4 2009-05-10 16:33:03 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -158,23 +158,38 @@ void MODEL_collide_multirelaxation() {
   const double   r3     = (1.0/3.0);
 
   /* dgemv parameters */
-  char T = 'T';
-  // const double alpha = 1.0;
   
-  int lda = NVEL;
-  int incx = 1;
-  //  const double beta = 0.f;
-  int incy = 1;
-  int mdim = NVEL;
-  int ndim = NVEL;
+  // for some reason mkl require const pointers to work
+  // something to do with a size requirement or operations are misaligned
 
 #ifdef MKL
 
-  double* alpha;
-  double* beta;
-  *alpha = 1.f;
-  *beta = 0.f;
+  const double _alpha = 1.f;
+  const double _beta = 0.f;
+  const char _T = 'T'; 
+  const int _lda = NVEL;
+  const int _incx = 1;
+  const int _incy = 1;
+  const int _mdim = NVEL;
+  const int _ndim = NVEL;
+  
+  const char* T = &_T; 
+  const int* lda = &_lda;
+  const int* incx = &_incx;
+  const int* incy = &_incy;
+  const int* mdim = &_mdim;
+  const int* ndim = &_ndim;
+  const double* alpha = &_alpha;
+  const double* beta = &_beta;
 #else
+
+    /* dgemv parameters */
+  char T = 'T'; 
+  const int lda = NVEL;
+  const int incx = 1;
+  const int incy = 1;
+  const int mdim = NVEL;
+  const int ndim = NVEL;
   const double alpha = 1.f;
   const double beta = 0.f;
 #endif
@@ -193,7 +208,7 @@ void MODEL_collide_multirelaxation() {
 	/* Compute all the modes */
 
 	dgemv(T, mdim, ndim, alpha, (double*)ma_, lda, site[index].f, incx, 
-	      beta, mode, incy);
+	    beta, mode, incy);
 
 	/* For convenience, write out the physical modes. */
 
@@ -286,7 +301,7 @@ void MODEL_collide_multirelaxation() {
 	/* Project post-collision modes back onto the distribution */
 
 	dgemv(T, mdim, ndim, alpha, mi_, lda, mode, incx, 
-	      beta, site[index].f, incy);
+	    beta, site[index].f, incy);
 
 	/* Next site */
       }
@@ -363,23 +378,38 @@ void MODEL_collide_binary_lb() {
   double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
   
-  // dgemv parameters
-  char T = 'T';
-  //  double alpha = 1.f;
-  int lda = NVEL;
-  int incx = 1;
-  //  double beta = 0.f;
-  int incy = 1.f;
-  int mdim = NVEL;
-  int ndim = NVEL;
+  /* dgemv parameters */
+
+  // for some reason mkl require const pointers to work
+  // something to do with a size requirement or operations are misaligned
 
 #ifdef MKL
 
-  double* alpha;
-  double* beta;
-  *alpha = 1.f;
-  *beta = 0.f;
+  const double _alpha = 1.f;
+  const double _beta = 0.f;
+  const char _T = 'T'; 
+  const int _lda = NVEL;
+  const int _incx = 1;
+  const int _incy = 1;
+  const int _mdim = NVEL;
+  const int _ndim = NVEL;
+
+  const char* T = &_T; 
+  const int* lda = &_lda;
+  const int* incx = &_incx;
+  const int* incy = &_incy;
+  const int* mdim = &_mdim;
+  const int* ndim = &_ndim;
+  const double* alpha = &_alpha;
+  const double* beta = &_beta;
 #else
+
+  char T = 'T'; 
+  const int lda = NVEL;
+  const int incx = 1;
+  const int incy = 1;
+  const int mdim = NVEL;
+  const int ndim = NVEL;
   const double alpha = 1.f;
   const double beta = 0.f;
 #endif
@@ -402,7 +432,7 @@ void MODEL_collide_binary_lb() {
 	/* Compute all the modes */
 
 	dgemv(T, mdim, ndim, alpha, ma_, lda, site[index].f, incx,
-	      beta, mode, incy);
+	    beta, mode, incy);
 
 	/* For convenience, write out the physical modes. */
 
@@ -500,7 +530,7 @@ void MODEL_collide_binary_lb() {
 
 
 	dgemv(T, mdim, ndim, alpha, mi_, lda, mode, incx,
-	      beta, site[index].f, incy);
+	     beta, site[index].f, incy);
 
 
 	/* Now, the order parameter distribution */

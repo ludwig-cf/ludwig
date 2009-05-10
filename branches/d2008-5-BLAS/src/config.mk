@@ -5,9 +5,9 @@
 #Define Machine.
 #
 #MACHINE = HPCX
-MACHINE = Ness
+#MACHINE = Ness
 #MACHINE = HecToR
-#MACHINE = ECDF
+MACHINE = ECDF
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)
@@ -33,8 +33,10 @@ else
 			ifeq ($(MACHINE), ECDF)
 				CC=gcc
 				MPICC=mpicc
-				OPTS = -D_D3Q19_ 
-				CFLAGS=$(OPTS) -DNDEBUG -D_SINGLE_FLUID_
+				OPTS = -D_D3Q19_ -DMKL
+				CFLAGS=$(OPTS) -DNDEBUG -D_SINGLE_FLUID_ 
+				LIBS= -L/exports/applications/apps/intel/mkl/10.0.1.014/lib/em64t/ \
+				 -lmkl_intel_lp64  -lmkl_sequential -lmkl_core  -lm
 			else
 				echo	
 				echo "OS not defined !!" 

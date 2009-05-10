@@ -12,7 +12,7 @@
 
 #$ -N Ludwig.exe.sge
 #$ -cwd
-#$ -pe openmpi-smp 8
+#$ -pe openmpi-smp 4
 #$ -l h_rt=00:30:00
 
 # Initialise environment module
@@ -23,6 +23,7 @@
 
 module load openmpi/intel/64/1.2.5/tcp
 module load intel/icc/64
+module load intel/mkl/64/10.0.1.014
 
 # Run MPI program through Ethernet eth0
 
