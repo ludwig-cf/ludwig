@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.4 2008-12-03 20:36:45 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.5 2009-05-12 11:32:00 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -224,7 +224,14 @@ static void phi_ch_upwind() {
 	  }
 
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  fluxw[nop_*index0 + n] = u*phi - mobility*(mu0 - mu1);
+	  if (n == 0) {
+	    fluxw[nop_*index0 + n] = u*phi - mobility*(mu0 - mu1);
+	  }
+	  else {
+	    double psiw = 0.5*(phi0 + phi_site[nop_*index1 + n]);
+	    double m = mobility*psiw*(1.0-psiw);
+	    fluxw[nop_*index0 + n] = u*phi - m*(mu0 - mu1);
+	  }
 
 	  /* east face (ic and icp1) */
 	  index1 = ADDR(icp1, jc, kc);
@@ -239,9 +246,14 @@ static void phi_ch_upwind() {
 	  }
 
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  fluxe[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
-
-
+	  if (n == 0) {
+	    fluxe[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
+	  }
+	  else {
+	    double psie = 0.5*(phi0 + phi_site[nop_*index1 + n]);
+	    double m = mobility*psie*(1.0-psie);
+	    fluxe[nop_*index0 + n] = u*phi - m*(mu1 - mu0);
+	  }
 
 	  /* y direction */
 	  index1 = le_site_index(ic, jc+1, kc);
@@ -256,7 +268,14 @@ static void phi_ch_upwind() {
 	  }
 
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  fluxy[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
+	  if (n == 0) {
+	    fluxy[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
+	  }
+	  else {
+	    double psin = 0.5*(phi0 + phi_site[nop_*index1 + n]);
+	    double m = mobility*psin*(1.0-psin);
+	    fluxy[nop_*index0 + n] = u*phi - m*(mu1 - mu0);
+	  }
 
 	  /* z direction */
 	  index1 = ADDR(ic, jc, kc+1);
@@ -271,7 +290,14 @@ static void phi_ch_upwind() {
 	  }
 
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  fluxz[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
+	  if (n == 0) {
+	    fluxz[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
+	  }
+	  else {
+	    double psiu = 0.5*(phi0 + phi_site[nop_*index1 + n]);
+	    double m = mobility*psiu*(1.0-psiu);
+	    fluxz[nop_*index0 + n] = u*phi - m*(mu1 - mu0);
+	  }
 	}
       }
     }
