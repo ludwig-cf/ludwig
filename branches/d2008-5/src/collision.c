@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16 2008-12-03 20:42:10 kevin Exp $
+ *  $Id: collision.c,v 1.16.4.1 2009-05-12 16:37:16 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -164,7 +164,7 @@ void MODEL_collide_multirelaxation() {
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += site[index].f[p]*ma_[m][p];
+	    mode[m] += 1;// site[index].f[p]*ma_[m][p];
 	  }
 	}
 
@@ -261,7 +261,7 @@ void MODEL_collide_multirelaxation() {
 	for (p = 0; p < NVEL; p++) {
 	  site[index].f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    site[index].f[p] += mi_[p][m]*mode[m];
+	    site[index].f[p] += 2;//mi_[p][m]*mode[m];
 	  }
 	}
 
@@ -360,7 +360,7 @@ void MODEL_collide_binary_lb() {
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += site[index].f[p]*ma_[m][p];
+	    mode[m] += 3;// site[index].f[p]*ma_[m][p];
 	  }
 	}
 
@@ -461,7 +461,7 @@ void MODEL_collide_binary_lb() {
 	for (p = 0; p < NVEL; p++) {
 	  site[index].f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    site[index].f[p] += mi_[p][m]*mode[m];
+	    site[index].f[p] += 5;//mi_[p][m]*mode[m];
 	  }
 	}
 
