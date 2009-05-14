@@ -6,8 +6,11 @@
 #
 #MACHINE = HPCX
 #MACHINE = Ness
-#MACHINE = HecToR
-MACHINE = ECDF
+MACHINE = HecToR
+#MACHINE = ECDF
+
+# choose 'single' or 'binary' fluid scheme
+#SCHEME= single
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)
@@ -21,20 +24,21 @@ else
 		CC=gcc
 		MPICC=mpicc 
 		OPTS = -D_D3Q19_ -DACML 
-		CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG -D_SINGLE_FLUID_ 
+		CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG 
 		LIBS= -lm -lacml -lpgftnrtl -lrt
 	else
 		ifeq ($(MACHINE),HecToR)
 			CC=gcc
-			MPICC=mpicc
-			OPTS = -D_D3Q19_
-			CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG -D_SINGLE_FLUID_
+			MPICC=cc
+			OPTS = -D_D3Q19_ -DACML
+			CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG 
+			LIBS= -lm -lacml -lpgftnrtl -lrt
 		else
 			ifeq ($(MACHINE), ECDF)
 				CC=gcc
 				MPICC=mpicc
 				OPTS = -D_D3Q19_ -DMKL
-				CFLAGS=$(OPTS) -DNDEBUG -D_SINGLE_FLUID_ 
+				CFLAGS=$(OPTS) -DNDEBUG
 				LIBS= -L/exports/applications/apps/intel/mkl/10.0.1.014/lib/em64t/ \
 				 -lmkl_intel_lp64  -lmkl_sequential -lmkl_core  -lm
 			else
@@ -44,6 +48,12 @@ else
 			endif
 		endif
 	endif
+endif
+
+ifeq ($(SCHEME), single)
+	OPTS += -D_SINGLE_FLUID_
+else
+	OPTS += -D_BINARY_FLUID_
 endif
 
 ###########################################################################
