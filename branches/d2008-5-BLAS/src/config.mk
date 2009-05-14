@@ -37,7 +37,7 @@ else
 			ifeq ($(MACHINE), ECDF)
 				CC=gcc
 				MPICC=mpicc
-				OPTS = -D_D3Q19_ -DMKL
+				OPTS = -D_D3Q19_ -DMKL -fastsse
 				CFLAGS=$(OPTS) -DNDEBUG
 				LIBS= -L/exports/applications/apps/intel/mkl/10.0.1.014/lib/em64t/ \
 				 -lmkl_intel_lp64  -lmkl_sequential -lmkl_core  -lm
