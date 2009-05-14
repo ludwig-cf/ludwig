@@ -6,8 +6,8 @@
 #
 #MACHINE = HPCX
 #MACHINE = Ness
-#MACHINE = HecToR
-MACHINE = ECDF
+MACHINE = HecToR
+#MACHINE = ECDF
 
 # choose 'single' or 'binary' fluid scheme
 #SCHEME= single
@@ -28,10 +28,11 @@ else
 		CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG
 	else
 		ifeq ($(MACHINE),HecToR)
-			CC=gcc
-			MPICC=mpicc
+			CC=
+			MPICC=cc
 			OPTS = -D_D3Q19_
 			CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG 
+			LIBS= -lm
 		else
 			ifeq ($(MACHINE), ECDF)
 				CC=gcc
