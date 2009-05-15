@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.17 2009-05-08 11:03:49 kevin Exp $
+ *  $Id: collision.c,v 1.18 2009-05-15 09:12:32 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,6 +33,7 @@
 #include "phi_stats.h"
 #include "lattice.h"
 
+#include "util.h"
 #include "utilities.h"
 #include "communicate.h"
 #include "leesedwards.h"
@@ -191,7 +192,7 @@ void MODEL_collide_multirelaxation() {
 
 	for (i = 0; i < 3; i++) {
 	  force[i] = (siteforce[i] + force_local[i]);
-	  u[i] = rrho*(u[i] + 0.5*force[i]);  
+	  u[i] = rrho*(u[i] + 0.5*force[i]);
 	}
 	hydrodynamics_set_velocity(index, u);
 
@@ -542,6 +543,7 @@ void MODEL_init( void ) {
   int     offset[3];
   double   phi;
   double   phi0, rho0;
+  double   mobility;
   char     filename[FILENAME_MAX];
 
   rho0 = get_rho0();
@@ -688,6 +690,18 @@ void MODEL_init( void ) {
     phi_init_surfactant(rho0);
   }
 
+  /* Order parameter mobility (probably to move) */
+
+  ind = RUN_get_double_parameter("mobility", &mobility);
+  info("\nOrder parameter mobility M: %f\n", mobility);
+  phi_ch_set_mobility(mobility);
+
+  if (nop_ == 2) {
+    ind = RUN_get_double_parameter("mobility_psi", &mobility);
+    info("\nSurfactant mobility M: %f\n", mobility);
+    phi_ch_op_set_mobility(mobility, 1);
+  }
+
   return;
 }
 
@@ -712,7 +726,6 @@ void RAND_init_fluctuations() {
   int  p;
   char tmp[128];
   double tau_s, tau_b, tau_g, kt;
-  double mobility;
 
   p = RUN_get_double_parameter("temperature", &kt);
   set_kT(kt);
@@ -752,18 +765,6 @@ void RAND_init_fluctuations() {
   info("Relaxation time: %f\n", tau_b);
   info("Isothermal kT:   %f\n", get_kT());
 
-  /* Order parameter mobility (probably to move) */
-
-  p = RUN_get_double_parameter("mobility", &mobility);
-  info("\nOrder parameter mobility M: %f\n", mobility);
-  phi_ch_set_mobility(mobility);
-
-  if (nop_ == 2) {
-    p = RUN_get_double_parameter("mobility_psi", &mobility);
-    info("\nSurfactant mobility M: %f\n", mobility);
-    phi_ch_op_set_mobility(mobility, 1);
-  }
-
 
   /* Ghost modes */
 
@@ -788,6 +789,8 @@ void RAND_init_fluctuations() {
     info("[Default] Ghost mode relaxation time: %f\n", tau_g);
   }
   else {
+    /* The leading factor here is a fudge-factor which must be in
+     * range 8-12 */
     rtau_ghost = 12.0*(2.0 - rtau_shear)/(8.0 - rtau_shear);
     tau_g = 1.0/rtau_ghost;
     info("[User   ] Ginzburg-D'Humieres relaxation time requested: %f\n",
