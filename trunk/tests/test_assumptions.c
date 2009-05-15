@@ -4,7 +4,9 @@
  *
  *  Test basic model assumptions, portability issues.
  *
- *  $Id: test_assumptions.c,v 1.5 2009-04-01 08:33:50 kevin Exp $
+ *  Also testing util.h stuff at the moment.
+ *
+ *  $Id: test_assumptions.c,v 1.6 2009-05-15 09:13:18 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -14,11 +16,15 @@
  *
  *****************************************************************************/
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
+#include "tests.h"
 #include "util.h"
+
+void test_util(void);
 
 int main(int argc, char ** argv) {
 
@@ -70,6 +76,8 @@ int main(int argc, char ** argv) {
     free(p_int);
   }
 
+  test_util();
+
 
   /* Information */
   printf("Language\n");
@@ -87,4 +95,68 @@ int main(int argc, char ** argv) {
   printf("All assumptions ok!\n");
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_util
+ *
+ *****************************************************************************/
+
+void test_util(void) {
+
+  int i, j, k, m, n;
+  double sumd, sume;
+  
+  /* Krocker delta and Levi-Civita tensor (floating point) */
+
+  printf("Kroneker delta d_[i][j] correct...");
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      if (i == j) {
+	assert(fabs(d_[i][j] - 1.0) < TEST_DOUBLE_TOLERANCE);
+      }
+      else {
+	assert(fabs(d_[i][j] - 0.0) < TEST_DOUBLE_TOLERANCE);
+      }
+    }
+  }
+  
+  printf("yes.\n");
+
+  /* Do some permutations to test the perutation tensor e_[i][j][k].
+   * Also use the identity e_ijk e_imn = d_jm d_kn - d_jn d_km
+   * for a test. */ 
+
+  printf("Permutation tensor e_[i][j][k] correct...");
+
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      for (k = 0; k < 3; k++) {
+	assert(fabs(e_[i][j][k] + e_[i][k][j]) < TEST_DOUBLE_TOLERANCE);
+	assert(fabs(e_[i][j][k] + e_[j][i][k]) < TEST_DOUBLE_TOLERANCE);
+	assert(fabs(e_[i][j][k] - e_[k][i][j]) < TEST_DOUBLE_TOLERANCE);
+      }
+    }
+  }
+
+  for (j = 0; j < 3; j++) {
+    for (k = 0; k < 3; k++) {
+      for (m = 0; m < 3; m++) {
+	for (n = 0; n < 3; n++) {
+	  sume = 0.0;
+	  for (i = 0; i < 3; i++) {
+	    sume += e_[i][j][k]*e_[i][m][n];
+	  }
+	  sumd = (d_[j][m]*d_[k][n] - d_[j][n]*d_[k][m]);
+	  assert(fabs(sume - sumd) < TEST_DOUBLE_TOLERANCE);
+	}
+      }
+    }
+  }
+
+  printf("yes.\n");
+
+  return;
 }
