@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.13 2009-05-05 14:33:58 kevin Exp $
+ *  $Id: free_energy.c,v 1.14 2009-05-15 09:11:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -33,6 +33,7 @@
 #include "pe.h"
 #include "phi.h"
 #include "runtime.h"
+#include "util.h"
 #include "utilities.h"
 #include "free_energy.h"
 
@@ -339,7 +340,6 @@ static void fe_chemical_stress_symmetric(const int index, double p[3][3]) {
   int ia, ib;
   double phi, bulk, delsq_phi, grad_phi_sq;
   double grad_phi[3];
-  extern const double d_[3][3]; /* Pending Refactor util etc. */ 
 
   phi = phi_get_phi_site(index);
   phi_get_grad_phi_site(index, grad_phi);
@@ -377,7 +377,6 @@ static void fe_chemical_stress_brazovskii(const int index, double p[3][3]) {
   double bulk_symmetric, brazovskii;
   double grad_phi[3];
   double grad_delsq_phi[3];
-  extern const double d_[3][3]; /* Pending Refactor util etc. */ 
 
   phi = phi_get_phi_site(index);
   phi_get_grad_phi_site(index, grad_phi);
@@ -587,7 +586,6 @@ static void fe_chemical_stress_sman(const int index, double p[3][3]) {
   double phi, psi, delsq_phi, p0;
   double dphi[3];
   double dpsi[3];
-  extern const double d_[3][3]; /* Pending Refactor util etc. */ 
 
   phi = phi_op_get_phi_site(index, 0);
   psi = phi_op_get_phi_site(index, 1);
