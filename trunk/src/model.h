@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.12 2009-04-09 14:53:29 kevin Exp $
+ *  $Id: model.h,v 1.13 2009-05-15 09:10:37 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -37,7 +37,6 @@ typedef struct {
 
 extern const double cs2;
 extern const double rcs2;
-extern const double d_[3][3];
 extern struct io_info_t * io_info_distribution_;
 
 void   init_site(void);
