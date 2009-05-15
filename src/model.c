@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.13 2009-04-15 10:51:14 kevin Exp $
+ *  $Id: model.c,v 1.14 2009-05-15 09:10:37 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -31,7 +31,6 @@
 
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
-const double d_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
 
 struct io_info_t * io_info_distribution_; 
 Site  * site;

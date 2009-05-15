@@ -7,7 +7,7 @@
  *  Little / big endian stuff based on suggestions by Harsha S.
  *  Adiga from IBM.
  *
- *  $Id: util.c,v 1.1 2008-11-04 16:44:03 kevin Exp $
+ *  $Id: util.c,v 1.2 2009-05-15 09:10:37 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -17,6 +17,15 @@
  *****************************************************************************/
 
 #include "util.h"
+
+#define c0 0.0
+#define c1 1.0
+
+const double d_[3][3]    = {{c1, c0, c0}, {c0, c1, c0}, {c0, c0, c1}};
+const double e_[3][3][3] = {{{c0, c0, c0}, { c0, c0, c1}, {c0,-c1, c0}},
+			    {{c0, c0,-c1}, { c0, c0, c0}, {c1, c0, c0}},
+			    {{c0, c1, c0}, {-c1, c0, c0}, {c0, c0, c0}}}; 
+
 
 /***************************************************************************
  *
