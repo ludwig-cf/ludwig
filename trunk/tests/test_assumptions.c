@@ -6,7 +6,7 @@
  *
  *  Also testing util.h stuff at the moment.
  *
- *  $Id: test_assumptions.c,v 1.6 2009-05-15 09:13:18 kevin Exp $
+ *  $Id: test_assumptions.c,v 1.7 2009-05-15 09:17:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,6 +24,7 @@
 #include "tests.h"
 #include "util.h"
 
+void (* p_function)(void);
 void test_util(void);
 
 int main(int argc, char ** argv) {
@@ -62,6 +63,9 @@ int main(int argc, char ** argv) {
   assert(FILENAME_MAX >= 128);
   printf("yes (%d characters)\n", FILENAME_MAX);
   printf("Checking BUFSIZ... (%d bytes)\n", BUFSIZ);
+
+  printf("Checking sizeof(void *)... (%d bytes)\n", sizeof(void *));
+  printf("Checking sizeof(func *)... (%d bytes)\n", sizeof(p_function));
 
   /* See what happens to zero size allocation */
 
