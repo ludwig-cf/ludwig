@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.4 2009-05-10 16:33:03 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.5 2009-05-16 11:47:07 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -208,7 +208,7 @@ void MODEL_collide_multirelaxation() {
 	/* Compute all the modes */
 
 	dgemv(T, mdim, ndim, alpha, (double*)ma_, lda, site[index].f, incx, 
-	    beta, mode, incy);
+	      beta, mode, incy);
 
 	/* For convenience, write out the physical modes. */
 
@@ -432,7 +432,7 @@ void MODEL_collide_binary_lb() {
 	/* Compute all the modes */
 
 	dgemv(T, mdim, ndim, alpha, ma_, lda, site[index].f, incx,
-	    beta, mode, incy);
+	      beta, mode, incy);
 
 	/* For convenience, write out the physical modes. */
 
@@ -541,11 +541,12 @@ void MODEL_collide_binary_lb() {
 	jphi[X] = 0.0;
 	jphi[Y] = 0.0;
 	jphi[Z] = 0.0;
-		for (p = 1; p < NVEL; p++) {
-		  for (i = 0; i < 3; i++) {
-		    jphi[i] += site[index].g[p]*cv[p][i];
-	    	  }
-		}
+
+	for (p = 1; p < NVEL; p++) {
+	  for (i = 0; i < 3; i++) {
+	    jphi[i] += site[index].g[p]*cv[p][i];
+	  }
+	}
 	//	dgemv(T, 3, ndim, alpha, cv, 3, site[index].g, incx,
 	//	      beta, jphi, incy);
 

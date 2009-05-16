@@ -12,7 +12,7 @@
 
 #$ -N Ludwig.exe.sge
 #$ -cwd
-#$ -pe openmpi-smp 4
+#$ -pe openmpi 8
 #$ -l h_rt=00:30:00
 
 # Initialise environment module
