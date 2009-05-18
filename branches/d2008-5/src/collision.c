@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.4.2 2009-05-14 11:44:33 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.4.3 2009-05-18 16:34:41 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -261,7 +261,7 @@ void MODEL_collide_multirelaxation() {
 	for (p = 0; p < NVEL; p++) {
 	  site[index].f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    site[index].f[p] += 2;//mi_[p][m]*mode[m];
+	    site[index].f[p] += mi_[p][m]*mode[m];
 	  }
 	}
 
