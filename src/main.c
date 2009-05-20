@@ -37,7 +37,9 @@
 #include "io_harness.h"
 #include "phi.h"
 
-int print_free_energy_profile(void);
+#include "stats_turbulent.h"
+#include "stats_surfactant.h"
+
 void set_block(void);
 
 int main( int argc, char **argv )
@@ -180,6 +182,7 @@ int main( int argc, char **argv )
       TEST_fluid_temperature();
 #endif
       phi_stats_print_stats();
+      /* stats_surfactant_1d();*/
       info("\nCompleted cycle %d\n", step);
     }
 
@@ -239,34 +242,6 @@ void print_shear_profile() {
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  print_free_energy_profile
- *
- *****************************************************************************/
-
-int print_free_energy_profile(void) {
-
-  int index;
-  int ic = 1, jc = 1, kc;
-  int N[ND];
-  double e;
-
-  info("Free energy density profile\n\n");
-  get_N_local(N);
-
-  for (kc = 1; kc <= N[Z]; kc++) {
-
-    index = get_site_index(ic, jc, kc);
-
-    e = free_energy_density(index);
-
-    printf("%4d %10.8f\n", kc, e);
-  }
-
-  return 0;
 }
 
 void set_block() {
