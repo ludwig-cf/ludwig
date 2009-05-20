@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.10 2009-05-07 15:29:05 kevin Exp $
+%  $Id: sections.tex,v 1.11 2009-05-20 17:02:38 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -588,12 +588,45 @@ $-\partial p / \partial x$ is replaced by the body force $\rho g$ and
 one can difine the viscosity-independnet conductance $C$ via
 $J = C\rho g / \eta$. The calculation procedes as above.
 
+
+\subsubsection{Matching lattice and real units in porous media}
+
+Following Succi \cite{succi} (Chapter~8) the following argument
+can be made to match lattice quantities and real physical
+quantities for a given system of interest. Suppose we have
+a structure with characteristic pore size $h = 1$ micron
+and characteristic sample size of 1 cm. If the fluid
+(e.g., water) has viscosity $\eta = 10^{-3}$ Pa s and density
+$\rho = 10^3$ kg~s$^{-1}$, and a typical flow is
+$U \sim 10^{-3}$ m~s$^{-1}$, then the pore scale Reynolds
+number is $Re_h \sim 10^{-3}$.
+
+If the speed of sound in water is 1500~m~s$^{-1}$,
+then the corresponding time scale related to the
+speed of sound and the pore size is $T = h/ c_s$,
+which is $\sim 10^{-10}-10^{-9}$~s. (Exact matching
+is acheived via the dimensionless group $\Delta x / c_s\Delta t$,
+with the lattice speed of sound $1/\sqrt{3}$).
+
+This, effectively very small, lattice
+time step is clearly a problem in reaching any respectable 
+macroscopic time in a simulation.
+One step that can be taken is to increase both the lattice
+viscosity and the lattice velocity so that the Reynolds number
+remains unchanged. (Note that the lattice viscosity matching
+the real viscoity might be $(\eta/\rho)T/h^2$ which, using the
+above figures, is $\sim 10^{-4}$.) This can gain 2--3 orders
+of magnitude while keeping the viscosity below $O(1)$. Ultimately,
+it may also be necessary to raise the Reynolds number, which may
+be considered small compared to unity as long as it remains
+in practice less than $O(10^{-1})$ \cite{cates_scaling}.
+
+
 \subsection{Miscellaneous}
 
 \inputkey{random\_seed}
 
 sets the random number generator seed.
-
 
 \subsection{Dealing with the Parallel I/O files}
 
@@ -2172,6 +2205,13 @@ Aidun, C.K., Y. Lu, and E.-J. Ding,
 Direct analysis of particulate suspensions with inertia using the
 discrete Boltzmann equation,
 \textit{J. Fluid Mech.}, \textbf{373}, 287, 1998.
+
+\bibitem{cates_scaling}
+M. E. Cates, J.-C. Desplat, P. Stansell, A.J. Wagner, K. Stratford,
+R. Adhikari, and I. Pagonabarraga,
+Physical and Computational Scaling Issues in Lattice Boltzmann
+Simulations of Binary Fluid Mixtures,
+\textit{Phil. Trans. Roy. Soc. A}, \textbf{363}, 1917 (2005). 
 
 \bibitem{chunladd}
 B. Chun and A.J.C. Ladd,
