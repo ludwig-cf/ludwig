@@ -157,6 +157,22 @@ double MPI_Wtick(void) {
 
 /*****************************************************************************
  *
+ *  MPI_Send
+ *
+ *****************************************************************************/
+
+int MPI_Send(void * buf, int count, MPI_Datatype datatype, int dest,
+	     int tag, MPI_Comm comm) {
+
+
+  printf("MPI_Send should not be called in serial.\n");
+  exit(0);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Recv
  *
  *****************************************************************************/
@@ -244,6 +260,37 @@ int MPI_Waitall(int count, MPI_Request * requests, MPI_Status * statuses) {
 
 /*****************************************************************************
  *
+ *  MPI_Probe
+ *
+ *****************************************************************************/
+
+int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status * status) {
+
+  printf("MPI_Probe should not be called in serial\n");
+  exit(0);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Sendrecv
+ *
+ *****************************************************************************/
+
+int MPI_Sendrecv(void * sendbuf, int sendcount, MPI_Datatype sendtype,
+		 int dest, int sendtag, void * recvbuf, int recvcount,
+		 MPI_Datatype recvtype, int source, int recvtag,
+		 MPI_Comm comm, MPI_Status * status) {
+
+  printf("MPI_Sendrecv should not be called in serial\n");
+  exit(0);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Reduce
  *
  *****************************************************************************/
@@ -268,7 +315,9 @@ int MPI_Allgather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 		  MPI_Comm comm) {
 
   assert(mpi_initialised_flag_);
-  assert(0); /* not implemented */
+  assert(sendcount == recvcount);
+  assert(sendtype == recvtype);
+  mpi_copy(sendbuf, recvbuf, sendcount, sendtype);
 
   return MPI_SUCCESS;
 }
@@ -340,9 +389,9 @@ int MPI_Comm_free(MPI_Comm * comm) {
  *
  *****************************************************************************/
 
-int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * new) {
+int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * newtype) {
 
-  *new = MPI_UNDEFINED;
+  *newtype = MPI_UNDEFINED;
 
   return MPI_SUCCESS;
 }

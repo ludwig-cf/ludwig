@@ -14,6 +14,7 @@ static int test_mpi_comm_rank(void);
 static int test_mpi_comm_size(void);
 static int test_mpi_allreduce(void);
 static int test_mpi_reduce(void);
+static int test_mpi_allgather(void);
 
 int main (int argc, char ** argv) {
 
@@ -28,6 +29,7 @@ int main (int argc, char ** argv) {
   ireturn = test_mpi_comm_size();
   ireturn = test_mpi_allreduce();
   ireturn = test_mpi_reduce();
+  ireturn = test_mpi_allgather();
 
   ireturn = MPI_Finalize();
   assert(ireturn == MPI_SUCCESS);
@@ -159,6 +161,25 @@ static int test_mpi_reduce(void) {
 
   free(dvsend);
   free(dvrecv);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_allgather
+ *
+ *****************************************************************************/
+
+int test_mpi_allgather(void) {
+
+  int ireturn;
+  double send[2];
+  double recv[2];
+
+  ireturn = MPI_Allgather(send, 2, MPI_DOUBLE, recv, 2, MPI_DOUBLE, comm_);
+
+  assert(ireturn == MPI_SUCCESS);
 
   return MPI_SUCCESS;
 }
