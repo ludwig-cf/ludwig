@@ -16,6 +16,10 @@
 #ifndef _MPI_SERIAL
 #define _MPI_SERIAL
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Datatypes */
 
 typedef int MPI_Handle;
@@ -41,6 +45,8 @@ enum return_codes {MPI_SUCCESS};
 /* Assorted constants */
 
 #define MPI_PROC_NULL     -9
+#define MPI_ANY_SOURCE    -10
+#define MPI_ANY_TAG       -11
 #define MPI_BOTTOM         0x0000
 #define MPI_UNDEFINED     -999
 
@@ -101,6 +107,9 @@ int MPI_Bcast(void * buffer, int count, MPI_Datatype datatype, int root,
 int MPI_Comm_rank(MPI_Comm comm, int * rank);
 int MPI_Comm_size(MPI_Comm comm, int * size);
 
+int MPI_Send(void * buf, int count, MPI_Datatype type, int dest, int tag,
+	     MPI_Comm comm);
+
 int MPI_Recv(void * buf, int count, MPI_Datatype datatype, int source,
 	     int tag, MPI_Comm comm, MPI_Status * status);
 int MPI_Irecv(void * buf, int count, MPI_Datatype datatype, int source,
@@ -113,6 +122,12 @@ int MPI_Isend(void * buf, int count, MPI_Datatype datatype, int dest,
 int MPI_Issend(void * buf, int count, MPI_Datatype datatype, int dest,
 	       int tag, MPI_Comm comm, MPI_Request * request);
 
+
+int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status * status);
+int MPI_Sendrecv(void * sendbuf, int sendcount, MPI_Datatype sendtype,
+		 int dest, int sendtag, void  *recvbuf, int recvcount,
+		 MPI_Datatype recvtype, int source, MPI_Datatype recvtag,
+		 MPI_Comm comm, MPI_Status * status);
 
 int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 	       MPI_Op op, int root, MPI_Comm comm);
@@ -164,5 +179,9 @@ int MPI_Init(int * argc, char *** argv);
 int MPI_Finalize(void);
 int MPI_Initialized(int * flag);
 int MPI_Abort(MPI_Comm comm, int errorcode);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _MPI_SERIAL */
