@@ -31,7 +31,7 @@
 ###############################################################################
 
 
-N_cycles 300
+N_cycles 600
 
 #t_start 500
 #input_config config.out00000500
@@ -246,11 +246,11 @@ boundary_speed_top    0.0
 #
 ###############################################################################
 
-freq_statistics 300
-freq_measure 300
-freq_config 300
-freq_phi    300
-freq_vel    300
+freq_statistics 700
+freq_measure 700
+freq_config 700
+freq_phi    700
+freq_vel    700
 config_at_end yes
 
 output_format	ASCII
