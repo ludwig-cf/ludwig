@@ -10,7 +10,7 @@ MACHINE = Ness
 #MACHINE = ECDF
 
 # choose 'single' or 'binary' fluid scheme
-#SCHEME= single
+SCHEME= single
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)

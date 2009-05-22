@@ -248,7 +248,7 @@ boundary_speed_top    0.0
 
 freq_statistics 700
 freq_measure 700
-freq_config 700
+freq_config 400
 freq_phi    700
 freq_vel    700
 config_at_end yes

@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.6 2009-05-19 15:23:51 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.7 2009-05-22 15:25:22 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -166,14 +166,14 @@ void MODEL_collide_multirelaxation() {
 
   const double _alpha = 1.f;
   const double _beta = 0.f;
-  const char _T = 'T'; 
+  const char _T = 'T';
   const int _lda = NVEL;
   const int _incx = 1;
   const int _incy = 1;
   const int _mdim = NVEL;
   const int _ndim = NVEL;
-  
-  const char* T = &_T; 
+
+  const char* T = &_T;
   const int* lda = &_lda;
   const int* incx = &_incx;
   const int* incy = &_incy;
@@ -183,8 +183,7 @@ void MODEL_collide_multirelaxation() {
   const double* beta = &_beta;
 #else
 
-    /* dgemv parameters */
-  char T = 'T'; 
+  char T = 'T';
   const int lda = NVEL;
   const int incx = 1;
   const int incy = 1;
@@ -193,6 +192,7 @@ void MODEL_collide_multirelaxation() {
   const double alpha = 1.f;
   const double beta = 0.f;
 #endif
+
 
   TIMER_start(TIMER_COLLIDE);
 
