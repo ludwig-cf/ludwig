@@ -5,8 +5,8 @@
 #Define Machine.
 #
 #MACHINE = HPCX
-#MACHINE = Ness
-MACHINE = HecToR
+MACHINE = Ness
+#MACHINE = HecToR
 #MACHINE = ECDF
 
 # choose 'single' or 'binary' fluid scheme

@@ -9,7 +9,7 @@ include config.mk
 ###############################################################################
 
 
-OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
+OBJS= d3q15.o d3q19.o model_ascii.o propagation.o collision.o \
       physics.o active.o brownian.o cio.o cmd.o ccomms.o \
       colloids.o bbl.o build.o communicate.o coords.o control.o \
       eigen3.o ewald.o free_energy.o interaction.o io_harness.o\

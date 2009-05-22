@@ -30,7 +30,9 @@
 #
 ###############################################################################
 
+
 N_cycles 300
+
 #t_start 500
 #input_config config.out00000500
 
@@ -45,7 +47,8 @@ N_cycles 300
 #
 ##############################################################################
 
-size 24_24_24
+size 64_64_64
+
 #for 8 procs keeping surface area constant (4 procs for above)
 #size 48_48_48 
 ##############################################################################
@@ -243,17 +246,18 @@ boundary_speed_top    0.0
 #
 ###############################################################################
 
-freq_statistics 50
-freq_measure 200000
-freq_config 5000000
-freq_phi    100000
-freq_vel    100000
-config_at_end no
+freq_statistics 300
+freq_measure 300
+freq_config 300
+freq_phi    300
+freq_vel    300
+config_at_end yes
 
-output_format BINARY
-input_format  BINARY
+output_format	ASCII
+input_format	ASCII
 phi_format    ASCII
 vel_format    ASCII
+config_format ASCII
 n_io_nodes 8
 #io_grid 2_2_2
 #io_grid_distribution 2_2_2

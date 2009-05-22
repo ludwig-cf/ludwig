@@ -141,9 +141,11 @@ int main( int argc, char **argv )
 
     if (is_config_step()) {
       get_output_config_filename(filename, step);
-      io_write(filename, io_info_distribution_);
+      //io_write(filename, io_info_distribution_);
       sprintf(filename, "%s%6.6d", "config.cds", step);
-      CIO_write_state(filename);
+      io_write(filename, io_info_distribution_);
+	    
+      // CIO_write_state(filename);
     }
 
     /* Measurements */
