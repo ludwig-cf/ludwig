@@ -31,6 +31,7 @@
 ###############################################################################
 
 
+
 N_cycles 600
 
 #t_start 500
@@ -46,6 +47,7 @@ N_cycles 600
 #                MPI will choose a default (may be implementation-dependent).
 #
 ##############################################################################
+
 
 size 64_64_64
 
@@ -248,7 +250,7 @@ boundary_speed_top    0.0
 
 freq_statistics 700
 freq_measure 700
-freq_config 700
+freq_config 600
 freq_phi    700
 freq_vel    700
 config_at_end yes
