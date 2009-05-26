@@ -4,7 +4,7 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.c,v 1.9.2.1 2009-05-06 09:15:28 cevi_parker Exp $
+ *  $Id: d3q19.c,v 1.9.2.2 2009-05-26 11:29:31 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -13,7 +13,7 @@
  *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
-// code
+
 #include "pe.h"
 #include "d3q19.h"
 
