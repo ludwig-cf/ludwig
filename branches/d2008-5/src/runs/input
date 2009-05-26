@@ -31,7 +31,6 @@
 ###############################################################################
 
 
-
 N_cycles 600
 
 #t_start 500
@@ -50,6 +49,7 @@ N_cycles 600
 
 
 size 64_64_64
+
 
 #for 8 procs keeping surface area constant (4 procs for above)
 #size 48_48_48 

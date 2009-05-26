@@ -12,7 +12,7 @@
 
 #$ -N Ludwig.exe.sge
 #$ -cwd
-#$ -pe openmpi-smp 2
+#$ -pe openmpi-smp8 16
 #$ -l h_rt=00:30:00
 
 # Initialise environment module
@@ -26,4 +26,4 @@ module load intel/icc/64
 
 # Run MPI program through Ethernet eth0
 
-mpirun --mca btl_tcp_if_include eth0 -np $NSLOTS ./Ludwig.exe
+mpirun --mca btl_tcp_if_include eth0 -np $NSLOTS ./LudwigB.exe
