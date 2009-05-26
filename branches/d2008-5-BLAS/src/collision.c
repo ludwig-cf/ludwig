@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.7 2009-05-22 15:25:22 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.8 2009-05-26 11:23:04 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -48,7 +48,7 @@
 #endif
 
 #ifdef MKL
-#include "/exports/applications/apps/intel/mkl/10.0.1.014/include/mkl.h"
+#include "/exports/applications/apps/intel/mkl/10.0.1.014/include/mkl.h" 
 #endif
 
 extern Site * site;
@@ -207,7 +207,7 @@ void MODEL_collide_multirelaxation() {
 
 	/* Compute all the modes */
 
-	dgemv(T, mdim, ndim, alpha, (double*)ma_, lda, site[index].f, incx, 
+	dgemv(T, mdim, ndim, alpha, ma_, lda, site[index].f, incx, 
 	      beta, mode, incy);
 
 	/* For convenience, write out the physical modes. */
@@ -380,9 +380,9 @@ void MODEL_collide_binary_lb() {
   
   /* dgemv parameters */
 
-  // for some reason mkl require const pointers to work
-  // something to do with a size requirement or operations are misaligned
-
+  /* for some reason mkl require const pointers to work
+   * something to do with a size requirement or operations are misaligned
+   */
 #ifdef MKL
 
   const double _alpha = 1.f;
@@ -393,6 +393,7 @@ void MODEL_collide_binary_lb() {
   const int _incy = 1;
   const int _mdim = NVEL;
   const int _ndim = NVEL;
+  const int _odim = 3;
 
   const char* T = &_T; 
   const int* lda = &_lda;
@@ -400,6 +401,7 @@ void MODEL_collide_binary_lb() {
   const int* incy = &_incy;
   const int* mdim = &_mdim;
   const int* ndim = &_ndim;
+  const int* odim = &_odim;
   const double* alpha = &_alpha;
   const double* beta = &_beta;
 #else
@@ -410,6 +412,7 @@ void MODEL_collide_binary_lb() {
   const int incy = 1;
   const int mdim = NVEL;
   const int ndim = NVEL;
+  const int odim = 3;
   const double alpha = 1.f;
   const double beta = 0.f;
 #endif
@@ -547,8 +550,10 @@ void MODEL_collide_binary_lb() {
 	    jphi[i] += site[index].g[p]*cv[p][i];
 	  }
 	}
-	//	dgemv(T, 3, ndim, alpha, cv, 3, site[index].g, incx,
-	//	      beta, jphi, incy);
+	 
+	/*dgemv(T, ndim, odim, alpha, cv, lda, site[index].g, incx,
+	 *    beta, jphi, incy);
+	 */
 
 	/* Relax order parameters modes. See the comments above. */
 
