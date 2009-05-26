@@ -23,8 +23,8 @@ else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
 		MPICC=mpicc 
-		OPTS = -D_D3Q19_ -DACML 
-		CFLAGS=$(OPTS) -Minform=warn -O3 -DNDEBUG 
+		OPTS = -D_D3Q19_ -DACML -fastsse
+		CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG 
 		LIBS= -lm -lacml -lpgftnrtl -lrt
 	else
 		ifeq ($(MACHINE),HecToR)

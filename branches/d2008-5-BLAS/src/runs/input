@@ -253,7 +253,7 @@ freq_measure 700
 freq_config 600
 freq_phi    700
 freq_vel    700
-config_at_end yes
+config_at_end no
 
 output_format	ASCII
 input_format	ASCII
