@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.5 2009-03-27 17:09:13 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.6 2009-05-29 06:57:56 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -51,7 +51,6 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 static void phi_gradients_with_solid(void);
 static void phi_gradients_walls(void);
 static void phi_gradients_fluid(void);
-static void phi_gradients_double_fluid(void);
 static void phi_gradients_leesedwards(void);
 static void (* phi_gradient_function)(void) = phi_gradients_fluid;
 static void f_grad_phi(int, int, int, int, int, const int *);
@@ -421,7 +420,7 @@ static void phi_gradients_fluid() {
  *
  *****************************************************************************/
  
-static void phi_gradients_double_fluid() {
+void phi_gradients_double_fluid() {
 
   int nlocal[3];
   int ic, jc, kc, ic1, jc1, kc1;
