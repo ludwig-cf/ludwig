@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.12 2009-03-27 17:09:13 kevin Exp $
+ *  $Id: lattice.c,v 1.13 2009-05-29 06:59:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -705,4 +705,51 @@ static int hydrodynamics_u_read_ascii(FILE * fp, const int ic, const int jc,
 				      const int kc) {
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  hydrodynamics_velocity_gradient_tensor
+ *
+ *  Return the velocity gradient tensor w_ab = d_b u_a at
+ *  the site (ic, jc, kc).
+ *
+ *  The differencing is 2nd order centred.
+ *
+ *  This must take account of the Lees Edwards planes in  the x-direction.
+ *
+ *****************************************************************************/
+
+void hydrodynamics_velocity_gradient_tensor(const int ic,
+					    const int jc,
+					    const int kc,
+					    double w[3][3]) {
+  int im1, ip1;
+
+  assert(initialised_);
+
+  im1 = le_index_real_to_buffer(ic, -1);
+  im1 = le_site_index(im1, jc, kc);
+  ip1 = le_index_real_to_buffer(ic, +1);
+  ip1 = le_site_index(ip1, jc, kc);
+
+  w[X][X] = 0.5*(u[ip1].c[X] - u[im1].c[X]);
+  w[Y][X] = 0.5*(u[ip1].c[Y] - u[im1].c[Y]);
+  w[Z][X] = 0.5*(u[ip1].c[Z] - u[im1].c[Z]);
+
+  im1 = le_site_index(ic, jc - 1, kc);
+  ip1 = le_site_index(ic, jc + 1, kc);
+
+  w[X][Y] = 0.5*(u[ip1].c[X] - u[im1].c[X]);
+  w[Y][Y] = 0.5*(u[ip1].c[Y] - u[im1].c[Y]);
+  w[Z][Y] = 0.5*(u[ip1].c[Z] - u[im1].c[Z]);
+
+  im1 = le_site_index(ic, jc, kc - 1);
+  ip1 = le_site_index(ic, jc, kc + 1);
+
+  w[X][Z] = 0.5*(u[ip1].c[X] - u[im1].c[X]);
+  w[Y][Z] = 0.5*(u[ip1].c[Y] - u[im1].c[Y]);
+  w[Z][Z] = 0.5*(u[ip1].c[Z] - u[im1].c[Z]);
+
+  return;
 }

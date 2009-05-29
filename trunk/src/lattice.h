@@ -2,7 +2,7 @@
  *
  *  hydrodynamics.h
  *
- *  $Id: lattice.h,v 1.6 2008-08-24 17:57:55 kevin Exp $
+ *  $Id: lattice.h,v 1.7 2009-05-29 06:59:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,6 +26,8 @@ void hydrodynamics_get_velocity(const int, double *);
 void hydrodynamics_zero_force(void);
 void hydrodynamics_leesedwards_transformation(void);
 void hydrodynamics_stats(void);
+void hydrodynamics_velocity_gradient_tensor(const int, const int, const int,
+					    double w[3][3]);
 
 extern struct io_info_t * io_info_velocity_;
 #endif
