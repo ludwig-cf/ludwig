@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.16 2009-03-31 10:20:13 kevin Exp $
+ *  $Id: test.c,v 1.17 2009-06-12 13:11:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -407,7 +407,7 @@ void test_rheology() {
   double pchem[3][3], plocal[3][3];
   double s[3][3];
   double u[3];
-  double rho, rrho, rv, eta;
+  double rho, rrho, rv;
   int nlocal[3];
   int ic, jc, kc, index, p, ia, ib;
 
