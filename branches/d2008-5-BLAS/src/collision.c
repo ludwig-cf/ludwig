@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.8 2009-05-26 11:23:04 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.9 2009-06-13 10:58:52 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -45,11 +45,24 @@
 
 #ifdef ACML
 #include <acml.h>
+#else
+#ifdef ESSL
+#include <essl.h>
+#else
+#ifdef MKL
+#include "/exports/applications/apps/intel/mkl/10.0.1.014/include/mkl.h"
+#else
+#ifdef HPCX
+extern void dgemv(char *trans, int *m, int *n, double *alpha, double *a, int *lda, double *x, int *incx, double *beta, double *y, int *incy, int trans_len);
+extern void dgemm(char *transa, char *transb, int *m, int *n, int *k, double *alpha, double *a, int *lda, double *b, int *ldb, double *beta, double *c,
+		  int* ldc, int transa_len, int transb_len);
+#else
+#include "acml.h"
+#endif
+#endif
+#endif
 #endif
 
-#ifdef MKL
-#include "/exports/applications/apps/intel/mkl/10.0.1.014/include/mkl.h" 
-#endif
 
 extern Site * site;
 
@@ -158,22 +171,17 @@ void MODEL_collide_multirelaxation() {
   const double   r3     = (1.0/3.0);
 
   /* dgemv parameters */
-  
-  // for some reason mkl require const pointers to work
-  // something to do with a size requirement or operations are misaligned
-
-#ifdef MKL
 
   const double _alpha = 1.f;
   const double _beta = 0.f;
-  const char _T = 'T';
+  const char _TransA = 'T';
   const int _lda = NVEL;
   const int _incx = 1;
   const int _incy = 1;
   const int _mdim = NVEL;
   const int _ndim = NVEL;
 
-  const char* T = &_T;
+  const char* TransA = &_TransA;
   const int* lda = &_lda;
   const int* incx = &_incx;
   const int* incy = &_incy;
@@ -181,18 +189,6 @@ void MODEL_collide_multirelaxation() {
   const int* ndim = &_ndim;
   const double* alpha = &_alpha;
   const double* beta = &_beta;
-#else
-
-  char T = 'T';
-  const int lda = NVEL;
-  const int incx = 1;
-  const int incy = 1;
-  const int mdim = NVEL;
-  const int ndim = NVEL;
-  const double alpha = 1.f;
-  const double beta = 0.f;
-#endif
-
 
   TIMER_start(TIMER_COLLIDE);
 
@@ -205,10 +201,25 @@ void MODEL_collide_multirelaxation() {
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = get_site_index(ic, jc, kc);
 
-	/* Compute all the modes */
-
-	dgemv(T, mdim, ndim, alpha, ma_, lda, site[index].f, incx, 
-	      beta, mode, incy);
+	/* Compute all the mode */
+	
+#ifdef ACML
+	dgemv(*TransA, *mdim, *ndim, *alpha, ma_, *lda,site[index].f, *incx, *beta, mode, *incy);
+#else
+#ifdef MKL
+	dgemv(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy);
+#else
+#ifdef ESSL
+	dgemv(TransA, *mdim, *ndim, *alpha, ma_, *lda,site[index].f, *incx, *beta, mode, *incy);
+#else
+#ifdef HPCX
+	dgemv(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy, *lda);
+#else
+	dgemv_(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy, *lda);
+#endif
+#endif
+#endif
+#endif
 
 	/* For convenience, write out the physical modes. */
 
@@ -300,8 +311,23 @@ void MODEL_collide_multirelaxation() {
 
 	/* Project post-collision modes back onto the distribution */
 
-	dgemv(T, mdim, ndim, alpha, mi_, lda, mode, incx, 
-	    beta, site[index].f, incy);
+#ifdef ACML
+	dgemv(*TransA, *mdim, *ndim, *alpha, mi_, *lda,mode, *incx, *beta, site[index].f, *incy);
+#else
+#ifdef MKL
+        dgemv(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy);
+#else
+#ifdef ESSL
+        dgemv(TransA, *mdim, *ndim, *alpha, mi_, *lda,mode, *incx, *beta, site[index].f, *incy);
+#else
+#ifdef HPCX
+	dgemv(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy, *lda);
+#else
+	dgemv_(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy, *lda);
+#endif
+#endif
+#endif
+#endif
 
 	/* Next site */
       }
@@ -383,11 +409,10 @@ void MODEL_collide_binary_lb() {
   /* for some reason mkl require const pointers to work
    * something to do with a size requirement or operations are misaligned
    */
-#ifdef MKL
 
   const double _alpha = 1.f;
   const double _beta = 0.f;
-  const char _T = 'T'; 
+  const char _TransA = 'T'; 
   const int _lda = NVEL;
   const int _incx = 1;
   const int _incy = 1;
@@ -395,7 +420,7 @@ void MODEL_collide_binary_lb() {
   const int _ndim = NVEL;
   const int _odim = 3;
 
-  const char* T = &_T; 
+  const char* TransA = &_TransA; 
   const int* lda = &_lda;
   const int* incx = &_incx;
   const int* incy = &_incy;
@@ -404,19 +429,6 @@ void MODEL_collide_binary_lb() {
   const int* odim = &_odim;
   const double* alpha = &_alpha;
   const double* beta = &_beta;
-#else
-
-  char T = 'T'; 
-  const int lda = NVEL;
-  const int incx = 1;
-  const int incy = 1;
-  const int mdim = NVEL;
-  const int ndim = NVEL;
-  const int odim = 3;
-  const double alpha = 1.f;
-  const double beta = 0.f;
-#endif
-
 
   TIMER_start(TIMER_COLLIDE);
 
@@ -434,9 +446,25 @@ void MODEL_collide_binary_lb() {
 
 	/* Compute all the modes */
 
-	dgemv(T, mdim, ndim, alpha, ma_, lda, site[index].f, incx,
-	      beta, mode, incy);
+#ifdef ACML
+	dgemv(*TransA, *mdim, *ndim, *alpha, ma_, *lda,site[index].f, *incx, *beta, mode, *incy);
+#else
+#ifdef MKL
+        dgemv(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy);
+#else
+#ifdef ESSL
+        dgemv(TransA, *mdim, *ndim, *alpha, ma_, *lda,site[index].f, *incx, *beta, mode, *incy);
+#else
+#ifdef HPCX
+	dgemv(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy, *lda);
+#else
+	dgemv_(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy, *lda);
+#endif
+#endif
+#endif
+#endif
 
+	
 	/* For convenience, write out the physical modes. */
 
 	rho = mode[0];
@@ -531,9 +559,23 @@ void MODEL_collide_binary_lb() {
 
 	/* Project post-collision modes back onto the distribution */
 
-
-	dgemv(T, mdim, ndim, alpha, mi_, lda, mode, incx,
-	     beta, site[index].f, incy);
+#ifdef ACML
+        dgemv(*TransA, *mdim, *ndim, *alpha, mi_, *lda,mode, *incx, *beta, site[index].f, *incy);
+#else
+#ifdef MKL
+        dgemv(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy);
+#else
+#ifdef ESSL
+	dgemv(TransA, *mdim, *ndim, *alpha, mi_, *lda,mode, *incx, *beta, site[index].f, *incy);
+#else
+#ifdef HPCX
+        dgemv(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy, *lda);
+#else
+        dgemv_(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy, *lda);
+#endif
+#endif
+#endif
+#endif
 
 
 	/* Now, the order parameter distribution */
