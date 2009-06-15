@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.9 2009-06-13 10:58:52 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.10 2009-06-15 11:25:20 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -560,7 +560,7 @@ void MODEL_collide_binary_lb() {
 	/* Project post-collision modes back onto the distribution */
 
 #ifdef ACML
-        dgemv(*TransA, *mdim, *ndim, *alpha, mi_, *lda,mode, *incx, *beta, site[index].f, *incy);
+	dgemv(*TransA, *mdim, *ndim, *alpha, mi_, *lda,mode, *incx, *beta, site[index].f, *incy);
 #else
 #ifdef MKL
         dgemv(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy);
@@ -592,10 +592,8 @@ void MODEL_collide_binary_lb() {
 	    jphi[i] += site[index].g[p]*cv[p][i];
 	  }
 	}
-	 
-	/*dgemv(T, ndim, odim, alpha, cv, lda, site[index].g, incx,
-	 *    beta, jphi, incy);
-	 */
+
+
 
 	/* Relax order parameters modes. See the comments above. */
 

@@ -4,7 +4,7 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.h,v 1.8 2009-04-09 14:53:29 kevin Exp $
+ *  $Id: d3q19.h,v 1.8.4.1 2009-06-15 11:25:20 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel computing Centre
@@ -22,7 +22,7 @@ enum {CVXBLOCK = 1};
 enum {CVYBLOCK = 3};
 enum {CVZBLOCK = 5};
 
-extern const    int cv[NVEL][3];
+extern const int cv[NVEL][3];
 extern const double wv[NVEL];
 extern const double q_[NVEL][3][3];
 extern const double norm_[NVEL];

@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model_ascii.c,v 1.1.4.2 2009-05-22 13:26:00 cevi_parker Exp $
+ *  $Id: model_ascii.c,v 1.1.4.3 2009-06-15 11:25:20 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -768,7 +768,7 @@ static int distributions_write(FILE * fp, const int ic , const int jc,
     fprintf(fp, "%13.12E\t", site[index].f[i]);
   
   fprintf(fp,"\n");
-#ifdef BINARY_FLUID
+#ifdef _BINARY_FLUID_
   for(i=0;i<NVEL;i++)
     fprintf(fp, "%13.12E\t", site[index].g[i]);
   

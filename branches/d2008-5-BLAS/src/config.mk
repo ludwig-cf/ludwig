@@ -10,10 +10,10 @@ MACHINE = Ness
 #MACHINE = ECDF
 
 # choose 'single' or 'binary' fluid scheme
-#SCHEME= single
+SCHEME= single
 
 # chose whether to use got blas
-#GOTO = goto
+GOTO = goto
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)
@@ -26,9 +26,9 @@ else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
 		MPICC=mpicc 
-		OPTS = -D_D3Q19_ -DACML -fastsse
-		CFLAGS=$(OPTS) -Minform=warn -Msafeptr -DNDEBUG -Mipa=inline
-		LIBS= -lm -lacml -lpgftnrtl -lrt
+		OPTS = -D_D3Q19_ -fastsse
+		CFLAGS=$(OPTS) -DNDEBUG -Minform=warn -Msafeptr -Mipa=inline,fast
+		LIBS= -DACML -lm -lacml -lpgftnrtl -lrt
 	else
 		ifeq ($(MACHINE),HecToR)
 			CC=gcc
@@ -57,7 +57,7 @@ endif
 
 ifeq ($(GOTO),goto)
         ifeq ($(MACHINE),Ness)
-                LIBS= -mp -lm -L./ -lgoto
+                LIBS= -lm -L./ -lgoto
         endif
         ifeq ($(MACHINE),ECDF)
                 LIBS= -lm -L./ -lgoto
