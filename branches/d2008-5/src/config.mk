@@ -4,14 +4,13 @@
 ###########################################################################
 #Define Machine.
 #
-
-MACHINE = HPCX
-#MACHINE = Ness
+#MACHINE = HPCX
+MACHINE = Ness
 #MACHINE = HecToR
 #MACHINE = ECDF
 
 # choose 'single' or 'binary' fluid scheme
-#SCHEME= single
+SCHEME= single
 
 ###########################################################################
 
@@ -25,14 +24,14 @@ else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
 		MPICC=mpicc
-		OPTS = -D_D3Q19_
-		CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG
+		OPTS = -D_D3Q19_ -fastsse -Msafeptr -Mautoinline -Mipa=fast,inline
+		CFLAGS=$(OPTS) -Minform=warn -DNDEBUG
 	else
 		ifeq ($(MACHINE),HecToR)
 			CC=
 			MPICC=cc
-			OPTS = -D_D3Q19_
-			CFLAGS=$(OPTS) -g -Minform=warn -O3 -DNDEBUG 
+			OPTS = -D_D3Q19_ -fastsse
+			CFLAGS=$(OPTS) -g -Minform=warn -DNDEBUG 
 			LIBS= -lm
 		else
 			ifeq ($(MACHINE), ECDF)
