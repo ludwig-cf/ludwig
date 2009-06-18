@@ -1,9 +1,10 @@
-
 /*****************************************************************************
  *
  *  test_prop
  *
  *  Test propagation stage (single distribution).
+ *
+ *  $Id: test_prop.c,v 1.4 2009-06-18 15:46:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,7 +31,18 @@ int main(int argc, char ** argv) {
   coords_init();
   init_site();
 
-  info("Testing propagation...\n");
+  info("Testing propagation...");
+
+  distribution_halo_set_complete();
+
+  test_velocity();
+  test_source_destination();
+
+  info("ok\n");
+
+  info("Repeat with reduced halos...\n");
+
+  distribution_halo_set_reduced();
 
   test_velocity();
   test_source_destination();
