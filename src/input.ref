@@ -36,17 +36,22 @@ N_cycles 10000
 
 ##############################################################################
 #
-#  System
+#  System and MPI
 #
 #  size NX_NY_NZ is the size of the system in lattice units
 #  grid PX_PY_PZ is the processor decomposition
 #                If PX*PY*PZ is not equal to the number of processors,
 #                MPI will choose a default (may be implementation-dependent).
 #
+#  reduced_halo  [yes|no] use reduced or full halos. Using reduced halos
+#                is *only* appropriate for fluid only problems.
+#                Default is no.
+# 
 ##############################################################################
 
 size 128_128_1
 #grid 1_2_1
+reduced_halo no
 
 ##############################################################################
 #

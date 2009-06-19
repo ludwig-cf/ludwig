@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.18 2009-05-15 09:12:32 kevin Exp $
+ *  $Id: collision.c,v 1.19 2009-06-19 12:26:49 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -587,6 +587,12 @@ void MODEL_init( void ) {
   /* Distributions */
 
   init_site();
+
+  ind = RUN_get_string_parameter("reduced_halo", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "yes") == 0) {
+    info("\nUsing reduced halos\n\n");
+    distribution_halo_set_reduced();
+  }
 
   /* Order parameter */
 
