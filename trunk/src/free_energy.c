@@ -15,7 +15,7 @@
  *
  *             (1/2) C (\nabla^2 \phi)^2 
  *
- *  $Id: free_energy.c,v 1.14 2009-05-15 09:11:46 kevin Exp $
+ *  $Id: free_energy.c,v 1.15 2009-06-22 11:21:24 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -144,8 +144,9 @@ void init_free_energy() {
     info("Bulk parameter B      = %f\n", B_);
     info("Ext. parameter C      = %f\n", C_);
     info("Surface penalty kappa = %f\n", kappa_);
-    info("Surface tension       = %f\n", surface_tension());
-    info("Interfacial width     = %f\n", interfacial_width());
+    info("Wavelength 2pi/q_0    = %f\n", 2.0*PI/sqrt(-kappa_/C_));
+    info("Amplitude             = %f\n",
+	 sqrt(4.0*(1.0 + kappa_*kappa_/(4.0*C_*B_))/3.0));
     fe_chemical_stress = fe_chemical_stress_brazovskii;
     fe_chemical_potential[0] = fe_chemical_potential_brazovskii;
     fe_density = free_energy_density_brazovskii;
@@ -178,6 +179,9 @@ void init_free_energy() {
     fe_chemical_potential[0] = fe_chemical_potential_sman_phi;
     fe_chemical_potential[1] = fe_chemical_potential_sman_psi;
     fe_density = free_energy_density_surfactant;
+  }
+  else if (strcmp(description, "lc_blue_phase") == 0) {
+    assert(nop_ == 5);
   }
   else {
     fatal("Unrecognised free energy\n");
