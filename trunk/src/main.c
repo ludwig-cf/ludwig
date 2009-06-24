@@ -36,6 +36,7 @@
 
 #include "io_harness.h"
 #include "phi.h"
+#include "phi_stats.h"
 
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
