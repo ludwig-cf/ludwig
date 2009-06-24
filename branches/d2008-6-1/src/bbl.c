@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.9 2009-04-09 17:07:12 kevin Exp $
+ *  $Id: bbl.c,v 1.9.6.1 2009-06-24 14:02:31 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -64,6 +64,81 @@ void bounce_back_on_links() {
   CCOM_halo_sum(CHALO_TYPE1);
   bounce_back_pass1();
   CCOM_halo_sum(CHALO_TYPE2);
+
+//////////////////////////    mass conservation   ///////////////////////////
+////// this should be included in update_coloids() better?
+
+#ifdef _ACTIVE2_
+{
+  double rsumw,dm;
+  int ic,jc,kc,ij;
+  Colloid   * p_colloid;
+  COLL_Link * p_link;
+
+  FVector   ci;
+  FVector   vb;
+
+  for (ic = 0; ic <= Ncell(X)+1 ; ic++)
+    for (jc = 0; jc <= Ncell(Y)+1 ; jc++)
+      for (kc = 0; kc <= Ncell(Z)+1 ; kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	/* For each colloid in the list */
+
+
+	while (p_colloid != NULL) {
+
+
+	  rsumw = 1.0 / p_colloid->sumw;
+	  p_colloid->sump *=rsumw;
+
+	  p_link = p_colloid->lnk;
+
+	  while (p_link != NULL) {
+
+
+	    if (p_link->status == LINK_UNUSED) {
+	      /* ignore */
+	    }
+	    else {
+		
+	     if (p_link->status == LINK_FLUID) {
+	      ij = p_link->v;       /* link velocity index i->j */
+
+	      ci.x = (double) cv[ij][0];
+	      ci.y = (double) cv[ij][1];
+	      ci.z = (double) cv[ij][2];
+
+	      dm =  -wv[ij]*p_colloid->sump; //-
+	      vb = UTIL_cross_product(p_link->rb, ci);
+
+	      p_colloid->fc0.x += dm*ci.x;
+	      p_colloid->fc0.y += dm*ci.y;
+	      p_colloid->fc0.z += dm*ci.z;
+
+	      p_colloid->tc0.x += dm*vb.x;
+	      p_colloid->tc0.y += dm*vb.y;
+	      p_colloid->tc0.z += dm*vb.z;
+	     }
+	    }
+
+	    /* Next link */
+	    p_link = p_link->next;
+	  }
+
+	  /* Next colloid */
+	  p_colloid = p_colloid->next;
+	}
+/* Next cell */
+      }
+
+  CCOM_halo_sum(CHALO_TYPE8);
+}
+#endif
+//////////////////////////////////////////////////////////
+
+
   update_colloids();
   bounce_back_pass2();
 
@@ -159,19 +234,42 @@ static void bounce_back_pass1() {
 		  rbmod = 1.0/UTIL_fvector_mod(p_link->rb);
 
 		  cost = rbmod*UTIL_dot_product(p_link->rb, p_colloid->dir);
-		  tans[X] = p_colloid->dir.x - cost*rbmod*p_link->rb.x;
-		  tans[Y] = p_colloid->dir.y - cost*rbmod*p_link->rb.y;
-		  tans[Z] = p_colloid->dir.z - cost*rbmod*p_link->rb.z;
-	
-		  rbmod = 1.0/p_colloid->n1_nodes;
-		  plegendre = 0.5*(3.0*cost*cost - 1.0);
-		  va.x = p_colloid->dp*tans[X]*plegendre*rbmod;
-		  va.y = p_colloid->dp*tans[Y]*plegendre*rbmod;
-		  va.z = p_colloid->dp*tans[Z]*plegendre*rbmod;
-		  
-		  dm_a = delta*UTIL_dot_product(va, ci);
-		  site[i].f[ij] -= dm_a;
-		  dm -= dm_a;
+		  sint = sqrt(1.0 - cost*cost);
+
+		  vector1[X] = p_link->rb.y*p_colloid->dir.z -  p_link->rb.z*p_colloid->dir.y;
+		  vector1[Y] = p_link->rb.z*p_colloid->dir.x -  p_link->rb.x*p_colloid->dir.z;
+		  vector1[Z] = p_link->rb.x*p_colloid->dir.y -  p_link->rb.y*p_colloid->dir.x;
+
+		  tans[X] = vector1[Y]*p_link->rb.z - vector1[Z]*p_link->rb.y;
+		  tans[Y] = vector1[Z]*p_link->rb.x - vector1[X]*p_link->rb.z;
+		  tans[Z] = vector1[X]*p_link->rb.y - vector1[Y]*p_link->rb.x;
+
+		  mod_tans = sqrt(tans[X]*tans[X]+tans[Y]*tans[Y]+tans[Z]*tans[Z]);
+
+		  if(mod_tans != 0.0)
+		  {
+		      tans[X] /= mod_tans;
+		      tans[Y] /= mod_tans;
+		      tans[Z] /= mod_tans;
+		  }
+
+
+	          plegendre =  -sint*(p_colloid->b2*cost+p_colloid->b1);
+
+
+		  va.x = tans[X]*plegendre;
+		  va.y = tans[Y]*plegendre;
+		  va.z = tans[Z]*plegendre;
+
+
+		  dm_a = -delta*UTIL_dot_product(va, ci);
+		  site[i].f[ij] += dm_a;
+		  dm+=dm_a;
+
+///////// mass conservation   ///////////
+                  p_colloid->sump+=dm_a;
+////////////////////////////////////////
+
 		}
 #endif
 	      }
@@ -342,6 +440,15 @@ static void bounce_back_pass2() {
 
 	      df = rho0*vdotc + wv[ij]*p_colloid->deltam;
 
+///////////// mass conservation    ////////////////
+#ifdef _ACTIVE2_
+		{
+	      df += wv[ij]*p_colloid->sump; 
+		}
+#endif
+//////////////////////////////////////////////////
+
+
 	      dg = phi_get_phi_site(i)*vdotc;
 	      p_colloid->deltaphi += dg;
 	      dg -= wv[ij]*dgtm1;
@@ -386,6 +493,17 @@ static void bounce_back_pass2() {
 	  p_colloid->f0 = UTIL_fvector_zero();
 	  p_colloid->t0 = UTIL_fvector_zero();
 	  deltag_ += p_colloid->deltaphi;
+
+////////////  mass conservation    ///////////////
+#ifdef _ACTIVE2_
+		{
+ 	  p_colloid->sump=0.0;
+	  p_colloid->fc0 = UTIL_fvector_zero();
+	  p_colloid->tc0 = UTIL_fvector_zero();
+		}
+#endif
+/////////////////////////////////////////////////
+
 
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;
@@ -509,6 +627,21 @@ static void update_colloids() {
 	        + p_colloid->torque.y;
 	  xb[5] = moment*p_colloid->omega.z + p_colloid->t0.z
 	        + p_colloid->torque.z;
+
+//////////////  mass correction  //////////////
+#ifdef _ACTIVE2_
+		{
+	 xb[0] += p_colloid->fc0.x;
+	 xb[1] += p_colloid->fc0.y;
+	 xb[2] += p_colloid->fc0.z;
+
+	 xb[3] += p_colloid->tc0.x;
+	 xb[4] += p_colloid->tc0.y;
+	 xb[5] += p_colloid->tc0.z;
+}
+#endif
+//////////////////////////////////////////////
+
 
 	  /* Begin the Gaussian elimination */
 

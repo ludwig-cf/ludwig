@@ -159,16 +159,6 @@ colloid_ah          2.3
 colloid_vf          0.061
 colloid_no          2000
 
-# Active particles
-#
-# colloid_type:     inactive [default]
-#                   active1_bipolar
-#                   active1_quadrupolar
-
-colloid_type        inactive
-colloid_cone_angle  90
-colloid_dp          0.2
-
 # Constant body force on all colloids ("gravity")
 
 colloid_gravity 0.0_0.0_0.0
@@ -178,6 +168,27 @@ colloid_gravity 0.0_0.0_0.0
 lubrication_on 0
 lubrication_normal_cutoff 0.3
 lubrication_tangential_cutoff 0.0
+
+##############################################################################
+#
+# Active particles
+#
+# colloid_type:     inactive [default]
+#                   active1_bipolar
+#                   active1_quadrupolar
+#                   active2               for squirmers (use -D_ACTIVE2_) 
+# For active2
+# colloids_b1       swimming speed
+# colloids_b2       stresslet
+#
+##############################################################################
+
+colloid_type        inactive
+colloid_cone_angle  90
+colloid_dp          0.2
+
+colloid_b1          0.05
+colloid_b2          0.1
 
 ###############################################################################
 #
