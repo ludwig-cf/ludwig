@@ -4,7 +4,7 @@
  *
  *  Routines dealing with bounce-back on links for active particles.
  *
- *  $Id: active.c,v 1.4.10.2 2009-06-24 14:38:55 ricardmn Exp $
+ *  $Id: active.c,v 1.4.10.3 2009-06-25 14:48:34 ricardmn Exp $
  *
  *  Isaac Llopis (Barcelona) developed the active particles.
  *
@@ -294,13 +294,11 @@ static void init_active2() {
   int       n, ic, jc, kc;
   double    b_1 = 0.02, b_2 = 0.1;
 
-/* active parameters */
-
-  n = RUN_get_double_parameter("colloid_b1", &b1);
+  n = RUN_get_double_parameter("colloid_b1", &b_1);
   info((n == 0) ? "[Default] " : "[User   ] "); 
-  info("active B_1 parameter %f\n", b1);
-  n = RUN_get_double_parameter("colloid_b2", &b2);
-  info("active B_2 parameter %f\n", b1);
+  info("active B_1 parameter %f\n", b_1);
+  n = RUN_get_double_parameter("colloid_b2", &b_2);
+  info("active B_2 parameter %f\n", b_2);
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -309,8 +307,8 @@ static void init_active2() {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {             
-	  p_colloid->b1 = b1;
-	  p_colloid->b2 = b2;
+	  p_colloid->b1 = b_1;
+	  p_colloid->b2 = b_2;
 	  /* Initialise direction vector */
 	  p_colloid->dir.x = 0.0;
 	  p_colloid->dir.y = 0.0;

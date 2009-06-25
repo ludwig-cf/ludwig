@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.11.10.1 2009-06-24 14:02:31 kevin Exp $
+ *  $Id: ccomms.c,v 1.11.10.2 2009-06-25 14:51:54 ricardmn Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -37,9 +37,7 @@ static MPI_Datatype _mpi_sum1;
 static MPI_Datatype _mpi_sum2;
 static MPI_Datatype _mpi_sum6;
 static MPI_Datatype _mpi_sum7;
-////////////////////   mass correction    //////////////
 static MPI_Datatype _mpi_sum8;
-////////////////////////////////////////////////////////
 
 #endif
 
@@ -56,10 +54,8 @@ typedef struct colloid_sum_message_type1 Colloid_sum_message_one;
 typedef struct colloid_sum_message_type2 Colloid_sum_message_two;
 typedef struct colloid_sum_message_type6 Colloid_sum_message_six;
 typedef struct colloid_sum_message_type7 Colloid_sum_message_sev;
-
-/////////////  mass correction /////////////
 typedef struct colloid_sum_message_type8 Colloid_sum_message_eig;
-////////////////////////////////////////////
+
 
 struct colloid_halo_message {
   int      index;
@@ -70,6 +66,8 @@ struct colloid_halo_message {
   FVector  omega;
   FVector  dir;
   double   dp;
+  double   b1;
+  double   b2;
   double   cosine_ca;
   double   random[6];
   double   s[3];
@@ -92,11 +90,7 @@ struct colloid_sum_message_type2 {
   FVector f0;
   FVector t0;
   double   zeta[21];
-
-//////    mass correction    /////////
-double sump;
-/////////////////////////////////////
-
+  double sump;
 };
 
 struct colloid_sum_message_type6 {
@@ -111,13 +105,12 @@ struct colloid_sum_message_type7 {
   double f0[3];
 };
 
-//////////////   mass correction   ////////////////// 
 struct colloid_sum_message_type8 {
   int     index;
   FVector fc0;
   FVector tc0;
 };
-/////////////////////////////////////////////////////
+
 
 static void CCOM_load_halo_buffer(Colloid *, int, FVector);
 static void CCOM_unload_halo_buffer(Colloid *, int);
@@ -133,15 +126,12 @@ static void CMPI_exchange_sum_type1(int, int, int);
 static void CMPI_exchange_sum_type2(int, int, int);
 static void CMPI_exchange_sum_type6(int, int, int);
 static void CMPI_exchange_sum_type7(int, int, int);
-//////////////////////   mass c.    ////
 static void CMPI_exchange_sum_type8(int, int, int);
-////////////////////////////////////////
 static void CMPI_anull_buffers(void);
 static void CMPI_init_messages(void);
 
 static int                       _halo_message_nmax;
 static int                       _halo_message_size[5];
-//////////////////////////////////////////////////  ^-- mass c.
 
 static Colloid_halo_message    * _halo_send;
 static Colloid_halo_message    * _halo_recv;
@@ -153,11 +143,8 @@ static Colloid_sum_message_six * _halo_send_six;
 static Colloid_sum_message_six * _halo_recv_six;
 static Colloid_sum_message_sev * _halo_send_sev;
 static Colloid_sum_message_sev * _halo_recv_sev;
-
-///////////////////  mass c.  ///////////////////
 static Colloid_sum_message_eig * _halo_send_eig;
 static Colloid_sum_message_eig * _halo_recv_eig;
-////////////////////////////////////////////////
 
 
 
@@ -200,10 +187,7 @@ void CCOM_init_halos() {
   _halo_message_size[CHALO_TYPE2] = sizeof(Colloid_sum_message_two);
   _halo_message_size[CHALO_TYPE6] = sizeof(Colloid_sum_message_six);
   _halo_message_size[CHALO_TYPE7] = sizeof(Colloid_sum_message_sev);
-
-/////////////////////   mass c. ////////////
   _halo_message_size[CHALO_TYPE8] = sizeof(Colloid_sum_message_eig);
-////////////////////////////////////////////
 
   info("Requesting %d bytes for halo messages\n",
        2*_halo_message_nmax*sizeof(Colloid_halo_message));
@@ -213,11 +197,8 @@ void CCOM_init_halos() {
        2*_halo_message_nmax*_halo_message_size[CHALO_TYPE2]);
   info("Requesting %d bytes for type six messages\n",
        2*_halo_message_nmax*_halo_message_size[CHALO_TYPE6]);
-
-/////////////////////  mass c. /////////////////////
   info("Requesting %d bytes for type eight messages\n",
        2*_halo_message_nmax*_halo_message_size[CHALO_TYPE8]);
-////////////////////////////////////////////////////
 
   _halo_send     = (Colloid_halo_message *)
     calloc(_halo_message_nmax, sizeof(Colloid_halo_message));
@@ -239,13 +220,10 @@ void CCOM_init_halos() {
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_sev));
   _halo_recv_sev = (Colloid_sum_message_sev *)
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_sev));
-
-////////////////  mass c.   ///////
   _halo_send_eig = (Colloid_sum_message_eig *)
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_eig));
   _halo_recv_eig = (Colloid_sum_message_eig *)
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_eig));
-//////////////////////////////////
 
 
   if (_halo_send      == NULL) fatal("_halo_send failed");
@@ -877,8 +855,6 @@ void CCOM_exchange_halo_sum(int dimension, int type, int nback, int nforw) {
 	     (nback + nforw)*_halo_message_size[type]);
     }
     break;
-
-//////////////////// mass correction  /////////////////////
   case CHALO_TYPE8:
     if (cart_size(dimension) > 1){
 
@@ -891,7 +867,6 @@ void CCOM_exchange_halo_sum(int dimension, int type, int nback, int nforw) {
 
     }
     break;
-//////////////////////////////////////////////////////////
 
   default:
     fatal("internal error: Incorrect message type %d\n", type);
@@ -1021,12 +996,9 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->n2_nodes= 0;
   p_colloid->lnk     = NULL;
   p_colloid->next    = NULL;
-
-//////////////////   mass c.  /////////////////
   p_colloid->fc0      = UTIL_fvector_zero();
   p_colloid->tc0      = UTIL_fvector_zero();
   p_colloid->sump  = 0.0;
-//////////////////////////////////////////////
 
   VERBOSE(("Unloaded particle (index %d) (order = %d)\n", p_colloid->index,
 	  nrecv));
@@ -1081,9 +1053,7 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     _halo_send_two[n].t0.x  = p_colloid->t0.x;
     _halo_send_two[n].t0.y  = p_colloid->t0.y;
     _halo_send_two[n].t0.z  = p_colloid->t0.z;
-////////////////////////// mass c.  ////////////
     _halo_send_two[n].sump  = p_colloid->sump;
-///////////////////////////////////////////////
     for (iz = 0; iz < 21; iz++) {
       _halo_send_two[n].zeta[iz] = p_colloid->zeta[iz];
     }
@@ -1102,8 +1072,6 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     _halo_send_sev[n].f0[Y] = p_colloid->f0.y;
     _halo_send_sev[n].f0[Z] = p_colloid->f0.z;
     break;
-
-//////////////////  mass correction  ////////////////
   case CHALO_TYPE8:
     _halo_send_eig[n].index = p_colloid->index;
     _halo_send_eig[n].fc0.x  = p_colloid->fc0.x;
@@ -1113,7 +1081,6 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     _halo_send_eig[n].tc0.y  = p_colloid->tc0.y;
     _halo_send_eig[n].tc0.z  = p_colloid->tc0.z;
     break;
-/////////////////////////////////////////////////////
 
   default:
     fatal("Incorrect message type\n");
@@ -1176,9 +1143,7 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     p_colloid->t0.x += _halo_recv_two[n].t0.x;
     p_colloid->t0.y += _halo_recv_two[n].t0.y;
     p_colloid->t0.z += _halo_recv_two[n].t0.z;
-///////////////////// mass c. //////////////
     p_colloid->sump += _halo_recv_two[n].sump;
-///////////////////////////////////////////
     for (iz = 0; iz < 21; iz++) {
       p_colloid->zeta[iz] += _halo_recv_two[n].zeta[iz];
     }
@@ -1212,7 +1177,6 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     p_colloid->f0.z += _halo_recv_sev[n].f0[Z];
     break;
 
-////////////////////   mass correction   ////////////
   case CHALO_TYPE8:
 
     if (p_colloid->index != _halo_recv_eig[n].index) {
@@ -1228,7 +1192,6 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     p_colloid->tc0.y += _halo_recv_eig[n].tc0.y;
     p_colloid->tc0.z += _halo_recv_eig[n].tc0.z;
     break;
-////////////////////////////////////////////////////
 
   default:
     fatal("Internal error: invalid message type\n");
@@ -1261,9 +1224,7 @@ void CMPI_init_messages() {
   MPI_Type_contiguous(sizeof(Colloid_sum_message_two), MPI_BYTE, &_mpi_sum2);
   MPI_Type_contiguous(sizeof(Colloid_sum_message_six), MPI_BYTE, &_mpi_sum6);
   MPI_Type_contiguous(sizeof(Colloid_sum_message_sev), MPI_BYTE, &_mpi_sum7);
-///////////////////  mass c.
   MPI_Type_contiguous(sizeof(Colloid_sum_message_eig), MPI_BYTE, &_mpi_sum8);
-//////////////////
   MPI_Type_commit(&_mpi_halo);
   MPI_Type_commit(&_mpi_sum1);
   MPI_Type_commit(&_mpi_sum2);
@@ -1540,7 +1501,6 @@ void CMPI_exchange_sum_type7(int dimension, int nforw, int nback) {
   return;
 }
 
-//////////////////////////   mass correction   /////////////////////////////////
 /*****************************************************************************
  *
  *  CMPI_exchange_sum_type8
@@ -1586,7 +1546,6 @@ void CMPI_exchange_sum_type8(int dimension, int nforw, int nback) {
 
   return;
 }
-///////////////////////////////////////////////////////////////////////
 
 
 /*****************************************************************************
@@ -1609,10 +1568,8 @@ void CMPI_anull_buffers() {
     _halo_recv_one[n].index = -1;
     _halo_send_two[n].index = -1;
     _halo_recv_two[n].index = -1;
-///////////////////  mass correction  //////////////
     _halo_send_eig[n].index = -1;
     _halo_recv_eig[n].index = -1;
-///////////////////////////////////////////////////
 
   }
 

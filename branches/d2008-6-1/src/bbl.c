@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.9.6.1 2009-06-24 14:02:31 kevin Exp $
+ *  $Id: bbl.c,v 1.9.6.2 2009-06-25 14:50:28 ricardmn Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -27,6 +27,7 @@ extern Site * site;
 
 static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
+static void mass_conservation_compute_force(void);
 static void update_colloids(void);
 static double WALL_lubrication(const int, FVector, double);
 
@@ -65,11 +66,28 @@ void bounce_back_on_links() {
   bounce_back_pass1();
   CCOM_halo_sum(CHALO_TYPE2);
 
-//////////////////////////    mass conservation   ///////////////////////////
-////// this should be included in update_coloids() better?
-
 #ifdef _ACTIVE2_
 {
+  mass_conservation_compute_force();
+  CCOM_halo_sum(CHALO_TYPE8);
+}
+#endif
+
+  update_colloids();
+  bounce_back_pass2();
+
+  TIMER_stop(TIMER_BBL);
+
+  return;
+}
+
+/*****************************************************************************
+*
+*  mass_conservation_compute_force
+*
+******************************************************************************/
+static void mass_conservation_compute_force() {
+
   double rsumw,dm;
   int ic,jc,kc,ij;
   Colloid   * p_colloid;
@@ -86,9 +104,7 @@ void bounce_back_on_links() {
 
 	/* For each colloid in the list */
 
-
 	while (p_colloid != NULL) {
-
 
 	  rsumw = 1.0 / p_colloid->sumw;
 	  p_colloid->sump *=rsumw;
@@ -96,7 +112,6 @@ void bounce_back_on_links() {
 	  p_link = p_colloid->lnk;
 
 	  while (p_link != NULL) {
-
 
 	    if (p_link->status == LINK_UNUSED) {
 	      /* ignore */
@@ -110,7 +125,7 @@ void bounce_back_on_links() {
 	      ci.y = (double) cv[ij][1];
 	      ci.z = (double) cv[ij][2];
 
-	      dm =  -wv[ij]*p_colloid->sump; //-
+	      dm =  -wv[ij]*p_colloid->sump;
 	      vb = UTIL_cross_product(p_link->rb, ci);
 
 	      p_colloid->fc0.x += dm*ci.x;
@@ -130,19 +145,8 @@ void bounce_back_on_links() {
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;
 	}
-/* Next cell */
+        /* Next cell */
       }
-
-  CCOM_halo_sum(CHALO_TYPE8);
-}
-#endif
-//////////////////////////////////////////////////////////
-
-
-  update_colloids();
-  bounce_back_pass2();
-
-  TIMER_stop(TIMER_BBL);
 
   return;
 }
@@ -225,10 +229,11 @@ static void bounce_back_pass1() {
 		dm =  2.0*site[i].f[ij]
 		  - wv[ij]*p_colloid->deltam; /* minus */
 		delta = 2.0*rcs2*wv[ij]*rho0;
+
 #ifdef _ACTIVE2_
 		{
-		  double rbmod, dm_a, cost, plegendre;
-		  double tans[3];
+		  double rbmod, dm_a, cost, plegendre, sint,mod_tans;
+		  double tans[3], vector1[3];
 		  FVector va;
 
 		  rbmod = 1.0/UTIL_fvector_mod(p_link->rb);
@@ -266,9 +271,8 @@ static void bounce_back_pass1() {
 		  site[i].f[ij] += dm_a;
 		  dm+=dm_a;
 
-///////// mass conservation   ///////////
+		/* needed for mass conservation   */
                   p_colloid->sump+=dm_a;
-////////////////////////////////////////
 
 		}
 #endif
@@ -440,13 +444,13 @@ static void bounce_back_pass2() {
 
 	      df = rho0*vdotc + wv[ij]*p_colloid->deltam;
 
-///////////// mass conservation    ////////////////
+
+		/*  mass conservation  */
 #ifdef _ACTIVE2_
 		{
 	      df += wv[ij]*p_colloid->sump; 
 		}
 #endif
-//////////////////////////////////////////////////
 
 
 	      dg = phi_get_phi_site(i)*vdotc;
@@ -494,7 +498,7 @@ static void bounce_back_pass2() {
 	  p_colloid->t0 = UTIL_fvector_zero();
 	  deltag_ += p_colloid->deltaphi;
 
-////////////  mass conservation    ///////////////
+
 #ifdef _ACTIVE2_
 		{
  	  p_colloid->sump=0.0;
@@ -502,8 +506,6 @@ static void bounce_back_pass2() {
 	  p_colloid->tc0 = UTIL_fvector_zero();
 		}
 #endif
-/////////////////////////////////////////////////
-
 
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;
@@ -628,7 +630,7 @@ static void update_colloids() {
 	  xb[5] = moment*p_colloid->omega.z + p_colloid->t0.z
 	        + p_colloid->torque.z;
 
-//////////////  mass correction  //////////////
+	 /*  mass conservation correction  */
 #ifdef _ACTIVE2_
 		{
 	 xb[0] += p_colloid->fc0.x;
@@ -640,8 +642,6 @@ static void update_colloids() {
 	 xb[5] += p_colloid->tc0.z;
 }
 #endif
-//////////////////////////////////////////////
-
 
 	  /* Begin the Gaussian elimination */
 

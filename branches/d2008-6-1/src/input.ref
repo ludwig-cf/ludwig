@@ -176,7 +176,7 @@ lubrication_tangential_cutoff 0.0
 # colloid_type:     inactive [default]
 #                   active1_bipolar
 #                   active1_quadrupolar
-#                   active2               for squirmers (use -D_ACTIVE2_) 
+#                   active2               for squirmers  (use -D_ACTIVE2_) 
 # For active2
 # colloids_b1       swimming speed
 # colloids_b2       stresslet
@@ -187,8 +187,8 @@ colloid_type        inactive
 colloid_cone_angle  90
 colloid_dp          0.2
 
-colloid_b1          0.05
-colloid_b2          0.1
+colloid_b1          0.01
+colloid_b2          0.05
 
 ###############################################################################
 #
