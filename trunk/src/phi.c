@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.6 2009-03-27 17:09:13 kevin Exp $
+ *  $Id: phi.c,v 1.7 2009-06-26 08:42:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -573,11 +573,10 @@ void phi_leesedwards_transformation() {
 
   if (cart_size(Y) > 1) {
     /* This has its own routine. */
-    assert(nop_ == 1);
     phi_leesedwards_parallel();
   }
   else {
-    /* If no messages are required... */
+    /* No messages are required... */
 
     get_N_local(nlocal);
     ib0 = nlocal[X] + nhalo_ + 1;
@@ -675,6 +674,8 @@ static void phi_leesedwards_parallel() {
   /* One round of communication for each buffer plane */
 
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+
+    assert(nop_ == 1); /* Code not general for nop_ > 1 */
 
     ic = le_index_buffer_to_real(ib);
     kc = 1 - nhalo_;
@@ -808,6 +809,108 @@ void phi_op_get_grad_phi_site(const int index, const int nop, double * grad) {
   for (ia = 0; ia < 3; ia++) {
     grad[ia] = grad_phi_site[3*(nop_*index + nop) + ia];
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_set_q_tensor
+ *
+ *  Set the independent elements of the q tensor at lattice site index
+ *  in phi_site. We assume q is constructed appropriately.
+ *
+ *****************************************************************************/
+
+void phi_set_q_tensor(const int index, double q[3][3]) {
+
+  assert(initialised_);
+  assert(nop_ == 5);
+
+  phi_site[nop_*index + 0] = q[X][X];
+  phi_site[nop_*index + 1] = q[X][Y];
+  phi_site[nop_*index + 2] = q[X][Z];
+  phi_site[nop_*index + 3] = q[Y][Y];
+  phi_site[nop_*index + 4] = q[Y][Z];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_get_q_tensor
+ *
+ *  Construct and return the symmetric q tensor at lattice index.
+ *
+ *****************************************************************************/
+
+void phi_get_q_tensor(int index, double q[3][3]) {
+
+  assert(initialised_);
+  assert(nop_ == 5);
+
+  q[X][X] = phi_site[nop_*index + 0];
+  q[X][Y] = phi_site[nop_*index + 1];
+  q[X][Z] = phi_site[nop_*index + 2];
+  q[Y][X] = q[X][Y];
+  q[Y][Y] = phi_site[nop_*index + 3];
+  q[Y][Z] = phi_site[nop_*index + 4];
+  q[Z][X] = q[X][Z];
+  q[Z][Y] = q[Y][Z];
+  q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_get_q_gradient_tensor
+ *
+ *  Return the rank 3 gradient tensor of q.
+ *
+ *****************************************************************************/
+
+void phi_get_q_gradient_tensor(const int index, double dq[3][3][3]) {
+
+  int ia;
+
+  assert(initialised_);
+  assert(nop_ == 5);
+
+  for (ia = 0; ia < 3; ia++) {
+    dq[ia][X][X] = grad_phi_site[3*(nop_*index + 0) + ia];
+    dq[ia][X][Y] = grad_phi_site[3*(nop_*index + 1) + ia];
+    dq[ia][X][Z] = grad_phi_site[3*(nop_*index + 2) + ia];
+    dq[ia][Y][X] = dq[ia][X][Y];
+    dq[ia][Y][Y] = grad_phi_site[3*(nop_*index + 3) + ia];
+    dq[ia][Y][Z] = grad_phi_site[3*(nop_*index + 4) + ia];
+    dq[ia][Z][X] = dq[ia][X][Z];
+    dq[ia][Z][Y] = dq[ia][Y][Z];
+    dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_get_q_delsq_tensor
+ *
+ *  Return the delsq Q_ab tensor at site index.
+ *
+ *****************************************************************************/
+
+void phi_get_q_delsq_tensor(const int index, double dsq[3][3]) {
+
+  dsq[X][X] = delsq_phi_site[nop_*index + 0];
+  dsq[X][Y] = delsq_phi_site[nop_*index + 1];
+  dsq[X][Z] = delsq_phi_site[nop_*index + 2];
+  dsq[Y][X] = dsq[X][Y];
+  dsq[Y][Y] = delsq_phi_site[nop_*index + 3];
+  dsq[Y][Z] = delsq_phi_site[nop_*index + 4];
+  dsq[Z][X] = dsq[X][Z];
+  dsq[Z][Y] = dsq[Y][Z];
+  dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
 
   return;
 }
