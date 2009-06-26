@@ -50,7 +50,7 @@ float tau1=0.56334;    // proportional to viscosity
 float tau2=0.25;       // magnitude of flow-induced diffusion
 float dt=1.0;          //
 float densityinit=2.0; // initial value for the density everywhere
-double noise_strength;       // noise strength
+double noise_strength; // noise strength
 
 // ----------------------------------------
 // electric field
