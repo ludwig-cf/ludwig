@@ -2,7 +2,7 @@
  *
  *  phi.h
  *
- *  $Id: phi.h,v 1.3 2008-11-14 14:42:50 kevin Exp $
+ *  $Id: phi.h,v 1.4 2009-06-26 08:42:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -36,6 +36,11 @@ double phi_op_get_phi_site(const int, const int);
 double phi_op_get_delsq_phi_site(const int, const int);
 void   phi_op_get_grad_phi_site(const int, const int, double *);
 void   phi_op_set_phi_site(const int, const int, const double);
+
+void   phi_set_q_tensor(const int, double q[3][3]);
+void   phi_get_q_tensor(const int, double q[3][3]);
+void   phi_get_q_gradient_tensor(const int, double dq[3][3][3]);
+void   phi_get_q_delsq_tensor(const int, double dsq[3][3]);
 
 extern struct io_info_t * io_info_phi;
 extern const int nop_;
