@@ -78,6 +78,8 @@ int main(int argc, char** argv)
   inputFile >> REDSHIFT >> endOfLine;
   inputFile >> BACKFLOW >> endOfLine;
   inputFile >> phivr >> endOfLine;
+  inputFile >> NOISE >> endOfLine;
+  inputFile >> noise_strength >> endOfLine;
   inputFile >> xi >> endOfLine;
   inputFile >> tau1 >> endOfLine;
   inputFile >> tau2 >> endOfLine;
@@ -135,6 +137,8 @@ int main(int argc, char** argv)
   logFile << REDSHIFT << "\t\t# REDSHIFT"<< endl;
   logFile << BACKFLOW << "\t\t# BACKFLOW"<< endl;
   logFile << phivr << "\t\t# phivr"<< endl;
+  logFile << NOISE << "\t\t# NOISE"<< endl;
+  logFile << noise_strength << "\t\t# noise_strength"<< endl;
   logFile << xi << "\t\t# xi"<< endl;
   logFile << tau1 << "\t\t# tau1"<< endl;
   logFile << tau2 << "\t\t# tau2"<< endl;
@@ -158,16 +162,13 @@ int main(int argc, char** argv)
   logFile << pe_cartesian_size_[1] << "\t\t# y proc decomposition" << endl;
   logFile << pe_cartesian_size_[2] << "\t\t# z proc decomposition" << endl;
   logFile << io_ngroups_ << "\t\t# number io groups (files)" << endl;
-  logFile << noise_strength << "\t\t# noise strength" << endl;
 
    logFile.close();
 
   int n,graphstp,improv;
-  int i,j,k;
-  int seed;
   double ****tmp;
-  double noise_strength=0.00001;
 
+  int i,j,k;
 
   initialize();
 
@@ -255,6 +256,36 @@ int main(int argc, char** argv)
 //      if(n==1500) startDroplet();
 //      if(n==1500) startSlab();
 
+/********************************/
+// change chirality during run
+/*
+
+   if(n==250000){Abulk=0.012611161; if(myPE==0){cout << "timestep " << n << ": changing parameter; Abulk = " << Abulk << endl;}}
+   if(n==300000){Abulk=0.028375113; if(myPE==0){cout << "timestep " << n << ": changing parameter; Abulk = " << Abulk << endl;}} 
+   if(n==350000){Abulk=0.11350045; if(myPE==0){cout << "timestep " << n << ": changing parameter; Abulk = " << Abulk << endl;}} 
+
+   kappa = sqrt(L1*27.0*q0*q0/(Abulk*gam));
+   caz = (1.0+4./3.*kappa*kappa);
+   tauc = 1.0/8.0*(1-4.0*kappa*kappa+pow(caz,1.5));
+
+*/
+/*******************************/
+
+
+/********************************/
+// change voltage during run
+
+
+
+/*
+   if(n==410000){delVz= 0.55*5.495388; if(myPE==0){cout << "timestep " << n << ": changing parameter; delVz = " << delVz << endl;}}
+   if(n==460000){delVz= 0.5*5.495388; if(myPE==0){cout << "timestep " << n << ": changing parameter; delVz = " << delVz << endl;}}
+   if(n==510000){delVz= 0.55*5.495388; if(myPE==0){cout << "timestep " << n << ": changing parameter; delVz = " << delVz << endl;}}
+   if(n==560000){delVz= 0.6*5.495388; if(myPE==0){cout << "timestep " << n << ": changing parameter; delVz = " << delVz << endl;}}
+   if(n==610000){delVz= 0.65*5.495388; if(myPE==0){cout << "timestep " << n << ": changing parameter; delVz = " << delVz << endl;}}
+
+*/
+/********************************/
 
 	computeStressFreeEnergy(n);
 
@@ -280,13 +311,13 @@ int main(int argc, char** argv)
       for (j=jy1; j<jy2; j++) {
 	  for (k=kz1; k<kz2; k++) {
 
-#if NOISE
-	    DEHxx[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-	    DEHxy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-	    DEHxz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-	    DEHyy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-	    DEHyz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-#endif
+	    if (NOISE==1){
+	     DEHxx[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	     DEHxy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	     DEHxz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	     DEHyy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	     DEHyz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    }
 
 	  Qxxnew[i][j][k]=Qxxold[i][j][k]+dt*(DEHxx[i][j][k]);
 	  Qxynew[i][j][k]=Qxyold[i][j][k]+dt*(DEHxy[i][j][k]);
@@ -328,13 +359,14 @@ int main(int argc, char** argv)
 	 for (j=jy1; j<jy2; j++) {
 	  for (k=kz1; k<kz2; k++) {
 
-#if NOISE
-	    DEHxx[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-	    DEHxy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-	    DEHxz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-	    DEHyy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-	    DEHyz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
-#endif
+	    if (NOISE==1){
+	       DEHxx[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	       DEHxy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	       DEHxz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	       DEHyy[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	       DEHyz[i][j][k]+=sqrt(noise_strength)/sqrt(dt)*gasdev(1);
+	    }
+
 
 	    Qxxnew[i][j][k]=Qxxold[i][j][k]+0.5*dt*(DEHxx[i][j][k]+
 			  DEHxxold[i][j][k]);

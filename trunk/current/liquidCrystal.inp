@@ -26,6 +26,8 @@
 1		% REDSHIFT
 1               % BACKFLOW
 1.0 		% phivr, coupling of hydrodynamics to order parameter
+1		% NOISE
+0.0		% noise_strength
 0.7 		% xi, related to effective aspect ratio, should be <= one
 2.5		% tau1, proportional to viscosity
 0.25		% tau2, magnitude of flow-induced diffusion
