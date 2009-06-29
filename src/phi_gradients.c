@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.6 2009-05-29 06:57:56 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.7 2009-06-29 16:28:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -55,6 +55,9 @@ static void phi_gradients_leesedwards(void);
 static void (* phi_gradient_function)(void) = phi_gradients_fluid;
 static void f_grad_phi(int, int, int, int, int, const int *);
 static void f_delsq_phi(int, int, int, int, int, const int *);
+
+static void phi_gradients_fluid_inline(void);
+static void phi_gradients_double_fluid_inline(void);
 
 /****************************************************************************
  *
@@ -657,3 +660,208 @@ static void f_delsq_phi(int icm1, int ic, int icp1, int jc, int kc,
 
   return;
 }
+
+/****************************************************************************
+ *
+ *  phi_gradients_fluid_inline
+ *
+ ****************************************************************************/
+
+static void phi_gradients_fluid_inline(void) {
+
+  int nlocal[3];
+  int ic, jc, kc;
+  int ia, index, index1;
+  int nextra = nhalo_ - 1;
+  int xs, ys;
+ 	 
+  double phi0;
+  const double r9 = (1.0/9.0);
+  const double r18 = (1.0/18.0);
+ 	 
+  get_N_local(nlocal);
+  assert(nhalo_ >= 1);
+  assert(nop == 1);
+  assert(le_get_nplane_total() == 0);
+
+  /* Strides in x- and y-directions */
+  xs = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
+  ys = (nlocal[Z] + 2*nhalo_);
+ 	 
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+ 	 
+	index = get_site_index(ic, jc, kc);
+	phi0 = phi_site[index];
+ 	 
+	grad_phi_site[3*index + X] =
+	  r18*(phi_site[index+xs     ]-phi_site[index-xs     ] +
+	       phi_site[index+xs+ys+1]-phi_site[index-xs+ys+1] +
+	       phi_site[index+xs-ys+1]-phi_site[index-xs-ys+1] +
+	       phi_site[index+xs+ys-1]-phi_site[index-xs+ys-1] +
+	       phi_site[index+xs-ys-1]-phi_site[index-xs-ys-1] +
+	       phi_site[index+xs+ys  ]-phi_site[index-xs+ys  ] +
+	       phi_site[index+xs-ys  ]-phi_site[index-xs-ys  ] +
+	       phi_site[index+xs   +1]-phi_site[index-xs   +1] +
+	       phi_site[index+xs   -1]-phi_site[index-xs   -1]);
+ 	                     
+	grad_phi_site[3*index + Y] =
+	  r18*(phi_site[index   +ys  ]-phi_site[index   -ys  ] +
+	       phi_site[index+xs+ys+1]-phi_site[index+xs-ys+1] +
+	       phi_site[index-xs+ys+1]-phi_site[index-xs-ys+1] +
+	       phi_site[index+xs+ys-1]-phi_site[index+xs-ys-1] +
+	       phi_site[index-xs+ys-1]-phi_site[index-xs-ys-1] +
+	       phi_site[index+xs+ys  ]-phi_site[index+xs-ys  ] +
+	       phi_site[index-xs+ys  ]-phi_site[index-xs-ys  ] +
+	       phi_site[index   +ys+1]-phi_site[index   -ys+1] +
+	       phi_site[index   +ys-1]-phi_site[index   -ys-1]);
+ 	                     
+        grad_phi_site[3*index + Z] =
+	  r18*(phi_site[index      +1]-phi_site[index      -1] +
+	       phi_site[index+xs+ys+1]-phi_site[index+xs+ys-1] +
+	       phi_site[index-xs+ys+1]-phi_site[index-xs+ys-1] +
+	       phi_site[index+xs-ys+1]-phi_site[index+xs-ys-1] +
+	       phi_site[index-xs-ys+1]-phi_site[index-xs-ys-1] +
+	       phi_site[index+xs   +1]-phi_site[index+xs   -1] +
+	       phi_site[index-xs   +1]-phi_site[index-xs   -1] +
+	       phi_site[index   +ys+1]-phi_site[index   +ys-1] +
+	       phi_site[index   -ys+1]-phi_site[index   -ys-1]);
+ 	                     
+	delsq_phi_site[index] = r9*(phi_site[index+xs     ] +
+				    phi_site[index-xs     ] +
+				    phi_site[index   +ys  ] +
+				    phi_site[index   -ys  ] +
+				    phi_site[index      +1] +
+				    phi_site[index      -1] +
+				    phi_site[index+xs+ys+1] +
+				    phi_site[index+xs+ys-1] +
+				    phi_site[index+xs-ys+1] +
+				    phi_site[index+xs-ys-1] +
+				    phi_site[index-xs+ys+1] +
+				    phi_site[index-xs+ys-1] +
+				    phi_site[index-xs-ys+1] +
+				    phi_site[index-xs-ys-1] +
+				    phi_site[index+xs+ys  ] +
+				    phi_site[index+xs-ys  ] +
+				    phi_site[index-xs+ys  ] +
+				    phi_site[index-xs-ys  ] +
+				    phi_site[index+xs   +1] +
+				    phi_site[index+xs   -1] +
+				    phi_site[index-xs   +1] +
+				    phi_site[index-xs   -1] +
+				    phi_site[index   +ys+1] +
+				    phi_site[index   +ys-1] +
+				    phi_site[index   -ys+1] +
+				    phi_site[index   -ys-1] -
+				    26.0*phi0);
+	/* Next site */
+      }
+    }
+  }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  phi_gradients_double_fluid_inline
+ *
+ ****************************************************************************/
+
+static void phi_gradients_double_fluid_inline(void) {
+
+  int nlocal[3];
+  int ic, jc, kc;
+  int ia, index, index1;
+  int nextra = nhalo_ - 1;
+  int xs, ys;                   
+ 	 
+  double phi0;
+  const double r9 = (1.0/9.0);
+  const double r18 = (1.0/18.0);
+ 	 
+  get_N_local(nlocal);
+  assert(nhalo_ >= 1);
+  assert(nop == 1);
+  assert(le_get_nplane_total() == 0);
+
+  /* Stride in the x- and y-directions */
+  xs = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
+  ys = (nlocal[Z] + 2*nhalo_);
+ 	 
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+ 	 
+	index = get_site_index(ic, jc, kc);
+	phi0 = delsq_phi_site[index];
+ 	 
+	grad_delsq_phi_site[3*index + X] =
+	  r18*(delsq_phi_site[index+xs     ]-delsq_phi_site[index-xs     ] +
+	       delsq_phi_site[index+xs+ys+1]-delsq_phi_site[index-xs+ys+1] +
+	       delsq_phi_site[index+xs-ys+1]-delsq_phi_site[index-xs-ys+1] +
+	       delsq_phi_site[index+xs+ys-1]-delsq_phi_site[index-xs+ys-1] +
+	       delsq_phi_site[index+xs-ys-1]-delsq_phi_site[index-xs-ys-1] +
+	       delsq_phi_site[index+xs+ys  ]-delsq_phi_site[index-xs+ys  ] +
+	       delsq_phi_site[index+xs-ys  ]-delsq_phi_site[index-xs-ys  ] +
+	       delsq_phi_site[index+xs   +1]-delsq_phi_site[index-xs   +1] +
+	       delsq_phi_site[index+xs   -1]-delsq_phi_site[index-xs   -1]);
+ 	                     
+	grad_delsq_phi_site[3*index + Y] =
+	  r18*(delsq_phi_site[index   +ys  ]-delsq_phi_site[index   -ys  ] +
+	       delsq_phi_site[index+xs+ys+1]-delsq_phi_site[index+xs-ys+1] +
+	       delsq_phi_site[index-xs+ys+1]-delsq_phi_site[index-xs-ys+1] +
+	       delsq_phi_site[index+xs+ys-1]-delsq_phi_site[index+xs-ys-1] +
+	       delsq_phi_site[index-xs+ys-1]-delsq_phi_site[index-xs-ys-1] +
+	       delsq_phi_site[index+xs+ys  ]-delsq_phi_site[index+xs-ys  ] +
+	       delsq_phi_site[index-xs+ys  ]-delsq_phi_site[index-xs-ys  ] +
+	       delsq_phi_site[index   +ys+1]-delsq_phi_site[index   -ys+1] +
+	       delsq_phi_site[index   +ys-1]-delsq_phi_site[index   -ys-1]);
+ 	                     
+        grad_delsq_phi_site[3*index + Z] =
+	  r18*(delsq_phi_site[index      +1]-delsq_phi_site[index      -1] +
+	       delsq_phi_site[index+xs+ys+1]-delsq_phi_site[index+xs+ys-1] +
+	       delsq_phi_site[index-xs+ys+1]-delsq_phi_site[index-xs+ys-1] +
+	       delsq_phi_site[index+xs-ys+1]-delsq_phi_site[index+xs-ys-1] +
+	       delsq_phi_site[index-xs-ys+1]-delsq_phi_site[index-xs-ys-1] +
+	       delsq_phi_site[index+xs   +1]-delsq_phi_site[index+xs   -1] +
+	       delsq_phi_site[index-xs   +1]-delsq_phi_site[index-xs   -1] +
+	       delsq_phi_site[index   +ys+1]-delsq_phi_site[index   +ys-1] +
+	       delsq_phi_site[index   -ys+1]-delsq_phi_site[index   -ys-1]);
+ 	                     
+	delsq_delsq_phi_site[index] = r9*(delsq_phi_site[index+xs     ] +
+					  delsq_phi_site[index-xs     ] +
+					  delsq_phi_site[index   +ys  ] +
+					  delsq_phi_site[index   -ys  ] +
+					  delsq_phi_site[index      +1] +
+					  delsq_phi_site[index      -1] +
+					  delsq_phi_site[index+xs+ys+1] +
+					  delsq_phi_site[index+xs+ys-1] +
+					  delsq_phi_site[index+xs-ys+1] +
+					  delsq_phi_site[index+xs-ys-1] +
+					  delsq_phi_site[index-xs+ys+1] +
+					  delsq_phi_site[index-xs+ys-1] +
+					  delsq_phi_site[index-xs-ys+1] +
+					  delsq_phi_site[index-xs-ys-1] +
+					  delsq_phi_site[index+xs+ys  ] +
+					  delsq_phi_site[index+xs-ys  ] +
+					  delsq_phi_site[index-xs+ys  ] +
+					  delsq_phi_site[index-xs-ys  ] +
+					  delsq_phi_site[index+xs   +1] +
+					  delsq_phi_site[index+xs   -1] +
+					  delsq_phi_site[index-xs   +1] +
+					  delsq_phi_site[index-xs   -1] +
+					  delsq_phi_site[index   +ys+1] +
+					  delsq_phi_site[index   +ys-1] +
+					  delsq_phi_site[index   -ys+1] +
+					  delsq_phi_site[index   -ys-1] -
+					  26.0*phi0);
+	/* Next site */
+      }
+    }
+  }
+
+  return;
+}
+
