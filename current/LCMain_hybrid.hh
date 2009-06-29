@@ -35,7 +35,6 @@ double rr,rr_old;
 int numuc;
 double numhftwist;
 double threshold;
-double noise_strength;
 
 float bodyforce;
 
@@ -50,7 +49,11 @@ float tau1=0.56334;    // proportional to viscosity
 float tau2=0.25;       // magnitude of flow-induced diffusion
 float dt=1.0;          //
 float densityinit=2.0; // initial value for the density everywhere
+
+// --------------------------------------
+// noise
 double noise_strength; // noise strength
+int NOISE,seed;
 
 // ----------------------------------------
 // electric field
