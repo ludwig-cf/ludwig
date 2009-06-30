@@ -2,9 +2,10 @@
  *
  *  blue_phase.c
  *
- *  Routines related to blue phase liquid crystals.
+ *  Routines related to blue phase liquid crystal free energy
+ *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.2 2009-06-01 16:50:07 kevin Exp $
+ *  $Id: blue_phase.c,v 1.3 2009-06-30 18:21:53 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,14 +22,8 @@
 #include "util.h"
 #include "coords.h"
 #include "lattice.h"
-#include "free_energy.h"
 #include "phi.h"
-
-/* Gamma = 0.3, k0 = 0.01, k1 = 0.01, a0 = 0.014384711 gamma = 3.1764706
- * q0 = numhalftwists*nunitcell*sqrt(2)*Pi/Ly 
- * with number of half twists in unit cell = 1.0,
- * number unit cells in pitch direction = 8 if Ly = 128
- * xi = 0.7 */
+#include "blue_phase.h"
 
 static double q0_;        /* Pitch = 2pi / q0_ */
 static double a0_;        /* Bulk free energy parameter A_0 */
@@ -43,6 +38,40 @@ static const double r3 = (1.0/3.0);
 
 /*****************************************************************************
  *
+ *  blue_phase_set_free_energy_parameters
+ *
+ *  Enforces the 'one constant approximation' kappa0 = kappa1 = kappa
+ *
+ *****************************************************************************/
+
+void blue_phase_set_free_energy_parameters(double a0, double gamma,
+					   double kappa, double q0) {
+  a0_ = a0;
+  gamma_ = gamma;
+  kappa0_ = kappa;
+  kappa1_ = kappa;
+  q0_ = q0;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_set_xi
+ *
+ *  Set the molecular aspect ratio.
+ *
+ *****************************************************************************/
+
+void blue_phase_set_xi(double xi) {
+
+  xi_ = xi;
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  blue_phase_free_energy_density
  *
  *  Return the free energy density at lattice site index.
@@ -51,24 +80,33 @@ static const double r3 = (1.0/3.0);
 
 double blue_phase_free_energy_density(const int index) {
 
-  int ia, ib, ic, id;
+  double e;
   double q[3][3];
   double dq[3][3][3];
-  double q2, q3;
-  double dq0, dq1;
-  double sum;
-  double tmp;
 
   phi_get_q_tensor(index, q);
   phi_get_q_gradient_tensor(index, dq);
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      for (ic = 0; ic < 3; ic++) {
-	dq[ia][ib][ic] *= 3.0;
-      }
-    }
-  }
+  e = blue_phase_compute_fed(q, dq);
+
+  return e;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_compute_fed
+ *
+ *  Compute the free energy density as a function of q and the q gradient
+ *  tensor dq.
+ *
+ *****************************************************************************/
+
+double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
+
+  int ia, ib, ic, id;
+  double q2, q3;
+  double dq0, dq1;
+  double sum;
 
   q2 = 0.0;
 
@@ -108,7 +146,6 @@ double blue_phase_free_energy_density(const int index) {
   /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
 
   dq1 = 0.0;
-  tmp = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -116,7 +153,6 @@ double blue_phase_free_energy_density(const int index) {
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
 	  sum += e_[ia][ic][id]*dq[ic][id][ib];
-	  tmp += e_[ia][ic][id]*dq[ic][id][ib]*q[ia][ib];
 	}
       }
       sum += 2.0*q0_*q[ia][ib];
@@ -127,17 +163,6 @@ double blue_phase_free_energy_density(const int index) {
   sum = 0.5*a0_*(1.0 - r3*gamma_)*q2 - r3*a0_*gamma_*q3
     + 0.25*a0_*gamma_*q2*q2 + 0.5*kappa0_*dq0 + 0.5*kappa1_*dq1;
 
-  info("%13.6e %13.6e %13.6e %13.6e %13.6e\n", 
-       0.5*a0_*(1.0 - r3*gamma_)*q2, -r3*a0_*gamma_*q3, 0.25*a0_*gamma_*q2*q2,
-       2.0*kappa0_*q0_*tmp, 0.5*kappa1_*dq1 - 2.0*kappa1_*q0_*q0_*q2);
-
-  info("%2d %2d %2d %13.6e %13.6e %13.6e %13.6e %13.6e\n",1,1,1, 
-       dq[X][X][X], dq[X][X][Y], dq[X][X][Z], dq[X][Y][Y], dq[X][Y][Z]);
-  info("%2d %2d %2d %13.6e %13.6e %13.6e %13.6e %13.6e\n",1,1,1, 
-       dq[Y][X][X], dq[Y][X][Y], dq[Y][X][Z], dq[Y][Y][Y], dq[Y][Y][Z]);
-  info("%2d %2d %2d %13.6e %13.6e %13.6e %13.6e %13.6e\n",1,1,1, 
-       dq[Z][X][X], dq[Z][X][Y], dq[Z][X][Z], dq[Z][Y][Y], dq[Z][Y][Z]);
-
   return sum;
 }
 
@@ -147,32 +172,44 @@ double blue_phase_free_energy_density(const int index) {
  *
  *  Return the molcular field h[3][3] at lattice site index.
  *
+ *  Note this is only valid in the one-constant approximation at
+ *  the moment (kappa0 = kappa1 = kappa).
+ *
  *****************************************************************************/
 
 void blue_phase_molecular_field(int index, double h[3][3]) {
 
-  int ia, ib, ic, id;
-
   double q[3][3];
   double dq[3][3][3];
   double dsq[3][3];
-  double q2;
-  double eq;
-  double sum;
+
+  assert(kappa0_ == kappa1_);
 
   phi_get_q_tensor(index, q);
   phi_get_q_gradient_tensor(index, dq);
   phi_get_q_delsq_tensor(index, dsq);
 
-  /* CORRECTION for match against LCMain */
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      dsq[ia][ib] *= 1.5;
-      for (ic = 0; ic < 3; ic++) {
-	dq[ia][ib][ic] *= 3.0;
-      }
-    }
-  }
+  blue_phase_compute_h(q, dq, dsq, h);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_compute_h
+ *
+ *  Compute the molcular field h from q, the q gradient tensor dq, and
+ *  the del^2 q tensor.
+ *
+ *****************************************************************************/
+
+void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
+			  double dsq[3][3], double h[3][3]) {
+  int ia, ib, ic, id;
+
+  double q2;
+  double eq;
+  double sum;
 
   /* From the bulk terms in the free energy... */
 
@@ -223,9 +260,6 @@ void blue_phase_molecular_field(int index, double h[3][3]) {
     }
   }
 
-  info("%13.6e %13.6e %13.6e %13.6e %13.6e\n", 
-       h[X][X], h[X][Y], h[X][Z], h[Y][Y], h[Y][Z]);
-
   return;
 }
 
@@ -239,18 +273,41 @@ void blue_phase_molecular_field(int index, double h[3][3]) {
 
 void blue_phase_chemical_stress(int index, double sth[3][3]) {
 
-  int ia, ib, ic, id, ie;
-
   double q[3][3];
   double h[3][3];
   double dq[3][3][3];
-  double p0 = 0.0;             /* isotropic pressure */
-  double qh;
-
-  assert(0); /* Sort out the isotropic pressure */
+  double dsq[3][3];
 
   phi_get_q_tensor(index, q);
   phi_get_q_gradient_tensor(index, dq);
+  phi_get_q_delsq_tensor(index, dsq);
+
+  blue_phase_compute_h(q, dq, dsq, h);
+  blue_phase_compute_stress(q, dq, h, sth);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_compute_stress
+ *
+ *  Compute the stress as a function of the q tensor, the q tensor
+ *  gradient and the molecular field.
+ *
+ *****************************************************************************/
+
+void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
+			       double h[3][3], double sth[3][3]) {
+
+  int ia, ib, ic, id, ie;
+  double qh;
+  double p0;
+
+  /* We have ignored the rho T term at the moment, assumed to be zero
+   * (in particular, it has no divergence if rho = const). */
+
+  p0 = 0.0 - blue_phase_compute_fed(q, dq);
 
   /* The contraction Q_ab H_ab */
 
@@ -270,7 +327,7 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
     }
   }
 
-  /* Remaining two terms in xi */
+  /* Remaining two terms in xi and molecular field */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -397,9 +454,11 @@ void blue_phase_update_q(void) {
  *
  *  blue_phase_O8M_init
  *
+ *  Using the current free energy parameter q0_
+ *
  *****************************************************************************/
 
-void blue_phase_O8M_init(void) {
+void blue_phase_O8M_init(double amplitude) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -411,19 +470,10 @@ void blue_phase_O8M_init(void) {
   double r2;
   double cosx, cosy, cosz, sinx, siny, sinz;
 
-  const double amplitude = -0.2;
-
   get_N_local(nlocal);
   get_N_offset(noffset);
-  r2 = sqrt(2.0);
 
-  /* Test value of q0_ = number half twists * number unit cells * pi
-   *                     * sqrt(2.0 / L_y to match LCMain  */
-  q0_ = 1.0*8.0*r2*4.0*atan(1.0)/L(Y);
-  gamma_ = 3.1764706;
-  kappa0_ = 0.01;
-  kappa1_ = 0.01;
-  a0_ = 0.014384711;
+  r2 = sqrt(2.0);
 
   /* The minus 1 in the coordinate positions here is to match with
    * the LC hybrid code. */
@@ -460,27 +510,6 @@ void blue_phase_O8M_init(void) {
     }
   }
 
-  phi_halo();
-  phi_gradients_compute();
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic - 1;
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc - 1;
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc - 1;
-
-	index = get_site_index(ic, jc, kc);
-
-
-	  info("%2d %2d %2d ", ic, jc, kc);
-	  /* blue_phase_free_energy_density(index);*/
-	  blue_phase_molecular_field(index, q);
-
-      }
-    }
-  }
-
   return;
 }
 
@@ -497,7 +526,7 @@ double blue_phase_chirality(void) {
 
   double chirality;
 
-  chirality = sqrt(108.0*kappa0_*q0_*q0_ / a0_*gamma_);
+  chirality = sqrt(108.0*kappa0_*q0_*q0_ / (a0_*gamma_));
 
   return chirality;
 }
