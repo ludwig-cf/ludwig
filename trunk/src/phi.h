@@ -2,7 +2,7 @@
  *
  *  phi.h
  *
- *  $Id: phi.h,v 1.4 2009-06-26 08:42:25 kevin Exp $
+ *  $Id: phi.h,v 1.5 2009-07-01 10:36:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -44,4 +44,9 @@ void   phi_get_q_delsq_tensor(const int, double dsq[3][3]);
 
 extern struct io_info_t * io_info_phi;
 extern const int nop_;
+
+/* Independent tensor order parameter elements */
+
+enum q_tensor {QXX, QXY, QXZ, QYY, QYZ};
+
 #endif
