@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.7 2009-06-26 08:42:25 kevin Exp $
+ *  $Id: phi.c,v 1.8 2009-07-01 10:36:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -827,11 +827,11 @@ void phi_set_q_tensor(const int index, double q[3][3]) {
   assert(initialised_);
   assert(nop_ == 5);
 
-  phi_site[nop_*index + 0] = q[X][X];
-  phi_site[nop_*index + 1] = q[X][Y];
-  phi_site[nop_*index + 2] = q[X][Z];
-  phi_site[nop_*index + 3] = q[Y][Y];
-  phi_site[nop_*index + 4] = q[Y][Z];
+  phi_site[nop_*index + QXX] = q[X][X];
+  phi_site[nop_*index + QXY] = q[X][Y];
+  phi_site[nop_*index + QXZ] = q[X][Z];
+  phi_site[nop_*index + QYY] = q[Y][Y];
+  phi_site[nop_*index + QYZ] = q[Y][Z];
 
   return;
 }
@@ -849,12 +849,12 @@ void phi_get_q_tensor(int index, double q[3][3]) {
   assert(initialised_);
   assert(nop_ == 5);
 
-  q[X][X] = phi_site[nop_*index + 0];
-  q[X][Y] = phi_site[nop_*index + 1];
-  q[X][Z] = phi_site[nop_*index + 2];
+  q[X][X] = phi_site[nop_*index + QXX];
+  q[X][Y] = phi_site[nop_*index + QXY];
+  q[X][Z] = phi_site[nop_*index + QXZ];
   q[Y][X] = q[X][Y];
-  q[Y][Y] = phi_site[nop_*index + 3];
-  q[Y][Z] = phi_site[nop_*index + 4];
+  q[Y][Y] = phi_site[nop_*index + QYY];
+  q[Y][Z] = phi_site[nop_*index + QYZ];
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
@@ -878,12 +878,12 @@ void phi_get_q_gradient_tensor(const int index, double dq[3][3][3]) {
   assert(nop_ == 5);
 
   for (ia = 0; ia < 3; ia++) {
-    dq[ia][X][X] = grad_phi_site[3*(nop_*index + 0) + ia];
-    dq[ia][X][Y] = grad_phi_site[3*(nop_*index + 1) + ia];
-    dq[ia][X][Z] = grad_phi_site[3*(nop_*index + 2) + ia];
+    dq[ia][X][X] = grad_phi_site[3*(nop_*index + QXX) + ia];
+    dq[ia][X][Y] = grad_phi_site[3*(nop_*index + QXY) + ia];
+    dq[ia][X][Z] = grad_phi_site[3*(nop_*index + QXZ) + ia];
     dq[ia][Y][X] = dq[ia][X][Y];
-    dq[ia][Y][Y] = grad_phi_site[3*(nop_*index + 3) + ia];
-    dq[ia][Y][Z] = grad_phi_site[3*(nop_*index + 4) + ia];
+    dq[ia][Y][Y] = grad_phi_site[3*(nop_*index + QYY) + ia];
+    dq[ia][Y][Z] = grad_phi_site[3*(nop_*index + QYZ) + ia];
     dq[ia][Z][X] = dq[ia][X][Z];
     dq[ia][Z][Y] = dq[ia][Y][Z];
     dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
@@ -902,12 +902,12 @@ void phi_get_q_gradient_tensor(const int index, double dq[3][3][3]) {
 
 void phi_get_q_delsq_tensor(const int index, double dsq[3][3]) {
 
-  dsq[X][X] = delsq_phi_site[nop_*index + 0];
-  dsq[X][Y] = delsq_phi_site[nop_*index + 1];
-  dsq[X][Z] = delsq_phi_site[nop_*index + 2];
+  dsq[X][X] = delsq_phi_site[nop_*index + QXX];
+  dsq[X][Y] = delsq_phi_site[nop_*index + QXY];
+  dsq[X][Z] = delsq_phi_site[nop_*index + QXZ];
   dsq[Y][X] = dsq[X][Y];
-  dsq[Y][Y] = delsq_phi_site[nop_*index + 3];
-  dsq[Y][Z] = delsq_phi_site[nop_*index + 4];
+  dsq[Y][Y] = delsq_phi_site[nop_*index + QYY];
+  dsq[Y][Z] = delsq_phi_site[nop_*index + QYZ];
   dsq[Z][X] = dsq[X][Z];
   dsq[Z][Y] = dsq[Y][Z];
   dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
