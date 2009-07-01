@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.3 2009-06-30 18:21:53 kevin Exp $
+ *  $Id: blue_phase.c,v 1.4 2009-07-01 09:15:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,7 +21,6 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "lattice.h"
 #include "phi.h"
 #include "blue_phase.h"
 
@@ -32,7 +31,6 @@ static double kappa0_;    /* Elastic constant \kappa_0 */
 static double kappa1_;    /* Elastic constant \kappa_1 */
 
 static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
-static double Gamma_;     /* Collective rotational diffusion constant */
 
 static const double r3 = (1.0/3.0);
 
@@ -376,82 +374,6 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 
 /*****************************************************************************
  *
- *  blue_phase_q_update
- *
- *  Update q via Euler forward step.
- *
- *****************************************************************************/
-
-void blue_phase_update_q(void) {
-
-  int ic, jc, kc;
-  int ia, ib, id;
-  int index;
-  int nlocal[3];
-
-  double q[3][3];
-  double w[3][3];
-  double d[3][3];
-  double h[3][3];
-  double s[3][3];
-  double omega[3][3];
-  double trace_qw;
-
-  const double dt = 1.0;
-
-  get_N_local(nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc < nlocal[Z]; kc++) {
-
-	index = get_site_index(ic, jc, kc);
-
-	phi_get_q_tensor(index, q);
-
-	/* Velocity gradient tensor, symmetric and antisymmetric parts */
-
-	hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
-
-	trace_qw = 0.0;
-
-	for (ia = 0; ia < 3; ia++) {
-	  trace_qw += q[ia][ia]*w[ia][ia];
-	  for (ib = 0; ib < 3; ib++) {
-	    d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
-	    omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
-	  }
-	}
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    s[ia][ib] = -2.0*xi_*(q[ia][ib] + r3*d_[ia][ib])*trace_qw;
-	    for (id = 0; id < 3; id++) {
-	      s[ia][ib] +=
-		(xi_*d[ia][id] + omega[ia][id])*(q[id][ib] + r3*d_[id][ib])
-	      + (q[ia][id] + r3*d_[ia][id])*(xi_*d[id][ib] - omega[id][ib]);
-	    }
-	  }
-	}
-
-	/* No advective piece yet. */
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    q[ia][ib] += dt*(s[ia][ib] + Gamma_*h[ia][ib]);
-	  }
-	}
-
-	/* Next site */
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  blue_phase_O8M_init
  *
  *  Using the current free energy parameter q0_
@@ -475,15 +397,12 @@ void blue_phase_O8M_init(double amplitude) {
 
   r2 = sqrt(2.0);
 
-  /* The minus 1 in the coordinate positions here is to match with
-   * the LC hybrid code. */
-
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic - 1;
+    x = noffset[X] + ic;
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc - 1;
+      y = noffset[Y] + jc;
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc - 1;
+	z = noffset[Z] + kc;
 
 	index = get_site_index(ic, jc, kc);
 
