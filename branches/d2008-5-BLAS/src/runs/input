@@ -48,7 +48,7 @@ N_cycles 600
 ##############################################################################
 
 
-size 54_54_54
+size 24_24_24
 
 
 #for 8 procs keeping surface area constant (4 procs for above)
@@ -248,7 +248,7 @@ boundary_speed_top    0.0
 #
 ###############################################################################
 
-freq_statistics 300
+freq_statistics 700
 freq_measure 700
 freq_config 600
 freq_phi    700
