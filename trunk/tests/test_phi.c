@@ -4,7 +4,7 @@
  *
  *  Tests for order parameter stuff.
  *
- *  $Id: test_phi.c,v 1.2 2008-08-26 08:35:26 kevin Exp $
+ *  $Id: test_phi.c,v 1.3 2009-07-01 10:37:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,7 +20,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "phi.h"
-#include "phi_gradients.h"
 #include "tests.h"
 
 static void   test_phi_interface(void);
@@ -37,6 +36,13 @@ int main (int argc, char ** argv) {
   info("\nOrder parameter tests...\n");
 
   phi_init();
+
+  /* enum */
+  test_assert(QXX == 0);
+  test_assert(QXY == 1);
+  test_assert(QXZ == 2);
+  test_assert(QYY == 3);
+  test_assert(QYZ == 4);
 
   test_phi_interface();
 
