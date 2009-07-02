@@ -392,9 +392,8 @@ void startDroplet(void)
 	fracmax = 0.5 + 1.0/numuc;
 
 	if ( (jc < (fracmin*Ly) )||( jc > (fracmax*Ly))||
-	     (ic < (fracmin*Lx) )||( ic > (fracmax*Lx))){
-
-//	     (kc < (fracmin*Lz) )||( kc > (fracmax*Lz))) {
+	     (ic < (fracmin*Lx) )||( ic > (fracmax*Lx))||
+	     (kc < (fracmin*Lz) )||( kc > (fracmax*Lz)) ) {
 
 
 	  amplitude=(0.546-0.2723/2.0);
@@ -442,7 +441,7 @@ void startDroplet(void)
 void startSlab(void)
 {
   int i,j,k;
-  double fracmin, fracmax;
+  double fracmin, fracmax, amplitude;
 
   int ic, jc, kc;
   int ioff = 0, joff = 0, koff = 0;
@@ -466,7 +465,7 @@ void startSlab(void)
 
 	if ((jc > (fracmin*Ly)) && (jc < (fracmax*Ly))) {
 
-/*
+///*
 	  amplitude=(0.546-0.2723/2.0);
 
 	  // slab in cholesteric environment
@@ -490,17 +489,17 @@ void startSlab(void)
 
 
 	  }
-*/
+//*/
 
 	  //  slab in isotropic environment
 
-//	  /*
+	  /*
 	        Qxx[i][j][k]= 1e-4/2.0;
 	        Qxy[i][j][k]= 0.0;
 	        Qyy[i][j][k]= -1e-4;
 	        Qxz[i][j][k]= 0.0;
 	        Qyz[i][j][k]= 0.0;
-//	 */
+	 */
 
 	}
       }
