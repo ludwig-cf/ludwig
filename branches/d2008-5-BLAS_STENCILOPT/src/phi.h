@@ -2,7 +2,7 @@
  *
  *  phi.h
  *
- *  $Id: phi.h,v 1.3 2008-11-14 14:42:50 kevin Exp $
+ *  $Id: phi.h,v 1.3.10.1 2009-07-08 10:11:53 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -39,4 +39,10 @@ void   phi_op_set_phi_site(const int, const int, const double);
 
 extern struct io_info_t * io_info_phi;
 extern const int nop_;
+
+/* tile depths */
+
+extern const int ti;
+extern const int tj; 
+
 #endif

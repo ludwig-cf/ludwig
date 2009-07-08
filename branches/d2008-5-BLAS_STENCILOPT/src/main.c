@@ -7,6 +7,7 @@
  *****************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "runtime.h"
@@ -40,8 +41,22 @@
 int print_free_energy_profile(void);
 void set_block(void);
 
+
 int main( int argc, char **argv )
 {
+  
+  /* check for valid arguments */
+  if(argc != 4){
+
+    printf("usage: Ludwig.exe filename xtiledpeth ytiledepth", argc);
+    return -1;
+  }
+
+  ti = atoi(argv[2]);
+  tj = atoi(argv[3]);
+
+  
+
   char    filename[FILENAME_MAX];
   int     step = 0;
 
@@ -53,8 +68,12 @@ int main( int argc, char **argv )
    *    - simple walls 
    *    - colloidal particles */
 
-  REGS_init();
+  
 
+  REGS_init();
+  
+  
+  
   pe_init(argc, argv);
   if (argc > 1) {
     RUN_read_input_file(argv[1]);
@@ -62,6 +81,9 @@ int main( int argc, char **argv )
   else {
     RUN_read_input_file("input");
   }
+
+  
+
   coords_init();
   init_control();
 
@@ -78,6 +100,8 @@ int main( int argc, char **argv )
 
   init_free_energy();
 
+  
+  
   if (get_step() == 0) {
     le_init_shear_profile();
   }
@@ -94,6 +118,8 @@ int main( int argc, char **argv )
   TEST_statistics();
   TEST_momentum();
   phi_stats_print_stats();
+
+  
 
   /* Main time stepping loop */
 

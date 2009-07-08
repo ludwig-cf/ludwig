@@ -16,7 +16,7 @@ MACHINE = Ness
 #SCHEME= single
 
 # chose whether to use got blas
-GOTO = goto
+#GOTO = goto
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)
@@ -29,8 +29,8 @@ else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
 		MPICC=mpicc 
-		OPTS= -D_D3Q19_ -fastsse
-		CFLAGS=$(OPTS) -DNDEBUG -Minform=warn -Msafeptr -Mipa=inline,fast -DX86
+		OPTS= -D_D3Q19_ -fastsse -Msafeptr -Minfo=all -Mautoinline
+		CFLAGS=$(OPTS) -DDEBUG -Minform=warn -DX86 -DBLOCKING
 		LIBS=  -lm -lacml -lpgftnrtl -lrt 
 
 	else

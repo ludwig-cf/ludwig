@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.5 2009-03-27 17:09:13 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.5.6.1 2009-07-08 10:11:53 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -24,6 +25,9 @@
 #include "leesedwards.h"
 #include "phi.h"
 #include "phi_gradients.h"
+
+const int ti;
+const int tj;
 
 extern double * phi_site;
 extern double * delsq_phi_site;
@@ -51,9 +55,16 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 static void phi_gradients_with_solid(void);
 static void phi_gradients_walls(void);
 static void phi_gradients_fluid(void);
+static void phi_gradients_fluid_riv(void);
 static void phi_gradients_double_fluid(void);
 static void phi_gradients_leesedwards(void);
+
+#ifdef BLOCKING
+static void (* phi_gradient_function)(void) = phi_gradients_fluid_riv;
+#else 
 static void (* phi_gradient_function)(void) = phi_gradients_fluid;
+#endif
+
 static void f_grad_phi(int, int, int, int, int, const int *);
 static void f_delsq_phi(int, int, int, int, int, const int *);
 
@@ -67,7 +78,12 @@ static void f_delsq_phi(int, int, int, int, int, const int *);
 
 void phi_gradients_set_fluid() {
 
+#ifdef BLOCKING
+  phi_gradient_function = phi_gradients_fluid_riv;
+#else 
   phi_gradient_function = phi_gradients_fluid;
+#endif 
+
   return;
 }
 
@@ -95,7 +111,7 @@ void phi_gradients_set_solid() {
  ****************************************************************************/
 
 void phi_gradients_compute() {
-
+  
   assert(phi_gradient_function);
 
   phi_leesedwards_transformation();
@@ -365,6 +381,53 @@ static void phi_gradients_walls() {
   return;
 }
 
+
+
+/*****************************************************************************
+ *
+ *  phi_gradients_fluid - Rivera blocked version : (partial 3d blocking)
+ *  see Rivera, " Tiling optimizations: In Proceedings of ISC '00 "
+ *  Tile size (TI,TJ) calculated with euclid algorithm
+ *
+ *  Fluid-only gradient calculation. This is an unrolled version.
+ *  It is much faster than the compact version.
+ *  needs to deal with padding
+ *****************************************************************************/
+
+static void phi_gradients_fluid_riv() {
+
+  int nlocal[3];
+  int ic, jc, kc, iic, jjc;
+  int icp1, icm1;
+  int nextra = nhalo_ - 1;
+
+  //  printf("\nti: %d, tj: %d\n", ti, tj);
+  
+  get_N_local(nlocal);
+  assert(nhalo_ >= 1);
+
+  for(iic=1-nextra; iic <= nlocal[X] + nextra; iic += ti) {
+    for(jjc=1-nextra; jjc <= nlocal[Y] + nextra; jjc += tj) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {  
+	for (ic = 1 - nextra; ic <= fmin(nlocal[X] + nextra, iic+ti); ic++) {
+	  icm1 = le_index_real_to_buffer(ic, -1);
+	  icp1 = le_index_real_to_buffer(ic, +1);
+
+	  for (jc = 1 - nextra; jc <= fmin(nlocal[Y] + nextra, jjc+ tj); jc++) {     
+	   
+	    f_grad_phi(icm1, ic, icp1, jc, kc, nlocal);
+	    f_delsq_phi(icm1, ic, icp1, jc, kc, nlocal);
+	    
+	    /* Next site */
+	  }
+	}
+      }
+    }
+  }
+  
+  return;
+}
+
 /*****************************************************************************
  *
  *  phi_gradients_fluid
@@ -478,6 +541,8 @@ static void phi_gradients_double_fluid() {
  *  side of the Lees Edwards boundary.
  *
  *****************************************************************************/
+
+
 
 static void phi_gradients_leesedwards() {
 
