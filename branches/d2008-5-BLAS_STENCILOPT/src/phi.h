@@ -2,7 +2,7 @@
  *
  *  phi.h
  *
- *  $Id: phi.h,v 1.3.10.2 2009-07-10 09:01:58 cevi_parker Exp $
+ *  $Id: phi.h,v 1.3.10.3 2009-07-10 14:25:52 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -42,7 +42,7 @@ extern const int nop_;
 
 /* tile depths */
 
-extern int ti;
+extern int tk;
 extern int tj; 
 
 #endif

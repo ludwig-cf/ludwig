@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.5.6.2 2009-07-10 09:01:58 cevi_parker Exp $
+ *  $Id: phi_gradients.c,v 1.5.6.3 2009-07-10 14:25:52 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,7 +26,7 @@
 #include "phi.h"
 #include "phi_gradients.h"
 
-int ti;
+int tk;
 int tj;
 
 extern double * phi_site;
@@ -397,30 +397,31 @@ static void phi_gradients_walls() {
 static void phi_gradients_fluid_riv() {
 
   int nlocal[3];
-  int ic, jc, kc, iic, jjc;
+  int ic, jc, kc, jjc, kkc;
   int icp1, icm1;
   int nextra = nhalo_ - 1;
   
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
-
-  for(iic=1-nextra; iic <= nlocal[X] + nextra; iic += ti) {
-    for(jjc=1-nextra; jjc <= nlocal[Y] + nextra; jjc += tj) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {  
-	for (ic = 1 - nextra; ic <= fmin(nlocal[X] + nextra, iic+ti); ic++) {
-	  icm1 = le_index_real_to_buffer(ic, -1);
-	  icp1 = le_index_real_to_buffer(ic, +1);
-
-	  for (jc = 1 - nextra; jc <= fmin(nlocal[Y] + nextra, jjc+ tj); jc++) {     
+  
+  for(jjc=1-nextra; jjc <= nlocal[Y] + nextra; jjc += tj) {
+      for(kkc=1-nextra; kkc <= nlocal[Z] + nextra; kkc += tk) {
+	  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) { 
 	      
-	      f_grad_phi(icm1, ic, icp1, jc, kc, nlocal);
-	      f_delsq_phi(icm1, ic, icp1, jc, kc, nlocal);
-	    
-	    /* Next site */
+	      icm1 = le_index_real_to_buffer(ic, -1);
+	      icp1 = le_index_real_to_buffer(ic, +1);
+	      
+	      for (jc = 1 - nextra; jc <= fmin(nlocal[Y] + nextra, jjc+ tj); jc++){        
+		  for (kc = 1 - nextra; kc <= fmin(nlocal[Z] + nextra, kkc+tk); kc++) {
+		      
+		      f_grad_phi(icm1, ic, icp1, jc, kc, nlocal);
+		      f_delsq_phi(icm1, ic, icp1, jc, kc, nlocal);
+		      
+		      /* Next site */
+		  }
+	      }
 	  }
-	}
       }
-    }
   }
   
   return;

@@ -52,7 +52,7 @@ int main( int argc, char **argv )
     return -1;
   }
 
-  ti = atoi(argv[2]);
+  tk = atoi(argv[2]);
   tj = atoi(argv[3]);
 
   
