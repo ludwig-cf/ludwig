@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.5.6.1 2009-07-08 10:11:53 cevi_parker Exp $
+ *  $Id: phi_gradients.c,v 1.5.6.2 2009-07-10 09:01:58 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,8 +26,8 @@
 #include "phi.h"
 #include "phi_gradients.h"
 
-const int ti;
-const int tj;
+int ti;
+int tj;
 
 extern double * phi_site;
 extern double * delsq_phi_site;
@@ -400,8 +400,6 @@ static void phi_gradients_fluid_riv() {
   int ic, jc, kc, iic, jjc;
   int icp1, icm1;
   int nextra = nhalo_ - 1;
-
-  //  printf("\nti: %d, tj: %d\n", ti, tj);
   
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
@@ -414,9 +412,9 @@ static void phi_gradients_fluid_riv() {
 	  icp1 = le_index_real_to_buffer(ic, +1);
 
 	  for (jc = 1 - nextra; jc <= fmin(nlocal[Y] + nextra, jjc+ tj); jc++) {     
-	   
-	    f_grad_phi(icm1, ic, icp1, jc, kc, nlocal);
-	    f_delsq_phi(icm1, ic, icp1, jc, kc, nlocal);
+	      
+	      f_grad_phi(icm1, ic, icp1, jc, kc, nlocal);
+	      f_delsq_phi(icm1, ic, icp1, jc, kc, nlocal);
 	    
 	    /* Next site */
 	  }

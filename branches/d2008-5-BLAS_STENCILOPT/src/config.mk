@@ -5,8 +5,8 @@
 #choose appropriate HPC Machine.
 #
 #MACHINE = HPCX
-MACHINE = Ness
-#MACHINE = HecToR
+#MACHINE = Ness
+MACHINE = HecToR
 #MACHINE = ECDF
 
 # choose compiler suite for Hector Machine option
@@ -39,7 +39,7 @@ else
                         MPICC=cc
                         OPTS = -D_D3Q19_ -DNDEBUG
                         CFLAGS=$(OPTS) -O3 -OPT:Ofast -OPT:recip=ON -OPT:malloc_algorithm=1 -inline \
-			-INLINE:preempt=ON -march=auto -m64 -msse3 -LNO:simd=2 -DX86
+			-INLINE:preempt=ON -march=auto -m64 -msse3 -LNO:simd=2 -DX86 -DBLOCKING
                         LIBS=   -lacml -lm
 
 		else
