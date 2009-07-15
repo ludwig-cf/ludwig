@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.4 2009-07-01 09:15:29 kevin Exp $
+ *  $Id: blue_phase.c,v 1.5 2009-07-15 11:20:36 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -66,6 +66,17 @@ void blue_phase_set_xi(double xi) {
   xi_ = xi;
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_get_xi
+ *
+ *****************************************************************************/
+
+double blue_phase_get_xi(void) {
+
+  return xi_;
 }
 
 /*****************************************************************************
