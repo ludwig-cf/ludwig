@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.15 2009-06-26 08:44:33 kevin Exp $
+ *  $Id: model.c,v 1.16 2009-07-16 13:28:45 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -87,6 +87,7 @@ void init_site() {
   nz = N[Z] + 2*nhalo_;
   nsites_ = nx*ny*nz;
 
+  info("The lattice Boltzmann model is D3Q%2d\n", NVEL);
   info("Requesting %d bytes for site data\n", nsites_*sizeof(Site));
 
   site = (Site  *) calloc(nsites_, sizeof(Site));
