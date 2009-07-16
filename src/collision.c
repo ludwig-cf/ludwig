@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.19 2009-06-19 12:26:49 kevin Exp $
+ *  $Id: collision.c,v 1.20 2009-07-16 14:30:42 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -601,6 +601,10 @@ void MODEL_init( void ) {
   if (ind != 0 && strcmp(filename, "yes") == 0) {
     phi_set_finite_difference();
     info("Switching order parameter to finite difference\n");
+
+    i = 1;
+    RUN_get_int_parameter("finite_difference_upwind_order", &i);
+    phi_ch_set_upwind_order(i);
   }
   else {
     info("Order parameter is via lattice Boltzmann\n");

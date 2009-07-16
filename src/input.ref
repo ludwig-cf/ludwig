@@ -97,6 +97,8 @@ temperature 0.00002133333
 #  phi_initialisation     spinodal or block [spinodal] 
 #  mobility               Order parameter mobility M
 #
+#  upwind_order           Order of upwind scheme for finite difference
+#                         [1|3|5|7]. Default is first order upwind 1.
 #  Under development:
 #
 #  free_energy sman_surfactant    Ternary surfactant model
@@ -137,10 +139,12 @@ C 0.0
 
 #noise 0.2
 phi0 0.0
-phi_finite_difference no
 phi_initialisation    spinodal
 mobility 0.15
 #mobility_psi 0.1
+
+phi_finite_difference no
+finite_difference_upwind_order 3
 
 ###############################################################################
 #
