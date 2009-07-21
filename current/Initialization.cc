@@ -399,7 +399,7 @@ void startDroplet(void)
 	  amplitude=(0.546-0.2723/2.0);
 
 	  // droplet in cholesteric environment
-//       /* 
+       /* 
 	  Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
 	  Qxy[i][j][k]= 0.0;
 	  Qyy[i][j][k]= -0.2723;
@@ -419,7 +419,7 @@ void startDroplet(void)
 
 
 	  }
-//       */
+       */
 
 	  //  droplet in isotropic environment
 
@@ -430,6 +430,55 @@ void startDroplet(void)
 	        Qxz[i][j][k]= 0.0;
 	        Qyz[i][j][k]= 0.0;
 	 */
+
+// BP droplet 
+
+// /*
+	if (O2STRUCT == 1) {
+
+	  amplitude=0.3; 
+
+	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*kc)-cos(2.0*q0*jc));
+	  Qxxinit[i][j][k]=Qxx[i][j][k];
+	  Qxy[i][j][k]=amplitude*sin(2.0*q0*kc);
+	  Qxyinit[i][j][k]=Qxy[i][j][k];
+	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
+
+	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)-cos(2.0*q0*kc));
+	  Qyyinit[i][j][k]=Qyy[i][j][k];
+	  Qyz[i][j][k]=amplitude*sin(2.0*q0*ic);
+ 	  Qyzinit[i][j][k]=Qyz[i][j][k];
+
+	 }
+
+
+
+	if ((O8STRUCT == 1) || (O8MSTRUCT == 1)) {
+	  Qxx[i][j][k]=amplitude*
+		(-2.0*cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc)+
+		 sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)+
+		 cos(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*jc));
+	  Qyy[i][j][k]=amplitude*
+	    (-2.0*sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)+
+	     sin(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*ic)+
+	     cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc));
+	  Qxy[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc)-
+	     sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc));
+	  Qxz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*kc)*sin(sqrt(2.0)*q0*jc)-
+	     cos(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc));
+	  Qyz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*kc)*cos(sqrt(2.0)*q0*ic)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*ic)-
+	     sin(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc));
+
+	}
+
+// */
+
 
 	}
       }
