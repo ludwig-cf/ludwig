@@ -380,21 +380,29 @@ void startDroplet(void)
 	jc = j - jy1 + joff;
 	kc = k - kz1 + koff;
 
-	// For 128^3 the unaltered position is 3/8 L -> 5/8 L
-	// For 256^3 the unaltered position is 7/16 L -> 9/16 L
-	// Assume Lx = Ly = Lz
 
-      /**********************************************/
-      /* NOTE: the number of unit cells enters here */
-      /**********************************************/
- 
+      /**************/
+      /* define ROI */
+      /**************/
+
 	fracmin = 0.5 - 1.0/numuc;
 	fracmax = 0.5 + 1.0/numuc;
 
+/*
+// replace sites outside ROI
+
 	if ( (jc < (fracmin*Ly) )||( jc > (fracmax*Ly))||
 	     (ic < (fracmin*Lx) )||( ic > (fracmax*Lx))||
-	     (kc < (fracmin*Lz) )||( kc > (fracmax*Lz)) ) {
+	     (kc < (fracmin*Lz) )||( kc > (fracmax*Lz)) ) { 
+*/
 
+///*
+// replace sites inside ROI
+
+	if ( (jc > (fracmin*Ly) )&&( jc < (fracmax*Ly))||
+	     (ic > (fracmin*Lx) )&&( ic < (fracmax*Lx))||
+	     (kc > (fracmin*Lz) )&&( kc < (fracmax*Lz)) ) {
+//*/
 
 	  amplitude=(0.546-0.2723/2.0);
 
@@ -433,7 +441,7 @@ void startDroplet(void)
 
 // BP droplet 
 
-// /*
+///*
 	if (O2STRUCT == 1) {
 
 	  amplitude=0.3; 
@@ -477,8 +485,7 @@ void startDroplet(void)
 
 	}
 
-// */
-
+ //*/
 
 	}
       }
