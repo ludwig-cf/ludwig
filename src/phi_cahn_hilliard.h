@@ -8,15 +8,16 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh 2008
  *
- *  $Id: phi_cahn_hilliard.h,v 1.3 2008-12-03 20:36:45 kevin Exp $
+ *  $Id: phi_cahn_hilliard.h,v 1.4 2009-07-27 13:48:34 kevin Exp $
  *
  *****************************************************************************/
 
-#ifndef _PHICAHNHILLIARD
-#define _PHICAHNHILLIARD
+#ifndef PHICAHNHILLIARD_H
+#define PHICAHNHILLIARD_H
 
 void phi_cahn_hilliard(void);
 void phi_ch_set_upwind_order(int);
+void phi_ch_set_langmuir_hinshelwood(double kplus, double kminus, double psi);
 
 double phi_ch_get_mobility(void);
 void   phi_ch_set_mobility(const double);
