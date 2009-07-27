@@ -399,8 +399,8 @@ void startDroplet(void)
 ///*
 // replace sites inside ROI
 
-	if ( (jc > (fracmin*Ly) )&&( jc < (fracmax*Ly))||
-	     (ic > (fracmin*Lx) )&&( ic < (fracmax*Lx))||
+	if ( (jc > (fracmin*Ly) )&&( jc < (fracmax*Ly)) &&
+	     (ic > (fracmin*Lx) )&&( ic < (fracmax*Lx)) &&
 	     (kc > (fracmin*Lz) )&&( kc < (fracmax*Lz)) ) {
 //*/
 
