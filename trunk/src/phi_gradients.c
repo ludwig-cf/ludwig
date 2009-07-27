@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.7 2009-06-29 16:28:03 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.8 2009-07-27 08:58:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -671,7 +671,7 @@ static void phi_gradients_fluid_inline(void) {
 
   int nlocal[3];
   int ic, jc, kc;
-  int ia, index, index1;
+  int index;
   int nextra = nhalo_ - 1;
   int xs, ys;
  	 
@@ -681,7 +681,7 @@ static void phi_gradients_fluid_inline(void) {
  	 
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
-  assert(nop == 1);
+  assert(nop_ == 1);
   assert(le_get_nplane_total() == 0);
 
   /* Strides in x- and y-directions */
@@ -773,7 +773,7 @@ static void phi_gradients_double_fluid_inline(void) {
 
   int nlocal[3];
   int ic, jc, kc;
-  int ia, index, index1;
+  int index;
   int nextra = nhalo_ - 1;
   int xs, ys;                   
  	 
@@ -783,7 +783,7 @@ static void phi_gradients_double_fluid_inline(void) {
  	 
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
-  assert(nop == 1);
+  assert(nop_ == 1);
   assert(le_get_nplane_total() == 0);
 
   /* Stride in the x- and y-directions */
