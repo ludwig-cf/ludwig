@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.5 2009-05-12 11:32:00 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.6 2009-07-27 13:48:34 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -29,6 +29,7 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "site_map.h"
+#include "advection.h"
 #include "lattice.h"
 #include "free_energy.h"
 #include "phi.h"
@@ -39,15 +40,20 @@ static double * fluxw;
 static double * fluxy;
 static double * fluxz;
 
-static void phi_ch_upwind(void);
-static void phi_ch_upwind_third_order(void);
-static void phi_ch_upwind_seventh_order(void);
+void phi_ch_diffusive_flux(void);
+void phi_ch_diffusive_flux_surfactant(void);
+static void phi_ch_correct_fluxes_for_solid(void);
 static void phi_ch_update_forward_step(void);
+static void phi_ch_langmuir_hinshelwood(void);
 
-static void (* phi_ch_compute_fluxes)(void) = phi_ch_upwind;
-static int signbit_double(double);
+static double * mobility_;   /* Order parameter mobilities */
+static double   lh_kplus_;   /* Langmuir Hinshelwood adsorption rate */
+static double   lh_kminus_;  /* Langmuir Hinshelwood desorption rate */
+static double   lh_psimax_;  /* Langmuir Hinshelwood monolayer capacity */
 
-static double * mobility_; /* Order parameter mobilities */
+static int langmuirh_ = 0; /* Langmuir Hinshelwood flag */
+static int advection_ = 1; /* Advection scheme */
+static int solid_     = 0; /* Solid present? */
 
 /*****************************************************************************
  *
@@ -71,20 +77,48 @@ void phi_cahn_hilliard() {
   get_N_local(nlocal);
   nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
 
-  fluxe = (double *) calloc(nop_*nsites, sizeof(double));
-  fluxw = (double *) calloc(nop_*nsites, sizeof(double));
-  fluxy = (double *) calloc(nop_*nsites, sizeof(double));
-  fluxz = (double *) calloc(nop_*nsites, sizeof(double));
-  if (fluxe == NULL) fatal("calloc(fluxe) failed");
-  if (fluxw == NULL) fatal("calloc(fluxw) failed");
-  if (fluxy == NULL) fatal("calloc(fluxy) failed");
-  if (fluxz == NULL) fatal("calloc(fluxz) failed");
+  fluxe = (double *) malloc(nop_*nsites*sizeof(double));
+  fluxw = (double *) malloc(nop_*nsites*sizeof(double));
+  fluxy = (double *) malloc(nop_*nsites*sizeof(double));
+  fluxz = (double *) malloc(nop_*nsites*sizeof(double));
+  if (fluxe == NULL) fatal("malloc(fluxe) failed");
+  if (fluxw == NULL) fatal("malloc(fluxw) failed");
+  if (fluxy == NULL) fatal("malloc(fluxy) failed");
+  if (fluxz == NULL) fatal("malloc(fluxz) failed");
 
 
   hydrodynamics_halo_u();
   hydrodynamics_leesedwards_transformation();
 
-  phi_ch_compute_fluxes();
+  switch (advection_) {
+  case 1:
+    advection_upwind(fluxe, fluxw, fluxy, fluxz);
+    break;
+  case 3:
+    advection_upwind_third_order(fluxe, fluxw, fluxy, fluxz);
+    break;
+  case 5:
+    advection_upwind_fifth_order(fluxe, fluxw, fluxy, fluxz);
+    break;
+  case 7:
+    advection_upwind_seventh_order(fluxe, fluxw, fluxy, fluxz);
+    break;
+  }
+
+  if (nop_ == 2) {
+    phi_ch_diffusive_flux_surfactant();
+  }
+  else {
+    phi_ch_diffusive_flux();
+  }
+
+  if (langmuirh_) {
+    phi_ch_langmuir_hinshelwood();
+  }
+  else {
+    if (solid_) phi_ch_correct_fluxes_for_solid();
+  }
+
   phi_ch_update_forward_step();
 
   free(fluxe);
@@ -159,13 +193,18 @@ void phi_ch_set_upwind_order(int n) {
 
   switch (n) {
   case 3:
-    phi_ch_compute_fluxes = phi_ch_upwind_third_order;
+    advection_ = 3;
+    info("Using third order upwind\n");
+    break;
+  case 5:
+    advection_ = 5;
+    info("Using fifth order upwind\n");
     break;
   case 7:
-    phi_ch_compute_fluxes = phi_ch_upwind_seventh_order;
+    advection_ = 7;
     break;
   default:
-    phi_ch_compute_fluxes = phi_ch_upwind;
+    advection_ = 1;
   }
 
   return;
@@ -173,28 +212,47 @@ void phi_ch_set_upwind_order(int n) {
 
 /*****************************************************************************
  *
- *  phi_ch_upwind
+ *  phi_ch_set_langmuir_hinshelwood
  *
- *  The fluxes (advective and diffusive) must be uniquely defined at
- *  the interfaces between the LB cells.
- *
- *  The faces are offset compared with the lattice, so care is needed
- *  with the indexing.
+ *  Set the Langmuir Hinshelwood parameters and sets the flag.
  *
  *****************************************************************************/
 
-static void phi_ch_upwind() {
+void phi_ch_set_langmuir_hinshelwood(double kplus, double kminus,
+				     double psimax) {
+  lh_kplus_  = kplus;
+  lh_kminus_ = kminus;
+  lh_psimax_ = psimax;
+  langmuirh_ = 1;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_diffusive_flux
+ *
+ *  Accumulate [add to a previously computed advective flux] the
+ *  'diffusive' contribution related to the chemical potential. It's
+ *  computed everywhere regardless of fluid/solid status.
+ *
+ *  This is a two point stencil the in the chemical potential,
+ *  and the mobility is constant.
+ *
+ *****************************************************************************/
+
+void phi_ch_diffusive_flux(void) {
 
   int nlocal[3];
-  int ic, jc, kc;            /* Counters over faces */
-  int index0, index1, n;
+  int ic, jc, kc, n;
+  int index0, index1;
   int icm1, icp1;
-  double u0[3], u1[3], u;
   double mu0, mu1;
-  double phi0, phi;
   double mobility;
 
   get_N_local(nlocal);
+  assert(nhalo_ >= 2);
+  assert(mobility_);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -205,100 +263,36 @@ static void phi_ch_upwind() {
 	index0 = ADDR(ic, jc, kc);
 
 	for (n = 0; n < nop_; n++) {
-	  phi0 = phi_site[nop_*index0 + n];
 	  mobility = mobility_[n];
 
 	  mu0 = free_energy_chemical_potential(index0, n);
-	  hydrodynamics_get_velocity(index0, u0);
 
-	  /* west face (icm1 and ic) */
+	  /* x-direction (between ic-1 and ic) */
+
 	  index1 = ADDR(icm1, jc, kc);
-	  hydrodynamics_get_velocity(index1, u1);
-
-	  u = 0.5*(u0[X] + u1[X]);
-	  if (u > 0.0) {
-	    phi = phi_site[nop_*index1 + n];
-	  }
-	  else {
-	    phi = phi0;
-	  }
-
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  if (n == 0) {
-	    fluxw[nop_*index0 + n] = u*phi - mobility*(mu0 - mu1);
-	  }
-	  else {
-	    double psiw = 0.5*(phi0 + phi_site[nop_*index1 + n]);
-	    double m = mobility*psiw*(1.0-psiw);
-	    fluxw[nop_*index0 + n] = u*phi - m*(mu0 - mu1);
-	  }
+	  fluxw[nop_*index0 + n] -= mobility*(mu0 - mu1);
 
-	  /* east face (ic and icp1) */
+	  /* ...and between ic and ic+1 */
+
 	  index1 = ADDR(icp1, jc, kc);
-	  hydrodynamics_get_velocity(index1, u1);
-
-	  u = 0.5*(u0[X] + u1[X]);
-	  if (u < 0.0) {
-	    phi = phi_site[nop_*index1 + n];
-	  }
-	  else {
-	    phi = phi0;
-	  }
-
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  if (n == 0) {
-	    fluxe[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
-	  }
-	  else {
-	    double psie = 0.5*(phi0 + phi_site[nop_*index1 + n]);
-	    double m = mobility*psie*(1.0-psie);
-	    fluxe[nop_*index0 + n] = u*phi - m*(mu1 - mu0);
-	  }
+	  fluxe[nop_*index0 + n] -= mobility*(mu1 - mu0);
 
 	  /* y direction */
+
 	  index1 = le_site_index(ic, jc+1, kc);
-	  hydrodynamics_get_velocity(index1, u1);
-
-	  u = 0.5*(u0[Y] + u1[Y]);
-	  if (u < 0.0) {
-	    phi = phi_site[nop_*index1 + n];
-	  }
-	  else {
-	    phi = phi0;
-	  }
-
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  if (n == 0) {
-	    fluxy[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
-	  }
-	  else {
-	    double psin = 0.5*(phi0 + phi_site[nop_*index1 + n]);
-	    double m = mobility*psin*(1.0-psin);
-	    fluxy[nop_*index0 + n] = u*phi - m*(mu1 - mu0);
-	  }
+	  fluxy[nop_*index0 + n] -= mobility*(mu1 - mu0);
 
 	  /* z direction */
+
 	  index1 = ADDR(ic, jc, kc+1);
-	  hydrodynamics_get_velocity(index1, u1);
-
-	  u = 0.5*(u0[Z] + u1[Z]);
-	  if (u < 0.0) {
-	    phi = phi_site[nop_*index1 + n];
-	  }
-	  else {
-	    phi = phi0;
-	  }
-
 	  mu1 = free_energy_chemical_potential(index1, n);
-	  if (n == 0) {
-	    fluxz[nop_*index0 + n] = u*phi - mobility*(mu1 - mu0);
-	  }
-	  else {
-	    double psiu = 0.5*(phi0 + phi_site[nop_*index1 + n]);
-	    double m = mobility*psiu*(1.0-psiu);
-	    fluxz[nop_*index0 + n] = u*phi - m*(mu1 - mu0);
-	  }
+	  fluxz[nop_*index0 + n] -= mobility*(mu1 - mu0);
 	}
+
+	/* Next site */
       }
     }
   }
@@ -308,106 +302,88 @@ static void phi_ch_upwind() {
 
 /*****************************************************************************
  *
- *  phi_get_fluxes_upwind_third_order
+ *  phi_ch_diffusive_flux_surfactant
  *
- *  Compute third order advective fluxes.
+ *  Analogue of the above for the surfactant model where the
+ *  compositional order parameter (n = 0) mobilty is fixed,
+ *  but that for the surfactant (n = 1) varies as
+ *
+ *  D_\psi = M_\psi \psi ( 1 - \psi).
+ *
+ *  This is again a two point stencil the in the chemical potential
+ *  for each face.
  *
  *****************************************************************************/
 
-static void phi_ch_upwind_third_order() {
+void phi_ch_diffusive_flux_surfactant(void) {
 
   int nlocal[3];
-  int ic, jc, kc;            /* Counters over faces */
+  int ic, jc, kc;
   int index0, index1;
-  int icm2, icm1, icp1, icp2;
-  double u0[3], u1[3], u;
-  double mu0, mu1;
-  double phi0, phi;
-
-  const double a1 = -0.213933;
-  const double a2 =  0.927865;
-  const double a3 =  0.286067;
+  int icm1, icp1;
+  double psi, psi0, mu0, mu1;
+  double m_phi, m_psi;
 
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
-  assert(nop_ == 1);
+  assert(nop_ == 2); /* Surfactant only */
   assert(mobility_);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm2 = le_index_real_to_buffer(ic, -2);
     icm1 = le_index_real_to_buffer(ic, -1);
     icp1 = le_index_real_to_buffer(ic, +1);
-    icp2 = le_index_real_to_buffer(ic, +2);
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = ADDR(ic, jc, kc);
-	phi0 = phi_site[index0];
 
-	mu0 = free_energy_get_chemical_potential(index0);
-	hydrodynamics_get_velocity(index0, u0);
+	m_phi = mobility_[0];
+	m_psi = mobility_[1];
 
-	/* west face (icm1 and ic) */
+	mu0 = free_energy_chemical_potential(index0, 0);
+	psi0 = phi_site[nop_*index0 + 1];
+
+	/* x-direction (between ic-1 and ic) */
+
 	index1 = ADDR(icm1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	mu1 = free_energy_chemical_potential(index1, 0);
+	fluxw[nop_*index0 + 0] -= m_phi*(mu0 - mu1);
 
-	u = 0.5*(u0[X] + u1[X]);
-	if (u > 0.0) {
-	  phi = a1*phi_site[ADDR(icm2,jc,kc)] + a2*phi_site[index1] + a3*phi0;
-	}
-	else {
-	  phi = a1*phi_site[ADDR(icp1,jc,kc)] + a2*phi0 + a3*phi_site[index1];
-	}
+	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
+	mu1 = free_energy_chemical_potential(index1, 1);
+	fluxw[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0 - mu1);
 
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxw[index0] = u*phi - mobility_[0]*(mu0 - mu1);
+	/* ...and between ic and ic+1 */
 
-	/* east face (ic and icp1) */
 	index1 = ADDR(icp1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	mu1 = free_energy_chemical_potential(index1, 0);
+	fluxe[nop_*index0 + 0] -= m_phi*(mu1 - mu0);
 
-	u = 0.5*(u0[X] + u1[X]);
-	if (u < 0.0) {
-	  phi = a1*phi_site[ADDR(icp2,jc,kc)] + a2*phi_site[index1] + a3*phi0;
-	}
-	else {
-	  phi = a1*phi_site[ADDR(icm1,jc,kc)] + a2*phi0 + a3*phi_site[index1];
-	}
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxe[index0] = u*phi - mobility_[0]*(mu1 - mu0);
-
-
+	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
+	mu1 = free_energy_chemical_potential(index1, 1);
+	fluxe[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0 - mu1);
 
 	/* y direction */
+
 	index1 = le_site_index(ic, jc+1, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	mu1 = free_energy_chemical_potential(index1, 0);
+	fluxy[nop_*index0 + 0] -= m_phi*(mu1 - mu0);
 
-	u = 0.5*(u0[Y] + u1[Y]);
-	if (u < 0.0) {
-	  phi = a1*phi_site[ADDR(ic,jc+2,kc)] + a2*phi_site[index1] + a3*phi0;
-	}
-	else {
-	  phi = a1*phi_site[ADDR(ic,jc-1,kc)] + a2*phi0 + a3*phi_site[index1];
-	}
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxy[index0] = u*phi - mobility_[0]*(mu1 - mu0);
+	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
+	mu1 = free_energy_chemical_potential(index1, 1);
+	fluxy[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0 - mu1);
 
 	/* z direction */
+
 	index1 = ADDR(ic, jc, kc+1);
-	hydrodynamics_get_velocity(index1, u1);
+	mu1 = free_energy_chemical_potential(index1, 0);
+	fluxz[nop_*index0 + 0] -= m_phi*(mu1 - mu0);
 
-	u = 0.5*(u0[Z] + u1[Z]);
-	if (u < 0.0) {
-	  phi = a1*phi_site[ADDR(ic,jc,kc+2)] + a2*phi_site[index1] + a3*phi0;
-	}
-	else {
-	  phi = a1*phi_site[ADDR(ic,jc,kc-1)] + a2*phi0 + a3*phi_site[index1];
-	}
+	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
+	mu1 = free_energy_chemical_potential(index1, 1);
+	fluxz[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0 - mu1);
 
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxz[index0] = u*phi - mobility_[0]*(mu1 - mu0);
+	/* Next site */
       }
     }
   }
@@ -415,6 +391,190 @@ static void phi_ch_upwind_third_order() {
   return;
 }
 
+
+/*****************************************************************************
+ *
+ *  phi_ch_correct_fluxes_for_solid
+ *
+ *  Set fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+static void phi_ch_correct_fluxes_for_solid(void) {
+
+  int nlocal[3];
+  int ic, jc, kc, index, n;
+
+  double mask, maskw, maske, masky, maskz;
+
+  get_N_local(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index = ADDR(ic, jc, kc);
+
+	mask  = (site_map_get_status_index(index)  == FLUID);
+	maske = (site_map_get_status(ic+1, jc, kc) == FLUID);
+	maskw = (site_map_get_status(ic-1, jc, kc) == FLUID);
+	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
+	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
+
+	for (n = 0;  n < nop_; n++) {
+	  fluxw[nop_*index + n] *= mask*maskw;
+	  fluxe[nop_*index + n] *= mask*maske;
+	  fluxy[nop_*index + n] *= mask*masky;
+	  fluxz[nop_*index + n] *= mask*maskz;
+	}
+
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_langmuir_hinshelwood
+ *
+ *  This computes the contribution to the fluxes for surfactant models
+ *  to include adsorption of surfactant at the solid-fluid
+ *  interface at the triple contact line.
+ *
+ *  The flux is determined by the Langmuir Hinshelwood equation
+ *
+ *  dpsi_t = (k^+ psi_fluid/h)*A*(1 - psi_solid / psi_solid_max)
+ *         - k^- *A*psi_solid/psi_solid_max
+ *
+ *  Here we treat psi as a concentration (per L^3). The thickness
+ *  of the adsorbed layer is h and the area of the discrete interface
+ *  is A (here = unity). psi_fluid is concentration (per L^3) and
+ *  psi_solid, psi_solid_max are nominally concentration (per L^2).
+ *
+ *  The k are rate constants (where the desorption k^- is often
+ *  considered to be zero but included for completeness).
+ *  The combination k^+ A can be treated as a diffusion
+ *  constant cf the mobility M.
+ *
+ *  Further, adsoption should only take place at the triple contact
+ *  line, which is dealt with by including a factor of
+ *
+ *  max(0.0,, 1.0 - phi_fluid^2), with phi the composition. The max()
+ *
+ *  ensures that |phi| > 1 does not contribute.
+ *
+ *  The current solid value is stored as the psi order parameter at
+ *  the solid sites. It is updated by ensuring all sites are updated
+ *  in the update routine.
+ *
+ *  As we do not allow Lees-Edwards planes here, we can set
+ *     fluxw(ic,jc,kc) = fluxe(ic-1,jc,kc)
+ *  
+ *****************************************************************************/
+
+static void phi_ch_langmuir_hinshelwood(void) {
+
+  int nlocal[3];
+  int ic, jc, kc, index, index1;
+
+  double mask, maske, masky, maskz;
+  double fluxhm, fluxhp;
+  double triple_contact;
+  double phi;
+
+  const double rh = 1.0;
+  const double rpsimax = 1.0/lh_psimax_;
+
+  get_N_local(nlocal);
+
+  assert(nop_ == 2); /* Surfactant model only */
+  assert(le_get_nplane_total() == 0);
+
+  for (ic = 0; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index = ADDR(ic, jc, kc);
+
+	mask  = (site_map_get_status_index(index)  == FLUID);
+	maske = (site_map_get_status(ic+1, jc, kc) == FLUID);
+	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
+	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
+
+	/* Order parameter fluxes are set to zero if either mask
+	 * is zero at this interface */
+
+	fluxe[nop_*index + 0] *= mask*maske;
+	fluxy[nop_*index + 0] *= mask*masky;
+	fluxz[nop_*index + 0] *= mask*maskz;
+
+	/* Surfactant: need to be careful what is solid and
+	 * what is fluid here (don't change fluid-fluid fluxes!) */
+
+	fluxe[nop_*index + 1] *= mask*maske;
+	fluxy[nop_*index + 1] *= mask*masky;
+	fluxz[nop_*index + 1] *= mask*maskz;
+
+	phi = phi_site[nop_*index + 0];
+	triple_contact = dmax(0.0, 1.0 - phi*phi);
+
+	index1 = ADDR(ic+1,jc,kc);
+	phi = phi_site[nop_*index1 + 0];
+
+	fluxhm = rh*lh_kplus_*phi_site[nop_*index + 1]
+	  *(1.0 - rpsimax*phi_site[nop_*index1 + 1])
+	  - lh_kminus_*rpsimax*phi_site[nop_*index1 + 1];
+	fluxhp = rh*lh_kplus_*phi_site[nop_*index1 + 1]
+	  *(1.0 - rpsimax*phi_site[nop_*index + 1])
+	  - lh_kminus_*rpsimax*phi_site[nop_*index + 1];
+
+	fluxe[nop_*index + 1] += triple_contact*mask*(1.0 - maske)*fluxhm
+	  - dmax(0.0, 1.0 - phi*phi)*maske*(1.0 - mask)*fluxhp;
+
+	index1 = ADDR(ic,jc+1,kc);
+	phi = phi_site[nop_*index1 + 0];
+
+	fluxhm = rh*lh_kplus_*phi_site[nop_*index + 1]
+	  *(1.0 - rpsimax*phi_site[nop_*index1 + 1])
+	  - lh_kminus_*rpsimax*phi_site[nop_*index1 + 1];
+	fluxhp = rh*lh_kplus_*phi_site[nop_*index1 + 1]
+	  *(1.0 - rpsimax*phi_site[nop_*index + 1])
+	  - lh_kminus_*rpsimax*phi_site[nop_*index + 1];
+
+	fluxy[nop_*index + 1] += triple_contact*mask*(1.0 - masky)*fluxhm
+	  - dmax(0.0, 1.0 - phi*phi)*masky*(1.0 - mask)*fluxhp;
+
+	index1 = ADDR(ic,jc,kc+1);
+	phi = phi_site[nop_*index1 + 0];
+
+	fluxhm = rh*lh_kplus_*phi_site[nop_*index + 1]
+	  *(1.0 - rpsimax*phi_site[nop_*index1 + 1])
+	  - lh_kminus_*rpsimax*phi_site[nop_*index1 + 1];
+	fluxhp = rh*lh_kplus_*phi_site[nop_*index1 + 1]
+	  *(1.0 - rpsimax*phi_site[nop_*index + 1])
+	  - lh_kminus_*rpsimax*phi_site[nop_*index + 1];
+
+	fluxz[nop_*index + 1] += triple_contact*mask*(1.0 - maskz)*fluxhm
+	  - dmax(0.0, 1.0 - phi*phi)*maskz*(1.0 - mask)*fluxhp;
+      }
+    }
+  }
+
+  for (ic = 1; ic < nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = ADDR(ic,jc,kc);
+	index1 = ADDR(ic-1,jc,kc);
+	fluxw[nop_*index + 0] = fluxe[nop_*index1 + 0];
+	fluxw[nop_*index + 1] = fluxe[nop_*index1 + 1];
+      }
+    }
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -425,10 +585,9 @@ static void phi_ch_upwind_third_order() {
  *
  *  phi new = phi old - dt*(flux_out - flux_in)
  *
- *  No normal flux at solid-fluid boundaries is imposed via a mask
- *  mechanism, irrespective of what has been computed for the flux.
- *
- *  The time step is the LB time step dt = 1.
+ *  The time step is the LB time step dt = 1. All sites are processed
+ *  to include solid-stored values in the case of Langmuir-Hinshelwood.
+ *  It also avoids a conditional on solid/fluid status.
  *
  *****************************************************************************/
 
@@ -436,8 +595,6 @@ static void phi_ch_update_forward_step() {
 
   int nlocal[3];
   int ic, jc, kc, index, n;
-  double maskw, maske, maskn, masks, masku, maskd;
-  double dphi;
 
   get_N_local(nlocal);
 
@@ -447,165 +604,17 @@ static void phi_ch_update_forward_step() {
 
 	index = ADDR(ic, jc, kc);
 
-	if (site_map_get_status_index(index) != FLUID) continue;
-
-	maske = (site_map_get_status(ic+1, jc, kc) == FLUID);
-	maskw = (site_map_get_status(ic-1, jc, kc) == FLUID);
-	maskn = (site_map_get_status(ic, jc+1, kc) == FLUID);
-	masks = (site_map_get_status(ic, jc-1, kc) == FLUID);
-	masku = (site_map_get_status(ic, jc, kc+1) == FLUID);
-	maskd = (site_map_get_status(ic, jc, kc-1) == FLUID);
-
 	for (n = 0; n < nop_; n++) {
-	  dphi = 0.0;
-	  dphi += maske*fluxe[nop_*index + n];
-	  dphi -= maskw*fluxw[nop_*index + n];
-	  dphi += maskn*fluxy[nop_*index + n];
-	  dphi -= masks*fluxy[nop_*ADDR(ic, jc-1, kc) + n];
-	  dphi += masku*fluxz[nop_*index + n];
-	  dphi -= maskd*fluxz[nop_*ADDR(ic, jc, kc-1) + n];
-
-	  phi_site[nop_*index + n] -= dphi;
+	  phi_site[nop_*index + n] -= (fluxe[nop_*index + n]
+	                             - fluxw[nop_*index + n]
+	                             + fluxy[nop_*index + n]
+	                             - fluxy[nop_*ADDR(ic, jc-1, kc) + n]
+	                             + fluxz[nop_*index + n]
+				     - fluxz[nop_*ADDR(ic, jc, kc-1) + n]);
 	}
-
       }
     }
   }
 
   return;
-}
-
-
-
-/*****************************************************************************
- *
- *  phi_ch_upwind_seventh_order
- *
- *  Seventh order upwind advective fluxes require a halo of at
- *  least 4 points.
- *
- *  Side effects:
- *    - the flux array phi_flux_ is overwritten with the fluxes.
- *
- *****************************************************************************/
-
-static void phi_ch_upwind_seventh_order() {
-
-  int nlocal[3];
-  int ic, jc, kc;            /* Counters over faces */
-  int index0, index1;
-  double u0[3], u1[3], u;
-  double mu0, mu1;
-  double phi;
-
-  int s, up;
-
-  /* Stencil has 7 points with weights axx/7! */
-  const double am4 = -36.0;
-  const double am3 = +300.0;
-  const double am2 = -1212.0;
-  const double am1 = +3828.0;
-  const double ap0 = +2568.0;
-  const double ap1 = -456.0;
-  const double ap2 = +48.0;
-  const double rfactorial7 = 1.0/(1*2*3*4*5*6*7);
-  const double r2 = 1.0/2.0;
-
-  get_N_local(nlocal);
-  assert(nhalo_ >= 4);
-  assert(nop_ == 1);
-  assert(mobility_);
-
-  for (ic = 0; ic <= nlocal[X]; ic++) {
-    for (jc = 0; jc <= nlocal[Y]; jc++) {
-      for (kc = 0; kc <= nlocal[Z]; kc++) {
-
-	index0 = ADDR(ic, jc, kc);
-	mu0 = free_energy_get_chemical_potential(index0);
-	hydrodynamics_get_velocity(index0, u0);
- 
-	/* x direction */
-	index1 = ADDR(ic+1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
-
-	u = r2*(u0[X] + u1[X]);
-	s = 1 - 2*signbit_double(u);
-	assert(s == -1 || s == +1);
-	up = ic + (s+1)/2;
-
-	phi = rfactorial7*(
-	    am4*phi_site[ADDR(up - 4*s, jc, kc)]
-	  + am3*phi_site[ADDR(up - 3*s, jc, kc)]
-	  + am2*phi_site[ADDR(up - 2*s, jc, kc)]
-	  + am1*phi_site[ADDR(up - 1*s, jc, kc)]
-	  + ap0*phi_site[ADDR(up      , jc, kc)]
-	  + ap1*phi_site[ADDR(up + 1*s, jc, kc)]
-	  + ap2*phi_site[ADDR(up + 2*s, jc, kc)]);
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxe[index0] = u*phi - mobility_[0]*(mu1 - mu0);
-
-	/* y direction */
-	index1 = ADDR(ic, jc+1, kc);
-	hydrodynamics_get_velocity(index1, u1);
-
-	u = r2*(u0[Y] + u1[Y]);
-	s = 1 - 2*signbit_double(u);
-	assert(s == -1 || s == +1);
-	up = jc + (s+1)/2;
-
-	phi = rfactorial7*(
-	    am4*phi_site[ADDR(ic, up - 4*s, kc)]
-	  + am3*phi_site[ADDR(ic, up - 3*s, kc)]
-	  + am2*phi_site[ADDR(ic, up - 2*s, kc)]
-	  + am1*phi_site[ADDR(ic, up - 1*s, kc)]
-	  + ap0*phi_site[ADDR(ic, up      , kc)]
-	  + ap1*phi_site[ADDR(ic, up + 1*s, kc)]
-	  + ap2*phi_site[ADDR(ic, up + 2*s, kc)]);
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxy[index0] = u*phi - mobility_[0]*(mu1 - mu0);
-
-	/* z direction */
-	index1 = ADDR(ic, jc, kc+1);
-	hydrodynamics_get_velocity(index1, u1);
-
-	u = r2*(u0[Z] + u1[Z]);
-	s = 1 - 2*signbit_double(u);
-	assert(s == -1 || s == +1);
-	up = kc + (s+1)/2;
-
-	phi = rfactorial7*(
-	    am4*phi_site[ADDR(ic, jc, up - 4*s)]
-	  + am3*phi_site[ADDR(ic, jc, up - 3*s)]
-	  + am2*phi_site[ADDR(ic, jc, up - 2*s)]
-	  + am1*phi_site[ADDR(ic, jc, up - 1*s)]
-	  + ap0*phi_site[ADDR(ic, jc, up      )]
-	  + ap1*phi_site[ADDR(ic, jc, up + 1*s)]
-	  + ap2*phi_site[ADDR(ic, jc, up + 2*s)]);
-
-	mu1 = free_energy_get_chemical_potential(index1);
-	fluxz[index0] = u*phi - mobility_[0]*(mu1 - mu0);
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  signbit_double function
- *
- *  Return 0 for +ve or zero argument, 1 for negative.
- *
- ****************************************************************************/
-
-int signbit_double(double u) {
-
-  int sign = 0;
-
-  if (u < 0.0) sign = +1;
-
-  return sign;
 }
