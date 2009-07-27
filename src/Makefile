@@ -38,7 +38,9 @@
 
 
 OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
-      physics.o active.o brownian.o cio.o cmd.o ccomms.o \
+      physics.o advection.o active.o blue_phase.o \
+      blue_phase_beris_edwards.o brownian.o \
+      cio.o cmd.o ccomms.o \
       colloids.o bbl.o build.o communicate.o coords.o control.o \
       eigen3.o ewald.o free_energy.o interaction.o io_harness.o\
       model_le.o potential.o \
@@ -120,7 +122,7 @@ verbose:
 	    "\t make mpi \t builds parallel implementation based on MPI\n"\
             "\t Check the Makefile for further details\n"	
 
-generic: $(OBJS)
+generic: $(OBJS) Makefile
 	$(CC) $(LDFLAGS) -o $(EXE) $(OBJS) $(LIBS)
 
 serial:
