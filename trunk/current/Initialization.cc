@@ -462,6 +462,9 @@ void startDroplet(void)
 
 
 	if ((O8STRUCT == 1) || (O8MSTRUCT == 1)) {
+
+	  if (O8MSTRUCT == 1) amplitude=-0.2; 
+
 	  Qxx[i][j][k]=amplitude*
 		(-2.0*cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc)+
 		 sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)+
