@@ -250,17 +250,17 @@ int main(int argc, char** argv)
 
   for (n=1+Nstart; n<=Nmax; n++) {
 
-/*************************/
-/* cut droplets or slabs */
-/*************************/
+    /*************************/
+    /* cut droplets or slabs */
+    /*************************/
 
-      if(n==300100) startDroplet();
+//      if(n==300100) startDroplet();
 //      if(n==1500) startSlab();
 
 
-/********************************/
-/* change parameters during run */
-/********************************/
+    /********************************/
+    /* change parameters during run */
+    /********************************/
 
 /*
 
@@ -268,8 +268,8 @@ int main(int argc, char** argv)
 
    if(n==20000){
 
-      gam=3.0;
-      Abulk=0.0069395656; 
+      gam=3.1764706;
+      Abulk=0.01820565; 
 
 
       if(myPE==0){
@@ -292,8 +292,8 @@ int main(int argc, char** argv)
 
 // change noise strength
 
-if(n==400000){noise_strength=1e-05;if(myPE==0){cout << "timestep " << n << ": changing parameter; noise_strength = " << noise_strength << endl;}}
-if(n==500000){noise_strength=5e-05;if(myPE==0){cout << "timestep " << n << ": changing parameter; noise_strength = " << noise_strength << endl;}}
+//if(n==450000){noise_strength=1e-05;if(myPE==0){cout << "timestep " << n << ": changing parameter; noise_strength = " << noise_strength << endl;}}
+//if(n==500000){noise_strength=5e-05;if(myPE==0){cout << "timestep " << n << ": changing parameter; noise_strength = " << noise_strength << endl;}}
 
 //*/
 

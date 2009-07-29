@@ -31,7 +31,7 @@ NAME	= HLBLC09
 all: $(NAME)P
 
 String.o: String.cc
-	$(CCP) -c String.cc $(DEFS)
+	$(CCP) -c String.cc
 
 LCParallel.o: LCParallel.cc
 	$(CCP) -c LCParallel.cc -DPARALLEL -D_COMM_3D_

@@ -21,12 +21,19 @@ NAME	= HLBLC09
 
 all: $(NAME)P
 
-$(NAME)S: LCMain_hybrid.cc String.cc LCParallel.cc Initialization.cc Output.cc
-	$(CCS) LCMain_hybrid.cc String.cc LCParallel.cc Initialization.cc Output.cc -o $(NAME)S \
+
+String.o: String.cc
+	$(CCS) -c String.cc $(INCS) $(DEFS)
+
+LCParallel.o: LCParallel.cc
+	$(CCP) -c LCParallel.cc -DPARALLEL $(INCS) $(DEFS) 
+
+$(NAME)S: LCMain_hybrid.cc String.o Initialization.cc Output.cc
+	$(CCS) LCMain_hybrid.cc String.o Initialization.cc Output.cc -o $(NAME)S \
 	$(INCS) $(DEFS) $(LIBPATH) $(LIBS)
 
-$(NAME)P: LCMain_hybrid.cc String.cc LCParallel.cc Initialization.cc Output.cc
-	$(CCP) LCMain_hybrid.cc String.cc LCParallel.cc  -o $(NAME)P $(INCS) \
+$(NAME)P: LCMain_hybrid.cc String.o LCParallel.o Initialization.cc Output.cc
+	$(CCP) LCMain_hybrid.cc String.o LCParallel.o  -o $(NAME)P $(INCS) \
 	$(DEFS) -DPARALLEL $(LIBPATH) $(LIBS)
 
 clean:
