@@ -566,7 +566,7 @@ void computeStressFreeEnergy(int n)
 	 ofstream file(fileName.get(),ios::app);
 	 file.precision(6);
 	 file.setf(ios::scientific);
-	 file << n << "\t" << freeenergy/Lx/Ly/Lz << " " << freeenergytwist/Lx/Ly/Lz << " " << rr <<"\t" << phivr << endl;
+	 file << n << "\t" << freeenergy/Lx/Ly/Lz << " " << freeenergytwist/Lx/Ly/Lz << " " << rr <<"\t" << phivr << "\t" << noise_strength << endl;
 	 file.close();
        }
    }
