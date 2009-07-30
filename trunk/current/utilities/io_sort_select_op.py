@@ -73,7 +73,7 @@ tdata=12
 
 
 
-os.system('ls order_velo.*.*.dat > filelist')
+os.system('ls -t1 order_velo.*.*.dat > filelist')
 
 
 inputdatafiles=open('filelist','r')

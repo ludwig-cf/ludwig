@@ -388,21 +388,21 @@ void startDroplet(void)
 	fracmin = 0.5 - 1.0/numuc;
 	fracmax = 0.5 + 1.0/numuc;
 
-/*
+///*
 // replace sites outside ROI
 
 	if ( (jc < (fracmin*Ly) )||( jc > (fracmax*Ly))||
 	     (ic < (fracmin*Lx) )||( ic > (fracmax*Lx))||
 	     (kc < (fracmin*Lz) )||( kc > (fracmax*Lz)) ) { 
-*/
+//*/
 
-///*
+/*
 // replace sites inside ROI
 
 	if ( (jc > (fracmin*Ly) )&&( jc < (fracmax*Ly)) &&
 	     (ic > (fracmin*Lx) )&&( ic < (fracmax*Lx)) &&
 	     (kc > (fracmin*Lz) )&&( kc < (fracmax*Lz)) ) {
-//*/
+*/
 
 	  amplitude=(0.546-0.2723/2.0);
 
@@ -431,17 +431,17 @@ void startDroplet(void)
 
 	  //  droplet in isotropic environment
 
-	  /*
+//	  /*
 	        Qxx[i][j][k]= 1e-4/2.0;
 	        Qxy[i][j][k]= 0.0;
 	        Qyy[i][j][k]= -1e-4;
 	        Qxz[i][j][k]= 0.0;
 	        Qyz[i][j][k]= 0.0;
-	 */
+//	 */
 
 // BP droplet 
 
-///*
+/*
 	if (O2STRUCT == 1) {
 
 	  amplitude=0.3; 
@@ -488,7 +488,7 @@ void startDroplet(void)
 
 	}
 
- //*/
+ */
 
 	}
       }

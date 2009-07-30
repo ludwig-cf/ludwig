@@ -254,7 +254,7 @@ int main(int argc, char** argv)
     /* cut droplets or slabs */
     /*************************/
 
-//      if(n==300100) startDroplet();
+      if(n==2000) startDroplet();
 //      if(n==1500) startSlab();
 
 
@@ -262,7 +262,7 @@ int main(int argc, char** argv)
     /* change parameters during run */
     /********************************/
 
-/*
+///*
 
 // temperature-chirality quench 
 
@@ -286,7 +286,7 @@ int main(int argc, char** argv)
    caz = (1.0+4./3.*kappa*kappa);
    tauc = 1.0/8.0*(1-4.0*kappa*kappa+pow(caz,1.5));
 
-*/
+//*/
 
 ///*
 
