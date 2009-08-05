@@ -46,14 +46,6 @@ if(BLUEHAAR==1){
       jdt[u]=Ly*drand48();
       kdt[u]=Lz*drand48();
 
-/*
-      idt[u]=Lx*0.25;
-      jdt[u]=Ly*0.25;
-      kdt[u]=Lz*0.25;
-      theta[u]=Pi;
-      phi[u]=Pi;
-*/
-
    }
 
 
