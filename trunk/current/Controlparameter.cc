@@ -1,5 +1,4 @@
 
-
 /***************************/
 /* cut droplets or slabs   */
 /* ROI and phase specified */
@@ -13,21 +12,9 @@
 /* change parameters during run */
 /********************************/
 
-// change redshift
-
-/*
-if((REDSHIFT==1) && (n<150000)){
-   if(O2STRUCT) rr=0.91;
-   if(O5STRUCT) rr=0.97;
-   if(O8STRUCT) rr=0.82;
-   if(O8MSTRUCT) rr=0.83;
-}
-*/
-
 // temperature-chirality quench 
 
 /*
-
 
 if(n==20000){
 

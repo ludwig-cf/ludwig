@@ -14,7 +14,8 @@
 0		% O8STRUCT
 1               % O8MSTRUCT
 0		% HEXPLANAR
-0		% HEX3D
+0		% HEX3DA
+0		% HEX3DB
 0		% DTSTRUCT
 0		% BLUEHAAR
 0.01		% L1 first elastic constant 

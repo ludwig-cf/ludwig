@@ -65,7 +65,8 @@ int main(int argc, char** argv)
   inputFile >> O8STRUCT >> endOfLine;
   inputFile >> O8MSTRUCT >> endOfLine;
   inputFile >> HEXPLANAR >> endOfLine;
-  inputFile >> HEX3D >> endOfLine;
+  inputFile >> HEX3DA >> endOfLine;
+  inputFile >> HEX3DB >> endOfLine;
   inputFile >> DTSTRUCT >> endOfLine;
   inputFile >> BLUEHAAR >> endOfLine;
   inputFile >> L1init >> endOfLine;
@@ -125,7 +126,8 @@ int main(int argc, char** argv)
   logFile << O8STRUCT << "\t\t# O8STRUCT"<< endl;
   logFile << O8MSTRUCT << "\t\t# O8MSTRUCT"<< endl;
   logFile << HEXPLANAR << "\t\t# HEXPLANAR"<< endl;
-  logFile << HEX3D << "\t\t# HEX3D"<< endl;
+  logFile << HEX3DA << "\t\t# HEX3DA"<< endl;
+  logFile << HEX3DB << "\t\t# HEX3DB"<< endl;
   logFile << DTSTRUCT << "\t\t# DTSTRUCT"<< endl;
   logFile << BLUEHAAR << "\t\t# BLUEHAAR"<< endl;
   logFile << L1init << "\t\t# L1"<< endl;
@@ -194,7 +196,7 @@ int main(int argc, char** argv)
       L2init=2.0*L2init;
     }
 
-    if (HEXPLANAR || HEX3D) {
+    if (HEXPLANAR || HEX3DA || HEX3DB) {
       q0init=numhftwist*numuc*Pi/Lx;
       L1init=2.0*L1init;
       L2init=2.0*L2init;
@@ -251,7 +253,6 @@ int main(int argc, char** argv)
   for (n=1+Nstart; n<=Nmax; n++) {
 
 // includes code which changes the control parameters during the run 
-
 #include "Controlparameter.cc"
 
 	computeStressFreeEnergy(n);
