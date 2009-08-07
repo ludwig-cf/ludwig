@@ -1,13 +1,24 @@
 /*****************************************************************************
  *
+ *  model_le.c
+ *
  *  Lees-Edwards transformations for distributions.
  *
  *  Note that the distributions have displacement u*t
  *  not u*(t-1) returned by le_get_displacement().
  *  This is for reasons of backwards compatability.
  *
+ *  $Id: model_le.c,v 1.4 2009-08-07 16:53:16 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) The University of Edinburgh (2009)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ * 
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -15,76 +26,87 @@
 #include "timer.h"
 #include "coords.h"
 #include "control.h"
-#include "runtime.h"
 #include "model.h"
 #include "physics.h"
 #include "leesedwards.h"
 
 extern Site * site;
-extern MPI_Datatype DT_Site;
 
-static double * LeesEdw_site;
-static void LE_update_buffers(void);
-static void le_update_parallel(void);
+static void le_reproject(void);
+static void le_displace_and_interpolate(void);
+static void le_displace_and_interpolate_parallel(void);
 
 /*****************************************************************************
  *
- * Applies Lees-Edwards: transformation of site contents across LE walls: 
- * and the components of the distribution functions which cross LE walls
+ *  model_le_apply_boundary_conditions
+ *
+ *  This is the driver to apply the LE conditions to the distributions
+ *  (applied to the post-collision distributions). There are two
+ *  stages:
+ *
+ *  1. a reprojection of distributions that will cross a plane in the
+ *     upcoming propagation step.
+ *  2. a displacement and interpolation of the reprojected distributions
+ *     to take account of the sliding displacement as a function of time.
+ *
+ *  Note we never deal with the halo regions here, as we assume the
+ *  upcoming propagation will be immediately preceeded by a distribution
+ *  halo update.
  *
  *****************************************************************************/
 
-void LE_apply_LEBC(void) {
+void model_le_apply_boundary_conditions(void) {
 
-  int     plane,xfac,yfac,xfac2,yfac2,zfac2,jj,kk,ind,ind0,ind1;
-  int     LE_loc;
-  int     i,j;
-  double  LE_vel;
-  int     N[3];
+  if (le_get_nplane_local() > 0) {
+
+    TIMER_start(TIMER_LE);
+
+    le_reproject();
+
+    if (cart_size(Y) > 1) {
+      le_displace_and_interpolate_parallel();
+    }
+    else {
+      le_displace_and_interpolate();
+    }
+
+    TIMER_stop(TIMER_LE);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  le_reproject
+ *
+ *  This is the reprojection of the post collision distributions to
+ *  take account of the velocity jump at the planes.
+ *
+ *****************************************************************************/
+
+static void le_reproject(void) {
+
+  int    ic, jc, kc, index;
+  int    nplane, plane, side;
+  int    ia, ib;
+  int    nlocal[3];
+  int    poffset, np, p;
 
   double rho, phi, ds[3][3], dsphi[3][3], udotc, jdotc, sdotq, sphidotq;
   double u[3], jphi[3], du[3], djphi[3];
+  double LE_vel;
   double t;
-  int ia, ib;
 
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
-  int p,side;
-  int nplane;
+
+  assert(CVXBLOCK == 1);
 
   nplane = le_get_nplane_local();
-  if (nplane == 0) return;
-
-  TIMER_start(TIMER_LE);
-
-  get_N_local(N);
-  yfac  =  N[Z]+2*nhalo_;
-  xfac  = (N[Y]+2*nhalo_) * (N[Z]+2*nhalo_);
-  zfac2 = LE_N_VEL_XING * 2;  /* final x2 because 2 dist functions (f and g) */
-  yfac2 = yfac * zfac2;
-  xfac2 = xfac * zfac2; 
-  
-  /* 
-   * Allocate memory for Lees-Edwards buffers ("translated" values) and 
-   * "unrolled" phis: see LE_update_buffers() and LE_unroll_phi().
-   * Storage required for LeesEdw_site[] is:
-   *   2*N_LE_planes   one plane on each side of LE wall
-   *   * 2             because there are two distribution functions f and g
-   *   * LE_N_VEL_XING simply save components crossing the LE wall 
-   *   * sizeof(double) because site components are doubles
-   */
-
-  LeesEdw_site = (double *)
-    malloc(2*nplane*xfac*2*LE_N_VEL_XING*sizeof(double));
-  
-  if(LeesEdw_site==NULL) {
-    fatal("LE_Init(): failed to allocate %d bytes for LE buffers\n",
-	  2*(2*LE_N_VEL_XING+1)*nplane*xfac*sizeof(double));
-  }
 
   t = 1.0*get_step();
-
-  /* Stage 2: use Ronojoy's scheme to update fs and gs */
+  get_N_local(nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
     for (side = 0; side < 2; side++) {
@@ -93,21 +115,22 @@ void LE_apply_LEBC(void) {
 
       if (side == 0) {
 	LE_vel =-le_plane_uy(t);
-	LE_loc = le_plane_location(plane);
+	ic = le_plane_location(plane);
+	poffset = xdisp_fwd_cv[0];
       }
       else {
 	/* Finally, deal with plane above LEBC */
 	LE_vel =+le_plane_uy(t);
-	LE_loc = le_plane_location(plane) + 1;
+	ic = le_plane_location(plane) + 1;
+	poffset = xdisp_bwd_cv[0];
       }
 
       /* First, for plane `below' LE plane, ie, crossing LE plane going up */
 
-      for (jj = 1; jj <= N[Y]; jj++) {
-	for (kk = 1; kk <= N[Z]; kk++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  
-	  /* ind = LE_loc*xfac + jj*yfac + kk;*/
-	  ind = get_site_index(LE_loc, jj, kk);
+	  index = ADDR(ic, jc, kc);
 	    	  
 	  /* For fi: M0 = rho; M1 = rho.u[]; M2 = s[][] */
 	  /* Corrected expressions for Lees-Edwards are as follows: */
@@ -118,8 +141,8 @@ void LE_apply_LEBC(void) {
 	  
 	  /* Compute 0th and 1st moments */
 
-	  rho = site[ind].f[0];
-	  phi = site[ind].g[0];
+	  rho = site[index].f[0];
+	  phi = site[index].g[0];
 
 	  for (ia = 0; ia < 3; ia++) {
 	    u[ia] = 0.0;
@@ -129,11 +152,11 @@ void LE_apply_LEBC(void) {
 	  }
 
 	  for (p = 1; p < NVEL; p++) {
-	    rho    += site[ind].f[p];
-	    phi    += site[ind].g[p];
+	    rho    += site[index].f[p];
+	    phi    += site[index].g[p];
 	    for (ia = 0; ia < 3; ia++) {
-	      u[ia] += site[ind].f[p]*cv[p][ia];
-	      jphi[ia] += site[ind].g[p]*cv[p][ia];
+	      u[ia] += site[index].f[p]*cv[p][ia];
+	      jphi[ia] += site[index].g[p]*cv[p][ia];
 	    }
 	  }
 
@@ -155,213 +178,33 @@ void LE_apply_LEBC(void) {
 	  }
 
 	  /* Now update the distribution */
-	  for (p = 0; p < NVEL; p++) {
-	      
-	    udotc =    du[Y] * cv[p][1];
-	    jdotc = djphi[Y] * cv[p][1];
-	      
+
+	  for (np = 0; np < xblocklen_cv[0]; np++) {
+
+	    /* Pick up the correct velocity indices */ 
+	    p = poffset + np;
+
+	    udotc =    du[Y]*cv[p][Y];
+	    jdotc = djphi[Y]*cv[p][Y];
+	    
 	    sdotq    = 0.0;
 	    sphidotq = 0.0;
 	      
-	    for (i = 0; i < 3; i++) {
-	      for (j = 0; j < 3; j++) {
-		sdotq += ds[i][j]*q_[p][i][j];
-		sphidotq += dsphi[i][j]*q_[p][i][j];
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		sdotq += ds[ia][ib]*q_[p][ia][ib];
+		sphidotq += dsphi[ia][ib]*q_[p][ia][ib];
 	      }
 	    }
 	      
 	    /* Project all this back to the distributions. */
-	    /* First case: the plane below Lees-Edwards BC */
 
-	    if (side == 0) {
-
-	      /* For each velocity intersecting the LE plane (up, ie X+1) */
-	      if (cv[p][X] == 1) {
-		site[ind].f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
-		site[ind].g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
-	      }
-	    }
-	    /* Now consider the case when above the LE plane */
-	    else {
-
-	      /* For each velocity intersecting the LE plane (down, ie X-1) */
-	      if (cv[p][X] == -1) {
-		site[ind].f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
-		site[ind].g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
-	      }
-	    }
+	    site[index].f[p] += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
+	    site[index].g[p] += wv[p]*(    jdotc*rcs2 + sphidotq*r2rcs4);
 	  }
+	  /* next site */
 	}
       }
-    }
-  }
-  
-  /* Stage 3: update buffers (pre-requisite to translation) */
-
-  halo_site();
-  LE_update_buffers();
-
-  /* Stage 4: apply translation on fs and gs crossing LE planes */
-
-  for (plane = 0; plane < nplane; plane++) {
-    LE_loc  = le_plane_location(plane);
-      
-    /* First, for plane 'below' LE plane: displacement = +displ */
-    for (jj = 1; jj <= N[Y]; jj++) {
-      for (kk = 1; kk <= N[Z]; kk++) {
-	/* ind  =  LE_loc*xfac  + jj*yfac  + kk;*/
-	ind = get_site_index(LE_loc, jj, kk);
-	ind0 = 2*plane*xfac2 + jj*yfac2 + kk*zfac2;
-	    
-	/* For each velocity intersecting the LE plane (up, ie X+1) */
-	ind1 = 0; 
-	for (p = 0; p < NVEL; p++) {	      
-	  if (cv[p][X] == 1) {
-	    site[ind].f[p] = LeesEdw_site[ind0+2*ind1];
-	    site[ind].g[p] = LeesEdw_site[ind0+2*ind1+1];
-	    ind1++;
-	  }
-	}
-      }
-    }
-      
-    /* Then, for plane 'above' LE plane, ie, crossing LE plane going down */
-
-    for (jj = 1; jj <= N[Y]; jj++) {
-      for (kk = 1; kk <= N[Z]; kk++) {
-	/* ind  =  (LE_loc+1)*xfac  + jj*yfac  + kk;*/
-	ind = get_site_index(LE_loc+1, jj, kk);
-	ind0 = (2*plane+1)*xfac2 + jj*yfac2 + kk*zfac2;
-	
-	/* For each velocity intersecting the LE plane (down, ie X-1) */
-
-	ind1 = 0;
-
-	for (p = 0; p < NVEL; p++) {
-	  if(cv[p][X] == -1) {
-	    site[ind].f[p] = LeesEdw_site[ind0+2*ind1];
-	    site[ind].g[p] = LeesEdw_site[ind0+2*ind1+1];
-	    ind1++;
-	  }
-	}
-	
-      }
-    }
-    /* Next side of plane */
-  }
-
-  free(LeesEdw_site);
-
-  TIMER_stop(TIMER_LE);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  LE_update_buffers
- *
- *****************************************************************************/
-
-void LE_update_buffers() {
-
-  int    nlocal[3];
-  int    nplane, n;
-  int    jj, kk, ind, ind0, ind1, ind2, xfac, yfac, xfac2, yfac2, zfac2;
-  int    integ, LE_loc, p;
-  int    disp_j1,disp_j2;
-  double displ, LE_frac;
-  double t;
-
-  nplane = le_get_nplane_local();
-  if (nplane == 0) return;
-
-  if (cart_size(Y) > 1) {
-    le_update_parallel();
-  }
-  else {
-
-    get_N_local(nlocal);
-    nplane = le_get_nplane_local();
-
-    t = 1.0*get_step();
-
-    yfac  =  nlocal[Z]+2*nhalo_;
-    xfac  = (nlocal[Y]+2*nhalo_) * (nlocal[Z]+2*nhalo_);
-    zfac2 = LE_N_VEL_XING * 2;  /* final x2 because fs and gs as well! */
-    yfac2 = yfac * zfac2;
-    xfac2 = xfac * zfac2;
-
-    for (n = 0; n < nplane; n++) {
- 
-      LE_loc  = le_plane_location(n);
-
-      displ = fmod(le_buffer_displacement(nhalo_, t), L(Y));
-      integ = floor(displ);
-      LE_frac = 1.0 - (displ - integ);
-
-      /* Plane below (going down): +ve displacement */
-      /* site_buff[i] = frac*site[i+integ] + (1-frac)*site[i+(integ+1)] */
-
-      for (jj = 1; jj <= nlocal[Y]; jj++) {
-
-	disp_j1 = ((jj+integ+2*nlocal[Y]-1) % nlocal[Y]) + 1;
-	disp_j2 = (disp_j1 % nlocal[Y]) + 1;
-
-	for (kk = 1; kk <= nlocal[Z]; kk++) {
-	  ind  = 2*n*xfac2 +      jj*yfac2 + kk*zfac2;
-	  ind0 = LE_loc *xfac  + disp_j1*yfac  + kk;
-	  ind1 = LE_loc *xfac  + disp_j2*yfac  + kk;
-
-	  ind0 = ADDR(LE_loc, disp_j1, kk);
-	  ind1 = ADDR(LE_loc, disp_j2, kk);
-		  
-	  /* For each velocity intersecting the LE plane (up, ie X+1) */
-	  ind2 = 0; 
-
-	  for (p = 0; p < NVEL; p++) {
-	    if (cv[p][X] == 1) {
-	      LeesEdw_site[ind+2*ind2] = 
-		LE_frac*site[ind0].f[p] + (1.0-LE_frac)*site[ind1].f[p];
-	      LeesEdw_site[ind+2*ind2+1] = 
-		LE_frac*site[ind0].g[p] + (1.0-LE_frac)*site[ind1].g[p];
-	      ind2++;
-	    }
-	  }
-	}
-      }
-	  
-      /* Plane above: -ve displacement */
-      /* site[i] = frac*site[i-integ] + (1-frac)*site[i-(integ+1)] */
-      /* buff[i] = site[i-(integ+1)] */
-
-      for (jj = 1; jj <= nlocal[Y]; jj++) {
-
-	disp_j1 = ((jj-integ+2*nlocal[Y]-2) % nlocal[Y]) + 1;
-	disp_j2 = ((disp_j1+nlocal[Y]) % nlocal[Y]) + 1;
-
-	for (kk = 1; kk <= nlocal[Z]; kk++) {
-	  ind = (2*n+1)*xfac2 +      jj*yfac2 + kk*zfac2;
-	  ind0 = (LE_loc+1)*xfac  + disp_j1*yfac  + kk;
-	  ind1 = (LE_loc+1)*xfac  + disp_j2*yfac  + kk;
-
-	  ind0 = ADDR(LE_loc+1, disp_j1, kk);
-	  ind1 = ADDR(LE_loc+1, disp_j2, kk);
-		  
-	  /* For each velocity intersecting the LE plane (up, ie X-1) */
-	  ind2 = 0;
-	  for (p = 0; p < NVEL; p++) {
-	    if (cv[p][X] == -1) {
-	      LeesEdw_site[ind+2*ind2] = 
-		LE_frac*site[ind1].f[p] + (1.0-LE_frac)*site[ind0].f[p];
-	      LeesEdw_site[ind+2*ind2+1] = 
-		LE_frac*site[ind1].g[p] + (1.0-LE_frac)*site[ind0].g[p];
-	      ind2++;
-	    }
-	  }
-	}
-      }
-      /* Next plane */
     }
   }
 
@@ -370,274 +213,441 @@ void LE_update_buffers() {
 
 /*****************************************************************************
  *
- *  le_update_parallel
- *
- *****************************************************************************/
-
-static void le_update_parallel() {
-
-  int nsites, nsites1, nsites2;
-  int n, jj, kk, start_y;
-  int p;
-  int nlocal[3];
-  int offset[3];
-  int nplane;
-  int ind, ind0, ind1, ind2;
-  int xfac, yfac, xfac2, yfac2, zfac2;
-  int LE_loc, integ;
-  double LE_frac, displ;
-  double t;
-
-  int  send[2], recv[2];
-
-  const int tag1 = 3102;
-  const int tag2 = 3103;
-  MPI_Request req[4];
-  MPI_Status status[4];
-  MPI_Comm comm = le_communicator();
-
-  Site * buff_site;
-  
-  get_N_local(nlocal);
-  get_N_offset(offset);
-  nplane = le_get_nplane_local();
-
-  t = 1.0*get_step();
-
-  yfac = nlocal[Z]+2*nhalo_;
-  xfac = (nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
-  nsites = (nlocal[Y]+2*nhalo_+1)*(nlocal[Z]+2*nhalo_);
-
-  /* 
-   * Set up buffer of translated sites (by linear interpolation):
-   * 1. Copy (nlocal[Y]+3)*(nlocal[Z]+2) translated sites in buff_site[]
-   * 2. Perform linear interpolation and copy to LeesEdw_site[]
-   */
-
-  /* Strides for LeesEdw_site[] */
-
-  zfac2 = LE_N_VEL_XING * 2;  /* x2 because 2 distrib funcs (f and g) */
-  yfac2 = yfac * zfac2;
-  xfac2 = xfac * zfac2; 
-
-  /* Allocate memory for buffering sites */
-
-  buff_site = (Site *) malloc(2*nsites*sizeof(Site));
-  if (buff_site == NULL) fatal("mallox(buff_site) failed\n");
-
-  for (n = 0; n < nplane; n++) {
-
-    LE_loc  = le_plane_location(n);
-
-    displ = fmod(le_buffer_displacement(nhalo_, t), L(Y));
-    integ = floor(displ);
-    LE_frac = 1.0 - (displ - integ);
-
-    /*
-     * Plane below (going down): +ve displacement:
-     * LeesEdw_site[i] =
-     *            frac*buff_site[i+integ] + (1-frac)*buff_site[i+integ+1]
-     */
-
-    /* Starting y coordinate (global address): range 1->N_total.y */
-    start_y = ((offset[Y]+(1-nhalo_)+integ+2*N_total(Y)-1) % N_total(Y)) + 1;
-      
-    /* Starting y coordinate (now local address on PE target_rank1) */
-    /* Valid values for start_y are in the range 0->nlocal[Y]-1 */
-    /* Obviously remainder starts at y=1 on PE target_rank2 */
-
-    start_y = start_y % nlocal[Y];
-      
-    /* Number of sites to fetch from target_rank1 and target_rank2 */
-    /* Note that nsites = nsites1+nsites2 = (nlocal[Y]+3)*(nlocal[Z]+2) */
-    nsites1 = (nlocal[Y]-start_y+1)*(nlocal[Z]+2*nhalo_);
-    nsites2 =     (start_y+1+1)*(nlocal[Z]+2*nhalo_);
-      
-    /* Use point-to-point communication */
-
-    le_displacement_ranks(-displ, recv, send);
-
-    MPI_Irecv(&buff_site[0].f[0], nsites1, DT_Site, recv[0],
-	      tag1, comm, &req[0]);
-    MPI_Irecv(&buff_site[nsites1].f[0], nsites2, DT_Site, recv[1],
-	      tag2, comm, &req[1]);
-
-    MPI_Issend(&site[ADDR(LE_loc,start_y,1-nhalo_)].f[0], nsites1, DT_Site,
-	       send[0], tag1, comm, &req[2]);
-    MPI_Issend(&site[ADDR(LE_loc,1,1-nhalo_)].f[0], nsites2, DT_Site,
-	       send[1], tag2, comm, &req[3]);
-    MPI_Waitall(4,req,status);
-
-    /* Plane above (going up): -ve displacement */
-    /* buff[i] = (1-frac)*phi[i-(integ+1)] + frac*phi[i-integ] */
-      
-    /* Starting y coordinate (global address): range 1->N_total.y */
-    start_y = ((offset[Y]+(1-nhalo_)-integ+2*N_total(Y)-2) % N_total(Y)) + 1;
-  
-    /* Starting y coordinate (now local address on PE target_rank1) */
-    /* Valid values for start_y are in the range 0->nlocal[Y]-1 */
-    /* Obviously remainder starts at y=1 on PE target_rank2 */
-
-    start_y = start_y % nlocal[Y];
-	  
-    /* Number of sites to fetch from target_rank1 and target_rank2 */
-    /* Note that nsites = nsites1+nsites2 = (nlocal[Y]+3)*(nlocal[Z]+2) */
-
-    nsites1 = (nlocal[Y]-start_y+1)*(nlocal[Z]+2*nhalo_);
-    nsites2 =     (start_y+1+1)*(nlocal[Z]+2*nhalo_);
-	  
-    /* Use point-to-point communication */
-
-    le_displacement_ranks(+displ, recv, send);
-
-    MPI_Irecv(&buff_site[nsites].f[0], nsites1, DT_Site, recv[0],
-	      tag1, comm, &req[0]);
-    MPI_Irecv(&buff_site[nsites+nsites1].f[0], nsites2, DT_Site,
-	      recv[1], tag2, comm, &req[1]);
-    MPI_Issend(&site[ADDR(LE_loc+1,start_y,1-nhalo_)].f[0], nsites1,
-	       DT_Site, send[0], tag1, comm, &req[2]);
-    MPI_Issend(&site[ADDR(LE_loc+1,1,1-nhalo_)].f[0], nsites2, DT_Site,
-	       send[1], tag2, comm, &req[3]);
-    MPI_Waitall(4,req,status);
-
-    /* 
-     * Perform linear interpolation on buffer of sites:
-     * Note that although all the the 30 components of each site has been
-     * copied in site_buff[], LeesEdw_buff[] will only store the
-     * components crossing the LE walls: favour low latency from 
-     * transferring a single large block rather than a complicated data
-     * structure vs. increased required bandwidth as only a third of the
-     * data transferred will be used (to be investigated further!)
-     */
-
-    /* Plane below */
-
-    for (jj = 1; jj <= nlocal[Y]; jj++) {
-      for (kk = 1; kk <= nlocal[Z]; kk++) {
-
-	ind = 2*n*xfac2 + jj*yfac2 + kk*zfac2;
-	ind0 =            (jj+nhalo_-1)*yfac  + kk + nhalo_-1;
-	ind1 =        (jj+nhalo_-1+1)*yfac  + kk + nhalo_-1;
-	ind2 = 0; 
-
-	for (p = 0; p < NVEL; p++) {
-	  if (cv[p][X] == 1) {
-	    LeesEdw_site[ind+2*ind2] =
-	      LE_frac       * buff_site[ind0].f[p] + 
-	      (1.0-LE_frac) * buff_site[ind1].f[p];
-	    LeesEdw_site[ind+2*ind2+1] =
-	      LE_frac       * buff_site[ind0].g[p] + 
-	      (1.0-LE_frac) * buff_site[ind1].g[p];
-	    ind2++;
-	  }
-	}
-      }
-    }
-
-    /* Plane above */
-    for (jj = 1; jj <= nlocal[Y]; jj++) {
-      for (kk = 1; kk <= nlocal[Z]; kk++) {
-	ind = (2*n+1)*xfac2 +  jj   *yfac2 + kk*zfac2;
-	ind0 =       nsites +  (jj+nhalo_-1)   *yfac  + kk+nhalo_-1;
-	ind1 =       nsites + (jj+nhalo_-1+1)*yfac  + kk+nhalo_-1;
-	ind2 = 0;
-
-	for (p = 0; p < NVEL; p++) {
-	  if (cv[p][X] == -1) {
-	    LeesEdw_site[ind+2*ind2] =
-	      LE_frac       * buff_site[ind1].f[p] + 
-	      (1.0-LE_frac) * buff_site[ind0].f[p];
-	    LeesEdw_site[ind+2*ind2+1] =
-	      LE_frac       * buff_site[ind1].g[p] + 
-	      (1.0-LE_frac) * buff_site[ind0].g[p];
-	    ind2++;
-	  }
-	}
-      }
-    }
-  }
-
-  free(buff_site);
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  le_init_shear_profile
+ *  model_le_init_shear_profile
  *
  *  Initialise the distributions to be consistent with a steady-state
  *  linear shear profile, consistent with plane velocity.
  *
  *****************************************************************************/
 
-void le_init_shear_profile() {
+void model_le_init_shear_profile() {
 
   int ic, jc, kc, index;
-  int i, j, n, p;
+  int i, j, p;
   int N[3];
   double rho, u[ND], gradu[ND][ND];
   double eta;
 
-  /* Only allow initialisation if the flag is set */
+  info("Initialising shear profile\n");
 
-  n = 0;
-  RUN_get_int_parameter("LE_init_profile", &n);
+  /* Initialise the density, velocity, gradu; ghost modes are zero */
 
-  if (n != 1) {
-    /* do nothing */
+  rho = get_rho0();
+  eta = get_eta_shear();
+  get_N_local(N);
+
+  for (i = 0; i< ND; i++) {
+    u[i] = 0.0;
+    for (j = 0; j < ND; j++) {
+      gradu[i][j] = 0.0;
+    }
   }
-  else {
-    info("Initialising shear profile\n");
 
-    /* Initialise the density, velocity, gradu; ghost modes are zero */
+  gradu[X][Y] = le_shear_rate();
 
-    rho = get_rho0();
-    eta = get_eta_shear();
-    get_N_local(N);
+  /* Loop trough the sites */
 
-    for (i = 0; i< ND; i++) {
-      u[i] = 0.0;
-      for (j = 0; j < ND; j++) {
-	gradu[i][j] = 0.0;
+  for (ic = 1; ic <= N[X]; ic++) {
+      
+    u[Y] = le_get_steady_uy(ic);
+
+    /* We can now project the physical quantities to the distribution */
+
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+
+	index = get_site_index(ic, jc, kc);
+
+	for (p = 0; p < NVEL; p++) {
+	  double f = 0.0;
+	  double cdotu = 0.0;
+	  double sdotq = 0.0;
+
+	  for (i = 0; i < ND; i++) {
+	    cdotu += cv[p][i]*u[i];
+	    for (j = 0; j < ND; j++) {
+	      sdotq += (rho*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
+	    }
+	  }
+	  f = wv[p]*(rho + rcs2*rho*cdotu + 0.5*rcs2*rcs2*sdotq);
+	  set_f_at_site(index, p, f);
+	}
+	/* Next site */
       }
     }
+  }
 
-    gradu[X][Y] = le_shear_rate();
+  return;
+}
 
-    /* Loop trough the sites */
+/*****************************************************************************
+ *
+ *  le_displace_and_interpolate
+ *
+ *  For each side of each plane, work out the relevant displacement
+ *  and do the necessary interpolation to get the modified plane-
+ *  crossing distributions.
+ *
+ *****************************************************************************/
 
-    for (ic = 1; ic <= N[X]; ic++) {
-      
-      u[Y] = le_get_steady_uy(ic);
+void le_displace_and_interpolate(void) {
 
-      /* We can now project the physical quantities to the distribution */
+  int    ic, jc, kc;
+  int    index0, index1;
+  int    nlocal[3];
+  int    n, nplane;
+  int    p;
+  int    jdy, j1, j2;
+  int    ndist;
+  int    ndata;
+  double dy, fr;
+  double t;
+  double * recv_buff;
 
-      for (jc = 1; jc <= N[Y]; jc++) {
-	for (kc = 1; kc <= N[Z]; kc++) {
+  get_N_local(nlocal);
+  nplane = le_get_nplane_local();
 
-	  index = get_site_index(ic, jc, kc);
+  t = 1.0*get_step();
 
-	  for (p = 0; p < NVEL; p++) {
-	    double f = 0.0;
-	    double cdotu = 0.0;
-	    double sdotq = 0.0;
+  /* We need to interpolate into a temporary buffer to make sure we
+   * don't overwrite distributions taking part. The size is just
+   * determined by the size of the local domain, and the number
+   * of plane-crossing distributions. */
 
-	    for (i = 0; i < ND; i++) {
-	      cdotu += cv[p][i]*u[i];
-	      for (j = 0; j < ND; j++) {
-		sdotq += (rho*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
-	      }
-	    }
-	    f = wv[p]*(rho + rcs2*rho*cdotu + 0.5*rcs2*rcs2*sdotq);
-	    set_f_at_site(index, p, f);
-	  }
-	  /* Next site */
+  ndist = xblocklen_cv[0];
+  ndata = 2*ndist*nlocal[Y]*nlocal[Z];
+  recv_buff = (double *) malloc(ndata*sizeof(double));
+  if(recv_buff == NULL) fatal("malloc(recv_buff) failed\n");
+
+  for (n = 0; n < nplane; n++) {
+ 
+    ic  = le_plane_location(n);
+
+    dy  = le_buffer_displacement(nhalo_, t);
+    dy  = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fr = dy - jdy;
+
+    ndata = 0;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+      j1 = 1 + (jc + jdy - 1 + 2*nlocal[Y]) % nlocal[Y];
+      j2 = 1 + (j1 % nlocal[Y]);
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = ADDR(ic, j1, kc);
+	index1 = ADDR(ic, j2, kc);
+		  
+	/* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
+
+	for (p = 0; p < ndist; p++) {
+	  recv_buff[ndata++] = (1.0 - fr)*site[index0].f[xdisp_fwd_cv[0] + p] 
+	    + fr*site[index1].f[xdisp_fwd_cv[0] + p];
+	}
+	for (p = 0; p < ndist; p++) {
+	  recv_buff[ndata++] = (1.0 - fr)*site[index0].g[xdisp_fwd_cv[0] + p] 
+	    + fr*site[index1].g[xdisp_fwd_cv[0] + p];
 	}
       }
     }
+
+    /* ...and copy back ... */
+
+    ndata = 0;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = ADDR(ic, jc, kc);
+	for (p = 0; p < ndist; p++) {
+	  site[index0].f[xdisp_fwd_cv[0] + p] = recv_buff[ndata++]; 
+	}
+	for (p = 0; p < ndist; p++) {
+	  site[index0].g[xdisp_fwd_cv[0] + p] = recv_buff[ndata++]; 
+	}
+      }
+    }
+
+
+    /* OTHER DIRECTION */
+ 
+    ic  = le_plane_location(n) + 1;
+
+    dy  = -le_buffer_displacement(nhalo_, t);
+    dy  = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fr = dy - jdy;
+
+    ndata = 0;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+      j1 = 1 + (jc + jdy - 1 + 2*nlocal[Y]) % nlocal[Y];
+      j2 = 1 + (j1 % nlocal[Y]) ;
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = ADDR(ic, j1, kc);
+	index1 = ADDR(ic, j2, kc);
+
+	for (p = 0; p < ndist; p++) {
+	  recv_buff[ndata++] = (1.0 - fr)*site[index0].f[xdisp_bwd_cv[0] + p]
+	    + fr*site[index1].f[xdisp_bwd_cv[0] + p];
+	}
+	for (p = 0; p < ndist; p++) {
+	  recv_buff[ndata++] = (1.0 - fr)*site[index0].g[xdisp_bwd_cv[0] + p]
+	    + fr*site[index1].g[xdisp_bwd_cv[0] + p];
+	}
+      }
+    }
+
+    /* ...and now overwrite... */
+
+    ndata = 0;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = ADDR(ic, jc, kc);
+	for (p = 0; p < ndist; p++) {
+	  site[index0].f[xdisp_bwd_cv[0] + p] = recv_buff[ndata++];
+	}
+	for (p = 0; p < ndist; p++) {
+	  site[index0].g[xdisp_bwd_cv[0] + p] = recv_buff[ndata++];
+	}
+      }
+    }
+
+    /* Next plane */
   }
+
+  free(recv_buff);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  le_displace_and_interpolate_parallel
+ *
+ *  Here we need to communicate to be able to do the displacement of
+ *  the buffers in the along-plane (Y-) direction.
+ *
+ *  Locally, we need to find interpolated values of the plane-crossing
+ *  distributions for 1 <= jc <= nlocal[Y]. To do a linear interpolation
+ *  everywhere, this requires (nlocal[Y] + 1) points displaced in the
+ *  appropriate direction.
+ *
+ *  Likewise, we need to send a total of (nlocal[Y] + 1) points to the
+ *  two corresponding recieving processes. Note we never involve the
+ *  halo regions here (so a preceeding halo exchange is not required). 
+ *
+ *****************************************************************************/
+
+static void le_displace_and_interpolate_parallel() {
+
+  int ic, jc, kc;
+  int j1, j1mod;
+  int jdy;
+  int n1, n2;
+  int ndata, ndata1, ndata2;
+  int ind0, ind1, ind2, index;
+  int n, nplane;
+  int p;
+  int nlocal[3];
+  int offset[3];
+  int  nrank_s[2], nrank_r[2];
+
+  const int tag1 = 3102;
+  const int tag2 = 3103;
+  int ndist;
+
+  double fr;
+  double dy;
+  double t;
+  double * send_buff;
+  double * recv_buff;
+
+  MPI_Request req[4];
+  MPI_Status status[4];
+  MPI_Comm comm = le_communicator();
+
+  assert(CVXBLOCK == 1);
+
+  get_N_local(nlocal);
+  get_N_offset(offset);
+  nplane = le_get_nplane_local();
+
+  t = 1.0*get_step();
+  ndist = xblocklen_cv[0];
+
+  ndata = 2*ndist*nlocal[Y]*nlocal[Z];
+  send_buff = (double *) malloc(ndata*sizeof(double));
+  if (send_buff == NULL) fatal("malloc(send_buff) failed\n");
+
+  ndata = 2*ndist*(nlocal[Y] + 1)*nlocal[Z];
+  recv_buff = (double *) malloc(ndata*sizeof(double));
+  if (recv_buff == NULL) fatal("malloc(recv_buff) failed\n");
+
+  for (n = 0; n < nplane; n++) {
+
+    ic  = le_plane_location(n);
+
+    dy  = le_buffer_displacement(nhalo_, t);
+    dy  = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fr  = dy - jdy;
+
+    /* Starting y coordinate is j1: 1 <= j1 <= N_total.y */
+
+    jc = offset[Y] + 1;
+    j1 = 1 + (jc + jdy - 1 + 2*N_total(Y)) % N_total(Y);
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+
+    j1mod = 1 + (j1 - 1) % nlocal[Y];
+    n1 = (nlocal[Y] - j1mod + 1);
+    n2 = j1mod;
+
+    ndata1 = n1*nlocal[Z]*2*ndist;
+    ndata2 = n2*nlocal[Z]*2*ndist;
+
+    /* Post the receives */
+
+    MPI_Irecv(recv_buff, ndata1, MPI_DOUBLE, nrank_r[0], tag1, comm, req);
+    MPI_Irecv(recv_buff + ndata1, ndata2, MPI_DOUBLE, nrank_r[1], tag2,
+	      comm, req + 1);
+
+    /* Load the send buffer. Note that data at j1mod gets sent to both
+     * receivers, making up the total of (nlocal[Y] + 1) points */
+
+    ndata = 0;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	/* cv[p][X] = +1 identified by disp_fwd[] */
+	index = ADDR(ic, jc, kc);
+	for (p = 0; p < ndist; p++) {
+	  send_buff[ndata++] = site[index].f[xdisp_fwd_cv[0] + p];
+	}
+	for (p = 0; p < ndist; p++) {
+	  send_buff[ndata++] = site[index].g[xdisp_fwd_cv[0] + p];
+	}
+      }
+    }
+
+    ndata = ndata2 - nlocal[Z]*2*ndist;
+
+    MPI_Issend(send_buff + ndata, ndata1, MPI_DOUBLE, nrank_s[0], tag1,
+	       comm, req + 2);
+    MPI_Issend(send_buff,         ndata2, MPI_DOUBLE, nrank_s[1], tag2,
+	       comm, req + 3);
+
+    /* Wait for the receives, and sort out the interpolated values */
+
+    MPI_Waitall(2, req, status);
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = ADDR(ic, jc, kc);
+	ind0 = 2*ndist*((jc-1)*nlocal[Z] + (kc-1));
+	for (p = 0; p < ndist; p++) {
+	  ind1 = ind0 + p;
+	  ind2 = ind0 + 2*ndist*nlocal[Z] + p;
+	  site[index].f[xdisp_fwd_cv[0] + p] = (1.0 - fr)*recv_buff[ind1]
+	    + fr*recv_buff[ind2];
+	}
+	for (p = 0; p < ndist; p++) {
+	  ind1 = ind0 + ndist + p;
+	  ind2 = ind0 + 2*ndist*nlocal[Z] + ndist + p;
+	  site[index].g[xdisp_fwd_cv[0] + p] = (1.0 - fr)*recv_buff[ind1]
+	    + fr*recv_buff[ind2];
+	}
+      }
+    }
+
+    /* Finish the sends */
+    MPI_Waitall(2, req + 2, status);
+
+
+
+    /* NOW THE OTHER DIRECTION */
+
+    ic  = le_plane_location(n) + 1;
+
+    dy  = -le_buffer_displacement(nhalo_, t);
+    dy  = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fr  = dy - jdy;
+
+    /* Starting y coordinate (global address): range 1 <= j1 <= N_total.y */
+
+    jc = offset[Y] + 1;
+    j1 = 1 + (jc + jdy - 1 + 2*N_total(Y)) % N_total(Y);
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+
+    j1mod = 1 + (j1 - 1) % nlocal[Y];
+    n1 = (nlocal[Y] - j1mod + 1);
+    n2 = j1mod;
+
+    ndata1 = n1*nlocal[Z]*2*ndist;
+    ndata2 = n2*nlocal[Z]*2*ndist;
+
+    /* Post the receives */
+
+    MPI_Irecv(recv_buff, ndata1, MPI_DOUBLE, nrank_r[0], tag1, comm, req);
+    MPI_Irecv(recv_buff + ndata1, ndata2, MPI_DOUBLE, nrank_r[1], tag2,
+	      comm, req + 1);
+
+    /* Load the send buffer. Note that data at j1mod gets sent to both
+     * receivers, making up the total of (nlocal[Y] + 1) points */
+
+    ndata = 0;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	/* cv[p][X] = -1 identified by disp_fwd[] */
+	index = ADDR(ic, jc, kc);
+	for (p = 0; p < ndist; p++) {
+	  send_buff[ndata++] = site[index].f[xdisp_bwd_cv[0] + p];
+	}
+	for (p = 0; p < ndist; p++) {
+	  send_buff[ndata++] = site[index].g[xdisp_bwd_cv[0] + p];
+	}
+      }
+    }
+
+    ndata = ndata2 - nlocal[Z]*2*ndist;
+
+    MPI_Issend(send_buff + ndata, ndata1, MPI_DOUBLE, nrank_s[0], tag1,
+	       comm, req + 2);
+    MPI_Issend(send_buff,         ndata2, MPI_DOUBLE, nrank_s[1], tag2,
+	       comm, req + 3);
+
+    /* Wait for the receives, and interpolate from the buffer */
+
+    MPI_Waitall(2, req, status);
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = ADDR(ic, jc, kc);
+	ind0 = 2*ndist*((jc-1)*nlocal[Z] + (kc-1));
+	for (p = 0; p < ndist; p++) {
+	  ind1 = ind0 + p;
+	  ind2 = ind0 + 2*ndist*nlocal[Z] + p;
+	  site[index].f[xdisp_bwd_cv[0] + p] = (1.0 - fr)*recv_buff[ind1]
+	    + fr*recv_buff[ind2];
+	}
+	for (p = 0; p < ndist; p++) {
+	  ind1 = ind0 + ndist + p;
+	  ind2 = ind0 + 2*ndist*nlocal[Z] + ndist + p;
+	  site[index].g[xdisp_bwd_cv[0] + p] = (1.0 - fr)*recv_buff[ind1]
+	    + fr*recv_buff[ind2];
+	}
+      }
+    }
+
+    /* Mop up the sends */
+    MPI_Waitall(2, req + 2, status);
+  }
+
+  free(send_buff);
+  free(recv_buff);
 
   return;
 }
