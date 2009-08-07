@@ -298,21 +298,27 @@ if(BLUEHAAR!=1){
 
 
 
-   if(HEX3D == 1) {
+   if(HEX3DA == 1) {
 
-     Qxx[i][j][k]=amplitude*
-       (-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)+0.25*cos(q0*Lx/Lz*kc));
-     Qxy[i][j][k]=amplitude*
-       (-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc)+0.25*sin(q0*Lx/Lz*kc));
-     Qxz[i][j][k]=amplitude*
-       (sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
-     Qyy[i][j][k]=amplitude*
-       (-cos(2.0*q0*ic)-0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)-
-	0.25*cos(q0*Lx/Lz*kc));
-     Qyz[i][j][k]=amplitude*
-       (-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
+     Qxx[i][j][k]=amplitude*(-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)+0.25*cos(q0*Lx/Lz*kc));
+     Qxy[i][j][k]=amplitude*(-0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc)+0.25*sin(q0*Lx/Lz*kc));
+     Qxz[i][j][k]=amplitude*(sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
+     Qyy[i][j][k]=amplitude*(-cos(2.0*q0*ic)-0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)-0.25*cos(q0*Lx/Lz*kc));
+     Qyz[i][j][k]=amplitude*(-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
 
    }
+
+
+     if(HEX3DB == 1) {
+
+       Qxx[i][j][k]=amplitude*(1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)+0.25*cos(q0*Lx/Lz*kc));
+       Qxy[i][j][k]=amplitude*(0.5*sqrt(3.0)*sin(q0*ic)*sin(q0*sqrt(3.0)*jc)+0.25*sin(q0*Lx/Lz*kc));
+       Qxz[i][j][k]=amplitude*(-sqrt(3.0)*cos(q0*ic)*sin(q0*sqrt(3.0)*jc));
+       Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)+0.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)-0.25*cos(q0*Lx/Lz*kc));
+       Qyz[i][j][k]=amplitude*(sin(2.0*q0*ic)+sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
+
+     }
+
 
 
 	if (RANDOM == 1) {
