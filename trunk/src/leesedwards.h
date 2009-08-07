@@ -2,7 +2,7 @@
  *
  *  leesedwards.h
  *
- *  $Id: leesedwards.h,v 1.4 2009-03-27 17:09:13 kevin Exp $
+ *  $Id: leesedwards.h,v 1.5 2009-08-07 16:37:20 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,7 +33,10 @@ double    le_plane_uy_max(void);
 double    le_shear_rate(void);
 MPI_Comm  le_communicator(void);
 void      le_displacement_ranks(const double, int[2], int[2]);
+void      le_jstart_to_ranks(const int, int send[2], int recv[2]);
 void      le_set_oscillatory(const double);
+void      le_set_nplane_total(const int nplane);
+void      le_set_plane_uymax(const double uy);
 
 /* Address macro. For performance purposes, -DNDEBUG replaces
  * calls to ADDR, ie., le_site_index() with a macro, which requires that

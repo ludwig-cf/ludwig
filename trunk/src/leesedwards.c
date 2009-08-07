@@ -6,7 +6,7 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id: leesedwards.c,v 1.13 2009-03-27 17:09:13 kevin Exp $
+ *  $Id: leesedwards.c,v 1.14 2009-08-07 16:37:20 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -84,7 +84,7 @@ void le_init() {
   }
 
   initialised_ = 1;
-
+  ntotal = le_get_nplane_total();
 
   if (le_get_nplane_total() != 0) {
 
@@ -222,7 +222,7 @@ static void le_init_tables() {
      np = ib / (2*nhalo_);
      ip = le_plane_location(np);
 
-     /* This bit of logical chooses the first nhalo_ points of the
+     /* This bit of logic chooses the first nhalo_ points of the
       * buffer region for each plane as the 'downward' looking part */
 
      if ((ib - np*2*nhalo_) < nhalo_) {
@@ -328,6 +328,16 @@ static void le_checks(void) {
     fatal("LE_init(): wall at domain boundary\n");
   }
 
+  /* There's currently a glitch if total number of planes > 0 and
+   * < cart_size(X) */
+
+  nplane = le_get_nplane_total();
+
+  if (nplane > 1 && nplane < cart_size(X)) {
+    fatal("Internal Error: total number planes > cart_size(X)\n");
+  }
+
+  return;
 }
 
 /*****************************************************************************
@@ -588,6 +598,8 @@ MPI_Comm le_communicator() {
  *  For a given  displacement, work out which two ranks in the
  *  one-diemnsional LE communicator are required for communication.
  *
+ *  TO BE REPLACED BY le_jstart_to_ranks
+ *
  *****************************************************************************/
 
 void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
@@ -615,6 +627,43 @@ void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
   /* Send to ... */
 
   pe_carty1 = cart_coords(Y) - ((j1/nlocal[Y]) - cart_coords(Y));
+  pe_carty2 = pe_carty1 - 1;
+
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty1, send);
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty2, send + 1);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  le_jstart_to_ranks
+ *
+ *  For global period position j1, work out which ranks are to
+ *  receive messages, and which are to send from the current
+ *  process in order to grab translated information.
+ *
+ *****************************************************************************/
+
+void le_jstart_to_ranks(const int j1, int send[2], int recv[2]) {
+
+  int nlocal[3];
+  int pe_carty1, pe_carty2;
+
+  assert(initialised_);
+  get_N_local(nlocal);
+
+  /* Receive from ... */
+
+  pe_carty1 = (j1 - 1) / nlocal[Y];
+  pe_carty2 = pe_carty1 + 1;
+
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty1, recv);
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty2, recv + 1);
+
+  /* Send to ... */
+
+  pe_carty1 = cart_coords(Y) - (((j1 - 1)/nlocal[Y]) - cart_coords(Y));
   pe_carty2 = pe_carty1 - 1;
 
   MPI_Cart_rank(le_params_.le_comm, &pe_carty1, send);
@@ -680,4 +729,39 @@ int le_site_index(const int ic, const int jc, const int kc) {
     +                                                    nhalo_ + kc - 1;
 
   return index;
+}
+
+/*****************************************************************************
+ *
+ *  le_set_nplane_total
+ *
+ *  Called before init if called at all.
+ *
+ *****************************************************************************/
+
+void le_set_nplane_total(const int n) {
+
+  assert(initialised_ == 0);
+
+  if ( n > 0) {
+    nplane_total_ = n;
+  }
+  else {
+    fatal("Called le_set_plane_ntotal(%d)\n", n);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  le_set_plane_uymax
+ *
+ *****************************************************************************/
+
+void le_set_plane_uymax(const double uy) {
+
+  le_params_.uy_plane = uy;
+
+  return;
 }
