@@ -37,9 +37,12 @@
 #include "io_harness.h"
 #include "phi.h"
 #include "phi_stats.h"
+#include "blue_phase.h"
+#include "model_le.h"
 
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
+#include "stats_rheology.h"
 
 void set_block(void);
 
@@ -47,6 +50,7 @@ int main( int argc, char **argv )
 {
   char    filename[FILENAME_MAX];
   int     step = 0;
+  int     n;
 
   /* Initialise the following:
    *    - RealityGrid steering (if required)
@@ -82,7 +86,10 @@ int main( int argc, char **argv )
   init_free_energy();
 
   if (get_step() == 0) {
-    le_init_shear_profile();
+    n = 0;
+    RUN_get_int_parameter("LE_init_profile", &n);
+
+    if (n != 0) model_le_init_shear_profile();
   }
   else {
     if (phi_is_finite_difference()) {
@@ -97,6 +104,7 @@ int main( int argc, char **argv )
   TEST_statistics();
   TEST_momentum();
   phi_stats_print_stats();
+
 
   /* Main time stepping loop */
 
@@ -119,7 +127,7 @@ int main( int argc, char **argv )
     /* Collision stage */
     collide();
 
-    LE_apply_LEBC();
+    model_le_apply_boundary_conditions();
     halo_site();
 
     /* Colloid bounce-back applied between collision and
