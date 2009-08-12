@@ -546,17 +546,21 @@ void computeStressFreeEnergy(int n)
 // redshift: The lower threshold is set to 1e-9 as very small values cause a program crash
 
 //   if (REDSHIFT==1 && n>150000){
+
    if (REDSHIFT==1){
       rr_old=rr;
       rr=-0.5*one_gradient/two_gradient;
       if(fabs(rr)<1e-9){rr=rr_old;}
    }
+
+/*
    else{
      if(O2STRUCT) rr=0.91;
      if(O5STRUCT) rr=0.97;
      if(O8STRUCT) rr=0.82;
      if(O8MSTRUCT) rr=0.83;
    }
+*/
 
     /* Make sure this output comes from the process consistent with
      * the above MPI_Reduce */
