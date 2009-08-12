@@ -108,7 +108,19 @@ int main(int argc, char** argv)
   String logFileName("liquidCrystal.");
   logFileName.concat((int) numCase);
   logFileName.concat(".log");
-  ofstream logFile(logFileName.get(),ios::out);
+ 
+   ifstream testlogFile(logFileName.get());
+
+   if(testlogFile){
+      testlogFile.close();
+      ofstream logFile(logFileName.get(),ios::app);
+      if (myPE==0) logFile << "# new run" << endl;
+      logFile.close();
+   }
+
+  ofstream logFile(logFileName.get(),ios::app);
+
+if (myPE==0){
 
   logFile << Lx << "\t\t# Lx" << endl;
   logFile << Ly << "\t\t# Ly" << endl;
@@ -166,6 +178,7 @@ int main(int argc, char** argv)
   logFile << io_ngroups_ << "\t\t# number io groups (files)" << endl;
 
    logFile.close();
+}
 
   int n,graphstp,improv;
   double ****tmp;
@@ -206,14 +219,21 @@ int main(int argc, char** argv)
 
   reinit();
 
-/* truncating free energy file for new run */
 
    String fileName("fe.");
    fileName.concat((int) numCase);
    fileName.concat(".dat");
-   ofstream file(fileName.get(),ios::trunc);
-   file.close();
- 
+
+   ifstream testfile(fileName.get());
+
+   if(testfile){
+      testfile.close();
+      ofstream file(fileName.get(),ios::app);
+      if (myPE==0) file << "# new run" << endl;
+      file.close();
+   }
+
+
    lastFreeenergy=-1000000;
 
    if (REDSHIFT==1){
