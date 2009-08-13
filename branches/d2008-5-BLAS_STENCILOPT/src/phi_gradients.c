@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.5.6.3 2009-07-10 14:25:52 cevi_parker Exp $
+ *  $Id: phi_gradients.c,v 1.5.6.4 2009-08-13 14:46:39 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -445,6 +445,8 @@ static void phi_gradients_fluid() {
 
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
+
+
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
