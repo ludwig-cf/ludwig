@@ -6,7 +6,7 @@
 /***************************/
 
 //if(n==2000) startDroplet();
-//if(n==1500) startSlab();
+//if(n==200000) startSlab();
 
 /********************************/
 /* change parameters during run */
@@ -14,12 +14,12 @@
 
 // temperature-chirality quench 
 
-/*
+///*
 
 if(n==20000){
 
    gam=3.0;
-   Abulk=0.0069395656;
+   Abulk=0.0090639224;
 
 
    if(myPE==0){
@@ -34,7 +34,7 @@ if(n==20000){
    caz = (1.0+4./3.*kappa*kappa);
    tauc = 1.0/8.0*(1-4.0*kappa*kappa+pow(caz,1.5));
 
-*/
+//*/
 
 /*
 
