@@ -1,54 +1,54 @@
-128		% Lx  % cannot set = 1 without changing code
-128		% Ly
-128		% Lz 
-0		% Nstart
-250000		% Nmax
-0    		% GRAPHICS
-1500		% stepskip
-2		% itimprov
-0.000000   	% bodyforce
-0		% RANDOM - this seems to be unstable??
-0		% TWIST
-0		% O2STRUCT
-0		% O5STRUCT
-0		% O8STRUCT
-1               % O8MSTRUCT
-0		% HEXPLANAR
-0		% HEX3DA
-0		% HEX3DB
-0		% DTSTRUCT
-0		% BLUEHAAR
-0.01		% L1 first elastic constant 
-0.01		% L2 second elastic constant (with only L1, L2 splay=bend)
-8	        % numuc - number of unit cells along pitch direction
-1.0             % numhftwist - number of half twists in unit cell
-0.3		% Gamma, diffusion constant
-3.1764706       % gam, gam > 2.7 => nematic 
-1		% REDSHIFT
-1               % BACKFLOW
-1.0 		% phivr, coupling of hydrodynamics to order parameter
-1		% NOISE
-0.0		% noise_strength
-0.7 		% xi, related to effective aspect ratio, should be <= one
-2.5		% tau1, proportional to viscosity
-0.25		% tau2, magnitude of flow-induced diffusion
-0.0		% delVz, (voltage at z=Lz) - (voltage at z=0)
-41.4    	% epsa, dielectric anisotropy
-0.0 		% epsav, average dielectric constant
-0.0		% vwtp, top wall velocity
-0.0		% vwbt, bottom wall velocity;
-2.0             % bcstren  // amplitude of harmonic boundary potential
-0.0	 	% angztop: ang with z axis at top boundary
-0.0	 	% angzbot: ang with z axis at bottom boundary 
-0.0		% angxytop: ang with x at top boundary
-0.0		% angxybot: ang with x at bottom boundary
-0.014384711     	% strength of the bulk term: ABulk
-0.19		% threshold to define a defect
-1500	     	% OVDPrintInt
-100	     	% FePrintInt
-100000	     	% SigPrintFac
-349		% numCase
-4		% x proc decomp
-8		% y proc decomp
-4		% z proc decomp
-4		% file grouping
+128		# Lx
+128		# Ly
+128		# Lz
+0		# Nstart
+200000		# Nmax
+0		# GRAPHICS
+4000		# stepskip
+2		# itimprov
+0		# bodyforce
+0		# RANDOM
+0		# TWIST
+0		# O2STRUCT
+0		# O5STRUCT
+0		# O8STRUCT
+1		# O8MSTRUCT
+0		# HEXPLANAR
+0		# HEX3DA
+0		# HEX3DB
+0		# DTSTRUCT
+0		# BLUEHAAR
+0.01		# L1
+0.01		# L2
+8		# numuc
+1		# numhftwist
+0.3		# Gamma
+2.713567839	# gam
+1		# REDSHIFT
+1		# BACKFLOW
+1		# phivr
+0		# NOISE
+0.0		# noise_strength
+0.7		# xi
+2.5		# tau1
+0.25		# tau2
+0		# delVz
+41.4		# epsa
+0		# epsav
+0		# vwtp
+0		# vwbt
+2		# bcstren
+0		# angztop
+0		# angzbot
+0		# angxytop
+0		# angxybot
+0.1918018824	# Abulk
+0.19		# threshold
+4000		# OVDPrintInt
+50		# FePrintInt
+1000000		# SigPrintFac
+516		# numCase
+8		# x proc decomposition
+16		# y proc decomposition
+16		# z proc decomposition
+4		# number io groups (files)

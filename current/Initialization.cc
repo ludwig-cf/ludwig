@@ -389,16 +389,16 @@ void startDroplet(void)
 ///*
 // replace sites outside ROI
 
-	if ( (jc < (fracmin*Ly) )||( jc > (fracmax*Ly))||
-	     (ic < (fracmin*Lx) )||( ic > (fracmax*Lx))||
+	if ( (ic < (fracmin*Lx) )||( ic > (fracmax*Lx))||
+	     (jc < (fracmin*Ly) )||( jc > (fracmax*Ly))||
 	     (kc < (fracmin*Lz) )||( kc > (fracmax*Lz)) ) { 
 //*/
 
 /*
 // replace sites inside ROI
 
-	if ( (jc > (fracmin*Ly) )&&( jc < (fracmax*Ly)) &&
-	     (ic > (fracmin*Lx) )&&( ic < (fracmax*Lx)) &&
+	if ( (ic > (fracmin*Lx) )&&( ic < (fracmax*Lx)) &&
+	     (jc > (fracmin*Ly) )&&( jc < (fracmax*Ly)) &&
 	     (kc > (fracmin*Lz) )&&( kc < (fracmax*Lz)) ) {
 */
 
@@ -517,12 +517,12 @@ void startSlab(void)
 	jc = j - jy1 + joff;
 	kc = k - kz1 + koff;
 
-	fracmin = 0.25;
+	fracmin = 0.5;
 	fracmax = 1.0;
 
 	if ((jc > (fracmin*Ly)) && (jc < (fracmax*Ly))) {
 
-///*
+/*
 	  amplitude=(0.546-0.2723/2.0);
 
 	  // slab in cholesteric environment
@@ -546,7 +546,7 @@ void startSlab(void)
 
 
 	  }
-//*/
+*/
 
 	  //  slab in isotropic environment
 
@@ -557,6 +557,59 @@ void startSlab(void)
 	        Qxz[i][j][k]= 0.0;
 	        Qyz[i][j][k]= 0.0;
 	 */
+
+// BP slab 
+
+///*
+	if (O2STRUCT == 1) {
+
+	  amplitude=0.3; 
+
+	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*kc)-cos(2.0*q0*jc));
+	  Qxxinit[i][j][k]=Qxx[i][j][k];
+	  Qxy[i][j][k]=amplitude*sin(2.0*q0*kc);
+	  Qxyinit[i][j][k]=Qxy[i][j][k];
+	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
+
+	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)-cos(2.0*q0*kc));
+	  Qyyinit[i][j][k]=Qyy[i][j][k];
+	  Qyz[i][j][k]=amplitude*sin(2.0*q0*ic);
+ 	  Qyzinit[i][j][k]=Qyz[i][j][k];
+
+	 }
+
+
+
+	if ((O8STRUCT == 1) || (O8MSTRUCT == 1)) {
+
+	  if (O8MSTRUCT == 1) amplitude=-0.2; 
+
+	  Qxx[i][j][k]=amplitude*
+		(-2.0*cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc)+
+		 sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)+
+		 cos(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*jc));
+	  Qyy[i][j][k]=amplitude*
+	    (-2.0*sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*kc)+
+	     sin(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*ic)+
+	     cos(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*kc));
+	  Qxy[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc)-
+	     sin(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc));
+	  Qxz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*ic)*cos(sqrt(2.0)*q0*jc)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*kc)*sin(sqrt(2.0)*q0*jc)-
+	     cos(sqrt(2.0)*q0*ic)*sin(sqrt(2.0)*q0*kc));
+	  Qyz[i][j][k]=amplitude*
+	    (sqrt(2.0)*cos(sqrt(2.0)*q0*kc)*cos(sqrt(2.0)*q0*ic)+
+	     sqrt(2.0)*sin(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*ic)-
+	     sin(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc));
+
+	}
+
+// */
+
+
 
 	}
       }
