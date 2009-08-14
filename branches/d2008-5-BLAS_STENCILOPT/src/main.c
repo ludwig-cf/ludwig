@@ -38,24 +38,26 @@
 #include "io_harness.h"
 #include "phi.h"
 
+
 int print_free_energy_profile(void);
 void set_block(void);
 
+extern Site* site;
+extern Site* site_odd;
+extern Site* site_even;
+extern Site* site_pdt;
 
 int main( int argc, char **argv )
 {
   
+#ifdef BLOCKING
   /* check for valid arguments */
   if(argc != 4){
 
     printf("usage: Ludwig.exe filename xtiledpeth ytiledepth", argc);
     return -1;
   }
-
-  tk = atoi(argv[2]);
-  tj = atoi(argv[3]);
-
-  
+#endif
 
   char    filename[FILENAME_MAX];
   int     step = 0;
@@ -72,8 +74,13 @@ int main( int argc, char **argv )
 
   REGS_init();
   
+  /* related to partial 3-d tiling algorithm */
   
-  
+#ifdef BLOCKING
+  tk = atoi(argv[2]);
+  tj = atoi(argv[3]);
+#endif BLOCKING
+
   pe_init(argc, argv);
   if (argc > 1) {
     RUN_read_input_file(argv[1]);
@@ -119,7 +126,6 @@ int main( int argc, char **argv )
   TEST_momentum();
   phi_stats_print_stats();
 
-  
 
   /* Main time stepping loop */
 
@@ -140,11 +146,26 @@ int main( int argc, char **argv )
     wall_update();
 
     /* Collision stage */
+
+#ifdef _FUSED_
+    if((step-1)%2 ==0){
+
+	site = site_even;
+	site_pdt = site_odd;
+
+    }else{
+	site = site_odd;
+	site_pdt = site_even;
+    }
+    
+    
+#endif
+
     collide();
 
     LE_apply_LEBC();
     halo_site();
-
+    
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
 
@@ -158,10 +179,26 @@ int main( int argc, char **argv )
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions hold active f,g */
 
-    propagation();
+    propagation(); /* for dissertation all this does is collect the correct halo values into site(t+dt) planes */
+
+#endif
+
+
+/* ensures the  next time level is written to file rather than the current */ 
+#ifdef _FUSED_
+    if((step)%2 ==0){
+
+	site = site_even;
+	site_pdt = site_odd;
+
+    }else{
+	site = site_odd;
+	site_pdt = site_even;
+    }
 #endif
 
     TIMER_stop(TIMER_STEPS);
+ 
 
     /* Configuration dump */
 

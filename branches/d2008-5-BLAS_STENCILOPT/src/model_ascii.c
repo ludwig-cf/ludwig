@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model_ascii.c,v 1.1.4.3 2009-06-15 11:25:20 cevi_parker Exp $
+ *  $Id: model_ascii.c,v 1.1.4.3.2.1 2009-08-14 07:47:43 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,6 +35,9 @@ const double d_[3][3] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
 
 struct io_info_t * io_info_distribution_; 
 Site  * site;
+Site * site_odd; /* stores sites distributions for either current or (t+dt) time level used on odd iterations */
+Site * site_even; /* ... on even iterations */
+Site * site_pdt;
 
 static int nsites_ = 0;
 static int initialised_ = 0;
@@ -90,7 +93,10 @@ void init_site() {
 
   info("Requesting %d bytes for site data\n", nsites_*sizeof(Site));
 
-  site = (Site  *) calloc(nsites_, sizeof(Site));
+  site_odd = (Site  *) calloc(nsites_, sizeof(Site));
+  site_even = (Site *) calloc(nsites_, sizeof(Site));
+  site = site_even;
+  site_pdt = site_odd;
   if (site == NULL) fatal("calloc(site) failed\n");
 
   /* Set up the MPI Datatypes used for site, and its corresponding

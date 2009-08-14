@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.11 2009-07-01 13:15:57 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.11.2.1 2009-08-14 07:47:43 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -47,6 +47,7 @@
 
 
 extern Site * site;
+extern Site * site_pdt;
 
 /* Variables (not static) */
 
@@ -174,9 +175,14 @@ void MODEL_collide_multirelaxation() {
   const double* alpha = &_alpha;
   const double* beta = &_beta;
 
+  int ijk;
+  int xfac, yfac;
+
   TIMER_start(TIMER_COLLIDE);
 
   get_N_local(N);
+  yfac = (N[Z]+2*nhalo_);
+  xfac = (N[Y]+2*nhalo_)*yfac;
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
@@ -184,6 +190,7 @@ void MODEL_collide_multirelaxation() {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = get_site_index(ic, jc, kc);
+	ijk = index;
 
 	/* Compute all the mode */
 
@@ -281,6 +288,31 @@ void MODEL_collide_multirelaxation() {
 	/* Project post-collision modes back onto the distribution */
 
 	DGEMV(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy);
+
+#ifdef _FUSED_
+	/* propagate site distributions to neighboring site */
+
+	site_pdt[ijk].f[0] = site[ijk].f[0];
+	site_pdt[ijk+ (+1)*xfac + (+1)*yfac       ].f[1] = site[ijk].f[1];
+	site_pdt[ijk+ (+1)*xfac             + (+1)].f[2] = site[ijk].f[2];
+	site_pdt[ijk+ (+1)*xfac                   ].f[3] = site[ijk].f[3];
+	site_pdt[ijk+ (+1)*xfac             + (-1)].f[4] = site[ijk].f[4];
+	site_pdt[ijk+ (+1)*xfac + (-1)*yfac       ].f[5] = site[ijk].f[5];
+	site_pdt[ijk                        + (+1)].f[9] = site[ijk].f[9];
+	site_pdt[ijk            + (+1)*yfac + (+1)].f[6] = site[ijk].f[6];
+	site_pdt[ijk            + (+1)*yfac       ].f[7] = site[ijk].f[7];
+	site_pdt[ijk            + (+1)*yfac + (-1)].f[8] = site[ijk].f[8];
+	site_pdt[ijk                        + (-1)].f[10] = site[ijk].f[10];
+	site_pdt[ijk            + (-1)*yfac + (+1)].f[11] = site[ijk].f[11];
+	site_pdt[ijk            + (-1)*yfac       ].f[12] = site[ijk].f[12];
+	site_pdt[ijk            + (-1)*yfac + (-1)].f[13] = site[ijk].f[13];
+	site_pdt[ijk+ (-1)*xfac + (+1)*yfac       ].f[14] = site[ijk].f[14];
+	site_pdt[ijk+ (-1)*xfac             + (+1)].f[15] = site[ijk].f[15];
+	site_pdt[ijk+ (-1)*xfac                   ].f[16] = site[ijk].f[16];
+	site_pdt[ijk+ (-1)*xfac             + (-1)].f[17] = site[ijk].f[17];
+	site_pdt[ijk+ (-1)*xfac + (-1)*yfac       ].f[18] = site[ijk].f[18];
+
+#endif
 
 	/* Next site */
       }
@@ -381,20 +413,25 @@ void MODEL_collide_binary_lb() {
   const double* alpha = &_alpha;
   const double* beta = &_beta;
 
+  int ijk;
+  int xfac, yfac;
+
   TIMER_start(TIMER_COLLIDE);
 
   get_N_local(N);
+  yfac = (N[Z]+2*nhalo_);
+  xfac = (N[Y]+2*nhalo_)*yfac;
 
   mobility = phi_ch_get_mobility();
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
-
+  
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = get_site_index(ic, jc, kc);
-
+	ijk = index;
 	/* Compute all the modes */
 
 	DGEMV(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy);
@@ -544,6 +581,51 @@ void MODEL_collide_binary_lb() {
 
 	  site[index].g[p] = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
 	}
+
+	#ifdef _FUSED_
+	/* propagate site distributions to neighboring site */
+
+	site_pdt[ijk].f[0] = site[ijk].f[0];
+	site_pdt[ijk+ (+1)*xfac + (+1)*yfac       ].f[1] = site[ijk].f[1];
+	site_pdt[ijk+ (+1)*xfac             + (+1)].f[2] = site[ijk].f[2];
+	site_pdt[ijk+ (+1)*xfac                   ].f[3] = site[ijk].f[3];
+	site_pdt[ijk+ (+1)*xfac             + (-1)].f[4] = site[ijk].f[4];
+	site_pdt[ijk+ (+1)*xfac + (-1)*yfac       ].f[5] = site[ijk].f[5];
+	site_pdt[ijk                        + (+1)].f[9] = site[ijk].f[9];
+	site_pdt[ijk            + (+1)*yfac + (+1)].f[6] = site[ijk].f[6];
+	site_pdt[ijk            + (+1)*yfac       ].f[7] = site[ijk].f[7];
+	site_pdt[ijk            + (+1)*yfac + (-1)].f[8] = site[ijk].f[8];
+	site_pdt[ijk                        + (-1)].f[10] = site[ijk].f[10];
+	site_pdt[ijk            + (-1)*yfac + (+1)].f[11] = site[ijk].f[11];
+	site_pdt[ijk            + (-1)*yfac       ].f[12] = site[ijk].f[12];
+	site_pdt[ijk            + (-1)*yfac + (-1)].f[13] = site[ijk].f[13];
+	site_pdt[ijk+ (-1)*xfac + (+1)*yfac       ].f[14] = site[ijk].f[14];
+	site_pdt[ijk+ (-1)*xfac             + (+1)].f[15] = site[ijk].f[15];
+	site_pdt[ijk+ (-1)*xfac                   ].f[16] = site[ijk].f[16];
+	site_pdt[ijk+ (-1)*xfac             + (-1)].f[17] = site[ijk].f[17];
+	site_pdt[ijk+ (-1)*xfac + (-1)*yfac       ].f[18] = site[ijk].f[18];
+
+	site_pdt[ijk].g[0] = site[ijk].g[0];
+	site_pdt[ijk+ (+1)*xfac + (+1)*yfac       ].g[1] = site[ijk].g[1];
+	site_pdt[ijk+ (+1)*xfac             + (+1)].g[2] = site[ijk].g[2];
+	site_pdt[ijk+ (+1)*xfac                   ].g[3] = site[ijk].g[3];
+	site_pdt[ijk+ (+1)*xfac             + (-1)].g[4] = site[ijk].g[4];
+	site_pdt[ijk+ (+1)*xfac + (-1)*yfac       ].g[5] = site[ijk].g[5];
+	site_pdt[ijk                        + (+1)].g[9] = site[ijk].g[9];
+	site_pdt[ijk            + (+1)*yfac + (+1)].g[6] = site[ijk].g[6];
+	site_pdt[ijk            + (+1)*yfac       ].g[7] = site[ijk].g[7];
+	site_pdt[ijk            + (+1)*yfac + (-1)].g[8] = site[ijk].g[8];
+	site_pdt[ijk                        + (-1)].g[10] = site[ijk].g[10];
+	site_pdt[ijk            + (-1)*yfac + (+1)].g[11] = site[ijk].g[11];
+	site_pdt[ijk            + (-1)*yfac       ].g[12] = site[ijk].g[12];
+	site_pdt[ijk            + (-1)*yfac + (-1)].g[13] = site[ijk].g[13];
+	site_pdt[ijk+ (-1)*xfac + (+1)*yfac       ].g[14] = site[ijk].g[14];
+	site_pdt[ijk+ (-1)*xfac             + (+1)].g[15] = site[ijk].g[15];
+	site_pdt[ijk+ (-1)*xfac                   ].g[16] = site[ijk].g[16];
+	site_pdt[ijk+ (-1)*xfac             + (-1)].g[17] = site[ijk].g[17];
+	site_pdt[ijk+ (-1)*xfac + (-1)*yfac       ].g[18] = site[ijk].g[18];
+
+#endif
 
 	/* Next site */
       }

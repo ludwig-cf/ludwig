@@ -15,22 +15,29 @@ MACHINE = HecToR
 # binary or single fluid
 #SCHEME= single
 
-# chose whether to use got blas
-#GOTO = goto
+# chose whether to use goto blas
+GOTO = goto
+
+# to enable blocking
+#BLOCKING=YES
+
+# to enable fused collision and propagation (single fluid simulations only) 
+FUSED=YES
 ###########################################################################
+
 
 ifeq ($(MACHINE),HPCX)
 	CC=xlc_r
 	MPICC=mpcc_r
 	OPTS = -D_D3Q19_ 
-	CFLAGS=$(OPTS) -q64 -DPOWER_ESSL
+	CFLAGS=$(OPTS) -q64 -DPOWER_ESSL -DNDEBUG
 	LIBS= -lessl
 else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
 		MPICC=mpicc 
 		OPTS= -D_D3Q19_ -fastsse -Msafeptr -Minfo=all -Mautoinline
-		CFLAGS=$(OPTS) -DDEBUG -Minform=warn -DX86 -DBLOCKING
+		CFLAGS=$(OPTS) -DNDEBUG -Minform=warn -DX86
 		LIBS=  -lm -lacml -lpgftnrtl -lrt 
 
 	else
@@ -39,7 +46,7 @@ else
                         MPICC=cc
                         OPTS = -D_D3Q19_ -DNDEBUG
                         CFLAGS=$(OPTS) -O3 -OPT:Ofast -OPT:recip=ON -OPT:malloc_algorithm=1 -inline \
-			-INLINE:preempt=ON -march=auto -m64 -msse3 -LNO:simd=2 -DX86 -DBLOCKING
+			-INLINE:preempt=ON -march=auto -m64 -msse3 -LNO:simd=2 -DX86 
                         LIBS=   -lacml -lm
 
 		else
@@ -79,6 +86,14 @@ ifeq ($(SCHEME), single)
 	OPTS += -D_SINGLE_FLUID_
 else
 	OPTS += -D_BINARY_FLUID_
+
+	ifeq ($(BLOCKING), YES)
+		OPTS += -DBLOCKING
+	endif
+endif
+
+ifeq ($(FUSED), YES)
+	OPTS += -D_FUSED_
 endif
 
 ###########################################################################
