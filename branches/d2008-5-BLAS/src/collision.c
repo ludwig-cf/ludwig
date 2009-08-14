@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.12 2009-08-14 08:13:08 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.13 2009-08-14 09:38:55 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -397,7 +397,6 @@ void MODEL_collide_binary_lb() {
 	/* Compute all the modes */
 
 	DGEMV(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy);
-
 	
 	/* For convenience, write out the physical modes. */
 
@@ -492,6 +491,7 @@ void MODEL_collide_binary_lb() {
 	}
 
 	/* Project post-collision modes back onto the distribution */
+
 
 	DGEMV(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy);
 

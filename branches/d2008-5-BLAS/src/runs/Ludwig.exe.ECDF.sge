@@ -12,9 +12,9 @@
 
 #$ -N Ludwig.exe.sge
 #$ -cwd
-#$ -pe openmpi-smp8 16
-#$ -l h_rt=00:30:00
-
+#$ -pe openmpi-smp 16
+#$ -l h_rt=00:55:00
+#$ -R y
 # Initialise environment module
 
 . /etc/profile.d/modules.sh
@@ -25,9 +25,14 @@ module load openmpi/intel/64/1.2.5/tcp
 module load intel/icc/64
 module load intel/mkl/64/10.0.1.014
 
-export OMP_NUM_THREADS=8
-export MKL_NUM_THREADS=8
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
 
 # Run MPI program through Ethernet eth0
 
-mpirun --mca btl_tcp_if_include eth0 -np $NSLOTS ./LudwigB.exe
+for k in 16
+do
+echo $k
+mpirun --mca btl_tcp_if_include eth0 -np $k ./LudwigB.exe input8
+
+done

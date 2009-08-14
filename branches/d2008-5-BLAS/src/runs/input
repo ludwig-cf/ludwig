@@ -47,9 +47,15 @@ N_cycles 600
 #
 ##############################################################################
 
+<<<<<<< input
+
+size 16_16_16
+=======
 size 64_64_64
 #grid 2_2_2
+>>>>>>> 1.1.2.1.2.12
 
+#grid 4_2_2
 
 #for 8 procs keeping surface area constant (4 procs for above)
 #size 48_48_48 
