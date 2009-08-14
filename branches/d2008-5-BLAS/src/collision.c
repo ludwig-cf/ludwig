@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.11 2009-07-01 13:15:57 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.12 2009-08-14 08:13:08 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -44,7 +44,6 @@
 
 
 #include "gemm.h" /* cross portability header file for blas subroutines dgemm and dgemv */
-
 
 extern Site * site;
 
@@ -213,7 +212,7 @@ void MODEL_collide_multirelaxation() {
 
 	for (i = 0; i < 3; i++) {
 	  force[i] = (siteforce[i] + force_local[i]);
-	  u[i] = rrho*(u[i] + 0.5*force[i]);  
+	  u[i] = 235.23*rrho*(u[i] + 0.5*force[i]);  
 	}
 	hydrodynamics_set_velocity(index, u);
 
@@ -510,7 +509,6 @@ void MODEL_collide_binary_lb() {
 	    jphi[i] += site[index].g[p]*cv[p][i];
 	  }
 	}
-
 
 
 	/* Relax order parameters modes. See the comments above. */

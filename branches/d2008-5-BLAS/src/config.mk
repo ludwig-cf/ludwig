@@ -4,8 +4,8 @@
 ###########################################################################
 #choose appropriate HPC Machine.
 #
-#MACHINE = HPCX
-MACHINE = Ness
+MACHINE = HPCX
+#MACHINE = Ness
 #MACHINE = HecToR
 #MACHINE = ECDF
 
@@ -16,15 +16,15 @@ MACHINE = Ness
 #SCHEME= single
 
 # chose whether to use got blas
-GOTO = goto
+#GOTO = goto
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)
 	CC=xlc_r
 	MPICC=mpcc_r
 	OPTS = -D_D3Q19_ 
-	CFLAGS=$(OPTS) -q64 -DPOWER_ESSL
-	LIBS= -lessl
+	CFLAGS=$(OPTS) -q64 -O5 -qipa -DPOWER_ESSL -DNDEBUG
+	LIBS= -lessl -qipa -lm
 else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
@@ -67,7 +67,7 @@ ifeq ($(GOTO),goto)
                 LIBS= -lm -L./ -lgoto 
         endif
         ifeq ($(MACHINE),HPCX)
-                LIBS= libgoto_power5-r1.26.a -bmap:map -DPOWER_GOTO
+                LIBS= -lm libgoto_power5-r1.26.a -bmap:map -DPOWER_GOTO
         endif
         ifeq ($(MACHINE), HecToR)
                 LIBS= -lm -L./ -lgoto_barcelonap-r1.26
