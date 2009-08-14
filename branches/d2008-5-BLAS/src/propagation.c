@@ -4,7 +4,7 @@
  *
  *  Propagation schemes for the different models.
  *
- *  $Id: propagation.c,v 1.4.8.1 2009-08-14 09:38:55 cevi_parker Exp $
+ *  $Id: propagation.c,v 1.4.8.2 2009-08-14 09:41:01 cevi_parker Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -292,6 +292,7 @@ static void d3q19_propagate_single() {
  *
  *****************************************************************************/
 
+
 static void d3q19_propagate_binary() {
 
   int i, j, k, ijk;
@@ -338,13 +339,19 @@ static void d3q19_propagate_binary() {
 	site[ijk].f[1] = site[ijk + (-1)*xfac + (-1)*yfac       ].f[1];
 	site[ijk].g[1] = site[ijk + (-1)*xfac + (-1)*yfac       ].g[1];
 
+
+      }
+    }
+  }    
     
+  
 
   /* Backward moving distributions */
   
-  // for (i = 1; i <= N[X]; i++) {
-  // for (j = 1; j <= N[Y]; j++) {
-  //   for (k = 1; k <= N[Z]; k++) {
+   for (i = 1; i <= N[X]; i++) {
+       for (j = 1; j <= N[Y]; j++) {
+	   for (k = 1; k <= N[Z]; k++) {
+	
 
 	ijk = get_site_index(i, j, k);
 
@@ -381,5 +388,6 @@ static void d3q19_propagate_binary() {
 
   return;
 }
+
 
 #endif /* _D3Q19_ */

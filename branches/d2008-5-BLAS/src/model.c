@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.13 2009-04-15 10:51:14 kevin Exp $
+ *  $Id: model.c,v 1.13.4.1 2009-08-14 09:41:01 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -722,9 +722,10 @@ void halo_site() {
 	       tagf, comm, &request[3]);  
     MPI_Waitall(4, request, status);
   }
- 
-  TIMER_stop(TIMER_HALO_LATTICE);
 
+
+  TIMER_stop(TIMER_HALO_LATTICE);
+  
   return;
 }
 

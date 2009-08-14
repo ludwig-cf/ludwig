@@ -115,10 +115,13 @@ int main( int argc, char **argv )
 
     /* Collision stage */
     collide();
-
+   
+    
+  halo_site();
+  
     LE_apply_LEBC();
-    halo_site();
-
+   
+  
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
 
@@ -132,7 +135,7 @@ int main( int argc, char **argv )
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions hold active f,g */
 
-    propagation();
+     propagation();
 #endif
 
     TIMER_stop(TIMER_STEPS);

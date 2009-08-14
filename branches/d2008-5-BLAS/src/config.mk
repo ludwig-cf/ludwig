@@ -7,12 +7,17 @@
 
 #MACHINE = HPCX
 #MACHINE = Ness
+<<<<<<< config.mk
+MACHINE = HecToR
+#MACHINE = ECDF
+=======
 #MACHINE = HecToR
 MACHINE = ECDF
 
 
 # choose 'single' or 'binary' fluid scheme
 #SCHEME= single
+>>>>>>> 1.1.2.1.2.15
 
 # choose compiler suite for Hector Machine option
 #PRG_ENV=pgi
