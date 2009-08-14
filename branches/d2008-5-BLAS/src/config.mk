@@ -5,33 +5,26 @@
 #choose appropriate HPC Machine.
 #
 
-#MACHINE = HPCX
+MACHINE = HPCX
 #MACHINE = Ness
-<<<<<<< config.mk
-MACHINE = HecToR
-#MACHINE = ECDF
-=======
 #MACHINE = HecToR
-MACHINE = ECDF
+#MACHINE = ECDF
+
 
 
 # choose 'single' or 'binary' fluid scheme
 #SCHEME= single
->>>>>>> 1.1.2.1.2.15
-
-# choose compiler suite for Hector Machine option
-#PRG_ENV=pgi
 
 # chose whether to use got blas
-#GOTO = goto
+GOTO = goto
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)
 	CC=xlc_r
 	MPICC=mpcc_r
 	OPTS = -D_D3Q19_ 
-	CFLAGS=$(OPTS) -q64 -O5 -qipa -DPOWER_ESSL -DNDEBUG
-	LIBS= -lessl -qipa -lm
+	CFLAGS=$(OPTS) -q64 -O5 -qipa -DNDEBUG
+	LIBS= -lessl -qipa -lm -DPOWER_ESSL
 else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
