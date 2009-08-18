@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.8 2009-07-01 10:36:03 kevin Exp $
+ *  $Id: phi.c,v 1.9 2009-08-18 14:01:59 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -618,7 +618,8 @@ void phi_leesedwards_transformation() {
  *  phi_leesedwards_parallel
  *
  *  The Lees Edwards transformation requires a certain amount of
- *  communication in parallel.
+ *  communication in parallel. The phi halo regions must be
+ *  up-to-date here.
  *
  *  Each process may require communication with at most 4 others
  *  (and at least 2 others) to specify completely the interpolated
@@ -687,30 +688,39 @@ static void phi_leesedwards_parallel() {
     jdy = floor(dy);
     fr  = dy - jdy;
 
-    /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo_.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+    /* In the real system (no halos) the first point we require is
+     * j1 = jc - jdy - 1 with 
+     * jc = noffset[Y] + 1 in the global coordinates. This determines
+     * which processors we are going to comunicate with. Modular
+     * arithmetic ensures 1 <= j1 <= N_total(Y) */
 
-    jc = noffset[Y] + 1 - nhalo_;
+    jc = noffset[Y] + 1;
     j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    assert(j1 >= 1);
+    assert(j1 <= N_total(Y));
 
-    le_displacement_ranks(dy, nrank_r, nrank_s);
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
 
-    /* Local quantities: given a local starting index j2, we receive
-     * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position nhalo_. */
+    /* Local quantities: j2 is the position of j1 in local coordinates
+     * and marks the dividing line of the two send sections. However,
+     * we can grap at least nhalo_ points to the left of j2, and another
+     * nhalo_ points at the right to the other send section, making up
+     * the (nlocal[Y] + 2*nhalo_ + 1) points we need */
 
-    j2 = j1 % nlocal[Y];
+    j2 = 1 + (j1 - 1) % nlocal[Y];
+    assert(j2 >= 1);
+    assert(j2 <= nlocal[Y]);
 
-    n1 = (nlocal[Y] - j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
-    n2 = (j2 + nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+    n1 = (nlocal[Y] - j2 + 1 + nhalo_)*(nlocal[Z] + 2*nhalo_);
+    n2 = (j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
 
     /* Post receives, sends and wait. */
 
     MPI_Irecv(buffer,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(buffer+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
-    MPI_Issend(phi_site + ADDR(ic,j2,kc), n1, MPI_DOUBLE, nrank_s[0], tag0,
-	       le_comm, request+2);
-    MPI_Issend(phi_site + ADDR(ic,nhalo_,kc), n2, MPI_DOUBLE, nrank_s[1], tag1,
+    MPI_Issend(phi_site + ADDR(ic,j2-nhalo_,kc), n1, MPI_DOUBLE, nrank_s[0],
+	       tag0, le_comm, request+2);
+    MPI_Issend(phi_site + ADDR(ic,1,kc), n2, MPI_DOUBLE, nrank_s[1], tag1,
 	       le_comm, request+3);
 
     MPI_Waitall(4, request, status);
@@ -732,6 +742,7 @@ static void phi_leesedwards_parallel() {
 
   return;
 }
+
 
 /*****************************************************************************
  *
