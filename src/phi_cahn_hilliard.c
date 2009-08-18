@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.6 2009-07-27 13:48:34 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.7 2009-08-18 14:53:55 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -45,6 +45,8 @@ void phi_ch_diffusive_flux_surfactant(void);
 static void phi_ch_correct_fluxes_for_solid(void);
 static void phi_ch_update_forward_step(void);
 static void phi_ch_langmuir_hinshelwood(void);
+static void phi_ch_le_fix_fluxes(void);
+static void phi_ch_le_fix_fluxes_parallel(void);
 
 static double * mobility_;   /* Order parameter mobilities */
 static double   lh_kplus_;   /* Langmuir Hinshelwood adsorption rate */
@@ -119,6 +121,8 @@ void phi_cahn_hilliard() {
     if (solid_) phi_ch_correct_fluxes_for_solid();
   }
 
+
+  phi_ch_le_fix_fluxes();
   phi_ch_update_forward_step();
 
   free(fluxe);
@@ -572,6 +576,299 @@ static void phi_ch_langmuir_hinshelwood(void) {
       }
     }
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_le_fix_fluxes
+ *
+ *  Owing to the non-linear calculation for the fluxes,
+ *  the LE-interpolated phi field doesn't give a unique
+ *  east-west face flux.
+ *
+ *  This ensures uniqueness, by averaging the relevant
+ *  contributions from each side of the plane.
+ *
+ *****************************************************************************/
+
+static void phi_ch_le_fix_fluxes(void) {
+
+  int nlocal[3]; /* Local system size */
+  int ip;        /* Index of the plane */
+  int ic;        /* Index x location in real system */
+  int jc, kc, n;
+  int index, index1;
+  int nbuffer;
+
+  double dy;     /* Displacement for current plane */
+  double fr;     /* Fractional displacement */
+  double t;      /* Time */
+  double sum;
+  int jdy;       /* Integral part of displacement */
+  int j1, j2;    /* j values in real system to interpolate between */
+
+  double * bufferw;
+  double * buffere;
+
+  int get_step(void);
+
+  if (cart_size(Y) > 1) {
+    /* Parallel */
+    phi_ch_le_fix_fluxes_parallel();
+  }
+  else {
+    /* Can do it directly */
+
+    get_N_local(nlocal);
+
+    nbuffer = nlocal[Y]*nlocal[Z];
+    buffere = (double *) malloc(nop_*nbuffer*sizeof(double));
+    if (buffere == NULL) fatal("malloc(buffere) failed\n");
+    bufferw = (double *) malloc(nop_*nbuffer*sizeof(double));
+    if (bufferw == NULL) fatal("malloc(bufferw) failed\n");
+
+    for (ip = 0; ip < le_get_nplane_local(); ip++) {
+
+      /* -1.0 as zero required for first step; a 'feature' to
+       * maintain the regression tests */
+
+      t = 1.0*get_step() - 1.0;
+
+      ic = le_plane_location(ip);
+
+      /* Looking up */
+      dy = +t*le_plane_uy(t);
+      dy = fmod(dy, L(Y));
+      jdy = floor(dy);
+      fr  = dy - jdy;
+
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
+	j2 = 1 + j1 % nlocal[Y];
+
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+	  for (n = 0; n < nop_; n++) {
+	    index = nop_*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+	    bufferw[index] = fr*fluxw[nop_*ADDR(ic+1,j1,kc) + n]
+	      + (1.0-fr)*fluxw[nop_*ADDR(ic+1,j2,kc) + n];
+	  }
+	}
+      }
+
+
+      /* Looking down */
+
+      dy = -t*le_plane_uy(t);
+      dy = fmod(dy, L(Y));
+      jdy = floor(dy);
+      fr  = dy - jdy;
+
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
+	j2 = 1 + j1 % nlocal[Y];
+
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+	  for (n = 0; n < nop_; n++) {
+	    index = nop_*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+	    buffere[index] = fr*fluxe[nop_*ADDR(ic,j1,kc) + n]
+	      + (1.0-fr)*fluxe[nop_*ADDR(ic,j2,kc) + n];
+	  }
+	}
+      }
+
+      /* Now average the fluxes. */
+
+      sum = 0.0;
+
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+	  for (n = 0; n < nop_; n++) {
+	    index = nop_*ADDR(ic,jc,kc) + n;
+	    index1 = nop_*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+	    fluxe[index] = 0.5*(fluxe[index] + bufferw[index1]);
+	    sum += fluxe[index];
+	    index = nop_*ADDR(ic+1,jc,kc) + n;
+	    fluxw[index] = 0.5*(fluxw[index] + buffere[index1]);
+	    sum -= fluxw[index];
+	  }
+	}
+      }
+
+      assert(fabs(sum) < 1.0e-14);
+      /* Next plane */
+    }
+
+    free(bufferw);
+    free(buffere);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_le_fix_fluxes_parallel
+ *
+ *  Parallel version of the above, where we need to communicate to
+ *  get hold of the appropriate fluxes.
+ *
+ *****************************************************************************/
+
+static void phi_ch_le_fix_fluxes_parallel(void) {
+
+  int      nlocal[3];      /* Local system size */
+  int      noffset[3];     /* Local starting offset */
+  double * buffere;        /* Interpolation buffer */
+  double * bufferw;
+  int ip;                  /* Index of the plane */
+  int ic;                  /* Index x location in real system */
+  int jc, kc, j1, j2;
+  int n, n1, n2;
+  double dy;               /* Displacement for current transforamtion */
+  double fre, frw;         /* Fractional displacements */
+  double t;                /* Time */
+  int jdy;                 /* Integral part of displacement */
+
+  MPI_Comm le_comm = le_communicator();
+  int      nrank_s[2];     /* send ranks */
+  int      nrank_r[2];     /* recv ranks */
+  const int tag0 = 951254;
+  const int tag1 = 951255;
+
+  MPI_Request request[8];
+  MPI_Status  status[8];
+
+  int get_step(void);
+
+  assert(nop_ == 1); /* Code not general for nop_ > 1 */
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+
+  /* Allocate the temporary buffer */
+
+  n = (nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo_);
+  buffere = (double *) malloc(n*sizeof(double));
+  if (buffere == NULL) fatal("malloc(buffere) failed\n");
+  bufferw = (double *) malloc(n*sizeof(double));
+  if (bufferw == NULL) fatal("malloc(bufferw) failed\n");
+
+  /* -1.0 as zero required for fisrt step; this is a 'feature'
+   * to ensure the regression tests stay te same */
+
+  t = 1.0*get_step() - 1.0;
+
+  /* One round of communication for each plane */
+
+  for (ip = 0; ip < le_get_nplane_local(); ip++) {
+
+    ic = le_plane_location(ip);
+
+    /* Work out the displacement-dependent quantities */
+
+    dy = +t*le_plane_uy(t);
+    dy = fmod(dy, L(Y));
+    jdy = floor(dy);
+    frw  = dy - jdy;
+
+    /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+
+    jc = noffset[Y] + 1;
+    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    assert(j1 > 0);
+    assert(j1 <= N_total(Y));
+
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+
+    /* Local quantities: given a local starting index j2, we receive
+     * n1 + n2 sites into the buffer, and send n1 sites starting with
+     * j2, and the remaining n2 sites from starting position 1. */
+
+    j2 = 1 + (j1 - 1) % nlocal[Y];
+    assert(j2 > 0);
+    assert(j2 <= nlocal[Y]);
+
+    n1 = (nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
+    n2 = j2*(nlocal[Z] + 2*nhalo_);
+
+    /* Post receives, sends (the wait is later). */
+
+    MPI_Irecv(bufferw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(bufferw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
+	      request + 1);
+    MPI_Issend(fluxw + ADDR(ic+1,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0],
+	       tag0, le_comm, request + 2);
+    MPI_Issend(fluxw + ADDR(ic+1,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1],
+	       tag1, le_comm, request + 3);
+
+
+    /* OTHER WAY */
+
+    kc = 1 - nhalo_;
+
+    dy = -t*le_plane_uy(t);
+    dy = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fre  = dy - jdy;
+
+    /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+
+    jc = noffset[Y] + 1;
+    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+
+    /* Local quantities: given a local starting index j2, we receive
+     * n1 + n2 sites into the buffer, and send n1 sites starting with
+     * j2, and the remaining n2 sites from starting position nhalo_. */
+
+    j2 = 1 + (j1 - 1) % nlocal[Y];
+
+    n1 = (nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
+    n2 = j2*(nlocal[Z] + 2*nhalo_);
+
+    /* Post new receives, sends, and wait for whole lot to finish. */
+
+    MPI_Irecv(buffere,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm,
+	      request + 4);
+    MPI_Irecv(buffere+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
+	      request + 5);
+    MPI_Issend(fluxe + ADDR(ic,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0], tag0,
+	       le_comm, request + 6);
+    MPI_Issend(fluxe + ADDR(ic,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1], tag1,
+	       le_comm, request + 7);
+
+    MPI_Waitall(8, request, status);
+
+    /* Now we've done all the communication, we can update the fluxes
+     * using the average of the local value and interpolated buffer
+     * value. */
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo_);
+      j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo_);
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	fluxe[ADDR(ic,jc,kc)] = 0.5*(fluxe[ADDR(ic,jc,kc)]
+				     + frw*bufferw[j1 + kc+nhalo_-1]
+				     + (1.0-frw)*bufferw[j2 + kc+nhalo_-1]);
+
+	fluxw[ADDR(ic+1,jc,kc)] = 0.5*(fluxw[ADDR(ic+1,jc,kc)]
+				       + fre*buffere[j1 + kc+nhalo_-1]
+				       + (1.0-fre)*buffere[j2 + kc+nhalo_-1]);
+      }
+    }
+
+    /* Next plane */
+  }
+
+  free(bufferw);
+  free(buffere);
 
   return;
 }
