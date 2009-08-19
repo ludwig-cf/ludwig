@@ -1,5 +1,8 @@
 /*
- * This header file allows for practically all-platform (ibm, amd, intel, gotoblas, atlas) independent dgemm implementation
+ * This header file allows for practically all-platform (ibm, amd, intel, gotoblas) independent 
+ * dgemm/dgemv subroutine calls from code. 
+ * to use do not include vendor BLAS header files in your code. use DGEMV and DGEMM rather than dgemv and dgemm
+ * see dgemm and dgemv functions below to know whether to pass pointer or by value parameter to DGEMM and DGEMV
  */
 
 
