@@ -1,0 +1,53 @@
+#!/bin/bash
+#$ -cwd -V
+#$ -pe mpi 8
+#$ -l h_rt=01:00:00  
+#  This is a template submission script for MPI batch jobs on ness,
+#  called "mpibatch.sge". The batch system is Sun Grid Engine (SGE).
+#
+#  ** You do not need to change the contents of this file.           **
+#  ** You must simply ensure that it has the correct name.           **
+#  ** You can delete lines beginning '#' EXCEPT the first two lines. **
+#
+#  To submit an executable called "program" you should take a copy
+#  of this file and call the copy "program.sge", ie type:
+#
+#    cp mpibatch.sge program.sge
+#
+#  To run, for example, using 4 processes you should then type:
+#
+#    qsub -pe mpi 4 program.sge
+#
+#  The executable "program" will then be run on 4 processes, and all
+#  relevant output will be send to a file called "program.sge.oXXXXX"
+#  where XXXXX is the job identifier assigned by SGE. There will be
+#  three other files (extensions .e, .po and .pe) which you can ignore.
+# 
+#  Flags:
+#         -pe mpi n:  This is an MPI job requiring n processes, so run
+#                     it under the "mpi" Programming Environment (PE).
+#
+#  Timing information from the unix "time" command will also be appended.
+#  Most important is the "real" time which is the elapsed wallclock time.
+#
+#  In order for this to work properly you MUST have loaded the MPI
+#  environment prior to submission via: module load mpich
+#
+
+export OMP_NUM_THREADS=1
+
+MPIEXE=`basename $REQUEST .sge`
+
+echo "--------------------------------------------------"
+echo "Running MPI program <$MPIEXE> on" $NSLOTS "processes"
+echo "--------------------------------------------------"
+echo
+
+
+(time mpiexec -n $NSLOTS ./LudwigBG.exe) 2>&1
+
+echo
+echo "--------------------"
+echo "Finished MPI program"
+echo "--------------------"
+echo
