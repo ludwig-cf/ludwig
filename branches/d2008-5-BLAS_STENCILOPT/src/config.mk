@@ -9,20 +9,12 @@ MACHINE = Ness
 #MACHINE = HecToR
 #MACHINE = ECDF
 
-# choose compiler suite for Hector Machine option
-#PRG_ENV=pgi
-
 # binary or single fluid
 #SCHEME= single
-
-# chose whether to use goto blas
-GOTO = goto
 
 # to enable blocking
 BLOCKING=YES
 
-# to enable fused collision and propagation (single fluid simulations only) 
-#FUSED=YES
 ###########################################################################
 
 
