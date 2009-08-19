@@ -47,27 +47,9 @@ N_cycles 600
 #
 ##############################################################################
 
-<<<<<<< input
-<<<<<<< input
 
-size 32_32_32
-#grid 1_1_1
-=======
-=======
-<<<<<<< input
-
-size 16_16_16
-=======
->>>>>>> 1.1.2.1.2.13
 size 64_64_64
-#grid 2_2_2
->>>>>>> 1.1.2.1.2.12
-
-<<<<<<< input
->>>>>>> 1.1.2.1.2.12
-=======
-#grid 4_2_2
->>>>>>> 1.1.2.1.2.13
+#grid 1_1_1
 
 #for 8 procs keeping surface area constant (4 procs for above)
 #size 48_48_48 
@@ -268,11 +250,7 @@ boundary_speed_top    0.0
 
 freq_statistics 100
 freq_measure 700
-<<<<<<< input
-freq_config 300
-=======
-freq_config 700
->>>>>>> 1.1.2.1.2.12
+freq_config 600
 freq_phi    700
 freq_vel    700
 config_at_end no

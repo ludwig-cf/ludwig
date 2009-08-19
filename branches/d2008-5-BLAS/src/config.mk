@@ -1,5 +1,5 @@
 
-# apply appropriate compiler settings, may have to use gmake if make fails (stringency issues)
+# apply appropriate compiler settings, may have to use 'gmake' if 'make' fails (HPCx stringency issues)
 # 
 ###########################################################################
 #choose appropriate HPC Machine.
@@ -15,7 +15,9 @@ MACHINE = Ness
 #SCHEME= single
 
 # uncomment to use to goto blas, comment to use vendor. 
-GOTO = goto
+# (goto version requires compiled goto blas library, see  http://www.tacc.utexas.edu/research-development/tacc-projects/)
+
+#GOTO = goto
 ###########################################################################
 
 ifeq ($(MACHINE),HPCX)

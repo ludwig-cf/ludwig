@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.16.6.14 2009-08-14 09:41:01 cevi_parker Exp $
+ *  $Id: collision.c,v 1.16.6.15 2009-08-19 16:22:56 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -13,6 +13,7 @@
  *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
+
 
 #include <stdio.h>
 #include <math.h>
@@ -184,7 +185,7 @@ void MODEL_collide_multirelaxation() {
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = get_site_index(ic, jc, kc);
 
-	/* Compute all the mode */
+	/* Compute all the mode: recasted matrix vector multiplication */
 
 	DGEMV(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy);
 
@@ -277,7 +278,7 @@ void MODEL_collide_multirelaxation() {
 #endif
 	}
 
-	/* Project post-collision modes back onto the distribution */
+	/* Project post-collision modes back onto the distribution : recasted mat-vec multiplication*/
 
 	DGEMV(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy);
 
@@ -394,7 +395,7 @@ void MODEL_collide_binary_lb() {
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = get_site_index(ic, jc, kc);
 
-	/* Compute all the modes */
+	/* Compute all the modes: recasted mat-vec multiplication */
 
 	DGEMV(TransA, mdim, ndim, alpha, ma_, lda,site[index].f, incx, beta, mode, incy);
 	
@@ -491,8 +492,7 @@ void MODEL_collide_binary_lb() {
 #endif
 	}
 
-	/* Project post-collision modes back onto the distribution */
-
+	/* Project post-collision modes back onto the distribution : recasted mat-vec multiplication */
 
 	DGEMV(TransA, mdim, ndim, alpha, mi_, lda,mode, incx, beta, site[index].f, incy);
 
