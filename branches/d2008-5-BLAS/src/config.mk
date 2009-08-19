@@ -5,17 +5,16 @@
 #choose appropriate HPC Machine.
 #
 
-MACHINE = HPCX
-#MACHINE = Ness
+#MACHINE = HPCX
+MACHINE = Ness
 #MACHINE = HecToR
 #MACHINE = ECDF
 
 
-
-# choose 'single' or 'binary' fluid scheme
+# uncomment to use 'single fluid' scheme, comment to use  'binary fluid' scheme
 #SCHEME= single
 
-# chose whether to use got blas
+# uncomment to use to goto blas, comment to use vendor. 
 GOTO = goto
 ###########################################################################
 

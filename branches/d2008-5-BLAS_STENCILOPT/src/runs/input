@@ -31,7 +31,7 @@
 ###############################################################################
 
 
-N_cycles 600
+N_cycles 200
 
 #t_start 500
 #input_config config.out00000500
@@ -48,7 +48,7 @@ N_cycles 600
 ##############################################################################
 
 
-size 64_64_64
+size 12_12_12
 #grid 1_1_1
 
 #for 8 procs keeping surface area constant (4 procs for above)

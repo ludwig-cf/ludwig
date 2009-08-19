@@ -12,7 +12,7 @@ MACHINE = Ness
 # binary or single fluid
 #SCHEME= single
 
-# to enable blocking
+# to enable blocking/tiling
 BLOCKING=YES
 
 ###########################################################################

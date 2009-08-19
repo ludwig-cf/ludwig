@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.5.6.4 2009-08-13 14:46:39 cevi_parker Exp $
+ *  $Id: phi_gradients.c,v 1.5.6.5 2009-08-19 15:41:13 cevi_parker Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -13,6 +13,8 @@
  *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
+
+/* tiled order parameter kernel is named phi_gradients_fluid_riv(void) for Msc Dissertation */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -55,7 +57,7 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 static void phi_gradients_with_solid(void);
 static void phi_gradients_walls(void);
 static void phi_gradients_fluid(void);
-static void phi_gradients_fluid_riv(void);
+static void phi_gradients_fluid_riv(void); /* rivera tiled phi gradients fluid */
 static void phi_gradients_double_fluid(void);
 static void phi_gradients_leesedwards(void);
 

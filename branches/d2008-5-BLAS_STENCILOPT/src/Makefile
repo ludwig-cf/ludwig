@@ -68,7 +68,7 @@ mpi:
 #  Default rule for compilation in the current directory.
 #
 .c.o :
-	$(CC) $(CFLAGS) $(INC) -c $?
+	$(CC) $(CFLAGS) $(INC) $(LIBS) -c $?
 
 
 .PHONY : clean

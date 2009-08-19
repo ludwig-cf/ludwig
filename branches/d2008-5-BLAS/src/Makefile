@@ -3,7 +3,7 @@
 # Makefile for LUDWIG
 #
 ###############################################################################
-# retireve machine and run specific compile configuration 
+# retireve machine and run specific compile configuration, see config.mk for instructions!
 include config.mk
 
 ###############################################################################
