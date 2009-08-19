@@ -5,8 +5,8 @@
 #choose appropriate HPC Machine.
 #
 #MACHINE = HPCX
-#MACHINE = Ness
-MACHINE = HecToR
+MACHINE = Ness
+#MACHINE = HecToR
 #MACHINE = ECDF
 
 # choose compiler suite for Hector Machine option
@@ -19,19 +19,19 @@ MACHINE = HecToR
 GOTO = goto
 
 # to enable blocking
-#BLOCKING=YES
+BLOCKING=YES
 
 # to enable fused collision and propagation (single fluid simulations only) 
-FUSED=YES
+#FUSED=YES
 ###########################################################################
 
 
 ifeq ($(MACHINE),HPCX)
 	CC=xlc_r
 	MPICC=mpcc_r
-	OPTS = -D_D3Q19_ 
-	CFLAGS=$(OPTS) -q64 -DPOWER_ESSL -DNDEBUG
-	LIBS= -lessl
+	OPTS = -D_D3Q19_ -O5 -qipa
+	CFLAGS=$(OPTS) -q64 
+	LIBS= -lessl -DPOWER_ESSL -DNDEBUG
 else
 	ifeq ($(MACHINE),Ness)
 		CC=gcc
@@ -54,7 +54,7 @@ else
 				CC=gcc
 				MPICC=mpicc
 				OPTS = -D_D3Q19_ 
-				CFLAGS=$(OPTS) -DNDEBUG -fast -DX86
+				CFLAGS=$(OPTS) -DNDEBUG -fast -DX86 -axS -funroll-loops -ansi-alias -align -ipo -vec-report
 				LIBS= -L/exports/applications/apps/intel/mkl/10.0.1.014/lib/em64t/ \
 				 -lmkl_intel_lp64  -lmkl_sequential -lmkl_core  -lm 
 			else
