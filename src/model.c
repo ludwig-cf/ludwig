@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.16 2009-07-16 13:28:45 kevin Exp $
+ *  $Id: model.c,v 1.17 2009-08-20 16:26:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -593,6 +593,37 @@ void get_momentum_at_site(const int index, double rhou[ND]) {
   for (p = 0; p < NVEL; p++) {
     for (i = 0; i < ND; i++) {
       rhou[i] += site[index].f[p]*cv[p][i];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_get_stress_at_site
+ *
+ *  Return the (deviatoric) stress at index.
+ *
+ *****************************************************************************/
+
+void distribution_get_stress_at_site(int index, double s[ND][ND]) {
+
+  int p, ia, ib;
+
+  assert(index >= 0  && index < nsites_);
+
+  for (ia = 0; ia < ND; ia++) {
+    for (ib = 0; ib < ND; ib++) {
+      s[ia][ib] = 0.0;
+    }
+  }
+
+  for (p = 0; p < NVEL; p++) {
+    for (ia = 0; ia < ND; ia++) {
+      for (ib = 0; ib < ND; ib++) {
+	s[ia][ib] += site[index].f[p]*q_[p][ia][ib];
+      }
     }
   }
 
