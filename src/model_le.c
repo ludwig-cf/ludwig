@@ -8,7 +8,7 @@
  *  not u*(t-1) returned by le_get_displacement().
  *  This is for reasons of backwards compatability.
  *
- *  $Id: model_le.c,v 1.4 2009-08-07 16:53:16 kevin Exp $
+ *  $Id: model_le.c,v 1.5 2009-08-20 16:39:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -83,6 +83,17 @@ void model_le_apply_boundary_conditions(void) {
  *  This is the reprojection of the post collision distributions to
  *  take account of the velocity jump at the planes.
  *
+ *  We compute the moments, and then the change to the moments:
+ *
+ *     rho  -> rho (unchanged)
+ *     g_a  -> g_a +/- rho u^le_a
+ *     S_ab -> S_ab +/- rho u_a u^le_b +/- rho u_b u^le_a + rho u^le_a u^le_b
+ *
+ *  with analogous expressions for order parameter moments.
+ * 
+ *  The change to the distribution is then computed by a reprojection
+ *  assuming the ghost modes are zero.
+ * 	    	  
  *****************************************************************************/
 
 static void le_reproject(void) {
@@ -131,14 +142,7 @@ static void le_reproject(void) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  
 	  index = ADDR(ic, jc, kc);
-	    	  
-	  /* For fi: M0 = rho; M1 = rho.u[]; M2 = s[][] */
-	  /* Corrected expressions for Lees-Edwards are as follows: */
-	  /* M0   -> M0 */
-	  /* M1i  -> M1i + u_LE_i*M0 */
-	  /* M2ij -> M2ij + u_LE_i*M1j + u_LE_j*M1i + u_LE_i.u_LE_j*M0 */
-	  /* (where u_LE[X]=u_LE[Z]=0; u_LE[Y] = plane speed uy) */
-	  
+
 	  /* Compute 0th and 1st moments */
 
 	  rho = site[index].f[0];
@@ -166,9 +170,6 @@ static void le_reproject(void) {
 	  du[Y] = LE_vel; 
 	  djphi[Y] = phi*LE_vel;
  
-	  /* Include correction for Lees-Edwards BC: first for the stress */
-	  /* NOTE: use the original u.y and jphi[1], i.e., befoer LE fix */
-
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      ds[ia][ib] = rho*(u[ia]*du[ib] + du[ia]*u[ib] + du[ia]*du[ib]);
