@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.18 2009-07-28 11:37:02 kevin Exp $
+ *  $Id: test.c,v 1.19 2009-08-20 16:30:04 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,7 +28,6 @@
 #include "leesedwards.h"
 #include "test.h"
 
-
 extern Site * site;
 
 /*****************************************************************************
@@ -48,7 +47,7 @@ void TEST_statistics() {
   double rhosum, phisum;
   double phibar, rhobar;
   double phivar, rhovar;
-  double rho, phi;
+  double rho;
   double rfluid;
   double partsum[3], partmin[2], partmax[2];
 
@@ -73,7 +72,6 @@ void TEST_statistics() {
   partmax[1] = -1.0;     /* phi_max */
   phivar     =  0.0;
 
-  phi_compute_phi_site();
 
   /* Accumulate the sums, minima, and maxima */
 
@@ -93,11 +91,6 @@ void TEST_statistics() {
 	if (rho < partmin[0]) partmin[0] = rho;
 	if (rho > partmax[0]) partmax[0] = rho;
 	partsum[0] += rho;
-
-	phi = phi_get_phi_site(index);
-	if (phi < partmin[1]) partmin[1] = phi;
-	if (phi > partmax[1]) partmax[1] = phi;
-	partsum[1] += phi;
 
 	partsum[2] += 1.0;
       }
@@ -138,10 +131,6 @@ void TEST_statistics() {
 	  rho += site[index].f[p];
 	}
 
-	phi = phi_get_phi_site(index);
-	partsum[0] += (rho - rhobar)*(rho - rhobar);
-	partsum[1] += (phi - phibar)*(phi - phibar);
-
       }
     }
   }
@@ -167,8 +156,6 @@ void TEST_statistics() {
   info("\nTEST_statistics [total, mean, variance, min, max]\n");
   info("[rho][%.8g, %.8g, %.8g, %.8g, %.8g]\n", rhosum, rhobar, rhovar,
        partmin[0], partmax[0]);
-  info("[phi][%.8g, %.8g, %.8g, %.8g, %.8g]\n", phisum, phibar, phivar,
-       partmin[1], partmax[1]);
 
   return;
 }
