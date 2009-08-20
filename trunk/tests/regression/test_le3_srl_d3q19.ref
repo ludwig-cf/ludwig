@@ -1,0 +1,100 @@
+Welcome to Ludwig (Serial version running on 1 process)
+
+Read 63 user parameters from input
+[User   ] Lattice size is (64, 64, 64)
+[User   ] periodic boundaries set to (1, 1, 1)
+[Default] Processor decomposition is (1, 1, 1)
+Cartesian Communicator:
+Periodic = (1, 1, 1)
+Reorder is true
+[Compute] local domain as (64, 64, 64)
+[User   ] Random number seed: -7361237
+
+External gravitational force
+[User   ] gravity = 0 0 0
+
+Model physics:
+Shear viscosity: 0.100000
+Relaxation time: 0.800000
+Bulk viscosity : 0.100000
+Relaxation time: 0.800000
+Isothermal kT:   0.000021
+
+Ghost modes
+[User   ] Ghost modes have been switched off.
+[Default] Ghost mode relaxation time: 1.000000
+
+
+Lees-Edwards boundary conditions are active:
+LE plane 1 is at x = 16 with speed 0.050000
+LE plane 2 is at x = 48 with speed 0.050000
+Overall shear rate = 0.001563
+The lattice Boltzmann model is D3Q19
+Requesting 95587328 bytes for site data
+Switching order parameter to finite difference
+Using third order upwind
+
+Order parameter mobility M: 0.150000
+[Boundary links: 0 (0 bytes)]
+[User   ] Free energy: symmetric
+
+Symmetric phi^4 free energy:
+Bulk parameter A      = -0.062500
+Bulk parameter B      = 0.062500
+Surface penalty kappa = 0.040000
+Surface tension       = 0.047140
+Interfacial width     = 1.131371
+Initialising shear profile
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][262144, 1, 0, 1, 1]
+
+TEST_momentum [x, y, z]
+[total][4.54557e-13, 2.2022e-13, 0]
+[fluid][4.54557e-13, 2.2022e-13, 0]
+[phi]  6.9259365e+00  2.6420351e-05 8.3281808e-04 -4.9999901e-02 4.9999855e-02
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+200  47728.6 59690.7 47396.9 46039.7   47693 62052.3 -1.22462 -0.934429
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][262144, 1, 0, 0.99997932, 1.0000443]
+
+TEST_momentum [x, y, z]
+[total][9.35807e-13, -0.000238726, -2.12528e-13]
+[fluid][9.35807e-13, -0.000238726, -2.12528e-13]
+Velocity stats:
+[ umin ][ -3.74738e-05 -0.0242409 -2.49961e-05 ]
+[ umax ][ 2.63871e-05 0.0242375 2.58662e-05 ]
+[phi]  6.9259365e+00  2.6420351e-05 1.1629994e-04 -4.3645450e-02 4.9086035e-02
+
+Completed cycle 200
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+400  15172.4 21662.2 15195.5 14184.5 15213.7 24008.4 -1.16602 -0.333042
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][262144, 1, 0, 0.99995394, 1.0001598]
+
+TEST_momentum [x, y, z]
+[total][9.05141e-13, 1.90026e-05, -3.44259e-13]
+[fluid][9.05141e-13, 1.90026e-05, -3.44259e-13]
+Velocity stats:
+[ umin ][ -0.000101123 -0.0242726 -9.25073e-05 ]
+[ umax ][ 8.22919e-05 0.024275 8.21839e-05 ]
+[phi]  6.9259365e+00  2.6420351e-05 3.6276136e-04 -7.8615391e-02 8.6848118e-02
+
+Completed cycle 400
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:    310.240    310.240    310.240 310.240000 (1 call)
+      Time step loop:      0.760      0.820    309.460   0.773650 (400 calls)
+         Propagation:      0.110      0.120     46.730   0.116825 (400 calls)
+           Collision:      0.340      0.350    137.260   0.343150 (400 calls)
+       Lattice halos:      0.000      0.010      4.140   0.005175 (800 calls)
+       phi gradients:      0.070      0.090     31.780   0.079450 (400 calls)
+     Lees Edwards BC:      0.010      0.020      4.650   0.011625 (400 calls)
+Ludwig finished normally.
