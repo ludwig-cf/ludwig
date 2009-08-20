@@ -2,7 +2,7 @@
  *
  *  phi.h
  *
- *  $Id: phi.h,v 1.5 2009-07-01 10:36:03 kevin Exp $
+ *  $Id: phi.h,v 1.6 2009-08-20 16:29:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -18,7 +18,6 @@
 void phi_init(void);
 void phi_finish(void);
 void phi_halo(void);
-void phi_compute_phi_site(void);
  
 double phi_get_phi_site(const int);
 void   phi_set_phi_site(const int, const double);

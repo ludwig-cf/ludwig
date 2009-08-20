@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.9 2009-08-18 14:01:59 kevin Exp $
+ *  $Id: phi.c,v 1.10 2009-08-20 16:29:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,9 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
 #include "control.h"
-#include "site_map.h"
 #include "io_harness.h"
 #include "leesedwards.h"
 #include "timer.h"
@@ -184,43 +182,6 @@ void phi_finish() {
   free(delsq_delsq_phi_site);
 
   initialised_ = 0;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_compute_phi_sites 
- *
- *  Recompute the value of the order parameter at all the current
- *  fluid sites (domain proper).
- *
- *  This couples the scalar order parameter phi to the LB distribution
- *  in the case of binary LB. This dependency on model.h and site_map.h
- *  could (should) be removed to a separate file ('coupler').
- *
- *****************************************************************************/
-
-void phi_compute_phi_site() {
-
-  int     ic, jc, kc, index;
-  int     nlocal[3];
-
-  assert(initialised_);
-  if (phi_finite_difference_) return;
-
-  get_N_local(nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = le_site_index(ic, jc, kc);
-	phi_site[nop_*index] = get_phi_at_site(index);
-      }
-    }
-  }
 
   return;
 }

@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.6 2009-03-31 10:20:13 kevin Exp $
+ *  $Id: phi_stats.c,v 1.7 2009-08-20 16:29:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,77 +21,10 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "phi.h"
-#include "phi_stats.h"
-
-/* Set phi function should move to 'coupler' */
 #include "site_map.h"
-#include "model.h"
-
-/*****************************************************************************
- *
- *  phi_set_mean_phi
- *
- *  Compute the current mean phi in the system and remove the excess
- *  so that the mean phi is phi_global (allowing for presence of any
- *  particles or, for that matter, other solids).
- *
- *  The value of phi_global is generally (but not necessilarily) zero.
- *
- *****************************************************************************/
-
-void phi_set_mean_phi(double phi_global) {
-
-  int      index, ic, jc, kc;
-  int      nlocal[3];
-  double   phi_local = 0.0, phi_total, phi_correction;
-  double   vlocal = 0.0, vtotal;
-  MPI_Comm comm = cart_comm();
-
-  get_N_local(nlocal);
-
-  /* Compute the mean phi in the domain proper */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = get_site_index(ic, jc, kc);
-	phi_local += get_phi_at_site(index);
-	vlocal += 1.0;
-      }
-    }
-  }
-
-  /* All processes need the total phi, and number of fluid sites
-   * to compute the mean */
-
-  MPI_Allreduce(&phi_local, &phi_total, 1, MPI_DOUBLE, MPI_SUM, comm);
-  MPI_Allreduce(&vlocal, &vtotal,   1, MPI_DOUBLE,    MPI_SUM, comm);
-
-  /* The correction requied at each fluid site is then ... */
-  phi_correction = phi_global - phi_total / vtotal;
-
-  /* The correction is added to the rest distribution g[0],
-   * which should be good approximation to where it should
-   * all end up if there were a full reprojection. */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	if (site_map_get_status(ic, jc, kc) == FLUID) {
-	  index = get_site_index(ic, jc, kc);
-	  phi_local = get_g_at_site(index, 0) + phi_correction;
-	  set_g_at_site(index, 0,  phi_local);
-	}
-      }
-    }
-  }
-
-  return;
-}
+#include "phi.h"
+#include "phi_lb_coupler.h"
+#include "phi_stats.h"
 
 /*****************************************************************************
  *
@@ -109,6 +42,11 @@ void phi_stats_print_stats() {
   double   phi0, phi1;
   double * phi_local;
   double * phi_total;
+
+  /* This is required to update phi_site[] when full LB is active */
+  phi_compute_phi_site();
+
+  /* Stats: */
 
   phi_local = (double *) malloc(5*nop_*sizeof(double));
   phi_total = (double *) malloc(5*nop_*sizeof(double));
@@ -131,6 +69,7 @@ void phi_stats_print_stats() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
+	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = get_site_index(ic, jc, kc);
 
 	for (n = 0; n < nop_; n++) {
