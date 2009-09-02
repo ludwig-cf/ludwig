@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.8 2009-07-27 08:58:31 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.9 2009-09-02 07:53:06 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -50,6 +50,7 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 
 static void phi_gradients_with_solid(void);
 static void phi_gradients_walls(void);
+static void phi_solid_walls(void);
 static void phi_gradients_fluid(void);
 static void phi_gradients_leesedwards(void);
 static void (* phi_gradient_function)(void) = phi_gradients_fluid;
@@ -70,6 +71,7 @@ static void phi_gradients_double_fluid_inline(void);
 void phi_gradients_set_fluid() {
 
   phi_gradient_function = phi_gradients_fluid;
+
   return;
 }
 
@@ -84,6 +86,8 @@ void phi_gradients_set_fluid() {
 void phi_gradients_set_solid() {
 
   phi_gradient_function = phi_gradients_with_solid;
+  info("Set phi gradient function to fluid/solid version\n");
+
   return;
 }
 
@@ -106,7 +110,10 @@ void phi_gradients_compute() {
 
   /* Non-periodic x-direction requires corrections */
 
-  if (!is_periodic(X)) phi_gradients_walls();
+  if (!is_periodic(X)) {
+    phi_gradients_walls();
+    phi_solid_walls();
+  }
 
   /* Brazovskii requires gradients up to nabla^2(\nabla^2) phi */
   /* There also needs to be the appropriate correction if LE is required */
@@ -360,6 +367,58 @@ static void phi_gradients_walls() {
 	  }
 	}
 	/* Next site */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_solid_walls
+ *
+ *  This copies the order parameter values at sites adjacent to
+ *  walls into the halo region. This is to allow FD advective fluxes
+ *  to be computed regardless of the presence of solid.
+ *
+ ****************************************************************************/
+
+void phi_solid_walls(void) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int n;
+
+  get_N_local(nlocal);
+
+  if (cart_coords(X) == 0) {
+    ic = 1;
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = le_site_index(ic, jc, kc);
+
+	for (n = 0; n < nop_; n++) {
+	  phi_site[nop_*ADDR(ic-1, jc, kc) + n] = phi_site[nop_*index + n];
+	}
+      }
+    }
+  }
+
+  if (cart_coords(X) == cart_size(X) - 1) {
+
+    ic = nlocal[X];
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = le_site_index(ic, jc, kc);
+
+	for (n = 0; n < nop_; n++) {
+	  phi_site[nop_*ADDR(ic+1, jc, kc) + n] = phi_site[nop_*index + n];
+	}
       }
     }
   }
