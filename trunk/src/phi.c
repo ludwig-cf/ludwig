@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.10 2009-08-20 16:29:05 kevin Exp $
+ *  $Id: phi.c,v 1.11 2009-09-02 07:47:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -624,7 +624,7 @@ static void phi_leesedwards_parallel() {
 
   /* Allocate the temporary buffer */
 
-  n = (nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+  n = nop_*(nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
   buffer = (double *) malloc(n*sizeof(double));
   if (buffer == NULL) fatal("malloc(buffer) failed\n");
 
@@ -636,8 +636,6 @@ static void phi_leesedwards_parallel() {
   /* One round of communication for each buffer plane */
 
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
-
-    assert(nop_ == 1); /* Code not general for nop_ > 1 */
 
     ic = le_index_buffer_to_real(ib);
     kc = 1 - nhalo_;
@@ -664,25 +662,25 @@ static void phi_leesedwards_parallel() {
 
     /* Local quantities: j2 is the position of j1 in local coordinates
      * and marks the dividing line of the two send sections. However,
-     * we can grap at least nhalo_ points to the left of j2, and another
+     * we can grab at least nhalo_ points to the left of j2, and another
      * nhalo_ points at the right to the other send section, making up
-     * the (nlocal[Y] + 2*nhalo_ + 1) points we need */
+     * the (nlocal[Y] + 2*nhalo_ + 1) points we need to send. */
 
     j2 = 1 + (j1 - 1) % nlocal[Y];
     assert(j2 >= 1);
     assert(j2 <= nlocal[Y]);
 
-    n1 = (nlocal[Y] - j2 + 1 + nhalo_)*(nlocal[Z] + 2*nhalo_);
-    n2 = (j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
+    n1 = nop_*(nlocal[Y] - j2 + 1 + nhalo_)*(nlocal[Z] + 2*nhalo_);
+    n2 = nop_*(j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
 
     /* Post receives, sends and wait. */
 
     MPI_Irecv(buffer,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(buffer+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
-    MPI_Issend(phi_site + ADDR(ic,j2-nhalo_,kc), n1, MPI_DOUBLE, nrank_s[0],
-	       tag0, le_comm, request+2);
-    MPI_Issend(phi_site + ADDR(ic,1,kc), n2, MPI_DOUBLE, nrank_s[1], tag1,
-	       le_comm, request+3);
+    MPI_Issend(phi_site + nop_*ADDR(ic,j2-nhalo_,kc), n1, MPI_DOUBLE,
+	       nrank_s[0], tag0, le_comm, request+2);
+    MPI_Issend(phi_site + nop_*ADDR(ic,1,kc), n2, MPI_DOUBLE,
+	       nrank_s[1], tag1, le_comm, request+3);
 
     MPI_Waitall(4, request, status);
 
@@ -693,8 +691,11 @@ static void phi_leesedwards_parallel() {
       j1 = (jc + nhalo_ - 1    )*(nlocal[Z] + 2*nhalo_);
       j2 = (jc + nhalo_ - 1 + 1)*(nlocal[Z] + 2*nhalo_);
       for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
-	phi_site[ADDR(ib0+ib,jc,kc)] =
-	  fr*buffer[j1 + kc+nhalo_-1] + (1.0-fr)*buffer[j2 + kc+nhalo_-1];
+	for (n = 0; n < nop_; n++) {
+	  phi_site[nop_*ADDR(ib0+ib,jc,kc) + n]
+	    = fr*buffer[nop_*(j1 + kc+nhalo_-1) + n]
+	    + (1.0-fr)*buffer[nop_*(j2 + kc+nhalo_-1) + n];
+	}
       }
     }
   }
