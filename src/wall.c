@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.10 2008-11-14 14:25:16 kevin Exp $
+ *  $Id: wall.c,v 1.11 2009-09-02 07:55:19 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -43,6 +43,7 @@ struct B_link_struct {
 static int nalloc_links_ = 0;       /* Current number of links allocated */
 static B_link * link_list_ = NULL;  /* Boundary links. */
 static int is_boundary_wall_ = 0;   /* Any boundaries present? */
+static double fnet_[3];             /* Accumulated net force on walls */
 
 static B_link * allocate_link(void);
 static void     init_links(void);
@@ -74,6 +75,10 @@ void wall_init() {
   if (is_boundary_wall_) init_boundary_speeds(ux_bottom, ux_top);
 
   report_boundary_memory();
+
+  fnet_[X] = 0.0;
+  fnet_[Y] = 0.0;
+  fnet_[Z] = 0.0;
 
   return;
 }
@@ -139,9 +144,10 @@ void wall_finish() {
 void wall_bounce_back() {
 
   B_link * p_link;
-  int      i, j, ij, ji;
+  int      i, j, ij, ji, ia;
   double   rho, cdotu;
   double   fp;
+  double   force;
 
   p_link = link_list_;
 
@@ -154,7 +160,9 @@ void wall_bounce_back() {
 
     rho = get_rho_at_site(i);
     cdotu = cv[ij][X]*p_link->ux;
-    fp = get_f_at_site(i, ij) - 2.0*rcs2*wv[ij]*rho*cdotu;
+    fp = get_f_at_site(i, ij);
+    force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+    fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
     set_f_at_site(j, ji, fp);
 
 #ifdef _SINGLE_FLUID_
@@ -164,6 +172,10 @@ void wall_bounce_back() {
     fp = get_g_at_site(i, ij) - 2.0*rcs2*wv[ij]*rho*cdotu;
     set_g_at_site(j, ji, fp);
 #endif
+
+    for (ia = 0; ia < 3; ia++) {
+      fnet_[ia] += force*cv[ij][ia];
+    }
 
     p_link = p_link->next;
   }
@@ -372,6 +384,44 @@ static void set_wall_velocity() {
 
     p_link = p_link->next;
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  wall_accumulate_force
+ *
+ *  Add a contribution to the force on the walls. This is for accounting
+ *  purposes only. There is no physical consequence.
+ *
+ *****************************************************************************/
+
+void wall_accumulate_force(const double f[3]) {
+
+  int ia;
+
+  for (ia = 0; ia < 3; ia++) {
+    fnet_[ia] += f[ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  wall_force
+ *
+ *  Get the accumulated force on the walls.
+ *
+ *****************************************************************************/
+
+void wall_force(void) {
+
+  double force[3];
+
+  MPI_Reduce(fnet_, force, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  info("Wall net: %18.10e %18.10e %18.10e\n", force[X], force[Y], force[Z]);
 
   return;
 }
