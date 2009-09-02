@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.7 2009-08-18 14:53:55 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.8 2009-09-02 07:47:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -55,7 +55,7 @@ static double   lh_psimax_;  /* Langmuir Hinshelwood monolayer capacity */
 
 static int langmuirh_ = 0; /* Langmuir Hinshelwood flag */
 static int advection_ = 1; /* Advection scheme */
-static int solid_     = 0; /* Solid present? */
+static int solid_     = 1; /* Solid present? */
 
 /*****************************************************************************
  *
@@ -605,7 +605,6 @@ static void phi_ch_le_fix_fluxes(void) {
   double dy;     /* Displacement for current plane */
   double fr;     /* Fractional displacement */
   double t;      /* Time */
-  double sum;
   int jdy;       /* Integral part of displacement */
   int j1, j2;    /* j values in real system to interpolate between */
 
@@ -623,10 +622,10 @@ static void phi_ch_le_fix_fluxes(void) {
 
     get_N_local(nlocal);
 
-    nbuffer = nlocal[Y]*nlocal[Z];
-    buffere = (double *) malloc(nop_*nbuffer*sizeof(double));
+    nbuffer = nop_*nlocal[Y]*nlocal[Z];
+    buffere = (double *) malloc(nbuffer*sizeof(double));
+    bufferw = (double *) malloc(nbuffer*sizeof(double));
     if (buffere == NULL) fatal("malloc(buffere) failed\n");
-    bufferw = (double *) malloc(nop_*nbuffer*sizeof(double));
     if (bufferw == NULL) fatal("malloc(bufferw) failed\n");
 
     for (ip = 0; ip < le_get_nplane_local(); ip++) {
@@ -682,23 +681,18 @@ static void phi_ch_le_fix_fluxes(void) {
 
       /* Now average the fluxes. */
 
-      sum = 0.0;
-
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nop_; n++) {
 	    index = nop_*ADDR(ic,jc,kc) + n;
 	    index1 = nop_*(nlocal[Z]*(jc-1) + (kc-1)) + n;
 	    fluxe[index] = 0.5*(fluxe[index] + bufferw[index1]);
-	    sum += fluxe[index];
 	    index = nop_*ADDR(ic+1,jc,kc) + n;
 	    fluxw[index] = 0.5*(fluxw[index] + buffere[index1]);
-	    sum -= fluxw[index];
 	  }
 	}
       }
 
-      assert(fabs(sum) < 1.0e-14);
       /* Next plane */
     }
 
@@ -744,16 +738,15 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 
   int get_step(void);
 
-  assert(nop_ == 1); /* Code not general for nop_ > 1 */
   get_N_local(nlocal);
   get_N_offset(noffset);
 
   /* Allocate the temporary buffer */
 
-  n = (nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo_);
+  n = nop_*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo_);
   buffere = (double *) malloc(n*sizeof(double));
-  if (buffere == NULL) fatal("malloc(buffere) failed\n");
   bufferw = (double *) malloc(n*sizeof(double));
+  if (buffere == NULL) fatal("malloc(buffere) failed\n");
   if (bufferw == NULL) fatal("malloc(bufferw) failed\n");
 
   /* -1.0 as zero required for fisrt step; this is a 'feature'
@@ -792,17 +785,17 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
     assert(j2 > 0);
     assert(j2 <= nlocal[Y]);
 
-    n1 = (nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
-    n2 = j2*(nlocal[Z] + 2*nhalo_);
+    n1 = nop_*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
+    n2 = nop_*j2*(nlocal[Z] + 2*nhalo_);
 
     /* Post receives, sends (the wait is later). */
 
     MPI_Irecv(bufferw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(bufferw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 1);
-    MPI_Issend(fluxw + ADDR(ic+1,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fluxw + nop_*ADDR(ic+1,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 2);
-    MPI_Issend(fluxw + ADDR(ic+1,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fluxw + nop_*ADDR(ic+1,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 3);
 
 
@@ -829,8 +822,8 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 
     j2 = 1 + (j1 - 1) % nlocal[Y];
 
-    n1 = (nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
-    n2 = j2*(nlocal[Z] + 2*nhalo_);
+    n1 = nop_*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
+    n2 = nop_*j2*(nlocal[Z] + 2*nhalo_);
 
     /* Post new receives, sends, and wait for whole lot to finish. */
 
@@ -838,10 +831,10 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 	      request + 4);
     MPI_Irecv(buffere+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 5);
-    MPI_Issend(fluxe + ADDR(ic,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0], tag0,
-	       le_comm, request + 6);
-    MPI_Issend(fluxe + ADDR(ic,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1], tag1,
-	       le_comm, request + 7);
+    MPI_Issend(fluxe + nop_*ADDR(ic,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0],
+	       tag0, le_comm, request + 6);
+    MPI_Issend(fluxe + nop_*ADDR(ic,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1],
+	       tag1, le_comm, request + 7);
 
     MPI_Waitall(8, request, status);
 
@@ -853,14 +846,16 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
       j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo_);
       j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo_);
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	fluxe[ADDR(ic,jc,kc)] = 0.5*(fluxe[ADDR(ic,jc,kc)]
-				     + frw*bufferw[j1 + kc+nhalo_-1]
-				     + (1.0-frw)*bufferw[j2 + kc+nhalo_-1]);
-
-	fluxw[ADDR(ic+1,jc,kc)] = 0.5*(fluxw[ADDR(ic+1,jc,kc)]
-				       + fre*buffere[j1 + kc+nhalo_-1]
-				       + (1.0-fre)*buffere[j2 + kc+nhalo_-1]);
+	for (n = 0; n < nop_; n++) {
+	  fluxe[nop_*ADDR(ic,jc,kc) + n]
+	    = 0.5*(fluxe[nop_*ADDR(ic,jc,kc) + n]
+		   + frw*bufferw[nop_*(j1 + kc+nhalo_-1) + n]
+		   + (1.0-frw)*bufferw[nop_*(j2 + kc+nhalo_-1) + n]);
+	  fluxw[nop_*ADDR(ic+1,jc,kc) + n]
+	    = 0.5*(fluxw[nop_*ADDR(ic+1,jc,kc) + n]
+		   + fre*buffere[nop_*(j1 + kc+nhalo_-1) + n]
+		   + (1.0-fre)*buffere[nop_*(j2 + kc+nhalo_-1) + n]);
+	}
       }
     }
 
