@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.1 2009-07-28 11:31:57 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.2 2009-09-02 07:54:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -36,6 +36,8 @@ static double * sxy_;
 static MPI_Comm comm_yz_;
 
 static void stats_rheology_print_s(const char *, double s[3][3]);
+
+#define NSTAT 6 /* Number of data items for stess statistics */
 
 /*****************************************************************************
  *
@@ -73,7 +75,7 @@ void stats_rheology_init(void) {
 
   get_N_local(nlocal);
 
-  sxy_ = (double *) malloc(3*nlocal[X]*sizeof(double));
+  sxy_ = (double *) malloc(NSTAT*nlocal[X]*sizeof(double));
   if (sxy_ == NULL) fatal("malloc(sxy_) failed\n");
 
   initialised_ = 1;
@@ -211,16 +213,16 @@ void stats_rheology_free_energy_density_profile(const char * filename) {
 
 void stats_rheology_stress_profile_zero(void) {
 
-  int ic;
+  int ic, n;
   int nlocal[3];
 
   assert(initialised_);
   get_N_local(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    sxy_[3*(ic-1)    ] = 0.0;
-    sxy_[3*(ic-1) + 1] = 0.0;
-    sxy_[3*(ic-1) + 2] = 0.0;
+    for (n = 0; n < NSTAT; n++) {
+      sxy_[NSTAT*(ic-1) + n] = 0.0;
+    }
   }
 
   counter_sxy_ = 0;
@@ -253,12 +255,16 @@ void stats_rheology_stress_profile_accumulate(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = ADDR(ic, jc, kc);
 	distribution_get_stress_at_site(index, s);
-	sxy_[3*(ic-1)    ] += s[X][Y];
+	sxy_[NSTAT*(ic-1)    ] += s[X][Y];
         free_energy_get_chemical_stress(index, s);
-	sxy_[3*(ic-1) +  1] += s[X][Y];
+	sxy_[NSTAT*(ic-1) + 1] += s[X][Y];
 	rho = get_rho_at_site(index);
+	rho = 1.0/rho;
 	get_momentum_at_site(index, u);
-	sxy_[3*(ic-1) +  2] += rho*u[X]*u[Y];
+	sxy_[NSTAT*(ic-1) + 2] += rho*u[X]*u[Y];
+	sxy_[NSTAT*(ic-1) + 3] += rho*u[X];
+	sxy_[NSTAT*(ic-1) + 4] += rho*u[Y];
+	sxy_[NSTAT*(ic-1) + 5] += rho*u[Z];
       }
     }
   }
@@ -277,7 +283,14 @@ void stats_rheology_stress_profile_accumulate(void) {
  *
  *    mean_yzt hydrodymanic stess(x)
  *    mean_yzt chemical stess(x)
- *    mean_yzt rho uu(x) 
+ *    mean_yzt rho uu(x)
+ *
+ *  As it's convenient, we also take the opportunity to get the mean
+ *  velocities:
+ *
+ *    mean_yzt u_x
+ *    mean_yzt u_y
+ *    mean_yzt u_z
  *
  *****************************************************************************/
 
@@ -288,6 +301,7 @@ void stats_rheology_stress_profile(const char * filename) {
   int noffset[3];
   double * sxymean;
   double rmean;
+  double uy;
 
   const int tag_token = 90728;
   int rank;
@@ -300,10 +314,10 @@ void stats_rheology_stress_profile(const char * filename) {
   get_N_local(nlocal);
   get_N_offset(noffset);
 
-  sxymean = (double *) malloc(3*nlocal[X]*sizeof(double));
+  sxymean = (double *) malloc(NSTAT*nlocal[X]*sizeof(double));
   if (sxymean == NULL) fatal("malloc(sxymean) failed\n");
 
-  MPI_Reduce(sxy_, sxymean, 3*nlocal[X], MPI_DOUBLE, MPI_SUM, 0, comm_yz_);
+  MPI_Reduce(sxy_, sxymean, NSTAT*nlocal[X], MPI_DOUBLE, MPI_SUM, 0, comm_yz_);
 
   rmean = 1.0/(L(Y)*L(Z)*counter_sxy_);
 
@@ -328,11 +342,20 @@ void stats_rheology_stress_profile(const char * filename) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       /* This is an average over (y,z) so don't care about the
-       * Lees Edwards planes */
+       * Lees Edwards places, but correct uy */
 
-      fprintf(fp_output, "%6d %18.10e %18.10e %18.10e\n", noffset[X] + ic,
-	      rmean*sxymean[3*(ic-1)], rmean*sxymean[3*(ic-1)+1],
-	      rmean*sxymean[3*(ic-1)+2]);
+      uy = le_get_block_uy(ic);
+
+      fprintf(fp_output,
+	      "%6d %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e\n",
+	      noffset[X] + ic,
+	      rmean*sxymean[NSTAT*(ic-1)  ],
+	      rmean*sxymean[NSTAT*(ic-1)+1],
+	      rmean*sxymean[NSTAT*(ic-1)+2],
+	      rmean*sxymean[NSTAT*(ic-1)+3],
+	      rmean*sxymean[NSTAT*(ic-1)+4] + uy,
+	      rmean*sxymean[NSTAT*(ic-1)+5]);
+
     }
 
     /* Close the file and send the token to next process */
