@@ -4,7 +4,7 @@
  *
  *  Interface for the wall information.
  *
- *  $Id: wall.h,v 1.3 2009-09-02 07:55:19 kevin Exp $
+ *  $Id: wall.h,v 1.4 2009-10-02 13:50:18 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -19,6 +19,6 @@ void wall_finish(void);
 void wall_update(void);
 
 void wall_accumulate_force(const double f[3]);
-void wall_foce(void);
+void wall_force(void);
 
 #endif
