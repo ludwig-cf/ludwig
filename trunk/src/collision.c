@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.20 2009-07-16 14:30:42 kevin Exp $
+ *  $Id: collision.c,v 1.21 2009-10-08 16:04:53 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,6 +30,7 @@
 #include "phi_gradients.h"
 #include "phi_force.h"
 #include "phi_cahn_hilliard.h"
+#include "phi_lb_coupler.h"
 #include "phi_stats.h"
 #include "lattice.h"
 
@@ -102,8 +103,6 @@ void collide() {
   else {
     MODEL_collide_binary_lb();
   }
-
-  TIMER_stop(TIMER_PHI_GRADIENTS);
 
 #endif
 
@@ -692,6 +691,11 @@ void MODEL_init( void ) {
   if (ind != 0 && strcmp(filename, "bath") == 0) {
     info("Initialising phi for bath\n");
     phi_init_bath();
+  }
+
+  if (ind != 0 && strcmp(filename, "drop") == 0) {
+    info("Initialising droplet\n");
+    phi_lb_init_drop(0.125*L(X), interfacial_width());
   }
 
   ind = RUN_get_double_parameter("psi_b", &rho0);
