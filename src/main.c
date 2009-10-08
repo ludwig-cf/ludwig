@@ -6,6 +6,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 
 #include "pe.h"
@@ -84,6 +85,8 @@ int main( int argc, char **argv )
   COLL_init();
 
   init_free_energy();
+  if (free_energy_is_brazovskii() &&
+      phi_is_finite_difference()) assert(nhalo_ >= 3);
 
   if (get_step() == 0) {
     n = 0;
@@ -98,6 +101,9 @@ int main( int argc, char **argv )
       io_read(filename, io_info_phi);
     }
   }
+
+  stats_rheology_init();
+  stats_turbulent_init();
 
   /* Report initial statistics */
 
@@ -126,7 +132,6 @@ int main( int argc, char **argv )
 
     /* Collision stage */
     collide();
-
     model_le_apply_boundary_conditions();
     halo_site();
 
@@ -161,8 +166,17 @@ int main( int argc, char **argv )
 
     if (is_measurement_step()) {	  
       sprintf(filename, "%s%6.6d", "config.cds", step);
-      CIO_write_state(filename);
-      sprintf(filename, "vav-%6.6d.dat", step);
+      /*CIO_write_state(filename);*/
+    }
+
+    if (is_shear_measurement_step()) {
+      stats_rheology_stress_profile_accumulate();
+    }
+
+    if (is_shear_output_step()) {
+      sprintf(filename, "str-%8.8d.dat", step);
+      stats_rheology_stress_profile(filename);
+      stats_rheology_stress_profile_zero();
     }
 
     if (is_phi_output_step()) {
@@ -185,13 +199,13 @@ int main( int argc, char **argv )
       MISC_curvature();
       TEST_statistics();
       TEST_momentum();
+      wall_force();
       hydrodynamics_stats();
 #endif
 #ifdef _NOISE_
       TEST_fluid_temperature();
 #endif
       phi_stats_print_stats();
-      /* stats_surfactant_1d();*/
       info("\nCompleted cycle %d\n", step);
     }
 
@@ -209,10 +223,10 @@ int main( int argc, char **argv )
     io_write(filename, io_info_phi);
   }
 
-  /* print_free_energy_profile();*/
-
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 
+  stats_rheology_finish();
+  stats_turbulent_finish();
   COLL_finish();
   wall_finish();
 
