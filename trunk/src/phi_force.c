@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.4 2009-09-02 07:50:25 kevin Exp $
+ *  $Id: phi_force.c,v 1.5 2009-10-08 16:06:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -44,6 +44,8 @@ static double * fluxw;
 static double * fluxy;
 static double * fluxz;
 
+static void (* phi_force_simple_)(void) = phi_force_calculation_fluid;
+
 /*****************************************************************************
  *
  *  phi_force_calculation
@@ -54,8 +56,29 @@ static double * fluxz;
 
 void phi_force_calculation() {
 
-  /* phi_force_calculation_fluid();*/
-  phi_force_flux();
+  if (le_get_nplane_total() > 0) {
+    /* Must use the flux method for LE planes */
+    phi_force_flux();
+  }
+  else {
+    phi_force_simple_();
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_set_solid
+ *
+ *  Set the force calculation method to allow for solid.
+ *
+ *****************************************************************************/
+
+void phi_force_set_solid(void) {
+
+  assert(0); /* Need to do something about force on particles */
+  phi_force_simple_ = phi_force_calculation_fluid_solid;
 
   return;
 }
@@ -221,96 +244,6 @@ static void phi_force_calculation_fluid_solid() {
 	mask = (site_map_get_status_index(index1) == FLUID);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(mask*pth1[Z][ia] + pth0[Z][ia]);
-	}
-
-	/* Store the force on lattice */
-
-	hydrodynamics_add_force_local(index, force);
-
-	/* Next site */
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_calculation_fluid
- *
- *  Compute force from thermodynamic sector via
- *    F_alpha = nalba_beta Pth_alphabeta
- *
- *****************************************************************************/
-
-static void phi_force_calculation_fluid_nvel() {
-
-  int p, ia, ib, ic, jc, kc, ic1, jc1, kc1;
-  int index, index1;
-  int nlocal[3];
-  double pth0[3][3];
-  double pth1[3][3];
-  double pdiffs[NVEL][3][3];
-  double gradpth[3][3];
-  double force[3];
-  double r10 = 0.1;
-
-  get_N_local(nlocal);
-  assert(nhalo_ >= 2);
-  assert(le_get_nplane_total() == 0);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = get_site_index(ic, jc, kc);
-
-	/* Compute pth at current point */
-	free_energy_get_chemical_stress(index, pth0);
-
-	/* Compute differences */
-
-	for (p = 1; p < NVEL; p++) {
-
-	  /* Compute pth1 at target point */
-
-	  ic1 = ic + cv[p][X];
-	  jc1 = jc + cv[p][Y];
-	  kc1 = kc + cv[p][Z];
-	  index1 = get_site_index(ic1, jc1, kc1);
-	  free_energy_get_chemical_stress(index1, pth1);
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pdiffs[p][ia][ib] = pth1[ia][ib] - pth0[ia][ib];
-	    }
-	  }
-	}
-
-	/* Accumulate the differences */
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    gradpth[ia][ib] = 0.0;
-	  }
-	}
-
-	for (p = 1; p < NVEL; p++) {
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      gradpth[ia][ib] += cv[p][ib]*pdiffs[p][ia][ib];
-	    }
-	  }
-	}
-
-	/* Compute the force */
-	
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = 0.0;
-	  for (ib = 0; ib < 3; ib++) {
-	    force[ia] -= r10*gradpth[ia][ib];
-	  }
 	}
 
 	/* Store the force on lattice */
