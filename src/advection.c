@@ -15,7 +15,7 @@
  *  to the 'west' face flux. There's no effect in the y- or z-
  *  directions.
  *
- *  $Id: advection.c,v 1.1 2009-07-27 13:48:34 kevin Exp $
+ *  $Id: advection.c,v 1.2 2009-10-08 17:24:41 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -402,7 +402,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	  for (n = 0; n < nop_; n++) {
 	    fluxy[nop_*index0 + n] =
 	      u*(a1*phi_site[nop_*ADDR(ic, jc+3, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc+2, jc) + n]
+	       + a2*phi_site[nop_*ADDR(ic, jc+2, kc) + n]
 	       + a3*phi_site[nop_*index1 + n]
 	       + a4*phi_site[nop_*index0 + n]
 	       + a5*phi_site[nop_*ADDR(ic, jc-1, kc) + n]);
