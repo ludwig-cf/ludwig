@@ -4,7 +4,7 @@
  *
  *  Model control and time stepping.
  *
- *  $Id: control.c,v 1.8 2009-04-09 14:53:29 kevin Exp $
+ *  $Id: control.c,v 1.9 2009-10-08 16:29:59 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  end Edinburgh Parallel Computing Centre
@@ -29,6 +29,8 @@ static int freq_measure    = 1000;
 static int freq_config     = 10000;
 static int freq_phi        = 100000000;
 static int freq_vel        = 100000000;
+static int freq_shear_io   = 100000000;
+static int freq_shear_meas = 100000000;
 static int config_at_end   = 1;
 
 /*****************************************************************************
@@ -51,6 +53,8 @@ void init_control() {
   n = RUN_get_int_parameter("freq_config", &freq_config);
   n = RUN_get_int_parameter("freq_phi", &freq_phi);
   n = RUN_get_int_parameter("freq_vel", &freq_vel);
+  n = RUN_get_int_parameter("freq_shear_measurement", &freq_shear_meas);
+  n = RUN_get_int_parameter("freq_shear_output", &freq_shear_io);
 
   n = RUN_get_string_parameter("config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
@@ -60,6 +64,9 @@ void init_control() {
   if (freq_statistics < 1) freq_statistics = t_start + t_steps + 1;
   if (freq_measure    < 1) freq_measure    = t_start + t_steps + 1;
   if (freq_config     < 1) freq_config     = t_start + t_steps + 1;
+
+  if (freq_shear_io   < 1) freq_shear_io   = t_start + t_steps + 1;
+  if (freq_shear_meas < 1) freq_shear_meas = t_start + t_steps + 1;
 
   return;
 }
@@ -128,3 +135,24 @@ int is_vel_output_step() {
 int is_config_at_end() {
   return config_at_end;
 }
+
+/*****************************************************************************
+ *
+ *  is_shear_measurement_step
+ *
+ *****************************************************************************/
+
+int is_shear_measurement_step() {
+  return ((t_current % freq_shear_meas) == 0);
+}
+
+/*****************************************************************************
+ *
+ *  is_shear_output_step
+ *
+ *****************************************************************************/
+
+int is_shear_output_step() {
+  return ((t_current % freq_shear_io) == 0);
+}
+
