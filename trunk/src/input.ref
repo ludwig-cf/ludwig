@@ -245,6 +245,8 @@ boundary_speed_top    0.0
 #                           N steps (can be large!)
 #  freq_phi        N        phi data output frequency
 #  freq_vel        N        velocity data output frequency
+#  freq_shear_measurement   stress profile accumulator
+#  freq_shear_output        stress profile output
 #  config_at_end            [yes|no] write full configuration at end of run
 #                           [default is yes]
 #
@@ -264,6 +266,8 @@ freq_measure 200000
 freq_config 5000000
 freq_phi    100000
 freq_vel    100000
+freq_shear_measurement 100000
+freq_shear_output      100000
 config_at_end no
 
 output_format BINARY
