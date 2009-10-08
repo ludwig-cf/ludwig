@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.8 2009-09-02 07:47:51 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.9 2009-10-08 16:07:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -209,6 +209,7 @@ void phi_ch_set_upwind_order(int n) {
     break;
   default:
     advection_ = 1;
+    info("Using upwind advection\n");
   }
 
   return;
@@ -325,7 +326,7 @@ void phi_ch_diffusive_flux_surfactant(void) {
   int ic, jc, kc;
   int index0, index1;
   int icm1, icp1;
-  double psi, psi0, mu0, mu1;
+  double psi, psi0, mu0_phi, mu0_psi, mu1;
   double m_phi, m_psi;
 
   get_N_local(nlocal);
@@ -344,48 +345,49 @@ void phi_ch_diffusive_flux_surfactant(void) {
 	m_phi = mobility_[0];
 	m_psi = mobility_[1];
 
-	mu0 = free_energy_chemical_potential(index0, 0);
+	mu0_phi = free_energy_chemical_potential(index0, 0);
+	mu0_psi = free_energy_chemical_potential(index0, 1);
 	psi0 = phi_site[nop_*index0 + 1];
 
 	/* x-direction (between ic-1 and ic) */
 
 	index1 = ADDR(icm1, jc, kc);
 	mu1 = free_energy_chemical_potential(index1, 0);
-	fluxw[nop_*index0 + 0] -= m_phi*(mu0 - mu1);
+	fluxw[nop_*index0 + 0] -= m_phi*(mu0_phi - mu1);
 
 	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
 	mu1 = free_energy_chemical_potential(index1, 1);
-	fluxw[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0 - mu1);
+	fluxw[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0_psi - mu1);
 
 	/* ...and between ic and ic+1 */
 
 	index1 = ADDR(icp1, jc, kc);
 	mu1 = free_energy_chemical_potential(index1, 0);
-	fluxe[nop_*index0 + 0] -= m_phi*(mu1 - mu0);
+	fluxe[nop_*index0 + 0] -= m_phi*(mu1 - mu0_phi);
 
 	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
 	mu1 = free_energy_chemical_potential(index1, 1);
-	fluxe[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0 - mu1);
+	fluxe[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu1 - mu0_psi);
 
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
 	mu1 = free_energy_chemical_potential(index1, 0);
-	fluxy[nop_*index0 + 0] -= m_phi*(mu1 - mu0);
+	fluxy[nop_*index0 + 0] -= m_phi*(mu1 - mu0_phi);
 
 	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
 	mu1 = free_energy_chemical_potential(index1, 1);
-	fluxy[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0 - mu1);
+	fluxy[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu1 - mu0_psi);
 
 	/* z direction */
 
 	index1 = ADDR(ic, jc, kc+1);
 	mu1 = free_energy_chemical_potential(index1, 0);
-	fluxz[nop_*index0 + 0] -= m_phi*(mu1 - mu0);
+	fluxz[nop_*index0 + 0] -= m_phi*(mu1 - mu0_phi);
 
 	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
 	mu1 = free_energy_chemical_potential(index1, 1);
-	fluxz[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0 - mu1);
+	fluxz[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu1 - mu0_psi);
 
 	/* Next site */
       }
