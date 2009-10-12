@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  $Id: stats_rheology.h,v 1.1 2009-07-28 11:31:57 kevin Exp $
+ *  $Id: stats_rheology.h,v 1.2 2009-10-12 18:17:13 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh (2009)
@@ -23,5 +23,6 @@ void stats_rheology_free_energy_density_profile(const char *);
 void stats_rheology_stress_profile_zero(void);
 void stats_rheology_stress_profile_accumulate(void);
 void stats_rheology_stress_profile(const char *);
+void stats_rheology_stress_section(const char *);
 
 #endif
