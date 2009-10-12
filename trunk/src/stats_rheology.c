@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.2 2009-09-02 07:54:31 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.3 2009-10-12 18:17:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,11 +33,17 @@
 static int initialised_ = 0;
 static int counter_sxy_ = 0;
 static double * sxy_;
+static double * stat_xz_;
 static MPI_Comm comm_yz_;
+static MPI_Comm comm_y_;
+static MPI_Comm comm_z_;
 
 static void stats_rheology_print_s(const char *, double s[3][3]);
 
-#define NSTAT 6 /* Number of data items for stess statistics */
+#define NSTAT1 6  /* Number of data items for stess statistics */
+#define NSTAT2 12 /* Number of data items for 3-d stress stats
+		   * 3 components of velocity, 3 components of
+                   * 3 different contributions to the stress */
 
 /*****************************************************************************
  *
@@ -71,12 +77,41 @@ void stats_rheology_init(void) {
     }
   }
 
+  remainder[X] = 0;
+  remainder[Y] = 1;
+  remainder[Z] = 0;
+
+  MPI_Cart_sub(cart_comm(), remainder, &comm_y_);
+
+  remainder[X] = 0;
+  remainder[Y] = 0;
+  remainder[Z] = 0;
+
+  MPI_Cart_sub(cart_comm(), remainder, &comm_z_);
+
+  MPI_Comm_rank(comm_y_, &rank);
+
+  if (rank != cart_coords(Y)) {
+    fatal("rank not equal to cart_coords(Y) in rheology stats\n");
+  }
+
+  MPI_Comm_rank(comm_z_, &rank);
+
+  if (rank != cart_coords(Z)) {
+    fatal("rank not equal to cart_coords(Z) in rheology stats\n");
+  }
+
   /* sxy_ */
 
   get_N_local(nlocal);
 
-  sxy_ = (double *) malloc(NSTAT*nlocal[X]*sizeof(double));
+  sxy_ = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxy_ == NULL) fatal("malloc(sxy_) failed\n");
+
+  /* stat_xz_ */
+
+  stat_xz_ = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
+  if (stat_xz_ == NULL) fatal("malloc(stat_xz_) failed\n");
 
   initialised_ = 1;
 
@@ -96,7 +131,10 @@ void stats_rheology_finish(void) {
   assert(initialised_);
 
   MPI_Comm_free(&comm_yz_);
+  MPI_Comm_free(&comm_y_);
+  MPI_Comm_free(&comm_z_);
   free(sxy_);
+  free(stat_xz_);
   initialised_ = 0;
 
   return;
@@ -213,17 +251,23 @@ void stats_rheology_free_energy_density_profile(const char * filename) {
 
 void stats_rheology_stress_profile_zero(void) {
 
-  int ic, n;
+  int ic, kc, n;
   int nlocal[3];
 
   assert(initialised_);
   get_N_local(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (n = 0; n < NSTAT; n++) {
-      sxy_[NSTAT*(ic-1) + n] = 0.0;
+    for (n = 0; n < NSTAT1; n++) {
+      sxy_[NSTAT1*(ic-1) + n] = 0.0;
+    }
+    for (kc = 1; kc <= nlocal[Z]; kc++) {
+      for (n = 0; n < NSTAT2; n++) {
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + n] = 0.0;
+      }
     }
   }
+
 
   counter_sxy_ = 0;
 
@@ -255,16 +299,36 @@ void stats_rheology_stress_profile_accumulate(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = ADDR(ic, jc, kc);
 	distribution_get_stress_at_site(index, s);
-	sxy_[NSTAT*(ic-1)    ] += s[X][Y];
+
+	sxy_[NSTAT1*(ic-1)    ] += s[X][Y];
+
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  0] += s[X][Y];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  1] += s[X][Z];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  2] += s[Y][Z];
+
         free_energy_get_chemical_stress(index, s);
-	sxy_[NSTAT*(ic-1) + 1] += s[X][Y];
+
+	sxy_[NSTAT1*(ic-1) + 1] += s[X][Y];
+
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  3] += s[X][Y];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  4] += s[X][Z];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  5] += s[Y][Z];
+
 	rho = get_rho_at_site(index);
 	rho = 1.0/rho;
 	get_momentum_at_site(index, u);
-	sxy_[NSTAT*(ic-1) + 2] += rho*u[X]*u[Y];
-	sxy_[NSTAT*(ic-1) + 3] += rho*u[X];
-	sxy_[NSTAT*(ic-1) + 4] += rho*u[Y];
-	sxy_[NSTAT*(ic-1) + 5] += rho*u[Z];
+
+	sxy_[NSTAT1*(ic-1) + 2] += rho*u[X]*u[Y];
+	sxy_[NSTAT1*(ic-1) + 3] += rho*u[X];
+	sxy_[NSTAT1*(ic-1) + 4] += rho*u[Y];
+	sxy_[NSTAT1*(ic-1) + 5] += rho*u[Z];
+
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  6] += rho*u[X]*u[Y];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  7] += rho*u[X]*u[Z];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  8] += rho*u[Y]*u[Z];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  9] += rho*u[X];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 10] += rho*u[Y];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 11] += rho*u[Z];
       }
     }
   }
@@ -314,10 +378,10 @@ void stats_rheology_stress_profile(const char * filename) {
   get_N_local(nlocal);
   get_N_offset(noffset);
 
-  sxymean = (double *) malloc(NSTAT*nlocal[X]*sizeof(double));
+  sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxymean == NULL) fatal("malloc(sxymean) failed\n");
 
-  MPI_Reduce(sxy_, sxymean, NSTAT*nlocal[X], MPI_DOUBLE, MPI_SUM, 0, comm_yz_);
+  MPI_Reduce(sxy_, sxymean, NSTAT1*nlocal[X], MPI_DOUBLE, MPI_SUM, 0, comm_yz_);
 
   rmean = 1.0/(L(Y)*L(Z)*counter_sxy_);
 
@@ -349,12 +413,12 @@ void stats_rheology_stress_profile(const char * filename) {
       fprintf(fp_output,
 	      "%6d %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e\n",
 	      noffset[X] + ic,
-	      rmean*sxymean[NSTAT*(ic-1)  ],
-	      rmean*sxymean[NSTAT*(ic-1)+1],
-	      rmean*sxymean[NSTAT*(ic-1)+2],
-	      rmean*sxymean[NSTAT*(ic-1)+3],
-	      rmean*sxymean[NSTAT*(ic-1)+4] + uy,
-	      rmean*sxymean[NSTAT*(ic-1)+5]);
+	      rmean*sxymean[NSTAT1*(ic-1)  ],
+	      rmean*sxymean[NSTAT1*(ic-1)+1],
+	      rmean*sxymean[NSTAT1*(ic-1)+2],
+	      rmean*sxymean[NSTAT1*(ic-1)+3],
+	      rmean*sxymean[NSTAT1*(ic-1)+4] + uy,
+	      rmean*sxymean[NSTAT1*(ic-1)+5]);
 
     }
 
@@ -373,6 +437,134 @@ void stats_rheology_stress_profile(const char * filename) {
   }
 
   free(sxymean);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  stats_rheology_stress_section
+ *
+ *  Outputs a section in the x-z direction (ie., averaged along the
+ *  flow direction of various quantities:
+ *
+ *  Full stress                  s_xy, s_xz, s_yz from \sum_i f_i Q_iab
+ *  Thermodynamic contribution   s_xy, s_xz, s_yz from P^th_ab
+ *  Equilibrium stress           s_xy, s_xz, s_xz from rho u_a u_b
+ *  Velocity                     u_x, u_y, x_z
+ *
+ *  In the output, the z-direction runs faster, then the x-direction.
+ *
+ *****************************************************************************/
+
+void stats_rheology_stress_section(const char * filename) {
+
+  int ic, kc;
+  int nlocal[3];
+  int n, is_writing;
+  FILE   * fp_output = NULL;
+  double * stat_2d;
+  double * stat_1d;
+  double raverage;
+  double uy;
+
+  MPI_Comm comm = cart_comm();
+  MPI_Status status;
+  int token = 0;
+  int rank;
+  const int tag_token = 20091012;
+
+  assert(initialised_);
+  get_N_local(nlocal);
+
+  stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
+  if (stat_2d == NULL) fatal("malloc(stat_2d) failed\n");
+
+  stat_1d = (double *) malloc(NSTAT2*N_total(Z)*sizeof(double));
+  if (stat_1d == NULL) fatal("malloc(stat_1d) failed\n");
+
+  /* Set the averaging factor (if no data, set to zero) */
+
+  raverage = 0.0;
+  if (counter_sxy_ > 0) raverage = 1.0/(L(Y)*counter_sxy_); 
+
+  /* Take the sum in the y-direction and store in stat_2d(x,z) */
+
+  MPI_Reduce(stat_xz_, stat_2d, NSTAT2*nlocal[X]*nlocal[Z], MPI_DOUBLE,
+	     MPI_SUM, 0, comm_y_);
+
+  /* Output now only involves cart_coords(Y) = 0 */
+
+  if (cart_coords(Y) == 0) {
+
+    /* The strategy is to gather strip-wise in the z-direction,
+     * and only write from the first process in this direction.
+     * We then sweep over x to give an xz section. */
+
+    is_writing = (cart_coords(Z) == 0);
+
+    if (cart_coords(X) == 0) {
+      /* Open the file */
+      if (is_writing) fp_output = fopen(filename, "w");
+    }
+    else {
+      /* Block until we get the token from the previous process and
+       * then can reopen the file... */
+      rank = cart_neighb(BACKWARD, X);
+      MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
+
+      if (is_writing) fp_output = fopen(filename, "a");
+    }
+
+    if (is_writing) {
+      if (fp_output == NULL) fatal("fopen(%s) failed\n", filename);
+    }
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+
+      /* Correct f1[Y] for leesedwards planes before output */
+      /* Also take the average here. */
+
+      uy = le_get_block_uy(ic);
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (n = 0; n < NSTAT2; n++) {
+	  stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + n] *= raverage;
+	}
+	/* u_y must be corrected */
+	stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 10] += uy;
+      }
+
+      MPI_Gather(stat_2d + NSTAT2*nlocal[Z]*(ic-1), NSTAT2*nlocal[Z],
+		 MPI_DOUBLE, stat_1d, NSTAT2*nlocal[Z], MPI_DOUBLE, 0,
+		 comm_z_);
+
+      /* write data */
+      if (is_writing) {
+	for (kc = 1; kc <= N_total(Z); kc++) {
+	  for (n = 0; n < NSTAT2; n++) {
+	    fprintf(fp_output, " %15.8e", stat_1d[NSTAT2*(kc-1) + n]);
+	  }
+	  fprintf(fp_output, "\n");
+	}
+      }
+    }
+
+    /* Close the file and send the token to the next process */
+
+    if (is_writing) {
+      if (ferror(fp_output)) {
+	perror("perror: ");
+	fatal("File error on writing %s\n", filename);
+      }
+      fclose(fp_output);
+    }
+
+    if (cart_coords(X) < cart_size(X) - 1) {
+      rank = cart_neighb(FORWARD, X);
+      MPI_Ssend(&token, 1, MPI_INT, rank, tag_token, comm);
+    }
+  }
 
   return;
 }

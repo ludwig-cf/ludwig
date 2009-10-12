@@ -175,8 +175,9 @@ int main( int argc, char **argv )
 
     if (is_shear_output_step()) {
       sprintf(filename, "str-%8.8d.dat", step);
-      stats_rheology_stress_profile(filename);
+      stats_rheology_stress_section(filename);
       stats_rheology_stress_profile_zero();
+      stats_rheology_mean_stress();
     }
 
     if (is_phi_output_step()) {
