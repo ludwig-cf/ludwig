@@ -177,7 +177,7 @@ int main( int argc, char **argv )
       sprintf(filename, "str-%8.8d.dat", step);
       stats_rheology_stress_section(filename);
       stats_rheology_stress_profile_zero();
-      stats_rheology_mean_stress();
+      stats_rheology_mean_stress("stress_means.dat");
     }
 
     if (is_phi_output_step()) {
