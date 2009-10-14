@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.3 2009-10-12 18:17:13 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.4 2009-10-14 17:16:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,10 +22,12 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
+#include "control.h"
 #include "leesedwards.h"
 #include "free_energy.h"
 #include "stats_rheology.h"
@@ -39,6 +41,7 @@ static MPI_Comm comm_y_;
 static MPI_Comm comm_z_;
 
 static void stats_rheology_print_s(const char *, double s[3][3]);
+static void stats_rheology_print_matrix(FILE *, double s[3][3]);
 
 #define NSTAT1 6  /* Number of data items for stess statistics */
 #define NSTAT2 12 /* Number of data items for 3-d stress stats
@@ -577,12 +580,12 @@ void stats_rheology_stress_section(const char * filename) {
  *  We have:
  *
  *    Full deviatoric stress:   S_ab    = \sum_i f_i Q_iab
- *    Equilibrium stress:       S^eq_ab = \rho u_a u_b
  *    Chemical stress:          P_ab      for current free energy
+ *    Equilibrium stress:       S^eq_ab = \rho u_a u_b
  *
  *****************************************************************************/
 
-void stats_rheology_mean_stress(void) {
+void stats_rheology_mean_stress(const char * filename) {
 
 #define NCOMP 27
 
@@ -596,6 +599,7 @@ void stats_rheology_mean_stress(void) {
   double rho, rrho, rv;
   int nlocal[3];
   int ic, jc, kc, index, ia, ib;
+  FILE * fp;
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
@@ -658,9 +662,46 @@ void stats_rheology_mean_stress(void) {
     }
   }
 
-  stats_rheology_print_s("stress_hydro", stress);
-  stats_rheology_print_s("stress_pchem", pchem);
-  stats_rheology_print_s("stress_rhouu", rhouu);
+  if (filename == NULL || strcmp(filename, "") == 0) {
+    /* Use info() */
+    stats_rheology_print_s("stress_hydro", stress);
+    stats_rheology_print_s("stress_pchem", pchem);
+    stats_rheology_print_s("stress_rhouu", rhouu);
+  }
+  else {
+    /* Use filename supplied */
+
+    if (pe_rank() == 0) {
+      fp = fopen(filename, "a");
+      if (fp == NULL) fatal("fopen(%s) failed\n", filename);
+
+      fprintf(fp, "%9d ", get_step());
+      stats_rheology_print_matrix(fp, stress);
+      stats_rheology_print_matrix(fp, pchem);
+      stats_rheology_print_matrix(fp, rhouu);
+      fprintf(fp, "\n");
+
+      fclose(fp);
+    }
+  }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  stats_rheology_print_matrix
+ *
+ *  Prints six components of a symmetric stress tensor.
+ *
+ ****************************************************************************/
+
+static void stats_rheology_print_matrix(FILE * fp, double s[3][3]) {
+
+  assert(fp);
+
+  fprintf(fp, "%15.8e %15.8e %15.8e ", s[X][X], s[X][Y], s[X][Z]);  
+  fprintf(fp, "%15.8e %15.8e %15.8e ", s[Y][Y], s[Y][Z], s[Z][Z]);  
 
   return;
 }
