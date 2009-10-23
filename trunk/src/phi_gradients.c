@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.9 2009-09-02 07:53:06 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.10 2009-10-23 16:56:06 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -53,12 +53,15 @@ static void phi_gradients_walls(void);
 static void phi_solid_walls(void);
 static void phi_gradients_fluid(void);
 static void phi_gradients_leesedwards(void);
-static void (* phi_gradient_function)(void) = phi_gradients_fluid;
+static void phi_gradients_double_leesedwards(void);
 static void f_grad_phi(int, int, int, int, int, const int *);
 static void f_delsq_phi(int, int, int, int, int, const int *);
+static void f_grad_delsq_phi(int, int, int, int, int, const int *);
+static void f_delsq_delsq_phi(int, int, int, int, int, const int *);
 
 static void phi_gradients_fluid_inline(void);
 static void phi_gradients_double_fluid_inline(void);
+static void (* phi_gradient_function)(void) = phi_gradients_fluid_inline;
 
 /****************************************************************************
  *
@@ -118,7 +121,10 @@ void phi_gradients_compute() {
   /* Brazovskii requires gradients up to nabla^2(\nabla^2) phi */
   /* There also needs to be the appropriate correction if LE is required */
 
-  if (free_energy_is_brazovskii()) phi_gradients_double_fluid();
+  if (free_energy_is_brazovskii()) {
+    phi_gradients_double_fluid_inline();
+    phi_gradients_double_leesedwards();
+  }
 
   return;
 }
@@ -473,13 +479,6 @@ static void phi_gradients_fluid() {
  *  This calculation can be extended (nhalo_ - 2) points beyond the
  *  local system.
  *
- *  Brazovskii: at the moment this will operate successfully to
- *  produce the higher derivatives in the domain proper for
- *  nhalo_ = 2, i.e., ok using the relaxation toward the chemical
- *  stress to force the two-distribution LB approach. Can't use
- *  finite difference yet as this would require the extra
- *  derivatives in the halo / Lees Edwards buffer regions.
- *
  *****************************************************************************/
  
 void phi_gradients_double_fluid() {
@@ -580,6 +579,66 @@ static void phi_gradients_leesedwards() {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 	  f_grad_phi(ic0, ic1, ic2, jc, kc, nlocal);
 	  f_delsq_phi(ic0, ic1, ic2, jc, kc, nlocal);
+	}
+      }
+    }
+    /* Next plane */
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_gradients_double_leesedwards
+ *
+ *  Set the grad \nabla^2 phi and nabla^2 \nabla^2 phi terms in the
+ *  Lees-Edwrds buffer regions.
+ * 
+ *****************************************************************************/
+
+static void phi_gradients_double_leesedwards(void) {
+
+  int nlocal[3];
+  int n, nh;
+  int nextra = nhalo_ - 2;
+  int ic, ic0, ic1, ic2, jc, kc;
+
+  assert(nhalo_ >= 3);
+  assert(nop_ == 1);
+
+  get_N_local(nlocal);
+
+  for (n = 0; n < le_get_nplane_local(); n++) {
+
+    ic = le_plane_location(n);
+
+    /* Looking across in +ve x-direction */
+    for (nh = 1; nh <= nextra; nh++) {
+      ic0 = le_index_real_to_buffer(ic, nh-1);
+      ic1 = le_index_real_to_buffer(ic, nh  );
+      ic2 = le_index_real_to_buffer(ic, nh+1);
+
+      for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+	  f_grad_delsq_phi(ic0, ic1, ic2, jc, kc, nlocal);
+	  f_delsq_delsq_phi(ic0, ic1, ic2, jc, kc, nlocal);
+	}
+      }
+    }
+
+    /* Looking across the plane in the -ve x-direction. */
+    ic += 1;
+
+    for (nh = 1; nh <= nextra; nh++) {
+      ic2 = le_index_real_to_buffer(ic, -nh+1);
+      ic1 = le_index_real_to_buffer(ic, -nh  );
+      ic0 = le_index_real_to_buffer(ic, -nh-1);
+
+      for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+	  f_grad_delsq_phi(ic0, ic1, ic2, jc, kc, nlocal);
+	  f_delsq_delsq_phi(ic0, ic1, ic2, jc, kc, nlocal);
 	}
       }
     }
@@ -732,7 +791,9 @@ static void phi_gradients_fluid_inline(void) {
   int ic, jc, kc;
   int index;
   int nextra = nhalo_ - 1;
-  int xs, ys;
+  int ys;
+  int icp1, icm1;
+  int indexp1, indexm1;
  	 
   double phi0;
   const double r9 = (1.0/9.0);
@@ -741,74 +802,76 @@ static void phi_gradients_fluid_inline(void) {
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
   assert(nop_ == 1);
-  assert(le_get_nplane_total() == 0);
 
-  /* Strides in x- and y-directions */
-  xs = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
+  /* Stride in y-direction */
   ys = (nlocal[Z] + 2*nhalo_);
  	 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
  	 
 	index = get_site_index(ic, jc, kc);
+	indexm1 = ADDR(icm1, jc, kc);
+	indexp1 = ADDR(icp1, jc, kc);
 	phi0 = phi_site[index];
  	 
 	grad_phi_site[3*index + X] =
-	  r18*(phi_site[index+xs     ]-phi_site[index-xs     ] +
-	       phi_site[index+xs+ys+1]-phi_site[index-xs+ys+1] +
-	       phi_site[index+xs-ys+1]-phi_site[index-xs-ys+1] +
-	       phi_site[index+xs+ys-1]-phi_site[index-xs+ys-1] +
-	       phi_site[index+xs-ys-1]-phi_site[index-xs-ys-1] +
-	       phi_site[index+xs+ys  ]-phi_site[index-xs+ys  ] +
-	       phi_site[index+xs-ys  ]-phi_site[index-xs-ys  ] +
-	       phi_site[index+xs   +1]-phi_site[index-xs   +1] +
-	       phi_site[index+xs   -1]-phi_site[index-xs   -1]);
+	  r18*(phi_site[indexp1     ]-phi_site[indexm1     ] +
+	       phi_site[indexp1+ys+1]-phi_site[indexm1+ys+1] +
+	       phi_site[indexp1-ys+1]-phi_site[indexm1-ys+1] +
+	       phi_site[indexp1+ys-1]-phi_site[indexm1+ys-1] +
+	       phi_site[indexp1-ys-1]-phi_site[indexm1-ys-1] +
+	       phi_site[indexp1+ys  ]-phi_site[indexm1+ys  ] +
+	       phi_site[indexp1-ys  ]-phi_site[indexm1-ys  ] +
+	       phi_site[indexp1   +1]-phi_site[indexm1   +1] +
+	       phi_site[indexp1   -1]-phi_site[indexm1   -1]);
  	                     
 	grad_phi_site[3*index + Y] =
-	  r18*(phi_site[index   +ys  ]-phi_site[index   -ys  ] +
-	       phi_site[index+xs+ys+1]-phi_site[index+xs-ys+1] +
-	       phi_site[index-xs+ys+1]-phi_site[index-xs-ys+1] +
-	       phi_site[index+xs+ys-1]-phi_site[index+xs-ys-1] +
-	       phi_site[index-xs+ys-1]-phi_site[index-xs-ys-1] +
-	       phi_site[index+xs+ys  ]-phi_site[index+xs-ys  ] +
-	       phi_site[index-xs+ys  ]-phi_site[index-xs-ys  ] +
+	  r18*(phi_site[index   +ys ]-phi_site[index   -ys  ] +
+	       phi_site[indexp1+ys+1]-phi_site[indexp1-ys+1] +
+	       phi_site[indexm1+ys+1]-phi_site[indexm1-ys+1] +
+	       phi_site[indexp1+ys-1]-phi_site[indexp1-ys-1] +
+	       phi_site[indexm1+ys-1]-phi_site[indexm1-ys-1] +
+	       phi_site[indexp1+ys  ]-phi_site[indexp1-ys  ] +
+	       phi_site[indexm1+ys  ]-phi_site[indexm1-ys  ] +
 	       phi_site[index   +ys+1]-phi_site[index   -ys+1] +
 	       phi_site[index   +ys-1]-phi_site[index   -ys-1]);
  	                     
         grad_phi_site[3*index + Z] =
 	  r18*(phi_site[index      +1]-phi_site[index      -1] +
-	       phi_site[index+xs+ys+1]-phi_site[index+xs+ys-1] +
-	       phi_site[index-xs+ys+1]-phi_site[index-xs+ys-1] +
-	       phi_site[index+xs-ys+1]-phi_site[index+xs-ys-1] +
-	       phi_site[index-xs-ys+1]-phi_site[index-xs-ys-1] +
-	       phi_site[index+xs   +1]-phi_site[index+xs   -1] +
-	       phi_site[index-xs   +1]-phi_site[index-xs   -1] +
+	       phi_site[indexp1+ys+1]-phi_site[indexp1+ys-1] +
+	       phi_site[indexm1+ys+1]-phi_site[indexm1+ys-1] +
+	       phi_site[indexp1-ys+1]-phi_site[indexp1-ys-1] +
+	       phi_site[indexm1-ys+1]-phi_site[indexm1-ys-1] +
+	       phi_site[indexp1   +1]-phi_site[indexp1   -1] +
+	       phi_site[indexm1   +1]-phi_site[indexm1   -1] +
 	       phi_site[index   +ys+1]-phi_site[index   +ys-1] +
 	       phi_site[index   -ys+1]-phi_site[index   -ys-1]);
  	                     
-	delsq_phi_site[index] = r9*(phi_site[index+xs     ] +
-				    phi_site[index-xs     ] +
+	delsq_phi_site[index] = r9*(phi_site[indexp1     ] +
+				    phi_site[indexm1     ] +
 				    phi_site[index   +ys  ] +
 				    phi_site[index   -ys  ] +
 				    phi_site[index      +1] +
 				    phi_site[index      -1] +
-				    phi_site[index+xs+ys+1] +
-				    phi_site[index+xs+ys-1] +
-				    phi_site[index+xs-ys+1] +
-				    phi_site[index+xs-ys-1] +
-				    phi_site[index-xs+ys+1] +
-				    phi_site[index-xs+ys-1] +
-				    phi_site[index-xs-ys+1] +
-				    phi_site[index-xs-ys-1] +
-				    phi_site[index+xs+ys  ] +
-				    phi_site[index+xs-ys  ] +
-				    phi_site[index-xs+ys  ] +
-				    phi_site[index-xs-ys  ] +
-				    phi_site[index+xs   +1] +
-				    phi_site[index+xs   -1] +
-				    phi_site[index-xs   +1] +
-				    phi_site[index-xs   -1] +
+				    phi_site[indexp1+ys+1] +
+				    phi_site[indexp1+ys-1] +
+				    phi_site[indexp1-ys+1] +
+				    phi_site[indexp1-ys-1] +
+				    phi_site[indexm1+ys+1] +
+				    phi_site[indexm1+ys-1] +
+				    phi_site[indexm1-ys+1] +
+				    phi_site[indexm1-ys-1] +
+				    phi_site[indexp1+ys  ] +
+				    phi_site[indexp1-ys  ] +
+				    phi_site[indexm1+ys  ] +
+				    phi_site[indexm1-ys  ] +
+				    phi_site[indexp1   +1] +
+				    phi_site[indexp1   -1] +
+				    phi_site[indexm1   +1] +
+				    phi_site[indexm1   -1] +
 				    phi_site[index   +ys+1] +
 				    phi_site[index   +ys-1] +
 				    phi_site[index   -ys+1] +
@@ -817,6 +880,139 @@ static void phi_gradients_fluid_inline(void) {
 	/* Next site */
       }
     }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  f_grad_delsq_phi
+ *
+ *  Sets grad_delsq_phi at (ic,jc,kc) from differences of delsq_phi_site[].
+ *  The explicit im, ic, ip, allow the buffer regions to be used when
+ *  Lees Edwards planes are present.
+ *
+ *****************************************************************************/
+
+static void f_grad_delsq_phi(int icm1, int ic, int icp1, int jc, int kc,
+			     const int nlocal[3]) {
+
+  const double r18 = 1.0/18.0;
+  int n;
+
+  for (n = 0; n < nop_; n++) {
+
+    grad_delsq_phi_site[3*(nop_*ADDR(ic,jc,kc) + n) + X] =
+      r18*(delsq_phi_site[nop_*ADDR(icp1,jc,  kc  ) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc,  kc  ) + n]
+	 + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc+1) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc+1,kc+1) + n]
+	 + delsq_phi_site[nop_*ADDR(icp1,jc-1,kc+1) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc-1,kc+1) + n]
+	 + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc-1) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc+1,kc-1) + n]
+	 + delsq_phi_site[nop_*ADDR(icp1,jc-1,kc-1) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc-1,kc-1) + n]
+	 + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc  ) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc+1,kc  ) + n]
+	 + delsq_phi_site[nop_*ADDR(icp1,jc-1,kc  ) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc-1,kc  ) + n]
+	 + delsq_phi_site[nop_*ADDR(icp1,jc,  kc+1) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc,  kc+1) + n]
+	 + delsq_phi_site[nop_*ADDR(icp1,jc,  kc-1) + n]
+	 - delsq_phi_site[nop_*ADDR(icm1,jc,  kc-1) + n]);
+		    
+    grad_delsq_phi_site[3*(nop_*ADDR(ic,jc,kc) + n) + Y] = 
+      r18*(delsq_phi_site[nop_*ADDR(ic  ,jc+1,kc  ) + n]
+	   - delsq_phi_site[nop_*ADDR(ic,  jc-1,kc  ) + n]
+	   + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(icp1,jc-1,kc+1) + n]
+	   + delsq_phi_site[nop_*ADDR(icm1,jc+1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(icm1,jc-1,kc+1) + n]
+	   + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc-1) + n]
+	   - delsq_phi_site[nop_*ADDR(icp1,jc-1,kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(icm1,jc+1,kc-1) + n]
+	   - delsq_phi_site[nop_*ADDR(icm1,jc-1,kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc  ) + n]
+	   - delsq_phi_site[nop_*ADDR(icp1,jc-1,kc  ) + n]
+	   + delsq_phi_site[nop_*ADDR(icm1,jc+1,kc  ) + n]
+	   - delsq_phi_site[nop_*ADDR(icm1,jc-1,kc  ) + n]
+	   + delsq_phi_site[nop_*ADDR(ic,  jc+1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(ic,  jc-1,kc+1) + n]
+	   + delsq_phi_site[nop_*ADDR(ic,  jc+1,kc-1) + n]
+	   - delsq_phi_site[nop_*ADDR(ic,  jc-1,kc-1) + n]);
+		    
+    grad_delsq_phi_site[3*(nop_*ADDR(ic,jc,kc) + n) + Z] = 
+      r18*(delsq_phi_site[nop_*ADDR(ic,  jc,  kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(ic,  jc,  kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(icp1,jc+1,kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(icm1,jc+1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(icm1,jc+1,kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(icp1,jc-1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(icp1,jc-1,kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(icm1,jc-1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(icm1,jc-1,kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(icp1,jc,  kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(icp1,jc,  kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(icm1,jc,  kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(icm1,jc,  kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(ic,  jc+1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(ic,  jc+1,kc-1) + n]
+	   + delsq_phi_site[nop_*ADDR(ic,  jc-1,kc+1) + n]
+	   - delsq_phi_site[nop_*ADDR(ic,  jc-1,kc-1) + n]);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  f_delsq_delsq_phi
+ *
+ *  Finite difference for delsq_delsq_phi required for Brazovskii.
+ *  The explicit icm1, ic, icp1 allow the calculation to take place
+ *  in the Lees-Edwards buffer regions.
+ *
+ *****************************************************************************/
+
+static void f_delsq_delsq_phi(int icm1, int ic, int icp1, int jc, int kc,
+			      const int nlocal[3]) {
+
+  const double r9 = 1.0/9.0;
+  int n;
+
+  for (n = 0; n < nop_; n++) {
+
+    delsq_delsq_phi_site[nop_*ADDR(ic,jc,kc) + n] =
+      r9*(delsq_phi_site[nop_*ADDR(icp1,jc,  kc  ) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc,  kc  ) + n]
+	  + delsq_phi_site[nop_*ADDR(ic,  jc+1,kc  ) + n]
+	  + delsq_phi_site[nop_*ADDR(ic,  jc-1,kc  ) + n]
+	  + delsq_phi_site[nop_*ADDR(ic,  jc,  kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(ic,  jc,  kc-1) + n]
+	  + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc-1) + n]
+	  + delsq_phi_site[nop_*ADDR(icp1,jc-1,kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(icp1,jc-1,kc-1) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc+1,kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc+1,kc-1) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc-1,kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc-1,kc-1) + n]
+	  + delsq_phi_site[nop_*ADDR(icp1,jc+1,kc  ) + n]
+	  + delsq_phi_site[nop_*ADDR(icp1,jc-1,kc  ) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc+1,kc  ) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc-1,kc  ) + n]
+	  + delsq_phi_site[nop_*ADDR(icp1,jc,  kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(icp1,jc,  kc-1) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc,  kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(icm1,jc,  kc-1) + n]
+	  + delsq_phi_site[nop_*ADDR(ic,  jc+1,kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(ic,  jc+1,kc-1) + n]
+	  + delsq_phi_site[nop_*ADDR(ic,  jc-1,kc+1) + n]
+	  + delsq_phi_site[nop_*ADDR(ic,  jc-1,kc-1) + n]
+	  - 26.0*delsq_phi_site[nop_*ADDR(ic,jc,kc) + n]);
   }
 
   return;
@@ -835,6 +1031,8 @@ static void phi_gradients_double_fluid_inline(void) {
   int index;
   int nextra = nhalo_ - 1;
   int xs, ys;                   
+  int icp1, icm1;
+  int indexp1, indexm1;
  	 
   double phi0;
   const double r9 = (1.0/9.0);
@@ -843,74 +1041,77 @@ static void phi_gradients_double_fluid_inline(void) {
   get_N_local(nlocal);
   assert(nhalo_ >= 1);
   assert(nop_ == 1);
-  assert(le_get_nplane_total() == 0);
 
   /* Stride in the x- and y-directions */
   xs = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
   ys = (nlocal[Z] + 2*nhalo_);
  	 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
  	 
 	index = get_site_index(ic, jc, kc);
+	indexm1 = ADDR(icm1, jc, kc);
+	indexp1 = ADDR(icp1, jc, kc);
 	phi0 = delsq_phi_site[index];
  	 
 	grad_delsq_phi_site[3*index + X] =
-	  r18*(delsq_phi_site[index+xs     ]-delsq_phi_site[index-xs     ] +
-	       delsq_phi_site[index+xs+ys+1]-delsq_phi_site[index-xs+ys+1] +
-	       delsq_phi_site[index+xs-ys+1]-delsq_phi_site[index-xs-ys+1] +
-	       delsq_phi_site[index+xs+ys-1]-delsq_phi_site[index-xs+ys-1] +
-	       delsq_phi_site[index+xs-ys-1]-delsq_phi_site[index-xs-ys-1] +
-	       delsq_phi_site[index+xs+ys  ]-delsq_phi_site[index-xs+ys  ] +
-	       delsq_phi_site[index+xs-ys  ]-delsq_phi_site[index-xs-ys  ] +
-	       delsq_phi_site[index+xs   +1]-delsq_phi_site[index-xs   +1] +
-	       delsq_phi_site[index+xs   -1]-delsq_phi_site[index-xs   -1]);
+	  r18*(delsq_phi_site[indexp1     ]-delsq_phi_site[indexm1     ] +
+	       delsq_phi_site[indexp1+ys+1]-delsq_phi_site[indexm1+ys+1] +
+	       delsq_phi_site[indexp1-ys+1]-delsq_phi_site[indexm1-ys+1] +
+	       delsq_phi_site[indexp1+ys-1]-delsq_phi_site[indexm1+ys-1] +
+	       delsq_phi_site[indexp1-ys-1]-delsq_phi_site[indexm1-ys-1] +
+	       delsq_phi_site[indexp1+ys  ]-delsq_phi_site[indexm1+ys  ] +
+	       delsq_phi_site[indexp1-ys  ]-delsq_phi_site[indexm1-ys  ] +
+	       delsq_phi_site[indexp1   +1]-delsq_phi_site[indexm1   +1] +
+	       delsq_phi_site[indexp1   -1]-delsq_phi_site[indexm1   -1]);
  	                     
 	grad_delsq_phi_site[3*index + Y] =
 	  r18*(delsq_phi_site[index   +ys  ]-delsq_phi_site[index   -ys  ] +
-	       delsq_phi_site[index+xs+ys+1]-delsq_phi_site[index+xs-ys+1] +
-	       delsq_phi_site[index-xs+ys+1]-delsq_phi_site[index-xs-ys+1] +
-	       delsq_phi_site[index+xs+ys-1]-delsq_phi_site[index+xs-ys-1] +
-	       delsq_phi_site[index-xs+ys-1]-delsq_phi_site[index-xs-ys-1] +
-	       delsq_phi_site[index+xs+ys  ]-delsq_phi_site[index+xs-ys  ] +
-	       delsq_phi_site[index-xs+ys  ]-delsq_phi_site[index-xs-ys  ] +
+	       delsq_phi_site[indexp1+ys+1]-delsq_phi_site[indexp1-ys+1] +
+	       delsq_phi_site[indexm1+ys+1]-delsq_phi_site[indexm1-ys+1] +
+	       delsq_phi_site[indexp1+ys-1]-delsq_phi_site[indexp1-ys-1] +
+	       delsq_phi_site[indexm1+ys-1]-delsq_phi_site[indexm1-ys-1] +
+	       delsq_phi_site[indexp1+ys  ]-delsq_phi_site[indexp1-ys  ] +
+	       delsq_phi_site[indexm1+ys  ]-delsq_phi_site[indexm1-ys  ] +
 	       delsq_phi_site[index   +ys+1]-delsq_phi_site[index   -ys+1] +
 	       delsq_phi_site[index   +ys-1]-delsq_phi_site[index   -ys-1]);
  	                     
         grad_delsq_phi_site[3*index + Z] =
 	  r18*(delsq_phi_site[index      +1]-delsq_phi_site[index      -1] +
-	       delsq_phi_site[index+xs+ys+1]-delsq_phi_site[index+xs+ys-1] +
-	       delsq_phi_site[index-xs+ys+1]-delsq_phi_site[index-xs+ys-1] +
-	       delsq_phi_site[index+xs-ys+1]-delsq_phi_site[index+xs-ys-1] +
-	       delsq_phi_site[index-xs-ys+1]-delsq_phi_site[index-xs-ys-1] +
-	       delsq_phi_site[index+xs   +1]-delsq_phi_site[index+xs   -1] +
-	       delsq_phi_site[index-xs   +1]-delsq_phi_site[index-xs   -1] +
+	       delsq_phi_site[indexp1+ys+1]-delsq_phi_site[indexp1+ys-1] +
+	       delsq_phi_site[indexm1+ys+1]-delsq_phi_site[indexm1+ys-1] +
+	       delsq_phi_site[indexp1-ys+1]-delsq_phi_site[indexp1-ys-1] +
+	       delsq_phi_site[indexm1-ys+1]-delsq_phi_site[indexm1-ys-1] +
+	       delsq_phi_site[indexp1   +1]-delsq_phi_site[indexp1   -1] +
+	       delsq_phi_site[indexm1   +1]-delsq_phi_site[indexm1   -1] +
 	       delsq_phi_site[index   +ys+1]-delsq_phi_site[index   +ys-1] +
 	       delsq_phi_site[index   -ys+1]-delsq_phi_site[index   -ys-1]);
  	                     
-	delsq_delsq_phi_site[index] = r9*(delsq_phi_site[index+xs     ] +
-					  delsq_phi_site[index-xs     ] +
+	delsq_delsq_phi_site[index] = r9*(delsq_phi_site[indexp1     ] +
+					  delsq_phi_site[indexm1     ] +
 					  delsq_phi_site[index   +ys  ] +
 					  delsq_phi_site[index   -ys  ] +
 					  delsq_phi_site[index      +1] +
 					  delsq_phi_site[index      -1] +
-					  delsq_phi_site[index+xs+ys+1] +
-					  delsq_phi_site[index+xs+ys-1] +
-					  delsq_phi_site[index+xs-ys+1] +
-					  delsq_phi_site[index+xs-ys-1] +
-					  delsq_phi_site[index-xs+ys+1] +
-					  delsq_phi_site[index-xs+ys-1] +
-					  delsq_phi_site[index-xs-ys+1] +
-					  delsq_phi_site[index-xs-ys-1] +
-					  delsq_phi_site[index+xs+ys  ] +
-					  delsq_phi_site[index+xs-ys  ] +
-					  delsq_phi_site[index-xs+ys  ] +
-					  delsq_phi_site[index-xs-ys  ] +
-					  delsq_phi_site[index+xs   +1] +
-					  delsq_phi_site[index+xs   -1] +
-					  delsq_phi_site[index-xs   +1] +
-					  delsq_phi_site[index-xs   -1] +
+					  delsq_phi_site[indexp1+ys+1] +
+					  delsq_phi_site[indexp1+ys-1] +
+					  delsq_phi_site[indexp1-ys+1] +
+					  delsq_phi_site[indexp1-ys-1] +
+					  delsq_phi_site[indexm1+ys+1] +
+					  delsq_phi_site[indexm1+ys-1] +
+					  delsq_phi_site[indexm1-ys+1] +
+					  delsq_phi_site[indexm1-ys-1] +
+					  delsq_phi_site[indexp1+ys  ] +
+					  delsq_phi_site[indexp1-ys  ] +
+					  delsq_phi_site[indexm1+ys  ] +
+					  delsq_phi_site[indexm1-ys  ] +
+					  delsq_phi_site[indexp1   +1] +
+					  delsq_phi_site[indexp1   -1] +
+					  delsq_phi_site[indexm1   +1] +
+					  delsq_phi_site[indexm1   -1] +
 					  delsq_phi_site[index   +ys+1] +
 					  delsq_phi_site[index   +ys-1] +
 					  delsq_phi_site[index   -ys+1] +
@@ -923,4 +1124,3 @@ static void phi_gradients_double_fluid_inline(void) {
 
   return;
 }
-
