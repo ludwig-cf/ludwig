@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.13 2009-05-29 06:59:23 kevin Exp $
+ *  $Id: lattice.c,v 1.14 2009-10-23 16:53:32 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -492,12 +492,17 @@ void hydrodynamics_leesedwards_transformation() {
   int jdy;       /* Integral part of displacement */
   int j1, j2;    /* j values in real system to interpolate between */
 
+  double ule[3]; /* +/- velocity jump at plane */
+
   assert(initialised_);
 
   if (cart_size(Y) > 1) {
     hydrodynamics_leesedwards_parallel();
   }
   else {
+
+    ule[X] = 0.0;
+    ule[Z] = 0.0;
 
     get_N_local(nlocal);
     ib0 = nlocal[X] + nhalo_ + 1;
@@ -508,6 +513,7 @@ void hydrodynamics_leesedwards_transformation() {
 
       ic = le_index_buffer_to_real(ib);
       dy = le_buffer_displacement(ib, t);
+      ule[Y] = dy/t; /* STEADY SHEAR ONLY */
       dy = fmod(dy, L(Y));
       jdy = floor(dy);
       fr  = dy - jdy;
@@ -520,7 +526,7 @@ void hydrodynamics_leesedwards_transformation() {
 	j2 = 1 + j1 % nlocal[Y];
 	for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
 	  for (ia = 0; ia < 3; ia++) {
-	  u[ADDR(ib0+ib,jc,kc)].c[ia] =
+	  u[ADDR(ib0+ib,jc,kc)].c[ia] = ule[ia] +
 	    fr*u[ADDR(ic,j1,kc)].c[ia] + (1.0-fr)*u[ADDR(ic,j2,kc)].c[ia];
 	  }
 	}
@@ -554,6 +560,7 @@ static void hydrodynamics_leesedwards_parallel() {
   double t;                /* time */
   int jdy;                 /* Integral part of displacement */
   int ia;
+  double ule[3];
 
   MPI_Comm le_comm = le_communicator();
   int      nrank_s[2];     /* send ranks */
@@ -576,6 +583,9 @@ static void hydrodynamics_leesedwards_parallel() {
 
   t = 1.0*get_step();
 
+  ule[X] = 0.0;
+  ule[Z] = 0.0;
+
   /* One round of communication for each buffer plane */
 
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
@@ -586,6 +596,7 @@ static void hydrodynamics_leesedwards_parallel() {
     /* Work out the displacement-dependent quantities */
 
     dy = le_buffer_displacement(ib, t);
+    ule[Y] = dy/t; /* STEADY SHEAR ONLY */
     dy = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = dy - jdy;
@@ -629,7 +640,7 @@ static void hydrodynamics_leesedwards_parallel() {
       for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
 	for (ia = 0; ia < 3; ia++) {
 	  u[ADDR(ib0+ib,jc,kc)].c[ia] = fr*buffer[j1+kc+nhalo_-1].c[ia]
-	    + (1.0-fr)*buffer[j2+kc+nhalo_-1].c[ia];
+	    + (1.0-fr)*buffer[j2+kc+nhalo_-1].c[ia] + ule[ia];
 	}
       }
     }
