@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.4 2009-10-14 17:16:01 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.5 2009-10-23 16:53:32 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,6 +28,8 @@
 #include "coords.h"
 #include "model.h"
 #include "control.h"
+#include "lattice.h"
+#include "physics.h"
 #include "leesedwards.h"
 #include "free_energy.h"
 #include "stats_rheology.h"
@@ -43,7 +45,7 @@ static MPI_Comm comm_z_;
 static void stats_rheology_print_s(const char *, double s[3][3]);
 static void stats_rheology_print_matrix(FILE *, double s[3][3]);
 
-#define NSTAT1 6  /* Number of data items for stess statistics */
+#define NSTAT1 7  /* Number of data items for stess statistics */
 #define NSTAT2 12 /* Number of data items for 3-d stress stats
 		   * 3 components of velocity, 3 components of
                    * 3 different contributions to the stress */
@@ -332,6 +334,9 @@ void stats_rheology_stress_profile_accumulate(void) {
 	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  9] += rho*u[X];
 	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 10] += rho*u[Y];
 	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 11] += rho*u[Z];
+
+	hydrodynamics_velocity_gradient_tensor(ic, jc,  kc, s);
+	sxy_[NSTAT1*(ic-1) + 6] += (s[X][Y] + s[Y][X]);
       }
     }
   }
@@ -359,6 +364,9 @@ void stats_rheology_stress_profile_accumulate(void) {
  *    mean_yzt u_y
  *    mean_yzt u_z
  *
+ *  Finally, the viscosus stress via finite difference, which is
+ *    mean_yzt eta*(d_x u_y + d_y u_x)
+ *
  *****************************************************************************/
 
 void stats_rheology_stress_profile(const char * filename) {
@@ -369,6 +377,7 @@ void stats_rheology_stress_profile(const char * filename) {
   double * sxymean;
   double rmean;
   double uy;
+  double eta = get_eta_shear();
 
   const int tag_token = 90728;
   int rank;
@@ -414,14 +423,15 @@ void stats_rheology_stress_profile(const char * filename) {
       uy = le_get_block_uy(ic);
 
       fprintf(fp_output,
-	      "%6d %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e\n",
+	      "%6d %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e\n",
 	      noffset[X] + ic,
 	      rmean*sxymean[NSTAT1*(ic-1)  ],
 	      rmean*sxymean[NSTAT1*(ic-1)+1],
 	      rmean*sxymean[NSTAT1*(ic-1)+2],
 	      rmean*sxymean[NSTAT1*(ic-1)+3],
 	      rmean*sxymean[NSTAT1*(ic-1)+4] + uy,
-	      rmean*sxymean[NSTAT1*(ic-1)+5]);
+	      rmean*sxymean[NSTAT1*(ic-1)+5],
+	      rmean*sxymean[NSTAT1*(ic-1)+6]*eta);
 
     }
 
