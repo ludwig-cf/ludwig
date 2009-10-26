@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.5 2009-10-23 16:53:32 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.6 2009-10-26 09:52:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -379,7 +379,7 @@ void stats_rheology_stress_profile(const char * filename) {
   double uy;
   double eta = get_eta_shear();
 
-  const int tag_token = 90728;
+  const int tag_token = 728;
   int rank;
   int token = 0;
   MPI_Status status;
@@ -485,7 +485,7 @@ void stats_rheology_stress_section(const char * filename) {
   MPI_Status status;
   int token = 0;
   int rank;
-  const int tag_token = 20091012;
+  const int tag_token = 1012;
 
   assert(initialised_);
   get_N_local(nlocal);
