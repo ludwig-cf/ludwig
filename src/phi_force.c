@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.5 2009-10-08 16:06:01 kevin Exp $
+ *  $Id: phi_force.c,v 1.6 2009-10-26 09:52:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -521,8 +521,8 @@ static void phi_force_fix_fluxes_parallel(void) {
   MPI_Comm le_comm = le_communicator();
   int      nrank_s[2];     /* send ranks */
   int      nrank_r[2];     /* recv ranks */
-  const int tag0 = 908200;
-  const int tag1 = 908201;
+  const int tag0 = 8200;
+  const int tag1 = 8201;
 
   MPI_Request request[8];
   MPI_Status  status[8];
