@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.17 2008-11-27 16:18:50 kevin Exp $
+ *  $Id: interaction.c,v 1.18 2009-10-30 18:05:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -160,8 +160,6 @@ void COLL_init() {
 #endif
 
   if (nc == 0) return;
-  /* Particle code only with nhalo_ = 1 at moment */
-  assert(nhalo_ == 1);
   /* Still require old COM_init() at the moment */
   COM_init();
 

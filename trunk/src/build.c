@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.3 2008-08-24 17:30:44 kevin Exp $
+ *  $Id: build.c,v 1.4 2009-10-30 18:05:03 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -25,20 +25,20 @@
 #include "site_map.h"
 #include "build.h"
 
-extern Site * site;
 extern int     boundaries_present(void);
-
 
 static Colloid ** coll_map;        /* Colloid map. */
 static Colloid ** coll_old;        /* Map at the previous time step */
 
 static void    COLL_link_mean_contrib(Colloid *, int, FVector);
-static void    COLL_remove_binary_fluid(int inode, Colloid *);
-static void    COLL_replace_binary_fluid(int inode, Colloid *);
 static void    COLL_reconstruct_links(Colloid *);
 static void    reconstruct_wall_links(Colloid *);
 static void    COLL_reset_links(Colloid *);
 static void    COLL_set_virtual_velocity(int inode, int p, FVector u);
+static void    build_remove_fluid(int index, Colloid *);
+static void    build_remove_order_parameter(int index, Colloid *);
+static void    build_replace_fluid(int index, Colloid *);
+static void    build_replace_order_parameter(int indeex, Colloid *);
 static IVector COM_index2coord( int index );
 static FVector COLL_fcoords_from_ijk(int, int, int);
 
@@ -60,8 +60,7 @@ void COLL_init_coordinates() {
   /* Allocate space for the local colloid map */
 
   get_N_local(N);
-  assert(nhalo_ == 1); /* all following require refactoring */
-  n = (N[X] + 2)*(N[Y] + 2)*(N[Z] + 2);
+  n = (N[X] + 2*nhalo_)*(N[Y] + 2*nhalo_)*(N[Z] + 2*nhalo_);
 
   info("Requesting %d bytes for colloid maps\n", 2*n*sizeof(Colloid*));
 
@@ -91,7 +90,7 @@ void COLL_update_map() {
   int     n, nsites;
   int     i, j, k;
   int     i_min, i_max, j_min, j_max, k_min, k_max;
-  int     index, xfac, yfac;
+  int     index;
 
   Colloid * p_colloid;
 
@@ -107,12 +106,9 @@ void COLL_update_map() {
   get_N_local(N);
   get_N_offset(offset);
 
-  xfac = (N[Y] + 2)*(N[Z] + 2);
-  yfac = (N[Z] + 2);
-
   /* First, set any existing colloid sites to fluid */
 
-  nsites = (N[X] + 2)*(N[Y] + 2)*(N[Z] + 2);
+  nsites = (N[X] + 2*nhalo_)*(N[Y] + 2*nhalo_)*(N[Z] + 2*nhalo_);
 
   for (ic = 1 - nhalo_; ic <= N[X] + nhalo_; ic++) {
     for (jc = 1 - nhalo_; jc <= N[Y] + nhalo_; jc++) {
@@ -163,12 +159,12 @@ void COLL_update_map() {
 	   * should not extend beyond the boundary of the current domain
 	   * (but include halos). */
 
-	  i_min = imax(0,      (int) floor(r0.x - radius));
-	  i_max = imin(N[X]+1, (int) ceil (r0.x + radius));
-	  j_min = imax(0,      (int) floor(r0.y - radius));
-	  j_max = imin(N[Y]+1, (int) ceil (r0.y + radius));
-	  k_min = imax(0,      (int) floor(r0.z - radius));
-	  k_max = imin(N[Z]+1, (int) ceil (r0.z + radius));
+	  i_min = imax(1-nhalo_,    (int) floor(r0.x - radius));
+	  i_max = imin(N[X]+nhalo_, (int) ceil (r0.x + radius));
+	  j_min = imax(1-nhalo_,    (int) floor(r0.y - radius));
+	  j_max = imin(N[Y]+nhalo_, (int) ceil (r0.y + radius));
+	  k_min = imax(1-nhalo_,    (int) floor(r0.z - radius));
+	  k_max = imin(N[Z]+nhalo_, (int) ceil (r0.z + radius));
 
 	  /* Check each site to see whether it is inside or not */
 
@@ -186,7 +182,7 @@ void COLL_update_map() {
 		if (UTIL_dot_product(rsep, rsep) < rsq) {
 
 		  /* Set index */
-		  index = i*xfac + j*yfac + k;
+		  index = get_site_index(i, j, k);
 
 		  coll_map[index] = p_colloid;
 		  site_map_set_status(i, j, k, COLLOID);
@@ -283,15 +279,11 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
   double       lambda = 0.5;
   FVector     rsite1, rsep;
   FVector     r0;
-  int         xfac, yfac;
   int         N[3];
   int         offset[3];
 
   get_N_local(N);
   get_N_offset(offset);
-
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   p_link = p_colloid->lnk;
   p_last = p_link;
@@ -310,7 +302,8 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
   /* ... end failsafe */
 
   /* Limits of the cube around the particle. Make sure these are
-   * the appropriate lattice nodes... */
+   * the appropriate lattice nodes, which extend to the penultimate
+   * site in each direction (to include halos). */
 
   r0.x -= (double) offset[X];
   r0.y -= (double) offset[Y];
@@ -332,7 +325,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	jc = j;
 	kc = k;
 
-	index1 = ic*xfac + jc*yfac + kc;
+	index1 = get_site_index(ic, jc, kc);
 
 	if (coll_map[index1] == p_colloid) continue;
 
@@ -350,7 +343,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	  jj = jc + cv[p][1];
 	  kk = kc + cv[p][2];
 
-	  index0 = ii*xfac + jj*yfac + kk;
+	  index0 = get_site_index(ii, jj, kk);
 
 	  if (coll_map[index0] != p_colloid) continue;
 
@@ -546,38 +539,43 @@ void COLL_remove_or_replace_fluid() {
   Colloid * p_colloid;
 
   int     i, j, k;
-  int     xfac, yfac, index;
+  int     index;
   int     sold, snew;
   int     halo;
   int     N[3];
 
   get_N_local(N);
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
+  for (i = 1 - nhalo_; i <= N[X] + nhalo_; i++) {
+    for (j = 1 - nhalo_; j <= N[Y] + nhalo_; j++) {
+      for (k = 1 - nhalo_; k <= N[Z] + nhalo_; k++) {
 
-  for (i = 0; i <= N[X] + 1; i++) {
-    for (j = 0; j <= N[Y] + 1; j++) {
-      for (k = 0; k <= N[Z] + 1; k++) {
-
-	index = i*xfac + j*yfac + k;
+	index = get_site_index(i, j, k);
 
 	sold = (coll_old[index] != (Colloid *) NULL);
 	snew = (coll_map[index] != (Colloid *) NULL);
 
-	halo = (i == 0 || j == 0 || k == 0 ||
+	halo = (i < 1 || j < 1 || k < 1 ||
 		i > N[X] || j > N[Y] || k > N[Z]);
 
 	if (sold == 0 && snew == 1) {
 	  p_colloid = coll_map[index];
 	  p_colloid->rebuild = 1;
-	  if (!halo) COLL_remove_binary_fluid(index, p_colloid);
+
+	  if (!halo) {
+	    build_remove_fluid(index, p_colloid);
+	    build_remove_order_parameter(index, p_colloid);
+	  }
 	}
 
 	if (sold == 1 && snew == 0) {
 	  p_colloid = coll_old[index];
 	  p_colloid->rebuild = 1;
-	  if (!halo) COLL_replace_binary_fluid(index, p_colloid);
+
+	  if (!halo) {
+	    build_replace_fluid(index, p_colloid);
+	    build_replace_order_parameter(index, p_colloid);
+	  }
 	}
       }
     }
@@ -586,26 +584,24 @@ void COLL_remove_or_replace_fluid() {
   return;
 }
 
+/******************************************************************************
+ *
+ *  build_remove_fluid
+ *
+ *  Remove denisty, momentum at site inode.
+ *
+ *  Corrections to the mass, force, and torque updates to the relevant
+ *  colloid are required.
+ *
+ *  We don't care about the 'swallowed' distribution information
+ *  associated with the old fluid.
+ *
+ *****************************************************************************/
 
-/*****************************************************************************
- *
- *  COLL_remove_binary_fluid
- *
- *  Remove fluid at site inode, which has just been occupied by
- *  colloid p_colloid.
- *
- *  This requires corrections to the bounce-back for this colloid
- *  at the following time-step.
- *
- *  As the old fluid has disappeared inside the colloid, the
- *  distributions (f, g) at inode do not actually need to be reset.
- *
- ****************************************************************************/
+static void build_remove_fluid(int index, Colloid * p_colloid) {
 
-void COLL_remove_binary_fluid(int inode, Colloid * p_colloid) {
-
+  int    noffset[3];
   double   oldrho;
-  double   oldphi;
   double   tmp[ND];
   FVector oldu;
 
@@ -613,15 +609,12 @@ void COLL_remove_binary_fluid(int inode, Colloid * p_colloid) {
   FVector rb;
   FVector r0;
 
-  int offset[3];
-
-  get_N_offset(offset);
+  get_N_offset(noffset);
 
   /* Get the properties of the old fluid at inode */
 
-  oldrho = get_rho_at_site(inode);
-  oldphi = get_phi_at_site(inode);
-  get_momentum_at_site(inode, tmp);
+  oldrho = get_rho_at_site(index);
+  get_momentum_at_site(index, tmp);
   oldu.x = tmp[X];
   oldu.y = tmp[Y];
   oldu.z = tmp[Z];
@@ -632,86 +625,82 @@ void COLL_remove_binary_fluid(int inode, Colloid * p_colloid) {
   p_colloid->deltam -= (oldrho - get_rho0());
   p_colloid->f0      = UTIL_fvector_add(p_colloid->f0, oldu);
 
-  ri    = COM_index2coord(inode);
+  ri    = COM_index2coord(index);
   rb    = COLL_fcoords_from_ijk(ri.x, ri.y, ri.z);
   r0    = p_colloid->r;
-  r0.x -= offset[X];
-  r0.y -= offset[Y];
-  r0.z -= offset[Z];
+  r0.x -= noffset[X];
+  r0.y -= noffset[Y];
+  r0.z -= noffset[Z];
   rb    = COLL_fvector_separation(r0, rb);
 
-  oldu               = UTIL_cross_product(rb, oldu);
-  p_colloid->t0      = UTIL_fvector_add(p_colloid->t0, oldu);
-
-  /* Set the corrections for order parameter */
-
-  p_colloid->deltaphi += (oldphi - get_phi0());
+  oldu          = UTIL_cross_product(rb, oldu);
+  p_colloid->t0 = UTIL_fvector_add(p_colloid->t0, oldu);
 
   return;
 }
 
+/*****************************************************************************
+ *
+ *  build_remove_order_parameter
+ *
+ *  Remove order parameter(s) at the site inode. The old site information
+ *  can be lost inside the particle, but we must record the correction.
+ *
+ *****************************************************************************/
+
+static void build_remove_order_parameter(int inode, Colloid * p_colloid) {
+
+  double phi;
+
+  phi = get_phi_at_site(inode);
+  p_colloid->deltaphi += (phi - get_phi0());
+
+  return;
+}
 
 /*****************************************************************************
  *
- *  COLL_replace_binary_fluid
+ *  build_replace_fluid
  *
- *  Replace fluid at site inode, which has just been vacated by
- *  colloid p_colloid.
+ *  Replace the distributions when a fluid site (index) is exposed.
+ *  This gives rise to corrections on the particle force and torque.
  *
- *  The new fluid properties must be set according to what
- *  fluid distributions (f, g) are
- *  present in the neighbourhood, and corrections added to the
- *  bounce-back for p_colloid at the next step.
- *
- *  Issues
- *    A naive weighted average at the moment.
- *
- ****************************************************************************/
+ *****************************************************************************/
 
-void COLL_replace_binary_fluid(int inode, Colloid * p_colloid) {
+static void build_replace_fluid(int index, Colloid * p_colloid) {
 
   int      indexn, p, pdash;
-  int      xfac, yfac;
-  int      N[3];
-  int      offset[3];
+  int      noffset[3];
   IVector  ri;
-
   FVector  rb;
 
-  double    newrho = 0.0;
-  double    newphi = 0.0;
+  double   newrho = 0.0;
   FVector  newu, newt;
   FVector  r0;
 
   double    weight = 0.0;
-
   double    newf[NVEL];
-  double    newg[NVEL];
 
-  get_N_local(N);
-  get_N_offset(offset);
+  get_N_offset(noffset);
 
-  yfac = (N[Z]+2);
-  xfac = (N[Y]+2)*yfac;
+  ri = COM_index2coord(index);
 
   /* Check the surrounding sites that were linked to inode,
    * and accumulate a (weighted) average distribution. */
 
   for (p = 0; p < NVEL; p++) {
     newf[p] = 0.0;
-    newg[p] = 0.0;
   }
 
   for (p = 1; p < NVEL; p++) {
 
-    indexn = inode + xfac*cv[p][0] + yfac*cv[p][1] + cv[p][2];
+    indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y], ri.z + cv[p][Z]);
 
     /* Site must have been fluid before position update */
     if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID) continue;
 
     for (pdash = 0; pdash < NVEL; pdash++) {
-      newf[pdash] += wv[p]*site[indexn].f[pdash];
-      newg[pdash] += wv[p]*site[indexn].g[pdash];
+      newf[pdash] += wv[p]*get_f_at_site(indexn, pdash);
     }
     weight += wv[p];
   }
@@ -724,13 +713,10 @@ void COLL_replace_binary_fluid(int inode, Colloid * p_colloid) {
 
   for (p = 0; p < NVEL; p++) {
     newf[p] *= weight;
-    newg[p] *= weight;
-    site[inode].f[p] = newf[p];
-    site[inode].g[p] = newg[p];
+    set_f_at_site(index, p, newf[p]);
 
     /* ... and remember the new fluid properties */
     newrho += newf[p];
-    newphi += newg[p];
     newu.x -= newf[p]*cv[p][0]; /* minus sign is approprite for upcoming ... */
     newu.y -= newf[p]*cv[p][1]; /* ... correction to colloid momentum */
     newu.z -= newf[p]*cv[p][2];
@@ -743,16 +729,69 @@ void COLL_replace_binary_fluid(int inode, Colloid * p_colloid) {
   p_colloid->deltam += (newrho - get_rho0());
   p_colloid->f0      = UTIL_fvector_add(p_colloid->f0, newu);
 
-  ri    = COM_index2coord(inode);
   rb    = COLL_fcoords_from_ijk(ri.x, ri.y, ri.z);
   r0    = p_colloid->r;
-  r0.x -= offset[X];
-  r0.y -= offset[Y];
-  r0.z -= offset[Z];
+  r0.x -= noffset[X];
+  r0.y -= noffset[Y];
+  r0.z -= noffset[Z];
   rb    = COLL_fvector_separation(r0, rb);
 
-  newt               = UTIL_cross_product(rb, newu);
-  p_colloid->t0      = UTIL_fvector_add(p_colloid->t0, newt);
+  newt          = UTIL_cross_product(rb, newu);
+  p_colloid->t0 = UTIL_fvector_add(p_colloid->t0, newt);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  build_replace_order_parameter
+ *
+ *  Replace the order parameter(s) at a newly exposed site (index).
+ *
+ *****************************************************************************/
+
+static void build_replace_order_parameter(int index, Colloid * p_colloid) {
+
+  int      indexn, p, pdash;
+  IVector  ri;
+
+  double    newphi = 0.0;
+  double    weight = 0.0;
+  double    newg[NVEL];
+
+  ri = COM_index2coord(index);
+
+  /* Check the surrounding sites that were linked to inode,
+   * and accumulate a (weighted) average distribution. */
+
+  for (p = 0; p < NVEL; p++) {
+    newg[p] = 0.0;
+  }
+
+  for (p = 1; p < NVEL; p++) {
+
+    indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y], ri.z + cv[p][Z]);
+
+    /* Site must have been fluid before position update */
+    if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID) continue;
+
+    for (pdash = 0; pdash < NVEL; pdash++) {
+      newg[pdash] += wv[p]*get_g_at_site(indexn, pdash);
+    }
+    weight += wv[p];
+  }
+
+  /* Set new fluid distributions */
+
+  weight = 1.0/weight;
+
+  for (p = 0; p < NVEL; p++) {
+    newg[p] *= weight;
+    set_g_at_site(index, p, newg[p]);
+
+    /* ... and remember the new fluid properties */
+    newphi += newg[p];
+  }
 
   /* Set corrections arising from change in order parameter */
 
@@ -774,7 +813,7 @@ void COLL_set_virtual_velocity(int inode, int p, FVector u) {
   double uc;
 
   uc = u.x*cv[p][0] + u.y*cv[p][1] + u.z*cv[p][2];
-  site[inode].f[p] = wv[p]*(1.0 + 3.0*uc);
+  set_f_at_site(inode, p, wv[p]*(1.0 + 3.0*uc));
 
   return;
 }
@@ -824,12 +863,15 @@ IVector COM_index2coord( int index )
 
   get_N_local(N);
 
-  yfac = N[Z]+2;
-  xfac = (N[Y]+2)*yfac;
+  yfac = N[Z]+2*nhalo_;
+  xfac = (N[Y]+2*nhalo_)*yfac;
   
-  coord.x = index/xfac;
-  coord.y = (index%xfac)/yfac;
-  coord.z = index%yfac;
+  coord.x = (1-nhalo_) + index/xfac;
+  coord.y = (1-nhalo_) + (index%xfac)/yfac;
+  coord.z = (1-nhalo_) + index%yfac;
+
+  assert(get_site_index(coord.x, coord.y, coord.z) == index);
+
   return(coord);
 }
 
@@ -914,15 +956,11 @@ void reconstruct_wall_links(Colloid * p_colloid) {
   double       lambda = 0.5;
   FVector     rsite1, rsep;
   FVector     r0;
-  int         xfac, yfac;
   int         N[3];
   int         offset[3];
 
   get_N_local(N);
   get_N_offset(offset);
-
-  yfac = (N[Z] + 2);
-  xfac = (N[Y] + 2)*yfac;
 
   p_link = p_colloid->lnk;
   p_last = p_colloid->lnk;
@@ -958,7 +996,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 	jc = j;
 	kc = k;
 
-	index1 = ic*xfac + jc*yfac + kc;
+	index1 = get_site_index(ic, jc, kc);
 
 	if (coll_map[index1] != p_colloid) continue;
 
@@ -973,7 +1011,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 	  jj = jc + cv[p][1];
 	  kk = kc + cv[p][2];
 
-	  index0 = ii*xfac + jj*yfac + kk;
+	  index0 = get_site_index(ii, jj, kk);
 
 	  if (site_map_get_status_index(index0) != BOUNDARY) continue;
 
