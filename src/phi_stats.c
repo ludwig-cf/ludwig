@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.7 2009-08-20 16:29:05 kevin Exp $
+ *  $Id: phi_stats.c,v 1.8 2009-10-30 18:03:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,6 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "site_map.h"
+#include "bbl.h"
 #include "phi.h"
 #include "phi_lb_coupler.h"
 #include "phi_stats.h"
@@ -61,6 +62,13 @@ void phi_stats_print_stats() {
     phi_local[2*nop_ + n] = 0.0;        /* phi^2  */
     phi_local[3*nop_ + n] = +DBL_MAX;   /* min    */
     phi_local[4*nop_ + n] = -DBL_MAX;   /* max    */
+  }
+
+  if (phi_is_finite_difference()) {
+    /* There's no correction coming from BBL */
+  }
+  else {
+    phi_local[1*nop_ + 0] = bbl_order_parameter_deficit();
   }
 
   /* Compute the mean phi in the domain proper */
