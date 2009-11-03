@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.8 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: colloids.c,v 1.9 2009-11-03 16:58:50 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -391,10 +391,6 @@ void free_colloid(Colloid * p_colloid) {
  *****************************************************************************/
 
 void colloids_memory_report() {
-
-#ifdef _MPI_
-  /* MPI_Reduce(); */
-#endif
 
   info("[colloids: %d (%d bytes) links: %d (%d bytes)]\n",
        nalloc_colls_, nalloc_colls_*sizeof(Colloid),
