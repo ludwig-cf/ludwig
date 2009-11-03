@@ -8,7 +8,7 @@
  *  See Ludwig Technical Notes for a complete description
  *  of the colloid implementation.
  *
- *  $Id: colloids.h,v 1.8 2009-11-03 17:19:55 kevin Exp $
+ *  $Id: colloids.h,v 1.9 2009-11-03 17:25:24 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -68,7 +68,6 @@ struct colloid {
   double sump;             /* flux through squirmer surface*/ 
   double b1;		   /* squirmer active parameter B_1 */
   double b2;               /* squirmer active parameter B_2 */
-
 
   /* Pointers */
 
