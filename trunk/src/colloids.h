@@ -8,7 +8,7 @@
  *  See Ludwig Technical Notes for a complete description
  *  of the colloid implementation.
  *
- *  $Id: colloids.h,v 1.7 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: colloids.h,v 1.8 2009-11-03 17:19:55 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -62,6 +62,13 @@ struct colloid {
   double   cosine_ca;      /* Cosine of the cone angle */
   int      n1_nodes;       /* Number of fluid nodes cone 1 ('front'?) */
   int      n2_nodes;       /* Number of fluid nodes cone 2 ('back'?) */
+
+  FVector   fc0;           /* total force on squirmer for mass conservation */          
+  FVector   tc0;           /* total torque on squirmer for mass conservation */
+  double sump;             /* flux through squirmer surface*/ 
+  double b1;		   /* squirmer active parameter B_1 */
+  double b2;               /* squirmer active parameter B_2 */
+
 
   /* Pointers */
 
