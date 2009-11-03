@@ -4,7 +4,7 @@
  *
  *  Routines dealing with bounce-back on links for active particles.
  *
- *  $Id: active.c,v 1.4 2008-08-24 16:47:31 kevin Exp $
+ *  $Id: active.c,v 1.5 2009-11-03 17:32:05 kevin Exp $
  *
  *  Isaac Llopis (Barcelona) developed the active particles.
  *
@@ -284,7 +284,7 @@ static void active1_prepass() {
  *
  *  init_active2
  *
- *  Set the momentum transfer coeffiecnt.
+ *  Set the momentum transfer coefficient.
  *
  *****************************************************************************/
 
@@ -292,11 +292,13 @@ static void init_active2() {
 
   Colloid * p_colloid;
   int       n, ic, jc, kc;
-  double    dp = 0.2;
+  double    b_1 = 0.02, b_2 = 0.1;
 
-  n = RUN_get_double_parameter("colloid_dp", &dp);
+  n = RUN_get_double_parameter("colloid_b1", &b_1);
   info((n == 0) ? "[Default] " : "[User   ] "); 
-  info("active momentum parameter %f\n", dp);
+  info("active B_1 parameter %f\n", b_1);
+  n = RUN_get_double_parameter("colloid_b2", &b_2);
+  info("active B_2 parameter %f\n", b_2);
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -305,8 +307,8 @@ static void init_active2() {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {             
-	  p_colloid->dp = dp;
-
+	  p_colloid->b1 = b_1;
+	  p_colloid->b2 = b_2;
 	  /* Initialise direction vector */
 	  p_colloid->dir.x = 0.0;
 	  p_colloid->dir.y = 0.0;
