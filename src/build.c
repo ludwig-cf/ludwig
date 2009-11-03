@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.4 2009-10-30 18:05:03 kevin Exp $
+ *  $Id: build.c,v 1.5 2009-11-03 16:57:40 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -20,6 +20,7 @@
 #include "coords.h"
 #include "physics.h"
 #include "model.h"
+#include "phi.h"
 #include "timer.h"
 #include "colloids.h"
 #include "site_map.h"
@@ -648,11 +649,17 @@ static void build_remove_fluid(int index, Colloid * p_colloid) {
  *
  *****************************************************************************/
 
-static void build_remove_order_parameter(int inode, Colloid * p_colloid) {
+static void build_remove_order_parameter(int index, Colloid * p_colloid) {
 
   double phi;
 
-  phi = get_phi_at_site(inode);
+  if (phi_is_finite_difference()) {
+    phi = phi_get_phi_site(index);
+  }
+  else {
+    phi = get_phi_at_site(index);
+  }
+
   p_colloid->deltaphi += (phi - get_phi0());
 
   return;
@@ -752,12 +759,13 @@ static void build_replace_fluid(int index, Colloid * p_colloid) {
 
 static void build_replace_order_parameter(int index, Colloid * p_colloid) {
 
-  int      indexn, p, pdash;
+  int      indexn, n, p, pdash;
   IVector  ri;
 
   double    newphi = 0.0;
   double    weight = 0.0;
   double    newg[NVEL];
+  double    * phi;
 
   ri = COM_index2coord(index);
 
@@ -768,29 +776,63 @@ static void build_replace_order_parameter(int index, Colloid * p_colloid) {
     newg[p] = 0.0;
   }
 
-  for (p = 1; p < NVEL; p++) {
+  if (phi_is_finite_difference()) {
 
-    indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y], ri.z + cv[p][Z]);
+    phi = (double *) malloc(nop_*sizeof(double));
+    if (phi == NULL) fatal("malloc(phi) failed\n");
 
-    /* Site must have been fluid before position update */
-    if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID) continue;
-
-    for (pdash = 0; pdash < NVEL; pdash++) {
-      newg[pdash] += wv[p]*get_g_at_site(indexn, pdash);
+    for (n = 0; n < nop_; n++) {
+      phi[n] = 0.0;
     }
-    weight += wv[p];
+
+    for (p = 1; p < NVEL; p++) {
+
+      indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y],
+			      ri.z + cv[p][Z]);
+
+      /* Site must have been fluid before position update */
+      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+	continue;
+      for (n = 0; n < nop_; n++) {
+	phi[n] += wv[p]*phi_op_get_phi_site(index, n);
+      }
+      weight += wv[p];
+    }
+
+    weight = 1.0/weight;
+    for (n = 0; n < nop_; n++) {
+      phi_op_set_phi_site(index, n, phi[n]*weight);
+    }
+    free(phi);
   }
+  else {
 
-  /* Set new fluid distributions */
+    for (p = 1; p < NVEL; p++) {
 
-  weight = 1.0/weight;
+      indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y],
+			      ri.z + cv[p][Z]);
 
-  for (p = 0; p < NVEL; p++) {
-    newg[p] *= weight;
-    set_g_at_site(index, p, newg[p]);
+      /* Site must have been fluid before position update */
+      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+	continue;
 
-    /* ... and remember the new fluid properties */
-    newphi += newg[p];
+      for (pdash = 0; pdash < NVEL; pdash++) {
+	newg[pdash] += wv[p]*get_g_at_site(indexn, pdash);
+      }
+      weight += wv[p];
+    }
+
+    /* Set new fluid distributions */
+
+    weight = 1.0/weight;
+
+    for (p = 0; p < NVEL; p++) {
+      newg[p] *= weight;
+      set_g_at_site(index, p, newg[p]);
+
+      /* ... and remember the new fluid properties */
+      newphi += newg[p];
+    }
   }
 
   /* Set corrections arising from change in order parameter */
@@ -1070,4 +1112,19 @@ void reconstruct_wall_links(Colloid * p_colloid) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_at_site_index
+ *
+ *  Return a pointer to the colloid occupying this site index,
+ *  or NULL if none.
+ *
+ *****************************************************************************/
+
+Colloid * colloid_at_site_index(int index) {
+
+  assert(coll_map);
+  return coll_map[index];
 }
