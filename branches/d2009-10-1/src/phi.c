@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11 2009-09-02 07:47:51 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.1 2009-11-04 10:21:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -39,6 +39,7 @@ double * grad_delsq_phi_site;
 
 static int initialised_ = 0;
 static int phi_finite_difference_ = 0;  /* Default is LB for order parameter */
+static int ngradient_ = 0;
 static MPI_Datatype phi_xy_t_;
 static MPI_Datatype phi_xz_t_;
 static MPI_Datatype phi_yz_t_;
@@ -183,6 +184,47 @@ void phi_finish() {
 
   initialised_ = 0;
 
+  return;
+}
+
+/****************************************************************************
+ *
+ *  phi_nop
+ *
+ *  Return the number of order parameters.
+ *
+ ****************************************************************************/
+
+int phi_nop(void) {
+
+  return nop_;
+}
+
+/****************************************************************************
+ *
+ *  phi_gradient_level
+ *
+ *  Return the order of spatial derivatives currently required.
+ *
+ ****************************************************************************/
+
+int phi_gradient_level(void) {
+
+  return ngradient_;
+}
+
+/****************************************************************************
+ *
+ *  phi_gradient_level_set
+ *
+ *  This can be either 2 or 4.
+ *
+ ****************************************************************************/
+
+void phi_gradient_level_set(const int n) {
+
+  assert(n == 2 || n == 4);
+  ngradient_ = n;
   return;
 }
 
