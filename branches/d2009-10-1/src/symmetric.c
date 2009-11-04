@@ -12,7 +12,7 @@
  *
  *  The usual mode of operation is to take a = -b < 0 and k > 0.
  *
- *  $Id: symmetric.c,v 1.1.2.1 2009-11-04 09:52:12 kevin Exp $
+ *  $Id: symmetric.c,v 1.1.2.2 2009-11-04 11:04:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -63,7 +63,7 @@ double symmetric_interfacial_tension(void) {
 
   double sigma;
 
-  sigma = sqrt(-8.0*a_*a_*a_/(9.0*b_*b_));
+  sigma = sqrt(-8.0*kappa_*a_*a_*a_/(9.0*b_*b_));
 
   return sigma;
 }

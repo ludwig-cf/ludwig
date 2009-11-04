@@ -25,7 +25,7 @@
  *  The beta term allows one to get at the Frumkin isotherm and has
  *  been added here.
  *
- *  $Id: surfactant.c,v 1.1.2.1 2009-11-04 09:55:34 kevin Exp $
+ *  $Id: surfactant.c,v 1.1.2.2 2009-11-04 11:04:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -94,7 +94,7 @@ double surfactant_interfacial_tension(void) {
 
   double sigma;
 
-  sigma = sqrt(-8.0*a_*a_*a_/(9.0*b_*b_));
+  sigma = sqrt(-8.0*kappa_*a_*a_*a_/(9.0*b_*b_));
 
   return sigma;
 }
