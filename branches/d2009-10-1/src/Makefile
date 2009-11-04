@@ -37,19 +37,26 @@
 ###############################################################################
 
 
-OBJS= d3q15.o d3q19.o model.o propagation.o collision.o \
-      physics.o advection.o active.o blue_phase.o \
-      blue_phase_beris_edwards.o brownian.o \
-      cio.o cmd.o ccomms.o \
-      colloids.o bbl.o build.o communicate.o coords.o control.o \
-      eigen3.o ewald.o free_energy.o interaction.o io_harness.o\
-      model_le.o potential.o \
-      phi.o phi_cahn_hilliard.o phi_force.o phi_gradients.o \
-      phi_lb_coupler.o phi_stats.o \
-      lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
-      site_map.o subgrid.o \
-      stats_rheology.o stats_surfactant.o stats_turbulent.o \
-      test.o timer.o util.o utilities.o wall.o main.o
+OBJS=d3q15.o d3q19.o model.o propagation.o collision.o \
+     physics.o advection.o active.o \
+     blue_phase.o blue_phase_rt.o \
+     blue_phase_beris_edwards.o \
+     brazovskii.o brazovskii_rt.o \
+     brownian.o \
+     cio.o cmd.o ccomms.o \
+     colloids.o bbl.o build.o communicate.o coords.o control.o \
+     eigen3.o ewald.o \
+     free_energy.o free_energy_rt.o \
+     interaction.o io_harness.o\
+     model_le.o potential.o \
+     phi.o phi_cahn_hilliard.o phi_force.o phi_gradients.o \
+     phi_lb_coupler.o phi_stats.o \
+     lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
+     surfactant.o surfactant_rt.o \
+     symmetric.o symmetric_rt.o \
+     site_map.o subgrid.o \
+     stats_rheology.o stats_surfactant.o stats_turbulent.o \
+     test.o timer.o util.o utilities.o wall.o main.o
 
 EXE= Ludwig.exe
 
