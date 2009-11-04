@@ -2,7 +2,7 @@
  *
  *  coords.h
  *
- *  $Id: coords.h,v 1.3 2008-08-24 17:37:59 kevin Exp $
+ *  $Id: coords.h,v 1.3.16.1 2009-11-04 18:35:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -18,7 +18,7 @@
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 
-extern const int nhalo_;
+extern int nhalo_;
 
 void   coords_init(void);
 int    N_total(const int);
@@ -32,7 +32,15 @@ int    cart_neighb(const int direction, const int dimension);
 void   get_N_local(int []);
 void   get_N_offset(int []);
 int    get_site_index(const int, const int, const int);
+void   default_decomposition(void);
+int    is_ok_decomposition(void);
 
 MPI_Comm cart_comm(void);
 
+void   coords_nhalo_set(const int nhalo);
+int    coords_nhalo(void);
+void   coords_ntotal_set(const int n[3]);
+void   coords_decomposition_set(const int p[3]);
+void   coords_reorder_set(const int);
+void   coords_periodicity_set(const int p[3]);
 #endif

@@ -4,7 +4,7 @@
  *
  *  Run time input for blue phase free energy, and related parameters.
  *
- *  $Id: blue_phase_rt.c,v 1.1.2.2 2009-11-04 10:24:16 kevin Exp $
+ *  $Id: blue_phase_rt.c,v 1.1.2.3 2009-11-04 18:35:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -38,10 +38,10 @@ void blue_phase_run_time(void) {
   double a0, gamma, q0, kappa0, kappa1;
   double xi;
 
-  /* Tensor order parameter nop = 5; del^2 required; */
-  phi_gradient_level_set(2);
+  /* Tensor order parameter (nop = 5); del^2 required; */
   assert(phi_nop() == 5);
-  assert(nhalo_ >= 2);
+  phi_gradient_level_set(2);
+  coords_nhalo_set(2);
 
   /* PARAMETERS */
 

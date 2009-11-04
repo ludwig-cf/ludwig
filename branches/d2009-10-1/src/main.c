@@ -13,6 +13,7 @@
 #include "runtime.h"
 #include "ran.h"
 #include "timer.h"
+#include "coords_rt.h"
 #include "coords.h"
 #include "control.h"
 #include "free_energy_rt.h"
@@ -31,6 +32,8 @@
 #include "brownian.h"
 #include "ccomms.h"
 
+#include "site_map.h"
+#include "physics.h"
 #include "lattice.h"
 #include "cio.h"
 #include "regsteer.h"
@@ -45,46 +48,55 @@
 #include "stats_surfactant.h"
 #include "stats_rheology.h"
 
-void set_block(void);
+void ludwig_rt(void);
+void ludwig_init(void);
 
-int main( int argc, char **argv )
-{
-  char    filename[FILENAME_MAX];
-  int     step = 0;
-  int     n;
+/*****************************************************************************
+ *
+ *  ludwig_rt
+ *
+ *  Digest the run-time arguments for different parts of the code.
+ *
+ *****************************************************************************/
 
-  /* Initialise the following:
-   *    - RealityGrid steering (if required)
-   *    - communications (MPI)
-   *    - random number generation (serial RNG and parallel fluctuations)
-   *    - model fields
-   *    - simple walls 
-   *    - colloidal particles */
-
-  REGS_init();
-
-  pe_init(argc, argv);
-  if (argc > 1) {
-    RUN_read_input_file(argv[1]);
-  }
-  else {
-    RUN_read_input_file("input");
-  }
-  coords_init();
-  init_control();
+void ludwig_rt(void) {
 
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
 
+  free_energy_run_time();
+
+  /* These together for the time being. */
+  coords_run_time();
+  coords_init();
+
+  init_control();
+
   ran_init();
+  init_physics();
   RAND_init_fluctuations();
   le_init();
 
   MODEL_init();
+  site_map_init();
   wall_init();
   COLL_init();
 
-  free_energy_run_time();
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  ludwig_init
+ *
+ *  Initialise.
+ *
+ *****************************************************************************/
+
+void ludwig_init(void) {
+
+  int n;
+  char filename[FILENAME_MAX];
 
   if (get_step() == 0) {
     n = 0;
@@ -102,6 +114,32 @@ int main( int argc, char **argv )
 
   stats_rheology_init();
   stats_turbulent_init();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  main
+ *
+ *****************************************************************************/
+
+int main( int argc, char **argv )
+{
+  char    filename[FILENAME_MAX];
+  int     step = 0;
+
+  pe_init(argc, argv);
+
+  if (argc > 1) {
+    RUN_read_input_file(argv[1]);
+  }
+  else {
+    RUN_read_input_file("input");
+  }
+
+  ludwig_rt();
+  ludwig_init();
 
   /* Report initial statistics */
 
@@ -233,60 +271,7 @@ int main( int argc, char **argv )
   TIMER_statistics();
 
   pe_finalise();
-  REGS_finish();
 
   return 0;
 }
 
-/*****************************************************************************
- *
- *  print_shear_profile
- *
- *****************************************************************************/
-
-void print_shear_profile() {
-
-  int index;
-  int ic, jc = 1, kc = 1;
-  int N[ND];
-  double rho, u[ND];
-
-  info("Shear profile\n\n");
-  get_N_local(N);
-
-  for (ic = 1; ic <= N[X]; ic++) {
-
-    index = get_site_index(ic, jc, kc);
-    rho = get_rho_at_site(index);
-    get_momentum_at_site(index, u);
-
-    printf("%4d %10.8f %10.8f\n", ic, rho, u[Y]/rho);
-  }
-
-  return;
-}
-
-void set_block() {
-
-  int index;
-  int ic, jc, kc;
-  int N[ND];
-  double phi;
-
-  get_N_local(N);
-
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
-
-	phi = -1.0;
-	if (ic >=1 && ic < 16) phi =1.0;
-
-	index = get_site_index(ic, jc, kc);
-	set_phi(phi, index);
-      }
-    }
-  }
-
-  return;
-}

@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.1 2009-11-04 10:20:43 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.2 2009-11-04 18:35:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -559,8 +559,6 @@ void MODEL_init( void ) {
 
   /* Now setup the rest of the simulation */
 
-  site_map_init();
-
   /* If you want to read porous media information here you need this. */
 
   i = RUN_get_string_parameter("porous_media_format", filename, FILENAME_MAX);
@@ -752,8 +750,6 @@ void RAND_init_fluctuations() {
   p = RUN_get_double_parameter("temperature", &kt);
   set_kT(kt);
   kt = kt*rcs2; /* Without normalisation kT = cs^2 */
-
-  init_physics();
 
   /* Initialise the relaxation times */
 

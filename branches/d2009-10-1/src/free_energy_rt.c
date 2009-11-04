@@ -7,7 +7,7 @@
  *
  *  A new free energy will give rise to an addition here.
  *
- *  $Id: free_energy_rt.c,v 1.1.2.1 2009-11-04 09:59:20 kevin Exp $
+ *  $Id: free_energy_rt.c,v 1.1.2.2 2009-11-04 18:35:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -48,7 +48,9 @@ void free_energy_run_time(void) {
   n = RUN_get_string_parameter("free_energy", description, 128);
 
   if (n == 1) {
-    info("Free energy density selected by the user:\n\n"); 
+    info("\n");
+    info("Free energy details\n");
+    info("-------------------\n\n");
   }
 
   if (strcmp(description, "symmetric") == 0) {

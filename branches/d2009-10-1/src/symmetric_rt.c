@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for the symmetric phi^4 free energy.
  *
- *  $Id: symmetric_rt.c,v 1.1.2.1 2009-11-04 09:52:12 kevin Exp $
+ *  $Id: symmetric_rt.c,v 1.1.2.2 2009-11-04 18:35:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -38,10 +38,17 @@ void symmetric_run_time(void) {
 
   /* Single order parameter, del^2 phi required. */
 
-  /* TODO: set ... */
-  phi_gradient_level_set(2);
-  assert(nhalo_ >= 2);
+  /* There's a slight complication in that halo width one is enough
+   * at the moment when using full LB. */
+
   assert(phi_nop() == 1);
+  phi_gradient_level_set(2);
+  coords_nhalo_set(2);
+
+  info("Symmetric phi^4 free energy selected.\n");
+  info("Single conserved order parameter nop = 1\n");
+  info("Requires up to del^2 derivatives so setting nhalo = %1d\n", nhalo_);
+  info("\n");
 
   /* Parameters */
 
@@ -49,7 +56,7 @@ void symmetric_run_time(void) {
   n = RUN_get_double_parameter("B", &b);
   n = RUN_get_double_parameter("K", &kappa);
 
-  info("Symmetric phi^4 free energy parameters:\n");
+  info("Parameters:\n");
   info("Bulk parameter A      = %12.5e\n", a);
   info("Bulk parameter B      = %12.5e\n", b);
   info("Surface penalty kappa = %12.5e\n", kappa);

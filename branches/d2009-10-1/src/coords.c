@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3 2008-08-24 17:37:59 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.1 2009-11-04 18:35:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -17,12 +17,12 @@
 #include <assert.h>
 
 #include "pe.h"
-#include "runtime.h"
 #include "coords.h"
 
-/* Change in halo size requires recompilation. nhalo_ is public. */
-const int nhalo_ = 1;
+/* TODO: remove unsafety feature here */
+int nhalo_ = 0;
 
+static int initialised_ = 0;
 static int n_total[3] = {64, 64, 64};
 static int n_local[3];
 static int n_offset[3];
@@ -35,13 +35,12 @@ static int pe_cartesian_rank             = 0;
 static int pe_cartesian_size[3]          = {1, 1, 1};
 static int pe_cartesian_coordinates[3]   = {0, 0, 0};
 static int pe_cartesian_neighbours[2][3] = {{0, 0, 0}, {0, 0, 0}};
+static int reorder_ = 1;
 
 static double length[3] = {64.0, 64.0, 64.0};
 static double lmin[3] = {0.5, 0.5, 0.5};
 
 static void cart_init(void);
-static void default_decomposition(void);
-static int  is_ok_decomposition(void);
 
 static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
 
@@ -58,27 +57,12 @@ void coords_init() {
 
   int n;
 
-  /* Look for "size" in the user input and set the lattice size. */
-
-  n = RUN_get_int_parameter_vector("size", n_total);
-
-  info((n == 0) ? "[Default] " : "[User   ] "); 
-  info("Lattice size is (%d, %d, %d)\n", n_total[X], n_total[Y], n_total[Z]);
-
   for (n = 0; n < 3; n++) {
     length[n] = (double) n_total[n];
   }
 
-  /* Look for the "periodicity" in the user input. (This is
-   * not reported at the moment.) */
-
-  n = RUN_get_int_parameter_vector("periodicity", periodic);
-
-  info((n == 0) ? "[Default] " : "[User   ] "); 
-  info("periodic boundaries set to (%d, %d, %d)\n", periodic[X], periodic[Y],
-       periodic[Z]);
-
   cart_init();
+  initialised_ = 1;
 
   return;
 }
@@ -94,28 +78,10 @@ void coords_init() {
 void cart_init() {
 
   int n;
-  int reorder = 1;
+  int tmp;
   int periodic[3];
 
-  /* Look for a user-defined decomposition */
-
-  n = RUN_get_int_parameter_vector("grid", pe_cartesian_size);
-
-  if (n != 0 && is_ok_decomposition()) {
-    /* The user decomposition is selected */
-    info("[User   ] Processor decomposition is (%d, %d, %d)\n",
-	 pe_cartesian_size[X], pe_cartesian_size[Y], pe_cartesian_size[Z]);
-  }
-  else {
-    /* Look for a default */
-    default_decomposition();
-    info("[Default] Processor decomposition is (%d, %d, %d)\n",
-	 pe_cartesian_size[X], pe_cartesian_size[Y], pe_cartesian_size[Z]);
-  }
-
   /* Set up the communicator and the Cartesian neighbour lists */
-
-  n = RUN_get_int_parameter("reorder", &reorder);
 
   for (n = 0; n < 3; n++) {
     periodic[n] = is_periodic(n);
@@ -123,9 +89,9 @@ void cart_init() {
 
   info("Cartesian Communicator:\n");
   info("Periodic = (%d, %d, %d)\n", periodic[X], periodic[Y], periodic[Z]);
-  info("Reorder is %s\n", reorder ? "true" : "false");
+  info("Reorder is %s\n", reorder_ ? "true" : "false");
 
-  MPI_Cart_create(MPI_COMM_WORLD, 3, pe_cartesian_size, periodic, reorder,
+  MPI_Cart_create(MPI_COMM_WORLD, 3, pe_cartesian_size, periodic, reorder_,
 		  &cartesian_communicator);
   MPI_Comm_rank(cartesian_communicator, &pe_cartesian_rank);
   MPI_Cart_coords(cartesian_communicator, pe_cartesian_rank, 3,
@@ -136,11 +102,11 @@ void cart_init() {
    * the recieve, but we only want destination of send. */
 
   for (n = 0; n < 3; n++) {
-    reorder = pe_cartesian_coordinates[n];
-    MPI_Cart_shift(cartesian_communicator, n, -1, &reorder,
+    tmp = pe_cartesian_coordinates[n];
+    MPI_Cart_shift(cartesian_communicator, n, -1, &tmp,
 		   &pe_cartesian_neighbours[BACKWARD][n]);
-    reorder = pe_cartesian_coordinates[n];
-    MPI_Cart_shift(cartesian_communicator, n, +1, &reorder,
+    tmp = pe_cartesian_coordinates[n];
+    MPI_Cart_shift(cartesian_communicator, n, +1, &tmp,
 		   &pe_cartesian_neighbours[FORWARD][n]);
   }
 
@@ -303,7 +269,7 @@ void get_N_offset(int n[]) {
  *
  *****************************************************************************/
 
-static void default_decomposition() {
+void default_decomposition() {
 
   int pe0[3] = {0, 0, 0};
 
@@ -333,7 +299,7 @@ static void default_decomposition() {
  *
  *****************************************************************************/
 
-static int is_ok_decomposition() {
+int is_ok_decomposition() {
 
   int ok = 1;
   int nnodes;
@@ -367,4 +333,99 @@ int get_site_index(const int ic, const int jc, const int kc) {
   assert(kc <= n_local[Z] + nhalo_);
 
   return (xfac_*(nhalo_ + ic - 1) + yfac_*(nhalo_ + jc -1) + nhalo_ + kc - 1);
+}
+
+/*****************************************************************************
+ *
+ *  coords_nhalo_set
+ *
+ *****************************************************************************/
+
+void coords_nhalo_set(const int n) {
+
+  assert(n > 0);
+  assert(initialised_ == 0);
+
+  nhalo_ = n;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_nhalo
+ *
+ *****************************************************************************/
+
+int coords_nhalo(void) {
+
+  return nhalo_;
+}
+
+/*****************************************************************************
+ *
+ *  coords_ntotal_set
+ *
+ *****************************************************************************/
+
+void coords_ntotal_set(const int ntotal[3]) {
+
+  int ia;
+  assert(initialised_ == 0);
+
+  for (ia = 0; ia < 3; ia++) {
+    n_total[ia] = ntotal[ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_periodicity_set
+ *
+ *****************************************************************************/
+
+void coords_periodicity_set(const int p[3]) {
+
+  int ia;
+  assert(initialised_ == 0);
+
+  for (ia = 0; ia < 3; ia++) {
+    periodic[ia] = p[ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_decomposition_set
+ *
+ *****************************************************************************/
+
+void coords_decomposition_set(const int input[3]) {
+
+  int ia;
+  assert(initialised_ == 0);
+
+  for (ia = 0; ia < 3; ia++) {
+    pe_cartesian_size[ia] = input[ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_reorder_set
+ *
+ *****************************************************************************/
+
+void coords_reorder_set(const int reorder_in) {
+
+  assert(initialised_ == 0);
+
+  reorder_ = reorder_in;
+
+  return;
 }
