@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15 2008-08-24 16:47:31 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.1 2009-11-04 18:39:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,9 +28,6 @@
 
 #include "colloids.h"
 #include "interaction.h"
-
-static void CMD_reset_particles(const double);
-static void CMD_test_particle_energy(const int);
 
 static void do_monte_carlo(const int);
 static void mc_move(const double);
@@ -607,198 +604,6 @@ void mc_mean_square_displacement() {
   dzsq /= get_N_colloid();
 
   info("Mean square displacements (serial only) %f %f %f\n", dxsq, dysq, dzsq);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  CMD_reset_particles
- *
- *  Linear part: taken from Gaussian at current temperature.
- *  Rotational part: zero.
- *
- *  Note that the initalisation of the velocity is not decompsoition
- *  independent.
- *
- *****************************************************************************/
-
-void CMD_reset_particles(const double factor) {
-
-  int     ic, jc, kc;
-  Colloid * p_colloid;
-
-  double xt = 0.0, yt = 0.0, zt = 0.0;
-  double vmin = 0.0, vmax = 0.0;
-  int nt = 0;
-
-  double var;
-  double get_kT(void);
-
-  var = factor*sqrt(get_kT());
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-	  p_colloid->v.x   = var*ran_parallel_gaussian();
-	  p_colloid->v.y   = var*ran_parallel_gaussian();
-	  p_colloid->v.z   = var*ran_parallel_gaussian();
-	  p_colloid->omega = UTIL_fvector_zero();
-
-	  /* Accumulate the totals */
-	  xt += p_colloid->v.x;
-	  yt += p_colloid->v.y;
-	  zt += p_colloid->v.z;
-	  ++nt;
-
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
-
-  /* We set the total colloid momentum to zero locally
-   * (and hence globally) */
-
-  if (nt > 0) {
-
-    double xst = 0.0, yst = 0.0, zst = 0.0;
-
-    xt /= (double) nt;
-    yt /= (double) nt;
-    zt /= (double) nt;
-
-    for (ic = 1; ic <= Ncell(X); ic++) {
-      for (jc = 1; jc <= Ncell(Y); jc++) {
-	for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	  p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	  while (p_colloid) {
-	    p_colloid->v.x -= xt;
-	    p_colloid->v.y -= yt;
-	    p_colloid->v.z -= zt;
-
-	    /* Actual velocity stats... */
-	    xst += p_colloid->v.x*p_colloid->v.x;
-	    yst += p_colloid->v.y*p_colloid->v.y;
-	    zst += p_colloid->v.z*p_colloid->v.z;
-
-	    vmin = dmin(p_colloid->v.x, vmin);
-	    vmin = dmin(p_colloid->v.y, vmin);
-	    vmin = dmin(p_colloid->v.z, vmin);
-	    vmax = dmax(p_colloid->v.x, vmax);
-	    vmax = dmax(p_colloid->v.x, vmax);
-	    vmax = dmax(p_colloid->v.x, vmax);
-
-	    p_colloid = p_colloid->next;
-	  }
-	}
-      }
-    }
-#ifdef _MPI_
-    /* MPI_Reduce(); */
-#endif
-  }
-
-  cell_update();
-  CCOM_halo_particles();
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  CMD_test_particle_energy
- *
- *****************************************************************************/
-
-void CMD_test_particle_energy(const int step) {
-
-  int     ic, jc, kc;
-  Colloid * p_colloid;
-
-  double sum[3], gsum[3];
-
-  sum[0] = 0.0;
-  sum[1] = 0.0;
-  sum[2] = 0.0;
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-
-	  /* Accumulate the totals */
-	  sum[0] += p_colloid->v.x;
-	  sum[1] += p_colloid->v.y;
-	  sum[2] += p_colloid->v.z;
-
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
-
-#ifdef _MPI_
-  MPI_Reduce(sum, gsum, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  sum[0] = gsum[0];
-  sum[1] = gsum[1];
-  sum[2] = gsum[2];
-#endif
-
-  gsum[0] = sum[0]/get_N_colloid();
-  gsum[1] = sum[1]/get_N_colloid();
-  gsum[2] = sum[2]/get_N_colloid();
-
-  info("Mean particle velocities: [x, y, z]\n");
-  info("[%g, %g, %g]\n", gsum[0], gsum[1], gsum[2]);
-
-  sum[0] = 0.0;
-  sum[1] = 0.0;
-  sum[2] = 0.0;
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-
-	  /* Accumulate the totals */
-	  sum[0] += p_colloid->v.x*p_colloid->v.x;
-	  sum[1] += p_colloid->v.y*p_colloid->v.y;
-	  sum[2] += p_colloid->v.z*p_colloid->v.z;
-
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
-
-#ifdef _MPI_
-  MPI_Reduce(sum, gsum, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  sum[0] = gsum[0];
-  sum[1] = gsum[1];
-  sum[2] = gsum[2];
-#endif
-
-  gsum[0] = sum[0]/get_N_colloid();
-  gsum[1] = sum[1]/get_N_colloid();
-  gsum[2] = sum[2]/get_N_colloid();
-
-  /* Can multiply by mass */
-  info("Particle: %d %g %g %g %g\n", step, gsum[0], gsum[1], gsum[2],
-       (gsum[0] + gsum[1] + gsum[2]));
-
 
   return;
 }
