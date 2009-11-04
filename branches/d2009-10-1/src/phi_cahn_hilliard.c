@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.10 2009-10-26 09:52:09 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.10.4.1 2009-11-04 10:20:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -255,9 +255,13 @@ void phi_ch_diffusive_flux(void) {
   double mu0, mu1;
   double mobility;
 
+  double (* chemical_potential)(const int index, const int nop);
+
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
   assert(mobility_);
+
+  chemical_potential = fe_chemical_potential_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -270,30 +274,30 @@ void phi_ch_diffusive_flux(void) {
 	for (n = 0; n < nop_; n++) {
 	  mobility = mobility_[n];
 
-	  mu0 = free_energy_chemical_potential(index0, n);
+	  mu0 = chemical_potential(index0, n);
 
 	  /* x-direction (between ic-1 and ic) */
 
 	  index1 = ADDR(icm1, jc, kc);
-	  mu1 = free_energy_chemical_potential(index1, n);
+	  mu1 = chemical_potential(index1, n);
 	  fluxw[nop_*index0 + n] -= mobility*(mu0 - mu1);
 
 	  /* ...and between ic and ic+1 */
 
 	  index1 = ADDR(icp1, jc, kc);
-	  mu1 = free_energy_chemical_potential(index1, n);
+	  mu1 = chemical_potential(index1, n);
 	  fluxe[nop_*index0 + n] -= mobility*(mu1 - mu0);
 
 	  /* y direction */
 
 	  index1 = le_site_index(ic, jc+1, kc);
-	  mu1 = free_energy_chemical_potential(index1, n);
+	  mu1 = chemical_potential(index1, n);
 	  fluxy[nop_*index0 + n] -= mobility*(mu1 - mu0);
 
 	  /* z direction */
 
 	  index1 = ADDR(ic, jc, kc+1);
-	  mu1 = free_energy_chemical_potential(index1, n);
+	  mu1 = chemical_potential(index1, n);
 	  fluxz[nop_*index0 + n] -= mobility*(mu1 - mu0);
 	}
 
@@ -329,10 +333,14 @@ void phi_ch_diffusive_flux_surfactant(void) {
   double psi, psi0, mu0_phi, mu0_psi, mu1;
   double m_phi, m_psi;
 
+  double (* chemical_potential)(const int index, const int nop);
+
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
   assert(nop_ == 2); /* Surfactant only */
   assert(mobility_);
+
+  chemical_potential = fe_chemical_potential_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -345,48 +353,48 @@ void phi_ch_diffusive_flux_surfactant(void) {
 	m_phi = mobility_[0];
 	m_psi = mobility_[1];
 
-	mu0_phi = free_energy_chemical_potential(index0, 0);
-	mu0_psi = free_energy_chemical_potential(index0, 1);
+	mu0_phi = chemical_potential(index0, 0);
+	mu0_psi = chemical_potential(index0, 1);
 	psi0 = phi_site[nop_*index0 + 1];
 
 	/* x-direction (between ic-1 and ic) */
 
 	index1 = ADDR(icm1, jc, kc);
-	mu1 = free_energy_chemical_potential(index1, 0);
+	mu1 = chemical_potential(index1, 0);
 	fluxw[nop_*index0 + 0] -= m_phi*(mu0_phi - mu1);
 
 	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
-	mu1 = free_energy_chemical_potential(index1, 1);
+	mu1 = chemical_potential(index1, 1);
 	fluxw[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu0_psi - mu1);
 
 	/* ...and between ic and ic+1 */
 
 	index1 = ADDR(icp1, jc, kc);
-	mu1 = free_energy_chemical_potential(index1, 0);
+	mu1 = chemical_potential(index1, 0);
 	fluxe[nop_*index0 + 0] -= m_phi*(mu1 - mu0_phi);
 
 	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
-	mu1 = free_energy_chemical_potential(index1, 1);
+	mu1 = chemical_potential(index1, 1);
 	fluxe[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu1 - mu0_psi);
 
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
-	mu1 = free_energy_chemical_potential(index1, 0);
+	mu1 = chemical_potential(index1, 0);
 	fluxy[nop_*index0 + 0] -= m_phi*(mu1 - mu0_phi);
 
 	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
-	mu1 = free_energy_chemical_potential(index1, 1);
+	mu1 = chemical_potential(index1, 1);
 	fluxy[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu1 - mu0_psi);
 
 	/* z direction */
 
 	index1 = ADDR(ic, jc, kc+1);
-	mu1 = free_energy_chemical_potential(index1, 0);
+	mu1 = chemical_potential(index1, 0);
 	fluxz[nop_*index0 + 0] -= m_phi*(mu1 - mu0_phi);
 
 	psi = 0.5*(psi0 + phi_site[nop_*index1 + 1]);
-	mu1 = free_energy_chemical_potential(index1, 1);
+	mu1 = chemical_potential(index1, 1);
 	fluxz[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu1 - mu0_psi);
 
 	/* Next site */

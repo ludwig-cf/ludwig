@@ -2,7 +2,7 @@
  *
  *  collision.h
  *
- *  $Id: collision.h,v 1.4 2008-08-24 17:34:26 kevin Exp $
+ *  $Id: collision.h,v 1.4.14.1 2009-11-04 10:20:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -16,10 +16,8 @@
 #define _COLLISION_H
 
 void    MODEL_init( void );
-void    MODEL_finish( void );
 void    get_fluctuations_stress(double shat[3][3]);
 void   RAND_init_fluctuations(void);
 void    collide(void);
-void     MISC_curvature(void);
 
 #endif

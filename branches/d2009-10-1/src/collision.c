@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21 2009-10-08 16:04:53 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.1 2009-11-04 10:20:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -14,6 +14,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <math.h>
 #include <string.h> /* Remove strcmp */
@@ -340,10 +341,15 @@ void MODEL_collide_binary_lb() {
   double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
+  double (* chemical_potential)(const int index, const int nop);
+  void   (* chemical_stress)(const int index, double s[3][3]);
 
   TIMER_start(TIMER_COLLIDE);
 
   get_N_local(N);
+
+  chemical_potential = fe_chemical_potential_function();
+  chemical_stress = fe_chemical_stress_function();
 
   mobility = phi_ch_get_mobility();
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
@@ -393,7 +399,7 @@ void MODEL_collide_binary_lb() {
 
 	/* Compute the thermodynamic component of the stress */
 
-	free_energy_get_chemical_stress(index, sth);
+	chemical_stress(index, sth);
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -468,7 +474,7 @@ void MODEL_collide_binary_lb() {
 	/* Now, the order parameter distribution */
 
 	phi = phi_get_phi_site(index);
-	mu = free_energy_get_chemical_potential(index);
+	mu = chemical_potential(index, 0);
 
 	jphi[X] = 0.0;
 	jphi[Y] = 0.0;
@@ -695,7 +701,9 @@ void MODEL_init( void ) {
 
   if (ind != 0 && strcmp(filename, "drop") == 0) {
     info("Initialising droplet\n");
-    phi_lb_init_drop(0.125*L(X), interfacial_width());
+    /* Pending refactoring */
+    /* phi_lb_init_drop(0.125*L(X), interfacial_width());*/
+    assert(0);
   }
 
   ind = RUN_get_double_parameter("psi_b", &rho0);
@@ -883,164 +891,6 @@ void get_fluctuations_stress(double shat[3][3]) {
   shat[X][X] += tr;
   shat[Y][Y] += tr;
   shat[Z][Z] += tr;
-
-  return;
-}
-
-/******************************************************************************
- *
- *  MISC_curvature
- *
- *  This function looks at the phi field and computes the curvature
- *  maxtrix. This can then be used to estimate the domain lengths
- *  in the coordinate directions and in the 'natural' directions.
- *
- *  The natural lengths are just reported in decreasing order.
- *
- *  A version of the above which also prints out the elements
- *  of the curvature matrix along with the length estimates.
- *
- *  See Paul's notes for further details.
- *
- ****************************************************************************/
-
-void  MISC_curvature() {
-
-#ifdef _SINGLE_FLUID_
-  /* Do nothing */
-#else
-
-  double eva1, eva2, eva3;
-  double alpha, beta; 
-  double lx, ly, lz;
-  double L1, L2, L3;
-
-  int i, j, k, index;
-  int N[3];
-
-  double dphi[3];
-
-  double eve1[3], eve2[3], eve3[3];
-  double sum[6];
-  double abnorm, rv;
-
-  void eigen3(double, double, double, double, double, double,
-	      double * , double * , double *, double *, double *, double *); 
-
-  get_N_local(N);
-
-  for (i = 0; i < 6; i++) {
-    sum[i] = 0.0;
-  }
-
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1;k <= N[Z]; k++) {
-
-	index = get_site_index(i, j, k);
-            
-	phi_get_grad_phi_site(index, dphi);
-	sum[0] += dphi[X]*dphi[X];
-	sum[1] += dphi[X]*dphi[Y];
-	sum[2] += dphi[X]*dphi[Z];
-	sum[3] += dphi[Y]*dphi[Y];
-	sum[4] += dphi[Y]*dphi[Z];
-	sum[5] += dphi[Z]*dphi[Z];
-      }
-    }
-  }
-
-#ifdef _MPI_
-  /* Note that we use Reduce here, so only process 0 in
-   * MPI_COMM_WORLD gets the correct total. This is approriate
-   * as info() is used to give the results. */
- {
-   double gsum[6];
-
-   for (i = 0; i < 6; i++) {
-     gsum[i] = sum[i];
-   }
-
-   MPI_Reduce(gsum, sum, 6, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
- }
-
-#endif
-
-  rv = 1.0 / (L(X)*L(Y)*L(Z));
-  sum[0] *= rv;
-  sum[1] *= rv;
-  sum[2] *= rv;
-  sum[3] *= rv;
-  sum[4] *= rv;
-  sum[5] *= rv;
- 
-  /* This is the phi^4 free energy with A = B */
-  abnorm = 4.0/(3.0*interfacial_width());
-  lx = abnorm / sum[0];
-  ly = abnorm / sum[3];
-  lz = abnorm / sum[5];
-    
-
-  eigen3(sum[0],sum[1],sum[2],sum[3],sum[4],sum[5],
-	 &eva1,&(eve1[0]),&eva2,&(eve2[0]),&eva3,&(eve3[0]));
-
-
-  /* Sort the eva values in ascending order */
-  if( eva1 < eva2 ){
-    rv = eva2; eva2 = eva1; eva1 = rv;
-    rv=eve2[0]; eve2[0]=eve1[0]; eve1[0]=rv;
-    rv=eve2[1]; eve2[1]=eve1[1]; eve1[1]=rv;
-    rv=eve2[2]; eve2[2]=eve1[2]; eve1[2]=rv;
-  }
-  if( eva1 < eva3 ){
-    rv = eva3; eva3 = eva1; eva1=rv;
-    rv=eve3[0]; eve3[0]=eve1[0]; eve1[0]=rv;
-    rv=eve3[1]; eve3[1]=eve1[1]; eve1[1]=rv;
-    rv=eve3[2]; eve3[2]=eve1[2]; eve1[2]=rv;
-  }
-  if( eva2 < eva3 ){
-    rv = eva3; eva3 = eva2; eva2 = rv;
-    rv=eve3[0]; eve3[0]=eve2[0]; eve2[0]=rv;
-    rv=eve3[1]; eve3[1]=eve2[1]; eve2[1]=rv;
-    rv=eve3[2]; eve3[2]=eve2[2]; eve2[2]=rv;
-  }
-  
-  /* Check to see if any of the eva values are zero. If so, set associated
-     length scale to zero. */
-
-  if( eva1 < 1e-10 ){
-    L1 = 0.0;
-  }
-  else{
-    L1 = abnorm / eva1;
-  }
-  if( eva2 < 1e-10 ){
-    L2 = 0.0;
-  }
-  else{
-    L2 = abnorm / eva2;
-  }
-  if( eva3 < 1e-10 ){
-    L3 = 0.0;
-  }
-  else{
-    L3 = abnorm / eva3;
-  }
-
-  /* Calculate the angles. */
-  if( fabs(eve1[1]) < 1e-10){
-    alpha = 0.5*PI;
-    beta  = 0.5*PI;
-  }
-  else{
-    alpha = atan(eve1[0]/eve1[1]);
-    beta  = atan(eve1[2]/eve1[1]);
-  }
-
-  info("\nCurvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]\n");
-  info("%d  %7g %7g %7g %7g %7g %7g %7g %7g\n", get_step(),
-       lx, ly, lz, L1, L2, L3, alpha, beta);
-#endif
 
   return;
 }

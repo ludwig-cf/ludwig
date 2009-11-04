@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.10 2009-10-23 16:56:06 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.10.4.1 2009-11-04 10:20:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -121,7 +121,7 @@ void phi_gradients_compute() {
   /* Brazovskii requires gradients up to nabla^2(\nabla^2) phi */
   /* There also needs to be the appropriate correction if LE is required */
 
-  if (free_energy_is_brazovskii()) {
+  if (phi_gradient_level() > 2) {
     phi_gradients_double_fluid_inline();
     phi_gradients_double_leesedwards();
   }
@@ -154,11 +154,12 @@ static void phi_gradients_with_solid() {
   double gradt[NGRAD_];
   double gradn[3];
   double dphi;
-  double rk = 1.0/free_energy_K();
+  double rk = 0.0; /* = 1.0/free_energy_K(); */
   const double r9 = (1.0/9.0);     /* normaliser for cv_bs */
   const double r18 = (1.0/18.0);   /* ditto */
 
   get_N_local(nlocal);
+  assert(0); /* PENDING TODO FIX WETTING */
   assert(nhalo_ >= 1);
   assert(le_get_nplane_total() == 0);
 
