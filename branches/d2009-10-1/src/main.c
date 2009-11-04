@@ -15,7 +15,7 @@
 #include "timer.h"
 #include "coords.h"
 #include "control.h"
-#include "free_energy.h"
+#include "free_energy_rt.h"
 #include "model.h"
 #include "bbl.h"
 #include "subgrid.h"
@@ -84,9 +84,7 @@ int main( int argc, char **argv )
   wall_init();
   COLL_init();
 
-  init_free_energy();
-  if (free_energy_is_brazovskii() &&
-      phi_is_finite_difference()) assert(nhalo_ >= 3);
+  free_energy_run_time();
 
   if (get_step() == 0) {
     n = 0;
@@ -197,7 +195,7 @@ int main( int argc, char **argv )
     if (is_statistics_step()) {
 
 #ifndef _BROWNIAN_
-      MISC_curvature();
+      /* PENDING TODO MISC_curvature(); */
       TEST_statistics();
       TEST_momentum();
       wall_force();
