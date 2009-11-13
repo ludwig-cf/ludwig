@@ -2,7 +2,7 @@
  *
  *  phi.h
  *
- *  $Id: phi.h,v 1.6.4.1 2009-11-04 10:21:51 kevin Exp $
+ *  $Id: phi.h,v 1.6.4.2 2009-11-13 14:34:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -33,6 +33,7 @@ void   phi_set_finite_difference(void);
 int    phi_gradient_level(void);
 void   phi_gradient_level_set(const int ngradient);
 int    phi_nop(void);
+void   phi_nop_set(const int n);
 
 double phi_op_get_phi_site(const int, const int);
 double phi_op_get_delsq_phi_site(const int, const int);
@@ -45,7 +46,7 @@ void   phi_get_q_gradient_tensor(const int, double dq[3][3][3]);
 void   phi_get_q_delsq_tensor(const int, double dsq[3][3]);
 
 extern struct io_info_t * io_info_phi;
-extern const int nop_;
+extern int nop_;
 
 /* Independent tensor order parameter elements */
 

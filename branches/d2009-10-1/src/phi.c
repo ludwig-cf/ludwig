@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11.4.1 2009-11-04 10:21:51 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.2 2009-11-13 14:34:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,7 +28,9 @@
 #include "phi.h"
 
 struct io_info_t * io_info_phi;
-const int nop_ = 1;
+
+/* Currently global scope */
+int nop_ = 1;
 
 /* Shift the gradients to phi-gradients */
 double * phi_site;
@@ -198,6 +200,21 @@ void phi_finish() {
 int phi_nop(void) {
 
   return nop_;
+}
+
+/*****************************************************************************
+ *
+ *  phi_nop_set
+ *
+ *****************************************************************************/
+
+void phi_nop_set(const int n) {
+
+  assert(initialised_ == 0);
+  assert(n >= 1);
+  nop_ = n;
+
+  return;
 }
 
 /****************************************************************************
