@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3.16.1 2009-11-04 18:35:08 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.2 2009-11-13 14:33:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -19,87 +19,76 @@
 #include "pe.h"
 #include "coords.h"
 
-/* TODO: remove unsafety feature here */
-int nhalo_ = 0;
+/* The effective state here is, with default values: */
 
-static int initialised_ = 0;
-static int n_total[3] = {64, 64, 64};
-static int n_local[3];
-static int n_offset[3];
+static int n_total[3]                  = {64, 64, 64};
+static int periodic[3]                 = {1, 1, 1};
+static int pe_cartesian_size[3]        = {1, 1, 1};
+static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
+static int reorder_                    = 1;
+static int initialised_                = 0;
+
+/* PENDING TODO: remove global scope */
+int nhalo_ = 1;
+
+/* The following lookups will be set by a call to coords_init(), for
+ * convenience, based on the current state: */
 
 static int xfac_;
 static int yfac_;
+static int n_local[3];
 
-static int periodic[3]                   = {1, 1, 1};
 static int pe_cartesian_rank             = 0;
-static int pe_cartesian_size[3]          = {1, 1, 1};
 static int pe_cartesian_coordinates[3]   = {0, 0, 0};
 static int pe_cartesian_neighbours[2][3] = {{0, 0, 0}, {0, 0, 0}};
-static int reorder_ = 1;
 
-static double length[3] = {64.0, 64.0, 64.0};
+/* Lmin is fixed for all current use. */
+
 static double lmin[3] = {0.5, 0.5, 0.5};
 
-static void cart_init(void);
-
-static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
+static void default_decomposition(void);
+static int  is_ok_decomposition(void);
 
 /*****************************************************************************
  *
  *  coords_init
  *
- *  Set the physical lattice size, and periodic flags (always periodic
- *  by default.
+ *  Set up the Cartesian communicator for the current state.
+ *  We must check here that the decomposition is allowable.
  *
  *****************************************************************************/
 
 void coords_init() {
 
   int n;
-
-  for (n = 0; n < 3; n++) {
-    length[n] = (double) n_total[n];
-  }
-
-  cart_init();
-  initialised_ = 1;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  cartesian_init
- *
- *  Initialise the decomposition and the Cartesian Communicator.
- *
- *****************************************************************************/
-
-void cart_init() {
-
-  int n;
   int tmp;
-  int periodic[3];
+  int iperiodic[3];
+
+  assert(initialised_ == 0);
 
   /* Set up the communicator and the Cartesian neighbour lists */
 
   for (n = 0; n < 3; n++) {
-    periodic[n] = is_periodic(n);
+    iperiodic[n] = is_periodic(n);
   }
 
-  info("Cartesian Communicator:\n");
-  info("Periodic = (%d, %d, %d)\n", periodic[X], periodic[Y], periodic[Z]);
-  info("Reorder is %s\n", reorder_ ? "true" : "false");
+  if (is_ok_decomposition()) {
+    /* The user decomposition is selected */
+  }
+  else {
+    /* Look for a default */
+    default_decomposition();
+  }
 
-  MPI_Cart_create(MPI_COMM_WORLD, 3, pe_cartesian_size, periodic, reorder_,
+  MPI_Cart_create(MPI_COMM_WORLD, 3, pe_cartesian_size, iperiodic, reorder_,
 		  &cartesian_communicator);
   MPI_Comm_rank(cartesian_communicator, &pe_cartesian_rank);
   MPI_Cart_coords(cartesian_communicator, pe_cartesian_rank, 3,
 		  pe_cartesian_coordinates);
 
-  /* We use reorder as a temporary here, as MPI_Cart_shift can
-   * change the actual argument for the rank of the source of
-   * the recieve, but we only want destination of send. */
+  /* We use a temporary here, as MPI_Cart_shift can change the actual
+   * argument for the rank of the source of the recieve, but we only
+   * want destination of send. */
 
   for (n = 0; n < 3; n++) {
     tmp = pe_cartesian_coordinates[n];
@@ -114,14 +103,50 @@ void cart_init() {
 
   for (n = 0; n < 3; n++) {
     n_local[n] = N_total(n) / pe_cartesian_size[n];
-    n_offset[n] = pe_cartesian_coordinates[n]*n_local[n];
   }
 
   xfac_ = (n_local[Y] + 2*nhalo_)*(n_local[Z] + 2*nhalo_);
   yfac_ = (n_local[Z] + 2*nhalo_);
 
-  info("[Compute] local domain as (%d, %d, %d)\n",
+  info("\n");
+  info("Initialised coordinate system:\n");
+  info("Actual system size:     %d %d %d\n",
+       n_total[X], n_total[Y], n_total[Z]);
+  info("Actual decomposition:   %d %d %d\n",
+       cart_size(X), cart_size(Y), cart_size(Z));
+  info("Local domain:           %d %d %d\n",
        n_local[X], n_local[Y], n_local[Z]);
+  info("Periodic:               %d %d %d\n",
+       iperiodic[X], iperiodic[Y], iperiodic[Z]);
+  info("Width of halo region:   %d\n", nhalo_);
+  info("Reorder:                %s\n\n", reorder_ ? "true" : "false");
+
+  initialised_ = 1;
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  coords_finish
+ *
+ *  Free Cartesian communicator; reset defaults.
+ *
+ ****************************************************************************/
+
+void coords_finish(void) {
+
+  int ia;
+  assert(initialised_);
+
+  MPI_Comm_free(&cartesian_communicator);
+
+  for (ia = 0; ia < 3; ia++) {
+    n_total[ia] = 64;
+    pe_cartesian_size[ia] = 1;
+    periodic[ia] = 1;
+  }
+  initialised_ = 0;
 
   return;
 }
@@ -210,7 +235,7 @@ int is_periodic(const int dim) {
 
 double L(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
-  return length[dim];
+  return ((double) n_total[dim]);
 }
 
 /*****************************************************************************
@@ -235,7 +260,9 @@ double Lmin(const int dim) {
  *****************************************************************************/
 
 void get_N_local(int n[]) {
+
   int i;
+  assert(initialised_);
 
   for (i = 0; i < 3; i++) {
     n[i] = n_local[i];
@@ -251,10 +278,12 @@ void get_N_local(int n[]) {
  *****************************************************************************/
 
 void get_N_offset(int n[]) {
+
   int i;
+  assert(initialised_);
 
   for (i = 0; i < 3; i++) {
-    n[i] = n_offset[i];
+    n[i] = pe_cartesian_coordinates[i]*n_local[i];
   }
 
   return;
@@ -269,7 +298,7 @@ void get_N_offset(int n[]) {
  *
  *****************************************************************************/
 
-void default_decomposition() {
+static void default_decomposition() {
 
   int pe0[3] = {0, 0, 0};
 
@@ -299,7 +328,7 @@ void default_decomposition() {
  *
  *****************************************************************************/
 
-int is_ok_decomposition() {
+static int is_ok_decomposition() {
 
   int ok = 1;
   int nnodes;
@@ -325,6 +354,7 @@ int is_ok_decomposition() {
 
 int get_site_index(const int ic, const int jc, const int kc) {
 
+  assert(initialised_);
   assert(ic >= 1-nhalo_);
   assert(jc >= 1-nhalo_);
   assert(kc >= 1-nhalo_);
