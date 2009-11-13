@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5 2009-11-03 16:57:40 kevin Exp $
+ *  $Id: build.c,v 1.5.4.1 2009-11-13 17:24:04 jlintuvu Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -41,7 +41,8 @@ static void    build_remove_order_parameter(int index, Colloid *);
 static void    build_replace_fluid(int index, Colloid *);
 static void    build_replace_order_parameter(int indeex, Colloid *);
 static IVector COM_index2coord( int index );
-static FVector COLL_fcoords_from_ijk(int, int, int);
+
+FVector COLL_fcoords_from_ijk(int, int, int);
 
 FVector   COLL_fvector_separation(FVector, FVector);
 
