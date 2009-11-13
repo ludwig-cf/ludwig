@@ -51,7 +51,8 @@ OBJS=d3q15.o d3q19.o model.o propagation.o collision.o \
      free_energy.o free_energy_rt.o \
      interaction.o io_harness.o\
      model_le.o potential.o \
-     phi.o phi_cahn_hilliard.o phi_force.o phi_gradients.o \
+     phi.o phi_cahn_hilliard.o \
+     phi_force.o phi_force_colloid.o phi_gradients.o \
      phi_lb_coupler.o phi_stats.o \
      lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
      surfactant.o surfactant_rt.o \
