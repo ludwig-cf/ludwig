@@ -4,7 +4,7 @@
  *
  *  Run time input for blue phase free energy, and related parameters.
  *
- *  $Id: blue_phase_rt.c,v 1.1.2.4 2009-11-13 14:35:45 kevin Exp $
+ *  $Id: blue_phase_rt.c,v 1.1.2.5 2009-11-13 19:26:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -82,5 +82,9 @@ void blue_phase_run_time(void) {
   info("Reduced temperature        = %12.5e\n",
        blue_phase_reduced_temperature());
 
+  fe_density_set(blue_phase_free_energy_density);
+  fe_chemical_stress_set(blue_phase_chemical_stress);
+
   return;
+
 }
