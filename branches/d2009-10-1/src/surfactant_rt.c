@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for the surfactant free energy.
  *
- *  $Id: surfactant_rt.c,v 1.1.2.2 2009-11-04 18:35:08 kevin Exp $
+ *  $Id: surfactant_rt.c,v 1.1.2.3 2009-11-13 14:35:45 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -43,7 +43,7 @@ void surfactant_run_time(void) {
 
   /* Two order parameters, del^2 phi / psi required. */
 
-  assert(phi_nop() == 2);
+  phi_nop_set(2);
   phi_gradient_level_set(2);
   coords_nhalo_set(2);
 

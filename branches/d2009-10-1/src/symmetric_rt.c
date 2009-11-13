@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for the symmetric phi^4 free energy.
  *
- *  $Id: symmetric_rt.c,v 1.1.2.2 2009-11-04 18:35:08 kevin Exp $
+ *  $Id: symmetric_rt.c,v 1.1.2.3 2009-11-13 14:35:45 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -41,7 +41,7 @@ void symmetric_run_time(void) {
   /* There's a slight complication in that halo width one is enough
    * at the moment when using full LB. */
 
-  assert(phi_nop() == 1);
+  phi_nop_set(1);
   phi_gradient_level_set(2);
   coords_nhalo_set(2);
 
