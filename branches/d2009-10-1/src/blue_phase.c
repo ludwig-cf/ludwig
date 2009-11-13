@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.5 2009-07-15 11:20:36 kevin Exp $
+ *  $Id: blue_phase.c,v 1.5.4.1 2009-11-13 17:23:11 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,6 +23,7 @@
 #include "coords.h"
 #include "phi.h"
 #include "blue_phase.h"
+#include "ran.h"
 
 static double q0_;        /* Pitch = 2pi / q0_ */
 static double a0_;        /* Bulk free energy parameter A_0 */
@@ -443,6 +444,122 @@ void blue_phase_O8M_init(double amplitude) {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  blue_phase_twist_init
+ *  Setting a uniform twist along z-axis [cholesteric phase]
+ *  Using the current free energy parameter q0_ (P=2pi/q0)
+ * -Juho 12/11/09
+ *****************************************************************************/
+
+void blue_phase_twist_init(double amplitude){
+  
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+  double r2;
+  double cosxy, cosz, sinxy,sinz;
+  
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+  
+  /* this corresponds to a 90 degree angle between the z-axis */
+  cosz=0.0;
+  sinz=1.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+	
+	index = get_site_index(ic, jc, kc);
+
+	cosxy=cos(q0_*z);
+	sinxy=sin(q0_*z);
+	
+	q[X][X] = amplitude*(3.0/2.0*sinz*sinz*cosxy*cosxy - 1.0/2.0);
+	q[X][Y] = 3.0/2.0*amplitude*(sinz*sinz*cosxy*sinxy);
+	q[X][Z] = 3.0/2.0*amplitude*(sinz*cosz*cosxy);
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude*(3.0/2.0*sinz*sinz*sinxy*sinxy - 1.0/2.0);
+	q[Y][Z] = 3.0/2.0*amplitude*(sinz*cosz*sinxy);
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_set_random_q_init
+ *  Setting q tensor to isotropic in chosen area of the simulation box
+ * -Juho 12/11/09
+ *****************************************************************************/
+
+void blue_set_random_q_init(double xmin, double xmax, double ymin, double ymax, double zmin, double zmax){
+  
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+  
+  double phase1,phase2;
+  double amplitude,Pi;
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+
+  /* set amplitude to something small */
+  amplitude = 0.0000001;
+  
+  Pi = atan(1.0)*4.0;
+  
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    if(x < xmin || x > xmax)continue;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      if(y < ymin || y > ymax)continue;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+	if(z < zmin || z > zmax)continue;
+
+	index = get_site_index(ic, jc, kc);
+	
+	phase1= 2.0/5.0*Pi*(0.5-ran_parallel_uniform());
+	phase2= Pi/2.0+Pi/5.0*(0.5-ran_parallel_uniform());
+	
+	q[X][X] = amplitude* (3.0/2.0*sin(phase2)*sin(phase2)*cos(phase1)*cos(phase1)-1.0/2.0);
+	q[X][Y] = 3.0*amplitude/2.0*(sin(phase2)*sin(phase2)*cos(phase1)*sin(phase1));
+	q[X][Z] = 3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*cos(phase1));
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude*(3.0/2.0*sin(phase2)*sin(phase2)*sin(phase1)*sin(phase1)-1.0/2.0);
+	q[Y][Z] = 3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*sin(phase1));
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+      }
+    }
+  }
+  return;
+}
 /*****************************************************************************
  *
  *  blue_phase_chirality
