@@ -13,7 +13,7 @@
  *  This is isolated in this file owing to the dependency on the
  *  colloid structure.
  *
- *  $Id: phi_force_colloid.c,v 1.1.2.1 2009-11-13 14:49:28 kevin Exp $
+ *  $Id: phi_force_colloid.c,v 1.1.2.2 2009-11-13 14:54:49 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -79,7 +79,7 @@ void phi_force_colloid(void) {
   get_N_local(nlocal);
   assert(nhalo_ >= 2);
 
-  chemical_stess = fe_chemical_stress_function();
+  chemical_stress = fe_chemical_stress_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
