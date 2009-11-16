@@ -18,6 +18,10 @@
 #include "phi.h"
 #include "colloids_Q_tensor.h"
 
+//#define n 3
+//void jacobi(double (*a)[n], double d[], double (*v)[n], int *nrot);
+//#undef n
+
 #define PLANAR_ANCHORING 1
 
 //extern FVector COLL_fcoords_from_ijk(int, int, int);
@@ -25,7 +29,6 @@
 
 void COLL_set_Q(){
   
-  int i,j,k;
   int ic,jc,kc;
   
   Colloid * p_colloid;
@@ -33,7 +36,7 @@ void COLL_set_Q(){
   FVector r0;
   FVector rsite0;
   FVector normal;
-  FVector dir;
+  FVector dir,dir_prev;
   FVector COLL_fvector_separation(FVector, FVector);
   FVector COLL_fcoords_from_ijk(int, int, int);
   Colloid * colloid_at_site_index(int);
@@ -42,11 +45,11 @@ void COLL_set_Q(){
   int index;
 
   double q[3][3];
-  double m[3][3],d[3],v[3][3];
+  double d[3],v[3][3];
   double director[3];
-  double len_normal,len_dir;
+  double len_normal;
   double amplitude;
-  int emax,enxt;
+  int emax,enxt,nrots;
   double rdotd;
   double dir_len;
   amplitude = 0.33333333;
@@ -109,7 +112,7 @@ void COLL_set_Q(){
 	  
 	  phi_get_q_tensor(index, q);
 	  
-	  //jacobi(q,d,v,&nrots);
+	  jacobi(q,d,v,&nrots);
 	  
 	  /* find the largest eigen value and corresponding eigen vector */
 	  if (d[0] > d[1]) {
@@ -141,11 +144,28 @@ void COLL_set_Q(){
 	    dir.z = dir.z - rdotd*normal.z;
 	    
 	    dir_len = sqrt(UTIL_dot_product(dir,dir));
-	    assert(dir_len<10e-8);
+	    if(dir_len<10e-8){
+	      /* the vectors were [almost] parallel.
+	       * now we use the direction of the previous node i,j,k
+	       * this fails if we are in the first node, so not great fix...
+	       */
+	      dir = UTIL_cross_product(dir_prev,normal);
+	      dir_len = sqrt(UTIL_dot_product(dir,dir));
+	      info("\n i,j,k, %d %d %d\n", ic,jc,kc);
+	      assert(dir_len>10e-8);
+	      
+	    }
+	    //info("\n i,j,k, %d %d %d\n", ic,jc,kc);
+	    //info("\ lengt, %lf %lf", dir_len,10e-8);
+	    assert(dir_len > 10e-8);
 	    
 	    director[0] = dir.x/dir_len;
 	    director[1] = dir.y/dir_len;
 	    director[2] = dir.z/dir_len;
+
+	    dir_prev.x = dir.x/dir_len;
+	    dir_prev.y = dir.y/dir_len;
+	    dir_prev.z = dir.z/dir_len;
 #else
 	    /* Homeotropic anchoring */
 	    director[0] = normal.x/len_normal;
@@ -170,13 +190,9 @@ void COLL_set_Q(){
 
 void COLL_randomize_Q(double delta_r){
   
-  int i,j,k;
   int ic,jc,kc;
   
   Colloid * p_colloid;
-
-  FVector r0;
-  FVector rsite0;
 
   FVector COLL_fvector_separation(FVector, FVector);
   FVector COLL_fcoords_from_ijk(int, int, int);
@@ -226,3 +242,86 @@ void COLL_randomize_Q(double delta_r){
     }
   }
 }
+
+#define ROTATE(a,i,j,k,l) g=a[i][j];h=a[k][l];a[i][j]=g-s*(h+g*tau);\
+	a[k][l]=h+s*(g-h*tau);
+#define n 3
+void jacobi(double (*a)[n], double d[], double (*v)[n], int *nrot)
+{
+  int j,iq,ip,i;
+  double tresh,theta,tau,t,sm,s,h,g,c;
+  double b[n],z[n];
+
+  for (ip=0;ip<n;ip++) {
+    for (iq=0;iq<n;iq++) v[ip][iq]=0.0;
+    v[ip][ip]=1.0;
+  }
+  for (ip=0;ip<n;ip++) {
+    b[ip]=d[ip]=a[ip][ip];
+    z[ip]=0.0;
+  }
+  *nrot=0;
+  for (i=1;i<=50;i++) {
+    sm=0.0;
+    for (ip=0;ip< n-1;ip++) {
+      for (iq=ip+1;iq<n;iq++)
+	sm += fabs(a[ip][iq]);
+    }
+    if (sm == 0.0) {
+      return;
+    }
+    if (i < 4)
+      tresh=0.2*sm/(n*n);
+    else
+      tresh=0.0;
+    for (ip=0;ip<n-1;ip++) {
+      for (iq=ip+1;iq<n;iq++) {
+	g=100.0*fabs(a[ip][iq]);
+	if (i > 4 && (fabs(d[ip])+g) == fabs(d[ip])
+	    && (fabs(d[iq])+g) == fabs(d[iq]))
+	  a[ip][iq]=0.0;
+	else if (fabs(a[ip][iq]) > tresh) {
+	  h=d[iq]-d[ip];
+	  if ((fabs(h)+g) == fabs(h))
+	    t=(a[ip][iq])/h;
+	  else {
+	    theta=0.5*h/(a[ip][iq]);
+	    t=1.0/(fabs(theta)+sqrt(1.0+theta*theta));
+	    if (theta < 0.0) t = -t;
+	  }
+	  c=1.0/sqrt(1+t*t);
+	  s=t*c;
+	  tau=s/(1.0+c);
+	  h=t*a[ip][iq];
+	  z[ip] -= h;
+	  z[iq] += h;
+	  d[ip] -= h;
+	  d[iq] += h;
+	  a[ip][iq]=0.0;
+	  for (j=0;j<=ip-1;j++) {
+	    ROTATE(a,j,ip,j,iq)
+	      }
+	  for (j=ip+1;j<=iq-1;j++) {
+	    ROTATE(a,ip,j,j,iq)
+	      }
+	  for (j=iq+1;j<n;j++) {
+	    ROTATE(a,ip,j,iq,j)
+	      }
+	  for (j=0;j<n;j++) {
+	    ROTATE(v,j,ip,j,iq)
+	      }
+	  ++(*nrot);
+	}
+      }
+    }
+    for (ip=0;ip<n;ip++) {
+      b[ip] += z[ip];
+      d[ip]=b[ip];
+      z[ip]=0.0;
+    }
+  }
+  printf("Too many iterations in routine jacobi");
+  exit(0);
+}
+#undef n
+#undef ROTATE
