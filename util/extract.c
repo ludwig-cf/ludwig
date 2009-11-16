@@ -20,7 +20,7 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.6 2008-11-17 15:37:13 kevin Exp $
+ *  $Id: extract.c,v 1.7 2009-11-16 14:59:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Grouand and
  *  Edinburgh Parallel Computing Centre
@@ -48,6 +48,7 @@ int input_isbigendian_ = -1;
 double le_speed_ = 0.0;
 double le_displace_ = 0.0;
 double * le_displacements_;
+double * le_duy_;
 int output_binary_ = 0;
 
 char stub_[FILENAME_MAX];
@@ -118,7 +119,9 @@ int main(int argc, char ** argv) {
   /* LE displacements as function of x */
   le_displace_ = le_speed_*(double) ntime;
   le_displacements_ = (double *) malloc(ntotal[0]*sizeof(double));
+  le_duy_ = (double *) malloc(ntotal[0]*sizeof(double));
   if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
+  if (le_duy_ == NULL) printf("malloc(le_duy_) failed\n");
   le_set_displacements();
 
 
@@ -424,30 +427,40 @@ void le_set_displacements() {
   int ic;
   int di;
   double dy;
+  double duy;
 
   for (ic = 0; ic < ntotal[0]; ic++) {
     le_displacements_[ic] = 0.0;
+    le_duy_[ic] = 0.0;
   }
 
   if (nplanes_ > 0) {
 
     di = ntotal[0] / nplanes_;
     dy = -(nplanes_/2.0)*le_displace_;
+    duy = -(nplanes_/2.0)*le_speed_;
 
     /* Fist half block */
     for (ic = 1; ic <= di/2; ic++) {
       le_displacements_[ic-1] = dy;
+      le_duy_[ic-1] = duy;
     }
 
     dy += le_displace_;
+    duy += le_speed_;
     for (ic = di/2 + 1; ic <= ntotal[0] - di/2; ic++) {
       le_displacements_[ic-1] = dy;
-      if ( (ic - di/2) % di == 0 ) dy += le_displace_;
+      le_duy_[ic-1] = duy;
+      if ( (ic - di/2) % di == 0 ) {
+	dy += le_displace_;
+	duy += le_speed_;
+      }
     }
 
     /* Last half block */
     for (ic = ntotal[0] - di/2 + 1; ic <= ntotal[0]; ic++) {
       le_displacements_[ic-1] = dy;
+      le_duy_[ic-1] = duy;
     }
   }
 
@@ -478,6 +491,9 @@ int site_index(int ic, int jc, int kc, const int n[3]) {
  *  This is always done relative to the middle of the system (as defined
  *  in le_displacements_[]).
  *
+ *  If nrec_ is 3, we assume this is the velocity field, and make
+ *  the appropriate correction to u_y.
+ *
  *****************************************************************************/
 
 void le_unroll(double * data) {
@@ -486,21 +502,27 @@ void le_unroll(double * data) {
   int j1, j2, jdy;
   double * buffer;
   double dy, fr;
+  double du[3];
 
-  assert(nrec_ <= 1);
+  /* If nrec_ > 3, adjust the du[] modifer. */
+  assert(nrec_ <= 3);
 
   /* Allocate the temporary buffer */
 
-  buffer = (double *) malloc(ntargets[1]*ntargets[2]*sizeof(double));
+  buffer = (double *) malloc(nrec_*ntargets[1]*ntargets[2]*sizeof(double));
   if (buffer == NULL) {
     printf("malloc(buffer) failed\n");
     exit(-1);
   }
 
+  du[0] = 0.0;
+  du[2] = 0.0;
+
   for (ic = 1; ic <= ntargets[0]; ic++) {
     dy = le_displacements_[ic-1];
     jdy = floor(dy);
     fr = dy - jdy;
+    du[1] = le_duy_[ic-1];
 
     for (jc = 1; jc <= ntargets[1]; jc++) {
       j1 = 1 + (jc - jdy - 2 + 100*ntotal[1]) % ntotal[1];
@@ -520,7 +542,7 @@ void le_unroll(double * data) {
       for (kc = 1; kc <= ntargets[2]; kc++) {
 	for (n = 0; n < nrec_; n++) {
 	  data[nrec_*site_index(ic,jc,kc,ntargets) + n] =
-	    buffer[nrec_*site_index(1,jc,kc,ntargets) + n];
+	    buffer[nrec_*site_index(1,jc,kc,ntargets) + n] + du[n];
 	}
       }
     }
