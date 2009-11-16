@@ -16,16 +16,16 @@
 #include "coords.h"
 #include "colloids.h"
 #include "phi.h"
+#include "io_harness.h"
 #include "colloids_Q_tensor.h"
 
-//#define n 3
-//void jacobi(double (*a)[n], double d[], double (*v)[n], int *nrot);
-//#undef n
+struct io_info_t * io_info_scalar_q_;
 
 #define PLANAR_ANCHORING 1
 
-//extern FVector COLL_fcoords_from_ijk(int, int, int);
-//extern FVector   COLL_fvector_separation(FVector, FVector);
+static int scalar_q_write(FILE * fp, const int i, const int j, const int k);
+static int scalar_q_write_ascii(FILE *, const int, const int, const int);
+
 
 void COLL_set_Q(){
   
@@ -325,3 +325,84 @@ void jacobi(double (*a)[n], double d[], double (*v)[n], int *nrot)
 }
 #undef n
 #undef ROTATE
+
+/*****************************************************************************
+ *
+ *  scalar_q_io_init
+ *
+ *  Initialise the I/O information for the scalar order parameter
+ *  output related to blue phase tensor order parameter.
+ *
+ *  This stuff lives here until a better home is found.
+ *
+ *****************************************************************************/
+
+void scalar_q_io_init(void) {
+
+  /* Use a default I/O struct */
+  io_info_scalar_q_ = io_info_create();
+
+  io_info_set_name(io_info_scalar_q_, "Scalar order parameter");
+  io_info_set_write_binary(io_info_scalar_q_, scalar_q_write);
+  io_info_set_write_ascii(io_info_scalar_q_, scalar_q_write_ascii);
+  io_info_set_bytesize(io_info_scalar_q_, 1*sizeof(double));
+
+  io_info_set_format_ascii(io_info_scalar_q_);
+  io_write_metadata("scalar_q", io_info_scalar_q_);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  scalar_q_write_ascii
+ *
+ *  Write the value of the scalar order parameter at (ic, jc, kc).
+ *
+ *****************************************************************************/
+
+static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
+				const int kc) {
+  int index, n;
+  double q[3][3];
+  double qs;
+
+  index = get_site_index(ic, jc, kc);
+  phi_get_q_tensor(index, q);
+
+  /* JUHO: YOU NEED CODE TO WORK OUT VALUE REQUIRED HERE */
+
+  qs = 0.0; /* what ever... */
+
+  n = fprintf(fp, "%22.15e\n", qs);
+  if (n != 23) fatal("fprintf(qs) failed at index %d\n", index);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  scalar_q_write
+ *
+ *  Do the same thing in binary.
+ *
+ *****************************************************************************/
+
+static int scalar_q_write(FILE * fp, const int ic, const int jc,
+			  const int kc) {
+  int index, n;
+  double q[3][3];
+  double qs;
+
+  index = get_site_index(ic, jc, kc);
+  phi_get_q_tensor(index, q);
+
+  /* JUHO: YOU NEED CODE TO WORK OUT VALUE REQUIRED HERE */
+
+  qs = 0.0;
+
+  n = fwrite(&qs, sizeof(double), 1, fp);
+  if (n != 1) fatal("fwrite(qs) failed at index %d\n", index);
+
+  return n;
+}
