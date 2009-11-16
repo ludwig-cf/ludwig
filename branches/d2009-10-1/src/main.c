@@ -47,6 +47,7 @@
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
 #include "stats_rheology.h"
+#include "stats_free_energy.h"
 
 void ludwig_rt(void);
 void ludwig_init(void);
@@ -111,6 +112,9 @@ void ludwig_init(void) {
       io_read(filename, io_info_phi);
     }
   }
+
+  /* blue phase / colloids */
+  /* phi_gradients_set_fluid();*/
 
   stats_rheology_init();
   stats_turbulent_init();
@@ -235,6 +239,8 @@ int main( int argc, char **argv )
 #ifndef _BROWNIAN_
       /* PENDING TODO MISC_curvature(); */
       TEST_statistics();
+      phi_stats_print_stats();
+      stats_free_energy_density();
       TEST_momentum();
       wall_force();
       hydrodynamics_stats();
@@ -242,7 +248,6 @@ int main( int argc, char **argv )
 #ifdef _NOISE_
       TEST_fluid_temperature();
 #endif
-      phi_stats_print_stats();
       info("\nCompleted cycle %d\n", step);
     }
 

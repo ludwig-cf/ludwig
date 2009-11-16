@@ -58,7 +58,8 @@ OBJS=d3q15.o d3q19.o model.o propagation.o collision.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
      site_map.o subgrid.o \
-     stats_rheology.o stats_surfactant.o stats_turbulent.o \
+     stats_free_energy.o stats_rheology.o stats_surfactant.o \
+     stats_turbulent.o \
      test.o timer.o util.o utilities.o wall.o main.o colloids_Q_tensor.o
 
 EXE= Ludwig.exe
