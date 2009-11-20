@@ -17,6 +17,7 @@
 #include "colloids.h"
 #include "phi.h"
 #include "io_harness.h"
+#include "ran.h"
 #include "colloids_Q_tensor.h"
 
 struct io_info_t * io_info_scalar_q_;
@@ -366,16 +367,61 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   int index, n;
   double q[3][3];
   double qs;
+  double d[3],v[3][3];
+  double director[3];
+  int nrots,emax,enxt;
+  int i;
+  Colloid * colloid_at_site_index(int);
+  Colloid * p_colloid;
 
   index = get_site_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
 
   /* JUHO: YOU NEED CODE TO WORK OUT VALUE REQUIRED HERE */
+  jacobi(q,d,v,&nrots);
+  
+  /* find the largest eigen value and corresponding eigen vector */
+  if (d[0] > d[1]) {
+    emax=0;
+    enxt=1;
+  }
+  else {
+    emax=1;
+    enxt=0;
+   }
+  if (d[2] > d[emax]) {
+    emax=2;
+  }
+  else if (d[2] > d[enxt]) {
+    enxt=2;
+  }
+  //dir.x = v[0][emax];
+  //dir.y = v[1][emax];
+  //dir.z = v[2][emax];
+  
+  qs = d[emax]; 
 
-  qs = 0.0; /* what ever... */
-
-  n = fprintf(fp, "%22.15e\n", qs);
-  if (n != 23) fatal("fprintf(qs) failed at index %d\n", index);
+  n = fprintf(fp, "%4d %4d %4d %22.15e ", ic,jc,kc,qs);
+  //info("\n n = %d , qs = %lf \n", n, qs);
+  if (n < 37) fatal("fprintf(qs) failed at index %d\n", index);
+  
+  p_colloid = colloid_at_site_index(index);
+  if(p_colloid != NULL){
+    /* this column is printed 0.0 if inside colloid otherwise the same as previous */
+    qs=0.0;
+      }
+  n = fprintf(fp, "%22.15e ", qs);
+  if (n < 23) fatal("fprintf(qs) failed at index %d\n", index);
+  
+  for (i=0;i<3;i++){
+    qs=v[i][emax];
+    //info("\n %lf %lf %d", d[emax],v[i][emax],i);
+    n = fprintf(fp, "%22.15e ", qs);
+    //info("\n n = %d , qs = %lf \n", n, qs);
+    if (n < 23) fatal("fprintf(qs) failed at index %d\n", index);
+  }
+  n = fprintf(fp, "\n");
+  if (n != 1) fatal("fprintf(qs) failed at index %d\n", index);
 
   return n;
 }
