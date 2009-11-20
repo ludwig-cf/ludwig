@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.1 2009-11-13 17:24:04 jlintuvu Exp $
+ *  $Id: build.c,v 1.5.4.2 2009-11-20 16:23:02 jlintuvu Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -566,7 +566,7 @@ void COLL_remove_or_replace_fluid() {
 
 	  if (!halo) {
 	    build_remove_fluid(index, p_colloid);
-	    build_remove_order_parameter(index, p_colloid);
+	    //build_remove_order_parameter(index, p_colloid);
 	  }
 	}
 
@@ -576,7 +576,7 @@ void COLL_remove_or_replace_fluid() {
 
 	  if (!halo) {
 	    build_replace_fluid(index, p_colloid);
-	    build_replace_order_parameter(index, p_colloid);
+	    //build_replace_order_parameter(index, p_colloid);
 	  }
 	}
       }
