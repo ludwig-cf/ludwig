@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.2 2009-11-04 18:35:08 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.3 2009-11-20 15:27:38 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -34,6 +34,11 @@
 #include "phi_lb_coupler.h"
 #include "phi_stats.h"
 #include "lattice.h"
+
+#include "phi_force_colloid.h"
+#include "blue_phase_beris_edwards.h"
+#include "blue_phase.h"
+#include "colloids_Q_tensor.h"
 
 #include "util.h"
 #include "utilities.h"
@@ -97,9 +102,10 @@ void collide() {
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
   if (phi_is_finite_difference()) {
-    phi_force_calculation();
+    phi_force_colloid();
+    //phi_force_calculation();
     MODEL_collide_multirelaxation();
-    phi_cahn_hilliard();
+    blue_phase_beris_edwards();
   }
   else {
     MODEL_collide_binary_lb();
@@ -548,7 +554,6 @@ void MODEL_init( void ) {
   int     offset[3];
   double   phi;
   double   phi0, rho0;
-  double   mobility;
   char     filename[FILENAME_MAX];
 
   rho0 = get_rho0();
@@ -558,34 +563,6 @@ void MODEL_init( void ) {
   get_N_offset(offset);
 
   /* Now setup the rest of the simulation */
-
-  /* If you want to read porous media information here you need this. */
-
-  i = RUN_get_string_parameter("porous_media_format", filename, FILENAME_MAX);
-  if (strcmp(filename, "ASCII") == 0) {
-    info("Expecting porous media file format in ascii\n");
-    io_info_set_processor_dependent(io_info_site_map);
-    io_info_set_format_ascii(io_info_site_map);
-  }
-
-  if (strcmp(filename, "BINARY") == 0) {
-    info("Expecting porous media file format in binary\n");
-    /* ...is the defualt */
-  }
-
-  /* Default is "status_only" */
-  i = RUN_get_string_parameter("porous_media_type", filename, FILENAME_MAX);
-  if (strcmp(filename, "status_with_h") == 0) {
-    info("Expecting site data to include wetting parameter h\n");
-    site_map_io_status_with_h();
-  }
-
-  i = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
-  if (i == 1) {
-    io_read(filename, io_info_site_map); 
-    site_map_halo();
-    phi_gradients_set_solid();
-  }
 
   /* Distributions */
 
@@ -684,44 +661,14 @@ void MODEL_init( void ) {
 	  }
   }
 
-  ind = RUN_get_string_parameter("phi_initialisation", filename,
-				 FILENAME_MAX);
 
-  if (ind != 0 && strcmp(filename, "block") == 0) {
-    info("Initialisng phi as block\n");
-    phi_init_block();
-  }
+  /* Initialise blue phase */
 
-  if (ind != 0 && strcmp(filename, "bath") == 0) {
-    info("Initialising phi for bath\n");
-    phi_init_bath();
-  }
+  blue_phase_twist_init(0.3333333);
+  //lblue_set_random_q_init(20, 40, 20, 40, 20, 40);
+  //blue_set_random_q_init(0, 0, 0, 0, 0, 0);
 
-  if (ind != 0 && strcmp(filename, "drop") == 0) {
-    info("Initialising droplet\n");
-    /* Pending refactoring */
-    /* phi_lb_init_drop(0.125*L(X), interfacial_width());*/
-    assert(0);
-  }
-
-  ind = RUN_get_double_parameter("psi_b", &rho0);
-
-  if (ind != 0) {
-    phi_init_surfactant(rho0);
-  }
-
-  /* Order parameter mobility (probably to move) */
-
-  ind = RUN_get_double_parameter("mobility", &mobility);
-  info("\nOrder parameter mobility M: %f\n", mobility);
-  phi_ch_set_mobility(mobility);
-
-  if (nop_ == 2) {
-    ind = RUN_get_double_parameter("mobility_psi", &mobility);
-    info("\nSurfactant mobility M: %f\n", mobility);
-    phi_ch_op_set_mobility(mobility, 1);
-  }
-
+  
   return;
 }
 
