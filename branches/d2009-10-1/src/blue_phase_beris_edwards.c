@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.1 2009-07-16 14:01:18 kevin Exp $
+ *  $Id: blue_phase_beris_edwards.c,v 1.1.4.1 2009-11-20 17:12:40 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,13 +21,14 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+#include "colloids.h"
 #include "lattice.h"
 #include "phi.h"
 #include "advection.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 
-static double Gamma_;     /* Collective rotational diffusion constant */
+static double Gamma_=0.5;     /* Collective rotational diffusion constant */
 
 static double * fluxe;
 static double * fluxw;
@@ -102,6 +103,8 @@ static void blue_phase_be_update(void) {
   double trace_qw;
   double xi;
 
+  Colloid * p_colloid;
+
   const double dt = 1.0;
 
   assert(nop_ == 5);
@@ -118,61 +121,77 @@ static void blue_phase_be_update(void) {
 	phi_get_q_tensor(index, q);
 	blue_phase_molecular_field(index, h);
 
-	/* Velocity gradient tensor, symmetric and antisymmetric parts */
+	p_colloid = colloid_at_site_index(index);
+	
+	if(p_colloid == NULL){
+	  /*this is fluid node */
+	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
-	hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
+	  hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
+	  
+	  trace_qw = 0.0;
 
-	trace_qw = 0.0;
-
-	for (ia = 0; ia < 3; ia++) {
-	  trace_qw += q[ia][ia]*w[ia][ia];
-	  for (ib = 0; ib < 3; ib++) {
-	    d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
-	    omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
-	  }
-	}
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    s[ia][ib] = -2.0*xi*(q[ia][ib] + r3*d_[ia][ib])*trace_qw;
-	    for (id = 0; id < 3; id++) {
-	      s[ia][ib] +=
-		(xi*d[ia][id] + omega[ia][id])*(q[id][ib] + r3*d_[id][ib])
-	      + (q[ia][id] + r3*d_[ia][id])*(xi*d[id][ib] - omega[id][ib]);
+	  for (ia = 0; ia < 3; ia++) {
+	    trace_qw += q[ia][ia]*w[ia][ia];
+	    for (ib = 0; ib < 3; ib++) {
+	      d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
+	      omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
 	    }
 	  }
+	  
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      s[ia][ib] = -2.0*xi*(q[ia][ib] + r3*d_[ia][ib])*trace_qw;
+	      for (id = 0; id < 3; id++) {
+		s[ia][ib] +=
+		  (xi*d[ia][id] + omega[ia][id])*(q[id][ib] + r3*d_[id][ib])
+		  + (q[ia][id] + r3*d_[ia][id])*(xi*d[id][ib] - omega[id][ib]);
+	      }
+	    }
+	  }
+	     
+	  /* Here's the update. */
+	  
+	  indexj = get_site_index(ic, jc+1, kc);
+	  indexk = get_site_index(ic, jc, kc+1);
+	  
+	  q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
+			 - fluxe[nop_*index + QXX] + fluxw[nop_*index  + QXX]
+			 - fluxy[nop_*index + QXX] + fluxy[nop_*indexj + QXX]
+			 - fluxz[nop_*index + QXX] + fluxz[nop_*indexk + QXX]);
+	     
+	  q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y]
+			 - fluxe[nop_*index + QXY] + fluxw[nop_*index  + QXY]
+			 - fluxy[nop_*index + QXY] + fluxy[nop_*indexj + QXY]
+			 - fluxz[nop_*index + QXY] + fluxz[nop_*indexk + QXY]);
+	     
+	  q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z]
+			 - fluxe[nop_*index + QXZ] + fluxw[nop_*index  + QXZ]
+			 - fluxy[nop_*index + QXZ] + fluxy[nop_*indexj + QXZ]
+			 - fluxz[nop_*index + QXZ] + fluxz[nop_*indexk + QXZ]);
+	     
+	  q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y]
+			 - fluxe[nop_*index + QYY] + fluxw[nop_*index  + QYY]
+			 - fluxy[nop_*index + QYY] + fluxy[nop_*indexj + QYY]
+			 - fluxz[nop_*index + QYY] + fluxz[nop_*indexk + QYY]);
+	     
+	  q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z]
+			 - fluxe[nop_*index + QYZ] + fluxw[nop_*index  + QYZ]
+			 - fluxy[nop_*index + QYZ] + fluxy[nop_*indexj + QYZ]
+			 - fluxz[nop_*index + QYZ] + fluxz[nop_*indexk + QYZ]);
 	}
-
-	/* Here's the update. */
-
-	indexj = get_site_index(ic, jc+1, kc);
-	indexk = get_site_index(ic, jc, kc+1);
-
-	q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
-		       - fluxe[nop_*index + QXX] + fluxw[nop_*index  + QXX]
-		       - fluxy[nop_*index + QXX] + fluxy[nop_*indexj + QXX]
-		       - fluxz[nop_*index + QXX] + fluxz[nop_*indexk + QXX]);
-
-	q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y]
-		       - fluxe[nop_*index + QXY] + fluxw[nop_*index  + QXY]
-		       - fluxy[nop_*index + QXY] + fluxy[nop_*indexj + QXY]
-		       - fluxz[nop_*index + QXY] + fluxz[nop_*indexk + QXY]);
-
-	q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z]
-		       - fluxe[nop_*index + QXZ] + fluxw[nop_*index  + QXZ]
-		       - fluxy[nop_*index + QXZ] + fluxy[nop_*indexj + QXZ]
-		       - fluxz[nop_*index + QXZ] + fluxz[nop_*indexk + QXZ]);
-
-	q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y]
-		       - fluxe[nop_*index + QYY] + fluxw[nop_*index  + QYY]
-		       - fluxy[nop_*index + QYY] + fluxy[nop_*indexj + QYY]
-		       - fluxz[nop_*index + QYY] + fluxz[nop_*indexk + QYY]);
-
-	q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z]
-		       - fluxe[nop_*index + QYZ] + fluxw[nop_*index  + QYZ]
-		       - fluxy[nop_*index + QYZ] + fluxy[nop_*indexj + QYZ]
-		       - fluxz[nop_*index + QYZ] + fluxz[nop_*indexk + QYZ]);
-
+	else{
+	  /* we are inside the colloid
+	   * use only the molecular field
+	   */
+	  q[X][X] += dt*Gamma_*h[X][X];
+	  q[X][Y] += dt*Gamma_*h[X][Y];
+	  q[X][Z] += dt*Gamma_*h[X][Z];
+	  q[Y][Y] += dt*Gamma_*h[Y][Y];
+	  q[Y][Z] += dt*Gamma_*h[Y][Z];
+	  
+	}
+	
 	phi_set_q_tensor(index, q);
 
 	/* Next site */
