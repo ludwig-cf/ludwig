@@ -43,6 +43,7 @@
 #include "phi_stats.h"
 #include "blue_phase.h"
 #include "model_le.h"
+#include "colloids_Q_tensor.h"
 
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
@@ -114,7 +115,10 @@ void ludwig_init(void) {
   }
 
   /* blue phase / colloids */
-  /* phi_gradients_set_fluid();*/
+   phi_gradients_set_fluid();
+
+  /* Initialise Lc in colloids */
+  COLL_randomize_Q(0.0);
 
   stats_rheology_init();
   stats_turbulent_init();
@@ -145,6 +149,8 @@ int main( int argc, char **argv )
   ludwig_rt();
   ludwig_init();
 
+  scalar_q_io_init();
+  
   /* Report initial statistics */
 
   TEST_statistics();
@@ -169,7 +175,7 @@ int main( int argc, char **argv )
     hydrodynamics_zero_force();
     COLL_update();
     wall_update();
-
+    COLL_set_Q();
     /* Collision stage */
     collide();
     model_le_apply_boundary_conditions();
@@ -224,6 +230,10 @@ int main( int argc, char **argv )
       info("Writing phi file at step %d!\n", step);
       sprintf(filename,"phi-%6.6d",step);
       io_write(filename, io_info_phi);
+
+      info("Writing scalar order parameter file at step %d!\n", step);
+      sprintf(filename,"scq-%6.6d",step);
+      io_write(filename, io_info_scalar_q_);
     }
 
     if (is_vel_output_step()) {
