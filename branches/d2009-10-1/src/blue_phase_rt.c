@@ -4,7 +4,7 @@
  *
  *  Run time input for blue phase free energy, and related parameters.
  *
- *  $Id: blue_phase_rt.c,v 1.1.2.5 2009-11-13 19:26:33 kevin Exp $
+ *  $Id: blue_phase_rt.c,v 1.1.2.6 2009-11-20 18:33:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,6 +21,7 @@
 #include "phi.h"
 #include "coords.h"
 #include "runtime.h"
+#include "free_energy.h"
 #include "blue_phase.h"
 #include "blue_phase_rt.h"
 
