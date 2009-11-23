@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.1.4.1 2009-11-20 17:12:40 jlintuvu Exp $
+ *  $Id: blue_phase_beris_edwards.c,v 1.1.4.2 2009-11-23 15:20:43 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -104,6 +104,7 @@ static void blue_phase_be_update(void) {
   double xi;
 
   Colloid * p_colloid;
+  Colloid * colloid_at_site_index(int);
 
   const double dt = 1.0;
 
