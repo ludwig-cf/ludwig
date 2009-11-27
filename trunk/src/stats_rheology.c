@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.6 2009-10-26 09:52:09 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.7 2009-11-27 18:22:00 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -90,7 +90,7 @@ void stats_rheology_init(void) {
 
   remainder[X] = 0;
   remainder[Y] = 0;
-  remainder[Z] = 0;
+  remainder[Z] = 1;
 
   MPI_Cart_sub(cart_comm(), remainder, &comm_z_);
 
