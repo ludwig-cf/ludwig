@@ -41,6 +41,7 @@
 #include "io_harness.h"
 #include "phi.h"
 #include "phi_stats.h"
+#include "phi_gradients.h"
 #include "blue_phase.h"
 #include "model_le.h"
 #include "colloids_Q_tensor.h"
