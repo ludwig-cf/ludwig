@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.5.4.1 2009-11-13 17:23:11 jlintuvu Exp $
+ *  $Id: blue_phase.c,v 1.5.4.2 2009-12-01 19:55:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -305,6 +305,11 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
  *  Compute the stress as a function of the q tensor, the q tensor
  *  gradient and the molecular field.
  *
+ *  Note the definition here has a minus sign included to allow
+ *  computation of the force as minus the divergence (which often
+ *  appears as plus in the liquid crystal literature). This is a
+ *  separate operation at the end to avoid confusion.
+ *
  *****************************************************************************/
 
 void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
@@ -378,6 +383,14 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
       for (ic = 0; ic < 3; ic++) {
 	sth[ia][ib] += q[ia][ic]*h[ic][ib] - h[ia][ic]*q[ic][ib];
       }
+    }
+  }
+
+  /* This is the minus sign. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = -sth[ia][ib];
     }
   }
 
@@ -461,7 +474,6 @@ void blue_phase_twist_init(double amplitude){
 
   double q[3][3];
   double x, y, z;
-  double r2;
   double cosxy, cosz, sinxy,sinz;
   
   get_N_local(nlocal);
