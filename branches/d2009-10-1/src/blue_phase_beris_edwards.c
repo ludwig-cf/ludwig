@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.1.4.2 2009-11-23 15:20:43 jlintuvu Exp $
+ *  $Id: blue_phase_beris_edwards.c,v 1.1.4.3 2009-12-01 19:56:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,14 +21,14 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "colloids.h"
+#include "site_map.h"
 #include "lattice.h"
 #include "phi.h"
 #include "advection.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 
-static double Gamma_=0.5;     /* Collective rotational diffusion constant */
+static double Gamma_;     /* Collective rotational diffusion constant */
 
 static double * fluxe;
 static double * fluxw;
@@ -85,6 +85,9 @@ void blue_phase_beris_edwards(void) {
  *  Update q via Euler forward step. Note here we only update the
  *  5 independent elements of the Q tensor.
  *
+ *  Note that solid objects (colloids) are currently treated by evolving
+ *  the order parameter inside, but with no hydrodynamics.
+ *
  *****************************************************************************/
 
 static void blue_phase_be_update(void) {
@@ -103,9 +106,6 @@ static void blue_phase_be_update(void) {
   double trace_qw;
   double xi;
 
-  Colloid * p_colloid;
-  Colloid * colloid_at_site_index(int);
-
   const double dt = 1.0;
 
   assert(nop_ == 5);
@@ -122,10 +122,19 @@ static void blue_phase_be_update(void) {
 	phi_get_q_tensor(index, q);
 	blue_phase_molecular_field(index, h);
 
-	p_colloid = colloid_at_site_index(index);
-	
-	if(p_colloid == NULL){
-	  /*this is fluid node */
+	if (site_map_get_status_index(index) != FLUID) {
+
+	  /* Solid: diffusion only. */
+
+	  q[X][X] += dt*Gamma_*h[X][X];
+	  q[X][Y] += dt*Gamma_*h[X][Y];
+	  q[X][Z] += dt*Gamma_*h[X][Z];
+	  q[Y][Y] += dt*Gamma_*h[Y][Y];
+	  q[Y][Z] += dt*Gamma_*h[Y][Z];
+	  
+	}
+	else {
+
 	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
 	  hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
@@ -151,7 +160,7 @@ static void blue_phase_be_update(void) {
 	    }
 	  }
 	     
-	  /* Here's the update. */
+	  /* Here's the full hydrodynamic update. */
 	  
 	  indexj = get_site_index(ic, jc+1, kc);
 	  indexk = get_site_index(ic, jc, kc+1);
@@ -180,17 +189,6 @@ static void blue_phase_be_update(void) {
 			 - fluxe[nop_*index + QYZ] + fluxw[nop_*index  + QYZ]
 			 - fluxy[nop_*index + QYZ] + fluxy[nop_*indexj + QYZ]
 			 - fluxz[nop_*index + QYZ] + fluxz[nop_*indexk + QYZ]);
-	}
-	else{
-	  /* we are inside the colloid
-	   * use only the molecular field
-	   */
-	  q[X][X] += dt*Gamma_*h[X][X];
-	  q[X][Y] += dt*Gamma_*h[X][Y];
-	  q[X][Z] += dt*Gamma_*h[X][Z];
-	  q[Y][Y] += dt*Gamma_*h[Y][Y];
-	  q[Y][Z] += dt*Gamma_*h[Y][Z];
-	  
 	}
 	
 	phi_set_q_tensor(index, q);
