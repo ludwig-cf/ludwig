@@ -60,92 +60,60 @@ datafiles.close
 
 # selecting order parameter from 3D data file
 
-
-#xdata=int(sys.argv[2])
-#ydata=int(sys.argv[3])
-#zdata=int(sys.argv[4])
-#tdata=int(sys.argv[5])
-
-xdata=1
-ydata=2
-zdata=3
-tdata=12
-
-
-
 os.system('ls -t1 order_velo.*.*.dat > filelist')
 
+x=11
+#y=int(sys.argv[2])-1
+#z=int(sys.argv[3])-1
 
-inputdatafiles=open('filelist','r')
+#ux=int(sys.argv[4])-1
+#uy=int(sys.argv[5])-1
+#uz=int(sys.argv[6])-1
+
+# inputfiles
+datafilenames=open('filelist','r')
 
 while 1:
-       line=inputdatafiles.readline()
+       line=datafilenames.readline()
 
        if not line: break
+
        linestring=line.split()
-       datafile=linestring[0]
+       datafilename=linestring[0]
 
-       outputfile= datafile + '-sel'
+       print 'processing %s' % datafilename
 
-       file=open(datafile,'r')
-       out=open(outputfile,'w')
+       outputfilename= datafilename + '-sel'
 
-       print '\n# selecting data form %s' % datafile
-       print '# x / y / z / data from column # %d / %d / %d / %d' % (xdata,ydata,zdata,tdata)
-       print '# writing data to file %s\n' % outputfile
+       file=open(datafilename,'r')
+       out=open(outputfilename,'w')
 
-       datalines=0
+       dataline=[]
        data=[]
 
        while 1:
+
+
 	       line=file.readline()
 	       if not line: break
-	       if line[0]=='#': # header sign
-		       continue
+#                       if line[0]=='#': # header sign
+#                               continue
 	       datastring=line.split()
-	       dataline=[]
 
-       # selects x, y and z components from inputfile and appends them to the output data array
-
-	       for j in range(len(datastring)):
-		       if j==xdata-1:
-			       dataline.append(float(datastring[xdata-1]))
-	       for j in range(len(datastring)):
-		       if j==ydata-1:
-			       dataline.append(float(datastring[ydata-1]))
-	       for j in range(len(datastring)):
-		       if j==zdata-1:
-			       dataline.append(float(datastring[zdata-1]))
-	       for j in range(len(datastring)):
-		       if j==tdata-1:
-			       dataline.append(float(datastring[tdata-1]))
-
-#              out.write('%d %d %d %f\n' % (dataline[0],dataline[1],dataline[2],dataline[3]))
-	       out.write('%f\n' % dataline[3])
-
-#              data.append(dataline)
-	       datalines=datalines+1
-       file.close
+	       for a in range(len(datastring)):
+		       if a==x:
+			      xdata=float(datastring[x])
+#                               if a==y:
+#                                      ydata=float(datastring[y])
+#                               if a==z:
+#                                      zdata=float(datastring[z])
+#                               if a==ux:
 
 
-       # write output data array to output file
-       # number of lines
-
-#               out.write('%d\n' % datalines)
-
-       # selected data
-#               for i in range(len(data)):
-       #       out.write('%d %d %d %f\n' % (data[i][0],data[i][1],data[i][2],data[i][3]))
-#                       out.write('%f\n' % data[i][3])
-
-       # if block data form is required
-
-       #       if data[i][0] != data[i+1][0]:
-       #               out.write('\n') 
-	       #out.write('%12.8g %12.8g %12.8g %12.8g' % (data[len(data)-1][0],data[len(data)-1][1],data[len(data)-1][2],data[len(data)-1][3]))
+#                       dataline=[xdata,ydata,zdata,uxdata,uydata,uzdata]
+	       out.write('%g\n' % xdata)
+#                       out.write('%d %d %d %le %le %le\n' % (dataline[0],dataline[1],dataline[2],dataline[3],dataline[4],dataline[5]))
 
        out.close
-
-inputdatafiles.close
-
-
+       file.close
+datafilenames.close
