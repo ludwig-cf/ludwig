@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11.4.2 2009-11-13 14:34:50 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.3 2009-12-02 15:26:30 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -289,13 +289,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, X);
     forw = cart_neighb(FORWARD, X);
 
-    ihalo = ADDR(nlocal[X] + 1, 1-nhalo_, 1-nhalo_);
+    ihalo = nop_*ADDR(nlocal[X] + 1, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, forw, btag, comm, request);
-    ihalo = ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = nop_*ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, back, ftag, comm, request+1);
-    ireal = ADDR(1, 1-nhalo_, 1-nhalo_);
+    ireal = nop_*ADDR(1, 1-nhalo_, 1-nhalo_);
     MPI_Issend(phi_site + ireal, 1, phi_yz_t_, back, btag, comm, request+2);
-    ireal = ADDR(nlocal[X] - nhalo_ + 1, 1-nhalo_, 1-nhalo_);
+    ireal = nop_*ADDR(nlocal[X] - nhalo_ + 1, 1-nhalo_, 1-nhalo_);
     MPI_Issend(phi_site + ireal, 1, phi_yz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -321,13 +321,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Y);
     forw = cart_neighb(FORWARD, Y);
 
-    ihalo = ADDR(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
+    ihalo = nop_*ADDR(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, forw, btag, comm, request);
-    ihalo = ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = nop_*ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, back, ftag, comm, request+1);
-    ireal = ADDR(1-nhalo_, 1, 1-nhalo_);
+    ireal = nop_*ADDR(1-nhalo_, 1, 1-nhalo_);
     MPI_Issend(phi_site + ireal, 1, phi_xz_t_, back, btag, comm, request+2);
-    ireal = ADDR(1-nhalo_, nlocal[Y] - nhalo_ + 1, 1-nhalo_);
+    ireal = nop_*ADDR(1-nhalo_, nlocal[Y] - nhalo_ + 1, 1-nhalo_);
     MPI_Issend(phi_site + ireal, 1, phi_xz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -353,13 +353,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Z);
     forw = cart_neighb(FORWARD, Z);
 
-    ihalo = ADDR(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
+    ihalo = nop_*ADDR(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, forw, btag, comm, request);
-    ihalo = ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = nop_*ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, back, ftag, comm, request+1);
-    ireal = ADDR(1-nhalo_, 1-nhalo_, 1);
+    ireal = nop_*ADDR(1-nhalo_, 1-nhalo_, 1);
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, back, btag, comm, request+2);
-    ireal = ADDR(1-nhalo_, 1-nhalo_, nlocal[Z] - nhalo_ + 1);
+    ireal = nop_*ADDR(1-nhalo_, 1-nhalo_, nlocal[Z] - nhalo_ + 1);
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -467,6 +467,8 @@ void phi_get_grad_delsq_phi_site(const int index, double grad[3]) {
   int ia;
 
   assert(initialised_);
+  assert(nop_ == 1);
+
   for (ia = 0; ia < 3; ia++) {
     grad[ia] = grad_delsq_phi_site[3*index + ia];
   }
@@ -483,6 +485,8 @@ void phi_get_grad_delsq_phi_site(const int index, double grad[3]) {
 double phi_get_delsq_delsq_phi_site(const int index) {
 
   assert(initialised_);
+  assert(nop_ == 1);
+
   return delsq_delsq_phi_site[index];
 }
 
@@ -933,6 +937,9 @@ void phi_get_q_gradient_tensor(const int index, double dq[3][3][3]) {
  *****************************************************************************/
 
 void phi_get_q_delsq_tensor(const int index, double dsq[3][3]) {
+
+  assert(initialised_);
+  assert(nop_ == 5);
 
   dsq[X][X] = delsq_phi_site[nop_*index + QXX];
   dsq[X][Y] = delsq_phi_site[nop_*index + QXY];
