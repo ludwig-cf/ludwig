@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.1.4.3 2009-12-01 19:56:15 kevin Exp $
+ *  $Id: blue_phase_beris_edwards.c,v 1.1.4.4 2009-12-02 15:28:19 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -66,7 +66,7 @@ void blue_phase_beris_edwards(void) {
   if (fluxy == NULL) fatal("malloc(fluxy) failed");
   if (fluxz == NULL) fatal("malloc(fluxz) failed");
 
-
+  hydrodynamics_halo_u();
   advection_upwind(fluxe, fluxw, fluxy, fluxz);
   blue_phase_be_update();
 
@@ -115,7 +115,7 @@ static void blue_phase_be_update(void) {
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc < nlocal[Z]; kc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = get_site_index(ic, jc, kc);
 
@@ -162,8 +162,8 @@ static void blue_phase_be_update(void) {
 	     
 	  /* Here's the full hydrodynamic update. */
 	  
-	  indexj = get_site_index(ic, jc+1, kc);
-	  indexk = get_site_index(ic, jc, kc+1);
+	  indexj = get_site_index(ic, jc-1, kc);
+	  indexk = get_site_index(ic, jc, kc-1);
 	  
 	  q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
 			 - fluxe[nop_*index + QXX] + fluxw[nop_*index  + QXX]
