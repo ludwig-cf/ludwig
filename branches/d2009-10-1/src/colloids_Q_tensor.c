@@ -60,7 +60,7 @@ void COLL_set_Q(){
   
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc < nlocal[Z]; kc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 	
 	index = get_site_index(ic, jc, kc);
 
@@ -160,25 +160,25 @@ void COLL_set_Q(){
 	    //info("\ lengt, %lf %lf", dir_len,10e-8);
 	    assert(dir_len > 10e-8);
 	    
-	    director[0] = dir.x/dir_len;
-	    director[1] = dir.y/dir_len;
-	    director[2] = dir.z/dir_len;
+	    director[X] = dir.x/dir_len;
+	    director[Y] = dir.y/dir_len;
+	    director[Z] = dir.z/dir_len;
 
 	    dir_prev.x = dir.x/dir_len;
 	    dir_prev.y = dir.y/dir_len;
 	    dir_prev.z = dir.z/dir_len;
 #else
 	    /* Homeotropic anchoring */
-	    director[0] = normal.x/len_normal;
-	    director[1] = normal.y/len_normal;
-	    director[2] = normal.z/len_normal;
+	    director[X] = normal.x/len_normal;
+	    director[Y] = normal.y/len_normal;
+	    director[Z] = normal.z/len_normal;
 
 #endif
-	    q[0][0] = amplitude*(director[0]*director[0] - 1.0/3.0);
-	    q[0][1] = amplitude*(director[0]*director[1]);
-	    q[0][2] = amplitude*(director[0]*director[2]);
-	    q[1][1] = amplitude*(director[1]*director[1] - 1.0/3.0);
-	    q[1][2] = amplitude*(director[1]*director[2]);
+	    q[X][X] = amplitude*(director[X]*director[X] - 1.0/3.0);
+	    q[X][Y] = amplitude*(director[X]*director[Y]);
+	    q[X][Z] = amplitude*(director[X]*director[Z]);
+	    q[Y][Y] = amplitude*(director[Y]*director[Y] - 1.0/3.0);
+	    q[Y][Z] = amplitude*(director[Y]*director[Z]);
 	    
 	    phi_set_q_tensor(index, q);
 	}
@@ -216,7 +216,7 @@ void COLL_randomize_Q(double delta_r){
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc < nlocal[Z]; kc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 	
 	index = get_site_index(ic, jc, kc);
 
@@ -401,11 +401,16 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   
   qs = d[emax]; 
 
+  p_colloid = colloid_at_site_index(index);
+  
+  if(p_colloid != NULL){
+    /* if inside colloid print perfect order */
+    qs=0.33333333333;
+  }
   n = fprintf(fp, "%4d %4d %4d %22.15e ", ic,jc,kc,qs);
   //info("\n n = %d , qs = %lf \n", n, qs);
   if (n < 37) fatal("fprintf(qs) failed at index %d\n", index);
   
-  p_colloid = colloid_at_site_index(index);
   if(p_colloid != NULL){
     /* this column is printed 0.0 if inside colloid otherwise the same as previous */
     qs=0.0;
