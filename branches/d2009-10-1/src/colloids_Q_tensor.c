@@ -18,6 +18,7 @@
 #include "phi.h"
 #include "io_harness.h"
 #include "ran.h"
+#include "lattice.h"
 #include "colloids_Q_tensor.h"
 
 struct io_info_t * io_info_scalar_q_;
@@ -26,7 +27,7 @@ struct io_info_t * io_info_scalar_q_;
 
 static int scalar_q_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_write_ascii(FILE *, const int, const int, const int);
-
+static double scalar_order_parameter(double q[3][3]);
 
 void COLL_set_Q(){
   
@@ -156,8 +157,6 @@ void COLL_set_Q(){
 	      assert(dir_len>10e-8);
 	      
 	    }
-	    //info("\n i,j,k, %d %d %d\n", ic,jc,kc);
-	    //info("\ lengt, %lf %lf", dir_len,10e-8);
 	    assert(dir_len > 10e-8);
 	    
 	    director[X] = dir.x/dir_len;
@@ -349,6 +348,7 @@ void scalar_q_io_init(void) {
   io_info_set_bytesize(io_info_scalar_q_, 1*sizeof(double));
 
   io_info_set_format_ascii(io_info_scalar_q_);
+  io_info_set_format_binary(io_info_scalar_q_);
   io_write_metadata("scalar_q", io_info_scalar_q_);
 
   return;
@@ -368,7 +368,6 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   double q[3][3];
   double qs;
   double d[3],v[3][3];
-  double director[3];
   int nrots,emax,enxt;
   int i;
   Colloid * colloid_at_site_index(int);
@@ -395,9 +394,6 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   else if (d[2] > d[enxt]) {
     enxt=2;
   }
-  //dir.x = v[0][emax];
-  //dir.y = v[1][emax];
-  //dir.z = v[2][emax];
   
   qs = d[emax]; 
 
@@ -408,7 +404,6 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
     qs=0.33333333333;
   }
   n = fprintf(fp, "%4d %4d %4d %22.15e ", ic,jc,kc,qs);
-  //info("\n n = %d , qs = %lf \n", n, qs);
   if (n < 37) fatal("fprintf(qs) failed at index %d\n", index);
   
   if(p_colloid != NULL){
@@ -420,9 +415,7 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   
   for (i=0;i<3;i++){
     qs=v[i][emax];
-    //info("\n %lf %lf %d", d[emax],v[i][emax],i);
     n = fprintf(fp, "%22.15e ", qs);
-    //info("\n n = %d , qs = %lf \n", n, qs);
     if (n < 23) fatal("fprintf(qs) failed at index %d\n", index);
   }
   n = fprintf(fp, "\n");
@@ -433,9 +426,70 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
 
 /*****************************************************************************
  *
+ *  colloids_fix_swd
+ *
+ *  The velocity gradient tensor used in the Beris-Edwards equations
+ *  requires some approximation to the velocity at lattice sites
+ *  inside particles. Here we set the lattice velocity based on
+ *  the solid body rotation u = v + Omega x rb
+ *
+ *****************************************************************************/
+
+void colloids_fix_swd(void) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int noffset[3];
+  const int nextra = 1;
+
+  double u[3];
+  double rb[3];
+  double x, y, z;
+
+  Colloid * p_c;
+  Colloid * colloid_at_site_index(int);
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+	z = noffset[Z] + kc;
+
+	index = get_site_index(ic, jc, kc);
+
+	p_c = colloid_at_site_index(index);
+
+	if (p_c) {
+	  /* Set the lattice velocity here to the solid body
+	   * rotational velocity */
+
+	  rb[X] = p_c->r.x - x;
+	  rb[Y] = p_c->r.y - y;
+	  rb[Z] = p_c->r.z - z;
+
+	  u[X] = p_c->v.x + p_c->omega.y*rb[Z] - p_c->omega.z*rb[Y];
+	  u[Y] = p_c->v.y + p_c->omega.z*rb[X] - p_c->omega.x*rb[Z];
+	  u[Z] = p_c->v.z + p_c->omega.x*rb[Y] - p_c->omega.y*rb[X];
+
+	  hydrodynamics_set_velocity(index, u);
+
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  scalar_q_write
  *
- *  Do the same thing in binary.
+ *  Write scalar order parameter in binary.
  *
  *****************************************************************************/
 
@@ -447,13 +501,40 @@ static int scalar_q_write(FILE * fp, const int ic, const int jc,
 
   index = get_site_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-
-  /* JUHO: YOU NEED CODE TO WORK OUT VALUE REQUIRED HERE */
-
-  qs = 0.0;
+  qs = scalar_order_parameter(q);
 
   n = fwrite(&qs, sizeof(double), 1, fp);
   if (n != 1) fatal("fwrite(qs) failed at index %d\n", index);
 
   return n;
+}
+
+/*****************************************************************************
+ *
+ *  scalar_order_parameter
+ *
+ *  Return the value of the scalar order parameter for given Q tensor.
+ *
+ *****************************************************************************/
+
+double scalar_order_parameter(double q[3][3]) {
+
+  int nrots, emax;
+  double d[3], v[3][3];
+
+  jacobi(q, d, v, &nrots);
+  
+  /* Find the largest eigenvalue */
+
+  if (d[0] > d[1]) {
+    emax=0;
+  }
+  else {
+    emax=1;
+  }
+  if (d[2] > d[emax]) {
+    emax=2;
+  }
+
+  return d[emax];
 }
