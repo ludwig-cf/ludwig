@@ -94,6 +94,8 @@ void COLL_set_Q(){
 	  */
 	  len_normal = sqrt(UTIL_dot_product(normal, normal));
 
+	  assert(len_normal <= p_colloid->ah);
+
 	  if(len_normal < 10e-8){
 	    /* we are very close to the centre of the colloid.
 	     * set the q tensor to zero
@@ -173,13 +175,21 @@ void COLL_set_Q(){
 	    director[Z] = normal.z/len_normal;
 
 #endif
-	    q[X][X] = amplitude*(director[X]*director[X] - 1.0/3.0);
-	    q[X][Y] = amplitude*(director[X]*director[Y]);
-	    q[X][Z] = amplitude*(director[X]*director[Z]);
-	    q[Y][Y] = amplitude*(director[Y]*director[Y] - 1.0/3.0);
-	    q[Y][Z] = amplitude*(director[Y]*director[Z]);
+	    q[X][X] = 3.0/2.0*amplitude*(director[X]*director[X] - 1.0/3.0);
+	    q[X][Y] = 3.0/2.0*amplitude*(director[X]*director[Y]);
+	    q[X][Z] = 3.0/2.0*amplitude*(director[X]*director[Z]);
+	    q[Y][Y] = 3.0/2.0*amplitude*(director[Y]*director[Y] - 1.0/3.0);
+	    q[Y][Z] = 3.0/2.0*amplitude*(director[Y]*director[Z]);
 	    
 	    phi_set_q_tensor(index, q);
+
+	    //debug
+	    phi_get_q_tensor(index,q);
+	    rdotd=scalar_order_parameter(q);
+	    //if(rdotd>1.0/3.0){
+	    //info("\n i,j,k, %d %d %d %lf %lf %lf \n", ic,jc,kc,rdotd,amplitude,len_normal);
+	    //info("%lf %lf %lf %lf %lf \n", director[X],director[Y],director[Z],len_normal,sqrt(director[X]*director[X]+director[Y]*director[Y]+director[Z]*director[Z]));
+	      //}
 	}
 	
       }
@@ -348,7 +358,7 @@ void scalar_q_io_init(void) {
   io_info_set_bytesize(io_info_scalar_q_, 1*sizeof(double));
 
   io_info_set_format_ascii(io_info_scalar_q_);
-  io_info_set_format_binary(io_info_scalar_q_);
+  // io_info_set_format_binary(io_info_scalar_q_);
   io_write_metadata("scalar_q", io_info_scalar_q_);
 
   return;
@@ -396,6 +406,11 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   }
   
   qs = d[emax]; 
+
+  //assert(qs<= 1.0/3.0);
+  // if(qs >= 1.0/3.0){
+  // info("\n qs = %lf, i, j, k, %d, %d, %d \n", qs, ic, jc, kc);
+  //}
 
   p_colloid = colloid_at_site_index(index);
   
