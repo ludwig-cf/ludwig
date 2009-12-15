@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.10.4.1 2009-11-04 10:20:43 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.10.4.2 2009-12-15 16:21:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,6 +30,7 @@
 #include "leesedwards.h"
 #include "site_map.h"
 #include "advection.h"
+#include "advection_bcs.h"
 #include "lattice.h"
 #include "free_energy.h"
 #include "phi.h"
@@ -42,7 +43,6 @@ static double * fluxz;
 
 void phi_ch_diffusive_flux(void);
 void phi_ch_diffusive_flux_surfactant(void);
-static void phi_ch_correct_fluxes_for_solid(void);
 static void phi_ch_update_forward_step(void);
 static void phi_ch_langmuir_hinshelwood(void);
 static void phi_ch_le_fix_fluxes(void);
@@ -118,7 +118,9 @@ void phi_cahn_hilliard() {
     phi_ch_langmuir_hinshelwood();
   }
   else {
-    if (solid_) phi_ch_correct_fluxes_for_solid();
+    if (solid_) {
+      advection_bcs_no_normal_flux(fluxe, fluxw, fluxy, fluxz);
+    }
   }
 
 
@@ -398,50 +400,6 @@ void phi_ch_diffusive_flux_surfactant(void) {
 	fluxz[nop_*index0 + 1] -= m_psi*psi*(1.0 - psi)*(mu1 - mu0_psi);
 
 	/* Next site */
-      }
-    }
-  }
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  phi_ch_correct_fluxes_for_solid
- *
- *  Set fluxes at solid fluid interfaces to zero.
- *
- *****************************************************************************/
-
-static void phi_ch_correct_fluxes_for_solid(void) {
-
-  int nlocal[3];
-  int ic, jc, kc, index, n;
-
-  double mask, maskw, maske, masky, maskz;
-
-  get_N_local(nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 0; jc <= nlocal[Y]; jc++) {
-      for (kc = 0; kc <= nlocal[Z]; kc++) {
-
-	index = ADDR(ic, jc, kc);
-
-	mask  = (site_map_get_status_index(index)  == FLUID);
-	maske = (site_map_get_status(ic+1, jc, kc) == FLUID);
-	maskw = (site_map_get_status(ic-1, jc, kc) == FLUID);
-	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
-	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
-
-	for (n = 0;  n < nop_; n++) {
-	  fluxw[nop_*index + n] *= mask*maskw;
-	  fluxe[nop_*index + n] *= mask*maske;
-	  fluxy[nop_*index + n] *= mask*masky;
-	  fluxz[nop_*index + n] *= mask*maskz;
-	}
-
       }
     }
   }
