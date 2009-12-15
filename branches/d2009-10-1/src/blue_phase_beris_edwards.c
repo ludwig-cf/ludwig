@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.1.4.4 2009-12-02 15:28:19 kevin Exp $
+ *  $Id: blue_phase_beris_edwards.c,v 1.1.4.5 2009-12-15 16:24:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,6 +25,7 @@
 #include "lattice.h"
 #include "phi.h"
 #include "advection.h"
+#include "advection_bcs.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 
@@ -68,6 +69,7 @@ void blue_phase_beris_edwards(void) {
 
   hydrodynamics_halo_u();
   advection_upwind(fluxe, fluxw, fluxy, fluxz);
+  advection_bcs_no_normal_flux(fluxe, fluxw, fluxy, fluxz);
   blue_phase_be_update();
 
   free(fluxe);
