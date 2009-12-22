@@ -29,10 +29,7 @@
 #
 # CC        C compiler (make serial)
 # MPICC     C compiler (make mpi)
-# COPTS     C compile time flags e.g., optimisation
-# OPTS      Preprocessor options (as described above)
 # LDFLAGS   Link time flags [-lm included by default]
-# LIBS      External library flags
 #
 ###############################################################################
 
@@ -55,54 +52,25 @@ EXE= Ludwig.exe
 
 ###############################################################################
 #
-#  SUN HPC section
+#  Compilation
+#
+#  Note that for the serial version you will need the dummy MPI library
+#  ../mpi_s from the cvs.
+#
+#  You need to set, as a minimum:
+#
+#  CC                    Serial C compiler
+#  MPICC                 MPI C compiler
+#  CFLAGS                Sum total of flags given to compiler
+#  LDFLAGS               Link options
 #
 ###############################################################################
-
 
 CC=cc
-MPICC=tmcc
-OPTS = -D_D3Q19_
-CFLAGS=$(OPTS)  -Xc -v -errwarn -xO3
+MPICC=cc
+OPTS = -O3
 LDFLAGS=
-
-###############################################################################
-#
-#  Linux
-#
-###############################################################################
-
-CC=gcc
-MPICC=mpicc
-OPTS = -D_D3Q19_
-CFLAGS=$(OPTS) -Wall -O3
-
-###############################################################################
-#
-# Bluegene
-#
-###############################################################################
-
-#KOJAK=#/bgl/local/packages/kojak/bin/kinst-pomp
-#HPCT = /bgl/local/packages/hpct_all/hpct_bgl_20070116
-
-#CC= xlc_r
-#MPICC=  mpixlc  #-I$(HPCT)/include
-#COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
-#LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
-#OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
-#CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
-
-#LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
-#-L/bgl/local/lib/mpitrace -lmpitrace_c
-
-
-###############################################################################
-#
-#  Generic section
-#
-###############################################################################
-
+CFLAGS=  -D_D3Q19_ $(OPTS) $(LDFLAGS)
 
 INC= -I.
 LIBS= -lm
@@ -120,19 +88,28 @@ default:
 
 verbose:
 	echo -e "LUDWIG make options ...\n"\
-	    "\t make serial \t builds serial implementation\n"\
+	    "\t make serial \t builds serial implementation (no assertions)\n"\
+	    "\t make serial_assert \t builds serial implementation\n"\
 	    "\t make mpi \t builds parallel implementation based on MPI\n"\
+	    "\t make mpi_assert \t builds MPI version with assertions\n"\
             "\t Check the Makefile for further details\n"	
 
 generic: $(OBJS) Makefile
 	$(CC) $(LDFLAGS) -o $(EXE) $(OBJS) $(LIBS)
 
 serial:
-	$(MAKE) generic "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
+	$(MAKE) generic "CC=$(CC) -DNDEBUG" "INC=$(INC) -I../mpi_s"\
+        "LIBS=$(LIBS) -L../mpi_s -lmpi"
+serial_assert:
+	$(MAKE) generic "CC=$(CC)" "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi"
+
 mpi:
-	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(MPILIB) $(LIBS)" "CFLAGS=$(CFLAGS) \
-		-D_MPI_"
+	$(MAKE) generic "CC=$(MPICC) -DNDEBUG" "LIBS= $(MPILIB) $(LIBS)" \
+        "CFLAGS=$(CFLAGS) -D_MPI_"
+mpi_assert:
+	$(MAKE) generic "CC=$(MPICC) " "LIBS= $(MPILIB) $(LIBS)" \
+        "CFLAGS=$(CFLAGS) -D_MPI_"
 
 ###############################################################################
 #
