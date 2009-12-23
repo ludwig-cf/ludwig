@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.11 2009-09-02 07:55:19 kevin Exp $
+ *  $Id: wall.c,v 1.11.4.1 2009-12-23 16:28:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -137,19 +137,21 @@ void wall_finish() {
  *
  *  wall_bounce_back
  *
- *
+ *  Bounce back each distribution.
  *
  *****************************************************************************/
 
-void wall_bounce_back() {
+void wall_bounce_back(void) {
 
   B_link * p_link;
   int      i, j, ij, ji, ia;
+  int      n, ndist;
   double   rho, cdotu;
   double   fp;
   double   force;
 
   p_link = link_list_;
+  ndist = distribution_ndist();
 
   while (p_link) {
 
@@ -158,23 +160,24 @@ void wall_bounce_back() {
     ij = p_link->p;   /* Link index direction solid->fluid */
     ji = NVEL - ij;   /* Opposite direction index */
 
-    rho = get_rho_at_site(i);
     cdotu = cv[ij][X]*p_link->ux;
-    fp = get_f_at_site(i, ij);
-    force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-    fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-    set_f_at_site(j, ji, fp);
 
-#ifdef _SINGLE_FLUID_
-#else
-    /* Order parameter (for "rho", read "phi" here) */
-    rho = get_phi_at_site(i);
-    fp = get_g_at_site(i, ij) - 2.0*rcs2*wv[ij]*rho*cdotu;
-    set_g_at_site(j, ji, fp);
-#endif
+    for (n = 0; n < ndist; n++) {
 
-    for (ia = 0; ia < 3; ia++) {
-      fnet_[ia] += force*cv[ij][ia];
+      fp = distribution_f(i, ij, n);
+      rho = distribution_zeroth_moment(i, n);
+
+      if (n == 0) {
+	/* This is the momentum */
+	force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+	for (ia = 0; ia < 3; ia++) {
+	  fnet_[ia] += force*cv[ij][ia];
+	}
+      }
+
+      fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+      distribution_f_set(j, ji, n, fp);
+
     }
 
     p_link = p_link->next;

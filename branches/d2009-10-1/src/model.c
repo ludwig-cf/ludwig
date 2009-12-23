@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.17 2009-08-20 16:26:09 kevin Exp $
+ *  $Id: model.c,v 1.17.4.1 2009-12-23 16:28:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,6 +35,7 @@ const double rcs2 = 3.0;
 struct io_info_t * io_info_distribution_; 
 Site  * site;
 
+static int ndist_  = 2;
 static int nsites_ = 0;
 static int initialised_ = 0;
 
@@ -48,7 +49,7 @@ static MPI_Datatype plane_xy_[2];
 static MPI_Datatype plane_xz_[2];
 static MPI_Datatype plane_yz_[2];
 
-MPI_Datatype DT_Site; /* currently referenced in model_le.c */
+static MPI_Datatype DT_Site;
 static MPI_Datatype site_x_[2];
 static MPI_Datatype site_y_[2];
 static MPI_Datatype site_z_[2];
@@ -135,7 +136,6 @@ void init_site() {
 static void distribution_mpi_init() {
 
   int count;
-  int ndist = 2;
   int nlocal[3];
   int nx, ny, nz;
   int * blocklen;
@@ -143,7 +143,7 @@ static void distribution_mpi_init() {
   MPI_Aint * disp_bwd;
   MPI_Datatype * types;
 
-  assert(ndist == 2);
+  assert(ndist_ == 2);
 
   get_N_local(nlocal);
   nx = nlocal[X] + 2*nhalo_;
@@ -152,7 +152,7 @@ static void distribution_mpi_init() {
 
   /* X direction */
 
-  count = ndist*CVXBLOCK + 2;
+  count = ndist_*CVXBLOCK + 2;
 
   blocklen = (int *) malloc(count*sizeof(int));
   disp_fwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
@@ -181,7 +181,7 @@ static void distribution_mpi_init() {
 
   /* Y direction */
 
-  count = ndist*CVYBLOCK + 2;
+  count = ndist_*CVYBLOCK + 2;
 
   blocklen = (int *) malloc(count*sizeof(int));
   disp_fwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
@@ -212,7 +212,7 @@ static void distribution_mpi_init() {
 
   /* Z direction */
 
-  count = ndist*CVZBLOCK + 2;
+  count = ndist_*CVZBLOCK + 2;
 
   blocklen = (int *) malloc(count*sizeof(int));
   disp_fwd = (MPI_Aint *) malloc(count*sizeof(MPI_Aint));
@@ -279,13 +279,12 @@ static void distribution_set_blocks(const int nblock, int * block,
 				    const int * basic_block){
 
   int n, p;
-  const int ndist = 2;
 
-  assert(ndist == 2);
+  assert(ndist_ == 2);
 
   block[0] = 1; /* For MPI_LB */
 
-  for (n = 0; n < ndist; n++) {
+  for (n = 0; n < ndist_; n++) {
     for (p = 0; p < nbasic; p++) {
       block[1 + n*nbasic + p] = basic_block[p];
     }
@@ -847,4 +846,111 @@ void distribution_halo_set_reduced(void) {
   plane_yz_[BACKWARD] = plane_yz_reduced_[BACKWARD];
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_ndist
+ *
+ *  Return the number of distribution functions.
+ *
+ *****************************************************************************/
+
+int distribution_ndist(void) {
+
+  assert(initialised_);
+  return ndist_;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_ndist_set
+ *
+ *  Set the number of distribution functions to be used.
+ *
+ *****************************************************************************/
+
+void distribution_ndist_set(const int n) {
+
+  assert(initialised_ == 0);
+  verbose("distribution_ndist_set() currently inactive\n");
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_f
+ *
+ *  Get the distribution at site index, velocity p, distribution n.
+ *
+ *****************************************************************************/
+
+double distribution_f(const int index, const int p, const int n) {
+
+  assert(initialised_);
+  assert(index >= 0 && index < nsites_);
+  assert(p >= 0 && p < NVEL);
+  assert(n >= 0 && n < ndist_);
+
+  if (n == 0) return site[index].f[p];
+  if (n == 1) return site[index].g[p];
+
+  return 0.0;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_f_set
+ *
+ *  Set the distribution for site index, velocity p, distribution n.
+ *
+ *****************************************************************************/
+
+void distribution_f_set(const int index, const int p, const int n,
+			const double fvalue) {
+
+  assert(initialised_);
+  assert(index >= 0 && index < nsites_);
+  assert(p >= 0 && p < NVEL);
+  assert(n >= 0 && n < ndist_);
+
+  if (n == 0) site[index].f[p] = fvalue;
+  if (n == 1) site[index].g[p] = fvalue;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_zeroth_moment
+ *
+ *  Return the zeroth moment of the distribution (rho for n = 0).
+ *
+ *****************************************************************************/
+
+double distribution_zeroth_moment(const int index, const int n) {
+
+  int p;
+  double rho;
+
+  assert(initialised_);
+  assert(index >= 0 && index < nsites_);
+  assert(n >= 0 && n < ndist_);
+
+  rho = 0.0;
+
+  if (n == 0) {
+    for (p = 0; p < NVEL; p++) {
+      rho += site[index].f[p];
+    }
+  }
+
+  if (n == 1) {
+    for (p = 0; p < NVEL; p++) {
+      rho += site[index].g[p];
+    }
+  }
+
+  return rho;
 }

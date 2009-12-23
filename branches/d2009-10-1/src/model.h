@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.14 2009-08-20 16:26:09 kevin Exp $
+ *  $Id: model.h,v 1.14.4.1 2009-12-23 16:28:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -54,8 +54,16 @@ void   set_g_at_site(const int, const int, const double);
 void   set_rho_u_at_site(const double, const double [], const int);
 void   get_momentum_at_site(const int, double[ND]);
 
+int    distribution_ndist(void);
+void   distribution_ndist_set(const int ndist);
+double distribution_f(const int index, const int p, const int n);
+void   distribution_f_set(const int index, const int p, const int n,
+			  const double fvalue);
+double distribution_zeroth_moment(const int index, const int n);
+
 void distribution_get_stress_at_site(int index, double s[ND][ND]);
 void distribution_halo_set_complete(void);
 void distribution_halo_set_reduced(void);
+
 
 #endif
