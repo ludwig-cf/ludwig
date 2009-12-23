@@ -4,7 +4,7 @@
  *
  *  Statistics for free energy density.
  *
- *  $Id: stats_free_energy.c,v 1.1.2.1 2009-11-16 16:21:38 kevin Exp $
+ *  $Id: stats_free_energy.c,v 1.1.2.2 2009-12-23 16:41:06 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -16,6 +16,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "control.h"
 #include "site_map.h"
 #include "free_energy.h"
 #include "stats_free_energy.h"
@@ -34,6 +35,7 @@ void stats_free_energy_density(void) {
   double fed;
   double fe_local[2];
   double fe_total[2];
+  double rv;
 
   double (* free_energy_density)(const int index);
 
@@ -57,9 +59,11 @@ void stats_free_energy_density(void) {
   }
 
   MPI_Reduce(fe_local, fe_total, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  rv = 1.0/(L(X)*L(Y)*L(Z));
 
   info("Free energy density [total, fluid]\n");
-  info("[fed] %14.7e %14.7e\n", fe_total[0], fe_total[1]);
+  info("[fed] %8d %14.7e %14.7e\n", get_step(), rv*fe_total[0],
+       rv*fe_total[1]);
 
   return;
 }
