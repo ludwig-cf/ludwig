@@ -1,0 +1,344 @@
+Welcome to Ludwig (MPI version running on 8 processes)
+
+Read 62 user parameters from test_spin_solid2_input
+[User   ] Lattice size is (64, 64, 64)
+[User   ] periodic boundaries set to (1, 1, 1)
+[Default] Processor decomposition is (2, 2, 2)
+Cartesian Communicator:
+Periodic = (1, 1, 1)
+Reorder is true
+[Compute] local domain as (32, 32, 32)
+[User   ] Random number seed: -7361237
+
+External gravitational force
+[User   ] gravity = 0 0 0
+
+Model physics:
+Shear viscosity: 0.083333
+Relaxation time: 0.750000
+Bulk viscosity : 0.083333
+Relaxation time: 0.750000
+Isothermal kT:   0.000021
+
+Ghost modes
+[User   ] Ghost modes have been switched off.
+[Default] Ghost mode relaxation time: 1.000000
+
+The lattice Boltzmann model is D3Q19
+Requesting 16681088 bytes for site data
+Order parameter is via lattice Boltzmann
+
+Order parameter mobility M: 0.150000
+[Boundary links: 0 (0 bytes)]
+
+Colloid cell list
+[User   ] Requested minimum cell width is 8.000000
+[       ] Actual local number of cells [4,4,4]
+[       ] Actual local cell width      [8.00,8.00,8.00]
+Requesting 1728 bytes for the cell list
+
+Particle initialisation
+[User   ] requested volume fraction of 0.400000
+[       ] initialised 2065 particles
+[       ] actual volume fraction of 0.401469
+
+Colloid message initiailisation...
+Taking volume of halo region = 512.000000 x 36 and ah = 2.300000
+Allocating space for 1514 particles in halo buffers
+Requesting 750944 bytes for halo messages
+Requesting 387584 bytes for type one messages
+Requesting 702496 bytes for type two messages
+Requesting 121120 bytes for type six messages
+Requesting 169568 bytes for type eight messages
+
+Colloid-colloid lubrication corrections
+[User   ] Lubrication corrections are switched off
+
+Colloid-colloid soft-sphere potential
+[User   ] Soft sphere potential is switched on
+[User   ] Soft-sphere energy (epsilon) is 0.000400 (18.750003 kT)
+[User   ] Soft-sphere width (sigma) is 0.100000
+[User   ] Soft-sphere exponent (nu) is 1.000000
+[User   ] Soft-sphere cutoff range is 0.250000
+
+Colloid-colloid Leonard Jones potential
+[User   ] Leonard Jones potential is switched off
+
+Colloid-colloid Yukawa potential
+[Default] Yukawa potential is switched off
+
+Checking cell list against specified interactions
+The maximum interaction range is: 4.850000
+The minimum cell width is 8.000000 (ok)
+Requesting 877952 bytes for colloid maps
+
+Checking colloid state...
+Total energy / NkT: 96.1489
+Mean square displacements (serial only) 0.000000 0.000000 0.000000
+State appears to have no overlaps
+CIO_write_state
+Set phi gradient function to fluid/solid version
+[User   ] Free energy: symmetric
+
+Symmetric phi^4 free energy:
+Bulk parameter A      = -0.062500
+Bulk parameter B      = 0.062500
+Surface penalty kappa = 0.040000
+Surface tension       = 0.047140
+Interfacial width     = 1.131371
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][157036, 1, 0, 1, 1]
+
+TEST_momentum [x, y, z]
+[total][1.11022e-16, 0, 0]
+[fluid][1.11022e-16, 0, 0]
+[phi] -1.2617291e+01 -8.0346487e-05 8.3161055e-04 -4.9999901e-02 4.9999855e-02
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.025142]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 1.07898e-310 0 0 37.3113 37.3113]
+[Max particle speed: 0.0021091]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+40  52025.5 51455.1 51491.2 51193.7 51711.7 52069.9 -0.14266 -0.731837
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156822, 1, 0, 0.97790425, 1.0041125]
+
+TEST_momentum [x, y, z]
+[total][1.31395e-13, -1.14825e-13, -2.60902e-14]
+[fluid][-0.0325384, -0.235176, 0.100818]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00292421 -0.00247499 -0.00277523 ]
+[ umax ][ 0.00259802 0.00263666 0.00365531 ]
+[phi] -1.2617291e+01 -8.0456129e-05 4.1964369e-04 -9.0598931e-02 9.4469850e-02
+
+Completed cycle 40
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.030028]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 1.07898e-310 0 0 27.0591 27.0591]
+[Max particle speed: 0.00123942]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+80  30679.9 30224.7 30247.5 30032.7 30409.1 30713.5 -0.14578 -0.733768
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156646, 1, 0, 0.98538823, 1.0027297]
+
+TEST_momentum [x, y, z]
+[total][-1.31214e-12, 1.97994e-13, -1.46327e-13]
+[fluid][0.0407587, -0.117361, 0.191286]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00292421 -0.00214628 -0.00237844 ]
+[ umax ][ 0.00259802 0.00263666 0.00365531 ]
+[phi] -1.2617291e+01 -8.0546525e-05 6.8320791e-04 -1.7348216e-01 1.7095064e-01
+
+Completed cycle 80
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.033365]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 1.07898e-310 0 0 21.7462 21.7462]
+[Max particle speed: 0.000988745]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+120  14929.1 14675.1 14729.7 14604.1 14782.5 14949.1 -0.146265 -0.609127
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156566, 1, 0, 0.9873118, 1.0020831]
+
+TEST_momentum [x, y, z]
+[total][-3.46029e-13, 2.74808e-13, -5.9619e-14]
+[fluid][0.0016044, -0.0659088, 0.115197]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00292421 -0.00214628 -0.00237844 ]
+[ umax ][ 0.00259802 0.00263666 0.00365531 ]
+[phi] -1.2617291e+01 -8.0587682e-05 1.3798507e-03 -3.0567243e-01 3.0614710e-01
+
+Completed cycle 120
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.036660]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 1.07898e-310 0 0 18.554 18.554]
+[Max particle speed: 0.000801147]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+160   6787.2 6667.03 6709.14 6639.96 6726.61 6797.55 -0.123093 -0.526361
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156549, 1, 0, 0.98755204, 1.0020818]
+
+TEST_momentum [x, y, z]
+[total][-1.88347e-12, 2.53908e-13, -9.39249e-14]
+[fluid][-0.0430441, -0.0612796, 0.118454]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00292421 -0.00214628 -0.00237844 ]
+[ umax ][ 0.00259802 0.00263666 0.00365531 ]
+[phi] -1.2617291e+01 -8.0596433e-05 3.0000870e-03 -4.4806886e-01 4.7152374e-01
+
+Completed cycle 160
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.039925]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 1.07898e-310 0 0 16.2216 16.2216]
+[Max particle speed: 0.00075318]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+200  3032.28  2978.5 3003.25  2966.5  3011.3 3036.58 -0.128969 -0.490354
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156561, 1, 0, 0.97568383, 1.0040814]
+
+TEST_momentum [x, y, z]
+[total][-1.86873e-12, 2.25375e-14, -1.40221e-13]
+[fluid][-0.0177908, -0.0361639, 0.108741]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00292421 -0.00214628 -0.00237844 ]
+[ umax ][ 0.00259802 0.00263666 0.00365531 ]
+[phi] -1.2617291e+01 -8.0590256e-05 6.5740779e-03 -5.7384295e-01 5.9317017e-01
+
+Completed cycle 200
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.042175]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 9.24841e-311 0 0 14.5497 14.5497]
+[Max particle speed: 0.000636647]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+240   1379.2 1355.31 1367.36 1349.29  1371.7 1381.07 -0.109789 -0.504842
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156600, 1, 0, 0.96298772, 1.00627]
+
+TEST_momentum [x, y, z]
+[total][-2.66775e-12, 5.07372e-14, -1.7697e-13]
+[fluid][-0.140823, -0.0753878, 0.148714]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00292421 -0.00214628 -0.00237844 ]
+[ umax ][ 0.00259802 0.00263666 0.00365531 ]
+[phi] -1.2617291e+01 -8.0570185e-05 1.3910818e-02 -6.5858355e-01 7.1144434e-01
+
+Completed cycle 240
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.044357]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 1.07898e-310 0 0 13.2991 13.2991]
+[Max particle speed: 0.000795225]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+280  659.867 648.279 653.687 645.143 656.253 660.529 -0.0950124 -0.532223
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156576, 1, 0, 0.95203338, 1.0088641]
+
+TEST_momentum [x, y, z]
+[total][-2.75846e-12, 9.28146e-14, -8.50986e-14]
+[fluid][-0.319027, -0.0662402, 0.150524]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00292421 -0.00214628 -0.00237844 ]
+[ umax ][ 0.00259802 0.00263666 0.00365531 ]
+[phi] -1.2617291e+01 -8.0582535e-05 2.7701718e-02 -7.3472740e-01 7.7673123e-01
+
+Completed cycle 280
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.045617]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 1.07898e-310 0 0 12.5312 12.5312]
+[Max particle speed: 0.00146754]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+320  341.466 335.384 337.125 333.388 339.099 341.533 -0.0685746 -0.627976
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156588, 1, 0, 0.945756, 1.012898]
+
+TEST_momentum [x, y, z]
+[total][-2.76223e-12, -9.49241e-15, -1.10134e-13]
+[fluid][-0.699257, -0.181419, 0.320434]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00292421 -0.00270183 -0.00280817 ]
+[ umax ][ 0.00259802 0.00263666 0.00365531 ]
+[phi] -1.2617291e+01 -8.0576360e-05 5.0908162e-02 -8.2034987e-01 8.1026341e-01
+
+Completed cycle 320
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.042614]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 1.07898e-310 0 0 12.4455 12.4455]
+[Max particle speed: 0.00284699]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+360  195.543 192.952 192.724  191.22 194.391 195.637 -0.0351856 -0.822697
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156562, 1, 0, 0.93647245, 1.0183965]
+
+TEST_momentum [x, y, z]
+[total][-2.79132e-12, 4.90719e-14, -7.86038e-14]
+[fluid][-1.29999, -0.37965, 0.583073]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.00441326 -0.00397364 -0.0035399 ]
+[ umax ][ 0.00450264 0.00466492 0.00543893 ]
+[phi] -1.2617291e+01 -8.0589741e-05 8.5232000e-02 -8.5542711e-01 8.5099023e-01
+
+Completed cycle 360
+
+Particle statistics:
+[Inter-particle gap minimum is: 0.034388]
+[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total
+Energy: 7.70701e-311 0 0 13.3091 13.3091]
+[Max particle speed: 0.00422818]
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+400  125.724 124.745 123.661 123.038 124.921 126.195 -0.140983 -1.0464
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][156675, 1, 0, 0.93076061, 1.0239785]
+
+TEST_momentum [x, y, z]
+[total][-3.10574e-12, 2.75779e-13, -1.26565e-14]
+[fluid][-1.81676, -0.533639, 1.06236]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.007409 -0.00623159 -0.00579118 ]
+[ umax ][ 0.00694905 0.00639709 0.008052 ]
+[phi] -1.2617291e+01 -8.0531616e-05 1.2878093e-01 -8.9223086e-01 8.9510019e-01
+
+Completed cycle 400
+
+Releasing colloids...
+[colloids: 0 (0 bytes) links: 0 (0 bytes)]
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     91.987     91.989     91.988  91.988003 (1 call)
+      Time step loop:      0.226      0.235     91.577   0.228943 (400 calls)
+         Propagation:      0.026      0.029     10.945   0.027363 (400 calls)
+           Collision:      0.037      0.041     15.536   0.038841 (400 calls)
+       Lattice halos:      0.001      0.016     10.905   0.009088 (1200 calls)
+       phi gradients:      0.064      0.067     26.184   0.065460 (400 calls)
+             Rebuild:      0.024      0.027      9.951   0.024877 (400 calls)
+                 BBL:      0.035      0.039     14.687   0.036717 (400 calls)
+      Particle halos:      0.002      0.005      1.163   0.002909 (400 calls)
+Ludwig finished normally.
