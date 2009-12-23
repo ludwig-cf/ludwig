@@ -5,7 +5,7 @@
  *  This is a more rigourous test of the halo swap code for the
  *  distributions than appears in test model.
  *
- *  $Id: test_halo.c,v 1.8 2009-06-19 11:52:52 kevin Exp $
+ *  $Id: test_halo.c,v 1.8.2.1 2009-12-23 16:29:44 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -138,15 +138,17 @@ int main(int argc, char ** argv) {
 void test_halo_null() {
 
   int n_local[3], n[3];
-  int index, p;
-  double f_actual, g_actual;
+  int index, nd, p;
+  int ndist;
+  double f_actual;
   int nextra = nhalo_ - 1;
-
-  get_N_local(n_local);
 
   int rank;
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Comm_rank(comm, &rank);
+
+  get_N_local(n_local);
+  ndist = distribution_ndist();
 
   /* Set entire distribution (all sites including halos) to 1.0 */
 
@@ -156,9 +158,10 @@ void test_halo_null() {
 
 	index = get_site_index(n[X], n[Y], n[Z]);
 
-	for (p = 0; p < NVEL; p++) {
-	  set_f_at_site(index, p, 1.0);
-	  set_g_at_site(index, p, 1.0);
+	for (nd = 0; nd < ndist; nd++) {
+	  for (p = 0; p < NVEL; p++) {
+	    distribution_f_set(index, p, nd, 1.0);
+	  }
 	}
 
       }
@@ -173,9 +176,10 @@ void test_halo_null() {
 
 	index = get_site_index(n[X], n[Y], n[Z]);
 
-	for (p = 0; p < NVEL; p++) {
-	  set_f_at_site(index, p, 0.0);
-	  set_g_at_site(index, p, 0.0);
+	for (nd = 0; nd < ndist; nd++) {
+	  for (p = 0; p < NVEL; p++) {
+	    distribution_f_set(index, p, nd, 0.0);
+	  }
 	}
 
       }
@@ -194,13 +198,13 @@ void test_halo_null() {
 
 	index = get_site_index(n[X], n[Y], n[Z]);
 
-	for (p = 0; p < NVEL; p++) {
-	  f_actual = get_f_at_site(index, p);
-	  g_actual = get_g_at_site(index, p);
+	for (nd = 0; nd < ndist; nd++) {
+	  for (p = 0; p < NVEL; p++) {
+	    f_actual = distribution_f(index, p, nd);
 
-	  /* everything should still be zero inside the lattice */
-	  test_assert(fabs(f_actual - 0.0) < TEST_DOUBLE_TOLERANCE);
-	  test_assert(fabs(g_actual - 0.0) < TEST_DOUBLE_TOLERANCE);
+	    /* everything should still be zero inside the lattice */
+	    test_assert(fabs(f_actual - 0.0) < TEST_DOUBLE_TOLERANCE);
+	  }
 	}
 
       }
@@ -217,7 +221,7 @@ void test_halo_null() {
  *  Test the halo swap for the distributions for coordinate direction dim.
  *
  *  Note that the reduced halo swaps are only meaningful in
- *  parallel. The will automatically work in serial.
+ *  parallel. They will automatically work in serial.
  *
  *****************************************************************************/
 
@@ -226,6 +230,7 @@ void test_halo(int dim, int reduced) {
   int n_local[3], n[3];
   int offset[3];
   int ic, jc, kc;
+  int nd, ndist;
   int nextra = nhalo_;
   int index, p, d;
 
@@ -235,6 +240,7 @@ void test_halo(int dim, int reduced) {
 
   get_N_local(n_local);
   get_N_offset(offset);
+  ndist = distribution_ndist();
 
   /* Zero entire distribution (all sites including halos) */
 
@@ -244,9 +250,10 @@ void test_halo(int dim, int reduced) {
 
 	index = get_site_index(n[X], n[Y], n[Z]);
 
-	for (p = 0; p < NVEL; p++) {
-	  set_f_at_site(index, p, -1.0);
-	  set_g_at_site(index, p, -1.0);
+	for (nd = 0; nd < ndist; nd++) {
+	  for (p = 0; p < NVEL; p++) {
+	    distribution_f_set(index, p, nd, -1.0);
+	  }
 	}
 
       }
@@ -266,9 +273,10 @@ void test_halo(int dim, int reduced) {
 	    n[Y] <= nhalo_ || n[Y] > n_local[Y] - nhalo_ ||
 	    n[Z] <= nhalo_ || n[Z] > n_local[Z] - nhalo_) {
 
-	  for (p = 0; p < NVEL; p++) {
-	    set_f_at_site(index, p, offset[dim] + n[dim]);
-	    set_g_at_site(index, p, offset[dim] + n[dim]);
+	  for (nd = 0; nd < ndist; nd++) {
+	    for (p = 0; p < NVEL; p++) {
+	      distribution_f_set(index, p, nd, 1.0*(offset[dim] + n[dim]));
+	    }
 	  }
 	}
 
@@ -291,36 +299,38 @@ void test_halo(int dim, int reduced) {
 
 	index = get_site_index(n[X], n[Y], n[Z]);
 
-	for (d = 0; d < 3; d++) {
+	for (nd = 0; nd < ndist; nd++) {
+	  for (d = 0; d < 3; d++) {
 
-	  /* 'Left' side */
-	  if (dim == d && n[d] == 0) {
+	    /* 'Left' side */
+	    if (dim == d && n[d] == 0) {
 
-	    f_expect = offset[dim];
-	    if (cart_coords(dim) == 0) f_expect = L(dim);
+	      f_expect = offset[dim];
+	      if (cart_coords(dim) == 0) f_expect = L(dim);
 
-	    for (p = 0; p < NVEL; p++) {
-	      f_actual = get_f_at_site(index, p);
-	      if (reduced) {
-	      }
-	      else {
-		test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	      for (p = 0; p < NVEL; p++) {
+		f_actual = distribution_f(index, p, nd);
+		if (reduced) {
+		}
+		else {
+		  test_assert(fabs(f_actual-f_expect) < TEST_DOUBLE_TOLERANCE);
+		}
 	      }
 	    }
-	  }
 
-	  /* 'Right' side */
-	  if (dim == d && n[d] == n_local[d] + 1) {
+	    /* 'Right' side */
+	    if (dim == d && n[d] == n_local[d] + 1) {
 
-	    f_expect = offset[dim] + n_local[dim] + 1.0;
-	    if (cart_coords(dim) == cart_size(dim) - 1) f_expect = 1.0;
+	      f_expect = offset[dim] + n_local[dim] + 1.0;
+	      if (cart_coords(dim) == cart_size(dim) - 1) f_expect = 1.0;
 
-	    for (p = 0; p < NVEL; p++) {
-	      if (reduced) {
-	      }
-	      else {
-		f_actual = get_f_at_site(index, p);
-		test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	      for (p = 0; p < NVEL; p++) {
+		if (reduced) {
+		}
+		else {
+		  f_actual = distribution_f(index, p, nd);
+		  test_assert(fabs(f_actual-f_expect) < TEST_DOUBLE_TOLERANCE);
+		}
 	      }
 	    }
 	  }
@@ -345,52 +355,54 @@ void test_halo(int dim, int reduced) {
 	/* left hand edge */
 	index = get_site_index(0, jc, kc);
 
-	for (p = 0; p < NVEL; p++) {
-	  f_actual = get_f_at_site(index, p);
-	  f_expect = -1.0;
+	for (nd = 0; nd < ndist; nd++) {
+	  for (p = 0; p < NVEL; p++) {
+	    f_actual = distribution_f(index, p, nd);
+	    f_expect = -1.0;
 
-	  if (cv[p][X] > 0) {
-	    f_expect = offset[X];
-	    if (cart_coords(dim) == 0) f_expect = L(X);
+	    if (cv[p][X] > 0) {
+	      f_expect = offset[X];
+	      if (cart_coords(dim) == 0) f_expect = L(X);
+	    }
+
+	    /* The easiest thing to do here is to avoid an assertion
+	     * if on an edge or corner. */
+	    if (on_edge(0, jc, kc, n_local[X]+1, n_local[Y]+1, n_local[Z]+1)) {
+	    }
+	    else {
+	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	    }
+
 	  }
 
-	  /* The easiest thing to do here is to avoid an assertion
-	   * if on an edge or corner. */
-	  if (on_edge(0, jc, kc, n_local[X]+1, n_local[Y]+1, n_local[Z]+1)) {
-	  }
-	  else {
-	    test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-	  }
+	  /* right hand edge */
+	  ic = n_local[X] + 1;
+	  index = get_site_index(ic, jc, kc);
 
+	  for (p = 0; p < NVEL; p++) {
+	    f_actual = distribution_f(index, p, nd);
+	    f_expect = -1.0;
+
+	    if (cv[p][X] < 0) {
+	      f_expect = offset[X] + ic;
+	      if (cart_coords(X) == cart_size(X) - 1) f_expect = 1.0;
+	    }
+
+	    if (on_edge(ic, jc, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
+	    }
+	    else {
+	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	    }
+	  }
 	}
-
-	/* right hand edge */
-	ic = n_local[X] + 1;
-	index = get_site_index(ic, jc, kc);
-
-	for (p = 0; p < NVEL; p++) {
-	  f_actual = get_f_at_site(index, p);
-	  f_expect = -1.0;
-
-	  if (cv[p][X] < 0) {
-	    f_expect = offset[X] + ic;
-	    if (cart_coords(X) == cart_size(X) - 1) f_expect = 1.0;
-	  }
-
-	  if (on_edge(ic, jc, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
-	  }
-	  else {
-	    test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-	  }
-	}
-
+	/* Next site */
       }
     }
 
     /* Finish x direction */
   }
 
-    /* Y-DIRECTION */
+  /* Y-DIRECTION */
 
   if (reduced && dim == Y && cart_size(Y) > 1) {
 
@@ -400,55 +412,55 @@ void test_halo(int dim, int reduced) {
 	/* left hand edge */
 	index = get_site_index(ic, 0, kc);
 
-	for (p = 0; p < NVEL; p++) {
-	  f_actual = get_f_at_site(index, p);
-	  f_expect = -1.0;
+	for (nd = 0; nd < ndist; nd++) {
+	  for (p = 0; p < NVEL; p++) {
+	    f_actual = distribution_f(index, p, nd);
+	    f_expect = -1.0;
 
-	  if (cv[p][Y] > 0) {
-	    f_expect = offset[X];
-	    if (cart_coords(dim) == 0) f_expect = L(X);
+	    if (cv[p][Y] > 0) {
+	      f_expect = offset[X];
+	      if (cart_coords(dim) == 0) f_expect = L(X);
+	    }
+
+	    if (on_edge(ic, 0, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
+	    }
+	    else {
+	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	    }
+
 	  }
 
-	  if (on_edge(ic, 0, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
-	  }
-	  else {
-	    test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-	  }
+	  /* right hand edge */
+	  jc = n_local[Y] + 1;
+	  index = get_site_index(ic, jc, kc);
 
+	  for (p = 0; p < NVEL; p++) {
+	    f_actual = distribution_f(index, p, nd);
+	    f_expect = -1.0;
+
+	    if (cv[p][Y] < 0) {
+	      f_expect = offset[X] + ic;
+	      if (cart_coords(X) == cart_size(X) - 1) f_expect = 1.0;
+	    }
+
+	    if (on_edge(ic, jc, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
+	    }
+	    else {
+	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	    }
+
+	  }
 	}
 
-	/* right hand edge */
-	jc = n_local[Y] + 1;
-	index = get_site_index(ic, jc, kc);
-
-	for (p = 0; p < NVEL; p++) {
-	  f_actual = get_f_at_site(index, p);
-	  f_expect = -1.0;
-
-	  if (cv[p][Y] < 0) {
-	    f_expect = offset[X] + ic;
-	    if (cart_coords(X) == cart_size(X) - 1) f_expect = 1.0;
-	  }
-
-	  if (on_edge(ic, jc, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
-	  }
-	  else {
-	    test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-	  }
-
-	}
-
+	/* Next site */
       }
     }
-
-
 
     /* Finished reduced check */
   }
 
   return;
 }
-
 
 /*****************************************************************************
  *

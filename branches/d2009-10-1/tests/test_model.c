@@ -2,6 +2,16 @@
  *
  *  test_model.c
  *
+ *  Unit test for the currently compiled model (D3Q15 or D3Q19).
+ *
+ *  $Id: test_model.c,v 1.9.2.1 2009-12-23 16:29:44 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) The University of Edinburgh (2009)
+ *
  *****************************************************************************/
 
 #include <math.h>
@@ -13,27 +23,60 @@
 #include "model.h"
 #include "tests.h"
 
-void test_halo_swap();
-void test_reduced_halo_swap();
-int on_corner(int x, int y, int z, int mx, int my, int mz);
+static void test_model_constants(void);
+static void test_model_velocity_set(void);
+static void test_model_distributions(void);
+void test_halo_swap(void);
+void test_reduced_halo_swap(void);
+static int on_corner(int x, int y, int z, int mx, int my, int mz);
 
 
-int xfwd[NVEL];
-int xbwd[NVEL];
-int yfwd[NVEL];
-int ybwd[NVEL];
-int zfwd[NVEL];
-int zbwd[NVEL];
+static int xfwd[NVEL];
+static int xbwd[NVEL];
+static int yfwd[NVEL];
+static int ybwd[NVEL];
+static int zfwd[NVEL];
+static int zbwd[NVEL];
 
 int main(int argc, char ** argv) {
 
-  int i, j, k, p;
-  double sum, sumx, sumy, sumz;
-  double dij;
-  double rho;
-  double u[ND];
-
   pe_init(argc, argv);
+
+  /* Test model structure */
+
+  test_model_constants();
+  test_model_velocity_set();
+
+  /* Now test actual distributions */
+
+  coords_init();
+
+  test_model_distributions();
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  test_halo_swap();
+  test_reduced_halo_swap();
+
+  info("\nModel tests passed ok.\n\n");
+
+  coords_finish();
+  pe_finalise();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_model_constants
+ *
+ *  Check the various constants associated with the reduced halo swap.
+ *
+ *****************************************************************************/
+
+static void test_model_constants(void) {
+
+  int i, k, p;
 
   for (p = 0; p < NVEL; p++) {
     xfwd[p] = 0;
@@ -83,13 +126,25 @@ int main(int argc, char ** argv) {
     }
   }
 
+  return;
+}
 
-  coords_init();
+/*****************************************************************************
+ *
+ *  test_model_velocity_set
+ *
+ *  Check the velocities, kinetic projector, tables of eigenvectors
+ *  etc etc are all consistent for the current model.
+ *
+ *****************************************************************************/
 
+static void test_model_velocity_set(void) {
 
-  info("Checking model.c objects...\n\n");
+  int i, j, k, p;
+  double dij;
+  double sum, sumx, sumy, sumz;
 
-  /* Check we compiled the right model. */
+  info("Checking velocities cv etc...\n\n");
 
   info("The number of dimensions appears to be ND = %d\n", ND);
   info("The model appears to have NVEL = %d\n", NVEL);
@@ -288,6 +343,25 @@ int main(int argc, char ** argv) {
   }
   info("ok\n");
 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_model_distributions
+ *
+ *  Test the distribution interface.
+ *
+ *****************************************************************************/
+
+static void test_model_distributions(void) {
+
+  int i, n, p;
+  int index;
+  int ndist;
+  double fvalue, fvalue_expected;
+  double rho;
+  double u[ND];
 
   /* Tests of the basic distribution functions. */
 
@@ -297,6 +371,13 @@ int main(int argc, char ** argv) {
   init_site();
 
   info("Allocated 1 site\n");
+
+  /* Report the number of distributions */
+
+  ndist = distribution_ndist();
+
+  info("Number of distributions: %d\n", ndist);
+  test_assert(ndist == 2); /* UPDATE */
 
   info("Set rho = 1 at site... ");
   set_rho(1.0, 0);
@@ -346,19 +427,32 @@ int main(int argc, char ** argv) {
   }
   rho = get_rho_at_site(0);
   test_assert(fabs(rho - 1.0) < TEST_DOUBLE_TOLERANCE);
+  info("ok\n");
+
+  /* UPDATE */
+
+  index = 0;
+
+  for (n = 0; n < ndist; n++) {
+    for (p = 0; p < NVEL; p++) {
+      fvalue_expected = 1.0*n + wv[p];
+      distribution_f_set(index, p, n, fvalue_expected);
+      fvalue = distribution_f(index, p, n);
+      test_assert(fabs(fvalue - fvalue_expected) < TEST_DOUBLE_TOLERANCE);
+    }
+  }
+
+  /* Check zeroth moments */
+
+  for (n = 0; n < ndist; n++) {
+    fvalue_expected = 1.0*n*NVEL + 1.0;
+    fvalue = distribution_zeroth_moment(index, n);
+    test_assert(fabs(fvalue - fvalue_expected) < TEST_DOUBLE_TOLERANCE);
+  }
 
   finish_site();
-  info("ok\n");
-  MPI_Barrier(MPI_COMM_WORLD);
 
-  test_halo_swap();
-  test_reduced_halo_swap();
-
-  info("\nModel tests passed ok.\n\n");
-
-  pe_finalise();
-
-  return 0;
+  return;
 }
 
 /*****************************************************************************
@@ -461,7 +555,7 @@ void test_reduced_halo_swap() {
 
   info("\nHalo swap (reduced)...\n\n");
 
-  coords_init();
+  /* coords_init();*/
   init_site();
   distribution_halo_set_reduced();
   get_N_local(N);
@@ -545,7 +639,7 @@ void test_reduced_halo_swap() {
  *
  *************************************/
 
-int on_corner(int x, int y, int z, int mx, int my, int mz) {
+static int on_corner(int x, int y, int z, int mx, int my, int mz) {
 
   int iscorner = 0;
 
