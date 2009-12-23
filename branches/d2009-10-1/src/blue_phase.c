@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.5.4.2 2009-12-01 19:55:05 kevin Exp $
+ *  $Id: blue_phase.c,v 1.5.4.3 2009-12-23 16:32:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,7 +32,8 @@ static double kappa0_;    /* Elastic constant \kappa_0 */
 static double kappa1_;    /* Elastic constant \kappa_1 */
 
 static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
-
+static double redshift_;  /* redshift parameter */
+ 
 static const double r3 = (1.0/3.0);
 
 /*****************************************************************************
@@ -401,7 +402,8 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
  *
  *  blue_phase_O8M_init
  *
- *  Using the current free energy parameter q0_
+ *  BP I using the current free energy parameter q0_
+ *  The redshift parameter is constant = 0.83.
  *
  *****************************************************************************/
 
@@ -453,6 +455,67 @@ void blue_phase_O8M_init(double amplitude) {
       }
     }
   }
+
+  /* Only now set the redshift */
+
+  redshift_ = 0.83;
+  q0_ = q0_/redshift_;
+  kappa0_ = kappa0_*redshift_*redshift_;
+  kappa1_ = kappa1_*redshift_*redshift_;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_O2_init
+ *
+ *  This initialisation is for BP II.
+ *
+ *****************************************************************************/
+
+void blue_phase_O2_init(double amplitude) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = get_site_index(ic, jc, kc);
+
+	q[X][X] = amplitude*(cos(2.0*q0_*z) - cos(2.0*q0_*y));
+	q[X][Y] = amplitude*sin(2.0*q0_*z);
+	q[X][Z] = amplitude*sin(2.0*q0_*y);
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude*(cos(2.0*q0_*x) - cos(2.0*q0_*z));
+	q[Y][Z] = amplitude*sin(2.0*q0_*x);
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+
+      }
+    }
+  }
+
+  redshift_ = 0.91;
+  q0_ = q0_/redshift_;
+  kappa0_ = kappa0_*redshift_*redshift_;
+  kappa1_ = kappa1_*redshift_*redshift_;
 
   return;
 }

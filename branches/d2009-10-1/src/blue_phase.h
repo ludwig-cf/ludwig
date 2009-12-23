@@ -2,7 +2,7 @@
  *
  *  blue_phase.h
  *
- *  $Id: blue_phase.h,v 1.4.4.1 2009-11-13 17:23:11 jlintuvu Exp $
+ *  $Id: blue_phase.h,v 1.4.4.2 2009-12-23 16:32:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -29,6 +29,7 @@ void   blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 
 void   blue_phase_chemical_stress(const int, double sth[3][3]);
 void   blue_phase_O8M_init(double amplitude);
+void   blue_phase_O2_init(double amplitude);
 
 double blue_phase_get_xi(void);
 double blue_phase_chirality(void);
