@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.14 2009-10-23 16:53:32 kevin Exp $
+ *  $Id: lattice.c,v 1.14.4.1 2010-01-06 17:21:53 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -463,9 +463,10 @@ void hydrodynamics_stats() {
     umax[ia] = utmp[ia];
   }
 
-  info("Velocity stats:\n");
-  info("[ umin ][ %g %g %g ]\n", umin[X], umin[Y], umin[Z]);
-  info("[ umax ][ %g %g %g ]\n", umax[X], umax[Y], umax[Z]);
+  info("\n");
+  info("Velocity - x y z\n");
+  info("[minimum ] %14.7e %14.7e %14.7e\n", umin[X], umin[Y], umin[Z]);
+  info("[maximum ] %14.7e %14.7e %14.7e\n", umax[X], umax[Y], umax[Z]);
 
   return;
 }
