@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.10 2009-11-03 17:32:05 kevin Exp $
+ *  $Id: bbl.c,v 1.10.2.1 2010-01-06 17:19:18 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -22,8 +22,6 @@
 #include "timer.h"
 #include "phi.h"
 #include "bbl.h"
-
-extern Site * site;
 
 static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
@@ -226,7 +224,8 @@ static void bounce_back_pass1() {
 	      if (p_link->status == LINK_FLUID) {
 		/* Bounce back of fluid on outside plus correction
 		 * arising from changes in shape at previous step. */
-		dm =  2.0*site[i].f[ij]
+
+		dm =  2.0*distribution_f(i, ij, 0)
 		  - wv[ij]*p_colloid->deltam; /* minus */
 		delta = 2.0*rcs2*wv[ij]*rho0;
 
@@ -234,6 +233,7 @@ static void bounce_back_pass1() {
 		{
 		  double rbmod, dm_a, cost, plegendre, sint,mod_tans;
 		  double tans[3], vector1[3];
+		  double fdist;
 		  FVector va;
 
 		  rbmod = 1.0/UTIL_fvector_mod(p_link->rb);
@@ -268,7 +268,11 @@ static void bounce_back_pass1() {
 
 
 		  dm_a = -delta*UTIL_dot_product(va, ci);
-		  site[i].f[ij] += dm_a;
+
+		  fdist = distribution_f(i, ij, 0);
+		  fdist += md_a;
+		  distribution_f_set(i, ij, 0, fdist);
+
 		  dm+=dm_a;
 
 		/* needed for mass conservation   */
@@ -280,7 +284,8 @@ static void bounce_back_pass1() {
 	      else {
 		/* Virtual momentum transfer for solid->solid links,
 		 * but no contribution to drag maxtrix */
-		dm = site[i].f[ij] + site[j].f[ji];
+
+		dm = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
 		delta = 0.0;
 	      }
 
@@ -373,6 +378,7 @@ static void bounce_back_pass2() {
   double     vdotc;
   double     dms;
   double     df, dg;
+  double    fdist;
 
   double     dgtm1;
   double rho0 = get_colloid_rho0();
@@ -431,7 +437,7 @@ static void bounce_back_pass2() {
 	      ci.y = (double) cv[ij][1];
 	      ci.z = (double) cv[ij][2];
 
-	      dm =  2.0*site[i].f[ij]
+	      dm =  2.0*distribution_f(i, ij, 0)
 		- wv[ij]*p_colloid->deltam; /* minus */
 
 	      /* Compute the self-consistent boundary velocity,
@@ -463,11 +469,18 @@ static void bounce_back_pass2() {
 
 	      /* The outside site actually undergoes BBL. */
 
-	      site[j].f[ji] = site[i].f[ij] - df;
+	      fdist = distribution_f(i, ij, 0);
+	      fdist = fdist - df;
+	      distribution_f_set(j, ji, 0, fdist);
 
-#ifndef _SINGLE_FLUID_
-	      site[j].g[ji] = site[i].g[ij] - dg;
-#endif
+	      /* This is slightly clunky. If the order parameter is
+	       * via LB, bounce back with correction. */
+	      if (distribution_ndist() > 1) {
+		fdist = distribution_f(i, ij, 1);
+		fdist = fdist - dg;
+		distribution_f_set(j, ji, 1, fdist);
+	      }
+
 	      /* The stress is r_b f_b */
 	      for (ia = 0; ia < 3; ia++) {
 		stress_[ia][0] += p_link->rb.x*(dm - df)*cv[ij][ia];
@@ -479,7 +492,7 @@ static void bounce_back_pass2() {
 
 	      /* The stress should include the solid->solid term */
 
-	      dm = site[i].f[ij] + site[j].f[ji];
+	      dm = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
 
 	      for (ia = 0; ia < 3; ia++) {
 		stress_[ia][0] += p_link->rb.x*dm*cv[ij][ia];
