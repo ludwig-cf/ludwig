@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.17.4.1 2009-12-23 16:28:05 kevin Exp $
+ *  $Id: model.c,v 1.17.4.2 2010-01-06 17:17:21 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -953,4 +953,42 @@ double distribution_zeroth_moment(const int index, const int n) {
   }
 
   return rho;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_first_moment
+ *
+ *  Return the first moment of the distribution p.
+ *
+ *****************************************************************************/
+
+void distribution_first_moment(const int index, const int ndist, double g[3]) {
+
+  int p;
+  int n;
+
+  assert(initialised_);
+  assert(index >= 0 && index < nsites_);
+  assert(ndist >= 0 && ndist < ndist_);
+
+  if (ndist == 0) {
+    for (n = 0; n < 3; n++) {
+      g[n] = 0.0;
+      for (p = 0; p < NVEL; p++) {
+	g[n] += cv[p][n]*site[index].f[p];
+      }
+    }
+  }
+
+  if (ndist == 1) {
+    for (n = 0; n < 3; n++) {
+      g[n] = 0.0;
+      for (p = 0; p < NVEL; p++) {
+	g[n] += cv[p][n]*site[index].g[p];
+      }
+    }
+  }
+
+  return;
 }
