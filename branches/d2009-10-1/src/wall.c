@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.11.4.1 2009-12-23 16:28:05 kevin Exp $
+ *  $Id: wall.c,v 1.11.4.2 2010-01-06 17:25:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -367,6 +367,8 @@ static void report_boundary_memory() {
  *  set_wall_velocity
  *
  *  Set distribution at solid sites to reflect solid body velocity.
+ *  This allows 'solid-solid' exchange of distributions between
+ *  wall and colloids.
  *
  *****************************************************************************/
 
@@ -383,7 +385,7 @@ static void set_wall_velocity() {
   while (p_link) {
     p = NVEL - p_link->p; /* Want the outward going component */
     fp = wv[p]*(rho + rcs2*p_link->ux*cv[p][X]);
-    set_f_at_site(p_link->j, p, fp);
+    distribution_f_set(p_link->j, p, 0, fp);
 
     p_link = p_link->next;
   }
@@ -413,18 +415,19 @@ void wall_accumulate_force(const double f[3]) {
 
 /*****************************************************************************
  *
- *  wall_force
+ *  wall_net_momentum
  *
- *  Get the accumulated force on the walls.
+ *  Get the accumulated force (interpreted as momentum) on the walls.
+ *
+ *  This is a reduction to rank 0 in MPI_COMM_WORLD for the purposes
+ *  of output statistics. This is the only meaningful use of this
+ *  quantity.
  *
  *****************************************************************************/
 
-void wall_force(void) {
+void wall_net_momentum(double g[3]) {
 
-  double force[3];
-
-  MPI_Reduce(fnet_, force, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  info("Wall net: %18.10e %18.10e %18.10e\n", force[X], force[Y], force[Z]);
+  MPI_Reduce(fnet_, g, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
   return;
 }
