@@ -59,7 +59,9 @@ reduced_halo no
 #
 #  viscosity      shear viscosity [default is 1/6, ie., relaxation time 1]
 #  viscosity_bulk bulk viscosity  [default = shear viscosity]
-#  temperature    isothermal fluctuation 'temperature' [-D_NOISE_ required]
+#
+#  isothermal_fluctuations  [on|off] Default is off.
+#  temperature              isothermal fluctuation 'temperature'
 #
 #  ghost_modes           [on|off] Default is on.
 #  ginzburg-dhumieres    Ghost mode relaxation time correction [on|off]
@@ -71,6 +73,8 @@ reduced_halo no
 
 viscosity 0.1
 viscosity_bulk 0.1
+
+isothermal_fluctuations off
 temperature 0.00002133333
 
 # ghost_modes off
