@@ -253,7 +253,6 @@ int main( int argc, char **argv )
       phi_stats_print_stats();
       stats_free_energy_density();
       TEST_momentum();
-      wall_force();
       hydrodynamics_stats();
 #endif
 #ifdef _NOISE_
