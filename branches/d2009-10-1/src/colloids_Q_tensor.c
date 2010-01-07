@@ -482,9 +482,9 @@ void colloids_fix_swd(void) {
 	  /* Set the lattice velocity here to the solid body
 	   * rotational velocity */
 
-	  rb[X] = p_c->r.x - x;
-	  rb[Y] = p_c->r.y - y;
-	  rb[Z] = p_c->r.z - z;
+	  rb[X] = x - p_c->r.x;
+	  rb[Y] = y - p_c->r.y;
+	  rb[Z] = z - p_c->r.z;
 
 	  u[X] = p_c->v.x + p_c->omega.y*rb[Z] - p_c->omega.z*rb[Y];
 	  u[Y] = p_c->v.y + p_c->omega.z*rb[X] - p_c->omega.x*rb[Z];
