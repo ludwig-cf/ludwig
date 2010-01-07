@@ -8,7 +8,7 @@
  *  not u*(t-1) returned by le_get_displacement().
  *  This is for reasons of backwards compatability.
  *
- *  $Id: model_le.c,v 1.5 2009-08-20 16:39:22 kevin Exp $
+ *  $Id: model_le.c,v 1.5.4.1 2010-01-07 15:39:34 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -271,7 +271,7 @@ void model_le_init_shear_profile() {
 	    }
 	  }
 	  f = wv[p]*(rho + rcs2*rho*cdotu + 0.5*rcs2*rcs2*sdotq);
-	  set_f_at_site(index, p, f);
+	  distribution_f_set(index, p, 0, f);
 	}
 	/* Next site */
       }

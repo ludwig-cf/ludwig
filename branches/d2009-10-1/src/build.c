@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.3 2009-12-23 16:34:37 kevin Exp $
+ *  $Id: build.c,v 1.5.4.4 2010-01-07 15:41:10 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -615,8 +615,8 @@ static void build_remove_fluid(int index, Colloid * p_colloid) {
 
   /* Get the properties of the old fluid at inode */
 
-  oldrho = get_rho_at_site(index);
-  get_momentum_at_site(index, tmp);
+  oldrho = distribution_zeroth_moment(index, 0);
+  distribution_first_moment(index, 0, tmp);
   oldu.x = tmp[X];
   oldu.y = tmp[Y];
   oldu.z = tmp[Z];
@@ -658,7 +658,7 @@ static void build_remove_order_parameter(int index, Colloid * p_colloid) {
     phi = phi_get_phi_site(index);
   }
   else {
-    phi = get_phi_at_site(index);
+    phi = distribution_zeroth_moment(index, 1);
   }
 
   p_colloid->deltaphi += (phi - get_phi0());
@@ -708,7 +708,7 @@ static void build_replace_fluid(int index, Colloid * p_colloid) {
     if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID) continue;
 
     for (pdash = 0; pdash < NVEL; pdash++) {
-      newf[pdash] += wv[p]*get_f_at_site(indexn, pdash);
+      newf[pdash] += wv[p]*distribution_f(indexn, pdash, 0);
     }
     weight += wv[p];
   }
@@ -721,7 +721,7 @@ static void build_replace_fluid(int index, Colloid * p_colloid) {
 
   for (p = 0; p < NVEL; p++) {
     newf[p] *= weight;
-    set_f_at_site(index, p, newf[p]);
+    distribution_f_set(index, p, 0, newf[p]);
 
     /* ... and remember the new fluid properties */
     newrho += newf[p];
@@ -808,6 +808,8 @@ static void build_replace_order_parameter(int index, Colloid * p_colloid) {
   }
   else {
 
+    /* Reset the distribution (distribution index 1) */
+
     for (p = 1; p < NVEL; p++) {
 
       indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y],
@@ -818,7 +820,7 @@ static void build_replace_order_parameter(int index, Colloid * p_colloid) {
 	continue;
 
       for (pdash = 0; pdash < NVEL; pdash++) {
-	newg[pdash] += wv[p]*get_g_at_site(indexn, pdash);
+	newg[pdash] += wv[p]*distribution_f(indexn, pdash, 1);
       }
       weight += wv[p];
     }
@@ -829,7 +831,7 @@ static void build_replace_order_parameter(int index, Colloid * p_colloid) {
 
     for (p = 0; p < NVEL; p++) {
       newg[p] *= weight;
-      set_g_at_site(index, p, newg[p]);
+      distribution_f_set(index, p, 1, newg[p]);
 
       /* ... and remember the new fluid properties */
       newphi += newg[p];
@@ -856,7 +858,7 @@ void COLL_set_virtual_velocity(int inode, int p, FVector u) {
   double uc;
 
   uc = u.x*cv[p][0] + u.y*cv[p][1] + u.z*cv[p][2];
-  set_f_at_site(inode, p, wv[p]*(1.0 + 3.0*uc));
+  distribution_f_set(inode, p, 0, wv[p]*(1.0 + 3.0*uc));
 
   return;
 }
