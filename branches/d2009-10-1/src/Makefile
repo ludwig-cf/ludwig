@@ -8,9 +8,6 @@
 # _D_D3Q15_              Use D3Q15 or
 # -D_D3Q19_              Use D3Q19
 #
-# -D_NOISE_              Switch on fluctuations
-# -D_SINGLE_FLUID_       Use single fluid only
-#
 # Temporary (to be replaced by run-time options)
 # -D_SUBGRID_            Sub-grid particles
 # -D_ACTIVE2_            "Active2" particles
@@ -58,24 +55,11 @@ OBJS=d3q15.o d3q19.o model.o propagation.o collision.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
      site_map.o subgrid.o \
-     stats_free_energy.o stats_rheology.o stats_surfactant.o \
-     stats_turbulent.o \
+     stats_distribution.o stats_free_energy.o stats_rheology.o \
+     stats_surfactant.o stats_turbulent.o \
      test.o timer.o util.o utilities.o wall.o main.o colloids_Q_tensor.o
 
 EXE= Ludwig.exe
-
-###############################################################################
-#
-#  SUN HPC section
-#
-###############################################################################
-
-
-CC=cc
-MPICC=tmcc
-OPTS = -D_D3Q19_
-CFLAGS=$(OPTS)  -Xc -v -errwarn -xO3
-LDFLAGS=
 
 ###############################################################################
 #

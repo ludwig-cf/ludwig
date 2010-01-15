@@ -50,9 +50,11 @@
 #include "stats_surfactant.h"
 #include "stats_rheology.h"
 #include "stats_free_energy.h"
+#include "stats_distribution.h"
 
 void ludwig_rt(void);
 void ludwig_init(void);
+void ludwig_report_momentum(void);
 
 /*****************************************************************************
  *
@@ -115,11 +117,13 @@ void ludwig_init(void) {
     }
   }
 
-  /* blue phase / colloids */
-   phi_gradients_set_fluid();
+  /* blue phase / colloids BLUEPHASE */
+  /*  phi_gradients_set_fluid();*/
 
   /* Initialise Lc in colloids */
-  COLL_randomize_Q(0.0);
+  /* COLL_randomize_Q(0.0);*/
+
+  scalar_q_io_init();
 
   stats_rheology_init();
   stats_turbulent_init();
@@ -149,17 +153,18 @@ int main( int argc, char **argv )
 
   ludwig_rt();
   ludwig_init();
-
-  scalar_q_io_init();
   
   /* Report initial statistics */
 
-  TEST_statistics();
-  TEST_momentum();
+  stats_distribution_print();
   phi_stats_print_stats();
+  ludwig_report_momentum();
 
 
   /* Main time stepping loop */
+
+  info("\n");
+  info("Starting time step loop.\n");
 
   while (next_step()) {
 
@@ -176,7 +181,7 @@ int main( int argc, char **argv )
     hydrodynamics_zero_force();
     COLL_update();
     wall_update();
-    COLL_set_Q();
+    /* COLL_set_Q();*/
     /* Collision stage */
     collide();
     model_le_apply_boundary_conditions();
@@ -233,7 +238,7 @@ int main( int argc, char **argv )
       io_write(filename, io_info_phi);
 
       info("Writing scalar order parameter file at step %d!\n", step);
-      sprintf(filename,"scq-%6.6d",step);
+      sprintf(filename,"scalar_q-%6.6d",step);
       io_write(filename, io_info_scalar_q_);
     }
 
@@ -249,15 +254,13 @@ int main( int argc, char **argv )
 
 #ifndef _BROWNIAN_
       /* PENDING TODO MISC_curvature(); */
-      TEST_statistics();
+      stats_distribution_print();
       phi_stats_print_stats();
       stats_free_energy_density();
-      TEST_momentum();
+      ludwig_report_momentum();
       hydrodynamics_stats();
 #endif
-#ifdef _NOISE_
-      TEST_fluid_temperature();
-#endif
+      test_isothermal_fluctuations();
       info("\nCompleted cycle %d\n", step);
     }
 
@@ -288,4 +291,48 @@ int main( int argc, char **argv )
   pe_finalise();
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  report_momentum
+ *
+ *  Tidy report of the current momentum of the system.
+ *
+ *****************************************************************************/
+
+void ludwig_report_momentum(void) {
+
+  int n;
+
+  double g[3];
+  double gc[3];
+  double gwall[3];
+  double gtotal[3];
+
+  for (n = 0; n < 3; n++) {
+    gtotal[n] = 0.0;
+    g[n] = 0.0;
+    gc[n] = 0.0;
+    gwall[n] = 0.0;
+  }
+
+  stats_distribution_momentum(g);
+  test_colloid_momentum(gc);
+  if (boundaries_present()) wall_net_momentum(gwall);
+
+  for (n = 0; n < 3; n++) {
+    gtotal[n] = g[n] + gc[n] + gwall[n];
+  }
+
+  info("\n");
+  info("Momentum - x y z\n");
+  info("[total   ] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
+  info("[fluid   ] %14.7e %14.7e %14.7e\n", g[X], g[Y], g[Z]);
+  info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
+  if (boundaries_present()) {
+    info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
+  }
+
+  return;
 }
