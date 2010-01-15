@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.8 2009-10-30 18:03:28 kevin Exp $
+ *  $Id: phi_stats.c,v 1.8.4.1 2010-01-15 16:50:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -107,14 +107,7 @@ void phi_stats_print_stats() {
     phi0 = phi_total[1*nop_ + n]/phi_total[n];
     phi1 = (phi_total[2*nop_ + n]/phi_total[n]) - phi0*phi0;
 
-    if (n == 0) {
-      info("[phi]");
-    }
-    else {
-      info("[psi]");
-    }
-
-    info(" %14.7e %14.7e%14.7e %14.7e%14.7e\n", phi_total[1*nop_ + n],
+    info("[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n", phi_total[1*nop_ + n],
 	 phi0, phi1, phi_total[3*nop_ + n], phi_total[4*nop_ + n]);
   }
 
