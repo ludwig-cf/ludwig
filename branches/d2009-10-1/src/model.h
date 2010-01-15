@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.14.4.2 2010-01-06 17:17:21 kevin Exp $
+ *  $Id: model.h,v 1.14.4.3 2010-01-15 16:58:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -43,28 +43,19 @@ void   init_site(void);
 void   finish_site(void);
 void   halo_site(void);
 
-double get_f_at_site(const int, const int);
-double get_g_at_site(const int, const int);
-double get_rho_at_site(const int);
-double get_phi_at_site(const int);
-void   set_rho(const double, const int);
-void   set_phi(const double, const int);
-void   set_f_at_site(const int, const int, const double);
-void   set_g_at_site(const int, const int, const double);
-void   set_rho_u_at_site(const double, const double [], const int);
-void   get_momentum_at_site(const int, double[ND]);
-
 int    distribution_ndist(void);
 void   distribution_ndist_set(const int ndist);
 double distribution_f(const int index, const int p, const int n);
 void   distribution_f_set(const int index, const int p, const int n,
 			  const double fvalue);
 double distribution_zeroth_moment(const int index, const int n);
+void   distribution_zeroth_moment_set_equilibrium(const int index, const int n,
+						  const double rho);
 void   distribution_first_moment(const int index, const int n, double g[3]);
 
-void distribution_get_stress_at_site(int index, double s[ND][ND]);
-void distribution_halo_set_complete(void);
-void distribution_halo_set_reduced(void);
+void   distribution_get_stress_at_site(int index, double s[ND][ND]);
+void   distribution_halo_set_complete(void);
+void   distribution_halo_set_reduced(void);
 
 
 #endif
