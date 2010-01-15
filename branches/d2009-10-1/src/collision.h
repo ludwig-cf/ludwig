@@ -2,7 +2,7 @@
  *
  *  collision.h
  *
- *  $Id: collision.h,v 1.4.14.1 2009-11-04 10:20:43 kevin Exp $
+ *  $Id: collision.h,v 1.4.14.2 2010-01-15 16:59:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -19,5 +19,6 @@ void    MODEL_init( void );
 void    get_fluctuations_stress(double shat[3][3]);
 void   RAND_init_fluctuations(void);
 void    collide(void);
+void    test_isothermal_fluctuations(void);
 
 #endif

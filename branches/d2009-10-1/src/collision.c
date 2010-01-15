@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.3 2009-11-20 15:27:38 jlintuvu Exp $
+ *  $Id: collision.c,v 1.21.4.4 2010-01-15 16:59:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -31,6 +31,7 @@
 #include "phi_gradients.h"
 #include "phi_force.h"
 #include "phi_cahn_hilliard.h"
+#include "blue_phase_beris_edwards.h"
 #include "phi_lb_coupler.h"
 #include "phi_stats.h"
 #include "lattice.h"
@@ -50,8 +51,6 @@
 #include "site_map.h"
 #include "io_harness.h"
 
-extern Site * site;
-
 /* Variables (not static) */
 
 double    siteforce[3];
@@ -67,10 +66,14 @@ static double rtau_ghost = 1.0;/* Inverse relaxation time for ghost modes */
 static double var_shear;       /* Variance for shear mode fluctuations */
 static double var_bulk;        /* Variance for bulk mode fluctuations */
 
-static double noise_var[NVEL]; /* Noise variances */
+static int    isothermal_fluctuations_ = 0; /* Flag for noise. */
+static double noise_var[NVEL];              /* Noise variances */
 
 void MODEL_collide_multirelaxation(void);
 void MODEL_collide_binary_lb(void);
+
+static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
+static void fluctuations_on(double shat[3][3], double ghat[NVEL]);
 
 /*****************************************************************************
  *
@@ -102,10 +105,11 @@ void collide() {
   TIMER_stop(TIMER_PHI_GRADIENTS);
 
   if (phi_is_finite_difference()) {
-    phi_force_colloid();
-    //phi_force_calculation();
+    /* phi_force_colloid();*/
+    phi_force_calculation();
     MODEL_collide_multirelaxation();
-    blue_phase_beris_edwards();
+    /*blue_phase_beris_edwards();*/
+    phi_cahn_hilliard();
   }
   else {
     MODEL_collide_binary_lb();
@@ -141,6 +145,7 @@ void MODEL_collide_multirelaxation() {
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
+  int       ndist;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -148,6 +153,7 @@ void MODEL_collide_multirelaxation() {
   double    s[3][3];                 /* Stress */
   double    seq[3][3];               /* Equilibrium stress */
   double    shat[3][3];              /* random stress */
+  double    ghat[NVEL];              /* noise for ghosts */
 
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
@@ -155,9 +161,17 @@ void MODEL_collide_multirelaxation() {
   double    force_local[3];
   const double   r3     = (1.0/3.0);
 
+#ifndef DIST_NEW
+  extern Site * site;
+#else
+  extern double * f_;
+#endif
+
   TIMER_start(TIMER_COLLIDE);
 
+  ndist = distribution_ndist();
   get_N_local(N);
+  fluctuations_off(shat, ghat);
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
@@ -171,7 +185,11 @@ void MODEL_collide_multirelaxation() {
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
+#ifndef DIST_NEW
 	    mode[m] += site[index].f[p]*ma_[m][p];
+#else
+	    mode[m] += f_[ndist*NVEL*index + p]*ma_[m][p];
+#endif
 	  }
 	}
 
@@ -234,13 +252,10 @@ void MODEL_collide_multirelaxation() {
 	    /* Correction from body force (assumes equal relaxation times) */
 
 	    s[i][j] += (2.0-rtau_shear)*(u[i]*force[j] + force[i]*u[j]);
-	    shat[i][j] = 0.0;
 	  }
 	}
 
-#ifdef _NOISE_
-	get_fluctuations_stress(shat);
-#endif
+	if (isothermal_fluctuations_) fluctuations_on(shat, ghat);
 
 	/* Now reset the hydrodynamic modes to post-collision values */
 
@@ -257,20 +272,26 @@ void MODEL_collide_multirelaxation() {
 	/* Ghost modes are relaxed toward zero equilibrium. */
 
 	for (m = NHYDRO; m < nmodes_; m++) {
-	  mode[m] = mode[m] - rtau_ghost*(mode[m] - 0.0);
-#ifdef _NOISE_
-	  mode[m] += noise_var[m]*ran_parallel_gaussian();
-#endif
+	  mode[m] = mode[m] - rtau_ghost*(mode[m] - 0.0) + ghat[m];
 	}
 
 	/* Project post-collision modes back onto the distribution */
 
+#ifndef DIST_NEW
 	for (p = 0; p < NVEL; p++) {
 	  site[index].f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
 	    site[index].f[p] += mi_[p][m]*mode[m];
 	  }
 	}
+#else
+	for (p = 0; p < NVEL; p++) {
+	  f_[ndist*NVEL*index + p] = 0.0;
+	  for (m = 0; m < nmodes_; m++) {
+	    f_[ndist*NVEL*index + p] += mi_[p][m]*mode[m];
+	  }
+	}
+#endif
 
 	/* Next site */
       }
@@ -324,6 +345,7 @@ void MODEL_collide_binary_lb() {
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
+  int       ndist;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -331,6 +353,7 @@ void MODEL_collide_binary_lb() {
   double    s[3][3];                 /* Stress */
   double    seq[3][3];               /* equilibrium stress */
   double    shat[3][3];              /* random stress */
+  double    ghat[NVEL];              /* noise for ghosts */
 
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
@@ -347,11 +370,18 @@ void MODEL_collide_binary_lb() {
   double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
+#ifndef DIST_NEW
+  extern Site * site;
+#else
+  extern double * f_;
+#endif
+
   double (* chemical_potential)(const int index, const int nop);
   void   (* chemical_stress)(const int index, double s[3][3]);
 
   TIMER_start(TIMER_COLLIDE);
 
+  ndist = distribution_ndist();
   get_N_local(N);
 
   chemical_potential = fe_chemical_potential_function();
@@ -359,6 +389,7 @@ void MODEL_collide_binary_lb() {
 
   mobility = phi_ch_get_mobility();
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
+  fluctuations_off(shat, ghat);
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
@@ -372,7 +403,11 @@ void MODEL_collide_binary_lb() {
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
+#ifndef DIST_NEW
 	    mode[m] += site[index].f[p]*ma_[m][p];
+#else
+	    mode[m] += f_[ndist*NVEL*index + p]*ma_[m][p];
+#endif
 	  }
 	}
 
@@ -443,9 +478,7 @@ void MODEL_collide_binary_lb() {
 	  }
 	}
 
-#ifdef _NOISE_
-	get_fluctuations_stress(shat);
-#endif
+	if (isothermal_fluctuations_) fluctuations_on(shat, ghat);
 
 	/* Now reset the hydrodynamic modes to post-collision values */
 
@@ -462,20 +495,26 @@ void MODEL_collide_binary_lb() {
 	/* Ghost modes are relaxed toward zero equilibrium. */
 
 	for (m = NHYDRO; m < nmodes_; m++) {
-	  mode[m] = mode[m] - rtau_ghost*(mode[m] - 0.0);
-#ifdef _NOISE_
-	  mode[m] += noise_var[m]*ran_parallel_gaussian();
-#endif
+	  mode[m] = mode[m] - rtau_ghost*(mode[m] - 0.0) + ghat[m];
 	}
 
 	/* Project post-collision modes back onto the distribution */
 
+#ifndef DIST_NEW
 	for (p = 0; p < NVEL; p++) {
 	  site[index].f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
 	    site[index].f[p] += mi_[p][m]*mode[m];
 	  }
 	}
+#else
+	for (p = 0; p < NVEL; p++) {
+	  f_[ndist*NVEL*index + p] = 0.0;
+	  for (m = 0; m < nmodes_; m++) {
+	    f_[ndist*NVEL*index + p] += mi_[p][m]*mode[m];
+	  }
+	}
+#endif
 
 	/* Now, the order parameter distribution */
 
@@ -487,7 +526,11 @@ void MODEL_collide_binary_lb() {
 	jphi[Z] = 0.0;
 	for (p = 1; p < NVEL; p++) {
 	  for (i = 0; i < 3; i++) {
+#ifndef DIST_NEW
 	    jphi[i] += site[index].g[p]*cv[p][i];
+#else
+	    jphi[i] += f_[ndist*NVEL*index + NVEL + p]*cv[p][i];
+#endif
 	  }
 	}
 
@@ -520,7 +563,12 @@ void MODEL_collide_binary_lb() {
 	  /* Project all this back to the distributions. The magic
 	   * here is to move phi into the non-propagating distribution. */
 
+#ifndef DIST_NEW
 	  site[index].g[p] = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
+#else
+	  f_[ndist*NVEL*index + NVEL + p]
+	    = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
+#endif
 	}
 
 	/* Next site */
@@ -554,6 +602,7 @@ void MODEL_init( void ) {
   int     offset[3];
   double   phi;
   double   phi0, rho0;
+  double   mobility;
   char     filename[FILENAME_MAX];
 
   rho0 = get_rho0();
@@ -649,26 +698,30 @@ void MODEL_init( void ) {
 	       (k>offset[Z]) && (k<=offset[Z] + N[Z]))
 	      {
 		ind = get_site_index(i-offset[X], j-offset[Y], k-offset[Z]);
-#ifdef _SINGLE_FLUID_
-		set_rho(rho0, ind);
-		set_phi(phi0, ind);
-#else
-		set_rho(rho0, ind); 
-		set_phi(phi,  ind);
-		phi_set_phi_site(ind, phi);
-#endif
+
+		distribution_zeroth_moment_set_equilibrium(ind, 0, rho0);
+		phi_lb_coupler_phi_set(ind, phi);
 	      }
 	  }
   }
 
+  ind = RUN_get_double_parameter("mobility", &mobility);
+  info("\nOrder parameter mobility M: %f\n", mobility);
+  phi_ch_set_mobility(mobility);
 
   /* Initialise blue phase */
 
-  blue_phase_twist_init(0.3333333);
-  //lblue_set_random_q_init(20, 40, 20, 40, 20, 40);
-  //blue_set_random_q_init(0, 0, 0, 0, 0, 0);
+  ind = RUN_get_double_parameter("lc_Gamma", &mobility);
+  if (ind != 0) {
+    blue_phase_be_set_rotational_diffusion(mobility);
+    info("Rotational diffusion constant: %f\n", mobility);
+  }
 
-  
+  /* BLUEPHASE */
+  /* blue_phase_twist_init(0.3333333);*/
+  /* blue_phase_O8M_init(-0.2);*/
+  /* blue_phase_O2_init(0.3);*/
+
   return;
 }
 
@@ -693,6 +746,9 @@ void RAND_init_fluctuations() {
   int  p;
   char tmp[128];
   double tau_s, tau_b, tau_g, kt;
+
+  p = RUN_get_string_parameter("isothermal_fluctuations", tmp, 128);
+  if (strcmp(tmp, "on") == 0) isothermal_fluctuations_ = 1;
 
   p = RUN_get_double_parameter("temperature", &kt);
   set_kT(kt);
@@ -834,6 +890,122 @@ void get_fluctuations_stress(double shat[3][3]) {
   shat[X][X] += tr;
   shat[Y][Y] += tr;
   shat[Z][Z] += tr;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  fluctuations_off
+ *
+ *  Return zero fluctuations for stress (shat) and ghost (ghat) modes.
+ *
+ *****************************************************************************/
+
+static void fluctuations_off(double shat[3][3], double ghat[NVEL]) {
+
+  int ia, ib;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      shat[ia][ib] = 0.0;
+    }
+  }
+
+  for (ia = NHYDRO; ia < NVEL; ia++) {
+    ghat[ia] = 0.0;
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  fluctuations_on
+ *
+ *  Return fluctuations to be added to stress (shat) and ghost (ghat)
+ *  modes.
+ *
+ *****************************************************************************/
+
+static void fluctuations_on(double shat[3][3], double ghat[NVEL]) {
+
+  int ia;
+
+  /* To be inlined. */
+  get_fluctuations_stress(shat);
+
+  for (ia = NHYDRO; ia < nmodes_; ia++) {
+    ghat[ia] = noise_var[ia]*ran_parallel_gaussian();
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_isothermal_fluctuations
+ *
+ *  Reports the equipartition of momentum, and the actual temperature
+ *  cf. the expected (input) temperature.
+ *
+ *****************************************************************************/
+
+void test_isothermal_fluctuations(void) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int n;
+
+  double glocal[4];
+  double gtotal[4];
+  double rrho;
+  double gsite[3];
+
+  if (isothermal_fluctuations_ == 0) return;
+
+  get_N_local(nlocal);
+
+  glocal[X] = 0.0;
+  glocal[Y] = 0.0;
+  glocal[Z] = 0.0;
+  glocal[3] = 0.0; /* volume of fluid */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = get_site_index(ic, jc, kc);
+	if (site_map_get_status_index(index) != FLUID) continue;
+
+	rrho = 1.0/distribution_zeroth_moment(index, 0);
+	distribution_first_moment(index, 0, gsite);
+
+	for (n = 0; n < 3; n++) {
+	  glocal[n] += gsite[n]*gsite[n]*rrho;
+	}
+
+	glocal[3] += 1.0;
+
+	/* Next cell */
+      }
+    }
+  }
+
+  /* Divide by the actual fluid volume. The reduction is to rank 0 in
+   * MPI_COMM_WORLD for output. */
+
+  MPI_Reduce(glocal, gtotal, 4, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+  for (n = 0; n < 3; n++) {
+    gtotal[n] /= gtotal[3];
+  }
+
+  info("\n");
+  info("Isothermal fluctuations\n");
+  info("[eqipart.] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
+  info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z],
+       get_kT()*ND);
 
   return;
 }
