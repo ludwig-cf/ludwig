@@ -5,7 +5,7 @@
  *  This is a more rigourous test of the halo swap code for the
  *  distributions than appears in test model.
  *
- *  $Id: test_halo.c,v 1.8.2.1 2009-12-23 16:29:44 kevin Exp $
+ *  $Id: test_halo.c,v 1.8.2.2 2010-01-15 17:10:40 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -340,7 +340,7 @@ void test_halo(int dim, int reduced) {
     }
   }
 
-  /* REDUCED HALO */
+  /* REDUCED HALO NEEDS WORK*/
   /* The logic required for the edges and corners for general
    * decomposition is really more pain than it is worth. By
    * excluding the edges and corners, a few cases may be
@@ -365,14 +365,6 @@ void test_halo(int dim, int reduced) {
 	      if (cart_coords(dim) == 0) f_expect = L(X);
 	    }
 
-	    /* The easiest thing to do here is to avoid an assertion
-	     * if on an edge or corner. */
-	    if (on_edge(0, jc, kc, n_local[X]+1, n_local[Y]+1, n_local[Z]+1)) {
-	    }
-	    else {
-	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-	    }
-
 	  }
 
 	  /* right hand edge */
@@ -386,12 +378,6 @@ void test_halo(int dim, int reduced) {
 	    if (cv[p][X] < 0) {
 	      f_expect = offset[X] + ic;
 	      if (cart_coords(X) == cart_size(X) - 1) f_expect = 1.0;
-	    }
-
-	    if (on_edge(ic, jc, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
-	    }
-	    else {
-	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
 	    }
 	  }
 	}
@@ -421,13 +407,6 @@ void test_halo(int dim, int reduced) {
 	      f_expect = offset[X];
 	      if (cart_coords(dim) == 0) f_expect = L(X);
 	    }
-
-	    if (on_edge(ic, 0, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
-	    }
-	    else {
-	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-	    }
-
 	  }
 
 	  /* right hand edge */
@@ -442,19 +421,14 @@ void test_halo(int dim, int reduced) {
 	      f_expect = offset[X] + ic;
 	      if (cart_coords(X) == cart_size(X) - 1) f_expect = 1.0;
 	    }
-
-	    if (on_edge(ic, jc, kc, ic, n_local[Y]+1, n_local[Z]+1)) {
-	    }
-	    else {
-	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
-	    }
-
 	  }
 	}
 
 	/* Next site */
       }
     }
+
+    /* Z-DIRECTION ? */
 
     /* Finished reduced check */
   }
