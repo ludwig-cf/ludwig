@@ -5,7 +5,7 @@
  *  In cases where the order parameter is via "full LB", this couples
  *  the scalar order parameter phi_site[] to the distributions.
  *
- *  $Id: phi_lb_coupler.c,v 1.2 2009-09-02 07:53:47 kevin Exp $
+ *  $Id: phi_lb_coupler.c,v 1.2.4.1 2010-01-15 16:53:24 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,12 +21,36 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "model.h"
+#include "physics.h"
 #include "site_map.h"
 #include "phi.h"
 #include "phi_lb_coupler.h"
 #include "utilities.h"
 
 extern double * phi_site;
+
+/*****************************************************************************
+ *
+ *  phi_lb_coupler_phi_set
+ *
+ *  This is to mediate between order parameter by LB and order parameter
+ *  via finite difference.
+ *
+ *****************************************************************************/
+
+void phi_lb_coupler_phi_set(const int index, const double phi) {
+
+  if (phi_is_finite_difference()) {
+    phi_op_set_phi_site(index, 0, phi);
+    /* This can (must) go when distributions reimplemented */ 
+    distribution_zeroth_moment_set_equilibrium(index, 1, get_phi0());
+  }
+  else {
+    distribution_zeroth_moment_set_equilibrium(index, 1, phi);
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -55,7 +79,7 @@ void phi_compute_phi_site() {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = le_site_index(ic, jc, kc);
-	phi_site[nop_*index] = get_phi_at_site(index);
+	phi_site[nop_*index] = distribution_zeroth_moment(index, 1);
       }
     }
   }
@@ -94,7 +118,7 @@ void phi_set_mean_phi(double phi_global) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = get_site_index(ic, jc, kc);
-	phi_local += get_phi_at_site(index);
+	phi_local += distribution_zeroth_moment(index, 1);
 	vlocal += 1.0;
       }
     }
@@ -119,8 +143,8 @@ void phi_set_mean_phi(double phi_global) {
 
 	if (site_map_get_status(ic, jc, kc) == FLUID) {
 	  index = get_site_index(ic, jc, kc);
-	  phi_local = get_g_at_site(index, 0) + phi_correction;
-	  set_g_at_site(index, 0,  phi_local);
+	  phi_local = distribution_f(index, 0, 1) + phi_correction;
+	  distribution_f_set(index, 0, 1, phi_local);
 	}
       }
     }
@@ -169,13 +193,11 @@ void phi_lb_init_drop(double radius, double xi0) {
 
         phi = tanh(rxi0*(r - radius));
 
-        /* Set both phi_site and g to allow for FD or LB */
-        phi_set_phi_site(index, phi);
+	distribution_zeroth_moment_set_equilibrium(index, 0, get_rho0());
 
-        set_rho(index, 1.0);
-        set_g_at_site(index, 0, phi);
+        distribution_f_set(index, 0, 1, phi);
         for (p = 1; p < NVEL; p++) {
-          set_g_at_site(index, p, 0.0);
+          distribution_f_set(index, p, 1, 0.0);
         }
 
       }
