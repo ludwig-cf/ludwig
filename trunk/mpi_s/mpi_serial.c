@@ -29,6 +29,7 @@ static void mpi_copy(void * send, void * recv, int count, MPI_Datatype type);
 static int mpi_sizeof(MPI_Datatype type);
 
 static int mpi_initialised_flag_ = 0;
+static int periods_[3];
 
 /*****************************************************************************
  *
@@ -489,8 +490,37 @@ int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler) {
 int MPI_Cart_create(MPI_Comm oldcomm, int ndims, int * dims, int * periods,
 		    int reorder, MPI_Comm * newcomm) {
 
+  int n;
   assert(mpi_initialised_flag_);
+  assert(ndims <= 3);
   *newcomm = oldcomm;
+
+  for (n = 0; n < ndims; n++) {
+    periods_[n] = periods[n];
+  }
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Cart_get
+ *
+ *  The state held for periods[] is only required for the tests.
+ *
+ *****************************************************************************/
+
+int MPI_Cart_get(MPI_Comm comm, int maxdims, int * dims, int * periods,
+		 int * coords) {
+
+  int n;
+  assert(mpi_initialised_flag_);
+
+  for (n = 0; n < maxdims; n++) {
+    dims[n] = 1;
+    periods[n] = periods_[n];
+    coords[n] = 0;
+  }
 
   return MPI_SUCCESS;
 }
