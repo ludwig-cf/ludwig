@@ -4,7 +4,7 @@
 %
 %  Content for Ludwig documentation.
 %
-%  $Id: sections.tex,v 1.11 2009-05-20 17:02:38 kevin Exp $
+%  $Id: sections.tex,v 1.12 2010-01-21 18:20:51 kevin Exp $
 %
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
@@ -845,8 +845,6 @@ and fluid.
 
 \subsubsection{Boundary walls}
 
-
-
 \subsection{Colloids}
 
 \subsubsection{General}
@@ -1640,6 +1638,191 @@ in one or more directions, the periodicity is broken in
 the corresponding directions.
 
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% LE Implementation
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Lees Edwards Sliding Period Boundary Conditions}
+
+\subsubsection{The LE module}
+
+\subsubsection{Distributions crossing the LE planes}
+
+With the planes conceptually half-way between lattice sites, the
+propagation moves some of the distributions (namely, those with
+$c_x = \pm1$) between different sliding blocks. While the collision
+stage is unaffected, action must be taken to adjust these
+distributions when the LE boundary conditions are active. This
+is done in a two-stage process described by Adhikari \textit{et al.}
+\cite{adhikari_desplat}, implemented between the collision and
+propagation.
+
+\textbf{a. Reprojection} The post-collision distributions with
+$c_x = \pm 1$ at sites adjacent to a boundary are modified to
+take account of the velocity jump $\pm u^{LE}_y$ between the sliding
+blocks. In terms of the hydrodynamic moments we have:
+\begin{eqnarray}
+\rho &\rightarrow& \rho', \\
+\rho u_\alpha &\rightarrow& (\rho u_\alpha)' \pm \rho' u^{LE}_\alpha, \\
+S_{\alpha\beta} &\rightarrow&
+S'_{\alpha\beta} \pm (\rho u_\alpha)' u^{LE}_\beta
+\pm (\rho u_\beta)' u^{LE}_\alpha + \rho' u^{LE}_\alpha u^{LE}_\beta.
+\end{eqnarray}
+If we work with the changes to the moemnts, then the density is
+unaffected $\delta\rho =  0$, the velocity is changed by
+$\delta u_\alpha = \pm u^{LE}_\alpha$, with an analogous expression for
+the change in the stress
+\begin{equation}
+\delta S_{\alpha\beta} =
+\pm (\rho u_\alpha)' u^{LE}_\beta
+\pm (\rho u_\beta)' u^{LE}_\alpha + \rho' u^{LE}_\alpha u^{LE}_\beta.
+\end{equation}
+We can then work out the change in the distributions by reprojecting
+via Eq.\ref{eq:}, i.e.,
+\begin{equation}
+f_i \rightarrow f_i' + w_i \Bigg(
+\frac{\rho \delta u_\alpha c_{i\alpha}}{c_s^2} +
+\frac{\delta S_{\alpha\beta}Q_{i\alpha\beta}}{2c_s^4} \Bigg).
+\end{equation}
+A similar set of expressions are given for the order parameter
+distributions in Adhikari \textit{et al.} \cite{adhikari_desplat}.
+
+\textbf{b. Interpolation of reprojected distributions}
+As the sliding blocks are displaced continuously with
+$\delta y = u_y^{LE}t$, which is not in general a whole number of
+lattice spacings, an interpolation is also required before
+propagation can take place. Consider the situation (Fig.~\ref{fig_le2}) from
+a stationary frame where the frame above has translated a small
+distance to the right ($\delta y < \Delta y$). In the stationary frame
+we must interpolate the ditributions with $c_x = 1$ to a
+`departure point' from which the propagation will move the
+distribution exactly to the appropriate lattice site in the moving
+frame. Schemeatically,
+\begin{equation}
+f_i'(x, y + \delta y, z) = 
+ (1 - \delta y) f_i^\star(x, y, z) +
+\delta y f_i^\star(x, y + \Delta y, z),
+\end{equation}
+where $f_i'$ here represents the interpolated value and $f_i^\star$
+is the reprojected post-collision quantity.
+
+In the case where the displacement $\delta y > 1$, the relevant
+lattice sites involved in the interpolation are displaced to the right
+by the integral part of $\delta y$, while the relative weight given to
+the two sites involves
+the fractional part of $\delta y$. To take account of the periodic
+boundary conditions
+in the $y$-direction, all displacements are modulo $L_y$.
+
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics{xfig/fig_le2.eps}
+\end{center}
+\caption{Schematic diagram showing interpolation of distributions in the
+stationary plane (below) in preparation for propagation into the moving
+frame (above). For a small displacement $\delta y = u^{LE} t$, the
+interpolation takes place between lattice sites in the stationary frame
+(green, left). Propogation from the interpolated positions (red) can
+then take place into the moving frame (right).}
+\label{fig_le2}
+\end{figure}
+
+
+In parallel, exactly the same calculation is undertaken. However,
+communication is required to take account of the processor
+decomposition in the $y$-direction. This requires the identification
+of the two processes which hold the relevant information as a function
+of displacement. 
+
+Note that the interpolated values are stored in the appropriate lattice
+site in the rest frame that ensures the normal propagation stage moves all
+distributions to the correct destination in memory.
+
+\subsubsection{Order parameter gradients}
+
+When the order parameter gradient is computed at a given point
+near the LE boundaries, the stencil may extend out of the stationary
+frame. The process of interpolation is slightly different to that
+for the distributions.
+
+Here, we need to interpolate values in the moving frame to the position
+which is seen by the rest frame. Figure~\ref{fig_le3} shows a five-point
+stencil to calculate the gradient at the central point $(x,y,z)$ in the
+rest frame. An interpolation of the $\phi$-field of the form
+\begin{equation}
+\phi'(x + \Delta x, y - \delta y, z) =
+\delta y \phi(x + \Delta x,  y - \Delta y, z) + 
+(1 - \delta y) \phi(x + \Delta x, y, z)
+\end{equation}
+must then take place. In practice, the interpolated values are stored
+in the offset buffer. As the gradient calculation requires $\phi$
+values in the halo regions, interpolated values for the buffer halo
+region are also required.
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics{xfig/fig_le3.eps}
+\end{center}
+\caption{Schematic diagram showing a five-point stencil to compute a
+gradient at the central point in the stationary frame. The upper point
+of the stencil is in the moving frame and so must be interpolated to
+the correct position (red sites).}
+\label{fig_le3}
+\end{figure}
+
+In parallel, the interpolation requires data from at most two adjacent
+processes in the along-plane $y-$direction as long as the $\phi$ halo
+regions are up-to-date. The rank of the processes involved is
+determined by the displacement $\delta y$ as a function of time.
+
+
+\subsubsection{Velocities and finite-difference fluxes}
+
+For the finite-difference implementation, the velocity field at
+the cell boundaries is required. At the planes, this means an
+interpolation which takes the same form as that for
+$\phi$ is needed.
+
+In computing the advective fluxes between cells, we must then
+allow for the presence of the planes. This is done by computing
+separately the 'east' and 'west' face fluxes in the $x$-direction
+(the flux that crosses the plane). Away from the planes, face-flux
+uniqueness $f_{ijk}^e = f_{i+1jk}^w$ ensures conservation of order
+parameter. However, at the planes, the non-linear conbination of
+velocity field and order parameter field does not in general give
+rise to consistent fluxes. In order to restore conservation, we
+reconcile east and west face fluxes at the plane by taking an
+average
+\begin{eqnarray}
+f_{ijk}^{e\star}&=&{\textstyle\frac{1}{2}}(f_{ijk}^e + f_{i+1j'k}^w),\quad 
+f_{i+1j'k}^w  = \delta y f_{i+1 j-1 k}^w + (1 - \delta y) f_{i+1jk}^w,\\
+f_{i+1 j k}^{w\star} &=& {\textstyle\frac{1}{2}}(f_{ij'k}^e + f_{i+1jk}^w),\quad
+f_{ij'k}^e = (1 - \delta y) f_{ijk}^e + \delta y f_{ij+1k}^e.
+\end{eqnarray}
+In this way, we average the east face flux in the rest frame $f_{ijk}^e$
+with the interpolated value of the west face flux in the moving frame
+$f_{i+1j'k}^w$, and vice-versa. One can then easily show that when
+integrated over the length of the plane, the average fluxes are
+consistent, i.e.,
+\begin{equation}
+\sum_j (f_{ijk}^{e\star} - f_{i+1jk}^{w\star}) = 0 \quad\forall k,
+\end{equation}
+thus ensuring order parameter conservation.
+
+A similar correction is required when computing the force on the fluid
+directly via the divergence of the thermodynamic stress
+$F_\alpha = \nabla_\beta P_{\alpha\beta}^{th}$. This is implementated
+by computing fluxes of momentum at cell faces in each direction, and
+then taking the divergence to compute the force. At the planes, an
+averaging procedure is again used to ensure conservation of momentum.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% End LE implementation
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 \vfill
 \pagebreak
 
@@ -2194,6 +2377,12 @@ $w_i$ & 12 & 2 & 2 & 2 & 2 & 2 & 2 &
 
 
 \begin{thebibliography}{99}
+
+\bibitem{adhikari_desplat}
+Adhikari, R. J.-C. Desplat, and K. Stratford,
+Sliding periodic boundary conditions for lattice Boltzmann and lattice
+kinetic equations,
+\texttt{arXiv:cond-mat/0503175v1} (2005).
 
 \bibitem{adhikari2005}
 Adhikari, R., K. Stratford. M.E. Cates, and A.J. Wagner,
