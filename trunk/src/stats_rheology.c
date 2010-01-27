@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.7 2009-11-27 18:22:00 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.8 2010-01-27 09:49:30 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -46,9 +46,10 @@ static void stats_rheology_print_s(const char *, double s[3][3]);
 static void stats_rheology_print_matrix(FILE *, double s[3][3]);
 
 #define NSTAT1 7  /* Number of data items for stess statistics */
-#define NSTAT2 12 /* Number of data items for 3-d stress stats
-		   * 3 components of velocity, 3 components of
-                   * 3 different contributions to the stress */
+#define NSTAT2 22 /* Number of data items for 2-d stress stats
+		   * 3 components of velocity, 6 components of
+                   * 3 different contributions to the stress;
+		   * 1 isotropic chemical stress (placeholder) */
 
 /*****************************************************************************
  *
@@ -292,7 +293,8 @@ void stats_rheology_stress_profile_accumulate(void) {
 
   int ic, jc, kc, index;
   int nlocal[3];
-  double rho;
+  int ia, ib, ndata;
+  double rrho;
   double u[3];
   double s[3][3];
 
@@ -303,37 +305,66 @@ void stats_rheology_stress_profile_accumulate(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = ADDR(ic, jc, kc);
+
+	/* Set up the (inverse) density, velocity */
+
+	rrho = 1.0/get_rho_at_site(index);
+	get_momentum_at_site(index, u);
+
+	/* Work out the vicous stress and accumulate. The factor
+	 * which relates the distribution \sum_i f_ c_ia c_ib
+	 * to the viscous stress is not included until output
+	 * is required. (See output routine.) */
+
 	distribution_get_stress_at_site(index, s);
 
-	sxy_[NSTAT1*(ic-1)    ] += s[X][Y];
+	sxy_[NSTAT1*(ic-1)] += s[X][Y];
 
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  0] += s[X][Y];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  1] += s[X][Z];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  2] += s[Y][Z];
+	ndata = 0;
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = ia; ib < 3; ib++) {
+	    s[ia][ib] = s[ia][ib] - rrho*u[ia]*u[ib];
+	    stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += s[ia][ib];
+	  }
+	}
+	assert(ndata == 6);
+
+	/* Thermodynamic part of stress */
 
         free_energy_get_chemical_stress(index, s);
 
 	sxy_[NSTAT1*(ic-1) + 1] += s[X][Y];
 
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  3] += s[X][Y];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  4] += s[X][Z];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  5] += s[Y][Z];
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = ia; ib < 3; ib++) {
+	    stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += s[ia][ib];
+	  }
+	}
 
-	rho = get_rho_at_site(index);
-	rho = 1.0/rho;
-	get_momentum_at_site(index, u);
+	sxy_[NSTAT1*(ic-1) + 2] += rrho*u[X]*u[Y];
+	sxy_[NSTAT1*(ic-1) + 3] += rrho*u[X];
+	sxy_[NSTAT1*(ic-1) + 4] += rrho*u[Y];
+	sxy_[NSTAT1*(ic-1) + 5] += rrho*u[Z];
 
-	sxy_[NSTAT1*(ic-1) + 2] += rho*u[X]*u[Y];
-	sxy_[NSTAT1*(ic-1) + 3] += rho*u[X];
-	sxy_[NSTAT1*(ic-1) + 4] += rho*u[Y];
-	sxy_[NSTAT1*(ic-1) + 5] += rho*u[Z];
+	/* Trivial part. */
 
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  6] += rho*u[X]*u[Y];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  7] += rho*u[X]*u[Z];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  8] += rho*u[Y]*u[Z];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) +  9] += rho*u[X];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 10] += rho*u[Y];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 11] += rho*u[Z];
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = ia; ib < 3; ib++) {
+	    stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++]
+	      += rrho*u[ia]*u[ib];
+	  }
+	}
+
+	/* Finally, three components of velocity */
+
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[X];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[Y];
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[Z];
+
+	/* Placeholder for isotropic part of chemical stress (set zero) */
+	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] = 0.0;
+
+	assert(ndata == NSTAT2);
 
 	hydrodynamics_velocity_gradient_tensor(ic, jc,  kc, s);
 	sxy_[NSTAT1*(ic-1) + 6] += (s[X][Y] + s[Y][X]);
@@ -461,10 +492,24 @@ void stats_rheology_stress_profile(const char * filename) {
  *  Outputs a section in the x-z direction (ie., averaged along the
  *  flow direction of various quantities:
  *
- *  Full stress                  s_xy, s_xz, s_yz from \sum_i f_i Q_iab
- *  Thermodynamic contribution   s_xy, s_xz, s_yz from P^th_ab
- *  Equilibrium stress           s_xy, s_xz, s_xz from rho u_a u_b
+ *  Thermodynamic contribution   + P^th_ab
+ *  Viscous stress               + eta (d_a u_b + d_b u_a)
+ *  Equilibrium stress           rho u_a u_b
  *  Velocity                     u_x, u_y, x_z
+ *  Isotropic part P^th          PENDING
+ *
+ *  For the 3 tensors, there are included 6 independent components:
+ *  S_xx S_xy S_xz S_yy S_yz S_zz.
+ *
+ *  There are a number of factors and corrections required:
+ *    1. The viscous stress must be recovered from the accumulated
+ *       measured second moment of the distribution by multiplying
+ *       by the factor 3 eta / tau, where tau is the LB relaxation
+ *       time (See Kruger etal PRE 2009).
+ *    2. The Lees-Edwards planes must be accounted for in the y
+ *       component of the velocity.
+ *    3. All the statistics are averaged to take account of L_y,
+ *       and the number of accumulated time steps.
  *
  *  In the output, the z-direction runs faster, then the x-direction.
  *
@@ -480,6 +525,7 @@ void stats_rheology_stress_section(const char * filename) {
   double * stat_1d;
   double raverage;
   double uy;
+  double eta, viscous;
 
   MPI_Comm comm = cart_comm();
   MPI_Status status;
@@ -489,6 +535,9 @@ void stats_rheology_stress_section(const char * filename) {
 
   assert(initialised_);
   get_N_local(nlocal);
+
+  eta = get_eta_shear();
+  viscous = rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
   if (stat_2d == NULL) fatal("malloc(stat_2d) failed\n");
@@ -535,8 +584,8 @@ void stats_rheology_stress_section(const char * filename) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
 
-      /* Correct f1[Y] for leesedwards planes before output */
-      /* Also take the average here. */
+      /* Correct f1[Y] for leesedwards planes before output. */
+      /* Viscous stress likewise. Also take the average here. */
 
       uy = le_get_block_uy(ic);
 
@@ -544,8 +593,14 @@ void stats_rheology_stress_section(const char * filename) {
 	for (n = 0; n < NSTAT2; n++) {
 	  stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + n] *= raverage;
 	}
+
+	/* The viscous stress must be corrected (first tensor) */
+	for (n = 0; n < 6; n++) {
+	  stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + n] *= viscous;
+	}
+
 	/* u_y must be corrected */
-	stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 10] += uy;
+	stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 19] += uy;
       }
 
       MPI_Gather(stat_2d + NSTAT2*nlocal[Z]*(ic-1), NSTAT2*nlocal[Z],
@@ -578,6 +633,9 @@ void stats_rheology_stress_section(const char * filename) {
       MPI_Ssend(&token, 1, MPI_INT, rank, tag_token, comm);
     }
   }
+
+  free(stat_1d);
+  free(stat_2d);
 
   return;
 }
