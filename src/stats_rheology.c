@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.8 2010-01-27 09:49:30 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.9 2010-01-29 14:18:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,6 +27,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
+#include "util.h"
 #include "control.h"
 #include "lattice.h"
 #include "physics.h"
@@ -294,7 +295,7 @@ void stats_rheology_stress_profile_accumulate(void) {
   int ic, jc, kc, index;
   int nlocal[3];
   int ia, ib, ndata;
-  double rrho;
+  double rho, rrho;
   double u[3];
   double s[3][3];
 
@@ -308,7 +309,8 @@ void stats_rheology_stress_profile_accumulate(void) {
 
 	/* Set up the (inverse) density, velocity */
 
-	rrho = 1.0/get_rho_at_site(index);
+	rho = get_rho_at_site(index);
+	rrho = 1.0/rho;
 	get_momentum_at_site(index, u);
 
 	/* Work out the vicous stress and accumulate. The factor
@@ -492,8 +494,8 @@ void stats_rheology_stress_profile(const char * filename) {
  *  Outputs a section in the x-z direction (ie., averaged along the
  *  flow direction of various quantities:
  *
- *  Thermodynamic contribution   + P^th_ab
  *  Viscous stress               + eta (d_a u_b + d_b u_a)
+ *  Thermodynamic contribution   + P^th_ab
  *  Equilibrium stress           rho u_a u_b
  *  Velocity                     u_x, u_y, x_z
  *  Isotropic part P^th          PENDING
@@ -504,7 +506,7 @@ void stats_rheology_stress_profile(const char * filename) {
  *  There are a number of factors and corrections required:
  *    1. The viscous stress must be recovered from the accumulated
  *       measured second moment of the distribution by multiplying
- *       by the factor 3 eta / tau, where tau is the LB relaxation
+ *       by the factor -3 eta / tau, where tau is the LB relaxation
  *       time (See Kruger etal PRE 2009).
  *    2. The Lees-Edwards planes must be accounted for in the y
  *       component of the velocity.
@@ -537,7 +539,7 @@ void stats_rheology_stress_section(const char * filename) {
   get_N_local(nlocal);
 
   eta = get_eta_shear();
-  viscous = rcs2*eta*2.0/(1.0 + 6.0*eta);
+  viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
   if (stat_2d == NULL) fatal("malloc(stat_2d) failed\n");
@@ -647,9 +649,12 @@ void stats_rheology_stress_section(const char * filename) {
  *  Provide a summary of the instantaneous mean stress to info().
  *  We have:
  *
- *    Full deviatoric stress:   S_ab    = \sum_i f_i Q_iab
- *    Chemical stress:          P_ab      for current free energy
- *    Equilibrium stress:       S^eq_ab = \rho u_a u_b
+ *  Viscous stress               + eta (d_a u_b + d_b u_a)
+ *  Thermodynamic contribution   + P^th_ab
+ *  Equilibrium stress           rho u_a u_b
+ *
+ *  Note that the viscous stress is constructed from the second
+ *  moment of the distribution.
  *
  *****************************************************************************/
 
@@ -665,11 +670,15 @@ void stats_rheology_mean_stress(const char * filename) {
   double send[NCOMP];
   double recv[NCOMP];
   double rho, rrho, rv;
+  double eta, viscous;
   int nlocal[3];
   int ic, jc, kc, index, ia, ib;
   FILE * fp;
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
+
+  eta = get_eta_shear();
+  viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   get_N_local(nlocal);
 
@@ -698,8 +707,8 @@ void stats_rheology_mean_stress(const char * filename) {
         for (ia = 0; ia < 3; ia++) {
           for (ib = 0; ib < 3; ib++) {
             rhouu[ia][ib] += rrho*u[ia]*u[ib];
-            stress[ia][ib] += s[ia][ib];
             pchem[ia][ib] += plocal[ia][ib];
+            stress[ia][ib] += (s[ia][ib] - rrho*u[ia]*u[ib]);
           }
         }
 
@@ -712,7 +721,7 @@ void stats_rheology_mean_stress(const char * filename) {
   kc = 0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      send[kc++] = stress[ia][ib];
+      send[kc++] = viscous*stress[ia][ib];
       send[kc++] = pchem[ia][ib];
       send[kc++] = rhouu[ia][ib];
     }
@@ -732,7 +741,7 @@ void stats_rheology_mean_stress(const char * filename) {
 
   if (filename == NULL || strcmp(filename, "") == 0) {
     /* Use info() */
-    stats_rheology_print_s("stress_hydro", stress);
+    stats_rheology_print_s("stress_viscs", stress);
     stats_rheology_print_s("stress_pchem", pchem);
     stats_rheology_print_s("stress_rhouu", rhouu);
   }
