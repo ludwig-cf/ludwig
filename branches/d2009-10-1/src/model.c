@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.17.4.4 2010-02-01 14:57:31 kevin Exp $
+ *  $Id: model.c,v 1.17.4.5 2010-02-01 16:24:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -70,7 +70,8 @@ static int distributions_write(FILE *, const int, const int, const int);
  *  Allocate memory for the distributions. If MPI2 is used, then
  *  this must use the appropriate utility to accomodate LE planes.
  *
- *  Irrespective of the value of nhalo_, we only ever at the moment
+ *  Irrespective of the value of nhalo associated with coords.c,
+ *  we only ever at the moment
  *  pass one plane worth of distribution values (ie., nhalo = 1).
  *
  ***************************************************************************/
