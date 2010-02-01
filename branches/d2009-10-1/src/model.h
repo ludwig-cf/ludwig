@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.14.4.3 2010-01-15 16:58:10 kevin Exp $
+ *  $Id: model.h,v 1.14.4.4 2010-02-01 14:57:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,10 +30,6 @@ enum {NHYDRO = 10};
 enum {MRHO = 0,
       MRUX = 1, MRUY = 2, MRUZ = 3,
       MSXX = 4, MSXY = 5, MSXZ = 6, MSYY = 7, MSYZ = 8, MSZZ = 9};
-
-typedef struct {
-  double f[NVEL], g[NVEL];
-} Site;
 
 extern const double cs2;
 extern const double rcs2;

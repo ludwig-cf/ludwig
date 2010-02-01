@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.4 2010-01-15 16:59:15 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.5 2010-02-01 14:57:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -161,11 +161,7 @@ void MODEL_collide_multirelaxation() {
   double    force_local[3];
   const double   r3     = (1.0/3.0);
 
-#ifndef DIST_NEW
-  extern Site * site;
-#else
   extern double * f_;
-#endif
 
   TIMER_start(TIMER_COLLIDE);
 
@@ -185,11 +181,7 @@ void MODEL_collide_multirelaxation() {
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-#ifndef DIST_NEW
-	    mode[m] += site[index].f[p]*ma_[m][p];
-#else
 	    mode[m] += f_[ndist*NVEL*index + p]*ma_[m][p];
-#endif
 	  }
 	}
 
@@ -277,21 +269,12 @@ void MODEL_collide_multirelaxation() {
 
 	/* Project post-collision modes back onto the distribution */
 
-#ifndef DIST_NEW
-	for (p = 0; p < NVEL; p++) {
-	  site[index].f[p] = 0.0;
-	  for (m = 0; m < nmodes_; m++) {
-	    site[index].f[p] += mi_[p][m]*mode[m];
-	  }
-	}
-#else
 	for (p = 0; p < NVEL; p++) {
 	  f_[ndist*NVEL*index + p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
 	    f_[ndist*NVEL*index + p] += mi_[p][m]*mode[m];
 	  }
 	}
-#endif
 
 	/* Next site */
       }
@@ -370,11 +353,7 @@ void MODEL_collide_binary_lb() {
   double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
-#ifndef DIST_NEW
-  extern Site * site;
-#else
   extern double * f_;
-#endif
 
   double (* chemical_potential)(const int index, const int nop);
   void   (* chemical_stress)(const int index, double s[3][3]);
@@ -403,11 +382,7 @@ void MODEL_collide_binary_lb() {
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-#ifndef DIST_NEW
-	    mode[m] += site[index].f[p]*ma_[m][p];
-#else
 	    mode[m] += f_[ndist*NVEL*index + p]*ma_[m][p];
-#endif
 	  }
 	}
 
@@ -500,21 +475,12 @@ void MODEL_collide_binary_lb() {
 
 	/* Project post-collision modes back onto the distribution */
 
-#ifndef DIST_NEW
-	for (p = 0; p < NVEL; p++) {
-	  site[index].f[p] = 0.0;
-	  for (m = 0; m < nmodes_; m++) {
-	    site[index].f[p] += mi_[p][m]*mode[m];
-	  }
-	}
-#else
 	for (p = 0; p < NVEL; p++) {
 	  f_[ndist*NVEL*index + p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
 	    f_[ndist*NVEL*index + p] += mi_[p][m]*mode[m];
 	  }
 	}
-#endif
 
 	/* Now, the order parameter distribution */
 
@@ -526,11 +492,7 @@ void MODEL_collide_binary_lb() {
 	jphi[Z] = 0.0;
 	for (p = 1; p < NVEL; p++) {
 	  for (i = 0; i < 3; i++) {
-#ifndef DIST_NEW
-	    jphi[i] += site[index].g[p]*cv[p][i];
-#else
 	    jphi[i] += f_[ndist*NVEL*index + NVEL + p]*cv[p][i];
-#endif
 	  }
 	}
 
@@ -563,12 +525,8 @@ void MODEL_collide_binary_lb() {
 	  /* Project all this back to the distributions. The magic
 	   * here is to move phi into the non-propagating distribution. */
 
-#ifndef DIST_NEW
-	  site[index].g[p] = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
-#else
 	  f_[ndist*NVEL*index + NVEL + p]
 	    = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
-#endif
 	}
 
 	/* Next site */
