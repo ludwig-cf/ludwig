@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.14 2009-10-23 16:53:32 kevin Exp $
+ *  $Id: lattice.c,v 1.15 2010-02-04 10:15:45 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -542,10 +542,14 @@ void hydrodynamics_leesedwards_transformation() {
  *  hydrodynamics_leesedwards_parallel
  *
  *  The Lees Edwards transformation for the velocity field in parallel.
+ *  This is a linear interpolation.
+ *
+ *  Note that we communicate with up to 3 processors in each direction;
+ *  this avoids having to update the halos completely.
  *
  *****************************************************************************/
 
-static void hydrodynamics_leesedwards_parallel() {
+static void hydrodynamics_leesedwards_parallel(void) {
 
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
@@ -554,30 +558,34 @@ static void hydrodynamics_leesedwards_parallel() {
   int ib0;                 /* buffer region offset */
   int ic;                  /* Index corresponding x location in real system */
   int jc, kc, j1, j2;
-  int n, n1, n2;
+  int n, n1, n2, n3;
   double dy;               /* Displacement for current ic->ib pair */
   double fr;               /* Fractional displacement */
   double t;                /* time */
   int jdy;                 /* Integral part of displacement */
   int ia;
+  int nhalo;
   double ule[3];
 
   MPI_Comm le_comm = le_communicator();
-  int      nrank_s[2];     /* send ranks */
-  int      nrank_r[2];     /* recv ranks */
+  int      nrank_s[3];     /* send ranks */
+  int      nrank_r[3];     /* recv ranks */
   const int tag0 = 1256;
   const int tag1 = 1257;
+  const int tag2 = 1258;
 
-  MPI_Request request[4];
-  MPI_Status  status[4];
+  MPI_Request request[6];
+  MPI_Status  status[3];
 
   get_N_local(nlocal);
   get_N_offset(noffset);
-  ib0 = nlocal[X] + nhalo_ + 1;
+  nhalo = nhalo_;
+
+  ib0 = nlocal[X] + nhalo + 1;
 
   /* Allocate the temporary buffer */
 
-  n = (nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+  n = (nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo);
   buffer = (struct vector *) malloc(n*sizeof(struct vector));
   if (buffer == NULL) fatal("hydrodynamics: malloc(le buffer) failed\n");
 
@@ -591,7 +599,7 @@ static void hydrodynamics_leesedwards_parallel() {
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
     ic = le_index_buffer_to_real(ib);
-    kc = 1 - nhalo_;
+    kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */
 
@@ -604,46 +612,56 @@ static void hydrodynamics_leesedwards_parallel() {
     /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo_.
      * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
 
-    jc = noffset[Y] + 1 - nhalo_;
+    jc = noffset[Y] + 1 - nhalo;
     j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
 
-    le_displacement_ranks(dy, nrank_r, nrank_s);
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
 
     /* Local quantities: given a local starting index j2, we receive
      * n1 + n2 sites into the buffer, and send n1 sites starting with
      * j2, and the remaining n2 sites from starting position nhalo_. */
 
-    j2 = j1 % nlocal[Y];
+    j2 = 1 + (j1 - 1) % nlocal[Y];
 
-    n1 = (nlocal[Y] - j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
-    n2 = (j2 + nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+    n1 = (nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = imin(nlocal[Y], j2 + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+    n3 = imax(0, j2 - nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
+    assert((n1+n2+n3) == (nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo));
 
     /* Post receives, sends and wait. */
 
     MPI_Irecv(buffer[0].c, n1, mpi_vector_t, nrank_r[0], tag0,
 	      le_comm, request);
     MPI_Irecv(buffer[n1].c, n2, mpi_vector_t, nrank_r[1], tag1,
-	      le_comm, request+1);
-    MPI_Issend(u[ADDR(ic,j2,kc)].c, n1, mpi_vector_t, nrank_s[0], tag0,
-	       le_comm, request+2);
-    MPI_Issend(u[ADDR(ic,nhalo_,kc)].c, n2, mpi_vector_t, nrank_s[1], tag1,
-	       le_comm, request+3);
+	      le_comm, request + 1);
+    MPI_Irecv(buffer[n1 + n2].c, n3, mpi_vector_t, nrank_r[2], tag2,
+	      le_comm, request + 2);
 
-    MPI_Waitall(4, request, status);
+    MPI_Issend(u[ADDR(ic,j2,kc)].c, n1, mpi_vector_t, nrank_s[0], tag0,
+	       le_comm, request + 3);
+    MPI_Issend(u[ADDR(ic,1,kc)].c, n2, mpi_vector_t, nrank_s[1], tag1,
+	       le_comm, request + 4);
+    MPI_Issend(u[ADDR(ic,1,kc)].c, n3, mpi_vector_t, nrank_s[2], tag2,
+	       le_comm, request + 5);
+
+    MPI_Waitall(3, request, status);
 
     /* Perform the actual interpolation from temporary buffer to
      * buffer region. */
 
-    for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-      j1 = (jc + nhalo_ - 1    )*(nlocal[Z] + 2*nhalo_);
-      j2 = (jc + nhalo_ - 1 + 1)*(nlocal[Z] + 2*nhalo_);
-      for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+      j1 = (jc + nhalo - 1    )*(nlocal[Z] + 2*nhalo);
+      j2 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	for (ia = 0; ia < 3; ia++) {
-	  u[ADDR(ib0+ib,jc,kc)].c[ia] = fr*buffer[j1+kc+nhalo_-1].c[ia]
-	    + (1.0-fr)*buffer[j2+kc+nhalo_-1].c[ia] + ule[ia];
+	  u[ADDR(ib0+ib,jc,kc)].c[ia] = fr*buffer[j1+kc+nhalo-1].c[ia]
+	    + (1.0-fr)*buffer[j2+kc+nhalo-1].c[ia] + ule[ia];
 	}
       }
     }
+
+    MPI_Waitall(3, request + 3, status);
   }
 
   free(buffer);
