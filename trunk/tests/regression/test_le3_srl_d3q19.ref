@@ -1,6 +1,6 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-Read 63 user parameters from input
+Read 63 user parameters from ../tests/regression/test_le3_input
 [User   ] Lattice size is (64, 64, 64)
 [User   ] periodic boundaries set to (1, 1, 1)
 [Default] Processor decomposition is (1, 1, 1)
@@ -30,7 +30,7 @@ LE plane 1 is at x = 16 with speed 0.050000
 LE plane 2 is at x = 48 with speed 0.050000
 Overall shear rate = 0.001563
 The lattice Boltzmann model is D3Q19
-Requesting 95587328 bytes for site data
+Requesting 104272000 bytes for site data
 Switching order parameter to finite difference
 Using third order upwind
 
@@ -55,34 +55,36 @@ TEST_momentum [x, y, z]
 [phi]  6.9259365e+00  2.6420351e-05 8.3281808e-04 -4.9999901e-02 4.9999855e-02
 
 Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-200  47728.6 59690.7 47396.9 46039.7   47693 62052.3 -1.22462 -0.934429
+200  47603.1 59400.1 47305.1 45911.5 47592.7 61771.2 -1.2218 -0.917209
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99997932, 1.0000443]
+[rho][262144, 1, 0, 0.99997934, 1.0000447]
 
 TEST_momentum [x, y, z]
-[total][9.35807e-13, -0.000238726, -2.12528e-13]
-[fluid][9.35807e-13, -0.000238726, -2.12528e-13]
+[total][8.57005e-13, -0.000238654, -5.05429e-14]
+[fluid][8.57005e-13, -0.000238654, -5.05429e-14]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
 Velocity stats:
-[ umin ][ -3.74738e-05 -0.0242409 -2.49961e-05 ]
-[ umax ][ 2.63871e-05 0.0242375 2.58662e-05 ]
-[phi]  6.9259365e+00  2.6420351e-05 1.1629994e-04 -4.3645450e-02 4.9086035e-02
+[ umin ][ -3.72844e-05 -0.0242419 -2.50005e-05 ]
+[ umax ][ 2.74874e-05 0.0242377 2.58583e-05 ]
+[phi]  6.9259365e+00  2.6420351e-05 1.1660130e-04 -4.3646288e-02 4.9091353e-02
 
 Completed cycle 200
 
 Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-400  15172.4 21662.2 15195.5 14184.5 15213.7 24008.4 -1.16602 -0.333042
+400  15114.4 21512.1 15151.5 14122.7 15169.3 23856.7 -1.16362 -0.325534
 
 TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99995394, 1.0001598]
+[rho][262144, 1, 0, 0.99995401, 1.0001634]
 
 TEST_momentum [x, y, z]
-[total][9.05141e-13, 1.90026e-05, -3.44259e-13]
-[fluid][9.05141e-13, 1.90026e-05, -3.44259e-13]
+[total][6.69426e-13, 1.55883e-05, -5.31242e-14]
+[fluid][6.69426e-13, 1.55883e-05, -5.31242e-14]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
 Velocity stats:
-[ umin ][ -0.000101123 -0.0242726 -9.25073e-05 ]
-[ umax ][ 8.22919e-05 0.024275 8.21839e-05 ]
-[phi]  6.9259365e+00  2.6420351e-05 3.6276136e-04 -7.8615391e-02 8.6848118e-02
+[ umin ][ -0.000100826 -0.0242764 -9.2513e-05 ]
+[ umax ][ 8.19087e-05 0.024277 8.22217e-05 ]
+[phi]  6.9259365e+00  2.6420351e-05 3.6418888e-04 -8.0211505e-02 8.6859843e-02
 
 Completed cycle 400
 
@@ -90,11 +92,11 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    310.240    310.240    310.240 310.240000 (1 call)
-      Time step loop:      0.760      0.820    309.460   0.773650 (400 calls)
-         Propagation:      0.110      0.120     46.730   0.116825 (400 calls)
-           Collision:      0.340      0.350    137.260   0.343150 (400 calls)
-       Lattice halos:      0.000      0.010      4.140   0.005175 (800 calls)
-       phi gradients:      0.070      0.090     31.780   0.079450 (400 calls)
-     Lees Edwards BC:      0.010      0.020      4.650   0.011625 (400 calls)
+               Total:    283.560    283.560    283.560 283.560000 (1 call)
+      Time step loop:      0.690      0.760    282.770   0.706925 (400 calls)
+         Propagation:      0.110      0.120     46.790   0.116975 (400 calls)
+           Collision:      0.270      0.290    110.470   0.276175 (400 calls)
+       Lattice halos:      0.000      0.010      4.150   0.005188 (800 calls)
+       phi gradients:      0.050      0.070     22.190   0.055475 (400 calls)
+     Lees Edwards BC:      0.010      0.020      4.790   0.011975 (400 calls)
 Ludwig finished normally.
