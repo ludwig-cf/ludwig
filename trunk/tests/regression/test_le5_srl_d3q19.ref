@@ -1,6 +1,6 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-Read 65 user parameters from ../tests/regression/test_le5_input
+Read 66 user parameters from ../tests/regression/test_le5_input
 [User   ] Lattice size is (64, 64, 1)
 [User   ] periodic boundaries set to (1, 1, 1)
 [Default] Processor decomposition is (1, 1, 1)
@@ -275,15 +275,236 @@ Velocity stats:
 
 Completed cycle 2600
 
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+2800      nan     nan     nan     nan     nan       0 -1.2057      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99993258, 1.0000844]
+
+TEST_momentum [x, y, z]
+[total][9.0452e-14, -6.39838e-06, 0]
+[fluid][9.0452e-14, -6.39838e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000166959 -0.00320542 0 ]
+[ umax ][ 0.000235034 0.00317465 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.6285788e-02 -4.5105966e-01 3.8356480e-01
+
+Completed cycle 2800
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+3000      nan     nan     nan     nan     nan       0 -1.20337      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.9999312, 1.0000898]
+
+TEST_momentum [x, y, z]
+[total][8.02344e-14, -6.08102e-06, 0]
+[fluid][8.02344e-14, -6.08102e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000156288 -0.00320692 0 ]
+[ umax ][ 0.000231672 0.00317644 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.6460592e-02 -4.6388987e-01 4.0043181e-01
+
+Completed cycle 3000
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+3200      nan     nan     nan     nan     nan       0 -1.20158      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.9999264, 1.0000904]
+
+TEST_momentum [x, y, z]
+[total][4.99531e-14, -5.93574e-06, 0]
+[fluid][4.99531e-14, -5.93574e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000153458 -0.00320603 0 ]
+[ umax ][ 0.000224335 0.00317755 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.6645430e-02 -4.5712000e-01 3.9481080e-01
+
+Completed cycle 3200
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+3400      nan     nan     nan     nan     nan       0    -1.2      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99992168, 1.0000943]
+
+TEST_momentum [x, y, z]
+[total][5.90673e-14, -5.9349e-06, 0]
+[fluid][5.90673e-14, -5.9349e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000151802 -0.00320422 0 ]
+[ umax ][ 0.000215945 0.00317819 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.6838553e-02 -4.6886460e-01 3.9489914e-01
+
+Completed cycle 3400
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+3600      nan     nan     nan     nan     nan       0 -1.19875      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99991963, 1.0000961]
+
+TEST_momentum [x, y, z]
+[total][4.73198e-14, -6.03111e-06, 0]
+[fluid][4.73198e-14, -6.03111e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000149414 -0.00320782 0 ]
+[ umax ][ 0.000207899 0.00317941 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.7038769e-02 -4.7400620e-01 4.0046343e-01
+
+Completed cycle 3600
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+3800      nan     nan     nan     nan     nan       0 -1.19821      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99992257, 1.0000956]
+
+TEST_momentum [x, y, z]
+[total][4.0825e-14, -6.18546e-06, 0]
+[fluid][4.0825e-14, -6.18546e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000141826 -0.00320714 0 ]
+[ umax ][ 0.000200528 0.00318019 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.7244940e-02 -4.6515215e-01 3.9487007e-01
+
+Completed cycle 3800
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+4000      nan     nan     nan     nan     nan       0 -1.19757      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99992387, 1.0001]
+
+TEST_momentum [x, y, z]
+[total][3.78655e-14, -6.32983e-06, 0]
+[fluid][3.78655e-14, -6.32983e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000143575 -0.00320495 0 ]
+[ umax ][ 0.000195058 0.00318119 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.7456394e-02 -4.8175623e-01 4.0494836e-01
+
+Completed cycle 4000
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+4200      nan     nan     nan     nan     nan       0 -1.19685      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99992271, 1.000103]
+
+TEST_momentum [x, y, z]
+[total][2.34222e-14, -6.40383e-06, 0]
+[fluid][2.34222e-14, -6.40383e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000139122 -0.00320834 0 ]
+[ umax ][ 0.000186556 0.00318069 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.7673011e-02 -4.7768096e-01 4.0574184e-01
+
+Completed cycle 4200
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+4400      nan     nan     nan     nan     nan       0 -1.1965      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99992306, 1.0001011]
+
+TEST_momentum [x, y, z]
+[total][1.49811e-14, -6.36469e-06, 0]
+[fluid][1.49811e-14, -6.36469e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000137003 -0.00320767 0 ]
+[ umax ][ 0.000178521 0.00317943 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.7894807e-02 -4.8068627e-01 4.0197733e-01
+
+Completed cycle 4400
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+4600      nan     nan     nan     nan     nan       0 -1.19634      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.9999219, 1.0001057]
+
+TEST_momentum [x, y, z]
+[total][2.73878e-14, -6.17336e-06, 0]
+[fluid][2.73878e-14, -6.17336e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000134289 -0.0032034 0 ]
+[ umax ][ 0.000173393 0.00318182 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.8121606e-02 -4.8804580e-01 4.1187777e-01
+
+Completed cycle 4600
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+4800      nan     nan     nan     nan     nan       0  -1.196      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99992453, 1.0001076]
+
+TEST_momentum [x, y, z]
+[total][4.13905e-14, -5.78958e-06, 0]
+[fluid][4.13905e-14, -5.78958e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000132164 -0.00320403 0 ]
+[ umax ][ 0.000178202 0.00318523 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.8353752e-02 -4.7454957e-01 4.1229606e-01
+
+Completed cycle 4800
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+5000      nan     nan     nan     nan     nan       0 -1.1956      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99992676, 1.000106]
+
+TEST_momentum [x, y, z]
+[total][4.46691e-14, -5.19836e-06, 0]
+[fluid][4.46691e-14, -5.19836e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000132207 -0.00320198 0 ]
+[ umax ][ 0.000187438 0.00318971 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.8591724e-02 -4.8958360e-01 4.0599642e-01
+
+Completed cycle 5000
+
+Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
+5200      nan     nan     nan     nan     nan       0 -1.19579      -0
+
+TEST_statistics [total, mean, variance, min, max]
+[rho][4096, 1, 0, 0.99992551, 1.0001098]
+
+TEST_momentum [x, y, z]
+[total][2.23363e-14, -4.4178e-06, 0]
+[fluid][2.23363e-14, -4.4178e-06, 0]
+Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
+Velocity stats:
+[ umin ][ -0.000139641 -0.00319813 0 ]
+[ umax ][ 0.000194983 0.00319356 1.17549e-38 ]
+[phi] -2.7646190e+01 -6.7495581e-03 1.8835650e-02 -4.8777337e-01 4.1502511e-01
+
+Completed cycle 5200
+
 Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     81.900     81.900     81.900  81.900000 (1 call)
-      Time step loop:      0.020      0.050     81.790   0.031458 (2600 calls)
-         Propagation:      0.000      0.010      5.910   0.002273 (2600 calls)
-           Collision:      0.000      0.020     13.890   0.005342 (2600 calls)
-       Lattice halos:      0.000      0.010      8.510   0.001637 (5200 calls)
-       phi gradients:      0.000      0.010     18.330   0.007050 (2600 calls)
-     Lees Edwards BC:      0.000      0.010      0.420   0.000162 (2600 calls)
+               Total:    163.170    163.170    163.170 163.170000 (1 call)
+      Time step loop:      0.020      0.050    163.000   0.031346 (5200 calls)
+         Propagation:      0.000      0.010     10.910   0.002098 (5200 calls)
+           Collision:      0.000      0.010     27.600   0.005308 (5200 calls)
+       Lattice halos:      0.000      0.010     17.680   0.001700 (10400 calls)
+       phi gradients:      0.000      0.020     37.300   0.007173 (5200 calls)
+     Lees Edwards BC:      0.000      0.010      0.990   0.000190 (5200 calls)
 Ludwig finished normally.
