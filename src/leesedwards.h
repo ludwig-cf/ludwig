@@ -2,7 +2,7 @@
  *
  *  leesedwards.h
  *
- *  $Id: leesedwards.h,v 1.5 2009-08-07 16:37:20 kevin Exp $
+ *  $Id: leesedwards.h,v 1.6 2010-02-04 10:17:19 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,7 +32,6 @@ double    le_plane_uy(const double);
 double    le_plane_uy_max(void);
 double    le_shear_rate(void);
 MPI_Comm  le_communicator(void);
-void      le_displacement_ranks(const double, int[2], int[2]);
 void      le_jstart_to_ranks(const int, int send[2], int recv[2]);
 void      le_set_oscillatory(const double);
 void      le_set_nplane_total(const int nplane);
