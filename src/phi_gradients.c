@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.10 2009-10-23 16:56:06 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.11 2010-02-04 10:19:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -1069,33 +1069,33 @@ static void phi_gradients_double_fluid_inline(void) {
 	       delsq_phi_site[indexp1   -1]-delsq_phi_site[indexm1   -1]);
  	                     
 	grad_delsq_phi_site[3*index + Y] =
-	  r18*(delsq_phi_site[index   +ys  ]-delsq_phi_site[index   -ys  ] +
+	  r18*(delsq_phi_site[index  +ys  ]-delsq_phi_site[index  -ys  ] +
 	       delsq_phi_site[indexp1+ys+1]-delsq_phi_site[indexp1-ys+1] +
 	       delsq_phi_site[indexm1+ys+1]-delsq_phi_site[indexm1-ys+1] +
 	       delsq_phi_site[indexp1+ys-1]-delsq_phi_site[indexp1-ys-1] +
 	       delsq_phi_site[indexm1+ys-1]-delsq_phi_site[indexm1-ys-1] +
 	       delsq_phi_site[indexp1+ys  ]-delsq_phi_site[indexp1-ys  ] +
 	       delsq_phi_site[indexm1+ys  ]-delsq_phi_site[indexm1-ys  ] +
-	       delsq_phi_site[index   +ys+1]-delsq_phi_site[index   -ys+1] +
-	       delsq_phi_site[index   +ys-1]-delsq_phi_site[index   -ys-1]);
+	       delsq_phi_site[index  +ys+1]-delsq_phi_site[index  -ys+1] +
+	       delsq_phi_site[index  +ys-1]-delsq_phi_site[index  -ys-1]);
  	                     
         grad_delsq_phi_site[3*index + Z] =
-	  r18*(delsq_phi_site[index      +1]-delsq_phi_site[index      -1] +
+	  r18*(delsq_phi_site[index     +1]-delsq_phi_site[index     -1] +
 	       delsq_phi_site[indexp1+ys+1]-delsq_phi_site[indexp1+ys-1] +
 	       delsq_phi_site[indexm1+ys+1]-delsq_phi_site[indexm1+ys-1] +
 	       delsq_phi_site[indexp1-ys+1]-delsq_phi_site[indexp1-ys-1] +
 	       delsq_phi_site[indexm1-ys+1]-delsq_phi_site[indexm1-ys-1] +
 	       delsq_phi_site[indexp1   +1]-delsq_phi_site[indexp1   -1] +
 	       delsq_phi_site[indexm1   +1]-delsq_phi_site[indexm1   -1] +
-	       delsq_phi_site[index   +ys+1]-delsq_phi_site[index   +ys-1] +
-	       delsq_phi_site[index   -ys+1]-delsq_phi_site[index   -ys-1]);
+	       delsq_phi_site[index  +ys+1]-delsq_phi_site[index  +ys-1] +
+	       delsq_phi_site[index  -ys+1]-delsq_phi_site[index  -ys-1]);
  	                     
 	delsq_delsq_phi_site[index] = r9*(delsq_phi_site[indexp1     ] +
 					  delsq_phi_site[indexm1     ] +
-					  delsq_phi_site[index   +ys  ] +
-					  delsq_phi_site[index   -ys  ] +
-					  delsq_phi_site[index      +1] +
-					  delsq_phi_site[index      -1] +
+					  delsq_phi_site[index  +ys  ] +
+					  delsq_phi_site[index  -ys  ] +
+					  delsq_phi_site[index     +1] +
+					  delsq_phi_site[index     -1] +
 					  delsq_phi_site[indexp1+ys+1] +
 					  delsq_phi_site[indexp1+ys-1] +
 					  delsq_phi_site[indexp1-ys+1] +
@@ -1112,10 +1112,10 @@ static void phi_gradients_double_fluid_inline(void) {
 					  delsq_phi_site[indexp1   -1] +
 					  delsq_phi_site[indexm1   +1] +
 					  delsq_phi_site[indexm1   -1] +
-					  delsq_phi_site[index   +ys+1] +
-					  delsq_phi_site[index   +ys-1] +
-					  delsq_phi_site[index   -ys+1] +
-					  delsq_phi_site[index   -ys-1] -
+					  delsq_phi_site[index  +ys+1] +
+					  delsq_phi_site[index  +ys-1] +
+					  delsq_phi_site[index  -ys+1] +
+					  delsq_phi_site[index  -ys-1] -
 					  26.0*phi0);
 	/* Next site */
       }
