@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11 2009-09-02 07:47:51 kevin Exp $
+ *  $Id: phi.c,v 1.12 2010-02-04 10:18:49 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -471,13 +471,14 @@ static int phi_write(FILE * fp, const int ic, const int jc, const int kc) {
 
 static int phi_read_ascii(FILE * fp, const int ic, const int jc,
 			  const int kc) {
-  int index, n;
+  int index, n, nread;
 
-  assert(nop_ == 1);
   index = le_site_index(ic, jc, kc);
-  n = fscanf(fp, "%22le", phi_site + index);
 
-  if (n != 1) fatal("fscanf(phi) failed at index %d", index);
+  for (n = 0; n < nop_; n++) {
+    nread = fscanf(fp, "%le", phi_site + nop_*index + n);
+    if (nread != 1) fatal("fscanf(phi) failed at index %d", index);
+  }
 
   return n;
 }
@@ -529,8 +530,11 @@ void phi_leesedwards_transformation() {
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
   double t;      /* Time */
-  int jdy;       /* Integral part of displacement */
-  int j1, j2;    /* j values in real system to interpolate between */
+
+  const double r6 = (1.0/6.0);
+
+  int jdy;               /* Integral part of displacement */
+  int j0, j1, j2, j3;    /* j values in real system to interpolate between */
 
   if (cart_size(Y) > 1) {
     /* This has its own routine. */
@@ -552,19 +556,26 @@ void phi_leesedwards_transformation() {
       dy = le_buffer_displacement(ib, t);
       dy = fmod(dy, L(Y));
       jdy = floor(dy);
-      fr  = dy - jdy;
+      fr  = 1.0 - (dy - jdy);
 
       for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-	/* Actually required here is j1 = jc - jdy - 1, but there's
-	 * horrible modular arithmetic for the periodic boundaries
-	 * to ensure 1 <= j1,j2 <= nlocal[Y] */
-	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
+
+	/* Note that a linear interpolation here would involve
+	 * (1.0 - fr)*phi(ic,j1,kc) + fr*phi(ic,j2,kc)
+	 * This is just Lagrange four-point instead. */
+
+	j0 = 1 + (jc - jdy - 3 + 2*nlocal[Y]) % nlocal[Y];
+	j1 = 1 + j0 % nlocal[Y];
 	j2 = 1 + j1 % nlocal[Y];
+	j3 = 1 + j2 % nlocal[Y];
+
 	for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
 	  for (n = 0; n < nop_; n++) {
 	    phi_site[nop_*ADDR(ib0+ib,jc,kc) + n] =
-	      fr*phi_site[nop_*ADDR(ic,j1,kc) + n]
-	      + (1.0-fr)*phi_site[nop_*ADDR(ic,j2,kc) + n];
+	      -  r6*fr*(fr-1.0)*(fr-2.0)*phi_site[nop_*ADDR(ic, j0, kc) + n]
+	      + 0.5*(fr*fr-1.0)*(fr-2.0)*phi_site[nop_*ADDR(ic, j1, kc) + n]
+	      - 0.5*fr*(fr+1.0)*(fr-2.0)*phi_site[nop_*ADDR(ic, j2, kc) + n]
+	      +        r6*fr*(fr*fr-1.0)*phi_site[nop_*ADDR(ic, j3, kc) + n];
 	  }
 	}
       }
@@ -582,11 +593,13 @@ void phi_leesedwards_transformation() {
  *  communication in parallel. The phi halo regions must be
  *  up-to-date here.
  *
- *  Each process may require communication with at most 4 others
- *  (and at least 2 others) to specify completely the interpolated
- *  buffer region (extending into the halo). The direction of the
- *  communcation in the cartesian communicator depends on the
- *  velocity jump at a given boundary. 
+ *  As we are using a 4-point interpolation, there is a requirement
+ *  to communicate with as many as three different processors to
+ *  send/receive appropriate interpolated values.
+ *
+ *  Note that the sends only involve the 'real' system, so there is
+ *  no requirement that the halos be up-to-date (although it is
+ *  expected that they will be for the gradient calculation).
  *
  *  Effect:
  *    Buffer region of phi_site[] is updated with the interpolated
@@ -594,37 +607,48 @@ void phi_leesedwards_transformation() {
  *
  *****************************************************************************/
 
-static void phi_leesedwards_parallel() {
+static void phi_leesedwards_parallel(void) {
 
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
-  double * buffer;         /* Interpolation buffer */
   int ib;                  /* Index in buffer region */
   int ib0;                 /* buffer region offset */
   int ic;                  /* Index corresponding x location in real system */
-  int jc, kc, j1, j2;
-  int n, n1, n2;
+  int jc, kc;
+  int j0, j1, j2, j3;
+  int n, n1, n2, n3;
+  int nhalo;
+  int jdy;                 /* Integral part of displacement */
+
   double dy;               /* Displacement for current ic->ib pair */
   double fr;               /* Fractional displacement */
   double t;                /* Time */
-  int jdy;                 /* Integral part of displacement */
+  double * buffer;         /* Interpolation buffer */
+  const double r6 = (1.0/6.0);
 
-  MPI_Comm le_comm = le_communicator();
-  int      nrank_s[2];     /* send ranks */
-  int      nrank_r[2];     /* recv ranks */
-  const int tag0 = 1254;
-  const int tag1 = 1255;
+  int      nrank_s[3];     /* send ranks */
+  int      nrank_r[3];     /* recv ranks */
 
-  MPI_Request request[4];
-  MPI_Status  status[4];
+  const int tag0 = 1256;
+  const int tag1 = 1257;
+  const int tag2 = 1258;
+
+  MPI_Comm le_comm;
+  MPI_Request request[6];
+  MPI_Status  status[3];
+
 
   get_N_local(nlocal);
   get_N_offset(noffset);
-  ib0 = nlocal[X] + nhalo_ + 1;
+  nhalo = nhalo_;
+
+  le_comm = le_communicator();
+
+  ib0 = nlocal[X] + nhalo + 1;
 
   /* Allocate the temporary buffer */
 
-  n = nop_*(nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+  n = nop_*(nlocal[Y] + 2*nhalo + 3)*(nlocal[Z] + 2*nhalo);
   buffer = (double *) malloc(n*sizeof(double));
   if (buffer == NULL) fatal("malloc(buffer) failed\n");
 
@@ -638,73 +662,95 @@ static void phi_leesedwards_parallel() {
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
     ic = le_index_buffer_to_real(ib);
-    kc = 1 - nhalo_;
+    kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */
 
     dy = le_buffer_displacement(ib, t);
     dy = fmod(dy, L(Y));
     jdy = floor(dy);
-    fr  = dy - jdy;
+    fr  = 1.0 - (dy - jdy);
 
-    /* In the real system (no halos) the first point we require is
-     * j1 = jc - jdy - 1 with 
-     * jc = noffset[Y] + 1 in the global coordinates. This determines
-     * which processors we are going to comunicate with. Modular
-     * arithmetic ensures 1 <= j1 <= N_total(Y) */
+    /* In the real system the first point we require is
+     * j1 = jc - jdy - 3
+     * with jc = noffset[Y] + 1 - nhalo in the global coordinates.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y) */
 
-    jc = noffset[Y] + 1;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    jc = noffset[Y] + 1 - nhalo;
+    j1 = 1 + (jc - jdy - 3 + 2*N_total(Y)) % N_total(Y);
     assert(j1 >= 1);
     assert(j1 <= N_total(Y));
 
     le_jstart_to_ranks(j1, nrank_s, nrank_r);
 
-    /* Local quantities: j2 is the position of j1 in local coordinates
-     * and marks the dividing line of the two send sections. However,
-     * we can grab at least nhalo_ points to the left of j2, and another
-     * nhalo_ points at the right to the other send section, making up
-     * the (nlocal[Y] + 2*nhalo_ + 1) points we need to send. */
+    /* Local quantities: j2 is the position of j1 in local coordinates.
+     * The three sections to send/receive are organised as follows:
+     * jc is the number of j points in each case, while n is the
+     * total number of data items. Note that n3 can be zero. */
 
     j2 = 1 + (j1 - 1) % nlocal[Y];
     assert(j2 >= 1);
     assert(j2 <= nlocal[Y]);
 
-    n1 = nop_*(nlocal[Y] - j2 + 1 + nhalo_)*(nlocal[Z] + 2*nhalo_);
-    n2 = nop_*(j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
+    jc = nlocal[Y] - j2 + 1;
+    n1 = nop_*jc*(nlocal[Z] + 2*nhalo);
+    MPI_Irecv(buffer, n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
 
-    /* Post receives, sends and wait. */
+    jc = imin(nlocal[Y], j2 + 2*nhalo + 2);
+    n2 = nop_*jc*(nlocal[Z] + 2*nhalo);
+    MPI_Irecv(buffer + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
+	      request + 1);
 
-    MPI_Irecv(buffer,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
-    MPI_Irecv(buffer+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
-    MPI_Issend(phi_site + nop_*ADDR(ic,j2-nhalo_,kc), n1, MPI_DOUBLE,
-	       nrank_s[0], tag0, le_comm, request+2);
-    MPI_Issend(phi_site + nop_*ADDR(ic,1,kc), n2, MPI_DOUBLE,
-	       nrank_s[1], tag1, le_comm, request+3);
+    jc = imax(0, j2 - nlocal[Y] + 2*nhalo + 2);
+    n3 = nop_*jc*(nlocal[Z] + 2*nhalo);
+    MPI_Irecv(buffer + n1 + n2, n3, MPI_DOUBLE, nrank_r[2], tag2, le_comm,
+	      request + 2);
 
-    MPI_Waitall(4, request, status);
+    /* Post sends and wait for receives. */
+
+    MPI_Issend(phi_site + nop_*ADDR(ic, j2, kc), n1, MPI_DOUBLE,
+	       nrank_s[0], tag0, le_comm, request + 3);
+    MPI_Issend(phi_site + nop_*ADDR(ic, 1, kc), n2, MPI_DOUBLE,
+	       nrank_s[1], tag1, le_comm, request + 4);
+    MPI_Issend(phi_site + nop_*ADDR(ic, 1, kc), n3, MPI_DOUBLE,
+	       nrank_s[2], tag2, le_comm, request + 5);
+
+    MPI_Waitall(3, request, status);
 
     /* Perform the actual interpolation from temporary buffer to
      * phi_site[] buffer region. */
 
-    for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-      j1 = (jc + nhalo_ - 1    )*(nlocal[Z] + 2*nhalo_);
-      j2 = (jc + nhalo_ - 1 + 1)*(nlocal[Z] + 2*nhalo_);
-      for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+
+      /* Note that the linear interpolation here would be
+       * (1.0-fr)*buffer(j1, k, n) + fr*buffer(j2, k, n)
+       * This is again Lagrange four point. */
+
+      j0 = (jc + nhalo - 1    )*(nlocal[Z] + 2*nhalo);
+      j1 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
+      j2 = (jc + nhalo - 1 + 2)*(nlocal[Z] + 2*nhalo);
+      j3 = (jc + nhalo - 1 + 3)*(nlocal[Z] + 2*nhalo);
+
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	for (n = 0; n < nop_; n++) {
-	  phi_site[nop_*ADDR(ib0+ib,jc,kc) + n]
-	    = fr*buffer[nop_*(j1 + kc+nhalo_-1) + n]
-	    + (1.0-fr)*buffer[nop_*(j2 + kc+nhalo_-1) + n];
+	  phi_site[nop_*ADDR(ib0+ib,jc,kc) + n] =
+	    -  r6*fr*(fr-1.0)*(fr-2.0)*buffer[nop_*(j0 + kc+nhalo-1) + n]
+	    + 0.5*(fr*fr-1.0)*(fr-2.0)*buffer[nop_*(j1 + kc+nhalo-1) + n]
+	    - 0.5*fr*(fr+1.0)*(fr-2.0)*buffer[nop_*(j2 + kc+nhalo-1) + n]
+	    +        r6*fr*(fr*fr-1.0)*buffer[nop_*(j3 + kc+nhalo-1) + n];
 	}
       }
     }
+
+    /* Clean up the sends, and move to next buffer location. */
+
+    MPI_Waitall(3, request + 3, status);
   }
 
   free(buffer);
 
   return;
 }
-
 
 /*****************************************************************************
  *
