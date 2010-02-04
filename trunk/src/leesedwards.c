@@ -6,7 +6,7 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id: leesedwards.c,v 1.14 2009-08-07 16:37:20 kevin Exp $
+ *  $Id: leesedwards.c,v 1.15 2010-02-04 10:17:19 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -593,50 +593,6 @@ MPI_Comm le_communicator() {
 
 /*****************************************************************************
  *
- *  le_displacement_ranks
- *
- *  For a given  displacement, work out which two ranks in the
- *  one-diemnsional LE communicator are required for communication.
- *
- *  TO BE REPLACED BY le_jstart_to_ranks
- *
- *****************************************************************************/
-
-void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
-
-  int nlocal[3];
-  int noffset[3];
-  int j1, jdy;
-  int pe_carty1, pe_carty2;
-
-  assert(initialised_);
-  get_N_local(nlocal);
-  get_N_offset(noffset);
-
-  jdy = floor(fmod(dy, L(Y)));
-  j1 = 1 + (noffset[Y] + 1 - nhalo_ - jdy - 2 + 2*N_total(Y)) % N_total(Y);
-
-  /* Receive from ... */
-
-  pe_carty1 = j1 / nlocal[Y];
-  pe_carty2 = pe_carty1 + 1;
-
-  MPI_Cart_rank(le_params_.le_comm, &pe_carty1, recv);
-  MPI_Cart_rank(le_params_.le_comm, &pe_carty2, recv + 1);
-
-  /* Send to ... */
-
-  pe_carty1 = cart_coords(Y) - ((j1/nlocal[Y]) - cart_coords(Y));
-  pe_carty2 = pe_carty1 - 1;
-
-  MPI_Cart_rank(le_params_.le_comm, &pe_carty1, send);
-  MPI_Cart_rank(le_params_.le_comm, &pe_carty2, send + 1);
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  le_jstart_to_ranks
  *
  *  For global period position j1, work out which ranks are to
@@ -645,10 +601,10 @@ void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
  *
  *****************************************************************************/
 
-void le_jstart_to_ranks(const int j1, int send[2], int recv[2]) {
+void le_jstart_to_ranks(const int j1, int send[3], int recv[3]) {
 
   int nlocal[3];
-  int pe_carty1, pe_carty2;
+  int pe_carty1, pe_carty2, pe_carty3;
 
   assert(initialised_);
   get_N_local(nlocal);
@@ -657,17 +613,21 @@ void le_jstart_to_ranks(const int j1, int send[2], int recv[2]) {
 
   pe_carty1 = (j1 - 1) / nlocal[Y];
   pe_carty2 = pe_carty1 + 1;
+  pe_carty3 = pe_carty1 + 2;
 
   MPI_Cart_rank(le_params_.le_comm, &pe_carty1, recv);
   MPI_Cart_rank(le_params_.le_comm, &pe_carty2, recv + 1);
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty3, recv + 2);
 
   /* Send to ... */
 
   pe_carty1 = cart_coords(Y) - (((j1 - 1)/nlocal[Y]) - cart_coords(Y));
   pe_carty2 = pe_carty1 - 1;
+  pe_carty3 = pe_carty1 - 2;
 
   MPI_Cart_rank(le_params_.le_comm, &pe_carty1, send);
   MPI_Cart_rank(le_params_.le_comm, &pe_carty2, send + 1);
+  MPI_Cart_rank(le_params_.le_comm, &pe_carty3, send + 2);
 
   return;
 }
