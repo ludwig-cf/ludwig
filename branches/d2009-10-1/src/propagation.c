@@ -4,7 +4,7 @@
  *
  *  Propagation schemes for the different models.
  *
- *  $Id: propagation.c,v 1.4.16.2 2010-02-01 14:57:31 kevin Exp $
+ *  $Id: propagation.c,v 1.4.16.3 2010-02-13 16:28:36 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -17,6 +17,7 @@
 #include "coords.h"
 #include "model.h"
 
+static void propagate_d2q9(void);
 static void propagate_d3q15(void);
 static void propagate_d3q19(void);
 
@@ -32,10 +33,78 @@ void propagation() {
 
   TIMER_start(TIMER_PROPAGATE);
 
+  if (NVEL == 9) propagate_d2q9();
   if (NVEL == 15) propagate_d3q15();
   if (NVEL == 19) propagate_d3q19();
 
   TIMER_stop(TIMER_PROPAGATE);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  propagate_d2q9
+ *
+ *  Follows the definition of the velocities in d2q9.c
+ *
+ *****************************************************************************/
+
+static void propagate_d2q9(void) {
+
+  int ic, jc, kc, index, n, p;
+  int xstr, ystr, zstr;
+  int nhalo;
+  int ndist;
+  int nlocal[3];
+
+  extern double * f_;
+
+  assert(NVEL == 9);
+
+  nhalo = coords_nhalo();
+  ndist = distribution_ndist();
+  get_N_local(nlocal);
+
+  zstr = ndist*NVEL;
+  ystr = zstr*(nlocal[Z] + 2*nhalo);
+  xstr = ystr*(nlocal[Y] + 2*nhalo);
+
+  /* Forward moving distributions in memory */
+  
+  for (ic = nlocal[X]; ic >= 1; ic--) {
+    for (jc = nlocal[Y]; jc >= 1; jc--) {
+
+      kc = 1;
+      index = get_site_index(ic, jc, kc);
+
+      for (n = 0; n < ndist; n++) {
+	p = ndist*NVEL*index + n*NVEL;
+	f_[p + 4] = f_[p +             (-1)*ystr + 4];
+	f_[p + 3] = f_[p + (-1)*xstr + (+1)*ystr + 3];
+	f_[p + 2] = f_[p + (-1)*xstr             + 2];
+	f_[p + 1] = f_[p + (-1)*xstr + (-1)*ystr + 1];
+      }
+    }
+  }
+
+  /* Backward moving distributions in memory */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+      kc = 1;
+      index = get_site_index(ic, jc, kc);
+
+      for (n = 0; n < ndist; n++) {
+	p = ndist*NVEL*index + n*NVEL;
+	f_[p + 5] = f_[p             + (+1)*ystr + 5];
+	f_[p + 6] = f_[p + (+1)*xstr + (-1)*ystr + 6];
+	f_[p + 7] = f_[p + (+1)*xstr             + 7];
+	f_[p + 8] = f_[p + (+1)*xstr + (+1)*ystr + 8];
+      }
+    }
+  }
 
   return;
 }
