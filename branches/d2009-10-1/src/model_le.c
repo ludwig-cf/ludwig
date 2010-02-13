@@ -8,7 +8,7 @@
  *  not u*(t-1) returned by le_get_displacement().
  *  This is for reasons of backwards compatability.
  *
- *  $Id: model_le.c,v 1.5.4.3 2010-02-01 14:57:31 kevin Exp $
+ *  $Id: model_le.c,v 1.5.4.4 2010-02-13 15:41:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -209,6 +209,7 @@ void le_displace_and_interpolate(void) {
   int    ndist;
   int    nprop;
   int    ndata;
+  int    nhalo;
   double dy, fr;
   double t;
   double * recv_buff;
@@ -216,6 +217,7 @@ void le_displace_and_interpolate(void) {
   extern double * f_;
 
   get_N_local(nlocal);
+  nhalo = coords_nhalo();
   nplane = le_get_nplane_local();
 
   t = 1.0*get_step();
@@ -235,7 +237,7 @@ void le_displace_and_interpolate(void) {
  
     ic  = le_plane_location(plane);
 
-    dy  = le_buffer_displacement(nhalo_, t);
+    dy  = le_buffer_displacement(nhalo, t);
     dy  = fmod(dy, L(Y));
     jdy = floor(dy);
     fr = dy - jdy;
@@ -287,7 +289,7 @@ void le_displace_and_interpolate(void) {
  
     ic  = le_plane_location(plane) + 1;
 
-    dy  = -le_buffer_displacement(nhalo_, t);
+    dy  = -le_buffer_displacement(nhalo, t);
     dy  = fmod(dy, L(Y));
     jdy = floor(dy);
     fr = dy - jdy;
@@ -364,6 +366,7 @@ static void le_displace_and_interpolate_parallel() {
   int jdy;
   int n1, n2;
   int ndata, ndata1, ndata2;
+  int nhalo;
   int ind0, ind1, ind2, index, i0;
   int n, nplane, plane;
   int p;
@@ -391,6 +394,7 @@ static void le_displace_and_interpolate_parallel() {
   assert(CVXBLOCK == 1);
 
   get_N_local(nlocal);
+  nhalo = coords_nhalo();
   get_N_offset(offset);
   nplane = le_get_nplane_local();
 
@@ -410,7 +414,7 @@ static void le_displace_and_interpolate_parallel() {
 
     ic  = le_plane_location(plane);
 
-    dy  = le_buffer_displacement(nhalo_, t);
+    dy  = le_buffer_displacement(nhalo, t);
     dy  = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = dy - jdy;
@@ -471,8 +475,6 @@ static void le_displace_and_interpolate_parallel() {
 	index = ADDR(ic, jc, kc);
 	ind0 = ndist*nprop*((jc-1)*nlocal[Z] + (kc-1));
 
-	/* THIS CHANGED SIGNIFICANTLY: CHECK UGLY INDEXING! */
-
 	for (n = 0; n < ndist; n++) {
 	  i0   = ndist*NVEL*index + n*NVEL + xdisp_fwd_cv[0];
 	  ind1 = ind0 + n*nprop;
@@ -494,7 +496,7 @@ static void le_displace_and_interpolate_parallel() {
 
     ic  = le_plane_location(plane) + 1;
 
-    dy  = -le_buffer_displacement(nhalo_, t);
+    dy  = -le_buffer_displacement(nhalo, t);
     dy  = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = dy - jdy;
@@ -591,7 +593,7 @@ void model_le_init_shear_profile() {
   int ic, jc, kc, index;
   int i, j, p;
   int N[3];
-  double rho, u[ND], gradu[ND][ND];
+  double rho, u[NDIM], gradu[NDIM][NDIM];
   double eta;
 
   info("Initialising shear profile\n");
@@ -602,9 +604,9 @@ void model_le_init_shear_profile() {
   eta = get_eta_shear();
   get_N_local(N);
 
-  for (i = 0; i< ND; i++) {
+  for (i = 0; i< NDIM; i++) {
     u[i] = 0.0;
-    for (j = 0; j < ND; j++) {
+    for (j = 0; j < NDIM; j++) {
       gradu[i][j] = 0.0;
     }
   }
@@ -629,9 +631,9 @@ void model_le_init_shear_profile() {
 	  double cdotu = 0.0;
 	  double sdotq = 0.0;
 
-	  for (i = 0; i < ND; i++) {
+	  for (i = 0; i < NDIM; i++) {
 	    cdotu += cv[p][i]*u[i];
-	    for (j = 0; j < ND; j++) {
+	    for (j = 0; j < NDIM; j++) {
 	      sdotq += (rho*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
 	    }
 	  }
