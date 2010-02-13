@@ -3,13 +3,13 @@
  *  model.c
  *
  *  This encapsulates data/operations related to distributions.
- *  However, the implementation of "Site" is exposed for performance
- *  reasons. For non-performance critical operations, prefer the
- *  access functions.
+ *  However, the implementation of the distribution is exposed
+ *  for performance-critical operations ehich, for space
+ *  considerations, are not included in this file.
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.17.4.5 2010-02-01 16:24:15 kevin Exp $
+ *  $Id: model.c,v 1.17.4.6 2010-02-13 15:40:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -391,7 +391,7 @@ static void distribution_io_info_init() {
     io_info_distribution_ = io_info_create();
   }
 
-  sprintf(string, "%1d x Distribution: d%dq%d", ndist_, ND, NVEL);
+  sprintf(string, "%1d x Distribution: d%dq%d", ndist_, NDIM, NVEL);
 
   io_info_set_name(io_info_distribution_, string);
   io_info_set_read(io_info_distribution_, distributions_read);
@@ -418,15 +418,15 @@ void distribution_get_stress_at_site(int index, double s[ND][ND]) {
   /* Want to ensure index is ok */
   assert(index >= 0  && index < nsite_);
 
-  for (ia = 0; ia < ND; ia++) {
-    for (ib = 0; ib < ND; ib++) {
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = 0; ib < NDIM; ib++) {
       s[ia][ib] = 0.0;
     }
   }
 
   for (p = 0; p < NVEL; p++) {
-    for (ia = 0; ia < ND; ia++) {
-      for (ib = 0; ib < ND; ib++) {
+    for (ia = 0; ia < NDIM; ia++) {
+      for (ib = 0; ib < NDIM; ib++) {
 	s[ia][ib] += f_[ndist_*NVEL*index + p]*q_[p][ia][ib];
       }
     }
@@ -773,12 +773,12 @@ void distribution_first_moment(const int index, const int ndist, double g[3]) {
   assert(index >= 0 && index < nsite_);
   assert(ndist >= 0 && ndist < ndist_);
 
-  g[X] = 0.0;
-  g[Y] = 0.0;
-  g[Z] = 0.0;
+  for (n = 0; n < NDIM; n++) {
+    g[n] = 0.0;
+  }
 
   for (p = 0; p < NVEL; p++) {
-    for (n = 0; n < 3; n++) {
+    for (n = 0; n < NDIM; n++) {
       g[n] += cv[p][n]*f_[ndist_*NVEL*index + ndist*NVEL + p];
     }
   }

@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.14.4.4 2010-02-01 14:57:31 kevin Exp $
+ *  $Id: model.h,v 1.14.4.5 2010-02-13 15:40:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,16 +15,17 @@
 #ifndef _MODEL_H
 #define _MODEL_H
 
+#include "d2q9.h"
 #include "d3q15.h"
 #include "d3q19.h"
 
-#if !defined (_D3Q15_) && !defined (_D3Q19_)
-#error "You must define either -D_D3Q15_ or -D_D3Q19_ in the Makeifle" 
+#if !defined (_D2Q9_) && !defined (_D3Q15_) && !defined (_D3Q19_)
+#error "You must define -D_D2Q9_, -D_D3Q15_ or -D_D3Q19_ in the Makefile" 
 #endif
 
 /* Always three dimensions at the moment */
 enum {ND = 3};
-enum {NHYDRO = 10};
+enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
 /* Identify the hydrodynamic modes */
 enum {MRHO = 0,
