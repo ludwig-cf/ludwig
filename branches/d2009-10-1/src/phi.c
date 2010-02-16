@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11.4.5 2010-02-01 16:26:29 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.6 2010-02-16 17:36:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -769,7 +769,6 @@ static void phi_leesedwards_parallel() {
   return;
 }
 
-
 /*****************************************************************************
  *
  *  phi_is_finite_difference
@@ -951,6 +950,97 @@ void phi_get_q_delsq_tensor(const int index, double dsq[3][3]) {
   dsq[Z][X] = dsq[X][Z];
   dsq[Z][Y] = dsq[Y][Z];
   dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_set_q_vector
+ *
+ *  Set Q_a at site index.
+ *
+ *****************************************************************************/
+
+void phi_set_q_vector(const int index, const double q[3]) {
+
+  int ia;
+
+  assert(initialised_);
+  assert(nop_ == 3);
+
+  for (ia = 0; ia < 3; ia++) {
+    phi_site[nop_*index + ia] = q[ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_q_get_vector
+ *
+ *  Retrieve Q_a at site index.
+ *
+ *****************************************************************************/
+
+void phi_get_q_vector(const int index, double q[3]) {
+
+  int ia;
+
+  assert(initialised_);
+  assert(nop_ == 3);
+
+  for (ia = 0; ia < 3; ia++) {
+    q[ia] = phi_site[nop_*index + ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_q_get_gradient_vector
+ *
+ *  Return the gradient tensor for vector order parameter.
+ *  This is currently dq[ia][ib] = d_a Q_b
+ *
+ *****************************************************************************/
+
+void phi_get_q_gradient_vector(const int index, double dq[3][3]) {
+
+  int ia, ib;
+
+  assert(initialised_);
+  assert(nop_ == 3);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      dq[ia][ib] = grad_phi_site[3*(nop_*index + ib) + ia];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_q_get_delsq_vector
+ *
+ *  Return \nabla^2 Q_a
+ *
+ *****************************************************************************/
+
+void phi_get_q_delsq_vector(const int index, double delsq[3]) {
+
+  int ia;
+
+  assert(initialised_);
+  assert(nop_ == 3);
+
+  for (ia = 0; ia < 3; ia++) {
+    delsq[ia] = delsq_phi_site[nop_*index + ia];
+  }
 
   return;
 }
