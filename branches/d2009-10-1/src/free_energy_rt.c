@@ -7,7 +7,7 @@
  *
  *  A new free energy will give rise to an addition here.
  *
- *  $Id: free_energy_rt.c,v 1.1.2.3 2010-01-21 12:55:39 kevin Exp $
+ *  $Id: free_energy_rt.c,v 1.1.2.4 2010-02-17 13:56:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,6 +22,7 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "gelx_rt.h"
 #include "symmetric_rt.h"
 #include "brazovskii_rt.h"
 #include "surfactant_rt.h"
@@ -68,6 +69,9 @@ void free_energy_run_time(void) {
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
     blue_phase_run_time();
+  }
+  else if (strcmp(description, "gelx") == 0) {
+    gelx_run_time();
   }
   else {
     if (n == 1) {
