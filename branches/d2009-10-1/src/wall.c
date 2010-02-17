@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.11.4.2 2010-01-06 17:25:28 kevin Exp $
+ *  $Id: wall.c,v 1.11.4.3 2010-02-17 11:56:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -16,6 +16,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -93,6 +94,25 @@ void wall_init() {
 
 int boundaries_present(void) {
   return is_boundary_wall_;
+}
+
+/*****************************************************************************
+ *
+ *  wall_present
+ *
+ *  Return 1 if there is a wall in the given direction.
+ *
+ *  At the moment, this information is implicit in the periodicity of
+ *  the Cartesian communicator; it would be better to have it explicit
+ *  (from input).
+ *
+ *****************************************************************************/
+
+int wall_present(const int d) {
+
+  assert(d == X || d == Y || d == Z);
+
+  return (is_boundary_wall_ && !is_periodic(d));
 }
 
 /*****************************************************************************
