@@ -2,7 +2,7 @@
  *
  *  coords.h
  *
- *  $Id: coords.h,v 1.3.16.2 2009-11-13 14:33:50 kevin Exp $
+ *  $Id: coords.h,v 1.3.16.3 2010-02-17 13:55:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -36,6 +36,7 @@ int    get_site_index(const int, const int, const int);
 
 MPI_Comm cart_comm(void);
 
+void   coords_nlocal(int n[3]);
 void   coords_nhalo_set(const int nhalo);
 int    coords_nhalo(void);
 void   coords_ntotal_set(const int n[3]);
