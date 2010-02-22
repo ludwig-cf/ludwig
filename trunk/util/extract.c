@@ -20,7 +20,7 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.7 2009-11-16 14:59:15 kevin Exp $
+ *  $Id: extract.c,v 1.8 2010-02-22 14:10:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Grouand and
  *  Edinburgh Parallel Computing Centre
@@ -171,7 +171,8 @@ int main(int argc, char ** argv) {
   /* Unroll the data if Lees Edwards planes are present */
 
   if (nplanes_ > 0) {
-    printf("Unrolling LE planes from centre\n");
+    printf("Unrolling LE planes from centre (displacement %f)\n",
+	   le_displace_);
     le_unroll(datasection);
   }
 
@@ -499,7 +500,7 @@ int site_index(int ic, int jc, int kc, const int n[3]) {
 void le_unroll(double * data) {
 
   int ic, jc, kc, n;
-  int j1, j2, jdy;
+  int j0, j1, j2, j3, jdy;
   double * buffer;
   double dy, fr;
   double du[3];
@@ -521,18 +522,26 @@ void le_unroll(double * data) {
   for (ic = 1; ic <= ntargets[0]; ic++) {
     dy = le_displacements_[ic-1];
     jdy = floor(dy);
-    fr = dy - jdy;
+    fr = 1.0 - (dy - jdy);
     du[1] = le_duy_[ic-1];
 
     for (jc = 1; jc <= ntargets[1]; jc++) {
-      j1 = 1 + (jc - jdy - 2 + 100*ntotal[1]) % ntotal[1];
+      j0 = 1 + (jc - jdy - 3 + 1000*ntotal[1]) % ntotal[1];
+      j1 = 1 + j0 % ntotal[1];
       j2 = 1 + j1 % ntotal[1];
+      j3 = 1 + j2 % ntotal[1];
 
       for (kc = 1; kc <= ntargets[2]; kc++) {
 	for (n = 0; n < nrec_; n++) {
-	  buffer[nrec_*site_index(1,jc,kc,ntargets) + n] = 
-	    fr*data[nrec_*site_index(ic,j1,kc,ntargets) + n] +
-	    (1.0 - fr)*data[nrec_*site_index(ic,j2,kc,ntargets) + n];
+	  buffer[nrec_*site_index(1,jc,kc,ntargets) + n] =
+	    - (1.0/6.0)*fr*(fr-1.0)*(fr-2.0)
+	               *data[nrec_*site_index(ic,j0,kc,ntargets) + n]
+	    + 0.5*(fr*fr-1.0)*(fr-2.0)
+	         *data[nrec_*site_index(ic,j1,kc,ntargets) + n]
+	    - 0.5*fr*(fr+1.0)*(fr-2.0)
+	         *data[nrec_*site_index(ic,j2,kc,ntargets) + n]
+	    + (1.0/6.0)*fr*(fr*fr-1.0)
+	               *data[nrec_*site_index(ic,j3,kc,ntargets) + n];
 	}
       }
     }
