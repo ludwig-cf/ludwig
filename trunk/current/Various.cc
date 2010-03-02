@@ -542,10 +542,7 @@ void computeStressFreeEnergy(int n)
     avestress=reducedstress;
 #endif
 
-
 // redshift: The lower threshold is set to 1e-9 as very small values cause a program crash
-
-//   if (REDSHIFT==1 && n>20000){
 
    if (REDSHIFT==1){
       rr_old=rr;
