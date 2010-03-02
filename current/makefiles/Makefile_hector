@@ -32,11 +32,11 @@ String.o: String.cc
 LCParallel.o: LCParallel.cc
 	$(CCP) -c LCParallel.cc -DPARALLEL -D_COMM_3D_
 
-$(NAME)S: String.o Initialization.cc Output.cc LCMain_hybrid.cc
+$(NAME)S: String.o Initialization.cc Various.cc LCMain_hybrid.cc
 	$(CCS) LCMain_hybrid.cc String.o -o $(NAME)S $(INCS) $(DEFS) \
 	$(LIBPATH) $(LIBS)
 
-$(NAME)P: String.o Initialization.cc Output.cc LCParallel.o LCMain_hybrid.cc
+$(NAME)P: String.o Initialization.cc Various.cc LCParallel.o LCMain_hybrid.cc
 	$(CCP) LCMain_hybrid.cc String.o LCParallel.o -o $(NAME)P $(INCS) \
 	$(DEFS) -DPARALLEL $(LIBPATH) $(LIBS)
 
