@@ -501,7 +501,9 @@ void update0_ks(double ****fnew, double ****fold) {
     }
   }
 
+#ifdef PARALLEL
   communicateOldDistributions(fold);
+#endif
 
   // 'Pull' propagation
 
@@ -563,7 +565,9 @@ void update_ks(double **** fnew, double **** fold) {
     }
   }
 
+#ifdef PARALLEL
   communicateOldDistributions(fold);
+#endif
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -750,7 +754,9 @@ void equilibriumdist(void)
 
 
   /* Communication of tau required here */
+#ifdef PARALLEL
   exchangeTau();
+#endif
 
 
   for (i=ix1; i<ix2; i++) {
@@ -955,8 +961,9 @@ void parametercalc(int n)
       }
     }
   }
-
+#ifdef PARALLEL
   exchangeMomentumAndQTensor();
+#endif
 
   for (i=ix1; i<ix2; i++) {
     iup=i+1;

@@ -116,9 +116,9 @@ if(BLUEHAAR==1){
 	 }
      }
 
-
+#ifdef PARALLEL
   exchangeMomentumAndQTensor();
-
+#endif
 
 
 // All other lattice sites are set to either isotropic liquid or cholesteric LC
