@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.6.4.1 2009-11-04 10:20:43 kevin Exp $
+ *  $Id: phi_force.c,v 1.6.4.2 2010-03-03 19:13:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -61,6 +61,8 @@ void phi_force_calculation() {
     phi_force_flux();
   }
   else {
+    /* Note that this routine does not do accounting for the wall
+     * momentum, if required. */
     phi_force_simple_();
   }
 
