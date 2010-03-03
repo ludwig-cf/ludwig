@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.15 2010-02-04 10:15:45 kevin Exp $
+ *  $Id: lattice.c,v 1.16 2010-03-03 19:18:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -474,7 +474,12 @@ void hydrodynamics_stats() {
  *
  *  hydrodynamics_lees_edwards_transformation
  *
- *  Compute the 'look-across-the-boundary' values of the velocity field.
+ *  Compute the 'look-across-the-boundary' values of the velocity field,
+ *  and update the velocity buffer region accordingly.
+ *
+ *  TODO:
+ *  There's an argument to say that only one buffer either side of the
+ *  planes needs to be set for the velocity.
  *
  *****************************************************************************/
 
