@@ -501,9 +501,7 @@ void update0_ks(double ****fnew, double ****fold) {
     }
   }
 
-#ifdef PARALLEL
   communicateOldDistributions(fold);
-#endif
 
   // 'Pull' propagation
 
@@ -565,9 +563,7 @@ void update_ks(double **** fnew, double **** fold) {
     }
   }
 
-#ifdef PARALLEL
   communicateOldDistributions(fold);
-#endif
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -754,9 +750,7 @@ void equilibriumdist(void)
 
 
   /* Communication of tau required here */
-#ifdef PARALLEL
   exchangeTau();
-#endif
 
 
   for (i=ix1; i<ix2; i++) {
@@ -961,9 +955,8 @@ void parametercalc(int n)
       }
     }
   }
-#ifdef PARALLEL
+
   exchangeMomentumAndQTensor();
-#endif
 
   for (i=ix1; i<ix2; i++) {
     iup=i+1;
@@ -1289,8 +1282,7 @@ void parametercalc(int n)
 
 #if FIXEDQ
 // WARNING !! The BC needs to be changed for parallelisation if BC != 0
-
-      if(pouiseuille1==1){
+	if(pouiseuille1==1){
 	if (k==0) {
 	  Hxx= -bcstren*(Qxxl-Qxxinit[i][j][0]);
 	  Hxy= -bcstren*(Qxyl-Qxyinit[i][j][0]);
@@ -1305,24 +1297,7 @@ void parametercalc(int n)
 	  Hxz= -bcstren*(Qxzl-Qxzinit[i][j][Lz-1]);
 	  Hyz= -bcstren*(Qyzl-Qyzinit[i][j][Lz-1]);
 	}
-      }
-
-      if(active==1){
-	if (k==0) {
-	  Hxx= -bcstren*(Qxxl-Qxxbot);
-	  Hxy= -bcstren*(Qxyl-Qxybot);
-	  Hyy= -bcstren*(Qyyl-Qyybot);
-	  Hxz= -bcstren*(Qxzl-Qxzbot);
-	  Hyz= -bcstren*(Qyzl-Qyzbot);
-	}
-	else if (k== Lz-1) {
-	  Hxx= -bcstren*(Qxxl-Qxxtop);
-	  Hxy= -bcstren*(Qxyl-Qxytop);
-	  Hyy= -bcstren*(Qyyl-Qyytop);
-	  Hxz= -bcstren*(Qxzl-Qxztop);
-	  Hyz= -bcstren*(Qyzl-Qyztop);
-	}
-      }
+       }
 #endif 
 
 	molfieldxx[i][j][k]=Hxx;
