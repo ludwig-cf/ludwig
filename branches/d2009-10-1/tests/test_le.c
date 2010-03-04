@@ -3,7 +3,7 @@
  *  test_leesedwards.c
  *
  *
- *  $Id: test_le.c,v 1.1 2009-08-07 16:32:52 kevin Exp $
+ *  $Id: test_le.c,v 1.1.2.1 2010-03-04 15:22:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,6 +21,7 @@
 #include "tests.h"
 
 static void test_parallel1(void);
+static void test_le_parallel2(void);
 
 int main (int argc, char ** argv) {
 
@@ -28,6 +29,7 @@ int main (int argc, char ** argv) {
   coords_init();
 
   test_parallel1();
+  test_le_parallel2();
 
   info("\nLees Edwards tests completed ok.\n");
   pe_finalise();
@@ -76,7 +78,7 @@ void test_parallel1(void) {
   info("yes\n");
 
   info("Local number of planes set correctly... ");
-  nplane_local = nplane / cart_size(Y);
+  nplane_local = nplane / cart_size(X);
   test_assert(le_get_nplane_local() == nplane_local);
   info("yes\n");
 
@@ -157,6 +159,88 @@ void test_parallel1(void) {
     test_assert(py >= 1);
     test_assert(py <= cart_size(Y));
     MPI_Cart_rank(comm, &py, &precv_rank_right);
+  }
+
+  le_finish();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_le_parallel2
+ *
+ *  Deisgned for the 4-point interpolation.
+ *
+ *****************************************************************************/
+
+static void test_le_parallel2(void) {
+
+  const int nplane = 2;
+  int n;
+  int jdy;
+  int jc, j1, j2;
+  int n1, n2, n3;
+  int nhalo;
+
+  int nlocal[3];
+  int noffset[3];
+
+  const double uy_set = 0.25;
+
+  double fr;
+  double dy;
+
+  MPI_Comm comm;
+
+  le_set_nplane_total(nplane);
+  le_set_plane_uymax(uy_set);
+  le_init();
+
+  /* Check displacement calculations. Run to a displacement which is
+   * at least a couple of periodic images. */
+
+  get_N_local(nlocal);
+  get_N_offset(noffset);
+  nhalo = coords_nhalo();
+
+  comm = le_communicator();
+
+  for (n = -5000; n <= 5000; n++) {
+
+    /* Set the displacement dy, and take modulo L(Y), which should
+     * give -L(Y) < dy < +L(Y) */
+
+    dy = uy_set*n;
+    dy = fmod(dy, L(Y));
+
+    test_assert(dy > -L(Y));
+    test_assert(dy < +L(Y));
+
+    /* The integral part of the displacement jdy and the fractional
+     * part are... */
+
+    jdy = floor(dy);
+    fr = dy - jdy;
+
+    test_assert(jdy < N_total(Y));
+    test_assert(jdy >= - N_total(Y));
+    test_assert(fr >= 0.0);
+    test_assert(fr <= 1.0);
+
+    jc = noffset[Y] + 1;
+    j1 = 1 + (jc - jdy - 3 - nhalo + 2*N_total(Y)) % N_total(Y);
+    j2 = 1 + (j1 - 1) % nlocal[Y];
+
+    test_assert(j2 >= 1);
+    test_assert(j2 <= nlocal[Y]);
+
+    n1 = nlocal[Y] - j2 + 1;
+    n2 = imin(nlocal[Y], j2 + 2 + 2*nhalo);
+    n3 = imax(0, j2 - nlocal[Y] + 2 + 2*nhalo);
+
+    /* info("n: %3d %3d %3d total: %3d\n", n1, n2, n3, n1+n2+n3);*/
+    test_assert((n1 + n2 + n3) == nlocal[Y] + 2*nhalo + 3);
   }
 
   le_finish();
