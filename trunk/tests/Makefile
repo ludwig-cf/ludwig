@@ -20,7 +20,7 @@
 
 CC     = gcc
 MPICC  = mpicc
-MPIRUN = mprun -np
+MPIRUN = mpirun -np
 NPROCS = 8
 
 SRC    = ../src
@@ -46,7 +46,7 @@ LINK    = $(CC) $(CLINK)
 
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_runtime.c test_random.c \
-              test_coords.c test_io.c test_prop.c \
+              test_coords.c test_le.c test_io.c test_prop.c \
               test_model.c test_halo.c test_site_map.c \
 	      test_phi.c
 
@@ -57,6 +57,7 @@ TEST_TIMER_OBJ = tests.o $(SRC)/pe.o $(SRC)/timer.o
 TEST_RUNTIME_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o
 TEST_RANDOM_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/ran.o
 TEST_COORDS_OBJ = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o
+TEST_LE_OBJ     = $(TEST_COORDS_OBJ) $(SRC)/leesedwards.o
 TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
 		$(SRC)/io_harness.o $(SRC)/util.o $(SRC)/leesedwards.o \
 		$(SRC)/control.o
@@ -85,6 +86,8 @@ test_random:	$(TEST_RANDOM_OBJ) test_random.o
 		$(LINK) -o $@ $(TEST_RANDOM_OBJ) $@.o $(CLIBS)
 test_coords:	$(TEST_COORDS_OBJ) test_coords.o
 		$(LINK) -o $@ $(TEST_COORDS_OBJ) $@.o $(CLIBS)
+test_le:	$(TEST_LE_OBJ) test_le.o
+		$(LINK) -o $@ $(TEST_LE_OBJ) $@.o $(CLIBS)
 test_io:	$(TEST_IO_OBJ) test_io.o
 		$(LINK) -o $@ $(TEST_IO_OBJ) $@.o $(CLIBS)
 test_model:	$(TEST_MODEL_OBJ) test_model.o
