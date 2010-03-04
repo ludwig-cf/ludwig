@@ -4,7 +4,7 @@
  *
  *  Unit test for the currently compiled model (D3Q15 or D3Q19).
  *
- *  $Id: test_model.c,v 1.9.2.2 2010-01-15 17:09:42 kevin Exp $
+ *  $Id: test_model.c,v 1.9.2.3 2010-03-04 15:25:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -33,6 +33,8 @@ static  int test_model_is_domain(const int ic, const int jc, const int kc);
 int main(int argc, char ** argv) {
 
   pe_init(argc, argv);
+
+  info("Testing D%1dQ%d\n", NDIM, NVEL);
 
   /* Test model structure (coordinate-independent stuff) */
 
@@ -66,7 +68,7 @@ int main(int argc, char ** argv) {
 static void test_model_constants(void) {
 
   int i, k, p;
-    
+
   for (i = 0; i < CVXBLOCK; i++) {
     for (k = 0; k < xblocklen_cv[i]; k++) {
       p = xdisp_fwd_cv[i] + k;
@@ -100,6 +102,8 @@ static void test_model_constants(void) {
     }
   }
 
+  info("Model constants ok.\n");
+
   return;
 }
 
@@ -120,8 +124,10 @@ static void test_model_velocity_set(void) {
 
   info("Checking velocities cv etc...\n\n");
 
-  info("The number of dimensions appears to be ND = %d\n", ND);
+  info("The number of dimensions appears to be NDIM = %d\n", NDIM);
   info("The model appears to have NVEL = %d\n", NVEL);
+  info("Number of hydrodynamic modes: %d\n", 1 + NDIM + NDIM*(NDIM+1)/2);
+  test_assert(NHYDRO == (1 + NDIM + NDIM*(NDIM+1)/2));
 
   /* Speed of sound */
 
@@ -133,8 +139,8 @@ static void test_model_velocity_set(void) {
 
   info("Checking Kronecker delta d_ij...");
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
+  for (i = 0; i < NDIM; i++) {
+    for (j = 0; j < NDIM; j++) {
       if (i == j) {
 	test_assert(fabs(d_[i][j] - 1.0) < TEST_DOUBLE_TOLERANCE);
       }
@@ -193,8 +199,8 @@ static void test_model_velocity_set(void) {
 
   info("Checking wv[p]*cv[p][i]*cv[p][j]...");
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
+  for (i = 0; i < NDIM; i++) {
+    for (j = 0; j < NDIM; j++) {
       sum = 0.0;
       for (p = 0; p < NVEL; p++) {
 	sum += wv[p]*cv[p][i]*cv[p][j];
@@ -210,8 +216,8 @@ static void test_model_velocity_set(void) {
   info("Checking q_[p][i][j] = cv[p][i]*cv[p][j] - c_s^2*d_[i][j]...");
 
   for (p = 0; p < NVEL; p++) {
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
+    for (i = 0; i < NDIM; i++) {
+      for (j = 0; j < NDIM; j++) {
 	sum = cv[p][i]*cv[p][j] - d_[i][j]/rcs2;
 	test_assert(fabs(sum - q_[p][i][j]) < TEST_DOUBLE_TOLERANCE);
       }
@@ -223,8 +229,8 @@ static void test_model_velocity_set(void) {
 
   info("Checking wv[p]*q_[p][i][j]...");
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
+  for (i = 0; i < NDIM; i++) {
+    for (j = 0; j < NDIM; j++) {
       sum = 0.0;
       for (p = 0; p < NVEL; p++) {
 	sum += wv[p]*q_[p][i][j];
@@ -236,9 +242,9 @@ static void test_model_velocity_set(void) {
 
   info("Checking wv[p]*cv[p][i]*q_[p][j][k]...");
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
-      for (k = 0; k < 3; k++) {
+  for (i = 0; i < NDIM; i++) {
+    for (j = 0; j < NDIM; j++) {
+      for (k = 0; k < NDIM; k++) {
 	sum = 0.0;
 	for (p = 0; p < NVEL; p++) {
 	  sum += wv[p]*cv[p][i]*q_[p][j][k];
@@ -250,12 +256,12 @@ static void test_model_velocity_set(void) {
   info("ok\n");
 
   /* No actual test here yet. Requires a theoretical answer. */
-  info("Checking d_[i][j]*q_[p][i][j]...\n");
+  info("Checking d_[i][j]*q_[p][i][j]...");
 
   for (p = 0; p < NVEL; p++) {
     sum = 0.0;
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
+    for (i = 0; i < NDIM; i++) {
+      for (j = 0; j < NDIM; j++) {
 	sum += d_[i][j]*q_[p][i][j];
       }
     }
@@ -269,9 +275,9 @@ static void test_model_velocity_set(void) {
 
   for (p = 0; p < NVEL; p++) {
     test_assert(fabs(ma_[0][p] - 1.0) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[1][p] - cv[p][X]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[2][p] - cv[p][Y]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[3][p] - cv[p][Z]) < TEST_DOUBLE_TOLERANCE);
+    for (i = 0; i < NDIM; i++) {
+      test_assert(fabs(ma_[1+i][p] - cv[p][i]) < TEST_DOUBLE_TOLERANCE);
+    }
   }
 
   info("ok\n");
@@ -279,12 +285,21 @@ static void test_model_velocity_set(void) {
   info("Check ma_ against q_ ...");
 
   for (p = 0; p < NVEL; p++) {
+    k = 0;
+    for (i = 0; i < NDIM; i++) {
+      for (j = i; j < NDIM; j++) {
+	test_assert(fabs(ma_[1 + NDIM + k++][p] - q_[p][i][j])
+		    < TEST_DOUBLE_TOLERANCE);
+      }
+    }
+    /*
     test_assert(fabs(ma_[4][p] - q_[p][X][X]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[5][p] - q_[p][X][Y]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[6][p] - q_[p][X][Z]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[7][p] - q_[p][Y][Y]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[8][p] - q_[p][Y][Z]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[9][p] - q_[p][Z][Z]) < TEST_DOUBLE_TOLERANCE);
+    */
   }
 
   info("ok\n");
@@ -334,7 +349,7 @@ static void test_model_distributions(void) {
   int index;
   int ndist;
   double fvalue, fvalue_expected;
-  double u[ND];
+  double u[NDIM];
 
   /* Tests of the basic distribution functions. */
 
@@ -378,7 +393,7 @@ static void test_model_distributions(void) {
     info("Check first moment... ");
 
     distribution_first_moment(index, n, u);
-    for (i = 0; i < ND; i++) {
+    for (i = 0; i < NDIM; i++) {
       test_assert(fabs(u[i] - 0.0) < TEST_DOUBLE_TOLERANCE);
     }
     info("ok\n");
@@ -401,7 +416,7 @@ static void test_model_halo_swap() {
 
   int i, j, k, p;
   int n, ndist;
-  int index, nlocal[ND];
+  int index, nlocal[3];
   const int nextra = 1;  /* Distribution halo width always 1 */
   double f_expect;
   double f_actual;
@@ -490,7 +505,7 @@ static void test_model_reduced_halo_swap() {
 
   int i, j, k, p;
   int icdt, jcdt, kcdt;
-  int index, nlocal[ND];
+  int index, nlocal[3];
   int n, ndist;
   const int nextra = 1;
 
