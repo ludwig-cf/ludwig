@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.12 2009-11-03 17:29:04 kevin Exp $
+ *  $Id: ccomms.c,v 1.12.2.1 2010-03-04 16:54:59 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -1021,11 +1021,6 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
 
   if (n >= _halo_message_nmax) fatal("_halo_send_one too small (%d)\n", n);
 
-#ifdef _VERY_VERBOSE_
-  VERBOSE(("Loading sum message type%d [index %d] (order %d)\n", type,
-	  p_colloid->index, n));
-#endif
-
   switch (type) {
   case CHALO_TYPE1:
     _halo_send_one[n].index    = p_colloid->index;
@@ -1196,11 +1191,6 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
   default:
     fatal("Internal error: invalid message type\n");
   }
-
-#ifdef _VERY_VERBOSE_
-  VERBOSE(("Unloaded sum message type%d (order = %d) [index %d]\n", type,
-	   n, p_colloid->index));
-#endif
 
   return;
 }
