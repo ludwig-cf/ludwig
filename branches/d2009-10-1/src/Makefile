@@ -53,7 +53,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      phi.o phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_gradients.o \
      phi_lb_coupler.o phi_stats.o \
-     lattice.o leesedwards.o pe.o ran.o regsteer.o runtime.o \
+     lattice.o leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
      site_map.o subgrid.o \
