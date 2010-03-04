@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.11.4.3 2010-02-17 11:56:28 kevin Exp $
+ *  $Id: wall.c,v 1.11.4.4 2010-03-04 14:30:42 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -86,19 +86,20 @@ void wall_init() {
 
 /*****************************************************************************
  *
- *  boundaries_present
+ *  wall_present
  *
- *  Return 0 is no boundaries are present.
+ *  Return 0 if no boundaries are present, or 1 if any boundary
+ *  at all.
  *
  *****************************************************************************/
 
-int boundaries_present(void) {
+int wall_present(void) {
   return is_boundary_wall_;
 }
 
 /*****************************************************************************
  *
- *  wall_present
+ *  wall_at_edge
  *
  *  Return 1 if there is a wall in the given direction.
  *
@@ -108,7 +109,7 @@ int boundaries_present(void) {
  *
  *****************************************************************************/
 
-int wall_present(const int d) {
+int wall_at_edge(const int d) {
 
   assert(d == X || d == Y || d == Z);
 

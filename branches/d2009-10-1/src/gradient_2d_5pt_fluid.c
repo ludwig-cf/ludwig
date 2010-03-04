@@ -16,7 +16,7 @@
  *
  *  Corrections for Lees-Edwards planes and plane wall in X are included.
  *
- *  $Id: gradient_2d_5pt_fluid.c,v 1.1.2.1 2010-03-04 09:11:20 kevin Exp $
+ *  $Id: gradient_2d_5pt_fluid.c,v 1.1.2.2 2010-03-04 14:30:42 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -283,8 +283,8 @@ static void gradient_2d_5pt_fluid_wall_correction(const double * field,
   ys = (nlocal[Z] + 2*nhalo);
   xs = ys*(nlocal[Y] + 2*nhalo);
 
-  assert(wall_present(Y) == 0);
-  assert(wall_present(Z) == 0);
+  assert(wall_at_edge(Y) == 0);
+  assert(wall_at_edge(Z) == 0);
 
   /* This enforces C = 0 and H = 0, ie., neutral wetting, as there
    * is currently no mechanism to obtain the free energy parameters. */
@@ -301,7 +301,7 @@ static void gradient_2d_5pt_fluid_wall_correction(const double * field,
   }
   rk = 0.0;
 
-  if (wall_present(X) && cart_coords(X) == 0) {
+  if (wall_at_edge(X) && cart_coords(X) == 0) {
 
     /* Correct the lower wall */
 
@@ -324,7 +324,7 @@ static void gradient_2d_5pt_fluid_wall_correction(const double * field,
     }
   }
 
-  if (wall_present(X) && cart_coords(X) == cart_size(X) - 1) {
+  if (wall_at_edge(X) && cart_coords(X) == cart_size(X) - 1) {
 
     /* Correct the upper wall */
 

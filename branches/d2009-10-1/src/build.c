@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.4 2010-01-07 15:41:10 kevin Exp $
+ *  $Id: build.c,v 1.5.4.5 2010-03-04 14:30:42 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -24,9 +24,8 @@
 #include "timer.h"
 #include "colloids.h"
 #include "site_map.h"
+#include "wall.h"
 #include "build.h"
-
-extern int     boundaries_present(void);
 
 static Colloid ** coll_map;        /* Colloid map. */
 static Colloid ** coll_old;        /* Map at the previous time step */
@@ -232,7 +231,7 @@ void COLL_update_links() {
 	  if (p_colloid->rebuild) {
 	    /* The shape has changed, so need to reconstruct */
 	    COLL_reconstruct_links(p_colloid);
-	    if (boundaries_present()) reconstruct_wall_links(p_colloid);
+	    if (wall_present()) reconstruct_wall_links(p_colloid);
 	  }
 	  else {
 	    /* Shape unchanged, so just reset existing links */

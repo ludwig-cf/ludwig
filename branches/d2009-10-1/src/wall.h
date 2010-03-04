@@ -4,7 +4,7 @@
  *
  *  Interface for the wall information.
  *
- *  $Id: wall.h,v 1.4.4.2 2010-02-17 11:56:28 kevin Exp $
+ *  $Id: wall.h,v 1.4.4.3 2010-03-04 14:30:42 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -20,6 +20,7 @@ void wall_update(void);
 
 void wall_accumulate_force(const double f[3]);
 void wall_net_momentum(double g[3]);
-int  wall_present(const int dimension);
+int  wall_present(void);
+int  wall_at_edge(const int dimension);
 
 #endif
