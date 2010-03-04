@@ -20,7 +20,7 @@
 
 CC     = gcc
 MPICC  = mpicc
-MPIRUN = mprun -np
+MPIRUN = mpirun -np
 NPROCS = 8
 
 SRC    = ../src
@@ -48,7 +48,7 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_runtime.c test_random.c \
               test_coords.c test_io.c test_prop.c \
               test_model.c test_halo.c test_site_map.c \
-	      test_phi.c
+	      test_phi.c test_le.c
 
 TESTS = ${TESTSOURCES:.c=}
 
@@ -61,13 +61,15 @@ TEST_IO_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/coords.o \
 		$(SRC)/io_harness.o $(SRC)/util.o $(SRC)/leesedwards.o \
 		$(SRC)/control.o
 TEST_MODEL_OBJ  = $(TEST_COORDS_OBJ) $(SRC)/model.o $(SRC)/control.o \
-		$(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/timer.o \
+		$(SRC)/d2q9.o $(SRC)/d3q15.o $(SRC)/d3q19.o $(SRC)/timer.o \
                 $(SRC)/io_harness.o $(SRC)/util.o $(SRC)/leesedwards.o
 TEST_PROP_OBJ	= $(TEST_MODEL_OBJ) $(SRC)/propagation.o
 TEST_EWALD_OBJ  = tests.o $(SRC)/pe.o $(SRC)/coords.o $(SRC)/colloids.o \
                   $(SRC)/ewald.o
 TEST_SITE_MAP_OBJ = $(TEST_IO_OBJ) $(SRC)/site_map.o
 TEST_PHI_OBJ      = $(TEST_MODEL_OBJ) $(SRC)/site_map.o $(SRC)/phi.o
+TEST_LE_OBJ     = tests.o $(SRC)/pe.o $(SRC)/runtime.o $(SRC)/control.o \
+                $(SRC)/coords.o $(SRC)/leesedwards.o
 
 #------------------------------------------------------------------------------
 #  Rules
@@ -97,6 +99,8 @@ test_site_map:	$(TEST_SITE_MAP_OBJ) test_site_map.o
 		$(LINK) -o $@ $(TEST_SITE_MAP_OBJ) $@.o $(CLIBS)
 test_phi:	$(TEST_PHI_OBJ) test_phi.o
 		$(LINK) -o $@ $(TEST_PHI_OBJ) $@.o $(CLIBS)
+test_le:	$(TEST_LE_OBJ) test_le.o
+		$(LINK) -o $@ $(TEST_LE_OBJ) $@.o $(CLIBS)
 
 test_sigma:     test_sigma.c
 		$(COMPILE) -I../mpi_s -c test_sigma.c
