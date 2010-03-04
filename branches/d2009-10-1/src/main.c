@@ -35,7 +35,6 @@
 #include "physics.h"
 #include "lattice.h"
 #include "cio.h"
-#include "regsteer.h"
 
 #include "io_harness.h"
 #include "phi.h"
