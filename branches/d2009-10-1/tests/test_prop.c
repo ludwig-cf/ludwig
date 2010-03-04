@@ -4,7 +4,7 @@
  *
  *  Test propagation stage.
  *
- *  $Id: test_prop.c,v 1.4.2.1 2009-12-23 16:29:44 kevin Exp $
+ *  $Id: test_prop.c,v 1.4.2.2 2010-03-04 15:23:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -187,6 +187,9 @@ void test_source_destination() {
 
 	    f_expect = L(Y)*L(Z)*isource + L(Z)*jsource + ksource;
 	    f_actual = distribution_f(index, p, nd);
+
+	    /* In case of d2q9, propagation is only for kc = 1 */
+	    if (NDIM == 2 && kc > 1) f_actual = f_expect;
 
 	    test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
 	  }
