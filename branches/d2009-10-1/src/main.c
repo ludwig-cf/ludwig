@@ -29,7 +29,6 @@
 #include "leesedwards.h"
 #include "interaction.h"
 #include "propagation.h"
-#include "brownian.h"
 #include "ccomms.h"
 
 #include "site_map.h"
@@ -137,8 +136,8 @@ void ludwig_init(void) {
  *
  *****************************************************************************/
 
-int main( int argc, char **argv )
-{
+int main( int argc, char **argv ) {
+
   char    filename[FILENAME_MAX];
   int     step = 0;
 
@@ -170,14 +169,6 @@ int main( int argc, char **argv )
 
     TIMER_start(TIMER_STEPS);
     step = get_step();
-
-#ifdef _BROWNIAN_
-    brownian_set_random();
-    CCOM_halo_particles();
-    COLL_forces();
-    brownian_step_no_inertia();
-    cell_update();
-#else
     hydrodynamics_zero_force();
     COLL_update();
     wall_update();
@@ -201,7 +192,6 @@ int main( int argc, char **argv )
      * and propagation, as the halo regions hold active f,g */
 
     propagation();
-#endif
 
     TIMER_stop(TIMER_STEPS);
 
@@ -229,7 +219,6 @@ int main( int argc, char **argv )
       sprintf(filename, "str-%8.8d.dat", step);
       stats_rheology_stress_section(filename);
       stats_rheology_stress_profile_zero();
-      stats_rheology_mean_stress("stress_means.dat");
     }
 
     if (is_phi_output_step()) {
@@ -252,14 +241,13 @@ int main( int argc, char **argv )
 
     if (is_statistics_step()) {
 
-#ifndef _BROWNIAN_
       /* PENDING TODO MISC_curvature(); */
       stats_distribution_print();
       phi_stats_print_stats();
       stats_free_energy_density();
       ludwig_report_momentum();
       hydrodynamics_stats();
-#endif
+
       test_isothermal_fluctuations();
       info("\nCompleted cycle %d\n", step);
     }
@@ -295,7 +283,7 @@ int main( int argc, char **argv )
 
 /*****************************************************************************
  *
- *  report_momentum
+ *  ludwig_report_momentum
  *
  *  Tidy report of the current momentum of the system.
  *
@@ -319,7 +307,7 @@ void ludwig_report_momentum(void) {
 
   stats_distribution_momentum(g);
   test_colloid_momentum(gc);
-  if (boundaries_present()) wall_net_momentum(gwall);
+  if (wall_present()) wall_net_momentum(gwall);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = g[n] + gc[n] + gwall[n];
@@ -330,7 +318,7 @@ void ludwig_report_momentum(void) {
   info("[total   ] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
   info("[fluid   ] %14.7e %14.7e %14.7e\n", g[X], g[Y], g[Z]);
   info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
-  if (boundaries_present()) {
+  if (wall_present()) {
     info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
 
