@@ -34,7 +34,7 @@
 ###############################################################################
 
 
-OBJS=d3q15.o d3q19.o model.o propagation.o collision.o \
+OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      physics.o advection.o advection_bcs.o active.o \
      blue_phase.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
@@ -46,6 +46,8 @@ OBJS=d3q15.o d3q19.o model.o propagation.o collision.o \
      control.o \
      eigen3.o ewald.o \
      free_energy.o free_energy_rt.o \
+     gelx.o gelx_rt.o \
+     gradient_2d_5pt_fluid.o \
      interaction.o io_harness.o\
      model_le.o potential.o \
      phi.o phi_cahn_hilliard.o \
