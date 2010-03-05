@@ -16,7 +16,7 @@
  *
  *  Corrections for Lees-Edwards planes and plane wall in X are included.
  *
- *  $Id: gradient_2d_5pt_fluid.c,v 1.1.2.2 2010-03-04 14:30:42 kevin Exp $
+ *  $Id: gradient_2d_5pt_fluid.c,v 1.1.2.3 2010-03-05 18:28:14 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -103,8 +103,7 @@ void gradient_2d_5pt_fluid_d4(void) {
 
   gradient_2d_5pt_fluid_operator(field, grad, delsq, nextra);
   gradient_2d_5pt_fluid_le_correction(field, grad, delsq, nextra);
-
-  /* No wall correction available yet */
+  gradient_2d_5pt_fluid_wall_correction(field, grad, delsq, nextra);
 
   return;
 }
@@ -315,7 +314,7 @@ static void gradient_2d_5pt_fluid_wall_correction(const double * field,
 	gradm1 = -(c[n]*fb + h[n])*rk;
 	grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
 	del2[nop*index + n]
-	  = gradp1 + gradm1
+	  = gradp1 - gradm1
 	  + field[nop*(index + ys) + n] + field[nop*(index  - ys) + n]
 	  - 2.0*field[nop*index + n];
       }
@@ -338,7 +337,7 @@ static void gradient_2d_5pt_fluid_wall_correction(const double * field,
 	gradp1 = -(c[n]*fb + h[n])*rk;
 	grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
 	del2[nop*index + n]
-	  = gradp1 + gradm1
+	  = gradp1 - gradm1
 	  + field[nop*(index + ys) + n] + field[nop*(index  - ys) + n]
 	  - 2.0*field[nop*index + n];
       }
