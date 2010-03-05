@@ -15,7 +15,7 @@
  *  to the 'west' face flux. There's no effect in the y- or z-
  *  directions.
  *
- *  $Id: advection.c,v 1.2 2009-10-08 17:24:41 kevin Exp $
+ *  $Id: advection.c,v 1.2.4.1 2010-03-05 12:15:49 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -169,7 +169,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
   const double a3 =  0.286067;
 
   get_N_local(nlocal);
-  assert(nhalo_ >= 2);
+  assert(coords_nhalo() >= 2);
 
   assert(fluxe);
   assert(fluxw);
@@ -318,7 +318,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
   const double a5 = -0.027880;
 
   get_N_local(nlocal);
-  assert(nhalo_ >= 3);
+  assert(coords_nhalo() >= 3);
 
   assert(fluxe);
   assert(fluxw);
@@ -488,7 +488,7 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
   const double a7 =  0.000842;
 
   get_N_local(nlocal);
-  assert(nhalo_ >= 4);
+  assert(coords_nhalo() >= 4);
 
   assert(fluxe);
   assert(fluxw);
