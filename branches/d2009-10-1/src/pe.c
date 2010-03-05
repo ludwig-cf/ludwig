@@ -15,10 +15,11 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh (2008)
  *
- *  $Id: pe.c,v 1.2 2008-08-24 17:56:22 kevin Exp $
+ *  $Id: pe.c,v 1.2.16.1 2010-03-05 17:30:58 kevin Exp $
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -50,6 +51,10 @@ void pe_init(int argc, char ** argv) {
        (pe_world_size > 1) ? "MPI" : "Serial",
        pe_world_size,
        (pe_world_size == 1) ? "" : "es");
+
+  if (pe_world_rank == 0) {
+    assert(printf("Note assertions via standard C assert() are on.\n\n"));
+  }
 
   return;
 }
