@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.10.4.2 2009-12-15 16:21:48 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.10.4.3 2010-03-05 12:33:24 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,6 +33,7 @@
 #include "advection_bcs.h"
 #include "lattice.h"
 #include "free_energy.h"
+#include "timer.h"
 #include "phi.h"
 
 extern double * phi_site;
@@ -75,6 +76,8 @@ void phi_cahn_hilliard() {
 
   int nlocal[3];
   int nsites;
+
+  TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
   get_N_local(nlocal);
   nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
@@ -131,6 +134,8 @@ void phi_cahn_hilliard() {
   free(fluxw);
   free(fluxy);
   free(fluxz);
+
+  TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
 
   return;
 }
@@ -856,7 +861,13 @@ static void phi_ch_update_forward_step() {
   int nlocal[3];
   int ic, jc, kc, index, n;
 
-  get_N_local(nlocal);
+  double wz;
+
+  coords_nlocal(nlocal);
+
+  /* For 2-d systems, this switches off the z fluxes. */
+  wz = 1.0;
+  if (nlocal[Z] == 1) wz = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -869,8 +880,8 @@ static void phi_ch_update_forward_step() {
 	                             - fluxw[nop_*index + n]
 	                             + fluxy[nop_*index + n]
 	                             - fluxy[nop_*ADDR(ic, jc-1, kc) + n]
-	                             + fluxz[nop_*index + n]
-				     - fluxz[nop_*ADDR(ic, jc, kc-1) + n]);
+	                             + wz*fluxz[nop_*index + n]
+				     - wz*fluxz[nop_*ADDR(ic, jc, kc-1) + n]);
 	}
       }
     }
