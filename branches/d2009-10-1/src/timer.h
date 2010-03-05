@@ -37,6 +37,8 @@ enum timer_id {TIMER_TOTAL,
                TIMER_EWALD_TOTAL,
                TIMER_EWALD_REAL_SPACE,
                TIMER_EWALD_FOURIER_SPACE,
+	       TIMER_FORCE_CALCULATION,
+	       TIMER_ORDER_PARAMETER_UPDATE,
 	       TIMER_FREE1,
 	       TIMER_FREE2,
                TIMER_FREE3};

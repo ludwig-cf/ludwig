@@ -15,7 +15,7 @@
 #include "pe.h"
 #include "timer.h"
 
-#define NTIMERS  19
+#define NTIMERS  21
 
 struct timer_struct {
   double          t_start;
@@ -46,6 +46,8 @@ static const char * timer_name[] = {"Total",
 				    "Ewald Sum total",
 				    "Ewald Real",
 				    "Ewald_Fourier",
+				    "Force calculation",
+				    "phi update",
 				    "Free1",
 				    "Free2",
                                     "Free3"};
