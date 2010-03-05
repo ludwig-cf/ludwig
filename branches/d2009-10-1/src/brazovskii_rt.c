@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for Brazovskii free energy.
  *
- *  $Id: brazovskii_rt.c,v 1.1.2.3 2009-11-13 14:35:45 kevin Exp $
+ *  $Id: brazovskii_rt.c,v 1.1.2.4 2010-03-05 17:30:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -43,6 +43,11 @@ void brazovskii_run_time(void) {
   phi_nop_set(1);
   phi_gradient_level_set(4);
   coords_nhalo_set(3);
+
+  info("Brazovskii free energy selected.\n");
+  info("Single conserved order parameter nop = 1\n");
+  info("Requires up to del^4 derivatives so setting nhalo = %1d\n", 3);
+  info("\n");
 
   /* Parameters */
 
