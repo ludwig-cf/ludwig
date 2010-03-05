@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.1.4.5 2009-12-15 16:24:28 kevin Exp $
+ *  $Id: blue_phase_beris_edwards.c,v 1.1.4.6 2010-03-05 12:35:14 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -52,11 +52,13 @@ void blue_phase_beris_edwards(void) {
 
   int nlocal[3];
   int nsites;
+  int nhalo;
 
   /* Set up advective fluxes and do the update. */
 
-  get_N_local(nlocal);
-  nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  nsites = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
 
   fluxe = (double *) malloc(nop_*nsites*sizeof(double));
   fluxw = (double *) malloc(nop_*nsites*sizeof(double));
