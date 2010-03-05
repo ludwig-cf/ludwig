@@ -5,7 +5,7 @@
  *  In cases where the order parameter is via "full LB", this couples
  *  the scalar order parameter phi_site[] to the distributions.
  *
- *  $Id: phi_lb_coupler.c,v 1.2.4.1 2010-01-15 16:53:24 kevin Exp $
+ *  $Id: phi_lb_coupler.c,v 1.2.4.2 2010-03-05 11:35:54 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -42,8 +42,6 @@ void phi_lb_coupler_phi_set(const int index, const double phi) {
 
   if (phi_is_finite_difference()) {
     phi_op_set_phi_site(index, 0, phi);
-    /* This can (must) go when distributions reimplemented */ 
-    distribution_zeroth_moment_set_equilibrium(index, 1, get_phi0());
   }
   else {
     distribution_zeroth_moment_set_equilibrium(index, 1, phi);
