@@ -22,13 +22,17 @@ void writeDiscFile_ks(const int);
 void exchangeTau(void);
 void writeRestart(const int);
 void readRestart(const int);
-void do_pouiseuille_distributions(double ****);
+void do_poiseuille_distributions(double ****);
 
 // ============================================================
 int main(int argc, char** argv) 
 {
 
-    int Nstart;
+  int Nstart;
+  int n,graphstp,improv;
+  double ****tmp;
+
+  int i,j,k;
 
 #ifdef PARALLEL
     double t0, t1;
@@ -81,6 +85,7 @@ int main(int argc, char** argv)
   inputFile >> phivr >> endOfLine;
   inputFile >> NOISE >> endOfLine;
   inputFile >> noise_strength >> endOfLine;
+  inputFile >> zeta >> endOfLine;
   inputFile >> xi >> endOfLine;
   inputFile >> tau1 >> endOfLine;
   inputFile >> tau2 >> endOfLine;
@@ -153,6 +158,7 @@ if (myPE==0){
   logFile << phivr << "\t\t# phivr"<< endl;
   logFile << NOISE << "\t\t# NOISE"<< endl;
   logFile << noise_strength << "\t\t# noise_strength"<< endl;
+  logFile << zeta << "\t\t# zeta"<< endl;
   logFile << xi << "\t\t# xi"<< endl;
   logFile << tau1 << "\t\t# tau1"<< endl;
   logFile << tau2 << "\t\t# tau2"<< endl;
@@ -179,11 +185,6 @@ if (myPE==0){
 
    logFile.close();
 }
-
-  int n,graphstp,improv;
-  double ****tmp;
-
-  int i,j,k;
 
   initialize();
 
@@ -233,13 +234,17 @@ if (myPE==0){
       file.close();
    }
 
-
    lastFreeenergy=-1000000;
+
+  if (BACKFLOW == 1){
+      phivr=1.0;
+  }
 
    if (REDSHIFT==1){
       rr=1.0;
    }
    else{
+     if(RANDOM) rr=1.0;
      if(O2STRUCT) rr=0.91;
      if(O5STRUCT) rr=0.97;
      if(O8STRUCT) rr=0.82;
@@ -258,8 +263,8 @@ if (myPE==0){
   L2=L2init*rr*rr;
  
   graphstp=0;
-  pouiseuille = 0;
-  pouiseuille1= 0;
+  active=1;
+  poiseuille=1;
   kappa = sqrt(L1*27.0*q0*q0/(Abulk*gam));
   caz = (1.0+4./3.*kappa*kappa);
   tauc = 1.0/8.0*(1-4.0*kappa*kappa+pow(caz,1.5));
@@ -274,6 +279,35 @@ if (myPE==0){
 
 // includes code which changes the control parameters during the run 
 #include "Controlparameter.cc"
+
+/*
+if(n%10000==0){
+    for (i=ix1; i<ix2; i++) {
+      for (j=jy1; j<jy2; j++) {
+          for (k=kz1; k<kz2; k++) {
+	 double amplitude=0.5;
+
+        Qxx[i][j][k]= amplitude*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+           cos(angxytop/180.0*Pi)*cos(angxytop/180.0*Pi)-1.0/3.0);
+        Qxy[i][j][k]= amplitude*sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+          cos(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi);
+        Qyy[i][j][k]= amplitude*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+           sin(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi)-1.0/3.0);
+        Qxz[i][j][k]= amplitude*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
+          cos(angxytop/180.0*Pi);
+        Qyz[i][j][k]= amplitude*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
+          sin(angxytop/180.0*Pi);
+
+        Qxx[i][j][k]+=0.1*(2.0*drand48()-1.0);
+        Qxy[i][j][k]+=0.1*(2.0*drand48()-1.0);
+        Qxz[i][j][k]+=0.1*(2.0*drand48()-1.0);
+        Qyy[i][j][k]+=0.1*(2.0*drand48()-1.0);
+        Qyz[i][j][k]+=0.1*(2.0*drand48()-1.0);
+	 }
+      }
+   }
+}
+*/
 
 	computeStressFreeEnergy(n);
 
@@ -322,7 +356,7 @@ if (myPE==0){
       }
     }
   }
- 
+
     for (i=ix1; i<ix2; i++) {
       for (j=jy1; j<jy2; j++) {
 	 for (k=kz1; k<kz2; k++) {
@@ -336,13 +370,13 @@ if (myPE==0){
       }
     }
   }
-    
+
     /*corrector*/
 
     for (improv=0; improv<itimprov; improv++) {
 
       parametercalc(n);
-       
+
       for (i=ix1; i<ix2; i++) {
 	 for (j=jy1; j<jy2; j++) {
 	  for (k=kz1; k<kz2; k++) {
@@ -371,7 +405,7 @@ if (myPE==0){
 	 }
       }
 
-   
+
       for (i=ix1; i<ix2; i++) {
 	 for (j=jy1; j<jy2; j++) {
 	  for (k=kz1; k<kz2; k++) {
@@ -399,31 +433,13 @@ if (myPE==0){
     streamfile_ks(n);
     graphstp=0;
   }
-   
-  if(n==1) {
-      pouiseuille1=1;
-  }
-
-  if(n==400) {
-      pouiseuille=1;
-  }
-  if(n==120000) {
-      delVz=0.0;
-  }   
-
-  if (BACKFLOW == 1){
-      if (n==1) {
-	  phivr=1.0;
-      }
-  }
-
 
   collisionop();
 
     /*predictor*/
 
   update0_ks(fpr, f);
-   
+  
     tmp=f;
     f=fpr;
     fpr=tmp;
@@ -442,6 +458,7 @@ if (myPE==0){
     if (n % stepskip == 0 || n ==1) {
 	writeDiscFile_ks(n);
     }
+
   }
 
   /* Write  restart */
@@ -489,6 +506,8 @@ void update0_ks(double ****fnew, double ****fold) {
 
   int i,j,k,l,imod,jmod,kmod;
 
+
+
   // Add collision tendency terms
 
   for (i=ix1; i<ix2; i++) {
@@ -519,7 +538,7 @@ void update0_ks(double ****fnew, double ****fold) {
     }
   }
 
-  if (pouiseuille1 == 1) do_pouiseuille_distributions(fnew);
+  if (poiseuille == 1) do_poiseuille_distributions(fnew);
 
   // Reset fold
 
@@ -581,7 +600,7 @@ void update_ks(double **** fnew, double **** fold) {
     }
   }
 
-  if (pouiseuille1 == 1) do_pouiseuille_distributions(fnew);
+  if (poiseuille == 1) do_poiseuille_distributions(fnew);
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -598,13 +617,13 @@ void update_ks(double **** fnew, double **** fold) {
 
 /*****************************************************************************
  *
- *  do_pouiseuille_distributions
+ *  do_poiseuille_distributions
  *
- *  Pouiseuille boundary conditions for distributions.
+ *  Poiseuille boundary conditions for distributions.
  *
  *****************************************************************************/
 
-void do_pouiseuille_distributions(double **** f) {
+void do_poiseuille_distributions(double **** f) {
 
 #ifdef BC
 
@@ -613,94 +632,94 @@ void do_pouiseuille_distributions(double **** f) {
   int ix, iy, iz;
   double rb;
 
+  /* Only at absolute z = 1 */
+
   if (pe_cartesian_coordinates_[2] == 0) {
 
-    /* Only at absolute z = 0 */
-
-    iz = 0;
-
+    iz = kz1;
+  
     for (ix = ix1; ix < ix2; ix++) {
-      for (iy = jy1; iy < jy2; iy++) {
+	 for (iy = jy1; iy < jy2; iy++) {
 
-	f[ix][iy][iz][5] = f[ix][iy][iz][6];
+	   f[ix][iy][iz][5] = f[ix][iy][iz][6];
 
-	rb = f[ix][iy][iz][0] + f[ix][iy][iz][1] + f[ix][iy][iz][2] +
-	  f[ix][iy][iz][3] + f[ix][iy][iz][4] +
-	  2.0*(f[ix][iy][iz][6] + f[ix][iy][iz][11] + f[ix][iy][iz][12] +
-	       f[ix][iy][iz][13] + f[ix][iy][iz][14]);
+	   rb = f[ix][iy][iz][0] + f[ix][iy][iz][1] + f[ix][iy][iz][2] +
+	     f[ix][iy][iz][3] + f[ix][iy][iz][4] +
+	     2.0*(f[ix][iy][iz][6] + f[ix][iy][iz][11] + f[ix][iy][iz][12] +
+		  f[ix][iy][iz][13] + f[ix][iy][iz][14]);
 
-	f[ix][iy][iz][7] =
-	  0.25*(-f[ix][iy][iz][1] - f[ix][iy][iz][2] +
-		f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
-	  0.25*(-f[ix][iy][iz][11] + f[ix][iy][iz][12] +
-		f[ix][iy][iz][14] + rb*vwbt) + 0.75*f[ix][iy][iz][13];
+	   f[ix][iy][iz][7] =
+	     0.25*(-f[ix][iy][iz][1] - f[ix][iy][iz][2] +
+		   f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
+	     0.25*(-f[ix][iy][iz][11] + f[ix][iy][iz][12] +
+		   f[ix][iy][iz][14] + rb*vwbt) + 0.75*f[ix][iy][iz][13];
 
-	f[ix][iy][iz][8] =
-	  0.25*(f[ix][iy][iz][1] - f[ix][iy][iz][2] -
-		f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
-	  0.25*(f[ix][iy][iz][11] - f[ix][iy][iz][12] +
-		f[ix][iy][iz][13] + rb*vwbt) + 0.75*f[ix][iy][iz][14];
+	   f[ix][iy][iz][8] =
+	     0.25*(f[ix][iy][iz][1] - f[ix][iy][iz][2] -
+		   f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
+	     0.25*(f[ix][iy][iz][11] - f[ix][iy][iz][12] +
+		   f[ix][iy][iz][13] + rb*vwbt) + 0.75*f[ix][iy][iz][14];
 
-	f[ix][iy][iz][9] =
-	  0.25*(f[ix][iy][iz][1] + f[ix][iy][iz][2] -
-		f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
-	  0.25*(-f[ix][iy][iz][13] + f[ix][iy][iz][14] +
-		f[ix][iy][iz][12] - rb*vwbt) + 0.75*f[ix][iy][iz][11];
+	   f[ix][iy][iz][9] =
+	     0.25*(f[ix][iy][iz][1] + f[ix][iy][iz][2] -
+		   f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
+	     0.25*(-f[ix][iy][iz][13] + f[ix][iy][iz][14] +
+		   f[ix][iy][iz][12] - rb*vwbt) + 0.75*f[ix][iy][iz][11];
 
-	f[ix][iy][iz][10] =
-	  0.25*(-f[ix][iy][iz][1] + f[ix][iy][iz][2] +
-		f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
-	  0.25*(f[ix][iy][iz][11] + f[ix][iy][iz][13] -
-		f[ix][iy][iz][14] - rb*vwbt) + 0.75*f[ix][iy][iz][12];
+	   f[ix][iy][iz][10] =
+	     0.25*(-f[ix][iy][iz][1] + f[ix][iy][iz][2] +
+		   f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
+	     0.25*(f[ix][iy][iz][11] + f[ix][iy][iz][13] -
+		   f[ix][iy][iz][14] - rb*vwbt) + 0.75*f[ix][iy][iz][12];
 
+	 }
       }
-    }
 
+   }
+
+   /* Only at absolute z = Lz do we have a boundary */
+  if (pe_cartesian_coordinates_[2] == pe_cartesian_size_[2]-1) {
+
+      iz=kz2-1;
+
+      for (ix = ix1; ix < ix2; ix++) {
+	 for (iy = jy1; iy < jy2; iy++) {
+
+	   f[ix][iy][iz][6] = f[ix][iy][iz][5];
+
+	   rb = f[ix][iy][iz][0] + f[ix][iy][iz][1] + f[ix][iy][iz][2] +
+	     f[ix][iy][iz][3] + f[ix][iy][iz][4] +
+	     2.0*(f[ix][iy][iz][5] + f[ix][iy][iz][7] + f[ix][iy][iz][8] +
+		  f[ix][iy][iz][9] + f[ix][iy][iz][10]);
+
+	   f[ix][iy][iz][11] =
+	     0.25*(-f[ix][iy][iz][1] - f[ix][iy][iz][2] +
+		   f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
+	     0.25*(-f[ix][iy][iz][7] + f[ix][iy][iz][8] +
+		   f[ix][iy][iz][10] + rb*vwtp) + 0.75*f[ix][iy][iz][9];
+
+	   f[ix][iy][iz][12] =
+	     0.25*(f[ix][iy][iz][1] - f[ix][iy][iz][2] -
+		   f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
+	     0.25*(f[ix][iy][iz][7] - f[ix][iy][iz][8] +
+		   f[ix][iy][iz][9] + rb*vwtp) + 0.75*f[ix][iy][iz][10];
+
+	   f[ix][iy][iz][13] =
+	     0.25*(f[ix][iy][iz][1] + f[ix][iy][iz][2] -
+		   f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
+	     0.25*(-f[ix][iy][iz][9] + f[ix][iy][iz][10] +
+		   f[ix][iy][iz][8] - rb*vwtp) + 0.75*f[ix][iy][iz][7];
+
+	   f[ix][iy][iz][14] =
+	     0.25*(-f[ix][iy][iz][1] + f[ix][iy][iz][2] +
+		   f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
+	     0.25*( f[ix][iy][iz][7] + f[ix][iy][iz][9] -
+		  f[ix][iy][iz][10] - rb*vwtp) + 0.75*f[ix][iy][iz][8];
+	 }
+      }
+ 
   }
 
-  if (pe_cartesian_coordinates_[2] == pe_cartesian_size_[2] - 1) {
-
-    /* Only at absolute z = Lz do we have a boundary */
-
-    iz = Lz2-1;
-
-    for (ix = ix1; ix < ix2; ix++) {
-      for (iy = jy1; iy < jy2; iy++) {
-
-	f[ix][iy][iz][6] = f[ix][iy][iz][5];
-
-	rb = f[ix][iy][iz][0] + f[ix][iy][iz][1] + f[ix][iy][iz][2] +
-	  f[ix][iy][iz][3] + f[ix][iy][iz][4] +
-	  2.0*(f[ix][iy][iz][5] + f[ix][iy][iz][7] + f[ix][iy][iz][8] +
-	       f[ix][iy][iz][9] + f[ix][iy][iz][10]);
-
-	f[ix][iy][iz][11] =
-	  0.25*(-f[ix][iy][iz][1] - f[ix][iy][iz][2] +
-		f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
-	  0.25*(-f[ix][iy][iz][7] + f[ix][iy][iz][8] +
-		f[ix][iy][iz][10] + rb*vwtp) + 0.75*f[ix][iy][iz][9];
-
-	f[ix][iy][iz][12] =
-	  0.25*(f[ix][iy][iz][1] - f[ix][iy][iz][2] -
-		f[ix][iy][iz][3] + f[ix][iy][iz][4]) +
-	  0.25*(f[ix][iy][iz][7] - f[ix][iy][iz][8] +
-		f[ix][iy][iz][9] + rb*vwtp) + 0.75*f[ix][iy][iz][10];
-
-	f[ix][iy][iz][13] =
-	  0.25*(f[ix][iy][iz][1] + f[ix][iy][iz][2] -
-		f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
-	  0.25*(-f[ix][iy][iz][9] + f[ix][iy][iz][10] +
-		f[ix][iy][iz][8] - rb*vwtp) + 0.75*f[ix][iy][iz][7];
-
-	f[ix][iy][iz][14] =
-	  0.25*(-f[ix][iy][iz][1] + f[ix][iy][iz][2] +
-		f[ix][iy][iz][3] - f[ix][iy][iz][4]) +
-	  0.25*( f[ix][iy][iz][7] + f[ix][iy][iz][9] -
-	       f[ix][iy][iz][10] - rb*vwtp) + 0.75*f[ix][iy][iz][8];
-      }
-    }
-
-  }
 
 #endif
 
@@ -721,13 +740,14 @@ void collisionop(void)
     }
   }
 
-  if (pouiseuille == 1) {
-    j = 0;
+  if (poiseuille == 1) {
     for (i=ix1; i<ix2; i++) {
-      for (k=kz1; k<kz2; k++) {
-	for (l=0; l<15; l++) {
-	  Fc[i][j][k][l] += e[l][1]*bodyforce*density[i][j][k];
-	}
+       for (j=jy1; j<jy2; j++) {
+	 for (k=kz1; k<kz2; k++) {
+	   for (l=0; l<15; l++) {
+	     Fc[i][j][k][l] += e[l][1]*bodyforce*density[i][j][k];
+	   }
+	 }
       }
     }
   }
@@ -751,7 +771,6 @@ void equilibriumdist(void)
 
   /* Communication of tau required here */
   exchangeTau();
-
 
   for (i=ix1; i<ix2; i++) {
     iup=i+1;
@@ -816,6 +835,14 @@ void equilibriumdist(void)
 	sigxz=2.0/3.0*xi*Hxz;
 	sigyz=2.0/3.0*xi*Hyz;
 #endif
+        // active contribution to the stress tensor
+	 if(active==1){
+	    sigxx+=zeta*Qxx[i][j][k];
+	    sigxy+=zeta*Qxy[i][j][k];
+	    sigxz+=zeta*Qxz[i][j][k];
+	    sigyy+=zeta*Qxx[i][j][k];
+	    sigyz+=zeta*Qxx[i][j][k];
+	 }
 
 	duxdx=(u[iup][j][k][0]-u[idwn][j][k][0])/2.0;
 	duxdy=(u[i][jup][k][0]-u[i][jdwn][k][0])/2.0;      
@@ -835,7 +862,8 @@ void equilibriumdist(void)
 	  (tauxz[iup][j][k]-tauxz[idwn][j][k])/2.0;
 
       /*B.C.; use one-sided derivatives*/
-	if(pouiseuille1==1){
+/*
+	if(poiseuille==1){
 
 #if BC
 	if(k==0) {
@@ -848,7 +876,7 @@ void equilibriumdist(void)
 	  dbdtauyb= -0.0*(tauxy[iup][j][k]-tauxy[idwn][j][k])/2.0+
 	    (-3.0*tauyz[i][j][k]+4.0*tauyz[i][j][k+1]-tauyz[i][j][k+2])/2.0;
 	}
-	else if(k==Lz-1) {
+	else if(k==Lz2-1) {
 	  duxdz= 0.0*(3.0*u[i][j][k][0]-4.0*u[i][j][k-1][0]+u[i][j][k-2][0])/2.0;
 	  duydz= 0.0*(3.0*u[i][j][k][1]-4.0*u[i][j][k-1][1]+u[i][j][k-2][1])/2.0;
 	  duzdz= 0.0*(3.0*u[i][j][k][2]-4.0*u[i][j][k-1][2]+u[i][j][k-2][2])/2.0;
@@ -861,6 +889,7 @@ void equilibriumdist(void)
 #endif
 
 	}
+*/
 
 	A2= (rho*temperature)/10.0;
 	A1= A2;
@@ -921,7 +950,7 @@ void parametercalc(int n)
   double dQyxdx,dQyxdy,dQyxdz;
   double dQzxdx,dQzxdy,dQzxdz,dQzydx,dQzydy,dQzydz;
   double dQzzdx,dQzzdy,dQzzdz;
-  double trt,trd2Q,TrQ2;
+  double trt,trd2Q,TrQ2,TrE2;
   double d2Qxxdxdx,d2Qxxdydy,d2Qxxdxdy,d2Qxxdzdz,d2Qxxdxdz,d2Qxxdydz;
   double d2Qyydxdx,d2Qyydydy,d2Qyydxdy,d2Qyydzdz,d2Qyydxdz,d2Qyydydz;
   double d2Qxydxdx,d2Qxydydy,d2Qxydxdy,d2Qxydzdz,d2Qxydxdz,d2Qxydydz;
@@ -937,21 +966,27 @@ void parametercalc(int n)
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
-      for (l=kz1; l<kz2; l++) {
-	density[i][j][l]=0.0;
+      for (k=kz1; k<kz2; k++) {
+
+	density[i][j][k]=0.0;
         freeenergy=0.0;
         freeenergytwist=0.0;
 	avestress=0.0;
-	u[i][j][l][0]=u[i][j][l][1]=u[i][j][l][2]=0.0;
-	for (k=0; k<15; k++) {
-	  density[i][j][l] += f[i][j][l][k];
-	  u[i][j][l][0] += f[i][j][l][k]*e[k][0];
-	  u[i][j][l][1] += f[i][j][l][k]*e[k][1];
-	  u[i][j][l][2] += f[i][j][l][k]*e[k][2];
+	u[i][j][k][0]=0.0;
+	u[i][j][k][1]=0.0;
+	u[i][j][k][2]=0.0;
+
+	for (l=0; l<15; l++) {
+	  density[i][j][k] += f[i][j][k][l];
+	  u[i][j][k][0] += f[i][j][k][l]*e[l][0];
+	  u[i][j][k][1] += f[i][j][k][l]*e[l][1];
+	  u[i][j][k][2] += f[i][j][k][l]*e[l][2];
 	}
-	u[i][j][l][0]=u[i][j][l][0]/density[i][j][l];
-	u[i][j][l][1]=u[i][j][l][1]/density[i][j][l];
-	u[i][j][l][2]=u[i][j][l][2]/density[i][j][l];
+
+	u[i][j][k][0]=u[i][j][k][0]/density[i][j][k];
+	u[i][j][k][1]=u[i][j][k][1]/density[i][j][k];
+	u[i][j][k][2]=u[i][j][k][2]/density[i][j][k];
+
       }
     }
   }
@@ -967,10 +1002,11 @@ void parametercalc(int n)
       for (k=kz1; k<kz2; k++) {
 	kup=k+1;
 	kdwn=k-1;
-
 /* first order derivative in the bulk */
 
 	dQxxdx=(Qxx[iup][j][k]-Qxx[idwn][j][k])*0.5;
+
+
 	dQxydx=(Qxy[iup][j][k]-Qxy[idwn][j][k])*0.5;
 	dQxzdx=(Qxz[iup][j][k]-Qxz[idwn][j][k])*0.5;
 
@@ -1020,7 +1056,6 @@ void parametercalc(int n)
 		   Qxx[idwn][j][kup]+Qxx[idwn][j][kdwn])*0.25;
 	d2Qxxdydz=(Qxx[i][jup][kup]-Qxx[i][jup][kdwn]-
 		   Qxx[i][jdwn][kup]+Qxx[i][jdwn][kdwn])*0.25;
-	
 
 	d2Qyydxdx=Qyy[iup][j][k]-2.0*Qyy[i][j][k]+Qyy[idwn][j][k];
 	d2Qyydydy=Qyy[i][jup][k]-2.0*Qyy[i][j][k]+Qyy[i][jdwn][k];
@@ -1068,7 +1103,8 @@ void parametercalc(int n)
 
 
 	/*B.C.; use one-sided derivatives*/
-	if(pouiseuille1==2){
+/*
+	if(poiseuille==1){
 #if BC
 	if(k==0) {
 	  dQxxdz= (-3.0*Qxx[i][j][k]+4.0*Qxx[i][j][k+1]-Qxx[i][j][k+2])*0.5;
@@ -1111,7 +1147,7 @@ void parametercalc(int n)
 	      3.0*Qyz[i][jdwn][k]-4.0*Qyz[i][jdwn][k+1]+Qyz[i][jdwn][k+2])*0.25;
 
 	}
-	else if(k==Lz-1) {
+	else if(k==Lz2-1) {
 	  dQxxdz=(3.0*Qxx[i][j][k]-4.0*Qxx[i][j][k-1]+Qxx[i][j][k-2])*0.5;
 	  dQxydz=(3.0*Qxy[i][j][k]-4.0*Qxy[i][j][k-1]+Qxy[i][j][k-2])*0.5; 
 	  dQyydz=(3.0*Qyy[i][j][k]-4.0*Qyy[i][j][k-1]+Qyy[i][j][k-2])*0.5;
@@ -1154,23 +1190,24 @@ void parametercalc(int n)
 	}
 #endif
 	}
-
+*/
 	duydz=(u[i][j][kup][1]-u[i][j][kdwn][1])*0.5;
 	
 /* boundary corrections */
       /*B.C.; use one-sided derivatives*/
-	if(pouiseuille1==1){
+/*
+	if(poiseuille==1){
 #if BC
 // WARNING !! The BC needs to be changed for parallelisation if BC != 0
 	if(k==0) {
 	  duydz= 0.0*(-3.0*u[i][j][k][1]+4.0*u[i][j][k+1][1]-u[i][j][k+2][1])*0.5;
 	}
-	else if(k==Lz-1) {
+	else if(k==Lz2-1) {
 	  duydz= 0.0*(3.0*u[i][j][k][1]-4.0*u[i][j][k-1][1]+u[i][j][k-2][1])*0.5;	  
 	}
 #endif
 	}
-
+*/
 
      txx=txy=txz=tyy=tyx=tyz=tzz=tzy=tzx=0;
 
@@ -1195,12 +1232,13 @@ void parametercalc(int n)
       +d2Qyydydy-d2Qxxdzdz-d2Qyydzdz;
 
 #endif
+
 	/* second order derivative contribution to H */
 
 	DEHxx[i][j][k] = L1 * (d2Qxxdxdx+d2Qxxdydy+d2Qxxdzdz)
-           +(L2 - L1)/2.0*(2.0*d2Qxxdxdx+2.0*d2Qxydxdy+2.0*d2Qxzdxdz
-           - 2.0/3.0*(trd2Q) ) 
-           + txx -1.0/3.0 * trt ;
+          +(L2 - L1)/2.0*(2.0*d2Qxxdxdx+2.0*d2Qxydxdy+2.0*d2Qxzdxdz
+          - 2.0/3.0*(trd2Q) ) 
+          + txx -1.0/3.0 * trt ;
 
 	DEHxy[i][j][k] = L1 * (d2Qxydxdx+d2Qxydydy+d2Qxydzdz)
           + (L2 - L1)/2.0 * (d2Qxydxdx+d2Qyydxdy+d2Qyzdxdz
@@ -1236,7 +1274,6 @@ void parametercalc(int n)
       nnxxl= Qxxl+1.0/3.0;
       nnyyl= Qyyl+1.0/3.0;
 
-
       Qsqxx=Qxxl+Qyyl;
       Qsqzz=Qsqxx*Qsqxx+Qxzl*Qxzl+Qyzl*Qyzl;
       Qsqxy=Qxyl*Qsqxx+Qxzl*Qyzl;
@@ -1245,11 +1282,10 @@ void parametercalc(int n)
       Qsqxx=Qxxl*Qxxl+Qxyl*Qxyl+Qxzl*Qxzl;
       Qsqyy=Qyyl*Qyyl+Qxyl*Qxyl+Qyzl*Qyzl;
              
-
 #if EON
 
 
-	double TrE2;
+
 	/* calculate E-field */
 	Ex[i][j][k]= 0.0;
 	Ey[i][j][k]= 0.0;
@@ -1280,17 +1316,34 @@ void parametercalc(int n)
 	Hyz= Abulk*(-(1.0-gam/3.0)*Qyzl+gam*Qsqyz-gam*Qyzl*TrQ2)
 	  -aa*L1*q0*q0*Qyzl+DEHyz[i][j][k];
 
+
+
 #if FIXEDQ
-// WARNING !! The BC needs to be changed for parallelisation if BC != 0
-	if(pouiseuille1==1){
-	if (k==0) {
+  if (pe_cartesian_coordinates_[2] == 0 && k==kz1) {
+       Hxx= -bcstren*(Qxxl-Qxxbot);
+       Hxy= -bcstren*(Qxyl-Qxybot);
+       Hyy= -bcstren*(Qyyl-Qyybot);
+       Hxz= -bcstren*(Qxzl-Qxzbot);
+       Hyz= -bcstren*(Qyzl-Qyzbot);
+   }
+
+  if (pe_cartesian_coordinates_[2] == pe_cartesian_size_[2]-1 && k==kz2-1) {
+       Hxx= -bcstren*(Qxxl-Qxxtop);
+       Hxy= -bcstren*(Qxyl-Qxytop);
+       Hyy= -bcstren*(Qyyl-Qyytop);
+       Hxz= -bcstren*(Qxzl-Qxztop);
+       Hyz= -bcstren*(Qyzl-Qyztop);
+   }
+/*
+	if(poiseuille==1){
+	if (kc==0) {
 	  Hxx= -bcstren*(Qxxl-Qxxinit[i][j][0]);
 	  Hxy= -bcstren*(Qxyl-Qxyinit[i][j][0]);
 	  Hyy= -bcstren*(Qyyl-Qyyinit[i][j][0]);
 	  Hxz= -bcstren*(Qxzl-Qxzinit[i][j][0]);
 	  Hyz= -bcstren*(Qyzl-Qyzinit[i][j][0]);
 	}
-	else if (k== Lz-1) {
+	else if (kc==Lz-1) {
 	  Hxx= -bcstren*(Qxxl-Qxxinit[i][j][Lz-1]);
 	  Hxy= -bcstren*(Qxyl-Qxyinit[i][j][Lz-1]);
 	  Hyy= -bcstren*(Qyyl-Qyyinit[i][j][Lz-1]);
@@ -1298,6 +1351,7 @@ void parametercalc(int n)
 	  Hyz= -bcstren*(Qyzl-Qyzinit[i][j][Lz-1]);
 	}
        }
+*/
 #endif 
 
 	molfieldxx[i][j][k]=Hxx;
@@ -1318,21 +1372,19 @@ void parametercalc(int n)
  
 
 #if FIXEDQ
-// WARNING !! The BC needs to be changed for parallelisation if BC != 0
-	if(pouiseuille1==1){
-	if (k==0) {
+     if(poiseuille==1){
+	if (pe_cartesian_coordinates_[2] == 0 && k==kz1) {
 	 Fh[i][j][k][0]=0.0;
 	 Fh[i][j][k][1]=0.0;
 	 Fh[i][j][k][2]=0.0;
 	}
-	else if (k==Lz-1) {
+	if (pe_cartesian_coordinates_[2] == pe_cartesian_size_[2]-1 && k==kz2-1) {
 	 Fh[i][j][k][0]=0.0;
 	 Fh[i][j][k][1]=0.0;
 	 Fh[i][j][k][2]=0.0;
 	}
-       }
+    }
 #endif
-
 	/* antisymmetric part of the stress tensor */
 
 	tauxy[i][j][k]= -1.0*phivr*
@@ -1359,15 +1411,16 @@ void parametercalc(int n)
 	duzdz=(u[i][j][kup][2]-u[i][j][kdwn][2])*0.5;
 
       /*B.C.; use one-sided derivatives*/
-	if(pouiseuille1==1){
+/*
+	if(poiseuille==1){
 #if BC
-	if(k==0) {
+	if(k==1) {
 	  duxdz= (-3.0*u[i][j][k][0]+4.0*u[i][j][k+1][0]-u[i][j][k+2][0])*0.5;
 	  duydz= (-3.0*u[i][j][k][1]+4.0*u[i][j][k+1][1]-u[i][j][k+2][1])*0.5;
 	  duzdz= (-3.0*u[i][j][k][2]+4.0*u[i][j][k+1][2]-u[i][j][k+2][2])*0.5;
 
 	}
-	else if(k==Lz-1) {
+	else if(k==Lz) {
 	  duxdz= (3.0*u[i][j][k][0]-4.0*u[i][j][k-1][0]+u[i][j][k-2][0])*0.5;
 	  duydz= (3.0*u[i][j][k][1]-4.0*u[i][j][k-1][1]+u[i][j][k-2][1])*0.5;
 	  duzdz= (3.0*u[i][j][k][2]-4.0*u[i][j][k-1][2]+u[i][j][k-2][2])*0.5;
@@ -1375,7 +1428,7 @@ void parametercalc(int n)
 	}
 #endif
 	}
-
+*/
            Gammap=Gamma;
 
 	/* -(Q+1/3) Tr(D.(Q+1/3)) term*/
@@ -1423,7 +1476,7 @@ void parametercalc(int n)
       }
     }
   }
-  
+
 }
  
 #include "Initialization.cc"
