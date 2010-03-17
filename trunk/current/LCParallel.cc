@@ -1,9 +1,7 @@
-
 #include "LCParallel.hh"
 
 // Parallel, and then serial, code to deal with the exchange of
 // information at the periodic and processor boundaries.
-
 #ifdef PARALLEL
 
 /****************************************************************************
@@ -1046,6 +1044,7 @@ void exchangeMomentumAndQTensor() {
             u[0][iy][iz][0]  =   u[Lx2-2][iy][iz][0];
             u[0][iy][iz][1]  =   u[Lx2-2][iy][iz][1];
             u[0][iy][iz][2]  =   u[Lx2-2][iy][iz][2];
+
     }
   }
 
@@ -1072,6 +1071,7 @@ void exchangeMomentumAndQTensor() {
             u[ix][0][iz][0]  =   u[ix][Ly2-2][iz][0];
             u[ix][0][iz][1]  =   u[ix][Ly2-2][iz][1];
             u[ix][0][iz][2]  =   u[ix][Ly2-2][iz][2];
+
     }
   }
 
@@ -1098,8 +1098,11 @@ void exchangeMomentumAndQTensor() {
             u[ix][iy][0][0]  =   u[ix][iy][Lz2-2][0];
             u[ix][iy][0][1]  =   u[ix][iy][Lz2-2][1];
             u[ix][iy][0][2]  =   u[ix][iy][Lz2-2][2];
+
     }
   }
+
+
 
   return;
 }

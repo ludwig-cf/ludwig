@@ -280,35 +280,6 @@ if (myPE==0){
 // includes code which changes the control parameters during the run 
 #include "Controlparameter.cc"
 
-/*
-if(n%10000==0){
-    for (i=ix1; i<ix2; i++) {
-      for (j=jy1; j<jy2; j++) {
-          for (k=kz1; k<kz2; k++) {
-	 double amplitude=0.5;
-
-        Qxx[i][j][k]= amplitude*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
-           cos(angxytop/180.0*Pi)*cos(angxytop/180.0*Pi)-1.0/3.0);
-        Qxy[i][j][k]= amplitude*sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
-          cos(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi);
-        Qyy[i][j][k]= amplitude*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
-           sin(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi)-1.0/3.0);
-        Qxz[i][j][k]= amplitude*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
-          cos(angxytop/180.0*Pi);
-        Qyz[i][j][k]= amplitude*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
-          sin(angxytop/180.0*Pi);
-
-        Qxx[i][j][k]+=0.1*(2.0*drand48()-1.0);
-        Qxy[i][j][k]+=0.1*(2.0*drand48()-1.0);
-        Qxz[i][j][k]+=0.1*(2.0*drand48()-1.0);
-        Qyy[i][j][k]+=0.1*(2.0*drand48()-1.0);
-        Qyz[i][j][k]+=0.1*(2.0*drand48()-1.0);
-	 }
-      }
-   }
-}
-*/
-
 	computeStressFreeEnergy(n);
 
 	q0=q0init/rr;
