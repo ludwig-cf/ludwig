@@ -7,10 +7,11 @@ void randomizeQ(void)
   double ic, jc, kc;
   double ioff, joff, koff;
 
+#ifdef PARALLEL
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
-
+#endif
 
 
 //========================//
@@ -323,8 +324,9 @@ if(BLUEHAAR!=1){
 
 	if (RANDOM == 1) {
 		
-	  amplitude=1e-2;
+	  amplitude=0.5;
 
+/*
 	  phase= 2.0/5.0*Pi*(0.5-drand48());  
 	  phase2= Pi/2.0+Pi/5.0*(0.5-drand48());
 
@@ -338,6 +340,25 @@ if(BLUEHAAR!=1){
 	    3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*cos(phase));
 	  Qyz[i][j][k]=
 	    3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*sin(phase));
+*/
+
+	Qxx[i][j][k]= amplitude*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+	   cos(angxytop/180.0*Pi)*cos(angxytop/180.0*Pi)-1.0/3.0); 
+	Qxy[i][j][k]= amplitude*sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+	  cos(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi);
+	Qyy[i][j][k]= amplitude*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+	   sin(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi)-1.0/3.0);
+	Qxz[i][j][k]= amplitude*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
+	  cos(angxytop/180.0*Pi);
+	Qyz[i][j][k]= amplitude*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
+	  sin(angxytop/180.0*Pi);
+
+        Qxx[i][j][k]+=0.25*(2.0*drand48()-1.0);
+        Qxy[i][j][k]+=0.25*(2.0*drand48()-1.0);
+        Qxz[i][j][k]+=0.25*(2.0*drand48()-1.0);
+        Qyy[i][j][k]+=0.25*(2.0*drand48()-1.0);
+        Qyz[i][j][k]+=0.25*(2.0*drand48()-1.0);
+
 
 	}
 
@@ -349,6 +370,7 @@ if(BLUEHAAR!=1){
       }
     }
    }
+
 }
 //================================//
 // end alternative configurations //
@@ -365,10 +387,11 @@ void startDroplet(void)
   int ic, jc, kc;
   int ioff = 0, joff = 0, koff = 0;
 
+#ifdef PARALLEL
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
-
+#endif
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -428,8 +451,7 @@ void startDroplet(void)
        */
 
 	  //  droplet in isotropic environment
-
-//	  /*
+	//  /*
 	        Qxx[i][j][k]= 1e-4/2.0;
 	        Qxy[i][j][k]= 0.0;
 	        Qyy[i][j][k]= -1e-4;
@@ -503,11 +525,11 @@ void startSlab(void)
   int ic, jc, kc;
   int ioff = 0, joff = 0, koff = 0;
 
-
+#ifdef PARALLEL
   ioff = Lx*pe_cartesian_coordinates_[0]/pe_cartesian_size_[0];
   joff = Ly*pe_cartesian_coordinates_[1]/pe_cartesian_size_[1];
   koff = Lz*pe_cartesian_coordinates_[2]/pe_cartesian_size_[2];
-
+#endif
 
   for (i=ix1; i<ix2; i++) {
     for (j=jy1; j<jy2; j++) {
@@ -560,7 +582,7 @@ void startSlab(void)
 
 // BP slab 
 
-///*
+/*
 	if (O2STRUCT == 1) {
 
 	  amplitude=0.3; 
@@ -607,7 +629,7 @@ void startSlab(void)
 
 	}
 
-// */
+ */
 
 
 

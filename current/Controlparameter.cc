@@ -14,7 +14,7 @@
 
 // temperature-chirality quench 
 
-///*
+/*
 
 if(n==20000){
 
@@ -34,7 +34,7 @@ if(n==20000){
    caz = (1.0+4./3.*kappa*kappa);
    tauc = 1.0/8.0*(1-4.0*kappa*kappa+pow(caz,1.5));
 
-//*/
+*/
 
 /*
 
