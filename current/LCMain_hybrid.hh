@@ -50,6 +50,9 @@ float tau2=0.25;       // magnitude of flow-induced diffusion
 float dt=1.0;          //
 float densityinit=2.0; // initial value for the density everywhere
 
+// -------------------------------------
+// activity
+double zeta;
 // --------------------------------------
 // noise
 double noise_strength; // noise strength
@@ -181,8 +184,7 @@ double ****fpr,****gxxpr,****gxypr;
 double ****gyypr,****gxzpr,****gyzpr;
 
 double oneplusdtover2tau1,oneplusdtover2tau2,qvisc; 
-int pouiseuille;
-int pouiseuille1;
+int active,poiseuille;
 int e[15][3];
 
 ofstream output;

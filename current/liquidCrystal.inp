@@ -1,18 +1,18 @@
-128		# Lx
-128		# Ly
-128		# Lz
+32		# Lx
+32		# Ly
+32		# Lz
 0		# Nstart
-200000		# Nmax
+1000		# Nmax
 0		# GRAPHICS
-4000		# stepskip
+1000000		# stepskip
 2		# itimprov
-0		# bodyforce
+0e-5		# bodyforce
 0		# RANDOM
 0		# TWIST
-0		# O2STRUCT
+1		# O2STRUCT
 0		# O5STRUCT
 0		# O8STRUCT
-1		# O8MSTRUCT
+0		# O8MSTRUCT
 0		# HEXPLANAR
 0		# HEX3DA
 0		# HEX3DB
@@ -20,15 +20,16 @@
 0		# BLUEHAAR
 0.01		# L1
 0.01		# L2
-8		# numuc
+2		# numuc
 1		# numhftwist
 0.3		# Gamma
-2.713567839	# gam
+2.84210526		# gam
 1		# REDSHIFT
 1		# BACKFLOW
 1		# phivr
 0		# NOISE
 0.0		# noise_strength
+0e-3		# zeta (activity)
 0.7		# xi
 2.5		# tau1
 0.25		# tau2
@@ -38,17 +39,17 @@
 0		# vwtp
 0		# vwbt
 2		# bcstren
-0		# angztop
-0		# angzbot
-0		# angxytop
-0		# angxybot
-0.1918018824	# Abulk
+90		# angztop
+90		# angzbot
+90		# angxytop
+90		# angxybot
+0.02930039	# Abulk
 0.19		# threshold
-4000		# OVDPrintInt
-50		# FePrintInt
-1000000		# SigPrintFac
+1000		# OVDPrintInt
+10		# FePrintInt
+10000000	# SigPrintFac
 516		# numCase
-8		# x proc decomposition
-16		# y proc decomposition
-16		# z proc decomposition
-4		# number io groups (files)
+2		# x proc decomposition
+1		# y proc decomposition
+2		# z proc decomposition
+1		# number io groups (files)

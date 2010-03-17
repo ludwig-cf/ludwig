@@ -167,7 +167,7 @@ void computeStressFreeEnergy(int n)
 
 /* boundary corrections */
 	/*B.C.; use one-sided derivatives*/
-	if(pouiseuille1==2){
+/*	if(pouiseuille1==2){
 #if BC
 	if(k==0) {
 	  dQxxdz= (-3.0*Qxx[i][j][k]+4.0*Qxx[i][j][k+1]-Qxx[i][j][k+2])/2.0;
@@ -253,7 +253,7 @@ void computeStressFreeEnergy(int n)
 	}
 #endif
 	}
-
+*/
 
 /* \parial F / \partial dQ * dQ */
 
@@ -543,14 +543,18 @@ void computeStressFreeEnergy(int n)
 #endif
 
 
-// redshift: The lower threshold is set to 1e-9 as very small values cause a program crash
+/* Redshift: 
+The lower threshold is set to 1e-9 as very small values cause a program crash.
+It is also kept fixed if it is NaN, which can occur if all gradients vanish, 
+e.g. if the initial configuration is a perfect nematic LC 
+*/
 
 //   if (REDSHIFT==1 && n>20000){
 
    if (REDSHIFT==1){
       rr_old=rr;
       rr=-0.5*one_gradient/two_gradient;
-      if(fabs(rr)<1e-9){rr=rr_old;}
+      if(fabs(rr)<1e-9 || isnan(rr)==1){rr=rr_old;}
    }
 
 /*
@@ -748,6 +752,7 @@ void streamfile_ks(const int iter) {
       m[2][0]=Qxz[i][j][k];
       m[2][1]=Qyz[i][j][k];
       m[2][2]= -(m[0][0]+m[1][1]);
+
       jacobi(m,d,v,&nrots);
 
       if (d[0] > d[1]) {
@@ -803,6 +808,7 @@ void streamfile_ks(const int iter) {
 	      << " " << v[1][emax]<< " " << v[2][emax] << endl;
 #endif
        } 
+
     }
   }
   output.close();
