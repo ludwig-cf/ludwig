@@ -133,9 +133,11 @@ int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 	       MPI_Op op, int root, MPI_Comm comm);
 
 
-int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * newtype);
+
+int MPI_Type_contiguous(int count, MPI_Datatype oldtype,
+			MPI_Datatype * newtype);
 int MPI_Type_vector(int count, int blocklength, int stride,
-		    MPI_Datatype old, MPI_Datatype * newtype);
+		    MPI_Datatype oldtype, MPI_Datatype * newtype);
 int MPI_Type_struct(int count, int * array_of_blocklengths,
 		    MPI_Aint * array_of_displacements,
 		    MPI_Datatype * array_of_types, MPI_Datatype * newtype);
@@ -162,6 +164,8 @@ int MPI_Comm_free(MPI_Comm * comm);
 int MPI_Cart_create(MPI_Comm comm_old, int ndims, int * dims, int * periods,
 		    int reoerder, MPI_Comm * comm_cart);
 int MPI_Dims_create(int nnodes, int ndims, int * dims);
+int MPI_Cart_get(MPI_Comm comm, int maxdims, int * dims, int * periods,
+		 int * coords);
 int MPI_Cart_rank(MPI_Comm comm, int * coords, int * rank);
 int MPI_Cart_coords(MPI_Comm comm, int rank, int maxdims, int * coords);
 int MPI_Cart_shift(MPI_Comm comm, int direction, int disp, int * rank_source,
