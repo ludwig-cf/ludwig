@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.17.4.6 2010-02-13 15:40:22 kevin Exp $
+ *  $Id: model.c,v 1.17.4.7 2010-03-21 13:36:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -36,7 +36,7 @@ const double rcs2 = 3.0;
 struct io_info_t * io_info_distribution_; 
 double * f_;
 
-static int ndist_ = 2;
+static int ndist_ = 1;
 static int nsite_ = 0;
 static int initialised_ = 0;
 
@@ -773,7 +773,7 @@ void distribution_first_moment(const int index, const int ndist, double g[3]) {
   assert(index >= 0 && index < nsite_);
   assert(ndist >= 0 && ndist < ndist_);
 
-  for (n = 0; n < NDIM; n++) {
+  for (n = 0; n < 3; n++) {
     g[n] = 0.0;
   }
 
