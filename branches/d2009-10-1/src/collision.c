@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.5 2010-02-01 14:57:31 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.6 2010-03-21 13:40:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -144,7 +144,7 @@ void MODEL_collide_multirelaxation() {
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
-  int       i, j;                    /* summed over indices ("alphabeta") */
+  int       ia, ib;                  /* indices ("alphabeta") */
   int       ndist;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
@@ -154,12 +154,12 @@ void MODEL_collide_multirelaxation() {
   double    seq[3][3];               /* Equilibrium stress */
   double    shat[3][3];              /* random stress */
   double    ghat[NVEL];              /* noise for ghosts */
+  double    rdim;                    /* 1 / dimension */
 
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
 
   double    force_local[3];
-  const double   r3     = (1.0/3.0);
 
   extern double * f_;
 
@@ -168,6 +168,12 @@ void MODEL_collide_multirelaxation() {
   ndist = distribution_ndist();
   get_N_local(N);
   fluctuations_off(shat, ghat);
+
+  rdim = 1.0/NDIM;
+
+  for (ia = 0; ia < 3; ia++) {
+    u[ia] = 0.0;
+  }
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
@@ -185,30 +191,36 @@ void MODEL_collide_multirelaxation() {
 	  }
 	}
 
-	/* For convenience, write out the physical modes. */
+	/* For convenience, write out the physical modes, that is,
+	 * rho, NDIM components of velocity, independent components
+	 * of stress (upper triangle), and lower triangle. */
 
 	rho = mode[0];
-	for (i = 0; i < ND; i++) {
-	  u[i] = mode[1 + i];
+	for (ia = 0; ia < NDIM; ia++) {
+	  u[ia] = mode[1 + ia];
 	}
-	s[X][X] = mode[4];
-	s[X][Y] = mode[5];
-	s[X][Z] = mode[6];
-	s[Y][X] = s[X][Y];
-	s[Y][Y] = mode[7];
-	s[Y][Z] = mode[8];
-	s[Z][X] = s[X][Z];
-	s[Z][Y] = s[Y][Z];
-	s[Z][Z] = mode[9];
+
+	m = 0;
+	for (ia = 0; ia < NDIM; ia++) {
+	  for (ib = ia; ib < NDIM; ib++) {
+	    s[ia][ib] = mode[1 + NDIM + m++];
+	  }
+	}
+
+	for (ia = 1; ia < NDIM; ia++) {
+	  for (ib = 0; ib < ia; ib++) {
+	    s[ia][ib] = s[ib][ia];
+	  }
+	}
 
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
 	hydrodynamics_get_force_local(index, force_local);
 
-	for (i = 0; i < 3; i++) {
-	  force[i] = (siteforce[i] + force_local[i]);
-	  u[i] = rrho*(u[i] + 0.5*force[i]);
+	for (ia = 0; ia < NDIM; ia++) {
+	  force[ia] = (siteforce[ia] + force_local[ia]);
+	  u[ia] = rrho*(u[ia] + 0.5*force[ia]);
 	}
 	hydrodynamics_set_velocity(index, u);
 
@@ -217,49 +229,52 @@ void MODEL_collide_multirelaxation() {
 	tr_s   = 0.0;
 	tr_seq = 0.0;
 
-	for (i = 0; i < 3; i++) {
+	for (ia = 0; ia < NDIM; ia++) {
 	  /* Set equilibrium stress */
-	  for (j = 0; j < 3; j++) {
-	    seq[i][j] = rho*u[i]*u[j];
+	  for (ib = 0; ib < NDIM; ib++) {
+	    seq[ia][ib] = rho*u[ia]*u[ib];
 	  }
 	  /* Compute trace */
-	  tr_s   += s[i][i];
-	  tr_seq += seq[i][i];
+	  tr_s   += s[ia][ia];
+	  tr_seq += seq[ia][ia];
 	}
 
 	/* Form traceless parts */
-	for (i = 0; i < 3; i++) {
-	  s[i][i]   -= r3*tr_s;
-	  seq[i][i] -= r3*tr_seq;
+	for (ia = 0; ia < NDIM; ia++) {
+	  s[ia][ia]   -= rdim*tr_s;
+	  seq[ia][ia] -= rdim*tr_seq;
 	}
 
 	/* Relax each mode */
 	tr_s = tr_s - rtau_bulk*(tr_s - tr_seq);
 
-	for (i = 0; i < 3; i++) {
-	  for (j = 0; j < 3; j++) {
-	    s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
-	    s[i][j] += d_[i][j]*r3*tr_s;
+	for (ia = 0; ia < NDIM; ia++) {
+	  for (ib = 0; ib < NDIM; ib++) {
+	    s[ia][ib] -= rtau_shear*(s[ia][ib] - seq[ia][ib]);
+	    s[ia][ib] += d_[ia][ib]*rdim*tr_s;
 
 	    /* Correction from body force (assumes equal relaxation times) */
 
-	    s[i][j] += (2.0-rtau_shear)*(u[i]*force[j] + force[i]*u[j]);
+	    s[ia][ib] += (2.0-rtau_shear)*(u[ia]*force[ib] + force[ia]*u[ib]);
 	  }
 	}
 
 	if (isothermal_fluctuations_) fluctuations_on(shat, ghat);
 
-	/* Now reset the hydrodynamic modes to post-collision values */
+	/* Now reset the hydrodynamic modes to post-collision values:
+	 * rho is unchanged, velocity unchanged if no force,
+	 * independent components of stress, and ghosts. */
 
-	mode[1] = mode[1] + force[X];    /* Conserved if no force */
-	mode[2] = mode[2] + force[Y];    /* Conserved if no force */
-	mode[3] = mode[3] + force[Z];    /* Conserved if no force */
-	mode[4] = s[X][X] + shat[X][X];
-	mode[5] = s[X][Y] + shat[X][Y];
-	mode[6] = s[X][Z] + shat[X][Z];
-	mode[7] = s[Y][Y] + shat[Y][Y];
-	mode[8] = s[Y][Z] + shat[Y][Z];
-	mode[9] = s[Z][Z] + shat[Z][Z];
+	for (ia = 0; ia < NDIM; ia++) {
+	  mode[1 + ia] += force[ia];
+	}
+
+	m = 0;
+	for (ia = 0; ia < NDIM; ia++) {
+	  for (ib = ia; ib < NDIM; ib++) {
+	    mode[1 + NDIM + m++] = s[ia][ib] + shat[ia][ib];
+	  }
+	}
 
 	/* Ghost modes are relaxed toward zero equilibrium. */
 
