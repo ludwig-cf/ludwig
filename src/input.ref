@@ -163,9 +163,11 @@ colloid_ah          2.3
 colloid_vf          0.061
 colloid_no          2000
 
-# Constant body force on all colloids ("gravity")
+# Constant body force on all colloids ("gravity") [default is zero]
+# Uniform magnetic field [default is zero]
 
 colloid_gravity 0.0_0.0_0.0
+magnetic_b0     0.0_0.0_0.0
 
 # Colloid-colloid lubrication corrections
 
