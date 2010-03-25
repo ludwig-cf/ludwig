@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.6 2010-03-21 13:40:13 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.7 2010-03-25 05:02:40 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -586,16 +586,6 @@ void MODEL_init( void ) {
 
   /* Now setup the rest of the simulation */
 
-  /* Distributions */
-
-  init_site();
-
-  ind = RUN_get_string_parameter("reduced_halo", filename, FILENAME_MAX);
-  if (ind != 0 && strcmp(filename, "yes") == 0) {
-    info("\nUsing reduced halos\n\n");
-    distribution_halo_set_reduced();
-  }
-
   /* Order parameter */
 
   ind = RUN_get_string_parameter("phi_finite_difference", filename,
@@ -607,10 +597,21 @@ void MODEL_init( void ) {
     i = 1;
     RUN_get_int_parameter("finite_difference_upwind_order", &i);
     phi_ch_set_upwind_order(i);
+    distribution_ndist_set(1);
   }
   else {
     info("Order parameter is via lattice Boltzmann\n");
+    distribution_ndist_set(2);
+    /* Only Cahn-Hilliard (binary) by this method */
+    i = RUN_get_string_parameter("free_energy", filename, FILENAME_MAX);
+    if (i == 1 && strcmp(filename, "symmetric") != 0) {
+      fatal("Trying to run full LB: check free energy?\n");
+    }
   }
+
+  /* Distributions */
+
+  init_site();
 
   phi_init();
 
@@ -618,6 +619,12 @@ void MODEL_init( void ) {
   if (ind != 0 && strcmp(filename, "ASCII") == 0) {
     io_info_set_format_ascii(io_info_phi);
     info("Setting phi I/O format to ASCII\n");
+  }
+
+  ind = RUN_get_string_parameter("reduced_halo", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "yes") == 0) {
+    info("\nUsing reduced halos\n\n");
+    distribution_halo_set_reduced();
   }
 
   hydrodynamics_init();
