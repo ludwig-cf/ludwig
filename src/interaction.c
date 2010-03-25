@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18 2009-10-30 18:05:03 kevin Exp $
+ *  $Id: interaction.c,v 1.19 2010-03-25 03:11:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,6 +32,8 @@
 #include "active.h"
 #include "build.h"
 #include "physics.h"
+#include "magnetic_field.h"
+#include "magnetic_field_rt.h"
 #include "potential.h"
 
 #include "colloids.h"
@@ -160,6 +162,9 @@ void COLL_init() {
 #endif
 
   if (nc == 0) return;
+
+  magnetic_field_runtime();
+
   /* Still require old COM_init() at the moment */
   COM_init();
 
