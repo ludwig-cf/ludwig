@@ -19,7 +19,7 @@
  *
  *  These quantities are zero by default.
  *
- *  $Id: free_energy_vector.c,v 1.1.2.2 2010-03-26 05:44:44 kevin Exp $
+ *  $Id: free_energy_vector.c,v 1.1.2.3 2010-03-26 06:11:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -72,7 +72,7 @@ void (* fe_v_molecular_field(void))(const int index, double h[3]) {
  *
  *****************************************************************************/
 
-void fe_v_lamda_set(const double lambda_new) {
+void fe_v_lambda_set(const double lambda_new) {
 
   lambda_ = lambda_new;
   return;
