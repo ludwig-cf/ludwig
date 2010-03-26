@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for active gel free energy.
  *
- *  $Id: gelx_rt.c,v 1.1.2.2 2010-03-26 05:23:53 kevin Exp $
+ *  $Id: gelx_rt.c,v 1.1.2.3 2010-03-26 08:38:18 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,7 +20,7 @@
 #include "phi.h"
 #include "coords.h"
 #include "runtime.h"
-#include "free_energy.h"
+#include "free_energy_vector.h"
 #include "gelx.h"
 #include "gelx_rt.h"
 
@@ -40,6 +40,7 @@ void gelx_run_time(void) {
   double k1;
   double k2;
   double zeta;
+  double lambda;
 
   /* Vector order parameter (nop = 3) and del^2 required. */
 
@@ -64,6 +65,7 @@ void gelx_run_time(void) {
   n = RUN_get_double_parameter("gelx_kappa1", &k1);
   n = RUN_get_double_parameter("gelx_kappa2", &k2);
   n = RUN_get_double_parameter("gelx_zeta", &zeta);
+  n = RUN_get_double_parameter("gelx_lambda", &lambda);
 
   info("Parameters:\n");
   info("Bulk parameter A      = %12.5e\n", a);
@@ -71,9 +73,11 @@ void gelx_run_time(void) {
   info("Interfacial kappa1    = %12.5e\n", k1);
   info("Interfacial kappa2    = %12.5e\n", k2);
   info("Active parameter zeta = %12.5e\n", zeta);
+  info("Lambda                = %12.5e\n", lambda);
 
   gelx_parameters_set(a, b, k1, k2);
   gelx_zeta_set(zeta);
+  fe_v_lambda_set(lambda);
 
   return;
 }
