@@ -19,7 +19,7 @@
  *
  *  These quantities are zero by default.
  *
- *  $Id: free_energy_vector.c,v 1.1.2.1 2010-03-21 13:43:23 kevin Exp $
+ *  $Id: free_energy_vector.c,v 1.1.2.2 2010-03-26 05:44:44 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -60,7 +60,7 @@ void fe_v_molecular_field_set(void (* f)(const int index, double h[3])) {
  *
  *****************************************************************************/
 
-void (* fe_v_mocular_field(void))(const int index, double h[3]) {
+void (* fe_v_molecular_field(void))(const int index, double h[3]) {
 
   assert(fp_h_);
   return fp_h_;
