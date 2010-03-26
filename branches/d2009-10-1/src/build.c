@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.5 2010-03-04 14:30:42 kevin Exp $
+ *  $Id: build.c,v 1.5.4.6 2010-03-26 04:37:19 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -603,7 +603,7 @@ static void build_remove_fluid(int index, Colloid * p_colloid) {
 
   int    noffset[3];
   double   oldrho;
-  double   tmp[ND];
+  double   tmp[3];
   FVector oldu;
 
   IVector ri;
