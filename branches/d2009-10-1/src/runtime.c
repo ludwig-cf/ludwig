@@ -28,7 +28,13 @@
  *  for reading the input file, and the key value pair list is then
  *  broadcast to all other processes.
  *
+ *  $Id: runtime.c,v 1.3.16.1 2010-03-26 11:32:51 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -111,8 +117,6 @@ void RUN_read_input_file(const char * input_file_name) {
 
 static void key_broadcast(int nkeys) {
 
-#ifdef _MPI_
-
   char * packed_keys;
   int n = 0;
 
@@ -146,7 +150,7 @@ static void key_broadcast(int nkeys) {
   }
 
   free(packed_keys);
-#endif
+
   return;
 }
 

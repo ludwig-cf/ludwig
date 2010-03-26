@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15.16.1 2009-11-04 18:39:48 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.2 2010-03-26 11:36:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -125,9 +125,7 @@ void monte_carlo() {
 
   mc_check_state();
 
-#ifdef _MPI_
   MPI_Barrier(MPI_COMM_WORLD);
-#endif
 
   CIO_write_state("config.cds.init");
 
@@ -348,7 +346,8 @@ double mc_total_energy() {
   Colloid * p_c2;
 
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
-  double etot = 0.0;
+  double elocal = 0.0;
+  double etotal;
   double h;
   double hard_sphere_energy(const double);
   double hard_wall_energy(const FVector, const double);
@@ -364,7 +363,7 @@ double mc_total_energy() {
 
 	while (p_c1) {
 
-	  etot += hard_wall_energy(p_c1->r, p_c1->ah);
+	  elocal += hard_wall_energy(p_c1->r, p_c1->ah);
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
@@ -385,10 +384,10 @@ double mc_total_energy() {
 		    h = sqrt(r_12.x*r_12.x + r_12.y*r_12.y + r_12.z*r_12.z);
 		    h = h - p_c1->ah - p_c2->ah;
 		    
-		    etot += hard_sphere_energy(h);
-		    etot += soft_sphere_energy(h);
-		    etot += yukawa_potential(h + p_c1->ah + p_c2->ah);
-		    etot += leonard_jones_energy(h);
+		    elocal += hard_sphere_energy(h);
+		    elocal += soft_sphere_energy(h);
+		    elocal += yukawa_potential(h + p_c1->ah + p_c2->ah);
+		    elocal += leonard_jones_energy(h);
 
 		  }
 		  
@@ -410,14 +409,9 @@ double mc_total_energy() {
     }
   }
 
-#ifdef _MPI_
- {
-   double elocal = etot;
-   MPI_Allreduce(&elocal, &etot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
- }
-#endif
+  MPI_Allreduce(&elocal, &etotal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  return etot;
+  return etotal;
 }
 
 /*****************************************************************************

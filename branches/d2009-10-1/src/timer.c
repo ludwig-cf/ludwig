@@ -7,6 +7,14 @@
  *  There are a number of separate 'timers', each of which can
  *  be started, and stopped, independently.
  *
+ *  $Id: timer.c,v 1.4.16.2 2010-03-26 11:33:24 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
+ *
  *****************************************************************************/
 
 #include <time.h>
@@ -27,7 +35,6 @@ struct timer_struct {
 };
 
 static struct timer_struct timer[NTIMERS];
-static double TIMER_get_seconds(void);
 
 static const char * timer_name[] = {"Total",
 				    "Time step loop",
@@ -87,7 +94,7 @@ void TIMER_init() {
 
 void TIMER_start(const int t_id) {
 
-  timer[t_id].t_start = TIMER_get_seconds();
+  timer[t_id].t_start = MPI_Wtime();
   timer[t_id].active  = 1;
   timer[t_id].nsteps += 1;
 
@@ -109,7 +116,7 @@ void TIMER_stop(const int t_id) {
 
   if (timer[t_id].active) {
 
-    t_elapse = TIMER_get_seconds() - timer[t_id].t_start;
+    t_elapse = MPI_Wtime() - timer[t_id].t_start;
 
     timer[t_id].t_sum += t_elapse;
     timer[t_id].t_max  = dmax(timer[t_id].t_max, t_elapse);
@@ -119,27 +126,6 @@ void TIMER_stop(const int t_id) {
 
   return;
 }
-
-
-/*****************************************************************************
- *
- *  TIMER_get_seconds
- *
- *  This should return the time since some fixed point in
- *  the past in seconds.
- *
- *****************************************************************************/
-
-double TIMER_get_seconds() {
-
-#ifdef _MPI_
-  return MPI_Wtime();
-#else
-  return ((double) clock()) / CLOCKS_PER_SEC;
-#endif
-
-}
-
 
 /*****************************************************************************
  *
@@ -156,11 +142,8 @@ void TIMER_statistics() {
   double t_min, t_max, t_sum;
   double r;
 
-#ifdef _MPI_
   r = MPI_Wtick();
-#else
-  r = 1.0/CLOCKS_PER_SEC;
-#endif
+
   info("\nTimer resolution: %g second\n", r);
   info("\nTimer statistics\n");
   info("%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
@@ -175,7 +158,6 @@ void TIMER_statistics() {
       t_max = timer[n].t_max;
       t_sum = timer[n].t_sum;
 
-#ifdef _MPI_
       MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0,
 		 MPI_COMM_WORLD);
       MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0,
@@ -184,7 +166,6 @@ void TIMER_statistics() {
 		   MPI_COMM_WORLD);
 
       t_sum /= pe_size();
-#endif
 
       info("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
 	   t_min, t_max, t_sum, t_sum/(double) timer[n].nsteps);
