@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.7 2010-03-25 05:02:40 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.8 2010-03-26 08:43:52 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -85,37 +85,16 @@ static void fluctuations_on(double shat[3][3], double ghat[NVEL]);
 
 void collide() {
 
-#ifdef _SINGLE_FLUID_
+  int ndist;
 
-  /* This is single fluid collision stage. */
-  MODEL_collide_multirelaxation();
+  ndist = distribution_ndist();
 
-#else
+  TIMER_start(TIMER_COLLIDE);
 
-  /* This is the binary LB collision. First, compute order parameter
-   * gradients, then collision stage. The order of these calls is
-   * important. */
-
-  TIMER_start(TIMER_PHI_GRADIENTS);
-
-  phi_compute_phi_site();
-  phi_halo();
-  phi_gradients_compute();
-
-  TIMER_stop(TIMER_PHI_GRADIENTS);
-
-  if (phi_is_finite_difference()) {
-    /* phi_force_colloid();*/
-    phi_force_calculation();
-    MODEL_collide_multirelaxation();
-    /*blue_phase_beris_edwards();*/
-    phi_cahn_hilliard();
-  }
-  else {
-    MODEL_collide_binary_lb();
-  }
-
-#endif
+  if (ndist == 1) MODEL_collide_multirelaxation();
+  if (ndist == 2) MODEL_collide_binary_lb();
+ 
+  TIMER_stop(TIMER_COLLIDE);
 
   return;
 }
@@ -162,8 +141,6 @@ void MODEL_collide_multirelaxation() {
   double    force_local[3];
 
   extern double * f_;
-
-  TIMER_start(TIMER_COLLIDE);
 
   ndist = distribution_ndist();
   get_N_local(N);
@@ -295,8 +272,6 @@ void MODEL_collide_multirelaxation() {
       }
     }
   }
- 
- TIMER_stop(TIMER_COLLIDE);
 
   return;
 }
@@ -373,8 +348,6 @@ void MODEL_collide_binary_lb() {
   double (* chemical_potential)(const int index, const int nop);
   void   (* chemical_stress)(const int index, double s[3][3]);
 
-  TIMER_start(TIMER_COLLIDE);
-
   ndist = distribution_ndist();
   get_N_local(N);
 
@@ -404,7 +377,7 @@ void MODEL_collide_binary_lb() {
 	/* For convenience, write out the physical modes. */
 
 	rho = mode[0];
-	for (i = 0; i < ND; i++) {
+	for (i = 0; i < 3; i++) {
 	  u[i] = mode[1 + i];
 	}
 	s[X][X] = mode[4];
@@ -549,8 +522,6 @@ void MODEL_collide_binary_lb() {
     }
   }
 
-  TIMER_stop(TIMER_COLLIDE);
-
   return;
 }
 
@@ -575,7 +546,6 @@ void MODEL_init( void ) {
   int     offset[3];
   double   phi;
   double   phi0, rho0;
-  double   mobility;
   char     filename[FILENAME_MAX];
 
   rho0 = get_rho0();
@@ -683,18 +653,6 @@ void MODEL_init( void ) {
 		phi_lb_coupler_phi_set(ind, phi);
 	      }
 	  }
-  }
-
-  ind = RUN_get_double_parameter("mobility", &mobility);
-  info("\nOrder parameter mobility M: %f\n", mobility);
-  phi_ch_set_mobility(mobility);
-
-  /* Initialise blue phase */
-
-  ind = RUN_get_double_parameter("lc_Gamma", &mobility);
-  if (ind != 0) {
-    blue_phase_be_set_rotational_diffusion(mobility);
-    info("Rotational diffusion constant: %f\n", mobility);
   }
 
   /* BLUEPHASE */
@@ -985,7 +943,7 @@ void test_isothermal_fluctuations(void) {
   info("Isothermal fluctuations\n");
   info("[eqipart.] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
   info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z],
-       get_kT()*ND);
+       get_kT()*NDIM);
 
   return;
 }
