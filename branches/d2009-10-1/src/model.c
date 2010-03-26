@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.17.4.7 2010-03-21 13:36:50 kevin Exp $
+ *  $Id: model.c,v 1.17.4.8 2010-03-26 08:40:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -104,9 +104,7 @@ void init_site() {
    *
    * in XY plane nx*ny blocks of 1 site with stride nz;
    * in XZ plane nx blocks of nz sites with stride ny*nz;
-   * in YZ plane one contiguous block of ny*nz sites.
-   *
-   * This is only confirmed for nhalo = 1. */
+   * in YZ plane one contiguous block of ny*nz sites. */
 
   MPI_Type_vector(nx*ny, ndist_*NVEL*nhalolocal, ndist_*NVEL*nz, MPI_DOUBLE,
 		  &plane_xy_full_);
@@ -411,7 +409,7 @@ static void distribution_io_info_init() {
  *
  *****************************************************************************/
 
-void distribution_get_stress_at_site(int index, double s[ND][ND]) {
+void distribution_get_stress_at_site(int index, double s[3][3]) {
 
   int p, ia, ib;
 

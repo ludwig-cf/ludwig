@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.14.4.5 2010-02-13 15:40:22 kevin Exp $
+ *  $Id: model.h,v 1.14.4.6 2010-03-26 08:40:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,14 +23,8 @@
 #error "You must define -D_D2Q9_, -D_D3Q15_ or -D_D3Q19_ in the Makefile" 
 #endif
 
-/* Always three dimensions at the moment */
-enum {ND = 3};
+/* Number of hydrodynamic modes */
 enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
-
-/* Identify the hydrodynamic modes */
-enum {MRHO = 0,
-      MRUX = 1, MRUY = 2, MRUZ = 3,
-      MSXX = 4, MSXY = 5, MSXZ = 6, MSYY = 7, MSYZ = 8, MSZZ = 9};
 
 extern const double cs2;
 extern const double rcs2;
@@ -50,7 +44,7 @@ void   distribution_zeroth_moment_set_equilibrium(const int index, const int n,
 						  const double rho);
 void   distribution_first_moment(const int index, const int n, double g[3]);
 
-void   distribution_get_stress_at_site(int index, double s[ND][ND]);
+void   distribution_get_stress_at_site(int index, double s[3][3]);
 void   distribution_halo_set_complete(void);
 void   distribution_halo_set_reduced(void);
 
