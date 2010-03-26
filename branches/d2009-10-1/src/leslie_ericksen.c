@@ -5,7 +5,7 @@
  *  Updates a vector order parameter according to something looking
  *  like a Leslie-Ericksen equation.
  *
- *  $Id: leslie_ericksen.c,v 1.1.2.1 2010-03-21 13:43:23 kevin Exp $
+ *  $Id: leslie_ericksen.c,v 1.1.2.2 2010-03-26 08:39:12 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -34,7 +34,32 @@ static double * fluxw;
 static double * fluxy;
 static double * fluxz;
 
+static void leslie_ericksen_update_fluid(void);
 static void leslie_ericksen_add_swimming_velocity(void);
+
+/*****************************************************************************
+ *
+ *  leslie_ericken_gamma_set
+ *
+ *****************************************************************************/
+
+void leslie_ericksen_gamma_set(const double gamma) {
+
+  Gamma_ = gamma;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  leslie_ericksen_swim_set
+ *
+ *****************************************************************************/
+
+void leslie_ericksen_swim_set(const double s) {
+
+  swim_ = s;
+  return;
+}
 
 /*****************************************************************************
  *
@@ -81,19 +106,30 @@ void leslie_ericksen_update(void) {
  *
  *****************************************************************************/
 
-void leslie_ericksen_update_fluid(void) {
+static void leslie_ericksen_update_fluid(void) {
 
   int ic, jc, kc, index;
+  int indexj, indexk;
+  int ia, ib;
   int nlocal[3];
 
   double lambda;
+  double p[3];
   double q[3];
   double h[3];
-  double d[3];
-  double omega[3];
+  double d[3][3];
+  double omega[3][3];
   double w[3][3];
+  double sum;
+
+  const double dt = 1.0;
+
+  void (* fe_molecular_field_function)(int index, double h[3]);
+
 
   coords_nlocal(nlocal);
+  fe_molecular_field_function = fe_v_molecular_field();
+  lambda = fe_v_lambda();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -102,7 +138,7 @@ void leslie_ericksen_update_fluid(void) {
 	index = get_site_index(ic, jc, kc);
 
 	phi_get_q_vector(index, q);
-	fe_v_molecular_field_function(index, h);
+	fe_molecular_field_function(index, h);
 	hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
 
 	for (ia = 0; ia < 3; ia++) {
@@ -113,6 +149,9 @@ void leslie_ericksen_update_fluid(void) {
 	}
 
 	/* update */
+
+	indexj = get_site_index(ic, jc+1, kc);
+	indexk = get_site_index(ic, jc, kc+1);
 
 	for (ia = 0; ia <= 3; ia++) {
 
@@ -144,9 +183,11 @@ void leslie_ericksen_update_fluid(void) {
 static void leslie_ericksen_add_swimming_velocity(void) {
 
   int ic, jc, kc, index;
+  int ia;
   int nlocal[3];
-  int p[3];
-  int u[3];
+
+  double p[3];
+  double u[3];
 
   coords_nlocal(nlocal);
 

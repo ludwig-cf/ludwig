@@ -2,7 +2,7 @@
  *
  *  leslie_ericksen.h
  *
- *  $Id: leslie_ericksen.h,v 1.1.2.1 2010-03-21 13:43:23 kevin Exp $
+ *  $Id: leslie_ericksen.h,v 1.1.2.2 2010-03-26 08:39:12 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -16,5 +16,7 @@
 #define LESLIE_ERICKSEN_H
 
 void leslie_ericksen_update(void);
+void leslie_ericksen_gamma_set(const double gamma);
+void leslie_ericksen_swim_set(const double gamma);
 
 #endif
