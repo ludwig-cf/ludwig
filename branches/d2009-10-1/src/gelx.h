@@ -2,7 +2,7 @@
  *
  *  gelx.h
  *
- *  $Id: gelx.h,v 1.1.2.2 2010-03-21 13:38:15 kevin Exp $
+ *  $Id: gelx.h,v 1.1.2.3 2010-03-26 05:23:53 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,5 +21,9 @@
 double gelx_free_energy_density(const int index);
 void   gelx_chemical_stress(const int index, double s[3][3]);
 void   gelx_molecular_field(const int index, double h[3]);
+void   gelx_parameters_set(const double a, const double b, const double kappa1,
+			   const double kappa2);
+void   gelx_zeta_set(const double zeta);
+double gelx_zeta(void);
 
 #endif
