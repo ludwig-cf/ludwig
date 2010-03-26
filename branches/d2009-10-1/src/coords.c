@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3.16.3 2010-02-17 13:55:15 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.4 2010-03-26 08:36:45 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -281,6 +281,25 @@ void coords_nlocal(int n[3]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_nsites
+ *
+ *  Return the total number of lattice sites, including the
+ *  halo regions.
+ *
+ *****************************************************************************/
+
+int coords_nsites(void) {
+
+  int nsites;
+
+  nsites = (n_local[X] + 2*nhalo_)*(n_local[Y] + 2*nhalo_)
+    *(n_local[Z] + 2*nhalo_);
+
+  return nsites;
 }
 
 /*****************************************************************************
