@@ -1,13 +1,44 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-Read 63 user parameters from input
+Note assertions via standard C assert() are on.
+
+Read 63 user parameters from ../tests/regression/test_le3_input
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+Single conserved order parameter nop = 1
+Requires up to del^2 derivatives so setting nhalo = 2
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Order parameter dynamics
+------------------------
+
+Using Cahn-Hilliard solver:
+Mobility M            =  1.50000e-01
+
+System details
+--------------
+
 [User   ] Lattice size is (64, 64, 64)
 [User   ] periodic boundaries set to (1, 1, 1)
-[Default] Processor decomposition is (1, 1, 1)
-Cartesian Communicator:
-Periodic = (1, 1, 1)
-Reorder is true
-[Compute] local domain as (64, 64, 64)
+[User   ] Processor decomposition: 2 2 2
+
+Initialised coordinate system:
+Actual system size:     64 64 64
+Actual decomposition:   1 1 1
+Local domain:           64 64 64
+Periodic:               1 1 1
+Width of halo region:   2
+Reorder:                true
+
 [User   ] Random number seed: -7361237
 
 External gravitational force
@@ -29,60 +60,53 @@ Lees-Edwards boundary conditions are active:
 LE plane 1 is at x = 16 with speed 0.050000
 LE plane 2 is at x = 48 with speed 0.050000
 Overall shear rate = 0.001563
-The lattice Boltzmann model is D3Q19
-Requesting 95587328 bytes for site data
 Switching order parameter to finite difference
 Using third order upwind
-
-Order parameter mobility M: 0.150000
 [Boundary links: 0 (0 bytes)]
-[User   ] Free energy: symmetric
-
-Symmetric phi^4 free energy:
-Bulk parameter A      = -0.062500
-Bulk parameter B      = 0.062500
-Surface penalty kappa = 0.040000
-Surface tension       = 0.047140
-Interfacial width     = 1.131371
 Initialising shear profile
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 1, 1]
-
-TEST_momentum [x, y, z]
-[total][4.54557e-13, 2.2022e-13, 0]
-[fluid][4.54557e-13, 2.2022e-13, 0]
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 0.0000000e+00  1.00000000000 1.00000000000
 [phi]  6.9259365e+00  2.6420351e-05 8.3281808e-04 -4.9999901e-02 4.9999855e-02
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-200  47728.6 59690.7 47396.9 46039.7   47693 62052.3 -1.22462 -0.934429
+Momentum - x y z
+[total   ]  1.3642421e-12 -7.2990225e-14  0.0000000e+00
+[fluid   ]  1.3642421e-12 -7.2990225e-14  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99997932, 1.0000443]
+Starting time step loop.
 
-TEST_momentum [x, y, z]
-[total][9.35807e-13, -0.000238726, -2.12528e-13]
-[fluid][9.35807e-13, -0.000238726, -2.12528e-13]
-Velocity stats:
-[ umin ][ -3.74738e-05 -0.0242409 -2.49961e-05 ]
-[ umax ][ 2.63871e-05 0.0242375 2.58662e-05 ]
-[phi]  6.9259365e+00  2.6420351e-05 1.1629994e-04 -4.3645450e-02 4.9086035e-02
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 1.7533086e-11  0.99997925648 1.00004472103
+[phi]  6.9259365e+00  2.6420351e-05 1.1634429e-04 -4.3669944e-02 4.8995164e-02
+Free energy density [total, fluid]
+[fed]      200  1.3866132e-06  1.3866132e-06
+
+Momentum - x y z
+[total   ]  3.1225023e-14 -2.4024725e-04  5.1129240e-14
+[fluid   ]  3.1225023e-14 -2.4024725e-04  5.1129240e-14
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.7090974e-05 -2.4241005e-02 -2.4972697e-05
+[maximum ]  2.6495676e-05  2.4237478e-02  2.5872574e-05
 
 Completed cycle 200
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-400  15172.4 21662.2 15195.5 14184.5 15213.7 24008.4 -1.16602 -0.333042
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 1.3370416e-10  0.99995408785 1.00016021238
+[phi]  6.9259365e+00  2.6420351e-05 3.6285163e-04 -7.8683600e-02 8.6967656e-02
+Free energy density [total, fluid]
+[fed]      400  4.1938159e-06  4.1938159e-06
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99995394, 1.0001598]
+Momentum - x y z
+[total   ] -2.0393409e-14  1.9975821e-05  5.7145261e-14
+[fluid   ] -2.0393409e-14  1.9975821e-05  5.7145261e-14
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
-TEST_momentum [x, y, z]
-[total][9.05141e-13, 1.90026e-05, -3.44259e-13]
-[fluid][9.05141e-13, 1.90026e-05, -3.44259e-13]
-Velocity stats:
-[ umin ][ -0.000101123 -0.0242726 -9.25073e-05 ]
-[ umax ][ 8.22919e-05 0.024275 8.21839e-05 ]
-[phi]  6.9259365e+00  2.6420351e-05 3.6276136e-04 -7.8615391e-02 8.6848118e-02
+Velocity - x y z
+[minimum ] -1.0142215e-04 -2.4272319e-02 -9.2467074e-05
+[maximum ]  8.2231566e-05  2.4274947e-02  8.2167575e-05
 
 Completed cycle 400
 
@@ -90,11 +114,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    310.240    310.240    310.240 310.240000 (1 call)
-      Time step loop:      0.760      0.820    309.460   0.773650 (400 calls)
-         Propagation:      0.110      0.120     46.730   0.116825 (400 calls)
-           Collision:      0.340      0.350    137.260   0.343150 (400 calls)
-       Lattice halos:      0.000      0.010      4.140   0.005175 (800 calls)
-       phi gradients:      0.070      0.090     31.780   0.079450 (400 calls)
-     Lees Edwards BC:      0.010      0.020      4.650   0.011625 (400 calls)
+               Total:   1717.540   1717.540   1717.540 1717.540000 (1 call)
+      Time step loop:      1.840     21.490   1716.200   4.290500 (400 calls)
+         Propagation:      0.050      0.820     51.590   0.128975 (400 calls)
+           Collision:      0.230      3.980    271.520   0.678800 (400 calls)
+       Lattice halos:     -0.000      0.150      6.200   0.007750 (800 calls)
+       phi gradients:      0.540      9.330    656.790   1.641975 (400 calls)
+     Lees Edwards BC:     -0.000      0.170      8.560   0.021400 (400 calls)
+   Force calculation:      0.340      4.170    440.400   1.101000 (400 calls)
+          phi update:      0.240      3.820    279.520   0.698800 (400 calls)
 Ludwig finished normally.
