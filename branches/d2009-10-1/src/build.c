@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.6 2010-03-26 04:37:19 kevin Exp $
+ *  $Id: build.c,v 1.5.4.7 2010-03-27 06:24:02 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -60,7 +60,7 @@ void COLL_init_coordinates() {
 
   /* Allocate space for the local colloid map */
 
-  get_N_local(N);
+  coords_nlocal(N);
   n = (N[X] + 2*nhalo_)*(N[Y] + 2*nhalo_)*(N[Z] + 2*nhalo_);
 
   info("Requesting %d bytes for colloid maps\n", 2*n*sizeof(Colloid*));
@@ -104,7 +104,7 @@ void COLL_update_map() {
   int     offset[3];
   int     ic, jc, kc;
 
-  get_N_local(N);
+  coords_nlocal(N);
   get_N_offset(offset);
 
   /* First, set any existing colloid sites to fluid */
@@ -183,7 +183,7 @@ void COLL_update_map() {
 		if (UTIL_dot_product(rsep, rsep) < rsq) {
 
 		  /* Set index */
-		  index = get_site_index(i, j, k);
+		  index = coords_index(i, j, k);
 
 		  coll_map[index] = p_colloid;
 		  site_map_set_status(i, j, k, COLLOID);
@@ -283,7 +283,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
   int         N[3];
   int         offset[3];
 
-  get_N_local(N);
+  coords_nlocal(N);
   get_N_offset(offset);
 
   p_link = p_colloid->lnk;
@@ -326,7 +326,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	jc = j;
 	kc = k;
 
-	index1 = get_site_index(ic, jc, kc);
+	index1 = coords_index(ic, jc, kc);
 
 	if (coll_map[index1] == p_colloid) continue;
 
@@ -344,7 +344,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	  jj = jc + cv[p][1];
 	  kk = kc + cv[p][2];
 
-	  index0 = get_site_index(ii, jj, kk);
+	  index0 = coords_index(ii, jj, kk);
 
 	  if (coll_map[index0] != p_colloid) continue;
 
@@ -545,13 +545,13 @@ void COLL_remove_or_replace_fluid() {
   int     halo;
   int     N[3];
 
-  get_N_local(N);
+  coords_nlocal(N);
 
   for (i = 1 - nhalo_; i <= N[X] + nhalo_; i++) {
     for (j = 1 - nhalo_; j <= N[Y] + nhalo_; j++) {
       for (k = 1 - nhalo_; k <= N[Z] + nhalo_; k++) {
 
-	index = get_site_index(i, j, k);
+	index = coords_index(i, j, k);
 
 	sold = (coll_old[index] != (Colloid *) NULL);
 	snew = (coll_map[index] != (Colloid *) NULL);
@@ -701,7 +701,7 @@ static void build_replace_fluid(int index, Colloid * p_colloid) {
 
   for (p = 1; p < NVEL; p++) {
 
-    indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y], ri.z + cv[p][Z]);
+    indexn = coords_index(ri.x + cv[p][X], ri.y + cv[p][Y], ri.z + cv[p][Z]);
 
     /* Site must have been fluid before position update */
     if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID) continue;
@@ -760,6 +760,7 @@ static void build_replace_fluid(int index, Colloid * p_colloid) {
 static void build_replace_order_parameter(int index, Colloid * p_colloid) {
 
   int      indexn, n, p, pdash;
+  int      nop;
   IVector  ri;
 
   double    newphi = 0.0;
@@ -767,6 +768,7 @@ static void build_replace_order_parameter(int index, Colloid * p_colloid) {
   double    newg[NVEL];
   double    * phi;
 
+  nop = phi_nop();
   ri = COM_index2coord(index);
 
   /* Check the surrounding sites that were linked to inode,
@@ -778,29 +780,29 @@ static void build_replace_order_parameter(int index, Colloid * p_colloid) {
 
   if (phi_is_finite_difference()) {
 
-    phi = (double *) malloc(nop_*sizeof(double));
+    phi = (double *) malloc(nop*sizeof(double));
     if (phi == NULL) fatal("malloc(phi) failed\n");
 
-    for (n = 0; n < nop_; n++) {
+    for (n = 0; n < nop; n++) {
       phi[n] = 0.0;
     }
 
     for (p = 1; p < NVEL; p++) {
 
-      indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y],
+      indexn = coords_index(ri.x + cv[p][X], ri.y + cv[p][Y],
 			      ri.z + cv[p][Z]);
 
       /* Site must have been fluid before position update */
       if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
 	continue;
-      for (n = 0; n < nop_; n++) {
+      for (n = 0; n < nop; n++) {
 	phi[n] += wv[p]*phi_op_get_phi_site(index, n);
       }
       weight += wv[p];
     }
 
     weight = 1.0/weight;
-    for (n = 0; n < nop_; n++) {
+    for (n = 0; n < nop; n++) {
       phi_op_set_phi_site(index, n, phi[n]*weight);
     }
     free(phi);
@@ -811,7 +813,7 @@ static void build_replace_order_parameter(int index, Colloid * p_colloid) {
 
     for (p = 1; p < NVEL; p++) {
 
-      indexn = get_site_index(ri.x + cv[p][X], ri.y + cv[p][Y],
+      indexn = coords_index(ri.x + cv[p][X], ri.y + cv[p][Y],
 			      ri.z + cv[p][Z]);
 
       /* Site must have been fluid before position update */
@@ -905,7 +907,7 @@ IVector COM_index2coord( int index )
   int N[3];
   int xfac,yfac;
 
-  get_N_local(N);
+  coords_nlocal(N);
 
   yfac = N[Z]+2*nhalo_;
   xfac = (N[Y]+2*nhalo_)*yfac;
@@ -914,7 +916,7 @@ IVector COM_index2coord( int index )
   coord.y = (1-nhalo_) + (index%xfac)/yfac;
   coord.z = (1-nhalo_) + index%yfac;
 
-  assert(get_site_index(coord.x, coord.y, coord.z) == index);
+  assert(coords_index(coord.x, coord.y, coord.z) == index);
 
   return(coord);
 }
@@ -1003,7 +1005,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
   int         N[3];
   int         offset[3];
 
-  get_N_local(N);
+  coords_nlocal(N);
   get_N_offset(offset);
 
   p_link = p_colloid->lnk;
@@ -1040,7 +1042,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 	jc = j;
 	kc = k;
 
-	index1 = get_site_index(ic, jc, kc);
+	index1 = coords_index(ic, jc, kc);
 
 	if (coll_map[index1] != p_colloid) continue;
 
@@ -1055,7 +1057,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 	  jj = jc + cv[p][1];
 	  kk = kc + cv[p][2];
 
-	  index0 = get_site_index(ii, jj, kk);
+	  index0 = coords_index(ii, jj, kk);
 
 	  if (site_map_get_status_index(index0) != BOUNDARY) continue;
 
