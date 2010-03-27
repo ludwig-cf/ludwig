@@ -39,7 +39,11 @@
 #include "io_harness.h"
 #include "phi.h"
 #include "phi_stats.h"
+#include "phi_force.h"
 #include "phi_gradients.h"
+#include "phi_lb_coupler.h"
+#include "phi_update.h"
+#include "phi_update_rt.h"
 #include "blue_phase.h"
 #include "model_le.h"
 #include "colloids_Q_tensor.h"
@@ -68,12 +72,14 @@ void ludwig_rt(void) {
   TIMER_start(TIMER_TOTAL);
 
   free_energy_run_time();
+  phi_update_run_time();
 
   /* These together for the time being. */
   coords_run_time();
   coords_init();
 
   init_control();
+
 
   ran_init();
   init_physics();
@@ -121,7 +127,7 @@ void ludwig_init(void) {
   /* Initialise Lc in colloids */
   /* COLL_randomize_Q(0.0);*/
 
-  scalar_q_io_init();
+  /* scalar_q_io_init();*/
 
   stats_rheology_init();
   stats_turbulent_init();
@@ -158,7 +164,6 @@ int main( int argc, char **argv ) {
   phi_stats_print_stats();
   ludwig_report_momentum();
 
-
   /* Main time stepping loop */
 
   info("\n");
@@ -172,7 +177,24 @@ int main( int argc, char **argv ) {
     COLL_update();
     wall_update();
     /* COLL_set_Q();*/
+
     /* Collision stage */
+
+    if (phi_nop()) {
+
+      TIMER_start(TIMER_PHI_GRADIENTS);
+
+      phi_compute_phi_site();
+      phi_halo();
+      phi_gradients_compute();
+
+      TIMER_stop(TIMER_PHI_GRADIENTS);
+
+      /* phi_force_colloid();*/
+      phi_force_calculation();
+      phi_update_dynamics();
+    }
+
     collide();
     model_le_apply_boundary_conditions();
     halo_site();
@@ -200,14 +222,14 @@ int main( int argc, char **argv ) {
       get_output_config_filename(filename, step);
       io_write(filename, io_info_distribution_);
       sprintf(filename, "%s%6.6d", "config.cds", step);
-      CIO_write_state(filename);
+      colloid_io_write(filename);
     }
 
     /* Measurements */
 
     if (is_measurement_step()) {	  
       sprintf(filename, "%s%6.6d", "config.cds", step);
-      /*CIO_write_state(filename);*/
+      /*colloid_io_write(filename);*/
     }
 
     if (is_shear_measurement_step()) {
@@ -260,7 +282,7 @@ int main( int argc, char **argv ) {
     get_output_config_filename(filename, step);
     io_write(filename, io_info_distribution_);
     sprintf(filename, "%s%6.6d", "config.cds", step);
-    CIO_write_state(filename);
+    colloid_io_write(filename);
     sprintf(filename,"phi-%6.6d",step);
     io_write(filename, io_info_phi);
   }
