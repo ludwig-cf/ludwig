@@ -2,9 +2,15 @@
  *
  *  ewald.c
  *
- *  The Ewald summation for magnetic dipoles.
+ *  The Ewald summation for magnetic dipoles. Currently assumes
+ *  all dipole strengths (mu) are the same.
  *
  *  See, for example, Allen and Tildesley, Computer Simulation of Liquids.
+ *
+ *  $Id: ewald.c,v 1.3.16.1 2010-03-27 07:13:08 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh.
@@ -250,6 +256,9 @@ static void ewald_sum_sin_cos_terms() {
   int ic, jc, kc;
   int ncell[3];
 
+  double * subsin;
+  double * subcos;
+
   fkx = 2.0*PI/L(X);
   fky = 2.0*PI/L(Y);
   fkz = 2.0*PI/L(Z);
@@ -331,28 +340,21 @@ static void ewald_sum_sin_cos_terms() {
     }
   }
 
-#ifdef _MPI_
-  {
-    double * subsin;
-    double * subcos;
+  subsin = (double *) calloc(nktot_, sizeof(double));
+  subcos = (double *) calloc(nktot_, sizeof(double));
+  if (subsin == NULL) fatal("calloc(subsin) failed\n");
+  if (subcos == NULL) fatal("calloc(subcos) failed\n");
 
-    subsin = (double *) calloc(nktot_, sizeof(double));
-    if (subsin == NULL) fatal("calloc(subsin) failed\n");
-    subcos = (double *) calloc(nktot_, sizeof(double));
-    if (subcos == NULL) fatal("calloc(subcos) failed\n");
-
-    for (kn = 0; kn < nktot_; kn++) {
-      subsin[kn] = sinx_[kn];
-      subcos[kn] = cosx_[kn];
-    }
-
-    MPI_Allreduce(subsin, sinx_, nktot_, MPI_DOUBLE, MPI_SUM, cart_comm());
-    MPI_Allreduce(subcos, cosx_, nktot_, MPI_DOUBLE, MPI_SUM, cart_comm());
-
-    free(subsin);
-    free(subcos);
+  for (kn = 0; kn < nktot_; kn++) {
+    subsin[kn] = sinx_[kn];
+    subcos[kn] = cosx_[kn];
   }
-#endif
+
+  MPI_Allreduce(subsin, sinx_, nktot_, MPI_DOUBLE, MPI_SUM, cart_comm());
+  MPI_Allreduce(subcos, cosx_, nktot_, MPI_DOUBLE, MPI_SUM, cart_comm());
+
+  free(subsin);
+  free(subcos);
 
   return ;
 }
@@ -740,380 +742,5 @@ static void ewald_set_kr_table(double r[3]) {
     }
   }
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  ewald_test
- *
- *  Temporary test code. Should get removed to a stand-alone test.
- *
- *  Note these tests do not rely on having the halos correct in serial
- *
- *****************************************************************************/
-
-#define TOLERANCE 1.0e-07
-
-void ewald_test() {
-
-  Colloid * p_c1;
-  Colloid * p_c2;
-  FVector r, v, omega;
-  double r12[3];
-  double e;
-
-  Colloid * COLL_add_colloid_no_halo(int, double, double, FVector,FVector,FVector);
-  FVector COLL_fvector_separation(FVector, FVector);
-
-  /* First set of tests use rc = 32.0, which is L/2. */
-  ewald_init(0.285, 32.0);
-
-  set_N_colloid(2);
-
-  assert(fabs(ewald_rc_ - 32.0) < TOLERANCE);
-  assert(fabs(mu_ - 0.285) < TOLERANCE);
-  assert(fabs(kappa_ - 0.078125) < TOLERANCE);
-
-  r.x = 3.0; r.y = 3.0; r.z = 3.0;
-  v.x = 0.0; v.y = 0.0; v.z = 0.0;
-  omega.x = 0.0; omega.y = 0.0; omega.z = 0.0;
-
-  p_c1 = COLL_add_colloid_no_halo(1, 2.3, 2.3, r, v, omega);
-
-  p_c1->s[X] = 0.0;
-  p_c1->s[Y] = 0.0;
-  p_c1->s[Z] = 1.0;
-
-
-  r.z = 13.0;
-
-  p_c2 = COLL_add_colloid_no_halo(2, 2.3, 2.3, r, v, omega);
-
-  p_c2->s[X] = 0.0;
-  p_c2->s[Y] = 0.0;
-  p_c2->s[Z] = -1.0;
-
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r.x, p_c1->r.y, p_c1->r.z,
-       p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
-
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r.x, p_c2->r.y, p_c2->r.z,
-       p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
-
-  r = COLL_fvector_separation(p_c1->r, p_c2->r);
-  r12[X] = r.x; r12[Y] = r.y; r12[Z] = r.z;
-
-
-
-  e = ewald_real_space_energy(p_c1->s, p_c2->s, r12);
-
-  info("Real space energy: %g\n", e);
-  assert(fabs(e - 0.000168995) < TOLERANCE);
-
-  e = ewald_fourier_space_energy();
-
-  info("Fourier space energy: %g\n", e);
-  assert(fabs(e - 2.25831e-05) < TOLERANCE);
-
-  e = ewald_self_energy();
-
-  info("Self energy term: %g\n", e);
-  assert(fabs(e - -2.91356e-05) < TOLERANCE);
-
-  /* Now forces */
-
-  info("Computing force and torque...\n");
-
-  info("Number of k-space terms is %d %d %d\n", nk_[X], nk_[Y], nk_[Z]);
-  assert(nk_[X] == 4);
-  assert(nk_[Y] == 4);
-  assert(nk_[Z] == 4);
-
-  ewald_real_space_sum();
-  info("Real space energy: %g\n", ereal_);
-  assert(fabs(ereal_ - 0.000168995) < TOLERANCE);
-
-
-  info("Real space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
-
-  assert(fabs(p_c1->force.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->force.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->force.z - -5.17464e-05) < TOLERANCE);
-
-
-  info("Real space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
-
-  assert(fabs(p_c2->force.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->force.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->force.z - 5.17464e-05) < TOLERANCE);
-
-  assert(fabs(p_c1->force.z + p_c2->force.z) < TOLERANCE);
-  info("Momentum conserved.\n");
-
-  info("Real space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
-
-  assert(fabs(p_c1->torque.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->torque.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->torque.z - 0.0) < TOLERANCE);
-
-  info("Real space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
-
-  assert(fabs(p_c2->torque.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->torque.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
-
-
-  /* Fourier space */
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
-
-  ewald_fourier_space_sum();
-  info("Fourier space energy: %g\n", efourier_);
-  assert(fabs(efourier_ - 2.25831e-05) < TOLERANCE);
-
-  info("Fourier space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
-
-  assert(fabs(p_c1->force.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->force.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->force.z - 3.08611e-06) < TOLERANCE);
-
-  info("Fourier space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
-
-  assert(fabs(p_c2->force.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->force.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->force.z - -3.08611e-06) < TOLERANCE);
-
-  assert(fabs(p_c1->force.z + p_c2->force.z) < TOLERANCE);
-  info("Momentum conserved.\n");
-
-  info("Fourier space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
-
-  assert(fabs(p_c1->torque.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->torque.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->torque.z - 0.0) < TOLERANCE);
-
-  info("Fourier space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
-
-  assert(fabs(p_c2->torque.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->torque.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
-
-
-  /* New orientation (non-zero torques). */
-
-  info("\nNew orientation\n");
-
-  p_c2->s[X] = 1.0;
-  p_c2->s[Y] = 0.0;
-  p_c2->s[Z] = 0.0;
-
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
-
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r.x, p_c1->r.y, p_c1->r.z,
-       p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
-
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r.x, p_c2->r.y, p_c2->r.z,
-       p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
-
-  /* Energy */
-
-  e = ewald_real_space_energy(p_c1->s, p_c2->s, r12);
-
-  info("Real space energy: %g\n", e);
-  assert(fabs(e - 0.0) < TOLERANCE);
-
-  e = ewald_fourier_space_energy();
-
-  info("Fourier space energy: %g\n", e);
-  assert(fabs(e - 2.76633e-05) < TOLERANCE);
-
-  e = ewald_self_energy();
-
-  info("Self energy term: %g\n", e);
-  assert(fabs(e - -2.91356e-05) < TOLERANCE);
-
-  /* Forces */
-
-  ewald_real_space_sum();
-  info("Real space energy: %g\n", ereal_);
-  assert(fabs(ereal_ - 0.0) < TOLERANCE);
-
-  info("Real space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
-
-  assert(fabs(p_c1->force.x - -2.29755e-05) < TOLERANCE);
-  assert(fabs(p_c1->force.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->force.z - 0.0) < TOLERANCE);
-
-
-  info("Real space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
-
-  assert(fabs(p_c2->force.x - 2.29755e-05) < TOLERANCE);
-  assert(fabs(p_c2->force.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->force.z - 0.0) < TOLERANCE);
-
-  assert(fabs(p_c1->force.x + p_c2->force.x) < TOLERANCE);
-  info("Momentum conserved.\n");
-
-
-  info("Real space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
-
-  assert(fabs(p_c1->torque.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->torque.y - -6.07598e-05) < TOLERANCE);
-  assert(fabs(p_c1->torque.z - 0.0) < TOLERANCE);
-
-  info("Real space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
-
-  assert(fabs(p_c2->torque.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->torque.y - -0.000168995) < TOLERANCE);
-  assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
-
-
-  /* Fourier space */
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
-  p_c1->torque.x = 0.0; p_c1->torque.y = 0.0; p_c1->torque.z = 0.0;
-  p_c2->torque.x = 0.0; p_c2->torque.y = 0.0; p_c2->torque.z = 0.0;
-
-
-  ewald_fourier_space_sum();
-  info("Fourier space energy: %g\n", efourier_);
-  assert(fabs(efourier_ - 2.76633e-05) < TOLERANCE);
-
-
-  info("Fourier space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
-
-  assert(fabs(p_c1->force.x - -1.35013e-06) < TOLERANCE);
-  assert(fabs(p_c1->force.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->force.z - 0.0) < TOLERANCE);
-
-  info("Fourier space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
-
-  assert(fabs(p_c2->force.x - 1.35013e-06) < TOLERANCE);
-  assert(fabs(p_c2->force.y - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->force.z - 0.0) < TOLERANCE);
-
-  assert(fabs(p_c1->force.x + p_c2->force.x) < TOLERANCE);
-  info("Momentum conserved.\n");
-
-  info("Fourier space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
-
-  assert(fabs(p_c1->torque.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c1->torque.y - -1.92945e-05) < TOLERANCE);
-  assert(fabs(p_c1->torque.z - 0.0) < TOLERANCE);
-
-  info("Fourier space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
-
-  assert(fabs(p_c2->torque.x - 0.0) < TOLERANCE);
-  assert(fabs(p_c2->torque.y - 5.08024e-06) < TOLERANCE);
-  assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
-
-  /* New orientation (non-zero torques). */
-
-  info("\nNew orientation\n");
-
-  p_c1->r.x = 3.0;
-  p_c1->r.y = 3.0;
-  p_c1->r.z = 3.0;
-
-  p_c1->s[X] = 0.0;
-  p_c1->s[Y] = 0.0;
-  p_c1->s[Z] = 1.0;
-
-
-  p_c2->r.x = 3.0;
-  p_c2->r.y = 13.0;
-  p_c2->r.z = 3.0;
-
-  p_c2->s[X] =  0.0;
-  p_c2->s[Y] = 1.0;
-  p_c2->s[Z] = 0.0;
-
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
-  p_c1->torque.x = 0.0; p_c1->torque.y = 0.0; p_c1->torque.z = 0.0;
-  p_c2->torque.x = 0.0; p_c2->torque.y = 0.0; p_c2->torque.z = 0.0;
-
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r.x, p_c1->r.y, p_c1->r.z,
-       p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
-
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r.x, p_c2->r.y, p_c2->r.z,
-       p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
-
-  ewald_real_space_sum();
-  info("Real space energy: %g\n", ereal_);
-
-  info("Real space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
-
-  info("Real space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
-
-  info("Real space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
-
-  info("Real space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
-
-
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
-  ewald_fourier_space_sum();
-
-  info("Fourier space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
-
-  info("Fourier space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
-
-  info("Fourier space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
-
-  info("Fourier space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
-
-  ewald_finish();
-
-
-
-  /* Now set cut-off = 8.0. */
-
-  ewald_init(0.285, 8.0);
-
-  e = ewald_real_space_energy(p_c1->s, p_c2->s, r12);
-
-  info("Real space energy: %g\n", e);
-  assert(fabs(e - 0.0) < TOLERANCE);
-
-  e = ewald_fourier_space_energy();
-
-  info("Fourier space energy: %g\n", e);
-  /* assert(fabs(e - 0.000265242) < TOLERANCE);*/
-
-  e = ewald_self_energy();
-
-  info("Self energy term: %g\n", e);
-  /* assert(fabs(e - -0.00186468) < TOLERANCE);*/
-
-  ewald_finish();
-
-  /* Temporary measure: finish here */
-  fatal("Ewald test exiting\n");
   return;
 }
