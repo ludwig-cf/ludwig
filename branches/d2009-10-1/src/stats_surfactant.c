@@ -4,7 +4,7 @@
  *
  *  Some routines to perform analysis of the surfactant model.
  *
- *  $Id: stats_surfactant.c,v 1.1.6.1 2009-11-04 10:20:43 kevin Exp $
+ *  $Id: stats_surfactant.c,v 1.1.6.2 2010-03-27 06:00:00 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -47,16 +47,16 @@ void stats_surfactant_1d(void) {
    * We also require surfactant */
 
   assert(pe_size() == 1);
-  assert(nop_ == 2);
+  assert(phi_nop() == 2);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   /* We assume z = 1 is a reasonable choice for the background
    * free energy level, which we need to subtract to find the
    * excess. */
 
   kc = 1;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   e0 = surfactant_free_energy_density(index);
   psi_b = phi_op_get_phi_site(index, 1);
 
@@ -69,7 +69,7 @@ void stats_surfactant_1d(void) {
 
   for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-    index = get_site_index(ic, jc, kc);
+    index = coords_index(ic, jc, kc);
 
     e = surfactant_free_energy_density(index);
     sigma += 0.5*(e - e0);
