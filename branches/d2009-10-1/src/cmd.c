@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15.16.2 2010-03-26 11:36:23 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.3 2010-03-27 11:19:21 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -127,7 +127,7 @@ void monte_carlo() {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  CIO_write_state("config.cds.init");
+  colloid_io_write("config.cds.init");
 
   return;
 }
