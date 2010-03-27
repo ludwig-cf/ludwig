@@ -8,7 +8,7 @@
  *  Boltzmann for binary fluid, no update is set (it's done via the
  *  appropriate collision).
  *
- *  $Id: phi_update_rt.c,v 1.1.2.1 2010-03-26 08:41:50 kevin Exp $
+ *  $Id: phi_update_rt.c,v 1.1.2.2 2010-03-27 11:05:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,7 +33,7 @@
  *
  *  phi_update_runtime
  *
- *  This could be split up if too ponderous.
+ *  This could be split up if gets too ponderous.
  *
  *****************************************************************************/
 
@@ -44,6 +44,7 @@ void phi_update_run_time(void) {
   char string[FILENAME_MAX];
   double value;
 
+  value = 0.0;
   n = RUN_get_string_parameter("free_energy", stringfe, FILENAME_MAX);
 
   if (n == 0 || strcmp(stringfe, "none") == 0) {
@@ -61,19 +62,25 @@ void phi_update_run_time(void) {
 			       FILENAME_MAX);
       if (strcmp(string, "yes") == 0) {
 	phi_update_set(phi_cahn_hilliard);
-	info("Using Cahn-Hilliard solver:\n");
+	info("Using Cahn-Hilliard finite difference solver:\n");
       }
       else {
-	info("Using full LB for Cahn-Hilliard:\n");
+	info("Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
       }
 
       /* Mobility (always required) */
-      p = RUN_get_double_parameter("mobility", &value);
+      RUN_get_double_parameter("mobility", &value);
+      phi_ch_set_mobility(value);
+      info("Mobility M            = %12.5e\n", phi_ch_get_mobility());
+    }
+    else if (strcmp(stringfe, "brazovskii") == 0) {
 
-      if (p == 1) {
-	phi_ch_set_mobility(value);
-	info("Mobility M            = %12.5e\n", phi_ch_get_mobility());
-      }
+      info("Using Cahn-Hilliard solver:\n");
+      phi_update_set(phi_cahn_hilliard);
+
+      RUN_get_double_parameter("mobility", &value);
+      phi_ch_set_mobility(value);
+      info("Mobility M            = %12.5e\n", phi_ch_get_mobility());
     }
     else if (strcmp(stringfe, "gelx") == 0) {
 
