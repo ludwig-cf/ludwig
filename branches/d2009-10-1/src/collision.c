@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.8 2010-03-26 08:43:52 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.9 2010-03-27 11:16:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,49 +17,29 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
-#include <string.h> /* Remove strcmp */
+#include <string.h>
 
 #include "pe.h"
 #include "ran.h"
+#include "util.h"
 #include "timer.h"
 #include "coords.h"
 #include "physics.h"
 #include "runtime.h"
-#include "control.h"
-#include "free_energy.h"
-#include "phi.h"
-#include "phi_gradients.h"
-#include "phi_force.h"
-#include "phi_cahn_hilliard.h"
-#include "blue_phase_beris_edwards.h"
-#include "phi_lb_coupler.h"
-#include "phi_stats.h"
 #include "lattice.h"
 
-#include "phi_force_colloid.h"
-#include "blue_phase_beris_edwards.h"
-#include "blue_phase.h"
-#include "colloids_Q_tensor.h"
+#include "phi.h"
+#include "free_energy.h"
+#include "phi_cahn_hilliard.h"
 
-#include "util.h"
-#include "utilities.h"
-#include "communicate.h"
-#include "leesedwards.h"
 #include "model.h"
-#include "collision.h"
-
 #include "site_map.h"
-#include "io_harness.h"
-
-/* Variables (not static) */
+#include "collision.h"
 
 double    siteforce[3];
 
-/* Variables concerned with the collision */
-
 static int    nmodes_ = NVEL;  /* Modes to use in collsion stage */
 
-static double  noise0 = 0.1;   /* Initial noise amplitude    */
 static double rtau_shear;      /* Inverse relaxation time for shear modes */
 static double rtau_bulk;       /* Inverse relaxation time for bulk modes */
 static double rtau_ghost = 1.0;/* Inverse relaxation time for ghost modes */
@@ -69,8 +49,8 @@ static double var_bulk;        /* Variance for bulk mode fluctuations */
 static int    isothermal_fluctuations_ = 0; /* Flag for noise. */
 static double noise_var[NVEL];              /* Noise variances */
 
-void MODEL_collide_multirelaxation(void);
-void MODEL_collide_binary_lb(void);
+static void MODEL_collide_multirelaxation(void);
+static void MODEL_collide_binary_lb(void);
 
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
 static void fluctuations_on(double shat[3][3], double ghat[NVEL]);
@@ -348,6 +328,8 @@ void MODEL_collide_binary_lb() {
   double (* chemical_potential)(const int index, const int nop);
   void   (* chemical_stress)(const int index, double s[3][3]);
 
+  assert (NDIM == 3);
+
   ndist = distribution_ndist();
   get_N_local(N);
 
@@ -521,144 +503,6 @@ void MODEL_collide_binary_lb() {
       }
     }
   }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * Initialise model (allocate buffers, initialise velocities, etc.)
- *
- *- \c Arguments: void
- *- \c Returns:   void
- *- \c Buffers:   sets .halo, .rho, .phi
- *- \c Version:   2.0b1
- *- \c Last \c updated: 01/03/2002 by JCD
- *- \c Authors:   P. Bladon and JC Desplat
- *- \c Note:      none
- */
-/*----------------------------------------------------------------------------*/
-
-void MODEL_init( void ) {
-
-  int     i,j,k,ind;
-  int     N[3];
-  int     offset[3];
-  double   phi;
-  double   phi0, rho0;
-  char     filename[FILENAME_MAX];
-
-  rho0 = get_rho0();
-  phi0 = get_phi0();
-
-  get_N_local(N);
-  get_N_offset(offset);
-
-  /* Now setup the rest of the simulation */
-
-  /* Order parameter */
-
-  ind = RUN_get_string_parameter("phi_finite_difference", filename,
-				 FILENAME_MAX);
-  if (ind != 0 && strcmp(filename, "yes") == 0) {
-    phi_set_finite_difference();
-    info("Switching order parameter to finite difference\n");
-
-    i = 1;
-    RUN_get_int_parameter("finite_difference_upwind_order", &i);
-    phi_ch_set_upwind_order(i);
-    distribution_ndist_set(1);
-  }
-  else {
-    info("Order parameter is via lattice Boltzmann\n");
-    distribution_ndist_set(2);
-    /* Only Cahn-Hilliard (binary) by this method */
-    i = RUN_get_string_parameter("free_energy", filename, FILENAME_MAX);
-    if (i == 1 && strcmp(filename, "symmetric") != 0) {
-      fatal("Trying to run full LB: check free energy?\n");
-    }
-  }
-
-  /* Distributions */
-
-  init_site();
-
-  phi_init();
-
-  ind = RUN_get_string_parameter("phi_format", filename, FILENAME_MAX);
-  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
-    io_info_set_format_ascii(io_info_phi);
-    info("Setting phi I/O format to ASCII\n");
-  }
-
-  ind = RUN_get_string_parameter("reduced_halo", filename, FILENAME_MAX);
-  if (ind != 0 && strcmp(filename, "yes") == 0) {
-    info("\nUsing reduced halos\n\n");
-    distribution_halo_set_reduced();
-  }
-
-  hydrodynamics_init();
-  
-  ind = RUN_get_string_parameter("vel_format", filename, FILENAME_MAX);
-  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
-    io_info_set_format_ascii(io_info_velocity_);
-    info("Setting velocity I/O format to ASCII\n"); 
-  }
-
-  /*
-   * A number of options are offered to start a simulation:
-   * 1. Read distribution functions site from file, then simply calculate
-   *    all other properties (rho/phi/gradients/velocities)
-   * 6. set rho/phi/velocity to default values, automatically set etc.
-   */
-
-  RUN_get_double_parameter("noise", &noise0);
-
-  /* Option 1: read distribution functions from file */
-
-  ind = RUN_get_string_parameter("input_config", filename, FILENAME_MAX);
-
-  if (ind != 0) {
-
-    info("Re-starting simulation at step %d with data read from "
-	 "config\nfile(s) %s\n", get_step(), filename);
-
-    /* Read distribution functions - sets both */
-    io_read(filename, io_info_distribution_);
-  } 
-  else {
-      /* 
-       * Provides same initial conditions for rho/phi regardless of the
-       * decomposition. 
-       */
-      
-      /* Initialise lattice with constant density */
-      /* Initialise phi with initial value +- noise */
-
-      for(i=1; i<=N_total(X); i++)
-	for(j=1; j<=N_total(Y); j++)
-	  for(k=1; k<=N_total(Z); k++) {
-
-	    phi = phi0 + noise0*(ran_serial_uniform() - 0.5);
-
-	    /* For computation with single fluid and no noise */
-	    /* Only set values if within local box */
-	    if((i>offset[X]) && (i<=offset[X] + N[X]) &&
-	       (j>offset[Y]) && (j<=offset[Y] + N[Y]) &&
-	       (k>offset[Z]) && (k<=offset[Z] + N[Z]))
-	      {
-		ind = get_site_index(i-offset[X], j-offset[Y], k-offset[Z]);
-
-		distribution_zeroth_moment_set_equilibrium(ind, 0, rho0);
-		phi_lb_coupler_phi_set(ind, phi);
-	      }
-	  }
-  }
-
-  /* BLUEPHASE */
-  /* blue_phase_twist_init(0.3333333);*/
-  /* blue_phase_O8M_init(-0.2);*/
-  /* blue_phase_O2_init(0.3);*/
 
   return;
 }
