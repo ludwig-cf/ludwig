@@ -4,7 +4,7 @@
  *
  *  Advection boundary conditions.
  *
- *  $Id: advection_bcs.c,v 1.1.2.1 2009-12-15 16:19:32 kevin Exp $
+ *  $Id: advection_bcs.c,v 1.1.2.2 2010-03-27 05:57:19 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -18,7 +18,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "leesedwards.h"
 #include "site_map.h"
 #include "phi.h"
 
@@ -35,6 +34,7 @@ void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
 
   int nlocal[3];
   int ic, jc, kc, index, n;
+  int nop;
 
   double mask, maskw, maske, masky, maskz;
 
@@ -43,13 +43,14 @@ void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
   assert(fluxy);
   assert(fluxz);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
+  nop = phi_nop();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = ADDR(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	mask  = (site_map_get_status_index(index)  == FLUID);
 	maske = (site_map_get_status(ic+1, jc, kc) == FLUID);
@@ -57,11 +58,11 @@ void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
 	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
 	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
 
-	for (n = 0;  n < nop_; n++) {
-	  fluxw[nop_*index + n] *= mask*maskw;
-	  fluxe[nop_*index + n] *= mask*maske;
-	  fluxy[nop_*index + n] *= mask*masky;
-	  fluxz[nop_*index + n] *= mask*maskz;
+	for (n = 0;  n < nop; n++) {
+	  fluxw[nop*index + n] *= mask*maskw;
+	  fluxe[nop*index + n] *= mask*maske;
+	  fluxy[nop*index + n] *= mask*masky;
+	  fluxz[nop*index + n] *= mask*maskz;
 	}
 
       }
