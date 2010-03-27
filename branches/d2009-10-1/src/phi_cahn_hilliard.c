@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.10.4.3 2010-03-05 12:33:24 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.10.4.4 2010-03-27 11:09:07 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,7 +33,6 @@
 #include "advection_bcs.h"
 #include "lattice.h"
 #include "free_energy.h"
-#include "timer.h"
 #include "phi.h"
 
 extern double * phi_site;
@@ -76,8 +75,6 @@ void phi_cahn_hilliard() {
 
   int nlocal[3];
   int nsites;
-
-  TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
   get_N_local(nlocal);
   nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
@@ -134,8 +131,6 @@ void phi_cahn_hilliard() {
   free(fluxw);
   free(fluxy);
   free(fluxz);
-
-  TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
 
   return;
 }
