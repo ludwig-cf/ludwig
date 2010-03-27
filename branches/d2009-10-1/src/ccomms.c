@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.12.2.1 2010-03-04 16:54:59 kevin Exp $
+ *  $Id: ccomms.c,v 1.12.2.2 2010-03-27 11:10:24 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -19,6 +19,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -30,16 +31,12 @@
 #include "colloids.h"
 #include "ccomms.h"
 
-#ifdef _MPI_
-
 static MPI_Datatype _mpi_halo;
 static MPI_Datatype _mpi_sum1;
 static MPI_Datatype _mpi_sum2;
 static MPI_Datatype _mpi_sum6;
 static MPI_Datatype _mpi_sum7;
 static MPI_Datatype _mpi_sum8;
-
-#endif
 
 /* Colloid message structures
  *
@@ -1207,8 +1204,6 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
 
 void CMPI_init_messages() {
 
-#ifdef _MPI_
-
   MPI_Type_contiguous(sizeof(Colloid_halo_message),    MPI_BYTE, &_mpi_halo);
   MPI_Type_contiguous(sizeof(Colloid_sum_message_one), MPI_BYTE, &_mpi_sum1);
   MPI_Type_contiguous(sizeof(Colloid_sum_message_two), MPI_BYTE, &_mpi_sum2);
@@ -1221,9 +1216,6 @@ void CMPI_init_messages() {
   MPI_Type_commit(&_mpi_sum6);
   MPI_Type_commit(&_mpi_sum7);
   MPI_Type_commit(&_mpi_sum8);
-
-
-#endif
 
   return;
 }
@@ -1252,7 +1244,6 @@ int CMPI_exchange_halo(int dimension, int nforw, int nback) {
   }
   else {
 
-#ifdef _MPI_
     int         nrecv_forw, nrecv_back;
     const int   tag = 1000;
     MPI_Request request[4];
@@ -1293,7 +1284,6 @@ int CMPI_exchange_halo(int dimension, int nforw, int nback) {
     MPI_Waitall(4, request, status);
 
     nrecv = nrecv_forw + nrecv_back;
-#endif
 
   }
 
@@ -1314,15 +1304,12 @@ int CMPI_exchange_halo(int dimension, int nforw, int nback) {
 
 void CMPI_exchange_sum_type1(int dimension, int nforw, int nback) {
 
-#ifdef _MPI_
-
   const int   tagf = 1001, tagb = 1002;
   MPI_Request requests[4];
   MPI_Status  status[4];
   int         nr = 0;
 
-  VERBOSE(("Sum 1 (direction %d) Sending %d and %d\n",
-	   dimension, nforw, nback));
+  assert(pe_size() == 1);
 
   if (nback) {
     MPI_Issend(_halo_send_one, nback, _mpi_sum1,
@@ -1343,9 +1330,6 @@ void CMPI_exchange_sum_type1(int dimension, int nforw, int nback) {
   }
 
   MPI_Waitall(nr, requests, status);
-  VERBOSE(("Sum 1 waitall returned\n"));
-
-#endif
 
   return;
 }
@@ -1362,15 +1346,12 @@ void CMPI_exchange_sum_type1(int dimension, int nforw, int nback) {
 
 void CMPI_exchange_sum_type2(int dimension, int nforw, int nback) {
 
-#ifdef _MPI_
-
   const int   tagf = 1001, tagb = 1002;
   MPI_Request requests[4];
   MPI_Status  status[4];
   int         nr = 0;
 
-  VERBOSE(("Sum 2 (direction %d) Sending %d and %d\n",
-	   dimension, nforw, nback));
+  assert(pe_size() == 1);
 
   if (nback) {
     MPI_Issend(_halo_send_two, nback, _mpi_sum2,
@@ -1391,8 +1372,6 @@ void CMPI_exchange_sum_type2(int dimension, int nforw, int nback) {
   }
 
   MPI_Waitall(nr, requests, status);
-  VERBOSE(("Sum 2 waitall returned\n"));
-#endif
 
   return;
 }
@@ -1409,15 +1388,12 @@ void CMPI_exchange_sum_type2(int dimension, int nforw, int nback) {
 
 void CMPI_exchange_sum_type6(int dimension, int nforw, int nback) {
 
-#ifdef _MPI_
-
   const int   tagf = 1001, tagb = 1002;
   MPI_Request requests[4];
   MPI_Status  status[4];
   int         nr = 0;
 
-  VERBOSE(("Sum 6 (direction %d) Sending %d and %d\n",
-	   dimension, nforw, nback));
+  assert(pe_size() == 1);
 
   if (nback) {
     MPI_Issend(_halo_send_six, nback, _mpi_sum6,
@@ -1438,8 +1414,6 @@ void CMPI_exchange_sum_type6(int dimension, int nforw, int nback) {
   }
 
   MPI_Waitall(nr, requests, status);
-  VERBOSE(("Sum 6 waitall returned\n"));
-#endif
 
   return;
 }
@@ -1456,15 +1430,12 @@ void CMPI_exchange_sum_type6(int dimension, int nforw, int nback) {
 
 void CMPI_exchange_sum_type7(int dimension, int nforw, int nback) {
 
-#ifdef _MPI_
-
   const int   tagf = 1001, tagb = 1002;
   MPI_Request requests[4];
   MPI_Status  status[4];
   int         nr = 0;
 
-  VERBOSE(("Sum 7 (direction %d) Sending %d and %d\n",
-	   dimension, nforw, nback));
+  assert(pe_size() == 1);
 
   if (nback) {
     MPI_Issend(_halo_send_sev, nback, _mpi_sum7,
@@ -1485,8 +1456,6 @@ void CMPI_exchange_sum_type7(int dimension, int nforw, int nback) {
   }
 
   MPI_Waitall(nr, requests, status);
-  VERBOSE(("Sum 7 waitall returned\n"));
-#endif
 
   return;
 }
@@ -1502,15 +1471,12 @@ void CMPI_exchange_sum_type7(int dimension, int nforw, int nback) {
 
 void CMPI_exchange_sum_type8(int dimension, int nforw, int nback) {
 
-#ifdef _MPI_
-
   const int   tagf = 1001, tagb = 1002;
   MPI_Request requests[4];
   MPI_Status  status[4];
   int         nr = 0;
 
-  VERBOSE(("Sum 8 (direction %d) Sending %d and %d\n",
-	   dimension, nforw, nback));
+  assert(pe_size() == 1);
 
   if (nback) {
     MPI_Issend(_halo_send_eig, nback, _mpi_sum8,
@@ -1531,8 +1497,6 @@ void CMPI_exchange_sum_type8(int dimension, int nforw, int nback) {
   }
 
   MPI_Waitall(nr, requests, status);
-  VERBOSE(("Sum 8 waitall returned\n"));
-#endif
 
   return;
 }
@@ -1576,8 +1540,9 @@ void CMPI_anull_buffers() {
 
 double colloid_min_ah(void) {
 
-  double ahmin = 10.0;
   int ic, jc, kc;
+  double ahminlocal = FLT_MAX;
+  double ahmin;
   Colloid * p_colloid;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
@@ -1588,7 +1553,7 @@ double colloid_min_ah(void) {
 
 	while (p_colloid) {
 
-	  ahmin = dmin(ahmin, p_colloid->ah);
+	  ahminlocal = dmin(ahminlocal, p_colloid->ah);
 
 	  p_colloid = p_colloid->next;
 	}
@@ -1597,12 +1562,7 @@ double colloid_min_ah(void) {
     }
   }
 
-#ifdef _MPI_
- {
-   double ahmin_local = ahmin;
-   MPI_Allreduce(&ahmin_local, &ahmin, 1, MPI_DOUBLE, MPI_MIN, cart_comm());
- }
-#endif
+  MPI_Allreduce(&ahminlocal, &ahmin, 1, MPI_DOUBLE, MPI_MIN, cart_comm());
 
   return ahmin;
 }
