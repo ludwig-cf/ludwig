@@ -5,7 +5,7 @@
  *  In cases where the order parameter is via "full LB", this couples
  *  the scalar order parameter phi_site[] to the distributions.
  *
- *  $Id: phi_lb_coupler.c,v 1.2.4.2 2010-03-05 11:35:54 kevin Exp $
+ *  $Id: phi_lb_coupler.c,v 1.2.4.3 2010-03-27 06:17:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,11 +15,11 @@
  *
  ****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "leesedwards.h"
 #include "model.h"
 #include "physics.h"
 #include "site_map.h"
@@ -44,6 +44,7 @@ void phi_lb_coupler_phi_set(const int index, const double phi) {
     phi_op_set_phi_site(index, 0, phi);
   }
   else {
+    assert(distribution_ndist() == 2);
     distribution_zeroth_moment_set_equilibrium(index, 1, phi);
   }
 
@@ -66,18 +67,22 @@ void phi_compute_phi_site() {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int nop;
 
   if (phi_is_finite_difference()) return;
 
-  get_N_local(nlocal);
+  assert(distribution_ndist() == 2);
+
+  coords_nlocal(nlocal);
+  nop = phi_nop();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = le_site_index(ic, jc, kc);
-	phi_site[nop_*index] = distribution_zeroth_moment(index, 1);
+	index = coords_index(ic, jc, kc);
+	phi_site[nop*index] = distribution_zeroth_moment(index, 1);
       }
     }
   }
@@ -106,7 +111,9 @@ void phi_set_mean_phi(double phi_global) {
   double   vlocal = 0.0, vtotal;
   MPI_Comm comm = cart_comm();
 
-  get_N_local(nlocal);
+  assert(distribution_ndist() == 2);
+
+  coords_nlocal(nlocal);
 
   /* Compute the mean phi in the domain proper */
 
@@ -115,7 +122,7 @@ void phi_set_mean_phi(double phi_global) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	phi_local += distribution_zeroth_moment(index, 1);
 	vlocal += 1.0;
       }
@@ -140,7 +147,7 @@ void phi_set_mean_phi(double phi_global) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) == FLUID) {
-	  index = get_site_index(ic, jc, kc);
+	  index = coords_index(ic, jc, kc);
 	  phi_local = distribution_f(index, 0, 1) + phi_correction;
 	  distribution_f_set(index, 0, 1, phi_local);
 	}
@@ -170,7 +177,9 @@ void phi_lb_init_drop(double radius, double xi0) {
   double centre[3];
   double phi, r, rxi0;
 
-  get_N_local(nlocal);
+  assert(distribution_ndist() == 2);
+
+  coords_nlocal(nlocal);
   get_N_offset(noffset);
 
   rxi0 = 1.0/xi0;
@@ -182,7 +191,8 @@ void phi_lb_init_drop(double radius, double xi0) {
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-        index = get_site_index(ic, jc, kc);
+
+        index = coords_index(ic, jc, kc);
         position[X] = 1.0*(noffset[X] + ic) - centre[X];
         position[Y] = 1.0*(noffset[Y] + jc) - centre[Y];
         position[Z] = 1.0*(noffset[Z] + kc) - centre[Z];
