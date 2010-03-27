@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9 2009-11-03 16:58:50 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.1 2010-03-27 11:01:52 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -204,11 +204,9 @@ IVector cell_coords(FVector r) {
   cell.y = (int) floor(rc.y / lcell[Y]);
   cell.z = (int) floor(rc.z / lcell[Z]);
 
-#ifdef _MPI_
   cell.x -= cart_coords(X)*ncell[X];
   cell.y -= cart_coords(Y)*ncell[Y];
   cell.z -= cart_coords(Z)*ncell[Z];
-#endif
 
   return cell;
 }
@@ -232,7 +230,7 @@ Colloid * CELL_get_head_of_list(const int ic, const int jc, const int kc) {
  *
  *  cell_insert_colloid
  *
- *  Insert a Colloid into a cell determined by it's position.
+ *  Insert a Colloid into a cell determined by its position.
  *  The list is kept in order of increasing Colloid index.
  *
  *****************************************************************************/
