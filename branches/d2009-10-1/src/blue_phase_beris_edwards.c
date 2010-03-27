@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.1.4.6 2010-03-05 12:35:14 kevin Exp $
+ *  $Id: blue_phase_beris_edwards.c,v 1.1.4.7 2010-03-27 06:29:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -50,20 +50,18 @@ static void blue_phase_be_update(void);
 
 void blue_phase_beris_edwards(void) {
 
-  int nlocal[3];
   int nsites;
-  int nhalo;
+  int nop;
 
   /* Set up advective fluxes and do the update. */
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  nsites = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+  nsites = coords_nsites();
+  nop = phi_nop();
 
-  fluxe = (double *) malloc(nop_*nsites*sizeof(double));
-  fluxw = (double *) malloc(nop_*nsites*sizeof(double));
-  fluxy = (double *) malloc(nop_*nsites*sizeof(double));
-  fluxz = (double *) malloc(nop_*nsites*sizeof(double));
+  fluxe = (double *) malloc(nop*nsites*sizeof(double));
+  fluxw = (double *) malloc(nop*nsites*sizeof(double));
+  fluxy = (double *) malloc(nop*nsites*sizeof(double));
+  fluxz = (double *) malloc(nop*nsites*sizeof(double));
   if (fluxe == NULL) fatal("malloc(fluxe) failed");
   if (fluxw == NULL) fatal("malloc(fluxw) failed");
   if (fluxy == NULL) fatal("malloc(fluxy) failed");
@@ -100,6 +98,7 @@ static void blue_phase_be_update(void) {
   int ia, ib, id;
   int index, indexj, indexk;
   int nlocal[3];
+  int nop;
 
   double q[3][3];
   double w[3][3];
@@ -112,16 +111,17 @@ static void blue_phase_be_update(void) {
 
   const double dt = 1.0;
 
-  assert(nop_ == 5);
-
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
+  nop = phi_nop();
   xi = blue_phase_get_xi();
+
+  assert(nop == 5);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	phi_get_q_tensor(index, q);
 	blue_phase_molecular_field(index, h);
@@ -166,33 +166,33 @@ static void blue_phase_be_update(void) {
 	     
 	  /* Here's the full hydrodynamic update. */
 	  
-	  indexj = get_site_index(ic, jc-1, kc);
-	  indexk = get_site_index(ic, jc, kc-1);
+	  indexj = coords_index(ic, jc-1, kc);
+	  indexk = coords_index(ic, jc, kc-1);
 	  
 	  q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
-			 - fluxe[nop_*index + QXX] + fluxw[nop_*index  + QXX]
-			 - fluxy[nop_*index + QXX] + fluxy[nop_*indexj + QXX]
-			 - fluxz[nop_*index + QXX] + fluxz[nop_*indexk + QXX]);
+			 - fluxe[nop*index + QXX] + fluxw[nop*index  + QXX]
+			 - fluxy[nop*index + QXX] + fluxy[nop*indexj + QXX]
+			 - fluxz[nop*index + QXX] + fluxz[nop*indexk + QXX]);
 	     
 	  q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y]
-			 - fluxe[nop_*index + QXY] + fluxw[nop_*index  + QXY]
-			 - fluxy[nop_*index + QXY] + fluxy[nop_*indexj + QXY]
-			 - fluxz[nop_*index + QXY] + fluxz[nop_*indexk + QXY]);
+			 - fluxe[nop*index + QXY] + fluxw[nop*index  + QXY]
+			 - fluxy[nop*index + QXY] + fluxy[nop*indexj + QXY]
+			 - fluxz[nop*index + QXY] + fluxz[nop*indexk + QXY]);
 	     
 	  q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z]
-			 - fluxe[nop_*index + QXZ] + fluxw[nop_*index  + QXZ]
-			 - fluxy[nop_*index + QXZ] + fluxy[nop_*indexj + QXZ]
-			 - fluxz[nop_*index + QXZ] + fluxz[nop_*indexk + QXZ]);
+			 - fluxe[nop*index + QXZ] + fluxw[nop*index  + QXZ]
+			 - fluxy[nop*index + QXZ] + fluxy[nop*indexj + QXZ]
+			 - fluxz[nop*index + QXZ] + fluxz[nop*indexk + QXZ]);
 	     
 	  q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y]
-			 - fluxe[nop_*index + QYY] + fluxw[nop_*index  + QYY]
-			 - fluxy[nop_*index + QYY] + fluxy[nop_*indexj + QYY]
-			 - fluxz[nop_*index + QYY] + fluxz[nop_*indexk + QYY]);
+			 - fluxe[nop*index + QYY] + fluxw[nop*index  + QYY]
+			 - fluxy[nop*index + QYY] + fluxy[nop*indexj + QYY]
+			 - fluxz[nop*index + QYY] + fluxz[nop*indexk + QYY]);
 	     
 	  q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z]
-			 - fluxe[nop_*index + QYZ] + fluxw[nop_*index  + QYZ]
-			 - fluxy[nop_*index + QYZ] + fluxy[nop_*indexj + QYZ]
-			 - fluxz[nop_*index + QYZ] + fluxz[nop_*indexk + QYZ]);
+			 - fluxe[nop*index + QYZ] + fluxw[nop*index  + QYZ]
+			 - fluxy[nop*index + QYZ] + fluxy[nop*indexj + QYZ]
+			 - fluxz[nop*index + QYZ] + fluxz[nop*indexk + QYZ]);
 	}
 	
 	phi_set_q_tensor(index, q);
