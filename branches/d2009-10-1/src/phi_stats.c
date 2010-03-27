@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.8.4.1 2010-01-15 16:50:48 kevin Exp $
+ *  $Id: phi_stats.c,v 1.8.4.2 2010-03-27 06:05:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -40,35 +40,39 @@ void phi_stats_print_stats() {
 
   int      index, ic, jc, kc, n;
   int      nlocal[3];
+  int      nop;
   double   phi0, phi1;
   double * phi_local;
   double * phi_total;
 
+  coords_nlocal(nlocal);
+  nop = phi_nop();
+
   /* This is required to update phi_site[] when full LB is active */
+
   phi_compute_phi_site();
 
   /* Stats: */
 
-  phi_local = (double *) malloc(5*nop_*sizeof(double));
-  phi_total = (double *) malloc(5*nop_*sizeof(double));
+  phi_local = (double *) malloc(5*nop*sizeof(double));
+  phi_total = (double *) malloc(5*nop*sizeof(double));
   if (phi_local == NULL) fatal("malloc(phi_local) failed\n");
   if (phi_total == NULL) fatal("malloc(phi_total) failed\n");
 
-  get_N_local(nlocal);
 
-  for (n = 0; n < nop_; n++) {
+  for (n = 0; n < nop; n++) {
     phi_local[         n] = 0.0;        /* volume */
-    phi_local[1*nop_ + n] = 0.0;        /* phi    */
-    phi_local[2*nop_ + n] = 0.0;        /* phi^2  */
-    phi_local[3*nop_ + n] = +DBL_MAX;   /* min    */
-    phi_local[4*nop_ + n] = -DBL_MAX;   /* max    */
+    phi_local[1*nop + n] = 0.0;        /* phi    */
+    phi_local[2*nop + n] = 0.0;        /* phi^2  */
+    phi_local[3*nop + n] = +DBL_MAX;   /* min    */
+    phi_local[4*nop + n] = -DBL_MAX;   /* max    */
   }
 
   if (phi_is_finite_difference()) {
     /* There's no correction coming from BBL */
   }
   else {
-    phi_local[1*nop_ + 0] = bbl_order_parameter_deficit();
+    phi_local[1*nop + 0] = bbl_order_parameter_deficit();
   }
 
   /* Compute the mean phi in the domain proper */
@@ -78,37 +82,37 @@ void phi_stats_print_stats() {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
-	for (n = 0; n < nop_; n++) {
+	for (n = 0; n < nop; n++) {
 	  phi0 = phi_op_get_phi_site(index, n);
 
 	  phi_local[         n] += 1.0;
-	  phi_local[1*nop_ + n] += phi0;
-	  phi_local[2*nop_ + n] += phi0*phi0;
-	  phi_local[3*nop_ + n] = dmin(phi0, phi_local[3*nop_ + n]);
-	  phi_local[4*nop_ + n] = dmax(phi0, phi_local[4*nop_ + n]);
+	  phi_local[1*nop + n] += phi0;
+	  phi_local[2*nop + n] += phi0*phi0;
+	  phi_local[3*nop + n] = dmin(phi0, phi_local[3*nop + n]);
+	  phi_local[4*nop + n] = dmax(phi0, phi_local[4*nop + n]);
 	}
       }
     }
   }
 
-  MPI_Reduce(phi_local, phi_total, 3*nop_, MPI_DOUBLE, MPI_SUM, 0,
+  MPI_Reduce(phi_local, phi_total, 3*nop, MPI_DOUBLE, MPI_SUM, 0,
 	     MPI_COMM_WORLD);
-  MPI_Reduce(phi_local + 3*nop_, phi_total + 3*nop_, nop_, MPI_DOUBLE,
+  MPI_Reduce(phi_local + 3*nop, phi_total + 3*nop, nop, MPI_DOUBLE,
 	     MPI_MIN, 0, MPI_COMM_WORLD);
-  MPI_Reduce(phi_local + 4*nop_, phi_total + 4*nop_, nop_, MPI_DOUBLE,
+  MPI_Reduce(phi_local + 4*nop, phi_total + 4*nop, nop, MPI_DOUBLE,
 	     MPI_MAX, 0, MPI_COMM_WORLD);
 
   /* Mean and variance */
 
-  for (n = 0; n < nop_; n++) {
+  for (n = 0; n < nop; n++) {
 
-    phi0 = phi_total[1*nop_ + n]/phi_total[n];
-    phi1 = (phi_total[2*nop_ + n]/phi_total[n]) - phi0*phi0;
+    phi0 = phi_total[1*nop + n]/phi_total[n];
+    phi1 = (phi_total[2*nop + n]/phi_total[n]) - phi0*phi0;
 
-    info("[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n", phi_total[1*nop_ + n],
-	 phi0, phi1, phi_total[3*nop_ + n], phi_total[4*nop_ + n]);
+    info("[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n", phi_total[1*nop + n],
+	 phi0, phi1, phi_total[3*nop + n], phi_total[4*nop + n]);
   }
 
   free(phi_local);
@@ -146,7 +150,7 @@ void phi_init_block() {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	z = noffset[Z] + kc;
 
 	if (z > 0.5*L(Z)) {
@@ -191,7 +195,7 @@ void phi_init_bath() {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	z = noffset[Z] + kc;
 	phi = tanh((z-z0)/xi0);
 	phi_set_phi_site(index, phi);
@@ -216,16 +220,16 @@ void phi_init_surfactant(double psi) {
   int ic, jc, kc, index;
   int nlocal[3];
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
-  if (nop_ == 2) {
+  if (phi_nop() == 2) {
 
     info("Initialising surfactant concentration to %f\n", psi);
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  index = get_site_index(ic, jc, kc);
+	  index = coords_index(ic, jc, kc);
 	  phi_op_set_phi_site(index, 1, psi);
 	}
       }
