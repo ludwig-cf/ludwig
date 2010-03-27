@@ -1,6 +1,6 @@
 
-/* KS note: this is superceded by io-harness. Colloid I/O
- * remains to be updated. */
+/* This has become a dumping ground for things that need to
+ * be refactored */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,106 +10,165 @@
 #include "runtime.h"
 #include "coords.h"
 
+#include "io_harness.h"
+#include "physics.h"
+#include "phi.h"
+#include "model.h"
+#include "lattice.h"
+#include "ran.h"
+#include "phi_lb_coupler.h"
+#include "phi_cahn_hilliard.h"
+#include "control.h"
+
 #include "utilities.h"
 #include "communicate.h"
 
-IO_Param     io_grp;      /* Parameters of current IO group */
+static char         input_config[256] = "EMPTY";
+static char         output_config[256] = "config.out";
 
-int          input_format;     /* Default input format is ASCII */
-int          output_format;    /* Default output format is binary */
+/*----------------------------------------------------------------------------*/
+/*!
+ * Initialise model (allocate buffers, initialise velocities, etc.)
+ *
+ *- \c Arguments: void
+ *- \c Returns:   void
+ *- \c Buffers:   sets .halo, .rho, .phi
+ *- \c Version:   2.0b1
+ *- \c Last \c updated: 01/03/2002 by JCD
+ *- \c Authors:   P. Bladon and JC Desplat
+ *- \c Note:      none
+ */
+/*----------------------------------------------------------------------------*/
 
-char         input_config[256] = "EMPTY";
-char         output_config[256] = "config.out";
+void MODEL_init( void ) {
 
-MPI_Comm     IO_Comm;     /* Communicator for parallel IO groups */
+  int     i,j,k,ind;
+  int     N[3];
+  int     offset[3];
+  double   phi;
+  double   phi0, rho0;
+  char     filename[FILENAME_MAX];
+  double  noise0 = 0.1;   /* Initial noise amplitude    */
 
-/*---------------------------------------------------------------------------*\
- * void COM_init( int argc, char **argv )                                    *
- *                                                                           *
- * Initialises communication routines                                        *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _MPI_, _TRACE_                                                   *
- *                                                                           *
- * Arguments                                                                 *
- * - argc:    same as the main() routine's argc                              *
- * - argv:    same as the main() routine's argv                              *
- *                                                                           *
- * Last Updated: 06/01/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
+  rho0 = get_rho0();
+  phi0 = get_phi0();
 
-void COM_init() {
+  get_N_local(N);
+  get_N_offset(offset);
 
-  char tmp[256];
+  /* Now setup the rest of the simulation */
 
-#ifdef _MPI_ /* Parallel (MPI) section */
+  /* Order parameter */
 
-  /* Set-up parallel IO parameters (rank and root) */
+  ind = RUN_get_string_parameter("phi_finite_difference", filename,
+				 FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "yes") == 0) {
+    phi_set_finite_difference();
+    info("Switching order parameter to finite difference\n");
 
-  io_grp.n_io = 1; /* Default */
-  RUN_get_int_parameter("n_io_nodes", &(io_grp.n_io));
-
-  io_grp.size = pe_size() / io_grp.n_io;
-
-  if((cart_rank()%io_grp.size) == 0) {
-    io_grp.root = 1;
+    i = 1;
+    RUN_get_int_parameter("finite_difference_upwind_order", &i);
+    phi_ch_set_upwind_order(i);
+    distribution_ndist_set(1);
   }
   else {
-    io_grp.root = 0;
+    info("Order parameter is via lattice Boltzmann\n");
+    distribution_ndist_set(2);
+    /* Only Cahn-Hilliard (binary) by this method */
+    i = RUN_get_string_parameter("free_energy", filename, FILENAME_MAX);
+    if (i == 1 && strcmp(filename, "symmetric") != 0) {
+      fatal("Trying to run full LB: check free energy?\n");
+    }
   }
 
-  /* Set-up filename suffix for each parallel IO file */
+  /* Distributions */
 
-  io_grp.file_ext = (char *) malloc(16*sizeof(char));
+  init_site();
 
-  if (io_grp.file_ext == NULL) fatal("malloc(io_grp.file_ext) failed\n");
+  phi_init();
 
-  io_grp.index = cart_rank()/io_grp.size + 1;   /* Start IO indexing at 1 */
-  sprintf(io_grp.file_ext, ".%d-%d", io_grp.n_io, io_grp.index);
+  ind = RUN_get_string_parameter("phi_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_phi);
+    info("Setting phi I/O format to ASCII\n");
+  }
 
-  /* Create communicator for each IO group, and get rank within IO group */
-  MPI_Comm_split(cart_comm(), io_grp.index, cart_rank(), &IO_Comm);
-  MPI_Comm_rank(IO_Comm, &io_grp.rank);
+  ind = RUN_get_string_parameter("reduced_halo", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "yes") == 0) {
+    info("\nUsing reduced halos\n\n");
+    distribution_halo_set_reduced();
+  }
 
-  MPI_Barrier(cart_comm());
+  hydrodynamics_init();
+  
+  ind = RUN_get_string_parameter("vel_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_velocity_);
+    info("Setting velocity I/O format to ASCII\n"); 
+  }
 
-#else /* Serial section */
+  /*
+   * A number of options are offered to start a simulation:
+   * 1. Read distribution functions site from file, then simply calculate
+   *    all other properties (rho/phi/gradients/velocities)
+   * 6. set rho/phi/velocity to default values, automatically set etc.
+   */
 
-  /* Serial definition of io_grp (used in cio) */
-  io_grp.root  = 1;
-  io_grp.n_io  = 1;
-  io_grp.size  = 1;
-  io_grp.index = 0;
-  io_grp.rank  = 0;
-  io_grp.file_ext = (char *) malloc(16*sizeof(char));
-  if (io_grp.file_ext == NULL) fatal("malloc(io_grp.file_ext) failed\n");
-  sprintf(io_grp.file_ext, "%s", ""); /* Nothing required in serial*/
+  RUN_get_double_parameter("noise", &noise0);
 
-#endif /* _MPI_ */
+  /* Option 1: read distribution functions from file */
 
-  /* Everybody */
+  ind = RUN_get_string_parameter("input_config", filename, FILENAME_MAX);
 
-  /* I/O */
-  strcpy(input_config, "EMPTY");
+  if (ind != 0) {
+
+    info("Re-starting simulation at step %d with data read from "
+	 "config\nfile(s) %s\n", get_step(), filename);
+
+    /* Read distribution functions - sets both */
+    io_read(filename, io_info_distribution_);
+  } 
+  else {
+      /* 
+       * Provides same initial conditions for rho/phi regardless of the
+       * decomposition. 
+       */
+      
+      /* Initialise lattice with constant density */
+      /* Initialise phi with initial value +- noise */
+
+      for(i=1; i<=N_total(X); i++)
+	for(j=1; j<=N_total(Y); j++)
+	  for(k=1; k<=N_total(Z); k++) {
+
+	    phi = phi0 + noise0*(ran_serial_uniform() - 0.5);
+
+	    /* For computation with single fluid and no noise */
+	    /* Only set values if within local box */
+	    if((i>offset[X]) && (i<=offset[X] + N[X]) &&
+	       (j>offset[Y]) && (j<=offset[Y] + N[Y]) &&
+	       (k>offset[Z]) && (k<=offset[Z] + N[Z]))
+	      {
+		ind = get_site_index(i-offset[X], j-offset[Y], k-offset[Z]);
+
+		distribution_zeroth_moment_set_equilibrium(ind, 0, rho0);
+		phi_lb_coupler_phi_set(ind, phi);
+	      }
+	  }
+  }
+
+  /* BLUEPHASE */
+  /* blue_phase_twist_init(0.3333333);*/
+  /* blue_phase_O8M_init(-0.2);*/
+  /* blue_phase_O2_init(0.3);*/
+
+  /* I/O old COM_init stuff */
   strcpy(output_config, "config.out");
-
-  input_format = BINARY;
-  output_format = BINARY;
 
   RUN_get_string_parameter("input_config", input_config, 256);
   RUN_get_string_parameter("output_config", output_config, 256);
 
-  RUN_get_string_parameter("input_format", tmp, 256);
-  if (strncmp("ASCII",  tmp, 5) == 0 ) input_format = ASCII;
-  if (strncmp("ASCII_SERIAL",  tmp, 12) == 0 ) input_format = ASCII_SERIAL;
-  if (strncmp("BINARY", tmp, 6) == 0 ) input_format = BINARY;
 
-  RUN_get_string_parameter("output_format", tmp, 256);
-  if (strncmp("ASCII",  tmp, 5) == 0 ) output_format = ASCII;
-  if (strncmp("BINARY", tmp, 6) == 0 ) output_format = BINARY;
-
-  /* Set input routines: point to ASCII/binary routine depending on current 
-     settings */
 }
 
 /*****************************************************************************
