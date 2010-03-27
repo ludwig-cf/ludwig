@@ -45,14 +45,16 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      coords.o coords_rt.o \
      control.o \
      eigen3.o ewald.o \
-     free_energy.o free_energy_rt.o \
+     free_energy.o free_energy_rt.o free_energy_vector.o \
      gelx.o gelx_rt.o \
      gradient_2d_5pt_fluid.o \
      interaction.o io_harness.o\
+     leslie_ericksen.o \
      model_le.o potential.o \
      phi.o phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_gradients.o \
      phi_lb_coupler.o phi_stats.o \
+     phi_update.o phi_update_rt.o \
      lattice.o leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
@@ -71,8 +73,9 @@ EXE= Ludwig.exe
 
 CC=gcc
 MPICC=mpicc
-OPTS = -D_D3Q19_
-CFLAGS=$(OPTS) -Wall -O3
+OPTS = -D_D3Q19_ -O3
+CFLAGS=$(OPTS) -Wall 
+
 
 ###############################################################################
 #
@@ -128,8 +131,7 @@ serial:
 	$(MAKE) generic "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi"
 mpi:
-	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(MPILIB) $(LIBS)" "CFLAGS=$(CFLAGS) \
-		-D_MPI_"
+	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(MPILIB) $(LIBS)" "CFLAGS=$(CFLAGS)"
 
 ###############################################################################
 #
