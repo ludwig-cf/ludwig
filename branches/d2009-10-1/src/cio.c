@@ -4,31 +4,41 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.7 2008-04-17 09:50:49 kevin Exp $
+ *  $Id: cio.c,v 1.7.16.1 2010-03-27 11:18:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "colloids.h"
 #include "cio.h"
-#include "communicate.h"
+
+#include "runtime.h"
 #include "interaction.h"
 
-#ifdef _MPI_
-#define         TAG_IO 2000
-extern MPI_Comm IO_Comm;
-#endif
+enum io_type { BINARY, ASCII, ASCII_SERIAL };
 
-extern IO_Param io_grp;                  /* From communicate.c */
+/* struct for parallel IO */
+typedef struct{
+  int root;                      /* Root PE of current I/O group */
+  int n_io;                      /* Number of parallel IO group */
+  int size;                      /* Size (in PEs) of each IO group */
+  int index;                     /* Index of current IO group */
+  int rank;                      /* Rank of PE in IO group */
+} IO_Param;
+
+static MPI_Comm IO_Comm;
+static IO_Param io_grp;
 
 void CIO_read_list_ascii(FILE *);
 void CIO_read_list_ascii_serial(FILE *);
@@ -41,15 +51,74 @@ void CIO_write_header_null(FILE *);
 int  CIO_write_list_ascii(FILE *, int, int, int);
 int  CIO_write_list_binary(FILE *, int, int, int);
 int  CIO_write_xu_binary(FILE *, int, int, int);
+void CIO_set_cio_format(int, int);
 
 static void (* CIO_write_header)(FILE *);
 static int  (* CIO_write_list)(FILE *, int, int, int);
 static void (* CIO_read_header)(FILE *);
 static void (* CIO_read_list)(FILE *);
 static void CIO_count_colloids(void);
+static void cio_filename(char * filename, const char * stub);
 
 static int nlocal_;                       /* Local number of colloids. */
 static int ntotal_;
+
+/*****************************************************************************
+ *
+ *  colloid_io_init
+ *
+ *****************************************************************************/
+
+void colloid_io_init(void) {
+
+  char tmp[256];
+  int input_format;
+  int output_format;
+
+  io_grp.n_io = 1; /* Always 1 at moment */
+
+  if (io_grp.n_io > pe_size()) io_grp.n_io = pe_size();
+  io_grp.size = pe_size() / io_grp.n_io;
+
+  if((cart_rank()%io_grp.size) == 0) {
+    io_grp.root = 1;
+  }
+  else {
+    io_grp.root = 0;
+  }
+
+  io_grp.index = cart_rank()/io_grp.size;
+
+  /* Create communicator for each IO group, and get rank within IO group */
+  MPI_Comm_split(cart_comm(), io_grp.index, cart_rank(), &IO_Comm);
+  MPI_Comm_rank(IO_Comm, &io_grp.rank);
+
+  input_format = BINARY;
+  output_format = BINARY;
+
+  RUN_get_string_parameter("input_format", tmp, 256);
+  if (strncmp("ASCII",  tmp, 5) == 0 ) input_format = ASCII;
+  if (strncmp("ASCII_SERIAL",  tmp, 12) == 0 ) input_format = ASCII_SERIAL;
+  if (strncmp("BINARY", tmp, 6) == 0 ) input_format = BINARY;
+
+  RUN_get_string_parameter("output_format", tmp, 256);
+  if (strncmp("ASCII",  tmp, 5) == 0 ) output_format = ASCII;
+  if (strncmp("BINARY", tmp, 6) == 0 ) output_format = BINARY;
+  CIO_set_cio_format(input_format, output_format);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_io_finish
+ *
+ *****************************************************************************/
+
+void colloid_io_finish(void) {
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -80,18 +149,14 @@ void CIO_count_colloids() {
     }
   }
 
-  ntotal_ = nlocal_;
-
-#ifdef _MPI_
   MPI_Allreduce(&nlocal_, &ntotal_, 1, MPI_INT, MPI_SUM, cart_comm());
-#endif
 
   return;
 }
 
 /*****************************************************************************
  *
- *  CIO_write_state
+ *  colloid_io_write
  *
  *  Write information on the colloids in the local domain proper (not
  *  including the halos) to the specified file.
@@ -101,24 +166,23 @@ void CIO_count_colloids() {
  *
  *****************************************************************************/
 
-void CIO_write_state(const char * filename) {
+void colloid_io_write(const char * filename) {
 
   FILE *    fp_state;
   char      filename_io[FILENAME_MAX];
   int       token = 0;
-
   int       ic, jc, kc;
 
-#ifdef _MPI_
+  const int tag = 9572;
+
   MPI_Status status;
-#endif
 
   if (get_N_colloid() == 0) return;
 
   /* Set the filename */
 
-  info("CIO_write_state\n");
-  sprintf(filename_io, "%s%s", filename, io_grp.file_ext);
+  info("colloid_io_write:\n");
+  cio_filename(filename_io, filename);
 
   /* Make sure everyone has their current number of particles
    * up-to-date */
@@ -138,9 +202,7 @@ void CIO_write_state(const char * filename) {
      * previous process, after which we can go ahead and append our own
      * colloids to the file. */
 
-#ifdef _MPI_
-    MPI_Recv(&token, 1, MPI_INT, io_grp.rank - 1, TAG_IO, IO_Comm, &status);
-#endif
+    MPI_Recv(&token, 1, MPI_INT, io_grp.rank - 1, tag, IO_Comm, &status);
     fp_state = fopen(filename_io, "a+b");
     if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
   }
@@ -166,14 +228,8 @@ void CIO_write_state(const char * filename) {
   if (io_grp.rank < io_grp.size - 1) {
     /* Send the token, which happens to be the accumulated number of
      * particles. */
-#ifdef _MPI_
-    MPI_Ssend(&token, 1, MPI_INT, io_grp.rank + 1, TAG_IO, IO_Comm);
-#endif
-  }
-  else {
-    /* Last  process ... */
-    VERBOSE(("IO group %d wrote %d colloids to %s\n", io_grp.index,
-	     token, filename_io));
+
+    MPI_Ssend(&token, 1, MPI_INT, io_grp.rank + 1, tag, IO_Comm);
   }
 
   return;
@@ -182,26 +238,25 @@ void CIO_write_state(const char * filename) {
 
 /*****************************************************************************
  *
- *  CIO_read_state
+ *  colloid_io_read
  *
  *  This is the driver routine to read colloid information from file.
  *
  *****************************************************************************/
 
-void CIO_read_state(const char * filename) {
+void colloid_io_read(const char * filename) {
 
   FILE *    fp_state;
   char      filename_io[FILENAME_MAX];
   long int  token = 0;
+  const int tag = 9573;
 
-#ifdef _MPI_
   MPI_Status status;
-#endif
 
   /* Set the filename from the stub and the extension */
 
-  info("CIO_read_state\n");
-  sprintf(filename_io, "%s%s", filename, io_grp.file_ext);
+  info("colloid_io_read:\n");
+  cio_filename(filename_io, filename);
 
   if (io_grp.root) {
     /* Open the file and read the header information */
@@ -212,9 +267,9 @@ void CIO_read_state(const char * filename) {
     /* Block until we receive the token which allows us to proceed.
      * Then, open the file and move to the appropriate position before
      * starting to read. */
-#ifdef _MPI_
-    MPI_Recv(&token, 1, MPI_LONG, io_grp.rank - 1, TAG_IO, IO_Comm, &status);
-#endif
+
+    MPI_Recv(&token, 1, MPI_LONG, io_grp.rank - 1, tag, IO_Comm, &status);
+
     fp_state = fopen(filename_io, "r");
     if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
     rewind(fp_state);
@@ -235,13 +290,9 @@ void CIO_read_state(const char * filename) {
   /* Pass on the token, which is the current offset in the file */
 
   if (io_grp.rank < io_grp.size - 1) {
-#ifdef _MPI_
-    MPI_Ssend(&token, 1, MPI_LONG, io_grp.rank + 1, TAG_IO, IO_Comm);
-#endif
-  }
-  else {
-    VERBOSE(("IO group %d read %d colloids from %s\n", io_grp.index,
-	     1, filename_io));
+
+    MPI_Ssend(&token, 1, MPI_LONG, io_grp.rank + 1, tag, IO_Comm);
+
   }
 
   /* This is set here, as the total is not yet known. */
@@ -627,6 +678,26 @@ void CIO_set_cio_format(int io_intype, int io_outtype) {
   default:
     fatal("Invalid colloid output format (value %d)\n", io_outtype);
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  cio_filename
+ *
+ *  Add the extension to the supplied stub.
+ *
+ *****************************************************************************/
+
+static void cio_filename(char * filename, const char * stub) {
+
+  assert(stub);
+  assert(strlen(stub) < FILENAME_MAX/2);  /* Check stub not too long */
+
+  if (io_grp.index >= 1000) fatal("Format botch for cio stub %s\n", stub);
+
+  sprintf(filename, "%s.%3.3d-%3.3d", stub, io_grp.n_io, io_grp.index + 1);
 
   return;
 }
