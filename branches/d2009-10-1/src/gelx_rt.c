@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for active gel free energy.
  *
- *  $Id: gelx_rt.c,v 1.1.2.3 2010-03-26 08:38:18 kevin Exp $
+ *  $Id: gelx_rt.c,v 1.1.2.4 2010-03-27 11:03:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -77,7 +77,9 @@ void gelx_run_time(void) {
 
   gelx_parameters_set(a, b, k1, k2);
   gelx_zeta_set(zeta);
+
   fe_v_lambda_set(lambda);
+  fe_v_molecular_field_set(gelx_molecular_field);
 
   return;
 }
