@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18 2009-10-30 18:05:03 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.1 2010-03-27 11:21:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -36,7 +36,6 @@
 
 #include "colloids.h"
 #include "interaction.h"
-#include "communicate.h"
 #include "model.h"
 #include "site_map.h"
 #include "collision.h"
@@ -46,9 +45,6 @@
 
 #include "ccomms.h"
 #include "ewald.h"
-
-extern int input_format;
-extern int output_format;
 
 static void    COLL_overlap(Colloid *, Colloid *);
 static void    COLL_set_fluid_gravity(void);
@@ -160,8 +156,9 @@ void COLL_init() {
 #endif
 
   if (nc == 0) return;
-  /* Still require old COM_init() at the moment */
-  COM_init();
+
+  /* Was comm_init */
+  colloid_io_init();
 
   nc = RUN_get_double_parameter("colloid_ah", &ahmax);
   if (nc == 0) fatal("Please set colloids_ah in the input file\n");
@@ -169,7 +166,6 @@ void COLL_init() {
   /* Initialisation section. */
 
   colloids_init();
-  CIO_set_cio_format(input_format, output_format);
 
   if (get_step() == 0 && ifrom_file == 0) {
 
@@ -191,7 +187,7 @@ void COLL_init() {
     }
     info("Reading colloid information from files: %s\n", filename);
 
-    CIO_read_state(filename);
+    colloid_io_read(filename);
   }
 
   CCOM_init_halos();
@@ -548,12 +544,15 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
 void COLL_forces() {
 
   int nc = get_N_colloid();
+  double hminlocal;
   double hmin;
+  double elocal[2];
+  double e[2];
 
   if (nc > 0) {
 
     COLL_zero_forces();
-    hmin = COLL_interactions();
+    hminlocal = COLL_interactions();
     COLL_set_fluid_gravity();
     ewald_sum();
 
@@ -563,20 +562,13 @@ void COLL_forces() {
       double rnkt = 1.0/(nc*get_kT());
 
       /* Note Fourier space and self energy available on all processes */
-      ewald_total_energy(&ereal, &efour, &eself);
-#ifdef _MPI_
-      {
-	double hlocal = hmin;
-	double elocal[2], e[2];
+      ewald_total_energy(e, e + 1, &eself);
 
-	elocal[0] = ereal;
-	elocal[1] = epotential_;
-	MPI_Reduce(&hlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
-	MPI_Reduce(elocal, e, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	ereal = e[0];
-	epotential_ = e[1];
-      }
-#endif
+      MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+      MPI_Reduce(elocal, e, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+      ereal = e[0];
+      efour = e[1];
 
       info("\nParticle statistics:\n");
       info("[Inter-particle gap minimum is: %f]\n", hmin);
@@ -974,30 +966,29 @@ double coll_max_speed() {
 
   Colloid * p_colloid;
   int ic, jc, kc;
-  double vmax = 0.0;
+  double vmaxlocal = 0.0;
+  double vmax;
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
-	  while (p_colloid) {
+	while (p_colloid) {
 
-	    vmax = dmax(vmax, UTIL_dot_product(p_colloid->v, p_colloid->v));
+	  vmax = dmax(vmax, UTIL_dot_product(p_colloid->v, p_colloid->v));
 
-	    p_colloid = p_colloid->next;
-	  }
+	  p_colloid = p_colloid->next;
+	}
       }
     }
   }
 
-#ifdef _MPI_
- {
-   double vmax_local = vmax;
-   MPI_Reduce(&vmax_local, &vmax, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
- }
-#endif
+  MPI_Reduce(&vmaxlocal, &vmax, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-  return sqrt(vmax);
+  /* Remember to take sqrt(), as we have computed v^2 */
+  vmax = sqrt(vmax);
+
+  return vmax;
 }
