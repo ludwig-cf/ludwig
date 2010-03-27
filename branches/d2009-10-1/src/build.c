@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.7 2010-03-27 06:24:02 kevin Exp $
+ *  $Id: build.c,v 1.5.4.8 2010-03-27 11:14:10 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -55,18 +55,14 @@ FVector   COLL_fvector_separation(FVector, FVector);
 
 void COLL_init_coordinates() {
 
-  int n;
-  int N[3];
+  int nsites;
 
-  /* Allocate space for the local colloid map */
+  /* Allocate space for the local colloid map (2 of them) */
 
-  coords_nlocal(N);
-  n = (N[X] + 2*nhalo_)*(N[Y] + 2*nhalo_)*(N[Z] + 2*nhalo_);
+  nsites = coords_nsites();
 
-  info("Requesting %d bytes for colloid maps\n", 2*n*sizeof(Colloid*));
-
-  coll_map = (Colloid **) malloc(n*sizeof(Colloid *));
-  coll_old = (Colloid **) malloc(n*sizeof(Colloid *));
+  coll_map = (Colloid **) malloc(nsites*sizeof(Colloid *));
+  coll_old = (Colloid **) malloc(nsites*sizeof(Colloid *));
 
   if (coll_map == (Colloid **) NULL) fatal("malloc (coll_map) failed");
   if (coll_old == (Colloid **) NULL) fatal("malloc (coll_old) failed");
@@ -92,6 +88,7 @@ void COLL_update_map() {
   int     i, j, k;
   int     i_min, i_max, j_min, j_max, k_min, k_max;
   int     index;
+  int     nhalo;
 
   Colloid * p_colloid;
 
@@ -106,14 +103,15 @@ void COLL_update_map() {
 
   coords_nlocal(N);
   get_N_offset(offset);
+  nhalo = coords_nhalo();
 
   /* First, set any existing colloid sites to fluid */
 
-  nsites = (N[X] + 2*nhalo_)*(N[Y] + 2*nhalo_)*(N[Z] + 2*nhalo_);
+  nsites = coords_nsites();
 
-  for (ic = 1 - nhalo_; ic <= N[X] + nhalo_; ic++) {
-    for (jc = 1 - nhalo_; jc <= N[Y] + nhalo_; jc++) {
-      for (kc = 1 - nhalo_; kc <= N[Z] + nhalo_; kc++) {
+  for (ic = 1 - nhalo; ic <= N[X] + nhalo; ic++) {
+    for (jc = 1 - nhalo; jc <= N[Y] + nhalo; jc++) {
+      for (kc = 1 - nhalo; kc <= N[Z] + nhalo; kc++) {
 	/* This avoids setting BOUNDARY to FLUID */
 	if (site_map_get_status(ic, jc, kc) == COLLOID) {
 	  site_map_set_status(ic, jc, kc, FLUID);
@@ -160,12 +158,12 @@ void COLL_update_map() {
 	   * should not extend beyond the boundary of the current domain
 	   * (but include halos). */
 
-	  i_min = imax(1-nhalo_,    (int) floor(r0.x - radius));
-	  i_max = imin(N[X]+nhalo_, (int) ceil (r0.x + radius));
-	  j_min = imax(1-nhalo_,    (int) floor(r0.y - radius));
-	  j_max = imin(N[Y]+nhalo_, (int) ceil (r0.y + radius));
-	  k_min = imax(1-nhalo_,    (int) floor(r0.z - radius));
-	  k_max = imin(N[Z]+nhalo_, (int) ceil (r0.z + radius));
+	  i_min = imax(1-nhalo,    (int) floor(r0.x - radius));
+	  i_max = imin(N[X]+nhalo, (int) ceil (r0.x + radius));
+	  j_min = imax(1-nhalo,    (int) floor(r0.y - radius));
+	  j_max = imin(N[Y]+nhalo, (int) ceil (r0.y + radius));
+	  k_min = imax(1-nhalo,    (int) floor(r0.z - radius));
+	  k_max = imin(N[Z]+nhalo, (int) ceil (r0.z + radius));
 
 	  /* Check each site to see whether it is inside or not */
 
@@ -544,12 +542,14 @@ void COLL_remove_or_replace_fluid() {
   int     sold, snew;
   int     halo;
   int     N[3];
+  int     nhalo;
 
   coords_nlocal(N);
+  nhalo = coords_nhalo();
 
-  for (i = 1 - nhalo_; i <= N[X] + nhalo_; i++) {
-    for (j = 1 - nhalo_; j <= N[Y] + nhalo_; j++) {
-      for (k = 1 - nhalo_; k <= N[Z] + nhalo_; k++) {
+  for (i = 1 - nhalo; i <= N[X] + nhalo; i++) {
+    for (j = 1 - nhalo; j <= N[Y] + nhalo; j++) {
+      for (k = 1 - nhalo; k <= N[Z] + nhalo; k++) {
 
 	index = coords_index(i, j, k);
 
@@ -906,15 +906,17 @@ IVector COM_index2coord( int index )
   IVector coord;
   int N[3];
   int xfac,yfac;
+  int nhalo;
 
   coords_nlocal(N);
+  nhalo = coords_nhalo();
 
-  yfac = N[Z]+2*nhalo_;
-  xfac = (N[Y]+2*nhalo_)*yfac;
+  yfac = N[Z]+2*nhalo;
+  xfac = (N[Y]+2*nhalo)*yfac;
   
-  coord.x = (1-nhalo_) + index/xfac;
-  coord.y = (1-nhalo_) + (index%xfac)/yfac;
-  coord.z = (1-nhalo_) + index%yfac;
+  coord.x = (1-nhalo) + index/xfac;
+  coord.y = (1-nhalo) + (index%xfac)/yfac;
+  coord.z = (1-nhalo) + index%yfac;
 
   assert(coords_index(coord.x, coord.y, coord.z) == index);
 
