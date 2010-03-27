@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3.16.4 2010-03-26 08:36:45 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.5 2010-03-27 05:56:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -384,6 +384,25 @@ static int is_ok_decomposition() {
  *****************************************************************************/
 
 int get_site_index(const int ic, const int jc, const int kc) {
+
+  assert(initialised_);
+  assert(ic >= 1-nhalo_);
+  assert(jc >= 1-nhalo_);
+  assert(kc >= 1-nhalo_);
+  assert(ic <= n_local[X] + nhalo_);
+  assert(jc <= n_local[Y] + nhalo_);
+  assert(kc <= n_local[Z] + nhalo_);
+
+  return (xfac_*(nhalo_ + ic - 1) + yfac_*(nhalo_ + jc -1) + nhalo_ + kc - 1);
+}
+
+/*****************************************************************************
+ *
+ *  coords_index
+ *
+ *****************************************************************************/
+
+int coords_index(const int ic, const int jc, const int kc) {
 
   assert(initialised_);
   assert(ic >= 1-nhalo_);

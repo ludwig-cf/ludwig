@@ -2,7 +2,7 @@
  *
  *  coords.h
  *
- *  $Id: coords.h,v 1.3.16.4 2010-03-26 08:36:45 kevin Exp $
+ *  $Id: coords.h,v 1.3.16.5 2010-03-27 05:56:49 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -44,5 +44,6 @@ void   coords_decomposition_set(const int p[3]);
 void   coords_reorder_set(const int);
 void   coords_periodicity_set(const int p[3]);
 int    coords_nsites(void);
+int    coords_index(const int ic, const int jc, const int kc);
 
 #endif
