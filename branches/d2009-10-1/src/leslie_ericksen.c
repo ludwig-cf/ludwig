@@ -5,7 +5,7 @@
  *  Updates a vector order parameter according to something looking
  *  like a Leslie-Ericksen equation.
  *
- *  $Id: leslie_ericksen.c,v 1.1.2.2 2010-03-26 08:39:12 kevin Exp $
+ *  $Id: leslie_ericksen.c,v 1.1.2.3 2010-03-29 05:57:21 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -115,7 +115,6 @@ static void leslie_ericksen_update_fluid(void) {
 
   double lambda;
   double p[3];
-  double q[3];
   double h[3];
   double d[3][3];
   double omega[3][3];
@@ -135,9 +134,9 @@ static void leslie_ericksen_update_fluid(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
-	phi_get_q_vector(index, q);
+	phi_vector(index, p);
 	fe_molecular_field_function(index, h);
 	hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
 
@@ -150,8 +149,8 @@ static void leslie_ericksen_update_fluid(void) {
 
 	/* update */
 
-	indexj = get_site_index(ic, jc+1, kc);
-	indexk = get_site_index(ic, jc, kc+1);
+	indexj = coords_index(ic, jc+1, kc);
+	indexk = coords_index(ic, jc, kc+1);
 
 	for (ia = 0; ia <= 3; ia++) {
 
@@ -165,6 +164,8 @@ static void leslie_ericksen_update_fluid(void) {
 		       -fluxz[3*index + ia] + fluxz[3*indexk + ia]
 		       + sum + Gamma_*h[ia]);
 	}
+
+	phi_vector_set(index, p);
 
 	/* Next lattice site */
       }
@@ -195,9 +196,9 @@ static void leslie_ericksen_add_swimming_velocity(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
-	phi_get_q_vector(index, p);
+	phi_vector(index, p);
 	hydrodynamics_get_velocity(index, u);
 
 	for (ia = 0; ia < 3; ia++) {
