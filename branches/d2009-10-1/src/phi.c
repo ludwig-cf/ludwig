@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11.4.6 2010-02-16 17:36:50 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.7 2010-03-29 05:52:54 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -956,13 +956,13 @@ void phi_get_q_delsq_tensor(const int index, double dsq[3][3]) {
 
 /*****************************************************************************
  *
- *  phi_set_q_vector
+ *  phi_vector_set
  *
- *  Set Q_a at site index.
+ *  Set q_a at site index.
  *
  *****************************************************************************/
 
-void phi_set_q_vector(const int index, const double q[3]) {
+void phi_vector_set(const int index, const double q[3]) {
 
   int ia;
 
@@ -978,13 +978,13 @@ void phi_set_q_vector(const int index, const double q[3]) {
 
 /*****************************************************************************
  *
- *  phi_q_get_vector
+ *  phi_vector
  *
- *  Retrieve Q_a at site index.
+ *  Retrieve vector order parameter at site index.
  *
  *****************************************************************************/
 
-void phi_get_q_vector(const int index, double q[3]) {
+void phi_vector(const int index, double q[3]) {
 
   int ia;
 
@@ -1000,14 +1000,14 @@ void phi_get_q_vector(const int index, double q[3]) {
 
 /*****************************************************************************
  *
- *  phi_q_get_gradient_vector
+ *  phi_vector_gradient
  *
  *  Return the gradient tensor for vector order parameter.
- *  This is currently dq[ia][ib] = d_a Q_b
+ *  This is currently dq[ia][ib] = d_a q_b
  *
  *****************************************************************************/
 
-void phi_get_q_gradient_vector(const int index, double dq[3][3]) {
+void phi_vector_gradient(const int index, double dq[3][3]) {
 
   int ia, ib;
 
@@ -1025,13 +1025,13 @@ void phi_get_q_gradient_vector(const int index, double dq[3][3]) {
 
 /*****************************************************************************
  *
- *  phi_q_get_delsq_vector
+ *  phi_vector_delsq
  *
- *  Return \nabla^2 Q_a
+ *  Return \nabla^2 for vector order parameter.
  *
  *****************************************************************************/
 
-void phi_get_q_delsq_vector(const int index, double delsq[3]) {
+void phi_vector_delsq(const int index, double delsq[3]) {
 
   int ia;
 
@@ -1040,6 +1040,56 @@ void phi_get_q_delsq_vector(const int index, double delsq[3]) {
 
   for (ia = 0; ia < 3; ia++) {
     delsq[ia] = delsq_phi_site[nop_*index + ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_vector_gradient_dyadic
+ *
+ *  Return d_c q_a q_b for vector order parameter.
+ *
+ *****************************************************************************/
+
+void phi_vector_gradient_dyadic(const int index, double dqq[3][3][3]) {
+
+  int ia, ib, ic;
+
+  assert(initialised_);
+  assert(nop_ == 3);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	dqq[ia][ib][ic] = 0.0;
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_vector_delsq_dyadic
+ *
+ *  Return nabla^2 q_a q_b for vector order parameter q_a
+ *
+ *****************************************************************************/
+
+void phi_vector_delsq_dyadic(const int index, double delsq[3][3]) {
+
+  int ia, ib;
+
+  assert(initialised_);
+  assert(nop_ == 3);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      delsq[ia][ib] = 0.0;
+    }
   }
 
   return;
