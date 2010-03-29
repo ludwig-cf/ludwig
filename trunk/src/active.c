@@ -4,7 +4,7 @@
  *
  *  Routines dealing with bounce-back on links for active particles.
  *
- *  $Id: active.c,v 1.5 2009-11-03 17:32:05 kevin Exp $
+ *  $Id: active.c,v 1.6 2010-03-29 04:06:23 kevin Exp $
  *
  *  Isaac Llopis (Barcelona) developed the active particles.
  *
@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "pe.h"
+#include "ran.h"
 #include "coords.h"
 #include "colloids.h"
 #include "ccomms.h"
@@ -127,7 +128,7 @@ static void init_active1() {
   info((n == 0) ? "[Default] " : "[User   ] "); 
   info("active momentum parameter %f\n", dp);
 
-  for (ic = 1; ic <= Ncell(X); ic++) {
+   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
@@ -140,7 +141,6 @@ static void init_active1() {
 	  p_colloid->dir.x = 0.0;
 	  p_colloid->dir.y = 0.0;
 	  p_colloid->dir.z = -1.0;
-
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;
 	}
@@ -293,6 +293,8 @@ static void init_active2() {
   Colloid * p_colloid;
   int       n, ic, jc, kc;
   double    b_1 = 0.02, b_2 = 0.1;
+  double alpha, rotate_angle, wvec_double[3];
+  FVector wvec, svec;
 
   n = RUN_get_double_parameter("colloid_b1", &b_1);
   info((n == 0) ? "[Default] " : "[User   ] "); 
@@ -300,19 +302,47 @@ static void init_active2() {
   n = RUN_get_double_parameter("colloid_b2", &b_2);
   info("active B_2 parameter %f\n", b_2);
 
-  for (ic = 1; ic <= Ncell(X); ic++) {
+  /* wvec is the angle by which the magnetic dipole differs
+   * from the propulsion direction */
+  alpha=0.5;
+  rotate_angle = alpha*PI;
+  ran_parallel_unit_vector(wvec_double);
+  wvec.x = rotate_angle*wvec_double[0];
+  wvec.y = rotate_angle*wvec_double[1];
+  wvec.z = rotate_angle*wvec_double[2];
+  wvec.x=wvec.z=0.0;
+  wvec.y = rotate_angle;
+
+  /* for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+    for (kc = 1; kc <= Ncell(Z); kc++) {*/
+      for (ic = 0; ic <= Ncell(X)+1; ic++) {
+    for (jc = 0; jc <= Ncell(Y)+1; jc++) {
+    for (kc = 0; kc <= Ncell(Z)+1; kc++) {
 
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {             
 	  p_colloid->b1 = b_1;
 	  p_colloid->b2 = b_2;
+
 	  /* Initialise direction vector */
 	  p_colloid->dir.x = 0.0;
 	  p_colloid->dir.y = 0.0;
 	  p_colloid->dir.z = -1.0;
+	  p_colloid->sump  = 0.0;
+	  p_colloid->fc0.x = 0.0;
+	  p_colloid->fc0.y = 0.0;
+	  p_colloid->fc0.z = 0.0;
+	  p_colloid->tc0.x = 0.0;
+	  p_colloid->tc0.y = 0.0;
+	  p_colloid->tc0.z = 0.0;
+
+	  /* Initialise the magnetic dipole unit vector */
+	  svec = UTIL_rotate_vector( p_colloid->dir,wvec);
+	  p_colloid->s[0] = svec.x;
+	  p_colloid->s[1] = svec.y;
+	  p_colloid->s[2] = svec.z;
 
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;

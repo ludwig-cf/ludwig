@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.7 2008-04-17 09:50:49 kevin Exp $
+ *  $Id: cio.c,v 1.8 2010-03-29 04:06:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -371,6 +371,8 @@ int CIO_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
 	    p_colloid->omega.y, p_colloid->omega.z);
     fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->s[X], p_colloid->s[Y],
             p_colloid->s[Z]);
+    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->dir.x,
+	    p_colloid->dir.y, p_colloid->dir.z);
     fprintf(fp, "%22.15e\n", p_colloid->deltaphi);
  
     /* Next colloid */
@@ -397,6 +399,7 @@ void CIO_read_list_ascii(FILE * fp) {
   double    read_a0;
   double    read_ah;
   FVector   read_r, read_v, read_o;
+  FVector   read_dir;
   double    read_s[3];
   double    read_deltaphi;
   Colloid * p_colloid;
@@ -408,6 +411,8 @@ void CIO_read_list_ascii(FILE * fp) {
     fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
     fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
     fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
+    fscanf(fp, "%22le %22le %22le\n", &(read_dir.x), &(read_dir.y),
+	   &(read_dir.z));
     fscanf(fp, "%22le\n",             &(read_deltaphi));
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
@@ -418,6 +423,9 @@ void CIO_read_list_ascii(FILE * fp) {
       p_colloid->s[X] = read_s[X];
       p_colloid->s[Y] = read_s[Y];
       p_colloid->s[Z] = read_s[Z];
+      p_colloid->dir.x = read_dir.x;
+      p_colloid->dir.y = read_dir.y;
+      p_colloid->dir.z = read_dir.z;
     }
     else {
       /* This didn't go into the cell list */
@@ -433,8 +441,8 @@ void CIO_read_list_ascii(FILE * fp) {
  *  CIO_read_list_ascii_serial
  *
  *  This is a solution to reading a serial file in parallel.
- *  Each process reads all the particles, and throws away
- *  those not in the local domain.
+ *
+ *  Cuurently for Ignacio's active magnetic squirmers.
  *
  *****************************************************************************/
 
@@ -445,8 +453,8 @@ void CIO_read_list_ascii_serial(FILE * fp) {
   double    read_a0;
   double    read_ah;
   FVector   read_r, read_v, read_o;
-  double    read_s[3];
-  double    read_deltaphi;
+  double    read_s[3], read_active[3];
+  double    b1_val, b2_val;
   Colloid * p_colloid;
 
   for (nread = 0; nread < ntotal_; nread++) {
@@ -456,16 +464,28 @@ void CIO_read_list_ascii_serial(FILE * fp) {
     fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
     fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
     fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
-    fscanf(fp, "%22le\n",             &(read_deltaphi));
+    fscanf(fp, "%22le %22le %22le\n", read_active, read_active+1, read_active+2);
+    fscanf(fp, "%22le %22le\n",             &b1_val, &b2_val);
 
     p_colloid = COLL_add_colloid_no_halo(read_index, read_a0, read_ah, read_r,
 					 read_v, read_o);
 
     if (p_colloid) {
-      p_colloid->deltaphi = read_deltaphi;
+      p_colloid->b1 = b1_val;
+      p_colloid->b2 = b2_val;
       p_colloid->s[X] = read_s[X];
       p_colloid->s[Y] = read_s[Y];
       p_colloid->s[Z] = read_s[Z];
+      p_colloid->dir.x = read_active[X];
+      p_colloid->dir.y = read_active[Y];
+      p_colloid->dir.z = read_active[Z];
+      p_colloid->sump  = 0.0;
+      p_colloid->fc0.x = 0.0;
+      p_colloid->fc0.y = 0.0;
+      p_colloid->fc0.z = 0.0;
+      p_colloid->tc0.x = 0.0;
+      p_colloid->tc0.y = 0.0;
+      p_colloid->tc0.z = 0.0;
     }
   }
 
@@ -497,6 +517,7 @@ int CIO_write_list_binary(FILE * fp, int ic, int jc, int kc) {
     fwrite(&(p_colloid->omega),    sizeof(FVector), 1, fp);
     fwrite(p_colloid->dr,          sizeof(double),  3, fp);
     fwrite(p_colloid->s,           sizeof(double),  3, fp);
+    fwrite(&(p_colloid->dir),      sizeof(FVector), 1, fp);
     fwrite(&(p_colloid->deltaphi), sizeof(double),  1, fp);
 
     /* Next colloid */
@@ -522,6 +543,7 @@ void CIO_read_list_binary(FILE * fp) {
   double    read_a0;
   double    read_ah;
   FVector   read_r, read_v, read_o;
+  FVector   read_dir;
   double    read_dr[3];
   double    read_s[3];
   double    read_deltaphi;
@@ -537,6 +559,7 @@ void CIO_read_list_binary(FILE * fp) {
     fread(&read_o,        sizeof(FVector), 1, fp);
     fread(read_dr,        sizeof(double),  3, fp);
     fread(read_s,         sizeof(double),  3, fp);
+    fread(&read_dir,      sizeof(FVector), 1, fp);
     fread(&read_deltaphi, sizeof(double),  1, fp);
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
@@ -549,6 +572,9 @@ void CIO_read_list_binary(FILE * fp) {
 	p_colloid->dr[i] = read_dr[i];
 	p_colloid->s[i] = read_s[i];
       }
+      p_colloid->dir.x = read_dir.x;
+      p_colloid->dir.y = read_dir.y;
+      p_colloid->dir.z = read_dir.z;
     }
     else {
       /* This didn't go into the cell list */
