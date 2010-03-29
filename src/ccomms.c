@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.12 2009-11-03 17:29:04 kevin Exp $
+ *  $Id: ccomms.c,v 1.13 2010-03-29 04:04:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -176,6 +176,12 @@ void CCOM_init_halos() {
   ah = colloid_min_ah();
 
   _halo_message_nmax = ncell*ncell*vcell/(ah*ah*ah);
+
+#ifdef _SUBGRID_
+  /* This may or may not be enough; the above is certainly
+   * too many for subgrid particles */
+  _halo_message_nmax = 100;
+#endif
 
   info("\nColloid message initiailisation...\n");
   info("Taking volume of halo region = %f x %d and ah = %f\n",
@@ -998,7 +1004,7 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->next    = NULL;
   p_colloid->fc0      = UTIL_fvector_zero();
   p_colloid->tc0      = UTIL_fvector_zero();
-  p_colloid->sump  = 0.0;
+  p_colloid->sump     = 0.0;
 
   VERBOSE(("Unloaded particle (index %d) (order = %d)\n", p_colloid->index,
 	  nrecv));
