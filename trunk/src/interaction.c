@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.19 2010-03-25 03:11:35 kevin Exp $
+ *  $Id: interaction.c,v 1.20 2010-03-29 04:07:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -685,7 +685,7 @@ double COLL_interactions() {
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
   double hmin = L(X);
   double h, fmod;
-  double g[3];
+  double g[3], torque_mag[3];
 
   FVector r_12, f;
   FVector COLL_fvector_separation(FVector, FVector);
@@ -707,6 +707,10 @@ double COLL_interactions() {
 	  p_c1->force.x += g[X];
 	  p_c1->force.y += g[Y];
 	  p_c1->force.z += g[Z];
+	  magnetic_field_torque( p_c1->s,  torque_mag);
+	  p_c1->torque.x += torque_mag[X];
+	  p_c1->torque.y += torque_mag[Y];
+	  p_c1->torque.z += torque_mag[Z];
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
