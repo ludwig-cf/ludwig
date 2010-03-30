@@ -2,7 +2,7 @@
  *
  *  advection_bcs.h
  *
- *  $Id: advection_bcs.h,v 1.1.2.1 2009-12-15 16:19:32 kevin Exp $
+ *  $Id: advection_bcs.h,v 1.1.2.2 2010-03-30 09:44:56 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,4 +17,6 @@
 
 void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz);
+void advection_bcs_wall(void);
+
 #endif

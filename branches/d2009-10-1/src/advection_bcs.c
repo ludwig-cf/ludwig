@@ -4,7 +4,7 @@
  *
  *  Advection boundary conditions.
  *
- *  $Id: advection_bcs.c,v 1.1.2.2 2010-03-27 05:57:19 kevin Exp $
+ *  $Id: advection_bcs.c,v 1.1.2.3 2010-03-30 09:44:56 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "pe.h"
+#include "wall.h"
 #include "coords.h"
 #include "site_map.h"
 #include "phi.h"
@@ -65,6 +66,69 @@ void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
 	  fluxz[nop*index + n] *= mask*maskz;
 	}
 
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  advection_bcs_wall
+ *
+ *  For the case of flat walls, we kludge the order parameter advection
+ *  by borrowing the adjacent fluid value.
+ *
+ *  The official explanation is this may be viewed as a no gradient
+ *  condition on the order parameter near the wall.
+ *
+ *  This will be effective for fluxes up to fourth order.
+ *
+ ****************************************************************************/
+
+void advection_bcs_wall(void) {
+
+  int ic, jc, kc, index, index1;
+  int nlocal[3];
+  int n, nop;
+
+  extern double * phi_site;
+
+  if (wall_at_edge(X) == 0) return;
+
+  coords_nlocal(nlocal);
+  nop = phi_nop();
+
+  if (cart_coords(X) == 0) {
+    ic = 1;
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index  = coords_index(ic, jc, kc);
+	index1 = coords_index(ic-1, jc, kc);
+
+	for (n = 0; n < nop; n++) {
+	  phi_site[nop*index1 + n] = phi_site[nop*index + n];
+	}
+      }
+    }
+  }
+
+  if (cart_coords(X) == cart_size(X) - 1) {
+
+    ic = nlocal[X];
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	index1 = coords_index(ic+1, jc, kc);
+
+	for (n = 0; n < nop_; n++) {
+	  phi_site[nop*index1 + n] = phi_site[nop*index + n];
+	}
       }
     }
   }
