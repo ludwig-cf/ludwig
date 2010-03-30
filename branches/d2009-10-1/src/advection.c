@@ -15,7 +15,10 @@
  *  to the 'west' face flux. There's no effect in the y- or z-
  *  directions.
  *
- *  $Id: advection.c,v 1.2.4.1 2010-03-05 12:15:49 kevin Exp $
+ *  Any solid-fluid boundary conditions are dealt with post-hoc by
+ *  in advection_bcs.c
+ *
+ *  $Id: advection.c,v 1.2.4.2 2010-03-30 14:12:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,8 +35,66 @@
 #include "leesedwards.h"
 #include "lattice.h"
 #include "phi.h"
+#include "advection.h"
 
 extern double * phi_site;
+
+static int order_ = 1; /* Default is upwind (bad!) */
+
+/*****************************************************************************
+ *
+ *  advection_order_set
+ *
+ *****************************************************************************/
+
+void advection_order_set(const int n) {
+
+  order_ = n;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  advection_order
+ *
+ *****************************************************************************/
+
+int advection_order(void) {
+
+  return order_;
+}
+
+/*****************************************************************************
+ *
+ *  advection_order_n
+ *
+ *  The user may call a specific order, or can take what is
+ *  set by calling this.
+ *
+ *****************************************************************************/
+
+void advection_order_n(double * fluxw, double * fluxe, double * fluxy,
+		       double * fluxz) {
+
+  switch (order_) {
+  case 1:
+    advection_upwind(fluxw, fluxe, fluxy, fluxz);
+    break;
+  case 3:
+    advection_upwind_third_order(fluxw, fluxe, fluxy, fluxz);
+    break;
+  case 5:
+    advection_upwind_fifth_order(fluxw, fluxe, fluxy, fluxz);
+    break;
+  case 7:
+    advection_upwind_seventh_order(fluxw, fluxe, fluxy, fluxz);
+    break;
+  default:
+    fatal("Bad advection scheme set order = %d\n", order_);
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -65,7 +126,7 @@ void advection_upwind(double * fluxe, double * fluxw,
   assert(fluxy);
   assert(fluxz);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -168,7 +229,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
   const double a2 =  0.927865;
   const double a3 =  0.286067;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
 
   assert(fluxe);
@@ -317,7 +378,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
   const double a4 =  0.361520;
   const double a5 = -0.027880;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   assert(coords_nhalo() >= 3);
 
   assert(fluxe);
@@ -487,7 +548,7 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
   const double a6 = -0.038383;
   const double a7 =  0.000842;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   assert(coords_nhalo() >= 4);
 
   assert(fluxe);

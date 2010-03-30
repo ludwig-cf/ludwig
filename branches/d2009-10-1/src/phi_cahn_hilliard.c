@@ -11,7 +11,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.10.4.4 2010-03-27 11:09:07 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.10.4.5 2010-03-30 14:12:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -54,7 +54,6 @@ static double   lh_kminus_;  /* Langmuir Hinshelwood desorption rate */
 static double   lh_psimax_;  /* Langmuir Hinshelwood monolayer capacity */
 
 static int langmuirh_ = 0; /* Langmuir Hinshelwood flag */
-static int advection_ = 1; /* Advection scheme */
 static int solid_     = 1; /* Solid present? */
 
 /*****************************************************************************
@@ -73,39 +72,25 @@ static int solid_     = 1; /* Solid present? */
 
 void phi_cahn_hilliard() {
 
-  int nlocal[3];
+  int nop;
   int nsites;
 
-  get_N_local(nlocal);
-  nsites = (nlocal[X]+2*nhalo_)*(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
+  nop = phi_nop();
+  nsites = coords_nsites();
 
-  fluxe = (double *) malloc(nop_*nsites*sizeof(double));
-  fluxw = (double *) malloc(nop_*nsites*sizeof(double));
-  fluxy = (double *) malloc(nop_*nsites*sizeof(double));
-  fluxz = (double *) malloc(nop_*nsites*sizeof(double));
+  fluxe = (double *) malloc(nop*nsites*sizeof(double));
+  fluxw = (double *) malloc(nop*nsites*sizeof(double));
+  fluxy = (double *) malloc(nop*nsites*sizeof(double));
+  fluxz = (double *) malloc(nop*nsites*sizeof(double));
   if (fluxe == NULL) fatal("malloc(fluxe) failed");
   if (fluxw == NULL) fatal("malloc(fluxw) failed");
   if (fluxy == NULL) fatal("malloc(fluxy) failed");
   if (fluxz == NULL) fatal("malloc(fluxz) failed");
 
-
   hydrodynamics_halo_u();
   hydrodynamics_leesedwards_transformation();
 
-  switch (advection_) {
-  case 1:
-    advection_upwind(fluxe, fluxw, fluxy, fluxz);
-    break;
-  case 3:
-    advection_upwind_third_order(fluxe, fluxw, fluxy, fluxz);
-    break;
-  case 5:
-    advection_upwind_fifth_order(fluxe, fluxw, fluxy, fluxz);
-    break;
-  case 7:
-    advection_upwind_seventh_order(fluxe, fluxw, fluxy, fluxz);
-    break;
-  }
+  advection_order_n(fluxe, fluxw, fluxy, fluxz);
 
   if (nop_ == 2) {
     phi_ch_diffusive_flux_surfactant();
@@ -121,6 +106,7 @@ void phi_cahn_hilliard() {
     if (solid_) {
       advection_bcs_no_normal_flux(fluxe, fluxw, fluxy, fluxz);
     }
+    advection_bcs_wall();
   }
 
 
@@ -191,34 +177,6 @@ void phi_ch_op_set_mobility(const double m, const int nop) {
 
 /*****************************************************************************
  *
- *  phi_ch_set_upwind_order
- *
- ****************************************************************************/
-
-void phi_ch_set_upwind_order(int n) {
-
-  switch (n) {
-  case 3:
-    advection_ = 3;
-    info("Using third order upwind\n");
-    break;
-  case 5:
-    advection_ = 5;
-    info("Using fifth order upwind\n");
-    break;
-  case 7:
-    advection_ = 7;
-    break;
-  default:
-    advection_ = 1;
-    info("Using upwind advection\n");
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  phi_ch_set_langmuir_hinshelwood
  *
  *  Set the Langmuir Hinshelwood parameters and sets the flag.
@@ -259,7 +217,7 @@ void phi_ch_diffusive_flux(void) {
 
   double (* chemical_potential)(const int index, const int nop);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   assert(nhalo_ >= 2);
   assert(mobility_);
 
@@ -337,7 +295,7 @@ void phi_ch_diffusive_flux_surfactant(void) {
 
   double (* chemical_potential)(const int index, const int nop);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   assert(nhalo_ >= 2);
   assert(nop_ == 2); /* Surfactant only */
   assert(mobility_);
@@ -459,7 +417,7 @@ static void phi_ch_langmuir_hinshelwood(void) {
   const double rh = 1.0;
   const double rpsimax = 1.0/lh_psimax_;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   assert(nop_ == 2); /* Surfactant model only */
   assert(le_get_nplane_total() == 0);
@@ -588,7 +546,7 @@ static void phi_ch_le_fix_fluxes(void) {
   else {
     /* Can do it directly */
 
-    get_N_local(nlocal);
+    coords_nlocal(nlocal);
 
     nbuffer = nop_*nlocal[Y]*nlocal[Z];
     buffere = (double *) malloc(nbuffer*sizeof(double));
@@ -706,7 +664,7 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 
   int get_step(void);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   get_N_offset(noffset);
 
   /* Allocate the temporary buffer */
