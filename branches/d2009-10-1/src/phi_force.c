@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.6.4.4 2010-03-27 11:23:30 kevin Exp $
+ *  $Id: phi_force.c,v 1.6.4.5 2010-03-30 14:21:38 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,7 +22,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
 #include "lattice.h"
 #include "phi.h"
 #include "site_map.h"
@@ -45,7 +44,20 @@ static double * fluxw;
 static double * fluxy;
 static double * fluxz;
 
+static int  force_required_ = 1;
 static void (* phi_force_simple_)(void) = phi_force_calculation_fluid;
+
+/*****************************************************************************
+ *
+ *  phi_force_required_set
+ *
+ *****************************************************************************/
+
+void phi_force_required_set(const int flag) {
+
+  force_required_ = flag;
+  return;
+}
 
 /*****************************************************************************
  *
@@ -57,7 +69,7 @@ static void (* phi_force_simple_)(void) = phi_force_calculation_fluid;
 
 void phi_force_calculation() {
 
-  if (phi_is_finite_difference() == 0) return;
+  if (force_required_ == 0) return;
 
   TIMER_start(TIMER_FORCE_CALCULATION);
 
@@ -116,7 +128,7 @@ static void phi_force_calculation_fluid() {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   assert(nhalo_ >= 2);
 
   chemical_stress = fe_chemical_stress_function();
@@ -205,7 +217,7 @@ static void phi_force_calculation_fluid_solid() {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   assert(nhalo_ >= 2);
 
   chemical_stress = fe_chemical_stress_function();
@@ -289,11 +301,9 @@ static void phi_force_calculation_fluid_solid() {
 
 static void phi_force_flux(void) {
 
-  int nlocal[3];
   int n;
 
-  get_N_local(nlocal);
-  n = (nlocal[X] + 2*nhalo_)*(nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
+  n = coords_nsites();
 
   fluxe = (double *) malloc(3*n*sizeof(double));
   fluxw = (double *) malloc(3*n*sizeof(double));
@@ -308,10 +318,9 @@ static void phi_force_flux(void) {
   phi_force_compute_fluxes();
   phi_force_fix_fluxes();
 
-  if (!is_periodic(X)) phi_force_wall();
+  if (wall_present()) phi_force_wall();
 
   phi_force_flux_divergence();
-
 
   free(fluxz);
   free(fluxy);
@@ -340,7 +349,7 @@ static void phi_force_compute_fluxes(void) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   assert(nhalo_ >= 2);
 
   chemical_stress = fe_chemical_stress_function();
@@ -432,7 +441,7 @@ static void phi_force_fix_fluxes(void) {
   }
   else {
 
-    get_N_local(nlocal);
+    coords_nlocal(nlocal);
 
     nbuffer = 3*nlocal[Y]*nlocal[Z];
     buffere = (double *) malloc(nbuffer*sizeof(double));
@@ -550,7 +559,7 @@ static void phi_force_fix_fluxes_parallel(void) {
 
   int get_step(void);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   get_N_offset(noffset);
 
   /* Allocate the temporary buffer */
@@ -687,7 +696,7 @@ static void phi_force_flux_divergence(void) {
   int ic, jc, kc, index, ia;
   double f[3];
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -728,7 +737,7 @@ static void phi_force_wall(void) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
