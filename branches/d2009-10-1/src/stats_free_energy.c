@@ -4,7 +4,7 @@
  *
  *  Statistics for free energy density.
  *
- *  $Id: stats_free_energy.c,v 1.1.2.2 2009-12-23 16:41:06 kevin Exp $
+ *  $Id: stats_free_energy.c,v 1.1.2.3 2010-03-30 14:20:04 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,6 +25,9 @@
  *
  *  stats_free_energy_density
  *
+ *  Tots up the free energy density. This does ignore solid sites,
+ *  but does not account for any surface free energy.
+ *
  ****************************************************************************/
 
 void stats_free_energy_density(void) {
@@ -39,7 +42,7 @@ void stats_free_energy_density(void) {
 
   double (* free_energy_density)(const int index);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   free_energy_density = fe_density_function();
 
   fe_local[0] = 0.0; /* Total */
@@ -49,7 +52,7 @@ void stats_free_energy_density(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	fed = free_energy_density(index);
 	fe_local[0] += fed;
@@ -61,8 +64,8 @@ void stats_free_energy_density(void) {
   MPI_Reduce(fe_local, fe_total, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
-  info("Free energy density [total, fluid]\n");
-  info("[fed] %8d %14.7e %14.7e\n", get_step(), rv*fe_total[0],
+  info("\nFree energy density - timestep total fluid\n");
+  info("[fed] %14d %14.7e %14.7e\n", get_step(), rv*fe_total[0],
        rv*fe_total[1]);
 
   return;
