@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.1 2010-03-27 11:21:33 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.2 2010-03-30 14:23:21 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -209,7 +209,6 @@ void COLL_init() {
    * colloid map and build the particles for the first time. */
 
   CCOM_halo_particles();
-  phi_gradients_set_solid();
 
 #ifndef _SUBGRID_
   COLL_update_map();
@@ -562,7 +561,7 @@ void COLL_forces() {
       double rnkt = 1.0/(nc*get_kT());
 
       /* Note Fourier space and self energy available on all processes */
-      ewald_total_energy(e, e + 1, &eself);
+      ewald_total_energy(elocal, elocal + 1, &eself);
 
       MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
       MPI_Reduce(elocal, e, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -967,7 +966,7 @@ double coll_max_speed() {
   Colloid * p_colloid;
   int ic, jc, kc;
   double vmaxlocal = 0.0;
-  double vmax;
+  double vmax = 0.0;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -977,7 +976,8 @@ double coll_max_speed() {
 
 	while (p_colloid) {
 
-	  vmax = dmax(vmax, UTIL_dot_product(p_colloid->v, p_colloid->v));
+	  vmaxlocal = dmax(vmaxlocal,
+			   UTIL_dot_product(p_colloid->v, p_colloid->v));
 
 	  p_colloid = p_colloid->next;
 	}
