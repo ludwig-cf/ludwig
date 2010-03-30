@@ -2,7 +2,7 @@
  *
  *  coords.h
  *
- *  $Id: coords.h,v 1.3.16.5 2010-03-27 05:56:49 kevin Exp $
+ *  $Id: coords.h,v 1.3.16.6 2010-03-30 03:47:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,6 +17,7 @@
 
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
+enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
 extern int nhalo_;
 
@@ -45,5 +46,6 @@ void   coords_reorder_set(const int);
 void   coords_periodicity_set(const int p[3]);
 int    coords_nsites(void);
 int    coords_index(const int ic, const int jc, const int kc);
-
+void   coords_minimum_distance(const double r1[3], const double r2[3],
+			       double r12[3]);
 #endif

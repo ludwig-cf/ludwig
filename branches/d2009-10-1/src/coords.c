@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3.16.5 2010-03-27 05:56:48 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.6 2010-03-30 03:47:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -506,6 +506,28 @@ void coords_reorder_set(const int reorder_in) {
   assert(initialised_ == 0);
 
   reorder_ = reorder_in;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_minimum_distance
+ *
+ *  Returns the minimum image separation r1 -> r2 (in that direction)
+ *  in periodic boundary conditions.
+ *
+ *****************************************************************************/
+
+void coords_minimum_distance(const double r1[3], const double r2[3],
+			     double r12[3]) {
+  int ia;
+
+  for (ia = 0; ia < 3; ia++) {
+    r12[ia] = r2[ia] - r1[ia];
+    if (r12[ia] >  0.5*n_total[ia]) r12[ia] -= 1.0*n_total[ia]*periodic[ia];
+    if (r12[ia] < -0.5*n_total[ia]) r12[ia] += 1.0*n_total[ia]*periodic[ia];
+  }
 
   return;
 }
