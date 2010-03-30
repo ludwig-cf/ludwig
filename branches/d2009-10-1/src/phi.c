@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11.4.7 2010-03-29 05:52:54 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.8 2010-03-30 14:19:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,7 +30,7 @@
 struct io_info_t * io_info_phi;
 
 /* Currently global scope */
-int nop_ = 1;
+int nop_ = 0;
 
 /* Shift the gradients to phi-gradients */
 double * phi_site;
@@ -1040,56 +1040,6 @@ void phi_vector_delsq(const int index, double delsq[3]) {
 
   for (ia = 0; ia < 3; ia++) {
     delsq[ia] = delsq_phi_site[nop_*index + ia];
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_vector_gradient_dyadic
- *
- *  Return d_c q_a q_b for vector order parameter.
- *
- *****************************************************************************/
-
-void phi_vector_gradient_dyadic(const int index, double dqq[3][3][3]) {
-
-  int ia, ib, ic;
-
-  assert(initialised_);
-  assert(nop_ == 3);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      for (ic = 0; ic < 3; ic++) {
-	dqq[ia][ib][ic] = 0.0;
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_vector_delsq_dyadic
- *
- *  Return nabla^2 q_a q_b for vector order parameter q_a
- *
- *****************************************************************************/
-
-void phi_vector_delsq_dyadic(const int index, double delsq[3][3]) {
-
-  int ia, ib;
-
-  assert(initialised_);
-  assert(nop_ == 3);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      delsq[ia][ib] = 0.0;
-    }
   }
 
   return;
