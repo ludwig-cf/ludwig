@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.1 2010-03-27 11:01:52 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.2 2010-03-30 03:49:40 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -87,7 +87,6 @@ void colloids_init() {
 
   n = (ncell[X] + n_halo_)*(ncell[Y] + n_halo_)*(ncell[Z] + n_halo_);
 
-  info("Requesting %d bytes for the cell list\n", n*sizeof(Colloid *));
   cell_list_ = (Colloid **) calloc(n, sizeof(Colloid *));
 
   if (cell_list_ == (Colloid **) NULL) fatal("calloc(cell_list)");
@@ -496,4 +495,49 @@ void cell_update() {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+
+
+/*****************************************************************************
+ *
+ *  colloid_add_local
+ *
+ *  Add a colloid only if the position is in the local domain.
+ *  (and not in the halo).
+ *
+ *  This returns a pointer to a new colloid, or NULL if none
+ *  is added.
+ *
+ *****************************************************************************/
+
+Colloid * colloid_add_local(const int index, const double r[3]) {
+
+  IVector cell;
+  Colloid * p_c = NULL;
+  FVector rnew;
+
+  rnew.x = r[X];
+  rnew.y = r[Y];
+  rnew.z = r[Z];
+
+  cell = cell_coords(rnew);
+
+  if (cell.x < 1 || cell.x > Ncell(X)) return p_c;
+  if (cell.y < 1 || cell.y > Ncell(Y)) return p_c;
+  if (cell.z < 1 || cell.z > Ncell(Z)) return p_c;
+
+  p_c = allocate_colloid();
+
+  /* Put the new colloid at the head of the appropriate cell list */
+
+  p_c->index = index;
+  p_c->r     = rnew;
+  p_c->lnk   = NULL;
+
+  cell_insert_colloid(p_c);
+
+  return p_c;
 }

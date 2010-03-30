@@ -8,7 +8,7 @@
  *  See Ludwig Technical Notes for a complete description
  *  of the colloid implementation.
  *
- *  $Id: colloids.h,v 1.9 2009-11-03 17:25:24 kevin Exp $
+ *  $Id: colloids.h,v 1.9.2.1 2010-03-30 03:49:43 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -109,5 +109,6 @@ void      colloids_memory_report(void);
 void      set_N_colloid(const int);
 int       get_N_colloid(void);
 double    get_colloid_rho0(void);
+Colloid * colloid_add_local(const int index, const double r[3]);
 
 #endif /* _COLLOIDS_H */
