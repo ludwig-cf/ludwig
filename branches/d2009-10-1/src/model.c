@@ -9,7 +9,7 @@
  *
  *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
  *
- *  $Id: model.c,v 1.17.4.8 2010-03-26 08:40:11 kevin Exp $
+ *  $Id: model.c,v 1.17.4.9 2010-03-30 05:55:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -85,7 +85,7 @@ void init_site() {
   int nhalo;
 
   nhalo = coords_nhalo();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   nx = nlocal[X] + 2*nhalo;
   ny = nlocal[Y] + 2*nhalo;
@@ -123,6 +123,39 @@ void init_site() {
   initialised_ = 1;
 
   distribution_halo_set_complete();
+  distribution_init_f();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_init_f
+ *
+ *  Fluid uniformly at rest.
+ *
+ *****************************************************************************/
+
+void distribution_init_f(void) {
+
+  int nlocal[3];
+  int ic, jc, kc, index;
+
+  assert(initialised_);
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	/* should be rho0 */
+	distribution_zeroth_moment_set_equilibrium(index, 0, 1.0);
+      }
+    }
+  }
 
   return;
 }
@@ -147,7 +180,7 @@ static void distribution_mpi_init() {
   MPI_Datatype * types;
 
   nhalo = coords_nhalo();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   nx = nlocal[X] + 2*nhalo;
   ny = nlocal[Y] + 2*nhalo;
@@ -460,7 +493,7 @@ void halo_site() {
   TIMER_start(TIMER_HALO_LATTICE);
 
   nhalo = coords_nhalo();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   /* The x-direction (YZ plane) */
 
@@ -468,27 +501,27 @@ void halo_site() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	ihalo = ndist_*NVEL*get_site_index(0, jc, kc);
-	ireal = ndist_*NVEL*get_site_index(nlocal[X], jc, kc);
+	ihalo = ndist_*NVEL*coords_index(0, jc, kc);
+	ireal = ndist_*NVEL*coords_index(nlocal[X], jc, kc);
 	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
 
-	ihalo = ndist_*NVEL*get_site_index(nlocal[X]+1, jc, kc);
-	ireal = ndist_*NVEL*get_site_index(1, jc, kc);
+	ihalo = ndist_*NVEL*coords_index(nlocal[X]+1, jc, kc);
+	ireal = ndist_*NVEL*coords_index(1, jc, kc);
 	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
       }
     }
   }
   else {
-    ihalo = ndist_*NVEL*get_site_index(nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
+    ihalo = ndist_*NVEL*coords_index(nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
     MPI_Irecv(f_ + ihalo, 1, plane_yz_[BACKWARD],
 	      cart_neighb(FORWARD,X), tagb, comm, &request[0]);
-    ihalo = ndist_*NVEL*get_site_index(0, 1 - nhalo, 1 - nhalo);
+    ihalo = ndist_*NVEL*coords_index(0, 1 - nhalo, 1 - nhalo);
     MPI_Irecv(f_ + ihalo, 1, plane_yz_[FORWARD],
 	      cart_neighb(BACKWARD,X), tagf, comm, &request[1]);
-    ireal = ndist_*NVEL*get_site_index(1, 1-nhalo, 1-nhalo);
+    ireal = ndist_*NVEL*coords_index(1, 1-nhalo, 1-nhalo);
     MPI_Issend(f_ + ireal, 1, plane_yz_[BACKWARD],
 	       cart_neighb(BACKWARD,X), tagb, comm, &request[2]);
-    ireal = ndist_*NVEL*get_site_index(nlocal[X], 1-nhalo, 1-nhalo);
+    ireal = ndist_*NVEL*coords_index(nlocal[X], 1-nhalo, 1-nhalo);
     MPI_Issend(f_ + ireal, 1, plane_yz_[FORWARD],
 	       cart_neighb(FORWARD,X), tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
@@ -500,27 +533,27 @@ void halo_site() {
     for (ic = 0; ic <= nlocal[X] + 1; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	ihalo = ndist_*NVEL*get_site_index(ic, 0, kc);
-	ireal = ndist_*NVEL*get_site_index(ic, nlocal[Y], kc);
+	ihalo = ndist_*NVEL*coords_index(ic, 0, kc);
+	ireal = ndist_*NVEL*coords_index(ic, nlocal[Y], kc);
 	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
 
-	ihalo = ndist_*NVEL*get_site_index(ic, nlocal[Y] + 1, kc);
-	ireal = ndist_*NVEL*get_site_index(ic, 1, kc);
+	ihalo = ndist_*NVEL*coords_index(ic, nlocal[Y] + 1, kc);
+	ireal = ndist_*NVEL*coords_index(ic, 1, kc);
 	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
       }
     }
   }
   else {
-    ihalo = ndist_*NVEL*get_site_index(1 - nhalo, nlocal[Y] + 1, 1 - nhalo);
+    ihalo = ndist_*NVEL*coords_index(1 - nhalo, nlocal[Y] + 1, 1 - nhalo);
     MPI_Irecv(f_ + ihalo, 1, plane_xz_[BACKWARD],
 	      cart_neighb(FORWARD,Y), tagb, comm, &request[0]);
-    ihalo = ndist_*NVEL*get_site_index(1 - nhalo, 0, 1 - nhalo);
+    ihalo = ndist_*NVEL*coords_index(1 - nhalo, 0, 1 - nhalo);
     MPI_Irecv(f_ + ihalo, 1, plane_xz_[FORWARD], cart_neighb(BACKWARD,Y),
 	      tagf, comm, &request[1]);
-    ireal = ndist_*NVEL*get_site_index(1 - nhalo, 1, 1 - nhalo);
+    ireal = ndist_*NVEL*coords_index(1 - nhalo, 1, 1 - nhalo);
     MPI_Issend(f_ + ireal, 1, plane_xz_[BACKWARD], cart_neighb(BACKWARD,Y),
 	       tagb, comm, &request[2]);
-    ireal = ndist_*NVEL*get_site_index(1 - nhalo, nlocal[Y], 1 - nhalo);
+    ireal = ndist_*NVEL*coords_index(1 - nhalo, nlocal[Y], 1 - nhalo);
     MPI_Issend(f_ + ireal, 1, plane_xz_[FORWARD], cart_neighb(FORWARD,Y),
 	       tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
@@ -532,28 +565,28 @@ void halo_site() {
     for (ic = 0; ic <= nlocal[X] + 1; ic++) {
       for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 
-	ihalo = ndist_*NVEL*get_site_index(ic, jc, 0);
-	ireal = ndist_*NVEL*get_site_index(ic, jc, nlocal[Z]);
+	ihalo = ndist_*NVEL*coords_index(ic, jc, 0);
+	ireal = ndist_*NVEL*coords_index(ic, jc, nlocal[Z]);
 	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
 
-	ihalo = ndist_*NVEL*get_site_index(ic, jc, nlocal[Z] + 1);
-	ireal = ndist_*NVEL*get_site_index(ic, jc, 1);
+	ihalo = ndist_*NVEL*coords_index(ic, jc, nlocal[Z] + 1);
+	ireal = ndist_*NVEL*coords_index(ic, jc, 1);
 	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
       }
     }
   }
   else {
 
-    ihalo = ndist_*NVEL*get_site_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
+    ihalo = ndist_*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
     MPI_Irecv(f_ + ihalo, 1, plane_xy_[BACKWARD], cart_neighb(FORWARD,Z),
 	      tagb, comm, &request[0]);
-    ihalo = ndist_*NVEL*get_site_index(1 - nhalo, 1 - nhalo, 0);
+    ihalo = ndist_*NVEL*coords_index(1 - nhalo, 1 - nhalo, 0);
     MPI_Irecv(f_ + ihalo, 1, plane_xy_[FORWARD], cart_neighb(BACKWARD,Z),
 	      tagf, comm, &request[1]);
-    ireal = ndist_*NVEL*get_site_index(1 - nhalo, 1 - nhalo, 1);
+    ireal = ndist_*NVEL*coords_index(1 - nhalo, 1 - nhalo, 1);
     MPI_Issend(f_ + ireal, 1, plane_xy_[BACKWARD], cart_neighb(BACKWARD,Z),
 	       tagb, comm, &request[2]);
-    ireal = ndist_*NVEL*get_site_index(1 - nhalo, 1 - nhalo, nlocal[Z]);
+    ireal = ndist_*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z]);
     MPI_Issend(f_ + ireal, 1, plane_xy_[FORWARD], cart_neighb(FORWARD,Z),
 	       tagf, comm, &request[3]);  
     MPI_Waitall(4, request, status);
@@ -577,7 +610,7 @@ static int distributions_read(FILE * fp, const int ic, const int jc,
 
   int index, n;
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
 
   n = fread(f_ + ndist_*NVEL*index, sizeof(double), ndist_*NVEL, fp);
 
@@ -601,7 +634,7 @@ static int distributions_write(FILE * fp, const int ic , const int jc,
 
   int index, n;
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
 
   n = fwrite(f_ + ndist_*NVEL*index, sizeof(double), ndist_*NVEL, fp);
 

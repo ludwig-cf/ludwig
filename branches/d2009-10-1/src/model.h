@@ -2,18 +2,18 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.14.4.6 2010-03-26 08:40:11 kevin Exp $
+ *  $Id: model.h,v 1.14.4.7 2010-03-30 05:55:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _MODEL_H
-#define _MODEL_H
+#ifndef MODEL_H
+#define MODEL_H
 
 #include "d2q9.h"
 #include "d3q15.h"
@@ -47,6 +47,6 @@ void   distribution_first_moment(const int index, const int n, double g[3]);
 void   distribution_get_stress_at_site(int index, double s[3][3]);
 void   distribution_halo_set_complete(void);
 void   distribution_halo_set_reduced(void);
-
+void   distribution_init_f(void);
 
 #endif
