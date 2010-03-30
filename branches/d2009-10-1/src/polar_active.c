@@ -7,7 +7,7 @@
  *  This is an implemetation of a free energy with vector order
  *  parameter.
  *
- *  $Id: polar_active.c,v 1.1.2.1 2010-03-29 05:31:32 kevin Exp $
+ *  $Id: polar_active.c,v 1.1.2.2 2010-03-30 14:24:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,6 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "phi.h"
+#include "phi_gradients.h"
 #include "polar_active.h"
 
 static double a_;
@@ -45,7 +46,7 @@ void polar_active_parameters_set(const double a, const double b,
   kappa1_ = k1;
   kappa2_ = k2;
 
-  /* No kappa2 term yet. */
+  /* No kappa2 term yet as derivatives not computed yet. */
   assert(kappa2_ == 0.0);
 
   return;
@@ -75,7 +76,7 @@ double polar_active_free_energy_density(const int index) {
 
   phi_vector(index, p);
   phi_vector_gradient(index, dp);
-  phi_vector_gradient_dyadic(index, dpp);
+  phi_gradients_grad_dyadic(index, dpp);
 
   p2  = 0.0;
   dp1 = 0.0;
@@ -164,7 +165,7 @@ void polar_active_molecular_field(const int index, double h[3]) {
 
   phi_vector(index, p);
   phi_vector_delsq(index, dsqp);
-  phi_vector_delsq_dyadic(index, dsqpp);
+  phi_gradients_delsq_dyadic(index, dsqpp);
 
   p2 = 0.0;
 
