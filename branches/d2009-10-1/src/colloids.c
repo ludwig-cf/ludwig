@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.4 2010-03-30 05:51:35 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.5 2010-03-30 14:15:29 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -540,4 +540,38 @@ Colloid * colloid_add_local(const int index, const double r[3]) {
   cell_insert_colloid(p_c);
 
   return p_c;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_nlocal
+ *
+ *  Return the local number of colloids. As the colloids move about,
+ *  this must be recomputed each time.
+ *
+ ****************************************************************************/
+
+int colloid_nlocal(void) {
+
+  int       ic, jc, kc;
+  int       nlocal;
+  Colloid * p_colloid;
+
+  nlocal = 0;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+
+	while (p_colloid) {
+	  nlocal++;
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  return nlocal;
 }
