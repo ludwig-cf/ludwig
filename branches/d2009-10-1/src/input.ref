@@ -85,19 +85,22 @@ temperature 0.00002133333
 #
 #  Free energy parameters
 #
-#  Used when -D_SINGLE_FLUID_ not in force.
+#  free_energy none               single fluid only [the default]
 #
-#  free_energy                    symmetric [is the default]
+#  Otherwise
+#
+#  free_energy                    symmetric
 #                                 brazovskii
 #                                 surfactant
+#                                 polar_active
 #                                 lc_blue_phase
 #
 #  phi_finite_difference          no [is the default] uses 2x distributions
 #                                 yes uses hybrid
 #
-#  finite_difference_upwind_order [default is 1] [1|3|5]
-#                                 sets order of upwind advection scheme
-#
+#  fd_advection_scheme_order      1-7
+#                                 sets order of finite difference
+#                                 advection scheme
 #
 #  Note: only parameters for the currently selected free energy at
 #  run time are meaningful; you don't have to comment out all the others.
@@ -106,7 +109,7 @@ temperature 0.00002133333
 
 free_energy lc_blue_phase
 phi_finite_difference yes
-finite_difference_upwind_order 3
+fd_advection_scheme_order 3
 
 ###############################################################################
 #
@@ -325,13 +328,17 @@ freq_shear_measurement 100000
 freq_shear_output      100000
 config_at_end no
 
-output_format BINARY
-input_format  BINARY
+
 phi_format    ASCII
 vel_format    ASCII
 n_io_nodes 8
 #io_grid 2_2_2
 #io_grid_distribution 2_2_2
+
+colloid_io_freq 1000
+colloids_io_grid 1_1_1
+colloid_io_format_input  BINARY
+colloid_io_format_output BINARY
 
 ###############################################################################
 #

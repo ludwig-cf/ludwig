@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.7.16.1 2010-03-27 11:18:16 kevin Exp $
+ *  $Id: cio.c,v 1.7.16.2 2010-03-30 14:16:39 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -96,12 +96,12 @@ void colloid_io_init(void) {
   input_format = BINARY;
   output_format = BINARY;
 
-  RUN_get_string_parameter("input_format", tmp, 256);
+  RUN_get_string_parameter("colloid_io_format_input", tmp, 256);
   if (strncmp("ASCII",  tmp, 5) == 0 ) input_format = ASCII;
   if (strncmp("ASCII_SERIAL",  tmp, 12) == 0 ) input_format = ASCII_SERIAL;
   if (strncmp("BINARY", tmp, 6) == 0 ) input_format = BINARY;
 
-  RUN_get_string_parameter("output_format", tmp, 256);
+  RUN_get_string_parameter("colloid_io_format_output", tmp, 256);
   if (strncmp("ASCII",  tmp, 5) == 0 ) output_format = ASCII;
   if (strncmp("BINARY", tmp, 6) == 0 ) output_format = BINARY;
   CIO_set_cio_format(input_format, output_format);
@@ -131,25 +131,11 @@ void colloid_io_finish(void) {
 
 void CIO_count_colloids() {
 
-  int       ic, jc, kc;
-  Colloid * p_colloid;
-
-  nlocal_ = 0;
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-	while (p_colloid) {
-	  nlocal_++;
-	  p_colloid = p_colloid->next;
-	}
-      }
-    }
-  }
+  nlocal_ = colloid_nlocal();
 
   MPI_Allreduce(&nlocal_, &ntotal_, 1, MPI_INT, MPI_SUM, cart_comm());
+
+  assert(ntotal_ == colloid_ntotal());
 
   return;
 }
@@ -177,12 +163,14 @@ void colloid_io_write(const char * filename) {
 
   MPI_Status status;
 
-  if (get_N_colloid() == 0) return;
+  if (colloid_ntotal() == 0) return;
 
   /* Set the filename */
 
-  info("colloid_io_write:\n");
   cio_filename(filename_io, filename);
+
+  info("colloid_io_write:\n");
+  info("writing colloid information to %s etc\n", filename_io);
 
   /* Make sure everyone has their current number of particles
    * up-to-date */
