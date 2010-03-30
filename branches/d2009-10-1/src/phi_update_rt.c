@@ -8,7 +8,7 @@
  *  Boltzmann for binary fluid, no update is set (it's done via the
  *  appropriate collision).
  *
- *  $Id: phi_update_rt.c,v 1.1.2.2 2010-03-27 11:05:26 kevin Exp $
+ *  $Id: phi_update_rt.c,v 1.1.2.3 2010-03-30 14:22:30 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,6 +24,7 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "phi_force.h"
 #include "phi_update.h"
 #include "phi_cahn_hilliard.h"
 #include "leslie_ericksen.h"
@@ -49,6 +50,7 @@ void phi_update_run_time(void) {
 
   if (n == 0 || strcmp(stringfe, "none") == 0) {
     /* No order parameter, no update. */
+    phi_force_required_set(0);
   }
   else {
 
@@ -66,6 +68,8 @@ void phi_update_run_time(void) {
       }
       else {
 	info("Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
+	/* Binary LB uses Swift et al method for force. */
+	phi_force_required_set(0);
       }
 
       /* Mobility (always required) */
