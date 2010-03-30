@@ -35,7 +35,9 @@
 
 
 OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
-     physics.o advection.o advection_bcs.o active.o \
+     physics.o \
+     advection.o advection_bcs.o advection_rt.o \
+     active.o \
      blue_phase.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
      brazovskii.o brazovskii_rt.o \
@@ -46,8 +48,9 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      control.o \
      eigen3.o ewald.o \
      free_energy.o free_energy_rt.o free_energy_vector.o \
-     gelx.o gelx_rt.o \
-     gradient_2d_5pt_fluid.o \
+     gradient.o \
+     gradient_2d_5pt_fluid.o gradient_3d_7pt_fluid.o \
+     gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
      interaction.o io_harness.o\
      leslie_ericksen.o \
      model_le.o potential.o \
@@ -55,6 +58,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      phi_force.o phi_force_colloid.o phi_gradients.o \
      phi_lb_coupler.o phi_stats.o \
      phi_update.o phi_update_rt.o \
+     polar_active.o polar_active_rt.o \
      lattice.o leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
@@ -75,27 +79,6 @@ CC=gcc
 MPICC=mpicc
 OPTS = -D_D3Q19_ -O3
 CFLAGS=$(OPTS) -Wall 
-
-
-###############################################################################
-#
-# Bluegene
-#
-###############################################################################
-
-#KOJAK=#/bgl/local/packages/kojak/bin/kinst-pomp
-#HPCT = /bgl/local/packages/hpct_all/hpct_bgl_20070116
-
-#CC= xlc_r
-#MPICC=  mpixlc  #-I$(HPCT)/include
-#COPTS= -qhalt=w -O3 -qhot #-qarch=440d -qtune=440
-#LDFLAGS= -qipa #-L$(HPCT)/lib -lhpm.rts -lm -lbgl_perfctr.rts
-#OPTS =  -D_D3Q19_  #-D_SINGLE_FLUID_ -D_NOISE_
-#CFLAGS=  $(OPTS) $(COPTS) $(LDFLAGS)
-
-#LIBS= -L/bgl/local/packages/mass-4.3/lib -lmass
-#-L/bgl/local/lib/mpitrace -lmpitrace_c
-
 
 ###############################################################################
 #
@@ -131,7 +114,7 @@ serial:
 	$(MAKE) generic "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi"
 mpi:
-	$(MAKE) generic "CC=$(MPICC)" "LIBS= $(MPILIB) $(LIBS)" "CFLAGS=$(CFLAGS)"
+	$(MAKE) generic "CC=$(MPICC)" "LIBS=$(LIBS)" "CFLAGS=$(CFLAGS)"
 
 ###############################################################################
 #
@@ -150,9 +133,6 @@ mpi:
 .PHONY : clean
 clean:
 	-rm -f $(OBJS) $(EXE)
-#
-# gcc -Wall can leave a mess
-#
 gcc-clean:
 	$(RM) ${OBJS:.o=*rtl}
 	$(RM) ${OBJS:.o=*jump}
