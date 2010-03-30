@@ -4,7 +4,7 @@
  *
  *  Unit test for the currently compiled model (D3Q15 or D3Q19).
  *
- *  $Id: test_model.c,v 1.9.2.3 2010-03-04 15:25:15 kevin Exp $
+ *  $Id: test_model.c,v 1.9.2.4 2010-03-30 03:55:40 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -366,7 +366,7 @@ static void test_model_distributions(void) {
   ndist = distribution_ndist();
 
   info("Number of distributions: %d\n", ndist);
-  test_assert(ndist == 2); /* WILL REQUIRE UPDATE */
+  test_assert(ndist == 1);
 
   for (n = 0; n < ndist; n++) {
 
