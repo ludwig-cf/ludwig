@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.3 2010-03-30 04:00:49 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.4 2010-03-30 05:51:35 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -146,6 +146,10 @@ void colloids_finish() {
  *****************************************************************************/
 
 int get_N_colloid() {
+  return N_colloid_;
+}
+
+int colloid_ntotal(void) {
   return N_colloid_;
 }
 
