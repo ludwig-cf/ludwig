@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.10.4.3 2010-03-30 14:25:47 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.10.4.4 2010-03-30 14:29:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -103,6 +103,16 @@ void phi_gradients_compute() {
 
   nop = phi_nop();
 
+  if (0) {
+    extern void gradient_2d_5pt_fluid_d2(void);
+
+    phi_leesedwards_transformation();
+    gradient_2d_5pt_fluid_d2();
+    gradient_2d_5pt_fluid_d4();
+    phi_solid_walls();
+  }
+  else {
+
   phi_leesedwards_transformation();
 
   gradient_d2(nop, phi_site, grad_phi_site, delsq_phi_site);
@@ -119,6 +129,7 @@ void phi_gradients_compute() {
   /* Remaining to test */
   /* phi_gradients_walls();*/
 
+  }
   return;
 }
 
