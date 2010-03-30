@@ -2,21 +2,30 @@
  *
  *  ewald.h
  *
- *  $Id: ewald.h,v 1.2 2007-12-05 17:56:12 kevin Exp $
+ *  $Id: ewald.h,v 1.2.20.1 2010-03-30 03:52:07 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef EWALD_H_
-#define EWALD_H_
+#ifndef EWALD_H
+#define EWALD_H
 
-void ewald_init(double, double);
-void ewald_sum(void);
-double ewald_real_space_energy(double [], double [], double []);
+void   ewald_init(double mu, double rc);
+void   ewald_finish(void);
+double ewald_kappa(void);
+
+void   ewald_sum(void);
+void   ewald_real_space_sum(void);
+void   ewald_fourier_space_sum(void);
+
+void   ewald_total_energy(double * ereal, double * efourier, double * eself);
 double ewald_fourier_space_energy(void);
 double ewald_self_energy(void);
-
-void   ewald_test(void);
-void   ewald_total_energy(double *, double *, double *);
+double ewald_real_space_energy(const double r1[3], const double r2[3],
+			       const double r12[3]);
 #endif

@@ -7,7 +7,7 @@
  *
  *  See, for example, Allen and Tildesley, Computer Simulation of Liquids.
  *
- *  $Id: ewald.c,v 1.3.16.1 2010-03-27 07:13:08 kevin Exp $
+ *  $Id: ewald.c,v 1.3.16.2 2010-03-30 03:52:07 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -47,8 +47,6 @@ static double * coskr_;  /* Table for cos(kr) values */
 
 static void ewald_sum_sin_cos_terms(void);
 static int  ewald_get_number_fourier_terms(void);
-static void ewald_real_space_sum(void);
-static void ewald_fourier_space_sum(void);
 static void ewald_set_kr_table(double []);
 
 /*****************************************************************************
@@ -111,6 +109,20 @@ void ewald_init(double mu_input, double rc_input) {
 
 /*****************************************************************************
  *
+ *  ewald_kappa
+ *
+ *  Return the value of the Ewald parameter kappa.
+ *
+ *****************************************************************************/
+
+double ewald_kappa(void) {
+
+  assert(ewald_on_);
+  return kappa_;
+}
+
+/*****************************************************************************
+ *
  *  ewald_finish
  *
  *****************************************************************************/
@@ -161,7 +173,8 @@ void ewald_sum() {
  *
  *****************************************************************************/
 
-double ewald_real_space_energy(double u1[3], double u2[3], double r12[3]) {
+double ewald_real_space_energy(const double u1[3], const double u2[3],
+			       const double r12[3]) {
 
   double e = 0.0;
   double r;
@@ -415,10 +428,11 @@ void ewald_real_space_sum() {
   Colloid * p_c2;
 
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
+
+  double r1[3];
+  double r2[3];
   double r12[3];
 
-  FVector r_12;
-  FVector COLL_fvector_separation(FVector, FVector);
   double erfc(double);
 
   TIMER_start(TIMER_EWALD_REAL_SPACE);
@@ -450,10 +464,13 @@ void ewald_real_space_sum() {
 		    double r;
 
 		    /* Here we need r2-r1 */
-		    r_12 = COLL_fvector_separation(p_c2->r, p_c1->r);
-		    r12[X] = r_12.x;
-		    r12[Y] = r_12.y;
-		    r12[Z] = r_12.z;
+		    r1[X] = p_c1->r.x;
+		    r1[Y] = p_c1->r.y;
+		    r1[Z] = p_c1->r.z;
+		    r2[X] = p_c2->r.x;
+		    r2[Y] = p_c2->r.y;
+		    r2[Z] = p_c2->r.z;
+		    coords_minimum_distance(r2, r1, r12);
 
 		    r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
 
