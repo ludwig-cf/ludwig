@@ -26,19 +26,6 @@
 static char         input_config[256] = "EMPTY";
 static char         output_config[256] = "config.out";
 
-/*----------------------------------------------------------------------------*/
-/*!
- * Initialise model (allocate buffers, initialise velocities, etc.)
- *
- *- \c Arguments: void
- *- \c Returns:   void
- *- \c Buffers:   sets .halo, .rho, .phi
- *- \c Version:   2.0b1
- *- \c Last \c updated: 01/03/2002 by JCD
- *- \c Authors:   P. Bladon and JC Desplat
- *- \c Note:      none
- */
-/*----------------------------------------------------------------------------*/
 
 void MODEL_init( void ) {
 
@@ -46,11 +33,10 @@ void MODEL_init( void ) {
   int     N[3];
   int     offset[3];
   double   phi;
-  double   phi0, rho0;
+  double   phi0;
   char     filename[FILENAME_MAX];
   double  noise0 = 0.1;   /* Initial noise amplitude    */
 
-  rho0 = get_rho0();
   phi0 = get_phi0();
 
   get_N_local(N);
@@ -65,10 +51,6 @@ void MODEL_init( void ) {
   if (ind != 0 && strcmp(filename, "yes") == 0) {
     phi_set_finite_difference();
     info("Switching order parameter to finite difference\n");
-
-    i = 1;
-    RUN_get_int_parameter("finite_difference_upwind_order", &i);
-    phi_ch_set_upwind_order(i);
     distribution_ndist_set(1);
   }
   else {
@@ -128,7 +110,7 @@ void MODEL_init( void ) {
     /* Read distribution functions - sets both */
     io_read(filename, io_info_distribution_);
   } 
-  else {
+  else if (phi_nop()){
       /* 
        * Provides same initial conditions for rho/phi regardless of the
        * decomposition. 
@@ -151,7 +133,6 @@ void MODEL_init( void ) {
 	      {
 		ind = get_site_index(i-offset[X], j-offset[Y], k-offset[Z]);
 
-		distribution_zeroth_moment_set_equilibrium(ind, 0, rho0);
 		phi_lb_coupler_phi_set(ind, phi);
 	      }
 	  }
