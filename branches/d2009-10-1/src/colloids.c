@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.2 2010-03-30 03:49:40 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.3 2010-03-30 04:00:49 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -496,10 +496,6 @@ void cell_update() {
 
   return;
 }
-
-/*****************************************************************************
- *
-
 
 /*****************************************************************************
  *
