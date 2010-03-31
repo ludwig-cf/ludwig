@@ -4,10 +4,13 @@
  *
  *  Free energy for polar active gel.
  *
+ *    f = (A/2) P_a P_a + (B/4) (P_a P_a)^2 + (kappa1/2) (d_a P_b)^2
+ *      + (kappa2/2) (d_a P_b P_c)^2
+ *
  *  This is an implemetation of a free energy with vector order
  *  parameter.
  *
- *  $Id: polar_active.c,v 1.1.2.2 2010-03-30 14:24:01 kevin Exp $
+ *  $Id: polar_active.c,v 1.1.2.3 2010-03-31 11:56:17 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -40,14 +43,10 @@ static double zeta_ = 0.0;
 
 void polar_active_parameters_set(const double a, const double b,
 				 const double k1, const double k2) {
-
   a_ = a;
   b_ = b;
   kappa1_ = k1;
   kappa2_ = k2;
-
-  /* No kappa2 term yet as derivatives not computed yet. */
-  assert(kappa2_ == 0.0);
 
   return;
 }
@@ -101,6 +100,15 @@ double polar_active_free_energy_density(const int index) {
  *
  *  polar_active_chemical_stress
  *
+ *  The stress is
+ *
+ *  S_ab = (1/2) (P_a h_b - P_b h_a) - (1/2) lambda (P_a h_b - P_b h_a)
+ *         - zeta P_a P_b - d_a P_c d_b P_c
+ * 
+ *  This is antisymmetric. Note that extra minus sign added at
+ *  the end to allow the force on the Navier Stokes to be
+ *  computed as F_a = - d_b S_ab.
+ *
  *****************************************************************************/
 
 void polar_active_chemical_stress(const int index, double s[3][3]) {
@@ -127,8 +135,7 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
       }
       s[ia][ib] = 0.5*(p[ia]*h[ib] - p[ib]*h[ia])
 	- 0.5*lambda*(p[ia]*h[ib] + p[ib]*h[ia])
-	- kappa1_*sum
-	- zeta_*p[ia]*p[ib];
+	- kappa1_*sum - zeta_*p[ia]*p[ib];
     }
   }
 
