@@ -48,6 +48,8 @@
 #include "model_le.h"
 #include "colloids_Q_tensor.h"
 
+#include "gradient_rt.h"
+
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
 #include "stats_rheology.h"
@@ -91,6 +93,8 @@ void ludwig_rt(void) {
   wall_init();
   COLL_init();
 
+  gradient_run_time();
+
   return;
 }
 
@@ -121,6 +125,7 @@ void ludwig_init(void) {
     }
   }
 
+  phi_gradients_init();
   /* blue phase / colloids BLUEPHASE */
   /*  phi_gradients_set_fluid();*/
 
