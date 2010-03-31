@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.10.4.4 2010-03-30 14:29:47 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.10.4.5 2010-03-31 12:02:34 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -41,6 +41,7 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 { 1, 0,-1}, { 1, 0, 0}, { 1, 0, 1},
 				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
 
+static int      level_required_ = 2;
 static int      dyadic_required_ = 0;
 static double * phi_delsq_pp_;
 static double * phi_dpp_;
@@ -89,6 +90,30 @@ void phi_gradients_finish(void) {
 
 /****************************************************************************
  *
+ *  phi_gradients_level_set
+ *
+ ****************************************************************************/
+
+void phi_gradients_level_set(const int level) {
+
+  level_required_ = level;
+  return;
+}
+
+/****************************************************************************
+ *
+ *  phi_gradients_dyadic_set
+ *
+ ****************************************************************************/
+
+void phi_gradients_dyadic_set(const int level) {
+
+  dyadic_required_ = level;
+  return;
+}
+
+/****************************************************************************
+ *
  *  phi_gradients_compute
  *
  *  To compute the gradients, the order parameter must be translated
@@ -103,21 +128,10 @@ void phi_gradients_compute() {
 
   nop = phi_nop();
 
-  if (0) {
-    extern void gradient_2d_5pt_fluid_d2(void);
-
-    phi_leesedwards_transformation();
-    gradient_2d_5pt_fluid_d2();
-    gradient_2d_5pt_fluid_d4();
-    phi_solid_walls();
-  }
-  else {
-
   phi_leesedwards_transformation();
-
   gradient_d2(nop, phi_site, grad_phi_site, delsq_phi_site);
 
-  if (phi_gradient_level() > 2) {
+  if (level_required_ > 2) {
     gradient_d4(nop, delsq_phi_site, grad_delsq_phi_site,
 		delsq_delsq_phi_site);
   }
@@ -129,7 +143,6 @@ void phi_gradients_compute() {
   /* Remaining to test */
   /* phi_gradients_walls();*/
 
-  }
   return;
 }
 
