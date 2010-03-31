@@ -16,7 +16,7 @@
  *
  *  Corrections for Lees-Edwards planes and plane wall in X are included.
  *
- *  $Id: gradient_2d_5pt_fluid.c,v 1.1.2.4 2010-03-30 08:35:09 kevin Exp $
+ *  $Id: gradient_2d_5pt_fluid.c,v 1.1.2.5 2010-03-31 10:29:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,6 +33,7 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
+#include "gradient.h"
 #include "gradient_2d_5pt_fluid.h"
 
 static void gradient_2d_5pt_fluid_operator(const int nop,
@@ -50,6 +51,21 @@ static void gradient_2d_5pt_fluid_wall_correction(const int nop,
 						  double * grad,
 						  double * delsq,
 						  const int nextra);
+
+/*****************************************************************************
+ *
+ *  gradient_2d_5pt_fluid_init
+ *
+ *****************************************************************************/
+
+void gradient_2d_5pt_fluid_init(void) {
+
+  gradient_d2_set(gradient_2d_5pt_fluid_d2);
+  gradient_d4_set(gradient_2d_5pt_fluid_d4);
+  gradient_d2_dyadic_set(gradient_2d_5pt_fluid_dyadic);
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -348,13 +364,13 @@ static void gradient_2d_5pt_fluid_wall_correction(const int nop,
 
 /*****************************************************************************
  *
- *  gradient_d2_5pt_fluid_dyadic
+ *  gradient_2d_5pt_fluid_dyadic
  *
  *  To compute d_c P_a P_b for vector order parameters P_a
  *
  *****************************************************************************/
 
-void gradient_d2_5pt_fluid_dyadic(const int nop,
+void gradient_2d_5pt_fluid_dyadic(const int nop,
 				  const double * field,
 				  double * grad,
 				  double * delsq) {
@@ -436,7 +452,7 @@ void gradient_d2_5pt_fluid_dyadic(const int nop,
       delsq[6*index + XZ] = 0.0;
       delsq[6*index + YY] =
 	+ field[nop*indexm1      + Y]*field[nop*indexm1      + Y]
-	+ field[nop*indexp1      + Y]*field[nop*indexm1      + Y]
+	+ field[nop*indexp1      + Y]*field[nop*indexp1      + Y]
 	+ field[nop*(index - ys) + Y]*field[nop*(index - ys) + Y]
 	+ field[nop*(index + ys) + Y]*field[nop*(index + ys) + Y]
 	- 4.0*field[nop*index + Y]*field[nop*index + Y];
