@@ -31,7 +31,7 @@
  *  This scheme was fist instituted for the work of Kendon et al.
  *  JFM (2001).
  *
- *  $Id: gradient_3d_27pt_fluid.c,v 1.1.2.1 2010-03-30 08:34:28 kevin Exp $
+ *  $Id: gradient_3d_27pt_fluid.c,v 1.1.2.2 2010-03-31 11:52:57 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -48,6 +48,7 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
+#include "gradient.h"
 #include "gradient_3d_27pt_fluid.h"
 
 static void gradient_3d_27pt_fluid_operator(const int nop,
@@ -63,6 +64,20 @@ static void gradient_3d_27pt_fluid_wall_correction(const int nop,
 						   double * grad,
 						   double * delsq,
 						   const int nextra);
+
+/*****************************************************************************
+ *
+ *  gradient_3d_27pt_fluid_init
+ *
+ *****************************************************************************/
+
+void gradient_3d_27pt_fluid_init(void) {
+
+  gradient_d2_set(gradient_3d_27pt_fluid_d2);
+  gradient_d4_set(gradient_3d_27pt_fluid_d4);
+
+  return;
+}
 
 /*****************************************************************************
  *
