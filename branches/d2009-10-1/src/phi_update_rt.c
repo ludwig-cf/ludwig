@@ -8,7 +8,7 @@
  *  Boltzmann for binary fluid, no update is set (it's done via the
  *  appropriate collision).
  *
- *  $Id: phi_update_rt.c,v 1.1.2.3 2010-03-30 14:22:30 kevin Exp $
+ *  $Id: phi_update_rt.c,v 1.1.2.4 2010-03-31 11:55:07 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -86,16 +86,16 @@ void phi_update_run_time(void) {
       phi_ch_set_mobility(value);
       info("Mobility M            = %12.5e\n", phi_ch_get_mobility());
     }
-    else if (strcmp(stringfe, "gelx") == 0) {
+    else if (strcmp(stringfe, "polar_active") == 0) {
 
       info("Using Leslie-Ericksen solver:\n");
       phi_update_set(leslie_ericksen_update);
 
-      RUN_get_double_parameter("gelx_gamma", &value);
+      RUN_get_double_parameter("leslie_ericksen_gamma", &value);
       leslie_ericksen_gamma_set(value);
       info("Rotational diffusion     = %12.5e\n", value);
 
-      RUN_get_double_parameter("gelx_swim", &value);
+      RUN_get_double_parameter("leslie_ericksen_swim", &value);
       leslie_ericksen_swim_set(value);
       info("Self-advection parameter = %12.5e\n", value);
     }
