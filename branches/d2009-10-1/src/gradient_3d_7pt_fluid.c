@@ -21,7 +21,7 @@
  *
  *  Corrections for Lees-Edwards planes and plane wall in X are included.
  *
- *  $Id: gradient_3d_7pt_fluid.c,v 1.1.2.1 2010-03-30 08:34:28 kevin Exp $
+ *  $Id: gradient_3d_7pt_fluid.c,v 1.1.2.2 2010-03-31 11:47:04 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -38,6 +38,7 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
+#include "gradient.h"
 #include "gradient_3d_7pt_fluid.h"
 
 
@@ -54,6 +55,21 @@ static void gradient_3d_7pt_fluid_wall_correction(const int nop,
 						  double * grad,
 						  double * delsq,
 						  const int nextra);
+
+/*****************************************************************************
+ *
+ *  gradient_3d_7pt_fluid_init
+ *
+ *****************************************************************************/
+
+void gradient_3d_7pt_fluid_init(void) {
+
+  gradient_d2_set(gradient_3d_7pt_fluid_d2);
+  gradient_d4_set(gradient_3d_7pt_fluid_d4);
+  gradient_d2_dyadic_set(gradient_3d_7pt_fluid_dyadic);
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -399,7 +415,7 @@ void gradient_3d_7pt_fluid_dyadic(const int nop, const double * field,
     icm1 = le_index_real_to_buffer(ic, -1);
     icp1 = le_index_real_to_buffer(ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; jc <= nlocal[Z] + nextra; kc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = le_site_index(ic, jc, kc);
 	indexm1 = le_site_index(icm1, jc, kc);
@@ -488,7 +504,7 @@ void gradient_3d_7pt_fluid_dyadic(const int nop, const double * field,
 	  - 6.0*field[nop*index + X]*field[nop*index + Z];
 	delsq[6*index + YY] =
 	  + field[nop*indexm1      + Y]*field[nop*indexm1      + Y]
-	  + field[nop*indexp1      + Y]*field[nop*indexm1      + Y]
+	  + field[nop*indexp1      + Y]*field[nop*indexp1      + Y]
 	  + field[nop*(index - ys) + Y]*field[nop*(index - ys) + Y]
 	  + field[nop*(index + ys) + Y]*field[nop*(index + ys) + Y]
 	  + field[nop*(index - 1)  + Y]*field[nop*(index - 1)  + Y]
@@ -496,7 +512,7 @@ void gradient_3d_7pt_fluid_dyadic(const int nop, const double * field,
 	  - 6.0*field[nop*index + Y]*field[nop*index + Y];
 	delsq[6*index + YZ] =
 	  + field[nop*indexm1      + Y]*field[nop*indexm1      + Z]
-	  + field[nop*indexp1      + Y]*field[nop*indexm1      + Z]
+	  + field[nop*indexp1      + Y]*field[nop*indexp1      + Z]
 	  + field[nop*(index - ys) + Y]*field[nop*(index - ys) + Z]
 	  + field[nop*(index + ys) + Y]*field[nop*(index + ys) + Z]
 	  + field[nop*(index - 1)  + Y]*field[nop*(index - 1)  + Z]
@@ -504,7 +520,7 @@ void gradient_3d_7pt_fluid_dyadic(const int nop, const double * field,
 	  - 6.0*field[nop*index + Y]*field[nop*index + Z];
 	delsq[6*index + ZZ] =
 	  + field[nop*indexm1      + Z]*field[nop*indexm1      + Z]
-	  + field[nop*indexp1      + Z]*field[nop*indexm1      + Z]
+	  + field[nop*indexp1      + Z]*field[nop*indexp1      + Z]
 	  + field[nop*(index - ys) + Z]*field[nop*(index - ys) + Z]
 	  + field[nop*(index + ys) + Z]*field[nop*(index + ys) + Z]
 	  + field[nop*(index - 1)  + Z]*field[nop*(index - 1)  + Z]
