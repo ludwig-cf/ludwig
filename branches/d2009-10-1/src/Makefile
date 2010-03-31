@@ -48,7 +48,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      control.o \
      eigen3.o ewald.o \
      free_energy.o free_energy_rt.o free_energy_vector.o \
-     gradient.o \
+     gradient.o gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_3d_7pt_fluid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
      interaction.o io_harness.o\
