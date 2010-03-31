@@ -102,6 +102,12 @@ temperature 0.00002133333
 #                                 sets order of finite difference
 #                                 advection scheme
 #
+#  fd_gradient_calcualtion        Scheme to yse for gradient calculations
+#                                 2d_5pt_fluid
+#                                 3d_7pt_fluid
+#                                 3d_27pt_fluid
+#                                 3d_27pt_solid
+#
 #  Note: only parameters for the currently selected free energy at
 #  run time are meaningful; you don't have to comment out all the others.
 #
@@ -110,6 +116,7 @@ temperature 0.00002133333
 free_energy lc_blue_phase
 phi_finite_difference yes
 fd_advection_scheme_order 3
+fd_gradient_calculation 3d_7pt_fluid
 
 ###############################################################################
 #
@@ -192,6 +199,22 @@ lc_kappa1  0.01
 lc_xi      0.7
 
 lc_Gamma   0.3
+
+###############################################################################
+#
+#  polar active gel
+#
+###############################################################################
+
+polar_active_a       -0.1
+polar_active_b       +0.1
+polar_active_k       0.01
+polar_active_klc     0.02
+polar_active_zeta    0.0
+polar_active_lambda  0.0
+
+leslie_ericksen_gamma 0.3
+leslie_ericksen_swim  0.0
 
 ###############################################################################
 #
