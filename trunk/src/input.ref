@@ -94,7 +94,8 @@ temperature 0.00002133333
 #
 #  phi_finite_difference  Use finite difference for the order parameter
 #                         [no|yes] default is lattice Boltzmann [no]
-#  phi_initialisation     spinodal or block [spinodal] 
+#  phi_initialisation     spinodal or block or from_file [spinodal]
+#                         from_file needs binary serial file phi-init.001-001 
 #  mobility               Order parameter mobility M
 #
 #  upwind_order           Order of upwind scheme for finite difference
