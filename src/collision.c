@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21 2009-10-08 16:04:53 kevin Exp $
+ *  $Id: collision.c,v 1.22 2010-04-01 04:56:14 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -696,6 +696,28 @@ void MODEL_init( void ) {
   if (ind != 0 && strcmp(filename, "drop") == 0) {
     info("Initialising droplet\n");
     phi_lb_init_drop(0.125*L(X), interfacial_width());
+  }
+
+  if (ind != 0 && strcmp(filename, "from_file") == 0) {
+    info("Initial order parameter requested from file\n");
+    info("Reading phi from serial file\n");
+    io_info_set_processor_independent(io_info_phi);
+    io_read("phi-init", io_info_phi);
+    io_info_set_processor_dependent(io_info_phi);
+
+    for (i = 1; i <= N[X]; i++) {
+      for (j = 1; j <= N[Y]; j++) {
+	for (k = 1; k <= N[Z]; k++) {
+
+	  ind = get_site_index(i, j, k);
+#ifdef _SINGLE_FLUID_
+#else
+	  phi = phi_get_phi_site(ind);
+	  set_phi(phi,  ind);
+#endif
+	}
+      }
+    }
   }
 
   ind = RUN_get_double_parameter("psi_b", &rho0);
