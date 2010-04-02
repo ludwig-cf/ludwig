@@ -107,7 +107,7 @@ mobility 0.15
 
 phi_finite_difference yes
 fd_gradient_calculation 3d_27pt_fluid
-finite_difference_upwind_order 3
+fd_advection_scheme_order 3
 
 D 0.00056587
 epsilon 0.03
