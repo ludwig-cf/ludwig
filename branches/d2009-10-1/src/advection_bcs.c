@@ -4,7 +4,7 @@
  *
  *  Advection boundary conditions.
  *
- *  $Id: advection_bcs.c,v 1.1.2.3 2010-03-30 09:44:56 kevin Exp $
+ *  $Id: advection_bcs.c,v 1.1.2.4 2010-04-02 07:50:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -126,7 +126,7 @@ void advection_bcs_wall(void) {
 	index = coords_index(ic, jc, kc);
 	index1 = coords_index(ic+1, jc, kc);
 
-	for (n = 0; n < nop_; n++) {
+	for (n = 0; n < nop; n++) {
 	  phi_site[nop*index1 + n] = phi_site[nop*index + n];
 	}
       }

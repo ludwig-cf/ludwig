@@ -18,13 +18,13 @@
  *  Any solid-fluid boundary conditions are dealt with post-hoc by
  *  in advection_bcs.c
  *
- *  $Id: advection.c,v 1.2.4.2 2010-03-30 14:12:26 kevin Exp $
+ *  $Id: advection.c,v 1.2.4.3 2010-04-02 07:50:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -113,7 +113,7 @@ void advection_order_n(double * fluxw, double * fluxe, double * fluxy,
 
 void advection_upwind(double * fluxe, double * fluxw,
 		      double * fluxy, double * fluxz) {
-
+  int nop;
   int nlocal[3];
   int ic, jc, kc;            /* Counters over faces */
   int index0, index1, n;
@@ -126,6 +126,7 @@ void advection_upwind(double * fluxe, double * fluxw,
   assert(fluxy);
   assert(fluxz);
 
+  nop = phi_nop();
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -136,9 +137,9 @@ void advection_upwind(double * fluxe, double * fluxw,
 
 	index0 = ADDR(ic, jc, kc);
 
-	for (n = 0; n < nop_; n++) {
+	for (n = 0; n < nop; n++) {
 
-	  phi0 = phi_site[nop_*index0 + n];
+	  phi0 = phi_site[nop*index0 + n];
 	  hydrodynamics_get_velocity(index0, u0);
 
 	  /* west face (icm1 and ic) */
@@ -148,10 +149,10 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  u = 0.5*(u0[X] + u1[X]);
 
 	  if (u > 0.0) {
-	    fluxw[nop_*index0 + n] = u*phi_site[nop_*index1 + n];
+	    fluxw[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }
 	  else {
-	    fluxw[nop_*index0 + n] = u*phi0;
+	    fluxw[nop*index0 + n] = u*phi0;
 	  }
 
 	  /* east face (ic and icp1) */
@@ -161,10 +162,10 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  u = 0.5*(u0[X] + u1[X]);
 
 	  if (u < 0.0) {
-	    fluxe[nop_*index0 + n] = u*phi_site[nop_*index1 + n];
+	    fluxe[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }
 	  else {
-	    fluxe[nop_*index0 + n] = u*phi0;
+	    fluxe[nop*index0 + n] = u*phi0;
 	  }
 
 	  /* y direction */
@@ -174,10 +175,10 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  u = 0.5*(u0[Y] + u1[Y]);
 
 	  if (u < 0.0) {
-	    fluxy[nop_*index0 + n] = u*phi_site[nop_*index1 + n];
+	    fluxy[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }
 	  else {
-	    fluxy[nop_*index0 + n] = u*phi0;
+	    fluxy[nop*index0 + n] = u*phi0;
 	  }
 
 	  /* z direction */
@@ -187,10 +188,10 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  u = 0.5*(u0[Z] + u1[Z]);
 
 	  if (u < 0.0) {
-	    fluxz[nop_*index0 + n] = u*phi_site[nop_*index1 + n];
+	    fluxz[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }
 	  else {
-	    fluxz[nop_*index0 + n] = u*phi0;
+	    fluxz[nop*index0 + n] = u*phi0;
 	  }
 	}
 	/* Next site */
@@ -217,7 +218,7 @@ void advection_upwind(double * fluxe, double * fluxw,
 
 void advection_upwind_third_order(double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz) {
-
+  int nop;
   int nlocal[3];
   int ic, jc, kc;
   int n;
@@ -229,6 +230,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
   const double a2 =  0.927865;
   const double a3 =  0.286067;
 
+  nop = phi_nop();
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
 
@@ -255,19 +257,19 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm2,jc,kc) + n]
-	       + a2*phi_site[nop_*index1 + n]
-	       + a3*phi_site[nop_*index0 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icm2,jc,kc) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a3*phi_site[nop*index0 + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp1,jc,kc) + n]
-	       + a2*phi_site[nop_*index0 + n]
-	       + a3*phi_site[nop_*index1 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icp1,jc,kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a3*phi_site[nop*index1 + n]);
 	  }
 	}
 
@@ -278,19 +280,19 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxe[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp2,jc,kc) + n]
-	       + a2*phi_site[nop_*index1 + n]
-	       + a3*phi_site[nop_*index0 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxe[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icp2,jc,kc) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a3*phi_site[nop*index0 + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxe[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm1,jc,kc) + n]
-	       + a2*phi_site[nop_*index0 + n]
-	       + a3*phi_site[nop_*index1 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxe[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icm1,jc,kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a3*phi_site[nop*index1 + n]);
 	  }
 	}
 
@@ -301,19 +303,19 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic,jc+2,kc) + n]
-	       + a2*phi_site[nop_*index1 + n]
-	       + a3*phi_site[nop_*index0 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic,jc+2,kc) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a3*phi_site[nop*index0 + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic,jc-1,kc) + n]
-	       + a2*phi_site[nop_*index0 + n]
-	       + a3*phi_site[nop_*index1 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic,jc-1,kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a3*phi_site[nop*index1 + n]);
 	  }
 	}
 
@@ -324,19 +326,19 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic,jc,kc+2) + n]
-	       + a2*phi_site[nop_*index1 + n]
-	       + a3*phi_site[nop_*index0 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic,jc,kc+2) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a3*phi_site[nop*index0 + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic,jc,kc-1) + n]
-	       + a2*phi_site[nop_*index0 + n]
-	       + a3*phi_site[nop_*index1 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic,jc,kc-1) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a3*phi_site[nop*index1 + n]);
 	  }
 	}
 
@@ -364,7 +366,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 
 void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz) {
-
+  int nop;
   int nlocal[3];
   int ic, jc, kc;
   int n;
@@ -378,6 +380,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
   const double a4 =  0.361520;
   const double a5 = -0.027880;
 
+  nop = phi_nop();
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 3);
 
@@ -406,23 +409,23 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm3, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icm2, jc, kc) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(icp1, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icm3, jc, kc) + n]
+	       + a2*phi_site[nop*ADDR(icm2, jc, kc) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*ADDR(icp1, jc, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp2, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icp1, jc, kc) + n]
-	       + a3*phi_site[nop_*index0 + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*ADDR(icm2, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icp2, jc, kc) + n]
+	       + a2*phi_site[nop*ADDR(icp1, jc, kc) + n]
+	       + a3*phi_site[nop*index0 + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*ADDR(icm2, jc, kc) + n]);
 	  }
 	}
 
@@ -433,23 +436,23 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxe[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp3, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icp2, jc, kc) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(icm1, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxe[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icp3, jc, kc) + n]
+	       + a2*phi_site[nop*ADDR(icp2, jc, kc) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*ADDR(icm1, jc, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxe[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm2, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icm1, jc, kc) + n]
-	       + a3*phi_site[nop_*index0 + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*ADDR(icp2, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxe[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icm2, jc, kc) + n]
+	       + a2*phi_site[nop*ADDR(icm1, jc, kc) + n]
+	       + a3*phi_site[nop*index0 + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*ADDR(icp2, jc, kc) + n]);
 	  }
 	}
 
@@ -460,23 +463,23 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc+3, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc+2, kc) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(ic, jc-1, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic, jc+3, kc) + n]
+	       + a2*phi_site[nop*ADDR(ic, jc+2, kc) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*ADDR(ic, jc-1, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc-2, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc-1, kc) + n]
-	       + a3*phi_site[nop_*index0 + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*ADDR(ic, jc+2, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic, jc-2, kc) + n]
+	       + a2*phi_site[nop*ADDR(ic, jc-1, kc) + n]
+	       + a3*phi_site[nop*index0 + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*ADDR(ic, jc+2, kc) + n]);
 	  }
 	}
 
@@ -487,23 +490,23 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc, kc+3) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc, kc+2) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(ic, jc, kc-1) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic, jc, kc+3) + n]
+	       + a2*phi_site[nop*ADDR(ic, jc, kc+2) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*ADDR(ic, jc, kc-1) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc, kc-2) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc, kc-1) + n]
-	       + a3*phi_site[nop_*index0 + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*ADDR(ic, jc, kc+2) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic, jc, kc-2) + n]
+	       + a2*phi_site[nop*ADDR(ic, jc, kc-1) + n]
+	       + a3*phi_site[nop*index0 + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*ADDR(ic, jc, kc+2) + n]);
 	  }
 	}
 
@@ -531,7 +534,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 
 void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 				    double * fluxy, double * fluxz) {
-
+  int nop;
   int nlocal[3];
   int ic, jc, kc;
   int icm1, icm2, icm3, icm4;
@@ -548,6 +551,7 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
   const double a6 = -0.038383;
   const double a7 =  0.000842;
 
+  nop = phi_nop();
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 4);
 
@@ -578,27 +582,27 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm4, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icm3, jc, kc) + n]
-	       + a3*phi_site[nop_*ADDR(icm2, jc, kc) + n]
-	       + a4*phi_site[nop_*ADDR(icm1, jc, kc) + n]
-	       + a5*phi_site[nop_*index0 + n]
-	       + a6*phi_site[nop_*index1 + n]
-	       + a7*phi_site[nop_*ADDR(icp2, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icm4, jc, kc) + n]
+	       + a2*phi_site[nop*ADDR(icm3, jc, kc) + n]
+	       + a3*phi_site[nop*ADDR(icm2, jc, kc) + n]
+	       + a4*phi_site[nop*ADDR(icm1, jc, kc) + n]
+	       + a5*phi_site[nop*index0 + n]
+	       + a6*phi_site[nop*index1 + n]
+	       + a7*phi_site[nop*ADDR(icp2, jc, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp3, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icp2, jc, kc) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(icm1, jc, kc) + n]
-	       + a6*phi_site[nop_*ADDR(icm2, jc, kc) + n]
-	       + a7*phi_site[nop_*ADDR(icm3, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(icp3, jc, kc) + n]
+	       + a2*phi_site[nop*ADDR(icp2, jc, kc) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*ADDR(icm1, jc, kc) + n]
+	       + a6*phi_site[nop*ADDR(icm2, jc, kc) + n]
+	       + a7*phi_site[nop*ADDR(icm3, jc, kc) + n]);
 	  }
 	}
 
@@ -609,27 +613,27 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc+4, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc+3, kc) + n]
-	       + a3*phi_site[nop_*ADDR(ic, jc+2, kc) + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*index0 + n]
-	       + a6*phi_site[nop_*ADDR(ic, jc-1, kc) + n]
-	       + a7*phi_site[nop_*ADDR(ic, jc-2, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic, jc+4, kc) + n]
+	       + a2*phi_site[nop*ADDR(ic, jc+3, kc) + n]
+	       + a3*phi_site[nop*ADDR(ic, jc+2, kc) + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*index0 + n]
+	       + a6*phi_site[nop*ADDR(ic, jc-1, kc) + n]
+	       + a7*phi_site[nop*ADDR(ic, jc-2, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc-3, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc-2, kc) + n]
-	       + a3*phi_site[nop_*ADDR(ic, jc-1, kc) + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*index1 + n]
-	       + a6*phi_site[nop_*ADDR(ic, jc+2, kc) + n]
-	       + a7*phi_site[nop_*ADDR(ic, jc+3, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic, jc-3, kc) + n]
+	       + a2*phi_site[nop*ADDR(ic, jc-2, kc) + n]
+	       + a3*phi_site[nop*ADDR(ic, jc-1, kc) + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*index1 + n]
+	       + a6*phi_site[nop*ADDR(ic, jc+2, kc) + n]
+	       + a7*phi_site[nop*ADDR(ic, jc+3, kc) + n]);
 	  }
 	}
 
@@ -640,27 +644,27 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc, kc+4) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc, kc+3) + n]
-	       + a3*phi_site[nop_*ADDR(ic, jc, kc+2) + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*index0 + n]
-	       + a6*phi_site[nop_*ADDR(ic, jc, kc-1) + n]
-	       + a7*phi_site[nop_*ADDR(ic, jc, kc-2) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic, jc, kc+4) + n]
+	       + a2*phi_site[nop*ADDR(ic, jc, kc+3) + n]
+	       + a3*phi_site[nop*ADDR(ic, jc, kc+2) + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*index0 + n]
+	       + a6*phi_site[nop*ADDR(ic, jc, kc-1) + n]
+	       + a7*phi_site[nop*ADDR(ic, jc, kc-2) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc, kc-3) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc, kc-2) + n]
-	       + a3*phi_site[nop_*ADDR(ic, jc, kc-1) + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*index1 + n]
-	       + a6*phi_site[nop_*ADDR(ic, jc, kc+2) + n]
-	       + a7*phi_site[nop_*ADDR(ic, jc, kc+3) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*ADDR(ic, jc, kc-3) + n]
+	       + a2*phi_site[nop*ADDR(ic, jc, kc-2) + n]
+	       + a3*phi_site[nop*ADDR(ic, jc, kc-1) + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*index1 + n]
+	       + a6*phi_site[nop*ADDR(ic, jc, kc+2) + n]
+	       + a7*phi_site[nop*ADDR(ic, jc, kc+3) + n]);
 	  }
 	}
 
