@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.5 2010-03-30 14:15:29 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.6 2010-04-02 07:52:29 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -128,8 +128,6 @@ void colloids_finish() {
       }
     }
   }
-
-  colloids_memory_report();
 
   /* Finally, free the cell list */
   if (cell_list_) free(cell_list_);
@@ -382,24 +380,6 @@ void free_colloid(Colloid * p_colloid) {
 
   return;
 }
-
-/*****************************************************************************
- *
- *  colloids_report_memory
- *
- *  Show the current total for colloids and links.
- *
- *****************************************************************************/
-
-void colloids_memory_report() {
-
-  info("[colloids: %d (%d bytes) links: %d (%d bytes)]\n",
-       nalloc_colls_, nalloc_colls_*sizeof(Colloid),
-       nalloc_links_, nalloc_links_*sizeof(COLL_Link));
-
-  return;
-}
-
 
 /*****************************************************************************
  *

@@ -8,7 +8,7 @@
  *  See Ludwig Technical Notes for a complete description
  *  of the colloid implementation.
  *
- *  $Id: colloids.h,v 1.9.2.3 2010-03-30 14:15:29 kevin Exp $
+ *  $Id: colloids.h,v 1.9.2.4 2010-04-02 07:52:29 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -105,7 +105,6 @@ Colloid * allocate_colloid(void);
 void      free_colloid(Colloid *);
 COLL_Link * allocate_boundary_link(void);
 void      cell_update(void);
-void      colloids_memory_report(void);
 void      set_N_colloid(const int);
 int       get_N_colloid(void);
 double    get_colloid_rho0(void);
