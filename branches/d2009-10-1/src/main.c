@@ -48,7 +48,9 @@
 #include "model_le.h"
 #include "colloids_Q_tensor.h"
 
+#include "advection_rt.h"
 #include "gradient_rt.h"
+
 
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
@@ -75,6 +77,7 @@ void ludwig_rt(void) {
 
   free_energy_run_time();
   phi_update_run_time();
+  advection_run_time();
 
   /* These together for the time being. */
   coords_run_time();
