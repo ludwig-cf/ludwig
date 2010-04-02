@@ -103,6 +103,7 @@ C 0.0
 #noise 0.2
 phi0 0.0
 phi_finite_difference no
+fd_gradient_calculation 3d_27pt_fluid
 phi_initialisation    spinodal
 mobility 2.0
 
