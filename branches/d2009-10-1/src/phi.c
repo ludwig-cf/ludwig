@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11.4.8 2010-03-30 14:19:08 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.9 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -29,19 +29,11 @@
 
 struct io_info_t * io_info_phi;
 
-/* Currently global scope */
-int nop_ = 0;
-
-/* Shift the gradients to phi-gradients */
 double * phi_site;
-double * delsq_phi_site;
-double * grad_phi_site;
-double * delsq_delsq_phi_site;
-double * grad_delsq_phi_site;
 
+static int nop_ = 0;                    /* Number of order parameter fields */
 static int initialised_ = 0;
 static int phi_finite_difference_ = 0;  /* Default is LB for order parameter */
-static int ngradient_ = 0;
 static MPI_Datatype phi_xy_t_;
 static MPI_Datatype phi_xz_t_;
 static MPI_Datatype phi_yz_t_;
@@ -59,47 +51,29 @@ static void phi_leesedwards_parallel(void);
  *
  *  phi_init
  *
- *  Allocate memory for the order parameter arra. If MPI2 is used
- *  this must use MPI_Alloc_mem() to allow use of Windows in the
- *  LE code.
+ *  Allocate memory for the order parameter.
  *
  *  Space for buffers to hold Lees Edwards interpolated quantities
- *  is added to the main array for convenince. It has no effect on
- *  the halo regions.
- *
- *  Note that only the first derivatives of the order parameters
- *  grad_phi_site, and delsq_phi_site are required for nop_ > 1.
- *  Storage is arranged as phi[nx][ny][nz][nop]
- *                         grad_phi[nx][ny[nz][nop][3] 
+ *  is added to the main array.
  *
  ****************************************************************************/
 
 void phi_init() {
 
+  int nhalo;
   int nsites;
   int nbuffer;
   int nlocal[3];
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
   nbuffer = le_get_nxbuffer();
 
-  nsites = (nlocal[X]+2*nhalo_ + nbuffer)
-    *(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
+  nsites = (nlocal[X]+2*nhalo + nbuffer)
+    *(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo);
 
   phi_site = (double *) calloc(nop_*nsites, sizeof(double));
   if (phi_site == NULL) fatal("calloc(phi) failed\n");
-
-  /* Gradients */
-
-  delsq_phi_site = (double *) calloc(nop_*nsites, sizeof(double));
-  grad_phi_site = (double *) calloc(3*nop_*nsites, sizeof(double));
-  grad_delsq_phi_site = (double *) calloc(3*nsites, sizeof(double));
-  delsq_delsq_phi_site = (double *) calloc(nsites, sizeof(double));
-
-  if (delsq_phi_site == NULL) fatal("calloc(delsq_phi_site) failed\n");
-  if (grad_phi_site == NULL) fatal("calloc(grad_phi_site) failed\n");
-  if (grad_delsq_phi_site == NULL) fatal("calloc(grad_delsq_phi) failed\n");
-  if (delsq_delsq_phi_site == NULL) fatal("calloc(delsq_delsq_phi) failed\n");
 
   phi_init_mpi();
   phi_init_io();
@@ -116,25 +90,27 @@ void phi_init() {
 
 static void phi_init_mpi() {
 
+  int nhalo;
   int nlocal[3], nh[3];
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
 
-  nh[X] = nlocal[X] + 2*nhalo_;
-  nh[Y] = nlocal[Y] + 2*nhalo_;
-  nh[Z] = nlocal[Z] + 2*nhalo_;
+  nh[X] = nlocal[X] + 2*nhalo;
+  nh[Y] = nlocal[Y] + 2*nhalo;
+  nh[Z] = nlocal[Z] + 2*nhalo;
 
   /* YZ planes in the X direction */
-  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo_*nop_, 1, MPI_DOUBLE, &phi_yz_t_);
+  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo*nop_, 1, MPI_DOUBLE, &phi_yz_t_);
   MPI_Type_commit(&phi_yz_t_);
 
   /* XZ planes in the Y direction */
-  MPI_Type_vector(nh[X], nh[Z]*nhalo_*nop_, nh[Y]*nh[Z]*nop_, MPI_DOUBLE,
+  MPI_Type_vector(nh[X], nh[Z]*nhalo*nop_, nh[Y]*nh[Z]*nop_, MPI_DOUBLE,
 		  &phi_xz_t_);
   MPI_Type_commit(&phi_xz_t_);
 
   /* XY planes in Z direction */
-  MPI_Type_vector(nh[X]*nh[Y], nhalo_*nop_, nh[Z]*nop_, MPI_DOUBLE,
+  MPI_Type_vector(nh[X]*nh[Y], nhalo*nop_, nh[Z]*nop_, MPI_DOUBLE,
 		  &phi_xy_t_);
   MPI_Type_commit(&phi_xy_t_);
 
@@ -179,10 +155,6 @@ void phi_finish() {
   MPI_Type_free(&phi_yz_t_);
 
   free(phi_site);
-  free(delsq_phi_site);
-  free(grad_phi_site);
-  free(grad_delsq_phi_site);
-  free(delsq_delsq_phi_site);
 
   initialised_ = 0;
 
@@ -217,34 +189,6 @@ void phi_nop_set(const int n) {
   return;
 }
 
-/****************************************************************************
- *
- *  phi_gradient_level
- *
- *  Return the order of spatial derivatives currently required.
- *
- ****************************************************************************/
-
-int phi_gradient_level(void) {
-
-  return ngradient_;
-}
-
-/****************************************************************************
- *
- *  phi_gradient_level_set
- *
- *  This can be either 2 or 4.
- *
- ****************************************************************************/
-
-void phi_gradient_level_set(const int n) {
-
-  assert(n == 2 || n == 4);
-  ngradient_ = n;
-  return;
-}
-
 /*****************************************************************************
  *
  *  phi_halo
@@ -253,6 +197,7 @@ void phi_gradient_level_set(const int n) {
 
 void phi_halo() {
 
+  int nhalo;
   int nlocal[3];
   int ic, jc, kc, ihalo, ireal, nh, n;
   int back, forw;
@@ -266,12 +211,13 @@ void phi_halo() {
   
   TIMER_start(TIMER_HALO_LATTICE);
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
 
   /* YZ planes in the X direction */
 
   if (cart_size(X) == 1) {
-    for (nh = 0; nh < nhalo_; nh++) {
+    for (nh = 0; nh < nhalo; nh++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
         for (kc = 1 ; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nop_; n++) {
@@ -289,13 +235,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, X);
     forw = cart_neighb(FORWARD, X);
 
-    ihalo = nop_*ADDR(nlocal[X] + 1, 1-nhalo_, 1-nhalo_);
+    ihalo = nop_*ADDR(nlocal[X] + 1, 1-nhalo, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, forw, btag, comm, request);
-    ihalo = nop_*ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = nop_*ADDR(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, back, ftag, comm, request+1);
-    ireal = nop_*ADDR(1, 1-nhalo_, 1-nhalo_);
+    ireal = nop_*ADDR(1, 1-nhalo, 1-nhalo);
     MPI_Issend(phi_site + ireal, 1, phi_yz_t_, back, btag, comm, request+2);
-    ireal = nop_*ADDR(nlocal[X] - nhalo_ + 1, 1-nhalo_, 1-nhalo_);
+    ireal = nop_*ADDR(nlocal[X] - nhalo + 1, 1-nhalo, 1-nhalo);
     MPI_Issend(phi_site + ireal, 1, phi_yz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -303,8 +249,8 @@ void phi_halo() {
   /* XZ planes in the Y direction */
 
   if (cart_size(Y) == 1) {
-    for (nh = 0; nh < nhalo_; nh++) {
-      for (ic = 1-nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
+    for (nh = 0; nh < nhalo; nh++) {
+      for (ic = 1-nhalo; ic <= nlocal[X] + nhalo; ic++) {
         for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nop_; n++) {
 	    phi_site[nop_*ADDR(ic,0-nh, kc) + n]
@@ -321,13 +267,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Y);
     forw = cart_neighb(FORWARD, Y);
 
-    ihalo = nop_*ADDR(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
+    ihalo = nop_*ADDR(1-nhalo, nlocal[Y] + 1, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, forw, btag, comm, request);
-    ihalo = nop_*ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = nop_*ADDR(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, back, ftag, comm, request+1);
-    ireal = nop_*ADDR(1-nhalo_, 1, 1-nhalo_);
+    ireal = nop_*ADDR(1-nhalo, 1, 1-nhalo);
     MPI_Issend(phi_site + ireal, 1, phi_xz_t_, back, btag, comm, request+2);
-    ireal = nop_*ADDR(1-nhalo_, nlocal[Y] - nhalo_ + 1, 1-nhalo_);
+    ireal = nop_*ADDR(1-nhalo, nlocal[Y] - nhalo + 1, 1-nhalo);
     MPI_Issend(phi_site + ireal, 1, phi_xz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -335,9 +281,9 @@ void phi_halo() {
   /* XY planes in the Z direction */
 
   if (cart_size(Z) == 1) {
-    for (nh = 0; nh < nhalo_; nh++) {
-      for (ic = 1 - nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
-        for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
+    for (nh = 0; nh < nhalo; nh++) {
+      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+        for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 	  for (n = 0; n < nop_; n++) {
 	    phi_site[nop_*ADDR(ic,jc, 0-nh) + n]
 	      = phi_site[nop_*ADDR(ic, jc, nlocal[Z]-nh) + n];
@@ -353,13 +299,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Z);
     forw = cart_neighb(FORWARD, Z);
 
-    ihalo = nop_*ADDR(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
+    ihalo = nop_*ADDR(1-nhalo, 1-nhalo, nlocal[Z] + 1);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, forw, btag, comm, request);
-    ihalo = nop_*ADDR(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = nop_*ADDR(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, back, ftag, comm, request+1);
-    ireal = nop_*ADDR(1-nhalo_, 1-nhalo_, 1);
+    ireal = nop_*ADDR(1-nhalo, 1-nhalo, 1);
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, back, btag, comm, request+2);
-    ireal = nop_*ADDR(1-nhalo_, 1-nhalo_, nlocal[Z] - nhalo_ + 1);
+    ireal = nop_*ADDR(1-nhalo, 1-nhalo, nlocal[Z] - nhalo + 1);
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -392,102 +338,6 @@ void phi_set_phi_site(const int index, const double phi) {
   assert(initialised_);
   phi_site[nop_*index] = phi;
   return;
-}
-
-/*****************************************************************************
- *
- *  phi_get_grad_phi_site
- *
- *****************************************************************************/
-
-void phi_get_grad_phi_site(const int index, double grad[3]) {
-
-  int ia;
-
-  assert(initialised_);
-  for (ia = 0; ia < 3; ia++) {
-    grad[ia] = grad_phi_site[3*nop_*index + ia];
-  }
- 
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_set_grad_phi_site
- *
- *****************************************************************************/
-
-void phi_set_grad_phi_site(const int index, const double grad[3]) {
-
-  int ia;
-
-  assert(initialised_);
-  for (ia = 0; ia < 3; ia++) {
-    grad_phi_site[3*nop_*index + ia] = grad[ia];
-  }
- 
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_get_delsq_phi_site
- *
- *****************************************************************************/
-
-double phi_get_delsq_phi_site(const int index) {
-
-  assert(initialised_);
-  return delsq_phi_site[nop_*index];
-}
-
-/*****************************************************************************
- *
- *  phi_set_delsq_phi_site
- *
- *****************************************************************************/
-
-void phi_set_delsq_phi_site(const int index, const double delsq) {
-
-  assert(initialised_);
-  delsq_phi_site[nop_*index] = delsq;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_get_grad_delsq_phi_site
- *
- *****************************************************************************/
-
-void phi_get_grad_delsq_phi_site(const int index, double grad[3]) {
-
-  int ia;
-
-  assert(initialised_);
-  assert(nop_ == 1);
-
-  for (ia = 0; ia < 3; ia++) {
-    grad[ia] = grad_delsq_phi_site[3*index + ia];
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_get_delsq_delsq_phi_site
- *
- *****************************************************************************/
-
-double phi_get_delsq_delsq_phi_site(const int index) {
-
-  assert(initialised_);
-  assert(nop_ == 1);
-
-  return delsq_delsq_phi_site[index];
 }
 
 /*****************************************************************************
@@ -584,6 +434,7 @@ static int phi_write_ascii(FILE * fp, const int ic, const int jc,
 
 void phi_leesedwards_transformation() {
 
+  int nhalo;
   int nlocal[3]; /* Local system size */
   int ib;        /* Index in buffer region */
   int ib0;       /* buffer region offset */
@@ -603,8 +454,9 @@ void phi_leesedwards_transformation() {
   else {
     /* No messages are required... */
 
-    get_N_local(nlocal);
-    ib0 = nlocal[X] + nhalo_ + 1;
+    nhalo = coords_nhalo();
+    coords_nlocal(nlocal);
+    ib0 = nlocal[X] + nhalo + 1;
 
     /* -1.0 as zero required for first step; a 'feature' to
      * maintain the regression tests */
@@ -618,13 +470,13 @@ void phi_leesedwards_transformation() {
       jdy = floor(dy);
       fr  = dy - jdy;
 
-      for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
+      for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 	/* Actually required here is j1 = jc - jdy - 1, but there's
 	 * horrible modular arithmetic for the periodic boundaries
 	 * to ensure 1 <= j1,j2 <= nlocal[Y] */
 	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
 	j2 = 1 + j1 % nlocal[Y];
-	for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	  for (n = 0; n < nop_; n++) {
 	    phi_site[nop_*ADDR(ib0+ib,jc,kc) + n] =
 	      fr*phi_site[nop_*ADDR(ic,j1,kc) + n]
@@ -660,6 +512,7 @@ void phi_leesedwards_transformation() {
 
 static void phi_leesedwards_parallel() {
 
+  int      nhalo;
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
   double * buffer;         /* Interpolation buffer */
@@ -682,13 +535,14 @@ static void phi_leesedwards_parallel() {
   MPI_Request request[4];
   MPI_Status  status[4];
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
-  ib0 = nlocal[X] + nhalo_ + 1;
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+  ib0 = nlocal[X] + nhalo + 1;
 
   /* Allocate the temporary buffer */
 
-  n = nop_*(nlocal[Y] + 2*nhalo_ + 1)*(nlocal[Z] + 2*nhalo_);
+  n = nop_*(nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo);
   buffer = (double *) malloc(n*sizeof(double));
   if (buffer == NULL) fatal("malloc(buffer) failed\n");
 
@@ -702,7 +556,7 @@ static void phi_leesedwards_parallel() {
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
     ic = le_index_buffer_to_real(ib);
-    kc = 1 - nhalo_;
+    kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */
 
@@ -726,22 +580,22 @@ static void phi_leesedwards_parallel() {
 
     /* Local quantities: j2 is the position of j1 in local coordinates
      * and marks the dividing line of the two send sections. However,
-     * we can grab at least nhalo_ points to the left of j2, and another
-     * nhalo_ points at the right to the other send section, making up
-     * the (nlocal[Y] + 2*nhalo_ + 1) points we need to send. */
+     * we can grab at least nhalo points to the left of j2, and another
+     * nhalo points at the right to the other send section, making up
+     * the (nlocal[Y] + 2*nhalo + 1) points we need to send. */
 
     j2 = 1 + (j1 - 1) % nlocal[Y];
     assert(j2 >= 1);
     assert(j2 <= nlocal[Y]);
 
-    n1 = nop_*(nlocal[Y] - j2 + 1 + nhalo_)*(nlocal[Z] + 2*nhalo_);
-    n2 = nop_*(j2 + nhalo_)*(nlocal[Z] + 2*nhalo_);
+    n1 = nop_*(nlocal[Y] - j2 + 1 + nhalo)*(nlocal[Z] + 2*nhalo);
+    n2 = nop_*(j2 + nhalo)*(nlocal[Z] + 2*nhalo);
 
     /* Post receives, sends and wait. */
 
     MPI_Irecv(buffer,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(buffer+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
-    MPI_Issend(phi_site + nop_*ADDR(ic,j2-nhalo_,kc), n1, MPI_DOUBLE,
+    MPI_Issend(phi_site + nop_*ADDR(ic,j2-nhalo,kc), n1, MPI_DOUBLE,
 	       nrank_s[0], tag0, le_comm, request+2);
     MPI_Issend(phi_site + nop_*ADDR(ic,1,kc), n2, MPI_DOUBLE,
 	       nrank_s[1], tag1, le_comm, request+3);
@@ -751,14 +605,14 @@ static void phi_leesedwards_parallel() {
     /* Perform the actual interpolation from temporary buffer to
      * phi_site[] buffer region. */
 
-    for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-      j1 = (jc + nhalo_ - 1    )*(nlocal[Z] + 2*nhalo_);
-      j2 = (jc + nhalo_ - 1 + 1)*(nlocal[Z] + 2*nhalo_);
-      for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+      j1 = (jc + nhalo - 1    )*(nlocal[Z] + 2*nhalo);
+      j2 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	for (n = 0; n < nop_; n++) {
 	  phi_site[nop_*ADDR(ib0+ib,jc,kc) + n]
-	    = fr*buffer[nop_*(j1 + kc+nhalo_-1) + n]
-	    + (1.0-fr)*buffer[nop_*(j2 + kc+nhalo_-1) + n];
+	    = fr*buffer[nop_*(j1 + kc+nhalo-1) + n]
+	    + (1.0-fr)*buffer[nop_*(j2 + kc+nhalo-1) + n];
 	}
       }
     }
@@ -820,37 +674,6 @@ void phi_op_set_phi_site(const int index, const int nop, const double value) {
 
 /*****************************************************************************
  *
- *  phi_op_get_delsq_phi_site
- *
- *****************************************************************************/
-
-double phi_op_get_delsq_phi_site(const int index, const int nop) {
-
-  assert(nop < nop_);
-  return delsq_phi_site[nop_*index + nop];
-}
-
-/*****************************************************************************
- *
- *  phi_op_get_grad_phi_site
- *
- *****************************************************************************/
-
-void phi_op_get_grad_phi_site(const int index, const int nop, double * grad) {
-
-  int ia;
-
-  assert(nop < nop_);
-
-  for (ia = 0; ia < 3; ia++) {
-    grad[ia] = grad_phi_site[3*(nop_*index + nop) + ia];
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  phi_set_q_tensor
  *
  *  Set the independent elements of the q tensor at lattice site index
@@ -863,11 +686,11 @@ void phi_set_q_tensor(const int index, double q[3][3]) {
   assert(initialised_);
   assert(nop_ == 5);
 
-  phi_site[nop_*index + QXX] = q[X][X];
-  phi_site[nop_*index + QXY] = q[X][Y];
-  phi_site[nop_*index + QXZ] = q[X][Z];
-  phi_site[nop_*index + QYY] = q[Y][Y];
-  phi_site[nop_*index + QYZ] = q[Y][Z];
+  phi_site[nop_*index + XX] = q[X][X];
+  phi_site[nop_*index + XY] = q[X][Y];
+  phi_site[nop_*index + XZ] = q[X][Z];
+  phi_site[nop_*index + YY] = q[Y][Y];
+  phi_site[nop_*index + YZ] = q[Y][Z];
 
   return;
 }
@@ -885,71 +708,15 @@ void phi_get_q_tensor(int index, double q[3][3]) {
   assert(initialised_);
   assert(nop_ == 5);
 
-  q[X][X] = phi_site[nop_*index + QXX];
-  q[X][Y] = phi_site[nop_*index + QXY];
-  q[X][Z] = phi_site[nop_*index + QXZ];
+  q[X][X] = phi_site[nop_*index + XX];
+  q[X][Y] = phi_site[nop_*index + XY];
+  q[X][Z] = phi_site[nop_*index + XZ];
   q[Y][X] = q[X][Y];
-  q[Y][Y] = phi_site[nop_*index + QYY];
-  q[Y][Z] = phi_site[nop_*index + QYZ];
+  q[Y][Y] = phi_site[nop_*index + YY];
+  q[Y][Z] = phi_site[nop_*index + YZ];
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_get_q_gradient_tensor
- *
- *  Return the rank 3 gradient tensor of q.
- *
- *****************************************************************************/
-
-void phi_get_q_gradient_tensor(const int index, double dq[3][3][3]) {
-
-  int ia;
-
-  assert(initialised_);
-  assert(nop_ == 5);
-
-  for (ia = 0; ia < 3; ia++) {
-    dq[ia][X][X] = grad_phi_site[3*(nop_*index + QXX) + ia];
-    dq[ia][X][Y] = grad_phi_site[3*(nop_*index + QXY) + ia];
-    dq[ia][X][Z] = grad_phi_site[3*(nop_*index + QXZ) + ia];
-    dq[ia][Y][X] = dq[ia][X][Y];
-    dq[ia][Y][Y] = grad_phi_site[3*(nop_*index + QYY) + ia];
-    dq[ia][Y][Z] = grad_phi_site[3*(nop_*index + QYZ) + ia];
-    dq[ia][Z][X] = dq[ia][X][Z];
-    dq[ia][Z][Y] = dq[ia][Y][Z];
-    dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_get_q_delsq_tensor
- *
- *  Return the delsq Q_ab tensor at site index.
- *
- *****************************************************************************/
-
-void phi_get_q_delsq_tensor(const int index, double dsq[3][3]) {
-
-  assert(initialised_);
-  assert(nop_ == 5);
-
-  dsq[X][X] = delsq_phi_site[nop_*index + QXX];
-  dsq[X][Y] = delsq_phi_site[nop_*index + QXY];
-  dsq[X][Z] = delsq_phi_site[nop_*index + QXZ];
-  dsq[Y][X] = dsq[X][Y];
-  dsq[Y][Y] = delsq_phi_site[nop_*index + QYY];
-  dsq[Y][Z] = delsq_phi_site[nop_*index + QYZ];
-  dsq[Z][X] = dsq[X][Z];
-  dsq[Z][Y] = dsq[Y][Z];
-  dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
 
   return;
 }
@@ -993,53 +760,6 @@ void phi_vector(const int index, double q[3]) {
 
   for (ia = 0; ia < 3; ia++) {
     q[ia] = phi_site[nop_*index + ia];
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_vector_gradient
- *
- *  Return the gradient tensor for vector order parameter.
- *  This is currently dq[ia][ib] = d_a q_b
- *
- *****************************************************************************/
-
-void phi_vector_gradient(const int index, double dq[3][3]) {
-
-  int ia, ib;
-
-  assert(initialised_);
-  assert(nop_ == 3);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      dq[ia][ib] = grad_phi_site[3*(nop_*index + ib) + ia];
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_vector_delsq
- *
- *  Return \nabla^2 for vector order parameter.
- *
- *****************************************************************************/
-
-void phi_vector_delsq(const int index, double delsq[3]) {
-
-  int ia;
-
-  assert(initialised_);
-  assert(nop_ == 3);
-
-  for (ia = 0; ia < 3; ia++) {
-    delsq[ia] = delsq_phi_site[nop_*index + ia];
   }
 
   return;

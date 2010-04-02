@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.11.4.4 2010-03-04 14:30:42 kevin Exp $
+ *  $Id: wall.c,v 1.11.4.5 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -224,7 +224,7 @@ static void init_links() {
 
   B_link * tmp;
 
-  get_N_local(n);
+  coords_nlocal(n);
 
   for (ic = 1; ic <= n[X]; ic++) {
     for (jc = 1; jc <= n[Y]; jc++) {
@@ -245,8 +245,8 @@ static void init_links() {
 	    /* Add a link to head of the list */
 
 	    tmp = allocate_link();
-	    tmp->i = get_site_index(ic, jc, kc);        /* fluid site */
-	    tmp->j = get_site_index(ic1, jc1, kc1);     /* solid site */
+	    tmp->i = coords_index(ic, jc, kc);        /* fluid site */
+	    tmp->j = coords_index(ic1, jc1, kc1);     /* solid site */
 	    tmp->p = p;
 	    tmp->ux = 0.0;
 
@@ -278,8 +278,8 @@ static void init_boundary_site_map() {
   int nlocal[3];
   int noffset[3];
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   for (ic = 0; ic <= nlocal[X] + 1; ic++) {
     for (jc = 0; jc <= nlocal[Y] + 1; jc++) {

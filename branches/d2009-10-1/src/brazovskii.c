@@ -23,13 +23,13 @@
  *  phi ~= A sin(k_0 x) in the traverse direction, where
  *  A^2 = 4 (1 + kappa^2/4cb)/3 and k_0 = sqrt(-kappa/2c). 
  *
- *  $Id: brazovskii.c,v 1.1.2.1 2009-11-04 09:53:39 kevin Exp $
+ *  $Id: brazovskii.c,v 1.1.2.2 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2009 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -37,6 +37,7 @@
 #include <math.h>
 
 #include "phi.h"
+#include "phi_gradients.h"
 #include "util.h"
 #include "brazovskii.h"
 
@@ -114,8 +115,8 @@ double brazovskii_free_energy_density(const int index) {
   double e;
 
   phi = phi_get_phi_site(index);
-  phi_get_grad_phi_site(index, dphi);
-  delsq = phi_get_delsq_phi_site(index);
+  phi_gradients_grad(index, dphi);
+  delsq = phi_gradients_delsq(index);
 
   e = 0.5*a_*phi*phi* + 0.25*b_*phi*phi*phi*phi
     + 0.5*kappa_*dot_product(dphi, dphi) + 0.5*c_*delsq*delsq;
@@ -143,8 +144,8 @@ double brazovskii_chemical_potential(const int index, const int nop) {
   assert(nop == 0);
 
   phi      = phi_get_phi_site(index);
-  del2_phi = phi_get_delsq_phi_site(index);
-  del4_phi = phi_get_delsq_delsq_phi_site(index);
+  del2_phi = phi_gradients_delsq(index);
+  del4_phi = phi_gradients_delsq_delsq(index);
 
   mu = a_*phi + b_*phi*phi*phi - kappa_*del2_phi + c_*del4_phi;
 
@@ -169,11 +170,11 @@ double brazovskii_isotropic_pressure(const int index) {
   double p0;
 
   phi = phi_get_phi_site(index);
-  phi_get_grad_phi_site(index, grad_phi);
-  del2_phi = phi_get_delsq_phi_site(index);
+  phi_gradients_grad(index, grad_phi);
+  del2_phi = phi_gradients_delsq(index);
 
-  del4_phi = phi_get_delsq_delsq_phi_site(index);
-  phi_get_grad_delsq_phi_site(index, grad_del2_phi);
+  del4_phi = phi_gradients_delsq_delsq(index);
+  phi_gradients_grad_delsq(index, grad_del2_phi);
 
   p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi - kappa_*phi*del2_phi
     + 0.5*kappa_*dot_product(grad_phi, grad_phi) + c_*phi*del4_phi
@@ -201,11 +202,11 @@ void brazovskii_chemical_stress(const int index, double s[3][3]) {
   double p0;
 
   phi = phi_get_phi_site(index);
-  phi_get_grad_phi_site(index, grad_phi);
-  del2_phi = phi_get_delsq_phi_site(index);
+  phi_gradients_grad(index, grad_phi);
+  del2_phi = phi_gradients_delsq(index);
 
-  del4_phi = phi_get_delsq_delsq_phi_site(index);
-  phi_get_grad_delsq_phi_site(index, grad_del2_phi);
+  del4_phi = phi_gradients_delsq_delsq(index);
+  phi_gradients_grad_delsq(index, grad_del2_phi);
 
   /* Isotropic part and tensor part */
 

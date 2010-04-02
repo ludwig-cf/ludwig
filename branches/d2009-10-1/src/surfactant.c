@@ -25,13 +25,13 @@
  *  The beta term allows one to get at the Frumkin isotherm and has
  *  been added here.
  *
- *  $Id: surfactant.c,v 1.1.2.2 2009-11-04 11:04:43 kevin Exp $
+ *  $Id: surfactant.c,v 1.1.2.3 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2010 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -39,7 +39,9 @@
 #include <math.h>
 
 #include "phi.h"
+#include "phi_gradients.h"
 #include "util.h"
+#include "surfactant.h"
 
 static double a_       = -0.0208333;
 static double b_       = +0.0208333;
@@ -160,7 +162,7 @@ double surfactant_free_energy_density(const int index) {
 
   phi = phi_op_get_phi_site(index, 0);
   psi = phi_op_get_phi_site(index, 1);
-  phi_get_grad_phi_site(index, dphi);
+  phi_gradients_grad(index, dphi);
 
   dphisq = dot_product(dphi, dphi);
 
@@ -205,14 +207,14 @@ double surfactant_chemical_potential(const int index, const int nop) {
 
   phi = phi_op_get_phi_site(index, 0);
   psi = phi_op_get_phi_site(index, 1);
-  phi_op_get_grad_phi_site(index, 0, dphi);
+  phi_gradients_grad_n(index, 0, dphi);
 
   /* There's a rather ugly switch here... */
 
   if (nop == 0) {
     /* mu_phi */
-    delsq_phi = phi_op_get_delsq_phi_site(index, 0);
-    phi_op_get_grad_phi_site(index, 1, dpsi);
+    delsq_phi = phi_gradients_delsq_n(index, 0);
+    phi_gradients_grad_n(index, 1, dpsi);
 
     mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi
       + w_*phi*psi
@@ -252,9 +254,9 @@ double surfactant_isotropic_pressure(const int index) {
 
   phi = phi_op_get_phi_site(index, 0);
   psi = phi_op_get_phi_site(index, 1);
-  delsq_phi = phi_op_get_delsq_phi_site(index, 0);
-  phi_op_get_grad_phi_site(index, 0, dphi);
-  phi_op_get_grad_phi_site(index, 1, dpsi);
+  delsq_phi = phi_gradients_delsq_n(index, 0);
+  phi_gradients_grad_n(index, 0, dphi);
+  phi_gradients_grad_n(index, 1, dpsi);
 
   assert(psi < 1.0);
 
@@ -300,9 +302,9 @@ void surfactant_chemical_stress(const int index, double s[3][3]) {
 
   phi = phi_op_get_phi_site(index, 0);
   psi = phi_op_get_phi_site(index, 1);
-  delsq_phi = phi_op_get_delsq_phi_site(index, 0);
-  phi_op_get_grad_phi_site(index, 0, dphi);
-  phi_op_get_grad_phi_site(index, 1, dpsi);
+  delsq_phi = phi_gradients_delsq_n(index, 0);
+  phi_gradients_grad_n(index, 0, dphi);
+  phi_gradients_grad_n(index, 1, dpsi);
 
   assert(psi < 1.0);
 

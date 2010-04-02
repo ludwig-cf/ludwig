@@ -8,7 +8,7 @@
  *  Boltzmann for binary fluid, no update is set (it's done via the
  *  appropriate collision).
  *
- *  $Id: phi_update_rt.c,v 1.1.2.4 2010-03-31 11:55:07 kevin Exp $
+ *  $Id: phi_update_rt.c,v 1.1.2.5 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -74,8 +74,8 @@ void phi_update_run_time(void) {
 
       /* Mobility (always required) */
       RUN_get_double_parameter("mobility", &value);
-      phi_ch_set_mobility(value);
-      info("Mobility M            = %12.5e\n", phi_ch_get_mobility());
+      phi_cahn_hilliard_mobility_set(value);
+      info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
     }
     else if (strcmp(stringfe, "brazovskii") == 0) {
 
@@ -83,8 +83,8 @@ void phi_update_run_time(void) {
       phi_update_set(phi_cahn_hilliard);
 
       RUN_get_double_parameter("mobility", &value);
-      phi_ch_set_mobility(value);
-      info("Mobility M            = %12.5e\n", phi_ch_get_mobility());
+      phi_cahn_hilliard_mobility_set(value);
+      info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
     }
     else if (strcmp(stringfe, "polar_active") == 0) {
 

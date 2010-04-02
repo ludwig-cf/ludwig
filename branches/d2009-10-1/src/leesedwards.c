@@ -6,12 +6,13 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id: leesedwards.c,v 1.14 2009-08-07 16:37:20 kevin Exp $
+ *  $Id: leesedwards.c,v 1.14.4.1 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
- *  (c) The University of Edinburgh (2009)
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -152,19 +153,21 @@ void le_finish() {
 static void le_init_tables() {
 
   int ib, ic, ip, n, nb, nh, np;
+  int nhalo;
   int nlocal[3];
   int nplane;
   int rdims[3];
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
   nplane = le_get_nplane_local();
 
   /* Look up table for buffer -> real index */
 
   /* For each 'x' location in the buffer region, work out the corresponding
    * x index in the real system:
-   *   - for each boundary there are 2*nhalo_ buffer planes
-   *   - the locations extend nhalo_ points either side of the boundary.
+   *   - for each boundary there are 2*nhalo buffer planes
+   *   - the locations extend nhalo points either side of the boundary.
    */
 
   n = le_get_nxbuffer();
@@ -176,9 +179,9 @@ static void le_init_tables() {
 
   ib = 0;
   for (n = 0; n < nplane; n++) {
-    ic = le_plane_location(n) - (nhalo_ - 1);
-    for (nh = 0; nh < 2*nhalo_; nh++) {
-      assert(ib < 2*nhalo_*nplane);
+    ic = le_plane_location(n) - (nhalo - 1);
+    for (nh = 0; nh < 2*nhalo; nh++) {
+      assert(ib < 2*nhalo*nplane);
       le_params_.index_buffer_to_real[ib] = ic + nh;
       ib++;
     }
@@ -195,7 +198,7 @@ static void le_init_tables() {
    * there is no transformation, ie., f(x, dx) = x + dx for all dx.
    */
 
-  n = (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1);
+  n = (nlocal[X] + 2*nhalo)*(2*nhalo + 1);
   le_params_.index_real_nbuffer = n;
 
   le_params_.index_real_to_buffer = (int *) malloc(n*sizeof(int));
@@ -205,10 +208,10 @@ static void le_init_tables() {
   /* Note the elements of the table at the extreme edges of the local
    * system point outside the system. Accesses must take care. */
 
-   for (ic = 1 - nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
-     for (nh = -nhalo_; nh <= nhalo_; nh++) {
-       n = (ic + nhalo_ - 1)*(2*nhalo_+1) + (nh + nhalo_);
-       assert(n >= 0 && n < (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1));
+   for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+     for (nh = -nhalo; nh <= nhalo; nh++) {
+       n = (ic + nhalo - 1)*(2*nhalo+1) + (nh + nhalo);
+       assert(n >= 0 && n < (nlocal[X] + 2*nhalo)*(2*nhalo + 1));
        le_params_.index_real_to_buffer[n] = ic + nh;
      }
    }
@@ -216,24 +219,24 @@ static void le_init_tables() {
    /* For each position in the buffer, add appropriate
     * corrections in the table. */
 
-   nb = nlocal[X] + nhalo_ + 1;
+   nb = nlocal[X] + nhalo + 1;
 
    for (ib = 0; ib < le_get_nxbuffer(); ib++) {
-     np = ib / (2*nhalo_);
+     np = ib / (2*nhalo);
      ip = le_plane_location(np);
 
-     /* This bit of logic chooses the first nhalo_ points of the
+     /* This bit of logic chooses the first nhalo points of the
       * buffer region for each plane as the 'downward' looking part */
 
-     if ((ib - np*2*nhalo_) < nhalo_) {
+     if ((ib - np*2*nhalo) < nhalo) {
 
        /* Looking across the plane in the -ve x-direction */
 
-       for (ic = ip + 1; ic <= ip + nhalo_; ic++) {
-	 for (nh = -nhalo_; nh <= -1; nh++) {
+       for (ic = ip + 1; ic <= ip + nhalo; ic++) {
+	 for (nh = -nhalo; nh <= -1; nh++) {
 	   if (ic + nh == le_params_.index_buffer_to_real[ib]) {
-	     n = (ic + nhalo_ - 1)*(2*nhalo_+1) + (nh + nhalo_);
-	     assert(n >= 0 && n < (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1));
+	     n = (ic + nhalo - 1)*(2*nhalo+1) + (nh + nhalo);
+	     assert(n >= 0 && n < (nlocal[X] + 2*nhalo)*(2*nhalo + 1));
 	     le_params_.index_real_to_buffer[n] = nb+ib;
 	   }
 	 }
@@ -242,11 +245,11 @@ static void le_init_tables() {
      else {
        /* looking across the plane in the +ve x-direction */
 
-       for (ic = ip - (nhalo_ - 1); ic <= ip; ic++) {
-	 for (nh = 1; nh <= nhalo_; nh++) {
+       for (ic = ip - (nhalo - 1); ic <= ip; ic++) {
+	 for (nh = 1; nh <= nhalo; nh++) {
 	   if (ic + nh == le_params_.index_buffer_to_real[ib]) {
-	     n = (ic + nhalo_ - 1)*(2*nhalo_+1) + (nh + nhalo_);
-	     assert(n >= 0 && n < (nlocal[X] + 2*nhalo_)*(2*nhalo_ + 1));
+	     n = (ic + nhalo - 1)*(2*nhalo+1) + (nh + nhalo);
+	     assert(n >= 0 && n < (nlocal[X] + 2*nhalo)*(2*nhalo + 1));
 	     le_params_.index_real_to_buffer[n] = nb+ib;	   
 	   }
 	 }
@@ -268,12 +271,12 @@ static void le_init_tables() {
 
   ib = 0;
   for (n = 0; n < nplane; n++) {
-    for (nh = 0; nh < nhalo_; nh++) {
+    for (nh = 0; nh < nhalo; nh++) {
       assert(ib < le_get_nxbuffer());
       le_params_.buffer_duy[ib] = -1;
       ib++;
     }
-    for (nh = 0; nh < nhalo_; nh++) {
+    for (nh = 0; nh < nhalo; nh++) {
       assert(ib < le_get_nxbuffer());
       le_params_.buffer_duy[ib] = +1;
       ib++;
@@ -304,22 +307,24 @@ static void le_init_tables() {
  
 static void le_checks(void) {
 
+  int     nhalo;
   int     nlocal[3];
   int     nplane, n;
   int ifail_local = 0;
   int ifail_global;
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
 
   /* From the local viewpoint, there must be no planes at either
-   * x = 1 or x = nlocal[X] (or indeed, within nhalo_ points of
+   * x = 1 or x = nlocal[X] (or indeed, within nhalo points of
    * a processor or periodic boundary). */
 
   nplane = le_get_nplane_local();
 
   for (n = 0; n < nplane; n++) {
-    if (le_plane_location(n) <= nhalo_) ifail_local = 1;
-    if (le_plane_location(n) > nlocal[X] - nhalo_) ifail_local = 1;
+    if (le_plane_location(n) <= nhalo) ifail_local = 1;
+    if (le_plane_location(n) > nlocal[X] - nhalo) ifail_local = 1;
   }
 
   MPI_Allreduce(&ifail_local, &ifail_global, 1, MPI_INT, MPI_LOR, cart_comm());
@@ -342,6 +347,30 @@ static void le_checks(void) {
 
 /*****************************************************************************
  *
+ *  le_nsites
+ *
+ *  The equivalent of coords_nsites() adding the necessary buffer
+ *  space required for LE quantities.
+ *
+ *****************************************************************************/
+
+int le_nsites(void) {
+
+  int nhalo;
+  int nlocal[3];
+  int nsites;
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+
+  nsites = (nlocal[X] + 2*nhalo + le_get_nxbuffer())*(nlocal[Y] + 2*nhalo)
+    *(nlocal[Z] + 2*nhalo);
+
+  return nsites;
+}
+
+/*****************************************************************************
+ *
  *  le_get_steady_uy
  *
  *  Return the velocity expected for steady shear profile at
@@ -359,7 +388,7 @@ double le_get_steady_uy(int ic) {
 
   assert(initialised_);
   assert(le_type_ == LINEAR);
-  get_N_offset(offset);
+  coords_nlocal_offset(offset);
 
   /* The shear profile is linear, so the local velocity is just a
    * function of position, modulo the number of planes encountered
@@ -395,7 +424,7 @@ double le_get_block_uy(int ic) {
 
   assert(initialised_);
   assert(le_type_ == LINEAR);
-  get_N_offset(offset);
+  coords_nlocal_offset(offset);
 
   /* So, just count the number of blocks from the centre L(X)/2
    * and mutliply by the plane speed. */
@@ -487,7 +516,7 @@ int le_plane_location(const int n) {
   assert(initialised_);
   assert(n >= 0 && n < le_get_nplane_local());
 
-  get_N_offset(offset);
+  coords_nlocal_offset(offset);
   nplane_offset = cart_coords(X)*le_get_nplane_local();
 
   ix = le_params_.dx_min + (n + nplane_offset)*le_params_.dx_sep - offset[X];
@@ -506,7 +535,7 @@ int le_plane_location(const int n) {
 
 int le_get_nxbuffer() {
 
-  return (2*nhalo_*le_get_nplane_local());
+  return (2*coords_nhalo()*le_get_nplane_local());
 }
 
 /*****************************************************************************
@@ -521,11 +550,14 @@ int le_get_nxbuffer() {
 int le_index_real_to_buffer(const int ic, const int di) {
 
   int ib;
+  int nhalo;
+
+  nhalo = coords_nhalo();
 
   assert(initialised_);
-  assert(di >= -nhalo_ && di <= +nhalo_);
+  assert(di >= -nhalo && di <= +nhalo);
 
-  ib = (ic + nhalo_ - 1)*(2*nhalo_ + 1) + di + nhalo_;
+  ib = (ic + nhalo - 1)*(2*nhalo + 1) + di + nhalo;
 
   assert(ib >= 0 && ib < le_params_.index_real_nbuffer);
 
@@ -604,17 +636,20 @@ MPI_Comm le_communicator() {
 
 void le_displacement_ranks(const double dy, int recv[2], int send[2]) {
 
+  int nhalo;
   int nlocal[3];
   int noffset[3];
   int j1, jdy;
   int pe_carty1, pe_carty2;
 
   assert(initialised_);
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   jdy = floor(fmod(dy, L(Y)));
-  j1 = 1 + (noffset[Y] + 1 - nhalo_ - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+  j1 = 1 + (noffset[Y] + 1 - nhalo - jdy - 2 + 2*N_total(Y)) % N_total(Y);
 
   /* Receive from ... */
 
@@ -651,7 +686,7 @@ void le_jstart_to_ranks(const int j1, int send[2], int recv[2]) {
   int pe_carty1, pe_carty2;
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   /* Receive from ... */
 
@@ -712,21 +747,23 @@ void le_set_oscillatory(double period) {
 
 int le_site_index(const int ic, const int jc, const int kc) {
 
+  int nhalo;
   int nlocal[3];
   int index;
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
 
-  assert(ic >= 1-nhalo_);
-  assert(jc >= 1-nhalo_);
-  assert(kc >= 1-nhalo_);
-  assert(ic <= nlocal[X] + nhalo_ + le_get_nxbuffer());
-  assert(jc <= nlocal[Y] + nhalo_);
-  assert(kc <= nlocal[Z] + nhalo_);
+  assert(ic >= 1-nhalo);
+  assert(jc >= 1-nhalo);
+  assert(kc >= 1-nhalo);
+  assert(ic <= nlocal[X] + nhalo + le_get_nxbuffer());
+  assert(jc <= nlocal[Y] + nhalo);
+  assert(kc <= nlocal[Z] + nhalo);
 
-  index = (nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_)*(nhalo_ + ic - 1)
-    +                            (nlocal[Z] + 2*nhalo_)*(nhalo_ + jc - 1)
-    +                                                    nhalo_ + kc - 1;
+  index = (nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo)*(nhalo + ic - 1)
+    +                           (nlocal[Z] + 2*nhalo)*(nhalo + jc - 1)
+    +                                                  nhalo + kc - 1;
 
   return index;
 }

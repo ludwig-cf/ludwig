@@ -56,14 +56,14 @@ void COLL_set_Q(){
   double dir_len;
   amplitude = 0.33333333;
 
-  get_N_local(nlocal);
-  get_N_offset(offset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(offset);
   
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	p_colloid = colloid_at_site_index(index);
 	
@@ -218,8 +218,8 @@ void COLL_randomize_Q(double delta_r){
   /* set amplitude to something small */
   amplitude = 0.0000001;
   
-  get_N_local(nlocal);
-  get_N_offset(offset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(offset);
   
   Pi = 4.0*atan(1.0);
 
@@ -227,7 +227,7 @@ void COLL_randomize_Q(double delta_r){
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	p_colloid = colloid_at_site_index(index);
 	
@@ -383,7 +383,7 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   Colloid * colloid_at_site_index(int);
   Colloid * p_colloid;
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
 
   /* JUHO: YOU NEED CODE TO WORK OUT VALUE REQUIRED HERE */
@@ -464,8 +464,8 @@ void colloids_fix_swd(void) {
   Colloid * p_c;
   Colloid * colloid_at_site_index(int);
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     x = noffset[X] + ic;
@@ -474,7 +474,7 @@ void colloids_fix_swd(void) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 	z = noffset[Z] + kc;
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	p_c = colloid_at_site_index(index);
 
@@ -514,7 +514,7 @@ static int scalar_q_write(FILE * fp, const int ic, const int jc,
   double q[3][3];
   double qs;
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
   qs = scalar_order_parameter(q);
 

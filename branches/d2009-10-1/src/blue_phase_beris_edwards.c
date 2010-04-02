@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.1.4.7 2010-03-27 06:29:25 kevin Exp $
+ *  $Id: blue_phase_beris_edwards.c,v 1.1.4.8 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -170,29 +170,29 @@ static void blue_phase_be_update(void) {
 	  indexk = coords_index(ic, jc, kc-1);
 	  
 	  q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
-			 - fluxe[nop*index + QXX] + fluxw[nop*index  + QXX]
-			 - fluxy[nop*index + QXX] + fluxy[nop*indexj + QXX]
-			 - fluxz[nop*index + QXX] + fluxz[nop*indexk + QXX]);
+			 - fluxe[nop*index + XX] + fluxw[nop*index  + XX]
+			 - fluxy[nop*index + XX] + fluxy[nop*indexj + XX]
+			 - fluxz[nop*index + XX] + fluxz[nop*indexk + XX]);
 	     
 	  q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y]
-			 - fluxe[nop*index + QXY] + fluxw[nop*index  + QXY]
-			 - fluxy[nop*index + QXY] + fluxy[nop*indexj + QXY]
-			 - fluxz[nop*index + QXY] + fluxz[nop*indexk + QXY]);
+			 - fluxe[nop*index + XY] + fluxw[nop*index  + XY]
+			 - fluxy[nop*index + XY] + fluxy[nop*indexj + XY]
+			 - fluxz[nop*index + XY] + fluxz[nop*indexk + XY]);
 	     
 	  q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z]
-			 - fluxe[nop*index + QXZ] + fluxw[nop*index  + QXZ]
-			 - fluxy[nop*index + QXZ] + fluxy[nop*indexj + QXZ]
-			 - fluxz[nop*index + QXZ] + fluxz[nop*indexk + QXZ]);
+			 - fluxe[nop*index + XZ] + fluxw[nop*index  + XZ]
+			 - fluxy[nop*index + XZ] + fluxy[nop*indexj + XZ]
+			 - fluxz[nop*index + XZ] + fluxz[nop*indexk + XZ]);
 	     
 	  q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y]
-			 - fluxe[nop*index + QYY] + fluxw[nop*index  + QYY]
-			 - fluxy[nop*index + QYY] + fluxy[nop*indexj + QYY]
-			 - fluxz[nop*index + QYY] + fluxz[nop*indexk + QYY]);
+			 - fluxe[nop*index + YY] + fluxw[nop*index  + YY]
+			 - fluxy[nop*index + YY] + fluxy[nop*indexj + YY]
+			 - fluxz[nop*index + YY] + fluxz[nop*indexk + YY]);
 	     
 	  q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z]
-			 - fluxe[nop*index + QYZ] + fluxw[nop*index  + QYZ]
-			 - fluxy[nop*index + QYZ] + fluxy[nop*indexj + QYZ]
-			 - fluxz[nop*index + QYZ] + fluxz[nop*indexk + QYZ]);
+			 - fluxe[nop*index + YZ] + fluxw[nop*index  + YZ]
+			 - fluxy[nop*index + YZ] + fluxy[nop*indexj + YZ]
+			 - fluxz[nop*index + YZ] + fluxz[nop*indexk + YZ]);
 	}
 	
 	phi_set_q_tensor(index, q);

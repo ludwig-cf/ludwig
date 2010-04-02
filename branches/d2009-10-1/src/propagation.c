@@ -4,9 +4,13 @@
  *
  *  Propagation schemes for the different models.
  *
- *  $Id: propagation.c,v 1.4.16.3 2010-02-13 16:28:36 kevin Exp $
+ *  $Id: propagation.c,v 1.4.16.4 2010-04-02 07:56:03 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -64,7 +68,7 @@ static void propagate_d2q9(void) {
 
   nhalo = coords_nhalo();
   ndist = distribution_ndist();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   zstr = ndist*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
@@ -76,7 +80,7 @@ static void propagate_d2q9(void) {
     for (jc = nlocal[Y]; jc >= 1; jc--) {
 
       kc = 1;
-      index = get_site_index(ic, jc, kc);
+      index = coords_index(ic, jc, kc);
 
       for (n = 0; n < ndist; n++) {
 	p = ndist*NVEL*index + n*NVEL;
@@ -94,7 +98,7 @@ static void propagate_d2q9(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
 
       kc = 1;
-      index = get_site_index(ic, jc, kc);
+      index = coords_index(ic, jc, kc);
 
       for (n = 0; n < ndist; n++) {
 	p = ndist*NVEL*index + n*NVEL;
@@ -131,7 +135,7 @@ static void propagate_d3q15(void) {
 
   nhalo = coords_nhalo();
   ndist = distribution_ndist();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   zstr = ndist*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
@@ -143,7 +147,7 @@ static void propagate_d3q15(void) {
     for (jc = nlocal[Y]; jc >= 1; jc--) {
       for (kc = nlocal[Z]; kc >= 1; kc--) {
 
-        index = get_site_index(ic, jc, kc);
+        index = coords_index(ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  p = ndist*NVEL*index + n*NVEL;
@@ -165,7 +169,7 @@ static void propagate_d3q15(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = get_site_index(ic, jc, kc);
+        index = coords_index(ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  p = ndist*NVEL*index + n*NVEL;
@@ -206,7 +210,7 @@ static void propagate_d3q19(void) {
 
   nhalo = coords_nhalo();
   ndist = distribution_ndist();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   zstr = ndist*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
@@ -218,7 +222,7 @@ static void propagate_d3q19(void) {
     for (jc = nlocal[Y]; jc >= 1; jc--) {
       for (kc = nlocal[Z]; kc >= 1; kc--) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  p = ndist*NVEL*index + n*NVEL;
@@ -242,7 +246,7 @@ static void propagate_d3q19(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  p = ndist*NVEL*index + n*NVEL;

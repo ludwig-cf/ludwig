@@ -10,7 +10,7 @@
  *  This is an implemetation of a free energy with vector order
  *  parameter.
  *
- *  $Id: polar_active.c,v 1.1.2.3 2010-03-31 11:56:17 kevin Exp $
+ *  $Id: polar_active.c,v 1.1.2.4 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -74,7 +74,7 @@ double polar_active_free_energy_density(const int index) {
   double dpp[3][3][3];
 
   phi_vector(index, p);
-  phi_vector_gradient(index, dp);
+  phi_gradients_vector_gradient(index, dp);
   phi_gradients_grad_dyadic(index, dpp);
 
   p2  = 0.0;
@@ -124,7 +124,7 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
   lambda = fe_v_lambda();
 
   phi_vector(index, p);
-  phi_vector_gradient(index, dp);
+  phi_gradients_vector_gradient(index, dp);
   polar_active_molecular_field(index, h);
 
   for (ia = 0; ia < 3; ia++) {
@@ -171,7 +171,7 @@ void polar_active_molecular_field(const int index, double h[3]) {
   double dsqpp[3][3];
 
   phi_vector(index, p);
-  phi_vector_delsq(index, dsqp);
+  phi_gradients_vector_delsq(index, dsqp);
   phi_gradients_delsq_dyadic(index, dsqpp);
 
   p2 = 0.0;

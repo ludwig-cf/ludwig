@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.9 2010-03-27 11:16:46 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.10 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -123,7 +123,7 @@ void MODEL_collide_multirelaxation() {
   extern double * f_;
 
   ndist = distribution_ndist();
-  get_N_local(N);
+  coords_nlocal(N);
   fluctuations_off(shat, ghat);
 
   rdim = 1.0/NDIM;
@@ -137,7 +137,7 @@ void MODEL_collide_multirelaxation() {
       for (kc = 1; kc <= N[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	/* Compute all the modes */
 
@@ -331,12 +331,12 @@ void MODEL_collide_binary_lb() {
   assert (NDIM == 3);
 
   ndist = distribution_ndist();
-  get_N_local(N);
+  coords_nlocal(N);
 
   chemical_potential = fe_chemical_potential_function();
   chemical_stress = fe_chemical_stress_function();
 
-  mobility = phi_ch_get_mobility();
+  mobility = phi_cahn_hilliard_mobility();
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
   fluctuations_off(shat, ghat);
 
@@ -345,7 +345,7 @@ void MODEL_collide_binary_lb() {
       for (kc = 1; kc <= N[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	/* Compute all the modes */
 
@@ -746,7 +746,7 @@ void test_isothermal_fluctuations(void) {
 
   if (isothermal_fluctuations_ == 0) return;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   glocal[X] = 0.0;
   glocal[Y] = 0.0;
@@ -757,7 +757,7 @@ void test_isothermal_fluctuations(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	if (site_map_get_status_index(index) != FLUID) continue;
 
 	rrho = 1.0/distribution_zeroth_moment(index, 0);

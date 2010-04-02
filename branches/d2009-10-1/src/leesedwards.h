@@ -2,17 +2,18 @@
  *
  *  leesedwards.h
  *
- *  $Id: leesedwards.h,v 1.5 2009-08-07 16:37:20 kevin Exp $
+ *  $Id: leesedwards.h,v 1.5.4.1 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
- *  (c) The University of Edinburgh (2009)
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _LEESEDWARDS_H
-#define _LEESEDWARDS_H
+#ifndef LEESEDWARDS_H
+#define LEESEDWARDS_H
 
 void le_init(void);
 void le_finish(void);
@@ -24,6 +25,7 @@ int le_site_index(const int, const int, const int);
 int le_plane_location(const int);
 int le_get_nplane_total(void);
 int le_get_nplane_local(void);
+int le_nsites(void);
 
 double    le_buffer_displacement(const int, const double);
 double    le_get_block_uy(int);

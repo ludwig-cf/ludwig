@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.8.4.2 2010-03-27 06:05:27 kevin Exp $
+ *  $Id: phi_stats.c,v 1.8.4.3 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -137,8 +137,8 @@ void phi_init_block() {
   double z, z1, z2;
   double phi, xi0;
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   z1 = 0.25*L(Z);
   z2 = 0.75*L(Z);
@@ -185,8 +185,8 @@ void phi_init_bath() {
   double z, z0;
   double phi, xi0;
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   z0 = 0.25*L(Z);
   xi0 = 1.13;

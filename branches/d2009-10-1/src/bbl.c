@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.10.2.1 2010-01-06 17:19:18 kevin Exp $
+ *  $Id: bbl.c,v 1.10.2.2 2010-04-02 07:56:02 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -273,11 +273,10 @@ static void bounce_back_pass1() {
 		  fdist += md_a;
 		  distribution_f_set(i, ij, 0, fdist);
 
-		  dm+=dm_a;
+		  dm += dm_a;
 
-		/* needed for mass conservation   */
-                  p_colloid->sump+=dm_a;
-
+		  /* needed for mass conservation   */
+                  p_colloid->sump += dm_a;
 		}
 #endif
 	      }

@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.8 2010-03-27 11:14:10 kevin Exp $
+ *  $Id: build.c,v 1.5.4.9 2010-04-02 07:56:02 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -102,7 +102,7 @@ void COLL_update_map() {
   int     ic, jc, kc;
 
   coords_nlocal(N);
-  get_N_offset(offset);
+  coords_nlocal_offset(offset);
   nhalo = coords_nhalo();
 
   /* First, set any existing colloid sites to fluid */
@@ -282,7 +282,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
   int         offset[3];
 
   coords_nlocal(N);
-  get_N_offset(offset);
+  coords_nlocal_offset(offset);
 
   p_link = p_colloid->lnk;
   p_last = p_link;
@@ -469,7 +469,7 @@ void COLL_reset_links(Colloid * p_colloid) {
 
   double      lambda = 0.5;
 
-  get_N_offset(offset);
+  coords_nlocal_offset(offset);
 
   p_link = p_colloid->lnk;
 
@@ -610,7 +610,7 @@ static void build_remove_fluid(int index, Colloid * p_colloid) {
   FVector rb;
   FVector r0;
 
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
 
   /* Get the properties of the old fluid at inode */
 
@@ -688,7 +688,7 @@ static void build_replace_fluid(int index, Colloid * p_colloid) {
   double    weight = 0.0;
   double    newf[NVEL];
 
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
 
   ri = COM_index2coord(index);
 
@@ -1008,7 +1008,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
   int         offset[3];
 
   coords_nlocal(N);
-  get_N_offset(offset);
+  coords_nlocal_offset(offset);
 
   p_link = p_colloid->lnk;
   p_last = p_colloid->lnk;

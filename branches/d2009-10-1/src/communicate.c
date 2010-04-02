@@ -39,8 +39,8 @@ void MODEL_init( void ) {
 
   phi0 = get_phi0();
 
-  get_N_local(N);
-  get_N_offset(offset);
+  coords_nlocal(N);
+  coords_nlocal_offset(offset);
 
   /* Now setup the rest of the simulation */
 
@@ -131,7 +131,7 @@ void MODEL_init( void ) {
 	       (j>offset[Y]) && (j<=offset[Y] + N[Y]) &&
 	       (k>offset[Z]) && (k<=offset[Z] + N[Z]))
 	      {
-		ind = get_site_index(i-offset[X], j-offset[Y], k-offset[Z]);
+		ind = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
 
 		phi_lb_coupler_phi_set(ind, phi);
 	      }

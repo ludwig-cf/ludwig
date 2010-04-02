@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.5.4.3 2009-12-23 16:32:47 kevin Exp $
+ *  $Id: blue_phase.c,v 1.5.4.4 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,6 +22,7 @@
 #include "util.h"
 #include "coords.h"
 #include "phi.h"
+#include "phi_gradients.h"
 #include "blue_phase.h"
 #include "ran.h"
 
@@ -96,7 +97,7 @@ double blue_phase_free_energy_density(const int index) {
   double dq[3][3][3];
 
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
 
   e = blue_phase_compute_fed(q, dq);
 
@@ -197,8 +198,8 @@ void blue_phase_molecular_field(int index, double h[3][3]) {
   assert(kappa0_ == kappa1_);
 
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
 
@@ -290,8 +291,8 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
   double dsq[3][3];
 
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, sth);
@@ -419,8 +420,8 @@ void blue_phase_O8M_init(double amplitude) {
   double r2;
   double cosx, cosy, cosz, sinx, siny, sinz;
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   r2 = sqrt(2.0);
 
@@ -431,7 +432,7 @@ void blue_phase_O8M_init(double amplitude) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	cosx = cos(r2*q0_*x);
 	cosy = cos(r2*q0_*y);
@@ -459,6 +460,7 @@ void blue_phase_O8M_init(double amplitude) {
   /* Only now set the redshift */
 
   redshift_ = 0.83;
+  /* Note that the unit test requires redshift_ = 1.0 here */
   q0_ = q0_/redshift_;
   kappa0_ = kappa0_*redshift_*redshift_;
   kappa1_ = kappa1_*redshift_*redshift_;
@@ -484,8 +486,8 @@ void blue_phase_O2_init(double amplitude) {
   double q[3][3];
   double x, y, z;
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = noffset[X] + ic;
@@ -494,7 +496,7 @@ void blue_phase_O2_init(double amplitude) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	q[X][X] = amplitude*(cos(2.0*q0_*z) - cos(2.0*q0_*y));
 	q[X][Y] = amplitude*sin(2.0*q0_*z);
@@ -539,8 +541,8 @@ void blue_phase_twist_init(double amplitude){
   double x, y, z;
   double cosxy, cosz, sinxy,sinz;
   
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
   
   /* this corresponds to a 90 degree angle between the z-axis */
   cosz=0.0;
@@ -553,7 +555,7 @@ void blue_phase_twist_init(double amplitude){
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 	
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	cosxy=cos(q0_*z);
 	sinxy=sin(q0_*z);
@@ -583,8 +585,8 @@ void blue_phase_twist_init(double amplitude){
  * -Juho 12/11/09
  *****************************************************************************/
 
-void blue_set_random_q_init(double xmin, double xmax, double ymin, double ymax, double zmin, double zmax){
-  
+void blue_set_random_q_init(double xmin, double xmax, double ymin,
+			    double ymax, double zmin, double zmax) {
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -596,8 +598,8 @@ void blue_set_random_q_init(double xmin, double xmax, double ymin, double ymax, 
   double phase1,phase2;
   double amplitude,Pi;
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   /* set amplitude to something small */
   amplitude = 0.0000001;
@@ -614,7 +616,7 @@ void blue_set_random_q_init(double xmin, double xmax, double ymin, double ymax, 
 	z = noffset[Z] + kc;
 	if(z < zmin || z > zmax)continue;
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	
 	phase1= 2.0/5.0*Pi*(0.5-ran_parallel_uniform());
 	phase2= Pi/2.0+Pi/5.0*(0.5-ran_parallel_uniform());

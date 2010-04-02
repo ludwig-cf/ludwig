@@ -6,7 +6,10 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.4 2008-08-24 18:05:06 kevin Exp $
+ *  $Id: subgrid.c,v 1.4.16.1 2010-04-02 07:56:03 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Phyiscs Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -51,8 +54,8 @@ void subgrid_force_from_particles() {
 
   TIMER_start(TIMER_FREE1);
 
-  get_N_local(N);
-  get_N_offset(offset);
+  coords_nlocal(N);
+  coords_nlocal_offset(offset);
 
   get_gravity(g);
 
@@ -88,7 +91,7 @@ void subgrid_force_from_particles() {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = get_site_index(i, j, k);
+		index = coords_index(i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */
@@ -201,8 +204,8 @@ static void subgrid_interpolation() {
   double dr;
   Colloid * p_colloid;
 
-  get_N_local(N);
-  get_N_offset(offset);
+  coords_nlocal(N);
+  coords_nlocal_offset(offset);
 
   /* Loop through all cells (including the halo cells) and set
    * the velocity at each particle to zero for this step. */
@@ -255,7 +258,7 @@ static void subgrid_interpolation() {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = get_site_index(i, j, k);
+		index = coords_index(i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */

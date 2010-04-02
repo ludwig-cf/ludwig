@@ -34,13 +34,13 @@
  *  The procedure ensures total momentum is conserved, ie., that
  *  leaving the fluid enters the colloid and vice versa.
  *
- *  $Id: phi_force_colloid.c,v 1.1.2.3 2009-12-01 19:56:59 kevin Exp $
+ *  $Id: phi_force_colloid.c,v 1.1.2.4 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -86,20 +86,22 @@ void phi_force_colloid(void) {
 
 static void phi_force_fast(void) {
 
-  int n, nhalo;
-  int nlocal[3];
+  int n;
 
-  get_N_local(nlocal);
-  nhalo = coords_nhalo();
-  assert(nhalo >= 2);
+  assert(coords_nhalo() >= 2);
 
-  n = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+  n = coords_nsites();
 
   pth_ = (double *) malloc(9*n*sizeof(double));
   if (pth_ == NULL) fatal("malloc(pth_) failed\n");
 
   phi_force_stress_compute();
   phi_force_interpolation1();
+
+  if (0) {
+    /* Could use method assuming zero stress on inside */
+    phi_force_interpolation2();
+  }
 
   free(pth_);
 
@@ -123,8 +125,8 @@ static void phi_force_stress_compute(void) {
   double pth_local[3][3];
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  get_N_local(nlocal);
-  assert(nhalo_ >= 2);
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 2);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -132,7 +134,7 @@ static void phi_force_stress_compute(void) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	chemical_stress(index, pth_local);
 	phi_force_stress_set(index, pth_local);
@@ -211,7 +213,7 @@ static void phi_force_interpolation1(void) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   chemical_stress = phi_force_stress;
 
@@ -219,7 +221,7 @@ static void phi_force_interpolation1(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	/* If this is solid, then there's no contribution here. */
 
@@ -231,7 +233,7 @@ static void phi_force_interpolation1(void) {
 
 	/* Compute differences */
 	
-	index1 = get_site_index(ic+1, jc, kc);
+	index1 = coords_index(ic+1, jc, kc);
 	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
@@ -248,7 +250,7 @@ static void phi_force_interpolation1(void) {
 	  p_c->force.z += 0.5*(pth1[Z][X] + pth0[Z][X]);
 	}
 
-	index1 = get_site_index(ic-1, jc, kc);
+	index1 = coords_index(ic-1, jc, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
@@ -264,7 +266,7 @@ static void phi_force_interpolation1(void) {
 
 
 
-	index1 = get_site_index(ic, jc+1, kc);
+	index1 = coords_index(ic, jc+1, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
@@ -278,7 +280,7 @@ static void phi_force_interpolation1(void) {
 	  p_c->force.z += 0.5*(pth1[Z][Y] + pth0[Z][Y]);
 	}
 
-	index1 = get_site_index(ic, jc-1, kc);
+	index1 = coords_index(ic, jc-1, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
@@ -293,7 +295,7 @@ static void phi_force_interpolation1(void) {
 	}
 
 
-	index1 = get_site_index(ic, jc, kc+1);
+	index1 = coords_index(ic, jc, kc+1);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
@@ -307,7 +309,7 @@ static void phi_force_interpolation1(void) {
 	  p_c->force.z += 0.5*(pth1[Z][Z] + pth0[Z][Z]);
 	}
 
-	index1 = get_site_index(ic, jc, kc-1);
+	index1 = coords_index(ic, jc, kc-1);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
@@ -356,7 +358,7 @@ static void phi_force_interpolation2(void) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -364,7 +366,7 @@ static void phi_force_interpolation2(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	/* If this is solid, then there's no contribution here. */
 	p_c = colloid_at_site_index(index);
@@ -375,7 +377,7 @@ static void phi_force_interpolation2(void) {
 
 	/* Compute differences */
 	
-	index1 = get_site_index(ic+1, jc, kc);
+	index1 = coords_index(ic+1, jc, kc);
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
@@ -396,7 +398,7 @@ static void phi_force_interpolation2(void) {
 	  }
 	}
 
-	index1 = get_site_index(ic-1, jc, kc);
+	index1 = coords_index(ic-1, jc, kc);
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
@@ -417,7 +419,7 @@ static void phi_force_interpolation2(void) {
 	  }
 	}
 
-	index1 = get_site_index(ic, jc+1, kc);
+	index1 = coords_index(ic, jc+1, kc);
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
@@ -438,7 +440,7 @@ static void phi_force_interpolation2(void) {
 	  }
 	}
 
-	index1 = get_site_index(ic, jc-1, kc);
+	index1 = coords_index(ic, jc-1, kc);
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
@@ -459,7 +461,7 @@ static void phi_force_interpolation2(void) {
 	  }
 	}
 	
-	index1 = get_site_index(ic, jc, kc+1);
+	index1 = coords_index(ic, jc, kc+1);
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
@@ -480,7 +482,7 @@ static void phi_force_interpolation2(void) {
 	  }
 	}
 
-	index1 = get_site_index(ic, jc, kc-1);
+	index1 = coords_index(ic, jc, kc-1);
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {

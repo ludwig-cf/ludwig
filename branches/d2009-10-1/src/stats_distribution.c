@@ -8,7 +8,7 @@
  *  If there is more than one distribution, it is assumed the relevant
  *  statistics are produced in the order parameter sector.
  *
- *  $Id: stats_distribution.c,v 1.1.2.1 2010-01-06 17:20:35 kevin Exp $
+ *  $Id: stats_distribution.c,v 1.1.2.2 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -47,7 +47,7 @@ void stats_distribution_print(void) {
   double rhomean;
   double rhovar;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   stat_local[0] = 0.0;       /* Volume */
   stat_local[1] = 0.0;       /* total mass (or density) */
@@ -60,7 +60,7 @@ void stats_distribution_print(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-        index = get_site_index(ic, jc, kc);
+        index = coords_index(ic, jc, kc);
 
 	rho = distribution_zeroth_moment(index, 0);
 	stat_local[0] += 1.0;
@@ -108,7 +108,7 @@ void stats_distribution_momentum(double g[3]) {
   double g_local[3];
   double g_site[3];
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   g_local[X] = 0.0;
   g_local[Y] = 0.0;
@@ -119,7 +119,7 @@ void stats_distribution_momentum(double g[3]) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-        index = get_site_index(ic, jc, kc);
+        index = coords_index(ic, jc, kc);
 
 	distribution_first_moment(index, 0, g_site);
 	g_local[X] += g_site[X];

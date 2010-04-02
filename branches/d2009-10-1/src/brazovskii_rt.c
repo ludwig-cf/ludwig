@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for Brazovskii free energy.
  *
- *  $Id: brazovskii_rt.c,v 1.1.2.4 2010-03-05 17:30:03 kevin Exp $
+ *  $Id: brazovskii_rt.c,v 1.1.2.5 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -17,9 +17,10 @@
 #include <assert.h>
 
 #include "pe.h"
-#include "phi.h"
 #include "coords.h"
 #include "runtime.h"
+#include "phi.h"
+#include "phi_gradients.h"
 #include "free_energy.h"
 #include "brazovskii.h"
 #include "brazovskii_rt.h"
@@ -41,7 +42,7 @@ void brazovskii_run_time(void) {
   /* Single order parameter, del^4 phi required */
 
   phi_nop_set(1);
-  phi_gradient_level_set(4);
+  phi_gradients_level_set(4);
   coords_nhalo_set(3);
 
   info("Brazovskii free energy selected.\n");

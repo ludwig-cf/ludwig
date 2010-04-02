@@ -5,7 +5,8 @@
 # Preprocessor flags.
 #
 #  One of:
-# _D_D3Q15_              Use D3Q15 or
+# -D_D2Q9_               Use D2Q9  or
+# -D_D3Q15_              Use D3Q15 or
 # -D_D3Q19_              Use D3Q19
 #
 # Temporary (to be replaced by run-time options)
@@ -33,6 +34,30 @@
 #
 ###############################################################################
 
+EXECUTABLE = Ludwig.exe
+LIBRARY = libludwig.a
+
+###############################################################################
+#
+#  Linux
+#
+###############################################################################
+
+CC = gcc
+MPICC = mpicc
+OPTS = -D_D3Q19_
+CFLAGS = -g -O3 -Wall 
+
+INC = -I.
+LIBS = -lm
+AR = ar
+ARFLAGS = -cru
+
+###############################################################################
+#
+#  Files
+#
+###############################################################################
 
 OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      physics.o \
@@ -65,30 +90,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      site_map.o subgrid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_surfactant.o stats_turbulent.o \
-     test.o timer.o util.o utilities.o wall.o main.o colloids_Q_tensor.o
-
-EXE= Ludwig.exe
-
-###############################################################################
-#
-#  Linux
-#
-###############################################################################
-
-CC=gcc
-MPICC=mpicc
-OPTS = -D_D3Q19_ -O3
-CFLAGS=$(OPTS) -Wall 
-
-###############################################################################
-#
-#  Generic section
-#
-###############################################################################
-
-
-INC= -I.
-LIBS= -lm
+     test.o timer.o util.o utilities.o wall.o colloids_Q_tensor.o
 
 ###############################################################################
 #
@@ -107,14 +109,21 @@ verbose:
 	    "\t make mpi \t builds parallel implementation based on MPI\n"\
             "\t Check the Makefile for further details\n"	
 
-generic: $(OBJS) Makefile
-	$(CC) $(LDFLAGS) -o $(EXE) $(OBJS) $(LIBS)
-
+code:	$(OBJS)
+	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
 serial:
-	$(MAKE) generic "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi"
+	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
+	-L../mpi_s -lmpi" "OBJS=$(OBJS) main.o"
 mpi:
-	$(MAKE) generic "CC=$(MPICC)" "LIBS=$(LIBS)" "CFLAGS=$(CFLAGS)"
+	$(MAKE) generic "OBJS=$(OBJS) main.o" "CC=$(MPICC)"
+
+
+libar:	$(OBJS)
+	$(AR) $(ARFLAGS) -o $(LIBRARY) $(OBJS)
+lib:
+	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
+libmpi:
+	$(MAKE) libar "CC=$(MPICC)"
 
 ###############################################################################
 #
@@ -127,19 +136,9 @@ mpi:
 #  Default rule for compilation in the current directory.
 #
 .c.o :
-	$(CC) $(CFLAGS) $(INC) -c $?
+	$(CC) $(OPTS) $(CFLAGS) $(INC) -c $?
 
 
 .PHONY : clean
 clean:
-	-rm -f $(OBJS) $(EXE)
-gcc-clean:
-	$(RM) ${OBJS:.o=*rtl}
-	$(RM) ${OBJS:.o=*jump}
-	$(RM) ${OBJS:.o=*addressof}
-	$(RM) ${OBJS:.o=*cfg}
-	$(RM) ${OBJS:.o=*life}
-	$(RM) ${OBJS:.o=*lreg}
-	$(RM) ${OBJS:.o=*greg}
-	$(RM) ${OBJS:.o=*postreload}
-	$(RM) ${OBJS:.o=*flow2}
+	-rm -f $(OBJS) $(EXE) $(LIBRARY) main.o

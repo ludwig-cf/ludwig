@@ -4,13 +4,13 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3.16.6 2010-03-30 03:47:28 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.7 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2008)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -21,15 +21,13 @@
 
 /* The effective state here is, with default values: */
 
+static int nhalo_ = 1;
 static int n_total[3]                  = {64, 64, 64};
 static int periodic[3]                 = {1, 1, 1};
 static int pe_cartesian_size[3]        = {1, 1, 1};
 static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
 static int reorder_                    = 1;
 static int initialised_                = 0;
-
-/* PENDING TODO: remove global scope */
-int nhalo_ = 1;
 
 /* The following lookups will be set by a call to coords_init(), for
  * convenience, based on the current state: */
@@ -251,25 +249,13 @@ double Lmin(const int dim) {
 
 /*****************************************************************************
  *
- *  get_N_local
+ *  coords_nlocal
  *
  *  These quantities are used in performance-critical regions, so
  *  the strategy at the moment is to unload the 3-vector into a
  *  local array via these functions when required.
  *
  *****************************************************************************/
-
-void get_N_local(int n[]) {
-
-  int i;
-  assert(initialised_);
-
-  for (i = 0; i < 3; i++) {
-    n[i] = n_local[i];
-  }
-
-  return;
-}
 
 void coords_nlocal(int n[3]) {
 
@@ -296,6 +282,8 @@ int coords_nsites(void) {
 
   int nsites;
 
+  assert(initialised_);
+
   nsites = (n_local[X] + 2*nhalo_)*(n_local[Y] + 2*nhalo_)
     *(n_local[Z] + 2*nhalo_);
 
@@ -304,11 +292,14 @@ int coords_nsites(void) {
 
 /*****************************************************************************
  *
- *  get_N_offset
+ *  coords_nlocal_offset
+ *
+ *  For the local domain, return the location of the first latttice
+ *  site in the global domain.
  *
  *****************************************************************************/
 
-void get_N_offset(int n[]) {
+void coords_nlocal_offset(int n[3]) {
 
   int i;
   assert(initialised_);
@@ -377,28 +368,9 @@ static int is_ok_decomposition() {
 
 /*****************************************************************************
  *
- *  get_site_index
+ *  coords_index
  *
  *  Compute the one-dimensional index from coordinates ic, jc, kc.
- *
- *****************************************************************************/
-
-int get_site_index(const int ic, const int jc, const int kc) {
-
-  assert(initialised_);
-  assert(ic >= 1-nhalo_);
-  assert(jc >= 1-nhalo_);
-  assert(kc >= 1-nhalo_);
-  assert(ic <= n_local[X] + nhalo_);
-  assert(jc <= n_local[Y] + nhalo_);
-  assert(kc <= n_local[Z] + nhalo_);
-
-  return (xfac_*(nhalo_ + ic - 1) + yfac_*(nhalo_ + jc -1) + nhalo_ + kc - 1);
-}
-
-/*****************************************************************************
- *
- *  coords_index
  *
  *****************************************************************************/
 

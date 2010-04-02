@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.5 2009-03-27 17:09:13 kevin Exp $
+ *  $Id: io_harness.c,v 1.5.12.1 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -126,7 +126,7 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
   MPI_Comm comm = cart_comm();
 
   assert(comm != MPI_COMM_NULL);
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
 
   p = io_decomposition_allocate();
   p->n_io = 1;
@@ -179,7 +179,7 @@ void io_write(char * filename_stub, struct io_info_t * io_info) {
   assert(io_info);
   assert(io_info->write_function);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   io_set_group_filename(filename_io, filename_stub, io_info);
 
   if (io_info->io_comm->rank == 0) {
@@ -247,7 +247,7 @@ void io_read(char * filename_stub, struct io_info_t * io_info) {
 
   assert(io_info);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   io_set_group_filename(filename_io, filename_stub, io_info);
 
@@ -624,7 +624,7 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
    * be unmangled. */
 
   assert(info);
-  get_N_offset(noff);
+  coords_nlocal_offset(noff);
   
   io_set_group_filename(filename_io, filename_stub, info);
   sprintf(filename_io, "%s.meta", filename_io);
@@ -670,7 +670,7 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
 
   /* Local decomposition information */
 
-  get_N_local(n);
+  coords_nlocal(n);
   fprintf(fp_meta, "%3d %3d %3d %3d %d %d %d %d %d %d\n", info->io_comm->rank,
           cart_coords(X), cart_coords(Y), cart_coords(Z),
           n[X], n[Y], n[Z], noff[X], noff[Y], noff[Z]);

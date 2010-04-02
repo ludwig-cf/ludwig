@@ -4,21 +4,22 @@
  *
  *  Run time initialisation for the symmetric phi^4 free energy.
  *
- *  $Id: symmetric_rt.c,v 1.1.2.3 2009-11-13 14:35:45 kevin Exp $
+ *  $Id: symmetric_rt.c,v 1.1.2.4 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2010 The University of Edinburgh
  *
  ****************************************************************************/
 
 #include <assert.h>
 
 #include "pe.h"
-#include "phi.h"
 #include "coords.h"
+#include "phi.h"
+#include "phi_gradients.h"
 #include "runtime.h"
 #include "free_energy.h"
 #include "symmetric.h"
@@ -42,12 +43,12 @@ void symmetric_run_time(void) {
    * at the moment when using full LB. */
 
   phi_nop_set(1);
-  phi_gradient_level_set(2);
+  phi_gradients_level_set(2);
   coords_nhalo_set(2);
 
   info("Symmetric phi^4 free energy selected.\n");
   info("Single conserved order parameter nop = 1\n");
-  info("Requires up to del^2 derivatives so setting nhalo = %1d\n", nhalo_);
+  info("Requires up to del^2 derivatives so setting nhalo = 2\n");
   info("\n");
 
   /* Parameters */

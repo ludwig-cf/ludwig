@@ -9,13 +9,13 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.6.4.3 2010-01-07 15:38:30 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.6.4.4 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -108,7 +108,7 @@ void stats_rheology_init(void) {
 
   /* sxy_ */
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   sxy_ = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxy_ == NULL) fatal("malloc(sxy_) failed\n");
@@ -175,8 +175,8 @@ void stats_rheology_free_energy_density_profile(const char * filename) {
 
   assert(initialised_);
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   fex = (double *) malloc(nlocal[X]*sizeof(double));
   if (fex == NULL) fatal("malloc(fex) failed\n");
@@ -264,7 +264,7 @@ void stats_rheology_stress_profile_zero(void) {
   int nlocal[3];
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (n = 0; n < NSTAT1; n++) {
@@ -303,7 +303,7 @@ void stats_rheology_stress_profile_accumulate(void) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -395,8 +395,8 @@ void stats_rheology_stress_profile(const char * filename) {
   FILE * fp_output;
 
   assert(initialised_);
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxymean == NULL) fatal("malloc(sxymean) failed\n");
@@ -496,7 +496,7 @@ void stats_rheology_stress_section(const char * filename) {
   const int tag_token = 1012;
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
   if (stat_2d == NULL) fatal("malloc(stat_2d) failed\n");
@@ -623,7 +623,7 @@ void stats_rheology_mean_stress(const char * filename) {
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -641,7 +641,7 @@ void stats_rheology_mean_stress(const char * filename) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = get_site_index(ic, jc, kc);
+        index = coords_index(ic, jc, kc);
 
 	rho = distribution_zeroth_moment(index, 0);
 	distribution_first_moment(index, 0, u);

@@ -5,7 +5,7 @@
  *  In cases where the order parameter is via "full LB", this couples
  *  the scalar order parameter phi_site[] to the distributions.
  *
- *  $Id: phi_lb_coupler.c,v 1.2.4.3 2010-03-27 06:17:33 kevin Exp $
+ *  $Id: phi_lb_coupler.c,v 1.2.4.4 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -180,7 +180,7 @@ void phi_lb_init_drop(double radius, double xi0) {
   assert(distribution_ndist() == 2);
 
   coords_nlocal(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
 
   rxi0 = 1.0/xi0;
 

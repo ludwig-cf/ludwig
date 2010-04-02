@@ -12,7 +12,7 @@
  *
  *  The usual mode of operation is to take a = -b < 0 and k > 0.
  *
- *  $Id: symmetric.c,v 1.1.2.2 2009-11-04 11:04:43 kevin Exp $
+ *  $Id: symmetric.c,v 1.1.2.3 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -26,6 +26,7 @@
 #include <math.h>
 
 #include "phi.h"
+#include "phi_gradients.h"
 #include "util.h"
 #include "symmetric.h"
 
@@ -98,7 +99,7 @@ double symmetric_free_energy_density(const int index) {
   double e;
 
   phi = phi_get_phi_site(index);
-  phi_get_grad_phi_site(index, dphi);
+  phi_gradients_grad(index, dphi);
 
   e = 0.5*a_*phi*phi* + 0.25*b_*phi*phi*phi*phi
     + 0.5*kappa_*dot_product(dphi, dphi);
@@ -124,7 +125,7 @@ double symmetric_chemical_potential(const int index, const int nop) {
   assert(nop == 0);
 
   phi = phi_get_phi_site(index);
-  delsq_phi = phi_get_delsq_phi_site(index);
+  delsq_phi = phi_gradients_delsq(index);
 
   mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi;
 
@@ -147,8 +148,8 @@ double symmetric_isotropic_pressure(const int index) {
   double p0;
 
   phi = phi_get_phi_site(index);
-  phi_get_grad_phi_site(index, grad_phi);
-  delsq_phi = phi_get_delsq_phi_site(index);
+  phi_gradients_grad(index, grad_phi);
+  delsq_phi = phi_gradients_delsq(index);
 
   p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
     - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
@@ -177,8 +178,8 @@ void symmetric_chemical_stress(const int index, double s[3][3]) {
   double p0;
 
   phi = phi_get_phi_site(index);
-  phi_get_grad_phi_site(index, grad_phi);
-  delsq_phi = phi_get_delsq_phi_site(index);
+  phi_gradients_grad(index, grad_phi);
+  delsq_phi = phi_gradients_delsq(index);
 
   p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
     - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);

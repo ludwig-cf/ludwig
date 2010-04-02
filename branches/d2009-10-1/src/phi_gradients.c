@@ -4,7 +4,7 @@
  *
  *  Compute various gradients in the order parameter.
  *
- *  $Id: phi_gradients.c,v 1.10.4.5 2010-03-31 12:02:34 kevin Exp $
+ *  $Id: phi_gradients.c,v 1.10.4.6 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -19,34 +19,21 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "phi.h"
 #include "gradient.h"
 #include "phi_gradients.h"
 
-extern double * phi_site;
-extern double * delsq_phi_site;
-extern double * grad_phi_site;
-extern double * delsq_delsq_phi_site;
-extern double * grad_delsq_phi_site;
-
-#define NGRAD_ 27
-static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
-				 {-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1},
-                                 {-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1},
-                                 {-1, 1,-1}, {-1, 1, 0}, {-1, 1, 1},
-                                 { 0,-1,-1}, { 0,-1, 0}, { 0,-1, 1},
-                                 { 0, 0,-1},             { 0, 0, 1},
-				 { 0, 1,-1}, { 0, 1, 0}, { 0, 1, 1},
-				 { 1,-1,-1}, { 1,-1, 0}, { 1,-1, 1},
-				 { 1, 0,-1}, { 1, 0, 0}, { 1, 0, 1},
-				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
-
 static int      level_required_ = 2;
 static int      dyadic_required_ = 0;
+
+static double * phi_delsq_;
+static double * phi_grad_;
+static double * phi_delsq_delsq_;
+static double * phi_grad_delsq_;
 static double * phi_delsq_pp_;
 static double * phi_dpp_;
 
-static void phi_gradients_walls(void);
 
 /****************************************************************************
  *
@@ -57,10 +44,33 @@ static void phi_gradients_walls(void);
 void phi_gradients_init(void) {
 
   int nop;
+  int nhalo;
   int nsites;
+  int nlocal[3];
 
   nop = phi_nop();
-  nsites = coords_nsites();
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+
+  nsites = (nlocal[X] + 2*nhalo + le_get_nxbuffer())*
+    (nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
+  if (level_required_ >= 2) {
+    phi_delsq_ = (double *) malloc(nop*nsites*sizeof(double));
+    phi_grad_ = (double *) malloc(3*nop*nsites*sizeof(double));
+
+    if (phi_delsq_ == NULL) fatal("malloc(phi_delsq_) failed\n");
+    if (phi_grad_ == NULL) fatal("malloc(phi_grad_) failed\n");
+  }
+
+  if (level_required_ >= 4) {
+    assert(phi_nop() == 1); /* Brazovskii only */
+    phi_grad_delsq_ = (double *) malloc(3*nsites*sizeof(double));
+    phi_delsq_delsq_ = (double *) malloc(nsites*sizeof(double));
+
+    if (phi_grad_delsq_ == NULL) fatal("malloc(phi_grad_delsq_) failed\n");
+    if (phi_delsq_delsq_ == NULL) fatal("malloc(phi_delsq_delsq_) failed\n");
+  }
 
   if (dyadic_required_) {
     assert(nop == 3);
@@ -82,6 +92,10 @@ void phi_gradients_init(void) {
 
 void phi_gradients_finish(void) {
 
+  if (phi_delsq_) free(phi_delsq_);
+  if (phi_grad_) free(phi_grad_);
+  if (phi_grad_delsq_) free(phi_grad_delsq_);
+  if (phi_delsq_delsq_) free(phi_delsq_delsq_);
   if (phi_delsq_pp_) free(phi_delsq_pp_);
   if (phi_dpp_) free(phi_dpp_);
 
@@ -125,23 +139,20 @@ void phi_gradients_dyadic_set(const int level) {
 void phi_gradients_compute() {
 
   int nop;
+  extern double * phi_site;
 
   nop = phi_nop();
 
   phi_leesedwards_transformation();
-  gradient_d2(nop, phi_site, grad_phi_site, delsq_phi_site);
+  gradient_d2(nop, phi_site, phi_grad_, phi_delsq_);
 
   if (level_required_ > 2) {
-    gradient_d4(nop, delsq_phi_site, grad_delsq_phi_site,
-		delsq_delsq_phi_site);
+    gradient_d4(nop, phi_delsq_, phi_grad_delsq_, phi_delsq_delsq_);
   }
 
   if (dyadic_required_) {
     gradient_d2_dyadic(nop, phi_site, phi_dpp_, phi_delsq_pp_);
   }
-
-  /* Remaining to test */
-  /* phi_gradients_walls();*/
 
   return;
 }
@@ -160,6 +171,7 @@ void phi_gradients_grad_dyadic(const int index, double dqq[3][3][3]) {
   int ia;
 
   assert(phi_dpp_);
+  assert(phi_nop() == 3);
 
   for (ia = 0; ia < 3; ia++) {
     dqq[ia][X][X] = phi_dpp_[18*index + 6*ia + XX];
@@ -187,6 +199,7 @@ void phi_gradients_grad_dyadic(const int index, double dqq[3][3][3]) {
 void phi_gradients_delsq_dyadic(const int index, double delsq[3][3]) {
 
   assert(phi_delsq_pp_);
+  assert(phi_nop() == 3);
 
   delsq[X][X] = phi_delsq_pp_[6*index + XX];
   delsq[X][Y] = phi_delsq_pp_[6*index + XY];
@@ -201,128 +214,208 @@ void phi_gradients_delsq_dyadic(const int index, double delsq[3][3]) {
   return;
 }
 
-/* OLD STUFF TO GO */
-
 /*****************************************************************************
  *
- *  phi_gradients_walls
- *
- *  This is a special case where solid walls are required at x = 0
- *  and x = L_x to run with the Lees-Edwards planes. It is called
- *  after phi_gradients_fluid to correct the gradients at the
- *  edges of the system.
- *
- *  This is done in preference to phi_gradients_solid, which is much
- *  slower. Always neutral wetting.
+ *  phi_gradients_grad_delsq
  *
  *****************************************************************************/
 
-static void phi_gradients_walls() {
+void phi_gradients_grad_delsq(const int index, double grad[3]) {
 
-  int nlocal[3];
-  int ic, jc, kc;
-  int ia, index, index1, n, p;
-  int nextra = nhalo_ - 1; /* Gradients not computed at last point locally */
+  int ia;
 
-  double gradt[NGRAD_];
-  double gradn[3];
-  double dphi;
-  const double r9 = (1.0/9.0);     /* normaliser for cv_bs */
-  const double r18 = (1.0/18.0);   /* ditto */
+  assert(phi_grad_delsq_);
+  assert(phi_nop() == 1);
 
-  get_N_local(nlocal);
-  assert(nhalo_ >= 1);
+  for (ia = 0; ia < 3; ia++) {
+    grad[ia] = phi_grad_delsq_[3*index + ia];
+  }
 
-  if (cart_coords(X) == 0) {
-    ic = 1;
+  return;
+}
 
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+/*****************************************************************************
+ *
+ *  phi_gradients_delsq_delsq
+ *
+ *****************************************************************************/
 
-	index = coords_index(ic, jc, kc);
+double phi_gradients_delsq_delsq(const int index) {
 
-	for (n = 0; n < nop_; n++) {
-	  
-	  /* This loop is hardwired to pick up bs_cv[p][X] >= 0
-	   * without a conditional */
-	  for (p = 1; p < 10; p++) {
-	    gradt[p] = 0.0;
-	  }
-	  for (p = 10; p < NGRAD_; p++) {
-	    index1 = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
-				   kc + bs_cv[p][Z]);
-	    dphi = phi_site[nop_*index1 + n] - phi_site[nop_*index + n];
-	    gradt[p] = dphi;
-	  }
+  assert(phi_delsq_delsq_);
+  assert(phi_nop() == 1);
+
+  return phi_delsq_delsq_[index];
+}
+
+/*****************************************************************************
+ *
+ *  phi_gradients_delsq_n
+ *
+ *****************************************************************************/
+
+double phi_gradients_delsq_n(const int index, const int nop) {
+
+  assert(phi_delsq_);
+  assert(nop < phi_nop());
+
+  return phi_delsq_[phi_nop()*index + nop];
+}
+
+/*****************************************************************************
+ *
+ *  phi_gradients_grad_n
+ *
+ *****************************************************************************/
+
+void phi_gradients_grad_n(const int index, const int nop, double grad[3]) {
+
+  int ia;
+
+  assert(phi_grad_);
+  assert(nop < phi_nop());
+
+  for (ia = 0; ia < 3; ia++) {
+    grad[ia] = phi_grad_[3*(phi_nop()*index + nop) + ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_gradients_grad
+ *
+ *****************************************************************************/
+
+void phi_gradients_grad(const int index, double grad[3]) {
+
+  int ia;
+
+  assert(phi_grad_);
+  assert(phi_nop() == 1);
+
+  for (ia = 0; ia < 3; ia++) {
+    grad[ia] = phi_grad_[3*index + ia];
+  }
  
-	  /* Accumulate the final gradients */
+  return;
+}
 
-	  dphi = 0.0;
-	  for (ia = 0; ia < 3; ia++) {
-	    gradn[ia] = 0.0;
-	  }
+/*****************************************************************************
+ *
+ *  phi_gradients_delsq
+ *
+ *****************************************************************************/
 
-	  for (p = 1; p < NGRAD_; p++) {
-	    dphi += gradt[p];
-	    for (ia = 0; ia < 3; ia++) {
-	      gradn[ia] += gradt[p]*bs_cv[p][ia];
-	    }
-	  }
+double phi_gradients_delsq(const int index) {
 
-	  delsq_phi_site[nop_*index + n] = r9*dphi;
-	  for (ia = 0; ia < 3; ia++) {
-	    grad_phi_site[3*(nop_*index + n) + ia]  = r18*gradn[ia];
-	  }
-	}
-	/* Next site */
-      }
+  assert(phi_delsq_);
+  assert(phi_nop() == 1);
+
+  return phi_delsq_[index];
+}
+
+/*****************************************************************************
+ *
+ *  phi_gradients_vector_delsq
+ *
+ *  Return \nabla^2 for vector order parameter.
+ *
+ *****************************************************************************/
+
+void phi_gradients_vector_delsq(const int index, double delsq[3]) {
+
+  int ia;
+
+  assert(phi_delsq_);
+  assert(phi_nop() == 3);
+
+  for (ia = 0; ia < 3; ia++) {
+    delsq[ia] = phi_delsq_[3*index + ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_vector_gradient
+ *
+ *  Return the gradient tensor for vector order parameter.
+ *  This is currently dq[ia][ib] = d_a q_b
+ *
+ *****************************************************************************/
+
+void phi_gradients_vector_gradient(const int index, double dq[3][3]) {
+
+  int ia, ib;
+
+  assert(phi_grad_);
+  assert(phi_nop() == 3);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      /* Address is 3*(nop*index + ib) + ia */ 
+      dq[ia][ib] = phi_grad_[3*(3*index + ib) + ia];
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
-    ic = nlocal[X];
+  return;
+}
 
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+/*****************************************************************************
+ *
+ *  phi_gradients_tensor_gradient
+ *
+ *  Return the rank 3 gradient tensor of q.
+ *
+ *****************************************************************************/
 
-	index = coords_index(ic, jc, kc);
+void phi_gradients_tensor_gradient(const int index, double dq[3][3][3]) {
 
-	for (n = 0; n < nop_; n++) {
+  int ia;
 
-	  /* Again, need to pick up only bs_cv[p][X] <= 0 */
-	  for (p = 1; p < 18; p++) {
-	    index1 = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
-				   kc + bs_cv[p][Z]);
-	    dphi = phi_site[nop_*index1 + n] - phi_site[nop_*index + n];
-	    gradt[p] = dphi;
-	  }
-	  for (p = 18; p < NGRAD_; p++) {
-	    gradt[p] = 0.0;
-	  }
- 
-	  /* Accumulate the final gradients */
+  assert(phi_grad_);
+  assert(phi_nop() == 5);
 
-	  dphi = 0.0;
-	  for (ia = 0; ia < 3; ia++) {
-	    gradn[ia] = 0.0;
-	  }
-
-	  for (p = 1; p < NGRAD_; p++) {
-	    dphi += gradt[p];
-	    for (ia = 0; ia < 3; ia++) {
-	      gradn[ia] += gradt[p]*bs_cv[p][ia];
-	    }
-	  }
-
-	  delsq_phi_site[nop_*index + n] = r9*dphi;
-	  for (ia = 0; ia < 3; ia++) {
-	    grad_phi_site[3*(nop_*index + n) + ia]  = r18*gradn[ia];
-	  }
-	}
-	/* Next site */
-      }
-    }
+  for (ia = 0; ia < 3; ia++) {
+    dq[ia][X][X] = phi_grad_[3*(5*index + XX) + ia];
+    dq[ia][X][Y] = phi_grad_[3*(5*index + XY) + ia];
+    dq[ia][X][Z] = phi_grad_[3*(5*index + XZ) + ia];
+    dq[ia][Y][X] = dq[ia][X][Y];
+    dq[ia][Y][Y] = phi_grad_[3*(5*index + YY) + ia];
+    dq[ia][Y][Z] = phi_grad_[3*(5*index + YZ) + ia];
+    dq[ia][Z][X] = dq[ia][X][Z];
+    dq[ia][Z][Y] = dq[ia][Y][Z];
+    dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_gradients_tensor_delsq
+ *
+ *  Return the delsq Q_ab tensor at site index.
+ *
+ *****************************************************************************/
+
+void phi_gradients_tensor_delsq(const int index, double dsq[3][3]) {
+
+  assert(phi_delsq_);
+  assert(phi_nop() == 5);
+
+  dsq[X][X] = phi_delsq_[5*index + XX];
+  dsq[X][Y] = phi_delsq_[5*index + XY];
+  dsq[X][Z] = phi_delsq_[5*index + XZ];
+  dsq[Y][X] = dsq[X][Y];
+  dsq[Y][Y] = phi_delsq_[5*index + YY];
+  dsq[Y][Z] = phi_delsq_[5*index + YZ];
+  dsq[Z][X] = dsq[X][Z];
+  dsq[Z][Y] = dsq[Y][Z];
+  dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
 
   return;
 }

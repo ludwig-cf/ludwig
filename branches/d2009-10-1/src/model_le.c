@@ -8,13 +8,13 @@
  *  not u*(t-1) returned by le_get_displacement().
  *  This is for reasons of backwards compatability.
  *
- *  $Id: model_le.c,v 1.5.4.4 2010-02-13 15:41:46 kevin Exp $
+ *  $Id: model_le.c,v 1.5.4.5 2010-04-02 07:56:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  * 
  *****************************************************************************/
 
@@ -116,7 +116,7 @@ static void le_reproject(void) {
   nplane = le_get_nplane_local();
 
   t = 1.0*get_step();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
     for (side = 0; side < 2; side++) {
@@ -216,7 +216,7 @@ void le_displace_and_interpolate(void) {
 
   extern double * f_;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   nplane = le_get_nplane_local();
 
@@ -393,9 +393,9 @@ static void le_displace_and_interpolate_parallel() {
 
   assert(CVXBLOCK == 1);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   nhalo = coords_nhalo();
-  get_N_offset(offset);
+  coords_nlocal_offset(offset);
   nplane = le_get_nplane_local();
 
   t = 1.0*get_step();
@@ -602,7 +602,7 @@ void model_le_init_shear_profile() {
 
   rho = get_rho0();
   eta = get_eta_shear();
-  get_N_local(N);
+  coords_nlocal(N);
 
   for (i = 0; i< NDIM; i++) {
     u[i] = 0.0;
@@ -624,7 +624,7 @@ void model_le_init_shear_profile() {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (p = 0; p < NVEL; p++) {
 	  double f = 0.0;

@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.6.4.5 2010-03-30 14:21:38 kevin Exp $
+ *  $Id: phi_force.c,v 1.6.4.6 2010-04-02 07:56:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -129,7 +129,7 @@ static void phi_force_calculation_fluid() {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   coords_nlocal(nlocal);
-  assert(nhalo_ >= 2);
+  assert(coords_nhalo() >= 2);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -218,7 +218,7 @@ static void phi_force_calculation_fluid_solid() {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   coords_nlocal(nlocal);
-  assert(nhalo_ >= 2);
+  assert(coords_nhalo() >= 2);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -350,7 +350,7 @@ static void phi_force_compute_fluxes(void) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   coords_nlocal(nlocal);
-  assert(nhalo_ >= 2);
+  assert(coords_nhalo() >= 2);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -535,6 +535,7 @@ static void phi_force_fix_fluxes(void) {
 
 static void phi_force_fix_fluxes_parallel(void) {
 
+  int      nhalo;
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
   double * buffere;        /* Interpolation buffer */
@@ -559,12 +560,13 @@ static void phi_force_fix_fluxes_parallel(void) {
 
   int get_step(void);
 
+  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
 
   /* Allocate the temporary buffer */
 
-  n = 3*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo_);
+  n = 3*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo);
   buffere = (double *) malloc(n*sizeof(double));
   bufferw = (double *) malloc(n*sizeof(double));
   if (buffere == NULL) fatal("malloc(buffere) failed\n");
@@ -603,17 +605,17 @@ static void phi_force_fix_fluxes_parallel(void) {
     assert(j2 > 0);
     assert(j2 <= nlocal[Y]);
 
-    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
-    n2 = 3*j2*(nlocal[Z] + 2*nhalo_);
+    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = 3*j2*(nlocal[Z] + 2*nhalo);
 
     /* Post receives, sends (the wait is later). */
 
     MPI_Irecv(bufferw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(bufferw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 1);
-    MPI_Issend(fluxw + 3*ADDR(ic+1,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fluxw + 3*ADDR(ic+1,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 2);
-    MPI_Issend(fluxw + 3*ADDR(ic+1,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fluxw + 3*ADDR(ic+1,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 3);
 
     /* OTHER WAY */
@@ -633,12 +635,12 @@ static void phi_force_fix_fluxes_parallel(void) {
 
     /* Local quantities: given a local starting index j2, we receive
      * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position nhalo_. */
+     * j2, and the remaining n2 sites from starting position nhalo. */
 
     j2 = 1 + (j1 - 1) % nlocal[Y];
 
-    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
-    n2 = 3*j2*(nlocal[Z] + 2*nhalo_);
+    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = 3*j2*(nlocal[Z] + 2*nhalo);
 
     /* Post new receives, sends, and wait for whole lot to finish. */
 
@@ -646,9 +648,9 @@ static void phi_force_fix_fluxes_parallel(void) {
 	      request + 4);
     MPI_Irecv(buffere+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 5);
-    MPI_Issend(fluxe + 3*ADDR(ic,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fluxe + 3*ADDR(ic,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 6);
-    MPI_Issend(fluxe + 3*ADDR(ic,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fluxe + 3*ADDR(ic,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 7);
 
     MPI_Waitall(8, request, status);
@@ -656,18 +658,18 @@ static void phi_force_fix_fluxes_parallel(void) {
     /* Now interpolate */
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo_);
-      j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo_);
+      j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo);
+      j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo);
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < 3; ia++) {
 	  fluxe[3*ADDR(ic,jc,kc) + ia]
 	    = 0.5*(fluxe[3*ADDR(ic,jc,kc) + ia]
-		   + frw*bufferw[3*(j1 + kc+nhalo_-1) + ia]
-		   + (1.0-frw)*bufferw[3*(j2 + kc+nhalo_-1) + ia]);
+		   + frw*bufferw[3*(j1 + kc+nhalo-1) + ia]
+		   + (1.0-frw)*bufferw[3*(j2 + kc+nhalo-1) + ia]);
 	  fluxw[3*ADDR(ic+1,jc,kc) + ia]
 	    = 0.5*(fluxw[3*ADDR(ic+1,jc,kc) + ia]
-		   + fre*buffere[3*(j1 + kc+nhalo_-1) + ia]
-		   + (1.0-fre)*buffere[3*(j2 + kc+nhalo_-1) + ia]);
+		   + fre*buffere[3*(j1 + kc+nhalo-1) + ia]
+		   + (1.0-fre)*buffere[3*(j2 + kc+nhalo-1) + ia]);
 	}
       }
     }
