@@ -5,7 +5,7 @@
  *  Tests for the blue phase free energy, molecular field, and
  *  the chemical stress.
  *
- *  $Id: test_blue_phase.c,v 1.1.2.1 2010-03-30 03:57:47 kevin Exp $
+ *  $Id: test_blue_phase.c,v 1.1.2.2 2010-04-05 06:18:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,6 +22,7 @@
 #include "coords.h"
 #include "phi.h"
 #include "phi_gradients.h"
+#include "gradient_3d_27pt_fluid.h"
 #include "blue_phase.h"
 #include "tests.h"
 
@@ -37,8 +38,16 @@ int main(int argc, char ** argv) {
 
   phi_nop_set(5);
   phi_init();
+  phi_gradients_init();
+  gradient_3d_27pt_fluid_init();
 
   test_o8m_struct();
+
+  phi_gradients_finish();
+  phi_finish();
+  le_finish();
+  coords_finish();
+  pe_finalise();
 
   return 0;
 }
