@@ -12,7 +12,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.10.4.6 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: phi_cahn_hilliard.c,v 1.10.4.7 2010-04-05 10:56:21 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -92,10 +92,10 @@ void phi_cahn_hilliard() {
   phi_ch_le_fix_fluxes();
   phi_ch_update_forward_step();
 
-  free(fluxe);
-  free(fluxw);
-  free(fluxy);
   free(fluxz);
+  free(fluxy);
+  free(fluxw);
+  free(fluxe);
 
   return;
 }
@@ -157,19 +157,19 @@ static void phi_ch_diffusive_flux(void) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, jc, kc);
+	index0 = le_site_index(ic, jc, kc);
 
 	mu0 = chemical_potential(index0, 0);
 
 	/* x-direction (between ic-1 and ic) */
 
-	index1 = ADDR(icm1, jc, kc);
+	index1 = le_site_index(icm1, jc, kc);
 	mu1 = chemical_potential(index1, 0);
 	fluxw[index0] -= mobility_*(mu0 - mu1);
 
 	/* ...and between ic and ic+1 */
 
-	index1 = ADDR(icp1, jc, kc);
+	index1 = le_site_index(icp1, jc, kc);
 	mu1 = chemical_potential(index1, 0);
 	fluxe[index0] -= mobility_*(mu1 - mu0);
 
@@ -181,7 +181,7 @@ static void phi_ch_diffusive_flux(void) {
 
 	/* z direction */
 
-	index1 = ADDR(ic, jc, kc+1);
+	index1 = le_site_index(ic, jc, kc+1);
 	mu1 = chemical_potential(index1, 0);
 	fluxz[index0] -= mobility_*(mu1 - mu0);
 
@@ -269,8 +269,8 @@ static void phi_ch_le_fix_fluxes(void) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nop; n++) {
 	    index = nop*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-	    bufferw[index] = fr*fluxw[nop*ADDR(ic+1,j1,kc) + n]
-	      + (1.0-fr)*fluxw[nop*ADDR(ic+1,j2,kc) + n];
+	    bufferw[index] = fr*fluxw[nop*le_site_index(ic+1,j1,kc) + n]
+	      + (1.0-fr)*fluxw[nop*le_site_index(ic+1,j2,kc) + n];
 	  }
 	}
       }
@@ -291,8 +291,8 @@ static void phi_ch_le_fix_fluxes(void) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nop; n++) {
 	    index = nop*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-	    buffere[index] = fr*fluxe[nop*ADDR(ic,j1,kc) + n]
-	      + (1.0-fr)*fluxe[nop*ADDR(ic,j2,kc) + n];
+	    buffere[index] = fr*fluxe[nop*le_site_index(ic,j1,kc) + n]
+	      + (1.0-fr)*fluxe[nop*le_site_index(ic,j2,kc) + n];
 	  }
 	}
       }
@@ -302,10 +302,10 @@ static void phi_ch_le_fix_fluxes(void) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nop; n++) {
-	    index = nop*ADDR(ic,jc,kc) + n;
+	    index = nop*le_site_index(ic,jc,kc) + n;
 	    index1 = nop*(nlocal[Z]*(jc-1) + (kc-1)) + n;
 	    fluxe[index] = 0.5*(fluxe[index] + bufferw[index1]);
-	    index = nop*ADDR(ic+1,jc,kc) + n;
+	    index = nop*le_site_index(ic+1,jc,kc) + n;
 	    fluxw[index] = 0.5*(fluxw[index] + buffere[index1]);
 	  }
 	}
@@ -415,9 +415,9 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
     MPI_Irecv(bufferw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(bufferw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 1);
-    MPI_Issend(fluxw + nop*ADDR(ic+1,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fluxw + nop*le_site_index(ic+1,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 2);
-    MPI_Issend(fluxw + nop*ADDR(ic+1,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fluxw + nop*le_site_index(ic+1,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 3);
 
 
@@ -453,9 +453,9 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 	      request + 4);
     MPI_Irecv(buffere+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 5);
-    MPI_Issend(fluxe + nop*ADDR(ic,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fluxe + nop*le_site_index(ic,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 6);
-    MPI_Issend(fluxe + nop*ADDR(ic,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fluxe + nop*le_site_index(ic,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 7);
 
     MPI_Waitall(8, request, status);
@@ -469,12 +469,12 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
       j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo);
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (n = 0; n < nop; n++) {
-	  fluxe[nop*ADDR(ic,jc,kc) + n]
-	    = 0.5*(fluxe[nop*ADDR(ic,jc,kc) + n]
+	  fluxe[nop*le_site_index(ic,jc,kc) + n]
+	    = 0.5*(fluxe[nop*le_site_index(ic,jc,kc) + n]
 		   + frw*bufferw[nop*(j1 + kc+nhalo-1) + n]
 		   + (1.0-frw)*bufferw[nop*(j2 + kc+nhalo-1) + n]);
-	  fluxw[nop*ADDR(ic+1,jc,kc) + n]
-	    = 0.5*(fluxw[nop*ADDR(ic+1,jc,kc) + n]
+	  fluxw[nop*le_site_index(ic+1,jc,kc) + n]
+	    = 0.5*(fluxw[nop*le_site_index(ic+1,jc,kc) + n]
 		   + fre*buffere[nop*(j1 + kc+nhalo-1) + n]
 		   + (1.0-fre)*buffere[nop*(j2 + kc+nhalo-1) + n]);
 	}
@@ -509,8 +509,16 @@ static void phi_ch_update_forward_step() {
 
   int nlocal[3];
   int ic, jc, kc, index;
+  int ys;
+  double wz = 1.0;
 
   coords_nlocal(nlocal);
+
+  ys = nlocal[Z] + 2*coords_nhalo();
+
+  /* In 2-d systems need to eliminate the z fluxes (no chemical
+   * potential computed in halo region for 2d_5pt_fluid) */
+  if (nlocal[Z] == 1) wz = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -520,8 +528,8 @@ static void phi_ch_update_forward_step() {
 
 	phi_site[index] -=
 	  (+ fluxe[index] - fluxw[index]
-	   + fluxy[index] - fluxy[coords_index(ic, jc-1, kc)]
-	   + fluxz[index] - fluxz[coords_index(ic, jc, kc-1)]);
+	   + fluxy[index] - fluxy[index - ys]
+	   + wz*fluxz[index] - wz*fluxz[index - 1]);
       }
     }
   }
