@@ -23,7 +23,6 @@
 
 #include "colloids.h"
 #include "collision.h"
-#include "test.h"
 #include "wall.h"
 #include "communicate.h"
 #include "leesedwards.h"
@@ -51,7 +50,7 @@
 #include "advection_rt.h"
 #include "gradient_rt.h"
 
-
+#include "stats_colloid.h"
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
 #include "stats_rheology.h"
@@ -322,9 +321,9 @@ void ludwig_report_momentum(void) {
 
   int n;
 
-  double g[3];
-  double gc[3];
-  double gwall[3];
+  double g[3];         /* Fluid momentum (total) */
+  double gc[3];        /* Colloid momentum (total) */
+  double gwall[3];     /* Wall momentum (for accounting purposes only) */
   double gtotal[3];
 
   for (n = 0; n < 3; n++) {
@@ -335,7 +334,7 @@ void ludwig_report_momentum(void) {
   }
 
   stats_distribution_momentum(g);
-  test_colloid_momentum(gc);
+  stats_colloid_momentum(gc);
   if (wall_present()) wall_net_momentum(gwall);
 
   for (n = 0; n < 3; n++) {
@@ -346,7 +345,9 @@ void ludwig_report_momentum(void) {
   info("Momentum - x y z\n");
   info("[total   ] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
   info("[fluid   ] %14.7e %14.7e %14.7e\n", g[X], g[Y], g[Z]);
-  info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
+  if (colloid_ntotal()) {
+    info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
+  }
   if (wall_present()) {
     info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
