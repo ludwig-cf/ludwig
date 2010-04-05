@@ -21,7 +21,7 @@
  *
  *  Corrections for Lees-Edwards planes and plane wall in X are included.
  *
- *  $Id: gradient_3d_7pt_fluid.c,v 1.1.2.2 2010-03-31 11:47:04 kevin Exp $
+ *  $Id: gradient_3d_7pt_fluid.c,v 1.1.2.3 2010-04-05 06:10:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -85,6 +85,10 @@ void gradient_3d_7pt_fluid_d2(const int nop, const double * field,
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
+  assert(field);
+  assert(grad);
+  assert(delsq);
+
   gradient_3d_7pt_fluid_operator(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
@@ -108,6 +112,10 @@ void gradient_3d_7pt_fluid_d4(const int nop, const double * field,
 
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
+
+  assert(field);
+  assert(grad);
+  assert(delsq);
 
   gradient_3d_7pt_fluid_operator(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
