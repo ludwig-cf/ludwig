@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.2.16.1 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: site_map.c,v 1.2.16.2 2010-04-05 03:36:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -255,14 +255,14 @@ void site_map_set_status(int ic, int jc, int kc, char status) {
 
 /*****************************************************************************
  *
- *  site_map_get_C
+ *  site_map_C
  *
  *  Wetting paramater C cf. Desplat et al. 2001.
  *  Always zero at the moment.
  *
  *****************************************************************************/
 
-double site_map_get_C(int index) {
+double site_map_C(int index) {
 
   assert(initialised_);
   return 0.0;
@@ -270,16 +270,62 @@ double site_map_get_C(int index) {
 
 /*****************************************************************************
  *
- *  site_map_get_H
+ *  site_map_H
  *
  *  Wetting parameter H cf. Desplat et al. 2001.
  *
  *****************************************************************************/
 
-double site_map_get_H(int index) {
+double site_map_H(int index) {
 
   assert(initialised_);
   return site_map[index].h;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_C_set
+ *
+ *****************************************************************************/
+
+void site_map_C_set(const int index, const double c) {
+
+  assert(initialised_);
+  /* Do nothing, as C is always zero at the moment */
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_H_set
+ *
+ *****************************************************************************/
+
+void site_map_H_set(const int index, const double h) {
+
+  assert(initialised_);
+  site_map[index].h = h;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_set
+ *
+ *  A routine to set everything in one go.
+ *
+ *****************************************************************************/
+
+void site_map_set(const int index, const char status, const double c,
+		  const double h) {
+
+  assert(initialised_);
+  assert(status >= FLUID && status <= COLLOID);
+
+  site_map[index].status = status;
+  /* C always zero. */
+  site_map[index].h = h;
+  return;
 }
 
 /*****************************************************************************

@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.12.2.2 2010-03-27 11:10:24 kevin Exp $
+ *  $Id: ccomms.c,v 1.12.2.3 2010-04-05 03:36:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -69,6 +69,8 @@ struct colloid_halo_message {
   double   random[6];
   double   s[3];
   double   dr[3];
+  double   cwetting;
+  double   hwetting;
 };
 
 struct colloid_sum_message_type1 {
@@ -515,6 +517,9 @@ void CMPI_accept_new(int nrecv) {
 	p_existing->dr[Y] = p_colloid->dr[Y];
 	p_existing->dr[Z] = p_colloid->dr[Z];
 
+	p_existing->c_wetting = p_colloid->c_wetting;
+	p_existing->h_wetting = p_colloid->h_wetting;
+
 	exists = 1;
       }
       p_existing = p_existing->next;
@@ -924,6 +929,9 @@ void CCOM_load_halo_buffer(Colloid * p_colloid, int n, FVector rperiod) {
   _halo_send[n].dr[Y] = p_colloid->dr[Y];
   _halo_send[n].dr[Z] = p_colloid->dr[Z];
 
+  _halo_send[n].cwetting = p_colloid->c_wetting;
+  _halo_send[n].hwetting = p_colloid->h_wetting;
+
   return;
 }
 
@@ -977,6 +985,9 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->dr[X] = _halo_recv[nrecv].dr[X];
   p_colloid->dr[Y] = _halo_recv[nrecv].dr[Y];
   p_colloid->dr[Z] = _halo_recv[nrecv].dr[Z];
+
+  p_colloid->c_wetting = _halo_recv[nrecv].cwetting;
+  p_colloid->h_wetting = _halo_recv[nrecv].hwetting;
 
   /* Additionally, must set all accumulated quantities to zero. */
   p_colloid->rebuild = 1;

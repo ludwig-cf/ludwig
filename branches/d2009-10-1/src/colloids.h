@@ -1,21 +1,21 @@
-
 /*****************************************************************************
  *
  *  colloids.h
  *
  *  Data structures and global list pointers for colloids.
  *
- *  See Ludwig Technical Notes for a complete description
- *  of the colloid implementation.
+ *  $Id: colloids.h,v 1.9.2.5 2010-04-05 03:36:26 kevin Exp $
  *
- *  $Id: colloids.h,v 1.9.2.4 2010-04-02 07:52:29 kevin Exp $
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _COLLOIDS_H
-#define _COLLOIDS_H
+#ifndef COLLOIDS_H
+#define COLLOIDS_H
 
 /* Colloid structure
  * contains state information for individual colloid.
@@ -53,6 +53,11 @@ struct colloid {
   /* Magnetic dipole */
 
   double   s[3];   
+
+  /* Wetting free energy parameters E.g., for binary fluid. */
+
+  double   c_wetting;
+  double   h_wetting;
 
   /* Active particle stuff */
 
@@ -112,4 +117,4 @@ Colloid * colloid_add_local(const int index, const double r[3]);
 int       colloid_ntotal(void);
 int       colloid_nlocal(void);
 
-#endif /* _COLLOIDS_H */
+#endif

@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.9 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: build.c,v 1.5.4.10 2010-04-05 03:36:26 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -113,8 +113,11 @@ void COLL_update_map() {
     for (jc = 1 - nhalo; jc <= N[Y] + nhalo; jc++) {
       for (kc = 1 - nhalo; kc <= N[Z] + nhalo; kc++) {
 	/* This avoids setting BOUNDARY to FLUID */
-	if (site_map_get_status(ic, jc, kc) == COLLOID) {
-	  site_map_set_status(ic, jc, kc, FLUID);
+	index = coords_index(ic, jc, kc);
+
+	if (site_map_get_status_index(index) == COLLOID) {
+	  /* No wetting properties required */
+	  site_map_set(index, FLUID, 0.0, 0.0);
 	}
       }
     }
@@ -184,7 +187,8 @@ void COLL_update_map() {
 		  index = coords_index(i, j, k);
 
 		  coll_map[index] = p_colloid;
-		  site_map_set_status(i, j, k, COLLOID);
+		  site_map_set(index, COLLOID, p_colloid->c_wetting,
+			       p_colloid->h_wetting);
 		}
 		/* Next site */
 	      }

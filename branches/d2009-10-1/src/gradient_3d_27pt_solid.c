@@ -21,7 +21,7 @@
  *  If one only needs a set contact angle, can have C = 0. C only comes
  *  into play when consdiering wetting phase transitions.
  *
- *  $Id: gradient_3d_27pt_solid.c,v 1.1.2.2 2010-03-31 11:52:57 kevin Exp $
+ *  $Id: gradient_3d_27pt_solid.c,v 1.1.2.3 2010-04-05 03:36:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -181,8 +181,8 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 	      ia = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
 				 kc + bs_cv[p][Z]);
 
-	      c = site_map_get_C(ia);
-	      h = site_map_get_H(ia);
+	      c = site_map_C(ia);
+	      h = site_map_H(ia);
 
 	      /* kludge: if nop is 2, set h[1] = 0 */
 	      /* This is for Langmuir Hinshelwood */
