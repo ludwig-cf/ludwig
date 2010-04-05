@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.14.4.2 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: lattice.c,v 1.14.4.3 2010-04-05 10:54:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -535,8 +535,8 @@ void hydrodynamics_leesedwards_transformation() {
 	j2 = 1 + j1 % nlocal[Y];
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	  for (ia = 0; ia < 3; ia++) {
-	  u[ADDR(ib0+ib,jc,kc)].c[ia] = ule[ia] +
-	    fr*u[ADDR(ic,j1,kc)].c[ia] + (1.0-fr)*u[ADDR(ic,j2,kc)].c[ia];
+	  u[le_site_index(ib0+ib,jc,kc)].c[ia] = ule[ia] +
+	    fr*u[le_site_index(ic,j1,kc)].c[ia] + (1.0-fr)*u[le_site_index(ic,j2,kc)].c[ia];
 	  }
 	}
       }
@@ -635,9 +635,9 @@ static void hydrodynamics_leesedwards_parallel() {
 	      le_comm, request);
     MPI_Irecv(buffer[n1].c, n2, mpi_vector_t, nrank_r[1], tag1,
 	      le_comm, request+1);
-    MPI_Issend(u[ADDR(ic,j2,kc)].c, n1, mpi_vector_t, nrank_s[0], tag0,
+    MPI_Issend(u[le_site_index(ic,j2,kc)].c, n1, mpi_vector_t, nrank_s[0], tag0,
 	       le_comm, request+2);
-    MPI_Issend(u[ADDR(ic,nhalo,kc)].c, n2, mpi_vector_t, nrank_s[1], tag1,
+    MPI_Issend(u[le_site_index(ic,nhalo,kc)].c, n2, mpi_vector_t, nrank_s[1], tag1,
 	       le_comm, request+3);
 
     MPI_Waitall(4, request, status);
@@ -650,7 +650,7 @@ static void hydrodynamics_leesedwards_parallel() {
       j2 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	for (ia = 0; ia < 3; ia++) {
-	  u[ADDR(ib0+ib,jc,kc)].c[ia] = fr*buffer[j1+kc+nhalo-1].c[ia]
+	  u[le_site_index(ib0+ib,jc,kc)].c[ia] = fr*buffer[j1+kc+nhalo-1].c[ia]
 	    + (1.0-fr)*buffer[j2+kc+nhalo-1].c[ia] + ule[ia];
 	}
       }

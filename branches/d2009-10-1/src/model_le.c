@@ -8,7 +8,7 @@
  *  not u*(t-1) returned by le_get_displacement().
  *  This is for reasons of backwards compatability.
  *
- *  $Id: model_le.c,v 1.5.4.5 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: model_le.c,v 1.5.4.6 2010-04-05 10:54:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -141,7 +141,7 @@ static void le_reproject(void) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  
-	  index = ADDR(ic, jc, kc);
+	  index = le_site_index(ic, jc, kc);
 
 	  for (n = 0; n < ndist; n++) {
 
@@ -250,8 +250,8 @@ void le_displace_and_interpolate(void) {
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, j1, kc);
-	index1 = ADDR(ic, j2, kc);
+	index0 = le_site_index(ic, j1, kc);
+	index1 = le_site_index(ic, j2, kc);
 		  
 	/* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
 
@@ -272,7 +272,7 @@ void le_displace_and_interpolate(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, jc, kc);
+	index0 = le_site_index(ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
@@ -302,8 +302,8 @@ void le_displace_and_interpolate(void) {
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, j1, kc);
-	index1 = ADDR(ic, j2, kc);
+	index0 = le_site_index(ic, j1, kc);
+	index1 = le_site_index(ic, j2, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
@@ -322,7 +322,7 @@ void le_displace_and_interpolate(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, jc, kc);
+	index0 = le_site_index(ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
@@ -446,7 +446,7 @@ static void le_displace_and_interpolate_parallel() {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	/* cv[p][X] = +1 identified by disp_fwd[] */
-	index = ADDR(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index + n*NVEL + xdisp_fwd_cv[0];
@@ -472,7 +472,7 @@ static void le_displace_and_interpolate_parallel() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = ADDR(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 	ind0 = ndist*nprop*((jc-1)*nlocal[Z] + (kc-1));
 
 	for (n = 0; n < ndist; n++) {
@@ -528,7 +528,7 @@ static void le_displace_and_interpolate_parallel() {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	/* cv[p][X] = -1 identified by disp_bwd[] */
-	index = ADDR(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index + n*NVEL + xdisp_bwd_cv[0];
@@ -554,7 +554,7 @@ static void le_displace_and_interpolate_parallel() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = ADDR(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 	ind0 = ndist*nprop*((jc-1)*nlocal[Z] + (kc-1));
 
 	for (n = 0; n < ndist; n++) {

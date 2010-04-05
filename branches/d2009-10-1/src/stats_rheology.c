@@ -9,7 +9,7 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.6.4.4 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.6.4.5 2010-04-05 10:54:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -310,7 +310,7 @@ void stats_rheology_stress_profile_accumulate(void) {
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = ADDR(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 	distribution_get_stress_at_site(index, s);
 
 	sxy_[NSTAT1*(ic-1)    ] += s[X][Y];

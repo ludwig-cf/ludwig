@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11.4.9 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.10 2010-04-05 10:54:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -221,10 +221,10 @@ void phi_halo() {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
         for (kc = 1 ; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nop_; n++) {
-	    phi_site[nop_*ADDR(0-nh, jc,kc) + n]
-	      = phi_site[nop_*ADDR(nlocal[X]-nh, jc, kc) + n];
-	    phi_site[nop_*ADDR(nlocal[X]+1+nh, jc,kc) + n]
-	      = phi_site[nop_*ADDR(1+nh, jc, kc) + n];
+	    phi_site[nop_*le_site_index(0-nh, jc,kc) + n]
+	      = phi_site[nop_*le_site_index(nlocal[X]-nh, jc, kc) + n];
+	    phi_site[nop_*le_site_index(nlocal[X]+1+nh, jc,kc) + n]
+	      = phi_site[nop_*le_site_index(1+nh, jc, kc) + n];
 	  }
         }
       }
@@ -235,13 +235,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, X);
     forw = cart_neighb(FORWARD, X);
 
-    ihalo = nop_*ADDR(nlocal[X] + 1, 1-nhalo, 1-nhalo);
+    ihalo = nop_*le_site_index(nlocal[X] + 1, 1-nhalo, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, forw, btag, comm, request);
-    ihalo = nop_*ADDR(1-nhalo, 1-nhalo, 1-nhalo);
+    ihalo = nop_*le_site_index(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_yz_t_, back, ftag, comm, request+1);
-    ireal = nop_*ADDR(1, 1-nhalo, 1-nhalo);
+    ireal = nop_*le_site_index(1, 1-nhalo, 1-nhalo);
     MPI_Issend(phi_site + ireal, 1, phi_yz_t_, back, btag, comm, request+2);
-    ireal = nop_*ADDR(nlocal[X] - nhalo + 1, 1-nhalo, 1-nhalo);
+    ireal = nop_*le_site_index(nlocal[X] - nhalo + 1, 1-nhalo, 1-nhalo);
     MPI_Issend(phi_site + ireal, 1, phi_yz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -253,10 +253,10 @@ void phi_halo() {
       for (ic = 1-nhalo; ic <= nlocal[X] + nhalo; ic++) {
         for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nop_; n++) {
-	    phi_site[nop_*ADDR(ic,0-nh, kc) + n]
-	      = phi_site[nop_*ADDR(ic, nlocal[Y]-nh, kc) + n];
-	    phi_site[nop_*ADDR(ic,nlocal[Y]+1+nh, kc) + n]
-	      = phi_site[nop_*ADDR(ic, 1+nh, kc) + n];
+	    phi_site[nop_*le_site_index(ic,0-nh, kc) + n]
+	      = phi_site[nop_*le_site_index(ic, nlocal[Y]-nh, kc) + n];
+	    phi_site[nop_*le_site_index(ic,nlocal[Y]+1+nh, kc) + n]
+	      = phi_site[nop_*le_site_index(ic, 1+nh, kc) + n];
 	  }
         }
       }
@@ -267,13 +267,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Y);
     forw = cart_neighb(FORWARD, Y);
 
-    ihalo = nop_*ADDR(1-nhalo, nlocal[Y] + 1, 1-nhalo);
+    ihalo = nop_*le_site_index(1-nhalo, nlocal[Y] + 1, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, forw, btag, comm, request);
-    ihalo = nop_*ADDR(1-nhalo, 1-nhalo, 1-nhalo);
+    ihalo = nop_*le_site_index(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_xz_t_, back, ftag, comm, request+1);
-    ireal = nop_*ADDR(1-nhalo, 1, 1-nhalo);
+    ireal = nop_*le_site_index(1-nhalo, 1, 1-nhalo);
     MPI_Issend(phi_site + ireal, 1, phi_xz_t_, back, btag, comm, request+2);
-    ireal = nop_*ADDR(1-nhalo, nlocal[Y] - nhalo + 1, 1-nhalo);
+    ireal = nop_*le_site_index(1-nhalo, nlocal[Y] - nhalo + 1, 1-nhalo);
     MPI_Issend(phi_site + ireal, 1, phi_xz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -285,10 +285,10 @@ void phi_halo() {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
         for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 	  for (n = 0; n < nop_; n++) {
-	    phi_site[nop_*ADDR(ic,jc, 0-nh) + n]
-	      = phi_site[nop_*ADDR(ic, jc, nlocal[Z]-nh) + n];
-	    phi_site[nop_*ADDR(ic,jc, nlocal[Z]+1+nh) + n]
-	      = phi_site[nop_*ADDR(ic, jc, 1+nh) + n];
+	    phi_site[nop_*le_site_index(ic,jc, 0-nh) + n]
+	      = phi_site[nop_*le_site_index(ic, jc, nlocal[Z]-nh) + n];
+	    phi_site[nop_*le_site_index(ic,jc, nlocal[Z]+1+nh) + n]
+	      = phi_site[nop_*le_site_index(ic, jc, 1+nh) + n];
 	  }
         }
       }
@@ -299,13 +299,13 @@ void phi_halo() {
     back = cart_neighb(BACKWARD, Z);
     forw = cart_neighb(FORWARD, Z);
 
-    ihalo = nop_*ADDR(1-nhalo, 1-nhalo, nlocal[Z] + 1);
+    ihalo = nop_*le_site_index(1-nhalo, 1-nhalo, nlocal[Z] + 1);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, forw, btag, comm, request);
-    ihalo = nop_*ADDR(1-nhalo, 1-nhalo, 1-nhalo);
+    ihalo = nop_*le_site_index(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(phi_site + ihalo,  1, phi_xy_t_, back, ftag, comm, request+1);
-    ireal = nop_*ADDR(1-nhalo, 1-nhalo, 1);
+    ireal = nop_*le_site_index(1-nhalo, 1-nhalo, 1);
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, back, btag, comm, request+2);
-    ireal = nop_*ADDR(1-nhalo, 1-nhalo, nlocal[Z] - nhalo + 1);
+    ireal = nop_*le_site_index(1-nhalo, 1-nhalo, nlocal[Z] - nhalo + 1);
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -478,9 +478,9 @@ void phi_leesedwards_transformation() {
 	j2 = 1 + j1 % nlocal[Y];
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	  for (n = 0; n < nop_; n++) {
-	    phi_site[nop_*ADDR(ib0+ib,jc,kc) + n] =
-	      fr*phi_site[nop_*ADDR(ic,j1,kc) + n]
-	      + (1.0-fr)*phi_site[nop_*ADDR(ic,j2,kc) + n];
+	    phi_site[nop_*le_site_index(ib0+ib,jc,kc) + n] =
+	      fr*phi_site[nop_*le_site_index(ic,j1,kc) + n]
+	      + (1.0-fr)*phi_site[nop_*le_site_index(ic,j2,kc) + n];
 	  }
 	}
       }
@@ -595,9 +595,9 @@ static void phi_leesedwards_parallel() {
 
     MPI_Irecv(buffer,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(buffer+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, request+1);
-    MPI_Issend(phi_site + nop_*ADDR(ic,j2-nhalo,kc), n1, MPI_DOUBLE,
+    MPI_Issend(phi_site + nop_*le_site_index(ic,j2-nhalo,kc), n1, MPI_DOUBLE,
 	       nrank_s[0], tag0, le_comm, request+2);
-    MPI_Issend(phi_site + nop_*ADDR(ic,1,kc), n2, MPI_DOUBLE,
+    MPI_Issend(phi_site + nop_*le_site_index(ic,1,kc), n2, MPI_DOUBLE,
 	       nrank_s[1], tag1, le_comm, request+3);
 
     MPI_Waitall(4, request, status);
@@ -610,7 +610,7 @@ static void phi_leesedwards_parallel() {
       j2 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	for (n = 0; n < nop_; n++) {
-	  phi_site[nop_*ADDR(ib0+ib,jc,kc) + n]
+	  phi_site[nop_*le_site_index(ib0+ib,jc,kc) + n]
 	    = fr*buffer[nop_*(j1 + kc+nhalo-1) + n]
 	    + (1.0-fr)*buffer[nop_*(j2 + kc+nhalo-1) + n];
 	}
