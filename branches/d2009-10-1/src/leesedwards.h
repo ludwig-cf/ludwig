@@ -2,7 +2,7 @@
  *
  *  leesedwards.h
  *
- *  $Id: leesedwards.h,v 1.5.4.1 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: leesedwards.h,v 1.5.4.2 2010-04-05 10:55:07 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -39,19 +39,5 @@ void      le_jstart_to_ranks(const int, int send[2], int recv[2]);
 void      le_set_oscillatory(const double);
 void      le_set_nplane_total(const int nplane);
 void      le_set_plane_uymax(const double uy);
-
-/* Address macro. For performance purposes, -DNDEBUG replaces
- * calls to ADDR, ie., le_site_index() with a macro, which requires that
- * the local system size be available as "nlocal". nhalo_ is
- * const, and available from coords.h, as are {X,Y,Z}  */
-
-#ifdef NDEBUG
-#define ADDR(ic,jc,kc) \
-((nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_)*(nhalo_+(ic)-1) + \
-                      (nlocal[Z]+2*nhalo_)*(nhalo_+(jc)-1) + \
-                                           (nhalo_+(kc)-1))
-#else
-#define ADDR le_site_index
-#endif
 
 #endif
