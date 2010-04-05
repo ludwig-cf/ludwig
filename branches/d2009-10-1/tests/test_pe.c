@@ -4,6 +4,13 @@
  *
  *  Test the parallel environment.
  *
+ *  $Id: test_pe.c,v 1.1.1.1.8.1 2010-04-05 06:16:43 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -21,10 +28,8 @@ int main(int argc, char ** argv) {
   test_assert(1);
   info("ok\n");
 
-#ifdef _MPI_
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &my_size);
-#endif
 
   info("Checking pe_rank() is correct...");
   test_assert(pe_rank() == my_rank);
@@ -34,9 +39,8 @@ int main(int argc, char ** argv) {
   test_assert(pe_size() == my_size);
   info("yes\n");
 
-  test_barrier();
   verbose("Checking verbose()\n");
-  test_barrier();
+
   info("Verbose working ok...");
   test_assert(1);
   info("yes\n");

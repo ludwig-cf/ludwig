@@ -2,7 +2,15 @@
  *
  *  test_timer
  *
+ *  Test the timing routines.
+ *
+ *  $Id: test_timer.c,v 1.3.4.1 2010-04-05 06:16:05 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -11,7 +19,7 @@
 
 #include "pe.h"
 #include "timer.h"
-#include "test.h"
+#include "tests.h"
 
 int main(int argc, char ** argv) {
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  t_random.c
+ *  test_random.c
  *
  *  Random number generator tests. Note that:
  *
@@ -10,6 +10,14 @@
  *  For a sample of 10 million, a tolerance of 0.001 will pass
  *  the statistical tests. Larger samples might have stricter
  *  tolerance.
+ *
+ *  $Id: test_random.c,v 1.3.8.1 2010-04-05 06:16:05 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -50,12 +58,6 @@ int main(int argc, char ** argv) {
   test_assert(fabs(r - 1.6206822) < TEST_FLOAT_TOLERANCE);
   info("(ok)\n");
   */
-  /* Parallel generators */
-
-#ifdef _MPI
-  r = ran_parallel_uniform();
-  verbose("PARALLEL %d ... %f\n", pe_rank(), r);
-#endif
 
   /* Check serial uniform statistics */
 
