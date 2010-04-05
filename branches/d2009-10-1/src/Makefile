@@ -5,6 +5,7 @@
 # Preprocessor flags.
 #
 #  One of:
+#
 # -D_D2Q9_               Use D2Q9  or
 # -D_D3Q15_              Use D3Q15 or
 # -D_D3Q19_              Use D3Q19
@@ -16,6 +17,7 @@
 # Please use the following for any production run
 #
 # -DNDEBUG               Switch off standard C assert()
+#                        The assertions can make the code much slower.
 #
 # make serial            for serial code
 # make mpi               for parallel code
@@ -143,4 +145,4 @@ libmpi:
 
 .PHONY : clean
 clean:
-	-rm -f $(OBJS) $(EXE) $(LIBRARY) main.o
+	-rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) main.o
