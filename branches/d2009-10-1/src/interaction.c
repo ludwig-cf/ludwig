@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.2 2010-03-30 14:23:21 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.3 2010-04-05 03:29:55 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -329,37 +329,6 @@ void COLL_init_colloids_test() {
 
 #endif
 
-#ifdef _COLLOIDS_TEST_OF_OPPORTUNITY_
-
-  Colloid * tmp;
-
-  FVector r0, v0, omega0;
-  double    a0 = 0.1171875;
-  double    ah = 1.546;
-
-  set_N_colloid(1);
-
-  r0.x = Lmin(X) + L(X) - 8.0;
-  r0.y = Lmin(Y) + 8.0;
-  r0.z = 0.5*L(Z);
-
-  v0.x = 0.0;
-  v0.y = 0.0;
-  v0.z = 0.0;
-
-  omega0.x = 0.0;
-  omega0.y = 0.0;
-  omega0.z = 0.0;
-
-  tmp = COLL_add_colloid_no_halo(1, a0, ah, r0, v0, omega0);
-  if (tmp == NULL) verbose("*** not added\n");
-  info("Starting test of opportunity\n");
-#endif
-
-#ifdef _EWALD_TEST_
-  /* ewald_test();*/
-#endif
-
   return;
 }
 
@@ -391,11 +360,6 @@ void COLL_test_output() {
 	  /*verbose("Autocorrelation omega: %10.9f %10.9f %10.9f\n",
 		  p_colloid->omega.z/p_colloid->stats.x, p_colloid->dir.x,
 		  p_colloid->dir.y);*/
-#endif
-#ifdef _COLLOIDS_TEST_OF_OPPORTUNITY_
-	  verbose("Position: %g %g %g %g %g %g\n",
-	       p_colloid->r.x, p_colloid->r.y, p_colloid->r.z,
-	       p_colloid->stats.x, p_colloid->stats.y, p_colloid->stats.z);
 #endif
 #ifdef _COLLOIDS_TEST_CALIBRATE_
 	  verbose("Calibrate: %g %g %g %g %g %g\n",
@@ -518,6 +482,9 @@ Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u
   for (n = 0; n < 21; n++) {
     tmp->zeta[n] = 0.0;
   }
+
+  tmp->c_wetting = 0.0;
+  tmp->h_wetting = 0.0;
 
   tmp->lnk = NULL;
   tmp->rebuild = 1;
@@ -728,16 +695,10 @@ double COLL_interactions() {
 		    if (h < 0.0) COLL_overlap(p_c1, p_c2);
 
 		    /* soft sphere */
-#ifdef _EWALD_TEST_
-		    /* Old soft sphere (temporary test) */
-		    fmod = 0.0;
-		    if (h < 0.25) {
-		      fmod = 0.0002*(h + p_c1->ah + p_c2->ah)*(pow(h,-2) - 16.0);
-		    }
-#else
+
 		    fmod = soft_sphere_force(h);
 		    fmod += yukawa_force(h + p_c1->ah + p_c2->ah);
-#endif
+
 		    f.x = -fmod*r_12.x;
 		    f.y = -fmod*r_12.y;
 		    f.z = -fmod*r_12.z;
