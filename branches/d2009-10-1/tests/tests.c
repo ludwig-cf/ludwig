@@ -2,65 +2,44 @@
  *
  *  tests.c
  *
+ *  $Id: tests.c,v 1.3.4.1 2010-04-05 06:15:16 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#ifdef _MPI_
 #include <mpi.h>
-#endif
 
 #include "tests.h"
-
 
 /*****************************************************************************
  *
  *  test_assert
  *
- *  This is a generalisation of assert() from <assert.h> which
- *  controls what is happening in parallel.
+ *  Asimple assertion to control what happens in parallel.
  *
  *****************************************************************************/
 
 void test_assert(const int lvalue) {
+
+  int rank;
 
   if (lvalue) {
     /* ok */
   }
   else {
     /* Who has failed? */
-#ifdef _MPI_
-    int rank;
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    printf("[%d] Failed test assertion\n", rank);
+    printf("[%d] ***************** Failed test assertion\n", rank);
     MPI_Abort(MPI_COMM_WORLD, 0);
-#else
-    printf("\n** HALT!\n");
-    printf("Failed test assertion\n");
-    exit(0);
-#endif
   }
 
   return;
 }
-
-/*****************************************************************************
- *
- *  test_barrier
- *
- *****************************************************************************/
-
-void test_barrier() {
-
-#ifdef _MPI_
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-  return;
-}
-
