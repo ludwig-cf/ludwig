@@ -157,6 +157,7 @@ int MPI_Allreduce(void * send, void * recv, int count, MPI_Datatype type,
 
 int MPI_Comm_split(MPI_Comm comm, int colour, int key, MPI_Comm * newcomm);
 int MPI_Comm_free(MPI_Comm * comm);
+int MPI_Comm_dup(MPI_Comm oldcomm, MPI_Comm * newcomm);
 
 /* TODO */
 /* Bindings for process topologies */

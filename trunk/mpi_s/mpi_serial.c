@@ -386,6 +386,24 @@ int MPI_Comm_free(MPI_Comm * comm) {
 
 /*****************************************************************************
  *
+ *  MPI_Comm_dup
+ *
+ *  Just return the old one.
+ *
+ *****************************************************************************/
+
+int MPI_Comm_dup(MPI_Comm oldcomm, MPI_Comm * newcomm) {
+
+  assert(mpi_initialised_flag_);
+  assert(oldcomm != MPI_COMM_NULL);
+
+  *newcomm = oldcomm;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Type_contiguous
  *
  *****************************************************************************/
