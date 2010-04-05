@@ -4,7 +4,7 @@
  *
  *  Tests for order parameter stuff.
  *
- *  $Id: test_phi.c,v 1.3.2.1 2009-12-15 17:18:32 kevin Exp $
+ *  $Id: test_phi.c,v 1.3.2.2 2010-04-05 06:23:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -42,13 +42,6 @@ int main (int argc, char ** argv) {
   coords_init();
 
   info("\nOrder parameter tests...\n");
-
-  /* enum */
-  test_assert(QXX == 0);
-  test_assert(QXY == 1);
-  test_assert(QXZ == 2);
-  test_assert(QYY == 3);
-  test_assert(QYZ == 4);
 
   /* Single order parameter */
 
@@ -137,7 +130,7 @@ void test_phi_interface_single() {
 
   int index = 0;
   double phi_in; /* Non-zero value */
-  double phi, dphi_in[3], dphi[3];
+  double phi;
 
   info("Checking phi functions...");
 
@@ -146,20 +139,6 @@ void test_phi_interface_single() {
   phi = phi_get_phi_site(index);
   test_assert(fabs(phi - phi_in) < TEST_DOUBLE_TOLERANCE);
 
-  phi_in = 2.0;
-  phi_set_delsq_phi_site(index, phi_in);
-  phi = phi_get_delsq_phi_site(index);
-  test_assert(fabs(phi - phi_in) < TEST_DOUBLE_TOLERANCE);
-
-  dphi_in[X] = 3.0;
-  dphi_in[Y] = 4.0;
-  dphi_in[Z] = 5.0;
-
-  phi_set_grad_phi_site(index, dphi_in);
-  phi_get_grad_phi_site(index, dphi);
-  test_assert(fabs(dphi[X] - dphi_in[X]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(dphi[Y] - dphi_in[Y]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(dphi[Z] - dphi_in[Z]) < TEST_DOUBLE_TOLERANCE);
   info("ok\n");
 
   return;
@@ -181,7 +160,7 @@ void test_phi_halo(double (* test_function)(int, int, int, int)) {
   int n, nop, nhalo;
   double phi, phi_original;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   nop = phi_nop();
 
@@ -191,7 +170,7 @@ void test_phi_halo(double (* test_function)(int, int, int, int)) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  phi = test_function(ic, jc, kc, n);
@@ -210,7 +189,7 @@ void test_phi_halo(double (* test_function)(int, int, int, int)) {
     for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  phi_original = test_function(ic, jc, kc, n);
@@ -237,7 +216,7 @@ double test_function1(int ic, int jc, int kc, int n) {
   double phi, pi, x;
   int noffset[3];
 
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
   pi = 4.0*atan(1.0);
 
   /* Work out the global x coordinate */
@@ -261,7 +240,7 @@ double test_function2(int ic, int jc, int kc, int n) {
   double phi, pi, y;
   int noffset[3];
 
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
   pi = 4.0*atan(1.0);
 
   /* Work out the global x coordinate */
@@ -285,7 +264,7 @@ double test_function3(int ic, int jc, int kc, int n) {
   double phi, pi, z;
   int noffset[3];
 
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
   pi = 4.0*atan(1.0);
 
   /* Work out the global x coordinate */
@@ -314,7 +293,7 @@ void test_phi_2d_halo(void) {
 
   double phi;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   nextra = coords_nhalo();
   nop = phi_nop();
 
@@ -326,7 +305,7 @@ void test_phi_2d_halo(void) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  phi_op_set_phi_site(index, n, 0.0);
@@ -343,7 +322,7 @@ void test_phi_2d_halo(void) {
 
       kc = 1;
 
-      index = get_site_index(ic, jc, kc);
+      index = coords_index(ic, jc, kc);
 
       for (n = 0; n < nop; n++) {
 	phi = 0.1*n;
@@ -361,7 +340,7 @@ void test_phi_2d_halo(void) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  phi = phi_op_get_phi_site(index, n);

@@ -4,7 +4,7 @@
  *
  *  'Unit tests' for coords.c
  *
- *  $Id: test_coords.c,v 1.2.8.1 2009-11-20 18:40:08 kevin Exp $
+ *  $Id: test_coords.c,v 1.2.8.2 2010-04-05 06:23:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -110,6 +110,12 @@ void test_coords_constants(void) {
   test_assert(X == 0);
   test_assert(Y == 1);
   test_assert(Z == 2);
+
+  test_assert(XX == 0);
+  test_assert(XY == 1);
+  test_assert(XZ == 2);
+  test_assert(YY == 3);
+  test_assert(YZ == 4);
   info("ok\n");
 
   info("Checking FORWARD BACKWARD enum... ");
@@ -212,8 +218,8 @@ void test_coords_communicator(void) {
   ntotal[Y] = N_total(Y);
   ntotal[Z] = N_total(Z);
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   info("Checking Cartesian communicator initialised...");
   communicator = cart_comm();

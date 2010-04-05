@@ -5,13 +5,13 @@
  *  This is a more rigourous test of the halo swap code for the
  *  distributions than appears in test model.
  *
- *  $Id: test_halo.c,v 1.8.2.2 2010-01-15 17:10:40 kevin Exp $
+ *  $Id: test_halo.c,v 1.8.2.3 2010-04-05 06:23:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2007)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -27,7 +27,6 @@
 
 static void test_halo_null(void);
 static void test_halo(const int dim, const int reduced);
-static int on_edge(int x, int y, int z, int mx, int my, int mz);
 
 int main(int argc, char ** argv) {
 
@@ -67,7 +66,7 @@ int main(int argc, char ** argv) {
 
   info("ok\n");
 
-  info("The halo width nhalo_ = %d\n", nhalo_);
+  info("The halo width nhalo = %d\n", coords_nhalo());
   info("Test for null leakage...\n");
 
   distribution_halo_set_complete();
@@ -141,13 +140,13 @@ void test_halo_null() {
   int index, nd, p;
   int ndist;
   double f_actual;
-  int nextra = nhalo_ - 1;
+  int nextra = coords_nhalo() - 1;
 
   int rank;
   MPI_Comm comm = MPI_COMM_WORLD;
   MPI_Comm_rank(comm, &rank);
 
-  get_N_local(n_local);
+  coords_nlocal(n_local);
   ndist = distribution_ndist();
 
   /* Set entire distribution (all sites including halos) to 1.0 */
@@ -156,7 +155,7 @@ void test_halo_null() {
     for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
       for (n[Z] = 1 - nextra; n[Z] <= n_local[Z] + nextra; n[Z]++) {
 
-	index = get_site_index(n[X], n[Y], n[Z]);
+	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -174,7 +173,7 @@ void test_halo_null() {
     for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
       for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
 
-	index = get_site_index(n[X], n[Y], n[Z]);
+	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -196,7 +195,7 @@ void test_halo_null() {
     for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
       for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
 
-	index = get_site_index(n[X], n[Y], n[Z]);
+	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -227,19 +226,23 @@ void test_halo_null() {
 
 void test_halo(int dim, int reduced) {
 
+  int nhalo;
   int n_local[3], n[3];
   int offset[3];
   int ic, jc, kc;
   int nd, ndist;
-  int nextra = nhalo_;
+  int nextra;
   int index, p, d;
 
   double f_expect, f_actual;
 
   test_assert(dim == X || dim == Y || dim == Z);
 
-  get_N_local(n_local);
-  get_N_offset(offset);
+  nhalo = coords_nhalo();
+  nextra = nhalo;
+
+  coords_nlocal(n_local);
+  coords_nlocal_offset(offset);
   ndist = distribution_ndist();
 
   /* Zero entire distribution (all sites including halos) */
@@ -248,7 +251,7 @@ void test_halo(int dim, int reduced) {
     for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
       for (n[Z] = 1 - nextra; n[Z] <= n_local[Z] + nextra; n[Z]++) {
 
-	index = get_site_index(n[X], n[Y], n[Z]);
+	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -267,11 +270,11 @@ void test_halo(int dim, int reduced) {
     for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
       for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
 
-	index = get_site_index(n[X], n[Y], n[Z]);
+	index = coords_index(n[X], n[Y], n[Z]);
 
-	if (n[X] <= nhalo_ || n[X] > n_local[X] - nhalo_ ||
-	    n[Y] <= nhalo_ || n[Y] > n_local[Y] - nhalo_ ||
-	    n[Z] <= nhalo_ || n[Z] > n_local[Z] - nhalo_) {
+	if (n[X] <= nhalo || n[X] > n_local[X] - nhalo ||
+	    n[Y] <= nhalo || n[Y] > n_local[Y] - nhalo ||
+	    n[Z] <= nhalo || n[Z] > n_local[Z] - nhalo) {
 
 	  for (nd = 0; nd < ndist; nd++) {
 	    for (p = 0; p < NVEL; p++) {
@@ -291,13 +294,13 @@ void test_halo(int dim, int reduced) {
    * interior sites are unchanged */
 
   /* Note the distribution halo swaps are always width 1, irrespective
-   * of nhalo_ */
+   * of nhalo */
 
   for (n[X] = 0; n[X] <= n_local[X] + 1; n[X]++) {
     for (n[Y] = 0; n[Y] <= n_local[Y] + 1; n[Y]++) {
       for (n[Z] = 0; n[Z] <= n_local[Z] + 1; n[Z]++) {
 
-	index = get_site_index(n[X], n[Y], n[Z]);
+	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (d = 0; d < 3; d++) {
@@ -353,7 +356,7 @@ void test_halo(int dim, int reduced) {
       for (kc = 0; kc <= n_local[Z] + 1; kc++) {
 
 	/* left hand edge */
-	index = get_site_index(0, jc, kc);
+	index = coords_index(0, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -369,7 +372,7 @@ void test_halo(int dim, int reduced) {
 
 	  /* right hand edge */
 	  ic = n_local[X] + 1;
-	  index = get_site_index(ic, jc, kc);
+	  index = coords_index(ic, jc, kc);
 
 	  for (p = 0; p < NVEL; p++) {
 	    f_actual = distribution_f(index, p, nd);
@@ -396,7 +399,7 @@ void test_halo(int dim, int reduced) {
       for (kc = 0; kc <= n_local[Z] + 1; kc++) {
 
 	/* left hand edge */
-	index = get_site_index(ic, 0, kc);
+	index = coords_index(ic, 0, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -411,7 +414,7 @@ void test_halo(int dim, int reduced) {
 
 	  /* right hand edge */
 	  jc = n_local[Y] + 1;
-	  index = get_site_index(ic, jc, kc);
+	  index = coords_index(ic, jc, kc);
 
 	  for (p = 0; p < NVEL; p++) {
 	    f_actual = distribution_f(index, p, nd);
@@ -434,37 +437,4 @@ void test_halo(int dim, int reduced) {
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  on_edge
- *
- *  Returns 1 if on one of the twelve edges (including corners) of the domain,
- *          0  otherwise.
- *
- *****************************************************************************/
-
-static int on_edge(int ic, int jc, int kc, int xmax, int ymax, int zmax) {
-
-  int isedge = 0;
-
-  if (ic == 0 && jc == 0) isedge = 1;
-  if (ic == 0 && kc == 0) isedge = 1;
-  if (jc == 0 && kc == 0) isedge = 1;
-
-  if (ic == 0 && jc == ymax) isedge = 1;
-  if (ic == 0 && kc == zmax) isedge = 1;
-
-  if (jc == 0 && ic == xmax) isedge = 1;
-  if (jc == 0 && kc == zmax) isedge = 1;
-
-  if (kc == 0 && ic == xmax) isedge = 1;
-  if (kc == 0 && jc == ymax) isedge = 1;
-
-  if (ic == xmax && jc == ymax) isedge = 1;
-  if (ic == xmax && kc == zmax) isedge = 1;
-  if (jc == ymax && kc == zmax) isedge = 1;
-
-  return isedge;
 }

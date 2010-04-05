@@ -4,7 +4,7 @@
  *
  *  Unit test for the currently compiled model (D3Q15 or D3Q19).
  *
- *  $Id: test_model.c,v 1.9.2.4 2010-03-30 03:55:40 kevin Exp $
+ *  $Id: test_model.c,v 1.9.2.5 2010-04-05 06:23:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -425,7 +425,7 @@ static void test_model_halo_swap() {
 
   init_site();
   distribution_halo_set_complete();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   ndist = distribution_ndist();
 
   /* The test relies on a uniform decomposition in parallel:
@@ -439,7 +439,7 @@ static void test_model_halo_swap() {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
 
-	index = get_site_index(i, j, k);
+	index = coords_index(i, j, k);
 
 	for (n = 0; n < ndist; n++) {
 	  distribution_f_set(index, X, n, (double) (i));
@@ -465,7 +465,7 @@ static void test_model_halo_swap() {
       for (k = 1 - nextra; k <= nlocal[Z] + nextra; k++) {
 	if (k >= 1 && k <= nlocal[Z]) continue;
 
-	index = get_site_index(i, j, k);
+	index = coords_index(i, j, k);
 
 	for (n = 0; n < ndist; n++) {
 
@@ -516,7 +516,7 @@ static void test_model_reduced_halo_swap() {
 
   init_site();
   distribution_halo_set_reduced();
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   ndist = distribution_ndist();
 
   /* Set everything which is NOT in a halo */
@@ -524,7 +524,7 @@ static void test_model_reduced_halo_swap() {
   for (i = 1; i <= nlocal[X]; i++) {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
-	index = get_site_index(i, j, k);
+	index = coords_index(i, j, k);
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
 	    f_expect = 1.0*(n*NVEL + p);
@@ -542,7 +542,7 @@ static void test_model_reduced_halo_swap() {
   for (i = 1; i <= nlocal[X]; i++) {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
-	index = get_site_index(i, j, k);
+	index = coords_index(i, j, k);
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
 	    f_actual = distribution_f(index, p, n);
@@ -565,7 +565,7 @@ static void test_model_reduced_halo_swap() {
       for (k = 1 - nextra; k <= nlocal[Z] + nextra; k++) {
 	if (k >= 1 && k <= nlocal[Z]) continue;
 
-	index = get_site_index(i, j, k);
+	index = coords_index(i, j, k);
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -606,7 +606,7 @@ static int test_model_is_domain(const int ic, const int jc, const int kc) {
   int nlocal[3];
   int iam = 1;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   if (ic < 1) iam = 0;
   if (jc < 1) iam = 0;

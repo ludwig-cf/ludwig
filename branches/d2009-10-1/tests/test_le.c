@@ -3,13 +3,13 @@
  *  test_leesedwards.c
  *
  *
- *  $Id: test_le.c,v 1.1.2.1 2010-03-04 15:22:26 kevin Exp $
+ *  $Id: test_le.c,v 1.1.2.2 2010-04-05 06:23:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -55,7 +55,6 @@ void test_parallel1(void) {
   int n1, n2;
   int py;
   int precv_rank_left, precv_rank_right;
-  int nrank_r[2], nrank_s[2];
 
   int nlocal[3];
   int noffset[3];
@@ -91,8 +90,8 @@ void test_parallel1(void) {
   /* Check displacement calculations. Run to a displacement which is
    * at least a couple of periodic images. */
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   comm = le_communicator();
 
@@ -200,8 +199,8 @@ static void test_le_parallel2(void) {
   /* Check displacement calculations. Run to a displacement which is
    * at least a couple of periodic images. */
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
   nhalo = coords_nhalo();
 
   comm = le_communicator();

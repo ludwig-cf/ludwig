@@ -4,13 +4,13 @@
  *
  *  Test propagation stage.
  *
- *  $Id: test_prop.c,v 1.4.2.2 2010-03-04 15:23:50 kevin Exp $
+ *  $Id: test_prop.c,v 1.4.2.3 2010-04-05 06:23:46 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  * 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) Ths University of Edinburgh (2007)
+ *  (c) 2010 Ths University of Edinburgh
  *
  *****************************************************************************/
 
@@ -72,7 +72,7 @@ void test_velocity() {
   int nd, ndist;
   double f_actual;
 
-  get_N_local(n_local);
+  coords_nlocal(n_local);
   ndist = distribution_ndist();
 
   /* Set test values */
@@ -81,7 +81,7 @@ void test_velocity() {
     for (jc = 1; jc <= n_local[Y]; jc++) {
       for (kc = 1; kc <= n_local[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -102,7 +102,7 @@ void test_velocity() {
     for (jc = 1; jc <= n_local[Y]; jc++) {
       for (kc = 1; kc <= n_local[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -137,8 +137,8 @@ void test_source_destination() {
   int isource, jsource, ksource;
   double f_actual, f_expect;
 
-  get_N_local(n_local);
-  get_N_offset(offset);
+  coords_nlocal(n_local);
+  coords_nlocal_offset(offset);
   ndist = distribution_ndist();
 
   /* Set test values */
@@ -147,7 +147,7 @@ void test_source_destination() {
     for (jc = 1; jc <= n_local[Y]; jc++) {
       for (kc = 1; kc <= n_local[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	f_actual = L(Y)*L(Z)*(offset[X] + ic) + L(Z)*(offset[Y] + jc) +
 	  (offset[Z] + kc);
@@ -171,7 +171,7 @@ void test_source_destination() {
     for (jc = 1; jc <= n_local[Y]; jc++) {
       for (kc = 1; kc <= n_local[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
