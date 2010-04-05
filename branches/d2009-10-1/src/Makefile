@@ -47,8 +47,8 @@ LIBRARY = libludwig.a
 
 CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q15_
-CFLAGS = -g -O3 -Wall 
+OPTS = -D_D3Q19_
+CFLAGS = -O3 -Wall
 
 INC = -I.
 LIBS = -lm
