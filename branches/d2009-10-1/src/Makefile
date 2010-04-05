@@ -47,7 +47,7 @@ LIBRARY = libludwig.a
 
 CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q19_
+OPTS = -D_D3Q15_
 CFLAGS = -g -O3 -Wall 
 
 INC = -I.
@@ -111,6 +111,8 @@ verbose:
 	echo -e "LUDWIG make options ...\n"\
 	    "\t make serial \t builds serial implementation\n"\
 	    "\t make mpi \t builds parallel implementation based on MPI\n"\
+	    "\t make lib \t builds serial library\n"\
+            "\t make libmpi \t builds parallel library\n"\
             "\t Check the Makefile for further details\n"	
 
 code:	$(OBJS)
@@ -119,7 +121,7 @@ serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi" "OBJS=$(OBJS) main.o"
 mpi:
-	$(MAKE) generic "OBJS=$(OBJS) main.o" "CC=$(MPICC)"
+	$(MAKE) code "OBJS=$(OBJS) main.o" "CC=$(MPICC)"
 
 
 libar:	$(OBJS)
