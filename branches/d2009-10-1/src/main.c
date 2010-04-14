@@ -253,10 +253,6 @@ int main( int argc, char **argv ) {
       info("Writing phi file at step %d!\n", step);
       sprintf(filename,"phi-%6.6d",step);
       io_write(filename, io_info_phi);
-
-      info("Writing scalar order parameter file at step %d!\n", step);
-      sprintf(filename,"scalar_q-%6.6d",step);
-      io_write(filename, io_info_scalar_q_);
     }
 
     if (is_vel_output_step()) {
