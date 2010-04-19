@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3.16.7 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.8 2010-04-19 10:31:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -500,6 +500,26 @@ void coords_minimum_distance(const double r1[3], const double r2[3],
     if (r12[ia] >  0.5*n_total[ia]) r12[ia] -= 1.0*n_total[ia]*periodic[ia];
     if (r12[ia] < -0.5*n_total[ia]) r12[ia] += 1.0*n_total[ia]*periodic[ia];
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_index_to_ijk
+ *
+ *  For given local index, return the corresponding local (ic,jc,kc)
+ *  coordinates.
+ *
+ *****************************************************************************/
+
+void coords_index_to_ijk(const int index, int coords[3]) {
+
+  coords[X] = (1 - nhalo_) + index / xfac_;
+  coords[Y] = (1 - nhalo_) + (index % xfac_) / yfac_;
+  coords[Z] = (1 - nhalo_) + index % yfac_;
+
+  assert(coords_index(coords[X], coords[Y], coords[Z]) == index);
 
   return;
 }
