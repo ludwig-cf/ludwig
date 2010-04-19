@@ -2,7 +2,7 @@
  *
  *  polar_active.h
  *
- *  $Id: polar_active.h,v 1.1.2.1 2010-03-29 05:31:32 kevin Exp $
+ *  $Id: polar_active.h,v 1.1.2.2 2010-04-19 10:32:36 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,5 +27,6 @@ void   polar_active_parameters_set(const double a, const double b,
 				   const double kappa2);
 void   polar_active_zeta_set(const double zeta);
 double polar_active_zeta(void);
+double polar_active_region(const int index);
 
 #endif

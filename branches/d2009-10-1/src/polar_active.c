@@ -10,7 +10,7 @@
  *  This is an implemetation of a free energy with vector order
  *  parameter.
  *
- *  $Id: polar_active.c,v 1.1.2.4 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: polar_active.c,v 1.1.2.5 2010-04-19 10:32:36 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -212,4 +212,40 @@ void polar_active_zeta_set(const double zeta_new) {
 double polar_active_zeta(void) {
 
   return zeta_;
+}
+
+/*****************************************************************************
+ *
+ *  polar_active_region
+ *
+ *  Returns 1 in the 'region' and zero outside. The 'region' is a
+ *  spherical volume of radius ractive, centred at the centre of
+ *  the grid (assumed to be cubic).
+ *
+ *  The radius of the 'region' is hardwired to (L/2) - 4 lattice
+ *  units to allow a clear inactive region at the edges.
+ *
+ *****************************************************************************/
+
+double polar_active_region(const int index) {
+
+  int noffset[3];
+  int coords[3];
+
+  double x, y, z;
+  double ractive;
+  double active;
+
+  coords_nlocal_offset(noffset);
+  coords_index_to_ijk(index, coords);
+
+  x = 1.0*(noffset[X] + coords[X]) - (Lmin(X) + 0.5*L(X));
+  y = 1.0*(noffset[Y] + coords[Y]) - (Lmin(Y) + 0.5*L(Y));
+  z = 1.0*(noffset[Z] + coords[Z]) - (Lmin(Z) + 0.5*L(Z));
+
+  active = 1.0;
+  ractive = 0.5*L(X) - 4.0;
+  if ((x*x + y*y + z*z) > ractive*ractive) active = 0.0;
+
+  return active;
 }
