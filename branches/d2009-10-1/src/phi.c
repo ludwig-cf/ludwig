@@ -4,7 +4,7 @@
  *
  *  Scalar order parameter.
  *
- *  $Id: phi.c,v 1.11.4.10 2010-04-05 10:54:31 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.11 2010-04-20 08:30:38 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -390,7 +390,7 @@ static int phi_read_ascii(FILE * fp, const int ic, const int jc,
 
   for (n = 0; n < nop_; n++) {
     nread = fscanf(fp, "%le", phi_site + nop_*index + n);
-    if (nread != 1) fatal("fscanf(phi) failed at index %d", index);
+    if (nread != 1) fatal("fscanf(phi) failed at index %d\n", index);
   }
 
   return n;
