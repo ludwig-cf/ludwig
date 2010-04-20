@@ -18,6 +18,8 @@
 #include "ran.h"
 #include "phi_lb_coupler.h"
 #include "phi_cahn_hilliard.h"
+#include "phi_stats.h"
+#include "symmetric.h"
 #include "control.h"
 
 #include "utilities.h"
@@ -136,6 +138,50 @@ void MODEL_init( void ) {
 		phi_lb_coupler_phi_set(ind, phi);
 	      }
 	  }
+  }
+
+  if (phi_nop()) {
+
+    ind = RUN_get_string_parameter("phi_initialisation", filename,
+				   FILENAME_MAX);
+
+    if (ind != 0 && strcmp(filename, "block") == 0) {
+      info("Initialisng phi as block\n");
+      phi_init_block();
+    }
+
+    if (ind != 0 && strcmp(filename, "bath") == 0) {
+      info("Initialising phi for bath\n");
+      phi_init_bath();
+    }
+
+    /* Assumes symmetric free energy */
+    if (ind != 0 && strcmp(filename, "drop") == 0) {
+      info("Initialising droplet\n");
+      phi_lb_init_drop(0.125*L(X), symmetric_interfacial_width());
+    }
+
+    if (ind != 0 && strcmp(filename, "from_file") == 0) {
+      info("Initial order parameter requested from file\n");
+      info("Reading phi from serial file\n");
+      io_info_set_processor_independent(io_info_phi);
+      io_read("phi-init", io_info_phi);
+      io_info_set_processor_dependent(io_info_phi);
+
+      if (distribution_ndist() > 1) {
+	/* Set the distribution from initial phi */
+	for (i = 1; i <= N[X]; i++) {
+	  for (j = 1; j <= N[Y]; j++) {
+	    for (k = 1; k <= N[Z]; k++) {
+	    
+	      ind = coords_index(i, j, k);
+	      phi = phi_get_phi_site(ind);
+	      distribution_zeroth_moment_set_equilibrium(ind, 1, phi);
+	    }
+	  }
+	}
+      }
+    }
   }
 
   /* BLUEPHASE */
