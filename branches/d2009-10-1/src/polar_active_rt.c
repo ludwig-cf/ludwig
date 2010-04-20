@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for active gel free energy.
  *
- *  $Id: polar_active_rt.c,v 1.1.2.2 2010-03-31 11:57:49 kevin Exp $
+ *  $Id: polar_active_rt.c,v 1.1.2.3 2010-04-20 08:38:04 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -62,10 +62,8 @@ void polar_active_run_time(void) {
   info("Vector order parameter nop = 3\n");
   info("Requires up to del^2 derivatives so setting nhalo = 2\n");
 
-  if (klc != 0.0) {
-    phi_gradients_dyadic_set(1);
-    info("Requires dyadic term in gradients\n");
-  }
+  phi_gradients_dyadic_set(1);
+  info("Requires dyadic term in gradients\n");
 
   info("\n");
 
