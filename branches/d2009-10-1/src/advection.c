@@ -18,7 +18,7 @@
  *  Any solid-fluid boundary conditions are dealt with post-hoc by
  *  in advection_bcs.c
  *
- *  $Id: advection.c,v 1.2.4.4 2010-04-05 10:54:31 kevin Exp $
+ *  $Id: advection.c,v 1.2.4.5 2010-04-21 16:50:06 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -73,24 +73,24 @@ int advection_order(void) {
  *
  *****************************************************************************/
 
-void advection_order_n(double * fluxw, double * fluxe, double * fluxy,
+void advection_order_n(double * fluxe, double * fluxw, double * fluxy,
 		       double * fluxz) {
 
   switch (order_) {
   case 1:
-    advection_upwind(fluxw, fluxe, fluxy, fluxz);
+    advection_upwind(fluxe, fluxw, fluxy, fluxz);
     break;
   case 2:
-    advection_second_order(fluxw, fluxe, fluxy, fluxz);
+    advection_second_order(fluxe, fluxw, fluxy, fluxz);
     break;
   case 3:
-    advection_upwind_third_order(fluxw, fluxe, fluxy, fluxz);
+    advection_upwind_third_order(fluxe, fluxw, fluxy, fluxz);
     break;
   case 5:
-    advection_upwind_fifth_order(fluxw, fluxe, fluxy, fluxz);
+    advection_upwind_fifth_order(fluxe, fluxw, fluxy, fluxz);
     break;
   case 7:
-    advection_upwind_seventh_order(fluxw, fluxe, fluxy, fluxz);
+    advection_upwind_seventh_order(fluxe, fluxw, fluxy, fluxz);
     break;
   default:
     fatal("Bad advection scheme set order = %d\n", order_);
