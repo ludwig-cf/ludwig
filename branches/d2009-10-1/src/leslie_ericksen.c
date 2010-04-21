@@ -5,7 +5,7 @@
  *  Updates a vector order parameter according to something looking
  *  like a Leslie-Ericksen equation.
  *
- *  $Id: leslie_ericksen.c,v 1.1.2.3 2010-03-29 05:57:21 kevin Exp $
+ *  $Id: leslie_ericksen.c,v 1.1.2.4 2010-04-21 16:39:34 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -89,7 +89,7 @@ void leslie_ericksen_update(void) {
 
   if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity();
   hydrodynamics_halo_u();
-  advection_upwind(fluxe, fluxw, fluxy, fluxz);
+  advection_upwind_third_order(fluxe, fluxw, fluxy, fluxz);
   leslie_ericksen_update_fluid();
 
   free(fluxz);
@@ -125,7 +125,6 @@ static void leslie_ericksen_update_fluid(void) {
 
   void (* fe_molecular_field_function)(int index, double h[3]);
 
-
   coords_nlocal(nlocal);
   fe_molecular_field_function = fe_v_molecular_field();
   lambda = fe_v_lambda();
@@ -149,8 +148,8 @@ static void leslie_ericksen_update_fluid(void) {
 
 	/* update */
 
-	indexj = coords_index(ic, jc+1, kc);
-	indexk = coords_index(ic, jc, kc+1);
+	indexj = coords_index(ic, jc-1, kc);
+	indexk = coords_index(ic, jc, kc-1);
 
 	for (ia = 0; ia <= 3; ia++) {
 
@@ -163,6 +162,7 @@ static void leslie_ericksen_update_fluid(void) {
 		       -fluxy[3*index + ia] + fluxy[3*indexj + ia]
 		       -fluxz[3*index + ia] + fluxz[3*indexk + ia]
 		       + sum + Gamma_*h[ia]);
+
 	}
 
 	phi_vector_set(index, p);
