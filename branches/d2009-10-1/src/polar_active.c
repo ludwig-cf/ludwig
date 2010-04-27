@@ -10,7 +10,7 @@
  *  This is an implemetation of a free energy with vector order
  *  parameter.
  *
- *  $Id: polar_active.c,v 1.1.2.5 2010-04-19 10:32:36 kevin Exp $
+ *  $Id: polar_active.c,v 1.1.2.6 2010-04-27 11:05:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,6 +27,7 @@
 #include "phi.h"
 #include "phi_gradients.h"
 #include "polar_active.h"
+#include "util.h"
 
 static double a_;
 static double b_;
@@ -102,8 +103,10 @@ double polar_active_free_energy_density(const int index) {
  *
  *  The stress is
  *
- *  S_ab = (1/2) (P_a h_b - P_b h_a) - (1/2) lambda (P_a h_b - P_b h_a)
- *         - zeta P_a P_b - d_a P_c d_b P_c
+ *  S_ab = (1/2) (P_a h_b - P_b h_a)
+ *       - lambda [(1/2)(P_a h_b - P_b h_a) - (1/3)P_c h_c d_ab]
+ *       - zeta [P_a P_b - (1/3) P_c P_c d_ab]
+ *       - kappa1 d_a P_c d_b P_c
  * 
  *  This is antisymmetric. Note that extra minus sign added at
  *  the end to allow the force on the Navier Stokes to be
@@ -117,15 +120,27 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
 
   double sum;
   double lambda;
+  double pdoth;
+  double p2;
   double p[3];
   double h[3];
   double dp[3][3];
+
+  const double r3 = (1.0/3.0);
 
   lambda = fe_v_lambda();
 
   phi_vector(index, p);
   phi_gradients_vector_gradient(index, dp);
   polar_active_molecular_field(index, h);
+
+  p2 = 0.0;
+  pdoth = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    p2 += p[ia]*p[ia];
+    pdoth +=  p[ia]*h[ia];
+  }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -134,8 +149,8 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
 	sum += dp[ia][ic]*dp[ib][ic];
       }
       s[ia][ib] = 0.5*(p[ia]*h[ib] - p[ib]*h[ia])
-	- 0.5*lambda*(p[ia]*h[ib] + p[ib]*h[ia])
-	- kappa1_*sum - zeta_*p[ia]*p[ib];
+	- lambda*(0.5*(p[ia]*h[ib] + p[ib]*h[ia]) - r3*d_[ia][ib]*pdoth)
+	- kappa1_*sum - zeta_*(p[ia]*p[ib] - r3*d_[ia][ib]*p2);
     }
   }
 
