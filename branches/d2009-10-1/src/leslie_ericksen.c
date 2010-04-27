@@ -5,7 +5,7 @@
  *  Updates a vector order parameter according to something looking
  *  like a Leslie-Ericksen equation.
  *
- *  $Id: leslie_ericksen.c,v 1.1.2.4 2010-04-21 16:39:34 kevin Exp $
+ *  $Id: leslie_ericksen.c,v 1.1.2.5 2010-04-27 13:21:44 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -151,7 +151,7 @@ static void leslie_ericksen_update_fluid(void) {
 	indexj = coords_index(ic, jc-1, kc);
 	indexk = coords_index(ic, jc, kc-1);
 
-	for (ia = 0; ia <= 3; ia++) {
+	for (ia = 0; ia < 3; ia++) {
 
 	  sum = 0.0;
 	  for (ib = 0; ib < 3; ib++) {
@@ -162,7 +162,6 @@ static void leslie_ericksen_update_fluid(void) {
 		       -fluxy[3*index + ia] + fluxy[3*indexj + ia]
 		       -fluxz[3*index + ia] + fluxz[3*indexk + ia]
 		       + sum + Gamma_*h[ia]);
-
 	}
 
 	phi_vector_set(index, p);
