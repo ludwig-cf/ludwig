@@ -288,9 +288,7 @@ if(BLUEHAAR!=1){
 	     sqrt(2.0)*sin(sqrt(2.0)*q0*jc)*sin(sqrt(2.0)*q0*ic)-
 	     sin(sqrt(2.0)*q0*jc)*cos(sqrt(2.0)*q0*kc));
 
-
 	}
-
 
    if (HEXPLANAR == 1) {
 
@@ -343,7 +341,11 @@ if(BLUEHAAR!=1){
 
 	}
 
-
+#ifdef KEVIN
+	printf("(%2d %2d %2d %17.14f %17.14f %17.14f %17.14f %17.14f\n",
+	       i, j, k, Qxx[i][j][k], Qxy[i][j][k], Qxz[i][j][k],
+	       Qyy[i][j][k], Qyz[i][j][k]);
+#endif
 
 	for (l=0; l<15; l++) {
 	  f[i][j][k][l]=density[i][j][k]/15.0;
@@ -351,10 +353,12 @@ if(BLUEHAAR!=1){
       }
     }
    }
+
 }
 //================================//
 // end alternative configurations //
 //================================//
+
 
 }
 
