@@ -7,7 +7,7 @@
  *  the stress are computed correctly for a given order parameter
  *  field.
  *
- *  $Id: test_polar_active.c,v 1.1.2.1 2010-04-05 06:12:26 kevin Exp $
+ *  $Id: test_polar_active.c,v 1.1.2.2 2010-04-28 11:15:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,6 +30,7 @@
 #include "polar_active.h"
 
 static void test_polar_active_aster(void);
+static void test_polar_active_terms(void);
 static void test_polar_active_init_aster(void);
 
 /*****************************************************************************
@@ -57,7 +58,8 @@ int main (int argc, char ** argv) {
   phi_gradients_init();
   gradient_2d_5pt_fluid_init();
 
-  test_polar_active_aster();
+  /* test_polar_active_aster();*/
+  test_polar_active_terms();
 
   phi_gradients_finish();
   phi_finish();
@@ -182,6 +184,45 @@ static void test_polar_active_aster(void) {
   info("ok\n");
 
   info("2-d test ok\n\n");
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_polar_active_terms
+ *
+ *****************************************************************************/
+
+void test_polar_active_terms(void) {
+
+  int index;
+
+  double s[3][3];
+
+  fe_v_lambda_set(2.1);
+  polar_active_parameters_set(-0.1, +0.1, 0.01, 0.02);
+  polar_active_zeta_set(0.01);
+
+  test_polar_active_init_aster();
+
+  phi_halo();
+  phi_gradients_compute();
+
+  /* Stress only */
+
+  index = coords_index(1, 2, 1);
+  polar_active_chemical_stress(index, s);
+
+  info("s[x][x] = %12.5e\n", s[X][X]);
+  info("s[x][y] = %12.5e\n", s[X][Y]);
+  info("s[x][z] = %12.5e\n", s[X][Z]);
+  info("s[y][x] = %12.5e\n", s[Y][X]);
+  info("s[y][y] = %12.5e\n", s[Y][Y]);
+  info("s[y][z] = %12.5e\n", s[Y][Z]);
+  info("s[z][x] = %12.5e\n", s[Z][X]);
+  info("s[z][y] = %12.5e\n", s[Z][Y]);
+  info("s[z][z] = %12.5e\n", s[Z][Z]);
 
   return;
 }
