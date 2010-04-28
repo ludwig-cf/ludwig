@@ -400,7 +400,6 @@ void computeStressFreeEnergy(int n)
 	Stresszx[i][j][k]=-DG2xz[i][j][k];
 	Stresszy[i][j][k]=-DG2yz[i][j][k];
 
-
       Qxxl=Qxx[i][j][k];
       Qxyl=Qxy[i][j][k];
       Qyyl=Qyy[i][j][k];
@@ -419,6 +418,90 @@ void computeStressFreeEnergy(int n)
       Qsqyz=Qxyl*Qxzl-Qyzl*Qsqxx+Qyyl*Qyzl;
       Qsqxx=Qxxl*Qxxl+Qxyl*Qxyl+Qxzl*Qxzl;
       Qsqyy=Qyyl*Qyyl+Qxyl*Qxyl+Qyzl*Qyzl;
+
+#ifdef KEVIN
+      {
+	double fed1, fed2, fed3, fed4, fed5, p0;
+	double sxx, syy, szz, sxy, sxz, syz, szy, szx, syx;
+	double shxx, shyy, shxy, shxz, shyz;
+
+        fed1 = (Abulk/2.0)*(1.0-gam/3.0)*(Qsqxx+Qsqyy+Qsqzz);
+        fed2 = -Abulk*gam/3.0*(Qsqxx*Qxxl+2.0*Qsqxy*Qxyl
+		     +2.0*Qsqxz*Qxzl+Qsqyy*Qyyl+2.0*Qsqyz*Qyzl+Qsqzz*Qzzl );
+
+        fed3 = Abulk*(gam/4.0)*(Qsqxx+Qsqyy+Qsqzz)*(Qsqxx+Qsqyy+Qsqzz);
+
+	fed4 = L2/2.0*(divQx*divQx+divQy*divQy+divQz*divQz);
+
+	fed5 = L1/2.0*(-DGchol1xx+DGxx-DGchol1yy+DGyy-DGchol1zz+DGzz)
+	  +     L1*q0*(DGchol2xx+DGchol2yy+DGchol2zz)
+	  + 2.0*L1*q0*q0*(Qsqxx+Qsqyy+Qsqzz);
+ 
+	p0 = 0.0 - fed1 - fed2 - fed3 - fed4 - fed5;
+
+	sxx=  -p0 - ( L1*DGxx - L1*DGchol1xx + L1*q0*DGchol2xx +
+		      L2*(dQxxdx*divQx+dQxydx*divQy+dQxzdx*divQz)) ;
+
+        syy = -p0 - ( L1*DGyy -L1*DGchol1yy + L1*q0*DGchol2yy +
+		      L2*(dQxydy*divQx+dQyydy*divQy+dQyzdy*divQz));
+
+        szz = -p0 - ( L1*DGzz - L1*DGchol1zz + L1*q0*DGchol2zz +
+		      L2*(dQxzdz*divQx+dQyzdz*divQy-(dQxxdz+dQyydz)*divQz));
+
+
+	sxy = Stressxy[i][j][k];
+	sxz = Stressxz[i][j][k];
+	syz = Stressyz[i][j][k];
+	syx = Stressyx[i][j][k];
+	szx = Stresszx[i][j][k];
+	szy = Stresszy[i][j][k];
+	
+
+	  /* molecular field contribution to the stress */
+ 
+      Hxx=molfieldxx[i][j][k];
+      Hxy=molfieldxy[i][j][k];
+      Hxz=molfieldxz[i][j][k];
+      Hyy=molfieldyy[i][j][k];
+      Hyz=molfieldyz[i][j][k];
+   
+	shxx = 2.0/3.0*xi*((1.0+3.0*Qxxl)*
+		  (Hxx*(1.0-2.0*Qxxl-Qyyl)-Hyy*(Qxxl+2.0*Qyyl)-2.0*Hyz*Qyzl)+
+		  (Hxy*Qxyl+Hxz*Qxzl)*(1.0-6.0*Qxxl));
+	shxy = xi*(Hxy*(2.0/3.0+Qxxl-4.0*Qxyl*Qxyl+Qyyl)-
+		  Hxx*Qxyl*(-1.0+4.0*Qxxl+2.0*Qyyl)-
+		  Hyy*Qxyl*(-1.0+4.0*Qyyl+2.0*Qxxl)+
+		  Hxz*(-4.0*Qxyl*Qxzl+Qyzl)+Hyz*(Qxzl-4.0*Qxyl*Qyzl));
+	shyy = 2.0/3.0*xi*((1.0+3.0*Qyyl)*
+		  (Hyy*(1.0-Qxxl-2.0*Qyyl)-Hxx*(2.0*Qxxl+Qyyl)-2.0*Hxz*Qxzl)+
+		  (Hxy*Qxyl+Hyz*Qyzl)*(1.0-6.0*Qyyl));
+	shxz = xi*(Hxz*(2.0/3.0-4.0*Qxzl*Qxzl-Qyyl)-
+		  Hxx*Qxzl*(4.0*Qxxl+2.0*Qyyl)-
+		  Hyy*Qxzl*(1.0+4.0*Qyyl+2.0*Qxxl)+
+		  Hxy*(Qyzl-4.0*Qxyl*Qxzl)+Hyz*(Qxyl-4.0*Qxzl*Qyzl));
+	shyz = xi*(Hyz*(2.0/3.0-4.0*Qyzl*Qyzl-Qxxl)-
+		  Hyy*Qyzl*(4.0*Qyyl+2.0*Qxxl)-
+		  Hxx*Qyzl*(1.0+4.0*Qxxl+2.0*Qyyl)+
+		  Hxy*(Qxzl-4.0*Qxyl*Qyzl)+Hxz*(Qxyl-4.0*Qxzl*Qyzl));
+
+	sxx -= shxx;
+	sxy -= shxy;
+	sxz -= shxz;
+	syy -= shyy;
+	syz -= shyz;
+
+	syx -= shxy;
+	szx -= shxz;
+	szy -= shyz;
+	szz -= -shxx-shyy;
+
+	printf("%2d %2d %2d %13.6e %13.6e %13.6e %13.6e %13.6e\n", i, j, k,
+	       sxx, sxy, sxz, syy, syz);
+	printf("%2d %2d %2d %13.6e %13.6e %13.6e %13.6e %13.6e\n", i, j, k,
+	       syx, szx, szy, szz, p0);
+	
+	}
+#endif
              
  
       Hxx=molfieldxx[i][j][k];
@@ -468,6 +551,7 @@ void computeStressFreeEnergy(int n)
 	Stresszx[i][j][k]+=-sigxz;
 	Stresszy[i][j][k]+=-sigyz;
 
+
 /* antisymmetric contribution from parametercalc */
 
 	Stressxy[i][j][k]+=tauxy[i][j][k];
@@ -486,6 +570,30 @@ void computeStressFreeEnergy(int n)
 	   one_gradient+=L1init*q0init*(DGchol2xx+DGchol2yy+DGchol2zz);
       }
 
+#ifdef KEVIN
+      {
+	double fed1, fed2, fed3, fed4, fed5;
+
+        fed1 = (Abulk/2.0)*(1.0-gam/3.0)*(Qsqxx+Qsqyy+Qsqzz);
+        fed2 = -Abulk*gam/3.0*(Qsqxx*Qxxl+2.0*Qsqxy*Qxyl
+		     +2.0*Qsqxz*Qxzl+Qsqyy*Qyyl+2.0*Qsqyz*Qyzl+Qsqzz*Qzzl );
+
+        fed3 = Abulk*(gam/4.0)*(Qsqxx+Qsqyy+Qsqzz)*(Qsqxx+Qsqyy+Qsqzz);
+
+	fed4 = L2/2.0*(divQx*divQx+divQy*divQy+divQz*divQz);
+
+	fed5 = L1/2.0*(-DGchol1xx+DGxx-DGchol1yy+DGyy-DGchol1zz+DGzz)
+	  +     L1*q0*(DGchol2xx+DGchol2yy+DGchol2zz)
+	  + 2.0*L1*q0*q0*(Qsqxx+Qsqyy+Qsqzz);
+ 
+	printf("%2d %2d %2d %13.6e %13.6e %13.6e %13.6e %13.6e\n", i, j, k,
+	       fed1, fed2, fed3, fed4, fed5);
+
+	printf("%2d %2d %2d %18.15e\n", i,j,k, fed1+fed2+fed3+fed4+fed5);
+
+
+      }
+#else
         freeenergy+=L1/2.0*(-DGchol1xx+DGxx-DGchol1yy+DGyy-DGchol1zz+DGzz)
         +L2/2.0*(divQx*divQx+divQy*divQy+divQz*divQz)
         +L1*q0*(DGchol2xx+DGchol2yy+DGchol2zz);
@@ -500,7 +608,7 @@ void computeStressFreeEnergy(int n)
         DGyy-DGchol1zz+DGzz)+L1*q0*(DGchol2xx+DGchol2yy+DGchol2zz)
         +2.0*q0*q0*L1*(Qxxl*Qxxl+2.0*Qxyl*Qxyl+
          2.0*Qxzl*Qxzl+Qyyl*Qyyl+2.0*Qyzl*Qyzl+Qzzl*Qzzl);
-
+#endif
 
 	 // electric field contribution
 #ifdef EON
