@@ -222,6 +222,12 @@ int main(int argc, char** argv)
   q0=q0init/rr;
   L1=L1init*rr*rr;
   L2=L2init*rr*rr;
+
+  /* KS code to check initialisation */
+  /* computeStressFreeEnergy(0);*/
+  /* parametercalc(0);*/
+  /* computeStressFreeEnergy(0);*/
+  /* exit(-1); */
  
   graphstp=0;
   pouiseuille = 0;
@@ -229,7 +235,14 @@ int main(int argc, char** argv)
   kappa = sqrt(L1*27.0*q0*q0/(Abulk*gam));
   caz = (1.0+4./3.*kappa*kappa);
   tauc = 1.0/8.0*(1-4.0*kappa*kappa+pow(caz,1.5));
-  
+
+  if (myPE == 0) {
+    printf("q0 is %8f\n", q0);
+    printf("L1 is %8f\n", L1);
+    printf("L2 is %8f\n", L2);
+  }
+
+
   if (q0 > 0.00001) 
     aa=(2.0*cos(2.0*Pi/Ly)-2.0+4.0*Pi/Ly*sin(2.0*Pi/Ly))/(Pi/Ly*Pi/Ly);
   else
@@ -1310,6 +1323,27 @@ void parametercalc(int n)
 	duzdx=(u[iup][j][k][2]-u[idwn][j][k][2])*0.5;
 	duzdy=(u[i][jup][k][2]-u[i][jdwn][k][2])*0.5;
 	duzdz=(u[i][j][kup][2]-u[i][j][kdwn][2])*0.5;
+
+#ifdef KEVIN
+
+	Hxx= Abulk*(-(1.0-gam/3.0)*Qxxl+gam*(Qsqxx-TrQ2/3.0)-
+             gam*Qxxl*TrQ2)
+	  -aa*L1*q0*q0*Qxxl + DEHxx[i][j][k];
+	Hxy= Abulk*(-(1.0-gam/3.0)*Qxyl+gam*Qsqxy-gam*Qxyl*TrQ2)
+	  -aa*L1*q0*q0*Qxyl + DEHxy[i][j][k];
+	Hyy= Abulk*(-(1.0-gam/3.0)*Qyyl+gam*(Qsqyy-TrQ2/3.0)-
+             gam*Qyyl*TrQ2)
+	  - aa*L1*q0*q0*Qyyl + DEHyy[i][j][k];
+	Hxz= Abulk*(-(1.0-gam/3.0)*Qxzl+gam*Qsqxz-gam*Qxzl*TrQ2)
+	  - aa*L1*q0*q0*Qxzl + DEHxz[i][j][k];
+	Hyz= Abulk*(-(1.0-gam/3.0)*Qyzl+gam*Qsqyz-gam*Qyzl*TrQ2)
+	  - aa*L1*q0*q0*Qyzl + DEHyz[i][j][k];
+
+
+	printf("(%2d %2d %2d %17.14f %17.14f %17.14f %17.14f %17.14f\n",
+	       i, j, k, Hxx, Hxy, Hxz, Hyy, Hyz);
+
+#endif
 
       /*B.C.; use one-sided derivatives*/
 	if(pouiseuille1==1){
