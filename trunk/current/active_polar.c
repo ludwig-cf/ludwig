@@ -819,9 +819,9 @@ void equilibriumdist(void)
 
 	sigxx=xi*(Pxl*hx-1.0/3.0*Pdoth);
 	sigxy=xi*(Pxl*hy+hx*Pyl)/2.0;
-	sigxz=xi*(Pxl*hz+hz*Pxl)/2.0;
+	sigxz=xi*(Pxl*hz+hx*Pzl)/2.0;
 	sigyy=xi*(Pyl*hy-1.0/3.0*Pdoth);
-	sigyz=xi*(Pyl*hz+hz*Pyl)/2.0;
+	sigyz=xi*(Pyl*hz+hy*Pzl)/2.0;
 	sigzz=xi*(Pzl*hz-1.0/3.0*Pdoth);
 
 	Psquare=Pxl*Pxl+Pyl*Pyl+Pzl*Pzl;
