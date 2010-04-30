@@ -2,7 +2,7 @@
  *
  *  advection.h
  *
- *  $Id: advection.h,v 1.1.4.3 2010-04-21 16:50:06 kevin Exp $
+ *  $Id: advection.h,v 1.1.4.4 2010-04-30 10:30:32 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,6 +22,8 @@ void advection_order_n(double * fluxe, double * fluxw, double * fluxy,
 void advection_upwind(double * fluxe, double * fluxw, double * fluxy,
 		      double * fluxz);
 void advection_second_order(double * fluxe, double * fluxw, double * fluxy,
+			    double * fluxz);
+void advection_fourth_order(double * fluxe, double * fluxw, double * fluxy,
 			    double * fluxz);
 void advection_upwind_third_order(double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz);

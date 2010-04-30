@@ -18,7 +18,7 @@
  *  Any solid-fluid boundary conditions are dealt with post-hoc by
  *  in advection_bcs.c
  *
- *  $Id: advection.c,v 1.2.4.5 2010-04-21 16:50:06 kevin Exp $
+ *  $Id: advection.c,v 1.2.4.6 2010-04-30 10:30:32 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -607,6 +607,114 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	       + a4*phi_site[nop*index1 + n]
 	       + a5*phi_site[nop*le_site_index(ic, jc, kc+2) + n]);
 	  }
+	}
+
+	/* Next interface. */
+      }
+    }
+  }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  advection_fourth_order
+ *
+ *  Advective fluxes.
+ *
+ *  The stencil is four points.
+ *
+ ****************************************************************************/
+
+void advection_fourth_order(double * fluxe, double * fluxw,
+			    double * fluxy, double * fluxz) {
+  int nop;
+  int nlocal[3];
+  int ic, jc, kc;
+  int n;
+  int index0, index1;
+  int icm2, icm1, icp1, icp2;
+  double u0[3], u1[3], u;
+
+  const double a1 = (1.0/16.0);
+  const double a2 = (9.0/16.0);
+
+  nop = phi_nop();
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 2);
+
+  assert(fluxe);
+  assert(fluxw);
+  assert(fluxy);
+  assert(fluxz);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm2 = le_index_real_to_buffer(ic, -2);
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    icp2 = le_index_real_to_buffer(ic, +2);
+
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = le_site_index(ic, jc, kc);
+	hydrodynamics_get_velocity(index0, u0);
+
+	/* west face (icm1 and ic) */
+
+	index1 = le_site_index(icm1, jc, kc);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[X] + u1[X]);
+	
+	for (n = 0; n < nop; n++) {
+	  fluxw[nop*index0 + n] =
+	    u*(-a1*phi_site[nop*le_site_index(icm2, jc, kc) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a2*phi_site[nop*index0 + n]
+	       - a1*phi_site[nop*le_site_index(icp1, jc, kc) + n]);
+	}
+
+	/* east face */
+
+	index1 = le_site_index(icp1, jc, kc);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[X] + u1[X]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxe[nop*index0 + n] =
+	    u*(-a1*phi_site[nop*le_site_index(icm1, jc, kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a2*phi_site[nop*index1 + n]
+	       - a1*phi_site[nop*le_site_index(icp2, jc, kc) + n]);
+	}
+
+	/* y-direction */
+
+	index1 = le_site_index(ic, jc+1, kc);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[Y] + u1[Y]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxy[nop*index0 + n] =
+	    u*(-a1*phi_site[nop*le_site_index(ic, jc-1, kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a2*phi_site[nop*index1 + n]
+	       - a1*phi_site[nop*le_site_index(ic, jc+2, kc) + n]);
+	}
+
+	/* z-direction */
+
+	index1 = le_site_index(ic, jc, kc+1);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[Z] + u1[Z]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxz[nop*index0 + n] =
+	    u*(-a1*phi_site[nop*le_site_index(ic, jc, kc-1) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a2*phi_site[nop*index1 + n]
+	       - a1*phi_site[nop*le_site_index(ic, jc, kc+2) + n]);
 	}
 
 	/* Next interface. */
