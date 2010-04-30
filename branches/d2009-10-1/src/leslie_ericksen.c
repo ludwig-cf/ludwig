@@ -5,7 +5,7 @@
  *  Updates a vector order parameter according to something looking
  *  like a Leslie-Ericksen equation.
  *
- *  $Id: leslie_ericksen.c,v 1.1.2.5 2010-04-27 13:21:44 kevin Exp $
+ *  $Id: leslie_ericksen.c,v 1.1.2.6 2010-04-30 10:22:59 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -89,7 +89,7 @@ void leslie_ericksen_update(void) {
 
   if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity();
   hydrodynamics_halo_u();
-  advection_upwind_third_order(fluxe, fluxw, fluxy, fluxz);
+  advection_order_n(fluxe, fluxw, fluxy, fluxz);
   leslie_ericksen_update_fluid();
 
   free(fluxz);
@@ -139,10 +139,15 @@ static void leslie_ericksen_update_fluid(void) {
 	fe_molecular_field_function(index, h);
 	hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
 
+	/* Note that the convection for Leslie Ericksen is that
+	 * w_ab = d_a u_b, which is the transpose of what the
+	 * above returns. Hence an extra minus sign in the
+	 * omega term in the following. */
+
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
 	    d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
-	    omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
+	    omega[ia][ib] = -0.5*(w[ia][ib] - w[ib][ia]);
 	  }
 	}
 
