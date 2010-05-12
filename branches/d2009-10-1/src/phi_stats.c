@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.8.4.3 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: phi_stats.c,v 1.8.4.4 2010-05-12 18:19:39 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -129,22 +129,19 @@ void phi_stats_print_stats() {
  *
  *****************************************************************************/
 
-void phi_init_block() {
+void phi_init_block(const double xi0) {
 
   int nlocal[3];
   int noffset[3];
   int ic, jc, kc, index;
   double z, z1, z2;
-  double phi, xi0;
+  double phi;
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
   z1 = 0.25*L(Z);
   z2 = 0.75*L(Z);
-  /* This is currently hardwired as the value that is generally
-   * used, but may want to change. */
-  xi0 = 1.13;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
@@ -155,12 +152,12 @@ void phi_init_block() {
 
 	if (z > 0.5*L(Z)) {
 	  phi = tanh((z-z2)/xi0);
-	  phi_set_phi_site(index, phi);
 	}
 	else {
 	  phi = -tanh((z-z1)/xi0);
-	  phi_set_phi_site(index, phi);
 	}
+	phi_set_phi_site(index, phi);
+	phi_lb_coupler_phi_set(index, phi);
       }
     }
   }
