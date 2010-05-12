@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.3 2010-04-05 03:29:55 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.4 2010-05-12 18:17:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -316,13 +316,9 @@ void COLL_init_colloids_test() {
   if (cell.y < 1 || cell.y > Ncell(Y)) return;
   if (cell.z < 1 || cell.z > Ncell(Z)) return;
 
-  VERBOSE(("\n"));
-  VERBOSE(("Autocorrelation test\n"));
-  VERBOSE(("Colloid initialised at (%f,%f,%f)\n", r0.x, r0.y, r0.z));
-  VERBOSE(("Velocity               (%f,%f,%f)\n", v0.x, v0.y, v0.z));
   p_colloid = COLL_add_colloid(1, a0, ah, r0, v0, omega0);
 
-  p_colloid->stats.x = v0.x;
+  p_colloid->stats[X] = v0.x;
   p_colloid->dir.x = 1.0;
   p_colloid->dir.y = 0.0;
   p_colloid->dir.z = 0.0;
@@ -356,9 +352,9 @@ void COLL_test_output() {
 	while (p_colloid) {
 #ifdef _COLLOIDS_TEST_AUTOCORRELATION_
 	  verbose("Autocorrelation test output: %10.9f %10.9f\n",
-	    p_colloid->r.x, p_colloid->v.x/p_colloid->stats.x);
+	    p_colloid->r.x, p_colloid->v.x/p_colloid->stats[X]);
 	  /*verbose("Autocorrelation omega: %10.9f %10.9f %10.9f\n",
-		  p_colloid->omega.z/p_colloid->stats.x, p_colloid->dir.x,
+		  p_colloid->omega.z/p_colloid->stats[X], p_colloid->dir.x,
 		  p_colloid->dir.y);*/
 #endif
 #ifdef _COLLOIDS_TEST_CALIBRATE_
@@ -375,125 +371,6 @@ void COLL_test_output() {
   }
 
   return;
-}
-
-
-/*****************************************************************************
- *
- *  COLL_add_colloid_no_halo
- *
- *  Add a colloid only if the proposed position is in the domain
- *  proper (and not in the halo).
- *
- *****************************************************************************/
-
-Colloid * COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
-			      FVector v0, FVector omega0) {
-
-  IVector cell;
-  Colloid * p_c = NULL;
-
-  cell = cell_coords(r0);
-  if (cell.x < 1 || cell.x > Ncell(X)) return p_c;
-  if (cell.y < 1 || cell.y > Ncell(Y)) return p_c;
-  if (cell.z < 1 || cell.z > Ncell(Z)) return p_c;
-
-  p_c = COLL_add_colloid(index, a0, ah, r0, v0, omega0);
-
-  return p_c;
-}
-
-
-/*****************************************************************************
- *
- *  COLL_add_colloid
- *
- *  Add a colloid with the given properties to the head of the
- *  appropriate cell list.
- *
- *  Important: it is up to the caller to ensure index is correct
- *             i.e., it's unique.
- *
- *  A pointer to the new colloid is returned to allow further
- *  modification of the structure. But it's already added to
- *  the cell list.
- *
- *****************************************************************************/
-
-Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u,
-			   FVector omega) {
-
-  Colloid * tmp;
-  IVector   cell;
-  int       n;
-
-  /* Don't add to no-existant cells! */
-  n = 0;
-  cell = cell_coords(r);
-  if (cell.x < 0 || cell.x > Ncell(X) + 1) n++;
-  if (cell.y < 0 || cell.y > Ncell(Y) + 1) n++;
-  if (cell.z < 0 || cell.z > Ncell(Z) + 1) n++;
-
-  if (n) {
-    verbose("Cell coords: %d %d %d position %g %g %g\n",
-	    cell.x, cell.y, cell.z, r.x, r.y, r.z);
-    fatal("Trying to add colloid to no-existant cell [index %d]\n", index);
-  }
-
-  tmp = allocate_colloid();
-
-  /* Put the new colloid at the head of the appropriate cell list */
-
-  tmp->index   = index;
-  tmp->a0      = a0;
-  tmp->ah      = ah;
-  tmp->r.x     = r.x;
-  tmp->r.y     = r.y;
-  tmp->r.z     = r.z;
-  tmp->v.x     = u.x;
-  tmp->v.y     = u.y;
-  tmp->v.z     = u.z;
-  tmp->omega.x = omega.x;
-  tmp->omega.y = omega.y;
-  tmp->omega.z = omega.z;
-
-  ran_parallel_unit_vector(tmp->s);
-
-  tmp->dr[X] = 0.0;
-  tmp->dr[Y] = 0.0;
-  tmp->dr[Z] = 0.0;
-
-  tmp->t0      = UTIL_fvector_zero();
-  tmp->f0      = UTIL_fvector_zero();
-  tmp->force   = UTIL_fvector_zero();
-  tmp->torque  = UTIL_fvector_zero();
-  tmp->cbar    = UTIL_fvector_zero();
-  tmp->rxcbar  = UTIL_fvector_zero();
-
-  /* Record the initial position */
-  tmp->stats.x = tmp->r.x;
-  tmp->stats.y = tmp->r.y;
-  tmp->stats.z = tmp->r.z;
-
-  tmp->deltam   = 0.0;
-  tmp->deltaphi = 0.0;
-  tmp->sumw     = 0.0;
-
-  for (n = 0; n < 21; n++) {
-    tmp->zeta[n] = 0.0;
-  }
-
-  tmp->c_wetting = 0.0;
-  tmp->h_wetting = 0.0;
-
-  tmp->lnk = NULL;
-  tmp->rebuild = 1;
-
-  /* Add to the cell list */
-
-  cell_insert_colloid(tmp);
-
-  return tmp;
 }
 
 
