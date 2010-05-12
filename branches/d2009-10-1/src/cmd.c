@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15.16.3 2010-03-27 11:19:21 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.4 2010-05-12 18:18:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -579,11 +579,11 @@ void mc_mean_square_displacement() {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
-	  ds = p_colloid->r.x - p_colloid->stats.x;
+	  ds = p_colloid->r.x - p_colloid->stats[X];
 	  dxsq += ds*ds;
-	  ds = p_colloid->r.y - p_colloid->stats.y;
+	  ds = p_colloid->r.y - p_colloid->stats[Y];
 	  dysq += ds*ds;
-	  ds = p_colloid->r.z - p_colloid->stats.z;
+	  ds = p_colloid->r.z - p_colloid->stats[Z];
 	  dzsq += ds*ds;
 
 	  p_colloid = p_colloid->next;
