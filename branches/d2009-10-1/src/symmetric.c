@@ -12,7 +12,7 @@
  *
  *  The usual mode of operation is to take a = -b < 0 and k > 0.
  *
- *  $Id: symmetric.c,v 1.1.2.3 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: symmetric.c,v 1.1.2.4 2010-05-12 14:56:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -48,6 +48,7 @@ void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
   a_ = a;
   b_ = b;
   kappa_ = kappa;
+  fe_kappa_set(kappa);
 
   return;
 }

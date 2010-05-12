@@ -2,13 +2,13 @@
  *
  *  symmetric.h
  *
- *  $Id: symmetric.h,v 1.1.2.1 2009-11-04 09:52:12 kevin Exp $
+ *  $Id: symmetric.h,v 1.1.2.2 2010-05-12 14:56:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2010 The University of Edinburgh
  *
  ****************************************************************************/
 
