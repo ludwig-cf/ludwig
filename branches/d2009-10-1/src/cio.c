@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.7.16.2 2010-03-30 14:16:39 kevin Exp $
+ *  $Id: cio.c,v 1.7.16.3 2010-05-12 18:16:20 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,45 +23,38 @@
 #include "colloids.h"
 #include "cio.h"
 
-#include "runtime.h"
-#include "interaction.h"
-
-enum io_type { BINARY, ASCII, ASCII_SERIAL };
-
-/* struct for parallel IO */
-typedef struct{
+typedef struct {
   int root;                      /* Root PE of current I/O group */
   int n_io;                      /* Number of parallel IO group */
   int size;                      /* Size (in PEs) of each IO group */
   int index;                     /* Index of current IO group */
   int rank;                      /* Rank of PE in IO group */
-} IO_Param;
 
-static MPI_Comm IO_Comm;
-static IO_Param io_grp;
+  MPI_Comm comm;                 /* Communicator */
 
-void CIO_read_list_ascii(FILE *);
-void CIO_read_list_ascii_serial(FILE *);
-void CIO_read_list_binary(FILE *);
-void CIO_read_header_ascii(FILE *);
-void CIO_read_header_binary(FILE *);
-void CIO_write_header_ascii(FILE *);
-void CIO_write_header_binary(FILE *);
-void CIO_write_header_null(FILE *);
-int  CIO_write_list_ascii(FILE *, int, int, int);
-int  CIO_write_list_binary(FILE *, int, int, int);
-int  CIO_write_xu_binary(FILE *, int, int, int);
-void CIO_set_cio_format(int, int);
+  void (* write_header_function)(FILE *);
+  int  (* write_list_function)(FILE *, int, int, int);
+  void (* read_header_function)(FILE *);
+  void (* read_list_function)(FILE *);
 
-static void (* CIO_write_header)(FILE *);
-static int  (* CIO_write_list)(FILE *, int, int, int);
-static void (* CIO_read_header)(FILE *);
-static void (* CIO_read_list)(FILE *);
-static void CIO_count_colloids(void);
-static void cio_filename(char * filename, const char * stub);
+} io_struct;
 
+static io_struct cio_;
 static int nlocal_;                       /* Local number of colloids. */
 static int ntotal_;
+
+static void colloid_io_read_list_ascii(FILE *);
+static void colloid_io_read_list_ascii_serial(FILE *);
+static void colloid_io_read_list_binary(FILE *);
+static void colloid_io_read_header_ascii(FILE *);
+static void colloid_io_read_header_binary(FILE *);
+static void colloid_io_write_header_ascii(FILE *);
+static void colloid_io_write_header_binary(FILE *);
+static int  colloid_io_write_list_ascii(FILE *, int, int, int);
+static int  colloid_io_write_list_binary(FILE *, int, int, int);
+
+static void colloid_io_count_colloids(void);
+static void cio_filename(char * filename, const char * stub);
 
 /*****************************************************************************
  *
@@ -71,40 +64,23 @@ static int ntotal_;
 
 void colloid_io_init(void) {
 
-  char tmp[256];
-  int input_format;
-  int output_format;
+  cio_.n_io = 1; /* Always 1 at moment */
 
-  io_grp.n_io = 1; /* Always 1 at moment */
+  if (cio_.n_io > pe_size()) cio_.n_io = pe_size();
+  cio_.size = pe_size() / cio_.n_io;
 
-  if (io_grp.n_io > pe_size()) io_grp.n_io = pe_size();
-  io_grp.size = pe_size() / io_grp.n_io;
-
-  if((cart_rank()%io_grp.size) == 0) {
-    io_grp.root = 1;
+  if ((cart_rank() % cio_.size) == 0) {
+    cio_.root = 1;
   }
   else {
-    io_grp.root = 0;
+    cio_.root = 0;
   }
 
-  io_grp.index = cart_rank()/io_grp.size;
+  cio_.index = cart_rank()/cio_.size;
 
   /* Create communicator for each IO group, and get rank within IO group */
-  MPI_Comm_split(cart_comm(), io_grp.index, cart_rank(), &IO_Comm);
-  MPI_Comm_rank(IO_Comm, &io_grp.rank);
-
-  input_format = BINARY;
-  output_format = BINARY;
-
-  RUN_get_string_parameter("colloid_io_format_input", tmp, 256);
-  if (strncmp("ASCII",  tmp, 5) == 0 ) input_format = ASCII;
-  if (strncmp("ASCII_SERIAL",  tmp, 12) == 0 ) input_format = ASCII_SERIAL;
-  if (strncmp("BINARY", tmp, 6) == 0 ) input_format = BINARY;
-
-  RUN_get_string_parameter("colloid_io_format_output", tmp, 256);
-  if (strncmp("ASCII",  tmp, 5) == 0 ) output_format = ASCII;
-  if (strncmp("BINARY", tmp, 6) == 0 ) output_format = BINARY;
-  CIO_set_cio_format(input_format, output_format);
+  MPI_Comm_split(cart_comm(), cio_.index, cart_rank(), &cio_.comm);
+  MPI_Comm_rank(cio_.comm, &cio_.rank);
 
   return;
 }
@@ -117,19 +93,21 @@ void colloid_io_init(void) {
 
 void colloid_io_finish(void) {
 
+  MPI_Comm_free(&cio_.comm);
+
   return;
 }
 
 /*****************************************************************************
  *
- *  CIO_count_colloids
+ *  colloid_io_count_colloids
  *
  *  Count the local number of (physical, not halo) colloids and
  *  add up across proceses.
  *
  *****************************************************************************/
 
-void CIO_count_colloids() {
+void colloid_io_count_colloids() {
 
   nlocal_ = colloid_nlocal();
 
@@ -165,6 +143,9 @@ void colloid_io_write(const char * filename) {
 
   if (colloid_ntotal() == 0) return;
 
+  assert(cio_.write_header_function);
+  assert(cio_.write_list_function);
+
   /* Set the filename */
 
   cio_filename(filename_io, filename);
@@ -175,9 +156,9 @@ void colloid_io_write(const char * filename) {
   /* Make sure everyone has their current number of particles
    * up-to-date */
 
-  CIO_count_colloids();
+  colloid_io_count_colloids();
 
-  if (io_grp.root) {
+  if (cio_.root) {
     /* Open the file, and write the header, followed by own colloids.
      * When this is done, pass the token to the next processs in the
      * group. */
@@ -190,19 +171,19 @@ void colloid_io_write(const char * filename) {
      * previous process, after which we can go ahead and append our own
      * colloids to the file. */
 
-    MPI_Recv(&token, 1, MPI_INT, io_grp.rank - 1, tag, IO_Comm, &status);
+    MPI_Recv(&token, 1, MPI_INT, cio_.rank - 1, tag, cio_.comm, &status);
     fp_state = fopen(filename_io, "a+b");
     if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
   }
 
   /* Write the local colloid state, consisting of header plus data. */
 
-  CIO_write_header(fp_state);
+  cio_.write_header_function(fp_state);
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
-	token += CIO_write_list(fp_state, ic, jc, kc);
+	token += cio_.write_list_function(fp_state, ic, jc, kc);
       }
     }
   }
@@ -213,11 +194,11 @@ void colloid_io_write(const char * filename) {
    * next process in the group. If this is the last process in the
    * group, we've completed the file. */
 
-  if (io_grp.rank < io_grp.size - 1) {
+  if (cio_.rank < cio_.size - 1) {
     /* Send the token, which happens to be the accumulated number of
      * particles. */
 
-    MPI_Ssend(&token, 1, MPI_INT, io_grp.rank + 1, tag, IO_Comm);
+    MPI_Ssend(&token, 1, MPI_INT, cio_.rank + 1, tag, cio_.comm);
   }
 
   return;
@@ -241,12 +222,15 @@ void colloid_io_read(const char * filename) {
 
   MPI_Status status;
 
+  assert(cio_.read_header_function);
+  assert(cio_.read_list_function);
+
   /* Set the filename from the stub and the extension */
 
   info("colloid_io_read:\n");
   cio_filename(filename_io, filename);
 
-  if (io_grp.root) {
+  if (cio_.root) {
     /* Open the file and read the header information */
     fp_state = fopen(filename_io, "r");
     if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
@@ -256,30 +240,31 @@ void colloid_io_read(const char * filename) {
      * Then, open the file and move to the appropriate position before
      * starting to read. */
 
-    MPI_Recv(&token, 1, MPI_LONG, io_grp.rank - 1, tag, IO_Comm, &status);
+    MPI_Recv(&token, 1, MPI_LONG, cio_.rank - 1, tag, cio_.comm, &status);
 
     fp_state = fopen(filename_io, "r");
     if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
     rewind(fp_state);
+
     /* This is a fix for reading serial files in parallel */
-    if (CIO_read_list != CIO_read_list_ascii_serial) {
+    if (cio_.read_list_function != colloid_io_read_list_ascii_serial) {
       fseek(fp_state, token, SEEK_SET);
     }
   }
 
   /* Read the data */
 
-  CIO_read_header(fp_state);
-  CIO_read_list(fp_state);
+  cio_.read_header_function(fp_state);
+  cio_.read_list_function(fp_state);
 
   token = ftell(fp_state);
   fclose(fp_state);
 
   /* Pass on the token, which is the current offset in the file */
 
-  if (io_grp.rank < io_grp.size - 1) {
+  if (cio_.rank < cio_.size - 1) {
 
-    MPI_Ssend(&token, 1, MPI_LONG, io_grp.rank + 1, tag, IO_Comm);
+    MPI_Ssend(&token, 1, MPI_LONG, cio_.rank + 1, tag, cio_.comm);
 
   }
 
@@ -293,16 +278,16 @@ void colloid_io_read(const char * filename) {
 
 /*****************************************************************************
  *
- *  CIO_write_header_ascii
+ *  colloid_io_write_header_ascii
  *
  *  Write colloid information to file in human-readable form.
  *
  *****************************************************************************/
 
-void CIO_write_header_ascii(FILE * fp) {
+static void colloid_io_write_header_ascii(FILE * fp) {
 
-  fprintf(fp, "I/O n_io:  %22d\n", io_grp.n_io);
-  fprintf(fp, "I/O index: %22d\n", io_grp.index);
+  fprintf(fp, "I/O n_io:  %22d\n", cio_.n_io);
+  fprintf(fp, "I/O index: %22d\n", cio_.index);
   fprintf(fp, "N_colloid: %22d\n", ntotal_);
   fprintf(fp, "nlocal:    %22d\n", nlocal_);
 
@@ -312,7 +297,7 @@ void CIO_write_header_ascii(FILE * fp) {
 
 /*****************************************************************************
  *
- *  CIO_read_header_ascii
+ *  colloid_io_read_header_ascii
  *
  *  Everybody reads their own header, which should include the
  *  local number of particles.
@@ -324,7 +309,7 @@ void CIO_write_header_ascii(FILE * fp) {
  *
  *****************************************************************************/
 
-void CIO_read_header_ascii(FILE * fp) {
+static void colloid_io_read_header_ascii(FILE * fp) {
 
   int    read_int;
 
@@ -338,41 +323,33 @@ void CIO_read_header_ascii(FILE * fp) {
   return;
 }
 
-
 /*****************************************************************************
  *
- *  CIO_write_header_binary
+ *  colloid_io_write_header_binary
  *
  *  Write the colloid header information to file.
  *
  *****************************************************************************/
 
-void CIO_write_header_binary(FILE * fp) {
+static void colloid_io_write_header_binary(FILE * fp) {
 
-  fwrite(&(io_grp.n_io),   sizeof(int),     1, fp);
-  fwrite(&(io_grp.index),  sizeof(int),     1, fp);
+  fwrite(&(cio_.n_io),   sizeof(int),     1, fp);
+  fwrite(&(cio_.index),  sizeof(int),     1, fp);
   fwrite(&ntotal_,         sizeof(int),     1, fp);
   fwrite(&nlocal_,         sizeof(int),     1, fp);
 
   return;
 }
 
-void CIO_write_header_null(FILE * fp) {
-
-  fwrite(&nlocal_, sizeof(int), 1, fp);
-
-  return;
-}
-
 /*****************************************************************************
  *
- *  CIO_read_header_binary
+ *  colloid_io_read_header_binary
  *
  *  The read equivalent of the above.
  *
  *****************************************************************************/
 
-void CIO_read_header_binary(FILE * fp) {
+static void colloid_io_read_header_binary(FILE * fp) {
 
   int     read_int;
 
@@ -386,11 +363,11 @@ void CIO_read_header_binary(FILE * fp) {
 
 /*****************************************************************************
  *
- *  CIO_write_list_ascii
+ *  colloid_io_write_list_ascii
  *
  *****************************************************************************/
 
-int CIO_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
+static int colloid_io_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
 
   Colloid * p_colloid;
   int       nwrite = 0;
@@ -410,6 +387,8 @@ int CIO_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
 	    p_colloid->omega.y, p_colloid->omega.z);
     fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->s[X], p_colloid->s[Y],
             p_colloid->s[Z]);
+    fprintf(fp, "%22.15e\n", p_colloid->c_wetting);
+    fprintf(fp, "%22.15e\n", p_colloid->h_wetting);
     fprintf(fp, "%22.15e\n", p_colloid->deltaphi);
  
     /* Next colloid */
@@ -422,14 +401,14 @@ int CIO_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
 
 /*****************************************************************************
  *
- *  CIO_read_ascii
+ *  colloid_io_read_ascii
  *
  *  The colloid data from file an add a new particle to the local
  *  list.
  *
  *****************************************************************************/
 
-void CIO_read_list_ascii(FILE * fp) {
+static void colloid_io_read_list_ascii(FILE * fp) {
 
   int       nread;
   int       read_index;
@@ -437,6 +416,7 @@ void CIO_read_list_ascii(FILE * fp) {
   double    read_ah;
   FVector   read_r, read_v, read_o;
   double    read_s[3];
+  double    read_c, read_h;
   double    read_deltaphi;
   Colloid * p_colloid;
 
@@ -447,6 +427,8 @@ void CIO_read_list_ascii(FILE * fp) {
     fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
     fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
     fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
+    fscanf(fp, "%22le\n",             &read_c);
+    fscanf(fp, "%22le\n",             &read_h);
     fscanf(fp, "%22le\n",             &(read_deltaphi));
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
@@ -457,6 +439,8 @@ void CIO_read_list_ascii(FILE * fp) {
       p_colloid->s[X] = read_s[X];
       p_colloid->s[Y] = read_s[Y];
       p_colloid->s[Z] = read_s[Z];
+      p_colloid->c_wetting = read_c;
+      p_colloid->h_wetting = read_h;
     }
     else {
       /* This didn't go into the cell list */
@@ -469,7 +453,7 @@ void CIO_read_list_ascii(FILE * fp) {
 
 /*****************************************************************************
  *
- *  CIO_read_list_ascii_serial
+ *  colloid_io_read_list_ascii_serial
  *
  *  This is a solution to reading a serial file in parallel.
  *  Each process reads all the particles, and throws away
@@ -477,7 +461,7 @@ void CIO_read_list_ascii(FILE * fp) {
  *
  *****************************************************************************/
 
-void CIO_read_list_ascii_serial(FILE * fp) {
+static void colloid_io_read_list_ascii_serial(FILE * fp) {
 
   int       nread;
   int       read_index;
@@ -485,6 +469,7 @@ void CIO_read_list_ascii_serial(FILE * fp) {
   double    read_ah;
   FVector   read_r, read_v, read_o;
   double    read_s[3];
+  double    read_c, read_h;
   double    read_deltaphi;
   Colloid * p_colloid;
 
@@ -495,6 +480,8 @@ void CIO_read_list_ascii_serial(FILE * fp) {
     fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
     fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
     fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
+    fscanf(fp, "%22le\n",             &read_c);
+    fscanf(fp, "%22le\n",             &read_h);
     fscanf(fp, "%22le\n",             &(read_deltaphi));
 
     p_colloid = COLL_add_colloid_no_halo(read_index, read_a0, read_ah, read_r,
@@ -505,6 +492,8 @@ void CIO_read_list_ascii_serial(FILE * fp) {
       p_colloid->s[X] = read_s[X];
       p_colloid->s[Y] = read_s[Y];
       p_colloid->s[Z] = read_s[Z];
+      p_colloid->c_wetting = read_c;
+      p_colloid->h_wetting = read_h;
     }
   }
 
@@ -513,13 +502,13 @@ void CIO_read_list_ascii_serial(FILE * fp) {
 
 /*****************************************************************************
  *
- *  CIO_write_list_binary
+ *  colloid_io_write_list_binary
  *
  *  Write out the colliod information (if any) for the specified list.
  *
  *****************************************************************************/
 
-int CIO_write_list_binary(FILE * fp, int ic, int jc, int kc) {
+static int colloid_io_write_list_binary(FILE * fp, int ic, int jc, int kc) {
 
   Colloid * p_colloid;
   int       nwrite = 0;
@@ -536,6 +525,8 @@ int CIO_write_list_binary(FILE * fp, int ic, int jc, int kc) {
     fwrite(&(p_colloid->omega),    sizeof(FVector), 1, fp);
     fwrite(p_colloid->dr,          sizeof(double),  3, fp);
     fwrite(p_colloid->s,           sizeof(double),  3, fp);
+    fwrite(&(p_colloid->c_wetting), sizeof(double),  1, fp);
+    fwrite(&(p_colloid->h_wetting), sizeof(double),  1, fp);
     fwrite(&(p_colloid->deltaphi), sizeof(double),  1, fp);
 
     /* Next colloid */
@@ -548,13 +539,11 @@ int CIO_write_list_binary(FILE * fp, int ic, int jc, int kc) {
 
 /*****************************************************************************
  *
- *  CIO_read_binary
- *
- *  Write me.
+ *  colloid_io_read_list_binary
  *
  *****************************************************************************/
 
-void CIO_read_list_binary(FILE * fp) {
+static void colloid_io_read_list_binary(FILE * fp) {
 
   int       nread;
   int       read_index;
@@ -563,6 +552,7 @@ void CIO_read_list_binary(FILE * fp) {
   FVector   read_r, read_v, read_o;
   double    read_dr[3];
   double    read_s[3];
+  double    read_c, read_h;
   double    read_deltaphi;
   Colloid * p_colloid;
 
@@ -576,6 +566,8 @@ void CIO_read_list_binary(FILE * fp) {
     fread(&read_o,        sizeof(FVector), 1, fp);
     fread(read_dr,        sizeof(double),  3, fp);
     fread(read_s,         sizeof(double),  3, fp);
+    fread(&read_c,        sizeof(double),  1, fp);
+    fread(&read_h,        sizeof(double),  1, fp);
     fread(&read_deltaphi, sizeof(double),  1, fp);
 
     p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
@@ -588,6 +580,8 @@ void CIO_read_list_binary(FILE * fp) {
 	p_colloid->dr[i] = read_dr[i];
 	p_colloid->s[i] = read_s[i];
       }
+      p_colloid->c_wetting = read_c;
+      p_colloid->h_wetting = read_h;
     }
     else {
       /* This didn't go into the cell list */
@@ -600,72 +594,70 @@ void CIO_read_list_binary(FILE * fp) {
 
 /*****************************************************************************
  *
- *  CIO_write_xu_binary
- *
- *  Write the position and velocity alone.
+ *  colloid_io_format_input_ascii_set
  *
  *****************************************************************************/
 
-int CIO_write_xu_binary(FILE * fp, int ic, int jc, int kc) {
+void colloid_io_format_input_ascii_set(void) {
 
-  Colloid * p_colloid;
-  int       nwrite = 0;
+  cio_.read_header_function = colloid_io_read_header_ascii;
+  cio_.read_list_function = colloid_io_read_list_ascii;
 
-  p_colloid = CELL_get_head_of_list(ic, jc, kc);
-
-  while (p_colloid) {
-    nwrite++;
-    fwrite(&(p_colloid->index),    sizeof(int),     1, fp);
-    fwrite(&(p_colloid->r),        sizeof(FVector), 1, fp);
-    fwrite(&(p_colloid->v),        sizeof(FVector), 1, fp);
-
-    /* Next colloid */
-    p_colloid = p_colloid->next;
-  }
-
-  return nwrite;
+  return;
 }
-
 
 /*****************************************************************************
  *
- *  CIO_set_cio_format
- *
- *  Set the format for IO {BINARY|ASCII|ASCII_SERIAL}.
+ *  colloid_io_format_input_binary_set
  *
  *****************************************************************************/
 
-void CIO_set_cio_format(int io_intype, int io_outtype) {
+void colloid_io_format_input_binary_set(void) {
 
-  switch (io_intype) {
-  case BINARY:
-    CIO_read_header  = CIO_read_header_binary;
-    CIO_read_list    = CIO_read_list_binary;
-    break;
-  case ASCII:
-    CIO_read_header  = CIO_read_header_ascii;
-    CIO_read_list    = CIO_read_list_ascii;
-    break;
-  case ASCII_SERIAL:
-    CIO_read_header  = CIO_read_header_ascii;
-    CIO_read_list    = CIO_read_list_ascii_serial;
-    break;
-  default:
-    fatal("Invalid colloid input format (value %d)\n", io_intype);
-  }
+  cio_.read_header_function = colloid_io_read_header_binary;
+  cio_.read_list_function = colloid_io_read_list_binary;
 
-  switch (io_outtype) {
-  case BINARY:
-    CIO_write_header = CIO_write_header_binary;
-    CIO_write_list   = CIO_write_list_binary;
-    break;
-  case ASCII:
-    CIO_write_header = CIO_write_header_ascii;
-    CIO_write_list   = CIO_write_list_ascii;
-    break;
-  default:
-    fatal("Invalid colloid output format (value %d)\n", io_outtype);
-  }
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_io_format_input_ascii_serial_set
+ *
+ *****************************************************************************/
+
+void colloid_io_format_input_ascii_serial_set(void) {
+
+  cio_.read_header_function = colloid_io_read_header_ascii;
+  cio_.read_list_function = colloid_io_read_list_ascii;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_io_format_output_ascii_set
+ *
+ *****************************************************************************/
+
+void colloid_io_format_output_ascii_set(void) {
+
+  cio_.write_header_function = colloid_io_write_header_ascii;
+  cio_.write_list_function = colloid_io_write_list_ascii;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_io_format_output_binary_set
+ *
+ *****************************************************************************/
+
+void colloid_io_format_output_binary_set(void) {
+
+  cio_.write_header_function = colloid_io_write_header_binary;
+  cio_.write_list_function = colloid_io_write_list_binary;
 
   return;
 }
@@ -683,9 +675,9 @@ static void cio_filename(char * filename, const char * stub) {
   assert(stub);
   assert(strlen(stub) < FILENAME_MAX/2);  /* Check stub not too long */
 
-  if (io_grp.index >= 1000) fatal("Format botch for cio stub %s\n", stub);
+  if (cio_.index >= 1000) fatal("Format botch for cio stub %s\n", stub);
 
-  sprintf(filename, "%s.%3.3d-%3.3d", stub, io_grp.n_io, io_grp.index + 1);
+  sprintf(filename, "%s.%3.3d-%3.3d", stub, cio_.n_io, cio_.index + 1);
 
   return;
 }

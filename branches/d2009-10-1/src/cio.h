@@ -2,7 +2,7 @@
  *
  *  cio.h
  *
- *  $Id: cio.h,v 1.1.1.1.22.1 2010-03-27 11:18:16 kevin Exp $
+ *  $Id: cio.h,v 1.1.1.1.22.2 2010-05-12 18:16:20 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,5 +20,11 @@ void colliod_io_finish(void);
 
 void colloid_io_read(const char * filename);
 void colloid_io_write(const char * filename);
+
+void colloid_io_format_input_ascii_set(void);
+void colloid_io_format_input_binary_set(void);
+void colloid_io_format_input_ascii_serial_set(void);
+void colloid_io_format_output_ascii_set(void);
+void colloid_io_format_output_binary_set(void);
 
 #endif
