@@ -4,7 +4,7 @@
  *
  *  Data structures and global list pointers for colloids.
  *
- *  $Id: colloids.h,v 1.9.2.5 2010-04-05 03:36:26 kevin Exp $
+ *  $Id: colloids.h,v 1.9.2.6 2010-05-12 18:14:41 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -48,7 +48,7 @@ struct colloid {
   double    deltaphi;      /* Order parameter deficit on bounce-back */
   double    sumw;          /* Sum of weights over links */
   double    zeta[21];      /* Upper triangle of 6x6 drag matrix zeta */
-  FVector   stats;         /* Particle statisitics */
+  double    stats[3];      /* Particle statisitics */
 
   /* Magnetic dipole */
 
@@ -116,5 +116,9 @@ double    get_colloid_rho0(void);
 Colloid * colloid_add_local(const int index, const double r[3]);
 int       colloid_ntotal(void);
 int       colloid_nlocal(void);
+
+Colloid * COLL_add_colloid(int, double, double, FVector, FVector, FVector);
+Colloid * COLL_add_colloid_no_halo(int, double, double, FVector, FVector,
+				   FVector);
 
 #endif

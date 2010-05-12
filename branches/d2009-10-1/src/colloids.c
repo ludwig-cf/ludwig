@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.6 2010-04-02 07:52:29 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.7 2010-05-12 18:14:41 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -31,6 +31,8 @@ static int N_colloid_ = 0;      /* The global number of colloids */
 static double lcell[3];
 static Colloid ** cell_list_;   /* Cell list for colloids */
 static double rho0_ = 1.0;      /* Colloid density */
+
+static void colloid_cell_coords(const double r[3], int icell[3]);
 
 /*****************************************************************************
  *
@@ -483,47 +485,6 @@ void cell_update() {
 
 /*****************************************************************************
  *
- *  colloid_add_local
- *
- *  Add a colloid only if the position is in the local domain.
- *  (and not in the halo).
- *
- *  This returns a pointer to a new colloid, or NULL if none
- *  is added.
- *
- *****************************************************************************/
-
-Colloid * colloid_add_local(const int index, const double r[3]) {
-
-  IVector cell;
-  Colloid * p_c = NULL;
-  FVector rnew;
-
-  rnew.x = r[X];
-  rnew.y = r[Y];
-  rnew.z = r[Z];
-
-  cell = cell_coords(rnew);
-
-  if (cell.x < 1 || cell.x > Ncell(X)) return p_c;
-  if (cell.y < 1 || cell.y > Ncell(Y)) return p_c;
-  if (cell.z < 1 || cell.z > Ncell(Z)) return p_c;
-
-  p_c = allocate_colloid();
-
-  /* Put the new colloid at the head of the appropriate cell list */
-
-  p_c->index = index;
-  p_c->r     = rnew;
-  p_c->lnk   = NULL;
-
-  cell_insert_colloid(p_c);
-
-  return p_c;
-}
-
-/*****************************************************************************
- *
  *  colloid_nlocal
  *
  *  Return the local number of colloids. As the colloids move about,
@@ -554,4 +515,207 @@ int colloid_nlocal(void) {
   }
 
   return nlocal;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_add_colloid
+ *
+ *  The colloid must have an index, and it must have a position.
+ *
+ *****************************************************************************/
+
+Colloid * colloid_add_colloid(const int index, const double r[3]) {
+
+  int       icell[3];
+  Colloid * p_colloid;
+
+  colloid_cell_coords(r, icell);
+
+  assert(icell[X] >= 0);
+  assert(icell[Y] >= 0);
+  assert(icell[Z] >= 0);
+  assert(icell[X] <= Ncell(X) + 1);
+  assert(icell[Y] <= Ncell(Y) + 1);
+  assert(icell[Z] <= Ncell(Z) + 1);
+
+  p_colloid = allocate_colloid();
+  p_colloid->index = index;
+  p_colloid->lnk = NULL;
+  p_colloid->next = NULL;
+
+  cell_insert_colloid(p_colloid);
+
+  verbose("Not set colloid properties!"); /* Not operational yet */
+
+  return p_colloid;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_add_colloid_local
+ *
+ *  Return a pointer to a new colloid, if r is in the local domain.
+ *
+ *****************************************************************************/
+
+Colloid * colloid_add_colloid_local(const int index, const double r[3]) {
+
+  int icell[3];
+
+  colloid_cell_coords(r, icell);
+  if (icell[X] < 1 || icell[X] > Ncell(X)) return NULL;
+  if (icell[Y] < 1 || icell[Y] > Ncell(Y)) return NULL;
+  if (icell[Z] < 1 || icell[Z] > Ncell(Z)) return NULL;
+
+  return colloid_add_colloid(index, r);
+}
+
+/*****************************************************************************
+ *
+ *  colloid_cell_coords
+ *
+ *  For position vector r in the global coordinate system
+ *  return the coordinates (ic,jc,kc) of the corresponding
+ *  cell in the local cell list.
+ *
+ *  If the position is not in the local domain, then neither
+ *  is the cell. The caller must handle this.
+ *
+ *  09/01/07 floor() is problematic when colloid exactly on cell
+ *           boundary and r is negative, ie., cell goes to -1
+ *
+ *****************************************************************************/
+
+static void colloid_cell_coords(const double r[3], int icell[3]) {
+
+  int ia;
+
+  for (ia = 0; ia < 3; ia++) {
+    icell[ia] = (int) floor((r[ia] - Lmin(ia) + lcell[ia]) / lcell[ia]);
+    icell[ia] -= cart_coords(ia)*ncell[ia];
+  }
+
+  return;
+}
+
+
+/*****************************************************************************
+ *
+ *  COLL_add_colloid_no_halo
+ *
+ *  Add a colloid only if the proposed position is in the domain
+ *  proper (and not in the halo).
+ *
+ *****************************************************************************/
+
+Colloid * COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
+			      FVector v0, FVector omega0) {
+
+  IVector cell;
+  Colloid * p_c = NULL;
+
+  cell = cell_coords(r0);
+  if (cell.x < 1 || cell.x > Ncell(X)) return p_c;
+  if (cell.y < 1 || cell.y > Ncell(Y)) return p_c;
+  if (cell.z < 1 || cell.z > Ncell(Z)) return p_c;
+
+  p_c = COLL_add_colloid(index, a0, ah, r0, v0, omega0);
+
+  return p_c;
+}
+
+
+/*****************************************************************************
+ *
+ *  COLL_add_colloid
+ *
+ *  Add a colloid with the given properties to the head of the
+ *  appropriate cell list.
+ *
+ *  Important: it is up to the caller to ensure index is correct
+ *             i.e., it's unique.
+ *
+ *  A pointer to the new colloid is returned to allow further
+ *  modification of the structure. But it's already added to
+ *  the cell list.
+ *
+ *****************************************************************************/
+
+Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u,
+			   FVector omega) {
+
+  Colloid * tmp;
+  IVector   cell;
+  int       n;
+
+  /* Don't add to no-existant cells! */
+  n = 0;
+  cell = cell_coords(r);
+  if (cell.x < 0 || cell.x > Ncell(X) + 1) n++;
+  if (cell.y < 0 || cell.y > Ncell(Y) + 1) n++;
+  if (cell.z < 0 || cell.z > Ncell(Z) + 1) n++;
+
+  if (n) {
+    verbose("Cell coords: %d %d %d position %g %g %g\n",
+	    cell.x, cell.y, cell.z, r.x, r.y, r.z);
+    fatal("Trying to add colloid to no-existant cell [index %d]\n", index);
+  }
+
+  tmp = allocate_colloid();
+
+  /* Put the new colloid at the head of the appropriate cell list */
+
+  tmp->index   = index;
+  tmp->a0      = a0;
+  tmp->ah      = ah;
+  tmp->r.x     = r.x;
+  tmp->r.y     = r.y;
+  tmp->r.z     = r.z;
+  tmp->v.x     = u.x;
+  tmp->v.y     = u.y;
+  tmp->v.z     = u.z;
+  tmp->omega.x = omega.x;
+  tmp->omega.y = omega.y;
+  tmp->omega.z = omega.z;
+
+  tmp->s[X] = 1.0;
+  tmp->s[Y] = 0.0;
+  tmp->s[Z] = 0.0;
+
+  tmp->dr[X] = 0.0;
+  tmp->dr[Y] = 0.0;
+  tmp->dr[Z] = 0.0;
+
+  tmp->t0      = UTIL_fvector_zero();
+  tmp->f0      = UTIL_fvector_zero();
+  tmp->force   = UTIL_fvector_zero();
+  tmp->torque  = UTIL_fvector_zero();
+  tmp->cbar    = UTIL_fvector_zero();
+  tmp->rxcbar  = UTIL_fvector_zero();
+
+  /* Record the initial position */
+  tmp->stats[X] = tmp->r.x;
+  tmp->stats[Y] = tmp->r.y;
+  tmp->stats[Z] = tmp->r.z;
+
+  tmp->deltam   = 0.0;
+  tmp->deltaphi = 0.0;
+  tmp->sumw     = 0.0;
+
+  for (n = 0; n < 21; n++) {
+    tmp->zeta[n] = 0.0;
+  }
+
+  tmp->c_wetting = 0.0;
+  tmp->h_wetting = 0.0;
+
+  tmp->lnk = NULL;
+  tmp->rebuild = 1;
+
+  /* Add to the cell list */
+
+  cell_insert_colloid(tmp);
+
+  return tmp;
 }
