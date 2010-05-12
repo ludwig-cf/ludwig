@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.7 2010-05-12 18:14:41 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.8 2010-05-12 18:38:43 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -519,13 +519,13 @@ int colloid_nlocal(void) {
 
 /*****************************************************************************
  *
- *  colloid_add_colloid
+ *  colloid_add
  *
  *  The colloid must have an index, and it must have a position.
  *
  *****************************************************************************/
 
-Colloid * colloid_add_colloid(const int index, const double r[3]) {
+Colloid * colloid_add(const int index, const double r[3]) {
 
   int       icell[3];
   Colloid * p_colloid;
@@ -541,25 +541,31 @@ Colloid * colloid_add_colloid(const int index, const double r[3]) {
 
   p_colloid = allocate_colloid();
   p_colloid->index = index;
+
+  /* to address implementations of state */
+  p_colloid->r.x = r[X];
+  p_colloid->r.y = r[Y];
+  p_colloid->r.z = r[Z];
+
   p_colloid->lnk = NULL;
   p_colloid->next = NULL;
 
   cell_insert_colloid(p_colloid);
 
-  verbose("Not set colloid properties!"); /* Not operational yet */
+  verbose("Not set colloid properties in add routine!\n");
 
   return p_colloid;
 }
 
 /*****************************************************************************
  *
- *  colloid_add_colloid_local
+ *  colloid_add_local
  *
  *  Return a pointer to a new colloid, if r is in the local domain.
  *
  *****************************************************************************/
 
-Colloid * colloid_add_colloid_local(const int index, const double r[3]) {
+Colloid * colloid_add_local(const int index, const double r[3]) {
 
   int icell[3];
 
@@ -568,7 +574,7 @@ Colloid * colloid_add_colloid_local(const int index, const double r[3]) {
   if (icell[Y] < 1 || icell[Y] > Ncell(Y)) return NULL;
   if (icell[Z] < 1 || icell[Z] > Ncell(Z)) return NULL;
 
-  return colloid_add_colloid(index, r);
+  return colloid_add(index, r);
 }
 
 /*****************************************************************************

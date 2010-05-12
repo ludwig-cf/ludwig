@@ -4,7 +4,7 @@
  *
  *  Data structures and global list pointers for colloids.
  *
- *  $Id: colloids.h,v 1.9.2.6 2010-05-12 18:14:41 kevin Exp $
+ *  $Id: colloids.h,v 1.9.2.7 2010-05-12 18:38:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -114,6 +114,7 @@ void      set_N_colloid(const int);
 int       get_N_colloid(void);
 double    get_colloid_rho0(void);
 Colloid * colloid_add_local(const int index, const double r[3]);
+Colloid * colloid_add(const int index, const double r[3]);
 int       colloid_ntotal(void);
 int       colloid_nlocal(void);
 
