@@ -21,7 +21,7 @@
  *  If one only needs a set contact angle, can have C = 0. C only comes
  *  into play when consdiering wetting phase transitions.
  *
- *  $Id: gradient_3d_27pt_solid.c,v 1.1.2.3 2010-04-05 03:36:26 kevin Exp $
+ *  $Id: gradient_3d_27pt_solid.c,v 1.1.2.4 2010-05-12 17:07:06 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -115,7 +115,7 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
   double gradt[NGRAD_];
   double gradn[3];
   double dphi;
-  double rk = 0.0;
+  double rk;
   double c, h, phi_b;
 
   const double r9 = (1.0/9.0);     /* normaliser for grad */
@@ -123,8 +123,7 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 
   coords_nlocal(nlocal);
 
-  /* rk = 1.0/free_energy_wetting();*/
-  rk = 0.0;
+  rk = 1.0/fe_kappa();
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
