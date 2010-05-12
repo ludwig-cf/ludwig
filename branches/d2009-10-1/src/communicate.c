@@ -147,7 +147,7 @@ void MODEL_init( void ) {
 
     if (ind != 0 && strcmp(filename, "block") == 0) {
       info("Initialisng phi as block\n");
-      phi_init_block();
+      phi_init_block(symmetric_interfacial_width());
     }
 
     if (ind != 0 && strcmp(filename, "bath") == 0) {
