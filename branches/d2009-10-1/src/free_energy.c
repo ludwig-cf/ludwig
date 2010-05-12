@@ -20,7 +20,7 @@
  *  gradients are arranged appropriately at the point of selecting
  *  the free energy.
  *
- *  $Id: free_energy.c,v 1.15.6.1 2009-11-04 09:59:20 kevin Exp $
+ *  $Id: free_energy.c,v 1.15.6.2 2010-05-12 14:54:56 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -43,6 +43,7 @@ static double (* fp_fed)(const int index) = fe_fed_null;
 static double (* fp_mu)(const int index, const int nop) = fe_mu_null;
 static double (* fp_iso)(const int index) = fe_iso_null;
 static void   (* fp_pth)(const int index, double sth[3][3]) = fe_pth_null;
+static double kappa_ = 1.0;
 
 /****************************************************************************
  *
@@ -205,5 +206,28 @@ static void fe_pth_null(const int index, double s[3][3]) {
     }
   }
 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  fe_kappa
+ *
+ *****************************************************************************/
+
+double fe_kappa(void) {
+
+  return kappa_;
+}
+
+/*****************************************************************************
+ *
+ *  fe_kappa_set
+ *
+ *****************************************************************************/
+
+void fe_kappa_set(const double kappa) {
+
+  kappa_ = kappa;
   return;
 }

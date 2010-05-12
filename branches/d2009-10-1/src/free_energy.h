@@ -4,7 +4,7 @@
  *
  *  The 'abstract' free energy interface.
  *
- *  $Id: free_energy.h,v 1.4.14.1 2009-11-04 09:59:20 kevin Exp $
+ *  $Id: free_energy.h,v 1.4.14.2 2010-05-12 14:54:56 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,5 +26,8 @@ double (* fe_density_function(void))(const int index);
 double (* fe_chemical_potential_function(void))(const int, const int nop);
 double (* fe_isotropic_pressure_function(void))(const int index);
 void   (* fe_chemical_stress_function(void))(const int index, double s[3][3]);
+
+double fe_kappa(void);
+void   fe_kappa_set(const double kappa);
 
 #endif
