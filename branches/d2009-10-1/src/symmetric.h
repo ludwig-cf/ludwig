@@ -2,7 +2,7 @@
  *
  *  symmetric.h
  *
- *  $Id: symmetric.h,v 1.1.2.2 2010-05-12 14:56:26 kevin Exp $
+ *  $Id: symmetric.h,v 1.1.2.3 2010-05-12 17:08:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -14,6 +14,8 @@
 
 #ifndef SYMMETRIC_H
 #define SYMMETRIC_H
+
+#include "free_energy.h"
 
 void   symmetric_free_energy_parameters_set(double a, double b, double kappa);
 double symmetric_interfacial_tension(void);
