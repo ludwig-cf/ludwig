@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.10.2.2 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: bbl.c,v 1.10.2.3 2010-05-13 11:35:51 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -270,7 +270,7 @@ static void bounce_back_pass1() {
 		  dm_a = -delta*UTIL_dot_product(va, ci);
 
 		  fdist = distribution_f(i, ij, 0);
-		  fdist += md_a;
+		  fdist += dm_a;
 		  distribution_f_set(i, ij, 0, fdist);
 
 		  dm += dm_a;
