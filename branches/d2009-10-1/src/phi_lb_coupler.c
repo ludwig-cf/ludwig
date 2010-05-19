@@ -5,13 +5,13 @@
  *  In cases where the order parameter is via "full LB", this couples
  *  the scalar order parameter phi_site[] to the distributions.
  *
- *  $Id: phi_lb_coupler.c,v 1.2.4.4 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: phi_lb_coupler.c,v 1.2.4.5 2010-05-19 19:16:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2010 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -25,7 +25,7 @@
 #include "site_map.h"
 #include "phi.h"
 #include "phi_lb_coupler.h"
-#include "utilities.h"
+#include "util.h"
 
 extern double * phi_site;
 

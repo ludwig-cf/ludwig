@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15.16.4 2010-05-12 18:18:33 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.5 2010-05-19 19:16:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,6 +24,7 @@
 #include "runtime.h"
 #include "physics.h"
 #include "potential.h"
+#include "util.h"
 #include "cio.h"
 
 #include "colloids.h"
@@ -92,7 +93,7 @@ void CMD_init_volume_fraction() {
     n_global = mc_init_bcc_lattice(vf, a0, ah);
   }
 
-  vf = (4.0/3.0)*PI*ah*ah*ah*n_global / (L(X)*L(Y)*L(Z));
+  vf = (4.0/3.0)*pi_*ah*ah*ah*n_global / (L(X)*L(Y)*L(Z));
   info("[       ] initialised %d particles\n", n_global);
   info("[       ] actual volume fraction of %f\n", vf);
 
@@ -279,6 +280,7 @@ void mc_set_proposed_move(const double drmax) {
 
 void mc_move(const double sign) {
 
+  int       ia;
   int       ic, jc, kc;
   Colloid * p_colloid;
 
@@ -290,9 +292,9 @@ void mc_move(const double sign) {
 
 	while (p_colloid) {
 
-	  p_colloid->r.x += sign*p_colloid->random[0];
-	  p_colloid->r.y += sign*p_colloid->random[1];
-	  p_colloid->r.z += sign*p_colloid->random[2];
+	  for (ia = 0; ia < 3; ia++) {
+	    p_colloid->r[ia] += sign*p_colloid->random[ia];
+	  }
 
 	  p_colloid = p_colloid->next;
 	}
@@ -319,7 +321,7 @@ void mc_check_state() {
   e = mc_total_energy();
 
   info("\nChecking colloid state...\n");
-  info("Total energy / NkT: %g\n", e/(get_N_colloid()*get_kT()));
+  info("Total energy / NkT: %g\n", e/(colloid_ntotal()*get_kT()));
   mc_mean_square_displacement();
 
   if (e >= ENERGY_HARD_SPHERE/2.0) {
@@ -350,10 +352,8 @@ double mc_total_energy() {
   double etotal;
   double h;
   double hard_sphere_energy(const double);
-  double hard_wall_energy(const FVector, const double);
-
-  FVector r_12;
-  FVector COLL_fvector_separation(FVector, FVector);
+  double hard_wall_energy(const double r[3], const double);
+  double r12[3];
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -379,9 +379,8 @@ double mc_total_energy() {
 
 		  if (p_c1->index < p_c2->index) {
 
-		    r_12 = COLL_fvector_separation(p_c1->r, p_c2->r);
-
-		    h = sqrt(r_12.x*r_12.x + r_12.y*r_12.y + r_12.z*r_12.z);
+		    coords_minimum_distance(p_c1->r, p_c2->r, r12);
+		    h = modulus(r12);
 		    h = h - p_c1->ah - p_c2->ah;
 		    
 		    elocal += hard_sphere_energy(h);
@@ -422,23 +421,23 @@ double mc_total_energy() {
  *
  *****************************************************************************/
 
-double hard_wall_energy(const FVector r, const double ah) {
+double hard_wall_energy(const double r[3], const double ah) {
 
   double etot = 0.0;
 
   if (is_periodic(X) == 0) {
-    if ((r.x - ah) < Lmin(X)) etot += ENERGY_HARD_SPHERE;
-    if ((r.x + ah) > Lmin(X) + L(X)) etot += ENERGY_HARD_SPHERE;
+    if ((r[X] - ah) < Lmin(X)) etot += ENERGY_HARD_SPHERE;
+    if ((r[X] + ah) > Lmin(X) + L(X)) etot += ENERGY_HARD_SPHERE;
   }
 
   if (is_periodic(Y) == 0) {
-    if ((r.y - ah) < Lmin(Y)) etot += ENERGY_HARD_SPHERE;
-    if ((r.y + ah) > Lmin(Y) + L(Y)) etot += ENERGY_HARD_SPHERE;
+    if ((r[Y] - ah) < Lmin(Y)) etot += ENERGY_HARD_SPHERE;
+    if ((r[Y] + ah) > Lmin(Y) + L(Y)) etot += ENERGY_HARD_SPHERE;
   }
 
   if (is_periodic(Z) == 0) {
-    if ((r.z - ah) < Lmin(Z)) etot += ENERGY_HARD_SPHERE;
-    if ((r.z + ah) > Lmin(Z) + L(Z)) etot += ENERGY_HARD_SPHERE;
+    if ((r[Z] - ah) < Lmin(Z)) etot += ENERGY_HARD_SPHERE;
+    if ((r[Z] + ah) > Lmin(Z) + L(Z)) etot += ENERGY_HARD_SPHERE;
   }
 
   return etot;
@@ -457,8 +456,7 @@ double hard_wall_energy(const FVector r, const double ah) {
 void mc_init_random(const int npart, const double a0, const double ah) {
 
   int n;
-  FVector r0;
-  FVector zero = {0.0, 0.0, 0.0};
+  double r0[3];
   double Lex[3];
 
   /* If boundaries are present, some of the volume must be excluded */
@@ -467,10 +465,11 @@ void mc_init_random(const int npart, const double a0, const double ah) {
   Lex[Z] = ah*(1.0 - is_periodic(Z));
 
   for (n = 1; n <= npart; n++) {
-    r0.x = Lmin(X) + Lex[X] + ran_serial_uniform()*(L(X) - 2.0*Lex[X]);
-    r0.y = Lmin(Y) + Lex[Y] + ran_serial_uniform()*(L(Y) - 2.0*Lex[Y]);
-    r0.z = Lmin(Z) + Lex[Z] + ran_serial_uniform()*(L(Z) - 2.0*Lex[Z]);
-    COLL_add_colloid_no_halo(n, a0, ah, r0, zero, zero);
+    r0[X] = Lmin(X) + Lex[X] + ran_serial_uniform()*(L(X) - 2.0*Lex[X]);
+    r0[Y] = Lmin(Y) + Lex[Y] + ran_serial_uniform()*(L(Y) - 2.0*Lex[Y]);
+    r0[Z] = Lmin(Z) + Lex[Z] + ran_serial_uniform()*(L(Z) - 2.0*Lex[Z]);
+    colloid_add_local(n, r0);
+    fatal("Set a0 ah\n");
   }
 
   return;
@@ -494,12 +493,11 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
   int     nx, ny, nz, ncx, ncy, ncz;
   int     index = 0;
   double  dx, dy, dz, vp;
-  FVector r0;
-  FVector zero = {0.0, 0.0, 0.0};
+  double r0[3];
 
   /* How many particles to get this volume fraction? */
 
-  n_request = (ceil) (L(X)*L(Y)*L(Z)*vf / ((4.0/3.0)*PI*ah*ah*ah));
+  n_request = (ceil) (L(X)*L(Y)*L(Z)*vf / ((4.0/3.0)*pi_*ah*ah*ah));
 
   /* How many will fit? */
 
@@ -520,13 +518,14 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
     for (ny = 1; ny <= ncy; ny++) {
       for (nz = 1; nz <= ncz; nz++) {
 
-	r0.x = Lmin(X) + dx*(nx-0.5);
-	r0.y = Lmin(Y) + dy*(ny-0.5);
-	r0.z = Lmin(Z) + dz*(nz-0.5);
+	r0[X] = Lmin(X) + dx*(nx-0.5);
+	r0[Y] = Lmin(Y) + dy*(ny-0.5);
+	r0[Z] = Lmin(Z) + dz*(nz-0.5);
 
 	if (ran_serial_uniform() < vp) {
 	  index++;
-	  COLL_add_colloid_no_halo(index, a0, ah, r0, zero, zero);
+	  colloid_add(index, r0);
+	  fatal("check properties\n");
 	}
       }
     }
@@ -542,13 +541,14 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
     for (ny = 1; ny < ncy; ny++) {
       for (nz = 1; nz < ncz; nz++) {
 
-	r0.x = Lmin(X) + dx*nx;
-	r0.y = Lmin(Y) + dy*ny;
-	r0.z = Lmin(Z) + dz*nz;
+	r0[X] = Lmin(X) + dx*(nx-0.5);
+	r0[Y] = Lmin(Y) + dy*(ny-0.5);
+	r0[Z] = Lmin(Z) + dz*(nz-0.5);
 
 	if (ran_serial_uniform() < vp) {
 	  index++;
-	  COLL_add_colloid_no_halo(index, a0, ah, r0, zero, zero);
+	  colloid_add(index, r0);
+	  fatal("check properties\n");
 	}
       }
     }
@@ -579,11 +579,11 @@ void mc_mean_square_displacement() {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
-	  ds = p_colloid->r.x - p_colloid->stats[X];
+	  ds = p_colloid->r[X] - p_colloid->stats[X];
 	  dxsq += ds*ds;
-	  ds = p_colloid->r.y - p_colloid->stats[Y];
+	  ds = p_colloid->r[Y] - p_colloid->stats[Y];
 	  dysq += ds*ds;
-	  ds = p_colloid->r.z - p_colloid->stats[Z];
+	  ds = p_colloid->r[Z] - p_colloid->stats[Z];
 	  dzsq += ds*ds;
 
 	  p_colloid = p_colloid->next;
@@ -593,11 +593,11 @@ void mc_mean_square_displacement() {
     }
   }
 
-  dxsq /= get_N_colloid();
-  dysq /= get_N_colloid();
-  dzsq /= get_N_colloid();
+  /* Use ds as a normaliser here ... */
+  ds = 1.0/colloid_ntotal();
 
-  info("Mean square displacements (serial only) %f %f %f\n", dxsq, dysq, dzsq);
+  info("Mean square displacements (serial only) %f %f %f\n",
+       ds*dxsq, ds*dysq, ds*dzsq);
 
   return;
 }

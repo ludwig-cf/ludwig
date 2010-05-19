@@ -4,7 +4,7 @@
  *
  *  Some useful quantities concerning colloids.
  *
- *  $Id: stats_colloid.c,v 1.1.2.1 2010-04-02 09:01:00 kevin Exp $
+ *  $Id: stats_colloid.c,v 1.1.2.2 2010-05-19 19:16:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,6 +20,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "colloids.h"
+#include "util.h"
 #include "stats_colloid.h"
 
 /*****************************************************************************
@@ -54,11 +55,11 @@ void stats_colloid_momentum(double g[3]) {
 
 	while (p_colloid) {
 
-	  mass = 4.0*PI*pow(p_colloid->a0, 3)/3.0;
+	  mass = 4.0*pi_*pow(p_colloid->a0, 3)/3.0;
 
-	  glocal[X] += mass*p_colloid->v.x;
-	  glocal[Y] += mass*p_colloid->v.y;
-	  glocal[Z] += mass*p_colloid->v.z;
+	  glocal[X] += mass*p_colloid->v[X];
+	  glocal[Y] += mass*p_colloid->v[Y];
+	  glocal[Z] += mass*p_colloid->v[Z];
 
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;

@@ -4,7 +4,7 @@
  *
  *  Colloid I/O, serial and parallel.
  *
- *  $Id: cio.c,v 1.7.16.3 2010-05-12 18:16:20 kevin Exp $
+ *  $Id: cio.c,v 1.7.16.4 2010-05-19 19:16:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -379,14 +379,18 @@ static int colloid_io_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
 
     fprintf(fp, "%22.15e %22.15e %d\n", p_colloid->a0, p_colloid->ah,
 	    p_colloid->index);
-    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->r.x, p_colloid->r.y,
-	    p_colloid->r.z);
-    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->v.x, p_colloid->v.y,
-	    p_colloid->v.z);
-    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->omega.x,
-	    p_colloid->omega.y, p_colloid->omega.z);
+    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->r[X], p_colloid->r[Y],
+	    p_colloid->r[Z]);
+    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->v[X], p_colloid->v[Y],
+	    p_colloid->v[Z]);
+    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->omega[X],
+	    p_colloid->omega[Y], p_colloid->omega[Z]);
     fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->s[X], p_colloid->s[Y],
             p_colloid->s[Z]);
+    fprintf(fp, "%22.15e %22.15e %22.15e\n", p_colloid->direction[X],
+	    p_colloid->direction[Y], p_colloid->direction[Z]);
+    fprintf(fp, "%22.15e\n", p_colloid->b1);
+    fprintf(fp, "%22.15e\n", p_colloid->b2);
     fprintf(fp, "%22.15e\n", p_colloid->c_wetting);
     fprintf(fp, "%22.15e\n", p_colloid->h_wetting);
     fprintf(fp, "%22.15e\n", p_colloid->deltaphi);
@@ -414,38 +418,58 @@ static void colloid_io_read_list_ascii(FILE * fp) {
   int       read_index;
   double    read_a0;
   double    read_ah;
-  FVector   read_r, read_v, read_o;
-  double    read_s[3];
-  double    read_c, read_h;
-  double    read_deltaphi;
+  double    read_r[3];
+  double    read_v[3];
+  double    read_s;
   Colloid * p_colloid;
 
   for (nread = 0; nread < nlocal_; nread++) {
 
     fscanf(fp, "%22le %22le %22d\n",  &(read_a0), &(read_ah), &(read_index));
-    fscanf(fp, "%22le %22le %22le\n", &(read_r.x), &(read_r.y), &(read_r.z));
-    fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
-    fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
-    fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
-    fscanf(fp, "%22le\n",             &read_c);
-    fscanf(fp, "%22le\n",             &read_h);
-    fscanf(fp, "%22le\n",             &(read_deltaphi));
+    fscanf(fp, "%22le %22le %22le\n", read_r, read_r + 1, read_r + 2);
 
-    p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
-				 read_v, read_o);
+    p_colloid = colloid_add(read_index, read_r);
 
-    if (p_colloid) {
-      p_colloid->deltaphi = read_deltaphi;
-      p_colloid->s[X] = read_s[X];
-      p_colloid->s[Y] = read_s[Y];
-      p_colloid->s[Z] = read_s[Z];
-      p_colloid->c_wetting = read_c;
-      p_colloid->h_wetting = read_h;
-    }
-    else {
+    if (p_colloid == NULL) {
       /* This didn't go into the cell list */
       fatal("Colloid information doesn't tally with read position\n");
     }
+
+    p_colloid->a0 = read_a0;
+    p_colloid->ah = read_ah;
+
+    fscanf(fp, "%22le %22le %22le\n", read_v, read_v + 1, read_v + 2);
+    p_colloid->v[X] = read_v[X];
+    p_colloid->v[Y] = read_v[Y];
+    p_colloid->v[Z] = read_v[Z];
+
+    fscanf(fp, "%22le %22le %22le\n", read_v, read_v + 1, read_v + 2);
+    p_colloid->omega[X] = read_v[X];
+    p_colloid->omega[Y] = read_v[Y];
+    p_colloid->omega[Z] = read_v[Z];
+
+    fscanf(fp, "%22le %22le %22le\n", read_v, read_v + 1, read_v + 2);
+    p_colloid->s[X] = read_v[X];
+    p_colloid->s[Y] = read_v[Y];
+    p_colloid->s[Z] = read_v[Z];
+
+    fscanf(fp, "%22le %22le %22le\n", read_v, read_v + 1, read_v + 2);
+    p_colloid->direction[X] = read_v[X];
+    p_colloid->direction[Y] = read_v[Y];
+    p_colloid->direction[Z] = read_v[Z];
+
+    fscanf(fp, "%22le\n", &read_s);
+    p_colloid->b1 = read_s;
+    fscanf(fp, "%22le\n", &read_s);
+    p_colloid->b2 = read_s;
+
+    fscanf(fp, "%22le\n", &read_s);
+    p_colloid->c_wetting = read_s;
+    fscanf(fp, "%22le\n", &read_s);
+    p_colloid->h_wetting = read_s;
+
+    fscanf(fp, "%22le\n", &read_s);
+    p_colloid->deltaphi = read_s;
   }
 
   return;
@@ -467,8 +491,8 @@ static void colloid_io_read_list_ascii_serial(FILE * fp) {
   int       read_index;
   double    read_a0;
   double    read_ah;
-  FVector   read_r, read_v, read_o;
   double    read_s[3];
+  double    read_d[3];
   double    read_c, read_h;
   double    read_deltaphi;
   Colloid * p_colloid;
@@ -476,24 +500,42 @@ static void colloid_io_read_list_ascii_serial(FILE * fp) {
   for (nread = 0; nread < ntotal_; nread++) {
 
     fscanf(fp, "%22le %22le %22d\n",  &(read_a0), &(read_ah), &(read_index));
-    fscanf(fp, "%22le %22le %22le\n", &(read_r.x), &(read_r.y), &(read_r.z));
-    fscanf(fp, "%22le %22le %22le\n", &(read_v.x), &(read_v.y), &(read_v.z));
-    fscanf(fp, "%22le %22le %22le\n", &(read_o.x), &(read_o.y), &(read_o.z));
     fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
-    fscanf(fp, "%22le\n",             &read_c);
-    fscanf(fp, "%22le\n",             &read_h);
-    fscanf(fp, "%22le\n",             &(read_deltaphi));
 
-    p_colloid = COLL_add_colloid_no_halo(read_index, read_a0, read_ah, read_r,
-					 read_v, read_o);
+    p_colloid = colloid_add_local(read_index, read_s);
 
     if (p_colloid) {
+      fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
+      p_colloid->v[X] = read_s[X];
+      p_colloid->v[Y] = read_s[Y];
+      p_colloid->v[Z] = read_s[Z];
+
+      fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
+      p_colloid->omega[X] = read_s[X];
+      p_colloid->omega[Y] = read_s[Y];
+      p_colloid->omega[Z] = read_s[Z];
+    }
+
+    if (p_colloid) {
+      /* Read and store */
+      fscanf(fp, "%22le %22le %22le\n", read_s, read_s+1, read_s+2);
+      fscanf(fp, "%22le %22le %22le\n", read_d, read_d+1, read_d+2);
+      fscanf(fp, "%22le\n",             &read_c);
+      fscanf(fp, "%22le\n",             &read_h);
+      fscanf(fp, "%22le\n",             &(read_deltaphi));
       p_colloid->deltaphi = read_deltaphi;
       p_colloid->s[X] = read_s[X];
       p_colloid->s[Y] = read_s[Y];
       p_colloid->s[Z] = read_s[Z];
+      p_colloid->direction[X] = read_d[X];
+      p_colloid->direction[Y] = read_d[Y];
+      p_colloid->direction[Z] = read_d[Z];
       p_colloid->c_wetting = read_c;
       p_colloid->h_wetting = read_h;
+    }
+    else {
+      /* Read anyway, and ignore TODO */
+      fatal("Unhandled non-local colloid reads\n");
     }
   }
 
@@ -520,11 +562,12 @@ static int colloid_io_write_list_binary(FILE * fp, int ic, int jc, int kc) {
     fwrite(&(p_colloid->a0),       sizeof(double),  1, fp);
     fwrite(&(p_colloid->ah),       sizeof(double),  1, fp);
     fwrite(&(p_colloid->index),    sizeof(int),     1, fp);
-    fwrite(&(p_colloid->r),        sizeof(FVector), 1, fp);
-    fwrite(&(p_colloid->v),        sizeof(FVector), 1, fp);
-    fwrite(&(p_colloid->omega),    sizeof(FVector), 1, fp);
+    fwrite(&(p_colloid->r),        sizeof(double), 3, fp);
+    fwrite(&(p_colloid->v),        sizeof(double), 3, fp);
+    fwrite(&(p_colloid->omega),    sizeof(double), 3, fp);
     fwrite(p_colloid->dr,          sizeof(double),  3, fp);
     fwrite(p_colloid->s,           sizeof(double),  3, fp);
+    fwrite(p_colloid->direction,   sizeof(double),  3, fp);
     fwrite(&(p_colloid->c_wetting), sizeof(double),  1, fp);
     fwrite(&(p_colloid->h_wetting), sizeof(double),  1, fp);
     fwrite(&(p_colloid->deltaphi), sizeof(double),  1, fp);
@@ -549,7 +592,6 @@ static void colloid_io_read_list_binary(FILE * fp) {
   int       read_index;
   double    read_a0;
   double    read_ah;
-  FVector   read_r, read_v, read_o;
   double    read_dr[3];
   double    read_s[3];
   double    read_c, read_h;
@@ -561,17 +603,15 @@ static void colloid_io_read_list_binary(FILE * fp) {
     fread(&read_a0,       sizeof(double),  1, fp);
     fread(&read_ah,       sizeof(double),  1, fp);
     fread(&read_index,    sizeof(int),     1, fp);
-    fread(&read_r,        sizeof(FVector), 1, fp);
-    fread(&read_v,        sizeof(FVector), 1, fp);
-    fread(&read_o,        sizeof(FVector), 1, fp);
     fread(read_dr,        sizeof(double),  3, fp);
     fread(read_s,         sizeof(double),  3, fp);
     fread(&read_c,        sizeof(double),  1, fp);
     fread(&read_h,        sizeof(double),  1, fp);
     fread(&read_deltaphi, sizeof(double),  1, fp);
 
-    p_colloid = COLL_add_colloid(read_index, read_a0, read_ah, read_r,
-				 read_v, read_o);
+    fatal("Forgot this\n");
+    /* Add colloid */
+    p_colloid = NULL;
 
     if (p_colloid) {
       int i;

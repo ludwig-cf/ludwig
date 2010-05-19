@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.4.16.2 2010-05-12 18:18:33 kevin Exp $
+ *  $Id: subgrid.c,v 1.4.16.3 2010-05-19 19:16:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,6 +26,7 @@
 #include "lattice.h"
 #include "colloids.h"
 #include "ccomms.h"
+#include "util.h"
 #include "subgrid.h"
 
 static double d_peskin(double);
@@ -73,9 +74,9 @@ void subgrid_force_from_particles() {
            * coordinates, so that the correct range of lattice
            * nodes is found */
 
-          r0[X] = p_colloid->r.x - (double) offset[X];
-          r0[Y] = p_colloid->r.y - (double) offset[Y];
-          r0[Z] = p_colloid->r.z - (double) offset[Z];
+          r0[X] = p_colloid->r[X] - 1.0*offset[X];
+          r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
+          r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
 
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
@@ -96,9 +97,9 @@ void subgrid_force_from_particles() {
                 /* Separation between r0 and the coordinate position of
 		 * this site */
 
-		r[X] = r0[X] - (double) i;
-		r[Y] = r0[Y] - (double) j;
-		r[Z] = r0[Z] - (double) k;
+		r[X] = r0[X] - 1.0*i;
+		r[Y] = r0[Y] - 1.0*j;
+		r[Z] = r0[Z] - 1.0*k;
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 
@@ -136,6 +137,7 @@ void subgrid_force_from_particles() {
 
 void subgrid_update() {
 
+  int ia;
   int ic, jc, kc;
   double drag, eta;
   double g[3];
@@ -159,18 +161,16 @@ void subgrid_update() {
 
 	while (p_colloid != NULL) {
 
-	  drag = (1.0/(6.0*PI*eta))*(1.0/p_colloid->a0 - 1.0/p_colloid->ah);
+	  drag = (1.0/(6.0*pi_*eta))*(1.0/p_colloid->a0 - 1.0/p_colloid->ah);
 
-	  p_colloid->r.x += (p_colloid->f0.x + drag*g[X]);
-	  p_colloid->r.y += (p_colloid->f0.y + drag*g[Y]);
-	  p_colloid->r.z += (p_colloid->f0.z + drag*g[Z]);
+	  for (ia = 0; ia < 3; ia++) {
+	    p_colloid->r[ia] += (p_colloid->f0[ia] + drag*g[ia]);
 
-	  /* Store the effective velocity of the particle
-	   * (don't use the p->v as this shows up in the momentum) */
+	    /* Store the effective velocity of the particle
+	     * (don't use the p->v as this shows up in the momentum) */
 
-	  p_colloid->stats[X] = p_colloid->f0.x + drag*g[X];
-	  p_colloid->stats[Y] = p_colloid->f0.y + drag*g[Y];
-	  p_colloid->stats[Z] = p_colloid->f0.z + drag*g[Z];
+	    p_colloid->stats[ia] = p_colloid->f0[ia] + drag*g[ia];
+	  }
 
 	  p_colloid = p_colloid->next;
 	}
@@ -217,9 +217,9 @@ static void subgrid_interpolation() {
         p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
-	  p_colloid->f0.x = 0.0;
-	  p_colloid->f0.y = 0.0;
-	  p_colloid->f0.z = 0.0;
+	  p_colloid->f0[X] = 0.0;
+	  p_colloid->f0[Y] = 0.0;
+	  p_colloid->f0[Z] = 0.0;
 	  p_colloid = p_colloid->next;
 	}
       }
@@ -240,9 +240,9 @@ static void subgrid_interpolation() {
            * coordinates, so that the correct range of lattice
            * nodes is found */
 
-          r0[X] = p_colloid->r.x - (double) offset[X];
-          r0[Y] = p_colloid->r.y - (double) offset[Y];
-          r0[Z] = p_colloid->r.z - (double) offset[Z];
+          r0[X] = p_colloid->r[X] - 1.0*offset[X];
+          r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
+          r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
 
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
@@ -263,16 +263,16 @@ static void subgrid_interpolation() {
                 /* Separation between r0 and the coordinate position of
 		 * this site */
 
-		r[X] = r0[X] - (double) i;
-		r[Y] = r0[Y] - (double) j;
-		r[Z] = r0[Z] - (double) k;
+		r[X] = r0[X] - 1.0*i;
+		r[Y] = r0[Y] - 1.0*j;
+		r[Z] = r0[Z] - 1.0*k;
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 		hydrodynamics_get_velocity(index, u);
 
-		p_colloid->f0.x += u[X]*dr;
-		p_colloid->f0.y += u[Y]*dr;
-		p_colloid->f0.z += u[Z]*dr;
+		p_colloid->f0[X] += u[X]*dr;
+		p_colloid->f0[Y] += u[Y]*dr;
+		p_colloid->f0[Z] += u[Z]*dr;
 	      }
 	    }
 	  }

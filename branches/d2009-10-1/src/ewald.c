@@ -7,7 +7,7 @@
  *
  *  See, for example, Allen and Tildesley, Computer Simulation of Liquids.
  *
- *  $Id: ewald.c,v 1.3.16.2 2010-03-30 03:52:07 kevin Exp $
+ *  $Id: ewald.c,v 1.3.16.3 2010-05-19 19:16:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,6 +26,7 @@
 #include "colloids.h"
 #include "ewald.h"
 #include "timer.h"
+#include "util.h"
 
 static int ewald_on_ = 0;
 static int nk_[3];
@@ -67,13 +68,13 @@ void ewald_init(double mu_input, double rc_input) {
 
   /* Set constants */
 
-  rpi_      = 1.0/sqrt(PI);
+  rpi_      = 1.0/sqrt(pi_);
   mu_       = mu_input;
   ewald_rc_ = rc_input;
   ewald_on_ = 1;
   kappa_    = 5.0/(2.0*ewald_rc_);
 
-  nk = ceil(kappa_*kappa_*ewald_rc_*L(X)/PI);
+  nk = ceil(kappa_*kappa_*ewald_rc_*L(X)/pi_);
 
   info("\nThe Ewald sum:\n");
   info("Real space cut off is     %f\n", ewald_rc_);
@@ -85,7 +86,7 @@ void ewald_init(double mu_input, double rc_input) {
   nk_[X] = nk;
   nk_[Y] = nk;
   nk_[Z] = nk;
-  kmax_ = pow(2.0*PI*nk/L(X), 2);
+  kmax_ = pow(2.0*pi_*nk/L(X), 2);
   nkmax_ = nk + 1;
   nktot_ = ewald_get_number_fourier_terms();
 
@@ -217,10 +218,10 @@ double ewald_fourier_space_energy() {
 
   ewald_sum_sin_cos_terms();
 
-  fkx = 2.0*PI/L(X);
-  fky = 2.0*PI/L(Y);
-  fkz = 2.0*PI/L(Z);
-  b0 = (4.0*PI/(L(X)*L(Y)*L(Z)))*mu_*mu_;
+  fkx = 2.0*pi_/L(X);
+  fky = 2.0*pi_/L(Y);
+  fkz = 2.0*pi_/L(Z);
+  b0 = (4.0*pi_/(L(X)*L(Y)*L(Z)))*mu_*mu_;
   r4kappa_sq = 1.0/(4.0*kappa_*kappa_);
 
   /* Sum over k to get the energy. */
@@ -272,9 +273,9 @@ static void ewald_sum_sin_cos_terms() {
   double * subsin;
   double * subcos;
 
-  fkx = 2.0*PI/L(X);
-  fky = 2.0*PI/L(Y);
-  fkz = 2.0*PI/L(Z);
+  fkx = 2.0*pi_/L(X);
+  fky = 2.0*pi_/L(Y);
+  fkz = 2.0*pi_/L(Z);
 
   ncell[X] = Ncell(X);
   ncell[Y] = Ncell(Y);
@@ -297,13 +298,8 @@ static void ewald_sum_sin_cos_terms() {
 
 	while (p_colloid != NULL) {
 
-	  double r[3];
 	  kn = 0;
-
-	  r[X] = p_colloid->r.x;
-	  r[Y] = p_colloid->r.y;
-	  r[Z] = p_colloid->r.z;
-	  ewald_set_kr_table(r);
+	  ewald_set_kr_table(p_colloid->r);
 
 	  for (kz = 0; kz <= nk_[Z]; kz++) {
 	    for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
@@ -384,7 +380,7 @@ double ewald_self_energy() {
 
   double eself;
 
-  eself = -2.0*mu_*mu_*(kappa_*kappa_*kappa_/(3.0*sqrt(PI)))*get_N_colloid();
+  eself = -2.0*mu_*mu_*(kappa_*kappa_*kappa_/(3.0*sqrt(pi_)))*colloid_ntotal();
 
   return eself;
 }
@@ -429,8 +425,6 @@ void ewald_real_space_sum() {
 
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
 
-  double r1[3];
-  double r2[3];
   double r12[3];
 
   double erfc(double);
@@ -464,13 +458,8 @@ void ewald_real_space_sum() {
 		    double r;
 
 		    /* Here we need r2-r1 */
-		    r1[X] = p_c1->r.x;
-		    r1[Y] = p_c1->r.y;
-		    r1[Z] = p_c1->r.z;
-		    r2[X] = p_c2->r.x;
-		    r2[Y] = p_c2->r.y;
-		    r2[Z] = p_c2->r.z;
-		    coords_minimum_distance(r2, r1, r12);
+
+		    coords_minimum_distance(p_c2->r, p_c1->r, r12);
 
 		    r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
 
@@ -504,13 +493,10 @@ void ewald_real_space_sum() {
 			  + c*(u2dotr*p_c1->s[i] + u1dotr*p_c2->s[i]);
 		      }
 
-		      p_c1->force.x += f[X];
-		      p_c1->force.y += f[Y];
-		      p_c1->force.z += f[Z];
-
-		      p_c2->force.x -= f[X];
-		      p_c2->force.y -= f[Y];
-		      p_c2->force.z -= f[Z];
+		      for (i = 0; i < 3; i++) {
+			p_c1->force[i] += f[i];
+			p_c2->force[i] -= f[i];
+		      }
 
 		      /* Torque on particle 1 */
 
@@ -518,9 +504,9 @@ void ewald_real_space_sum() {
 		      g[Y] = b*p_c2->s[Y] - c*u2dotr*r12[Y];
 		      g[Z] = b*p_c2->s[Z] - c*u2dotr*r12[Z];
 
-		      p_c1->torque.x += -(p_c1->s[Y]*g[Z] - p_c1->s[Z]*g[Y]);
-		      p_c1->torque.y += -(p_c1->s[Z]*g[X] - p_c1->s[X]*g[Z]);
-		      p_c1->torque.z += -(p_c1->s[X]*g[Y] - p_c1->s[Y]*g[X]);
+		      p_c1->torque[X] += -(p_c1->s[Y]*g[Z] - p_c1->s[Z]*g[Y]);
+		      p_c1->torque[Y] += -(p_c1->s[Z]*g[X] - p_c1->s[X]*g[Z]);
+		      p_c1->torque[Z] += -(p_c1->s[X]*g[Y] - p_c1->s[Y]*g[X]);
 
 		      /* Torque on particle 2 */
 
@@ -528,9 +514,9 @@ void ewald_real_space_sum() {
 		      g[Y] = b*p_c1->s[Y] - c*u1dotr*r12[Y];
 		      g[Z] = b*p_c1->s[Z] - c*u1dotr*r12[Z];
 
-		      p_c2->torque.x += -(p_c2->s[Y]*g[Z] - p_c2->s[Z]*g[Y]);
-		      p_c2->torque.y += -(p_c2->s[Z]*g[X] - p_c2->s[X]*g[Z]);
-		      p_c2->torque.z += -(p_c2->s[X]*g[Y] - p_c2->s[Y]*g[X]);
+		      p_c2->torque[X] += -(p_c2->s[Y]*g[Z] - p_c2->s[Z]*g[Y]);
+		      p_c2->torque[Y] += -(p_c2->s[Z]*g[X] - p_c2->s[X]*g[Z]);
+		      p_c2->torque[Z] += -(p_c2->s[X]*g[Y] - p_c2->s[Y]*g[X]);
 		    }
  
 		  }
@@ -579,11 +565,11 @@ void ewald_fourier_space_sum() {
 
   ewald_sum_sin_cos_terms();
 
-  fkx = 2.0*PI/L(X);
-  fky = 2.0*PI/L(Y);
-  fkz = 2.0*PI/L(Z);
+  fkx = 2.0*pi_/L(X);
+  fky = 2.0*pi_/L(Y);
+  fkz = 2.0*pi_/L(Z);
   r4kappa_sq = 1.0/(4.0*kappa_*kappa_);
-  b0 = (4.0*PI/(L(X)*L(Y)*L(Z)))*mu_*mu_;
+  b0 = (4.0*pi_/(L(X)*L(Y)*L(Z)))*mu_*mu_;
 
   ncell[X] = Ncell(X);
   ncell[Y] = Ncell(Y);
@@ -601,13 +587,10 @@ void ewald_fourier_space_sum() {
 
 	  /* Sum over k to get the force/torque. */
 
-	  double f[3], r[3], t[3];
+	  double f[3], t[3];
 	  int i;
 
-	  r[X] = p_colloid->r.x;
-	  r[Y] = p_colloid->r.y;
-	  r[Z] = p_colloid->r.z;
-	  ewald_set_kr_table(r);
+	  ewald_set_kr_table(p_colloid->r);
 
 	  for (i = 0; i < 3; i++) {
 	    f[i] = 0.0;
@@ -673,12 +656,10 @@ void ewald_fourier_space_sum() {
 
 	  /* Accululate force/torque */
 
-	  p_colloid->force.x += f[X];
-	  p_colloid->force.y += f[Y];
-	  p_colloid->force.z += f[Z];
-	  p_colloid->torque.x += t[X];
-	  p_colloid->torque.y += t[Y];
-	  p_colloid->torque.z += t[Z];
+	  for (i = 0; i < 3; i++) {
+	    p_colloid->force[i] += f[i];
+	    p_colloid->torque[i] += t[i];
+	  }
 
 	  p_colloid = p_colloid->next;
 	}
@@ -708,9 +689,9 @@ static int ewald_get_number_fourier_terms() {
   double fkx, fky, fkz;
   int kx, ky, kz, kn = 0;
 
-  fkx = 2.0*PI/L(X);
-  fky = 2.0*PI/L(Y);
-  fkz = 2.0*PI/L(Z);
+  fkx = 2.0*pi_/L(X);
+  fky = 2.0*pi_/L(Y);
+  fkz = 2.0*pi_/L(Z);
 
   for (kz = 0; kz <= nk_[Z]; kz++) {
     for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
@@ -747,8 +728,8 @@ static void ewald_set_kr_table(double r[3]) {
   for (i = 0; i < 3; i++) {
     sinkr_[3*0 + i] = 0.0;
     coskr_[3*0 + i] = 1.0;
-    sinkr_[3*1 + i] = sin(2.0*PI*r[i]/L(i));
-    coskr_[3*1 + i] = cos(2.0*PI*r[i]/L(i));
+    sinkr_[3*1 + i] = sin(2.0*pi_*r[i]/L(i));
+    coskr_[3*1 + i] = cos(2.0*pi_*r[i]/L(i));
     c2[i] = 2.0*coskr_[3*1 + i];
   }
 

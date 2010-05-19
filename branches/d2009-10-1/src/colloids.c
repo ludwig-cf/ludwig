@@ -4,9 +4,13 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.8 2010-05-12 18:38:43 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.9 2010-05-19 19:16:50 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -31,8 +35,6 @@ static int N_colloid_ = 0;      /* The global number of colloids */
 static double lcell[3];
 static Colloid ** cell_list_;   /* Cell list for colloids */
 static double rho0_ = 1.0;      /* Colloid density */
-
-static void colloid_cell_coords(const double r[3], int icell[3]);
 
 /*****************************************************************************
  *
@@ -139,15 +141,11 @@ void colloids_finish() {
 
 /*****************************************************************************
  *
- *  get_N_colloid
+ *  colloid_ntotal
  *
  *  Return the global number of colloids.
  *
  *****************************************************************************/
-
-int get_N_colloid() {
-  return N_colloid_;
-}
 
 int colloid_ntotal(void) {
   return N_colloid_;
@@ -169,49 +167,14 @@ void set_N_colloid(const int n) {
 
 /*****************************************************************************
  *
- *  get_colloid_rho0
+ *  colloid_rho0
  *
  *  Return the colloid density (generally equal to that of fluid).
  *
  *****************************************************************************/
 
-double get_colloid_rho0() {
+double colloid_rho0(void) {
   return rho0_;
-}
-
-/*****************************************************************************
- *
- *  cell_coords
- *
- *  For position vector r in the global coordinate system
- *  return the coordinates (ic,jc,kc) of the corresponding
- *  cell in the local cell list.
- *
- *  If the position is not in the local domain, then neither
- *  is the cell. The caller must handle this.
- *
- *  09/01/07 floor() is problematic when colloid exactly on cell
- *           boundary and r is negative, ie., cell goes to -1
- *****************************************************************************/
-
-IVector cell_coords(FVector r) {
-
-  IVector cell;
-  FVector rc;
-
-  rc.x = r.x - Lmin(X) + lcell[X];
-  rc.y = r.y - Lmin(Y) + lcell[Y];
-  rc.z = r.z - Lmin(Z) + lcell[Z];
-
-  cell.x = (int) floor(rc.x / lcell[X]);
-  cell.y = (int) floor(rc.y / lcell[Y]);
-  cell.z = (int) floor(rc.z / lcell[Z]);
-
-  cell.x -= cart_coords(X)*ncell[X];
-  cell.y -= cart_coords(Y)*ncell[Y];
-  cell.z -= cart_coords(Z)*ncell[Z];
-
-  return cell;
 }
 
 /*****************************************************************************
@@ -242,20 +205,11 @@ void cell_insert_colloid(Colloid * p_new) {
 
   Colloid * p_current;
   Colloid * p_previous;
-  IVector   cell;
+  int cell[3];
   int       cindex;
 
-  cell   = cell_coords(p_new->r);
-  cindex = cell.x*cifac_ + cell.y*cjfac_ + cell.z;
-
-  if (cell.x < 0 || cell.x > (ncell[X] + 1) ||
-      cell.y < 0 || cell.y > (ncell[Y] + 1) ||
-      cell.z < 0 || cell.z > (ncell[Z] + 1)) {
-    verbose("*** Dubious cell index %d position %d %d %d\n", cindex,
-	   cell.x, cell.y, cell.z);
-    verbose("*** Particle %d position %g %g %g\n", p_new->index, p_new->r.x,
-	    p_new->r.y, p_new->r.z);
-  }
+  colloid_cell_coords(p_new->r, cell);
+  cindex = cell[X]*cifac_ + cell[Y]*cjfac_ + cell[Z];
 
   p_current = cell_list_[cindex];
   p_previous = p_current;
@@ -399,7 +353,7 @@ void cell_update() {
   Colloid * p_previous;
   Colloid * tmp;
 
-  IVector   cell;
+  int cell[3];
   int       cl_old, cl_new;
   int       ic, jc, kc;
   int       destroy;
@@ -415,12 +369,12 @@ void cell_update() {
 
 	while (p_colloid) {
 
-	  cell = cell_coords(p_colloid->r);
+	  colloid_cell_coords(p_colloid->r, cell);
 
-	  destroy = (cell.x < 0 || cell.y < 0 || cell.z < 0 ||
-		     cell.x > ncell[X] + 1 ||
-		     cell.y > ncell[Y] + 1 || cell.z > ncell[Z] + 1);
-	  
+	  destroy = (cell[X] < 0 || cell[Y] < 0 || cell[Z] < 0 ||
+		     cell[X] > ncell[X] + 1 ||
+		     cell[Y] > ncell[Y] + 1 || cell[Z] > ncell[Z] + 1);
+
 	  if (destroy) {
 	    /* This particle should be unlinked and removed. */
 
@@ -437,8 +391,7 @@ void cell_update() {
 	    p_colloid = tmp;
 	  }
 	  else {
-
-	    cl_new = cell.z + cjfac_*cell.y + cifac_*cell.x;
+	    cl_new = cell[Z] + cjfac_*cell[Y] + cifac_*cell[X];
 
 	    if (cl_new == cl_old) {
 	      /* No movement so next colloid */
@@ -462,10 +415,6 @@ void cell_update() {
 		p_previous->next = tmp;
 	      }
 
-	      /*
-	      p_colloid->next = cell_list_[cl_new];
-	      cell_list_[cl_new] = p_colloid;
-	      */
 	      cell_insert_colloid(p_colloid);
 
 	      p_colloid = tmp;
@@ -542,11 +491,17 @@ Colloid * colloid_add(const int index, const double r[3]) {
   p_colloid = allocate_colloid();
   p_colloid->index = index;
 
-  /* to address implementations of state */
-  p_colloid->r.x = r[X];
-  p_colloid->r.y = r[Y];
-  p_colloid->r.z = r[Z];
+  p_colloid->r[X] = r[X];
+  p_colloid->r[Y] = r[Y];
+  p_colloid->r[Z] = r[Z];
 
+#ifdef _COLLOIDS_TEST_CHARIOT
+  p_colloid->direction[X] = sqrt(2.0)*0.3;
+  p_colloid->direction[Y] = sqrt(2.0)*0.4;
+  p_colloid->direction[Z] = sqrt(2.0)*0.5;
+  p_colloid->h_wetting = 0.0051;
+#endif
+  p_colloid->rebuild = 1;
   p_colloid->lnk = NULL;
   p_colloid->next = NULL;
 
@@ -593,7 +548,7 @@ Colloid * colloid_add_local(const int index, const double r[3]) {
  *
  *****************************************************************************/
 
-static void colloid_cell_coords(const double r[3], int icell[3]) {
+void colloid_cell_coords(const double r[3], int icell[3]) {
 
   int ia;
 
@@ -603,125 +558,4 @@ static void colloid_cell_coords(const double r[3], int icell[3]) {
   }
 
   return;
-}
-
-
-/*****************************************************************************
- *
- *  COLL_add_colloid_no_halo
- *
- *  Add a colloid only if the proposed position is in the domain
- *  proper (and not in the halo).
- *
- *****************************************************************************/
-
-Colloid * COLL_add_colloid_no_halo(int index, double a0, double ah, FVector r0,
-			      FVector v0, FVector omega0) {
-
-  IVector cell;
-  Colloid * p_c = NULL;
-
-  cell = cell_coords(r0);
-  if (cell.x < 1 || cell.x > Ncell(X)) return p_c;
-  if (cell.y < 1 || cell.y > Ncell(Y)) return p_c;
-  if (cell.z < 1 || cell.z > Ncell(Z)) return p_c;
-
-  p_c = COLL_add_colloid(index, a0, ah, r0, v0, omega0);
-
-  return p_c;
-}
-
-
-/*****************************************************************************
- *
- *  COLL_add_colloid
- *
- *  Add a colloid with the given properties to the head of the
- *  appropriate cell list.
- *
- *  Important: it is up to the caller to ensure index is correct
- *             i.e., it's unique.
- *
- *  A pointer to the new colloid is returned to allow further
- *  modification of the structure. But it's already added to
- *  the cell list.
- *
- *****************************************************************************/
-
-Colloid * COLL_add_colloid(int index, double a0, double ah, FVector r, FVector u,
-			   FVector omega) {
-
-  Colloid * tmp;
-  IVector   cell;
-  int       n;
-
-  /* Don't add to no-existant cells! */
-  n = 0;
-  cell = cell_coords(r);
-  if (cell.x < 0 || cell.x > Ncell(X) + 1) n++;
-  if (cell.y < 0 || cell.y > Ncell(Y) + 1) n++;
-  if (cell.z < 0 || cell.z > Ncell(Z) + 1) n++;
-
-  if (n) {
-    verbose("Cell coords: %d %d %d position %g %g %g\n",
-	    cell.x, cell.y, cell.z, r.x, r.y, r.z);
-    fatal("Trying to add colloid to no-existant cell [index %d]\n", index);
-  }
-
-  tmp = allocate_colloid();
-
-  /* Put the new colloid at the head of the appropriate cell list */
-
-  tmp->index   = index;
-  tmp->a0      = a0;
-  tmp->ah      = ah;
-  tmp->r.x     = r.x;
-  tmp->r.y     = r.y;
-  tmp->r.z     = r.z;
-  tmp->v.x     = u.x;
-  tmp->v.y     = u.y;
-  tmp->v.z     = u.z;
-  tmp->omega.x = omega.x;
-  tmp->omega.y = omega.y;
-  tmp->omega.z = omega.z;
-
-  tmp->s[X] = 1.0;
-  tmp->s[Y] = 0.0;
-  tmp->s[Z] = 0.0;
-
-  tmp->dr[X] = 0.0;
-  tmp->dr[Y] = 0.0;
-  tmp->dr[Z] = 0.0;
-
-  tmp->t0      = UTIL_fvector_zero();
-  tmp->f0      = UTIL_fvector_zero();
-  tmp->force   = UTIL_fvector_zero();
-  tmp->torque  = UTIL_fvector_zero();
-  tmp->cbar    = UTIL_fvector_zero();
-  tmp->rxcbar  = UTIL_fvector_zero();
-
-  /* Record the initial position */
-  tmp->stats[X] = tmp->r.x;
-  tmp->stats[Y] = tmp->r.y;
-  tmp->stats[Z] = tmp->r.z;
-
-  tmp->deltam   = 0.0;
-  tmp->deltaphi = 0.0;
-  tmp->sumw     = 0.0;
-
-  for (n = 0; n < 21; n++) {
-    tmp->zeta[n] = 0.0;
-  }
-
-  tmp->c_wetting = 0.0;
-  tmp->h_wetting = 0.0;
-
-  tmp->lnk = NULL;
-  tmp->rebuild = 1;
-
-  /* Add to the cell list */
-
-  cell_insert_colloid(tmp);
-
-  return tmp;
 }

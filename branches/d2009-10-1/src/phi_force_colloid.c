@@ -34,7 +34,7 @@
  *  The procedure ensures total momentum is conserved, ie., that
  *  leaving the fluid enters the colloid and vice versa.
  *
- *  $Id: phi_force_colloid.c,v 1.1.2.4 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: phi_force_colloid.c,v 1.1.2.5 2010-05-19 19:16:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -245,9 +245,9 @@ static void phi_force_interpolation1(void) {
 	if (p_c) {
 	  /* Compute the fluxes at solid/fluid boundary */
 
-	  p_c->force.x += 0.5*(pth1[X][X] + pth0[X][X]);
-	  p_c->force.y += 0.5*(pth1[Y][X] + pth0[Y][X]);
-	  p_c->force.z += 0.5*(pth1[Z][X] + pth0[Z][X]);
+	  for (ia = 0; ia < 3; ia++) {
+	    p_c->force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  }
 	}
 
 	index1 = coords_index(ic-1, jc, kc);
@@ -259,9 +259,9 @@ static void phi_force_interpolation1(void) {
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
-	  p_c->force.x -= 0.5*(pth1[X][X] + pth0[X][X]);
-	  p_c->force.y -= 0.5*(pth1[Y][X] + pth0[Y][X]);
-	  p_c->force.z -= 0.5*(pth1[Z][X] + pth0[Z][X]);
+	  for (ia = 0; ia < 3; ia++) {
+	    p_c->force[ia] -= 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  }
 	}
 
 
@@ -275,9 +275,9 @@ static void phi_force_interpolation1(void) {
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
-	  p_c->force.x += 0.5*(pth1[X][Y] + pth0[X][Y]);
-	  p_c->force.y += 0.5*(pth1[Y][Y] + pth0[Y][Y]);
-	  p_c->force.z += 0.5*(pth1[Z][Y] + pth0[Z][Y]);
+	  for (ia = 0; ia < 3; ia++) {
+	    p_c->force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  }
 	}
 
 	index1 = coords_index(ic, jc-1, kc);
@@ -289,9 +289,9 @@ static void phi_force_interpolation1(void) {
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
-	  p_c->force.x -= 0.5*(pth1[X][Y] + pth0[X][Y]);
-	  p_c->force.y -= 0.5*(pth1[Y][Y] + pth0[Y][Y]);
-	  p_c->force.z -= 0.5*(pth1[Z][Y] + pth0[Z][Y]);
+	  for (ia = 0; ia < 3; ia++) {
+	    p_c->force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  }
 	}
 
 
@@ -304,9 +304,9 @@ static void phi_force_interpolation1(void) {
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
-	  p_c->force.x += 0.5*(pth1[X][Z] + pth0[X][Z]);
-	  p_c->force.y += 0.5*(pth1[Y][Z] + pth0[Y][Z]);
-	  p_c->force.z += 0.5*(pth1[Z][Z] + pth0[Z][Z]);
+	  for (ia = 0; ia < 3; ia++) {
+	    p_c->force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  }
 	}
 
 	index1 = coords_index(ic, jc, kc-1);
@@ -318,9 +318,9 @@ static void phi_force_interpolation1(void) {
 	p_c = colloid_at_site_index(index1);
 
 	if (p_c) {
-	  p_c->force.x -= 0.5*(pth1[X][Z] + pth0[X][Z]);
-	  p_c->force.y -= 0.5*(pth1[Y][Z] + pth0[Y][Z]);
-	  p_c->force.z -= 0.5*(pth1[Z][Z] + pth0[Z][Z]);
+	  for (ia = 0; ia < 3; ia++) {
+	    p_c->force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  }
 	}
 
 	/* Store the force on lattice */
@@ -384,11 +384,8 @@ static void phi_force_interpolation2(void) {
 	  /* Compute the fluxes at solid/fluid boundary */
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] = -0.5*pth0[ia][X];
+	    p_c->force[ia] += 0.5*pth0[ia][X];
 	  }
-
-	  p_c->force.x += 0.5*pth0[X][X];
-	  p_c->force.y += 0.5*pth0[Y][X];
-	  p_c->force.z += 0.5*pth0[Z][X];
 	}
 	else {
 	  /* This flux is fluid-fluid */ 
@@ -405,11 +402,8 @@ static void phi_force_interpolation2(void) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*pth0[ia][X];
+	    p_c->force[ia] -= 0.5*pth0[ia][X];
 	  }
-
-	  p_c->force.x -= 0.5*pth0[X][X];
-	  p_c->force.y -= 0.5*pth0[Y][X];
-	  p_c->force.z -= 0.5*pth0[Z][X];
 	}
 	else {
 	  /* Fluid - fluid */
@@ -426,11 +420,8 @@ static void phi_force_interpolation2(void) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] -= 0.5*pth0[ia][Y];
+	    p_c->force[ia] += 0.5*pth0[ia][Y];
 	  }
-
-	  p_c->force.x += 0.5*pth0[X][Y];
-	  p_c->force.y += 0.5*pth0[Y][Y];
-	  p_c->force.z += 0.5*pth0[Z][Y];
 	}
 	else {
 	  /* Fluid-fluid */
@@ -447,11 +438,8 @@ static void phi_force_interpolation2(void) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*pth0[ia][Y];
+	    p_c->force[ia] -= 0.5*pth0[ia][Y];
 	  }
-
-	  p_c->force.x -= 0.5*pth0[X][Y];
-	  p_c->force.y -= 0.5*pth0[Y][Y];
-	  p_c->force.z -= 0.5*pth0[Z][Y];
 	}
 	else {
 	  /* Fluid-fluid */
@@ -468,11 +456,8 @@ static void phi_force_interpolation2(void) {
 	  /* Fluid-solid */
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] -= 0.5*pth0[ia][Z];
+	    p_c->force[ia] += 0.5*pth0[ia][Z];
 	  }
-
-	  p_c->force.x += 0.5*pth0[X][Z];
-	  p_c->force.y += 0.5*pth0[Y][Z];
-	  p_c->force.z += 0.5*pth0[Z][Z];
 	}
 	else {
 	  /* Fluid-fluid */
@@ -489,11 +474,8 @@ static void phi_force_interpolation2(void) {
 	  /* Fluid-solid */
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*pth0[ia][Z];
+	    p_c->force[ia] -= 0.5*pth0[ia][Z];
 	  }
-
-	  p_c->force.x -= 0.5*pth0[X][Z];
-	  p_c->force.y -= 0.5*pth0[Y][Z];
-	  p_c->force.z -= 0.5*pth0[Z][Z];
 	}
 	else {
 	  /* Fluid-fluid */

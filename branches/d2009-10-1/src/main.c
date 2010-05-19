@@ -45,6 +45,7 @@
 #include "phi_update_rt.h"
 #include "blue_phase.h"
 #include "model_le.h"
+#include "colloid_io_rt.h"
 #include "colloids_Q_tensor.h"
 
 #include "advection_rt.h"
@@ -93,6 +94,7 @@ void ludwig_rt(void) {
   MODEL_init();
   site_map_init();
   wall_init();
+  colloid_io_run_time();
   COLL_init();
 
   gradient_run_time();
@@ -198,7 +200,7 @@ int main( int argc, char **argv ) {
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
       /* phi_force_colloid();*/
-      phi_force_calculation();
+      /* phi_force_calculation();*/
       phi_update_dynamics();
     }
 
@@ -236,7 +238,7 @@ int main( int argc, char **argv ) {
 
     if (is_measurement_step()) {	  
       sprintf(filename, "%s%6.6d", "config.cds", step);
-      /*colloid_io_write(filename);*/
+      colloid_io_write(filename);
     }
 
     if (is_shear_measurement_step()) {

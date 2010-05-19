@@ -47,7 +47,7 @@ LIBRARY = libludwig.a
 
 CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q19_
+OPTS = -D_D3Q19_ -D_COLLOIDS_TEST_ -D_ACTIVE2_ -DNEW
 CFLAGS = -O3 -Wall
 
 INC = -I.
@@ -70,7 +70,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      brazovskii.o brazovskii_rt.o \
      brownian.o \
      cio.o cmd.o ccomms.o \
-     colloids.o bbl.o build.o communicate.o \
+     colloids.o colloid_io_rt.o bbl.o build.o communicate.o \
      coords.o coords_rt.o \
      control.o \
      eigen3.o ewald.o \
@@ -94,7 +94,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_surfactant.o stats_turbulent.o \
-     timer.o util.o utilities.o wall.o colloids_Q_tensor.o
+     timer.o util.o wall.o colloids_Q_tensor.o
 
 ###############################################################################
 #

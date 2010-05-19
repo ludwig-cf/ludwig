@@ -10,7 +10,7 @@
  *  This is an implemetation of a free energy with vector order
  *  parameter.
  *
- *  $Id: polar_active.c,v 1.1.2.6 2010-04-27 11:05:47 kevin Exp $
+ *  $Id: polar_active.c,v 1.1.2.7 2010-05-19 19:16:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,6 +21,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -29,12 +30,13 @@
 #include "polar_active.h"
 #include "util.h"
 
-static double a_;
-static double b_;
-static double kappa1_;
-static double kappa2_;
+static double a_;                 /* Free energy parameter */
+static double b_;                 /* Free energy parameter */
+static double kappa1_;            /* Free energy elastic constant */
+static double kappa2_;            /* Free energy elastic constant */
 
-static double zeta_ = 0.0;
+static double zeta_ = 0.0;        /* 'Activity' parameter */
+static double radius_ = FLT_MAX;  /* Used for spherical 'active region' */
 
 /*****************************************************************************
  *
@@ -231,14 +233,23 @@ double polar_active_zeta(void) {
 
 /*****************************************************************************
  *
+ *  polar_active_region_radius_set
+ *
+ *****************************************************************************/
+
+void polar_active_region_radius_set(const double r) {
+
+  radius_ = r;
+  return;
+}
+
+/*****************************************************************************
+ *
  *  polar_active_region
  *
  *  Returns 1 in the 'region' and zero outside. The 'region' is a
- *  spherical volume of radius ractive, centred at the centre of
- *  the grid (assumed to be cubic).
- *
- *  The radius of the 'region' is hardwired to (L/2) - 4 lattice
- *  units to allow a clear inactive region at the edges.
+ *  spherical volume of radius raduis_, centred at the centre of
+ *  the grid.
  *
  *****************************************************************************/
 
@@ -248,7 +259,6 @@ double polar_active_region(const int index) {
   int coords[3];
 
   double x, y, z;
-  double ractive;
   double active;
 
   coords_nlocal_offset(noffset);
@@ -259,8 +269,7 @@ double polar_active_region(const int index) {
   z = 1.0*(noffset[Z] + coords[Z]) - (Lmin(Z) + 0.5*L(Z));
 
   active = 1.0;
-  ractive = 0.5*L(X) - 4.0;
-  if ((x*x + y*y + z*z) > ractive*ractive) active = 0.0;
+  if ((x*x + y*y + z*z) > radius_*radius_) active = 0.0;
 
   return active;
 }

@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.4 2010-05-12 18:17:10 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.5 2010-05-19 19:16:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -29,7 +29,6 @@
 #include "runtime.h"
 #include "free_energy.h"
 
-#include "active.h"
 #include "build.h"
 #include "physics.h"
 #include "potential.h"
@@ -43,12 +42,16 @@
 #include "control.h"
 #include "subgrid.h"
 
+#include "util.h"
 #include "ccomms.h"
 #include "ewald.h"
 
 static void    COLL_overlap(Colloid *, Colloid *);
 static void    COLL_set_fluid_gravity(void);
+#ifdef NEW
+#else
 static FVector COLL_lubrication(Colloid *, Colloid *, FVector, double);
+#endif
 static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
 static void    coll_position_update(void);
@@ -80,7 +83,7 @@ static double epotential_;
 
 void COLL_update() {
 
-  if (get_N_colloid() == 0) return;
+  if (colloid_ntotal() == 0) return;
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
@@ -104,7 +107,6 @@ void COLL_update() {
 
   COLL_test_output();
   COLL_forces();
-  active_bbl_prepass();
 
 #else /* _SUBGRID_ */
   COLL_test_output();
@@ -171,6 +173,7 @@ void COLL_init() {
 
 #ifdef _COLLOIDS_TEST_
     COLL_init_colloids_test();
+    init_active();
 #else
     CMD_init_volume_fraction();
     init_active();
@@ -263,7 +266,7 @@ void lubrication_init() {
 
 void COLL_finish() {
 
-  if (get_N_colloid() == 0) return;
+  if (colloid_ntotal() == 0) return;
 
   colloids_finish();
 
@@ -284,10 +287,35 @@ void COLL_finish() {
 
 void COLL_init_colloids_test() {
 
+#ifdef _COLLOIDS_TEST_
+
+  double r0[3];
+
+  Colloid * pc;
+
+  set_N_colloid(1);
+
+  r0[X] =  Lmin(X) + 0.5*L(X);
+  r0[Y] =  Lmin(Y) + 0.5*L(Y);
+  r0[Z] =  Lmin(Z) + 0.5*L(Z);
+
+  pc = colloid_add(1, r0);
+  assert(pc);
+
+  pc->ah = 2.3;
+  pc->a0 = 2.3;
+  pc->v[X] = 0.0;
+  pc->v[Y] = 0.0;
+  pc->v[Z] = 0.0;
+  pc->omega[X] = 0.0;
+  pc->omega[Y] = 0.0;
+  pc->omega[Z] = 0.0;
+
+#endif
+
 #ifdef _COLLOIDS_TEST_AUTOCORRELATION_
 
-  FVector r0, v0, omega0;
-  IVector cell;
+  double r0[3];
   Colloid * p_colloid;
   double    a0 = 2.3;
   double    ah = 2.3;
@@ -296,32 +324,30 @@ void COLL_init_colloids_test() {
 
   set_N_colloid(1);
 
-  r0.x =  .0 + 1.0*L(X);
-  r0.y =  .0 + 1.0*L(Y);
-  r0.z =  .0 + 0.5*L(Z);
+  r0[X] =  .0 + 1.0*L(X);
+  r0[Y] =  .0 + 1.0*L(Y);
+  r0[Z] =  .0 + 0.5*L(Z);
 
-  v0.x = 1.0*get_eta_shear()/ah;
-  v0.y = 0.0;
-  v0.z = 0.0;
+  p_colloid = colloid_add(1, r0);
 
-  omega0.x = 0.0;
-  omega0.y = 0.0;
-  omega0.z = 0.0*get_eta_shear()/(ah*ah);
+  assert(p_colloid);
 
-  /* Look at the proposed position and decide whether it is in
-   * the local domain. If it is, then it can be added. */
+  p_colloid->a0 = a0;
+  p_colloid->ah = ah;
 
-  cell = cell_coords(r0);
-  if (cell.x < 1 || cell.x > Ncell(X)) return;
-  if (cell.y < 1 || cell.y > Ncell(Y)) return;
-  if (cell.z < 1 || cell.z > Ncell(Z)) return;
+  p_colloid->v[X] = get_eta_shear()/ah;
+  p_colloid->v[Y] = 0.0;
+  p_colloid->v[Z] = 0.0;
 
-  p_colloid = COLL_add_colloid(1, a0, ah, r0, v0, omega0);
+  p_colloid->stats[X] = p_colloid->v[X];
 
-  p_colloid->stats[X] = v0.x;
-  p_colloid->dir.x = 1.0;
-  p_colloid->dir.y = 0.0;
-  p_colloid->dir.z = 0.0;
+  p_colloid->omega[X] = 0.0;
+  p_colloid->omega[Y] = 0.0;
+  p_colloid->omega[Z] = 0.0*get_eta_shear()/(ah*ah);
+
+  p_colloid->direction[X] = 1.0;
+  p_colloid->direction[Y] = 0.0;
+  p_colloid->direction[Z] = 0.0;
 
 #endif
 
@@ -352,17 +378,11 @@ void COLL_test_output() {
 	while (p_colloid) {
 #ifdef _COLLOIDS_TEST_AUTOCORRELATION_
 	  verbose("Autocorrelation test output: %10.9f %10.9f\n",
-	    p_colloid->r.x, p_colloid->v.x/p_colloid->stats[X]);
+		  p_colloid->r[X], p_colloid->v[X]/p_colloid->stats[X]);
 	  /*verbose("Autocorrelation omega: %10.9f %10.9f %10.9f\n",
 		  p_colloid->omega.z/p_colloid->stats[X], p_colloid->dir.x,
 		  p_colloid->dir.y);*/
 #endif
-#ifdef _COLLOIDS_TEST_CALIBRATE_
-	  verbose("Calibrate: %g %g %g %g %g %g\n",
-		  p_colloid->v.x, p_colloid->v.y, p_colloid->v.z,
-		  p_colloid->force.x, p_colloid->force.y, p_colloid->force.z);
-#endif
-		  
 	  p_colloid = p_colloid->next;
 
 	}
@@ -386,7 +406,7 @@ void COLL_test_output() {
 
 void COLL_forces() {
 
-  int nc = get_N_colloid();
+  int nc = colloid_ntotal();
   double hminlocal;
   double hmin;
   double elocal[2];
@@ -438,7 +458,7 @@ void COLL_forces() {
 
 void COLL_zero_forces() {
 
-  int       ic, jc, kc;
+  int       ic, jc, kc, ia;
   Colloid * p_colloid;
 
   /* Only real particles need correct external force. */
@@ -450,8 +470,12 @@ void COLL_zero_forces() {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
-	  p_colloid->force  = UTIL_fvector_zero();
-	  p_colloid->torque = UTIL_fvector_zero();
+
+	  for (ia = 0; ia < 3; ia++) {
+	    p_colloid->force[ia] = 0.0;
+	    p_colloid->torque[ia] = 0.0;
+	  }
+
 	  p_colloid = p_colloid->next;
 	}
       }
@@ -484,9 +508,9 @@ void COLL_set_fluid_gravity() {
 
   /* Size of force per fluid node */
 
-  siteforce[X] = -get_N_colloid()*g[X]/volume;
-  siteforce[Y] = -get_N_colloid()*g[Y]/volume;
-  siteforce[Z] = -get_N_colloid()*g[Z]/volume;
+  siteforce[X] = -colloid_ntotal()*g[X]/volume;
+  siteforce[Y] = -colloid_ntotal()*g[Y]/volume;
+  siteforce[Z] = -colloid_ntotal()*g[Z]/volume;
 
   return;
 }
@@ -512,13 +536,14 @@ double COLL_interactions() {
   Colloid * p_c1;
   Colloid * p_c2;
 
+  int    ia;
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
   double hmin = L(X);
   double h, fmod;
   double g[3];
 
-  FVector r_12, f;
-  FVector COLL_fvector_separation(FVector, FVector);
+  double r12[3];
+
   get_gravity(g);
 
   epotential_ = 0.0;
@@ -534,9 +559,10 @@ double COLL_interactions() {
 	  /* Single particle contributions here, if required. */
 
 	  /* External gravity */
-	  p_c1->force.x += g[X];
-	  p_c1->force.y += g[Y];
-	  p_c1->force.z += g[Z];
+
+	  p_c1->force[X] += g[X];
+	  p_c1->force[Y] += g[Y];
+	  p_c1->force[Z] += g[Z];
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
@@ -556,17 +582,13 @@ double COLL_interactions() {
 
 		    /* Compute the unit vector r_12, and the gap, h */
 
-		    r_12 = COLL_fvector_separation(p_c1->r, p_c2->r);
-		    h = sqrt(r_12.x*r_12.x + r_12.y*r_12.y + r_12.z*r_12.z);
+		    coords_minimum_distance(p_c1->r, p_c2->r, r12);
+		    h = modulus(r12);
+		    fatal("lubrication force to be done\n");
+		    r12[X] /= h;
+		    r12[Y] /= h;
+		    r12[Z] /= h;
 
-		    f = COLL_lubrication(p_c1, p_c2, r_12, h);
-		    p_c1->force = UTIL_fvector_add(p_c1->force, f);
-		    p_c2->force = UTIL_fvector_subtract(p_c2->force, f);
-
-		    /* Conservative forces: use unit vector */
-		    r_12.x /= h;
-		    r_12.y /= h;
-		    r_12.z /= h;
 		    h = h - p_c1->ah - p_c2->ah;
 		    if (h < hmin) hmin = h;
 		    if (h < 0.0) COLL_overlap(p_c1, p_c2);
@@ -576,11 +598,10 @@ double COLL_interactions() {
 		    fmod = soft_sphere_force(h);
 		    fmod += yukawa_force(h + p_c1->ah + p_c2->ah);
 
-		    f.x = -fmod*r_12.x;
-		    f.y = -fmod*r_12.y;
-		    f.z = -fmod*r_12.z;
-		    p_c1->force = UTIL_fvector_add(p_c1->force, f);
-		    p_c2->force = UTIL_fvector_subtract(p_c2->force, f);
+		    for (ia = 0; ia < 3; ia++) {
+		      p_c1->force[ia] -= fmod*r12[ia];
+		      p_c2->force[ia] += fmod*r12[ia];
+		    }
 
 		    epotential_ += soft_sphere_energy(h);
 		    epotential_ += yukawa_potential(p_c1->ah + p_c2->ah + h);
@@ -669,6 +690,9 @@ void check_interactions(double ahmax) {
  *
  *****************************************************************************/
 
+#ifdef NEW
+/* pending rewrite */
+#else
 FVector COLL_lubrication(Colloid * p_i, Colloid * p_j, FVector r_ij, double h) {
 
   FVector force;
@@ -736,7 +760,7 @@ FVector COLL_lubrication(Colloid * p_i, Colloid * p_j, FVector r_ij, double h) {
 
   return force;
 }
-
+#endif
 /*****************************************************************************
  *
  *  COLL_overlap
@@ -748,10 +772,10 @@ FVector COLL_lubrication(Colloid * p_i, Colloid * p_j, FVector r_ij, double h) {
 void COLL_overlap(Colloid * p_c1, Colloid * p_c2) {
 
   verbose("Detected overlapping particles\n");
-  verbose("Particle[%d] at (%f,%f,%f)\n", p_c1->index, p_c1->r.x, p_c1->r.y,
-	  p_c1->r.z);
-  verbose("particle[%d] at (%f,%f,%f)\n", p_c2->index, p_c2->r.x, p_c2->r.y,
-	  p_c2->r.z);
+  verbose("Particle[%d] at (%f,%f,%f)\n", p_c1->index, p_c1->r[X], p_c1->r[Y],
+	  p_c1->r[Z]);
+  verbose("particle[%d] at (%f,%f,%f)\n", p_c2->index, p_c2->r[X], p_c2->r[Y],
+	  p_c2->r[Z]);
   fatal("Stopping");
 
   return;
@@ -767,8 +791,10 @@ void COLL_overlap(Colloid * p_c1, Colloid * p_c2) {
 
 void coll_position_update(void) {
 
-  Colloid * p_colloid;
+  int ia;
   int ic, jc, kc;
+
+  Colloid * p_colloid;
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
@@ -778,9 +804,9 @@ void coll_position_update(void) {
 
 	  while (p_colloid) {
 
-	    p_colloid->r.x += p_colloid->dr[X];
-	    p_colloid->r.y += p_colloid->dr[Y];
-	    p_colloid->r.z += p_colloid->dr[Z];
+	    for (ia = 0; ia < 3; ia++) {
+	      p_colloid->r[ia] += p_colloid->dr[ia];
+	    }
 
 	    p_colloid = p_colloid->next;
 	  }
@@ -801,10 +827,12 @@ void coll_position_update(void) {
 
 double coll_max_speed() {
 
-  Colloid * p_colloid;
   int ic, jc, kc;
-  double vmaxlocal = 0.0;
-  double vmax = 0.0;
+  double vmaxlocal;
+  double vmax;
+  Colloid * p_colloid;
+
+  vmaxlocal = 0.0;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -813,10 +841,7 @@ double coll_max_speed() {
 	p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	while (p_colloid) {
-
-	  vmaxlocal = dmax(vmaxlocal,
-			   UTIL_dot_product(p_colloid->v, p_colloid->v));
-
+	  vmaxlocal = dmax(vmaxlocal, dot_product(p_colloid->v, p_colloid->v));
 	  p_colloid = p_colloid->next;
 	}
       }

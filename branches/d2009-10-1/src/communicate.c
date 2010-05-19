@@ -22,7 +22,6 @@
 #include "symmetric.h"
 #include "control.h"
 
-#include "utilities.h"
 #include "communicate.h"
 
 static char         input_config[256] = "EMPTY";
@@ -158,7 +157,7 @@ void MODEL_init( void ) {
     /* Assumes symmetric free energy */
     if (ind != 0 && strcmp(filename, "drop") == 0) {
       info("Initialising droplet\n");
-      phi_lb_init_drop(0.125*L(X), symmetric_interfacial_width());
+      phi_lb_init_drop(0.4*L(X), symmetric_interfacial_width());
     }
 
     if (ind != 0 && strcmp(filename, "from_file") == 0) {

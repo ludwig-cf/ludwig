@@ -18,7 +18,7 @@
 #include "colloids.h"
 #include "ccomms.h"
 #include "physics.h"
-#include "utilities.h"
+#include "util.h"
 
 void brownian_step_ermak_buckholz(void);
 void brownian_step_no_inertia(void);
@@ -38,6 +38,7 @@ static double dt_ = 1.0;  /* Time step; fixed here to be 1 LB step */
 
 void do_brownian_dynamics() {
 
+  int     ia;
   int     ic, jc, kc;
   Colloid * p_colloid;
   int i, n, nt, nmax = 100000;
@@ -54,8 +55,8 @@ void do_brownian_dynamics() {
   brownian_step_no_inertia_test();
   if (1) return;
 
-  mass  = (4.0/3.0)*PI*pow(2.3, 3);
-  beta  = 6.0*PI*get_eta_shear()*2.3/mass;
+  mass  = (4.0/3.0)*pi_*pow(2.3, 3);
+  beta  = 6.0*pi_*get_eta_shear()*2.3/mass;
   scaleu = sqrt(mass/(3.0*get_kT()));
   scalex = beta*scaleu;
 
@@ -103,15 +104,11 @@ void do_brownian_dynamics() {
 	  p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	  while (p_colloid) {
-	    r[X][0] = p_colloid->r.x;
-	    r[Y][0] = p_colloid->r.y;
-	    r[Z][0] = p_colloid->r.z;
-	    u[X][0] = p_colloid->v.x;
-	    u[Y][0] = p_colloid->v.y;
-	    u[Z][0] = p_colloid->v.z;
-	    s[X][0] = p_colloid->s[X];
-	    s[Y][0] = p_colloid->s[Y];
-	    s[Z][0] = p_colloid->s[Z];
+	    for (ia = 0; ia < 3; ia++) {
+	      r[ia][0] = p_colloid->r[ia];
+	      u[ia][0] = p_colloid->v[ia];
+	      s[ia][0] = p_colloid->s[ia];
+	    }
 
 	    p_colloid = p_colloid->next;
 	  }
@@ -149,8 +146,8 @@ void do_brownian_dynamics() {
   /* No inertia test */
   for (n = 0; n < NTIME; n++) {
     double tau = n*dt_;
-    double difft = get_kT() / (6.0*PI*get_eta_shear()*2.3);
-    double diffr = get_kT() / (8.0*PI*get_eta_shear()*2.3*2.3*2.3);
+    double difft = get_kT() / (6.0*pi_*get_eta_shear()*2.3);
+    double diffr = get_kT() / (8.0*pi_*get_eta_shear()*2.3*2.3*2.3);
     info("%8.3f %8.3f %8.3f ",  tau, 2.0*tau, correlator_rr[n]/(3.0*difft*nmax));
     info("%8.3f %8.3f\n", 4.0*tau, correlator_ss[n]/(diffr*nmax));
   }
@@ -206,25 +203,28 @@ void brownian_step_no_inertia() {
 
 	  /* Translational motion */
 
-	  rgamma = 1.0 / (6.0*PI*eta*p_colloid->ah);
+	  rgamma = 1.0 / (6.0*pi_*eta*p_colloid->ah);
 	  sigma = sqrt(2.0*dt_*kT*rgamma);
 
 	  ran[X] = sigma*p_colloid->random[0];
 	  ran[Y] = sigma*p_colloid->random[1];
 	  ran[Z] = sigma*p_colloid->random[2];
 
-	  p_colloid->r.x += dt_*rgamma*p_colloid->force.x + ran[X];
-	  p_colloid->r.y += dt_*rgamma*p_colloid->force.y + ran[Y];
-	  p_colloid->r.z += dt_*rgamma*p_colloid->force.z + ran[Z];
+	  p_colloid->r[X] += dt_*rgamma*p_colloid->force[X] + ran[X];
+	  p_colloid->r[Y] += dt_*rgamma*p_colloid->force[Y] + ran[Y];
+	  p_colloid->r[Z] += dt_*rgamma*p_colloid->force[Z] + ran[Z];
 
 	  /* Rotational motion */
 
-	  rgamma = 1.0 / (8.0*PI*eta*pow(p_colloid->ah, 3));
+	  rgamma = 1.0 / (8.0*pi_*eta*pow(p_colloid->ah, 3));
 	  sigma = sqrt(2.0*dt_*kT*rgamma);
 
-	  ran[X] = dt_*rgamma*p_colloid->torque.x + sigma*p_colloid->random[3];
-	  ran[Y] = dt_*rgamma*p_colloid->torque.y + sigma*p_colloid->random[4];
-	  ran[Z] = dt_*rgamma*p_colloid->torque.z + sigma*p_colloid->random[5];
+	  ran[X] = dt_*rgamma*p_colloid->torque[X]
+	    + sigma*p_colloid->random[3+X];
+	  ran[Y] = dt_*rgamma*p_colloid->torque[Y]
+	    + sigma*p_colloid->random[3+Y];
+	  ran[Z] = dt_*rgamma*p_colloid->torque[Z]
+	    + sigma*p_colloid->random[3+Z];
 
 	  rotate_vector(p_colloid->s, ran);
 
@@ -261,7 +261,7 @@ void brownian_step_no_inertia() {
 void brownian_step_ermak_buckholz() {
 
   int     ic, jc, kc;
-  Colloid * p_colloid;
+  Colloid * pc;
 
   double ranx, rany, ranz;
   double cx, cy, cz;
@@ -280,15 +280,15 @@ void brownian_step_ermak_buckholz() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	pc = CELL_get_head_of_list(ic, jc, kc);
 
-	while (p_colloid) {
+	while (pc) {
 
-	  rmass = 1.0/((4.0/3.0)*PI*pow(p_colloid->ah, 3.0));
+	  rmass = 1.0/((4.0/3.0)*pi_*pow(pc->ah, 3.0));
 
 	  /* Friction coefficient is xi, and related quantities */
 
-	  xi = 6.0*PI*get_eta_shear()*p_colloid->ah*rmass;
+	  xi = 6.0*pi_*get_eta_shear()*pc->ah*rmass;
 	  xidt = xi*dt_;
 
 	  c0 = exp(-xidt);
@@ -299,17 +299,17 @@ void brownian_step_ermak_buckholz() {
 
 	  sigma_v = sqrt(rmass*kT*(1.0 - c0*c0));
 
-	  ranx = p_colloid->random[0];
-	  rany = p_colloid->random[1];
-	  ranz = p_colloid->random[2];
+	  ranx = pc->random[0];
+	  rany = pc->random[1];
+	  ranz = pc->random[2];
 
-	  cx = c0*p_colloid->v.x + rmass*c1*p_colloid->force.x + sigma_v*ranx;
-	  cy = c0*p_colloid->v.y + rmass*c1*p_colloid->force.y + sigma_v*rany;
-	  cz = c0*p_colloid->v.z + rmass*c1*p_colloid->force.z + sigma_v*ranz;
+	  cx = c0*pc->v[X] + rmass*c1*pc->force[X] + sigma_v*ranx;
+	  cy = c0*pc->v[Y] + rmass*c1*pc->force[Y] + sigma_v*rany;
+	  cz = c0*pc->v[Z] + rmass*c1*pc->force[Z] + sigma_v*ranz;
 
-	  p_colloid->v.x = cx;
-	  p_colloid->v.y = cy;
-	  p_colloid->v.z = cz;
+	  pc->v[X] = cx;
+	  pc->v[Y] = cy;
+	  pc->v[Z] = cz;
 
 	  /* Generate correlated random pairs */
 
@@ -317,21 +317,21 @@ void brownian_step_ermak_buckholz() {
 	  c12 = rmass*kT*(1.0 - c0)*(1.0 - c0) / (sigma_v*sigma_r*xi);
 	  c21 = sqrt(1.0 - c12*c12);
 
-	  ranx = (c12*ranx + c21*p_colloid->random[3]);
-	  rany = (c12*rany + c21*p_colloid->random[4]);
-	  ranz = (c12*ranz + c21*p_colloid->random[5]);
+	  ranx = (c12*ranx + c21*pc->random[3]);
+	  rany = (c12*rany + c21*pc->random[4]);
+	  ranz = (c12*ranz + c21*pc->random[5]);
 
 	  /* Position update */
 
-	  cx = c1*p_colloid->v.x + rmass*c2*p_colloid->force.x + sigma_r*ranx;
-	  cy = c1*p_colloid->v.y + rmass*c2*p_colloid->force.y + sigma_r*rany;
-	  cz = c1*p_colloid->v.z + rmass*c2*p_colloid->force.z + sigma_r*ranz;
+	  cx = c1*pc->v[X] + rmass*c2*pc->force[X] + sigma_r*ranx;
+	  cy = c1*pc->v[Y] + rmass*c2*pc->force[Y] + sigma_r*rany;
+	  cz = c1*pc->v[Z] + rmass*c2*pc->force[Z] + sigma_r*ranz;
 
-	  p_colloid->r.x += cx;
-	  p_colloid->r.y += cy;
-	  p_colloid->r.z += cz;
+	  pc->r[X] += cx;
+	  pc->r[Y] += cy;
+	  pc->r[Z] += cz;
 
-	  p_colloid = p_colloid->next;
+	  pc = pc->next;
 	}
       }
     }
@@ -402,6 +402,7 @@ void brownian_step_no_inertia_test() {
 
   const int nmax  = 10000;
 
+  int     ia;
   int     ic, jc, kc;
   Colloid * p_colloid;
   int     i, n, nt;
@@ -414,8 +415,8 @@ void brownian_step_no_inertia_test() {
   double  dr[3];
 
 
-  difft = get_kT() / (6.0*PI*get_eta_shear()*2.3);
-  diffr = get_kT() / (8.0*PI*get_eta_shear()*2.3*2.3*2.3);
+  difft = get_kT() / (6.0*pi_*get_eta_shear()*2.3);
+  diffr = get_kT() / (8.0*pi_*get_eta_shear()*2.3*2.3*2.3);
 
   /* Initialise */
 
@@ -455,12 +456,11 @@ void brownian_step_no_inertia_test() {
 	  p_colloid = CELL_get_head_of_list(ic, jc, kc);
 
 	  while (p_colloid) {
-	    r[X][0] = p_colloid->r.x;
-	    r[Y][0] = p_colloid->r.y;
-	    r[Z][0] = p_colloid->r.z;
-	    s[X][0] = p_colloid->s[X];
-	    s[Y][0] = p_colloid->s[Y];
-	    s[Z][0] = p_colloid->s[Z];
+
+	    for (ia = 0; ia < 3; ia++) {
+	      r[ia][0] = p_colloid->r[ia];
+	      s[ia][0] = p_colloid->s[ia];
+	    }
 
 	    p_colloid = p_colloid->next;
 	  }

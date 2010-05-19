@@ -2,13 +2,13 @@
  *
  *  polar_active.h
  *
- *  $Id: polar_active.h,v 1.1.2.2 2010-04-19 10:32:36 kevin Exp $
+ *  $Id: polar_active.h,v 1.1.2.3 2010-05-19 19:16:51 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2010)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -27,6 +27,7 @@ void   polar_active_parameters_set(const double a, const double b,
 				   const double kappa2);
 void   polar_active_zeta_set(const double zeta);
 double polar_active_zeta(void);
+void   polar_active_region_radius_set(const double r);
 double polar_active_region(const int index);
 
 #endif

@@ -19,6 +19,7 @@
 #include "io_harness.h"
 #include "ran.h"
 #include "lattice.h"
+#include "util.h"
 #include "colloids_Q_tensor.h"
 
 struct io_info_t * io_info_scalar_q_;
@@ -30,17 +31,18 @@ static int scalar_q_write_ascii(FILE *, const int, const int, const int);
 static double scalar_order_parameter(double q[3][3]);
 
 void COLL_set_Q(){
-  
+
+  int ia;
   int ic,jc,kc;
   
   Colloid * p_colloid;
 
-  FVector r0;
-  FVector rsite0;
-  FVector normal;
-  FVector dir,dir_prev;
-  FVector COLL_fvector_separation(FVector, FVector);
-  FVector COLL_fcoords_from_ijk(int, int, int);
+  double r0[3];
+  double rsite0[3];
+  double normal[3];
+  double dir[3];
+  double dir_prev[3];
+
   Colloid * colloid_at_site_index(int);
 
   int nlocal[3],offset[3];
@@ -70,40 +72,41 @@ void COLL_set_Q(){
 	/* check if this node is inside a colloid */
 	if(p_colloid != NULL){
 	  
-	  /* get the colloid position 
-	   */
-	  
-	  r0 = p_colloid->r;
-	  
+
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
 	   * nodes is found */
-	  r0.x -= (double) offset[X];
-	  r0.y -= (double) offset[Y];
-	  r0.z -= (double) offset[Z];
-	  
-	  /* rsite0 is the coordinate position of the site */
-	  rsite0 = COLL_fcoords_from_ijk(ic, jc, kc);
-	  
-	  /* calculate the vector between the centre of mass of the colloid and node i, j, k 
-	   * so need to calculate rsite0 - r0
-	   */
-	  normal = COLL_fvector_separation(r0, rsite0);
-	  /* now for homeotropic anchoring only thing needed is to normalise the
-	     the surface normal vector
-	  */
-	  len_normal = sqrt(UTIL_dot_product(normal, normal));
+	  r0[X] = p_colloid->r[X] - 1.0*offset[X];
+	  r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
+	  r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
 
+	  rsite0[X] = 1.0*ic;
+	  rsite0[Y] = 1.0*jc;
+	  rsite0[Z] = 1.0*kc;
+
+	  /* calculate the vector between the centre of mass of the
+	   * colloid and node i, j, k 
+	   * so need to calculate rsite0 - r0 */
+
+	  coords_minimum_distance(r0, rsite0, normal);
+
+	  /* now for homeotropic anchoring only thing needed is to
+	   * normalise the the surface normal vector  */
+
+	  len_normal = modulus(normal);
 	  assert(len_normal <= p_colloid->ah);
 
-	  if(len_normal < 10e-8){
+	  if (len_normal < 10e-8) {
 	    /* we are very close to the centre of the colloid.
-	     * set the q tensor to zero
-	     */
-	    q[0][0]=q[0][1]=q[0][2]=q[1][1]=q[1][2]=0.0;
+	     * set the q tensor to zero */
+	    q[X][X] = 0.0;
+	    q[X][Y] = 0.0;
+	    q[X][Z] = 0.0;
+	    q[Y][Y] = 0.0;
+	    q[Y][Z] = 0.0;
 	    phi_set_q_tensor(index,q);
 	    continue;
-	      }
+	  }
 	  
 #if PLANAR_ANCHORING
 	  /* now we need set the director inside the colloid
@@ -133,47 +136,47 @@ void COLL_set_Q(){
 	    else if (d[2] > d[enxt]) {
 	      enxt=2;
 	    }
-	    dir.x = v[0][emax];
-	    dir.y = v[1][emax];
-	    dir.z = v[2][emax];
 
-	    /* calculate the projection of the director along the surface normal 
-	     * and remove that from the director to make the director perpendicular to 
-	     * the surface
-	     */
-	    rdotd = UTIL_dot_product(normal,dir)/(len_normal*len_normal);
+	    dir[X] = v[X][emax];
+	    dir[Y] = v[Y][emax];
+	    dir[Z] = v[Z][emax];
+
+	    /* calculate the projection of the director along the surface
+	     * normal and remove that from the director to make the
+	     * director perpendicular to the surface */
+
+	    rdotd = dot_product(normal, dir)/(len_normal*len_normal);
 	    
-	    dir.x = dir.x - rdotd*normal.x;
-	    dir.y = dir.y - rdotd*normal.y;
-	    dir.z = dir.z - rdotd*normal.z;
+	    dir[X] = dir[X] - rdotd*normal[X];
+	    dir[Y] = dir[Y] - rdotd*normal[Y];
+	    dir[Z] = dir[Z] - rdotd*normal[Z];
 	    
-	    dir_len = sqrt(UTIL_dot_product(dir,dir));
-	    if(dir_len<10e-8){
+	    dir_len = modulus(dir);
+
+	    if (dir_len < 10e-8) {
 	      /* the vectors were [almost] parallel.
 	       * now we use the direction of the previous node i,j,k
 	       * this fails if we are in the first node, so not great fix...
 	       */
-	      dir = UTIL_cross_product(dir_prev,normal);
-	      dir_len = sqrt(UTIL_dot_product(dir,dir));
+
+	      cross_product(dir_prev, normal, dir);
+	      dir_len = modulus(dir);
 	      info("\n i,j,k, %d %d %d\n", ic,jc,kc);
 	      assert(dir_len>10e-8);
-	      
 	    }
 	    assert(dir_len > 10e-8);
-	    
-	    director[X] = dir.x/dir_len;
-	    director[Y] = dir.y/dir_len;
-	    director[Z] = dir.z/dir_len;
 
-	    dir_prev.x = dir.x/dir_len;
-	    dir_prev.y = dir.y/dir_len;
-	    dir_prev.z = dir.z/dir_len;
+	    for (ia = 0; ia < 3; ia++) {
+	      director[ia] = dir[ia] / dir_len;
+	      dir_prev[ia] = dir[ia] / dir_len;
+	    }
+
 #else
 	    /* Homeotropic anchoring */
-	    director[X] = normal.x/len_normal;
-	    director[Y] = normal.y/len_normal;
-	    director[Z] = normal.z/len_normal;
 
+	    director[X] = normal[X]/len_normal;
+	    director[Y] = normal[Y]/len_normal;
+	    director[Z] = normal[Z]/len_normal;
 #endif
 	    q[X][X] = 3.0/2.0*amplitude*(director[X]*director[X] - 1.0/3.0);
 	    q[X][Y] = 3.0/2.0*amplitude*(director[X]*director[Y]);
@@ -183,13 +186,6 @@ void COLL_set_Q(){
 	    
 	    phi_set_q_tensor(index, q);
 
-	    //debug
-	    phi_get_q_tensor(index,q);
-	    rdotd=scalar_order_parameter(q);
-	    //if(rdotd>1.0/3.0){
-	    //info("\n i,j,k, %d %d %d %lf %lf %lf \n", ic,jc,kc,rdotd,amplitude,len_normal);
-	    //info("%lf %lf %lf %lf %lf \n", director[X],director[Y],director[Z],len_normal,sqrt(director[X]*director[X]+director[Y]*director[Y]+director[Z]*director[Z]));
-	      //}
 	}
 	
       }
@@ -203,9 +199,6 @@ void COLL_randomize_Q(double delta_r){
   int ic,jc,kc;
   
   Colloid * p_colloid;
-
-  FVector COLL_fvector_separation(FVector, FVector);
-  FVector COLL_fcoords_from_ijk(int, int, int);
   Colloid * colloid_at_site_index(int);
 
   int nlocal[3],offset[3];
@@ -482,13 +475,15 @@ void colloids_fix_swd(void) {
 	  /* Set the lattice velocity here to the solid body
 	   * rotational velocity */
 
-	  rb[X] = x - p_c->r.x;
-	  rb[Y] = y - p_c->r.y;
-	  rb[Z] = z - p_c->r.z;
+	  rb[X] = p_c->r[X] - x;
+	  rb[Y] = p_c->r[Y] - y;
+	  rb[Z] = p_c->r[Z] - z;
 
-	  u[X] = p_c->v.x + p_c->omega.y*rb[Z] - p_c->omega.z*rb[Y];
-	  u[Y] = p_c->v.y + p_c->omega.z*rb[X] - p_c->omega.x*rb[Z];
-	  u[Z] = p_c->v.z + p_c->omega.x*rb[Y] - p_c->omega.y*rb[X];
+	  cross_product(p_c->omega, rb, u);
+
+	  u[X] += p_c->v[X];
+	  u[Y] += p_c->v[Y];
+	  u[Z] += p_c->v[Z];
 
 	  hydrodynamics_set_velocity(index, u);
 
