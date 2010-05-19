@@ -7,7 +7,7 @@
  *
  *  This only works in serial.
  *
- *  $Id: test_ewald.c,v 1.1.2.1 2010-03-30 03:53:53 kevin Exp $
+ *  $Id: test_ewald.c,v 1.1.2.2 2010-05-19 19:18:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -96,10 +96,10 @@ int main (int argc, char ** argv) {
   p_c2->s[Y] = 0.0;
   p_c2->s[Z] = -1.0;
 
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r.x, p_c1->r.y, p_c1->r.z,
+  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r[X], p_c1->r[Y], p_c1->r[Z],
        p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
 
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r.x, p_c2->r.y, p_c2->r.z,
+  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r[X], p_c2->r[Y], p_c2->r[Z],
        p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
 
   coords_minimum_distance(r1, r2, r12);
@@ -132,41 +132,41 @@ int main (int argc, char ** argv) {
 
 
   info("Real space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
+       p_c1->force[X], p_c1->force[Y], p_c1->force[Z]);
 
-  test_assert(fabs(p_c1->force.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force.z - -5.17464e-05) < TOLERANCE);
+  test_assert(fabs(p_c1->force[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Z] - -5.17464e-05) < TOLERANCE);
 
 
   info("Real space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
+       p_c2->force[X], p_c2->force[Y], p_c2->force[Z]);
 
-  test_assert(fabs(p_c2->force.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force.z - 5.17464e-05) < TOLERANCE);
+  test_assert(fabs(p_c2->force[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->force[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->force[Z] - 5.17464e-05) < TOLERANCE);
 
-  test_assert(fabs(p_c1->force.z + p_c2->force.z) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Z] + p_c2->force[Z]) < TOLERANCE);
   info("Momentum conserved.\n");
 
   info("Real space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
+       p_c1->torque[X], p_c1->torque[Y], p_c1->torque[Z]);
 
-  test_assert(fabs(p_c1->torque.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[Z] - 0.0) < TOLERANCE);
 
   info("Real space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
+       p_c2->torque[X], p_c2->torque[Y], p_c2->torque[Z]);
 
-  test_assert(fabs(p_c2->torque.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[Z] - 0.0) < TOLERANCE);
 
 
   /* Fourier space */
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
+  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
+  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
 
   ewald_fourier_space_sum();
   ewald_total_energy(&ereal, &efourier, &eself);
@@ -175,35 +175,35 @@ int main (int argc, char ** argv) {
   test_assert(fabs(efourier - 2.25831e-05) < TOLERANCE);
 
   info("Fourier space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
+       p_c1->force[X], p_c1->force[Y], p_c1->force[Z]);
 
-  test_assert(fabs(p_c1->force.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force.z - 3.08611e-06) < TOLERANCE);
+  test_assert(fabs(p_c1->force[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Z] - 3.08611e-06) < TOLERANCE);
 
   info("Fourier space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
+       p_c2->force[X], p_c2->force[Y], p_c2->force[Z]);
 
-  test_assert(fabs(p_c2->force.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force.z - -3.08611e-06) < TOLERANCE);
+  test_assert(fabs(p_c2->force[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->force[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->force[Z] - -3.08611e-06) < TOLERANCE);
 
-  test_assert(fabs(p_c1->force.z + p_c2->force.z) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Z] + p_c2->force[Z]) < TOLERANCE);
   info("Momentum conserved.\n");
 
   info("Fourier space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
+       p_c1->torque[X], p_c1->torque[Y], p_c1->torque[Z]);
 
-  test_assert(fabs(p_c1->torque.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[Z] - 0.0) < TOLERANCE);
 
   info("Fourier space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
+       p_c2->torque[X], p_c2->torque[Y], p_c2->torque[Z]);
 
-  test_assert(fabs(p_c2->torque.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[Z] - 0.0) < TOLERANCE);
 
 
   /* New orientation (non-zero torques). */
@@ -214,13 +214,13 @@ int main (int argc, char ** argv) {
   p_c2->s[Y] = 0.0;
   p_c2->s[Z] = 0.0;
 
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
+  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
+  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
 
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r.x, p_c1->r.y, p_c1->r.z,
+  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r[X], p_c1->r[Y], p_c1->r[Z],
        p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
 
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r.x, p_c2->r.y, p_c2->r.z,
+  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r[X], p_c2->r[Y], p_c2->r[Z],
        p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
 
   /* Energy */
@@ -249,44 +249,44 @@ int main (int argc, char ** argv) {
   test_assert(fabs(ereal - 0.0) < TOLERANCE);
 
   info("Real space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
+       p_c1->force[X], p_c1->force[Y], p_c1->force[Z]);
 
-  test_assert(fabs(p_c1->force.x - -2.29755e-05) < TOLERANCE);
-  test_assert(fabs(p_c1->force.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->force[X] - -2.29755e-05) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Z] - 0.0) < TOLERANCE);
 
 
   info("Real space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
+       p_c2->force[X], p_c2->force[Y], p_c2->force[Z]);
 
-  test_assert(fabs(p_c2->force.x - 2.29755e-05) < TOLERANCE);
-  test_assert(fabs(p_c2->force.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->force[X] - 2.29755e-05) < TOLERANCE);
+  test_assert(fabs(p_c2->force[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->force[Z] - 0.0) < TOLERANCE);
 
-  test_assert(fabs(p_c1->force.x + p_c2->force.x) < TOLERANCE);
+  test_assert(fabs(p_c1->force[X] + p_c2->force[X]) < TOLERANCE);
   info("Momentum conserved.\n");
 
 
   info("Real space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
+       p_c1->torque[X], p_c1->torque[Y], p_c1->torque[Z]);
 
-  test_assert(fabs(p_c1->torque.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque.y - -6.07598e-05) < TOLERANCE);
-  test_assert(fabs(p_c1->torque.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[Y] - -6.07598e-05) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[Z] - 0.0) < TOLERANCE);
 
   info("Real space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
+       p_c2->torque[X], p_c2->torque[Y], p_c2->torque[Z]);
 
-  test_assert(fabs(p_c2->torque.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque.y - -0.000168995) < TOLERANCE);
-  test_assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[Y] - -0.000168995) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[Z] - 0.0) < TOLERANCE);
 
 
   /* Fourier space */
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
-  p_c1->torque.x = 0.0; p_c1->torque.y = 0.0; p_c1->torque.z = 0.0;
-  p_c2->torque.x = 0.0; p_c2->torque.y = 0.0; p_c2->torque.z = 0.0;
+  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
+  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
+  p_c1->torque[X] = 0.0; p_c1->torque[Y] = 0.0; p_c1->torque[Z] = 0.0;
+  p_c2->torque[X] = 0.0; p_c2->torque[Y] = 0.0; p_c2->torque[Z] = 0.0;
 
 
   ewald_fourier_space_sum();
@@ -297,66 +297,66 @@ int main (int argc, char ** argv) {
 
 
   info("Fourier space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
+       p_c1->force[X], p_c1->force[Y], p_c1->force[Z]);
 
-  test_assert(fabs(p_c1->force.x - -1.35013e-06) < TOLERANCE);
-  test_assert(fabs(p_c1->force.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->force.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->force[X] - -1.35013e-06) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->force[Z] - 0.0) < TOLERANCE);
 
   info("Fourier space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
+       p_c2->force[X], p_c2->force[Y], p_c2->force[Z]);
 
-  test_assert(fabs(p_c2->force.x - 1.35013e-06) < TOLERANCE);
-  test_assert(fabs(p_c2->force.y - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->force.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->force[X] - 1.35013e-06) < TOLERANCE);
+  test_assert(fabs(p_c2->force[Y] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->force[Z] - 0.0) < TOLERANCE);
 
-  test_assert(fabs(p_c1->force.x + p_c2->force.x) < TOLERANCE);
+  test_assert(fabs(p_c1->force[X] + p_c2->force[X]) < TOLERANCE);
   info("Momentum conserved.\n");
 
   info("Fourier space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
+       p_c1->torque[X], p_c1->torque[Y], p_c1->torque[Z]);
 
-  test_assert(fabs(p_c1->torque.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c1->torque.y - -1.92945e-05) < TOLERANCE);
-  test_assert(fabs(p_c1->torque.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[Y] - -1.92945e-05) < TOLERANCE);
+  test_assert(fabs(p_c1->torque[Z] - 0.0) < TOLERANCE);
 
   info("Fourier space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
+       p_c2->torque[X], p_c2->torque[Y], p_c2->torque[Z]);
 
-  test_assert(fabs(p_c2->torque.x - 0.0) < TOLERANCE);
-  test_assert(fabs(p_c2->torque.y - 5.08024e-06) < TOLERANCE);
-  test_assert(fabs(p_c2->torque.z - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[X] - 0.0) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[Y] - 5.08024e-06) < TOLERANCE);
+  test_assert(fabs(p_c2->torque[Z] - 0.0) < TOLERANCE);
 
   /* New orientation (non-zero torques). */
 
   info("\nNew orientation\n");
 
-  p_c1->r.x = 3.0;
-  p_c1->r.y = 3.0;
-  p_c1->r.z = 3.0;
+  p_c1->r[X] = 3.0;
+  p_c1->r[Y] = 3.0;
+  p_c1->r[Z] = 3.0;
 
   p_c1->s[X] = 0.0;
   p_c1->s[Y] = 0.0;
   p_c1->s[Z] = 1.0;
 
 
-  p_c2->r.x = 3.0;
-  p_c2->r.y = 13.0;
-  p_c2->r.z = 3.0;
+  p_c2->r[X] = 3.0;
+  p_c2->r[Y] = 13.0;
+  p_c2->r[Z] = 3.0;
 
   p_c2->s[X] =  0.0;
   p_c2->s[Y] = 1.0;
   p_c2->s[Z] = 0.0;
 
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
-  p_c1->torque.x = 0.0; p_c1->torque.y = 0.0; p_c1->torque.z = 0.0;
-  p_c2->torque.x = 0.0; p_c2->torque.y = 0.0; p_c2->torque.z = 0.0;
+  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
+  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
+  p_c1->torque[X] = 0.0; p_c1->torque[Y] = 0.0; p_c1->torque[Z] = 0.0;
+  p_c2->torque[X] = 0.0; p_c2->torque[Y] = 0.0; p_c2->torque[Z] = 0.0;
 
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r.x, p_c1->r.y, p_c1->r.z,
+  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r[X], p_c1->r[Y], p_c1->r[Z],
        p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
 
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r.x, p_c2->r.y, p_c2->r.z,
+  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r[X], p_c2->r[Y], p_c2->r[Z],
        p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
 
   ewald_real_space_sum();
@@ -365,34 +365,34 @@ int main (int argc, char ** argv) {
   info("Real space energy: %g\n", ereal);
 
   info("Real space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
+       p_c1->force[X], p_c1->force[Y], p_c1->force[Z]);
 
   info("Real space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
+       p_c2->force[X], p_c2->force[Y], p_c2->force[Z]);
 
   info("Real space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
+       p_c1->torque[X], p_c1->torque[Y], p_c1->torque[Z]);
 
   info("Real space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
+       p_c2->torque[X], p_c2->torque[Y], p_c2->torque[Z]);
 
 
-  p_c1->force.x = 0.0; p_c1->force.y = 0.0; p_c1->force.z = 0.0;
-  p_c2->force.x = 0.0; p_c2->force.y = 0.0; p_c2->force.z = 0.0;
+  p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
+  p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
 
   ewald_fourier_space_sum();
 
   info("Fourier space force on particle 1: %g %g %g\n",
-       p_c1->force.x, p_c1->force.y, p_c1->force.z);
+       p_c1->force[X], p_c1->force[Y], p_c1->force[Z]);
 
   info("Fourier space force on particle 2: %g %g %g\n",
-       p_c2->force.x, p_c2->force.y, p_c2->force.z);
+       p_c2->force[X], p_c2->force[Y], p_c2->force[Z]);
 
   info("Fourier space torque on particle 1: %g %g %g\n",
-       p_c1->torque.x, p_c1->torque.y, p_c1->torque.z);
+       p_c1->torque[X], p_c1->torque[Y], p_c1->torque[Z]);
 
   info("Fourier space torque on particle 2: %g %g %g\n",
-       p_c2->torque.x, p_c2->torque.y, p_c2->torque.z);
+       p_c2->torque[X], p_c2->torque[Y], p_c2->torque[Z]);
 
   ewald_finish();
 
