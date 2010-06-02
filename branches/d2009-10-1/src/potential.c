@@ -6,9 +6,13 @@
  *
  *  Provides routines for pairwise energies and forces.
  *
- *  $Id: potential.c,v 1.5 2008-02-13 10:56:10 kevin Exp $
+ *  $Id: potential.c,v 1.5.16.1 2010-06-02 14:10:48 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -17,6 +21,7 @@
 #include "pe.h"
 #include "runtime.h"
 #include "physics.h"
+#include "util.h"
 #include "potential.h"
 
 

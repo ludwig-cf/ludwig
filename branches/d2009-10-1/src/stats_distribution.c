@@ -8,7 +8,7 @@
  *  If there is more than one distribution, it is assumed the relevant
  *  statistics are produced in the order parameter sector.
  *
- *  $Id: stats_distribution.c,v 1.1.2.2 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: stats_distribution.c,v 1.1.2.3 2010-06-02 14:10:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,6 +25,7 @@
 #include "coords.h"
 #include "model.h"
 #include "site_map.h"
+#include "util.h"
 #include "stats_distribution.h"
 
 /*****************************************************************************

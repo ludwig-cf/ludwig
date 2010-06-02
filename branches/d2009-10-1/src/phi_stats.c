@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.8.4.4 2010-05-12 18:19:39 kevin Exp $
+ *  $Id: phi_stats.c,v 1.8.4.5 2010-06-02 14:10:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,6 +25,7 @@
 #include "bbl.h"
 #include "phi.h"
 #include "phi_lb_coupler.h"
+#include "util.h"
 #include "phi_stats.h"
 
 /*****************************************************************************

@@ -7,7 +7,7 @@
  *  There are a number of separate 'timers', each of which can
  *  be started, and stopped, independently.
  *
- *  $Id: timer.c,v 1.4.16.2 2010-03-26 11:33:24 kevin Exp $
+ *  $Id: timer.c,v 1.4.16.3 2010-06-02 14:10:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,6 +21,7 @@
 #include <float.h>
 
 #include "pe.h"
+#include "util.h"
 #include "timer.h"
 
 #define NTIMERS  21

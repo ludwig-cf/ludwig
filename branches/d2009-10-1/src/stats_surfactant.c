@@ -4,7 +4,7 @@
  *
  *  Some routines to perform analysis of the surfactant model.
  *
- *  $Id: stats_surfactant.c,v 1.1.6.2 2010-03-27 06:00:00 kevin Exp $
+ *  $Id: stats_surfactant.c,v 1.1.6.3 2010-06-02 14:10:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,6 +21,7 @@
 #include "coords.h"
 #include "phi.h"
 #include "control.h"
+#include "util.h"
 #include "surfactant.h"
 #include "stats_surfactant.h"
 

@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.14.4.3 2010-04-05 10:54:31 kevin Exp $
+ *  $Id: lattice.c,v 1.14.4.4 2010-06-02 14:10:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,6 +26,7 @@
 #include "leesedwards.h"
 #include "control.h"
 #include "io_harness.h"
+#include "util.h"
 #include "lattice.h"
 
 
