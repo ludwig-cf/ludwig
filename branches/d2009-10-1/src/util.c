@@ -7,7 +7,7 @@
  *  Little / big endian stuff based on suggestions by Harsha S.
  *  Adiga from IBM.
  *
- *  $Id: util.c,v 1.2.6.1 2010-05-19 19:16:51 kevin Exp $
+ *  $Id: util.c,v 1.2.6.2 2010-06-02 13:57:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -157,4 +157,28 @@ void rotate_vector(double v[3], const double w[3]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  imin, imax, dmin, dmax
+ *
+ *  minimax functions
+ *
+ *****************************************************************************/
+
+int imin(const int i, const int j) {
+  return ((i < j) ? i : j);
+}
+
+int imax(const int i, const int j) {
+  return ((i > j) ? i : j);
+}
+
+double dmin(const double a, const double b) {
+  return ((a < b) ? a : b);
+}
+
+double dmax(const double a, const double b) {
+  return ((a > b) ? a : b);
 }

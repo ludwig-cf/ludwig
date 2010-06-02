@@ -2,7 +2,7 @@
  *
  *  util.h
  *
- *  $Id: util.h,v 1.2.6.2 2010-05-19 19:16:51 kevin Exp $
+ *  $Id: util.h,v 1.2.6.3 2010-06-02 13:57:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,5 +25,10 @@ double dot_product(const double a[3], const double b[3]);
 void   cross_product(const double a[3], const double b[3], double result[3]);
 double modulus(const double a[3]);
 void   rotate_vector(double [3], const double [3]);
+
+int    imin(const int i, const int j);
+int    imax(const int i, const int j);
+double dmin(const double a, const double b);
+double dmax(const double a, const double b);
 
 #endif
