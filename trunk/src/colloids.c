@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9 2009-11-03 16:58:50 kevin Exp $
+ *  $Id: colloids.c,v 1.10 2010-06-03 14:01:11 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
  *
@@ -223,6 +223,8 @@ IVector cell_coords(FVector r) {
  *****************************************************************************/
 
 Colloid * CELL_get_head_of_list(const int ic, const int jc, const int kc) {
+
+  assert(cell_list_);
 
   return cell_list_[ic*cifac_ + jc*cjfac_ + kc];
 }
