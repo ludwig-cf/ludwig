@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.4 2008-08-24 18:05:06 kevin Exp $
+ *  $Id: subgrid.c,v 1.5 2010-06-03 14:01:44 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -137,6 +137,8 @@ void subgrid_update() {
   double drag, eta;
   double g[3];
   Colloid * p_colloid;
+
+  if (get_N_colloid() == 0) return;
 
   TIMER_start(TIMER_FREE1);
 
