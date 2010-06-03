@@ -5,7 +5,7 @@
  *  Statistics on fluid/particle conservation laws.
  *  Single fluid and binary fluid.
  *
- *  $Id: test.c,v 1.19 2009-08-20 16:30:04 kevin Exp $
+ *  $Id: test.c,v 1.20 2010-06-03 14:25:19 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -230,6 +230,13 @@ void TEST_momentum() {
       }
     }
   }
+
+#ifdef _SUBGRID_
+  /* Don't register the inertialess particles */
+  cx = 0.0;
+  cy = 0.0;
+  cz = 0.0;
+#endif
 
 #ifdef _MPI_
   {

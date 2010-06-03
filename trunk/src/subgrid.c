@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.5 2010-06-03 14:01:44 kevin Exp $
+ *  $Id: subgrid.c,v 1.6 2010-06-03 14:25:19 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
@@ -164,12 +164,11 @@ void subgrid_update() {
 	  p_colloid->r.y += (p_colloid->f0.y + drag*g[Y]);
 	  p_colloid->r.z += (p_colloid->f0.z + drag*g[Z]);
 
-	  /* Store the effective velocity of the particle
-	   * (don't use the p->v as this shows up in the momentum) */
+	  /* Store the effective velocity of the particle */
 
-	  p_colloid->stats.x = p_colloid->f0.x + drag*g[X];
-	  p_colloid->stats.y = p_colloid->f0.y + drag*g[Y];
-	  p_colloid->stats.z = p_colloid->f0.z + drag*g[Z];
+	  p_colloid->v.x = p_colloid->f0.x + drag*g[X];
+	  p_colloid->v.y = p_colloid->f0.y + drag*g[Y];
+	  p_colloid->v.z = p_colloid->f0.z + drag*g[Z];
 
 	  p_colloid = p_colloid->next;
 	}
