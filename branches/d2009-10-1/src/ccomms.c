@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.12.2.5 2010-06-02 14:11:19 kevin Exp $
+ *  $Id: ccomms.c,v 1.12.2.6 2010-06-03 17:35:44 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -197,6 +197,7 @@ void CCOM_init_halos() {
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_two));
   _halo_recv_two = (Colloid_sum_message_two *)
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_two));
+  _halo_send_sev = (Colloid_sum_message_sev *)
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_sev));
   _halo_recv_sev = (Colloid_sum_message_sev *)
     calloc(_halo_message_nmax, sizeof(Colloid_sum_message_sev));
