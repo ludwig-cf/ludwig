@@ -142,8 +142,8 @@ int main( int argc, char **argv )
     subgrid_update();
 #else
     bounce_back_on_links();
-    wall_bounce_back();
 #endif
+    wall_bounce_back();
 
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions hold active f,g */
