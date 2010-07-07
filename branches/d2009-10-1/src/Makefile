@@ -12,7 +12,6 @@
 #
 # Temporary (to be replaced by run-time options)
 # -D_SUBGRID_            Sub-grid particles
-# -D_ACTIVE2_            "Active2" particles
 #
 # Please use the following for any production run
 #
@@ -47,7 +46,7 @@ LIBRARY = libludwig.a
 
 CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q19_ -D_COLLOIDS_TEST_ -D_ACTIVE2_ -DNEW
+OPTS = -D_D3Q19_
 CFLAGS = -O3 -Wall
 
 INC = -I.
@@ -70,7 +69,8 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      brazovskii.o brazovskii_rt.o \
      brownian.o \
      cio.o cmd.o ccomms.o \
-     colloids.o colloid_io_rt.o bbl.o build.o communicate.o \
+     colloid.o colloid_link.o colloids.o colloid_io_rt.o \
+     bbl.o build.o communicate.o \
      coords.o coords_rt.o \
      control.o \
      eigen3.o ewald.o \
