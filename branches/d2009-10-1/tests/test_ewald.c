@@ -7,7 +7,7 @@
  *
  *  This only works in serial.
  *
- *  $Id: test_ewald.c,v 1.1.2.2 2010-05-19 19:18:23 kevin Exp $
+ *  $Id: test_ewald.c,v 1.1.2.3 2010-07-07 11:43:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -59,8 +59,6 @@ int main (int argc, char ** argv) {
 
   /* First test */
 
-  set_N_colloid(2);
-
   test_assert(fabs(rc - 32.0) < TOLERANCE);
   test_assert(fabs(mu - 0.285) < TOLERANCE);
   test_assert(fabs(ewald_kappa() - 0.078125) < TOLERANCE);
@@ -77,35 +75,38 @@ int main (int argc, char ** argv) {
   p_c2 = colloid_add_local(2, r2);
   test_assert(p_c1 != NULL);
   test_assert(p_c2 != NULL);
+  colloids_ntotal_set();
 
   /* First colloid .... */
 
-  p_c1->a0 = 2.3;
-  p_c1->ah = 2.3;
+  p_c1->s.a0 = 2.3;
+  p_c1->s.ah = 2.3;
 
-  p_c1->s[X] = 0.0;
-  p_c1->s[Y] = 0.0;
-  p_c1->s[Z] = 1.0;
+  p_c1->s.s[X] = 0.0;
+  p_c1->s.s[Y] = 0.0;
+  p_c1->s.s[Z] = 1.0;
 
   /* Second colloid ... */
 
-  p_c2->a0 = 2.3;
-  p_c2->ah = 2.3;
+  p_c2->s.a0 = 2.3;
+  p_c2->s.ah = 2.3;
 
-  p_c2->s[X] = 0.0;
-  p_c2->s[Y] = 0.0;
-  p_c2->s[Z] = -1.0;
+  p_c2->s.s[X] = 0.0;
+  p_c2->s.s[Y] = 0.0;
+  p_c2->s.s[Z] = -1.0;
 
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r[X], p_c1->r[Y], p_c1->r[Z],
-       p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
+  info("Particle 1: %f %f %f %f %f %f\n",
+       p_c1->s.r[X], p_c1->s.r[Y], p_c1->s.r[Z],
+       p_c1->s.s[X], p_c1->s.s[Y], p_c1->s.s[Z]);
 
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r[X], p_c2->r[Y], p_c2->r[Z],
-       p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
+  info("Particle 2: %f %f %f %f %f %f\n",
+       p_c2->s.r[X], p_c2->s.r[Y], p_c2->s.r[Z],
+       p_c2->s.s[X], p_c2->s.s[Y], p_c2->s.s[Z]);
 
   coords_minimum_distance(r1, r2, r12);
 
 
-  e = ewald_real_space_energy(p_c1->s, p_c2->s, r12);
+  e = ewald_real_space_energy(p_c1->s.s, p_c2->s.s, r12);
 
   info("Real space energy: %g\n", e);
   test_assert(fabs(e - 0.000168995) < TOLERANCE);
@@ -210,22 +211,24 @@ int main (int argc, char ** argv) {
 
   info("\nNew orientation\n");
 
-  p_c2->s[X] = 1.0;
-  p_c2->s[Y] = 0.0;
-  p_c2->s[Z] = 0.0;
+  p_c2->s.s[X] = 1.0;
+  p_c2->s.s[Y] = 0.0;
+  p_c2->s.s[Z] = 0.0;
 
   p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
   p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
 
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r[X], p_c1->r[Y], p_c1->r[Z],
-       p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
+  info("Particle 1: %f %f %f %f %f %f\n",
+       p_c1->s.r[X], p_c1->s.r[Y], p_c1->s.r[Z],
+       p_c1->s.s[X], p_c1->s.s[Y], p_c1->s.s[Z]);
 
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r[X], p_c2->r[Y], p_c2->r[Z],
-       p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
+  info("Particle 2: %f %f %f %f %f %f\n",
+       p_c2->s.r[X], p_c2->s.r[Y], p_c2->s.r[Z],
+       p_c2->s.s[X], p_c2->s.s[Y], p_c2->s.s[Z]);
 
   /* Energy */
 
-  e = ewald_real_space_energy(p_c1->s, p_c2->s, r12);
+  e = ewald_real_space_energy(p_c1->s.s, p_c2->s.s, r12);
 
   info("Real space energy: %g\n", e);
   test_assert(fabs(e - 0.0) < TOLERANCE);
@@ -331,33 +334,35 @@ int main (int argc, char ** argv) {
 
   info("\nNew orientation\n");
 
-  p_c1->r[X] = 3.0;
-  p_c1->r[Y] = 3.0;
-  p_c1->r[Z] = 3.0;
+  p_c1->s.r[X] = 3.0;
+  p_c1->s.r[Y] = 3.0;
+  p_c1->s.r[Z] = 3.0;
 
-  p_c1->s[X] = 0.0;
-  p_c1->s[Y] = 0.0;
-  p_c1->s[Z] = 1.0;
+  p_c1->s.s[X] = 0.0;
+  p_c1->s.s[Y] = 0.0;
+  p_c1->s.s[Z] = 1.0;
 
 
-  p_c2->r[X] = 3.0;
-  p_c2->r[Y] = 13.0;
-  p_c2->r[Z] = 3.0;
+  p_c2->s.r[X] = 3.0;
+  p_c2->s.r[Y] = 13.0;
+  p_c2->s.r[Z] = 3.0;
 
-  p_c2->s[X] =  0.0;
-  p_c2->s[Y] = 1.0;
-  p_c2->s[Z] = 0.0;
+  p_c2->s.s[X] =  0.0;
+  p_c2->s.s[Y] = 1.0;
+  p_c2->s.s[Z] = 0.0;
 
   p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
   p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
   p_c1->torque[X] = 0.0; p_c1->torque[Y] = 0.0; p_c1->torque[Z] = 0.0;
   p_c2->torque[X] = 0.0; p_c2->torque[Y] = 0.0; p_c2->torque[Z] = 0.0;
 
-  info("Particle 1: %f %f %f %f %f %f\n", p_c1->r[X], p_c1->r[Y], p_c1->r[Z],
-       p_c1->s[X], p_c1->s[Y], p_c1->s[Z]);
+  info("Particle 1: %f %f %f %f %f %f\n",
+       p_c1->s.r[X], p_c1->s.r[Y], p_c1->s.r[Z],
+       p_c1->s.s[X], p_c1->s.s[Y], p_c1->s.s[Z]);
 
-  info("Particle 2: %f %f %f %f %f %f\n", p_c2->r[X], p_c2->r[Y], p_c2->r[Z],
-       p_c2->s[X], p_c2->s[Y], p_c2->s[Z]);
+  info("Particle 2: %f %f %f %f %f %f\n",
+       p_c2->s.r[X], p_c2->s.r[Y], p_c2->s.r[Z],
+       p_c2->s.s[X], p_c2->s.s[Y], p_c2->s.s[Z]);
 
   ewald_real_space_sum();
   ewald_total_energy(&ereal, &efourier, &eself);
@@ -402,7 +407,7 @@ int main (int argc, char ** argv) {
 
   ewald_init(0.285, 8.0);
 
-  e = ewald_real_space_energy(p_c1->s, p_c2->s, r12);
+  e = ewald_real_space_energy(p_c1->s.s, p_c2->s.s, r12);
 
   info("Real space energy: %g\n", e);
   test_assert(fabs(e - 0.0) < TOLERANCE);

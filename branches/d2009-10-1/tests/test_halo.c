@@ -5,7 +5,7 @@
  *  This is a more rigourous test of the halo swap code for the
  *  distributions than appears in test model.
  *
- *  $Id: test_halo.c,v 1.8.2.3 2010-04-05 06:23:46 kevin Exp $
+ *  $Id: test_halo.c,v 1.8.2.4 2010-07-07 11:43:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -187,7 +187,7 @@ void test_halo_null() {
 
   /* Swap */
 
-  halo_site();
+  distribution_halo();
 
   /* Check everywhere in the interior still zero */
 
@@ -287,7 +287,7 @@ void test_halo(int dim, int reduced) {
     }
   }
 
-  halo_site();
+  distribution_halo();
 
   /* Check the results (all sites for distribution halo).
    * The halo regions should contain a copy of the above, while the

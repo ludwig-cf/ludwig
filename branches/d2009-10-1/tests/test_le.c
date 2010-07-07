@@ -3,7 +3,7 @@
  *  test_leesedwards.c
  *
  *
- *  $Id: test_le.c,v 1.1.2.2 2010-04-05 06:23:46 kevin Exp $
+ *  $Id: test_le.c,v 1.1.2.3 2010-07-07 11:43:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -18,6 +18,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
+#include "util.h"
 #include "tests.h"
 
 static void test_parallel1(void);

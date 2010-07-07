@@ -11,7 +11,7 @@
  *  the statistical tests. Larger samples might have stricter
  *  tolerance.
  *
- *  $Id: test_random.c,v 1.3.8.1 2010-04-05 06:16:05 kevin Exp $
+ *  $Id: test_random.c,v 1.3.8.2 2010-07-07 11:43:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,6 +25,7 @@
 
 #include "pe.h"
 #include "ran.h"
+#include "util.h"
 #include "tests.h"
 
 #define NLARGE         10000000

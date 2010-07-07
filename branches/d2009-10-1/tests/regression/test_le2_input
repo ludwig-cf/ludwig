@@ -107,6 +107,7 @@ mobility 0.15
 
 phi_finite_difference no
 fd_gradient_calculation 3d_27pt_fluid
+finite_difference_upwind_order 3
 
 
 D 0.00056587

@@ -4,7 +4,7 @@
  *
  *  Test propagation stage.
  *
- *  $Id: test_prop.c,v 1.4.2.3 2010-04-05 06:23:46 kevin Exp $
+ *  $Id: test_prop.c,v 1.4.2.4 2010-07-07 11:43:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -93,7 +93,7 @@ void test_velocity() {
     }
   }
 
-  halo_site();
+  distribution_halo();
   propagation();
 
   /* Test */
@@ -162,7 +162,7 @@ void test_source_destination() {
     }
   }
 
-  halo_site();
+  distribution_halo();
   propagation();
 
   /* Test */

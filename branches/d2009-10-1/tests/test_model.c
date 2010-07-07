@@ -4,7 +4,7 @@
  *
  *  Unit test for the currently compiled model (D3Q15 or D3Q19).
  *
- *  $Id: test_model.c,v 1.9.2.5 2010-04-05 06:23:46 kevin Exp $
+ *  $Id: test_model.c,v 1.9.2.6 2010-07-07 11:43:26 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -454,7 +454,7 @@ static void test_model_halo_swap() {
     }
   }
 
-  halo_site();
+  distribution_halo();
 
   /* Test all the sites not in the interior */
 
@@ -535,7 +535,7 @@ static void test_model_reduced_halo_swap() {
     }
   }
 
-  halo_site();
+  distribution_halo();
 
   /* Now check that the interior sites are unchanged */
 
