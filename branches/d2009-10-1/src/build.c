@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.11 2010-05-19 19:16:50 kevin Exp $
+ *  $Id: build.c,v 1.5.4.12 2010-07-07 11:10:43 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -134,7 +134,7 @@ void COLL_update_map() {
 
 	/* Set the cell index */
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	/* For each colloid in this cell, check solid/fluid status */
 
@@ -142,16 +142,16 @@ void COLL_update_map() {
 
 	  /* Set actual position and radius */
 
-	  radius = p_colloid->a0;
+	  radius = p_colloid->s.a0;
 	  rsq    = radius*radius;
 
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
 	   * nodes is found */
 
-	  r0[X] = p_colloid->r[X] - 1.0*offset[X];
-	  r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
-	  r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
+	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
 	  /* Compute appropriate range of sites that require checks, i.e.,
 	   * a cubic box around the centre of the colloid. However, this
@@ -186,8 +186,7 @@ void COLL_update_map() {
 		  index = coords_index(i, j, k);
 
 		  coll_map[index] = p_colloid;
-		  site_map_set(index, COLLOID, p_colloid->c_wetting,
-			       p_colloid->h_wetting);
+		  site_map_set(index, COLLOID, p_colloid->s.c, p_colloid->s.h);
 		}
 		/* Next site */
 	      }
@@ -222,7 +221,7 @@ void COLL_update_links() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++)
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 
@@ -232,7 +231,7 @@ void COLL_update_links() {
 	    p_colloid->rxcbar[ia] = 0.0;
 	  }
 
-	  if (p_colloid->rebuild) {
+	  if (p_colloid->s.rebuild) {
 	    /* The shape has changed, so need to reconstruct */
 	    COLL_reconstruct_links(p_colloid);
 	    if (wall_present()) reconstruct_wall_links(p_colloid);
@@ -243,7 +242,8 @@ void COLL_update_links() {
 	  }
 
 	  /* Next colloid */
-	  p_colloid->rebuild = 0;
+
+	  p_colloid->s.rebuild = 0;
 	  p_colloid = p_colloid->next;
 	}
 
@@ -274,8 +274,8 @@ void COLL_update_links() {
 
 void COLL_reconstruct_links(Colloid * p_colloid) {
 
-  COLL_Link * p_link;
-  COLL_Link * p_last;
+  colloid_link_t * p_link;
+  colloid_link_t * p_last;
   int         i_min, i_max, j_min, j_max, k_min, k_max;
   int         i, ic, ii, j, jc, jj, k, kc, kk;
   int         index0, index1, p;
@@ -293,7 +293,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 
   p_link = p_colloid->lnk;
   p_last = p_link;
-  radius = p_colloid->a0;
+  radius = p_colloid->s.a0;
 
   /* Failsafe approach: set all links to unused status */
 
@@ -310,9 +310,9 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
    * the appropriate lattice nodes, which extend to the penultimate
    * site in each direction (to include halos). */
 
-  r0[X] = p_colloid->r[X] - 1.0*offset[X];
-  r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
-  r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
+  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
   i_min = imax(1,    (int) floor(r0[X] - radius));
   i_max = imin(N[X], (int) ceil (r0[X] + radius));
@@ -364,7 +364,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 
 	    p_link->i = index1;
 	    p_link->j = index0;
-	    p_link->v = p;
+	    p_link->p = p;
 
 	    if (site_map_get_status_index(index1) == FLUID) {
 	      p_link->status = LINK_FLUID;
@@ -375,11 +375,11 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	      double wxrb[3];
 	      p_link->status = LINK_COLLOID;
 
-	      cross_product(p_colloid->omega, p_link->rb, wxrb);
-	      ub[X] = p_colloid->v[X] + wxrb[X];
-	      ub[Y] = p_colloid->v[Y] + wxrb[Y];
-	      ub[Z] = p_colloid->v[Z] + wxrb[Z];
-	      build_virtual_distribution_set(p_link->j, p_link->v, ub);
+	      cross_product(p_colloid->s.w, p_link->rb, wxrb);
+	      ub[X] = p_colloid->s.v[X] + wxrb[X];
+	      ub[Y] = p_colloid->s.v[Y] + wxrb[Y];
+	      ub[Z] = p_colloid->s.v[Z] + wxrb[Z];
+	      build_virtual_distribution_set(p_link->j, p_link->p, ub);
 	    }
 
 	    /* Next link */
@@ -390,7 +390,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	  else {
 	    /* Add a new link to the end of the list */
 
-	    p_link = allocate_boundary_link();
+	    p_link = colloid_link_allocate();
 
 	    p_link->rb[X] = rsep[X] + lambda*cv[p][X];
 	    p_link->rb[Y] = rsep[Y] + lambda*cv[p][Y];
@@ -398,7 +398,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 
 	    p_link->i = index1;
 	    p_link->j = index0;
-	    p_link->v = p;
+	    p_link->p = p;
 
 	    if (site_map_get_status_index(index1) == FLUID) {
 	      p_link->status = LINK_FLUID;
@@ -409,11 +409,11 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
 	      double wxrb[3];
 	      p_link->status = LINK_COLLOID;
 
-	      cross_product(p_colloid->omega, p_link->rb, wxrb);
-	      ub[X] = p_colloid->v[X] + wxrb[X];
-	      ub[Y] = p_colloid->v[Y] + wxrb[Y];
-	      ub[Z] = p_colloid->v[Z] + wxrb[Z];
-	      build_virtual_distribution_set(p_link->j, p_link->v, ub);
+	      cross_product(p_colloid->s.w, p_link->rb, wxrb);
+	      ub[X] = p_colloid->s.v[X] + wxrb[X];
+	      ub[Y] = p_colloid->s.v[Y] + wxrb[Y];
+	      ub[Z] = p_colloid->s.v[Z] + wxrb[Z];
+	      build_virtual_distribution_set(p_link->j, p_link->p, ub);
 	    }
 
 	    if (p_colloid->lnk == NULL) {
@@ -477,7 +477,7 @@ void COLL_reset_links(Colloid * p_colloid) {
 
   int ia;
 
-  COLL_Link * p_link;
+  colloid_link_t * p_link;
   int         isite[3];
   double      rsite[3];
   double      rsep[3];
@@ -504,28 +504,28 @@ void COLL_reset_links(Colloid * p_colloid) {
       coords_index_to_ijk(p_link->i, isite);
       for (ia = 0; ia < 3; ia++) {
 	rsite[ia] = 1.0*isite[ia];
-	r0[ia] = p_colloid->r[ia] - 1.0*offset[ia];
+	r0[ia] = p_colloid->s.r[ia] - 1.0*offset[ia];
       }
       coords_minimum_distance(r0, rsite, rsep);
 
-      p_link->rb[X] = rsep[X] + lambda*cv[p_link->v][X];
-      p_link->rb[Y] = rsep[Y] + lambda*cv[p_link->v][Y];
-      p_link->rb[Z] = rsep[Z] + lambda*cv[p_link->v][Z];
+      p_link->rb[X] = rsep[X] + lambda*cv[p_link->p][X];
+      p_link->rb[Y] = rsep[Y] + lambda*cv[p_link->p][Y];
+      p_link->rb[Z] = rsep[Z] + lambda*cv[p_link->p][Z];
 
       if (site_map_get_status_index(p_link->i) == FLUID) {
 	p_link->status = LINK_FLUID;
-	build_link_mean(p_colloid, p_link->v, p_link->rb);
+	build_link_mean(p_colloid, p_link->p, p_link->rb);
       }
       else {
 	double ub[3];
-	double oxrb[3];
+	double wxrb[3];
 	p_link->status = LINK_COLLOID;
 
-	cross_product(p_colloid->omega, p_link->rb, oxrb);
-	ub[X] = p_colloid->v[X] + oxrb[X];
-	ub[Y] = p_colloid->v[Y] + oxrb[Y];
-	ub[Z] = p_colloid->v[Z] + oxrb[Z];
-	build_virtual_distribution_set(p_link->j, p_link->v, ub);
+	cross_product(p_colloid->s.w, p_link->rb, wxrb);
+	ub[X] = p_colloid->s.v[X] + wxrb[X];
+	ub[Y] = p_colloid->s.v[Y] + wxrb[Y];
+	ub[Z] = p_colloid->s.v[Z] + wxrb[Z];
+	build_virtual_distribution_set(p_link->j, p_link->p, ub);
       }
     }
 
@@ -579,7 +579,7 @@ void COLL_remove_or_replace_fluid() {
 
 	if (sold == 0 && snew == 1) {
 	  p_colloid = coll_map[index];
-	  p_colloid->rebuild = 1;
+	  p_colloid->s.rebuild = 1;
 
 	  if (!halo) {
 	    build_remove_fluid(index, p_colloid);
@@ -589,7 +589,7 @@ void COLL_remove_or_replace_fluid() {
 
 	if (sold == 1 && snew == 0) {
 	  p_colloid = coll_old[index];
-	  p_colloid->rebuild = 1;
+	  p_colloid->s.rebuild = 1;
 
 	  if (!halo) {
 	    build_replace_fluid(index, p_colloid);
@@ -644,7 +644,7 @@ static void build_remove_fluid(int index, Colloid * p_colloid) {
 
   for (ia = 0; ia < 3; ia++) {
     p_colloid->f0[ia] += g[ia];
-    r0[ia] = p_colloid->r[ia] - 1.0*noffset[ia];
+    r0[ia] = p_colloid->s.r[ia] - 1.0*noffset[ia];
     rtmp[ia] = 1.0*ib[ia];
   }
 
@@ -678,7 +678,7 @@ static void build_remove_order_parameter(int index, Colloid * p_colloid) {
     phi = distribution_zeroth_moment(index, 1);
   }
 
-  p_colloid->deltaphi += (phi - get_phi0());
+  p_colloid->s.deltaphi += (phi - get_phi0());
 
   return;
 }
@@ -765,7 +765,7 @@ static void build_replace_fluid(int index, Colloid * p_colloid) {
 
   for (ia = 0; ia < 3; ia++) {
     p_colloid->f0[ia] += g[ia];
-    r0[ia] = p_colloid->r[ia] - 1.0*noffset[ia];
+    r0[ia] = p_colloid->s.r[ia] - 1.0*noffset[ia];
     rtmp[ia] = 1.0*ib[ia];
   }
 
@@ -871,7 +871,7 @@ static void build_replace_order_parameter(int index, Colloid * p_colloid) {
 
   /* Set corrections arising from change in order parameter */
 
-  p_colloid->deltaphi -= (newphi - get_phi0());
+  p_colloid->s.deltaphi -= (newphi - get_phi0());
 
   return;
 }
@@ -952,8 +952,8 @@ static void build_link_mean(Colloid * p_colloid, int p, const double rb[3]) {
 
 void reconstruct_wall_links(Colloid * p_colloid) {
 
-  COLL_Link * p_link;
-  COLL_Link * p_last;
+  colloid_link_t * p_link;
+  colloid_link_t * p_last;
   int         i_min, i_max, j_min, j_max, k_min, k_max;
   int         i, ic, ii, j, jc, jj, k, kc, kk;
   int         index0, index1, p;
@@ -971,7 +971,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 
   p_link = p_colloid->lnk;
   p_last = p_colloid->lnk;
-  radius = p_colloid->a0;
+  radius = p_colloid->s.a0;
 
   /* Work out the first unused link */
 
@@ -983,9 +983,9 @@ void reconstruct_wall_links(Colloid * p_colloid) {
   /* Limits of the cube around the particle. Make sure these are
    * the appropriate lattice nodes... */
 
-  r0[X] = p_colloid->r[X] - 1.0*offset[X];
-  r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
-  r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
+  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
   i_min = imax(1,    (int) floor(r0[X] - radius));
   i_max = imin(N[X], (int) ceil (r0[X] + radius));
@@ -1034,7 +1034,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 
 	    p_link->i = index0;
 	    p_link->j = index1;
-	    p_link->v = NVEL - p;
+	    p_link->p = NVEL - p;
 	    p_link->status = LINK_BOUNDARY;
 
 	    /* Next link */
@@ -1045,7 +1045,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 	  else {
 	    /* Add a new link to the end of the list */
 
-	    p_link = allocate_boundary_link();
+	    p_link = colloid_link_allocate();
 
 	    p_link->rb[X] = rsep[X] + lambda*cv[p][0];
 	    p_link->rb[Y] = rsep[Y] + lambda*cv[p][1];
@@ -1053,7 +1053,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
 
 	    p_link->i = index0;
 	    p_link->j = index1;
-	    p_link->v = NVEL - p;
+	    p_link->p = NVEL - p;
 	    p_link->status = LINK_BOUNDARY;
 
 	    if (p_colloid->lnk == NULL) {
