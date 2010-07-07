@@ -7,7 +7,7 @@
  *
  *  See, for example, Allen and Tildesley, Computer Simulation of Liquids.
  *
- *  $Id: ewald.c,v 1.3.16.3 2010-05-19 19:16:50 kevin Exp $
+ *  $Id: ewald.c,v 1.3.16.4 2010-07-07 09:05:14 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -294,12 +294,13 @@ static void ewald_sum_sin_cos_terms() {
 
 	Colloid * p_colloid;
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 
 	  kn = 0;
-	  ewald_set_kr_table(p_colloid->r);
+
+	  ewald_set_kr_table(p_colloid->s.r);
 
 	  for (kz = 0; kz <= nk_[Z]; kz++) {
 	    for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
@@ -324,7 +325,7 @@ static void ewald_sum_sin_cos_terms() {
 		if (kx < 0) skr[X] = -skr[X];
 		if (ky < 0) skr[Y] = -skr[Y];
 
-		udotk = dot_product(p_colloid->s, k);
+		udotk = dot_product(p_colloid->s.s, k);
 
 		/*
 		sinx_[kn] += udotk*sin(kdotr);
@@ -437,7 +438,7 @@ void ewald_real_space_sum() {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_c1 = CELL_get_head_of_list(ic, jc, kc);
+	p_c1 = colloids_cell_list(ic, jc, kc);
 
 	while (p_c1) {
 
@@ -449,18 +450,15 @@ void ewald_real_space_sum() {
 		jd = jc + dy;
 		kd = kc + dz;
 
-		p_c2 = CELL_get_head_of_list(id, jd, kd);
+		p_c2 = colloids_cell_list(id, jd, kd);
 
 		while (p_c2) {
-
-		  if (p_c1->index < p_c2->index) {
-
+		  if (p_c1->s.index < p_c2->s.index) {
 		    double r;
 
 		    /* Here we need r2-r1 */
 
-		    coords_minimum_distance(p_c2->r, p_c1->r, r12);
-
+		    coords_minimum_distance(p_c2->s.r, p_c1->s.r, r12);
 		    r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
 
 		    if (r < ewald_rc_) {
@@ -480,9 +478,9 @@ void ewald_real_space_sum() {
 		      d = 5.0*c/(r*r)
 			+ 4.0*kappa_*kappa_*kappa_*kappa_*b2;
 
-		      udotu  = dot_product(p_c1->s, p_c2->s);
-		      u1dotr = dot_product(p_c1->s, r12);
-		      u2dotr = dot_product(p_c2->s, r12);
+		      udotu  = dot_product(p_c1->s.s, p_c2->s.s);
+		      u1dotr = dot_product(p_c1->s.s, r12);
+		      u2dotr = dot_product(p_c2->s.s, r12);
 
 		      ereal_ += udotu*b - u1dotr*u2dotr*c;
 
@@ -490,7 +488,7 @@ void ewald_real_space_sum() {
 
 		      for (i = 0; i < 3; i++) {
 			f[i] = (udotu*c - u1dotr*u2dotr*d)*r12[i]
-			  + c*(u2dotr*p_c1->s[i] + u1dotr*p_c2->s[i]);
+			  + c*(u2dotr*p_c1->s.s[i] + u1dotr*p_c2->s.s[i]);
 		      }
 
 		      for (i = 0; i < 3; i++) {
@@ -500,23 +498,23 @@ void ewald_real_space_sum() {
 
 		      /* Torque on particle 1 */
 
-		      g[X] = b*p_c2->s[X] - c*u2dotr*r12[X];
-		      g[Y] = b*p_c2->s[Y] - c*u2dotr*r12[Y];
-		      g[Z] = b*p_c2->s[Z] - c*u2dotr*r12[Z];
+		      g[X] = b*p_c2->s.s[X] - c*u2dotr*r12[X];
+		      g[Y] = b*p_c2->s.s[Y] - c*u2dotr*r12[Y];
+		      g[Z] = b*p_c2->s.s[Z] - c*u2dotr*r12[Z];
 
-		      p_c1->torque[X] += -(p_c1->s[Y]*g[Z] - p_c1->s[Z]*g[Y]);
-		      p_c1->torque[Y] += -(p_c1->s[Z]*g[X] - p_c1->s[X]*g[Z]);
-		      p_c1->torque[Z] += -(p_c1->s[X]*g[Y] - p_c1->s[Y]*g[X]);
+		      p_c1->torque[X] += -(p_c1->s.s[Y]*g[Z] - p_c1->s.s[Z]*g[Y]);
+		      p_c1->torque[Y] += -(p_c1->s.s[Z]*g[X] - p_c1->s.s[X]*g[Z]);
+		      p_c1->torque[Z] += -(p_c1->s.s[X]*g[Y] - p_c1->s.s[Y]*g[X]);
 
 		      /* Torque on particle 2 */
 
-		      g[X] = b*p_c1->s[X] - c*u1dotr*r12[X];
-		      g[Y] = b*p_c1->s[Y] - c*u1dotr*r12[Y];
-		      g[Z] = b*p_c1->s[Z] - c*u1dotr*r12[Z];
+		      g[X] = b*p_c1->s.s[X] - c*u1dotr*r12[X];
+		      g[Y] = b*p_c1->s.s[Y] - c*u1dotr*r12[Y];
+		      g[Z] = b*p_c1->s.s[Z] - c*u1dotr*r12[Z];
 
-		      p_c2->torque[X] += -(p_c2->s[Y]*g[Z] - p_c2->s[Z]*g[Y]);
-		      p_c2->torque[Y] += -(p_c2->s[Z]*g[X] - p_c2->s[X]*g[Z]);
-		      p_c2->torque[Z] += -(p_c2->s[X]*g[Y] - p_c2->s[Y]*g[X]);
+		      p_c2->torque[X] += -(p_c2->s.s[Y]*g[Z] - p_c2->s.s[Z]*g[Y]);
+		      p_c2->torque[Y] += -(p_c2->s.s[Z]*g[X] - p_c2->s.s[X]*g[Z]);
+		      p_c2->torque[Z] += -(p_c2->s.s[X]*g[Y] - p_c2->s.s[Y]*g[X]);
 		    }
  
 		  }
@@ -581,7 +579,7 @@ void ewald_fourier_space_sum() {
 
 	Colloid * p_colloid;
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 
@@ -590,7 +588,7 @@ void ewald_fourier_space_sum() {
 	  double f[3], t[3];
 	  int i;
 
-	  ewald_set_kr_table(p_colloid->r);
+	  ewald_set_kr_table(p_colloid->s.r);
 
 	  for (i = 0; i < 3; i++) {
 	    f[i] = 0.0;
@@ -638,16 +636,16 @@ void ewald_fourier_space_sum() {
 
 		/* Force and torque */
 
-		udotk = dot_product(p_colloid->s, k);
+		udotk = dot_product(p_colloid->s.s, k);
 
 		for (i = 0; i < 3; i++) {
 		  f[i] += b*k[i]*udotk*(cosx_[kn]*sinkr - sinx_[kn]*coskr);
 		  g[i] =  b*k[i]*(cosx_[kn]*coskr + sinx_[kn]*sinkr);
 		}
 
-		t[X] += -(p_colloid->s[Y]*g[Z] - p_colloid->s[Z]*g[Y]);
-		t[Y] += -(p_colloid->s[Z]*g[X] - p_colloid->s[X]*g[Z]);
-		t[Z] += -(p_colloid->s[X]*g[Y] - p_colloid->s[Y]*g[X]);
+		t[X] += -(p_colloid->s.s[Y]*g[Z] - p_colloid->s.s[Z]*g[Y]);
+		t[Y] += -(p_colloid->s.s[Z]*g[X] - p_colloid->s.s[X]*g[Z]);
+		t[Z] += -(p_colloid->s.s[X]*g[Y] - p_colloid->s.s[Y]*g[X]);
 
 		kn++;
 	      }
