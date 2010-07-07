@@ -7,7 +7,7 @@
  *  There are a number of separate 'timers', each of which can
  *  be started, and stopped, independently.
  *
- *  $Id: timer.c,v 1.4.16.3 2010-06-02 14:10:48 kevin Exp $
+ *  $Id: timer.c,v 1.4.16.4 2010-07-07 10:45:41 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -133,7 +133,6 @@ void TIMER_stop(const int t_id) {
  *  TIMER_statistics
  *
  *  Print a digestable overview of the time statistics.
- *  Communication is assumed to take place within MPI_COMM_WORLD.
  *
  *****************************************************************************/
 
@@ -142,6 +141,8 @@ void TIMER_statistics() {
   int    n;
   double t_min, t_max, t_sum;
   double r;
+
+  MPI_Comm comm = pe_comm();
 
   r = MPI_Wtick();
 
@@ -159,12 +160,9 @@ void TIMER_statistics() {
       t_max = timer[n].t_max;
       t_sum = timer[n].t_sum;
 
-      MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0,
-		 MPI_COMM_WORLD);
-      MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0,
-		 MPI_COMM_WORLD);
-      MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0,
-		   MPI_COMM_WORLD);
+      MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+      MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+      MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
       t_sum /= pe_size();
 
