@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.14.4.4 2010-06-02 14:10:48 kevin Exp $
+ *  $Id: lattice.c,v 1.14.4.5 2010-07-07 09:06:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -437,7 +437,10 @@ void hydrodynamics_stats() {
   double umax[3];
   double utmp[3];
 
+  MPI_Comm comm;
+
   coords_nlocal(nlocal);
+  comm = pe_comm();
 
   for (ia = 0; ia < 3; ia++) {
     umin[ia] = FLT_MAX;
@@ -458,13 +461,13 @@ void hydrodynamics_stats() {
     }
   }
 
-  MPI_Reduce(umin, utmp, 3, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+  MPI_Reduce(umin, utmp, 3, MPI_DOUBLE, MPI_MIN, 0, comm);
 
   for (ia = 0; ia < 3; ia++) {
     umin[ia] = utmp[ia];
   }
 
-  MPI_Reduce(umax, utmp, 3, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(umax, utmp, 3, MPI_DOUBLE, MPI_MAX, 0, comm);
 
   for (ia = 0; ia < 3; ia++) {
     umax[ia] = utmp[ia];
