@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.10.2.5 2010-07-07 11:24:54 kevin Exp $
+ *  $Id: bbl.c,v 1.10.2.6 2010-07-07 11:31:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -680,8 +680,6 @@ static void update_colloids() {
 	    pc->s.w[ia] = xb[3+ia];
 	  }
 
-	  info("%d %12.4e %12.4e %12.4e %12.4e\n", get_step(), pc->s.r[Y],
-	       modulus(pc->s.v), pc->s.v[Y], pc->force[Y]);
 	  rotate_vector(pc->s.m, xb + 3);
 	  rotate_vector(pc->s.s, xb + 3);
 
