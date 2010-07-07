@@ -199,14 +199,22 @@ int main( int argc, char **argv ) {
 
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
-      /* phi_force_colloid();*/
-      /* phi_force_calculation();*/
-      phi_update_dynamics();
+      if (phi_is_finite_difference()) {
+	if (colloid_ntotal() == 0) {
+	  phi_force_calculation();
+	}
+	else {
+	  phi_force_colloid();
+	}
+	phi_update_dynamics();
+      }
     }
 
     collide();
     model_le_apply_boundary_conditions();
-    halo_site();
+    TIMER_start(TIMER_HALO_LATTICE);
+    distribution_halo();
+    TIMER_stop(TIMER_HALO_LATTICE);
 
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
@@ -221,7 +229,9 @@ int main( int argc, char **argv ) {
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions hold active f,g */
 
+    TIMER_start(TIMER_PROPAGATE);
     propagation();
+    TIMER_stop(TIMER_PROPAGATE);
 
     TIMER_stop(TIMER_STEPS);
 
