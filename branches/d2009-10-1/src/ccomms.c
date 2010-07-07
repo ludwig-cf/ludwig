@@ -9,7 +9,7 @@
  *
  *  MPI (or serial, with some overhead).
  *
- *  $Id: ccomms.c,v 1.12.2.6 2010-06-03 17:35:44 kevin Exp $
+ *  $Id: ccomms.c,v 1.12.2.7 2010-07-07 11:16:07 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -278,7 +278,7 @@ void CCOM_halo_particles() {
     for (kc = 1; kc <= Ncell(Z); kc++) {
 
       ic = 1;
-      p_colloid = CELL_get_head_of_list(ic, jc, kc);
+      p_colloid = colloids_cell_list(ic, jc, kc);
 
       while (p_colloid) {
 
@@ -299,7 +299,7 @@ void CCOM_halo_particles() {
     for (kc = 1; kc <= Ncell(Z); kc++) {
 
       ic = Ncell(X);
-      p_colloid = CELL_get_head_of_list(ic, jc, kc);
+      p_colloid = colloids_cell_list(ic, jc, kc);
 
       while (p_colloid) {
 
@@ -328,7 +328,7 @@ void CCOM_halo_particles() {
     for (kc = 1; kc <= Ncell(Z)    ; kc++) {
 
       jc = 1;
-      p_colloid = CELL_get_head_of_list(ic, jc, kc);
+      p_colloid = colloids_cell_list(ic, jc, kc);
 
       while (p_colloid) {
 
@@ -349,7 +349,7 @@ void CCOM_halo_particles() {
     for (kc = 1; kc <= Ncell(Z)    ; kc++) {
 
       jc = Ncell(Y);
-      p_colloid = CELL_get_head_of_list(ic, jc, kc);
+      p_colloid = colloids_cell_list(ic, jc, kc);
 
       while (p_colloid) {
 
@@ -380,7 +380,7 @@ void CCOM_halo_particles() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
 
       kc = 1;
-      p_colloid = CELL_get_head_of_list(ic, jc, kc);
+      p_colloid = colloids_cell_list(ic, jc, kc);
 
       while (p_colloid) {
 
@@ -401,7 +401,7 @@ void CCOM_halo_particles() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
 
       kc = Ncell(Z);
-      p_colloid = CELL_get_head_of_list(ic, jc, kc);
+      p_colloid = colloids_cell_list(ic, jc, kc);
 
       while (p_colloid) {
 
@@ -431,14 +431,12 @@ void CCOM_halo_particles() {
  *  receive buffer, and creates a copy of the particle in the
  *  halo region if one doesn't already exist.
  *
- *
  *****************************************************************************/
 
 void CMPI_accept_new(int nrecv) {
 
   Colloid * p_colloid;
   Colloid * p_existing;
-  int       ia;
   int       cell[3];
   int       exists;
   int       n;
@@ -446,12 +444,12 @@ void CMPI_accept_new(int nrecv) {
   for (n = 0; n < nrecv; n++) {
 
     /* Load the new particle */
-    p_colloid = allocate_colloid();
+    p_colloid = colloid_allocate();
     CCOM_unload_halo_buffer(p_colloid, n);
 
     /* See where it wants to go in the cell list */
 
-    colloid_cell_coords(p_colloid->r, cell);
+    colloids_cell_coords(p_colloid->s.r, cell);
 
     /* Have a look at the existing particles in the list location:
      * if it's already present, make a copy of the state; if it's new,
@@ -464,37 +462,26 @@ void CMPI_accept_new(int nrecv) {
      * changed crossing the periodic boundaries. Trap this here?
      * The whole mechanism needs cleaning up. */
 
-    p_existing = CELL_get_head_of_list(cell[X], cell[Y], cell[Z]);
+    p_existing = colloids_cell_list(cell[X], cell[Y], cell[Z]);
 
     while (p_existing) {
-      if (p_colloid->index == p_existing->index) {
-	/* Just copy the state information */
 
-	for (ia = 0; ia < 3; ia++) {
-	  p_existing->r[ia] = p_colloid->r[ia];
-	  p_existing->v[ia] = p_colloid->v[ia];
-	  p_existing->omega[ia] = p_colloid->omega[ia];
-	  p_existing->random[ia] = p_colloid->random[ia];
-	  p_existing->random[3+ia] = p_colloid->random[3+ia];
-	  p_existing->s[ia] = p_colloid->s[ia];
-	  p_existing->dr[ia] = p_colloid->dr[ia];
-	}
+      if (p_colloid->s.index == p_existing->s.index) {
 
-	p_existing->c_wetting = p_colloid->c_wetting;
-	p_existing->h_wetting = p_colloid->h_wetting;
-
+	p_existing->s = p_colloid->s;
 	exists = 1;
       }
+
       p_existing = p_existing->next;
     }
 
     if (exists) {
       /* Just drop the incoming copy */
-      free_colloid(p_colloid);
+      colloid_free(p_colloid);
     }
     else {
       /* Add the incoming colloid */
-      cell_insert_colloid(p_colloid);
+      colloids_cell_insert_colloid(p_colloid);
     }
   }
 
@@ -528,7 +515,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_load_sum_message_buffer(p_colloid, nback, type);
@@ -545,7 +532,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_load_sum_message_buffer(p_colloid, nback + nforw, type);
@@ -571,7 +558,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_unload_sum_message_buffer(p_colloid, nforw + n, type);
@@ -590,7 +577,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_unload_sum_message_buffer(p_colloid, n, type);
@@ -615,7 +602,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_load_sum_message_buffer(p_colloid, nback, type);
@@ -632,7 +619,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = Ncell(Y); jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_load_sum_message_buffer(p_colloid, nback + nforw, type);
@@ -657,7 +644,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_unload_sum_message_buffer(p_colloid, nforw + n, type);
@@ -674,7 +661,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = Ncell(Y); jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_unload_sum_message_buffer(p_colloid, n, type);
@@ -700,7 +687,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_load_sum_message_buffer(p_colloid, nback, type);
@@ -717,7 +704,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = Ncell(Z); kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_load_sum_message_buffer(p_colloid, nback + nforw, type);
@@ -739,7 +726,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_unload_sum_message_buffer(p_colloid, nforw + n, type);
@@ -758,7 +745,7 @@ void CCOM_halo_sum(const int type) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = Ncell(Z); kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  CCOM_unload_sum_message_buffer(p_colloid, n, type);
@@ -844,23 +831,34 @@ void CCOM_load_halo_buffer(Colloid * p_colloid, int n,
 
   if (n >= _halo_message_nmax) fatal("_halo_send buffer too small (%d)\n", n);
 
-  _halo_send[n].index     = p_colloid->index;
-  _halo_send[n].a0        = p_colloid->a0;
-  _halo_send[n].ah        = p_colloid->ah;
-  _halo_send[n].r[X]       = p_colloid->r[X] + rperiod[X];
-  _halo_send[n].r[Y]       = p_colloid->r[Y] + rperiod[Y];
-  _halo_send[n].r[Z]       = p_colloid->r[Z] + rperiod[Z];
-  _halo_send[n].v[X]       = p_colloid->v[X];
-  _halo_send[n].v[Y]       = p_colloid->v[Y];
-  _halo_send[n].v[Z]       = p_colloid->v[Z];
-  _halo_send[n].omega[X]   = p_colloid->omega[X];
-  _halo_send[n].omega[Y]   = p_colloid->omega[Y];
-  _halo_send[n].omega[Z]   = p_colloid->omega[Z];
-  _halo_send[n].direction[X]     = p_colloid->direction[X];
-  _halo_send[n].direction[Y]     = p_colloid->direction[Y];
-  _halo_send[n].direction[Z]     = p_colloid->direction[Z];
-  _halo_send[n].b1        = p_colloid->b1;
-  _halo_send[n].b2        = p_colloid->b2;
+  _halo_send[n].index     = p_colloid->s.index;
+  _halo_send[n].a0        = p_colloid->s.a0;
+  _halo_send[n].ah        = p_colloid->s.ah;
+  _halo_send[n].r[X]       = p_colloid->s.r[X] + rperiod[X];
+  _halo_send[n].r[Y]       = p_colloid->s.r[Y] + rperiod[Y];
+  _halo_send[n].r[Z]       = p_colloid->s.r[Z] + rperiod[Z];
+  _halo_send[n].v[X]       = p_colloid->s.v[X];
+  _halo_send[n].v[Y]       = p_colloid->s.v[Y];
+  _halo_send[n].v[Z]       = p_colloid->s.v[Z];
+  _halo_send[n].omega[X]   = p_colloid->s.w[X];
+  _halo_send[n].omega[Y]   = p_colloid->s.w[Y];
+  _halo_send[n].omega[Z]   = p_colloid->s.w[Z];
+  _halo_send[n].direction[X]     = p_colloid->s.m[X];
+  _halo_send[n].direction[Y]     = p_colloid->s.m[Y];
+  _halo_send[n].direction[Z]     = p_colloid->s.m[Z];
+  _halo_send[n].b1        = p_colloid->s.b1;
+  _halo_send[n].b2        = p_colloid->s.b2;
+
+  _halo_send[n].s[X] = p_colloid->s.s[X];
+  _halo_send[n].s[Y] = p_colloid->s.s[Y];
+  _halo_send[n].s[Z] = p_colloid->s.s[Z];
+
+  _halo_send[n].dr[X] = p_colloid->s.dr[X];
+  _halo_send[n].dr[Y] = p_colloid->s.dr[Y];
+  _halo_send[n].dr[Z] = p_colloid->s.dr[Z];
+
+  _halo_send[n].cwetting = p_colloid->s.c;
+  _halo_send[n].hwetting = p_colloid->s.h;
 
   _halo_send[n].random[0] = p_colloid->random[0];
   _halo_send[n].random[1] = p_colloid->random[1];
@@ -868,17 +866,6 @@ void CCOM_load_halo_buffer(Colloid * p_colloid, int n,
   _halo_send[n].random[3] = p_colloid->random[3];
   _halo_send[n].random[4] = p_colloid->random[4];
   _halo_send[n].random[5] = p_colloid->random[5];
-
-  _halo_send[n].s[X] = p_colloid->s[X];
-  _halo_send[n].s[Y] = p_colloid->s[Y];
-  _halo_send[n].s[Z] = p_colloid->s[Z];
-
-  _halo_send[n].dr[X] = p_colloid->dr[X];
-  _halo_send[n].dr[Y] = p_colloid->dr[Y];
-  _halo_send[n].dr[Z] = p_colloid->dr[Z];
-
-  _halo_send[n].cwetting = p_colloid->c_wetting;
-  _halo_send[n].hwetting = p_colloid->h_wetting;
 
   return;
 }
@@ -901,21 +888,21 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
     fatal("Unloaded stale particle (order %d)\n", nrecv);
   }
 
-  p_colloid->index     = _halo_recv[nrecv].index;
-  p_colloid->a0        = _halo_recv[nrecv].a0;
-  p_colloid->ah        = _halo_recv[nrecv].ah;
+  p_colloid->s.index     = _halo_recv[nrecv].index;
+  p_colloid->s.a0        = _halo_recv[nrecv].a0;
+  p_colloid->s.ah        = _halo_recv[nrecv].ah;
 
   for (ia = 0; ia < 3; ia++) {
-    p_colloid->r[ia]       = _halo_recv[nrecv].r[ia];
-    p_colloid->v[ia]       = _halo_recv[nrecv].v[ia];
-    p_colloid->omega[ia]   = _halo_recv[nrecv].omega[ia];
+    p_colloid->s.r[ia]       = _halo_recv[nrecv].r[ia];
+    p_colloid->s.v[ia]       = _halo_recv[nrecv].v[ia];
+    p_colloid->s.w[ia]   = _halo_recv[nrecv].omega[ia];
   }
 
-  p_colloid->direction[X]     = _halo_recv[nrecv].direction[X];
-  p_colloid->direction[Y]     = _halo_recv[nrecv].direction[Y];
-  p_colloid->direction[Z]     = _halo_recv[nrecv].direction[Z];
-  p_colloid->b1        = _halo_recv[nrecv].b1;
-  p_colloid->b2        = _halo_recv[nrecv].b2;
+  p_colloid->s.m[X]     = _halo_recv[nrecv].direction[X];
+  p_colloid->s.m[Y]     = _halo_recv[nrecv].direction[Y];
+  p_colloid->s.m[Z]     = _halo_recv[nrecv].direction[Z];
+  p_colloid->s.b1        = _halo_recv[nrecv].b1;
+  p_colloid->s.b2        = _halo_recv[nrecv].b2;
 
   p_colloid->random[0] = _halo_recv[nrecv].random[0];
   p_colloid->random[1] = _halo_recv[nrecv].random[1];
@@ -924,19 +911,21 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->random[4] = _halo_recv[nrecv].random[4];
   p_colloid->random[5] = _halo_recv[nrecv].random[5];
 
-  p_colloid->s[X] = _halo_recv[nrecv].s[X];
-  p_colloid->s[Y] = _halo_recv[nrecv].s[Y];
-  p_colloid->s[Z] = _halo_recv[nrecv].s[Z];
+  p_colloid->s.s[X] = _halo_recv[nrecv].s[X];
+  p_colloid->s.s[Y] = _halo_recv[nrecv].s[Y];
+  p_colloid->s.s[Z] = _halo_recv[nrecv].s[Z];
 
-  p_colloid->dr[X] = _halo_recv[nrecv].dr[X];
-  p_colloid->dr[Y] = _halo_recv[nrecv].dr[Y];
-  p_colloid->dr[Z] = _halo_recv[nrecv].dr[Z];
+  p_colloid->s.dr[X] = _halo_recv[nrecv].dr[X];
+  p_colloid->s.dr[Y] = _halo_recv[nrecv].dr[Y];
+  p_colloid->s.dr[Z] = _halo_recv[nrecv].dr[Z];
 
-  p_colloid->c_wetting = _halo_recv[nrecv].cwetting;
-  p_colloid->h_wetting = _halo_recv[nrecv].hwetting;
+  p_colloid->s.c = _halo_recv[nrecv].cwetting;
+  p_colloid->s.h = _halo_recv[nrecv].hwetting;
+
+  p_colloid->s.deltaphi= 0.0;
 
   /* Additionally, must set all accumulated quantities to zero. */
-  p_colloid->rebuild = 1;
+  p_colloid->s.rebuild = 1;
 
   for (ia = 0; ia < 3; ia++) {
     p_colloid->f0[ia] = 0.0;
@@ -952,7 +941,7 @@ void CCOM_unload_halo_buffer(Colloid * p_colloid, int nrecv) {
   p_colloid->sump    = 0.0;
   p_colloid->sumw    = 0.0;
   p_colloid->deltam  = 0.0;
-  p_colloid->deltaphi= 0.0;
+
   p_colloid->lnk     = NULL;
   p_colloid->next    = NULL;
 
@@ -976,7 +965,8 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
 
   switch (type) {
   case CHALO_TYPE1:
-    _halo_send_one[n].index    = p_colloid->index;
+    _halo_send_one[n].index    = p_colloid->s.index;
+
     for (ia = 0; ia < 3; ia++) {
       _halo_send_one[n].cbar[ia]   = p_colloid->cbar[ia];
       _halo_send_one[n].rxcbar[ia] = p_colloid->rxcbar[ia];
@@ -985,10 +975,11 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     }
     _halo_send_one[n].sumw     = p_colloid->sumw;
     _halo_send_one[n].deltam   = p_colloid->deltam;
-    _halo_send_one[n].deltaphi = p_colloid->deltaphi;
+    _halo_send_one[n].deltaphi = p_colloid->s.deltaphi;
     break;
   case CHALO_TYPE2:
-    _halo_send_two[n].index = p_colloid->index;
+    _halo_send_two[n].index = p_colloid->s.index;
+
     for (ia = 0; ia < 3; ia++) {
       _halo_send_two[n].f0[ia]  = p_colloid->f0[ia];
       _halo_send_two[n].t0[ia]  = p_colloid->t0[ia];
@@ -999,13 +990,15 @@ void CCOM_load_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     }
     break;
   case CHALO_TYPE7:
-    _halo_send_sev[n].index = p_colloid->index;
+    _halo_send_sev[n].index = p_colloid->s.index;
+
     for (ia = 0; ia < 3; ia++) {
       _halo_send_sev[n].f0[ia] = p_colloid->f0[ia];
     }
     break;
   case CHALO_TYPE8:
-    _halo_send_eig[n].index = p_colloid->index;
+    _halo_send_eig[n].index = p_colloid->s.index;
+
     for (ia = 0; ia < 3; ia++) {
       _halo_send_eig[n].fc0[ia]  = p_colloid->fc0[ia];
       _halo_send_eig[n].tc0[ia]  = p_colloid->tc0[ia];
@@ -1036,11 +1029,10 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
 
   switch (type) {
   case CHALO_TYPE1:
-
-    if (p_colloid->index != _halo_recv_one[n].index) {
+    if (p_colloid->s.index != _halo_recv_one[n].index) {
       verbose("Type one does not match (order %d) [expected %d got %d]\n",
-	      n, p_colloid->index, _halo_recv_one[n].index);
-      fatal("");
+	      n, p_colloid->s.index, _halo_recv_one[n].index);
+      fatal("Stopping");
     }
 
     for (ia = 0; ia < 3; ia++) {
@@ -1051,14 +1043,13 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     }
     p_colloid->sumw     += _halo_recv_one[n].sumw;
     p_colloid->deltam   += _halo_recv_one[n].deltam;
-    p_colloid->deltaphi += _halo_recv_one[n].deltaphi;
+    p_colloid->s.deltaphi += _halo_recv_one[n].deltaphi;
     break;
 
   case CHALO_TYPE2:
-
-    if (p_colloid->index != _halo_recv_two[n].index) {
+    if (p_colloid->s.index != _halo_recv_two[n].index) {
       verbose("Type two does not match (order %d) (expected %d got %d)\n",
-	      n, p_colloid->index, _halo_recv_two[n].index);
+	      n, p_colloid->s.index, _halo_recv_two[n].index);
       fatal("");
     }
 
@@ -1073,10 +1064,9 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     break;
 
   case CHALO_TYPE7:
-
-    if (p_colloid->index != _halo_recv_sev[n].index) {
+    if (p_colloid->s.index != _halo_recv_sev[n].index) {
       verbose("Type seven does not match (order %d) (expected %d got %d)\n",
-	      n, p_colloid->index, _halo_recv_sev[n].index);
+	      n, p_colloid->s.index, _halo_recv_sev[n].index);
       fatal("");
     }
 
@@ -1086,10 +1076,9 @@ void CCOM_unload_sum_message_buffer(Colloid * p_colloid, int n, int type) {
     break;
 
   case CHALO_TYPE8:
-
-    if (p_colloid->index != _halo_recv_eig[n].index) {
+    if (p_colloid->s.index != _halo_recv_eig[n].index) {
       verbose("Type eight does not match (order %d) (expected %d got %d)\n",
-	      n, p_colloid->index, _halo_recv_eig[n].index);
+	      n, p_colloid->s.index, _halo_recv_eig[n].index);
       fatal("");
     }
 
@@ -1218,8 +1207,6 @@ void CMPI_exchange_sum_type1(int dimension, int nforw, int nback) {
   MPI_Status  status[4];
   int         nr = 0;
 
-  assert(pe_size() == 1);
-
   if (nback) {
     MPI_Issend(_halo_send_one, nback, _mpi_sum1,
 	       cart_neighb(BACKWARD,dimension), tagb, cart_comm(),
@@ -1260,8 +1247,6 @@ void CMPI_exchange_sum_type2(int dimension, int nforw, int nback) {
   MPI_Status  status[4];
   int         nr = 0;
 
-  assert(pe_size() == 1);
-
   if (nback) {
     MPI_Issend(_halo_send_two, nback, _mpi_sum2,
 	       cart_neighb(BACKWARD,dimension), tagb, cart_comm(),
@@ -1301,8 +1286,6 @@ void CMPI_exchange_sum_type7(int dimension, int nforw, int nback) {
   MPI_Status  status[4];
   int         nr = 0;
 
-  assert(pe_size() == 1);
-
   if (nback) {
     MPI_Issend(_halo_send_sev, nback, _mpi_sum7,
 	       cart_neighb(BACKWARD,dimension), tagb, cart_comm(),
@@ -1341,8 +1324,6 @@ void CMPI_exchange_sum_type8(int dimension, int nforw, int nback) {
   MPI_Request requests[4];
   MPI_Status  status[4];
   int         nr = 0;
-
-  assert(pe_size() == 1);
 
   if (nback) {
     MPI_Issend(_halo_send_eig, nback, _mpi_sum8,
@@ -1415,12 +1396,10 @@ double colloid_min_ah(void) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
-
-	  ahminlocal = dmin(ahminlocal, p_colloid->ah);
-
+	  ahminlocal = dmin(ahminlocal, p_colloid->s.ah);
 	  p_colloid = p_colloid->next;
 	}
 
