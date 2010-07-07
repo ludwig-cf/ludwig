@@ -4,7 +4,7 @@
  *
  *  Propagation schemes for the different models.
  *
- *  $Id: propagation.c,v 1.4.16.4 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: propagation.c,v 1.4.16.5 2010-07-07 10:51:39 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "pe.h"
-#include "timer.h"
 #include "coords.h"
 #include "model.h"
 
@@ -35,13 +34,9 @@ static void propagate_d3q19(void);
 
 void propagation() {
 
-  TIMER_start(TIMER_PROPAGATE);
-
   if (NVEL == 9) propagate_d2q9();
   if (NVEL == 15) propagate_d3q15();
   if (NVEL == 19) propagate_d3q19();
-
-  TIMER_stop(TIMER_PROPAGATE);
 
   return;
 }
