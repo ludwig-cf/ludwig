@@ -4,7 +4,7 @@
  *
  *  Some useful quantities concerning colloids.
  *
- *  $Id: stats_colloid.c,v 1.1.2.2 2010-05-19 19:16:51 kevin Exp $
+ *  $Id: stats_colloid.c,v 1.1.2.3 2010-07-07 10:48:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -29,7 +29,7 @@
  *
  *  Return net colloid momentum as g[3].
  *
- *  The final reduction to rank 0 in MPI_COMM_WORLD is for the
+ *  The final reduction to rank 0 in pe_comm is for the
  *  purpose of output statistics via info().
  *
  *****************************************************************************/
@@ -51,15 +51,14 @@ void stats_colloid_momentum(double g[3]) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
+	  mass = 4.0*pi_*pow(p_colloid->s.a0, 3)/3.0;
 
-	  mass = 4.0*pi_*pow(p_colloid->a0, 3)/3.0;
-
-	  glocal[X] += mass*p_colloid->v[X];
-	  glocal[Y] += mass*p_colloid->v[Y];
-	  glocal[Z] += mass*p_colloid->v[Z];
+	  glocal[X] += mass*p_colloid->s.v[X];
+	  glocal[Y] += mass*p_colloid->s.v[Y];
+	  glocal[Z] += mass*p_colloid->s.v[Z];
 
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;
@@ -70,7 +69,7 @@ void stats_colloid_momentum(double g[3]) {
     }
   }
 
-  MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
   return;
 }
