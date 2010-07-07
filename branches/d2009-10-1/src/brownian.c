@@ -2,9 +2,11 @@
  *
  *  brownian.c
  *
- *  Brownian Dynamics
+ *  $Id: brownian.c,v 1.3.16.2 2010-07-07 09:02:36 kevin Exp $
  *
- *  Edinburgh Soft Matter and Statistical Physics Group
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
  *
@@ -101,13 +103,13 @@ void do_brownian_dynamics() {
       for (jc = 1; jc <= Ncell(Y); jc++) {
 	for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	  p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	  p_colloid = colloids_cell_list(ic, jc, kc);
 
 	  while (p_colloid) {
 	    for (ia = 0; ia < 3; ia++) {
-	      r[ia][0] = p_colloid->r[ia];
-	      u[ia][0] = p_colloid->v[ia];
-	      s[ia][0] = p_colloid->s[ia];
+	      r[ia][0] = p_colloid->s.r[ia];
+	      u[ia][0] = p_colloid->s.v[ia];
+	      s[ia][0] = p_colloid->s.s[ia];
 	    }
 
 	    p_colloid = p_colloid->next;
@@ -131,7 +133,7 @@ void do_brownian_dynamics() {
       }
     }
 
-    cell_update();
+    colloids_cell_update();
   }
 
   info("\nResults Ermak and Buckholz \n");
@@ -197,26 +199,26 @@ void brownian_step_no_inertia() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 
 	  /* Translational motion */
 
-	  rgamma = 1.0 / (6.0*pi_*eta*p_colloid->ah);
+	  rgamma = 1.0 / (6.0*pi_*eta*p_colloid->s.ah);
 	  sigma = sqrt(2.0*dt_*kT*rgamma);
 
 	  ran[X] = sigma*p_colloid->random[0];
 	  ran[Y] = sigma*p_colloid->random[1];
 	  ran[Z] = sigma*p_colloid->random[2];
 
-	  p_colloid->r[X] += dt_*rgamma*p_colloid->force[X] + ran[X];
-	  p_colloid->r[Y] += dt_*rgamma*p_colloid->force[Y] + ran[Y];
-	  p_colloid->r[Z] += dt_*rgamma*p_colloid->force[Z] + ran[Z];
+	  p_colloid->s.r[X] += dt_*rgamma*p_colloid->force[X] + ran[X];
+	  p_colloid->s.r[Y] += dt_*rgamma*p_colloid->force[Y] + ran[Y];
+	  p_colloid->s.r[Z] += dt_*rgamma*p_colloid->force[Z] + ran[Z];
 
 	  /* Rotational motion */
 
-	  rgamma = 1.0 / (8.0*pi_*eta*pow(p_colloid->ah, 3));
+	  rgamma = 1.0 / (8.0*pi_*eta*pow(p_colloid->s.ah, 3));
 	  sigma = sqrt(2.0*dt_*kT*rgamma);
 
 	  ran[X] = dt_*rgamma*p_colloid->torque[X]
@@ -226,7 +228,7 @@ void brownian_step_no_inertia() {
 	  ran[Z] = dt_*rgamma*p_colloid->torque[Z]
 	    + sigma*p_colloid->random[3+Z];
 
-	  rotate_vector(p_colloid->s, ran);
+	  rotate_vector(p_colloid->s.s, ran);
 
 	  /* Next colloid */
 
@@ -280,15 +282,15 @@ void brownian_step_ermak_buckholz() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	pc = CELL_get_head_of_list(ic, jc, kc);
+	pc = colloids_cell_list(ic, jc, kc);
 
 	while (pc) {
 
-	  rmass = 1.0/((4.0/3.0)*pi_*pow(pc->ah, 3.0));
+	  rmass = 1.0/((4.0/3.0)*pi_*pow(pc->s.ah, 3.0));
 
 	  /* Friction coefficient is xi, and related quantities */
 
-	  xi = 6.0*pi_*get_eta_shear()*pc->ah*rmass;
+	  xi = 6.0*pi_*get_eta_shear()*pc->s.ah*rmass;
 	  xidt = xi*dt_;
 
 	  c0 = exp(-xidt);
@@ -303,13 +305,13 @@ void brownian_step_ermak_buckholz() {
 	  rany = pc->random[1];
 	  ranz = pc->random[2];
 
-	  cx = c0*pc->v[X] + rmass*c1*pc->force[X] + sigma_v*ranx;
-	  cy = c0*pc->v[Y] + rmass*c1*pc->force[Y] + sigma_v*rany;
-	  cz = c0*pc->v[Z] + rmass*c1*pc->force[Z] + sigma_v*ranz;
+	  cx = c0*pc->s.v[X] + rmass*c1*pc->force[X] + sigma_v*ranx;
+	  cy = c0*pc->s.v[Y] + rmass*c1*pc->force[Y] + sigma_v*rany;
+	  cz = c0*pc->s.v[Z] + rmass*c1*pc->force[Z] + sigma_v*ranz;
 
-	  pc->v[X] = cx;
-	  pc->v[Y] = cy;
-	  pc->v[Z] = cz;
+	  pc->s.v[X] = cx;
+	  pc->s.v[Y] = cy;
+	  pc->s.v[Z] = cz;
 
 	  /* Generate correlated random pairs */
 
@@ -323,13 +325,13 @@ void brownian_step_ermak_buckholz() {
 
 	  /* Position update */
 
-	  cx = c1*pc->v[X] + rmass*c2*pc->force[X] + sigma_r*ranx;
-	  cy = c1*pc->v[Y] + rmass*c2*pc->force[Y] + sigma_r*rany;
-	  cz = c1*pc->v[Z] + rmass*c2*pc->force[Z] + sigma_r*ranz;
+	  cx = c1*pc->s.v[X] + rmass*c2*pc->force[X] + sigma_r*ranx;
+	  cy = c1*pc->s.v[Y] + rmass*c2*pc->force[Y] + sigma_r*rany;
+	  cz = c1*pc->s.v[Z] + rmass*c2*pc->force[Z] + sigma_r*ranz;
 
-	  pc->r[X] += cx;
-	  pc->r[Y] += cy;
-	  pc->r[Z] += cz;
+	  pc->s.r[X] += cx;
+	  pc->s.r[Y] += cy;
+	  pc->s.r[Z] += cz;
 
 	  pc = pc->next;
 	}
@@ -359,7 +361,7 @@ void brownian_set_random() {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 
@@ -437,7 +439,7 @@ void brownian_step_no_inertia_test() {
 
     CCOM_halo_particles();
     brownian_step_no_inertia();
-    cell_update();
+    colloids_cell_update();
 
     /* Rotate the tables of position and orientation backwards
      * and store the current values */
@@ -453,13 +455,13 @@ void brownian_step_no_inertia_test() {
       for (jc = 1; jc <= ncell[Y]; jc++) {
 	for (kc = 1; kc <= ncell[Z]; kc++) {
 
-	  p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	  p_colloid = colloids_cell_list(ic, jc, kc);
 
 	  while (p_colloid) {
 
 	    for (ia = 0; ia < 3; ia++) {
-	      r[ia][0] = p_colloid->r[ia];
-	      s[ia][0] = p_colloid->s[ia];
+	      r[ia][0] = p_colloid->s.r[ia];
+	      s[ia][0] = p_colloid->s.s[ia];
 	    }
 
 	    p_colloid = p_colloid->next;
