@@ -4,7 +4,7 @@
  *
  *  Halo exchange of colloid state information.
  *
- *  $Id: colloids_halo.c,v 1.1.2.1 2010-06-10 15:05:36 kevin Exp $
+ *  $Id: colloids_halo.c,v 1.1.2.2 2010-07-07 11:04:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -229,9 +229,9 @@ static void colloids_halo_load(int dim, int nload[2]) {
 
 static void colloids_halo_load_list(int ic, int jc, int kc,
 				    const double * rperiod, int * n) {
-  Colloid * pc;
+  colloid_t * pc;
 
-  pc = CELL_get_head_of_list(ic, jc, kc);
+  pc = colloids_cell_list(ic, jc, kc);
 
   while (pc) {
     send_[*n] = pc->s;
@@ -262,13 +262,13 @@ static void colloids_halo_unload(int nrecv) {
   int n;
   int exists;
   int cell[3];
-  Colloid * pc;
+  colloid_t * pc;
 
   for (n = 0; n < nrecv; n++) {
 
-    colloid_cell_coords(recv_[n].r, cell);
+    colloids_cell_coords(recv_[n].r, cell);
     exists = 0;
-    pc = CELL_get_head_of_list(cell[X], cell[Y], cell[Z]);
+    pc = colloids_cell_list(cell[X], cell[Y], cell[Z]);
 
     while (pc) {
 
@@ -281,8 +281,9 @@ static void colloids_halo_unload(int nrecv) {
     }
 
     if (exists == 0) {
-      pc = colloid_allocate();      
-      cell_insert_colloid(pc);
+      pc = colloid_allocate();
+      pc->s = recv_[n];
+      colloids_cell_insert_colloid(pc);
     }
   }
 
