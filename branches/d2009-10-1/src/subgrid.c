@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.4.16.3 2010-05-19 19:16:51 kevin Exp $
+ *  $Id: subgrid.c,v 1.4.16.4 2010-07-07 10:56:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
@@ -66,7 +66,7 @@ void subgrid_force_from_particles() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-        p_colloid = CELL_get_head_of_list(ic, jc, kc);
+        p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 
@@ -74,9 +74,9 @@ void subgrid_force_from_particles() {
            * coordinates, so that the correct range of lattice
            * nodes is found */
 
-          r0[X] = p_colloid->r[X] - 1.0*offset[X];
-          r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
-          r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
+          r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+          r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+          r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
@@ -157,17 +157,20 @@ void subgrid_update() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-        p_colloid = CELL_get_head_of_list(ic, jc, kc);
+        p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 
-	  drag = (1.0/(6.0*pi_*eta))*(1.0/p_colloid->a0 - 1.0/p_colloid->ah);
+	  drag = (1.0/(6.0*pi_*eta))*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
 
 	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->r[ia] += (p_colloid->f0[ia] + drag*g[ia]);
-
+	    p_colloid->s.r[ia] += (p_colloid->f0[ia] + drag*g[ia]);
 	    /* Store the effective velocity of the particle
 	     * (don't use the p->v as this shows up in the momentum) */
+
+	    /* TODO: store the effective velocity in the proper
+	     * place, but ignore it when computing momentum
+	     * rather than this kludge */
 
 	    p_colloid->stats[ia] = p_colloid->f0[ia] + drag*g[ia];
 	  }
@@ -214,7 +217,7 @@ static void subgrid_interpolation() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-        p_colloid = CELL_get_head_of_list(ic, jc, kc);
+        p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 	  p_colloid->f0[X] = 0.0;
@@ -232,7 +235,7 @@ static void subgrid_interpolation() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-        p_colloid = CELL_get_head_of_list(ic, jc, kc);
+        p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 
@@ -240,9 +243,9 @@ static void subgrid_interpolation() {
            * coordinates, so that the correct range of lattice
            * nodes is found */
 
-          r0[X] = p_colloid->r[X] - 1.0*offset[X];
-          r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
-          r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
+          r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+          r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+          r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
