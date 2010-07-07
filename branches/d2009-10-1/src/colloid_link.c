@@ -4,7 +4,7 @@
  *
  *  Colloid boundary link structure.
  *
- *  $Id: colloid_link.c,v 1.1.2.1 2010-06-06 14:27:29 kevin Exp $
+ *  $Id: colloid_link.c,v 1.1.2.2 2010-07-07 09:04:08 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -49,8 +49,6 @@ colloid_link_t * colloid_link_allocate(void) {
 void colloid_link_free_list(colloid_link_t * p) {
 
   colloid_link_t * tmp;
-
-  assert(p);
 
   while (p) {
     tmp = p->next;
