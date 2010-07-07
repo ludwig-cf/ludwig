@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.11.4.5 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: wall.c,v 1.11.4.6 2010-07-07 10:54:48 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -440,7 +440,7 @@ void wall_accumulate_force(const double f[3]) {
  *
  *  Get the accumulated force (interpreted as momentum) on the walls.
  *
- *  This is a reduction to rank 0 in MPI_COMM_WORLD for the purposes
+ *  This is a reduction to rank 0 in pe_comm() for the purposes
  *  of output statistics. This is the only meaningful use of this
  *  quantity.
  *
@@ -448,7 +448,7 @@ void wall_accumulate_force(const double f[3]) {
 
 void wall_net_momentum(double g[3]) {
 
-  MPI_Reduce(fnet_, g, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(fnet_, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
   return;
 }

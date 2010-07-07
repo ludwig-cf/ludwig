@@ -4,7 +4,7 @@
  *
  *  Order parameter statistics.
  *
- *  $Id: phi_stats.c,v 1.8.4.5 2010-06-02 14:10:48 kevin Exp $
+ *  $Id: phi_stats.c,v 1.8.4.6 2010-07-07 10:50:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -46,8 +46,11 @@ void phi_stats_print_stats() {
   double * phi_local;
   double * phi_total;
 
+  MPI_Comm comm;
+
   coords_nlocal(nlocal);
   nop = phi_nop();
+  comm = pe_comm();
 
   /* This is required to update phi_site[] when full LB is active */
 
@@ -98,12 +101,11 @@ void phi_stats_print_stats() {
     }
   }
 
-  MPI_Reduce(phi_local, phi_total, 3*nop, MPI_DOUBLE, MPI_SUM, 0,
-	     MPI_COMM_WORLD);
+  MPI_Reduce(phi_local, phi_total, 3*nop, MPI_DOUBLE, MPI_SUM, 0, comm);
   MPI_Reduce(phi_local + 3*nop, phi_total + 3*nop, nop, MPI_DOUBLE,
-	     MPI_MIN, 0, MPI_COMM_WORLD);
+	     MPI_MIN, 0, comm);
   MPI_Reduce(phi_local + 4*nop, phi_total + 4*nop, nop, MPI_DOUBLE,
-	     MPI_MAX, 0, MPI_COMM_WORLD);
+	     MPI_MAX, 0, comm);
 
   /* Mean and variance */
 

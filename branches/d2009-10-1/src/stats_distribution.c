@@ -8,7 +8,7 @@
  *  If there is more than one distribution, it is assumed the relevant
  *  statistics are produced in the order parameter sector.
  *
- *  $Id: stats_distribution.c,v 1.1.2.3 2010-06-02 14:10:48 kevin Exp $
+ *  $Id: stats_distribution.c,v 1.1.2.4 2010-07-07 10:50:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -48,7 +48,10 @@ void stats_distribution_print(void) {
   double rhomean;
   double rhovar;
 
+  MPI_Comm comm;
+
   coords_nlocal(nlocal);
+  comm = pe_comm();
 
   stat_local[0] = 0.0;       /* Volume */
   stat_local[1] = 0.0;       /* total mass (or density) */
@@ -73,12 +76,9 @@ void stats_distribution_print(void) {
     }
   }
 
-  MPI_Reduce(stat_local, stat_total, 3, MPI_DOUBLE, MPI_SUM, 0,
-	     MPI_COMM_WORLD);
-  MPI_Reduce(stat_local + 3, stat_total + 3, 1, MPI_DOUBLE, MPI_MIN, 0,
-	     MPI_COMM_WORLD);
-  MPI_Reduce(stat_local + 4, stat_total + 4, 1, MPI_DOUBLE, MPI_MAX, 0,
-	     MPI_COMM_WORLD);
+  MPI_Reduce(stat_local, stat_total, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
+  MPI_Reduce(stat_local + 3, stat_total + 3, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+  MPI_Reduce(stat_local + 4, stat_total + 4, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
 
   /* Compute mean density, and the variance, and print. We
    * assume the fluid volume (stat_total[0]) is not zero... */ 
@@ -130,7 +130,7 @@ void stats_distribution_momentum(double g[3]) {
     }
   }
 
-  MPI_Reduce(g_local, g, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(g_local, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
   return;
 }

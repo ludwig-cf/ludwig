@@ -24,11 +24,11 @@
  *  We demand that the keys are unique, i.e., they only appear
  *  once in the input file.
  *
- *  In parallel, the root process in MPI_COMM_WORLD is responsible
+ *  In parallel, the root process in pe_comm() is responsible
  *  for reading the input file, and the key value pair list is then
  *  broadcast to all other processes.
  *
- *  $Id: runtime.c,v 1.3.16.1 2010-03-26 11:32:51 kevin Exp $
+ *  $Id: runtime.c,v 1.3.16.2 2010-07-07 10:50:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -122,7 +122,7 @@ static void key_broadcast(int nkeys) {
 
   /* Broacdcast the number of keys and set up the message. */
 
-  MPI_Bcast(&nkeys, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nkeys, 1, MPI_INT, 0, pe_comm());
 
   packed_keys = (char *) malloc(nkeys*NKEY_LENGTH*sizeof(char));
   if (packed_keys == NULL) fatal("malloc(packed_keys) failed\n");
@@ -139,7 +139,7 @@ static void key_broadcast(int nkeys) {
     }
   }
 
-  MPI_Bcast(packed_keys, nkeys*NKEY_LENGTH, MPI_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Bcast(packed_keys, nkeys*NKEY_LENGTH, MPI_CHAR, 0, pe_comm());
 
   /* Unpack message and set up the list */
 

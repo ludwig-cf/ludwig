@@ -4,7 +4,7 @@
  *
  *  Statistics for free energy density.
  *
- *  $Id: stats_free_energy.c,v 1.1.2.3 2010-03-30 14:20:04 kevin Exp $
+ *  $Id: stats_free_energy.c,v 1.1.2.4 2010-07-07 10:50:47 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -61,7 +61,7 @@ void stats_free_energy_density(void) {
     }
   }
 
-  MPI_Reduce(fe_local, fe_total, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(fe_local, fe_total, 2, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
   info("\nFree energy density - timestep total fluid\n");
