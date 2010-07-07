@@ -5,7 +5,7 @@
  *  In cases where the order parameter is via "full LB", this couples
  *  the scalar order parameter phi_site[] to the distributions.
  *
- *  $Id: phi_lb_coupler.c,v 1.2.4.5 2010-05-19 19:16:51 kevin Exp $
+ *  $Id: phi_lb_coupler.c,v 1.2.4.6 2010-07-07 10:57:58 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -40,12 +40,19 @@ extern double * phi_site;
 
 void phi_lb_coupler_phi_set(const int index, const double phi) {
 
+  int p;
+
   if (phi_is_finite_difference()) {
     phi_op_set_phi_site(index, 0, phi);
   }
   else {
     assert(distribution_ndist() == 2);
-    distribution_zeroth_moment_set_equilibrium(index, 1, phi);
+
+    distribution_f_set(index, 0, 1, phi);
+
+    for (p = 1; p < NVEL; p++) {
+      distribution_f_set(index, p, 1, 0.0);
+    }
   }
 
   return;
@@ -171,13 +178,11 @@ void phi_lb_init_drop(double radius, double xi0) {
 
   int nlocal[3];
   int noffset[3];
-  int index, ic, jc, kc, p;
+  int index, ic, jc, kc;
 
   double position[3];
   double centre[3];
   double phi, r, rxi0;
-
-  assert(distribution_ndist() == 2);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -202,12 +207,7 @@ void phi_lb_init_drop(double radius, double xi0) {
         phi = tanh(rxi0*(r - radius));
 
 	distribution_zeroth_moment_set_equilibrium(index, 0, get_rho0());
-
-        distribution_f_set(index, 0, 1, phi);
-        for (p = 1; p < NVEL; p++) {
-          distribution_f_set(index, p, 1, 0.0);
-        }
-
+	phi_lb_coupler_phi_set(index, phi);
       }
     }
   }
