@@ -4,7 +4,7 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.10 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: collision.c,v 1.21.4.11 2010-07-07 11:05:49 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -775,9 +775,9 @@ void test_isothermal_fluctuations(void) {
   }
 
   /* Divide by the actual fluid volume. The reduction is to rank 0 in
-   * MPI_COMM_WORLD for output. */
+   * pe_comm() for output. */
 
-  MPI_Reduce(glocal, gtotal, 4, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(glocal, gtotal, 4, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
   for (n = 0; n < 3; n++) {
     gtotal[n] /= gtotal[3];
