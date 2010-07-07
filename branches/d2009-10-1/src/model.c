@@ -7,14 +7,15 @@
  *  for performance-critical operations ehich, for space
  *  considerations, are not included in this file.
  *
- *  The LB model is either _D3Q15_ or _D3Q19_, as included in model.h.
+ *  The LB model is either D2Q9, D3Q15 or D3Q19, as included in model.h.
  *
- *  $Id: model.c,v 1.17.4.9 2010-03-30 05:55:28 kevin Exp $
+ *  $Id: model.c,v 1.17.4.10 2010-07-07 10:44:38 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
- *  (c) 2008 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,9 +27,8 @@
 #include "pe.h"
 #include "runtime.h"
 #include "coords.h"
-#include "model.h"
 #include "io_harness.h"
-#include "timer.h"
+#include "model.h"
 
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
@@ -67,12 +67,9 @@ static int distributions_write(FILE *, const int, const int, const int);
  *
  *  init_site
  *
- *  Allocate memory for the distributions. If MPI2 is used, then
- *  this must use the appropriate utility to accomodate LE planes.
- *
  *  Irrespective of the value of nhalo associated with coords.c,
- *  we only ever at the moment
- *  pass one plane worth of distribution values (ie., nhalo = 1).
+ *  we only ever at the moment pass one plane worth of distribution
+ *  values. This is nhalolocal.
  *
  ***************************************************************************/
  
@@ -468,14 +465,14 @@ void distribution_get_stress_at_site(int index, double s[3][3]) {
 
 /*****************************************************************************
  *
- *  halo_site
+ *  distribution_halo
  *
  *  Swap the distributions at the periodic/processor boundaries
  *  in each direction.
  *
  *****************************************************************************/
 
-void halo_site() {
+void distribution_halo() {
 
   int ic, jc, kc;
   int ihalo, ireal;
@@ -490,7 +487,6 @@ void halo_site() {
   MPI_Comm comm = cart_comm();
 
   assert(initialised_);
-  TIMER_start(TIMER_HALO_LATTICE);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -592,8 +588,6 @@ void halo_site() {
     MPI_Waitall(4, request, status);
   }
  
-  TIMER_stop(TIMER_HALO_LATTICE);
-
   return;
 }
 

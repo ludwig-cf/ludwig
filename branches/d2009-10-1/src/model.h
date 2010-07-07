@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.14.4.7 2010-03-30 05:55:28 kevin Exp $
+ *  $Id: model.h,v 1.14.4.8 2010-07-07 10:44:38 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,7 +32,7 @@ extern struct io_info_t * io_info_distribution_;
 
 void   init_site(void);
 void   finish_site(void);
-void   halo_site(void);
+void   distribution_halo(void);
 
 int    distribution_ndist(void);
 void   distribution_ndist_set(const int ndist);
