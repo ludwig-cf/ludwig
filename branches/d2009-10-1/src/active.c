@@ -4,7 +4,7 @@
  *
  *  Routines dealing with bounce-back on links for active particles.
  *
- *  $Id: active.c,v 1.5.2.1 2010-05-19 19:16:50 kevin Exp $
+ *  $Id: active.c,v 1.5.2.2 2010-07-07 09:00:31 kevin Exp $
  *
  *  Isaac Llopis (Barcelona) developed the active particles.
  *
@@ -23,17 +23,9 @@
 #include "pe.h"
 #include "coords.h"
 #include "colloids.h"
-#include "ccomms.h"
 #include "runtime.h"
-#include "util.h"
-#include "lattice.h"
-
-enum active_type {TYPE_INACTIVE, TYPE_TWO}; 
-
-static int    type_ = TYPE_INACTIVE;   /* Default */
 
 static void init_active2(void);
-static void active2_prepass(void);
 
 /*****************************************************************************
  *
@@ -50,32 +42,8 @@ void init_active() {
   /* Determine the request */
 
   if (strcmp(tmp, "active2") == 0) {
-    type_ = TYPE_TWO;
     info("\n\n[User   ] Active particle type 2\n");
     init_active2();
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  active_bbl_prepass
- *
- *  Prepass to BBL called before the collision.
- *
- *****************************************************************************/
-
-void active_bbl_prepass() {
-
-  switch (type_) {
-  case TYPE_INACTIVE:
-    break;
-  case TYPE_TWO:
-    active2_prepass();
-    break;
-  default:
-    break;
   }
 
   return;
@@ -105,16 +73,14 @@ static void init_active2() {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {             
-	  p_colloid->b1 = b_1;
-	  p_colloid->b2 = b_2;
-
-	  /* Initialise direction vector */
-	  p_colloid->direction[X] = 0.0;
-	  p_colloid->direction[Y] = 0.0;
-	  p_colloid->direction[Z] = -1.0;
+	  p_colloid->s.b1 = b_1;
+	  p_colloid->s.b2 = b_2;
+	  p_colloid->s.m[X] = 0.0;
+	  p_colloid->s.m[Y] = 0.0;
+	  p_colloid->s.m[Z] = -1.0;
 
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;
@@ -123,19 +89,6 @@ static void init_active2() {
       }
     }
   }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  active2_prepass
- *
- *  This step is called for "active2" particles.
- *
- *****************************************************************************/
-
-static void active2_prepass() {
 
   return;
 }
