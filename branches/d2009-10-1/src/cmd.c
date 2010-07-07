@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15.16.5 2010-05-19 19:16:50 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.6 2010-07-07 11:07:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -97,7 +97,7 @@ void CMD_init_volume_fraction() {
   info("[       ] initialised %d particles\n", n_global);
   info("[       ] actual volume fraction of %f\n", vf);
 
-  set_N_colloid(n_global);
+  colloids_ntotal_set();
 
   mc_max_ah_ = ah;
 
@@ -118,15 +118,15 @@ void monte_carlo() {
 
   /* Set maximum Monte-Carlo move */
 
-  mc_drmax_ = dmin(Lcell(X), Lcell(Y));
-  mc_drmax_ = dmin(Lcell(Z), mc_drmax_);
+  mc_drmax_ = dmin(colloids_lcell(X), colloids_lcell(Y));
+  mc_drmax_ = dmin(colloids_lcell(Z), mc_drmax_);
   mc_drmax_ = 0.5*(mc_drmax_ - 2.0*mc_max_ah_ - get_max_potential_range());
 
   if (n > 0) do_monte_carlo(n);
 
   mc_check_state();
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(pe_comm());
 
   colloid_io_write("config.cds.init");
 
@@ -151,7 +151,7 @@ void do_monte_carlo(const int mc_max_iterations) {
 
   drmax = mc_drmax_;
 
-  cell_update();
+  colloids_cell_update();
   CCOM_halo_particles();
 
   etotal_old = mc_total_energy();
@@ -173,7 +173,7 @@ void do_monte_carlo(const int mc_max_iterations) {
       /* The particles really move, so update the cell list */
       etotal_old = etotal_new;
       naccept++;
-      cell_update();
+      colloids_cell_update();
     }
     else {
       /* Just role back to the old positions everywhere */
@@ -244,7 +244,7 @@ void mc_set_proposed_move(const double drmax) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 
@@ -288,12 +288,12 @@ void mc_move(const double sign) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 
 	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->r[ia] += sign*p_colloid->random[ia];
+	    p_colloid->s.r[ia] += sign*p_colloid->random[ia];
 	  }
 
 	  p_colloid = p_colloid->next;
@@ -359,11 +359,11 @@ double mc_total_energy() {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_c1 = CELL_get_head_of_list(ic, jc, kc);
+	p_c1 = colloids_cell_list(ic, jc, kc);
 
 	while (p_c1) {
 
-	  elocal += hard_wall_energy(p_c1->r, p_c1->ah);
+	  elocal += hard_wall_energy(p_c1->s.r, p_c1->s.ah);
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
@@ -373,26 +373,26 @@ double mc_total_energy() {
 		jd = jc + dy;
 		kd = kc + dz;
 
-		p_c2 = CELL_get_head_of_list(id, jd, kd);
+		p_c2 = colloids_cell_list(id, jd, kd);
 
 		while (p_c2) {
 
-		  if (p_c1->index < p_c2->index) {
+		  if (p_c1->s.index < p_c2->s.index) {
+		    coords_minimum_distance(p_c1->s.r, p_c2->s.r, r12);
 
-		    coords_minimum_distance(p_c1->r, p_c2->r, r12);
 		    h = modulus(r12);
-		    h = h - p_c1->ah - p_c2->ah;
-		    
+		    h = h - p_c1->s.ah - p_c2->s.ah;
+
 		    elocal += hard_sphere_energy(h);
 		    elocal += soft_sphere_energy(h);
-		    elocal += yukawa_potential(h + p_c1->ah + p_c2->ah);
+		    elocal += yukawa_potential(h + p_c1->s.ah + p_c2->s.ah);
 		    elocal += leonard_jones_energy(h);
 
 		  }
 		  
 		  /* Next colloid */
 		  p_c2 = p_c2->next;
-		}
+		  }
 
 		/* Next search cell */
 	      }
@@ -404,12 +404,12 @@ double mc_total_energy() {
 	}
 
 	/* Next cell */
+	}
       }
     }
-  }
-
-  MPI_Allreduce(&elocal, &etotal, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
+    
+    MPI_Allreduce(&elocal, &etotal, 1, MPI_DOUBLE, MPI_SUM, pe_comm());
+    
   return etotal;
 }
 
@@ -576,14 +576,15 @@ void mc_mean_square_displacement() {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
-	  ds = p_colloid->r[X] - p_colloid->stats[X];
+	  ds = p_colloid->s.r[X] - p_colloid->stats[X];
 	  dxsq += ds*ds;
-	  ds = p_colloid->r[Y] - p_colloid->stats[Y];
+	  ds = p_colloid->s.r[Y] - p_colloid->stats[Y];
 	  dysq += ds*ds;
-	  ds = p_colloid->r[Z] - p_colloid->stats[Z];
+	  ds = p_colloid->s.r[Z] - p_colloid->stats[Z];
+
 	  dzsq += ds*ds;
 
 	  p_colloid = p_colloid->next;
