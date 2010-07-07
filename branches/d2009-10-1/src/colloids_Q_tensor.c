@@ -76,9 +76,10 @@ void COLL_set_Q(){
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
 	   * nodes is found */
-	  r0[X] = p_colloid->r[X] - 1.0*offset[X];
-	  r0[Y] = p_colloid->r[Y] - 1.0*offset[Y];
-	  r0[Z] = p_colloid->r[Z] - 1.0*offset[Z];
+
+	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
 	  rsite0[X] = 1.0*ic;
 	  rsite0[Y] = 1.0*jc;
@@ -94,7 +95,7 @@ void COLL_set_Q(){
 	   * normalise the the surface normal vector  */
 
 	  len_normal = modulus(normal);
-	  assert(len_normal <= p_colloid->ah);
+	  assert(len_normal <= p_colloid->s.ah);
 
 	  if (len_normal < 10e-8) {
 	    /* we are very close to the centre of the colloid.
@@ -475,15 +476,15 @@ void colloids_fix_swd(void) {
 	  /* Set the lattice velocity here to the solid body
 	   * rotational velocity */
 
-	  rb[X] = p_c->r[X] - x;
-	  rb[Y] = p_c->r[Y] - y;
-	  rb[Z] = p_c->r[Z] - z;
+	  rb[X] = p_c->s.r[X] - x;
+	  rb[Y] = p_c->s.r[Y] - y;
+	  rb[Z] = p_c->s.r[Z] - z;
 
-	  cross_product(p_c->omega, rb, u);
+	  cross_product(p_c->s.w, rb, u);
 
-	  u[X] += p_c->v[X];
-	  u[Y] += p_c->v[Y];
-	  u[Z] += p_c->v[Z];
+	  u[X] += p_c->s.v[X];
+	  u[Y] += p_c->s.v[Y];
+	  u[Z] += p_c->s.v[Z];
 
 	  hydrodynamics_set_velocity(index, u);
 
