@@ -4,7 +4,7 @@
  *
  *  Halo exchange of colloid state information.
  *
- *  $Id: colloids_halo.c,v 1.1.2.2 2010-07-07 11:04:33 kevin Exp $
+ *  $Id: colloids_halo.c,v 1.1.2.3 2010-07-13 18:20:53 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -185,8 +185,8 @@ static void colloids_halo_load(int dim, int nload[2]) {
   }
 
   p = cart_coords(dim);
-  if (p == 0) rback[dim] = L(dim)*(1.0 - DBL_EPSILON);
-  if (p == cart_size(dim) - 1) rforw[dim] = -L(dim)*(1.0 - DBL_EPSILON);
+  if (p == 0) rback[dim] = L(dim);
+  if (p == cart_size(dim) - 1) rforw[dim] = -L(dim);
 
   if (dim == X) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -208,7 +208,7 @@ static void colloids_halo_load(int dim, int nload[2]) {
 
   if (dim == Z) {
     for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-      for (jc = 0; jc <= Ncell(Y); jc++) {
+      for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
 	colloids_halo_load_list(ic, jc, 1, rback, nload + BACKWARD);
 	colloids_halo_load_list(ic, jc, Ncell(Z), rforw, nload + FORWARD); 
       }

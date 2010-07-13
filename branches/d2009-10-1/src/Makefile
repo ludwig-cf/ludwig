@@ -69,7 +69,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      brazovskii.o brazovskii_rt.o \
      brownian.o \
      cio.o cmd.o ccomms.o \
-     colloid.o colloid_link.o colloids.o colloid_io_rt.o \
+     colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
      bbl.o build.o communicate.o \
      coords.o coords_rt.o \
      control.o \
