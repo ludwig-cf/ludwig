@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.10 2010-07-07 11:03:25 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.11 2010-07-13 18:18:53 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -91,6 +91,24 @@ void colloids_finish() {
   ncell_[Y] = 2;
   ncell_[Z] = 2;
   ntotal_ = 0;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info
+ *
+ *****************************************************************************/
+
+void colloids_info(void) {
+
+  info("colloids_info:\n");
+  info("Cells:             %d %d %d\n", ncell_[X], ncell_[Y], ncell_[Z]);
+  info("Halo:              %d\n", nhalo_);
+  info("Total (global):    %d\n", ntotal_);
+  info("Allocated (local): %d\n", nalloc_);
+  info("\n");
 
   return;
 }
@@ -538,6 +556,30 @@ void colloids_cell_coords(const double r[3], int icell[3]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_cell_count
+ *
+ *  Count the number of particles in this cell.
+ *
+ *****************************************************************************/
+
+int colloids_cell_count(const int ic, const int jc, const int kc) {
+
+  int n;
+  colloid_t * pc;
+
+  n = 0;
+  pc = colloids_cell_list(ic, jc, kc);
+
+  while (pc) {
+    n++;
+    pc = pc->next;
+  }
+
+  return n;
 }
 
 /*****************************************************************************

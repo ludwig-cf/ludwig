@@ -4,7 +4,7 @@
  *
  *  Data structures holding linked list of colloids.
  *
- *  $Id: colloids.h,v 1.9.2.9 2010-07-07 11:03:25 kevin Exp $
+ *  $Id: colloids.h,v 1.9.2.10 2010-07-13 18:18:53 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -47,29 +47,31 @@ struct colloid {
   /* Pointers */
 
   colloid_link_t * lnk; /* Pointer to the list of links defining surface */
-  Colloid   * next;     /* colloid is a linked list */
+  colloid_t * next;     /* colloid is a linked list */
 
 };
 
-void      colloids_init(void);
-void      colloids_finish(void);
-void      colloids_ntotal_set(void);
-void      colloids_cell_ncell_set(const int ncell[3]);
-void      colloids_cell_ncell(int ncell[3]);
-void      colloids_cell_coords(const double r[3], int icell[3]);
-void      colloids_cell_insert_colloid(Colloid *);
-void      colloids_cell_update(void);
-int       colloids_nalloc(void);
-int       Ncell(const int dim);
-double    colloids_lcell(const int dim);
-Colloid * colloids_cell_list(const int, const int, const int);
+void        colloids_init(void);
+void        colloids_finish(void);
+void        colloids_ntotal_set(void);
+void        colloids_cell_ncell_set(const int ncell[3]);
+void        colloids_cell_ncell(int ncell[3]);
+void        colloids_cell_coords(const double r[3], int icell[3]);
+void        colloids_cell_insert_colloid(colloid_t *);
+void        colloids_cell_update(void);
+int         colloids_cell_count(const int ic, const int jc, const int kc);
+int         colloids_nalloc(void);
+int         Ncell(const int dim);
+double      colloids_lcell(const int dim);
 
-Colloid * colloid_allocate(void);
-Colloid * colloid_add_local(const int index, const double r[3]);
-Colloid * colloid_add(const int index, const double r[3]);
-void      colloid_free(Colloid *);
-double    colloid_rho0(void);
-int       colloid_ntotal(void);
-int       colloid_nlocal(void);
+colloid_t * colloids_cell_list(const int, const int, const int);
+colloid_t * colloid_allocate(void);
+colloid_t * colloid_add_local(const int index, const double r[3]);
+colloid_t * colloid_add(const int index, const double r[3]);
+
+void        colloid_free(colloid_t *);
+double      colloid_rho0(void);
+int         colloid_ntotal(void);
+int         colloid_nlocal(void);
 
 #endif
