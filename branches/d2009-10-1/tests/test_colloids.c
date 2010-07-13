@@ -4,7 +4,7 @@
  *
  *  Colloid cell list et al.
  *
- *  $Id: test_colloids.c,v 1.1.2.1 2010-06-10 17:59:49 kevin Exp $
+ *  $Id: test_colloids.c,v 1.1.2.2 2010-07-13 18:24:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -52,6 +52,8 @@ int main(int argc, char ** argv) {
   test_colloids_lcell();
   test_colloids_allocate();
   test_colloids_add_local();
+
+  info("Completed colloids test\n");
 
   coords_finish();
   pe_finalise();
@@ -148,6 +150,7 @@ static void test_colloids_add_local(void) {
 
   int index;
   int noffset[3];
+  int icell[3];
   double r[3];
 
   colloid_t * pc;
@@ -155,7 +158,7 @@ static void test_colloids_add_local(void) {
   coords_nlocal_offset(noffset);
   colloids_init();
 
-  index = pe_rank();
+  index = 1 + pe_rank();
 
   /* This should not go in */
   r[X] = Lmin(X) + 1.0*(noffset[X] - 1);
@@ -178,6 +181,12 @@ static void test_colloids_add_local(void) {
 
   colloids_ntotal_set();
   test_assert(colloid_ntotal() == pe_size());
+
+  /* Check the cell */
+
+  colloids_cell_coords(r, icell);
+  test_assert(colloids_cell_count(icell[X], icell[Y], icell[Z]) == 1);
+  test_assert(colloids_cell_list(icell[X], icell[Y], icell[Z]) == pc);
 
   colloids_finish();
   test_assert(colloids_nalloc() == 0);
