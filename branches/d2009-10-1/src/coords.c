@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3.16.9 2010-07-07 10:59:05 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.10 2010-07-13 18:17:41 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -22,7 +22,7 @@
 /* The effective state here is, with default values: */
 
 static int nhalo_ = 1;
-static int n_total[3]                  = {64, 64, 64};
+static int ntotal_[3]                  = {64, 64, 64};
 static int periodic[3]                 = {1, 1, 1};
 static int pe_cartesian_size[3]        = {1, 1, 1};
 static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
@@ -106,19 +106,6 @@ void coords_init() {
   xfac_ = (n_local[Y] + 2*nhalo_)*(n_local[Z] + 2*nhalo_);
   yfac_ = (n_local[Z] + 2*nhalo_);
 
-  info("\n");
-  info("Initialised coordinate system:\n");
-  info("Actual system size:     %d %d %d\n",
-       n_total[X], n_total[Y], n_total[Z]);
-  info("Actual decomposition:   %d %d %d\n",
-       cart_size(X), cart_size(Y), cart_size(Z));
-  info("Local domain:           %d %d %d\n",
-       n_local[X], n_local[Y], n_local[Z]);
-  info("Periodic:               %d %d %d\n",
-       iperiodic[X], iperiodic[Y], iperiodic[Z]);
-  info("Width of halo region:   %d\n", nhalo_);
-  info("Reorder:                %s\n\n", reorder_ ? "true" : "false");
-
   initialised_ = 1;
 
   return;
@@ -140,11 +127,32 @@ void coords_finish(void) {
   MPI_Comm_free(&cartesian_communicator);
 
   for (ia = 0; ia < 3; ia++) {
-    n_total[ia] = 64;
+    ntotal_[ia] = 64;
     pe_cartesian_size[ia] = 1;
     periodic[ia] = 1;
   }
   initialised_ = 0;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_info()
+ *
+ *****************************************************************************/
+
+void coords_info(void) {
+
+  info("\n");
+  info("coords_info:\n");
+  info("Initialised:    %d\n", initialised_);
+  info("System size:    %d %d %d\n", ntotal_[X], ntotal_[Y], ntotal_[Z]);
+  info("Decomposition:  %d %d %d\n", cart_size(X), cart_size(Y), cart_size(Z));
+  info("Local domain:   %d %d %d\n", n_local[X], n_local[Y], n_local[Z]);
+  info("Periodic:       %d %d %d\n", periodic[X], periodic[Y], periodic[Z]);
+  info("Halo nhalo:     %d\n", nhalo_);
+  info("Reorder:        %s\n\n", reorder_ ? "true" : "false");
 
   return;
 }
@@ -211,7 +219,7 @@ MPI_Comm cart_comm() {
 
 int N_total(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
-  return n_total[dim];
+  return ntotal_[dim];
 }
 
 /*****************************************************************************
@@ -233,7 +241,7 @@ int is_periodic(const int dim) {
 
 double L(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
-  return ((double) n_total[dim]);
+  return ((double) ntotal_[dim]);
 }
 
 /*****************************************************************************
@@ -325,9 +333,9 @@ static void default_decomposition() {
   int pe0[3] = {0, 0, 0};
 
   /* Trap 2-d systems */
-  if (n_total[X] == 1) pe0[X] = 1;
-  if (n_total[Y] == 1) pe0[Y] = 1;
-  if (n_total[Z] == 1) pe0[Z] = 1;
+  if (ntotal_[X] == 1) pe0[X] = 1;
+  if (ntotal_[Y] == 1) pe0[Y] = 1;
+  if (ntotal_[Z] == 1) pe0[Z] = 1;
 
   MPI_Dims_create(pe_size(), 3, pe0);
 
@@ -425,7 +433,7 @@ void coords_ntotal_set(const int ntotal[3]) {
   assert(initialised_ == 0);
 
   for (ia = 0; ia < 3; ia++) {
-    n_total[ia] = ntotal[ia];
+    ntotal_[ia] = ntotal[ia];
   }
 
   return;
@@ -497,8 +505,8 @@ void coords_minimum_distance(const double r1[3], const double r2[3],
 
   for (ia = 0; ia < 3; ia++) {
     r12[ia] = r2[ia] - r1[ia];
-    if (r12[ia] >  0.5*n_total[ia]) r12[ia] -= 1.0*n_total[ia]*periodic[ia];
-    if (r12[ia] < -0.5*n_total[ia]) r12[ia] += 1.0*n_total[ia]*periodic[ia];
+    if (r12[ia] >  0.5*ntotal_[ia]) r12[ia] -= 1.0*ntotal_[ia]*periodic[ia];
+    if (r12[ia] < -0.5*ntotal_[ia]) r12[ia] += 1.0*ntotal_[ia]*periodic[ia];
   }
 
   return;

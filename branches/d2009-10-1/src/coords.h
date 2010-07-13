@@ -2,7 +2,7 @@
  *
  *  coords.h
  *
- *  $Id: coords.h,v 1.3.16.8 2010-04-19 10:31:29 kevin Exp $
+ *  $Id: coords.h,v 1.3.16.9 2010-07-13 18:17:41 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,6 +21,7 @@ enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
 void   coords_init(void);
 void   coords_finish(void);
+void   coords_info(void);
 int    N_total(const int);
 int    is_periodic(const int);
 double L(const int);

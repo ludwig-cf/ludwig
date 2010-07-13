@@ -82,6 +82,7 @@ void ludwig_rt(void) {
   /* These together for the time being. */
   coords_run_time();
   coords_init();
+  coords_info();
 
   init_control();
 
