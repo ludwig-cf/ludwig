@@ -47,7 +47,7 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_model.c test_halo.c test_site_map.c \
 	      test_phi.c test_le.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
-              test_colloid.c test_colloids.c
+              test_colloid.c test_colloids.c test_colloids_halo.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}
