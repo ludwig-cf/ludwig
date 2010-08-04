@@ -4,7 +4,7 @@
  *
  *  Run time stuff for the coordinate system.
  *
- *  $Id: coords_rt.c,v 1.1.2.2 2009-11-13 14:33:50 kevin Exp $
+ *  $Id: coords_rt.c,v 1.1.2.3 2010-08-04 17:55:00 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -34,37 +34,24 @@ void coords_run_time(void) {
 
   info("\n");
   info("System details\n");
-  info("--------------\n\n");
+  info("--------------\n");
 
   n = RUN_get_int_parameter_vector("size", vector);
-
-  info((n == 0) ? "[Default] " : "[User   ] "); 
-  info("Lattice size is (%d, %d, %d)\n", vector[X], vector[Y], vector[Z]);
-
   coords_ntotal_set(vector);
 
   n = RUN_get_int_parameter_vector("periodicity", vector);
-
-  info((n == 0) ? "[Default] " : "[User   ] "); 
-  info("periodic boundaries set to (%d, %d, %d)\n", vector[X], vector[Y],
-       vector[Z]);
-
   coords_periodicity_set(vector);
 
   /* Look for a user-defined decomposition */
 
   n = RUN_get_int_parameter_vector("grid", vector);
-
-  if (n != 0) {
-    coords_decomposition_set(vector);
-    info("[User   ] Processor decomposition: %d %d %d\n",
-	 vector[X], vector[Y], vector[Z]);
-  }
-
-
+  if (n != 0) coords_decomposition_set(vector);
 
   n = RUN_get_int_parameter("reorder", &reorder);
   if (n != 0) coords_reorder_set(reorder);
+
+  coords_init();
+  coords_info();
 
   return;
 }
