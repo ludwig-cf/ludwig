@@ -4,7 +4,7 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.3.16.10 2010-07-13 18:17:41 kevin Exp $
+ *  $Id: coords.c,v 1.3.16.11 2010-08-04 17:51:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -144,15 +144,13 @@ void coords_finish(void) {
 
 void coords_info(void) {
 
-  info("\n");
-  info("coords_info:\n");
-  info("Initialised:    %d\n", initialised_);
   info("System size:    %d %d %d\n", ntotal_[X], ntotal_[Y], ntotal_[Z]);
   info("Decomposition:  %d %d %d\n", cart_size(X), cart_size(Y), cart_size(Z));
   info("Local domain:   %d %d %d\n", n_local[X], n_local[Y], n_local[Z]);
   info("Periodic:       %d %d %d\n", periodic[X], periodic[Y], periodic[Z]);
   info("Halo nhalo:     %d\n", nhalo_);
-  info("Reorder:        %s\n\n", reorder_ ? "true" : "false");
+  info("Reorder:        %s\n", reorder_ ? "true" : "false");
+  info("Initialised:    %d\n", initialised_);
 
   return;
 }
