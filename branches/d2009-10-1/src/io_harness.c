@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.5.12.1 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: io_harness.c,v 1.5.12.2 2010-08-04 17:50:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,7 +35,6 @@
 #include "util.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "runtime.h"
 #include "io_harness.h"
 
 struct io_decomposition_t {
@@ -83,7 +82,6 @@ struct io_info_t * io_info_create() {
   int io_grid[3] = {1, 1, 1}; /* Default i/o grid */
   struct io_info_t * p_info;
 
-  RUN_get_int_parameter_vector("io_grid", io_grid); /* User input grid */
   p_info = io_info_create_with_grid(io_grid);
 
   return p_info;
