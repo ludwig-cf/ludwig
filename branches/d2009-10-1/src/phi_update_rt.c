@@ -8,7 +8,7 @@
  *  Boltzmann for binary fluid, no update is set (it's done via the
  *  appropriate collision).
  *
- *  $Id: phi_update_rt.c,v 1.1.2.5 2010-04-02 07:56:03 kevin Exp $
+ *  $Id: phi_update_rt.c,v 1.1.2.6 2010-08-04 17:53:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,11 +24,14 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "phi.h"
 #include "phi_force.h"
 #include "phi_update.h"
 #include "phi_cahn_hilliard.h"
 #include "leslie_ericksen.h"
 #include "blue_phase_beris_edwards.h"
+
+static void phi_update_rt_fe(const char * string);
 
 /*****************************************************************************
  *
@@ -40,77 +43,93 @@
 
 void phi_update_run_time(void) {
 
-  int n, p;
+  int n;
   char stringfe[FILENAME_MAX];
-  char string[FILENAME_MAX];
-  double value;
 
-  value = 0.0;
   n = RUN_get_string_parameter("free_energy", stringfe, FILENAME_MAX);
 
   if (n == 0 || strcmp(stringfe, "none") == 0) {
-    /* No order parameter, no update. */
+    /* No order parameter, no update, no force... */
     phi_force_required_set(0);
   }
   else {
+    /* Sort out free energy */
+    phi_update_rt_fe(stringfe);
+  }
 
-    info("\n");
-    info("Order parameter dynamics\n");
-    info("------------------------\n\n");
+  return;
+}
 
-    if (strcmp(stringfe, "symmetric") == 0) {
-      /* Check if we're using full LB */
-      RUN_get_string_parameter("phi_finite_difference", string,
-			       FILENAME_MAX);
-      if (strcmp(string, "yes") == 0) {
-	phi_update_set(phi_cahn_hilliard);
-	info("Using Cahn-Hilliard finite difference solver:\n");
-      }
-      else {
-	info("Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
-	/* Binary LB uses Swift et al method for force. */
-	phi_force_required_set(0);
-      }
+/*****************************************************************************
+ *
+ *  phi_update_rt_fe
+ *
+ *  Filter the various free energy choices.
+ *
+ *****************************************************************************/
 
-      /* Mobility (always required) */
-      RUN_get_double_parameter("mobility", &value);
-      phi_cahn_hilliard_mobility_set(value);
-      info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+static void phi_update_rt_fe(const char * stringfe) {
+
+  int p;
+  double value;
+
+  info("\n");
+  info("Order parameter dynamics\n");
+  info("------------------------\n\n");
+
+  value = 0.0;
+
+  if (strcmp(stringfe, "symmetric") == 0) {
+
+    info("Using Cahn-Hilliard finite difference solver:\n");
+    phi_set_finite_difference();
+    phi_update_set(phi_cahn_hilliard);
+
+    RUN_get_double_parameter("mobility", &value);
+    phi_cahn_hilliard_mobility_set(value);
+    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+  }
+  else if (strcmp(stringfe, "symmetric_lb") == 0) {
+  
+    info("Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
+    phi_force_required_set(0);
+
+    RUN_get_double_parameter("mobility", &value);
+    phi_cahn_hilliard_mobility_set(value);
+    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+  }
+  else if (strcmp(stringfe, "brazovskii") == 0) {
+
+    info("Using Cahn-Hilliard solver:\n");
+    phi_update_set(phi_cahn_hilliard);
+
+    RUN_get_double_parameter("mobility", &value);
+    phi_cahn_hilliard_mobility_set(value);
+    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+  }
+  else if (strcmp(stringfe, "polar_active") == 0) {
+
+    info("Using Leslie-Ericksen solver:\n");
+    phi_update_set(leslie_ericksen_update);
+
+    RUN_get_double_parameter("leslie_ericksen_gamma", &value);
+    leslie_ericksen_gamma_set(value);
+    info("Rotational diffusion     = %12.5e\n", value);
+
+    RUN_get_double_parameter("leslie_ericksen_swim", &value);
+    leslie_ericksen_swim_set(value);
+    info("Self-advection parameter = %12.5e\n", value);
+  }
+  else if (strcmp(stringfe, "lc_blue_phase") == 0) {
+
+    info("Using Beris-Edwards solver:\n");
+    phi_update_set(blue_phase_beris_edwards);
+
+    p = RUN_get_double_parameter("lc_Gamma", &value);
+    if (p != 0) {
+      blue_phase_be_set_rotational_diffusion(value);
+      info("Rotational diffusion constant = %12.5e\n", value);
     }
-    else if (strcmp(stringfe, "brazovskii") == 0) {
-
-      info("Using Cahn-Hilliard solver:\n");
-      phi_update_set(phi_cahn_hilliard);
-
-      RUN_get_double_parameter("mobility", &value);
-      phi_cahn_hilliard_mobility_set(value);
-      info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
-    }
-    else if (strcmp(stringfe, "polar_active") == 0) {
-
-      info("Using Leslie-Ericksen solver:\n");
-      phi_update_set(leslie_ericksen_update);
-
-      RUN_get_double_parameter("leslie_ericksen_gamma", &value);
-      leslie_ericksen_gamma_set(value);
-      info("Rotational diffusion     = %12.5e\n", value);
-
-      RUN_get_double_parameter("leslie_ericksen_swim", &value);
-      leslie_ericksen_swim_set(value);
-      info("Self-advection parameter = %12.5e\n", value);
-    }
-    else if (strcmp(stringfe, "lc_blue_phase") == 0) {
-
-      info("Using Beris-Edwards solver:\n");
-      phi_update_set(blue_phase_beris_edwards);
-
-      p = RUN_get_double_parameter("lc_Gamma", &value);
-      if (p != 0) {
-	blue_phase_be_set_rotational_diffusion(value);
-	info("Rotational diffusion constant = %12.5e\n", value);
-      }
-    }
-
   }
 
   return;

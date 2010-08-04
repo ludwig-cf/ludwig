@@ -7,7 +7,7 @@
  *
  *  A new free energy will give rise to an addition here.
  *
- *  $Id: free_energy_rt.c,v 1.1.2.5 2010-03-29 05:53:57 kevin Exp $
+ *  $Id: free_energy_rt.c,v 1.1.2.6 2010-08-04 17:53:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -59,6 +59,9 @@ void free_energy_run_time(void) {
     info("None selected\n");
   }
   else if (strcmp(description, "symmetric") == 0) {
+    symmetric_run_time();
+  }
+  else if (strcmp(description, "symmetric_lb") == 0) {
     symmetric_run_time();
   }
   else if (strcmp(description, "brazovskii") == 0) {

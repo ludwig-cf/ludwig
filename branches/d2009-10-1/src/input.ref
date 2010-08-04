@@ -22,17 +22,16 @@
 #
 #  Run duration
 #
+#  N_start        If N_start > 0, this is a restart from previous output
+#
 #  N_cycles       number of lattice Boltzmann time steps to run
 #                 (if it's a restart, this is still the number of steps
 #                 to run, not the final step)
-#  t_start        time of restart
-#  input_config   distribution restart file stub (from previous output)
 #
 ###############################################################################
 
+N_start  0
 N_cycles 1
-#t_start 500
-#input_config config.out00000500
 
 ##############################################################################
 #
@@ -95,8 +94,7 @@ temperature 0.00002133333
 #                                 polar_active
 #                                 lc_blue_phase
 #
-#  phi_finite_difference          no [is the default] uses 2x distributions
-#                                 yes uses hybrid
+#                                 symmetric_lb symmetric with 2 distributions
 #
 #  fd_advection_scheme_order      1-7
 #                                 sets order of finite difference
@@ -114,7 +112,7 @@ temperature 0.00002133333
 ###############################################################################
 
 free_energy lc_blue_phase
-phi_finite_difference yes
+
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 
@@ -351,12 +349,10 @@ freq_shear_measurement 100000
 freq_shear_output      100000
 config_at_end no
 
+distribution_io_grid 1_1_1
 
 phi_format    ASCII
 vel_format    ASCII
-n_io_nodes 8
-#io_grid 2_2_2
-#io_grid_distribution 2_2_2
 
 colloid_io_freq 1000
 colloids_io_grid 1_1_1
