@@ -24,10 +24,6 @@
 
 #include "communicate.h"
 
-static char         input_config[256] = "EMPTY";
-static char         output_config[256] = "config.out";
-
-
 void MODEL_init( void ) {
 
   int     i,j,k,ind;
@@ -45,28 +41,6 @@ void MODEL_init( void ) {
 
   /* Now setup the rest of the simulation */
 
-  /* Order parameter */
-
-  ind = RUN_get_string_parameter("phi_finite_difference", filename,
-				 FILENAME_MAX);
-  if (ind != 0 && strcmp(filename, "yes") == 0) {
-    phi_set_finite_difference();
-    info("Switching order parameter to finite difference\n");
-    distribution_ndist_set(1);
-  }
-  else {
-    info("Order parameter is via lattice Boltzmann\n");
-    distribution_ndist_set(2);
-    /* Only Cahn-Hilliard (binary) by this method */
-    i = RUN_get_string_parameter("free_energy", filename, FILENAME_MAX);
-    if (i == 1 && strcmp(filename, "symmetric") != 0) {
-      fatal("Trying to run full LB: check free energy?\n");
-    }
-  }
-
-  /* Distributions */
-
-  init_site();
 
   phi_init();
 
@@ -74,12 +48,6 @@ void MODEL_init( void ) {
   if (ind != 0 && strcmp(filename, "ASCII") == 0) {
     io_info_set_format_ascii(io_info_phi);
     info("Setting phi I/O format to ASCII\n");
-  }
-
-  ind = RUN_get_string_parameter("reduced_halo", filename, FILENAME_MAX);
-  if (ind != 0 && strcmp(filename, "yes") == 0) {
-    info("\nUsing reduced halos\n\n");
-    distribution_halo_set_reduced();
   }
 
   hydrodynamics_init();
@@ -99,44 +67,27 @@ void MODEL_init( void ) {
 
   RUN_get_double_parameter("noise", &noise0);
 
-  /* Option 1: read distribution functions from file */
+  if (phi_nop()){
 
-  ind = RUN_get_string_parameter("input_config", filename, FILENAME_MAX);
+    /* Initialise phi with initial value +- noise */
 
-  if (ind != 0) {
+    for(i=1; i<=N_total(X); i++)
+      for(j=1; j<=N_total(Y); j++)
+	for(k=1; k<=N_total(Z); k++) {
 
-    info("Re-starting simulation at step %d with data read from "
-	 "config\nfile(s) %s\n", get_step(), filename);
+	  phi = phi0 + noise0*(ran_serial_uniform() - 0.5);
 
-    /* Read distribution functions - sets both */
-    io_read(filename, io_info_distribution_);
-  } 
-  else if (phi_nop()){
-      /* 
-       * Provides same initial conditions for rho/phi regardless of the
-       * decomposition. 
-       */
-      
-      /* Initialise lattice with constant density */
-      /* Initialise phi with initial value +- noise */
+	  /* For computation with single fluid and no noise */
+	  /* Only set values if within local box */
+	  if((i>offset[X]) && (i<=offset[X] + N[X]) &&
+	     (j>offset[Y]) && (j<=offset[Y] + N[Y]) &&
+	     (k>offset[Z]) && (k<=offset[Z] + N[Z]))
+	    {
+	      ind = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
 
-      for(i=1; i<=N_total(X); i++)
-	for(j=1; j<=N_total(Y); j++)
-	  for(k=1; k<=N_total(Z); k++) {
-
-	    phi = phi0 + noise0*(ran_serial_uniform() - 0.5);
-
-	    /* For computation with single fluid and no noise */
-	    /* Only set values if within local box */
-	    if((i>offset[X]) && (i<=offset[X] + N[X]) &&
-	       (j>offset[Y]) && (j<=offset[Y] + N[Y]) &&
-	       (k>offset[Z]) && (k<=offset[Z] + N[Z]))
-	      {
-		ind = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
-
-		phi_lb_coupler_phi_set(ind, phi);
-	      }
-	  }
+	      phi_lb_coupler_phi_set(ind, phi);
+	    }
+	}
   }
 
   if (phi_nop()) {
@@ -188,43 +139,4 @@ void MODEL_init( void ) {
   /* blue_phase_O8M_init(-0.2);*/
   /* blue_phase_O2_init(0.3);*/
 
-  /* I/O old COM_init stuff */
-  strcpy(output_config, "config.out");
-
-  RUN_get_string_parameter("input_config", input_config, 256);
-  RUN_get_string_parameter("output_config", output_config, 256);
-
-
-}
-
-/*****************************************************************************
- *
- *  get_output_config_filename
- *
- *  Return conifguration file name stub for time "step"
- *
- *****************************************************************************/
-
-void get_output_config_filename(char * stub, const int step) {
-
-  sprintf(stub, "%s%8.8d", output_config, step);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  get_input_config_filename
- *
- *  Return configuration file name (where for historical reasons,
- *  input_config holds the whole name). "step is ignored.
- *
- *****************************************************************************/
-
-void get_input_config_filename(char * stub, const int step) {
-
-  /* But use this... */
-  sprintf(stub, "%s", input_config);
-
-  return;
 }
