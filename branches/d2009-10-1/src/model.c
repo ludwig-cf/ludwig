@@ -9,7 +9,7 @@
  *
  *  The LB model is either D2Q9, D3Q15 or D3Q19, as included in model.h.
  *
- *  $Id: model.c,v 1.17.4.10 2010-07-07 10:44:38 kevin Exp $
+ *  $Id: model.c,v 1.17.4.11 2010-08-04 17:49:17 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -25,7 +25,6 @@
 #include <string.h>
 
 #include "pe.h"
-#include "runtime.h"
 #include "coords.h"
 #include "io_harness.h"
 #include "model.h"
@@ -33,12 +32,12 @@
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
 
-struct io_info_t * io_info_distribution_; 
 double * f_;
 
 static int ndist_ = 1;
 static int nsite_ = 0;
 static int initialised_ = 0;
+static struct io_info_t * io_info_distribution_; 
 
 static MPI_Datatype plane_xy_full_;
 static MPI_Datatype plane_xz_full_;
@@ -54,7 +53,6 @@ static MPI_Datatype site_x_[2];
 static MPI_Datatype site_y_[2];
 static MPI_Datatype site_z_[2];
 
-static void distribution_io_info_init(void);
 static void distribution_mpi_init(void);
 static void distribution_set_types(const int, MPI_Datatype *);
 static void distribution_set_blocks(const int, int *, const int, const int *);
@@ -65,7 +63,7 @@ static int distributions_write(FILE *, const int, const int, const int);
 
 /***************************************************************************
  *
- *  init_site
+ *  distribution_init
  *
  *  Irrespective of the value of nhalo associated with coords.c,
  *  we only ever at the moment pass one plane worth of distribution
@@ -73,7 +71,7 @@ static int distributions_write(FILE *, const int, const int, const int);
  *
  ***************************************************************************/
  
-void init_site() {
+void distribution_init(void) {
 
   int nlocal[3];
   int nx, ny, nz;
@@ -116,7 +114,6 @@ void init_site() {
   MPI_Type_commit(&plane_yz_full_);
 
   distribution_mpi_init();
-  distribution_io_info_init();
   initialised_ = 1;
 
   distribution_halo_set_complete();
@@ -361,17 +358,17 @@ static void distribution_set_displacements(const int ndisp,
 
 /*****************************************************************************
  *
- *  finish_site
+ *  distribution_finish
  *
  *  Clean up.
  *
  *****************************************************************************/
 
-void finish_site() {
+void distribution_finish(void) {
 
   int n;
 
-  io_info_destroy(io_info_distribution_);
+  if (io_info_distribution_) io_info_destroy(io_info_distribution_);
   free(f_);
 
   MPI_Type_free(&plane_xy_full_);
@@ -398,26 +395,16 @@ void finish_site() {
 
 /*****************************************************************************
  *
- *  distribution_io_info_init
- *
- *  Initialise the io_info struct for the distributions.
+ *  distribution_io_info_set
  *
  *****************************************************************************/
 
-static void distribution_io_info_init() {
+void distribution_io_info_set(struct io_info_t * io_info) {
 
-  int n;
-  int io_grid[3];
   char string[FILENAME_MAX];
 
-  n = RUN_get_int_parameter_vector("io_grid_distribution", io_grid);
-
-  if (n == 1) {
-    io_info_distribution_ = io_info_create_with_grid(io_grid);
-  }
-  else {
-    io_info_distribution_ = io_info_create();
-  }
+  assert(io_info);
+  io_info_distribution_ = io_info;
 
   sprintf(string, "%1d x Distribution: d%dq%d", ndist_, NDIM, NVEL);
 
@@ -426,9 +413,18 @@ static void distribution_io_info_init() {
   io_info_set_write(io_info_distribution_, distributions_write);
   io_info_set_bytesize(io_info_distribution_, ndist_*NVEL*sizeof(double));
 
-  io_write_metadata("config", io_info_distribution_);
-
   return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_io_info
+ *
+ *****************************************************************************/
+
+struct io_info_t * distribution_io_info(void) {
+
+  return io_info_distribution_;
 }
 
 /*****************************************************************************
@@ -695,7 +691,6 @@ void distribution_halo_set_reduced(void) {
 
 int distribution_ndist(void) {
 
-  assert(initialised_);
   return ndist_;
 }
 

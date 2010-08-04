@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.14.4.8 2010-07-07 10:44:38 kevin Exp $
+ *  $Id: model.h,v 1.14.4.9 2010-08-04 17:49:17 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,10 +28,9 @@ enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
 extern const double cs2;
 extern const double rcs2;
-extern struct io_info_t * io_info_distribution_;
 
-void   init_site(void);
-void   finish_site(void);
+void   distribution_init(void);
+void   distribution_finish(void);
 void   distribution_halo(void);
 
 int    distribution_ndist(void);
@@ -48,5 +47,8 @@ void   distribution_get_stress_at_site(int index, double s[3][3]);
 void   distribution_halo_set_complete(void);
 void   distribution_halo_set_reduced(void);
 void   distribution_init_f(void);
+
+struct io_info_t * distribution_io_info(void);
+void   distribution_io_info_set(struct io_info_t * io_info);
 
 #endif
