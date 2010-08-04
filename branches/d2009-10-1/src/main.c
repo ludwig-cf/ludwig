@@ -49,6 +49,7 @@
 #include "colloids_Q_tensor.h"
 
 #include "advection_rt.h"
+#include "distribution_rt.h"
 #include "gradient_rt.h"
 
 #include "stats_colloid.h"
@@ -79,10 +80,7 @@ void ludwig_rt(void) {
   phi_update_run_time();
   advection_run_time();
 
-  /* These together for the time being. */
   coords_run_time();
-  coords_init();
-  coords_info();
 
   init_control();
 
@@ -92,6 +90,7 @@ void ludwig_rt(void) {
   RAND_init_fluctuations();
   le_init();
 
+  distribution_run_time();
   MODEL_init();
   site_map_init();
   wall_init();
@@ -123,6 +122,14 @@ void ludwig_init(void) {
     if (n != 0) model_le_init_shear_profile();
   }
   else {
+    /* Distributions */
+
+    sprintf(filename, "dist-%8.8d", get_step());
+    info("Re-starting simulation at step %d with data read from "
+	 "config\nfile(s) %s\n", get_step(), filename);
+
+    io_read(filename, distribution_io_info());
+
     if (phi_is_finite_difference()) {
       sprintf(filename,"phi-%6.6d", get_step());
       info("Reading phi state from %s\n", filename);
@@ -239,8 +246,8 @@ int main( int argc, char **argv ) {
     /* Configuration dump */
 
     if (is_config_step()) {
-      get_output_config_filename(filename, step);
-      io_write(filename, io_info_distribution_);
+      sprintf(filename, "dist-%8.8d", step);
+      io_write(filename, distribution_io_info());
       sprintf(filename, "%s%6.6d", "config.cds", step);
       colloid_io_write(filename);
     }
@@ -295,8 +302,8 @@ int main( int argc, char **argv ) {
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
-    get_output_config_filename(filename, step);
-    io_write(filename, io_info_distribution_);
+    sprintf(filename, "dist-%8.8d", step);
+    io_write(filename, distribution_io_info());
     sprintf(filename, "%s%6.6d", "config.cds", step);
     colloid_io_write(filename);
     sprintf(filename,"phi-%6.6d",step);
