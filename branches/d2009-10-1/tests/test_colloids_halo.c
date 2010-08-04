@@ -12,6 +12,8 @@
  *
  *****************************************************************************/
 
+#include <math.h>
+
 #include "pe.h"
 #include "coords.h"
 #include "colloids.h"
@@ -107,15 +109,15 @@ void test_colloids_halo111(void) {
   test_assert(colloids_nalloc() == 2);
 
   pc = colloids_cell_list(Ncell(X)+1, 1, 1);
-  test_assert(pc);
-  r1[X] = r0[X] + 1.0*N_total(X)/Ncell(X);
-  if (cart_coords(X) == 0) r1[X] = r0[X] + 1.0*N_total(X);
+  test_assert(pc != NULL);
+  r1[X] = r0[X] + 1.0*N_total(X)/cart_size(X);
   r1[Y] = r0[Y];
   r1[Z] = r0[Z];
+
   test_position(r1, pc->s.r);
 
-
   colloids_halo_send_count(Y, ncount);
+
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 2);
 
@@ -130,10 +132,9 @@ void test_colloids_halo111(void) {
   test_assert(colloids_nalloc() == 4);
 
   pc = colloids_cell_list(1, Ncell(Y)+1, 1);
-  test_assert(pc);
+  test_assert(pc != NULL);
   r1[X] = r0[X];
-  r1[Y] = r0[Y] + 1.0*N_total(Y)/Ncell(X);
-  if (cart_coords(Y) == 0) r1[Y] = r0[Y] + 1.0*N_total(Y);
+  r1[Y] = r0[Y] + 1.0*N_total(Y)/cart_size(Y);
   r1[Z] = r0[Z];
   test_position(r1, pc->s.r);
 
@@ -205,9 +206,8 @@ void test_colloids_halo211(void) {
   test_assert(colloids_nalloc() == 2);
 
   pc = colloids_cell_list(0, 1, 1);
-  test_assert(pc);
-  r1[X] = r0[X] - 1.0*N_total(X)/Ncell(X);
-  if (cart_coords(X) == cart_size(X) - 1) r1[X] = r0[X] - 1.0*N_total(X);
+  test_assert(pc != NULL);
+  r1[X] = r0[X] - 1.0*N_total(X)/cart_size(X);
   r1[Y] = r0[Y];
   r1[Z] = r0[Z];
   test_position(r1, pc->s.r);
@@ -227,10 +227,9 @@ void test_colloids_halo211(void) {
   test_assert(colloids_nalloc() == 4);
 
   pc = colloids_cell_list(2, Ncell(Y)+1, 1);
-  test_assert(pc);
+  test_assert(pc != NULL);
   r1[X] = r0[X];
-  r1[Y] = r0[Y] + 1.0*N_total(Y)/Ncell(X);
-  if (cart_coords(Y) == 0) r1[Y] = r0[Y] + 1.0*N_total(Y);
+  r1[Y] = r0[Y] + 1.0*N_total(Y)/cart_size(Y);
   r1[Z] = r0[Z];
   test_position(r1, pc->s.r);
 
@@ -240,7 +239,7 @@ void test_colloids_halo211(void) {
 
   colloids_halo_dim(Z);
 
-  /* We should end up with eight in total */
+  /* We should end up with eight in total (locally) */
 
   test_assert(colloids_cell_count(2, 1, Ncell(Z)+1) == 1);
   test_assert(colloids_cell_count(0, 1, Ncell(Z)+1) == 1);
