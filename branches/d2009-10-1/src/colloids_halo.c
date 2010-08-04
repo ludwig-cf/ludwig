@@ -4,7 +4,7 @@
  *
  *  Halo exchange of colloid state information.
  *
- *  $Id: colloids_halo.c,v 1.1.2.3 2010-07-13 18:20:53 kevin Exp $
+ *  $Id: colloids_halo.c,v 1.1.2.4 2010-08-04 14:27:45 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -111,7 +110,7 @@ void colloids_halo_dim(int dim) {
   /* Wait for the receives, unload the recv buffer, and finish */
 
   MPI_Waitall(2, request_recv, status);
-  colloids_halo_unload(nrecv[FORWARD] + nrecv[BACKWARD]);
+  colloids_halo_unload(n);
   free(recv_);
 
   MPI_Waitall(2, request_send, status);
@@ -281,9 +280,10 @@ static void colloids_halo_unload(int nrecv) {
     }
 
     if (exists == 0) {
-      pc = colloid_allocate();
+      pc = colloid_add(recv_[n].index, recv_[n].r);
+      assert(pc);
       pc->s = recv_[n];
-      colloids_cell_insert_colloid(pc);
+      pc->s.rebuild = 1;
     }
   }
 
@@ -303,6 +303,9 @@ static void colloids_halo_irecv(int dim, int nrecv[2], MPI_Request req[2]) {
   int pback;
 
   MPI_Comm comm;
+
+  req[0] = MPI_REQUEST_NULL;
+  req[1] = MPI_REQUEST_NULL;
 
   if (cart_size(dim) > 1) {
     comm  = cart_comm();
@@ -338,6 +341,9 @@ static void colloids_halo_isend(int dim, int nsend[2], MPI_Request req[2]) {
   if (cart_size(dim) == 1) {
     n = nsend[FORWARD] + nsend[BACKWARD];
     memcpy(recv_, send_, n*sizeof(colloid_state_t));
+
+    req[0] = MPI_REQUEST_NULL;
+    req[1] = MPI_REQUEST_NULL;
   }
   else {
 
