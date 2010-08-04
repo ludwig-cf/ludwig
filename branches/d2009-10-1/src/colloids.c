@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.11 2010-07-13 18:18:53 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.12 2010-08-04 14:26:43 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -303,16 +303,17 @@ double colloids_lcell(const int dim) {
  *  colloid_allocate
  *
  *  Allocate space for a colloid structure and return a pointer to
- *  it (or fail gracefully).
+ *  it (or fail gracefully). Use calloc to ensure everything is
+ *  zero and pointers are NULL.
  *
  *****************************************************************************/
 
-Colloid * colloid_allocate(void) {
+colloid_t * colloid_allocate(void) {
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
-  p_colloid = (Colloid *) malloc(sizeof(Colloid));
-  if (p_colloid == (Colloid *) NULL) fatal("malloc(Colloid) failed\n");
+  p_colloid = (colloid_t *) calloc(1, sizeof(colloid_t));
+  if (p_colloid == (colloid_t *) NULL) fatal("calloc(colloid_t) failed\n");
 
   nalloc_++;
 
