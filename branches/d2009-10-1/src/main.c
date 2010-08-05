@@ -50,6 +50,7 @@
 
 #include "advection_rt.h"
 #include "distribution_rt.h"
+#include "collision_rt.h"
 #include "gradient_rt.h"
 
 #include "stats_colloid.h"
@@ -84,13 +85,13 @@ void ludwig_rt(void) {
 
   init_control();
 
-
-  ran_init();
   init_physics();
-  RAND_init_fluctuations();
   le_init();
 
   distribution_run_time();
+  collision_run_time();
+
+  ran_init();
   MODEL_init();
   site_map_init();
   wall_init();
@@ -218,8 +219,12 @@ int main( int argc, char **argv ) {
       }
     }
 
+    TIMER_start(TIMER_COLLIDE);
     collide();
+    TIMER_stop(TIMER_COLLIDE);
+
     model_le_apply_boundary_conditions();
+
     TIMER_start(TIMER_HALO_LATTICE);
     distribution_halo();
     TIMER_stop(TIMER_HALO_LATTICE);

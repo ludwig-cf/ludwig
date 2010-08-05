@@ -70,7 +70,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      brownian.o \
      cio.o cmd.o ccomms.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
-     bbl.o build.o communicate.o \
+     bbl.o build.o collision_rt.o communicate.o \
      coords.o coords_rt.o \
      control.o distribution_rt.o \
      eigen3.o ewald.o \
