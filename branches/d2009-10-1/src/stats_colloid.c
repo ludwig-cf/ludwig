@@ -4,7 +4,7 @@
  *
  *  Some useful quantities concerning colloids.
  *
- *  $Id: stats_colloid.c,v 1.1.2.3 2010-07-07 10:48:02 kevin Exp $
+ *  $Id: stats_colloid.c,v 1.1.2.4 2010-08-05 15:29:37 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -47,29 +47,35 @@ void stats_colloid_momentum(double g[3]) {
   glocal[Y] = 0.0;
   glocal[Z] = 0.0;
 
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+  if (colloid_ntotal() == 0) {
+    /* do nothing */
+  }
+  else {
 
-	p_colloid = colloids_cell_list(ic, jc, kc);
+    for (ic = 1; ic <= Ncell(X); ic++) {
+      for (jc = 1; jc <= Ncell(Y); jc++) {
+	for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	while (p_colloid) {
-	  mass = 4.0*pi_*pow(p_colloid->s.a0, 3)/3.0;
+	  p_colloid = colloids_cell_list(ic, jc, kc);
 
-	  glocal[X] += mass*p_colloid->s.v[X];
-	  glocal[Y] += mass*p_colloid->s.v[Y];
-	  glocal[Z] += mass*p_colloid->s.v[Z];
+	  while (p_colloid) {
+	    mass = 4.0*pi_*pow(p_colloid->s.a0, 3)/3.0;
 
-	  /* Next colloid */
-	  p_colloid = p_colloid->next;
+	    glocal[X] += mass*p_colloid->s.v[X];
+	    glocal[Y] += mass*p_colloid->s.v[Y];
+	    glocal[Z] += mass*p_colloid->s.v[Z];
+
+	    /* Next colloid */
+	    p_colloid = p_colloid->next;
+	  }
+
+	  /* Next cell */
 	}
-
-	/* Next cell */
       }
     }
-  }
 
-  MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+  }
 
   return;
 }
