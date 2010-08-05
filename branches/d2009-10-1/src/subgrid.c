@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.4.16.4 2010-07-07 10:56:35 kevin Exp $
+ *  $Id: subgrid.c,v 1.4.16.5 2010-08-05 17:22:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,6 +23,7 @@
 #include "coords.h"
 #include "timer.h"
 #include "physics.h"
+#include "interaction.h"
 #include "lattice.h"
 #include "colloids.h"
 #include "ccomms.h"
@@ -58,7 +59,7 @@ void subgrid_force_from_particles() {
   coords_nlocal(N);
   coords_nlocal_offset(offset);
 
-  get_gravity(g);
+  colloid_gravity(g);
 
   /* Loop through all cells (including the halo cells) */
 
@@ -151,7 +152,7 @@ void subgrid_update() {
   /* Loop through all cells (including the halo cells) */
 
   eta = get_eta_shear();
-  get_gravity(g);
+  colloid_gravity(g);
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {

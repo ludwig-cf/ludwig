@@ -4,10 +4,13 @@
  *
  *  Basic physical quantities for fluid.
  *
- *  $Id: physics.c,v 1.3 2008-08-24 17:42:54 kevin Exp $
+ *  $Id: physics.c,v 1.3.16.1 2010-08-05 17:22:27 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,12 +21,12 @@
 
 static double eta_shear = 1.0/6.0;   /* Shear viscosity */
 static double eta_bulk  = 1.0/6.0;   /* Bulk viscosity */
-static double kT_ = 0.0;             /* Isothermal "temperature" */
+static double kt_ = 0.0;             /* Isothermal "temperature" */
 
 static double rho0 = 1.0;            /* Average simulation density */
 static double phi0 = 0.0;            /* Average order parameter    */
 
-static double g_[3] = {0.0, 0.0, 0.0}; /* External gravitational force */
+static double bodyforce_[3] = {0.0, 0.0, 0.0};
 
 /*****************************************************************************
  *
@@ -36,6 +39,7 @@ static double g_[3] = {0.0, 0.0, 0.0}; /* External gravitational force */
 void init_physics() {
 
   int p;
+  double vector[3];
 
   p = RUN_get_double_parameter("viscosity", &eta_shear);
   eta_bulk = eta_shear;
@@ -44,10 +48,25 @@ void init_physics() {
   p = RUN_get_double_parameter("phi0", &phi0);
   p = RUN_get_double_parameter("rho0", &rho0);
 
-  info("\nExternal gravitational force\n");
-  p = RUN_get_double_parameter_vector("colloid_gravity", g_);
-  info("[%s] gravity = %g %g %g\n", (p == 0) ? "Default" : "User   ",
-       g_[0], g_[1], g_[2]);
+  p = RUN_get_double_parameter_vector("force", vector);
+
+  if (p != 0) {
+    bodyforce_[0] = vector[0];
+    bodyforce_[1] = vector[1];
+    bodyforce_[2] = vector[2];
+  }
+
+  p = RUN_get_double_parameter("temperature", &kt_);
+
+  info("\n");
+  info("Fluid properties\n");
+  info("----------------\n");
+  info("Density:           %12.5e\n", rho0);
+  info("Shear viscosity    %12.5e\n", eta_shear);
+  info("Bulk viscosity     %12.5e\n", eta_bulk);
+  info("Temperature        %12.5e\n", kt_);
+  info("Body force density %12.5e %12.5e %12.5e\n", 
+       bodyforce_[0], bodyforce_[1], bodyforce_[2]); 
 
   return;
 }
@@ -87,7 +106,7 @@ double get_eta_bulk() {
 
 /*****************************************************************************
  *
- *  get_kT
+ *  get_kt
  *
  *  Access function for the isothermal temperature.
  *
@@ -95,21 +114,7 @@ double get_eta_bulk() {
 
 double get_kT() {
 
-  return kT_;
-}
-
-/*****************************************************************************
- *
- *  set_kT
- *
- *****************************************************************************/
-
-void set_kT(const double t) {
-
-  if (t < 0.0) fatal("Trying to set kT < 0 (=%f)\n"); 
-  kT_ = t;
-
-  return;
+  return kt_;
 }
 
 /*****************************************************************************
@@ -140,15 +145,41 @@ double get_phi0() {
 
 /*****************************************************************************
  *
- *  get_gravity
+ *  fluid_body_force
  *
  *****************************************************************************/
 
-void get_gravity(double gravity[3]) {
+void fluid_body_force(double f[3]) {
 
-  int i;
-
-  for (i = 0; i < 3; i++) gravity[i] = g_[i];
+  f[0] = bodyforce_[0];
+  f[1] = bodyforce_[1];
+  f[2] = bodyforce_[2];
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  fluid_body_force_set
+ *
+ *****************************************************************************/
+
+void fluid_body_force_set(const double f[3]) {
+
+  bodyforce_[0] = f[0];
+  bodyforce_[1] = f[1];
+  bodyforce_[2] = f[2];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  fluid_kt
+ *
+ *****************************************************************************/
+
+double fluid_kt(void) {
+
+  return kt_;
 }

@@ -2,25 +2,31 @@
  *
  *  physics.h
  *
- *  $Id: physics.h,v 1.3 2008-08-24 17:42:54 kevin Exp $
+ *  $Id: physics.h,v 1.3.16.1 2010-08-05 17:22:27 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _PHYSICS_H
-#define _PHYSICS_H
+#ifndef PHYSICS_H
+#define PHYSICS_H
 
 void   init_physics(void);
 
 double get_eta_shear(void);
 double get_eta_bulk(void);
 double get_kT(void);
-void   set_kT(const double);
 double get_rho0(void);
 double get_phi0(void);
-void   get_gravity(double []);
 
 void set_eta(const double);
+
+double fluid_kt(void);
+void   fluid_body_force(double f[3]);
+void   fluid_body_force_set(const double f[3]);
 
 #endif

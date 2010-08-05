@@ -6,13 +6,13 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.6 2010-07-07 11:19:06 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.7 2010-08-05 17:22:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -56,6 +56,9 @@ static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
 static void    coll_position_update(void);
 static double  coll_max_speed(void);
+
+static int    gravity_ = 0;            /* Switch */
+static double g_[3] = {0.0, 0.0, 0.0}; /* External gravitational force */
 
 struct lubrication_struct {
   int corrections_on;
@@ -201,6 +204,18 @@ void COLL_init() {
        ncell[X], ncell[Y], ncell[Z]);
   info("[       ] Actual local cell width      [%.2f,%.2f,%.2f]\n",
        colloids_lcell(X), colloids_lcell(Y), colloids_lcell(Z));
+
+  info("\nExternal gravitational force\n");
+  n = RUN_get_double_parameter_vector("colloid_gravity", g_);
+
+  if (n != 0) {
+    if (g_[0] != 0.0 || g_[1] != 0.0 || g_[2] != 0.0) {
+      gravity_ = 1;
+      info("Gravity is present\n");
+    }
+  }
+  info("[%s] gravity = %g %g %g\n", (n == 0) ? "Default" : "User   ",
+       g_[0], g_[1], g_[2]);
 
   if (get_step() == 0 && ifrom_file == 0) {
 
@@ -497,24 +512,31 @@ void COLL_zero_forces() {
  *  match, exactly, the force on the colloids and so depends on the
  *  current number of fluid sites globally (fluid volume).
  *
- *  Issues
+ *  Note the volume calculation is a collective communication.
+ *
+ *  Todo: avoid this collective communication if there is no gravity!
  *
  *****************************************************************************/
 
 void COLL_set_fluid_gravity() {
 
-  double volume;
-  double g[3];
-  extern double siteforce[3];
+  int ia, nc;
+  double rvolume;
+  double f[3];
 
-  volume = site_map_volume(FLUID);
-  get_gravity(g);
+  nc = colloid_ntotal();
 
-  /* Size of force per fluid node */
+  if (nc > 0) {
 
-  siteforce[X] = -colloid_ntotal()*g[X]/volume;
-  siteforce[Y] = -colloid_ntotal()*g[Y]/volume;
-  siteforce[Z] = -colloid_ntotal()*g[Z]/volume;
+    rvolume = 1.0/site_map_volume(FLUID);
+
+    /* Force per fluid node to balance is... */
+
+    for (ia = 0; ia < 3; ia++) {
+      f[ia] = -g_[ia]*rvolume*nc;
+    }
+    fluid_body_force_set(f);
+  }
 
   return;
 }
@@ -544,11 +566,9 @@ double COLL_interactions() {
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
   double hmin = L(X);
   double h, fmod;
-  double f[3], g[3];
+  double f[3];
 
   double r12[3];
-
-  get_gravity(g);
 
   epotential_ = 0.0;
 
@@ -564,9 +584,9 @@ double COLL_interactions() {
 
 	  /* External gravity */
 
-	  p_c1->force[X] += g[X];
-	  p_c1->force[Y] += g[Y];
-	  p_c1->force[Z] += g[Z];
+	  p_c1->force[X] += g_[X];
+	  p_c1->force[Y] += g_[Y];
+	  p_c1->force[Z] += g_[Z];
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
@@ -855,4 +875,19 @@ double coll_max_speed() {
   vmax = sqrt(vmax);
 
   return vmax;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_gravity
+ *
+ *****************************************************************************/
+
+void colloid_gravity(double f[3]) {
+
+  f[X] = g_[X];
+  f[Y] = g_[Y];
+  f[Z] = g_[Z];
+
+  return;
 }

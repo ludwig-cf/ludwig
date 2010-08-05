@@ -2,7 +2,7 @@
  *
  *  distribution_rt.c
  *
- *  $Id: distribution_rt.c,v 1.1.2.1 2010-08-04 17:48:39 kevin Exp $
+ *  $Id: distribution_rt.c,v 1.1.2.2 2010-08-05 17:22:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -57,7 +57,6 @@ void distribution_run_time(void) {
   info("Input format:     binary\n");
   info("Output format:    binary\n");
   info("I/O grid:         %d %d %d\n", io_grid[0], io_grid[1], io_grid[2]);
-  info("\n");
 
   distribution_init();
 

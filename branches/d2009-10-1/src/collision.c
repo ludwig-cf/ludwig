@@ -4,7 +4,10 @@
  *
  *  Collision stage routines and associated data.
  *
- *  $Id: collision.c,v 1.21.4.11 2010-07-07 11:05:49 kevin Exp $
+ *  Isothermal fluctuations following Adhikari et al., Europhys. Lett
+ *  (2005).
+ *
+ *  $Id: collision.c,v 1.21.4.12 2010-08-05 17:22:27 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,40 +20,33 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
-#include <string.h>
 
 #include "pe.h"
 #include "ran.h"
 #include "util.h"
-#include "timer.h"
 #include "coords.h"
 #include "physics.h"
-#include "runtime.h"
 #include "lattice.h"
+#include "model.h"
+#include "site_map.h"
+#include "collision.h"
 
 #include "phi.h"
 #include "free_energy.h"
 #include "phi_cahn_hilliard.h"
 
-#include "model.h"
-#include "site_map.h"
-#include "collision.h"
+static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
+static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
-double    siteforce[3];
+static double rtau_shear;       /* Inverse relaxation time for shear modes */
+static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
+static double rtau_ghost = 1.0; /* Inverse relaxation time for ghost modes */
+static double var_shear;        /* Variance for shear mode fluctuations */
+static double var_bulk;         /* Variance for bulk mode fluctuations */
+static double noise_var[NVEL];  /* Noise variances */
 
-static int    nmodes_ = NVEL;  /* Modes to use in collsion stage */
-
-static double rtau_shear;      /* Inverse relaxation time for shear modes */
-static double rtau_bulk;       /* Inverse relaxation time for bulk modes */
-static double rtau_ghost = 1.0;/* Inverse relaxation time for ghost modes */
-static double var_shear;       /* Variance for shear mode fluctuations */
-static double var_bulk;        /* Variance for bulk mode fluctuations */
-
-static int    isothermal_fluctuations_ = 0; /* Flag for noise. */
-static double noise_var[NVEL];              /* Noise variances */
-
-static void MODEL_collide_multirelaxation(void);
-static void MODEL_collide_binary_lb(void);
+static void collision_multirelaxation(void);
+static void collision_binary_lb(void);
 
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
 static void fluctuations_on(double shat[3][3], double ghat[NVEL]);
@@ -68,20 +64,17 @@ void collide() {
   int ndist;
 
   ndist = distribution_ndist();
+  collision_relaxation_times_set();
 
-  TIMER_start(TIMER_COLLIDE);
-
-  if (ndist == 1) MODEL_collide_multirelaxation();
-  if (ndist == 2) MODEL_collide_binary_lb();
- 
-  TIMER_stop(TIMER_COLLIDE);
+  if (ndist == 1) collision_multirelaxation();
+  if (ndist == 2) collision_binary_lb();
 
   return;
 }
 
 /*****************************************************************************
  *
- *  MODEL_collide_multirelaxation
+ *  collision_multirelaxation
  *
  *  Collision with (potentially) different relaxation times for each
  *  different mode.
@@ -98,7 +91,7 @@ void collide() {
  *
  *****************************************************************************/
 
-void MODEL_collide_multirelaxation() {
+void collision_multirelaxation() {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
@@ -119,12 +112,14 @@ void MODEL_collide_multirelaxation() {
   double    tr_s, tr_seq;
 
   double    force_local[3];
+  double    force_global[3];
 
   extern double * f_;
 
   ndist = distribution_ndist();
   coords_nlocal(N);
   fluctuations_off(shat, ghat);
+  fluid_body_force(force_global);
 
   rdim = 1.0/NDIM;
 
@@ -176,7 +171,7 @@ void MODEL_collide_multirelaxation() {
 	hydrodynamics_get_force_local(index, force_local);
 
 	for (ia = 0; ia < NDIM; ia++) {
-	  force[ia] = (siteforce[ia] + force_local[ia]);
+	  force[ia] = (force_global[ia] + force_local[ia]);
 	  u[ia] = rrho*(u[ia] + 0.5*force[ia]);
 	}
 	hydrodynamics_set_velocity(index, u);
@@ -258,7 +253,7 @@ void MODEL_collide_multirelaxation() {
 
 /*****************************************************************************
  *
- *  MODEL_collide_binary_lb
+ *  collision_binary_lb
  *
  *  Binary LB collision stage (here we are progressing toward
  *  decoupled version).
@@ -292,7 +287,7 @@ void MODEL_collide_multirelaxation() {
  *
  *****************************************************************************/
 
-void MODEL_collide_binary_lb() {
+void collision_binary_lb() {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
@@ -312,6 +307,8 @@ void MODEL_collide_binary_lb() {
   double    tr_s, tr_seq;
 
   double    force_local[3];
+  double    force_global[3];
+
   const double   r3     = (1.0/3.0);
 
 
@@ -332,6 +329,7 @@ void MODEL_collide_binary_lb() {
 
   ndist = distribution_ndist();
   coords_nlocal(N);
+  fluid_body_force(force_global);
 
   chemical_potential = fe_chemical_potential_function();
   chemical_stress = fe_chemical_stress_function();
@@ -378,7 +376,7 @@ void MODEL_collide_binary_lb() {
 	hydrodynamics_get_force_local(index, force_local);
 
 	for (i = 0; i < 3; i++) {
-	  force[i] = (siteforce[i] + force_local[i]);
+	  force[i] = (force_global[i] + force_local[i]);
 	  u[i] = rrho*(u[i] + 0.5*force[i]);  
 	}
 	hydrodynamics_set_velocity(index, u);
@@ -507,126 +505,43 @@ void MODEL_collide_binary_lb() {
   return;
 }
 
-/****************************************************************************
+/*****************************************************************************
  *
- *  RAND_init_fluctuations
+ *  fluctuations_off
  *
- *  Set variances for fluctuating lattice Boltzmann.
- *  Issues
- *    The 'physical' temperature is taken from the input
- *    and used throughout the code.
- *    Note there is an extra normalisation in the lattice fluctuations
- *    which would otherwise give effective kT = cs2
+ *  Return zero fluctuations for stress (shat) and ghost (ghat) modes.
  *
- *    IMPORTANT: Note that the noise generation is not decomposition-
- *               independent when run in parallel.
- *
- ****************************************************************************/
+ *****************************************************************************/
 
-void RAND_init_fluctuations() {
+static void fluctuations_off(double shat[3][3], double ghat[NVEL]) {
 
-  int  p;
-  char tmp[128];
-  double tau_s, tau_b, tau_g, kt;
+  int ia, ib;
 
-  p = RUN_get_string_parameter("isothermal_fluctuations", tmp, 128);
-  if (strcmp(tmp, "on") == 0) isothermal_fluctuations_ = 1;
-
-  p = RUN_get_double_parameter("temperature", &kt);
-  set_kT(kt);
-  kt = kt*rcs2; /* Without normalisation kT = cs^2 */
-
-  /* Initialise the relaxation times */
-
-  rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear());
-  rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk());
-
-  tau_s = 1.0/rtau_shear;
-  tau_b = 1.0/rtau_bulk;
-
-  /* Initialise the stress variances */
-
-  var_bulk =
-    sqrt(kt)*sqrt(2.0/9.0)*sqrt((tau_b + tau_b - 1.0)/(tau_b*tau_b));
-  var_shear =
-    sqrt(kt)*sqrt(1.0/9.0)*sqrt((tau_s + tau_s - 1.0)/(tau_s*tau_s));
-
-  /* Collision global force on fluid defaults to zero. */
-
-  siteforce[X] = 0.0;
-  siteforce[Y] = 0.0;
-  siteforce[Z] = 0.0;
-
-  p = RUN_get_double_parameter_vector("force", siteforce);
-
-  /* Information */
-
-  info("\nModel physics:\n");
-  info("Shear viscosity: %f\n", get_eta_shear());
-  info("Relaxation time: %f\n", tau_s);
-  info("Bulk viscosity : %f\n", get_eta_bulk());
-  info("Relaxation time: %f\n", tau_b);
-  info("Isothermal kT:   %f\n", get_kT());
-
-
-  /* Ghost modes */
-
-  p = RUN_get_string_parameter("ghost_modes", tmp, 128);
-  if (strcmp(tmp, "off") == 0) nmodes_ = NHYDRO;
-
-  info("\nGhost modes\n");
-  if (nmodes_ == NHYDRO) {
-    info("[User   ] Ghost modes have been switched off.\n");
-  }
-  else {
-    info("[Default] All modes (hydrodynamic and ghost) are active\n");
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      shat[ia][ib] = 0.0;
+    }
   }
 
-  /* Ginzburg / d'Humieres */
-
-  p = RUN_get_string_parameter("ginzburg-dhumieres", tmp, 128);
-  if (p == 1 && strcmp(tmp, "off") == 0) p = 0;
-
-  if (p == 0) {
-    tau_g = 1.0/rtau_ghost;
-    info("[Default] Ghost mode relaxation time: %f\n", tau_g);
+  for (ia = NHYDRO; ia < NVEL; ia++) {
+    ghat[ia] = 0.0;
   }
-  else {
-    /* The leading factor here is a fudge-factor which must be in
-     * range 8-12 */
-    rtau_ghost = 12.0*(2.0 - rtau_shear)/(8.0 - rtau_shear);
-    tau_g = 1.0/rtau_ghost;
-    info("[User   ] Ginzburg-D'Humieres relaxation time requested: %f\n",
-	 tau_g);
-  }
-
-  /* Noise variances */
-
-  for (p = NHYDRO; p < NVEL; p++) {
-    noise_var[p] = sqrt(kt/norm_[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
-  }
-
-  info("\n");
 
   return;
 }
 
-
 /*****************************************************************************
  *
- *  get_fluctuations_stress
+ *  fluctuations_on
  *
- *  Compute the random stress maxtrix with appropriate variances.
- *  This should be called once per active lattice site to set
- *  shat[][], which goes into the reprojection of the distributions.
- *
- *  Isothermal fluctuations following Adhikari et al., Europhys. Lett
- *  (2005).
+ *  Return fluctuations to be added to stress (shat) and ghost (ghat)
+ *  modes.
  *
  *****************************************************************************/
 
-void get_fluctuations_stress(double shat[3][3]) {
+static void fluctuations_on(double shat[3][3], double ghat[NVEL]) {
 
+  int ia;
   double tr;
   const double r3 = (1.0/3.0);
 
@@ -673,49 +588,7 @@ void get_fluctuations_stress(double shat[3][3]) {
   shat[Y][Y] += tr;
   shat[Z][Z] += tr;
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  fluctuations_off
- *
- *  Return zero fluctuations for stress (shat) and ghost (ghat) modes.
- *
- *****************************************************************************/
-
-static void fluctuations_off(double shat[3][3], double ghat[NVEL]) {
-
-  int ia, ib;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      shat[ia][ib] = 0.0;
-    }
-  }
-
-  for (ia = NHYDRO; ia < NVEL; ia++) {
-    ghat[ia] = 0.0;
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  fluctuations_on
- *
- *  Return fluctuations to be added to stress (shat) and ghost (ghat)
- *  modes.
- *
- *****************************************************************************/
-
-static void fluctuations_on(double shat[3][3], double ghat[NVEL]) {
-
-  int ia;
-
-  /* To be inlined. */
-  get_fluctuations_stress(shat);
+  /* Ghost modes */
 
   for (ia = NHYDRO; ia < nmodes_; ia++) {
     ghat[ia] = noise_var[ia]*ran_parallel_gaussian();
@@ -788,6 +661,157 @@ void test_isothermal_fluctuations(void) {
   info("[eqipart.] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
   info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z],
        get_kT()*NDIM);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_ghost_modes_on
+ *
+ *****************************************************************************/
+
+void collision_ghost_modes_on(void) {
+
+  nmodes_ = NVEL;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_ghost_modes_off
+ *
+ *****************************************************************************/
+
+void collision_ghost_modes_off(void) {
+
+  nmodes_ = NHYDRO;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_fluctuations_on
+ *
+ *****************************************************************************/
+
+void collision_fluctuations_on(void) {
+
+  isothermal_fluctuations_ = 1;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_fluctuations_off
+ *
+ *****************************************************************************/
+
+void collision_fluctuations_off(void) {
+
+  isothermal_fluctuations_ = 0;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_relaxation_times_set
+ *
+ *  Note there is an extra normalisation in the lattice fluctuations
+ *  which would otherwise give effective kT = cs2
+ *
+ *****************************************************************************/
+
+void collision_relaxation_times_set(void) {
+
+  int p;
+  double kt;
+  double tau_s;
+  double tau_b;
+  double tau_g;
+
+  /* Initialise the relaxation times */
+
+  rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear());
+  rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk());
+
+  if (isothermal_fluctuations_) {
+
+    tau_s = 1.0/rtau_shear;
+    tau_b = 1.0/rtau_bulk;
+
+    /* Initialise the stress variances */
+
+    kt = fluid_kt();
+    kt = kt*rcs2; /* Without normalisation kT = cs^2 */
+
+    var_bulk =
+      sqrt(kt)*sqrt(2.0/9.0)*sqrt((tau_b + tau_b - 1.0)/(tau_b*tau_b));
+    var_shear =
+      sqrt(kt)*sqrt(1.0/9.0)*sqrt((tau_s + tau_s - 1.0)/(tau_s*tau_s));
+
+    /* Noise variances */
+
+    tau_g = 1.0/rtau_ghost;
+
+    for (p = NHYDRO; p < NVEL; p++) {
+      noise_var[p] =
+	sqrt(kt/norm_[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_relaxation_times
+ *
+ *  Return NVEL (inverse) relaxation times. This is really just for
+ *  information, so I've put the bulk viscosity of the diagonal of
+ *  the stress elements and the shear on the off-diagonal.
+ *
+ *****************************************************************************/
+
+void collision_relaxation_times(double * tau) {
+
+  int ia, ib;
+  int mode;
+
+  /* Density and momentum */
+
+  tau[0] = 0.0;
+
+  for (ia = 0; ia < NDIM; ia++) {
+    tau[ia] = 0.0;
+  }
+
+  /* Stress */
+
+  mode = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      if (ia == ib) tau[1 + NDIM + mode++] = rtau_shear;
+      if (ia != ib) tau[1 + NDIM + mode++] = rtau_bulk;
+    }
+  }
+
+  for (ia = 1; ia < NDIM; ia++) {
+    for (ib = 0; ib < ia; ib++) {
+      if (ia == ib) tau[1 + NDIM + mode++] = rtau_shear;
+      if (ia != ib) tau[1 + NDIM + mode++] = rtau_bulk;
+    }
+  }
+
+  /* Ghosts */
+
+  for (ia = NHYDRO; ia < NVEL; ia++) {
+    tau[ia] = rtau_ghost;
+  }
 
   return;
 }
