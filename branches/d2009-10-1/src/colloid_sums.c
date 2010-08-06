@@ -4,7 +4,7 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id: colloid_sums.c,v 1.1.2.1 2010-07-13 18:23:00 kevin Exp $
+ *  $Id: colloid_sums.c,v 1.1.2.2 2010-08-06 17:38:33 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -14,15 +14,51 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "pe.h"
 #include "coords.h"
 #include "colloids.h"
 #include "colloid_sums.h"
 
+static void colloid_sums_count(const int dim, int ncount[2]);
+static void colloid_sums_irecv(int dim, int n[2], int s, MPI_Request req[2]);
+static void colloid_sums_isend(int dim, int n[2], int s, MPI_Request req[2]);
+static void colloid_sums_process(int dim, const int ncount[2]);
+
+/*****************************************************************************
+ *
+ *  Sum / message types
+ *
+ *  1. Structural components related to links: sumw, cbar, rxcbar
+ *     includes deficits from previous time step: dmass, dphi
+ *
+ *  2. Dynamic quanitities required for implicit update:
+ *     external force and torque fex, tex; zero-velocity
+ *     force and torque f0, t0; upper triangle of symmetric
+ *     drag matrix zeta; active squirmer mass correction mactive.
+ *
+ *  3. Active squirmer force and torque corrections: fc0, tc0
+ *
+ *  For each message type, the index is passed as a double
+ *  for simplicity. The following keep track of the different
+ *  messages...
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m1(int, int, int, int);
+static int colloid_sums_m2(int, int, int, int);
+static int colloid_sums_m3(int, int, int, int);
+
+static const int msize_[3] = {10, 35, 7};  /* Message sizes (doubles) */
+static int mtype_;                         /* Current message type */
+static int mload_;                         /* Load / unload flag */
+static int tag_ = 1070;                    /* Message tag */
+
 static double * send_;
 static double * recv_;
-
-static void colloid_sums_count(const int dim, int ncount[2]);
 
 /*****************************************************************************
  *
@@ -30,30 +66,50 @@ static void colloid_sums_count(const int dim, int ncount[2]);
  *
  *****************************************************************************/
 
-void colloid_sums_sim(const int dim) {
+void colloid_sums_dim(const int dim, const int mtype) {
 
+  int n, nsize;
   int ncount[2];
+ 
+  MPI_Request recv_req[2];
+  MPI_Request send_req[2];
+  MPI_Status  status[2];
+
+  assert(mtype >=0 && mtype < 3);
+  mtype_ = mtype;
+  nsize = msize_[mtype];
 
   colloid_sums_count(dim, ncount);
 
-  /* Allocate send and receive buffer, and load */
+  /* Allocate send and receive buffer */
 
   n = ncount[BACKWARD] + ncount[FORWARD];
-  send_ = (double *) malloc(n*sizeof(double));
-  recv_ = (double *) malloc(n*sizeof(double));
-
+  send_ = (double *) malloc(n*nsize*sizeof(double));
+  recv_ = (double *) malloc(n*nsize*sizeof(double));
+ 
   if (send_ == NULL) fatal("malloc(send_) failed\n");
   if (recv_ == NULL) fatal("malloc(recv_) failed\n");
 
   /* Post receives */
 
+  colloid_sums_irecv(dim, ncount, nsize, recv_req);
+
   /* load send buffer with appropriate message type and send */
+
+  mload_ = 1;
+  colloid_sums_process(dim, ncount);
+  colloid_sums_isend(dim, ncount, nsize, send_req);
 
   /* Wait for receives and unload the sum */
 
+  MPI_Waitall(2, recv_req, status);
+  mload_ = 0;
+  colloid_sums_process(dim, ncount);
+  free(recv_);
+
   /* Finish */
 
-  free(recv_);
+  MPI_Waitall(2, send_req, status);
   free(send_);
 
   return;
@@ -65,7 +121,7 @@ void colloid_sums_sim(const int dim) {
  *
  *****************************************************************************/
 
-static void colloid_sum_count(connst int dim, int ncount[2]) {
+static void colloid_sums_count(const int dim, int ncount[2]) {
 
   int ic, jc, kc;
 
@@ -108,29 +164,297 @@ static void colloid_sum_count(connst int dim, int ncount[2]) {
   return;
 }
 
-
 /*****************************************************************************
  *
  *  colloid_sums_irecv
  *
  *****************************************************************************/
 
-static void colloid_sums_irecv(int dim, int nrecv[2], MPI_Request req[2]) {
-
-  int pforw;
-  int pback;
+static void colloid_sums_irecv(int dim, int ncount[2], int nsize,
+			       MPI_Request req[2]) {
+  int nf, pforw;
+  int nb, pback;
 
   MPI_Comm comm;
+
+  req[0] = MPI_REQUEST_NULL;
+  req[1] = MPI_REQUEST_NULL;
 
   if (cart_size(dim) > 1) {
     comm  = cart_comm();
     pforw = cart_neighb(FORWARD, dim);
     pback = cart_neighb(BACKWARD, dim);
 
-    MPI_Irecv(recv_, nrecv[FORWARD], MPI_DOUBLE, pforw, tag_, comm, req);
-    MPI_Irecv(recv_ + nrecv[FORWARD], nrecv[BACKWARD], MPI_DOUBLE, pback,
-	      tag_, comm, req + 1);
+    nb = nsize*ncount[BACKWARD];
+    nf = nsize*ncount[FORWARD];
+
+    if (nb > 0) MPI_Irecv(recv_ + nf, nb, MPI_DOUBLE, pback, tag_, comm, req);
+    if (nf > 0) MPI_Irecv(recv_, nf, MPI_DOUBLE, pforw, tag_, comm, req + 1);
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_isend
+ *
+ *****************************************************************************/
+
+static void colloid_sums_isend(int dim, int ncount[2], int nsize,
+			       MPI_Request req[2]) {
+  int nf, pforw;
+  int nb, pback;
+
+  MPI_Comm comm;
+
+  nf = nsize*ncount[FORWARD];
+  nb = nsize*ncount[BACKWARD];
+
+  req[0] = MPI_REQUEST_NULL;
+  req[1] = MPI_REQUEST_NULL;
+
+  if (cart_size(dim) == 1) {
+    memcpy(recv_, send_, (nf + nb)*sizeof(MPI_DOUBLE));
+  }
+  else {
+
+    comm = cart_comm();
+    pforw = cart_neighb(FORWARD, dim);
+    pback = cart_neighb(BACKWARD, dim);
+
+    if (nb > 0) MPI_Issend(send_, nb, MPI_DOUBLE, pback, tag_, comm, req);
+    if (nf > 0) MPI_Issend(send_ + nb, nf, MPI_DOUBLE, pforw, tag_,
+			   comm, req + 1);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_process
+ *
+ *  The send buffer is loaded with all backward going particles, then
+ *  all forward going particles. Likewise for recv.
+ *
+ *****************************************************************************/
+
+static void colloid_sums_process(int dim, const int ncount[2]) {
+
+  int nb, nf;
+  int ic, jc, kc;
+
+  int (* message_loader)(int, int, int, int) = NULL;
+
+  if (mtype_ == COLLOID_SUM_STRUCTURE) message_loader = colloid_sums_m1;
+  if (mtype_ == COLLOID_SUM_DYNAMICS) message_loader = colloid_sums_m2;
+  if (mtype_ == COLLOID_SUM_ACTIVE) message_loader = colloid_sums_m3;
+  assert(message_loader);
+
+  nb = 0;
+  nf = ncount[BACKWARD];
+
+  if (dim == X) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+	nb += message_loader(0, jc, kc, nb);
+	nb += message_loader(1, jc, kc, nb);
+	nf += message_loader(Ncell(X), jc, kc, nf);
+	nf += message_loader(Ncell(X)+1, jc, kc, nf);
+      }
+    }
+  }
+
+  if (dim == Y) {
+    for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+	nb += message_loader(ic, 0, kc, nb);
+	nb += message_loader(ic, 1, kc, nb);
+	nf += message_loader(ic, Ncell(Y), kc, nf); 
+	nf += message_loader(ic, Ncell(Y)+1, kc, nf); 
+      }
+    }
+  }
+
+  if (dim == Z) {
+    for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+      for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+	nb += message_loader(ic, jc, 0, nb);
+	nb += message_loader(ic, jc, 1, nb);
+	nf += message_loader(ic, jc, Ncell(Z), nf); 
+	nf += message_loader(ic, jc, Ncell(Z)+1, nf); 
+      }
+    }
+  }
+
+  assert(nb == ncount[BACKWARD]);
+  assert(nf == ncount[BACKWARD] + ncount[FORWARD]);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_m1
+ *
+ *  'Structure' messages cbar, rxcbar etc
+ *
+ *  The supplied offset for the start of the message is number of
+ *  particles, so must take account of the size of the message.
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m1(int ic, int jc, int kc, int noff) {
+
+  int n, npart;
+  int ia;
+  int index;
+  colloid_t * pc;
+
+  n = msize_[mtype_]*noff;
+  npart = 0;
+  pc = colloids_cell_list(ic, jc, kc);
+
+  while (pc) {
+
+    if (mload_) {
+      send_[n++] = 1.0*pc->s.index;
+      send_[n++] = pc->sumw;
+      for (ia = 0; ia < 3; ia++) {
+	send_[n++] = pc->cbar[ia];
+	send_[n++] = pc->rxcbar[ia];
+      }
+      send_[n++] = pc->deltam;
+      send_[n++] = pc->s.deltaphi;
+      assert(n == noff + msize_[mtype_]);
+    }
+    else {
+      /* unload and check incoming index (a fatal error) */
+      index = (int) recv_[n++];
+      if (index != pc->s.index) fatal("Sum mismatch m1 (%d)\n", index);
+
+      pc->sumw += recv_[n++];
+      for (ia = 0; ia < 3; ia++) {
+	pc->cbar[ia] += recv_[n++];
+	pc->rxcbar[ia] += recv_[n++];
+      }
+      pc->deltam += recv_[n++];
+      pc->s.deltaphi += recv_[n++];
+      assert(n == noff + msize_[mtype_]);
+    }
+
+    npart++;
+    pc = pc->next;
+  }
+
+  return npart;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_m2
+ *
+ *  'Dynamics' message f0, t0, fex, tex, etc
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m2(int ic, int jc, int kc, int noff) {
+
+  int n, npart;
+  int ia;
+  int index;
+  colloid_t * pc;
+
+  n = msize_[mtype_]*noff;
+  npart = 0;
+  pc = colloids_cell_list(ic, jc, kc);
+
+  while (pc) {
+
+    if (mload_) {
+      send_[n++] = 1.0*pc->s.index;
+      send_[n++] = pc->sump;
+      for (ia = 0; ia < 3; ia++) {
+	send_[n++] = pc->f0[ia];
+	send_[n++] = pc->t0[ia];
+	send_[n++] = pc->force[ia];
+	send_[n++] = pc->torque[ia];
+      }
+      for (ia = 0; ia < 21; ia++) {
+	send_[n++] = pc->zeta[ia];
+      }
+      assert(n == noff + msize_[mtype_]);
+    }
+    else {
+      /* unload and check incoming index (a fatal error) */
+      index = (int) recv_[n++];
+      if (index != pc->s.index) fatal("Sum mismatch m2 (%d)\n", index);
+
+      pc->sump += recv_[n++];
+      for (ia = 0; ia < 3; ia++) {
+	pc->f0[ia] += recv_[n++];
+	pc->t0[ia] += recv_[n++];
+	pc->force[ia] += recv_[n++];
+	pc->torque[ia] += recv_[n++];
+      }
+      for (ia = 0; ia < 21; ia++) {
+	pc->zeta[ia] += recv_[ia];
+      }
+      assert(n == noff + msize_[mtype_]);
+    }
+
+    npart++;
+    pc = pc->next;
+  }
+
+  return npart;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_m3
+ *
+ *  See comments for m1 above.
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m3(int ic, int jc, int kc, int noff) {
+
+  int n, npart;
+  int ia;
+  int index;
+  colloid_t * pc;
+
+  n = msize_[mtype_]*noff;
+  npart = 0;
+  pc = colloids_cell_list(ic, jc, kc);
+
+  while (pc) {
+
+    if (mload_) {
+      send_[n++] = 1.0*pc->s.index;
+      for (ia = 0; ia < 3; ia++) {
+	send_[n++] = pc->fc0[ia];
+	send_[n++] = pc->tc0[ia];
+      }
+      assert(n == noff + msize_[mtype_]);
+    }
+    else {
+      /* unload and check incoming index (a fatal error) */
+      index = (int) recv_[n++];
+      if (index != pc->s.index) fatal("Sum mismatch m2 (%d)\n", index);
+
+      for (ia = 0; ia < 3; ia++) {
+	pc->fc0[ia] += recv_[n++];
+	pc->tc0[ia] += recv_[n++];
+      }
+      assert(n == noff + msize_[mtype_]);
+    }
+
+    npart++;
+    pc = pc->next;
+  }
+
+  return npart;
 }
