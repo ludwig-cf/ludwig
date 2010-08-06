@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.7 2010-08-05 17:22:27 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.8 2010-08-06 17:41:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -224,7 +224,6 @@ void COLL_init() {
     colloids_ntotal_set();
 #else
     CMD_init_volume_fraction();
-    init_active();
 #endif
   }
   else {
