@@ -209,13 +209,20 @@ int main( int argc, char **argv ) {
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
       if (phi_is_finite_difference()) {
+
+	TIMER_start(TIMER_FORCE_CALCULATION);
 	if (colloid_ntotal() == 0) {
 	  phi_force_calculation();
 	}
 	else {
 	  phi_force_colloid();
 	}
+	TIMER_stop(TIMER_FORCE_CALCULATION);
+
+	TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 	phi_update_dynamics();
+	TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
+
       }
     }
 
@@ -235,7 +242,9 @@ int main( int argc, char **argv ) {
 #ifdef _SUBGRID_
     subgrid_update();
 #else
+    TIMER_start(TIMER_BBL);
     bounce_back_on_links();
+    TIMER_stop(TIMER_BBL);
     wall_bounce_back();
 #endif
 

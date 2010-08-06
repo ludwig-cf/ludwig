@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.6.4.7 2010-04-05 10:54:31 kevin Exp $
+ *  $Id: phi_force.c,v 1.6.4.8 2010-08-06 17:42:20 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,7 +27,6 @@
 #include "site_map.h"
 #include "leesedwards.h"
 #include "free_energy.h"
-#include "timer.h"
 #include "wall.h"
 
 static void phi_force_calculation_fluid(void);
@@ -71,8 +70,6 @@ void phi_force_calculation() {
 
   if (force_required_ == 0) return;
 
-  TIMER_start(TIMER_FORCE_CALCULATION);
-
   if (le_get_nplane_total() > 0) {
     /* Must use the flux method for LE planes */
     phi_force_flux();
@@ -82,8 +79,6 @@ void phi_force_calculation() {
      * momentum, if required. */
     phi_force_simple_();
   }
-
-  TIMER_stop(TIMER_FORCE_CALCULATION);
 
   return;
 }

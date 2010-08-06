@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.10.2.6 2010-07-07 11:31:15 kevin Exp $
+ *  $Id: bbl.c,v 1.10.2.7 2010-08-06 17:42:20 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,7 +23,6 @@
 #include "colloids.h"
 #include "ccomms.h"
 #include "model.h"
-#include "timer.h"
 #include "util.h"
 #include "phi.h"
 #include "bbl.h"
@@ -66,8 +65,6 @@ void bounce_back_on_links() {
 
   if (colloid_ntotal() == 0) return;
 
-  TIMER_start(TIMER_BBL);
-
   CCOM_halo_sum(CHALO_TYPE1);
   bounce_back_pass1();
   CCOM_halo_sum(CHALO_TYPE2);
@@ -78,8 +75,6 @@ void bounce_back_on_links() {
 
   update_colloids();
   bounce_back_pass2();
-
-  TIMER_stop(TIMER_BBL);
 
   return;
 }
