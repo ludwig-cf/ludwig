@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.4.16.5 2010-08-05 17:22:27 kevin Exp $
+ *  $Id: subgrid.c,v 1.4.16.6 2010-08-06 17:39:30 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,7 +21,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "timer.h"
 #include "physics.h"
 #include "interaction.h"
 #include "lattice.h"
@@ -53,8 +52,6 @@ void subgrid_force_from_particles() {
   double r[3], r0[3], force[3], g[3];
   double dr;
   Colloid * p_colloid;
-
-  TIMER_start(TIMER_FREE1);
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);
@@ -121,8 +118,6 @@ void subgrid_force_from_particles() {
     }
   }
 
-  TIMER_stop(TIMER_FREE1);
-
   return;
 }
 
@@ -144,7 +139,11 @@ void subgrid_update() {
   double g[3];
   Colloid * p_colloid;
 
-  TIMER_start(TIMER_FREE1);
+  fatal("fix me\n"); /* The following needs to be rechecked.*/
+
+  /* The position update needs to be checked */
+  /* The 'velocity' situation needs to be checked */
+  /* The message passing could be replaced by larger halo for velocity? */
 
   subgrid_interpolation();
   CCOM_halo_sum(CHALO_TYPE7);
@@ -182,8 +181,6 @@ void subgrid_update() {
       }
     }
   }
-
-  TIMER_stop(TIMER_FREE1);
 
   return;
 }
