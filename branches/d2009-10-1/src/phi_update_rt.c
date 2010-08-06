@@ -8,7 +8,7 @@
  *  Boltzmann for binary fluid, no update is set (it's done via the
  *  appropriate collision).
  *
- *  $Id: phi_update_rt.c,v 1.1.2.6 2010-08-04 17:53:33 kevin Exp $
+ *  $Id: phi_update_rt.c,v 1.1.2.7 2010-08-06 17:44:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -51,6 +51,8 @@ void phi_update_run_time(void) {
   if (n == 0 || strcmp(stringfe, "none") == 0) {
     /* No order parameter, no update, no force... */
     phi_force_required_set(0);
+    /* KLUDGE: parts of code use this to check ndist = 1 */
+    phi_set_finite_difference();
   }
   else {
     /* Sort out free energy */

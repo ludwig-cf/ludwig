@@ -2,9 +2,9 @@
  *
  *  phi.c
  *
- *  Scalar order parameter.
+ *  Scalar, vector, tensor, order parameter.
  *
- *  $Id: phi.c,v 1.11.4.11 2010-04-20 08:30:38 kevin Exp $
+ *  $Id: phi.c,v 1.11.4.12 2010-08-06 17:44:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,7 +24,6 @@
 #include "control.h"
 #include "io_harness.h"
 #include "leesedwards.h"
-#include "timer.h"
 #include "phi.h"
 
 struct io_info_t * io_info_phi;
@@ -209,8 +208,6 @@ void phi_halo() {
 
   assert(initialised_);
   
-  TIMER_start(TIMER_HALO_LATTICE);
-
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
@@ -309,8 +306,6 @@ void phi_halo() {
     MPI_Issend(phi_site + ireal, 1, phi_xy_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
-
-  TIMER_stop(TIMER_HALO_LATTICE);
 
   return;
 }
