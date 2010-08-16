@@ -11,6 +11,7 @@
 #include "coords.h"
 
 #include "io_harness.h"
+#include "blue_phase.h"
 #include "physics.h"
 #include "phi.h"
 #include "model.h"
@@ -21,6 +22,7 @@
 #include "phi_stats.h"
 #include "symmetric.h"
 #include "control.h"
+#include "colloids_Q_tensor.h"
 
 #include "communicate.h"
 
@@ -48,6 +50,14 @@ void MODEL_init( void ) {
   if (ind != 0 && strcmp(filename, "ASCII") == 0) {
     io_info_set_format_ascii(io_info_phi);
     info("Setting phi I/O format to ASCII\n");
+  }
+
+  scalar_q_io_init();
+
+  ind = RUN_get_string_parameter("qs_dir_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_scalar_q_);
+    info("Setting qs_dir I/O format to ASCII\n");
   }
 
   hydrodynamics_init();
@@ -137,6 +147,6 @@ void MODEL_init( void ) {
   /* BLUEPHASE */
   /* blue_phase_twist_init(0.3333333);*/
   /* blue_phase_O8M_init(-0.2);*/
-  /* blue_phase_O2_init(0.3);*/
+   blue_phase_O2_init(0.3);
 
 }

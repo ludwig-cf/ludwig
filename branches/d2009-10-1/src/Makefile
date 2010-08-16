@@ -44,10 +44,10 @@ LIBRARY = libludwig.a
 #
 ###############################################################################
 
-CC = gcc
-MPICC = mpicc
-OPTS = -D_D3Q19_
-CFLAGS = -O3 -Wall
+CC = CC 
+MPICC = CC
+OPTS = -D_D3Q19_ # -DNDEBUG
+CFLAGS = -fastsse
 
 INC = -I.
 LIBS = -lm

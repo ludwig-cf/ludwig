@@ -8,7 +8,7 @@
  *  Boltzmann for binary fluid, no update is set (it's done via the
  *  appropriate collision).
  *
- *  $Id: phi_update_rt.c,v 1.1.2.7 2010-08-06 17:44:05 kevin Exp $
+ *  $Id: phi_update_rt.c,v 1.1.2.8 2010-08-16 10:38:05 ohenrich Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -126,6 +126,7 @@ static void phi_update_rt_fe(const char * stringfe) {
 
     info("Using Beris-Edwards solver:\n");
     phi_update_set(blue_phase_beris_edwards);
+    phi_set_finite_difference();
 
     p = RUN_get_double_parameter("lc_Gamma", &value);
     if (p != 0) {

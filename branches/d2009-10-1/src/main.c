@@ -39,6 +39,7 @@
 #include "phi.h"
 #include "phi_stats.h"
 #include "phi_force.h"
+#include "phi_force_colloid.h"
 #include "phi_gradients.h"
 #include "phi_lb_coupler.h"
 #include "phi_update.h"
@@ -145,8 +146,6 @@ void ludwig_init(void) {
   /* Initialise Lc in colloids */
   /* COLL_randomize_Q(0.0);*/
 
-  /* scalar_q_io_init();*/
-
   stats_rheology_init();
   stats_turbulent_init();
 
@@ -211,12 +210,14 @@ int main( int argc, char **argv ) {
       if (phi_is_finite_difference()) {
 
 	TIMER_start(TIMER_FORCE_CALCULATION);
-	if (colloid_ntotal() == 0) {
-	  phi_force_calculation();
-	}
-	else {
+
+// stress for blue phase is currently only implemented in phi_force_colloid()
+//	if (colloid_ntotal() == 0) {
+//	  phi_force_calculation();
+//	}
+//	else {
 	  phi_force_colloid();
-	}
+//	}
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
 	TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
@@ -287,6 +288,10 @@ int main( int argc, char **argv ) {
       info("Writing phi file at step %d!\n", step);
       sprintf(filename,"phi-%6.6d",step);
       io_write(filename, io_info_phi);
+
+      info("Writing scalar op and director at step %d!\n", step);
+      sprintf(filename,"qs_dir-%6.6d",step);
+      io_write(filename, io_info_scalar_q_);
     }
 
     if (is_vel_output_step()) {

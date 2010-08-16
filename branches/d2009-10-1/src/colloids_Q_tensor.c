@@ -26,9 +26,9 @@ struct io_info_t * io_info_scalar_q_;
 
 #define PLANAR_ANCHORING 1
 
-static int scalar_q_write(FILE * fp, const int i, const int j, const int k);
-static int scalar_q_write_ascii(FILE *, const int, const int, const int);
-static double scalar_order_parameter(double q[3][3]);
+static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
+static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
+static double * scalar_order_parameter_director(double q[3][3]);
 
 void COLL_set_Q(){
 
@@ -329,44 +329,8 @@ void jacobi(double (*a)[n], double d[], double (*v)[n], int *nrot)
 }
 #undef n
 #undef ROTATE
-
-/*****************************************************************************
- *
- *  scalar_q_io_init
- *
- *  Initialise the I/O information for the scalar order parameter
- *  output related to blue phase tensor order parameter.
- *
- *  This stuff lives here until a better home is found.
- *
- *****************************************************************************/
-
-void scalar_q_io_init(void) {
-
-  /* Use a default I/O struct */
-  io_info_scalar_q_ = io_info_create();
-
-  io_info_set_name(io_info_scalar_q_, "Scalar order parameter");
-  io_info_set_write_binary(io_info_scalar_q_, scalar_q_write);
-  io_info_set_write_ascii(io_info_scalar_q_, scalar_q_write_ascii);
-  io_info_set_bytesize(io_info_scalar_q_, 1*sizeof(double));
-
-  io_info_set_format_ascii(io_info_scalar_q_);
-  // io_info_set_format_binary(io_info_scalar_q_);
-  io_write_metadata("scalar_q", io_info_scalar_q_);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  scalar_q_write_ascii
- *
- *  Write the value of the scalar order parameter at (ic, jc, kc).
- *
- *****************************************************************************/
-
-static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
+/*
+static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
 				const int kc) {
   int index, n;
   double q[3][3];
@@ -380,10 +344,10 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
 
-  /* JUHO: YOU NEED CODE TO WORK OUT VALUE REQUIRED HERE */
+//   JUHO: YOU NEED CODE TO WORK OUT VALUE REQUIRED HERE
   jacobi(q,d,v,&nrots);
   
-  /* find the largest eigen value and corresponding eigen vector */
+//   find the largest eigen value and corresponding eigen vector
   if (d[0] > d[1]) {
     emax=0;
     enxt=1;
@@ -409,14 +373,14 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
   p_colloid = colloid_at_site_index(index);
   
   if(p_colloid != NULL){
-    /* if inside colloid print perfect order */
+//     if inside colloid print perfect order
     qs=0.33333333333;
   }
   n = fprintf(fp, "%4d %4d %4d %22.15e ", ic,jc,kc,qs);
   if (n < 37) fatal("fprintf(qs) failed at index %d\n", index);
   
   if(p_colloid != NULL){
-    /* this column is printed 0.0 if inside colloid otherwise the same as previous */
+//    this column is printed 0.0 if inside colloid otherwise the same as previous
     qs=0.0;
       }
   n = fprintf(fp, "%22.15e ", qs);
@@ -432,6 +396,8 @@ static int scalar_q_write_ascii(FILE * fp, const int ic, const int jc,
 
   return n;
 }
+
+*/
 
 /*****************************************************************************
  *
@@ -498,44 +464,96 @@ void colloids_fix_swd(void) {
 
 /*****************************************************************************
  *
- *  scalar_q_write
+ *  scalar_q_io_init
  *
- *  Write scalar order parameter in binary.
+ *  Initialise the I/O information for the scalar order parameter and director
+ *  output related to blue phase tensor order parameter.
+ *
+ *  This stuff lives here until a better home is found.
  *
  *****************************************************************************/
 
-static int scalar_q_write(FILE * fp, const int ic, const int jc,
-			  const int kc) {
+void scalar_q_io_init(void) {
+
+  /* Use a default I/O struct */
+  io_info_scalar_q_ = io_info_create();
+
+  io_info_set_name(io_info_scalar_q_, "Scalar order parameter and director");
+  io_info_set_write_binary(io_info_scalar_q_, scalar_q_dir_write);
+  io_info_set_write_ascii(io_info_scalar_q_, scalar_q_dir_write_ascii);
+  io_info_set_bytesize(io_info_scalar_q_, 4*sizeof(double));
+
+  io_info_set_format_binary(io_info_scalar_q_);
+  io_write_metadata("qs_dir", io_info_scalar_q_);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  scalar_q_write_ascii
+ *
+ *  Write the value of the scalar order parameter and director at (ic, jc, kc).
+ *
+ *****************************************************************************/
+static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
+                          const int kc) {
   int index, n;
   double q[3][3];
-  double qs;
+  double * qs_dir;
 
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  qs = scalar_order_parameter(q);
+  qs_dir = scalar_order_parameter_director(q);
 
-  n = fwrite(&qs, sizeof(double), 1, fp);
-  if (n != 1) fatal("fwrite(qs) failed at index %d\n", index);
+  n = fprintf(fp, "%le %le %le %le\n", qs_dir[0], qs_dir[1], qs_dir[2], qs_dir[3]);
+  if (n < 0) fatal("fprintf(qs_dir) failed at index %d\n", index);
+
+  return n;
+}
+
+
+/*****************************************************************************
+ *
+ *  scalar_q_dir_write
+ *
+ *  Write scalar order parameter and director in binary.
+ *
+ *****************************************************************************/
+
+static int scalar_q_dir_write(FILE * fp, const int ic, const int jc,
+			  const int kc) {
+  int index, n;
+  double q[3][3];
+  double * qs_dir;
+
+  index = coords_index(ic, jc, kc);
+  phi_get_q_tensor(index, q);
+  qs_dir = scalar_order_parameter_director(q);
+
+  n = fwrite(qs_dir, sizeof(double), 4, fp);
+  if (n != 4) fatal("fwrite(qs_dir) failed at index %d\n", index);
 
   return n;
 }
 
 /*****************************************************************************
  *
- *  scalar_order_parameter
+ *  scalar_order_parameter_director
  *
- *  Return the value of the scalar order parameter for given Q tensor.
+ *  Return the value of the scalar order parameter and director for given Q tensor.
  *
  *****************************************************************************/
 
-double scalar_order_parameter(double q[3][3]) {
+double * scalar_order_parameter_director(double q[3][3]) {
 
   int nrots, emax;
   double d[3], v[3][3];
+  double static return_array[4];
 
   jacobi(q, d, v, &nrots);
   
-  /* Find the largest eigenvalue */
+  /* Find the largest eigenvalue and director */
 
   if (d[0] > d[1]) {
     emax=0;
@@ -547,5 +565,10 @@ double scalar_order_parameter(double q[3][3]) {
     emax=2;
   }
 
-  return d[emax];
+  return_array[0]=d[emax];
+  return_array[1]=v[emax][0];
+  return_array[2]=v[emax][1];
+  return_array[3]=v[emax][2];
+
+  return return_array;
 }
