@@ -234,6 +234,9 @@ if (myPE==0){
       file.close();
    }
 
+   ofstream file(fileName.get(),ios::app);
+   file.close();
+
    lastFreeenergy=-1000000;
 
   if (BACKFLOW == 1){
