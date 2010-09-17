@@ -4,7 +4,7 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id: colloid_sums.c,v 1.1.2.2 2010-08-06 17:38:33 kevin Exp $
+ *  $Id: colloid_sums.c,v 1.1.2.3 2010-09-17 16:30:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,7 +32,7 @@ static void colloid_sums_process(int dim, const int ncount[2]);
  *
  *  Sum / message types
  *
- *  1. Structural components related to links: sumw, cbar, rxcbar
+ *  1. Structural components related to links: sumw, cbar, rxcbar;
  *     includes deficits from previous time step: dmass, dphi
  *
  *  2. Dynamic quanitities required for implicit update:
@@ -215,7 +215,7 @@ static void colloid_sums_isend(int dim, int ncount[2], int nsize,
   req[1] = MPI_REQUEST_NULL;
 
   if (cart_size(dim) == 1) {
-    memcpy(recv_, send_, (nf + nb)*sizeof(MPI_DOUBLE));
+    memcpy(recv_, send_, (nf + nb)*sizeof(double));
   }
   else {
 
@@ -236,7 +236,12 @@ static void colloid_sums_isend(int dim, int ncount[2], int nsize,
  *  colloid_sums_process
  *
  *  The send buffer is loaded with all backward going particles, then
- *  all forward going particles. Likewise for recv.
+ *  all forward going particles.
+ *
+ *  If it's the unload stage, we must arrange for the particles to be
+ *  extracted from the opposite part of the buffer, ie., particles
+ *  at the back recieve from the forward part of the buffer and
+ *  vice-verssa.
  *
  *****************************************************************************/
 
@@ -252,8 +257,14 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
   if (mtype_ == COLLOID_SUM_ACTIVE) message_loader = colloid_sums_m3;
   assert(message_loader);
 
-  nb = 0;
-  nf = ncount[BACKWARD];
+  if (mload_ == 1) {
+    nb = 0;
+    nf = ncount[BACKWARD];
+  }
+  else {
+    nb = ncount[FORWARD];
+    nf = 0;
+  }
 
   if (dim == X) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -288,8 +299,14 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
     }
   }
 
-  assert(nb == ncount[BACKWARD]);
-  assert(nf == ncount[BACKWARD] + ncount[FORWARD]);
+  if (mload_ == 1) {
+    assert(nb == ncount[BACKWARD]);
+    assert(nf == ncount[BACKWARD] + ncount[FORWARD]);
+  }
+  else {
+    assert(nb == ncount[FORWARD] + ncount[BACKWARD]);
+    assert(nf == ncount[FORWARD]);
+  }
 
   return;
 }
@@ -327,11 +344,13 @@ static int colloid_sums_m1(int ic, int jc, int kc, int noff) {
       }
       send_[n++] = pc->deltam;
       send_[n++] = pc->s.deltaphi;
-      assert(n == noff + msize_[mtype_]);
+
+      assert(n == (noff + 1)*msize_[mtype_]);
     }
     else {
       /* unload and check incoming index (a fatal error) */
       index = (int) recv_[n++];
+
       if (index != pc->s.index) fatal("Sum mismatch m1 (%d)\n", index);
 
       pc->sumw += recv_[n++];
@@ -341,7 +360,7 @@ static int colloid_sums_m1(int ic, int jc, int kc, int noff) {
       }
       pc->deltam += recv_[n++];
       pc->s.deltaphi += recv_[n++];
-      assert(n == noff + msize_[mtype_]);
+      assert(n == (noff + 1)*msize_[mtype_]);
     }
 
     npart++;
