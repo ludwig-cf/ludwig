@@ -4,6 +4,8 @@
  *
  *  Halo swap test.
  *
+ *  $Id: test_colloids_halo.c,v 1.1.2.3 2010-09-17 16:38:33 kevin Exp $
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *

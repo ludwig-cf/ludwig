@@ -47,7 +47,8 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_model.c test_halo.c test_site_map.c \
 	      test_phi.c test_le.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
-              test_colloid.c test_colloids.c test_colloids_halo.c
+              test_colloid.c test_colloids.c test_colloids_halo.c \
+              test_colloid_sums.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}
@@ -60,7 +61,7 @@ base: $(TESTOBJECTS) tests.o
 	test_sources='$(TESTS)'; \
 	for file in $$test_sources; \
 	do $(CC) $$file.o -o $$file tests.o \
-	-L$(SRC) -lludwig -L../mpi_s -lmpi -lm; \
+	-L$(SRC) -lludwig $(CLIBS); \
 	done
 
 tests:	
