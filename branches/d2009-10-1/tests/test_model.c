@@ -4,7 +4,7 @@
  *
  *  Unit test for the currently compiled model (D3Q15 or D3Q19).
  *
- *  $Id: test_model.c,v 1.9.2.6 2010-07-07 11:43:26 kevin Exp $
+ *  $Id: test_model.c,v 1.9.2.7 2010-09-17 16:35:39 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -356,7 +356,7 @@ static void test_model_distributions(void) {
   info("\n\n\nDistribution functions:\n");
   info("Allocate lattice sites...\n");
 
-  init_site();
+  distribution_init();
   index = 0;
 
   info("Allocated 1 site\n");
@@ -399,7 +399,7 @@ static void test_model_distributions(void) {
     info("ok\n");
   }
 
-  finish_site();
+  distribution_finish();
 
   return;
 }
@@ -423,7 +423,7 @@ static void test_model_halo_swap() {
 
   info("\nHalo swap (full distributions)...\n\n");
 
-  init_site();
+  distribution_init();
   distribution_halo_set_complete();
   coords_nlocal(nlocal);
   ndist = distribution_ndist();
@@ -492,7 +492,7 @@ static void test_model_halo_swap() {
   }
 
   info("Halo swap ok\n");
-  finish_site();
+  distribution_finish();
 }
 
 /*****************************************************************************
@@ -514,7 +514,7 @@ static void test_model_reduced_halo_swap() {
 
   info("\nHalo swap (reduced)...\n\n");
 
-  init_site();
+  distribution_init();
   distribution_halo_set_reduced();
   coords_nlocal(nlocal);
   ndist = distribution_ndist();

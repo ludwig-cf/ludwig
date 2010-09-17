@@ -4,7 +4,7 @@
  *
  *  Test propagation stage.
  *
- *  $Id: test_prop.c,v 1.4.2.4 2010-07-07 11:43:26 kevin Exp $
+ *  $Id: test_prop.c,v 1.4.2.5 2010-09-17 16:35:39 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -29,7 +29,7 @@ int main(int argc, char ** argv) {
 
   pe_init(argc, argv);
   coords_init();
-  init_site();
+  distribution_init();
 
   info("Testing propagation...\n");
   info("Number of distributions is %d\n", distribution_ndist());
@@ -50,7 +50,7 @@ int main(int argc, char ** argv) {
 
   info("Propagation ok\n");
 
-  finish_site();
+  distribution_finish();
   pe_finalise();
 
   return 0;
