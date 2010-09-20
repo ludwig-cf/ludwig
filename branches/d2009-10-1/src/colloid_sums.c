@@ -4,7 +4,7 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id: colloid_sums.c,v 1.1.2.3 2010-09-17 16:30:15 kevin Exp $
+ *  $Id: colloid_sums.c,v 1.1.2.4 2010-09-20 17:12:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,7 +35,7 @@ static void colloid_sums_process(int dim, const int ncount[2]);
  *  1. Structural components related to links: sumw, cbar, rxcbar;
  *     includes deficits from previous time step: dmass, dphi
  *
- *  2. Dynamic quanitities required for implicit update:
+ *  2. Dynamic quantities required for implicit update:
  *     external force and torque fex, tex; zero-velocity
  *     force and torque f0, t0; upper triangle of symmetric
  *     drag matrix zeta; active squirmer mass correction mactive.
@@ -48,17 +48,22 @@ static void colloid_sums_process(int dim, const int ncount[2]);
  *
  *****************************************************************************/
 
-static int colloid_sums_m1(int, int, int, int);
-static int colloid_sums_m2(int, int, int, int);
-static int colloid_sums_m3(int, int, int, int);
+static int colloid_sums_m1(int, int, int, int); /* STRUCTURE */
+static int colloid_sums_m2(int, int, int, int); /* DYNAMICS */
+static int colloid_sums_m3(int, int, int, int); /* ACTIVE */
 
-static const int msize_[3] = {10, 35, 7};  /* Message sizes (doubles) */
-static int mtype_;                         /* Current message type */
-static int mload_;                         /* Load / unload flag */
-static int tag_ = 1070;                    /* Message tag */
+static const int msize_[3] = {10, 35, 7};       /* Message sizes (doubles) */
 
-static double * send_;
-static double * recv_;
+/* The following are used for internal communication */
+
+static enum load_unload {MESSAGE_LOAD, MESSAGE_UNLOAD};
+
+static int mtype_;                              /* Current message type */
+static int mload_;                              /* Load / unload flag */
+static int tag_ = 1070;                         /* Message tag */
+
+static double * send_;                          /* Send buffer */
+static double * recv_;                          /* Receive buffer */
 
 /*****************************************************************************
  *
@@ -96,14 +101,14 @@ void colloid_sums_dim(const int dim, const int mtype) {
 
   /* load send buffer with appropriate message type and send */
 
-  mload_ = 1;
+  mload_ = MESSAGE_LOAD;
   colloid_sums_process(dim, ncount);
   colloid_sums_isend(dim, ncount, nsize, send_req);
 
   /* Wait for receives and unload the sum */
 
   MPI_Waitall(2, recv_req, status);
-  mload_ = 0;
+  mload_ = MESSAGE_UNLOAD;
   colloid_sums_process(dim, ncount);
   free(recv_);
 
@@ -240,8 +245,8 @@ static void colloid_sums_isend(int dim, int ncount[2], int nsize,
  *
  *  If it's the unload stage, we must arrange for the particles to be
  *  extracted from the opposite part of the buffer, ie., particles
- *  at the back recieve from the forward part of the buffer and
- *  vice-verssa.
+ *  at the back receive from the forward part of the buffer and
+ *  vice-versa.
  *
  *****************************************************************************/
 
@@ -257,7 +262,7 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
   if (mtype_ == COLLOID_SUM_ACTIVE) message_loader = colloid_sums_m3;
   assert(message_loader);
 
-  if (mload_ == 1) {
+  if (mload_ == MESSAGE_LOAD) {
     nb = 0;
     nf = ncount[BACKWARD];
   }
@@ -299,7 +304,7 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
     }
   }
 
-  if (mload_ == 1) {
+  if (mload_ == MESSAGE_LOAD) {
     assert(nb == ncount[BACKWARD]);
     assert(nf == ncount[BACKWARD] + ncount[FORWARD]);
   }
@@ -335,7 +340,7 @@ static int colloid_sums_m1(int ic, int jc, int kc, int noff) {
 
   while (pc) {
 
-    if (mload_) {
+    if (mload_ == MESSAGE_LOAD) {
       send_[n++] = 1.0*pc->s.index;
       send_[n++] = pc->sumw;
       for (ia = 0; ia < 3; ia++) {
@@ -345,7 +350,7 @@ static int colloid_sums_m1(int ic, int jc, int kc, int noff) {
       send_[n++] = pc->deltam;
       send_[n++] = pc->s.deltaphi;
 
-      assert(n == (noff + 1)*msize_[mtype_]);
+      assert(n == (noff + npart + 1)*msize_[mtype_]);
     }
     else {
       /* unload and check incoming index (a fatal error) */
@@ -360,7 +365,7 @@ static int colloid_sums_m1(int ic, int jc, int kc, int noff) {
       }
       pc->deltam += recv_[n++];
       pc->s.deltaphi += recv_[n++];
-      assert(n == (noff + 1)*msize_[mtype_]);
+      assert(n == (noff + npart + 1)*msize_[mtype_]);
     }
 
     npart++;
@@ -391,7 +396,7 @@ static int colloid_sums_m2(int ic, int jc, int kc, int noff) {
 
   while (pc) {
 
-    if (mload_) {
+    if (mload_ == MESSAGE_LOAD) {
       send_[n++] = 1.0*pc->s.index;
       send_[n++] = pc->sump;
       for (ia = 0; ia < 3; ia++) {
@@ -403,7 +408,7 @@ static int colloid_sums_m2(int ic, int jc, int kc, int noff) {
       for (ia = 0; ia < 21; ia++) {
 	send_[n++] = pc->zeta[ia];
       }
-      assert(n == noff + msize_[mtype_]);
+      assert(n == (noff + npart + 1)*msize_[mtype_]);
     }
     else {
       /* unload and check incoming index (a fatal error) */
@@ -418,9 +423,9 @@ static int colloid_sums_m2(int ic, int jc, int kc, int noff) {
 	pc->torque[ia] += recv_[n++];
       }
       for (ia = 0; ia < 21; ia++) {
-	pc->zeta[ia] += recv_[ia];
+	pc->zeta[ia] += recv_[n++];
       }
-      assert(n == noff + msize_[mtype_]);
+      assert(n == (noff + npart + 1)*msize_[mtype_]);
     }
 
     npart++;
@@ -451,13 +456,13 @@ static int colloid_sums_m3(int ic, int jc, int kc, int noff) {
 
   while (pc) {
 
-    if (mload_) {
+    if (mload_ == MESSAGE_LOAD) {
       send_[n++] = 1.0*pc->s.index;
       for (ia = 0; ia < 3; ia++) {
 	send_[n++] = pc->fc0[ia];
 	send_[n++] = pc->tc0[ia];
       }
-      assert(n == noff + msize_[mtype_]);
+      assert(n == (noff + npart + 1)*msize_[mtype_]);
     }
     else {
       /* unload and check incoming index (a fatal error) */
@@ -468,7 +473,7 @@ static int colloid_sums_m3(int ic, int jc, int kc, int noff) {
 	pc->fc0[ia] += recv_[n++];
 	pc->tc0[ia] += recv_[n++];
       }
-      assert(n == noff + msize_[mtype_]);
+      assert(n == (noff + npart + 1)*msize_[mtype_]);
     }
 
     npart++;
