@@ -4,7 +4,7 @@
  *
  *  Test of the various sum routines.
  *
- *  $Id: test_colloid_sums.c,v 1.1.2.1 2010-09-17 16:36:25 kevin Exp $
+ *  $Id: test_colloid_sums.c,v 1.1.2.2 2010-09-20 17:13:42 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,10 +23,10 @@
 #include "colloid_sums.h"
 #include "tests.h"
 
-static void test_colloid_sums_reference_set(colloid_t * cref);
+static void test_colloid_sums_reference_set(colloid_t * cref, int seed);
 static void test_colloid_sums_copy(colloid_t ref, colloid_t * pc);
 static void test_colloid_sums_assert(colloid_t c1, colloid_t * c2);
-static void test_colloid_sums_edge_x(void);
+static void test_colloid_sums_edge_x(const int ncell[3]);
 
 /*****************************************************************************
  *
@@ -37,13 +37,25 @@ static void test_colloid_sums_edge_x(void);
 int main(int argc, char ** argv) {
 
   int ntotal[3] = {1024, 512, 256};
+  int ncell[3];
 
   pe_init(argc, argv);
 
   coords_ntotal_set(ntotal);
   coords_init();
 
-  test_colloid_sums_edge_x();
+  /* We use cells > 2 to prevent copies in directions other than x
+   * when a call to colloids_halo_state() is made. */
+
+  ncell[X] = 4;
+  ncell[Y] = 3;
+  ncell[Z] = 3;
+  test_colloid_sums_edge_x(ncell);
+
+  ncell[X] = 2;
+  ncell[Y] = 4;
+  ncell[Z] = 3;
+  test_colloid_sums_edge_x(ncell);
 
   coords_finish();
   pe_finalise();
@@ -55,44 +67,52 @@ int main(int argc, char ** argv) {
  *
  *  test_colloid_sums_edge_x
  *
- *  Place a single particle at {delta, Ly/2, Lz/2} to test
+ *  Place a single particle at {delta, nlocal/2, nlocal/2} to test
  *  the x communication.
- *
- *  We use 4 cells to prevent copies in directions other than x
- *  when a call to colloids_halo_state() is made.
  *
  *****************************************************************************/
 
-static void test_colloid_sums_edge_x(void) {
+static void test_colloid_sums_edge_x(const int ncell[3]) {
 
   int         index;
-  int         ncell[3] = {4, 4, 4};
   int         ic, jc, kc;
+  int         nlocal[3];
 
   double      r0[3];
   colloid_t * pc;
-  colloid_t * pctest;
-  colloid_t   cref;   /* All ranks get the same reference colloid */
+  colloid_t   cref1;   /* All ranks get the same reference colloids */
+  colloid_t   cref2;
 
-  test_colloid_sums_reference_set(&cref);
+  test_colloid_sums_reference_set(&cref1, 1);
+  test_colloid_sums_reference_set(&cref2, 2);
   colloids_cell_ncell_set(ncell);
+  coords_nlocal(nlocal);
 
   colloids_init();
 
-  index = 1;
+  /* This must work in parallel to initialise only a single particle
+   * which only gets swapped in the x-direction. */
+
   r0[X] = Lmin(X) + 0.5;
-  r0[Y] = Lmin(Y) + 0.5*L(Y);
-  r0[Z] = Lmin(Z) + 0.5*L(Z);
+  r0[Y] = Lmin(Y) + 0.5*nlocal[Y];
+  r0[Z] = Lmin(Z) + 0.5*nlocal[Z];
 
+  index = 1;
   pc = colloid_add_local(index, r0);
-
   if (pc) {
-    /* The 'owner' sets some values for the sum */
-    test_colloid_sums_copy(cref, pc);
+    test_colloid_sums_copy(cref1, pc);
+  }
+
+  index = 2;
+  pc = colloid_add_local(index, r0);
+  if (pc) {
+    test_colloid_sums_copy(cref2, pc);
   }
 
   colloids_halo_state();
   colloid_sums_dim(X, COLLOID_SUM_STRUCTURE);
+  colloid_sums_dim(X, COLLOID_SUM_DYNAMICS);
+  colloid_sums_dim(X, COLLOID_SUM_ACTIVE);
 
   /* Everywhere check colloid index = 1 has the correct sum */
 
@@ -100,14 +120,12 @@ static void test_colloid_sums_edge_x(void) {
     for (jc = 0; jc <= ncell[Y] + 1; jc++) {
       for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-	pctest = colloids_cell_list(ic, jc, kc);
+	pc = colloids_cell_list(ic, jc, kc);
 
-	if (pctest) {
+	if (pc) {
 	  /* Check the totals */
-	  test_colloid_sums_assert(cref, pctest);
-
-	  /* Should be at most one colloid */
-	  test_assert(pctest->next == NULL);
+	  if (pc->s.index == 1) test_colloid_sums_assert(cref1, pc);
+	  if (pc->s.index == 2) test_colloid_sums_assert(cref2, pc);
 	}
 	/* Next cell */
       }
@@ -127,20 +145,47 @@ static void test_colloid_sums_edge_x(void) {
  *
  *****************************************************************************/
 
-static void test_colloid_sums_reference_set(colloid_t * pc) {
+static void test_colloid_sums_reference_set(colloid_t * pc, int seed) {
 
   int ia;
   int ivalue;
 
-  ivalue = 2;
+  ivalue = seed;
+
+  /* STURCTURE */
+  /* Note, we haven't included s.deltaphi as this is part of the
+   * state, which is involved in the halo swap, as well as the sum. */
 
   pc->sumw = 1.0*ivalue++;
+  pc->deltam = 1.0*ivalue++;
 
   for (ia = 0; ia < 3; ia++) {
     pc->cbar[ia] = 1.0*ivalue++;
     pc->rxcbar[ia] = 1.0*ivalue++;
   }
  
+  /* DYNAMICS */
+
+  for (ia = 0; ia < 3; ia++) {
+    pc->f0[ia] = 1.0*ivalue++;
+    pc->t0[ia] = 1.0*ivalue++;
+    pc->force[ia] = 1.0*ivalue++;
+    pc->torque[ia] = 1.0*ivalue++;
+  }
+
+  pc->sump = 1.0*ivalue++;
+
+  for (ia = 0; ia < 21; ia++) {
+    pc->zeta[ia] = 1.0*ivalue++;
+  }
+
+  /* ACTIVE */
+
+  for (ia = 0; ia < 3; ia++) {
+    pc->fc0[ia] = 1.0*ivalue++;
+    pc->tc0[ia] = 1.0*ivalue++;
+  }
+
   return;
 }
 
@@ -157,10 +202,21 @@ static void test_colloid_sums_copy(colloid_t ref, colloid_t * pc) {
   int ia;
 
   pc->sumw = ref.sumw;
+  pc->sump = ref.sump;
 
   for (ia = 0; ia < 3; ia++) {
     pc->cbar[ia] = ref.cbar[ia];
     pc->rxcbar[ia] = ref.rxcbar[ia];
+    pc->f0[ia] = ref.f0[ia];
+    pc->t0[ia] = ref.t0[ia];
+    pc->force[ia] = ref.force[ia];
+    pc->torque[ia] = ref.torque[ia];
+    pc->fc0[ia] = ref.fc0[ia];
+    pc->tc0[ia] = ref.tc0[ia];
+  }
+
+  for (ia = 0; ia < 21; ia++) {
+    pc->zeta[ia] = ref.zeta[ia];
   }
 
   return;
@@ -178,13 +234,35 @@ static void test_colloid_sums_assert(colloid_t c1, colloid_t * c2) {
 
   int ia;
 
+  /* STRUCTURE */
+
   test_assert(fabs(c1.sumw - c2->sumw) < TEST_DOUBLE_TOLERANCE);
 
   for (ia = 0; ia < 3; ia++) {
-
     test_assert(fabs(c1.cbar[ia] - c2->cbar[ia]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(c1.rxcbar[ia] - c2->rxcbar[ia]) < TEST_DOUBLE_TOLERANCE);
+  }
 
+  /* DYNAMICS */
+
+  test_assert(fabs(c1.sump - c2->sump) < TEST_DOUBLE_TOLERANCE);
+
+  for (ia = 0; ia < 3; ia++) {
+    test_assert(fabs(c1.f0[ia] - c2->f0[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1.t0[ia] - c2->t0[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1.force[ia] - c2->force[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1.torque[ia] - c2->torque[ia]) < TEST_DOUBLE_TOLERANCE);
+  }
+
+  for (ia = 0; ia < 21; ia++) {
+    test_assert(fabs(c1.zeta[ia] - c2->zeta[ia]) < TEST_DOUBLE_TOLERANCE);
+  }
+
+  /* ACTIVE */
+
+  for (ia = 0; ia < 3; ia++) {
+    test_assert(fabs(c1.fc0[ia] - c2->fc0[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1.tc0[ia] - c2->tc0[ia]) < TEST_DOUBLE_TOLERANCE);
   }
 
   return;
