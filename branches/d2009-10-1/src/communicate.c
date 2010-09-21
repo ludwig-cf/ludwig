@@ -145,8 +145,8 @@ void MODEL_init( void ) {
   }
 
   /* BLUEPHASE */
-  /* blue_phase_twist_init(0.3333333);*/
+  blue_phase_twist_init(0.3333333);
+  /*blue_set_random_q_init(50, 78, 50, 78, 50, 78);*/
   /* blue_phase_O8M_init(-0.2);*/
-   blue_phase_O2_init(0.3);
-
+  /* blue_phase_O2_init(0.3);*/
 }

@@ -1,5 +1,8 @@
 /*
  * colloids_Q_tensor.c
+ *
+ *  $Id: colloids_Q_tensor.c,v 1.1.2.13 2010-09-21 16:03:01 jlintuvu Exp $
+ *
  * routine to set the Q tensor inside a colloid to correspond
  * to homeotropic or planar anchoring at the surface
  * 11/11/09
@@ -28,7 +31,8 @@ struct io_info_t * io_info_scalar_q_;
 
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
-static double * scalar_order_parameter_director(double q[3][3]);
+static void scalar_order_parameter_director(double q[3][3], double qs[4]);
+
 
 void COLL_set_Q(){
 
@@ -49,11 +53,10 @@ void COLL_set_Q(){
   int index;
 
   double q[3][3];
-  double d[3],v[3][3];
+  double qs[4];
   double director[3];
   double len_normal;
   double amplitude;
-  int emax,enxt,nrots;
   double rdotd;
   double dir_len;
   amplitude = 0.33333333;
@@ -63,14 +66,14 @@ void COLL_set_Q(){
   
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	
 	index = coords_index(ic, jc, kc);
 
 	p_colloid = colloid_at_site_index(index);
 	
 	/* check if this node is inside a colloid */
-	if(p_colloid != NULL){
+	if (p_colloid != NULL){
 	  
 
 	  /* Need to translate the colloid position to "local"
@@ -119,28 +122,11 @@ void COLL_set_Q(){
 	  */
 	  
 	  phi_get_q_tensor(index, q);
-	  
-	  jacobi(q,d,v,&nrots);
-	  
-	  /* find the largest eigen value and corresponding eigen vector */
-	  if (d[0] > d[1]) {
-	      emax=0;
-	      enxt=1;
-	    }
-	    else {
-	      emax=1;
-	      enxt=0;
-	    }
-	    if (d[2] > d[emax]) {
-	      emax=2;
-	    }
-	    else if (d[2] > d[enxt]) {
-	      enxt=2;
-	    }
+	  scalar_order_parameter_director(q, qs);
 
-	    dir[X] = v[X][emax];
-	    dir[Y] = v[Y][emax];
-	    dir[Z] = v[Z][emax];
+	  dir[X] = qs[1];
+	  dir[Y] = qs[2];
+	  dir[Z] = qs[3];
 
 	    /* calculate the projection of the director along the surface
 	     * normal and remove that from the director to make the
@@ -162,10 +148,8 @@ void COLL_set_Q(){
 
 	      cross_product(dir_prev, normal, dir);
 	      dir_len = modulus(dir);
-	      info("\n i,j,k, %d %d %d\n", ic,jc,kc);
-	      assert(dir_len>10e-8);
+	      fatal("dir_len < 10-8 i,j,k, %d %d %d\n", ic,jc,kc);
 	    }
-	    assert(dir_len > 10e-8);
 
 	    for (ia = 0; ia < 3; ia++) {
 	      director[ia] = dir[ia] / dir_len;
@@ -179,11 +163,11 @@ void COLL_set_Q(){
 	    director[Y] = normal[Y]/len_normal;
 	    director[Z] = normal[Z]/len_normal;
 #endif
-	    q[X][X] = 3.0/2.0*amplitude*(director[X]*director[X] - 1.0/3.0);
-	    q[X][Y] = 3.0/2.0*amplitude*(director[X]*director[Y]);
-	    q[X][Z] = 3.0/2.0*amplitude*(director[X]*director[Z]);
-	    q[Y][Y] = 3.0/2.0*amplitude*(director[Y]*director[Y] - 1.0/3.0);
-	    q[Y][Z] = 3.0/2.0*amplitude*(director[Y]*director[Z]);
+	    q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
+	    q[X][Y] = 1.5*amplitude*(director[X]*director[Y]);
+	    q[X][Z] = 1.5*amplitude*(director[X]*director[Z]);
+	    q[Y][Y] = 1.5*amplitude*(director[Y]*director[Y] - 1.0/3.0);
+	    q[Y][Z] = 1.5*amplitude*(director[Y]*director[Z]);
 	    
 	    phi_set_q_tensor(index, q);
 
@@ -329,75 +313,6 @@ void jacobi(double (*a)[n], double d[], double (*v)[n], int *nrot)
 }
 #undef n
 #undef ROTATE
-/*
-static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
-				const int kc) {
-  int index, n;
-  double q[3][3];
-  double qs;
-  double d[3],v[3][3];
-  int nrots,emax,enxt;
-  int i;
-  Colloid * colloid_at_site_index(int);
-  Colloid * p_colloid;
-
-  index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-
-//   JUHO: YOU NEED CODE TO WORK OUT VALUE REQUIRED HERE
-  jacobi(q,d,v,&nrots);
-  
-//   find the largest eigen value and corresponding eigen vector
-  if (d[0] > d[1]) {
-    emax=0;
-    enxt=1;
-  }
-  else {
-    emax=1;
-    enxt=0;
-   }
-  if (d[2] > d[emax]) {
-    emax=2;
-  }
-  else if (d[2] > d[enxt]) {
-    enxt=2;
-  }
-  
-  qs = d[emax]; 
-
-  //assert(qs<= 1.0/3.0);
-  // if(qs >= 1.0/3.0){
-  // info("\n qs = %lf, i, j, k, %d, %d, %d \n", qs, ic, jc, kc);
-  //}
-
-  p_colloid = colloid_at_site_index(index);
-  
-  if(p_colloid != NULL){
-//     if inside colloid print perfect order
-    qs=0.33333333333;
-  }
-  n = fprintf(fp, "%4d %4d %4d %22.15e ", ic,jc,kc,qs);
-  if (n < 37) fatal("fprintf(qs) failed at index %d\n", index);
-  
-  if(p_colloid != NULL){
-//    this column is printed 0.0 if inside colloid otherwise the same as previous
-    qs=0.0;
-      }
-  n = fprintf(fp, "%22.15e ", qs);
-  if (n < 23) fatal("fprintf(qs) failed at index %d\n", index);
-  
-  for (i=0;i<3;i++){
-    qs=v[i][emax];
-    n = fprintf(fp, "%22.15e ", qs);
-    if (n < 23) fatal("fprintf(qs) failed at index %d\n", index);
-  }
-  n = fprintf(fp, "\n");
-  if (n != 1) fatal("fprintf(qs) failed at index %d\n", index);
-
-  return n;
-}
-
-*/
 
 /*****************************************************************************
  *
@@ -491,20 +406,21 @@ void scalar_q_io_init(void) {
 
 /*****************************************************************************
  *
- *  scalar_q_write_ascii
+ *  scalar_q_dir_write_ascii
  *
  *  Write the value of the scalar order parameter and director at (ic, jc, kc).
  *
  *****************************************************************************/
+
 static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
-                          const int kc) {
+				    const int kc) {
   int index, n;
   double q[3][3];
-  double * qs_dir;
+  double qs_dir[4];
 
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  qs_dir = scalar_order_parameter_director(q);
+  scalar_order_parameter_director(q, qs_dir);
 
   n = fprintf(fp, "%le %le %le %le\n", qs_dir[0], qs_dir[1], qs_dir[2], qs_dir[3]);
   if (n < 0) fatal("fprintf(qs_dir) failed at index %d\n", index);
@@ -522,14 +438,14 @@ static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
  *****************************************************************************/
 
 static int scalar_q_dir_write(FILE * fp, const int ic, const int jc,
-			  const int kc) {
+			      const int kc) {
   int index, n;
   double q[3][3];
-  double * qs_dir;
+  double qs_dir[4];
 
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  qs_dir = scalar_order_parameter_director(q);
+  scalar_order_parameter_director(q, qs_dir);
 
   n = fwrite(qs_dir, sizeof(double), 4, fp);
   if (n != 4) fatal("fwrite(qs_dir) failed at index %d\n", index);
@@ -541,15 +457,15 @@ static int scalar_q_dir_write(FILE * fp, const int ic, const int jc,
  *
  *  scalar_order_parameter_director
  *
- *  Return the value of the scalar order parameter and director for given Q tensor.
+ *  Return the value of the scalar order parameter and director for
+ *  given Q tensor.
  *
  *****************************************************************************/
 
-double * scalar_order_parameter_director(double q[3][3]) {
+static void scalar_order_parameter_director(double q[3][3], double qs[4]) {
 
   int nrots, emax;
   double d[3], v[3][3];
-  double static return_array[4];
 
   jacobi(q, d, v, &nrots);
   
@@ -565,10 +481,10 @@ double * scalar_order_parameter_director(double q[3][3]) {
     emax=2;
   }
 
-  return_array[0]=d[emax];
-  return_array[1]=v[emax][0];
-  return_array[2]=v[emax][1];
-  return_array[3]=v[emax][2];
+  qs[0] = d[emax];
+  qs[1] = v[emax][0];
+  qs[2] = v[emax][1];
+  qs[3] = v[emax][2];
 
-  return return_array;
+  return;
 }

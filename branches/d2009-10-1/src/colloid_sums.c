@@ -4,7 +4,7 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id: colloid_sums.c,v 1.1.2.4 2010-09-20 17:12:31 kevin Exp $
+ *  $Id: colloid_sums.c,v 1.1.2.5 2010-09-21 16:03:01 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -56,7 +56,7 @@ static const int msize_[3] = {10, 35, 7};       /* Message sizes (doubles) */
 
 /* The following are used for internal communication */
 
-static enum load_unload {MESSAGE_LOAD, MESSAGE_UNLOAD};
+enum load_unload {MESSAGE_LOAD, MESSAGE_UNLOAD};
 
 static int mtype_;                              /* Current message type */
 static int mload_;                              /* Load / unload flag */

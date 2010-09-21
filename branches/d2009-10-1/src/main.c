@@ -61,6 +61,7 @@
 #include "stats_free_energy.h"
 #include "stats_distribution.h"
 
+
 void ludwig_rt(void);
 void ludwig_init(void);
 void ludwig_report_momentum(void);
@@ -117,6 +118,9 @@ void ludwig_init(void) {
   int n;
   char filename[FILENAME_MAX];
 
+  /* Initialise Lc in colloids */
+  COLL_randomize_Q(0.0);
+
   if (get_step() == 0) {
     n = 0;
     RUN_get_int_parameter("LE_init_profile", &n);
@@ -133,18 +137,13 @@ void ludwig_init(void) {
     io_read(filename, distribution_io_info());
 
     if (phi_is_finite_difference()) {
-      sprintf(filename,"phi-%6.6d", get_step());
+      sprintf(filename,"phi-%8.8d", get_step());
       info("Reading phi state from %s\n", filename);
       io_read(filename, io_info_phi);
     }
   }
 
   phi_gradients_init();
-  /* blue phase / colloids BLUEPHASE */
-  /*  phi_gradients_set_fluid();*/
-
-  /* Initialise Lc in colloids */
-  /* COLL_randomize_Q(0.0);*/
 
   stats_rheology_init();
   stats_turbulent_init();
@@ -175,6 +174,8 @@ int main( int argc, char **argv ) {
   ludwig_rt();
   ludwig_init();
   
+  scalar_q_io_init();
+
   /* Report initial statistics */
 
   stats_distribution_print();
@@ -211,13 +212,14 @@ int main( int argc, char **argv ) {
 
 	TIMER_start(TIMER_FORCE_CALCULATION);
 
-// stress for blue phase is currently only implemented in phi_force_colloid()
-//	if (colloid_ntotal() == 0) {
-//	  phi_force_calculation();
-//	}
-//	else {
+	if (colloid_ntotal() == 0) {
+	  phi_force_calculation();
+	}
+	else {
 	  phi_force_colloid();
-//	}
+	  /* Fixes the velocity gradient tensor for beris edwards */
+	  colloids_fix_swd();
+	}
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
 	TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
@@ -263,15 +265,21 @@ int main( int argc, char **argv ) {
     if (is_config_step()) {
       sprintf(filename, "dist-%8.8d", step);
       io_write(filename, distribution_io_info());
-      sprintf(filename, "%s%6.6d", "config.cds", step);
+      sprintf(filename, "%s%8.8d", "config.cds", step);
       colloid_io_write(filename);
+      sprintf(filename,"phi-%8.8d",step);
+      io_write(filename, io_info_phi);
     }
 
     /* Measurements */
 
     if (is_measurement_step()) {	  
-      sprintf(filename, "%s%6.6d", "config.cds", step);
+      sprintf(filename, "%s%8.8d", "config.cds", step);
       colloid_io_write(filename);
+      
+      info("Writing scalar order parameter file at step %d!\n", step);
+      sprintf(filename,"scalar_q-%8.8d",step);
+      io_write(filename, io_info_scalar_q_);
     }
 
     if (is_shear_measurement_step()) {
@@ -286,17 +294,13 @@ int main( int argc, char **argv ) {
 
     if (is_phi_output_step()) {
       info("Writing phi file at step %d!\n", step);
-      sprintf(filename,"phi-%6.6d",step);
+      sprintf(filename,"phi-%8.8d",step);
       io_write(filename, io_info_phi);
-
-      info("Writing scalar op and director at step %d!\n", step);
-      sprintf(filename,"qs_dir-%6.6d",step);
-      io_write(filename, io_info_scalar_q_);
     }
 
     if (is_vel_output_step()) {
       info("Writing velocity output at step %d!\n", step);
-      sprintf(filename, "vel-%6.6d", step);
+      sprintf(filename, "vel-%8.8d", step);
       io_write(filename, io_info_velocity_);
     }
 
@@ -323,9 +327,9 @@ int main( int argc, char **argv ) {
   if (is_config_at_end()) {
     sprintf(filename, "dist-%8.8d", step);
     io_write(filename, distribution_io_info());
-    sprintf(filename, "%s%6.6d", "config.cds", step);
+    sprintf(filename, "%s%8.8d", "config.cds", step);
     colloid_io_write(filename);
-    sprintf(filename,"phi-%6.6d",step);
+    sprintf(filename,"phi-%8.8d",step);
     io_write(filename, io_info_phi);
   }
 
