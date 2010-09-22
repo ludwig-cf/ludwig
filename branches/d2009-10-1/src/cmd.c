@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15.16.6 2010-07-07 11:07:15 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.7 2010-09-22 16:11:41 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -468,8 +468,11 @@ void mc_init_random(const int npart, const double a0, const double ah) {
     r0[X] = Lmin(X) + Lex[X] + ran_serial_uniform()*(L(X) - 2.0*Lex[X]);
     r0[Y] = Lmin(Y) + Lex[Y] + ran_serial_uniform()*(L(Y) - 2.0*Lex[Y]);
     r0[Z] = Lmin(Z) + Lex[Z] + ran_serial_uniform()*(L(Z) - 2.0*Lex[Z]);
-    colloid_add_local(n, r0);
-    fatal("Set a0 ah\n");
+    pc = colloid_add_local(n, r0);
+    if (pc) {
+      pc->s.a0 = a0;
+      pc->s.ah = ah;
+    }
   }
 
   return;
