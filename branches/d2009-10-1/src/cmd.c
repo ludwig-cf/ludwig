@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15.16.7 2010-09-22 16:11:41 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.8 2010-09-22 16:16:11 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -458,6 +458,7 @@ void mc_init_random(const int npart, const double a0, const double ah) {
   int n;
   double r0[3];
   double Lex[3];
+  colloid_t * pc;
 
   /* If boundaries are present, some of the volume must be excluded */
   Lex[X] = ah*(1.0 - is_periodic(X));
@@ -498,6 +499,8 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
   double  dx, dy, dz, vp;
   double r0[3];
 
+  colloid_t * pc;
+
   /* How many particles to get this volume fraction? */
 
   n_request = (ceil) (L(X)*L(Y)*L(Z)*vf / ((4.0/3.0)*pi_*ah*ah*ah));
@@ -527,8 +530,10 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
 
 	if (ran_serial_uniform() < vp) {
 	  index++;
-	  colloid_add(index, r0);
-	  fatal("check properties\n");
+	  pc = colloid_add(index, r0);
+	  assert(pc);
+	  pc->s.a0 = a0;
+	  pc->s.ah = ah;
 	}
       }
     }
@@ -550,8 +555,10 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
 
 	if (ran_serial_uniform() < vp) {
 	  index++;
-	  colloid_add(index, r0);
-	  fatal("check properties\n");
+	  pc = colloid_add(index, r0);
+	  assert(pc);
+	  pc->s.a0 = a0;
+	  pc->s.ah = ah;
 	}
       }
     }
