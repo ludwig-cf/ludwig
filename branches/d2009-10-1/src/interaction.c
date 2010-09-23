@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.8 2010-08-06 17:41:25 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.9 2010-09-23 16:38:44 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -233,7 +233,7 @@ void COLL_init() {
       sprintf(filename, "%s", "config.cds.init");
     }
     else {
-      sprintf(filename, "%s%6.6d", "config.cds", get_step());
+      sprintf(filename, "%s%8.8d", "config.cds", get_step());
     }
     info("Reading colloid information from files: %s\n", filename);
 
