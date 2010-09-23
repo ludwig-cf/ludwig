@@ -2,7 +2,7 @@
  *
  *  colloid_sums.h
  *
- *  $Id: colloid_sums.h,v 1.1.2.1 2010-08-06 17:38:33 kevin Exp $
+ *  $Id: colloid_sums.h,v 1.1.2.2 2010-09-23 17:09:12 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -19,6 +19,7 @@ enum message_type {COLLOID_SUM_STRUCTURE = 0,
 		   COLLOID_SUM_DYNAMICS = 1,
 		   COLLOID_SUM_ACTIVE = 2};
 
-void colloid_sums_dim(int dim, int message_type);
+void colloid_sums_halo(const int message_type);
+void colloid_sums_dim(const int dim, const int message_type);
 
 #endif

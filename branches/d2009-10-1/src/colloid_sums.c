@@ -4,7 +4,7 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id: colloid_sums.c,v 1.1.2.5 2010-09-21 16:03:01 jlintuvu Exp $
+ *  $Id: colloid_sums.c,v 1.1.2.6 2010-09-23 17:09:12 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -64,6 +64,30 @@ static int tag_ = 1070;                         /* Message tag */
 
 static double * send_;                          /* Send buffer */
 static double * recv_;                          /* Receive buffer */
+
+/*****************************************************************************
+ *
+ *  colloid_sums_halo
+ *
+ *  There are a limited number of acceptable non-periodic boundaries.
+ *  The order of the calls is therefore important, as X messages must
+ *  be complete, etc. These must be trapped explicitly in serial.
+ *
+ *****************************************************************************/
+
+void colloid_sums_halo(const int mtype) {
+
+  if (cart_size(X) == 1 && is_periodic(X) == 0) return;
+  colloid_sums_dim(X, mtype);
+
+  if (cart_size(Y) == 1 && is_periodic(Y) == 0) return;
+  colloid_sums_dim(Y, mtype);
+
+  if (cart_size(Z) == 1 && is_periodic(Z) == 0) return;
+  colloid_sums_sim(Z, mtype);
+
+  return;
+}
 
 /*****************************************************************************
  *
