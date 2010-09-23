@@ -4,7 +4,7 @@
  *
  *  The implementation is exposed for the time being.
  *
- *  $Id: colloid_link.h,v 1.1.2.1 2010-06-06 14:27:29 kevin Exp $
+ *  $Id: colloid_link.h,v 1.1.2.2 2010-09-23 17:39:20 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -37,6 +37,6 @@ enum link_status {LINK_FLUID, LINK_COLLOID, LINK_BOUNDARY, LINK_UNUSED};
 colloid_link_t * colloid_link_allocate(void);
 void             colloid_link_free_list(colloid_link_t * link);
 int              colloid_link_count(colloid_link_t * link);
-int              colooid_link_total(void);
+int              colloid_link_total(void);
 
 #endif
