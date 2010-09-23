@@ -4,7 +4,7 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id: colloid_sums.c,v 1.1.2.6 2010-09-23 17:09:12 kevin Exp $
+ *  $Id: colloid_sums.c,v 1.1.2.7 2010-09-23 17:27:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -84,7 +84,7 @@ void colloid_sums_halo(const int mtype) {
   colloid_sums_dim(Y, mtype);
 
   if (cart_size(Z) == 1 && is_periodic(Z) == 0) return;
-  colloid_sums_sim(Z, mtype);
+  colloid_sums_dim(Z, mtype);
 
   return;
 }
