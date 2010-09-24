@@ -278,7 +278,7 @@ int main( int argc, char **argv ) {
       colloid_io_write(filename);
       
       info("Writing scalar order parameter file at step %d!\n", step);
-      sprintf(filename,"scalar_q-%8.8d",step);
+      sprintf(filename,"qs_dir-%8.8d",step);
       io_write(filename, io_info_scalar_q_);
     }
 
