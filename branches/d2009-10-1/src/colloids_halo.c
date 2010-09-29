@@ -4,7 +4,7 @@
  *
  *  Halo exchange of colloid state information.
  *
- *  $Id: colloids_halo.c,v 1.1.2.5 2010-09-24 17:31:32 kevin Exp $
+ *  $Id: colloids_halo.c,v 1.1.2.6 2010-09-29 18:08:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,7 +26,8 @@
 
 static colloid_state_t * send_;   /* Send buffer */
 static colloid_state_t * recv_;   /* Recv buffer */
-static const int tag_ = 1065;
+static const int tagf_ = 1061;
+static const int tagb_ = 1062;
 
 static void colloids_halo_load(int dim, const int nsend[2]);
 static void colloids_halo_unload(int nrecv);
@@ -250,6 +251,9 @@ static int colloids_halo_load_list(int ic, int jc, int kc,
     send_[noff + n].r[X] = pc->s.r[X] + rperiod[X];
     send_[noff + n].r[Y] = pc->s.r[Y] + rperiod[Y];
     send_[noff + n].r[Z] = pc->s.r[Z] + rperiod[Z];
+    /* Because delta phi is accumulated across copies at each time step,
+     * we must zero the outgoing copy here to avoid overcounting */
+    send_[noff + n].deltaphi = 0.0;
     n++;
     pc = pc->next;
   }
@@ -325,10 +329,10 @@ static void colloids_halo_irecv(int dim, int nrecv[2], MPI_Request req[2]) {
     pback = cart_neighb(BACKWARD, dim);
 
     n = nrecv[FORWARD]*sizeof(colloid_state_t);
-    MPI_Irecv(recv_, n, MPI_BYTE, pforw, tag_, comm, req);
+    MPI_Irecv(recv_, n, MPI_BYTE, pforw, tagb_, comm, req);
 
     n = nrecv[BACKWARD]*sizeof(colloid_state_t);
-    MPI_Irecv(recv_ + nrecv[FORWARD], n, MPI_BYTE, pback, tag_, comm, req + 1);
+    MPI_Irecv(recv_ + nrecv[FORWARD], n, MPI_BYTE, pback, tagf_, comm, req+1);
   }
 
   return;
@@ -364,10 +368,10 @@ static void colloids_halo_isend(int dim, int nsend[2], MPI_Request req[2]) {
     pback = cart_neighb(BACKWARD, dim);
 
     n = nsend[FORWARD]*sizeof(colloid_state_t);
-    MPI_Issend(send_ + nsend[BACKWARD], n, MPI_BYTE, pforw, tag_, comm, req);
+    MPI_Issend(send_ + nsend[BACKWARD], n, MPI_BYTE, pforw, tagf_, comm, req);
 
     n = nsend[BACKWARD]*sizeof(colloid_state_t);
-    MPI_Issend(send_, n, MPI_BYTE, pback, tag_, comm, req + 1);
+    MPI_Issend(send_, n, MPI_BYTE, pback, tagb_, comm, req + 1);
   }
 
   return;
@@ -382,7 +386,6 @@ static void colloids_halo_isend(int dim, int nsend[2], MPI_Request req[2]) {
 static void colloids_halo_number(int dim, int nsend[2], int nrecv[2]) {
 
   int       pforw, pback;
-  const int tag = 1066;
 
   MPI_Comm    comm;
   MPI_Request request[4];
@@ -398,11 +401,11 @@ static void colloids_halo_number(int dim, int nsend[2], int nrecv[2]) {
     pforw = cart_neighb(FORWARD, dim);
     pback = cart_neighb(BACKWARD, dim);
 
-    MPI_Irecv(nrecv + FORWARD, 1, MPI_INT, pforw, tag, comm, request);
-    MPI_Irecv(nrecv + BACKWARD, 1, MPI_INT, pback, tag, comm, request + 1);
+    MPI_Irecv(nrecv + FORWARD, 1, MPI_INT, pforw, tagb_, comm, request);
+    MPI_Irecv(nrecv + BACKWARD, 1, MPI_INT, pback, tagf_, comm, request + 1);
 
-    MPI_Issend(nsend + FORWARD, 1, MPI_INT, pforw, tag, comm, request + 2);
-    MPI_Issend(nsend + BACKWARD, 1, MPI_INT, pback, tag, comm, request + 3);
+    MPI_Issend(nsend + FORWARD, 1, MPI_INT, pforw, tagf_, comm, request + 2);
+    MPI_Issend(nsend + BACKWARD, 1, MPI_INT, pback, tagb_, comm, request + 3);
 
     MPI_Waitall(4, request, status);
   }
