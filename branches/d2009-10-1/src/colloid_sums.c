@@ -4,7 +4,7 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id: colloid_sums.c,v 1.1.2.7 2010-09-23 17:27:05 kevin Exp $
+ *  $Id: colloid_sums.c,v 1.1.2.8 2010-09-29 18:07:29 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -60,7 +60,8 @@ enum load_unload {MESSAGE_LOAD, MESSAGE_UNLOAD};
 
 static int mtype_;                              /* Current message type */
 static int mload_;                              /* Load / unload flag */
-static int tag_ = 1070;                         /* Message tag */
+static int tagf_ = 1070;                        /* Message tag */
+static int tagb_ = 1071;                        /* Message tag */
 
 static double * send_;                          /* Send buffer */
 static double * recv_;                          /* Receive buffer */
@@ -148,6 +149,9 @@ void colloid_sums_dim(const int dim, const int mtype) {
  *
  *  colloid_sums_count
  *
+ *  Note that we need the full extent of the cell list is each
+ *  direction perpendicular to the transfer.
+ *
  *****************************************************************************/
 
 static void colloid_sums_count(const int dim, int ncount[2]) {
@@ -158,8 +162,8 @@ static void colloid_sums_count(const int dim, int ncount[2]) {
   ncount[FORWARD] = 0;
 
   if (dim == X) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 	ncount[BACKWARD] += colloids_cell_count(0, jc, kc);
 	ncount[BACKWARD] += colloids_cell_count(1, jc, kc);
 	ncount[FORWARD]  += colloids_cell_count(Ncell(X), jc, kc);
@@ -170,7 +174,7 @@ static void colloid_sums_count(const int dim, int ncount[2]) {
 
   if (dim == Y) {
     for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 	ncount[BACKWARD] += colloids_cell_count(ic, 0, kc);
 	ncount[BACKWARD] += colloids_cell_count(ic, 1, kc);
 	ncount[FORWARD]  += colloids_cell_count(ic, Ncell(Y), kc); 
@@ -217,8 +221,8 @@ static void colloid_sums_irecv(int dim, int ncount[2], int nsize,
     nb = nsize*ncount[BACKWARD];
     nf = nsize*ncount[FORWARD];
 
-    if (nb > 0) MPI_Irecv(recv_ + nf, nb, MPI_DOUBLE, pback, tag_, comm, req);
-    if (nf > 0) MPI_Irecv(recv_, nf, MPI_DOUBLE, pforw, tag_, comm, req + 1);
+    if (nb > 0) MPI_Irecv(recv_ + nf, nb, MPI_DOUBLE, pback, tagf_, comm, req);
+    if (nf > 0) MPI_Irecv(recv_, nf, MPI_DOUBLE, pforw, tagb_, comm, req + 1);
   }
 
   return;
@@ -252,8 +256,8 @@ static void colloid_sums_isend(int dim, int ncount[2], int nsize,
     pforw = cart_neighb(FORWARD, dim);
     pback = cart_neighb(BACKWARD, dim);
 
-    if (nb > 0) MPI_Issend(send_, nb, MPI_DOUBLE, pback, tag_, comm, req);
-    if (nf > 0) MPI_Issend(send_ + nb, nf, MPI_DOUBLE, pforw, tag_,
+    if (nb > 0) MPI_Issend(send_, nb, MPI_DOUBLE, pback, tagb_, comm, req);
+    if (nf > 0) MPI_Issend(send_ + nb, nf, MPI_DOUBLE, pforw, tagf_,
 			   comm, req + 1);
   }
 
@@ -296,8 +300,8 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
   }
 
   if (dim == X) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 	nb += message_loader(0, jc, kc, nb);
 	nb += message_loader(1, jc, kc, nb);
 	nf += message_loader(Ncell(X), jc, kc, nf);
@@ -308,7 +312,7 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
 
   if (dim == Y) {
     for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 	nb += message_loader(ic, 0, kc, nb);
 	nb += message_loader(ic, 1, kc, nb);
 	nf += message_loader(ic, Ncell(Y), kc, nf); 
@@ -380,7 +384,9 @@ static int colloid_sums_m1(int ic, int jc, int kc, int noff) {
       /* unload and check incoming index (a fatal error) */
       index = (int) recv_[n++];
 
-      if (index != pc->s.index) fatal("Sum mismatch m1 (%d)\n", index);
+      if (index != pc->s.index) {
+	fatal("Sum mismatch m1 (%d)\n", index);
+      }
 
       pc->sumw += recv_[n++];
       for (ia = 0; ia < 3; ia++) {
