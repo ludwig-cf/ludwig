@@ -4,7 +4,7 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.9.4.12 2010-08-04 14:26:43 kevin Exp $
+ *  $Id: colloids.c,v 1.9.4.13 2010-09-30 18:04:55 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,7 +30,7 @@ static int ncell_[3] = {2, 2, 2}; /* Width of cell list (minus halos) */
 static int ntotal_ = 0;           /* Total (physical) number of colloids */
 static int nalloc_ = 0;           /* No. colloids currently allocated */
 
-static Colloid ** cell_list_;     /* Cell list for colloids */
+static colloid_t ** cell_list_;   /* Cell list for colloids */
 
 /*****************************************************************************
  *
@@ -48,8 +48,8 @@ void colloids_init() {
 
   n = (ncell_[X] + 2*nhalo_)*(ncell_[Y] + 2*nhalo_)*(ncell_[Z] + 2*nhalo_);
 
-  cell_list_ = (Colloid **) calloc(n, sizeof(Colloid *));
-  if (cell_list_ == (Colloid **) NULL) fatal("calloc(cell_list)");
+  cell_list_ = (colloid_t **) calloc(n, sizeof(colloid_t *));
+  if (cell_list_ == (colloid_t **) NULL) fatal("calloc(cell_list)");
 
   return;
 }
@@ -65,8 +65,8 @@ void colloids_init() {
 void colloids_finish() {
 
   int ic, jc, kc;
-  Colloid * p_colloid;
-  Colloid * p_tmp;
+  colloid_t * p_colloid;
+  colloid_t * p_tmp;
 
   for (ic = 0; ic <= ncell_[X]+1; ic++) {
     for (jc = 0; jc <= ncell_[Y]+1; jc++) {
@@ -185,7 +185,7 @@ double colloid_rho0(void) {
  *
  *****************************************************************************/
 
-Colloid * colloids_cell_list(const int ic, const int jc, const int kc) {
+colloid_t * colloids_cell_list(const int ic, const int jc, const int kc) {
 
   int xstride;
   int ystride;
@@ -208,15 +208,15 @@ Colloid * colloids_cell_list(const int ic, const int jc, const int kc) {
  *
  *  colloids_cell_insert_colloid
  *
- *  Insert a Colloid into a cell determined by its position.
+ *  Insert a colloid_t into a cell determined by its position.
  *  The list is kept in order of increasing Colloid index.
  *
  *****************************************************************************/
 
-void colloids_cell_insert_colloid(Colloid * p_new) {
+void colloids_cell_insert_colloid(colloid_t * p_new) {
 
-  Colloid * p_current;
-  Colloid * p_previous;
+  colloid_t * p_current;
+  colloid_t * p_previous;
   int cell[3];
   int       cindex;
 
@@ -326,7 +326,7 @@ colloid_t * colloid_allocate(void) {
  *
  *****************************************************************************/
 
-void colloid_free(Colloid * p_colloid) {
+void colloid_free(colloid_t * p_colloid) {
 
   assert(p_colloid);
 
@@ -350,9 +350,9 @@ void colloid_free(Colloid * p_colloid) {
 
 void colloids_cell_update(void) {
 
-  Colloid * p_colloid;
-  Colloid * p_previous;
-  Colloid * tmp;
+  colloid_t * p_colloid;
+  colloid_t * p_previous;
+  colloid_t * tmp;
 
   int cell[3];
   int       cl_old, cl_new;
@@ -449,7 +449,7 @@ int colloid_nlocal(void) {
 
   int       ic, jc, kc;
   int       nlocal;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   nlocal = 0;
 
@@ -478,10 +478,10 @@ int colloid_nlocal(void) {
  *
  *****************************************************************************/
 
-Colloid * colloid_add(const int index, const double r[3]) {
+colloid_t * colloid_add(const int index, const double r[3]) {
 
   int       icell[3];
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   colloids_cell_coords(r, icell);
 
@@ -516,7 +516,7 @@ Colloid * colloid_add(const int index, const double r[3]) {
  *
  *****************************************************************************/
 
-Colloid * colloid_add_local(const int index, const double r[3]) {
+colloid_t * colloid_add_local(const int index, const double r[3]) {
 
   int icell[3];
 

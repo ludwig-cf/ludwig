@@ -4,7 +4,7 @@
  *
  *  Data structures holding linked list of colloids.
  *
- *  $Id: colloids.h,v 1.9.2.11 2010-08-04 14:26:43 kevin Exp $
+ *  $Id: colloids.h,v 1.9.2.12 2010-09-30 18:04:55 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,7 +20,6 @@
 #include "colloid.h"
 #include "colloid_link.h"
 
-typedef struct colloid Colloid;
 typedef struct colloid colloid_t;
 
 struct colloid {
