@@ -2,7 +2,7 @@
  *
  *  cmd.c
  *
- *  $Id: cmd.c,v 1.15.16.8 2010-09-22 16:16:11 kevin Exp $
+ *  $Id: cmd.c,v 1.15.16.9 2010-09-30 18:03:59 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,7 +20,6 @@
 #include "pe.h"
 #include "ran.h"
 #include "coords.h"
-#include "ccomms.h"
 #include "runtime.h"
 #include "physics.h"
 #include "potential.h"
@@ -28,6 +27,7 @@
 #include "cio.h"
 
 #include "colloids.h"
+#include "colloids_halo.h"
 #include "interaction.h"
 
 static void do_monte_carlo(const int);
@@ -152,7 +152,7 @@ void do_monte_carlo(const int mc_max_iterations) {
   drmax = mc_drmax_;
 
   colloids_cell_update();
-  CCOM_halo_particles();
+  colloids_halo_state();
 
   etotal_old = mc_total_energy();
 
@@ -161,7 +161,7 @@ void do_monte_carlo(const int mc_max_iterations) {
     /* A proposed move for the next step must be communicated. */
     ntrials++;
     mc_set_proposed_move(drmax);
-    CCOM_halo_particles();
+    colloids_halo_state();
 
     /* Move particles and calculate proposed new energy */
     mc_move(+1.0);
@@ -236,7 +236,7 @@ int mc_metropolis(double delta) {
 void mc_set_proposed_move(const double drmax) {
 
   int       ic, jc, kc;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   double mc_move_prob_ = 0.01;
 
@@ -282,7 +282,7 @@ void mc_move(const double sign) {
 
   int       ia;
   int       ic, jc, kc;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
@@ -321,7 +321,8 @@ void mc_check_state() {
   e = mc_total_energy();
 
   info("\nChecking colloid state...\n");
-  info("Total energy / NkT: %g\n", e/(colloid_ntotal()*get_kT()));
+  /*info("Total energy / NkT: %g\n", e/(colloid_ntotal()*get_kT()));*/
+  info("Total energy / NkT: %g\n", e);
   mc_mean_square_displacement();
 
   if (e >= ENERGY_HARD_SPHERE/2.0) {
@@ -344,8 +345,8 @@ void mc_check_state() {
 
 double mc_total_energy() {
 
-  Colloid * p_c1;
-  Colloid * p_c2;
+  colloid_t * p_c1;
+  colloid_t * p_c2;
 
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
   double elocal = 0.0;
@@ -384,6 +385,7 @@ double mc_total_energy() {
 		    h = h - p_c1->s.ah - p_c2->s.ah;
 
 		    elocal += hard_sphere_energy(h);
+
 		    elocal += soft_sphere_energy(h);
 		    elocal += yukawa_potential(h + p_c1->s.ah + p_c2->s.ah);
 		    elocal += leonard_jones_energy(h);
@@ -530,10 +532,11 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
 
 	if (ran_serial_uniform() < vp) {
 	  index++;
-	  pc = colloid_add(index, r0);
-	  assert(pc);
-	  pc->s.a0 = a0;
-	  pc->s.ah = ah;
+	  pc = colloid_add_local(index, r0);
+	  if (pc) {
+	    pc->s.a0 = a0;
+	    pc->s.ah = ah;
+	  }
 	}
       }
     }
@@ -549,16 +552,17 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
     for (ny = 1; ny < ncy; ny++) {
       for (nz = 1; nz < ncz; nz++) {
 
-	r0[X] = Lmin(X) + dx*(nx-0.5);
-	r0[Y] = Lmin(Y) + dy*(ny-0.5);
-	r0[Z] = Lmin(Z) + dz*(nz-0.5);
+	r0[X] = Lmin(X) + dx*nx;
+	r0[Y] = Lmin(Y) + dy*ny;
+	r0[Z] = Lmin(Z) + dz*nz;
 
 	if (ran_serial_uniform() < vp) {
 	  index++;
-	  pc = colloid_add(index, r0);
-	  assert(pc);
-	  pc->s.a0 = a0;
-	  pc->s.ah = ah;
+	  pc = colloid_add_local(index, r0);
+	  if (pc) {
+	    pc->s.a0 = a0;
+	    pc->s.ah = ah;
+	  }
 	}
       }
     }
@@ -578,7 +582,7 @@ int mc_init_bcc_lattice(double vf, double a0, double ah) {
 void mc_mean_square_displacement() {
 
   int     ic, jc, kc;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
   double    ds, dxsq = 0.0, dysq = 0.0, dzsq = 0.0;
 
 

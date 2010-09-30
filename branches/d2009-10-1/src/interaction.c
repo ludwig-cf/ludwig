@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.9 2010-09-23 16:38:44 jlintuvu Exp $
+ *  $Id: interaction.c,v 1.18.4.10 2010-09-30 18:03:59 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -43,10 +43,11 @@
 #include "subgrid.h"
 
 #include "util.h"
-#include "ccomms.h"
+#include "colloid_sums.h"
+#include "colloids_halo.h"
 #include "ewald.h"
 
-static void    COLL_overlap(Colloid *, Colloid *);
+static void    COLL_overlap(colloid_t *, colloid_t *);
 static void    COLL_set_fluid_gravity(void);
 
 void lubrication_sphere_sphere(double a1, double a2,
@@ -92,7 +93,7 @@ void COLL_update() {
 
   coll_position_update();
   colloids_cell_update();
-  CCOM_halo_particles();
+  colloids_halo_state();
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
@@ -240,8 +241,6 @@ void COLL_init() {
     colloid_io_read(filename);
   }
 
-  CCOM_init_halos();
-
   /* ewald_init(0.285, 16.0);*/
 
   lubrication_init();
@@ -258,7 +257,7 @@ void COLL_init() {
   /* Transfer any particles in the halo regions, initialise the
    * colloid map and build the particles for the first time. */
 
-  CCOM_halo_particles();
+  colloids_halo_state();
 
 #ifndef _SUBGRID_
   COLL_update_map();
@@ -337,7 +336,7 @@ void COLL_init_colloids_test() {
 #ifdef _COLLOIDS_TEST_AUTOCORRELATION_
 
   double r0[3];
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
   double    a0 = 2.3;
   double    ah = 2.3;
 
@@ -384,7 +383,7 @@ void COLL_init_colloids_test() {
 
 void COLL_test_output() {
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
   int       ic, jc, kc;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
@@ -477,7 +476,7 @@ void COLL_forces() {
 void COLL_zero_forces() {
 
   int       ic, jc, kc, ia;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   /* Only real particles need correct external force. */
 
@@ -558,8 +557,8 @@ void COLL_set_fluid_gravity() {
 
 double COLL_interactions() {
 
-  Colloid * p_c1;
-  Colloid * p_c2;
+  colloid_t * p_c1;
+  colloid_t * p_c2;
 
   int    ia;
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
@@ -790,7 +789,7 @@ void lubrication_sphere_sphere(double a1, double a2,
  *
  *****************************************************************************/
 
-void COLL_overlap(Colloid * p_c1, Colloid * p_c2) {
+void COLL_overlap(colloid_t * p_c1, colloid_t * p_c2) {
 
   verbose("Detected overlapping particles\n");
   colloid_state_write_ascii(p_c1->s, stdout);
@@ -813,7 +812,7 @@ void coll_position_update(void) {
   int ia;
   int ic, jc, kc;
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
@@ -849,7 +848,7 @@ double coll_max_speed() {
   int ic, jc, kc;
   double vmaxlocal;
   double vmax;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   vmaxlocal = 0.0;
 
