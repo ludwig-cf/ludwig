@@ -2,7 +2,7 @@
  *
  *  brownian.c
  *
- *  $Id: brownian.c,v 1.3.16.2 2010-07-07 09:02:36 kevin Exp $
+ *  $Id: brownian.c,v 1.3.16.3 2010-09-30 18:02:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -12,13 +12,14 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 
 #include "pe.h"
 #include "ran.h"
 #include "coords.h"
 #include "colloids.h"
-#include "ccomms.h"
+#include "colloids_halo.h"
 #include "physics.h"
 #include "util.h"
 
@@ -42,7 +43,7 @@ void do_brownian_dynamics() {
 
   int     ia;
   int     ic, jc, kc;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
   int i, n, nt, nmax = 100000;
   double u[3][NTIME];
   double r[3][NTIME];
@@ -53,6 +54,9 @@ void do_brownian_dynamics() {
   double correlator_ss[NTIME];
   double mass, scaleu, scalex, beta;
   double dr[3];
+
+  /* Brownian dynamics requires an update. */
+  assert(0);
 
   brownian_step_no_inertia_test();
   if (1) return;
@@ -85,7 +89,7 @@ void do_brownian_dynamics() {
 
   /* Set random numbers for each particle */
     brownian_set_random();
-    CCOM_halo_particles();
+    colloids_halo_state();
     /* brownian_step_ermak_buckholz();*/
     brownian_step_no_inertia();
 
@@ -185,7 +189,7 @@ void do_brownian_dynamics() {
 void brownian_step_no_inertia() {
 
   int       ic, jc, kc;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
   double    ran[3];
   double    eta, kT;
   double    sigma, rgamma;
@@ -263,7 +267,7 @@ void brownian_step_no_inertia() {
 void brownian_step_ermak_buckholz() {
 
   int     ic, jc, kc;
-  Colloid * pc;
+  colloid_t * pc;
 
   double ranx, rany, ranz;
   double cx, cy, cz;
@@ -353,7 +357,7 @@ void brownian_step_ermak_buckholz() {
 void brownian_set_random() {
 
   int     ic, jc, kc;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   /* Set random numbers for each particle */
 
@@ -406,7 +410,7 @@ void brownian_step_no_inertia_test() {
 
   int     ia;
   int     ic, jc, kc;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
   int     i, n, nt;
   int     ncell[3];
   double  diffr, difft;
@@ -437,7 +441,7 @@ void brownian_step_no_inertia_test() {
 
     brownian_set_random();
 
-    CCOM_halo_particles();
+    colloids_halo_state();
     brownian_step_no_inertia();
     colloids_cell_update();
 

@@ -7,7 +7,7 @@
  *
  *  See, for example, Allen and Tildesley, Computer Simulation of Liquids.
  *
- *  $Id: ewald.c,v 1.3.16.4 2010-07-07 09:05:14 kevin Exp $
+ *  $Id: ewald.c,v 1.3.16.5 2010-09-30 18:02:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -292,7 +292,7 @@ static void ewald_sum_sin_cos_terms() {
     for (jc = 1; jc <= ncell[Y]; jc++) {
       for (kc = 1; kc <= ncell[Z]; kc++) {
 
-	Colloid * p_colloid;
+	colloid_t * p_colloid;
 
 	p_colloid = colloids_cell_list(ic, jc, kc);
 
@@ -421,8 +421,8 @@ void ewald_total_energy(double * ereal, double * efour, double * eself) {
 
 void ewald_real_space_sum() {
 
-  Colloid * p_c1;
-  Colloid * p_c2;
+  colloid_t * p_c1;
+  colloid_t * p_c2;
 
   int    ic, jc, kc, id, jd, kd, dx, dy, dz;
 
@@ -577,7 +577,7 @@ void ewald_fourier_space_sum() {
     for (jc = 1; jc <= ncell[Y]; jc++) {
       for (kc = 1; kc <= ncell[Z]; kc++) {
 
-	Colloid * p_colloid;
+	colloid_t * p_colloid;
 
 	p_colloid = colloids_cell_list(ic, jc, kc);
 

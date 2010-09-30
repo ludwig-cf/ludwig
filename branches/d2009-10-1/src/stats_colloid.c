@@ -4,7 +4,7 @@
  *
  *  Some useful quantities concerning colloids.
  *
- *  $Id: stats_colloid.c,v 1.1.2.4 2010-08-05 15:29:37 kevin Exp $
+ *  $Id: stats_colloid.c,v 1.1.2.5 2010-09-30 18:02:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -41,7 +41,7 @@ void stats_colloid_momentum(double g[3]) {
   double glocal[3];
   double mass;
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   glocal[X] = 0.0;
   glocal[Y] = 0.0;

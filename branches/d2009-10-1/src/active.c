@@ -4,7 +4,7 @@
  *
  *  Routines dealing with bounce-back on links for active particles.
  *
- *  $Id: active.c,v 1.5.2.2 2010-07-07 09:00:31 kevin Exp $
+ *  $Id: active.c,v 1.5.2.3 2010-09-30 18:02:35 kevin Exp $
  *
  *  Isaac Llopis (Barcelona) developed the active particles.
  *
@@ -59,7 +59,7 @@ void init_active() {
 
 static void init_active2() {
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
   int       n, ic, jc, kc;
   double    b_1 = 0.02, b_2 = 0.1;
 

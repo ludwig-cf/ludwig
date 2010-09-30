@@ -4,7 +4,7 @@
  *
  *  Colloid parallel I/O driver.
  *
- *  $Id: cio.c,v 1.7.16.5 2010-07-07 10:53:47 kevin Exp $
+ *  $Id: cio.c,v 1.7.16.6 2010-09-30 18:02:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -333,7 +333,7 @@ static int colloid_io_read_header_binary(FILE * fp) {
 
 static void colloid_io_write_list_ascii(FILE * fp, int ic, int jc, int kc) {
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   p_colloid = colloids_cell_list(ic, jc, kc);
 
@@ -357,7 +357,7 @@ static void colloid_io_read_list_ascii(FILE * fp, int ndata) {
   int nlocal = 0;
 
   colloid_state_t s;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   for (nread = 0; nread < ndata; nread++) {
     colloid_state_read_ascii(&s, fp);
@@ -379,7 +379,7 @@ static void colloid_io_read_list_ascii(FILE * fp, int ndata) {
 
 static void colloid_io_write_list_binary(FILE * fp, int ic, int jc, int kc) {
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   p_colloid = colloids_cell_list(ic, jc, kc);
 
@@ -402,7 +402,7 @@ static void colloid_io_read_list_binary(FILE * fp, int ndata) {
   int nread;
 
   colloid_state_t s;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   for (nread = 0; nread < ndata; nread++) {
     colloid_state_read_binary(&s, fp);

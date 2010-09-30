@@ -1,7 +1,7 @@
 /*
  * colloids_Q_tensor.c
  *
- *  $Id: colloids_Q_tensor.c,v 1.1.2.13 2010-09-21 16:03:01 jlintuvu Exp $
+ *  $Id: colloids_Q_tensor.c,v 1.1.2.14 2010-09-30 18:02:35 kevin Exp $
  *
  * routine to set the Q tensor inside a colloid to correspond
  * to homeotropic or planar anchoring at the surface
@@ -39,7 +39,7 @@ void COLL_set_Q(){
   int ia;
   int ic,jc,kc;
   
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   double r0[3];
   double rsite0[3];
@@ -47,7 +47,7 @@ void COLL_set_Q(){
   double dir[3];
   double dir_prev[3];
 
-  Colloid * colloid_at_site_index(int);
+  colloid_t * colloid_at_site_index(int);
 
   int nlocal[3],offset[3];
   int index;
@@ -183,8 +183,8 @@ void COLL_randomize_Q(double delta_r){
   
   int ic,jc,kc;
   
-  Colloid * p_colloid;
-  Colloid * colloid_at_site_index(int);
+  colloid_t * p_colloid;
+  colloid_t * colloid_at_site_index(int);
 
   int nlocal[3],offset[3];
   int index;
@@ -336,8 +336,8 @@ void colloids_fix_swd(void) {
   double rb[3];
   double x, y, z;
 
-  Colloid * p_c;
-  Colloid * colloid_at_site_index(int);
+  colloid_t * p_c;
+  colloid_t * colloid_at_site_index(int);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);

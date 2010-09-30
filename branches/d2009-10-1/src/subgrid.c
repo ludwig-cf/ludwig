@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.4.16.6 2010-08-06 17:39:30 kevin Exp $
+ *  $Id: subgrid.c,v 1.4.16.7 2010-09-30 18:02:35 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
@@ -16,6 +16,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 #include <stddef.h>
 
@@ -25,7 +26,7 @@
 #include "interaction.h"
 #include "lattice.h"
 #include "colloids.h"
-#include "ccomms.h"
+#include "colloids_halo.h"
 #include "util.h"
 #include "subgrid.h"
 
@@ -51,7 +52,7 @@ void subgrid_force_from_particles() {
 
   double r[3], r0[3], force[3], g[3];
   double dr;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);
@@ -137,7 +138,7 @@ void subgrid_update() {
   int ic, jc, kc;
   double drag, eta;
   double g[3];
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   fatal("fix me\n"); /* The following needs to be rechecked.*/
 
@@ -146,7 +147,9 @@ void subgrid_update() {
   /* The message passing could be replaced by larger halo for velocity? */
 
   subgrid_interpolation();
-  CCOM_halo_sum(CHALO_TYPE7);
+
+  /* Require halo sum involving f0. */
+  assert(0);
 
   /* Loop through all cells (including the halo cells) */
 
@@ -203,7 +206,7 @@ static void subgrid_interpolation() {
 
   double r0[3], r[3], u[3];
   double dr;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);

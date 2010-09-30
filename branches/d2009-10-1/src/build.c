@@ -5,7 +5,7 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id: build.c,v 1.5.4.12 2010-07-07 11:10:43 kevin Exp $
+ *  $Id: build.c,v 1.5.4.13 2010-09-30 18:02:35 kevin Exp $
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -28,19 +28,19 @@
 #include "wall.h"
 #include "build.h"
 
-static Colloid ** coll_map;        /* Colloid map. */
-static Colloid ** coll_old;        /* Map at the previous time step */
+static colloid_t ** coll_map;        /* colloid_t map. */
+static colloid_t ** coll_old;        /* Map at the previous time step */
 
-static void build_link_mean(Colloid * pc, int p, const double rb[3]);
+static void build_link_mean(colloid_t * pc, int p, const double rb[3]);
 static void build_virtual_distribution_set(int index, int p,
 					   const double u[3]);
-static void    COLL_reconstruct_links(Colloid *);
-static void    reconstruct_wall_links(Colloid *);
-static void    COLL_reset_links(Colloid *);
-static void    build_remove_fluid(int index, Colloid *);
-static void    build_remove_order_parameter(int index, Colloid *);
-static void    build_replace_fluid(int index, Colloid *);
-static void    build_replace_order_parameter(int indeex, Colloid *);
+static void    COLL_reconstruct_links(colloid_t *);
+static void    reconstruct_wall_links(colloid_t *);
+static void    COLL_reset_links(colloid_t *);
+static void    build_remove_fluid(int index, colloid_t *);
+static void    build_remove_order_parameter(int index, colloid_t *);
+static void    build_replace_fluid(int index, colloid_t *);
+static void    build_replace_order_parameter(int indeex, colloid_t *);
 
 /*****************************************************************************
  *
@@ -58,11 +58,11 @@ void COLL_init_coordinates() {
 
   nsites = coords_nsites();
 
-  coll_map = (Colloid **) malloc(nsites*sizeof(Colloid *));
-  coll_old = (Colloid **) malloc(nsites*sizeof(Colloid *));
+  coll_map = (colloid_t **) malloc(nsites*sizeof(colloid_t *));
+  coll_old = (colloid_t **) malloc(nsites*sizeof(colloid_t *));
 
-  if (coll_map == (Colloid **) NULL) fatal("malloc (coll_map) failed");
-  if (coll_old == (Colloid **) NULL) fatal("malloc (coll_old) failed");
+  if (coll_map == (colloid_t **) NULL) fatal("malloc (coll_map) failed");
+  if (coll_old == (colloid_t **) NULL) fatal("malloc (coll_old) failed");
 
   return;
 }
@@ -87,7 +87,7 @@ void COLL_update_map() {
   int     index;
   int     nhalo;
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   double  r0[3];
   double  rsite0[3];
@@ -212,7 +212,7 @@ void COLL_update_map() {
 
 void COLL_update_links() {
 
-  Colloid   * p_colloid;
+  colloid_t   * p_colloid;
 
   int         ia;
   int         ic, jc, kc;
@@ -272,7 +272,7 @@ void COLL_update_links() {
  *
  ****************************************************************************/
 
-void COLL_reconstruct_links(Colloid * p_colloid) {
+void COLL_reconstruct_links(colloid_t * p_colloid) {
 
   colloid_link_t * p_link;
   colloid_link_t * p_last;
@@ -473,7 +473,7 @@ void COLL_reconstruct_links(Colloid * p_colloid) {
  *
  ****************************************************************************/
 
-void COLL_reset_links(Colloid * p_colloid) {
+void COLL_reset_links(colloid_t * p_colloid) {
 
   int ia;
 
@@ -553,7 +553,7 @@ void COLL_reset_links(Colloid * p_colloid) {
 
 void COLL_remove_or_replace_fluid() {
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
   int     i, j, k;
   int     index;
@@ -571,8 +571,8 @@ void COLL_remove_or_replace_fluid() {
 
 	index = coords_index(i, j, k);
 
-	sold = (coll_old[index] != (Colloid *) NULL);
-	snew = (coll_map[index] != (Colloid *) NULL);
+	sold = (coll_old[index] != (colloid_t *) NULL);
+	snew = (coll_map[index] != (colloid_t *) NULL);
 
 	halo = (i < 1 || j < 1 || k < 1 ||
 		i > N[X] || j > N[Y] || k > N[Z]);
@@ -617,7 +617,7 @@ void COLL_remove_or_replace_fluid() {
  *
  *****************************************************************************/
 
-static void build_remove_fluid(int index, Colloid * p_colloid) {
+static void build_remove_fluid(int index, colloid_t * p_colloid) {
 
   int    ia;
   int    ib[3];
@@ -667,7 +667,7 @@ static void build_remove_fluid(int index, Colloid * p_colloid) {
  *
  *****************************************************************************/
 
-static void build_remove_order_parameter(int index, Colloid * p_colloid) {
+static void build_remove_order_parameter(int index, colloid_t * p_colloid) {
 
   double phi;
 
@@ -692,7 +692,7 @@ static void build_remove_order_parameter(int index, Colloid * p_colloid) {
  *
  *****************************************************************************/
 
-static void build_replace_fluid(int index, Colloid * p_colloid) {
+static void build_replace_fluid(int index, colloid_t * p_colloid) {
 
   int    indexn, p, pdash;
   int    ia;
@@ -787,7 +787,7 @@ static void build_replace_fluid(int index, Colloid * p_colloid) {
  *
  *****************************************************************************/
 
-static void build_replace_order_parameter(int index, Colloid * p_colloid) {
+static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
 
   int indexn, n, p, pdash;
   int nop;
@@ -903,7 +903,7 @@ static void build_virtual_distribution_set(int index, int p,
  *
  *****************************************************************************/
 
-static void build_link_mean(Colloid * p_colloid, int p, const double rb[3]) {
+static void build_link_mean(colloid_t * p_colloid, int p, const double rb[3]) {
 
   int    ia;
   double c[3];
@@ -950,7 +950,7 @@ static void build_link_mean(Colloid * p_colloid, int p, const double rb[3]) {
  *
  *****************************************************************************/
 
-void reconstruct_wall_links(Colloid * p_colloid) {
+void reconstruct_wall_links(colloid_t * p_colloid) {
 
   colloid_link_t * p_link;
   colloid_link_t * p_last;
@@ -1089,7 +1089,7 @@ void reconstruct_wall_links(Colloid * p_colloid) {
  *
  *****************************************************************************/
 
-Colloid * colloid_at_site_index(int index) {
+colloid_t * colloid_at_site_index(int index) {
 
   if (coll_map == NULL) return NULL;
   return coll_map[index];
