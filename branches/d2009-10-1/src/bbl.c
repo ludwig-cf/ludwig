@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.10.2.7 2010-08-06 17:42:20 kevin Exp $
+ *  $Id: bbl.c,v 1.10.2.8 2010-09-30 18:03:23 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,7 +21,7 @@
 #include "coords.h"
 #include "physics.h"
 #include "colloids.h"
-#include "ccomms.h"
+#include "colloid_sums.h"
 #include "model.h"
 #include "util.h"
 #include "phi.h"
@@ -36,6 +36,7 @@ static void update_colloids(void);
 static double wall_lubrication(const int dim, const double r[3],
 			       const double ah);
 
+static int bbl_active_ = 0;  /* Flag for active particles. */
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
 static double stress_[3][3]; /* Surface stress */
 
@@ -65,13 +66,14 @@ void bounce_back_on_links() {
 
   if (colloid_ntotal() == 0) return;
 
-  CCOM_halo_sum(CHALO_TYPE1);
+  colloid_sums_halo(COLLOID_SUM_STRUCTURE);
   bounce_back_pass1();
-  CCOM_halo_sum(CHALO_TYPE2);
+  colloid_sums_halo(COLLOID_SUM_DYNAMICS);
 
-  /* Might try to miss these two lines if b1, b2 == 0 */
-  mass_conservation_compute_force();
-  CCOM_halo_sum(CHALO_TYPE8);
+  if (bbl_active_) {
+    mass_conservation_compute_force();
+    colloid_sums_halo(COLLOID_SUM_ACTIVE);
+  }
 
   update_colloids();
   bounce_back_pass2();
@@ -93,7 +95,7 @@ static void mass_conservation_compute_force() {
   double c[3];
   double rbxc[3];
 
-  Colloid        * p_colloid;
+  colloid_t      * p_colloid;
   colloid_link_t * p_link;
 
   for (ic = 0; ic <= Ncell(X)+1 ; ic++) {
@@ -156,7 +158,7 @@ static void mass_conservation_compute_force() {
 
 static void bounce_back_pass1() {
 
-  Colloid   * p_colloid;
+  colloid_t      * p_colloid;
   colloid_link_t * p_link;
 
   double    c[3];
@@ -340,7 +342,7 @@ static void bounce_back_pass1() {
 
 static void bounce_back_pass2() {
 
-  Colloid   * p_colloid;
+  colloid_t      * p_colloid;
   colloid_link_t * p_link;
 
   double wxrb[3];
@@ -512,10 +514,10 @@ static void bounce_back_pass2() {
 
 static void update_colloids() {
 
-  Colloid   * pc;
+  colloid_t * pc;
 
   int ia;
-  int         ic, jc, kc;
+  int ic, jc, kc;
 
   double xb[6];
   double a[6][6];
