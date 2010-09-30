@@ -44,10 +44,10 @@ LIBRARY = libludwig.a
 #
 ###############################################################################
 
-CC = CC 
-MPICC = CC
-OPTS = -D_D3Q19_ # -DNDEBUG
-CFLAGS = -fastsse
+CC = gcc 
+MPICC = mpicc
+OPTS = -D_D3Q19_
+CFLAGS = -O3 -Wall
 
 INC = -I.
 LIBS = -lm
@@ -68,7 +68,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      blue_phase_beris_edwards.o \
      brazovskii.o brazovskii_rt.o \
      brownian.o \
-     cio.o cmd.o ccomms.o \
+     cio.o cmd.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o communicate.o \
      coords.o coords_rt.o \
