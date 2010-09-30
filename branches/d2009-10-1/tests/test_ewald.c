@@ -7,7 +7,7 @@
  *
  *  This only works in serial.
  *
- *  $Id: test_ewald.c,v 1.1.2.3 2010-07-07 11:43:26 kevin Exp $
+ *  $Id: test_ewald.c,v 1.1.2.4 2010-09-30 18:09:42 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -41,8 +41,8 @@ int main (int argc, char ** argv) {
   double efourier;
   double eself;
 
-  Colloid * p_c1;
-  Colloid * p_c2;
+  colloid_t * p_c1;
+  colloid_t * p_c2;
 
   pe_init(argc, argv);
 
