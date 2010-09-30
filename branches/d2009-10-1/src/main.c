@@ -28,7 +28,6 @@
 #include "leesedwards.h"
 #include "interaction.h"
 #include "propagation.h"
-#include "ccomms.h"
 
 #include "site_map.h"
 #include "physics.h"
@@ -119,7 +118,7 @@ void ludwig_init(void) {
   char filename[FILENAME_MAX];
 
   /* Initialise Lc in colloids */
-  COLL_randomize_Q(0.0);
+  if (phi_nop() == 5) COLL_randomize_Q(0.0);
 
   if (get_step() == 0) {
     n = 0;
