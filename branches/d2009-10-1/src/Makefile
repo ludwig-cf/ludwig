@@ -63,7 +63,6 @@ ARFLAGS = -cru
 OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      physics.o \
      advection.o advection_bcs.o advection_rt.o \
-     active.o \
      blue_phase.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
      brazovskii.o brazovskii_rt.o \
