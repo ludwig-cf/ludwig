@@ -2,7 +2,7 @@
  *
  *  collision_rt.c
  *
- *  $Id: collision_rt.c,v 1.1.2.1 2010-08-05 17:23:10 kevin Exp $
+ *  $Id: collision_rt.c,v 1.1.2.2 2010-10-01 16:29:01 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -37,7 +37,7 @@ void collision_run_time(void) {
   int noise;
   int nghost;
   char tmp[128];
-  double tau[NVEL];
+  double rtau[NVEL];
 
   p = RUN_get_string_parameter("isothermal_fluctuations", tmp, 128);
   noise = 0;
@@ -56,7 +56,7 @@ void collision_run_time(void) {
   }
 
   collision_relaxation_times_set();
-  collision_relaxation_times(tau);
+  collision_relaxation_times(rtau);
 
   info("\n");
   info("Lattice Boltzmann collision\n");
@@ -64,9 +64,9 @@ void collision_run_time(void) {
   info("Hydrodynamic modes:       on\n");
   info("Ghost modes:              %s\n", (nghost == 1) ? "on" : "off");
   info("Isothermal fluctuations:  %s\n", (noise == 1) ? "on" : "off");
-  info("Shear relaxation time:   %12.5e\n", tau[1 + NDIM]);
-  info("Bulk relaxation time:    %12.5e\n", tau[1 + NDIM + 1]);
-  info("Ghost relaxation time:   %12.5e\n", tau[NVEL-1]);
+  info("Shear relaxation time:   %12.5e\n", 1.0/rtau[1 + NDIM]);
+  info("Bulk relaxation time:    %12.5e\n", 1.0/rtau[1 + NDIM + 1]);
+  info("Ghost relaxation time:   %12.5e\n", 1.0/rtau[NVEL-1]);
 
   return;
 }
