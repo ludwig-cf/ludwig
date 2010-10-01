@@ -193,7 +193,7 @@ int main( int argc, char **argv ) {
     hydrodynamics_zero_force();
     COLL_update();
     wall_update();
-    /* COLL_set_Q();*/
+    if (phi_nop() == 5) COLL_set_Q();
 
     /* Collision stage */
 
