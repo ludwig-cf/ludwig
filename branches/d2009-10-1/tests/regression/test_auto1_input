@@ -43,6 +43,7 @@ freq_statistics 4
 freq_measure 2000
 freq_config 5000000
 #freq_graphics 150
+config_at_end no
 
 output_format BINARY
 input_format  BINARY
