@@ -4,7 +4,7 @@
  *
  *  Basic physical quantities for fluid.
  *
- *  $Id: physics.c,v 1.3.16.1 2010-08-05 17:22:27 kevin Exp $
+ *  $Id: physics.c,v 1.3.16.2 2010-10-05 17:59:05 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -46,7 +46,6 @@ void init_physics() {
 
   p = RUN_get_double_parameter("viscosity_bulk", &eta_bulk);
   p = RUN_get_double_parameter("phi0", &phi0);
-  p = RUN_get_double_parameter("rho0", &rho0);
 
   p = RUN_get_double_parameter_vector("force", vector);
 
@@ -61,7 +60,7 @@ void init_physics() {
   info("\n");
   info("Fluid properties\n");
   info("----------------\n");
-  info("Density:           %12.5e\n", rho0);
+  info("Mean density:      %12.5e\n", rho0);
   info("Shear viscosity    %12.5e\n", eta_shear);
   info("Bulk viscosity     %12.5e\n", eta_bulk);
   info("Temperature        %12.5e\n", kt_);
