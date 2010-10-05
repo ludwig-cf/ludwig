@@ -2,6 +2,7 @@
 #define _COLLOIDS_Q_TENSOR_H
 
 void COLL_set_Q(void);
+void COLL_set_Q_2(void);
 void COLL_randomize_Q(double delta_r);
 void colloids_fix_swd(void);
 
