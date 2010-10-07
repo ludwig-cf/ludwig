@@ -2,9 +2,9 @@
  *
  *  advection_rt.c
  *
- *  Look at awitches associated with advection.
+ *  Look at switches associated with advection.
  *
- *  $Id: advection_rt.c,v 1.1.2.1 2010-03-30 14:10:16 kevin Exp $
+ *  $Id: advection_rt.c,v 1.1.2.2 2010-10-07 15:38:37 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,12 +33,13 @@ void advection_run_time(void) {
   int n;
   int order;
   char key1[FILENAME_MAX];
-  char key2[FILENAME_MAX];
 
   RUN_get_string_parameter("free_energy", key1, FILENAME_MAX);
-  RUN_get_string_parameter("phi_finite_difference", key2, FILENAME_MAX);
 
-  if (strcmp(key1, "none") != 0 && strcmp(key2, "yes") == 0) {
+  if (strcmp(key1, "none") == 0 || strcmp(key1, "symmetric_lb") == 0) {
+    /* No finite difference advection required. */
+  }
+  else {
 
     info("Advection scheme order: ");
 
