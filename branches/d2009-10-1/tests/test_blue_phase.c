@@ -5,13 +5,13 @@
  *  Tests for the blue phase free energy, molecular field, and
  *  the chemical stress.
  *
- *  $Id: test_blue_phase.c,v 1.1.2.2 2010-04-05 06:18:28 kevin Exp $
+ *  $Id: test_blue_phase.c,v 1.1.2.3 2010-10-07 16:37:00 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -24,6 +24,7 @@
 #include "phi_gradients.h"
 #include "gradient_3d_27pt_fluid.h"
 #include "blue_phase.h"
+#include "leesedwards.h"
 #include "tests.h"
 
 static void test_o8m_struct(void);
@@ -109,7 +110,7 @@ void test_o8m_struct(void) {
 
   info("Blue phase O8M struct test\n");
   info("Must have q order parameter (nop = 5)...");
-  test_assert(nop_ == 5);
+  test_assert(phi_nop() == 5);
   info("ok\n");
 
   q0 = sqrt(2.0)*4.0*atan(1.0)*numhalftwists*numunitcells / L(Y);
@@ -247,7 +248,7 @@ void test_o8m_struct(void) {
   kc = 1;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 1)...");
@@ -259,7 +260,7 @@ void test_o8m_struct(void) {
   kc = 2;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 2)...");
@@ -271,7 +272,7 @@ void test_o8m_struct(void) {
   kc = 3;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 3)...");
@@ -283,7 +284,7 @@ void test_o8m_struct(void) {
   kc = 4;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1,12, 4)...");
@@ -295,7 +296,7 @@ void test_o8m_struct(void) {
   kc = 6;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 2, 7, 6)...");
@@ -313,8 +314,8 @@ void test_o8m_struct(void) {
   kc = 1;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -332,8 +333,8 @@ void test_o8m_struct(void) {
   kc = 2;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -350,8 +351,8 @@ void test_o8m_struct(void) {
   kc = 3;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -368,8 +369,8 @@ void test_o8m_struct(void) {
   kc = 4;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -386,8 +387,8 @@ void test_o8m_struct(void) {
   kc = 6;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -428,8 +429,8 @@ void test_o8m_struct(void) {
   kc = 1;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -454,8 +455,8 @@ void test_o8m_struct(void) {
   kc = 2;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -478,8 +479,8 @@ void test_o8m_struct(void) {
   kc = 3;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -502,8 +503,8 @@ void test_o8m_struct(void) {
   kc = 4;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -526,8 +527,8 @@ void test_o8m_struct(void) {
   kc = 6;
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
