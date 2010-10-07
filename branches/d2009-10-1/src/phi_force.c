@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.6.4.8 2010-08-06 17:42:20 kevin Exp $
+ *  $Id: phi_force.c,v 1.6.4.9 2010-10-07 17:33:12 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -144,35 +144,35 @@ static void phi_force_calculation_fluid() {
 	index1 = le_site_index(icp1, jc, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -0.5*(pth1[X][ia] + pth0[X][ia]);
+	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 	index1 = le_site_index(icm1, jc, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[X][ia] + pth0[X][ia]);
+	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	
 	index1 = le_site_index(ic, jc+1, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[Y][ia] + pth0[Y][ia]);
+	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	index1 = le_site_index(ic, jc-1, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[Y][ia] + pth0[Y][ia]);
+	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	
 	index1 = le_site_index(ic, jc, kc+1);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[Z][ia] + pth0[Z][ia]);
+	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 	index1 = le_site_index(ic, jc, kc-1);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[Z][ia] + pth0[Z][ia]);
+	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 
 	/* Store the force on lattice */
@@ -214,6 +214,8 @@ static void phi_force_calculation_fluid_solid() {
 
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
+  /* Antisymetric stress not catered for yet... */
+  assert(phi_nop() != 5);
 
   chemical_stress = fe_chemical_stress_function();
 
