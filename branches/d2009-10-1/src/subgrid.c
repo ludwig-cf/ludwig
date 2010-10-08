@@ -6,7 +6,7 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.4.16.7 2010-09-30 18:02:35 kevin Exp $
+ *  $Id: subgrid.c,v 1.4.16.8 2010-10-08 15:06:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,6 +33,7 @@
 static double d_peskin(double);
 static void   subgrid_interpolation(void);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
+static int subgrid_on_ = 0;  /* Subgrid particle flag */
 
 /*****************************************************************************
  *
@@ -316,4 +317,29 @@ static double d_peskin(double r) {
   }
 
   return delta;
+}
+
+/*****************************************************************************
+ *
+ *  subgrid_on_set
+ *
+ *  Set the flag to 'on'.
+ *
+ *****************************************************************************/
+
+void subgrid_on_set(void) {
+
+  subgrid_on_ = 1;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  subgrid_on
+ *
+ *****************************************************************************/
+
+int subgrid_on(void) {
+
+  return subgrid_on_;
 }
