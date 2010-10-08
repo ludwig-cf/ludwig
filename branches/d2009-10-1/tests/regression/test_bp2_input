@@ -101,8 +101,8 @@ temperature 0.00002133333
 ###############################################################################
 
 free_energy lc_blue_phase
-phi_finite_difference yes
-finite_difference_upwind_order 3
+fd_advection_scheme_order 3
+fd_gradient_calculation 3d_7pt_fluid
 
 ###############################################################################
 #
@@ -177,12 +177,6 @@ surf_psi_b 0.01
 #
 ###############################################################################
 
-#lc_a0         0.014384711
-#lc_gamma      3.1764706
-#lc_q0         0.27768018
-#lc_kappa0     0.01
-#lc_kappa1     0.01
-
 lc_a0      0.0069
 lc_gamma   3.0
 lc_q0      0.1963495
@@ -191,6 +185,10 @@ lc_kappa1  0.02
 
 lc_xi         0.7
 lc_Gamma   0.1
+
+lc_q_initialisation o2
+lc_q_init_amplitude 0.3
+lc_init_redshift 0.91
 
 ###############################################################################
 #

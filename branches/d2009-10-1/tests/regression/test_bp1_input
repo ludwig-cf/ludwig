@@ -101,8 +101,8 @@ temperature 0.00002133333
 ###############################################################################
 
 free_energy lc_blue_phase
-phi_finite_difference yes
-finite_difference_upwind_order 3
+fd_advection_scheme_order 3
+fd_gradient_calculation 3d_7pt_fluid
 
 ###############################################################################
 #
@@ -191,6 +191,10 @@ lc_kappa1     0.01
 
 lc_xi         0.7
 lc_Gamma   0.1
+
+lc_q_initialisation o8m
+lc_q_init_amplitude -0.2
+lc_init_redshift 0.83
 
 ###############################################################################
 #
