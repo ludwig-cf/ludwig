@@ -177,6 +177,7 @@ int main( int argc, char **argv ) {
 
   /* Report initial statistics */
 
+  info("Initial conditions.\n");
   stats_distribution_print();
   phi_stats_print_stats();
   ludwig_report_momentum();
@@ -227,7 +228,6 @@ int main( int argc, char **argv ) {
 
       }
     }
-
     TIMER_start(TIMER_COLLIDE);
     collide();
     TIMER_stop(TIMER_COLLIDE);
@@ -241,17 +241,18 @@ int main( int argc, char **argv ) {
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
 
-#ifdef _SUBGRID_
-    subgrid_update();
-#else
-    TIMER_start(TIMER_BBL);
-    bounce_back_on_links();
-    TIMER_stop(TIMER_BBL);
-    wall_bounce_back();
-#endif
+    if (subgrid_on()) {
+      subgrid_update();
+    }
+    else {
+      TIMER_start(TIMER_BBL);
+      bounce_back_on_links();
+      TIMER_stop(TIMER_BBL);
+      wall_bounce_back();
+    }
 
     /* There must be no halo updates between bounce back
-     * and propagation, as the halo regions hold active f,g */
+     * and propagation, as the halo regions are active */
 
     TIMER_start(TIMER_PROPAGATE);
     propagation();
@@ -275,10 +276,12 @@ int main( int argc, char **argv ) {
     if (is_measurement_step()) {	  
       sprintf(filename, "%s%8.8d", "config.cds", step);
       colloid_io_write(filename);
-      
-      info("Writing scalar order parameter file at step %d!\n", step);
-      sprintf(filename,"qs_dir-%8.8d",step);
-      io_write(filename, io_info_scalar_q_);
+
+      if (phi_nop() == 5) {
+	info("Writing scalar order parameter file at step %d!\n", step);
+	sprintf(filename,"qs_dir-%8.8d",step);
+	io_write(filename, io_info_scalar_q_);
+      }
     }
 
     if (is_shear_measurement_step()) {
@@ -328,15 +331,17 @@ int main( int argc, char **argv ) {
     io_write(filename, distribution_io_info());
     sprintf(filename, "%s%8.8d", "config.cds", step);
     colloid_io_write(filename);
-    sprintf(filename,"phi-%8.8d",step);
-    io_write(filename, io_info_phi);
+    if (phi_nop()) {
+      sprintf(filename,"phi-%8.8d",step);
+      io_write(filename, io_info_phi);
+    }
   }
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 
   stats_rheology_finish();
   stats_turbulent_finish();
-  COLL_finish();
+  colloids_finish();
   wall_finish();
 
   TIMER_stop(TIMER_TOTAL);

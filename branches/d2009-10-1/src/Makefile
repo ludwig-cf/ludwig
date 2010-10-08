@@ -10,9 +10,6 @@
 # -D_D3Q15_              Use D3Q15 or
 # -D_D3Q19_              Use D3Q19
 #
-# Temporary (to be replaced by run-time options)
-# -D_SUBGRID_            Sub-grid particles
-#
 # Please use the following for any production run
 #
 # -DNDEBUG               Switch off standard C assert()
@@ -67,7 +64,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      blue_phase_beris_edwards.o \
      brazovskii.o brazovskii_rt.o \
      brownian.o \
-     cio.o cmd.o \
+     cio.o colloids_init.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o communicate.o \
      coords.o coords_rt.o \

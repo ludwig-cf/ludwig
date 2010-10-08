@@ -48,7 +48,7 @@ N_cycles 1
 # 
 ##############################################################################
 
-size 128_128_1
+size 32_32_32
 #grid 1_2_1
 reduced_halo no
 
@@ -63,9 +63,6 @@ reduced_halo no
 #  temperature              isothermal fluctuation 'temperature'
 #
 #  ghost_modes           [on|off] Default is on.
-#  ginzburg-dhumieres    Ghost mode relaxation time correction [on|off]
-#                        There is an additional free parameter associated
-#                        with this (= 12.0). Default is off.
 #  force FX_FY_FZ        Uniform body force on fluid (default zero)
 #
 ##############################################################################
@@ -77,7 +74,6 @@ isothermal_fluctuations off
 temperature 0.00002133333
 
 # ghost_modes off
-# ginzburg-dhumieres off
 # force 0.00_0.0_0.0
 
 ##############################################################################
@@ -187,6 +183,16 @@ surf_psi_b 0.01
 #  lc_kappa1
 #  lc_xi
 #
+#  lc_q_initialisation  twist
+#                       o8m
+#                       o2
+#
+#  lc_q_init_amplitude  scalar order parameter amplitude for initialisation
+#
+#  Typically            BPI   o8m amplitude -0.2
+#                       BPII  o2  amplitude +0.3
+#                       simple cholesteric twist (z-axis) amplitude +1/3
+#
 ###############################################################################
 
 lc_a0      0.014384711
@@ -197,6 +203,10 @@ lc_kappa1  0.01
 lc_xi      0.7
 
 lc_Gamma   0.3
+
+lc_q_initialisation o8m
+lc_q_init_amplitude -0.2
+lc_init_redshift 0.83
 
 ###############################################################################
 #
@@ -219,17 +229,20 @@ leslie_ericksen_swim  0.0
 #  Colloid parameters
 #
 #  colloid_init:  no_colloids [default]
-#                 fixed_number_monodisperse
-#                 fixed_volume_fraction_monodisperse
+#                 from_file
+#                 random (see below)
+#  colloid_type:  inactive bbl [default]
+#                 active   Include active terms in BBL
+#                 subgrid  No bbl ("unresolved particles")
 #
 ###############################################################################
 
-colloid_init        no_colloids
-colloid_mc_steps    0
-colloid_a0          2.3
-colloid_ah          2.3
-colloid_vf          0.061
-colloid_no          2000
+colloid_init        random
+colloid_type        inactive
+colloid_random_no   1
+colloid_random_a0   2.3
+colloid_random_ah   2.3
+colloid_random_dh   0.4
 
 # Constant body force on all colloids ("gravity")
 
@@ -240,27 +253,6 @@ colloid_gravity 0.0_0.0_0.0
 lubrication_on 0
 lubrication_normal_cutoff 0.3
 lubrication_tangential_cutoff 0.0
-
-##############################################################################
-#
-# Active particles
-#
-# colloid_type:     inactive [default]
-#                   active1_bipolar
-#                   active1_quadrupolar
-#                   active2               for squirmers  (use -D_ACTIVE2_) 
-# For active2
-# colloids_b1       swimming speed
-# colloids_b2       stresslet
-#
-##############################################################################
-
-colloid_type        inactive
-colloid_cone_angle  90
-colloid_dp          0.2
-
-colloid_b1          0.01
-colloid_b2          0.05
 
 ###############################################################################
 #
@@ -275,15 +267,11 @@ soft_sphere_sigma 0.1
 soft_sphere_nu 1.0
 soft_sphere_cutoff 0.25
 
-# Leonard Jones
-leonard_jones_on 0
+# Lennard Jones
+lennard_jones_on 0
 lj_sigma 2.3
 lj_cutoff 4.6
 lj_epsilon 0.0003
-
-# Cell list minimum allowable width
-
-cell_list_lmin 8.0
 
 ###############################################################################
 #
@@ -358,6 +346,8 @@ colloid_io_freq 1000
 colloids_io_grid 1_1_1
 colloid_io_format_input  BINARY
 colloid_io_format_output BINARY
+
+qs_dir_format BINARY
 
 ###############################################################################
 #
