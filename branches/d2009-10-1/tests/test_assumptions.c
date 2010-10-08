@@ -6,7 +6,7 @@
  *
  *  Also testing util.h stuff at the moment.
  *
- *  $Id: test_assumptions.c,v 1.7 2009-05-15 09:17:51 kevin Exp $
+ *  $Id: test_assumptions.c,v 1.7.2.1 2010-10-08 13:42:15 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -57,15 +57,15 @@ int main(int argc, char ** argv) {
   printf("yes\n");
 
   printf("Checking sizeof(void *) ...\n");
-  printf("%d\n", sizeof(void *));
+  printf("%lu\n", sizeof(void *));
 
   printf("Checking FILENAME_MAX >= 128 characters ... ");
   assert(FILENAME_MAX >= 128);
   printf("yes (%d characters)\n", FILENAME_MAX);
   printf("Checking BUFSIZ... (%d bytes)\n", BUFSIZ);
 
-  printf("Checking sizeof(void *)... (%d bytes)\n", sizeof(void *));
-  printf("Checking sizeof(func *)... (%d bytes)\n", sizeof(p_function));
+  printf("Checking sizeof(void *)... (%lu bytes)\n", sizeof(void *));
+  printf("Checking sizeof(func *)... (%lu bytes)\n", sizeof(p_function));
 
   /* See what happens to zero size allocation */
 
