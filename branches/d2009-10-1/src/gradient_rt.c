@@ -4,7 +4,7 @@
  *
  *  Set the gradient routine. 
  *
- *  $Id: gradient_rt.c,v 1.1.2.1 2010-03-31 12:00:16 kevin Exp $
+ *  $Id: gradient_rt.c,v 1.1.2.2 2010-10-08 15:12:25 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -71,6 +71,8 @@ void gradient_run_time(void) {
       fatal("Please check and try again\n");
     }
   }
+
+  info("\n");
 
   return;
 }
