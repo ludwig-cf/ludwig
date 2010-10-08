@@ -2,7 +2,7 @@
  *
  *  interaction.h
  *
- *  $Id: interaction.h,v 1.4.20.2 2010-08-05 17:22:27 kevin Exp $
+ *  $Id: interaction.h,v 1.4.20.3 2010-10-08 15:35:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,7 +17,6 @@
 
 void      COLL_zero_forces(void);
 void      COLL_init(void);
-void      COLL_finish(void);
 
 double    COLL_interactions(void);
 void      COLL_update(void);

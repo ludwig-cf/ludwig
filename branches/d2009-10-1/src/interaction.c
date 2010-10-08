@@ -6,7 +6,7 @@
  *
  *  Refactoring is in progress.
  *
- *  $Id: interaction.c,v 1.18.4.10 2010-09-30 18:03:59 kevin Exp $
+ *  $Id: interaction.c,v 1.18.4.11 2010-10-08 15:35:13 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,8 +27,8 @@
 #include "coords.h"
 #include "ran.h"
 #include "runtime.h"
-#include "free_energy.h"
 
+#include "bbl.h"
 #include "build.h"
 #include "physics.h"
 #include "potential.h"
@@ -37,14 +37,15 @@
 #include "interaction.h"
 #include "model.h"
 #include "site_map.h"
-#include "collision.h"
 #include "cio.h"
 #include "control.h"
 #include "subgrid.h"
+#include "stats_colloid.h"
 
 #include "util.h"
 #include "colloid_sums.h"
 #include "colloids_halo.h"
+#include "colloids_init.h"
 #include "ewald.h"
 
 static void    COLL_overlap(colloid_t *, colloid_t *);
@@ -56,7 +57,9 @@ void lubrication_sphere_sphere(double a1, double a2,
 static void    COLL_init_colloids_test(void);
 static void    COLL_test_output(void);
 static void    coll_position_update(void);
-static double  coll_max_speed(void);
+static void    lubrication_init(void);
+static void    colloid_forces_check(void);
+static double  colloid_forces_ahmax(void);
 
 static int    gravity_ = 0;            /* Switch */
 static double g_[3] = {0.0, 0.0, 0.0}; /* External gravitational force */
@@ -97,28 +100,27 @@ void COLL_update() {
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
-#ifndef _SUBGRID_
+  if (subgrid_on()) {
+    COLL_forces();
+    subgrid_force_from_particles();
+  }
+  else {
 
-  /* Removal or replacement of fluid requires a lattice halo update */
-  TIMER_start(TIMER_HALO_LATTICE);
-  distribution_halo();
-  TIMER_stop(TIMER_HALO_LATTICE);
+    /* Removal or replacement of fluid requires a lattice halo update */
+    TIMER_start(TIMER_HALO_LATTICE);
+    distribution_halo();
+    TIMER_stop(TIMER_HALO_LATTICE);
 
-  TIMER_start(TIMER_REBUILD);
-  COLL_update_map();
-  COLL_remove_or_replace_fluid();
-  COLL_update_links();
+    TIMER_start(TIMER_REBUILD);
+    COLL_update_map();
+    COLL_remove_or_replace_fluid();
+    COLL_update_links();
 
-  TIMER_stop(TIMER_REBUILD);
+    TIMER_stop(TIMER_REBUILD);
 
-  COLL_test_output();
-  COLL_forces();
-
-#else /* _SUBGRID_ */
-  COLL_test_output();
-  COLL_forces();
-  subgrid_force_from_particles();
-#endif /* SUBGRID */
+    COLL_test_output();
+    COLL_forces();
+  }
 
   return;
 }
@@ -133,136 +135,92 @@ void COLL_update() {
 
 void COLL_init() {
 
-  double lcellmin;          /* Minimum width of cell */
-  int    n;
-  int    ncell[3];
-
+  int n;
+  int init_from_file;
+  int init_random;
   char filename[FILENAME_MAX];
-  char tmp[128];
-  int nc = 0;
-  int ifrom_file = 0;
-  double ahmax;
-
-  void CMD_init_volume_fraction(void);
-  void lubrication_init(void);
-  void check_interactions(const double);
-  void monte_carlo(void);
-  void phi_gradients_set_solid(void);
+  char keyvalue[128];
+  double a0, ah, dh;
 
   /* Default position: no colloids */
 
-  RUN_get_string_parameter("colloid_init", tmp, 128);
-  if (strcmp(tmp, "no_colloids") == 0) nc = 0;
+  init_random = 0;
+  init_from_file = 0;
 
-  /* This is just to get past the start. */
-  if (strcmp(tmp, "fixed_volume_fraction_monodisperse") == 0) nc = 1;
-  if (strcmp(tmp, "fixed_number_monodisperse") == 0) nc = 1;
-  if (strcmp(tmp, "from_file") == 0) {
-    nc = 1;
-    ifrom_file = 1;
-  }
+  RUN_get_string_parameter("colloid_init", keyvalue, 128);
 
+  if (strcmp(keyvalue, "random") == 0) init_random = 1;
+  if (strcmp(keyvalue, "from_file") == 0) init_from_file = 1;
 
-#ifdef _COLLOIDS_TEST_
-  nc = 1;
-#endif
-
-  if (nc == 0) return;
-
-  /* Was comm_init */
-  colloid_io_init();
-
-  nc = RUN_get_double_parameter("colloid_ah", &ahmax);
-  if (nc == 0) fatal("Please set colloids_ah in the input file\n");
-
-  /* Initialisation section. */
-
-  /* Look for minimum cell list width  in the user input */
-
-  n = RUN_get_double_parameter("cell_list_lmin", &lcellmin);
-
-  info("\nColloid cell list\n");
-
-  if (n != 0) {
-    info("[User   ] Requested minimum cell width is %f\n", lcellmin);
-  }
-  else {
-    /* Fall back to a default */
-    lcellmin = 6.0;
-    info("[Default] Requested minimum cell width is %f\n", lcellmin);
-  }
-
-  /* Work out the number and width of the cells */
-
-  ncell[X] = L(X) / (cart_size(X)*lcellmin);
-  ncell[Y] = L(Y) / (cart_size(Y)*lcellmin);
-  ncell[Z] = L(Z) / (cart_size(Z)*lcellmin);
-
-  colloids_cell_ncell_set(ncell);
   colloids_init();
 
-  info("[       ] Actual local number of cells [%d,%d,%d]\n",
-       ncell[X], ncell[Y], ncell[Z]);
-  info("[       ] Actual local cell width      [%.2f,%.2f,%.2f]\n",
-       colloids_lcell(X), colloids_lcell(Y), colloids_lcell(Z));
+  if (init_random || init_from_file) {
 
-  info("\nExternal gravitational force\n");
-  n = RUN_get_double_parameter_vector("colloid_gravity", g_);
+    /* Initialisation section. */
 
-  if (n != 0) {
-    if (g_[0] != 0.0 || g_[1] != 0.0 || g_[2] != 0.0) {
-      gravity_ = 1;
-      info("Gravity is present\n");
+    colloid_io_init();
+
+    if (init_from_file) {
+      if (get_step() == 0) {
+	sprintf(filename, "%s", "config.cds.init");
+      }
+      else {
+	sprintf(filename, "%s%8.8d", "config.cds", get_step());
+      }
+
+      colloid_io_read(filename);
     }
-  }
-  info("[%s] gravity = %g %g %g\n", (n == 0) ? "Default" : "User   ",
-       g_[0], g_[1], g_[2]);
 
-  if (get_step() == 0 && ifrom_file == 0) {
-
-#ifdef _COLLOIDS_TEST_
-    COLL_init_colloids_test();
-    colloids_ntotal_set();
-#else
-    CMD_init_volume_fraction();
-#endif
-  }
-  else {
-    /* Restart from previous configuration */
-
-    if (get_step() == 0) {
-      sprintf(filename, "%s", "config.cds.init");
+    if (init_random) {
+      /* Minimal error testing here at the moment. */
+      RUN_get_int_parameter("colloid_random_no", &n);
+      RUN_get_double_parameter("colloid_random_a0", &a0);
+      RUN_get_double_parameter("colloid_random_ah", &ah);
+      RUN_get_double_parameter("colloid_random_dh", &dh);
+      colloids_init_random(n, a0, ah, dh);
+      info("Initialised %d colloid%s at random\n", n, (n > 1) ? "s" : "");
     }
-    else {
-      sprintf(filename, "%s%8.8d", "config.cds", get_step());
+
+    n = RUN_get_double_parameter_vector("colloid_gravity", g_);
+    if (n != 0) {
+      if (g_[0] != 0.0 || g_[1] != 0.0 || g_[2] != 0.0) {
+	gravity_ = 1;
+      }
     }
-    info("Reading colloid information from files: %s\n", filename);
 
-    colloid_io_read(filename);
+    /* ewald_init(0.285, 16.0);*/
+
+    lubrication_init();
+    soft_sphere_init();
+    lennard_jones_init();
+    yukawa_init();
+    colloid_forces_check();
+
+    COLL_init_coordinates();
+
+    /* Transfer any particles in the halo regions, initialise the
+     * colloid map and build the particles for the first time. */
+
+    colloids_halo_state();
+
+    /* Active */
+    RUN_get_string_parameter("colloid_type", keyvalue, 128);
+    if (strcmp(keyvalue, "active") == 0) bbl_active_on_set();
+    if (strcmp(keyvalue, "subgrid") == 0) subgrid_on_set();
+
+    if (subgrid_on() == 0) {
+      COLL_update_map();
+      COLL_update_links();
+    }
+
+    /* Information */
+    if (gravity_) {
+      info("Sedimentation force on:   yes\n");
+      info("Sedimentation force:      %14.7e %14.7e %14.7e",
+	   g_[X], g_[Y], g_[Z]);
+    }
+    info("\n");
   }
-
-  /* ewald_init(0.285, 16.0);*/
-
-  lubrication_init();
-  soft_sphere_init();
-  leonard_jones_init();
-  yukawa_init();
-  check_interactions(ahmax);
-
-
-  COLL_init_coordinates();
-
-  if (get_step() == 0 && ifrom_file == 0) monte_carlo();
-
-  /* Transfer any particles in the halo regions, initialise the
-   * colloid map and build the particles for the first time. */
-
-  colloids_halo_state();
-
-#ifndef _SUBGRID_
-  COLL_update_map();
-  COLL_update_links();
-#endif /* _SUBGRID_ */
 
   return;
 }
@@ -276,18 +234,15 @@ void COLL_init() {
  *
  *****************************************************************************/
 
-void lubrication_init() {
+static void lubrication_init(void) {
 
   int n;
 
-  info("\nColloid-colloid lubrication corrections\n");
-
   n = RUN_get_int_parameter("lubrication_on", &(lubrication.corrections_on));
-  info((n == 0) ? "[Default] " : "[User   ] ");
-  info("Lubrication corrections are switched %s\n",
-       (lubrication.corrections_on == 0) ? "off" : "on");
 
   if (lubrication.corrections_on) {
+    info("\nColloid-colloid lubrication corrections\n");
+    info("Lubrication corrections are switched on\n");
     n = RUN_get_double_parameter("lubrication_normal_cutoff",
 				 &(lubrication.cutoff_norm));
     info((n == 0) ? "[Default] " : "[User   ] ");
@@ -304,24 +259,6 @@ void lubrication_init() {
 
 /*****************************************************************************
  *
- *  COLL_finish
- *
- *  Execute once at the end of the model run.
- *
- *****************************************************************************/
-
-void COLL_finish() {
-
-  if (colloid_ntotal() == 0) return;
-
-  colloids_finish();
-
-  return;
-}
-
-
-/*****************************************************************************
- *
  *  COLL_init_colloids_test
  *
  *  This is a routine which hardwires a small number
@@ -333,7 +270,7 @@ void COLL_finish() {
 
 void COLL_init_colloids_test() {
 
-#ifdef _COLLOIDS_TEST_AUTOCORRELATION_
+#ifdef _COLLOIDS_TEST_
 
   double r0[3];
   colloid_t * p_colloid;
@@ -366,6 +303,9 @@ void COLL_init_colloids_test() {
   p_colloid->s.m[X] = 1.0;
   p_colloid->s.m[Y] = 0.0;
   p_colloid->s.m[Z] = 0.0;
+
+  colloids_ntotal_set();
+
 #endif
 
   return;
@@ -393,7 +333,7 @@ void COLL_test_output() {
 	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
-#ifdef _COLLOIDS_TEST_AUTOCORRELATION_
+#ifdef _COLLOIDS_TEST_
 	  verbose("Autocorrelation test output: %10.9f %10.9f\n",
 		  p_colloid->s.r[X], p_colloid->s.v[X]/p_colloid->stats[X]);
 	  /*verbose("Autocorrelation omega: %10.9f %10.9f %10.9f\n",
@@ -426,8 +366,6 @@ void COLL_forces() {
   int nc = colloid_ntotal();
   double hminlocal;
   double hmin;
-  double elocal[2];
-  double e[2];
 
   if (nc > 0) {
 
@@ -438,25 +376,13 @@ void COLL_forces() {
 
     if (is_statistics_step()) {
 
-      double ereal, efour, eself;
-      double rnkt = 1.0/(nc*get_kT());
-
-      /* Note Fourier space and self energy available on all processes */
-      ewald_total_energy(elocal, elocal + 1, &eself);
-
       MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-      MPI_Reduce(elocal, e, 2, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-
-      ereal = e[0];
-      efour = e[1];
 
       info("\nParticle statistics:\n");
-      info("[Inter-particle gap minimum is: %f]\n", hmin);
-      info("[Energies (perNkT): Ewald (r) Ewald (f) Ewald (s) Pot. Total\n");
-      info("Energy: %g %g %g %g %g]\n", rnkt*ereal, rnkt*efour,
-	   rnkt*eself, rnkt*epotential_,
-	   rnkt*(ereal + efour + eself + epotential_));
-      info("[Max particle speed: %g]\n", coll_max_speed());
+      if (nc > 1) {
+	info("Inter-particle minimum h is: %10.5e\n", hmin);
+      }
+      stats_colloid_velocity_minmax();
     }
   }
 
@@ -510,9 +436,7 @@ void COLL_zero_forces() {
  *  match, exactly, the force on the colloids and so depends on the
  *  current number of fluid sites globally (fluid volume).
  *
- *  Note the volume calculation is a collective communication.
- *
- *  Todo: avoid this collective communication if there is no gravity!
+ *  Note the volume calculation involves a collective communication.
  *
  *****************************************************************************/
 
@@ -524,7 +448,7 @@ void COLL_set_fluid_gravity() {
 
   nc = colloid_ntotal();
 
-  if (nc > 0) {
+  if (gravity_ && nc > 0) {
 
     rvolume = 1.0/site_map_volume(FLUID);
 
@@ -656,20 +580,21 @@ double COLL_interactions() {
 
 /*****************************************************************************
  *
- *  check_interactions
+ *  colloid_forces_check
  *
  *  Check the cell list width against the current interaction cut-off
  *  lengths.
  *
  *****************************************************************************/
 
-void check_interactions(double ahmax) {
+static void colloid_forces_check(void) {
 
+  double ahmax;
   double rmax = 0.0;
   double lmin = DBL_MAX;
   double rc;
 
-  info("\nChecking cell list against specified interactions\n");
+  ahmax = colloid_forces_ahmax();
 
   /* Work out the maximum cut-off range */
 
@@ -692,10 +617,6 @@ void check_interactions(double ahmax) {
     info("The maximum interaction range is: %f\n", rmax);
     info("The minumum cell width is only:   %f\n", lmin);
     fatal("Please check and try again\n");
-  }
-  else {
-    info("The maximum interaction range is: %f\n", rmax);
-    info("The minimum cell width is %f (ok)\n", lmin);
   }
 
   return;
@@ -835,44 +756,41 @@ void coll_position_update(void) {
   return;
 }
 
-/****************************************************************************
+/*****************************************************************************
  *
- *  coll_max_speed
+ *  colloid_forces_ahmax
  *
- *  Return the largest current colloid velocity.
+ *  At start-up, we may need to examine what size of particles are
+ *  present. This affects the largest interaction distance.
  *
- ****************************************************************************/ 
+ *****************************************************************************/
 
-double coll_max_speed() {
+static double colloid_forces_ahmax(void) {
 
   int ic, jc, kc;
-  double vmaxlocal;
-  double vmax;
-  colloid_t * p_colloid;
+  double ahmax;
+  double ahmax_local;
+  colloid_t * pc;
 
-  vmaxlocal = 0.0;
+  ahmax_local = 0.0;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
-	p_colloid = colloids_cell_list(ic, jc, kc);
+	pc = colloids_cell_list(ic, jc, kc);
 
-	while (p_colloid) {
-	  vmaxlocal = dmax(vmaxlocal,
-			   dot_product(p_colloid->s.v, p_colloid->s.v));
-	  p_colloid = p_colloid->next;
+	while (pc) {
+	  ahmax_local = dmax(ahmax_local, pc->s.ah);
+	  pc = pc->next;
 	}
       }
     }
   }
 
-  MPI_Reduce(&vmaxlocal, &vmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
+  MPI_Allreduce(&ahmax_local, &ahmax, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
 
-  /* Remember to take sqrt(), as we have computed v^2 */
-  vmax = sqrt(vmax);
-
-  return vmax;
+  return ahmax;
 }
 
 /*****************************************************************************
