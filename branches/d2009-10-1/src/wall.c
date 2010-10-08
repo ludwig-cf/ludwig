@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.11.4.6 2010-07-07 10:54:48 kevin Exp $
+ *  $Id: wall.c,v 1.11.4.7 2010-10-08 15:05:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -71,11 +71,12 @@ void wall_init() {
 
   if (strcmp(tmp, "yes") == 0) is_boundary_wall_ = 1;
 
-  if (is_boundary_wall_) init_boundary_site_map();
-  init_links();
-  if (is_boundary_wall_) init_boundary_speeds(ux_bottom, ux_top);
-
-  report_boundary_memory();
+  if (is_boundary_wall_) {
+    init_boundary_site_map();
+    init_links();
+    init_boundary_speeds(ux_bottom, ux_top);
+    report_boundary_memory();
+  }
 
   fnet_[X] = 0.0;
   fnet_[Y] = 0.0;
