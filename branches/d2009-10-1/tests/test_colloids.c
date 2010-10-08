@@ -4,7 +4,7 @@
  *
  *  Colloid cell list et al.
  *
- *  $Id: test_colloids.c,v 1.1.2.2 2010-07-13 18:24:02 kevin Exp $
+ *  $Id: test_colloids.c,v 1.1.2.3 2010-10-08 12:09:50 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -129,7 +129,7 @@ static void test_colloids_allocate(void) {
   colloid_t * pc;
 
   pc = colloid_allocate();
-  test_assert(pc);
+  test_assert(pc != NULL);
   test_assert(colloids_nalloc() == 1);
 
   colloid_free(pc);
@@ -175,7 +175,7 @@ static void test_colloids_add_local(void) {
   r[Z] = Lmin(Z) + 1.0*(noffset[Z] + 1);
 
   pc = colloid_add_local(index, r);
-  test_assert(pc);
+  test_assert(pc != NULL);
   test_assert(colloids_nalloc() == 1);
   test_assert(colloid_nlocal() == 1);
 
