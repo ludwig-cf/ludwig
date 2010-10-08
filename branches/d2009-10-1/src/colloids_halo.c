@@ -4,7 +4,7 @@
  *
  *  Halo exchange of colloid state information.
  *
- *  $Id: colloids_halo.c,v 1.1.2.6 2010-09-29 18:08:31 kevin Exp $
+ *  $Id: colloids_halo.c,v 1.1.2.7 2010-10-08 15:10:10 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -184,7 +183,7 @@ static void colloids_halo_load(int dim, const int nsend[2]) {
   }
 
   p = cart_coords(dim);
-  if (p == 0) rback[dim] = L(dim)*(1.0 - DBL_EPSILON);
+  if (p == 0) rback[dim] = L(dim);
   if (p == cart_size(dim) - 1) rforw[dim] = -L(dim);
 
   if (dim == X) {
