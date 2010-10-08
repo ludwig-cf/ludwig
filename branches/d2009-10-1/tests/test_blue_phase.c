@@ -5,7 +5,7 @@
  *  Tests for the blue phase free energy, molecular field, and
  *  the chemical stress.
  *
- *  $Id: test_blue_phase.c,v 1.1.2.3 2010-10-07 16:37:00 kevin Exp $
+ *  $Id: test_blue_phase.c,v 1.1.2.4 2010-10-08 12:08:38 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -81,7 +81,7 @@ int main(int argc, char ** argv) {
  *  Molecular aspect ratio:
  *       xi = 0.7
  *
- *  The redshift should be 1.0 (check the o8m_init routine).
+ *  The redshift should be 1.0.
  *
  *****************************************************************************/
 
@@ -138,6 +138,7 @@ void test_o8m_struct(void) {
    * so an exhaustive test is probably not worth while. */
 
   blue_phase_O8M_init(amplitude);
+  blue_phase_redshift_set(1.0);
 
   ic = 1;
   jc = 1;
