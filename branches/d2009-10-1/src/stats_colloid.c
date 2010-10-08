@@ -4,7 +4,7 @@
  *
  *  Some useful quantities concerning colloids.
  *
- *  $Id: stats_colloid.c,v 1.1.2.5 2010-09-30 18:02:35 kevin Exp $
+ *  $Id: stats_colloid.c,v 1.1.2.6 2010-10-08 15:07:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -76,6 +76,52 @@ void stats_colloid_momentum(double g[3]) {
 
     MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
   }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  stats_colloid_velocity_minmax
+ *
+ *  Report stats on particle speeds. Accumulate min(-v) for maximum.
+ *
+ ****************************************************************************/ 
+
+void stats_colloid_velocity_minmax(void) {
+
+  int ia;
+  int ic, jc, kc;
+  double vmin[6];
+  double vminlocal[6];
+  colloid_t * pc;
+
+  for (ia = 0; ia < 6; ia++) {
+    vminlocal[ia] = FLT_MAX;
+  }
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+
+	while (pc) {
+	  for (ia = 0; ia < 3; ia++) {
+	    vminlocal[ia] = dmin(vminlocal[ia], pc->s.v[ia]);
+	    vminlocal[3+ia] = dmin(vminlocal[3+ia], -pc->s.v[ia]);
+	  }
+	  pc = pc->next;
+	}
+      }
+    }
+  }
+
+  MPI_Reduce(vminlocal, vmin, 6, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+
+  info("Colloid velocities - x y z\n");
+  info("[minimum ] %14.7e %14.7e %14.7e\n", vmin[X], vmin[Y], vmin[Z]);
+  info("[maximum ] %14.7e %14.7e %14.7e\n", -vmin[3+X],-vmin[3+Y],-vmin[3+Z]);
 
   return;
 }
