@@ -4,7 +4,7 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.10.2.8 2010-09-30 18:03:23 kevin Exp $
+ *  $Id: bbl.c,v 1.10.2.9 2010-10-08 15:29:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -801,4 +801,29 @@ void bbl_surface_stress() {
        rv*stress_[X][Z], rv*stress_[Y][Z], rv*stress_[Z][Z]);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_active_on_set
+ *
+ *  Switch the active particle flag on.
+ *
+ *****************************************************************************/
+
+void bbl_active_on_set(void) {
+
+  bbl_active_ = 1;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_active_on
+ *
+ *****************************************************************************/
+
+int bbl_active_on(void) {
+
+  return bbl_active_;
 }
