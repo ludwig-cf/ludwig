@@ -4,7 +4,7 @@
  *
  *  Test of the various sum routines.
  *
- *  $Id: test_colloid_sums.c,v 1.1.2.3 2010-09-23 17:12:02 kevin Exp $
+ *  $Id: test_colloid_sums.c,v 1.1.2.4 2010-10-08 13:44:14 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,6 +30,7 @@ static void test_colloid_sums_reference_set(colloid_t * cref, int seed);
 static void test_colloid_sums_copy(colloid_t ref, colloid_t * pc);
 static void test_colloid_sums_assert(colloid_t c1, colloid_t * c2);
 static void test_colloid_sums_edge(const int ncell[3], const double r0[3]);
+static void test_colloid_sums_move(void);
 
 /*****************************************************************************
  *
@@ -43,6 +44,7 @@ int main(int argc, char ** argv) {
   info("Checking colloid sum messages\n");
 
   test_colloid_sums_1d();
+  test_colloid_sums_move();
 
   info("Tests complete\n");
   pe_finalise();
@@ -316,6 +318,68 @@ static void test_colloid_sums_assert(colloid_t c1, colloid_t * c2) {
     test_assert(fabs(c1.fc0[ia] - c2->fc0[ia]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(c1.tc0[ia] - c2->tc0[ia]) < TEST_DOUBLE_TOLERANCE);
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_sums_move
+ *
+ *****************************************************************************/
+
+static void test_colloid_sums_move(void) {
+
+
+  int index;
+  int ic, jc, kc;
+  int ntotal[3] = {64, 64, 64};
+  int n, nstep = 100;
+  int ncell[3] = {8, 8, 8};
+  double r0[3] = {56.55, 8.55, 3.0};
+  double dx;
+
+  colloid_t * pc;
+
+  coords_ntotal_set(ntotal);
+  coords_init();
+  colloids_cell_ncell_set(ncell);
+  colloids_init();
+
+  dx = 1.0*ntotal[X]/nstep;
+
+  index = 1;
+  pc = colloid_add_local(index, r0);
+  if (pc) info("Test single particle at (0.5,0.5,0.5)\n");
+
+  colloids_halo_state();
+  colloid_sums_halo(COLLOID_SUM_STRUCTURE);
+
+  for (n = 0; n < 2*nstep; n++) {
+
+    /* Move the particle (twice around) */
+
+    for (ic = 0; ic <= ncell[X] + 1; ic++) {
+      for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+	for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+	  pc = colloids_cell_list(ic, jc, kc);
+
+	  while (pc) {
+	    pc->s.r[Y] -= dx;
+	    pc = pc->next;
+	  }
+	  
+	}
+      }
+    }
+
+    colloids_cell_update();
+    colloids_halo_state();
+    colloid_sums_halo(COLLOID_SUM_STRUCTURE);
+  }
+
+  colloids_finish();
+  coords_finish();
 
   return;
 }
