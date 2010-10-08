@@ -1,7 +1,7 @@
 /*
  * colloids_Q_tensor.c
  *
- *  $Id: colloids_Q_tensor.c,v 1.1.2.15 2010-10-05 15:55:34 jlintuvu Exp $
+ *  $Id: colloids_Q_tensor.c,v 1.1.2.16 2010-10-08 15:08:42 kevin Exp $
  *
  * routine to set the Q tensor inside a colloid to correspond
  * to homeotropic or planar anchoring at the surface
@@ -195,7 +195,6 @@ void COLL_set_Q_2(){
   colloid_link_t * p_link;
 
   int nlocal[3],offset[3];
-  int index;
   int jsite[3];
   double q[3][3];
   double qs[4];
