@@ -12,6 +12,14 @@
 #
 #  Compilers etc will depend on your platform
 #
+#  $Id: Makefile,v 1.12.2.6 2010-10-08 13:46:31 kevin Exp $
+#
+#  Edinburgh Soft Matter and Statistical Physics Group and
+#  Edinburgh Parallel Computing Centre
+#
+#  Kevin Stratford (kevin@epcc.ed.ac.uk)
+#  (c) 2010 The University of Edinburgh
+#
 ###############################################################################
 
 #------------------------------------------------------------------------------
@@ -33,9 +41,6 @@ MPI_STUB_LIB = -L../mpi_s -lmpi
 
 CLIBS  = -lm
 MPILIB = -lmpi
-LAUNCH  =
-
-LINK    = $(CC) $(CLINK)
 
 #------------------------------------------------------------------------------
 # Files
@@ -48,7 +53,7 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
 	      test_phi.c test_le.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
               test_colloid.c test_colloids.c test_colloids_halo.c \
-              test_colloid_sums.c
+              test_colloid_sums.c test_blue_phase.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}
@@ -75,10 +80,12 @@ tests_mpi:
 
 do_tests: tests
 	checks='$(TESTS)'; \
-	for file in $$checks; do $(LAUNCH) ./$$file; echo; done
+	for file in $$checks; do ./$$file; echo; done
 
 do_tests_mpi: tests_mpi
-	$(MAKE) do_tests "LAUNCH=$(MPIRUN) $(NPROCS)" 
+	checks='$(TESTS)'; \
+	for file in $$checks; do $(MPIRUN) $(NPROCS) ./$$file; echo; done
+
 
 clean:
 	$(RM) core *.o $(TESTS)
