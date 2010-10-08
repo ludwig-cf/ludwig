@@ -100,7 +100,7 @@ void MODEL_init( void ) {
 	}
   }
 
-  if (phi_nop()) {
+  if (phi_nop() == 1) {
 
     ind = RUN_get_string_parameter("phi_initialisation", filename,
 				   FILENAME_MAX);
@@ -144,9 +144,26 @@ void MODEL_init( void ) {
     }
   }
 
-  /* BLUEPHASE */
-  blue_phase_twist_init(0.3333333);
-  /*blue_set_random_q_init(50, 78, 50, 78, 50, 78);*/
-  /* blue_phase_O8M_init(-0.2);*/
-  /* blue_phase_O2_init(0.3);*/
+  if (phi_nop() == 5) {
+
+    /* BLUEPHASE initialisation */
+    RUN_get_string_parameter("lc_q_initialisation", filename, FILENAME_MAX);
+    RUN_get_double_parameter("lc_q_init_amplitude", &phi0);
+
+    if (strcmp(filename, "twist") == 0) {
+      info("Initialising Q_ab to cholesteric (amplitude %14.7e)\n", phi0);
+      blue_phase_twist_init(phi0);
+    }
+
+    if (strcmp(filename, "o8m") == 0) {
+      info("Initialising Q_ab using O8M (amplitude %14.7e)\n", phi0);
+      blue_phase_O8M_init(phi0);
+    }
+
+    if (strcmp(filename, "o2") == 0) {
+      info("Initialising Q_ab using O2 (amplitude %14.7e)\n", phi0);
+      blue_phase_O2_init(phi0);
+    }
+  }
+
 }
