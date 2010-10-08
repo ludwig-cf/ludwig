@@ -2,13 +2,13 @@
  *
  *  blue_phase.h
  *
- *  $Id: blue_phase.h,v 1.4.4.2 2009-12-23 16:32:47 kevin Exp $
+ *  $Id: blue_phase.h,v 1.4.4.3 2010-10-08 15:31:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -30,12 +30,15 @@ void   blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 void   blue_phase_chemical_stress(const int, double sth[3][3]);
 void   blue_phase_O8M_init(double amplitude);
 void   blue_phase_O2_init(double amplitude);
+void   blue_phase_redshift_set(const double redshift);
 
 double blue_phase_get_xi(void);
 double blue_phase_chirality(void);
 double blue_phase_reduced_temperature(void);
+double blue_phase_redshift(void);
 
 void blue_phase_twist_init(double amplitude);
-void blue_set_random_q_init(double xmin, double xmax, double ymin, double ymax, double zmin, double zmax);
+void blue_set_random_q_init(double xmin, double xmax, double ymin, double ymax,
+			    double zmin, double zmax);
 #endif
  

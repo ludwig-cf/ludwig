@@ -4,7 +4,7 @@
  *
  *  Run time input for blue phase free energy, and related parameters.
  *
- *  $Id: blue_phase_rt.c,v 1.1.2.7 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: blue_phase_rt.c,v 1.1.2.8 2010-10-08 15:31:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -39,6 +39,7 @@ void blue_phase_run_time(void) {
   int n;
   double a0, gamma, q0, kappa0, kappa1;
   double xi;
+  double redshift;
 
   /* Tensor order parameter (nop = 5); del^2 required; */
 
@@ -65,6 +66,10 @@ void blue_phase_run_time(void) {
   n = RUN_get_double_parameter("lc_xi", &xi);
   assert(n == 1);
 
+  /* Use a default redshift of 1 */
+  redshift = 1.0;
+  RUN_get_double_parameter("lc_init_redshift", &redshift);
+
   info("\n");
   info("Liquid crystal blue phase free energy\n");
   info("Bulk parameter A0:         = %12.5e\n", a0);
@@ -79,10 +84,13 @@ void blue_phase_run_time(void) {
 
   blue_phase_set_free_energy_parameters(a0, gamma, kappa0, q0);
   blue_phase_set_xi(xi);
+  blue_phase_redshift_set(redshift);
+
   info("Effective aspect ratio xi  = %12.5e\n", xi);
   info("Chirality                  = %12.5e\n", blue_phase_chirality());
   info("Reduced temperature        = %12.5e\n",
        blue_phase_reduced_temperature());
+  info("Initial redshift           = %12.5e\n", redshift);
 
   fe_density_set(blue_phase_free_energy_density);
   fe_chemical_stress_set(blue_phase_chemical_stress);

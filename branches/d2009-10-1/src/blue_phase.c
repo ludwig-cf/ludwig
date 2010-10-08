@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.5.4.4 2010-04-02 07:56:02 kevin Exp $
+ *  $Id: blue_phase.c,v 1.5.4.5 2010-10-08 15:31:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -34,6 +34,7 @@ static double kappa1_;    /* Elastic constant \kappa_1 */
 
 static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
 static double redshift_;  /* redshift parameter */
+static double rredshift_; /* reciprocal */
  
 static const double r3 = (1.0/3.0);
 
@@ -116,9 +117,15 @@ double blue_phase_free_energy_density(const int index) {
 double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
 
   int ia, ib, ic, id;
+  double q0;
+  double kappa0, kappa1;
   double q2, q3;
   double dq0, dq1;
   double sum;
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
 
   q2 = 0.0;
 
@@ -167,13 +174,13 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
 	  sum += e_[ia][ic][id]*dq[ic][id][ib];
 	}
       }
-      sum += 2.0*q0_*q[ia][ib];
+      sum += 2.0*q0*q[ia][ib];
       dq1 += sum*sum;
     }
   }
 
   sum = 0.5*a0_*(1.0 - r3*gamma_)*q2 - r3*a0_*gamma_*q3
-    + 0.25*a0_*gamma_*q2*q2 + 0.5*kappa0_*dq0 + 0.5*kappa1_*dq1;
+    + 0.25*a0_*gamma_*q2*q2 + 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
 
   return sum;
 }
@@ -219,9 +226,15 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
 			  double dsq[3][3], double h[3][3]) {
   int ia, ib, ic, id;
 
+  double q0;              /* Redshifted value */
+  double kappa0, kappa1;  /* Redshifted values */
   double q2;
   double eq;
   double sum;
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
 
   /* From the bulk terms in the free energy... */
 
@@ -266,9 +279,9 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
 	    (e_[ia][ic][id]*dq[ic][id][ib] + e_[ib][ic][id]*dq[ic][id][ia]);
 	}
       }
-      h[ia][ib] += kappa1_*dsq[ia][ib]
-	- 2.0*kappa1_*q0_*sum + 4.0*r3*kappa1_*q0_*eq*d_[ia][ib]
-	- 4.0*kappa1_*q0_*q0_*q[ia][ib];
+      h[ia][ib] += kappa1*dsq[ia][ib]
+	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d_[ia][ib]
+	- 4.0*kappa1*q0*q0*q[ia][ib];
     }
   }
 
@@ -316,10 +329,16 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
 
 void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 			       double h[3][3], double sth[3][3]) {
-
   int ia, ib, ic, id, ie;
+  double q0;
+  double kappa0;
+  double kappa1;
   double qh;
   double p0;
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
 
   /* We have ignored the rho T term at the moment, assumed to be zero
    * (in particular, it has no divergence if rho = const). */
@@ -364,13 +383,13 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
 	  sth[ia][ib] +=
-	    - kappa0_*dq[ia][ic][ib]*dq[id][ic][id]
-	    - kappa1_*dq[ia][ic][id]*dq[ib][ic][id]
-	    + kappa1_*dq[ia][ic][id]*dq[ic][ib][id];
+	    - kappa0*dq[ia][ic][ib]*dq[id][ic][id]
+	    - kappa1*dq[ia][ic][id]*dq[ib][ic][id]
+	    + kappa1*dq[ia][ic][id]*dq[ic][ib][id];
 
 	  for (ie = 0; ie < 3; ie++) {
 	    sth[ia][ib] +=
-	      -2.0*kappa1_*q0_*dq[ia][ic][id]*e_[ib][ic][ie]*q[id][ie];
+	      -2.0*kappa1*q0*dq[ia][ic][id]*e_[ib][ic][ie]*q[id][ie];
 	  }
 	}
       }
@@ -404,7 +423,6 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
  *  blue_phase_O8M_init
  *
  *  BP I using the current free energy parameter q0_
- *  The redshift parameter is constant = 0.83.
  *
  *****************************************************************************/
 
@@ -457,14 +475,6 @@ void blue_phase_O8M_init(double amplitude) {
     }
   }
 
-  /* Only now set the redshift */
-
-  redshift_ = 0.83;
-  /* Note that the unit test requires redshift_ = 1.0 here */
-  q0_ = q0_/redshift_;
-  kappa0_ = kappa0_*redshift_*redshift_;
-  kappa1_ = kappa1_*redshift_*redshift_;
-
   return;
 }
 
@@ -513,11 +523,6 @@ void blue_phase_O2_init(double amplitude) {
       }
     }
   }
-
-  redshift_ = 0.91;
-  q0_ = q0_/redshift_;
-  kappa0_ = kappa0_*redshift_*redshift_;
-  kappa1_ = kappa1_*redshift_*redshift_;
 
   return;
 }
@@ -644,6 +649,8 @@ void blue_set_random_q_init(double xmin, double xmax, double ymin,
  *  Return the chirality, which is defined here as
  *         sqrt(108 \kappa_0 q_0^2 / A_0 \gamma)
  *
+ *  Not dependent on the redshift.
+ *
  *****************************************************************************/
 
 double blue_phase_chirality(void) {
@@ -671,4 +678,34 @@ double blue_phase_reduced_temperature(void) {
   tau = 27.0*(1.0 - r3*gamma_) / gamma_;
 
   return tau;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_redshift
+ *
+ *  Return the redshift parameter.
+ *
+ *****************************************************************************/
+
+double blue_phase_redshift(void) {
+
+  return redshift_;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_redshift_set
+ *
+ *  Set the redshift parameter.
+ *
+ *****************************************************************************/
+
+void blue_phase_redshift_set(const double redshift) {
+
+  assert(redshift != 0.0);
+  redshift_ = redshift;
+  rredshift_ = 1.0/redshift_;
+
+  return;
 }
