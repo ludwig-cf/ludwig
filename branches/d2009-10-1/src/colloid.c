@@ -5,7 +5,7 @@
  *  State type for particles including bounce-back on links, wetting,
  *  magnetic dipoles, and squirmers.
  *
- *  $Id: colloid.c,v 1.1.2.2 2010-09-28 16:21:57 kevin Exp $
+ *  $Id: colloid.c,v 1.1.2.3 2010-10-08 15:02:24 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -84,6 +84,10 @@ int colloid_state_read_binary(colloid_state_t * ps, FILE * fp) {
   assert(fp);
 
   nread = fread(ps, sizeof(colloid_state_t), 1, fp);
+
+  /* Always set the rebuild flag (even if file has zero) */
+
+  ps->rebuild = 1;
 
   return nread;
 }
