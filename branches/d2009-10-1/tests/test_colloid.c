@@ -4,7 +4,7 @@
  *
  *  Unit test for colloid structure.
  *
- *  $Id: test_colloid.c,v 1.1.2.1 2010-06-06 11:44:30 kevin Exp $
+ *  $Id: test_colloid.c,v 1.1.2.2 2010-10-08 13:43:14 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -132,6 +132,7 @@ void test_colloid_binary_io(colloid_state_t sref, const char * filename) {
   else {
     n = colloid_state_read_binary(&s, fp);
     fclose(fp);
+    assert(s.rebuild == 1);
     printf("read %d binary item from %s\n", n, filename);
     assert(n == 1);
   }
@@ -146,14 +147,13 @@ void test_colloid_binary_io(colloid_state_t sref, const char * filename) {
  *
  *  test_colloid_compare
  *
- *  Compare all the elements of two colloid structs.
+ *  Compare all the elements of two colloid structs (bar rebuild).
  *
  *****************************************************************************/
 
 int test_colloid_compare(colloid_state_t s1, colloid_state_t s2) {
 
   assert(s1.index == s2.index);
-  assert(s1.rebuild == s2.rebuild);
   assert(test_are_equal_scalar_double(s1.a0, s2.a0));
   assert(test_are_equal_scalar_double(s1.ah, s2.ah));
   assert(test_are_equal_vector_double(s1.r, s2.r, 3));
