@@ -4,7 +4,7 @@
  *
  *  D3Q15 definitions.
  *
- *  $Id: d3q15.h,v 1.7 2009-04-09 14:53:29 kevin Exp $
+ *  $Id: d3q15.h,v 1.8 2010-10-15 12:40:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -16,8 +16,8 @@
 
 #ifdef _D3Q15_
 
+enum {NDIM = 3};
 enum {NVEL = 15};
-enum {LE_N_VEL_XING = 5};
 enum {CVXBLOCK = 1};
 enum {CVYBLOCK = 3};
 enum {CVZBLOCK = 5};

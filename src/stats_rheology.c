@@ -9,13 +9,13 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.9 2010-01-29 14:18:09 kevin Exp $
+ *  $Id: stats_rheology.c,v 1.10 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -110,7 +110,7 @@ void stats_rheology_init(void) {
 
   /* sxy_ */
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   sxy_ = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxy_ == NULL) fatal("malloc(sxy_) failed\n");
@@ -173,15 +173,19 @@ void stats_rheology_free_energy_density_profile(const char * filename) {
   MPI_Status status;
   MPI_Comm comm = cart_comm();
 
+  double (* free_energy_density)(const int index);
+
   assert(initialised_);
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   fex = (double *) malloc(nlocal[X]*sizeof(double));
   if (fex == NULL) fatal("malloc(fex) failed\n");
   fexmean = (double *) malloc(nlocal[X]*sizeof(double));
   if (fexmean == NULL) fatal("malloc(fexmean failed\n");
+
+  free_energy_density = fe_density_function();
 
   /* Accumulate the local average over y,z */
   /* Do the reduction in (y,z) to give local f(x) */
@@ -262,7 +266,7 @@ void stats_rheology_stress_profile_zero(void) {
   int nlocal[3];
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (n = 0; n < NSTAT1; n++) {
@@ -299,19 +303,24 @@ void stats_rheology_stress_profile_accumulate(void) {
   double u[3];
   double s[3][3];
 
+  void (* chemical_stress)(const int index, double s[3][3]);
+
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
+
+  chemical_stress = fe_chemical_stress_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = ADDR(ic, jc, kc);
+
+	index = le_site_index(ic, jc, kc);
 
 	/* Set up the (inverse) density, velocity */
 
-	rho = get_rho_at_site(index);
+	rho = distribution_zeroth_moment(index, 0);
 	rrho = 1.0/rho;
-	get_momentum_at_site(index, u);
+	distribution_first_moment(index, 0, u);
 
 	/* Work out the vicous stress and accumulate. The factor
 	 * which relates the distribution \sum_i f_ c_ia c_ib
@@ -333,7 +342,7 @@ void stats_rheology_stress_profile_accumulate(void) {
 
 	/* Thermodynamic part of stress */
 
-        free_energy_get_chemical_stress(index, s);
+        chemical_stress(index, s);
 
 	sxy_[NSTAT1*(ic-1) + 1] += s[X][Y];
 
@@ -386,8 +395,8 @@ void stats_rheology_stress_profile_accumulate(void) {
  *  Average and output the accumulated mean stress profile. There are
  *  three results which are the xy components of
  *
- *    mean_yzt hydrodymanic stess(x)
- *    mean_yzt chemical stess(x)
+ *    mean_yzt hydrodymanic stress(x)
+ *    mean_yzt chemical stress(x)
  *    mean_yzt rho uu(x)
  *
  *  As it's convenient, we also take the opportunity to get the mean
@@ -420,8 +429,8 @@ void stats_rheology_stress_profile(const char * filename) {
   FILE * fp_output;
 
   assert(initialised_);
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxymean == NULL) fatal("malloc(sxymean) failed\n");
@@ -536,7 +545,7 @@ void stats_rheology_stress_section(const char * filename) {
   const int tag_token = 1012;
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   eta = get_eta_shear();
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
@@ -675,12 +684,16 @@ void stats_rheology_mean_stress(const char * filename) {
   int ic, jc, kc, index, ia, ib;
   FILE * fp;
 
+  void (* chemical_stress)(const int index, double s[3][3]);
+
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
   eta = get_eta_shear();
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
+
+  chemical_stress = fe_chemical_stress_function();
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -696,12 +709,12 @@ void stats_rheology_mean_stress(const char * filename) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = get_site_index(ic, jc, kc);
+        index = coords_index(ic, jc, kc);
 
-	rho = get_rho_at_site(index);
-	get_momentum_at_site(index, u);
+	rho = distribution_zeroth_moment(index, 0);
+	distribution_first_moment(index, 0, u);
 	distribution_get_stress_at_site(index, s);
-        free_energy_get_chemical_stress(index, plocal);
+        chemical_stress(index, plocal);
 
 	rrho = 1.0/rho;
         for (ia = 0; ia < 3; ia++) {
@@ -727,7 +740,7 @@ void stats_rheology_mean_stress(const char * filename) {
     }
   }
 
-  MPI_Reduce(send, recv, NCOMP, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(send, recv, NCOMP, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
   kc = 0;
   for (ia = 0; ia < 3; ia++) {

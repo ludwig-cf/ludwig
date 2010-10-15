@@ -5,28 +5,58 @@
  *  In cases where the order parameter is via "full LB", this couples
  *  the scalar order parameter phi_site[] to the distributions.
  *
- *  $Id: phi_lb_coupler.c,v 1.2 2009-09-02 07:53:47 kevin Exp $
+ *  $Id: phi_lb_coupler.c,v 1.3 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2010 The University of Edinburgh
  *
  ****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "leesedwards.h"
 #include "model.h"
+#include "physics.h"
 #include "site_map.h"
 #include "phi.h"
 #include "phi_lb_coupler.h"
-#include "utilities.h"
+#include "util.h"
 
 extern double * phi_site;
+
+/*****************************************************************************
+ *
+ *  phi_lb_coupler_phi_set
+ *
+ *  This is to mediate between order parameter by LB and order parameter
+ *  via finite difference.
+ *
+ *****************************************************************************/
+
+void phi_lb_coupler_phi_set(const int index, const double phi) {
+
+  int p;
+
+  if (phi_is_finite_difference()) {
+    phi_op_set_phi_site(index, 0, phi);
+  }
+  else {
+    assert(distribution_ndist() == 2);
+
+    distribution_f_set(index, 0, 1, phi);
+
+    for (p = 1; p < NVEL; p++) {
+      distribution_f_set(index, p, 1, 0.0);
+    }
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -44,18 +74,22 @@ void phi_compute_phi_site() {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int nop;
 
   if (phi_is_finite_difference()) return;
 
-  get_N_local(nlocal);
+  assert(distribution_ndist() == 2);
+
+  coords_nlocal(nlocal);
+  nop = phi_nop();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = le_site_index(ic, jc, kc);
-	phi_site[nop_*index] = get_phi_at_site(index);
+	index = coords_index(ic, jc, kc);
+	phi_site[nop*index] = distribution_zeroth_moment(index, 1);
       }
     }
   }
@@ -84,7 +118,9 @@ void phi_set_mean_phi(double phi_global) {
   double   vlocal = 0.0, vtotal;
   MPI_Comm comm = cart_comm();
 
-  get_N_local(nlocal);
+  assert(distribution_ndist() == 2);
+
+  coords_nlocal(nlocal);
 
   /* Compute the mean phi in the domain proper */
 
@@ -93,8 +129,8 @@ void phi_set_mean_phi(double phi_global) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = get_site_index(ic, jc, kc);
-	phi_local += get_phi_at_site(index);
+	index = coords_index(ic, jc, kc);
+	phi_local += distribution_zeroth_moment(index, 1);
 	vlocal += 1.0;
       }
     }
@@ -118,9 +154,9 @@ void phi_set_mean_phi(double phi_global) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	if (site_map_get_status(ic, jc, kc) == FLUID) {
-	  index = get_site_index(ic, jc, kc);
-	  phi_local = get_g_at_site(index, 0) + phi_correction;
-	  set_g_at_site(index, 0,  phi_local);
+	  index = coords_index(ic, jc, kc);
+	  phi_local = distribution_f(index, 0, 1) + phi_correction;
+	  distribution_f_set(index, 0, 1, phi_local);
 	}
       }
     }
@@ -142,14 +178,14 @@ void phi_lb_init_drop(double radius, double xi0) {
 
   int nlocal[3];
   int noffset[3];
-  int index, ic, jc, kc, p;
+  int index, ic, jc, kc;
 
   double position[3];
   double centre[3];
   double phi, r, rxi0;
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   rxi0 = 1.0/xi0;
 
@@ -160,7 +196,8 @@ void phi_lb_init_drop(double radius, double xi0) {
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-        index = get_site_index(ic, jc, kc);
+
+        index = coords_index(ic, jc, kc);
         position[X] = 1.0*(noffset[X] + ic) - centre[X];
         position[Y] = 1.0*(noffset[Y] + jc) - centre[Y];
         position[Z] = 1.0*(noffset[Z] + kc) - centre[Z];
@@ -169,15 +206,8 @@ void phi_lb_init_drop(double radius, double xi0) {
 
         phi = tanh(rxi0*(r - radius));
 
-        /* Set both phi_site and g to allow for FD or LB */
-        phi_set_phi_site(index, phi);
-
-        set_rho(index, 1.0);
-        set_g_at_site(index, 0, phi);
-        for (p = 1; p < NVEL; p++) {
-          set_g_at_site(index, p, 0.0);
-        }
-
+	distribution_zeroth_moment_set_equilibrium(index, 0, get_rho0());
+	phi_lb_coupler_phi_set(index, phi);
       }
     }
   }

@@ -2,18 +2,20 @@
  *
  *  brownian.h
  *
- *  Brownian dynmaics
+ *  Brownian dynamics is disabled at the moment.
  *
- *  Edinburgh Soft Matter and Statistical Physics Group
+ *  $Id: brownian.h,v 1.3 2010-10-15 12:40:02 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2007)
- *
- *  $Id: brownian.h,v 1.2 2007-12-05 17:56:12 kevin Exp $
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _BROWNIAN_H
-#define _BROWNIAN_H
+#ifndef BROWNIAN_H
+#define BROWNIAN_H
 
 void brownian_step_no_inertia(void);
 void brownian_set_random(void);

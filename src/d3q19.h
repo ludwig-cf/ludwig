@@ -4,7 +4,7 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.h,v 1.8 2009-04-09 14:53:29 kevin Exp $
+ *  $Id: d3q19.h,v 1.9 2010-10-15 12:40:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel computing Centre
@@ -16,8 +16,8 @@
 
 #ifdef _D3Q19_
 
+enum {NDIM = 3};
 enum {NVEL = 19};
-enum {LE_N_VEL_XING = 5};
 enum {CVXBLOCK = 1};
 enum {CVYBLOCK = 3};
 enum {CVZBLOCK = 5};

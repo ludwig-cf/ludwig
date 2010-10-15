@@ -4,12 +4,18 @@
  *
  *  Runtime input interface.
  *
+ *  $Id: runtime.h,v 1.3 2010-10-15 12:40:03 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _RUNTIME_H
-#define _RUNTIME_H
+#ifndef RUNTIME_H
+#define RUNTIME_H
 
 void RUN_read_input_file(const char *);
 int  RUN_get_int_parameter(const char *, int *);

@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.2 2008-08-24 16:58:10 kevin Exp $
+ *  $Id: site_map.c,v 1.3 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -56,14 +56,11 @@ static MPI_Datatype mpi_yz_t_;
 
 void site_map_init() {
 
-  int nlocal[3];
-  int n;
+  int nsites;
 
-  get_N_local(nlocal);
+  nsites = coords_nsites();
 
-  n = (nlocal[X] + 2*nhalo_)*(nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
-
-  site_map = (struct site_info_t *) malloc(n*sizeof(struct site_info_t));
+  site_map = (struct site_info_t *) malloc(nsites*sizeof(struct site_info_t));
   if (site_map == NULL) fatal("malloc(site_map) failed\n");
 
   site_map_init_io();
@@ -116,26 +113,28 @@ static void site_map_init_mpi() {
 
   int nlocal[3];
   int nh[3];
+  int nhalo;
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
 
-  nh[X] = nlocal[X] + 2*nhalo_;
-  nh[Y] = nlocal[Y] + 2*nhalo_;
-  nh[Z] = nlocal[Z] + 2*nhalo_;
+  nh[X] = nlocal[X] + 2*nhalo;
+  nh[Y] = nlocal[Y] + 2*nhalo;
+  nh[Z] = nlocal[Z] + 2*nhalo;
 
   MPI_Type_contiguous(sizeof(struct site_info_t), MPI_BYTE, &mpi_site_t_);
   MPI_Type_commit(&mpi_site_t_);
 
   /* YZ planes in the X direction */
-  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo_, 1, mpi_site_t_, &mpi_yz_t_);
+  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo, 1, mpi_site_t_, &mpi_yz_t_);
   MPI_Type_commit(&mpi_yz_t_);
 
   /* XZ planes in the Y direction */
-  MPI_Type_vector(nh[X], nh[Z]*nhalo_, nh[Y]*nh[Z], mpi_site_t_, &mpi_xz_t_);
+  MPI_Type_vector(nh[X], nh[Z]*nhalo, nh[Y]*nh[Z], mpi_site_t_, &mpi_xz_t_);
   MPI_Type_commit(&mpi_xz_t_);
 
   /* XY planes in Z direction */
-  MPI_Type_vector(nh[X]*nh[Y], nhalo_, nh[Z], mpi_site_t_, &mpi_xy_t_);
+  MPI_Type_vector(nh[X]*nh[Y], nhalo, nh[Z], mpi_site_t_, &mpi_xy_t_);
   MPI_Type_commit(&mpi_xy_t_);
 
   return;
@@ -177,18 +176,20 @@ void site_map_finish() {
 
 void site_map_set_all(char status) {
 
+  int nhalo;
   int nlocal[3];
   int index, ic, jc, kc;
 
   assert(initialised_);
   assert(status >= FLUID && status <= COLLOID);
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
 
-  for (ic = 1 - nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
-    for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-      for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
-	index = get_site_index(ic, jc, kc);
+  for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	index = coords_index(ic, jc, kc);
 	site_map[index].status = status;
 	site_map[index].h = 0.0;
       }
@@ -212,7 +213,7 @@ char site_map_get_status(int ic, int jc, int kc) {
 
   assert(initialised_);
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
 
   return site_map[index].status;
 }
@@ -246,7 +247,7 @@ void site_map_set_status(int ic, int jc, int kc, char status) {
   assert(initialised_);
   assert(status >= FLUID && status <= COLLOID);
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   site_map[index].status = status;
 
   return;
@@ -254,14 +255,14 @@ void site_map_set_status(int ic, int jc, int kc, char status) {
 
 /*****************************************************************************
  *
- *  site_map_get_C
+ *  site_map_C
  *
  *  Wetting paramater C cf. Desplat et al. 2001.
  *  Always zero at the moment.
  *
  *****************************************************************************/
 
-double site_map_get_C(int index) {
+double site_map_C(int index) {
 
   assert(initialised_);
   return 0.0;
@@ -269,16 +270,62 @@ double site_map_get_C(int index) {
 
 /*****************************************************************************
  *
- *  site_map_get_H
+ *  site_map_H
  *
  *  Wetting parameter H cf. Desplat et al. 2001.
  *
  *****************************************************************************/
 
-double site_map_get_H(int index) {
+double site_map_H(int index) {
 
   assert(initialised_);
   return site_map[index].h;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_C_set
+ *
+ *****************************************************************************/
+
+void site_map_C_set(const int index, const double c) {
+
+  assert(initialised_);
+  /* Do nothing, as C is always zero at the moment */
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_H_set
+ *
+ *****************************************************************************/
+
+void site_map_H_set(const int index, const double h) {
+
+  assert(initialised_);
+  site_map[index].h = h;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_set
+ *
+ *  A routine to set everything in one go.
+ *
+ *****************************************************************************/
+
+void site_map_set(const int index, const char status, const double c,
+		  const double h) {
+
+  assert(initialised_);
+  assert(status >= FLUID && status <= COLLOID);
+
+  site_map[index].status = status;
+  /* C always zero. */
+  site_map[index].h = h;
+  return;
 }
 
 /*****************************************************************************
@@ -300,7 +347,7 @@ double site_map_volume(char status) {
   assert(initialised_);
   assert(status >= FLUID && status <= COLLOID);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
   v_local = 0.0;
 
   /* Look for fluid nodes (not halo) */
@@ -309,7 +356,7 @@ double site_map_volume(char status) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	if (site_map[index].status == status) v_local += 1.0;
       }
     }
@@ -333,6 +380,7 @@ double site_map_volume(char status) {
 void site_map_halo() {
 
   int ic, jc, kc, ihalo, ireal, nh;
+  int nhalo;
   int nlocal[3];
   int back, forw;
   const int btag = 151;
@@ -342,20 +390,21 @@ void site_map_halo() {
   MPI_Status status[4];
 
   assert(initialised_);
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
 
   /* YZ planes in X direction */
 
   if (cart_size(X) == 1) {
-    for (nh = 0; nh < nhalo_; nh++) {
+    for (nh = 0; nh < nhalo; nh++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1 ; kc <= nlocal[Z]; kc++) {
-	  ihalo = get_site_index(0-nh, jc, kc);
-	  ireal = get_site_index(nlocal[X]-nh, jc, kc);
+	  ihalo = coords_index(0-nh, jc, kc);
+	  ireal = coords_index(nlocal[X]-nh, jc, kc);
 	  site_map[ihalo] = site_map[ireal];
 
-	  ihalo = get_site_index(nlocal[X]+1+nh, jc, kc);
-	  ireal = get_site_index(1+nh, jc, kc);
+	  ihalo = coords_index(nlocal[X]+1+nh, jc, kc);
+	  ireal = coords_index(1+nh, jc, kc);
 	  site_map[ihalo] = site_map[ireal];
 	}
       }
@@ -366,13 +415,13 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, X);
     forw = cart_neighb(FORWARD, X);
 
-    ihalo = get_site_index(nlocal[X] + 1, 1-nhalo_, 1-nhalo_);
+    ihalo = coords_index(nlocal[X] + 1, 1-nhalo, 1-nhalo);
     MPI_Irecv(site_map + ihalo,  1, mpi_yz_t_, forw, btag, comm, request);
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = coords_index(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(site_map + ihalo,  1, mpi_yz_t_, back, ftag, comm, request+1);
-    ireal = get_site_index(1, 1-nhalo_, 1-nhalo_);
+    ireal = coords_index(1, 1-nhalo, 1-nhalo);
     MPI_Issend(site_map + ireal, 1, mpi_yz_t_, back, btag, comm, request+2);
-    ireal = get_site_index(nlocal[X] - nhalo_ + 1, 1-nhalo_, 1-nhalo_);
+    ireal = coords_index(nlocal[X] - nhalo + 1, 1-nhalo, 1-nhalo);
     MPI_Issend(site_map + ireal, 1, mpi_yz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -380,15 +429,15 @@ void site_map_halo() {
   /* XZ planes in the Y direction */
 
   if (cart_size(Y) == 1) {
-    for (nh = 0; nh < nhalo_; nh++) {
-      for (ic = 1-nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
+    for (nh = 0; nh < nhalo; nh++) {
+      for (ic = 1-nhalo; ic <= nlocal[X] + nhalo; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  ihalo = get_site_index(ic, 0-nh, kc);
-	  ireal = get_site_index(ic, nlocal[Y]-nh, kc);
+	  ihalo = coords_index(ic, 0-nh, kc);
+	  ireal = coords_index(ic, nlocal[Y]-nh, kc);
 	  site_map[ihalo] = site_map[ireal];
 
-	  ihalo = get_site_index(ic, nlocal[Y]+1+nh, kc);
-	  ireal = get_site_index(ic, 1+nh, kc);
+	  ihalo = coords_index(ic, nlocal[Y]+1+nh, kc);
+	  ireal = coords_index(ic, 1+nh, kc);
 	  site_map[ihalo] = site_map[ireal];
 	}
       }
@@ -399,13 +448,13 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, Y);
     forw = cart_neighb(FORWARD, Y);
 
-    ihalo = get_site_index(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
+    ihalo = coords_index(1-nhalo, nlocal[Y] + 1, 1-nhalo);
     MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, forw, btag, comm, request);
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = coords_index(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, back, ftag, comm, request+1);
-    ireal = get_site_index(1-nhalo_, 1, 1-nhalo_);
+    ireal = coords_index(1-nhalo, 1, 1-nhalo);
     MPI_Issend(site_map + ireal, 1, mpi_xz_t_, back, btag, comm, request+2);
-    ireal = get_site_index(1-nhalo_, nlocal[Y] - nhalo_ + 1, 1-nhalo_);
+    ireal = coords_index(1-nhalo, nlocal[Y] - nhalo + 1, 1-nhalo);
     MPI_Issend(site_map + ireal, 1, mpi_xz_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -413,15 +462,15 @@ void site_map_halo() {
   /* XY planes in the Z direction */
 
   if (cart_size(Z) == 1) {
-    for (nh = 0; nh < nhalo_; nh++) {
-      for (ic = 1 - nhalo_; ic <= nlocal[X] + nhalo_; ic++) {
-	for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
-	  ihalo = get_site_index(ic, jc, 0-nh);
-	  ireal = get_site_index(ic, jc, nlocal[Z]-nh);
+    for (nh = 0; nh < nhalo; nh++) {
+      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+	  ihalo = coords_index(ic, jc, 0-nh);
+	  ireal = coords_index(ic, jc, nlocal[Z]-nh);
 	  site_map[ihalo] = site_map[ireal];
 
-	  ihalo = get_site_index(ic, jc, nlocal[Z]+1+nh);
-	  ireal = get_site_index(ic, jc,            1+nh);
+	  ihalo = coords_index(ic, jc, nlocal[Z]+1+nh);
+	  ireal = coords_index(ic, jc,            1+nh);
 	  site_map[ihalo] = site_map[ireal];
 	}
       }
@@ -432,13 +481,13 @@ void site_map_halo() {
     back = cart_neighb(BACKWARD, Z);
     forw = cart_neighb(FORWARD, Z);
 
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
+    ihalo = coords_index(1-nhalo, 1-nhalo, nlocal[Z] + 1);
     MPI_Irecv(site_map + ihalo,  1, mpi_xy_t_, forw, btag, comm, request);
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, 1-nhalo_);
+    ihalo = coords_index(1-nhalo, 1-nhalo, 1-nhalo);
     MPI_Irecv(site_map + ihalo,  1, mpi_xy_t_, back, ftag, comm, request+1);
-    ireal = get_site_index(1-nhalo_, 1-nhalo_, 1);
+    ireal = coords_index(1-nhalo, 1-nhalo, 1);
     MPI_Issend(site_map + ireal, 1, mpi_xy_t_, back, btag, comm, request+2);
-    ireal = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] - nhalo_ + 1);
+    ireal = coords_index(1-nhalo, 1-nhalo, nlocal[Z] - nhalo + 1);
     MPI_Issend(site_map + ireal, 1, mpi_xy_t_, forw, ftag, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -474,7 +523,7 @@ static int site_map_write(FILE * fp, int ic, int jc, int kc) {
 
   int index, n;
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
 
   n = fputc(site_map[index].status, fp);
   if (n == EOF) fatal("Failed to write site map binary at %d\n", index);
@@ -492,7 +541,7 @@ static int site_map_read(FILE * fp, int ic, int jc, int kc) {
 
   int index, n;
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
 
   n = fgetc(fp);
   if (n == EOF) fatal("Failed to read site map binary at %d (%d, %d, %d)\n",
@@ -520,7 +569,7 @@ static int site_map_write_ascii(FILE * fp, int ic, int jc, int kc) {
   int index, n;
   int tmp;
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   tmp = site_map[index].status;
   n = fprintf(fp, "%d\n", tmp);
   if (n != 1) fatal("Failed to write site map ascii at %d\n", index);
@@ -541,7 +590,7 @@ static int site_map_read_ascii(FILE * fp, int ic, int jc, int kc) {
 
   assert(io_type_ == 0);
 
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   n = fscanf(fp, "%d\n", &tmp);
   if (n != 1) fatal("Failed to read site map ascii at %d (%d, %d, %d)\n",
 		    index, ic, jc, kc);

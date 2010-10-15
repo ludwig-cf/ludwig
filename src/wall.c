@@ -6,7 +6,7 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.11 2009-09-02 07:55:19 kevin Exp $
+ *  $Id: wall.c,v 1.12 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
@@ -16,6 +16,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,11 +71,12 @@ void wall_init() {
 
   if (strcmp(tmp, "yes") == 0) is_boundary_wall_ = 1;
 
-  if (is_boundary_wall_) init_boundary_site_map();
-  init_links();
-  if (is_boundary_wall_) init_boundary_speeds(ux_bottom, ux_top);
-
-  report_boundary_memory();
+  if (is_boundary_wall_) {
+    init_boundary_site_map();
+    init_links();
+    init_boundary_speeds(ux_bottom, ux_top);
+    report_boundary_memory();
+  }
 
   fnet_[X] = 0.0;
   fnet_[Y] = 0.0;
@@ -85,14 +87,34 @@ void wall_init() {
 
 /*****************************************************************************
  *
- *  boundaries_present
+ *  wall_present
  *
- *  Return 0 is no boundaries are present.
+ *  Return 0 if no boundaries are present, or 1 if any boundary
+ *  at all.
  *
  *****************************************************************************/
 
-int boundaries_present(void) {
+int wall_present(void) {
   return is_boundary_wall_;
+}
+
+/*****************************************************************************
+ *
+ *  wall_at_edge
+ *
+ *  Return 1 if there is a wall in the given direction.
+ *
+ *  At the moment, this information is implicit in the periodicity of
+ *  the Cartesian communicator; it would be better to have it explicit
+ *  (from input).
+ *
+ *****************************************************************************/
+
+int wall_at_edge(const int d) {
+
+  assert(d == X || d == Y || d == Z);
+
+  return (is_boundary_wall_ && !is_periodic(d));
 }
 
 /*****************************************************************************
@@ -137,19 +159,21 @@ void wall_finish() {
  *
  *  wall_bounce_back
  *
- *
+ *  Bounce back each distribution.
  *
  *****************************************************************************/
 
-void wall_bounce_back() {
+void wall_bounce_back(void) {
 
   B_link * p_link;
   int      i, j, ij, ji, ia;
+  int      n, ndist;
   double   rho, cdotu;
   double   fp;
   double   force;
 
   p_link = link_list_;
+  ndist = distribution_ndist();
 
   while (p_link) {
 
@@ -158,23 +182,24 @@ void wall_bounce_back() {
     ij = p_link->p;   /* Link index direction solid->fluid */
     ji = NVEL - ij;   /* Opposite direction index */
 
-    rho = get_rho_at_site(i);
     cdotu = cv[ij][X]*p_link->ux;
-    fp = get_f_at_site(i, ij);
-    force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-    fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-    set_f_at_site(j, ji, fp);
 
-#ifdef _SINGLE_FLUID_
-#else
-    /* Order parameter (for "rho", read "phi" here) */
-    rho = get_phi_at_site(i);
-    fp = get_g_at_site(i, ij) - 2.0*rcs2*wv[ij]*rho*cdotu;
-    set_g_at_site(j, ji, fp);
-#endif
+    for (n = 0; n < ndist; n++) {
 
-    for (ia = 0; ia < 3; ia++) {
-      fnet_[ia] += force*cv[ij][ia];
+      fp = distribution_f(i, ij, n);
+      rho = distribution_zeroth_moment(i, n);
+
+      if (n == 0) {
+	/* This is the momentum */
+	force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+	for (ia = 0; ia < 3; ia++) {
+	  fnet_[ia] += force*cv[ij][ia];
+	}
+      }
+
+      fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+      distribution_f_set(j, ji, n, fp);
+
     }
 
     p_link = p_link->next;
@@ -200,7 +225,7 @@ static void init_links() {
 
   B_link * tmp;
 
-  get_N_local(n);
+  coords_nlocal(n);
 
   for (ic = 1; ic <= n[X]; ic++) {
     for (jc = 1; jc <= n[Y]; jc++) {
@@ -221,8 +246,8 @@ static void init_links() {
 	    /* Add a link to head of the list */
 
 	    tmp = allocate_link();
-	    tmp->i = get_site_index(ic, jc, kc);        /* fluid site */
-	    tmp->j = get_site_index(ic1, jc1, kc1);     /* solid site */
+	    tmp->i = coords_index(ic, jc, kc);        /* fluid site */
+	    tmp->j = coords_index(ic1, jc1, kc1);     /* solid site */
 	    tmp->p = p;
 	    tmp->ux = 0.0;
 
@@ -254,8 +279,8 @@ static void init_boundary_site_map() {
   int nlocal[3];
   int noffset[3];
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   for (ic = 0; ic <= nlocal[X] + 1; ic++) {
     for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
@@ -364,6 +389,8 @@ static void report_boundary_memory() {
  *  set_wall_velocity
  *
  *  Set distribution at solid sites to reflect solid body velocity.
+ *  This allows 'solid-solid' exchange of distributions between
+ *  wall and colloids.
  *
  *****************************************************************************/
 
@@ -380,7 +407,7 @@ static void set_wall_velocity() {
   while (p_link) {
     p = NVEL - p_link->p; /* Want the outward going component */
     fp = wv[p]*(rho + rcs2*p_link->ux*cv[p][X]);
-    set_f_at_site(p_link->j, p, fp);
+    distribution_f_set(p_link->j, p, 0, fp);
 
     p_link = p_link->next;
   }
@@ -410,18 +437,19 @@ void wall_accumulate_force(const double f[3]) {
 
 /*****************************************************************************
  *
- *  wall_force
+ *  wall_net_momentum
  *
- *  Get the accumulated force on the walls.
+ *  Get the accumulated force (interpreted as momentum) on the walls.
+ *
+ *  This is a reduction to rank 0 in pe_comm() for the purposes
+ *  of output statistics. This is the only meaningful use of this
+ *  quantity.
  *
  *****************************************************************************/
 
-void wall_force(void) {
+void wall_net_momentum(double g[3]) {
 
-  double force[3];
-
-  MPI_Reduce(fnet_, force, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  info("Wall net: %18.10e %18.10e %18.10e\n", force[X], force[Y], force[Z]);
+  MPI_Reduce(fnet_, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
   return;
 }

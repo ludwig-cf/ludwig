@@ -6,7 +6,7 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
- *  $Id: phi_force.c,v 1.6 2009-10-26 09:52:09 kevin Exp $
+ *  $Id: phi_force.c,v 1.7 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,7 +22,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
 #include "lattice.h"
 #include "phi.h"
 #include "site_map.h"
@@ -44,7 +43,20 @@ static double * fluxw;
 static double * fluxy;
 static double * fluxz;
 
+static int  force_required_ = 1;
 static void (* phi_force_simple_)(void) = phi_force_calculation_fluid;
+
+/*****************************************************************************
+ *
+ *  phi_force_required_set
+ *
+ *****************************************************************************/
+
+void phi_force_required_set(const int flag) {
+
+  force_required_ = flag;
+  return;
+}
 
 /*****************************************************************************
  *
@@ -56,11 +68,15 @@ static void (* phi_force_simple_)(void) = phi_force_calculation_fluid;
 
 void phi_force_calculation() {
 
+  if (force_required_ == 0) return;
+
   if (le_get_nplane_total() > 0) {
     /* Must use the flux method for LE planes */
     phi_force_flux();
   }
   else {
+    /* Note that this routine does not do accounting for the wall
+     * momentum, if required. */
     phi_force_simple_();
   }
 
@@ -105,8 +121,12 @@ static void phi_force_calculation_fluid() {
   double pth1[3][3];
   double force[3];
 
-  get_N_local(nlocal);
-  assert(nhalo_ >= 2);
+  void (* chemical_stress)(const int index, double s[3][3]);
+
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 2);
+
+  chemical_stress = fe_chemical_stress_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -114,45 +134,45 @@ static void phi_force_calculation_fluid() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = ADDR(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 
 	/* Compute pth at current point */
-	free_energy_get_chemical_stress(index, pth0);
+	chemical_stress(index, pth0);
 
 	/* Compute differences */
 	
-	index1 = ADDR(icp1, jc, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(icp1, jc, kc);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -0.5*(pth1[X][ia] + pth0[X][ia]);
+	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
-	index1 = ADDR(icm1, jc, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(icm1, jc, kc);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[X][ia] + pth0[X][ia]);
+	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	
-	index1 = ADDR(ic, jc+1, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc+1, kc);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[Y][ia] + pth0[Y][ia]);
+	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
-	index1 = ADDR(ic, jc-1, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc-1, kc);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[Y][ia] + pth0[Y][ia]);
+	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	
-	index1 = ADDR(ic, jc, kc+1);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc, kc+1);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[Z][ia] + pth0[Z][ia]);
+	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
-	index1 = ADDR(ic, jc, kc-1);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc, kc-1);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[Z][ia] + pth0[Z][ia]);
+	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 
 	/* Store the force on lattice */
@@ -190,8 +210,14 @@ static void phi_force_calculation_fluid_solid() {
   double pth1[3][3];
   double force[3];
 
-  get_N_local(nlocal);
-  assert(nhalo_ >= 2);
+  void (* chemical_stress)(const int index, double s[3][3]);
+
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 2);
+  /* Antisymetric stress not catered for yet... */
+  assert(phi_nop() != 5);
+
+  chemical_stress = fe_chemical_stress_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -199,48 +225,48 @@ static void phi_force_calculation_fluid_solid() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = ADDR(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 
 	/* Compute pth at current point */
-	free_energy_get_chemical_stress(index, pth0);
+	chemical_stress(index, pth0);
 
 	/* Compute differences */
 	
-	index1 = ADDR(icp1, jc, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(icp1, jc, kc);
+	chemical_stress(index1, pth1);
 	mask = (site_map_get_status_index(index1) == FLUID);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = -0.5*(mask*pth1[X][ia] + pth0[X][ia]);
 	}
-	index1 = ADDR(icm1, jc, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(icm1, jc, kc);
+	chemical_stress(index1, pth1);
 	mask = (site_map_get_status_index(index1) == FLUID);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(mask*pth1[X][ia] + pth0[X][ia]);
 	}
 
 	
-	index1 = ADDR(ic, jc+1, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc+1, kc);
+	chemical_stress(index1, pth1);
 	mask = (site_map_get_status_index(index1) == FLUID);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(mask*pth1[Y][ia] + pth0[Y][ia]);
 	}
-	index1 = ADDR(ic, jc-1, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc-1, kc);
+	chemical_stress(index1, pth1);
 	mask = (site_map_get_status_index(index1) == FLUID);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(mask*pth1[Y][ia] + pth0[Y][ia]);
 	}
 	
-	index1 = ADDR(ic, jc, kc+1);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc, kc+1);
+	chemical_stress(index1, pth1);
 	mask = (site_map_get_status_index(index1) == FLUID);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(mask*pth1[Z][ia] + pth0[Z][ia]);
 	}
-	index1 = ADDR(ic, jc, kc-1);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc, kc-1);
+	chemical_stress(index1, pth1);
 	mask = (site_map_get_status_index(index1) == FLUID);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(mask*pth1[Z][ia] + pth0[Z][ia]);
@@ -272,11 +298,9 @@ static void phi_force_calculation_fluid_solid() {
 
 static void phi_force_flux(void) {
 
-  int nlocal[3];
   int n;
 
-  get_N_local(nlocal);
-  n = (nlocal[X] + 2*nhalo_)*(nlocal[Y] + 2*nhalo_)*(nlocal[Z] + 2*nhalo_);
+  n = coords_nsites();
 
   fluxe = (double *) malloc(3*n*sizeof(double));
   fluxw = (double *) malloc(3*n*sizeof(double));
@@ -291,10 +315,9 @@ static void phi_force_flux(void) {
   phi_force_compute_fluxes();
   phi_force_fix_fluxes();
 
-  if (!is_periodic(X)) phi_force_wall();
+  if (wall_present()) phi_force_wall();
 
   phi_force_flux_divergence();
-
 
   free(fluxz);
   free(fluxy);
@@ -321,8 +344,12 @@ static void phi_force_compute_fluxes(void) {
   double pth0[3][3];
   double pth1[3][3];
 
-  get_N_local(nlocal);
-  assert(nhalo_ >= 2);
+  void (* chemical_stress)(const int index, double s[3][3]);
+
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 2);
+
+  chemical_stress = fe_chemical_stress_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -330,39 +357,39 @@ static void phi_force_compute_fluxes(void) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = ADDR(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 
 	/* Compute pth at current point */
-	free_energy_get_chemical_stress(index, pth0);
+	chemical_stress(index, pth0);
 
 	/* fluxw_a = (1/2)[P(i, j, k) + P(i-1, j, k)]_xa */
 	
-	index1 = ADDR(icm1, jc, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(icm1, jc, kc);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  fluxw[3*index + ia] = 0.5*(pth1[X][ia] + pth0[X][ia]);
 	}
 
 	/* fluxe_a = (1/2)[P(i, j, k) + P(i+1, j, k)_xa */
 
-	index1 = ADDR(icp1, jc, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(icp1, jc, kc);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  fluxe[3*index + ia] = 0.5*(pth1[X][ia] + pth0[X][ia]);
 	}
 
 	/* fluxy_a = (1/2)[P(i, j, k) + P(i, j+1, k)]_ya */
 
-	index1 = ADDR(ic, jc+1, kc);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc+1, kc);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  fluxy[3*index + ia] = 0.5*(pth1[Y][ia] + pth0[Y][ia]);
 	}
 	
 	/* fluxz_a = (1/2)[P(i, j, k) + P(i, j, k+1)]_za */
 
-	index1 = ADDR(ic, jc, kc+1);
-	free_energy_get_chemical_stress(index1, pth1);
+	index1 = le_site_index(ic, jc, kc+1);
+	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  fluxz[3*index + ia] = 0.5*(pth1[Z][ia] + pth0[Z][ia]);
 	}
@@ -411,7 +438,7 @@ static void phi_force_fix_fluxes(void) {
   }
   else {
 
-    get_N_local(nlocal);
+    coords_nlocal(nlocal);
 
     nbuffer = 3*nlocal[Y]*nlocal[Z];
     buffere = (double *) malloc(nbuffer*sizeof(double));
@@ -442,8 +469,8 @@ static void phi_force_fix_fluxes(void) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (ia = 0; ia < 3; ia++) {
 	    index = 3*(nlocal[Z]*(jc-1) + (kc-1)) + ia;
-	    bufferw[index] = fr*fluxw[3*ADDR(ic+1,j1,kc) + ia]
-	      + (1.0-fr)*fluxw[3*ADDR(ic+1,j2,kc) + ia];
+	    bufferw[index] = fr*fluxw[3*le_site_index(ic+1,j1,kc) + ia]
+	      + (1.0-fr)*fluxw[3*le_site_index(ic+1,j2,kc) + ia];
 	  }
 	}
       }
@@ -464,8 +491,8 @@ static void phi_force_fix_fluxes(void) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (ia = 0; ia < 3; ia++) {
 	    index = 3*(nlocal[Z]*(jc-1) + (kc-1)) + ia;
-	    buffere[index] = fr*fluxe[3*ADDR(ic,j1,kc) + ia]
-	      + (1.0-fr)*fluxe[3*ADDR(ic,j2,kc) + ia];
+	    buffere[index] = fr*fluxe[3*le_site_index(ic,j1,kc) + ia]
+	      + (1.0-fr)*fluxe[3*le_site_index(ic,j2,kc) + ia];
 	  }
 	}
       }
@@ -475,10 +502,10 @@ static void phi_force_fix_fluxes(void) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (ia = 0; ia < 3; ia++) {
-	    index = 3*ADDR(ic,jc,kc) + ia;
+	    index = 3*le_site_index(ic,jc,kc) + ia;
 	    index1 = 3*(nlocal[Z]*(jc-1) + (kc-1)) + ia;
 	    fluxe[index] = 0.5*(fluxe[index] + bufferw[index1]);
-	    index = 3*ADDR(ic+1,jc,kc) + ia;
+	    index = 3*le_site_index(ic+1,jc,kc) + ia;
 	    fluxw[index] = 0.5*(fluxw[index] + buffere[index1]);
 	  }
 	}
@@ -505,6 +532,7 @@ static void phi_force_fix_fluxes(void) {
 
 static void phi_force_fix_fluxes_parallel(void) {
 
+  int      nhalo;
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
   double * buffere;        /* Interpolation buffer */
@@ -529,12 +557,13 @@ static void phi_force_fix_fluxes_parallel(void) {
 
   int get_step(void);
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   /* Allocate the temporary buffer */
 
-  n = 3*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo_);
+  n = 3*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo);
   buffere = (double *) malloc(n*sizeof(double));
   bufferw = (double *) malloc(n*sizeof(double));
   if (buffere == NULL) fatal("malloc(buffere) failed\n");
@@ -573,17 +602,17 @@ static void phi_force_fix_fluxes_parallel(void) {
     assert(j2 > 0);
     assert(j2 <= nlocal[Y]);
 
-    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
-    n2 = 3*j2*(nlocal[Z] + 2*nhalo_);
+    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = 3*j2*(nlocal[Z] + 2*nhalo);
 
     /* Post receives, sends (the wait is later). */
 
     MPI_Irecv(bufferw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(bufferw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 1);
-    MPI_Issend(fluxw + 3*ADDR(ic+1,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fluxw + 3*le_site_index(ic+1,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 2);
-    MPI_Issend(fluxw + 3*ADDR(ic+1,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fluxw + 3*le_site_index(ic+1,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 3);
 
     /* OTHER WAY */
@@ -603,12 +632,12 @@ static void phi_force_fix_fluxes_parallel(void) {
 
     /* Local quantities: given a local starting index j2, we receive
      * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position nhalo_. */
+     * j2, and the remaining n2 sites from starting position nhalo. */
 
     j2 = 1 + (j1 - 1) % nlocal[Y];
 
-    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo_);
-    n2 = 3*j2*(nlocal[Z] + 2*nhalo_);
+    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = 3*j2*(nlocal[Z] + 2*nhalo);
 
     /* Post new receives, sends, and wait for whole lot to finish. */
 
@@ -616,9 +645,9 @@ static void phi_force_fix_fluxes_parallel(void) {
 	      request + 4);
     MPI_Irecv(buffere+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 5);
-    MPI_Issend(fluxe + 3*ADDR(ic,j2,1-nhalo_), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fluxe + 3*le_site_index(ic,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 6);
-    MPI_Issend(fluxe + 3*ADDR(ic,1,1-nhalo_), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fluxe + 3*le_site_index(ic,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 7);
 
     MPI_Waitall(8, request, status);
@@ -626,18 +655,18 @@ static void phi_force_fix_fluxes_parallel(void) {
     /* Now interpolate */
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo_);
-      j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo_);
+      j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo);
+      j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo);
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[3*ADDR(ic,jc,kc) + ia]
-	    = 0.5*(fluxe[3*ADDR(ic,jc,kc) + ia]
-		   + frw*bufferw[3*(j1 + kc+nhalo_-1) + ia]
-		   + (1.0-frw)*bufferw[3*(j2 + kc+nhalo_-1) + ia]);
-	  fluxw[3*ADDR(ic+1,jc,kc) + ia]
-	    = 0.5*(fluxw[3*ADDR(ic+1,jc,kc) + ia]
-		   + fre*buffere[3*(j1 + kc+nhalo_-1) + ia]
-		   + (1.0-fre)*buffere[3*(j2 + kc+nhalo_-1) + ia]);
+	  fluxe[3*le_site_index(ic,jc,kc) + ia]
+	    = 0.5*(fluxe[3*le_site_index(ic,jc,kc) + ia]
+		   + frw*bufferw[3*(j1 + kc+nhalo-1) + ia]
+		   + (1.0-frw)*bufferw[3*(j2 + kc+nhalo-1) + ia]);
+	  fluxw[3*le_site_index(ic+1,jc,kc) + ia]
+	    = 0.5*(fluxw[3*le_site_index(ic+1,jc,kc) + ia]
+		   + fre*buffere[3*(j1 + kc+nhalo-1) + ia]
+		   + (1.0-fre)*buffere[3*(j2 + kc+nhalo-1) + ia]);
 	}
       }
     }
@@ -666,18 +695,18 @@ static void phi_force_flux_divergence(void) {
   int ic, jc, kc, index, ia;
   double f[3];
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = ADDR(ic, jc, kc);
+        index = le_site_index(ic, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
 	  f[ia] = - (fluxe[3*index + ia] - fluxw[3*index + ia]
-		     + fluxy[3*index + ia] - fluxy[3*ADDR(ic, jc-1, kc) + ia]
-		     + fluxz[3*index + ia] - fluxz[3*ADDR(ic, jc, kc-1) + ia]);
+		     + fluxy[3*index + ia] - fluxy[3*le_site_index(ic, jc-1, kc) + ia]
+		     + fluxz[3*index + ia] - fluxz[3*le_site_index(ic, jc, kc-1) + ia]);
 	}
 
 	hydrodynamics_add_force_local(index, f);
@@ -705,7 +734,11 @@ static void phi_force_wall(void) {
   double fw[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress extrpolated to wall */
 
-  get_N_local(nlocal);
+  void (* chemical_stress)(const int index, double s[3][3]);
+
+  coords_nlocal(nlocal);
+
+  chemical_stress = fe_chemical_stress_function();
 
   fw[X] = 0.0;
   fw[Y] = 0.0;
@@ -716,8 +749,8 @@ static void phi_force_wall(void) {
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = ADDR(ic,jc,kc);
-	free_energy_get_chemical_stress(index, pth0);
+	index = le_site_index(ic,jc,kc);
+	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
 	  fluxw[3*index + ia] = pth0[X][ia];
@@ -732,8 +765,8 @@ static void phi_force_wall(void) {
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = ADDR(ic,jc,kc);
-	free_energy_get_chemical_stress(index, pth0);
+	index = le_site_index(ic,jc,kc);
+	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
 	  fluxe[3*index + ia] = pth0[X][ia];

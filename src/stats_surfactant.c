@@ -4,7 +4,7 @@
  *
  *  Some routines to perform analysis of the surfactant model.
  *
- *  $Id: stats_surfactant.c,v 1.1 2009-05-07 15:23:39 kevin Exp $
+ *  $Id: stats_surfactant.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -20,8 +20,10 @@
 #include "pe.h"
 #include "coords.h"
 #include "phi.h"
-#include "free_energy.h"
 #include "control.h"
+#include "util.h"
+#include "surfactant.h"
+#include "stats_surfactant.h"
 
 /*****************************************************************************
  *
@@ -46,17 +48,17 @@ void stats_surfactant_1d(void) {
    * We also require surfactant */
 
   assert(pe_size() == 1);
-  assert(nop_ == 2);
+  assert(phi_nop() == 2);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   /* We assume z = 1 is a reasonable choice for the background
    * free energy level, which we need to subtract to find the
    * excess. */
 
   kc = 1;
-  index = get_site_index(ic, jc, kc);
-  e0 = free_energy_density(index);
+  index = coords_index(ic, jc, kc);
+  e0 = surfactant_free_energy_density(index);
   psi_b = phi_op_get_phi_site(index, 1);
 
   /* To compute the surface tension, run through both interfaces
@@ -68,9 +70,9 @@ void stats_surfactant_1d(void) {
 
   for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-    index = get_site_index(ic, jc, kc);
+    index = coords_index(ic, jc, kc);
 
-    e = free_energy_density(index);
+    e = surfactant_free_energy_density(index);
     sigma += 0.5*(e - e0);
     psi_0 = dmax(psi_0, phi_op_get_phi_site(index, 1));
   }
@@ -78,7 +80,7 @@ void stats_surfactant_1d(void) {
   /* Compute the fractional reduction in the surface tension
    * below the bare surface value */
 
-  sigma0 = surface_tension();
+  sigma0 = surfactant_interfacial_tension();
   sigma = (sigma - sigma0)/sigma0;
 
   /* The sqrt(t) is the usual dependance for analysis of the

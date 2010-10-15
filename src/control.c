@@ -4,7 +4,7 @@
  *
  *  Model control and time stepping.
  *
- *  $Id: control.c,v 1.9 2009-10-08 16:29:59 kevin Exp $
+ *  $Id: control.c,v 1.10 2010-10-15 12:40:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  end Edinburgh Parallel Computing Centre
@@ -13,6 +13,7 @@
  *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
+
 #include <stdio.h>
 #include <string.h>
 
@@ -46,8 +47,8 @@ void init_control() {
   int n;
   char tmp[128];
 
+  n = RUN_get_int_parameter("N_start", &t_start);
   n = RUN_get_int_parameter("N_cycles", &t_steps);
-  n = RUN_get_int_parameter("t_start", &t_start);
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
   n = RUN_get_int_parameter("freq_config", &freq_config);

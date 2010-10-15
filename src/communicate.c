@@ -1,6 +1,6 @@
 
-/* KS note: this is superceded by io-harness. Colloid I/O
- * remains to be updated. */
+/* This has become a dumping ground for things that need to
+ * be refactored */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,136 +10,160 @@
 #include "runtime.h"
 #include "coords.h"
 
-#include "utilities.h"
+#include "io_harness.h"
+#include "blue_phase.h"
+#include "physics.h"
+#include "phi.h"
+#include "model.h"
+#include "lattice.h"
+#include "ran.h"
+#include "phi_lb_coupler.h"
+#include "phi_cahn_hilliard.h"
+#include "phi_stats.h"
+#include "symmetric.h"
+#include "control.h"
+#include "colloids_Q_tensor.h"
+
 #include "communicate.h"
 
-IO_Param     io_grp;      /* Parameters of current IO group */
+void MODEL_init( void ) {
 
-int          input_format;     /* Default input format is ASCII */
-int          output_format;    /* Default output format is binary */
+  int     i,j,k,ind;
+  int     N[3];
+  int     offset[3];
+  double   phi;
+  double   phi0;
+  char     filename[FILENAME_MAX];
+  double  noise0 = 0.1;   /* Initial noise amplitude    */
 
-char         input_config[256] = "EMPTY";
-char         output_config[256] = "config.out";
+  phi0 = get_phi0();
 
-MPI_Comm     IO_Comm;     /* Communicator for parallel IO groups */
+  coords_nlocal(N);
+  coords_nlocal_offset(offset);
 
-/*---------------------------------------------------------------------------*\
- * void COM_init( int argc, char **argv )                                    *
- *                                                                           *
- * Initialises communication routines                                        *
- *                                                                           *
- * Version: 2.0                                                              *
- * Options: _MPI_, _TRACE_                                                   *
- *                                                                           *
- * Arguments                                                                 *
- * - argc:    same as the main() routine's argc                              *
- * - argv:    same as the main() routine's argv                              *
- *                                                                           *
- * Last Updated: 06/01/2002 by JCD                                           *
-\*---------------------------------------------------------------------------*/
+  /* Now setup the rest of the simulation */
 
-void COM_init() {
 
-  char tmp[256];
+  phi_init();
 
-#ifdef _MPI_ /* Parallel (MPI) section */
-
-  /* Set-up parallel IO parameters (rank and root) */
-
-  io_grp.n_io = 1; /* Default */
-  RUN_get_int_parameter("n_io_nodes", &(io_grp.n_io));
-
-  io_grp.size = pe_size() / io_grp.n_io;
-
-  if((cart_rank()%io_grp.size) == 0) {
-    io_grp.root = 1;
-  }
-  else {
-    io_grp.root = 0;
+  ind = RUN_get_string_parameter("phi_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_phi);
+    info("Setting phi I/O format to ASCII\n");
   }
 
-  /* Set-up filename suffix for each parallel IO file */
+  scalar_q_io_init();
 
-  io_grp.file_ext = (char *) malloc(16*sizeof(char));
+  ind = RUN_get_string_parameter("qs_dir_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_scalar_q_);
+    info("Setting qs_dir I/O format to ASCII\n");
+  }
 
-  if (io_grp.file_ext == NULL) fatal("malloc(io_grp.file_ext) failed\n");
+  hydrodynamics_init();
+  
+  ind = RUN_get_string_parameter("vel_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_velocity_);
+    info("Setting velocity I/O format to ASCII\n"); 
+  }
 
-  io_grp.index = cart_rank()/io_grp.size + 1;   /* Start IO indexing at 1 */
-  sprintf(io_grp.file_ext, ".%d-%d", io_grp.n_io, io_grp.index);
+  /*
+   * A number of options are offered to start a simulation:
+   * 1. Read distribution functions site from file, then simply calculate
+   *    all other properties (rho/phi/gradients/velocities)
+   * 6. set rho/phi/velocity to default values, automatically set etc.
+   */
 
-  /* Create communicator for each IO group, and get rank within IO group */
-  MPI_Comm_split(cart_comm(), io_grp.index, cart_rank(), &IO_Comm);
-  MPI_Comm_rank(IO_Comm, &io_grp.rank);
+  RUN_get_double_parameter("noise", &noise0);
 
-  MPI_Barrier(cart_comm());
+  if (phi_nop()){
 
-#else /* Serial section */
+    /* Initialise phi with initial value +- noise */
 
-  /* Serial definition of io_grp (used in cio) */
-  io_grp.root  = 1;
-  io_grp.n_io  = 1;
-  io_grp.size  = 1;
-  io_grp.index = 0;
-  io_grp.rank  = 0;
-  io_grp.file_ext = (char *) malloc(16*sizeof(char));
-  if (io_grp.file_ext == NULL) fatal("malloc(io_grp.file_ext) failed\n");
-  sprintf(io_grp.file_ext, "%s", ""); /* Nothing required in serial*/
+    for(i=1; i<=N_total(X); i++)
+      for(j=1; j<=N_total(Y); j++)
+	for(k=1; k<=N_total(Z); k++) {
 
-#endif /* _MPI_ */
+	  phi = phi0 + noise0*(ran_serial_uniform() - 0.5);
 
-  /* Everybody */
+	  /* For computation with single fluid and no noise */
+	  /* Only set values if within local box */
+	  if((i>offset[X]) && (i<=offset[X] + N[X]) &&
+	     (j>offset[Y]) && (j<=offset[Y] + N[Y]) &&
+	     (k>offset[Z]) && (k<=offset[Z] + N[Z]))
+	    {
+	      ind = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
 
-  /* I/O */
-  strcpy(input_config, "EMPTY");
-  strcpy(output_config, "config.out");
+	      phi_lb_coupler_phi_set(ind, phi);
+	    }
+	}
+  }
 
-  input_format = BINARY;
-  output_format = BINARY;
+  if (phi_nop() == 1) {
 
-  RUN_get_string_parameter("input_config", input_config, 256);
-  RUN_get_string_parameter("output_config", output_config, 256);
+    ind = RUN_get_string_parameter("phi_initialisation", filename,
+				   FILENAME_MAX);
 
-  RUN_get_string_parameter("input_format", tmp, 256);
-  if (strncmp("ASCII",  tmp, 5) == 0 ) input_format = ASCII;
-  if (strncmp("ASCII_SERIAL",  tmp, 12) == 0 ) input_format = ASCII_SERIAL;
-  if (strncmp("BINARY", tmp, 6) == 0 ) input_format = BINARY;
+    if (ind != 0 && strcmp(filename, "block") == 0) {
+      info("Initialisng phi as block\n");
+      phi_init_block(symmetric_interfacial_width());
+    }
 
-  RUN_get_string_parameter("output_format", tmp, 256);
-  if (strncmp("ASCII",  tmp, 5) == 0 ) output_format = ASCII;
-  if (strncmp("BINARY", tmp, 6) == 0 ) output_format = BINARY;
+    if (ind != 0 && strcmp(filename, "bath") == 0) {
+      info("Initialising phi for bath\n");
+      phi_init_bath();
+    }
 
-  /* Set input routines: point to ASCII/binary routine depending on current 
-     settings */
-}
+    /* Assumes symmetric free energy */
+    if (ind != 0 && strcmp(filename, "drop") == 0) {
+      info("Initialising droplet\n");
+      phi_lb_init_drop(0.4*L(X), symmetric_interfacial_width());
+    }
 
-/*****************************************************************************
- *
- *  get_output_config_filename
- *
- *  Return conifguration file name stub for time "step"
- *
- *****************************************************************************/
+    if (ind != 0 && strcmp(filename, "from_file") == 0) {
+      info("Initial order parameter requested from file\n");
+      info("Reading phi from serial file\n");
+      io_info_set_processor_independent(io_info_phi);
+      io_read("phi-init", io_info_phi);
+      io_info_set_processor_dependent(io_info_phi);
 
-void get_output_config_filename(char * stub, const int step) {
+      if (distribution_ndist() > 1) {
+	/* Set the distribution from initial phi */
+	for (i = 1; i <= N[X]; i++) {
+	  for (j = 1; j <= N[Y]; j++) {
+	    for (k = 1; k <= N[Z]; k++) {
+	    
+	      ind = coords_index(i, j, k);
+	      phi = phi_get_phi_site(ind);
+	      distribution_zeroth_moment_set_equilibrium(ind, 1, phi);
+	    }
+	  }
+	}
+      }
+    }
+  }
 
-  sprintf(stub, "%s%8.8d", output_config, step);
+  if (phi_nop() == 5) {
 
-  return;
-}
+    /* BLUEPHASE initialisation */
+    RUN_get_string_parameter("lc_q_initialisation", filename, FILENAME_MAX);
+    RUN_get_double_parameter("lc_q_init_amplitude", &phi0);
 
-/*****************************************************************************
- *
- *  get_input_config_filename
- *
- *  Return configuration file name (where for historical reasons,
- *  input_config holds the whole name). "step is ignored.
- *
- *****************************************************************************/
+    if (strcmp(filename, "twist") == 0) {
+      info("Initialising Q_ab to cholesteric (amplitude %14.7e)\n", phi0);
+      blue_phase_twist_init(phi0);
+    }
 
-void get_input_config_filename(char * stub, const int step) {
+    if (strcmp(filename, "o8m") == 0) {
+      info("Initialising Q_ab using O8M (amplitude %14.7e)\n", phi0);
+      blue_phase_O8M_init(phi0);
+    }
 
-  /* But use this... */
-  sprintf(stub, "%s", input_config);
+    if (strcmp(filename, "o2") == 0) {
+      info("Initialising Q_ab using O2 (amplitude %14.7e)\n", phi0);
+      blue_phase_O2_init(phi0);
+    }
+  }
 
-  return;
 }
