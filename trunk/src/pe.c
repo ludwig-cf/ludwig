@@ -5,20 +5,20 @@
  *  The parallel environment.
  *
  *  This is responsible for initialisation and finalisation of
- *  the parallel environment (or a logically consistent picture
- *  in serial). Functions to get the current rank and size in
- *  MPI_COMM_WORLD are provided via the MPI stub library.
+ *  the parallel environment. In serial, the MPI stub library is
+ *  required.
+ *
+ *  $Id: pe.c,v 1.3 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2008)
- *
- *  $Id: pe.c,v 1.2 2008-08-24 17:56:22 kevin Exp $
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -27,6 +27,8 @@
 
 static int pe_world_rank;
 static int pe_world_size;
+static MPI_Comm pe_parent_comm_ = MPI_COMM_WORLD;
+static MPI_Comm pe_comm_;
 
 /*****************************************************************************
  *
@@ -41,15 +43,20 @@ void pe_init(int argc, char ** argv) {
 
   MPI_Init(&argc, &argv);
 
-  MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_ARE_FATAL);
+  MPI_Comm_dup(pe_parent_comm_, &pe_comm_);
 
-  MPI_Comm_size(MPI_COMM_WORLD, &pe_world_size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &pe_world_rank);
+  MPI_Errhandler_set(pe_comm_, MPI_ERRORS_ARE_FATAL);
+
+  MPI_Comm_size(pe_comm_, &pe_world_size);
+  MPI_Comm_rank(pe_comm_, &pe_world_rank);
 
   info("Welcome to Ludwig (%s version running on %d process%s)\n\n",
-       (pe_world_size > 1) ? "MPI" : "Serial",
-       pe_world_size,
+       (pe_world_size > 1) ? "MPI" : "Serial", pe_world_size,
        (pe_world_size == 1) ? "" : "es");
+
+  if (pe_world_rank == 0) {
+    assert(printf("Note assertions via standard C assert() are on.\n\n"));
+  }
 
   return;
 }
@@ -69,6 +76,17 @@ void pe_finalise() {
   MPI_Finalize();
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  pe_comm
+ *
+ *****************************************************************************/
+
+MPI_Comm pe_comm(void) {
+
+  return pe_comm_;
 }
 
 /*****************************************************************************
@@ -127,7 +145,7 @@ void fatal(const char * fmt, ...) {
 
   /* Considered a successful exit (code 0). */
 
-  MPI_Abort(MPI_COMM_WORLD, 0);
+  MPI_Abort(pe_comm_, 0);
 
   return;
 }
@@ -155,24 +173,12 @@ void verbose(const char * fmt, ...) {
 
 /*****************************************************************************
  *
- *  imin, imax, dmin, dmax
- *
- *  minimax functions
+ *  pe_parent_comm_set
  *
  *****************************************************************************/
 
-int imin(const int i, const int j) {
-  return ((i < j) ? i : j);
-}
+void pe_parent_comm_set(MPI_Comm parent) {
 
-int imax(const int i, const int j) {
-  return ((i > j) ? i : j);
-}
-
-double dmin(const double a, const double b) {
-  return ((a < b) ? a : b);
-}
-
-double dmax(const double a, const double b) {
-  return ((a > b) ? a : b);
+  pe_parent_comm_ = parent;
+  return;
 }

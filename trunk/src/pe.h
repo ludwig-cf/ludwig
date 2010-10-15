@@ -2,18 +2,18 @@
  *
  *  pe.h
  *
+ *  $Id: pe.h,v 1.3 2010-10-15 12:40:03 kevin Exp $
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2008)
- *
- *  $Id: pe.h,v 1.2 2008-08-24 17:56:22 kevin Exp $
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _MESSAGES_H
-#define _MESSAGES_H
+#ifndef PE_H
+#define PE_H
 
 #include <mpi.h>
 
@@ -21,22 +21,12 @@ void pe_init(int , char **);
 void pe_finalise(void);
 int  pe_rank(void);
 int  pe_size(void);
+void pe_parent_comm_set(const MPI_Comm parent);
 
-void info(const char *, ...);
-void fatal(const char *, ...);
-void verbose(const char *, ...);
+MPI_Comm pe_comm(void);
 
-int imin(const int, const int);
-int imax(const int, const int);
-double dmin(const double, const double);
-double dmax(const double, const double);
+void info(const char * fmt, ...);
+void fatal(const char * fmt, ...);
+void verbose(const char * fmt, ...);
 
-
-#ifdef _VERBOSE_MACRO_ON_
-#define VERBOSE(A) verbose A
-#else
-#define VERBOSE(A)
 #endif
-
-#endif /* _MESSAGES_H */
-

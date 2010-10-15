@@ -6,28 +6,34 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.6 2010-06-03 14:25:19 kevin Exp $
+ *  $Id: subgrid.c,v 1.7 2010-10-15 12:40:03 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Phyiscs Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2007 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 #include <stddef.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "timer.h"
 #include "physics.h"
+#include "interaction.h"
 #include "lattice.h"
 #include "colloids.h"
-#include "ccomms.h"
+#include "colloids_halo.h"
+#include "util.h"
 #include "subgrid.h"
 
 static double d_peskin(double);
 static void   subgrid_interpolation(void);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
+static int subgrid_on_ = 0;  /* Subgrid particle flag */
 
 /*****************************************************************************
  *
@@ -47,14 +53,12 @@ void subgrid_force_from_particles() {
 
   double r[3], r0[3], force[3], g[3];
   double dr;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
-  TIMER_start(TIMER_FREE1);
+  coords_nlocal(N);
+  coords_nlocal_offset(offset);
 
-  get_N_local(N);
-  get_N_offset(offset);
-
-  get_gravity(g);
+  colloid_gravity(g);
 
   /* Loop through all cells (including the halo cells) */
 
@@ -62,7 +66,7 @@ void subgrid_force_from_particles() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-        p_colloid = CELL_get_head_of_list(ic, jc, kc);
+        p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 
@@ -70,9 +74,9 @@ void subgrid_force_from_particles() {
            * coordinates, so that the correct range of lattice
            * nodes is found */
 
-          r0[X] = p_colloid->r.x - (double) offset[X];
-          r0[Y] = p_colloid->r.y - (double) offset[Y];
-          r0[Z] = p_colloid->r.z - (double) offset[Z];
+          r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+          r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+          r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
@@ -88,14 +92,14 @@ void subgrid_force_from_particles() {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = get_site_index(i, j, k);
+		index = coords_index(i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */
 
-		r[X] = r0[X] - (double) i;
-		r[Y] = r0[Y] - (double) j;
-		r[Z] = r0[Z] - (double) k;
+		r[X] = r0[X] - 1.0*i;
+		r[Y] = r0[Y] - 1.0*j;
+		r[Z] = r0[Z] - 1.0*k;
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 
@@ -116,8 +120,6 @@ void subgrid_force_from_particles() {
     }
   }
 
-  TIMER_stop(TIMER_FREE1);
-
   return;
 }
 
@@ -133,42 +135,45 @@ void subgrid_force_from_particles() {
 
 void subgrid_update() {
 
+  int ia;
   int ic, jc, kc;
   double drag, eta;
   double g[3];
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
-  if (get_N_colloid() == 0) return;
-
-  TIMER_start(TIMER_FREE1);
+  fatal("fix me\n"); /* The following needs to be rechecked.*/
 
   subgrid_interpolation();
-  CCOM_halo_sum(CHALO_TYPE7);
+
+  /* Require halo sum involving f0. */
+  assert(0);
 
   /* Loop through all cells (including the halo cells) */
 
   eta = get_eta_shear();
-  get_gravity(g);
+  colloid_gravity(g);
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-        p_colloid = CELL_get_head_of_list(ic, jc, kc);
+        p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 
-	  drag = (1.0/(6.0*PI*eta))*(1.0/p_colloid->a0 - 1.0/p_colloid->ah);
+	  drag = (1.0/(6.0*pi_*eta))*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
 
-	  p_colloid->r.x += (p_colloid->f0.x + drag*g[X]);
-	  p_colloid->r.y += (p_colloid->f0.y + drag*g[Y]);
-	  p_colloid->r.z += (p_colloid->f0.z + drag*g[Z]);
+	  for (ia = 0; ia < 3; ia++) {
+	    p_colloid->s.r[ia] += (p_colloid->f0[ia] + drag*g[ia]);
+	    /* Store the effective velocity of the particle
+	     * (don't use the p->v as this shows up in the momentum) */
 
-	  /* Store the effective velocity of the particle */
+	    /* TODO: store the effective velocity in the proper
+	     * place, but ignore it when computing momentum
+	     * rather than this kludge */
 
-	  p_colloid->v.x = p_colloid->f0.x + drag*g[X];
-	  p_colloid->v.y = p_colloid->f0.y + drag*g[Y];
-	  p_colloid->v.z = p_colloid->f0.z + drag*g[Z];
+	    p_colloid->stats[ia] = p_colloid->f0[ia] + drag*g[ia];
+	  }
 
 	  p_colloid = p_colloid->next;
 	}
@@ -176,8 +181,6 @@ void subgrid_update() {
       }
     }
   }
-
-  TIMER_stop(TIMER_FREE1);
 
   return;
 }
@@ -200,10 +203,10 @@ static void subgrid_interpolation() {
 
   double r0[3], r[3], u[3];
   double dr;
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
-  get_N_local(N);
-  get_N_offset(offset);
+  coords_nlocal(N);
+  coords_nlocal_offset(offset);
 
   /* Loop through all cells (including the halo cells) and set
    * the velocity at each particle to zero for this step. */
@@ -212,12 +215,12 @@ static void subgrid_interpolation() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-        p_colloid = CELL_get_head_of_list(ic, jc, kc);
+        p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
-	  p_colloid->f0.x = 0.0;
-	  p_colloid->f0.y = 0.0;
-	  p_colloid->f0.z = 0.0;
+	  p_colloid->f0[X] = 0.0;
+	  p_colloid->f0[Y] = 0.0;
+	  p_colloid->f0[Z] = 0.0;
 	  p_colloid = p_colloid->next;
 	}
       }
@@ -230,7 +233,7 @@ static void subgrid_interpolation() {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-        p_colloid = CELL_get_head_of_list(ic, jc, kc);
+        p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
 
@@ -238,9 +241,9 @@ static void subgrid_interpolation() {
            * coordinates, so that the correct range of lattice
            * nodes is found */
 
-          r0[X] = p_colloid->r.x - (double) offset[X];
-          r0[Y] = p_colloid->r.y - (double) offset[Y];
-          r0[Z] = p_colloid->r.z - (double) offset[Z];
+          r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+          r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+          r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
@@ -256,21 +259,21 @@ static void subgrid_interpolation() {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = get_site_index(i, j, k);
+		index = coords_index(i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */
 
-		r[X] = r0[X] - (double) i;
-		r[Y] = r0[Y] - (double) j;
-		r[Z] = r0[Z] - (double) k;
+		r[X] = r0[X] - 1.0*i;
+		r[Y] = r0[Y] - 1.0*j;
+		r[Z] = r0[Z] - 1.0*k;
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 		hydrodynamics_get_velocity(index, u);
 
-		p_colloid->f0.x += u[X]*dr;
-		p_colloid->f0.y += u[Y]*dr;
-		p_colloid->f0.z += u[Z]*dr;
+		p_colloid->f0[X] += u[X]*dr;
+		p_colloid->f0[Y] += u[Y]*dr;
+		p_colloid->f0[Z] += u[Z]*dr;
 	      }
 	    }
 	  }
@@ -310,4 +313,29 @@ static double d_peskin(double r) {
   }
 
   return delta;
+}
+
+/*****************************************************************************
+ *
+ *  subgrid_on_set
+ *
+ *  Set the flag to 'on'.
+ *
+ *****************************************************************************/
+
+void subgrid_on_set(void) {
+
+  subgrid_on_ = 1;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  subgrid_on
+ *
+ *****************************************************************************/
+
+int subgrid_on(void) {
+
+  return subgrid_on_;
 }

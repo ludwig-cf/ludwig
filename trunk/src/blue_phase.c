@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.5 2009-07-15 11:20:36 kevin Exp $
+ *  $Id: blue_phase.c,v 1.6 2010-10-15 12:40:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,7 +22,9 @@
 #include "util.h"
 #include "coords.h"
 #include "phi.h"
+#include "phi_gradients.h"
 #include "blue_phase.h"
+#include "ran.h"
 
 static double q0_;        /* Pitch = 2pi / q0_ */
 static double a0_;        /* Bulk free energy parameter A_0 */
@@ -31,7 +33,9 @@ static double kappa0_;    /* Elastic constant \kappa_0 */
 static double kappa1_;    /* Elastic constant \kappa_1 */
 
 static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
-
+static double redshift_;  /* redshift parameter */
+static double rredshift_; /* reciprocal */
+ 
 static const double r3 = (1.0/3.0);
 
 /*****************************************************************************
@@ -94,7 +98,7 @@ double blue_phase_free_energy_density(const int index) {
   double dq[3][3][3];
 
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
 
   e = blue_phase_compute_fed(q, dq);
 
@@ -113,9 +117,15 @@ double blue_phase_free_energy_density(const int index) {
 double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
 
   int ia, ib, ic, id;
+  double q0;
+  double kappa0, kappa1;
   double q2, q3;
   double dq0, dq1;
   double sum;
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
 
   q2 = 0.0;
 
@@ -164,13 +174,13 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
 	  sum += e_[ia][ic][id]*dq[ic][id][ib];
 	}
       }
-      sum += 2.0*q0_*q[ia][ib];
+      sum += 2.0*q0*q[ia][ib];
       dq1 += sum*sum;
     }
   }
 
   sum = 0.5*a0_*(1.0 - r3*gamma_)*q2 - r3*a0_*gamma_*q3
-    + 0.25*a0_*gamma_*q2*q2 + 0.5*kappa0_*dq0 + 0.5*kappa1_*dq1;
+    + 0.25*a0_*gamma_*q2*q2 + 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
 
   return sum;
 }
@@ -195,8 +205,8 @@ void blue_phase_molecular_field(int index, double h[3][3]) {
   assert(kappa0_ == kappa1_);
 
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
 
@@ -216,9 +226,15 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
 			  double dsq[3][3], double h[3][3]) {
   int ia, ib, ic, id;
 
+  double q0;              /* Redshifted value */
+  double kappa0, kappa1;  /* Redshifted values */
   double q2;
   double eq;
   double sum;
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
 
   /* From the bulk terms in the free energy... */
 
@@ -263,9 +279,9 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
 	    (e_[ia][ic][id]*dq[ic][id][ib] + e_[ib][ic][id]*dq[ic][id][ia]);
 	}
       }
-      h[ia][ib] += kappa1_*dsq[ia][ib]
-	- 2.0*kappa1_*q0_*sum + 4.0*r3*kappa1_*q0_*eq*d_[ia][ib]
-	- 4.0*kappa1_*q0_*q0_*q[ia][ib];
+      h[ia][ib] += kappa1*dsq[ia][ib]
+	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d_[ia][ib]
+	- 4.0*kappa1*q0*q0*q[ia][ib];
     }
   }
 
@@ -288,8 +304,8 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
   double dsq[3][3];
 
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, sth);
@@ -304,14 +320,25 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
  *  Compute the stress as a function of the q tensor, the q tensor
  *  gradient and the molecular field.
  *
+ *  Note the definition here has a minus sign included to allow
+ *  computation of the force as minus the divergence (which often
+ *  appears as plus in the liquid crystal literature). This is a
+ *  separate operation at the end to avoid confusion.
+ *
  *****************************************************************************/
 
 void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 			       double h[3][3], double sth[3][3]) {
-
   int ia, ib, ic, id, ie;
+  double q0;
+  double kappa0;
+  double kappa1;
   double qh;
   double p0;
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
 
   /* We have ignored the rho T term at the moment, assumed to be zero
    * (in particular, it has no divergence if rho = const). */
@@ -356,13 +383,13 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
 	  sth[ia][ib] +=
-	    - kappa0_*dq[ia][ic][ib]*dq[id][ic][id]
-	    - kappa1_*dq[ia][ic][id]*dq[ib][ic][id]
-	    + kappa1_*dq[ia][ic][id]*dq[ic][ib][id];
+	    - kappa0*dq[ia][ic][ib]*dq[id][ic][id]
+	    - kappa1*dq[ia][ic][id]*dq[ib][ic][id]
+	    + kappa1*dq[ia][ic][id]*dq[ic][ib][id];
 
 	  for (ie = 0; ie < 3; ie++) {
 	    sth[ia][ib] +=
-	      -2.0*kappa1_*q0_*dq[ia][ic][id]*e_[ib][ic][ie]*q[id][ie];
+	      -2.0*kappa1*q0*dq[ia][ic][id]*e_[ib][ic][ie]*q[id][ie];
 	  }
 	}
       }
@@ -380,6 +407,14 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
     }
   }
 
+  /* This is the minus sign. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
   return;
 }
 
@@ -387,7 +422,7 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
  *
  *  blue_phase_O8M_init
  *
- *  Using the current free energy parameter q0_
+ *  BP I using the current free energy parameter q0_
  *
  *****************************************************************************/
 
@@ -403,8 +438,8 @@ void blue_phase_O8M_init(double amplitude) {
   double r2;
   double cosx, cosy, cosz, sinx, siny, sinz;
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   r2 = sqrt(2.0);
 
@@ -415,7 +450,7 @@ void blue_phase_O8M_init(double amplitude) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	cosx = cos(r2*q0_*x);
 	cosy = cos(r2*q0_*y);
@@ -445,10 +480,176 @@ void blue_phase_O8M_init(double amplitude) {
 
 /*****************************************************************************
  *
+ *  blue_phase_O2_init
+ *
+ *  This initialisation is for BP II.
+ *
+ *****************************************************************************/
+
+void blue_phase_O2_init(double amplitude) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = coords_index(ic, jc, kc);
+
+	q[X][X] = amplitude*(cos(2.0*q0_*z) - cos(2.0*q0_*y));
+	q[X][Y] = amplitude*sin(2.0*q0_*z);
+	q[X][Z] = amplitude*sin(2.0*q0_*y);
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude*(cos(2.0*q0_*x) - cos(2.0*q0_*z));
+	q[Y][Z] = amplitude*sin(2.0*q0_*x);
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_twist_init
+ *  Setting a uniform twist along z-axis [cholesteric phase]
+ *  Using the current free energy parameter q0_ (P=2pi/q0)
+ * -Juho 12/11/09
+ *****************************************************************************/
+
+void blue_phase_twist_init(double amplitude){
+  
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+  double cosxy, cosz, sinxy,sinz;
+  
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+  
+  /* this corresponds to a 90 degree angle between the z-axis */
+  cosz=0.0;
+  sinz=1.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+	
+	index = coords_index(ic, jc, kc);
+
+	cosxy=cos(q0_*z);
+	sinxy=sin(q0_*z);
+	
+	q[X][X] = amplitude*(3.0/2.0*sinz*sinz*cosxy*cosxy - 1.0/2.0);
+	q[X][Y] = 3.0/2.0*amplitude*(sinz*sinz*cosxy*sinxy);
+	q[X][Z] = 3.0/2.0*amplitude*(sinz*cosz*cosxy);
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude*(3.0/2.0*sinz*sinz*sinxy*sinxy - 1.0/2.0);
+	q[Y][Z] = 3.0/2.0*amplitude*(sinz*cosz*sinxy);
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_set_random_q_init
+ *  Setting q tensor to isotropic in chosen area of the simulation box
+ * -Juho 12/11/09
+ *****************************************************************************/
+
+void blue_set_random_q_init(double xmin, double xmax, double ymin,
+			    double ymax, double zmin, double zmax) {
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+  
+  double phase1,phase2;
+  double amplitude,Pi;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  /* set amplitude to something small */
+  amplitude = 0.0000001;
+  
+  Pi = atan(1.0)*4.0;
+  
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    if(x < xmin || x > xmax)continue;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      if(y < ymin || y > ymax)continue;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+	if(z < zmin || z > zmax)continue;
+
+	index = coords_index(ic, jc, kc);
+	
+	phase1= 2.0/5.0*Pi*(0.5-ran_parallel_uniform());
+	phase2= Pi/2.0+Pi/5.0*(0.5-ran_parallel_uniform());
+	
+	q[X][X] = amplitude* (3.0/2.0*sin(phase2)*sin(phase2)*cos(phase1)*cos(phase1)-1.0/2.0);
+	q[X][Y] = 3.0*amplitude/2.0*(sin(phase2)*sin(phase2)*cos(phase1)*sin(phase1));
+	q[X][Z] = 3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*cos(phase1));
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude*(3.0/2.0*sin(phase2)*sin(phase2)*sin(phase1)*sin(phase1)-1.0/2.0);
+	q[Y][Z] = 3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*sin(phase1));
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+      }
+    }
+  }
+  return;
+}
+/*****************************************************************************
+ *
  *  blue_phase_chirality
  *
  *  Return the chirality, which is defined here as
  *         sqrt(108 \kappa_0 q_0^2 / A_0 \gamma)
+ *
+ *  Not dependent on the redshift.
  *
  *****************************************************************************/
 
@@ -477,4 +678,34 @@ double blue_phase_reduced_temperature(void) {
   tau = 27.0*(1.0 - r3*gamma_) / gamma_;
 
   return tau;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_redshift
+ *
+ *  Return the redshift parameter.
+ *
+ *****************************************************************************/
+
+double blue_phase_redshift(void) {
+
+  return redshift_;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_redshift_set
+ *
+ *  Set the redshift parameter.
+ *
+ *****************************************************************************/
+
+void blue_phase_redshift_set(const double redshift) {
+
+  assert(redshift != 0.0);
+  redshift_ = redshift;
+  rredshift_ = 1.0/redshift_;
+
+  return;
 }

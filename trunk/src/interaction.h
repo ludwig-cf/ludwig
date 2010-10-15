@@ -1,25 +1,22 @@
-/******************************************************************************
+/*****************************************************************************
  *
  *  interaction.h
  *
- *  Colloid-colloid and colloid-lattce interactions.
+ *  $Id: interaction.h,v 1.5 2010-10-15 12:40:03 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
- ******************************************************************************/
+ *****************************************************************************/
 
-#ifndef _INTERACTION_H
-#define _INTERACTION_H
+#ifndef INTERACTION_H
+#define INTERACTION_H
 
-void COLL_compute_phi_gradients(void);
-void COLL_compute_phi_fluid(void);
-
-Colloid * COLL_add_colloid(int, double, double, FVector, FVector, FVector);
-Colloid * COLL_add_colloid_no_halo(int, double, double, FVector, FVector,
-				   FVector);
 void      COLL_zero_forces(void);
 void      COLL_init(void);
-void      COLL_finish(void);
 
 double    COLL_interactions(void);
 void      COLL_update(void);
@@ -28,4 +25,6 @@ void      COLL_forces(void);
 double    soft_sphere_energy(const double);
 double    soft_sphere_force(const double);
 
-#endif /* _INTERACTION_H */
+void      colloid_gravity(double f[3]);
+
+#endif

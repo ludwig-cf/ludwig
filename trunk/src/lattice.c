@@ -5,7 +5,7 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.16 2010-03-03 19:18:48 kevin Exp $
+ *  $Id: lattice.c,v 1.17 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,6 +26,7 @@
 #include "leesedwards.h"
 #include "control.h"
 #include "io_harness.h"
+#include "util.h"
 #include "lattice.h"
 
 
@@ -45,10 +46,7 @@ static int             initialised_ = 0;
 static void hydrodynamics_init_mpi(void);
 static void hydrodynamics_leesedwards_parallel(void);
 static void hydrodynamics_init_io(void);
-static int  hydrodynamics_u_read(FILE *, const int, const int, const int);
 static int  hydrodynamics_u_write(FILE *, const int, const int, const int);
-static int  hydrodynamics_u_read_ascii(FILE *, const int, const int,
-				       const int);
 static int  hydrodynamics_u_write_ascii(FILE *, const int, const int,
 					const int);
 
@@ -62,14 +60,16 @@ static int  hydrodynamics_u_write_ascii(FILE *, const int, const int,
 
 void hydrodynamics_init() {
 
+  int nhalo;
   int nlocal[3];
   int nsites, nbuffer;
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
   nbuffer = le_get_nxbuffer();
 
-  nsites = (nlocal[X]+2*nhalo_ + nbuffer)
-    *(nlocal[Y]+2*nhalo_)*(nlocal[Z]+2*nhalo_);
+  nsites = (nlocal[X]+2*nhalo + nbuffer)
+    *(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo);
 
   u = (struct vector *) calloc(nsites, sizeof(struct vector));
   f = (struct vector *) calloc(nsites, sizeof(struct vector));
@@ -92,12 +92,14 @@ void hydrodynamics_init() {
 
 static void hydrodynamics_init_mpi() {
 
+  int nhalo;
   int nlocal[3], nx, ny, nz;
 
-  get_N_local(nlocal);
-  nx = nlocal[X] + 2*nhalo_;
-  ny = nlocal[Y] + 2*nhalo_;
-  nz = nlocal[Z] + 2*nhalo_;
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  nx = nlocal[X] + 2*nhalo;
+  ny = nlocal[Y] + 2*nhalo;
+  nz = nlocal[Z] + 2*nhalo;
 
   MPI_Type_contiguous(sizeof(struct vector), MPI_BYTE, &mpi_vector_t);
   MPI_Type_commit(&mpi_vector_t);
@@ -125,9 +127,7 @@ static void hydrodynamics_init_io() {
   io_info_velocity_ = io_info_create();
 
   io_info_set_name(io_info_velocity_, "Velocity field");
-  io_info_set_read_binary(io_info_velocity_, hydrodynamics_u_read);
   io_info_set_write_binary(io_info_velocity_, hydrodynamics_u_write);
-  io_info_set_read_ascii(io_info_velocity_, hydrodynamics_u_read_ascii);
   io_info_set_write_ascii(io_info_velocity_, hydrodynamics_u_write_ascii);
   io_info_set_bytesize(io_info_velocity_, 3*sizeof(double));
 
@@ -166,6 +166,7 @@ void hydrodynamics_finish(void) {
 
 void hydrodynamics_halo_u() {
 
+  int nhalo;
   int nlocal[3];
   int ic, jc, kc, ihalo, ireal;
   int forw, back;
@@ -179,7 +180,8 @@ void hydrodynamics_halo_u() {
   assert(initialised_);
   assert(nhalolocal == 1); /* Code below is not general */
 
-  get_N_local(nlocal);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
 
   /* The x-direction (YZ plane) */
 
@@ -187,12 +189,12 @@ void hydrodynamics_halo_u() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        ihalo = get_site_index(0, jc, kc);
-        ireal = get_site_index(nlocal[X], jc, kc);
+        ihalo = coords_index(0, jc, kc);
+        ireal = coords_index(nlocal[X], jc, kc);
 	u[ihalo] = u[ireal];
 
-        ihalo = get_site_index(nlocal[X]+1, jc, kc);
-        ireal = get_site_index(1, jc, kc);
+        ihalo = coords_index(nlocal[X]+1, jc, kc);
+        ireal = coords_index(1, jc, kc);
         u[ihalo] = u[ireal];
       }
     }
@@ -202,13 +204,13 @@ void hydrodynamics_halo_u() {
     forw = cart_neighb(FORWARD, X);
     back = cart_neighb(BACKWARD, X);
 
-    ihalo = get_site_index(nlocal[X] + 1, 1 - nhalo_, 1 - nhalo_);
+    ihalo = coords_index(nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
     MPI_Irecv(u[ihalo].c, 1, halo_yz_t, forw, tagb, comm, request);
-    ihalo = get_site_index(0, 1-nhalo_, 1-nhalo_);
+    ihalo = coords_index(0, 1-nhalo, 1-nhalo);
     MPI_Irecv(u[ihalo].c, 1, halo_yz_t, back, tagf, comm, request+1);
-    ireal = get_site_index(1, 1-nhalo_, 1-nhalo_);
+    ireal = coords_index(1, 1-nhalo, 1-nhalo);
     MPI_Issend(u[ireal].c, 1, halo_yz_t, back, tagb, comm, request+2);
-    ireal = get_site_index(nlocal[X], 1-nhalo_, 1-nhalo_);
+    ireal = coords_index(nlocal[X], 1-nhalo, 1-nhalo);
     MPI_Issend(u[ireal].c, 1, halo_yz_t, forw, tagf, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -219,12 +221,12 @@ void hydrodynamics_halo_u() {
     for (ic = 0; ic <= nlocal[X]+1; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        ihalo = get_site_index(ic, 0, kc);
-        ireal = get_site_index(ic, nlocal[Y], kc);
+        ihalo = coords_index(ic, 0, kc);
+        ireal = coords_index(ic, nlocal[Y], kc);
         u[ihalo] = u[ireal];
 
-        ihalo = get_site_index(ic, nlocal[Y]+1, kc);
-        ireal = get_site_index(ic, 1, kc);
+        ihalo = coords_index(ic, nlocal[Y]+1, kc);
+        ireal = coords_index(ic, 1, kc);
         u[ihalo] = u[ireal];
       }
     }
@@ -234,13 +236,13 @@ void hydrodynamics_halo_u() {
     forw = cart_neighb(FORWARD, Y);
     back = cart_neighb(BACKWARD, Y);
 
-    ihalo = get_site_index(1-nhalo_, nlocal[Y] + 1, 1-nhalo_);
+    ihalo = coords_index(1-nhalo, nlocal[Y] + 1, 1-nhalo);
     MPI_Irecv(u[ihalo].c, 1, halo_xz_t, forw, tagb, comm, request);
-    ihalo = get_site_index(1-nhalo_, 0, 1-nhalo_);
+    ihalo = coords_index(1-nhalo, 0, 1-nhalo);
     MPI_Irecv(u[ihalo].c, 1, halo_xz_t, back, tagf, comm, request+1);
-    ireal = get_site_index(1-nhalo_, 1, 1-nhalo_);
+    ireal = coords_index(1-nhalo, 1, 1-nhalo);
     MPI_Issend(u[ireal].c, 1, halo_xz_t, back, tagb, comm, request+2);
-    ireal = get_site_index(1-nhalo_, nlocal[Y], 1-nhalo_);
+    ireal = coords_index(1-nhalo, nlocal[Y], 1-nhalo);
     MPI_Issend(u[ireal].c, 1, halo_xz_t, forw, tagf, comm, request+3);
     MPI_Waitall(4, request, status);
   }
@@ -251,12 +253,12 @@ void hydrodynamics_halo_u() {
     for (ic = 0; ic <= nlocal[X]+1; ic++) {
       for (jc = 0; jc <= nlocal[Y]+1; jc++) {
 
-        ihalo = get_site_index(ic, jc, 0);
-        ireal = get_site_index(ic, jc, nlocal[Z]);
+        ihalo = coords_index(ic, jc, 0);
+        ireal = coords_index(ic, jc, nlocal[Z]);
         u[ihalo] = u[ireal];
 
-        ihalo = get_site_index(ic, jc, nlocal[Z]+1);
-        ireal = get_site_index(ic, jc, 1);
+        ihalo = coords_index(ic, jc, nlocal[Z]+1);
+        ireal = coords_index(ic, jc, 1);
         u[ihalo] = u[ireal];
       }
     }
@@ -266,13 +268,13 @@ void hydrodynamics_halo_u() {
     forw = cart_neighb(FORWARD, Z);
     back = cart_neighb(BACKWARD, Z);
 
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z] + 1);
+    ihalo = coords_index(1-nhalo, 1-nhalo, nlocal[Z] + 1);
     MPI_Irecv(u[ihalo].c, 1, halo_xy_t, forw, tagb, comm, request);
-    ihalo = get_site_index(1-nhalo_, 1-nhalo_, 0);
+    ihalo = coords_index(1-nhalo, 1-nhalo, 0);
     MPI_Irecv(u[ihalo].c, 1, halo_xy_t, back, tagf, comm, request+1);
-    ireal = get_site_index(1-nhalo_, 1-nhalo_, 1);
+    ireal = coords_index(1-nhalo, 1-nhalo, 1);
     MPI_Issend(u[ireal].c, 1, halo_xy_t, back, tagb, comm, request+2);
-    ireal = get_site_index(1-nhalo_, 1-nhalo_, nlocal[Z]);
+    ireal = coords_index(1-nhalo, 1-nhalo, nlocal[Z]);
     MPI_Issend(u[ireal].c, 1, halo_xy_t, forw, tagf, comm, request+3);  
     MPI_Waitall(4, request, status);
   }
@@ -395,13 +397,13 @@ void hydrodynamics_zero_force() {
   int ic, jc, kc, ia, index;
   int nlocal[3];
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
 	  f[index].c[ia] = 0.0;
@@ -430,7 +432,10 @@ void hydrodynamics_stats() {
   double umax[3];
   double utmp[3];
 
-  get_N_local(nlocal);
+  MPI_Comm comm;
+
+  coords_nlocal(nlocal);
+  comm = pe_comm();
 
   for (ia = 0; ia < 3; ia++) {
     umin[ia] = FLT_MAX;
@@ -441,7 +446,7 @@ void hydrodynamics_stats() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
 	  umin[ia] = dmin(umin[ia], u[index].c[ia]);
@@ -451,21 +456,22 @@ void hydrodynamics_stats() {
     }
   }
 
-  MPI_Reduce(umin, utmp, 3, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+  MPI_Reduce(umin, utmp, 3, MPI_DOUBLE, MPI_MIN, 0, comm);
 
   for (ia = 0; ia < 3; ia++) {
     umin[ia] = utmp[ia];
   }
 
-  MPI_Reduce(umax, utmp, 3, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce(umax, utmp, 3, MPI_DOUBLE, MPI_MAX, 0, comm);
 
   for (ia = 0; ia < 3; ia++) {
     umax[ia] = utmp[ia];
   }
 
-  info("Velocity stats:\n");
-  info("[ umin ][ %g %g %g ]\n", umin[X], umin[Y], umin[Z]);
-  info("[ umax ][ %g %g %g ]\n", umax[X], umax[Y], umax[Z]);
+  info("\n");
+  info("Velocity - x y z\n");
+  info("[minimum ] %14.7e %14.7e %14.7e\n", umin[X], umin[Y], umin[Z]);
+  info("[maximum ] %14.7e %14.7e %14.7e\n", umax[X], umax[Y], umax[Z]);
 
   return;
 }
@@ -485,6 +491,7 @@ void hydrodynamics_stats() {
 
 void hydrodynamics_leesedwards_transformation() {
 
+  int nhalo;
   int nlocal[3]; /* Local system size */
   int ib;        /* Index in buffer region */
   int ib0;       /* buffer region offset */
@@ -509,8 +516,9 @@ void hydrodynamics_leesedwards_transformation() {
     ule[X] = 0.0;
     ule[Z] = 0.0;
 
-    get_N_local(nlocal);
-    ib0 = nlocal[X] + nhalo_ + 1;
+    nhalo = coords_nhalo();
+    coords_nlocal(nlocal);
+    ib0 = nlocal[X] + nhalo + 1;
 
     t = 1.0*get_step();
 
@@ -523,16 +531,16 @@ void hydrodynamics_leesedwards_transformation() {
       jdy = floor(dy);
       fr  = dy - jdy;
 
-      for (jc = 1 - nhalo_; jc <= nlocal[Y] + nhalo_; jc++) {
+      for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 	/* Actually required here is j1 = jc - jdy - 1, but there's
 	 * horrible modular arithmetic for the periodic boundaries
 	 * to ensure 1 <= j1,j2 <= nlocal[Y] */
 	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
 	j2 = 1 + j1 % nlocal[Y];
-	for (kc = 1 - nhalo_; kc <= nlocal[Z] + nhalo_; kc++) {
+	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	  for (ia = 0; ia < 3; ia++) {
-	  u[ADDR(ib0+ib,jc,kc)].c[ia] = ule[ia] +
-	    fr*u[ADDR(ic,j1,kc)].c[ia] + (1.0-fr)*u[ADDR(ic,j2,kc)].c[ia];
+	  u[le_site_index(ib0+ib,jc,kc)].c[ia] = ule[ia] +
+	    fr*u[le_site_index(ic,j1,kc)].c[ia] + (1.0-fr)*u[le_site_index(ic,j2,kc)].c[ia];
 	  }
 	}
       }
@@ -582,10 +590,9 @@ static void hydrodynamics_leesedwards_parallel(void) {
   MPI_Request request[6];
   MPI_Status  status[3];
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
-  nhalo = nhalo_;
-
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
   ib0 = nlocal[X] + nhalo + 1;
 
   /* Allocate the temporary buffer */
@@ -614,7 +621,7 @@ static void hydrodynamics_leesedwards_parallel(void) {
     jdy = floor(dy);
     fr  = dy - jdy;
 
-    /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo_.
+    /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo.
      * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
 
     jc = noffset[Y] + 1 - nhalo;
@@ -624,7 +631,7 @@ static void hydrodynamics_leesedwards_parallel(void) {
 
     /* Local quantities: given a local starting index j2, we receive
      * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position nhalo_. */
+     * j2, and the remaining n2 sites from starting position nhalo. */
 
     j2 = 1 + (j1 - 1) % nlocal[Y];
 
@@ -643,12 +650,12 @@ static void hydrodynamics_leesedwards_parallel(void) {
     MPI_Irecv(buffer[n1 + n2].c, n3, mpi_vector_t, nrank_r[2], tag2,
 	      le_comm, request + 2);
 
-    MPI_Issend(u[ADDR(ic,j2,kc)].c, n1, mpi_vector_t, nrank_s[0], tag0,
-	       le_comm, request + 3);
-    MPI_Issend(u[ADDR(ic,1,kc)].c, n2, mpi_vector_t, nrank_s[1], tag1,
-	       le_comm, request + 4);
-    MPI_Issend(u[ADDR(ic,1,kc)].c, n3, mpi_vector_t, nrank_s[2], tag2,
-	       le_comm, request + 5);
+    MPI_Issend(u[le_site_index(ic,j2,kc)].c, n1, mpi_vector_t, nrank_s[0],
+	       tag0, le_comm, request + 3);
+    MPI_Issend(u[le_site_index(ic,1,kc)].c, n2, mpi_vector_t, nrank_s[1],
+	       tag1, le_comm, request + 4);
+    MPI_Issend(u[le_site_index(ic,1,kc)].c, n3, mpi_vector_t, nrank_s[2],
+	       tag2, le_comm, request + 5);
 
     MPI_Waitall(3, request, status);
 
@@ -660,7 +667,7 @@ static void hydrodynamics_leesedwards_parallel(void) {
       j2 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	for (ia = 0; ia < 3; ia++) {
-	  u[ADDR(ib0+ib,jc,kc)].c[ia] = fr*buffer[j1+kc+nhalo-1].c[ia]
+	  u[le_site_index(ib0+ib,jc,kc)].c[ia] = fr*buffer[j1+kc+nhalo-1].c[ia]
 	    + (1.0-fr)*buffer[j2+kc+nhalo-1].c[ia] + ule[ia];
 	}
       }
@@ -695,21 +702,6 @@ static int hydrodynamics_u_write(FILE * fp, const int ic, const int jc,
 
 /*****************************************************************************
  *
- *  hydrodynamics_u_read
- *
- *  Should not need to read u, as it is not strictly state.
- *  So it's a no op at the moment.
- *
- *****************************************************************************/
-
-static int hydrodynamics_u_read(FILE * fp, const int ic, const int jc,
-				const int kc) {
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  hydrodynamics_u_write_ascii
  *
  *****************************************************************************/
@@ -725,20 +717,6 @@ static int hydrodynamics_u_write_ascii(FILE * fp, const int ic, const int jc,
   if (n != 69) fatal("fprintf(phi) failed at index %d\n", index);
 
   return n;
-}
-
-/*****************************************************************************
- *
- *  hydrodynamics_u_read_ascii
- *
- *  Again, should never be here, as u is not currently state.
- *
- *****************************************************************************/
-
-static int hydrodynamics_u_read_ascii(FILE * fp, const int ic, const int jc,
-				      const int kc) {
-
-  return 0;
 }
 
 /*****************************************************************************

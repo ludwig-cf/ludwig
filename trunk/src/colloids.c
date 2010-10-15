@@ -4,33 +4,33 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.10 2010-06-03 14:01:11 kevin Exp $
+ *  $Id: colloids.c,v 1.11 2010-10-15 12:40:02 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk).
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
 
 #include "pe.h"
-#include "runtime.h"
 #include "coords.h"
 #include "colloids.h"
 
-const  int n_halo_       = 2;   /* Number of halo cells (one at each end) */
-static int nalloc_colls_ = 0;   /* Number of colloids currently alloacted */
-static int nalloc_links_ = 0;   /* Number of links currently allocated */
-static int cifac_;
-static int cjfac_;
-static int ncell[3];            /* Width of cell list (minus halos) */
-static int N_colloid_ = 0;      /* The global number of colloids */
+static const int nhalo_ = 1;      /* Number of halo cells (one at each end) */
+static const double rho0_ = 1.0;  /* Colloid density */
 
-static double lcell[3];
-static Colloid ** cell_list_;   /* Cell list for colloids */
-static double rho0_ = 1.0;      /* Colloid density */
+static int ncell_[3] = {2, 2, 2}; /* Width of cell list (minus halos) */
+static int ntotal_ = 0;           /* Total (physical) number of colloids */
+static int nalloc_ = 0;           /* No. colloids currently allocated */
+
+static colloid_t ** cell_list_;   /* Cell list for colloids */
 
 /*****************************************************************************
  *
@@ -42,58 +42,14 @@ static double rho0_ = 1.0;      /* Colloid density */
 
 void colloids_init() {
 
-  double lcellmin;          /* Minimum width of cell */
-  int    n;
-
-  /* Look for minimum cell list width  in the user input */
-
-  n = RUN_get_double_parameter("cell_list_lmin", &lcellmin);
-
-  info("\nColloid cell list\n");
-
-  if (n != 0) {
-    info("[User   ] Requested minimum cell width is %f\n", lcellmin);
-  }
-  else {
-    /* Fall back to a default */
-    lcellmin = 6.0;
-    info("[Default] Requested minimum cell width is %f\n", lcellmin);
-  }
-
-  /* Work out the number and width of the cells */
-
-  ncell[X] = L(X) / (cart_size(X)*lcellmin);
-  ncell[Y] = L(Y) / (cart_size(Y)*lcellmin);
-  ncell[Z] = L(Z) / (cart_size(Z)*lcellmin);
-
-  lcell[X] = L(X) / (cart_size(X)*ncell[X]);
-  lcell[Y] = L(Y) / (cart_size(Y)*ncell[Y]);
-  lcell[Z] = L(Z) / (cart_size(Z)*ncell[Z]);
-
-  info("[       ] Actual local number of cells [%d,%d,%d]\n",
-       ncell[X], ncell[Y], ncell[Z]);
-  info("[       ] Actual local cell width      [%.2f,%.2f,%.2f]\n",
-       lcell[X], lcell[Y], lcell[Z]);
-
-  /* For particle halo swaps require at least one;
-   * for halo sums, require at least two, so two is the minimum. */
-
-  if (ncell[X] < 2 || ncell[Y] < 2 || ncell[Z] < 2) {
-    info("[Error  ] Please check the cell width (cell_list_lmin).\n");
-    fatal("[Stop] Must be at least two cells in each direction.\n");
-  }
+  int n;
 
   /* Set the total number of cells and allocate the cell list */
 
-  n = (ncell[X] + n_halo_)*(ncell[Y] + n_halo_)*(ncell[Z] + n_halo_);
+  n = (ncell_[X] + 2*nhalo_)*(ncell_[Y] + 2*nhalo_)*(ncell_[Z] + 2*nhalo_);
 
-  info("Requesting %d bytes for the cell list\n", n*sizeof(Colloid *));
-  cell_list_ = (Colloid **) calloc(n, sizeof(Colloid *));
-
-  if (cell_list_ == (Colloid **) NULL) fatal("calloc(cell_list)");
-
-  cjfac_ = (ncell[Z] + n_halo_);
-  cifac_ = (ncell[Y] + n_halo_)*cjfac_;
+  cell_list_ = (colloid_t **) calloc(n, sizeof(colloid_t *));
+  if (cell_list_ == (colloid_t **) NULL) fatal("calloc(cell_list)");
 
   return;
 }
@@ -108,21 +64,19 @@ void colloids_init() {
 
 void colloids_finish() {
 
-  Colloid * p_colloid;
-  Colloid * p_tmp;
   int ic, jc, kc;
+  colloid_t * p_colloid;
+  colloid_t * p_tmp;
 
-  info("\nReleasing colloids...\n");
+  for (ic = 0; ic <= ncell_[X]+1; ic++) {
+    for (jc = 0; jc <= ncell_[Y]+1; jc++) {
+      for (kc = 0; kc <= ncell_[Z]+1; kc++) {
 
-  for (ic = 0; ic <= ncell[X]+1; ic++) {
-    for (jc = 0; jc <= ncell[Y]+1; jc++) {
-      for (kc = 0; kc <= ncell[Z]+1; kc++) {
-
-	p_colloid = CELL_get_head_of_list(ic, jc, kc);
+	p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid) {
 	  p_tmp = p_colloid->next;
-	  free_colloid(p_colloid);
+	  colloid_free(p_colloid);
 	  p_colloid = p_tmp;
 	}
 	/* Next cell */
@@ -130,139 +84,158 @@ void colloids_finish() {
     }
   }
 
-  colloids_memory_report();
-
   /* Finally, free the cell list */
   if (cell_list_) free(cell_list_);
+
+  ncell_[X] = 2;
+  ncell_[Y] = 2;
+  ncell_[Z] = 2;
+  ntotal_ = 0;
 
   return;
 }
 
 /*****************************************************************************
  *
- *  get_N_colloid
+ *  colloids_info
+ *
+ *****************************************************************************/
+
+void colloids_info(void) {
+
+  info("colloids_info:\n");
+  info("Cells:             %d %d %d\n", ncell_[X], ncell_[Y], ncell_[Z]);
+  info("Halo:              %d\n", nhalo_);
+  info("Total (global):    %d\n", ntotal_);
+  info("Allocated (local): %d\n", nalloc_);
+  info("\n");
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_cell_ncell_set
+ *
+ *  There must be at least 2 cells locally for the purposes of
+ *  communications.
+ *
+ *****************************************************************************/
+
+void colloids_cell_ncell_set(const int n[3]) {
+
+  int ia;
+
+  for (ia = 0; ia < 3; ia++) {
+    if (n[ia] < 2) fatal("Trying to set ncell_[%d] < 2\n", n[ia]);
+    ncell_[ia] = n[ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_ntotal
  *
  *  Return the global number of colloids.
  *
  *****************************************************************************/
 
-int get_N_colloid() {
-  return N_colloid_;
+int colloid_ntotal(void) {
+  return ntotal_;
 }
 
 /*****************************************************************************
  *
- *  set_N_colloid
+ *  colloids_ntotal_set
  *
- *  Set the global number of colloids.
+ *  Set the global number of colloids from the current list.
  *
  *****************************************************************************/
 
-void set_N_colloid(const int n) {
-  assert(n >= 0);
-  N_colloid_ = n;
+void colloids_ntotal_set(void) {
+
+  int nlocal;
+
+  nlocal = colloid_nlocal();
+  MPI_Allreduce(&nlocal, &ntotal_, 1, MPI_INT, MPI_SUM, cart_comm());
+
   return;
 }
 
 /*****************************************************************************
  *
- *  get_colloid_rho0
+ *  colloid_rho0
  *
  *  Return the colloid density (generally equal to that of fluid).
  *
  *****************************************************************************/
 
-double get_colloid_rho0() {
+double colloid_rho0(void) {
   return rho0_;
 }
 
 /*****************************************************************************
  *
- *  cell_coords
- *
- *  For position vector r in the global coordinate system
- *  return the coordinates (ic,jc,kc) of the corresponding
- *  cell in the local cell list.
- *
- *  If the position is not in the local domain, then neither
- *  is the cell. The caller must handle this.
- *
- *  09/01/07 floor() is problematic when colloid exactly on cell
- *           boundary and r is negative, ie., cell goes to -1
- *****************************************************************************/
-
-IVector cell_coords(FVector r) {
-
-  IVector cell;
-  FVector rc;
-
-  rc.x = r.x - Lmin(X) + lcell[X];
-  rc.y = r.y - Lmin(Y) + lcell[Y];
-  rc.z = r.z - Lmin(Z) + lcell[Z];
-
-  cell.x = (int) floor(rc.x / lcell[X]);
-  cell.y = (int) floor(rc.y / lcell[Y]);
-  cell.z = (int) floor(rc.z / lcell[Z]);
-
-#ifdef _MPI_
-  cell.x -= cart_coords(X)*ncell[X];
-  cell.y -= cart_coords(Y)*ncell[Y];
-  cell.z -= cart_coords(Z)*ncell[Z];
-#endif
-
-  return cell;
-}
-
-/*****************************************************************************
- *
- *  cell_get_colloid
+ *  colloids_cell_list
  *
  *  Return a pointer to the colloid (may be NULL) at the head of
  *  the list at (ic, jc, kc).
  *
  *****************************************************************************/
 
-Colloid * CELL_get_head_of_list(const int ic, const int jc, const int kc) {
+colloid_t * colloids_cell_list(const int ic, const int jc, const int kc) {
 
+  int xstride;
+  int ystride;
+
+  assert(ic >= 0);
+  assert(ic < ncell_[X] + 2*nhalo_);
+  assert(jc >= 0);
+  assert(jc < ncell_[Y] + 2*nhalo_);
+  assert(kc >= 0);
+  assert(kc < ncell_[Z] + 2*nhalo_);
   assert(cell_list_);
 
-  return cell_list_[ic*cifac_ + jc*cjfac_ + kc];
+  ystride = (ncell_[Z] + 2*nhalo_);
+  xstride = (ncell_[Y] + 2*nhalo_)*ystride;
+  return cell_list_[ic*xstride + jc*ystride + kc];
 }
 
 
 /*****************************************************************************
  *
- *  cell_insert_colloid
+ *  colloids_cell_insert_colloid
  *
- *  Insert a Colloid into a cell determined by it's position.
+ *  Insert a colloid_t into a cell determined by its position.
  *  The list is kept in order of increasing Colloid index.
  *
  *****************************************************************************/
 
-void cell_insert_colloid(Colloid * p_new) {
+void colloids_cell_insert_colloid(colloid_t * p_new) {
 
-  Colloid * p_current;
-  Colloid * p_previous;
-  IVector   cell;
+  colloid_t * p_current;
+  colloid_t * p_previous;
+  int cell[3];
   int       cindex;
 
-  cell   = cell_coords(p_new->r);
-  cindex = cell.x*cifac_ + cell.y*cjfac_ + cell.z;
+  int cifac;
+  int cjfac;
 
-  if (cell.x < 0 || cell.x > (ncell[X] + 1) ||
-      cell.y < 0 || cell.y > (ncell[Y] + 1) ||
-      cell.z < 0 || cell.z > (ncell[Z] + 1)) {
-    verbose("*** Dubious cell index %d position %d %d %d\n", cindex,
-	   cell.x, cell.y, cell.z);
-    verbose("*** Particle %d position %g %g %g\n", p_new->index, p_new->r.x,
-	    p_new->r.y, p_new->r.z);
-  }
+  assert(cell_list_);
+
+  cjfac = (ncell_[Z] + 2*nhalo_);
+  cifac = (ncell_[Y] + 2*nhalo_)*cjfac;
+
+  colloids_cell_coords(p_new->s.r, cell);
+  cindex = cell[X]*cifac + cell[Y]*cjfac + cell[Z];
 
   p_current = cell_list_[cindex];
   p_previous = p_current;
 
   while (p_current) {
-    if (p_new->index < p_current->index) break;
+    if (p_new->s.index < p_current->s.index) break;
     p_previous = p_current;
     p_current = p_current->next;
   }
@@ -283,128 +256,91 @@ void cell_insert_colloid(Colloid * p_new) {
 
 /*****************************************************************************
  *
+ *  colloids_cell_ncell
+ *
+ *****************************************************************************/
+
+void colloids_cell_ncell(int n[3]) {
+
+  n[X] = ncell_[X];
+  n[Y] = ncell_[Y];
+  n[Z] = ncell_[Z];
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  Ncell
  *
  *  Return the number of cells in the given coordinate direction
  *  in the current sub-domain.
  *
+ *  Pending deletion. Use the above.
+ *
  *****************************************************************************/
 
 int Ncell(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
-  return ncell[dim];
+  return ncell_[dim];
 }
 
 /*****************************************************************************
  *
- *  Lcell
+ *  colloids_lcell
  *
  *  Return the cell width in the specified coordinate direction.
  *
  *****************************************************************************/
 
-double Lcell(const int dim) {
+double colloids_lcell(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
-  return lcell[dim];
+  return L(dim)/(cart_size(dim)*ncell_[dim]);
 }
 
 /*****************************************************************************
  *
- *  allocate_colloid
+ *  colloid_allocate
  *
  *  Allocate space for a colloid structure and return a pointer to
- *  it (or fail gracefully).
+ *  it (or fail gracefully). Use calloc to ensure everything is
+ *  zero and pointers are NULL.
  *
  *****************************************************************************/
 
-Colloid * allocate_colloid() {
+colloid_t * colloid_allocate(void) {
 
-  Colloid * p_colloid;
+  colloid_t * p_colloid;
 
-  p_colloid = (Colloid *) malloc(sizeof(Colloid));
-  if (p_colloid == (Colloid *) NULL) fatal("malloc(Colloid) failed\n");
+  p_colloid = (colloid_t *) calloc(1, sizeof(colloid_t));
+  if (p_colloid == (colloid_t *) NULL) fatal("calloc(colloid_t) failed\n");
 
-  nalloc_colls_++;
+  nalloc_++;
 
   return p_colloid;
 }
 
 /*****************************************************************************
  *
- *  allocate_boundary_link
- *
- *  Return a pointer to a newly allocated COLL_Link structure
- *  or fail gracefully.
+ *  colloid_free
  *
  *****************************************************************************/
 
-COLL_Link * allocate_boundary_link() {
+void colloid_free(colloid_t * p_colloid) {
 
-  COLL_Link * p_link;
+  assert(p_colloid);
 
-  p_link = (COLL_Link *) malloc(sizeof(COLL_Link));
-  if (p_link == (COLL_Link *) NULL) fatal("malloc(Coll_link) failed\n");
-
-  nalloc_links_++;
-
-  return p_link;
-}
-
-/*****************************************************************************
- *
- *  free_colloid
- *
- *  Destroy an unwanted colloid. Note that this is the only way
- *  that boundary links should be freed, so that the current
- *  link count is maintained correctly. 
- *
- *****************************************************************************/
-
-void free_colloid(Colloid * p_colloid) {
-
-  COLL_Link * p_link;
-  COLL_Link * tmp;
-
-  if (p_colloid == NULL) fatal("Trying to free NULL colloid\n");
-
-  /* Free any links, then the colloid itself */
-
-  p_link = p_colloid->lnk;
-    
-  while (p_link != NULL) {
-    tmp = p_link->next;
-    free(p_link);
-    p_link = tmp;
-    nalloc_links_--;
-  }
+  colloid_link_free_list(p_colloid->lnk);
 
   free(p_colloid);
-  nalloc_colls_--;
+  nalloc_--;
 
   return;
 }
 
 /*****************************************************************************
  *
- *  colloids_report_memory
- *
- *  Show the current total for colloids and links.
- *
- *****************************************************************************/
-
-void colloids_memory_report() {
-
-  info("[colloids: %d (%d bytes) links: %d (%d bytes)]\n",
-       nalloc_colls_, nalloc_colls_*sizeof(Colloid),
-       nalloc_links_, nalloc_links_*sizeof(COLL_Link));
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  update_cells
+ *  colloids_cell_update
  *
  *  Look for particles which have changed cell lists following the
  *  last position update. Move as necessary, or remove if the
@@ -412,34 +348,37 @@ void colloids_memory_report() {
  *
  *****************************************************************************/
 
-void cell_update() {
+void colloids_cell_update(void) {
 
-  Colloid * p_colloid;
-  Colloid * p_previous;
-  Colloid * tmp;
+  colloid_t * p_colloid;
+  colloid_t * p_previous;
+  colloid_t * tmp;
 
-  IVector   cell;
+  int cell[3];
   int       cl_old, cl_new;
   int       ic, jc, kc;
   int       destroy;
+  int       cifac;
+  int       cjfac;
 
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+  cjfac = (ncell_[Z] + 2*nhalo_);
+  cifac = (ncell_[Y] + 2*nhalo_)*cjfac;
 
-	cl_old = kc + cjfac_*jc + cifac_*ic;
+  for (ic = 0; ic <= ncell_[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell_[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell_[Z] + 1; kc++) {
+
+	cl_old = kc + cjfac*jc + cifac*ic;
 
 	p_colloid = cell_list_[cl_old];
 	p_previous = p_colloid;
 
 	while (p_colloid) {
+	  colloids_cell_coords(p_colloid->s.r, cell);
+	  destroy = (cell[X] < 0 || cell[Y] < 0 || cell[Z] < 0 ||
+		     cell[X] > ncell_[X] + 1 ||
+		     cell[Y] > ncell_[Y] + 1 || cell[Z] > ncell_[Z] + 1);
 
-	  cell = cell_coords(p_colloid->r);
-
-	  destroy = (cell.x < 0 || cell.y < 0 || cell.z < 0 ||
-		     cell.x > ncell[X] + 1 ||
-		     cell.y > ncell[Y] + 1 || cell.z > ncell[Z] + 1);
-	  
 	  if (destroy) {
 	    /* This particle should be unlinked and removed. */
 
@@ -452,12 +391,11 @@ void cell_update() {
 	      p_previous->next = tmp;
 	    }
 
-	    free_colloid(p_colloid);
+	    colloid_free(p_colloid);
 	    p_colloid = tmp;
 	  }
 	  else {
-
-	    cl_new = cell.z + cjfac_*cell.y + cifac_*cell.x;
+	    cl_new = cell[Z] + cjfac*cell[Y] + cifac*cell[X];
 
 	    if (cl_new == cl_old) {
 	      /* No movement so next colloid */
@@ -481,11 +419,7 @@ void cell_update() {
 		p_previous->next = tmp;
 	      }
 
-	      /*
-	      p_colloid->next = cell_list_[cl_new];
-	      cell_list_[cl_new] = p_colloid;
-	      */
-	      cell_insert_colloid(p_colloid);
+	      colloids_cell_insert_colloid(p_colloid);
 
 	      p_colloid = tmp;
 	    }
@@ -500,4 +434,162 @@ void cell_update() {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_nlocal
+ *
+ *  Return the local number of colloids. As the colloids move about,
+ *  this must be recomputed each time.
+ *
+ ****************************************************************************/
+
+int colloid_nlocal(void) {
+
+  int       ic, jc, kc;
+  int       nlocal;
+  colloid_t * p_colloid;
+
+  nlocal = 0;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	p_colloid = colloids_cell_list(ic, jc, kc);
+
+	while (p_colloid) {
+	  nlocal++;
+	  p_colloid = p_colloid->next;
+	}
+      }
+    }
+  }
+
+  return nlocal;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_add
+ *
+ *  The colloid must have an index, and it must have a position.
+ *
+ *****************************************************************************/
+
+colloid_t * colloid_add(const int index, const double r[3]) {
+
+  int       icell[3];
+  colloid_t * p_colloid;
+
+  colloids_cell_coords(r, icell);
+
+  assert(icell[X] >= 0);
+  assert(icell[Y] >= 0);
+  assert(icell[Z] >= 0);
+  assert(icell[X] < Ncell(X) + 2*nhalo_);
+  assert(icell[Y] < Ncell(Y) + 2*nhalo_);
+  assert(icell[Z] < Ncell(Z) + 2*nhalo_);
+
+  p_colloid = colloid_allocate();
+  p_colloid->s.index = index;
+
+  p_colloid->s.r[X] = r[X];
+  p_colloid->s.r[Y] = r[Y];
+  p_colloid->s.r[Z] = r[Z];
+
+  p_colloid->s.rebuild = 1;
+  p_colloid->lnk = NULL;
+  p_colloid->next = NULL;
+
+  colloids_cell_insert_colloid(p_colloid);
+
+  return p_colloid;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_add_local
+ *
+ *  Return a pointer to a new colloid, if r is in the local domain.
+ *
+ *****************************************************************************/
+
+colloid_t * colloid_add_local(const int index, const double r[3]) {
+
+  int icell[3];
+
+  colloids_cell_coords(r, icell);
+  assert(nhalo_ == 1); /* Following would need to be adjusted */
+  if (icell[X] < 1 || icell[X] > Ncell(X)) return NULL;
+  if (icell[Y] < 1 || icell[Y] > Ncell(Y)) return NULL;
+  if (icell[Z] < 1 || icell[Z] > Ncell(Z)) return NULL;
+
+  return colloid_add(index, r);
+}
+
+/*****************************************************************************
+ *
+ *  colloids_cell_coords
+ *
+ *  For position vector r in the global coordinate system
+ *  return the coordinates (ic,jc,kc) of the corresponding
+ *  cell in the local cell list.
+ *
+ *  If the position is not in the local domain, then neither
+ *  is the cell. The caller must handle this.
+ *
+ *  09/01/07 floor() is problematic when colloid exactly on cell
+ *           boundary and r is negative, ie., cell goes to -1
+ *
+ *****************************************************************************/
+
+void colloids_cell_coords(const double r[3], int icell[3]) {
+
+  int ia;
+  double lcell;
+
+  for (ia = 0; ia < 3; ia++) {
+    lcell = colloids_lcell(ia);
+    icell[ia] = (int) floor((r[ia] - Lmin(ia) + lcell) / lcell);
+    icell[ia] -= cart_coords(ia)*ncell_[ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_cell_count
+ *
+ *  Count the number of particles in this cell.
+ *
+ *****************************************************************************/
+
+int colloids_cell_count(const int ic, const int jc, const int kc) {
+
+  int n;
+  colloid_t * pc;
+
+  n = 0;
+  pc = colloids_cell_list(ic, jc, kc);
+
+  while (pc) {
+    n++;
+    pc = pc->next;
+  }
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_nalloc
+ *
+ *****************************************************************************/
+
+int colloids_nalloc(void) {
+
+  return nalloc_;
 }

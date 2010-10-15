@@ -1,38 +1,33 @@
 /*****************************************************************************
  *
- *  free_energy
+ *  free_energy.h
  *
- *  The free energy.
+ *  The 'abstract' free energy interface.
  *
- *  $Id: free_energy.h,v 1.4 2008-11-14 14:42:50 kevin Exp $
+ *  $Id: free_energy.h,v 1.5 2010-10-15 12:40:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
+ *  (c) 2009 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _FREE_ENERGY_H
-#define _FREE_ENERGY_H
+#ifndef FREE_ENERGY_H
+#define FREE_ENERGY_H
 
-void init_free_energy(void);
+void fe_density_set(double (* f)(const int index));
+void fe_chemical_potential_set(double (* f)(const int index, const int nop));
+void fe_isotropic_pressure_set(double (* f)(const int index));
+void fe_chemical_stress_set(void (* f)(const int index, double s[3][3]));
 
-double free_energy_A(void);
-double free_energy_B(void);
-double free_energy_K(void);
-double surface_tension(void);
-double interfacial_width(void);
-double free_energy_density(const int);
-double free_energy_chemical_potential(const int, const int);
-double free_energy_get_chemical_potential(const int);
-double free_energy_get_isotropic_pressure(const int);
-void   free_energy_get_chemical_stress(const int, double [3][3]);
+double (* fe_density_function(void))(const int index);
+double (* fe_chemical_potential_function(void))(const int, const int nop);
+double (* fe_isotropic_pressure_function(void))(const int index);
+void   (* fe_chemical_stress_function(void))(const int index, double s[3][3]);
 
-void free_energy_set_A(const double);
-void free_energy_set_B(const double);
-void free_energy_set_kappa(const double);
-int  free_energy_is_brazovskii(void);
+double fe_kappa(void);
+void   fe_kappa_set(const double kappa);
 
 #endif

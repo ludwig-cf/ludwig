@@ -2,24 +2,27 @@
  *
  *  collision.h
  *
- *  $Id: collision.h,v 1.4 2008-08-24 17:34:26 kevin Exp $
+ *  $Id: collision.h,v 1.5 2010-10-15 12:40:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _COLLISION_H
-#define _COLLISION_H
+#ifndef COLLISION_H
+#define COLLISION_H
 
-void    MODEL_init( void );
-void    MODEL_finish( void );
-void    get_fluctuations_stress(double shat[3][3]);
-void   RAND_init_fluctuations(void);
-void    collide(void);
-void     MISC_curvature(void);
+void collide(void);
+void test_isothermal_fluctuations(void);
+
+void collision_ghost_modes_on(void);
+void collision_ghost_modes_off(void);
+void collision_fluctuations_on(void);
+void collision_fluctuations_off(void);
+void collision_relaxation_times_set(void);
+void collision_relaxation_times(double * tau);
 
 #endif

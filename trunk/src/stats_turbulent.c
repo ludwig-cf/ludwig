@@ -4,7 +4,7 @@
  *
  *  Statistics to probe turbulent flow.
  *
- *  $Id: stats_turbulent.c,v 1.2 2008-08-24 16:58:10 kevin Exp $
+ *  $Id: stats_turbulent.c,v 1.3 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -42,7 +42,7 @@ void stats_turbulent_init() {
 
   int nlocal[3];
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   ubar_ = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
   if (ubar_ == NULL) fatal("malloc(ubar_) failed\n");
@@ -136,7 +136,7 @@ void stats_turbulent_ubar_accumulate() {
   double u[3];
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -172,7 +172,7 @@ void stats_turbulent_ubar_zero() {
   int ia;
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -214,7 +214,7 @@ void stats_turbulent_ubar_output(const char * filename) {
   const int tag_token = 4129;
 
   assert(initialised_);
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   f1 = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
   if (f1 == NULL) fatal("malloc(f1) failed\n");

@@ -6,9 +6,13 @@
  *
  *  Provides routines for pairwise energies and forces.
  *
- *  $Id: potential.c,v 1.5 2008-02-13 10:56:10 kevin Exp $
+ *  $Id: potential.c,v 1.6 2010-10-15 12:40:03 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -17,6 +21,7 @@
 #include "pe.h"
 #include "runtime.h"
 #include "physics.h"
+#include "util.h"
 #include "potential.h"
 
 
@@ -30,12 +35,12 @@ static struct soft_sphere_potential_struct {
   double cutoff;
 } soft_sphere;
 
-static struct leonard_jones_potential_struct {
+static struct lennard_jones_potential_struct {
   int on;
   double sigma;
   double epsilon;
   double cutoff;
-} leonard_jones;
+} lennard_jones;
 
 static struct yukawa_struct {
   int on;
@@ -57,16 +62,12 @@ void soft_sphere_init() {
 
   int n;
 
-  info("\nColloid-colloid soft-sphere potential\n");
-
   soft_sphere.on = 0;
-
   n = RUN_get_int_parameter("soft_sphere_on", &soft_sphere.on);
-  info((n == 0) ? "[Default] " : "[User   ] ");
-  info("Soft sphere potential is switched %s\n",
-       (soft_sphere.on == 0) ? "off" : "on");
 
   if (soft_sphere.on) {
+    info("\nColloid-colloid soft-sphere potential\n");
+    info("Soft sphere potential is switched on\n");
     n = RUN_get_double_parameter("soft_sphere_epsilon", &soft_sphere.epsilon);
     info((n == 0) ? "[Default] " : "[User   ] ");
     info("Soft-sphere energy (epsilon) is %f (%f kT)\n", soft_sphere.epsilon,
@@ -91,40 +92,36 @@ void soft_sphere_init() {
 
 /*****************************************************************************
  *
- *  leonard_jones_init
+ *  lennard_jones_init
  *
- *  Initialise the parameters for the Leonard-Jones interaction between
+ *  Initialise the parameters for the Lennard-Jones interaction between
  *  colloids.
  *
  *****************************************************************************/
 
-void leonard_jones_init() {
+void lennard_jones_init() {
 
   int n;
 
-  info("\nColloid-colloid Leonard Jones potential\n");
+  lennard_jones.on = 0;
+  n = RUN_get_int_parameter("lennard_jones_on", &lennard_jones.on);
 
-  leonard_jones.on = 0;
-
-  n = RUN_get_int_parameter("leonard_jones_on", &leonard_jones.on);
-  info((n == 0) ? "[Default] " : "[User   ] ");
-  info("Leonard Jones potential is switched %s\n",
-       (leonard_jones.on == 0) ? "off" : "on");
-
-  if (leonard_jones.on) {
-    n = RUN_get_double_parameter("lj_epsilon", &leonard_jones.epsilon);
+  if (lennard_jones.on) {
+    info("\nColloid-colloid Lennard Jones potential\n");
+    info("Lennard Jones potential is switched on\n");
+    n = RUN_get_double_parameter("lj_epsilon", &lennard_jones.epsilon);
     info((n == 0) ? "[Default] " : "[User   ] ");
-    info("Leonard Jones energy (epsilon) is %f (%f kT)\n",
-	 leonard_jones.epsilon, leonard_jones.epsilon/get_kT());
+    info("Lennard Jones energy (epsilon) is %f (%f kT)\n",
+	 lennard_jones.epsilon, lennard_jones.epsilon/get_kT());
 
-    n = RUN_get_double_parameter("lj_sigma", &leonard_jones.sigma);
+    n = RUN_get_double_parameter("lj_sigma", &lennard_jones.sigma);
     info((n == 0) ? "[Default] " : "[User   ] ");
-    info("Leonard Jones width (sigma) is %f\n", leonard_jones.sigma);
+    info("Lennard Jones width (sigma) is %f\n", lennard_jones.sigma);
 
-    n = RUN_get_double_parameter("lj_cutoff", &leonard_jones.cutoff);
+    n = RUN_get_double_parameter("lj_cutoff", &lennard_jones.cutoff);
     info((n == 0) ? "[Default] " : "[User   ] ");
-    info("Leonard Jones cutoff range is %f (%3.2f x sigma)\n",
-	 leonard_jones.cutoff, leonard_jones.cutoff/leonard_jones.sigma);
+    info("Lennard Jones cutoff range is %f (%3.2f x sigma)\n",
+	 lennard_jones.cutoff, lennard_jones.cutoff/lennard_jones.sigma);
   }
 
   return;
@@ -140,16 +137,13 @@ void yukawa_init() {
 
   int n;
 
-  info("\nColloid-colloid Yukawa potential\n");
-
   yukawa.on = 0;
 
   n = RUN_get_int_parameter("yukawa_on", &yukawa.on);
-  info((n == 0) ? "[Default] " : "[User   ] ");
-  info("Yukawa potential is switched %s\n",
-       (yukawa.on == 0) ? "off" : "on");
 
   if (yukawa.on) {
+    info("\nColloid-colloid Yukawa potential\n");
+    info("Yukawa potential is switched on\n");
     n = RUN_get_double_parameter("yukawa_epsilon", &yukawa.epsilon);
     info((n == 0) ? "[Default] " : "[User   ] ");
     info("Yukawa energy (epsilon) is %f (%f kT)\n",
@@ -222,19 +216,19 @@ double soft_sphere_force(const double h) {
 
 /*****************************************************************************
  *
- *  leonard_jones_energy
+ *  lennard_jones_energy
  *
  *  Return the potential at centre-centre separation r.
  *
  *****************************************************************************/
 
-double leonard_jones_energy(const double r) {
+double lennard_jones_energy(const double r) {
 
   double e = 0.0;
 
-  if (leonard_jones.on && r < leonard_jones.cutoff) {
-    double sigmar = pow(leonard_jones.sigma/r, 6.0);
-    e = 4.0*leonard_jones.epsilon*(sigmar*sigmar - sigmar);
+  if (lennard_jones.on && r < lennard_jones.cutoff) {
+    double sigmar = pow(lennard_jones.sigma/r, 6.0);
+    e = 4.0*lennard_jones.epsilon*(sigmar*sigmar - sigmar);
   }
 
   return e;
@@ -322,7 +316,7 @@ double get_max_potential_range() {
   double rmax = 0.0;
 
   rmax = dmax(rmax, soft_sphere.cutoff);
-  rmax = dmax(rmax, leonard_jones.cutoff);
+  rmax = dmax(rmax, lennard_jones.cutoff);
   rmax = dmax(rmax, yukawa.cutoff);
 
   return rmax;

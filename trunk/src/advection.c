@@ -15,13 +15,16 @@
  *  to the 'west' face flux. There's no effect in the y- or z-
  *  directions.
  *
- *  $Id: advection.c,v 1.2 2009-10-08 17:24:41 kevin Exp $
+ *  Any solid-fluid boundary conditions are dealt with post-hoc by
+ *  in advection_bcs.c
+ *
+ *  $Id: advection.c,v 1.3 2010-10-15 12:40:02 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -32,8 +35,69 @@
 #include "leesedwards.h"
 #include "lattice.h"
 #include "phi.h"
+#include "advection.h"
 
 extern double * phi_site;
+
+static int order_ = 1; /* Default is upwind (bad!) */
+
+/*****************************************************************************
+ *
+ *  advection_order_set
+ *
+ *****************************************************************************/
+
+void advection_order_set(const int n) {
+
+  order_ = n;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  advection_order
+ *
+ *****************************************************************************/
+
+int advection_order(void) {
+
+  return order_;
+}
+
+/*****************************************************************************
+ *
+ *  advection_order_n
+ *
+ *  The user may call a specific order, or can take what is
+ *  set by calling this.
+ *
+ *****************************************************************************/
+
+void advection_order_n(double * fluxe, double * fluxw, double * fluxy,
+		       double * fluxz) {
+
+  switch (order_) {
+  case 1:
+    advection_upwind(fluxe, fluxw, fluxy, fluxz);
+    break;
+  case 2:
+    advection_second_order(fluxe, fluxw, fluxy, fluxz);
+    break;
+  case 3:
+    advection_upwind_third_order(fluxe, fluxw, fluxy, fluxz);
+    break;
+  case 5:
+    advection_upwind_fifth_order(fluxe, fluxw, fluxy, fluxz);
+    break;
+  case 7:
+    advection_upwind_seventh_order(fluxe, fluxw, fluxy, fluxz);
+    break;
+  default:
+    fatal("Bad advection scheme set order = %d\n", order_);
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -52,7 +116,7 @@ extern double * phi_site;
 
 void advection_upwind(double * fluxe, double * fluxw,
 		      double * fluxy, double * fluxz) {
-
+  int nop;
   int nlocal[3];
   int ic, jc, kc;            /* Counters over faces */
   int index0, index1, n;
@@ -65,7 +129,8 @@ void advection_upwind(double * fluxe, double * fluxw,
   assert(fluxy);
   assert(fluxz);
 
-  get_N_local(nlocal);
+  nop = phi_nop();
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -73,37 +138,37 @@ void advection_upwind(double * fluxe, double * fluxw,
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, jc, kc);
+	index0 = le_site_index(ic, jc, kc);
 
-	for (n = 0; n < nop_; n++) {
+	for (n = 0; n < nop; n++) {
 
-	  phi0 = phi_site[nop_*index0 + n];
+	  phi0 = phi_site[nop*index0 + n];
 	  hydrodynamics_get_velocity(index0, u0);
 
 	  /* west face (icm1 and ic) */
 
-	  index1 = ADDR(icm1, jc, kc);
+	  index1 = le_site_index(icm1, jc, kc);
 	  hydrodynamics_get_velocity(index1, u1);
 	  u = 0.5*(u0[X] + u1[X]);
 
 	  if (u > 0.0) {
-	    fluxw[nop_*index0 + n] = u*phi_site[nop_*index1 + n];
+	    fluxw[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }
 	  else {
-	    fluxw[nop_*index0 + n] = u*phi0;
+	    fluxw[nop*index0 + n] = u*phi0;
 	  }
 
 	  /* east face (ic and icp1) */
 
-	  index1 = ADDR(icp1, jc, kc);
+	  index1 = le_site_index(icp1, jc, kc);
 	  hydrodynamics_get_velocity(index1, u1);
 	  u = 0.5*(u0[X] + u1[X]);
 
 	  if (u < 0.0) {
-	    fluxe[nop_*index0 + n] = u*phi_site[nop_*index1 + n];
+	    fluxe[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }
 	  else {
-	    fluxe[nop_*index0 + n] = u*phi0;
+	    fluxe[nop*index0 + n] = u*phi0;
 	  }
 
 	  /* y direction */
@@ -113,25 +178,121 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  u = 0.5*(u0[Y] + u1[Y]);
 
 	  if (u < 0.0) {
-	    fluxy[nop_*index0 + n] = u*phi_site[nop_*index1 + n];
+	    fluxy[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }
 	  else {
-	    fluxy[nop_*index0 + n] = u*phi0;
+	    fluxy[nop*index0 + n] = u*phi0;
 	  }
 
 	  /* z direction */
 
-	  index1 = ADDR(ic, jc, kc+1);
+	  index1 = le_site_index(ic, jc, kc+1);
 	  hydrodynamics_get_velocity(index1, u1);
 	  u = 0.5*(u0[Z] + u1[Z]);
 
 	  if (u < 0.0) {
-	    fluxz[nop_*index0 + n] = u*phi_site[nop_*index1 + n];
+	    fluxz[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }
 	  else {
-	    fluxz[nop_*index0 + n] = u*phi0;
+	    fluxz[nop*index0 + n] = u*phi0;
 	  }
 	}
+	/* Next site */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  advection_second_order
+ *
+ *  'Centred difference' advective fluxes.
+ *
+ *  Symmetric two-point stencil.
+ *
+ *****************************************************************************/
+
+void advection_second_order(double * fluxe, double * fluxw,
+			    double * fluxy, double * fluxz) {
+  int nop;
+  int nlocal[3];
+  int ic, jc, kc;
+  int n;
+  int index0, index1;
+  int icp1, icm1;
+  int ys;
+  double u0[3], u1[3], u;
+
+  nop = phi_nop();
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 1);
+
+  assert(fluxe);
+  assert(fluxw);
+  assert(fluxy);
+  assert(fluxz);
+
+  ys = nlocal[Z] + 2*coords_nhalo();
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = le_site_index(ic, jc, kc);
+	hydrodynamics_get_velocity(index0, u0);
+
+	/* west face (icm1 and ic) */
+
+	index1 = le_site_index(icm1, jc, kc);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[X] + u1[X]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxw[nop*index0 + n] = u*0.5*
+	    (phi_site[nop*index1 + n] + phi_site[nop*index0 + n]);
+	}	
+
+	/* east face (ic and icp1) */
+
+	index1 = le_site_index(icp1, jc, kc);
+
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[X] + u1[X]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxe[nop*index0 + n] = u*0.5*
+	    (phi_site[nop*index1 + n] + phi_site[nop*index0 + n]);
+	}
+
+	/* y direction */
+
+	index1 = le_site_index(ic, jc+1, kc);
+
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[Y] + u1[Y]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxy[nop*index0 + n] = u*0.5*
+	    (phi_site[nop*index1 + n] + phi_site[nop*index0 + n]);
+	}
+
+	/* z direction */
+
+	index1 = le_site_index(ic, jc, kc+1);
+
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[Z] + u1[Z]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxz[nop*index0 + n] = u*0.5*
+	    (phi_site[nop*index1 + n] + phi_site[nop*index0 + n]);
+	}
+
 	/* Next site */
       }
     }
@@ -156,7 +317,7 @@ void advection_upwind(double * fluxe, double * fluxw,
 
 void advection_upwind_third_order(double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz) {
-
+  int nop;
   int nlocal[3];
   int ic, jc, kc;
   int n;
@@ -168,8 +329,9 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
   const double a2 =  0.927865;
   const double a3 =  0.286067;
 
-  get_N_local(nlocal);
-  assert(nhalo_ >= 2);
+  nop = phi_nop();
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 2);
 
   assert(fluxe);
   assert(fluxw);
@@ -184,52 +346,52 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, jc, kc);
+	index0 = le_site_index(ic, jc, kc);
 	hydrodynamics_get_velocity(index0, u0);
 
 	/* west face (icm1 and ic) */
 
-	index1 = ADDR(icm1, jc, kc);
+	index1 = le_site_index(icm1, jc, kc);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm2,jc,kc) + n]
-	       + a2*phi_site[nop_*index1 + n]
-	       + a3*phi_site[nop_*index0 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icm2,jc,kc) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a3*phi_site[nop*index0 + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp1,jc,kc) + n]
-	       + a2*phi_site[nop_*index0 + n]
-	       + a3*phi_site[nop_*index1 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icp1,jc,kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a3*phi_site[nop*index1 + n]);
 	  }
 	}
 
 	/* east face (ic and icp1) */
 
-	index1 = ADDR(icp1, jc, kc);
+	index1 = le_site_index(icp1, jc, kc);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxe[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp2,jc,kc) + n]
-	       + a2*phi_site[nop_*index1 + n]
-	       + a3*phi_site[nop_*index0 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxe[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icp2,jc,kc) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a3*phi_site[nop*index0 + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxe[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm1,jc,kc) + n]
-	       + a2*phi_site[nop_*index0 + n]
-	       + a3*phi_site[nop_*index1 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxe[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icm1,jc,kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a3*phi_site[nop*index1 + n]);
 	  }
 	}
 
@@ -240,42 +402,42 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic,jc+2,kc) + n]
-	       + a2*phi_site[nop_*index1 + n]
-	       + a3*phi_site[nop_*index0 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic,jc+2,kc) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a3*phi_site[nop*index0 + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic,jc-1,kc) + n]
-	       + a2*phi_site[nop_*index0 + n]
-	       + a3*phi_site[nop_*index1 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic,jc-1,kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a3*phi_site[nop*index1 + n]);
 	  }
 	}
 
 	/* z direction */
 
-	index1 = ADDR(ic, jc, kc+1);
+	index1 = le_site_index(ic, jc, kc+1);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic,jc,kc+2) + n]
-	       + a2*phi_site[nop_*index1 + n]
-	       + a3*phi_site[nop_*index0 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic,jc,kc+2) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a3*phi_site[nop*index0 + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic,jc,kc-1) + n]
-	       + a2*phi_site[nop_*index0 + n]
-	       + a3*phi_site[nop_*index1 + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic,jc,kc-1) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a3*phi_site[nop*index1 + n]);
 	  }
 	}
 
@@ -303,7 +465,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 
 void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz) {
-
+  int nop;
   int nlocal[3];
   int ic, jc, kc;
   int n;
@@ -317,8 +479,9 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
   const double a4 =  0.361520;
   const double a5 = -0.027880;
 
-  get_N_local(nlocal);
-  assert(nhalo_ >= 3);
+  nop = phi_nop();
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 3);
 
   assert(fluxe);
   assert(fluxw);
@@ -335,115 +498,223 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, jc, kc);
+	index0 = le_site_index(ic, jc, kc);
 	hydrodynamics_get_velocity(index0, u0);
 
 	/* west face (icm1 and ic) */
 
-	index1 = ADDR(icm1, jc, kc);
+	index1 = le_site_index(icm1, jc, kc);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm3, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icm2, jc, kc) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(icp1, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icm3, jc, kc) + n]
+	       + a2*phi_site[nop*le_site_index(icm2, jc, kc) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*le_site_index(icp1, jc, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp2, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icp1, jc, kc) + n]
-	       + a3*phi_site[nop_*index0 + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*ADDR(icm2, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icp2, jc, kc) + n]
+	       + a2*phi_site[nop*le_site_index(icp1, jc, kc) + n]
+	       + a3*phi_site[nop*index0 + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*le_site_index(icm2, jc, kc) + n]);
 	  }
 	}
 
 	/* east face */
 
-	index1 = ADDR(icp1, jc, kc);
+	index1 = le_site_index(icp1, jc, kc);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxe[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp3, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icp2, jc, kc) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(icm1, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxe[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icp3, jc, kc) + n]
+	       + a2*phi_site[nop*le_site_index(icp2, jc, kc) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*le_site_index(icm1, jc, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxe[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm2, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icm1, jc, kc) + n]
-	       + a3*phi_site[nop_*index0 + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*ADDR(icp2, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxe[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icm2, jc, kc) + n]
+	       + a2*phi_site[nop*le_site_index(icm1, jc, kc) + n]
+	       + a3*phi_site[nop*index0 + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*le_site_index(icp2, jc, kc) + n]);
 	  }
 	}
 
 	/* y-direction */
 
-	index1 = ADDR(ic, jc+1, kc);
+	index1 = le_site_index(ic, jc+1, kc);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc+3, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc+2, kc) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(ic, jc-1, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic, jc+3, kc) + n]
+	       + a2*phi_site[nop*le_site_index(ic, jc+2, kc) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*le_site_index(ic, jc-1, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc-2, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc-1, kc) + n]
-	       + a3*phi_site[nop_*index0 + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*ADDR(ic, jc+2, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic, jc-2, kc) + n]
+	       + a2*phi_site[nop*le_site_index(ic, jc-1, kc) + n]
+	       + a3*phi_site[nop*index0 + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*le_site_index(ic, jc+2, kc) + n]);
 	  }
 	}
 
 	/* z-direction */
 
-	index1 = ADDR(ic, jc, kc+1);
+	index1 = le_site_index(ic, jc, kc+1);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc, kc+3) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc, kc+2) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(ic, jc, kc-1) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic, jc, kc+3) + n]
+	       + a2*phi_site[nop*le_site_index(ic, jc, kc+2) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*le_site_index(ic, jc, kc-1) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc, kc-2) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc, kc-1) + n]
-	       + a3*phi_site[nop_*index0 + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*ADDR(ic, jc, kc+2) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic, jc, kc-2) + n]
+	       + a2*phi_site[nop*le_site_index(ic, jc, kc-1) + n]
+	       + a3*phi_site[nop*index0 + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*le_site_index(ic, jc, kc+2) + n]);
 	  }
+	}
+
+	/* Next interface. */
+      }
+    }
+  }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  advection_fourth_order
+ *
+ *  Advective fluxes.
+ *
+ *  The stencil is four points.
+ *
+ ****************************************************************************/
+
+void advection_fourth_order(double * fluxe, double * fluxw,
+			    double * fluxy, double * fluxz) {
+  int nop;
+  int nlocal[3];
+  int ic, jc, kc;
+  int n;
+  int index0, index1;
+  int icm2, icm1, icp1, icp2;
+  double u0[3], u1[3], u;
+
+  const double a1 = (1.0/16.0);
+  const double a2 = (9.0/16.0);
+
+  nop = phi_nop();
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 2);
+
+  assert(fluxe);
+  assert(fluxw);
+  assert(fluxy);
+  assert(fluxz);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm2 = le_index_real_to_buffer(ic, -2);
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    icp2 = le_index_real_to_buffer(ic, +2);
+
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = le_site_index(ic, jc, kc);
+	hydrodynamics_get_velocity(index0, u0);
+
+	/* west face (icm1 and ic) */
+
+	index1 = le_site_index(icm1, jc, kc);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[X] + u1[X]);
+	
+	for (n = 0; n < nop; n++) {
+	  fluxw[nop*index0 + n] =
+	    u*(-a1*phi_site[nop*le_site_index(icm2, jc, kc) + n]
+	       + a2*phi_site[nop*index1 + n]
+	       + a2*phi_site[nop*index0 + n]
+	       - a1*phi_site[nop*le_site_index(icp1, jc, kc) + n]);
+	}
+
+	/* east face */
+
+	index1 = le_site_index(icp1, jc, kc);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[X] + u1[X]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxe[nop*index0 + n] =
+	    u*(-a1*phi_site[nop*le_site_index(icm1, jc, kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a2*phi_site[nop*index1 + n]
+	       - a1*phi_site[nop*le_site_index(icp2, jc, kc) + n]);
+	}
+
+	/* y-direction */
+
+	index1 = le_site_index(ic, jc+1, kc);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[Y] + u1[Y]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxy[nop*index0 + n] =
+	    u*(-a1*phi_site[nop*le_site_index(ic, jc-1, kc) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a2*phi_site[nop*index1 + n]
+	       - a1*phi_site[nop*le_site_index(ic, jc+2, kc) + n]);
+	}
+
+	/* z-direction */
+
+	index1 = le_site_index(ic, jc, kc+1);
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[Z] + u1[Z]);
+
+	for (n = 0; n < nop; n++) {
+	  fluxz[nop*index0 + n] =
+	    u*(-a1*phi_site[nop*le_site_index(ic, jc, kc-1) + n]
+	       + a2*phi_site[nop*index0 + n]
+	       + a2*phi_site[nop*index1 + n]
+	       - a1*phi_site[nop*le_site_index(ic, jc, kc+2) + n]);
 	}
 
 	/* Next interface. */
@@ -470,7 +741,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 
 void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 				    double * fluxy, double * fluxz) {
-
+  int nop;
   int nlocal[3];
   int ic, jc, kc;
   int icm1, icm2, icm3, icm4;
@@ -487,8 +758,9 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
   const double a6 = -0.038383;
   const double a7 =  0.000842;
 
-  get_N_local(nlocal);
-  assert(nhalo_ >= 4);
+  nop = phi_nop();
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 4);
 
   assert(fluxe);
   assert(fluxw);
@@ -507,99 +779,99 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = ADDR(ic, jc, kc);
+	index0 = le_site_index(ic, jc, kc);
 	hydrodynamics_get_velocity(index0, u0);
  
 	/* x direction */
 
-	index1 = ADDR(icp1, jc, kc);
+	index1 = le_site_index(icp1, jc, kc);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icm4, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icm3, jc, kc) + n]
-	       + a3*phi_site[nop_*ADDR(icm2, jc, kc) + n]
-	       + a4*phi_site[nop_*ADDR(icm1, jc, kc) + n]
-	       + a5*phi_site[nop_*index0 + n]
-	       + a6*phi_site[nop_*index1 + n]
-	       + a7*phi_site[nop_*ADDR(icp2, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icm4, jc, kc) + n]
+	       + a2*phi_site[nop*le_site_index(icm3, jc, kc) + n]
+	       + a3*phi_site[nop*le_site_index(icm2, jc, kc) + n]
+	       + a4*phi_site[nop*le_site_index(icm1, jc, kc) + n]
+	       + a5*phi_site[nop*index0 + n]
+	       + a6*phi_site[nop*index1 + n]
+	       + a7*phi_site[nop*le_site_index(icp2, jc, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxw[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(icp3, jc, kc) + n]
-	       + a2*phi_site[nop_*ADDR(icp2, jc, kc) + n]
-	       + a3*phi_site[nop_*index1 + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*ADDR(icm1, jc, kc) + n]
-	       + a6*phi_site[nop_*ADDR(icm2, jc, kc) + n]
-	       + a7*phi_site[nop_*ADDR(icm3, jc, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxw[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(icp3, jc, kc) + n]
+	       + a2*phi_site[nop*le_site_index(icp2, jc, kc) + n]
+	       + a3*phi_site[nop*index1 + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*le_site_index(icm1, jc, kc) + n]
+	       + a6*phi_site[nop*le_site_index(icm2, jc, kc) + n]
+	       + a7*phi_site[nop*le_site_index(icm3, jc, kc) + n]);
 	  }
 	}
 
 	/* y-direction */
 
-	index1 = ADDR(ic, jc+1, kc);
+	index1 = le_site_index(ic, jc+1, kc);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc+4, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc+3, kc) + n]
-	       + a3*phi_site[nop_*ADDR(ic, jc+2, kc) + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*index0 + n]
-	       + a6*phi_site[nop_*ADDR(ic, jc-1, kc) + n]
-	       + a7*phi_site[nop_*ADDR(ic, jc-2, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic, jc+4, kc) + n]
+	       + a2*phi_site[nop*le_site_index(ic, jc+3, kc) + n]
+	       + a3*phi_site[nop*le_site_index(ic, jc+2, kc) + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*index0 + n]
+	       + a6*phi_site[nop*le_site_index(ic, jc-1, kc) + n]
+	       + a7*phi_site[nop*le_site_index(ic, jc-2, kc) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxy[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc-3, kc) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc-2, kc) + n]
-	       + a3*phi_site[nop_*ADDR(ic, jc-1, kc) + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*index1 + n]
-	       + a6*phi_site[nop_*ADDR(ic, jc+2, kc) + n]
-	       + a7*phi_site[nop_*ADDR(ic, jc+3, kc) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxy[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic, jc-3, kc) + n]
+	       + a2*phi_site[nop*le_site_index(ic, jc-2, kc) + n]
+	       + a3*phi_site[nop*le_site_index(ic, jc-1, kc) + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*index1 + n]
+	       + a6*phi_site[nop*le_site_index(ic, jc+2, kc) + n]
+	       + a7*phi_site[nop*le_site_index(ic, jc+3, kc) + n]);
 	  }
 	}
 
 	/* z-direction */
 
-	index1 = ADDR(ic, jc, kc+1);
+	index1 = le_site_index(ic, jc, kc+1);
 	hydrodynamics_get_velocity(index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc, kc+4) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc, kc+3) + n]
-	       + a3*phi_site[nop_*ADDR(ic, jc, kc+2) + n]
-	       + a4*phi_site[nop_*index1 + n]
-	       + a5*phi_site[nop_*index0 + n]
-	       + a6*phi_site[nop_*ADDR(ic, jc, kc-1) + n]
-	       + a7*phi_site[nop_*ADDR(ic, jc, kc-2) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic, jc, kc+4) + n]
+	       + a2*phi_site[nop*le_site_index(ic, jc, kc+3) + n]
+	       + a3*phi_site[nop*le_site_index(ic, jc, kc+2) + n]
+	       + a4*phi_site[nop*index1 + n]
+	       + a5*phi_site[nop*index0 + n]
+	       + a6*phi_site[nop*le_site_index(ic, jc, kc-1) + n]
+	       + a7*phi_site[nop*le_site_index(ic, jc, kc-2) + n]);
 	  }
 	}
 	else {
-	  for (n = 0; n < nop_; n++) {
-	    fluxz[nop_*index0 + n] =
-	      u*(a1*phi_site[nop_*ADDR(ic, jc, kc-3) + n]
-	       + a2*phi_site[nop_*ADDR(ic, jc, kc-2) + n]
-	       + a3*phi_site[nop_*ADDR(ic, jc, kc-1) + n]
-	       + a4*phi_site[nop_*index0 + n]
-	       + a5*phi_site[nop_*index1 + n]
-	       + a6*phi_site[nop_*ADDR(ic, jc, kc+2) + n]
-	       + a7*phi_site[nop_*ADDR(ic, jc, kc+3) + n]);
+	  for (n = 0; n < nop; n++) {
+	    fluxz[nop*index0 + n] =
+	      u*(a1*phi_site[nop*le_site_index(ic, jc, kc-3) + n]
+	       + a2*phi_site[nop*le_site_index(ic, jc, kc-2) + n]
+	       + a3*phi_site[nop*le_site_index(ic, jc, kc-1) + n]
+	       + a4*phi_site[nop*index0 + n]
+	       + a5*phi_site[nop*index1 + n]
+	       + a6*phi_site[nop*le_site_index(ic, jc, kc+2) + n]
+	       + a7*phi_site[nop*le_site_index(ic, jc, kc+3) + n]);
 	  }
 	}
 
