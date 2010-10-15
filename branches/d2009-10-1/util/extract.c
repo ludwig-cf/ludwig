@@ -3,7 +3,8 @@
  *  extract.c
  *
  *  This program deals with the consolidation of parallel I/O
- *  (in serial).
+ *  (and in serial with Lees-Edwards planes). This program is
+ *  serial.
  *
  *  To process/recombined parallel I/O into a single file with the
  *  correct order (ie., z running fastest, then y, then x) run
@@ -20,10 +21,11 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.8 2010-02-22 14:10:05 kevin Exp $
+ *  $Id: extract.c,v 1.8.2.1 2010-10-15 11:31:32 kevin Exp $
  *
- *  Edinburgh Soft Matter and Statistical Physics Grouand and
+ *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
+ *
  *  (c) The University of Edinburgh (2008)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -44,12 +46,13 @@ int pe_[3];
 int nplanes_ = 0;
 int nio_;
 int nrec_ = 1;
-int input_isbigendian_ = -1;
+int input_isbigendian_ = -1;   /* May need to deal with endianness */
+int output_binary_ = 0;        /* Switch for format of final output */
+
 double le_speed_ = 0.0;
 double le_displace_ = 0.0;
 double * le_displacements_;
 double * le_duy_;
-int output_binary_ = 0;
 
 char stub_[FILENAME_MAX];
 
