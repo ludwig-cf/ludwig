@@ -4,7 +4,7 @@
  *
  *  Colloid potentials and colloid-colloid interactions.
  *
- *  $Id: interaction.c,v 1.21 2010-10-15 12:40:03 kevin Exp $
+ *  $Id: interaction.c,v 1.22 2010-10-19 08:28:37 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -138,9 +138,11 @@ void COLL_init() {
   int n;
   int init_from_file;
   int init_random;
+  int ncell[3];
   char filename[FILENAME_MAX];
   char keyvalue[128];
   double a0, ah, dh;
+  double width;
 
   /* Default position: no colloids */
 
@@ -151,6 +153,26 @@ void COLL_init() {
 
   if (strcmp(keyvalue, "random") == 0) init_random = 1;
   if (strcmp(keyvalue, "from_file") == 0) init_from_file = 1;
+
+  if (init_random || init_from_file) {
+
+    /* Set the list list width. */
+    n = RUN_get_double_parameter("colloid_cell_min", &width);
+    if (n == 0) {
+      info("Must set a minimum cell width for colloids colloid_cell_min\n");
+      fatal("Stop.\n");
+    }
+    ncell[X] = L(X) / (cart_size(X)*width);
+    ncell[Y] = L(Y) / (cart_size(Y)*width);
+    ncell[Z] = L(Z) / (cart_size(Z)*width);
+
+    if (ncell[X] < 2 || ncell[Y] < 2 || ncell[Z] < 2) {
+      info("[Error  ] Please check the cell width (cell_list_lmin).\n");
+      fatal("[Stop] Must be at least two cells in each direction.\n");
+    }
+
+    colloids_cell_ncell_set(ncell);
+  }
 
   colloids_init();
   magnetic_field_runtime();
@@ -371,6 +393,7 @@ void COLL_forces() {
   if (nc > 0) {
 
     COLL_zero_forces();
+
     hminlocal = COLL_interactions();
     COLL_set_fluid_gravity();
     ewald_sum();
