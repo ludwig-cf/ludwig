@@ -4,7 +4,7 @@
  *
  *  Run time colloid I/O settings.
  *
- *  $Id: colloid_io_rt.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id: colloid_io_rt.c,v 1.3 2010-10-19 07:45:28 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -36,6 +36,7 @@ void colloid_io_run_time(void) {
   /* Defaults */
 
   colloid_io_format_input_serial_set();
+  colloid_io_format_input_ascii_set();
   colloid_io_format_output_ascii_set();
 
   info("\n");
@@ -56,7 +57,7 @@ void colloid_io_run_time(void) {
   if (strncmp("ASCII_SERIAL",  tmp, 12) == 0 ) {
     colloid_io_format_input_ascii_set();
     colloid_io_format_input_serial_set();
-    info("Input format:  ascii serial single file\n");
+    info("Input file:    serial single file\n");
   }
 
   if (strncmp("BINARY", tmp, 6) == 0 ) {
@@ -67,7 +68,7 @@ void colloid_io_run_time(void) {
   if (strncmp("BINARY_SERIAL", tmp, 6) == 0 ) {
     colloid_io_format_input_binary_set();
     colloid_io_format_input_serial_set();
-    info("Input format:  binary serial single file\n");
+    info("Input file:    serial single file\n");
   }
 
   nuser = RUN_get_string_parameter("colloid_io_format_output", tmp, 256);
