@@ -16,7 +16,7 @@
 #  If a given keyword does not appear, or is commented out, a default
 #  value will be used.
 #
-#  $Id: input.ref,v 1.12 2010-10-15 12:40:03 kevin Exp $
+#  $Id: input.ref,v 1.13 2010-10-19 08:28:37 kevin Exp $
 #
 ##############################################################################
 
@@ -237,10 +237,16 @@ leslie_ericksen_swim  0.0
 #                 active   Include active terms in BBL
 #                 subgrid  No bbl ("unresolved particles")
 #
+#  colloid_cell_min:
+#                 This MUST be set if colloids are present: it specifies
+#                 the minimum cell list width, and must be at least 2ah
+#                 + delta, where delta catches any colloid-colloid
+#                 interactions. 
+#
 ###############################################################################
 
 colloid_type        inactive
-colloid_init        random
+colloid_init        no_colloids
 
 colloid_random_no   1
 colloid_random_a0   2.3
@@ -250,8 +256,9 @@ colloid_random_dh   0.4
 # Constant body force on all colloids ("gravity") [default is zero]
 # Uniform magnetic field [default is zero]
 
-colloid_gravity 0.0_0.0_0.0
-magnetic_b0     0.0_0.0_0.0
+colloid_cell_min 8.0
+colloid_gravity  0.0_0.0_0.0
+magnetic_b0      0.0_0.0_0.0
 
 # Colloid-colloid lubrication corrections
 
