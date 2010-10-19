@@ -4,7 +4,7 @@
  *
  *  Halo exchange of colloid state information.
  *
- *  $Id: colloids_halo.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id: colloids_halo.c,v 1.3 2010-10-19 07:48:21 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -124,33 +125,36 @@ void colloids_halo_dim(int dim) {
 void colloids_halo_send_count(int dim, int nsend[2]) {
 
   int ic, jc, kc;
+  int ncell[3];
+
+  colloids_cell_ncell(ncell);
 
   nsend[BACKWARD] = 0;
   nsend[FORWARD] = 0;
 
   if (dim == X) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
 	nsend[BACKWARD] += colloids_cell_count(1, jc, kc);
-	nsend[FORWARD] += colloids_cell_count(Ncell(X), jc, kc); 
+	nsend[FORWARD] += colloids_cell_count(ncell[X], jc, kc); 
       }
     }
   }
 
   if (dim == Y) {
-    for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+    for (ic = 0; ic <= ncell[X] + 1; ic++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
 	nsend[BACKWARD] += colloids_cell_count(ic, 1, kc);
-	nsend[FORWARD] += colloids_cell_count(ic, Ncell(Y), kc); 
+	nsend[FORWARD] += colloids_cell_count(ic, ncell[Y], kc); 
       }
     }
   }
 
   if (dim == Z) {
-    for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-      for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+    for (ic = 0; ic <= ncell[X] + 1; ic++) {
+      for (jc = 0; jc <= ncell[Y] + 1; jc++) {
 	nsend[BACKWARD] += colloids_cell_count(ic, jc, 1);
-	nsend[FORWARD] += colloids_cell_count(ic, jc, Ncell(Z)); 
+	nsend[FORWARD] += colloids_cell_count(ic, jc, ncell[Z]); 
       }
     }
   }
@@ -171,8 +175,11 @@ static void colloids_halo_load(int dim, const int nsend[2]) {
   int noff;         /* Offset in the send buffer to fill */
   int nsent_forw;   /* Counter for particles put into send forw buffer */
   int nsent_back;   /* Counter for particles put into send back buffer */
+  int ncell[3];
   double rforw[3];
   double rback[3];
+
+  colloids_cell_ncell(ncell);
 
   nsent_forw = 0;
   nsent_back = 0;
@@ -182,39 +189,42 @@ static void colloids_halo_load(int dim, const int nsend[2]) {
     rforw[p] = 0.0;
   }
 
+  /* The factor (1-epsilon) here is to prevent problems associated
+   * with a colloid position *exactly* on a cell boundary. */
+
   p = cart_coords(dim);
-  if (p == 0) rback[dim] = L(dim);
+  if (p == 0) rback[dim] = (1.0-DBL_EPSILON)*L(dim);
   if (p == cart_size(dim) - 1) rforw[dim] = -L(dim);
 
   if (dim == X) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
 	noff = nsent_back;
 	nsent_back += colloids_halo_load_list(1, jc, kc, rback, noff);
 	noff = nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(Ncell(X), jc, kc, rforw, noff);
+	nsent_forw += colloids_halo_load_list(ncell[X], jc, kc, rforw, noff);
       }
     }
   }
 
   if (dim == Y) {
-    for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+    for (ic = 0; ic <= ncell[X] + 1; ic++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
 	noff = nsent_back;
 	nsent_back += colloids_halo_load_list(ic, 1, kc, rback, noff);
 	noff = nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(ic, Ncell(Y), kc, rforw, noff); 
+	nsent_forw += colloids_halo_load_list(ic, ncell[Y], kc, rforw, noff); 
       }
     }
   }
 
   if (dim == Z) {
-    for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-      for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+    for (ic = 0; ic <= ncell[X] + 1; ic++) {
+      for (jc = 0; jc <= ncell[Y] + 1; jc++) {
 	noff = nsent_back;
 	nsent_back += colloids_halo_load_list(ic, jc, 1, rback, noff);
 	noff = nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(ic, jc, Ncell(Z), rforw, noff); 
+	nsent_forw += colloids_halo_load_list(ic, jc, ncell[Z], rforw, noff); 
       }
     }
   }
