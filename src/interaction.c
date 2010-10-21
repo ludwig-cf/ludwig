@@ -4,7 +4,7 @@
  *
  *  Colloid potentials and colloid-colloid interactions.
  *
- *  $Id: interaction.c,v 1.22 2010-10-19 08:28:37 kevin Exp $
+ *  $Id: interaction.c,v 1.23 2010-10-21 18:13:42 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <float.h>
 #include <math.h>
@@ -54,8 +55,6 @@ static void    COLL_set_fluid_gravity(void);
 void lubrication_sphere_sphere(double a1, double a2,
 			       const double u1[3], const double u2[3],
 			       const double r12[3], double f[3]);
-static void    COLL_init_colloids_test(void);
-static void    COLL_test_output(void);
 static void    coll_position_update(void);
 static void    lubrication_init(void);
 static void    colloid_forces_check(void);
@@ -118,7 +117,6 @@ void COLL_update() {
 
     TIMER_stop(TIMER_REBUILD);
 
-    COLL_test_output();
     COLL_forces();
   }
 
@@ -141,8 +139,10 @@ void COLL_init() {
   int ncell[3];
   char filename[FILENAME_MAX];
   char keyvalue[128];
-  double a0, ah, dh;
+  double dh;
   double width;
+
+  colloid_state_t * state0;
 
   /* Default position: no colloids */
 
@@ -195,13 +195,26 @@ void COLL_init() {
     }
 
     if (init_random) {
+      state0 = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
+      assert(state0 != NULL);
+
       /* Minimal error testing here at the moment. */
       RUN_get_int_parameter("colloid_random_no", &n);
-      RUN_get_double_parameter("colloid_random_a0", &a0);
-      RUN_get_double_parameter("colloid_random_ah", &ah);
+      RUN_get_double_parameter("colloid_random_a0", &state0->a0);
+      RUN_get_double_parameter("colloid_random_ah", &state0->ah);
+      RUN_get_double_parameter_vector("colloid_random_r0", state0->r);
+      RUN_get_double_parameter_vector("colloid_random_v0", state0->v);
+      RUN_get_double_parameter_vector("colloid_random_w0", state0->w);
+      RUN_get_double_parameter_vector("colloid_random_s0", state0->s);
+      RUN_get_double_parameter_vector("colloid_random_m0", state0->m);
+      RUN_get_double_parameter("colloid_random_b1", &state0->b1);
+      RUN_get_double_parameter("colloid_random_b2", &state0->b2);
       RUN_get_double_parameter("colloid_random_dh", &dh);
-      colloids_init_random(n, a0, ah, dh);
-      info("Initialised %d colloid%s at random\n", n, (n > 1) ? "s" : "");
+
+      colloids_init_random(n, state0, dh);
+      info("Initialised %d colloid%s from input\n", n, (n > 1) ? "s" : "");
+
+      free(state0);
     }
 
     n = RUN_get_double_parameter_vector("colloid_gravity", g_);
@@ -279,100 +292,6 @@ static void lubrication_init(void) {
 
   return;
 }
-
-/*****************************************************************************
- *
- *  COLL_init_colloids_test
- *
- *  This is a routine which hardwires a small number
- *  of colloids for tests of colloid physics.
- *
- *  Serial.
- *
- *****************************************************************************/
-
-void COLL_init_colloids_test() {
-
-#ifdef _COLLOIDS_TEST_
-
-  double r0[3];
-  colloid_t * p_colloid;
-  double    a0 = 2.3;
-  double    ah = 2.3;
-
-  /* Autocorrelation test. */
-
-  r0[X] =  .0 + 1.0*L(X);
-  r0[Y] =  .0 + 1.0*L(Y);
-  r0[Z] =  .0 + 0.5*L(Z);
-
-  p_colloid = colloid_add(1, r0);
-
-  assert(p_colloid);
-
-  p_colloid->s.a0 = a0;
-  p_colloid->s.ah = ah;
-
-  p_colloid->s.v[X] = get_eta_shear()/ah;
-  p_colloid->s.v[Y] = 0.0;
-  p_colloid->s.v[Z] = 0.0;
-
-  p_colloid->stats[X] = p_colloid->s.v[X];
-
-  p_colloid->s.w[X] = 0.0;
-  p_colloid->s.w[Y] = 0.0;
-  p_colloid->s.w[Z] = 0.0*get_eta_shear()/(ah*ah);
-
-  p_colloid->s.m[X] = 1.0;
-  p_colloid->s.m[Y] = 0.0;
-  p_colloid->s.m[Z] = 0.0;
-
-  colloids_ntotal_set();
-
-#endif
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  COLL_test_output
- *
- *  Look at the particles in the domain proper and perform
- *  diagnostic output as required.
- *
- *****************************************************************************/
-
-void COLL_test_output() {
-
-  colloid_t * p_colloid;
-  int       ic, jc, kc;
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	p_colloid = colloids_cell_list(ic, jc, kc);
-
-	while (p_colloid) {
-#ifdef _COLLOIDS_TEST_
-	  verbose("Autocorrelation test output: %10.9f %10.9f\n",
-		  p_colloid->s.r[X], p_colloid->s.v[X]/p_colloid->stats[X]);
-	  /*verbose("Autocorrelation omega: %10.9f %10.9f %10.9f\n",
-		  p_colloid->w.z/p_colloid->stats[X], p_colloid->dir.x,
-		  p_colloid->dir.y);*/
-#endif
-	  p_colloid = p_colloid->next;
-
-	}
-      }
-    }
-  }
-
-  return;
-}
-
 
 /*****************************************************************************
  *

@@ -2,7 +2,7 @@
  *
  *  colloids_init.h
  *
- *  $Id: colloids_init.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id: colloids_init.h,v 1.3 2010-10-21 18:13:42 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -14,6 +14,6 @@
 
 #ifndef COLLOIDS_INIT_H
 
-void colloids_init_random(int n, double a0, double ah, double dh);
+void colloids_init_random(int n, const colloid_state_t * state0, double dh);
 
 #endif
