@@ -16,7 +16,7 @@
 #  If a given keyword does not appear, or is commented out, a default
 #  value will be used.
 #
-#  $Id: input.ref,v 1.13 2010-10-19 08:28:37 kevin Exp $
+#  $Id: input.ref,v 1.14 2010-10-21 18:13:42 kevin Exp $
 #
 ##############################################################################
 
@@ -246,12 +246,17 @@ leslie_ericksen_swim  0.0
 ###############################################################################
 
 colloid_type        inactive
-colloid_init        no_colloids
+colloid_init        random
 
 colloid_random_no   1
+colloid_random_dh   0.4
+
 colloid_random_a0   2.3
 colloid_random_ah   2.3
-colloid_random_dh   0.4
+colloid_random_r0   64.0_64.0_32.0
+colloid_random_v0   0.0_0.0_0.0
+colloid_random_s0   1.0_0.0_0.0
+colloid_random_m0   1.0_0.0_0.0
 
 # Constant body force on all colloids ("gravity") [default is zero]
 # Uniform magnetic field [default is zero]
