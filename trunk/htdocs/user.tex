@@ -1,0 +1,783 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  user.tex
+%
+%  The 'user' section which holds an overview, and discusses
+%  compilation and running.
+%
+%  $Id: user.tex,v 1.1 2010-10-21 18:05:50 kevin Exp $
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  Kevin Stratford (kevin@epcc.ed.ac.uk)
+%  (c) 2010 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+
+\subsection{Overview}
+
+We aim to provide a robust and portable code, written in C, which
+can be used to perform serial and scalable parallel simulations of
+complex fluid systems based around hydrodynamics via the Lattice
+Boltzmann method. Complex fluids are introduced via a free energy,
+of which a number of different examples are available. The preferred
+method of dealing with the corresponding order parameter equations
+is now by using finite difference. However, for the case of a binary
+fluid, the `full LB' approach, using two distributions, is retained
+as an option for the time being.
+
+\subsection{Availability}
+
+We have a NeSCForge project account available at
+
+\texttt{http://forge.nesc.ac.uk/projects/ludwig/}
+
+This provides controlled access to known persons and provide CVS, bug
+tracking, and so on. The NeSCForge CVS is not available to the public.
+
+\textbf{IMPORTANT:} NeSCForge is scheduled to go out of service on 20th
+December 2010. KS will announce an alternative as soon as possible.
+This may mean some disruption.
+
+To download, e.g., the \texttt{src} module, you need
+\begin{verbatim}
+cvs -z3 -d:ext:developername@forge.nesc.ac.uk:/cvsroot/ludwig co src
+\end{verbatim}
+where \texttt{developername} is replaced by your Nescforge user name.
+(Note that this requires secure shell; you may need to set the
+environment variable \texttt{CVS\_RSH=ssh} if you do not appear
+to be getting any response.)
+
+Currently, you need to download at least the cvs modules \texttt{src},
+and \texttt{mpi\_s}. The \texttt{mpi\_s} module contains a `stub'
+library to replace MPI in serial, and is required to run in serial.
+This documentation is in the module
+\texttt{htdocs}, unit tests are in \texttt{tests}, and the utilities
+are in the module \texttt{util}.
+
+
+\subsection{Compilation}
+
+Locate your local C compiler. The following example uses \texttt{gcc}
+in serial, and \texttt{mpicc} in parallel. For MPI in particular,
+local details may vary.
+
+\subsubsection{Serial}
+
+First, compile the MPI stub library in the \texttt{mpi\_s}
+directory. Do this by editing the Makefile, and checking the compiler
+is appropriate. You should be able to build the library and run the
+tests using, e.g.,:
+
+\begin{verbatim}
+$ make libc
+gcc -Wall -I.  -c mpi_serial.c
+ar -cru libmpi.a mpi_serial.o
+$ make testc
+gcc -Wall   mpi_tests.c -L. -lmpi
+./a.out
+Running mpi_s tests...
+Finished mpi_s tests ok.
+\end{verbatim}
+
+Now compile the main code in the \texttt{src} directory. Again
+edit the Makefile to check the compiler. At this stage, you also
+need to choose the LB model using exactly one of the preprocessor
+options for D2Q9 (fluid only problems), D3Q15, or D3Q19. Now type,
+e.g., using D3Q19:
+
+\begin{verbatim}
+$ make serial
+gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d2q9.c
+gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d3q15.c
+gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d3q19.c
+gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c model.c
+...
+\end{verbatim}
+
+This should provide an executable \texttt{Ludwig.exe} which is linked
+against the MPI stub library.
+
+\subsubsection{Parallel}
+
+Here, you do not need to compile the stub library. Simply compile
+the main code with, e.g.,:
+\begin{verbatim}
+$ make mpi
+mpicc -D_D3Q19_ -O3 -Wall -I. -c d2q9.c
+mpicc -D_D3Q19_ -O3 -Wall -I. -c d3q15.c
+mpicc -D_D3Q19_ -O3 -Wall -I. -c d3q19.c
+mpicc -D_D3Q19_ -O3 -Wall -I. -c model.c
+...
+\end{verbatim}
+
+Invoke the executable with the MPI launcher in the usual way for your
+system, e.g., \texttt{mpirun -np 8 ./Ludwig.exe} for 8 processors,
+and so on.
+
+\subsubsection{C assertions}
+
+The code makes quite a lot of use of standard C assertions, which
+are useful to prevent errors. They do result in a considerably
+slower execution in some instances, so production runs should
+switch off the assertions with the standard \texttt{NDEBUG}
+preprocessor flag.
+
+
+\section{User Input}
+
+The executable will look for an input file at run time.
+By default, this file is named \texttt{input} and should be in the
+current working directory. The alternative is to specify the name
+of the file explicitly on the command line:
+\begin{verbatim}
+$ ./Ludwig.exe input_file
+\end{verbatim}
+A reference input file \texttt{input.ref} is provided as a template.
+
+The contents of the input file are made up of \textit{key value}
+pairs with control the run-time behaviour. Blank lines and lines
+begining with \# are ignored as comments. The following describes
+the effect of various keys. Most keys have a default value which
+will be used by the code if the corresponding key is not present
+(or commented out) in the input file.
+
+\subsection{Setting up the input}
+
+Decide what free energy you want and check the relevant sections
+of this dcoumentation. If you want a simple fluid only, the free
+energy should be set to \texttt{none}.
+
+You should set at least the basic fluid parameters, the system
+size, and number of steps to be run.
+
+\textbf{IMPORTANT:} Although many incompatible choices of input
+parameters are trapped at run time, you must be careful in how
+the input file is set out. If you mistakenly set or unset some
+options in the input, erroneous results will surely result...
+
+
+\subsection{Basic run parameters}
+
+\inputkey{N\_cycles}
+
+The number of lattice Boltzmann time steps to execute. Default
+value: 0.
+
+\inputkey{N\_start}
+
+By default the code will start from time step $t = 0$. If you 
+wish to restart from a previously saved configuration, set
+the appropriate value for \texttt{N\_start}. The code will
+execute \texttt{N\_cycles} steps starting from this point.
+
+\inputkey{size}
+
+Controls the number of lattice points in the $(x, y, z)$ directions,
+respectively. Default value: 64\_64\_64. If a two-dimensional system
+is required, the $z$-direction can be set to 1.
+
+\inputkey{grid}
+
+In parallel, this sets the processor Cartesian decomposition, i.e.,
+the number of processors in each dimension of the Cartesian communicator.
+The default value may be implementation dependent as it is that returned
+by \texttt{MPI\_Dims\_create()}. For
+example:
+\begin{verbatim}
+size 64_64_64
+grid 4_2_1
+\end{verbatim}
+gives a total (physical) system size of 64 lattice sites in each
+direction, decomposed across 4 processors in the x-direction, 2 in
+the y-direction and 1 (no decomposition) in the z-direction. The
+total number of processors must therefore be 8. The local domain
+size per processor is then 16x32x64.
+
+
+\subsection{Fluid properties}
+
+\inputkey{free\_energy}
+
+This sets the free energy in use, and hence has many consequences.
+The default value is \texttt{none}, i.e., use a simple fluid only.
+The available choices are for symmetric binary fluids, Brazovskii
+smectics, polar active gels, and liquid crystals. The surfactant
+model is currently being rebuilt.
+
+\inputkey{viscosity}
+
+Sets the LB fluid shear viscosity $\eta$ (and related relaxation time).
+Safe values are roughly $0.2 > \eta > 0.0001 $. Default value is 1/6
+(i.e., relaxation time equal to unity).
+
+\inputkey{viscosity\_bulk}
+
+Sets the LB bulk viscosity $\zeta$ (and related relaxation time).
+This can be useful if you are concerned with incompressiblity
+violations, in which case $\zeta >> \eta$ can be useful. The
+default value is $\zeta = \eta$.
+
+\inputkey{isothermal\_fluctuations}
+
+This switches on the fluctuationing hydrodynamics. Default is off.
+
+\inputkey{temperature}
+
+The LB 'temperature' using fluctuating hydrodynamics. Safe values
+are $0.0001 > kT > 0$. 
+
+\inputkey{ghost\_modes}
+
+Allows you to switch the ghost modes off in the collision stage.
+Default is on.
+
+
+\subsection{Symmetric binary fluid}
+
+\inputkey{free\_energy symmetric}
+
+The following applies for the binary fluid problem with
+compositional order parameter $\phi$ and free energy
+(excluding the term in the density $\rho$):
+\begin{equation}
+ F[\phi] = 
+\int dr \left(
+{\textstyle \frac{1}{2}}A\phi^2
++ {\textstyle \frac{1}{4}}B\phi^4
++ {\textstyle \frac{1}{2}}\kappa (\mathbf{\nabla}\phi)^2 \right).
+\end{equation}
+
+This is described in some detail
+by Kendon et al \cite{viv}. The first two terms represent the bulk
+contribution, whereas the term in $\kappa$ penalises curvature in
+the interface.
+
+\inputkey{A} The parameter $A$. Note $A < 0$.
+
+\inputkey{B} The parameter $B$. Note $B = -A$ for common usage,
+although this is not enforced.
+
+\inputkey{K} The parameter $\kappa$, which is positive.
+
+The order parameter evolution is determined by a Cahn-Hilliard equation
+with mobility set by
+
+\inputkey{mobility} Sets mobility $M$ (uniform in space).
+
+The following parameters control the initialisation of the order
+parameter.
+
+\inputkey{phi\_initialisation}
+
+Determines how the compositional order parameter is initialised
+at the start of the run. If set to \texttt{spinodal} the value
+is set to $\phi_0$ as set above plus or minus a random noise, the
+magnitude of which is set by the value of the \texttt{noise} key.
+If set to \texttt{block} a one-dimensional profile is set up in
+the $z$-direction representing two blocks of fluid with
+$\phi = \pm 1$. The two interfaces are set at $z = L_z/4$ and
+$z = 3L_z/4$ with the equilibrium $\tanh(z/\xi_0)$ profile having 
+appropriate width. The $\phi = -1$ section is in the middle.
+
+\inputkey{phi0}
+
+The mean compositional order parameter roughly $-0.5 < \phi_0 < 0.5$.
+The default value is zero, i.e., a symmetric 50:50 mixture by volume.
+
+\inputkey{noise}
+
+The magnitude of the initial fluctuations in $\phi$ used to
+initiate spinodal decomposition.
+
+\subsubsection{Binary fluid using two distributions}
+
+\inputkey{symmetric\_lb}
+
+This is the special case where the composition is represented
+by a second LB distribution, and an appropriate lattice kinetic
+equation approximating the Cahn-Hilliard equation is solved.
+In this case the above parameters have the same meaning.
+
+
+\subsection{Brazovskii}
+
+\inputkey{free\_energy brazovskii}
+
+This is similar to the symmetric free energy, but with one extra term
+in a higher derivative of $\phi$.
+\begin{equation}
+ F[\phi] = 
+\int dr \left(
+{\textstyle \frac{1}{2}}A\phi^2
++ {\textstyle \frac{1}{4}}B\phi^4
++ {\textstyle \frac{1}{2}}\kappa (\mathbf{\nabla}\phi)^2
++ {\textstyle \frac{1}{2}} C (\nabla^2 \phi)^2 \right).
+\end{equation}
+
+The parameters now include $C$. For $A<0$, phase separation occurs
+with a result depending on $\kappa$: ones get two symmetric phases
+for $\kappa >0$ (cf. symmetric) or a lamellar phase for
+$\kappa < 0$.
+
+\inputkey{A} Bulk parameter $A < 0$.
+
+\inputkey{B} Bulk parameter $B = -A$.
+
+\inputkey{K} Negative for lamellar phase.
+
+\inputkey{C} Positive.
+
+Other parameters, including the mobility, are set as for the
+symmetric free energy (see above).
+
+
+\subsection{Surfactant in binary fluid}
+
+\inputkey{free\_energy surfactant}
+
+Currently under reconstruction.
+
+This is for use with a two order parameter model the first of
+which is the composition, as for the symmetric free energy,
+while the second $\psi$ represents surfactant concentration.
+The free energy density is made up of a number of terms:
+
+\begin{equation}
+{\textstyle \frac{1}{2}}A\phi^2
++ {\textstyle \frac{1}{4}}B\phi^4
++ {\textstyle \frac{1}{2}}\kappa (\mathbf{\nabla}\phi)^2
+\end{equation}
+is the standard symmetric term related to the composition.
+These parameters are represented in the input as
+
+\inputkey{surf\_A}
+\inputkey{surf\_B}
+\inputkey{surf\_kappa}
+
+\begin{equation}
+D \left(\psi \ln\psi + (1 - \psi) \ln(1-\psi)\right)
+\end{equation}
+represents the energy of surfactant in the bulk phase with surfactant
+concentration $0 < \psi < 1$ with a single parameter $D$;
+\begin{equation}
+-{\textstyle \frac{1}{2}} \epsilon \psi (\mathbf{\nabla} \phi)^2
+-{\textstyle \frac{1}{2}} \beta \psi^2  (\mathbf{\nabla} \phi)^2
+\end{equation}
+where the term in $\epsilon$ represents the energy reduction by
+adsorbing surfactant at the interface and the term in $\beta$
+provides an additional favourable term modelling the fact that
+the molecules like to line up; finally, there is an extra term
+\begin{equation}
++{\textstyle \frac{1}{2}} W \psi \phi^2
+\end{equation}
+which is included to stabilise the interface \cite{theissengompper}.
+
+The corresponding keys for the input file are:
+
+\inputkey{D} is the bulk surfactant contribution parameter
+
+\inputkey{epsilon} is the parameter $\epsilon$
+
+\inputkey{W} is the parameter $W$
+
+\inputkey{beta} is the value of the parameter $\beta$.
+
+\inputkey{phi\_b} the initial, uniform, background surfactant
+concentration $\psi_b$.
+
+\inputkey{mobility\_psi} Sets the (uniform) mobility for the surfactant
+as appropriate for the Cahn-Hilliard equation.
+
+
+\subsection{Polar Active Gel}
+
+\inputkey{free\_energy polar\_active}
+
+This models a polar active gel with vector order parameter $P_\alpha$.
+The free energy density is:
+
+
+The corresponding input parameters are:
+
+\inputkey{polar\_active\_a}
+
+\inputkey{polar\_active\_b}
+
+\inputkey{polar\_active\_k}
+
+\inputkey{polar\_active\_klc}
+
+\inputkey{polar\_active\_zeta}
+
+\inputkey{polar\_active\_lambda}
+
+\inputkey{leslie\_ericksen\_gamma}
+
+\inputkey{leslie\_ericksen\_swim}
+
+
+\subsection{Liquid Crystal}
+
+\inputkey{free\_energy lc\_blue\_phase}
+
+Here, we have a tensor order parameter $Q_{\alpha\beta}$.
+The free energy density is
+\begin{eqnarray}
+f = {\textstyle\frac{1}{2}}A_0(1 - \gamma/3)Q^2_{\alpha\beta}
+  - {\textstyle\frac{1}{3}}A_0 \gamma
+Q_{\alpha\beta}Q_{\beta\delta}Q_{\delta\alpha}
+ + {\textstyle\frac{1}{4}}A_0 \gamma (Q^2_{\alpha\beta})^2
+\nonumber
+\\
++ {\textstyle\frac{1}{2}} \Big(
+\kappa_0 (\epsilon_{\alpha\delta\sigma} \partial_\delta Q_{\sigma\beta} +
+2q_0 Q_{\alpha\beta})^2 + \kappa_1(\partial_\alpha Q_{\alpha\beta})^2 \Big)
+\end{eqnarray}
+
+The corresponding input parameters are:
+
+\inputkey{lc\_a0} The bulk free energy parameter $A_0$
+
+\inputkey{lc\_gamma} The bulk free energy parameter $\gamma$
+
+\inputkey{lc\_q0} The pitch wavenumber $q_0 = 2\pi / p$, where p
+is the pitch.
+
+\inputkey{lc\_kappa0} Elastic constant $\kappa_0$ in distortion free energy
+
+\inputkey{lc\_kappa1} Elastic constant $\kappa_1$ in distortion free energy
+
+Note that the code currently enforces the `one elastic constant'
+approximation ($\kappa_0 = \kappa_1$), so both these values must
+be equal in the input. This constraint may be relaxed in the future.
+
+
+\inputkey{lc\_Gamma} The rotational diffusion constant appearing in
+the Beris Edwards equation (note \texttt{lc\_gamma} and \texttt{lc\_Gamma}
+are different).
+
+\inputkey{lc\_xi} Aspect ratio for rod lie molecules appearing in the
+stress tensor.
+
+
+\subsubsection{Initial LC order parameter $Q_{\alpha\beta}$}
+
+\inputkey{lc\_q\_initialisation}
+
+There are a number of useful choices here. The key value
+\texttt{twist} initialises a simple cholesteric with the
+helical axis in the $z-$direction;  \texttt{o8m}
+gives equilibrium BPI, \texttt{o2} gives BPII. The appropriate
+choices for the other parameters must be made correspondingly.
+
+An additional \texttt{lc\_q\_init\_amplitude} value sets the
+scalar order parameter  `amplitude' in each case.
+
+\subsubsection{The redshift}
+
+\inputkey{lc\_init\_redshift}
+
+Sets the initial value of the redshift parameter. For example,
+for the \texttt{o8m} initialisation, the redshift can be set to 0.83,
+and for the \texttt{o2} initialisation, the redshift can be set to 0.91.
+The default redshift is unity.
+
+\subsection{Colloidal particles}
+
+The are a number of important options required for colloids. If
+none of these keys are present, no colloids will be used.
+
+\inputkey{colloid\_init}
+
+This determines how the code initialises particles (or not). As stated, the
+default is to have no particles (value \texttt{no\_colloids}). There
+are two other options at the moment.
+
+There are two options:
+
+\inputkey{colloid\_init    from\_file}
+
+requires a preprepared file of colloid information. To understand
+how to create such a file in the correct format,
+see the example program \texttt{colloid\_file.c} in the util
+directory.
+
+\inputkey{colloid\_init   random}
+
+This may be useful to initialise a limited number of colloids at
+low volume fraction. Note that there is no guarantee that the
+particles do not overlap, in which case the initialisation will
+terminate. The number of particles and their properties
+are determined by the value of the keys described below.
+
+\inputkey{colloid\_type}
+
+This controls the the type of particle. Appropriate values are
+\texttt{inactive}, giving a standard fully resolved LB colloid;
+\texttt{active} switches on the correction to BBL appropriate
+for active particles (expecting parameters $b_0$ and $b_1$ to be
+set); \texttt{subgrid} gives unresolved particles (radius $< 1$
+lattice unit) and no BBL.
+
+If more than one particle is used, all positions are set at random.
+
+
+\inputkey{colloid\_gravity  0.0\_0.0\_-0.0001}
+
+Sets a body force on each particle. Useful, for example, for
+sedimentation. For example, the above gives a constant force in
+the negative $z$-direction on each particle.
+The code automatically computes the compensating body force on fluid
+nodes required to give no net change in the total momentum of the
+system at each time step.
+
+\inputkey{colloid\_cell\_min}
+
+This sets the minimum cell list width. The cell list has a number
+of purposes: it is used to compute colloid-colloid interactions
+at $O(N)$, but it is also used in the message passing episodes
+for the colloids. This key must be set and there must be at least
+two cells per processor domain.
+
+
+\subsubsection{Initialisation from file}
+
+A file containing initial state properties for one or more colloids
+can be read at run file. This file must be of the correct from, but
+can be ASCII or binary. To help to create such a file, an example
+is given in \texttt{./util/colloid\_file.c}. This file will be
+read correctly in both serial and in parallel. Colloid positions
+should always be in terms of the global coordinates. By default,
+the input expected is \texttt{config.cds.init.001-001}.
+
+All colloid output is in serial (ie., a single file is produced)
+at the moment. Again, it may be ASCII or binary.
+
+\subsubsection{Initialisation at random}
+
+\inputkey{colloid\_random\_no} Sets the total number of particles
+
+\inputkey{colloid\_random\_a0}
+
+\inputkey{colloid\_random\_ah}
+
+\inputkey{colloid\_random\_dh}
+
+The parameter $a_0$ the nominal radius of the particle on the lattice.
+This is used to construct the links for BBL. The smallest acceptable LB
+particle is $a_0 = 1.25$ (approximately). There are 'magic' values
+including 1.25, 2.3, 3.7, 4.77 which minimise discretisation effects.
+The hydrodynamic radius of the particles is $a_h$. For all
+reasonable applications choose $a_h = a_0$. This is the radius for
+all physical purposes. The \texttt{colloid\_random\_dh} parameter
+specifies the smallest allowed surface-surface separation if two or
+more particles (or walls) are required. This is useful to prevent
+very close particles experiencing large and destabilising interactions
+at start time.
+
+The other state for the initial colloids can be set uniformly by
+means of the keys:
+
+\inputkey{colloid\_random\_v0} initial velocity vector
+
+\inputkey{colloid\_random\_w0} initial angular velocity vector
+
+\inputkey{colloid\_random\_s0} initial spin vector
+
+\inputkey{colloid\_random\_m0} initial direction of motion vector for active
+particles
+
+\inputkey{colloid\_random\_b1} active parameter $b_1$
+
+\inputkey{colloid\_random\_b2} active parameter $b_2$ (should be combined
+with the \texttt{active} particle type key as discussed above).
+
+There is one special case. If you want exactly one particle, you may
+set its initial position with
+
+\inputkey{colloid\_random\_r0} the initial position vector.
+
+\subsection{Boundary conditions}
+
+Solid planar boundary walls can be added at the extremities of the
+system (i.e., the volume of fluid is exactly that specified by
+the \texttt{size} keyword). The wall can be in one, two or all three
+coordinate directions, i.e., a 'slab' geometry, and 'duct' geometry
+or a 'box' geometry, respectively.
+
+The boundary walls are switched on via the keyword value pair
+
+\inputkey{boundary\_walls\_on [no | yes]}
+
+If \texttt{yes} then the geometry is specified with the keyword
+as one of
+
+\inputkey{periodicity [1\_1\_1 | 1\_1\_0 | 1\_0\_0 | 0\_0\_0]}
+
+Note that these are the only valid selections. \texttt{1\_1\_0}
+gives periodic boundaries in the $x-$ and $y-$directions, with
+walls at either edge in the $z-$direction. \texttt{1\_0\_0}
+gives periodic conditions in the $x-$ direction only, while
+\texttt{0\_0\_0} is a fully enclosed box.
+
+In the case of the slab geometry, two further values are used so
+that shear may be imparted to the system:
+
+\inputkey{boundary\_speed\_bottom}
+
+\inputkey{boundary\_speed\_top}
+
+These values set the $x-$component of the wall velocity at
+$z = z_{min}$ and $z = z_{max}$, respectively. Like all
+velocities, these values must respect the low Mach number
+constraint $u_x < c_s$.
+
+\subsection{Lees-Edwards planes}
+
+\inputkey{N\_LE\_plane}
+
+sets the total number of Lees-Edwards planes. Default is zero.
+The placing is as followings. The number of planes $n$ must
+divide the lattice size in the $x$-direction to give an integer
+$\delta x$. Planes are then placed at $\delta x / 2, 3\delta x/2, \ldots$.
+
+\inputkey{LE\_plane\_vel}
+
+sets the velocity of each plane relative to the lattice. All planes
+have the same, constant, velocity.
+
+\inputkey{LE\_init\_profile}
+
+if set to 1, the fluid velocity is initialise to reflect a steady
+state shear flow appropriate for the number of planes at the
+given velocity. If set to zero, the fluid is initialised with
+zero velocity.
+
+Note that when the Lees Edwards boundaries are in place, output
+files containing lattice quantities must be `unrolled' to remove
+the time-dependent displacement of the planes. This is done using
+the extraction utility (see section on parallel I/O).
+
+\subsection{Input/Output}
+
+\subsubsection{Serial I/O and standard output}
+
+A variety of information is printed to standard output during the
+course of the simulation. This should allow the user to keep track
+of basic progress in terms of integrated quantities, total mass,
+total momentum and so on. Frequency of output is controlled by
+
+\inputkey{freq\_statistics}
+
+which is an integer. Note that these global statistics require
+global communication, and so can affect performance in parallel.
+It is recommended that the frequency is kept to a minimum for
+large systems (e.g., every 500 or 1000 time steps). This
+consideration is true for most types of output (see section
+on parallel I/O).
+
+\subsubsection{Configurations}
+
+It may be appropriate to save entire model configurations from
+time to time, and certainly when a restart is wanted. For each lattice
+quantity, in addition to the data themselves, the program produces a
+single meta-data file (ending in
+\texttt{.meta}) which is used to describe these data. Colloid
+data does not require a meta-data file at the moment.
+
+\inputkey{freq\_config}
+
+This is an integer and sets the frequency of full configuration dumps.
+These may be large depending on the size of the system.
+Full configurations should consist of the LB distributions,
+order parameter (if present) and colloids (if present).
+
+
+\inputkey{config\_at\_end [yes | no]} 
+
+forces (or switches off) a configuration dump at the end of the run.
+The default is to produce a configuration at the end of the run.
+
+\subsubsection{Other lattice quantities}
+
+A number of other lattice-based quantities are available as output.
+
+\inputkey{freq\_measure}
+
+sets the frequency of recording of colloid/order parameter output.
+This includes the combined scalar order parameter and director
+field output in the case of the liquid crystal free energy.
+
+\inputkey{freq\_phi}
+
+set frequency of order parameter output.
+
+\inputkey{freq\_vel}
+
+set frequency of velocity output. Note that all the hydrodynamic
+quantities can be reconstructed from the distribution output, if
+available. If only the velocity field is required, this method
+allows a considerable saving in storage.
+
+
+\subsubsection{I/O format}
+
+
+\inputkey{vel\_format}
+
+\inputkey{phi\_format}
+
+May be either \texttt{ASCII} or \texttt{BINARY}. Default is \texttt{BINARY}.
+Configuration I/O is always in binary. It is recommended to use
+binary output for speed and disk space considerations.
+
+\subsubsection{Parallel I/O}
+
+
+\subsection{Miscellaneous}
+
+\inputkey{random\_seed}
+
+sets the random number generator seed.
+
+\subsection{Dealing with the Parallel I/O files}
+
+When running in parallel, output of lattice-based (and particle)
+quantities takes place in parallel. As a consequence, the order
+of the output in the files is not in the same order as would be
+the case in serial. This means the parallel output must be
+manipulated into the correct order before any analysis.
+
+Parallel I/O subdivides the processors into one or more groups,
+each of which write data to a separate file. Information on the
+content of each of these files is contained in `meta-data' file
+for each quantity, which are produced automatically at the start
+of each run. The files are called, e.g., \texttt{phi.001-001.meta}.
+If there are 8 I/O groups, the files will be named \texttt{008-001}
+to \texttt{008-008} for the different groups.
+
+The actual data is stored for each relevant time step as, e.g.,
+\texttt{phi-000100.001-001} where the extension refers to the
+I/O. To recombined a single, or multiple, data files into a
+single file in the correct order, a utility program
+\texttt{extract.c} is provided.
+
+The executable takes two arguments, e.g.,
+
+\inputkey{./extract phi.001-001.meta phi-000100.001-001}
+
+where  the first is the first meta-data file in the relevant series,
+and the second is the first data file for the relevant time step. The
+program will combine the relevant quantities in the correct order
+and produce a single new file \texttt{phi-000100} (in the above case).
+
+\subsection{Restarting}
+
+When restarting in parallel, the processor decomposition must be
+preserved. An attempt to change the processor decomposition will
+cause the configuration files to be read in the incorrect order,
+and results will be wrong.
