@@ -2,7 +2,7 @@
  *
  *  blue_phase.h
  *
- *  $Id: blue_phase.h,v 1.5 2010-10-15 12:40:02 kevin Exp $
+ *  $Id: blue_phase.h,v 1.6 2010-11-01 14:52:55 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,6 +17,7 @@
 
 void   blue_phase_set_free_energy_parameters(double, double, double, double);
 void   blue_phase_set_xi(double);
+void   blue_phase_set_zeta(double);
 
 double blue_phase_free_energy_density(const int);
 double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]);
@@ -33,6 +34,7 @@ void   blue_phase_O2_init(double amplitude);
 void   blue_phase_redshift_set(const double redshift);
 
 double blue_phase_get_xi(void);
+double blue_phase_get_zeta(void);
 double blue_phase_chirality(void);
 double blue_phase_reduced_temperature(void);
 double blue_phase_redshift(void);

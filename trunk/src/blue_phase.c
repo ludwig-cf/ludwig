@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.6 2010-10-15 12:40:02 kevin Exp $
+ *  $Id: blue_phase.c,v 1.7 2010-11-01 14:52:55 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,6 +35,7 @@ static double kappa1_;    /* Elastic constant \kappa_1 */
 static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
 static double redshift_;  /* redshift parameter */
 static double rredshift_; /* reciprocal */
+static double zeta_;      /* Apolar activity parameter \zeta */
  
 static const double r3 = (1.0/3.0);
 
@@ -81,6 +82,32 @@ void blue_phase_set_xi(double xi) {
 double blue_phase_get_xi(void) {
 
   return xi_;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_set_zeta
+ *
+ *  Set the activity parameter.
+ *
+ *****************************************************************************/
+
+void blue_phase_set_zeta(double zeta) {
+
+  zeta_ = zeta;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_get_zeta
+ *
+ *****************************************************************************/
+
+double blue_phase_get_zeta(void) {
+
+  return zeta_;
 }
 
 /*****************************************************************************
@@ -339,7 +366,7 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
   q0 = q0_*rredshift_;
   kappa0 = kappa0_*redshift_*redshift_;
   kappa1 = kappa1_*redshift_*redshift_;
-
+  
   /* We have ignored the rho T term at the moment, assumed to be zero
    * (in particular, it has no divergence if rho = const). */
 
