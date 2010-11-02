@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  t_random.c
+ *  test_random.c
  *
  *  Random number generator tests. Note that:
  *
@@ -11,12 +11,21 @@
  *  the statistical tests. Larger samples might have stricter
  *  tolerance.
  *
+ *  $Id: test_random.c,v 1.4 2010-11-02 17:51:22 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
+ *
  *****************************************************************************/
 
 #include <math.h>
 
 #include "pe.h"
 #include "ran.h"
+#include "util.h"
 #include "tests.h"
 
 #define NLARGE         10000000
@@ -50,12 +59,6 @@ int main(int argc, char ** argv) {
   test_assert(fabs(r - 1.6206822) < TEST_FLOAT_TOLERANCE);
   info("(ok)\n");
   */
-  /* Parallel generators */
-
-#ifdef _MPI
-  r = ran_parallel_uniform();
-  verbose("PARALLEL %d ... %f\n", pe_rank(), r);
-#endif
 
   /* Check serial uniform statistics */
 

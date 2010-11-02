@@ -15,6 +15,9 @@
 #  If a given keyword does not appear, or is commented out, a default
 #  value will be used.
 #
+#  $Id: test_le6_input,v 1.2 2010-11-02 17:51:23 kevin Exp $
+#  3D Brazovskii test with LE
+#
 ##############################################################################
 
 ##############################################################################
@@ -29,9 +32,9 @@
 #
 ###############################################################################
 
-N_cycles 2600
-#t_start 500000
-#input_config config.out00500000
+N_cycles 400
+#t_start 100000
+#input_config config.out00100000
 
 
 ##############################################################################
@@ -45,8 +48,8 @@ N_cycles 2600
 #
 ##############################################################################
 
-size 64_64_1
-grid 2_4_1
+size 64_64_64
+#grid 2_2_1
 
 ##############################################################################
 #
@@ -64,8 +67,8 @@ grid 2_4_1
 #
 ##############################################################################
 
-viscosity 0.1
-#viscosity_bulk 0.65
+viscosity 0.0833333333
+#viscosity_bulk 8.3333
 temperature 0.00002133333
 
 ghost_modes off
@@ -93,22 +96,20 @@ force 0.0_0.00_0.0
 #
 ###############################################################################
 
-free_energy symmetric_lb
+free_energy brazovskii
 
-A -0.0625
-B 0.0625
-K 0.04
-C 0.000
+A -0.0005
+B 0.0005
+K -0.0006
+C 0.00076
 
-#noise 1.0
+noise 1.0
 phi0 0.0
 phi_initialisation    spinodal
-mobility 0.15
+mobility 0.250
 
-phi_finite_difference no
+fd_advection_scheme_order 5
 fd_gradient_calculation 3d_27pt_fluid
-finite_difference_upwind_order 3
-
 
 D 0.00056587
 epsilon 0.03
@@ -225,11 +226,13 @@ boundary_speed_top    0.0
 ###############################################################################
 
 freq_statistics 200
-freq_measure 20000
-freq_config 50000000
-freq_phi    50000
-freq_vel    40000000
-config_at_end no
+freq_measure 10000
+freq_config 10000000
+freq_phi    100000
+freq_vel    400000000
+freq_shear_measurement 500
+freq_shear_output 100000
+config_at_end yes
 
 output_format BINARY
 input_format  BINARY
@@ -253,8 +256,8 @@ n_io_nodes 1
 ###############################################################################
 
 N_LE_plane 2
-LE_plane_vel 0.05
-LE_init_profile 1
+LE_plane_vel 0.0064
+LE_init_profile 0
 
 ###############################################################################
 #

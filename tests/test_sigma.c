@@ -387,7 +387,7 @@ void drop_relax(int ntmax) {
   for (nt = 0; nt < ntmax; nt++) {
     hydrodynamics_zero_force();
     collide();
-    halo_site();
+    distribution_halo();
     propagation();
   }
 

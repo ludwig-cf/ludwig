@@ -3,6 +3,15 @@
  *  test_phi_ch.c
  *
  *  Order parameter advection and the Cahn Hilliard equation.
+ *  NOT A COMPLETE TEST.
+ *
+ *  $Id: test_phi_ch.c,v 1.3 2010-11-02 17:51:22 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -12,17 +21,18 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "lattice.h"
+#include "site_map.h"
 
 #include "phi.h"
-#include "phi_stats.h"
 #include "phi_gradients.h"
+#include "gradient_3d_7pt_fluid.h"
 #include "phi_cahn_hilliard.h"
-#include "free_energy.h"
+#include "symmetric.h"
 
 #include "io_harness.h"
-#include "utilities.h"
-
+#include "util.h"
 
 static void test_advection(void);
 static void test_set_velocity(const double *);
@@ -32,11 +42,16 @@ static void test_drop_difference(void);
 int main (int argc, char ** argv) {
 
   pe_init(argc, argv);
+  coords_nhalo_set(2);
   coords_init();
+  le_init();
+  site_map_init();
+  phi_nop_set(1);
   phi_init();
+  phi_gradients_init();
   hydrodynamics_init();
+  gradient_3d_7pt_fluid_init();
 
-  phi_ch_set_mobility(0.1);
   test_advection();
 
   phi_finish();
@@ -67,7 +82,6 @@ void test_advection() {
   test_set_velocity(u);
   test_set_drop();
 
-  phi_stats_print_stats();
   io_write("test_phi_ch_init.dat", io_info_phi);
 
   /* Steps */
@@ -78,7 +92,6 @@ void test_advection() {
     phi_cahn_hilliard();
   }
 
-  phi_stats_print_stats();
   test_drop_difference();
 
   /* Some output */
@@ -101,13 +114,13 @@ void test_set_velocity(const double u[3]) {
   int ic, jc, kc, index;
   int nlocal[3];
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = get_site_index(ic, jc, kc);
+        index = coords_index(ic, jc, kc);
 	hydrodynamics_set_velocity(index, u);
       }
     }
@@ -133,17 +146,17 @@ void test_set_drop() {
   double position[3];
   double phi, r, radius, rzeta;
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   radius = 0.25*L(X);
-  rzeta = 1.0/interfacial_width();
+  rzeta = 1.0/symmetric_interfacial_width();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	position[X] = 1.0*(noffset[X] + ic) - (0.5*L(X) + Lmin(X));
 	position[Y] = 1.0*(noffset[Y] + jc) - (0.5*L(Y) + Lmin(Y));
 	position[Z] = 1.0*(noffset[Z] + kc) - (0.5*L(Z) + Lmin(Z));
@@ -179,11 +192,11 @@ void test_drop_difference() {
   double phi, phi0, r, radius, rzeta, dphi, dmax;
   double sum[2]; 
 
-  get_N_local(nlocal);
-  get_N_offset(noffset);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   radius = 0.25*L(X);
-  rzeta = 1.0/interfacial_width();
+  rzeta = 1.0/symmetric_interfacial_width();
 
   sum[0] = 0.0;
   sum[1] = 0.0;
@@ -193,7 +206,7 @@ void test_drop_difference() {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	position[X] = 1.0*(noffset[X] + ic) - (0.5*L(X)+Lmin(X));
 	position[Y] = 1.0*(noffset[Y] + jc) - (0.5*L(Y)+Lmin(Y));
 	position[Z] = 1.0*(noffset[Z] + kc) - (0.5*L(Z)+Lmin(Z));

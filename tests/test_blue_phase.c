@@ -5,13 +5,13 @@
  *  Tests for the blue phase free energy, molecular field, and
  *  the chemical stress.
  *
- *  $Id: test_blue_phase.c,v 1.1 2009-07-01 09:16:32 kevin Exp $
+ *  $Id: test_blue_phase.c,v 1.2 2010-11-02 17:51:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -22,7 +22,9 @@
 #include "coords.h"
 #include "phi.h"
 #include "phi_gradients.h"
+#include "gradient_3d_27pt_fluid.h"
 #include "blue_phase.h"
+#include "leesedwards.h"
 #include "tests.h"
 
 static void test_o8m_struct(void);
@@ -33,10 +35,20 @@ int main(int argc, char ** argv) {
 
   pe_init(argc, argv);
   coords_init();
-  le_init();
+  le_init(); /* Must be initialised to compute gradients. */
+
+  phi_nop_set(5);
   phi_init();
+  phi_gradients_init();
+  gradient_3d_27pt_fluid_init();
 
   test_o8m_struct();
+
+  phi_gradients_finish();
+  phi_finish();
+  le_finish();
+  coords_finish();
+  pe_finalise();
 
   return 0;
 }
@@ -48,11 +60,11 @@ int main(int argc, char ** argv) {
  *  The test values here come from Davide's original code, of which
  *  we have a (more-or-less) independent implementation.
  *
- *  Note that the way the gradients are calculated between the two
- *  codes is slightly different. For this problem it means that
- *  the q gradient tensor is a factor 3 smaller than the original
- *  and the del^2 q tensor is a factor 1.5 smaller than the original.
- *  These have been allowed for in the current test values.
+ *  Note that the original code used 3d 7 point stencil for the
+ *  gradient calculation. If the 27 point version is used in the
+ *  tests, the resulting gradients must be adjusted to get the
+ *  right answer. This is done by the multiply_gradient() and
+ *  multiply_delsq() routines.
  *
  *  The parameters are:
  *
@@ -68,6 +80,8 @@ int main(int argc, char ** argv) {
  *
  *  Molecular aspect ratio:
  *       xi = 0.7
+ *
+ *  The redshift should be 1.0.
  *
  *****************************************************************************/
 
@@ -92,11 +106,11 @@ void test_o8m_struct(void) {
   double h[3][3];
   double value;
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   info("Blue phase O8M struct test\n");
   info("Must have q order parameter (nop = 5)...");
-  test_assert(nop_ == 5);
+  test_assert(phi_nop() == 5);
   info("ok\n");
 
   q0 = sqrt(2.0)*4.0*atan(1.0)*numhalftwists*numunitcells / L(Y);
@@ -124,11 +138,12 @@ void test_o8m_struct(void) {
    * so an exhaustive test is probably not worth while. */
 
   blue_phase_O8M_init(amplitude);
+  blue_phase_redshift_set(1.0);
 
   ic = 1;
   jc = 1;
   kc = 1;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
 
   info("Check q( 1, 1, 1)...");
@@ -142,7 +157,7 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 2;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
 
   info("Check q( 1, 1, 2)...");
@@ -156,7 +171,7 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 3;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
 
   info("Check q( 1, 1, 3)...");
@@ -170,7 +185,7 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 12;
   kc = 4;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
 
   info("Check q( 1,12, 4)...");
@@ -184,7 +199,7 @@ void test_o8m_struct(void) {
   ic = 2;
   jc = 7;
   kc = 6;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
 
   info("Check q( 2, 7, 6)...");
@@ -204,7 +219,7 @@ void test_o8m_struct(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, q);
 
 	value = q[X][X] + q[Y][Y] + q[Z][Z];
@@ -232,9 +247,9 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 1;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 1)...");
@@ -244,9 +259,9 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 2;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 2)...");
@@ -256,9 +271,9 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 3;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 3)...");
@@ -268,9 +283,9 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 12;
   kc = 4;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1,12, 4)...");
@@ -280,9 +295,9 @@ void test_o8m_struct(void) {
   ic = 2;
   jc = 7;
   kc = 6;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
+  phi_gradients_tensor_gradient(index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 2, 7, 6)...");
@@ -298,10 +313,10 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 1;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -317,10 +332,10 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 2;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -335,10 +350,10 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 3;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -353,10 +368,10 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 12;
   kc = 4;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -371,10 +386,10 @@ void test_o8m_struct(void) {
   ic = 2;
   jc = 7;
   kc = 6;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -393,7 +408,7 @@ void test_o8m_struct(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = get_site_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 	blue_phase_molecular_field(index, h);
 
 	test_assert(fabs(h[X][Y] - h[Y][X]) < TEST_DOUBLE_TOLERANCE);
@@ -413,122 +428,123 @@ void test_o8m_struct(void) {
   ic = 1;
   jc = 1;
   kc = 1;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, dsq);
 
   info("check s( 1, 1, 1)...");
-  test_assert(fabs(dsq[X][X] - 7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[X][Y] - 8.924220e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[X][Z] - 9.837494e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][X] - 9.837494e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][Y] - 7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][Z] - 8.924220e-03) < TEST_FLOAT_TOLERANCE);  
-  test_assert(fabs(dsq[Z][X] - 8.924220e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Y] - 9.837494e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Z] - 7.887056e-03) < TEST_FLOAT_TOLERANCE);
+
+  test_assert(fabs(dsq[X][X] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][Y] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][Z] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][X] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][Y] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][Z] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);  
+  test_assert(fabs(dsq[Z][X] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
 
   ic = 1;
   jc = 1;
   kc = 2;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, dsq);
 
   info("check s( 1, 1, 2)...");
-  test_assert(fabs(dsq[X][X] - -7.375082e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][X] -  7.375082e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);  
-  test_assert(fabs(dsq[Y][Y] -  4.179480e-02) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][Z] -  2.748179e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][Y] - -4.179480e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][Z] - -2.748179e-02) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Y] -  2.871796e-02) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Z] -  5.329164e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Y] - -2.871796e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Z] - -5.329164e-03) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
   ic = 1;
   jc = 1;
   kc = 3;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, dsq);
 
   info("check s( 1, 1, 3)...");
-  test_assert(fabs(dsq[X][X] -  7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[X][Y] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[X][Z] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][X] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][Y] -  7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][Z] -  8.924220e-03) < TEST_FLOAT_TOLERANCE);  
-  test_assert(fabs(dsq[Z][X] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Y] -  9.837494e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Z] -  7.887056e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][X] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][Y] -  8.924220e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][Z] -  9.837494e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][X] -  9.837494e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][Y] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][Z] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);  
+  test_assert(fabs(dsq[Z][X] -  8.924220e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
   ic = 1;
   jc = 12;
   kc = 4;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, dsq);
 
   info("check s( 1,12, 4)...");
-  test_assert(fabs(dsq[X][X] - -2.779621e-04) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[X][Y] - -7.180623e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][X] -  2.779621e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][Y] -  7.180623e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][X] - -1.308445e-03) < TEST_FLOAT_TOLERANCE);  
-  test_assert(fabs(dsq[Y][Y] -  5.056451e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][X] -  1.308445e-03) < TEST_FLOAT_TOLERANCE);  
+  test_assert(fabs(dsq[Y][Y] - -5.056451e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Z] -  1.007305e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Z] - -1.007305e-04) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
   ic = 2;
   jc = 7;
   kc = 6;
-  index = get_site_index(ic, jc, kc);
+  index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  phi_get_q_gradient_tensor(index, dq);
-  phi_get_q_delsq_tensor(index, dsq);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, dsq);
 
   info("check s( 2, 7, 6)...");
-  test_assert(fabs(dsq[X][X] -  1.007305e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[X][X] - -1.007305e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Y][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);  
-  test_assert(fabs(dsq[Y][Y] - -2.779621e-04) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Y][Z] - -7.180623e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][Y] -  2.779621e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Y][Z] -  7.180623e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Y] - -1.308445e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(dsq[Z][Z] -  5.056451e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Y] -  1.308445e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(dsq[Z][Z] - -5.056451e-03) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
   info("Blue phase O8M structure ok\n");

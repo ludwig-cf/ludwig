@@ -1,90 +1,124 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-Read 63 user parameters from ../tests/regression/test_le3_input
-[User   ] Lattice size is (64, 64, 64)
-[User   ] periodic boundaries set to (1, 1, 1)
-[Default] Processor decomposition is (1, 1, 1)
-Cartesian Communicator:
-Periodic = (1, 1, 1)
-Reorder is true
-[Compute] local domain as (64, 64, 64)
-[User   ] Random number seed: -7361237
+Read 64 user parameters from ../tests/regression/test_le3_input
 
-External gravitational force
-[User   ] gravity = 0 0 0
+Free energy details
+-------------------
 
-Model physics:
-Shear viscosity: 0.100000
-Relaxation time: 0.800000
-Bulk viscosity : 0.100000
-Relaxation time: 0.800000
-Isothermal kT:   0.000021
+Symmetric phi^4 free energy selected.
+Single conserved order parameter nop = 1
+Requires up to del^2 derivatives so setting nhalo = 2
 
-Ghost modes
-[User   ] Ghost modes have been switched off.
-[Default] Ghost mode relaxation time: 1.000000
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
 
+Order parameter dynamics
+------------------------
+
+Using Cahn-Hilliard finite difference solver:
+Mobility M            =  1.50000e-01
+Advection scheme order: 3
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Fluid properties
+----------------
+Mean density:       1.00000e+00
+Shear viscosity     1.00000e-01
+Bulk viscosity      1.00000e-01
+Temperature         2.13333e-05
+Body force density  0.00000e+00  0.00000e+00  0.00000e+00
 
 Lees-Edwards boundary conditions are active:
 LE plane 1 is at x = 16 with speed 0.050000
 LE plane 2 is at x = 48 with speed 0.050000
 Overall shear rate = 0.001563
-The lattice Boltzmann model is D3Q19
-Requesting 104272000 bytes for site data
-Switching order parameter to finite difference
-Using third order upwind
 
-Order parameter mobility M: 0.150000
-[Boundary links: 0 (0 bytes)]
-[User   ] Free energy: symmetric
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
 
-Symmetric phi^4 free energy:
-Bulk parameter A      = -0.062500
-Bulk parameter B      = 0.062500
-Surface penalty kappa = 0.040000
-Surface tension       = 0.047140
-Interfacial width     = 1.131371
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Colloid I/O settings
+--------------------
+Input format:       ascii serial
+Output format:      ascii
+
+
+Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
+
+Gradient calcaulation: 3d_27pt_fluid
+
 Initialising shear profile
+Initial conditions.
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 1, 1]
-
-TEST_momentum [x, y, z]
-[total][4.54557e-13, 2.2022e-13, 0]
-[fluid][4.54557e-13, 2.2022e-13, 0]
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 0.0000000e+00  1.00000000000 1.00000000000
 [phi]  6.9259365e+00  2.6420351e-05 8.3281808e-04 -4.9999901e-02 4.9999855e-02
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-200  47603.1 59400.1 47305.1 45911.5 47592.7 61771.2 -1.2218 -0.917209
+Momentum - x y z
+[total   ]  9.6633812e-13 -7.2990225e-14  0.0000000e+00
+[fluid   ]  9.6633812e-13 -7.2990225e-14  0.0000000e+00
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99997934, 1.0000447]
+Starting time step loop.
 
-TEST_momentum [x, y, z]
-[total][8.57005e-13, -0.000238654, -5.05429e-14]
-[fluid][8.57005e-13, -0.000238654, -5.05429e-14]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -3.72844e-05 -0.0242419 -2.50005e-05 ]
-[ umax ][ 2.74874e-05 0.0242377 2.58583e-05 ]
-[phi]  6.9259365e+00  2.6420351e-05 1.1660130e-04 -4.3646288e-02 4.9091353e-02
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 1.7458701e-11  0.99997928181 1.00004508287
+[phi]  6.9259365e+00  2.6420351e-05 1.1664593e-04 -4.3670783e-02 4.9000226e-02
+
+Free energy density - timestep total fluid
+[fed]            200  1.3908166e-06  1.3908166e-06
+
+Momentum - x y z
+[total   ]  9.3587985e-13 -2.4012580e-04 -1.8337068e-13
+[fluid   ]  9.3587985e-13 -2.4012580e-04 -1.8337068e-13
+
+Velocity - x y z
+[minimum ] -3.6897226e-05 -2.4242066e-02 -2.4976673e-05
+[maximum ]  2.7598494e-05  2.4237671e-02  2.5864802e-05
 
 Completed cycle 200
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-400  15114.4 21512.1 15151.5 14122.7 15169.3 23856.7 -1.16362 -0.325534
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 1.3475598e-10  0.99995415041 1.00016378080
+[phi]  6.9259365e+00  2.6420351e-05 3.6427970e-04 -8.0513665e-02 8.6978628e-02
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99995401, 1.0001634]
+Free energy density - timestep total fluid
+[fed]            400  4.2118802e-06  4.2118802e-06
 
-TEST_momentum [x, y, z]
-[total][6.69426e-13, 1.55883e-05, -5.31242e-14]
-[fluid][6.69426e-13, 1.55883e-05, -5.31242e-14]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.000100826 -0.0242764 -9.2513e-05 ]
-[ umax ][ 8.19087e-05 0.024277 8.22217e-05 ]
-[phi]  6.9259365e+00  2.6420351e-05 3.6418888e-04 -8.0211505e-02 8.6859843e-02
+Momentum - x y z
+[total   ]  6.5127070e-13  1.6665303e-05 -2.6744926e-13
+[fluid   ]  6.5127070e-13  1.6665303e-05 -2.6744926e-13
+
+Velocity - x y z
+[minimum ] -1.0112763e-04 -2.4276134e-02 -9.2476049e-05
+[maximum ]  8.1838187e-05  2.4276947e-02  8.2213070e-05
 
 Completed cycle 400
 
@@ -92,11 +126,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    283.560    283.560    283.560 283.560000 (1 call)
-      Time step loop:      0.690      0.760    282.770   0.706925 (400 calls)
-         Propagation:      0.110      0.120     46.790   0.116975 (400 calls)
-           Collision:      0.270      0.290    110.470   0.276175 (400 calls)
-       Lattice halos:      0.000      0.010      4.150   0.005188 (800 calls)
-       phi gradients:      0.050      0.070     22.190   0.055475 (400 calls)
-     Lees Edwards BC:      0.010      0.020      4.790   0.011975 (400 calls)
+               Total:    309.140    309.140    309.140 309.140000 (1 call)
+      Time step loop:      0.760      0.790    308.410   0.771025 (400 calls)
+         Propagation:      0.060      0.070     27.090   0.067725 (400 calls)
+           Collision:      0.300      0.310    121.730   0.304325 (400 calls)
+       Lattice halos:      0.000      0.010      2.150   0.005375 (400 calls)
+       phi gradients:      0.060      0.080     26.490   0.066225 (400 calls)
+     Lees Edwards BC:      0.010      0.020      4.960   0.012400 (400 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (400 calls)
+   Force calculation:      0.180      0.200     75.780   0.189450 (400 calls)
+          phi update:      0.110      0.130     48.590   0.121475 (400 calls)
 Ludwig finished normally.

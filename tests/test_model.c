@@ -2,6 +2,16 @@
  *
  *  test_model.c
  *
+ *  Unit test for the currently compiled model (D3Q15 or D3Q19).
+ *
+ *  $Id: test_model.c,v 1.10 2010-11-02 17:51:22 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) The University of Edinburgh (2010)
+ *
  *****************************************************************************/
 
 #include <math.h>
@@ -13,47 +23,60 @@
 #include "model.h"
 #include "tests.h"
 
-void test_halo_swap();
-void test_reduced_halo_swap();
-int on_corner(int x, int y, int z, int mx, int my, int mz);
-
-
-int xfwd[NVEL];
-int xbwd[NVEL];
-int yfwd[NVEL];
-int ybwd[NVEL];
-int zfwd[NVEL];
-int zbwd[NVEL];
+static void test_model_constants(void);
+static void test_model_velocity_set(void);
+static void test_model_distributions(void);
+static void test_model_halo_swap(void);
+static void test_model_reduced_halo_swap(void);
+static  int test_model_is_domain(const int ic, const int jc, const int kc);
 
 int main(int argc, char ** argv) {
 
-  int i, j, k, p;
-  double sum, sumx, sumy, sumz;
-  double dij;
-  double rho;
-  double u[ND];
-
   pe_init(argc, argv);
 
-  for (p = 0; p < NVEL; p++) {
-    xfwd[p] = 0;
-    xbwd[p] = 0;
-    yfwd[p] = 0;
-    ybwd[p] = 0;
-    zfwd[p] = 0;
-    zbwd[p] = 0;
-  }
-    
+  info("Testing D%1dQ%d\n", NDIM, NVEL);
+
+  /* Test model structure (coordinate-independent stuff) */
+
+  test_model_constants();
+  test_model_velocity_set();
+
+  /* Now test actual distributions */
+
+  coords_init();
+
+  test_model_distributions();
+  test_model_halo_swap();
+  test_model_reduced_halo_swap();
+
+  info("\nModel tests passed ok.\n\n");
+
+  coords_finish();
+  pe_finalise();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_model_constants
+ *
+ *  Check the various constants associated with the reduced halo swap.
+ *
+ *****************************************************************************/
+
+static void test_model_constants(void) {
+
+  int i, k, p;
+
   for (i = 0; i < CVXBLOCK; i++) {
     for (k = 0; k < xblocklen_cv[i]; k++) {
       p = xdisp_fwd_cv[i] + k;
       test_assert(p >= 0 && p < NVEL);
       test_assert(cv[p][X] == +1);
-      xfwd[p] = 1;
       p = xdisp_bwd_cv[i] + k;
       test_assert(p >= 0 && p < NVEL);
       test_assert(cv[p][X] == -1);
-      xbwd[p] = 1;
     }
   }
 
@@ -62,11 +85,9 @@ int main(int argc, char ** argv) {
       p = ydisp_fwd_cv[i] + k;
       test_assert(p >= 0 && p < NVEL);
       test_assert(cv[p][Y] == +1);
-      yfwd[p] = 1;
       p = ydisp_bwd_cv[i] + k;
       test_assert(p >= 0 && p < NVEL);
       test_assert(cv[p][Y] == -1);
-      ybwd[p] = 1;
     }
   }
 
@@ -75,24 +96,38 @@ int main(int argc, char ** argv) {
       p = zdisp_fwd_cv[i] + k;
       test_assert(p >= 0 && p < NVEL);
       test_assert(cv[p][Z] == +1);
-      zfwd[p] = 1;
       p = zdisp_bwd_cv[i] + k;
       test_assert(p >= 0 && p < NVEL);
       test_assert(cv[p][Z] == -1);
-      zbwd[p] = 1;
     }
   }
 
+  info("Model constants ok.\n");
 
-  coords_init();
+  return;
+}
 
+/*****************************************************************************
+ *
+ *  test_model_velocity_set
+ *
+ *  Check the velocities, kinetic projector, tables of eigenvectors
+ *  etc etc are all consistent for the current model.
+ *
+ *****************************************************************************/
 
-  info("Checking model.c objects...\n\n");
+static void test_model_velocity_set(void) {
 
-  /* Check we compiled the right model. */
+  int i, j, k, p;
+  double dij;
+  double sum, sumx, sumy, sumz;
 
-  info("The number of dimensions appears to be ND = %d\n", ND);
+  info("Checking velocities cv etc...\n\n");
+
+  info("The number of dimensions appears to be NDIM = %d\n", NDIM);
   info("The model appears to have NVEL = %d\n", NVEL);
+  info("Number of hydrodynamic modes: %d\n", 1 + NDIM + NDIM*(NDIM+1)/2);
+  test_assert(NHYDRO == (1 + NDIM + NDIM*(NDIM+1)/2));
 
   /* Speed of sound */
 
@@ -104,8 +139,8 @@ int main(int argc, char ** argv) {
 
   info("Checking Kronecker delta d_ij...");
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
+  for (i = 0; i < NDIM; i++) {
+    for (j = 0; j < NDIM; j++) {
       if (i == j) {
 	test_assert(fabs(d_[i][j] - 1.0) < TEST_DOUBLE_TOLERANCE);
       }
@@ -164,8 +199,8 @@ int main(int argc, char ** argv) {
 
   info("Checking wv[p]*cv[p][i]*cv[p][j]...");
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
+  for (i = 0; i < NDIM; i++) {
+    for (j = 0; j < NDIM; j++) {
       sum = 0.0;
       for (p = 0; p < NVEL; p++) {
 	sum += wv[p]*cv[p][i]*cv[p][j];
@@ -181,8 +216,8 @@ int main(int argc, char ** argv) {
   info("Checking q_[p][i][j] = cv[p][i]*cv[p][j] - c_s^2*d_[i][j]...");
 
   for (p = 0; p < NVEL; p++) {
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
+    for (i = 0; i < NDIM; i++) {
+      for (j = 0; j < NDIM; j++) {
 	sum = cv[p][i]*cv[p][j] - d_[i][j]/rcs2;
 	test_assert(fabs(sum - q_[p][i][j]) < TEST_DOUBLE_TOLERANCE);
       }
@@ -194,8 +229,8 @@ int main(int argc, char ** argv) {
 
   info("Checking wv[p]*q_[p][i][j]...");
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
+  for (i = 0; i < NDIM; i++) {
+    for (j = 0; j < NDIM; j++) {
       sum = 0.0;
       for (p = 0; p < NVEL; p++) {
 	sum += wv[p]*q_[p][i][j];
@@ -207,9 +242,9 @@ int main(int argc, char ** argv) {
 
   info("Checking wv[p]*cv[p][i]*q_[p][j][k]...");
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
-      for (k = 0; k < 3; k++) {
+  for (i = 0; i < NDIM; i++) {
+    for (j = 0; j < NDIM; j++) {
+      for (k = 0; k < NDIM; k++) {
 	sum = 0.0;
 	for (p = 0; p < NVEL; p++) {
 	  sum += wv[p]*cv[p][i]*q_[p][j][k];
@@ -221,12 +256,12 @@ int main(int argc, char ** argv) {
   info("ok\n");
 
   /* No actual test here yet. Requires a theoretical answer. */
-  info("Checking d_[i][j]*q_[p][i][j]...\n");
+  info("Checking d_[i][j]*q_[p][i][j]...");
 
   for (p = 0; p < NVEL; p++) {
     sum = 0.0;
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
+    for (i = 0; i < NDIM; i++) {
+      for (j = 0; j < NDIM; j++) {
 	sum += d_[i][j]*q_[p][i][j];
       }
     }
@@ -240,9 +275,9 @@ int main(int argc, char ** argv) {
 
   for (p = 0; p < NVEL; p++) {
     test_assert(fabs(ma_[0][p] - 1.0) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[1][p] - cv[p][X]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[2][p] - cv[p][Y]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[3][p] - cv[p][Z]) < TEST_DOUBLE_TOLERANCE);
+    for (i = 0; i < NDIM; i++) {
+      test_assert(fabs(ma_[1+i][p] - cv[p][i]) < TEST_DOUBLE_TOLERANCE);
+    }
   }
 
   info("ok\n");
@@ -250,12 +285,21 @@ int main(int argc, char ** argv) {
   info("Check ma_ against q_ ...");
 
   for (p = 0; p < NVEL; p++) {
+    k = 0;
+    for (i = 0; i < NDIM; i++) {
+      for (j = i; j < NDIM; j++) {
+	test_assert(fabs(ma_[1 + NDIM + k++][p] - q_[p][i][j])
+		    < TEST_DOUBLE_TOLERANCE);
+      }
+    }
+    /*
     test_assert(fabs(ma_[4][p] - q_[p][X][X]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[5][p] - q_[p][X][Y]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[6][p] - q_[p][X][Z]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[7][p] - q_[p][Y][Y]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[8][p] - q_[p][Y][Z]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[9][p] - q_[p][Z][Z]) < TEST_DOUBLE_TOLERANCE);
+    */
   }
 
   info("ok\n");
@@ -288,284 +332,288 @@ int main(int argc, char ** argv) {
   }
   info("ok\n");
 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_model_distributions
+ *
+ *  Test the distribution interface.
+ *
+ *****************************************************************************/
+
+static void test_model_distributions(void) {
+
+  int i, n, p;
+  int index;
+  int ndist;
+  double fvalue, fvalue_expected;
+  double u[NDIM];
 
   /* Tests of the basic distribution functions. */
 
   info("\n\n\nDistribution functions:\n");
   info("Allocate lattice sites...\n");
 
-  init_site();
+  distribution_init();
+  index = 0;
 
   info("Allocated 1 site\n");
 
-  info("Set rho = 1 at site... ");
-  set_rho(1.0, 0);
-  info("ok\n");
+  /* Report the number of distributions */
 
-  info("Check rho is correct... ");
-  rho = get_rho_at_site(0);
-  test_assert(fabs(rho - 1.0) < TEST_DOUBLE_TOLERANCE);
-  info("ok\n");
+  ndist = distribution_ndist();
 
-  info("Check individual distributions... ");
-  for (p = 0; p < NVEL; p++) {
-    rho = get_f_at_site(0, p);
-    test_assert(fabs(rho - wv[p]) < TEST_DOUBLE_TOLERANCE);
+  info("Number of distributions: %d\n", ndist);
+  test_assert(ndist == 1);
+
+  for (n = 0; n < ndist; n++) {
+
+    info("\n");
+    info("Distribution %2d\n\n", n);
+
+    info("Check individual distributions... ");
+
+    for (p = 0; p < NVEL; p++) {
+      fvalue_expected = 1.0*n + wv[p];
+      distribution_f_set(index, p, n, fvalue_expected);
+      fvalue = distribution_f(index, p, n);
+      test_assert(fabs(fvalue - fvalue_expected) < TEST_DOUBLE_TOLERANCE);
+    }
+    info("ok\n");
+
+    info("Check zeroth moment... ");
+
+    fvalue_expected = 1.0*n*NVEL + 1.0;
+    fvalue = distribution_zeroth_moment(index, n);
+    test_assert(fabs(fvalue - fvalue_expected) < TEST_DOUBLE_TOLERANCE);
+    info("ok\n");
+
+    info("Check first moment... ");
+
+    distribution_first_moment(index, n, u);
+    for (i = 0; i < NDIM; i++) {
+      test_assert(fabs(u[i] - 0.0) < TEST_DOUBLE_TOLERANCE);
+    }
+    info("ok\n");
   }
-  info("ok\n");
 
-  info("Check momentum... ");
-  get_momentum_at_site(0, u);
-  for (i = 0; i < ND; i++) {
-    test_assert(fabs(u[i] - 0.0) < TEST_DOUBLE_TOLERANCE);
-  }
-  info("ok\n");
+  distribution_finish();
 
-  info("Set rho and u... ");
-
-  for (i = 0; i < ND; i++) {
-    u[i] = 0.001;
-  }
-
-  set_rho_u_at_site(1.0, u, 0);
-
-  rho = get_rho_at_site(0);
-  test_assert(fabs(rho - 1.0) < TEST_DOUBLE_TOLERANCE);
-
-  for (i = 0; i < ND; i++) {
-    test_assert(fabs(u[i] - 0.001) < TEST_DOUBLE_TOLERANCE);
-  }
-  info("ok\n");
-
-  info("Set individual f[p]... ");
-
-  for (p = 0; p< NVEL; p++) {
-    set_f_at_site(0, p, wv[p]);
-    rho = get_f_at_site(0, p);
-    test_assert(fabs(rho - wv[p]) < TEST_DOUBLE_TOLERANCE);
-  }
-  rho = get_rho_at_site(0);
-  test_assert(fabs(rho - 1.0) < TEST_DOUBLE_TOLERANCE);
-
-  finish_site();
-  info("ok\n");
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  test_halo_swap();
-  test_reduced_halo_swap();
-
-  info("\nModel tests passed ok.\n\n");
-
-  pe_finalise();
-
-  return 0;
+  return;
 }
 
 /*****************************************************************************
  *
- *  test_halo_swap
+ *  test_model_halo_swap
  *
  *  Test full halo swap.
  *
  *****************************************************************************/
 
-void test_halo_swap() {
+static void test_model_halo_swap() {
 
   int i, j, k, p;
-  int index, N[ND];
-  double u[ND];
-  double rho;
-
-  /* Test the periodic/processor halo swap:
-   * (1) load f[0] at each site with the index,
-   * (2) swap
-   * (3) check halos. */
+  int n, ndist;
+  int index, nlocal[3];
+  const int nextra = 1;  /* Distribution halo width always 1 */
+  double f_expect;
+  double f_actual;
 
   info("\nHalo swap (full distributions)...\n\n");
 
-  init_site();
+  distribution_init();
   distribution_halo_set_complete();
-  get_N_local(N);
+  coords_nlocal(nlocal);
+  ndist = distribution_ndist();
 
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
+  /* The test relies on a uniform decomposition in parallel:
+   *
+   * f[0] or f[X] is set to local x index,
+   * f[1] or f[Y] is set to local y index
+   * f[2] or f[Z] is set to local z index
+   * remainder are set to velocity index. */
 
-	index = get_site_index(i, j, k);
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
 
-	set_f_at_site(index, X, (double) (i));
-	set_f_at_site(index, Y, (double) (j));
-	set_f_at_site(index, Z, (double) (k));
+	index = coords_index(i, j, k);
 
-	for (p = 3; p < NVEL; p++) {
-	  set_f_at_site(index, p, (double) p);
+	for (n = 0; n < ndist; n++) {
+	  distribution_f_set(index, X, n, (double) (i));
+	  distribution_f_set(index, Y, n, (double) (j));
+	  distribution_f_set(index, Z, n, (double) (k));
+
+	  for (p = 3; p < NVEL; p++) {
+	    distribution_f_set(index, p, n, (double) p);
+	  }
 	}
       }
     }
   }
 
-  halo_site();
+  distribution_halo();
 
-  for (i = 0; i <= N[X] + 1; i++) {
-    for (j = 0; j <= N[Y] + 1; j++) {
-      for (k = 0; k <= N[Z] + 1; k++) {
-	index = get_site_index(i, j, k);
+  /* Test all the sites not in the interior */
 
-	u[X] = get_f_at_site(index, X);
-	u[Y] = get_f_at_site(index, Y);
-	u[Z] = get_f_at_site(index, Z);
-	
-	if (i == 0) {
-	  test_assert(fabs(u[X] - (double) N[X]) < TEST_DOUBLE_TOLERANCE);
-	}
-	if (i == N[X] + 1) {
-	  test_assert(fabs(u[X] - 1.0) < TEST_DOUBLE_TOLERANCE);
-	}
+  for (i = 1 - nextra; i <= nlocal[X] + nextra; i++) {
+    if (i >= 1 && i <= nlocal[X]) continue;
+    for (j = 1 - nextra; j <= nlocal[Y] + nextra; j++) {
+      if (j >= 1 && j <= nlocal[Y]) continue;
+      for (k = 1 - nextra; k <= nlocal[Z] + nextra; k++) {
+	if (k >= 1 && k <= nlocal[Z]) continue;
 
-	if (j == 0) {
-	  test_assert(fabs(u[Y] - (double) N[Y]) < TEST_DOUBLE_TOLERANCE);
-	}
-	if (j == N[Y] + 1) {
-	  test_assert(fabs(u[Y] - 1.0) < TEST_DOUBLE_TOLERANCE);
-	}
+	index = coords_index(i, j, k);
 
-	if (k == 0) {
-	  test_assert(fabs(u[Z] - (double) N[Z]) < TEST_DOUBLE_TOLERANCE);
-	}
-	if (k == N[Z] + 1) {
-	  test_assert(fabs(u[Z] - 1.0) < TEST_DOUBLE_TOLERANCE);
-	}
+	for (n = 0; n < ndist; n++) {
 
-	for (p = 3; p < NVEL; p++) {
-	  rho = get_f_at_site(index, p);
-	  test_assert(fabs(rho - (double) p) < TEST_DOUBLE_TOLERANCE);
+	  f_expect = fabs(i - nlocal[X]);
+	  f_actual = distribution_f(index, X, n);
+	  test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+
+	  f_expect = fabs(j - nlocal[Y]);
+	  f_actual = distribution_f(index, Y, n);
+	  test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+
+	  f_expect = fabs(k - nlocal[Z]);
+	  f_actual = distribution_f(index, Z, n);
+	  test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+
+	  for (p = 3; p < NVEL; p++) {
+	    f_actual = distribution_f(index, p, n);
+	    f_expect = (double) p;
+	    test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	  }
 	}
       }
     }
   }
 
   info("Halo swap ok\n");
-  finish_site();
+  distribution_finish();
 }
 
 /*****************************************************************************
  *
- *  test_reduced_halo_swap
+ *  test_model_reduced_halo_swap
  *
  *****************************************************************************/
 
-void test_reduced_halo_swap() {  
-  int index, N[ND];
-  double f;  
+static void test_model_reduced_halo_swap() {  
+
   int i, j, k, p;
+  int icdt, jcdt, kcdt;
+  int index, nlocal[3];
+  int n, ndist;
+  const int nextra = 1;
+
+  double f_expect;
+  double f_actual;
 
   info("\nHalo swap (reduced)...\n\n");
 
-  coords_init();
-  init_site();
+  distribution_init();
   distribution_halo_set_reduced();
-  get_N_local(N);
-  
+  coords_nlocal(nlocal);
+  ndist = distribution_ndist();
+
   /* Set everything which is NOT in a halo */
-  for (i = 1; i <= N[X]; i++) {
-    for (j = 1; j <= N[Y]; j++) {
-      for (k = 1; k <= N[Z]; k++) {
-	index = get_site_index(i, j, k);
-	for (p = 0; p < NVEL; p++) {
-	  set_f_at_site(index, p, (double) p);
+
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
+	index = coords_index(i, j, k);
+	for (n = 0; n < ndist; n++) {
+	  for (p = 0; p < NVEL; p++) {
+	    f_expect = 1.0*(n*NVEL + p);
+	    distribution_f_set(index, p, n, f_expect);
+	  }
 	}
       }
     }
   }
 
-  /* do swap */
-  halo_site();
+  distribution_halo();
 
-  /* Now check that the sites are right still
-   * Also check the halos sites now
-   */
-  for (i = 0; i <= N[X]+1; i++) {
-    for (j = 0; j <= N[Y]+1; j++) {
-      for (k = 0; k <= N[Z]+1; k++) {
-	index = get_site_index(i, j, k);
+  /* Now check that the interior sites are unchanged */
 
-	for(p = 0; p < NVEL; p++) {
-	  f = get_f_at_site(index, p);
-	  if(i == 0 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
-	    if(xfwd[p] > 0) {
-	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);
-	    }
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
+	index = coords_index(i, j, k);
+	for (n = 0; n < ndist; n++) {
+	  for (p = 0; p < NVEL; p++) {
+	    f_actual = distribution_f(index, p, n);
+	    f_expect = 1.0*(n*NVEL +  p);
+	    test_assert(fabs(f_expect - f_actual) < TEST_DOUBLE_TOLERANCE);
 	  }
-	  if(i == N[X]+1 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
-	    if(xbwd[p] > 0) {
-	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);  
+	}
+      }
+    }
+  }
+
+  /* Also check the halos sites. The key test of the reduced halo
+   * swap is that distributions for which r + c_i dt takes us into
+   * the domain proper must be correct. */
+
+  for (i = 1 - nextra; i <= nlocal[X] + nextra; i++) {
+    if (i >= 1 && i <= nlocal[X]) continue;
+    for (j = 1 - nextra; j <= nlocal[Y] + nextra; j++) {
+      if (j >= 1 && j <= nlocal[Y]) continue;
+      for (k = 1 - nextra; k <= nlocal[Z] + nextra; k++) {
+	if (k >= 1 && k <= nlocal[Z]) continue;
+
+	index = coords_index(i, j, k);
+
+	for (n = 0; n < ndist; n++) {
+	  for (p = 0; p < NVEL; p++) {
+
+	    f_actual = distribution_f(index, p, n);
+	    f_expect = 1.0*(n*NVEL + p);
+
+	    icdt = i + cv[p][X];
+	    jcdt = j + cv[p][Y];
+	    kcdt = k + cv[p][Z];
+
+	    if (test_model_is_domain(icdt, jcdt, kcdt)) {
+	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
 	    }
-	  }
-	  if(j == 0 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
-	    if(yfwd[p] > 0) {
-	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);
-	    }
-	  }
-	  if(j == N[Y]+1 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
-	    if(ybwd[p] > 0) {
-	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);  
-	    }
-	  }
-	  if(k == 0 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
-	    if(zfwd[p] > 0) {
-	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);
-	    }
-	  }
-	  if(k == N[Z]+1 && !on_corner(i, j, k, N[X]+1, N[Y]+1, N[Z]+1)) {
-	    if(zbwd[p] > 0) {
-	      test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);  
-	    }
-	  }
-	  
-	  /* Check the interior is still the same. */
-	  if(i > 0 && j > 0 && k > 0 &&
-	     i < N[X]+1 && j < N[Y]+1 && k < N[Z]+1) {
-	    test_assert(fabs(f - p) < TEST_DOUBLE_TOLERANCE);
 	  }
 	}
 
+	/* Next site */
       }
     }
   }
 
   info("Reduced halo swapping... ok");
 
+  return;
 }
 
-
-/*************************************
+/*****************************************************************************
  *
- * Returns 0(false) if on a corner,
- *         1(true)  otherwise.
+ *  test_model_is_domain
  *
- *************************************/
+ *  Is (ic, jc, kc) in the domain proper?
+ *
+ *****************************************************************************/
 
-int on_corner(int x, int y, int z, int mx, int my, int mz) {
+static int test_model_is_domain(const int ic, const int jc, const int kc) {
 
-  int iscorner = 0;
+  int nlocal[3];
+  int iam = 1;
 
-  /* on the axes */
+  coords_nlocal(nlocal);
 
-  if (fabs(x) + fabs(y) == 0 || fabs(x) + fabs(z) == 0 ||
-      fabs(y) + fabs(z) == 0 ) {
-    iscorner = 1;
-  }
+  if (ic < 1) iam = 0;
+  if (jc < 1) iam = 0;
+  if (kc < 1) iam = 0;
+  if (ic > nlocal[X]) iam = 0;
+  if (jc > nlocal[Y]) iam = 0;
+  if (kc > nlocal[Z]) iam = 0;
 
-  /* opposite corners from axes */
-
-  if ((x == mx && y == my) || (x == mx && z == mz) || (y == my && z == mz)) {
-    iscorner = 1;
-  }
-  
-  if ((x == 0 && y == my) || (x == 0 && z == mz) || (y == 0 && x == mx) ||
-      (y == 0 && z == mz) || (z == 0 && x == mx) || (z == 0 && y == my)) {
-    iscorner = 1;
-  }
-
-  return iscorner;
+  return iam;
 }

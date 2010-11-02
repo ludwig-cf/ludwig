@@ -1,8 +1,16 @@
 /*****************************************************************************
  *
- *  t_coords.c
+ *  test_coords.c
  *
- *  This tests coords.c (default and user input)
+ *  'Unit tests' for coords.c
+ *
+ *  $Id: test_coords.c,v 1.3 2010-11-02 17:51:22 kevin Exp $
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2009 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -10,272 +18,250 @@
 #include <math.h>
 
 #include "pe.h"
-#include "runtime.h"
 #include "coords.h"
 #include "tests.h"
 
+static void test_coords_constants(void);
+static void test_coords_system(const int ntotal[3], const int period[3]);
+static void test_coords_decomposition(const int decomp_request[3]);
+static void test_coords_communicator(void);
+static void test_coords_cart_info(void);
+static void test_coords_sub_communicator(void);
 static int neighbour_rank(int, int, int);
 
 int main(int argc, char ** argv) {
 
-  int nlocal[3];
-  int ntotal[3];
-  int noffset[3];
-  int dims[3]    = {1, 1, 1};
-  int periods[3] = {1, 0, 1}; /* Matches test_coords_input1 */
-  int coords[3]  = {0, 0, 0};
-  int rank       = 0;
-  int n;
+  int ntotal_default[3] = {64, 64, 64};
+  int periods_default[3] = {1, 1, 1};
+  int decomposition_default[3] = {1, 1, 1};
 
-#ifdef _MPI_
-  MPI_Comm communicator;
-#endif
+  int ntotal_test1[3] = {1024, 1, 512};
+  int periods_test1[3] = {1, 0, 1};
+  int decomposition_test1[3] = {2, 1, 4};
 
+  int ntotal_test2[3] = {1024, 1024, 1024};
+  int periods_test2[3] = {1, 1, 1};
+  int decomposition_test2[3] = {4, 4, 4};
 
   pe_init(argc, argv);
 
-  info("Checking coords.c defaults...\n\n");
+  info("Checking coords.c ...\n\n");
 
-  /* coords_init();*/
+  test_coords_constants();
 
-  /* Check coordinate directions */
+  /* Check the defaults, an the correct resetting of defaults. */
 
-  info("Checking X enum... ");
-  test_assert(X == 0);
-  info("(ok)\n");
-
-  info("Checking Y enum... ");
-  test_assert(Y == 1);
-  info("(ok)\n");
-
-  info("Checking Z enum... ");
-  test_assert(Z == 2);
-  info("(ok)\n");
-
-  /* Check default system size (lattice points) */
-
-  info("Checking default system N_total[X] = 64...");
-  test_assert(N_total(X) == 64);
-  info("yes\n");
-
-  info("Checking default system N_total[Y] = 64...");
-  test_assert(N_total(Y) == 64);
-  info("yes\n");
-
-  info("Checking default system N_total[Z] = 64...");
-  test_assert(N_total(Z) == 64);
-  info("yes\n");
-
-  /* Check default periodicity */
-
-  info("Checking default periodicity in X...");
-  test_assert(is_periodic(X));
-  info("true\n");
-
-  info("Checking default periodicity in Y...");
-  test_assert(is_periodic(Y));
-  info("true\n");
-
-  info("Checking default periodicity in Z...");
-  test_assert(is_periodic(Z));
-  info("true\n");
-
-  /* System length */
-
-  info("Checking default system L(X)...");
-  test_assert(fabs(L(X) - 64.0) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-
-  info("Checking default system L(Y)...");
-  test_assert(fabs(L(Y) - 64.0) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-
-  info("Checking default system L(Z)...");
-  test_assert(fabs(L(Z) - 64.0) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-
-  /* System minimum Lmin() */
-
-  info("Checking default Lmin(X)...");
-  test_assert(fabs(Lmin(X) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-
-  info("Checking default Lmin(Y)...");
-  test_assert(fabs(Lmin(Y) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-
-  info("Checking default Lmin(Z)...");
-  test_assert(fabs(Lmin(Z) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-
-
-
-
-
-
-  /* Now take some user input */
-
-  info("\n");
-  info("Checking user input test_coords_input1...\n");
-
-  RUN_read_input_file("test_coords_input1");
+  info("\nCheck defaults...\n\n");
+  test_coords_system(ntotal_default, periods_default);
 
   coords_init();
+  test_coords_system(ntotal_default, periods_default);
+  test_coords_decomposition(decomposition_default);
+  test_coords_communicator();
+  coords_finish();
 
-  /* Check user system size */
+  info("\nCheck reset of defaults...\n\n");
+  test_coords_system(ntotal_default, periods_default);
 
-  info("Checking user system N_total[X] = 1024...");
-  test_assert(N_total(X) == 1024);
-  info("yes\n");
 
-  info("Checking user system N_total[Y] = 1...");
-  test_assert(N_total(Y) == 1);
-  info("yes\n");
+  /* Now test 1 */
 
-  info("Checking user system N_total[Z] = 512...");
-  test_assert(N_total(Z) == 512);
-  info("yes\n");
+  coords_ntotal_set(ntotal_test1);
+  coords_periodicity_set(periods_test1);
+  coords_decomposition_set(decomposition_test1);
 
-  /* Check user periodicity */
+  coords_init();
+  test_coords_system(ntotal_test1, periods_test1);
+  test_coords_decomposition(decomposition_test1);
+  test_coords_communicator();
+  test_coords_cart_info();
+  coords_finish();
 
-  info("Checking user periodicity in X is true...");
-  test_assert(is_periodic(X));
-  info("correct\n");
+  /* Now test 2 */
 
-  info("Checking user periodicity in Y is false...");
-  test_assert(is_periodic(Y) == 0);
-  info("correct\n");
+  coords_ntotal_set(ntotal_test2);
+  coords_periodicity_set(periods_test2);
+  coords_decomposition_set(decomposition_test2);
 
-  info("Checking user periodicity in Z is true...");
-  test_assert(is_periodic(Z));
-  info("correct\n");
+  coords_init();
+  test_coords_system(ntotal_test2, periods_test2);
+  test_coords_decomposition(decomposition_test2);
+  test_coords_communicator();
+  test_coords_cart_info();
+  test_coords_sub_communicator();
+  coords_finish();
 
-  /* System length */
+  pe_finalise();
 
-  info("Checking user system L(X)...");
-  test_assert(fabs(L(X) - 1024.0) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
+  return 0;
+}
 
-  info("Checking user system L(Y)...");
-  test_assert(fabs(L(Y) - 1.0) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
+/*****************************************************************************
+ *
+ *  test_coords_constants
+ *
+ *  Test enums etc
+ *
+ *****************************************************************************/
 
-  info("Checking user system L(Z)...");
-  test_assert(fabs(L(Z) - 512.0) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
+void test_coords_constants(void) {
 
-  /* System minimum Lmin() */
+  info("Checking X Y Z enum... ");
+  test_assert(X == 0);
+  test_assert(Y == 1);
+  test_assert(Z == 2);
 
-  info("Checking user Lmin(X)...");
+  test_assert(XX == 0);
+  test_assert(XY == 1);
+  test_assert(XZ == 2);
+  test_assert(YY == 3);
+  test_assert(YZ == 4);
+  info("ok\n");
+
+  info("Checking FORWARD BACKWARD enum... ");
+  test_assert(FORWARD == 0);
+  test_assert(BACKWARD == 1);
+  info("ok\n");
+
+  info("Checking Lmin()... ");
   test_assert(fabs(Lmin(X) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-
-  info("Checking user Lmin(Y)...");
   test_assert(fabs(Lmin(Y) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-
-  info("Checking user Lmin(Z)...");
   test_assert(fabs(Lmin(Z) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  info("(ok)\n");
-  info("Running tests for the Cartesian Communicator...\n\n");
+  info("ok\n");
 
-  /* coords_init();*/
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_coords_system
+ *
+ *  Check the results against the reference system
+ *
+ *****************************************************************************/
+
+void test_coords_system(const int ntotal_ref[3], const int period_ref[3]) {
+
+  info("Checking system N_total...");
+  test_assert(N_total(X) == ntotal_ref[X]);
+  test_assert(N_total(Y) == ntotal_ref[Y]);
+  test_assert(N_total(Z) == ntotal_ref[Z]);
+  info("yes\n");
+
+  info("Checking periodicity ...");
+  test_assert(is_periodic(X) == period_ref[X]);
+  test_assert(is_periodic(Y) == period_ref[Y]);
+  test_assert(is_periodic(Z) == period_ref[Z]);
+  info("correct\n");
+
+  info("Checking system L()...");
+  test_assert(fabs(L(X) - 1.0*ntotal_ref[X]) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(L(Y) - 1.0*ntotal_ref[Y]) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(L(Z) - 1.0*ntotal_ref[Z]) < TEST_DOUBLE_TOLERANCE);
+  info("(ok)\n");
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_coods_decomposition
+ *
+ *  Check we got the requested decomposition, provided it is valid.
+ *
+ *****************************************************************************/
+
+void test_coords_decomposition(const int decomp_request[3]) {
+
+  int nproc;
+  int ok = 1;
+
+  nproc = decomp_request[X]*decomp_request[Y]*decomp_request[Z];
+  if (pe_size() != nproc) ok = 0;
+  if (N_total(X) % decomp_request[X] != 0) ok = 0;
+  if (N_total(Y) % decomp_request[Y] != 0) ok = 0;
+  if (N_total(Z) % decomp_request[Z] != 0) ok = 0;
+
+  if (ok) {
+    test_assert(cart_size(X) == decomp_request[X]);
+    test_assert(cart_size(Y) == decomp_request[Y]);
+    test_assert(cart_size(Z) == decomp_request[Z]);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  test_coords_communicator
+ *
+ *  Test the communicator stuff against reference values.
+ *  We assume there has been a relevant call to test_coords_system()
+ *  to check ntotal[] and periods[] are correct.
+ *
+ *****************************************************************************/
+
+void test_coords_communicator(void) {
+
+  MPI_Comm communicator;
+
+  int nlocal[3];
+  int ntotal[3];
+  int noffset[3];
+  int dims[3];
+  int periods[3];
+  int coords[3];
+  int rank;
+  int n;
 
   ntotal[X] = N_total(X);
   ntotal[Y] = N_total(Y);
   ntotal[Z] = N_total(Z);
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
-#ifdef _MPI_
   info("Checking Cartesian communicator initialised...");
   communicator = cart_comm();
   MPI_Cart_get(communicator, 3, dims, periods, coords);
-  info("yes\n");
-#endif
-
-  info("Checking cart_size(X) ...");
-  test_assert(cart_size(X) == dims[X]);
-  info("ok\n");
-
-  info("Checking cart_size(Y) ...");
-  test_assert(cart_size(Y) == dims[Y]);
-  info("ok\n");
-
-  info("Checking cart_size(Z) ...");
-  test_assert(cart_size(Z) == dims[Z]);
-  info("ok\n");
-
-  info("Checking cart_coords(X) ...");
-  test_assert(cart_coords(X) == coords[X]);
-  info("ok\n");
-
-  info("Checking cart_coords(Y) ...");
-  test_assert(cart_coords(Y) == coords[Y]);
-  info("ok\n");
-
-  info("Checking cart_coords(Z) ...");
-  test_assert(cart_coords(Z) == coords[Z]);
-  info("ok\n");
-
-  info("Checking periodity in X...");
-  test_assert(is_periodic(X) == periods[X]);
-  info("ok\n");
-
-  info("Checking periodity in Y...");
-  test_assert(is_periodic(Y) == periods[Y]);
-  info("ok\n");
-
-  info("Checking periodity in Z...");
-  test_assert(is_periodic(Z) == periods[Z]);
-  info("ok\n");
-
-  info("Checking n_local[X] ...");
-  test_assert(nlocal[X] == ntotal[X]/cart_size(X));
-  info("ok\n");
-
-  info("Checking n_local[Y] ...");
-  test_assert(nlocal[Y] == ntotal[Y]/cart_size(Y));
-  info("ok\n");
-
-  info("Checking n_local[Z] ...");
-  test_assert(nlocal[Z] == ntotal[Z]/cart_size(Z));
-  info("ok\n");
-
-  /* Check offsets */
-
-  n = 0;
-  get_N_offset(noffset);
-
-  info("Checking n_offset(X)...");
-  test_assert(noffset[X] == cart_coords(X)*nlocal[X]);
-  info("ok\n");
-
-  info("Checking n_offset(Y)...");
-  test_assert(noffset[Y] == cart_coords(Y)*nlocal[Y]);
-  info("ok\n");
-
-  info("Checking n_offset(Z)...");
-  test_assert(noffset[Z] == cart_coords(Z)*nlocal[Z]);
-  info("ok\n");
-
-#ifdef _MPI_
   MPI_Comm_rank(communicator, &rank);
-#endif
+  info("yes\n");
 
   info("Checking Cartesian rank...");
   test_assert(cart_rank() == rank);
   info("ok\n");
 
+  info("Checking cart_size() ...");
+  test_assert(cart_size(X) == dims[X]);
+  test_assert(cart_size(Y) == dims[Y]);
+  test_assert(cart_size(Z) == dims[Z]);
+  info("ok\n");
+
+  info("Checking cart_coords() ...");
+  test_assert(cart_coords(X) == coords[X]);
+  test_assert(cart_coords(Y) == coords[Y]);
+  test_assert(cart_coords(Z) == coords[Z]);
+  info("ok\n");
+
+  info("Checking periodity...");
+  test_assert(is_periodic(X) == periods[X]);
+  test_assert(is_periodic(Y) == periods[Y]);
+  test_assert(is_periodic(Z) == periods[Z]);
+  info("ok\n");
+
+  info("Checking n_local[] ...");
+  test_assert(nlocal[X] == ntotal[X]/cart_size(X));
+  test_assert(nlocal[Y] == ntotal[Y]/cart_size(Y));
+  test_assert(nlocal[Z] == ntotal[Z]/cart_size(Z));
+  info("ok\n");
+
+  info("Checking n_offset()...");
+  test_assert(noffset[X] == cart_coords(X)*nlocal[X]);
+  test_assert(noffset[Y] == cart_coords(Y)*nlocal[Y]);
+  test_assert(noffset[Z] == cart_coords(Z)*nlocal[Z]);
+  info("ok\n");
+
   /* Check the neighbours */
-
-  info("Checking FORWARD is 0...");
-  test_assert(FORWARD == 0);
-  info("yes\n");
-
-  info("Checking BACKWARD is 1...");
-  test_assert(BACKWARD == 1);
-  info("yes\n");
 
   info("Checking FORWARD neighbours in X...");
   n = neighbour_rank(cart_coords(X)+1, cart_coords(Y), cart_coords(Z));
@@ -307,35 +293,118 @@ int main(int argc, char ** argv) {
   test_assert(n == cart_neighb(BACKWARD, Z));
   info("ok\n");
 
+  return;
+}
 
-  /* This is for information only. */
+/*****************************************************************************
+ *
+ *  test_coords_cart_info
+ *
+ *  Some information on the Cartesian communicator (strictly, not a test).
+ *
+ *****************************************************************************/
 
-#ifdef _MPI_
+static void test_coords_cart_info(void) {
+
+  int n, index;
+  const int tag = 100;
+  char string[FILENAME_MAX];
+
+  MPI_Status status[1];
 
   info("\n");
   info("Overview\n");
   info("[rank] cartesian rank (X, Y, Z) cartesian order\n");
 
-  for (n = 0; n < pe_size(); n++) {
-    int index;
-    MPI_Barrier(MPI_COMM_WORLD);
+  /* This looks at whether cart_rank() is in the "natural" order */
 
-    /* This looks at whether cart_rank() is in the "natural" order */
-    index = cart_size(Z)*cart_size(Y)*cart_coords(X) +
-      cart_size(Z)*cart_coords(Y) + cart_coords(Z);
+  index = cart_size(Z)*cart_size(Y)*cart_coords(X) +
+    cart_size(Z)*cart_coords(Y) + cart_coords(Z);
 
-    if (n == pe_rank()) {
-      printf("[%4d] %14d (%d, %d, %d) %d\n", pe_rank(), cart_rank(),
-	     cart_coords(X), cart_coords(Y), cart_coords(Z), index);
+  sprintf(string, "[%4d] %14d (%d, %d, %d) %d\n", pe_rank(), cart_rank(),
+	  cart_coords(X), cart_coords(Y), cart_coords(Z), index);
+
+  info(string);
+
+  /* Pass everything to root to print in order. */
+
+  if (pe_rank() != 0) {
+    MPI_Ssend(string, FILENAME_MAX, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
+  }
+  else {
+    for (n = 1; n < pe_size(); n++) {
+      MPI_Recv(string, FILENAME_MAX, MPI_CHAR, n, tag, MPI_COMM_WORLD, status);
+      info(string);
     }
   }
-  test_assert(1);
 
-#endif
+  return;
+}
 
-  pe_finalise();
+/*****************************************************************************
+ *
+ *  test_coords_sub_communicator
+ *
+ *  Look at some results of MPI_Cart_sub()
+ *
+ *****************************************************************************/
 
-  return 0;
+static void test_coords_sub_communicator(void) {
+
+  int remainder[3];
+  int n, rank1, rank2;
+  const int tag = 100;
+  char string[FILENAME_MAX];
+
+  MPI_Comm sub_comm1;
+  MPI_Comm sub_comm2;
+  MPI_Status status[1];
+
+  /* One-dimensional ub-communicator in Y */
+
+  remainder[X] = 0;
+  remainder[Y] = 1;
+  remainder[Z] = 0;
+
+  MPI_Cart_sub(cart_comm(), remainder, &sub_comm1);
+  MPI_Comm_rank(sub_comm1, &rank1);
+
+  /* Two-dimensional sub-comminucator in YZ */
+
+  remainder[X] = 0;
+  remainder[Y] = 1;
+  remainder[Z] = 1;
+
+  MPI_Cart_sub(cart_comm(), remainder, &sub_comm2);
+  MPI_Comm_rank(sub_comm2, &rank2);
+
+
+  info("\n");
+  info("Sub-dimensional communicators\n");
+  info("[rank] cartesian rank (X, Y, Z) -> Y 1-d YZ 2-d\n");
+
+  sprintf(string, "[%4d] %14d (%d, %d, %d)        %d      %d\n",
+	  pe_rank(), cart_rank(),
+	  cart_coords(X), cart_coords(Y), cart_coords(Z), rank1, rank2);
+
+  info(string);
+
+  /* Pass everything to root to print in order. */
+
+  if (pe_rank() != 0) {
+    MPI_Ssend(string, FILENAME_MAX, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
+  }
+  else {
+    for (n = 1; n < pe_size(); n++) {
+      MPI_Recv(string, FILENAME_MAX, MPI_CHAR, n, tag, MPI_COMM_WORLD, status);
+      info(string);
+    }
+  }
+
+  MPI_Comm_free(&sub_comm2);
+  MPI_Comm_free(&sub_comm1);
+
+  return;
 }
 
 /*****************************************************************************
@@ -353,8 +422,6 @@ int main(int argc, char ** argv) {
 int neighbour_rank(int nx, int ny, int nz) {
 
   int rank = 0;
-
-#ifdef _MPI_
   int coords[3];
   int periodic = 1;
 
@@ -368,7 +435,9 @@ int neighbour_rank(int nx, int ny, int nz) {
 
   rank = MPI_PROC_NULL;
   if (periodic) MPI_Cart_rank(cart_comm(), coords, &rank);
-#endif
+
+  /* Serial doesn't quite work out with the above */
+  if (pe_size() == 1) rank = 0;
 
   return rank;
 }
