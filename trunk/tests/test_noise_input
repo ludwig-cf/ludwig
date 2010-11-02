@@ -1,6 +1,7 @@
 ##############################################################################
 #
 #  Ludwig input file
+#  Reference.
 #
 #  Lines introduced with # and blank lines are ignored.
 #
@@ -29,24 +30,28 @@
 #
 ###############################################################################
 
-N_cycles 2600
-#t_start 500000
-#input_config config.out00500000
-
+N_cycles 100
+#t_start 500
+#input_config config.out00000500
 
 ##############################################################################
 #
-#  System
+#  System and MPI
 #
 #  size NX_NY_NZ is the size of the system in lattice units
 #  grid PX_PY_PZ is the processor decomposition
 #                If PX*PY*PZ is not equal to the number of processors,
 #                MPI will choose a default (may be implementation-dependent).
 #
+#  reduced_halo  [yes|no] use reduced or full halos. Using reduced halos
+#                is *only* appropriate for fluid only problems.
+#                Default is no.
+# 
 ##############################################################################
 
-size 64_64_1
-grid 2_4_1
+size 64_64_64
+#grid 1_2_1
+reduced_halo yes
 
 ##############################################################################
 #
@@ -54,7 +59,9 @@ grid 2_4_1
 #
 #  viscosity      shear viscosity [default is 1/6, ie., relaxation time 1]
 #  viscosity_bulk bulk viscosity  [default = shear viscosity]
-#  temperature    isothermal fluctuation 'temperature' [-D_NOISE_ required]
+#
+#  isothermal_fluctuations  [on|off] Default is off.
+#  temperature              isothermal fluctuation 'temperature'
 #
 #  ghost_modes           [on|off] Default is on.
 #  ginzburg-dhumieres    Ghost mode relaxation time correction [on|off]
@@ -64,13 +71,15 @@ grid 2_4_1
 #
 ##############################################################################
 
-viscosity 0.1
-#viscosity_bulk 0.65
-temperature 0.00002133333
+viscosity 0.083333333333
+#viscosity_bulk 0.1
 
-ghost_modes off
-#ginzburg-dhumieres on
-force 0.0_0.00_0.0
+isothermal_fluctuations on
+temperature 0.0000213333333
+
+# ghost_modes off
+# ginzburg-dhumieres off
+# force 0.00_0.0_0.0
 
 ##############################################################################
 #
@@ -78,43 +87,108 @@ force 0.0_0.00_0.0
 #
 #  Used when -D_SINGLE_FLUID_ not in force.
 #
-#  free_energy  [symmetric|brazovskii]  symmetric is the default
-#  A            symmetric bulk parameter (usually A < 0)
-#  B            symmetric bulk parameter (usually b = -A)
-#  kappa        surface 'penalty' parameter
-#  C            additional brazovskki parameter
+#  free_energy                    symmetric [is the default]
+#                                 brazovskii
+#                                 surfactant
+#                                 lc_blue_phase
 #
-#  noise        magnitude of initial order parameter noise [default 0.05]
-#  phi0         mean order parameter
+#  phi_finite_difference          no [is the default] uses 2x distributions
+#                                 yes uses hybrid
 #
-#  phi_finite_difference  Use finite difference for the order parameter
-#                         [no|yes] default is lattice Boltzmann [no]
-#  mobility               Order parameter mobility M
+#  finite_difference_upwind_order [default is 1] [1|3|5]
+#                                 sets order of upwind advection scheme
+#
+#
+#  Note: only parameters for the currently selected free energy at
+#  run time are meaningful; you don't have to comment out all the others.
 #
 ###############################################################################
 
-free_energy symmetric_lb
+free_energy lc_blue_phase
+phi_finite_difference yes
+finite_difference_upwind_order 3
+
+###############################################################################
+#
+#  Symmetric / Brazovskii
+#
+#  A            symmetric bulk parameter (A < 0 for binary fluid)
+#  B            symmetric bulk parameter (B = -A for binary fluid)
+#  kappa        surface 'penalty' parameter (kappa > 0 for binary fluid)
+#  C            additional brazovskki parameter (C = 0 for binary fluid)
+#
+#  mobility               Order parameter mobility M
+#
+#  phi_initialisation     spinodal or block [spinodal] 
+#  noise        magnitude of initial order parameter noise [default 0.05]
+#  phi0         mean order parameter
+#
+#
+###############################################################################
 
 A -0.0625
 B 0.0625
 K 0.04
-C 0.000
+C 0.0
 
-#noise 1.0
-phi0 0.0
-phi_initialisation    spinodal
 mobility 0.15
 
-phi_finite_difference no
-fd_gradient_calculation 3d_27pt_fluid
-finite_difference_upwind_order 3
+noise 0.05
+phi0 0.0
+phi_initialisation    spinodal
 
+###############################################################################
+#
+#  Surfactant free energy; set
+#
+#  In addition to A, B, K, of the symmrtric binary fluid, there are the
+#  extra parameters
+#
+#  surf_kT             bulk surfactant parameter
+#  surf_epsilon        surface term
+#  surf_beta           non-linear term
+#  surf_W              entropy term
+#
+#  surf_mobility_phi   fluid order parameter mobility
+#  surf_mobility_psi   surfactant order parameter mobility
+#  surf_psi_b          initial uniform (background) concentration
+#             
+###############################################################################
 
-D 0.00056587
-epsilon 0.03
-beta 0.0
-psi_b 0.1
-mobility_psi 2.0
+surf_A -0.0208333
+surf_B  0.0208333
+surf_kappa 0.12
+
+surf_kT 0.00056587
+surf_epsilon 0.03
+surf_beta 0.0
+surf_W 0.0
+
+surf_mobility_phi 0.15
+surf_mobility_psi 2.0
+surf_psi_b 0.01
+
+###############################################################################
+#
+#  Blue Phase free energy
+#
+#  lc_a0
+#  lc_gamma
+#  lc_q0
+#  lc_kappa0
+#  lc_kappa1
+#  lc_xi
+#
+###############################################################################
+
+lc_a0      0.014384711
+lc_gamma   3.1764706
+lc_q0      1.1107207
+lc_kappa0  0.01
+lc_kappa1  0.01
+lc_xi      0.7
+
+lc_Gamma   0.3
 
 ###############################################################################
 #
@@ -133,16 +207,6 @@ colloid_ah          2.3
 colloid_vf          0.061
 colloid_no          2000
 
-# Active particles
-#
-# colloid_type:     inactive [default]
-#                   active1_bipolar
-#                   active1_quadrupolar
-
-colloid_type        inactive
-colloid_cone_angle  90
-colloid_dp          0.2
-
 # Constant body force on all colloids ("gravity")
 
 colloid_gravity 0.0_0.0_0.0
@@ -152,6 +216,27 @@ colloid_gravity 0.0_0.0_0.0
 lubrication_on 0
 lubrication_normal_cutoff 0.3
 lubrication_tangential_cutoff 0.0
+
+##############################################################################
+#
+# Active particles
+#
+# colloid_type:     inactive [default]
+#                   active1_bipolar
+#                   active1_quadrupolar
+#                   active2               for squirmers  (use -D_ACTIVE2_) 
+# For active2
+# colloids_b1       swimming speed
+# colloids_b2       stresslet
+#
+##############################################################################
+
+colloid_type        inactive
+colloid_cone_angle  90
+colloid_dp          0.2
+
+colloid_b1          0.01
+colloid_b2          0.05
 
 ###############################################################################
 #
@@ -202,7 +287,7 @@ boundary_speed_bottom 0.0
 boundary_speed_top    0.0
 
 #porous_media_format BINARY
-#porous_media_file   capillary6_6_20
+#porous_media_file   capillary_8_8_32.dat
 #porous_media_type   status_only
 
 ###############################################################################
@@ -213,6 +298,10 @@ boundary_speed_top    0.0
 #  freq_output     N        Output field state every N steps
 #  freq_config     N        Output full configuration (for restart) every
 #                           N steps (can be large!)
+#  freq_phi        N        phi data output frequency
+#  freq_vel        N        velocity data output frequency
+#  freq_shear_measurement   stress profile accumulator
+#  freq_shear_output        stress profile output
 #  config_at_end            [yes|no] write full configuration at end of run
 #                           [default is yes]
 #
@@ -222,19 +311,25 @@ boundary_speed_top    0.0
 #  output_format            [ASCII|BINARY] default output format
 #  input_format             [ASCII|BINARY] default input format
 #
+#  phi_format               Override default format for particular quantities
+#  etc...                   (both input and output)
+#
 ###############################################################################
 
-freq_statistics 200
-freq_measure 20000
-freq_config 50000000
-freq_phi    50000
-freq_vel    40000000
+freq_statistics 100
+freq_measure 200000
+freq_config 5000000
+freq_phi    100000
+freq_vel    100000
+freq_shear_measurement 100000
+freq_shear_output      100000
 config_at_end no
 
 output_format BINARY
 input_format  BINARY
-phi_format    BINARY
-n_io_nodes 1
+phi_format    ASCII
+vel_format    ASCII
+n_io_nodes 8
 #io_grid 2_2_2
 #io_grid_distribution 2_2_2
 
@@ -250,11 +345,17 @@ n_io_nodes 1
 #  LE_init_profile  set the initial velocity profile to be consistent with
 #                   desired shear rate. (Only valid at t = 0). [0|1]
 #
+#  LE_oscillation_period
+#                   Integer > 1, switches on u = u_0 cos(2\pi t/T) where
+#                   u_0 is maximum plane velocity set via LE_plane_vel,
+#                   and T is the oscillation period
+#
 ###############################################################################
 
-N_LE_plane 2
-LE_plane_vel 0.05
-LE_init_profile 1
+#N_LE_plane 2
+#LE_plane_vel 0.008
+#LE_init_profile 1
+#LE_oscillation_period 0
 
 ###############################################################################
 #
@@ -264,5 +365,5 @@ LE_init_profile 1
 #
 ###############################################################################
 
-random_seed -7361237
-#random_seed 8361235
+#random_seed 7361237
+random_seed 8361235

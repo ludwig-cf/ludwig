@@ -1,224 +1,258 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
 Read 63 user parameters from ../tests/regression/test_le1_input
-[User   ] Lattice size is (64, 64, 64)
-[User   ] periodic boundaries set to (1, 1, 1)
-[Default] Processor decomposition is (1, 1, 1)
-Cartesian Communicator:
-Periodic = (1, 1, 1)
-Reorder is true
-[Compute] local domain as (64, 64, 64)
-[User   ] Random number seed: -7361237
 
-External gravitational force
-[User   ] gravity = 0 0 0
+Free energy details
+-------------------
 
-Model physics:
-Shear viscosity: 0.100000
-Relaxation time: 0.800000
-Bulk viscosity : 0.100000
-Relaxation time: 0.800000
-Isothermal kT:   0.000021
+Symmetric phi^4 free energy selected.
+Single conserved order parameter nop = 1
+Requires up to del^2 derivatives so setting nhalo = 2
 
-Ghost modes
-[User   ] Ghost modes have been switched off.
-[Default] Ghost mode relaxation time: 1.000000
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
 
+Order parameter dynamics
+------------------------
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  2.00000e+00
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Fluid properties
+----------------
+Mean density:       1.00000e+00
+Shear viscosity     1.00000e-01
+Bulk viscosity      1.00000e-01
+Temperature         2.13333e-05
+Body force density  0.00000e+00  0.00000e+00  0.00000e+00
 
 Lees-Edwards boundary conditions are active:
 LE plane 1 is at x = 16 with speed 0.005000
 LE plane 2 is at x = 48 with speed 0.005000
 Overall shear rate = 0.000156
-The lattice Boltzmann model is D3Q15
-Requesting 82320000 bytes for site data
-Order parameter is via lattice Boltzmann
 
-Order parameter mobility M: 2.000000
-[Boundary links: 0 (0 bytes)]
-[User   ] Free energy: symmetric
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q15
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
 
-Symmetric phi^4 free energy:
-Bulk parameter A      = -0.062500
-Bulk parameter B      = 0.062500
-Surface penalty kappa = 0.040000
-Surface tension       = 0.047140
-Interfacial width     = 1.131371
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 1, 1]
+Colloid I/O settings
+--------------------
+Input format:       ascii serial
+Output format:      ascii
 
-TEST_momentum [x, y, z]
-[total][1.38778e-17, 0, 0]
-[fluid][1.38778e-17, 0, 0]
+
+Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
+
+Gradient calcaulation: 3d_27pt_fluid
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 0.0000000e+00  1.00000000000 1.00000000000
 [phi]  6.9259365e+00  2.6420351e-05 8.3281808e-04 -4.9999901e-02 4.9999855e-02
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-40  15495.5 14919.1 15370.4 14915.4 15228.3 15646.7 -0.0750869 0.0149353
+Momentum - x y z
+[total   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99990004, 1.0002998]
+Starting time step loop.
 
-TEST_momentum [x, y, z]
-[total][-3.3395e-13, -0.000104203, 3.11313e-14]
-[fluid][-3.3395e-13, -0.000104203, 3.11313e-14]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -7.81242e-05 -0.00220896 -7.02271e-05 ]
-[ umax ][ 7.74855e-05 0.00218762 6.75906e-05 ]
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 5.8798211e-10  0.99990004059 1.00029984696
 [phi]  6.9259365e+00  2.6420351e-05 4.9481944e-04 -9.0397461e-02 9.9249832e-02
+
+Free energy density - timestep total fluid
+[fed]             40  4.6344476e-06  4.6344476e-06
+
+Momentum - x y z
+[total   ] -2.6592097e-13 -1.0420441e-04  8.8019869e-14
+[fluid   ] -2.6592097e-13 -1.0420441e-04  8.8019869e-14
+
+Velocity - x y z
+[minimum ] -7.8124232e-05 -2.2089602e-03 -7.0227115e-05
+[maximum ]  7.7485446e-05  2.1876158e-03  6.7590584e-05
 
 Completed cycle 40
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-80  757.326 725.025 761.669 724.041  751.05 769.232 -0.113985 0.103566
-
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99917636, 1.005589]
-
-TEST_momentum [x, y, z]
-[total][-1.68532e-13, -0.00303298, 2.11706e-14]
-[fluid][-1.68532e-13, -0.00303298, 2.11706e-14]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.00104739 -0.00282251 -0.00101364 ]
-[ umax ][ 0.00107835 0.00286374 0.000753743 ]
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 2.7986873e-07  0.99917635917 1.00558897967
 [phi]  6.9259365e+00  2.6420351e-05 1.0869441e-02 -4.1524572e-01 3.9061741e-01
+
+Free energy density - timestep total fluid
+[fed]             80  9.4569942e-05  9.4569942e-05
+
+Momentum - x y z
+[total   ] -8.7263530e-14 -3.0344608e-03  8.8068441e-14
+[fluid   ] -8.7263530e-14 -3.0344608e-03  8.8068441e-14
+
+Velocity - x y z
+[minimum ] -1.0473903e-03 -2.8225059e-03 -1.0136387e-03
+[maximum ]  1.0783486e-03  2.8637420e-03  7.5374310e-04
 
 Completed cycle 80
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-120  50.3417 47.8996 50.9238  47.802 50.1179 51.2666 -0.171803 0.0703759
-
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.99028104, 1.0145286]
-
-TEST_momentum [x, y, z]
-[total][-2.49512e-13, 3.97852e-06, -1.94745e-13]
-[fluid][-2.49512e-13, 3.97852e-06, -1.94745e-13]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.0142071 -0.0133896 -0.0108591 ]
-[ umax ][ 0.0140929 0.0110799 0.0104904 ]
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 7.3133471e-06  0.99028104070 1.01452859261
 [phi]  6.9259365e+00  2.6420351e-05 1.6770263e-01 -8.8898771e-01 8.7585015e-01
+
+Free energy density - timestep total fluid
+[fed]            120  1.4121019e-03  1.4121019e-03
+
+Momentum - x y z
+[total   ] -1.2458957e-13  8.5351911e-05  1.4680271e-13
+[fluid   ] -1.2458957e-13  8.5351911e-05  1.4680271e-13
+
+Velocity - x y z
+[minimum ] -1.4207136e-02 -1.3389614e-02 -1.0859108e-02
+[maximum ]  1.4092872e-02  1.1079940e-02  1.0490404e-02
 
 Completed cycle 120
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-160  21.3284  20.254 21.0155  20.221 20.9683 21.4141 -0.171795 0.0217388
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 2.7677868e-05  0.98564884002 1.03808304853
+[phi]  6.9259365e+00  2.6420351e-05 4.1762725e-01 -9.9064111e-01 9.8733553e-01
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.98564883, 1.038083]
+Free energy density - timestep total fluid
+[fed]            160  3.3062426e-03  3.3062426e-03
 
-TEST_momentum [x, y, z]
-[total][-7.00379e-13, 0.176123, -1.65772e-13]
-[fluid][-7.00379e-13, 0.176123, -1.65772e-13]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.0377736 -0.0446432 -0.0393623 ]
-[ umax ][ 0.0486431 0.0503119 0.0414354 ]
-[phi]  6.9259365e+00  2.6420351e-05 4.1762725e-01 -9.9064111e-01 9.8733552e-01
+Momentum - x y z
+[total   ] -3.3427948e-13  1.7671403e-01  2.4610695e-13
+[fluid   ] -3.3427948e-13  1.7671403e-01  2.4610695e-13
+
+Velocity - x y z
+[minimum ] -3.7773642e-02 -4.4643249e-02 -3.9362329e-02
+[maximum ]  4.8643116e-02  5.0311928e-02  4.1435392e-02
 
 Completed cycle 160
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-200  20.2701 19.3146 19.6269 19.2775 19.6492 20.2872 -0.126899 -0.247492
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 2.7583972e-05  0.98589050527 1.04181816027
+[phi]  6.9259365e+00  2.6420351e-05 4.9237566e-01 -1.0007207e+00 9.9491678e-01
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.98589051, 1.0418182]
+Free energy density - timestep total fluid
+[fed]            200  3.4632340e-03  3.4632340e-03
 
-TEST_momentum [x, y, z]
-[total][-1.2232e-12, 0.0723514, 1.6846e-12]
-[fluid][-1.2232e-12, 0.0723514, 1.6846e-12]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.0563694 -0.0511897 -0.0618066 ]
-[ umax ][ 0.0684497 0.0657636 0.0535169 ]
-[phi]  6.9259365e+00  2.6420351e-05 4.9237566e-01 -1.0007207e+00 9.9491677e-01
+Momentum - x y z
+[total   ] -2.6548382e-13  6.8243874e-02 -3.9730025e-13
+[fluid   ] -2.6548382e-13  6.8243874e-02 -3.9730025e-13
+
+Velocity - x y z
+[minimum ] -5.6369407e-02 -5.1189736e-02 -6.1806520e-02
+[maximum ]  6.8449752e-02  6.5763708e-02  5.3515988e-02
 
 Completed cycle 200
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-240  20.9837 19.9099 19.9965 19.7265 20.1849 20.9839 0.0158497 -0.690349
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 3.1205256e-05  0.98220002155 1.04718843719
+[phi]  6.9259365e+00  2.6420351e-05 5.3647279e-01 -1.0073875e+00 1.0028013e+00
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.98220006, 1.0471884]
+Free energy density - timestep total fluid
+[fed]            240  3.3393478e-03  3.3393478e-03
 
-TEST_momentum [x, y, z]
-[total][-5.05266e-13, 0.0122865, -5.04055e-13]
-[fluid][-5.05266e-13, 0.0122865, -5.04055e-13]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.0648973 -0.0624884 -0.0705167 ]
-[ umax ][ 0.0671266 0.0678496 0.0689869 ]
-[phi]  6.9259365e+00  2.6420351e-05 5.3647278e-01 -1.0073874e+00 1.0028013e+00
+Momentum - x y z
+[total   ] -3.3834047e-13  3.8035048e-03 -8.4652597e-13
+[fluid   ] -3.3834047e-13  3.8035048e-03 -8.4652597e-13
+
+Velocity - x y z
+[minimum ] -6.4897265e-02 -6.2488320e-02 -7.0515930e-02
+[maximum ]  6.7126433e-02  6.7849531e-02  6.8986992e-02
 
 Completed cycle 240
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-280    21.77 20.7946 20.9116 20.6193 21.0582 21.8061 0.137574 -0.623757
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 3.1917296e-05  0.98038733969 1.04058053783
+[phi]  6.9259365e+00  2.6420351e-05 5.7324104e-01 -1.0117664e+00 1.0154762e+00
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.98038741, 1.0405805]
+Free energy density - timestep total fluid
+[fed]            280  3.1733445e-03  3.1733445e-03
 
-TEST_momentum [x, y, z]
-[total][-6.95381e-13, 0.0975771, -3.9318e-12]
-[fluid][-6.95381e-13, 0.0975771, -3.9318e-12]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.0623259 -0.0586905 -0.0624304 ]
-[ umax ][ 0.0713104 0.077097 0.0803862 ]
-[phi]  6.9259365e+00  2.6420351e-05 5.7324104e-01 -1.0117662e+00 1.0154761e+00
+Momentum - x y z
+[total   ] -6.7333292e-14  8.5234626e-02 -1.2101622e-12
+[fluid   ] -6.7333292e-14  8.5234626e-02 -1.2101622e-12
+
+Velocity - x y z
+[minimum ] -6.2324506e-02 -5.8690523e-02 -6.2428451e-02
+[maximum ]  7.1310233e-02  7.7096883e-02  8.0386220e-02
 
 Completed cycle 280
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-320  22.3495 21.9473 22.3261 21.7872 22.3401 22.5038 0.468529 -0.205308
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 3.7346295e-05  0.97755598972 1.04728450931
+[phi]  6.9259365e+00  2.6420351e-05 6.0393227e-01 -1.0130328e+00 1.0159072e+00
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.97755609, 1.0472852]
+Free energy density - timestep total fluid
+[fed]            320  2.9939241e-03  2.9939241e-03
 
-TEST_momentum [x, y, z]
-[total][7.60503e-15, 0.10585, -3.35307e-12]
-[fluid][7.60503e-15, 0.10585, -3.35307e-12]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.0646612 -0.0562038 -0.0727384 ]
-[ umax ][ 0.0675631 0.0733651 0.0669698 ]
-[phi]  6.9259365e+00  2.6420351e-05 6.0393228e-01 -1.0130328e+00 1.0159072e+00
+Momentum - x y z
+[total   ] -1.0384055e-14  8.9648060e-02  1.2451203e-12
+[fluid   ] -1.0384055e-14  8.9648060e-02  1.2451203e-12
+
+Velocity - x y z
+[minimum ] -6.4661166e-02 -5.6203755e-02 -7.2738283e-02
+[maximum ]  6.7563040e-02  7.3365002e-02  6.6969878e-02
 
 Completed cycle 320
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-360  22.8367 23.0817 24.0277 22.6383 23.2394 24.0796 1.01661 -0.341654
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 3.6787657e-05  0.97833921390 1.04845342309
+[phi]  6.9259365e+00  2.6420351e-05 6.3216595e-01 -1.0167082e+00 1.0176190e+00
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.97833919, 1.0484542]
+Free energy density - timestep total fluid
+[fed]            360  2.8245384e-03  2.8245384e-03
 
-TEST_momentum [x, y, z]
-[total][-4.72088e-14, 0.0181112, 4.69413e-12]
-[fluid][-4.72088e-14, 0.0181112, 4.69413e-12]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.0648299 -0.0582539 -0.079862 ]
-[ umax ][ 0.0807529 0.0841504 0.0544432 ]
-[phi]  6.9259365e+00  2.6420351e-05 6.3216596e-01 -1.0167086e+00 1.0176190e+00
+Momentum - x y z
+[total   ] -8.6214022e-14 -2.4779446e-03  1.9974491e-12
+[fluid   ] -8.6214022e-14 -2.4779446e-03  1.9974491e-12
+
+Velocity - x y z
+[minimum ] -6.4829892e-02 -5.8254396e-02 -7.9862028e-02
+[maximum ]  8.0752871e-02  8.4150302e-02  5.4442992e-02
 
 Completed cycle 360
 
-Curvature statistics [ t, lx, ly, lz, L1, L2, L3, alpha, beta]
-400  23.4684 24.1063 25.7276  23.337 24.0651  25.935 1.47787 -1.21571
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 4.0013735e-05  0.97766841773 1.05228171890
+[phi]  6.9259365e+00  2.6420351e-05 6.5602595e-01 -1.0186035e+00 1.0180615e+00
 
-TEST_statistics [total, mean, variance, min, max]
-[rho][262144, 1, 0, 0.97766839, 1.0522811]
+Free energy density - timestep total fluid
+[fed]            400  2.6717639e-03  2.6717639e-03
 
-TEST_momentum [x, y, z]
-[total][-6.28921e-13, 0.00961609, 6.99382e-12]
-[fluid][-6.28921e-13, 0.00961609, 6.99382e-12]
-Wall net:   0.0000000000e+00   0.0000000000e+00   0.0000000000e+00
-Velocity stats:
-[ umin ][ -0.0664275 -0.0587535 -0.0688715 ]
-[ umax ][ 0.0692173 0.0819781 0.0589542 ]
-[phi]  6.9259365e+00  2.6420351e-05 6.5602594e-01 -1.0186041e+00 1.0180615e+00
+Momentum - x y z
+[total   ]  2.3608893e-13 -2.5911064e-02  2.1411831e-12
+[fluid   ]  2.3608893e-13 -2.5911064e-02  2.1411831e-12
+
+Velocity - x y z
+[minimum ] -6.6427669e-02 -5.8754540e-02 -6.8871431e-02
+[maximum ]  6.9217584e-02  8.1978476e-02  5.8954690e-02
 
 Completed cycle 400
 
@@ -226,11 +260,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    234.070    234.070    234.070 234.070000 (1 call)
-      Time step loop:      0.570      0.600    232.320   0.580800 (400 calls)
-         Propagation:      0.090      0.100     38.130   0.095325 (400 calls)
-           Collision:      0.380      0.390    152.320   0.380800 (400 calls)
-       Lattice halos:      0.000      0.010      3.430   0.004288 (800 calls)
-       phi gradients:      0.080      0.100     32.870   0.082175 (400 calls)
-     Lees Edwards BC:      0.010      0.020      4.120   0.010300 (400 calls)
+               Total:    267.300    267.300    267.300 267.300000 (1 call)
+      Time step loop:      0.660      0.690    265.040   0.662600 (400 calls)
+         Propagation:      0.100      0.110     43.610   0.109025 (400 calls)
+           Collision:      0.420      0.440    170.910   0.427275 (400 calls)
+       Lattice halos:      0.000      0.010      3.170   0.007925 (400 calls)
+       phi gradients:      0.090      0.100     37.400   0.093500 (400 calls)
+     Lees Edwards BC:      0.020      0.030      8.240   0.020600 (400 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (400 calls)
 Ludwig finished normally.

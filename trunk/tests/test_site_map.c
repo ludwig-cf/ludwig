@@ -4,7 +4,7 @@
  *
  *  Tests for site map interface.
  *
- *  $Id: test_site_map.c,v 1.2 2008-08-26 08:35:27 kevin Exp $
+ *  $Id: test_site_map.c,v 1.3 2010-11-02 17:51:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -31,7 +31,7 @@ int main (int argc, char ** argv) {
   pe_init(argc, argv);
   coords_init();
 
-  get_N_local(nlocal);
+  coords_nlocal(nlocal);
 
   info("\nTesting site map interface\n");
 

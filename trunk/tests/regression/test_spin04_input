@@ -102,9 +102,12 @@ C 0.0
 
 #noise 0.2
 phi0 0.0
-phi_finite_difference yes
 phi_initialisation    spinodal
 mobility 1.25
+
+fd_gradient_calculation 3d_27pt_fluid
+fd_advection_scheme_order 1
+
 
 D 0.0003
 epsilon 0.0016

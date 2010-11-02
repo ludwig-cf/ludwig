@@ -93,7 +93,7 @@ force 0.0_0.0_0.0
 #
 ###############################################################################
 
-free_energy symmetric
+free_energy symmetric_lb
 
 A -0.0625
 B 0.0625
@@ -105,8 +105,8 @@ phi0 0.0
 phi_initialisation    spinodal
 mobility 0.15
 
-phi_finite_difference no
-finite_difference_upwind_order 1
+fd_gradient_calculation 3d_27pt_solid
+#fd_advection_scheme_order 1
 
 D 0.00056587
 epsilon 0.03
@@ -124,22 +124,14 @@ mobility_psi 0.15
 #
 ###############################################################################
 
-colloid_init        fixed_number_monodisperse
-colloid_mc_steps    0
-colloid_a0          2.3
-colloid_ah          2.3
-colloid_vf          0.061
-colloid_no          20
-
-# Active particles
-#
-# colloid_type:     inactive [default]
-#                   active1_bipolar
-#                   active1_quadrupolar
-
 colloid_type        inactive
-colloid_cone_angle  90
-colloid_dp          0.2
+colloid_init        random
+
+colloid_random_a0   2.3
+colloid_random_ah   2.3
+colloid_random_no   20
+
+colloid_cell_min    8.0
 
 # Constant body force on all colloids ("gravity")
 
@@ -169,10 +161,6 @@ leonard_jones_on 0
 lj_sigma 2.3
 lj_cutoff 4.6
 lj_epsilon 0.0003
-
-# Cell list minimum allowable width
-
-cell_list_lmin 8.0
 
 ###############################################################################
 #

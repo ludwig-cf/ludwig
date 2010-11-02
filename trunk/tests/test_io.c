@@ -4,13 +4,13 @@
  *
  *  Test code for the lattice I/O harness code.
  *
- *  $Id: test_io.c,v 1.3 2008-08-26 08:40:50 kevin Exp $
+ *  $Id: test_io.c,v 1.4 2010-11-02 17:51:22 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2008)
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -326,7 +326,7 @@ double test_index(int ic, int jc, int kc) {
   double dindex;
   int    noffset[3];
 
-  get_N_offset(noffset);
+  coords_nlocal_offset(noffset);
 
   ic += noffset[X];
   jc += noffset[Y];
