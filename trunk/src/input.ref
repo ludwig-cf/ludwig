@@ -16,7 +16,7 @@
 #  If a given keyword does not appear, or is commented out, a default
 #  value will be used.
 #
-#  $Id: input.ref,v 1.14 2010-10-21 18:13:42 kevin Exp $
+#  $Id: input.ref,v 1.15 2010-11-02 17:39:36 jlintuvu Exp $
 #
 ##############################################################################
 
@@ -184,6 +184,7 @@ surf_psi_b 0.01
 #  lc_kappa0
 #  lc_kappa1
 #  lc_xi
+#  lc_active_zeta
 #
 #  lc_q_initialisation  twist
 #                       o8m
@@ -205,6 +206,7 @@ lc_kappa1  0.01
 lc_xi      0.7
 
 lc_Gamma   0.3
+lc_active_zeta 0.0
 
 lc_q_initialisation o8m
 lc_q_init_amplitude -0.2
