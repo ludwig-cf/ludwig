@@ -21,7 +21,7 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.9 2010-10-15 11:42:33 kevin Exp $
+ *  $Id: extract.c,v 1.10 2010-11-03 15:45:31 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -148,7 +148,7 @@ int main(int argc, char ** argv) {
 
     /* Open the current data file */
 
-    sprintf(io_data, "%s-%6.6d.%3.3d-%3.3d", stub_, ntime, nio_, n);
+    sprintf(io_data, "%s-%8.8d.%3.3d-%3.3d", stub_, ntime, nio_, n);
     printf("-> %s\n", io_data);
 
     fp_data = fopen(io_data, "r+b");
@@ -181,7 +181,7 @@ int main(int argc, char ** argv) {
 
   /* Write a single file with the final section */
 
-  sprintf(io_data, "%s-%6.6d", stub_, ntime);
+  sprintf(io_data, "%s-%8.8d", stub_, ntime);
   fp_data = fopen(io_data, "w+b");
   if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
 
