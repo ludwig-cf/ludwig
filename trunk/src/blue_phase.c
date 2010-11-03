@@ -5,7 +5,7 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.7 2010-11-01 14:52:55 jlintuvu Exp $
+ *  $Id: blue_phase.c,v 1.8 2010-11-03 18:06:50 jlintuvu Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -598,6 +598,62 @@ void blue_phase_twist_init(double amplitude){
 	q[Y][X] = q[X][Y];
 	q[Y][Y] = amplitude*(3.0/2.0*sinz*sinz*sinxy*sinxy - 1.0/2.0);
 	q[Y][Z] = 3.0/2.0*amplitude*(sinz*cosz*sinxy);
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_chi_edge
+ *  Setting  chi edge disclination
+ *  Using the current free energy parameter q0_ (P=2pi/q0)
+ *****************************************************************************/
+
+void blue_phase_chi_edge(int N, double z0, double x0, double amplitude){
+  
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+  double nx,ny,nz;
+  double theta;
+  
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+  
+  /* this corresponds to a 90 degree angle between the z-axis */
+  nz = 0.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+	
+	index = coords_index(ic, jc, kc);
+	theta = 1.0*N/2.0*atan2((1.0*z-z0),(1.0*x-x0)) + q0_*(z-z0);
+	
+	nx = cos(theta);
+	ny = sin(theta);
+		
+	q[X][X] = amplitude*(3.0/2.0*nx*nx- 1.0/2.0);
+	q[X][Y] = 3.0/2.0*amplitude*(nx*ny);
+	q[X][Z] = 3.0/2.0*amplitude*(nx*nz);
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude*(3.0/2.0*ny*ny - 1.0/2.0);
+	q[Y][Z] = 3.0/2.0*amplitude*(ny*nz);
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
