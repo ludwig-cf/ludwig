@@ -33,9 +33,9 @@
 
 /* System size (could be read at run time) */
 
-int lx_ = 32;
-int ly_ = 32;
-int lz_ = 32;
+int lx_ = 128;
+int ly_ = 128;
+int lz_ = 128;
 
 float * data_out_;
 int nio_;

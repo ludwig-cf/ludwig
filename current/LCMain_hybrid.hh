@@ -30,7 +30,7 @@ float L1init,L1;
 float L2init,L2;
 
 double q0init,q0;
-double rr,rr_old;
+double rr,rr_prev,rr_fxd;
 
 int numuc;
 double numhftwist;
@@ -45,7 +45,7 @@ double phivr=0.0;      // coupling of hydrodynamics to order parameter
 float beta=0.0;        // 2.1349     viscous polymer stress coefficient O(q^2)
 float beta2=0.0;       // 0.15159  viscous polymer stress coefficient O(q)
 float xi=1.0;          // related to effective aspect ratio, should be <= one
-float tau1=0.56334;    // proportional to viscosity
+float tau1=0.56334;    // proportional to viscosity, eta=1/3*tau1
 float tau2=0.25;       // magnitude of flow-induced diffusion
 float dt=1.0;          //
 float densityinit=2.0; // initial value for the density everywhere
@@ -81,7 +81,7 @@ double vwbt=-0.0;
 // Inital configuration 
 
 int RANDOM,TWIST,O2STRUCT,O5STRUCT,O8STRUCT,O8MSTRUCT,DTSTRUCT,HEX3DA,HEX3DB,HEXPLANAR,BLUEHAAR;
-int REDSHIFT,BACKFLOW;
+int REDSHIFT,BACKFLOW,ACTIVE,POISEUILLE;
  
 float bcstren=10.0;  // amplitude of harmonic boundary potential
 double wallamp;
@@ -115,6 +115,12 @@ void setboundary();
 void readStartupFile(const int);
 void writeDiscFile(const int iter);
 void computeStressFreeEnergy(const int iter);
+void get_Qfxd(void);
+void set_Q(const int, const int);
+void cspline(double*,double*,double*,double*);
+void spline(double*,double*,int,double,double,double*);
+void splint(double*,double*,double*,int,double,double*);
+
 
 // modified numerical recipes routines
 double gasdev(int);
@@ -154,8 +160,10 @@ double ***Qxxold,***Qxyold,***Qyyold;
 double ***Qxzold,***Qyzold;
 double ***Qxxnew,***Qxynew,***Qyynew;
 double ***Qxznew,***Qyznew; 
-double ***Qxxinit,***Qxyinit,***Qyyinit;
-double ***Qxzinit,***Qyzinit;
+double ***Qxxfxd,***Qxyfxd,***Qyyfxd;
+double ***Qxzfxd,***Qyzfxd;
+double ***Qxxfxd_all_y,***Qxyfxd_all_y,***Qyyfxd_all_y;
+double ***Qxzfxd_all_y,***Qyzfxd_all_y;
 double ***DEHxx,***DEHxy,***DEHyy;
 double ***DEHxz,***DEHyz;
 double ***DEHxxold,***DEHxyold,***DEHyyold;
@@ -184,7 +192,6 @@ double ****fpr,****gxxpr,****gxypr;
 double ****gyypr,****gxzpr,****gyzpr;
 
 double oneplusdtover2tau1,oneplusdtover2tau2,qvisc; 
-int active,poiseuille;
 int e[15][3];
 
 ofstream output;

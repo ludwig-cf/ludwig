@@ -1,5 +1,6 @@
 #include "LCParallel.hh"
-
+#include <iostream>
+#include <fstream>
 // Parallel, and then serial, code to deal with the exchange of
 // information at the periodic and processor boundaries.
 #ifdef PARALLEL
@@ -998,6 +999,89 @@ void exchangeTau() {
   return;
 }
 
+void communicateQfxd(){
+
+   double   t0, t1;
+   extern double total_comm_;
+   extern int Lx2,Ly2,Lz2,Lx,Ly,Lz;
+   extern int ix1,ix2,jy1,jy2,kz1,kz2;
+   int ix,jy,jyoff,kz,l,m;
+
+   extern double ***Qxxfxd_all_y,***Qxyfxd_all_y,***Qxzfxd_all_y,***Qyyfxd_all_y,***Qyzfxd_all_y;
+   extern double ***Qxxfxd,***Qxyfxd,***Qxzfxd,***Qyyfxd,***Qyzfxd;
+
+   extern MPI_Comm cartesian_communicator_;
+   extern int pe_cartesian_size_[3];
+   extern int pe_cartesian_coordinates_[3];
+   int pe_cartesian_rank;
+
+   const int nquantity = 5;   /* 5 Q-tensor entries */
+   double * buf_send;     /* send data */
+   double * buf_recv;     /* receive data */
+   int send_count,recv_count;
+
+   /* communicator and rank */
+   int free_coords[3]; 
+   MPI_Comm y_row_comm;
+   int my_y_row_rank;
+
+   free_coords[0]=0;
+   free_coords[1]=1;
+   free_coords[2]=0;
+
+   t0 = MPI_Wtime();
+
+   /* Create communicator along y */
+   MPI_Cart_sub(cartesian_communicator_,free_coords,&y_row_comm);
+   MPI_Comm_rank(y_row_comm, &my_y_row_rank);
+
+    /* Allocate buffers */
+
+   send_count = nquantity*(Lx2-2)*(Ly2-2)*(Lz2-2);
+   recv_count = pe_cartesian_size_[1]*nquantity*(Lx2-2)*(Ly2-2)*(Lz2-2);
+
+   buf_send = new double[send_count];
+   buf_recv = new double[recv_count];
+
+   /* get fixed Q-tensor at decomposition slices including boundary sites z=0 and z=Lz */
+   if (pe_cartesian_coordinates_[2]==0 || pe_cartesian_coordinates_[2]==pe_cartesian_size_[2]-1){
+   l=0;
+   for (ix=ix1; ix<ix2; ix++){
+      for (jy=jy1; jy<jy2; jy++){
+	 for (kz=kz1; kz<kz2; kz++){
+	    buf_send[l++] = Qxxfxd[ix][jy][kz];
+	    buf_send[l++] = Qxyfxd[ix][jy][kz];
+	    buf_send[l++] = Qxzfxd[ix][jy][kz];
+	    buf_send[l++] = Qyyfxd[ix][jy][kz];
+	    buf_send[l++] = Qyzfxd[ix][jy][kz];
+	 }
+      }
+   }
+
+   /* send fixed Q-tensor using row communicator */	
+   MPI_Allgather(buf_send,send_count,MPI_DOUBLE,buf_recv,send_count,MPI_DOUBLE,y_row_comm);
+
+   l=0;	
+   for (m=0; m<pe_cartesian_size_[1];m++){ 
+      jyoff=m*(Ly2-2);
+      for (ix=ix1; ix<ix2; ix++){
+	 for (jy=jy1; jy<jy2; jy++){
+	    for (kz=kz1; kz<kz2; kz++){
+	    Qxxfxd_all_y[ix][jyoff+jy][kz]=buf_recv[l++];
+	    Qxyfxd_all_y[ix][jyoff+jy][kz]=buf_recv[l++];
+	    Qxzfxd_all_y[ix][jyoff+jy][kz]=buf_recv[l++];
+	    Qyyfxd_all_y[ix][jyoff+jy][kz]=buf_recv[l++];
+	    Qyzfxd_all_y[ix][jyoff+jy][kz]=buf_recv[l++];
+	    }
+	 }
+      }
+   }
+   }
+
+   t1 = MPI_Wtime();
+   total_comm_ += (t1 - t0);
+
+}
 #else /* PARALLEL; below are serial equivalents */
 
 /****************************************************************************
