@@ -1,3 +1,21 @@
+/***************/ 
+/* BP rheology */ 
+/***************/
+int n_flow=3000;
+
+// get Q, redshift and 
+// activate bounce back at the walls
+if(n==n_flow) {
+   get_Qfxd();
+   POISEUILLE=1;
+}
+
+// set Q and redshift
+if(n>n_flow) {
+   set_Q(n,n_flow);
+   POISEUILLE=1;
+}
+
 
 /***************************/
 /* cut droplets or slabs   */

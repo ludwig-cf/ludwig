@@ -6,7 +6,6 @@
 0		# GRAPHICS
 1000000		# stepskip
 2		# itimprov
-0e-5		# bodyforce
 0		# RANDOM
 0		# TWIST
 1		# O2STRUCT
@@ -23,12 +22,15 @@
 2		# numuc
 1		# numhftwist
 0.3		# Gamma
-2.84210526		# gam
+3.0		# gam
 1		# REDSHIFT
+0		# POISEUILLE
+0e-5		# bodyforce
 1		# BACKFLOW
 1		# phivr
 0		# NOISE
 0.0		# noise_strength
+0		# ACTIVE
 0e-3		# zeta (activity)
 0.7		# xi
 2.5		# tau1
@@ -38,18 +40,18 @@
 0		# epsav
 0		# vwtp
 0		# vwbt
-2		# bcstren
+0		# bcstren
 90		# angztop
 90		# angzbot
 90		# angxytop
 90		# angxybot
-0.02930039	# Abulk
+0.0069		# Abulk
 0.19		# threshold
 1000		# OVDPrintInt
-10		# FePrintInt
+100		# FePrintInt
 10000000	# SigPrintFac
-516		# numCase
+806		# numCase
 2		# x proc decomposition
-1		# y proc decomposition
+2		# y proc decomposition
 2		# z proc decomposition
 1		# number io groups (files)

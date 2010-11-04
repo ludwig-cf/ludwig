@@ -21,7 +21,7 @@ if(BLUEHAAR==1){
 
    // number and radius of DTCs	
    int Ndt=256;
-   double Rdt=3;
+   double Rdt=5;
    // rotation angles
    double *theta,*phi,di,dj,dk;
    // center coordinates of DTC
@@ -92,16 +92,10 @@ if(BLUEHAAR==1){
 		     if((0<=ir && ir<Lx2) && (0<=jr && jr<Ly2) && (0<=kr && kr<Lz2)){  
 
 		      Qxx[ir][jr][kr]=amplitude*(-cos(2*q0*jc));
-		      Qxxinit[ir][jr][kr]=Qxx[ir][jr][kr];
 		      Qxy[ir][jr][kr]=0.0;
-		      Qxyinit[ir][jr][kr]=Qxy[ir][jr][kr];
 		      Qxz[ir][jr][kr]=amplitude*sin(2.0*q0*jc);
-		      Qxzinit[ir][jr][kr]=Qxz[ir][jr][kr];
-
 		      Qyy[ir][jr][kr]=amplitude*(-cos(2.0*q0*ic));
 		      Qyz[ir][jr][kr]=-amplitude*sin(2.0*q0*ic);
-		      Qyyinit[ir][jr][kr]=Qyy[ir][jr][kr];
-		      Qyzinit[ir][jr][kr]=Qyz[ir][jr][kr];
 
 		     }
 
@@ -139,21 +133,20 @@ if(BLUEHAAR==1){
 
 // isotropic liquid
 
-/*
-		   Qxx[i][j][k]= 1e-4/2.0;
+		   Qxx[i][j][k]= 1e-5;
 		   Qxy[i][j][k]= 0.0;
-		   Qyy[i][j][k]= -1e-4;
+		   Qyy[i][j][k]= 0.0;
 		   Qxz[i][j][k]= 0.0;
 		   Qyz[i][j][k]= 0.0;
-*/
-// cholesteric environment
 
+// cholesteric environment
+/*
 		   Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
 		   Qxy[i][j][k]= 0.0;
 		   Qyy[i][j][k]= -0.2723;
 		   Qxz[i][j][k]= -amplitude*(sin(2.0*q0*jc));
 		   Qyz[i][j][k]= 0.0;
-
+*/
 	       }
 
 	    }
@@ -186,8 +179,6 @@ if(BLUEHAAR!=1){
 
 // cholesteric LC
 
-
-
       Qxx[i][j][k]=0.2723/2.0+amplitude*cos(2.0*q0*jc);
       Qxy[i][j][k]= 0.0;
       Qyy[i][j][k]= -0.2723;
@@ -196,24 +187,16 @@ if(BLUEHAAR!=1){
 
          }
 
-
  // phase=2.0*q0*k;
-
 
 	if (DTSTRUCT == 1) {
           amplitude=0.3;
 
 	  Qxx[i][j][k]=amplitude*(-cos(2*q0*jc));
-	  Qxxinit[i][j][k]=Qxx[i][j][k];
 	  Qxy[i][j][k]=0.0;
-	  Qxyinit[i][j][k]=Qxy[i][j][k];
 	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
-	  Qxzinit[i][j][k]=Qxz[i][j][k];
-
 	  Qyy[i][j][k]=amplitude*(-cos(2.0*q0*ic));
 	  Qyz[i][j][k]=-amplitude*sin(2.0*q0*ic);
-	  Qyyinit[i][j][k]=Qyy[i][j][k];
-	  Qyzinit[i][j][k]=Qyz[i][j][k];
 
 	}
 
@@ -223,17 +206,12 @@ if(BLUEHAAR!=1){
 	  amplitude=0.3; 
 
 	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*kc)-cos(2.0*q0*jc));
-	  Qxxinit[i][j][k]=Qxx[i][j][k];
 	  Qxy[i][j][k]=amplitude*sin(2.0*q0*kc);
-	  Qxyinit[i][j][k]=Qxy[i][j][k];
 	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
-
 	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)-cos(2.0*q0*kc));
-	  Qyyinit[i][j][k]=Qyy[i][j][k];
 	  Qyz[i][j][k]=amplitude*sin(2.0*q0*ic);
- 	  Qyzinit[i][j][k]=Qyz[i][j][k];
 
-}
+	}
 
 	if (O5STRUCT == 1) {
 
@@ -284,7 +262,6 @@ if(BLUEHAAR!=1){
 
 	}
 
-
    if (HEXPLANAR == 1) {
 
 /* twist is along z-direction */
@@ -297,8 +274,6 @@ if(BLUEHAAR!=1){
 
    }
 
-
-
    if(HEX3DA == 1) {
 
      Qxx[i][j][k]=amplitude*(-1.5*cos(q0*ic)*cos(q0*sqrt(3.0)*jc)+0.25*cos(q0*Lx/Lz*kc));
@@ -308,7 +283,6 @@ if(BLUEHAAR!=1){
      Qyz[i][j][k]=amplitude*(-sin(2.0*q0*ic)-sin(q0*ic)*cos(q0*sqrt(3.0)*jc));
 
    }
-
 
      if(HEX3DB == 1) {
 
@@ -320,27 +294,11 @@ if(BLUEHAAR!=1){
 
      }
 
-
+// nematic order with noise 
 
 	if (RANDOM == 1) {
 		
 	  amplitude=0.5;
-
-/*
-	  phase= 2.0/5.0*Pi*(0.5-drand48());  
-	  phase2= Pi/2.0+Pi/5.0*(0.5-drand48());
-
-	  Qxx[i][j][k]= amplitude*
-	    (3.0/2.0*sin(phase2)*sin(phase2)*cos(phase)*cos(phase)-1.0/2.0);
-	  Qxy[i][j][k]= 3.0*amplitude/2.0*
-	    (sin(phase2)*sin(phase2)*cos(phase)*sin(phase));
-	  Qyy[i][j][k]= amplitude*
-	    (3.0/2.0*sin(phase2)*sin(phase2)*sin(phase)*sin(phase)-1.0/2.0);
-	  Qxz[i][j][k]=
-	    3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*cos(phase));
-	  Qyz[i][j][k]=
-	    3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*sin(phase));
-*/
 
 	Qxx[i][j][k]= amplitude*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
 	   cos(angxytop/180.0*Pi)*cos(angxytop/180.0*Pi)-1.0/3.0); 
@@ -467,15 +425,10 @@ void startDroplet(void)
 	  amplitude=0.3; 
 
 	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*kc)-cos(2.0*q0*jc));
-	  Qxxinit[i][j][k]=Qxx[i][j][k];
 	  Qxy[i][j][k]=amplitude*sin(2.0*q0*kc);
-	  Qxyinit[i][j][k]=Qxy[i][j][k];
 	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
-
 	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)-cos(2.0*q0*kc));
-	  Qyyinit[i][j][k]=Qyy[i][j][k];
 	  Qyz[i][j][k]=amplitude*sin(2.0*q0*ic);
- 	  Qyzinit[i][j][k]=Qyz[i][j][k];
 
 	 }
 
@@ -588,15 +541,10 @@ void startSlab(void)
 	  amplitude=0.3; 
 
 	  Qxx[i][j][k]=amplitude*(cos(2.0*q0*kc)-cos(2.0*q0*jc));
-	  Qxxinit[i][j][k]=Qxx[i][j][k];
 	  Qxy[i][j][k]=amplitude*sin(2.0*q0*kc);
-	  Qxyinit[i][j][k]=Qxy[i][j][k];
 	  Qxz[i][j][k]=amplitude*sin(2.0*q0*jc);
-
 	  Qyy[i][j][k]=amplitude*(cos(2.0*q0*ic)-cos(2.0*q0*kc));
-	  Qyyinit[i][j][k]=Qyy[i][j][k];
 	  Qyz[i][j][k]=amplitude*sin(2.0*q0*ic);
- 	  Qyzinit[i][j][k]=Qyz[i][j][k];
 
 	 }
 
@@ -640,45 +588,56 @@ void startSlab(void)
 }
 
 
-void reinit()
-{
-  gasdev(1);
+void reinit(){
+// initializes Q-tensor
 
-  f=fa;
-  fpr=fb;
+   gasdev(1);
 
-  oneplusdtover2tau1=1.0+0.5*dt/tau1;
-  oneplusdtover2tau2=1.0+0.5*dt/tau2;
+   f=fa;
+   fpr=fb;
 
-  wallamp=0.03;
+   oneplusdtover2tau1=1.0+0.5*dt/tau1;
+   oneplusdtover2tau2=1.0+0.5*dt/tau2;
 
-  if (gam > 2.7){
-    wallamp=(0.25+0.75*sqrt((1.0-8.0/(3.0*gam))));
-  }
- 
-  Qxxtop= wallamp*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
-     cos(angxytop/180.0*Pi)*cos(angxytop/180.0*Pi)-1.0/3.0); 
-  Qxytop= wallamp*sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
-    cos(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi);
-  Qyytop= wallamp*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
-     sin(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi)-1.0/3.0);
-  Qxztop= wallamp*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
-    cos(angxytop/180.0*Pi);
-  Qyztop= wallamp*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
-    sin(angxytop/180.0*Pi);
-	
-  Qxxbot= wallamp*(sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
-     cos(angxybot/180.0*Pi)*cos(angxybot/180.0*Pi)-1.0/3.0); 
-  Qxybot= wallamp*sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
-    cos(angxybot/180.0*Pi)*sin(angxybot/180.0*Pi);
-  Qyybot= wallamp*(sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
-     sin(angxybot/180.0*Pi)*sin(angxybot/180.0*Pi)-1.0/3.0);
-  Qxzbot= wallamp*sin(angzbot/180.0*Pi)*cos(angzbot/180.0*Pi)*
-    cos(angxybot/180.0*Pi);
-  Qyzbot= wallamp*sin(angzbot/180.0*Pi)*cos(angzbot/180.0*Pi)*
-    sin(angxybot/180.0*Pi);
 
-  randomizeQ();
+#ifdef FIXEDQ
+// nematic at boundary if bcstren!=0
+
+   if (RANDOM==1){
+
+      wallamp=0.03;
+
+      if (gam > 2.7){
+	 wallamp=(0.25+0.75*sqrt((1.0-8.0/(3.0*gam))));
+      }
+
+      Qxxtop= wallamp*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+	cos(angxytop/180.0*Pi)*cos(angxytop/180.0*Pi)-1.0/3.0); 
+      Qxytop= wallamp*sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+       cos(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi);
+      Qyytop= wallamp*(sin(angztop/180.0*Pi)*sin(angztop/180.0*Pi)*
+	sin(angxytop/180.0*Pi)*sin(angxytop/180.0*Pi)-1.0/3.0);
+      Qxztop= wallamp*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
+       cos(angxytop/180.0*Pi);
+      Qyztop= wallamp*sin(angztop/180.0*Pi)*cos(angztop/180.0*Pi)*
+       sin(angxytop/180.0*Pi);
+	   
+      Qxxbot= wallamp*(sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
+	cos(angxybot/180.0*Pi)*cos(angxybot/180.0*Pi)-1.0/3.0); 
+      Qxybot= wallamp*sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
+       cos(angxybot/180.0*Pi)*sin(angxybot/180.0*Pi);
+      Qyybot= wallamp*(sin(angzbot/180.0*Pi)*sin(angzbot/180.0*Pi)*
+	sin(angxybot/180.0*Pi)*sin(angxybot/180.0*Pi)-1.0/3.0);
+      Qxzbot= wallamp*sin(angzbot/180.0*Pi)*cos(angzbot/180.0*Pi)*
+       cos(angxybot/180.0*Pi);
+      Qyzbot= wallamp*sin(angzbot/180.0*Pi)*cos(angzbot/180.0*Pi)*
+       sin(angxybot/180.0*Pi);
+   }
+
+#endif
+
+// bulk initial configurations
+     randomizeQ();
 
 }
 
@@ -714,7 +673,7 @@ void initialize(void)
 		  pe_cartesian_coordinates_);
 
   /* Add 2 to the lattice size in each direction to accomodate halo regions,
-   * which are located at L=0 and L=L-1 */
+   * which are located at L=0 and L=L+1 */
 
   Lx2 = 2 + Lx/pe_cartesian_size_[0];
   ix1=1;
@@ -799,7 +758,6 @@ void initialize(void)
     }
   }
 
-
   fb=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
     fb[ix]=new double**[Ly2];
@@ -810,7 +768,6 @@ void initialize(void)
     }
   }
 
-
   Fc=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
     Fc[ix]=new double**[Ly2];
@@ -820,7 +777,6 @@ void initialize(void)
 	Fc[ix][iy][iz]=new double[15];
     }
   }
-
 
   feq=new double***[Lx2];
   for (ix=0;ix<Lx2;ix++) {
@@ -851,8 +807,6 @@ void initialize(void)
 	Fh[ix][iy][iz]=new double[3];
     }
   }
-
-
 
   density=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
@@ -950,36 +904,71 @@ void initialize(void)
     for (iy=0;iy<Ly2;iy++)
       Qyznew[ix][iy]=new double[Lz2];
   }
-  Qxxinit=new double**[Lx2];
+
+// local fixed Q-tensor
+  Qxxfxd=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxxinit[ix]=new double*[Ly2];
+    Qxxfxd[ix]=new double*[Ly2];
     for (iy=0;iy<Ly2;iy++)
-      Qxxinit[ix][iy]=new double[Lz2];
+      Qxxfxd[ix][iy]=new double[Lz2];
   }
-  Qxyinit=new double**[Lx2];
+  Qxyfxd=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxyinit[ix]=new double*[Ly2];
+    Qxyfxd[ix]=new double*[Ly2];
     for (iy=0;iy<Ly2;iy++)
-      Qxyinit[ix][iy]=new double[Lz2];
+      Qxyfxd[ix][iy]=new double[Lz2];
   }
-  Qyyinit=new double**[Lx2];
+  Qyyfxd=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyyinit[ix]=new double*[Ly2];
+    Qyyfxd[ix]=new double*[Ly2];
     for (iy=0;iy<Ly2;iy++)
-      Qyyinit[ix][iy]=new double[Lz2];
+      Qyyfxd[ix][iy]=new double[Lz2];
   }
-  Qxzinit=new double**[Lx2];
+  Qxzfxd=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qxzinit[ix]=new double*[Ly2];
+    Qxzfxd[ix]=new double*[Ly2];
     for (iy=0;iy<Ly2;iy++)
-      Qxzinit[ix][iy]=new double[Lz2];
+      Qxzfxd[ix][iy]=new double[Lz2];
   }
-  Qyzinit=new double**[Lx2];
+  Qyzfxd=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
-    Qyzinit[ix]=new double*[Ly2];
+    Qyzfxd[ix]=new double*[Ly2];
     for (iy=0;iy<Ly2;iy++)
-      Qyzinit[ix][iy]=new double[Lz2];
+      Qyzfxd[ix][iy]=new double[Lz2];
   }
+
+// fixed Q-tensor along wall at k=1 and k=Lz
+  Qxxfxd_all_y=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxxfxd_all_y[ix]=new double*[Ly+2];
+    for (iy=0;iy<Ly+2;iy++)
+      Qxxfxd_all_y[ix][iy]=new double[Lz2];
+  }
+  Qxyfxd_all_y=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxyfxd_all_y[ix]=new double*[Ly+2];
+    for (iy=0;iy<Ly+2;iy++)
+      Qxyfxd_all_y[ix][iy]=new double[Lz2];
+  }
+  Qyyfxd_all_y=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyyfxd_all_y[ix]=new double*[Ly+2];
+    for (iy=0;iy<Ly+2;iy++)
+      Qyyfxd_all_y[ix][iy]=new double[Lz2];
+  }
+  Qxzfxd_all_y=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qxzfxd_all_y[ix]=new double*[Ly+2];
+    for (iy=0;iy<Ly+2;iy++)
+      Qxzfxd_all_y[ix][iy]=new double[Lz2];
+  }
+  Qyzfxd_all_y=new double**[Lx2];
+  for (ix=0;ix<Lx2;ix++) {
+    Qyzfxd_all_y[ix]=new double*[Ly+2];
+    for (iy=0;iy<Ly+2;iy++)
+      Qyzfxd_all_y[ix][iy]=new double[Lz2];
+  }
+
   DEHxx=new double**[Lx2];
   for (ix=0;ix<Lx2;ix++) {
     DEHxx[ix]=new double*[Ly2];

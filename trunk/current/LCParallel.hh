@@ -13,6 +13,7 @@
 
 void exchangeMomentumAndQTensor(void);
 void exchangeTau(void);
+void communicateQfxd(void);
 void communicateOldDistributions(double ****fold);
 
 #endif
