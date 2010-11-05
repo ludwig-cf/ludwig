@@ -194,7 +194,6 @@ int main( int argc, char **argv ) {
     hydrodynamics_zero_force();
     COLL_update();
     wall_update();
-    if (phi_nop() == 5) COLL_set_Q();
 
     /* Collision stage */
 
@@ -202,8 +201,12 @@ int main( int argc, char **argv ) {
 
       TIMER_start(TIMER_PHI_GRADIENTS);
 
+      /* Note that the liquid crystal boundary conditions must come after
+       * the halo swap, but before the gradient calculation. */
+
       phi_compute_phi_site();
       phi_halo();
+      if (phi_nop() == 5) COLL_set_Q();
       phi_gradients_compute();
 
       TIMER_stop(TIMER_PHI_GRADIENTS);
