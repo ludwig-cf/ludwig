@@ -1,7 +1,7 @@
 /*
  * colloids_Q_tensor.c
  *
- *  $Id: colloids_Q_tensor.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id: colloids_Q_tensor.c,v 1.3 2010-11-25 14:58:52 kevin Exp $
  *
  * routine to set the Q tensor inside a colloid to correspond
  * to homeotropic or planar anchoring at the surface
@@ -523,9 +523,9 @@ void colloids_fix_swd(void) {
 	  /* Set the lattice velocity here to the solid body
 	   * rotational velocity */
 
-	  rb[X] = p_c->s.r[X] - x;
-	  rb[Y] = p_c->s.r[Y] - y;
-	  rb[Z] = p_c->s.r[Z] - z;
+	  rb[X] = x - p_c->s.r[X];
+	  rb[Y] = y - p_c->s.r[Y];
+	  rb[Z] = z - p_c->s.r[Z];
 
 	  cross_product(p_c->s.w, rb, u);
 
