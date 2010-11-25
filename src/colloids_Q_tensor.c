@@ -1,7 +1,7 @@
 /*
  * colloids_Q_tensor.c
  *
- *  $Id: colloids_Q_tensor.c,v 1.3 2010-11-25 14:58:52 kevin Exp $
+ *  $Id: colloids_Q_tensor.c,v 1.4 2010-11-25 18:10:38 kevin Exp $
  *
  * routine to set the Q tensor inside a colloid to correspond
  * to homeotropic or planar anchoring at the surface
@@ -648,9 +648,9 @@ static void scalar_order_parameter_director(double q[3][3], double qs[4]) {
   }
 
   qs[0] = d[emax];
-  qs[1] = v[emax][0];
-  qs[2] = v[emax][1];
-  qs[3] = v[emax][2];
+  qs[1] = v[X][emax];
+  qs[2] = v[Y][emax];
+  qs[3] = v[Z][emax];
 
   return;
 }
