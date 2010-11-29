@@ -4,7 +4,7 @@
  *
  *  D2Q9 definitions.
  *
- *  $Id: d2q9.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id: d2q9.c,v 1.3 2010-11-29 17:11:31 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -14,6 +14,7 @@
  *
  *****************************************************************************/
 
+#include "pe.h"
 #include "d2q9.h"
 
 #ifdef _D2Q9_
