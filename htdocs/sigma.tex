@@ -1,0 +1,396 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  sigma.tex
+%
+%  A rather long section on the calibration of surface tension
+%  for the binary fluid models.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Calibration of the Surface Tension}
+
+The binary fluid model introduces an interfacial tension $\sigma$ which
+can be predicted from the choice of free energy \cite{swift,kendon}.
+In particular, Kendon et al. 2000 described the process of calibrating
+the actual interfacial tension of the model fluid. This was based on
+a measurement of the Laplace pressure difference between the fluid
+inside and outside a spherical droplet via
+\begin{equation}
+\Delta p = 2 \sigma / R
+\end{equation}
+where $R$ is the radius of the spherical drop at equilibrium. This
+measurement appears quite difficult in practice owing to tendency of
+any initial drop to evaporate \cite{yue2007}.
+
+\subsection{New measurement}
+
+Here, we prefer a measure based on the expected profile of the
+order parameter $\phi$ and the free energy density at a flat interface.
+In order to sample all orientations of the interface with respect to
+the lattice we again take a large droplet of fluid A initialised at
+rest in fluid B. We assume that the interface is locally flat and so
+the procedure holds.
+
+If a droplet with radius $r_0$ is constructed with an initial interfacial
+profile of $\phi(r) = \tanh{(r - r_0) / \xi_0}$
+with $r$ in the radial direction,  then the free energy density will be
+(with $-A = B$)
+\begin{equation}
+ e(r) = -{\scriptstyle \frac{1}{4}} |A| [1 - \mathrm{sech}^4 (r-r_0)/\xi_0]
++ {\scriptstyle \frac{1}{2}}
+ (\kappa/\xi_0^2)\, \mathrm{sech}^4{(r-r_0)/\xi_0}.
+\end{equation}
+Obtaining a fit to $\xi_0$ from the measured interfacial profile of
+$\phi (r)$ and to $ e_0 = \kappa / 2 \xi_0^2$ from the peak in the measured
+profile of free energy
+density allows an estimate of the interfacial tension to be made:
+\begin{equation}
+\sigma = 2(8/9)^{1/2} \xi_0 |e_0|.
+\end{equation}
+This measurement is taken after the initial profile has been allowed
+to relax for at least 10 times the larger of the diffusion time
+$\xi_0^2 / M$ or the momentum diffusion time $\xi_0^2 / \eta$.
+
+
+We have measured the surface tension using the following approaches.
+
+\textit{Method 1}.
+
+LB for two distributions with relaxation of order parameter
+following Kendon etal. The force on the fluid is applied
+via the equilibrium stress following Swift et al.
+
+\textit{Method 2}.
+
+As method 1 but using the realxation of order parameter
+following Stratford etal.
+
+\textit{Method 3}.
+
+As Method 1 but with force via divergence of the chemical stress.
+
+\textit{Method 4}.
+
+As Method 3 but with force via divergence of the chemical stress.
+
+\textit{Method 5}.
+
+Using finite difference (1st order upwind) for the order parameter.
+
+\textit{Method 6}.
+
+Using finite difference (3rd order upwind).
+
+\subsection{Results}
+
+We follow the parameter sets in Kendon et al Table~2. These
+are reproduced here in Table~\ref{tab:r1}. Measured values for
+Run028 parameters are show in Table~\ref{tab:newr028}.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{llllllll}
+\hline
+Run & $-A, B$ & $\kappa$ & $\eta$ & $M$ & $\sigma$  & $L_0$ & $T_0$ \\
+\hline
+Run028 & 0.083 & 0.053 & 1.41 & 0.05  & 0.0625 & 31.8 & 718 \\
+Run022 & 0.0625 & 0.04 & 0.5 & 0.25   & 0.0471 & 5.31 & 56.3 \\
+Run029 & 0.0625 & 0.04 & 0.2 & 0.15   & 0.0471 & 0.849 & 3.61 \\
+Run020 & 0.00625 & 0.004 & 0.025 & 2.00 & 0.00471 & 0.133 & 0.704 \\
+Run030 & 0.00625 & 0.004 & 0.0065 & 1.25 & 0.00471 & 0.00829 & 0.0124 \\
+Run019 & 0.003125 & 0.002 & 0.0014 & 4.00 & 0.00236 & 0.000831 & 0.000493 \\
+Run032 & 0.00125  & 0.0008 & 0.0005 & 5.0 & 0.000943 & 0.000265 & 0.000141\\
+\hline  
+\end{tabular}
+\end{center}
+\caption{Table showing common parameter values following Kendon et al.
+with the theoretical interfacial tension, $L_0$ and $T_0$. Note that
+the order parameter mobility is used here (cf $\tilde{M} = 2M$) in
+Kendon et al.}
+\label{tab:r1}
+\end{table} 
+
+\begin{table}
+\begin{tabular}{lllllll}
+\hline
+Method & $\xi_0$ & $e_{min}$ & $e_{max}$ & $\sigma$  & $\phi_{min}$
+& $\phi_{max}$\\
+\hline
+\multicolumn{7}{c}{Run028}\\
+\hline
+Theory   & 1.13 & -0.0207 &  0.0207 & 0.0625 & -1.0 & 1.0 \\
+Method 1 & 1.00 & -0.0207 & 0.0128 & 0.063(3) & -1.0091 & 1.0028 \\
+Method 2 & 1.00 & -0.0207 & 0.0126 & 0.063(1) & -1.0113 & 0.9993 \\
+Method 3 & && & & & \\
+Method 4 & && & & & \\
+Method 5 & && & & & \\
+Method 6 & --& --& --& --& --& --\\
+\hline
+\multicolumn{7}{c}{Run029}\\
+\hline
+Theory & 1.13 & -0.0156 & 0.0156 & 0.0471  & -1.0 & 1.0\\
+Method 2 & 0.99 & -0.0156 & 0.010(?) & 0.048(4) & -1.0110 & 1.0003\\ 
+Method 6 & 1.02 & -0.0156 & 0.0099 & 0.049(0) & -1.0048 & 1.0002\\
+\hline
+\multicolumn{7}{c}{Run030}\\
+\hline
+Theory & 1.13 & -0.00156 & 0.00156 & 0.00471 & -1.0 & 1.0\\
+Method 2 & 1.04 & -0.00156 & 0.0008(?) & 0.0047(1) & -1.0167 & 1.0063\\
+Method 6 & 1.08 & -0.00156 & 0.0007(?) & 0.0048(0) & -1.0028 & 1.0031\\
+\hline
+\multicolumn{7}{c}{Run019}\\
+\hline
+Theory & 1.13 & -0.000781 & 0.000781 & 0.00236 & -1.0 & 1.0\\
+Method 2 & 1.29(?) & -0.000781 & 0.00015(?) & 0.0022(8) & -1.0312 & 1.0242\\
+Method 6 & 1.23(?) & 0.0010(?) &&  0.0024(?) & -1.0085 & 1.0019\\
+\hline 
+\multicolumn{7}{c}{Run032}\\
+\hline
+Theory   & 1.13 &  -0.000312 & 0.000312 & 0.000943  & -1.0 &1.0\\
+Method 2 & 1.07  & -0.000312& 0.000157 & 0.00094(7) & -1.0511 & 1.0311\\
+Method 6 & 1.6(5)& -0.000312 & not st. & 0.0010(7) &-1.0056 & 1.0010\\
+\hline
+\end{tabular}
+\caption{Results for the different methods for Run208 parameters.}
+\end{table}
+
+\section{Upwind Advection Schemes}
+
+The solution to the Cahn-Hilliard equation for the order parameter
+\begin{equation}
+\partial_t \phi + \partial_\alpha (u_\alpha \phi + M\partial_\alpha \mu) = 0
+\label{eq:ch}
+\end{equation}
+assumes that the valocity field $u_\alpha$ is known, along with the
+order parameter mobility $M$. Adopting a divergence form ensures that
+any finite difference scheme conserves the total order parameter in
+the system.
+
+Considering just the advective part of \ref{eq:ch}, a finite difference
+approach boils down to finding an interpolation of $\phi(\mathbf{r})$ to
+the faces of a control volume surrounding the lattice site at $\mathbf{r}$.
+So, in one dimension we have
+\begin{equation}
+\phi_i^{n+1} = \phi_i^n + \frac{\Delta t}{\Delta x} (u_w \phi_w - u_e \phi_e)
+\label{eq:phifd}
+\end{equation}
+where subscripts $w$ and $e$ refer to compass directions with index $i$
+incresing eastward. A first order upwind scheme approximates the
+interfacial value $\phi_w$ depending on the direction of the velocity
+at the face, viz:
+\begin{equation}
+\phi_w = \left\{
+\begin{array}{ll} \phi_i & u_w < 0, \\ \phi_{i-1} & u_w >= 0.
+\end{array} \right.
+\end{equation}
+This choice is conditionally stable for the Euler forward time step
+of Eq.~(\ref{eq:phifd}), but highly dissipative.
+
+
+
+Better accuracy requires
+a higher-order approximation to the interfacial value of $\phi$.
+
+\subsection{Uniformly third order scheme}
+
+We follow Leonard et al. \cite{utopia} in adopting a uniformly third
+order approximation dependent upon both the normal and tangential
+interfacial Courant numbers. It is extended here to three dimensions.
+
+Consider the two dimensional problem of Figure \ref{fig:utopia}.
+
+The flux at face $W$ is then
+\[\begin{array}{ll}
+c_x \Big\{ &
+1/2(\phi_c + \phi_w) - 1/2c_x (\phi_c - \phi_w)
+ - 1/6 (1 -c_x^2)(\phi_c - 2\phi_w + \phi_{ww})\\
+& - 1/2c_y (\phi_w - \phi_{sw})\\
+& - c_y (1/4 - 1/3c_x)(\phi_c - \phi_w - \phi_s + \phi_{sw})
+ - c_y (1/4 - 1/6c_y)(\phi_{nw} - 2\phi_w + \phi_{sw})\\
+& - 1/2c_z (\phi_w - \phi_{wd}) \\
+& - c_z (1/4 - 1/3c_x) (\phi_c - \phi_w -\phi_{cd} + \phi_{wd})
+ - c_z (1/4 - 1/6 c_y) (\phi_{wu} - 2 \phi_w + \phi_{wd}) \\
+& + c_y c_z \big[
+1/3(\phi_w - \phi_{wd}) - 1/3 (\phi_{sw} - \phi_{swd}) \\
+& + (1/6 - 1/4c_x) (\phi_c - \phi_w -\phi_s + \phi_{sw}
+    -(\phi_{cd} - \phi_{wd} - \phi_{sd} + \phi_{swd}))\\
+& + (1/6 - 1/8c_y)(\phi_{nw} - 2 \phi_w + \phi_{sw} 
+                - (\phi_{nwd} - 2\phi_{wd} + \phi_{swd}))\\
+& + (1/6 - 1/8c_z)(\phi_{wu} - 2\phi_w + \phi_{wd}
+                 - (\phi_{swu} - 2\phi_{sw} + \phi_{swd}))\big] \Big\}
+\end{array}\]
+
+\subsection{Gory details}
+
+The flux-integral method of Leonard et al. assumes that within a
+given cell, the order parameter is piecewise quadratic. So, for
+cell $W$ we have
+\begin{eqnarray}
+\phi (\zeta, \eta, \theta) = \phi_W - {\scriptstyle \frac{1}{24}} 
+(\phi_C + \phi_{SW} + \phi_{WW} + \phi_{NW} + \phi_{WD} + \phi_{WU}
+- 6\phi_W)\\
++ {\scriptstyle \frac{1}{2}} (\phi_C - \phi_{WW}) \zeta
++ {\scriptstyle \frac{1}{2}} (\phi_C - 2\phi_{W} + \phi_{WW}) \zeta^2\\
++ {\scriptstyle \frac{1}{2}} (\phi_{NW} - \phi_{SW}) \eta
++ {\scriptstyle \frac{1}{2}} (\phi_{NW} - 2\phi_{W} + \phi_{SW}) \eta^2\\
++ {\scriptstyle \frac{1}{2}} (\phi_{WU} - \phi_{WD}) \theta
++ {\scriptstyle \frac{1}{2}} (\phi_{WU} - 2\phi_{W} + \phi_{WD}) \theta^2
+\end{eqnarray}
+
+
+\section{Lattice kinetic equation viewed as finite difference}
+
+For binary fluid problems the second distribution $g_i (\mathbf{x};t)$,
+representing the composition, obeys the evolution equation
+\begin{equation}
+g_i (\mathbf{x}; t + \Delta t )
+= g_i^\star (\mathbf{x} - \mathbf{c}_i \Delta t; t)
+\label{lke}
+\end{equation}
+where the star indicates the post-collision distribution. Here we consider
+the distribution to be set by requiring the first moment
+\begin{equation}
+j_\alpha = \sum_i g_i^\star (\mathbf{x};t) c_{i\alpha} = \phi u_\alpha
+\label{eq:moment1}
+\end{equation}
+and the second moment as
+\begin{equation}
+\Phi_{\alpha\beta} = \sum_i g_i^\star (\mathbf{x}; t) c_{i\alpha} c_{i\beta}
+= \phi u_\alpha u_\beta + 2M\mu (\mathbf{x};t) \delta_{\alpha\beta}.
+\end{equation}
+Here the mobility $M$ enters through the terms related to the chemical
+potential $\mu (\mathbf{x};t)$. The distribution is then set using the
+reprojection
+\begin{equation}
+g_i^\star (\mathbf{x}; t) = \delta_{i0}\phi
++ w_i (j_\alpha u_{i\alpha} / c_s^2
++      \Phi_{\alpha\beta} Q_{i\alpha\beta} / 2c_s^4),
+\end{equation}
+where the $\delta_{i0}$ moves $\phi$ mostly into the non-propagating
+distribution.
+
+For a uniform velocity field $u_\alpha = (u_x, u_y, u_z)$ it is possible
+to expand \ref{eq:lke} in a finite difference form which includes three
+parts: the advective part in $\phi$ related to the first moment, a
+dissipative contribution in $\phi$ related to the $\phi u_\alpha u_\beta$
+term in the second moment, and a part related to the
+ diffusion of the chemical potential.
+
+\subsection{Advective terms}
+
+Combining \ref{eq:lke} and \ref{eq:moment1} and taking the sum over
+the distributions we have
+\begin{equation}
+\sum_i g_i (\mathbf{x};t) = \sum_i \Big( g_0^\star (\mathbf{x};t)  +
+(1/c_s^2)  w_i \phi (\mathbf{x} - \mathbf{c}_i \Delta t;t)
+u_\alpha c_{i\alpha} \Big).
+\end{equation}
+Introducing a finite finiterence notation $\phi_{ijk}^n
+= \sum_{i'} g_{i'}^\star (\mathbf{x}; t)$ where the indices $i,j,k$
+represent the spatial discretistation, and the superscript $n$ represents
+the discrete time level we have
+\begin{eqnarray}
+\phi_{ijk}^{n+1}  = \phi_{ijk}^n - u_x w_1/c_s^2 \Big\{
+\phi_{i+1 j k}^n - \phi_{i-1 j k}^n \\
++ 1/2(
+\phi_{i+1 j+1 k}^n - \phi_{i-1 j-1 k}^n +
+\phi_{i+1 j-1 k}^n - \phi_{i-1 j+1 k}^n +
+\phi_{i+1 j k+1}^n - \phi_{i-1 j k-1}^n +
+\phi_{i+1 j k-1}^n - \phi_{i-1 j k-+}^n)
+\Big\} \\ +
+u_y w_1 / c_s^2 \Big\{
+\phi_{i j+1 k}^n - \phi_{i j-1 k}^n \\
++ 1/2 (
+\phi_{i+1 j+1 k}^n - \phi_{i-1 j-1 k}^n +
+\phi_{i-1 j+1 k}^n - \phi_{i+1 j-1 k}^n +
+\phi_{i j+1 k+1}^n - \phi_{i j-1 k-1}^n +
+\phi_{i j+1 k-1}^n - \phi_{i j-1 k+1}^n)
+\Big\} \\ +
+u_z w_1 / c_s^2 \Big\{
+\phi_{i j k+1}^n - \phi_{i j k-1}^n \\
++ 1/2 (
+\phi_{i+1 j k+1}^n - \phi_{i-1 j k-1}^n +
+\phi_{i-1 j k+1}^n - \phi_{i+1 j k-1}^n +
+\phi_{i j+1 k+1}^n - \phi_{i j-1 k-1}^n +
+\phi_{i j-1 k+1}^n - \phi_{i j+1 k-1}^n) \Big\}.
+\end{eqnarray}
+We can regcognise here second order centred difference approximations to
+the first derivative in $\phi$ in the coordinate direction in the
+diagonal directions (cf \cite{sescu2008} with 'isotropy correction factor'
+$\beta = 1/2$ in three dimensions).
+
+There are a number of points to note about this. First, there are
+terms in $\sum_i g_0^\star$ which are not included above, but are dealt
+with below. Second, while the spatial discretisation looks ok, this is
+forward in time, which would classically be undesirable. Dissipation
+is required to prevent dispersive errors dominating. (Although with
+general flow field, the coefficients of the finite difference form are
+altered in ways which could provide some upwind bias.)
+
+\subsection{Dissipative terms} 
+
+The dissipative terms from the $\phi u_\alpha u_\beta$ term in the
+second moment give
+\begin{equation}
+\sum_{i'} g_{i'} (\mathbf{x}; t + \Delta t) =
+1/2c_s^4 \sum_{i'} w_i \phi (\mathbf{x} - \mathbf{c}_i \Delta t; t)
+u_\alpha u_\beta Q_{i'\alpha\beta}.
+\end{equation}
+With a little effort this may be expanded to give and evolution
+equation with the following difusive tendency terms:
+\begin{eqnarray}
+w_1/2c_s^4  \Big\{
+(u_x^2 - c_s^2u^2)(\phi_{i+1 j k} - 2\phi_{ijk} + \phi_{i-1 j k}) \\+
+(u_y^2 - c_s^2u^2)(\phi_{i j+1 k} - 2\phi_{ijk} + \phi_{i j-1 k}) \\+
+(u_z^2 - c_s^2u^2)(\phi_{i j k+1} - 2\phi_{ijk} + \phi_{i j k-1}) \Big\}\\
++ w_2/2c_s^4 \Big\{
+\big[ (u_x^2 + u_y^2) - c_s^2u^2\big]
+(\phi_{i+1 j+1 k} - 2\phi_{ijk} + \phi_{i-1 j-1 k}) \\+
+\big[ (u_x^2 - u_y^2) - c_s^2u^2 \big]
+(\phi_{i+1 j-1 k} - 2\phi_{ijk} + \phi_{i-1 j+1 k}) \\+
+\big[ (u_x^2 + u_z^2) - c_s^2u^2 \big]
+(\phi_{i-1 j k-1} - 2\phi_{ijk} + \phi_{i+1 j k+1}) \\+
+\big[ (u_x^2 - u_z^2) - c_s^2u^2 \big]
+(\phi_{i+1 j k-1} - 2\phi_{ijk} + \phi_{i-1 j k+1}) \\+
+\big[ (u_y^2 + u_z^2) - c_s^2u^2 \big]
+(\phi_{i j-1 k-1} -2\phi_{ijk} + \phi_{i j+1 k+1}) \\+
+\big[ (u_y^2 - u_z^2) - c_s^2u^2 \big]
+(\phi_{i j+1 k-1} - 2\phi_{ijk} + \phi_{i j-1 k+1}) \Big\}.
+\end{eqnarray}
+It can be see that the coefficients of these diffusive terms is
+related to the aspect ratio of the flow, and that the coefficents
+of given terms could become negative.
+
+\subsection{Chemical potential term}
+
+Finally, the terms in the chemical potential give
+\begin{equation}
+\sum_{i'} g(\mathbf{x};t + \Delta t) =
+\sum_{i'} w_i 2M\mu(\mathbf{x} - \mathbf{c}_ \Delta t)
+\delta_{\alpha\beta} Q_{i\alpha\beta}.
+\end{equation}
+Noting that the contraction $\delta_{\alpha\beta} Q_{i\alpha\beta} =
+-1, 0, 1$ for velocities with weights $w_0, w_1, w_2$ respectively,
+we get
+\begin{eqnarray}
+\phi_{ijk}^{n+1} = \phi_{ijk}^n -  w_0 2M u_{ijk}/2c_s^4
++ 2M w_2/2c_s^4 \Big\{
+\mu_{i+1 j+1 k} + \mu_{i-1 j-1 k} + \mu_{i+1 j-1 k} + \mu_{i-1 j+1 k} + \\
+\mu_{i+1 j k+1} + \mu_{i-1 j k-1} + \mu_{i+1 j k-1} + \mu_{i-1 j k+1} +
+\mu_{i j+1 k+1} + \mu_{i j-1 k-1} + \mu_{i j+1 k-1} + \mu_{i j-1 k+1} \Big\}.
+\end{eqnarray}
+This can be combined to give an easily recognisable finite difference
+solution for the diffusion equation
+\begin{eqnarray}
+\phi_{ijk}^{n+1} = \phi_{ijk}^n + 2M w_2 / 2 c_s^4
+\Big\{
+\mu_{i+1 j+1 k} - 2\mu_{ijk} + \mu_{i-1 j-1 k} + 
+\mu_{i+1 j-1 k} - 2\mu_{ijk} + \mu_{i-1 j+1 k} + \\
+\mu_{i+1 j k+1} - 2\mu_{ijk} + \mu_{i-1 j k-1} +
+\mu_{i+1 j k-1} - 2\mu_{ijk} + \mu_{i-1 j k+1} + \\
+\mu_{i j+1 k+1} - 2\mu_{ijk} + \mu_{i j-1 k-1} + 
+\mu_{i j+1 k-1} - 2\mu_{ijk} + \mu_{i j-1 k+1} \Big\}.
+\end{eqnarray}
+Note that this uses the twelve stencil points in $\mu$ related to
+the velocities with weight $w_2$ and so should have very good isotropy
+properties. The final prefactor is $M$ (check).
