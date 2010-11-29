@@ -4,7 +4,7 @@
  *
  *  Halo exchange of colloid state information.
  *
- *  $Id: colloids_halo.c,v 1.3 2010-10-19 07:48:21 kevin Exp $
+ *  $Id: colloids_halo.c,v 1.4 2010-11-29 17:03:16 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -297,7 +297,11 @@ static void colloids_halo_unload(int nrecv) {
     while (pc) {
 
       if (pc->s.index == recv_[n].index) {
+	/* kludge: don't update deltaphi */
+	double phi;
+	phi = pc->s.deltaphi;
 	pc->s = recv_[n];
+	pc->s.deltaphi = phi;
 	exists = 1;
       }
 
