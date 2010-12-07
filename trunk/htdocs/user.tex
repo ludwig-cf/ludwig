@@ -31,33 +31,48 @@ as an option for the time being.
 
 \subsection{Availability}
 
-We have a NeSCForge project account available at
+Under the auspices of the CCPs (Collaborative Computational Projects),
+and in particular CCP5, we have a CCPForge project account at
 
-\texttt{http://forge.nesc.ac.uk/projects/ludwig/}
+\texttt{http://ccpforge.cse.rl.ac.uk/}
 
-This provides controlled access to known persons and provide CVS, bug
-tracking, and so on. The NeSCForge CVS is not available to the public.
+This provides controlled access to known persons and uses version
+control via SVN, and includes bug
+tracking, and so on. The CCPForge SVN is not available to the public
+at the present time. You need to create an account at CCPForge, and
+let me or Juho know the username so you can be added to the access list.
 
-\textbf{IMPORTANT:} NeSCForge is scheduled to go out of service on 20th
-December 2010. KS will announce an alternative as soon as possible.
-This may mean some disruption.
-
-To download, e.g., the \texttt{src} module, you need
+To download the entire code, you need
 \begin{verbatim}
-cvs -z3 -d:ext:developername@forge.nesc.ac.uk:/cvsroot/ludwig co src
+svn checkout --username <user> http://ccpforge.cse.rl.ac.uk/svn/ludwig
 \end{verbatim}
-where \texttt{developername} is replaced by your Nescforge user name.
-(Note that this requires secure shell; you may need to set the
-environment variable \texttt{CVS\_RSH=ssh} if you do not appear
-to be getting any response.)
+where \texttt{<user>} is replaced by your CCPForge user name.
+Note that this will download all the existing tags and branches
+into a new directory named \texttt{ludwig}, as well as the main code!
+On success, you should see three directories
+\begin{verbatim}
+$ ls ludwig
+branches  tags      trunk
+\end{verbatim}
+The main code is in the \texttt{trunk} subdirectory. This documentation is
+found in the file \texttt{trunk/htdocs/ludwig.tex}, unit tests are in
+the directory \texttt{trunk/tests}, and the utilities are in
+\texttt{trunk/util}, and so on.
 
-Currently, you need to download at least the cvs modules \texttt{src},
-and \texttt{mpi\_s}. The \texttt{mpi\_s} module contains a `stub'
-library to replace MPI in serial, and is required to run in serial.
-This documentation is in the module
-\texttt{htdocs}, unit tests are in \texttt{tests}, and the utilities
-are in the module \texttt{util}.
+If you do not want all the tags and branches (which take up a certain amount
+of space), you can specify that you
+want only the trunk, e.g.,
+\begin{verbatim}
+svn co --username <user> http://ccpforge.cse.rl.ac.uk/svn/ludwig/trunk
+\end{verbatim}
+in which case you will get a new directory called \texttt{trunk} containing
+the source files. All the instructions below refer to paths relative to
+this trunk directory.
 
+If you have problems, it may be worth while looking at the issue
+tracker on the project web page. It would be useful if all issues
+could be reported via this mechanism. If you e-mail me, I will just
+insert your e-mail into the issue tracker!
 
 \subsection{Compilation}
 
