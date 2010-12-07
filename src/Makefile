@@ -32,7 +32,7 @@
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = icc 
+CC = gcc 
 MPICC = mpicc
 OPTS = -D_D3Q19_
 CFLAGS = -O3 -Wall
