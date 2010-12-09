@@ -27,6 +27,14 @@
 # MPICC     C compiler (make mpi)
 # LDFLAGS   Link time flags [-lm included by default]
 #
+# $Id$
+#
+# Edinburgh Soft Matter and Statistical Physics Group and
+# Edinburgh Parallel Computing Centre
+#
+# Kevin Stratford (kevin@epcc.ed.ac.uk)
+# (c) 2010 The University of Edinburgh
+#
 ###############################################################################
 
 EXECUTABLE = Ludwig.exe
@@ -79,7 +87,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      site_map.o subgrid.o \
      stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
-     stats_surfactant.o stats_turbulent.o \
+     stats_surfactant.o stats_turbulent.o svn.o \
      timer.o util.o wall.o colloids_Q_tensor.o
 
 ###############################################################################
@@ -96,28 +104,18 @@ default:
 verbose:
 	echo -e "LUDWIG make options ...\n"\
 	    "\t make serial \t builds serial implementation (no assertions)\n"\
-	    "\t make serial_assert \t builds serial implementation\n"\
 	    "\t make mpi \t builds parallel implementation based on MPI\n"\
-	    "\t make mpi_assert \t builds MPI version with assertions\n"\
 	    "\t make lib \t builds serial library\n"\
             "\t make libmpi \t builds parallel library\n"\
             "\t Check the Makefile for further details\n"	
 
-code:	$(OBJS)
+code:	svn $(OBJS)
 	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
 serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi" "OBJS=$(OBJS) main.o"
-serial_assert:
-	$(MAKE) generic "CC=$(CC)" "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi"
-
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) main.o" "CC=$(MPICC)"
-mpi_assert:
-	$(MAKE) generic "CC=$(MPICC) " "LIBS= $(MPILIB) $(LIBS)" \
-        "CFLAGS=$(CFLAGS)"
-
 
 libar:	$(OBJS)
 	$(AR) $(ARFLAGS) -o $(LIBRARY) $(OBJS)
@@ -125,6 +123,14 @@ lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
 	$(MAKE) libar "CC=$(MPICC)"
+
+# To obtain the latest svn version information, we use svnversion.
+# If svnversion is not available there may be an ugly error message,
+# although compilation should procede. The result should be double
+# quoted, e.g. "1191", hence the apostrophe armageddon.
+
+svn:
+	$(CC) -D SVN_REVISION='"'`svnversion`'"' -c svn.c
 
 ###############################################################################
 #

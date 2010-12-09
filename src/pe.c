@@ -8,7 +8,7 @@
  *  the parallel environment. In serial, the MPI stub library is
  *  required.
  *
- *  $Id: pe.c,v 1.3 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include "svn.h"
 #include "pe.h"
 
 static int pe_world_rank;
@@ -55,6 +56,7 @@ void pe_init(int argc, char ** argv) {
        (pe_world_size == 1) ? "" : "es");
 
   if (pe_world_rank == 0) {
+    printf("The SVN revision details are: %s\n", svn_revision());
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
   }
 
