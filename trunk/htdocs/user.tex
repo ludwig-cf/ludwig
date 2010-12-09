@@ -80,6 +80,15 @@ Locate your local C compiler. The following example uses \texttt{gcc}
 in serial, and \texttt{mpicc} in parallel. For MPI in particular,
 local details may vary.
 
+The other thing required by the Makefile is the utility
+\texttt{svnversion}, which allows the compile-time SVN version number to
+be included in the executable (and hence the output of the program). This
+is useful to remember which version you were using when looking at
+results at a later date. If
+\texttt{svnversion} is not available (and it
+should be if you have downloaded the code via SVN), you may get an
+error message, but the code should still compile.
+
 \subsubsection{Serial}
 
 First, compile the MPI stub library in the \texttt{mpi\_s}
@@ -106,6 +115,7 @@ e.g., using D3Q19:
 
 \begin{verbatim}
 $ make serial
+gcc  -D SVN_REVISION='"'`svnversion`'"' -c svn.c
 gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d2q9.c
 gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d3q15.c
 gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d3q19.c
