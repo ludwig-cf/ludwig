@@ -4,7 +4,7 @@
  *
  *  Colloid potentials and colloid-colloid interactions.
  *
- *  $Id: interaction.c,v 1.23 2010-10-21 18:13:42 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -673,12 +673,20 @@ void COLL_overlap(colloid_t * p_c1, colloid_t * p_c2) {
  *
  *  Update the colloid positions (all cells).
  *
+ *  Moving a particle more than 1 lattice unit in any direction can
+ *  cause it to leave the cell list entirely, which ends in
+ *  catastrophe. We therefore have a check here against a maximum
+ *  velocity (effectively dr) and stop if the check fails.
+ *
  *****************************************************************************/
 
 void coll_position_update(void) {
 
   int ia;
   int ic, jc, kc;
+  int ifail;
+
+  const double drmax[3] = {0.8, 0.8, 0.8};
 
   colloid_t * p_colloid;
 
@@ -690,8 +698,17 @@ void coll_position_update(void) {
 
 	  while (p_colloid) {
 
+	    ifail = 0;
 	    for (ia = 0; ia < 3; ia++) {
+	      if (p_colloid->s.dr[ia] > drmax[ia]) ifail = 1;
 	      p_colloid->s.r[ia] += p_colloid->s.dr[ia];
+	    }
+
+	    if (ifail == 1) {
+	      verbose("Colloid velocity exceeded maximum %7.3f %7.3f %7.3f\n",
+		      drmax[X], drmax[Y], drmax[Z]);
+	      colloid_state_write_ascii(p_colloid->s, stdout);
+	      fatal("Stopping\n");
 	    }
 
 	    p_colloid = p_colloid->next;
