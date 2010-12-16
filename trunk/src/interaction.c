@@ -308,6 +308,7 @@ void COLL_forces() {
   int nc = colloid_ntotal();
   double hminlocal;
   double hmin;
+  double etotal;
 
   if (nc > 0) {
 
@@ -320,10 +321,12 @@ void COLL_forces() {
     if (is_statistics_step()) {
 
       MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+      MPI_Reduce(&epotential_, &etotal, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
       info("\nParticle statistics:\n");
       if (nc > 1) {
 	info("Inter-particle minimum h is: %10.5e\n", hmin);
+	info("Potential energy is:         %10.5e\n", etotal);
       }
       stats_colloid_velocity_minmax();
     }
@@ -532,6 +535,10 @@ double COLL_interactions() {
  *  Check the cell list width against the current interaction cut-off
  *  lengths.
  *
+ *  For surface-surface separation based potentials, the criterion has
+ *  a contribution of the largest colloid diameter present. For centre-
+ *  centre calculations (such as Yukawa), this is not required.
+ *
  *****************************************************************************/
 
 static void colloid_forces_check(void) {
@@ -541,7 +548,12 @@ static void colloid_forces_check(void) {
   double lmin = DBL_MAX;
   double rc;
 
-  ahmax = colloid_forces_ahmax();
+  if (potential_centre_to_centre()) {
+    ahmax = 0.0;
+  }
+  else {
+    ahmax = colloid_forces_ahmax();
+  }
 
   /* Work out the maximum cut-off range */
 
