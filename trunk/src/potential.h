@@ -2,7 +2,7 @@
  *
  *  potential.h
  *
- *  $Id: potential.h,v 1.5 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statisitcal Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,5 +28,6 @@ double hard_sphere_energy(const double);
 double yukawa_potential(const double);
 double yukawa_force(const double);
 double get_max_potential_range(void);
+int    potential_centre_to_centre(void);
 
 #endif
