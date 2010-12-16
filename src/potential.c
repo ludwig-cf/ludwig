@@ -6,7 +6,7 @@
  *
  *  Provides routines for pairwise energies and forces.
  *
- *  $Id: potential.c,v 1.6 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -297,7 +297,7 @@ double yukawa_force(double r) {
   if (yukawa.on && r < rc) {
     u0 = epsilon*exp(-kappa*r)/r;
     u0_rc = epsilon*exp(-kappa*rc)/rc;
-    f = (u0*(kappa*r + 1.0)/r - u0_rc*(kappa*rc + 1.0)/rc)/r;
+    f = u0*(kappa*r + 1.0)/r - u0_rc*(kappa*rc + 1.0)/rc;
   }
 
   return f;
@@ -320,4 +320,28 @@ double get_max_potential_range() {
   rmax = dmax(rmax, yukawa.cutoff);
 
   return rmax;
+}
+
+/*****************************************************************************
+ *
+ *  potential_centre_to_centre
+ *
+ *  True true if it's a centre-centre based potential (Yukawa at the
+ *  moment.
+ *
+ *****************************************************************************/
+
+int potential_centre_to_centre(void) {
+
+  if (yukawa.on) {
+    /* Check there's nothing else switched on. */
+    if (soft_sphere.on) {
+      fatal("Please do not use both Yukawa and Soft Sphere potentials\n");
+    }
+    if (lennard_jones.on) {
+      fatal("Please do not use both Yukawa and Lennard Jones potentials\n");
+    }
+  }
+
+  return yukawa.on;
 }
