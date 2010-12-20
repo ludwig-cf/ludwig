@@ -7,7 +7,7 @@
  *  Isothermal fluctuations following Adhikari et al., Europhys. Lett
  *  (2005).
  *
- *  $Id: collision.c,v 1.23 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -30,6 +30,7 @@
 #include "model.h"
 #include "site_map.h"
 #include "collision.h"
+#include "fluctuations.h"
 
 #include "phi.h"
 #include "free_energy.h"
@@ -45,11 +46,15 @@ static double var_shear;        /* Variance for shear mode fluctuations */
 static double var_bulk;         /* Variance for bulk mode fluctuations */
 static double noise_var[NVEL];  /* Noise variances */
 
+static fluctuations_t * fl_;
+
 static void collision_multirelaxation(void);
 static void collision_binary_lb(void);
 
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
 static void fluctuations_on(double shat[3][3], double ghat[NVEL]);
+       void collision_fluctuations(int index, double shat[3][3],
+				   double ghat[NVEL]);
 
 /*****************************************************************************
  *
@@ -211,7 +216,12 @@ void collision_multirelaxation() {
 	  }
 	}
 
-	if (isothermal_fluctuations_) fluctuations_on(shat, ghat);
+	if (isothermal_fluctuations_) {
+	  /* Use old fluctuations pending tests of new, which are
+	   * introduced like this... */
+	  /* collision_fluctuations(index, shat, ghat);*/
+	  fluctuations_on(shat, ghat);
+	}
 
 	/* Now reset the hydrodynamic modes to post-collision values:
 	 * rho is unchanged, velocity unchanged if no force,
@@ -421,7 +431,10 @@ void collision_binary_lb() {
 	  }
 	}
 
-	if (isothermal_fluctuations_) fluctuations_on(shat, ghat);
+	if (isothermal_fluctuations_) {
+	  fluctuations_on(shat, ghat);
+	  /* collision_fluctuations(index, shat, ghat); */
+	}
 
 	/* Now reset the hydrodynamic modes to post-collision values */
 
@@ -811,6 +824,157 @@ void collision_relaxation_times(double * tau) {
 
   for (ia = NHYDRO; ia < NVEL; ia++) {
     tau[ia] = rtau_ghost;
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_init
+ *
+ *  Set up the noise generator.
+ *
+ *****************************************************************************/
+
+void collision_init(void) {
+
+  int nsites;
+  int ic, jc, kc, index;
+  int is_local;
+  int nlocal[3];
+  int noffset[3];
+  int ntotal[3];
+
+  unsigned int serial[4] = {13, 829, 2441, 22383979};
+  unsigned int state[4];
+
+  ntotal[X] = N_total(X);
+  ntotal[Y] = N_total(Y);
+  ntotal[Z] = N_total(Z);
+
+  nsites = coords_nsites();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  /* This is slightly incestuous; we are going to use the uniform
+   * generator from fluctuations to generate, in serial, the
+   * initial states for the fluctuation generator. The initialisation
+   * of the serial state is absolutely fixed, as above. */
+
+  fl_ = fluctuations_create(nsites);
+
+  for (ic = 1; ic <= ntotal[X]; ic++) {
+    for (jc = 1; jc <= ntotal[Y]; jc++) {
+      for (kc = 1; kc <= ntotal[Z]; kc++) {
+	state[0] = fluctuations_uniform(serial);
+	state[1] = fluctuations_uniform(serial);
+	state[2] = fluctuations_uniform(serial);
+	state[3] = fluctuations_uniform(serial);
+	is_local = 1;
+	if (ic <= noffset[X] || ic > noffset[X] + nlocal[X]) is_local = 0;
+	if (jc <= noffset[Y] || jc > noffset[Y] + nlocal[Y]) is_local = 0;
+	if (kc <= noffset[Z] || kc > noffset[Z] + nlocal[Z]) is_local = 0;
+	if (is_local) {
+	  index = coords_index(ic-noffset[X], jc-noffset[Y], kc-noffset[Z]);
+	  fluctuations_state_set(fl_, index, state);
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_finish
+ *
+ *****************************************************************************/
+
+void collision_finish(void) {
+
+  assert(fl_);
+  fluctuations_destroy(fl_);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_fluctuations
+ *
+ *  Compute that fluctuating contributions to the distribution at
+ *  the current index.
+ *
+ *  There are NDIM*(NDIM+1)/2 independent stress modes, and
+ *  NVEL - NHYDRO ghost modes.
+ *
+ *****************************************************************************/
+
+void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
+
+  int ia;
+  double tr;
+  double random[NFLUCTUATION];
+  const double r3 = (1.0/3.0);
+
+  assert(fl_);
+  assert(NFLUCTUATION >= NDIM*(NDIM+1)/2);
+  assert(NFLUCTUATION >= (NVEL - NHYDRO));
+
+  /* Set symetric random stress matrix (elements with unit variance) */
+
+  fluctuations_reap(fl_, index, random);
+
+  shat[X][X] = random[0];
+  shat[X][Y] = random[1];
+  shat[X][Z] = random[2];
+
+  shat[Y][X] = shat[X][Y];
+  shat[Y][Y] = random[3];
+  shat[Y][Z] = random[4];
+
+  shat[Z][X] = shat[X][Z];
+  shat[Z][Y] = shat[Y][Z];
+  shat[Z][Z] = random[5];
+
+  /* Compute the trace and the traceless part */
+
+  tr = r3*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
+  shat[X][X] -= tr;
+  shat[Y][Y] -= tr;
+  shat[Z][Z] -= tr;
+
+  /* Set variance of the traceless part */
+
+  shat[X][X] *= sqrt(2.0)*var_shear;
+  shat[X][Y] *= var_shear;
+  shat[X][Z] *= var_shear;
+
+  shat[Y][X] *= var_shear;
+  shat[Y][Y] *= sqrt(2.0)*var_shear;
+  shat[Y][Z] *= var_shear;
+
+  shat[Z][X] *= var_shear;
+  shat[Z][Y] *= var_shear;
+  shat[Z][Z] *= sqrt(2.0)*var_shear;
+
+  /* Set variance of trace and recombine... */
+
+  tr *= (var_bulk);
+
+  shat[X][X] += tr;
+  shat[Y][Y] += tr;
+  shat[Z][Z] += tr;
+
+  /* Ghost modes */
+
+  if (nmodes_ == NVEL) {
+    fluctuations_reap(fl_, index, random);
+    for (ia = NHYDRO; ia < nmodes_; ia++) {
+      ghat[ia] = noise_var[ia]*random[ia - NHYDRO];
+    }
   }
 
   return;
