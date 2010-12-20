@@ -2,7 +2,7 @@
  *
  *  collision.h
  *
- *  $Id: collision.h,v 1.5 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,5 +24,7 @@ void collision_fluctuations_on(void);
 void collision_fluctuations_off(void);
 void collision_relaxation_times_set(void);
 void collision_relaxation_times(double * tau);
+void collision_init(void);
+void collision_finish(void);
 
 #endif
