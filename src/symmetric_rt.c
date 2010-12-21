@@ -4,7 +4,7 @@
  *
  *  Run time initialisation for the symmetric phi^4 free energy.
  *
- *  $Id: symmetric_rt.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
@@ -24,13 +24,43 @@
 #include "free_energy.h"
 #include "symmetric.h"
 
+static void symmetric_init(const int nhalo);
+
 /****************************************************************************
  *
  *  symmetric_run_time
  *
+ *  This means hybrid, requiring nhalo = 2.
+ *
  ****************************************************************************/
 
 void symmetric_run_time(void) {
+
+  symmetric_init(2);
+  return;
+}
+
+/****************************************************************************
+ *
+ *  symmetric_run_time_lb
+ *
+ *  This means full lattice Boltzmann, where nhalo = 1 is enough.
+ *
+ ****************************************************************************/
+
+void symmetric_run_time_lb(void) {
+
+  symmetric_init(1);
+  return;
+}
+
+/****************************************************************************
+ *
+ *  symmetric_init
+ *
+ ****************************************************************************/
+
+static void symmetric_init(const int nhalo) {
 
   int n;
   double a;
@@ -39,16 +69,13 @@ void symmetric_run_time(void) {
 
   /* Single order parameter, del^2 phi required. */
 
-  /* There's a slight complication in that halo width one is enough
-   * at the moment when using full LB. */
-
   phi_nop_set(1);
   phi_gradients_level_set(2);
-  coords_nhalo_set(2);
+  coords_nhalo_set(nhalo);
 
   info("Symmetric phi^4 free energy selected.\n");
   info("Single conserved order parameter nop = 1\n");
-  info("Requires up to del^2 derivatives so setting nhalo = 2\n");
+  info("Requires up to del^2 derivatives so setting nhalo = %1d\n", nhalo);
   info("\n");
 
   /* Parameters */
