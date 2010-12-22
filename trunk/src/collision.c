@@ -118,8 +118,7 @@ void collision_multirelaxation() {
 
   double    force_local[3];
   double    force_global[3];
-
-  extern double * f_;
+  double    f[NVEL];
 
   ndist = distribution_ndist();
   coords_nlocal(N);
@@ -141,10 +140,12 @@ void collision_multirelaxation() {
 
 	/* Compute all the modes */
 
+	distribution_index(index, 0, f);
+
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += f_[ndist*NVEL*index + p]*ma_[m][p];
+	    mode[m] += f[p]*ma_[m][p];
 	  }
 	}
 
@@ -219,8 +220,8 @@ void collision_multirelaxation() {
 	if (isothermal_fluctuations_) {
 	  /* Use old fluctuations pending tests of new, which are
 	   * introduced like this... */
-	  /* collision_fluctuations(index, shat, ghat);*/
-	  fluctuations_on(shat, ghat);
+	  collision_fluctuations(index, shat, ghat);
+	  /* fluctuations_on(shat, ghat);*/
 	}
 
 	/* Now reset the hydrodynamic modes to post-collision values:
@@ -247,11 +248,13 @@ void collision_multirelaxation() {
 	/* Project post-collision modes back onto the distribution */
 
 	for (p = 0; p < NVEL; p++) {
-	  f_[ndist*NVEL*index + p] = 0.0;
+	  f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    f_[ndist*NVEL*index + p] += mi_[p][m]*mode[m];
+	    f[p] += mi_[p][m]*mode[m];
 	  }
 	}
+
+	distribution_index_set(index, 0, f);
 
 	/* Next site */
       }
@@ -318,6 +321,7 @@ void collision_binary_lb() {
 
   double    force_local[3];
   double    force_global[3];
+  double    f[NVEL];
 
   const double   r3     = (1.0/3.0);
 
@@ -329,8 +333,6 @@ void collision_binary_lb() {
   double    rtau2;
   double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
-
-  extern double * f_;
 
   double (* chemical_potential)(const int index, const int nop);
   void   (* chemical_stress)(const int index, double s[3][3]);
@@ -357,10 +359,12 @@ void collision_binary_lb() {
 
 	/* Compute all the modes */
 
+	distribution_index(index, 0, f);
+
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += f_[ndist*NVEL*index + p]*ma_[m][p];
+	    mode[m] += f[p]*ma_[m][p];
 	  }
 	}
 
@@ -432,8 +436,8 @@ void collision_binary_lb() {
 	}
 
 	if (isothermal_fluctuations_) {
-	  fluctuations_on(shat, ghat);
-	  /* collision_fluctuations(index, shat, ghat); */
+	  /* fluctuations_on(shat, ghat);*/
+	  collision_fluctuations(index, shat, ghat);
 	}
 
 	/* Now reset the hydrodynamic modes to post-collision values */
@@ -457,25 +461,31 @@ void collision_binary_lb() {
 	/* Project post-collision modes back onto the distribution */
 
 	for (p = 0; p < NVEL; p++) {
-	  f_[ndist*NVEL*index + p] = 0.0;
+	  /* f_[ndist*NVEL*index + p] = 0.0;*/
+	  f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    f_[ndist*NVEL*index + p] += mi_[p][m]*mode[m];
+	    /* f_[ndist*NVEL*index + p] += mi_[p][m]*mode[m];*/
+	    f[p] += mi_[p][m]*mode[m];
 	  }
 	}
+
+	distribution_index_set(index, 0, f);
 
 	/* Now, the order parameter distribution */
 
 	phi = phi_get_phi_site(index);
 	mu = chemical_potential(index, 0);
+	distribution_index(index, 1, f);
 
 	jphi[X] = 0.0;
 	jphi[Y] = 0.0;
 	jphi[Z] = 0.0;
 	for (p = 1; p < NVEL; p++) {
 	  for (i = 0; i < 3; i++) {
-	    jphi[i] += f_[ndist*NVEL*index + NVEL + p]*cv[p][i];
+	    jphi[i] += f[p]*cv[p][i];
 	  }
 	}
+
 
 	/* Relax order parameters modes. See the comments above. */
 
@@ -506,9 +516,10 @@ void collision_binary_lb() {
 	  /* Project all this back to the distributions. The magic
 	   * here is to move phi into the non-propagating distribution. */
 
-	  f_[ndist*NVEL*index + NVEL + p]
-	    = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
+	  f[p] = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
 	}
+
+	distribution_index_set(index, 1, f);
 
 	/* Next site */
       }
