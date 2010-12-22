@@ -2,7 +2,7 @@
  *
  *  model.h
  *
- *  $Id: model.h,v 1.15 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -47,6 +47,9 @@ void   distribution_get_stress_at_site(int index, double s[3][3]);
 void   distribution_halo_set_complete(void);
 void   distribution_halo_set_reduced(void);
 void   distribution_init_f(void);
+void   distribution_index(const int index, const int n, double f[NVEL]);
+void   distribution_index_set(const int index, const int n,
+			      const double f[NVEL]);
 
 struct io_info_t * distribution_io_info(void);
 void   distribution_io_info_set(struct io_info_t * io_info);
