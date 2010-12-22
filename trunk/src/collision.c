@@ -220,8 +220,8 @@ void collision_multirelaxation() {
 	if (isothermal_fluctuations_) {
 	  /* Use old fluctuations pending tests of new, which are
 	   * introduced like this... */
-	  collision_fluctuations(index, shat, ghat);
-	  /* fluctuations_on(shat, ghat);*/
+	  /* collision_fluctuations(index, shat, ghat);*/
+	  fluctuations_on(shat, ghat);
 	}
 
 	/* Now reset the hydrodynamic modes to post-collision values:
@@ -436,8 +436,8 @@ void collision_binary_lb() {
 	}
 
 	if (isothermal_fluctuations_) {
-	  /* fluctuations_on(shat, ghat);*/
-	  collision_fluctuations(index, shat, ghat);
+	  fluctuations_on(shat, ghat);
+	  /* collision_fluctuations(index, shat, ghat);*/
 	}
 
 	/* Now reset the hydrodynamic modes to post-collision values */
