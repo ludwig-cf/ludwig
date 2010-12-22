@@ -9,7 +9,7 @@
  *
  *  The LB model is either D2Q9, D3Q15 or D3Q19, as included in model.h.
  *
- *  $Id: model.c,v 1.18 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -827,6 +827,52 @@ void distribution_zeroth_moment_set_equilibrium(const int index, const int n,
 
   for (p = 0; p < NVEL; p++) {
     f_[ndist_*NVEL*index + n*NVEL + p] = wv[p]*rho;
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_index
+ *
+ *  Return the distribution n at index.
+ *
+ *****************************************************************************/
+
+void distribution_index(const int index, const int n, double f[NVEL]) {
+
+  int p;
+
+  assert(initialised_);
+  assert(n >= 0 && n < ndist_);
+  assert(index >= 0 && index < nsite_);
+
+  for (p = 0; p < NVEL; p++) {
+    f[p] = f_[ndist_*NVEL*index + n*NVEL + p];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_index_set
+ *
+ *  Set distribution n and index.
+ *
+ *****************************************************************************/
+
+void distribution_index_set(const int index, const int n,
+			    const double f[NVEL]) {
+  int p;
+
+  assert(initialised_);
+  assert(n >= 0 && n < ndist_);
+  assert(index >= 0 && index < nsite_);
+
+  for (p = 0; p < NVEL; p++) {
+    f_[ndist_*NVEL*index + n*NVEL + p] = f[p];
   }
 
   return;
