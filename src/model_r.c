@@ -204,13 +204,19 @@ void distribution_halo() {
 
   int ic, jc, kc;
   int n, p;
+  int pforw, pback;
   int ihalo, ireal;
   int indexhalo, indexreal;
-  int nhalo;
+  int nsend, count;
   int nlocal[3];
 
   const int tagf = 900;
   const int tagb = 901;
+
+  double * sendforw;
+  double * sendback;
+  double * recvforw;
+  double * recvback;
 
   MPI_Request request[4];
   MPI_Status status[4];
@@ -218,139 +224,247 @@ void distribution_halo() {
 
   assert(initialised_);
 
-  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
   /* The x-direction (YZ plane) */
 
-  if (cart_size(X) == 1) {
-    for (p = 0; p < NVEL; p++) {
-      for (n = 0; n < ndist_; n++) {
-	ihalo = p*ndist_*nsite_ + n*nsite_;
-	ireal = p*ndist_*nsite_ + n*nsite_;
-	for (jc = 1; jc <= nlocal[Y]; jc++) {
-	  for (kc = 1; kc <= nlocal[Z]; kc++) {
+  nsend = NVEL*ndist_*nlocal[Y]*nlocal[Z];
+  sendforw = (double *) malloc(nsend*sizeof(double));
+  sendback = (double *) malloc(nsend*sizeof(double));
+  recvforw = (double *) malloc(nsend*sizeof(double));
+  recvback = (double *) malloc(nsend*sizeof(double));
+  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
+  if (sendback == NULL) fatal("malloc(sendback) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvback) failed\n");
 
-	    indexhalo = ihalo + coords_index(0, jc, kc);
-	    indexreal = ireal + coords_index(nlocal[X], jc, kc);
-	    f_[indexhalo] = f_[indexreal];
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < ndist_; n++) {
+      ireal = p*ndist_*nsite_ + n*nsite_;
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	    indexhalo = ihalo + coords_index(nlocal[X]+1, jc, kc);
-	    indexreal = ireal + coords_index(1, jc, kc);
-	    f_[indexhalo] = f_[indexreal];
-	  }
+	  indexreal = ireal + coords_index(nlocal[X], jc, kc);
+	  sendforw[count] = f_[indexreal];
+
+	  indexreal = ireal + coords_index(1, jc, kc);
+	  sendback[count] = f_[indexreal];
+	  ++count;
 	}
       }
     }
   }
+  assert(count == nsend);
+
+  if (cart_size(X) == 1) {
+    memcpy(recvback, sendforw, nsend*sizeof(double));
+    memcpy(recvforw, sendback, nsend*sizeof(double));
+  }
   else {
 
-    fatal("No parallel x halo\n");
+    pforw = cart_neighb(FORWARD, X);
+    pback = cart_neighb(BACKWARD, X);
 
-    ihalo = ndist_*NVEL*coords_index(nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
+    MPI_Irecv(recvforw, nsend, MPI_DOUBLE, pforw, tagb, comm, request);
+    MPI_Irecv(recvback, nsend, MPI_DOUBLE, pback, tagf, comm, request + 1);
 
-    /*
-    MPI_Irecv(f_ + ihalo, 1, plane_yz_[BACKWARD],
-	      cart_neighb(FORWARD,X), tagb, comm, &request[0]);
-    ihalo = ndist_*NVEL*coords_index(0, 1 - nhalo, 1 - nhalo);
-    MPI_Irecv(f_ + ihalo, 1, plane_yz_[FORWARD],
-	      cart_neighb(BACKWARD,X), tagf, comm, &request[1]);
-    ireal = ndist_*NVEL*coords_index(1, 1-nhalo, 1-nhalo);
-    MPI_Issend(f_ + ireal, 1, plane_yz_[BACKWARD],
-	       cart_neighb(BACKWARD,X), tagb, comm, &request[2]);
-    ireal = ndist_*NVEL*coords_index(nlocal[X], 1-nhalo, 1-nhalo);
-    MPI_Issend(f_ + ireal, 1, plane_yz_[FORWARD],
-	       cart_neighb(FORWARD,X), tagf, comm, &request[3]);
-    MPI_Waitall(4, request, status);
-    */
+    MPI_Issend(sendback, nsend, MPI_DOUBLE, pback, tagb, comm, request + 2);
+    MPI_Issend(sendforw, nsend, MPI_DOUBLE, pforw, tagf, comm, request + 3);
+
+    /* Wait for receives */
+    MPI_Waitall(2, request, status);
   }
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < ndist_; n++) {
+      ihalo = p*ndist_*nsite_ + n*nsite_;
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  indexhalo = ihalo + coords_index(0, jc, kc);
+	  f_[indexhalo] = recvback[count];
+
+	  indexhalo = ihalo + coords_index(nlocal[X]+1, jc, kc);
+	  f_[indexhalo] = recvforw[count];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+
+  free(recvback);
+  free(recvforw);
+
+  if (cart_size(X) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 2, status);
+  }
+
+  free(sendback);
+  free(sendforw);
   
+
   /* The y-direction (XZ plane) */
 
-  if (cart_size(Y) == 1) {
-    for (p = 0; p < NVEL; p++) {
-      for (n = 0; n < ndist_; n++) {
-	ihalo = p*ndist_*nsite_ + n*nsite_;
-	ireal = p*ndist_*nsite_ + n*nsite_;
-	for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-	  for (kc = 1; kc <= nlocal[Z]; kc++) {
+  nsend = NVEL*ndist_*(nlocal[X] + 2)*nlocal[Z];
+  sendforw = (double *) malloc(nsend*sizeof(double));
+  sendback = (double *) malloc(nsend*sizeof(double));
+  recvforw = (double *) malloc(nsend*sizeof(double));
+  recvback = (double *) malloc(nsend*sizeof(double));
+  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
+  if (sendback == NULL) fatal("malloc(sendback) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvback) failed\n");
 
-	    indexhalo = ihalo + coords_index(ic, 0, kc);
-	    indexreal = ireal + coords_index(ic, nlocal[Y], kc);
-	    f_[indexhalo] = f_[indexreal];
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < ndist_; n++) {
+      ireal = p*ndist_*nsite_ + n*nsite_;
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	    indexhalo = ihalo + coords_index(ic, nlocal[Y] + 1, kc);
-	    indexreal = ireal + coords_index(ic, 1, kc);
-	    f_[indexhalo] = f_[indexreal];
-	  }
+	  indexreal = ireal + coords_index(ic, nlocal[Y], kc);
+	  sendforw[count] = f_[indexreal];
+
+	  indexreal = ireal + coords_index(ic, 1, kc);
+	  sendback[count] = f_[indexreal];
+	  ++count;
 	}
       }
     }
   }
+  assert(count == nsend);
+
+
+  if (cart_size(Y) == 1) {
+    memcpy(recvback, sendforw, nsend*sizeof(double));
+    memcpy(recvforw, sendback, nsend*sizeof(double));
+  }
   else {
 
-    fatal("No parallel y halo\n");
+    pforw = cart_neighb(FORWARD, Y);
+    pback = cart_neighb(BACKWARD, Y);
 
-    ihalo = ndist_*NVEL*coords_index(1 - nhalo, nlocal[Y] + 1, 1 - nhalo);
+    MPI_Irecv(recvforw, nsend, MPI_DOUBLE, pforw, tagb, comm, request);
+    MPI_Irecv(recvback, nsend, MPI_DOUBLE, pback, tagf, comm, request + 1);
 
-    /*
-    MPI_Irecv(f_ + ihalo, 1, plane_xz_[BACKWARD],
-	      cart_neighb(FORWARD,Y), tagb, comm, &request[0]);
-    ihalo = ndist_*NVEL*coords_index(1 - nhalo, 0, 1 - nhalo);
-    MPI_Irecv(f_ + ihalo, 1, plane_xz_[FORWARD], cart_neighb(BACKWARD,Y),
-	      tagf, comm, &request[1]);
-    ireal = ndist_*NVEL*coords_index(1 - nhalo, 1, 1 - nhalo);
-    MPI_Issend(f_ + ireal, 1, plane_xz_[BACKWARD], cart_neighb(BACKWARD,Y),
-	       tagb, comm, &request[2]);
-    ireal = ndist_*NVEL*coords_index(1 - nhalo, nlocal[Y], 1 - nhalo);
-    MPI_Issend(f_ + ireal, 1, plane_xz_[FORWARD], cart_neighb(FORWARD,Y),
-	       tagf, comm, &request[3]);
-    MPI_Waitall(4, request, status);
-    */
+    MPI_Issend(sendback, nsend, MPI_DOUBLE, pback, tagb, comm, request + 2);
+    MPI_Issend(sendforw, nsend, MPI_DOUBLE, pforw, tagf, comm, request + 3);
+
+    /* Wait of receives */
+    MPI_Waitall(2, request, status);
   }
-  
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < ndist_; n++) {
+      ihalo = p*ndist_*nsite_ + n*nsite_;
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  indexhalo = ihalo + coords_index(ic, 0, kc);
+	  f_[indexhalo] = recvback[count];
+
+	  indexhalo = ihalo + coords_index(ic, nlocal[Y] + 1, kc);
+	  f_[indexhalo] = recvforw[count];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+  free(recvback);
+  free(recvforw);
+
+  if (cart_size(Y) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 2, status);
+  }
+
+  free(sendback);
+  free(sendforw);
+
   /* Finally, z-direction (XY plane) */
 
-  if (cart_size(Z) == 1) {
-    for (p = 0; p < NVEL; p++) {
-      for (n = 0; n < ndist_; n++) {
-	ihalo = p*ndist_*nsite_ + n*nsite_;
-	ireal = p*ndist_*nsite_ + n*nsite_;
-	for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-	  for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
+  nsend = NVEL*ndist_*(nlocal[X] + 2)*(nlocal[Y] + 2);
+  sendforw = (double *) malloc(nsend*sizeof(double));
+  sendback = (double *) malloc(nsend*sizeof(double));
+  recvforw = (double *) malloc(nsend*sizeof(double));
+  recvback = (double *) malloc(nsend*sizeof(double));
+  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
+  if (sendback == NULL) fatal("malloc(sendback) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvback) failed\n");
 
-	    indexhalo = ihalo + coords_index(ic, jc, 0);
-	    indexreal = ireal + coords_index(ic, jc, nlocal[Z]);
-	    f_[indexhalo] = f_[indexreal];
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < ndist_; n++) {
+      ireal = p*ndist_*nsite_ + n*nsite_;
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 
-	    indexhalo = ihalo + coords_index(ic, jc, nlocal[Z] + 1);
-	    indexreal = ireal + coords_index(ic, jc, 1);
-	    f_[indexhalo] = f_[indexreal];
-	  }
+	  indexreal = ireal + coords_index(ic, jc, nlocal[Z]);
+	  sendforw[count] = f_[indexreal];
+
+	  indexreal = ireal + coords_index(ic, jc, 1);
+	  sendback[count] = f_[indexreal];
+	  ++count;
 	}
       }
     }
   }
+  assert(count == nsend);
+
+  if (cart_size(Z) == 1) {
+    memcpy(recvback, sendforw, nsend*sizeof(double));
+    memcpy(recvforw, sendback, nsend*sizeof(double));
+  }
   else {
 
-    fatal("No parallel z halo\n");
+    pforw = cart_neighb(FORWARD, Z);
+    pback = cart_neighb(BACKWARD, Z);
 
-    /*
-    ihalo = ndist_*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
-    MPI_Irecv(f_ + ihalo, 1, plane_xy_[BACKWARD], cart_neighb(FORWARD,Z),
-	      tagb, comm, &request[0]);
-    ihalo = ndist_*NVEL*coords_index(1 - nhalo, 1 - nhalo, 0);
-    MPI_Irecv(f_ + ihalo, 1, plane_xy_[FORWARD], cart_neighb(BACKWARD,Z),
-	      tagf, comm, &request[1]);
-    ireal = ndist_*NVEL*coords_index(1 - nhalo, 1 - nhalo, 1);
-    MPI_Issend(f_ + ireal, 1, plane_xy_[BACKWARD], cart_neighb(BACKWARD,Z),
-	       tagb, comm, &request[2]);
-    ireal = ndist_*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z]);
-    MPI_Issend(f_ + ireal, 1, plane_xy_[FORWARD], cart_neighb(FORWARD,Z),
-	       tagf, comm, &request[3]);  
-    MPI_Waitall(4, request, status);
-    */
+    MPI_Irecv(recvforw, nsend, MPI_DOUBLE, pforw, tagb, comm, request);
+    MPI_Irecv(recvback, nsend, MPI_DOUBLE, pback, tagf, comm, request + 1);
+
+    MPI_Issend(sendback, nsend, MPI_DOUBLE, pback, tagb, comm, request + 2);
+    MPI_Issend(sendforw, nsend, MPI_DOUBLE, pforw, tagf, comm, request + 3);
+
+    /* Wait for receives */
+    MPI_Waitall(2, request, status);
   }
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < ndist_; n++) {
+      ihalo = p*ndist_*nsite_ + n*nsite_;
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
+
+	  indexhalo = ihalo + coords_index(ic, jc, 0);
+	  f_[indexhalo] = recvback[count];
+
+	  indexhalo = ihalo + coords_index(ic, jc, nlocal[Z] + 1);
+	  f_[indexhalo] = recvforw[count];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+  free(recvback);
+  free(recvforw);
+
+  if (cart_size(Z) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 2, status);
+  }
+
+  free(sendback);
+  free(sendforw);
  
   return;
 }
