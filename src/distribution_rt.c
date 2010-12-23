@@ -2,7 +2,7 @@
  *
  *  distribution_rt.c
  *
- *  $Id: distribution_rt.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,6 +32,7 @@ void distribution_run_time(void) {
   int nreduced;
   int io_grid[3] = {1, 1, 1};
   char string[FILENAME_MAX];
+  char memory = ' '; 
 
   struct io_info_t * io_info;
 
@@ -46,12 +47,14 @@ void distribution_run_time(void) {
   io_info = io_info_create_with_grid(io_grid);
   distribution_io_info_set(io_info);
 
+  /* Append R to the record if the model is the reverse implementation */ 
+  if (distribution_order() == MODEL_R) memory = 'R';
 
   info("\n");
   info("Lattice Boltzmann distributions\n");
   info("-------------------------------\n");
 
-  info("Model:            d%dq%d\n", NDIM, NVEL);
+  info("Model:            d%dq%d %c\n", NDIM, NVEL, memory);
   info("Number of sets:   %d\n", distribution_ndist());
   info("Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
   info("Input format:     binary\n");

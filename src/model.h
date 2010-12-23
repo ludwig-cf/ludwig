@@ -26,6 +26,9 @@
 /* Number of hydrodynamic modes */
 enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
+/* Memory arrangement */
+enum {MODEL, MODEL_R};
+
 extern const double cs2;
 extern const double rcs2;
 
@@ -34,6 +37,7 @@ void   distribution_finish(void);
 void   distribution_halo(void);
 
 int    distribution_ndist(void);
+int    distribution_order(void);
 void   distribution_ndist_set(const int ndist);
 double distribution_f(const int index, const int p, const int n);
 void   distribution_f_set(const int index, const int p, const int n,

@@ -877,3 +877,14 @@ void distribution_index_set(const int index, const int n,
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  distribution_order
+ *
+ *****************************************************************************/
+
+int distribution_order(void) {
+
+  return MODEL;
+}
