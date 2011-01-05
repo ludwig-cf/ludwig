@@ -807,3 +807,56 @@ When restarting in parallel, the processor decomposition must be
 preserved. An attempt to change the processor decomposition will
 cause the configuration files to be read in the incorrect order,
 and results will be wrong.
+
+\section{Parallel Performance}
+
+\subsection{General Comments}
+
+The basic LB calculation should scale well in parallel, that is,
+the time taken for fixed problem size will decrease linearly
+with the number of MPI processes (strong scaling), or a larger
+problem can be run on a proportionally larger number processes
+in the same time (weak scaling). To ensure performance is retained
+in parallel, it is useful to understand some basic considerations.
+Some of these are discussed below.
+
+\textit{Ludwig} has been run successfully on up to 131,072 MPI
+tasks with close to ideal scaling, and there is no problem in
+principle to run larger decompositions.
+
+\subsection{Things to Remember and Things to Avoid}
+
+There are a number of simple issues to get right:
+\begin{itemize}
+\item
+Make sure the assertions are switched off and appropriate optimisations
+are switched on for production runs (see Makefile).
+\item
+Do not use too small a local domain size. Typically, 16$^3$ to 32$^3$
+cubic local domains will give resaonble scaling. Anything smaller may
+be inefficient. The best size may depend on the exact nature of the
+calculation and the hardware. Note that this limitation will always
+ultimately limit strong scaling.
+\item
+Don't have diagnsotic output (freq\_statistics) more often than is
+necessary. This output requires a global communication which is slow.
+\item
+Use BINARY output options; ASCII output is slower, and produces larger
+files.
+\item
+Do not use serial I/O. This will have an increasingly high overhead as
+the number of processors is increases (it's probably reasonable to
+128--256 MPI tasks). This is because each MPI tasks writes its data,
+in turn, to a single file; this in inherently serial. To avoid this,
+you need to specify the I/O decomposition for the various output
+quantities of interest. This splits the system into regular blocks
+(in a similar approach to the MPI decomposition), the data for which
+are written to separate files in parallel. For example, if the MPI
+decomposition is 8\_8\_8 (512 MPI tasks), then a reasonable I/O
+decomposition may be 2\_2\_2 or 4\_4\_4. The only way to find out
+what works best is to try some tests for the problem size you want to
+address.
+\item
+Don't use the Ewald sum! This simply does not scale.
+An alternative algorithm is required.
+\end{itemize}
