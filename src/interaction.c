@@ -58,7 +58,6 @@ void lubrication_sphere_sphere(double a1, double a2,
 static void    coll_position_update(void);
 static void    lubrication_init(void);
 static void    colloid_forces_check(void);
-static double  colloid_forces_ahmax(void);
 
 static int    gravity_ = 0;            /* Switch */
 static double g_[3] = {0.0, 0.0, 0.0}; /* External gravitational force */
@@ -141,6 +140,7 @@ void COLL_init() {
   char keyvalue[128];
   double dh;
   double width;
+  double g[3];
 
   colloid_state_t * state0;
 
@@ -217,10 +217,10 @@ void COLL_init() {
       free(state0);
     }
 
-    n = RUN_get_double_parameter_vector("colloid_gravity", g_);
+    n = RUN_get_double_parameter_vector("colloid_gravity", g);
     if (n != 0) {
-      if (g_[0] != 0.0 || g_[1] != 0.0 || g_[2] != 0.0) {
-	gravity_ = 1;
+      if (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0) {
+	colloid_gravity_set(g);
       }
     }
 
@@ -741,7 +741,7 @@ void coll_position_update(void) {
  *
  *****************************************************************************/
 
-static double colloid_forces_ahmax(void) {
+double colloid_forces_ahmax(void) {
 
   int ic, jc, kc;
   double ahmax;
@@ -780,6 +780,22 @@ void colloid_gravity(double f[3]) {
   f[X] = g_[X];
   f[Y] = g_[Y];
   f[Z] = g_[Z];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_gravity_set
+ *
+ *****************************************************************************/
+
+void colloid_gravity_set(const double f[3]) {
+
+  g_[X] = f[X];
+  g_[Y] = f[Y];
+  g_[Z] = f[Z];
+  gravity_ = 1;
 
   return;
 }

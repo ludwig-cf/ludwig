@@ -2,7 +2,7 @@
  *
  *  interaction.h
  *
- *  $Id: interaction.h,v 1.5 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -26,5 +26,7 @@ double    soft_sphere_energy(const double);
 double    soft_sphere_force(const double);
 
 void      colloid_gravity(double f[3]);
+void      colloid_gravity_set(const double f[3]);
+double    colloid_forces_ahmax(void);
 
 #endif
