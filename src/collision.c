@@ -52,7 +52,6 @@ static void collision_multirelaxation(void);
 static void collision_binary_lb(void);
 
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
-static void fluctuations_on(double shat[3][3], double ghat[NVEL]);
        void collision_fluctuations(int index, double shat[3][3],
 				   double ghat[NVEL]);
 
@@ -218,10 +217,7 @@ void collision_multirelaxation() {
 	}
 
 	if (isothermal_fluctuations_) {
-	  /* Use old fluctuations pending tests of new, which are
-	   * introduced like this... */
-	  /* collision_fluctuations(index, shat, ghat);*/
-	  fluctuations_on(shat, ghat);
+	  collision_fluctuations(index, shat, ghat);
 	}
 
 	/* Now reset the hydrodynamic modes to post-collision values:
@@ -436,8 +432,7 @@ void collision_binary_lb() {
 	}
 
 	if (isothermal_fluctuations_) {
-	  fluctuations_on(shat, ghat);
-	  /* collision_fluctuations(index, shat, ghat);*/
+	  collision_fluctuations(index, shat, ghat);
 	}
 
 	/* Now reset the hydrodynamic modes to post-collision values */
@@ -549,73 +544,6 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]) {
 
   for (ia = NHYDRO; ia < NVEL; ia++) {
     ghat[ia] = 0.0;
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  fluctuations_on
- *
- *  Return fluctuations to be added to stress (shat) and ghost (ghat)
- *  modes.
- *
- *****************************************************************************/
-
-static void fluctuations_on(double shat[3][3], double ghat[NVEL]) {
-
-  int ia;
-  double tr;
-  const double r3 = (1.0/3.0);
-
-  /* Set symetric random stress matrix (elements with unit variance) */
-
-  shat[X][X] = ran_parallel_gaussian();
-  shat[X][Y] = ran_parallel_gaussian();
-  shat[X][Z] = ran_parallel_gaussian();
-
-  shat[Y][X] = shat[X][Y];
-  shat[Y][Y] = ran_parallel_gaussian();
-  shat[Y][Z] = ran_parallel_gaussian();
-
-  shat[Z][X] = shat[X][Z];
-  shat[Z][Y] = shat[Y][Z];
-  shat[Z][Z] = ran_parallel_gaussian();
-
-  /* Compute the trace and the traceless part */
-
-  tr = r3*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
-  shat[X][X] -= tr;
-  shat[Y][Y] -= tr;
-  shat[Z][Z] -= tr;
-
-  /* Set variance of the traceless part */
-
-  shat[X][X] *= sqrt(2.0)*var_shear;
-  shat[X][Y] *= var_shear;
-  shat[X][Z] *= var_shear;
-
-  shat[Y][X] *= var_shear;
-  shat[Y][Y] *= sqrt(2.0)*var_shear;
-  shat[Y][Z] *= var_shear;
-
-  shat[Z][X] *= var_shear;
-  shat[Z][Y] *= var_shear;
-  shat[Z][Z] *= sqrt(2.0)*var_shear;
-
-  /* Set variance of trace and recombine... */
-
-  tr *= (var_bulk);
-
-  shat[X][X] += tr;
-  shat[Y][Y] += tr;
-  shat[Z][Z] += tr;
-
-  /* Ghost modes */
-
-  for (ia = NHYDRO; ia < nmodes_; ia++) {
-    ghat[ia] = noise_var[ia]*ran_parallel_gaussian();
   }
 
   return;
