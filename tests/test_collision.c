@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,6 +23,7 @@
 #include "tests.h"
 
 #define NSAMPLE 1000000
+#define TOLERANCE 0.05
 
 static void test_fluctuations_stats1(void);
 
@@ -66,6 +67,7 @@ static void test_fluctuations_stats1(void) {
 
   double * moment6;
   double   rnorm;
+  double m1, m2, m3, m4, m5, m6;
 
   double r[NFLUCTUATION];
   fluctuations_t * f;
@@ -133,11 +135,24 @@ static void test_fluctuations_stats1(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = coords_index(ic, jc, kc);
 
+	/* Moments */
+	m1 = rnorm*moment6[0*nsites + index];
+	m2 = rnorm*moment6[1*nsites + index];
+	m3 = rnorm*moment6[2*nsites + index];
+	m4 = rnorm*moment6[3*nsites + index];
+	m5 = rnorm*moment6[4*nsites + index];
+	m6 = rnorm*moment6[5*nsites + index];
+
+	test_assert(fabs(m1 - 0.0) < TOLERANCE);
+	test_assert(fabs(m2 - 1.0) < TOLERANCE);
+	test_assert(fabs(m3 - 0.0) < TOLERANCE);
+	test_assert(fabs(m4 - 3.0) < TOLERANCE);
+	test_assert(fabs(m5 - 0.0) < TOLERANCE);
+	test_assert(fabs(m6 - 10.0) < TOLERANCE);
+
 	info("%2d %2d %2d %10.7f %10.7f %10.7f %10.7f %10.7f %10.7f\n",
-	     ic, jc, kc,
-	     rnorm*moment6[0*nsites + index], rnorm*moment6[1*nsites + index],
-	     rnorm*moment6[2*nsites + index], rnorm*moment6[3*nsites + index],
-	     rnorm*moment6[4*nsites + index], rnorm*moment6[5*nsites + index]);
+	     ic, jc, kc, m1, m2, m3, m4, m5, m6);
+
       }
     }
   }
