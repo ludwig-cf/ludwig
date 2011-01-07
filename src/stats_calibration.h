@@ -15,8 +15,8 @@
 #ifndef STATS_CALIBRATION_H
 #define STATS_CALIBRATION_H
 
-void stats_calibration_init(void);
-void stats_calibration_accululate(int ntimestep);
+void stats_calibration_init(int nswitch);
+void stats_calibration_accumulate(int ntimestep);
 void stats_calibration_finish(void);
 
 #endif
