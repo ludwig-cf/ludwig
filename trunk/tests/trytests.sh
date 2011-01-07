@@ -77,6 +77,10 @@ echo Running spin solid1 serial test
 ./Ludwig.exe ../tests/regression/test_spin_solid1_input > /tmp/junk
 diff /tmp/junk ../tests/regression/test_spin_solid1_d3q19.ref1
 
+echo Running Yukawa test
+cp ../tests/regression/test_yukawa_cds.001-001 ./config.cds.init.001-001
+./Ludwig.exe ../tests/regression/test_yukawa_input > /tmp/junk
+diff /tmp/junk ../tests/regression/test_yukawa_d3q19.ref1
 
 # Parallel unit tests
 
@@ -103,6 +107,11 @@ diff /tmp/junk ../tests/regression/test_bp2_par.ref
 echo Running spin03 parallel test
 mpirun -np 8 ./Ludwig.exe ../tests/regression/test_spin03_input > /tmp/junk
 diff /tmp/junk ../tests/regression/test_spin03_d3q19_par.ref
+
+echo Running Yukawa parallel test
+cp ../tests/regression/test_yukawa_cds.001-001 ./config.cds.init.001-001
+mpirun -np 8 ./Ludwig.exe ../tests/regression/test_yukawa_input > /tmp/junk
+diff /tmp/junk ../tests/regression/test_yukawa_d3q19.ref8
 
 make clean
 
