@@ -57,7 +57,7 @@ static void   stats_calibration_measure(void);
  *  2. This gives us a estimate of the force required to drive
  *     sedimentation at this velocity.
  *  3. This velocity sets the Stokes' time a/U.
- *  4. Allow a spin-up period equal to the momentun diffusion time
+ *  4. Allow a spin-up period equal to the momentum diffusion time
  *     for the whole system L^2 / eta. This is nstart.
  *  5. After this, we can take measurements of the mean force on
  *     the particle fbar, and the mean velocity.
@@ -66,7 +66,7 @@ static void   stats_calibration_measure(void);
  *
  *****************************************************************************/
 
-void stats_calibration_init(void) {
+void stats_calibration_init(int nswitch) {
 
   int ia;
   double a;
@@ -76,40 +76,47 @@ void stats_calibration_init(void) {
   double fhasimoto;
   double f[3];
 
-  /* Make sure we have a cubic system with one particle */
-
-  assert(N_total(X) == N_total(Y));
-  assert(N_total(Y) == N_total(Z));
-  assert(colloid_ntotal() == 1);
-
-  length = 1.0*L(Z);
-  rho = get_rho0();
-  eta = get_eta_shear();
-  a = colloid_forces_ahmax();
-
-  calib_.a0 = a;
-  calib_.utarget = eta*TARGET_REYNOLDS_NUMBER/(a*rho);
-  fhasimoto = stats_calibration_hasimoto(a, length);
-  calib_.ftarget = 6.0*pi_*eta*a*calib_.utarget/fhasimoto;
-
-  calib_.nstokes = a/calib_.utarget;
-  calib_.nfreq = calib_.nstokes/MEASUREMENTS_PER_STOKES_TIME;
-  if (calib_.nfreq < 1) calib_.nfreq = 1;
-  calib_.nstart = length*length/eta;
-
-  /* Set a force of the right size in a random direction, and zero
-   * the accumulators. */
-
-  ran_serial_unit_vector(f);
-
-  for (ia = 0; ia < 3; ia++) {
-    f[ia] *= calib_.ftarget;
-    calib_.fbar[ia] = 0.0;
-    calib_.ubar[ia] = 0.0;
+  if (nswitch == 0) {
+    /* No statistics are required */
+    calib_.nstart = -1;
   }
-  calib_.ndata = 0;
+  else {
 
-  colloid_gravity_set(f);
+    /* Make sure we have a cubic system with one particle */
+
+    assert(N_total(X) == N_total(Y));
+    assert(N_total(Y) == N_total(Z));
+    assert(colloid_ntotal() == 1);
+
+    length = 1.0*L(Z);
+    rho = get_rho0();
+    eta = get_eta_shear();
+    a = colloid_forces_ahmax();
+
+    calib_.a0 = a;
+    calib_.utarget = eta*TARGET_REYNOLDS_NUMBER/(a*rho);
+    fhasimoto = stats_calibration_hasimoto(a, length);
+    calib_.ftarget = 6.0*pi_*eta*a*calib_.utarget/fhasimoto;
+
+    calib_.nstokes = a/calib_.utarget;
+    calib_.nfreq = calib_.nstokes/MEASUREMENTS_PER_STOKES_TIME;
+    if (calib_.nfreq < 1) calib_.nfreq = 1;
+    calib_.nstart = length*length/eta;
+
+    /* Set a force of the right size in a random direction, and zero
+     * the accumulators. */
+
+    ran_serial_unit_vector(f);
+
+    for (ia = 0; ia < 3; ia++) {
+      f[ia] *= calib_.ftarget;
+      calib_.fbar[ia] = 0.0;
+      calib_.ubar[ia] = 0.0;
+    }
+    calib_.ndata = 0;
+
+    colloid_gravity_set(f);
+  }
 
   return;
 }
@@ -122,9 +129,11 @@ void stats_calibration_init(void) {
 
 void stats_calibration_accumulate(int ntime) {
 
-  if (ntime >= calib_.nstart && (ntime % calib_.nfreq) == 0) {
-    ++calib_.ndata;
-    stats_calibration_measure();
+  if (ntime >= calib_.nstart) {
+    if ((ntime % calib_.nfreq) == 0) {
+      ++calib_.ndata;
+      stats_calibration_measure();
+    }
   }
 
   return;
@@ -150,8 +159,9 @@ void stats_calibration_finish(void) {
   double f0, u0;
   double f[3];
   double u[3];
+  double fbar[3];
 
-  if (calib_.ndata < 1) fatal("No data in stats_calibration_finish\n");
+  if (calib_.nstart < 0) return;
 
   eta = get_eta_shear();
   t = 1.0*calib_.ndata*calib_.nfreq/calib_.nstokes;
@@ -167,9 +177,16 @@ void stats_calibration_finish(void) {
   info("Number of measurements:    %11d\n", calib_.ndata);
   info("Run time (Stokes times):   %11.4e\n", t);
 
+  if (calib_.ndata < 1) fatal("No data in stats_calibration_finish\n");
+
+  /* We need to do a reduction on fbar to get the total before
+   * taking the average. */
+
+  MPI_Reduce(calib_.fbar, fbar, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
   for (ia = 0; ia < 3; ia++) {
     u[ia] = calib_.ubar[ia]/calib_.ndata;
-    f[ia] = calib_.fbar[ia]/calib_.ndata;
+    f[ia] = fbar[ia]/calib_.ndata;
   }
 
   /* There is no closed expression for ah in the finite system, so
