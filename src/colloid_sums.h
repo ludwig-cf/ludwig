@@ -2,7 +2,7 @@
  *
  *  colloid_sums.h
  *
- *  $Id: colloid_sums.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,9 +15,12 @@
 #ifndef COLLOID_SUMS_H
 #define COLLOID_SUMS_H
 
+/* Note that ACTIVE and SUBGRID are indeed the same. */
+
 enum sum_message_type {COLLOID_SUM_STRUCTURE = 0,
 		       COLLOID_SUM_DYNAMICS = 1,
-		       COLLOID_SUM_ACTIVE = 2};
+		       COLLOID_SUM_ACTIVE = 2,
+                       COLLOID_SUM_SUBGRID = 2};
 
 void colloid_sums_halo(const int message_type);
 void colloid_sums_dim(const int dim, const int message_type);

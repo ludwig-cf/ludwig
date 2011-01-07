@@ -6,13 +6,13 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id: subgrid.c,v 1.7 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,7 +26,7 @@
 #include "interaction.h"
 #include "lattice.h"
 #include "colloids.h"
-#include "colloids_halo.h"
+#include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
 
@@ -137,20 +137,16 @@ void subgrid_update() {
 
   int ia;
   int ic, jc, kc;
-  double drag, eta;
+  double drag, reta;
   double g[3];
   colloid_t * p_colloid;
 
-  fatal("fix me\n"); /* The following needs to be rechecked.*/
-
   subgrid_interpolation();
-
-  /* Require halo sum involving f0. */
-  assert(0);
+  colloid_sums_halo(COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
 
-  eta = get_eta_shear();
+  reta = 1.0/(6.0*pi_*get_eta_shear());
   colloid_gravity(g);
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
@@ -161,18 +157,11 @@ void subgrid_update() {
 
 	while (p_colloid != NULL) {
 
-	  drag = (1.0/(6.0*pi_*eta))*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
+	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
 
 	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->s.r[ia] += (p_colloid->f0[ia] + drag*g[ia]);
-	    /* Store the effective velocity of the particle
-	     * (don't use the p->v as this shows up in the momentum) */
-
-	    /* TODO: store the effective velocity in the proper
-	     * place, but ignore it when computing momentum
-	     * rather than this kludge */
-
-	    p_colloid->stats[ia] = p_colloid->f0[ia] + drag*g[ia];
+	    p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*g[ia];
+	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }
 
 	  p_colloid = p_colloid->next;
@@ -218,9 +207,9 @@ static void subgrid_interpolation() {
         p_colloid = colloids_cell_list(ic, jc, kc);
 
 	while (p_colloid != NULL) {
-	  p_colloid->f0[X] = 0.0;
-	  p_colloid->f0[Y] = 0.0;
-	  p_colloid->f0[Z] = 0.0;
+	  p_colloid->fc0[X] = 0.0;
+	  p_colloid->fc0[Y] = 0.0;
+	  p_colloid->fc0[Z] = 0.0;
 	  p_colloid = p_colloid->next;
 	}
       }
@@ -271,9 +260,9 @@ static void subgrid_interpolation() {
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 		hydrodynamics_get_velocity(index, u);
 
-		p_colloid->f0[X] += u[X]*dr;
-		p_colloid->f0[Y] += u[Y]*dr;
-		p_colloid->f0[Z] += u[Z]*dr;
+		p_colloid->fc0[X] += u[X]*dr;
+		p_colloid->fc0[Y] += u[Y]*dr;
+		p_colloid->fc0[Z] += u[Z]*dr;
 	      }
 	    }
 	  }

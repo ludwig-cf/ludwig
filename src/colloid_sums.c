@@ -4,7 +4,7 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id: colloid_sums.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -41,6 +41,7 @@ static void colloid_sums_process(int dim, const int ncount[2]);
  *     drag matrix zeta; active squirmer mass correction mactive.
  *
  *  3. Active squirmer force and torque corrections: fc0, tc0
+ *     Also used for subgrid total force: fc0
  *
  *  For each message type, the index is passed as a double
  *  for simplicity. The following keep track of the different
@@ -50,7 +51,7 @@ static void colloid_sums_process(int dim, const int ncount[2]);
 
 static int colloid_sums_m1(int, int, int, int); /* STRUCTURE */
 static int colloid_sums_m2(int, int, int, int); /* DYNAMICS */
-static int colloid_sums_m3(int, int, int, int); /* ACTIVE */
+static int colloid_sums_m3(int, int, int, int); /* ACTIVE and SUBGRID */
 
 static const int msize_[3] = {10, 35, 7};       /* Message sizes (doubles) */
 
