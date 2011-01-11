@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <math.h>
 
 #include "pe.h"
@@ -78,7 +79,8 @@ void stats_calibration_init(int nswitch) {
 
   if (nswitch == 0) {
     /* No statistics are required */
-    calib_.nstart = -1;
+    calib_.nstart = INT_MAX;
+    calib_.nfreq = INT_MAX;
   }
   else {
 
@@ -116,6 +118,16 @@ void stats_calibration_init(int nswitch) {
     calib_.ndata = 0;
 
     colloid_gravity_set(f);
+
+    info("\n\n");
+    info("Calibration information:\n");
+    info("Target Reynolds number:    %11.4e\n", TARGET_REYNOLDS_NUMBER);
+    info("Target particle speed:     %11.4e\n", calib_.utarget);
+    info("Force applied:             %11.4e\n", calib_.ftarget);
+    info("Spin-up T_diffusion:       %11d\n", calib_.nstart);
+    info("Stokes time (timesteps):   %11d\n", calib_.nstokes);
+    info("Measurement frequency:     %11d\n", calib_.nfreq);
+    info("\n\n");
   }
 
   return;
@@ -167,13 +179,7 @@ void stats_calibration_finish(void) {
   t = 1.0*calib_.ndata*calib_.nfreq/calib_.nstokes;
 
   info("\n\n");
-  info("Calibration information:\n");
-  info("Target Reynolds number:    %11.4e\n", TARGET_REYNOLDS_NUMBER);
-  info("Target particle speed:     %11.4e\n", calib_.utarget);
-  info("Force applied:             %11.4e\n", calib_.ftarget);
-  info("Spin-up T_diffusion:       %11d\n", calib_.nstart);
-  info("Stokes time (timesteps):   %11d\n", calib_.nstokes);
-  info("Measurement frequency:     %11d\n", calib_.nfreq);
+  info("Calibration result\n");
   info("Number of measurements:    %11d\n", calib_.ndata);
   info("Run time (Stokes times):   %11.4e\n", t);
 

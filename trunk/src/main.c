@@ -8,6 +8,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "pe.h"
 #include "runtime.h"
@@ -59,6 +60,7 @@
 #include "stats_rheology.h"
 #include "stats_free_energy.h"
 #include "stats_distribution.h"
+#include "stats_calibration.h"
 
 
 void ludwig_rt(void);
@@ -114,7 +116,7 @@ void ludwig_rt(void) {
 
 void ludwig_init(void) {
 
-  int n;
+  int n, nstat;
   char filename[FILENAME_MAX];
 
   /* Initialise Lc in colloids */
@@ -146,6 +148,15 @@ void ludwig_init(void) {
 
   stats_rheology_init();
   stats_turbulent_init();
+
+  /* Calibration statistics required? */
+
+  nstat = 0;
+  n = RUN_get_string_parameter("calibration", filename, FILENAME_MAX);
+  if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
+  stats_calibration_init(nstat);
+
+  collision_init();
 
   return;
 }
@@ -323,6 +334,8 @@ int main( int argc, char **argv ) {
       info("\nCompleted cycle %d\n", step);
     }
 
+    stats_calibration_accumulate(step);
+
     /* Next time step */
   }
 
@@ -343,6 +356,7 @@ int main( int argc, char **argv ) {
 
   stats_rheology_finish();
   stats_turbulent_finish();
+  stats_calibration_finish();
   colloids_finish();
   wall_finish();
 
