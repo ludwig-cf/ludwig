@@ -85,7 +85,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
      site_map.o subgrid.o \
-     stats_colloid.o \
+     stats_calibration.o stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_surfactant.o stats_turbulent.o svn.o \
      timer.o util.o wall.o colloids_Q_tensor.o
