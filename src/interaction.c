@@ -571,7 +571,7 @@ static void colloid_forces_check(void) {
   lmin = dmin(lmin, colloids_lcell(Y));
   lmin = dmin(lmin, colloids_lcell(Z));
 
-  if (rmax > lmin) {
+  if (colloid_ntotal() > 1 && rmax > lmin) {
     info("Cell list width too small to capture specified interactions!\n");
     info("The maximum interaction range is: %f\n", rmax);
     info("The minumum cell width is only:   %f\n", lmin);
