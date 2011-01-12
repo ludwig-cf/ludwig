@@ -173,56 +173,55 @@ void stats_calibration_finish(void) {
   double u[3];
   double fbar[3];
 
-  if (calib_.nstart < 0) return;
+  if (calib_.nstart < INT_MAX) {
 
-  eta = get_eta_shear();
-  t = 1.0*calib_.ndata*calib_.nfreq/calib_.nstokes;
+    eta = get_eta_shear();
+    t = 1.0*calib_.ndata*calib_.nfreq/calib_.nstokes;
 
-  info("\n\n");
-  info("Calibration result\n");
-  info("Number of measurements:    %11d\n", calib_.ndata);
-  info("Run time (Stokes times):   %11.4e\n", t);
+    info("\n\n");
+    info("Calibration result\n");
+    info("Number of measurements:    %11d\n", calib_.ndata);
+    info("Run time (Stokes times):   %11.4e\n", t);
 
-  if (calib_.ndata < 1) fatal("No data in stats_calibration_finish\n");
+    if (calib_.ndata < 1) fatal("No data in stats_calibration_finish\n");
 
-  /* We need to do a reduction on fbar to get the total before
-   * taking the average. */
+    /* We need to do a reduction on fbar to get the total before
+     * taking the average. */
 
-  MPI_Reduce(calib_.fbar, fbar, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(calib_.fbar, fbar, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
-  for (ia = 0; ia < 3; ia++) {
-    u[ia] = calib_.ubar[ia]/calib_.ndata;
-    f[ia] = fbar[ia]/calib_.ndata;
+    for (ia = 0; ia < 3; ia++) {
+      u[ia] = calib_.ubar[ia]/calib_.ndata;
+      f[ia] = fbar[ia]/calib_.ndata;
+    }
+
+    /* There is no closed expression for ah in the finite system, so
+     * we use the Hasimoto expression to iterate to a solution. Two
+     * or three iterations is usually enough for 3 figures of accuracy. */
+
+    length = L(X);
+    f0 = modulus(f);
+    u0 = modulus(u);
+
+    ah = calib_.a0;
+
+    for (ia = 0; ia < 10; ia++) {
+      ahm1 = ah;
+      fhasimoto = stats_calibration_hasimoto(ahm1, length);
+      ah = 1.0/(6.0*pi_*eta*u0/f0 - (fhasimoto - 1.0)/ahm1);
+    }
+
+    fhasimoto = stats_calibration_hasimoto(ah, length);
+  
+    info("\n");
+    info("Actual force:              %11.4e\n", f0);
+    info("Actual speed:              %11.4e\n", u0);
+    info("Hasimoto correction (a/L): %11.4e\n", fhasimoto);
+    info("Input radius:              %11.4e\n", calib_.a0);
+    info("Hydrodynamic radius:       %11.4e\n", ah);
+    info("Stokes equation rhs:       %11.4e\n", 6.0*pi_*eta*ah*u0);
+    info("Stokes equation lhs:       %11.4e\n", f0*fhasimoto);
   }
-
-  /* There is no closed expression for ah in the finite system, so
-   * we use the Hasimoto expression to iterate to a solution. Two
-   * or three iterations is usually enough for 3 figures of accuracy. */
-
-  length = L(X);
-  f0 = modulus(f);
-  u0 = modulus(u);
-
-  ah = calib_.a0;
-
-  for (ia = 0; ia < 10; ia++) {
-    ahm1 = ah;
-    fhasimoto = stats_calibration_hasimoto(ahm1, length);
-    ah = 1.0/(6.0*pi_*eta*u0/f0 - (fhasimoto - 1.0)/ahm1);
-  }
-
-  fhasimoto = stats_calibration_hasimoto(ah, length);
-
-  info("\n");
-  info("Mean hydrodynamic force:   %11.4e %11.4e %11.4e\n", f[X], f[Y], f[Z]);
-  info("Mean velocity:             %11.4e %11.4e %11.4e\n", u[X], u[Y], u[Z]);
-  info("Actual force:              %11.4e\n", f0);
-  info("Actual speed:              %11.4e\n", u0);
-  info("Hasimoto correction (a/L): %11.4e\n", fhasimoto);
-  info("Input radius:              %11.4e\n", calib_.a0);
-  info("Hydrodynamic radius:       %11.4e\n", ah);
-  info("Stokes equation rhs:       %11.4e\n", 6.0*pi_*eta*ah*u0);
-  info("Stokes equation lhs:       %11.4e\n", f0*fhasimoto);
 
   return;
 }
