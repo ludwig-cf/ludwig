@@ -5,7 +5,7 @@
  *  Note that the number of timers, their ids, and their descriptive
  *  names must match here.
  *
- *  $Id: timer.h,v 1.4 2010-10-15 12:40:03 kevin Exp $
+ *  $Id: timer.h,v 1.4 2010/10/15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -44,6 +44,19 @@ enum timer_id {TIMER_TOTAL,
 	       TIMER_ORDER_PARAMETER_UPDATE,
 	       TIMER_FREE1,
 	       TIMER_FREE2,
-               TIMER_FREE3};
+               TIMER_FREE3,
+	       PHICOMP,
+	       GETPHI,
+	       PHIHALO,
+	       PHIGRADCOMP,
+	       FORCEPUT,
+	       PHIPUT,
+	       VELOCITYGET,
+	       EDGEPACK,
+	       EDGEGET,
+	       EDGEUNPACK,
+	       HALOPACK,
+	       HALOPUT,
+	       HALOUNPACK};
 
 #endif

@@ -50,13 +50,21 @@ LIBS = -lm
 AR = ar
 ARFLAGS = -cru
 
+#GPU compilation variables
+GPUCC = nvcc
+GPUOPTS = $(OPTS) -D_GPU_
+GPUCFLAGS = -O3 -arch=sm_20 
+GPUINC = $(INC) -I../mpi_s
+GPULIBS= -L/usr/local/cuda/lib64 -lcudart
+
+
 ###############################################################################
 #
 #  Files
 #
 ###############################################################################
 
-OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
+OBJS=d2q9.o d3q15.o d3q19.o model_r.o propagation.o collision.o \
      physics.o \
      advection.o advection_bcs.o advection_rt.o \
      blue_phase.o blue_phase_rt.o \
@@ -90,6 +98,9 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      stats_surfactant.o stats_turbulent.o svn.o \
      timer.o util.o wall.o colloids_Q_tensor.o
 
+GPUOBJS = collision_gpu.o propagation_gpu.o phi_lb_coupler_gpu.o \
+	utilities_gpu.o
+
 ###############################################################################
 #
 #  Targets
@@ -114,6 +125,11 @@ code:	svn $(OBJS)
 serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi" "OBJS=$(OBJS) main.o"
+serialgpu: $(GPUOBJS)
+	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
+	-L../mpi_s -lmpi $(GPULIBS)" "OBJS=$(OBJS) main.o $(GPUOBJS) " \
+	"OPTS=$(OPTS) -D_GPU_"
+
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) main.o" "CC=$(MPICC)"
 
@@ -139,13 +155,16 @@ svn:
 ###############################################################################
 
 
+.SUFFIXES:
+.SUFFIXES: .c .cu .o
 #
 #  Default rule for compilation in the current directory.
 #
 .c.o :
 	$(CC) $(OPTS) $(CFLAGS) $(INC) -c $?
-
+.cu.o :
+	$(GPUCC) $(GPUOPTS) $(GPUCFLAGS) $(GPUINC) -c $?
 
 .PHONY : clean
 clean:
-	-rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) main.o
+	-rm -f $(OBJS) $(GPUOBJS) $(EXECUTABLE) $(LIBRARY) main.o
