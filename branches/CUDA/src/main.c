@@ -465,6 +465,12 @@ int main( int argc, char **argv ) {
     /* Next time step */
   }
 
+#ifdef _GPU_
+  get_f_from_gpu();
+  finalise_gpu();
+#endif
+
+
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
