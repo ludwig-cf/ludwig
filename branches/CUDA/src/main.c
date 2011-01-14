@@ -214,6 +214,7 @@ int main( int argc, char **argv ) {
 #ifdef _GPU_
   initialise_gpu();
   put_f_on_gpu();
+  put_force_on_gpu(); 
 #endif
 
 
@@ -292,9 +293,9 @@ int main( int argc, char **argv ) {
 
     #ifdef _GPU_
 
-    TIMER_start(FORCEPUT);
-    put_force_on_gpu();
-    TIMER_stop(FORCEPUT);
+/*     TIMER_start(FORCEPUT); */
+/*     put_force_on_gpu(); */
+/*     TIMER_stop(FORCEPUT); */
 
     TIMER_start(PHIPUT);
     put_phi_on_gpu();
@@ -358,9 +359,9 @@ int main( int argc, char **argv ) {
     propagation_gpu();
     TIMER_stop(TIMER_PROPAGATE);
 
-    TIMER_start(VELOCITYGET);
-    get_velocity_from_gpu();
-    TIMER_stop(VELOCITYGET);
+/*     TIMER_start(VELOCITYGET); */
+/*     get_velocity_from_gpu(); */
+/*     TIMER_stop(VELOCITYGET); */
 
     #else
     TIMER_start(TIMER_PROPAGATE);
@@ -393,6 +394,7 @@ int main( int argc, char **argv ) {
     if (is_measurement_step()) {	  
 
 #ifdef _GPU_
+      get_velocity_from_gpu();
       get_f_from_gpu();
 #endif
 
@@ -410,6 +412,7 @@ int main( int argc, char **argv ) {
     if (is_shear_measurement_step()) {
 
 #ifdef _GPU_
+      get_velocity_from_gpu();
       get_f_from_gpu();
 #endif
 
@@ -420,6 +423,7 @@ int main( int argc, char **argv ) {
     if (is_shear_output_step()) {
 
 #ifdef _GPU_
+      get_velocity_from_gpu();
       get_f_from_gpu();
 #endif
 
@@ -436,6 +440,9 @@ int main( int argc, char **argv ) {
     }
 
     if (is_vel_output_step()) {
+#ifdef _GPU_
+      get_velocity_from_gpu();
+#endif
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "vel-%8.8d", step);
       io_write(filename, io_info_velocity_);
@@ -447,6 +454,7 @@ int main( int argc, char **argv ) {
 
 
 #ifdef _GPU_
+      get_velocity_from_gpu();
       get_f_from_gpu();
 #endif
 
@@ -466,6 +474,7 @@ int main( int argc, char **argv ) {
   }
 
 #ifdef _GPU_
+  get_velocity_from_gpu();
   get_f_from_gpu();
   finalise_gpu();
 #endif
