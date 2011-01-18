@@ -82,6 +82,7 @@ void finalise_gpu(void);
 void collide_gpu(void);
 void propagation_gpu(void);
 void phi_compute_phi_site_gpu(void);
+void halo_swap_gpu(void);
 #endif
 
 
@@ -320,14 +321,16 @@ int main( int argc, char **argv ) {
 
 #ifdef _GPU_
     get_f_edges_from_gpu();
-#endif
 
+    TIMER_start(TIMER_HALO_LATTICE);    
+    halo_swap_gpu();
+    TIMER_stop(TIMER_HALO_LATTICE);    
+
+    put_f_halos_on_gpu(); 
+#else
     TIMER_start(TIMER_HALO_LATTICE);    
     distribution_halo();
     TIMER_stop(TIMER_HALO_LATTICE);
-    
-#ifdef _GPU_
-    put_f_halos_on_gpu(); 
 #endif
     
 
