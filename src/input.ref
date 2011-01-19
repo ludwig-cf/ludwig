@@ -196,6 +196,9 @@ surf_psi_b 0.01
 #                       BPII  o2  amplitude +0.3
 #                       simple cholesteric twist (z-axis) amplitude +1/3
 #
+#  lc_anchoring         [normal|planar] anchoring boundary conditions
+#                       for solid (if present; defualt is normal)
+#
 ###############################################################################
 
 lc_a0      0.014384711
@@ -211,6 +214,8 @@ lc_active_zeta 0.0
 lc_q_initialisation o8m
 lc_q_init_amplitude -0.2
 lc_init_redshift 0.83
+
+lc_anchoring normal
 
 ###############################################################################
 #
