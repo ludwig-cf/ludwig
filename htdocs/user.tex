@@ -627,6 +627,49 @@ set its initial position with
 
 \inputkey{colloid\_random\_r0} the initial position vector.
 
+
+\subsubsection{Hydrodynamic radius}
+
+There is an important issue to understand about the (nominally)
+spherical particles in LB. The input radius $a_0$ is used to
+construct the link boundary conditions. However, discretisation
+errors in the boundary conditions means that the `real' particle
+size may be different. This real radius is the hydrodynamic radius $a_h$.
+As a further complication, the hydrodynamic radius can also
+be a function of viscosity for a given input radius. Some values
+are given in Table~X. This values are computed using a calibration
+procedure described by Nguyen and Ladd \cite{nguyen2001}.
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+$\eta$ & \multicolumn{3}{c|}{$a_0$}\\ \cline{2-4} 
+       & 1.25 & 2.30 & 4.77 \\
+\hline
+1/6  & 1.09 (1.05) & 2.23 (2.20) & 4.76 \\
+1/100  & 1.40 (1.34) & 2.50 (2.46) & 5.01 \\
+1/1000  & 1.63 & 2.71 & 5.23 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{A table of calibrated hydrodynamic radii as a function of input
+radius and fluid viscosity $\eta$. These figures are for D3Q19 (and D3Q15
+in brackets).}
+\end{table}
+
+If a calibration is required for a given radius and viscosity,
+use the \texttt{calibration on} key pair in the input file. Some
+examples are given in the \texttt{tests/calibration} directory.
+An apppropriate
+number of time steps must be used to allow the system to get over
+the initial transient (we use the momentum diffusion time for the
+system $L^2/\eta$) and to allow at least one
+particle Stokes time ($a/U$). The input radius and hydrodynamic
+radius should be set the same in the input file.
+
+% PENDING Ginzburg d'Humieres correct to ghost mode relaxation times
+
 \subsection{Boundary conditions}
 
 Solid planar boundary walls can be added at the extremities of the
