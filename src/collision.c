@@ -7,13 +7,16 @@
  *  Isothermal fluctuations following Adhikari et al., Europhys. Lett
  *  (2005).
  *
+ *  The relaxation times can be set to give either 'm10', BGK, or
+ *  'two-relaxation' time (TRT) models.
+ *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -22,7 +25,6 @@
 #include <math.h>
 
 #include "pe.h"
-#include "ran.h"
 #include "util.h"
 #include "coords.h"
 #include "physics.h"
@@ -37,13 +39,14 @@
 #include "phi_cahn_hilliard.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
+static int nrelax_ = RELAXATION_M10;     /* Default is m10 */
 static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
 static double rtau_shear;       /* Inverse relaxation time for shear modes */
 static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
-static double rtau_ghost = 1.0; /* Inverse relaxation time for ghost modes */
 static double var_shear;        /* Variance for shear mode fluctuations */
 static double var_bulk;         /* Variance for bulk mode fluctuations */
+static double rtau_[NVEL];      /* Inverse relaxation times */
 static double noise_var[NVEL];  /* Noise variances */
 
 static fluctuations_t * fl_;
@@ -238,7 +241,7 @@ void collision_multirelaxation() {
 	/* Ghost modes are relaxed toward zero equilibrium. */
 
 	for (m = NHYDRO; m < nmodes_; m++) {
-	  mode[m] = mode[m] - rtau_ghost*(mode[m] - 0.0) + ghat[m];
+	  mode[m] = mode[m] - rtau_[m]*(mode[m] - 0.0) + ghat[m];
 	}
 
 	/* Project post-collision modes back onto the distribution */
@@ -450,16 +453,14 @@ void collision_binary_lb() {
 	/* Ghost modes are relaxed toward zero equilibrium. */
 
 	for (m = NHYDRO; m < nmodes_; m++) {
-	  mode[m] = mode[m] - rtau_ghost*(mode[m] - 0.0) + ghat[m];
+	  mode[m] = mode[m] - rtau_[m]*(mode[m] - 0.0) + ghat[m];
 	}
 
 	/* Project post-collision modes back onto the distribution */
 
 	for (p = 0; p < NVEL; p++) {
-	  /* f_[ndist*NVEL*index + p] = 0.0;*/
 	  f[p] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    /* f_[ndist*NVEL*index + p] += mi_[p][m]*mode[m];*/
 	    f[p] += mi_[p][m]*mode[m];
 	  }
 	}
@@ -671,6 +672,23 @@ void collision_fluctuations_off(void) {
 
 /*****************************************************************************
  *
+ *  collision_relaxation_set
+ *
+ *****************************************************************************/
+
+void collision_relaxation_set(const int nrelax) {
+
+  assert(nrelax == RELAXATION_M10 ||
+         nrelax == RELAXATION_BGK ||
+         nrelax == RELAXATION_TRT);
+
+  nrelax_ = nrelax;
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  collision_relaxation_times_set
  *
  *  Note there is an extra normalisation in the lattice fluctuations
@@ -691,6 +709,46 @@ void collision_relaxation_times_set(void) {
   rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear());
   rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk());
 
+  if (nrelax_ == RELAXATION_M10) {
+    for (p = NHYDRO; p < NVEL; p++) {
+      rtau_[p] = 1.0;
+    }
+  }
+
+  if (nrelax_ == RELAXATION_BGK) {
+    for (p = NHYDRO; p < NVEL; p++) {
+      rtau_[p] = rtau_shear;
+    }
+  }
+
+  if (nrelax_ == RELAXATION_TRT) {
+
+    assert(NVEL != 9);
+
+    tau_g = 2.0/(1.0 + (3.0/8.0)*rtau_shear);
+
+    if (NVEL == 15) {
+      rtau_[10] = rtau_shear;
+      rtau_[11] = tau_g;
+      rtau_[12] = tau_g;
+      rtau_[13] = tau_g;
+      rtau_[14] = rtau_shear;
+    }
+
+    if (NVEL == 19) {
+      rtau_[10] = rtau_shear;
+      rtau_[14] = rtau_shear;
+      rtau_[18] = rtau_shear;
+
+      rtau_[11] = tau_g;
+      rtau_[12] = tau_g;
+      rtau_[13] = tau_g;
+      rtau_[15] = tau_g;
+      rtau_[16] = tau_g;
+      rtau_[17] = tau_g;
+    }
+  }
+
   if (isothermal_fluctuations_) {
 
     tau_s = 1.0/rtau_shear;
@@ -708,9 +766,8 @@ void collision_relaxation_times_set(void) {
 
     /* Noise variances */
 
-    tau_g = 1.0/rtau_ghost;
-
     for (p = NHYDRO; p < NVEL; p++) {
+      tau_g = 1.0/rtau_[p];
       noise_var[p] =
 	sqrt(kt/norm_[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
     }
@@ -733,6 +790,8 @@ void collision_relaxation_times(double * tau) {
 
   int ia, ib;
   int mode;
+
+  assert(nrelax_ == RELAXATION_M10);
 
   /* Density and momentum */
 
@@ -762,7 +821,7 @@ void collision_relaxation_times(double * tau) {
   /* Ghosts */
 
   for (ia = NHYDRO; ia < NVEL; ia++) {
-    tau[ia] = rtau_ghost;
+    tau[ia] = rtau_[ia];
   }
 
   return;
