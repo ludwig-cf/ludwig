@@ -1,13 +1,19 @@
-/*
- * colloids_Q_tensor.c
+/*****************************************************************************
  *
- *  $Id: colloids_Q_tensor.c,v 1.4 2010-11-25 18:10:38 kevin Exp $
+ *  colloids_Q_tensor.c
  *
- * routine to set the Q tensor inside a colloid to correspond
- * to homeotropic or planar anchoring at the surface
- * 11/11/09
- * -Juho
- */
+ *  Routines to set the Q tensor inside a colloid to correspond
+ *  to homeotropic (normal) or planar anchoring at the surface.
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Juho Lintuvuori (jlintuvu@ph.ed.ac.uk)
+ *  (c) 2011 The University of Edinburgh
+ *  
+ *****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,8 +32,7 @@
 #include "colloids_Q_tensor.h"
 
 struct io_info_t * io_info_scalar_q_;
-
-#define PLANAR_ANCHORING 1
+static int anchoring_ = ANCHORING_NORMAL;
 
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
@@ -41,11 +46,9 @@ void COLL_set_Q(){
   
   colloid_t * p_colloid;
 
-  double r0[3];
   double rsite0[3];
   double normal[3];
   double dir[3];
-  double dir_prev[3];
 
   colloid_t * colloid_at_site_index(int);
 
@@ -66,33 +69,31 @@ void COLL_set_Q(){
   
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 	
 	index = coords_index(ic, jc, kc);
 
 	p_colloid = colloid_at_site_index(index);
 	
 	/* check if this node is inside a colloid */
-	if (p_colloid != NULL){
-	  
+
+	if (p_colloid != NULL){	  
 
 	  /* Need to translate the colloid position to "local"
 	   * coordinates, so that the correct range of lattice
 	   * nodes is found */
 
-	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
-	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
-	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
-
-	  rsite0[X] = 1.0*ic;
-	  rsite0[Y] = 1.0*jc;
-	  rsite0[Z] = 1.0*kc;
+	  rsite0[X] = 1.0*(offset[X] + ic);
+	  rsite0[Y] = 1.0*(offset[Y] + jc);
+	  rsite0[Z] = 1.0*(offset[Z] + kc);
 
 	  /* calculate the vector between the centre of mass of the
 	   * colloid and node i, j, k 
 	   * so need to calculate rsite0 - r0 */
 
-	  coords_minimum_distance(r0, rsite0, normal);
+	  normal[X] = rsite0[X] - p_colloid->s.r[X];
+	  normal[Y] = rsite0[Y] - p_colloid->s.r[Y];
+	  normal[Z] = rsite0[Z] - p_colloid->s.r[Z];
 
 	  /* now for homeotropic anchoring only thing needed is to
 	   * normalise the the surface normal vector  */
@@ -112,21 +113,22 @@ void COLL_set_Q(){
 	    continue;
 	  }
 	  
-#if PLANAR_ANCHORING
-	  /* now we need set the director inside the colloid
-	     perpendicular to the vector normal of of the surface [i.e. it is
-	     confined in a plane] i.e.  
-	     perpendicular to the vector r between the centre of the colloid
-	     corresponding node i,j,k
-	     -Juho
-	  */
-	  
-	  phi_get_q_tensor(index, q);
-	  scalar_order_parameter_director(q, qs);
+	  if (anchoring_ == ANCHORING_PLANAR) {
 
-	  dir[X] = qs[1];
-	  dir[Y] = qs[2];
-	  dir[Z] = qs[3];
+	    /* now we need set the director inside the colloid
+	     * perpendicular to the vector normal of of the surface
+	     * [i.e. it is confined in a plane] i.e.  
+	     * perpendicular to the vector r between the centre of the colloid
+	     * corresponding node i,j,k
+	     * -Juho
+	     */
+	  
+	    phi_get_q_tensor(index, q);
+	    scalar_order_parameter_director(q, qs);
+
+	    dir[X] = qs[1];
+	    dir[Y] = qs[2];
+	    dir[Z] = qs[3];
 
 	    /* calculate the projection of the director along the surface
 	     * normal and remove that from the director to make the
@@ -146,30 +148,29 @@ void COLL_set_Q(){
 	       * this fails if we are in the first node, so not great fix...
 	       */
 
-	      cross_product(dir_prev, normal, dir);
-	      dir_len = modulus(dir);
 	      fatal("dir_len < 10-8 i,j,k, %d %d %d\n", ic,jc,kc);
 	    }
 
 	    for (ia = 0; ia < 3; ia++) {
 	      director[ia] = dir[ia] / dir_len;
-	      dir_prev[ia] = dir[ia] / dir_len;
 	    }
+	  }
 
-#else
+	  if (anchoring_ == ANCHORING_NORMAL) {
 	    /* Homeotropic anchoring */
 
 	    director[X] = normal[X]/len_normal;
 	    director[Y] = normal[Y]/len_normal;
 	    director[Z] = normal[Z]/len_normal;
-#endif
-	    q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
-	    q[X][Y] = 1.5*amplitude*(director[X]*director[Y]);
-	    q[X][Z] = 1.5*amplitude*(director[X]*director[Z]);
-	    q[Y][Y] = 1.5*amplitude*(director[Y]*director[Y] - 1.0/3.0);
-	    q[Y][Z] = 1.5*amplitude*(director[Y]*director[Z]);
+	  }
+
+	  q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
+	  q[X][Y] = 1.5*amplitude*(director[X]*director[Y]);
+	  q[X][Z] = 1.5*amplitude*(director[X]*director[Z]);
+	  q[Y][Y] = 1.5*amplitude*(director[Y]*director[Y] - 1.0/3.0);
+	  q[Y][Z] = 1.5*amplitude*(director[Y]*director[Z]);
 	    
-	    phi_set_q_tensor(index, q);
+	  phi_set_q_tensor(index, q);
 
 	}
 	
@@ -271,57 +272,53 @@ void COLL_set_Q_2(){
 		continue;
 	      }
 	    
-#if PLANAR_ANCHORING
-	      /* now we need set the director inside the colloid
-		 perpendicular to the vector normal of of the surface [i.e. it is
-		 confined in a plane] i.e.  
-		 perpendicular to the vector r between the centre of the colloid
-		 corresponding node i,j,k
-		 -Juho
-	      */
+	      if (anchoring_ == ANCHORING_PLANAR) {
 	  
-	      phi_get_q_tensor(p_link->j, q);
-	      scalar_order_parameter_director(q, qs);
+		phi_get_q_tensor(p_link->j, q);
+		scalar_order_parameter_director(q, qs);
 	      
-	      dir[X] = qs[1];
-	      dir[Y] = qs[2];
-	      dir[Z] = qs[3];
+		dir[X] = qs[1];
+		dir[Y] = qs[2];
+		dir[Z] = qs[3];
 	    
-	      /* calculate the projection of the director along the surface
-	       * normal and remove that from the director to make the
-	       * director perpendicular to the surface */
+		/* calculate the projection of the director along the surface
+		 * normal and remove that from the director to make the
+		 * director perpendicular to the surface */
 	    
-	      rdotd = dot_product(normal, dir)/(len_normal*len_normal);
+		rdotd = dot_product(normal, dir)/(len_normal*len_normal);
 	    
-	      dir[X] = dir[X] - rdotd*normal[X];
-	      dir[Y] = dir[Y] - rdotd*normal[Y];
-	      dir[Z] = dir[Z] - rdotd*normal[Z];
+		dir[X] = dir[X] - rdotd*normal[X];
+		dir[Y] = dir[Y] - rdotd*normal[Y];
+		dir[Z] = dir[Z] - rdotd*normal[Z];
 	      
-	      dir_len = modulus(dir);
-
-	      if (dir_len < 10e-8) {
-		/* the vectors were [almost] parallel.
-		 * now we use the direction of the previous node i,j,k
-		 * this fails if we are in the first node, so not great fix...
-		 */
-
-		cross_product(dir_prev, normal, dir);
 		dir_len = modulus(dir);
-		fatal("dir_len < 10-8 i,j,k, %d %d %d\n", ic,jc,kc);
+
+		if (dir_len < 10e-8) {
+		  /* the vectors were [almost] parallel.
+		   * now we use the direction of the previous node i,j,k
+		   * this fails if we are in the first node.
+		   */
+
+		  cross_product(dir_prev, normal, dir);
+		  dir_len = modulus(dir);
+		  fatal("dir_len < 10-8 i,j,k, %d %d %d\n", ic,jc,kc);
+		}
+
+		for (ia = 0; ia < 3; ia++) {
+		  director[ia] = dir[ia] / dir_len;
+		  dir_prev[ia] = dir[ia] / dir_len;
+		}
 	      }
 
-	      for (ia = 0; ia < 3; ia++) {
-		director[ia] = dir[ia] / dir_len;
-		dir_prev[ia] = dir[ia] / dir_len;
+	      if (anchoring_ == ANCHORING_NORMAL) {
+
+		/* Homeotropic anchoring */
+
+		director[X] = normal[X]/len_normal;
+		director[Y] = normal[Y]/len_normal;
+		director[Z] = normal[Z]/len_normal;
 	      }
 
-#else
-	      /* Homeotropic anchoring */
-
-	      director[X] = normal[X]/len_normal;
-	      director[Y] = normal[Y]/len_normal;
-	      director[Z] = normal[Z]/len_normal;
-#endif
 	      q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
 	      q[X][Y] = 1.5*amplitude*(director[X]*director[Y]);
 	      q[X][Z] = 1.5*amplitude*(director[X]*director[Z]);
@@ -651,6 +648,21 @@ static void scalar_order_parameter_director(double q[3][3], double qs[4]) {
   qs[1] = v[X][emax];
   qs[2] = v[Y][emax];
   qs[3] = v[Z][emax];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_q_tensor_anchoring_set
+ *
+ *****************************************************************************/
+
+void colloids_q_tensor_anchoring_set(const int type) {
+
+  assert(type == ANCHORING_PLANAR || type == ANCHORING_NORMAL);
+
+  anchoring_ = type;
 
   return;
 }

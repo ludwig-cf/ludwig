@@ -119,9 +119,6 @@ void ludwig_init(void) {
   int n, nstat;
   char filename[FILENAME_MAX];
 
-  /* Initialise Lc in colloids */
-  if (phi_nop() == 5) COLL_randomize_Q(0.0);
-
   if (get_step() == 0) {
     n = 0;
     RUN_get_int_parameter("LE_init_profile", &n);
@@ -216,8 +213,8 @@ int main( int argc, char **argv ) {
        * the halo swap, but before the gradient calculation. */
 
       phi_compute_phi_site();
-      phi_halo();
       if (phi_nop() == 5) COLL_set_Q();
+      phi_halo();
       phi_gradients_compute();
 
       TIMER_stop(TIMER_PHI_GRADIENTS);
