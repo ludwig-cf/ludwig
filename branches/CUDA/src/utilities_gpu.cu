@@ -26,16 +26,17 @@ extern const double q_[NVEL][3][3];
 
 
 /* accelerator memory address pointers for required data structures */
+
 double * f_d;
 double * ftmp_d;
 
+/* edge and halo buffers on accelerator */
 double * fedgeXLOW_d;
 double * fedgeXHIGH_d;
 double * fedgeYLOW_d;
 double * fedgeYHIGH_d;
 double * fedgeZLOW_d;
 double * fedgeZHIGH_d;
-
 double * fhaloXLOW_d;
 double * fhaloXHIGH_d;
 double * fhaloYLOW_d;
@@ -59,6 +60,7 @@ int * N_d;
 double * force_global_d;
 
 /* host memory address pointers for temporary staging of data */
+
 char * site_map_status_temp;
 double * force_temp;
 double * velocity_temp;
@@ -66,13 +68,13 @@ double * phi_site_temp;
 double * grad_phi_site_temp;
 double * delsq_phi_site_temp;
 
+/* edge and  halo buffers on host */
 double * fedgeXLOW;
 double * fedgeXHIGH;
 double * fedgeYLOW;
 double * fedgeYHIGH;
 double * fedgeZLOW;
 double * fedgeZHIGH;
-
 double * fhaloXLOW;
 double * fhaloXHIGH;
 double * fhaloYLOW;
@@ -87,37 +89,13 @@ static int nsites;
 static int ndist;
 static  int N[3];
 static  int Nall[3];
-static int maxN;
-static int nedgedata;
-static int nhalodata;
+static int npvel; /* number of velocity components when packed */
 static int nhalodataX;
 static int nhalodataY;
 static int nhalodataZ;
 
 
 
-
-enum {XUP,XDOWN,YUP,YDOWN,ZUP,ZDOWN};
-
- const int packedvelidx[NVEL][6] = {{-1, -1, -1, -1, -1, -1},
-				   { 0, -1,  0, -1, -1, -1},
-				   { 1, -1, -1, -1,  0, -1},
-				   { 2, -1, -1, -1, -1, -1},
-				   { 3, -1, -1, -1, -1,  0},
-				   { 4, -1, -1,  0, -1, -1},
-				   {-1, -1,  1, -1,  1, -1},
-				   {-1, -1,  2, -1, -1, -1},
-				   {-1, -1,  3, -1, -1,  1},
-				   {-1, -1, -1, -1,  2, -1},
-				   {-1, -1, -1, -1, -1,  2},
-				   {-1, -1, -1,  1,  3, -1},
-				   {-1, -1, -1,  2, -1, -1},
-				   {-1, -1, -1,  3, -1,  3},
-				   {-1,  0,  4, -1, -1, -1},
-				   {-1,  1, -1, -1,  4, -1},
-				   {-1,  2, -1, -1, -1, -1},
-				   {-1,  3, -1, -1, -1,  4},
-				   {-1,  4, -1,  4, -1, -1}};
 
 /* Perform tasks necessary to initialise accelerator */
 void initialise_gpu()
@@ -162,6 +140,7 @@ void initialise_gpu()
 	     cudaMemcpyHostToDevice);
   cudaMemcpy(site_map_status_d, site_map_status_temp, nsites*sizeof(char), \
 	     cudaMemcpyHostToDevice);
+  
 
 
 }
@@ -188,18 +167,25 @@ static void calculate_data_sizes()
 
   nsites = Nall[X]*Nall[Y]*Nall[Z];
   ndata = nsites * ndist * NVEL;
-  maxN = max(N[X],N[Y]);
-  maxN = max(maxN,N[Z]);
-  nedgedata = maxN * maxN * nhalo * 12 * ndist * NVEL;
-
-  nhalodataX = N[Y] * N[Z] * nhalo * ndist * NVEL;
-  nhalodataY = Nall[X] * N[Z] * nhalo * ndist * NVEL;
-  nhalodataZ = Nall[X] * Nall[Y] * nhalo * ndist * NVEL;
 
 
 
-  nhalodata = (maxN+2*nhalo) * (maxN+2*nhalo) * nhalo * 12 * ndist * NVEL;
+  /* calculate number of velocity components when packed */
+  int p;
+  npvel=0;
+  for (p=0; p<NVEL; p++)
+    {
+      if (cv[p][0] == 1) npvel++; 
+    }
+
+  nhalodataX = N[Y] * N[Z] * nhalo * ndist * npvel;
+  nhalodataY = Nall[X] * N[Z] * nhalo * ndist * npvel;
+  nhalodataZ = Nall[X] * Nall[Y] * nhalo * ndist * npvel;
+
+
 }
+
+
 
 
 
@@ -214,39 +200,39 @@ static void allocate_memory_on_gpu()
   phi_site_temp = (double *) malloc(nsites*sizeof(double));
   grad_phi_site_temp = (double *) malloc(nsites*3*sizeof(double));
   delsq_phi_site_temp = (double *) malloc(nsites*sizeof(double));
-
+  
   fedgeXLOW = (double *) malloc(nhalodataX*sizeof(double));
- fedgeXHIGH = (double *) malloc(nhalodataX*sizeof(double));
- fedgeYLOW = (double *) malloc(nhalodataY*sizeof(double));
- fedgeYHIGH = (double *) malloc(nhalodataY*sizeof(double));
- fedgeZLOW = (double *) malloc(nhalodataZ*sizeof(double));
- fedgeZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
-
+  fedgeXHIGH = (double *) malloc(nhalodataX*sizeof(double));
+  fedgeYLOW = (double *) malloc(nhalodataY*sizeof(double));
+  fedgeYHIGH = (double *) malloc(nhalodataY*sizeof(double));
+  fedgeZLOW = (double *) malloc(nhalodataZ*sizeof(double));
+  fedgeZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
+  
   fhaloXLOW = (double *) malloc(nhalodataX*sizeof(double));
- fhaloXHIGH = (double *) malloc(nhalodataX*sizeof(double));
- fhaloYLOW = (double *) malloc(nhalodataY*sizeof(double));
- fhaloYHIGH = (double *) malloc(nhalodataY*sizeof(double));
- fhaloZLOW = (double *) malloc(nhalodataZ*sizeof(double));
- fhaloZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
-
+  fhaloXHIGH = (double *) malloc(nhalodataX*sizeof(double));
+  fhaloYLOW = (double *) malloc(nhalodataY*sizeof(double));
+  fhaloYHIGH = (double *) malloc(nhalodataY*sizeof(double));
+  fhaloZLOW = (double *) malloc(nhalodataZ*sizeof(double));
+  fhaloZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
+  
   /* arrays on accelerator */
   cudaMalloc((void **) &f_d, ndata*sizeof(double));
   cudaMalloc((void **) &ftmp_d, ndata*sizeof(double));
-
+  
   cudaMalloc((void **) &fedgeXLOW_d, nhalodataX*sizeof(double));
- cudaMalloc((void **) &fedgeXHIGH_d, nhalodataX*sizeof(double));
- cudaMalloc((void **) &fedgeYLOW_d, nhalodataY*sizeof(double));
- cudaMalloc((void **) &fedgeYHIGH_d, nhalodataY*sizeof(double));
- cudaMalloc((void **) &fedgeZLOW_d, nhalodataZ*sizeof(double));
- cudaMalloc((void **) &fedgeZHIGH_d, nhalodataZ*sizeof(double));
-
+  cudaMalloc((void **) &fedgeXHIGH_d, nhalodataX*sizeof(double));
+  cudaMalloc((void **) &fedgeYLOW_d, nhalodataY*sizeof(double));
+  cudaMalloc((void **) &fedgeYHIGH_d, nhalodataY*sizeof(double));
+  cudaMalloc((void **) &fedgeZLOW_d, nhalodataZ*sizeof(double));
+  cudaMalloc((void **) &fedgeZHIGH_d, nhalodataZ*sizeof(double));
+  
   cudaMalloc((void **) &fhaloXLOW_d, nhalodataX*sizeof(double));
- cudaMalloc((void **) &fhaloXHIGH_d, nhalodataX*sizeof(double));
- cudaMalloc((void **) &fhaloYLOW_d, nhalodataY*sizeof(double));
- cudaMalloc((void **) &fhaloYHIGH_d, nhalodataY*sizeof(double));
- cudaMalloc((void **) &fhaloZLOW_d, nhalodataZ*sizeof(double));
- cudaMalloc((void **) &fhaloZHIGH_d, nhalodataZ*sizeof(double));
-
+  cudaMalloc((void **) &fhaloXHIGH_d, nhalodataX*sizeof(double));
+  cudaMalloc((void **) &fhaloYLOW_d, nhalodataY*sizeof(double));
+  cudaMalloc((void **) &fhaloYHIGH_d, nhalodataY*sizeof(double));
+  cudaMalloc((void **) &fhaloZLOW_d, nhalodataZ*sizeof(double));
+  cudaMalloc((void **) &fhaloZHIGH_d, nhalodataZ*sizeof(double));
+  
   cudaMalloc((void **) &site_map_status_d, nsites*sizeof(char));
   cudaMalloc((void **) &ma_d, NVEL*NVEL*sizeof(double));
   cudaMalloc((void **) &mi_d, NVEL*NVEL*sizeof(double));
@@ -261,7 +247,7 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &grad_phi_site_d, nsites*3*sizeof(double));
   cudaMalloc((void **) &N_d, sizeof(int)*3);
   cudaMalloc((void **) &force_global_d, sizeof(double)*3);
-  //checkCUDAError("allocate_memory_on_gpu");
+   //checkCUDAError("allocate_memory_on_gpu");
 
 }
 
@@ -477,7 +463,7 @@ void put_phi_on_gpu()
 void get_phi_site_from_gpu()
 {
 
-  int index, i, ic, jc, kc;
+  int index, ic, jc, kc;
 	      
 
   /* copy data from accelerator to host */
@@ -517,14 +503,9 @@ void get_phi_site_from_gpu()
 void get_f_edges_from_gpu()
 {
 
- int ii, jj, kk, p, m, index;
- int offset, packed_index;
  static dim3 BlockDims;
  static dim3 GridDims;
  
- int npackedsite = maxN*maxN;
-
-
   /* pack edges on accelerator */
 
   #define BLOCKSIZE 256
@@ -535,21 +516,21 @@ void get_f_edges_from_gpu()
   TIMER_start(EDGEPACK);
  
  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
-  pack_edgesX_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,
+ pack_edgesX_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
 						N_d,fedgeXLOW_d,
 						fedgeXHIGH_d,f_d);
 
 
   GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  pack_edgesY_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,
+  pack_edgesY_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
 						N_d,fedgeYLOW_d,
 						fedgeYHIGH_d,f_d);
 
 
-  GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-  pack_edgesZ_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,
-						N_d,fedgeZLOW_d,
-						fedgeZHIGH_d,f_d);
+    GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
+  pack_edgesZ_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
+  						N_d,fedgeZLOW_d,
+  						fedgeZHIGH_d,f_d);
   cudaThreadSynchronize();
   TIMER_stop(EDGEPACK);
 
@@ -583,12 +564,8 @@ void get_f_edges_from_gpu()
 void put_f_halos_on_gpu()
 {
 
-  int ii, jj, kk, p, m, index;
-  int offset, packed_index;
   static dim3 BlockDims;
   static dim3 GridDims;
-
-  int npackedsite = (maxN+2*nhalo)*(maxN+2*nhalo);
 
 
   /* copy data from host to accelerator */
@@ -616,19 +593,20 @@ void put_f_halos_on_gpu()
   TIMER_start(HALOUNPACK);
 
   GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_halosX_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,
+  unpack_halosX_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
 						  N_d,f_d,fhaloXLOW_d,
 						  fhaloXHIGH_d);
 
+
   GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_halosY_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,
+  unpack_halosY_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
 						  N_d,f_d,fhaloYLOW_d,
 						  fhaloYHIGH_d);
 
   GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-  unpack_halosZ_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,
-						  N_d,f_d,fhaloZLOW_d,
-						  fhaloZHIGH_d);
+   unpack_halosZ_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
+  						  N_d,f_d,fhaloZLOW_d,
+  					  fhaloZHIGH_d);
 
   cudaThreadSynchronize();
   TIMER_stop(HALOUNPACK);
@@ -663,7 +641,6 @@ void halo_swap_gpu()
   int npackedsiteZ=NedgeZ[X]*NedgeZ[Y]*NedgeZ[Z];
 
 
- int index, packed_index;
 
   /* The x-direction (YZ plane) */
   /* x up */
@@ -672,11 +649,11 @@ void halo_swap_gpu()
   /* x down */
   memcpy(fhaloXHIGH,fedgeXLOW,nhalodataX*sizeof(double));
 
-
-
+ 
+ 
   /* fill in corners of Y edge data  */
 
-  for (p=0;p<NVEL;p++)
+  for (p=0;p<npvel;p++)
     {
       for (m=0;m<ndist;m++)
 	{
@@ -693,14 +670,14 @@ void halo_swap_gpu()
 		index_target = get_linear_index(ii,jj,kk,NedgeY);
 		
 		fedgeYLOW[npackedsiteY*ndist*p+npackedsiteY*m+index_target] =
-		  fhaloXLOW[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
+		fhaloXLOW[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
 
 		/* xlow part of yhigh */
 		index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);
 		index_target = get_linear_index(ii,jj,kk,NedgeY);
 
 		fedgeYHIGH[npackedsiteY*ndist*p+npackedsiteY*m+index_target] =
-		  fhaloXLOW[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
+		fhaloXLOW[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
 
 
 		/* get high X data */
@@ -710,13 +687,13 @@ void halo_swap_gpu()
 		index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
 
 		fedgeYLOW[npackedsiteY*ndist*p+npackedsiteY*m+index_target] =
-		  fhaloXHIGH[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
+		fhaloXHIGH[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
 
 		/* xhigh part of yhigh */
 		index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);			index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
 
 		fedgeYHIGH[npackedsiteY*ndist*p+npackedsiteY*m+index_target] =
-		  fhaloXHIGH[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
+		fhaloXHIGH[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
 
 
 
@@ -730,7 +707,7 @@ void halo_swap_gpu()
 
   /* The y-direction (XZ plane) */
   /* y up */
-  memcpy(fhaloYLOW,fedgeYHIGH,nhalodataY*sizeof(double));
+   memcpy(fhaloYLOW,fedgeYHIGH,nhalodataY*sizeof(double));
 
   /* y down */
   memcpy(fhaloYHIGH,fedgeYLOW,nhalodataY*sizeof(double));
@@ -739,7 +716,7 @@ void halo_swap_gpu()
   /* fill in corners of Z edge data: from Xhalo  */
 
 
-  for (p=0;p<NVEL;p++)
+  for (p=0;p<npvel;p++)
     {
       for (m=0;m<ndist;m++)
 	{
@@ -797,7 +774,7 @@ void halo_swap_gpu()
   /* fill in corners of Z edge data: from Yhalo  */
 
 
-  for (p=0;p<NVEL;p++)
+  for (p=0;p<npvel;p++)
     {
       for (m=0;m<ndist;m++)
 	{
@@ -863,20 +840,24 @@ void halo_swap_gpu()
 
 
 /* pack X edges on the accelerator */
-__global__ static void pack_edgesX_gpu_d(int ndist, int nhalo, int N[3], 
+__global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,
+					 int* cv_ptr, int N[3],
 					 double* fedgeXLOW_d,
-					 double* fedgeXHIGH_d, double* f_d) 
+					 double* fedgeXHIGH_d, double* f_d)
 {
 
   int p,m, index,ii,jj,kk;
-  int packed_index;
+  int packed_index,packedp;
+ /* cast dummy cv pointer to correct 2d type */
+  int (*cv_d)[3] = (int (*)[3]) cv_ptr;
+
 
   int Nall[3];
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
   Nall[Z]=N[Z]+2*nhalo;
   int nsite = Nall[X]*Nall[Y]*Nall[Z];
-
+ 
   int Nedge[3];
   Nedge[X]=nhalo;
   Nedge[Y]=N[Y];
@@ -895,41 +876,63 @@ __global__ static void pack_edgesX_gpu_d(int ndist, int nhalo, int N[3],
       
       /* LOW EDGE */
       index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
+
+      /* variables to determine how vel packing is done from cv array */
+      int dirn=X; /* 3d direction */ 
+      int ud=-1; /* up or down */
+      int pn=-1; /* positive 1 or negative 1 factor */
+
       
       /* copy data to packed structure */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {	  
-	  fedgeXLOW_d[ndist*npackedsite*p+m*npackedsite+packed_index] 
-	    = f_d[ndist*nsite*p+nsite*m+index];	  
-	}	   
+	if (cv_d[p][dirn] == ud )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      fedgeXLOW_d[ndist*npackedsite*packedp+m*npackedsite
+			  +packed_index]
+		= f_d[ndist*nsite*p+nsite*m+index];
+	    }
+	    packedp++;
+	  }
       }
-           
+      
   
       /* HIGH EDGE */
       index = get_linear_index_gpu_d(Nall[X]-nhalo-1-ii,jj+nhalo,kk+nhalo,Nall);
       /* copy data to packed structure */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  fedgeXHIGH_d[ndist*npackedsite*p+m*npackedsite+packed_index] 
-	    = f_d[ndist*nsite*p+nsite*m+index];
-	  
-	  
-	}	   
+	if (cv_d[p][dirn] == ud*pn )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      fedgeXHIGH_d[ndist*npackedsite*packedp+m*npackedsite
+			   +packed_index]
+		= f_d[ndist*nsite*p+nsite*m+index];
+	      
+	    }
+	    packedp++;
+	  }
       }
-    }       
-     
+    }
+  
   
 }
 
 /* unpack X halos on the accelerator */
-__global__ static void unpack_halosX_gpu_d(int ndist, int nhalo, int N[3], 
+__global__ static void unpack_halosX_gpu_d(int ndist, int nhalo,
+					   int* cv_ptr,int N[3],
 					   double* f_d, double* fhaloXLOW_d,
-					   double* fhaloXHIGH_d) 
+					   double* fhaloXHIGH_d)
 {
 
+
+
   int p,m, index,ii,jj,kk;
-  int packed_index;
+  int packed_index, packedp;
+ /* cast dummy cv pointer to correct 2d type */
+  int (*cv_d)[3] = (int (*)[3]) cv_ptr;
 
   int Nall[3];
   Nall[X]=N[X]+2*nhalo;
@@ -952,46 +955,65 @@ __global__ static void unpack_halosX_gpu_d(int ndist, int nhalo, int N[3],
       packed_index = threadIndex;
       
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+
+      /* variables to determine how vel packing is done from cv array */
+      int dirn=X; /* 3d direction */ 
+      int ud=1; /* up or down */
+      int pn=-1; /* positive 1 or negative 1 factor */
       
       /* LOW HALO */
       index = get_linear_index_gpu_d(ii,jj+nhalo,kk+nhalo,Nall);
       
       /* copy packed structure data to original array */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
+	if (cv_d[p][dirn] == ud)
+	  {
+	    for (m = 0; m < ndist; m++) {
 	  
-	  f_d[ndist*nsite*p+nsite*m+index] =	
-	    fhaloXLOW_d[ndist*npackedsite*p+m*npackedsite+packed_index];  
+	      f_d[ndist*nsite*p+nsite*m+index] =
+		fhaloXLOW_d[ndist*npackedsite*packedp+m*npackedsite
+			    +packed_index];
 
-	}	   
+	    }
+	    packedp++;
+	  }
       }
            
   
       /* HIGH HALO */
       index = get_linear_index_gpu_d(Nall[X]-1-ii,jj+nhalo,kk+nhalo,Nall);
       /* copy packed structure data to original array */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  f_d[ndist*nsite*p+nsite*m+index] =
-	    fhaloXHIGH_d[ndist*npackedsite*p+m*npackedsite+packed_index];
-	  
-	  
-	}	   
+	if (cv_d[p][dirn] == ud*pn )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      f_d[ndist*nsite*p+nsite*m+index] =
+		fhaloXHIGH_d[ndist*npackedsite*packedp+m*npackedsite
+			     +packed_index];
+	      
+	    }
+	    packedp++;
+	  }
       }
-    }       
-     
+    }
+  
   
 }
 
 
 /* pack Y edges on the accelerator */
-__global__ static void pack_edgesY_gpu_d(int ndist, int nhalo, int N[3], 
-					 double* fedgeYLOW_d,
+__global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,
+					 int* cv_ptr, int N[3], 					 double* fedgeYLOW_d,
 					 double* fedgeYHIGH_d, double* f_d) {
 
   int p,m, index,ii,jj,kk;
-  int packed_index;
+  int packed_index, packedp;
+
+ /* cast dummy cv pointer to correct 2d type */
+  int (*cv_d)[3] = (int (*)[3]) cv_ptr;
 
   int Nall[3];
   Nall[X]=N[X]+2*nhalo;
@@ -1014,36 +1036,50 @@ __global__ static void pack_edgesY_gpu_d(int ndist, int nhalo, int N[3],
       packed_index = threadIndex;
       
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
-      
+
+      /* variables to determine how vel packing is done from cv array */
+      int dirn=Y; /* 3d direction */ 
+      int ud=-1; /* up or down */
+      int pn=-1; /* positive 1 or negative 1 factor */
+  
+    
       /* LOW EDGE */
       index = get_linear_index_gpu_d(ii,jj+nhalo,kk+nhalo,Nall);
       
       /* copy data to packed structure */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  fedgeYLOW_d[ndist*npackedsite*p+m*npackedsite+packed_index] 
-	    = f_d[ndist*nsite*p+nsite*m+index];
-	  
-	  
-	}	   
+	if (cv_d[p][dirn] == ud )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      fedgeYLOW_d[ndist*npackedsite*packedp+m*npackedsite+packed_index]
+		= f_d[ndist*nsite*p+nsite*m+index];
+	      
+	    }
+	    packedp++;
+	  }
       }
-           
-  
+      
+      
       /* HIGH EDGE */
       index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo-1-jj,kk+nhalo,Nall);
       /* copy data to packed structure */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  fedgeYHIGH_d[ndist*npackedsite*p+m*npackedsite+packed_index] 
-	    = f_d[ndist*nsite*p+nsite*m+index];
-	  
-	  
-	}	   
+	if (cv_d[p][dirn] == ud*pn )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      fedgeYHIGH_d[ndist*npackedsite*packedp+m*npackedsite+packed_index]
+		= f_d[ndist*nsite*p+nsite*m+index];
+	      
+	    }
+	    packedp++;
+	  }
       }
-    }       
-     
+    }
+  
   
 }
 
@@ -1051,14 +1087,17 @@ __global__ static void pack_edgesY_gpu_d(int ndist, int nhalo, int N[3],
 
 
 /* unpack Y halos on the accelerator */
-__global__ static void unpack_halosY_gpu_d(int ndist, int nhalo, int N[3], 
+__global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,
+					 int* cv_ptr, int N[3],
 					   double* f_d, double* fhaloYLOW_d,
-					   double* fhaloYHIGH_d) 
+					   double* fhaloYHIGH_d)
 {
 
   int p,m, index,ii,jj,kk;
-  int packed_index;
-
+  int packed_index, packedp;
+ /* cast dummy cv pointer to correct 2d type */
+  int (*cv_d)[3] = (int (*)[3]) cv_ptr;
+  
 
   int Nall[3];
   Nall[X]=N[X]+2*nhalo;
@@ -1082,50 +1121,86 @@ __global__ static void unpack_halosY_gpu_d(int ndist, int nhalo, int N[3],
       
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
 
-      
+      /* variables to determine how vel packing is done from cv array */
+      int dirn=Y; /* 3d direction */ 
+      int ud=1; /* up or down */
+      int pn=-1; /* positive 1 or negative 1 factor */
+
+      /* correct for diagonal data that was packed by X packing subroutine */
+      if (ii < nhalo) 
+	{ 
+	  dirn = X;
+	  ud=1;
+	  pn=1;
+	}
+      if (ii >= Nall[X]-nhalo)
+	{ 
+	  dirn = X;
+	  ud=-1;
+	  pn=1;
+	}
+
+
+
       /* LOW EDGE */
       index = get_linear_index_gpu_d(ii,jj,kk+nhalo,Nall);
       
        /* copy packed structure data to original array */
+      packedp=0;
+
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  f_d[ndist*nsite*p+nsite*m+index] = 
-	    fhaloYLOW_d[ndist*npackedsite*p+m*npackedsite+packed_index];
-	  
-	  
-	}	   
-      }
-           
+	if (cv_d[p][dirn] == ud )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      f_d[ndist*nsite*p+nsite*m+index] =
+	      fhaloYLOW_d[ndist*npackedsite*packedp+m*npackedsite+packed_index];
+	      
+	    }
+	    packedp++;
+	  }
   
+      
+      }
+
+      
       /* HIGH EDGE */
       index = get_linear_index_gpu_d(ii,Nall[Y]-1-jj,kk+nhalo,Nall);
       /* copy packed structure data to original array */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  f_d[ndist*nsite*p+nsite*m+index] =
-	    fhaloYHIGH_d[ndist*npackedsite*p+m*npackedsite+packed_index];
-	  
-	}	   
+	if (cv_d[p][dirn] == ud*pn )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      f_d[ndist*nsite*p+nsite*m+index] =
+		fhaloYHIGH_d[ndist*npackedsite*packedp+m*npackedsite+packed_index];
+	      
+	    }
+	    packedp++;
+	  }
+	
       }
       
     }
   
-     
+  
   
 }
 
 
 
 /* pack Z edges on the accelerator */
-__global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo, int N[3], 
+__global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
+					 int* cv_ptr, int N[3],
 					 double* fedgeZLOW_d,
-					 double* fedgeZHIGH_d, double* f_d) 
+					 double* fedgeZHIGH_d, double* f_d)
 {
 
   int p,m, index,ii,jj,kk;
-  int packed_index;
+  int packed_index, packedp;
+ /* cast dummy cv pointer to correct 2d type */
+  int (*cv_d)[3] = (int (*)[3]) cv_ptr;
 
   int Nall[3];
   Nall[X]=N[X]+2*nhalo;
@@ -1148,36 +1223,50 @@ __global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo, int N[3],
       packed_index = threadIndex;
       
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+
+      /* variables to determine how vel packing is done from cv array */
+      int dirn=Z; /* 3d direction */ 
+      int ud=-1; /* up or down */
+      int pn=-1; /* positive 1 or negative 1 factor */
+
       
       /* LOW EDGE */
       index = get_linear_index_gpu_d(ii,jj,kk+nhalo,Nall);
       
       /* copy data to packed structure */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  fedgeZLOW_d[ndist*npackedsite*p+m*npackedsite+packed_index] 
-	    = f_d[ndist*nsite*p+nsite*m+index];
-	  
-	  
-	}	   
+	if (cv_d[p][dirn] == ud )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      fedgeZLOW_d[ndist*npackedsite*packedp+m*npackedsite+packed_index]
+		= f_d[ndist*nsite*p+nsite*m+index];
+	      
+	    }
+	    packedp++;
+	  }
       }
-           
-  
+      
+      
       /* HIGH EDGE */
       index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo-1-kk,Nall);
       /* copy data to packed structure */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  fedgeZHIGH_d[ndist*npackedsite*p+m*npackedsite+packed_index] 
-	    = f_d[ndist*nsite*p+nsite*m+index];
-	  
-	  
-	}	   
+	if (cv_d[p][dirn] == ud*pn )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      fedgeZHIGH_d[ndist*npackedsite*packedp+m*npackedsite+packed_index]
+		= f_d[ndist*nsite*p+nsite*m+index];
+	      
+	    }
+	    packedp++;
+	  }
       }
-    }       
-     
+    }
+  
   
 }
 
@@ -1185,13 +1274,16 @@ __global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo, int N[3],
 
 
 /* unpack Z halos on the accelerator */
-__global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo, int N[3],
+__global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
+					   int* cv_ptr, int N[3],
 					   double* f_d, double* fhaloZLOW_d,
-					   double* fhaloZHIGH_d) 
+					   double* fhaloZHIGH_d)
 {
 
   int p,m, index,ii,jj,kk;
-  int packed_index;
+  int packed_index, packedp;
+ /* cast dummy cv pointer to correct 2d type */
+  int (*cv_d)[3] = (int (*)[3]) cv_ptr;
   
   int Nall[3];
   Nall[X]=N[X]+2*nhalo;
@@ -1214,35 +1306,79 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo, int N[3],
       packed_index = threadIndex;
       
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+
+      /* variables to determine how vel packing is done from cv array */
+      int dirn=Z; /* 3d direction */ 
+      int ud=1; /* up or down */
+      int pn=-1; /* positive 1 or negative 1 factor */
+
+      /* correct for diagonal data that was packed by X packing subroutine */
+      if (ii < nhalo)
+	{ 
+	  dirn = X;
+	  ud=1;
+	  pn=1;
+	}
+      if (ii >= Nall[X]-nhalo)
+	{ 
+	  dirn = X;
+	  ud=-1;
+	  pn=1;
+	}
+      /* correct for diagonal data that was packed by Y packing subroutine */
+      if (jj < nhalo)
+	{ 
+	  dirn = Y;
+	  ud=1;
+	  pn=1;
+	}
+
+      if (jj >= Nall[Y]-nhalo)
+	{ 
+	  dirn = Y;
+	  ud=-1;
+	  pn=1;
+	}
+
       
       /* LOW EDGE */
       index = get_linear_index_gpu_d(ii,jj,kk,Nall);
       
       /* copy packed structure data to original array */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  f_d[ndist*nsite*p+nsite*m+index] = 
-	    fhaloZLOW_d[ndist*npackedsite*p+m*npackedsite+packed_index];
-	  
-	}	   
+	if (cv_d[p][dirn] == ud )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      f_d[ndist*nsite*p+nsite*m+index] =
+		fhaloZLOW_d[ndist*npackedsite*packedp+m*npackedsite+packed_index];
+	      
+	    }
+	    packedp++;
+	  }
       }
       
       
       /* HIGH EDGE */
       index = get_linear_index_gpu_d(ii,jj,Nall[Z]-1-kk,Nall);
       /* copy packed structure data to original array */
+      packedp=0;
       for (p = 0; p < NVEL; p++) {
-	for (m = 0; m < ndist; m++) {
-	  
-	  f_d[ndist*nsite*p+nsite*m+index] =
-	    fhaloZHIGH_d[ndist*npackedsite*p+m*npackedsite+packed_index];
-	  
-	}	   
+	if (cv_d[p][dirn] == ud*pn )
+	  {
+	    for (m = 0; m < ndist; m++) {
+	      
+	      f_d[ndist*nsite*p+nsite*m+index] =
+		fhaloZHIGH_d[ndist*npackedsite*packedp+m*npackedsite+packed_index];
+	      
+	    }
+	    packedp++;
+	  }
       }
       
     }
-    
+  
 }
 
 
