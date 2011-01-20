@@ -83,11 +83,11 @@ cp ../tests/regression/test_yukawa_cds.001-001 ./config.cds.init.001-001
 diff /tmp/junk ../tests/regression/test_yukawa_d3q19.ref1
 
 echo Running Cholesteric normal anchoring test
-./Ludwig.exe ../tests/regression/test_chol_normal_inupt > /tmp/junk
+./Ludwig.exe ../tests/regression/test_chol_normal_input > /tmp/junk
 diff /tmp/junk ../tests/regression/test_chol_normal_d3q19.ref1
 
 echo Running Cholesteric planar anchoring test
-./Ludwig.exe ../tests/regression/test_chol_planar_inupt > /tmp/junk
+./Ludwig.exe ../tests/regression/test_chol_planar_input > /tmp/junk
 diff /tmp/junk ../tests/regression/test_chol_planar_d3q19.ref1
 
 
@@ -123,11 +123,11 @@ mpirun -np 8 ./Ludwig.exe ../tests/regression/test_yukawa_input > /tmp/junk
 diff /tmp/junk ../tests/regression/test_yukawa_d3q19.ref8
 
 echo Running Cholesteric normal anchoring parallel test
-mpirun -np 8 ./Ludwig.exe ../tests/regression/test_chol_normal_inupt > /tmp/j8
+mpirun -np 8 ./Ludwig.exe ../tests/regression/test_chol_normal_input > /tmp/j8
 diff /tmp/j8 ../tests/regression/test_chol_normal_d3q19.ref8
 
 echo Running Cholesteric planar anchoring parallel test
-mpirun -np 8 ./Ludwig.exe ../tests/regression/test_chol_planar_inupt > /tmp/j8
+mpirun -np 8 ./Ludwig.exe ../tests/regression/test_chol_planar_input > /tmp/j8
 diff /tmp/j8 ../tests/regression/test_chol_planar_d3q19.ref8
 
 make clean
