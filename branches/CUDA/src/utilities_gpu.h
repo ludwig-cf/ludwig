@@ -30,15 +30,19 @@ extern "C" void   phi_gradients_grad(const int index, double grad[3]);
 extern "C" double phi_gradients_delsq(const int index);
 extern "C" void TIMER_start(const int);
 extern "C" void TIMER_stop(const int);
+extern "C" int le_get_nxbuffer(void);
+extern "C" int le_index_real_to_buffer(const int ic, const int di);
 
 /* expose routines in this module to outside routines */
 extern "C" void initialise_gpu();
 extern "C" void put_f_on_gpu();
 extern "C" void put_force_on_gpu();
 extern "C" void put_phi_on_gpu();
+extern "C" void put_grad_phi_on_gpu();
+extern "C" void put_delsq_phi_on_gpu();
 extern "C" void get_f_from_gpu();
 extern "C" void get_velocity_from_gpu();
-extern "C" void get_phi_site_from_gpu();
+extern "C" void get_phi_from_gpu();
 extern "C" void finalise_gpu();
 extern "C" void copy_f_to_ftmp_on_gpu(void);
 extern "C" void get_f_edges_from_gpu(void);

@@ -99,7 +99,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model_r.o propagation.o collision.o \
      timer.o util.o wall.o colloids_Q_tensor.o
 
 GPUOBJS = collision_gpu.o propagation_gpu.o phi_lb_coupler_gpu.o \
-	utilities_gpu.o
+	gradient_3d_7pt_fluid_gpu.o utilities_gpu.o
 
 ###############################################################################
 #

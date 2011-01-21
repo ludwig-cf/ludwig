@@ -74,15 +74,18 @@ void put_f_on_gpu(void);
 void put_f_halos_on_gpu(void);
 void put_force_on_gpu(void);
 void put_phi_on_gpu(void);
+void put_grad_phi_on_gpu(void);
+void put_delsq_phi_on_gpu(void);
 void get_f_from_gpu(void);
 void get_f_edges_from_gpu(void);
 void get_velocity_from_gpu(void);
-void get_phi_site_from_gpu(void);
+void get_phi_from_gpu(void);
 void finalise_gpu(void);
 void collide_gpu(void);
 void propagation_gpu(void);
 void phi_compute_phi_site_gpu(void);
 void halo_swap_gpu(void);
+void phi_gradients_compute_gpu(void);
 #endif
 
 
@@ -253,7 +256,7 @@ int main( int argc, char **argv ) {
       TIMER_stop(PHICOMP);
 
       TIMER_start(GETPHI);
-      get_phi_site_from_gpu();
+      get_phi_from_gpu();
       TIMER_stop(GETPHI);
 
 #else
@@ -265,13 +268,32 @@ int main( int argc, char **argv ) {
       TIMER_stop(PHIHALO);
       if (phi_nop() == 5) COLL_set_Q();
 
+
+#ifdef _GPU_
+
+      TIMER_start(PHIPUT);
+      put_phi_on_gpu();
+      TIMER_stop(PHIPUT);
+
+      TIMER_start(PHIGRADCOMP);
+      phi_gradients_compute_gpu();
+      TIMER_stop(PHIGRADCOMP);
+      
+      
+#else      
       TIMER_start(PHIGRADCOMP);
       phi_gradients_compute();
       TIMER_stop(PHIGRADCOMP);
+#endif
 
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
       if (phi_is_finite_difference()) {
+
+#ifdef _GPU_
+	printf("phi_is_finite_difference not yet supported in GPU mode\n");
+	exit(1);
+#endif
 
 	TIMER_start(TIMER_FORCE_CALCULATION);
 
@@ -292,27 +314,23 @@ int main( int argc, char **argv ) {
       }
     }
 
-    #ifdef _GPU_
+#ifdef _GPU_
 
 /*     TIMER_start(FORCEPUT); */
 /*     put_force_on_gpu(); */
 /*     TIMER_stop(FORCEPUT); */
 
-    TIMER_start(PHIPUT);
-    put_phi_on_gpu();
-    TIMER_stop(PHIPUT);
-
     TIMER_start(TIMER_COLLIDE);
     collide_gpu();
     TIMER_stop(TIMER_COLLIDE);
 
-    #else
+#else
 
     TIMER_start(TIMER_COLLIDE);
     collide();
     TIMER_stop(TIMER_COLLIDE);
 
-    #endif
+#endif
 
 
     model_le_apply_boundary_conditions();
