@@ -44,6 +44,19 @@ double * fhaloYHIGH_d;
 double * fhaloZLOW_d;
 double * fhaloZHIGH_d;
 
+double * phiedgeXLOW_d;
+double * phiedgeXHIGH_d;
+double * phiedgeYLOW_d;
+double * phiedgeYHIGH_d;
+double * phiedgeZLOW_d;
+double * phiedgeZHIGH_d;
+double * phihaloXLOW_d;
+double * phihaloXHIGH_d;
+double * phihaloYLOW_d;
+double * phihaloYHIGH_d;
+double * phihaloZLOW_d;
+double * phihaloZHIGH_d;
+
 double * ma_d;
 double * mi_d;
 double * d_d;
@@ -85,6 +98,19 @@ double * fhaloYHIGH;
 double * fhaloZLOW;
 double * fhaloZHIGH;
 
+double * phiedgeXLOW;
+double * phiedgeXHIGH;
+double * phiedgeYLOW;
+double * phiedgeYHIGH;
+double * phiedgeZLOW;
+double * phiedgeZHIGH;
+double * phihaloXLOW;
+double * phihaloXHIGH;
+double * phihaloYLOW;
+double * phihaloYHIGH;
+double * phihaloZLOW;
+double * phihaloZHIGH;
+
 int * le_index_real_to_buffer_temp;
 
 /* data size variables */
@@ -92,12 +118,16 @@ static int ndata;
 static int nhalo;
 static int nsites;
 static int ndist;
+static int nop;
 static  int N[3];
 static  int Nall[3];
 static int npvel; /* number of velocity components when packed */
 static int nhalodataX;
 static int nhalodataY;
 static int nhalodataZ;
+static int nphihalodataX;
+static int nphihalodataY;
+static int nphihalodataZ;
 static int nlexbuf;
 
 
@@ -203,11 +233,19 @@ static void calculate_data_sizes()
   nhalodataY = Nall[X] * N[Z] * nhalo * ndist * npvel;
   nhalodataZ = Nall[X] * Nall[Y] * nhalo * ndist * npvel;
 
+  nop = phi_nop();
+
+  nphihalodataX = N[Y] * N[Z] * nhalo * nop ;
+  nphihalodataY = Nall[X] * N[Z] * nhalo * nop;
+  nphihalodataZ = Nall[X] * Nall[Y] * nhalo * nop;
+
+
 
   //nlexbuf = le_get_nxbuffer();
 /*for holding le buffer index translation */
 /* -1 then +1 values */
   nlexbuf = 2*Nall[X]; 
+
 
 
 }
@@ -242,6 +280,21 @@ static void allocate_memory_on_gpu()
   fhaloYHIGH = (double *) malloc(nhalodataY*sizeof(double));
   fhaloZLOW = (double *) malloc(nhalodataZ*sizeof(double));
   fhaloZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
+
+  phiedgeXLOW = (double *) malloc(nphihalodataX*sizeof(double));
+  phiedgeXHIGH = (double *) malloc(nphihalodataX*sizeof(double));
+  phiedgeYLOW = (double *) malloc(nphihalodataY*sizeof(double));
+  phiedgeYHIGH = (double *) malloc(nphihalodataY*sizeof(double));
+  phiedgeZLOW = (double *) malloc(nphihalodataZ*sizeof(double));
+  phiedgeZHIGH = (double *) malloc(nphihalodataZ*sizeof(double));
+  
+  phihaloXLOW = (double *) malloc(nphihalodataX*sizeof(double));
+  phihaloXHIGH = (double *) malloc(nphihalodataX*sizeof(double));
+  phihaloYLOW = (double *) malloc(nphihalodataY*sizeof(double));
+  phihaloYHIGH = (double *) malloc(nphihalodataY*sizeof(double));
+  phihaloZLOW = (double *) malloc(nphihalodataZ*sizeof(double));
+  phihaloZHIGH = (double *) malloc(nphihalodataZ*sizeof(double));
+
   
   /* arrays on accelerator */
   cudaMalloc((void **) &f_d, ndata*sizeof(double));
@@ -260,6 +313,20 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &fhaloYHIGH_d, nhalodataY*sizeof(double));
   cudaMalloc((void **) &fhaloZLOW_d, nhalodataZ*sizeof(double));
   cudaMalloc((void **) &fhaloZHIGH_d, nhalodataZ*sizeof(double));
+
+  cudaMalloc((void **) &phiedgeXLOW_d, nphihalodataX*sizeof(double));
+  cudaMalloc((void **) &phiedgeXHIGH_d, nphihalodataX*sizeof(double));
+  cudaMalloc((void **) &phiedgeYLOW_d, nphihalodataY*sizeof(double));
+  cudaMalloc((void **) &phiedgeYHIGH_d, nphihalodataY*sizeof(double));
+  cudaMalloc((void **) &phiedgeZLOW_d, nphihalodataZ*sizeof(double));
+  cudaMalloc((void **) &phiedgeZHIGH_d, nphihalodataZ*sizeof(double));
+  
+  cudaMalloc((void **) &phihaloXLOW_d, nphihalodataX*sizeof(double));
+  cudaMalloc((void **) &phihaloXHIGH_d, nphihalodataX*sizeof(double));
+  cudaMalloc((void **) &phihaloYLOW_d, nphihalodataY*sizeof(double));
+  cudaMalloc((void **) &phihaloYHIGH_d, nphihalodataY*sizeof(double));
+  cudaMalloc((void **) &phihaloZLOW_d, nphihalodataZ*sizeof(double));
+  cudaMalloc((void **) &phihaloZHIGH_d, nphihalodataZ*sizeof(double));
   
   cudaMalloc((void **) &site_map_status_d, nsites*sizeof(char));
   cudaMalloc((void **) &ma_d, NVEL*NVEL*sizeof(double));
@@ -310,6 +377,20 @@ static void free_memory_on_gpu()
   free(fhaloZLOW);
   free(fhaloZHIGH);
 
+  free(phiedgeXLOW);
+  free(phiedgeXHIGH);
+  free(phiedgeYLOW);
+  free(phiedgeYHIGH);
+  free(phiedgeZLOW);
+  free(phiedgeZHIGH);
+
+  free(phihaloXLOW);
+  free(phihaloXHIGH);
+  free(phihaloYLOW);
+  free(phihaloYHIGH);
+  free(phihaloZLOW);
+  free(phihaloZHIGH);
+
   /* free memory on accelerator */
   cudaFree(f_d);
   cudaFree(ftmp_d);
@@ -327,6 +408,21 @@ static void free_memory_on_gpu()
   cudaFree(fhaloYHIGH_d);
   cudaFree(fhaloZLOW_d);
   cudaFree(fhaloZHIGH_d);
+
+
+  cudaFree(phiedgeXLOW_d);
+  cudaFree(phiedgeXHIGH_d);
+  cudaFree(phiedgeYLOW_d);
+  cudaFree(phiedgeYHIGH_d);
+  cudaFree(phiedgeZLOW_d);
+  cudaFree(phiedgeZHIGH_d);
+
+  cudaFree(phihaloXLOW_d);
+  cudaFree(phihaloXHIGH_d);
+  cudaFree(phihaloYLOW_d);
+  cudaFree(phihaloYHIGH_d);
+  cudaFree(phihaloZLOW_d);
+  cudaFree(phihaloZHIGH_d);
 
   cudaFree(ma_d);
   cudaFree(mi_d);
@@ -1471,6 +1567,706 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
     }
   
 }
+
+
+
+
+
+
+/* copy phi edges from accelerator to host */
+void get_phi_edges_from_gpu()
+{
+
+ static dim3 BlockDims;
+ static dim3 GridDims;
+ 
+  /* pack edges on accelerator */
+
+  #define BLOCKSIZE 256
+  /* 1D decomposition - use x grid and block dimension only */
+  BlockDims.x=BLOCKSIZE;
+
+  /* run the kernels to pack the edges */
+  TIMER_start(EDGEPACK);
+ 
+ GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+ pack_phi_edgesX_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
+						N_d,phiedgeXLOW_d,
+						phiedgeXHIGH_d,phi_site_d);
+
+
+  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
+  pack_phi_edgesY_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
+						N_d,phiedgeYLOW_d,
+						phiedgeYHIGH_d,phi_site_d);
+
+
+    GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
+  pack_phi_edgesZ_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
+  						N_d,phiedgeZLOW_d,
+  						phiedgeZHIGH_d,phi_site_d);
+  cudaThreadSynchronize();
+  TIMER_stop(EDGEPACK);
+
+
+
+  /* copy data from accelerator to host */
+  TIMER_start(EDGEGET);
+  cudaMemcpy(phiedgeXLOW, phiedgeXLOW_d, nphihalodataX*sizeof(double),
+	     cudaMemcpyDeviceToHost);
+  cudaMemcpy(phiedgeXHIGH, phiedgeXHIGH_d, nphihalodataX*sizeof(double),
+	     cudaMemcpyDeviceToHost);
+  cudaMemcpy(phiedgeYLOW, phiedgeYLOW_d, nphihalodataY*sizeof(double),
+	     cudaMemcpyDeviceToHost);
+  cudaMemcpy(phiedgeYHIGH, phiedgeYHIGH_d, nphihalodataY*sizeof(double),
+	     cudaMemcpyDeviceToHost);
+  cudaMemcpy(phiedgeZLOW, phiedgeZLOW_d, nphihalodataZ*sizeof(double),
+	     cudaMemcpyDeviceToHost);
+  cudaMemcpy(phiedgeZHIGH, phiedgeZHIGH_d, nphihalodataZ*sizeof(double),
+	     cudaMemcpyDeviceToHost);
+  TIMER_stop(EDGEGET);
+  
+  
+  //checkCUDAError("get_f_edges_from_gpu");
+
+}
+
+
+
+
+/* copy phi halos from host to accelerator */
+void put_phi_halos_on_gpu()
+{
+
+  static dim3 BlockDims;
+  static dim3 GridDims;
+
+
+  /* copy data from host to accelerator */
+  TIMER_start(HALOPUT);
+  cudaMemcpy(phihaloXLOW_d, phihaloXLOW, nphihalodataX*sizeof(double),
+	     cudaMemcpyHostToDevice);
+  cudaMemcpy(phihaloXHIGH_d, phihaloXHIGH, nphihalodataX*sizeof(double),
+	     cudaMemcpyHostToDevice);
+  cudaMemcpy(phihaloYLOW_d, phihaloYLOW, nphihalodataY*sizeof(double),
+	     cudaMemcpyHostToDevice);
+  cudaMemcpy(phihaloYHIGH_d, phihaloYHIGH, nphihalodataY*sizeof(double),
+	     cudaMemcpyHostToDevice);
+  cudaMemcpy(phihaloZLOW_d, phihaloZLOW, nphihalodataZ*sizeof(double),
+	     cudaMemcpyHostToDevice);
+  cudaMemcpy(phihaloZHIGH_d, phihaloZHIGH, nphihalodataZ*sizeof(double),
+	     cudaMemcpyHostToDevice);
+  TIMER_stop(HALOPUT);
+
+
+  #define BLOCKSIZE 256
+  /* 1D decomposition - use x grid and block dimension only */
+  BlockDims.x=BLOCKSIZE;
+
+  /* run the kernels to unpack the halos */
+  TIMER_start(HALOUNPACK);
+
+  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+  unpack_phi_halosX_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
+						  N_d,phi_site_d,phihaloXLOW_d,
+						  phihaloXHIGH_d);
+
+
+  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
+  unpack_phi_halosY_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
+						  N_d,phi_site_d,phihaloYLOW_d,
+						  phihaloYHIGH_d);
+
+  GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
+   unpack_phi_halosZ_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
+  						  N_d,phi_site_d,phihaloZLOW_d,
+  					  phihaloZHIGH_d);
+
+  cudaThreadSynchronize();
+  TIMER_stop(HALOUNPACK);
+
+
+  //checkCUDAError("get_f_edges_from_gpu");
+
+}
+
+void phi_halo_swap_gpu()
+{
+  int NedgeX[3], NedgeY[3], NedgeZ[3];
+
+  int ii,jj,kk,m,index_source,index_target;
+
+
+  /* the sizes of the packed structures */
+  NedgeX[X]=nhalo;
+  NedgeX[Y]=N[Y];
+  NedgeX[Z]=N[Z];
+
+  NedgeY[X]=Nall[X];
+  NedgeY[Y]=nhalo;
+  NedgeY[Z]=N[Z];
+
+  NedgeZ[X]=Nall[X];
+  NedgeZ[Y]=Nall[Y];
+  NedgeZ[Z]=nhalo;
+
+  int npackedsiteX=NedgeX[X]*NedgeX[Y]*NedgeX[Z];
+  int npackedsiteY=NedgeY[X]*NedgeY[Y]*NedgeY[Z];
+  int npackedsiteZ=NedgeZ[X]*NedgeZ[Y]*NedgeZ[Z];
+
+
+
+  /* The x-direction (YZ plane) */
+  /* x up */
+  memcpy(phihaloXLOW,phiedgeXHIGH,nphihalodataX*sizeof(double));
+
+  /* x down */
+  memcpy(phihaloXHIGH,phiedgeXLOW,nphihalodataX*sizeof(double));
+
+ 
+ 
+  /* fill in corners of Y edge data  */
+
+
+  for (m=0;m<nop;m++)
+    {
+      
+      
+      for (ii = 0; ii < nhalo; ii++) {
+	for (jj = 0; jj < nhalo; jj++) {
+	  for (kk = 0; kk < N[Z]; kk++) {
+	    
+	    
+	    
+	    /* xlow part of ylow */
+	    index_source = get_linear_index(ii,jj,kk,NedgeX);
+	    index_target = get_linear_index(ii,jj,kk,NedgeY);
+	    
+	    phiedgeYLOW[npackedsiteY*m+index_target] =
+	      phihaloXLOW[npackedsiteX*m+index_source];
+	    
+	    /* xlow part of yhigh */
+	    index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);
+	    index_target = get_linear_index(ii,jj,kk,NedgeY);
+	    
+	    phiedgeYHIGH[npackedsiteY*m+index_target] =
+	      phihaloXLOW[npackedsiteX*m+index_source];
+	    
+	    
+	    /* get high X data */
+	    
+	    /* xhigh part of ylow */
+	    index_source = get_linear_index(ii,jj,kk,NedgeX);
+	    index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+	    
+	    phiedgeYLOW[npackedsiteY*m+index_target] =
+	      phihaloXHIGH[npackedsiteX*m+index_source];
+	    
+	    /* xhigh part of yhigh */
+	    index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);			index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+	    
+	    phiedgeYHIGH[npackedsiteY*m+index_target] =
+	      phihaloXHIGH[npackedsiteX*m+index_source];
+	    
+	    
+	    
+	  }
+	}
+	
+      }
+    }
+  
+  
+  
+  /* The y-direction (XZ plane) */
+  /* y up */
+  memcpy(phihaloYLOW,phiedgeYHIGH,nphihalodataY*sizeof(double));
+  
+  /* y down */
+  memcpy(phihaloYHIGH,phiedgeYLOW,nphihalodataY*sizeof(double));
+  
+  
+  /* fill in corners of Z edge data: from Xhalo  */
+  
+  
+  
+  for (m=0;m<nop;m++)
+    {
+      
+      for (ii = 0; ii < nhalo; ii++) {
+	for (jj = 0; jj < N[Y]; jj++) {
+	  for (kk = 0; kk < nhalo; kk++) {
+	    
+	    
+	    
+	    /* xlow part of zlow */
+	    index_source = get_linear_index(ii,jj,kk,NedgeX);
+	    index_target = get_linear_index(ii,jj+nhalo,kk,NedgeZ);
+	    
+	    phiedgeZLOW[npackedsiteZ*m+index_target] =
+	      phihaloXLOW[npackedsiteX*m+index_source];
+	    
+	    
+	    /* xlow part of zhigh */
+	    index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
+	    index_target = get_linear_index(ii,jj+nhalo,kk,NedgeZ);
+	    
+	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
+	      phihaloXLOW[npackedsiteX*m+index_source];
+	    
+	    
+	    
+	    /* xhigh part of zlow */
+	    index_source = get_linear_index(ii,jj,kk,NedgeX);
+	    index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+					    NedgeZ);
+	    
+	    phiedgeZLOW[npackedsiteZ*m+index_target] =
+	      phihaloXHIGH[npackedsiteX*m+index_source];
+	    
+	    
+	    /* xhigh part of zhigh */
+	    
+	    index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
+	    index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+					    NedgeZ);
+	    
+	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
+	      phihaloXHIGH[npackedsiteX*m+index_source];
+	    
+	    
+	  }
+	}
+	
+	
+      }
+    }
+  
+  /* fill in corners of Z edge data: from Yhalo  */
+  
+  
+  
+  for (m=0;m<nop;m++)
+    {
+      
+      
+      
+      for (ii = 0; ii < Nall[X]; ii++) {
+	for (jj = 0; jj < nhalo; jj++) {
+	  for (kk = 0; kk < nhalo; kk++) {
+	    
+	    
+	    
+	    /* ylow part of zlow */
+	    index_source = get_linear_index(ii,jj,kk,NedgeY);
+	    index_target = get_linear_index(ii,jj,kk,NedgeZ);
+	    
+	    phiedgeZLOW[npackedsiteZ*m+index_target] =
+	      phihaloYLOW[npackedsiteY*m+index_source];
+	    
+	    
+	    /* ylow part of zhigh */
+	    index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
+	    index_target = get_linear_index(ii,jj,kk,NedgeZ);
+	    
+	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
+	      phihaloYLOW[npackedsiteY*m+index_source];
+	    
+	    
+	    
+	    /* yhigh part of zlow */
+	    index_source = get_linear_index(ii,jj,kk,NedgeY);
+	    index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+	    
+	    phiedgeZLOW[npackedsiteZ*m+index_target] =
+	      phihaloYHIGH[npackedsiteY*m+index_source];
+	    
+	    
+	    /* yhigh part of zhigh */
+	    
+	    index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
+	    index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+	    
+	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
+	      phihaloYHIGH[npackedsiteY*m+index_source];
+	    
+	    
+	  }
+	}
+	
+      }
+    }
+  
+  
+  /* The z-direction (xy plane) */
+  /* z up */
+  memcpy(phihaloZLOW,phiedgeZHIGH,nphihalodataZ*sizeof(double));
+
+  /* z down */
+  memcpy(phihaloZHIGH,phiedgeZLOW,nphihalodataZ*sizeof(double));
+
+
+}
+
+
+/* pack X edges on the accelerator */
+__global__ static void pack_phi_edgesX_gpu_d(int nop, int nhalo,
+					 int N[3],
+					 double* phiedgeXLOW_d,
+					 double* phiedgeXHIGH_d, double* phi_site_d)
+{
+
+  int m,index,ii,jj,kk,packed_index;
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  int nsite = Nall[X]*Nall[Y]*Nall[Z];
+ 
+  int Nedge[3];
+  Nedge[X]=nhalo;
+  Nedge[Y]=N[Y];
+  Nedge[Z]=N[Z];
+
+  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
+  
+  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  if (threadIndex < npackedsite)
+    {
+      
+      packed_index = threadIndex;
+      
+      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+      
+      /* LOW EDGE */
+      index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
+
+      
+      /* copy data to packed structure */
+	    for (m = 0; m < nop; m++) {
+	      phiedgeXLOW_d[m*npackedsite+packed_index]
+		= phi_site_d[nsite*m+index];
+	    }
+      
+  
+      /* HIGH EDGE */
+      index = get_linear_index_gpu_d(Nall[X]-nhalo-1-ii,jj+nhalo,kk+nhalo,Nall);
+      /* copy data to packed structure */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phiedgeXHIGH_d[m*npackedsite+packed_index]
+		= phi_site_d[nsite*m+index];
+	      
+	    }
+    }
+  
+}
+
+/* unpack X halos on the accelerator */
+__global__ static void unpack_phi_halosX_gpu_d(int nop, int nhalo,
+					   int N[3],
+					   double* phi_site_d, double* phihaloXLOW_d,
+					   double* phihaloXHIGH_d)
+{
+
+
+  int m,index,ii,jj,kk,packed_index;
+
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  int nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  int Nedge[3];
+  Nedge[X]=nhalo;
+  Nedge[Y]=N[Y];
+  Nedge[Z]=N[Z];
+
+  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
+  
+  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  if (threadIndex < npackedsite)
+    {
+      
+      packed_index = threadIndex;
+      
+      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+
+      /* LOW HALO */
+      index = get_linear_index_gpu_d(ii,jj+nhalo,kk+nhalo,Nall);
+      
+      /* copy packed structure data to original array */
+	    for (m = 0; m < nop; m++) {
+	  
+	      phi_site_d[nsite*m+index] =
+		phihaloXLOW_d[m*npackedsite+packed_index];
+
+	    }
+           
+  
+      /* HIGH HALO */
+      index = get_linear_index_gpu_d(Nall[X]-1-ii,jj+nhalo,kk+nhalo,Nall);
+      /* copy packed structure data to original array */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phi_site_d[nsite*m+index] =
+		phihaloXHIGH_d[m*npackedsite+packed_index];
+	      
+	    }
+    }
+  
+  
+}
+
+
+/* pack Y edges on the accelerator */
+__global__ static void pack_phi_edgesY_gpu_d(int nop, int nhalo,
+					 int N[3], 					 double* phiedgeYLOW_d,
+					 double* phiedgeYHIGH_d, double* phi_site_d) {
+
+  int m,index,ii,jj,kk,packed_index;
+
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  int nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  int Nedge[3];
+  Nedge[X]=Nall[X];
+  Nedge[Y]=nhalo;
+  Nedge[Z]=N[Z];
+
+  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
+  
+  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  if (threadIndex < npackedsite)
+    {
+      
+      packed_index = threadIndex;
+      
+      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+
+      
+      /* LOW EDGE */
+      index = get_linear_index_gpu_d(ii,jj+nhalo,kk+nhalo,Nall);
+      
+      /* copy data to packed structure */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phiedgeYLOW_d[m*npackedsite+packed_index]
+		= phi_site_d[nsite*m+index];
+	      
+	    }
+      
+      
+      /* HIGH EDGE */
+      index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo-1-jj,kk+nhalo,Nall);
+      /* copy data to packed structure */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phiedgeYHIGH_d[m*npackedsite+packed_index]
+		= phi_site_d[nsite*m+index];
+	      
+	    }
+    }
+  
+  
+}
+
+
+
+
+/* unpack Y halos on the accelerator */
+__global__ static void unpack_phi_halosY_gpu_d(int nop, int nhalo,
+					  int N[3],
+					   double* phi_site_d, double* phihaloYLOW_d,
+					   double* phihaloYHIGH_d)
+{
+
+  int m,index,ii,jj,kk,packed_index;
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  int nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  int Nedge[3];
+  Nedge[X]=Nall[X];
+  Nedge[Y]=nhalo;
+  Nedge[Z]=N[Z];
+
+  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
+  
+  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  if (threadIndex < npackedsite)
+    {
+      
+      packed_index = threadIndex;
+      
+      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+
+
+
+      /* LOW EDGE */
+      index = get_linear_index_gpu_d(ii,jj,kk+nhalo,Nall);
+      
+       /* copy packed structure data to original array */
+
+	    for (m = 0; m < nop; m++) {
+	      
+	      phi_site_d[nsite*m+index] =
+	      phihaloYLOW_d[m*npackedsite+packed_index];
+	      
+	    }
+      
+
+      
+      /* HIGH EDGE */
+      index = get_linear_index_gpu_d(ii,Nall[Y]-1-jj,kk+nhalo,Nall);
+      /* copy packed structure data to original array */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phi_site_d[nsite*m+index] =
+		phihaloYHIGH_d[m*npackedsite+packed_index];
+	      
+	    }
+      
+    }
+  
+  
+  
+}
+
+
+
+/* pack Z edges on the accelerator */
+__global__ static void pack_phi_edgesZ_gpu_d(int nop, int nhalo,
+					 int N[3],
+					 double* phiedgeZLOW_d,
+					 double* phiedgeZHIGH_d, double* phi_site_d)
+{
+
+  int m,index,ii,jj,kk,packed_index;
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  int nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  int Nedge[3];
+  Nedge[X]=Nall[X];
+  Nedge[Y]=Nall[Y];
+  Nedge[Z]=nhalo;
+
+  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
+  
+  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  if (threadIndex < npackedsite)
+    {
+      
+      packed_index = threadIndex;
+      
+      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+      
+      /* LOW EDGE */
+      index = get_linear_index_gpu_d(ii,jj,kk+nhalo,Nall);
+      
+      /* copy data to packed structure */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phiedgeZLOW_d[m*npackedsite+packed_index]
+		= phi_site_d[nsite*m+index];
+	      
+	    }
+      
+      
+      /* HIGH EDGE */
+      index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo-1-kk,Nall);
+      /* copy data to packed structure */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phiedgeZHIGH_d[m*npackedsite+packed_index]
+		= phi_site_d[nsite*m+index];
+	      
+	    }
+    }
+  
+  
+}
+
+
+
+
+/* unpack Z halos on the accelerator */
+__global__ static void unpack_phi_halosZ_gpu_d(int nop, int nhalo,
+					   int N[3],
+					   double* phi_site_d, double* phihaloZLOW_d,
+					   double* phihaloZHIGH_d)
+{
+
+  int m,index,ii,jj,kk,packed_index;
+  
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  int nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  int Nedge[3];
+  Nedge[X]=Nall[X];
+  Nedge[Y]=Nall[Y];
+  Nedge[Z]=nhalo;
+  
+  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
+  
+  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  if (threadIndex < npackedsite)
+    {
+      
+      packed_index = threadIndex;
+      
+      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
+
+      
+      /* LOW EDGE */
+      index = get_linear_index_gpu_d(ii,jj,kk,Nall);
+      
+      /* copy packed structure data to original array */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phi_site_d[nsite*m+index] =
+		phihaloZLOW_d[m*npackedsite+packed_index];
+	      
+	    }
+      
+      
+      /* HIGH EDGE */
+      index = get_linear_index_gpu_d(ii,jj,Nall[Z]-1-kk,Nall);
+      /* copy packed structure data to original array */
+	    for (m = 0; m < nop; m++) {
+	      
+	      phi_site_d[nsite*m+index] =
+		phihaloZHIGH_d[m*npackedsite+packed_index];
+	      
+	    }
+      
+    }
+  
+}
+
 
 
 

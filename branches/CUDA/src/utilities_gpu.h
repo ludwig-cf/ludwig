@@ -32,6 +32,7 @@ extern "C" void TIMER_start(const int);
 extern "C" void TIMER_stop(const int);
 extern "C" int le_get_nxbuffer(void);
 extern "C" int le_index_real_to_buffer(const int ic, const int di);
+extern "C" int    phi_nop(void);
 
 /* expose routines in this module to outside routines */
 extern "C" void initialise_gpu();
@@ -48,6 +49,9 @@ extern "C" void copy_f_to_ftmp_on_gpu(void);
 extern "C" void get_f_edges_from_gpu(void);
 extern "C" void put_f_halos_on_gpu(void);
 extern "C" void halo_swap_gpu(void);
+extern "C" void get_phi_edges_from_gpu(void);
+extern "C" void put_phi_halos_on_gpu(void);
+extern "C" void phi_halo_swap_gpu(void);
 extern "C" void checkCUDAError(const char *msg);
 
 
@@ -83,6 +87,28 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
 					 int* cv_d, int N[3], 
 					   double* f_d, double* fhaloZLOW_d,
 					   double* fhaloZHIGH_d);
+
+__global__ static void pack_phi_edgesX_gpu_d(int ndist, int nhalo,
+					 int N[3], 
+					 double* phiedgeXLOW_d,
+					 double* phiedgeXHIGH_d, double* phi_d); 
+__global__ static void unpack_phi_halosX_gpu_d(int ndist, int nhalo, int N[3],
+					 double* phi_d, double* phihaloXLOW_d,
+					   double* phihaloXHIGH_d);
+__global__ static void pack_phi_edgesY_gpu_d(int ndist, int nhalo,
+					 int N[3], 
+					 double* phiedgeYLOW_d,
+					 double* phiedgeYHIGH_d, double* phi_d); 
+__global__ static void unpack_phi_halosY_gpu_d(int ndist, int nhalo, int N[3],
+					   double* phi_d, double* phihaloYLOW_d,					   double* phihaloYHIGH_d);
+__global__ static void pack_phi_edgesZ_gpu_d(int ndist, int nhalo, 
+					 int N[3],  
+					 double* phiedgeZLOW_d,
+					 double* phiedgeZHIGH_d, double* phi_d); 
+__global__ static void unpack_phi_halosZ_gpu_d(int ndist, int nhalo, 
+					 int N[3], 
+					   double* phi_d, double* phihaloZLOW_d,					   double* phihaloZHIGH_d);
+
 __device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,
 						   int index,int N[3]);
 __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]);
