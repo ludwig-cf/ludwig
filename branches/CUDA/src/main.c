@@ -258,11 +258,18 @@ int main( int argc, char **argv ) {
       phi_compute_phi_site_gpu();
       TIMER_stop(PHICOMP);
 
-      TIMER_start(PHIHALO);
       get_phi_edges_from_gpu();
+
+      TIMER_start(PHIHALO);
       phi_halo_swap_gpu();
-      put_phi_halos_on_gpu();
       TIMER_stop(PHIHALO);
+
+      put_phi_halos_on_gpu();
+
+      //get_phi_from_gpu();
+      //phi_halo();
+      //put_phi_on_gpu();
+
 
       TIMER_start(PHIGRADCOMP);
       phi_gradients_compute_gpu();
@@ -343,7 +350,16 @@ int main( int argc, char **argv ) {
     halo_swap_gpu();
     TIMER_stop(TIMER_HALO_LATTICE);    
 
-    put_f_halos_on_gpu(); 
+      put_f_halos_on_gpu(); 
+
+    //get_f_from_gpu();
+
+    //TIMER_start(TIMER_HALO_LATTICE);    
+    //distribution_halo();
+    //TIMER_stop(TIMER_HALO_LATTICE);    
+
+    //put_f_on_gpu(); 
+
 #else
     TIMER_start(TIMER_HALO_LATTICE);    
     distribution_halo();

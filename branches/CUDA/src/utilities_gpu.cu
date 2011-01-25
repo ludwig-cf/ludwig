@@ -11,10 +11,12 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "pe.h"
 #include "utilities_gpu.h"
 #include "util.h"
 #include "model.h"
 #include "timer.h"
+
 
 /* external pointers to data on host*/
 extern double * f_;
@@ -140,7 +142,20 @@ void initialise_gpu()
 
   int ic,jc,kc,index;
   
-  //cudaSetDevice(4);
+
+  int devicenum=cart_rank();
+
+  //FERMI0 hack
+  if (devicenum ==1 ) devicenum=4;
+
+  cudaSetDevice(devicenum);
+
+  cudaGetDevice(&devicenum);
+  printf("rank %d running on device %d\n",cart_rank(),devicenum);
+  
+
+  
+
 
   calculate_data_sizes();
   allocate_memory_on_gpu();
@@ -441,7 +456,6 @@ static void free_memory_on_gpu()
   cudaFree(le_index_real_to_buffer_d);
 
 }
-
 
 
 /* copy f_ from host to accelerator */
@@ -809,6 +823,14 @@ void halo_swap_gpu()
 
   int ii,jj,kk,m,p,index_source,index_target;
 
+  const int tagf = 900;
+  const int tagb = 901;
+  
+  MPI_Request request[4];
+  MPI_Status status[4];
+  MPI_Comm comm = cart_comm();
+
+
 
   /* the sizes of the packed structures */
   NedgeX[X]=nhalo;
@@ -830,12 +852,27 @@ void halo_swap_gpu()
 
 
   /* The x-direction (YZ plane) */
-  /* x up */
-  memcpy(fhaloXLOW,fedgeXHIGH,nhalodataX*sizeof(double));
 
-  /* x down */
-  memcpy(fhaloXHIGH,fedgeXLOW,nhalodataX*sizeof(double));
+   if (cart_size(X) == 1) {
+    /* x up */
+    memcpy(fhaloXLOW,fedgeXHIGH,nhalodataX*sizeof(double));
+    
+    /* x down */
+    memcpy(fhaloXHIGH,fedgeXLOW,nhalodataX*sizeof(double));
+      }
+  else
+    {
+      MPI_Irecv(fhaloXLOW, nhalodataX, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,X), tagf, comm, &request[0]);
+      MPI_Irecv(fhaloXHIGH, nhalodataX, MPI_DOUBLE,
+	      cart_neighb(FORWARD,X), tagb, comm, &request[1]);
+      MPI_Isend(fedgeXHIGH, nhalodataX, MPI_DOUBLE,
+	      cart_neighb(FORWARD,X), tagf, comm, &request[2]);
+      MPI_Isend(fedgeXLOW, nhalodataX, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,X), tagb, comm, &request[3]);
+      MPI_Waitall(4, request, status);
 
+    }
  
  
   /* fill in corners of Y edge data  */
@@ -893,11 +930,28 @@ void halo_swap_gpu()
   
 
   /* The y-direction (XZ plane) */
+
+   if (cart_size(Y) == 1) {
   /* y up */
    memcpy(fhaloYLOW,fedgeYHIGH,nhalodataY*sizeof(double));
 
   /* y down */
   memcpy(fhaloYHIGH,fedgeYLOW,nhalodataY*sizeof(double));
+      }
+  else
+    {
+
+      MPI_Irecv(fhaloYLOW, nhalodataY, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,Y), tagf, comm, &request[0]);
+      MPI_Irecv(fhaloYHIGH, nhalodataY, MPI_DOUBLE,
+	      cart_neighb(FORWARD,Y), tagb, comm, &request[1]);
+      MPI_Isend(fedgeYHIGH, nhalodataY, MPI_DOUBLE,
+	      cart_neighb(FORWARD,Y), tagf, comm, &request[2]);
+      MPI_Isend(fedgeYLOW, nhalodataY, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,Y), tagb, comm, &request[3]);
+      MPI_Waitall(4, request, status);
+
+    }
 
 
   /* fill in corners of Z edge data: from Xhalo  */
@@ -1015,12 +1069,27 @@ void halo_swap_gpu()
 	}
     }
  
+  if (cart_size(Z) == 1) {
   /* The z-direction (xy plane) */
   /* z up */
   memcpy(fhaloZLOW,fedgeZHIGH,nhalodataZ*sizeof(double));
 
   /* z down */
   memcpy(fhaloZHIGH,fedgeZLOW,nhalodataZ*sizeof(double));
+      }
+  else
+    {
+      MPI_Irecv(fhaloZLOW, nhalodataZ, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,Z), tagf, comm, &request[0]);
+      MPI_Irecv(fhaloZHIGH, nhalodataZ, MPI_DOUBLE,
+	      cart_neighb(FORWARD,Z), tagb, comm, &request[1]);
+      MPI_Isend(fedgeZHIGH, nhalodataZ, MPI_DOUBLE,
+	      cart_neighb(FORWARD,Z), tagf, comm, &request[2]);
+      MPI_Isend(fedgeZLOW, nhalodataZ, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,Z), tagb, comm, &request[3]);
+      MPI_Waitall(4, request, status);
+
+    }
 
 
 }
@@ -1587,7 +1656,7 @@ void get_phi_edges_from_gpu()
   BlockDims.x=BLOCKSIZE;
 
   /* run the kernels to pack the edges */
-  TIMER_start(EDGEPACK);
+  TIMER_start(PHIEDGEPACK);
  
  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
  pack_phi_edgesX_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
@@ -1606,12 +1675,12 @@ void get_phi_edges_from_gpu()
   						N_d,phiedgeZLOW_d,
   						phiedgeZHIGH_d,phi_site_d);
   cudaThreadSynchronize();
-  TIMER_stop(EDGEPACK);
+  TIMER_stop(PHIEDGEPACK);
 
 
 
   /* copy data from accelerator to host */
-  TIMER_start(EDGEGET);
+  TIMER_start(PHIEDGEGET);
   cudaMemcpy(phiedgeXLOW, phiedgeXLOW_d, nphihalodataX*sizeof(double),
 	     cudaMemcpyDeviceToHost);
   cudaMemcpy(phiedgeXHIGH, phiedgeXHIGH_d, nphihalodataX*sizeof(double),
@@ -1624,7 +1693,7 @@ void get_phi_edges_from_gpu()
 	     cudaMemcpyDeviceToHost);
   cudaMemcpy(phiedgeZHIGH, phiedgeZHIGH_d, nphihalodataZ*sizeof(double),
 	     cudaMemcpyDeviceToHost);
-  TIMER_stop(EDGEGET);
+  TIMER_stop(PHIEDGEGET);
   
   
   //checkCUDAError("get_f_edges_from_gpu");
@@ -1643,7 +1712,7 @@ void put_phi_halos_on_gpu()
 
 
   /* copy data from host to accelerator */
-  TIMER_start(HALOPUT);
+  TIMER_start(PHIHALOPUT);
   cudaMemcpy(phihaloXLOW_d, phihaloXLOW, nphihalodataX*sizeof(double),
 	     cudaMemcpyHostToDevice);
   cudaMemcpy(phihaloXHIGH_d, phihaloXHIGH, nphihalodataX*sizeof(double),
@@ -1656,7 +1725,7 @@ void put_phi_halos_on_gpu()
 	     cudaMemcpyHostToDevice);
   cudaMemcpy(phihaloZHIGH_d, phihaloZHIGH, nphihalodataZ*sizeof(double),
 	     cudaMemcpyHostToDevice);
-  TIMER_stop(HALOPUT);
+  TIMER_stop(PHIHALOPUT);
 
 
   #define BLOCKSIZE 256
@@ -1664,7 +1733,7 @@ void put_phi_halos_on_gpu()
   BlockDims.x=BLOCKSIZE;
 
   /* run the kernels to unpack the halos */
-  TIMER_start(HALOUNPACK);
+  TIMER_start(PHIHALOUNPACK);
 
   GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
   unpack_phi_halosX_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
@@ -1683,7 +1752,7 @@ void put_phi_halos_on_gpu()
   					  phihaloZHIGH_d);
 
   cudaThreadSynchronize();
-  TIMER_stop(HALOUNPACK);
+  TIMER_stop(PHIHALOUNPACK);
 
 
   //checkCUDAError("get_f_edges_from_gpu");
@@ -1695,6 +1764,13 @@ void phi_halo_swap_gpu()
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 
   int ii,jj,kk,m,index_source,index_target;
+
+  const int tagf = 903;
+  const int tagb = 904;
+  
+  MPI_Request request[4];
+  MPI_Status status[4];
+  MPI_Comm comm = cart_comm();
 
 
   /* the sizes of the packed structures */
@@ -1717,11 +1793,28 @@ void phi_halo_swap_gpu()
 
 
   /* The x-direction (YZ plane) */
-  /* x up */
-  memcpy(phihaloXLOW,phiedgeXHIGH,nphihalodataX*sizeof(double));
 
-  /* x down */
-  memcpy(phihaloXHIGH,phiedgeXLOW,nphihalodataX*sizeof(double));
+   if (cart_size(X) == 1) {
+     /* x up */
+     memcpy(phihaloXLOW,phiedgeXHIGH,nphihalodataX*sizeof(double));
+     
+     /* x down */
+     memcpy(phihaloXHIGH,phiedgeXLOW,nphihalodataX*sizeof(double));
+     
+      }
+  else
+    {
+      MPI_Irecv(phihaloXLOW, nphihalodataX, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,X), tagf, comm, &request[0]);
+      MPI_Irecv(phihaloXHIGH, nphihalodataX, MPI_DOUBLE,
+	      cart_neighb(FORWARD,X), tagb, comm, &request[1]);
+      MPI_Isend(phiedgeXHIGH, nphihalodataX, MPI_DOUBLE,
+	      cart_neighb(FORWARD,X), tagf, comm, &request[2]);
+      MPI_Isend(phiedgeXLOW,  nphihalodataX, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,X), tagb, comm, &request[3]);
+      MPI_Waitall(4, request, status);
+
+    }
 
  
  
@@ -1779,12 +1872,27 @@ void phi_halo_swap_gpu()
   
   
   /* The y-direction (XZ plane) */
+   if (cart_size(Y) == 1) {
   /* y up */
   memcpy(phihaloYLOW,phiedgeYHIGH,nphihalodataY*sizeof(double));
   
   /* y down */
   memcpy(phihaloYHIGH,phiedgeYLOW,nphihalodataY*sizeof(double));
   
+      }
+  else
+    {
+      MPI_Irecv(phihaloYLOW, nphihalodataY, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,Y), tagf, comm, &request[0]);
+      MPI_Irecv(phihaloYHIGH, nphihalodataY, MPI_DOUBLE,
+	      cart_neighb(FORWARD,Y), tagb, comm, &request[1]);
+      MPI_Isend(phiedgeYHIGH, nphihalodataY, MPI_DOUBLE,
+	      cart_neighb(FORWARD,Y), tagf, comm, &request[2]);
+      MPI_Isend(phiedgeYLOW,  nphihalodataY, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,Y), tagb, comm, &request[3]);
+      MPI_Waitall(4, request, status);
+
+    }
   
   /* fill in corners of Z edge data: from Xhalo  */
   
@@ -1899,12 +2007,26 @@ void phi_halo_swap_gpu()
   
   
   /* The z-direction (xy plane) */
+   if (cart_size(Z) == 1) {
   /* z up */
   memcpy(phihaloZLOW,phiedgeZHIGH,nphihalodataZ*sizeof(double));
 
   /* z down */
   memcpy(phihaloZHIGH,phiedgeZLOW,nphihalodataZ*sizeof(double));
+      }
+  else
+    {
+      MPI_Irecv(phihaloZLOW, nphihalodataZ, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,Z), tagf, comm, &request[0]);
+      MPI_Irecv(phihaloZHIGH, nphihalodataZ, MPI_DOUBLE,
+	      cart_neighb(FORWARD,Z), tagb, comm, &request[1]);
+      MPI_Isend(phiedgeZHIGH, nphihalodataZ, MPI_DOUBLE,
+	      cart_neighb(FORWARD,Z), tagf, comm, &request[2]);
+      MPI_Isend(phiedgeZLOW,  nphihalodataZ, MPI_DOUBLE,
+	      cart_neighb(BACKWARD,Z), tagb, comm, &request[3]);
+      MPI_Waitall(4, request, status);
 
+    }
 
 }
 

@@ -607,25 +607,25 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  
 	  /* Project post-collision modes back onto the distribution */
 	  
-	  double f_tmp[NVEL];
+/* 	  double f_tmp[NVEL]; */
 	  
-	  for (p = 0; p < NVEL; p++) {
-	    f_tmp[p] = 0.0;
-	    for (m = 0; m < NVEL; m++) {
-	      f_tmp[p] += mi_d[p][m]*mode[m];
-	    }
-	  f_d[nsite*NDIST*p + index] = f_tmp[p];
-	}
+/* 	  for (p = 0; p < NVEL; p++) { */
+/* 	    f_tmp[p] = 0.0; */
+/* 	    for (m = 0; m < NVEL; m++) { */
+/* 	      f_tmp[p] += mi_d[p][m]*mode[m]; */
+/* 	    } */
+/* 	  f_d[nsite*NDIST*p + index] = f_tmp[p]; */
+/* 	} */
 
- /*  	  double f_tmp;   */
+  	  double f_tmp;
 	  
-/*  	  for (p = 0; p < NVEL; p++) {  */
-/*  	    f_tmp = 0.0;  */
-/*  	    for (m = 0; m < NVEL; m++) {  */
-/*  	      f_tmp += mi_d[p][m]*mode[m];  */
-/*  	    }  */
-/*  	  f_d[nsite*NDIST*p + index] = f_tmp;  */
-/*  	} */
+ 	  for (p = 0; p < NVEL; p++) {
+ 	    f_tmp = 0.0;
+ 	    for (m = 0; m < NVEL; m++) {
+ 	      f_tmp += mi_d[p][m]*mode[m];
+ 	    }
+ 	  f_d[nsite*NDIST*p + index] = f_tmp;
+ 	}
 
 	/* Now, the order parameter distribution */
 

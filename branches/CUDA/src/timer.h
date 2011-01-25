@@ -54,9 +54,11 @@ enum timer_id {TIMER_TOTAL,
 	       VELOCITYGET,
 	       EDGEPACK,
 	       EDGEGET,
-	       EDGEUNPACK,
-	       HALOPACK,
+	       PHIEDGEPACK,
+	       PHIEDGEGET,
 	       HALOPUT,
-	       HALOUNPACK};
+	       HALOUNPACK,
+	       PHIHALOPUT,
+	       PHIHALOUNPACK};
 
 #endif

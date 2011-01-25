@@ -68,10 +68,12 @@ static const char * timer_name[] = {"Total",
 				    "Velocity d->h",
 				    "Edge pack d",
 				    "Edge d->h",
-				    "Edge unpack h",
-				    "Halo pack h",
+				    "Phi Edge pack d",
+				    "Phi Edge d->h",
 				    "Halo h->d",
-				    "Halo unpack d"};
+				    "Halo unpack d",
+				    "Phi Halo h->d",
+				    "Phi Halo unpack d"};
 
 
 /****************************************************************************

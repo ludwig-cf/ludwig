@@ -41,7 +41,8 @@ EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
 CC = gcc 
-MPICC = mpicc
+#MPICC = mpicc
+MPICC = /usr/bin/mpicc
 OPTS = -D_D3Q19_
 CFLAGS = -O3 -Wall
 
@@ -54,7 +55,8 @@ ARFLAGS = -cru
 GPUCC = nvcc
 GPUOPTS = $(OPTS) -D_GPU_
 GPUCFLAGS = -O3 -arch=sm_20 
-GPUINC = $(INC) -I../mpi_s
+#GPUINC = $(INC) -I../mpi_s
+GPUINC = $(INC) -I /usr/include/mpich2
 GPULIBS= -L/usr/local/cuda/lib64 -lcudart
 
 
@@ -133,6 +135,10 @@ serialgpu: $(GPUOBJS)
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) main.o" "CC=$(MPICC)"
 
+mpigpu: $(GPUOBJS)
+	$(MAKE) code "INC=$(INC)" "LIBS=$(LIBS) \
+	$(GPULIBS)" "OBJS=$(OBJS) main.o $(GPUOBJS) " \
+	"OPTS=$(OPTS) -D_GPU_" "CC=$(MPICC)"
 libar:	$(OBJS)
 	$(AR) $(ARFLAGS) -o $(LIBRARY) $(OBJS)
 lib:

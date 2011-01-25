@@ -12,7 +12,7 @@
 
 /* from coords.h */
 enum cartesian_directions {X, Y, Z};
-
+enum cartesian_neighbours {FORWARD, BACKWARD};
 
 /* declarations for required external (host) routines */
 extern "C" void coords_nlocal(int n[3]);
@@ -33,6 +33,10 @@ extern "C" void TIMER_stop(const int);
 extern "C" int le_get_nxbuffer(void);
 extern "C" int le_index_real_to_buffer(const int ic, const int di);
 extern "C" int    phi_nop(void);
+extern "C" MPI_Comm cart_comm(void);
+extern "C" int    cart_size(const int);
+extern "C" int    cart_neighb(const int direction, const int dimension);
+extern "C" int    cart_rank(void);
 
 /* expose routines in this module to outside routines */
 extern "C" void initialise_gpu();
