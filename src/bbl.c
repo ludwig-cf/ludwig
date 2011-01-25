@@ -14,6 +14,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -214,6 +215,8 @@ static void bounce_back_pass1() {
 	      ij = p_link->p;       /* link velocity index i->j */
 	      ji = NVEL - ij;      /* link velocity index j->i */
 
+	      assert(ij > 0 && ij < NVEL);
+
 	      /* For stationary link, the momentum transfer from the
 	       * fluid to the colloid is "dm" */
 
@@ -227,19 +230,26 @@ static void bounce_back_pass1() {
 
 		/* Squirmer section */
 		{
-		  double rmod, dm_a, cost, plegendre, sint;
+		  double mod, rmod, dm_a, cost, plegendre, sint;
 		  double tans[3], vector1[3];
 		  double fdist;
 
-		  rmod = 1.0/modulus(p_link->rb);
+		  /* We expect s.m to be a unit vector, but for floating
+		   * point purposes, we must make sure here. */
+
+		  mod = modulus(p_link->rb)*modulus(p_colloid->s.m);
+		  rmod = 0.0;
+		  if (mod != 0.0) rmod = 1.0/mod;
 		  cost = rmod*dot_product(p_link->rb, p_colloid->s.m);
+		  assert(cost*cost <= 1.0);
 		  sint = sqrt(1.0 - cost*cost);
 
 		  cross_product(p_link->rb, p_colloid->s.m, vector1);
 		  cross_product(vector1, p_link->rb, tans);
 
-		  rmod = modulus(tans);
-		  if (rmod != 0.0) rmod = 1.0/rmod;
+		  mod = modulus(tans);
+		  rmod = 0.0;
+		  if (mod != 0.0) rmod = 1.0/mod;
 	          plegendre = -sint*(p_colloid->s.b2*cost + p_colloid->s.b1);
 
 		  dm_a = 0.0;
