@@ -826,7 +826,7 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
       if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
 	continue;
       for (n = 0; n < nop; n++) {
-	phi[n] += wv[p]*phi_op_get_phi_site(index, n);
+	phi[n] += wv[p]*phi_op_get_phi_site(indexn, n);
       }
       weight += wv[p];
     }
