@@ -731,6 +731,30 @@ files containing lattice quantities must be `unrolled' to remove
 the time-dependent displacement of the planes. This is done using
 the extraction utility (see section on parallel I/O).
 
+Note that if something more complicated is required, for example,
+an equilibration at zero shear followed by a run with shear, one
+needs to be careful how this is arranged. The code works out the
+current displacement of the planes by computing $U_{LE} t$, where
+$t$ is the current time step. A shear run should then start from
+$t = 0$, otherwise an offset is required. At the moment this cannot
+be done via the input.
+
+\subsubsection{Lees-Edwards planes in parallel} 
+
+There are a couple of additional constraints to use the Lees-Edwards
+planes in parallel. In particular, the planes cannot fall at a
+processor boundary in the $x$-direction. This means you should
+arrange an integer number of planes per process in the $x$-direction.
+(For example, use one plane per process; this will also ensure the number
+of planes
+still evenly divides the total system size.)
+This will interleave the planes with the processor decomposition.
+The $y$-direction and $z$-direction may be decomposed without
+further constraint.
+
+Note that this means a simulation with one plane will only work
+if there is one process in the $x$ decomposition.
+
 \subsection{Input/Output}
 
 \subsubsection{Serial I/O and standard output}
