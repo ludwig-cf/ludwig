@@ -6,7 +6,7 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id: leesedwards.c,v 1.16 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -333,13 +333,16 @@ static void le_checks(void) {
     fatal("LE_init(): wall at domain boundary\n");
   }
 
-  /* There's currently a glitch if total number of planes > 0 and
-   * < cart_size(X) */
+  /* As nplane_local = ntotal/cart_size(X) (integer division) we must have
+   * ntotal % cart_size(X) = 0 */
 
   nplane = le_get_nplane_total();
 
-  if (nplane > 1 && nplane < cart_size(X)) {
-    fatal("Internal Error: total number planes > cart_size(X)\n");
+  if ((nplane % cart_size(X)) != 0) {
+    info("\n");
+    info("Must have a uniform number of planes per process in X direction\n");
+    info("Eg., use one plane per process.\n");
+    fatal("Please check and try again.\n");
   }
 
   return;
