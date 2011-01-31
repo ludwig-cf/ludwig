@@ -4,7 +4,7 @@
  *
  *  Run time input for blue phase free energy, and related parameters.
  *
- *  $Id: blue_phase_rt.c,v 1.3 2010-11-01 14:52:55 jlintuvu Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -37,6 +37,7 @@
 void blue_phase_run_time(void) {
 
   int n;
+  int redshift_update;
   double a0, gamma, q0, kappa0, kappa1;
   double xi;
   double zeta;
@@ -71,6 +72,9 @@ void blue_phase_run_time(void) {
   redshift = 1.0;
   RUN_get_double_parameter("lc_init_redshift", &redshift);
 
+  redshift_update = 0;
+  RUN_get_int_parameter("lc_redshift_update", &redshift_update);
+
   /* Use a default zeta (no activity) of 0 */
   zeta = 0.0;
   RUN_get_double_parameter("lc_active_zeta", &zeta);
@@ -90,6 +94,7 @@ void blue_phase_run_time(void) {
   blue_phase_set_free_energy_parameters(a0, gamma, kappa0, q0);
   blue_phase_set_xi(xi);
   blue_phase_redshift_set(redshift);
+  blue_phase_redshift_update_set(redshift_update);
   blue_phase_set_zeta(zeta);
 
   info("Effective aspect ratio xi  = %12.5e\n", xi);
@@ -97,6 +102,8 @@ void blue_phase_run_time(void) {
   info("Reduced temperature        = %12.5e\n",
        blue_phase_reduced_temperature());
   info("Initial redshift           = %12.5e\n", redshift);
+  info("Dynamic redshift update    = %12s\n",
+       redshift_update == 0 ? "no" : "yes");
   info("LC activity constant zeta  = %12.5e\n", zeta);
 
   fe_density_set(blue_phase_free_energy_density);
