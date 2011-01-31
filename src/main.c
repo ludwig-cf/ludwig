@@ -216,6 +216,7 @@ int main( int argc, char **argv ) {
       if (phi_nop() == 5) COLL_set_Q();
       phi_halo();
       phi_gradients_compute();
+      if (phi_nop() == 5) blue_phase_redshift_compute();
 
       TIMER_stop(TIMER_PHI_GRADIENTS);
 

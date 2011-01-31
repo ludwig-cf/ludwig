@@ -5,13 +5,13 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id: blue_phase.c,v 1.8 2010-11-03 18:06:50 jlintuvu Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -36,7 +36,10 @@ static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
 static double redshift_;  /* redshift parameter */
 static double rredshift_; /* reciprocal */
 static double zeta_;      /* Apolar activity parameter \zeta */
- 
+
+static int redshift_update_ = 0; /* Dynamic cubic redshift update */
+
+static const double redshift_min_ = 0.00000000001; 
 static const double r3 = (1.0/3.0);
 
 /*****************************************************************************
@@ -44,6 +47,9 @@ static const double r3 = (1.0/3.0);
  *  blue_phase_set_free_energy_parameters
  *
  *  Enforces the 'one constant approximation' kappa0 = kappa1 = kappa
+ *
+ *  Note that these values remain unchanged throughout. Redshifted
+ *  values are computed separately as needed.
  *
  *****************************************************************************/
 
@@ -725,6 +731,7 @@ void blue_set_random_q_init(double xmin, double xmax, double ymin,
   }
   return;
 }
+
 /*****************************************************************************
  *
  *  blue_phase_chirality
@@ -786,9 +793,278 @@ double blue_phase_redshift(void) {
 
 void blue_phase_redshift_set(const double redshift) {
 
-  assert(redshift != 0.0);
+  assert(fabs(redshift) >= redshift_min_);
   redshift_ = redshift;
   rredshift_ = 1.0/redshift_;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_redshift_update_set
+ *
+ *  At the moment the 'token' is on/off.
+ *
+ *****************************************************************************/
+
+void blue_phase_redshift_update_set(int update) {
+
+  redshift_update_ = update;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_redshift_compute
+ *
+ *  Redshift adjustment. If this is required at all, it should be
+ *  done at every timestep. It gives rise to an Allreduce.
+ *
+ *  The redshift calculation uses the unredshifted values of the
+ *  free energy parameters kappa0_, kappa1_ and q0_.
+ *
+ *  The term quadratic in gradients may be written F_ddQ
+ *
+ *     (1/2) [ kappa1 (d_a Q_bc)^2 - kappa1 (d_a Q_bc d_b Q_ac)
+ *           + kappa0 (d_b Q_ab)^2 ]
+ *
+ *  The linear term is F_dQ
+ *
+ *     2 q0 kappa1 Q_ab e_acg d_c Q_gb
+ *
+ *  The new redshift is computed as - F_dQ / 2 F_ddQ
+ *
+ *****************************************************************************/
+
+void blue_phase_redshift_compute(void) {
+
+  int ic, jc, kc, index;
+  int ia, ib, id, ig;
+  int nlocal[3];
+
+  double q[3][3], dq[3][3][3];
+
+  double dq0, dq1, dq2, dq3, sum;
+  double egrad_local[2], egrad[2];    /* Gradient terms for redshift calc. */
+  double rnew;
+
+  if (redshift_update_ == 0) return;
+
+  coords_nlocal(nlocal);
+
+  egrad_local[0] = 0.0;
+  egrad_local[1] = 0.0;
+
+  /* Accumulate the sums (all fluid) */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	phi_get_q_tensor(index, q);
+	phi_gradients_tensor_gradient(index, dq);
+
+	/* kaapa0 (d_b Q_ab)^2 */
+
+	dq0 = 0.0;
+
+	for (ia = 0; ia < 3; ia++) {
+	  sum = 0.0;
+	  for (ib = 0; ib < 3; ib++) {
+	    sum += dq[ib][ia][ib];
+	  }
+	  dq0 += sum*sum;
+	}
+
+	/* kappa1 (e_agd d_g Q_db + 2q_0 Q_ab)^2 */
+
+	dq1 = 0.0;
+	dq2 = 0.0;
+	dq3 = 0.0;
+
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    sum = 0.0;
+	    for (ig = 0; ig < 3; ig++) {
+	      dq1 += dq[ia][ib][ig]*dq[ia][ib][ig];
+	      dq2 += dq[ia][ib][ig]*dq[ib][ia][ig];
+	      for (id = 0; id < 3; id++) {
+		sum += e_[ia][ig][id]*dq[ig][id][ib];
+	      }
+	    }
+	    dq3 += q[ia][ib]*sum;
+	  }
+	}
+
+	/* linear gradient and square gradient terms */
+
+	egrad_local[0] += 2.0*q0_*kappa1_*dq3;
+	egrad_local[1] += 0.5*(kappa1_*dq1 - kappa1_*dq2 + kappa0_*dq0);
+
+      }
+    }
+  }
+
+  /* Allreduce the gradient results, and compute a new redshift (we
+   * keep the old one if problematic). */
+
+  MPI_Allreduce(egrad_local, egrad, 2, MPI_DOUBLE, MPI_SUM, cart_comm());
+
+  rnew = redshift_;
+  if (egrad[1] != 0.0) rnew = -0.5*egrad[0]/egrad[1];
+  if (fabs(rnew) < redshift_min_) rnew = redshift_;
+
+  blue_phase_redshift_set(rnew);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_stats
+ *
+ *  Computes various statistics.
+ *
+ *****************************************************************************/
+
+void blue_phase_stats(int nstep) {
+
+  int ic, jc, kc, index;
+  int ia, ib, id, ig;
+  int nlocal[3];
+
+  double q0, kappa0, kappa1;
+  double q[3][3], dq[3][3][3], dsq[3][3], h[3][3], sth[3][3];
+
+  double q2, q3, dq0, dq1, sum;
+
+  double elocal[12], etotal[12];        /* Free energy contributions etc */
+  double rv;
+
+  coords_nlocal(nlocal);
+  rv = 1.0/(L(X)*L(Y)*L(Z));
+
+  /* Use current redshift. */
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
+
+  for (ia = 0; ia < 12; ia++) {
+    elocal[ia] = 0.0;
+  }
+
+  /* Accumulate the sums (all fluid) */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	phi_get_q_tensor(index, q);
+	phi_gradients_tensor_gradient(index, dq);
+	phi_gradients_tensor_delsq(index, dsq);
+  
+	blue_phase_compute_h(q, dq, dsq, h);
+	blue_phase_compute_stress(q, dq, h, sth);
+
+	q2 = 0.0;
+
+	/* Q_ab^2 */
+
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    q2 += q[ia][ib]*q[ia][ib];
+	  }
+	}
+
+	/* Q_ab Q_bd Q_da */
+
+	q3 = 0.0;
+
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    for (id = 0; id < 3; id++) {
+	      /* We use here the fact that q[id][ia] = q[ia][id] */
+	      q3 += q[ia][ib]*q[ib][id]*q[ia][id];
+	    }
+	  }
+	}
+
+	/* (d_b Q_ab)^2 */
+
+	dq0 = 0.0;
+
+	for (ia = 0; ia < 3; ia++) {
+	  sum = 0.0;
+	  for (ib = 0; ib < 3; ib++) {
+	    sum += dq[ib][ia][ib];
+	  }
+	  dq0 += sum*sum;
+	}
+
+	/* (e_agd d_g Q_db + 2q_0 Q_ab)^2 */
+
+	dq1 = 0.0;
+
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    sum = 0.0;
+	    for (ig = 0; ig < 3; ig++) {
+	      for (id = 0; id < 3; id++) {
+		sum += e_[ia][ig][id]*dq[ig][id][ib];
+	      }
+	    }
+	    sum += 2.0*q0*q[ia][ib];
+	    dq1 += sum*sum;
+	  }
+	}
+
+	/* Contributions bulk, kappa0, and kappa1 */
+
+	elocal[0] += 0.5*a0_*(1.0 - r3*gamma_)*q2 - r3*a0_*gamma_*q3
+	  + 0.25*a0_*gamma_*q2*q2;
+	elocal[1] += 0.5*kappa0*dq0;
+	elocal[2] += 0.5*kappa1*dq1;
+
+	/* stress */
+
+	elocal[3]  += sth[X][X];
+	elocal[4]  += sth[X][Y];
+	elocal[5]  += sth[X][Z];
+	elocal[6]  += sth[Y][X];
+	elocal[7]  += sth[Y][Y];
+	elocal[8]  += sth[Y][Z];
+	elocal[9]  += sth[Z][X];
+	elocal[10] += sth[Z][Y];
+	elocal[11] += sth[Z][Z];
+      }
+    }
+  }
+
+  /* Results to standard out */
+
+  MPI_Reduce(elocal, etotal, 12, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+
+  for (ia = 0; ia < 12; ia++) {
+    etotal[ia] *= rv;
+  }
+
+  /* 1. bulk kappa0 kappa1
+   * 2. total redshift
+   * 3. s_xx s_yz (only at the moment) */
+
+  info("\n");
+  info("[fed1] %14d %14.7e %14.7e %14.7e\n", nstep, etotal[0],
+       etotal[1], etotal[2]);
+  info("[fed2] %14d %14.7e %14.7e\n", nstep,
+       etotal[0] + etotal[1] + etotal[2], redshift_);
+  info("[fed3] %14d %14.7e %14.7e\n", nstep, etotal[3], etotal[8]);
 
   return;
 }

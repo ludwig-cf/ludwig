@@ -2,7 +2,7 @@
  *
  *  blue_phase.h
  *
- *  $Id: blue_phase.h,v 1.7 2010-11-03 18:06:50 jlintuvu Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -38,6 +38,10 @@ double blue_phase_get_zeta(void);
 double blue_phase_chirality(void);
 double blue_phase_reduced_temperature(void);
 double blue_phase_redshift(void);
+
+void blue_phase_redshift_update_set(int onoff);
+void blue_phase_redshift_compute(void);
+void blue_phase_stats(int nstep);
 
 void blue_phase_twist_init(double amplitude);
 void blue_phase_chi_edge(int N, double z0, double x0, double amplitude);
