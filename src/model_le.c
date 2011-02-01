@@ -8,7 +8,7 @@
  *  not u*(t-1) returned by le_get_displacement().
  *  This is for reasons of backwards compatability.
  *
- *  $Id: model_le.c,v 1.6 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -372,7 +372,7 @@ static void le_displace_and_interpolate_parallel() {
   int p;
   int nlocal[3];
   int offset[3];
-  int nrank_s[2], nrank_r[2];
+  int nrank_s[3], nrank_r[3];
   int nprop;
   int ndist;
 
@@ -385,9 +385,9 @@ static void le_displace_and_interpolate_parallel() {
   double * send_buff;
   double * recv_buff;
 
+  MPI_Comm    comm;
   MPI_Request req[4];
   MPI_Status status[4];
-  MPI_Comm comm = le_communicator();
 
   extern double * f_;
 
@@ -397,6 +397,8 @@ static void le_displace_and_interpolate_parallel() {
   nhalo = coords_nhalo();
   coords_nlocal_offset(offset);
   nplane = le_get_nplane_local();
+
+  comm = le_communicator();
 
   t = 1.0*get_step();
   ndist = distribution_ndist();

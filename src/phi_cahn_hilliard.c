@@ -12,7 +12,7 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  $Id: phi_cahn_hilliard.c,v 1.11 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -347,12 +347,12 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
   double t;                /* Time */
   int jdy;                 /* Integral part of displacement */
 
-  MPI_Comm le_comm = le_communicator();
-  int      nrank_s[2];     /* send ranks */
-  int      nrank_r[2];     /* recv ranks */
+  int      nrank_s[3];     /* send ranks */
+  int      nrank_r[3];     /* recv ranks */
   const int tag0 = 1254;
   const int tag1 = 1255;
 
+  MPI_Comm    le_comm;
   MPI_Request request[8];
   MPI_Status  status[8];
 
@@ -362,6 +362,8 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
+
+  le_comm = le_communicator();
 
   /* Allocate the temporary buffer */
 

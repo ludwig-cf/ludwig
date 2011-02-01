@@ -5,13 +5,13 @@
  *  Deals with the hydrodynamic sector quantities one would expect
  *  in Navier Stokes, rho, u, ...
  *
- *  $Id: lattice.c,v 1.17 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2011 The University of Edinburgh
  *
  ***************************************************************************/
 
@@ -580,13 +580,13 @@ static void hydrodynamics_leesedwards_parallel(void) {
   int nhalo;
   double ule[3];
 
-  MPI_Comm le_comm = le_communicator();
   int      nrank_s[3];     /* send ranks */
   int      nrank_r[3];     /* recv ranks */
   const int tag0 = 1256;
   const int tag1 = 1257;
   const int tag2 = 1258;
 
+  MPI_Comm    le_comm;
   MPI_Request request[6];
   MPI_Status  status[3];
 
@@ -594,6 +594,8 @@ static void hydrodynamics_leesedwards_parallel(void) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   ib0 = nlocal[X] + nhalo + 1;
+
+  le_comm = le_communicator();
 
   /* Allocate the temporary buffer */
 
