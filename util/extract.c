@@ -21,13 +21,13 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id: extract.c,v 1.10 2010-11-03 15:45:31 jlintuvu Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2008)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2011 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -48,6 +48,8 @@ int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
 int output_binary_ = 0;        /* Switch for format of final output */
+
+int le_t0_ = 0;                /* LE offset start time (time steps) */ 
 
 double le_speed_ = 0.0;
 double le_displace_ = 0.0;
@@ -120,7 +122,7 @@ int main(int argc, char ** argv) {
   if (datasection == NULL) printf("calloc(datasection) failed\n");
 
   /* LE displacements as function of x */
-  le_displace_ = le_speed_*(double) ntime;
+  le_displace_ = le_speed_*(double) (ntime - le_t0_);
   le_displacements_ = (double *) malloc(ntotal[0]*sizeof(double));
   le_duy_ = (double *) malloc(ntotal[0]*sizeof(double));
   if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
