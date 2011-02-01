@@ -187,7 +187,7 @@ double ewald_real_space_energy(const double u1[3], const double u2[3],
     double rr = 1.0/r;
     double b, b1, b2, c;
 
-    b1 = mu_*mu_*erfc(kappa_*r)*(rr*rr*rr);
+//    b1 = mu_*mu_*erfc(kappa_*r)*(rr*rr*rr);
     b2 = mu_*mu_*(2.0*kappa_*rpi_)*exp(-kappa_*kappa_*r*r)*(rr*rr);
 
     b = b1 + b2;
@@ -469,7 +469,7 @@ void ewald_real_space_sum() {
 		      int i;
 
 		      /* Energy */
-		      b1 = mu_*mu_*erfc(kappa_*r)*(rr*rr*rr);
+//		      b1 = mu_*mu_*erfc(kappa_*r)*(rr*rr*rr);
 		      b2 = mu_*mu_*(2.0*kappa_*rpi_)
 			*exp(-kappa_*kappa_*r*r)*(rr*rr);
 

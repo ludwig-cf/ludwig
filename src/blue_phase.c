@@ -17,6 +17,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "pe.h"
 #include "util.h"
@@ -945,6 +946,9 @@ void blue_phase_stats(int nstep) {
   double elocal[12], etotal[12];        /* Free energy contributions etc */
   double rv;
 
+  static int output_to_file_ = 0;
+  FILE * fp_output;
+
   coords_nlocal(nlocal);
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
@@ -1055,16 +1059,26 @@ void blue_phase_stats(int nstep) {
     etotal[ia] *= rv;
   }
 
-  /* 1. bulk kappa0 kappa1
-   * 2. total redshift
-   * 3. s_xx s_yz (only at the moment) */
-
-  info("\n");
-  info("[fed1] %14d %14.7e %14.7e %14.7e\n", nstep, etotal[0],
-       etotal[1], etotal[2]);
-  info("[fed2] %14d %14.7e %14.7e\n", nstep,
-       etotal[0] + etotal[1] + etotal[2], redshift_);
-  info("[fed3] %14d %14.7e %14.7e\n", nstep, etotal[3], etotal[8]);
+   if(output_to_file_==1){
+     if(pe_rank()==0){
+     /* timestep, total FE, gradient FE, redhsift, S_YZ, S_XX, S_YY, S_ZZ */
+       fp_output = fopen("free_energy.dat","a");
+       fprintf(fp_output,"%d %14.7le %14.7le %14.7le %14.7le %14.7le %14.7le %14.7le\n",
+	   nstep,etotal[0]+etotal[1]+etotal[2],etotal[1]+etotal[2],redshift_,etotal[8],elocal[3],elocal[7],elocal[11]);
+       fclose(fp_output);
+     }
+   }
+   else{
+     /* 1. bulk kappa0 kappa1
+      * 2. total redshift
+      * 3. s_xx s_yz (only at the moment) */
+     info("\n");
+     info("[fed1] %14d %14.7e %14.7e %14.7e\n", nstep, etotal[0],
+	  etotal[1], etotal[2]);
+     info("[fed2] %14d %14.7e %14.7e\n", nstep,
+	  etotal[0] + etotal[1] + etotal[2], redshift_);
+     info("[fed3] %14d %14.7e %14.7e\n", nstep, etotal[3], etotal[8]);
+   }
 
   return;
 }
