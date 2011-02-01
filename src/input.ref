@@ -349,13 +349,13 @@ boundary_speed_top    0.0
 #                           [default is yes]
 #
 #  io_grid  NX_NY_NZ        Cartesian processor I/O grid. Default is 1_1_1
-#  The following for particle data are under review...
-#  n_io_nodes               Number of I/O processors for particles
-#  output_format            [ASCII|BINARY] default output format
-#  input_format             [ASCII|BINARY] default input format
 #
 #  phi_format               Override default format for particular quantities
 #  etc...                   (both input and output)
+#
+#  distribution_io_grid         decomposition for parallel input/output
+#  distribution_io_input_format BINARY or BINARY_SERIAL for single serial
+#                               input files. Output always parallel.
 #
 ###############################################################################
 
@@ -369,6 +369,7 @@ freq_shear_output      100000
 config_at_end no
 
 distribution_io_grid 1_1_1
+distribution_io_input_format BINARY
 
 phi_format    ASCII
 vel_format    ASCII

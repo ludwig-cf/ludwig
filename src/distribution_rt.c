@@ -47,6 +47,9 @@ void distribution_run_time(void) {
   io_info = io_info_create_with_grid(io_grid);
   distribution_io_info_set(io_info);
 
+  RUN_get_string_parameter("distribution_io_format_input", string,
+			   FILENAME_MAX);
+
   /* Append R to the record if the model is the reverse implementation */ 
   if (distribution_order() == MODEL_R) memory = 'R';
 
@@ -57,7 +60,15 @@ void distribution_run_time(void) {
   info("Model:            d%dq%d %c\n", NDIM, NVEL, memory);
   info("Number of sets:   %d\n", distribution_ndist());
   info("Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
-  info("Input format:     binary\n");
+
+  if (strcmp("BINARY_SERIAL", string) == 0) {
+    info("Input format:     binary single serial file\n");
+    io_info_set_processor_independent(io_info);
+  }
+  else {
+    info("Input format:     binary\n");
+  }
+
   info("Output format:    binary\n");
   info("I/O grid:         %d %d %d\n", io_grid[0], io_grid[1], io_grid[2]);
 
