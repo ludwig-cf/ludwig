@@ -199,6 +199,12 @@ surf_psi_b 0.01
 #  lc_anchoring         [normal|planar] anchoring boundary conditions
 #                       for solid (if present; defualt is normal)
 #
+#  lc_init_redshift     Initial value of redshift.
+#
+#
+#  lc_redshift_update   [0|1] Allow dynamic cubic redshift adjustment
+#                       (default is none).
+#
 ###############################################################################
 
 lc_a0      0.014384711
@@ -214,7 +220,7 @@ lc_active_zeta 0.0
 lc_q_initialisation o8m
 lc_q_init_amplitude -0.2
 lc_init_redshift 0.83
-lc_update_redshift 0
+lc_redshift_update 0
 
 lc_anchoring normal
 
