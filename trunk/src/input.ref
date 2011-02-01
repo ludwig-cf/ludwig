@@ -412,12 +412,17 @@ qs_dir_format BINARY
 #                   u_0 is maximum plane velocity set via LE_plane_vel,
 #                   and T is the oscillation period
 #
+#  LE_time_offset   Integer offset to allow equilibration etc. CARE!
+#                   This must be <= N_start and fixed for given run.
+#                   Default is 0, ie., no offset. 
+#
 ###############################################################################
 
 #N_LE_plane 2
 #LE_plane_vel 0.008
 #LE_init_profile 1
 #LE_oscillation_period 0
+#LE_time_offset 0
 
 ###############################################################################
 #

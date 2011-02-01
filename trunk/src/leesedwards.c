@@ -85,12 +85,11 @@ void le_init() {
     le_params_.omega = 2.0*4.0*atan(1.0)/period;
   }
 
-  /* The time offset is taken from N_start which is an integer, but store
-   * in le_params as a double. This also ensures the LE start conincides
-   * with a restart (or t = 0). */
+  /* The time offset is taken from LE_time_offset which is an integer, but
+   * store in le_params as a double (below). */
 
   time_zero = 0;
-  n = RUN_get_int_parameter("N_start", &time_zero);
+  n = RUN_get_int_parameter("LE_time_offset", &time_zero);
 
   initialised_ = 1;
   ntotal = le_get_nplane_total();
