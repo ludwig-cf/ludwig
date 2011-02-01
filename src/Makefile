@@ -43,7 +43,6 @@ LIBRARY = libludwig.a
 CC = CC 
 MPICC = CC
 OPTS = -D_D3Q19_
-#CFLAGS = -O3 -DNDEBUG
 CFLAGS = -Wall -O3 -OPT:Ofast -DNDEBUG
 
 INC = -I.
