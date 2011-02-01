@@ -24,7 +24,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "runtime.h"
-#include "control.h"
 #include "leesedwards.h"
 
 enum shear_type {LINEAR, OSCILLATORY};
@@ -38,6 +37,7 @@ static struct le_parameters {
   double dx_min;            /* Position first plane */
   double dx_sep;            /* Plane separation */
   double omega;             /* u_y = u_le cos (omega t) for oscillatory */  
+  double time0;             /* time offset */
 
   /* Local parameters */
   MPI_Comm  le_comm;
@@ -69,6 +69,7 @@ void le_init() {
   int n;
   int ntotal;
   int period;
+  int time_zero;
 
   /* initialise the state from input */
 
@@ -83,6 +84,13 @@ void le_init() {
     le_type_ = OSCILLATORY;
     le_params_.omega = 2.0*4.0*atan(1.0)/period;
   }
+
+  /* The time offset is taken from N_start which is an integer, but store
+   * in le_params as a double. This also ensures the LE start conincides
+   * with a restart (or t = 0). */
+
+  time_zero = 0;
+  n = RUN_get_int_parameter("N_start", &time_zero);
 
   initialised_ = 1;
   ntotal = le_get_nplane_total();
@@ -113,6 +121,10 @@ void le_init() {
       info("Oscillation period: %d time steps\n", period);
       info("Maximum shear rate = %f\n", le_shear_rate());
     }
+
+    le_params_.time0 = 1.0*time_zero;
+    info("\n");
+    info("Lees-Edwards time offset (time steps): %8d\n", time_zero);
   }
 
   le_checks();
@@ -290,8 +302,6 @@ static void le_init_tables() {
   rdims[Y] = 1;
   rdims[Z] = 0;
   MPI_Cart_sub(cart_comm(), rdims, &(le_params_.le_comm));
-
-  MPI_Comm_rank(le_params_.le_comm, &n);
 
   return;
 }
@@ -481,9 +491,13 @@ int le_get_nplane_total() {
 double le_plane_uy(double t) {
 
   double uy;
+  double tle;
+
+  tle = t - le_params_.time0;
+  assert(tle >= 0.0);
 
   uy = le_params_.uy_plane;
-  if (le_type_ == OSCILLATORY) uy *= cos(le_params_.omega*t);
+  if (le_type_ == OSCILLATORY) uy *= cos(le_params_.omega*tle);
 
   return uy;
 }
@@ -600,13 +614,17 @@ int le_index_buffer_to_real(int ib) {
 double le_buffer_displacement(int ib, double t) {
 
   double dy = 0.0;
+  double tle;
 
   assert(initialised_);
   assert(ib >= 0 && ib < le_get_nxbuffer());
 
-  if (le_type_ == LINEAR) dy = t*le_plane_uy_max()*le_params_.buffer_duy[ib];
+  tle = t - le_params_.time0;
+  assert(tle >= 0.0);
+
+  if (le_type_ == LINEAR) dy = tle*le_plane_uy_max()*le_params_.buffer_duy[ib];
   if (le_type_ == OSCILLATORY) {
-    dy = le_params_.uy_plane*sin(le_params_.omega*t)/le_params_.omega;
+    dy = le_params_.uy_plane*sin(le_params_.omega*tle)/le_params_.omega;
   }
 
   return dy;
