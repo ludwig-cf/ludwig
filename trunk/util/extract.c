@@ -562,7 +562,10 @@ void le_unroll(double * data) {
       for (kc = 1; kc <= ntargets[2]; kc++) {
 	for (n = 0; n < nrec_; n++) {
 	  data[nrec_*site_index(ic,jc,kc,ntargets) + n] =
-	    buffer[nrec_*site_index(1,jc,kc,ntargets) + n] + du[n];
+	    buffer[nrec_*site_index(1,jc,kc,ntargets) + n];
+	  if (n < 3) {
+	    data[nrec_*site_index(ic,jc,kc,ntargets) + n] += du[n];
+	  }
 	}
       }
     }
