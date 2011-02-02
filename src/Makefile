@@ -40,10 +40,10 @@
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = CC 
-MPICC = CC
+CC = gcc
+MPICC = mpicc
 OPTS = -D_D3Q19_
-CFLAGS = -Wall -O3 -OPT:Ofast -DNDEBUG
+CFLAGS = -Wall -O3
 
 INC = -I.
 LIBS = -lm
