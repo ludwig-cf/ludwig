@@ -48,6 +48,7 @@ int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
 int output_binary_ = 0;        /* Switch for format of final output */
+int is_velocity_ = 0;          /* Switch to identify velocity field */
 
 int le_t0_ = 0;                /* LE offset start time (time steps) */ 
 
@@ -269,6 +270,13 @@ void read_meta_data_file(const char * filename) {
   printf("Number of I/O groups: %d\n", nio_);
 
   fclose(fp_meta);
+
+  /* Is this the velocity field? */
+
+  if (nrec_ == 3 && strncmp(filename, "vel", 3) == 0) {
+    is_velocity_ = 1;
+    printf("\nThis is a velocity field\n");
+  }
 
   return;
 }
@@ -497,8 +505,8 @@ int site_index(int ic, int jc, int kc, const int n[3]) {
  *  This is always done relative to the middle of the system (as defined
  *  in le_displacements_[]).
  *
- *  If nrec_ is 3, we assume this is the velocity field, and make
- *  the appropriate correction to u_y.
+ *  If this is the velocity field, we need to make a correction to u_y
+ *  to allow for the motion of the planes.
  *
  *****************************************************************************/
 
@@ -510,9 +518,6 @@ void le_unroll(double * data) {
   double dy, fr;
   double du[3];
 
-  /* If nrec_ > 3, adjust the du[] modifer. */
-  assert(nrec_ <= 3);
-
   /* Allocate the temporary buffer */
 
   buffer = (double *) malloc(nrec_*ntargets[1]*ntargets[2]*sizeof(double));
@@ -522,13 +527,14 @@ void le_unroll(double * data) {
   }
 
   du[0] = 0.0;
+  du[1] = 0.0;
   du[2] = 0.0;
 
   for (ic = 1; ic <= ntargets[0]; ic++) {
     dy = le_displacements_[ic-1];
     jdy = floor(dy);
     fr = 1.0 - (dy - jdy);
-    du[1] = le_duy_[ic-1];
+    if (is_velocity_) du[1] = le_duy_[ic-1];
 
     for (jc = 1; jc <= ntargets[1]; jc++) {
       j0 = 1 + (jc - jdy - 3 + 1000*ntotal[1]) % ntotal[1];
