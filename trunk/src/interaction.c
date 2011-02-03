@@ -49,8 +49,12 @@
 #include "colloids_init.h"
 #include "ewald.h"
 
-static void    COLL_overlap(colloid_t *, colloid_t *);
-static void    COLL_set_fluid_gravity(void);
+static void colloid_forces_overlap(colloid_t *, colloid_t *);
+static void colloid_forces_fluid_gravity_set(void);
+static void colloid_forces_pairwise(double * h, double * e);
+static void colloid_forces_zero_set(void);
+static void colloid_forces_single_particle_set(void);
+static void colloid_forces(void);
 
 void lubrication_sphere_sphere(double a1, double a2,
 			       const double u1[3], const double u2[3],
@@ -59,6 +63,7 @@ static void    coll_position_update(void);
 static void    lubrication_init(void);
 static void    colloid_forces_check(void);
 
+static int    cell_list_interactions_ = 1;
 static int    gravity_ = 0;            /* Switch */
 static double g_[3] = {0.0, 0.0, 0.0}; /* External gravitational force */
 
@@ -67,8 +72,6 @@ struct lubrication_struct {
   double cutoff_norm;  /* Normal */
   double cutoff_tang;  /* Tangential */
 } lubrication;
-
-static double epotential_;
 
 /*****************************************************************************
  *
@@ -99,7 +102,7 @@ void COLL_update() {
   TIMER_stop(TIMER_PARTICLE_HALO);
 
   if (subgrid_on()) {
-    COLL_forces();
+    colloid_forces();
     subgrid_force_from_particles();
   }
   else {
@@ -116,7 +119,7 @@ void COLL_update() {
 
     TIMER_stop(TIMER_REBUILD);
 
-    COLL_forces();
+    colloid_forces();
   }
 
   return;
@@ -154,7 +157,19 @@ void COLL_init() {
   if (strcmp(keyvalue, "random") == 0) init_random = 1;
   if (strcmp(keyvalue, "from_file") == 0) init_from_file = 1;
 
-  if (init_random || init_from_file) {
+  RUN_get_string_parameter("colloid_cell_list_interactions", keyvalue, 128);
+
+  if (strcmp(keyvalue, "no") == 0) cell_list_interactions_ = 0;
+
+  if (cell_list_interactions_ == 0) {
+    /* We use ncell = 2 */
+    ncell[X] = 2;
+    ncell[Y] = 2;
+    ncell[Z] = 2;
+    colloids_cell_ncell_set(ncell);
+  }
+
+  if (cell_list_interactions_ == 1 && (init_random || init_from_file)) {
 
     /* Set the list list width. */
     n = RUN_get_double_parameter("colloid_cell_min", &width);
@@ -295,7 +310,7 @@ static void lubrication_init(void) {
 
 /*****************************************************************************
  *
- *  COLL_forces
+ *  colloid_forces
  *
  *  Top-level function for compuatation of external forces to be called
  *  once per time step. Note that particle copies in the halo regions
@@ -303,31 +318,39 @@ static void lubrication_init(void) {
  *
  *****************************************************************************/
 
-void COLL_forces() {
+static void colloid_forces(void) {
 
-  int nc = colloid_ntotal();
-  double hminlocal;
-  double hmin;
-  double etotal;
+  int nc;
+  double hmin, hminlocal;
+  double etotal, elocal;
+
+  nc = colloid_ntotal();
+
+  hminlocal = L(X);
+  elocal = 0.0;
 
   if (nc > 0) {
+    colloid_forces_zero_set();
+    colloid_forces_single_particle_set();
+    colloid_forces_fluid_gravity_set();
 
-    COLL_zero_forces();
-
-    hminlocal = COLL_interactions();
-    COLL_set_fluid_gravity();
-    ewald_sum();
+    if (nc > 1) {
+      colloid_forces_pairwise(&hminlocal, &elocal);
+      ewald_sum();
+    }
 
     if (is_statistics_step()) {
 
-      MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-      MPI_Reduce(&epotential_, &etotal, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-
       info("\nParticle statistics:\n");
+
       if (nc > 1) {
+	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+	MPI_Reduce(&elocal, &etotal, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
 	info("Inter-particle minimum h is: %10.5e\n", hmin);
 	info("Potential energy is:         %10.5e\n", etotal);
       }
+
       stats_colloid_velocity_minmax();
     }
   }
@@ -338,19 +361,17 @@ void COLL_forces() {
 
 /*****************************************************************************
  *
- *  COLL_zero_forces
+ *  colloid_forces_zero_set
  *
- *  Set the external forces on the particles to zero.
- *  All additional forces are accumulated.
+ *  Set the external forces on the particles to zero (including halos).
+ *  All additional forces are then accumulated.
  *
  *****************************************************************************/
 
-void COLL_zero_forces() {
+static void colloid_forces_zero_set(void) {
 
   int       ic, jc, kc, ia;
   colloid_t * p_colloid;
-
-  /* Only real particles need correct external force. */
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
@@ -376,7 +397,45 @@ void COLL_zero_forces() {
 
 /*****************************************************************************
  *
- *  COLL_set_fluid_gravity
+ *  colloid_forces_single_particle_set
+ *
+ *  Accumulate single particle force contributions.
+ *
+ *****************************************************************************/
+
+static void colloid_forces_single_particle_set(void) {
+
+  int ic, jc, kc, ia;
+  double btorque[3];
+  colloid_t * pc;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+
+	while (pc) {
+
+	  magnetic_field_torque(pc->s.s,  btorque);
+
+	  for (ia = 0; ia < 3; ia++) {
+	    pc->force[ia] += g_[ia];
+	    pc->torque[ia] += btorque[ia];
+	  }
+
+	  pc = pc->next;
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_forces_fluid_gravity_set
  *
  *  Set the current gravtitational force on the fluid. This should
  *  match, exactly, the force on the colloids and so depends on the
@@ -386,7 +445,7 @@ void COLL_zero_forces() {
  *
  *****************************************************************************/
 
-void COLL_set_fluid_gravity() {
+static void colloid_forces_fluid_gravity_set(void) {
 
   int ia, nc;
   double rvolume;
@@ -411,7 +470,7 @@ void COLL_set_fluid_gravity() {
 
 /*****************************************************************************
  *
- *  COLL_interactions
+ *  colloid_forces_interactions
  *
  *  For each cell in the domain proper, look for interactions between
  *  colloids in the same cell, and all the surrounding cells. Add any
@@ -420,49 +479,49 @@ void COLL_set_fluid_gravity() {
  *  Double-counting of interactions is avoided by checking the unique
  *  indexes of each colloid (i < j).
  *
- *  The cell list approach maintains O(N) effort.
- *  The minumum separation between particles encountered is returned.
+ *  The minumum separation between particles encountered and the
+ *  potential energy are returned.
  *
  *****************************************************************************/
 
-double COLL_interactions() {
+static void colloid_forces_pairwise(double * hmin, double * epot) {
 
   colloid_t * p_c1;
   colloid_t * p_c2;
 
-  int    ia;
-  int    ic, jc, kc, id, jd, kd, dx, dy, dz;
-  double hmin = L(X);
-  double h, fmod;
-  double torque_mag[3];
-  double f[3];
+  int ia;
+  int ic, jc, kc, id, jd, kd, dx, dy, dz;
+  int dxm, dxp, dym, dyp, dzm, dzp;
 
+  double h, fmod;
+  double f[3];
   double r12[3];
 
-  epotential_ = 0.0;
-
   for (ic = 1; ic <= Ncell(X); ic++) {
+    dxm = 2 - cell_list_interactions_;
+    dxp = 2 - cell_list_interactions_;
+    if (ic - dxm < 0) dxm = 1;
+    if (ic + dxp > Ncell(X) + 1) dxp = 1;
+
     for (jc = 1; jc <= Ncell(Y); jc++) {
+      dym = 2 - cell_list_interactions_;
+      dyp = 2 - cell_list_interactions_;
+      if (jc - dym < 0) dym = 1;
+      if (jc + dyp > Ncell(Y) + 1) dyp = 1;
+
       for (kc = 1; kc <= Ncell(Z); kc++) {
+	dzm = 2 - cell_list_interactions_;
+	dzp = 2 - cell_list_interactions_;
+	if (kc - dzm < 0) dzm = 1;
+	if (kc + dzp > Ncell(Z) + 1) dzp = 1;
 
 	p_c1 = colloids_cell_list(ic, jc, kc);
 
 	while (p_c1) {
 
-	  /* Single particle contributions here, if required. */
-
-	  /* External fields - here gravity, magnetic torque */
-
-	  magnetic_field_torque(p_c1->s.s,  torque_mag);
-
-	  for (ia = 0; ia < 3; ia++) {
-	    p_c1->force[ia] += g_[ia];
-	    p_c1->torque[ia] += torque_mag[ia];
-	  }
-
-	  for (dx = -1; dx <= +1; dx++) {
-	    for (dy = -1; dy <= +1; dy++) {
-	      for (dz = -1; dz <= +1; dz++) {
+	  for (dx = -dxm; dx <= +dxp; dx++) {
+	    for (dy = -dym; dy <= +dyp; dy++) {
+	      for (dz = -dzm; dz <= +dzp; dz++) {
 
 		id = ic + dx;
 		jd = jc + dy;
@@ -488,8 +547,8 @@ double COLL_interactions() {
 		    r12[Z] /= h;
 
 		    h = h - p_c1->s.ah - p_c2->s.ah;
-		    if (h < hmin) hmin = h;
-		    if (h < 0.0) COLL_overlap(p_c1, p_c2);
+		    if (h < *hmin) *hmin = h;
+		    if (h < 0.0) colloid_forces_overlap(p_c1, p_c2);
 
 		    /* soft sphere */
 
@@ -503,8 +562,8 @@ double COLL_interactions() {
 		      p_c2->force[ia] += fmod*r12[ia];
 		    }
 
-		    epotential_ += soft_sphere_energy(h);
-		    epotential_ += yukawa_potential(p_c1->s.ah + p_c2->s.ah + h);
+		    *epot += soft_sphere_energy(h);
+		    *epot += yukawa_potential(p_c1->s.ah + p_c2->s.ah + h);
 		  }
 		  
 		  /* Next colloid */
@@ -525,7 +584,7 @@ double COLL_interactions() {
     }
   }
 
-  return hmin;
+  return;
 }
 
 /*****************************************************************************
@@ -543,10 +602,15 @@ double COLL_interactions() {
 
 static void colloid_forces_check(void) {
 
+  int ifail;
+  int nlocal[3];
+
   double ahmax;
   double rmax = 0.0;
   double lmin = DBL_MAX;
   double rc;
+
+  coords_nlocal(nlocal);
 
   if (potential_centre_to_centre()) {
     ahmax = 0.0;
@@ -567,9 +631,30 @@ static void colloid_forces_check(void) {
 
   /* Check against the cell list */
 
-  lmin = dmin(lmin, colloids_lcell(X));
-  lmin = dmin(lmin, colloids_lcell(Y));
-  lmin = dmin(lmin, colloids_lcell(Z));
+  if (cell_list_interactions_ == 0) {
+
+    /* The cell list contraint is relaxed to be */
+    lmin = dmin(lmin, 1.0*nlocal[X]);
+    lmin = dmin(lmin, 1.0*nlocal[Y]);
+    lmin = dmin(lmin, 1.0*nlocal[Z]);
+
+    /* The particles must not be larger than nlocal - 1 or else links
+     * will extend beyond 2 subdomains */
+    ifail = 0;
+    if (2.0*ahmax >= 1.0*(nlocal[X] - 1)) ifail = 1;
+    if (2.0*ahmax >= 1.0*(nlocal[Y] - 1)) ifail = 1;
+    if (2.0*ahmax >= 1.0*(nlocal[Z] - 1)) ifail = 1;
+    if (ifail == 1) {
+      fatal("Particles too large for local domain (amax = %6.2f) \n", ahmax);
+    }
+  }
+  else {
+
+    /* The usual cell list contraint applies */
+    lmin = dmin(lmin, colloids_lcell(X));
+    lmin = dmin(lmin, colloids_lcell(Y));
+    lmin = dmin(lmin, colloids_lcell(Z));
+  }
 
   if (colloid_ntotal() > 1 && rmax > lmin) {
     info("Cell list width too small to capture specified interactions!\n");
@@ -663,13 +748,13 @@ void lubrication_sphere_sphere(double a1, double a2,
 
 /*****************************************************************************
  *
- *  COLL_overlap
+ *  colloid_forces_overlap
  *
  *  Action on detection of overlapping particles.
  *
  *****************************************************************************/
 
-void COLL_overlap(colloid_t * p_c1, colloid_t * p_c2) {
+static void colloid_forces_overlap(colloid_t * p_c1, colloid_t * p_c2) {
 
   verbose("Detected overlapping particles\n");
   colloid_state_write_ascii(p_c1->s, stdout);
