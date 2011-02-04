@@ -4,7 +4,7 @@
  *
  *  Run time colloid I/O settings.
  *
- *  $Id: colloid_io_rt.c,v 1.3 2010-10-19 07:45:28 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,14 +24,18 @@
  *
  *  colloid_io_run_time
  *
- *  The decomposition is pending.
- *
  *****************************************************************************/
 
 void colloid_io_run_time(void) {
 
   int  nuser;
+  int io_grid[3] = {1, 1, 1};
   char tmp[256];
+
+  RUN_get_int_parameter_vector("default_io_grid", io_grid);
+  RUN_get_int_parameter_vector("colloid_io_grid", io_grid);
+
+  colloid_io_init(io_grid);
 
   /* Defaults */
 
@@ -42,7 +46,8 @@ void colloid_io_run_time(void) {
   info("\n");
   info("Colloid I/O settings\n");
   info("--------------------\n");
-
+  info("Decomposition:  %2d %2d %2d\n", io_grid[0], io_grid[1], io_grid[2]);
+  
   nuser = RUN_get_string_parameter("colloid_io_format_input", tmp, 256);
 
   if (nuser == 0) {

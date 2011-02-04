@@ -35,6 +35,7 @@
 #include "potential.h"
 
 #include "colloids.h"
+#include "colloid_io_rt.h"
 #include "interaction.h"
 #include "model.h"
 #include "site_map.h"
@@ -196,7 +197,7 @@ void COLL_init() {
 
     /* Initialisation section. */
 
-    colloid_io_init();
+    colloid_io_run_time();
 
     if (init_from_file) {
       if (get_step() == 0) {

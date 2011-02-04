@@ -28,21 +28,35 @@
 
 void MODEL_init( void ) {
 
-  int     i,j,k,ind;
-  int     N[3];
-  int     offset[3];
+  int i, j, k, ind;
+  int N[3];
+  int offset[3];
+  int io_grid_default[3] = {1, 1, 1};
+  int io_grid[3];
+
   double   phi;
   double   phi0;
   char     filename[FILENAME_MAX];
   double  noise0 = 0.1;   /* Initial noise amplitude    */
 
-  phi0 = get_phi0();
+  struct io_info_t * io_info;
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);
 
   /* Now setup the rest of the simulation */
 
+  RUN_get_int_parameter_vector("io_grid_default", io_grid_default);
+
+  for (i = 0; i < 3; i++) {
+    io_grid[i] = io_grid_default[i];
+  }
+  RUN_get_int_parameter_vector("phi_io_grid", io_grid);
+
+  io_info = io_info_create_with_grid(io_grid);
+  phi_io_info_set(io_info);
+
+  phi0 = get_phi0();
 
   phi_init();
 
@@ -52,7 +66,14 @@ void MODEL_init( void ) {
     info("Setting phi I/O format to ASCII\n");
   }
 
-  scalar_q_io_init();
+
+  for (i = 0; i < 3; i++) {
+    io_grid[i] = io_grid_default[i];
+  }
+  RUN_get_int_parameter_vector("qs_dir_io_grid", io_grid);
+
+  io_info = io_info_create_with_grid(io_grid);
+  scalar_q_io_info_set(io_info);
 
   ind = RUN_get_string_parameter("qs_dir_format", filename, FILENAME_MAX);
   if (ind != 0 && strcmp(filename, "ASCII") == 0) {

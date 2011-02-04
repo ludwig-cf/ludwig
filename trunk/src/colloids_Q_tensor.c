@@ -551,10 +551,10 @@ void colloids_fix_swd(void) {
  *
  *****************************************************************************/
 
-void scalar_q_io_init(void) {
+void scalar_q_io_info_set(struct io_info_t * info) {
 
-  /* Use a default I/O struct */
-  io_info_scalar_q_ = io_info_create();
+  assert(info);
+  io_info_scalar_q_ = info;
 
   io_info_set_name(io_info_scalar_q_, "Scalar order parameter and director");
   io_info_set_write_binary(io_info_scalar_q_, scalar_q_dir_write);

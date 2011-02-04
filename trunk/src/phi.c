@@ -39,7 +39,6 @@ static MPI_Datatype phi_xz_t_;
 static MPI_Datatype phi_yz_t_;
 
 static void phi_init_mpi(void);
-static void phi_init_io(void);
 static int  phi_read(FILE *, const int, const int, const int);
 static int  phi_write(FILE *, const int, const int, const int);
 static int  phi_read_ascii(FILE *, const int, const int, const int);
@@ -76,7 +75,6 @@ void phi_init() {
   if (phi_site == NULL) fatal("calloc(phi) failed\n");
 
   phi_init_mpi();
-  phi_init_io();
   initialised_ = 1;
 
   return;
@@ -119,14 +117,16 @@ static void phi_init_mpi() {
 
 /*****************************************************************************
  *
- *  phi_init_io
+ *  phi_io_info_set
+ *
+ *  Note this goes ahead, even if nop = 0.
  *
  *****************************************************************************/
 
-static void phi_init_io() {
+void phi_io_info_set(struct io_info_t * info) {
 
-  /* Take a default I/O struct */
-  io_info_phi = io_info_create();
+  assert(info);
+  io_info_phi = info;
 
   io_info_set_name(io_info_phi, "Compositional order parameter");
   io_info_set_read_binary(io_info_phi, phi_read);
@@ -136,7 +136,7 @@ static void phi_init_io() {
   io_info_set_bytesize(io_info_phi, nop_*sizeof(double));
 
   io_info_set_format_binary(io_info_phi);
-  io_write_metadata("phi", io_info_phi);
+  if (nop_ > 0) io_write_metadata("phi", io_info_phi);
 
   return;
 }
