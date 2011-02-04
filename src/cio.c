@@ -4,7 +4,7 @@
  *
  *  Colloid parallel I/O driver.
  *
- *  $Id: cio.c,v 1.9 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,14 +24,15 @@
 #include "cio.h"
 
 typedef struct {
-  int root;                      /* Root PE of current I/O group */
   int n_io;                      /* Number of parallel IO group */
   int size;                      /* Size (in PEs) of each IO group */
   int index;                     /* Index of current IO group */
   int rank;                      /* Rank of PE in IO group */
   int single_file_read;          /* 'serial' input flag */
+  int coords[3];                 /* Cartesian position of this group */
 
   MPI_Comm comm;                 /* Communicator */
+  MPI_Comm xcomm;                /* Communicator between groups */
 
   void (* write_header_function)(FILE * fp, int nfile);
   void (* write_list_function)(FILE *, int, int, int);
@@ -59,28 +60,47 @@ static void colloid_io_check_read(int ngroup);
  *
  *  colloid_io_init
  *
+ *  This split is the same as that which occurs in io_harness, which
+ *  means the spatial decomposition is the same as that of the
+ *  lattice quantities.
+ *
+ *  The io_grid[3] input is that requested; we return what actually
+ *  gets allocated, given the constraints.
+ *
  *****************************************************************************/
 
-void colloid_io_init(void) {
+void colloid_io_init(int io_grid[3]) {
 
-  cio_.n_io = 1; /* Always 1 at moment */
+  int ia;
+  int ncart;
 
-  if (cio_.n_io > pe_size()) cio_.n_io = pe_size();
-  cio_.size = pe_size() / cio_.n_io;
+  cio_.n_io = 1;
 
-  if ((cart_rank() % cio_.size) == 0) {
-    cio_.root = 1;
+  for (ia = 0; ia < 3; ia++) {
+    ncart = cart_size(ia);
+
+    if (io_grid[ia] > ncart) io_grid[ia] = ncart;
+
+    if (ncart % io_grid[ia] != 0) {
+      fatal("Bad colloid io grid (dim %d = %d)\n", ia, io_grid[ia]);
+    }
+
+    cio_.n_io *= io_grid[ia];
+    cio_.coords[ia] = io_grid[ia]*cart_coords(ia)/ncart;
   }
-  else {
-    cio_.root = 0;
-  }
 
-  cio_.index = cart_rank()/cio_.size;
-  cio_.single_file_read = 0;
+  cio_.index = cio_.coords[X] + cio_.coords[Y]*io_grid[X]
+    + cio_.coords[Z]*io_grid[X]*io_grid[Y];
 
-  /* Create communicator for each IO group, and get rank within IO group */
   MPI_Comm_split(cart_comm(), cio_.index, cart_rank(), &cio_.comm);
   MPI_Comm_rank(cio_.comm, &cio_.rank);
+  MPI_Comm_size(cio_.comm, &cio_.size);
+
+  cio_.single_file_read = 0;
+
+  /* 'Cross' communicator between same rank in different groups. */
+
+  MPI_Comm_split(cart_comm(), cio_.rank, cart_rank(), &cio_.xcomm);
 
   return;
 }
@@ -153,6 +173,7 @@ void colloid_io_write(const char * filename) {
 
   colloid_io_filename(filename_io, filename);
 
+  info("\n");
   info("colloid_io_write:\n");
   info("writing colloid information to %s etc\n", filename_io);
 
@@ -161,7 +182,7 @@ void colloid_io_write(const char * filename) {
 
   ngroup = colloid_io_count_colloids();
 
-  if (cio_.root) {
+  if (cio_.rank == 0) {
     /* Open the file, and write the header, followed by own colloids.
      * When this is done, pass the token to the next processs in the
      * group. */
@@ -237,9 +258,11 @@ void colloid_io_read(const char * filename) {
   if (cio_.single_file_read) {
     /* All groups read for single 'serial' file */
     sprintf(filename_io, "%s.%3.3d-%3.3d", filename, 1, 1);
+    info("colloid_io_read: reading from single file %s\n", filename_io);
   }
-
-  info("colloid_io_read: reading from %s etc\n", filename_io);
+  else {
+    info("colloid_io_read: reading from %s etc\n", filename_io);
+  }
 
   /* Open the file and read the information */
 
@@ -507,7 +530,10 @@ static void colloid_io_filename(char * filename, const char * stub) {
  *  colloid_io_check_read
  *
  *  Check the number of colloids in the list is consistent with that
- *  in the file, and set the total.
+ *  in the file (ngroup), and set the total.
+ *
+ *  If we haven't lost any particles, we can set the global total and
+ *  proceed.
  *
  *****************************************************************************/
 
@@ -519,6 +545,12 @@ static void colloid_io_check_read(int ngroup) {
   nlocal = colloid_nlocal();
 
   MPI_Reduce(&nlocal, &ntotal, 1, MPI_INT, MPI_SUM, 0, cio_.comm);
+
+  if (cio_.single_file_read) {
+    /* Only the global total can be compared (ngroup is ntotal). */
+    nlocal = ntotal;
+    MPI_Allreduce(&nlocal, &ntotal, 1, MPI_INT, MPI_SUM, cio_.xcomm);
+  }
 
   if (cio_.rank == 0) {
     if (ntotal != ngroup) {

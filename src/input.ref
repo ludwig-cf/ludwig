@@ -275,6 +275,7 @@ colloid_random_m0   1.0_0.0_0.0
 # Constant body force on all colloids ("gravity") [default is zero]
 # Uniform magnetic field [default is zero]
 
+colloid_cell_list_interactions yes
 colloid_cell_min 8.0
 colloid_gravity  0.0_0.0_0.0
 magnetic_b0      0.0_0.0_0.0
@@ -368,9 +369,12 @@ freq_shear_measurement 100000
 freq_shear_output      100000
 config_at_end no
 
+default_io_grid 1_1_1
+
 distribution_io_grid 1_1_1
 distribution_io_input_format BINARY
 
+phi_io_grid 1_1_1
 phi_format    ASCII
 vel_format    ASCII
 
@@ -393,6 +397,7 @@ colloids_io_grid 1_1_1
 colloid_io_format_input  BINARY
 colloid_io_format_output BINARY
 
+qs_dir_io_grid 1_1_1
 qs_dir_format BINARY
 
 ###############################################################################

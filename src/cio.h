@@ -2,7 +2,7 @@
  *
  *  cio.h
  *
- *  $Id: cio.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,7 +15,7 @@
 #ifndef CIO_H
 #define CIO_H
 
-void colloid_io_init(void);
+void colloid_io_init(int io_grid[3]);
 void colliod_io_finish(void);
 
 void colloid_io_read(const char * filename);

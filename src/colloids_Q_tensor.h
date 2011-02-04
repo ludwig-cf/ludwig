@@ -23,8 +23,8 @@ void COLL_randomize_Q(double delta_r);
 void colloids_fix_swd(void);
 void colloids_q_tensor_anchoring_set(const int type);
 
-void scalar_q_io_init(void);
 extern struct io_info_t * io_info_scalar_q_;
+void scalar_q_io_info_set(struct io_info_t * info);
 
 void jacobi(double (*a)[3], double d[], double (*v)[3], int *nrot);
 

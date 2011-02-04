@@ -38,5 +38,6 @@ void   phi_vector_set(const int index, const double q[3]);
 void   phi_vector(const int index, double q[3]);
 
 extern struct io_info_t * io_info_phi;
+void   phi_io_info_set(struct io_info_t * info);
 
 #endif
