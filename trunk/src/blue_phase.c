@@ -946,7 +946,7 @@ void blue_phase_stats(int nstep) {
   double elocal[12], etotal[12];        /* Free energy contributions etc */
   double rv;
 
-  static int output_to_file_ = 0;
+  static int output_to_file_ = 1;
   FILE * fp_output;
 
   coords_nlocal(nlocal);
@@ -1063,8 +1063,8 @@ void blue_phase_stats(int nstep) {
      if(pe_rank()==0){
      /* timestep, total FE, gradient FE, redhsift, S_YZ, S_XX, S_YY, S_ZZ */
        fp_output = fopen("free_energy.dat","a");
-       fprintf(fp_output,"%d %14.7le %14.7le %14.7le %14.7le %14.7le %14.7le %14.7le\n",
-	   nstep,etotal[0]+etotal[1]+etotal[2],etotal[1]+etotal[2],redshift_,etotal[8],elocal[3],elocal[7],elocal[11]);
+       fprintf(fp_output,"%d %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le\n",
+	   nstep,etotal[0]+etotal[1]+etotal[2],etotal[1]+etotal[2],redshift_,etotal[3],etotal[4],etotal[5],etotal[6],etotal[7],etotal[8],etotal[9],etotal[10],etotal[11]);
        fclose(fp_output);
      }
    }
