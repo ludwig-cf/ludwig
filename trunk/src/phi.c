@@ -4,13 +4,13 @@
  *
  *  Scalar, vector, tensor, order parameter.
  *
- *  $Id: phi.c,v 1.13 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -149,7 +149,7 @@ void phi_io_info_set(struct io_info_t * info) {
 
 void phi_finish() {
 
-  io_info_destroy(io_info_phi);
+  if (io_info_phi) io_info_destroy(io_info_phi);
   MPI_Type_free(&phi_xy_t_);
   MPI_Type_free(&phi_xz_t_);
   MPI_Type_free(&phi_yz_t_);
