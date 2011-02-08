@@ -52,6 +52,8 @@ int is_velocity_ = 0;          /* Switch to identify velocity field */
 
 int le_t0_ = 0;                /* LE offset start time (time steps) */ 
 
+int output_cmf_ = 0;           /* flag for output in column-major format */
+
 double le_speed_ = 0.0;
 double le_displace_ = 0.0;
 double * le_displacements_;
@@ -65,6 +67,7 @@ int  read_data_file_name(const char *);
 int site_index(int, int, int, const int *);
 void read_data(FILE *, int *, double *);
 void write_data(FILE *, int *, double *);
+void write_data_cmf(FILE *, int *, double *);
 int copy_data(double *, double *);
 int le_displacement(int, int);
 void le_set_displacements(void);
@@ -190,7 +193,8 @@ int main(int argc, char ** argv) {
 
   printf("\nWriting result to %s\n", io_data);
 
-  write_data(fp_data, ntargets, datasection);
+  if(output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
+  if(output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
 
   fclose(fp_data);
   free(datalocal);
@@ -403,6 +407,61 @@ void write_data(FILE * fp_data, int n[3], double * data) {
 	  }
 	  fprintf(fp_data, "%13.6e\n", *(data + index));
 	  index++;
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/****************************************************************************
+ *
+ *  write_data_cmf
+ *
+ *  Write contiguous block of (float) data.
+ *
+ ****************************************************************************/
+
+void write_data_cmf(FILE * fp_data, int n[3], double * data) {
+
+  int ic, jc, kc, index, nr;
+  double array[n[0]][n[1]][n[2]][nrec_];
+  double *ptr1;
+
+  index = 0;
+
+  for (ic = 0; ic < n[0]; ic++) {
+    for (jc = 0; jc < n[1]; jc++) {
+      for (kc = 0; kc < n[2]; kc++) {
+	for (nr = 0; nr < nrec_; nr++) {
+	  array[ic][jc][kc][nr]=*(data + index);
+	  index++;
+	}
+      }
+    }
+  }
+
+  if (output_binary_) {
+    for (kc = 0; kc < n[2]; kc++) {
+      for (jc = 0; jc < n[1]; jc++) {
+	for (ic = 0; ic < n[0]; ic++) {
+	  for (nr = 0; nr < nrec_; nr++) {
+	    ptr1=&array[ic][jc][kc][nr];
+	    fwrite(ptr1, sizeof(double), 1, fp_data);
+	  }
+	}
+      }
+    }
+  }
+  else {
+    for (kc = 0; kc < n[2]; kc++) {
+      for (jc = 0; jc < n[1]; jc++) {
+	for (ic = 0; ic < n[0]; ic++) {
+	  for (nr = 0; nr < nrec_ - 1; nr++) {
+	    fprintf(fp_data, "%13.6e ", array[ic][jc][kc][nr]);
+	  }
+	  fprintf(fp_data, "%13.6e\n", array[ic][jc][kc][nr]);
 	}
       }
     }
