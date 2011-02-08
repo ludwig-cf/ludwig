@@ -578,15 +578,20 @@ void blue_phase_twist_init(double amplitude){
 
   double q[3][3];
   double x, y, z;
-  double cosxy, cosz, sinxy,sinz;
-  
+  double cosxy, sinxy;
+  double cosyz, sinyz;
+  double cosxz, sinxz;
+  int x_twist_=0; 
+  int y_twist_=0; 
+  int z_twist_=1; 
+
+  /* this corresponds to a 90 degree angle between the z-axis */
+  double cosz=0.0;
+  double sinz=1.0;
+ 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   
-  /* this corresponds to a 90 degree angle between the z-axis */
-  cosz=0.0;
-  sinz=1.0;
-
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = noffset[X] + ic;
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -596,18 +601,50 @@ void blue_phase_twist_init(double amplitude){
 	
 	index = coords_index(ic, jc, kc);
 
-	cosxy=cos(q0_*z);
-	sinxy=sin(q0_*z);
+	if(x_twist_==1){
+	  cosyz=cos(q0_*x);
+	  sinyz=sin(q0_*x);
 	
-	q[X][X] = amplitude*(3.0/2.0*sinz*sinz*cosxy*cosxy - 1.0/2.0);
-	q[X][Y] = 3.0/2.0*amplitude*(sinz*sinz*cosxy*sinxy);
-	q[X][Z] = 3.0/2.0*amplitude*(sinz*cosz*cosxy);
-	q[Y][X] = q[X][Y];
-	q[Y][Y] = amplitude*(3.0/2.0*sinz*sinz*sinxy*sinxy - 1.0/2.0);
-	q[Y][Z] = 3.0/2.0*amplitude*(sinz*cosz*sinxy);
-	q[Z][X] = q[X][Z];
-	q[Z][Y] = q[Y][Z];
-	q[Z][Z] = - q[X][X] - q[Y][Y];
+	  q[X][X] = -0.5*amplitude; 
+	  q[X][Y] = 0.0;
+	  q[X][Z] = 0.0;
+	  q[Y][X] = q[X][Y];
+	  q[Y][Y] = amplitude*(1.5*cosyz*cosyz-0.5);
+	  q[Y][Z] = 1.5*amplitude*sinyz*cosyz;
+	  q[Z][X] = q[X][Z];
+	  q[Z][Y] = q[Y][Z];
+	  q[Z][Z] = - q[X][X] - q[Y][Y];
+	}
+
+	if(y_twist_==1){
+	  cosxz=cos(q0_*y);
+	  sinxz=sin(q0_*y);
+	
+	  q[X][X] = amplitude*(1.5*cosxz*cosxz-0.5);
+	  q[X][Y] = 0.0;
+	  q[X][Z] = -1.5*amplitude*sinxz*cosxz;
+	  q[Y][X] = q[X][Y];
+	  q[Y][Y] = -0.5*amplitude;
+	  q[Y][Z] = 0.0;
+	  q[Z][X] = q[X][Z];
+	  q[Z][Y] = q[Y][Z];
+	  q[Z][Z] = - q[X][X] - q[Y][Y];
+	}
+
+	if(z_twist_==1){
+	  cosxy=cos(q0_*z);
+	  sinxy=sin(q0_*z);
+	
+	  q[X][X] = amplitude*(1.5*sinz*sinz*cosxy*cosxy - 0.5);
+	  q[X][Y] = 1.5*amplitude*(sinz*sinz*cosxy*sinxy);
+	  q[X][Z] = 1.5*amplitude*(sinz*cosz*cosxy);
+	  q[Y][X] = q[X][Y];
+	  q[Y][Y] = amplitude*(1.5*sinz*sinz*sinxy*sinxy - 0.5);
+	  q[Y][Z] = 1.5*amplitude*(sinz*cosz*sinxy);
+	  q[Z][X] = q[X][Z];
+	  q[Z][Y] = q[Y][Z];
+	  q[Z][Z] = - q[X][X] - q[Y][Y];
+	}
 
 	phi_set_q_tensor(index, q);
       }
