@@ -5,7 +5,7 @@
  *  Order parameter advection and the Cahn Hilliard equation.
  *  NOT A COMPLETE TEST.
  *
- *  $Id: test_phi_ch.c,v 1.3 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -31,7 +31,6 @@
 #include "phi_cahn_hilliard.h"
 #include "symmetric.h"
 
-#include "io_harness.h"
 #include "util.h"
 
 static void test_advection(void);
@@ -82,8 +81,6 @@ void test_advection() {
   test_set_velocity(u);
   test_set_drop();
 
-  io_write("test_phi_ch_init.dat", io_info_phi);
-
   /* Steps */
 
   for (n = 0; n < ntmax; n++) {
@@ -93,9 +90,6 @@ void test_advection() {
   }
 
   test_drop_difference();
-
-  /* Some output */
-  io_write("test_phi_ch_final.dat", io_info_phi);
 
   return;
 }
