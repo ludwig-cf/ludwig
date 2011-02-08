@@ -23,6 +23,7 @@
 #include "model.h"
 #include "propagation_gpu.h"
 
+extern "C" void checkCUDAError(const char *msg);
 
 /*****************************************************************************
  *
@@ -47,11 +48,7 @@ void propagation_gpu() {
   /* copy f to ftmp on accelerator */
   copy_f_to_ftmp_on_gpu();
 
-  /* set up CUDA grid */
-  #define BLOCKSIZE 256
-  /* 1D decomposition - use x grid and block dimension only */ 
-  BlockDims.x=BLOCKSIZE;
-  GridDims.x=(N[X]*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+
 
   /* run the kernel */
   if (NVEL == 9){
@@ -63,9 +60,37 @@ void propagation_gpu() {
     exit(1);
   }
   if (NVEL == 19){
-    propagate_d3q19_1Ddecomp_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo, 
-						      N_d,f_d,ftmp_d);
-    cudaThreadSynchronize();
+  /* set up CUDA grid */
+  #define BLOCKSIZE 512
+  /* 1D decomposition - use x grid and block dimension only */ 
+  BlockDims.x=BLOCKSIZE;
+  GridDims.x=(N[X]*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+  //propagate_d3q19_1Ddecomp_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo, 
+  //					      N_d,f_d,ftmp_d);
+  //cudaThreadSynchronize();
+
+    
+
+  BlockDims.x=8;
+  BlockDims.y=8;
+  BlockDims.z=8;
+
+
+  //fold Z into X since max number of blocks in Z dir is 1.
+  GridDims.x=((N[X]+BlockDims.x-1)/BlockDims.x)
+    * ((N[Z]+BlockDims.z-1)/BlockDims.z);
+  GridDims.y=(N[Y]+BlockDims.y-1)/BlockDims.y;
+  //GridDims.z=(N[Z]+BlockDims.z-1)/BlockDims.z;
+  GridDims.z=1;
+
+  //GridDims.x=16;
+  //GridDims.y=4;
+  //GridDims.z=1;
+
+      propagate_d3q19_gpu_d<<<GridDims,BlockDims>>>(ndist,nhalo, 
+  				      N_d,f_d,ftmp_d);
+  cudaThreadSynchronize();
+  //checkCUDAError("propagate");
   }  
   return;
 }
@@ -79,6 +104,109 @@ void propagation_gpu() {
  *  Adapted to run on GPU: Alan Gray
  *
  *****************************************************************************/
+
+__global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
+					     double* fnew_d, double* fold_d) {
+
+  int ii, jj, kk, index, n, p, threadIndex, nsite, Nall[3];
+  int xstr, ystr, zstr, pstr, xfac, yfac;
+  int threadIndexX,threadIndexY,threadIndexZ;
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+
+  nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  zstr = 1;
+  ystr = zstr*Nall[Z];
+  xstr = ystr*Nall[Y];
+  pstr = nsite*ndist; 
+
+  //blockDimXZ=blockDim
+
+  /* CUDA thread index */
+  threadIndexX = blockIdx.x*blockDim.x+threadIdx.x;
+  threadIndexY = blockIdx.y*blockDim.y+threadIdx.y;
+  threadIndexZ = threadIdx.z;
+
+
+  /* Avoid going beyond problem domain */
+  if ((threadIndexX < (N[X]*N[Z])/8) &&
+      (threadIndexY < N[Y]) &&
+      (threadIndexZ < 8) )
+     {
+  //need blockIDs
+
+       int myblockidX=blockIdx.x/(N[Z]/8);
+       int myblockidY=blockIdx.y;
+       int myblockidZ=blockIdx.x-myblockidX*(N[Z]/8);
+
+  
+  int Ntest[3];
+  Ntest[X]=N[X]*N[Y]/8;
+  Ntest[Y]=N[Y];
+  Ntest[Z]=8;
+
+  threadIndex = get_linear_index_gpu_d(threadIndexX,threadIndexY,threadIndexZ,Ntest);
+
+
+//  threadIndexX = myblockidX*blockDim.x+threadIdx.x;
+//  threadIndexY = myblockidY*blockDim.y+threadIdx.y;
+//  threadIndexZ = myblockidZ*blockDim.z+threadIdx.z;
+
+//  threadIndex = get_linear_index_gpu_d(threadIndexX,threadIndexY,threadIndexZ,N);
+
+
+
+      /* calculate index from CUDA thread index */
+      yfac = N[Z];
+      xfac = N[Y]*yfac;
+       
+      ii = threadIndex/xfac;
+      jj = ((threadIndex-xfac*ii)/yfac);
+      kk = (threadIndex-ii*xfac-jj*yfac);
+      
+      index = get_linear_index_gpu_d(ii+1,jj+1,kk+1,Nall);
+    
+      for (n = 0; n < ndist; n++) {
+	
+	/* Distributions moving forward in memory. */
+
+	fnew_d[9*pstr+n*nsite+index]=fold_d[9*pstr+n*nsite+index+                    (-1)];
+	fnew_d[8*pstr+n*nsite+index]=fold_d[8*pstr+n*nsite+index+          (-1)*ystr+(+1)];
+	fnew_d[7*pstr+n*nsite+index]=fold_d[7*pstr+n*nsite+index+         +(-1)*ystr     ];
+	fnew_d[6*pstr+n*nsite+index]=fold_d[6*pstr+n*nsite+index+         +(-1)*ystr+(-1)];
+	fnew_d[5*pstr+n*nsite+index]=fold_d[5*pstr+n*nsite+index+(-1)*xstr+(+1)*ystr     ];
+	fnew_d[4*pstr+n*nsite+index]=fold_d[4*pstr+n*nsite+index+(-1)*xstr          +(+1)];
+	fnew_d[3*pstr+n*nsite+index]=fold_d[3*pstr+n*nsite+index+(-1)*xstr               ];
+	fnew_d[2*pstr+n*nsite+index]=fold_d[2*pstr+n*nsite+index+(-1)*xstr          +(-1)];
+	fnew_d[1*pstr+n*nsite+index]=fold_d[1*pstr+n*nsite+index+(-1)*xstr+(-1)*ystr     ];
+	
+	/* Distributions moving backward in memory. */  
+	
+	fnew_d[10*pstr+n*nsite+index]=fold_d[10*pstr+n*nsite+index+                    (+1)];
+	fnew_d[11*pstr+n*nsite+index]=fold_d[11*pstr+n*nsite+index+          (+1)*ystr+(-1)];
+	fnew_d[12*pstr+n*nsite+index]=fold_d[12*pstr+n*nsite+index+         +(+1)*ystr     ];
+	fnew_d[13*pstr+n*nsite+index]=fold_d[13*pstr+n*nsite+index+         +(+1)*ystr+(+1)];
+	fnew_d[14*pstr+n*nsite+index]=fold_d[14*pstr+n*nsite+index+(+1)*xstr+(-1)*ystr     ];
+	fnew_d[15*pstr+n*nsite+index]=fold_d[15*pstr+n*nsite+index+(+1)*xstr          +(-1)];
+	fnew_d[16*pstr+n*nsite+index]=fold_d[16*pstr+n*nsite+index+(+1)*xstr               ];
+	fnew_d[17*pstr+n*nsite+index]=fold_d[17*pstr+n*nsite+index+(+1)*xstr          +(+1)];
+	fnew_d[18*pstr+n*nsite+index]=fold_d[18*pstr+n*nsite+index+(+1)*xstr+(+1)*ystr     ];
+
+	
+      } 
+
+
+     }
+
+
+   
+   return;
+}
+
+
 
 __global__ static void propagate_d3q19_1Ddecomp_gpu_d(int ndist, int nhalo, int N[3],
 					     double* fnew_d, double* fold_d) {

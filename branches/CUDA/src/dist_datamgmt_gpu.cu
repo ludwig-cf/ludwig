@@ -133,8 +133,8 @@ static void allocate_dist_memory_on_gpu()
   
   //fedgeXLOW = (double *) malloc(nhalodataX*sizeof(double));
   //fedgeXHIGH = (double *) malloc(nhalodataX*sizeof(double));
-  cudaMallocHost(&fedgeXLOW,nhalodataX*sizeof(double));
-  cudaMallocHost(&fedgeXHIGH,nhalodataX*sizeof(double));
+  //cudaMallocHost(&fedgeXLOW,nhalodataX*sizeof(double));
+  //cudaMallocHost(&fedgeXHIGH,nhalodataX*sizeof(double));
 
   fedgeXLOW = (double *) malloc(nhalodataX*sizeof(double));
   fedgeXHIGH = (double *) malloc(nhalodataX*sizeof(double));
@@ -178,10 +178,10 @@ static void free_dist_memory_on_gpu()
 {
 
 
-  //free(fedgeXLOW);
-  //free(fedgeXHIGH);
-  cudaFreeHost(fedgeXLOW);
-  cudaFreeHost(fedgeXHIGH);
+  free(fedgeXLOW);
+  free(fedgeXHIGH);
+  //cudaFreeHost(fedgeXLOW);
+  //cudaFreeHost(fedgeXHIGH);
   free(fedgeYLOW);
   free(fedgeYHIGH);
   free(fedgeZLOW);

@@ -187,8 +187,13 @@ void initialise_gpu()
 /* Perform tasks necessary to finalise accelerator */
 void finalise_gpu()
 {
+
+
   free_memory_on_gpu();
   finalise_dist_gpu();
+  checkCUDAError("finalise");
+
+
 }
 
 
