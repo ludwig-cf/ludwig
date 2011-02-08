@@ -222,6 +222,8 @@ int main( int argc, char **argv ) {
   initialise_gpu();
   put_f_on_gpu();
   put_force_on_gpu(); 
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
 #endif
 
 
