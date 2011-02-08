@@ -63,7 +63,7 @@ void propagation_gpu() {
     exit(1);
   }
   if (NVEL == 19){
-    propagate_d3q19_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo, 
+    propagate_d3q19_1Ddecomp_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo, 
 						      N_d,f_d,ftmp_d);
     cudaThreadSynchronize();
   }  
@@ -80,7 +80,7 @@ void propagation_gpu() {
  *
  *****************************************************************************/
 
-__global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
+__global__ static void propagate_d3q19_1Ddecomp_gpu_d(int ndist, int nhalo, int N[3],
 					     double* fnew_d, double* fold_d) {
 
   int ii, jj, kk, index, n, p, threadIndex, nsite, Nall[3];
@@ -162,5 +162,21 @@ __global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
   int xfac = N[Y]*yfac;
 
   return ii*xfac + jj*yfac + kk;
+
+}
+
+/* get 3d coordinates from the index on the accelerator */
+__device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,int index,int N[3])
+
+{
+  
+  int yfac = N[Z];
+  int xfac = N[Y]*yfac;
+  
+  *ii = index/xfac;
+  *jj = ((index-xfac*(*ii))/yfac);
+  *kk = (index-(*ii)*xfac-(*jj)*yfac);
+
+  return;
 
 }
