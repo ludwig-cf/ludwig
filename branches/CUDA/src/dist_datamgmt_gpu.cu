@@ -1,8 +1,9 @@
 /*****************************************************************************
  *
- * utilities_gpu.cu
+ * dist_datamgmt_gpu.cu
  *  
- * Data management and other utilities for GPU adaptation of Ludwig
+ * Distribution data management for GPU adaptation of Ludwig
+ * 
  * Alan Gray/ Alan Richardson 
  *
  *****************************************************************************/
