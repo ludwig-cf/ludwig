@@ -46,7 +46,7 @@ void MODEL_init( void ) {
 
   /* Now setup the rest of the simulation */
 
-  RUN_get_int_parameter_vector("io_grid_default", io_grid_default);
+  RUN_get_int_parameter_vector("default_io_grid", io_grid_default);
 
   for (i = 0; i < 3; i++) {
     io_grid[i] = io_grid_default[i];
