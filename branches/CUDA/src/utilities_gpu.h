@@ -64,13 +64,21 @@ static void calculate_data_sizes(void);
 static void allocate_memory_on_gpu(void);
 static void free_memory_on_gpu(void);
 
-static void calculate_dist_data_sizes();
-static void allocate_dist_memory_on_gpu();
-static void free_dist_memory_on_gpu();
+static void calculate_dist_data_sizes(void);
+static void allocate_dist_memory_on_gpu(void);
+static void free_dist_memory_on_gpu(void);
+
+static void calculate_phi_data_sizes(void);
+static void allocate_phi_memory_on_gpu(void);
+static void free_phi_memory_on_gpu(void);
 
 
 void init_dist_gpu();
 void finalise_dist_gpu();
+
+
+void init_phi_gpu();
+void finalise_phi_gpu();
 
 int get_linear_index(int ii,int jj,int kk,int N[3]);
 

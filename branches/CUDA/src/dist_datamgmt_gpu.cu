@@ -416,9 +416,6 @@ void halo_swap_gpu()
     }
 
 
-  /* wait for Y data from accelerator*/ 
-  cudaStreamSynchronize(streamY); 
-
  /* wait for X halo swaps to finish */ 
    if (cart_size(X) > 1)       MPI_Waitall(4, request, status);
 
@@ -432,6 +429,9 @@ void halo_swap_gpu()
 						  N_d,f_d,fhaloXLOW_d,
 						  fhaloXHIGH_d);
 
+
+  /* wait for Y data from accelerator*/ 
+  cudaStreamSynchronize(streamY); 
 
   /* fill in corners of Y edge data  */
 
@@ -511,6 +511,20 @@ void halo_swap_gpu()
 
     }
 
+ /* wait for Y halo swaps to finish */ 
+    if (cart_size(Y) > 1)       MPI_Waitall(4, request, status); 
+
+ /* put Y halos back on device, and unpack */
+  cudaMemcpyAsync(fhaloYLOW_d, fhaloYLOW, nhalodataY*sizeof(double), 
+		  cudaMemcpyHostToDevice,streamY);
+  cudaMemcpyAsync(fhaloYHIGH_d, fhaloYHIGH, nhalodataY*sizeof(double), 
+	     cudaMemcpyHostToDevice,streamY);
+
+  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
+  unpack_halosY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(ndist,nhalo,cv_d,
+						  N_d,f_d,fhaloYLOW_d,
+						  fhaloYHIGH_d);
+
 
  
 
@@ -573,20 +587,6 @@ void halo_swap_gpu()
 	  }
 	}
     }
-
-  /* wait for Y halo swaps to finish */ 
-    if (cart_size(Y) > 1)       MPI_Waitall(4, request, status); 
-
- /* put Y halos back on device, and unpack */
-  cudaMemcpyAsync(fhaloYLOW_d, fhaloYLOW, nhalodataY*sizeof(double), 
-		  cudaMemcpyHostToDevice,streamY);
-  cudaMemcpyAsync(fhaloYHIGH_d, fhaloYHIGH, nhalodataY*sizeof(double), 
-	     cudaMemcpyHostToDevice,streamY);
-
-  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_halosY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(ndist,nhalo,cv_d,
-						  N_d,f_d,fhaloYLOW_d,
-						  fhaloYHIGH_d);
 
 
   /* fill in corners of Z edge data: from Yhalo  */
