@@ -27,7 +27,6 @@ extern int * cv_d;
 extern int * N_d;
 
 /* accelerator memory address pointers for required data structures */
-
 double * f_d;
 double * ftmp_d;
 
@@ -46,7 +45,7 @@ double * fhaloZLOW_d;
 double * fhaloZHIGH_d;
 
 
-/* edge and  halo buffers on host */
+/* edge and halo buffers on host */
 double * fedgeXLOW;
 double * fedgeXHIGH;
 double * fedgeYLOW;
@@ -71,7 +70,10 @@ static int npvel; /* number of velocity components when packed */
 static int nhalodataX;
 static int nhalodataY;
 static int nhalodataZ;
-static int nlexbuf;
+
+/* handles for CUDA streams (for ovelapping)*/
+static cudaStream_t streamX,streamY, streamZ;
+
 
 /* Perform tasks necessary to initialise accelerator */
 void init_dist_gpu()
@@ -80,6 +82,12 @@ void init_dist_gpu()
 
   calculate_dist_data_sizes();
   allocate_dist_memory_on_gpu();
+  
+  /* create CUDA streams (for ovelapping)*/
+  cudaStreamCreate(&streamX);
+  cudaStreamCreate(&streamY);
+  cudaStreamCreate(&streamZ);
+
 
   //checkCUDAError("Init GPU");  
 
@@ -89,6 +97,12 @@ void init_dist_gpu()
 void finalise_dist_gpu()
 {
   free_dist_memory_on_gpu();
+
+  /* destroy CUDA streams*/
+  cudaStreamDestroy(streamX);
+  cudaStreamDestroy(streamY);
+  cudaStreamDestroy(streamZ);
+
 }
 
 
@@ -136,19 +150,46 @@ static void allocate_dist_memory_on_gpu()
   //cudaMallocHost(&fedgeXLOW,nhalodataX*sizeof(double));
   //cudaMallocHost(&fedgeXHIGH,nhalodataX*sizeof(double));
 
-  fedgeXLOW = (double *) malloc(nhalodataX*sizeof(double));
-  fedgeXHIGH = (double *) malloc(nhalodataX*sizeof(double));
-  fedgeYLOW = (double *) malloc(nhalodataY*sizeof(double));
-  fedgeYHIGH = (double *) malloc(nhalodataY*sizeof(double));
-  fedgeZLOW = (double *) malloc(nhalodataZ*sizeof(double));
-  fedgeZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
+  cudaHostAlloc( (void **)&fedgeXLOW, nhalodataX*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fedgeXHIGH, nhalodataX*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fedgeYLOW, nhalodataY*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fedgeYHIGH, nhalodataY*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fedgeZLOW, nhalodataZ*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fedgeZHIGH, nhalodataZ*sizeof(double), 
+		 cudaHostAllocDefault);
+
+
+  cudaHostAlloc( (void **)&fhaloXLOW, nhalodataX*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fhaloXHIGH, nhalodataX*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fhaloYLOW, nhalodataY*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fhaloYHIGH, nhalodataY*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fhaloZLOW, nhalodataZ*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&fhaloZHIGH, nhalodataZ*sizeof(double), 
+		 cudaHostAllocDefault);
+
+  //fedgeXLOW = (double *) malloc(nhalodataX*sizeof(double));
+  //fedgeXHIGH = (double *) malloc(nhalodataX*sizeof(double));
+  //fedgeYLOW = (double *) malloc(nhalodataY*sizeof(double));
+  //fedgeYHIGH = (double *) malloc(nhalodataY*sizeof(double));
+  //fedgeZLOW = (double *) malloc(nhalodataZ*sizeof(double));
+  //fedgeZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
   
-  fhaloXLOW = (double *) malloc(nhalodataX*sizeof(double));
-  fhaloXHIGH = (double *) malloc(nhalodataX*sizeof(double));
-  fhaloYLOW = (double *) malloc(nhalodataY*sizeof(double));
-  fhaloYHIGH = (double *) malloc(nhalodataY*sizeof(double));
-  fhaloZLOW = (double *) malloc(nhalodataZ*sizeof(double));
-  fhaloZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
+  //fhaloXLOW = (double *) malloc(nhalodataX*sizeof(double));
+  //fhaloXHIGH = (double *) malloc(nhalodataX*sizeof(double));
+  //fhaloYLOW = (double *) malloc(nhalodataY*sizeof(double));
+  //fhaloYHIGH = (double *) malloc(nhalodataY*sizeof(double));
+  //fhaloZLOW = (double *) malloc(nhalodataZ*sizeof(double));
+  //fhaloZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
   
   /* arrays on accelerator */
   cudaMalloc((void **) &f_d, ndata*sizeof(double));
@@ -178,21 +219,33 @@ static void free_dist_memory_on_gpu()
 {
 
 
-  free(fedgeXLOW);
-  free(fedgeXHIGH);
-  //cudaFreeHost(fedgeXLOW);
-  //cudaFreeHost(fedgeXHIGH);
-  free(fedgeYLOW);
-  free(fedgeYHIGH);
-  free(fedgeZLOW);
-  free(fedgeZHIGH);
+  //free(fedgeXLOW);
+  //free(fedgeXHIGH);
+  cudaFreeHost(fedgeXLOW);
+  cudaFreeHost(fedgeXHIGH);
+  cudaFreeHost(fedgeYLOW);
+  cudaFreeHost(fedgeYHIGH);
+  cudaFreeHost(fedgeZLOW);
+  cudaFreeHost(fedgeZHIGH);
 
-  free(fhaloXLOW);
-  free(fhaloXHIGH);
-  free(fhaloYLOW);
-  free(fhaloYHIGH);
-  free(fhaloZLOW);
-  free(fhaloZHIGH);
+  cudaFreeHost(fhaloXLOW);
+  cudaFreeHost(fhaloXHIGH);
+  cudaFreeHost(fhaloYLOW);
+  cudaFreeHost(fhaloYHIGH);
+  cudaFreeHost(fhaloZLOW);
+  cudaFreeHost(fhaloZHIGH);
+
+/*   free(fedgeYLOW); */
+/*   free(fedgeYHIGH); */
+/*   free(fedgeZLOW); */
+/*   free(fedgeZHIGH); */
+
+/*   free(fhaloXLOW); */
+/*   free(fhaloXHIGH); */
+/*   free(fhaloYLOW); */
+/*   free(fhaloYHIGH); */
+/*   free(fhaloZLOW); */
+/*   free(fhaloZHIGH); */
 
   /* free memory on accelerator */
   cudaFree(f_d);
@@ -248,31 +301,6 @@ void copy_f_to_ftmp_on_gpu()
 }
 
 
-/* copy f_ edges from accelerator to host */
-void get_f_edges_from_gpu()
-{
-  
-  
-  //checkCUDAError("get_f_edges_from_gpu");
-
-}
-
-
-
-
-/* copy f_ halos from host to accelerator */
-void put_f_halos_on_gpu()
-{
-
-  static dim3 BlockDims;
-  static dim3 GridDims;
-
-
-
-  //checkCUDAError("get_f_edges_from_gpu");
-
-}
-
 void halo_swap_gpu()
 {
   int NedgeX[3], NedgeY[3], NedgeZ[3];
@@ -315,20 +343,54 @@ void halo_swap_gpu()
   int npackedsiteY=NedgeY[X]*NedgeY[Y]*NedgeY[Z];
   int npackedsiteZ=NedgeZ[X]*NedgeZ[Y]*NedgeZ[Z];
 
-  
+  /* the below code is structured to overlap packing, CPU-GPU comms and MPI 
+   as and where possible */
 
-  /* pack X edges on device */
+
+ /* pack X edges on accelerator */
  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
- pack_edgesX_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
+ pack_edgesX_gpu_d<<<GridDims.x,BlockDims.x,0,streamX>>>(ndist,nhalo,cv_d,
 						N_d,fedgeXLOW_d,
 						fedgeXHIGH_d,f_d);
+ /* pack Y edges on accelerator */ 
+ GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
+ pack_edgesY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(ndist,nhalo,cv_d,
+					       N_d,fedgeYLOW_d,
+					       fedgeYHIGH_d,f_d);
+ /* pack Z edges on accelerator */ 
+ GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
+ pack_edgesZ_gpu_d<<<GridDims.x,BlockDims.x,0,streamZ>>>(ndist,nhalo,cv_d,
+							 N_d,fedgeZLOW_d,
+							 fedgeZHIGH_d,f_d); 
 
   /* get X low edges */
- cudaMemcpy(fedgeXLOW, fedgeXLOW_d, nhalodataX*sizeof(double),
-		 cudaMemcpyDeviceToHost);
+ cudaMemcpyAsync(fedgeXLOW, fedgeXLOW_d, nhalodataX*sizeof(double),
+		 cudaMemcpyDeviceToHost,streamX);
+
  /* get X high edges */
- cudaMemcpy(fedgeXHIGH, fedgeXHIGH_d, nhalodataX*sizeof(double),
-		 cudaMemcpyDeviceToHost);
+ cudaMemcpyAsync(fedgeXHIGH, fedgeXHIGH_d, nhalodataX*sizeof(double),
+		 cudaMemcpyDeviceToHost,streamX);
+
+
+ /* get Y low edges */
+ cudaMemcpyAsync(fedgeYLOW, fedgeYLOW_d, nhalodataY*sizeof(double), 
+		 cudaMemcpyDeviceToHost,streamY);
+ /* get Y high edges */
+ cudaMemcpyAsync(fedgeYHIGH, fedgeYHIGH_d, nhalodataY*sizeof(double), 
+		 cudaMemcpyDeviceToHost,streamY);
+
+
+  /* get Z low edges */
+  cudaMemcpyAsync(fedgeZLOW, fedgeZLOW_d, nhalodataZ*sizeof(double), 
+	     cudaMemcpyDeviceToHost,streamZ);
+  /* get Z high edges */
+  cudaMemcpyAsync(fedgeZHIGH, fedgeZHIGH_d, nhalodataZ*sizeof(double), 
+	     cudaMemcpyDeviceToHost,streamZ);
+
+
+ /* wait for X data from accelerator*/ 
+  cudaStreamSynchronize(streamX); 
+
 
 
   /* The x-direction (YZ plane) */
@@ -350,24 +412,25 @@ void halo_swap_gpu()
 	      cart_neighb(FORWARD,X), tagf, comm, &request[2]);
       MPI_Isend(fedgeXLOW, nhalodataX, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,X), tagb, comm, &request[3]);
+
     }
 
 
-  /* pack Y edges on device */ 
- GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
- pack_edgesY_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
-					       N_d,fedgeYLOW_d,
-					       fedgeYHIGH_d,f_d);
-  /* get Y low edges */
-  cudaMemcpy(fedgeYLOW, fedgeYLOW_d, nhalodataY*sizeof(double), 
-	     cudaMemcpyDeviceToHost);
-  /* get Y high edges */
-  cudaMemcpy(fedgeYHIGH, fedgeYHIGH_d, nhalodataY*sizeof(double), 
-	     cudaMemcpyDeviceToHost);
-
+  /* wait for Y data from accelerator*/ 
+  cudaStreamSynchronize(streamY); 
 
  /* wait for X halo swaps to finish */ 
- if (cart_size(X) > 1)       MPI_Waitall(4, request, status);
+   if (cart_size(X) > 1)       MPI_Waitall(4, request, status);
+
+ /* put X halos back on device, and unpack */
+  cudaMemcpyAsync(fhaloXLOW_d, fhaloXLOW, nhalodataX*sizeof(double), 
+	     cudaMemcpyHostToDevice,streamX);
+  cudaMemcpyAsync(fhaloXHIGH_d, fhaloXHIGH, nhalodataX*sizeof(double), 
+	     cudaMemcpyHostToDevice,streamX);
+  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+  unpack_halosX_gpu_d<<<GridDims.x,BlockDims.x,0,streamX>>>(ndist,nhalo,cv_d,
+						  N_d,f_d,fhaloXLOW_d,
+						  fhaloXHIGH_d);
 
 
   /* fill in corners of Y edge data  */
@@ -449,37 +512,10 @@ void halo_swap_gpu()
     }
 
 
- /* put X halos back on device, and unpack */
-  cudaMemcpy(fhaloXLOW_d, fhaloXLOW, nhalodataX*sizeof(double), 
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(fhaloXHIGH_d, fhaloXHIGH, nhalodataX*sizeof(double), 
-	     cudaMemcpyHostToDevice);
-  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_halosX_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
-						  N_d,f_d,fhaloXLOW_d,
-						  fhaloXHIGH_d);
-
-
-
  
- /* get Z data */
- /* pack Z edges on accelerator */ 
-    GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-    pack_edgesZ_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
-  						N_d,fedgeZLOW_d,
-  						fedgeZHIGH_d,f_d); 
 
-  /* get Z low edges */
-  cudaMemcpy(fedgeZLOW, fedgeZLOW_d, nhalodataZ*sizeof(double), 
-		  cudaMemcpyDeviceToHost);
-  /* get Z high edges */
-  cudaMemcpy(fedgeZHIGH, fedgeZHIGH_d, nhalodataZ*sizeof(double), 
-		  cudaMemcpyDeviceToHost);
-
-
-  /* wait for Y halo swaps to finish */ 
-  if (cart_size(Y) > 1)       MPI_Waitall(4, request, status); 
-
+  /* wait for Z data from accelerator*/ 
+  cudaStreamSynchronize(streamZ); 
 
 
   /* fill in corners of Z edge data: from Xhalo  */
@@ -537,7 +573,22 @@ void halo_swap_gpu()
 	  }
 	}
     }
-  
+
+  /* wait for Y halo swaps to finish */ 
+    if (cart_size(Y) > 1)       MPI_Waitall(4, request, status); 
+
+ /* put Y halos back on device, and unpack */
+  cudaMemcpyAsync(fhaloYLOW_d, fhaloYLOW, nhalodataY*sizeof(double), 
+		  cudaMemcpyHostToDevice,streamY);
+  cudaMemcpyAsync(fhaloYHIGH_d, fhaloYHIGH, nhalodataY*sizeof(double), 
+	     cudaMemcpyHostToDevice,streamY);
+
+  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
+  unpack_halosY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(ndist,nhalo,cv_d,
+						  N_d,f_d,fhaloYLOW_d,
+						  fhaloYHIGH_d);
+
+
   /* fill in corners of Z edge data: from Yhalo  */
   for (p=0;p<npvel;p++)
     {
@@ -615,37 +666,23 @@ void halo_swap_gpu()
     }
 
 
- /* put Y halos back on device, and unpack */
-  cudaMemcpy(fhaloYLOW_d, fhaloYLOW, nhalodataY*sizeof(double), 
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(fhaloYHIGH_d, fhaloYHIGH, nhalodataY*sizeof(double), 
-	     cudaMemcpyHostToDevice);
-
-  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_halosY_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
-						  N_d,f_d,fhaloYLOW_d,
-						  fhaloYHIGH_d);
-
   /* wait for Z halo swaps to finish */ 
   if (cart_size(Z) > 1)       MPI_Waitall(4, request, status); 
 
 
  /* put Z halos back on device, and unpack */
-  cudaMemcpy(fhaloZLOW_d, fhaloZLOW, nhalodataZ*sizeof(double), 
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(fhaloZHIGH_d, fhaloZHIGH, nhalodataZ*sizeof(double), 
-	     cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(fhaloZLOW_d, fhaloZLOW, nhalodataZ*sizeof(double), 
+	     cudaMemcpyHostToDevice,streamZ);
+  cudaMemcpyAsync(fhaloZHIGH_d, fhaloZHIGH, nhalodataZ*sizeof(double), 
+	     cudaMemcpyHostToDevice,streamZ);
   GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-   unpack_halosZ_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo,cv_d,
+  unpack_halosZ_gpu_d<<<GridDims.x,BlockDims.x,0,streamZ>>>(ndist,nhalo,cv_d,
   						  N_d,f_d,fhaloZLOW_d,
   					  fhaloZHIGH_d);
 
 
+  /* wait for all streams to complete */
   cudaThreadSynchronize();
-  //TIMER_stop(HALOUNPACK);
-
-
-
 
 }
 

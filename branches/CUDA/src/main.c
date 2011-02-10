@@ -71,14 +71,12 @@ void ludwig_report_momentum(void);
 /* these declarations should probably be refactored to a header file */
 void initialise_gpu(void);
 void put_f_on_gpu(void);
-void put_f_halos_on_gpu(void);
 void put_force_on_gpu(void);
 void put_phi_on_gpu(void);
 void put_phi_halos_on_gpu(void);
 void put_grad_phi_on_gpu(void);
 void put_delsq_phi_on_gpu(void);
 void get_f_from_gpu(void);
-void get_f_edges_from_gpu(void);
 void get_velocity_from_gpu(void);
 void get_phi_from_gpu(void);
 void get_phi_edges_from_gpu(void);
@@ -344,30 +342,13 @@ int main( int argc, char **argv ) {
     model_le_apply_boundary_conditions();
 
 
-
+    TIMER_start(TIMER_HALO_LATTICE);    
 #ifdef _GPU_
-    get_f_edges_from_gpu();
-
-    TIMER_start(TIMER_HALO_LATTICE);    
     halo_swap_gpu();
-    TIMER_stop(TIMER_HALO_LATTICE);    
-
-      put_f_halos_on_gpu(); 
-
-    //get_f_from_gpu();
-
-    //TIMER_start(TIMER_HALO_LATTICE);    
-    //distribution_halo();
-    //TIMER_stop(TIMER_HALO_LATTICE);    
-
-    //put_f_on_gpu(); 
-
 #else
-    TIMER_start(TIMER_HALO_LATTICE);    
     distribution_halo();
-    TIMER_stop(TIMER_HALO_LATTICE);
 #endif
-    
+    TIMER_stop(TIMER_HALO_LATTICE);        
 
 
 
