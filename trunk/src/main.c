@@ -92,10 +92,10 @@ void ludwig_rt(void) {
 
   distribution_run_time();
   collision_run_time();
+  site_map_run_time();
 
   ran_init();
   MODEL_init();
-  site_map_init();
   wall_init();
   COLL_init();
 
@@ -320,7 +320,6 @@ int main( int argc, char **argv ) {
 
       stats_distribution_print();
       phi_stats_print_stats();
-//      blue_phase_stats(step);
       stats_free_energy_density();
       ludwig_report_momentum();
       hydrodynamics_stats();
