@@ -1,22 +1,22 @@
-#############################################################################
-#
-#  porous.tex
-#
-#  Some considerations for porous media.
-#
-#  $Id: porous.tex,v 1.1 2010-11-29 16:45:57 kevin Exp $
-#
-#  Edinburgh Soft Matter and Statistical Physics Group and
-#  Edinburgh Parallel Computing Centre
-#
-#  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2010 The University of Edinburgh
-#
-#############################################################################
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  porous.tex
+%
+%  Some considerations for porous media.
+%
+%  $Id$
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  Kevin Stratford (kevin@epcc.ed.ac.uk)
+%  (c) 2011 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
-\subsection{Porous Media}
+\section{Porous Media}
 
 Porous media calculations can be undertaken when appropriate
 solid/fluid status information is supplied. The are a number
@@ -38,7 +38,7 @@ The default is \texttt{BINARY}.
 
 is either \texttt{status\_only} (the default) or \texttt{status\_with\_h}.
 
-\subsubsection{File format}
+\subsection{File format}
 
 In all cases the status (fluid/solid) information is represented by a
 single \texttt{char} (or integer), which must be supplied via the
@@ -59,7 +59,7 @@ value which is the local value of $H$. The order is then
 $s_1,h_1, s_2, h_2, \ldots$.
 
 
-\subsubsection{Permeability calculations}
+\subsection{Permeability calculations}
 
 Single fluid permeability calculations for a given proous structure
 can be undertaken by driving a flow via the fluid body force. Note
@@ -82,20 +82,14 @@ with $\rho_0 = 1$).
 Note that in the case of porous media with narrow channels at the grid
 scale, the wall velocity can be dependent on the viscosity of the fluid.
 This is an artefact of the bounce-back on links and will result in a
-viscosity-dependent permeability (see, e.g., \cite{lipanmiller}). To minimise
-this effect, it is recommended to switch on the correction to the ghost
-mode relaxation time proposed by Ginzburg and d'Humi\`eres \cite{ginzburg}
-which corrects the viscosity-dependence of the apparent boundary
-position. This is done via the input switches
-
-\texttt{ghost\_modes on\\
-ginzburg\_dhumieres on}
-
-and should recover a viscosity-independent permeability measurement
-\cite{lipanmiller,chunladd}.
+viscosity-dependent permeability (see, e.g., \cite{lipanmiller}).
+To minimise this effect, e.g.,  Ginzburg and d'Humi\`eres \cite{ginzburg}
+corrects the viscosity-dependence of the apparent boundary position
+using a three relaxation time scheme. This is currently under
+investigation.
 
 
-\subsubsection{Example: circular capillaries}
+\subsection{Example: circular capillaries}
 
 The utility \texttt{capillary.c} can be used to generate various
 porous media input files corresponding to various simple circular
@@ -124,7 +118,7 @@ to give the conductance.
 
 
 
-\subsubsection{Example: rectangular capillaries}
+\subsection{Example: rectangular capillaries}
 
 An analtyical expression is also available for the conductance
 of a square or rectugular capillary. For an infinite capillary
@@ -144,7 +138,7 @@ one can difine the viscosity-independnet conductance $C$ via
 $J = C\rho g / \eta$. The calculation procedes as above.
 
 
-\subsubsection{Matching lattice and real units in porous media}
+\subsection{Matching lattice and real units in porous media}
 
 Following Succi \cite{succi} (Chapter~8) the following argument
 can be made to match lattice quantities and real physical

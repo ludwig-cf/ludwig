@@ -143,6 +143,13 @@ Invoke the executable with the MPI launcher in the usual way for your
 system, e.g., \texttt{mpirun -np 8 ./Ludwig.exe} for 8 processors,
 and so on.
 
+\subsubsection{ANSI C}
+
+The code is ANSI C (1989), with the single exception of calls to the
+library function \texttt{erfc()} in the Ewald sum code. This
+can sometimes cause a problem, which can usually be solved with
+a compiler-specific work-around.
+
 \subsubsection{C assertions}
 
 The code makes quite a lot of use of standard C assertions, which
@@ -512,6 +519,13 @@ for the \texttt{o8m} initialisation, the redshift can be set to 0.83,
 and for the \texttt{o2} initialisation, the redshift can be set to 0.91.
 The default redshift is unity.
 
+\inputkey{lc\_redshift\_update [0|1]}
+
+Switches on (default is off) the dynamic computation of the redshift
+from the order parameter gradient terms in the free energy. The
+caluclation is performed at every time step, and override any
+initial value specified in the above. It is also robust to restarts.
+
 \subsection{Colloidal particles}
 
 The are a number of important options required for colloids. If
@@ -561,13 +575,39 @@ The code automatically computes the compensating body force on fluid
 nodes required to give no net change in the total momentum of the
 system at each time step.
 
+\subsubsection{Interactions and the cell list}
+
+In each local domain, colloidal particles are stored in a cell list.
+This is a common structure in molecular dynamics-like problems. Here,
+it also serves as the basis for parallel communication of colloid
+information, so there are a number of constraints which it is important
+to understand. In particular, parallel communication imposes the
+constraint that there be at least 2 cells in the local domain in
+each coordinate direction.
+
+The size of the cells is computed automatically by the code based on
+the local domain size, particle size, and the cut-off distance of any
+pairwise interactions that are relevant. This will usually mean trying
+to maximise the number of cells (to reduce pairwise interaction
+calculation). The user must set the minimum allowable cell width.
+
 \inputkey{colloid\_cell\_min}
 
-This sets the minimum cell list width. The cell list has a number
-of purposes: it is used to compute colloid-colloid interactions
-at $O(N)$, but it is also used in the message passing episodes
-for the colloids. This key must be set and there must be at least
-two cells per processor domain.
+This sets the minimum cell list width. This key must be set and there
+must be at least two cells per processor domain. If the minimum does
+not capture the specified interactions, a fatal error will result.
+For spherical particles, the minimum width will typically be
+$2a_h + h_c$ where $h_c$ is an interaction cut-off distance.
+
+
+In the case where very large particles are required, it can be useful
+to switch of the cell list. This is done via
+
+\inputkey{colloid\_cell\_list\_interactions no}
+
+The constraint in this case is that $2a_h + h_c < L_{local}$, ie.,
+there is effectively one cell in each local domain. This option
+should not be required in normal circumstances.
 
 
 \subsubsection{Initialisation from file}
@@ -731,13 +771,20 @@ files containing lattice quantities must be `unrolled' to remove
 the time-dependent displacement of the planes. This is done using
 the extraction utility (see section on parallel I/O).
 
-Note that if something more complicated is required, for example,
-an equilibration at zero shear followed by a run with shear, one
-needs to be careful how this is arranged. The code works out the
+The code works out the
 current displacement of the planes by computing $U_{LE} t$, where
 $t$ is the current time step. A shear run should then start from
-$t = 0$, otherwise an offset is required. At the moment this cannot
-be done via the input.
+$t = 0$, otherwise an offset is required.
+
+\inputkey{LE\_time\_offset}
+
+It is often convenient to run an equilibration with no shear, and
+then to start an experiment after some number of steps. This
+key allows you to offset the start of the Lees-Edwards motion.
+It should then take the value of the start time (in time steps)
+corresponding to the restart at the end of the equilibration
+period. You also need to take this value into account when unrolling
+the output.
 
 \subsubsection{Lees-Edwards planes in parallel} 
 
@@ -830,6 +877,32 @@ binary output for speed and disk space considerations.
 
 \subsubsection{Parallel I/O}
 
+In serial, each output quantity appears in one file (\texttt{phi-}
+and so on). In parallel, this is also the case by default. However,
+this does not scale, owing to the fact that each process has to
+write to the same file in turn (ie., in serial). The solution is
+to make the I/O parallel. This is done by splitting the domain into
+different ``I/O grids'' each of which writes to a separate file.
+
+The default I/O grid can be set using, e.g.,
+
+\inputkey{default\_io\_grid 2\_2\_2}
+
+meaning that the domain is decomposed into a 2x2x2 Cartesian
+decomposition for I/O purposes. This will give rise to a total
+of 8 files per I/O event with extensions \texttt{.008-001} to
+\texttt{.008-008}. These files must be recombined if analysis
+is required. However, restarting can be performed with the
+parallel files.
+
+Individual lattice quantities can use separate I/O grids. This
+may be particularly useful for the distribution data, which are
+much larger than the other lattice quantities. This means a
+finer decomposition may be appropriate. Clearly, the size of the
+I/O decomposition cannot exceed the processor decomposition.
+See the advice in section \cite{section-advice} for guidelines.
+
+
 
 \subsection{Miscellaneous}
 
@@ -892,6 +965,7 @@ tasks with close to ideal scaling, and there is no problem in
 principle to run larger decompositions.
 
 \subsection{Things to Remember and Things to Avoid}
+\ref{section-advice}
 
 There are a number of simple issues to get right:
 \begin{itemize}
