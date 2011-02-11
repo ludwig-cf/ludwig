@@ -52,6 +52,7 @@
 #include "distribution_rt.h"
 #include "collision_rt.h"
 #include "gradient_rt.h"
+#include "site_map_rt.h"
 
 #include "stats_colloid.h"
 #include "stats_turbulent.h"
