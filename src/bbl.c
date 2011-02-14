@@ -241,6 +241,7 @@ static void bounce_back_pass1() {
 		  rmod = 0.0;
 		  if (mod != 0.0) rmod = 1.0/mod;
 		  cost = rmod*dot_product(p_link->rb, p_colloid->s.m);
+		  if (cost*cost > 1.0) cost = 1.0;
 		  assert(cost*cost <= 1.0);
 		  sint = sqrt(1.0 - cost*cost);
 
