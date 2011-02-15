@@ -4,7 +4,7 @@
  *
  *  Test propagation stage.
  *
- *  $Id: test_prop.c,v 1.5 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -27,7 +27,8 @@ static void test_source_destination(void);
 
 int main(int argc, char ** argv) {
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
   coords_init();
   distribution_init();
 
@@ -52,6 +53,7 @@ int main(int argc, char ** argv) {
 
   distribution_finish();
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

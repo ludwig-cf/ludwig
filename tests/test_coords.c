@@ -4,7 +4,7 @@
  *
  *  'Unit tests' for coords.c
  *
- *  $Id: test_coords.c,v 1.3 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -43,7 +43,8 @@ int main(int argc, char ** argv) {
   int periods_test2[3] = {1, 1, 1};
   int decomposition_test2[3] = {4, 4, 4};
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   info("Checking coords.c ...\n\n");
 
@@ -92,6 +93,7 @@ int main(int argc, char ** argv) {
   coords_finish();
 
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

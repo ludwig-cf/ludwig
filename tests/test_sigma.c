@@ -50,7 +50,8 @@ int main (int argc, char ** argv) {
 
   struct drop_t drop0;
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   RUN_read_input_file("test_sigma_input");
 
@@ -72,6 +73,7 @@ int main (int argc, char ** argv) {
   TIMER_statistics();
   phi_finish();
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

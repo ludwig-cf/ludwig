@@ -5,7 +5,7 @@
  *  This is a more rigourous test of the halo swap code for the
  *  distributions than appears in test model.
  *
- *  $Id: test_halo.c,v 1.9 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -31,7 +31,9 @@ static void test_halo(const int dim, const int reduced);
 int main(int argc, char ** argv) {
 
   int i, k;
-  pe_init(argc, argv);
+
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   info("Checking distribution halo swaps...\n\n");
 
@@ -122,6 +124,7 @@ int main(int argc, char ** argv) {
   distribution_finish();
   coords_finish();
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

@@ -11,7 +11,7 @@
  *  the statistical tests. Larger samples might have stricter
  *  tolerance.
  *
- *  $Id: test_random.c,v 1.4 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -38,7 +38,8 @@ int main(int argc, char ** argv) {
   double rhat[3], rmean[3];
   int    n;
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   info("Testing random number generators (may take a minute...)\n");
   info("Random sample size is %d\n\n", NLARGE);
@@ -281,6 +282,7 @@ int main(int argc, char ** argv) {
   info("\nRandom number tests ok\n\n");
 
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

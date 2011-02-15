@@ -4,7 +4,13 @@
  *
  *  Associated test input files are:
  *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -24,7 +30,8 @@ int main(int argc, char ** argv) {
   double dvector[3];
   char   string[256];
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   info("Testing runtime.c...\n");
 
@@ -180,6 +187,7 @@ int main(int argc, char ** argv) {
 
   info("All checks ok!\n");
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

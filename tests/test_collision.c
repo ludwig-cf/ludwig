@@ -35,11 +35,13 @@ static void test_fluctuations_stats1(void);
 
 int main (int argc, char ** argv) {
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   test_fluctuations_stats1();
 
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

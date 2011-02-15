@@ -5,13 +5,13 @@
  *  Test the finite-difference approximations to the various
  *  gradients required.
  *
- *  $Id: test_phi_gradients.c,v 1.1 2009-06-18 15:48:43 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -48,7 +48,8 @@ static void   test_function3_grad_delsq(int, int, int, double[3]);
 
 int main(int argc, char ** argv) {
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
   coords_init();
   le_init();
   phi_init();
@@ -85,6 +86,9 @@ int main(int argc, char ** argv) {
   }
 
   info("All gradients ok\n");
+
+  pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

@@ -4,7 +4,7 @@
  *
  *  Unit test for the currently compiled model (D3Q15 or D3Q19).
  *
- *  $Id: test_model.c,v 1.10 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
@@ -32,7 +32,8 @@ static  int test_model_is_domain(const int ic, const int jc, const int kc);
 
 int main(int argc, char ** argv) {
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   info("Testing D%1dQ%d\n", NDIM, NVEL);
 
@@ -53,6 +54,7 @@ int main(int argc, char ** argv) {
 
   coords_finish();
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

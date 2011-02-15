@@ -5,7 +5,7 @@
  *  Tests for the blue phase free energy, molecular field, and
  *  the chemical stress.
  *
- *  $Id: test_blue_phase.c,v 1.2 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -33,7 +33,9 @@ static void multiply_delsq(double [3][3], double);
 
 int main(int argc, char ** argv) {
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+
+  pe_init();
   coords_init();
   le_init(); /* Must be initialised to compute gradients. */
 
@@ -49,6 +51,8 @@ int main(int argc, char ** argv) {
   le_finish();
   coords_finish();
   pe_finalise();
+
+  MPI_Finalize();
 
   return 0;
 }

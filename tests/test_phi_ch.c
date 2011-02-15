@@ -40,7 +40,8 @@ static void test_drop_difference(void);
 
 int main (int argc, char ** argv) {
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
   coords_nhalo_set(2);
   coords_init();
   le_init();
@@ -55,6 +56,7 @@ int main (int argc, char ** argv) {
 
   phi_finish();
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }
