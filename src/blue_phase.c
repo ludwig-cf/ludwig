@@ -39,6 +39,7 @@ static double rredshift_; /* reciprocal */
 static double zeta_;      /* Apolar activity parameter \zeta */
 
 static int redshift_update_ = 0; /* Dynamic cubic redshift update */
+static int output_to_file_  = 0; /* To stdout or "free_energy.dat" */
 
 static const double redshift_min_ = 0.00000000001; 
 static const double r3 = (1.0/3.0);
@@ -965,7 +966,10 @@ void blue_phase_redshift_compute(void) {
  *
  *  blue_phase_stats
  *
- *  Computes various statistics.
+ *  This computes statistics for the free energy, and for the
+ *  thermodynamic stress, if required. Remember that all the
+ *  components of the stress have an additional minus sign cf.
+ *  what may be expected.
  *
  *****************************************************************************/
 
@@ -980,10 +984,9 @@ void blue_phase_stats(int nstep) {
 
   double q2, q3, dq0, dq1, sum;
 
-  double elocal[12], etotal[12];        /* Free energy contributions etc */
+  double elocal[14], etotal[14];        /* Free energy contributions etc */
   double rv;
 
-  static int output_to_file_ = 1;
   FILE * fp_output;
 
   coords_nlocal(nlocal);
@@ -995,7 +998,7 @@ void blue_phase_stats(int nstep) {
   kappa0 = kappa0_*redshift_*redshift_;
   kappa1 = kappa1_*redshift_*redshift_;
 
-  for (ia = 0; ia < 12; ia++) {
+  for (ia = 0; ia < 14; ia++) {
     elocal[ia] = 0.0;
   }
 
@@ -1068,53 +1071,74 @@ void blue_phase_stats(int nstep) {
 
 	/* Contributions bulk, kappa0, and kappa1 */
 
-	elocal[0] += 0.5*a0_*(1.0 - r3*gamma_)*q2 - r3*a0_*gamma_*q3
-	  + 0.25*a0_*gamma_*q2*q2;
-	elocal[1] += 0.5*kappa0*dq0;
-	elocal[2] += 0.5*kappa1*dq1;
+	elocal[0] += 0.5*a0_*(1.0 - r3*gamma_)*q2;
+	elocal[1] += -r3*a0_*gamma_*q3;
+	elocal[2] += 0.25*a0_*gamma_*q2*q2;
+	elocal[3] += 0.5*kappa0*dq0;
+	elocal[4] += 0.5*kappa1*dq1;
 
-	/* stress */
+	/* Nine compoenents of stress */
 
-	elocal[3]  += sth[X][X];
-	elocal[4]  += sth[X][Y];
-	elocal[5]  += sth[X][Z];
-	elocal[6]  += sth[Y][X];
-	elocal[7]  += sth[Y][Y];
-	elocal[8]  += sth[Y][Z];
-	elocal[9]  += sth[Z][X];
-	elocal[10] += sth[Z][Y];
-	elocal[11] += sth[Z][Z];
+	elocal[5]  += sth[X][X];
+	elocal[6]  += sth[X][Y];
+	elocal[7]  += sth[X][Z];
+	elocal[8]  += sth[Y][X];
+	elocal[9]  += sth[Y][Y];
+	elocal[10] += sth[Y][Z];
+	elocal[11] += sth[Z][X];
+	elocal[12] += sth[Z][Y];
+	elocal[13] += sth[Z][Z];
       }
     }
   }
 
   /* Results to standard out */
 
-  MPI_Reduce(elocal, etotal, 12, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+  MPI_Reduce(elocal, etotal, 14, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
 
-  for (ia = 0; ia < 12; ia++) {
+  for (ia = 0; ia < 14; ia++) {
     etotal[ia] *= rv;
   }
 
-   if(output_to_file_==1){
-     if(pe_rank()==0){
-     /* timestep, total FE, gradient FE, redhsift, S_YZ, S_XX, S_YY, S_ZZ */
-       fp_output = fopen("free_energy.dat","a");
-       fprintf(fp_output,"%d %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le %12.6le\n",
-	   nstep,etotal[0]+etotal[1]+etotal[2],etotal[1]+etotal[2],redshift_,etotal[3],etotal[4],etotal[5],etotal[6],etotal[7],etotal[8],etotal[9],etotal[10],etotal[11]);
+   if (output_to_file_ == 1) {
+
+     /* Note that the reduction is to rank 0 in the Cartesian communicator */
+     if (cart_rank() == 0) {
+
+       fp_output = fopen("free_energy.dat", "a");
+       if (fp_output == NULL) fatal("fopen(free_energy.dat) failed\n");
+
+       /* timestep, total FE, gradient FE, redhsift */
+       fprintf(fp_output, "%d %12.6le %12.6le %12.6le ", nstep, 
+	       etotal[0] + etotal[1] + etotal[2] + etotal[3] + etotal[4],
+	       etotal[3] + etotal[4], redshift_);
+       /* Stress xx, xy, xz, ... */
+       fprintf(fp_output, "%12.6le %12.6le %12.6le ",
+	       etotal[5], etotal[6], etotal[7]);
+       fprintf(fp_output, "%12.6le %12.6le %12.6le ",
+	       etotal[8], etotal[9], etotal[10]);
+       fprintf(fp_output, "%12.6le %12.6le %12.6le\n",
+	       etotal[11], etotal[12], etotal[13]);
+       
        fclose(fp_output);
      }
    }
-   else{
-     /* 1. bulk kappa0 kappa1
-      * 2. total redshift
-      * 3. s_xx s_yz (only at the moment) */
+   else {
+
+     /* To standard output we send
+      * 1. three terms in the bulk free energy
+      * 2. two terms in distortion + current redshift
+      * 3. total bulk, total distortion, and the grand total */
+
      info("\n");
-     info("[fed1] %14d %14.7e %14.7e %14.7e\n", nstep, etotal[0],
+     info("[fed1]%14d %14.7e %14.7e %14.7e\n", nstep, etotal[0],
 	  etotal[1], etotal[2]);
-     info("[fed2] %14d %14.7e %14.7e\n", nstep,
-	  etotal[0] + etotal[1] + etotal[2], redshift_);
-     info("[fed3] %14d %14.7e %14.7e\n", nstep, etotal[3], etotal[8]);
+     info("[fed2]%14d %14.7e %14.7e %14.7e\n", nstep, etotal[3], etotal[4],
+	  redshift_);
+     info("[fed3]%14d %14.7e %14.7e %14.7e\n", nstep,
+	  etotal[0] + etotal[1] + etotal[2],
+	  etotal[3] + etotal[4],
+	  etotal[0] + etotal[1] + etotal[2] + etotal[3] + etotal[4]);
    }
 
   return;
