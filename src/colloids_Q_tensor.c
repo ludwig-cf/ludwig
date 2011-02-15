@@ -59,6 +59,7 @@ void COLL_set_Q(){
   double qs[4];
   double director[3];
   double len_normal;
+  double rlen_normal;
   double amplitude;
   double rdotd;
   double dir_len;
@@ -112,6 +113,14 @@ void COLL_set_Q(){
 	    phi_set_q_tensor(index,q);
 	    continue;
 	  }
+
+	  rlen_normal = 1.0/len_normal;
+
+	  /* Homeotropic anchoring (the default) */
+
+	  director[X] = normal[X]*rlen_normal;
+	  director[Y] = normal[Y]*rlen_normal;
+	  director[Z] = normal[Z]*rlen_normal;
 	  
 	  if (anchoring_ == ANCHORING_PLANAR) {
 
@@ -134,7 +143,7 @@ void COLL_set_Q(){
 	     * normal and remove that from the director to make the
 	     * director perpendicular to the surface */
 
-	    rdotd = dot_product(normal, dir)/(len_normal*len_normal);
+	    rdotd = dot_product(normal, dir)*rlen_normal*rlen_normal;
 	    
 	    dir[X] = dir[X] - rdotd*normal[X];
 	    dir[Y] = dir[Y] - rdotd*normal[Y];
@@ -154,14 +163,6 @@ void COLL_set_Q(){
 	    for (ia = 0; ia < 3; ia++) {
 	      director[ia] = dir[ia] / dir_len;
 	    }
-	  }
-
-	  if (anchoring_ == ANCHORING_NORMAL) {
-	    /* Homeotropic anchoring */
-
-	    director[X] = normal[X]/len_normal;
-	    director[Y] = normal[Y]/len_normal;
-	    director[Z] = normal[Z]/len_normal;
 	  }
 
 	  q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
@@ -201,6 +202,7 @@ void COLL_set_Q_2(){
   double qs[4];
   double director[3];
   double len_normal;
+  double rlen_normal;
   double amplitude;
   double rdotd;
   double dir_len;
@@ -272,6 +274,14 @@ void COLL_set_Q_2(){
 		continue;
 	      }
 	    
+	      rlen_normal = 1.0/len_normal;
+
+	      /* Homeotropic anchoring */
+
+	      director[X] = normal[X]*rlen_normal;
+	      director[Y] = normal[Y]*rlen_normal;
+	      director[Z] = normal[Z]*rlen_normal;
+
 	      if (anchoring_ == ANCHORING_PLANAR) {
 	  
 		phi_get_q_tensor(p_link->j, q);
@@ -285,7 +295,7 @@ void COLL_set_Q_2(){
 		 * normal and remove that from the director to make the
 		 * director perpendicular to the surface */
 	    
-		rdotd = dot_product(normal, dir)/(len_normal*len_normal);
+		rdotd = dot_product(normal, dir)*rlen_normal*rlen_normal;
 	    
 		dir[X] = dir[X] - rdotd*normal[X];
 		dir[Y] = dir[Y] - rdotd*normal[Y];
@@ -308,15 +318,6 @@ void COLL_set_Q_2(){
 		  director[ia] = dir[ia] / dir_len;
 		  dir_prev[ia] = dir[ia] / dir_len;
 		}
-	      }
-
-	      if (anchoring_ == ANCHORING_NORMAL) {
-
-		/* Homeotropic anchoring */
-
-		director[X] = normal[X]/len_normal;
-		director[Y] = normal[Y]/len_normal;
-		director[Z] = normal[Z]/len_normal;
 	      }
 
 	      q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
