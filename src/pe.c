@@ -21,6 +21,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 
 #include "svn.h"
@@ -30,6 +31,7 @@ static int pe_world_rank;
 static int pe_world_size;
 static MPI_Comm pe_parent_comm_ = MPI_COMM_WORLD;
 static MPI_Comm pe_comm_;
+static char subdirectory_[FILENAME_MAX] = "";
 
 /*****************************************************************************
  *
@@ -40,9 +42,16 @@ static MPI_Comm pe_comm_;
  *
  *****************************************************************************/
 
-void pe_init(int argc, char ** argv) {
+void pe_init(void) {
 
-  MPI_Init(&argc, &argv);
+  int ifail;
+
+  MPI_Initialized(&ifail);
+
+  if (ifail == 0) {
+    printf("Please make sure MPI is initialised!\n");
+    exit(0);
+  }
 
   MPI_Comm_dup(pe_parent_comm_, &pe_comm_);
 
@@ -73,9 +82,34 @@ void pe_init(int argc, char ** argv) {
 
 void pe_finalise() {
 
+  MPI_Comm_free(&pe_comm_);
   info("Ludwig finished normally.\n");
 
-  MPI_Finalize();
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  pe_redirect_stdout
+ *
+ *****************************************************************************/
+
+void pe_redirect_stdout(const char * filename) {
+
+  int rank;
+  FILE * stream;
+
+  MPI_Comm_rank(pe_parent_comm_, &rank);
+
+  if (rank == 0) {
+    printf("Redirecting stdout to file %s\n", filename);
+  }
+
+  stream = freopen(filename, "w", stdout);
+  if (stream == NULL) {
+    printf("[%d] ffreopen(%s) failed\n", rank, filename);
+    fatal("Stop.\n");
+  }
 
   return;
 }
@@ -182,5 +216,31 @@ void verbose(const char * fmt, ...) {
 void pe_parent_comm_set(MPI_Comm parent) {
 
   pe_parent_comm_ = parent;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  pe_subdirectory_set
+ *
+ *****************************************************************************/
+
+void pe_subdirectory_set(const char * name) {
+
+  if (name != NULL) sprintf(subdirectory_, "%s/", name);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  pe_subdirectory
+ *
+ *****************************************************************************/
+
+void pe_subdirectory(char * name) {
+
+  sprintf(name, "%s", subdirectory_);
+
   return;
 }

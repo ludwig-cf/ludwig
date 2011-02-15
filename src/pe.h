@@ -2,7 +2,7 @@
  *
  *  pe.h
  *
- *  $Id: pe.h,v 1.3 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -17,11 +17,14 @@
 
 #include <mpi.h>
 
-void pe_init(int , char **);
+void pe_init(void);
 void pe_finalise(void);
 int  pe_rank(void);
 int  pe_size(void);
 void pe_parent_comm_set(const MPI_Comm parent);
+void pe_redirect_stdout(const char * filename);
+void pe_subdirectory_set(const char * name);
+void pe_subdirectory(char * name);
 
 MPI_Comm pe_comm(void);
 
