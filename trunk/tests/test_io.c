@@ -4,7 +4,7 @@
  *
  *  Test code for the lattice I/O harness code.
  *
- *  $Id: test_io.c,v 1.4 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -39,7 +39,8 @@ int main (int argc, char ** argv) {
 
   /* Take default system size */
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
   if (argc > 1) RUN_read_input_file(argv[1]);
   coords_init();
 
@@ -48,6 +49,7 @@ int main (int argc, char ** argv) {
   test_ascii();
 
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

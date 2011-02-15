@@ -7,7 +7,7 @@
  *  the stress are computed correctly for a given order parameter
  *  field.
  *
- *  $Id: test_polar_active.c,v 1.2 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -45,7 +45,8 @@ int main (int argc, char ** argv) {
 
   int ntotal[3] = {100, 100, 1};
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   coords_nhalo_set(2);
   coords_ntotal_set(ntotal);
@@ -70,6 +71,7 @@ int main (int argc, char ** argv) {
   phi_finish();
   coords_finish();
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

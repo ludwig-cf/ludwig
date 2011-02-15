@@ -4,7 +4,7 @@
  *
  *  Test the parallel environment.
  *
- *  $Id: test_pe.c,v 1.2 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,7 +22,8 @@ int main(int argc, char ** argv) {
   int my_rank = 0;
   int my_size = 1;
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   info("Checking pe_init() (post-hoc)...");
   test_assert(1);
@@ -47,6 +48,7 @@ int main(int argc, char ** argv) {
 
   info("About to do pe_finalise()...\n");
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

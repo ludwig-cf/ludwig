@@ -7,7 +7,7 @@
  *
  *  This only works in serial.
  *
- *  $Id: test_ewald.c,v 1.2 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -44,7 +44,8 @@ int main (int argc, char ** argv) {
   colloid_t * p_c1;
   colloid_t * p_c2;
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   if (pe_size() > 1) return 0;
 
@@ -428,6 +429,7 @@ int main (int argc, char ** argv) {
 
   coords_finish();
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

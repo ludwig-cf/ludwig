@@ -38,10 +38,12 @@ int main (int argc, char ** argv) {
   unsigned int state_ref[NFLUCTUATION_STATE] = {123, 456, 78, 9};
   unsigned int state[NFLUCTUATION_STATE];
 
+  MPI_Init(&argc, &argv);
+
   a1 = sqrt(2.0 + sqrt(2.0));
   a2 = sqrt(2.0 - sqrt(2.0));
 
-  pe_init(argc, argv);
+  pe_init();
   f = fluctuations_create(1);
 
   fluctuations_reap(f, 0, r);
@@ -93,6 +95,7 @@ int main (int argc, char ** argv) {
 
   fluctuations_destroy(f);
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

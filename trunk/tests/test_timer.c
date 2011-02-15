@@ -4,7 +4,7 @@
  *
  *  Test the timing routines.
  *
- *  $Id: test_timer.c,v 1.4 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -23,7 +23,8 @@
 
 int main(int argc, char ** argv) {
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   info("\nTesting timer routines...\n");
 
@@ -39,6 +40,7 @@ int main(int argc, char ** argv) {
   TIMER_statistics();
 
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

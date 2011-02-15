@@ -4,7 +4,7 @@
  *
  *  Tests for order parameter stuff.
  *
- *  $Id: test_phi.c,v 1.4 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -36,7 +36,8 @@ int main (int argc, char ** argv) {
   int nhalo = 2;
   int n[3];
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
 
   coords_nhalo_set(nhalo);
   coords_init();
@@ -86,6 +87,7 @@ int main (int argc, char ** argv) {
   coords_finish();
 
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 

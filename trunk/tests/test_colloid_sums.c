@@ -40,7 +40,8 @@ static void test_colloid_sums_move(void);
 
 int main(int argc, char ** argv) {
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
   info("Checking colloid sum messages\n");
 
   test_colloid_sums_1d();
@@ -48,6 +49,7 @@ int main(int argc, char ** argv) {
 
   info("Tests complete\n");
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }

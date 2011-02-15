@@ -4,7 +4,7 @@
  *
  *  Colloid cell list et al.
  *
- *  $Id: test_colloids.c,v 1.2 2010-11-02 17:51:22 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -38,7 +38,8 @@ int main(int argc, char ** argv) {
 
   int ncell[3];
 
-  pe_init(argc, argv);
+  MPI_Init(&argc, &argv);
+  pe_init();
   coords_init();
 
   /* The default local number of cells is {2, 2, 2} */
@@ -75,6 +76,7 @@ int main(int argc, char ** argv) {
 
   coords_finish();
   pe_finalise();
+  MPI_Finalize();
 
   return 0;
 }
