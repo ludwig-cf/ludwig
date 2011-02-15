@@ -37,13 +37,15 @@
 #
 ###############################################################################
 
+MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = gcc
+CC = gcc 
 MPICC = mpicc
 OPTS = -D_D3Q19_
 CFLAGS = -Wall -O3
+
 
 INC = -I.
 LIBS = -lm
@@ -88,7 +90,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      stats_calibration.o stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_surfactant.o stats_turbulent.o svn.o \
-     timer.o util.o wall.o colloids_Q_tensor.o
+     timer.o util.o wall.o colloids_Q_tensor.o ludwig.o
 
 ###############################################################################
 #
@@ -113,9 +115,9 @@ code:	svn $(OBJS)
 	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
 serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi" "OBJS=$(OBJS) main.o"
+	-L../mpi_s -lmpi" "OBJS=$(OBJS) $(MAIN).o"
 mpi:
-	$(MAKE) code "OBJS=$(OBJS) main.o" "CC=$(MPICC)"
+	$(MAKE) code "OBJS=$(OBJS) $(MAIN).o" "CC=$(MPICC)"
 
 libar:	$(OBJS)
 	$(AR) $(ARFLAGS) -o $(LIBRARY) $(OBJS)
@@ -148,4 +150,4 @@ svn:
 
 .PHONY : clean
 clean:
-	-rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) main.o
+	-rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) $(MAIN).o

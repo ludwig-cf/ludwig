@@ -141,6 +141,7 @@ void COLL_init() {
   int init_random;
   int ncell[3];
   char filename[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX];
   char keyvalue[128];
   double dh;
   double width;
@@ -195,16 +196,18 @@ void COLL_init() {
 
   if (init_random || init_from_file) {
 
+      pe_subdirectory(subdirectory);
+
     /* Initialisation section. */
 
     colloid_io_run_time();
 
     if (init_from_file) {
       if (get_step() == 0) {
-	sprintf(filename, "%s", "config.cds.init");
+	sprintf(filename, "%s%s", subdirectory, "config.cds.init");
       }
       else {
-	sprintf(filename, "%s%8.8d", "config.cds", get_step());
+	sprintf(filename, "%s/%s%8.8d", subdirectory, "config.cds", get_step());
       }
 
       colloid_io_read(filename);
