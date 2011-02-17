@@ -5,7 +5,7 @@
  *  Time evolution for the blue phase tensor order parameter via the
  *  Beris-Edwards equation.
  *
- *  $Id: blue_phase_beris_edwards.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,6 +21,7 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "site_map.h"
 #include "lattice.h"
 #include "phi.h"
@@ -68,6 +69,7 @@ void blue_phase_beris_edwards(void) {
   if (fluxz == NULL) fatal("malloc(fluxz) failed");
 
   hydrodynamics_halo_u();
+  hydrodynamics_leesedwards_transformation();
   advection_upwind(fluxe, fluxw, fluxy, fluxz);
   advection_bcs_no_normal_flux(fluxe, fluxw, fluxy, fluxz);
   blue_phase_be_update();
@@ -121,7 +123,7 @@ static void blue_phase_be_update(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = le_site_index(ic, jc, kc);
 
 	phi_get_q_tensor(index, q);
 	blue_phase_molecular_field(index, h);
@@ -135,7 +137,7 @@ static void blue_phase_be_update(void) {
 	  q[X][Z] += dt*Gamma_*h[X][Z];
 	  q[Y][Y] += dt*Gamma_*h[Y][Y];
 	  q[Y][Z] += dt*Gamma_*h[Y][Z];
-	  
+
 	}
 	else {
 
@@ -166,29 +168,29 @@ static void blue_phase_be_update(void) {
 	     
 	  /* Here's the full hydrodynamic update. */
 	  
-	  indexj = coords_index(ic, jc-1, kc);
-	  indexk = coords_index(ic, jc, kc-1);
+	  indexj = le_site_index(ic, jc-1, kc);
+	  indexk = le_site_index(ic, jc, kc-1);
 	  
 	  q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
 			 - fluxe[nop*index + XX] + fluxw[nop*index  + XX]
 			 - fluxy[nop*index + XX] + fluxy[nop*indexj + XX]
 			 - fluxz[nop*index + XX] + fluxz[nop*indexk + XX]);
-	     
+
 	  q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y]
 			 - fluxe[nop*index + XY] + fluxw[nop*index  + XY]
 			 - fluxy[nop*index + XY] + fluxy[nop*indexj + XY]
 			 - fluxz[nop*index + XY] + fluxz[nop*indexk + XY]);
-	     
+
 	  q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z]
 			 - fluxe[nop*index + XZ] + fluxw[nop*index  + XZ]
 			 - fluxy[nop*index + XZ] + fluxy[nop*indexj + XZ]
 			 - fluxz[nop*index + XZ] + fluxz[nop*indexk + XZ]);
-	     
+
 	  q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y]
 			 - fluxe[nop*index + YY] + fluxw[nop*index  + YY]
 			 - fluxy[nop*index + YY] + fluxy[nop*indexj + YY]
 			 - fluxz[nop*index + YY] + fluxz[nop*indexk + YY]);
-	     
+
 	  q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z]
 			 - fluxe[nop*index + YZ] + fluxw[nop*index  + YZ]
 			 - fluxy[nop*index + YZ] + fluxy[nop*indexj + YZ]
