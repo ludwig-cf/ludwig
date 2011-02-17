@@ -367,7 +367,7 @@ static void phi_force_compute_fluxes(void) {
 	index1 = le_site_index(icm1, jc, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  fluxw[3*index + ia] = 0.5*(pth1[X][ia] + pth0[X][ia]);
+	  fluxw[3*index + ia] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxe_a = (1/2)[P(i, j, k) + P(i+1, j, k)_xa */
@@ -375,7 +375,7 @@ static void phi_force_compute_fluxes(void) {
 	index1 = le_site_index(icp1, jc, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[3*index + ia] = 0.5*(pth1[X][ia] + pth0[X][ia]);
+	  fluxe[3*index + ia] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxy_a = (1/2)[P(i, j, k) + P(i, j+1, k)]_ya */
@@ -383,7 +383,7 @@ static void phi_force_compute_fluxes(void) {
 	index1 = le_site_index(ic, jc+1, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[3*index + ia] = 0.5*(pth1[Y][ia] + pth0[Y][ia]);
+	  fluxy[3*index + ia] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	
 	/* fluxz_a = (1/2)[P(i, j, k) + P(i, j, k+1)]_za */
@@ -391,7 +391,7 @@ static void phi_force_compute_fluxes(void) {
 	index1 = le_site_index(ic, jc, kc+1);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[3*index + ia] = 0.5*(pth1[Z][ia] + pth0[Z][ia]);
+	  fluxz[3*index + ia] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 
 	/* Next site */
