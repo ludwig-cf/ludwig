@@ -333,8 +333,7 @@ void ludwig_run(const char * inputfile) {
 
       stats_distribution_print();
       phi_stats_print_stats();
-      blue_phase_stats(step);
-//      stats_free_energy_density();
+      stats_free_energy_density();
       ludwig_report_momentum();
       hydrodynamics_stats();
 
