@@ -184,6 +184,7 @@ void ludwig_run(const char * inputfile) {
   int     step = 0;
 
   pe_init();
+  pe_subdirectory_set(".");
   RUN_read_input_file(inputfile);
 
   ludwig_rt();
@@ -332,7 +333,8 @@ void ludwig_run(const char * inputfile) {
 
       stats_distribution_print();
       phi_stats_print_stats();
-      stats_free_energy_density();
+      blue_phase_stats(step);
+//      stats_free_energy_density();
       ludwig_report_momentum();
       hydrodynamics_stats();
 
