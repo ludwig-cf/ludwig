@@ -207,7 +207,7 @@ void COLL_init() {
 	sprintf(filename, "%s%s", subdirectory, "config.cds.init");
       }
       else {
-	sprintf(filename, "%s/%s%8.8d", subdirectory, "config.cds", get_step());
+	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", get_step());
       }
 
       colloid_io_read(filename);
