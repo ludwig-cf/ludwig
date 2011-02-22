@@ -140,14 +140,14 @@ static void ludwig_init(void) {
   else {
     /* Distributions */
 
-    sprintf(filename, "%s/dist-%8.8d", subdirectory, get_step());
+    sprintf(filename, "%sdist-%8.8d", subdirectory, get_step());
     info("Re-starting simulation at step %d with data read from "
 	 "config\nfile(s) %s\n", get_step(), filename);
 
     io_read(filename, distribution_io_info());
 
     if (phi_is_finite_difference()) {
-      sprintf(filename,"%s/phi-%8.8d", subdirectory, get_step());
+      sprintf(filename,"%sphi-%8.8d", subdirectory, get_step());
       info("Reading phi state from %s\n", filename);
       io_read(filename, io_info_phi);
     }
@@ -184,7 +184,6 @@ void ludwig_run(const char * inputfile) {
   int     step = 0;
 
   pe_init();
-  pe_subdirectory_set(".");
   RUN_read_input_file(inputfile);
 
   ludwig_rt();
