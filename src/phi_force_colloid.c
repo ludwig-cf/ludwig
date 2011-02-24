@@ -360,7 +360,7 @@ static void phi_force_interpolation2(void) {
 
   coords_nlocal(nlocal);
 
-  chemical_stress = fe_chemical_stress_function();
+  chemical_stress = phi_force_stress_set;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -383,8 +383,8 @@ static void phi_force_interpolation2(void) {
 	if (p_c) {
 	  /* Compute the fluxes at solid/fluid boundary */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -0.5*pth0[ia][X];
-	    p_c->force[ia] += 0.5*pth0[ia][X];
+	    force[ia] = -pth0[ia][X];
+	    p_c->force[ia] += pth0[ia][X];
 	  }
 	}
 	else {
@@ -401,8 +401,8 @@ static void phi_force_interpolation2(void) {
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*pth0[ia][X];
-	    p_c->force[ia] -= 0.5*pth0[ia][X];
+	    force[ia] += pth0[ia][X];
+	    p_c->force[ia] -= pth0[ia][X];
 	  }
 	}
 	else {
@@ -419,8 +419,8 @@ static void phi_force_interpolation2(void) {
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= 0.5*pth0[ia][Y];
-	    p_c->force[ia] += 0.5*pth0[ia][Y];
+	    force[ia] -= pth0[ia][Y];
+	    p_c->force[ia] += pth0[ia][Y];
 	  }
 	}
 	else {
@@ -437,8 +437,8 @@ static void phi_force_interpolation2(void) {
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*pth0[ia][Y];
-	    p_c->force[ia] -= 0.5*pth0[ia][Y];
+	    force[ia] += pth0[ia][Y];
+	    p_c->force[ia] -= pth0[ia][Y];
 	  }
 	}
 	else {
@@ -455,8 +455,8 @@ static void phi_force_interpolation2(void) {
 	if (p_c) {
 	  /* Fluid-solid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= 0.5*pth0[ia][Z];
-	    p_c->force[ia] += 0.5*pth0[ia][Z];
+	    force[ia] -= pth0[ia][Z];
+	    p_c->force[ia] += pth0[ia][Z];
 	  }
 	}
 	else {
@@ -473,8 +473,8 @@ static void phi_force_interpolation2(void) {
 	if (p_c) {
 	  /* Fluid-solid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*pth0[ia][Z];
-	    p_c->force[ia] -= 0.5*pth0[ia][Z];
+	    force[ia] += pth0[ia][Z];
+	    p_c->force[ia] -= pth0[ia][Z];
 	  }
 	}
 	else {
