@@ -29,6 +29,7 @@
 #include "ran.h"
 #include "lattice.h"
 #include "util.h"
+#include "site_map.h"
 #include "colloids_Q_tensor.h"
 
 struct io_info_t * io_info_scalar_q_;
@@ -37,7 +38,7 @@ static int anchoring_ = ANCHORING_NORMAL;
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
 static void scalar_order_parameter_director(double q[3][3], double qs[4]);
-
+static void colloids_q_estimate(int, int, int, double dir[3]);
 
 void COLL_set_Q(){
 
@@ -178,6 +179,262 @@ void COLL_set_Q(){
       }
     }
   }
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_q_set
+ *
+ *  Set Q_ab inside particle near the surface to satisfy current
+ *  anchoring condition. This is required for the calculation of
+ *  order parameter gradients in the fluid.
+ *
+ *  Normal: the director near the surface is determined solely by
+ *          geometry.
+ *  Planar: an estimate of the nearby order parameter is required,
+ *          which is then forced to lie in the tangent plane.
+ *
+ *****************************************************************************/
+
+void colloids_q_set(void) {
+
+  int ia;
+  int ic,jc,kc;
+  
+  colloid_t * p_colloid;
+
+  double rsite0[3];
+  double normal[3];
+  double dir[3];
+
+  colloid_t * colloid_at_site_index(int);
+
+  int nlocal[3],offset[3];
+  int index;
+
+  double q[3][3];
+  double director[3];
+  double len_normal;
+  double rlen_normal;
+  double amplitude;
+  double rdotd;
+  double dir_len;
+  double root3;
+  amplitude = 0.33333333;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(offset);
+  root3 = sqrt(3.0);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	
+	index = coords_index(ic, jc, kc);
+
+	p_colloid = colloid_at_site_index(index);
+	
+	/* check if this node is inside a colloid */
+
+	if (p_colloid != NULL) {	  
+
+	  /* Need to translate the colloid position to "local"
+	   * coordinates, so that the correct range of lattice
+	   * nodes is found */
+
+	  rsite0[X] = 1.0*(offset[X] + ic);
+	  rsite0[Y] = 1.0*(offset[Y] + jc);
+	  rsite0[Z] = 1.0*(offset[Z] + kc);
+
+	  /* calculate the vector between the centre of mass of the
+	   * colloid and node i, j, k 
+	   * so need to calculate rsite0 - r0 */
+
+	  normal[X] = rsite0[X] - p_colloid->s.r[X];
+	  normal[Y] = rsite0[Y] - p_colloid->s.r[Y];
+	  normal[Z] = rsite0[Z] - p_colloid->s.r[Z];
+
+	  /* now for homeotropic anchoring only thing needed is to
+	   * normalise the the surface normal vector  */
+
+	  len_normal = modulus(normal);
+
+	  if (len_normal > (p_colloid->s.ah - root3)) {
+
+	    /* We are near the surface */
+	    rlen_normal = 1.0/len_normal;
+
+	    /* Homeotropic anchoring (the default) */
+
+	    director[X] = normal[X]*rlen_normal;
+	    director[Y] = normal[Y]*rlen_normal;
+	    director[Z] = normal[Z]*rlen_normal;
+	  
+	    if (anchoring_ == ANCHORING_PLANAR) {
+
+	      /* We need an estimate of the existing director */
+
+	      colloids_q_estimate(ic, jc, kc, dir);
+
+	      rdotd = dot_product(normal, dir)*rlen_normal*rlen_normal;
+	    
+	      dir[X] = dir[X] - rdotd*normal[X];
+	      dir[Y] = dir[Y] - rdotd*normal[Y];
+	      dir[Z] = dir[Z] - rdotd*normal[Z];
+	    
+	      dir_len = modulus(dir);
+
+	      if (dir_len < 10e-8) {
+		/* The director is normal to the surface; just have
+		 * to take this (as for normal). */
+	      }
+	      else {
+		for (ia = 0; ia < 3; ia++) {
+		  director[ia] = dir[ia] / dir_len;
+		}
+	      }
+	    }
+
+	    q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
+	    q[X][Y] = 1.5*amplitude*(director[X]*director[Y]);
+	    q[X][Z] = 1.5*amplitude*(director[X]*director[Z]);
+	    q[Y][Y] = 1.5*amplitude*(director[Y]*director[Y] - 1.0/3.0);
+	    q[Y][Z] = 1.5*amplitude*(director[Y]*director[Z]);
+
+	    phi_set_q_tensor(index, q);
+	  }
+	}
+	
+      }
+    }
+  }
+
+  return;
+}
+
+/******************************************************************************
+ *
+ *  colloids_q_estimate
+ *
+ *  For solid site (ic, jc, kc), get an estimate of the nearby fluid
+ *  director by averaging the order parameter at (at most) six
+ *  nearest neighbours.
+ *
+ *  If there are no fluid sites nearby, we don't care what the answer
+ *  is, but set to (1, 0, 0).
+ *
+ ******************************************************************************/
+
+static void colloids_q_estimate(int ic, int jc, int kc, double dir[3]) {
+
+  int index;
+  int ia, ib;
+  int count;
+  double q[3][3];
+  double q1[3][3];
+  double qs[4];
+  double rcount;
+
+  count = 0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q[ia][ib] = 0.0;
+    }
+  }
+
+  if (site_map_get_status(ic+1, jc, kc) == FLUID) {
+    index = coords_index(ic+1, jc, kc);
+    phi_get_q_tensor(index, q1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q[ia][ib] += q1[ia][ib];
+      }
+    }
+    ++count;
+  }
+
+  if (site_map_get_status(ic-1, jc, kc) == FLUID) {
+    index = coords_index(ic-1, jc, kc);
+    phi_get_q_tensor(index, q1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q[ia][ib] += q1[ia][ib];
+      }
+    }
+    ++count;
+  }
+
+  if (site_map_get_status(ic, jc+1, kc) == FLUID) {
+    index = coords_index(ic, jc+1, kc);
+    phi_get_q_tensor(index, q1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q[ia][ib] += q1[ia][ib];
+      }
+    }
+    ++count;
+  }
+
+  if (site_map_get_status(ic, jc-1, kc) == FLUID) {
+    index = coords_index(ic, jc-1, kc);
+    phi_get_q_tensor(index, q1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q[ia][ib] += q1[ia][ib];
+      }
+    }
+    ++count;
+  }
+
+  if (site_map_get_status(ic, jc, kc+1) == FLUID) {
+    index = coords_index(ic, jc, kc+1);
+    phi_get_q_tensor(index, q1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q[ia][ib] += q1[ia][ib];
+      }
+    }
+    ++count;
+  }
+
+  if (site_map_get_status(ic, jc, kc-1) == FLUID) {
+    index = coords_index(ic, jc, kc-1);
+    phi_get_q_tensor(index, q1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q[ia][ib] += q1[ia][ib];
+      }
+    }
+    ++count;
+  }
+
+  if (count > 0) {
+    rcount = 1.0/count;
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q[ia][ib] = q[ia][ib]*rcount;
+      }
+    }
+    scalar_order_parameter_director(q, qs);
+
+    dir[X] = qs[1];
+    dir[Y] = qs[2];
+    dir[Z] = qs[3];
+  }
+  else {
+    dir[0] = 1.0;
+    dir[1] = 0.0;
+    dir[2] = 0.0;
+  }
+
   return;
 }
 
