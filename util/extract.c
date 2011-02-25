@@ -47,6 +47,7 @@ int nplanes_ = 0;
 int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
+int input_binary_ = 1;         /* Switch for format of input */
 int output_binary_ = 0;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
 
@@ -355,14 +356,29 @@ void read_data(FILE * fp_data, int n[3], double * data) {
   int ic, jc, kc, index, nr;
   double phi;
 
-  for (ic = 1; ic <= n[0]; ic++) {
-    for (jc = 1; jc <= n[1]; jc++) {
-      for (kc = 1; kc <= n[2]; kc++) {
-	index = site_index(ic, jc, kc, nlocal);
+  if (input_binary_) {
+    for (ic = 1; ic <= n[0]; ic++) {
+      for (jc = 1; jc <= n[1]; jc++) {
+	for (kc = 1; kc <= n[2]; kc++) {
+	  index = site_index(ic, jc, kc, nlocal);
 
-	for (nr = 0; nr < nrec_; nr++) {
-	  fread(&phi, sizeof(double), 1, fp_data);
-	  *(data + nrec_*index + nr) = phi;
+	  for (nr = 0; nr < nrec_; nr++) {
+	    fread(&phi, sizeof(double), 1, fp_data);
+	    *(data + nrec_*index + nr) = phi;
+	  }
+	}
+      }
+    }
+  }
+  else {
+    for (ic = 1; ic <= n[0]; ic++) {
+      for (jc = 1; jc <= n[1]; jc++) {
+	for (kc = 1; kc <= n[2]; kc++) {
+	  index = site_index(ic, jc, kc, nlocal);
+
+	  for (nr = 0; nr < nrec_; nr++) {
+	    fscanf(fp_data, "%le", data + nrec_*index + nr);
+	  }
 	}
       }
     }
