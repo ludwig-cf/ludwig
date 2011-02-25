@@ -34,7 +34,7 @@
  *  The procedure ensures total momentum is conserved, ie., that
  *  leaving the fluid enters the colloid and vice versa.
  *
- *  $Id: phi_force_colloid.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -99,7 +99,7 @@ static void phi_force_fast(void) {
   phi_force_interpolation1();
 
   if (0) {
-    /* Could use method assuming zero stress on inside */
+    /* Could use method assuming stress on inside not available */
     phi_force_interpolation2();
   }
 
@@ -360,7 +360,7 @@ static void phi_force_interpolation2(void) {
 
   coords_nlocal(nlocal);
 
-  chemical_stress = phi_force_stress_set;
+  chemical_stress = phi_force_stress;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
