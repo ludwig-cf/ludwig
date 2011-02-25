@@ -345,6 +345,11 @@ void ludwig_run(const char * inputfile) {
     /* Next time step */
   }
 
+  /* To prevent any conflict between the last regular dump, and
+   * a final dump, there's a barrier here. */
+
+  MPI_Barrier(pe_comm()); 
+
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
