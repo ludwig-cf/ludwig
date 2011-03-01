@@ -17,6 +17,9 @@
 ##############################################################################
 #!/bin/bash
 
+# Test machine is currently martensite, where we need
+export PATH=$PATH:/opt/openmpi/bin
+
 # Serial unit tests
 
 cd ../mpi_s
@@ -129,6 +132,14 @@ diff /tmp/j8 ../tests/regression/test_chol_normal_d3q19.ref8
 echo Running Cholesteric planar anchoring parallel test
 mpirun -np 8 ./Ludwig.exe ../tests/regression/test_chol_planar_input > /tmp/j8
 diff /tmp/j8 ../tests/regression/test_chol_planar_d3q19.ref8
+
+echo Running PARALLEL RESTART TEST PART ONE
+mpirun -np 8 ./Ludwig.exe ../tests/regression/test_parallel_restart_input1 > /tmp/j9
+diff /tmp/j9 ../tests/regression/test_parallel_restart1_d3q19.ref8
+
+echo Running PARALLEL RESTART TEST PART TWO
+mpirun -np 8 ./Ludwig.exe ../tests/regression/test_parallel_restart_input2 > /tmp/j9
+diff /tmp/j9 ../tests/regression/test_parallel_restart2_d3q19.ref8
 
 make clean
 
