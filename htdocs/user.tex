@@ -667,6 +667,17 @@ set its initial position with
 
 \inputkey{colloid\_random\_r0} the initial position vector.
 
+\subsubsection{Restarting at random!}
+
+Be careful if you are restarting a simulation that used the random
+initialisation at $t=0$. You must change to 
+
+\texttt{colloid\_init  from\_file}
+
+to avoid generating a completely new set of random positions
+(which will not be consistent with the density and order parameter
+fields at the restart time). This is almost certainly not what you
+intended!
 
 \subsubsection{Hydrodynamic radius}
 
