@@ -39,7 +39,6 @@ void colloid_io_run_time(void) {
 
   /* Defaults */
 
-  colloid_io_format_input_serial_set();
   colloid_io_format_input_ascii_set();
   colloid_io_format_output_ascii_set();
 
@@ -70,7 +69,7 @@ void colloid_io_run_time(void) {
     info("Input format:  binary\n");
   }
 
-  if (strncmp("BINARY_SERIAL", tmp, 6) == 0 ) {
+  if (strncmp("BINARY_SERIAL", tmp, 13) == 0 ) {
     colloid_io_format_input_binary_set();
     colloid_io_format_input_serial_set();
     info("Input file:    serial single file\n");
