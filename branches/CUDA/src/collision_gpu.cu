@@ -606,16 +606,11 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  }
 	  
 	  /* Project post-collision modes back onto the distribution */
-	  
-/* 	  double f_tmp[NVEL]; */
-	  
-/* 	  for (p = 0; p < NVEL; p++) { */
-/* 	    f_tmp[p] = 0.0; */
-/* 	    for (m = 0; m < NVEL; m++) { */
-/* 	      f_tmp[p] += mi_d[p][m]*mode[m]; */
-/* 	    } */
-/* 	  f_d[nsite*NDIST*p + index] = f_tmp[p]; */
-/* 	} */
+
+	  /* the below syncthreads is required, otherwise the above 
+	     summation goes wrong. This is NOT UNDERSTOOD yet and under
+	     investigation - Alan Gray */	  
+	  __syncthreads();
 
   	  double f_tmp;
 	  
