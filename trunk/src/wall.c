@@ -6,13 +6,13 @@
  *
  *  Special case: boundary walls.
  *
- *  $Id: wall.c,v 1.12 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -52,6 +52,7 @@ static void     init_boundary_site_map(void);
 static void     init_boundary_speeds(const double, const double);
 static void     report_boundary_memory(void);
 static void     set_wall_velocity(void);
+static void     wall_shear_init(double utop, double ubottom);
 
 /*****************************************************************************
  *
@@ -61,6 +62,7 @@ static void     set_wall_velocity(void);
 
 void wall_init() {
 
+  int init_shear = 0;
   double ux_bottom = 0.0;
   double ux_top = 0.0;
   char   tmp[128];
@@ -72,10 +74,15 @@ void wall_init() {
   if (strcmp(tmp, "yes") == 0) is_boundary_wall_ = 1;
 
   if (is_boundary_wall_) {
+    info("\n");
+    info("Boundary walls\n");
+    info("--------------\n");
     init_boundary_site_map();
     init_links();
     init_boundary_speeds(ux_bottom, ux_top);
     report_boundary_memory();
+    RUN_get_int_parameter("boundary_shear_init", &init_shear);
+    if (init_shear) wall_shear_init(ux_top, ux_bottom);
   }
 
   fnet_[X] = 0.0;
@@ -450,6 +457,88 @@ void wall_accumulate_force(const double f[3]) {
 void wall_net_momentum(double g[3]) {
 
   MPI_Reduce(fnet_, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  wall_shear_init
+ *
+ *  Initialise the distributions to be consistent with a linear shear
+ *  profile for the given top and bottom wall velocities.
+ *
+ *  This is only relevant for walls at z = 0 and z = L_z.
+ *
+ *****************************************************************************/
+
+static void wall_shear_init(double uxtop, double uxbottom) {
+
+  int ic, jc, kc, index;
+  int ia, ib, p;
+  int nlocal[3];
+  int noffset[3];
+  double rho, u[3], gradu[3][3];
+  double eta;
+  double gammadot;
+  double f;
+  double cdotu;
+  double sdotq;
+
+  /* Shear rate */
+  gammadot = (uxtop - uxbottom)/L(Z);
+
+  info("Initialising linear shear profile for walls\n");
+  info("Speed at top u_x    %14.7e\n", uxtop);
+  info("Speed at bottom u_x %14.7e\n", uxbottom); 
+  info("Overall shear rate  %14.7e\n", gammadot);
+
+  /* Initialise the density, velocity, gradu; ghost modes are zero */
+
+  rho = get_rho0();
+  eta = get_eta_shear();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ia = 0; ia < 3; ia++) {
+    u[ia] = 0.0;
+    for (ib = 0; ib < 3; ib++) {
+      gradu[ia][ib] = 0.0;
+    }
+  }
+
+  /* Shear rate */
+  gradu[X][Z] = gammadot;
+
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	/* Linearly interpolate between top and bottom to get velocity;
+	 * the - 1.0 accounts for kc starting at 1. */
+	u[X] = uxbottom + (noffset[Z] + kc - 0.5)*(uxtop - uxbottom)/L(Z);
+
+        index = coords_index(ic, jc, kc);
+
+        for (p = 0; p < NVEL; p++) {
+
+	  cdotu = 0.0;
+	  sdotq = 0.0;
+
+          for (ia = 0; ia < 3; ia++) {
+            cdotu += cv[p][ia]*u[ia];
+            for (ib = 0; ib < 3; ib++) {
+              sdotq += (rho*u[ia]*u[ib] - eta*gradu[ia][ib])*q_[p][ia][ib];
+            }
+          }
+          f = wv[p]*rho*(1.0 + rcs2*cdotu + 0.5*rcs2*rcs2*sdotq);
+          distribution_f_set(index, p, 0, f);
+        }
+        /* Next site */
+      }
+    }
+  }
 
   return;
 }
