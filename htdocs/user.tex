@@ -756,6 +756,18 @@ $z = z_{min}$ and $z = z_{max}$, respectively. Like all
 velocities, these values must respect the low Mach number
 constraint $u_x < c_s$.
 
+There is a further option for use with the special case in which
+top and bottom walls in the $z-direction$ are used to drive a shear
+flow (typically with the top speed positive and the bottom speed
+negative). The key
+
+\inputkey{boundary\_shear\_init}
+
+may be switched on (set to 1) to provide initialisation of the
+LB distributions appropriate for the specified shear rate based
+on a linear velocity profile in the $z-$direction. The default
+is to initialise the fluid at rest.
+
 \subsection{Lees-Edwards planes}
 
 \inputkey{N\_LE\_plane}
