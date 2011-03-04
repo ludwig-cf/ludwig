@@ -315,6 +315,7 @@ lj_epsilon 0.0003
 #                         unchanged
 #  boundary_speed_top     For use with built-in walls
 #  boundary_speed_bottom  For use with built-in walls
+#  boundary_shear_init    Initialise shear flow (z direction only).
 #
 #  porous_media_file filestub    If present, the file filestub.001-001
 #                                should contain porous media data
@@ -329,6 +330,7 @@ boundary_walls_on no
 periodicity 1_1_1
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
+boundary_shear_init 0
 
 #porous_media_format BINARY
 #porous_media_file   capillary_8_8_32.dat
