@@ -70,6 +70,7 @@
 #include "stats_free_energy.h"
 #include "stats_distribution.h"
 #include "stats_calibration.h"
+#include "stats_velocity.h"
 
 #include "ludwig.h"
 
@@ -334,7 +335,7 @@ void ludwig_run(const char * inputfile) {
       phi_stats_print_stats();
       stats_free_energy_density();
       ludwig_report_momentum();
-      hydrodynamics_stats();
+      stats_velocity_minmax();
 
       test_isothermal_fluctuations();
       info("\nCompleted cycle %d\n", step);
