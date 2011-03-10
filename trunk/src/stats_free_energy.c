@@ -36,8 +36,8 @@ void stats_free_energy_density(void) {
   int nlocal[3];
 
   double fed;
-  double fe_local[2];
-  double fe_total[2];
+  double fe_local[3];
+  double fe_total[3];
   double rv;
 
   double (* free_energy_density)(const int index);
@@ -47,6 +47,7 @@ void stats_free_energy_density(void) {
 
   fe_local[0] = 0.0; /* Total */
   fe_local[1] = 0.0; /* Fluid */
+  fe_local[2] = 0.0; /* Volume */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -56,17 +57,20 @@ void stats_free_energy_density(void) {
 
 	fed = free_energy_density(index);
 	fe_local[0] += fed;
-	if (site_map_get_status_index(index) == FLUID) fe_local[1] += fed;
+	if (site_map_get_status_index(index) == FLUID) {
+	    fe_local[1] += fed;
+	    fe_local[2] += 1.0;
+	}
       }
     }
   }
 
-  MPI_Reduce(fe_local, fe_total, 2, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+  MPI_Reduce(fe_local, fe_total, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
   info("\nFree energy density - timestep total fluid\n");
-  info("[fed] %14d %14.7e %14.7e\n", get_step(), rv*fe_total[0],
-       rv*fe_total[1]);
+  info("[fed] %14d %17.10e %17.10e\n", get_step(), rv*fe_total[0],
+       fe_total[1]/fe_total[2]);
 
   return;
 }
