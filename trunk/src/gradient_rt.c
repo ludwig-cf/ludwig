@@ -4,7 +4,7 @@
  *
  *  Set the gradient routine. 
  *
- *  $Id: gradient_rt.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -22,6 +22,7 @@
 #include "gradient.h"
 #include "gradient_2d_5pt_fluid.h"
 #include "gradient_3d_7pt_fluid.h"
+#include "gradient_3d_7pt_solid.h"
 #include "gradient_3d_27pt_fluid.h"
 #include "gradient_3d_27pt_solid.h"
 #include "gradient_rt.h"
@@ -56,6 +57,10 @@ void gradient_run_time(void) {
     else if (strcmp(key1, "3d_7pt_fluid") == 0) {
       info("3d_7pt_fluid\n");
       gradient_3d_7pt_fluid_init();
+    }
+    else if (strcmp(key1, "3d_7pt_solid") == 0) {
+      info("3d_7pt_solid\n");
+      gradient_3d_7pt_solid_init();
     }
     else if (strcmp(key1, "3d_27pt_fluid") == 0) {
       info("3d_27pt_fluid\n");
