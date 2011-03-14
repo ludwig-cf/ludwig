@@ -15,6 +15,10 @@
 #ifndef BLUEPHASE_H
 #define BLUEPHASE_H
 
+/* 'Extension' of free energy (pending free_energy_tensor.h) */
+
+#include "free_energy.h"
+
 void   blue_phase_set_free_energy_parameters(double, double, double, double);
 void   blue_phase_set_xi(double);
 void   blue_phase_set_zeta(double);
