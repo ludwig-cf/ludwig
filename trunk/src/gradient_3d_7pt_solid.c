@@ -49,6 +49,8 @@
 #include "coords.h"
 #include "gradient.h"
 #include "site_map.h"
+#include "free_energy.h"
+#include "colloids_Q_tensor.h"
 #include "gradient_3d_7pt_solid.h"
 
 
@@ -58,7 +60,6 @@ static void gradient_3d_7pt_fluid_operator(const int nop, const double * field,
 
 static const int cv_[6][3] = {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0},
 			      {0,0,1}, {0,0,-1}};
-static const double wlrk_ = 1.0;
 
 /*****************************************************************************
  *
@@ -100,6 +101,10 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
  *
  *  gradient_3d_7pt_fluid_operator
  *
+ *  We need both the surface anchoring W and the fluid elastic constant
+ *  kappa here to provide wlrk = WL/kappa. The lengthscale L is assumed
+ *  to be the grid scale L = 1.
+ *
  *****************************************************************************/
 
 static void gradient_3d_7pt_fluid_operator(const int nop,
@@ -114,10 +119,14 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   int index, index1;
 
   double dx1[5], dx2[5], dy1[5], dy2[5], dz1[5], dz2[5], qs[5];
-  extern void colloids_q_boundary(int, const int di[3], double qs[5]);
+  double w, kappa, wlrk;
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+
+  w = colloids_q_tensor_w();
+  kappa = fe_kappa();
+  wlrk = w/kappa;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -131,7 +140,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 	if (site_map_get_status_index(index1) == COLLOID) {
 	    colloids_q_boundary(index, cv_[0], qs);
 	    for (n = 0; n < nop; n++) {
-		dx1[n] = -wlrk_*(field[nop*index + n] - qs[n]);
+		dx1[n] = -wlrk*(field[nop*index + n] - qs[n]);
 	    }
 	}
 	else {
@@ -144,7 +153,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 	if (site_map_get_status_index(index1) == COLLOID) {
 	    colloids_q_boundary(index, cv_[1], qs);
 	    for (n = 0; n < nop; n++) {
-		dx2[n] = -wlrk_*(field[nop*index + n] - qs[n]);
+		dx2[n] = -wlrk*(field[nop*index + n] - qs[n]);
 	    }
 	}
 	else {
@@ -158,7 +167,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 	    colloids_q_boundary(index, cv_[2], qs);
 
 	    for (n = 0; n < nop; n++) {
-		dy1[n] = -wlrk_*(field[nop*index + n] - qs[n]);
+		dy1[n] = -wlrk*(field[nop*index + n] - qs[n]);
 	    }
 	}
 	else {
@@ -171,7 +180,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 	if (site_map_get_status_index(index1) == COLLOID) {
 	    colloids_q_boundary(index, cv_[3], qs);
 	    for (n = 0; n < nop; n++) {
-		dy2[n] = -wlrk_*(field[nop*index + n] - qs[n]);
+		dy2[n] = -wlrk*(field[nop*index + n] - qs[n]);
 	    }
 	}
 	else {
@@ -184,7 +193,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 	if (site_map_get_status_index(index1) == COLLOID) {
 	    colloids_q_boundary(index, cv_[4], qs);
 	    for (n = 0; n < nop; n++) {
-		dz1[n] = -wlrk_*(field[nop*index + n] - qs[n]);
+		dz1[n] = -wlrk*(field[nop*index + n] - qs[n]);
 	    }
 	}
 	else {
@@ -197,7 +206,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 	if (site_map_get_status_index(index1) == COLLOID) {
 	    colloids_q_boundary(index, cv_[5], qs);
 	    for (n = 0; n < nop; n++) {
-		dz2[n] = -wlrk_*(field[nop*index + n] - qs[n]);
+		dz2[n] = -wlrk*(field[nop*index + n] - qs[n]);
 	    }
 	}
 	else {

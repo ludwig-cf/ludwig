@@ -22,6 +22,9 @@ void COLL_set_Q_2(void);
 void COLL_randomize_Q(double delta_r);
 void colloids_fix_swd(void);
 void colloids_q_tensor_anchoring_set(const int type);
+void colloids_q_tensor_w_set(double w);
+void colloids_q_boundary(int index, const int di[3], double qs[5]);
+double colloids_q_tensor_w(void);
 
 extern struct io_info_t * io_info_scalar_q_;
 void scalar_q_io_info_set(struct io_info_t * info);
