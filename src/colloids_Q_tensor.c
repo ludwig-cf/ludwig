@@ -34,6 +34,7 @@
 
 struct io_info_t * io_info_scalar_q_;
 static int anchoring_ = ANCHORING_NORMAL;
+static double w_surface_ = 0.0; /* Anchoring strength in free energy */
 
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
@@ -199,23 +200,19 @@ void COLL_set_Q(){
 
 void colloids_q_boundary(int index, const int di[3], double qs[5]) {
 
-  int ia, index1;
+  int ia, ib, ic, id, index1;
   int isite[3];
   int noffset[3];
 
   double rsite0[3];
-  double normal[3];
-  double dir[3];
+  double nhat[3];
 
   double q[3][3];
-  double qscalar[4];
-  double director[3];
+  double qtilde[3][3];
   double len_normal;
   double rlen_normal;
   double amplitude;
-  double rdotd;
-  double dir_len;
-  
+
   colloid_t * p_colloid;
   colloid_t * colloid_at_site_index(int);
 
@@ -227,8 +224,8 @@ void colloids_q_boundary(int index, const int di[3], double qs[5]) {
 
   coords_index_to_ijk(index, isite);
   for (ia = 0; ia < 3; ia++) {
-      isite[ia] += di[ia];
-      rsite0[ia] = 1.0*(noffset[ia] + isite[ia]);
+    isite[ia] += di[ia];
+    rsite0[ia] = 1.0*(noffset[ia] + isite[ia]);
   }
 
   index1 = coords_index(isite[X], isite[Y], isite[Z]);
@@ -239,59 +236,61 @@ void colloids_q_boundary(int index, const int di[3], double qs[5]) {
   /* Calculate the vector between the centre of mass of the
    * colloid and node i, j, k  */
 
-  normal[X] = rsite0[X] - p_colloid->s.r[X];
-  normal[Y] = rsite0[Y] - p_colloid->s.r[Y];
-  normal[Z] = rsite0[Z] - p_colloid->s.r[Z];
+  nhat[X] = rsite0[X] - p_colloid->s.r[X];
+  nhat[Y] = rsite0[Y] - p_colloid->s.r[Y];
+  nhat[Z] = rsite0[Z] - p_colloid->s.r[Z];
 
-  /* Homeotropic anchoring (the default): use unit normal.
-   * (If |normal| is zero, there's something seriously wrong with
-   * the colloid.) */
+  /* Unit normal. (If |normal| is zero, there's something seriously wrong
+   * with the colloid!) */
 
-  len_normal = modulus(normal);
+  len_normal = modulus(nhat);
   assert(len_normal > 0.0);
 
   rlen_normal = 1.0/len_normal;
 
   for (ia = 0; ia < 3; ia++) {
-      normal[ia] *= rlen_normal;
-      director[ia] = normal[ia];
+    nhat[ia] *= rlen_normal;
   }
 
-  if (anchoring_ == ANCHORING_PLANAR) {
+  if (anchoring_ == ANCHORING_NORMAL) {
+    qs[0] = 0.5*amplitude*(3.0*nhat[X]*nhat[X] - 1.0);
+    qs[1] = 0.5*amplitude*(3.0*nhat[X]*nhat[Y]);
+    qs[2] = 0.5*amplitude*(3.0*nhat[X]*nhat[Z]);
+    qs[3] = 0.5*amplitude*(3.0*nhat[Y]*nhat[Y] - 1.0);
+    qs[4] = 0.5*amplitude*(3.0*nhat[Y]*nhat[Z]);
+  }
+  else {
 
-      /* We need an estimate of the existing director, for which
-       * we look at Q at the fluid site. This is then projected onto
-       * the tangent surface via the 'vector rejection'
-       * d - (d.\hat{n}) \hat{n} where n is unit normal. */
+    /* Planar: use the fluid Q_ab to find ~Q_ab */
 
-      phi_get_q_tensor(index, q);
-      scalar_order_parameter_director(q, qscalar);
+    phi_get_q_tensor(index, q);
 
-      dir[X] = qscalar[1];
-      dir[Y] = qscalar[2];
-      dir[Z] = qscalar[3];
-
-      rdotd = dot_product(normal, dir);
-
-      dir[X] = dir[X] - rdotd*normal[X];
-      dir[Y] = dir[Y] - rdotd*normal[Y];
-      dir[Z] = dir[Z] - rdotd*normal[Z];
-            
-      dir_len = modulus(dir);
-
-      if (dir_len > 0.0) {
-          rlen_normal = 1.0/dir_len;
-          for (ia = 0; ia < 3; ia++) {
-              director[ia] = rlen_normal*dir[ia];
-          }
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	qtilde[ia][ib] = q[ia][ib] + 0.5*amplitude*d_[ia][ib];
       }
-  }
+    }
 
-  qs[0] = 0.5*amplitude*(3.0*director[X]*director[X] - 1.0);
-  qs[1] = 0.5*amplitude*(3.0*director[X]*director[Y]);
-  qs[2] = 0.5*amplitude*(3.0*director[X]*director[Z]);
-  qs[3] = 0.5*amplitude*(3.0*director[Y]*director[Y] - 1.0);
-  qs[4] = 0.5*amplitude*(3.0*director[Y]*director[Z]);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q[ia][ib] = 0.0;
+	for (ic = 0; ic < 3; ic++) {
+	  for (id = 0; id < 3; id++) {
+	    q[ia][ib] += (d_[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
+	      *(d_[id][ib] - nhat[id]*nhat[ib]);
+	  }
+	}
+      }
+    }
+
+    /* Return Q_ab = ~Q_ab - (1/2) A d_ab */
+
+    qs[0] = q[X][X] - 0.5*amplitude;
+    qs[1] = q[X][Y];
+    qs[2] = q[X][Z];
+    qs[3] = q[Y][Y] - 0.5*amplitude;
+    qs[4] = q[Y][Z];
+  }
 
   return;
 }
@@ -780,5 +779,28 @@ void colloids_q_tensor_anchoring_set(const int type) {
 
   anchoring_ = type;
 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_q_tensor_w
+ *
+ *****************************************************************************/
+
+double colloids_q_tensor_w(void) {
+
+  return w_surface_;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_q_tensor_w_set
+ *
+ *****************************************************************************/
+
+void colloids_q_tensor_w_set(double w) {
+
+  w_surface_ = w;
   return;
 }

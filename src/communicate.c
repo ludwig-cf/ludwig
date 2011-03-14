@@ -197,6 +197,14 @@ void MODEL_init( void ) {
       info("Using planar anchoring boundary conditions\n");
       colloids_q_tensor_anchoring_set(ANCHORING_PLANAR);
     }
+
+    if (strcmp(filename, "planar") == 0 ||  strcmp(filename, "normal") == 0) {
+      phi0 = 0.0;
+      RUN_get_double_parameter("lc_anchoring_strength", &phi0);
+      colloids_q_tensor_w_set(phi0);
+      info("Anchoring strength w = %14.7e\n", colloids_q_tensor_w());
+    }
+    
   }
 
 }
