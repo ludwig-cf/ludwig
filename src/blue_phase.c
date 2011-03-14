@@ -63,6 +63,9 @@ void blue_phase_set_free_energy_parameters(double a0, double gamma,
   kappa1_ = kappa;
   q0_ = q0;
 
+  /* Anchoring boundary conditions require kappa0 from free energy */
+  fe_kappa_set(kappa0_);
+
   return;
 }
 
