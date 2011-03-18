@@ -284,20 +284,30 @@ void ludwig_run(const char * inputfile) {
     /* Configuration dump */
 
     if (is_config_step()) {
+      info("Writing distribution output at step %d!\n", step);
       sprintf(filename, "%sdist-%8.8d", subdirectory, step);
       io_write(filename, distribution_io_info());
-      sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
-      colloid_io_write(filename);
-      sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-      io_write(filename, io_info_phi);
+    }
+
+    if (is_config_step() || is_measurement_step()) {
+      if (colloid_ntotal() > 0) {
+	info("Writing colloid output at step %d!\n", step);
+	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
+	colloid_io_write(filename);
+      }
+    }
+
+    if (is_phi_output_step() || is_config_step()) {
+      if (phi_nop() > 0) {
+	info("Writing phi file at step %d!\n", step);
+	sprintf(filename,"%sphi-%8.8d", subdirectory, step);
+	io_write(filename, io_info_phi);
+      }
     }
 
     /* Measurements */
 
     if (is_measurement_step()) {	  
-      sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
-      colloid_io_write(filename);
-
       if (phi_nop() == 5) {
 	info("Writing scalar order parameter file at step %d!\n", step);
 	sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
@@ -313,12 +323,6 @@ void ludwig_run(const char * inputfile) {
       sprintf(filename, "%sstr-%8.8d.dat", subdirectory, step);
       stats_rheology_stress_section(filename);
       stats_rheology_stress_profile_zero();
-    }
-
-    if (is_phi_output_step()) {
-      info("Writing phi file at step %d!\n", step);
-      sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-      io_write(filename, io_info_phi);
     }
 
     if (is_vel_output_step()) {
