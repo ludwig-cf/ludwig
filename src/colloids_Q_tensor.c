@@ -29,6 +29,7 @@
 #include "ran.h"
 #include "lattice.h"
 #include "util.h"
+#include "model.h"
 #include "site_map.h"
 #include "colloids_Q_tensor.h"
 
@@ -186,110 +187,76 @@ void COLL_set_Q(){
  *
  *  colloids_q_boundary
  *
- *  Produce an estimate of the surface order parameter Q^s_ab for
+ *  Produce an estimate of the surface order parameter Q^0_ab for
  *  normal or planar anchoring.
  *
- *  Here the index is the fluid point, di[3] is the lattice vector which
- *  takes you from the fluid point to the colloid point.
+ *  This will depend on the outward surface normal nhat, and in the
+ *  case of planar anchoring may depend on the estimate of the
+ *  existing order parameter at the surface Qs_ab.
  *
- *  The estimate is returned in qs[5].
+ *  This planar anchoring idea follows e.g., Fournier and Galatola
+ *  Europhys. Lett. 72, 403 (2005).
  *
- *  The exact details for planar anchoring are yet to be determined.
+ *  Fixed planar anchoring can be hardwired at the moment by setting
+ *  n_a. This is appropriate for flat walls only.
  *
  *****************************************************************************/
 
-void colloids_q_boundary(int index, const int di[3], double qs[5]) {
+void colloids_q_boundary(const double nhat[3], double qs[3][3],
+			 double q0[3][3]) {
+  int ia, ib, ic, id;
 
-  int ia, ib, ic, id, index1;
-  int isite[3];
-  int noffset[3];
-
-  double rsite0[3];
-  double nhat[3];
-
-  double q[3][3];
   double qtilde[3][3];
-  double len_normal;
-  double rlen_normal;
   double amplitude;
-
-  colloid_t * p_colloid;
-  colloid_t * colloid_at_site_index(int);
+  double  n[3];
 
   amplitude = 0.33333333;
 
-  coords_nlocal_offset(noffset);
-
-  /* Find the position of the solid site. */
-
-  coords_index_to_ijk(index, isite);
-  for (ia = 0; ia < 3; ia++) {
-    isite[ia] += di[ia];
-    rsite0[ia] = 1.0*(noffset[ia] + isite[ia]);
-  }
-
-  index1 = coords_index(isite[X], isite[Y], isite[Z]);
-  p_colloid = colloid_at_site_index(index1);
-
-  assert(p_colloid);
-
-  /* Calculate the vector between the centre of mass of the
-   * colloid and node i, j, k  */
-
-  nhat[X] = rsite0[X] - p_colloid->s.r[X];
-  nhat[Y] = rsite0[Y] - p_colloid->s.r[Y];
-  nhat[Z] = rsite0[Z] - p_colloid->s.r[Z];
-
-  /* Unit normal. (If |normal| is zero, there's something seriously wrong
-   * with the colloid!) */
-
-  len_normal = modulus(nhat);
-  assert(len_normal > 0.0);
-
-  rlen_normal = 1.0/len_normal;
-
-  for (ia = 0; ia < 3; ia++) {
-    nhat[ia] *= rlen_normal;
-  }
-
   if (anchoring_ == ANCHORING_NORMAL) {
-    qs[0] = 0.5*amplitude*(3.0*nhat[X]*nhat[X] - 1.0);
-    qs[1] = 0.5*amplitude*(3.0*nhat[X]*nhat[Y]);
-    qs[2] = 0.5*amplitude*(3.0*nhat[X]*nhat[Z]);
-    qs[3] = 0.5*amplitude*(3.0*nhat[Y]*nhat[Y] - 1.0);
-    qs[4] = 0.5*amplitude*(3.0*nhat[Y]*nhat[Z]);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q0[ia][ib] = 0.5*amplitude*(3.0*nhat[ia]*nhat[ib] - d_[ia][ib]);
+      }
+    }
   }
-  else {
+
+  if (anchoring_ == ANCHORING_PLANAR) {
 
     /* Planar: use the fluid Q_ab to find ~Q_ab */
 
-    phi_get_q_tensor(index, q);
-
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	qtilde[ia][ib] = q[ia][ib] + 0.5*amplitude*d_[ia][ib];
+	qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
       }
     }
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	q[ia][ib] = 0.0;
+	q0[ia][ib] = 0.0;
 	for (ic = 0; ic < 3; ic++) {
 	  for (id = 0; id < 3; id++) {
-	    q[ia][ib] += (d_[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
+	    q0[ia][ib] += (d_[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
 	      *(d_[id][ib] - nhat[id]*nhat[ib]);
 	  }
 	}
+	/* Return Q^0_ab = ~Q_ab - (1/2) A d_ab */
+	q0[ia][ib] -= 0.5*amplitude*d_[ia][ib];
       }
     }
 
-    /* Return Q_ab = ~Q_ab - (1/2) A d_ab */
+  }
 
-    qs[0] = q[X][X] - 0.5*amplitude;
-    qs[1] = q[X][Y];
-    qs[2] = q[X][Z];
-    qs[3] = q[Y][Y] - 0.5*amplitude;
-    qs[4] = q[Y][Z];
+  if (anchoring_ == ANCHORING_FIXED) {
+
+    n[X] = 0.0;
+    n[Y] = 1.0;
+    n[Z] = 0.0;
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q0[ia][ib] = 0.5*amplitude*(3.0*n[ia]*n[ib] - d_[ia][ib]);
+      }
+    }
   }
 
   return;
@@ -455,7 +422,6 @@ void COLL_set_Q_2(){
   }
   return;
 }
-
 
 void COLL_randomize_Q(double delta_r){
   
@@ -697,8 +663,17 @@ static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
   double qs_dir[4];
 
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  scalar_order_parameter_director(q, qs_dir);
+
+  if (site_map_get_status_index(index) == FLUID) {
+    phi_get_q_tensor(index, q);
+    scalar_order_parameter_director(q, qs_dir);
+  }
+  else {
+    qs_dir[0] = 0.0;
+    qs_dir[1] = 0.0;
+    qs_dir[2] = 0.0;
+    qs_dir[3] = 0.0;
+  }
 
   n = fprintf(fp, "%le %le %le %le\n", qs_dir[0], qs_dir[1], qs_dir[2], qs_dir[3]);
   if (n < 0) fatal("fprintf(qs_dir) failed at index %d\n", index);
