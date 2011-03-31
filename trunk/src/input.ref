@@ -186,7 +186,7 @@ surf_psi_b 0.01
 #  lc_xi
 #  lc_active_zeta
 #
-#  lc_q_initialisation  twist
+#  lc_q_initialisation  nematic, twist
 #                       o8m
 #                       o2
 #
@@ -199,11 +199,18 @@ surf_psi_b 0.01
 #  lc_anchoring         [normal|planar] anchoring boundary conditions
 #                       for solid (if present; defualt is normal)
 #
+#  lc_anchoring_strength the parameter w in the surface free energy
+#                        [Default is zero = 'free' anchoring]
+#
 #  lc_init_redshift     Initial value of redshift.
 #
 #
 #  lc_redshift_update   [0|1] Allow dynamic cubic redshift adjustment
 #                       (default is none).
+#
+#  lc_init_nematic      Initial director vector [default 1.0_0.0_0.0] when
+#                       nematic initialisation used (doesn't need to be
+#                       unit vector)
 #
 ###############################################################################
 
@@ -221,8 +228,10 @@ lc_q_initialisation o8m
 lc_q_init_amplitude -0.2
 lc_init_redshift 0.83
 lc_redshift_update 0
+lc_init_nematic 1.0_0.0_0.0
 
 lc_anchoring normal
+lc_anchoring_strength 0.0
 
 ###############################################################################
 #

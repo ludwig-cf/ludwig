@@ -36,6 +36,7 @@ void MODEL_init( void ) {
 
   double   phi;
   double   phi0;
+  double nhat[3];
   char     filename[FILENAME_MAX];
   double  noise0 = 0.1;   /* Initial noise amplitude    */
 
@@ -167,13 +168,28 @@ void MODEL_init( void ) {
 
   if (phi_nop() == 5) {
 
+    info("\n");
+
     /* BLUEPHASE initialisation */
     RUN_get_string_parameter("lc_q_initialisation", filename, FILENAME_MAX);
     RUN_get_double_parameter("lc_q_init_amplitude", &phi0);
 
+    /* Default nematic director (if required) */
+    nhat[X] = 1.0;
+    nhat[Y] = 0.0;
+    nhat[Z] = 0.0;
+    RUN_get_double_parameter_vector("lc_init_nematic", nhat);
+
     if (strcmp(filename, "twist") == 0) {
       info("Initialising Q_ab to cholesteric (amplitude %14.7e)\n", phi0);
       blue_phase_twist_init(phi0);
+    }
+
+    if (strcmp(filename, "nematic") == 0) {
+      info("Initialising Q_ab to nematic\n");
+      info("Amplitude: %14.7e\n", phi0);
+      info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
+      blue_phase_nematic_init(phi0, nhat);
     }
 
     if (strcmp(filename, "o8m") == 0) {
@@ -186,6 +202,7 @@ void MODEL_init( void ) {
       blue_phase_O2_init(phi0);
     }
 
+    info("\n");
     RUN_get_string_parameter("lc_anchoring", filename, FILENAME_MAX);
 
     if (strcmp(filename, "normal") == 0) {

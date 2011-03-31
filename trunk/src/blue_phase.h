@@ -42,11 +42,13 @@ double blue_phase_get_zeta(void);
 double blue_phase_chirality(void);
 double blue_phase_reduced_temperature(void);
 double blue_phase_redshift(void);
+double blue_phase_q0(void);
 
 void blue_phase_redshift_update_set(int onoff);
 void blue_phase_redshift_compute(void);
 void blue_phase_stats(int nstep);
 
+void blue_phase_nematic_init(const double a, const double n[3]);
 void blue_phase_twist_init(double amplitude);
 void blue_phase_chi_edge(int N, double z0, double x0, double amplitude);
 void blue_set_random_q_init(double xmin, double xmax, double ymin, double ymax,

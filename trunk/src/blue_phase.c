@@ -1,4 +1,4 @@
-/*****************************************************************************
+#/*****************************************************************************
  *
  *  blue_phase.c
  *
@@ -587,7 +587,7 @@ void blue_phase_twist_init(double amplitude){
   double cosxz, sinxz;
   int x_twist_=0; 
   int y_twist_=0; 
-  int z_twist_=1; 
+  int z_twist_=1;
 
   /* this corresponds to a 90 degree angle between the z-axis */
   double cosz=0.0;
@@ -655,6 +655,56 @@ void blue_phase_twist_init(double amplitude){
     }
   }
 
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_nematic_init
+ *
+ *  Initialise a uniform nematic via
+ *
+ *    Q_ab = (1/2) A (3 n_a n_b - d_ab)
+ *
+ *  The inputs are the amplitude A and the vector n_a (which we explicitly
+ *  convert to a unit vector here).
+ *
+ *****************************************************************************/
+
+void blue_phase_nematic_init(const double a, const double n[3]) {
+
+  int ia, ib;
+  int ic, jc, kc;
+  int nlocal[3];
+  int index;
+
+  double nhat[3];
+  double q[3][3];
+
+  assert(a > 0.0);
+  assert(modulus(n) > 0.0);
+
+  for (ia = 0; ia < 3; ia++) {
+    nhat[ia] = n[ia] / modulus(n);
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q[ia][ib] = 0.5*a*(3.0*nhat[ia]*nhat[ib] - d_[ia][ib]);
+    }
+  }
+ 
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	phi_set_q_tensor(index, q);
+      }
+    }
+  }
   return;
 }
 
@@ -1145,4 +1195,17 @@ void blue_phase_stats(int nstep) {
    }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_q0
+ *
+ *  Return the pitch wavenumber (unredshifted).
+ *
+ *****************************************************************************/
+
+double blue_phase_q0(void) {
+
+  return q0_;
 }
