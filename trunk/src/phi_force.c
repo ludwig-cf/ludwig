@@ -30,7 +30,6 @@
 #include "wall.h"
 
 static void phi_force_calculation_fluid(void);
-static void phi_force_calculation_fluid_solid(void);
 static void phi_force_compute_fluxes(void);
 static void phi_force_flux_divergence(void);
 static void phi_force_fix_fluxes(void);
@@ -44,7 +43,6 @@ static double * fluxy;
 static double * fluxz;
 
 static int  force_required_ = 1;
-static void (* phi_force_simple_)(void) = phi_force_calculation_fluid;
 
 /*****************************************************************************
  *
@@ -70,31 +68,14 @@ void phi_force_calculation() {
 
   if (force_required_ == 0) return;
 
-  if (le_get_nplane_total() > 0) {
+  if (le_get_nplane_total() > 0 || wall_present()) {
     /* Must use the flux method for LE planes */
+    /* Also convenient for plane walls */
     phi_force_flux();
   }
   else {
-    /* Note that this routine does not do accounting for the wall
-     * momentum, if required. */
-    phi_force_simple_();
+    phi_force_calculation_fluid();
   }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_set_solid
- *
- *  Set the force calculation method to allow for solid.
- *
- *****************************************************************************/
-
-void phi_force_set_solid(void) {
-
-  assert(0); /* Need to do something about force on particles */
-  phi_force_simple_ = phi_force_calculation_fluid_solid;
 
   return;
 }
@@ -173,103 +154,6 @@ static void phi_force_calculation_fluid() {
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	}
-
-	/* Store the force on lattice */
-
-	hydrodynamics_add_force_local(index, force);
-
-	/* Next site */
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_calculation_fluid_solid
- *
- *  Compute force from thermodynamic sector via
- *    F_alpha = nalba_beta Pth_alphabeta
- *  using a simple six-point stencil.
- *
- *  Side effect: increments the force at each local lattice site in
- *  preparation for the collision stage.
- *
- *****************************************************************************/
-
-static void phi_force_calculation_fluid_solid() {
-
-  int ia, ic, jc, kc, icm1, icp1;
-  int index, index1;
-  int nlocal[3];
-  int mask;
-  double pth0[3][3];
-  double pth1[3][3];
-  double force[3];
-
-  void (* chemical_stress)(const int index, double s[3][3]);
-
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
-  /* Antisymetric stress not catered for yet... */
-  assert(phi_nop() != 5);
-
-  chemical_stress = fe_chemical_stress_function();
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = le_site_index(ic, jc, kc);
-
-	/* Compute pth at current point */
-	chemical_stress(index, pth0);
-
-	/* Compute differences */
-	
-	index1 = le_site_index(icp1, jc, kc);
-	chemical_stress(index1, pth1);
-	mask = (site_map_get_status_index(index1) == FLUID);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -0.5*(mask*pth1[X][ia] + pth0[X][ia]);
-	}
-	index1 = le_site_index(icm1, jc, kc);
-	chemical_stress(index1, pth1);
-	mask = (site_map_get_status_index(index1) == FLUID);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(mask*pth1[X][ia] + pth0[X][ia]);
-	}
-
-	
-	index1 = le_site_index(ic, jc+1, kc);
-	chemical_stress(index1, pth1);
-	mask = (site_map_get_status_index(index1) == FLUID);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(mask*pth1[Y][ia] + pth0[Y][ia]);
-	}
-	index1 = le_site_index(ic, jc-1, kc);
-	chemical_stress(index1, pth1);
-	mask = (site_map_get_status_index(index1) == FLUID);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(mask*pth1[Y][ia] + pth0[Y][ia]);
-	}
-	
-	index1 = le_site_index(ic, jc, kc+1);
-	chemical_stress(index1, pth1);
-	mask = (site_map_get_status_index(index1) == FLUID);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(mask*pth1[Z][ia] + pth0[Z][ia]);
-	}
-	index1 = le_site_index(ic, jc, kc-1);
-	chemical_stress(index1, pth1);
-	mask = (site_map_get_status_index(index1) == FLUID);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(mask*pth1[Z][ia] + pth0[Z][ia]);
 	}
 
 	/* Store the force on lattice */
@@ -724,17 +608,22 @@ static void phi_force_flux_divergence(void) {
  *
  *  phi_force_wall
  *
- *  Account for the net force on the wall.
+ *  We extrapolate the stress to the wall. This is equivalent to using
+ *  a one-sided gradient when we get to do the divergence.
+ *
+ *  The stress on the wall is recorded for accounting purposes.
  *
  *****************************************************************************/
 
 static void phi_force_wall(void) {
 
   int ic, jc, kc;
-  int index, ia;
+  int index, index1, ia;
   int nlocal[3];
   double fw[3];         /* Net force on wall */
-  double pth0[3][3];    /* Chemical stress extrpolated to wall */
+  double pth0[3][3];    /* Chemical stress at fluid point next to wall */
+  double pth1[3][3];    /* Stress at next fluid point. */
+  double sx;            /* Extrapolated stress component */
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
@@ -752,11 +641,14 @@ static void phi_force_wall(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic,jc,kc);
+	index1 = le_site_index(ic+1, jc, kc);
 	chemical_stress(index, pth0);
+	chemical_stress(index1,pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxw[3*index + ia] = pth0[X][ia];
-	  fw[ia] -= fluxw[3*index + ia];
+	  sx = pth0[ia][X] - 0.5*(pth1[ia][X] - pth0[ia][X]);
+	  fluxw[3*index + ia] = sx;
+	  fw[ia] -= sx;
 	}
       }
     }
@@ -768,11 +660,14 @@ static void phi_force_wall(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic,jc,kc);
+	index1 = le_site_index(ic-1, jc, kc);
 	chemical_stress(index, pth0);
+	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[3*index + ia] = pth0[X][ia];
-	  fw[ia] += fluxe[3*index + ia];
+	  sx = pth0[ia][X] + 0.5*(pth0[ia][X] - pth1[ia][X]);
+	  fluxe[3*index + ia] = sx;
+	  fw[ia] += sx;
 	}
       }
     }
