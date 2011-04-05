@@ -92,18 +92,19 @@ static void gradient_3d_7pt_solid_wall_z(const int nop,
 					 double * del2,
 					 const int nextra);
 
-static void gradient_x_general(const int index, const int nhat[3],
-			       const double dn[3],
-			       const double * field, double * grad,
-			       double * del2);
+static void gradient_norm1(const int index, const int norm1,
+			   const int nhat1[3], const double dn1[3],
+			   const double * field, double * grad,
+			   double * del2);
 
-static void gradient_y(const int index, const int nyhat[3],
-		       const double dny[3], const double * field,
-		       double * grad, double * del2);
+static void gradient_norm2(const int index, const int norm1, const int norm2,
+			   const int nhat1[3], const double dn1[3],
+			   const int nhat2[3], const double dn2[3],
+			   const double * field, double * grad,
+			   double * del2);
 
-static void gradient_z(const int index, const int nzhat[3],
-		       const double dnz[3], const double * field,
-		       double * grad, double * del2);
+static void gradient_bcs(double kappa0, double kappa1, const double dn[3],
+			 double dq[NOP][3], double bc[NOP][NOP][3]);
 
 int util_solve_linear_system(const int n, double (*a)[], double * xb);
 
@@ -347,7 +348,7 @@ static void gradient_3d_7pt_solid_try2_wall(const int nop,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(1, jc, kc);
-	gradient_x_general(index, nhat, dn, field, grad, del2);
+	gradient_norm1(index, X, nhat, dn, field, grad, del2);
       }
     }
   }
@@ -367,7 +368,7 @@ static void gradient_3d_7pt_solid_try2_wall(const int nop,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(nlocal[X], jc, kc);
-	gradient_x_general(index, nhat, dn, field, grad, del2);
+	gradient_norm1(index, X, nhat, dn, field, grad, del2);
       }
     }
   }
@@ -377,171 +378,157 @@ static void gradient_3d_7pt_solid_try2_wall(const int nop,
 
 /*****************************************************************************
  *
- *  gradient_x_general
+ *  gradient_norm1
+ *
+ *  Computes the cholesteric boundary condition for fluid sites with
+ *  one normal solid neighbour.
+ *
+ *  The fluid site is at index;
+ *  The direction of the neighbour (hence required gradient) is
+ *      norm1 [ = X | Y | Z ];
+ *  The integer outward normal vector is nhat1 (a lattice vector)
+ *  The 'true' normal (floating point) at the half way position is
+ *  dn1 (not necessarily == nhat1).
  *
  *****************************************************************************/
 
-static void gradient_x_general(const int index, const int nhat[3],
-			       const double dn[3],
-			       const double * field, double * grad,
-			       double * del2) {
-  int ia, ib, ic, ig, n;
+static void gradient_norm1(const int index, const int norm1,
+			   const int nhat1[3], const double dn1[3],
+			   const double * field, double * grad,
+			   double * del2) {
+
+  int ia, ib, ic, ig, n1, n2;
   int nhalo;
   int nlocal[3];
-  int xs, ys;
-  int nsolid;            /* Points to solid partial gradient */
-  int nfluid;            /* Points to fluid partial gradient */
+  int str[3];            /* Memory strides in each direction */
+  int nsolid1;            /* Points to solid partial gradient */
+  int nfluid1;            /* Points to fluid partial gradient */
 
-  double gradx[NOP][2];  /* grad[n][0] is forward gradient, Q_{ic+1} - Q_ic
-		            grad[n][1] backward gradient,   Q_ic - Q_{ic-1} */ 
-  double qs[NOP];
-  double qsab[3][3];
-  double q0[3][3];
+  double gradn[NOP][3][2];  /* gradn[n1][ia][0] is forward gradient for n1 in
+			     * direction ia , Q_{ic+1} - Q_ic etc,
+			     * grad[n][ia] [1] backward gradient,
+			     * Q_ic - Q_{ic-1} etc */ 
+  double dq[NOP][3];        /* Gradients of the order parameter from fluid */
+ 
+  double qs1[NOP];
+  double qs1ab[3][3];
+  double q01[3][3];
 
-  double a[5][5];        /* Linear algebra Ax = b */
-  double b[5];           /* b is the rhs/solution vector */
-  double c[3][3];        /* Constant terms */
+  double bc1[NOP][NOP][3];  /* All gradient terms in boundary conditon */
+  double a[NOP][NOP];       /* Linear algebra Ax = b */
+  double b[NOP];            /* b is the rhs/solution vector */
+  double c1[3][3];          /* Constant terms in boundary condition */
 
   double kappa0, kappa1, q_0, w;
-  double kappa2;
-
-  double dyqxx, dzqxx, dyqxy, dzqxy, dyqxz;
-  double dzqxz, dyqyy, dzqyy, dyqyz, dzqyz;
 
   assert(NOP == 5);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
+  str[Z] = 1;
+  str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
+  str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
 
   kappa0 = fe_kappa();
   kappa1 = fe_kappa(); /* One elastic constant */ 
-  kappa2 = kappa0 + kappa1;
+
   q_0 = blue_phase_q0();
   w = colloids_q_tensor_w();
 
-  nfluid = (1 - nhat[X])/2;
-  nsolid = (1 + nhat[X])/2;
+  nfluid1 = (1 - nhat1[norm1])/2;
+  nsolid1 = (1 + nhat1[norm1])/2;
 
-  assert(nfluid == 0 || nfluid == 1);
-  assert(nsolid == 0 || nsolid == 1);
-  assert(nfluid != nsolid);
+  assert(nfluid1 == 0 || nfluid1 == 1);
+  assert(nsolid1 == 0 || nsolid1 == 1);
+  assert(nfluid1 != nsolid1);
 
-  for (n = 0; n < NOP; n++) {
-    gradx[n][0] = field[NOP*(index + xs) + n] - field[NOP*index + n];
-    gradx[n][1] = field[NOP*index + n] - field[NOP*(index - xs) + n];
-    qs[n] = field[NOP*index + n] - 0.5*dn[X]*gradx[n][nfluid];
+  for (n1 = 0; n1 < NOP; n1++) {
+    for (ia = 0; ia < 3; ia++) {
+      gradn[n1][ia][0] =
+	field[NOP*(index + str[ia]) + n1] - field[NOP*index + n1];
+      gradn[n1][ia][1] =
+	field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
+    }
+    qs1[n1] = field[NOP*index+n1] - 0.5*nhat1[norm1]*gradn[n1][norm1][nfluid1];
   }
 
-  fed_q5_to_qab(qsab, qs);
-  colloids_q_boundary(dn, qsab, q0);
+  fed_q5_to_qab(qs1ab, qs1);
+  colloids_q_boundary(dn1, qs1ab, q01);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      fe_wall_[nsolid] +=
-	0.5*w*(qsab[ia][ib] - q0[ia][ib])*(qsab[ia][ib] - q0[ia][ib]);
+      fe_wall_[nsolid1] +=
+	0.5*w*(qs1ab[ia][ib] - q01[ia][ib])*(qs1ab[ia][ib] - q01[ia][ib]);
     }
   }
 
-  /* Tangential derivatives from fluid */
+  /* Derivatives of Q_ab precomputed for the fluid; set unknowns to unity
+   * as these multiply the coefficients in the respective terms in the
+   * linear algebra problem to follow. */
 
-  dyqxx = grad[3*(NOP*index + XX) + Y];
-  dzqxx = grad[3*(NOP*index + XX) + Z];
-  dyqxy = grad[3*(NOP*index + XY) + Y];
-  dzqxy = grad[3*(NOP*index + XY) + Z];
-  dyqxz = grad[3*(NOP*index + XZ) + Y];
-  dzqxz = grad[3*(NOP*index + XZ) + Z];
-  dyqyy = grad[3*(NOP*index + YY) + Y];
-  dzqyy = grad[3*(NOP*index + YY) + Z];
-  dyqyz = grad[3*(NOP*index + YZ) + Y];
-  dzqyz = grad[3*(NOP*index + YZ) + Z];
+  for (n1 = 0; n1 < NOP; n1++) {
+    for (ia = 0; ia < 3; ia++) {
+      dq[n1][ia] = grad[3*(NOP*index + n1) + ia];
+    }
+    dq[n1][norm1] = 1.0;
+  }
 
   /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      c[ia][ib] = 0.0;
+      c1[ia][ib] = 0.0;
       for (ig = 0; ig < 3; ig++) {
 	for (ic = 0; ic < 3; ic++) {
-	  c[ia][ib] += kappa1*q_0*dn[ig]*
-	    (e_[ia][ig][ic]*qsab[ic][ib] + e_[ib][ig][ic]*qsab[ic][ia]);
+	  c1[ia][ib] += kappa1*q_0*dn1[ig]*
+	    (e_[ia][ig][ic]*qs1ab[ic][ib] + e_[ib][ig][ic]*qs1ab[ic][ia]);
 	}
       }
-      c[ia][ib] += w*(qsab[ia][ib] - q0[ia][ib]);
+      c1[ia][ib] += w*(qs1ab[ia][ib] - q01[ia][ib]);
     }
   }
 
-  /* Construct coefficient matrix */
+  /* Construct the linear algebra problem matrixA vector b */
 
-  a[XX][XX] =  kappa0*dn[X];
-  a[XX][XY] = -kappa1*dn[Y];
-  a[XX][XZ] = -kappa1*dn[Z];
-  a[XX][YY] =  0.0;
-  a[XX][YZ] =  0.0;
+  gradient_bcs(kappa0, kappa1, dn1, dq, bc1);
 
-  b[XX] = -(kappa1*dn[Y]*dyqxx + kappa0*dn[X]*dyqxy
-	  + kappa1*dn[Z]*dzqxx + kappa0*dn[X]*dzqxz + c[X][X]);
+  for (n1 = 0; n1 < NOP; n1++) {
+    b[n1] = 0.0;
+    for (n2 = 0; n2 < NOP; n2++) {
+      a[n1][n2] = bc1[n1][n2][norm1];
+      b[n1] -= bc1[n1][n2][norm1];
+      for (ia = 0; ia < 3; ia++) {
+	b[n1] += bc1[n1][n2][ia];
+      }
+    }
+  }
 
-  a[XY][XX] =  kappa0*dn[Y];
-  a[XY][XY] =  kappa2*dn[X];
-  a[XY][XZ] =  0.0;
-  a[XY][YY] = -kappa1*dn[Y];
-  a[XY][YZ] = -kappa1*dn[Z];
+  b[XX] = -(b[XX] + c1[X][X]);
+  b[XY] = -(b[XY] + 2.0*c1[X][Y]);
+  b[XZ] = -(b[XZ] + 2.0*c1[X][Z]);
+  b[YY] = -(b[YY] + c1[Y][Y]);
+  b[YZ] = -(b[YZ] + 2.0*c1[Y][Z]);
 
-  b[XY] = -(-kappa1*dn[X]*dyqxx + kappa2*dn[Y]*dyqxy - kappa1*dn[Z]*dyqxz
-	    + kappa0*dn[X]*dyqyy
-	    + 2.0*kappa1*dn[Z]*dzqxy + kappa0*dn[Y]*dzqxz
-	    + kappa0*dn[X]*dzqyz + 2.0*c[X][Y]);
-
-  a[XZ][XX] =  kappa2*dn[Z];
-  a[XZ][XY] =  0.0;
-  a[XZ][XZ] =  kappa2*dn[X];
-  a[XZ][YY] =  kappa1*dn[Z];
-  a[XZ][YZ] = -kappa1*dn[Y];
-
-  b[XZ] = -(kappa0*dn[Z]*dyqxy + 2.0*kappa1*dn[Y]*dyqxz + kappa0*dn[X]*dyqyz
-	    - kappa2*dn[X]*dzqxx - kappa1*dn[Y]*dzqxy + kappa2*dn[Z]*dzqxz
-	    - kappa0*dn[X]*dzqyy + 2.0*c[X][Z]);
-
-  a[YY][XX] = 0.0;
-  a[YY][XY] = kappa0*dn[Y];
-  a[YY][XZ] = 0.0;
-  a[YY][YY] = kappa1*dn[X];
-  a[YY][YZ] = 0.0;
-
-  b[YY] = -(-kappa1*dn[X]*dyqxy + kappa0*dn[Y]*dyqyy - kappa1*dn[Z]*dyqyz
-	    + kappa1*dn[Z]*dzqyy + kappa0*dn[Y]*dzqyz + c[Y][Y]);
-
-  a[YZ][XX] = 0.0;
-  a[YZ][XY] = kappa0*dn[Z];
-  a[YZ][XZ] = kappa0*dn[Y];
-  a[YZ][YY] = 0.0;
-  a[YZ][YZ] = 2.0*kappa1*dn[X];
-
-  b[YZ] = -(kappa1*dn[Z]*dyqxx - kappa1*dn[X]*dyqxz + kappa2*dn[Z]*dyqyy
-	    + kappa2*dn[Y]*dyqyz
-	    - kappa0*dn[Y]*dzqxx - kappa1*dn[X]*dzqxy - kappa2*dn[Y]*dzqyy
-	    + kappa2*dn[Z]*dzqyz + 2.0*c[Y][Z]);
-
-  /* SOLVE LINEAR SYSTEM b <- A^{-1} b */
+  /* SOLVE LINEAR SYSTEM b <= A^{-1} b */
 
   util_solve_linear_system(5, a, b);
 
-  gradx[XX][nsolid] = b[XX];
-  gradx[XY][nsolid] = b[XY];
-  gradx[XZ][nsolid] = b[XZ];
-  gradx[YY][nsolid] = b[YY];
-  gradx[YZ][nsolid] = b[YZ];
+  /* This result for the solid partial gradient always has the wrong
+   * sign for the final gradient calculation. */
 
-  for (n = 0; n < NOP; n++) {
-    grad[3*(NOP*index + n) + X] = 0.5*(dn[X]*gradx[n][0] - dn[X]*gradx[n][1]);
-    del2[NOP*index + n]
-      = dn[X]*gradx[n][0] + dn[X]*gradx[n][1]
-      + field[NOP*(index + ys) + n] + field[NOP*(index - ys) + n]
-      + field[NOP*(index + 1 ) + n] + field[NOP*(index - 1 ) + n]
-      - 4.0*field[NOP*index + n];
+  gradn[XX][norm1][nsolid1] = -b[XX];
+  gradn[XY][norm1][nsolid1] = -b[XY];
+  gradn[XZ][norm1][nsolid1] = -b[XZ];
+  gradn[YY][norm1][nsolid1] = -b[YY];
+  gradn[YZ][norm1][nsolid1] = -b[YZ];
+
+  for (n1 = 0; n1 < NOP; n1++) {
+    grad[3*(NOP*index + n1) + norm1] =
+      0.5*(gradn[n1][norm1][0] + gradn[n1][norm1][1]);
+    del2[NOP*index + n1] = gradn[n1][X][0] - gradn[n1][X][1]
+      + gradn[n1][Y][0] - gradn[n1][Y][1]
+      + gradn[n1][Z][0] - gradn[n1][Z][1];
   }
 
   return;
@@ -584,7 +571,7 @@ static void gradient_3d_7pt_solid_wall_y(const int nop,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(ic, 1, kc);
-	gradient_y(index, nhat, dn, field, grad, del2);
+	gradient_norm1(index, Y, nhat, dn, field, grad, del2);
       }
     }
   }
@@ -598,180 +585,9 @@ static void gradient_3d_7pt_solid_wall_y(const int nop,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(ic, nlocal[Y], kc);
-	gradient_y(index, nhat, dn, field, grad, del2);
+	gradient_norm1(index, Y, nhat, dn, field, grad, del2);
       }
     }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  gradient_y
- *
- *****************************************************************************/
-
-void gradient_y(const int index, const int nyhat[3], const double dny[3],
-		const double * field, double * grad, double * del2) {
-
-  int ia, ib, ic, ig, n;
-  int nhalo;
-  int nlocal[3];
-  int xs, ys;
-  int nsolidy;            /* Points to solid partial gradient */
-  int nfluidy;            /* Points to fluid partial gradient */
-
-  double grady[NOP][2];  /* grad[n][0] is forward gradient, Q_{ic+1} - Q_ic
-		            grad[n][1] backward gradient,   Q_ic - Q_{ic-1} */ 
-  double qs[NOP];
-  double qsab[3][3];
-  double q0[3][3];
-
-  double a[5][5];        /* Linear algebra Ax = b */
-  double b[5];           /* b is the rhs/solution vector */
-  double c[3][3];        /* Constant terms */
-
-  double dxqxx, dxqxy, dxqxz, dxqyy, dxqyz;
-  double dzqxx, dzqxy, dzqxz, dzqyy, dzqyz;
-
-  double kappa0, kappa1, q_0, w;
-  double kappa2;
-
-  assert(NOP == 5);
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
-
-  kappa0 = fe_kappa();
-  kappa1 = fe_kappa(); /* One elastic constant */ 
-  kappa2 = kappa0 + kappa1;
-  q_0 = blue_phase_q0();
-  w = colloids_q_tensor_w();
-
-  nfluidy = (1 - nyhat[Y])/2;
-  nsolidy = (1 + nyhat[Y])/2;
-
-  assert(nfluidy == 0 || nfluidy == 1);
-  assert(nsolidy == 0 || nsolidy == 1);
-  assert(nfluidy != nsolidy);
-
-  for (n = 0; n < NOP; n++) {
-    grady[n][0] = field[NOP*(index + ys) + n] - field[NOP*index + n];
-    grady[n][1] = field[NOP*index + n] - field[NOP*(index - ys) + n];
-    qs[n] = field[NOP*index + n] - 0.5*dny[Y]*grady[n][nfluidy];
-  }
-
-  fed_q5_to_qab(qsab, qs);
-  colloids_q_boundary(dny, qsab, q0);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      fe_wall_[nsolidy] +=
-	0.5*w*(qsab[ia][ib] - q0[ia][ib])*(qsab[ia][ib] - q0[ia][ib]);
-    }
-  }
-
-  /* Tangential derivatives from fluid */
-
-  dxqxx = grad[3*(NOP*index + XX) + X];
-  dzqxx = grad[3*(NOP*index + XX) + Z];
-  dxqxy = grad[3*(NOP*index + XY) + X];
-  dzqxy = grad[3*(NOP*index + XY) + Z];
-  dxqxz = grad[3*(NOP*index + XZ) + X];
-  dzqxz = grad[3*(NOP*index + XZ) + Z];
-  dxqyy = grad[3*(NOP*index + YY) + X];
-  dzqyy = grad[3*(NOP*index + YY) + Z];
-  dxqyz = grad[3*(NOP*index + YZ) + X];
-  dzqyz = grad[3*(NOP*index + YZ) + Z];
-
-  /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      c[ia][ib] = 0.0;
-      for (ig = 0; ig < 3; ig++) {
-	for (ic = 0; ic < 3; ic++) {
-	  c[ia][ib] += kappa1*q_0*dny[ig]*
-	    (e_[ia][ig][ic]*qsab[ic][ib] + e_[ib][ig][ic]*qsab[ic][ia]);
-	}
-      }
-      c[ia][ib] += w*(qsab[ia][ib] - q0[ia][ib]);
-    }
-  }
-
-  /* Construct coefficient matrix */
-
-  a[XX][XX] = kappa1*dny[Y];
-  a[XX][XY] = kappa0*dny[X];
-  a[XX][XZ] = 0.0;
-  a[XX][YY] = 0.0;
-  a[XX][YZ] = 0.0;
-
-  b[XX] = -(kappa0*dny[X]*dxqxx - kappa1*dny[Y]*dxqxy - kappa1*dny[Z]*dxqxz
-	    + kappa1*dny[Z]*dzqxx + kappa0*dny[X]*dzqyz + c[X][X]);
-
-  a[XY][XX] = -kappa1*dny[X];
-  a[XY][XY] =  kappa2*dny[Y];
-  a[XY][XZ] = -kappa1*dny[Z];
-  a[XY][YY] =  kappa0*dny[X];
-  a[XY][YZ] =  0.0;
-
-  b[XY] = -(kappa0*dny[Y]*dxqxx + kappa2*dny[X]*dxqxy - kappa1*dny[Y]*dxqyy
-	    - kappa1*dny[Z]*dxqyz
-	    + 2.0*kappa1*dny[Z]*dzqxy + kappa0*dny[Y]*dzqxz
-	    + kappa0*dny[X]*dzqyz + 2.0*c[X][Y]);
-
-  a[XZ][XX] = 0.0;
-  a[XZ][XY] = kappa0*dny[Z];
-  a[XZ][XZ] = 2.0*kappa1*dny[Y];
-  a[XZ][YY] = 0.0;
-  a[XZ][YZ] = kappa0*dny[X];
-
-  b[XZ] = -(kappa2*dny[Z]*dxqxx + kappa2*dny[X]*dxqxz + kappa1*dny[Z]*dxqyy
-	    - kappa1*dny[Y]*dxqyz - kappa2*dny[X]*dzqxx - kappa1*dny[Y]*dzqxy
-	    + kappa2*dny[Z]*dzqxy - kappa0*dny[X]*dzqyy + 2.0*c[X][Z]);
-
-  a[YY][XX] =  0.0;
-  a[YY][XY] = -kappa1*dny[X];
-  a[YY][XZ] =  0.0;
-  a[YY][YY] =  kappa0*dny[Y];
-  a[YY][YZ] = -kappa1*dny[Z];
-
-  b[YY] = -(kappa0*dny[Y]*dxqxy + kappa1*dny[X]*dxqyy
-	    + kappa1*dny[Z]*dzqyy + kappa0*dny[Y]*dzqyz + c[Y][Y]);
-
-  a[YZ][XX] =  kappa1*dny[Z];
-  a[YZ][XY] =  0.0;
-  a[YZ][XZ] = -kappa1*dny[X];
-  a[YZ][YY] =  kappa2*dny[Z];
-  a[YZ][YZ] =  kappa2*dny[Y];
-
-  b[YZ] = -(kappa0*dny[Z]*dxqxy + kappa0*dny[Y]*dxqxz + 2.0*kappa1*dny[X]*dxqyz
-	    - kappa0*dny[Y]*dzqxx - kappa1*dny[X]*dzqxy - kappa2*dny[Y]*dzqyy
-	    + kappa2*dny[Z]*dzqyz + 2.0*c[Y][Z]);
-
-  /* SOLVE LINEAR SYSTEM b <- A^{-1} b */
-
-  util_solve_linear_system(5, a, b);
-
-  grady[XX][nsolidy] = b[XX];
-  grady[XY][nsolidy] = b[XY];
-  grady[XZ][nsolidy] = b[XZ];
-  grady[YY][nsolidy] = b[YY];
-  grady[YZ][nsolidy] = b[YZ];
-
-  for (n = 0; n < NOP; n++) {
-    grad[3*(NOP*index + n) + Y] =
-      0.5*(dny[Y]*grady[n][0] - dny[Y]*grady[n][1]);
-    del2[NOP*index + n]
-      = dny[Y]*grady[n][0] + dny[Y]*grady[n][1]
-      + field[NOP*(index + xs) + n] + field[NOP*(index - xs) + n]
-      + field[NOP*(index + 1 ) + n] + field[NOP*(index - 1 ) + n]
-      - 4.0*field[NOP*index + n];
   }
 
   return;
@@ -814,7 +630,7 @@ static void gradient_3d_7pt_solid_wall_z(const int nop,
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
 	index = coords_index(ic, jc, 1);
-	gradient_z(index, nhat, dn, field, grad, del2);
+	gradient_norm1(index, Z, nhat, dn, field, grad, del2);
       }
     }
   }
@@ -828,7 +644,7 @@ static void gradient_3d_7pt_solid_wall_z(const int nop,
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
 	index = coords_index(ic, jc, nlocal[Z]);
-	gradient_z(index, nhat, dn, field, grad, del2);
+	gradient_norm1(index, Z, nhat, dn, field, grad, del2);
       }
     }
   }
@@ -838,172 +654,199 @@ static void gradient_3d_7pt_solid_wall_z(const int nop,
 
 /*****************************************************************************
  *
- *  gradient_z
+ *  gradient_norm2
  *
  *****************************************************************************/
 
-void gradient_z(const int index, const int nzhat[3], const double dnz[3],
-		const double * field, double * grad, double * del2) {
+static void gradient_norm2(const int index, const int norm1, const int norm2,
+			   const int nhat1[3], const double dn1[3],
+			   const int nhat2[3], const double dn2[3],
+			   const double * field, double * grad,
+			   double * del2) {
 
-  int ia, ib, ic, ig, n;
+  int ia, ib, ic, ig, n1, n2;
   int nhalo;
   int nlocal[3];
-  int xs, ys;
-  int nsolidz;            /* Points to solid partial gradient */
-  int nfluidz;            /* Points to fluid partial gradient */
+  int str[3];             /* Memory strides */
+  int nsolid1, nsolid2;   /* Point to solid partial gradients */
+  int nfluid1, nfluid2;   /* Point to fluid partial gradients */
 
-  double gradz[NOP][2];  /* grad[n][0] is forward gradient, Q_{ic+1} - Q_ic
-		            grad[n][1] backward gradient,   Q_ic - Q_{ic-1} */ 
-  double qs[NOP];
-  double qsab[3][3];
-  double q0[3][3];
 
-  double a[5][5];        /* Linear algebra Ax = b */
-  double b[5];           /* b is the rhs/solution vector */
-  double c[3][3];        /* Constant terms */
+  double gradn[NOP][3][2];  /* gradn[n1][ia][0] is forward gradient for n1 in
+			     * direction ia , Q_{ic+1} - Q_ic etc,
+			     * grad[n][ia] [1] backward gradient,
+			     * Q_ic - Q_{ic-1} etc */ 
+  double dq[NOP][3];        /* Gradients of the order parameter from fluid */
+ 
+  double qs1[NOP], qs2[NOP];
+  double qs1ab[3][3], qs2ab[3][3];
+  double q01[3][3], q02[3][3];
 
-  double dxqxx, dxqxy, dxqxz, dxqyy, dxqyz;
-  double dyqxx, dyqxy, dyqxz, dyqyy, dyqyz;
+  double bc1[NOP][NOP][3];   /* All gradient terms in boundary conditon */
+  double a[2*NOP][2*NOP];    /* Linear algebra Ax = b */
+  double b[2*NOP];           /* b is the rhs/solution vector */
+  double c1[3][3];           /* Constant terms in boundary condition */
+  double c2[3][3];
 
   double kappa0, kappa1, q_0, w;
-  double kappa2;
 
   assert(NOP == 5);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
+  str[Z] = 1;
+  str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
+  str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
 
   kappa0 = fe_kappa();
   kappa1 = fe_kappa(); /* One elastic constant */ 
-  kappa2 = kappa0 + kappa1;
+
   q_0 = blue_phase_q0();
   w = colloids_q_tensor_w();
 
-  nfluidz = (1 - nzhat[Z])/2;
-  nsolidz = (1 + nzhat[Z])/2;
+  nfluid1 = (1 - nhat1[norm1])/2;
+  nsolid1 = (1 + nhat1[norm1])/2;
 
-  assert(nfluidz == 0 || nfluidz == 1);
-  assert(nsolidz == 0 || nsolidz == 1);
-  assert(nfluidz != nsolidz);
+  nfluid2 = (1 - nhat2[norm2])/2;
+  nsolid2 = (1 + nhat2[norm2])/2;
 
-  for (n = 0; n < NOP; n++) {
-    gradz[n][0] = field[NOP*(index + 1) + n] - field[NOP*index + n];
-    gradz[n][1] = field[NOP*index + n] - field[NOP*(index - 1) + n];
-    qs[n] = field[NOP*index + n] - 0.5*dnz[Z]*gradz[n][nfluidz];
+  assert(nfluid1 == 0 || nfluid1 == 1);
+  assert(nsolid1 == 0 || nsolid1 == 1);
+  assert(nfluid1 != nsolid1);
+
+  assert(nfluid2 == 0 || nfluid2 == 1);
+  assert(nsolid2 == 0 || nsolid2 == 1);
+  assert(nfluid2 != nsolid2);
+
+  for (n1 = 0; n1 < NOP; n1++) {
+    for (ia = 0; ia < 3; ia++) {
+      gradn[n1][ia][0] =
+	field[NOP*(index + str[ia]) + n1] - field[NOP*index + n1];
+      gradn[n1][ia][1] =
+	field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
+    }
+    qs1[n1] = field[NOP*index+n1] - 0.5*nhat1[norm1]*gradn[n1][norm1][nfluid1];
+    qs2[n1] = field[NOP*index+n1] - 0.5*nhat2[norm2]*gradn[n1][norm2][nfluid2];
   }
 
-  fed_q5_to_qab(qsab, qs);
-  colloids_q_boundary(dnz, qsab, q0);
+  fed_q5_to_qab(qs1ab, qs1);
+  colloids_q_boundary(dn1, qs1ab, q01);
+  fed_q5_to_qab(qs2ab, qs2);
+  colloids_q_boundary(dn2, qs2ab, q02);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      fe_wall_[nsolidz] +=
-	0.5*w*(qsab[ia][ib] - q0[ia][ib])*(qsab[ia][ib] - q0[ia][ib]);
+      fe_wall_[nsolid1] +=
+	0.5*w*(qs1ab[ia][ib] - q01[ia][ib])*(qs1ab[ia][ib] - q01[ia][ib])
+	+ 0.5*w*(qs2ab[ia][ib] - q02[ia][ib])*(qs2ab[ia][ib] - q02[ia][ib]);
     }
   }
 
-  /* Tangential derivatives from fluid */
+  /* Derivatives of Q_ab precomputed for the fluid; set unknowns to unity
+   * as these multiply the coefficients in the respective terms in the
+   * linear algebra problem to follow. */
 
-  dxqxx = grad[3*(NOP*index + XX) + X];
-  dyqxx = grad[3*(NOP*index + XX) + Y];
-  dxqxy = grad[3*(NOP*index + XY) + X];
-  dyqxy = grad[3*(NOP*index + XY) + Y];
-  dxqxz = grad[3*(NOP*index + XZ) + X];
-  dyqxz = grad[3*(NOP*index + XZ) + Y];
-  dxqyy = grad[3*(NOP*index + YY) + X];
-  dyqyy = grad[3*(NOP*index + YY) + Y];
-  dxqyz = grad[3*(NOP*index + YZ) + X];
-  dyqyz = grad[3*(NOP*index + YZ) + Y];
+  for (n1 = 0; n1 < NOP; n1++) {
+    for (ia = 0; ia < 3; ia++) {
+      dq[n1][ia] = grad[3*(NOP*index + n1) + ia];
+    }
+    dq[n1][norm1] = 1.0;
+    dq[n1][norm2] = 1.0;
+  }
 
   /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      c[ia][ib] = 0.0;
+      c1[ia][ib] = 0.0;
+      c2[ia][ib] = 0.0;
       for (ig = 0; ig < 3; ig++) {
 	for (ic = 0; ic < 3; ic++) {
-	  c[ia][ib] += kappa1*q_0*dnz[ig]*
-	    (e_[ia][ig][ic]*qsab[ic][ib] + e_[ib][ig][ic]*qsab[ic][ia]);
+	  c1[ia][ib] += kappa1*q_0*dn1[ig]*
+	    (e_[ia][ig][ic]*qs1ab[ic][ib] + e_[ib][ig][ic]*qs1ab[ic][ia]);
+	  c2[ia][ib] += kappa1*q_0*dn2[ig]*
+	    (e_[ia][ig][ic]*qs2ab[ic][ib] + e_[ib][ig][ic]*qs2ab[ic][ia]);
 	}
       }
-      c[ia][ib] += w*(qsab[ia][ib] - q0[ia][ib]);
+      c1[ia][ib] += w*(qs1ab[ia][ib] - q01[ia][ib]);
+      c2[ia][ib] += w*(qs2ab[ia][ib] - q02[ia][ib]);
     }
   }
 
-  /* Construct coefficient matrix */
+  /* Construct boundary condition terms: first normal */
 
-  a[XX][XX] = kappa1*dnz[Z];
-  a[XX][XY] = 0.0;
-  a[XX][XZ] = kappa0*dnz[X];
-  a[XX][YY] = 0.0;
-  a[XX][YZ] = 0.0;
+  gradient_bcs(kappa0, kappa1, dn1, dq, bc1);
 
-  b[XX] = -(kappa0*dnz[X]*dxqxx - kappa1*dnz[Y]*dxqxy - kappa1*dnz[Z]*dxqxz
-	    + kappa1*dnz[Y]*dyqxx + kappa0*dnz[X]*dyqxy + c[X][X]);
+  for (n1 = 0; n1 < NOP; n1++) {
+    b[n1] = 0.0;
+    for (n2 = 0; n2 < NOP; n2++) {
+      a[n1][n2] = bc1[n1][n2][norm1];
+      a[n1][NOP + n2] = bc1[n1][n2][norm2];
+      b[n1] -= bc1[n1][n2][norm1];
+      b[n1] -= bc1[n1][n2][norm2];
+      for (ia = 0; ia < 3; ia++) {
+	b[n1] += bc1[n1][n2][ia];
+      }
+    }
+  }
 
-  a[XY][XX] = 0.0;
-  a[XY][XY] = 2.0*kappa1*dnz[Z];
-  a[XY][XZ] = kappa0*dnz[Y];
-  a[XY][YY] = 0.0;
-  a[XY][YZ] = kappa0*dnz[X];
+  b[XX] = -(b[XX] + c1[X][X]);
+  b[XY] = -(b[XY] + 2.0*c1[X][Y]);
+  b[XZ] = -(b[XZ] + 2.0*c1[X][Z]);
+  b[YY] = -(b[YY] + c1[Y][Y]);
+  b[YZ] = -(b[YZ] + 2.0*c1[Y][Z]);
 
-  b[XY] = -(kappa0*dnz[Y]*dxqxx + kappa2*dnz[X]*dxqxy - kappa1*dnz[Y]*dxqyy
-	    - kappa1*dnz[Z]*dxqyz
-	    - kappa1*dnz[X]*dyqxx + kappa2*dnz[Y]*dyqxy - kappa1*dnz[Z]*dyqxz
-	    + kappa0*dnz[X]*dyqyy + 2.0*c[X][Y]);
+  /* Second normal */
 
-  a[XZ][XX] = -kappa2*dnz[X];
-  a[XZ][XY] = -kappa1*dnz[Y];
-  a[XZ][XZ] =  kappa2*dnz[Z];
-  a[XZ][YY] = -kappa0*dnz[X];
-  a[XZ][YZ] =  0.0;
+  gradient_bcs(kappa0, kappa1, dn2, dq, bc1);
 
-  b[XZ] = -(kappa2*dnz[Z]*dxqxx + kappa2*dnz[X]*dxqxz + kappa1*dnz[Z]*dxqyy
-	    - kappa1*dnz[Y]*dxqyz
-	    + kappa0*dnz[Z]*dyqxy + 2.0*kappa1*dnz[Y]*dyqxz
-	    + kappa0*dnz[X]*dyqyz + 2.0*c[X][Z]);
+  for (n1 = 0; n1 < NOP; n1++) {
+    b[n1] = 0.0;
+    for (n2 = 0; n2 < NOP; n2++) {
+      a[NOP + n1][n2] = bc1[n1][n2][norm1];
+      a[NOP + n1][NOP + n2] = bc1[n1][n2][norm2];
+      b[NOP + n1] -= bc1[n1][n2][norm1];
+      b[NOP + n1] -= bc1[n1][n2][norm2];
+      for (ia = 0; ia < 3; ia++) {
+	b[NOP + n1] += bc1[n1][n2][ia];
+      }
+    }
+  }
 
-  a[YY][XX] = 0.0;
-  a[YY][XY] = 0.0;
-  a[YY][XZ] = 0.0;
-  a[YY][YY] = kappa1*dnz[Z];
-  a[YY][YZ] = kappa0*dnz[Y];
+  b[NOP + XX] = -(b[NOP + XX] + c2[X][X]);
+  b[NOP + XY] = -(b[NOP + XY] + 2.0*c2[X][Y]);
+  b[NOP + XZ] = -(b[NOP + XZ] + 2.0*c2[X][Z]);
+  b[NOP + YY] = -(b[NOP + YY] + c2[Y][Y]);
+  b[NOP + YZ] = -(b[NOP + YZ] + 2.0*c2[Y][Z]);
 
-  b[YY] = -(kappa0*dnz[Y]*dxqxy + kappa1*dnz[X]*dxqyy
-	    - kappa1*dnz[X]*dyqxy + kappa0*dnz[Y]*dyqyy - kappa1*dnz[Z]*dyqyz
-	    + c[Y][Y]);
+  /* SOLVE LINEAR SYSTEM b <= A^{-1} b */
 
-  a[YZ][XX] = -kappa0*dnz[Y];
-  a[YZ][XY] = -kappa1*dnz[X];
-  a[YZ][XZ] =  0.0;
-  a[YZ][YY] = -kappa2*dnz[Y];
-  a[YZ][YZ] =  kappa2*dnz[Z];
+  util_solve_linear_system(2*NOP, a, b);
 
-  b[YZ] = -(kappa0*dnz[Z]*dxqxy + kappa0*dnz[Y]*dxqxz + 2.0*kappa1*dnz[X]*dxqyz
-	    + kappa1*dnz[Z]*dyqxx - kappa1*dnz[X]*dyqxz + kappa2*dnz[Z]*dyqyy
-	    + kappa2*dnz[Y]*dyqyz + 2.0*c[Y][Z]);
+  /* This result for the solid partial gradients always has the wrong
+   * sign for the final gradient calculation. */
 
-  /* SOLVE LINEAR SYSTEM b <- A^{-1} b */
+  gradn[XX][norm1][nsolid1] = -b[XX];
+  gradn[XY][norm1][nsolid1] = -b[XY];
+  gradn[XZ][norm1][nsolid1] = -b[XZ];
+  gradn[YY][norm1][nsolid1] = -b[YY];
+  gradn[YZ][norm1][nsolid1] = -b[YZ];
 
-  util_solve_linear_system(5, a, b);
+  gradn[XX][norm2][nsolid2] = -b[NOP + XX];
+  gradn[XY][norm2][nsolid2] = -b[NOP + XY];
+  gradn[XZ][norm2][nsolid2] = -b[NOP + XZ];
+  gradn[YY][norm2][nsolid2] = -b[NOP + YY];
+  gradn[YZ][norm2][nsolid2] = -b[NOP + YZ];
 
-  gradz[XX][nsolidz] = b[XX];
-  gradz[XY][nsolidz] = b[XY];
-  gradz[XZ][nsolidz] = b[XZ];
-  gradz[YY][nsolidz] = b[YY];
-  gradz[YZ][nsolidz] = b[YZ];
-
-  for (n = 0; n < NOP; n++) {
-    grad[3*(NOP*index + n) + Z] =
-      0.5*(dnz[Z]*gradz[n][0] - dnz[Z]*gradz[n][1]);
-    del2[NOP*index + n]
-      = dnz[Z]*gradz[n][0] + dnz[Z]*gradz[n][1]
-      + field[NOP*(index + xs) + n] + field[NOP*(index - xs) + n]
-      + field[NOP*(index + ys) + n] + field[NOP*(index - ys) + n]
-      - 4.0*field[NOP*index + n];
+  for (n1 = 0; n1 < NOP; n1++) {
+    grad[3*(NOP*index + n1) + norm1] =
+      0.5*(gradn[n1][norm1][0] + gradn[n1][norm1][1]);
+    grad[3*(NOP*index + n1) + norm2] =
+      0.5*(gradn[n1][norm2][0] + gradn[n1][norm2][1]);
+    del2[NOP*index + n1] = gradn[n1][X][0] - gradn[n1][X][1]
+      + gradn[n1][Y][0] - gradn[n1][Y][1]
+      + gradn[n1][Z][0] - gradn[n1][Z][1];
   }
 
   return;
@@ -1011,699 +854,116 @@ void gradient_z(const int index, const int nzhat[3], const double dnz[3],
 
 /*****************************************************************************
  *
- *  gradient_xy
+ *  gradient_bcs
  *
  *****************************************************************************/
 
-static void gradient_xy(const int index, const int nxhat[3],
-			const double dnx[3], const int nyhat[3],
-			const double dny[3], const double * field,
-			double * grad, double * del2) {
-  int ia, ib, ic, ig, n;
-  int nhalo;
-  int nlocal[3];
-  int xs, ys;
-  int nsolidx, nsolidy;   /* Points to solid partial gradient */
-  int nfluidx, nfluidy;   /* Points to fluid partial gradient */
+static void gradient_bcs(double kappa0, double kappa1, const double dn[3],
+			 double dq[NOP][3], double bc[NOP][NOP][3]) {
 
-  double gradx[NOP][2];  /* grad[n][0] is forward gradient, Q_{ic+1} - Q_ic
-		            grad[n][1] backward gradient,   Q_ic - Q_{ic-1} */
-  double grady[NOP][2];
-
-  double qsx[NOP], qsy[NOP];
-  double qsxab[3][3], qsyab[3][3];
-  double qx0[3][3], qy0[3][3];
-
-  double a[10][10];           /* Linear algebra Ax = b */
-  double b[10];               /* b is the rhs/solution vector */
-  double cx[3][3], cy[3][3];  /* Constant terms */
-
-  double kappa0, kappa1, q_0, w;
   double kappa2;
 
-  double dzqxx, dzqxy, dzqxz, dzqyy, dzqyz;
-
-  assert(NOP == 5);
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
-
-  kappa0 = fe_kappa();
-  kappa1 = fe_kappa(); /* One elastic constant */ 
   kappa2 = kappa0 + kappa1;
-  q_0 = blue_phase_q0();
-  w = colloids_q_tensor_w();
 
-  nfluidx = (1 - nxhat[X])/2;
-  nsolidx = (1 + nxhat[X])/2;
-  nfluidy = (1 - nyhat[Y])/2;
-  nsolidy = (1 + nyhat[Y])/2;
-
-  assert(nfluidx == 0 || nfluidx == 1);
-  assert(nsolidx == 0 || nsolidx == 1);
-  assert(nfluidx != nsolidx);
-  assert(nfluidy == 0 || nfluidy == 1);
-  assert(nsolidy == 0 || nsolidy == 1);
-  assert(nfluidy != nsolidy);
-
-  for (n = 0; n < NOP; n++) {
-    gradx[n][0] = field[NOP*(index + xs) + n] - field[NOP*index + n];
-    gradx[n][1] = field[NOP*index + n] - field[NOP*(index - xs) + n];
-    qsx[n] = field[NOP*index + n] - 0.5*dnx[X]*gradx[n][nfluidx];
-    grady[n][0] = field[NOP*(index + ys) + n] - field[NOP*index + n];
-    grady[n][1] = field[NOP*index + n] - field[NOP*(index - ys) + n];
-    qsy[n] = field[NOP*index + n] - 0.5*dny[Y]*grady[n][nfluidy];
-  }
-
-  fed_q5_to_qab(qsxab, qsx);
-  fed_q5_to_qab(qsyab, qsy);
-  colloids_q_boundary(dnx, qsxab, qx0);
-  colloids_q_boundary(dny, qsyab, qy0);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      fe_wall_[nsolidx] +=
-	0.5*w*(qsxab[ia][ib] - qx0[ia][ib])*(qsxab[ia][ib] - qx0[ia][ib])
-	+ 0.5*w*(qsyab[ia][ib] - qy0[ia][ib])*(qsxab[ia][ib] - qy0[ia][ib]);
-    }
-  }
-
-  /* Tangential derivatives from fluid */
-
-  dzqxx = grad[3*(NOP*index + XX) + Z];
-  dzqxy = grad[3*(NOP*index + XY) + Z];
-  dzqxz = grad[3*(NOP*index + XZ) + Z];
-  dzqyy = grad[3*(NOP*index + YY) + Z];
-  dzqyz = grad[3*(NOP*index + YZ) + Z];
-
-  /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      cx[ia][ib] = 0.0;
-      cy[ia][ib] = 0.0;
-      for (ig = 0; ig < 3; ig++) {
-	for (ic = 0; ic < 3; ic++) {
-	  cx[ia][ib] += kappa1*q_0*dnx[ig]*
-	    (e_[ia][ig][ic]*qsxab[ic][ib] + e_[ib][ig][ic]*qsxab[ic][ia]);
-	  cy[ia][ib] += kappa1*q_0*dny[ig]*
-	    (e_[ia][ig][ic]*qsyab[ic][ib] + e_[ib][ig][ic]*qsyab[ic][ia]);
-	}
-      }
-      cx[ia][ib] += w*(qsxab[ia][ib] - qx0[ia][ib]);
-      cy[ia][ib] += w*(qsyab[ia][ib] - qy0[ia][ib]);
-    }
-  }
-
-  /* Construct coefficient matrix */
-
-  a[XX][XX] =  kappa0*dnx[X];
-  a[XX][XY] = -kappa1*dnx[Y];
-  a[XX][XZ] = -kappa1*dnx[Z];
-  a[XX][YY] =  0.0;
-  a[XX][YZ] =  0.0;
-
-  b[XX] = -(kappa1*dnx[Z]*dzqxx + kappa0*dnx[X]*dzqxz + cx[X][X]);
-
-  a[XY][XX] =  kappa0*dnx[Y];
-  a[XY][XY] =  kappa2*dnx[X];
-  a[XY][XZ] =  0.0;
-  a[XY][YY] = -kappa1*dnx[Y];
-  a[XY][YZ] = -kappa1*dnx[Z];
-
-  b[XY] = -(2.0*kappa1*dnx[Z]*dzqxy + kappa0*dnx[Y]*dzqxz + kappa0*dnx[X]*dzqyz
-	    + 2.0*cx[X][Y]);
-
-  a[XZ][XX] =  kappa2*dnx[Z];
-  a[XZ][XY] =  0.0;
-  a[XZ][XZ] =  kappa2*dnx[X];
-  a[XZ][YY] =  kappa1*dnx[Z];
-  a[XZ][YZ] = -kappa1*dnx[Y];
-
-  b[XZ] = -(-kappa2*dnx[X]*dzqxx - kappa1*dnx[Y]*dzqxy + kappa2*dnx[Z]*dzqxz
-	    - kappa0*dnx[X]*dzqyy + 2.0*cx[X][Z]);
-
-  a[YY][XX] = 0.0;
-  a[YY][XY] = kappa0*dnx[Y];
-  a[YY][XZ] = 0.0;
-  a[YY][YY] = kappa1*dnx[X];
-  a[YY][YZ] = 0.0;
-
-  b[YY] = -(kappa1*dnx[Z]*dzqyy + kappa0*dnx[Y]*dzqyz + cx[Y][Y]);
-
-  a[YZ][XX] = 0.0;
-  a[YZ][XY] = kappa0*dnx[Z];
-  a[YZ][XZ] = kappa0*dnx[Y];
-  a[YZ][YY] = 0.0;
-  a[YZ][YZ] = 2.0*kappa1*dnx[X];
-
-  b[YZ] = -(-kappa0*dnx[Y]*dzqxx - kappa1*dnx[X]*dzqxy - kappa2*dnx[Y]*dzqyy
-	    + kappa2*dnx[Z]*dzqyz + 2.0*cx[Y][Z]);
-
-
-  a[NOP+XX][XX] = kappa1*dny[Y];
-  a[NOP+XX][XY] = kappa0*dny[X];
-  a[NOP+XX][XZ] = 0.0;
-  a[NOP+XX][YY] = 0.0;
-  a[NOP+XX][YZ] = 0.0;
-
-  b[NOP+XX] = -(kappa1*dny[Z]*dzqxx + kappa0*dny[X]*dzqyz + cy[X][X]);
-
-  a[NOP+XY][XX] = -kappa1*dny[X];
-  a[NOP+XY][XY] =  kappa2*dny[Y];
-  a[NOP+XY][XZ] = -kappa1*dny[Z];
-  a[NOP+XY][YY] =  kappa0*dny[X];
-  a[NOP+XY][YZ] =  0.0;
-
-  b[NOP+XY] = -(2.0*kappa1*dny[Z]*dzqxy + kappa0*dny[Y]*dzqxz
-	    + kappa0*dny[X]*dzqyz + 2.0*cy[X][Y]);
-
-  a[NOP+XZ][XX] = 0.0;
-  a[NOP+XZ][XY] = kappa0*dny[Z];
-  a[NOP+XZ][XZ] = 2.0*kappa1*dny[Y];
-  a[NOP+XZ][YY] = 0.0;
-  a[NOP+XZ][YZ] = kappa0*dny[X];
-
-  b[NOP+XZ] = -(-kappa2*dny[X]*dzqxx - kappa1*dny[Y]*dzqxy
-	    + kappa2*dny[Z]*dzqxy - kappa0*dny[X]*dzqyy + 2.0*cy[X][Z]);
-
-  a[NOP+YY][XX] =  0.0;
-  a[NOP+YY][XY] = -kappa1*dny[X];
-  a[NOP+YY][XZ] =  0.0;
-  a[NOP+YY][YY] =  kappa0*dny[Y];
-  a[NOP+YY][YZ] = -kappa1*dny[Z];
-
-  b[NOP+YY] = -(kappa1*dny[Z]*dzqyy + kappa0*dny[Y]*dzqyz + cy[Y][Y]);
-
-  a[NOP+YZ][XX] =  kappa1*dny[Z];
-  a[NOP+YZ][XY] =  0.0;
-  a[NOP+YZ][XZ] = -kappa1*dny[X];
-  a[NOP+YZ][YY] =  kappa2*dny[Z];
-  a[NOP+YZ][YZ] =  kappa2*dny[Y];
-
-  b[NOP+YZ] = -(-kappa0*dny[Y]*dzqxx - kappa1*dny[X]*dzqxy
-		- kappa2*dny[Y]*dzqyy + kappa2*dny[Z]*dzqyz + 2.0*cy[Y][Z]);
-
-
-  /* SOLVE LINEAR SYSTEM b <- A^{-1} b */
-
-  util_solve_linear_system(10, a, b);
-
-  gradx[XX][nsolidx] = b[XX];
-  gradx[XY][nsolidx] = b[XY];
-  gradx[XZ][nsolidx] = b[XZ];
-  gradx[YY][nsolidx] = b[YY];
-  gradx[YZ][nsolidx] = b[YZ];
-
-  grady[XX][nsolidy] = b[NOP+XX];
-  grady[XY][nsolidy] = b[NOP+XY];
-  grady[XZ][nsolidy] = b[NOP+XZ];
-  grady[YY][nsolidy] = b[NOP+YY];
-  grady[YZ][nsolidy] = b[NOP+YZ];
-
-  /* SHOULD MULTIPLY BY nhat NOT dn */
-
-  for (n = 0; n < NOP; n++) {
-    grad[3*(NOP*index + n) + X] =
-      0.5*(dnx[X]*gradx[n][0] - dnx[X]*gradx[n][1]);
-    grad[3*(NOP*index + n) + Y] =
-      0.5*(dny[Y]*grady[n][0] - dny[Y]*grady[n][1]);
-    del2[NOP*index + n]
-      = dnx[X]*gradx[n][0] + dnx[X]*gradx[n][1]
-      + dny[Y]*grady[n][0] + dny[Y]*grady[n][1]
-      + field[NOP*(index + 1 ) + n] + field[NOP*(index - 1 ) + n]
-      - 2.0*field[NOP*index + n];
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  gradient_xz
- *
- *****************************************************************************/
-
-static void gradient_xz(const int index, const int nxhat[3],
-			const double dnx[3], const int nzhat[3],
-			const double dnz[3], const double * field,
-			double * grad, double * del2) {
-  int ia, ib, ic, ig, n;
-  int nhalo;
-  int nlocal[3];
-  int xs, ys;
-  int nsolidx, nsolidz;   /* Points to solid partial gradient */
-  int nfluidx, nfluidz;   /* Points to fluid partial gradient */
-
-  double gradx[NOP][2];  /* grad[n][0] is forward gradient, Q_{ic+1} - Q_ic
-		            grad[n][1] backward gradient,   Q_ic - Q_{ic-1} */
-  double gradz[NOP][2];
-
-  double qsx[NOP], qsz[NOP];
-  double qsxab[3][3], qszab[3][3];
-  double qx0[3][3], qz0[3][3];
-
-  double a[10][10];           /* Linear algebra Ax = b */
-  double b[10];               /* b is the rhs/solution vector */
-  double cx[3][3], cz[3][3];  /* Constant terms */
-
-  double kappa0, kappa1, q_0, w;
-  double kappa2;
-
-  double dyqxx, dyqxy, dyqxz, dyqyy, dyqyz;
-
-  assert(NOP == 5);
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
-
-  kappa0 = fe_kappa();
-  kappa1 = fe_kappa(); /* One elastic constant */ 
-  kappa2 = kappa0 + kappa1;
-  q_0 = blue_phase_q0();
-  w = colloids_q_tensor_w();
-
-  nfluidx = (1 - nxhat[X])/2;
-  nsolidx = (1 + nxhat[X])/2;
-  nfluidz = (1 - nzhat[Z])/2;
-  nsolidz = (1 + nzhat[Z])/2;
-
-  assert(nfluidx == 0 || nfluidx == 1);
-  assert(nsolidx == 0 || nsolidx == 1);
-  assert(nfluidx != nsolidx);
-  assert(nfluidz == 0 || nfluidz == 1);
-  assert(nsolidz == 0 || nsolidz == 1);
-  assert(nfluidz != nsolidz);
-
-  for (n = 0; n < NOP; n++) {
-    gradx[n][0] = field[NOP*(index + xs) + n] - field[NOP*index + n];
-    gradx[n][1] = field[NOP*index + n] - field[NOP*(index - xs) + n];
-    qsx[n] = field[NOP*index + n] - 0.5*dnx[X]*gradx[n][nfluidx];
-    gradz[n][0] = field[NOP*(index + 1) + n] - field[NOP*index + n];
-    gradz[n][1] = field[NOP*index + n] - field[NOP*(index - 1) + n];
-    qsz[n] = field[NOP*index + n] - 0.5*nzhat[Z]*gradz[n][nfluidz];
-  }
-
-  fed_q5_to_qab(qsxab, qsx);
-  fed_q5_to_qab(qszab, qsz);
-  colloids_q_boundary(dnx, qsxab, qx0);
-  colloids_q_boundary(dnz, qszab, qz0);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      fe_wall_[nsolidx] +=
-	0.5*w*(qsxab[ia][ib] - qx0[ia][ib])*(qsxab[ia][ib] - qx0[ia][ib])
-	+ 0.5*w*(qszab[ia][ib] - qz0[ia][ib])*(qszab[ia][ib] - qz0[ia][ib]);
-    }
-  }
-
-  /* Tangential derivatives from fluid */
-
-  dyqxx = grad[3*(NOP*index + XX) + Y];
-  dyqxy = grad[3*(NOP*index + XY) + Y];
-  dyqxz = grad[3*(NOP*index + XZ) + Y];
-  dyqyy = grad[3*(NOP*index + YY) + Y];
-  dyqyz = grad[3*(NOP*index + YZ) + Y];
-
-  /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      cx[ia][ib] = 0.0;
-      cz[ia][ib] = 0.0;
-      for (ig = 0; ig < 3; ig++) {
-	for (ic = 0; ic < 3; ic++) {
-	  cx[ia][ib] += kappa1*q_0*dnx[ig]*
-	    (e_[ia][ig][ic]*qsxab[ic][ib] + e_[ib][ig][ic]*qsxab[ic][ia]);
-	  cz[ia][ib] += kappa1*q_0*dnz[ig]*
-	    (e_[ia][ig][ic]*qszab[ic][ib] + e_[ib][ig][ic]*qszab[ic][ia]);
-	}
-      }
-      cx[ia][ib] += w*(qsxab[ia][ib] - qx0[ia][ib]);
-      cz[ia][ib] += w*(qszab[ia][ib] - qz0[ia][ib]);
-    }
-  }
-
-  /* Construct coefficient matrix */
-
-  a[XX][XX] =  kappa0*dnx[X];
-  a[XX][XY] = -kappa1*dnx[Y];
-  a[XX][XZ] = -kappa1*dnx[Z];
-  a[XX][YY] =  0.0;
-  a[XX][YZ] =  0.0;
-
-  b[XX] = -(kappa1*dnx[Y]*dyqxx + kappa0*dnx[X]*dyqxy + cx[X][X]);
-
-  a[XY][XX] =  kappa0*dnx[Y];
-  a[XY][XY] =  kappa2*dnx[X];
-  a[XY][XZ] =  0.0;
-  a[XY][YY] = -kappa1*dnx[Y];
-  a[XY][YZ] = -kappa1*dnx[Z];
-
-  b[XY] = -(-kappa1*dnx[X]*dyqxx + kappa2*dnx[Y]*dyqxy - kappa1*dnx[Z]*dyqxz
-	    + kappa0*dnx[X]*dyqyy + 2.0*cx[X][Y]);
-
-  a[XZ][XX] =  kappa2*dnx[Z];
-  a[XZ][XY] =  0.0;
-  a[XZ][XZ] =  kappa2*dnx[X];
-  a[XZ][YY] =  kappa1*dnx[Z];
-  a[XZ][YZ] = -kappa1*dnx[Y];
-
-  b[XZ] = -(kappa0*dnx[Z]*dyqxy + 2.0*kappa1*dnx[Y]*dyqxz + kappa0*dnx[X]*dyqyz
-	    + 2.0*cx[X][Z]);
-
-  a[YY][XX] = 0.0;
-  a[YY][XY] = kappa0*dnx[Y];
-  a[YY][XZ] = 0.0;
-  a[YY][YY] = kappa1*dnx[X];
-  a[YY][YZ] = 0.0;
-
-  b[YY] = -(-kappa1*dnx[X]*dyqxy + kappa0*dnx[Y]*dyqyy - kappa1*dnx[Z]*dyqyz
-	    + cx[Y][Y]);
-
-  a[YZ][XX] = 0.0;
-  a[YZ][XY] = kappa0*dnx[Z];
-  a[YZ][XZ] = kappa0*dnx[Y];
-  a[YZ][YY] = 0.0;
-  a[YZ][YZ] = 2.0*kappa1*dnx[X];
-
-  b[YZ] = -(kappa1*dnx[Z]*dyqxx - kappa1*dnx[X]*dyqxz + kappa2*dnx[Z]*dyqyy
-	    + kappa2*dnx[Y]*dyqyz + 2.0*cx[Y][Z]);
-
-
-  a[NOP+XX][XX] = kappa1*dnz[Z];
-  a[NOP+XX][XY] = 0.0;
-  a[NOP+XX][XZ] = kappa0*dnz[X];
-  a[NOP+XX][YY] = 0.0;
-  a[NOP+XX][YZ] = 0.0;
-
-  b[NOP+XX] = -(kappa1*dnz[Y]*dyqxx + kappa0*dnz[X]*dyqxy + cz[X][X]);
-
-  a[NOP+XY][XX] = 0.0;
-  a[NOP+XY][XY] = 2.0*kappa1*dnz[Z];
-  a[NOP+XY][XZ] = kappa0*dnz[Y];
-  a[NOP+XY][YY] = 0.0;
-  a[NOP+XY][YZ] = kappa0*dnz[X];
-
-  b[NOP+XY] = -(-kappa1*dnz[X]*dyqxx + kappa2*dnz[Y]*dyqxy
-		- kappa1*dnz[Z]*dyqxz + kappa0*dnz[X]*dyqyy + 2.0*cz[X][Y]);
-
-  a[NOP+XZ][XX] = -kappa2*dnz[X];
-  a[NOP+XZ][XY] = -kappa1*dnz[Y];
-  a[NOP+XZ][XZ] =  kappa2*dnz[Z];
-  a[NOP+XZ][YY] = -kappa0*dnz[X];
-  a[NOP+XZ][YZ] =  0.0;
-
-  b[NOP+XZ] = -(kappa0*dnz[Z]*dyqxy + 2.0*kappa1*dnz[Y]*dyqxz
-		+ kappa0*dnz[X]*dyqyz + 2.0*cz[X][Z]);
-
-  a[NOP+YY][XX] = 0.0;
-  a[NOP+YY][XY] = 0.0;
-  a[NOP+YY][XZ] = 0.0;
-  a[NOP+YY][YY] = kappa1*dnz[Z];
-  a[NOP+YY][YZ] = kappa0*dnz[Y];
-
-  b[NOP+YY] = -(-kappa1*dnz[X]*dyqxy + kappa0*dnz[Y]*dyqyy
-		- kappa1*dnz[Z]*dyqyz + cz[Y][Y]);
-
-  a[NOP+YZ][XX] = -kappa0*dnz[Y];
-  a[NOP+YZ][XY] = -kappa1*dnz[X];
-  a[NOP+YZ][XZ] =  0.0;
-  a[NOP+YZ][YY] = -kappa2*dnz[Y];
-  a[NOP+YZ][YZ] =  kappa2*dnz[Z];
-
-  b[NOP+YZ] = -(kappa1*dnz[Z]*dyqxx - kappa1*dnz[X]*dyqxz + kappa2*dnz[Z]*dyqyy
-		+ kappa2*dnz[Y]*dyqyz + 2.0*cz[Y][Z]);
-
-  /* SOLVE LINEAR SYSTEM b <- A^{-1} b */
-
-  util_solve_linear_system(10, a, b);
-
-  gradx[XX][nsolidx] = b[XX];
-  gradx[XY][nsolidx] = b[XY];
-  gradx[XZ][nsolidx] = b[XZ];
-  gradx[YY][nsolidx] = b[YY];
-  gradx[YZ][nsolidx] = b[YZ];
-
-  gradz[XX][nsolidz] = b[NOP+XX];
-  gradz[XY][nsolidz] = b[NOP+XY];
-  gradz[XZ][nsolidz] = b[NOP+XZ];
-  gradz[YY][nsolidz] = b[NOP+YY];
-  gradz[YZ][nsolidz] = b[NOP+YZ];
-
-  /* SHOULD MULTIPLY BY nhat NOT dn */
-
-  for (n = 0; n < NOP; n++) {
-    grad[3*(NOP*index + n) + X] =
-      0.5*(dnx[X]*gradx[n][0] - dnx[X]*gradx[n][1]);
-    grad[3*(NOP*index + n) + Z] =
-      0.5*(dnz[Z]*gradz[n][0] - dnz[Z]*gradz[n][1]);
-    del2[NOP*index + n]
-      = dnx[X]*gradx[n][0] + dnx[X]*gradx[n][1]
-      + dnz[Z]*gradz[n][0] + dnz[Z]*gradz[n][1]
-      + field[NOP*(index + ys) + n] + field[NOP*(index - ys) + n]
-      - 2.0*field[NOP*index + n];
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  gradient_yz
- *
- *****************************************************************************/
-
-static void gradient_yz(const int index, const int nyhat[3],
-			const double dny[3], const int nzhat[3],
-			const double dnz[3], const double * field,
-			double * grad, double * del2) {
-  int ia, ib, ic, ig, n;
-  int nhalo;
-  int nlocal[3];
-  int xs, ys;
-  int nsolidy, nsolidz;   /* Points to solid partial gradient */
-  int nfluidy, nfluidz;   /* Points to fluid partial gradient */
-
-  double grady[NOP][2];  /* grad[n][0] is forward gradient, Q_{ic+1} - Q_ic
-		            grad[n][1] backward gradient,   Q_ic - Q_{ic-1} */
-  double gradz[NOP][2];
-
-  double qsy[NOP], qsz[NOP];
-  double qsyab[3][3], qszab[3][3];
-  double qy0[3][3], qz0[3][3];
-
-  double a[10][10];           /* Linear algebra Ax = b */
-  double b[10];               /* b is the rhs/solution vector */
-  double cy[3][3], cz[3][3];  /* Constant terms */
-
-  double kappa0, kappa1, q_0, w;
-  double kappa2;
-
-  double dxqxx, dxqxy, dxqxz, dxqyy, dxqyz;
-
-  assert(NOP == 5);
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
-
-  kappa0 = fe_kappa();
-  kappa1 = fe_kappa(); /* One elastic constant */ 
-  kappa2 = kappa0 + kappa1;
-  q_0 = blue_phase_q0();
-  w = colloids_q_tensor_w();
-
-  nfluidy = (1 - nyhat[Y])/2;
-  nsolidy = (1 + nyhat[Y])/2;
-  nfluidz = (1 - nzhat[Z])/2;
-  nsolidz = (1 + nzhat[Z])/2;
-
-  assert(nfluidy == 0 || nfluidy == 1);
-  assert(nsolidy == 0 || nsolidy == 1);
-  assert(nfluidy != nsolidy);
-  assert(nfluidz == 0 || nfluidz == 1);
-  assert(nsolidz == 0 || nsolidz == 1);
-  assert(nfluidz != nsolidz);
-
-  for (n = 0; n < NOP; n++) {
-    grady[n][0] = field[NOP*(index + ys) + n] - field[NOP*index + n];
-    grady[n][1] = field[NOP*index + n] - field[NOP*(index - ys) + n];
-    qsy[n] = field[NOP*index + n] - 0.5*nyhat[Y]*grady[n][nfluidy];
-    gradz[n][0] = field[NOP*(index + 1) + n] - field[NOP*index + n];
-    gradz[n][1] = field[NOP*index + n] - field[NOP*(index - 1) + n];
-    qsz[n] = field[NOP*index + n] - 0.5*nzhat[Z]*gradz[n][nfluidz];
-  }
-
-  fed_q5_to_qab(qsyab, qsy);
-  fed_q5_to_qab(qszab, qsz);
-  colloids_q_boundary(dny, qsyab, qy0);
-  colloids_q_boundary(dnz, qszab, qz0);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      /* TODO STORE FREE ENERGY SOMEHWERE SENSIBLE */
-      fe_wall_[nsolidy] +=
-	0.5*w*(qsyab[ia][ib] - qy0[ia][ib])*(qsyab[ia][ib] - qy0[ia][ib])
-	+ 0.5*w*(qszab[ia][ib] - qz0[ia][ib])*(qszab[ia][ib] - qz0[ia][ib]);
-    }
-  }
-
-  /* Tangential derivatives from fluid */
-
-  dxqxx = grad[3*(NOP*index + XX) + X];
-  dxqxy = grad[3*(NOP*index + XY) + X];
-  dxqxz = grad[3*(NOP*index + XZ) + X];
-  dxqyy = grad[3*(NOP*index + YY) + X];
-  dxqyz = grad[3*(NOP*index + YZ) + X];
-
-  /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      cy[ia][ib] = 0.0;
-      cz[ia][ib] = 0.0;
-      for (ig = 0; ig < 3; ig++) {
-	for (ic = 0; ic < 3; ic++) {
-	  cy[ia][ib] += kappa1*q_0*dny[ig]*
-	    (e_[ia][ig][ic]*qsyab[ic][ib] + e_[ib][ig][ic]*qsyab[ic][ia]);
-	  cz[ia][ib] += kappa1*q_0*dnz[ig]*
-	    (e_[ia][ig][ic]*qszab[ic][ib] + e_[ib][ig][ic]*qszab[ic][ia]);
-	}
-      }
-      cy[ia][ib] += w*(qsyab[ia][ib] - qy0[ia][ib]);
-      cz[ia][ib] += w*(qszab[ia][ib] - qz0[ia][ib]);
-    }
-  }
-
-  /* Construct coefficient matrix */
-
-  a[XX][XX] = kappa1*dny[Y];
-  a[XX][XY] = kappa0*dny[X];
-  a[XX][XZ] = 0.0;
-  a[XX][YY] = 0.0;
-  a[XX][YZ] = 0.0;
-
-  b[XX] = -(kappa0*dny[X]*dxqxx - kappa1*dny[Y]*dxqxy - kappa1*dny[Z]*dxqxz
-	    + cy[X][X]);
-
-  a[XY][XX] = -kappa1*dny[X];
-  a[XY][XY] =  kappa2*dny[Y];
-  a[XY][XZ] = -kappa1*dny[Z];
-  a[XY][YY] =  kappa0*dny[X];
-  a[XY][YZ] =  0.0;
-
-  b[XY] = -(kappa0*dny[Y]*dxqxx + kappa2*dny[X]*dxqxy - kappa1*dny[Y]*dxqyy
-	    - kappa1*dny[Z]*dxqyz + 2.0*cy[X][Y]);
-
-  a[XZ][XX] = 0.0;
-  a[XZ][XY] = kappa0*dny[Z];
-  a[XZ][XZ] = 2.0*kappa1*dny[Y];
-  a[XZ][YY] = 0.0;
-  a[XZ][YZ] = kappa0*dny[X];
-
-  b[XZ] = -(kappa2*dny[Z]*dxqxx + kappa2*dny[X]*dxqxz + kappa1*dny[Z]*dxqyy
-	    - kappa1*dny[Y]*dxqyz + 2.0*cy[X][Z]);
-
-  a[YY][XX] =  0.0;
-  a[YY][XY] = -kappa1*dny[X];
-  a[YY][XZ] =  0.0;
-  a[YY][YY] =  kappa0*dny[Y];
-  a[YY][YZ] = -kappa1*dny[Z];
-
-  b[YY] = -(kappa0*dny[Y]*dxqxy + kappa1*dny[X]*dxqyy + cy[Y][Y]);
-
-  a[YZ][XX] =  kappa1*dny[Z];
-  a[YZ][XY] =  0.0;
-  a[YZ][XZ] = -kappa1*dny[X];
-  a[YZ][YY] =  kappa2*dny[Z];
-  a[YZ][YZ] =  kappa2*dny[Y];
-
-  b[YZ] = -(kappa0*dny[Z]*dxqxy + kappa0*dny[Y]*dxqxz + 2.0*kappa1*dny[X]*dxqyz
-	    + 2.0*cy[Y][Z]);
-
-  a[NOP+XX][XX] = kappa1*dnz[Z];
-  a[NOP+XX][XY] = 0.0;
-  a[NOP+XX][XZ] = kappa0*dnz[X];
-  a[NOP+XX][YY] = 0.0;
-  a[NOP+XX][YZ] = 0.0;
-
-  b[NOP+XX] = -(kappa0*dnz[X]*dxqxx - kappa1*dnz[Y]*dxqxy - kappa1*dnz[Z]*dxqxz
-		+ cz[X][X]);
-
-  a[NOP+XY][XX] = 0.0;
-  a[NOP+XY][XY] = 2.0*kappa1*dnz[Z];
-  a[NOP+XY][XZ] = kappa0*dnz[Y];
-  a[NOP+XY][YY] = 0.0;
-  a[NOP+XY][YZ] = kappa0*dnz[X];
-
-  b[NOP+XY] = -(kappa0*dnz[Y]*dxqxx + kappa2*dnz[X]*dxqxy - kappa1*dnz[Y]*dxqyy
-		- kappa1*dnz[Z]*dxqyz + 2.0*cz[X][Y]);
-
-  a[NOP+XZ][XX] = -kappa2*dnz[X];
-  a[NOP+XZ][XY] = -kappa1*dnz[Y];
-  a[NOP+XZ][XZ] =  kappa2*dnz[Z];
-  a[NOP+XZ][YY] = -kappa0*dnz[X];
-  a[NOP+XZ][YZ] =  0.0;
-
-  b[NOP+XZ] = -(kappa2*dnz[Z]*dxqxx + kappa2*dnz[X]*dxqxz + kappa1*dnz[Z]*dxqyy
-		- kappa1*dnz[Y]*dxqyz + 2.0*cz[X][Z]);
-
-  a[NOP+YY][XX] = 0.0;
-  a[NOP+YY][XY] = 0.0;
-  a[NOP+YY][XZ] = 0.0;
-  a[NOP+YY][YY] = kappa1*dnz[Z];
-  a[NOP+YY][YZ] = kappa0*dnz[Y];
-
-  b[NOP+YY] = -(kappa0*dnz[Y]*dxqxy + kappa1*dnz[X]*dxqyy + cz[Y][Y]);
-
-  a[NOP+YZ][XX] = -kappa0*dnz[Y];
-  a[NOP+YZ][XY] = -kappa1*dnz[X];
-  a[NOP+YZ][XZ] =  0.0;
-  a[NOP+YZ][YY] = -kappa2*dnz[Y];
-  a[NOP+YZ][YZ] =  kappa2*dnz[Z];
-
-  b[NOP+YZ] = -(kappa0*dnz[Z]*dxqxy + kappa0*dnz[Y]*dxqxz
-		+ 2.0*kappa1*dnz[X]*dxqyz + 2.0*cz[Y][Z]);
-
-  /* SOLVE LINEAR SYSTEM b <- A^{-1} b */
-
-  util_solve_linear_system(10, a, b);
-
-  grady[XX][nsolidy] = b[XX];
-  grady[XY][nsolidy] = b[XY];
-  grady[XZ][nsolidy] = b[XZ];
-  grady[YY][nsolidy] = b[YY];
-  grady[YZ][nsolidy] = b[YZ];
-
-  gradz[XX][nsolidz] = b[NOP+XX];
-  gradz[XY][nsolidz] = b[NOP+XY];
-  gradz[XZ][nsolidz] = b[NOP+XZ];
-  gradz[YY][nsolidz] = b[NOP+YY];
-  gradz[YZ][nsolidz] = b[NOP+YZ];
-
-
-  /* SHOULD MULTIPLY BY nhat NOT dn */
-
-  for (n = 0; n < NOP; n++) {
-    grad[3*(NOP*index + n) + Y] =
-      0.5*(dny[Y]*grady[n][0] - dny[Y]*grady[n][1]);
-    grad[3*(NOP*index + n) + Z] =
-      0.5*(dnz[Z]*gradz[n][0] - dnz[Z]*gradz[n][1]);
-    del2[NOP*index + n]
-      = dny[Y]*grady[n][0] + dny[Y]*grady[n][1]
-      + dnz[Z]*gradz[n][0] + dnz[Z]*gradz[n][1]
-      + field[NOP*(index + xs) + n] + field[NOP*(index - xs) + n]
-      - 2.0*field[NOP*index + n];
-  }
+  /* XX equation */
+
+  bc[XX][XX][X] =  kappa0*dn[X]*dq[XX][X];
+  bc[XX][XY][X] = -kappa1*dn[Y]*dq[XY][X];
+  bc[XX][XZ][X] = -kappa1*dn[Z]*dq[XZ][X];
+  bc[XX][YY][X] =  0.0;
+  bc[XX][YZ][X] =  0.0;
+
+  bc[XX][XX][Y] = kappa1*dn[Y]*dq[XX][Y];
+  bc[XX][XY][Y] = kappa0*dn[X]*dq[XY][Y];
+  bc[XX][XZ][Y] = 0.0;
+  bc[XX][YY][Y] = 0.0;
+  bc[XX][YZ][Y] = 0.0;
+
+  bc[XX][XX][Z] = kappa1*dn[Z]*dq[XX][Z];
+  bc[XX][XY][Z] = 0.0;
+  bc[XX][XZ][Z] = kappa0*dn[X]*dq[XZ][Z];
+  bc[XX][YY][Z] = 0.0;
+  bc[XX][YZ][Z] = 0.0;
+
+  /* XY equation */
+
+  bc[XY][XX][X] =  kappa0*dn[Y]*dq[XX][X];
+  bc[XY][XY][X] =  kappa2*dn[X]*dq[XY][X];
+  bc[XY][XZ][X] =  0.0;
+  bc[XY][YY][X] = -kappa1*dn[Y]*dq[YY][X];
+  bc[XY][YZ][X] = -kappa1*dn[Z]*dq[YZ][X];
+
+  bc[XY][XX][Y] = -kappa1*dn[X]*dq[XX][Y];
+  bc[XY][XY][Y] =  kappa2*dn[Y]*dq[XY][Y];
+  bc[XY][XZ][Y] = -kappa1*dn[Z]*dq[XZ][Y];
+  bc[XY][YY][Y] =  kappa0*dn[X]*dq[YY][Y];
+  bc[XY][YZ][Y] =  0.0;
+
+  bc[XY][XX][Z] = 0.0;
+  bc[XY][XY][Z] = 2.0*kappa1*dn[Z]*dq[XY][Z];
+  bc[XY][XZ][Z] = kappa0*dn[Y]*dq[XZ][Z];
+  bc[XY][YY][Z] = 0.0;
+  bc[XY][YZ][Z] = kappa0*dn[X]*dq[YZ][Z];
+
+  /* XZ equation */
+
+  bc[XZ][XX][X] =  kappa2*dn[Z]*dq[XX][X];
+  bc[XZ][XY][X] =  0.0;
+  bc[XZ][XZ][X] =  kappa2*dn[X]*dq[XZ][X];
+  bc[XZ][YY][X] =  kappa1*dn[Z]*dq[YY][X];
+  bc[XZ][YZ][X] = -kappa1*dn[Y]*dq[YZ][X];
+
+  bc[XZ][XX][Y] = 0.0;
+  bc[XZ][XY][Y] = kappa0*dn[Z]*dq[XY][Y];
+  bc[XZ][XZ][Y] = 2.0*kappa1*dn[Y]*dq[XZ][Y];
+  bc[XZ][YY][Y] = 0.0;
+  bc[XZ][YZ][Y] = kappa0*dn[X]*dq[YZ][Y];
+
+  bc[XZ][XX][Z] = -kappa2*dn[X]*dq[XX][Z];
+  bc[XZ][XY][Z] = -kappa1*dn[Y]*dq[XY][Z];
+  bc[XZ][XZ][Z] =  kappa2*dn[Z]*dq[XZ][Z];
+  bc[XZ][YY][Z] = -kappa0*dn[X]*dq[YY][Z];
+  bc[XZ][YZ][Z] =  0.0;
+
+  /* YY equation */
+
+  bc[YY][XX][X] = 0.0;
+  bc[YY][XY][X] = kappa0*dn[Y]*dq[XY][X];
+  bc[YY][XZ][X] = 0.0;
+  bc[YY][YY][X] = kappa1*dn[X]*dq[YY][X];
+  bc[YY][YZ][X] = 0.0;
+
+  bc[YY][XX][Y] =  0.0;
+  bc[YY][XY][Y] = -kappa1*dn[X]*dq[XY][Y];
+  bc[YY][XZ][Y] =  0.0;
+  bc[YY][YY][Y] =  kappa0*dn[Y]*dq[YY][Y];
+  bc[YY][YZ][Y] = -kappa1*dn[Z]*dq[YZ][Y];
+
+  bc[YY][XX][Z] = 0.0;
+  bc[YY][XY][Z] = 0.0;
+  bc[YY][XZ][Z] = 0.0;
+  bc[YY][YY][Z] = kappa1*dn[Z]*dq[YY][Z];
+  bc[YY][YZ][Z] = kappa0*dn[Y]*dq[YZ][Z];
+
+  /* YZ equation */
+
+  bc[YZ][XX][X] = 0.0;
+  bc[YZ][XY][X] = kappa0*dn[Z]*dq[XY][X];
+  bc[YZ][XZ][X] = kappa0*dn[Y]*dq[XZ][X];
+  bc[YZ][YY][X] = 0.0;
+  bc[YZ][YZ][X] = 2.0*kappa1*dn[X]*dq[YZ][X];
+
+  bc[YZ][XX][Y] =  kappa1*dn[Z]*dq[XX][Y];
+  bc[YZ][XY][Y] =  0.0;
+  bc[YZ][XZ][Y] = -kappa1*dn[X]*dq[XZ][Y];
+  bc[YZ][YY][Y] =  kappa2*dn[Z]*dq[YY][Y];
+  bc[YZ][YZ][Y] =  kappa2*dn[Y]*dq[YZ][Y];
+
+  bc[YZ][XX][Z] = -kappa0*dn[Y]*dq[XX][Z];
+  bc[YZ][XY][Z] = -kappa1*dn[X]*dq[XY][Z];
+  bc[YZ][XZ][Z] =  0.0;
+  bc[YZ][YY][Z] = -kappa2*dn[Y]*dq[YY][Z];
+  bc[YZ][YZ][Z] =  kappa2*dn[Z]*dq[YZ][Z];
 
   return;
 }
