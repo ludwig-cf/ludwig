@@ -24,6 +24,8 @@ void colloids_fix_swd(void);
 void colloids_q_tensor_anchoring_set(const int type);
 void colloids_q_tensor_w_set(double w);
 void colloids_q_boundary(const double n[3], double qs[3][3], double q0[3][3]);
+void colloids_q_boundary_normal(const int index, const int di[3],
+				double dn[3]);
 double colloids_q_tensor_w(void);
 
 extern struct io_info_t * io_info_scalar_q_;
