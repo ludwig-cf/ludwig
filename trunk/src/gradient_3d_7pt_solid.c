@@ -115,7 +115,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
 static void gradient_bcs(double kappa0, double kappa1, const double dn[3],
 			 double dq[NOP][3], double bc[NOP][NOP][3]);
 
-int util_solve_linear_system(const int n, double (*a)[], double * xb);
+void util_gauss_jordan(const int n, double (*a)[n], double * b);
 
 static double fe_wall_[2];
 
@@ -167,6 +167,7 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
   }
 
   /* Always at the moment. Might want to avoid if only flat walls */
+
   gradient_colloid(nop, field, grad, delsq, nextra);
 
   return;
@@ -182,77 +183,6 @@ void gradient_3d_7pt_solid_fe_s(double * fstats) {
 
   fstats[0] = fe_wall_[0];
   fstats[1] = fe_wall_[1];
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  gradient_3d_7pt_solid_hs
- *
- *  TODO:
- *  This is potentially using updated values of phi.
- *
- *****************************************************************************/
-
-void gradient_3d_7pt_solid_hs(int ic, int jc, int kc, double hs[3][3]) {
-
-  int ia, ib, n, p;
-  int index, index1;
-  char status;
-
-  double w;
-  double gradf;
-  double qs[5];
-  double qsab[3][3], q0[3][3];
-  double dn[3];
-  extern double * phi_site;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      hs[ia][ib] = 0.0;
-    }
-  }
-
-  index = coords_index(ic, jc, kc);
-  w = colloids_q_tensor_w();
-
-  for (p = 0; p < NGRAD_BC; p++) {
-
-    index1 = coords_index(ic + bc_[p][X], jc + bc_[p][Y], kc + bc_[p][Z]);
-    status = site_map_get_status_index(index1);
-  
-    if (status == BOUNDARY) {
-
-      /* Use fluid point in the opposite direction to solid to construct
-       * gradient and extrapolate to solid surface */
-
-      index1 = coords_index(ic - bc_[p][X], jc - bc_[p][Y], kc - bc_[p][Z]);
-
-      for (n = 0; n < NOP; n++) {
-	gradf = phi_site[NOP*index1 + n] - phi_site[NOP*index + n];
-	qs[n] = phi_site[NOP*index + n] - 0.5*gradf;
-      }
-
-      for (ia = 0; ia < 3; ia++) {
-	dn[ia] = 1.0*bc_[p][ia];
-      }
-
-      fed_q5_to_qab(qsab, qs);
-      colloids_q_boundary(dn, qsab, q0);
-
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0 ; ib < 3; ib++) {
-	  hs[ia][ib] = -w*(qsab[ia][ib] - q0[ia][ib]);
-	}
-      }
-
-      if (status == COLLOID) {
-	fatal("NO colloid hs yet\n");
-      }
-
-    }
-  }
 
   return;
 }
@@ -411,6 +341,7 @@ static void gradient_colloid(const int nop, const double * field,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(ic, jc, kc);
+	if (site_map_get_status_index(index) != FLUID) continue;
 
 	for (n = 0; n < 3; n++) {
 	  nhat[n][X] = 0;
@@ -602,7 +533,7 @@ static void gradient_norm1(const int index, const int norm1,
     }
   }
 
-  /* Construct the linear algebra problem matrixA vector b */
+  /* Construct the linear algebra problem matrix A vector b */
 
   gradient_bcs(kappa0, kappa1, dn1, dq, bc1);
 
@@ -625,7 +556,7 @@ static void gradient_norm1(const int index, const int norm1,
 
   /* SOLVE LINEAR SYSTEM b <= A^{-1} b */
 
-  util_solve_linear_system(5, a, b);
+  util_gauss_jordan(NOP, a, b);
 
   /* This result for the solid partial gradient always has the wrong
    * sign for the final gradient calculation. */
@@ -915,7 +846,7 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
   gradient_bcs(kappa0, kappa1, dn2, dq, bc1);
 
   for (n1 = 0; n1 < NOP; n1++) {
-    b[n1] = 0.0;
+    b[NOP + n1] = 0.0;
     for (n2 = 0; n2 < NOP; n2++) {
       a[NOP + n1][n2] = bc1[n1][n2][norm1];
       a[NOP + n1][NOP + n2] = bc1[n1][n2][norm2];
@@ -935,7 +866,7 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
 
   /* SOLVE LINEAR SYSTEM b <= A^{-1} b */
 
-  util_solve_linear_system(2*NOP, a, b);
+  util_gauss_jordan(2*NOP, a, b);
 
   /* This result for the solid partial gradients always has the wrong
    * sign for the final gradient calculation. */
@@ -1138,7 +1069,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
   nsolid[X] = (1 + nhatx[X])/2;
 
   nfluid[Y] = (1 - nhaty[Y])/2;
-  nsolid[Y] = (1 + nhatx[Y])/2;
+  nsolid[Y] = (1 + nhaty[Y])/2;
 
   nfluid[Z] = (1 - nhatz[Z])/2;
   nsolid[Z] = (1 + nhatz[Z])/2;
@@ -1270,7 +1201,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
 
   /* SOLVE LINEAR SYSTEM b <= A^{-1} b */
 
-  util_solve_linear_system(3*NOP, a, b);
+  util_gauss_jordan(3*NOP, a, b);
 
   /* This result for the solid partial gradients always has the wrong
    * sign for the final gradient calculation. */
@@ -1297,87 +1228,92 @@ static void gradient_norm3(const int index, const int nhatx[3],
 
 /*****************************************************************************
  *
- *  util_solve_linear_system
+ *  util_gauss_jordan
  *
- *  Solve Ax = b for nxn A. xb RHS on entry and solution on exit.
- *  A is destroyed.
+ *  Solve linear system via Gauss Jordan elimination with full pivoting.
+ *  See, e.g., Press et al page 39.
+ *
+ *  A is the n by n matrix, b is rhs on input and solution on output.
+ *  A is column-scrambled inverse on exit.
  *
  *****************************************************************************/
 
-int util_solve_linear_system(const int n, double (*a)[n], double * xb) {
+void util_gauss_jordan(const int n, double (*a)[n], double * b) {
 
-  int i, j, k;
-  int ifail = 0;
-  int iprow;
-  int * ipivot;
+  int i, j, k, ia, ib;
+  int irow, icol;
+  int ipivot[3*NOP];
 
-  double tmp;
+  double rpivot, tmp;
 
-  ipivot = (int *) malloc(n*sizeof(int));
-  if (ipivot == NULL) fatal("malloc(ipivot) failed\n");
+  assert(n <= 3*NOP);
+  icol = -1;
+  irow = -1;
 
-  iprow = -1;
-  for (k = 0; k < n; k++) {
-    ipivot[k] = -1;
+  for (j = 0; j < n; j++) {
+    ipivot[j] = -1;
   }
 
-  for (k = 0; k < n; k++) {
-
-    /* Find pivot row */
+  for (i = 0; i < n; i++) {
     tmp = 0.0;
-    for (i = 0; i < n; i++) {
-      if (ipivot[i] == -1) {
-	if (fabs(a[i][k]) >= tmp) {
-	  tmp = fabs(a[i][k]);
-	  iprow = i;
+    for (j = 0; j < n; j++) {
+      if (ipivot[j] != 0) {
+	for (k = 0; k < n; k++) {
+
+	  if (ipivot[k] == -1) {
+	    if (fabs(a[j][k]) >= tmp) {
+	      tmp = fabs(a[j][k]);
+	      irow = j;
+	      icol = k;
+	    }
+	  }
+	  else if (ipivot[k] > 1) {
+	    fatal("Gauss Jordan elimination failed\n");
+	  }
+
 	}
       }
     }
-    ipivot[k] = iprow;
 
-    /* divide pivot row by the pivot element a[iprow][k] */
+    assert(icol != -1);
+    assert(irow != -1);
 
-    if (a[iprow][k] == 0.0) {
-      ifail = -1;
-      info("*** IFAIL = -1\n");
-      /* Must drop through to deallocate ipivot[] */
-      break;
+    ipivot[icol] += 1;
+
+    if (irow != icol) {
+      for (ia = 0; ia < n; ia++) {
+	tmp = a[irow][ia];
+	a[irow][ia] = a[icol][ia];
+	a[icol][ia] = tmp;
+      }
+      tmp = b[irow];
+      b[irow] = b[icol];
+      b[icol] = tmp;
     }
 
-    tmp = 1.0 / a[iprow][k];
+    if (a[icol][icol] == 0.0) fatal("Gauss Jordan elimination failed\n");
 
-    for (j = k; j < n; j++) {
-      a[iprow][j] *= tmp;
+    rpivot = 1.0/a[icol][icol];
+    a[icol][icol] = 1.0;
+
+    for (ia = 0; ia < n; ia++) {
+      a[icol][ia] *= rpivot;
     }
-    xb[iprow] *= tmp;
+    b[icol] *= rpivot;
 
-    /* Subtract the pivot row (scaled) from remaining rows */
-
-    for (i = 0; i < n; i++) {
-      if (ipivot[i] == -1) {
-	tmp = a[i][k];
-	for (j = k; j < n; j++) {
-	  a[i][j] -= tmp*a[iprow][j];
+    for (ia = 0; ia < n; ia++) {
+      if (ia != icol) {
+	tmp = a[ia][icol];
+	a[ia][icol] = 0.0;
+	for (ib = 0; ib < n; ib++) {
+	  a[ib][ib] -= a[icol][ib]*tmp;
 	}
-	xb[i] -= tmp*xb[iprow];
+	b[ia] -= b[icol]*tmp;
       }
     }
   }
 
-  /* Now do the back substitution */
+  /* Could recover the inverse here if required. */
 
-  for (i = n - 1; i > -1; i--) {
-    iprow = ipivot[i];
-    tmp = xb[iprow];
-    for (k = i + 1; k < n; k++) {
-      tmp -= a[iprow][k]*xb[ipivot[k]];
-    }
-    xb[iprow] = tmp;
-  }
-
-  free(ipivot);
-
-  if (ifail != 0) fatal("IFAIL FAILED\n");
-
-  return ifail;
+  return;
 }
