@@ -115,7 +115,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
 static void gradient_bcs(double kappa0, double kappa1, const double dn[3],
 			 double dq[NOP][3], double bc[NOP][NOP][3]);
 
-void util_gauss_jordan(const int n, double (*a)[n], double * b);
+void util_gauss_jordan(const int n, double **a, double * b);
 
 static double fe_wall_[2];
 
@@ -556,7 +556,7 @@ static void gradient_norm1(const int index, const int norm1,
 
   /* SOLVE LINEAR SYSTEM b <= A^{-1} b */
 
-  util_gauss_jordan(NOP, a, b);
+  /* util_gauss_jordan(NOP, a, b);*/
 
   /* This result for the solid partial gradient always has the wrong
    * sign for the final gradient calculation. */
@@ -866,7 +866,7 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
 
   /* SOLVE LINEAR SYSTEM b <= A^{-1} b */
 
-  util_gauss_jordan(2*NOP, a, b);
+  /* util_gauss_jordan(2*NOP, a, b);*/
 
   /* This result for the solid partial gradients always has the wrong
    * sign for the final gradient calculation. */
@@ -1201,7 +1201,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
 
   /* SOLVE LINEAR SYSTEM b <= A^{-1} b */
 
-  util_gauss_jordan(3*NOP, a, b);
+  /*util_gauss_jordan(3*NOP, a, b);*/
 
   /* This result for the solid partial gradients always has the wrong
    * sign for the final gradient calculation. */
@@ -1238,7 +1238,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
  *
  *****************************************************************************/
 
-void util_gauss_jordan(const int n, double (*a)[n], double * b) {
+void util_gauss_jordan(const int n, double **a, double * b) {
 
   int i, j, k, ia, ib;
   int irow, icol;
