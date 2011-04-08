@@ -32,6 +32,7 @@
 static void phi_force_calculation_fluid(void);
 static void phi_force_compute_fluxes(void);
 static void phi_force_flux_divergence(void);
+static void phi_force_flux_divergence_with_fix(void);
 static void phi_force_fix_fluxes(void);
 static void phi_force_fix_fluxes_parallel(void);
 static void phi_force_flux(void);
@@ -183,6 +184,7 @@ static void phi_force_calculation_fluid() {
 static void phi_force_flux(void) {
 
   int n;
+  int fix_fluxes = 1;
 
   n = coords_nsites();
 
@@ -197,11 +199,16 @@ static void phi_force_flux(void) {
   if (fluxz == NULL) fatal("malloc(fluxz) force failed");
 
   phi_force_compute_fluxes();
-  phi_force_fix_fluxes();
 
   if (wall_present()) phi_force_wall();
 
-  phi_force_flux_divergence();
+  if (fix_fluxes) {
+    phi_force_fix_fluxes();
+    phi_force_flux_divergence();
+  }
+  else {
+    phi_force_flux_divergence_with_fix();
+  }
 
   free(fluxz);
   free(fluxy);
@@ -597,6 +604,84 @@ static void phi_force_flux_divergence(void) {
 
 	hydrodynamics_add_force_local(index, f);
 
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_flux_divergence_with_fix
+ *
+ *  Take the diverence of the momentum fluxes to get a force on the
+ *  fluid site.
+ *
+ *  It is intended that these fluxes are uncorrected, and that a
+ *  global constraint on the total force is enforced. This costs
+ *  one Allreduce in pe_comm() per call. 
+ *
+ *****************************************************************************/
+
+static void phi_force_flux_divergence_with_fix(void) {
+
+  int nlocal[3];
+  int ic, jc, kc, index, ia;
+  int indexj, indexk;
+  double f[3];
+
+  double fsum_local[3];
+  double fsum[3];
+  double rv;
+
+  coords_nlocal(nlocal);
+
+  for (ia = 0; ia < 3; ia++) {
+    fsum_local[ia] = 0.0;
+  }
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = le_site_index(ic, jc, kc);
+	indexj = le_site_index(ic, jc-1, kc);
+	indexk = le_site_index(ic, jc, kc-1);
+
+	for (ia = 0; ia < 3; ia++) {
+	  f[ia] = - (fluxe[3*index + ia] - fluxw[3*index + ia]
+		     + fluxy[3*index + ia] - fluxy[3*indexj + ia]
+		     + fluxz[3*index + ia] - fluxz[3*indexk + ia]);
+	  fsum_local[ia] += f[ia];
+	}
+      }
+    }
+  }
+
+  MPI_Allreduce(fsum_local, fsum, 3, MPI_DOUBLE, MPI_SUM, pe_comm());
+
+  rv = 1.0/(L(X)*L(Y)*L(Z));
+
+  for (ia = 0; ia < 3; ia++) {
+    fsum[ia] *= rv;
+  }
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = le_site_index(ic, jc, kc);
+	indexj = le_site_index(ic, jc-1, kc);
+	indexk = le_site_index(ic, jc, kc-1);
+
+	for (ia = 0; ia < 3; ia++) {
+	  f[ia] = - (fluxe[3*index + ia] - fluxw[3*index + ia]
+		     + fluxy[3*index + ia] - fluxy[3*indexj + ia]
+		     + fluxz[3*index + ia] - fluxz[3*indexk + ia]);
+	  f[ia] -= fsum[ia];
+	}
+	hydrodynamics_add_force_local(index, f);
       }
     }
   }
