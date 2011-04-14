@@ -87,6 +87,7 @@ void stats_free_energy_density(void) {
     info("\nFree energies - timestep f v f/v f_s a f_s/a\n");
 
     if (fe_total[4] > 0.0) {
+      /* Area > 0 means the free energy is available */
       info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
 	   get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
 	   fe_total[3], fe_total[4], fe_total[3]/fe_total[4]);
