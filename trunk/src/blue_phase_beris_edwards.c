@@ -25,6 +25,7 @@
 #include "site_map.h"
 #include "lattice.h"
 #include "phi.h"
+#include "colloids.h"
 #include "colloids_Q_tensor.h"
 #include "wall.h"
 #include "advection.h"
@@ -43,9 +44,10 @@ static const double r3 = (1.0/3.0);
 
 static void blue_phase_be_update(double * hs5);
 static void blue_phase_be_surface(double * hs5);
+static void blue_phase_be_colloid(double * hs5);
 static void blue_phase_be_wallx(double * hs5);
 static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
-			     double hs[3][3]);
+			     const double dn[3], double hs[3][3]);
 
 /*****************************************************************************
  *
@@ -84,7 +86,8 @@ void blue_phase_beris_edwards(void) {
   hydrodynamics_leesedwards_transformation();
   advection_upwind(fluxe, fluxw, fluxy, fluxz);
   advection_bcs_no_normal_flux(fluxe, fluxw, fluxy, fluxz);
-  blue_phase_be_surface(hs5);
+  /* surface terms not operational yet ... */
+  /* ... call blue_phase_be_surface(hs5) here */
   blue_phase_be_update(hs5);
 
   free(hs5);
@@ -258,7 +261,120 @@ static void blue_phase_be_surface(double * hs5) {
   if (wall_at_edge(Y)) fatal("No y wall yet\n");
   if (wall_at_edge(Z)) fatal("No z wall yet\n");
 
-  /* if (colloid_ntotal() > 0) fatal("No colloid yet\n");*/
+  if (colloid_ntotal() > 0) blue_phase_be_colloid(hs5);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_be_colloid
+ *
+ *  Compute the surface contributions to the moleculasr field in the
+ *  presence of colloids.
+ *
+ *****************************************************************************/
+
+static void blue_phase_be_colloid(double * hs5) {
+
+  int nlocal[3];
+  int ic, jc, kc;
+  int index;
+  int nop;
+
+  int nhat[3];
+  double dn[3];
+  double hs[3][3];
+
+  coords_nlocal(nlocal);
+  nop = phi_nop();
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	if (site_map_get_status_index(index) != FLUID) continue;
+
+	nhat[Y] = 0;
+	nhat[Z] = 0;
+
+	if (site_map_get_status(ic+1, jc, kc) == COLLOID) {
+	  nhat[X] = -1;
+	  colloids_q_boundary_normal(index, nhat, dn);
+	  blue_phase_be_hs(ic, jc, kc, nhat, dn, hs);
+	  hs5[nop*index + XX] += hs[X][X];
+	  hs5[nop*index + XY] += hs[X][Y];
+	  hs5[nop*index + XZ] += hs[X][Z];
+	  hs5[nop*index + YY] += hs[Y][Y];
+	  hs5[nop*index + YZ] += hs[Y][Z];
+	}
+
+	if (site_map_get_status(ic-1, jc, kc) == COLLOID) {
+	  nhat[X] = +1;
+	  colloids_q_boundary_normal(index, nhat, dn);	  
+	  blue_phase_be_hs(ic, jc, kc, nhat, dn, hs);
+	  hs5[nop*index + XX] += hs[X][X];
+	  hs5[nop*index + XY] += hs[X][Y];
+	  hs5[nop*index + XZ] += hs[X][Z];
+	  hs5[nop*index + YY] += hs[Y][Y];
+	  hs5[nop*index + YZ] += hs[Y][Z];
+	}
+
+	nhat[X] = 0;
+	nhat[Z] = 0;
+
+	if (site_map_get_status(ic, jc+1, kc) == COLLOID) {
+	  nhat[Y] = -1;
+	  colloids_q_boundary_normal(index, nhat, dn);	  
+	  blue_phase_be_hs(ic, jc, kc, nhat, dn, hs);
+	  hs5[nop*index + XX] += hs[X][X];
+	  hs5[nop*index + XY] += hs[X][Y];
+	  hs5[nop*index + XZ] += hs[X][Z];
+	  hs5[nop*index + YY] += hs[Y][Y];
+	  hs5[nop*index + YZ] += hs[Y][Z];
+	}
+
+	if (site_map_get_status(ic, jc-1, kc) == COLLOID) {
+	  nhat[Y] = 1;
+	  colloids_q_boundary_normal(index, nhat, dn);	  
+	  blue_phase_be_hs(ic, jc, kc, nhat, dn, hs);
+	  hs5[nop*index + XX] += hs[X][X];
+	  hs5[nop*index + XY] += hs[X][Y];
+	  hs5[nop*index + XZ] += hs[X][Z];
+	  hs5[nop*index + YY] += hs[Y][Y];
+	  hs5[nop*index + YZ] += hs[Y][Z];
+	}
+
+	nhat[X] = 0;
+	nhat[Y] = 0;
+
+	if (site_map_get_status(ic, jc, kc+1) == COLLOID) {
+	  nhat[Z] = -1;
+	  colloids_q_boundary_normal(index, nhat, dn);	  
+	  blue_phase_be_hs(ic, jc, kc, nhat, dn, hs);
+	  hs5[nop*index + XX] += hs[X][X];
+	  hs5[nop*index + XY] += hs[X][Y];
+	  hs5[nop*index + XZ] += hs[X][Z];
+	  hs5[nop*index + YY] += hs[Y][Y];
+	  hs5[nop*index + YZ] += hs[Y][Z];
+	}
+
+	if (site_map_get_status(ic, jc, kc-1) == COLLOID) {
+	  nhat[Z] = 1;
+	  colloids_q_boundary_normal(index, nhat, dn);	  
+	  blue_phase_be_hs(ic, jc, kc, nhat, dn, hs);
+	  hs5[nop*index + XX] += hs[X][X];
+	  hs5[nop*index + XY] += hs[X][Y];
+	  hs5[nop*index + XZ] += hs[X][Z];
+	  hs5[nop*index + YY] += hs[Y][Y];
+	  hs5[nop*index + YZ] += hs[Y][Z];
+	}
+
+	/* Next site */
+      }
+    }
+  }
 
   return;
 }
@@ -278,6 +394,7 @@ static void blue_phase_be_wallx(double * hs5) {
   int nhat[3];
   int nop;
 
+  double dn[3];
   double hs[3][3];
 
   coords_nlocal(nlocal);
@@ -285,15 +402,18 @@ static void blue_phase_be_wallx(double * hs5) {
 
   nhat[Y] = 0;
   nhat[Z] = 0;
+  dn[Y] = 0.0;
+  dn[Z] = 0.0;
 
   if (cart_coords(X) == 0) {
 
     ic = 1;
     nhat[X] = +1;
+    dn[X] = +1.0;
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	blue_phase_be_hs(ic, jc, kc, nhat, hs);
+	blue_phase_be_hs(ic, jc, kc, nhat, dn, hs);
 	index = coords_index(ic, jc, kc);
 	hs5[nop*index + XX] = hs[X][X];
 	hs5[nop*index + XY] = hs[X][Y];
@@ -308,10 +428,11 @@ static void blue_phase_be_wallx(double * hs5) {
 
     ic = nlocal[X];
     nhat[X] = -1;
+    dn[X] = -1.0;
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	blue_phase_be_hs(ic, jc, kc, nhat, hs);
+	blue_phase_be_hs(ic, jc, kc, nhat, dn, hs);
 	index = coords_index(ic, jc, kc);
 	hs5[nop*index + XX] = hs[X][X];
 	hs5[nop*index + XY] = hs[X][Y];
@@ -344,12 +465,15 @@ static void blue_phase_be_wallx(double * hs5) {
  *
  *  The input (ic, jc, kc) is the fluid site, and the surface outward
  *  (repeat outward, pointing into the fluid) normal on the lattice is
- *  nhat.
+ *  nhat. This is used to do the extrapolation.
+ *
+ *  The 'true' outward normal (floating point) is dn[3]. This is used
+ *  compute the surface Q^0_ab. 
  *
  *****************************************************************************/
 
 static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
-			     double hs[3][3]) {
+			     const double dn[3], double hs[3][3]) {
   int ia, ib;
   int index1, index2;
 
@@ -357,7 +481,6 @@ static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
   double q1[3][3];
   double q2[3][3];
   double qs[3][3], q0[3][3];
-  double dn[3];
 
   w = colloids_q_tensor_w();
 
@@ -371,7 +494,6 @@ static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
     for (ib = 0; ib < 3; ib++) {
       qs[ia][ib] = q1[ia][ib] - 0.5*(q1[ia][ib] - q2[ia][ib]);
     }
-    dn[ia] = 1.0*nhat[ia];
   }
 
   colloids_q_boundary(dn, qs, q0);
