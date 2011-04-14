@@ -746,6 +746,10 @@ static int scalar_q_dir_write(FILE * fp, const int ic, const int jc,
   phi_get_q_tensor(index, q);
   scalar_order_parameter_director(q, qs_dir);
 
+  if (site_map_get_status_index(index) != FLUID) {
+    qs_dir[0] = 1.0;
+  }
+
   n = fwrite(qs_dir, sizeof(double), 4, fp);
   if (n != 4) fatal("fwrite(qs_dir) failed at index %d\n", index);
 
@@ -796,7 +800,8 @@ static void scalar_order_parameter_director(double q[3][3], double qs[4]) {
 
 void colloids_q_tensor_anchoring_set(const int type) {
 
-  assert(type == ANCHORING_PLANAR || type == ANCHORING_NORMAL);
+  assert(type == ANCHORING_PLANAR || type == ANCHORING_NORMAL ||
+	 type == ANCHORING_FIXED);
 
   anchoring_ = type;
 
