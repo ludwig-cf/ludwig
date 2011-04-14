@@ -76,7 +76,7 @@ tests:
 
 tests_mpi:
 	$(MAKE) base "CC=$(MPICC) -D_MPI_" \
-	"CLIBS=$(CLIBS) $(MPILIB) $(LBLIBS)"
+	"CLIBS=$(CLIBS) $(LBLIBS)"
 
 
 do_tests: tests
