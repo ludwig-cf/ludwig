@@ -17,7 +17,9 @@
 #include "pe.h"
 #include "coords.h"
 #include "control.h"
+#include "colloids.h"
 #include "site_map.h"
+#include "wall.h"
 #include "free_energy.h"
 #include "stats_free_energy.h"
 
@@ -36,8 +38,8 @@ void stats_free_energy_density(void) {
   int nlocal[3];
 
   double fed;
-  double fe_local[3];
-  double fe_total[3];
+  double fe_local[5];
+  double fe_total[5];
   double rv;
 
   double (* free_energy_density)(const int index);
@@ -45,9 +47,11 @@ void stats_free_energy_density(void) {
   coords_nlocal(nlocal);
   free_energy_density = fe_density_function();
 
-  fe_local[0] = 0.0; /* Total */
-  fe_local[1] = 0.0; /* Fluid */
-  fe_local[2] = 0.0; /* Volume */
+  fe_local[0] = 0.0; /* Total free energy (fluid all sites) */
+  fe_local[1] = 0.0; /* Fluid only free energy */
+  fe_local[2] = 0.0; /* Volume of fluid */
+  fe_local[3] = 0.0; /* surface free energy */
+  fe_local[4] = 0.0; /* other wall free energy (walls only) */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -65,12 +69,42 @@ void stats_free_energy_density(void) {
     }
   }
 
-  MPI_Reduce(fe_local, fe_total, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  /* A robust mechanism is required to get the surface free energy */
 
-  info("\nFree energy density - timestep total fluid\n");
-  info("[fed] %14d %17.10e %17.10e\n", get_step(), rv*fe_total[0],
-       fe_total[1]/fe_total[2]);
+  if (wall_present()) {
+
+    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+    info("\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
+    info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
+	 get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	 fe_total[3], fe_total[4]);
+  }
+  else if (colloid_ntotal() > 0) {
+
+    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+    info("\nFree energies - timestep f v f/v f_s a f_s/a\n");
+
+    if (fe_total[4] > 0.0) {
+      info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
+	   get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	   fe_total[3], fe_total[4], fe_total[3]/fe_total[4]);
+    }
+    else {
+      info("[fe] %14d %17.10e %17.10e %17.10e %17.10e\n",
+	   get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	   fe_total[3]);
+    }
+  }
+  else {
+    MPI_Reduce(fe_local, fe_total, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    rv = 1.0/(L(X)*L(Y)*L(Z));
+
+    info("\nFree energy density - timestep total fluid\n");
+    info("[fed] %14d %17.10e %17.10e\n", get_step(), rv*fe_total[0],
+	 fe_total[1]/fe_total[2]);
+  }
 
   return;
 }
