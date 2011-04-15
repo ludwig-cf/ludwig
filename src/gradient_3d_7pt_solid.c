@@ -53,6 +53,7 @@
 #include "gradient.h"
 #include "site_map.h"
 #include "free_energy.h"
+#include "colloids.h"
 #include "colloids_Q_tensor.h"
 #include "gradient_3d_7pt_solid.h"
 
@@ -153,8 +154,18 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
 
 void gradient_3d_7pt_solid_fe_s(double * fstats) {
 
-  fstats[0] = fe_wall_[0];
-  fstats[1] = fe_wall_[1];
+  /* KLUDGE */
+
+  if (colloid_ntotal() > 0) {
+    /* return total plus nominal area */
+    fstats[0] = fe_wall_[0] + fe_wall_[1];
+    fstats[1] = 1.0;
+  }
+  else {
+    /* Walls */
+    fstats[0] = fe_wall_[0];
+    fstats[1] = fe_wall_[1];
+  }
 
   return;
 }
@@ -596,13 +607,11 @@ static void gradient_norm1(const int index, const int norm1,
   b[YY] = -(b[YY] + c1[Y][Y]);
   b[YZ] = -(b[YZ] + 2.0*c1[Y][Z]);
 
-  /* util_gauss_jordan(NOP, a, b);*/
+  util_gauss_jordan(NOP, a, b);
 
-  gradn[XX][norm1][nsolid1] = b[XX];
-  gradn[XY][norm1][nsolid1] = b[XY];
-  gradn[XZ][norm1][nsolid1] = b[XZ];
-  gradn[YY][norm1][nsolid1] = b[YY];
-  gradn[YZ][norm1][nsolid1] = b[YZ];
+  for (n1 = 0; n1 < NOP; n1++) {
+    gradn[n1][norm1][nsolid1] = b[n1];
+  }
 
   for (n1 = 0; n1 < NOP; n1++) {
     grad[3*(NOP*index + n1) + norm1] =
@@ -775,11 +784,9 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
 
     util_gauss_jordan(NOP, a, b);
 
-    gradn[XX][norm1][nsolid1] = b[XX];
-    gradn[XY][norm1][nsolid1] = b[XY];
-    gradn[XZ][norm1][nsolid1] = b[XZ];
-    gradn[YY][norm1][nsolid1] = b[YY];
-    gradn[YZ][norm1][nsolid1] = b[YZ];
+    for (n1 = 0; n1 < NOP; n1++) {
+      gradn[n1][norm1][nsolid1] = b[n1];
+    }
 
     /* Second normal */
 
@@ -804,11 +811,9 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
 
     util_gauss_jordan(NOP, a, b);
 
-    gradn[XX][norm2][nsolid2] = b[XX];
-    gradn[XY][norm2][nsolid2] = b[XY];
-    gradn[XZ][norm2][nsolid2] = b[XZ];
-    gradn[YY][norm2][nsolid2] = b[YY];
-    gradn[YZ][norm2][nsolid2] = b[YZ];
+    for (n1 = 0; n1 < NOP; n1++) {
+      gradn[n1][norm2][nsolid2] = b[n1];
+    }
 
     for (n1 = 0; n1 < NOP; n1++) {
       grad[3*(NOP*index + n1) + norm1] =
