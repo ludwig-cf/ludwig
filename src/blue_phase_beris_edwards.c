@@ -43,7 +43,6 @@ static double * fluxz;
 static const double r3 = (1.0/3.0);
 
 static void blue_phase_be_update(double * hs5);
-static void blue_phase_be_surface(double * hs5);
 static void blue_phase_be_colloid(double * hs5);
 static void blue_phase_be_wallx(double * hs5);
 static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
@@ -255,7 +254,7 @@ double blue_phase_be_get_rotational_diffusion(void) {
  *
  *****************************************************************************/
 
-static void blue_phase_be_surface(double * hs5) {
+void blue_phase_be_surface(double * hs5) {
 
   if (wall_at_edge(X)) blue_phase_be_wallx(hs5);
   if (wall_at_edge(Y)) fatal("No y wall yet\n");
@@ -270,7 +269,7 @@ static void blue_phase_be_surface(double * hs5) {
  *
  *  blue_phase_be_colloid
  *
- *  Compute the surface contributions to the moleculasr field in the
+ *  Compute the surface contributions to the molecular field in the
  *  presence of colloids.
  *
  *****************************************************************************/
@@ -475,27 +474,15 @@ static void blue_phase_be_wallx(double * hs5) {
 static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
 			     const double dn[3], double hs[3][3]) {
   int ia, ib;
-  int index1, index2;
+  int index1;
 
   double w;
-  double q1[3][3];
-  double q2[3][3];
   double qs[3][3], q0[3][3];
 
   w = colloids_q_tensor_w();
 
   index1 = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index1, q1);
-
-  index2 = coords_index(ic + nhat[X], jc + nhat[Y], kc + nhat[Z]);
-  phi_get_q_tensor(index2, q2);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      qs[ia][ib] = q1[ia][ib] - 0.5*(q1[ia][ib] - q2[ia][ib]);
-    }
-  }
-
+  phi_get_q_tensor(index1, qs);
   colloids_q_boundary(dn, qs, q0);
 
   for (ia = 0; ia < 3; ia++) {
