@@ -187,8 +187,9 @@ void COLL_set_Q(){
  *
  *  colloids_q_boundary_normal
  *
- *  Find the 'true' outward unit normal at the half way point between a
- *  fluid site index, and a neighbouring colloid site.
+ *  Find the 'true' outward unit normal at fluid site index. Note that
+ *  the half-way point is not used to provide a simple unique value in
+ *  the gradient calculation.
  *
  *  The unit lattice vector which is the discrete outward normal is di[3].
  *  The result is returned in unit vector dn.
@@ -213,8 +214,7 @@ void colloids_q_boundary_normal(const int index, const int di[3],
   assert(pc);
 
   for (ia = 0; ia < 3; ia++) {
-    /* di is outward normal hence minus sign for di[] */
-    dn[ia] = 1.0*(noffset[ia] + isite[ia]) - 0.5*di[ia];
+    dn[ia] = 1.0*(noffset[ia] + isite[ia]);
     dn[ia] -= pc->s.r[ia];
   }
 

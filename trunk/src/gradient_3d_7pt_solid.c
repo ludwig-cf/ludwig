@@ -502,10 +502,8 @@ static void gradient_norm1(const int index, const int norm1,
 			     * Q_ic - Q_{ic-1} etc */ 
   double dq[NOP][3];        /* Gradients of the order parameter from fluid */
  
-  double qs1[NOP];
-  double qs1ab[3][3];
-  double q01[3][3];
-  double q[3][3];
+  double qs[3][3];
+  double q0[3][3];
 
   double bc1[NOP][NOP][3];  /* All gradient terms in boundary conditon */
   double a[NOP][NOP];       /* Linear algebra Ax = b */
@@ -544,17 +542,16 @@ static void gradient_norm1(const int index, const int norm1,
       gradn[n1][ia][1] =
 	field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
     }
-    qs1[n1] = field[NOP*index+n1] - 0.5*nhat1[norm1]*gradn[n1][norm1][nfluid1];
   }
 
-  fed_q5_to_qab(qs1ab, qs1);
+  fed_q5_to_qab(qs, field + NOP*index);
   colloids_q_boundary_normal(index, nhat1, dn);
-  colloids_q_boundary(dn, qs1ab, q01);
+  colloids_q_boundary(dn, qs, q0);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       fe_wall_[nsolid1] +=
-	0.5*w*(qs1ab[ia][ib] - q01[ia][ib])*(qs1ab[ia][ib] - q01[ia][ib]);
+	0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
     }
   }
 
@@ -571,18 +568,16 @@ static void gradient_norm1(const int index, const int norm1,
 
   /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
 
-  fed_q5_to_qab(q, field + NOP*index);
-
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       c1[ia][ib] = 0.0;
       for (ig = 0; ig < 3; ig++) {
 	for (ic = 0; ic < 3; ic++) {
 	  c1[ia][ib] -= kappa1*q_0*nhat1[ig]*
-	    (e_[ia][ig][ic]*q[ic][ib] + e_[ib][ig][ic]*q[ic][ia]);
+	    (e_[ia][ig][ic]*qs[ic][ib] + e_[ib][ig][ic]*qs[ic][ia]);
 	}
       }
-      c1[ia][ib] -= w*(qs1ab[ia][ib] - q01[ia][ib]);
+      c1[ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
     }
   }
 
@@ -651,10 +646,8 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
   double dq1[NOP][3];       /* Gradients of the order parameter from fluid */
   double dq2[NOP][3];
 
-  double qs1[NOP], qs2[NOP];
-  double qs1ab[3][3], qs2ab[3][3];
-  double q01[3][3], q02[3][3];
-  double q[3][3];
+  double qs[3][3];
+  double q0[3][3];
 
   double bc1[NOP][NOP][3];   /* All gradient terms in boundary conditon */
   double a[NOP][NOP];        /* Linear algebra Ax = b */
@@ -701,28 +694,20 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
       gradn[n1][ia][1] =
 	field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
     }
-    qs1[n1] = field[NOP*index+n1] - 0.5*nhat1[norm1]*gradn[n1][norm1][nfluid1];
-    qs2[n1] = field[NOP*index+n1] - 0.5*nhat2[norm2]*gradn[n1][norm2][nfluid2];
   }
 
-  fed_q5_to_qab(qs1ab, qs1);
+  fed_q5_to_qab(qs, field + NOP*index);
   colloids_q_boundary_normal(index, nhat1, dn);
-  colloids_q_boundary(dn, qs1ab, q01);
-  fed_q5_to_qab(qs2ab, qs2);
-  colloids_q_boundary_normal(index, nhat2, dn);
-  colloids_q_boundary(dn, qs2ab, q02);
+  colloids_q_boundary(dn, qs, q0);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       fe_wall_[nsolid1] +=
-	0.5*w*(qs1ab[ia][ib] - q01[ia][ib])*(qs1ab[ia][ib] - q01[ia][ib])
-	+ 0.5*w*(qs2ab[ia][ib] - q02[ia][ib])*(qs2ab[ia][ib] - q02[ia][ib]);
+	2.0*0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
     }
   }
 
-  /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
-
-  fed_q5_to_qab(q, field + NOP*index);
+  /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_ca) n_g + w*(qs - q0)_ab */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -731,13 +716,13 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
       for (ig = 0; ig < 3; ig++) {
 	for (ic = 0; ic < 3; ic++) {
 	  c1[ia][ib] -= kappa1*q_0*nhat1[ig]*
-	    (e_[ia][ig][ic]*q[ic][ib] + e_[ib][ig][ic]*q[ic][ia]);
+	    (e_[ia][ig][ic]*qs[ic][ib] + e_[ib][ig][ic]*qs[ic][ia]);
 	  c2[ia][ib] -= kappa1*q_0*nhat2[ig]*
-	    (e_[ia][ig][ic]*q[ic][ib] + e_[ib][ig][ic]*q[ic][ia]);
+	    (e_[ia][ig][ic]*qs[ic][ib] + e_[ib][ig][ic]*qs[ic][ia]);
 	}
       }
-      c1[ia][ib] -= w*(qs1ab[ia][ib] - q01[ia][ib]);
-      c2[ia][ib] -= w*(qs2ab[ia][ib] - q02[ia][ib]);
+      c1[ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
+      c2[ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
     }
   }
 
@@ -856,10 +841,8 @@ static void gradient_norm3(const int index, const int nhatx[3],
   double dq2[NOP][3];
   double dq3[NOP][3];
 
-  double qs1[NOP], qs2[NOP], qs3[NOP];
-  double qs1ab[3][3], qs2ab[3][3], qs3ab[3][3];
-  double q01[3][3], q02[3][3], q03[3][3];
-  double q[3][3];
+  double qs[3][3];
+  double q0[3][3];
 
   double bc1[NOP][NOP][3];   /* All gradient terms in boundary conditon */
   double a[NOP][NOP];        /* Linear algebra Ax = b */
@@ -914,33 +897,20 @@ static void gradient_norm3(const int index, const int nhatx[3],
       gradn[n1][ia][1] =
 	field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
     }
-    qs1[n1] = field[NOP*index+n1] - 0.5*nhatx[X]*gradn[n1][X][nfluid[X]];
-    qs2[n1] = field[NOP*index+n1] - 0.5*nhaty[Y]*gradn[n1][Y][nfluid[Y]];
-    qs3[n1] = field[NOP*index+n1] - 0.5*nhatz[Z]*gradn[n1][Z][nfluid[Z]];
   }
 
-  fed_q5_to_qab(qs1ab, qs1);
+  fed_q5_to_qab(qs, field + NOP*index);
   colloids_q_boundary_normal(index, nhatx, dn);
-  colloids_q_boundary(dn, qs1ab, q01);
-  fed_q5_to_qab(qs2ab, qs2);
-  colloids_q_boundary_normal(index, nhaty, dn);
-  colloids_q_boundary(dn, qs2ab, q02);
-  fed_q5_to_qab(qs3ab, qs3);
-  colloids_q_boundary_normal(index, nhatz, dn);
-  colloids_q_boundary(dn, qs3ab, q03);
+  colloids_q_boundary(dn, qs, q0);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       fe_wall_[0] +=
-	0.5*w*(qs1ab[ia][ib] - q01[ia][ib])*(qs1ab[ia][ib] - q01[ia][ib])
-	+ 0.5*w*(qs2ab[ia][ib] - q02[ia][ib])*(qs2ab[ia][ib] - q02[ia][ib])
-	+ 0.5*w*(qs3ab[ia][ib] - q03[ia][ib])*(qs3ab[ia][ib] - q03[ia][ib]);
+	3.0*0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
     }
   }
 
   /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
-
-  fed_q5_to_qab(q, field + NOP*index);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -950,16 +920,16 @@ static void gradient_norm3(const int index, const int nhatx[3],
       for (ig = 0; ig < 3; ig++) {
 	for (ic = 0; ic < 3; ic++) {
 	  c1[ia][ib] -= kappa1*q_0*nhatx[ig]*
-	    (e_[ia][ig][ic]*q[ic][ib] + e_[ib][ig][ic]*q[ic][ia]);
+	    (e_[ia][ig][ic]*qs[ic][ib] + e_[ib][ig][ic]*qs[ic][ia]);
 	  c2[ia][ib] -= kappa1*q_0*nhaty[ig]*
-	    (e_[ia][ig][ic]*q[ic][ib] + e_[ib][ig][ic]*q[ic][ia]);
+	    (e_[ia][ig][ic]*qs[ic][ib] + e_[ib][ig][ic]*qs[ic][ia]);
 	  c3[ia][ib] -= kappa1*q_0*nhatz[ig]*
-	    (e_[ia][ig][ic]*q[ic][ib] + e_[ib][ig][ic]*q[ic][ia]);
+	    (e_[ia][ig][ic]*qs[ic][ib] + e_[ib][ig][ic]*qs[ic][ia]);
 	}
       }
-      c1[ia][ib] -= w*(qs1ab[ia][ib] - q01[ia][ib]);
-      c2[ia][ib] -= w*(qs2ab[ia][ib] - q02[ia][ib]);
-      c3[ia][ib] -= w*(qs3ab[ia][ib] - q03[ia][ib]);
+      c1[ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
+      c2[ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
+      c3[ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
     }
   }
 
