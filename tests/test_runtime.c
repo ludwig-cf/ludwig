@@ -41,9 +41,9 @@ int main(int argc, char ** argv) {
   info("...input file read ok.\n");
 
   n = 0;
-  info("Checking number of keys available is now 10... ");
+  info("Checking number of keys available is now 11... ");
   n = RUN_get_active_keys();
-  test_assert(n == 10);
+  test_assert(n == 11);
   info("yes\n");
 
   n = 0;
@@ -84,6 +84,11 @@ int main(int argc, char ** argv) {
 
   info("Checking 'temp' is +1...");
   test_assert(ivalue == 1);
+  info("yes\n");
+
+  info("Checking 'temper' is 0...");
+  n = RUN_get_int_parameter("temper", &ivalue);
+  test_assert(ivalue == 0);
   info("yes\n");
 
   n = 0;
