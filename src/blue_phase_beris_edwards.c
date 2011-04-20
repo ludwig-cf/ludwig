@@ -85,8 +85,11 @@ void blue_phase_beris_edwards(void) {
   hydrodynamics_leesedwards_transformation();
   advection_upwind(fluxe, fluxw, fluxy, fluxz);
   advection_bcs_no_normal_flux(fluxe, fluxw, fluxy, fluxz);
-  /* surface terms not operational yet ... */
-  /* ... call blue_phase_be_surface(hs5) here */
+
+  if (colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
+    blue_phase_be_surface(hs5);
+  }
+
   blue_phase_be_update(hs5);
 
   free(hs5);
@@ -128,12 +131,18 @@ static void blue_phase_be_update(double * hs) {
   double xi;
 
   const double dt = 1.0;
+  double dt_solid;
 
   coords_nlocal(nlocal);
   nop = phi_nop();
   xi = blue_phase_get_xi();
 
   assert(nop == 5);
+
+  /* For first anchoring method (only) have evolution at solid sites. */
+
+  dt_solid = 0;
+  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) dt_solid = dt;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -148,11 +157,11 @@ static void blue_phase_be_update(double * hs) {
 
 	  /* Solid: diffusion only. */
 
-	  q[X][X] += dt*Gamma_*h[X][X];
-	  q[X][Y] += dt*Gamma_*h[X][Y];
-	  q[X][Z] += dt*Gamma_*h[X][Z];
-	  q[Y][Y] += dt*Gamma_*h[Y][Y];
-	  q[Y][Z] += dt*Gamma_*h[Y][Z];
+	  q[X][X] += dt_solid*Gamma_*h[X][X];
+	  q[X][Y] += dt_solid*Gamma_*h[X][Y];
+	  q[X][Z] += dt_solid*Gamma_*h[X][Z];
+	  q[Y][Y] += dt_solid*Gamma_*h[Y][Y];
+	  q[Y][Z] += dt_solid*Gamma_*h[Y][Z];
 
 	}
 	else {
