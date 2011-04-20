@@ -209,6 +209,7 @@ lc_q_initialisation twist
 lc_q_init_amplitude 0.33333333
 lc_init_redshift 1.0
 
+lc_anchoring_method one
 lc_anchoring planar
 
 ###############################################################################
