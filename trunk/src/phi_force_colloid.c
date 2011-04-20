@@ -52,6 +52,7 @@
 #include "coords.h"
 #include "lattice.h"
 #include "colloids.h"
+#include "colloids_Q_tensor.h"
 #include "free_energy.h"
 
 static double * pth_; 
@@ -96,11 +97,12 @@ static void phi_force_fast(void) {
   if (pth_ == NULL) fatal("malloc(pth_) failed\n");
 
   phi_force_stress_compute();
-  phi_force_interpolation1();
 
-  if (0) {
-    /* Could use method assuming stress on inside not available */
+  if (colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     phi_force_interpolation2();
+  }
+  else {
+    phi_force_interpolation1();
   }
 
   free(pth_);

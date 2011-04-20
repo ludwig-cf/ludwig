@@ -222,7 +222,7 @@ void ludwig_run(const char * inputfile) {
        * the halo swap, but before the gradient calculation. */
 
       phi_compute_phi_site();
-      if (phi_nop() == 5) COLL_set_Q();
+      if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) COLL_set_Q();
       phi_halo();
       phi_gradients_compute();
       if (phi_nop() == 5) blue_phase_redshift_compute();
