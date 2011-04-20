@@ -201,31 +201,6 @@ void MODEL_init( void ) {
       info("Initialising Q_ab using O2 (amplitude %14.7e)\n", phi0);
       blue_phase_O2_init(phi0);
     }
-
-    info("\n");
-    RUN_get_string_parameter("lc_anchoring", filename, FILENAME_MAX);
-
-    if (strcmp(filename, "normal") == 0) {
-      info("Using normal anchoring boundary conditions\n");
-      colloids_q_tensor_anchoring_set(ANCHORING_NORMAL);
-    }
-
-    if (strcmp(filename, "planar") == 0) {
-      info("Using planar anchoring boundary conditions\n");
-      colloids_q_tensor_anchoring_set(ANCHORING_PLANAR);
-    }
-
-    if (strcmp(filename, "fixed") == 0) {
-      info("Using planar anchoring boundary conditions\n");
-      colloids_q_tensor_anchoring_set(ANCHORING_FIXED);
-    }
-
-    if (strcmp(filename, "planar") == 0 ||  strcmp(filename, "normal") == 0) {
-      phi0 = 0.0;
-      RUN_get_double_parameter("lc_anchoring_strength", &phi0);
-      colloids_q_tensor_w_set(phi0);
-      info("Anchoring strength w = %14.7e\n", colloids_q_tensor_w());
-    }
     
   }
 
