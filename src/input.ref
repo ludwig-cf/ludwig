@@ -196,7 +196,9 @@ surf_psi_b 0.01
 #                       BPII  o2  amplitude +0.3
 #                       simple cholesteric twist (z-axis) amplitude +1/3
 #
-#  lc_anchoring         [normal|planar] anchoring boundary conditions
+#  lc_anchoring_method  [none|one|two] (default is none) one: Juho's method
+#                       two: explicit surface free energy
+#  lc_anchoring         [normal|planar|fixed] anchoring boundary conditions
 #                       for solid (if present; defualt is normal)
 #
 #  lc_anchoring_strength the parameter w in the surface free energy
@@ -230,6 +232,7 @@ lc_init_redshift 0.83
 lc_redshift_update 0
 lc_init_nematic 1.0_0.0_0.0
 
+lc_anchoring_method none
 lc_anchoring normal
 lc_anchoring_strength 0.0
 
