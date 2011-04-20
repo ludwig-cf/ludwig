@@ -35,6 +35,7 @@
 
 struct io_info_t * io_info_scalar_q_;
 static int anchoring_ = ANCHORING_NORMAL;
+static int anchoring_method_ = ANCHORING_METHOD_NONE;
 static double w_surface_ = 0.0; /* Anchoring strength in free energy */
 
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
@@ -65,6 +66,7 @@ void COLL_set_Q(){
   double amplitude;
   double rdotd;
   double dir_len;
+
   amplitude = 0.33333333;
 
   coords_nlocal(nlocal);
@@ -829,4 +831,32 @@ void colloids_q_tensor_w_set(double w) {
 
   w_surface_ = w;
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_q_anchoring_method_set
+ *
+ *****************************************************************************/
+
+void colloids_q_anchoring_method_set(int method) {
+
+  assert(method == ANCHORING_METHOD_NONE ||
+	 method == ANCHORING_METHOD_ONE ||
+	 method == ANCHORING_METHOD_TWO);
+
+  anchoring_method_ = method;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_q_anchoring_method
+ *
+ *****************************************************************************/
+
+int colloids_q_anchoring_method(void) {
+
+  return anchoring_method_;
 }
