@@ -208,24 +208,31 @@ void colloids_q_boundary_normal(const int index, const int di[3],
   colloid_t * pc;
   colloid_t * colloid_at_site_index(int);
 
-  coords_nlocal_offset(noffset);
   coords_index_to_ijk(index, isite);
 
   index1 = coords_index(isite[X] - di[X], isite[Y] - di[Y], isite[Z] - di[Z]);
   pc = colloid_at_site_index(index1);
-  assert(pc);
 
-  for (ia = 0; ia < 3; ia++) {
-    dn[ia] = 1.0*(noffset[ia] + isite[ia]);
-    dn[ia] -= pc->s.r[ia];
+  if (pc) {
+    coords_nlocal_offset(noffset);
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] = 1.0*(noffset[ia] + isite[ia]);
+      dn[ia] -= pc->s.r[ia];
+    }
+
+    rd = modulus(dn);
+    assert(rd > 0.0);
+    rd = 1.0/rd;
+
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] *= rd;
+    }
   }
-
-  rd = modulus(dn);
-  assert(rd > 0.0);
-  rd = 1.0/rd;
-
-  for (ia = 0; ia < 3; ia++) {
-    dn[ia] *= rd;
+  else {
+    /* Assume di is the true outward normal (e.g., flat wall) */
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] = 1.0*di[ia];
+    }
   }
 
   return;
