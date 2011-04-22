@@ -23,14 +23,17 @@
  *
  *  f_s = w (Q_ab - Q^s_ab)^2
  *
- *  Taking the functional derivative, and equating to kappa | grad Q_ab .n|
- *  we get
+ *  There is a correction related to the surface component of the
+ *  molecular field
  *
- *    grad Q_ab ~ (wL/kappa)*(Q_ab - Q^s_ab) at solid fluid surface
+ *        w (Q_ab - Q^s_ab)
  *
- *  This is a test routine for tensor order parameter with anchoring
- *  Q^s specified in colloids_Q_tensor.c at the moment. We take the
- *  length scale L = 1, the grid scale.
+ *  and for cholesterics, one related to the pitch wavenumber q0.
+ *  Anchoring is specified in colloids_Q_tensor.c at the moment.
+ *
+ *  A special treatment of edges and corners is required for colloids,
+ *  where an iterative approach is used to get two or three orthogonal
+ *  gradients at fluid points.
  *
  *  $Id$
  *
@@ -98,8 +101,6 @@ static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
 
 void util_gauss_jordan(const int n, double a[][NOP], double * b);
 
-static double fe_wall_[2];
-
 /*****************************************************************************
  *
  *  gradient_3d_7pt_solid_init
@@ -130,9 +131,6 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
   assert(grad);
   assert(delsq);
 
-  fe_wall_[0] = 0.0;
-  fe_wall_[1] = 0.0;
-
   gradient_fluid(field, grad, delsq, nextra);
 
   if (wall_at_edge(X)) gradient_wall_x(field, grad, delsq, nextra);
@@ -148,27 +146,11 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_solid_fe_s
+ *  fed_q5_to_qab
+ *
+ *  A utility to expand condensed tensor.
  *
  *****************************************************************************/
-
-void gradient_3d_7pt_solid_fe_s(double * fstats) {
-
-  /* KLUDGE */
-
-  if (colloid_ntotal() > 0) {
-    /* return total plus nominal area */
-    fstats[0] = fe_wall_[0] + fe_wall_[1];
-    fstats[1] = 1.0;
-  }
-  else {
-    /* Walls */
-    fstats[0] = fe_wall_[0];
-    fstats[1] = fe_wall_[1];
-  }
-
-  return;
-}
 
 void fed_q5_to_qab(double q[3][3], const double * phi) {
 
@@ -548,13 +530,6 @@ static void gradient_norm1(const int index, const int norm1,
   colloids_q_boundary_normal(index, nhat1, dn);
   colloids_q_boundary(dn, qs, q0);
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      fe_wall_[nsolid1] +=
-	0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-    }
-  }
-
   /* Derivatives of Q_ab precomputed for the fluid; set unknowns to unity
    * as these multiply the coefficients in the respective terms in the
    * linear algebra problem to follow. */
@@ -699,13 +674,6 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
   fed_q5_to_qab(qs, field + NOP*index);
   colloids_q_boundary_normal(index, nhat1, dn);
   colloids_q_boundary(dn, qs, q0);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      fe_wall_[nsolid1] +=
-	2.0*0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-    }
-  }
 
   /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_ca) n_g + w*(qs - q0)_ab */
 
@@ -902,13 +870,6 @@ static void gradient_norm3(const int index, const int nhatx[3],
   fed_q5_to_qab(qs, field + NOP*index);
   colloids_q_boundary_normal(index, nhatx, dn);
   colloids_q_boundary(dn, qs, q0);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      fe_wall_[0] +=
-	3.0*0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-    }
-  }
 
   /* constant terms k1*q0*(e_agc Q_cb + e_bgc Q_Ca) n_g + w*(qs - q0)_ab */
 
