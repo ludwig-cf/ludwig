@@ -610,6 +610,8 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
 
   FILE * fp_meta;
   char filename_io[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX];
+  char filename[FILENAME_MAX];
   int  nx, ny, nz;
   int n[3], noff[3];
 
@@ -623,10 +625,11 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
 
   assert(info);
   coords_nlocal_offset(noff);
-  
-  io_set_group_filename(filename_io, filename_stub, info);
-  sprintf(filename_io, "%s.meta", filename_io);
 
+  pe_subdirectory(subdirectory);
+
+  io_set_group_filename(filename, filename_stub, info);
+  sprintf(filename_io, "%s%s.meta", subdirectory, filename);
 
   if(info->io_comm->rank == 0) {
     /* Write the information stub */
