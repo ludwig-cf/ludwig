@@ -69,6 +69,7 @@ void COLL_set_Q(){
 
   amplitude = 0.33333333;
 
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
   
@@ -607,8 +608,8 @@ void jacobi(double (*a)[n], double d[], double (*v)[n], int *nrot)
       z[ip]=0.0;
     }
   }
-  printf("Too many iterations in routine jacobi");
-  exit(0);
+  verbose("Too many iterations in routine jacobi\n");
+  fatal("Please replace this code with something better!\n");;
 }
 #undef n
 #undef ROTATE
