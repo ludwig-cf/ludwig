@@ -228,13 +228,13 @@ static void stats_free_energy_colloid(double * fs) {
   coords_nlocal(nlocal);
   w = colloids_q_tensor_w();
 
-  assert(phi_nop() == 5);
-  assert(w >= 0.0);
-
   fs[0] = 0.0;
   fs[1] = 0.0;
 
   if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
+
+  assert(phi_nop() == 5);
+  assert(w >= 0.0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
