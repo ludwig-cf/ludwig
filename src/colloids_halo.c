@@ -45,7 +45,8 @@ static  int colloids_halo_load_list(int ic, int jc, int kc,
  *    {1, 1, 1}, {1, 1, 0}, {1, 0, 0}, or {0, 0, 0}
  *
  *  These are trapped explicitly in serial here. In parallel,
- *  communications at the boundaries involve MPI_PROC_NULL.
+ *  communications at the boundaries involve MPI_PROC_NULL and are
+ *  trapped later by setting the number of incoming colloids to zero.
  *
  *****************************************************************************/
 
@@ -421,6 +422,10 @@ static void colloids_halo_number(int dim, int nsend[2], int nrecv[2]) {
     MPI_Issend(nsend + BACKWARD, 1, MPI_INT, pback, tagb_, comm, request + 3);
 
     MPI_Waitall(4, request, status);
+
+    /* Non-peridoic boundaries receive no particles */
+    if (pforw == MPI_PROC_NULL) nrecv[FORWARD] = 0;
+    if (pback == MPI_PROC_NULL) nrecv[BACKWARD] = 0;
   }
 
   return;
