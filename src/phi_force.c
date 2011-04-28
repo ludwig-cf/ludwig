@@ -6,6 +6,8 @@
  *  via the divergence of the chemical stress. Its calculation as
  *  a divergence ensures momentum is conserved.
  *
+ *  Note that the stress may be asymmetric.
+ *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -30,18 +32,18 @@
 #include "wall.h"
 
 static void phi_force_calculation_fluid(void);
-static void phi_force_compute_fluxes(void);
-static void phi_force_flux_divergence(void);
-static void phi_force_flux_divergence_with_fix(void);
-static void phi_force_fix_fluxes(void);
-static void phi_force_fix_fluxes_parallel(void);
+static void phi_force_compute_fluxes(double * fe, double * fw, double * fy,
+				     double * fz);
+static void phi_force_flux_divergence(double * fe, double * fw, double * fy,
+				      double * fz);
+static void phi_force_flux_divergence_with_fix(double * fe, double * fw,
+					       double * fy, double * fz);
+static void phi_force_fix_fluxes(double * fe, double * fw);
+static void phi_force_fix_fluxes_parallel(double * fe, double * fw);
 static void phi_force_flux(void);
-static void phi_force_wall(void);
-
-static double * fluxe;
-static double * fluxw;
-static double * fluxy;
-static double * fluxz;
+static void phi_force_wallx(double * fe, double * fw);
+static void phi_force_wally(double * fy);
+static void phi_force_wallz(double * fz);
 
 static int  force_required_ = 1;
 
@@ -184,7 +186,12 @@ static void phi_force_calculation_fluid() {
 static void phi_force_flux(void) {
 
   int n;
-  int fix_fluxes = 1;
+  int fix_fluxes = 0;
+
+  double * fluxe;
+  double * fluxw;
+  double * fluxy;
+  double * fluxz;
 
   n = coords_nsites();
 
@@ -198,16 +205,18 @@ static void phi_force_flux(void) {
   if (fluxy == NULL) fatal("malloc(fluxy) force failed");
   if (fluxz == NULL) fatal("malloc(fluxz) force failed");
 
-  phi_force_compute_fluxes();
+  phi_force_compute_fluxes(fluxe, fluxw, fluxy, fluxz);
 
-  if (wall_present()) phi_force_wall();
+  if (wall_at_edge(X)) phi_force_wallx(fluxe, fluxw);
+  if (wall_at_edge(Y)) phi_force_wally(fluxy);
+  if (wall_at_edge(Z)) phi_force_wallz(fluxz);
 
   if (fix_fluxes) {
-    phi_force_fix_fluxes();
-    phi_force_flux_divergence();
+    phi_force_fix_fluxes(fluxe, fluxw);
+    phi_force_flux_divergence(fluxe, fluxw, fluxy, fluxz);
   }
   else {
-    phi_force_flux_divergence_with_fix();
+    phi_force_flux_divergence_with_fix(fluxe, fluxw, fluxy, fluxz);
   }
 
   free(fluxz);
@@ -227,7 +236,8 @@ static void phi_force_flux(void) {
  *
  *****************************************************************************/
 
-static void phi_force_compute_fluxes(void) {
+static void phi_force_compute_fluxes(double * fluxe, double * fluxw,
+				     double * fluxy, double * fluxz) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
@@ -303,7 +313,7 @@ static void phi_force_compute_fluxes(void) {
  *
  *****************************************************************************/
 
-static void phi_force_fix_fluxes(void) {
+static void phi_force_fix_fluxes(double * fluxe, double * fluxw) {
 
   int nlocal[3]; /* Local system size */
   int ip;        /* Index of the plane */
@@ -325,7 +335,7 @@ static void phi_force_fix_fluxes(void) {
 
   if (cart_size(Y) > 1) {
     /* Parallel */
-    phi_force_fix_fluxes_parallel();
+    phi_force_fix_fluxes_parallel(fluxe, fluxw);
   }
   else {
 
@@ -421,7 +431,7 @@ static void phi_force_fix_fluxes(void) {
  *
  *****************************************************************************/
 
-static void phi_force_fix_fluxes_parallel(void) {
+static void phi_force_fix_fluxes_parallel(double * fluxe, double * fluxw) {
 
   int      nhalo;
   int      nlocal[3];      /* Local system size */
@@ -582,10 +592,12 @@ static void phi_force_fix_fluxes_parallel(void) {
  *
  *****************************************************************************/
 
-static void phi_force_flux_divergence(void) {
+static void phi_force_flux_divergence(double * fluxe, double * fluxw,
+				      double * fluxy, double * fluxz) {
 
   int nlocal[3];
-  int ic, jc, kc, index, ia;
+  int ic, jc, kc, ia;
+  int index, indexj, indexk;
   double f[3];
 
   coords_nlocal(nlocal);
@@ -596,10 +608,13 @@ static void phi_force_flux_divergence(void) {
 
         index = le_site_index(ic, jc, kc);
 
+	indexj = le_site_index(ic, jc-1, kc);
+	indexk = le_site_index(ic, jc, kc-1);
+
 	for (ia = 0; ia < 3; ia++) {
 	  f[ia] = - (fluxe[3*index + ia] - fluxw[3*index + ia]
-		     + fluxy[3*index + ia] - fluxy[3*le_site_index(ic, jc-1, kc) + ia]
-		     + fluxz[3*index + ia] - fluxz[3*le_site_index(ic, jc, kc-1) + ia]);
+		     + fluxy[3*index + ia] - fluxy[3*indexj + ia]
+		     + fluxz[3*index + ia] - fluxz[3*indexk + ia]);
 	}
 
 	hydrodynamics_add_force_local(index, f);
@@ -624,8 +639,9 @@ static void phi_force_flux_divergence(void) {
  *
  *****************************************************************************/
 
-static void phi_force_flux_divergence_with_fix(void) {
-
+static void phi_force_flux_divergence_with_fix(double * fluxe, double * fluxw,
+					       double * fluxy,
+					       double * fluxz) {
   int nlocal[3];
   int ic, jc, kc, index, ia;
   int indexj, indexk;
@@ -691,7 +707,7 @@ static void phi_force_flux_divergence_with_fix(void) {
 
 /*****************************************************************************
  *
- *  phi_force_wall
+ *  phi_force_wallx
  *
  *  We extrapolate the stress to the wall. This is equivalent to using
  *  a one-sided gradient when we get to do the divergence.
@@ -700,7 +716,7 @@ static void phi_force_flux_divergence_with_fix(void) {
  *
  *****************************************************************************/
 
-static void phi_force_wall(void) {
+static void phi_force_wallx(double * fluxe, double * fluxw) {
 
   int ic, jc, kc;
   int index, index1, ia;
@@ -759,6 +775,160 @@ static void phi_force_wall(void) {
   }
 
   wall_accumulate_force(fw);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_wally
+ *
+ *  We extrapolate the stress to the wall. This is equivalent to using
+ *  a one-sided gradient when we get to do the divergence.
+ *
+ *  The stress on the wall is recorded for accounting purposes.
+ *
+ *****************************************************************************/
+
+static void phi_force_wally(double * fluxy) {
+
+  int ic, jc, kc;
+  int index, index1, ia;
+  int nlocal[3];
+  double fy[3];         /* Net force on wall */
+  double pth0[3][3];    /* Chemical stress at fluid point next to wall */
+  double pth1[3][3];    /* Stress at next fluid point. */
+  double sy;            /* Extrapolated stress component */
+
+  void (* chemical_stress)(const int index, double s[3][3]);
+
+  coords_nlocal(nlocal);
+
+  chemical_stress = fe_chemical_stress_function();
+
+  fy[X] = 0.0;
+  fy[Y] = 0.0;
+  fy[Z] = 0.0;
+
+  if (cart_coords(Y) == 0) {
+    jc = 1;
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = le_site_index(ic, jc, kc);
+	index1 = le_site_index(ic, jc+1, kc);
+	chemical_stress(index, pth0);
+	chemical_stress(index1, pth1);
+
+	/* Face flux a jc - 1 */
+	index1 = le_site_index(ic, jc-1, kc);
+
+	for (ia = 0; ia < 3; ia++) {
+	  sy = pth0[ia][Y] - 0.5*(pth1[ia][Y] - pth0[ia][Y]);
+	  fluxy[3*index1 + ia] = sy;
+	  fy[ia] -= sy;
+	}
+      }
+    }
+  }
+
+  if (cart_coords(Y) == cart_size(Y) - 1) {
+    jc = nlocal[Y];
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = le_site_index(ic, jc, kc);
+	index1 = le_site_index(ic, jc-1, kc);
+	chemical_stress(index, pth0);
+	chemical_stress(index1, pth1);
+
+	for (ia = 0; ia < 3; ia++) {
+	  sy = pth0[ia][Y] + 0.5*(pth0[ia][Y] - pth1[ia][Y]);
+	  fluxy[3*index + ia] = sy;
+	  fy[ia] += sy;
+	}
+      }
+    }
+  }
+
+  wall_accumulate_force(fy);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_wallz
+ *
+ *  We extrapolate the stress to the wall. This is equivalent to using
+ *  a one-sided gradient when we get to do the divergence.
+ *
+ *  The stress on the wall is recorded for accounting purposes.
+ *
+ *****************************************************************************/
+
+static void phi_force_wallz(double * fluxz) {
+
+  int ic, jc, kc;
+  int index, index1, ia;
+  int nlocal[3];
+  double fz[3];         /* Net force on wall */
+  double pth0[3][3];    /* Chemical stress at fluid point next to wall */
+  double pth1[3][3];    /* Stress at next fluid point. */
+  double sz;            /* Extrapolated stress component */
+
+  void (* chemical_stress)(const int index, double s[3][3]);
+
+  coords_nlocal(nlocal);
+
+  chemical_stress = fe_chemical_stress_function();
+
+  fz[X] = 0.0;
+  fz[Y] = 0.0;
+  fz[Z] = 0.0;
+
+  if (cart_coords(Z) == 0) {
+    kc = 1;
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	index = le_site_index(ic, jc, kc);
+	index1 = le_site_index(ic, jc, kc+1);
+	chemical_stress(index, pth0);
+	chemical_stress(index1, pth1);
+
+	/* Face flux at kc-1 */
+	index1 = le_site_index(ic, jc, kc-1);
+
+	for (ia = 0; ia < 3; ia++) {
+	  sz = pth0[ia][Z] - 0.5*(pth1[ia][Z] - pth0[ia][Z]);
+	  fluxz[3*index1 + ia] = sz;
+	  fz[ia] -= sz;
+	}
+      }
+    }
+  }
+
+  if (cart_coords(Z) == cart_size(Z) - 1) {
+    kc = nlocal[Z];
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	index = le_site_index(ic, jc, kc);
+	index1 = le_site_index(ic, jc, kc-1);
+	chemical_stress(index, pth0);
+	chemical_stress(index1, pth1);
+
+	for (ia = 0; ia < 3; ia++) {
+	  sz = pth0[ia][Z] + 0.5*(pth0[ia][Z] - pth1[ia][Z]);
+	  fluxz[3*index + ia] = sz;
+	  fz[ia] += sz;
+	}
+      }
+    }
+  }
+
+  wall_accumulate_force(fz);
 
   return;
 }
