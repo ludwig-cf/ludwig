@@ -50,7 +50,6 @@ static B_link * allocate_link(void);
 static void     init_links(void);
 static void     init_boundary_site_map(void);
 static void     init_boundary_speeds(const double, const double);
-static void     report_boundary_memory(void);
 static void     set_wall_velocity(void);
 static void     wall_shear_init(double utop, double ubottom);
 
@@ -60,9 +59,10 @@ static void     wall_shear_init(double utop, double ubottom);
  *
  ****************************************************************************/
 
-void wall_init() {
+void wall_init(void) {
 
   int init_shear = 0;
+  int ntotal;
   double ux_bottom = 0.0;
   double ux_top = 0.0;
   char   tmp[128];
@@ -80,9 +80,21 @@ void wall_init() {
     init_boundary_site_map();
     init_links();
     init_boundary_speeds(ux_bottom, ux_top);
-    report_boundary_memory();
+
     RUN_get_int_parameter("boundary_shear_init", &init_shear);
     if (init_shear) wall_shear_init(ux_top, ux_bottom);
+
+    info("Boundary walls:                %1s %1s %1s\n",
+	 (is_periodic(X) == 0) ? "X" : "-",
+	 (is_periodic(Y) == 0) ? "Y" : "-",
+	 (is_periodic(Z) == 0) ? "Z" : "-");
+    info("Boundary speed u_x (bottom):  %14.7e\n", ux_bottom);
+    info("Boundary speed u_x (top):     %14.7e\n", ux_top);
+    info("Boundary shear initialise:     %d\n", init_shear);
+
+    MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
+    info("Boundary links allocated:      %d\n", ntotal);
+    info("Memory (total, bytes):         %d\n", ntotal*sizeof(B_link));
   }
 
   fnet_[X] = 0.0;
@@ -285,13 +297,15 @@ static void init_boundary_site_map() {
   int ic_global, jc_global, kc_global;
   int nlocal[3];
   int noffset[3];
+  int nextra;
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
+  nextra = coords_nhalo();
 
-  for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-    for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
-      for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	/* If this is an appropriate periodic boundary, set to solid */
 
@@ -375,20 +389,6 @@ B_link * allocate_link() {
   nalloc_links_++;
 
   return p_link;
-}
-
-/*****************************************************************************
- *
- *  report_boundary_memory
- *
- *****************************************************************************/
-
-static void report_boundary_memory() {
-
-  info("[Boundary links: %d (%d bytes)]\n", nalloc_links_,
-       nalloc_links_*sizeof(B_link));
-
-  return;
 }
 
 /*****************************************************************************
