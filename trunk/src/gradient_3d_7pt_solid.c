@@ -99,7 +99,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
 static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
 			 double dq[NOP][3], double bc[NOP][NOP][3]);
 
-void util_gauss_jordan(const int n, double a[][NOP], double * b);
+static int util_gaussian(double a[NOP][NOP], double xb[NOP]);
 
 /*****************************************************************************
  *
@@ -577,7 +577,7 @@ static void gradient_norm1(const int index, const int norm1,
   b[YY] = -(b[YY] + c1[Y][Y]);
   b[YZ] = -(b[YZ] + 2.0*c1[Y][Z]);
 
-  util_gauss_jordan(NOP, a, b);
+  util_gaussian(a, b);
 
   for (n1 = 0; n1 < NOP; n1++) {
     gradn[n1][norm1][nsolid1] = b[n1];
@@ -735,7 +735,7 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
     b[YY] = -(b[YY] + c1[Y][Y]);
     b[YZ] = -(b[YZ] + 2.0*c1[Y][Z]);
 
-    util_gauss_jordan(NOP, a, b);
+    util_gaussian(a, b);
 
     for (n1 = 0; n1 < NOP; n1++) {
       gradn[n1][norm1][nsolid1] = b[n1];
@@ -762,7 +762,7 @@ static void gradient_norm2(const int index, const int norm1, const int norm2,
     b[YY] = -(b[YY] + c2[Y][Y]);
     b[YZ] = -(b[YZ] + 2.0*c2[Y][Z]);
 
-    util_gauss_jordan(NOP, a, b);
+    util_gaussian(a, b);
 
     for (n1 = 0; n1 < NOP; n1++) {
       gradn[n1][norm2][nsolid2] = b[n1];
@@ -936,7 +936,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
     b[YY] = -(b[YY] + c1[Y][Y]);
     b[YZ] = -(b[YZ] + 2.0*c1[Y][Z]);
 
-    util_gauss_jordan(NOP, a, b);
+    util_gaussian(a, b);
 
     for (n1 = 0; n1 < NOP; n1++) {
       gradn[n1][X][nsolid[X]] = b[n1];
@@ -963,7 +963,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
     b[YY] = -(b[YY] + c2[Y][Y]);
     b[YZ] = -(b[YZ] + 2.0*c2[Y][Z]);
 
-    util_gauss_jordan(NOP, a, b);
+    util_gaussian(a, b);
 
     for (n1 = 0; n1 < NOP; n1++) {
       gradn[n1][Y][nsolid[Y]] = b[n1];
@@ -990,7 +990,7 @@ static void gradient_norm3(const int index, const int nhatx[3],
     b[YY] = -(b[YY] + c3[Y][Y]);
     b[YZ] = -(b[YZ] + 2.0*c3[Y][Z]);
 
-    util_gauss_jordan(NOP, a, b);
+    util_gaussian(a, b);
 
     for (n1 = 0; n1 < NOP; n1++) {
       gradn[n1][Z][nsolid[Z]] = b[n1];
@@ -1128,92 +1128,82 @@ static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
 
 /*****************************************************************************
  *
- *  util_gauss_jordan
+ *  util_gaussian
  *
- *  Solve linear system via Gauss Jordan elimination with full pivoting.
- *  See, e.g., Press et al page 39.
+ *  Solve linear system via Gaussian elimination. For the problems in this
+ *  file, we only need to exchange rows, ie., have a partial pivot.
  *
- *  A is the n by n matrix, b is rhs on input and solution on output.
- *  A is column-scrambled inverse on exit.
+ *  We solve Ax = b for A[NOP][NOP].
+ *  xb is RHS on entry, and solution on exit.
+ *  A is destroyed.
+ *
+ *  Returns zero on success.
  *
  *****************************************************************************/
 
-void util_gauss_jordan(const int n, double a[][NOP], double * b) {
+static int util_gaussian(double a[NOP][NOP], double xb[NOP]) {
 
-  int i, j, k, ia, ib;
-  int irow, icol;
-  int ipivot[3*NOP];
+  int i, j, k;
+  int ifail = 0;
+  int iprow;
+  int ipivot[NOP];
 
-  double rpivot, tmp;
+  double tmp;
 
-  assert(n == NOP);
-  icol = -1;
-  irow = -1;
-
-  for (j = 0; j < n; j++) {
-    ipivot[j] = -1;
+  iprow = -1;
+  for (k = 0; k < NOP; k++) {
+    ipivot[k] = -1;
   }
 
-  for (i = 0; i < n; i++) {
+  for (k = 0; k < NOP; k++) {
+
+    /* Find pivot row */
     tmp = 0.0;
-    for (j = 0; j < n; j++) {
-      if (ipivot[j] != 0) {
-	for (k = 0; k < n; k++) {
-
-	  if (ipivot[k] == -1) {
-	    if (fabs(a[j][k]) >= tmp) {
-	      tmp = fabs(a[j][k]);
-	      irow = j;
-	      icol = k;
-	    }
-	  }
-	  else if (ipivot[k] > 1) {
-	    fatal("Gauss Jordan elimination failed\n");
-	  }
-
+    for (i = 0; i < NOP; i++) {
+      if (ipivot[i] == -1) {
+	if (fabs(a[i][k]) >= tmp) {
+	  tmp = fabs(a[i][k]);
+	  iprow = i;
 	}
       }
     }
+    ipivot[k] = iprow;
 
-    assert(icol != -1);
-    assert(irow != -1);
+    /* divide pivot row by the pivot element a[iprow][k] */
 
-    ipivot[icol] += 1;
-
-    if (irow != icol) {
-      for (ia = 0; ia < n; ia++) {
-	tmp = a[irow][ia];
-	a[irow][ia] = a[icol][ia];
-	a[icol][ia] = tmp;
-      }
-      tmp = b[irow];
-      b[irow] = b[icol];
-      b[icol] = tmp;
+    if (a[iprow][k] == 0.0) {
+      fatal("Gaussian elimination failed in gradient calculation\n");
     }
 
-    if (a[icol][icol] == 0.0) fatal("Gauss Jordan elimination failed\n");
-
-    rpivot = 1.0/a[icol][icol];
-    a[icol][icol] = 1.0;
-
-    for (ia = 0; ia < n; ia++) {
-      a[icol][ia] *= rpivot;
+    tmp = 1.0 / a[iprow][k];
+    for (j = k; j < NOP; j++) {
+      a[iprow][j] *= tmp;
     }
-    b[icol] *= rpivot;
+    xb[iprow] *= tmp;
 
-    for (ia = 0; ia < n; ia++) {
-      if (ia != icol) {
-	tmp = a[ia][icol];
-	a[ia][icol] = 0.0;
-	for (ib = 0; ib < n; ib++) {
-	  a[ib][ib] -= a[icol][ib]*tmp;
+    /* Subtract the pivot row (scaled) from remaining rows */
+
+    for (i = 0; i < NOP; i++) {
+      if (ipivot[i] == -1) {
+	tmp = a[i][k];
+	for (j = k; j < NOP; j++) {
+	  a[i][j] -= tmp*a[iprow][j];
 	}
-	b[ia] -= b[icol]*tmp;
+	xb[i] -= tmp*xb[iprow];
       }
     }
   }
 
-  /* Could recover the inverse here if required. */
+  /* Now do the back substitution */
 
-  return;
+  for (i = NOP - 1; i > -1; i--) {
+    iprow = ipivot[i];
+    tmp = xb[iprow];
+    for (k = i + 1; k < NOP; k++) {
+      tmp -= a[iprow][k]*xb[ipivot[k]];
+    }
+    xb[iprow] = tmp;
+  }
+
+  return ifail;
 }
