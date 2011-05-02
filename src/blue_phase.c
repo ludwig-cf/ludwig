@@ -201,6 +201,7 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
   }
 
   /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
+  /* With symmetric Q_db write Q_bd */
 
   dq1 = 0.0;
 
@@ -209,7 +210,7 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
       sum = 0.0;
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
-	  sum += e_[ia][ic][id]*dq[ic][id][ib];
+	  sum += e_[ia][ic][id]*dq[ic][ib][id];
 	}
       }
       sum += 2.0*q0*q[ia][ib];
@@ -308,13 +309,14 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
     }
   }
 
+  /* d_c Q_db written as d_c Q_bd etc */
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       sum = 0.0;
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
 	  sum +=
-	    (e_[ia][ic][id]*dq[ic][id][ib] + e_[ib][ic][id]*dq[ic][id][ia]);
+	    (e_[ia][ic][id]*dq[ic][ib][id] + e_[ib][ic][id]*dq[ic][ia][id]);
 	}
       }
       h[ia][ib] += kappa1*dsq[ia][ib]
@@ -407,8 +409,8 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
 	sth[ia][ib] +=
-	  -xi_*h[ia][ic]*(q[ic][ib] + r3*d_[ic][ib])
-	  -xi_*(q[ia][ic] + r3*d_[ia][ic])*h[ic][ib];
+	  -xi_*h[ia][ic]*(q[ib][ic] + r3*d_[ib][ic])
+	  -xi_*(q[ia][ic] + r3*d_[ia][ic])*h[ib][ic];
       }
     }
   }
@@ -421,7 +423,7 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
 	  sth[ia][ib] +=
-	    - kappa0*dq[ia][ic][ib]*dq[id][ic][id]
+	    - kappa0*dq[ia][ib][ic]*dq[id][ic][id]
 	    - kappa1*dq[ia][ic][id]*dq[ib][ic][id]
 	    + kappa1*dq[ia][ic][id]*dq[ic][ib][id];
 
@@ -440,7 +442,7 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
-	sth[ia][ib] += q[ia][ic]*h[ic][ib] - h[ia][ic]*q[ic][ib];
+	sth[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
       }
     }
   }
