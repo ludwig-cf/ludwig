@@ -211,7 +211,7 @@ static void phi_force_flux(void) {
   if (wall_at_edge(Y)) phi_force_wally(fluxy);
   if (wall_at_edge(Z)) phi_force_wallz(fluxz);
 
-  if (fix_fluxes) {
+  if (fix_fluxes || wall_present()) {
     phi_force_fix_fluxes(fluxe, fluxw);
     phi_force_flux_divergence(fluxe, fluxw, fluxy, fluxz);
   }
