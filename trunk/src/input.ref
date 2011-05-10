@@ -44,6 +44,8 @@ N_cycles 1
 #                If PX*PY*PZ is not equal to the number of processors,
 #                MPI will choose a default (may be implementation-dependent).
 #
+#  periodicity   Periodicity of MPI Cartesian communicator
+#
 #  reduced_halo  [yes|no] use reduced or full halos. Using reduced halos
 #                is *only* appropriate for fluid only problems.
 #                Default is no.
@@ -52,6 +54,7 @@ N_cycles 1
 
 size 32_32_32
 #grid 1_2_1
+periodicity 1_1_1
 reduced_halo no
 
 ##############################################################################
@@ -319,12 +322,10 @@ lj_epsilon 0.0003
 
 ###############################################################################
 #
-#  Periodic conditions / boundaries
+#  Walls / boundaries
 #
-#  boundary_walls_on      [yes|no] Use built-in side walls [default no]
-#  periodicity X_Y_Z      Sets periodic boundary conditions in coordinate
-#                         directions [default is 1_1_1]. Best to leave this
-#                         unchanged
+#  boundary_walls         X_Y_Z [0 for no wall; 1 for wall]
+#                         Must be consistent with periodicity above
 #  boundary_speed_top     For use with built-in walls
 #  boundary_speed_bottom  For use with built-in walls
 #  boundary_shear_init    Initialise shear flow (z direction only).
@@ -338,8 +339,7 @@ lj_epsilon 0.0003
 #
 ###############################################################################
 
-boundary_walls_on no
-periodicity 1_1_1
+boundary_walls 0_0_0
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
 boundary_shear_init 0
