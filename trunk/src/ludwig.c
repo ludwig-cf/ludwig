@@ -210,7 +210,6 @@ void ludwig_run(const char * inputfile) {
     step = get_step();
     hydrodynamics_zero_force();
     COLL_update();
-    wall_update();
 
     /* Collision stage */
 
@@ -238,8 +237,6 @@ void ludwig_run(const char * inputfile) {
 	}
 	else {
 	  phi_force_colloid();
-	  /* Fixes the velocity gradient tensor for beris edwards */
-	  colloids_fix_swd();
 	}
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
@@ -267,6 +264,7 @@ void ludwig_run(const char * inputfile) {
     }
     else {
       TIMER_start(TIMER_BBL);
+      wall_update();
       bounce_back_on_links();
       wall_bounce_back();
       TIMER_stop(TIMER_BBL);
