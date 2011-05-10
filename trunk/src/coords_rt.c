@@ -40,7 +40,7 @@ void coords_run_time(void) {
   coords_ntotal_set(vector);
 
   n = RUN_get_int_parameter_vector("periodicity", vector);
-  coords_periodicity_set(vector);
+  if (n != 0) coords_periodicity_set(vector);
 
   /* Look for a user-defined decomposition */
 
