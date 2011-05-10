@@ -4,7 +4,7 @@
  *
  *  Keeps track of the solid/fluid status of the lattice.
  *
- *  $Id: site_map.c,v 1.3 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -396,16 +396,18 @@ void site_map_halo() {
   /* YZ planes in X direction */
 
   if (cart_size(X) == 1) {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1 ; kc <= nlocal[Z]; kc++) {
-	  ihalo = coords_index(0-nh, jc, kc);
-	  ireal = coords_index(nlocal[X]-nh, jc, kc);
-	  site_map[ihalo] = site_map[ireal];
+    if (is_periodic(X)) {
+      for (nh = 0; nh < nhalo; nh++) {
+	for (jc = 1; jc <= nlocal[Y]; jc++) {
+	  for (kc = 1 ; kc <= nlocal[Z]; kc++) {
+	    ihalo = coords_index(0-nh, jc, kc);
+	    ireal = coords_index(nlocal[X]-nh, jc, kc);
+	    site_map[ihalo] = site_map[ireal];
 
-	  ihalo = coords_index(nlocal[X]+1+nh, jc, kc);
-	  ireal = coords_index(1+nh, jc, kc);
-	  site_map[ihalo] = site_map[ireal];
+	    ihalo = coords_index(nlocal[X]+1+nh, jc, kc);
+	    ireal = coords_index(1+nh, jc, kc);
+	    site_map[ihalo] = site_map[ireal];
+	  }
 	}
       }
     }
@@ -429,16 +431,18 @@ void site_map_halo() {
   /* XZ planes in the Y direction */
 
   if (cart_size(Y) == 1) {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (ic = 1-nhalo; ic <= nlocal[X] + nhalo; ic++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  ihalo = coords_index(ic, 0-nh, kc);
-	  ireal = coords_index(ic, nlocal[Y]-nh, kc);
-	  site_map[ihalo] = site_map[ireal];
+    if (is_periodic(Y)) {
+      for (nh = 0; nh < nhalo; nh++) {
+	for (ic = 1-nhalo; ic <= nlocal[X] + nhalo; ic++) {
+	  for (kc = 1; kc <= nlocal[Z]; kc++) {
+	    ihalo = coords_index(ic, 0-nh, kc);
+	    ireal = coords_index(ic, nlocal[Y]-nh, kc);
+	    site_map[ihalo] = site_map[ireal];
 
-	  ihalo = coords_index(ic, nlocal[Y]+1+nh, kc);
-	  ireal = coords_index(ic, 1+nh, kc);
-	  site_map[ihalo] = site_map[ireal];
+	    ihalo = coords_index(ic, nlocal[Y]+1+nh, kc);
+	    ireal = coords_index(ic, 1+nh, kc);
+	    site_map[ihalo] = site_map[ireal];
+	  }
 	}
       }
     }
@@ -462,16 +466,18 @@ void site_map_halo() {
   /* XY planes in the Z direction */
 
   if (cart_size(Z) == 1) {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
-	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-	  ihalo = coords_index(ic, jc, 0-nh);
-	  ireal = coords_index(ic, jc, nlocal[Z]-nh);
-	  site_map[ihalo] = site_map[ireal];
+    if (is_periodic(Z)) {
+      for (nh = 0; nh < nhalo; nh++) {
+	for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+	  for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+	    ihalo = coords_index(ic, jc, 0-nh);
+	    ireal = coords_index(ic, jc, nlocal[Z]-nh);
+	    site_map[ihalo] = site_map[ireal];
 
-	  ihalo = coords_index(ic, jc, nlocal[Z]+1+nh);
-	  ireal = coords_index(ic, jc,            1+nh);
-	  site_map[ihalo] = site_map[ireal];
+	    ihalo = coords_index(ic, jc, nlocal[Z]+1+nh);
+	    ireal = coords_index(ic, jc,            1+nh);
+	    site_map[ihalo] = site_map[ireal];
+	  }
 	}
       }
     }

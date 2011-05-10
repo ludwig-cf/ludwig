@@ -490,16 +490,18 @@ void distribution_halo() {
   /* The x-direction (YZ plane) */
 
   if (cart_size(X) == 1) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+    if (is_periodic(X)) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	ihalo = ndist_*NVEL*coords_index(0, jc, kc);
-	ireal = ndist_*NVEL*coords_index(nlocal[X], jc, kc);
-	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	  ihalo = ndist_*NVEL*coords_index(0, jc, kc);
+	  ireal = ndist_*NVEL*coords_index(nlocal[X], jc, kc);
+	  memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
 
-	ihalo = ndist_*NVEL*coords_index(nlocal[X]+1, jc, kc);
-	ireal = ndist_*NVEL*coords_index(1, jc, kc);
-	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	  ihalo = ndist_*NVEL*coords_index(nlocal[X]+1, jc, kc);
+	  ireal = ndist_*NVEL*coords_index(1, jc, kc);
+	  memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	}
       }
     }
   }
@@ -522,16 +524,18 @@ void distribution_halo() {
   /* The y-direction (XZ plane) */
 
   if (cart_size(Y) == 1) {
-    for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+    if (is_periodic(Y)) {
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	ihalo = ndist_*NVEL*coords_index(ic, 0, kc);
-	ireal = ndist_*NVEL*coords_index(ic, nlocal[Y], kc);
-	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	  ihalo = ndist_*NVEL*coords_index(ic, 0, kc);
+	  ireal = ndist_*NVEL*coords_index(ic, nlocal[Y], kc);
+	  memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
 
-	ihalo = ndist_*NVEL*coords_index(ic, nlocal[Y] + 1, kc);
-	ireal = ndist_*NVEL*coords_index(ic, 1, kc);
-	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	  ihalo = ndist_*NVEL*coords_index(ic, nlocal[Y] + 1, kc);
+	  ireal = ndist_*NVEL*coords_index(ic, 1, kc);
+	  memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	}
       }
     }
   }
@@ -554,16 +558,18 @@ void distribution_halo() {
   /* Finally, z-direction (XY plane) */
 
   if (cart_size(Z) == 1) {
-    for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-      for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
+    if (is_periodic(Z)) {
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 
-	ihalo = ndist_*NVEL*coords_index(ic, jc, 0);
-	ireal = ndist_*NVEL*coords_index(ic, jc, nlocal[Z]);
-	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	  ihalo = ndist_*NVEL*coords_index(ic, jc, 0);
+	  ireal = ndist_*NVEL*coords_index(ic, jc, nlocal[Z]);
+	  memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
 
-	ihalo = ndist_*NVEL*coords_index(ic, jc, nlocal[Z] + 1);
-	ireal = ndist_*NVEL*coords_index(ic, jc, 1);
-	memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	  ihalo = ndist_*NVEL*coords_index(ic, jc, nlocal[Z] + 1);
+	  ireal = ndist_*NVEL*coords_index(ic, jc, 1);
+	  memcpy(f_ + ihalo, f_ + ireal, ndist_*NVEL*sizeof(double));
+	}
       }
     }
   }
