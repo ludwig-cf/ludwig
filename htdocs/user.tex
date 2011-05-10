@@ -729,30 +729,38 @@ the \texttt{size} keyword). The wall can be in one, two or all three
 coordinate directions, i.e., a 'slab' geometry, and 'duct' geometry
 or a 'box' geometry, respectively.
 
-The boundary walls are switched on via the keyword value pair
+The boundary walls are switched on via the keyword
 
-\inputkey{boundary\_walls\_on [no | yes]}
+\inputkey{boundary\_walls}
 
-If \texttt{yes} then the geometry is specified with the keyword
-as one of
+and with a complementatary specification of the key \texttt{periodicity}.
 
-\inputkey{periodicity [1\_1\_1 | 1\_1\_0 | 1\_0\_0 | 0\_0\_0]}
+For example, walls at $x = x_{\min}$  and $x = x_{\max}$  are specified
+by
 
-Note that these are the only valid selections. \texttt{1\_1\_0}
-gives periodic boundaries in the $x-$ and $y-$directions, with
-walls at either edge in the $z-$direction. \texttt{1\_0\_0}
+\inputkey{boundary\_walls 1\_0\_0}
+
+\inputkey{periodicity 0\_1\_1}
+
+Both must be present. Note that there are a number of constraints on
+valid choices, and the code will stop if there is an invalid choice, or
+the two keys above do not match. Common choices are:
+\texttt{boundary\_walls 0\_0\_1},
+which gives periodic boundaries in the $x-$ and $y-$directions, with
+walls at either edge in the $z-$direction; \texttt{0\_1\_1}
 gives periodic conditions in the $x-$ direction only, while
-\texttt{0\_0\_0} is a fully enclosed box.
+\texttt{1\_1\_1} is a fully enclosed box.
 
-In the case of the slab geometry, two further values are used so
-that shear may be imparted to the system:
+In the case of the slab geometry with walls at $z = z_{\min}$ and
+$z= z_{\max}$ (only),
+two further values are used so that shear may be imparted to the system:
 
 \inputkey{boundary\_speed\_bottom}
 
 \inputkey{boundary\_speed\_top}
 
 These values set the $x-$component of the wall velocity at
-$z = z_{min}$ and $z = z_{max}$, respectively. Like all
+$z = z_{\min}$ and $z = z_{\max}$, respectively. Like all
 velocities, these values must respect the low Mach number
 constraint $u_x < c_s$.
 
