@@ -651,6 +651,13 @@ void colloids_fix_swd(void) {
 
 	index = coords_index(ic, jc, kc);
 
+	if (site_map_get_status_index(index) != FLUID) {
+	  u[X] = 0.0;
+	  u[Y] = 0.0;
+	  u[Z] = 0.0;
+	  hydrodynamics_set_velocity(index, u);
+	}
+
 	p_c = colloid_at_site_index(index);
 
 	if (p_c) {
