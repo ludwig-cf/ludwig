@@ -43,7 +43,7 @@ struct B_link_struct {
 
 static int nalloc_links_ = 0;       /* Current number of links allocated */
 static B_link * link_list_ = NULL;  /* Boundary links. */
-static int is_boundary_wall_ = 0;   /* Any boundaries present? */
+static int is_boundary_[3];         /* Any boundaries present? */
 static double fnet_[3];             /* Accumulated net force on walls */
 
 static B_link * allocate_link(void);
@@ -52,6 +52,7 @@ static void     init_boundary_site_map(void);
 static void     init_boundary_speeds(const double, const double);
 static void     set_wall_velocity(void);
 static void     wall_shear_init(double utop, double ubottom);
+static void     wall_checks(void);
 
 /*****************************************************************************
  *
@@ -65,18 +66,24 @@ void wall_init(void) {
   int ntotal;
   double ux_bottom = 0.0;
   double ux_top = 0.0;
-  char   tmp[128];
 
   RUN_get_double_parameter("boundary_speed_bottom", &ux_bottom);
   RUN_get_double_parameter("boundary_speed_top", &ux_top);
-  RUN_get_string_parameter("boundary_walls_on", tmp, 128);
 
-  if (strcmp(tmp, "yes") == 0) is_boundary_wall_ = 1;
+  /* Set the wall status: default to no walls */
 
-  if (is_boundary_wall_) {
+  is_boundary_[X] = 0;
+  is_boundary_[Y] = 0;
+  is_boundary_[Z] = 0;
+
+  RUN_get_int_parameter_vector("boundary_walls", is_boundary_);
+
+  if (wall_present()) {
     info("\n");
     info("Boundary walls\n");
     info("--------------\n");
+
+    wall_checks();
     init_boundary_site_map();
     init_links();
     init_boundary_speeds(ux_bottom, ux_top);
@@ -85,9 +92,9 @@ void wall_init(void) {
     if (init_shear) wall_shear_init(ux_top, ux_bottom);
 
     info("Boundary walls:                %1s %1s %1s\n",
-	 (is_periodic(X) == 0) ? "X" : "-",
-	 (is_periodic(Y) == 0) ? "Y" : "-",
-	 (is_periodic(Z) == 0) ? "Z" : "-");
+	 (is_boundary_[X] == 1) ? "X" : "-",
+	 (is_boundary_[Y] == 1) ? "Y" : "-",
+	 (is_boundary_[Z] == 1) ? "Z" : "-");
     info("Boundary speed u_x (bottom):  %14.7e\n", ux_bottom);
     info("Boundary speed u_x (top):     %14.7e\n", ux_top);
     info("Boundary shear initialise:     %d\n", init_shear);
@@ -106,6 +113,41 @@ void wall_init(void) {
 
 /*****************************************************************************
  *
+ *  wall_checks
+ *
+ *****************************************************************************/
+
+static void wall_checks(void) {
+
+  int ifail;
+
+  ifail = 0;
+  if (is_periodic(X) && is_boundary_[X]) ifail = 1;
+  if (is_periodic(Y) && is_boundary_[Y]) ifail = 1;
+  if (is_periodic(Z) && is_boundary_[Z]) ifail = 1;
+
+  if (ifail == 1) {
+    info("Boundary walls must match periodicity of system\n");
+    fatal("Please check input file and try again\n");
+  }
+
+  /* Untested configurations */
+
+  if (is_boundary_[X] == 0 && is_boundary_[Y] == 1 && is_boundary_[Z] == 0)
+    ifail = 1;
+  if (is_boundary_[X] == 1 && is_boundary_[Y] == 0 && is_boundary_[Z] == 1)
+    ifail = 1;
+
+  if (ifail == 1) {
+    info("Untested boundary wall configuration.\n");
+    info("Please check documentation and try again.\n");
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  wall_present
  *
  *  Return 0 if no boundaries are present, or 1 if any boundary
@@ -114,7 +156,12 @@ void wall_init(void) {
  *****************************************************************************/
 
 int wall_present(void) {
-  return is_boundary_wall_;
+
+  int present;
+
+  present = (is_boundary_[X] || is_boundary_[Y] || is_boundary_[Z]);
+
+  return present;
 }
 
 /*****************************************************************************
@@ -133,7 +180,7 @@ int wall_at_edge(const int d) {
 
   assert(d == X || d == Y || d == Z);
 
-  return (is_boundary_wall_ && !is_periodic(d));
+  return (is_boundary_[d]);
 }
 
 /*****************************************************************************
@@ -187,6 +234,7 @@ void wall_bounce_back(void) {
   B_link * p_link;
   int      i, j, ij, ji, ia;
   int      n, ndist;
+  char     status;
   double   rho, cdotu;
   double   fp;
   double   force;
@@ -203,22 +251,42 @@ void wall_bounce_back(void) {
 
     cdotu = cv[ij][X]*p_link->ux;
 
-    for (n = 0; n < ndist; n++) {
+    status = site_map_get_status_index(i);
 
-      fp = distribution_f(i, ij, n);
-      rho = distribution_zeroth_moment(i, n);
+    if (status == COLLOID) {
 
-      if (n == 0) {
-	/* This is the momentum */
-	force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-	for (ia = 0; ia < 3; ia++) {
-	  fnet_[ia] += force*cv[ij][ia];
-	}
+      /* This matches the momentum exchange in colloid BBL. */
+      /* This only affects the accounting (via anomaly, as below) */
+
+      fp = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
+      for (ia = 0; ia < 3; ia++) {
+	fnet_[ia] += (fp - 2.0*wv[ij])*cv[ij][ia];
       }
 
-      fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-      distribution_f_set(j, ji, n, fp);
+    }
+    else {
 
+      for (n = 0; n < ndist; n++) {
+
+	fp = distribution_f(i, ij, n);
+	rho = distribution_zeroth_moment(i, n);
+
+	if (n == 0) {
+	  /* This is the momentum. To prevent accumulation of round-off
+	   * in the running total (fnet_), we subtract the equilibrium
+	   * wv[]ij]. This is ok for walls where there are exactly
+	   * equal and opposite links at each side of the system. */
+
+	  force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+	  for (ia = 0; ia < 3; ia++) {
+	    fnet_[ia] += (force - 2.0*wv[ij])*cv[ij][ia];
+	  }
+	}
+
+	fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+	distribution_f_set(j, ji, n, fp);
+
+      }
     }
 
     p_link = p_link->next;
@@ -313,19 +381,19 @@ static void init_boundary_site_map() {
 	jc_global = jc + noffset[Y];
 	kc_global = kc + noffset[Z];
 
-	if (!is_periodic(Z)) {
+	if (is_boundary_[Z]) {
 	  if (kc_global == 0 || kc_global == N_total(Z) + 1) {
 	    site_map_set_status(ic, jc, kc, BOUNDARY);
 	  }
 	}
 
-	if (!is_periodic(Y)) {
+	if (is_boundary_[Y]) {
 	  if (jc_global == 0 || jc_global == N_total(Y) + 1) {
 	    site_map_set_status(ic, jc, kc, BOUNDARY);
 	  }
 	}
 
-	if (!is_periodic(X)) {
+	if (is_boundary_[X]) {
 	  if (ic_global == 0 || ic_global == N_total(X) + 1) {
 	    site_map_set_status(ic, jc, kc, BOUNDARY);
 	  }
