@@ -49,6 +49,7 @@ static void colloid_sums_process(int dim, const int ncount[2]);
  *
  *****************************************************************************/
 
+static int colloid_sums_m0(int, int, int, int); /* DUMMY */
 static int colloid_sums_m1(int, int, int, int); /* STRUCTURE */
 static int colloid_sums_m2(int, int, int, int); /* DYNAMICS */
 static int colloid_sums_m3(int, int, int, int); /* ACTIVE and SUBGRID */
@@ -79,13 +80,8 @@ static double * recv_;                          /* Receive buffer */
 
 void colloid_sums_halo(const int mtype) {
 
-  if (cart_size(X) == 1 && is_periodic(X) == 0) return;
   colloid_sums_dim(X, mtype);
-
-  if (cart_size(Y) == 1 && is_periodic(Y) == 0) return;
   colloid_sums_dim(Y, mtype);
-
-  if (cart_size(Z) == 1 && is_periodic(Z) == 0) return;
   colloid_sums_dim(Z, mtype);
 
   return;
@@ -115,6 +111,7 @@ void colloid_sums_dim(const int dim, const int mtype) {
   /* Allocate send and receive buffer */
 
   n = ncount[BACKWARD] + ncount[FORWARD];
+
   send_ = (double *) malloc(n*nsize*sizeof(double));
   recv_ = (double *) malloc(n*nsize*sizeof(double));
  
@@ -193,6 +190,11 @@ static void colloid_sums_count(const int dim, int ncount[2]) {
 	ncount[FORWARD]  += colloids_cell_count(ic, jc, Ncell(Z)+1); 
       }
     }
+  }
+
+  if (is_periodic(dim) == 0) {
+    if (cart_coords(dim) == 0) ncount[BACKWARD] = 0;
+    if (cart_coords(dim) == cart_size(dim) - 1) ncount[FORWARD] = 0;
   }
 
   return;
@@ -284,12 +286,15 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
   int nb, nf;
   int ic, jc, kc;
 
-  int (* message_loader)(int, int, int, int) = NULL;
+  int (* message_loaderf)(int, int, int, int) = NULL;
+  int (* message_loaderb)(int, int, int, int) = NULL;
 
-  if (mtype_ == COLLOID_SUM_STRUCTURE) message_loader = colloid_sums_m1;
-  if (mtype_ == COLLOID_SUM_DYNAMICS) message_loader = colloid_sums_m2;
-  if (mtype_ == COLLOID_SUM_ACTIVE) message_loader = colloid_sums_m3;
-  assert(message_loader);
+  if (mtype_ == COLLOID_SUM_STRUCTURE) message_loaderf = colloid_sums_m1;
+  if (mtype_ == COLLOID_SUM_DYNAMICS) message_loaderf = colloid_sums_m2;
+  if (mtype_ == COLLOID_SUM_ACTIVE) message_loaderf = colloid_sums_m3;
+
+  assert(message_loaderf);
+  message_loaderb = message_loaderf;
 
   if (mload_ == MESSAGE_LOAD) {
     nb = 0;
@@ -300,13 +305,21 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
     nf = 0;
   }
 
+  /* Eliminate messages at non-perioidic boundaries via dummy loader m0 */
+
+  if (is_periodic(dim) == 0) {
+    ic = cart_coords(dim);
+    if (ic == 0) message_loaderb = colloid_sums_m0;
+    if (ic == cart_size(dim) - 1) message_loaderf = colloid_sums_m0;
+  }
+
   if (dim == X) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
-	nb += message_loader(0, jc, kc, nb);
-	nb += message_loader(1, jc, kc, nb);
-	nf += message_loader(Ncell(X), jc, kc, nf);
-	nf += message_loader(Ncell(X)+1, jc, kc, nf);
+	nb += message_loaderb(0, jc, kc, nb);
+	nb += message_loaderb(1, jc, kc, nb);
+	nf += message_loaderf(Ncell(X), jc, kc, nf);
+	nf += message_loaderf(Ncell(X)+1, jc, kc, nf);
       }
     }
   }
@@ -314,10 +327,10 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
   if (dim == Y) {
     for (ic = 0; ic <= Ncell(X) + 1; ic++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
-	nb += message_loader(ic, 0, kc, nb);
-	nb += message_loader(ic, 1, kc, nb);
-	nf += message_loader(ic, Ncell(Y), kc, nf); 
-	nf += message_loader(ic, Ncell(Y)+1, kc, nf); 
+	nb += message_loaderb(ic, 0, kc, nb);
+	nb += message_loaderb(ic, 1, kc, nb);
+	nf += message_loaderf(ic, Ncell(Y), kc, nf); 
+	nf += message_loaderf(ic, Ncell(Y)+1, kc, nf); 
       }
     }
   }
@@ -325,10 +338,10 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
   if (dim == Z) {
     for (ic = 0; ic <= Ncell(X) + 1; ic++) {
       for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-	nb += message_loader(ic, jc, 0, nb);
-	nb += message_loader(ic, jc, 1, nb);
-	nf += message_loader(ic, jc, Ncell(Z), nf); 
-	nf += message_loader(ic, jc, Ncell(Z)+1, nf); 
+	nb += message_loaderb(ic, jc, 0, nb);
+	nb += message_loaderb(ic, jc, 1, nb);
+	nf += message_loaderf(ic, jc, Ncell(Z), nf); 
+	nf += message_loaderf(ic, jc, Ncell(Z)+1, nf); 
       }
     }
   }
@@ -343,6 +356,19 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_m0
+ *
+ *  Null message for non-perioidic boundaries.
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m0(int ic, int jc, int kc, int noff) {
+
+  return 0;
 }
 
 /*****************************************************************************

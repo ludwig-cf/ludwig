@@ -52,13 +52,8 @@ static  int colloids_halo_load_list(int ic, int jc, int kc,
 
 void colloids_halo_state(void) {
 
-  if (cart_size(X) == 1 && is_periodic(X) == 0) return;
   colloids_halo_dim(X);
-
-  if (cart_size(Y) == 1 && is_periodic(Y) == 0) return;
   colloids_halo_dim(Y);
-
-  if (cart_size(Z) == 1 && is_periodic(Z) == 0) return;
   colloids_halo_dim(Z);
 
   return;
@@ -95,8 +90,8 @@ void colloids_halo_dim(int dim) {
   n = nrecv[FORWARD] + nrecv[BACKWARD];
   recv_ = (colloid_state_t *) malloc(n*sizeof(colloid_state_t));
 
-  if (send_ == NULL) fatal("malloc(send_) failed\n");
-  if (recv_ == NULL) fatal("malloc(recv_) failed\n");
+  if (send_ == NULL) fatal("colloids halo malloc(send_) failed\n");
+  if (recv_ == NULL) fatal("colloids halo malloc(recv_) failed\n");
 
   colloids_halo_irecv(dim, nrecv, request_recv);
 
@@ -356,7 +351,7 @@ static void colloids_halo_irecv(int dim, int nrecv[2], MPI_Request req[2]) {
  *
  *  colloids_halo_isend
  *
- *  This 'progresses the message' in serial.
+ *  This 'progresses the message' in serial (for periodic boundaries).
  *
  *****************************************************************************/
 
@@ -369,8 +364,11 @@ static void colloids_halo_isend(int dim, int nsend[2], MPI_Request req[2]) {
   MPI_Comm comm;
 
   if (cart_size(dim) == 1) {
-    n = nsend[FORWARD] + nsend[BACKWARD];
-    memcpy(recv_, send_, n*sizeof(colloid_state_t));
+
+    if (is_periodic(dim)) {
+      n = nsend[FORWARD] + nsend[BACKWARD];
+      memcpy(recv_, send_, n*sizeof(colloid_state_t));
+    }
 
     req[0] = MPI_REQUEST_NULL;
     req[1] = MPI_REQUEST_NULL;
@@ -422,10 +420,13 @@ static void colloids_halo_number(int dim, int nsend[2], int nrecv[2]) {
     MPI_Issend(nsend + BACKWARD, 1, MPI_INT, pback, tagb_, comm, request + 3);
 
     MPI_Waitall(4, request, status);
+  }
 
-    /* Non-peridoic boundaries receive no particles */
-    if (pforw == MPI_PROC_NULL) nrecv[FORWARD] = 0;
-    if (pback == MPI_PROC_NULL) nrecv[BACKWARD] = 0;
+  /* Non periodic boundaries receive no particles */
+
+  if (is_periodic(dim) == 0) {
+    if (cart_coords(dim) == 0) nrecv[BACKWARD] = 0;
+    if (cart_coords(dim) == cart_size(dim) - 1) nrecv[FORWARD] = 0;
   }
 
   return;
