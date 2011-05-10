@@ -607,6 +607,7 @@ static void colloid_forces_pairwise(double * hmin, double * epot) {
 static void colloid_forces_check(void) {
 
   int ifail;
+  int nhalo;
   int nlocal[3];
 
   double ahmax;
@@ -614,6 +615,7 @@ static void colloid_forces_check(void) {
   double lmin = DBL_MAX;
   double rc;
 
+  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
   if (potential_centre_to_centre()) {
@@ -642,12 +644,12 @@ static void colloid_forces_check(void) {
     lmin = dmin(lmin, 1.0*nlocal[Y]);
     lmin = dmin(lmin, 1.0*nlocal[Z]);
 
-    /* The particles must not be larger than nlocal - 1 or else links
-     * will extend beyond 2 subdomains */
+    /* The particles must not be larger than nlocal - nhalo or else colloid
+     * information will extend beyond 2 subdomains */
     ifail = 0;
-    if (2.0*ahmax >= 1.0*(nlocal[X] - 1)) ifail = 1;
-    if (2.0*ahmax >= 1.0*(nlocal[Y] - 1)) ifail = 1;
-    if (2.0*ahmax >= 1.0*(nlocal[Z] - 1)) ifail = 1;
+    if (2.0*ahmax >= 1.0*(nlocal[X] - nhalo)) ifail = 1;
+    if (2.0*ahmax >= 1.0*(nlocal[Y] - nhalo)) ifail = 1;
+    if (2.0*ahmax >= 1.0*(nlocal[Z] - nhalo)) ifail = 1;
     if (ifail == 1) {
       fatal("Particles too large for local domain (amax = %6.2f) \n", ahmax);
     }
