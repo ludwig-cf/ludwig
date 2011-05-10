@@ -28,6 +28,9 @@
 #include "stats_free_energy.h"
 
 static void stats_free_energy_wall(double * fs);
+static void stats_free_energy_wallx(double * fs);
+static void stats_free_energy_wally(double * fs);
+static void stats_free_energy_wallz(double * fs);
 static void stats_free_energy_colloid(double * fs);
 
 /****************************************************************************
@@ -132,6 +135,25 @@ void stats_free_energy_density(void) {
 
 static void stats_free_energy_wall(double * fs) {
 
+  if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
+
+  if (wall_at_edge(X)) stats_free_energy_wallx(fs);
+  if (wall_at_edge(Y)) stats_free_energy_wally(fs);
+  if (wall_at_edge(Z)) stats_free_energy_wallz(fs);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  stats_free_energy_wallx
+ *
+ *  Return f_s for bottom wall and top wall (and could add an area).
+ *
+ *****************************************************************************/
+
+static void stats_free_energy_wallx(double * fs) {
+
   int ic, jc, kc, index;
   int ia, ib;
   int nlocal[3];
@@ -142,11 +164,6 @@ static void stats_free_energy_wall(double * fs) {
 
   fs[0] = 0.0;
   fs[1] = 0.0;
-
-  if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
-
-  if (wall_at_edge(Y)) fatal("No y wall free energy yet\n");
-  if (wall_at_edge(Z)) fatal("No z wall free energy yet\n");
 
   coords_nlocal(nlocal);
   w = colloids_q_tensor_w();
@@ -185,6 +202,158 @@ static void stats_free_energy_wall(double * fs) {
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+	phi_get_q_tensor(index, qs);
+	colloids_q_boundary(dn, qs, q0);
+	
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    fs[1] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
+	  }
+	}
+
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  stats_free_energy_wally
+ *
+ *  Return f_s for bottom wall and top wall (and could add an area).
+ *
+ *****************************************************************************/
+
+static void stats_free_energy_wally(double * fs) {
+
+  int ic, jc, kc, index;
+  int ia, ib;
+  int nlocal[3];
+
+  double w;
+  double dn[3];
+  double qs[3][3], q0[3][3];
+
+  fs[0] = 0.0;
+  fs[1] = 0.0;
+
+  coords_nlocal(nlocal);
+  w = colloids_q_tensor_w();
+
+  assert(phi_nop() == 5);
+
+  dn[X] = 0.0;
+  dn[Z] = 0.0;
+
+  if (cart_coords(Y) == 0) {
+
+    jc = 1;
+    dn[Y] = +1.0;
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+	phi_get_q_tensor(index, qs);
+	colloids_q_boundary(dn, qs, q0);
+	
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    fs[0] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
+	  }
+	}
+
+      }
+    }
+  }
+
+  if (cart_coords(Y) == cart_size(Y) - 1) {
+
+    jc = nlocal[Y];
+    dn[Y] = -1;
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+	phi_get_q_tensor(index, qs);
+	colloids_q_boundary(dn, qs, q0);
+	
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    fs[1] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
+	  }
+	}
+
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  stats_free_energy_wallz
+ *
+ *  Return f_s for bottom wall and top wall (and could add an area).
+ *
+ *****************************************************************************/
+
+static void stats_free_energy_wallz(double * fs) {
+
+  int ic, jc, kc, index;
+  int ia, ib;
+  int nlocal[3];
+
+  double w;
+  double dn[3];
+  double qs[3][3], q0[3][3];
+
+  fs[0] = 0.0;
+  fs[1] = 0.0;
+
+  coords_nlocal(nlocal);
+  w = colloids_q_tensor_w();
+
+  assert(phi_nop() == 5);
+
+  dn[X] = 0.0;
+  dn[Y] = 0.0;
+
+  if (cart_coords(Z) == 0) {
+
+    kc = 1;
+    dn[Z] = +1.0;
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+        index = coords_index(ic, jc, kc);
+	phi_get_q_tensor(index, qs);
+	colloids_q_boundary(dn, qs, q0);
+	
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    fs[0] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
+	  }
+	}
+
+      }
+    }
+  }
+
+  if (cart_coords(Z) == cart_size(Z) - 1) {
+
+    kc = nlocal[Z];
+    dn[Z] = -1;
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
