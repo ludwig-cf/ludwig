@@ -241,6 +241,7 @@ void COLL_update_links() {
 	    COLL_reset_links(p_colloid);
 	  }
 
+
 	  /* Next colloid */
 
 	  p_colloid->s.rebuild = 0;
@@ -279,6 +280,7 @@ void COLL_reconstruct_links(colloid_t * p_colloid) {
   int         i_min, i_max, j_min, j_max, k_min, k_max;
   int         i, ic, ii, j, jc, jj, k, kc, kk;
   int         index0, index1, p;
+  char        status1;
 
   double       radius;
   double       lambda = 0.5;
@@ -337,6 +339,7 @@ void COLL_reconstruct_links(colloid_t * p_colloid) {
 	rsite1[Y] = 1.0*j;
 	rsite1[Z] = 1.0*k;
 	coords_minimum_distance(r0, rsite1, rsep);
+	status1 = site_map_get_status_index(index1);
 
 	/* Index 1 is outside, so cycle through the lattice vectors
 	 * to determine if the end is inside, and so requires a link */
@@ -366,7 +369,7 @@ void COLL_reconstruct_links(colloid_t * p_colloid) {
 	    p_link->j = index0;
 	    p_link->p = p;
 
-	    if (site_map_get_status_index(index1) == FLUID) {
+	    if (status1 == FLUID) {
 	      p_link->status = LINK_FLUID;
 	      build_link_mean(p_colloid, p, p_link->rb);
 	    }
@@ -400,7 +403,7 @@ void COLL_reconstruct_links(colloid_t * p_colloid) {
 	    p_link->j = index0;
 	    p_link->p = p;
 
-	    if (site_map_get_status_index(index1) == FLUID) {
+	    if (status1 == FLUID) {
 	      p_link->status = LINK_FLUID;
 	      build_link_mean(p_colloid, p, p_link->rb);
 	    }
@@ -483,6 +486,7 @@ void COLL_reset_links(colloid_t * p_colloid) {
   double      rsep[3];
   double      r0[3];
   int         offset[3];
+  char        status;
 
   double      lambda = 0.5;
 
@@ -512,14 +516,17 @@ void COLL_reset_links(colloid_t * p_colloid) {
       p_link->rb[Y] = rsep[Y] + lambda*cv[p_link->p][Y];
       p_link->rb[Z] = rsep[Z] + lambda*cv[p_link->p][Z];
 
-      if (site_map_get_status_index(p_link->i) == FLUID) {
+      status = site_map_get_status_index(p_link->i);
+
+      if (status == FLUID) {
 	p_link->status = LINK_FLUID;
 	build_link_mean(p_colloid, p_link->p, p_link->rb);
       }
       else {
 	double ub[3];
 	double wxrb[3];
-	p_link->status = LINK_COLLOID;
+	if (status == COLLOID) p_link->status = LINK_COLLOID;
+	if (status == BOUNDARY) p_link->status = LINK_BOUNDARY;
 
 	cross_product(p_colloid->s.w, p_link->rb, wxrb);
 	ub[X] = p_colloid->s.v[X] + wxrb[X];
@@ -1056,14 +1063,10 @@ void reconstruct_wall_links(colloid_t * p_colloid) {
 	    p_link->p = NVEL - p;
 	    p_link->status = LINK_BOUNDARY;
 
-	    if (p_colloid->lnk == NULL) {
-	      /* There should be links in this list. */
-	      fatal("No links in list\n");
-	    }
-	    else {
-	      p_last->next = p_link;
-	    }
+	    /* There must be at least one link in the list. */
+	    assert(p_link);
 
+	    p_last->next = p_link;
 	    p_link->next = NULL;
 	    p_last = p_link;
 	    p_link = NULL;
