@@ -52,6 +52,8 @@
 #include "coords.h"
 #include "lattice.h"
 #include "colloids.h"
+#include "site_map.h"
+#include "wall.h"
 #include "colloids_Q_tensor.h"
 #include "free_energy.h"
 
@@ -341,8 +343,8 @@ static void phi_force_interpolation1(void) {
  *
  *  phi_force_interpolation2
  *
- *  In the presence of solid, P_th is assumed to be zero.
- *  Also slow at the moment.
+ *  General version which deals with solid interfaces by using P^th from
+ *  the adjacent fluid site at the interface.
  *
  *****************************************************************************/
 
@@ -353,7 +355,8 @@ static void phi_force_interpolation2(void) {
   int nlocal[3];
   double pth0[3][3];
   double pth1[3][3];
-  double force[3];
+  double force[3];                  /* Accumulated force on fluid */
+  double fw[3];                     /* Accumulated force on wall */
 
   colloid_t * p_c;
   colloid_t * colloid_at_site_index(int);
@@ -377,6 +380,10 @@ static void phi_force_interpolation2(void) {
 	/* Compute pth at current point */
 	chemical_stress(index, pth0);
 
+	for (ia = 0; ia < 3; ia++) {
+	  fw[ia] = 0.0;
+	}
+
 	/* Compute differences */
 	
 	index1 = coords_index(ic+1, jc, kc);
@@ -387,6 +394,12 @@ static void phi_force_interpolation2(void) {
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] = -pth0[ia][X];
 	    p_c->force[ia] += pth0[ia][X];
+	  }
+	}
+	else if (site_map_get_status_index(index1) == BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] = -pth0[ia][X];
+	    fw[ia] = pth0[ia][X];
 	  }
 	}
 	else {
@@ -407,6 +420,12 @@ static void phi_force_interpolation2(void) {
 	    p_c->force[ia] -= pth0[ia][X];
 	  }
 	}
+	else if (site_map_get_status_index(index1) == BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][X];
+	    fw[ia] -= pth0[ia][X];
+	  }
+	}
 	else {
 	  /* Fluid - fluid */
 	  chemical_stress(index1, pth1);
@@ -423,6 +442,12 @@ static void phi_force_interpolation2(void) {
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] -= pth0[ia][Y];
 	    p_c->force[ia] += pth0[ia][Y];
+	  }
+	}
+	else if (site_map_get_status_index(index1) == BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] -= pth0[ia][Y];
+	    fw[ia] += pth0[ia][Y];
 	  }
 	}
 	else {
@@ -443,6 +468,12 @@ static void phi_force_interpolation2(void) {
 	    p_c->force[ia] -= pth0[ia][Y];
 	  }
 	}
+	else if (site_map_get_status_index(index1) == BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][Y];
+	    fw[ia] -= pth0[ia][Y];
+	  }
+	}
 	else {
 	  /* Fluid-fluid */
 	  chemical_stress(index1, pth1);
@@ -459,6 +490,12 @@ static void phi_force_interpolation2(void) {
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] -= pth0[ia][Z];
 	    p_c->force[ia] += pth0[ia][Z];
+	  }
+	}
+	else if (site_map_get_status_index(index1) == BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] -= pth0[ia][Z];
+	    fw[ia] += pth0[ia][Z];
 	  }
 	}
 	else {
@@ -479,6 +516,12 @@ static void phi_force_interpolation2(void) {
 	    p_c->force[ia] -= pth0[ia][Z];
 	  }
 	}
+	else if (site_map_get_status_index(index1) == BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][Z];
+	    fw[ia] -= pth0[ia][Z];
+	  }
+	}
 	else {
 	  /* Fluid-fluid */
 	  chemical_stress(index1, pth1);
@@ -490,6 +533,7 @@ static void phi_force_interpolation2(void) {
 	/* Store the force on lattice */
 
 	hydrodynamics_add_force_local(index, force);
+	wall_accumulate_force(fw);
 
 	/* Next site */
       }
