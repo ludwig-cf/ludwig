@@ -25,6 +25,7 @@
 #include "coords.h"
 #include "physics.h"
 #include "model.h"
+#include "util.h"
 #include "wall.h"
 #include "site_map.h"
 #include "runtime.h"
@@ -41,10 +42,11 @@ struct B_link_struct {
   B_link * next;     /* This is a linked list */
 };
 
-static int nalloc_links_ = 0;       /* Current number of links allocated */
-static B_link * link_list_ = NULL;  /* Boundary links. */
-static int is_boundary_[3];         /* Any boundaries present? */
-static double fnet_[3];             /* Accumulated net force on walls */
+static int nalloc_links_ = 0;        /* Current number of links allocated */
+static B_link * link_list_ = NULL;   /* Boundary links. */
+static int is_boundary_[3];          /* Any boundaries present? */
+static double fnet_[3];              /* Accumulated net force on walls */
+static double lubrication_rcnormal_; /* Wall normal lubrication cut off */
 
 static B_link * allocate_link(void);
 static void     init_links(void);
@@ -66,9 +68,11 @@ void wall_init(void) {
   int ntotal;
   double ux_bottom = 0.0;
   double ux_top = 0.0;
+  double rc = 0.0;
 
   RUN_get_double_parameter("boundary_speed_bottom", &ux_bottom);
   RUN_get_double_parameter("boundary_speed_top", &ux_top);
+  RUN_get_double_parameter("boundary_lubrication_rcnormal", &rc);
 
   /* Set the wall status: default to no walls */
 
@@ -87,21 +91,23 @@ void wall_init(void) {
     init_boundary_site_map();
     init_links();
     init_boundary_speeds(ux_bottom, ux_top);
+    lubrication_rcnormal_ = rc;
 
     RUN_get_int_parameter("boundary_shear_init", &init_shear);
     if (init_shear) wall_shear_init(ux_top, ux_bottom);
 
-    info("Boundary walls:                %1s %1s %1s\n",
+    info("Boundary walls:                  %1s %1s %1s\n",
 	 (is_boundary_[X] == 1) ? "X" : "-",
 	 (is_boundary_[Y] == 1) ? "Y" : "-",
 	 (is_boundary_[Z] == 1) ? "Z" : "-");
-    info("Boundary speed u_x (bottom):  %14.7e\n", ux_bottom);
-    info("Boundary speed u_x (top):     %14.7e\n", ux_top);
-    info("Boundary shear initialise:     %d\n", init_shear);
+    info("Boundary speed u_x (bottom):    %14.7e\n", ux_bottom);
+    info("Boundary speed u_x (top):       %14.7e\n", ux_top);
+    info("Boundary normal lubrication rc: %14.7e\n", lubrication_rcnormal_);
 
     MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
-    info("Boundary links allocated:      %d\n", ntotal);
-    info("Memory (total, bytes):         %d\n", ntotal*sizeof(B_link));
+    info("Boundary links allocated:        %d\n", ntotal);
+    info("Memory (total, bytes):           %d\n", ntotal*sizeof(B_link));
+    info("Boundary shear initialise:       %d\n", init_shear);
   }
 
   fnet_[X] = 0.0;
@@ -609,4 +615,46 @@ static void wall_shear_init(double uxtop, double uxbottom) {
   }
 
   return;
+}
+
+/******************************************************************************
+ *
+ *  wall_lubrication
+ *
+ *  This returns the normal lubrication correction for colloid of hydrodynamic
+ *  radius ah at position r near a flat wall in dimension dim (if present).
+ *  This is based on the analytical expression for a sphere.
+ *
+ *  The result should be added to the appropriate diagonal element of
+ *  the colloid's drag matrix in the implicit update. There is, therefore,
+ *  no velocity appearing here (wall assumed to have no velocity).
+ *  This is therefore closely related to BBL in bbl.c.
+ *
+ *  This operates in parallel by computing the absolute distance between
+ *  the side of the system (walls nominally at Lmin and (Lmax + Lmin)),
+ *  and applying the cutoff.
+ * 
+ *  Normal force is added to the diagonal of drag matrix \zeta^FU_xx etc
+ *  (No tangential force would be added to \zeta^FU_xx and \zeta^FU_yy)
+ *
+ *****************************************************************************/
+
+double wall_lubrication(const int dim, const double r[3], const double ah) {
+
+  double force;
+  double hlub;
+  double h;
+
+  force = 0.0;
+  hlub = lubrication_rcnormal_;
+
+  if (is_boundary_[dim]) {
+    /* Lower, then upper */
+    h = r[dim] - Lmin(dim) - ah; 
+    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+    h = Lmin(dim) + L(dim) - r[dim] - ah;
+    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+  }
+
+  return force;
 }
