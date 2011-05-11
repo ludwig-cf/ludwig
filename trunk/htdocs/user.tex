@@ -606,7 +606,9 @@ to switch of the cell list. This is done via
 \inputkey{colloid\_cell\_list\_interactions no}
 
 The constraint in this case is that $2a_h + h_c < L_{local}$, ie.,
-there is effectively one cell in each local domain. This option
+there is effectively one cell in each local domain. (In practice,
+the constraint is slightly tighter than this if larger halo regions
+are in effect.) This option
 should not be required in normal circumstances.
 
 
@@ -775,6 +777,33 @@ may be switched on (set to 1) to provide initialisation of the
 LB distributions appropriate for the specified shear rate based
 on a linear velocity profile in the $z-$direction. The default
 is to initialise the fluid at rest.
+
+\subsubsection{Flat wall lubrication correction}
+
+It is possible to prevent colloids colliding with the flat boundary walls
+by adding the correction to the normal component of the lubrication
+force. The general form of this correction is
+\begin{equation}
+\mathbf{F}_{\mathrm{lub}} = -6\pi \eta a_h^2
+%({\textstyle \frac{1}{h} - \frac{1}{h_c}})
+(1/h - 1/h_c)
+\mathbf{u} . \mathbf{r}.
+\end{equation}
+Here, $h$ is the surface to surface separation, and $h_c$ is the cutoff
+distance beyond which the correction is not applied. The relative
+velocity (assuming the wall is not moving) and normal separation are
+$\mathbf{u}$ and $\mathbf{r}$ respectively.
+
+The cutoff distance can be set from the input via
+
+\inputkey{boundary\_lubrication\_rcnormal 0.1}
+
+where the value is (strictly) set via calibration, cf. the hydrodynamic
+radius. In general, the cutoff is between zero and 0.5 lattice spacing,
+and can be smaller for larger particles. Because the wall velocity is
+fixed, this force correction should cause no stability issues in the
+colloid velocity update (provided a colloid's initial position is not
+very close to the wall). By default the cutoff $h_c = 0$.
 
 \subsection{Lees-Edwards planes}
 
