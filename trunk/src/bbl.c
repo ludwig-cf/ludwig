@@ -25,6 +25,7 @@
 #include "colloid_sums.h"
 #include "model.h"
 #include "util.h"
+#include "wall.h"
 #include "phi.h"
 #include "bbl.h"
 
@@ -32,10 +33,6 @@ static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
 static void mass_conservation_compute_force(void);
 static void update_colloids(void);
-
-/* move to wall.c ? */
-static double wall_lubrication(const int dim, const double r[3],
-			       const double ah);
 
 static int bbl_active_ = 0;  /* Flag for active particles. */
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
@@ -722,43 +719,6 @@ static void update_colloids() {
   }
 
   return;
-}
-
-/******************************************************************************
- *
- *  wall_lubrication
- *
- *  For a given colloid, add any appropriate particle-wall lubrication
- *  force. Again, this relies on the fact that the walls have no
- *  component of velocity nornal to their own plane.
- *
- *  The result should be added to the appropriate diagonal element of
- *  the colloid's drag matrix in the implicit update.
- *
- *  Issues
- *    Normal force is added to the diagonal of drag matrix \zeta^FU_zz
- *    Tangential force to \zeta^FU_xx and \zeta^FU_yy
- *
- *****************************************************************************/
-
-double wall_lubrication(const int dim, const double r[3], const double ah) {
-
-  double force;
-  double hlub;
-  double h;
-
-  force = 0.0;  /* no force by default */
-  hlub = 0.5;   /* half a lattice spacing cut off */
-
-  if (dim == Z && is_periodic(Z) == 0) {
-    /* Lower, then upper */
-    h = r[Z] - Lmin(Z) - ah; 
-    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
-    h = Lmin(Z) + L(Z) - r[Z] - ah;
-    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
-  }
-
-  return force;
 }
 
 /*****************************************************************************
