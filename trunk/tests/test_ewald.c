@@ -47,7 +47,13 @@ int main (int argc, char ** argv) {
   MPI_Init(&argc, &argv);
   pe_init();
 
-  if (pe_size() > 1) return 0;
+  if (pe_size() > 1) {
+
+    info("No Ewald sum test in parallel\n");
+    pe_finalise();
+    MPI_Finalize();
+    return 0;
+  }
 
   coords_init();
 
