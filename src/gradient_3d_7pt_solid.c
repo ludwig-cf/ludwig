@@ -99,6 +99,8 @@ static void gradient_norm3(const int index, const int nhatx[3],
 static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
 			 double dq[NOP][3], double bc[NOP][NOP][3]);
 
+static void gradient_general(const double * field, double * grad,
+			     double * del2, const int nextra);
 static int util_gaussian(double a[NOP][NOP], double xb[NOP]);
 
 /*****************************************************************************
@@ -117,6 +119,9 @@ void gradient_3d_7pt_solid_init(void) {
 /*****************************************************************************
  *
  *  gradient_3d_7pt_solid_operator
+ *
+ *  Compute the gradients in the fluid, and then correct for the presence
+ *  of various solids.
  *
  *****************************************************************************/
 
@@ -137,9 +142,9 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
   if (wall_at_edge(Y)) gradient_wall_y(field, grad, delsq, nextra);
   if (wall_at_edge(Z)) gradient_wall_z(field, grad, delsq, nextra);
 
-  /* Always at the moment. Might want to avoid if only flat walls */
-
   gradient_colloid(field, grad, delsq, nextra);
+
+  /*gradient_general(field, grad, delsq, nextra);*/
 
   return;
 }
@@ -332,6 +337,7 @@ static void gradient_wall_x(const double * field, double * grad, double * del2,
 
 	index = coords_index(1, jc, kc);
 	gradient_norm1(index, X, nhat, field, grad, del2);
+
       }
     }
   }
@@ -345,6 +351,7 @@ static void gradient_wall_x(const double * field, double * grad, double * del2,
 
 	index = coords_index(nlocal[X], jc, kc);
 	gradient_norm1(index, X, nhat, field, grad, del2);
+	
       }
     }
   }
@@ -1004,6 +1011,203 @@ static void gradient_norm3(const int index, const int nhatx[3],
       del2[NOP*index + n1] = gradn[n1][X][0] - gradn[n1][X][1]
 	+ gradn[n1][Y][0] - gradn[n1][Y][1]
 	+ gradn[n1][Z][0] - gradn[n1][Z][1];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  gradient_general
+ *
+ *  General routine to deal with solid in all configurations.
+ *
+ *****************************************************************************/
+
+static void gradient_general(const double * field, double * grad,
+			     double * del2, const int nextra) {
+  int nlocal[3];
+  int nhalo;
+  int ic, jc, kc;
+  int ia, ib, ig, ih;
+  int index, n, ns, n1, n2;
+  int niterate;
+
+  int str[3];
+  int code[6];
+
+  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+  const int normal[6] = {X, X, Y, Y, Z, Z};
+  const int nsolid[6] = {0, 1, 0, 1, 0, 1};
+
+  double gradn[NOP][3][2];                  /* Partial gradients */
+  double q0[3][3];                          /* Prefered surface Q_ab */
+  double qs[3][3];                          /* 'Surface' Q_ab */
+  double a[NOP][NOP];                       /* Matrix for linear system */
+  double b[NOP];                            /* RHS / unknown */
+  double dq[NOP][3];                        /* normal/tangential gradients */
+  double bc[NOP][NOP][3];                   /* Terms in boundary condition */
+  double c[6][3][3];                        /* Constant terms in BC. */
+  double dn[3];                             /* Unit normal. */
+
+  double w;                                 /* Anchoring strength parameter */
+  double q_0;                               /* Cholesteric pitch wavevector */
+  double kappa0;                            /* Elastic constants */
+  double kappa1;
+
+  assert(NOP == 5);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+
+  str[Z] = 1;
+  str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
+  str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
+
+  kappa0 = fe_kappa();
+  kappa1 = fe_kappa(); /* One elastic constant */ 
+
+  q_0 = blue_phase_q0();
+  w = colloids_q_tensor_w();
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	if (site_map_get_status_index(index) != FLUID) continue;
+
+	code[0] = (site_map_get_status(ic+1, jc, kc) != FLUID);
+	code[1] = (site_map_get_status(ic-1, jc, kc) != FLUID);
+	code[2] = (site_map_get_status(ic, jc+1, kc) != FLUID);
+	code[3] = (site_map_get_status(ic, jc-1, kc) != FLUID);
+	code[4] = (site_map_get_status(ic, jc, kc+1) != FLUID);
+	code[5] = (site_map_get_status(ic, jc, kc-1) != FLUID);
+
+	/* Set up partial gradients, and gradients */
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[n1][ia][0] =
+	      field[NOP*(index + str[ia]) + n1] - field[NOP*index + n1];
+	    gradn[n1][ia][1] =
+	      field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
+	  }
+	}
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  del2[NOP*index + n1] = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad[3*(NOP*index + n1) + ia] = 
+	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	    del2[NOP*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	  }
+	}
+
+	ns = code[0] + code[1] + code[2] + code[3] + code[4] + code[5];
+	if (ns == 0) continue;
+
+	/* Solid boundary condition corrections are required. */
+
+	fed_q5_to_qab(qs, field + NOP*index);
+
+	for (n = 0; n < 6; n++) {
+	  if (code[n] == 0) continue;
+
+	  colloids_q_boundary_normal(index, bcs[n], dn);
+	  colloids_q_boundary(dn, qs, q0);
+
+	  /* Compute c[n][a][b] */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      c[n][ia][ib] = 0.0;
+	      for (ig = 0; ig < 3; ig++) {
+		for (ih = 0; ih < 3; ih++) {
+		  c[n][ia][ib] -= kappa1*q_0*bcs[n][ig]*
+		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+		}
+	      }
+	      c[n][ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
+	    }
+	  }
+	}
+
+	/* Set up initial approximation to grad using partial gradients
+	 * where solid sites are involved (or zero where none available) */
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[n1][ia][0] *= (1 - code[2*ia]);
+	    gradn[n1][ia][1] *= (1 - code[2*ia + 1]);
+	    grad[3*(NOP*index + n1) + ia] =
+	      0.5*(1.0 + ((code[2*ia] + code[2*ia+1]) % 2))*
+	      (gradn[n1][ia][0] + gradn[n1][ia][1]);
+	  }
+	}
+
+	/* Iterate to a solution. */
+
+	for (niterate = 0; niterate < NITERATION; niterate++) {
+
+	  for (n = 0; n < 6; n++) {
+
+	    if (code[n] == 0) continue;
+
+	    for (n1 = 0; n1 < NOP; n1++) {
+	      for (ia = 0; ia < 3; ia++) {
+		dq[n1][ia] = grad[3*(NOP*index + n1) + ia];
+
+	      }
+	      dq[n1][normal[n]] = 1.0;
+	    }
+
+	    /* Construct boundary condition terms. */
+
+	    gradient_bcs(kappa0, kappa1, bcs[n], dq, bc);
+
+	    for (n1 = 0; n1 < NOP; n1++) {
+	      b[n1] = 0.0;
+	      for (n2 = 0; n2 < NOP; n2++) {
+		a[n1][n2] = bc[n1][n2][normal[n]];
+		b[n1] -= bc[n1][n2][normal[n]];
+		for (ia = 0; ia < 3; ia++) {
+		  b[n1] += bc[n1][n2][ia];
+		}
+	      }
+	    }
+
+	    b[XX] = -(b[XX] +     c[n][X][X]);
+	    b[XY] = -(b[XY] + 2.0*c[n][X][Y]);
+	    b[XZ] = -(b[XZ] + 2.0*c[n][X][Z]);
+	    b[YY] = -(b[YY] +     c[n][Y][Y]);
+	    b[YZ] = -(b[YZ] + 2.0*c[n][Y][Z]);
+
+	    util_gaussian(a, b);
+
+	    for (n1 = 0; n1 < NOP; n1++) {
+	      gradn[n1][normal[n]][nsolid[n]] = b[n1];
+	    }
+	  }
+
+	  /* Now recompute gradients */
+
+	  for (n1 = 0; n1 < NOP; n1++) {
+	    del2[NOP*index + n1] = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      grad[3*(NOP*index + n1) + ia] =
+		0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	      del2[NOP*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	    }
+	  }
+
+	  /* No iteration required if only one boundary. */
+	  if (ns < 2) break;
+	}
+
+	/* Next site. */
+      }
     }
   }
 
