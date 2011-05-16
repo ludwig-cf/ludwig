@@ -26,15 +26,16 @@
 #include "colloids.h"
 #include "phi.h"
 #include "io_harness.h"
-#include "ran.h"
 #include "lattice.h"
 #include "util.h"
 #include "model.h"
 #include "site_map.h"
+#include "blue_phase.h"
 #include "colloids_Q_tensor.h"
 
 struct io_info_t * io_info_scalar_q_;
-static int anchoring_ = ANCHORING_NORMAL;
+static int anchoring_coll_ = ANCHORING_NORMAL;
+static int anchoring_wall_ = ANCHORING_NORMAL;
 static int anchoring_method_ = ANCHORING_METHOD_NONE;
 static double w_surface_ = 0.0; /* Anchoring strength in free energy */
 
@@ -127,7 +128,7 @@ void COLL_set_Q(){
 	  director[Y] = normal[Y]*rlen_normal;
 	  director[Z] = normal[Z]*rlen_normal;
 	  
-	  if (anchoring_ == ANCHORING_PLANAR) {
+	  if (anchoring_coll_ == ANCHORING_PLANAR) {
 
 	    /* now we need set the director inside the colloid
 	     * perpendicular to the vector normal of of the surface
@@ -253,30 +254,28 @@ void colloids_q_boundary_normal(const int index, const int di[3],
  *  This planar anchoring idea follows e.g., Fournier and Galatola
  *  Europhys. Lett. 72, 403 (2005).
  *
- *  Fixed planar anchoring can be hardwired at the moment by setting
- *  n_a. This is appropriate for flat walls only.
- *
  *****************************************************************************/
 
 void colloids_q_boundary(const double nhat[3], double qs[3][3],
-			 double q0[3][3]) {
+			 double q0[3][3], char site_map_status) {
   int ia, ib, ic, id;
+  int anchoring;
 
   double qtilde[3][3];
   double amplitude;
-  double  n[3];
+  double  nfix[3] = {0.0, 1.0, 0.0};
 
-  amplitude = 0.33333333;
+  assert(site_map_status == COLLOID || site_map_status == BOUNDARY);
 
-  if (anchoring_ == ANCHORING_NORMAL) {
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.5*amplitude*(3.0*nhat[ia]*nhat[ib] - d_[ia][ib]);
-      }
-    }
-  }
+  anchoring = anchoring_coll_;
+  if (site_map_status == BOUNDARY) anchoring = anchoring_wall_;
 
-  if (anchoring_ == ANCHORING_PLANAR) {
+  if (anchoring == ANCHORING_FIXED) blue_phase_q_uniaxial(nfix, q0);
+  if (anchoring == ANCHORING_NORMAL) blue_phase_q_uniaxial(nhat, q0);
+
+  if (anchoring == ANCHORING_PLANAR) {
+
+    amplitude = blue_phase_amplitude();
 
     /* Planar: use the fluid Q_ab to find ~Q_ab */
 
@@ -302,233 +301,7 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
 
   }
 
-  if (anchoring_ == ANCHORING_FIXED) {
-
-    n[X] = 0.0;
-    n[Y] = 1.0;
-    n[Z] = 0.0;
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.5*amplitude*(3.0*n[ia]*n[ib] - d_[ia][ib]);
-      }
-    }
-  }
-
   return;
-}
-
-void COLL_set_Q_2(){
-
-  int ia;
-  int ic,jc,kc;
-  
-  colloid_t * p_colloid;
-
-  double r0[3];
-  double rsite0[3];
-  double normal[3];
-  double dir[3];
-  double dir_prev[3];
-
-  colloid_link_t * p_link;
-
-  int nlocal[3],offset[3];
-  int jsite[3];
-  double q[3][3];
-  double qs[4];
-  double director[3];
-  double len_normal;
-  double rlen_normal;
-  double amplitude;
-  double rdotd;
-  double dir_len;
-  amplitude = 0.33333333;
-
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
- 
-  /* Loop through all cells (including the halo cells) */
-  
-  for (ic = 0; ic <= Ncell(X) + 1; ic++){
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++){
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
-
-	/* Set the cell index */
-
-	p_colloid = colloids_cell_list(ic, jc, kc);
-	
-	/* check if this node is inside a colloid */
-	while (p_colloid != NULL){
-	  
-	  p_link = p_colloid->lnk;
-
-	  /* loop over the links to get access to the boundary nodes */
-	  while(p_link != NULL){
-
-	    if (p_link->status == LINK_UNUSED) {
-	      /* ignore */
-	    }
-	    else {
-	      
-	      /* get the i j k of the boundary node in local coordinates */
-	      coords_index_to_ijk(p_link->j, jsite);
-  
-	      /* Need to translate the colloid position to "local"
-	       * coordinates, so that the correct range of lattice
-	       * nodes is found */
-
-	      r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
-	      r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
-	      r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
-
-	      rsite0[X] = 1.0*jsite[0];
-	      rsite0[Y] = 1.0*jsite[1];
-	      rsite0[Z] = 1.0*jsite[2];
-
-	      /* calculate the vector between the centre of mass of the
-	       * colloid and node i, j, k 
-	       * so need to calculate rsite0 - r0 */
-
-	      coords_minimum_distance(r0, rsite0, normal);
-
-	      /* now for homeotropic anchoring only thing needed is to
-	       * normalise the the surface normal vector  */
-
-	      len_normal = modulus(normal);
-	      assert(len_normal <= p_colloid->s.ah);
-	    
-	      if (len_normal < 10e-8) {
-		/* we are very close to the centre of the colloid.
-		 * set the q tensor to zero */
-		q[X][X] = 0.0;
-		q[X][Y] = 0.0;
-		q[X][Z] = 0.0;
-		q[Y][Y] = 0.0;
-		q[Y][Z] = 0.0;
-		phi_set_q_tensor(p_link->j,q);
-		fatal("Colloid too small, distance %lf\n", len_normal);
-		continue;
-	      }
-	    
-	      rlen_normal = 1.0/len_normal;
-
-	      /* Homeotropic anchoring */
-
-	      director[X] = normal[X]*rlen_normal;
-	      director[Y] = normal[Y]*rlen_normal;
-	      director[Z] = normal[Z]*rlen_normal;
-
-	      if (anchoring_ == ANCHORING_PLANAR) {
-	  
-		phi_get_q_tensor(p_link->j, q);
-		scalar_order_parameter_director(q, qs);
-	      
-		dir[X] = qs[1];
-		dir[Y] = qs[2];
-		dir[Z] = qs[3];
-	    
-		/* calculate the projection of the director along the surface
-		 * normal and remove that from the director to make the
-		 * director perpendicular to the surface */
-	    
-		rdotd = dot_product(normal, dir)*rlen_normal*rlen_normal;
-	    
-		dir[X] = dir[X] - rdotd*normal[X];
-		dir[Y] = dir[Y] - rdotd*normal[Y];
-		dir[Z] = dir[Z] - rdotd*normal[Z];
-	      
-		dir_len = modulus(dir);
-
-		if (dir_len < 10e-8) {
-		  /* the vectors were [almost] parallel.
-		   * now we use the direction of the previous node i,j,k
-		   * this fails if we are in the first node.
-		   */
-
-		  cross_product(dir_prev, normal, dir);
-		  dir_len = modulus(dir);
-		  fatal("dir_len < 10-8 i,j,k, %d %d %d\n", ic,jc,kc);
-		}
-
-		for (ia = 0; ia < 3; ia++) {
-		  director[ia] = dir[ia] / dir_len;
-		  dir_prev[ia] = dir[ia] / dir_len;
-		}
-	      }
-
-	      q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
-	      q[X][Y] = 1.5*amplitude*(director[X]*director[Y]);
-	      q[X][Z] = 1.5*amplitude*(director[X]*director[Z]);
-	      q[Y][Y] = 1.5*amplitude*(director[Y]*director[Y] - 1.0/3.0);
-	      q[Y][Z] = 1.5*amplitude*(director[Y]*director[Z]);
-	    
-	      phi_set_q_tensor(p_link->j, q);
-
-	    }
-	    /* Next link */
-	    p_link = p_link->next;
-	  }
-	  /* Next colloid */
-	  p_colloid = p_colloid->next;
-	}
-	/* Next cell */
-      }
-    }
-  }
-  return;
-}
-
-void COLL_randomize_Q(double delta_r){
-  
-  int ic,jc,kc;
-  
-  colloid_t * p_colloid;
-  colloid_t * colloid_at_site_index(int);
-
-  int nlocal[3],offset[3];
-  int index;
-  
-  double Pi;
-  double q[3][3];
-  double amplitude,phase1,phase2;
-  
-  /* set amplitude to something small */
-  amplitude = 0.0000001;
-  
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
-  
-  Pi = 4.0*atan(1.0);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	
-	index = coords_index(ic, jc, kc);
-
-	p_colloid = colloid_at_site_index(index);
-	
-	/* check if this node is inside a colloid */
-	if(p_colloid != NULL){
-	  phase1= 2.0/5.0*Pi*(0.5-ran_parallel_uniform());
-	  phase2= Pi/2.0+Pi/5.0*(0.5-ran_parallel_uniform());
-
-	  q[X][X] = amplitude* (3.0/2.0*sin(phase2)*sin(phase2)*cos(phase1)*cos(phase1)-1.0/2.0);
-	  q[X][Y] = 3.0*amplitude/2.0*(sin(phase2)*sin(phase2)*cos(phase1)*sin(phase1));
-	  q[X][Z] = 3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*cos(phase1));
-	  q[Y][X] = q[X][Y];
-	  q[Y][Y] = amplitude*(3.0/2.0*sin(phase2)*sin(phase2)*sin(phase1)*sin(phase1)-1.0/2.0);
-	  q[Y][Z] = 3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*sin(phase1));
-	  q[Z][X] = q[X][Z];
-	  q[Z][Y] = q[Y][Z];
-	  q[Z][Z] = - q[X][X] - q[Y][Y];
-
-	  phi_set_q_tensor(index, q);
-	}
-      }
-    }
-  }
 }
 
 #define ROTATE(a,i,j,k,l) g=a[i][j];h=a[k][l];a[i][j]=g-s*(h+g*tau);\
@@ -817,10 +590,25 @@ static void scalar_order_parameter_director(double q[3][3], double qs[4]) {
 
 void colloids_q_tensor_anchoring_set(const int type) {
 
+  assert(type == ANCHORING_PLANAR || type == ANCHORING_NORMAL);
+
+  anchoring_coll_ = type;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  wall_anchoring_set
+ *
+ *****************************************************************************/
+
+void wall_anchoring_set(const int type) {
+
   assert(type == ANCHORING_PLANAR || type == ANCHORING_NORMAL ||
 	 type == ANCHORING_FIXED);
 
-  anchoring_ = type;
+  anchoring_wall_ = type;
 
   return;
 }

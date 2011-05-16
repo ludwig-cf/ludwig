@@ -131,7 +131,8 @@ static void gradient_general(const double * field, double * grad,
   int niterate;
 
   int str[3];
-  int code[6];
+  int mask[6];
+  char status[6];
 
   const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
   const int normal[6] = {X, X, Y, Y, Z, Z};
@@ -176,12 +177,12 @@ static void gradient_general(const double * field, double * grad,
 	index = coords_index(ic, jc, kc);
 	if (site_map_get_status_index(index) != FLUID) continue;
 
-	code[0] = (site_map_get_status(ic+1, jc, kc) != FLUID);
-	code[1] = (site_map_get_status(ic-1, jc, kc) != FLUID);
-	code[2] = (site_map_get_status(ic, jc+1, kc) != FLUID);
-	code[3] = (site_map_get_status(ic, jc-1, kc) != FLUID);
-	code[4] = (site_map_get_status(ic, jc, kc+1) != FLUID);
-	code[5] = (site_map_get_status(ic, jc, kc-1) != FLUID);
+	status[0] = site_map_get_status(ic+1, jc, kc);
+	status[1] = site_map_get_status(ic-1, jc, kc);
+	status[2] = site_map_get_status(ic, jc+1, kc);
+	status[3] = site_map_get_status(ic, jc-1, kc);
+	status[4] = site_map_get_status(ic, jc, kc+1);
+	status[5] = site_map_get_status(ic, jc, kc-1);
 
 	/* Set up partial gradients, and gradients */
 
@@ -203,7 +204,12 @@ static void gradient_general(const double * field, double * grad,
 	  }
 	}
 
-	ns = code[0] + code[1] + code[2] + code[3] + code[4] + code[5];
+	ns = 0;
+	for (n = 0; n < 6; n++) {
+	  mask[n] = (status[n] != FLUID);
+	  ns += mask[n];
+	}
+
 	if (ns == 0) continue;
 
 	/* Solid boundary condition corrections are required. */
@@ -211,10 +217,10 @@ static void gradient_general(const double * field, double * grad,
 	util_q5_to_qab(qs, field + NOP*index);
 
 	for (n = 0; n < 6; n++) {
-	  if (code[n] == 0) continue;
+	  if (status[n] == FLUID) continue;
 
 	  colloids_q_boundary_normal(index, bcs[n], dn);
-	  colloids_q_boundary(dn, qs, q0);
+	  colloids_q_boundary(dn, qs, q0, status[n]);
 
 	  /* Compute c[n][a][b] */
 
@@ -237,10 +243,10 @@ static void gradient_general(const double * field, double * grad,
 
 	for (n1 = 0; n1 < NOP; n1++) {
 	  for (ia = 0; ia < 3; ia++) {
-	    gradn[n1][ia][0] *= (1 - code[2*ia]);
-	    gradn[n1][ia][1] *= (1 - code[2*ia + 1]);
+	    gradn[n1][ia][0] *= (1 - mask[2*ia]);
+	    gradn[n1][ia][1] *= (1 - mask[2*ia + 1]);
 	    grad[3*(NOP*index + n1) + ia] =
-	      0.5*(1.0 + ((code[2*ia] + code[2*ia+1]) % 2))*
+	      0.5*(1.0 + ((mask[2*ia] + mask[2*ia+1]) % 2))*
 	      (gradn[n1][ia][0] + gradn[n1][ia][1]);
 	  }
 	}
@@ -251,7 +257,7 @@ static void gradient_general(const double * field, double * grad,
 
 	  for (n = 0; n < 6; n++) {
 
-	    if (code[n] == 0) continue;
+	    if (status[n] == FLUID) continue;
 
 	    for (n1 = 0; n1 < NOP; n1++) {
 	      for (ia = 0; ia < 3; ia++) {
