@@ -183,7 +183,7 @@ static void stats_free_energy_wallx(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
-	colloids_q_boundary(dn, qs, q0);
+	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
@@ -205,7 +205,7 @@ static void stats_free_energy_wallx(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
-	colloids_q_boundary(dn, qs, q0);
+	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
@@ -259,7 +259,7 @@ static void stats_free_energy_wally(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
-	colloids_q_boundary(dn, qs, q0);
+	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
@@ -281,7 +281,7 @@ static void stats_free_energy_wally(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
-	colloids_q_boundary(dn, qs, q0);
+	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
@@ -335,7 +335,7 @@ static void stats_free_energy_wallz(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
-	colloids_q_boundary(dn, qs, q0);
+	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
@@ -357,7 +357,7 @@ static void stats_free_energy_wallz(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
-	colloids_q_boundary(dn, qs, q0);
+	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
@@ -420,7 +420,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic+1, jc, kc) == COLLOID) {
           nhat[X] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0);
+	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      fs[0] += 0.5*w*
@@ -433,7 +433,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic-1, jc, kc) == COLLOID) {
           nhat[X] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0);
+	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      fs[0] += 0.5*w*
@@ -449,7 +449,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic, jc+1, kc) == COLLOID) {
           nhat[Y] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0);
+	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      fs[0] += 0.5*w*
@@ -462,7 +462,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic, jc-1, kc) == COLLOID) {
           nhat[Y] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0);
+	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      fs[0] += 0.5*w*
@@ -478,7 +478,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic, jc, kc+1) == COLLOID) {
           nhat[Z] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0);
+	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      fs[0] += 0.5*w*
@@ -491,7 +491,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic, jc, kc-1) == COLLOID) {
           nhat[Z] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0);
+	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      fs[0] += 0.5*w*

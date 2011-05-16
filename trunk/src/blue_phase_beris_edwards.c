@@ -621,6 +621,7 @@ static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
 			     const double dn[3], double hs[3][3]) {
   int ia, ib;
   int index1;
+  char status;
 
   double w;
   double qs[3][3], q0[3][3];
@@ -628,8 +629,9 @@ static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
   w = colloids_q_tensor_w();
 
   index1 = coords_index(ic, jc, kc);
+  status = site_map_get_status(ic - nhat[X], jc - nhat[Y], kc - nhat[Z]);
   phi_get_q_tensor(index1, qs);
-  colloids_q_boundary(dn, qs, q0);
+  colloids_q_boundary(dn, qs, q0, status);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0 ; ib < 3; ib++) {
