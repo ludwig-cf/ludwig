@@ -62,6 +62,7 @@
 #include "collision_rt.h"
 #include "gradient_rt.h"
 #include "site_map_rt.h"
+#include "blue_phase_rt.h"
 
 #include "stats_colloid.h"
 #include "stats_turbulent.h"
@@ -190,6 +191,8 @@ void ludwig_run(const char * inputfile) {
   ludwig_rt();
   ludwig_init();
 
+  if (phi_nop() == 5) blue_phase_rt_initial_conditions();
+
   /* Report initial statistics */
 
   info("Initial conditions.\n");
@@ -198,6 +201,13 @@ void ludwig_run(const char * inputfile) {
   ludwig_report_momentum();
 
   pe_subdirectory(subdirectory);
+
+  if (phi_nop() == 5) {
+    step = 0;
+    info("Writing scalar order parameter file at step %d!\n", step);
+    sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
+    io_write(filename, io_info_scalar_q_);
+  }
 
   /* Main time stepping loop */
 

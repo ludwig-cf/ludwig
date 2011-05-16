@@ -236,7 +236,8 @@ lc_redshift_update 0
 lc_init_nematic 1.0_0.0_0.0
 
 lc_anchoring_method none
-lc_anchoring normal
+lc_wall_anchoring fixed
+lc_coll_anchoring normal
 lc_anchoring_strength 0.0
 
 ###############################################################################

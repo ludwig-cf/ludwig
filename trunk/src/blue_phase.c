@@ -37,6 +37,7 @@ static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
 static double redshift_;  /* redshift parameter */
 static double rredshift_; /* reciprocal */
 static double zeta_;      /* Apolar activity parameter \zeta */
+static double amplitude_; /* Magnitude of order (largest eigenvalue in Q_ab) */
 
 static int redshift_update_ = 0; /* Dynamic cubic redshift update */
 static int output_to_file_  = 0; /* To stdout or "free_energy.dat" */
@@ -65,6 +66,30 @@ void blue_phase_set_free_energy_parameters(double a0, double gamma,
 
   /* Anchoring boundary conditions require kappa0 from free energy */
   fe_kappa_set(kappa0_);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_amplitude
+ *
+ *****************************************************************************/
+
+double blue_phase_amplitude(void) {
+
+  return amplitude_;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_amplitude_set
+ *
+ *****************************************************************************/
+
+void blue_phase_amplitude_set(const double a) {
+
+  amplitude_ = a;
 
   return;
 }
@@ -466,7 +491,7 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
  *
  *****************************************************************************/
 
-void blue_phase_O8M_init(double amplitude) {
+void blue_phase_O8M_init(void) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -499,12 +524,12 @@ void blue_phase_O8M_init(double amplitude) {
 	siny = sin(r2*q0_*y);
 	sinz = sin(r2*q0_*z);
 
-	q[X][X] = amplitude*(-2.0*cosy*sinz +    sinx*cosz + cosx*siny);
-	q[X][Y] = amplitude*(  r2*cosy*cosz + r2*sinx*sinz - sinx*cosy);
-	q[X][Z] = amplitude*(  r2*cosx*cosy + r2*sinz*siny - cosx*sinz);
+	q[X][X] = amplitude_*(-2.0*cosy*sinz +    sinx*cosz + cosx*siny);
+	q[X][Y] = amplitude_*(  r2*cosy*cosz + r2*sinx*sinz - sinx*cosy);
+	q[X][Z] = amplitude_*(  r2*cosx*cosy + r2*sinz*siny - cosx*sinz);
 	q[Y][X] = q[X][Y];
-	q[Y][Y] = amplitude*(-2.0*sinx*cosz +    siny*cosx + cosy*sinz);
-	q[Y][Z] = amplitude*(  r2*cosz*cosx + r2*siny*sinx - siny*cosz);
+	q[Y][Y] = amplitude_*(-2.0*sinx*cosz +    siny*cosx + cosy*sinz);
+	q[Y][Z] = amplitude_*(  r2*cosz*cosx + r2*siny*sinx - siny*cosz);
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
@@ -526,7 +551,7 @@ void blue_phase_O8M_init(double amplitude) {
  *
  *****************************************************************************/
 
-void blue_phase_O2_init(double amplitude) {
+void blue_phase_O2_init(void) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -548,12 +573,12 @@ void blue_phase_O2_init(double amplitude) {
 
 	index = coords_index(ic, jc, kc);
 
-	q[X][X] = amplitude*(cos(2.0*q0_*z) - cos(2.0*q0_*y));
-	q[X][Y] = amplitude*sin(2.0*q0_*z);
-	q[X][Z] = amplitude*sin(2.0*q0_*y);
+	q[X][X] = amplitude_*(cos(2.0*q0_*z) - cos(2.0*q0_*y));
+	q[X][Y] = amplitude_*sin(2.0*q0_*z);
+	q[X][Z] = amplitude_*sin(2.0*q0_*y);
 	q[Y][X] = q[X][Y];
-	q[Y][Y] = amplitude*(cos(2.0*q0_*x) - cos(2.0*q0_*z));
-	q[Y][Z] = amplitude*sin(2.0*q0_*x);
+	q[Y][Y] = amplitude_*(cos(2.0*q0_*x) - cos(2.0*q0_*z));
+	q[Y][Z] = amplitude_*sin(2.0*q0_*x);
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
@@ -570,88 +595,61 @@ void blue_phase_O2_init(double amplitude) {
 /*****************************************************************************
  *
  *  blue_phase_twist_init
- *  Setting a uniform twist along z-axis [cholesteric phase]
- *  Using the current free energy parameter q0_ (P=2pi/q0)
- * -Juho 12/11/09
+ *
+ *  Initialise a uniaxial helix in the indicated helical axis.
+ *  Uses the current free energy parameters
+ *     q0_ (P=2pi/q0)
+ *     amplitude
+ *
  *****************************************************************************/
 
-void blue_phase_twist_init(double amplitude){
+void blue_phase_twist_init(const int helical_axis) {
   
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
   int index;
 
+  double n[3];
   double q[3][3];
   double x, y, z;
-  double cosxy, sinxy;
-  double cosyz, sinyz;
-  double cosxz, sinxz;
-  int x_twist_=0; 
-  int y_twist_=0; 
-  int z_twist_=1;
-
-  /* this corresponds to a 90 degree angle between the z-axis */
-  double cosz=0.0;
-  double sinz=1.0;
  
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
-  
+
+  assert(helical_axis == X || helical_axis == Y || helical_axis == Z);
+ 
+  n[X] = 0.0;
+  n[Y] = 0.0;
+  n[Z] = 0.0;
+ 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic;
+
+    if (helical_axis == X) {
+      x = noffset[X] + ic;
+      n[Y] = cos(q0_*x);
+      n[Z] = sin(q0_*x);
+    }
+
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc;
+
+      if (helical_axis == Y) {
+	y = noffset[Y] + jc;
+	n[X] = cos(q0_*y);
+	n[Z] = -sin(q0_*y);
+      }
+
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc;
 	
 	index = coords_index(ic, jc, kc);
 
-	if(x_twist_==1){
-	  cosyz=cos(q0_*x);
-	  sinyz=sin(q0_*x);
-	
-	  q[X][X] = -0.5*amplitude; 
-	  q[X][Y] = 0.0;
-	  q[X][Z] = 0.0;
-	  q[Y][X] = q[X][Y];
-	  q[Y][Y] = amplitude*(1.5*cosyz*cosyz-0.5);
-	  q[Y][Z] = 1.5*amplitude*sinyz*cosyz;
-	  q[Z][X] = q[X][Z];
-	  q[Z][Y] = q[Y][Z];
-	  q[Z][Z] = - q[X][X] - q[Y][Y];
+	if (helical_axis == Z) {
+	  z = noffset[Z] + kc;
+	  n[X] = cos(q0_*z);
+	  n[Y] = sin(q0_*z);
 	}
 
-	if(y_twist_==1){
-	  cosxz=cos(q0_*y);
-	  sinxz=sin(q0_*y);
-	
-	  q[X][X] = amplitude*(1.5*cosxz*cosxz-0.5);
-	  q[X][Y] = 0.0;
-	  q[X][Z] = -1.5*amplitude*sinxz*cosxz;
-	  q[Y][X] = q[X][Y];
-	  q[Y][Y] = -0.5*amplitude;
-	  q[Y][Z] = 0.0;
-	  q[Z][X] = q[X][Z];
-	  q[Z][Y] = q[Y][Z];
-	  q[Z][Z] = - q[X][X] - q[Y][Y];
-	}
-
-	if(z_twist_==1){
-	  cosxy=cos(q0_*z);
-	  sinxy=sin(q0_*z);
-	
-	  q[X][X] = amplitude*(1.5*sinz*sinz*cosxy*cosxy - 0.5);
-	  q[X][Y] = 1.5*amplitude*(sinz*sinz*cosxy*sinxy);
-	  q[X][Z] = 1.5*amplitude*(sinz*cosz*cosxy);
-	  q[Y][X] = q[X][Y];
-	  q[Y][Y] = amplitude*(1.5*sinz*sinz*sinxy*sinxy - 0.5);
-	  q[Y][Z] = 1.5*amplitude*(sinz*cosz*sinxy);
-	  q[Z][X] = q[X][Z];
-	  q[Z][Y] = q[Y][Z];
-	  q[Z][Z] = - q[X][X] - q[Y][Y];
-	}
-
+	blue_phase_q_uniaxial(n, q);
 	phi_set_q_tensor(index, q);
       }
     }
@@ -662,41 +660,64 @@ void blue_phase_twist_init(double amplitude){
 
 /*****************************************************************************
  *
+ *  blue_phase_q_uniaxial
+ *
+ *  For given director n we return
+ *
+ *     Q_ab = (1/2) A (3 n_a n_b - d_ab)
+ *
+ *  where A gives the maximum amplitude of order on diagonalisation.
+ *
+ *  Note this is slightly different  from the definition in
+ *  Wright and Mermin (Eq. 4.3) where
+ *
+ *     Q_ab = (1/3) gamma (3 n_a n_b - d_ab)
+ *
+ *  and the magnitude of order is then (2/3) gamma.
+ *
+ *****************************************************************************/
+
+void blue_phase_q_uniaxial(const double n[3], double q[3][3]) {
+
+  int ia, ib;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q[ia][ib] = 0.5*amplitude_*(3.0*n[ia]*n[ib] - d_[ia][ib]);
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  blue_phase_nematic_init
  *
- *  Initialise a uniform nematic via
- *
- *    Q_ab = (1/2) A (3 n_a n_b - d_ab)
+ *  Initialise a uniform uniaxial nematic.
  *
  *  The inputs are the amplitude A and the vector n_a (which we explicitly
  *  convert to a unit vector here).
  *
  *****************************************************************************/
 
-void blue_phase_nematic_init(const double a, const double n[3]) {
+void blue_phase_nematic_init(const double n[3]) {
 
-  int ia, ib;
   int ic, jc, kc;
   int nlocal[3];
-  int index;
+  int ia, index;
 
   double nhat[3];
   double q[3][3];
 
-  assert(a > 0.0);
   assert(modulus(n) > 0.0);
+  coords_nlocal(nlocal);
 
   for (ia = 0; ia < 3; ia++) {
     nhat[ia] = n[ia] / modulus(n);
   }
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      q[ia][ib] = 0.5*a*(3.0*nhat[ia]*nhat[ib] - d_[ia][ib]);
-    }
-  }
- 
-  coords_nlocal(nlocal);
+  blue_phase_q_uniaxial(nhat, q);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -717,7 +738,7 @@ void blue_phase_nematic_init(const double a, const double n[3]) {
  *  Using the current free energy parameter q0_ (P=2pi/q0)
  *****************************************************************************/
 
-void blue_phase_chi_edge(int N, double z0, double x0, double amplitude){
+void blue_phase_chi_edge(int N, double z0, double x0) {
   
   int ic, jc, kc;
   int nlocal[3];
@@ -726,14 +747,11 @@ void blue_phase_chi_edge(int N, double z0, double x0, double amplitude){
 
   double q[3][3];
   double x, y, z;
-  double nx,ny,nz;
+  double n[3];
   double theta;
   
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
-  
-  /* this corresponds to a 90 degree angle between the z-axis */
-  nz = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = noffset[X] + ic;
@@ -743,21 +761,13 @@ void blue_phase_chi_edge(int N, double z0, double x0, double amplitude){
 	z = noffset[Z] + kc;
 	
 	index = coords_index(ic, jc, kc);
-	theta = 1.0*N/2.0*atan2((1.0*z-z0),(1.0*x-x0)) + q0_*(z-z0);
-	
-	nx = cos(theta);
-	ny = sin(theta);
-		
-	q[X][X] = amplitude*(3.0/2.0*nx*nx- 1.0/2.0);
-	q[X][Y] = 3.0/2.0*amplitude*(nx*ny);
-	q[X][Z] = 3.0/2.0*amplitude*(nx*nz);
-	q[Y][X] = q[X][Y];
-	q[Y][Y] = amplitude*(3.0/2.0*ny*ny - 1.0/2.0);
-	q[Y][Z] = 3.0/2.0*amplitude*(ny*nz);
-	q[Z][X] = q[X][Z];
-	q[Z][Y] = q[Y][Z];
-	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+	theta = 1.0*N/2.0*atan2((1.0*z-z0),(1.0*x-x0)) + q0_*(z-z0);	
+	n[X] = cos(theta);
+	n[Y] = sin(theta);
+	n[Z] = 0.0;
+
+	blue_phase_q_uniaxial(n, q);
 	phi_set_q_tensor(index, q);
       }
     }
@@ -773,56 +783,39 @@ void blue_phase_chi_edge(int N, double z0, double x0, double amplitude){
  * -Juho 12/11/09
  *****************************************************************************/
 
-void blue_set_random_q_init(double xmin, double xmax, double ymin,
-			    double ymax, double zmin, double zmax) {
+void blue_set_random_q_init(void) {
+
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
   int index;
 
+  double n[3];
   double q[3][3];
-  double x, y, z;
-  
-  double phase1,phase2;
-  double amplitude,Pi;
+  double phase1, phase2;
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
-
-  /* set amplitude to something small */
-  amplitude = 0.0000001;
-  
-  Pi = atan(1.0)*4.0;
   
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic;
-    if(x < xmin || x > xmax)continue;
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc;
-      if(y < ymin || y > ymax)continue;
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc;
-	if(z < zmin || z > zmax)continue;
 
 	index = coords_index(ic, jc, kc);
-	
-	phase1= 2.0/5.0*Pi*(0.5-ran_parallel_uniform());
-	phase2= Pi/2.0+Pi/5.0*(0.5-ran_parallel_uniform());
-	
-	q[X][X] = amplitude* (3.0/2.0*sin(phase2)*sin(phase2)*cos(phase1)*cos(phase1)-1.0/2.0);
-	q[X][Y] = 3.0*amplitude/2.0*(sin(phase2)*sin(phase2)*cos(phase1)*sin(phase1));
-	q[X][Z] = 3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*cos(phase1));
-	q[Y][X] = q[X][Y];
-	q[Y][Y] = amplitude*(3.0/2.0*sin(phase2)*sin(phase2)*sin(phase1)*sin(phase1)-1.0/2.0);
-	q[Y][Z] = 3.0*amplitude/2.0*(sin(phase2)*cos(phase2)*sin(phase1));
-	q[Z][X] = q[X][Z];
-	q[Z][Y] = q[Y][Z];
-	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+	phase1 = pi_*(0.5 - ran_parallel_uniform());
+	phase2 = pi_*(0.5 - ran_parallel_uniform());
+
+	n[X] = cos(phase1)*sin(phase2);
+	n[Y] = sin(phase1)*sin(phase2);
+	n[Z] = cos(phase2);
+
+	blue_phase_q_uniaxial(n, q);
 	phi_set_q_tensor(index, q);
       }
     }
   }
+
   return;
 }
 
