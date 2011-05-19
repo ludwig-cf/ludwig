@@ -226,12 +226,16 @@ void COLL_init() {
       RUN_get_double_parameter_vector("colloid_random_w0", state0->w);
       RUN_get_double_parameter_vector("colloid_random_s0", state0->s);
       RUN_get_double_parameter_vector("colloid_random_m0", state0->m);
+      RUN_get_double_parameter("colloid_random_c", &state0->c);
+      RUN_get_double_parameter("colloid_random_h", &state0->h);
       RUN_get_double_parameter("colloid_random_b1", &state0->b1);
       RUN_get_double_parameter("colloid_random_b2", &state0->b2);
       RUN_get_double_parameter("colloid_random_dh", &dh);
 
       colloids_init_random(n, state0, dh);
       info("Initialised %d colloid%s from input\n", n, (n > 1) ? "s" : "");
+      info("*****c = %f\n", state0->c);
+      info("*****h = %f\n", state0->h);
 
       free(state0);
     }
