@@ -75,7 +75,7 @@ void blue_phase_run_time(void) {
   assert(n == 1);
   n = RUN_get_double_parameter("lc_xi", &xi);
   assert(n == 1);
-  n = RUN_get_double_parameter("lc_amplitude", &amplitude);
+  n = RUN_get_double_parameter("lc_q_init_amplitude", &amplitude);
   assert(n == 1);
 
   /* Use a default redshift of 1 */
@@ -97,7 +97,7 @@ void blue_phase_run_time(void) {
   info("... gives pitch length     = %14.7e\n", 2.0*4.0*atan(1.0)/q0);
   info("Elastic constant kappa0    = %14.7e\n", kappa0);
   info("Elastic constant kappa1    = %14.7e\n", kappa1);
-  info("Amplitude of order         = %14.7e\n", amplitude);
+  info("Amplitude (uniaxial) order = %14.7e\n", amplitude);
 
   /* One-constant approximation enforced. */
   assert(kappa0 == kappa1);
