@@ -35,6 +35,4 @@ void wall_anchoring_set(const int type);
 extern struct io_info_t * io_info_scalar_q_;
 void scalar_q_io_info_set(struct io_info_t * info);
 
-void jacobi(double (*a)[3], double d[], double (*v)[3], int *nrot);
-
 #endif
