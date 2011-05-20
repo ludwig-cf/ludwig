@@ -69,7 +69,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      colloid_sums.o bbl.o build.o collision_rt.o communicate.o \
      coords.o coords_rt.o \
      control.o distribution_rt.o \
-     eigen3.o ewald.o fluctuations.o \
+     ewald.o fluctuations.o \
      free_energy.o free_energy_rt.o free_energy_vector.o \
      gradient.o gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
