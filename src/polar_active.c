@@ -5,18 +5,19 @@
  *  Free energy for polar active gel.
  *
  *    f = (A/2) P_a P_a + (B/4) (P_a P_a)^2 + (kappa1/2) (d_a P_b)^2
+ *      + (delta kappa1 / 2) (e_abc d_b P_c)^2
  *      + (kappa2/2) (d_a P_b P_c)^2
  *
  *  This is an implemetation of a free energy with vector order
  *  parameter.
  *
- *  $Id: polar_active.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -33,6 +34,7 @@
 static double a_;                 /* Free energy parameter */
 static double b_;                 /* Free energy parameter */
 static double kappa1_;            /* Free energy elastic constant */
+static double delta_;             /* Free energy elastic constant */
 static double kappa2_;            /* Free energy elastic constant */
 
 static double zeta_ = 0.0;        /* 'Activity' parameter */
@@ -49,6 +51,7 @@ void polar_active_parameters_set(const double a, const double b,
   a_ = a;
   b_ = b;
   kappa1_ = k1;
+  delta_  = 0.0;   /* We assert this until molecular field is fixed */
   kappa2_ = k2;
 
   return;
@@ -61,6 +64,7 @@ void polar_active_parameters_set(const double a, const double b,
  *  The free energy density is:
  *
  *    f = (A/2) P_a P_a + (B/4) (P_a P_a)^2 + (kappa1/2) (d_a P_b)^2
+ *      + (delta kappa1 / 2) (e_abc d_b P_c)^2
  *      + (kappa2/2) (d_a P_b P_c)^2
  *
  *****************************************************************************/
@@ -71,10 +75,11 @@ double polar_active_free_energy_density(const int index) {
 
   double e;
   double p2;
-  double dp1, dp2;
+  double dp1, dp2, dp3;
   double p[3];
   double dp[3][3];
   double dpp[3][3][3];
+  double sum;
 
   phi_vector(index, p);
   phi_gradients_vector_gradient(index, dp);
@@ -83,18 +88,23 @@ double polar_active_free_energy_density(const int index) {
   p2  = 0.0;
   dp1 = 0.0;
   dp2 = 0.0;
+  dp3 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     p2 += p[ia]*p[ia];
+    sum = 0.0;
     for (ib = 0; ib < 3; ib++) {
       dp1 += dp[ia][ib]*dp[ia][ib];
       for (ic = 0; ic < 3; ic++) {
 	dp2 += dpp[ia][ib][ic]*dpp[ia][ib][ic];
+        sum += e_[ia][ib][ic]*dp[ib][ic];
       }
     }
+    dp3 += sum*sum;
   }
 
-  e = 0.5*a_*p2 + 0.25*b_*p2*p2 + 0.5*kappa1_*dp1 + 0.5*kappa2_*dp2;
+  e = 0.5*a_*p2 + 0.25*b_*p2*p2 + 0.5*kappa1_*dp1 + 0.5*delta_*kappa1_*dp3
+      + 0.5*kappa2_*dp2;
 
   return e;
 }
