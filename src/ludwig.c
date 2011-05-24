@@ -63,6 +63,7 @@
 #include "gradient_rt.h"
 #include "site_map_rt.h"
 #include "blue_phase_rt.h"
+#include "polar_active_rt.h"
 
 #include "stats_colloid.h"
 #include "stats_turbulent.h"
@@ -194,14 +195,13 @@ void ludwig_run(const char * inputfile) {
 
   /* Report initial statistics */
 
-  info("Initial conditions.\n");
-  stats_distribution_print();
-  phi_stats_print_stats();
-  ludwig_report_momentum();
-
   pe_subdirectory(subdirectory);
 
   step = get_step();
+
+  if (step == 0 && phi_nop() == 3) {
+    polar_active_rt_initial_conditions();
+  }
 
   if (step == 0 && phi_nop() == 5) {
     blue_phase_rt_initial_conditions();
@@ -209,6 +209,11 @@ void ludwig_run(const char * inputfile) {
     sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
     io_write(filename, io_info_scalar_q_);
   }
+
+  info("Initial conditions.\n");
+  stats_distribution_print();
+  phi_stats_print_stats();
+  ludwig_report_momentum();
 
   /* Main time stepping loop */
 
