@@ -29,6 +29,7 @@
 #define c1 1.0
 
 const double pi_ = 3.1415926535897932385;
+const double r3_ = (1.0/3.0);
 const double d_[3][3]    = {{c1, c0, c0}, {c0, c1, c0}, {c0, c0, c1}};
 const double e_[3][3][3] = {{{c0, c0, c0}, { c0, c0, c1}, {c0,-c1, c0}},
 			    {{c0, c0,-c1}, { c0, c0, c0}, {c1, c0, c0}},

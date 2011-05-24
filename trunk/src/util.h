@@ -18,6 +18,7 @@
 extern const double d_[3][3];
 extern const double e_[3][3][3];
 extern const double pi_;
+extern const double r3_;
 
 int    is_bigendian(void);
 double reverse_byte_order_double(char *);
