@@ -1,4 +1,4 @@
-#/*****************************************************************************
+/*****************************************************************************
  *
  *  blue_phase.c
  *
@@ -37,13 +37,15 @@ static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
 static double redshift_;  /* redshift parameter */
 static double rredshift_; /* reciprocal */
 static double zeta_;      /* Apolar activity parameter \zeta */
-static double amplitude_; /* Magnitude of order (largest eigenvalue in Q_ab) */
 
 static int redshift_update_ = 0; /* Dynamic cubic redshift update */
 static int output_to_file_  = 0; /* To stdout or "free_energy.dat" */
+static double amplitude_ = 0.0;  /* Magnitude of order (uniaxial) */
+static double epsilon_ = 0.0;    /* Dielectric anisotropy (e/12pi) */
+
+static double electric_[3] = {0.0, 0.0, 0.0}; /* Electric field */
 
 static const double redshift_min_ = 0.00000000001; 
-static const double r3 = (1.0/3.0);
 
 /*****************************************************************************
  *
@@ -185,6 +187,7 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
   double q2, q3;
   double dq0, dq1;
   double sum;
+  double efield;
 
   q0 = q0_*rredshift_;
   kappa0 = kappa0_*redshift_*redshift_;
@@ -243,8 +246,17 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
     }
   }
 
-  sum = 0.5*a0_*(1.0 - r3*gamma_)*q2 - r3*a0_*gamma_*q3
-    + 0.25*a0_*gamma_*q2*q2 + 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
+  /* Electric field term (epsilon_ includes the factor 1/12pi) */
+
+  efield = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      efield += electric_[ia]*q[ia][ib]*electric_[ib];
+    }
+  }
+
+  sum = 0.5*a0_*(1.0 - r3_*gamma_)*q2 - r3_*a0_*gamma_*q3 +
+    0.25*a0_*gamma_*q2*q2 + 0.5*kappa0*dq0 + 0.5*kappa1*dq1 - epsilon_*efield;;
 
   return sum;
 }
@@ -293,6 +305,7 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
   double q0;              /* Redshifted value */
   double kappa0, kappa1;  /* Redshifted values */
   double q2;
+  double e2;
   double eq;
   double sum;
 
@@ -316,8 +329,8 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
       for (ic = 0; ic < 3; ic++) {
 	sum += q[ia][ic]*q[ib][ic];
       }
-      h[ia][ib] = -a0_*(1.0 - r3*gamma_)*q[ia][ib]
-	+ a0_*gamma_*(sum - r3*q2*d_[ia][ib]) - a0_*gamma_*q2*q[ia][ib];
+      h[ia][ib] = -a0_*(1.0 - r3_*gamma_)*q[ia][ib]
+	+ a0_*gamma_*(sum - r3_*q2*d_[ia][ib]) - a0_*gamma_*q2*q[ia][ib];
     }
   }
 
@@ -345,8 +358,21 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
 	}
       }
       h[ia][ib] += kappa1*dsq[ia][ib]
-	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d_[ia][ib]
+	- 2.0*kappa1*q0*sum + 4.0*r3_*kappa1*q0*eq*d_[ia][ib]
 	- 4.0*kappa1*q0*q0*q[ia][ib];
+    }
+  }
+
+  /* Electric field term */
+
+  e2 = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    e2 += electric_[ia]*electric_[ia];
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      h[ia][ib] +=  epsilon_*(electric_[ia]*electric_[ib] - r3_*d_[ia][ib]*e2);
     }
   }
 
@@ -424,7 +450,7 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] = -p0*d_[ia][ib] + 2.0*xi_*(q[ia][ib] + r3*d_[ia][ib])*qh;
+      sth[ia][ib] = -p0*d_[ia][ib] + 2.0*xi_*(q[ia][ib] + r3_*d_[ia][ib])*qh;
     }
   }
 
@@ -434,8 +460,8 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
 	sth[ia][ib] +=
-	  -xi_*h[ia][ic]*(q[ib][ic] + r3*d_[ib][ic])
-	  -xi_*(q[ia][ic] + r3*d_[ia][ic])*h[ib][ic];
+	  -xi_*h[ia][ic]*(q[ib][ic] + r3_*d_[ib][ic])
+	  -xi_*(q[ia][ic] + r3_*d_[ia][ic])*h[ib][ic];
       }
     }
   }
@@ -787,15 +813,14 @@ void blue_set_random_q_init(void) {
 
   int ic, jc, kc;
   int nlocal[3];
-  int noffset[3];
   int index;
+  int ia, ib;
 
   double n[3];
   double q[3][3];
   double phase1, phase2;
 
   coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
   
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -809,6 +834,12 @@ void blue_set_random_q_init(void) {
 	n[X] = cos(phase1)*sin(phase2);
 	n[Y] = sin(phase1)*sin(phase2);
 	n[Z] = cos(phase2);
+
+	for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+		q[ia][ib] *= 0.00001;
+	    }
+	}
 
 	blue_phase_q_uniaxial(n, q);
 	phi_set_q_tensor(index, q);
@@ -852,7 +883,7 @@ double blue_phase_reduced_temperature(void) {
 
   double tau;
 
-  tau = 27.0*(1.0 - r3*gamma_) / gamma_;
+  tau = 27.0*(1.0 - r3_*gamma_) / gamma_;
 
   return tau;
 }
@@ -1119,8 +1150,8 @@ void blue_phase_stats(int nstep) {
 
 	/* Contributions bulk, kappa0, and kappa1 */
 
-	elocal[0] += 0.5*a0_*(1.0 - r3*gamma_)*q2;
-	elocal[1] += -r3*a0_*gamma_*q3;
+	elocal[0] += 0.5*a0_*(1.0 - r3_*gamma_)*q2;
+	elocal[1] += -r3_*a0_*gamma_*q3;
 	elocal[2] += 0.25*a0_*gamma_*q2*q2;
 	elocal[3] += 0.5*kappa0*dq0;
 	elocal[4] += 0.5*kappa1*dq1;
@@ -1203,4 +1234,34 @@ void blue_phase_stats(int nstep) {
 double blue_phase_q0(void) {
 
   return q0_;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_electric_field_set
+ *
+ *****************************************************************************/
+
+void blue_phase_electric_field_set(const double e[3]) {
+
+  electric_[X] = e[X];
+  electric_[Y] = e[Y];
+  electric_[Z] = e[Z];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_dielectric_anisotropy_set
+ *
+ *  Include the factor 1/12pi appearing in the free energy.
+ *
+ *****************************************************************************/
+
+void blue_phase_dielectric_anisotropy_set(double e) {
+
+  epsilon_ = (1.0/(12.0*pi_))*e;
+
+  return;
 }

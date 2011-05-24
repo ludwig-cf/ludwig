@@ -50,6 +50,8 @@ void blue_phase_run_time(void) {
   double zeta;
   double w;
   double redshift;
+  double epsilon;
+  double electric[3];
 
   /* Tensor order parameter (nop = 5); del^2 required; */
 
@@ -117,6 +119,25 @@ void blue_phase_run_time(void) {
   info("Dynamic redshift update    = %14s\n",
        redshift_update == 0 ? "no" : "yes");
   info("LC activity constant zeta  = %14.7e\n", zeta);
+
+
+  /* Default electric field stuff zero */
+
+  epsilon = 0.0;
+  RUN_get_double_parameter("lc_dielectric_anisotropy", &epsilon);
+  electric[X] = 0.0;
+  electric[Y] = 0.0;
+  electric[Z] = 0.0;
+
+  n = RUN_get_double_parameter_vector("electric_e0", electric);
+
+  if (n == 1) {
+    blue_phase_dielectric_anisotropy_set(epsilon);
+    blue_phase_electric_field_set(electric);
+    info("Dielectric anisotropy      = %14.7e\n", epsilon);
+    info("Electric field             = %14.7 %14.7e %14.7e\n",
+	 electric[X], electric[Y], electric[Z]);
+  }
 
   fe_density_set(blue_phase_free_energy_density);
   fe_chemical_stress_set(blue_phase_chemical_stress);
