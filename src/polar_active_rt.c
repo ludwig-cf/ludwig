@@ -61,7 +61,7 @@ void polar_active_run_time(void) {
   n = RUN_get_double_parameter("polar_active_b", &b);
   n = RUN_get_double_parameter("polar_active_k", &k1);
   n = RUN_get_double_parameter("polar_active_dk", &delta);
-  delta = 0.0 /* Pending molecular field */
+  delta = 0.0; /* Pending molecular field */
   n = RUN_get_double_parameter("polar_active_klc", &klc);
   n = RUN_get_double_parameter("polar_active_zeta", &zeta);
   n = RUN_get_double_parameter("polar_active_lambda", &lambda);
