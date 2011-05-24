@@ -42,7 +42,7 @@ void phi_lb_coupler_phi_set(const int index, const double phi) {
 
   int p;
 
-  if (phi_is_finite_difference()) {
+  if (distribution_ndist() == 1) {
     phi_op_set_phi_site(index, 0, phi);
   }
   else {
@@ -76,7 +76,7 @@ void phi_compute_phi_site() {
   int nlocal[3];
   int nop;
 
-  if (phi_is_finite_difference()) return;
+  if (distribution_ndist() == 1) return;
 
   assert(distribution_ndist() == 2);
 
