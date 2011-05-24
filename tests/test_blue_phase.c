@@ -141,7 +141,8 @@ void test_o8m_struct(void) {
    * Note there are a limited number of unique order parameter values,
    * so an exhaustive test is probably not worth while. */
 
-  blue_phase_O8M_init(amplitude);
+  blue_phase_amplitude_set(amplitude);
+  blue_phase_O8M_init();
   blue_phase_redshift_set(1.0);
 
   ic = 1;
