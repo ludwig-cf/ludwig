@@ -234,8 +234,6 @@ void COLL_init() {
 
       colloids_init_random(n, state0, dh);
       info("Initialised %d colloid%s from input\n", n, (n > 1) ? "s" : "");
-      info("*****c = %f\n", state0->c);
-      info("*****h = %f\n", state0->h);
 
       free(state0);
     }
