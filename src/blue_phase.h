@@ -37,6 +37,8 @@ void   blue_phase_O8M_init(void);
 void   blue_phase_O2_init(void);
 void   blue_phase_redshift_set(const double redshift);
 void   blue_phase_amplitude_set(const double amplitude);
+void   blue_phase_electric_field_set(const double e[3]);
+void   blue_phase_dielectric_anisotropy_set(double e);
 
 double blue_phase_amplitude(void);
 double blue_phase_get_xi(void);
