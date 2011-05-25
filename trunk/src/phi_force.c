@@ -36,10 +36,9 @@ static void phi_force_compute_fluxes(double * fe, double * fw, double * fy,
 				     double * fz);
 static void phi_force_flux_divergence(double * fe, double * fw, double * fy,
 				      double * fz);
+static void phi_force_flux_fix_local(double * fluxe, double * fluxw);
 static void phi_force_flux_divergence_with_fix(double * fe, double * fw,
 					       double * fy, double * fz);
-static void phi_force_fix_fluxes(double * fe, double * fw);
-static void phi_force_fix_fluxes_parallel(double * fe, double * fw);
 static void phi_force_flux(void);
 static void phi_force_wallx(double * fe, double * fw);
 static void phi_force_wally(double * fy);
@@ -212,7 +211,7 @@ static void phi_force_flux(void) {
   if (wall_at_edge(Z)) phi_force_wallz(fluxz);
 
   if (fix_fluxes || wall_present()) {
-    phi_force_fix_fluxes(fluxe, fluxw);
+    phi_force_flux_fix_local(fluxe, fluxw);
     phi_force_flux_divergence(fluxe, fluxw, fluxy, fluxz);
   }
   else {
@@ -299,286 +298,6 @@ static void phi_force_compute_fluxes(double * fluxe, double * fluxw,
       }
     }
   }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_fix_fluxes
- *
- *  For the Lees-Edwards planes we need to reconcile the east and
- *  west face fluxes (in the same manner as for advective fluxes)
- *  at the planes.
- *
- *****************************************************************************/
-
-static void phi_force_fix_fluxes(double * fluxe, double * fluxw) {
-
-  int nlocal[3]; /* Local system size */
-  int ip;        /* Index of the plane */
-  int ic;        /* Index x location in real system */
-  int jc, kc, ia;
-  int index, index1;
-  int nbuffer;
-
-  double dy;     /* Displacement for current plane */
-  double fr;     /* Fractional displacement */
-  double t;      /* Time */
-  int jdy;       /* Integral part of displacement */
-  int j1, j2;    /* j values in real system to interpolate between */
-
-  double * bufferw;
-  double * buffere;
-
-  int get_step(void);
-
-  if (cart_size(Y) > 1) {
-    /* Parallel */
-    phi_force_fix_fluxes_parallel(fluxe, fluxw);
-  }
-  else {
-
-    coords_nlocal(nlocal);
-
-    nbuffer = 3*nlocal[Y]*nlocal[Z];
-    buffere = (double *) malloc(nbuffer*sizeof(double));
-    bufferw = (double *) malloc(nbuffer*sizeof(double));
-    if (buffere == NULL) fatal("malloc(buffere) force failed\n");
-    if (bufferw == NULL) fatal("malloc(bufferw) force failed\n");
-
-    for (ip = 0; ip < le_get_nplane_local(); ip++) {
-
-      /* -1.0 as zero required for first step; a 'feature' to
-       * maintain the regression tests */
-
-      t = 1.0*get_step() - 1.0;
-
-      ic = le_plane_location(ip);
-
-      /* Looking up */
-      dy = +t*le_plane_uy(t);
-      dy = fmod(dy, L(Y));
-      jdy = floor(dy);
-      fr  = dy - jdy;
-
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-
-	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
-	j2 = 1 + j1 % nlocal[Y];
-
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (ia = 0; ia < 3; ia++) {
-	    index = 3*(nlocal[Z]*(jc-1) + (kc-1)) + ia;
-	    bufferw[index] = fr*fluxw[3*le_site_index(ic+1,j1,kc) + ia]
-	      + (1.0-fr)*fluxw[3*le_site_index(ic+1,j2,kc) + ia];
-	  }
-	}
-      }
-
-
-      /* Looking down */
-
-      dy = -t*le_plane_uy(t);
-      dy = fmod(dy, L(Y));
-      jdy = floor(dy);
-      fr  = dy - jdy;
-
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-
-	j1 = 1 + (jc - jdy - 2 + 2*nlocal[Y]) % nlocal[Y];
-	j2 = 1 + j1 % nlocal[Y];
-
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (ia = 0; ia < 3; ia++) {
-	    index = 3*(nlocal[Z]*(jc-1) + (kc-1)) + ia;
-	    buffere[index] = fr*fluxe[3*le_site_index(ic,j1,kc) + ia]
-	      + (1.0-fr)*fluxe[3*le_site_index(ic,j2,kc) + ia];
-	  }
-	}
-      }
-
-      /* Now average the fluxes. */
-
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (ia = 0; ia < 3; ia++) {
-	    index = 3*le_site_index(ic,jc,kc) + ia;
-	    index1 = 3*(nlocal[Z]*(jc-1) + (kc-1)) + ia;
-	    fluxe[index] = 0.5*(fluxe[index] + bufferw[index1]);
-	    index = 3*le_site_index(ic+1,jc,kc) + ia;
-	    fluxw[index] = 0.5*(fluxw[index] + buffere[index1]);
-	  }
-	}
-      }
-
-      /* Next plane */
-    }
-
-    free(bufferw);
-    free(buffere);
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_fix_fluxes_parallel
- *
- *  Parallel version of the above, where communication is required to
- *  get hold of the interpolation buffer.
- *
- *****************************************************************************/
-
-static void phi_force_fix_fluxes_parallel(double * fluxe, double * fluxw) {
-
-  int      nhalo;
-  int      nlocal[3];      /* Local system size */
-  int      noffset[3];     /* Local starting offset */
-  double * buffere;        /* Interpolation buffer */
-  double * bufferw;
-  int ip;                  /* Index of the plane */
-  int ic;                  /* Index x location in real system */
-  int jc, kc, j1, j2, ia;
-  int n, n1, n2;
-  double dy;               /* Displacement for current transforamtion */
-  double fre, frw;         /* Fractional displacements */
-  double t;                /* Time */
-  int jdy;                 /* Integral part of displacement */
-
-  int      nrank_s[3];     /* send ranks */
-  int      nrank_r[3];     /* recv ranks */
-  const int tag0 = 8200;
-  const int tag1 = 8201;
-
-  MPI_Comm    le_comm;
-  MPI_Request request[8];
-  MPI_Status  status[8];
-
-  int get_step(void);
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-
-  /* Allocate the temporary buffer */
-
-  n = 3*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo);
-  buffere = (double *) malloc(n*sizeof(double));
-  bufferw = (double *) malloc(n*sizeof(double));
-  if (buffere == NULL) fatal("malloc(buffere) failed\n");
-  if (bufferw == NULL) fatal("malloc(bufferw) failed\n");
-
-  t = 1.0*get_step() - 1.0;
-
-  le_comm = le_communicator();
-
-  /* One round of communication for each plane */
-
-  for (ip = 0; ip < le_get_nplane_local(); ip++) {
-
-    ic = le_plane_location(ip);
-
-    /* Work out the displacement-dependent quantities */
-
-    dy = +t*le_plane_uy(t);
-    dy = fmod(dy, L(Y));
-    jdy = floor(dy);
-    frw  = dy - jdy;
-
-    /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
-
-    jc = noffset[Y] + 1;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
-    assert(j1 > 0);
-    assert(j1 <= N_total(Y));
-
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
-
-    /* Local quantities: given a local starting index j2, we receive
-     * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position 1. */
-
-    j2 = 1 + (j1 - 1) % nlocal[Y];
-    assert(j2 > 0);
-    assert(j2 <= nlocal[Y]);
-
-    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
-    n2 = 3*j2*(nlocal[Z] + 2*nhalo);
-
-    /* Post receives, sends (the wait is later). */
-
-    MPI_Irecv(bufferw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
-    MPI_Irecv(bufferw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
-	      request + 1);
-    MPI_Issend(fluxw + 3*le_site_index(ic+1,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
-	       tag0, le_comm, request + 2);
-    MPI_Issend(fluxw + 3*le_site_index(ic+1,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
-	       tag1, le_comm, request + 3);
-
-    /* OTHER WAY */
-
-    dy = -t*le_plane_uy(t);
-    dy = fmod(dy, L(Y));
-    jdy = floor(dy);
-    fre  = dy - jdy;
-
-    /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
-
-    jc = noffset[Y] + 1;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
-
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
-
-    /* Local quantities: given a local starting index j2, we receive
-     * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position nhalo. */
-
-    j2 = 1 + (j1 - 1) % nlocal[Y];
-
-    n1 = 3*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
-    n2 = 3*j2*(nlocal[Z] + 2*nhalo);
-
-    /* Post new receives, sends, and wait for whole lot to finish. */
-
-    MPI_Irecv(buffere,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm,
-	      request + 4);
-    MPI_Irecv(buffere+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
-	      request + 5);
-    MPI_Issend(fluxe + 3*le_site_index(ic,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
-	       tag0, le_comm, request + 6);
-    MPI_Issend(fluxe + 3*le_site_index(ic,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
-	       tag1, le_comm, request + 7);
-
-    MPI_Waitall(8, request, status);
-
-    /* Now interpolate */
-
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo);
-      j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo);
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	for (ia = 0; ia < 3; ia++) {
-	  fluxe[3*le_site_index(ic,jc,kc) + ia]
-	    = 0.5*(fluxe[3*le_site_index(ic,jc,kc) + ia]
-		   + frw*bufferw[3*(j1 + kc+nhalo-1) + ia]
-		   + (1.0-frw)*bufferw[3*(j2 + kc+nhalo-1) + ia]);
-	  fluxw[3*le_site_index(ic+1,jc,kc) + ia]
-	    = 0.5*(fluxw[3*le_site_index(ic+1,jc,kc) + ia]
-		   + fre*buffere[3*(j1 + kc+nhalo-1) + ia]
-		   + (1.0-fre)*buffere[3*(j2 + kc+nhalo-1) + ia]);
-	}
-      }
-    }
-
-    /* Next plane */
-  }
-
-  free(bufferw);
-  free(buffere);
 
   return;
 }
@@ -701,6 +420,81 @@ static void phi_force_flux_divergence_with_fix(double * fluxe, double * fluxw,
       }
     }
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_flux_fix_local
+ *
+ *  A per-plane version of the above. We know that, integrated across the
+ *  area of the plane, the fluxw and fluxe contributions must be equal.
+ *  Owing to the interpolation, this may not be exactly satisfied.
+ *
+ *  For each plane, there is therefore a correction.
+ *
+ *****************************************************************************/
+
+static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
+
+  int nlocal[3];
+  int nplane;
+  int ic, jc, kc, index, ia, ip;
+
+  double * fbar;     /* Local sum over plane */
+  double * fcor;     /* Global correction */
+  double ra;         /* Normaliser */
+
+  coords_nlocal(nlocal);
+  nplane = le_get_nplane_local();
+
+  if (nplane == 0) return;
+
+  fbar = (double *) calloc(3*nplane, sizeof(double));
+  fcor = (double *) calloc(3*nplane, sizeof(double));
+  if (fbar == NULL) fatal("calloc(%d, fbar) failed\n", 3*nplane);
+  if (fcor == NULL) fatal("calloc(%d, fcor) failed\n", 3*nplane);
+
+  for (ip = 0; ip < nplane; ip++) { 
+
+    ic = le_plane_location(ip);
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = le_site_index(ic, jc, kc);
+
+	for (ia = 0; ia < 3; ia++) {
+	  fbar[3*ip + ia] = fluxe[3*index + ia] - fluxw[3*index + ia];
+	}
+      }
+    }
+  }
+
+  MPI_Allreduce(fbar, fcor, 3*nplane, MPI_DOUBLE, MPI_SUM, le_communicator());
+
+  ra = 0.5/(L(Y)*L(Z));
+
+  for (ip = 0; ip < nplane; ip++) { 
+
+    ic = le_plane_location(ip);
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = le_site_index(ic, jc, kc);
+
+	for (ia = 0; ia < 3; ia++) {
+	    fluxe[3*index + ia] -= ra*fcor[3*ip + ia];
+	    fluxw[3*index + ia] += ra*fcor[3*ip + ia];
+	}
+      }
+    }
+  }
+
+  free(fcor);
+  free(fbar);
 
   return;
 }
