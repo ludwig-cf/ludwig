@@ -497,6 +497,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  for(p = 0; p < NVEL; p++) {
 	    for(m = 0; m < NDIST; m++) {
 	      f_loc[NVEL*m+p] = f_d[nsite*NDIST*p + nsite*m + index];
+	      //f_loc[NVEL*m+p] = f_d[NVEL*NDIST*index + NVEL*m + p];
 	    }
 	  }
 	  
@@ -619,7 +620,8 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
  	    for (m = 0; m < NVEL; m++) {
  	      f_tmp += mi_d[p][m]*mode[m];
  	    }
- 	  f_d[nsite*NDIST*p + index] = f_tmp;
+	    f_d[nsite*NDIST*p + index] = f_tmp;
+	    //f_d[NVEL*NDIST*index + p] = f_tmp;
  	}
 
 	/* Now, the order parameter distribution */
@@ -665,6 +667,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	   * here is to move phi into the non-propagating distribution. */
 	  
 	  f_d[nsite*NDIST*p+nsite+index]
+	    //f_d[NVEL*NDIST*index+NVEL+p]
 	    = wv_d[p]*(jdotc*rcs2_d + sphidotq*r2rcs4) + phi*dp0;
 	  
 	}

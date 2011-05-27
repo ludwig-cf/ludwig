@@ -41,8 +41,8 @@ EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
 CC = gcc 
-#MPICC = mpicc
-MPICC = /opt/mpich2/bin/mpicc
+MPICC = mpicc
+#MPICC = /opt/mpich2/bin/mpicc
 OPTS = -D_D3Q19_
 CFLAGS = -O3 -Wall
 
@@ -56,7 +56,8 @@ GPUCC = nvcc
 GPUOPTS = $(OPTS) -D_GPU_
 GPUCFLAGS = -O3 -arch=sm_20 
 #GPUINC = $(INC) -I../mpi_s
-GPUINC = $(INC) -I /opt/mpich2/include
+#GPUINC = $(INC) -I /opt/mpich2/include
+GPUINC = $(INC) -I /home/agray3/mpich/mpich2-1.3.2p1-install/include/
 GPULIBS= -L/usr/local/cuda/lib64 -lcudart
 
 

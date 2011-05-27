@@ -307,6 +307,8 @@ void halo_swap_gpu()
 
   int ii,jj,kk,m,p,index_source,index_target;
 
+#define OVERLAP
+
   const int tagf = 900;
   const int tagb = 901;
   
@@ -371,6 +373,11 @@ void halo_swap_gpu()
  cudaMemcpyAsync(fedgeXHIGH, fedgeXHIGH_d, nhalodataX*sizeof(double),
 		 cudaMemcpyDeviceToHost,streamX);
 
+#ifndef OVERLAP
+  TIMER_start(HALOGETX); 
+  cudaStreamSynchronize(streamX);
+  TIMER_stop(HALOGETX); 
+#endif
 
  /* get Y low edges */
  cudaMemcpyAsync(fedgeYLOW, fedgeYLOW_d, nhalodataY*sizeof(double), 
@@ -379,6 +386,11 @@ void halo_swap_gpu()
  cudaMemcpyAsync(fedgeYHIGH, fedgeYHIGH_d, nhalodataY*sizeof(double), 
 		 cudaMemcpyDeviceToHost,streamY);
 
+#ifndef OVERLAP
+  TIMER_start(HALOGETY); 
+  cudaStreamSynchronize(streamY);
+  TIMER_stop(HALOGETY); 
+#endif
 
   /* get Z low edges */
   cudaMemcpyAsync(fedgeZLOW, fedgeZLOW_d, nhalodataZ*sizeof(double), 
@@ -387,10 +399,16 @@ void halo_swap_gpu()
   cudaMemcpyAsync(fedgeZHIGH, fedgeZHIGH_d, nhalodataZ*sizeof(double), 
 	     cudaMemcpyDeviceToHost,streamZ);
 
+#ifndef OVERLAP
+  TIMER_start(HALOGETZ); 
+  cudaStreamSynchronize(streamZ);
+  TIMER_stop(HALOGETZ); 
+#endif
 
+  TIMER_start(HALOGETX);
  /* wait for X data from accelerator*/ 
   cudaStreamSynchronize(streamX); 
-
+  TIMER_stop(HALOGETX);
 
 
   /* The x-direction (YZ plane) */
@@ -416,8 +434,11 @@ void halo_swap_gpu()
     }
 
 
+  TIMER_start(HALOMPIX);
  /* wait for X halo swaps to finish */ 
    if (cart_size(X) > 1)       MPI_Waitall(4, request, status);
+  TIMER_stop(HALOMPIX);
+
 
  /* put X halos back on device, and unpack */
   cudaMemcpyAsync(fhaloXLOW_d, fhaloXLOW, nhalodataX*sizeof(double), 
@@ -429,10 +450,18 @@ void halo_swap_gpu()
 						  N_d,f_d,fhaloXLOW_d,
 						  fhaloXHIGH_d);
 
+#ifndef OVERLAP
+  TIMER_start(HALOPUTX); 
+  cudaStreamSynchronize(streamX);
+  TIMER_stop(HALOPUTX); 
+#endif
 
+  TIMER_start(HALOGETY);
   /* wait for Y data from accelerator*/ 
   cudaStreamSynchronize(streamY); 
+  TIMER_stop(HALOGETY);
 
+  TIMER_start(HALOYCORNER);
   /* fill in corners of Y edge data  */
 
   for (p=0;p<npvel;p++)
@@ -485,7 +514,7 @@ void halo_swap_gpu()
 	  }
 	}
     }
-  
+  TIMER_stop(HALOYCORNER);  
 
   /* The y-direction (XZ plane) */
 
@@ -511,8 +540,10 @@ void halo_swap_gpu()
 
     }
 
+  TIMER_start(HALOMPIY);
  /* wait for Y halo swaps to finish */ 
     if (cart_size(Y) > 1)       MPI_Waitall(4, request, status); 
+  TIMER_stop(HALOMPIY);
 
  /* put Y halos back on device, and unpack */
   cudaMemcpyAsync(fhaloYLOW_d, fhaloYLOW, nhalodataY*sizeof(double), 
@@ -525,13 +556,18 @@ void halo_swap_gpu()
 						  N_d,f_d,fhaloYLOW_d,
 						  fhaloYHIGH_d);
 
-
+#ifndef OVERLAP
+  TIMER_start(HALOPUTY); 
+  cudaStreamSynchronize(streamY);
+  TIMER_stop(HALOPUTY); 
+#endif
  
-
+  TIMER_start(HALOGETZ);
   /* wait for Z data from accelerator*/ 
   cudaStreamSynchronize(streamZ); 
+  TIMER_stop(HALOGETZ);
 
-
+  TIMER_start(HALOZCORNER);
   /* fill in corners of Z edge data: from Xhalo  */
   for (p=0;p<npvel;p++)
     {
@@ -643,7 +679,9 @@ void halo_swap_gpu()
 	  }
 	}
     }
- 
+  TIMER_stop(HALOZCORNER);
+
+  TIMER_start(HALOMPIZ); 
   if (cart_size(Z) == 1) {
   /* The z-direction (xy plane) */
   /* z up */
@@ -668,7 +706,7 @@ void halo_swap_gpu()
 
   /* wait for Z halo swaps to finish */ 
   if (cart_size(Z) > 1)       MPI_Waitall(4, request, status); 
-
+  TIMER_stop(HALOMPIZ); 
 
  /* put Z halos back on device, and unpack */
   cudaMemcpyAsync(fhaloZLOW_d, fhaloZLOW, nhalodataZ*sizeof(double), 
@@ -682,7 +720,19 @@ void halo_swap_gpu()
 
 
   /* wait for all streams to complete */
-  cudaThreadSynchronize();
+  TIMER_start(HALOPUTX); 
+  cudaStreamSynchronize(streamX);
+  TIMER_stop(HALOPUTX); 
+
+  TIMER_start(HALOPUTY); 
+  cudaStreamSynchronize(streamY);
+  TIMER_stop(HALOPUTY); 
+
+  TIMER_start(HALOPUTZ); 
+  cudaStreamSynchronize(streamZ);
+  TIMER_stop(HALOPUTZ); 
+
+  //cudaThreadSynchronize();
 
 }
 
