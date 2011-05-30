@@ -40,7 +40,8 @@ static struct le_parameters {
   double time0;             /* time offset */
 
   /* Local parameters */
-  MPI_Comm  le_comm;
+  MPI_Comm  le_comm;        /* 1-d communicator */
+  MPI_Comm  le_plane_comm;  /* 2-d communicator */
   int *     index_buffer_to_real;
   int       index_real_nbuffer;
   int *     index_real_to_buffer;
@@ -301,6 +302,14 @@ static void le_init_tables() {
   rdims[Y] = 1;
   rdims[Z] = 0;
   MPI_Cart_sub(cart_comm(), rdims, &(le_params_.le_comm));
+
+  /* Plane communicator in yz, or x = const. */
+
+  rdims[X] = 0;
+  rdims[Y] = 1;
+  rdims[Z] = 1;
+
+  MPI_Cart_sub(cart_comm(), rdims, &(le_params_.le_plane_comm));
 
   return;
 }
@@ -641,6 +650,18 @@ MPI_Comm le_communicator() {
 
   assert(initialised_);
   return le_params_.le_comm;
+}
+
+/*****************************************************************************
+ *
+ *  le_plane_comm
+ *
+ *****************************************************************************/
+
+MPI_Comm le_plane_comm(void) {
+
+  assert(initialised_);
+  return le_params_.le_plane_comm;
 }
 
 /*****************************************************************************

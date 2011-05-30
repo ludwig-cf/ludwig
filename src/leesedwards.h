@@ -34,6 +34,7 @@ double    le_plane_uy(const double);
 double    le_plane_uy_max(void);
 double    le_shear_rate(void);
 MPI_Comm  le_communicator(void);
+MPI_Comm  le_plane_comm(void);
 void      le_jstart_to_ranks(const int, int send[2], int recv[2]);
 void      le_set_oscillatory(const double);
 void      le_set_nplane_total(const int nplane);
