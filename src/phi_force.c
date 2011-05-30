@@ -440,16 +440,20 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
 
   int nlocal[3];
   int nplane;
-  int ic, jc, kc, index, ia, ip;
+  int ic, jc, kc, index, index1, ia, ip;
 
   double * fbar;     /* Local sum over plane */
   double * fcor;     /* Global correction */
   double ra;         /* Normaliser */
 
+  MPI_Comm comm;
+
   coords_nlocal(nlocal);
   nplane = le_get_nplane_local();
 
   if (nplane == 0) return;
+
+  comm = le_plane_comm();
 
   fbar = (double *) calloc(3*nplane, sizeof(double));
   fcor = (double *) calloc(3*nplane, sizeof(double));
@@ -464,15 +468,16 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = le_site_index(ic, jc, kc);
+        index1 = le_site_index(ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fbar[3*ip + ia] = fluxe[3*index + ia] - fluxw[3*index + ia];
+	  fbar[3*ip + ia] += - fluxe[3*index + ia] + fluxw[3*index1 + ia];
 	}
       }
     }
   }
 
-  MPI_Allreduce(fbar, fcor, 3*nplane, MPI_DOUBLE, MPI_SUM, le_communicator());
+  MPI_Allreduce(fbar, fcor, 3*nplane, MPI_DOUBLE, MPI_SUM, comm);
 
   ra = 0.5/(L(Y)*L(Z));
 
@@ -483,11 +488,12 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = le_site_index(ic, jc, kc);
+        index  = le_site_index(ic, jc, kc);
+        index1 = le_site_index(ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	    fluxe[3*index + ia] -= ra*fcor[3*ip + ia];
-	    fluxw[3*index + ia] += ra*fcor[3*ip + ia];
+	  fluxe[3*index  + ia] += ra*fcor[3*ip + ia];
+	  fluxw[3*index1 + ia] -= ra*fcor[3*ip + ia];
 	}
       }
     }
