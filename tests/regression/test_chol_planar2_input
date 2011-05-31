@@ -211,7 +211,8 @@ lc_init_redshift 1.0
 lc_init_nematic 1.0_0.0_0.0
 
 lc_anchoring_method two
-lc_anchoring planar
+lc_wall_anchoring planar
+lc_coll_abchoring planar
 #lc_anchoring_strength 0.0
 #lc_anchoring_strength 0.000648456
 lc_anchoring_strength 0.002593824
