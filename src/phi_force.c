@@ -185,7 +185,7 @@ static void phi_force_calculation_fluid() {
 static void phi_force_flux(void) {
 
   int n;
-  int fix_fluxes = 0;
+  int fix_fluxes = 1;
 
   double * fluxe;
   double * fluxw;
