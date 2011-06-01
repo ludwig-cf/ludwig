@@ -47,6 +47,7 @@ double blue_phase_chirality(void);
 double blue_phase_reduced_temperature(void);
 double blue_phase_redshift(void);
 double blue_phase_q0(void);
+double blue_phase_dimensionless_field_strength(void);
 
 void blue_phase_redshift_update_set(int onoff);
 void blue_phase_redshift_compute(void);

@@ -890,6 +890,33 @@ double blue_phase_reduced_temperature(void) {
 
 /*****************************************************************************
  *
+ *  blue_phase_dimensionless_field_strength
+ *
+ *  Return the dimensionless field strength which is
+ *      e^2 = (27 epsilon / 32 pi A_O gamma) E_a E_a
+ *
+ *****************************************************************************/
+
+double blue_phase_dimensionless_field_strength(void) {
+
+  int ia;
+  double e;
+  double fieldsq;
+
+  fieldsq = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    fieldsq += electric_[ia]*electric_[ia];
+  }
+
+  /* Remember epsilon is stored with factor (1/12pi) */ 
+
+  e = sqrt(27.0*(12.0*pi_*epsilon_)*fieldsq/(32.0*pi_*a0_*gamma_));
+
+  return e;
+}
+
+/*****************************************************************************
+ *
  *  blue_phase_redshift
  *
  *  Return the redshift parameter.
