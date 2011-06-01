@@ -135,7 +135,7 @@ void blue_phase_run_time(void) {
     blue_phase_dielectric_anisotropy_set(epsilon);
     blue_phase_electric_field_set(electric);
     info("Dielectric anisotropy      = %14.7e\n", epsilon);
-    info("Electric field             = %14.7 %14.7e %14.7e\n",
+    info("Electric field             = %14.7e %14.7e %14.7e\n",
 	 electric[X], electric[Y], electric[Z]);
   }
 
