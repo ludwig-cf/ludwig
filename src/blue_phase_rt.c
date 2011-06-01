@@ -134,9 +134,12 @@ void blue_phase_run_time(void) {
   if (n == 1) {
     blue_phase_dielectric_anisotropy_set(epsilon);
     blue_phase_electric_field_set(electric);
+    info("\n");
     info("Dielectric anisotropy      = %14.7e\n", epsilon);
     info("Electric field             = %14.7e %14.7e %14.7e\n",
 	 electric[X], electric[Y], electric[Z]);
+    info("Dimensionless field e      = %14.7e\n",
+         blue_phase_dimensionless_field_strength());
   }
 
   fe_density_set(blue_phase_free_energy_density);
