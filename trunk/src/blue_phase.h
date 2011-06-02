@@ -22,6 +22,7 @@
 void   blue_phase_set_free_energy_parameters(double, double, double, double);
 void   blue_phase_set_xi(double);
 void   blue_phase_set_zeta(double);
+void   blue_phase_set_gamma(double);
 
 double blue_phase_free_energy_density(const int);
 double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]);
@@ -43,6 +44,7 @@ void   blue_phase_dielectric_anisotropy_set(double e);
 double blue_phase_amplitude(void);
 double blue_phase_get_xi(void);
 double blue_phase_get_zeta(void);
+double blue_phase_get_gamma(void);
 double blue_phase_chirality(void);
 double blue_phase_reduced_temperature(void);
 double blue_phase_redshift(void);
@@ -58,5 +60,7 @@ void blue_phase_nematic_init(const double n[3]);
 void blue_phase_twist_init(const int helical_axis);
 void blue_phase_chi_edge(int N, double z0, double x0);
 void blue_set_random_q_init(void);
+
+void blue_phase_set_active_region_gamma_zeta(const int index);
 #endif
  
