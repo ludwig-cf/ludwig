@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -43,6 +44,8 @@ static int pe_cartesian_neighbours[2][3] = {{0, 0, 0}, {0, 0, 0}};
 /* Lmin is fixed for all current use. */
 
 static double lmin[3] = {0.5, 0.5, 0.5};
+
+static double radius_ = FLT_MAX;
 
 static void default_decomposition(void);
 static int  is_ok_decomposition(void);
@@ -528,4 +531,47 @@ void coords_index_to_ijk(const int index, int coords[3]) {
   assert(coords_index(coords[X], coords[Y], coords[Z]) == index);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_active_region_radius_set
+ *
+ *****************************************************************************/
+
+void coords_active_region_radius_set(const double r) {
+
+  radius_ = r;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_active_region
+ *
+ *  Returns 1 in the 'region' and zero outside. The 'region' is a
+ *  spherical volume of radius radius_, centred at the centre of
+ *  the grid.
+ *
+ *****************************************************************************/
+
+double coords_active_region(const int index) {
+
+  int noffset[3];
+  int coords[3];
+
+  double x, y, z;
+  double active;
+
+  coords_nlocal_offset(noffset);
+  coords_index_to_ijk(index, coords);
+
+  x = 1.0*(noffset[X] + coords[X]) - (Lmin(X) + 0.5*L(X));
+  y = 1.0*(noffset[Y] + coords[Y]) - (Lmin(Y) + 0.5*L(Y));
+  z = 1.0*(noffset[Z] + coords[Z]) - (Lmin(Z) + 0.5*L(Z));
+
+  active = 1.0;
+  if ((x*x + y*y + z*z) > radius_*radius_) active = 0.0;
+
+  return active;
 }

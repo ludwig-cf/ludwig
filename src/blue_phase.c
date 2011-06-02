@@ -150,6 +150,32 @@ double blue_phase_get_zeta(void) {
 
 /*****************************************************************************
  *
+ *  blue_phase_set_gamma
+ *
+ *  Set the gamma_ parameter.
+ *
+ *****************************************************************************/
+
+void blue_phase_set_gamma(double gamma) {
+
+  gamma_ = gamma;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_get_gamma
+ *
+ *****************************************************************************/
+
+double blue_phase_get_gamma(void) {
+
+  return gamma_;
+}
+
+/*****************************************************************************
+ *
  *  blue_phase_free_energy_density
  *
  *  Return the free energy density at lattice site index.
@@ -164,7 +190,7 @@ double blue_phase_free_energy_density(const int index) {
 
   phi_get_q_tensor(index, q);
   phi_gradients_tensor_gradient(index, dq);
-
+  
   e = blue_phase_compute_fed(q, dq);
 
   return e;
@@ -1292,3 +1318,36 @@ void blue_phase_dielectric_anisotropy_set(double e) {
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  blue_phase_set_active_region_gamma_zeta
+ *
+ *  Set the parameters gamma_ and zeta_ for inside and outside 
+ *
+ *  the active region.
+ *****************************************************************************/
+
+void blue_phase_set_active_region_gamma_zeta(const int index) {
+  
+  double zeta_inside=0.0;
+  double zeta_outside=0.0;
+  
+  double gamma_inside=3.0;
+  double gamma_outside=2.4;
+
+  /* check if we are inside/outside the active region */
+
+  if ( coords_active_region(index) > 0.5 ){
+    /*inside*/
+    blue_phase_set_zeta(zeta_inside);
+    blue_phase_set_gamma(gamma_inside);
+  }
+  else {
+    /*outside*/
+    blue_phase_set_zeta(zeta_outside);
+    blue_phase_set_gamma(gamma_outside);
+  }
+  return;
+}
+    

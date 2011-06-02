@@ -47,4 +47,6 @@ void   coords_minimum_distance(const double r1[3], const double r2[3],
 			       double r12[3]);
 void   coords_index_to_ijk(const int index, int coords[3]);
 
+void coords_active_region_radius_set(const double r);
+double coords_active_region(const int index);
 #endif
