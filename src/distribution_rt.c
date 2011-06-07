@@ -12,14 +12,19 @@
  *
  *****************************************************************************/
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "pe.h"
+#include "util.h"
 #include "runtime.h"
+#include "coords.h"
 #include "model.h"
 #include "io_harness.h"
 #include "distribution_rt.h"
+
+static void distribution_rt_2d_kelvin_helmholtz(void);
 
 /*****************************************************************************
  *
@@ -76,6 +81,88 @@ void distribution_run_time(void) {
 
   io_write_metadata("dist", distribution_io_info());
   if (nreduced == 1) distribution_halo_set_reduced();
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_rt_initial_conditions
+ *
+ *****************************************************************************/
+
+void distribution_rt_initial_conditions(void) {
+
+  char key[FILENAME_MAX];
+
+  RUN_get_string_parameter("distribution_initialisation", key, FILENAME_MAX);
+
+  if (strcmp("2d_kelvin_helmholtz", key) == 0) {
+    distribution_rt_2d_kelvin_helmholtz();
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_rt_2d_kelvin_helmholtz
+ *
+ *  A test problem put forward by Brown and Minion
+ *  J. Comp. Phys. \textbf{122} 165--183 (1995)
+ *
+ *  The system in (x, y) is scaled to 0 <= x,y < 1 and then
+ *
+ *      u_x = U tanh( kappa (y - 1/4))   y <= 1/2
+ *      u_x = U tanh( kappa (3/4 - y))   y > 1/2
+ *
+ *      u_y = delta U sin(2 pi x)
+ *
+ *      where U is a maximum velocity, kappa is the (inverse) width of
+ *      the initial shear layer, and delta is a perturbation.
+ *
+ *   For example, a 'thin' shear layer might have kappa = 80 and delta = 0.05
+ *   with Re = rho U L / eta = 10^4.
+ *
+ *   U must satisfy the LB mach number constraint. See also Dellar
+ *   J. Comp. Phys. \textbf{190} 351--370 (2003).
+ *
+ *****************************************************************************/
+
+static void distribution_rt_2d_kelvin_helmholtz(void) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int noffset[3];
+
+  double rho = 1.0;
+  double u0 = 0.01;
+  double delta = 0.05;
+  double kappa = 80.0;
+  double u[3];
+
+  double x, y;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = (1.0*(noffset[X] + ic) - Lmin(X))/L(X);
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = (1.0*(noffset[Y] + jc) - Lmin(Y))/L(Y);
+
+      if (y >  0.5) u[X] = u0*tanh(kappa*(0.75 - y));
+      if (y <= 0.5) u[X] = u0*tanh(kappa*(y - 0.25));
+      u[Y] = u0*delta*sin(2.0*pi_*x);
+      u[Z] = 0.0;
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+        distribution_rho_u_set_equilibrium(index, rho, u);
+      }
+    }
+  }
 
   return;
 }
