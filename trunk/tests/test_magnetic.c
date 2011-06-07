@@ -4,7 +4,7 @@
  *
  *  Test of uniform magnetic field interface.
  *
- *  $Id: test_magnetic.c,v 1.1 2010-03-24 12:44:30 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -21,7 +21,7 @@
 #include "coords.h"
 #include "magnetic_field.h"
 
-static void test_magnetic_field_uniform();
+static void test_magnetic_field_uniform(void);
 static void cross_product(const double a[3], const double b[3], double c[3]);
 
 int main (int argc, char ** argv) {
