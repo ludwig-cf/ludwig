@@ -19,9 +19,11 @@
 #include <math.h>
 
 #include "pe.h"
+#include "util.h"
 #include "coords.h"
 #include "phi.h"
 #include "phi_gradients.h"
+#include "gradient_3d_7pt_fluid.h"
 #include "gradient_3d_27pt_fluid.h"
 #include "blue_phase.h"
 #include "leesedwards.h"
@@ -81,6 +83,9 @@ int main(int argc, char ** argv) {
  *       kappa0 = 0.01
  *       kappa1 = 0.01
  *                with one constant approximation (kappa0 = kappa1 = kappa).
+ *       epsilon  dielectric anisotropy (typcially comes out to be 41.4 in
+ *                lattice units based on matching Frederick transition).
+ *                          
  *
  *  Molecular aspect ratio:
  *       xi = 0.7
@@ -100,6 +105,7 @@ void test_o8m_struct(void) {
   double gamma = 3.1764706;
   double q0;
   double kappa = 0.01;
+  double epsilon = 41.4;
 
   double xi = 0.7;
   double amplitude = -0.2;
@@ -108,7 +114,9 @@ void test_o8m_struct(void) {
   double dq[3][3][3];
   double dsq[3][3];
   double h[3][3];
+  double field[3];
   double value;
+  double e;
 
   coords_nlocal(nlocal);
 
@@ -550,6 +558,131 @@ void test_o8m_struct(void) {
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] -  1.308445e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -5.056451e-03) < TEST_FLOAT_TOLERANCE);
+  info("ok\n");
+
+
+  /* Electric field test */
+
+  /* Default electric field should be zero */
+
+  value = blue_phase_dimensionless_field_strength();
+  info("Dimensionless electric field is initially zero...");
+  test_assert(fabs(value - 0.0) < TEST_DOUBLE_TOLERANCE);
+  info("ok\n");
+
+  field[X] = 0.0;
+  field[Y] = 0.0;
+  field[Z] = 1.0;
+
+  blue_phase_electric_field_set(field);
+  blue_phase_dielectric_anisotropy_set(epsilon);
+
+  e = sqrt(27.0*epsilon*1.0/(32.0*pi_*a0*gamma));
+
+  value = blue_phase_dimensionless_field_strength();
+  info("Electric field (0.0, 0.0, 1.0) gives dimensionless field %14.7e...", e);
+  test_assert(fabs(value - e) < TEST_FLOAT_TOLERANCE);
+  info("ok\n");
+
+  field[X] = 1.0;
+  field[Y] = 1.0;
+  field[Z] = 1.0;
+
+  blue_phase_electric_field_set(field);
+
+  e = sqrt(27.0*epsilon*3.0/(32.0*pi_*a0*gamma));
+
+  value = blue_phase_dimensionless_field_strength();
+  info("Electric field (1.0, 1.0, 1.0) gives dimensionless field %14.7e...", e);
+  test_assert(fabs(value - e) < TEST_FLOAT_TOLERANCE);
+  info("ok\n");
+
+  /* Set dimensionless field to 0.2 for these parameters */
+
+  field[X] = 0.012820969/sqrt(3.0);
+  field[Y] = field[X];
+  field[Z] = field[X];
+
+
+  blue_phase_electric_field_set(field);
+  value = blue_phase_dimensionless_field_strength();
+  info("Set dimensionless field 0.2...");
+  test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
+  info("ok\n");
+
+  /* Check F(1,1,1) */
+
+  gradient_3d_7pt_fluid_init();
+  phi_halo();
+  phi_gradients_compute();
+
+
+  ic = 1;
+  jc = 1;
+  kc = 1;
+  index = coords_index(ic, jc, kc);
+  phi_get_q_tensor(index, q);
+  phi_gradients_tensor_gradient(index, dq);
+  value = blue_phase_compute_fed(q, dq);
+  info("Check F( 1, 1, 1)... %14.7e ", value);
+  test_assert(fabs(value - 6.1626224e-03) < TEST_FLOAT_TOLERANCE);
+  info("ok\n");
+
+  ic = 2;
+  jc = 7;
+  kc = 6;
+  index = coords_index(ic, jc, kc);
+  phi_get_q_tensor(index, q);
+  phi_gradients_tensor_gradient(index, dq);
+  value = blue_phase_compute_fed(q, dq);
+  info("Check F( 2, 7, 6)... %14.7e ", value);
+  test_assert(fabs(value - 6.7087074e-04) < TEST_FLOAT_TOLERANCE);
+  info("ok\n");
+
+  field[X] = 0.012820969;
+  field[Y] = 0.0;
+  field[Z] = 0.0;
+
+  blue_phase_electric_field_set(field);
+  value = blue_phase_dimensionless_field_strength();
+  info("Set dimensionless field again 0.2...");
+  test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
+  info("ok\n");
+
+  ic = 1;
+  jc = 1;
+  kc = 1;
+  index = coords_index(ic, jc, kc);
+  phi_get_q_tensor(index, q);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
+  blue_phase_compute_h(q, dq, dsq, h);
+  info("Check h( 1, 1, 1)...");
+
+  test_assert(fabs(h[X][X] -  1.2034268e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[X][Y] -  1.7119419e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[X][Z] -  1.7119419e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[Y][Y] - -6.0171338e-05) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[Y][Z] -  1.7119419e-02) < TEST_FLOAT_TOLERANCE);
+
+  info("ok\n");
+
+  ic = 2;
+  jc = 7;
+  kc = 6;
+  index = coords_index(ic, jc, kc);
+  phi_get_q_tensor(index, q);
+  phi_gradients_tensor_gradient(index, dq);
+  phi_gradients_tensor_delsq(index, dsq);
+  blue_phase_compute_h(q, dq, dsq, h);
+  info("Check h( 2, 7, 6)...");
+
+  test_assert(fabs(h[X][X] - +5.5362629e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[X][Y] -  0.0000000    ) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[X][Z] -  0.0000000    ) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[Y][Y] - +5.6693334e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[Y][Z] - +2.3299416e-03) < TEST_FLOAT_TOLERANCE);
+
   info("ok\n");
 
   info("Blue phase O8M structure ok\n");
