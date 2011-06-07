@@ -840,6 +840,40 @@ void distribution_zeroth_moment_set_equilibrium(const int index, const int n,
 
 /*****************************************************************************
  *
+ *  distribution_rho_u_set_equilibrium
+ *
+ *  Set equilibrium f_i for a given rho, u using an equilibrium stress.
+ *
+ *****************************************************************************/
+
+void distribution_rho_u_set_equilibrium(const int index, const double rho,
+					const double u[3]) {
+  int ia, ib, p;
+
+  double udotc;
+  double sdotq;
+
+  assert(initialised_);
+  assert(index >= 0 && index < nsite_);
+
+  for (p = 0; p < NVEL; p++) {
+    udotc = 0.0;
+    sdotq = 0.0;
+    for (ia = 0; ia < 3; ia++) {
+      udotc += u[ia]*cv[p][ia];
+      for (ib = 0; ib < 3; ib++) {
+	sdotq += q_[p][ia][ib]*u[ia]*u[ib];
+      }
+    }
+    f_[ndist_*NVEL*index + p]
+       = rho*wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  distribution_index
  *
  *  Return the distribution n at index.

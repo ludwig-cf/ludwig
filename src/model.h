@@ -45,6 +45,8 @@ void   distribution_f_set(const int index, const int p, const int n,
 double distribution_zeroth_moment(const int index, const int n);
 void   distribution_zeroth_moment_set_equilibrium(const int index, const int n,
 						  const double rho);
+void   distribution_rho_u_set_equilibrium(const int index, const double rho,
+					  const double u[3]);
 void   distribution_first_moment(const int index, const int n, double g[3]);
 
 void   distribution_get_stress_at_site(int index, double s[3][3]);
