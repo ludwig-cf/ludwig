@@ -914,29 +914,35 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
     for (j = 1; j<=N_total(Y); j++) {
       for (k = 1; k<=N_total(Z); k++) {
 
-	phase1 = pi_*(0.5 - ran_parallel_uniform());
-	phase2 = pi_*(0.5 - ran_parallel_uniform());
+	if((i>xmin) && (i<xmax) &&
+	   (j>ymin) && (j<ymax) &&
+	   (k>zmin) && (k<zmax))
+	  {
+	    
+	    phase1 = pi_*(0.5 - ran_parallel_uniform());
+	    phase2 = pi_*(0.5 - ran_parallel_uniform());
 
-	/* Only set values if within local box */
-	if((i>offset[X]) && (i<=offset[X] + nlocal[X]) &&
-	   (j>offset[Y]) && (j<=offset[Y] + nlocal[Y]) &&
-	   (k>offset[Z]) && (k<=offset[Z] + nlocal[Z]))
-	    {
-	      index = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
+	    /* Only set values if within local box */
+	    if((i>offset[X]) && (i<=offset[X] + nlocal[X]) &&
+	       (j>offset[Y]) && (j<=offset[Y] + nlocal[Y]) &&
+	       (k>offset[Z]) && (k<=offset[Z] + nlocal[Z]))
+	      {
+		index = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
 	      
-	      n[X] = cos(phase1)*sin(phase2);
-	      n[Y] = sin(phase1)*sin(phase2);
-	      n[Z] = cos(phase2);
+		n[X] = cos(phase1)*sin(phase2);
+		n[Y] = sin(phase1)*sin(phase2);
+		n[Z] = cos(phase2);
 
-	      for (ia = 0; ia < 3; ia++) {
-		for (ib = 0; ib < 3; ib++) {
-		  q[ia][ib] *= 0.00001;
+		for (ia = 0; ia < 3; ia++) {
+		  for (ib = 0; ib < 3; ib++) {
+		    q[ia][ib] *= 0.00001;
+		  }
 		}
-	      }
 
-	      blue_phase_q_uniaxial(n, q);
-	      phi_set_q_tensor(index, q);
-	    }
+		blue_phase_q_uniaxial(n, q);
+		phi_set_q_tensor(index, q);
+	      }
+	  }
       }
     }
   }
