@@ -884,8 +884,8 @@ void blue_set_random_q_init(void) {
  *****************************************************************************/
 
 void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
-				      const double ymin,const double ymax,
-				      const double zmin,const double zmax) {
+				      const double ymin, const double ymax,
+				      const double zmin, const double zmax) {
 
   int i, j, k;
   int nlocal[3];
@@ -900,7 +900,7 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
   double amplitude_local;
 
   coords_nlocal(nlocal);
-  coords_nlocal(offset);
+  coords_nlocal_offset(offset);
   
   /* get the original amplitude 
    * and set the new amplitude for
@@ -909,7 +909,7 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
   amplitude_original = blue_phase_amplitude();
   amplitude_local = 0.00001;
   blue_phase_amplitude_set(amplitude_local);
-  
+  info("jippii \n");
   for (i = 1; i<=N_total(X); i++) {
     for (j = 1; j<=N_total(Y); j++) {
       for (k = 1; k<=N_total(Z); k++) {
@@ -918,10 +918,9 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 	   (j>ymin) && (j<ymax) &&
 	   (k>zmin) && (k<zmax))
 	  {
+	    phase1 = pi_*(0.5 - ran_serial_uniform());
+	    phase2 = pi_*(0.5 - ran_serial_uniform());
 	    
-	    phase1 = pi_*(0.5 - ran_parallel_uniform());
-	    phase2 = pi_*(0.5 - ran_parallel_uniform());
-
 	    /* Only set values if within local box */
 	    if((i>offset[X]) && (i<=offset[X] + nlocal[X]) &&
 	       (j>offset[Y]) && (j<=offset[Y] + nlocal[Y]) &&
