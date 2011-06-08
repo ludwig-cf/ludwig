@@ -137,6 +137,7 @@ static void ludwig_init(void) {
 
   if (get_step() == 0) {
     n = 0;
+    distribution_rt_initial_conditions();
     RUN_get_int_parameter("LE_init_profile", &n);
 
     if (n != 0) model_le_init_shear_profile();
