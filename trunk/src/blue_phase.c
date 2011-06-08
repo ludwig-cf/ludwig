@@ -909,7 +909,7 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
   amplitude_original = blue_phase_amplitude();
   amplitude_local = 0.00001;
   blue_phase_amplitude_set(amplitude_local);
-  info("jippii \n");
+  
   for (i = 1; i<=N_total(X); i++) {
     for (j = 1; j<=N_total(Y); j++) {
       for (k = 1; k<=N_total(Z); k++) {
