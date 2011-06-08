@@ -845,7 +845,7 @@ void blue_set_random_q_init(void) {
   double n[3];
   double q[3][3];
   double phase1, phase2;
-
+  
   coords_nlocal(nlocal);
   
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -872,6 +872,77 @@ void blue_set_random_q_init(void) {
       }
     }
   }
+  
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_set_random_q_rectangle_init
+ *  Setting q tensor to isotropic in chosen area of the simulation box
+ * 
+ *****************************************************************************/
+
+void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
+				      const double ymin,const double ymax,
+				      const double zmin,const double zmax) {
+
+  int i, j, k;
+  int nlocal[3];
+  int offset[3];
+  int index;
+  int ia, ib;
+
+  double n[3];
+  double q[3][3];
+  double phase1, phase2;
+  double amplitude_original;
+  double amplitude_local;
+
+  coords_nlocal(nlocal);
+  coords_nlocal(offset);
+  
+  /* get the original amplitude 
+   * and set the new amplitude for
+   * the local operation 
+   */
+  amplitude_original = blue_phase_amplitude();
+  amplitude_local = 0.00001;
+  blue_phase_amplitude_set(amplitude_local);
+  
+  for (i = 1; i<=N_total(X); i++) {
+    for (j = 1; j<=N_total(Y); j++) {
+      for (k = 1; k<=N_total(Z); k++) {
+
+	phase1 = pi_*(0.5 - ran_parallel_uniform());
+	phase2 = pi_*(0.5 - ran_parallel_uniform());
+
+	/* Only set values if within local box */
+	if((i>offset[X]) && (i<=offset[X] + nlocal[X]) &&
+	   (j>offset[Y]) && (j<=offset[Y] + nlocal[Y]) &&
+	   (k>offset[Z]) && (k<=offset[Z] + nlocal[Z]))
+	    {
+	      index = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
+	      
+	      n[X] = cos(phase1)*sin(phase2);
+	      n[Y] = sin(phase1)*sin(phase2);
+	      n[Z] = cos(phase2);
+
+	      for (ia = 0; ia < 3; ia++) {
+		for (ib = 0; ib < 3; ib++) {
+		  q[ia][ib] *= 0.00001;
+		}
+	      }
+
+	      blue_phase_q_uniaxial(n, q);
+	      phi_set_q_tensor(index, q);
+	    }
+      }
+    }
+  }
+
+  /* set the amplitude to the original value */
+  blue_phase_amplitude_set(amplitude_original);
 
   return;
 }
