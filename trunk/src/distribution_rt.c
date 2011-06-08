@@ -116,11 +116,14 @@ void distribution_rt_initial_conditions(void) {
  *      u_x = U tanh( kappa (y - 1/4))   y <= 1/2
  *      u_x = U tanh( kappa (3/4 - y))   y > 1/2
  *
- *      u_y = delta U sin(2 pi x)
+ *      u_y = delta U sin(2 pi (x + 1/4))
  *
  *      where U is a maximum velocity, kappa is the (inverse) width of
  *      the initial shear layer, and delta is a perturbation.
  *
+ *   The (x + 1/4) is just to move the area of interest into the
+ *   middle of the system.
+ *   
  *   For example, a 'thin' shear layer might have kappa = 80 and delta = 0.05
  *   with Re = rho U L / eta = 10^4.
  *
@@ -136,7 +139,7 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
   int noffset[3];
 
   double rho = 1.0;
-  double u0 = 0.01;
+  double u0 = 0.04;
   double delta = 0.05;
   double kappa = 80.0;
   double u[3];
@@ -153,7 +156,7 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
 
       if (y >  0.5) u[X] = u0*tanh(kappa*(0.75 - y));
       if (y <= 0.5) u[X] = u0*tanh(kappa*(y - 0.25));
-      u[Y] = u0*delta*sin(2.0*pi_*x);
+      u[Y] = u0*delta*sin(2.0*pi_*(x + 0.25));
       u[Z] = 0.0;
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -163,6 +166,13 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
       }
     }
   }
+
+  info("\n");
+  info("Initial distribution: 2d kelvin helmholtz\n");
+  info("Velocity magnitude:   %14.7e\n", u0);
+  info("Shear layer kappa:    %14.7e\n", kappa);
+  info("Perturbation delta:   %14.7e\n", delta);
+  info("\n");
 
   return;
 }
