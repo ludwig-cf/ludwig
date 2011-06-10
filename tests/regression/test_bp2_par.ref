@@ -1,92 +1,7 @@
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,1,0]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,1,0]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,1,1]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,1,1]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,1,2]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,1,2]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,1,3]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,1,3]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,1,4]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,1,4]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,1,5]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,1,5]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,1,6]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,1,7]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,1,6]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,1,7]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
 Welcome to Ludwig (MPI version running on 8 processes)
+
+The SVN revision details are: 1356M
+Note assertions via standard C assert() are on.
 
 Read 78 user parameters from ../tests/regression/test_bp2_input
 
@@ -98,16 +13,18 @@ Tensor order parameter nop = 5
 Requires up to del^2 derivatives so setting nhalo = 2
 
 Liquid crystal blue phase free energy
-Bulk parameter A0:         =  6.90000e-03
-Magnitude of order gamma   =  3.00000e+00
-Pitch wavevector q0        =  1.96350e-01
-... gives pitch length     =  3.20000e+01
-Elastic constant kappa0    =  2.00000e-02
-Elastic constant kappa1    =  2.00000e-02
-Effective aspect ratio xi  =  7.00000e-01
-Chirality                  =  2.00573e+00
-Reduced temperature        =  0.00000e+00
-Initial redshift           =  9.10000e-01
+Bulk parameter A0:         =  6.9000000e-03
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  1.9634950e-01
+... gives pitch length     =  3.2000007e+01
+Elastic constant kappa0    =  2.0000000e-02
+Elastic constant kappa1    =  2.0000000e-02
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  2.0057255e+00
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  9.1000000e-01
+Dynamic redshift update    =             no
+LC activity constant zeta  =  0.0000000e+00
 
 Order parameter dynamics
 ------------------------
@@ -136,7 +53,7 @@ Body force density  0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
 -------------------------------
-Model:            d3q19
+Model:            d3q19  
 Number of sets:   1
 Halo type:        full
 Input format:     binary
@@ -152,12 +69,10 @@ Shear relaxation time:    5.50000e+00
 Bulk relaxation time:     5.50000e+00
 Ghost relaxation time:    1.00000e+00
 [User   ] Random number seed: 8361235
+
 Initialising Q_ab using O2 (amplitude  3.0000000e-01)
 
-Colloid I/O settings
---------------------
-Input format:       ascii serial
-Output format:      ascii
+Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
 
 Gradient calcaulation: 3d_7pt_fluid
 
@@ -186,7 +101,7 @@ Scalars - total mean variance min max
 [phi] -3.5739665e-04 -1.0906880e-08 3.6945029e-02 -3.0131171e-01 3.0131172e-01
 
 Free energy density - timestep total fluid
-[fed]            100  9.1278632e-04  9.1278632e-04
+[fed]            100  9.1278631632e-04  9.1278631632e-04
 
 Momentum - x y z
 [total   ]  4.6380261e-13 -1.7687241e-14  3.8913317e-14
@@ -207,7 +122,7 @@ Scalars - total mean variance min max
 [phi] -3.2114114e-04 -9.8004498e-09 3.2048412e-02 -2.9745597e-01 2.9745597e-01
 
 Free energy density - timestep total fluid
-[fed]            200  5.6248083e-04  5.6248083e-04
+[fed]            200  5.6248083214e-04  5.6248083214e-04
 
 Momentum - x y z
 [total   ]  4.0062745e-13  1.4276774e-14  1.3454515e-14
@@ -228,7 +143,7 @@ Scalars - total mean variance min max
 [phi] -2.9164718e-04 -8.9003656e-09 2.8703152e-02 -2.9360063e-01 2.9360062e-01
 
 Free energy density - timestep total fluid
-[fed]            300  3.6713209e-04  3.6713209e-04
+[fed]            300  3.6713208863e-04  3.6713208863e-04
 
 Momentum - x y z
 [total   ]  3.4922759e-13 -1.8717666e-14 -2.5403291e-14
@@ -249,7 +164,7 @@ Scalars - total mean variance min max
 [phi] -2.6733444e-04 -8.1583997e-09 2.6282083e-02 -2.9141728e-01 2.9141728e-01
 
 Free energy density - timestep total fluid
-[fed]            400  2.4823451e-04  2.4823451e-04
+[fed]            400  2.4823451274e-04  2.4823451274e-04
 
 Momentum - x y z
 [total   ]  3.2557984e-13 -5.5379312e-14 -6.4108441e-14
@@ -270,7 +185,7 @@ Scalars - total mean variance min max
 [phi] -2.4694525e-04 -7.5361711e-09 2.4453173e-02 -2.9002036e-01 2.9002037e-01
 
 Free energy density - timestep total fluid
-[fed]            500  1.7142465e-04  1.7142465e-04
+[fed]            500  1.7142464574e-04  1.7142464574e-04
 
 Momentum - x y z
 [total   ]  3.2699884e-13 -2.6215141e-14 -3.6380621e-14
@@ -291,7 +206,7 @@ Scalars - total mean variance min max
 [phi] -2.2956589e-04 -7.0057950e-09 2.3023773e-02 -2.8883785e-01 2.8883785e-01
 
 Free energy density - timestep total fluid
-[fed]            600  1.1958039e-04  1.1958039e-04
+[fed]            600  1.1958039368e-04  1.1958039368e-04
 
 Momentum - x y z
 [total   ]  2.0627597e-13 -4.4724641e-14 -7.2698791e-14
@@ -312,7 +227,7 @@ Scalars - total mean variance min max
 [phi] -2.1453825e-04 -6.5471878e-09 2.1874970e-02 -2.8808059e-01 2.8808059e-01
 
 Free energy density - timestep total fluid
-[fed]            700  8.3386988e-05  8.3386988e-05
+[fed]            700  8.3386987580e-05  8.3386987580e-05
 
 Momentum - x y z
 [total   ]  2.0232427e-13 -6.7251760e-14 -1.0205725e-13
@@ -333,7 +248,7 @@ Scalars - total mean variance min max
 [phi] -2.0138192e-04 -6.1456884e-09 2.0929813e-02 -2.8881079e-01 2.8881079e-01
 
 Free energy density - timestep total fluid
-[fed]            800  5.7432360e-05  5.7432360e-05
+[fed]            800  5.7432359731e-05  5.7432359731e-05
 
 Momentum - x y z
 [total   ]  2.1045665e-13 -5.1146587e-14 -1.3162388e-13
@@ -354,7 +269,7 @@ Scalars - total mean variance min max
 [phi] -1.8974039e-04 -5.7904171e-09 2.0136583e-02 -2.8931566e-01 2.8931566e-01
 
 Free energy density - timestep total fluid
-[fed]            900  3.8405908e-05  3.8405908e-05
+[fed]            900  3.8405908182e-05  3.8405908182e-05
 
 Momentum - x y z
 [total   ]  2.3949592e-13 -7.5189854e-14 -1.1662893e-13
@@ -375,7 +290,7 @@ Scalars - total mean variance min max
 [phi] -1.7934385e-04 -5.4731398e-09 1.9459421e-02 -2.8973368e-01 2.8973368e-01
 
 Free energy density - timestep total fluid
-[fed]           1000  2.4197329e-05  2.4197329e-05
+[fed]           1000  2.4197328932e-05  2.4197328932e-05
 
 Momentum - x y z
 [total   ]  2.8929290e-13 -6.0337152e-14 -1.3127693e-13
@@ -396,7 +311,7 @@ Scalars - total mean variance min max
 [phi] -1.6998487e-04 -5.1875266e-09 1.8872791e-02 -2.9027645e-01 2.9027645e-01
 
 Free energy density - timestep total fluid
-[fed]           1100  1.3415507e-05  1.3415507e-05
+[fed]           1100  1.3415507298e-05  1.3415507298e-05
 
 Momentum - x y z
 [total   ]  3.3209893e-13 -6.1430028e-14 -1.5330098e-13
@@ -417,7 +332,7 @@ Scalars - total mean variance min max
 [phi] -1.6150101e-04 -4.9286196e-09 1.8358125e-02 -2.9059133e-01 2.9059133e-01
 
 Free energy density - timestep total fluid
-[fed]           1200  5.1176875e-06  5.1176875e-06
+[fed]           1200  5.1176875259e-06  5.1176875259e-06
 
 Momentum - x y z
 [total   ]  2.7458244e-13 -9.6176539e-14 -1.6612406e-13
@@ -438,7 +353,7 @@ Scalars - total mean variance min max
 [phi] -1.5376258e-04 -4.6924616e-09 1.7901637e-02 -2.9071213e-01 2.9071213e-01
 
 Free energy density - timestep total fluid
-[fed]           1300 -1.3499452e-06 -1.3499452e-06
+[fed]           1300 -1.3499451637e-06 -1.3499451637e-06
 
 Momentum - x y z
 [total   ]  2.9857367e-13 -1.1809650e-13 -1.9288043e-13
@@ -459,7 +374,7 @@ Scalars - total mean variance min max
 [phi] -1.4666524e-04 -4.4758680e-09 1.7492910e-02 -2.9066705e-01 2.9066705e-01
 
 Free energy density - timestep total fluid
-[fed]           1400 -6.4497578e-06 -6.4497578e-06
+[fed]           1400 -6.4497577656e-06 -6.4497577656e-06
 
 Momentum - x y z
 [total   ]  2.9157579e-13 -1.2538234e-13 -1.7372215e-13
@@ -480,7 +395,7 @@ Scalars - total mean variance min max
 [phi] -1.4012401e-04 -4.2762453e-09 1.7123937e-02 -2.9048106e-01 2.9048106e-01
 
 Free energy density - timestep total fluid
-[fed]           1500 -1.0514259e-05 -1.0514259e-05
+[fed]           1500 -1.0514258937e-05 -1.0514258937e-05
 
 Momentum - x y z
 [total   ]  2.6420879e-13 -1.8667706e-13 -1.7557483e-13
@@ -493,7 +408,7 @@ Velocity - x y z
 Completed cycle 1500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.5042679e-09  0.99951246607 1.00009531075
+[rho]       32768.00  1.00000000000 7.5042674e-09  0.99951246607 1.00009531075
 [phi] -1.7121661e+00 -5.2251162e-05 3.0266817e-02 -2.2014067e-01 4.0316136e-01
 [phi] -1.3657812e-04 -4.1680334e-09 1.6817310e-02 -2.9074552e-01 2.9074552e-01
 [phi] -1.3569803e-04 -4.1411751e-09 1.6788475e-02 -2.9017575e-01 2.9017575e-01
@@ -501,7 +416,7 @@ Scalars - total mean variance min max
 [phi] -1.3406904e-04 -4.0914624e-09 1.6788475e-02 -2.9017575e-01 2.9017575e-01
 
 Free energy density - timestep total fluid
-[fed]           1600 -1.3786079e-05 -1.3786079e-05
+[fed]           1600 -1.3786078698e-05 -1.3786078698e-05
 
 Momentum - x y z
 [total   ]  3.2229081e-13 -1.7949878e-13 -1.7807283e-13
@@ -522,7 +437,7 @@ Scalars - total mean variance min max
 [phi] -1.2844241e-04 -3.9197513e-09 1.6481590e-02 -2.8976995e-01 2.8976995e-01
 
 Free energy density - timestep total fluid
-[fed]           1700 -1.6444551e-05 -1.6444551e-05
+[fed]           1700 -1.6444551245e-05 -1.6444551245e-05
 
 Momentum - x y z
 [total   ]  3.3302527e-13 -1.6221399e-13 -1.4684781e-13
@@ -543,7 +458,7 @@ Scalars - total mean variance min max
 [phi] -1.2319568e-04 -3.7596339e-09 1.6199331e-02 -2.8928028e-01 2.8928028e-01
 
 Free energy density - timestep total fluid
-[fed]           1800 -1.8623759e-05 -1.8623759e-05
+[fed]           1800 -1.8623758826e-05 -1.8623758826e-05
 
 Momentum - x y z
 [total   ]  2.8357178e-13 -1.7204294e-13 -1.5784596e-13
@@ -556,7 +471,7 @@ Velocity - x y z
 Completed cycle 1800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.5030211e-09  0.99961907330 1.00008437690
+[rho]       32768.00  1.00000000000 4.5030213e-09  0.99961907330 1.00008437690
 [phi] -1.9465715e+00 -5.9404648e-05 2.8766961e-02 -2.0863777e-01 3.9592981e-01
 [phi] -1.2065042e-04 -3.6819586e-09 1.5961996e-02 -2.8925882e-01 2.8925882e-01
 [phi] -1.1979286e-04 -3.6557880e-09 1.5938496e-02 -2.8872124e-01 2.8872124e-01
@@ -564,7 +479,7 @@ Scalars - total mean variance min max
 [phi] -1.1828795e-04 -3.6098618e-09 1.5938496e-02 -2.8872124e-01 2.8872124e-01
 
 Free energy density - timestep total fluid
-[fed]           1900 -2.0425000e-05 -2.0425000e-05
+[fed]           1900 -2.0424999983e-05 -2.0424999983e-05
 
 Momentum - x y z
 [total   ]  2.5388372e-13 -1.8013022e-13 -1.7136292e-13
@@ -585,7 +500,7 @@ Scalars - total mean variance min max
 [phi] -1.1368435e-04 -3.4693710e-09 1.5696462e-02 -2.8810546e-01 2.8810546e-01
 
 Free energy density - timestep total fluid
-[fed]           2000 -2.1925542e-05 -2.1925542e-05
+[fed]           2000 -2.1925541687e-05 -2.1925541687e-05
 
 Momentum - x y z
 [total   ]  2.6004546e-13 -1.6704346e-13 -1.9100693e-13
@@ -606,7 +521,7 @@ Scalars - total mean variance min max
 [phi] -1.0935503e-04 -3.3372507e-09 1.5471058e-02 -2.8744389e-01 2.8744389e-01
 
 Free energy density - timestep total fluid
-[fed]           2100 -2.3184848e-05 -2.3184848e-05
+[fed]           2100 -2.3184847823e-05 -2.3184847823e-05
 
 Momentum - x y z
 [total   ]  2.6525657e-13 -1.4897111e-13 -1.9222124e-13
@@ -619,7 +534,7 @@ Velocity - x y z
 Completed cycle 2100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 2.9263498e-09  0.99969899373 1.00007547059
+[rho]       32768.00  1.00000000000 2.9263496e-09  0.99969899373 1.00007547059
 [phi] -2.0545839e+00 -6.2700925e-05 2.7575615e-02 -2.0022596e-01 3.8994653e-01
 [phi] -1.0746360e-04 -3.2795288e-09 1.5280404e-02 -2.8725216e-01 2.8725216e-01
 [phi] -1.0665853e-04 -3.2549601e-09 1.5260466e-02 -2.8674606e-01 2.8674606e-01
@@ -627,7 +542,7 @@ Scalars - total mean variance min max
 [phi] -1.0527432e-04 -3.2127173e-09 1.5260466e-02 -2.8674606e-01 2.8674606e-01
 
 Free energy density - timestep total fluid
-[fed]           2200 -2.4249066e-05 -2.4249066e-05
+[fed]           2200 -2.4249065881e-05 -2.4249065881e-05
 
 Momentum - x y z
 [total   ]  2.7373936e-13 -1.5258281e-13 -1.9734214e-13
@@ -648,7 +563,7 @@ Scalars - total mean variance min max
 [phi] -1.0141995e-04 -3.0950912e-09 1.5063154e-02 -2.8602019e-01 2.8602019e-01
 
 Free energy density - timestep total fluid
-[fed]           2300 -2.5154295e-05 -2.5154295e-05
+[fed]           2300 -2.5154294604e-05 -2.5154294604e-05
 
 Momentum - x y z
 [total   ]  2.6570413e-13 -1.5828311e-13 -2.6040975e-13
@@ -661,7 +576,7 @@ Velocity - x y z
 Completed cycle 2300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 2.2627478e-09  0.99974128278 1.00007009699
+[rho]       32768.00  1.00000000000 2.2627482e-09  0.99974128278 1.00007009699
 [phi] -2.0773505e+00 -6.3395707e-05 2.6902697e-02 -1.9580723e-01 3.8645268e-01
 [phi] -9.9840677e-05 -3.0468957e-09 1.4895996e-02 -2.8576176e-01 2.8576176e-01
 [phi] -9.9079672e-05 -3.0236716e-09 1.4877814e-02 -2.8527337e-01 2.8527337e-01
@@ -669,7 +584,7 @@ Scalars - total mean variance min max
 [phi] -9.7772496e-05 -2.9837798e-09 1.4877814e-02 -2.8527337e-01 2.8527337e-01
 
 Free energy density - timestep total fluid
-[fed]           2400 -2.5928987e-05 -2.5928987e-05
+[fed]           2400 -2.5928987265e-05 -2.5928987265e-05
 
 Momentum - x y z
 [total   ]  1.8864424e-13 -1.9181531e-13 -2.5589253e-13
@@ -690,7 +605,7 @@ Scalars - total mean variance min max
 [phi] -9.4314927e-05 -2.8782632e-09 1.4703325e-02 -2.8451172e-01 2.8451172e-01
 
 Free energy density - timestep total fluid
-[fed]           2500 -2.6595736e-05 -2.6595736e-05
+[fed]           2500 -2.6595735730e-05 -2.6595735730e-05
 
 Momentum - x y z
 [total   ]  2.1748575e-13 -1.9415719e-13 -2.4385355e-13
@@ -703,7 +618,7 @@ Velocity - x y z
 Completed cycle 2500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.7792405e-09  0.99977672307 1.00006503569
+[rho]       32768.00  1.00000000000 1.7792403e-09  0.99977672307 1.00006503569
 [phi] -2.0719722e+00 -6.3231574e-05 2.6304889e-02 -1.9209536e-01 3.8327583e-01
 [phi] -9.2979182e-05 -2.8374994e-09 1.4555490e-02 -2.8421414e-01 2.8421414e-01
 [phi] -9.2265261e-05 -2.8157123e-09 1.4538716e-02 -2.8374048e-01 2.8374048e-01
@@ -711,7 +626,7 @@ Scalars - total mean variance min max
 [phi] -9.1032213e-05 -2.7780827e-09 1.4538716e-02 -2.8374048e-01 2.8374048e-01
 
 Free energy density - timestep total fluid
-[fed]           2600 -2.7172605e-05 -2.7172605e-05
+[fed]           2600 -2.7172605335e-05 -2.7172605335e-05
 
 Momentum - x y z
 [total   ]  2.1866189e-13 -2.0959623e-13 -2.2672836e-13
@@ -724,7 +639,7 @@ Velocity - x y z
 Completed cycle 2600
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.5853316e-09  0.99979228418 1.00006260805
+[rho]       32768.00  1.00000000000 1.5853314e-09  0.99979228418 1.00006260805
 [phi] -2.0610962e+00 -6.2899665e-05 2.6029947e-02 -1.9102866e-01 3.8179096e-01
 [phi] -8.9798261e-05 -2.7404254e-09 1.4399314e-02 -2.8343147e-01 2.8343147e-01
 [phi] -8.9108166e-05 -2.7193654e-09 1.4383143e-02 -2.8296414e-01 2.8296414e-01
@@ -732,7 +647,7 @@ Scalars - total mean variance min max
 [phi] -8.7911041e-05 -2.6828320e-09 1.4383143e-02 -2.8296414e-01 2.8296414e-01
 
 Free energy density - timestep total fluid
-[fed]           2700 -2.7674141e-05 -2.7674141e-05
+[fed]           2700 -2.7674141372e-05 -2.7674141372e-05
 
 Momentum - x y z
 [total   ]  1.9172164e-13 -2.2646815e-13 -2.5299901e-13
@@ -745,7 +660,7 @@ Velocity - x y z
 Completed cycle 2700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.4161967e-09  0.99980658924 1.00006024529
+[rho]       32768.00  1.00000000000 1.4161969e-09  0.99980658924 1.00006024529
 [phi] -2.0458065e+00 -6.2433059e-05 2.5769188e-02 -1.9091298e-01 3.8036854e-01
 [phi] -8.6767974e-05 -2.6479484e-09 1.4251488e-02 -2.8264813e-01 2.8264813e-01
 [phi] -8.6101551e-05 -2.6276108e-09 1.4235863e-02 -2.8218649e-01 2.8218649e-01
@@ -753,7 +668,7 @@ Scalars - total mean variance min max
 [phi] -8.4939563e-05 -2.5921497e-09 1.4235863e-02 -2.8218649e-01 2.8218649e-01
 
 Free energy density - timestep total fluid
-[fed]           2800 -2.8112134e-05 -2.8112134e-05
+[fed]           2800 -2.8112133712e-05 -2.8112133712e-05
 
 Momentum - x y z
 [total   ]  1.9101040e-13 -2.2563895e-13 -2.3263336e-13
@@ -766,7 +681,7 @@ Velocity - x y z
 Completed cycle 2800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.2678687e-09  0.99981975752 1.00005819827
+[rho]       32768.00  1.00000000000 1.2678691e-09  0.99981975752 1.00005819827
 [phi] -2.0267685e+00 -6.1852066e-05 2.5521483e-02 -1.9084671e-01 3.7900436e-01
 [phi] -8.3877951e-05 -2.5597519e-09 1.4111351e-02 -2.8186731e-01 2.8186731e-01
 [phi] -8.3234828e-05 -2.5401254e-09 1.4096222e-02 -2.8141078e-01 2.8141078e-01
@@ -774,7 +689,7 @@ Scalars - total mean variance min max
 [phi] -8.2107196e-05 -2.5057128e-09 1.4096222e-02 -2.8141078e-01 2.8141078e-01
 
 Free energy density - timestep total fluid
-[fed]           2900 -2.8496201e-05 -2.8496201e-05
+[fed]           2900 -2.8496201361e-05 -2.8496201361e-05
 
 Momentum - x y z
 [total   ]  1.9696397e-13 -2.4538011e-13 -2.2635366e-13
@@ -787,7 +702,7 @@ Velocity - x y z
 Completed cycle 2900
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1371850e-09  0.99983189603 1.00005663321
+[rho]       32768.00  1.00000000000 1.1371852e-09  0.99983189603 1.00005663321
 [phi] -2.0045660e+00 -6.1174499e-05 2.5285839e-02 -1.9073510e-01 3.7769466e-01
 [phi] -8.1118859e-05 -2.4755511e-09 1.3978317e-02 -2.8109165e-01 2.8109165e-01
 [phi] -8.0498533e-05 -2.4566203e-09 1.3963639e-02 -2.8063974e-01 2.8063974e-01
@@ -795,7 +710,7 @@ Scalars - total mean variance min max
 [phi] -7.9404401e-05 -2.4232300e-09 1.3963639e-02 -2.8063974e-01 2.8063974e-01
 
 Free energy density - timestep total fluid
-[fed]           3000 -2.8834242e-05 -2.8834242e-05
+[fed]           3000 -2.8834242287e-05 -2.8834242287e-05
 
 Momentum - x y z
 [total   ]  1.5635757e-13 -2.7541511e-13 -2.3007291e-13
@@ -816,7 +731,7 @@ Scalars - total mean variance min max
 [phi] -7.6822605e-05 -2.3444398e-09 1.3837595e-02 -2.7987565e-01 2.7987565e-01
 
 Free energy density - timestep total fluid
-[fed]           3100 -2.9132782e-05 -2.9132782e-05
+[fed]           3100 -2.9132781687e-05 -2.9132781687e-05
 
 Momentum - x y z
 [total   ]  1.3797644e-13 -2.9455952e-13 -2.1332242e-13
@@ -837,7 +752,7 @@ Scalars - total mean variance min max
 [phi] -7.4354071e-05 -2.2691062e-09 1.3717628e-02 -2.7912043e-01 2.7912043e-01
 
 Free energy density - timestep total fluid
-[fed]           3200 -2.9397243e-05 -2.9397243e-05
+[fed]           3200 -2.9397243277e-05 -2.9397243277e-05
 
 Momentum - x y z
 [total   ]  1.4368368e-13 -2.9514932e-13 -2.1679186e-13
@@ -858,7 +773,7 @@ Scalars - total mean variance min max
 [phi] -7.1991778e-05 -2.1970147e-09 1.3603318e-02 -2.7837565e-01 2.7837565e-01
 
 Free energy density - timestep total fluid
-[fed]           3300 -2.9632162e-05 -2.9632162e-05
+[fed]           3300 -2.9632161771e-05 -2.9632161771e-05
 
 Momentum - x y z
 [total   ]  1.5525775e-13 -2.6920827e-13 -2.6170038e-13
@@ -871,7 +786,7 @@ Velocity - x y z
 Completed cycle 3300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.4604833e-10  0.99987191943 1.00004988792
+[rho]       32768.00  1.00000000000 7.4604856e-10  0.99987191943 1.00004988792
 [phi] -1.8934148e+00 -5.7782434e-05 2.4447673e-02 -1.8996602e-01 3.7293871e-01
 [phi] -7.1234545e-05 -2.1739058e-09 1.3507511e-02 -2.7808002e-01 2.7808002e-01
 [phi] -7.0697995e-05 -2.1575316e-09 1.3494288e-02 -2.7764261e-01 2.7764261e-01
@@ -879,7 +794,7 @@ Scalars - total mean variance min max
 [phi] -6.9729320e-05 -2.1279700e-09 1.3494288e-02 -2.7764261e-01 2.7764261e-01
 
 Free energy density - timestep total fluid
-[fed]           3400 -2.9841350e-05 -2.9841350e-05
+[fed]           3400 -2.9841350281e-05 -2.9841350281e-05
 
 Momentum - x y z
 [total   ]  1.7269172e-13 -3.0703218e-13 -2.6005587e-13
@@ -900,7 +815,7 @@ Scalars - total mean variance min max
 [phi] -6.7560842e-05 -2.0617933e-09 1.3390195e-02 -2.7692234e-01 2.7692234e-01
 
 Free energy density - timestep total fluid
-[fed]           3500 -3.0028033e-05 -3.0028033e-05
+[fed]           3500 -3.0028032854e-05 -3.0028032854e-05
 
 Momentum - x y z
 [total   ]  1.9467761e-13 -3.1227451e-13 -2.7010338e-13
@@ -913,7 +828,7 @@ Velocity - x y z
 Completed cycle 3500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.0775274e-10  0.99988781474 1.00004643507
+[rho]       32768.00  1.00000000000 6.0775296e-10  0.99988781474 1.00004643507
 [phi] -1.8294250e+00 -5.5829620e-05 2.4082089e-02 -1.8945648e-01 3.7081460e-01
 [phi] -6.6892037e-05 -2.0413830e-09 1.3303386e-02 -2.7664747e-01 2.7664747e-01
 [phi] -6.6391866e-05 -2.0261189e-09 1.3290728e-02 -2.7621567e-01 2.7621567e-01
@@ -921,7 +836,7 @@ Scalars - total mean variance min max
 [phi] -6.5480997e-05 -1.9983214e-09 1.3290728e-02 -2.7621567e-01 2.7621567e-01
 
 Free energy density - timestep total fluid
-[fed]           3600 -3.0194950e-05 -3.0194950e-05
+[fed]           3600 -3.0194950009e-05 -3.0194950009e-05
 
 Momentum - x y z
 [total   ]  1.2071941e-13 -2.7589389e-13 -2.7294139e-13
@@ -942,7 +857,7 @@ Scalars - total mean variance min max
 [phi] -6.3484857e-05 -1.9374041e-09 1.3195603e-02 -2.7552325e-01 2.7552325e-01
 
 Free energy density - timestep total fluid
-[fed]           3700 -3.0344443e-05 -3.0344443e-05
+[fed]           3700 -3.0344443201e-05 -3.0344443201e-05
 
 Momentum - x y z
 [total   ]  1.4046056e-13 -2.0455859e-13 -2.1471019e-13
@@ -955,7 +870,7 @@ Velocity - x y z
 Completed cycle 3700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.9641447e-10  0.99990156946 1.00004303647
+[rho]       32768.00  1.00000000000 4.9641469e-10  0.99990156946 1.00004303647
 [phi] -1.7626148e+00 -5.3790735e-05 2.3746603e-02 -1.8890109e-01 3.6883740e-01
 [phi] -6.2891851e-05 -1.9193070e-09 1.3116729e-02 -2.7527239e-01 2.7527239e-01
 [phi] -6.2423977e-05 -1.9050286e-09 1.3104558e-02 -2.7484556e-01 2.7484556e-01
@@ -963,7 +878,7 @@ Scalars - total mean variance min max
 [phi] -6.1567889e-05 -1.8789029e-09 1.3104558e-02 -2.7484556e-01 2.7484556e-01
 
 Free energy density - timestep total fluid
-[fed]           3800 -3.0478523e-05 -3.0478523e-05
+[fed]           3800 -3.0478522775e-05 -3.0478522775e-05
 
 Momentum - x y z
 [total   ]  1.6256788e-13 -1.4773599e-13 -1.8261781e-13
@@ -984,7 +899,7 @@ Scalars - total mean variance min max
 [phi] -5.9725895e-05 -1.8226897e-09 1.3017354e-02 -2.7418296e-01 2.7418296e-01
 
 Free energy density - timestep total fluid
-[fed]           3900 -3.0598923e-05 -3.0598923e-05
+[fed]           3900 -3.0598922901e-05 -3.0598922901e-05
 
 Momentum - x y z
 [total   ]  1.7956123e-13 -1.2461907e-13 -1.4750701e-13
@@ -997,7 +912,7 @@ Velocity - x y z
 Completed cycle 3900
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.0638160e-10  0.99991353142 1.00003974057
+[rho]       32768.00  1.00000000000 4.0638137e-10  0.99991353142 1.00003974057
 [phi] -1.6944413e+00 -5.1710246e-05 2.3437897e-02 -1.8831908e-01 3.6699344e-01
 [phi] -5.9198830e-05 -1.8066049e-09 1.2945523e-02 -2.7395792e-01 2.7395792e-01
 [phi] -5.8759121e-05 -1.7931861e-09 1.2933773e-02 -2.7353568e-01 2.7353568e-01
@@ -1005,7 +920,7 @@ Scalars - total mean variance min max
 [phi] -5.7954984e-05 -1.7686457e-09 1.2933773e-02 -2.7353568e-01 2.7353568e-01
 
 Free energy density - timestep total fluid
-[fed]           4000 -3.0707146e-05 -3.0707146e-05
+[fed]           4000 -3.0707146228e-05 -3.0707146228e-05
 
 Momentum - x y z
 [total   ]  1.6658896e-13 -1.4352061e-13 -1.9425433e-13
@@ -1018,7 +933,7 @@ Velocity - x y z
 Completed cycle 4000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 3.6797698e-10  0.99991893078 1.00003814132
+[rho]       32768.00  1.00000000000 3.6797676e-10  0.99991893078 1.00003814132
 [phi] -1.6601955e+00 -5.0665146e-05 2.3292691e-02 -1.8802269e-01 3.6611767e-01
 [phi] -5.7457868e-05 -1.7534750e-09 1.2865169e-02 -2.7332389e-01 2.7332389e-01
 [phi] -5.7030737e-05 -1.7404400e-09 1.2853609e-02 -2.7290385e-01 2.7290385e-01
@@ -1026,7 +941,7 @@ Scalars - total mean variance min max
 [phi] -5.6251537e-05 -1.7166607e-09 1.2853609e-02 -2.7290385e-01 2.7290385e-01
 
 Free energy density - timestep total fluid
-[fed]           4100 -3.0804500e-05 -3.0804500e-05
+[fed]           4100 -3.0804500350e-05 -3.0804500350e-05
 
 Momentum - x y z
 [total   ]  1.4339571e-13 -1.4410695e-13 -2.0028423e-13
@@ -1039,7 +954,7 @@ Velocity - x y z
 Completed cycle 4100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 3.3337488e-10  0.99992398423 1.00003657830
+[rho]       32768.00  1.00000000000 3.3337466e-10  0.99992398423 1.00003657830
 [phi] -1.6259934e+00 -4.9621381e-05 2.3153159e-02 -1.8772465e-01 3.6527091e-01
 [phi] -5.5782653e-05 -1.7023515e-09 1.2788058e-02 -2.7270539e-01 2.7270539e-01
 [phi] -5.5367133e-05 -1.6896708e-09 1.2776677e-02 -2.7228752e-01 2.7228752e-01
@@ -1047,7 +962,7 @@ Scalars - total mean variance min max
 [phi] -5.4612190e-05 -1.6666318e-09 1.2776677e-02 -2.7228752e-01 2.7228752e-01
 
 Free energy density - timestep total fluid
-[fed]           4200 -3.0892128e-05 -3.0892128e-05
+[fed]           4200 -3.0892127733e-05 -3.0892127733e-05
 
 Momentum - x y z
 [total   ]  1.7730262e-13 -1.6003518e-13 -1.7897489e-13
@@ -1060,7 +975,7 @@ Velocity - x y z
 Completed cycle 4200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 3.0219316e-10  0.99992871954 1.00003505347
+[rho]       32768.00  1.00000000000 3.0219294e-10  0.99992871954 1.00003505347
 [phi] -1.5919276e+00 -4.8581776e-05 2.3019011e-02 -1.8742617e-01 3.6445190e-01
 [phi] -5.4170005e-05 -1.6531374e-09 1.2714015e-02 -2.7210239e-01 2.7210239e-01
 [phi] -5.3765163e-05 -1.6407826e-09 1.2702801e-02 -2.7168668e-01 2.7168668e-01
@@ -1068,7 +983,7 @@ Scalars - total mean variance min max
 [phi] -5.3033807e-05 -1.6184633e-09 1.2702801e-02 -2.7168668e-01 2.7168668e-01
 
 Free energy density - timestep total fluid
-[fed]           4300 -3.0971030e-05 -3.0971030e-05
+[fed]           4300 -3.0971030382e-05 -3.0971030382e-05
 
 Momentum - x y z
 [total   ]  1.9784521e-13 -1.6511098e-13 -1.6663060e-13
@@ -1081,7 +996,7 @@ Velocity - x y z
 Completed cycle 4300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 2.7409386e-10  0.99993316183 1.00003356820
+[rho]       32768.00  1.00000000000 2.7409408e-10  0.99993316183 1.00003356820
 [phi] -1.5580773e+00 -4.7548746e-05 2.2889978e-02 -1.8712827e-01 3.6365949e-01
 [phi] -5.2616952e-05 -1.6057419e-09 1.2642878e-02 -2.7151479e-01 2.7151479e-01
 [phi] -5.2221880e-05 -1.5936853e-09 1.2631822e-02 -2.7110123e-01 2.7110124e-01
@@ -1089,7 +1004,7 @@ Scalars - total mean variance min max
 [phi] -5.1513466e-05 -1.5720662e-09 1.2631822e-02 -2.7110123e-01 2.7110123e-01
 
 Free energy density - timestep total fluid
-[fed]           4400 -3.1042090e-05 -3.1042090e-05
+[fed]           4400 -3.1042090287e-05 -3.1042090287e-05
 
 Momentum - x y z
 [total   ]  2.1320792e-13 -1.4899540e-13 -1.6145418e-13
@@ -1102,7 +1017,7 @@ Velocity - x y z
 Completed cycle 4400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 2.4876745e-10  0.99993733388 1.00003212346
+[rho]       32768.00  1.00000000000 2.4876790e-10  0.99993733388 1.00003212346
 [phi] -1.5245098e+00 -4.6524346e-05 2.2765809e-02 -1.8683182e-01 3.6289256e-01
 [phi] -5.1120702e-05 -1.5600800e-09 1.2574496e-02 -2.7094246e-01 2.7094246e-01
 [phi] -5.0734530e-05 -1.5482950e-09 1.2563589e-02 -2.7053106e-01 2.7053106e-01
@@ -1110,7 +1025,7 @@ Scalars - total mean variance min max
 [phi] -5.0048425e-05 -1.5273567e-09 1.2563589e-02 -2.7053106e-01 2.7053106e-01
 
 Free energy density - timestep total fluid
-[fed]           4500 -3.1106086e-05 -3.1106086e-05
+[fed]           4500 -3.1106086433e-05 -3.1106086433e-05
 
 Momentum - x y z
 [total   ]  2.6588107e-13 -1.4463777e-13 -1.4321183e-13
@@ -1131,7 +1046,7 @@ Scalars - total mean variance min max
 [phi] -4.8636116e-05 -1.4842565e-09 1.2497962e-02 -2.6997598e-01 2.6997598e-01
 
 Free energy density - timestep total fluid
-[fed]           4600 -3.1163709e-05 -3.1163709e-05
+[fed]           4600 -3.1163709030e-05 -3.1163709030e-05
 
 Momentum - x y z
 [total   ]  2.9272071e-13 -1.5433835e-13 -1.3281737e-13
@@ -1152,7 +1067,7 @@ Scalars - total mean variance min max
 [phi] -4.7274117e-05 -1.4426916e-09 1.2434812e-02 -2.6943578e-01 2.6943578e-01
 
 Free energy density - timestep total fluid
-[fed]           4700 -3.1215571e-05 -3.1215571e-05
+[fed]           4700 -3.1215571469e-05 -3.1215571469e-05
 
 Momentum - x y z
 [total   ]  3.3225506e-13 -1.8612889e-13 -1.4843682e-13
@@ -1165,7 +1080,7 @@ Velocity - x y z
 Completed cycle 4700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.8688984e-10  0.99994842711 1.00002803636
+[rho]       32768.00  1.00000000000 1.8688961e-10  0.99994842711 1.00002803636
 [phi] -1.4260306e+00 -4.3519000e-05 2.2420208e-02 -1.8595803e-01 3.6073470e-01
 [phi] -4.6947338e-05 -1.4327190e-09 1.2384521e-02 -2.6931502e-01 2.6931502e-01
 [phi] -4.6583084e-05 -1.4216029e-09 1.2374017e-02 -2.6891023e-01 2.6891024e-01
@@ -1173,7 +1088,7 @@ Scalars - total mean variance min max
 [phi] -4.5960156e-05 -1.4025927e-09 1.2374017e-02 -2.6891023e-01 2.6891023e-01
 
 Free energy density - timestep total fluid
-[fed]           4800 -3.1262220e-05 -3.1262220e-05
+[fed]           4800 -3.1262220401e-05 -3.1262220401e-05
 
 Momentum - x y z
 [total   ]  3.6742484e-13 -1.7967572e-13 -1.4117180e-13
@@ -1186,7 +1101,7 @@ Velocity - x y z
 Completed cycle 4800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.7023383e-10  0.99995170819 1.00002675632
+[rho]       32768.00  1.00000000000 1.7023360e-10  0.99995170819 1.00002675632
 [phi] -1.3940805e+00 -4.2543959e-05 2.2313290e-02 -1.8567371e-01 3.6005997e-01
 [phi] -4.5653597e-05 -1.3932372e-09 1.2325846e-02 -2.6880159e-01 2.6880159e-01
 [phi] -4.5295208e-05 -1.3823000e-09 1.2315463e-02 -2.6839907e-01 2.6839907e-01
@@ -1194,7 +1109,7 @@ Scalars - total mean variance min max
 [phi] -4.4692103e-05 -1.3638947e-09 1.2315463e-02 -2.6839907e-01 2.6839907e-01
 
 Free energy density - timestep total fluid
-[fed]           4900 -3.1304144e-05 -3.1304144e-05
+[fed]           4900 -3.1304144281e-05 -3.1304144281e-05
 
 Momentum - x y z
 [total   ]  3.0237271e-13 -1.6264420e-13 -1.4963725e-13
@@ -1208,7 +1123,7 @@ Completed cycle 4900
 Writing phi file at step 5000!
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.5525958e-10  0.99995480597 1.00002551676
+[rho]       32768.00  1.00000000000 1.5525981e-10  0.99995480597 1.00002551676
 [phi] -1.3626192e+00 -4.1583838e-05 2.2210200e-02 -1.8539354e-01 3.5940610e-01
 [phi] -4.4405000e-05 -1.3551331e-09 1.2269312e-02 -2.6830223e-01 2.6830223e-01
 [phi] -4.4051825e-05 -1.3443550e-09 1.2259045e-02 -2.6790202e-01 2.6790202e-01
@@ -1216,7 +1131,7 @@ Scalars - total mean variance min max
 [phi] -4.3467942e-05 -1.3265363e-09 1.2259045e-02 -2.6790202e-01 2.6790202e-01
 
 Free energy density - timestep total fluid
-[fed]           5000 -3.1341781e-05 -3.1341781e-05
+[fed]           5000 -3.1341780637e-05 -3.1341780637e-05
 
 Momentum - x y z
 [total   ]  2.7567879e-13 -1.7066903e-13 -1.5231566e-13
@@ -1229,7 +1144,7 @@ Velocity - x y z
 Completed cycle 5000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.4180257e-10  0.99995773360 1.00002431708
+[rho]       32768.00  1.00000000000 1.4180279e-10  0.99995773360 1.00002431708
 [phi] -1.3316690e+00 -4.0639311e-05 2.2110766e-02 -1.8511781e-01 3.5877231e-01
 [phi] -4.3199596e-05 -1.3183470e-09 1.2214817e-02 -2.6781664e-01 2.6781664e-01
 [phi] -4.2851019e-05 -1.3077093e-09 1.2204662e-02 -2.6741878e-01 2.6741878e-01
@@ -1237,7 +1152,7 @@ Scalars - total mean variance min max
 [phi] -4.2285782e-05 -1.2904597e-09 1.2204662e-02 -2.6741878e-01 2.6741878e-01
 
 Free energy density - timestep total fluid
-[fed]           5100 -3.1375522e-05 -3.1375522e-05
+[fed]           5100 -3.1375522277e-05 -3.1375522277e-05
 
 Momentum - x y z
 [total   ]  2.6249489e-13 -2.2776572e-13 -1.5334956e-13
@@ -1250,7 +1165,7 @@ Velocity - x y z
 Completed cycle 5100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.2972734e-10  0.99996050307 1.00002315654
+[rho]       32768.00  1.00000000000 1.2972712e-10  0.99996050307 1.00002315654
 [phi] -1.3012472e+00 -3.9710913e-05 2.2014829e-02 -1.8484677e-01 3.5815785e-01
 [phi] -4.2035537e-05 -1.2828228e-09 1.2162269e-02 -2.6734453e-01 2.6734453e-01
 [phi] -4.1690989e-05 -1.2723080e-09 1.2152220e-02 -2.6694906e-01 2.6694906e-01
@@ -1258,7 +1173,7 @@ Scalars - total mean variance min max
 [phi] -4.1143822e-05 -1.2556098e-09 1.2152220e-02 -2.6694906e-01 2.6694906e-01
 
 Free energy density - timestep total fluid
-[fed]           5200 -3.1405723e-05 -3.1405723e-05
+[fed]           5200 -3.1405722617e-05 -3.1405722617e-05
 
 Momentum - x y z
 [total   ]  2.7047808e-13 -1.7170987e-13 -1.2709972e-13
@@ -1271,7 +1186,7 @@ Velocity - x y z
 Completed cycle 5200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1890688e-10  0.99996312537 1.00002203434
+[rho]       32768.00  1.00000000000 1.1890666e-10  0.99996312537 1.00002203434
 [phi] -1.2713675e+00 -3.8799056e-05 2.1922236e-02 -1.8458059e-01 3.5756201e-01
 [phi] -4.0911075e-05 -1.2485069e-09 1.2111579e-02 -2.6688557e-01 2.6688557e-01
 [phi] -4.0570031e-05 -1.2380991e-09 1.2101633e-02 -2.6649253e-01 2.6649254e-01
@@ -1279,7 +1194,7 @@ Scalars - total mean variance min max
 [phi] -4.0040369e-05 -1.2219351e-09 1.2101633e-02 -2.6649253e-01 2.6649253e-01
 
 Free energy density - timestep total fluid
-[fed]           5300 -3.1432700e-05 -3.1432700e-05
+[fed]           5300 -3.1432700267e-05 -3.1432700267e-05
 
 Momentum - x y z
 [total   ]  3.0305619e-13 -1.7868693e-13 -1.2875118e-13
@@ -1292,7 +1207,7 @@ Velocity - x y z
 Completed cycle 5300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0921797e-10  0.99996561061 1.00002094958
+[rho]       32768.00  1.00000000000 1.0921775e-10  0.99996561061 1.00002094958
 [phi] -1.2420398e+00 -3.7904048e-05 2.1832843e-02 -1.8431944e-01 3.5698413e-01
 [phi] -3.9824554e-05 -1.2153489e-09 1.2062664e-02 -2.6643945e-01 2.6643945e-01
 [phi] -3.9486521e-05 -1.2050330e-09 1.2052816e-02 -2.6604889e-01 2.6604889e-01
@@ -1300,7 +1215,7 @@ Scalars - total mean variance min max
 [phi] -3.8973814e-05 -1.1893864e-09 1.2052816e-02 -2.6604889e-01 2.6604889e-01
 
 Free energy density - timestep total fluid
-[fed]           5400 -3.1456743e-05 -3.1456743e-05
+[fed]           5400 -3.1456742991e-05 -3.1456742991e-05
 
 Momentum - x y z
 [total   ]  2.6188773e-13 -1.2970180e-13 -1.3289370e-13
@@ -1313,7 +1228,7 @@ Velocity - x y z
 Completed cycle 5400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0056223e-10  0.99996796803 1.00001990095
+[rho]       32768.00  1.00000000000 1.0056178e-10  0.99996796803 1.00001990095
 [phi] -1.2132713e+00 -3.7026102e-05 2.1746515e-02 -1.8406342e-01 3.5642356e-01
 [phi] -3.8774401e-05 -1.1833008e-09 1.2015444e-02 -2.6600585e-01 2.6600585e-01
 [phi] -3.8438924e-05 -1.1730629e-09 1.2005692e-02 -2.6561781e-01 2.6561781e-01
@@ -1321,7 +1236,7 @@ Scalars - total mean variance min max
 [phi] -3.7942642e-05 -1.1579176e-09 1.2005692e-02 -2.6561781e-01 2.6561781e-01
 
 Free energy density - timestep total fluid
-[fed]           5500 -3.1478111e-05 -3.1478111e-05
+[fed]           5500 -3.1478111148e-05 -3.1478111148e-05
 
 Momentum - x y z
 [total   ]  3.1701725e-13 -1.5240240e-13 -1.6855961e-13
@@ -1342,7 +1257,7 @@ Scalars - total mean variance min max
 [phi] -3.6945406e-05 -1.1274843e-09 1.1960188e-02 -2.6519898e-01 2.6519898e-01
 
 Free energy density - timestep total fluid
-[fed]           5600 -3.1497041e-05 -3.1497041e-05
+[fed]           5600 -3.1497040678e-05 -3.1497040678e-05
 
 Momentum - x y z
 [total   ]  3.5927511e-13 -1.9973606e-13 -1.9472618e-13
@@ -1355,7 +1270,7 @@ Velocity - x y z
 Completed cycle 5600
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.5965235e-11  0.99997233268 1.00001790918
+[rho]       32768.00  1.00000000000 8.5965457e-11  0.99997233268 1.00001790918
 [phi] -1.1574273e+00 -3.5321878e-05 2.1582546e-02 -1.8356706e-01 3.5535193e-01
 [phi] -3.6777309e-05 -1.1223544e-09 1.1925804e-02 -2.6517493e-01 2.6517493e-01
 [phi] -3.6445708e-05 -1.1122347e-09 1.1916234e-02 -2.6479206e-01 2.6479206e-01
@@ -1363,7 +1278,7 @@ Scalars - total mean variance min max
 [phi] -3.5980738e-05 -1.0980450e-09 1.1916234e-02 -2.6479206e-01 2.6479206e-01
 
 Free energy density - timestep total fluid
-[fed]           5700 -3.1513746e-05 -3.1513746e-05
+[fed]           5700 -3.1513745713e-05 -3.1513745713e-05
 
 Momentum - x y z
 [total   ]  3.8031731e-13 -1.7720894e-13 -1.9462904e-13
@@ -1376,7 +1291,7 @@ Velocity - x y z
 Completed cycle 5700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.9865892e-11  0.99997435493 1.00001696410
+[rho]       32768.00  1.00000000000 7.9865670e-11  0.99997435493 1.00001696410
 [phi] -1.1303543e+00 -3.4495674e-05 2.1504667e-02 -1.8332680e-01 3.5483973e-01
 [phi] -3.5827607e-05 -1.0933718e-09 1.1883248e-02 -2.6477697e-01 2.6477697e-01
 [phi] -3.5497389e-05 -1.0832943e-09 1.1873765e-02 -2.6439675e-01 2.6439675e-01
@@ -1384,7 +1299,7 @@ Scalars - total mean variance min max
 [phi] -3.5047333e-05 -1.0695597e-09 1.1873765e-02 -2.6439675e-01 2.6439675e-01
 
 Free energy density - timestep total fluid
-[fed]           5800 -3.1528421e-05 -3.1528421e-05
+[fed]           5800 -3.1528420859e-05 -3.1528420859e-05
 
 Momentum - x y z
 [total   ]  3.9050013e-13 -1.5866128e-13 -2.1802005e-13
@@ -1397,7 +1312,7 @@ Velocity - x y z
 Completed cycle 5800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.4472650e-11  0.99997627953 1.00001605149
+[rho]       32768.00  1.00000000000 7.4472872e-11  0.99997627953 1.00001605149
 [phi] -1.1038458e+00 -3.3686702e-05 2.1429379e-02 -1.8309184e-01 3.5434256e-01
 [phi] -3.4908739e-05 -1.0653302e-09 1.1842116e-02 -2.6439026e-01 2.6439026e-01
 [phi] -3.4579573e-05 -1.0552848e-09 1.1832718e-02 -2.6401272e-01 2.6401272e-01
@@ -1405,7 +1320,7 @@ Scalars - total mean variance min max
 [phi] -3.4143957e-05 -1.0419909e-09 1.1832718e-02 -2.6401272e-01 2.6401272e-01
 
 Free energy density - timestep total fluid
-[fed]           5900 -3.1541243e-05 -3.1541243e-05
+[fed]           5900 -3.1541243211e-05 -3.1541243211e-05
 
 Momentum - x y z
 [total   ]  3.5306827e-13 -1.6307442e-13 -2.2273156e-13
@@ -1418,7 +1333,7 @@ Velocity - x y z
 Completed cycle 5900
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.9708461e-11  0.99997811259 1.00001517030
+[rho]       32768.00  1.00000000000 6.9708017e-11  0.99997811259 1.00001517030
 [phi] -1.0778991e+00 -3.2894871e-05 2.1356576e-02 -1.8286216e-01 3.5385990e-01
 [phi] -3.4019484e-05 -1.0381923e-09 1.1802350e-02 -2.6401449e-01 2.6401449e-01
 [phi] -3.3691069e-05 -1.0281698e-09 1.1793035e-02 -2.6363966e-01 2.6363966e-01
@@ -1426,7 +1341,7 @@ Scalars - total mean variance min max
 [phi] -3.3269433e-05 -1.0153025e-09 1.1793035e-02 -2.6363966e-01 2.6363966e-01
 
 Free energy density - timestep total fluid
-[fed]           6000 -3.1552374e-05 -3.1552374e-05
+[fed]           6000 -3.1552374119e-05 -3.1552374119e-05
 
 Momentum - x y z
 [total   ]  3.3170688e-13 -1.6565568e-13 -2.3882285e-13
@@ -1447,7 +1362,7 @@ Scalars - total mean variance min max
 [phi] -3.2422636e-05 -9.8946032e-10 1.1754660e-02 -2.6327727e-01 2.6327727e-01
 
 Free energy density - timestep total fluid
-[fed]           6100 -3.1561961e-05 -3.1561961e-05
+[fed]           6100 -3.1561960754e-05 -3.1561960754e-05
 
 Momentum - x y z
 [total   ]  3.4988679e-13 -1.7999144e-13 -2.1370405e-13
@@ -1460,7 +1375,7 @@ Velocity - x y z
 Completed cycle 6100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.1868954e-11  0.99998152630 1.00001397290
+[rho]       32768.00  1.00000000000 6.1869398e-11  0.99998152630 1.00001397290
 [phi] -1.0276732e+00 -3.1362098e-05 2.1218039e-02 -1.8241852e-01 3.5293619e-01
 [phi] -3.2325225e-05 -9.8648758e-10 1.1726698e-02 -2.6329452e-01 2.6329452e-01
 [phi] -3.1997514e-05 -9.7648662e-10 1.1717541e-02 -2.6292524e-01 2.6292524e-01
@@ -1468,7 +1383,7 @@ Scalars - total mean variance min max
 [phi] -3.1602497e-05 -9.6443167e-10 1.1717541e-02 -2.6292524e-01 2.6292524e-01
 
 Free energy density - timestep total fluid
-[fed]           6200 -3.1570137e-05 -3.1570137e-05
+[fed]           6200 -3.1570137490e-05 -3.1570137490e-05
 
 Momentum - x y z
 [total   ]  2.9501748e-13 -1.7987348e-13 -2.2229441e-13
@@ -1481,7 +1396,7 @@ Velocity - x y z
 Completed cycle 6200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 5.8692162e-11  0.99998228943 1.00001437147
+[rho]       32768.00  1.00000000000 5.8692606e-11  0.99998228943 1.00001437147
 [phi] -1.0033827e+00 -3.0620811e-05 2.1152121e-02 -1.8220447e-01 3.5249423e-01
 [phi] -3.1518058e-05 -9.6185481e-10 1.1690708e-02 -2.6294973e-01 2.6294973e-01
 [phi] -3.1190352e-05 -9.5185401e-10 1.1681628e-02 -2.6258327e-01 2.6258327e-01
@@ -1489,7 +1404,7 @@ Scalars - total mean variance min max
 [phi] -3.0808001e-05 -9.4018557e-10 1.1681628e-02 -2.6258327e-01 2.6258327e-01
 
 Free energy density - timestep total fluid
-[fed]           6300 -3.1577027e-05 -3.1577027e-05
+[fed]           6300 -3.1577027134e-05 -3.1577027134e-05
 
 Momentum - x y z
 [total   ]  2.4275720e-13 -2.0522473e-13 -1.7975899e-13
@@ -1502,7 +1417,7 @@ Velocity - x y z
 Completed cycle 6300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 5.5947469e-11  0.99998253137 1.00001476080
+[rho]       32768.00  1.00000000000 5.5947247e-11  0.99998253137 1.00001476080
 [phi] -9.7963159e-01 -2.9895984e-05 2.1088323e-02 -1.8199553e-01 3.5206494e-01
 [phi] -3.0736176e-05 -9.3799365e-10 1.1655877e-02 -2.6261469e-01 2.6261469e-01
 [phi] -3.0408273e-05 -9.2798685e-10 1.1646873e-02 -2.6225108e-01 2.6225108e-01
@@ -1510,7 +1425,7 @@ Scalars - total mean variance min max
 [phi] -3.0038172e-05 -9.1669225e-10 1.1646873e-02 -2.6225108e-01 2.6225108e-01
 
 Free energy density - timestep total fluid
-[fed]           6400 -3.1582742e-05 -3.1582742e-05
+[fed]           6400 -3.1582742022e-05 -3.1582742022e-05
 
 Momentum - x y z
 [total   ]  1.9385535e-13 -2.1645186e-13 -1.6181501e-13
@@ -1523,7 +1438,7 @@ Velocity - x y z
 Completed cycle 6400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 5.3595794e-11  0.99998276625 1.00001514076
+[rho]       32768.00  1.00000000000 5.3595350e-11  0.99998276625 1.00001514076
 [phi] -9.5641234e-01 -2.9187388e-05 2.1026563e-02 -1.8179162e-01 3.5164793e-01
 [phi] -2.9978617e-05 -9.1487477e-10 1.1622162e-02 -2.6228910e-01 2.6228910e-01
 [phi] -2.9650337e-05 -9.0485647e-10 1.1613232e-02 -2.6192837e-01 2.6192837e-01
@@ -1531,7 +1446,7 @@ Scalars - total mean variance min max
 [phi] -2.9292085e-05 -8.9392349e-10 1.1613232e-02 -2.6192837e-01 2.6192837e-01
 
 Free energy density - timestep total fluid
-[fed]           6500 -3.1587385e-05 -3.1587385e-05
+[fed]           6500 -3.1587384994e-05 -3.1587384994e-05
 
 Momentum - x y z
 [total   ]  1.3495108e-13 -1.9808113e-13 -1.3650886e-13
@@ -1544,7 +1459,7 @@ Velocity - x y z
 Completed cycle 6500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 5.1599613e-11  0.99998299426 1.00001551128
+[rho]       32768.00  1.00000000000 5.1599836e-11  0.99998299426 1.00001551128
 [phi] -9.3371692e-01 -2.8494779e-05 2.0966764e-02 -1.8159268e-01 3.5124278e-01
 [phi] -2.9244463e-05 -8.9247018e-10 1.1589518e-02 -2.6197271e-01 2.6197271e-01
 [phi] -2.8915644e-05 -8.8243544e-10 1.1580661e-02 -2.6161487e-01 2.6161488e-01
@@ -1552,7 +1467,7 @@ Scalars - total mean variance min max
 [phi] -2.8568857e-05 -8.7185233e-10 1.1580660e-02 -2.6161487e-01 2.6161487e-01
 
 Free energy density - timestep total fluid
-[fed]           6600 -3.1591050e-05 -3.1591050e-05
+[fed]           6600 -3.1591050265e-05 -3.1591050265e-05
 
 Momentum - x y z
 [total   ]  1.0614079e-13 -2.7221975e-13 -1.5783902e-13
@@ -1573,7 +1488,7 @@ Scalars - total mean variance min max
 [phi] -2.7867644e-05 -8.5045300e-10 1.1549119e-02 -2.6131032e-01 2.6131032e-01
 
 Free energy density - timestep total fluid
-[fed]           6700 -3.1593824e-05 -3.1593824e-05
+[fed]           6700 -3.1593824214e-05 -3.1593824214e-05
 
 Momentum - x y z
 [total   ]  1.5938986e-13 -1.9461863e-13 -1.5113605e-13
@@ -1586,7 +1501,7 @@ Velocity - x y z
 Completed cycle 6700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.8551385e-11  0.99998343039 1.00001622389
+[rho]       32768.00  1.00000000000 4.8551163e-11  0.99998343039 1.00001622389
 [phi] -8.8986326e-01 -2.7156472e-05 2.0852760e-02 -1.8120936e-01 3.5046661e-01
 [phi] -2.7842906e-05 -8.4969805e-10 1.1527284e-02 -2.6136639e-01 2.6136639e-01
 [phi] -2.7512597e-05 -8.3961783e-10 1.1518568e-02 -2.6101443e-01 2.6101443e-01
@@ -1594,7 +1509,7 @@ Scalars - total mean variance min max
 [phi] -2.7187638e-05 -8.2970086e-10 1.1518568e-02 -2.6101443e-01 2.6101443e-01
 
 Free energy density - timestep total fluid
-[fed]           6800 -3.1595786e-05 -3.1595786e-05
+[fed]           6800 -3.1595786075e-05 -3.1595786075e-05
 
 Momentum - x y z
 [total   ]  1.1041168e-13 -1.8065410e-13 -1.5439039e-13
@@ -1607,7 +1522,7 @@ Velocity - x y z
 Completed cycle 6800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.7441162e-11  0.99998363886 1.00001656608
+[rho]       32768.00  1.00000000000 4.7440940e-11  0.99998363886 1.00001656608
 [phi] -8.6868708e-01 -2.6510226e-05 2.0798417e-02 -1.8102481e-01 3.5009485e-01
 [phi] -2.7173863e-05 -8.2928050e-10 1.1497618e-02 -2.6107596e-01 2.6107596e-01
 [phi] -2.6842635e-05 -8.1917221e-10 1.1488972e-02 -2.6072696e-01 2.6072696e-01
@@ -1615,7 +1530,7 @@ Scalars - total mean variance min max
 [phi] -2.6528067e-05 -8.0957235e-10 1.1488972e-02 -2.6072696e-01 2.6072696e-01
 
 Free energy density - timestep total fluid
-[fed]           6900 -3.1597009e-05 -3.1597009e-05
+[fed]           6900 -3.1597008578e-05 -3.1597008578e-05
 
 Momentum - x y z
 [total   ]  7.9162371e-14 -1.6191562e-13 -1.5081686e-13
@@ -1636,7 +1551,7 @@ Scalars - total mean variance min max
 [phi] -2.5888186e-05 -7.9004473e-10 1.1460293e-02 -2.6044765e-01 2.6044765e-01
 
 Free energy density - timestep total fluid
-[fed]           7000 -3.1597559e-05 -3.1597559e-05
+[fed]           7000 -3.1597558511e-05 -3.1597558511e-05
 
 Momentum - x y z
 [total   ]  1.4698659e-13 -1.2976425e-13 -1.4865886e-13
@@ -1657,7 +1572,7 @@ Scalars - total mean variance min max
 [phi] -2.5267293e-05 -7.7109660e-10 1.1432500e-02 -2.6017627e-01 2.6017627e-01
 
 Free energy density - timestep total fluid
-[fed]           7100 -3.1597497e-05 -3.1597497e-05
+[fed]           7100 -3.1597497239e-05 -3.1597497239e-05
 
 Momentum - x y z
 [total   ]  1.2540663e-13 -1.0072845e-13 -1.0970391e-13
@@ -1678,7 +1593,7 @@ Scalars - total mean variance min max
 [phi] -2.4664708e-05 -7.5270716e-10 1.1405560e-02 -2.5991257e-01 2.5991257e-01
 
 Free energy density - timestep total fluid
-[fed]           7200 -3.1596881e-05 -3.1596881e-05
+[fed]           7200 -3.1596881161e-05 -3.1596881161e-05
 
 Momentum - x y z
 [total   ]  3.8274939e-14 -5.9369176e-14 -1.1326357e-13
@@ -1691,7 +1606,7 @@ Velocity - x y z
 Completed cycle 7200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.5187409e-11  0.99998441274 1.00001784294
+[rho]       32768.00  1.00000000000 4.5187187e-11  0.99998441274 1.00001784294
 [phi] -7.8876763e-01 -2.4071278e-05 2.0597314e-02 -1.8033191e-01 3.4870900e-01
 [phi] -2.4691763e-05 -7.5353280e-10 1.1387821e-02 -2.5999331e-01 2.5999331e-01
 [phi] -2.4356035e-05 -7.4328720e-10 1.1379442e-02 -2.5965632e-01 2.5965632e-01
@@ -1699,7 +1614,7 @@ Scalars - total mean variance min max
 [phi] -2.4079783e-05 -7.3485667e-10 1.1379441e-02 -2.5965632e-01 2.5965632e-01
 
 Free energy density - timestep total fluid
-[fed]           7300 -3.1595762e-05 -3.1595762e-05
+[fed]           7300 -3.1595762135e-05 -3.1595762135e-05
 
 Momentum - x y z
 [total   ]  1.2521234e-14 -5.2600285e-14 -1.0538792e-13
@@ -1712,7 +1627,7 @@ Velocity - x y z
 Completed cycle 7300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.5071724e-11  0.99998459208 1.00001813988
+[rho]       32768.00  1.00000000000 4.5071280e-11  0.99998459208 1.00001813988
 [phi] -7.6993611e-01 -2.3496585e-05 2.0550820e-02 -1.8016953e-01 3.4838629e-01
 [phi] -2.4116316e-05 -7.3597156e-10 1.1362431e-02 -2.5974127e-01 2.5974127e-01
 [phi] -2.3779328e-05 -7.2568749e-10 1.1354116e-02 -2.5940730e-01 2.5940731e-01
@@ -1720,7 +1635,7 @@ Scalars - total mean variance min max
 [phi] -2.3511891e-05 -7.1752599e-10 1.1354116e-02 -2.5940730e-01 2.5940730e-01
 
 Free energy density - timestep total fluid
-[fed]           7400 -3.1594188e-05 -3.1594188e-05
+[fed]           7400 -3.1594187857e-05 -3.1594187857e-05
 
 Momentum - x y z
 [total   ] -1.2184698e-14 -7.6851719e-14 -1.5113605e-13
@@ -1733,7 +1648,7 @@ Velocity - x y z
 Completed cycle 7400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.5101700e-11  0.99998476610 1.00001842825
+[rho]       32768.00  1.00000000000 4.5101922e-11  0.99998476610 1.00001842825
 [phi] -7.5154463e-01 -2.2935322e-05 2.0505732e-02 -1.8001131e-01 3.4807250e-01
 [phi] -2.3557626e-05 -7.1892169e-10 1.1337807e-02 -2.5949623e-01 2.5949623e-01
 [phi] -2.3219347e-05 -7.0859823e-10 1.1329556e-02 -2.5916530e-01 2.5916530e-01
@@ -1741,7 +1656,7 @@ Scalars - total mean variance min max
 [phi] -2.2960440e-05 -7.0069703e-10 1.1329556e-02 -2.5916530e-01 2.5916530e-01
 
 Free energy density - timestep total fluid
-[fed]           7500 -3.1592202e-05 -3.1592202e-05
+[fed]           7500 -3.1592202207e-05 -3.1592202207e-05
 
 Momentum - x y z
 [total   ] -5.7509553e-14 -6.2266164e-14 -1.5337731e-13
@@ -1754,7 +1669,7 @@ Velocity - x y z
 Completed cycle 7500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.5261350e-11  0.99998493495 1.00001870823
+[rho]       32768.00  1.00000000000 4.5261128e-11  0.99998493495 1.00001870823
 [phi] -7.3358355e-01 -2.2387193e-05 2.0462001e-02 -1.7985715e-01 3.4776735e-01
 [phi] -2.3015101e-05 -7.0236513e-10 1.1313921e-02 -2.5925799e-01 2.5925799e-01
 [phi] -2.2675512e-05 -6.9200172e-10 1.1305733e-02 -2.5893010e-01 2.5893010e-01
@@ -1762,7 +1677,7 @@ Scalars - total mean variance min max
 [phi] -2.2424854e-05 -6.8435222e-10 1.1305733e-02 -2.5893010e-01 2.5893010e-01
 
 Free energy density - timestep total fluid
-[fed]           7600 -3.1589846e-05 -3.1589846e-05
+[fed]           7600 -3.1589845560e-05 -3.1589845560e-05
 
 Momentum - x y z
 [total   ] -6.0285110e-14 -7.5692924e-14 -1.1726731e-13
@@ -1783,7 +1698,7 @@ Scalars - total mean variance min max
 [phi] -2.1904586e-05 -6.6847493e-10 1.1282623e-02 -2.5870150e-01 2.5870150e-01
 
 Free energy density - timestep total fluid
-[fed]           7700 -3.1587155e-05 -3.1587155e-05
+[fed]           7700 -3.1587155076e-05 -3.1587155076e-05
 
 Momentum - x y z
 [total   ] -5.9958982e-14 -7.7608059e-14 -1.0635243e-13
@@ -1796,7 +1711,7 @@ Velocity - x y z
 Completed cycle 7700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.5922377e-11  0.99998525778 1.00001924381
+[rho]       32768.00  1.00000000000 4.5922599e-11  0.99998525778 1.00001924381
 [phi] -6.9891453e-01 -2.1329179e-05 2.0378427e-02 -1.7956061e-01 3.4718199e-01
 [phi] -2.1976306e-05 -6.7066365e-10 1.1268265e-02 -2.5880110e-01 2.5880110e-01
 [phi] -2.1634073e-05 -6.6021952e-10 1.1260201e-02 -2.5847930e-01 2.5847930e-01
@@ -1804,7 +1719,7 @@ Scalars - total mean variance min max
 [phi] -2.1399109e-05 -6.5304898e-10 1.1260201e-02 -2.5847930e-01 2.5847930e-01
 
 Free energy density - timestep total fluid
-[fed]           7800 -3.1584165e-05 -3.1584165e-05
+[fed]           7800 -3.1584164956e-05 -3.1584164956e-05
 
 Momentum - x y z
 [total   ] -2.3842039e-14 -6.2304328e-14 -4.9821258e-14
@@ -1817,7 +1732,7 @@ Velocity - x y z
 Completed cycle 7800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.6397330e-11  0.99998541204 1.00001949981
+[rho]       32768.00  1.00000000000 4.6397108e-11  0.99998541204 1.00001949981
 [phi] -6.8218773e-01 -2.0818717e-05 2.0338494e-02 -1.7941806e-01 3.4690127e-01
 [phi] -2.1478973e-05 -6.5548623e-10 1.1246446e-02 -2.5858206e-01 2.5858206e-01
 [phi] -2.1135419e-05 -6.4500180e-10 1.1238443e-02 -2.5826331e-01 2.5826331e-01
@@ -1825,7 +1740,7 @@ Scalars - total mean variance min max
 [phi] -2.0907921e-05 -6.3805910e-10 1.1238443e-02 -2.5826331e-01 2.5826331e-01
 
 Free energy density - timestep total fluid
-[fed]           7900 -3.1580907e-05 -3.1580907e-05
+[fed]           7900 -3.1580906682e-05 -3.1580906682e-05
 
 Momentum - x y z
 [total   ] -2.8213543e-14 -3.8583720e-14 -2.5209002e-14
@@ -1838,7 +1753,7 @@ Velocity - x y z
 Completed cycle 7900
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.6955551e-11  0.99998556171 1.00001974823
+[rho]       32768.00  1.00000000000 4.6955995e-11  0.99998556171 1.00001974823
 [phi] -6.6585370e-01 -2.0320242e-05 2.0299743e-02 -1.7927918e-01 3.4662820e-01
 [phi] -2.0995675e-05 -6.4073714e-10 1.1225269e-02 -2.5836905e-01 2.5836905e-01
 [phi] -2.0650813e-05 -6.3021279e-10 1.1217327e-02 -2.5805335e-01 2.5805335e-01
@@ -1846,7 +1761,7 @@ Scalars - total mean variance min max
 [phi] -2.0430530e-05 -6.2349031e-10 1.1217327e-02 -2.5805335e-01 2.5805335e-01
 
 Free energy density - timestep total fluid
-[fed]           8000 -3.1577409e-05 -3.1577409e-05
+[fed]           8000 -3.1577409237e-05 -3.1577409237e-05
 
 Momentum - x y z
 [total   ] -8.7322510e-14 -2.3571423e-14 -3.4042213e-14
@@ -1859,7 +1774,7 @@ Velocity - x y z
 Completed cycle 8000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.7591708e-11  0.99998570693 1.00001998923
+[rho]       32768.00  1.00000000000 4.7591486e-11  0.99998570693 1.00001998923
 [phi] -6.4990329e-01 -1.9833474e-05 2.0262133e-02 -1.7914390e-01 3.4636257e-01
 [phi] -2.0525932e-05 -6.2640174e-10 1.1204713e-02 -2.5816189e-01 2.5816189e-01
 [phi] -2.0179783e-05 -6.1583812e-10 1.1196832e-02 -2.5784923e-01 2.5784923e-01
@@ -1867,7 +1782,7 @@ Scalars - total mean variance min max
 [phi] -1.9966473e-05 -6.0932839e-10 1.1196832e-02 -2.5784923e-01 2.5784923e-01
 
 Free energy density - timestep total fluid
-[fed]           8100 -3.1573699e-05 -3.1573699e-05
+[fed]           8100 -3.1573699293e-05 -3.1573699293e-05
 
 Momentum - x y z
 [total   ] -7.8961143e-14 -4.2934406e-14  2.8643754e-14
@@ -1888,7 +1803,7 @@ Scalars - total mean variance min max
 [phi] -1.9515309e-05 -5.9555997e-10 1.1176935e-02 -2.5765078e-01 2.5765078e-01
 
 Free energy density - timestep total fluid
-[fed]           8200 -3.1569801e-05 -3.1569801e-05
+[fed]           8200 -3.1569801401e-05 -3.1569801401e-05
 
 Momentum - x y z
 [total   ] -8.4252050e-14 -6.9312611e-14 -1.4960255e-14
@@ -1909,7 +1824,7 @@ Scalars - total mean variance min max
 [phi] -1.9076608e-05 -5.8217187e-10 1.1157618e-02 -2.5745784e-01 2.5745784e-01
 
 Free energy density - timestep total fluid
-[fed]           8300 -3.1565738e-05 -3.1565738e-05
+[fed]           8300 -3.1565738156e-05 -3.1565738156e-05
 
 Momentum - x y z
 [total   ] -9.2779950e-14 -5.7159139e-14 -6.8695050e-16
@@ -1922,7 +1837,7 @@ Velocity - x y z
 Completed cycle 8300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 4.9863447e-11  0.99998611728 1.00002066977
+[rho]       32768.00  1.00000000000 4.9863669e-11  0.99998611728 1.00002066977
 [phi] -6.0426435e-01 -1.8440684e-05 2.0155774e-02 -1.7875873e-01 3.4560812e-01
 [phi] -1.9193521e-05 -5.8573977e-10 1.1146567e-02 -2.5757378e-01 2.5757378e-01
 [phi] -1.8843625e-05 -5.7506179e-10 1.1138862e-02 -2.5727023e-01 2.5727023e-01
@@ -1930,7 +1845,7 @@ Scalars - total mean variance min max
 [phi] -1.8649960e-05 -5.6915160e-10 1.1138862e-02 -2.5727023e-01 2.5727023e-01
 
 Free energy density - timestep total fluid
-[fed]           8400 -3.1561530e-05 -3.1561530e-05
+[fed]           8400 -3.1561530344e-05 -3.1561530344e-05
 
 Momentum - x y z
 [total   ] -8.6087387e-14 -3.6276537e-14 -2.4077962e-14
@@ -1943,7 +1858,7 @@ Velocity - x y z
 Completed cycle 8400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 5.0722537e-11  0.99998624606 1.00002088316
+[rho]       32768.00  1.00000000000 5.0722093e-11  0.99998624606 1.00002088316
 [phi] -5.8975971e-01 -1.7998038e-05 2.0122362e-02 -1.7863695e-01 3.4537010e-01
 [phi] -1.8773568e-05 -5.7292383e-10 1.1128294e-02 -2.5738833e-01 2.5738833e-01
 [phi] -1.8422480e-05 -5.6220949e-10 1.1120647e-02 -2.5708780e-01 2.5708780e-01
@@ -1951,7 +1866,7 @@ Scalars - total mean variance min max
 [phi] -1.8234964e-05 -5.5648692e-10 1.1120647e-02 -2.5708780e-01 2.5708780e-01
 
 Free energy density - timestep total fluid
-[fed]           8500 -3.1557197e-05 -3.1557197e-05
+[fed]           8500 -3.1557197089e-05 -3.1557197089e-05
 
 Momentum - x y z
 [total   ] -7.1085499e-14 -2.6034730e-14  3.4416914e-15
@@ -1964,7 +1879,7 @@ Velocity - x y z
 Completed cycle 8500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 5.1615823e-11  0.99998637103 1.00002109017
+[rho]       32768.00  1.00000000000 5.1616045e-11  0.99998637103 1.00002109017
 [phi] -5.7559514e-01 -1.7565770e-05 2.0089914e-02 -1.7851833e-01 3.4513849e-01
 [phi] -1.8365039e-05 -5.6045650e-10 1.1110546e-02 -2.5720792e-01 2.5720792e-01
 [phi] -1.8012801e-05 -5.4970707e-10 1.1102957e-02 -2.5691040e-01 2.5691040e-01
@@ -1972,7 +1887,7 @@ Scalars - total mean variance min max
 [phi] -1.7831235e-05 -5.4416611e-10 1.1102957e-02 -2.5691040e-01 2.5691040e-01
 
 Free energy density - timestep total fluid
-[fed]           8600 -3.1552756e-05 -3.1552756e-05
+[fed]           8600 -3.1552755975e-05 -3.1552755975e-05
 
 Momentum - x y z
 [total   ] -8.7853336e-14  4.8988591e-15  4.6067317e-14
@@ -1993,7 +1908,7 @@ Scalars - total mean variance min max
 [phi] -1.7438404e-05 -5.3217787e-10 1.1085775e-02 -2.5673787e-01 2.5673787e-01
 
 Free energy density - timestep total fluid
-[fed]           8700 -3.1548223e-05 -3.1548223e-05
+[fed]           8700 -3.1548223167e-05 -3.1548223167e-05
 
 Momentum - x y z
 [total   ] -3.0864200e-14 -1.9116653e-15  5.9084682e-14
@@ -2006,7 +1921,7 @@ Velocity - x y z
 Completed cycle 8700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 5.3508309e-11  0.99998661000 1.00002148577
+[rho]       32768.00  1.00000000000 5.3507865e-11  0.99998661000 1.00002148577
 [phi] -5.4825359e-01 -1.6731372e-05 2.0027789e-02 -1.7829025e-01 3.4469374e-01
 [phi] -1.7580753e-05 -5.3652200e-10 1.1076558e-02 -2.5686162e-01 2.5686162e-01
 [phi] -1.7226358e-05 -5.2570671e-10 1.1069083e-02 -2.5657008e-01 2.5657009e-01
@@ -2014,7 +1929,7 @@ Scalars - total mean variance min max
 [phi] -1.7056117e-05 -5.2051138e-10 1.1069083e-02 -2.5657008e-01 2.5657009e-01
 
 Free energy density - timestep total fluid
-[fed]           8800 -3.1543614e-05 -3.1543614e-05
+[fed]           8800 -3.1543613519e-05 -3.1543613519e-05
 
 Momentum - x y z
 [total   ]  3.9326181e-14  1.8204188e-14  4.6969373e-14
@@ -2035,7 +1950,7 @@ Scalars - total mean variance min max
 [phi] -1.6684034e-05 -5.0915630e-10 1.1052867e-02 -2.5640689e-01 2.5640689e-01
 
 Free energy density - timestep total fluid
-[fed]           8900 -3.1538941e-05 -3.1538941e-05
+[fed]           8900 -3.1538940673e-05 -3.1538940673e-05
 
 Momentum - x y z
 [total   ]  5.8480998e-14  8.9303565e-15  6.0840222e-14
@@ -2048,7 +1963,7 @@ Velocity - x y z
 Completed cycle 8900
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 5.5494942e-11  0.99998683508 1.00002185802
+[rho]       32768.00  1.00000000000 5.5495386e-11  0.99998683508 1.00002185802
 [phi] -5.2217624e-01 -1.5935554e-05 1.9969162e-02 -1.7807387e-01 3.4427247e-01
 [phi] -1.6837811e-05 -5.1384922e-10 1.1044474e-02 -2.5653375e-01 2.5653375e-01
 [phi] -1.6481469e-05 -5.0297451e-10 1.1037111e-02 -2.5624816e-01 2.5624817e-01
@@ -2056,7 +1971,7 @@ Scalars - total mean variance min max
 [phi] -1.6321829e-05 -4.9810268e-10 1.1037111e-02 -2.5624816e-01 2.5624817e-01
 
 Free energy density - timestep total fluid
-[fed]           9000 -3.1534217e-05 -3.1534217e-05
+[fed]           9000 -3.1534217152e-05 -3.1534217152e-05
 
 Momentum - x y z
 [total   ]  7.7673978e-14  1.0814266e-14  7.0270179e-14
@@ -2077,7 +1992,7 @@ Scalars - total mean variance min max
 [phi] -1.5969183e-05 -4.8734080e-10 1.1021801e-02 -2.5609377e-01 2.5609377e-01
 
 Free energy density - timestep total fluid
-[fed]           9100 -3.1529454e-05 -3.1529454e-05
+[fed]           9100 -3.1529454441e-05 -3.1529454441e-05
 
 Momentum - x y z
 [total   ]  2.3602648e-14  6.2241878e-15  1.0570711e-13
@@ -2098,7 +2013,7 @@ Scalars - total mean variance min max
 [phi] -1.5625797e-05 -4.7686148e-10 1.1006923e-02 -2.5594358e-01 2.5594358e-01
 
 Free energy density - timestep total fluid
-[fed]           9200 -3.1524663e-05 -3.1524663e-05
+[fed]           9200 -3.1524663067e-05 -3.1524663067e-05
 
 Momentum - x y z
 [total   ]  7.9169310e-14  1.0214052e-14  6.0104699e-14
@@ -2119,7 +2034,7 @@ Scalars - total mean variance min max
 [phi] -1.5291374e-05 -4.6665571e-10 1.0992463e-02 -2.5579747e-01 2.5579747e-01
 
 Free energy density - timestep total fluid
-[fed]           9300 -3.1519853e-05 -3.1519853e-05
+[fed]           9300 -3.1519852672e-05 -3.1519852672e-05
 
 Momentum - x y z
 [total   ]  7.5363327e-14 -1.4623719e-14  8.0588314e-14
@@ -2140,7 +2055,7 @@ Scalars - total mean variance min max
 [phi] -1.4965632e-05 -4.5671484e-10 1.0978408e-02 -2.5565533e-01 2.5565533e-01
 
 Free energy density - timestep total fluid
-[fed]           9400 -3.1515032e-05 -3.1515032e-05
+[fed]           9400 -3.1515032077e-05 -3.1515032077e-05
 
 Momentum - x y z
 [total   ]  6.7019307e-14 -3.4937331e-14  6.3782313e-14
@@ -2153,7 +2068,7 @@ Velocity - x y z
 Completed cycle 9400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.0711658e-11  0.99998734228 1.00002269550
+[rho]       32768.00  1.00000000000 6.0711880e-11  0.99998734228 1.00002269550
 [phi] -4.6212197e-01 -1.4102843e-05 1.9836506e-02 -1.7758021e-01 3.4331354e-01
 [phi] -1.5144476e-05 -4.6217274e-10 1.0971836e-02 -2.5578801e-01 2.5578801e-01
 [phi] -1.4784357e-05 -4.5118278e-10 1.0964747e-02 -2.5551704e-01 2.5551704e-01
@@ -2161,7 +2076,7 @@ Scalars - total mean variance min max
 [phi] -1.4648306e-05 -4.4703082e-10 1.0964747e-02 -2.5551704e-01 2.5551704e-01
 
 Free energy density - timestep total fluid
-[fed]           9500 -3.1510209e-05 -3.1510209e-05
+[fed]           9500 -3.1510209346e-05 -3.1510209346e-05
 
 Momentum - x y z
 [total   ] -1.5546592e-14 -3.2137487e-14  5.2555182e-14
@@ -2174,7 +2089,7 @@ Velocity - x y z
 Completed cycle 9500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.1776584e-11  0.99998743497 1.00002284833
+[rho]       32768.00  1.00000000000 6.1776806e-11  0.99998743497 1.00002284833
 [phi] -4.5093583e-01 -1.3761469e-05 1.9812166e-02 -1.7748902e-01 3.4313671e-01
 [phi] -1.4831591e-05 -4.5262424e-10 1.0958502e-02 -2.5565058e-01 2.5565058e-01
 [phi] -1.4470925e-05 -4.4161757e-10 1.0951466e-02 -2.5538249e-01 2.5538249e-01
@@ -2182,7 +2097,7 @@ Scalars - total mean variance min max
 [phi] -1.4339127e-05 -4.3759543e-10 1.0951466e-02 -2.5538249e-01 2.5538249e-01
 
 Free energy density - timestep total fluid
-[fed]           9600 -3.1505392e-05 -3.1505392e-05
+[fed]           9600 -3.1505391839e-05 -3.1505391839e-05
 
 Momentum - x y z
 [total   ] -5.4803384e-14 -6.9305672e-14  3.6373682e-14
@@ -2203,7 +2118,7 @@ Scalars - total mean variance min max
 [phi] -1.4037849e-05 -4.2840115e-10 1.0938554e-02 -2.5525157e-01 2.5525157e-01
 
 Free energy density - timestep total fluid
-[fed]           9700 -3.1500586e-05 -3.1500586e-05
+[fed]           9700 -3.1500586267e-05 -3.1500586267e-05
 
 Momentum - x y z
 [total   ] -5.0289634e-14 -7.2834100e-14  1.9893809e-14
@@ -2216,7 +2131,7 @@ Velocity - x y z
 Completed cycle 9700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.3901107e-11  0.99998761228 1.00002314057
+[rho]       32768.00  1.00000000000 6.3900885e-11  0.99998761228 1.00002314057
 [phi] -4.2933521e-01 -1.3102271e-05 1.9765499e-02 -1.7731368e-01 3.4279693e-01
 [phi] -1.4229481e-05 -4.3424931e-10 1.0932930e-02 -2.5538657e-01 2.5538657e-01
 [phi] -1.3867934e-05 -4.2321576e-10 1.0926000e-02 -2.5512418e-01 2.5512418e-01
@@ -2224,7 +2139,7 @@ Scalars - total mean variance min max
 [phi] -1.3744226e-05 -4.1944048e-10 1.0926000e-02 -2.5512418e-01 2.5512418e-01
 
 Free energy density - timestep total fluid
-[fed]           9800 -3.1495799e-05 -3.1495799e-05
+[fed]           9800 -3.1495798740e-05 -3.1495798740e-05
 
 Momentum - x y z
 [total   ] -5.3571730e-14 -7.6359058e-14  4.2042758e-14
@@ -2237,7 +2152,7 @@ Velocity - x y z
 Completed cycle 9800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.4964478e-11  0.99998769709 1.00002328027
+[rho]       32768.00  1.00000000000 6.4964034e-11  0.99998769709 1.00002328027
 [phi] -4.1890819e-01 -1.2784063e-05 1.9743132e-02 -1.7722940e-01 3.4263371e-01
 [phi] -1.3939769e-05 -4.2540798e-10 1.0920670e-02 -2.5525978e-01 2.5525978e-01
 [phi] -1.3577891e-05 -4.1436434e-10 1.0913793e-02 -2.5500021e-01 2.5500021e-01
@@ -2245,7 +2160,7 @@ Scalars - total mean variance min max
 [phi] -1.3458022e-05 -4.1070625e-10 1.0913793e-02 -2.5500021e-01 2.5500021e-01
 
 Free energy density - timestep total fluid
-[fed]           9900 -3.1491035e-05 -3.1491035e-05
+[fed]           9900 -3.1491034809e-05 -3.1491034809e-05
 
 Momentum - x y z
 [total   ] -3.2637087e-14 -1.1122353e-13  3.4708347e-14
@@ -2267,7 +2182,7 @@ Scalars - total mean variance min max
 [phi] -1.3179016e-05 -4.0219164e-10 1.0901922e-02 -2.5487958e-01 2.5487958e-01
 
 Free energy density - timestep total fluid
-[fed]          10000 -3.1486300e-05 -3.1486300e-05
+[fed]          10000 -3.1486299512e-05 -3.1486299512e-05
 
 Momentum - x y z
 [total   ] -1.0970391e-14 -1.5145177e-13 -5.5996874e-15
@@ -2288,7 +2203,7 @@ Scalars - total mean variance min max
 [phi] -1.2906984e-05 -3.9388991e-10 1.0890378e-02 -2.5476218e-01 2.5476218e-01
 
 Free energy density - timestep total fluid
-[fed]          10100 -3.1481597e-05 -3.1481597e-05
+[fed]          10100 -3.1481597409e-05 -3.1481597409e-05
 
 Momentum - x y z
 [total   ] -3.1762787e-14 -1.6990576e-13 -9.1662788e-15
@@ -2301,7 +2216,7 @@ Velocity - x y z
 Completed cycle 10100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.8115291e-11  0.99998793699 1.00002367529
+[rho]       32768.00  1.00000000000 6.8115513e-11  0.99998793699 1.00002367529
 [phi] -3.8904844e-01 -1.1872816e-05 1.9679665e-02 -1.7698942e-01 3.4216929e-01
 [phi] -1.3113258e-05 -4.0018489e-10 1.0885873e-02 -2.5489914e-01 2.5489914e-01
 [phi] -1.2750821e-05 -3.8912419e-10 1.0879151e-02 -2.5464792e-01 2.5464792e-01
@@ -2309,7 +2224,7 @@ Scalars - total mean variance min max
 [phi] -1.2641721e-05 -3.8579470e-10 1.0879151e-02 -2.5464792e-01 2.5464792e-01
 
 Free energy density - timestep total fluid
-[fed]          10200 -3.1476933e-05 -3.1476933e-05
+[fed]          10200 -3.1476932619e-05 -3.1476932619e-05
 
 Momentum - x y z
 [total   ] -2.3644281e-14 -1.2646481e-13 -4.5720372e-14
@@ -2322,7 +2237,7 @@ Velocity - x y z
 Completed cycle 10200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 6.9153128e-11  0.99998801234 1.00002379936
+[rho]       32768.00  1.00000000000 6.9153572e-11  0.99998801234 1.00002379936
 [phi] -3.7954987e-01 -1.1582943e-05 1.9659661e-02 -1.7691352e-01 3.4202252e-01
 [phi] -1.2851250e-05 -3.9218904e-10 1.0874902e-02 -2.5478519e-01 2.5478519e-01
 [phi] -1.2488768e-05 -3.8112696e-10 1.0868231e-02 -2.5453672e-01 2.5453672e-01
@@ -2330,7 +2245,7 @@ Scalars - total mean variance min max
 [phi] -1.2383019e-05 -3.7789976e-10 1.0868231e-02 -2.5453672e-01 2.5453672e-01
 
 Free energy density - timestep total fluid
-[fed]          10300 -3.1472309e-05 -3.1472309e-05
+[fed]          10300 -3.1472308852e-05 -3.1472308852e-05
 
 Momentum - x y z
 [total   ]  3.8396369e-14 -8.8297425e-14 -4.3874626e-14
@@ -2343,7 +2258,7 @@ Velocity - x y z
 Completed cycle 10300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.0180750e-11  0.99998808551 1.00002391981
+[rho]       32768.00  1.00000000000 7.0180972e-11  0.99998808551 1.00002391981
 [phi] -3.7026945e-01 -1.1299727e-05 1.9640204e-02 -1.7683958e-01 3.4187957e-01
 [phi] -1.2595652e-05 -3.8438880e-10 1.0864229e-02 -2.5467423e-01 2.5467423e-01
 [phi] -1.2233194e-05 -3.7332744e-10 1.0857610e-02 -2.5442848e-01 2.5442848e-01
@@ -2351,7 +2266,7 @@ Scalars - total mean variance min max
 [phi] -1.2130691e-05 -3.7019931e-10 1.0857609e-02 -2.5442848e-01 2.5442848e-01
 
 Free energy density - timestep total fluid
-[fed]          10400 -3.1467729e-05 -3.1467729e-05
+[fed]          10400 -3.1467729441e-05 -3.1467729441e-05
 
 Momentum - x y z
 [total   ]  4.6546100e-14 -8.9317442e-14 -3.1689928e-14
@@ -2372,7 +2287,7 @@ Scalars - total mean variance min max
 [phi] -1.1884538e-05 -3.6268732e-10 1.0847277e-02 -2.5432313e-01 2.5432313e-01
 
 Free energy density - timestep total fluid
-[fed]          10500 -3.1463197e-05 -3.1463197e-05
+[fed]          10500 -3.1463197369e-05 -3.1463197369e-05
 
 Momentum - x y z
 [total   ]  4.4683007e-14 -1.0422913e-13 -3.1329106e-14
@@ -2385,7 +2300,7 @@ Velocity - x y z
 Completed cycle 10500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.2207351e-11  0.99998822555 1.00002415037
+[rho]       32768.00  1.00000000000 7.2207573e-11  0.99998822555 1.00002415037
 [phi] -3.5234198e-01 -1.0752624e-05 1.9602868e-02 -1.7669736e-01 3.4160476e-01
 [phi] -1.2102925e-05 -3.6935196e-10 1.0843745e-02 -2.5446095e-01 2.5446095e-01
 [phi] -1.1740715e-05 -3.5829818e-10 1.0837226e-02 -2.5422058e-01 2.5422059e-01
@@ -2393,7 +2308,7 @@ Scalars - total mean variance min max
 [phi] -1.1644385e-05 -3.5535842e-10 1.0837226e-02 -2.5422058e-01 2.5422059e-01
 
 Free energy density - timestep total fluid
-[fed]          10600 -3.1458715e-05 -3.1458715e-05
+[fed]          10600 -3.1458715292e-05 -3.1458715292e-05
 
 Momentum - x y z
 [total   ]  3.2942399e-14 -7.7937656e-14 -3.1995240e-14
@@ -2414,7 +2329,7 @@ Scalars - total mean variance min max
 [phi] -1.1410056e-05 -3.4820728e-10 1.0827447e-02 -2.5412076e-01 2.5412076e-01
 
 Free energy density - timestep total fluid
-[fed]          10700 -3.1454286e-05 -3.1454286e-05
+[fed]          10700 -3.1454285571e-05 -3.1454285571e-05
 
 Momentum - x y z
 [total   ]  1.0035028e-13 -6.5236011e-14 -3.6352865e-14
@@ -2435,7 +2350,7 @@ Scalars - total mean variance min max
 [phi] -1.1181381e-05 -3.4122868e-10 1.0817933e-02 -2.5402359e-01 2.5402359e-01
 
 Free energy density - timestep total fluid
-[fed]          10800 -3.1449910e-05 -3.1449910e-05
+[fed]          10800 -3.1449910288e-05 -3.1449910288e-05
 
 Momentum - x y z
 [total   ]  1.2596868e-13 -6.4635797e-14 -3.4486303e-14
@@ -2448,7 +2363,7 @@ Velocity - x y z
 Completed cycle 10800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.5164319e-11  0.99998842085 1.00002447189
+[rho]       32768.00  1.00000000000 7.5164097e-11  0.99998842085 1.00002447189
 [phi] -3.2695864e-01 -9.9779859e-06 1.9550581e-02 -1.7649747e-01 3.4121875e-01
 [phi] -1.1407323e-05 -3.4812386e-10 1.0815046e-02 -2.5416144e-01 2.5416144e-01
 [phi] -1.1045955e-05 -3.3709580e-10 1.0808676e-02 -2.5392899e-01 2.5392899e-01
@@ -2456,7 +2371,7 @@ Scalars - total mean variance min max
 [phi] -1.0958196e-05 -3.3441762e-10 1.0808676e-02 -2.5392899e-01 2.5392899e-01
 
 Free energy density - timestep total fluid
-[fed]          10900 -3.1445591e-05 -3.1445591e-05
+[fed]          10900 -3.1445591268e-05 -3.1445591268e-05
 
 Momentum - x y z
 [total   ]  1.8896690e-13 -6.1360639e-14 -1.8485213e-14
@@ -2469,7 +2384,7 @@ Velocity - x y z
 Completed cycle 10900
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.6125106e-11  0.99998848223 1.00002457298
+[rho]       32768.00  1.00000000000 7.6124884e-11  0.99998848223 1.00002457298
 [phi] -3.1888035e-01 -9.7314560e-06 1.9534086e-02 -1.7643423e-01 3.4109670e-01
 [phi] -1.1186379e-05 -3.4138121e-10 1.0805990e-02 -2.5406675e-01 2.5406675e-01
 [phi] -1.0825413e-05 -3.3036540e-10 1.0799669e-02 -2.5383689e-01 2.5383689e-01
@@ -2477,7 +2392,7 @@ Scalars - total mean variance min max
 [phi] -1.0740346e-05 -3.2776934e-10 1.0799669e-02 -2.5383689e-01 2.5383689e-01
 
 Free energy density - timestep total fluid
-[fed]          11000 -3.1441330e-05 -3.1441330e-05
+[fed]          11000 -3.1441330104e-05 -3.1441330104e-05
 
 Momentum - x y z
 [total   ]  1.9146837e-13 -6.5197847e-14 -3.5194070e-14
@@ -2490,7 +2405,7 @@ Velocity - x y z
 Completed cycle 11000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.7070794e-11  0.99998854182 1.00002467114
+[rho]       32768.00  1.00000000000 7.7070350e-11  0.99998854182 1.00002467114
 [phi] -3.1098580e-01 -9.4905336e-06 1.9518035e-02 -1.7637262e-01 3.4097780e-01
 [phi] -1.0970635e-05 -3.3479720e-10 1.0797176e-02 -2.5397452e-01 2.5397452e-01
 [phi] -1.0610129e-05 -3.2379545e-10 1.0790904e-02 -2.5374723e-01 2.5374723e-01
@@ -2498,7 +2413,7 @@ Scalars - total mean variance min max
 [phi] -1.0527675e-05 -3.2127915e-10 1.0790904e-02 -2.5374723e-01 2.5374723e-01
 
 Free energy density - timestep total fluid
-[fed]          11100 -3.1437128e-05 -3.1437128e-05
+[fed]          11100 -3.1437128167e-05 -3.1437128167e-05
 
 Momentum - x y z
 [total   ]  1.9466373e-13 -3.8639231e-14 -2.7894353e-15
@@ -2511,7 +2426,7 @@ Velocity - x y z
 Completed cycle 11100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.8005380e-11  0.99998859969 1.00002476649
+[rho]       32768.00  1.00000000000 7.8005602e-11  0.99998859969 1.00002476649
 [phi] -3.0327061e-01 -9.2550845e-06 1.9502416e-02 -1.7631258e-01 3.4086197e-01
 [phi] -1.0759937e-05 -3.2836722e-10 1.0788599e-02 -2.5388467e-01 2.5388467e-01
 [phi] -1.0399953e-05 -3.1738138e-10 1.0782375e-02 -2.5365993e-01 2.5365993e-01
@@ -2519,7 +2434,7 @@ Scalars - total mean variance min max
 [phi] -1.0320032e-05 -3.1494238e-10 1.0782375e-02 -2.5365993e-01 2.5365993e-01
 
 Free energy density - timestep total fluid
-[fed]          11200 -3.1432987e-05 -3.1432987e-05
+[fed]          11200 -3.1432986626e-05 -3.1432986626e-05
 
 Momentum - x y z
 [total   ]  1.7477339e-13 -4.3801768e-14  1.5182300e-14
@@ -2532,7 +2447,7 @@ Velocity - x y z
 Completed cycle 11200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.8928419e-11  0.99998865590 1.00002485913
+[rho]       32768.00  1.00000000000 7.8927975e-11  0.99998865590 1.00002485913
 [phi] -2.9573048e-01 -9.0249779e-06 1.9487216e-02 -1.7625409e-01 3.4074914e-01
 [phi] -1.0554143e-05 -3.2208687e-10 1.0780250e-02 -2.5379715e-01 2.5379715e-01
 [phi] -1.0194738e-05 -3.1111873e-10 1.0774074e-02 -2.5357494e-01 2.5357494e-01
@@ -2540,7 +2455,7 @@ Scalars - total mean variance min max
 [phi] -1.0117275e-05 -3.0875473e-10 1.0774074e-02 -2.5357494e-01 2.5357494e-01
 
 Free energy density - timestep total fluid
-[fed]          11300 -3.1428906e-05 -3.1428906e-05
+[fed]          11300 -3.1428906467e-05 -3.1428906467e-05
 
 Momentum - x y z
 [total   ]  1.6918758e-13 -9.7720443e-14  1.5328017e-14
@@ -2553,7 +2468,7 @@ Velocity - x y z
 Completed cycle 11300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 7.9831475e-11  0.99998871049 1.00002494914
+[rho]       32768.00  1.00000000000 7.9831253e-11  0.99998871049 1.00002494914
 [phi] -2.8836125e-01 -8.8000869e-06 1.9472423e-02 -1.7619709e-01 3.4063921e-01
 [phi] -1.0353112e-05 -3.1595190e-10 1.0772123e-02 -2.5371189e-01 2.5371189e-01
 [phi] -9.9943437e-06 -3.0500316e-10 1.0765996e-02 -2.5349218e-01 2.5349218e-01
@@ -2561,7 +2476,7 @@ Scalars - total mean variance min max
 [phi] -9.9192630e-06 -3.0271188e-10 1.0765996e-02 -2.5349218e-01 2.5349218e-01
 
 Free energy density - timestep total fluid
-[fed]          11400 -3.1424889e-05 -3.1424889e-05
+[fed]          11400 -3.1424888503e-05 -3.1424888503e-05
 
 Momentum - x y z
 [total   ]  2.1732616e-13 -6.6110312e-14  3.1294412e-14
@@ -2574,7 +2489,7 @@ Velocity - x y z
 Completed cycle 11400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.0725204e-11  0.99998876353 1.00002503661
+[rho]       32768.00  1.00000000000 8.0724982e-11  0.99998876353 1.00002503661
 [phi] -2.8115887e-01 -8.5802877e-06 1.9458026e-02 -1.7614154e-01 3.4053212e-01
 [phi] -1.0156709e-05 -3.0995817e-10 1.0764213e-02 -2.5362883e-01 2.5362883e-01
 [phi] -9.7986322e-06 -2.9903052e-10 1.0758133e-02 -2.5341160e-01 2.5341160e-01
@@ -2582,7 +2497,7 @@ Scalars - total mean variance min max
 [phi] -9.7258623e-06 -2.9680976e-10 1.0758133e-02 -2.5341160e-01 2.5341160e-01
 
 Free energy density - timestep total fluid
-[fed]          11500 -3.1420933e-05 -3.1420933e-05
+[fed]          11500 -3.1420933390e-05 -3.1420933390e-05
 
 Momentum - x y z
 [total   ]  2.3264377e-13 -8.7815172e-14  8.1878948e-15
@@ -2595,7 +2510,7 @@ Velocity - x y z
 Completed cycle 11500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.1604723e-11  0.99998881505 1.00002512163
+[rho]       32768.00  1.00000000000 8.1604279e-11  0.99998881505 1.00002512163
 [phi] -2.7411940e-01 -8.3654602e-06 1.9444014e-02 -1.7608742e-01 3.4042778e-01
 [phi] -9.9648042e-06 -3.0410169e-10 1.0756513e-02 -2.5354791e-01 2.5354791e-01
 [phi] -9.6074716e-06 -2.9319677e-10 1.0750480e-02 -2.5333313e-01 2.5333313e-01
@@ -2603,7 +2518,7 @@ Scalars - total mean variance min max
 [phi] -9.5369442e-06 -2.9104444e-10 1.0750480e-02 -2.5333313e-01 2.5333313e-01
 
 Free energy density - timestep total fluid
-[fed]          11600 -3.1417042e-05 -3.1417042e-05
+[fed]          11600 -3.1417041638e-05 -3.1417041638e-05
 
 Momentum - x y z
 [total   ]  1.8072696e-13 -9.0597668e-14  2.6860458e-14
@@ -2616,7 +2531,7 @@ Velocity - x y z
 Completed cycle 11600
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.2466922e-11  0.99998886509 1.00002520426
+[rho]       32768.00  1.00000000000 8.2467144e-11  0.99998886509 1.00002520426
 [phi] -2.6723900e-01 -8.1554871e-06 1.9430374e-02 -1.7603468e-01 3.4032612e-01
 [phi] -9.7772694e-06 -2.9837858e-10 1.0749017e-02 -2.5346907e-01 2.5346907e-01
 [phi] -9.4207344e-06 -2.8749800e-10 1.0743031e-02 -2.5325672e-01 2.5325673e-01
@@ -2624,7 +2539,7 @@ Scalars - total mean variance min max
 [phi] -9.3523821e-06 -2.8541205e-10 1.0743031e-02 -2.5325672e-01 2.5325673e-01
 
 Free energy density - timestep total fluid
-[fed]          11700 -3.1413214e-05 -3.1413214e-05
+[fed]          11700 -3.1413213622e-05 -3.1413213622e-05
 
 Momentum - x y z
 [total   ]  2.2508037e-13 -1.2624971e-13  3.1988301e-14
@@ -2637,7 +2552,7 @@ Velocity - x y z
 Completed cycle 11700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.3315355e-11  0.99998891369 1.00002528458
+[rho]       32768.00  1.00000000000 8.3315133e-11  0.99998891369 1.00002528458
 [phi] -2.6051394e-01 -7.9502546e-06 1.9417098e-02 -1.7598328e-01 3.4022708e-01
 [phi] -9.5939818e-06 -2.9278509e-10 1.0741719e-02 -2.5339225e-01 2.5339225e-01
 [phi] -9.2382976e-06 -2.8193047e-10 1.0735780e-02 -2.5318232e-01 2.5318232e-01
@@ -2645,7 +2560,7 @@ Scalars - total mean variance min max
 [phi] -9.1720526e-06 -2.7990883e-10 1.0735780e-02 -2.5318232e-01 2.5318232e-01
 
 Free energy density - timestep total fluid
-[fed]          11800 -3.1409450e-05 -3.1409450e-05
+[fed]          11800 -3.1409449598e-05 -3.1409449598e-05
 
 Momentum - x y z
 [total   ]  2.2245400e-13 -7.1474077e-14  5.2811922e-14
@@ -2658,7 +2573,7 @@ Velocity - x y z
 Completed cycle 11800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.4150908e-11  0.99998896088 1.00002536266
+[rho]       32768.00  1.00000000000 8.4151353e-11  0.99998896088 1.00002536266
 [phi] -2.5394057e-01 -7.7496513e-06 1.9404174e-02 -1.7593320e-01 3.4013057e-01
 [phi] -9.4148233e-06 -2.8731761e-10 1.0734614e-02 -2.5331740e-01 2.5331740e-01
 [phi] -9.0600418e-06 -2.7649053e-10 1.0728722e-02 -2.5310986e-01 2.5310986e-01
@@ -2666,7 +2581,7 @@ Scalars - total mean variance min max
 [phi] -8.9958419e-06 -2.7453131e-10 1.0728722e-02 -2.5310986e-01 2.5310986e-01
 
 Free energy density - timestep total fluid
-[fed]          11900 -3.1405750e-05 -3.1405750e-05
+[fed]          11900 -3.1405749705e-05 -3.1405749705e-05
 
 Momentum - x y z
 [total   ]  1.7836080e-13 -7.5401491e-14  4.6858351e-14
@@ -2679,7 +2594,7 @@ Velocity - x y z
 Completed cycle 11900
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.4968477e-11  0.99998900672 1.00002543856
+[rho]       32768.00  1.00000000000 8.4968699e-11  0.99998900672 1.00002543856
 [phi] -2.4751534e-01 -7.5535687e-06 1.9391592e-02 -1.7588438e-01 3.4003654e-01
 [phi] -9.2396798e-06 -2.8197265e-10 1.0727697e-02 -2.5324448e-01 2.5324448e-01
 [phi] -8.8858514e-06 -2.7117466e-10 1.0721851e-02 -2.5303930e-01 2.5303930e-01
@@ -2687,7 +2602,7 @@ Scalars - total mean variance min max
 [phi] -8.8236341e-06 -2.6927594e-10 1.0721851e-02 -2.5303930e-01 2.5303930e-01
 
 Free energy density - timestep total fluid
-[fed]          12000 -3.1402114e-05 -3.1402114e-05
+[fed]          12000 -3.1402113981e-05 -3.1402113981e-05
 
 Momentum - x y z
 [total   ]  2.3944735e-13 -9.0916857e-14  5.4095617e-14
@@ -2708,7 +2623,7 @@ Scalars - total mean variance min max
 [phi] -8.6553211e-06 -2.6413944e-10 1.0715161e-02 -2.5297058e-01 2.5297059e-01
 
 Free energy density - timestep total fluid
-[fed]          12100 -3.1398542e-05 -3.1398542e-05
+[fed]          12100 -3.1398542367e-05 -3.1398542367e-05
 
 Momentum - x y z
 [total   ]  2.3911428e-13 -5.1941090e-14  3.3389957e-14
@@ -2721,7 +2636,7 @@ Velocity - x y z
 Completed cycle 12100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.6565421e-11  0.99998909456 1.00002558408
+[rho]       32768.00  1.00000000000 8.6565644e-11  0.99998909456 1.00002558408
 [phi] -2.3509548e-01 -7.1745446e-06 1.9367419e-02 -1.7579046e-01 3.3985563e-01
 [phi] -8.9009986e-06 -2.7163692e-10 1.0714404e-02 -2.5310417e-01 2.5310417e-01
 [phi] -8.5492236e-06 -2.6090160e-10 1.0708649e-02 -2.5290366e-01 2.5290366e-01
@@ -2729,7 +2644,7 @@ Scalars - total mean variance min max
 [phi] -8.4907954e-06 -2.5911851e-10 1.0708649e-02 -2.5290366e-01 2.5290366e-01
 
 Free energy density - timestep total fluid
-[fed]          12200 -3.1395035e-05 -3.1395035e-05
+[fed]          12200 -3.1395034720e-05 -3.1395034720e-05
 
 Momentum - x y z
 [total   ]  2.9986430e-13 -4.5612819e-14  4.2930937e-14
@@ -2750,7 +2665,7 @@ Scalars - total mean variance min max
 [phi] -8.3299507e-06 -2.5420992e-10 1.0702308e-02 -2.5283848e-01 2.5283848e-01
 
 Free energy density - timestep total fluid
-[fed]          12300 -3.1391591e-05 -3.1391591e-05
+[fed]          12300 -3.1391590814e-05 -3.1391590814e-05
 
 Momentum - x y z
 [total   ]  3.2978828e-13 -2.1451591e-14  3.5776937e-14
@@ -2763,7 +2678,7 @@ Velocity - x y z
 Completed cycle 12300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.8099306e-11  0.99998917750 1.00002572161
+[rho]       32768.00  1.00000000000 8.8099528e-11  0.99998917750 1.00002572161
 [phi] -2.2322768e-01 -6.8123681e-06 1.9344505e-02 -1.7570124e-01 3.3968385e-01
 [phi] -8.5770961e-06 -2.6175220e-10 1.0701799e-02 -2.5297094e-01 2.5297094e-01
 [phi] -8.2275651e-06 -2.5108536e-10 1.0696135e-02 -2.5277500e-01 2.5277500e-01
@@ -2771,7 +2686,7 @@ Scalars - total mean variance min max
 [phi] -8.1726917e-06 -2.4941076e-10 1.0696135e-02 -2.5277500e-01 2.5277500e-01
 
 Free energy density - timestep total fluid
-[fed]          12400 -3.1388210e-05 -3.1388210e-05
+[fed]          12400 -3.1388210352e-05 -3.1388210352e-05
 
 Momentum - x y z
 [total   ]  3.5234662e-13  1.8308272e-14  3.2245040e-14
@@ -2792,7 +2707,7 @@ Scalars - total mean variance min max
 [phi] -8.0189192e-06 -2.4471799e-10 1.0690124e-02 -2.5271317e-01 2.5271317e-01
 
 Free energy density - timestep total fluid
-[fed]          12500 -3.1384893e-05 -3.1384893e-05
+[fed]          12500 -3.1384892972e-05 -3.1384892972e-05
 
 Momentum - x y z
 [total   ]  3.6748729e-13  2.0851376e-14  7.4280859e-14
@@ -2813,7 +2728,7 @@ Scalars - total mean variance min max
 [phi] -7.8685357e-06 -2.4012865e-10 1.0684271e-02 -2.5265295e-01 2.5265295e-01
 
 Free energy density - timestep total fluid
-[fed]          12600 -3.1381638e-05 -3.1381638e-05
+[fed]          12600 -3.1381638250e-05 -3.1381638250e-05
 
 Momentum - x y z
 [total   ]  3.9429224e-13  7.0467937e-14  8.7631291e-14
@@ -2826,7 +2741,7 @@ Velocity - x y z
 Completed cycle 12600
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.0297325e-11  0.99998929340 1.00002591401
+[rho]       32768.00  1.00000000000 9.0297547e-11  0.99998929340 1.00002591401
 [phi] -2.0640619e-01 -6.2990172e-06 1.9312345e-02 -1.7557572e-01 3.3944227e-01
 [phi] -8.1172436e-06 -2.4771862e-10 1.0684102e-02 -2.5278355e-01 2.5278355e-01
 [phi] -7.7714327e-06 -2.3716531e-10 1.0678572e-02 -2.5259430e-01 2.5259430e-01
@@ -2834,7 +2749,7 @@ Scalars - total mean variance min max
 [phi] -7.7214546e-06 -2.3564010e-10 1.0678572e-02 -2.5259430e-01 2.5259430e-01
 
 Free energy density - timestep total fluid
-[fed]          12700 -3.1378446e-05 -3.1378446e-05
+[fed]          12700 -3.1378445710e-05 -3.1378445710e-05
 
 Momentum - x y z
 [total   ]  3.7872136e-13  7.4121265e-14  7.9436457e-14
@@ -2847,7 +2762,7 @@ Velocity - x y z
 Completed cycle 12700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.1000985e-11  0.99998932990 1.00002597468
+[rho]       32768.00  1.00000000000 9.1001207e-11  0.99998932990 1.00002597468
 [phi] -2.0104852e-01 -6.1355139e-06 1.9302183e-02 -1.7553598e-01 3.3936580e-01
 [phi] -7.9705269e-06 -2.4324118e-10 1.0678509e-02 -2.5272424e-01 2.5272424e-01
 [phi] -7.6260452e-06 -2.3272843e-10 1.0673022e-02 -2.5253716e-01 2.5253716e-01
@@ -2855,7 +2770,7 @@ Scalars - total mean variance min max
 [phi] -7.5775888e-06 -2.3124966e-10 1.0673022e-02 -2.5253716e-01 2.5253716e-01
 
 Free energy density - timestep total fluid
-[fed]          12800 -3.1375315e-05 -3.1375315e-05
+[fed]          12800 -3.1375314826e-05 -3.1375314826e-05
 
 Momentum - x y z
 [total   ]  3.1150429e-13  2.4424907e-14  9.3140773e-14
@@ -2868,7 +2783,7 @@ Velocity - x y z
 Completed cycle 12800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.1689545e-11  0.99998936539 1.00002603371
+[rho]       32768.00  1.00000000000 9.1689323e-11  0.99998936539 1.00002603371
 [phi] -1.9581085e-01 -5.9756728e-06 1.9292286e-02 -1.7549725e-01 3.3929128e-01
 [phi] -7.8269503e-06 -2.3885957e-10 1.0673061e-02 -2.5266643e-01 2.5266643e-01
 [phi] -7.4838391e-06 -2.2838864e-10 1.0667618e-02 -2.5248151e-01 2.5248151e-01
@@ -2876,7 +2791,7 @@ Scalars - total mean variance min max
 [phi] -7.4368524e-06 -2.2695472e-10 1.0667618e-02 -2.5248151e-01 2.5248151e-01
 
 Free energy density - timestep total fluid
-[fed]          12900 -3.1372245e-05 -3.1372245e-05
+[fed]          12900 -3.1372245030e-05 -3.1372245030e-05
 
 Momentum - x y z
 [total   ]  3.7867973e-13  3.2793213e-14  1.1724649e-13
@@ -2897,7 +2812,7 @@ Scalars - total mean variance min max
 [phi] -7.2991605e-06 -2.2275270e-10 1.0662355e-02 -2.5242730e-01 2.5242730e-01
 
 Free energy density - timestep total fluid
-[fed]          13000 -3.1369236e-05 -3.1369236e-05
+[fed]          13000 -3.1369235710e-05 -3.1369235710e-05
 
 Momentum - x y z
 [total   ]  3.4592468e-13  2.0230345e-14  1.4487717e-13
@@ -2910,7 +2825,7 @@ Velocity - x y z
 Completed cycle 13000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.3028252e-11  0.99998943342 1.00002614700
+[rho]       32768.00  1.00000000000 9.3028474e-11  0.99998943342 1.00002614700
 [phi] -1.8568464e-01 -5.6666456e-06 1.9273262e-02 -1.7542270e-01 3.3914787e-01
 [phi] -7.5488923e-06 -2.3037391e-10 1.0662586e-02 -2.5255517e-01 2.5255517e-01
 [phi] -7.2086385e-06 -2.1999019e-10 1.0657230e-02 -2.5237450e-01 2.5237450e-01
@@ -2918,7 +2833,7 @@ Scalars - total mean variance min max
 [phi] -7.1644410e-06 -2.1864139e-10 1.0657230e-02 -2.5237450e-01 2.5237450e-01
 
 Free energy density - timestep total fluid
-[fed]          13100 -3.1366286e-05 -3.1366286e-05
+[fed]          13100 -3.1366286222e-05 -3.1366286222e-05
 
 Momentum - x y z
 [total   ]  3.7384332e-13  8.0525864e-15  1.5461937e-13
@@ -2931,7 +2846,7 @@ Velocity - x y z
 Completed cycle 13100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.3678842e-11  0.99998946602 1.00002620132
+[rho]       32768.00  1.00000000000 9.3678620e-11  0.99998946602 1.00002620132
 [phi] -1.8079083e-01 -5.5172983e-06 1.9264120e-02 -1.7538682e-01 3.3907889e-01
 [phi] -7.4142537e-06 -2.2626507e-10 1.0657551e-02 -2.5250164e-01 2.5250164e-01
 [phi] -7.0754837e-06 -2.1592663e-10 1.0652238e-02 -2.5232306e-01 2.5232306e-01
@@ -2939,7 +2854,7 @@ Scalars - total mean variance min max
 [phi] -7.0326109e-06 -2.1461825e-10 1.0652238e-02 -2.5232306e-01 2.5232306e-01
 
 Free energy density - timestep total fluid
-[fed]          13200 -3.1363396e-05 -3.1363396e-05
+[fed]          13200 -3.1363395889e-05 -3.1363395889e-05
 
 Momentum - x y z
 [total   ]  3.5066394e-13  3.3764658e-14  1.2617685e-13
@@ -2960,7 +2875,7 @@ Scalars - total mean variance min max
 [phi] -6.9035976e-06 -2.1068108e-10 1.0647377e-02 -2.5227296e-01 2.5227296e-01
 
 Free energy density - timestep total fluid
-[fed]          13300 -3.1360564e-05 -3.1360564e-05
+[fed]          13300 -3.1360564004e-05 -3.1360564004e-05
 
 Momentum - x y z
 [total   ]  3.3413897e-13  8.3676122e-14  9.4597941e-14
@@ -2973,7 +2888,7 @@ Velocity - x y z
 Completed cycle 13300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.4937169e-11  0.99998952850 1.00002630559
+[rho]       32768.00  1.00000000000 9.4937391e-11  0.99998952850 1.00002630559
 [phi] -1.7132906e-01 -5.2285481e-06 1.9246544e-02 -1.7531777e-01 3.3894611e-01
 [phi] -7.1533820e-06 -2.1830389e-10 1.0647870e-02 -2.5239860e-01 2.5239860e-01
 [phi] -6.8176855e-06 -2.0805925e-10 1.0642642e-02 -2.5222414e-01 2.5222415e-01
@@ -2981,7 +2896,7 @@ Scalars - total mean variance min max
 [phi] -6.7773288e-06 -2.0682766e-10 1.0642642e-02 -2.5222414e-01 2.5222415e-01
 
 Free energy density - timestep total fluid
-[fed]          13400 -3.1357790e-05 -3.1357790e-05
+[fed]          13400 -3.1357789837e-05 -3.1357789837e-05
 
 Momentum - x y z
 [total   ]  3.5999329e-13  8.9043356e-14  7.7798878e-14
@@ -2994,7 +2909,7 @@ Velocity - x y z
 Completed cycle 13400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.5549568e-11  0.99998955845 1.00002635562
+[rho]       32768.00  1.00000000000 9.5549790e-11  0.99998955845 1.00002635562
 [phi] -1.6675622e-01 -5.0889960e-06 1.9238098e-02 -1.7528454e-01 3.3888223e-01
 [phi] -7.0270070e-06 -2.1444723e-10 1.0643216e-02 -2.5234902e-01 2.5234902e-01
 [phi] -6.6928977e-06 -2.0425103e-10 1.0638031e-02 -2.5217659e-01 2.5217659e-01
@@ -3002,7 +2917,7 @@ Scalars - total mean variance min max
 [phi] -6.6537342e-06 -2.0305585e-10 1.0638031e-02 -2.5217659e-01 2.5217659e-01
 
 Free energy density - timestep total fluid
-[fed]          13500 -3.1355073e-05 -3.1355073e-05
+[fed]          13500 -3.1355072635e-05 -3.1355072635e-05
 
 Momentum - x y z
 [total   ]  3.4778083e-13  6.9479145e-14  4.9328597e-14
@@ -3015,7 +2930,7 @@ Velocity - x y z
 Completed cycle 13500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.6144204e-11  0.99998958757 1.00002640430
+[rho]       32768.00  1.00000000000 9.6144426e-11  0.99998958757 1.00002640430
 [phi] -1.6228557e-01 -4.9525626e-06 1.9229870e-02 -1.7525215e-01 3.3881997e-01
 [phi] -6.9032481e-06 -2.1067041e-10 1.0638683e-02 -2.5230070e-01 2.5230070e-01
 [phi] -6.5707558e-06 -2.0052355e-10 1.0633539e-02 -2.5213027e-01 2.5213027e-01
@@ -3023,7 +2938,7 @@ Scalars - total mean variance min max
 [phi] -6.5327468e-06 -1.9936361e-10 1.0633539e-02 -2.5213027e-01 2.5213027e-01
 
 Free energy density - timestep total fluid
-[fed]          13600 -3.1352412e-05 -3.1352412e-05
+[fed]          13600 -3.1352411627e-05 -3.1352411627e-05
 
 Momentum - x y z
 [total   ]  3.7872136e-13  3.2109732e-14  4.6927739e-14
@@ -3044,7 +2959,7 @@ Scalars - total mean variance min max
 [phi] -6.4142999e-06 -1.9574890e-10 1.0629165e-02 -2.5208514e-01 2.5208514e-01
 
 Free energy density - timestep total fluid
-[fed]          13700 -3.1349806e-05 -3.1349806e-05
+[fed]          13700 -3.1349806023e-05 -3.1349806023e-05
 
 Momentum - x y z
 [total   ]  3.5783529e-13  8.0355861e-14  3.9634962e-14
@@ -3065,7 +2980,7 @@ Scalars - total mean variance min max
 [phi] -6.2983323e-06 -1.9220985e-10 1.0624903e-02 -2.5204118e-01 2.5204118e-01
 
 Free energy density - timestep total fluid
-[fed]          13800 -3.1347255e-05 -3.1347255e-05
+[fed]          13800 -3.1347255021e-05 -3.1347255021e-05
 
 Momentum - x y z
 [total   ]  4.1816550e-13  1.0531159e-13  5.8265892e-14
@@ -3078,7 +2993,7 @@ Velocity - x y z
 Completed cycle 13800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.7859276e-11  0.99998953798 1.00002654259
+[rho]       32768.00  1.00000000000 9.7859498e-11  0.99998953798 1.00002654259
 [phi] -1.4946411e-01 -4.5612826e-06 1.9206445e-02 -1.7515977e-01 3.3864246e-01
 [phi] -6.5470126e-06 -1.9979897e-10 1.0625772e-02 -2.5216288e-01 2.5216289e-01
 [phi] -6.2195353e-06 -1.8980516e-10 1.0620753e-02 -2.5199835e-01 2.5199835e-01
@@ -3086,7 +3001,7 @@ Scalars - total mean variance min max
 [phi] -6.1847835e-06 -1.8874461e-10 1.0620753e-02 -2.5199835e-01 2.5199835e-01
 
 Free energy density - timestep total fluid
-[fed]          13900 -3.1344758e-05 -3.1344758e-05
+[fed]          13900 -3.1344757808e-05 -3.1344757808e-05
 
 Momentum - x y z
 [total   ]  4.0732001e-13  1.0512771e-13  9.2918728e-14
@@ -3107,7 +3022,7 @@ Scalars - total mean variance min max
 [phi] -6.0735891e-06 -1.8535123e-10 1.0616710e-02 -2.5195662e-01 2.5195662e-01
 
 Free energy density - timestep total fluid
-[fed]          14000 -3.1342314e-05 -3.1342314e-05
+[fed]          14000 -3.1342313562e-05 -3.1342313562e-05
 
 Momentum - x y z
 [total   ]  3.2721048e-13  9.1853608e-14  1.0155071e-13
@@ -3120,7 +3035,7 @@ Velocity - x y z
 Completed cycle 14000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 9.8942632e-11  0.99998940459 1.00002662876
+[rho]       32768.00  1.00000000000 9.8942854e-11  0.99998940459 1.00002662876
 [phi] -1.4138683e-01 -4.3147838e-06 1.9191820e-02 -1.7510199e-01 3.3853145e-01
 [phi] -6.3214360e-06 -1.9291492e-10 1.0617709e-02 -2.5207668e-01 2.5207668e-01
 [phi] -5.9974256e-06 -1.8302691e-10 1.0612771e-02 -2.5191596e-01 2.5191596e-01
@@ -3128,7 +3043,7 @@ Scalars - total mean variance min max
 [phi] -5.9646942e-06 -1.8202802e-10 1.0612771e-02 -2.5191596e-01 2.5191596e-01
 
 Free energy density - timestep total fluid
-[fed]          14100 -3.1339921e-05 -3.1339921e-05
+[fed]          14100 -3.1339921451e-05 -3.1339921451e-05
 
 Momentum - x y z
 [total   ]  3.8461942e-13  1.1275356e-13  1.2406048e-13
@@ -3149,7 +3064,7 @@ Scalars - total mean variance min max
 [phi] -5.8580415e-06 -1.7877324e-10 1.0608934e-02 -2.5187635e-01 2.5187635e-01
 
 Free energy density - timestep total fluid
-[fed]          14200 -3.1337581e-05 -3.1337581e-05
+[fed]          14200 -3.1337580637e-05 -3.1337580637e-05
 
 Momentum - x y z
 [total   ]  4.0655673e-13  1.1423501e-13  1.2533724e-13
@@ -3170,7 +3085,7 @@ Scalars - total mean variance min max
 [phi] -5.7535736e-06 -1.7558513e-10 1.0605197e-02 -2.5183776e-01 2.5183776e-01
 
 Free energy density - timestep total fluid
-[fed]          14300 -3.1335290e-05 -3.1335290e-05
+[fed]          14300 -3.1335290279e-05 -3.1335290279e-05
 
 Momentum - x y z
 [total   ]  4.0331627e-13  1.0887125e-13  1.3391371e-13
@@ -3183,7 +3098,7 @@ Velocity - x y z
 Completed cycle 14300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0048118e-10  0.99998921759 1.00002674969
+[rho]       32768.00  1.00000000000 1.0048140e-10  0.99998921759 1.00002674969
 [phi] -1.2993531e-01 -3.9653109e-06 1.9171267e-02 -1.7502062e-01 3.3837540e-01
 [phi] -5.9997850e-06 -1.8309891e-10 1.0606373e-02 -2.5195531e-01 2.5195531e-01
 [phi] -5.6811451e-06 -1.7337479e-10 1.0601556e-02 -2.5180016e-01 2.5180016e-01
@@ -3191,7 +3106,7 @@ Scalars - total mean variance min max
 [phi] -5.6512373e-06 -1.7246207e-10 1.0601556e-02 -2.5180016e-01 2.5180016e-01
 
 Free energy density - timestep total fluid
-[fed]          14400 -3.1333050e-05 -3.1333050e-05
+[fed]          14400 -3.1333049534e-05 -3.1333049534e-05
 
 Momentum - x y z
 [total   ]  3.9060422e-13  9.9160263e-14  1.3149898e-13
@@ -3212,7 +3127,7 @@ Scalars - total mean variance min max
 [phi] -5.5509862e-06 -1.6940266e-10 1.0598009e-02 -2.5176353e-01 2.5176353e-01
 
 Free energy density - timestep total fluid
-[fed]          14500 -3.1330858e-05 -3.1330858e-05
+[fed]          14500 -3.1330857558e-05 -3.1330857558e-05
 
 Momentum - x y z
 [total   ]  3.9196424e-13  1.5233995e-13  1.5584756e-13
@@ -3225,7 +3140,7 @@ Velocity - x y z
 Completed cycle 14500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0145063e-10  0.99998910119 1.00002682512
+[rho]       32768.00  1.00000000000 1.0145085e-10  0.99998910119 1.00002682512
 [phi] -1.2272120e-01 -3.7451538e-06 1.9158431e-02 -1.7496972e-01 3.3827823e-01
 [phi] -5.7958699e-06 -1.7687591e-10 1.0599291e-02 -2.5187937e-01 2.5187937e-01
 [phi] -5.4809155e-06 -1.6726427e-10 1.0594553e-02 -2.5172783e-01 2.5172783e-01
@@ -3233,7 +3148,7 @@ Scalars - total mean variance min max
 [phi] -5.4527611e-06 -1.6640506e-10 1.0594553e-02 -2.5172783e-01 2.5172783e-01
 
 Free energy density - timestep total fluid
-[fed]          14600 -3.1328714e-05 -3.1328714e-05
+[fed]          14600 -3.1328713505e-05 -3.1328713505e-05
 
 Momentum - x y z
 [total   ]  4.1747508e-13  1.7248009e-13  1.6785878e-13
@@ -3254,7 +3169,7 @@ Scalars - total mean variance min max
 [phi] -5.3565165e-06 -1.6346791e-10 1.0591187e-02 -2.5169305e-01 2.5169306e-01
 
 Free energy density - timestep total fluid
-[fed]          14700 -3.1326617e-05 -3.1326617e-05
+[fed]          14700 -3.1326616532e-05 -3.1326616532e-05
 
 Momentum - x y z
 [total   ]  4.5280793e-13  1.7622362e-13  1.8833546e-13
@@ -3267,7 +3182,7 @@ Velocity - x y z
 Completed cycle 14700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0237611e-10  0.99998899089 1.00002689666
+[rho]       32768.00  1.00000000000 1.0237589e-10  0.99998899089 1.00002689666
 [phi] -1.1582614e-01 -3.5347334e-06 1.9146246e-02 -1.7492132e-01 3.3818590e-01
 [phi] -5.5999058e-06 -1.7089556e-10 1.0592567e-02 -2.5180718e-01 2.5180718e-01
 [phi] -5.2887088e-06 -1.6139858e-10 1.0587907e-02 -2.5165917e-01 2.5165917e-01
@@ -3275,7 +3190,7 @@ Scalars - total mean variance min max
 [phi] -5.2622087e-06 -1.6058986e-10 1.0587907e-02 -2.5165917e-01 2.5165917e-01
 
 Free energy density - timestep total fluid
-[fed]          14800 -3.1324566e-05 -3.1324566e-05
+[fed]          14800 -3.1324565797e-05 -3.1324565797e-05
 
 Momentum - x y z
 [total   ]  4.1264908e-13  2.2250604e-13  1.8751667e-13
@@ -3288,7 +3203,7 @@ Velocity - x y z
 Completed cycle 14800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0282508e-10  0.99998893793 1.00002693101
+[rho]       32768.00  1.00000000000 1.0282530e-10  0.99998893793 1.00002693101
 [phi] -1.1249392e-01 -3.4330420e-06 1.9140387e-02 -1.7489803e-01 3.3814147e-01
 [phi] -5.5047884e-06 -1.6799281e-10 1.0589333e-02 -2.5177242e-01 2.5177242e-01
 [phi] -5.1954915e-06 -1.5855382e-10 1.0584711e-02 -2.5162615e-01 2.5162615e-01
@@ -3296,7 +3211,7 @@ Scalars - total mean variance min max
 [phi] -5.1697871e-06 -1.5776938e-10 1.0584711e-02 -2.5162615e-01 2.5162615e-01
 
 Free energy density - timestep total fluid
-[fed]          14900 -3.1322560e-05 -3.1322560e-05
+[fed]          14900 -3.1322560463e-05 -3.1322560463e-05
 
 Momentum - x y z
 [total   ]  3.9510062e-13  1.9950014e-13  1.7943980e-13
@@ -3318,7 +3233,7 @@ Scalars - total mean variance min max
 [phi] -5.0792073e-06 -1.5500511e-10 1.0581598e-02 -2.5159398e-01 2.5159398e-01
 
 Free energy density - timestep total fluid
-[fed]          15000 -3.1320600e-05 -3.1320600e-05
+[fed]          15000 -3.1320599694e-05 -3.1320599694e-05
 
 Momentum - x y z
 [total   ]  3.8553188e-13  2.4285088e-13  1.8659380e-13
@@ -3339,7 +3254,7 @@ Scalars - total mean variance min max
 [phi] -4.9904284e-06 -1.5229579e-10 1.0578564e-02 -2.5156263e-01 2.5156263e-01
 
 Free energy density - timestep total fluid
-[fed]          15100 -3.1318683e-05 -3.1318683e-05
+[fed]          15100 -3.1318682661e-05 -3.1318682661e-05
 
 Momentum - x y z
 [total   ]  3.4092174e-13  2.2323463e-13  1.9612784e-13
@@ -3352,7 +3267,7 @@ Velocity - x y z
 Completed cycle 15100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0410717e-10  0.99998878764 1.00002702869
+[rho]       32768.00  1.00000000000 1.0410672e-10  0.99998878764 1.00002702869
 [phi] -1.0293866e-01 -3.1414385e-06 1.9123694e-02 -1.7483156e-01 3.3801478e-01
 [phi] -5.2303616e-06 -1.5961797e-10 1.0580116e-02 -2.5167327e-01 2.5167327e-01
 [phi] -4.9268384e-06 -1.5035517e-10 1.0575609e-02 -2.5153209e-01 2.5153209e-01
@@ -3360,7 +3275,7 @@ Scalars - total mean variance min max
 [phi] -4.9034032e-06 -1.4963999e-10 1.0575609e-02 -2.5153209e-01 2.5153209e-01
 
 Free energy density - timestep total fluid
-[fed]          15200 -3.1316809e-05 -3.1316809e-05
+[fed]          15200 -3.1316808541e-05 -3.1316808541e-05
 
 Momentum - x y z
 [total   ]  3.9312997e-13  2.3078414e-13  1.8657298e-13
@@ -3373,7 +3288,7 @@ Velocity - x y z
 Completed cycle 15200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0451640e-10  0.99998874029 1.00002705954
+[rho]       32768.00  1.00000000000 1.0451662e-10  0.99998874029 1.00002705954
 [phi] -9.9895443e-02 -3.0485670e-06 1.9118412e-02 -1.7481050e-01 3.3797466e-01
 [phi] -5.1423881e-06 -1.5693323e-10 1.0577199e-02 -2.5164184e-01 2.5164184e-01
 [phi] -4.8408101e-06 -1.4772980e-10 1.0572729e-02 -2.5150233e-01 2.5150233e-01
@@ -3381,7 +3296,7 @@ Scalars - total mean variance min max
 [phi] -4.8180963e-06 -1.4703663e-10 1.0572729e-02 -2.5150233e-01 2.5150233e-01
 
 Free energy density - timestep total fluid
-[fed]          15300 -3.1314977e-05 -3.1314977e-05
+[fed]          15300 -3.1314976516e-05 -3.1314976516e-05
 
 Momentum - x y z
 [total   ]  3.6361192e-13  2.1188606e-13  2.1310037e-13
@@ -3394,7 +3309,7 @@ Velocity - x y z
 Completed cycle 15300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0491408e-10  0.99998869424 1.00002708959
+[rho]       32768.00  1.00000000000 1.0491452e-10  0.99998869424 1.00002708959
 [phi] -9.6920621e-02 -2.9577826e-06 1.9113265e-02 -1.7478996e-01 3.3793554e-01
 [phi] -5.0560979e-06 -1.5429986e-10 1.0574356e-02 -2.5161120e-01 2.5161120e-01
 [phi] -4.7564750e-06 -1.4515610e-10 1.0569924e-02 -2.5147332e-01 2.5147333e-01
@@ -3402,7 +3317,7 @@ Scalars - total mean variance min max
 [phi] -4.7344638e-06 -1.4448437e-10 1.0569924e-02 -2.5147332e-01 2.5147333e-01
 
 Free energy density - timestep total fluid
-[fed]          15400 -3.1313186e-05 -3.1313186e-05
+[fed]          15400 -3.1313185777e-05 -3.1313185777e-05
 
 Momentum - x y z
 [total   ]  4.0012091e-13  1.9792154e-13  2.2726959e-13
@@ -3415,7 +3330,7 @@ Velocity - x y z
 Completed cycle 15400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0530776e-10  0.99998864945 1.00002711885
+[rho]       32768.00  1.00000000000 1.0530754e-10  0.99998864945 1.00002711885
 [phi] -9.4012714e-02 -2.8690404e-06 1.9108249e-02 -1.7476993e-01 3.3789740e-01
 [phi] -4.9714528e-06 -1.5171670e-10 1.0571585e-02 -2.5158131e-01 2.5158132e-01
 [phi] -4.6737940e-06 -1.4263287e-10 1.0567190e-02 -2.5144507e-01 2.5144507e-01
@@ -3423,7 +3338,7 @@ Scalars - total mean variance min max
 [phi] -4.6524689e-06 -1.4198208e-10 1.0567190e-02 -2.5144507e-01 2.5144507e-01
 
 Free energy density - timestep total fluid
-[fed]          15500 -3.1311436e-05 -3.1311436e-05
+[fed]          15500 -3.1311435519e-05 -3.1311435519e-05
 
 Momentum - x y z
 [total   ]  3.6527725e-13  1.9711663e-13  2.6121466e-13
@@ -3444,7 +3359,7 @@ Scalars - total mean variance min max
 [phi] -4.5720730e-06 -1.3952860e-10 1.0564526e-02 -2.5141753e-01 2.5141753e-01
 
 Free energy density - timestep total fluid
-[fed]          15600 -3.1309725e-05 -3.1309725e-05
+[fed]          15600 -3.1309724949e-05 -3.1309724949e-05
 
 Momentum - x y z
 [total   ]  3.4993189e-13  2.1688554e-13  2.5668356e-13
@@ -3457,7 +3372,7 @@ Velocity - x y z
 Completed cycle 15600
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0606027e-10  0.99998856347 1.00002717512
+[rho]       32768.00  1.00000000000 1.0606049e-10  0.99998856347 1.00002717512
 [phi] -8.8391892e-02 -2.6975065e-06 1.9098598e-02 -1.7473134e-01 3.3782398e-01
 [phi] -4.8069476e-06 -1.4669640e-10 1.0566252e-02 -2.5152375e-01 2.5152375e-01
 [phi] -4.5132400e-06 -1.3773316e-10 1.0561930e-02 -2.5139070e-01 2.5139070e-01
@@ -3465,7 +3380,7 @@ Scalars - total mean variance min max
 [phi] -4.4932386e-06 -1.3712276e-10 1.0561930e-02 -2.5139070e-01 2.5139070e-01
 
 Free energy density - timestep total fluid
-[fed]          15700 -3.1308053e-05 -3.1308053e-05
+[fed]          15700 -3.1308053281e-05 -3.1308053281e-05
 
 Momentum - x y z
 [total   ]  3.6049982e-13  1.9959034e-13  2.6786906e-13
@@ -3486,7 +3401,7 @@ Scalars - total mean variance min max
 [phi] -4.4159314e-06 -1.3476353e-10 1.0559401e-02 -2.5136455e-01 2.5136455e-01
 
 Free energy density - timestep total fluid
-[fed]          15800 -3.1306420e-05 -3.1306420e-05
+[fed]          15800 -3.1306419738e-05 -3.1306419738e-05
 
 Momentum - x y z
 [total   ]  4.0544651e-13  1.9880625e-13  2.2585406e-13
@@ -3499,7 +3414,7 @@ Velocity - x y z
 Completed cycle 15800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0677992e-10  0.99998848202 1.00002722851
+[rho]       32768.00  1.00000000000 1.0677970e-10  0.99998848202 1.00002722851
 [phi] -8.3021776e-02 -2.5336235e-06 1.9089432e-02 -1.7469464e-01 3.3775419e-01
 [phi] -4.6485835e-06 -1.4186351e-10 1.0561185e-02 -2.5146901e-01 2.5146901e-01
 [phi] -4.3588534e-06 -1.3302165e-10 1.0556937e-02 -2.5133907e-01 2.5133907e-01
@@ -3507,7 +3422,7 @@ Scalars - total mean variance min max
 [phi] -4.3401151e-06 -1.3244980e-10 1.0556937e-02 -2.5133907e-01 2.5133907e-01
 
 Free energy density - timestep total fluid
-[fed]          15900 -3.1304824e-05 -3.1304824e-05
+[fed]          15900 -3.1304823551e-05 -3.1304823551e-05
 
 Momentum - x y z
 [total   ]  4.0181053e-13  2.2917432e-13  2.3472196e-13
@@ -3528,7 +3443,7 @@ Scalars - total mean variance min max
 [phi] -4.2657537e-06 -1.3018047e-10 1.0554535e-02 -2.5131424e-01 2.5131424e-01
 
 Free energy density - timestep total fluid
-[fed]          16000 -3.1303264e-05 -3.1303264e-05
+[fed]          16000 -3.1303263963e-05 -3.1303263963e-05
 
 Momentum - x y z
 [total   ]  4.1586526e-13  2.4934221e-13  2.4250046e-13
@@ -3541,7 +3456,7 @@ Velocity - x y z
 Completed cycle 16000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0746692e-10  0.99998840484 1.00002727920
+[rho]       32768.00  1.00000000000 1.0746648e-10  0.99998840484 1.00002727920
 [phi] -7.7891686e-02 -2.3770656e-06 1.9080727e-02 -1.7465974e-01 3.3768786e-01
 [phi] -4.4960874e-06 -1.3720970e-10 1.0556372e-02 -2.5141694e-01 2.5141694e-01
 [phi] -4.2103563e-06 -1.2848988e-10 1.0552195e-02 -2.5129005e-01 2.5129005e-01
@@ -3549,7 +3464,7 @@ Scalars - total mean variance min max
 [phi] -4.1928192e-06 -1.2795469e-10 1.0552195e-02 -2.5129005e-01 2.5129005e-01
 
 Free energy density - timestep total fluid
-[fed]          16100 -3.1301740e-05 -3.1301740e-05
+[fed]          16100 -3.1301740226e-05 -3.1301740226e-05
 
 Momentum - x y z
 [total   ]  4.3017326e-13  2.3931551e-13  1.8399171e-13
@@ -3562,7 +3477,7 @@ Velocity - x y z
 Completed cycle 16100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0779644e-10  0.99998836777 1.00002730356
+[rho]       32768.00  1.00000000000 1.0779622e-10  0.99998836777 1.00002730356
 [phi] -7.5413446e-02 -2.3014357e-06 1.9076539e-02 -1.7464293e-01 3.3765593e-01
 [phi] -4.4219593e-06 -1.3494749e-10 1.0554056e-02 -2.5139186e-01 2.5139186e-01
 [phi] -4.1382344e-06 -1.2628889e-10 1.0549915e-02 -2.5126647e-01 2.5126647e-01
@@ -3570,7 +3485,7 @@ Scalars - total mean variance min max
 [phi] -4.1212722e-06 -1.2577125e-10 1.0549915e-02 -2.5126647e-01 2.5126647e-01
 
 Free energy density - timestep total fluid
-[fed]          16200 -3.1300252e-05 -3.1300252e-05
+[fed]          16200 -3.1300251600e-05 -3.1300251600e-05
 
 Momentum - x y z
 [total   ]  4.3730644e-13  2.5342922e-13  1.9125673e-13
@@ -3583,7 +3498,7 @@ Velocity - x y z
 Completed cycle 16200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0812107e-10  0.99998833164 1.00002732730
+[rho]       32768.00  1.00000000000 1.0812129e-10  0.99998833164 1.00002732730
 [phi] -7.2991431e-02 -2.2275217e-06 1.9072458e-02 -1.7462654e-01 3.3762480e-01
 [phi] -4.3492028e-06 -1.3272713e-10 1.0551799e-02 -2.5136741e-01 2.5136741e-01
 [phi] -4.0674884e-06 -1.2412989e-10 1.0547693e-02 -2.5124350e-01 2.5124350e-01
@@ -3591,7 +3506,7 @@ Scalars - total mean variance min max
 [phi] -4.0510862e-06 -1.2362934e-10 1.0547693e-02 -2.5124350e-01 2.5124350e-01
 
 Free energy density - timestep total fluid
-[fed]          16300 -3.1298797e-05 -3.1298797e-05
+[fed]          16300 -3.1298797359e-05 -3.1298797359e-05
 
 Momentum - x y z
 [total   ]  4.5081647e-13  2.8872391e-13  1.8771096e-13
@@ -3612,7 +3527,7 @@ Scalars - total mean variance min max
 [phi] -3.9822274e-06 -1.2152794e-10 1.0545527e-02 -2.5122111e-01 2.5122111e-01
 
 Free energy density - timestep total fluid
-[fed]          16400 -3.1297377e-05 -3.1297377e-05
+[fed]          16400 -3.1297376783e-05 -3.1297376783e-05
 
 Momentum - x y z
 [total   ]  4.2657197e-13  3.0993264e-13  1.9728663e-13
@@ -3633,7 +3548,7 @@ Scalars - total mean variance min max
 [phi] -3.9146663e-06 -1.1946613e-10 1.0543417e-02 -2.5119929e-01 2.5119929e-01
 
 Free energy density - timestep total fluid
-[fed]          16500 -3.1295989e-05 -3.1295989e-05
+[fed]          16500 -3.1295989166e-05 -3.1295989166e-05
 
 Momentum - x y z
 [total   ]  4.1098028e-13  3.0245251e-13  1.9277635e-13
@@ -3646,7 +3561,7 @@ Velocity - x y z
 Completed cycle 16500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0904588e-10  0.99998822879 1.00002739490
+[rho]       32768.00  1.00000000000 1.0904566e-10  0.99998822879 1.00002739490
 [phi] -6.6050947e-02 -2.0157149e-06 1.9060825e-02 -1.7457976e-01 3.3753601e-01
 [phi] -4.1388643e-06 -1.2630811e-10 1.0545362e-02 -2.5129761e-01 2.5129761e-01
 [phi] -3.8632088e-06 -1.1789578e-10 1.0541361e-02 -2.5117803e-01 2.5117803e-01
@@ -3654,7 +3569,7 @@ Scalars - total mean variance min max
 [phi] -3.8483752e-06 -1.1744309e-10 1.0541361e-02 -2.5117803e-01 2.5117803e-01
 
 Free energy density - timestep total fluid
-[fed]          16600 -3.1294634e-05 -3.1294634e-05
+[fed]          16600 -3.1294633811e-05 -3.1294633811e-05
 
 Momentum - x y z
 [total   ]  3.9505552e-13  2.7889149e-13  1.8431784e-13
@@ -3667,7 +3582,7 @@ Velocity - x y z
 Completed cycle 16600
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0934098e-10  0.99998819627 1.00002741627
+[rho]       32768.00  1.00000000000 1.0934120e-10  0.99998819627 1.00002741627
 [phi] -6.3842184e-02 -1.9483088e-06 1.9057142e-02 -1.7456493e-01 3.3750788e-01
 [phi] -4.0712990e-06 -1.2424618e-10 1.0543324e-02 -2.5127548e-01 2.5127548e-01
 [phi] -3.7976721e-06 -1.1589575e-10 1.0539357e-02 -2.5115732e-01 2.5115732e-01
@@ -3675,7 +3590,7 @@ Scalars - total mean variance min max
 [phi] -3.7833257e-06 -1.1545794e-10 1.0539357e-02 -2.5115732e-01 2.5115732e-01
 
 Free energy density - timestep total fluid
-[fed]          16700 -3.1293310e-05 -3.1293310e-05
+[fed]          16700 -3.1293310033e-05 -3.1293310033e-05
 
 Momentum - x y z
 [total   ]  4.1636833e-13  2.9606873e-13  1.8613583e-13
@@ -3696,7 +3611,7 @@ Scalars - total mean variance min max
 [phi] -3.7194887e-06 -1.1350979e-10 1.0537404e-02 -2.5113713e-01 2.5113713e-01
 
 Free energy density - timestep total fluid
-[fed]          16800 -3.1292017e-05 -3.1292017e-05
+[fed]          16800 -3.1292017157e-05 -3.1292017157e-05
 
 Momentum - x y z
 [total   ]  4.9344903e-13  2.9256458e-13  1.9739765e-13
@@ -3709,7 +3624,7 @@ Velocity - x y z
 Completed cycle 16800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.0990964e-10  0.99998813372 1.00002745740
+[rho]       32768.00  1.00000000000 1.0990986e-10  0.99998813372 1.00002745740
 [phi] -5.9575197e-02 -1.8180907e-06 1.9050054e-02 -1.7453636e-01 3.3745370e-01
 [phi] -3.9398232e-06 -1.2023386e-10 1.0539400e-02 -2.5123285e-01 2.5123285e-01
 [phi] -3.6702652e-06 -1.1200760e-10 1.0535500e-02 -2.5111745e-01 2.5111745e-01
@@ -3717,7 +3632,7 @@ Scalars - total mean variance min max
 [phi] -3.6568408e-06 -1.1159792e-10 1.0535500e-02 -2.5111745e-01 2.5111745e-01
 
 Free energy density - timestep total fluid
-[fed]          16900 -3.1290755e-05 -3.1290755e-05
+[fed]          16900 -3.1290754520e-05 -3.1290754520e-05
 
 Momentum - x y z
 [total   ]  5.2602020e-13  2.8806818e-13  1.4679924e-13
@@ -3738,7 +3653,7 @@ Scalars - total mean variance min max
 [phi] -3.5953558e-06 -1.0972155e-10 1.0533646e-02 -2.5109828e-01 2.5109828e-01
 
 Free energy density - timestep total fluid
-[fed]          17000 -3.1289521e-05 -3.1289521e-05
+[fed]          17000 -3.1289521469e-05 -3.1289521469e-05
 
 Momentum - x y z
 [total   ]  5.6878113e-13  2.9322378e-13  1.3218593e-13
@@ -3751,7 +3666,7 @@ Velocity - x y z
 Completed cycle 17000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1045187e-10  0.99998807437 1.00002749643
+[rho]       32768.00  1.00000000000 1.1045209e-10  0.99998807437 1.00002749643
 [phi] -5.5501965e-02 -1.6937856e-06 1.9043320e-02 -1.7450918e-01 3.3740220e-01
 [phi] -3.8130469e-06 -1.1636496e-10 1.0535671e-02 -2.5119229e-01 2.5119229e-01
 [phi] -3.5475697e-06 -1.0826324e-10 1.0531838e-02 -2.5107959e-01 2.5107959e-01
@@ -3759,7 +3674,7 @@ Scalars - total mean variance min max
 [phi] -3.5350093e-06 -1.0787992e-10 1.0531838e-02 -2.5107959e-01 2.5107959e-01
 
 Free energy density - timestep total fluid
-[fed]          17100 -3.1288317e-05 -3.1288317e-05
+[fed]          17100 -3.1288317362e-05 -3.1288317362e-05
 
 Momentum - x y z
 [total   ]  6.0415214e-13  3.1435618e-13  1.0662998e-13
@@ -3780,7 +3695,7 @@ Scalars - total mean variance min max
 [phi] -3.4757736e-06 -1.0607219e-10 1.0530077e-02 -2.5106138e-01 2.5106138e-01
 
 Free energy density - timestep total fluid
-[fed]          17200 -3.1287142e-05 -3.1287142e-05
+[fed]          17200 -3.1287141570e-05 -3.1287141570e-05
 
 Momentum - x y z
 [total   ]  5.9899655e-13  3.5316194e-13  1.0001028e-13
@@ -3801,7 +3716,7 @@ Scalars - total mean variance min max
 [phi] -3.4176299e-06 -1.0429779e-10 1.0528360e-02 -2.5104363e-01 2.5104363e-01
 
 Free energy density - timestep total fluid
-[fed]          17300 -3.1285993e-05 -3.1285993e-05
+[fed]          17300 -3.1285993471e-05 -3.1285993471e-05
 
 Momentum - x y z
 [total   ]  5.9303951e-13  3.4416914e-13  1.1008555e-13
@@ -3814,7 +3729,7 @@ Velocity - x y z
 Completed cycle 17300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1121459e-10  0.99998799103 1.00002755131
+[rho]       32768.00  1.00000000000 1.1121482e-10  0.99998799103 1.00002755131
 [phi] -4.9737964e-02 -1.5178822e-06 1.9033844e-02 -1.7447087e-01 3.3732966e-01
 [phi] -3.6312651e-06 -1.1081742e-10 1.0530421e-02 -2.5113511e-01 2.5113511e-01
 [phi] -3.3719166e-06 -1.0290273e-10 1.0526687e-02 -2.5102634e-01 2.5102634e-01
@@ -3822,7 +3737,7 @@ Scalars - total mean variance min max
 [phi] -3.3605569e-06 -1.0255606e-10 1.0526687e-02 -2.5102634e-01 2.5102634e-01
 
 Free energy density - timestep total fluid
-[fed]          17400 -3.1284872e-05 -3.1284872e-05
+[fed]          17400 -3.1284872459e-05 -3.1284872459e-05
 
 Momentum - x y z
 [total   ]  5.4840854e-13  3.1676051e-13  1.4467594e-13
@@ -3835,7 +3750,7 @@ Velocity - x y z
 Completed cycle 17400
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1145951e-10  0.99998796471 1.00002756868
+[rho]       32768.00  1.00000000000 1.1145973e-10  0.99998796471 1.00002756868
 [phi] -4.7905047e-02 -1.4619460e-06 1.9030843e-02 -1.7445872e-01 3.3730668e-01
 [phi] -3.5728134e-06 -1.0903361e-10 1.0528758e-02 -2.5111698e-01 2.5111698e-01
 [phi] -3.3155054e-06 -1.0118120e-10 1.0525056e-02 -2.5100949e-01 2.5100949e-01
@@ -3843,7 +3758,7 @@ Scalars - total mean variance min max
 [phi] -3.3045253e-06 -1.0084611e-10 1.0525056e-02 -2.5100949e-01 2.5100949e-01
 
 Free energy density - timestep total fluid
-[fed]          17500 -3.1283778e-05 -3.1283778e-05
+[fed]          17500 -3.1283777934e-05 -3.1283777934e-05
 
 Momentum - x y z
 [total   ]  5.7360020e-13  3.4154971e-13  1.3383739e-13
@@ -3856,7 +3771,7 @@ Velocity - x y z
 Completed cycle 17500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1169576e-10  0.99998793909 1.00002758559
+[rho]       32768.00  1.00000000000 1.1169599e-10  0.99998793909 1.00002758559
 [phi] -4.6114811e-02 -1.4073124e-06 1.9027918e-02 -1.7444688e-01 3.3728426e-01
 [phi] -3.5153951e-06 -1.0728134e-10 1.0527136e-02 -2.5109929e-01 2.5109929e-01
 [phi] -3.2601261e-06 -9.9491153e-11 1.0523467e-02 -2.5099306e-01 2.5099306e-01
@@ -3864,7 +3779,7 @@ Scalars - total mean variance min max
 [phi] -3.2495190e-06 -9.9167449e-11 1.0523467e-02 -2.5099306e-01 2.5099306e-01
 
 Free energy density - timestep total fluid
-[fed]          17600 -3.1282709e-05 -3.1282709e-05
+[fed]          17600 -3.1282709310e-05 -3.1282709310e-05
 
 Momentum - x y z
 [total   ]  5.3358706e-13  3.3214057e-13  1.1014106e-13
@@ -3877,7 +3792,7 @@ Velocity - x y z
 Completed cycle 17600
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1192625e-10  0.99998791412 1.00002760208
+[rho]       32768.00  1.00000000000 1.1192602e-10  0.99998791412 1.00002760208
 [phi] -4.4366369e-02 -1.3539541e-06 1.9025066e-02 -1.7443532e-01 3.3726241e-01
 [phi] -3.4589888e-06 -1.0555996e-10 1.0525556e-02 -2.5108203e-01 2.5108204e-01
 [phi] -3.2057566e-06 -9.7831928e-11 1.0521918e-02 -2.5097706e-01 2.5097706e-01
@@ -3885,7 +3800,7 @@ Scalars - total mean variance min max
 [phi] -3.1955134e-06 -9.7519330e-11 1.0521918e-02 -2.5097706e-01 2.5097706e-01
 
 Free energy density - timestep total fluid
-[fed]          17700 -3.1281666e-05 -3.1281666e-05
+[fed]          17700 -3.1281666012e-05 -3.1281666012e-05
 
 Momentum - x y z
 [total   ]  5.6521107e-13  3.1797481e-13  1.1592116e-13
@@ -3898,7 +3813,7 @@ Velocity - x y z
 Completed cycle 17700
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1215406e-10  0.99998788980 1.00002761815
+[rho]       32768.00  1.00000000000 1.1215384e-10  0.99998788980 1.00002761815
 [phi] -4.2658851e-02 -1.3018448e-06 1.9022287e-02 -1.7442404e-01 3.3724110e-01
 [phi] -3.4035738e-06 -1.0386883e-10 1.0524014e-02 -2.5106520e-01 2.5106520e-01
 [phi] -3.1523760e-06 -9.6202880e-11 1.0520409e-02 -2.5096146e-01 2.5096146e-01
@@ -3906,7 +3821,7 @@ Scalars - total mean variance min max
 [phi] -3.1424901e-06 -9.5901187e-11 1.0520409e-02 -2.5096146e-01 2.5096146e-01
 
 Free energy density - timestep total fluid
-[fed]          17800 -3.1280647e-05 -3.1280647e-05
+[fed]          17800 -3.1280647474e-05 -3.1280647474e-05
 
 Momentum - x y z
 [total   ]  5.2986435e-13  3.7376005e-13  1.1057127e-13
@@ -3919,7 +3834,7 @@ Velocity - x y z
 Completed cycle 17800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1237344e-10  0.99998786610 1.00002763381
+[rho]       32768.00  1.00000000000 1.1237367e-10  0.99998786610 1.00002763381
 [phi] -4.0991406e-02 -1.2509584e-06 1.9019578e-02 -1.7441305e-01 3.3722032e-01
 [phi] -3.3491297e-06 -1.0220733e-10 1.0522512e-02 -2.5104879e-01 2.5104879e-01
 [phi] -3.0999639e-06 -9.4603390e-11 1.0518937e-02 -2.5094626e-01 2.5094626e-01
@@ -3927,7 +3842,7 @@ Scalars - total mean variance min max
 [phi] -3.0904248e-06 -9.4312279e-11 1.0518937e-02 -2.5094626e-01 2.5094626e-01
 
 Free energy density - timestep total fluid
-[fed]          17900 -3.1279653e-05 -3.1279653e-05
+[fed]          17900 -3.1279653142e-05 -3.1279653142e-05
 
 Momentum - x y z
 [total   ]  5.3595670e-13  3.4524467e-13  1.2571194e-13
@@ -3948,7 +3863,7 @@ Scalars - total mean variance min max
 [phi] -3.0393038e-06 -9.2752192e-11 1.0517504e-02 -2.5093144e-01 2.5093144e-01
 
 Free energy density - timestep total fluid
-[fed]          18000 -3.1278682e-05 -3.1278682e-05
+[fed]          18000 -3.1278682473e-05 -3.1278682473e-05
 
 Momentum - x y z
 [total   ]  5.8304750e-13  3.1378719e-13  1.1092516e-13
@@ -3969,7 +3884,7 @@ Scalars - total mean variance min max
 [phi] -2.9890983e-06 -9.1220040e-11 1.0516106e-02 -2.5091701e-01 2.5091701e-01
 
 Free energy density - timestep total fluid
-[fed]          18100 -3.1277735e-05 -3.1277735e-05
+[fed]          18100 -3.1277734933e-05 -3.1277734933e-05
 
 Momentum - x y z
 [total   ]  5.9605793e-13  3.0220965e-13  9.8296371e-14
@@ -3982,7 +3897,7 @@ Velocity - x y z
 Completed cycle 18100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1300516e-10  0.99998779878 1.00002767844
+[rho]       32768.00  1.00000000000 1.1300494e-10  0.99998779878 1.00002767844
 [phi] -3.6221281e-02 -1.1053858e-06 1.9011852e-02 -1.7438165e-01 3.3716103e-01
 [phi] -3.1914259e-06 -9.7394590e-11 1.0518225e-02 -2.5100190e-01 2.5100190e-01
 [phi] -2.9483407e-06 -8.9976217e-11 1.0514744e-02 -2.5090294e-01 2.5090294e-01
@@ -3990,7 +3905,7 @@ Scalars - total mean variance min max
 [phi] -2.9397974e-06 -8.9715496e-11 1.0514744e-02 -2.5090294e-01 2.5090294e-01
 
 Free energy density - timestep total fluid
-[fed]          18200 -3.1276810e-05 -3.1276810e-05
+[fed]          18200 -3.1276810000e-05 -3.1276810000e-05
 
 Momentum - x y z
 [total   ]  6.0668831e-13  2.4240679e-13  1.1981388e-13
@@ -4003,7 +3918,7 @@ Velocity - x y z
 Completed cycle 18200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1320300e-10  0.99998777753 1.00002769257
+[rho]       32768.00  1.00000000000 1.1320322e-10  0.99998777753 1.00002769257
 [phi] -3.4705982e-02 -1.0591425e-06 1.9009405e-02 -1.7437169e-01 3.3714224e-01
 [phi] -3.1406720e-06 -9.5845702e-11 1.0516867e-02 -2.5098703e-01 2.5098703e-01
 [phi] -2.8996058e-06 -8.8488947e-11 1.0513417e-02 -2.5088923e-01 2.5088923e-01
@@ -4011,7 +3926,7 @@ Scalars - total mean variance min max
 [phi] -2.8913766e-06 -8.8237811e-11 1.0513417e-02 -2.5088923e-01 2.5088923e-01
 
 Free energy density - timestep total fluid
-[fed]          18300 -3.1275907e-05 -3.1275907e-05
+[fed]          18300 -3.1275907162e-05 -3.1275907162e-05
 
 Momentum - x y z
 [total   ]  5.9405258e-13  2.5403984e-13  1.2028573e-13
@@ -4024,7 +3939,7 @@ Velocity - x y z
 Completed cycle 18300
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1339796e-10  0.99998775682 1.00002770634
+[rho]       32768.00  1.00000000000 1.1339774e-10  0.99998775682 1.00002770634
 [phi] -3.3226761e-02 -1.0140003e-06 1.9007019e-02 -1.7436198e-01 3.3712391e-01
 [phi] -3.0907948e-06 -9.4323572e-11 1.0515543e-02 -2.5097253e-01 2.5097253e-01
 [phi] -2.8517431e-06 -8.7028292e-11 1.0512123e-02 -2.5087586e-01 2.5087587e-01
@@ -4032,7 +3947,7 @@ Scalars - total mean variance min max
 [phi] -2.8438231e-06 -8.6786594e-11 1.0512123e-02 -2.5087587e-01 2.5087587e-01
 
 Free energy density - timestep total fluid
-[fed]          18400 -3.1275026e-05 -3.1275026e-05
+[fed]          18400 -3.1275025915e-05 -3.1275025915e-05
 
 Momentum - x y z
 [total   ]  6.0011371e-13  3.1316269e-13  1.2820300e-13
@@ -4053,7 +3968,7 @@ Scalars - total mean variance min max
 [phi] -2.7971132e-06 -8.5361120e-11 1.0510862e-02 -2.5086284e-01 2.5086284e-01
 
 Free energy density - timestep total fluid
-[fed]          18500 -3.1274166e-05 -3.1274166e-05
+[fed]          18500 -3.1274165768e-05 -3.1274165768e-05
 
 Momentum - x y z
 [total   ]  5.6719560e-13  3.0618216e-13  1.0326462e-13
@@ -4066,7 +3981,7 @@ Velocity - x y z
 Completed cycle 18500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1377588e-10  0.99998771702 1.00002773284
+[rho]       32768.00  1.00000000000 1.1377632e-10  0.99998771702 1.00002773284
 [phi] -3.0373566e-02 -9.2692766e-07 1.9002427e-02 -1.7434326e-01 3.3708862e-01
 [phi] -2.9936017e-06 -9.1357473e-11 1.0512993e-02 -2.5094457e-01 2.5094457e-01
 [phi] -2.7585642e-06 -8.4184699e-11 1.0509633e-02 -2.5085015e-01 2.5085015e-01
@@ -4074,7 +3989,7 @@ Scalars - total mean variance min max
 [phi] -2.7512296e-06 -8.3960865e-11 1.0509633e-02 -2.5085015e-01 2.5085015e-01
 
 Free energy density - timestep total fluid
-[fed]          18600 -3.1273326e-05 -3.1273326e-05
+[fed]          18600 -3.1273326238e-05 -3.1273326238e-05
 
 Momentum - x y z
 [total   ]  5.5432742e-13  2.6679006e-13  1.1379786e-13
@@ -4087,7 +4002,7 @@ Velocity - x y z
 Completed cycle 18600
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1395707e-10  0.99998769789 1.00002774560
+[rho]       32768.00  1.00000000000 1.1395729e-10  0.99998769789 1.00002774560
 [phi] -2.8998136e-02 -8.8495288e-07 1.9000217e-02 -1.7433424e-01 3.3707163e-01
 [phi] -2.9462523e-06 -8.9912483e-11 1.0511766e-02 -2.5093110e-01 2.5093110e-01
 [phi] -2.7132151e-06 -8.2800754e-11 1.0508435e-02 -2.5083779e-01 2.5083779e-01
@@ -4095,7 +4010,7 @@ Scalars - total mean variance min max
 [phi] -2.7061615e-06 -8.2585495e-11 1.0508435e-02 -2.5083779e-01 2.5083779e-01
 
 Free energy density - timestep total fluid
-[fed]          18700 -3.1272507e-05 -3.1272507e-05
+[fed]          18700 -3.1272506853e-05 -3.1272506853e-05
 
 Momentum - x y z
 [total   ]  5.0327797e-13  2.7068278e-13  8.4557361e-14
@@ -4116,7 +4031,7 @@ Scalars - total mean variance min max
 [phi] -2.6618865e-06 -8.1234330e-11 1.0507267e-02 -2.5082573e-01 2.5082573e-01
 
 Free energy density - timestep total fluid
-[fed]          18800 -3.1271707e-05 -3.1271707e-05
+[fed]          18800 -3.1271707150e-05 -3.1271707150e-05
 
 Momentum - x y z
 [total   ]  4.5611084e-13  2.9747732e-13  6.0597360e-14
@@ -4137,7 +4052,7 @@ Scalars - total mean variance min max
 [phi] -2.6183916e-06 -7.9906972e-11 1.0506129e-02 -2.5081399e-01 2.5081399e-01
 
 Free energy density - timestep total fluid
-[fed]          18900 -3.1270927e-05 -3.1270927e-05
+[fed]          18900 -3.1270926676e-05 -3.1270926676e-05
 
 Momentum - x y z
 [total   ]  3.6563461e-13  2.8035560e-13  4.7427340e-14
@@ -4150,7 +4065,7 @@ Velocity - x y z
 Completed cycle 18900
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1447776e-10  0.99998764346 1.00002778195
+[rho]       32768.00  1.00000000000 1.1447754e-10  0.99998764346 1.00002778195
 [phi] -2.5068100e-02 -7.6501771e-07 1.8993914e-02 -1.7430849e-01 3.3702313e-01
 [phi] -2.8089982e-06 -8.5723823e-11 1.0508263e-02 -2.5089263e-01 2.5089263e-01
 [phi] -2.5819300e-06 -7.8794250e-11 1.0505020e-02 -2.5080254e-01 2.5080254e-01
@@ -4158,7 +4073,7 @@ Scalars - total mean variance min max
 [phi] -2.5756568e-06 -7.8602808e-11 1.0505020e-02 -2.5080254e-01 2.5080254e-01
 
 Free energy density - timestep total fluid
-[fed]          19000 -3.1270165e-05 -3.1270165e-05
+[fed]          19000 -3.1270164986e-05 -3.1270164986e-05
 
 Momentum - x y z
 [total   ]  4.1119191e-13  2.7895047e-13  2.7179647e-14
@@ -4171,7 +4086,7 @@ Velocity - x y z
 Completed cycle 19000
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1464207e-10  0.99998762626 1.00002779346
+[rho]       32768.00  1.00000000000 1.1464185e-10  0.99998762626 1.00002779346
 [phi] -2.3821247e-02 -7.2696676e-07 1.8991917e-02 -1.7430032e-01 3.3700777e-01
 [phi] -2.7647931e-06 -8.4374791e-11 1.0507153e-02 -2.5088042e-01 2.5088042e-01
 [phi] -2.5397027e-06 -7.7505577e-11 1.0503939e-02 -2.5079139e-01 2.5079139e-01
@@ -4179,7 +4094,7 @@ Scalars - total mean variance min max
 [phi] -2.5336709e-06 -7.7321501e-11 1.0503939e-02 -2.5079139e-01 2.5079139e-01
 
 Free energy density - timestep total fluid
-[fed]          19100 -3.1269422e-05 -3.1269422e-05
+[fed]          19100 -3.1269421646e-05 -3.1269421646e-05
 
 Momentum - x y z
 [total   ]  4.6595713e-13  3.3145708e-13  2.6437186e-15
@@ -4192,7 +4107,7 @@ Velocity - x y z
 Completed cycle 19100
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1479950e-10  0.99998760950 1.00002780468
+[rho]       32768.00  1.00000000000 1.1479973e-10  0.99998760950 1.00002780468
 [phi] -2.2604876e-02 -6.8984607e-07 1.8989971e-02 -1.7429235e-01 3.3699278e-01
 [phi] -2.7213362e-06 -8.3048589e-11 1.0506071e-02 -2.5086852e-01 2.5086852e-01
 [phi] -2.4982176e-06 -7.6239551e-11 1.0502886e-02 -2.5078052e-01 2.5078052e-01
@@ -4200,7 +4115,7 @@ Scalars - total mean variance min max
 [phi] -2.4924197e-06 -7.6062611e-11 1.0502886e-02 -2.5078052e-01 2.5078052e-01
 
 Free energy density - timestep total fluid
-[fed]          19200 -3.1268696e-05 -3.1268696e-05
+[fed]          19200 -3.1268696231e-05 -3.1268696231e-05
 
 Momentum - x y z
 [total   ]  4.3412149e-13  3.4928657e-13  4.2750525e-14
@@ -4213,7 +4128,7 @@ Velocity - x y z
 Completed cycle 19200
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1495627e-10  0.99998759319 1.00002781562
+[rho]       32768.00  1.00000000000 1.1495649e-10  0.99998759319 1.00002781562
 [phi] -2.1418349e-02 -6.5363614e-07 1.8988073e-02 -1.7428457e-01 3.3697816e-01
 [phi] -2.6786129e-06 -8.1744778e-11 1.0505016e-02 -2.5085690e-01 2.5085690e-01
 [phi] -2.4574598e-06 -7.4995723e-11 1.0501859e-02 -2.5076992e-01 2.5076992e-01
@@ -4221,7 +4136,7 @@ Scalars - total mean variance min max
 [phi] -2.4518840e-06 -7.4825563e-11 1.0501859e-02 -2.5076992e-01 2.5076992e-01
 
 Free energy density - timestep total fluid
-[fed]          19300 -3.1267988e-05 -3.1267988e-05
+[fed]          19300 -3.1267988324e-05 -3.1267988324e-05
 
 Momentum - x y z
 [total   ]  4.0778492e-13  3.2456329e-13  1.1123047e-14
@@ -4242,7 +4157,7 @@ Scalars - total mean variance min max
 [phi] -2.4120569e-06 -7.3610135e-11 1.0500858e-02 -2.5075960e-01 2.5075960e-01
 
 Free energy density - timestep total fluid
-[fed]          19400 -3.1267298e-05 -3.1267298e-05
+[fed]          19400 -3.1267297517e-05 -3.1267297517e-05
 
 Momentum - x y z
 [total   ]  4.2307477e-13  3.2620087e-13 -1.2496948e-14
@@ -4263,7 +4178,7 @@ Scalars - total mean variance min max
 [phi] -2.3729174e-06 -7.2415692e-11 1.0499882e-02 -2.5074954e-01 2.5074954e-01
 
 Free energy density - timestep total fluid
-[fed]          19500 -3.1266623e-05 -3.1266623e-05
+[fed]          19500 -3.1266623412e-05 -3.1266623412e-05
 
 Momentum - x y z
 [total   ]  3.7396128e-13  2.9445543e-13  6.5225603e-15
@@ -4276,7 +4191,7 @@ Velocity - x y z
 Completed cycle 19500
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1540546e-10  0.99998754674 1.00002784679
+[rho]       32768.00  1.00000000000 1.1540569e-10  0.99998754674 1.00002784679
 [phi] -1.8031644e-02 -5.5028209e-07 1.8982660e-02 -1.7426237e-01 3.3693644e-01
 [phi] -2.5547051e-06 -7.7963412e-11 1.0502004e-02 -2.5082371e-01 2.5082371e-01
 [phi] -2.3394072e-06 -7.1393042e-11 1.0498931e-02 -2.5073973e-01 2.5073973e-01
@@ -4284,7 +4199,7 @@ Scalars - total mean variance min max
 [phi] -2.3344562e-06 -7.1241949e-11 1.0498931e-02 -2.5073973e-01 2.5073973e-01
 
 Free energy density - timestep total fluid
-[fed]          19600 -3.1265966e-05 -3.1265966e-05
+[fed]          19600 -3.1265965619e-05 -3.1265965619e-05
 
 Momentum - x y z
 [total   ]  3.9455939e-13  3.0221312e-13 -3.4097725e-14
@@ -4305,7 +4220,7 @@ Scalars - total mean variance min max
 [phi] -2.2966587e-06 -7.0088462e-11 1.0498004e-02 -2.5073018e-01 2.5073018e-01
 
 Free energy density - timestep total fluid
-[fed]          19700 -3.1265324e-05 -3.1265324e-05
+[fed]          19700 -3.1265323755e-05 -3.1265323755e-05
 
 Momentum - x y z
 [total   ]  3.9904885e-13  2.7140790e-13 -1.8818280e-14
@@ -4326,7 +4241,7 @@ Scalars - total mean variance min max
 [phi] -2.2595134e-06 -6.8954876e-11 1.0497101e-02 -2.5072087e-01 2.5072087e-01
 
 Free energy density - timestep total fluid
-[fed]          19800 -3.1264697e-05 -3.1264697e-05
+[fed]          19800 -3.1264697446e-05 -3.1264697446e-05
 
 Momentum - x y z
 [total   ]  3.7561274e-13  2.5598967e-13 -1.1074475e-14
@@ -4339,7 +4254,7 @@ Velocity - x y z
 Completed cycle 19800
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1582224e-10  0.99998750380 1.00002787564
+[rho]       32768.00  1.00000000000 1.1582202e-10  0.99998750380 1.00002787564
 [phi] -1.4891798e-02 -4.5446161e-07 1.8977644e-02 -1.7424174e-01 3.3689775e-01
 [phi] -2.4369093e-06 -7.4368569e-11 1.0499212e-02 -2.5079289e-01 2.5079289e-01
 [phi] -2.2273950e-06 -6.7974702e-11 1.0496220e-02 -2.5071179e-01 2.5071179e-01
@@ -4347,7 +4262,7 @@ Scalars - total mean variance min max
 [phi] -2.2230047e-06 -6.7840719e-11 1.0496220e-02 -2.5071179e-01 2.5071179e-01
 
 Free energy density - timestep total fluid
-[fed]          19900 -3.1264086e-05 -3.1264086e-05
+[fed]          19900 -3.1264086328e-05 -3.1264086328e-05
 
 Momentum - x y z
 [total   ]  3.9517695e-13  2.8578875e-13 -5.6343818e-15
@@ -4361,7 +4276,7 @@ Completed cycle 19900
 Writing phi file at step 20000!
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.1595436e-10  0.99998749023 1.00002788478
+[rho]       32768.00  1.00000000000 1.1595414e-10  0.99998749023 1.00002788478
 [phi] -1.3897387e-02 -4.2411461e-07 1.8976055e-02 -1.7423520e-01 3.3688548e-01
 [phi] -2.3989429e-06 -7.3209926e-11 1.0498326e-02 -2.5078310e-01 2.5078311e-01
 [phi] -2.1913394e-06 -6.6874372e-11 1.0495362e-02 -2.5070295e-01 2.5070295e-01
@@ -4369,7 +4284,7 @@ Scalars - total mean variance min max
 [phi] -2.1871263e-06 -6.6745797e-11 1.0495362e-02 -2.5070295e-01 2.5070295e-01
 
 Free energy density - timestep total fluid
-[fed]          20000 -3.1263490e-05 -3.1263490e-05
+[fed]          20000 -3.1263490042e-05 -3.1263490042e-05
 
 Momentum - x y z
 [total   ]  4.0867310e-13  2.7396835e-13 -1.9720336e-14
@@ -4385,13 +4300,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    677.316    677.325    677.321 677.320749 (1 call)
-      Time step loop:      0.033      0.042    676.520   0.033826 (20000 calls)
-         Propagation:      0.000      0.004      8.121   0.000406 (20000 calls)
-           Collision:      0.008      0.009    161.402   0.008070 (20000 calls)
-       Lattice halos:      0.002      0.004     41.311   0.002066 (20000 calls)
-       phi gradients:      0.002      0.010     46.961   0.002348 (20000 calls)
-                 BBL:      0.000      0.000      0.021   0.000001 (20000 calls)
-   Force calculation:      0.013      0.015    267.350   0.013368 (20000 calls)
-          phi update:      0.007      0.010    149.187   0.007459 (20000 calls)
+               Total:   1773.669   1773.670   1773.670 1773.669561 (1 call)
+      Time step loop:      0.087      0.094   1772.767   0.088638 (20000 calls)
+         Propagation:      0.000      0.001     10.394   0.000520 (20000 calls)
+           Collision:      0.008      0.009    161.461   0.008073 (20000 calls)
+       Lattice halos:      0.001      0.004     44.494   0.002225 (20000 calls)
+       phi gradients:      0.001      0.008     45.110   0.002255 (20000 calls)
+                 BBL:      0.000      0.000      0.047   0.000002 (20000 calls)
+   Force calculation:      0.061      0.064   1232.443   0.061622 (20000 calls)
+          phi update:      0.011      0.016    277.130   0.013857 (20000 calls)
 Ludwig finished normally.
