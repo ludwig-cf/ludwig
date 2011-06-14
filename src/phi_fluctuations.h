@@ -2,20 +2,23 @@
  *
  *  phi_fluctuations.h
  *
- *  $Id: phi_fluctuations.h,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef PHI_FLUCTUATIONS_H
 #define PHI_FLUCTUATIONS_H
 
-void phi_fluctuations_random_flux(double * fluxw, double * fluxe,
-				  double * fluxy, double * fluxz);
+int  phi_fluctuations_on(void);
+void phi_fluctuations_on_set(int flag);
+void phi_fluctuations_init(unsigned int master_seed);
+void phi_fluctuations_finalise(void);
+void phi_fluctuations_site(int n, double var, double * jsite);
 
 #endif
