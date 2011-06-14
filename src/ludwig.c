@@ -49,6 +49,7 @@
 #include "phi_stats.h"
 #include "phi_force.h"
 #include "phi_force_colloid.h"
+#include "phi_fluctuations.h"
 #include "phi_gradients.h"
 #include "phi_lb_coupler.h"
 #include "phi_update.h"
@@ -91,6 +92,9 @@ static void ludwig_report_momentum(void);
 
 static void ludwig_rt(void) {
 
+  int p;
+  unsigned int seed;
+
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
 
@@ -110,6 +114,16 @@ static void ludwig_rt(void) {
   site_map_run_time();
 
   ran_init();
+  if (phi_fluctuations_on()) {
+    RUN_get_int_parameter("fd_phi_fluctuations_seed", &p);
+    seed = 0;
+    if (p > 0) {
+      seed = p;
+      info("Order parameter noise seed: %u\n", seed);
+    }
+    phi_fluctuations_init(seed);
+  }
+
   MODEL_init();
   wall_init();
   COLL_init();
