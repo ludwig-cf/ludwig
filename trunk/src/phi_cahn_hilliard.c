@@ -5,12 +5,15 @@
  *  The time evolution of the order parameter phi is described
  *  by the Cahn Hilliard equation
  *
- *     d_t phi + div (u phi - M grad mu) = 0.
+ *     d_t phi + div (u phi - M grad mu - \hat{xi}) = 0.
  *
  *  The equation is solved here via finite difference. The velocity
  *  field u is assumed known from the hydrodynamic sector. M is the
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
+ *
+ *  Random fluxes \hat{xi} can be included if required via
+ *  phi_fluctuations.c with variance 2 M kT.
  *
  *  $Id$
  *
@@ -33,6 +36,7 @@
 #include "advection_bcs.h"
 #include "lattice.h"
 #include "free_energy.h"
+#include "phi_fluctuations.h"
 #include "phi.h"
 
 extern double * phi_site;
@@ -45,6 +49,7 @@ static void phi_ch_diffusive_flux(void);
 static void phi_ch_update_forward_step(void);
 static void phi_ch_le_fix_fluxes(void);
 static void phi_ch_le_fix_fluxes_parallel(void);
+static void phi_ch_random_flux(void);
 
 static double mobility_  = 0.0; /* Order parameter mobility */
 
@@ -88,6 +93,7 @@ void phi_cahn_hilliard() {
   phi_ch_diffusive_flux();
 
   advection_bcs_wall();
+  if (phi_fluctuations_on()) phi_ch_random_flux();
 
   phi_ch_le_fix_fluxes();
   phi_ch_update_forward_step();
@@ -189,6 +195,69 @@ static void phi_ch_diffusive_flux(void) {
       }
     }
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_random_flux
+ *
+ *  This adds (repeat adds) the random contribution to the face
+ *  fluxes (advective + diffusive) following Sumesh et al 2011.
+ *
+ *****************************************************************************/
+
+static void phi_ch_random_flux(void) {
+
+  int ic, jc, kc, index0, index1;
+  int nsites;
+  int nlocal[3];
+
+  double * rflux;
+  double kt, var;
+  extern double get_kT(void);
+
+  assert(le_get_nplane_local() == 0);
+
+  nsites = coords_nsites();
+  rflux = (double *) malloc(3*nsites*sizeof(double));
+  if (rflux == NULL) fatal("malloc(rflux) failed\n");
+
+  kt = get_kT();
+  var = sqrt(2.0*kt*mobility_);
+  phi_fluctuations_site(3, var, rflux);
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(ic, jc, kc);
+
+	/* x-direction */
+
+	index1 = coords_index(ic-1, jc, kc);
+	fluxw[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
+
+	index1 = coords_index(ic+1, jc, kc);
+	fluxe[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
+
+	/* y direction */
+
+	index1 = coords_index(ic, jc+1, kc);
+	fluxy[index0] += 0.5*(rflux[3*index0 + Y] + rflux[3*index1 + Y]);
+
+	/* z direction */
+
+	index1 = coords_index(ic, jc, kc+1);
+	fluxz[index0] += 0.5*(rflux[3*index0 + Z] + rflux[3*index1 + Z]);
+      }
+    }
+  }
+
+  free(rflux);
 
   return;
 }
