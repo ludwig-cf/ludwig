@@ -4,7 +4,7 @@
  *
  *  Order parameter fluctuations.
  *
- *  $Id: phi_fluctuations.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,188 +15,174 @@
  *****************************************************************************/
 
 #include <assert.h>
-#include <stdlib.h>
-#include <math.h>
 
 #include "pe.h"
-#include "ran.h"
 #include "coords.h"
-#include "leesedwards.h"
+#include "fluctuations.h"
 
-static double * siteflux_;
-
-static void phi_fluctuations_siteflux_set(void);
-static void phi_fluctuations_siteflux_halo(void);
-static void phi_fluctuations_random_flux_set(double * fluxw, double * fluxe,
-					     double * fluxy, double * fluxz);
+static int              fluctuations_on_ = 0;
+static fluctuations_t * fl_;
 
 /*****************************************************************************
  *
- *  phi_fluctuations_random_flux
- *
- *  Lees-Edwards will be pending implemtation of general
- *  field transformation function and validation for no LE.
- *  MPI pending validation.
+ *  phi_fluctuations_on
  *
  *****************************************************************************/
 
-void phi_fluctuations_random_flux(double * fluxw, double * fluxe,
-				  double * fluxy, double * fluxz) {
+int phi_fluctuations_on(void) {
+
+  return fluctuations_on_;
+}
+
+/*****************************************************************************
+ *
+ *  phi_fluctuations_on_set
+ *
+ *****************************************************************************/
+
+void phi_fluctuations_on_set(int flag) {
+
+  fluctuations_on_ = flag;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_fluctuations_init
+ *
+ *  Parallel initialisation of fluctuation generator. The initial
+ *  state of the fluctuation generator for each latttice site is set
+ *  according its global position and a 'master' seed.
+ *
+ *  If the master_seed provided > 0, then use it to control the
+ *  first part of the initial state, which has a default
+ *  value as below.
+ *
+ *****************************************************************************/
+
+void phi_fluctuations_init(unsigned int master_seed) {
+
   int nsites;
+  int ic, jc, kc, index;
+  int ig, jg, kg;
+  int nextra;
+  int nlocal[3];
+  int noffset[3];
+  int ntotal[3];
 
-  nsites = le_nsites();
+  unsigned int serial[NFLUCTUATION_STATE] = {13, 12953, 712357, 22383979};
+  unsigned int serial_local[NFLUCTUATION_STATE];
+  unsigned int state[NFLUCTUATION_STATE];
 
-  siteflux_ = (double*) malloc(3*nsites*sizeof(double));
-  if (siteflux_ == NULL) fatal("malloc(siteflux_) failed\n");
+  assert(NFLUCTUATION_STATE == 4); /* Assumed below */
 
-  phi_fluctuations_siteflux_set();
-  phi_fluctuations_siteflux_halo();
-  phi_fluctuations_random_flux_set(fluxw, fluxe, fluxy, fluxz);
+  if (fluctuations_on_ == 0) return;
+  if (master_seed > 0) serial[0] = master_seed;
 
-  free(siteflux_);
+  ntotal[X] = N_total(X);
+  ntotal[Y] = N_total(Y);
+  ntotal[Z] = N_total(Z);
+
+  nsites = coords_nsites();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  nsites = coords_nsites();
+  nextra = 1;
+
+  fl_ = fluctuations_create(nsites);
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+
+    /* (ig, jg, kg) is the global lattice position, used for
+     * decomposition-independent initial random state */
+
+    ig = noffset[X] + ic;
+    if (ig < 1) ig += ntotal[X];
+    if (ig > ntotal[X]) ig -= ntotal[X];
+ 
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+
+      jg = noffset[Y] + jc;
+      if (jg < 1) jg += ntotal[Y];
+      if (jg > ntotal[Y]) jg -= ntotal[Y];
+
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	kg = noffset[Z] + kc;
+	if (kg < 1) kg += ntotal[Z];
+	if (kg > ntotal[Z]) kg -= ntotal[Z];
+
+	serial_local[0] = serial[0] + ig;
+	serial_local[1] = serial[1] + jg;
+	serial_local[2] = serial[2] + kg;
+	serial_local[3] = serial[3];
+
+        state[0] = fluctuations_uniform(serial_local);
+        state[1] = fluctuations_uniform(serial_local);
+        state[2] = fluctuations_uniform(serial_local);
+        state[3] = fluctuations_uniform(serial_local);
+
+	index = coords_index(ic, jc, kc);
+	fluctuations_state_set(fl_, index, state);
+      }
+    }
+  }
 
   return;
 }
 
 /*****************************************************************************
  *
- *  phi_fluctuations_siteflux_set
+ *  phi_fluctuations_finalise
  *
  *****************************************************************************/
 
-static void phi_fluctuations_siteflux_set(void) {
+void phi_fluctuations_finalise(void) {
+
+  if (fluctuations_on_) fluctuations_destroy(fl_);
+  fluctuations_on_ = 0;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_fluctuations_site
+ *
+ *  Computes n random fluxes of variance var at each lattice site.
+ *  Include extra points up to halo = 1 to allow face fluxes to be
+ *  computed.
+ *
+ *****************************************************************************/
+
+void phi_fluctuations_site(int n, double var, double * jsite) {
 
   int nlocal[3];
   int ic, jc, kc, index;
   int ia;
+  int nextra;
 
-  double mobility;
-  double kt;
-  double rvar;
+  double reap[NFLUCTUATION];
 
   coords_nlocal(nlocal);
+  nextra = 1;
 
-  /* assignment of kt, mobility pending refactor of physics.h */
+  assert(fluctuations_on_);
+  assert(n < NFLUCTUATION);
+  assert(nextra <= coords_nhalo());
 
-  mobility = 1.0;
-  kt = 0.0;
-  rvar = sqrt(2.0*mobility*kt);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(ic, jc, kc);
+	fluctuations_reap(fl_, index, reap);
 
-	for (ia = 0; ia < 3; ia++) {
-	  siteflux_[3*index + ia] = rvar*ran_parallel_gaussian();
+	for (ia = 0; ia < n; ia++) {
+	  jsite[n*index + ia] = var*reap[ia];
 	}
 
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_fluctuations_siteflux_halo
- *
- *****************************************************************************/
-
-static void phi_fluctuations_siteflux_halo(void) {
-
-  int nlocal[3];
-  int ic, jc, kc;
-  int index1, index2;
-  int ia;
-
-  coords_nlocal(nlocal);
-
-  assert(pe_size() == 1);
-
-  for (jc = 1; jc <= nlocal[Y]; jc++) {
-    for (kc = 1; kc <= nlocal[Z]; kc++) {
-      index1 = coords_index(0, jc, kc);
-      index2 = coords_index(nlocal[X], jc, kc);
-      for (ia = 0; ia < 3; ia++) {
-	siteflux_[3*index1 + ia] = siteflux_[3*index2 + ia];
-      }
-      index1 = coords_index(1, jc, kc);
-      index2 = coords_index(nlocal[X]+1, jc, kc);
-      for (ia = 0; ia < 3; ia++) {
-	siteflux_[3*index2 + ia] = siteflux_[3*index1 + ia];
-      }
-    }
-  }
-
-  for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-    for (kc = 1; kc <= nlocal[Z]; kc++) {
-      index1 = coords_index(ic, 0, kc);
-      index2 = coords_index(ic, nlocal[Y], kc);
-      for (ia = 0; ia < 3; ia++) {
-	siteflux_[3*index1 + ia] = siteflux_[3*index2 + ia];
-      }
-      index1 = coords_index(ic, 1, kc);
-      index2 = coords_index(ic, nlocal[Y] + 1, kc);
-      for (ia = 0; ia < 3; ia++) {
-	siteflux_[3*index2 + ia] = siteflux_[3*index1 + ia];
-      }
-    }
-  }
-
-  for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-    for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
-      index1 = coords_index(ic, jc, 0);
-      index2 = coords_index(ic, jc, nlocal[Z]);
-      for (ia = 0; ia < 3; ia++) {
-	siteflux_[3*index1 + ia] = siteflux_[3*index2 + ia];
-      }
-      index1 = coords_index(ic, jc, 1);
-      index2 = coords_index(ic, jc, nlocal[Z] + 1);
-      for (ia = 0; ia < 3; ia++) {
-	siteflux_[3*index2 + ia] = siteflux_[3*index1 + ia];
-      }
-    }
-  }   
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_fluctuations_random_flux_set
- *
- *  Used 'centred difference' to obtain the face fluxes from the
- *  site fluxes.
- *
- *****************************************************************************/
-
-static void phi_fluctuations_random_flux_set(double * fluxw, double * fluxe,
-					     double * fluxy, double * fluxz) {
-  int nlocal[3];
-  int ic, jc, kc;
-  int index, index1;
-
-  coords_nlocal(nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 0; jc <= nlocal[Y]; jc++) {
-      for (kc = 0; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	index1 = coords_index(ic-1, jc, kc);
-	fluxw[index] = 0.5*(siteflux_[3*index1 + X] + siteflux_[3*index + X]);
-	index1 = coords_index(ic+1, jc, kc);
-	fluxe[index] = 0.5*(siteflux_[3*index + X] + siteflux_[3*index1 + X]);
-
-	index1 = coords_index(ic, jc+1, kc);
-	fluxy[index] = 0.5*(siteflux_[3*index + Y] + siteflux_[3*index1 + Y]);
-
-	index1 = coords_index(ic, jc, kc+1);
-	fluxz[index] = 0.5*(siteflux_[3*index + Z] + siteflux_[3*index1 + Z]);
       }
     }
   }
