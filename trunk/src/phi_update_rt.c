@@ -27,6 +27,7 @@
 #include "phi.h"
 #include "phi_force.h"
 #include "phi_update.h"
+#include "phi_fluctuations.h"
 #include "phi_cahn_hilliard.h"
 #include "leslie_ericksen.h"
 #include "blue_phase_beris_edwards.h"
@@ -90,6 +91,11 @@ static void phi_update_rt_fe(const char * stringfe) {
     RUN_get_double_parameter("mobility", &value);
     phi_cahn_hilliard_mobility_set(value);
     info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+
+    p = 0;
+    RUN_get_int_parameter("fd_phi_fluctuations", &p);
+    info("Order parameter noise = %3s\n", (p == 0) ? "off" : " on");
+    if (p != 0) phi_fluctuations_on_set(p);
   }
   else if (strcmp(stringfe, "symmetric_lb") == 0) {
   
