@@ -94,10 +94,6 @@ static void symmetric_init(const int nhalo) {
   info("Surface tension       = %12.5e\n", symmetric_interfacial_tension());
   info("Interfacial width     = %12.5e\n", symmetric_interfacial_width());
 
-  /* For the symmetric... */
-
-  assert(kappa > 0.0);
-
   /* Set free energy function pointers. */
 
   fe_density_set(symmetric_free_energy_density);
