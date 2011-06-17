@@ -104,8 +104,12 @@ temperature 0.00002133333
 #  fd_gradient_calcualtion        Scheme to yse for gradient calculations
 #                                 2d_5pt_fluid
 #                                 3d_7pt_fluid
+#                                 3d_7pt_solid (free_energy lc_blue_phase only)
 #                                 3d_27pt_fluid
 #                                 3d_27pt_solid
+#
+#  fd_phi_fluctuations            [0/1] Cahn Hilliard only at the moment
+#  fd_phi_fluctuations_seed       RNG seed for order parameter fluctuations
 #
 #  Note: only parameters for the currently selected free energy at
 #  run time are meaningful; you don't have to comment out all the others.
@@ -116,6 +120,9 @@ free_energy lc_blue_phase
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
+fd_phi_fluctuations 0
+fd_phi_fluctuations_seed 17
+
 
 ###############################################################################
 #
@@ -275,8 +282,8 @@ leslie_ericksen_swim  0.0
 #
 ###############################################################################
 
+colloid_init        none
 colloid_type        inactive
-colloid_init        random
 
 colloid_random_no   1
 colloid_random_dh   0.4
