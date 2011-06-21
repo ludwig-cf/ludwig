@@ -1,0 +1,192 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  anchoring.tex
+%
+%  $Id$
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  Kevin Stratford (kevin@epcc.ed.ac.uk)
+%  (c) 2011 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Cholesteric Anchoring}
+
+We have a fluid free energy density
+\begin{equation}
+f = 
+{\textstyle\frac{1}{2}} \kappa_0 (\partial_\beta Q_{\alpha\beta})^2
++ {\textstyle\frac{1}{2}}
+ \kappa_1 (\epsilon_{\alpha\gamma\sigma} \partial_\gamma
+Q_{\sigma\beta} + 2q_0 Q_{\alpha\beta})^2
+\end{equation}
+where we have ignored the bulk terms for the time being, but we retain
+two elastic constants $\kappa_0$ and $\kappa_1$ in the distortion term.
+The cholesteric pitch $p = 2\pi/q_0$.
+
+There is also a surface term (an area density)
+\begin{equation}
+f_s = {\textstyle\frac{1}{2}} w (Q_{\alpha\beta} - Q_{\alpha\beta}^0)^2
+\end{equation}
+where $Q^0_{\alpha\beta}$ is the preferred order parameter configuration
+at the surface (to be either normal or planar).
+
+The boundary condition we wish to apply is, for the bulk term
+\begin{equation}
+n_\gamma \frac{\partial f}{\partial Q_{\alpha\beta,\gamma}} = 0
+\end{equation}
+where $Q_{\alpha\beta,\gamma} = \partial_\gamma Q_{\alpha\beta}$. Here,
+$n_\gamma$ is the outward unit normal at the surface (pointing into the
+fluid). With the
+addition of the surface term we obtain
+\begin{equation}
+n_\gamma \frac{\partial f}{\partial Q_{\alpha\beta,\gamma}}
++ \frac{\partial f_s}{\partial Q_{\alpha\beta}} = 0.
+\end{equation}
+The derivative of the distortion free energy with respect to
+$Q_{\alpha\beta,\gamma}$ gives
+\begin{equation}
+\kappa_0 n_\beta \partial_\gamma Q_{\alpha\gamma}
++ \kappa_1 n_\gamma
+(\partial_\gamma Q_{\alpha\beta} - \partial_\alpha Q_{\gamma\beta})
+- 2\kappa_1 q_0 n_\gamma \epsilon_{\alpha\gamma\sigma} Q_{\sigma\beta}.
+\end{equation}
+However, if we want a symmetric form (the derivative with respect to
+$Q_{\beta\alpha,\gamma}$ is just as good) we can write this as
+\begin{eqnarray}
+{\textstyle\frac{1}{2}} \kappa_0 (n_\alpha \partial_\gamma Q_{\beta\gamma}
++ n_\beta \partial_\gamma Q_{\alpha\gamma})
++ \kappa_1 n_\gamma \partial_\gamma Q_{\alpha\beta}
+- {\textstyle\frac{1}{2}} \kappa_1 n_\gamma ( \partial_\alpha Q_{\gamma\beta}
++ \partial_\beta Q_{\gamma\alpha})
+\nonumber
+\\
+- \kappa_1 q_0 n_\gamma (\epsilon_{\alpha\gamma\sigma} Q_{\sigma\beta}
++ \epsilon_{\beta\gamma\sigma}Q_{\sigma\alpha}).
+\end{eqnarray}
+If we add the derivative of the surface free energy,
+where we assume that the preferred orientation $Q_{\alpha\beta}^0$ is
+independent of $Q_{\alpha\beta}$, we get a full boundary condition
+for the gradient of the tensor order parameter at the solid-fluid boundary:
+\begin{eqnarray}
+{\textstyle\frac{1}{2}} \kappa_0 (n_\alpha \partial_\gamma Q_{\beta\gamma}
++ n_\beta \partial_\gamma Q_{\alpha\gamma})
++ \kappa_1 n_\gamma \partial_\gamma Q_{\alpha\beta}
+- {\textstyle\frac{1}{2}} \kappa_1 n_\gamma ( \partial_\alpha Q_{\gamma\beta}
++ \partial_\beta Q_{\gamma\alpha})
+\nonumber
+\\
+- \kappa_1 q_0 n_\gamma (\epsilon_{\alpha\gamma\sigma} Q_{\sigma\beta}
++ \epsilon_{\beta\gamma\sigma}Q_{\sigma\alpha})
+- w(Q_{\alpha\beta} - Q_{\alpha\beta}^0) = 0.
+\label{cholesteric_bc}
+\end{eqnarray}
+
+\subsection{Discrete implementation}
+
+In three dimensions, the boundary condition Eq.~\ref{cholesteric_bc}
+contains (potentially) 15 unknown derivatives
+$\partial_\gamma Q_{\alpha\beta}$
+corresponding to the 5 independent elements of the order parameter
+tensor $Q_{xx}$, $Q_{xy}$, $Q_{xz}$, $Q_{yy}$, and $Q_{yz}$. At a
+flat surface with, e.g., $n = (1, 0, 0)$, this is reduced to five unknown
+gradients $\partial_x Q_{\alpha\beta}$ at the
+boundary if we assume the tangential gradients $\partial_y Q_{\alpha\beta}$
+and $\partial_z Q_{\alpha\beta}$ can be approximated
+using the standard differencing method involving only fluid values of
+$Q_{\alpha\beta}$. We proceed by
+computing the constant terms
+$$
+- \kappa_1 q_0 n_\gamma (\epsilon_{\alpha\gamma\sigma} Q_{\sigma\beta}
++ \epsilon_{\beta\gamma\sigma}Q_{\sigma\alpha})
+- w(Q_{\alpha\beta} - Q_{\alpha\beta}^0)
+$$
+using $Q_{\alpha\beta}$ from the adjacent fluid site, and an estimate
+of $Q^0_{\alpha\beta}$ for the appropriate anchoring type. To these
+constant terms are added the tangential gradients.
+The gradients at the surface are then computed by solving a 5x5
+linear algebra problem for $\partial_x Q_{\alpha\beta}$. This
+allows the full gradient at the adjacent fluid site to be constructed.
+
+At concave edges or corners, where it is not possible to compute the
+tangential gradients from the usual stencil as for a flat interface,
+a different approach is required. We note than an attempt to solve a
+10x10 or 15x15 linear algebra problem for the full set of unknown
+gradients has proven unreliable: in the case where $n_\gamma$ is
+normal to the coordinate directions there is simply no solution
+available. Instead we adopt an iterative approach.
+
+Consider the case of an edge where the solid neighbours
+are in the $x$ and $y$ directions.  We first make an approximation
+to the tangential gradients in the $x$ and $y$ directions by using
+a one-sided derivative from the fluid points available. This
+tangential approximation in $y$ is then used to find a first
+estimate of the gradients $\partial_x Q_{\alpha\beta}$ using the
+procedure described above. The tangential estimate in $x$ is then
+used to obtain $\partial_y Q_{\alpha\beta}$. These surface gradients
+are then used to improve the estimate of the tangential gradients,
+and the process is iterated.
+
+{\small
+\begin{table}
+\begin{center}
+
+\begin{tabular}{|c|ccccc|}
+
+\hline
+&
+$Q_{xx,x}$ & $Q_{xy,x}$ & $Q_{xz,x}$ & $Q_{yy,x}$ & $Q_{yz,x}$ \\
+\hline
+$Q_{xx}$ &
+$\kappa_0 n_x$ & $-\kappa_1 n_y$ & $-\kappa_1 n_z$ & & \\
+$Q_{xy}$ &
+$\kappa_0 n_y$ & $\kappa' n_x$ & & $-\kappa_1 n_y$  & $-\kappa_1 n_z$  \\
+$Q_{xz}$ &
+$\kappa' n_z$ & & $\kappa' n_x$ & $\kappa_1 n_z$ & $-\kappa_1 n_y$ \\
+$Q_{yy}$ &
+ & $\kappa_0 n_y$ & & $\kappa_1 n_x$ & \\
+$Q_{yz}$ &
+ & $\kappa_0 n_z$ & $\kappa_0 n_y$ & & $2\kappa_1 n_x$ \\
+\hline
+\hline
+&
+$Q_{xx,y}$ & $Q_{xy,y}$ & $Q_{xz,y}$ & $Q_{yy,y}$ & $Q_{yz,y}$ \\
+\hline
+$Q_{xx}$ &
+$\kappa_1 n_y$ & $\kappa_0 n_x$ & & & \\
+$Q_{xy}$ &
+$-\kappa_1 n_x$ & $\kappa' n_y$ & $-\kappa_1 n_z$ & $\kappa_0 n_x$ & \\
+$Q_{xz}$ &
+ & $\kappa_0 n_z$ & $2\kappa_1 n_y$ & & $\kappa_0 n_x$ \\
+$Q_{yy}$ &
+ & $-\kappa_1 n_x$ & & $\kappa_0 n_y$ & $-\kappa_1 n_z$\\
+$Q_{yz}$ &
+$\kappa_1 n_z$ & & $-\kappa_1 n_x$ & $\kappa' n_z$ & $\kappa' n_y$\\
+\hline
+\hline
+&
+$Q_{xx,z}$ & $Q_{xy,z}$ & $Q_{xz,z}$ & $Q_{yy,z}$ & $Q_{yz,z}$ \\
+\hline
+$Q_{xx}$ &
+$\kappa_1 n_z$ & & $\kappa_0 n_x$ & & \\
+$Q_{xy}$ &
+ & $2\kappa_1 n_z$ & $\kappa_0 n_y$ & & $\kappa_0 n_x$ \\
+$Q_{xz}$ &
+$-\kappa' n_x$ & $-\kappa_1 n_y$ & $\kappa' n_z$ & $-\kappa_0 n_x$ & \\
+$Q_{yy}$ &
+ & & & $\kappa_1 n_z$ & $\kappa_0 n_y$  \\
+$Q_{yz}$ &
+$-\kappa_0 n_y$ & $-\kappa_1 n_x$ & & $-\kappa' n_y$ & $\kappa' n_z$ \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Coefficients of the various derivatives of the order parameter
+tensor appearing in five equations for the independent elements of the
+order parameter. Note $\kappa_0 + \kappa_1 = \kappa'$ and all the
+coefficients have been multiplied by a factor of 2.}
+\label{tab:cholesteric_bcs}
+\end{table} 
+}
+ 
