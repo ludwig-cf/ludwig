@@ -279,6 +279,31 @@ void blue_phase_rt_initial_conditions(void) {
     blue_phase_O2_init();
   }
 
+  if (strcmp(key1, "o5") == 0) {
+    info("Initialising Q_ab using O5\n");
+    blue_phase_O5_init();
+  }
+
+  if (strcmp(key1, "h2d") == 0) {
+    info("Initialising Q_ab using H2D\n");
+    blue_phase_H2D_init();
+  }
+
+  if (strcmp(key1, "h3da") == 0) {
+    info("Initialising Q_ab using H3DA\n");
+    blue_phase_H3DA_init();
+  }
+
+  if (strcmp(key1, "h3db") == 0) {
+    info("Initialising Q_ab using H3DB\n");
+    blue_phase_H3DB_init();
+  }
+
+  if (strcmp(key1, "dtc") == 0) {
+    info("Initialising Q_ab using DTC\n");
+    blue_phase_DTC_init();
+  }
+
   if (strcmp(key1, "random") == 0) {
     info("Initialising Q_ab randomly\n");
     blue_set_random_q_init();
