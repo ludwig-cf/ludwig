@@ -39,7 +39,7 @@ static double rredshift_; /* reciprocal */
 static double zeta_;      /* Apolar activity parameter \zeta */
 
 static int redshift_update_ = 0; /* Dynamic cubic redshift update */
-static int output_to_file_  = 0; /* To stdout or "free_energy.dat" */
+static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
 static double amplitude_ = 0.0;  /* Magnitude of order (uniaxial) */
 static double epsilon_ = 0.0;    /* Dielectric anisotropy (e/12pi) */
 
@@ -644,6 +644,264 @@ void blue_phase_O2_init(void) {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  blue_phase_H2D_init
+ *
+ *  This initialisation is for 2D hexagonal BP.
+ *
+ *****************************************************************************/
+
+void blue_phase_H2D_init(void) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = coords_index(ic, jc, kc);
+
+	q[X][X] = amplitude_*(-1.5*cos(q0_*x)*cos(q0_*sqrt(3.0)*y));
+	q[X][Y] = amplitude_*(-0.5*sqrt(3.0)*sin(q0_*x)*sin(q0_*sqrt(3.0)*y));
+	q[X][Z] = amplitude_*(sqrt(3.0)*cos(q0_*x)*sin(q0_*sqrt(3.0)*y));
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude_*(-cos(2.0*q0_*x)-0.5*cos(q0_*x)*cos(q0_*sqrt(3.0)*y));
+	q[Y][Z] = amplitude_*(-sin(2.0*q0_*x)-sin(q0_*x)*cos(q0_*sqrt(3.0)*y));
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_H3DA_init
+ *
+ *  This initialisation is for 3D hexagonal BP A.
+ *
+ *****************************************************************************/
+
+void blue_phase_H3DA_init(void) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = coords_index(ic, jc, kc);
+
+	q[X][X] = amplitude_*(-1.5*cos(q0_*x)*cos(q0_*sqrt(3.0)*y)+0.25*cos(q0_*N_total(X)/N_total(Z)*z)); 
+	q[X][Y] = amplitude_*(-0.5*sqrt(3.0)*sin(q0_*x)*sin(q0_*sqrt(3.0)*y)+0.25*sin(q0_*N_total(X)/N_total(Z)*z));
+	q[X][Z] = amplitude_*(sqrt(3.0)*cos(q0_*x)*sin(q0_*sqrt(3.0)*y));
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude_*(-cos(2.0*q0_*x)-0.5*cos(q0_*x)*cos(q0_*sqrt(3.0)*y)-0.25*cos(q0_*N_total(X)/N_total(Z)*z));
+	q[Y][Z] = amplitude_*(-sin(2.0*q0_*x)-sin(q0_*x)*cos(q0_*sqrt(3.0)*y));
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_H3DB_init
+ *
+ *  This initialisation is for 3D hexagonal BP B.
+ *
+ *****************************************************************************/
+
+void blue_phase_H3DB_init(void) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = coords_index(ic, jc, kc);
+
+	q[X][X] = amplitude_*(1.5*cos(q0_*x)*cos(q0_*sqrt(3.0)*y)+0.25*cos(q0_*N_total(X)/N_total(Z)*z)); 
+	q[X][Y] = amplitude_*(0.5*sqrt(3.0)*sin(q0_*x)*sin(q0_*sqrt(3.0)*y)+0.25*sin(q0_*N_total(X)/N_total(Z)*z));
+	q[X][Z] = amplitude_*(-sqrt(3.0)*cos(q0_*x)*sin(q0_*sqrt(3.0)*y));
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude_*(cos(2.0*q0_*x)+0.5*cos(q0_*x)*cos(q0_*sqrt(3.0)*y)-0.25*cos(q0_*N_total(X)/N_total(Z)*z));
+	q[Y][Z] = amplitude_*(sin(2.0*q0_*x)+sin(q0_*x)*cos(q0_*sqrt(3.0)*y));
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_O5_init
+ *
+ *  This initialisation is for O5.
+ *
+ *****************************************************************************/
+
+void blue_phase_O5_init(void) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = coords_index(ic, jc, kc);
+
+	q[X][X] = amplitude_*
+            (2.0*cos(sqrt(2.0)*q0_*y)*cos(sqrt(2.0)*q0_*z)-
+                 cos(sqrt(2.0)*q0_*x)*cos(sqrt(2.0)*q0_*z)-
+                 cos(sqrt(2.0)*q0_*x)*cos(sqrt(2.0)*q0_*y)); 
+	q[X][Y] = amplitude_*
+            (sqrt(2.0)*cos(sqrt(2.0)*q0_*y)*sin(sqrt(2.0)*q0_*z)-
+             sqrt(2.0)*cos(sqrt(2.0)*q0_*x)*sin(sqrt(2.0)*q0_*z)-
+             sin(sqrt(2.0)*q0_*x)*sin(sqrt(2.0)*q0_*y));
+	q[X][Z] = amplitude_*
+            (sqrt(2.0)*cos(sqrt(2.0)*q0_*x)*sin(sqrt(2.0)*q0_*y)-
+             sqrt(2.0)*cos(sqrt(2.0)*q0_*z)*sin(sqrt(2.0)*q0_*y)-
+             sin(sqrt(2.0)*q0_*x)*sin(sqrt(2.0)*q0_*z));
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude_*
+            (2.0*cos(sqrt(2.0)*q0_*x)*cos(sqrt(2.0)*q0_*z)-
+                 cos(sqrt(2.0)*q0_*y)*cos(sqrt(2.0)*q0_*x)-
+                 cos(sqrt(2.0)*q0_*y)*cos(sqrt(2.0)*q0_*z));
+	q[Y][Z] = amplitude_*
+            (sqrt(2.0)*cos(sqrt(2.0)*q0_*z)*sin(sqrt(2.0)*q0_*x)-
+             sqrt(2.0)*cos(sqrt(2.0)*q0_*y)*sin(sqrt(2.0)*q0_*x)-
+             sin(sqrt(2.0)*q0_*y)*sin(sqrt(2.0)*q0_*z));
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+
+      }
+    }
+  }
+
+  return;
+}
+/*****************************************************************************
+ *
+ *  blue_phase_DTC_init
+ *
+ *  This initialisation is with double twist cylinders.
+ *
+ *****************************************************************************/
+
+void blue_phase_DTC_init(void) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = coords_index(ic, jc, kc);
+
+	q[X][X] = -amplitude_*(cos(2*q0_*y));
+	q[X][Y] = 0.0;
+	q[X][Z] = amplitude_*sin(2.0*q0_*y);
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = -amplitude_*(cos(2.0*q0_*x));
+	q[Y][Z] = -amplitude_*sin(2.0*q0_*x);
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	phi_set_q_tensor(index, q);
+
+      }
+    }
+  }
+
+  return;
+}
 /*****************************************************************************
  *
  *  blue_phase_twist_init
