@@ -36,6 +36,11 @@ void   blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 void   blue_phase_chemical_stress(const int, double sth[3][3]);
 void   blue_phase_O8M_init(void);
 void   blue_phase_O2_init(void);
+void   blue_phase_O5_init(void);
+void   blue_phase_H2D_init(void);
+void   blue_phase_H3DA_init(void);
+void   blue_phase_H3DB_init(void);
+void   blue_phase_DTC_init(void);
 void   blue_phase_redshift_set(const double redshift);
 void   blue_phase_amplitude_set(const double amplitude);
 void   blue_phase_electric_field_set(const double e[3]);
