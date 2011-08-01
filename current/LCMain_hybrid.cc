@@ -250,6 +250,7 @@ if (myPE==0){
    }
    else{
      if(RANDOM) rr=1.0;
+     if(DTSTRUCT) rr=1.0;
      if(O2STRUCT) rr=0.91;
      if(O5STRUCT) rr=0.97;
      if(O8STRUCT) rr=0.82;

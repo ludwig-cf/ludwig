@@ -568,6 +568,7 @@ e.g. if the initial configuration is a perfect nematic LC
      if(O5STRUCT) rr=0.97;
      if(O8STRUCT) rr=0.82;
      if(O8MSTRUCT) rr=0.83;
+     if(DTSTRUCT) rr=1.0;
    }
 */
 
