@@ -35,7 +35,7 @@
 
 int lx_ = 128;
 int ly_ = 128;
-int lz_ = 128;
+int lz_ = 32;
 
 float * data_out_;
 int nio_;
@@ -276,9 +276,12 @@ void write_order_velo(const char * file_name) {
   fp = fopen(file_name, "w");
   if (fp == NULL) printf("fopen(order_velo file) failed\n");
 
-  for (ic = 0; ic < lx_; ic++) {
-    for (jc = 0; jc < ly_; jc++) {
-      for (kc = 0; kc < lz_; kc++) {
+  for (kc = 0; kc < lz_; kc++) {
+     for (jc = 0; jc < ly_; jc++) {
+        for (ic = 0; ic < lx_; ic++) {
+
+//    for (jc = 0; jc < ly_; jc++) {
+//      for (kc = 0; kc < lz_; kc++) {
 
 	index = 10*get_global_index(ic, jc, kc);
 
@@ -438,9 +441,12 @@ void write_director(const char * file_name) {
   fp = fopen(file_name, "w");
   if (fp == NULL) printf("fopen(stress file) failed\n");
 
-  for (ic = 0; ic < lx_; ic++) {
-    for (jc = 0; jc < ly_; jc++) {
-      for (kc = 0; kc < lz_; kc++) {
+  for (kc = 0; kc < lz_; kc++) {
+     for (jc = 0; jc < ly_; jc++) {
+        for (ic = 0; ic < lx_; ic++) {
+
+//    for (jc = 0; jc < ly_; jc++) {
+//      for (kc = 0; kc < lz_; kc++) {
 
 	index = 3*get_global_index(ic, jc, kc);
 
