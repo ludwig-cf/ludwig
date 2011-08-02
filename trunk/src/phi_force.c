@@ -519,12 +519,10 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
 static void phi_force_wallx(double * fluxe, double * fluxw) {
 
   int ic, jc, kc;
-  int index, index1, ia;
+  int index, ia;
   int nlocal[3];
   double fw[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
-  double pth1[3][3];    /* Stress at next fluid point. */
-  double sx;            /* Extrapolated stress component */
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
@@ -542,14 +540,11 @@ static void phi_force_wallx(double * fluxe, double * fluxw) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic,jc,kc);
-	index1 = le_site_index(ic+1, jc, kc);
 	chemical_stress(index, pth0);
-	chemical_stress(index1,pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  sx = pth0[ia][X] - 0.5*(pth1[ia][X] - pth0[ia][X]);
-	  fluxw[3*index + ia] = sx;
-	  fw[ia] -= sx;
+	  fluxw[3*index + ia] = pth0[ia][X];
+	  fw[ia] -= pth0[ia][X];
 	}
       }
     }
@@ -561,14 +556,11 @@ static void phi_force_wallx(double * fluxe, double * fluxw) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic,jc,kc);
-	index1 = le_site_index(ic-1, jc, kc);
 	chemical_stress(index, pth0);
-	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  sx = pth0[ia][X] + 0.5*(pth0[ia][X] - pth1[ia][X]);
-	  fluxe[3*index + ia] = sx;
-	  fw[ia] += sx;
+	  fluxe[3*index + ia] = pth0[ia][X];
+	  fw[ia] += pth0[ia][X];
 	}
       }
     }
@@ -597,8 +589,6 @@ static void phi_force_wally(double * fluxy) {
   int nlocal[3];
   double fy[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
-  double pth1[3][3];    /* Stress at next fluid point. */
-  double sy;            /* Extrapolated stress component */
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
@@ -616,17 +606,14 @@ static void phi_force_wally(double * fluxy) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic, jc, kc);
-	index1 = le_site_index(ic, jc+1, kc);
 	chemical_stress(index, pth0);
-	chemical_stress(index1, pth1);
 
 	/* Face flux a jc - 1 */
 	index1 = le_site_index(ic, jc-1, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  sy = pth0[ia][Y] - 0.5*(pth1[ia][Y] - pth0[ia][Y]);
-	  fluxy[3*index1 + ia] = sy;
-	  fy[ia] -= sy;
+	  fluxy[3*index1 + ia] = pth0[ia][Y];
+	  fy[ia] -= pth0[ia][Y];
 	}
       }
     }
@@ -638,14 +625,11 @@ static void phi_force_wally(double * fluxy) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic, jc, kc);
-	index1 = le_site_index(ic, jc-1, kc);
 	chemical_stress(index, pth0);
-	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  sy = pth0[ia][Y] + 0.5*(pth0[ia][Y] - pth1[ia][Y]);
-	  fluxy[3*index + ia] = sy;
-	  fy[ia] += sy;
+	  fluxy[3*index + ia] = pth0[ia][Y];
+	  fy[ia] += pth0[ia][Y];
 	}
       }
     }
@@ -674,8 +658,6 @@ static void phi_force_wallz(double * fluxz) {
   int nlocal[3];
   double fz[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
-  double pth1[3][3];    /* Stress at next fluid point. */
-  double sz;            /* Extrapolated stress component */
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
@@ -693,17 +675,14 @@ static void phi_force_wallz(double * fluxz) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	index = le_site_index(ic, jc, kc);
-	index1 = le_site_index(ic, jc, kc+1);
 	chemical_stress(index, pth0);
-	chemical_stress(index1, pth1);
 
 	/* Face flux at kc-1 */
 	index1 = le_site_index(ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  sz = pth0[ia][Z] - 0.5*(pth1[ia][Z] - pth0[ia][Z]);
-	  fluxz[3*index1 + ia] = sz;
-	  fz[ia] -= sz;
+	  fluxz[3*index1 + ia] = pth0[ia][Z];
+	  fz[ia] -= pth0[ia][Z];
 	}
       }
     }
@@ -715,14 +694,11 @@ static void phi_force_wallz(double * fluxz) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	index = le_site_index(ic, jc, kc);
-	index1 = le_site_index(ic, jc, kc-1);
 	chemical_stress(index, pth0);
-	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  sz = pth0[ia][Z] + 0.5*(pth0[ia][Z] - pth1[ia][Z]);
-	  fluxz[3*index + ia] = sz;
-	  fz[ia] += sz;
+	  fluxz[3*index + ia] = pth0[ia][Z];
+	  fz[ia] += pth0[ia][Z];
 	}
       }
     }
