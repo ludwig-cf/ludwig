@@ -224,6 +224,10 @@ surf_psi_b 0.01
 #                       nematic initialisation used (doesn't need to be
 #                       unit vector)
 #
+#  lc_dielectric_anisotropy This value should probably remainn unchanged.
+#
+#  electric_e0          External magnetic field appearing in free energy.
+#
 ###############################################################################
 
 lc_a0      0.014384711
@@ -241,6 +245,8 @@ lc_q_init_amplitude -0.2
 lc_init_redshift 0.83
 lc_redshift_update 0
 lc_init_nematic 1.0_0.0_0.0
+lc_dielectric_anisotropy 41.4
+# electric_e0 0.0_0.0_0.0
 
 lc_anchoring_method none
 lc_wall_anchoring fixed
