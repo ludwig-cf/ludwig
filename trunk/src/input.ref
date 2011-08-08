@@ -196,9 +196,10 @@ surf_psi_b 0.01
 #  lc_xi
 #  lc_active_zeta
 #
-#  lc_q_initialisation  nematic, twist
-#                       o8m
-#                       o2
+#  lc_q_initialisation  nematic, twist, dtc
+#			cholesteric: cholesteric_x,y,z 
+#                       cubic: o8m (BPI), o2 (BPII), o5
+#                       hexagonal BPs: h2d, h3da, h3db
 #
 #  lc_q_init_amplitude  scalar order parameter amplitude for initialisation
 #
@@ -224,7 +225,7 @@ surf_psi_b 0.01
 #                       nematic initialisation used (doesn't need to be
 #                       unit vector)
 #
-#  lc_dielectric_anisotropy This value should probably remainn unchanged.
+#  lc_dielectric_anisotropy This value should probably remain unchanged.
 #
 #  electric_e0          External magnetic field appearing in free energy.
 #
