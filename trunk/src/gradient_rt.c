@@ -21,6 +21,7 @@
 #include "runtime.h"
 #include "gradient.h"
 #include "gradient_2d_5pt_fluid.h"
+#include "gradient_2d_tomita_fluid.h"
 #include "gradient_3d_7pt_fluid.h"
 #include "gradient_3d_7pt_solid.h"
 #include "gradient_3d_27pt_fluid.h"
@@ -53,6 +54,10 @@ void gradient_run_time(void) {
     if (strcmp(key1, "2d_5pt_fluid") == 0) {
       info("2d_5pt_fluid\n");
       gradient_2d_5pt_fluid_init();
+    }
+    else if (strcmp(key1, "2d_tomita_fluid") == 0) {
+      info("2d_tomita_fluid\n");
+      gradient_2d_tomita_fluid_init();
     }
     else if (strcmp(key1, "3d_7pt_fluid") == 0) {
       info("3d_7pt_fluid\n");
