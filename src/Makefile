@@ -72,7 +72,8 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o collision.o \
      ewald.o fluctuations.o \
      free_energy.o free_energy_rt.o free_energy_vector.o \
      gradient.o gradient_rt.o \
-     gradient_2d_5pt_fluid.o gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
+     gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
+     gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
      interaction.o io_harness.o\
      leslie_ericksen.o magnetic_field.o magnetic_field_rt.o \
