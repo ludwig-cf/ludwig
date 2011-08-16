@@ -17,5 +17,6 @@
 
 void symmetric_run_time(void);
 void symmetric_run_time_lb(void);
+void symmetric_run_time_noise(void);
 
 #endif
