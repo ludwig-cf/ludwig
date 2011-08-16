@@ -214,7 +214,7 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
 
-  assert(0); /* NOT IMPLEMENTED */
+  assert(le_get_nplane_local() == 0); /* NOT IMPLEMENTED */
   assert(nlocal[Z] == 1);
 
   ys = (nlocal[Z] + 2*nhalo);
@@ -306,7 +306,7 @@ static void gradient_2d_tomita_fluid_wall_correction(const int nop,
   double * c;                   /* Solid free energy parameters C */
   double * h;                   /* Solid free energy parameters H */
 
-  assert(0); /* NOT IMPLEMENTED */
+  assert(wall_at_edge(X) == 0); /* NOT IMPLEMENTED */
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
 
