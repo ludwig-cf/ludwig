@@ -51,6 +51,8 @@ static void phi_ch_le_fix_fluxes(void);
 static void phi_ch_le_fix_fluxes_parallel(void);
 static void phi_ch_random_flux(void);
 
+static void phi_ch_diffusive_flux_noise(void);
+
 static double mobility_  = 0.0; /* Order parameter mobility */
 
 /*****************************************************************************
@@ -90,7 +92,8 @@ void phi_cahn_hilliard() {
 
   advection_order_n(fluxe, fluxw, fluxy, fluxz);
 
-  phi_ch_diffusive_flux();
+  if (coords_nhalo() == 2) phi_ch_diffusive_flux();
+  if (coords_nhalo() == 3) phi_ch_diffusive_flux_noise();
 
   advection_bcs_wall();
   if (phi_fluctuations_on()) phi_ch_random_flux();
@@ -190,6 +193,87 @@ static void phi_ch_diffusive_flux(void) {
 	index1 = le_site_index(ic, jc, kc+1);
 	mu1 = chemical_potential(index1, 0);
 	fluxz[index0] -= mobility_*(mu1 - mu0);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_diffusive_flux_noise
+ *
+ *  Accumulate [add to previously computed advective fluxes]
+ *  diffusive fluxes related to the mobility.
+ *
+ *  This version is based on Sumesh et al to allow correct
+ *  treatment of noise. The fluxes are calculated via
+ *
+ *  grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
+ *  flux_x(x + 1/2) = -0.5*M*(grad_x mu(i) + grad_x mu(i+1)) etc
+ *
+ *  In contrast to Sumesh et al., we don't have 'diagonal' fluxes
+ *  yet. There are also no Lees Edwards planes yet.
+ *
+ *****************************************************************************/
+
+static void phi_ch_diffusive_flux_noise(void) {
+
+  int nhalo;
+  int nlocal[3];
+  int ic, jc, kc;
+  int index0;
+  int xs, ys, zs;
+  double mum2, mum1, mu00, mup1, mup2;
+
+  double (* chemical_potential)(const int index, const int nop);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  assert(nhalo >= 3);
+
+  zs = 1;
+  ys = (nlocal[Z] + 2*nhalo)*zs;
+  xs = (nlocal[Y] + 2*nhalo)*ys;
+
+  chemical_potential = fe_chemical_potential_function();
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(ic, jc, kc);
+	mum2 = chemical_potential(index0 - 2*xs, 0);
+	mum1 = chemical_potential(index0 - 1*xs, 0);
+	mu00 = chemical_potential(index0,        0);
+	mup1 = chemical_potential(index0 + 1*xs, 0);
+	mup2 = chemical_potential(index0 + 2*xs, 0);
+
+	/* x-direction (between ic-1 and ic) */
+
+	fluxw[index0] -= 0.25*mobility_*(mup1 + mu00 - mum1 - mum2);
+
+	/* ...and between ic and ic+1 */
+
+	fluxe[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
+
+	/* y direction between jc and jc+1 */
+
+	mum1 = chemical_potential(index0 - 1*ys, 0);
+	mup1 = chemical_potential(index0 + 1*ys, 0);
+	mup2 = chemical_potential(index0 + 2*ys, 0);
+
+	fluxy[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
+
+	/* z direction between kc and kc+1 */
+
+	mum1 = chemical_potential(index0 - 1*zs, 0);
+	mup1 = chemical_potential(index0 + 1*zs, 0);
+	mup2 = chemical_potential(index0 + 2*zs, 0);
+	fluxz[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
 
 	/* Next site */
       }
