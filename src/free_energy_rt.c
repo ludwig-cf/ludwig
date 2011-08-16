@@ -64,6 +64,9 @@ void free_energy_run_time(void) {
   else if (strcmp(description, "symmetric_lb") == 0) {
     symmetric_run_time_lb();
   }
+  else if (strcmp(description, "symmetric_noise") == 0) {
+    symmetric_run_time_noise();
+  }
   else if (strcmp(description, "brazovskii") == 0) {
     brazovskii_run_time();
   }

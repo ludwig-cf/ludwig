@@ -56,6 +56,22 @@ void symmetric_run_time_lb(void) {
 
 /****************************************************************************
  *
+ *  symmetric_run_time_noise
+ *
+ *  This is hybrid with discretisation following Sumesh et al.
+ *  requiring nhalo = 3.
+ *
+ ****************************************************************************/
+
+void symmetric_run_time_noise(void) {
+
+  symmetric_init(3);
+
+  return;
+}
+
+/****************************************************************************
+ *
  *  symmetric_init
  *
  ****************************************************************************/
