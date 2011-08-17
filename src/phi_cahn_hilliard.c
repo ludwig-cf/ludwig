@@ -92,8 +92,12 @@ void phi_cahn_hilliard() {
 
   advection_order_n(fluxe, fluxw, fluxy, fluxz);
 
-  if (coords_nhalo() == 2) phi_ch_diffusive_flux();
-  if (coords_nhalo() == 3) phi_ch_diffusive_flux_noise();
+  if (phi_fluctuations_on()) {
+    phi_ch_diffusive_flux_noise();
+  }
+  else {
+    phi_ch_diffusive_flux();
+  }
 
   advection_bcs_wall();
   if (phi_fluctuations_on()) phi_ch_random_flux();
