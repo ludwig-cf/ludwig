@@ -8,7 +8,7 @@
  *  Boltzmann for binary fluid, no update is set (it's done via the
  *  appropriate collision).
  *
- *  $Id: phi_update_rt.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -82,7 +82,8 @@ static void phi_update_rt_fe(const char * stringfe) {
 
   value = 0.0;
 
-  if (strcmp(stringfe, "symmetric") == 0) {
+  if (strcmp(stringfe, "symmetric") == 0 ||
+      strcmp(stringfe, "symmetric_noise") == 0) {
 
     info("Using Cahn-Hilliard finite difference solver:\n");
     phi_set_finite_difference();
