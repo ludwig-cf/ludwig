@@ -1,0 +1,511 @@
+This is pdfTeX, Version 3.1415926-1.40.11 (TeX Live 2010) (format=pdflatex 2011.6.1)  11 AUG 2011 23:46
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**bprheo.tex
+(./bprheo.tex
+LaTeX2e <2009/09/24>
+Babel <v3.8l> and hyphenation patterns for english, dumylang, nohyphenation, ge
+rman-x-2009-06-19, ngerman-x-2009-06-19, ancientgreek, ibycus, arabic, armenian
+, basque, bulgarian, catalan, pinyin, coptic, croatian, czech, danish, dutch, u
+kenglish, usenglishmax, esperanto, estonian, farsi, finnish, french, galician, 
+german, ngerman, swissgerman, monogreek, greek, hungarian, icelandic, assamese,
+ bengali, gujarati, hindi, kannada, malayalam, marathi, oriya, panjabi, tamil, 
+telugu, indonesian, interlingua, irish, italian, kurmanji, lao, latin, latvian,
+ lithuanian, mongolian, mongolianlmc, bokmal, nynorsk, polish, portuguese, roma
+nian, russian, sanskrit, serbian, slovak, slovenian, spanish, swedish, turkish,
+ turkmen, ukrainian, uppersorbian, welsh, loaded.
+(/usr/local/texlive/2010/texmf-dist/tex/latex/revtex/revtex4-1.cls
+Document Class: revtex4-1 2010/02/25/18:00:00 4.1p (http://publish.aps.org/revt
+ex4/ for documentation)
+ Copyright (c) 2009 The American Physical Society.
+ mailto:revtex@aps.org
+ Licensed under the LPPL:
+http://www.ctan.org/tex-archive/macros/latex/base/lppl.txt
+ Arthur Ogawa <arthur_ogawa at sbcglobal dot net>
+ Based on work by David Carlisle <david at dcarlisle.demon.co.uk>.
+ltxutil[2010/02/25/18:00:00 4.1p utilities package (portions licensed from W. E
+. Baxter web at superscript.com)]
+LaTeX Info: Redefining \@centercr on input line 308.
+Class revtex4-1 Info: Repairing broken LaTeX eqnarray on input line 358.
+\eqncolsep=\skip41
+Class revtex4-1 Info: Repairing hyperref-unfriendly LaTeX definition of \mpfoot
+note on input line 433.
+Class revtex4-1 Info: Repairing broken LateX \@sect on input line 755.
+\intertabularlinepenalty=\count79
+\@tbpen=\count80
+\@arstrutbox@hline=\box26
+Class revtex4-1 Info: Repairing broken LaTeX \@xbitor on input line 1786.
+Class revtex4-1 Info: Making \typeout \long on input line 2046.
+ltxfront[2010/02/25/18:00:00 4.1p frontmatter package (AO,DPC)]
+\c@affil=\count81
+\c@collab=\count82
+\absbox=\box27
+ltxgrid[2010/02/25/18:00:00 4.1p page grid package (portions licensed from W. E
+. Baxter web at superscript.com)]
+\c@linecount=\count83
+\output@latex=\toks14
+\box@size@1=\box28
+\box@size@2=\box29
+\@protection@box=\box30
+\@topmark@saved=\toks15
+\footins@saved=\box31
+\footins@recovered=\box32
+\column@recovered=\box33
+\pagesofar=\box34
+\footsofar=\box35
+\pagegrid@col=\count84
+Class revtex4-1 Info: Overriding \@vspace, \@vspacer, \@no@pgbk, \@newline, and
+ \\  on input line 5578.
+\c@part=\count85
+\c@section=\count86
+\c@subsection=\count87
+\c@subsubsection=\count88
+\c@paragraph=\count89
+\c@subparagraph=\count90
+\abovecaptionskip=\skip42
+\belowcaptionskip=\skip43
+\c@figure=\count91
+\fbox@1=\box36
+\c@table=\count92
+\fbox@2=\box37
+\c@video=\count93
+\fbox@4=\box38
+\@bibdataout=\write3
+\widetext@top=\box39
+\widetext@bot=\box40
+Class revtex4-1 Info: Selecting society aps on input line 7540.
+(/usr/local/texlive/2010/texmf-dist/tex/latex/revtex/aps4-1.rtx
+File: aps4-1 2010/02/25/18:00:00 4.1p (http://publish.aps.org/revtex4/ for docu
+mentation)
+Class revtex4-1 Info: RevTeX society APS selected on input line 31.
+)
+Class revtex4-1 Info: Selecting journal pre on input line 7542.
+Class revtex4-1 Info: APS journal PRE selected on input line 7543.
+
+
+Class revtex4-1 Warning: No type size specified, using default 10.
+
+(/usr/local/texlive/2010/texmf-dist/tex/latex/revtex/aps10pt4-1.rtx
+File: aps10pt4-1 2010/02/25/18:00:00 4.1p (http://publish.aps.org/revtex4/ for 
+documentation)
+Class revtex4-1 Info: RevTeX pointsize 10pt selected on input line 30.
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/textcase/textcase.sty
+Package: textcase 2004/10/07 v0.07 Text only upper/lower case changing (DPC)
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/url/url.sty
+\Urlmuskip=\muskip10
+Package: url 2006/04/12  ver 3.3  Verb mode for urls, etc.
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/natbib/natbib.sty
+Package: natbib 2009/11/07 8.31a (PWD, AO)
+\bibhang=\skip44
+\bibsep=\skip45
+LaTeX Info: Redefining \cite on input line 694.
+\c@NAT@ctr=\count94
+)
+Class revtex4-1 Info: Repairing natbib's \BibitemShut on input line 7547.
+
+(/usr/local/texlive/2010/texmf-dist/tex/latex/revtex/revsymb4-1.sty
+Package: revsymb4-1 2010/02/25/18:00:00 4.1p (http://publish.aps.org/revtex4/ f
+or documentation)
+LaTeX Info: Redefining \REV@mathfrak on input line 119.
+))
+(/usr/local/texlive/2010/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/local/texlive/2010/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 1999/03/16 v1.13 key=value parser (DPC)
+\KV@toks@=\toks16
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2009/02/05 v1.0o Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/local/texlive/2010/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/latexconfig/graphics.cfg
+File: graphics.cfg 2010/04/23 v1.9 graphics configuration of TeX Live
+)
+Package graphics Info: Driver file: pdftex.def on input line 91.
+
+(/usr/local/texlive/2010/texmf-dist/tex/latex/pdftex-def/pdftex.def
+File: pdftex.def 2010/02/14 v0.04n Graphics/color for pdfTeX
+\Gread@gobject=\count95
+))
+\Gin@req@height=\dimen102
+\Gin@req@width=\dimen103
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2000/07/18 v2.13 AMS math features
+\@mathmargin=\skip46
+
+For additional information on amsmath, use the `?' option.
+(/usr/local/texlive/2010/texmf-dist/tex/latex/amsmath/amstext.sty
+Package: amstext 2000/06/29 v2.01
+
+(/usr/local/texlive/2010/texmf-dist/tex/latex/amsmath/amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0
+\@emptytoks=\toks17
+\ex@=\dimen104
+)
+LaTeX Info: Redefining \text on input line 53.
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/amsmath/amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d
+\pmbraise@=\dimen105
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/amsmath/amsopn.sty
+Package: amsopn 1999/12/14 v2.01 operator names
+)
+\inf@bad=\count96
+LaTeX Info: Redefining \frac on input line 211.
+\uproot@=\count97
+\leftroot@=\count98
+LaTeX Info: Redefining \overline on input line 307.
+\classnum@=\count99
+\DOTSCASE@=\count100
+LaTeX Info: Redefining \ldots on input line 379.
+LaTeX Info: Redefining \dots on input line 382.
+LaTeX Info: Redefining \cdots on input line 467.
+\Mathstrutbox@=\box41
+\strutbox@=\box42
+\big@size=\dimen106
+LaTeX Font Info:    Redeclaring font encoding OML on input line 567.
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 568.
+\macc@depth=\count101
+\c@MaxMatrixCols=\count102
+\dotsspace@=\muskip11
+\c@parentequation=\count103
+\dspbrk@lvl=\count104
+\tag@help=\toks18
+\row@=\count105
+\column@=\count106
+\maxfields@=\count107
+\andhelp@=\toks19
+\eqnshift@=\dimen107
+\alignsep@=\dimen108
+\tagshift@=\dimen109
+\tagwidth@=\dimen110
+\totwidth@=\dimen111
+\lineht@=\dimen112
+\@envbody=\toks20
+\multlinegap=\skip47
+\multlinetaggap=\skip48
+\mathdisplay@stack=\toks21
+LaTeX Info: Redefining \[ on input line 2666.
+LaTeX Info: Redefining \] on input line 2667.
+)
+Class revtex4-1 Info: Patching LaTeX tabular. on input line 37.
+Class revtex4-1 Info: Robustifying \LaTeX's \boldmath command on input line 37.
+
+Class revtex4-1 Info: cite was not loaded (OK!) on input line 37.
+Class revtex4-1 Info: mcite was not loaded (OK!) on input line 37.
+Class revtex4-1 Info: multicol was not loaded (OK!) on input line 37.
+
+(./bprheo.aux)
+\openout1 = `bprheo.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+
+(/usr/local/texlive/2010/texmf-dist/tex/context/base/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count108
+\scratchdimen=\dimen113
+\scratchbox=\box43
+\nofMPsegments=\count109
+\nofMParguments=\count110
+\everyMPshowfont=\toks22
+\MPscratchCnt=\count111
+\MPscratchDim=\dimen114
+\MPnumerator=\count112
+\everyMPtoPDFconversion=\toks23
+) (/usr/local/texlive/2010/texmf-dist/tex/generic/oberdiek/pdftexcmds.sty
+Package: pdftexcmds 2010/04/01 v0.9 Utility functions of pdfTeX for LuaTeX (HO)
+
+
+(/usr/local/texlive/2010/texmf-dist/tex/generic/oberdiek/infwarerr.sty
+Package: infwarerr 2010/04/08 v1.3 Providing info/warning/message (HO)
+)
+(/usr/local/texlive/2010/texmf-dist/tex/generic/oberdiek/ifluatex.sty
+Package: ifluatex 2010/03/01 v1.3 Provides the ifluatex switch (HO)
+Package ifluatex Info: LuaTeX not detected.
+)
+(/usr/local/texlive/2010/texmf-dist/tex/generic/oberdiek/ltxcmds.sty
+Package: ltxcmds 2010/04/26 v1.7 LaTeX kernel commands for general use (HO)
+)
+Package pdftexcmds Info: LuaTeX not detected.
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/oberdiek/epstopdf-base.sty
+Package: epstopdf-base 2010/02/09 v2.5 Base part for package epstopdf
+
+(/usr/local/texlive/2010/texmf-dist/tex/latex/oberdiek/grfext.sty
+Package: grfext 2007/09/30 v1.0 Managing graphics extensions (HO)
+)
+(/usr/local/texlive/2010/texmf-dist/tex/latex/oberdiek/kvoptions.sty
+Package: kvoptions 2010/02/22 v3.7 Keyval support for LaTeX options (HO)
+
+(/usr/local/texlive/2010/texmf-dist/tex/generic/oberdiek/kvsetkeys.sty
+Package: kvsetkeys 2010/03/01 v1.9 Key value parser (HO)
+
+(/usr/local/texlive/2010/texmf-dist/tex/generic/oberdiek/etexcmds.sty
+Package: etexcmds 2010/01/28 v1.3 Prefix for e-TeX command names (HO)
+Package etexcmds Info: Could not find \expanded.
+(etexcmds)             That can mean that you are not using pdfTeX 1.50 or
+(etexcmds)             that some package has redefined \expanded.
+(etexcmds)             In the latter case, load this package earlier.
+)))
+Package grfext Info: Graphics extension search list:
+(grfext)             [.png,.pdf,.jpg,.mps,.jpeg,.jbig2,.jb2,.PNG,.PDF,.JPG,.JPE
+G,.JBIG2,.JB2,.eps]
+(grfext)             \AppendGraphicsExtensions on input line 436.
+
+(/usr/local/texlive/2010/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
+e
+))
+\openout3 = `bprheoNotes.bib'.
+
+
+Overfull \hbox (0.50803pt too wide) in alignment at lines 101--104
+ [][][] []
+ []
+
+
+Overfull \hbox (6.5257pt too wide) in alignment at lines 162--167
+ [][][] []
+ []
+
+[1{/usr/local/texlive/2010/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+<disc-160k_run902.png, id=18, 841.1425pt x 758.835pt>
+File: disc-160k_run902.png Graphic file (type png)
+
+<use disc-160k_run902.png>
+<disc-164k_run902.png, id=19, 841.1425pt x 758.835pt>
+File: disc-164k_run902.png Graphic file (type png)
+
+<use disc-164k_run902.png>
+<disc-165k_run902.png, id=20, 841.1425pt x 758.835pt>
+File: disc-165k_run902.png Graphic file (type png)
+
+<use disc-165k_run902.png>
+
+Class revtex4-1 Warning: Float cannot be placed.
+
+
+Underfull \hbox (badness 2237) in paragraph at lines 203--205
+[]\OT1/cmr/m/n/10 Interestingly, while be-ing steadily sheared in y-
+ []
+
+<slice-disc-v_z-149k_run902.png, id=21, 723.70375pt x 670.505pt>
+File: slice-disc-v_z-149k_run902.png Graphic file (type png)
+
+<use slice-disc-v_z-149k_run902.png>
+<slice-disc-v_z-160k_run902.png, id=22, 723.70375pt x 670.505pt>
+File: slice-disc-v_z-160k_run902.png Graphic file (type png)
+
+<use slice-disc-v_z-160k_run902.png>
+<slice-disc-v_z-167k_run902.png, id=23, 723.70375pt x 670.505pt>
+File: slice-disc-v_z-167k_run902.png Graphic file (type png)
+
+<use slice-disc-v_z-167k_run902.png>
+<slice-disc-v_z-173k_run902.png, id=24, 723.70375pt x 670.505pt>
+File: slice-disc-v_z-173k_run902.png Graphic file (type png)
+
+<use slice-disc-v_z-173k_run902.png>
+<slice-disc-v_z-182k_run902.png, id=25, 723.70375pt x 670.505pt>
+File: slice-disc-v_z-182k_run902.png Graphic file (type png)
+
+<use slice-disc-v_z-182k_run902.png>
+<slice-disc-v_z-192k_run902.png, id=26, 723.70375pt x 670.505pt>
+File: slice-disc-v_z-192k_run902.png Graphic file (type png)
+
+<use slice-disc-v_z-192k_run902.png>
+
+Class revtex4-1 Warning: Float cannot be placed.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 218--224
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 225--227
+
+ []
+
+<v_xz-v_z-160k_run902.png, id=27, 841.1425pt x 758.835pt>
+File: v_xz-v_z-160k_run902.png Graphic file (type png)
+
+<use v_xz-v_z-160k_run902.png>
+<v_xz-v_z-160k_run903.png, id=28, 841.1425pt x 758.835pt>
+File: v_xz-v_z-160k_run903.png Graphic file (type png)
+
+<use v_xz-v_z-160k_run903.png>
+
+Class revtex4-1 Warning: Float cannot be placed.
+
+[2]
+
+LaTeX Warning: A float is stuck (cannot be placed); try class option [floatfix]
+ on input line 249.
+
+<stress_bp2.pdf, id=33, 361.35pt x 252.945pt>
+File: stress_bp2.pdf Graphic file (type pdf)
+ <use stress_bp2.pdf>
+Overfull \hbox (9.0pt too wide) in paragraph at lines 251--252
+ [][] 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<dir-op-y_225k_run949.png, id=34, 752.8125pt x 691.58376pt>
+File: dir-op-y_225k_run949.png Graphic file (type png)
+
+<use dir-op-y_225k_run949.png>
+Overfull \hbox (9.0pt too wide) in paragraph at lines 262--263
+ [][] 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<disc-365k_run914.png, id=35, 751.80875pt x 705.63625pt>
+File: disc-365k_run914.png Graphic file (type png)
+
+<use disc-365k_run914.png>
+<disc-367k_run914.png, id=36, 751.80875pt x 705.63625pt>
+File: disc-367k_run914.png Graphic file (type png)
+
+<use disc-367k_run914.png>
+<disc-375k_run914.png, id=37, 751.80875pt x 705.63625pt>
+File: disc-375k_run914.png Graphic file (type png)
+
+<use disc-375k_run914.png>
+<disc-380k_run914.png, id=38, 751.80875pt x 705.63625pt>
+File: disc-380k_run914.png Graphic file (type png)
+
+<use disc-380k_run914.png>
+<disc-384k_run914.png, id=39, 751.80875pt x 705.63625pt>
+File: disc-384k_run914.png Graphic file (type png)
+
+<use disc-384k_run914.png>
+<disc-389k_run914.png, id=40, 751.80875pt x 705.63625pt>
+File: disc-389k_run914.png Graphic file (type png)
+
+<use disc-389k_run914.png>
+
+Class revtex4-1 Warning: Float cannot be placed.
+
+<v_xz-v_z-360k_run914.png, id=41, 879.285pt x 792.9625pt>
+File: v_xz-v_z-360k_run914.png Graphic file (type png)
+
+<use v_xz-v_z-360k_run914.png>
+<v_xz-v_z-360k_run922.png, id=42, 879.285pt x 792.9625pt>
+File: v_xz-v_z-360k_run922.png Graphic file (type png)
+
+<use v_xz-v_z-360k_run922.png>
+
+Class revtex4-1 Warning: Float cannot be placed.
+
+<stress_bp1.pdf, id=43, 361.35pt x 252.945pt>
+File: stress_bp1.pdf Graphic file (type pdf)
+ <use stress_bp1.pdf>
+Overfull \hbox (9.0pt too wide) in paragraph at lines 315--316
+ [][] 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<spectrum_bp1.pdf, id=44, 361.35pt x 252.945pt>
+File: spectrum_bp1.pdf Graphic file (type pdf)
+ <use spectrum_bp1.pdf>
+Overfull \hbox (9.0pt too wide) in paragraph at lines 329--330
+ [][] 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<dir-op-z_395k_run916.png, id=45, 752.8125pt x 691.58376pt>
+File: dir-op-z_395k_run916.png Graphic file (type png)
+
+<use dir-op-z_395k_run916.png>
+<dir-op-x_395k_run916.png, id=46, 752.8125pt x 691.58376pt>
+File: dir-op-x_395k_run916.png Graphic file (type png)
+
+<use dir-op-x_395k_run916.png>
+Overfull \hbox (9.0pt too wide) in paragraph at lines 340--342
+ [][] 
+ []
+
+
+Overfull \hbox (9.0pt too wide) in paragraph at lines 340--342
+ [] 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+(./bprheo.bbl [3]) [4] [5 <./disc-160k_run902.png (PNG copy)> <./disc-164k_run9
+02.png (PNG copy)> <./disc-165k_run902.png (PNG copy)> <./slice-disc-v_z-149k_r
+un902.png (PNG copy)> <./slice-disc-v_z-160k_run902.png (PNG copy)> <./slice-di
+sc-v_z-167k_run902.png (PNG copy)> <./slice-disc-v_z-173k_run902.png (PNG copy)
+> <./slice-disc-v_z-182k_run902.png (PNG copy)> <./slice-disc-v_z-192k_run902.p
+ng (PNG copy)>] [6 <./v_xz-v_z-160k_run902.png (PNG copy)> <./v_xz-v_z-160k_run
+903.png (PNG copy)> <./stress_bp2.pdf>] [7 <./dir-op-y_225k_run949.png (PNG cop
+y)> <./disc-365k_run914.png (PNG copy)> <./disc-367k_run914.png (PNG copy)> <./
+disc-375k_run914.png (PNG copy)> <./disc-380k_run914.png (PNG copy)> <./disc-38
+4k_run914.png (PNG copy)> <./disc-389k_run914.png (PNG copy)>] [8 <./v_xz-v_z-3
+60k_run914.png (PNG copy)> <./v_xz-v_z-360k_run922.png (PNG copy)> <./stress_bp
+1.pdf>] [9 <./spectrum_bp1.pdf>] [10 <./dir-op-z_395k_run916.png (PNG copy)> <.
+/dir-op-x_395k_run916.png (PNG copy)>] (./bprheo.aux) ) 
+Here is how much of TeX's memory you used:
+ 4089 strings out of 493747
+ 55421 string characters out of 3143547
+ 182748 words of memory out of 3000000
+ 7319 multiletter control sequences out of 15000+200000
+ 10696 words of font info for 38 fonts, out of 3000000 for 9000
+ 714 hyphenation exceptions out of 8191
+ 38i,11n,23p,418b,286s stack positions out of 5000i,500n,10000p,200000b,50000s
+</usr/local/texlive/2010
+/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2010/
+texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2010/t
+exmf-dist/fonts/type1/public/amsfonts/cm/cmbx9.pfb></usr/local/texlive/2010/tex
+mf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2010/texm
+f-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2010/texmf
+-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/local/texlive/2010/texmf-d
+ist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2010/texmf-dis
+t/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/local/texlive/2010/texmf-dist/
+fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2010/texmf-dist/fo
+nts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/texlive/2010/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2010/texmf-dist/fonts/ty
+pe1/public/amsfonts/cm/cmr9.pfb></usr/local/texlive/2010/texmf-dist/fonts/type1
+/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2010/texmf-dist/fonts/type1/
+public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/2010/texmf-dist/fonts/type1/pu
+blic/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2010/texmf-dist/fonts/type1/publ
+ic/amsfonts/cm/cmsy9.pfb></usr/local/texlive/2010/texmf-dist/fonts/type1/public
+/amsfonts/cm/cmti9.pfb>
+Output written on bprheo.pdf (10 pages, 7882268 bytes).
+PDF statistics:
+ 160 PDF objects out of 1000 (max. 8388607)
+ 99 compressed objects within 1 object stream
+ 0 named destinations out of 1000 (max. 500000)
+ 126 words of extra memory for PDF output out of 10000 (max. 10000000)
+
