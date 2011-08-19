@@ -1,0 +1,251 @@
+\providecommand*{\mcitethebibliography}{\thebibliography}
+\csname @ifundefined\endcsname{endmcitethebibliography}
+{\let\endmcitethebibliography\endthebibliography}{}
+\begin{mcitethebibliography}{33}
+\providecommand*{\natexlab}[1]{#1}
+\providecommand*{\mciteSetBstSublistMode}[1]{}
+\providecommand*{\mciteSetBstMaxWidthForm}[2]{}
+\providecommand*{\mciteBstWouldAddEndPuncttrue}
+  {\def\EndOfBibitem{\unskip.}}
+\providecommand*{\mciteBstWouldAddEndPunctfalse}
+  {\let\EndOfBibitem\relax}
+\providecommand*{\mciteSetBstMidEndSepPunct}[3]{}
+\providecommand*{\mciteSetBstSublistLabelBeginEnd}[3]{}
+\providecommand*{\EndOfBibitem}{}
+\mciteSetBstSublistMode{f}
+\mciteSetBstMaxWidthForm{subitem}
+{(\emph{\alph{mcitesubitemcount}})}
+\mciteSetBstSublistLabelBeginEnd{\mcitemaxwidthsubitemform\space}
+{\relax}{\relax}
+
+\bibitem[Saksena and Coveney(2009)]{Saksena09}
+R.~Saksena and P.~Coveney, \emph{Soft Matter}, 2009, \textbf{5},
+  4446--4463\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Brazovskii(1975)]{Brazovskii75}
+S.~Brazovskii, \emph{Sov. Phys. JETP}, 1975, \textbf{68}, 175--185\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Bates and Fredrickson(1990)]{Bates90}
+F.~Bates and G.~Fredrickson, \emph{Ann. Rev. Phys. Chem.}, 1990, \textbf{41},
+  525--557\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Cates and Milner(1989)]{Cates89}
+M.~Cates and S.~Milner, \emph{Phys. Rev. Lett.}, 1989, \textbf{62},
+  1856--1859\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[K.A.~Koppi(1993)]{Koppi93}
+F.~B. K.A.~Koppi, M.~Tirrell, \emph{Phys. Rev. Lett.}, 1993, \textbf{70},
+  1449--1452\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Fredrickson(1994)]{Fredrickson94}
+G.~H. Fredrickson, \emph{J. Rheol.}, 1994, \textbf{38}, 1045\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Panizza \emph{et~al.}(1996)Panizza, Roux, Vuillaume, Lu, and
+  Cates]{Panizza96}
+P.~Panizza, D.~Roux, V.~Vuillaume, C.~Lu and M.~Cates, \emph{Langmuir}, 1996,
+  \textbf{12}, 248--252\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Iwashita and Tanaka(2007)]{Iwashita07}
+Y.~Iwashita and H.~Tanaka, \emph{Phys. Rev. Lett.}, 2007, \textbf{98},
+  145703\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[et~al.(1987)]{Gomati87}
+R.~G. et~al., \emph{J. Phys. Chem.}, 1987, \textbf{91}, 6203\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[et~al.(1992)]{Boltenhagen92}
+P.~B. et~al., \emph{Phys. Rev. A}, 1992, \textbf{46}, R1743\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Fournier and Durand(1994)]{Fournier94}
+J.~B. Fournier and G.~Durand, \emph{J. Phys. II (France)}, 1994, \textbf{4},
+  975\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[et~al.(2004)]{Ramos04}
+L.~R. et~al., \emph{Europhys. Lett.}, 2004, \textbf{66}, 888\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Diat and Roux(1993)]{Diat93}
+O.~Diat and D.~Roux, \emph{J. Phys. II (France)}, 1993, \textbf{3}, 9\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Larson \emph{et~al.}(1993)Larson, Winey, Patel, Watanabe, and
+  Bruinsma]{Larson93}
+R.~Larson, K.~Winey, S.~Patel, H.~Watanabe and R.~Bruinsma, \emph{Rheol. Acta},
+  1993, \textbf{32}, 245--253\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Hamley \emph{et~al.}(1999)Hamley, Davidson, and Gleeson]{Hamley99}
+I.~Hamley, P.~Davidson and A.~Gleeson, \emph{Polymer}, 1999, \textbf{40},
+  3599--3603\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Swift \emph{et~al.}(1996)Swift, Orlandini, Osborn, and
+  Yeomans]{Swift96}
+M.~Swift, E.~Orlandini, W.~Osborn and J.~Yeomans, \emph{Phys. Rev. E}, 1996,
+  \textbf{54}, 5041--5052\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Gonnella \emph{et~al.}(1997)Gonnella, Orlandini, and
+  Yeomans]{Gonnella97}
+G.~Gonnella, E.~Orlandini and J.~Yeomans, \emph{Phys. Rev. Lett.}, 1997,
+  \textbf{78}, 1695--1698\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Gonnella \emph{et~al.}(1998)Gonnella, Orlandini, and
+  Yeomans]{Gonnella98}
+G.~Gonnella, E.~Orlandini and J.~Yeomans, \emph{Phys. Rev. E}, 1998,
+  \textbf{58}, 480--485\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Xu \emph{et~al.}(2003)Xu, Gonnella, and Lamura]{Xu03}
+A.~Xu, G.~Gonnella and A.~Lamura, \emph{Phys. Rev. E}, 2003, \textbf{67},
+  056105\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Xu \emph{et~al.}(2005)Xu, Gonnella, Lamura, Amati, and
+  Massaioli]{Xu05}
+A.~Xu, G.~Gonnella, A.~Lamura, G.~Amati and F.~Massaioli, \emph{Europhys.
+  Lett.}, 2005, \textbf{71}, 651--657\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Xu \emph{et~al.}(2006)Xu, Gonnella, and Lamura]{Xu06a}
+A.~Xu, G.~Gonnella and A.~Lamura, \emph{Physica A}, 2006, \textbf{362},
+  42--47\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Xu and Gonnella(2006)]{Xu06b}
+A.~Xu and G.~Gonnella, \emph{Phys. Rev. E}, 2006, \textbf{74}, 011505\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Succi(2001)]{Succi}
+S.~Succi, \emph{The Lattice Boltzman Equation}, Oxford University Press,
+  Oxford, 2001\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[de~Gennes and Prost(1993)]{deGennes}
+P.~G. de~Gennes and J.~Prost, \emph{The Physics of Liquid Crystals (2nd
+  Edition)}, Clarendon Press, Oxford, 1993\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Evans(1979)]{Evans79}
+R.~Evans, \emph{Adv. Phys.}, 1979, \textbf{28}, 143--200\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[d'Humieres \emph{et~al.}(2002)d'Humieres, Ginzburg, Krafczyk,
+  Lallemand, and Luo]{dHumieres02}
+D.~d'Humieres, I.~Ginzburg, M.~Krafczyk, P.~Lallemand and L.~Luo, \emph{Philos.
+  T. Roy. Soc. A}, 2002, \textbf{360}, 1792\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Adhikari \emph{et~al.}(2005)Adhikari, Stratford, Cates, and
+  Wagner]{Adhikari05}
+R.~Adhikari, K.~Stratford, M.~Cates and A.~Wagner, \emph{Europhys. Lett.},
+  2005, \textbf{71}, 473--479\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Wagner and Pagonabarraga(2002)]{Wagner02}
+A.~Wagner and I.~Pagonabarraga, \emph{J. Stat. Phys.}, 2002, \textbf{107},
+  521--537\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[FFT()]{FFTW}
+\emph{Fastest Fourier Transform in the West}, http://www.fftw.org/\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Leibler(1980)]{Leibler80}
+L.~Leibler, \emph{Macromolecules}, 1980, \textbf{13}, 1602--1617\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Fredrickson and Binder(1989)]{Fredrickson89}
+G.~Fredrickson and K.~Binder, \emph{J. Chem. Phys.}, 1989, \textbf{91},
+  7265--7275\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Kendon \emph{et~al.}(2001)Kendon, Cates, Pagonabarraga, Desplat, and
+  Bladon]{Kendon01}
+V.~Kendon, M.~Cates, I.~Pagonabarraga, J.~Desplat and P.~Bladon, \emph{J. Fluid
+  Mech.}, 2001, \textbf{440}, 147--203\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Lu \emph{et~al.}(2008)Lu, Chen, Ishii, Komura, and Kato]{Lu08}
+C.-Y.-D. Lu, P.~Chen, Y.~Ishii, S.~Komura and T.~Kato, \emph{Eur. Phys. J. E},
+  2008, \textbf{25}, 91--101\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\end{mcitethebibliography}

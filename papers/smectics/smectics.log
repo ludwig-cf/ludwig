@@ -1,0 +1,754 @@
+This is pdfTeX, Version 3.1415926-1.40.10 (TeX Live 2009/Debian) (format=pdflatex 2011.4.7)  19 AUG 2011 09:15
+entering extended mode
+ %&-line parsing enabled.
+**smectics.tex
+(./smectics.tex
+LaTeX2e <2009/09/24>
+Babel <v3.8l> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, farsi, arabic, croatian, bulgarian, ukrainian, russian, czech, slov
+ak, danish, dutch, finnish, french, basque, ngerman, german, german-x-2009-06-1
+9, ngerman-x-2009-06-19, ibycus, monogreek, greek, ancientgreek, hungarian, san
+skrit, italian, latin, latvian, lithuanian, mongolian2a, mongolian, bokmal, nyn
+orsk, romanian, irish, coptic, serbian, turkish, welsh, esperanto, uppersorbian
+, estonian, indonesian, interlingua, icelandic, kurmanji, slovenian, polish, po
+rtuguese, spanish, galician, catalan, swedish, ukenglish, loaded.
+(/usr/share/texmf-texlive/tex/latex/base/article.cls
+Document Class: article 2007/10/19 v1.4h Standard LaTeX document class
+(/usr/share/texmf-texlive/tex/latex/base/size10.clo
+File: size10.clo 2007/10/19 v1.4h Standard LaTeX file (size option)
+)
+\c@part=\count79
+\c@section=\count80
+\c@subsection=\count81
+\c@subsubsection=\count82
+\c@paragraph=\count83
+\c@subparagraph=\count84
+\c@figure=\count85
+\c@table=\count86
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+)
+(/usr/share/texmf-texlive/tex/latex/natbib/natbib.sty
+Package: natbib 2009/07/16 8.31 (PWD, AO)
+\bibhang=\skip43
+\bibsep=\skip44
+LaTeX Info: Redefining \cite on input line 694.
+\c@NAT@ctr=\count87
+) (./mhchem.sty
+Package: mhchem 2007/05/19 v3.07 for typesetting chemical formulae
+
+(/usr/share/texmf-texlive/tex/latex/base/ifthen.sty
+Package: ifthen 2001/05/26 v1.1c Standard LaTeX ifthen package (DPC)
+)
+(/usr/share/texmf-texlive/tex/latex/tools/calc.sty
+Package: calc 2007/08/22 v4.3 Infix arithmetic (KKT,FJ)
+\calc@Acount=\count88
+\calc@Bcount=\count89
+\calc@Adimen=\dimen103
+\calc@Bdimen=\dimen104
+\calc@Askip=\skip45
+\calc@Bskip=\skip46
+LaTeX Info: Redefining \setlength on input line 76.
+LaTeX Info: Redefining \addtolength on input line 77.
+\calc@Ccount=\count90
+\calc@Cskip=\skip47
+)
+(/usr/share/texmf-texlive/tex/latex/oberdiek/twoopt.sty
+Package: twoopt 2008/08/11 v1.5 Definitions with two optional arguments (HO)
+)
+(/usr/share/texmf-texlive/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2000/07/18 v2.13 AMS math features
+\@mathmargin=\skip48
+
+For additional information on amsmath, use the `?' option.
+(/usr/share/texmf-texlive/tex/latex/amsmath/amstext.sty
+Package: amstext 2000/06/29 v2.01
+
+(/usr/share/texmf-texlive/tex/latex/amsmath/amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0
+\@emptytoks=\toks14
+\ex@=\dimen105
+))
+(/usr/share/texmf-texlive/tex/latex/amsmath/amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d
+\pmbraise@=\dimen106
+)
+(/usr/share/texmf-texlive/tex/latex/amsmath/amsopn.sty
+Package: amsopn 1999/12/14 v2.01 operator names
+)
+\inf@bad=\count91
+LaTeX Info: Redefining \frac on input line 211.
+\uproot@=\count92
+\leftroot@=\count93
+LaTeX Info: Redefining \overline on input line 307.
+\classnum@=\count94
+\DOTSCASE@=\count95
+LaTeX Info: Redefining \ldots on input line 379.
+LaTeX Info: Redefining \dots on input line 382.
+LaTeX Info: Redefining \cdots on input line 467.
+\Mathstrutbox@=\box26
+\strutbox@=\box27
+\big@size=\dimen107
+LaTeX Font Info:    Redeclaring font encoding OML on input line 567.
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 568.
+\macc@depth=\count96
+\c@MaxMatrixCols=\count97
+\dotsspace@=\muskip10
+\c@parentequation=\count98
+\dspbrk@lvl=\count99
+\tag@help=\toks15
+\row@=\count100
+\column@=\count101
+\maxfields@=\count102
+\andhelp@=\toks16
+\eqnshift@=\dimen108
+\alignsep@=\dimen109
+\tagshift@=\dimen110
+\tagwidth@=\dimen111
+\totwidth@=\dimen112
+\lineht@=\dimen113
+\@envbody=\toks17
+\multlinegap=\skip49
+\multlinetaggap=\skip50
+\mathdisplay@stack=\toks18
+LaTeX Info: Redefining \[ on input line 2666.
+LaTeX Info: Redefining \] on input line 2667.
+)
+(/usr/share/texmf-texlive/tex/latex/graphics/keyval.sty
+Package: keyval 1999/03/16 v1.13 key=value parser (DPC)
+\KV@toks@=\toks19
+)
+(/usr/share/texmf-texlive/tex/latex/graphics/graphics.sty
+Package: graphics 2009/02/05 v1.0o Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texmf-texlive/tex/latex/graphics/trig.sty
+Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
+)
+(/etc/texmf/tex/latex/config/graphics.cfg
+File: graphics.cfg 2009/08/28 v1.8 graphics configuration of TeX Live
+)
+Package graphics Info: Driver file: pdftex.def on input line 91.
+
+(/usr/share/texmf-texlive/tex/latex/pdftex-def/pdftex.def
+File: pdftex.def 2009/08/25 v0.04m Graphics/color for pdfTeX
+\Gread@gobject=\count103
+))
+\tok@mhchem@ce@iii=\toks20
+\mhchem@arrowminlength=\skip51
+\mhchem@arrows@box=\box28
+\mhchem@arrowlength@pgf=\skip52
+\mhchem@arrowminlength@pgf=\skip53
+\mhchem@bondwidth=\skip54
+\mhchem@bondheight=\skip55
+\mhchem@smallbondwidth@tmpA=\skip56
+\mhchem@smallbondwidth@tmpB=\skip57
+\mhchem@smallbondwidth=\skip58
+\mhchem@cf@element=\toks21
+\mhchem@cf@number=\toks22
+\mhchem@cf@sup=\toks23
+\tok@mhchem@cf@i=\toks24
+\c@mhchem@cf@length=\count104
+\mhchem@cf@replaceminus@tok=\toks25
+\mhchem@option@minussidebearingleft=\skip59
+\mhchem@option@minussidebearingright=\skip60
+
+
+Package mhchem Warning: You did not specify a 'version' option for the mhchem
+(mhchem)                package. This means you EITHER have an existing
+(mhchem)                document and mhchem was updated to a newer version.
+(mhchem)                Please check the mhchem manual in that case! OR, you
+(mhchem)                are about to create a new document; in this case,
+(mhchem)                please write \usepackage[version=3]{mhchem} in your pre
+amble in
+(mhchem)                order to use the most recent version of mhchem.
+
+) (/usr/share/texmf-texlive/tex/latex/psnfss/times.sty
+Package: times 2005/04/12 PSNFSS-v9.2a (SPQR) 
+)
+(/usr/share/texmf-texlive/tex/latex/psnfss/mathptm.sty
+Package: mathptm 2005/04/12 PSNFSS-v9.2a Times w/ Math (SPQR, WaS) 
+
+
+Package mathptm Warning: This package is to be regarded as obsolete.
+(mathptm)                See the PSNFSS documentation.
+
+LaTeX Font Info:    Redeclaring symbol font `operators' on input line 31.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
+(Font)                  OT1/cmr/m/n --> OT1/ptmcm/m/n on input line 31.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/ptmcm/m/n on input line 31.
+LaTeX Font Info:    Redeclaring symbol font `letters' on input line 32.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `normal'
+(Font)                  OML/cmm/m/it --> OML/ptmcm/m/it on input line 32.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `bold'
+(Font)                  OML/cmm/b/it --> OML/ptmcm/m/it on input line 32.
+LaTeX Font Info:    Redeclaring symbol font `symbols' on input line 33.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `normal'
+(Font)                  OMS/cmsy/m/n --> OMS/pzccm/m/n on input line 33.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `bold'
+(Font)                  OMS/cmsy/b/n --> OMS/pzccm/m/n on input line 33.
+LaTeX Font Info:    Redeclaring symbol font `largesymbols' on input line 34.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `normal'
+(Font)                  OMX/cmex/m/n --> OMX/psycm/m/n on input line 34.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `bold'
+(Font)                  OMX/cmex/m/n --> OMX/psycm/m/n on input line 34.
+\symbold=\mathgroup4
+\symitalic=\mathgroup5
+LaTeX Font Info:    Redeclaring math alphabet \mathbf on input line 37.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
+(Font)                  OT1/cmr/bx/n --> OT1/ptm/bx/n on input line 37.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/ptm/bx/n on input line 37.
+LaTeX Font Info:    Redeclaring math alphabet \mathit on input line 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
+(Font)                  OT1/cmr/m/it --> OT1/ptm/m/it on input line 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
+(Font)                  OT1/cmr/bx/it --> OT1/ptm/m/it on input line 38.
+) (/usr/share/texmf-texlive/tex/latex/sectsty/sectsty.sty
+Package: sectsty 2002/02/25 v2.0.2 Commands to change all sectional heading sty
+les
+) (./balance.sty
+Package: balance 1999/02/23 4.3 (PWD)
+\oldvsize=\dimen114
+)
+(/usr/share/texmf-texlive/tex/latex/graphics/graphicx.sty
+Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
+\Gin@req@height=\dimen115
+\Gin@req@width=\dimen116
+)
+(/usr/share/texmf-texlive/tex/latex/lastpage/lastpage.sty
+Package: lastpage 1994/06/25 v0.1b LaTeX2e package for refs to last page number
+ (JPG)
+) (./caption.sty
+Package: caption 2008/04/01 v3.1h Customizing captions (AR)
+
+(./caption3.sty
+Package: caption3 2009/10/09 v3.1k caption3 kernel (AR)
+\captionmargin=\dimen117
+\captionmargin@=\dimen118
+\captionwidth=\dimen119
+\caption@indent=\dimen120
+\caption@parindent=\dimen121
+\caption@hangindent=\dimen122
+)
+\c@ContinuedFloat=\count105
+) (./fancyhdr.sty
+\fancy@headwidth=\skip61
+\f@ncyO@elh=\skip62
+\f@ncyO@erh=\skip63
+\f@ncyO@olh=\skip64
+\f@ncyO@orh=\skip65
+\f@ncyO@elf=\skip66
+\f@ncyO@erf=\skip67
+\f@ncyO@olf=\skip68
+\f@ncyO@orf=\skip69
+)
+(/usr/share/texmf-texlive/tex/latex/tools/bm.sty
+Package: bm 2004/02/26 v1.1c Bold Symbol Support (DPC/FMi)
+LaTeX Info: Redefining \bm on input line 204.
+)
+(/usr/share/texmf-texlive/tex/latex/float/float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count106
+\float@exts=\toks26
+\float@box=\box29
+\@float@everytoks=\toks27
+\@floatcapt=\box30
+)
+
+LaTeX Warning: Unused global option(s):
+    [8.5pt].
+
+(./smectics.aux)
+\openout1 = `smectics.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Try loading font information for OT1+ptm on input line 32.
+ (/usr/share/texmf-texlive/tex/latex/psnfss/ot1ptm.fd
+File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
+)
+(/usr/share/texmf-texlive/tex/context/base/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count107
+\scratchdimen=\dimen123
+\scratchbox=\box31
+\nofMPsegments=\count108
+\nofMParguments=\count109
+\everyMPshowfont=\toks28
+\MPscratchCnt=\count110
+\MPscratchDim=\dimen124
+\MPnumerator=\count111
+\everyMPtoPDFconversion=\toks29
+)
+Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: float package is loaded.
+Package caption Info: End \AtBeginDocument code.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17.28> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 91.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 91.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 91.
+LaTeX Font Info:    Try loading font information for OT1+ptmcm on input line 91
+.
+ (/usr/share/texmf-texlive/tex/latex/psnfss/ot1ptmcm.fd
+File: ot1ptmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OT1/ptmcm.
+)
+LaTeX Font Info:    Try loading font information for OML+ptmcm on input line 91
+.
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/omlptmcm.fd
+File: omlptmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OML/ptmcm.
+)
+LaTeX Font Info:    Try loading font information for OMS+pzccm on input line 91
+.
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/omspzccm.fd
+File: omspzccm.fd 2000/01/03 Fontinst v1.801 font definitions for OMS/pzccm.
+)
+LaTeX Font Info:    Try loading font information for OMX+psycm on input line 91
+.
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/omxpsycm.fd
+File: omxpsycm.fd 2000/01/03 Fontinst v1.801 font definitions for OMX/psycm.
+)
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <9> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 91.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 91.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <9> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 91.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 91.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 97.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <6> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 97.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <5> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 97.
+LaTeX Font Info:    Try loading font information for OMS+ptm on input line 102.
+
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/omsptm.fd
+File: omsptm.fd 
+)
+LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <8> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 102.
+LaTeX Font Info:    Try loading font information for OT1+pcr on input line 102.
+
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/ot1pcr.fd
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+)
+LaTeX Font Info:    Try loading font information for OMS+pcr on input line 102.
+
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/omspcr.fd
+File: omspcr.fd 
+)
+LaTeX Font Info:    Font shape `OMS/pcr/m/n' in size <8> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 102.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <14.4> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 105.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7.4> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 111.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+<LH.pdf, id=1, 56.21pt x 7.02625pt>
+File: LH.pdf Graphic file (type pdf)
+ <use LH.pdf>
+<CH.pdf, id=2, 255.95625pt x 17.06375pt>
+File: CH.pdf Graphic file (type pdf)
+ <use CH.pdf>
+<RH.pdf, id=3, 140.525pt x 10.0375pt>
+File: RH.pdf Graphic file (type pdf)
+ <use RH.pdf>
+<LF.pdf, id=4, 154.5775pt x 8.03pt>
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf>
+<RF.pdf, id=5, 90.3375pt x 7.02625pt>
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf>
+LaTeX Font Info:    Try loading font information for OT1+phv on input line 136.
+
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/ot1phv.fd
+File: ot1phv.fd 2001/06/04 scalable font definitions for OT1/phv.
+)
+LaTeX Font Info:    Try loading font information for OMS+phv on input line 136.
+
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/omsphv.fd
+File: omsphv.fd 
+)
+LaTeX Font Info:    Font shape `OMS/phv/m/n' in size <8> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 136.
+ [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}
+
+
+ <./LH.pdf> <./CH.pdf> <./RH.pdf> <./LF.pdf> <./RF.pdf>]
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf>
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf> [2]
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 265.
+
+<phi_run703_320.jpg, id=99, 979.66pt x 497.86pt>
+File: phi_run703_320.jpg Graphic file (type jpg)
+ <use phi_run703_320.jpg>
+Overfull \hbox (9.23825pt too wide) in paragraph at lines 267--267
+ [][] 
+ []
+
+<phi_run704_500.jpg, id=100, 979.66pt x 497.86pt>
+File: phi_run704_500.jpg Graphic file (type jpg)
+ <use phi_run704_500.jpg>
+Overfull \hbox (9.23825pt too wide) in paragraph at lines 268--268
+ [][] 
+ []
+
+<phi_run705_1280.jpg, id=101, 979.66pt x 497.86pt>
+File: phi_run705_1280.jpg Graphic file (type jpg)
+ <use phi_run705_1280.jpg>
+Overfull \hbox (9.23825pt too wide) in paragraph at lines 269--270
+ [][] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 279.
+
+<phi_run707_320.jpg, id=102, 979.66pt x 497.86pt>
+File: phi_run707_320.jpg Graphic file (type jpg)
+ <use phi_run707_320.jpg>
+Overfull \hbox (9.23825pt too wide) in paragraph at lines 281--281
+ [][] 
+ []
+
+<phi_run710_800.jpg, id=103, 979.66pt x 497.86pt>
+File: phi_run710_800.jpg Graphic file (type jpg)
+ <use phi_run710_800.jpg>
+Overfull \hbox (9.23825pt too wide) in paragraph at lines 282--282
+ [][] 
+ []
+
+<phi_run765_1280.jpg, id=104, 979.66pt x 497.86pt>
+File: phi_run765_1280.jpg Graphic file (type jpg)
+ <use phi_run765_1280.jpg>
+Overfull \hbox (9.23825pt too wide) in paragraph at lines 283--284
+ [][] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 298.
+
+<phi_run704_400.jpg, id=105, 1047.915pt x 525.965pt>
+File: phi_run704_400.jpg Graphic file (type jpg)
+ <use phi_run704_400.jpg>
+<shear_str_run704_400.jpg, id=106, 1057.9525pt x 542.025pt>
+File: shear_str_run704_400.jpg Graphic file (type jpg)
+
+<use shear_str_run704_400.jpg>
+<N1_run704_400.jpg, id=107, 1057.9525pt x 542.025pt>
+File: N1_run704_400.jpg Graphic file (type jpg)
+ <use N1_run704_400.jpg>
+Overfull \hbox (6.38875pt too wide) in paragraph at lines 300--303
+ []| [] 
+ []
+
+
+Overfull \hbox (4.11581pt too wide) in paragraph at lines 300--303
+ [] 
+ []
+
+
+Overfull \hbox (4.11581pt too wide) in paragraph at lines 300--303
+ [] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 306.
+
+<ck_run703_320.jpg, id=108, 623.32875pt x 618.31pt>
+File: ck_run703_320.jpg Graphic file (type jpg)
+ <use ck_run703_320.jpg>
+<ck_run704_500.jpg, id=109, 623.32875pt x 618.31pt>
+File: ck_run704_500.jpg Graphic file (type jpg)
+ <use ck_run704_500.jpg>
+<ck_run705_1280.jpg, id=110, 623.32875pt x 618.31pt>
+File: ck_run705_1280.jpg Graphic file (type jpg)
+ <use ck_run705_1280.jpg>
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 351.
+
+<phi_defects_run774_5120.jpg, id=111, 979.66pt x 497.86pt>
+File: phi_defects_run774_5120.jpg Graphic file (type jpg)
+
+<use phi_defects_run774_5120.jpg>
+<phi_defects_run774_10240.jpg, id=112, 979.66pt x 497.86pt>
+File: phi_defects_run774_10240.jpg Graphic file (type jpg)
+
+<use phi_defects_run774_10240.jpg>
+Overfull \hbox (9.23825pt too wide) in paragraph at lines 353--355
+ [][] 
+ []
+
+
+Overfull \hbox (9.23825pt too wide) in paragraph at lines 353--355
+ [] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 367.
+
+<defect_density_5e-4.pdf, id=113, 361.35pt x 252.945pt>
+File: defect_density_5e-4.pdf Graphic file (type pdf)
+
+<use defect_density_5e-4.pdf>
+Overfull \hbox (9.24744pt too wide) in paragraph at lines 369--370
+ [][] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 383.
+
+<S_xy_tot_t_5e-4.pdf, id=114, 361.35pt x 252.945pt>
+File: S_xy_tot_t_5e-4.pdf Graphic file (type pdf)
+ <use S_xy_tot_t_5e-4.pdf>
+Overfull \hbox (9.24744pt too wide) in paragraph at lines 385--386
+ [][] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 400.
+
+<P_xy_chem_t_5e-4.pdf, id=115, 361.35pt x 252.945pt>
+File: P_xy_chem_t_5e-4.pdf Graphic file (type pdf)
+
+<use P_xy_chem_t_5e-4.pdf>
+Overfull \hbox (9.24744pt too wide) in paragraph at lines 402--403
+ [][] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 410.
+
+<P_xy_defect_density.pdf, id=116, 361.35pt x 252.945pt>
+File: P_xy_defect_density.pdf Graphic file (type pdf)
+
+<use P_xy_defect_density.pdf>
+Overfull \hbox (9.24744pt too wide) in paragraph at lines 412--413
+ [][] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 420.
+
+<N1_t_5e-4.pdf, id=117, 361.35pt x 252.945pt>
+File: N1_t_5e-4.pdf Graphic file (type pdf)
+ <use N1_t_5e-4.pdf>
+Overfull \hbox (9.24744pt too wide) in paragraph at lines 422--423
+ [][] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 444.
+
+<S_xy_N1_gammadot.pdf, id=118, 361.35pt x 252.945pt>
+File: S_xy_N1_gammadot.pdf Graphic file (type pdf)
+
+<use S_xy_N1_gammadot.pdf>
+Overfull \hbox (9.24744pt too wide) in paragraph at lines 446--447
+ [][] 
+ []
+
+File: LF.pdf Graphic file (type pdf)
+<use LF.pdf>
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf> [3]
+Underfull \vbox (badness 1092) has occurred while \output is active []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: RF.pdf Graphic file (type pdf)
+
+<use RF.pdf>
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf> [4 <./ck_run703_320.jpg> <./ck_run704_500.jpg> <./ck_run705_1280.
+jpg>]
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf>
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf> [5 <./phi_run703_320.jpg> <./phi_run704_500.jpg> <./phi_run705_12
+80.jpg> <./phi_run707_320.jpg> <./phi_run710_800.jpg> <./phi_run765_1280.jpg>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: RF.pdf Graphic file (type pdf)
+
+<use RF.pdf>
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf> [6 <./phi_run704_400.jpg> <./shear_str_run704_400.jpg> <./N1_run7
+04_400.jpg>]
+Underfull \vbox (badness 2302) has occurred while \output is active []
+
+
+Underfull \vbox (badness 2318) has occurred while \output is active []
+
+File: LF.pdf Graphic file (type pdf)
+
+<use LF.pdf>
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf> [7 <./phi_defects_run774_5120.jpg> <./phi_defects_run774_10240.jp
+g> <./defect_density_5e-4.pdf>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: RF.pdf Graphic file (type pdf)
+
+<use RF.pdf>
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf> [8 <./S_xy_tot_t_5e-4.pdf> <./P_xy_chem_t_5e-4.pdf>]
+File: LF.pdf Graphic file (type pdf)
+
+<use LF.pdf>
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf> [9 <./P_xy_defect_density.pdf> <./N1_t_5e-4.pdf> <./S_xy_N1_gamma
+dot.pdf>]
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 465.
+
+<phi_run786_320.jpg, id=169, 746.79pt x 524.96124pt>
+File: phi_run786_320.jpg Graphic file (type jpg)
+ <use phi_run786_320.jpg>
+<phi_run788_960.jpg, id=170, 746.79pt x 524.96124pt>
+File: phi_run788_960.jpg Graphic file (type jpg)
+ <use phi_run788_960.jpg>
+<phi_run792_960.jpg, id=171, 722.7pt x 536.0025pt>
+File: phi_run792_960.jpg Graphic file (type jpg)
+ <use phi_run792_960.jpg>
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 486.
+
+<ck_y-slice_run786_320.jpg, id=172, 649.42625pt x 647.41875pt>
+File: ck_y-slice_run786_320.jpg Graphic file (type jpg)
+
+<use ck_y-slice_run786_320.jpg>
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 492.
+
+<ck_x-slice_run788_960.jpg, id=173, 623.32875pt x 618.31pt>
+File: ck_x-slice_run788_960.jpg Graphic file (type jpg)
+
+<use ck_x-slice_run788_960.jpg>
+<ck_y-slice_run788_960.jpg, id=174, 623.32875pt x 618.31pt>
+File: ck_y-slice_run788_960.jpg Graphic file (type jpg)
+
+<use ck_y-slice_run788_960.jpg>
+<ck_z-slice_run788_960.jpg, id=175, 623.32875pt x 618.31pt>
+File: ck_z-slice_run788_960.jpg Graphic file (type jpg)
+
+<use ck_z-slice_run788_960.jpg>
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf>
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf> [10 <./phi_run786_320.jpg> <./phi_run788_960.jpg> <./phi_run792_9
+60.jpg>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: LF.pdf Graphic file (type pdf)
+
+<use LF.pdf>
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf> [11 <./ck_x-slice_run788_960.jpg> <./ck_y-slice_run788_960.jpg> <
+./ck_z-slice_run788_960.jpg> <./ck_y-slice_run786_320.jpg>]
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `!tbp') on input line 525.
+
+<ck_run788_960_zoom.jpg, id=182, 488.82625pt x 644.4075pt>
+File: ck_run788_960_zoom.jpg Graphic file (type jpg)
+
+<use ck_run788_960_zoom.jpg>
+Overfull \hbox (10.5774pt too wide) in alignment at lines 537--575
+[][][][][]
+ []
+
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 537--576
+[][] 
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: RF.pdf Graphic file (type pdf)
+
+<use RF.pdf>
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf> [12 <./ck_run788_960_zoom.jpg>] (./smectics.bbl
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+)
+AED: lastpage setting LastPage
+File: LF.pdf Graphic file (type pdf)
+ <use LF.pdf>
+File: RF.pdf Graphic file (type pdf)
+ <use RF.pdf> [13] (./smectics.aux) ) 
+Here is how much of TeX's memory you used:
+ 4063 strings out of 493857
+ 58363 string characters out of 1153306
+ 185878 words of memory out of 3000000
+ 7214 multiletter control sequences out of 15000+50000
+ 60789 words of font info for 116 fonts, out of 3000000 for 9000
+ 714 hyphenation exceptions out of 8191
+ 36i,14n,43p,754b,395s stack positions out of 5000i,500n,10000p,200000b,50000s
+{/usr/share/texmf-texlive/fonts/enc/dvips/
+base/8r.enc}</usr/share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmex10.pfb
+></usr/share/texmf-texlive/fonts/type1/public/amsfonts/cmextra/cmex9.pfb></usr/
+share/texmf-texlive/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf
+-texlive/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texmf-texlive/fon
+ts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texmf-texlive/fonts/type1/pu
+blic/amsfonts/cm/cmsy8.pfb></usr/share/texmf-texlive/fonts/type1/urw/courier/uc
+rr8a.pfb></usr/share/texmf-texlive/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/sh
+are/texmf-texlive/fonts/type1/urw/symbol/usyr.pfb></usr/share/texmf-texlive/fon
+ts/type1/urw/times/utmb8a.pfb></usr/share/texmf-texlive/fonts/type1/urw/times/u
+tmbi8a.pfb></usr/share/texmf-texlive/fonts/type1/urw/times/utmr8a.pfb></usr/sha
+re/texmf-texlive/fonts/type1/urw/times/utmri8a.pfb></usr/share/texmf-texlive/fo
+nts/type1/urw/zapfchan/uzcmi8a.pfb>
+Output written on smectics.pdf (13 pages, 6820630 bytes).
+PDF statistics:
+ 235 PDF objects out of 1000 (max. 8388607)
+ 0 named destinations out of 1000 (max. 500000)
+ 166 words of extra memory for PDF output out of 10000 (max. 10000000)
+
