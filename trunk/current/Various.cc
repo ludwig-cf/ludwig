@@ -535,7 +535,7 @@ if (pe_cartesian_coordinates_[2] == 0){
       for (jc=1; jc<=Ly; jc++){
 	 x[jc]=jc;
 	 xi[jc]=jc;
-	 if(vwbt!=0) xi[jc]=fmod(jc+(vwbt/fabs(vwbt))*dy_bt+Ly-1.,Ly)+1.;
+	 if(vwbt!=0) xi[jc]=fmod(jc-(vwbt/fabs(vwbt))*dy_bt+Ly-1.,Ly)+1.;
       }
 
       // Qxx
@@ -591,7 +591,7 @@ if (pe_cartesian_coordinates_[2] == pe_cartesian_size_[2]-1){
       for (jc=1; jc<=Ly; jc++){
 	 x[jc]=jc;
 	 xi[jc]=jc;
-	 if(vwtp!=0) xi[jc]=fmod(jc+(vwtp/fabs(vwtp))*dy_tp+Ly-1.,Ly)+1.;
+	 if(vwtp!=0) xi[jc]=fmod(jc-(vwtp/fabs(vwtp))*dy_tp+Ly-1.,Ly)+1.;
       }
 
       // Qxx
