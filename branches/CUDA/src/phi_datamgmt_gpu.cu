@@ -77,6 +77,9 @@ static int nphihalodataY;
 static int nphihalodataZ;
 static int nlexbuf;
 
+/* handles for CUDA streams (for ovelapping)*/
+static cudaStream_t streamX,streamY, streamZ;
+
 
 void init_phi_gpu(){
 
@@ -102,6 +105,11 @@ void init_phi_gpu(){
   cudaMemcpy(le_index_real_to_buffer_d, le_index_real_to_buffer_temp, 
 	     nlexbuf*sizeof(int),cudaMemcpyHostToDevice);
 
+  /* create CUDA streams (for ovelapping)*/
+  cudaStreamCreate(&streamX);
+  cudaStreamCreate(&streamY);
+  cudaStreamCreate(&streamZ);
+
 
 }
 
@@ -109,6 +117,11 @@ void init_phi_gpu(){
 void finalise_phi_gpu()
 {
   free_phi_memory_on_gpu();
+
+  /* destroy CUDA streams*/
+  cudaStreamDestroy(streamX);
+  cudaStreamDestroy(streamY);
+  cudaStreamDestroy(streamZ);
 
 }
 
@@ -154,21 +167,48 @@ static void allocate_phi_memory_on_gpu()
   grad_phi_site_temp = (double *) malloc(nsites*3*sizeof(double));
   delsq_phi_site_temp = (double *) malloc(nsites*sizeof(double));
   le_index_real_to_buffer_temp = (int *) malloc(nlexbuf*sizeof(int));
+
+  cudaHostAlloc( (void **)&phiedgeXLOW, nphihalodataX*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phiedgeXHIGH, nphihalodataX*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phiedgeYLOW, nphihalodataY*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phiedgeYHIGH, nphihalodataY*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phiedgeZLOW, nphihalodataZ*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phiedgeZHIGH, nphihalodataZ*sizeof(double), 
+		 cudaHostAllocDefault);
+
+
+  cudaHostAlloc( (void **)&phihaloXLOW, nphihalodataX*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phihaloXHIGH, nphihalodataX*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phihaloYLOW, nphihalodataY*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phihaloYHIGH, nphihalodataY*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phihaloZLOW, nphihalodataZ*sizeof(double), 
+		 cudaHostAllocDefault);
+  cudaHostAlloc( (void **)&phihaloZHIGH, nphihalodataZ*sizeof(double), 
+		 cudaHostAllocDefault);
   
 
-  phiedgeXLOW = (double *) malloc(nphihalodataX*sizeof(double));
-  phiedgeXHIGH = (double *) malloc(nphihalodataX*sizeof(double));
-  phiedgeYLOW = (double *) malloc(nphihalodataY*sizeof(double));
-  phiedgeYHIGH = (double *) malloc(nphihalodataY*sizeof(double));
-  phiedgeZLOW = (double *) malloc(nphihalodataZ*sizeof(double));
-  phiedgeZHIGH = (double *) malloc(nphihalodataZ*sizeof(double));
+//  phiedgeXLOW = (double *) malloc(nphihalodataX*sizeof(double));
+//  phiedgeXHIGH = (double *) malloc(nphihalodataX*sizeof(double));
+//  phiedgeYLOW = (double *) malloc(nphihalodataY*sizeof(double));
+//  phiedgeYHIGH = (double *) malloc(nphihalodataY*sizeof(double));
+//  phiedgeZLOW = (double *) malloc(nphihalodataZ*sizeof(double));
+//  phiedgeZHIGH = (double *) malloc(nphihalodataZ*sizeof(double));
   
-  phihaloXLOW = (double *) malloc(nphihalodataX*sizeof(double));
-  phihaloXHIGH = (double *) malloc(nphihalodataX*sizeof(double));
-  phihaloYLOW = (double *) malloc(nphihalodataY*sizeof(double));
-  phihaloYHIGH = (double *) malloc(nphihalodataY*sizeof(double));
-  phihaloZLOW = (double *) malloc(nphihalodataZ*sizeof(double));
-  phihaloZHIGH = (double *) malloc(nphihalodataZ*sizeof(double));
+//  phihaloXLOW = (double *) malloc(nphihalodataX*sizeof(double));
+//  phihaloXHIGH = (double *) malloc(nphihalodataX*sizeof(double));
+//  phihaloYLOW = (double *) malloc(nphihalodataY*sizeof(double));
+//  phihaloYHIGH = (double *) malloc(nphihalodataY*sizeof(double));
+//  phihaloZLOW = (double *) malloc(nphihalodataZ*sizeof(double));
+//  phihaloZHIGH = (double *) malloc(nphihalodataZ*sizeof(double));
 
   cudaMalloc((void **) &phiedgeXLOW_d, nphihalodataX*sizeof(double));
   cudaMalloc((void **) &phiedgeXHIGH_d, nphihalodataX*sizeof(double));
@@ -205,19 +245,34 @@ static void free_phi_memory_on_gpu()
   free(delsq_phi_site_temp);
   free(le_index_real_to_buffer_temp);
 
-  free(phiedgeXLOW);
-  free(phiedgeXHIGH);
-  free(phiedgeYLOW);
-  free(phiedgeYHIGH);
-  free(phiedgeZLOW);
-  free(phiedgeZHIGH);
+  cudaFreeHost(phiedgeXLOW);
+  cudaFreeHost(phiedgeXHIGH);
+  cudaFreeHost(phiedgeYLOW);
+  cudaFreeHost(phiedgeYHIGH);
+  cudaFreeHost(phiedgeZLOW);
+  cudaFreeHost(phiedgeZHIGH);
 
-  free(phihaloXLOW);
-  free(phihaloXHIGH);
-  free(phihaloYLOW);
-  free(phihaloYHIGH);
-  free(phihaloZLOW);
-  free(phihaloZHIGH);
+  cudaFreeHost(phihaloXLOW);
+  cudaFreeHost(phihaloXHIGH);
+  cudaFreeHost(phihaloYLOW);
+  cudaFreeHost(phihaloYHIGH);
+  cudaFreeHost(phihaloZLOW);
+  cudaFreeHost(phihaloZHIGH);
+
+
+ // free(phiedgeXLOW);
+ // free(phiedgeXHIGH);
+ // free(phiedgeYLOW);
+ // free(phiedgeYHIGH);
+ // free(phiedgeZLOW);
+ // free(phiedgeZHIGH);
+
+ // free(phihaloXLOW);
+ // free(phihaloXHIGH);
+ // free(phihaloYLOW);
+ // free(phihaloYHIGH);
+ // free(phihaloZLOW);
+ // free(phihaloZHIGH);
 
   /* free memory on accelerator */
 
@@ -374,131 +429,13 @@ void get_phi_from_gpu()
 
 
 
-
-
-
-/* copy phi edges from accelerator to host */
-void get_phi_edges_from_gpu()
-{
-
- static dim3 BlockDims;
- static dim3 GridDims;
- 
-  /* pack edges on accelerator */
-
-  #define BLOCKSIZE 256
-  /* 1D decomposition - use x grid and block dimension only */
-  BlockDims.x=BLOCKSIZE;
-
-  /* run the kernels to pack the edges */
-  TIMER_start(PHIEDGEPACK);
- 
- GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
- pack_phi_edgesX_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
-						N_d,phiedgeXLOW_d,
-						phiedgeXHIGH_d,phi_site_d);
-
-
-  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  pack_phi_edgesY_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
-						N_d,phiedgeYLOW_d,
-						phiedgeYHIGH_d,phi_site_d);
-
-
-    GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-  pack_phi_edgesZ_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
-  						N_d,phiedgeZLOW_d,
-  						phiedgeZHIGH_d,phi_site_d);
-  cudaThreadSynchronize();
-  TIMER_stop(PHIEDGEPACK);
-
-
-
-  /* copy data from accelerator to host */
-  TIMER_start(PHIEDGEGET);
-  cudaMemcpy(phiedgeXLOW, phiedgeXLOW_d, nphihalodataX*sizeof(double),
-	     cudaMemcpyDeviceToHost);
-  cudaMemcpy(phiedgeXHIGH, phiedgeXHIGH_d, nphihalodataX*sizeof(double),
-	     cudaMemcpyDeviceToHost);
-  cudaMemcpy(phiedgeYLOW, phiedgeYLOW_d, nphihalodataY*sizeof(double),
-	     cudaMemcpyDeviceToHost);
-  cudaMemcpy(phiedgeYHIGH, phiedgeYHIGH_d, nphihalodataY*sizeof(double),
-	     cudaMemcpyDeviceToHost);
-  cudaMemcpy(phiedgeZLOW, phiedgeZLOW_d, nphihalodataZ*sizeof(double),
-	     cudaMemcpyDeviceToHost);
-  cudaMemcpy(phiedgeZHIGH, phiedgeZHIGH_d, nphihalodataZ*sizeof(double),
-	     cudaMemcpyDeviceToHost);
-  TIMER_stop(PHIEDGEGET);
-  
-  
-  //checkCUDAError("get_f_edges_from_gpu");
-
-}
-
-
-
-
-/* copy phi halos from host to accelerator */
-void put_phi_halos_on_gpu()
-{
-
-  static dim3 BlockDims;
-  static dim3 GridDims;
-
-
-  /* copy data from host to accelerator */
-  TIMER_start(PHIHALOPUT);
-  cudaMemcpy(phihaloXLOW_d, phihaloXLOW, nphihalodataX*sizeof(double),
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(phihaloXHIGH_d, phihaloXHIGH, nphihalodataX*sizeof(double),
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(phihaloYLOW_d, phihaloYLOW, nphihalodataY*sizeof(double),
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(phihaloYHIGH_d, phihaloYHIGH, nphihalodataY*sizeof(double),
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(phihaloZLOW_d, phihaloZLOW, nphihalodataZ*sizeof(double),
-	     cudaMemcpyHostToDevice);
-  cudaMemcpy(phihaloZHIGH_d, phihaloZHIGH, nphihalodataZ*sizeof(double),
-	     cudaMemcpyHostToDevice);
-  TIMER_stop(PHIHALOPUT);
-
-
-  #define BLOCKSIZE 256
-  /* 1D decomposition - use x grid and block dimension only */
-  BlockDims.x=BLOCKSIZE;
-
-  /* run the kernels to unpack the halos */
-  TIMER_start(PHIHALOUNPACK);
-
-  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_phi_halosX_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
-						  N_d,phi_site_d,phihaloXLOW_d,
-						  phihaloXHIGH_d);
-
-
-  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_phi_halosY_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
-						  N_d,phi_site_d,phihaloYLOW_d,
-						  phihaloYHIGH_d);
-
-  GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-   unpack_phi_halosZ_gpu_d<<<GridDims.x,BlockDims.x>>>(nop,nhalo,
-  						  N_d,phi_site_d,phihaloZLOW_d,
-  					  phihaloZHIGH_d);
-
-  cudaThreadSynchronize();
-  TIMER_stop(PHIHALOUNPACK);
-
-
-  //checkCUDAError("get_f_edges_from_gpu");
-
-}
-
 void phi_halo_swap_gpu()
 {
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 
   int ii,jj,kk,m,index_source,index_target;
+
+#define OVERLAP
 
   const int tagf = 903;
   const int tagb = 904;
@@ -506,6 +443,12 @@ void phi_halo_swap_gpu()
   MPI_Request request[4];
   MPI_Status status[4];
   MPI_Comm comm = cart_comm();
+
+  static dim3 BlockDims;
+  static dim3 GridDims;
+  #define BLOCKSIZE 256
+  /* 1D decomposition - use x grid and block dimension only */
+  BlockDims.x=BLOCKSIZE;
 
 
   /* the sizes of the packed structures */
@@ -526,8 +469,70 @@ void phi_halo_swap_gpu()
   int npackedsiteZ=NedgeZ[X]*NedgeZ[Y]*NedgeZ[Z];
 
 
+  /* the below code is structured to overlap packing, CPU-GPU comms and MPI 
+   as and where possible */
 
-  /* The x-direction (YZ plane) */
+ /* pack X edges on accelerator */
+ GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+ pack_phi_edgesX_gpu_d<<<GridDims.x,BlockDims.x,0,streamX>>>(nop,nhalo,
+						N_d,phiedgeXLOW_d,
+						phiedgeXHIGH_d,phi_site_d);
+
+
+ /* pack Y edges on accelerator */ 
+  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
+  pack_phi_edgesY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(nop,nhalo,
+						N_d,phiedgeYLOW_d,
+						phiedgeYHIGH_d,phi_site_d);
+
+ /* pack Z edges on accelerator */ 
+    GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
+  pack_phi_edgesZ_gpu_d<<<GridDims.x,BlockDims.x,0,streamZ>>>(nop,nhalo,
+  						N_d,phiedgeZLOW_d,
+  						phiedgeZHIGH_d,phi_site_d);
+
+
+  /* get X low edges */
+  cudaMemcpyAsync(phiedgeXLOW, phiedgeXLOW_d, nphihalodataX*sizeof(double),
+		  cudaMemcpyDeviceToHost,streamX);
+ /* get X high edges */
+  cudaMemcpyAsync(phiedgeXHIGH, phiedgeXHIGH_d, nphihalodataX*sizeof(double),
+		  cudaMemcpyDeviceToHost,streamX);
+
+
+#ifndef OVERLAP
+  cudaStreamSynchronize(streamX);
+#endif
+
+ /* get Y low edges */
+  cudaMemcpyAsync(phiedgeYLOW, phiedgeYLOW_d, nphihalodataY*sizeof(double),
+		  cudaMemcpyDeviceToHost,streamY);
+ /* get Y high edges */
+  cudaMemcpyAsync(phiedgeYHIGH, phiedgeYHIGH_d, nphihalodataY*sizeof(double),
+		  cudaMemcpyDeviceToHost,streamY);
+
+
+#ifndef OVERLAP
+  cudaStreamSynchronize(streamY);
+#endif
+
+  /* get Z low edges */
+  cudaMemcpyAsync(phiedgeZLOW, phiedgeZLOW_d, nphihalodataZ*sizeof(double),
+		  cudaMemcpyDeviceToHost,streamZ);
+  /* get Z high edges */
+  cudaMemcpyAsync(phiedgeZHIGH, phiedgeZHIGH_d, nphihalodataZ*sizeof(double),
+		  cudaMemcpyDeviceToHost,streamZ);
+
+
+#ifndef OVERLAP
+  cudaStreamSynchronize(streamZ);
+#endif
+
+
+ /* wait for X data from accelerator*/ 
+  cudaStreamSynchronize(streamX); 
+
+
 
    if (cart_size(X) == 1) {
      /* x up */
@@ -539,6 +544,7 @@ void phi_halo_swap_gpu()
       }
   else
     {
+      /* initiate transfers */
       MPI_Irecv(phihaloXLOW, nphihalodataX, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,X), tagf, comm, &request[0]);
       MPI_Irecv(phihaloXHIGH, nphihalodataX, MPI_DOUBLE,
@@ -547,14 +553,34 @@ void phi_halo_swap_gpu()
 	      cart_neighb(FORWARD,X), tagf, comm, &request[2]);
       MPI_Isend(phiedgeXLOW,  nphihalodataX, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,X), tagb, comm, &request[3]);
-      MPI_Waitall(4, request, status);
+     }
 
-    }
 
- 
- 
+ /* wait for X halo swaps to finish */ 
+   if (cart_size(X) > 1)       MPI_Waitall(4, request, status);
+
+
+ /* put X halos back on device, and unpack */
+  cudaMemcpyAsync(phihaloXLOW_d, phihaloXLOW, nphihalodataX*sizeof(double),
+		  cudaMemcpyHostToDevice,streamX);
+  cudaMemcpyAsync(phihaloXHIGH_d, phihaloXHIGH, nphihalodataX*sizeof(double),
+		  cudaMemcpyHostToDevice,streamX);
+  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+  unpack_phi_halosX_gpu_d<<<GridDims.x,BlockDims.x,0,streamX>>>(nop,nhalo,
+						  N_d,phi_site_d,phihaloXLOW_d,
+						  phihaloXHIGH_d);
+
+
+
+#ifndef OVERLAP
+  cudaStreamSynchronize(streamX);
+#endif
+
+  /* wait for Y data from accelerator*/ 
+  cudaStreamSynchronize(streamY); 
+
+
   /* fill in corners of Y edge data  */
-
 
   for (m=0;m<nop;m++)
     {
@@ -604,8 +630,8 @@ void phi_halo_swap_gpu()
       }
     }
   
-  
-  
+
+
   /* The y-direction (XZ plane) */
    if (cart_size(Y) == 1) {
   /* y up */
@@ -617,6 +643,7 @@ void phi_halo_swap_gpu()
       }
   else
     {
+      /* initiate transfers */
       MPI_Irecv(phihaloYLOW, nphihalodataY, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Y), tagf, comm, &request[0]);
       MPI_Irecv(phihaloYHIGH, nphihalodataY, MPI_DOUBLE,
@@ -625,14 +652,34 @@ void phi_halo_swap_gpu()
 	      cart_neighb(FORWARD,Y), tagf, comm, &request[2]);
       MPI_Isend(phiedgeYLOW,  nphihalodataY, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Y), tagb, comm, &request[3]);
-      MPI_Waitall(4, request, status);
-
     }
-  
+
+
+ /* wait for Y halo swaps to finish */ 
+    if (cart_size(Y) > 1)       MPI_Waitall(4, request, status); 
+
+ /* put Y halos back on device, and unpack */
+  cudaMemcpyAsync(phihaloYLOW_d, phihaloYLOW, nphihalodataY*sizeof(double),
+		  cudaMemcpyHostToDevice,streamY);
+  cudaMemcpyAsync(phihaloYHIGH_d, phihaloYHIGH, nphihalodataY*sizeof(double),
+		  cudaMemcpyHostToDevice,streamY);
+  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
+  unpack_phi_halosY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(nop,nhalo,
+						  N_d,phi_site_d,phihaloYLOW_d,
+						  phihaloYHIGH_d);
+
+
+
+#ifndef OVERLAP
+  cudaStreamSynchronize(streamY);
+#endif
+
+ 
+  /* wait for Z data from accelerator*/ 
+  cudaStreamSynchronize(streamZ); 
+
   /* fill in corners of Z edge data: from Xhalo  */
-  
-  
-  
+    
   for (m=0;m<nop;m++)
     {
       
@@ -740,7 +787,8 @@ void phi_halo_swap_gpu()
       }
     }
   
-  
+
+
   /* The z-direction (xy plane) */
    if (cart_size(Z) == 1) {
   /* z up */
@@ -762,6 +810,24 @@ void phi_halo_swap_gpu()
       MPI_Waitall(4, request, status);
 
     }
+
+ /* put Z halos back on device, and unpack */
+  cudaMemcpyAsync(phihaloZLOW_d, phihaloZLOW, nphihalodataZ*sizeof(double),
+		  cudaMemcpyHostToDevice,streamZ);
+  cudaMemcpyAsync(phihaloZHIGH_d, phihaloZHIGH, nphihalodataZ*sizeof(double),
+		  cudaMemcpyHostToDevice,streamZ);
+
+  GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
+   unpack_phi_halosZ_gpu_d<<<GridDims.x,BlockDims.x,0,streamZ>>>(nop,nhalo,
+  						  N_d,phi_site_d,phihaloZLOW_d,
+  					  phihaloZHIGH_d);
+
+
+  /* wait for all streams to complete */
+  cudaStreamSynchronize(streamX);
+  cudaStreamSynchronize(streamY);
+  cudaStreamSynchronize(streamZ);
+  
 
 }
 

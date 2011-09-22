@@ -73,13 +73,11 @@ void initialise_gpu(void);
 void put_f_on_gpu(void);
 void put_force_on_gpu(void);
 void put_phi_on_gpu(void);
-void put_phi_halos_on_gpu(void);
 void put_grad_phi_on_gpu(void);
 void put_delsq_phi_on_gpu(void);
 void get_f_from_gpu(void);
 void get_velocity_from_gpu(void);
 void get_phi_from_gpu(void);
-void get_phi_edges_from_gpu(void);
 void finalise_gpu(void);
 void collide_gpu(void);
 void propagation_gpu(void);
@@ -258,17 +256,9 @@ int main( int argc, char **argv ) {
       phi_compute_phi_site_gpu();
       TIMER_stop(PHICOMP);
 
-      get_phi_edges_from_gpu();
-
       TIMER_start(PHIHALO);
       phi_halo_swap_gpu();
       TIMER_stop(PHIHALO);
-
-      put_phi_halos_on_gpu();
-
-      //get_phi_from_gpu();
-      //phi_halo();
-      //put_phi_on_gpu();
 
 
       TIMER_start(PHIGRADCOMP);

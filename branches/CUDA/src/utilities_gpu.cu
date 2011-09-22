@@ -18,7 +18,8 @@
 #include "timer.h"
 
 
-#define GPUS_PER_NODE 4
+//#define GPUS_PER_NODE 4
+#define GPUS_PER_NODE 1
 
 /* external pointers to data on host*/
 extern const double ma_[NVEL][NVEL];
@@ -68,7 +69,8 @@ void initialise_gpu()
   int devicenum=cart_rank()%GPUS_PER_NODE;
 
   //FERMI0 hack
-  if (devicenum ==1 ) devicenum=4;
+  //if (devicenum ==1 ) devicenum=4;
+  //devicenum=0;
 
   cudaSetDevice(devicenum);
 
