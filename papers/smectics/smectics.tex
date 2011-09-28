@@ -599,6 +599,75 @@ Structure factor data confirmed the very regular layered ordering of the structu
 \section{Acknowledgements}
 
 
+\section{Appendix: sliding periodic boundary conditions}
+
+The simulations of shear flow are undertaken using a mixed finite
+difference / lattice Boltzmann approach, where the former is used
+to advance the order parameter in time via the Cahn-Hilliard equation,
+and the later is used to solve the Navier-Stokes equations.
+Coupling between the two is
+via the velocity field, which advects the order parameter, and
+the thermodynamic pressure tensor (6), the divergence of which
+contributes a body force on the fluid. The sliding periodic
+boundary conditions of Lees and Edwards\cite{leesedwards} may be
+applied to the lattice Boltzmann part of the calculation
+\cite{wagnerpagonabarraga,adhikari2005} to generate shear in the system. We
+describe here how the sliding periodic boundaries are extended to
+include the finite difference part of the calculation.
+
+We consider a finite difference mesh where the order parameter
+values are co-located with the density and velocity fields provided
+by lattice Boltzmann. Away from the sliding periodic boundaries, the
+finite difference discretisation is as one would expect.
+In order to ensure conservation of order parameter, as expressed by
+\begin{equation}
+\partial_t \phi + \partial_\alpha (u_\alpha \phi - M\partial_\alpha \mu) = 0,
+\end{equation}
+we consider each lattice point to be surrounded by a cubic control volume or
+cell
+of dimensions $\Delta x = 1$ in two or three dimensions.
+We compute convective and diffusive fluxes at the cell boundaries using
+linear interpolation of the normal velocity component to the cell face.
+For the advective fluxes, the interfacial values of the order parameter
+are computed via cubic interpolation weighted in the upwind direction.
+This is combined with an Euler forward step for the time integration:
+a small Courant number ($u\Delta t/\Delta x$), and hence numerically
+stability, is gauranteed by the small Mach number constraint
+standard in lattice Boltzmann. The gradient of the chemical potential
+is computed at each cell face using values of $\mu$ computed at the
+lattice point either side.
+
+A body force on the fluid in the Navier-Stokes equations may be
+included in the lattice Boltzmann approach. Again, to ensure conservation
+of momentum, the divergence of the thermodynamic presure tensor is
+computed based on cell-face values. In practice, this requires a
+finite difference stencil
+that entends at least $\pm 3$ lattice points in each coordinate direction
+(the thermodynamic pressure involves a fourth derivative of the order
+parameter).
+
+The sliding periodic boundaries lie (conceptually) along plane
+co-incident with the cell faces. Where the finite difference stencil 
+overlaps a such a plane, the relative movement between the two sides
+of the plane must be accounted for when computing derivatives of the
+order parameter, and hence fluxes of order parameter and momentum,
+near the planes. This means interpolating values of the order parameter
+on each side of the plane to positions corresponding to the lattice
+locations on the other side so that the finite difference stencil
+can be used normally. For this study, where there are high derivatives
+of the order parameter in the free energy, it is important that this
+interpolation is at least cubic. Linear interpolation of the order
+parameter leads to unphysical oscillations of physical quantities
+such as the shear stress related to the magnitude of the velocity jump
+across the sliding boundary.
+With cubic interpolation, such artefacts are absent. The non-linear
+nature of this interpoation means that fluxes of both order parameter
+and momentum computed at the plane do not exectly match on each side.
+However, this may be corrected at each sliding boundary at each time
+step, restoring global order parameter and momentum conservation.
+
+
+
 \footnotesize{
 \bibliography{smectics} %your .bib file
 \bibliographystyle{rsc} %the RSC's .bst file
