@@ -17,7 +17,9 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
+#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
