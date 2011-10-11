@@ -18,6 +18,8 @@
 #include "free_energy.h"
 
 void   symmetric_free_energy_parameters_set(double a, double b, double kappa);
+double symmetric_a(void);
+double symmetric_b(void);
 double symmetric_interfacial_tension(void);
 double symmetric_interfacial_width(void);
 double symmetric_free_energy_density(const int index);

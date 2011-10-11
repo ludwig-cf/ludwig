@@ -98,7 +98,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model_r.o propagation.o collision.o \
      site_map.o subgrid.o \
      stats_calibration.o stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
-     stats_surfactant.o stats_turbulent.o svn.o \
+     stats_surfactant.o stats_symmetric.o stats_turbulent.o svn.o \
      timer.o util.o wall.o colloids_Q_tensor.o
 
 GPUOBJS = collision_gpu.o propagation_gpu.o phi_lb_coupler_gpu.o \

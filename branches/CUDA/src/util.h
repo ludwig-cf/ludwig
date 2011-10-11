@@ -31,4 +31,7 @@ int    imax(const int i, const int j);
 double dmin(const double a, const double b);
 double dmax(const double a, const double b);
 
+int    util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
+int    util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
+
 #endif

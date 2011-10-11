@@ -32,6 +32,7 @@ const double e_[3][3][3] = {{{c0, c0, c0}, { c0, c0, c1}, {c0,-c1, c0}},
 			    {{c0, c0,-c1}, { c0, c0, c0}, {c1, c0, c0}},
 			    {{c0, c1, c0}, {-c1, c0, c0}, {c0, c0, c0}}}; 
 
+static void util_swap(int ia, int ib, double a[3], double b[3][3]);
 
 /***************************************************************************
  *
@@ -181,4 +182,170 @@ double dmin(const double a, const double b) {
 
 double dmax(const double a, const double b) {
   return ((a > b) ? a : b);
+}
+
+/*****************************************************************************
+ *
+ *  util_jacobi_sort
+ *
+ *  Returns sorted eigenvalues and eigenvectors, highest eigenvalue first.
+ *
+ *  Returns zero on success.
+ *
+ *****************************************************************************/
+
+int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]) {
+
+  int ifail;
+
+  ifail = util_jacobi(a, vals, vecs);
+
+  /* And sort */
+
+  if (vals[X] < vals[Y]) util_swap(X, Y, vals, vecs);
+  if (vals[X] < vals[Z]) util_swap(X, Z, vals, vecs);
+  if (vals[Y] < vals[Z]) util_swap(Y, Z, vals, vecs);
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  util_jacobi
+ *
+ *  Find the eigenvalues and eigenvectors of a 3x3 symmetric matrix a.
+ *  This routine from Press et al. (page 467). The eigenvectors are
+ *  returned as the columns of vecs[nrow][ncol].
+ *
+ *  Returns 0 on success. Garbage out usually means garbage in!
+ *
+ *****************************************************************************/
+
+int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
+
+  int iterate, ia, ib, ic;
+  double tresh, theta, tau, t, sum, s, h, g, c;
+  double b[3], z[3];
+
+  const int maxjacobi = 50;    /* Maximum number of iterations */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      vecs[ia][ib] = d_[ia][ib];
+    }
+    vals[ia] = a[ia][ia];
+    b[ia] = a[ia][ia];
+    z[ia] = 0.0;
+  }
+
+  for (iterate = 1; iterate <= maxjacobi; iterate++) {
+    sum = 0.0;
+
+    for (ia = 0; ia < 2; ia++) {
+      for (ib = ia + 1; ib < 3; ib++) {
+        sum += fabs(a[ia][ib]);
+      }
+    }
+
+    if (sum < DBL_MIN) return 0;
+
+    if (iterate < 4)
+      tresh = 0.2*sum/(3*3);
+    else
+      tresh = 0.0;
+
+    for (ia = 0; ia < 2; ia++) {
+      for (ib = ia + 1; ib < 3; ib++) {
+
+        g = 100.0*fabs(a[ia][ib]);
+
+        if (iterate > 4 && (fabs(vals[ia]) + g) == fabs(vals[ia]) &&
+            (fabs(vals[ib]) + g) == fabs(vals[ib])) {
+          a[ia][ib] = 0.0;
+        }
+        else if (fabs(a[ia][ib]) > tresh) {
+          h = vals[ib] - vals[ia];
+          if ((fabs(h) + g) == fabs(h)) {
+            t = (a[ia][ib])/h;
+          }
+          else {
+            theta = 0.5*h/a[ia][ib];
+            t = 1.0/(fabs(theta) + sqrt(1.0 + theta*theta));
+            if (theta < 0.0) t = -t;
+          }
+
+          c = 1.0/sqrt(1 + t*t);
+          s = t*c;
+          tau = s/(1.0 + c);
+          h = t*a[ia][ib];
+          z[ia] -= h;
+          z[ib] += h;
+          vals[ia] -= h;
+          vals[ib] += h;
+          a[ia][ib] = 0.0;
+
+          for (ic = 0; ic <= ia - 1; ic++) {
+            assert(ic < 3);
+            g = a[ic][ia];
+            h = a[ic][ib];
+            a[ic][ia] = g - s*(h + g*tau);
+            a[ic][ib] = h + s*(g - h*tau);
+          }
+          for (ic = ia + 1; ic <= ib - 1; ic++) {
+            assert(ic < 3);
+            g = a[ia][ic];
+            h = a[ic][ib];
+            a[ia][ic] = g - s*(h + g*tau);
+            a[ic][ib] = h + s*(g - h*tau);
+          }
+          for (ic = ib + 1; ic < 3; ic++) {
+            g = a[ia][ic];
+            h = a[ib][ic];
+            a[ia][ic] = g - s*(h + g*tau);
+            a[ib][ic] = h + s*(g - h*tau);
+          }
+          for (ic = 0; ic < 3; ic++) {
+            g = vecs[ic][ia];
+            h = vecs[ic][ib];
+            vecs[ic][ia] = g - s*(h + g*tau);
+            vecs[ic][ib] = h + s*(g - h*tau);
+          }
+        }
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      b[ia] += z[ia];
+      vals[ia] = b[ia];
+      z[ia] = 0.0;
+    }
+  }
+
+  return -1;
+}
+
+/*****************************************************************************
+ *
+ *  util_swap
+ *
+ *  Intended for a[3] eigenvalues and b[nrow][ncol] column eigenvectors.
+ *
+ *****************************************************************************/
+
+static void util_swap(int ia, int ib, double a[3], double b[3][3]) {
+
+  int ic;
+  double tmp;
+
+  tmp = a[ia];
+  a[ia] = a[ib];
+  a[ib] = tmp;
+
+  for (ic = 0; ic < 3; ic++) {
+    tmp = b[ic][ia];
+    b[ic][ia] = b[ic][ib];
+    b[ic][ib] = tmp;
+  }
+
+  return;
 }
