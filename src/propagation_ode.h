@@ -16,6 +16,12 @@
 #define PROPAGATION_ODE_H
 
 void propagation_ode(void);
+void propagation_ode_d2q9_euler(void);
+void propagation_ode_d2q9_rk2(void);
+
+void propagation_ode_init(void);
+void propagation_ode_finish(void);
+void propagation_ode_halo(void);
 
 #endif
 
