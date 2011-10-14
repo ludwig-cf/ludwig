@@ -105,34 +105,143 @@ First published on the web Xth XXXXXXXXXX 200X}}}
 
 
 \section{Introduction}
-Instances of soft complex fluids surrounding us abound: for instance paint, cosmetics and food products such as ketchup, mayonnaise, yogurt etc are all well-known examples of colloidal suspensions, where particles or droplets are suspended in a viscous fluid. Biological systems also include a large range of soft materials: for instance the intracellular network of actin fibres constituting the cytoskeleton of mammalian cells is a polymeric fluid, as is the DNA making up the bacterial nucleoid or eukaryotic chromosomes, or the viral genome of bacteriophages, where enhanced confinement imparts strong liquid crystalline character. Soft materials such as liquid crystalline fluids, with or without colloidal inclusions, are also of importance technologically, for instance when they are used to build up display devices or in bio-sensing.
 
-Rheology gives a powerful way to characterise macroscopic physical properties of a soft material such as its viscosity, elastic and loss moduli, which quantify, for instance, its rigidity, response to applied forces or stresses etc. While in a Newtonian, viscous fluid, shearing gives rise to a stress which is linearly proportional to the applied shear rate -- the slope being the viscosity -- in complex fluids flow is often non-Newtonian and such a simple linear relation no longer holds. Thus, viscoelastic complex fluids may be shear thickening or shear thinning, if their effective viscosity increases or decreases with applied shear. They may even spontaneously phase separate when flowing, giving rise to shear bands which are familiar in the rheology of liquid crystals in the vicinity of the isotropic-nematic transition, and in wormlike micelles.
+Instances of soft complex fluids abound. Examples include colloidal
+suspensions, where particles or droplets are suspended in a viscous
+fluid, living tissues, and liquid crystalline fluids. Well known
+examples of colloidal suspensions include paint, cosmetics, and
+food products such as ketchup, mayonnaise, and yogurt.
+The intracellular network of actin fibres constituting the
+cytoskeleton of mammalian cells is a polymeric fluid.
+The same is true of the DNA making up the bacterial nucleoid and
+eukaryotic chromosomes, and the viral genome of bacteriophages,
+where enhanced confinement imparts a strong liquid crystalline
+character to the system.
+Liquid crystalline fluids themselves, with or without colloidal
+inclusions, are of of wide technological importance in devices
+such as electronic displays and sensors.
 
-The rheological properties of a non-Newtonian fluid are often linked to the microstructure of the material. For instance, in the flow of polydomain liquid crystals, which are not uniformly ordered, the existence of regions with conflicting director patterns leads to a non-linear relation between shear stress and applied shear rate. Another intriguing example of strongly non-Newtonian rheology is region I flow in polymeric nematic liquid crystals. While our understanding of the physics of region I flow is far from complete, it is thought that a defect network may form and lead to much enhanced viscosity, with marked shear thinning, $\eta \sim \dot{\gamma}^{\alpha}$, and an exponent $\alpha$ typically between 0 and 1. Particularly relevant to our current work is the rheology of layered systems, such as smectics and cholesterics. Experiments involving any of such soft materials typically lead to vastly different results, according to whether the system has been ordered prior to the rheological study, for instance via pre-shearing, or not. In the latter case the measured viscosities are much larger, and just as in polydomain or region I nematic flow, this stiffening is usually associated to the presence of defects in the sample. An intriguing flow mode which is possible in layered system is permeation, through which the individual molecules in the fluid displace keeping the defect pattern intact in steady state. This leads to increased dissipation and hence to a larger viscosity. A well-known example of permeation flow is the one which occurs e.g. in cholesterics which are sheared or pushed along the direction of the cholesteric helix. However, one would expect permeation flows to be possible also when a non-translationally invariant defect pattern is present in the system, so that it may occur to some extent also in quenched smectics for instance.
-Lamellar rheology is also of interest for a number of additional intriguing phenomenological observations beyond their nonlinear shear-stress curve. For instance, in block-copolymers one may observe, under some conditions, shear-induced phase transitions from the microphase separated state to ordered phases like the lamellar one~\cite{Cates89,Koppi93,Fredrickson94}, and it would be desirable to extend our theoretical understanding of such switches. Furthermore, lyotropic layered liquid crystals have sometimes been observed to form an onion phase \cite{Panizza96,Iwashita07} which can happen either spontaneously \cite{Gomati87,Boltenhagen92,Fournier94,Ramos04} or under shear \cite{Diat93} -- the mechanism underlying such pattern formation has remained elusive to date. 
+The behaviour under flow, or rheology, of such materials is important
+to understand, as it affects many industrial and manufacturing processes.
+At the same time, rheological measurements provide a powerful way to
+characterise macroscopic properties of a soft material.
+The response to applied forces or stresses can be used to quantify,
+e.g., the viscosity, or elastic and loss moduli of soft materials.
+On shearing, a simple Newtonian fluid exhibits a stress which is
+linearly proportional to the applied shear rate; the
+constant of proportionality is just the viscosity. In marked
+contrast, complex fluids flow is often non-Newtonian and such a simple
+linear relation no longer holds. On shearing, the effective viscosity
+of a complex viscoelastic fluid may increase or decrease, corresponding
+to shear thinkening or shear thinning behaviour. Complex fluids may even
+spontaneously phase separate when flowing, giving rise to shear bands.
+These are familiar in the rheology of liquid crystals in the vicinity of
+the isotropic-nematic transition, and in wormlike micelles.
 
+The rheological properties of a non-Newtonian fluid are typically linked
+to the microstructure of the material. Particularly relevant to our
+current work is the rheology of layered systems, such as smectics and
+cholesterics. Here, experiments may show different rheological results
+depending on whether the system has been ordered prior to measurement
+(for example, by pre-shearing).
+For instance, in the flow of polydomain liquid crystals, which are not
+uniformly ordered, the existence of regions with conflicting director
+patterns leads to a non-linear relation between shear stress and
+applied shear rate.
+Another example of strongly non-Newtonian rheology is region I flow
+in polymeric nematic liquid crystals. While our understanding of the
+physics of region I flow is far from complete, it is thought that a
+defect network may form and lead to much enhanced viscosity, with
+marked shear thinning. In both these cases, stiffening is usually
+associated to the presence of defects in the sample.
 
-Despite the wealth of experimentally available results, and the importance of rheology to for instance industrial applications, flow behaviour remains challenging to study theoretically. This is mainly in view of the highly non-linear equations of motion which require either drastic approximations or challenging computer simulations. At the same time, realistic modelling eventually requires the simulation of a fully 3-dimensional flow, which is particularly expensive computationally. In this work, we aim to contribute to fill in the gap towards realistic large scale computational studies of complex fluids, and our focus is the physics of smectics under shear. For another example of large scale simulations for complex fluids, see Ref.~\cite{Saksena09} where sheared gyroid phases were simulated.
-We shall concentrate here on intermediate values of the shear rate for which, as we shall see, we may observe either an approximately linear or markedly non-linear behaviour of the system, according to the thermodynamic parameters. In our treatment, we describe smectics via a Brazovskii free energy functional \cite{Brazovskii75}, which provides a robust framework to study systems like micelles, surfactants, smectic liquid crystals and block-copolymer.
+Another intriguing type of flow which is possible in layered systems
+is permeation,
+where individual molecules in the fluid translate while keeping the
+defect pattern intact in steady state. This leads to increased dissipation
+and hence to a larger viscosity. A well-known example of permeation flow
+is found in cholesterics which are sheared or pushed along the direction
+of the cholesteric helix. However, one would also expect permeation flows
+to be possible when a non-translationally invariant defect pattern is
+present in the system; this might be the case in quenched smectics, for
+instance. In addition to their non-linear shear-stress curve, lamellar
+systems are also of interest for a number of other phenomena.
+In block-copolymers one may observe, under some conditions, shear-induced
+phase transitions from the microphase separated state to ordered phases
+like the lamellar one~\cite{Cates89,Koppi93,Fredrickson94}. It would be
+desirable to extend our theoretical understanding of such switches.
+Further, lyotropic layered liquid crystals have sometimes been observed
+to form an onion phase \cite{Panizza96,Iwashita07} which can happen either
+spontaneously \cite{Gomati87,Boltenhagen92,Fournier94,Ramos04} or under
+shear \cite{Diat93}. The mechanism underlying such pattern formation has
+remained elusive to date.
+
+Despite a wealth of experimental results, and the importance of rheology
+to many commercial applications, theoretical progress in understanding
+flow behaviour of complex fluids has remained a challenge. This is largely
+because of the non-linear nature of the equations of motion, and the
+coupling of the flow to different microstructures. These either require
+drastic approximations or, for practical purposes, resort to computer
+simulation. Even here, realistic 3-dimensional calculations are
+computationally expensive.
+In this work, our focus is the physics of smectics under shear.
+While sheared smectics have been studied extensively via simulations
+in the literature~\cite{Swift96,Gonnella97,Gonnella98,Xu03,Xu05,Xu06a,Xu06b},
+computational constraints have meant almost all these results are limited
+to two dimensions. Further, a number of these studies have used solid walls
+to drive shear in the hydrodymamics and, inconsistently, sliding periodic
+boundaries for the composition variable. Such simulations have a number of
+drawbacks: solid walls to drive shear limits the attanable shear rate in
+larger systems and so exacerbates finite size effects; mixed boundary
+conditions make it difficult to disentangle bulk and boundary effects
+in the rheology. In this work, we try to overcome all of these issues.
+(One notable example which does tackle a large 3-dimensional simulation
+of a complex fluid under shear involved gyroid phases~\cite{Saksena09}.)
+
+We describe smectics via a Brazovskii free energy functional
+\cite{Brazovskii75}, which provides a robust framework to study systems
+like micelles, surfactants, smectic liquid crystals and block-copolymers.
+The governing equations in the model are a convection-diffusion equation
+for the scalar order parameter, which represents the density difference
+of two fluid components, and the Navier-Stokes equation describing
+hydrodynamics. A stress tensor that contains extra contributions owing
+to the presence of interfaces between the components is included.
+These dynamical equations are solved using a combination of a finite
+difference scheme for the convection-diffusion equation, and the
+lattice Boltzmann method (LBM)~\cite{Succi} for the Navier-Stokes equation.
+We use consistent sliding periodic (Lees-Edwards) boundary conditions for
+both convection-diffusion and Navier-Stokes equations. This allows us to
+probe the true bulk rheology of the smectic phase for large systems and
+high shear rates, as quantified by an appropriate Peclet number.
+
+% KS: this can be moved to existing appendix
+%The LBM solves the Boltzmann equation on a regular lattice for a representative fluid that obey simplified dynamics in terms of a free propagation step of quasi-particles followed by a collision step, in which the particles interact.
+%The LBM solves the Navier-Stokes equation in the limit of small Mach numbers $Ma\ll1$ and has been largely applied to fluid flow in complex geometries, where it is superior to conventional methods of computational fluid dynamics.
+
 
 %Copolymer consist of type-A polymers covalently bonded to type-B polymers and can self-organise in a variety of phases, ranging from spherical phases over hexagonal cylindrical phases to lamellar phases or bicontinuous gyroid phases \cite{Bates90}. 
 
-The governing equations in our model are a convection-diffusion equation for the scalar order parameter, which represents the density difference of the two phases and the Navier-Stokes equation with a stress tensor that contains extra contributions due to the presence of the lamellar interfaces.
-In our approach the dynamical equations are solved using a combination of finite difference scheme for the convection-diffusion equation and the lattice Boltzmann method (LBM) \cite{Succi} for the Navier-Stokes equation.
-The LBM solves the Boltzmann equation on a regular lattice for a representative fluid that obey simplified dynamics in terms of a free propagation step of quasi-particles followed by a collision step, in which the particles interact.
-The LBM solves the Navier-Stokes equation in the limit of small Mach numbers $Ma\ll1$ and has been largely applied to fluid flow in complex geometries, where it is superior to conventional methods of computational fluid dynamics.
+% KS: this following paragraph doesn't quite make sense to me yet.
 
-Our main finding is that as anticipated above depending on system parameters we find that a smectic phase may lead to vastly different rheological responses. 
-When thermodynamic forces are weaker with respect to viscous, flow-induced, ones, shear quickly orders the system into a lamellar phase, with only a few defects. The rheology in this regime is Newtonian, and the shear stress is linear in the applied shear rate. If, on the other hand, thermodynamic forces are larger, we observe that shear actually leads to the nucleation of new defects, and the rheology is highly nonlinear, with the shear rate proportional to $\dot{\gamma}^{\alpha}$, with $\alpha\simeq 0.87$, leading to a shear thinning behaviour. Such a behaviour is qualitatively reminiscent of the one found experimentally in XXX, where the numerical value of $\alpha$ was however different. In this regime we also find that the rheology is history dependent, as the defect density decreases for instance if the shear rate is ramped down gradually. Finally, intriguingly, dimensionality appears to play a key role: within our 3D simulations, we have indeed not been able to enter the nonlinear rheology regime with defect nucleation, and we always observe a shear-induced ordering into a lamellar phase. More research and parameter steering will be needed to make this observation more quantitative.
-We note that sheared smectics have been studied extensively via simulations in the literature~\cite{Swift96,Gonnella97,Gonnella98,Xu03,Xu05,Xu06a,Xu06b}, but because of computational constraints almost all results were limited to two dimensions and smaller strains than the ones considered here. Furthermore in this work we use Lees-Edwards boundary conditions which allow us to probe the true bulk rheology of the system, at variance with previous work which employed solid walls and different boundary conditions, which introduce finite size and boundary effects into the physics.
+Our main finding is that, depending on system parameters, a smectic phase
+shows markedly different rheological responses. At lower Peclet
+numbers, where thermodynamic effects are relatively strong compared with
+flow effects,  shear quickly orders the system into a lamellar phase,
+with only a few defects. The rheology in this regime is Newtonian, and
+the shear stress is linear in the applied shear rate.
+If, on the other hand, thermodynamic forces are larger, we observe that shear actually leads to the nucleation of new defects, and the rheology is highly nonlinear, with the shear rate proportional to $\dot{\gamma}^{\alpha}$, with $\alpha\simeq 0.87$, leading to a shear thinning behaviour. Such a behaviour is qualitatively reminiscent of the one found experimentally in XXX, where the numerical value of $\alpha$ was however different. In this regime we also find that the rheology is history dependent, as the defect density decreases for instance if the shear rate is ramped down gradually. Finally, intriguingly, dimensionality appears to play a key role: within our 3D simulations, we have indeed not been able to enter the nonlinear rheology regime with defect nucleation, and we always observe a shear-induced ordering into a lamellar phase. More research and parameter steering will be needed to make this observation more quantitative.
  
-This paper is organised as follows. In Sec.II we introduce the model, including its equilibrium properties, the full stress tensor and the dynamical equations.
-We briefly sketch how we derive structural information from the order parameter and describe our defect quantification procedure, which measures the local alignment of the lamellar structure.
-We present results of the two dimensional case in In Sec.III, discuss the morphology, average and local shear stress densities and first normal stress differences and their relation to the defect structure.
+This paper is organised as follows. In Section II we introduce the model,
+including its equilibrium properties, the full stress tensor and the
+dynamical equations. We briefly sketch how we derive structural information
+from the order parameter and describe our defect quantification procedure,
+which measures the local alignment of the lamellar structure.
+We present results of the two-dimensional case in in Section III and
+discuss the morphology, average and local shear stress densities and
+first normal stress differences and their relation to the defect structure.
 We also show structure factors for various flow states and flow curves.
-In Sec. IV we compare our 2D-results with results in three dimensions. 
-A summary with conclusions closes the paper in Sec.V.
+We also compare our two-dimensional results with results in three dimensions. 
+A summary with conclusions closes the paper in Section V.
 
 
 \section{Model and Definitions}
