@@ -106,8 +106,9 @@ First published on the web Xth XXXXXXXXXX 200X}}}
 
 \section{Introduction}
 
-Instances of soft complex fluids abound. Examples include colloidal
-suspensions, where particles or droplets are suspended in a viscous
+Instances of soft complex fluids are abound in our everyday world. 
+Examples include colloidal suspensions, 
+where particles or droplets are suspended in a viscous
 fluid, living tissues, and liquid crystalline fluids. Well known
 examples of colloidal suspensions include paint, cosmetics, and
 food products such as ketchup, mayonnaise, and yogurt.
@@ -257,8 +258,10 @@ In order to ensure thermodynamic stability the parameters $b$ and $c$ have to be
 For $a>0$ there is only one unique solution $\phi\equiv0$ which minimises the functional Eq. \ref{FE-functional} and wich reprsents the the disordered state.
 For $a<0$ a microphase separation occurs.
 Depending on the sign of $\kappa$ either two homogenous phases coexist ($\kappa>0$) or a transition to an ordered lamellar phase state takes place ($\kappa<0$) as the formation of interfaces become energetically favourable.
-The lamellar width is approximately given by $2\pi /\sqrt{|\kappa|/2 c}$, whereas the interfacial width is roughly $\sqrt{2|\kappa|/|a|}$. 
-This entails that by varying $a$ (and $b\sim |a|$) by about on decade, the segregation of the two phases varies by about a factor $3$.\\
+The lamellar width is approximately given by $2\pi /\sqrt{|\kappa|/2 c}$. 
+By varying the Landau-parameters $a$ (and $b\sim |a|$) we change the distance from the critical point and the magnitude of the order-parameter.
+The segregation between both phases was found to dependent neither solely on $a,b$ nor only on $\kappa,c$. 
+It is rather the magnitude of all parameters, which has to be similar in order to produce a lamellar phase, that controls the level of segregation.\\
 The dynamics of the binary fluid is governed by an advection-diffusion equation with a diffusive current that is proportional to the chemical potential $\mu$, the functional derivative of ${\cal F}$ with respect to $\phi$.
 
 \begin{equation}\label{OPEOM}
@@ -318,27 +321,27 @@ C({\mathbf k})=\phi({\mathbf k})\phi(-{\mathbf k}),
 with $\phi({\mathbf k})$ being the normalised Fourier-transform of the order parameter.
 The transform itself was calculated using the FFTW-library \cite{FFTW}.\\
 For the analysis of the relation between rheological quantities and the morphology of the system it was necessary to find a means to quantify the number of defects.
-For this purpose we defined an alignment factor $X_i$, which measures the average projection of the normalised order parameter gradients onto the gradient at site $i$.
-More explicitly the alignment factor $X_i$ is given by
+For this purpose we defined an alignment function $X({\mathbf r})$, which measures the average projection of the normalised order parameter gradients onto the gradient at a specific site.
+More explicitly the alignment function $X$ is given by
 
 \begin{equation}\label{alignment}
-X_i=\frac{1}{N_{nn}} \sum_{j=1,N_{nn}}\left(\frac{\nabla \phi_i \cdot \nabla \phi_j}{|\nabla\phi_i||\nabla\phi_j|}\right)^2. 
+X({\mathbf r})=\frac{1}{V'({\mathbf r})} \int_{V'({\mathbf r})} d{\mathbf r'} \left(\frac{\nabla \phi ({\mathbf r}) \cdot \nabla \phi ({\mathbf r'})}{|\nabla\phi ({\mathbf r}) ||\nabla\phi ({\mathbf r'}) |}\right)^2. 
 \end{equation}
 
-$N_{nn}$ is the number of nearest neighbours ($N_{nn}=8$ in 2D and $N_{nn}=26$ in 3D).
-For smooth alignment and small curvature of the lamellae $X_i$ is very close to unity.
+$V'$ is a small volume that contains $\mathbf r$, which in practice can be chosen to contain  and its nearest neighbours.
+For smooth alignment and small curvature of the lamellae $X$ is very close to unity.
 At the endpoints of the lamellae or in regions where their orientation changes abruptly it departs form unity and takes smaller positive values.
 By setting a threshold $\xi$ it is possible to detect domains where the order parameter structure deviates preceivably from what would be recognised as an aligned configuration exhibiting lamellar order.
 We found a threshold value of $\xi=0.8$ to be well suitable for our requirements.
-Unfortunately, this defect detecting protocol is not able to assign only single sites to defect regions as naturally more than one site would have an alignment factor below the threshold.
+Unfortunately, this defect detecting protocol is not able to assign only single sites to defect regions as naturally more than one site would have an alignment function below the threshold.
 However, as the number of sites per defect is on average more or less constant throughout the sample, this protocol provides still a useful way to quantify the degree of order and alignment in various flow conditions.\\
-By normalising the number of defects sites with $X_i$ below the threshold a defect density can be defined:
+By normalising the number of defects sites with $X$ below the threshold a defect density can be defined:
 
 \begin{equation}\label{defect density}
-\rho_D=\frac{1}{N} \sum_{i=1,N} \theta(\xi-X_i).  
+\rho_D({\mathbf r})=\frac{1}{V} \int d{\mathbf r'} \theta(\xi-X(\mathbf r')).  
 \end{equation}
 
-The function $\theta$ is the Heaviside function and $N=N_x\times N_y \times N_z$ the total number of sites in the simulation.
+The function $\theta$ is the Heaviside function and $V$ is the volume of the entire system.
 The exact value of the defect density clearly depends on the lamellar width and of course on the threshold $\xi$ for the alignment parameter.
 
 \subsection*{Parameter Mapping to Physical Units}
@@ -381,9 +384,9 @@ Hence, the conversion between shear rates and Peclet numbers is roughly $\gd=10^
 \section{Results}
 
 Our discussion will be in two parts, beginning with simulations in two dimensions for systems A-2D and B-2D.
-The system size was $N_x\times N_y\times N_z=512\time1024\times 1$ and $N_x \times N_y \times N_z=256\times512\times 1$ respectively for the longtime runs in the nonlinear rheological regime.
-Phase segregation was controlled by modifying the Landau parameters $a$ and $b$ in the bulk free energy term of Eq. \ref{FE-functional} while keeping the parameters $\kappa$ and $c$ controlling the gradient terms constant.
-By this we obtained a slightly different stress response with the system with lower segregation level appearing somwhat sofer.
+The system size was $N_x\times N_y\times N_z=512\times 1024\times 1$ and $N_x \times N_y \times N_z=256\times512\times 1$ respectively for the longtime runs in the nonlinear rheological regime.
+The distance from the critical point was controlled by modifying the Landau parameters $a$ and $b$ in the bulk free energy term of Eq. \ref{FE-functional} while keeping the parameters $\kappa$ and $c$ controlling the gradient terms constant.
+By this we obtained a slightly different stress response with the system with lower order appearing somwhat sofer.
 The lamellar distance was identical in both cases.\\
 The second part of our discussion consists of simulations in three dimensions, referred to as A-3D and C-3D using identical parameters to system A-2D and C-2D and $N_x\times N_y\times N_z=128\times256\times128$.
 Note that velocity gradient and flow direction are oriented along the x- and y-axis, respectively, which is the {\it vertical} and the {\it horizontal} dimension in the 2D-plots. 
@@ -446,14 +449,13 @@ system C & & & &\\
 
 Lamellar phases occur within the Landau-Brazovskii free energy functional approach Eq. \ref{FE-functional} due to the interplay of gain in free energy by virtue of phase separation and loss due to local curvature.
 Hence, a range of parametrizations can produce lamellar phases with almost identical outcome.
-In previous studies \cite{Kendon01,Xu03, Xu06b} parameters have been identified which cover the relevant morphology of lamellar phases and to produce stable outcomes. 
+In previous studies \cite{Kendon01,Kumaran2001,Xu03, Xu06b,Kumaran2011} parameters have been identified which cover the relevant morphology of lamellar phases and to produce stable outcomes. 
 We performed simulations for Landau parameters $5\cdot10^{-4}\le-a=b\le5\cdot10^{-5}$ and viscosities $8.33\cdot10^{-4}\le\eta\le 0.833$.
 Reasonable numerical stability was attained for all Landau parameters in this range and for viscosities $\eta\ge 8.33\e{-3}$.
 The morphology of the lamellar structure and the kinetics of the spinodal decomposition depended on the specific choice though.
-Smaller Landau parameters slowed down the ripening of the lamellar structure, which is consistent with the fact that systems with lower segregation have lower average order parameters and are generally closer to the critical point.
-Higher viscosities lead to shorter interfaces, whereas lower values typically invoke longer lamellae.
-This effect has been reported before \cite{Gonnella97}.
-It turned out to be more pronounced for low segregation, although not as quite to the same extent as in the above reference.
+Smaller Landau parameters slowed down the ripening of the lamellar structure, which is consistent with the fact that systems B has a lower average order parameter and is closer to the critical point.
+Higher viscosities lead to shorter interfaces, whereas lower values typically yield longer lamellae.
+This effect has been reported before \cite{Gonnella97} and turned out to be more pronounced for the softer system B-2D, although not as quite to the same extent as in the former case.
 In shear flow high values of $\eta$ entailed more inhomogenous lamellae in terms of shape and thickness.\\
 In the following we will show characteristic results for viscosity $\eta=8.33\e{-2}$ and the systems A-2D and B-2D, respectively.
 The top picture in Fig. \ref{fig1} shows the order parameter $\phi$ at the end of the equilibration phase prior to shearing.
@@ -469,6 +471,35 @@ If shear flow is imposed, the lamellae start to align in flow direction, which i
 \label{fig1}
 \end{figure}
 
+The flow direction and the direction of the velocity gradient are {\it vertical} x- and {\it horizontal} y-direction.
+The relative flow imposed by the Lees-Edwards planes is always in positive y-direction in the upper half and in negative y-direction in the lower half of the images.
+After a short transient phase during which the order parameter remains rather homogenous, expanded and compressed regions emerge with a lamellar spacing that deviates from the equilibrium value.
+This is depicted in the centre picture of Fig. \ref{fig1} for shear rate $\gd= 1\e{-4}$.
+The inhomogeneities remain present in the steady state, are advected by the flow and undergo continuously affine transformations.
+A buckling instability above a critical shear rate has been described earlier by Gonnella et al. \cite{Gonnella98} and Kumaran et al. \cite{Kumaran2001}.
+It was suggested that the density of defects defects get introduced into a lamellar liquid crystal due to dilation and annealing occurs due to application of shear.
+This would lead to irregularities in the sample a dynamical process where the steady state defect density is determined by balance between the rate of introduction and rate of annealing of defects.
+In a more recent paper Kumaran et al. state that they observe similar inhomogeneities only above a certain system size \cite{Kumaran2011}, which agrees well with our observation.
+We found that shear alignment is more likely to take place in smaller systems of $N_x\times N_y\times N_z=128\times 256\times 1$.
+However, this trend is not necessarily followed at higher shear rates, a fact that we will discuss later in connection with our results in three dimensions.\\
+Kumaran et al. also identified a second mechanism of defect creation that is due to layer compression and splitting.
+Although we have not checked this in detail, this is also very likely the case in our results as the lamellar pattern is strongly compressed and heterogenous as shown in Fig. \ref{fig1}.\\
+After the shear flow has been switched off the lamellar spacing became again more homogenous and the equilibrium value was restored with expanded regions contracting and vice versa.
+The final state after the relaxation has virtually come to a standstill is shown in the bottom picture of Fig. \ref{fig1}. 
+Most of the lamellae remain oriented along the flow direction, but depending on the local expansion and compression level during flow some regions may have large angles after relaxation. 
+The length of the interfaces varies considerably, which is another residue of the inhomogeneities present in shear flow.\\
+Fig. \ref{fig2} shows equivalent states for system B-2D, which is closer to the critical point.
+All generic results of Fig. \ref{fig1} are the same, but the interfaces appear to be slightly longer.
+Consequently, the lamellar alignment in flow direction after switch off is also more pronounced.\\ 
+Another shear-induced structure in binary lamellar systems was reported in \cite{Xu06b}.
+The reported results differ from our observations in some aspects.
+Xu et al. shear-induced structures emerge at the centre and remain localised, while ours do occur in band-like patterns that are wrapped around the periodic boundaries of our system.
+Xu et al. also reported a shear banding region with reduced local shear rate, which is absent in our case.
+These differences may be simply a direct consequence of the different boundary conditions that were applied.
+While we applied Lees-Edwards BCs to all quantities, Xu and co-workers seem to have used a kind of hybrid scheme.\\
+To our understanding Lees-Edwards BC were applied to the order parameter only, whereas solid moving walls were placed in the LB-part at the upper and lower boundaries.
+It might be that in \cite{Xu06b} actually not bulk flow behaviour was simulated, but rather flow in a confined geometry. 
+This could also explain why Xu et al. always observe a shear-induced structure at the centre of the system.\\ 
 
 \begin{figure}[htp]
 \centering
@@ -479,88 +510,70 @@ If shear flow is imposed, the lamellae start to align in flow direction, which i
 \label{fig2}
 \end{figure}
 
-The flow direction and the direction of the velocity gradient are {\it vertical} x- and {\it horizontal} y-direction.
-The relative flow imposed by the Lees-Edwards planes is always in positive y-direction in the upper half and in negative y-direction in the lower half of the images.
-After a short transient phase during which the order parameter remains rather homogenous, regions of reduced and increased lamellar width emerge and the spacing begins to deviate from its well-defined equilibrium value.
-These regions are advected with the flow while they continuously undergo affine transformations.
-The centre picture in Fig. \ref{fig1} shows an example at an intermediate time step at shear rate $\gd= 1\e{-4}$.
-In a previous work on binary fluids and lamellar systems in shear flow \cite{Xu06b} another shear-induced structure was found.
-However, the reported results differ from our observations in the following aspects.
-Xu et al. shear-induced structures emerge at the centre and remain localised, while ours do occur in band-like patterns that are wrapped around the periodic boundaries of our system.
-Xu et al. also reported a shear banding region with reduced local shear rate, which is absent in our case.
-These differences may be simply a direct consequence of the different boundary conditions that were applied.
-While we applied Lees-Edwards BCs to all quantities, Xu and co-workers seem to have used a kind of hybrid scheme.
+By introducing the alignment function $X$ in Eq. \ref{alignment} we suggest a method to identify and quantify defects in the lamellar structure.
+Fig. \ref{fig3} shows an example of the time evolution of system A-2D at low shear rate.
+All lattice sites with $X({\mathbf r})\le0.8$ are marked in red and they obviously coincide with lamellar endpoints or local disturbances.
+The top picture gives the situation at the lowest applied shear rate $\dot{\gamma}=1.25\e{-5}$, whereas the system has been pre-sheared at consecutively decreasing shear rates between $\gd=1\e{-4}$ and $2.5\e{-5}$.
+There are regions which show some sort of flow alignment and others which don't.
+The bottom picture of Fig. \ref{fig3} shows a later state with a total strain that has increased by another $10^{5}\%$. 
+Obviously many defects have annealed and the interfaces are well aligned with the flow direction.
 
-\begin{figure}[htp!]
+\begin{figure}[htp]
+\centering
+\includegraphics[angle=0,width=0.5\textwidth]{phi_defects_run774_5120.jpg}
+\includegraphics[angle=0,width=0.5\textwidth]{phi_defects_run774_10240.jpg}
+\caption{Defect structure of system A-2D: The pictures show results at timestep $t=5.12\e{6}$ (top) and $1.024\e{7}$ (bottom) with an imposed shear rate $\dot{\gamma}=1.25\cdot10^{-5}$. The system has been pre-sheared at various higher, subsequently lowered shear rates ranging from $\dot{\gamma}=2\e{-4}$ to the above value (see Tab.\ref{tab1}). Sites where the alignment function $X$ was smaller than $0.8$ are highlighted red.}
+\label{fig3}
+\end{figure}
+
+Defect annihilation to this large extent is only found below a specific shear rate.
+A prerequisite seems to be that the defects can smootly approach each other and cancel, which is prevented by the buckling instability above a criticl shear rate.
+Then the system shows a tendency to trip over itself, which results in the creation of new defects.
+The critical value differs in systems A-2D and B-2D and is related to the magnitude of the order parameter and the distance from the critical point.
+It is roughly between $\dot{\gamma}=2.5-5\e{-5}$ in A-2D and around $\dot{\gamma}=1-2\e{-4}$ in B-2D.\\
+
+\begin{figure}[htp]
 \centering
 \hspace*{-0.1cm}\includegraphics[angle=0,width=0.5\textwidth]{phi_run704_400.jpg}
 \includegraphics[angle=0,width=0.49\textwidth]{shear_str_run704_400.jpg}
 \includegraphics[angle=0,width=0.49\textwidth]{N1_run704_400.jpg}
 \caption{Order parameter $\phi({\mathbf r})$ (top), shear stress $\sigma_{xy}({\mathbf r})$ (centre) and first normal stress differences $N_1({\mathbf r})$ (bottom) of system A-2D at $t=4\e{5}$}
-\label{fig3}
-\end{figure}
-
-\begin{figure}[htp!]
-\centering
-\includegraphics[angle=0,width=0.33\textwidth]{ck_run703_320.jpg}
-\includegraphics[angle=0,width=0.33\textwidth]{ck_run704_500.jpg}
-\includegraphics[angle=0,width=0.33\textwidth]{ck_run705_1280.jpg}
-\caption{Structure factor $C({\bm k})$ of system A-2D: Shown are states after equilibration at $t=3.2\e{5}$ (left), at $\dot{\gamma}=1\cdot10^{-4}$ and $t=5\e{5}$ (centre) and after switch-off at $t=1.28\e{6}$ (right). The sections shown correspond to wave vectors on the interval $k_x, k_y \in [-\pi/2 l,\pi/2 l]$.}
 \label{fig4}
 \end{figure}
 
-To our understanding Lees-Edwards BC were applied to the order parameter only, whereas solid moving walls were placed in the LB-part at the upper and lower boundaries.
-It might be that in \cite{Xu06b} actually not bulk flow behaviour was simulated, but rather flow in a confined geometry. 
-This could also explain why Xu et al. always observe a shear-induced structure at the centre of the system.\\ 
-After the shear flow has been switched off the lamellar spacing became again more homogenous and the equilibrium value was restored with expanded regions contracting and vice versa.
-The final state after the relaxation has virtually come to a standstill is shown in the bottom picture of Fig. \ref{fig1}. 
-Most of the lamellae remain oriented along the flow direction, but depending on the local expansion and compression level during flow some regions may have large angles after relaxation. 
-The length of the interfaces varies considerably, which is another residue of the inhomogeneities present in shear flow.\\
-Fig. \ref{fig2} shows equivalent states for system B-2D with lower segregation.
-All generic results of Fig. \ref{fig1} are the same, but the interfaces appear to be slightly longer.
-Consequently, the lamellar alignment in flow direction after switch off is also more pronounced.\\ 
-In Fig. \ref{fig3} we suggest a relation between the inhomogeneous morphology in the flowing state and typical rheological quantities.
+In Fig. \ref{fig4} we suggest a relation between the inhomogeneous morphology in the flowing state and typical rheological quantities.
 The pictures show the order parameter $\phi({\bm r})$, shear stress density $\sigma_{xy}({\bm r})$ and first normal stress difference density $N1({\bm r})=\sigma_{yy}({\bm r})-\sigma_{xx}({\bm r})$ of system A-2D in steady shear flow at shear rate $\dot{\gamma}=1\e{-4}$.
 In regions where the lamellar width is larger than in the equilibrium state shear stresses and first normal stress differences show low positive or negative values.
 Large positive values of both quantities coincide with regions where the lamellae are under compression.
 Peak values in LBU are in the region of $-2\e{-4}$ and $3\e{-4}$ for shear stress and  $-3.5\e{-4}$ and $7\e{-4}$ for the normal stress differences.
 Despite being locall negative, the ensemble averages of these quantities are always positive.
 Very similar results with smaller peak magnitudes are obtained for system B-2D.
-Fig. \ref{fig4} shows structure factors $C({\bm k})$ for the same states as Fig. \ref{fig1}.
+
+\begin{figure}[htp]
+\centering
+\includegraphics[angle=0,width=0.33\textwidth]{ck_run703_320.jpg}
+\includegraphics[angle=0,width=0.33\textwidth]{ck_run704_500.jpg}
+\includegraphics[angle=0,width=0.33\textwidth]{ck_run705_1280.jpg}
+\caption{Structure factor $C({\bm k})$ of system A-2D: Shown are states after equilibration at $t=3.2\e{5}$ (left), at $\dot{\gamma}=1\cdot10^{-4}$ and $t=5\e{5}$ (centre) and after switch-off at $t=1.28\e{6}$ (right). The sections shown correspond to wave vectors on the interval $k_x, k_y \in [-\pi/2 l,\pi/2 l]$.}
+\label{fig5}
+\end{figure}
+
+Fig. \ref{fig5} shows structure factors $C({\bm k})$ for the same states as Fig. \ref{fig1}.
 Initially isotropic after spinodal decomposition and equilibration, $C({\bm k})$ has a distinct peak at $|{\bm k}|\simeq \pm0.2\pi/l$.
 In steady shear flow the structure factor develops two distinct but rather broad peaks at $k_x\simeq\mp 0.012\pi/l, k_y\simeq\pm 0.22 \pi/l$.
 It is interesting to see that the inhomogenous morphology of the lamellar structure is also clearly encoded in the structure factor. 
 The Fourier-vector at the peak has a small component in x-direction, indicating the average tilt of the lamellae away from the flow direction in the direction of extensional flow.
 The position of the peak is almost constant throughout the entire simulation and the average lamellar spacing decreases from about 10 lattice sites in equilibrium to about 8.5 lattice sites.
 If the shear flow is switched off the system adopts again its equilibrium value and the small tilt of the signal vanishes completely, indicating that this is a purely dynamical phenomenon. 
-The intensity of the peak is slightly larger due to the fact that the interfaces remain oriented along the flow direction.
-By introducing the alignment factor $X_i$ in Eq. \ref{alignment} we suggest a method to identify and quantify defects in the lamellar structure.
-Fig. \ref{fig5} shows an example of the time evolution of system A-2D at low shear rate.
-All lattice sites with $X_i\le0.8$ are marked in red and they obviously coincide with lamellar endpoints or local disturbances.
-The top picture gives the situation at the lowest applied shear rate $\dot{\gamma}=1.25\e{-5}$, whereas the system has been pre-sheared at consecutively decreasing shear rates between $\gd=1\e{-4}$ and $2.5\e{-5}$.
-There are regions which show some sort of flow alignment and others which don't.
-The bottom picture of Fig. \ref{fig5} shows a later state with a total strain that has increased by another $10^{5}\%$. 
-Obviously many defects have annealed and the interfaces are well aligned with the flow direction.
+The intensity of the peak is slightly larger due to the fact that the interfaces remain oriented along the flow direction.\\
 
-\begin{figure}[htp!]
-\centering
-\includegraphics[angle=0,width=0.5\textwidth]{phi_defects_run774_5120.jpg}
-\includegraphics[angle=0,width=0.5\textwidth]{phi_defects_run774_10240.jpg}
-\caption{Defect structure of system A-2D: The pictures show results at timestep $t=5.12\e{6}$ (top) and $1.024\e{7}$ (bottom) with an imposed shear rate $\dot{\gamma}=1.25\cdot10^{-5}$. The system has been pre-sheared at various higher, subsequently lowered shear rates ranging from $\dot{\gamma}=2\e{-4}$ to the above value (see Tab.\ref{tab1}). Sites where the alignment factor $X_i$ was smaller than $0.8$ are highlighted red.}
-\label{fig5}
-\end{figure}
-
-Defect annihilation to this large extent is only found below a specific shear rate.
-A prerequisite seems to be that the defects can smootly approach each other and cancel, which is not possible above the instability as the lamellae buckle similar to \cite{Gonnella98}, show a tendency to trip over themselves which results in the creation of new defects.
-The critical value depends on the segregation and differs in systems A-2D and B-2D.
-It is roughly between $\dot{\gamma}=2.5-5\e{-5}$ in A-2D and around $\dot{\gamma}=1-2\e{-4}$ in B-2D.\\
 Fig. \ref{fig6} shows the  complete time evolution of the defects density $\rho_D$ of system A-2D for a sequence of decreasing shear rates starting at $\gd=2\e{-4}$ and ranging down to $\gd=2.5\e{-5}$.
 The runs with the two highest shear rates were started from the equilibrium configuration, whereas all others were pre-sheared using the final configuration of the preceding run as initial configuration in order to save computational rexources.
 The total strain between the beginning and end of every individual run was at least $10^{5}\%$.
 Interestingly, while stepping down in shear rate both systems A-2D and B-2D anneal defects almost instantaneously.
 If the shear rate is turned up again (not shown), the lamellae buckle and new defects recur immediately.
 
-\begin{figure}[htp!]
+\begin{figure}[htp]
 \centering
 \includegraphics[angle=0,width=0.5\textwidth]{defect_density_5e-4.pdf}
 \caption{Defect density $\rho_D$ vs time: The main picture shows data for system A-2D of a sequence of simulations with consecutively lowered shear rate $\dot{\gamma}=2\e{-4}$ (red solid), $1\e{-4}$ (green long-dashed),  $5\e{-5}$ (blue short-dashed),  $2.5\e{-5}$ (magenta dotted) and  $1.25\e{-5}$ (cyan dashed-dotted). Horizontal lines indicate time averages of the particular quantities, where we assume the system has reached a steady state. The inset gives data for the system A-3D and shear rates $\dot{\gamma}=2\cdot10^{-4}, 1\cdot10^{-4}$ and $5\cdot10^{-5}$.} 
@@ -631,7 +644,7 @@ Hence the normal stresses $\sigma_{xx}$ become increasingly smaller and may even
 This explanation is further sustained by the fact that only $\sigma_{xx}$ seems to evolve anomalously slowly and all other components of the stress tensor reach their steady state values more quickly.
 We expect that these anomalous trends become considerably smaller in larger systems.
 System B-2D behaves differently in the sense that $N_1$ does not follow this trend but rather continues to fall for lower shear rates. 
-This is likely to be a direct consequence of the lower segregation in system B-2D, which gives rise to positive normal stresses $\sigma_{xx}$ preventing $N_1$ from increasing.\\
+This is likely to be a direct consequence of the lower order parameter in system B-2D and its softness with respect to system A-2D, which gives rise to positive normal stresses $\sigma_{xx}$ preventing $N_1$ from increasing.\\
 In Fig. \ref{fig11} the shear rate dependence of $\sigma_{xy}$ and $N_1$ is shown. 
 System A-2D gives rise to shear thinning with the average shear stress of systems A-2D following a power law $\sigma_{xy}=\dot{\gamma}^m$ with exponent $m\simeq 0.87$.
 For system B-2D the best fit is actually obtained for an exponent $m=1$, indicating more or less constant viscosity and no pronounced shear thinning.
@@ -660,36 +673,37 @@ In the following we compare 3D-systems with 2D-systems smaller than those of the
 \label{fig12}
 \end{figure*}
 
-The parameters sets are those of system A - we refer to A-3D for the three-dimensional run - and system C, which has a slightly larger segregation than system B.
+The parameters sets are those of system A - we refer to A-3D for the three-dimensional run - and system C, which is intermediate between A and B.
 The system size is $N_x\times N_y \times N_z=128\times256\times128$ lattice sites and $128\times256\times1$, respectively with the directions of flow along the long dimension and the velocity gradient along x in the 3D-case. 
 Two snapshots of system C-2D and A-2D in shear flow are shown in the bottom pictures in Fig. \ref{fig12}.
 They feature the typical fluctuating pattern of breaking and merging lamellae that was described in the previous paragraph and which is particularly pronounced in the case of system C-2D.
 The top picture visualise results for system C-3D with the same free energy parameters as C-2D.
 The quiescent state of system C-3D after equilibration is shown at the left with a morphology virtually identical to that of A-3D.
 The lamellar width of roughly 10 lattice sites is more or less the same as in two dimensions.
-A slice through the structure factor along $k_y=0$ (cuts along $k_x,k_z=0$ look identical) is shown in Fig. \ref{fig13} and resembles that in Fig. \ref{fig4}.
+A slice through the structure factor along $k_y=0$ (cuts along $k_x,k_z=0$ look identical) is shown in Fig. \ref{fig13} and resembles that in Fig. \ref{fig5}.
 However, in shear flow considerable differences arise between the two- and three-dimensional case.
 Contrary to the result in 2D, the three dimensional systems order readily into a regular lamellar structure after a transient period as shown in Fig. \ref{fig12} for system C-3D. 
 We opted for this system as the differences between the 3D- and 2D-system are the most striking we observed.
 Interestingly, these findings are consistent for even the highest shear rates, indicating that there is a very strong tendency in three dimensions to form ordered lamellar arrays.
+This is consistent with the picture that layer undulation due to an instability in three-dimensional smectic liquid crystal layers emerges above a critical shear rates, which is well above those we have applied in the present study \cite{Guo2002,Soddemann2004, Stewart2009}. 
 
 \begin{figure}[htp!]
 \centering
-\includegraphics[angle=0,width=0.35\textwidth]{ck_y-slice_run786_320.jpg}
+\includegraphics[angle=0,width=0.40\textwidth]{ck_y-slice_run786_320.jpg}
 \caption{Structure factor $C({\mathbf k})$ of quiescent system A-3D, showing a cut along $k_y=0$ after equilibration at $t=3.2\e{5}$. Shown are wave vectors on the interval $k_x, k_z\in[-\pi/2 l,\pi/2 l]$.}
 \label{fig13}
 \end{figure}
 
-\begin{figure*}[htp!]
+\begin{figure}[htp!]
 \centering
-\includegraphics[angle=0,width=0.33\textwidth]{ck_x-slice_run788_960.jpg}
-\includegraphics[angle=0,width=0.33\textwidth]{ck_y-slice_run788_960.jpg}
-\includegraphics[angle=0,width=0.33\textwidth]{ck_z-slice_run788_960.jpg}
+\includegraphics[angle=0,width=0.35\textwidth]{ck_x-slice_run788_960.jpg}
+\includegraphics[angle=0,width=0.35\textwidth]{ck_y-slice_run788_960.jpg}
+\includegraphics[angle=0,width=0.35\textwidth]{ck_z-slice_run788_960.jpg}
 \caption{Structure factor $C({\mathbf k})$ of system A-3D in shear flow ($\dot{\gamma}=1\cdot10^{-4}$) at t=960k: Cuts through along $k_x=0,k_y=0$ and $k_z=3\pi/16 l$, respectively are shown for wave-vectors $k_x, k_y, k_z\in[-\pi/2 l,\pi/2 l]$. Note that in these images y is the flow direction, whereas the direction of the velocity gradient and vorticity are z and x, respectively.}
 \label{fig14}
-\end{figure*}
+\end{figure}
 
-Nevertheless, the order is not completely perfect and edge dislocations emerge spontaneously in pairs as a consequence of a mismatch between some of the layers.
+However, the order is not completely perfect and edge dislocations emerge spontaneously in pairs as a consequence of a mismatch between some of the layers.
 The Burgers vector is oriented along the gradient direction with edges along the flow direction.
 This forms a structure that is translational invariant along the flow direction and in the steady state the location of the edge defects does not change and the defects to not anneal.
 A closer look at the kinetic evolution of the order parameter reveals that regions separated by different values of order parameter connect along a third direction by expelling regions with opposite order parameter.
@@ -707,10 +721,10 @@ For all shear rates $\gd5\e{-5}-2\e{-4}$ system A-3D takes similar values, which
 Finally we want to glimpse at the structure factor of system A-3D in shear flow.
 Fig. \ref{fig14} shows $C({\bm k})$ at shear rate $\gd=1\e{-4}$ for Fourier vectors on the interval $[-\pi/2 l, \pi/ 2 l]$.
 The leftmost picture is a cut along $k_x=0$ in with $k_y$ in horizontal and $k_z$ in vertical direction.
-It shows data in flow-velocity-gradient plane and can be directly compared with the left picture in Fig. \ref{fig4}.
+It shows data in flow-velocity-gradient plane and can be directly compared with the left picture in Fig. \ref{fig5}.
 The other images give cuts along $k_y=0$ in $k_x-k_z$-plane and along $k_z$ in $k_x-k_y$-plane. 
 Note that for the centre picture a logarithmic colour map had to be adopted due to the strong ordering in 3D.
-There is a certain similarity between the 2D-structure factor {\it after} switch-off (Fig. \ref{fig4}) and the 3D-structure, but the latter shows a pronounced peak at $k_z\simeq\pm0.2\pi/l$ also during shear flow, which is slightly concealed by the logarithmic scale.The split nature is an effect of the relatively sparse discretization and was caused by the visualisation software.
+There is a certain similarity between the 2D-structure factor {\it after} switch-off (Fig. \ref{fig5}) and the 3D-structure, but the latter shows a pronounced peak at $k_z\simeq\pm0.2\pi/l$ also during shear flow, which is slightly concealed by the logarithmic scale.The split nature is an effect of the relatively sparse discretization and was caused by the visualisation software.
 Although strongly peaked, the spatial dependence of the signal is best demonstrated in a 3D-representation. 
 Fig. \ref{fig15} depicts a close up of the 3D-structure factor, whereas the red area corresponds to an isosurface of about $C({\bm k})\simeq 10^3$.
 It reveals a banana-shaped spatial dependence with some small appendices in flow direction at $k_x=0$.
@@ -722,29 +736,7 @@ It reveals a banana-shaped spatial dependence with some small appendices in flow
 \label{fig15}
 \end{figure}
 
-\section{Discussion and Conclusions}
-
-We have performed large scale simulations of a lamellar system in steady shear flow  in two and three dimensions.
-We were able to relate the morphology of the order parameter in the quiescent state to results from previous studies of the same system using similar parameters.\\
-In two dimensions and steady state simple shear flow at Peclet numbers ${\cal O}(10)$ we did not observe a homogenous lamellar structure for shear rates above a critical threshold, which depends on the exact parametrization of the free energy functional.
-The morphology was rather inhomogenous instead, exhibiting regions that are under pressure with lamellar spacings smaller than the equilibrium value and others that were stretched.
-We could relate the structure to typical values of rheological quantities.
-Areas under extensional flow coincide with locally negative or small positive shear stresses and first normal stress differences, whereas both go to positive peak values in the compressed domains.
-Below a critical shear rate the systems showed no tendency anymore to trip over itself and defects annealed as they could approach each other in adjacent lamellae.
-The characteristic time of this process was set by the shear rate and the total strain.
-The deviatoric part of the chemical pressure was correlated to the number of defect sites, whereas the latter was measured by means of an alignment factor, which quantified the local curvature of the lamellar interfaces.
-For the stiffer system A-2D we could verify a linear relation between the defect density and the average chemical contribution to the shear stress.\\ 
-In system A-2D first normal stress differences decreased as long as a dynamic equilibrium between defect creation an annihilation existed.
-Below the critical threshold this was no longer the case and pronounced defect annealing caused a rise in the first normal stress differences as the average lamellar spacing increased.
-We could establish a shear thinning regime for the more defect laden system A-2D.
-System B in contrary was so perfectly annealed in the steady state that virtually shear stresses were down at the hydrodynamic level and the relation between shear stress and shear rate was trivially linear.\\
-In three dimensions we simulated shear strains which have not been attained so far.
-Interestingly for the same parameters we observe striking differences between system A-2D in 2D and system A-3D in 3D.
-It seems that the dynamics of the defects in two and three dimensions is rather incommensurable.
-Even at the lowest applied shear rates the chemical stress has decayed to a level where the apparent viscosity was virtually identical to the solvent.
-Structure factor data confirmed the very regular layered ordering of the structure and a lamellar spacing close to the equilibrium value. 
-
-A comparison of these results with experimental work can be only limited because the topology is different in two and three dimensions.
+A comparison of these results with experimental work is possbile although the topology is different in two and three dimensions.
 Our 2D-systems correspond to are translational invariant along the third dimension.
 Every branching point or endpoint of a lamella has the topology of an edge defect in the 3D-continuation of the structure.
 A recent experimental and theoretical work studies the nonlinear relation between shear stress and shear rate in lyotropic lamellar phases \cite{Lu08}
@@ -753,7 +745,31 @@ For the power law dependence of the shear stress on the shear rate Lu et al. fin
 Our value of $m=0.87$ appears to be slightly too large.
 A possible explanation for this is that screw defects, which do not exist in our 2D-picture, play a key role for this theory.\\
 
+\section{Conclusions}
 
+We studied nonlinear rheology of lamellar systems in two and three dimensions by means of large-scale simulations of a well-established model for binary liquid-crystalline fluids, which is based on a Brazovskii-free-energy-functional.
+The lamellar structure of the order parameter in the quiescent state agrees well with previous results using the same model in two dimensions and similar parameters.
+When flowing the morphology of the order parameter depends crucially on the system size.
+At system sizes $N_x\times N_y\times N_z=128\times256\times 1$ the system showed a strong tendency to align with the shear flow at low shear rates $\gd\le5\e{-5}$.
+At higher shear rates and for larger system sizes of $N_x\times N_y\times N_z=256\times512\times 1$ and above heterogenous lamellar structures with strongly extended and compressed regions were present in the steady states.
+A similar dependence of these charactistic patterns on the system size has been recently reported in \cite{Kumaran2011}.
+The patterns occured in distinctive bands and were oriented along the direction of extension and perpendicular to the direction of compression.
+The closer the system was to the critical point the more this feature gave way to flow alignment.
+The extended regions with lamellar spacing larger than at equilibrium were local regions with either negative or small positive shear stress and first normal stress difference, whereas positive peak values were found in the compressed domains.
+Depending on the applied shear rate and in agreement with other studies we found two different dynamical regimes. 
+Below a critical value, which was basically controlled by the magnitude of the order parameter and the distance from the critical point, alignment in flow direction and annealing of defects to a very large degree was obtained. 
+Beyond the critical shear rate a buckling instability occured.
+The systems continuously tripped over itself, which resulted in a dynamical equilibrium between defect annihilation and creation of new defects.
+The shear stress in system A-2D follwed a clear power law dependence on the strain rate like $\sigma_{xy}=\gamma^\alpha$ with $\alpha=0.87$, giving rise to shear-thinning behaviour.
+Interestingly, the magnitude of chemical contribution $P_{xy}$ to the shear stress could be directly related to the density of defects.
+In system A-2D first normal stress differences became smaller with decreasing shear rate as long as the system was above the buckling instability.
+Below the critical shear rate continued defect annealing caused a rise in the first normal stress differences due to incommensurabilities in the lamellar width.\\
+We simulated flow behaviour of the same systems in three dimensions for the first time and found striking differences between the two- and three-dimensional versions of systems A and C.
+The 3D-system showed none of the distictive bands along the extensional direction and no buckling instability was found in the range of applied shear rates.
+The structure, initially amorphous after spinodal decomposition, ordered into a lamellar array with edge defects oriented along the flow directions.
+This is in total contrast to the 2D-case, where numerous defects appeared that would correspond to edge defects that are oriented perpendicular to the flow in 3D.
+Our results agree with theoretical values and simulations that predict a layer undulation instability at shear rates about two orders of magnitude larger than the ones we have applied.
+This constitutes a surprising change in results due to the different dimensonality and topoloogy of the strucutre despite identical parametrisation of the model.
 
 \section{Acknowledgements}
 We acknowledge support by EPSRC Grants No. EP/E045316 and No. EP/E030173 and computing time at the Argonne Leadership Computing Facility, Argonne, U.S.A. as well as on HECToR, U.K.
