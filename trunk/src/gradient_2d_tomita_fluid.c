@@ -14,8 +14,15 @@
  *  collapses to a five-point stencil. The optimum value epsilon is
  *  reckoned to be epsilon = 0.5.
  *
- *  d_x phi = [phi(ic+1,jc) - phi(ic-1,jc)] / 2
- *  d_y phi = [phi(ic,jc+1) - phi(ic,jc-1)] / 2
+ *  In the same spirit, the gradient is approximated as:
+ *
+ *  d_x phi = 0.5*(1 / 1 + 2epsilon) * [
+ *            epsilon * ( phi(ic+1, jc-1) - phi(ic-1, jc-1) )
+ *                    + ( phi(ic+1, jc  ) - phi(ic-1, jc  ) )
+ *          + epsilon * ( phi(ic+1, jc+1) - phi(ic-1, jc+1) ) ]
+ *
+ *  and likewise for d_y phi. Again, this gives 5-point stencil for
+ *  epsilon = 0.
  *
  *  Corrections for Lees-Edwards planes and plane wall in X are included.
  *
@@ -108,7 +115,6 @@ void gradient_2d_tomita_fluid_d4(const int nop, const double * field,
 
   int nextra;
 
-  assert(0); /* NOT IMPLEMENTED */
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
 
@@ -211,10 +217,11 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
   int index, indexm1, indexp1;            /* 1d addresses involved */
   int ys;                                 /* y-stride for 1d address */
 
+  const double rfactor = 1.0 / (1.0 + 2.0*epsilon_);
+
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
 
-  assert(le_get_nplane_local() == 0); /* NOT IMPLEMENTED */
   assert(nlocal[Z] == 1);
 
   ys = (nlocal[Z] + 2*nhalo);
@@ -235,15 +242,28 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
 	indexp1 = le_site_index(ic2, jc, 1);
 
 	for (n = 0; n < nop; n++) {
-	  grad[3*(nop*index + n) + X]
-	    = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
-	  grad[3*(nop*index + n) + Y]
-	    = 0.5*(field[nop*(index + ys) + n] - field[nop*(index - ys) + n]);
+	  grad[3*(nop*index + n) + X] = 0.5*rfactor*
+	    (field[nop*indexp1 + n] - field[nop*indexm1 + n]
+	     + epsilon_*
+	     (field[nop*(indexp1 + ys) + n] - field[nop*(indexm1 + ys) + n] +
+	      field[nop*(indexp1 - ys) + n] - field[nop*(indexm1 - ys) + n]));
+	  grad[3*(nop*index + n) + Y] = 0.5*rfactor*
+	    (field[nop*(index + ys) + n] - field[nop*(index - ys) + n]
+	     + epsilon_*
+	     (field[nop*(indexp1 + ys) + n] - field[nop*(indexp1 - ys) + n] +
+	      field[nop*(indexm1 + ys) + n] - field[nop*(indexm1 - ys) + n]));
 	  grad[3*(nop*index + n) + Z] = 0.0;
-	  del2[nop*index + n]
-	    = field[nop*indexp1 + n] + field[nop*indexm1 + n]
-	    + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	    - 4.0*field[nop*index + n];
+
+	  del2[nop*index + n] =
+	    rfactor*(field[nop*indexp1 + n] +
+		     field[nop*indexm1 + n] +
+		     field[nop*(index + ys) + n] +
+		     field[nop*(index - ys) + n] +
+		     epsilon_*(field[nop*(indexp1 + ys) + n] +
+			       field[nop*(indexp1 - ys) + n] +
+			       field[nop*(indexm1 + ys) + n] +
+			       field[nop*(indexm1 - ys) + n])
+		     - 4.0*(1.0 + epsilon_)*field[nop*index + n]);
 	}
       }
     }
@@ -262,15 +282,29 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
 	indexp1 = le_site_index(ic2, jc, 1);
 
 	for (n = 0; n < nop; n++) {
-	  grad[3*(nop*index + n) + X]
-	    = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
-	  grad[3*(nop*index + n) + Y]
-	    = 0.5*(field[nop*(index + ys) + n] - field[nop*(index - ys) + n]);
+	  grad[3*(nop*index + n) + X] = 0.5*rfactor*
+	    (field[nop*indexp1 + n] - field[nop*indexm1 + n]
+	     + epsilon_*
+	     (field[nop*(indexp1 + ys) + n] - field[nop*(indexm1 + ys) + n] +
+	      field[nop*(indexp1 - ys) + n] - field[nop*(indexm1 - ys) + n]));
+	  grad[3*(nop*index + n) + Y] = 0.5*rfactor*
+	    (field[nop*(index + ys) + n] - field[nop*(index - ys) + n]
+	     + epsilon_*
+	     (field[nop*(indexp1 + ys) + n] - field[nop*(indexp1 - ys) + n] +
+	      field[nop*(indexm1 + ys) + n] - field[nop*(indexm1 - ys) + n]));
 	  grad[3*(nop*index + n) + Z] = 0.0;
-	  del2[nop*index + n]
-	    = field[nop*indexp1 + n] + field[nop*indexm1 + n]
-	    + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	    - 4.0*field[nop*index + n];
+
+	  del2[nop*index + n] =
+	    rfactor*(field[nop*indexp1 + n] +
+		     field[nop*indexm1 + n] +
+		     field[nop*(index + ys) + n] +
+		     field[nop*(index - ys) + n] +
+		     epsilon_*(field[nop*(indexp1 + ys) + n] +
+			       field[nop*(indexp1 - ys) + n] +
+			       field[nop*(indexm1 + ys) + n] +
+			       field[nop*(indexm1 - ys) + n])
+		     - 4.0*(1.0 + epsilon_)*field[nop*index + n]);
+
 	}
       }
     }
