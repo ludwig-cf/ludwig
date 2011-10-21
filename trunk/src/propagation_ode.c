@@ -244,6 +244,7 @@ void propagation_ode_init(void){
 
   int nlocal[3]; 
 
+  coords_nlocal(nlocal);
   distribution_ndist_set(2);
 
   assert(distribution_ndist() == 2); /* Implementation with binary distribution */
