@@ -74,6 +74,7 @@
 #include "stats_distribution.h"
 #include "stats_calibration.h"
 #include "stats_velocity.h"
+#include "stats_sigma.h"
 #include "stats_symmetric.h"
 
 #include "ludwig.h"
@@ -178,10 +179,17 @@ static void ludwig_init(void) {
   stats_turbulent_init();
   collision_init();
 
-  /* Calibration statistics required? */
+  /* Calibration statistics for ah required? */
 
   nstat = 0;
   n = RUN_get_string_parameter("calibration", filename, FILENAME_MAX);
+  if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
+  stats_calibration_init(nstat);
+
+  /* Calibration of surface tension required (symmetric only) */
+
+  nstat = 0;
+  n = RUN_get_string_parameter("calibration_sigma", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
   stats_calibration_init(nstat);
 
@@ -342,6 +350,7 @@ void ludwig_run(const char * inputfile) {
 	sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
 	io_write(filename, io_info_scalar_q_);
       }
+      stats_sigma_measure(step);
     }
 
     if (is_shear_measurement_step()) {
