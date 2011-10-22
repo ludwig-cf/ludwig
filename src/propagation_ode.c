@@ -24,9 +24,15 @@
 #include "coords.h"
 #include "model.h"
 #include "propagation_ode.h"
+#include "control.h"
+#include "runtime.h"
 
-double * fdash_;
-static int ndist_ = 2;
+static int  ndist_ = 2;
+static void propagation_ode_d2q9_euler(void);
+static void propagation_ode_d2q9_rk2(void);
+static void propagation_ode_integrator_set(char*);
+static char *propagation_ode_integrator_type;
+static double dt_ode;
 
 /*****************************************************************************
  *
@@ -56,54 +62,61 @@ void propagation_ode(void) {
  *
  *****************************************************************************/
 
-/* depreciated */
 void propagation_ode_d2q9_euler(void) {
 
-  int ic, jc, kc, index, p;
-  int nlocal[3];
-  int nhalo;
-  int xstr, ystr, zstr;
+  int ic, jc, kc, index, p, pdash;
+  int nlocal[3]; 
+  int nhalo; 
+  int xstr, ystr, zstr; 
 
-  double dt = 1.0;
-
+  double dt;
   extern double * f_;
+ 
+  nhalo = coords_nhalo(); 
+  coords_nlocal(nlocal); 
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  assert(distribution_ndist() == 1); /* No implementation for binary. */
-  assert(nlocal[Z] == 1); /* 2-d */
-
-  kc = 1;
-
-  zstr = 1*NVEL;
+  zstr = ndist_*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
-  xstr = ystr*(nlocal[Y] + 2*nhalo); 
+  xstr = ystr*(nlocal[Y] + 2*nhalo);
+
+  dt = propagation_ode_get_tstep();
+ 
+  kc = 1;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
 
       index = coords_index(ic, jc, kc);
 
-      p = NVEL*index + 0;
-      fdash_[p] = 0.0;
-      p = NVEL*index + 1;
-      fdash_[p] = 0.5*(f_[p - xstr - ystr] - f_[p + xstr + ystr]);
-      p = NVEL*index + 2;
-      fdash_[p] = 0.5*(f_[p - xstr       ] - f_[p + xstr       ]);
-      p = NVEL*index + 3;
-      fdash_[p] = 0.5*(f_[p - xstr + ystr] - f_[p + xstr - ystr]);
-      p = NVEL*index + 4;
-      fdash_[p] = 0.5*(f_[p        - ystr] - f_[p        + ystr]);
+       p = ndist_*NVEL*index + 0;
+       pdash = p+NVEL;
+       f_[pdash] = 0.0;
+       p = ndist_*NVEL*index + 1;
+       pdash = p+NVEL;
+       f_[pdash] = 0.5*(f_[p - xstr - ystr] - f_[p + xstr + ystr]);
+       p = ndist_*NVEL*index + 2;
+       pdash = p+NVEL;
+       f_[pdash] = 0.5*(f_[p - xstr       ] - f_[p + xstr       ]);
+       p = ndist_*NVEL*index + 3;
+       pdash = p+NVEL;
+       f_[pdash] = 0.5*(f_[p - xstr + ystr] - f_[p + xstr - ystr]);
+       p = ndist_*NVEL*index + 4;
+       pdash = p+NVEL;
+       f_[pdash] = 0.5*(f_[p        - ystr] - f_[p        + ystr]);
 
-      p = NVEL*index + 5;
-      fdash_[p] = 0.5*(f_[p        + ystr] - f_[p        - ystr]);
-      p = NVEL*index + 6;
-      fdash_[p] = 0.5*(f_[p + xstr - ystr] - f_[p - xstr + ystr]);
-      p = NVEL*index + 7;
-      fdash_[p] = 0.5*(f_[p + xstr       ] - f_[p - xstr       ]);
-      p = NVEL*index + 8;
-      fdash_[p] = 0.5*(f_[p + xstr + ystr] - f_[p - xstr - ystr]);
+       p = ndist_*NVEL*index + 5;
+       pdash = p+NVEL;
+       f_[pdash] = 0.5*(f_[p        + ystr] - f_[p        - ystr]);
+       p = ndist_*NVEL*index + 6;
+       pdash = p+NVEL;
+       f_[pdash] = 0.5*(f_[p + xstr - ystr] - f_[p - xstr + ystr]);
+       p = ndist_*NVEL*index + 7;
+       pdash = p+NVEL;
+       f_[pdash] = 0.5*(f_[p + xstr       ] - f_[p - xstr       ]);
+       p = ndist_*NVEL*index + 8;
+       pdash = p+NVEL;
+       f_[pdash] = 0.5*(f_[p + xstr + ystr] - f_[p - xstr - ystr]);
+
     }
   }
 
@@ -115,7 +128,7 @@ void propagation_ode_d2q9_euler(void) {
       index = coords_index(ic, jc, kc);
 
       for (p = 0; p < NVEL; p++) {
-	f_[NVEL*index + p] += dt*fdash_[NVEL*index + p];
+	f_[ndist_*NVEL*index + p] += dt*f_[ndist_*NVEL*index + p + NVEL];
       }
     }
   }
@@ -137,12 +150,8 @@ void propagation_ode_d2q9_rk2(void) {
   int nlocal[3]; 
   int nhalo; 
   int xstr, ystr, zstr; 
-
-  double dt = 1.0;  /* We can choose time steps smaller than unity, */
-  int ndt=0, idt=0; /* but it must be a rational number. */ 
- 
+  double dt;
   extern double * f_;
-  extern double * fdash_;
  
   nhalo = coords_nhalo(); 
   coords_nlocal(nlocal); 
@@ -150,98 +159,95 @@ void propagation_ode_d2q9_rk2(void) {
   zstr = ndist_*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
   xstr = ystr*(nlocal[Y] + 2*nhalo);
+
+  dt = propagation_ode_get_tstep();
  
   kc = 1;
 
-  ndt=(int)(1.0/dt);
+   for (ic = 1; ic <= nlocal[X]; ic++) {
+     for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-  while(idt<ndt){
+       index = coords_index(ic, jc, kc);
 
-     for (ic = 1; ic <= nlocal[X]; ic++) {
-       for (jc = 1; jc <= nlocal[Y]; jc++) {
+       p = ndist_*NVEL*index + 0;
+       pdash = p+NVEL;
+       f_[pdash] = 0.0;
+       p = ndist_*NVEL*index + 1;
+       pdash = p+NVEL;
+       f_[pdash] = f_[p] + 0.25*dt*(f_[p - xstr - ystr] - f_[p + xstr + ystr]);
+       p = ndist_*NVEL*index + 2;
+       pdash = p+NVEL;
+       f_[pdash] = f_[p] + 0.25*dt*(f_[p - xstr       ] - f_[p + xstr       ]);
+       p = ndist_*NVEL*index + 3;
+       pdash = p+NVEL;
+       f_[pdash] = f_[p] + 0.25*dt*(f_[p - xstr + ystr] - f_[p + xstr - ystr]);
+       p = ndist_*NVEL*index + 4;
+       pdash = p+NVEL;
+       f_[pdash] = f_[p] + 0.25*dt*(f_[p        - ystr] - f_[p        + ystr]);
 
-	 index = coords_index(ic, jc, kc);
-
-	 p = ndist_*NVEL*index + 0;
-	 pdash = p+NVEL;
-	 f_[pdash] = 0.0;
-	 p = ndist_*NVEL*index + 1;
-	 pdash = p+NVEL;
-	 f_[pdash] = f_[p] + 0.25*dt*(f_[p - xstr - ystr] - f_[p + xstr + ystr]);
-	 p = ndist_*NVEL*index + 2;
-	 pdash = p+NVEL;
-	 f_[pdash] = f_[p] + 0.25*dt*(f_[p - xstr       ] - f_[p + xstr       ]);
-	 p = ndist_*NVEL*index + 3;
-	 pdash = p+NVEL;
-	 f_[pdash] = f_[p] + 0.25*dt*(f_[p - xstr + ystr] - f_[p + xstr - ystr]);
-	 p = ndist_*NVEL*index + 4;
-	 pdash = p+NVEL;
-	 f_[pdash] = f_[p] + 0.25*dt*(f_[p        - ystr] - f_[p        + ystr]);
-
-	 p = ndist_*NVEL*index + 5;
-	 pdash = p+NVEL;
-	 f_[pdash] = f_[p] + 0.25*dt*(f_[p        + ystr] - f_[p        - ystr]);
-	 p = ndist_*NVEL*index + 6;
-	 pdash = p+NVEL;
-	 f_[pdash] = f_[p] + 0.25*dt*(f_[p + xstr - ystr] - f_[p - xstr + ystr]);
-	 p = ndist_*NVEL*index + 7;
-	 pdash = p+NVEL;
-	 f_[pdash] = f_[p] + 0.25*dt*(f_[p + xstr       ] - f_[p - xstr       ]);
-	 p = ndist_*NVEL*index + 8;
-	 pdash = p+NVEL;
-	 f_[pdash] = f_[p] + 0.25*dt*(f_[p + xstr + ystr] - f_[p - xstr - ystr]);
-       }
+       p = ndist_*NVEL*index + 5;
+       pdash = p+NVEL;
+       f_[pdash] = f_[p] + 0.25*dt*(f_[p        + ystr] - f_[p        - ystr]);
+       p = ndist_*NVEL*index + 6;
+       pdash = p+NVEL;
+       f_[pdash] = f_[p] + 0.25*dt*(f_[p + xstr - ystr] - f_[p - xstr + ystr]);
+       p = ndist_*NVEL*index + 7;
+       pdash = p+NVEL;
+       f_[pdash] = f_[p] + 0.25*dt*(f_[p + xstr       ] - f_[p - xstr       ]);
+       p = ndist_*NVEL*index + 8;
+       pdash = p+NVEL;
+       f_[pdash] = f_[p] + 0.25*dt*(f_[p + xstr + ystr] - f_[p - xstr - ystr]);
      }
+   }
 
-     /* Halo exchange */
-     distribution_halo();
+   /* Halo exchange */
+   distribution_halo();
 
-     /* Update */
+   /* Update */
 
-     for (ic = 1; ic <= nlocal[X]; ic++) {
-       for (jc = 1; jc <= nlocal[Y]; jc++) {
+   for (ic = 1; ic <= nlocal[X]; ic++) {
+     for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-	 index = coords_index(ic, jc, kc);
+       index = coords_index(ic, jc, kc);
 
-	 p = ndist_*NVEL*index + 0;
-	 pdash = p+NVEL;
-	 f_[p] += 0.0;
-	 p = ndist_*NVEL*index + 1;
-	 pdash = p+NVEL;
-	 f_[p] += 0.5*dt*(f_[pdash - xstr - ystr] - f_[pdash + xstr + ystr]);
-	 p = ndist_*NVEL*index + 2; 
-	 pdash = p+NVEL;
-	 f_[p] += 0.5*dt*(f_[pdash - xstr       ] - f_[pdash + xstr       ]);
-	 p = ndist_*NVEL*index + 3;
-	 pdash = p+NVEL;
-	 f_[p] += 0.5*dt*(f_[pdash - xstr + ystr] - f_[pdash + xstr - ystr]);
-	 p = ndist_*NVEL*index + 4;
-	 pdash = p+NVEL;
-	 f_[p] += 0.5*dt*(f_[pdash        - ystr] - f_[pdash        + ystr]);
+       p = ndist_*NVEL*index + 0;
+       pdash = p+NVEL;
+       f_[p] += 0.0;
+       p = ndist_*NVEL*index + 1;
+       pdash = p+NVEL;
+       f_[p] += 0.5*dt*(f_[pdash - xstr - ystr] - f_[pdash + xstr + ystr]);
+       p = ndist_*NVEL*index + 2; 
+       pdash = p+NVEL;
+       f_[p] += 0.5*dt*(f_[pdash - xstr       ] - f_[pdash + xstr       ]);
+       p = ndist_*NVEL*index + 3;
+       pdash = p+NVEL;
+       f_[p] += 0.5*dt*(f_[pdash - xstr + ystr] - f_[pdash + xstr - ystr]);
+       p = ndist_*NVEL*index + 4;
+       pdash = p+NVEL;
+       f_[p] += 0.5*dt*(f_[pdash        - ystr] - f_[pdash        + ystr]);
 
-	 p = ndist_*NVEL*index + 5;
-	 pdash = p+NVEL;
-	 f_[p] += 0.5*dt*(f_[pdash        + ystr] - f_[pdash        - ystr]);
-	 p = ndist_*NVEL*index + 6;
-	 pdash = p+NVEL;
-	 f_[p] += 0.5*dt*(f_[pdash + xstr - ystr] - f_[pdash - xstr + ystr]);
-	 p = ndist_*NVEL*index + 7;
-	 pdash = p+NVEL;
-	 f_[p] += 0.5*dt*(f_[pdash + xstr       ] - f_[pdash - xstr       ]);
-	 p = ndist_*NVEL*index + 8;
-	 pdash = p+NVEL;
-	 f_[p] += 0.5*dt*(f_[pdash + xstr + ystr] - f_[pdash - xstr - ystr]);
-       }
+       p = ndist_*NVEL*index + 5;
+       pdash = p+NVEL;
+       f_[p] += 0.5*dt*(f_[pdash        + ystr] - f_[pdash        - ystr]);
+       p = ndist_*NVEL*index + 6;
+       pdash = p+NVEL;
+       f_[p] += 0.5*dt*(f_[pdash + xstr - ystr] - f_[pdash - xstr + ystr]);
+       p = ndist_*NVEL*index + 7;
+       pdash = p+NVEL;
+       f_[p] += 0.5*dt*(f_[pdash + xstr       ] - f_[pdash - xstr       ]);
+       p = ndist_*NVEL*index + 8;
+       pdash = p+NVEL;
+       f_[p] += 0.5*dt*(f_[pdash + xstr + ystr] - f_[pdash - xstr - ystr]);
      }
-
-   idt++;
    }
 
    return;
 }
 
-void propagation_ode_init(void){
+void propagation_ode_init(void) { 
 
+  int n;
+  char tmp[128];
   int nlocal[3]; 
 
   coords_nlocal(nlocal);
@@ -250,69 +256,26 @@ void propagation_ode_init(void){
   assert(distribution_ndist() == 2); /* Implementation with binary distribution */
   assert(nlocal[Z] <= 3); /* 2-d parallel */ 
 
+  n = RUN_get_string_parameter("propagation_ode_integrator", tmp, 128);
+  if (n==1 && strcmp(tmp,"rk2") == 0) propagation_ode_integrator_set(tmp);
+
+  n = RUN_get_double_parameter("propagation_ode_tstep", &dt_ode);
+  assert(n == 1);
+
+  info("\n");
+  info("Continuous-time-LB propagation\n");
+  info("------------------------------\n");
+  info("Time step size:  %g\n", dt_ode);
+  info("Integrator type: %s\n", propagation_ode_integrator_type);
+
+
   return;
 }
 
-/* depreciated */
-void propagation_ode_halo(void){
-
-  int ic, jc, kc;
-  int nlocal[3]; 
-  int nhalo; 
-  int ihalo, ireal; 
-
-  extern double * fdash_;
- 
-  nhalo = coords_nhalo(); 
-  coords_nlocal(nlocal); 
-
-  kc = 1.0;
-
-  /* Only serial case is implemented here below */
-  /* The x-direction (YZ plane) */
-
-  if (cart_size(X) == 1) {
-    if (is_periodic(X)) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-        for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-          ihalo = ndist_*NVEL*coords_index(0, jc, kc);
-          ireal = ndist_*NVEL*coords_index(nlocal[X], jc, kc);
-          memcpy(fdash_ + ihalo, fdash_ + ireal, ndist_*NVEL*sizeof(double));
-
-          ihalo = ndist_*NVEL*coords_index(nlocal[X]+1, jc, kc);
-          ireal = ndist_*NVEL*coords_index(1, jc, kc);
-          memcpy(fdash_ + ihalo, fdash_ + ireal, ndist_*NVEL*sizeof(double));
-        }
-      }
-    }
-  }
-  
-  /* The y-direction (XZ plane) */
-
-  if (cart_size(Y) == 1) {
-    if (is_periodic(Y)) {
-      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-        for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-          ihalo = ndist_*NVEL*coords_index(ic, 0, kc);
-          ireal = ndist_*NVEL*coords_index(ic, nlocal[Y], kc);
-          memcpy(fdash_ + ihalo, fdash_ + ireal, ndist_*NVEL*sizeof(double));
-
-          ihalo = ndist_*NVEL*coords_index(ic, nlocal[Y] + 1, kc);
-          ireal = ndist_*NVEL*coords_index(ic, 1, kc);
-          memcpy(fdash_ + ihalo, fdash_ + ireal, ndist_*NVEL*sizeof(double));
-        }
-      }
-    }
-  }
-  return;
+void propagation_ode_integrator_set(char * type) {
+  propagation_ode_integrator_type = type;
 }
 
-/* depreciated */
-void propagation_ode_finish(void){
-
-   free(fdash_);
-
-  return;
+double propagation_ode_get_tstep() {
+  return dt_ode;
 }

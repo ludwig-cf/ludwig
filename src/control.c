@@ -33,6 +33,8 @@ static int freq_vel        = 100000000;
 static int freq_shear_io   = 100000000;
 static int freq_shear_meas = 100000000;
 static int config_at_end   = 1;
+static int propagation_ode = 0;
+
 
 /*****************************************************************************
  *
@@ -49,6 +51,10 @@ void init_control() {
 
   n = RUN_get_int_parameter("N_start", &t_start);
   n = RUN_get_int_parameter("N_cycles", &t_steps);
+
+  n = RUN_get_string_parameter("propagation_ode", tmp, 128);
+  if (n ==1 && strcmp(tmp, "yes") == 0) propagation_ode = 1;
+
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
   n = RUN_get_int_parameter("freq_config", &freq_config);
@@ -56,7 +62,6 @@ void init_control() {
   n = RUN_get_int_parameter("freq_vel", &freq_vel);
   n = RUN_get_int_parameter("freq_shear_measurement", &freq_shear_meas);
   n = RUN_get_int_parameter("freq_shear_output", &freq_shear_io);
-
   n = RUN_get_string_parameter("config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
 
@@ -87,7 +92,6 @@ int next_step() {
   ++t_current;
   return (t_start + t_steps - t_current + 1);
 }
-
 
 /*****************************************************************************
  *
@@ -155,5 +159,15 @@ int is_shear_measurement_step() {
 
 int is_shear_output_step() {
   return ((t_current % freq_shear_io) == 0);
+}
+
+/*****************************************************************************
+ *
+ *  is_propagation_ode
+ *
+ *****************************************************************************/
+
+int is_propagation_ode() {
+  return propagation_ode;
 }
 
