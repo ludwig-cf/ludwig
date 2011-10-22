@@ -38,6 +38,7 @@
 #include "leesedwards.h"
 #include "interaction.h"
 #include "propagation.h"
+#include "propagation_ode.h"
 
 #include "site_map.h"
 #include "physics.h"
@@ -109,6 +110,10 @@ static void ludwig_rt(void) {
 
   init_physics();
   le_init();
+
+  /* current initialisation of CTLB */ 
+  /* using the binary distribution */  
+  if (is_propagation_ode()) propagation_ode_init(); 
 
   distribution_run_time();
   collision_run_time();
@@ -313,7 +318,14 @@ void ludwig_run(const char * inputfile) {
      * and propagation, as the halo regions are active */
 
     TIMER_start(TIMER_PROPAGATE);
-    propagation();
+
+    if(is_propagation_ode()) {
+      propagation_ode();
+    }
+    else {
+      propagation();
+    }
+
     TIMER_stop(TIMER_PROPAGATE);
 
     TIMER_stop(TIMER_STEPS);

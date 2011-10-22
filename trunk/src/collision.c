@@ -38,6 +38,8 @@
 #include "free_energy.h"
 #include "phi_cahn_hilliard.h"
 
+#include "propagation_ode.h"
+
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* Default is m10 */
 static int isothermal_fluctuations_ = 0; /* Flag for noise. */
@@ -57,7 +59,6 @@ static void collision_binary_lb(void);
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
        void collision_fluctuations(int index, double shat[3][3],
 				   double ghat[NVEL]);
-
 /*****************************************************************************
  *
  *  collide
@@ -69,12 +70,13 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
 void collide() {
 
   int ndist;
+  extern int is_propagation_ode(void);
 
   ndist = distribution_ndist();
   collision_relaxation_times_set();
 
-  if (ndist == 1) collision_multirelaxation();
-  if (ndist == 2) collision_binary_lb();
+  collision_multirelaxation();
+  if (ndist == 2 && is_propagation_ode()==0) collision_binary_lb();
 
   return;
 }
@@ -704,10 +706,15 @@ void collision_relaxation_times_set(void) {
   double tau_b;
   double tau_g;
 
+  double dt_ode=1.0;
+  extern int is_propagation_ode(void);
+ 
+  if (is_propagation_ode()) dt_ode = propagation_ode_get_tstep();
+
   /* Initialise the relaxation times */
 
-  rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear());
-  rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk());
+  rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear()/dt_ode);
+  rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk()/dt_ode);
 
   if (nrelax_ == RELAXATION_M10) {
     for (p = NHYDRO; p < NVEL; p++) {

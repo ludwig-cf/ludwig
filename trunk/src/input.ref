@@ -30,10 +30,18 @@
 #                 (if it's a restart, this is still the number of steps
 #                 to run, not the final step)
 #
+#  propagation_ode            [yes|no] continuous-time propagation 
+#                             default is no
+#  propagation_ode_tstep      continuous time step size, default is 1.0
+#  propagation_ode_integrator [rk2] 2nd order Runge-Kutta
+#
 ###############################################################################
 
 N_start  0
 N_cycles 1
+propagation_ode no
+propagation_ode_tstep 1.0
+propagation_ode_integrator rk2
 
 ##############################################################################
 #
