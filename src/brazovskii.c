@@ -118,7 +118,7 @@ double brazovskii_free_energy_density(const int index) {
   phi_gradients_grad(index, dphi);
   delsq = phi_gradients_delsq(index);
 
-  e = 0.5*a_*phi*phi* + 0.25*b_*phi*phi*phi*phi
+  e = 0.5*a_*phi*phi + 0.25*b_*phi*phi*phi*phi
     + 0.5*kappa_*dot_product(dphi, dphi) + 0.5*c_*delsq*delsq;
 
   return e;
