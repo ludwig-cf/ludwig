@@ -38,6 +38,7 @@
 #include "free_energy.h"
 #include "phi_cahn_hilliard.h"
 
+#include "control.h"
 #include "propagation_ode.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
@@ -65,18 +66,20 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
  *
  *  Driver routine for the collision stage.
  *
+ *  Note that the ODE propagation currently uses ndist == 2, as
+ *  well as the LB binary, hence the logic.
+ *
  *****************************************************************************/
 
-void collide() {
+void collide(void) {
 
   int ndist;
-  extern int is_propagation_ode(void);
 
   ndist = distribution_ndist();
   collision_relaxation_times_set();
 
-  collision_multirelaxation();
-  if (ndist == 2 && is_propagation_ode()==0) collision_binary_lb();
+  if (ndist == 1 || is_propagation_ode() == 1) collision_multirelaxation();
+  if (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb();
 
   return;
 }
