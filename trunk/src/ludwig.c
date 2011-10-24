@@ -196,7 +196,7 @@ static void ludwig_init(void) {
   nstat = 0;
   n = RUN_get_string_parameter("calibration_sigma", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
-  stats_calibration_init(nstat);
+  stats_sigma_init(nstat);
 
   collision_init();
 
