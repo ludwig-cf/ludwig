@@ -124,8 +124,8 @@ double symmetric_free_energy_density(const int index) {
   phi = phi_get_phi_site(index);
   phi_gradients_grad(index, dphi);
 
-  e = 0.5*a_*phi*phi* + 0.25*b_*phi*phi*phi*phi
-    + 0.5*kappa_*dot_product(dphi, dphi);
+  e = 0.5*a_*phi*phi + 0.25*b_*phi*phi*phi*phi
+	+ 0.5*kappa_*dot_product(dphi, dphi);
 
   return e;
 }
