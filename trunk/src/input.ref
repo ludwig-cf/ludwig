@@ -30,10 +30,10 @@
 #                 (if it's a restart, this is still the number of steps
 #                 to run, not the final step)
 #
-#  propagation_ode            [yes|no] continuous-time propagation 
-#                             default is no
+#  propagation_ode            [on|off] continuous-time propagation 
+#                             default is off
 #  propagation_ode_tstep      continuous time step size, default is 1.0
-#  propagation_ode_integrator [rk2] 2nd order Runge-Kutta
+#  propagation_ode_integrator [euler|rk2] Euler, 2nd order Runge-Kutta
 #
 ###############################################################################
 
