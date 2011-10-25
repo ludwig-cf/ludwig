@@ -53,7 +53,7 @@ void init_control() {
   n = RUN_get_int_parameter("N_cycles", &t_steps);
 
   n = RUN_get_string_parameter("propagation_ode", tmp, 128);
-  if (n ==1 && strcmp(tmp, "yes") == 0) propagation_ode = 1;
+  if (n ==1 && strcmp(tmp, "on") == 0) propagation_ode = 1;
 
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
   n = RUN_get_int_parameter("freq_measure", &freq_measure);

@@ -18,6 +18,7 @@
 void   propagation_ode(void);
 void   propagation_ode_init(void);
 double propagation_ode_get_tstep(void);
+enum   propagation_ode_integrator_type {EULER, RK2};
 
 #endif
 

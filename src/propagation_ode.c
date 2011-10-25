@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -30,8 +31,8 @@
 static int  ndist_ = 2;
 static void propagation_ode_d2q9_euler(void);
 static void propagation_ode_d2q9_rk2(void);
-static void propagation_ode_integrator_set(char*);
-static char *propagation_ode_integrator_type;
+void propagation_ode_integrator_set(const int);
+static int  integrator_type = RK2;
 static double dt_ode;
 
 /*****************************************************************************
@@ -45,7 +46,8 @@ static double dt_ode;
 void propagation_ode(void) {
 
   assert(NVEL == 9);
-  propagation_ode_d2q9_rk2();
+  if (integrator_type == EULER) propagation_ode_d2q9_euler();
+  if (integrator_type == RK2) propagation_ode_d2q9_rk2();
 
   return;
 }
@@ -247,7 +249,7 @@ void propagation_ode_d2q9_rk2(void) {
 void propagation_ode_init(void) { 
 
   int n;
-  char tmp[128];
+  char integrator[FILENAME_MAX];
   int nlocal[3]; 
 
   coords_nlocal(nlocal);
@@ -256,8 +258,15 @@ void propagation_ode_init(void) {
   assert(distribution_ndist() == 2); /* Implementation with binary distribution */
   assert(nlocal[Z] <= 3); /* 2-d parallel */ 
 
-  n = RUN_get_string_parameter("propagation_ode_integrator", tmp, 128);
-  if (n==1 && strcmp(tmp,"rk2") == 0) propagation_ode_integrator_set(tmp);
+  n = RUN_get_string_parameter("propagation_ode_integrator", integrator, FILENAME_MAX);
+
+  if (strcmp(integrator, "euler") == 0) {
+        propagation_ode_integrator_set(EULER);
+  }
+
+  if (strcmp(integrator, "rk2") == 0) {
+        propagation_ode_integrator_set(RK2);
+  }
 
   n = RUN_get_double_parameter("propagation_ode_tstep", &dt_ode);
   assert(n == 1);
@@ -266,14 +275,18 @@ void propagation_ode_init(void) {
   info("Continuous-time-LB propagation\n");
   info("------------------------------\n");
   info("Time step size:  %g\n", dt_ode);
-  info("Integrator type: %s\n", propagation_ode_integrator_type);
+  info("Integrator type: %s\n", integrator);
 
 
   return;
 }
 
-void propagation_ode_integrator_set(char * type) {
-  propagation_ode_integrator_type = type;
+void propagation_ode_integrator_set(const int type) {
+
+  assert(type == EULER || type == RK2);
+
+  integrator_type = type;
+  return;
 }
 
 double propagation_ode_get_tstep() {
