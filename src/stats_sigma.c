@@ -116,11 +116,12 @@ void stats_sigma_init(int nswitch) {
     /* Print some information */
 
     info("\n");
-    info("Surface tension calibration via droplet initialised.\n");
+    info("Surface tension calibration via droplet initialised\n");
+    info("---------------------------------------------------\n");
     info("Drop radius:     %14.7e\n", drop.radius);
     datum = symmetric_interfacial_width()/drop.radius;
     info("Cahn number:     %14.7e\n", datum);
-    datum = phi_cahn_hilliard_mobility()*symmetric_a();
+    datum = -phi_cahn_hilliard_mobility()*symmetric_a();
     info("Diffusivity:     %14.7e\n", datum);
     /* The relevant diffusion time is for the interfacial width ... */
     datum = XIINIT*drop.xi0*XIINIT*drop.xi0/datum;
@@ -151,7 +152,7 @@ void stats_sigma_measure(int ntime) {
     stats_sigma_find_sigma(&drop);
 
     info("\n");
-    info("Surface tension calibration - radius xi0 sigma\n");
+    info("Surface tension calibration - radius xi0 surface tension\n");
     info("[sigma] %14d %14.7e %14.7e %14.7e\n", ntime, drop.radius, drop.xi0,
 	 drop.sigma);
   }
