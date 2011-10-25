@@ -30,13 +30,14 @@
 #define NBIN      128
 #define NFITMAX   2000
 #define XIINIT    2.0
-#define XIPROFILE 3.0
+#define XIPROFILE 10.0
 
 struct drop_type {
   double radius;
   double xi0;
   double centre[3];
   double phimax;
+  double sigma;
 };
 
 typedef struct drop_type drop_t;
@@ -46,7 +47,8 @@ static int initialised_ = 0;
 static void stats_sigma_init_drop(drop_t drop);
 static void stats_sigma_find_drop(drop_t * drop);
 static void stats_sigma_find_radius(drop_t * drop);
-static void stats_sigma_find_sigma(drop_t drop, double results[2]);
+static void stats_sigma_find_xi0(drop_t * drop);
+static void stats_sigma_find_sigma(drop_t * drop);
 
 /*****************************************************************************
  *
@@ -79,18 +81,29 @@ void stats_sigma_init(int nswitch) {
 
   if (nswitch == 0) {
     /* No measurement required. */
-
     initialised_ = 0;
   }
   else {
 
-    /* Check we have a cubic system */
+    /* Check we have a cubic system, or a square system (2d) */
+
+    if (N_total(X) != N_total(Y)) {
+      info("Surface tension calibration expects Lx = Ly\n");
+      info("You have: %4d %4d\n", N_total(X), N_total(Y));
+      fatal("Please check and try again\n");
+    }
+
+    if (N_total(Z) != 1 && (N_total(Z) != N_total(Y))) {
+      info("Surface tension calibration expects Lx = Ly = Lz\n");
+      info("You have: %4d %4d %4d\n", N_total(X), N_total(Y), N_total(Z));
+      fatal("Please check and try again\n");
+    }
 
     /* Initialise the drop properties. */
 
     initialised_ = 1;
     drop.radius    = L(X)/4.0;
-    drop.xi0       = 2.0*symmetric_interfacial_width();
+    drop.xi0       = XIINIT*symmetric_interfacial_width();
     drop.centre[X] = L(X)/2.0;
     drop.centre[Y] = L(Y)/2.0;
     drop.centre[Z] = L(Z)/2.0;
@@ -110,7 +123,7 @@ void stats_sigma_init(int nswitch) {
     datum = phi_cahn_hilliard_mobility()*symmetric_a();
     info("Diffusivity:     %14.7e\n", datum);
     /* The relevant diffusion time is for the interfacial width ... */
-    datum = drop.xi0*drop.xi0/datum;
+    datum = XIINIT*drop.xi0*XIINIT*drop.xi0/datum;
     info("Diffusion time:  %14.7e\n", datum); 
   }
 
@@ -129,13 +142,18 @@ void stats_sigma_init(int nswitch) {
 void stats_sigma_measure(int ntime) {
 
   drop_t drop;
-  double results[2];
 
   if (initialised_) {
-    /* do compuation */
+
     stats_sigma_find_drop(&drop);
     stats_sigma_find_radius(&drop);
-    stats_sigma_find_sigma(drop, results);
+    stats_sigma_find_xi0(&drop);
+    stats_sigma_find_sigma(&drop);
+
+    info("\n");
+    info("Surface tension calibration - radius xi0 sigma\n");
+    info("[sigma] %14d %14.7e %14.7e %14.7e\n", ntime, drop.radius, drop.xi0,
+	 drop.sigma);
   }
 
   return;
@@ -323,30 +341,34 @@ static void stats_sigma_find_radius(drop_t * drop) {
 
 /*****************************************************************************
  *
- *  stats_sigma_find_sigma
+ *  stats_sigma_find_xi0
  *
- *  Compute the radial profile of phi and of the free energy density
- *  (binned). phi(r) is used to fit an interfacial width and f(r) is
- *  used to fit a sigma.
+ *  Compute a (binned) mean radial profile of the order parameter and
+ *  use the resulting phi(r) to fit an interfacial width based on the
+ *  expected tanh(r/xi) profile.
  *
- *  results[0] is xi, results[1] is sigma, on exit.
+ *  The current values of drop.centre and drop.radius are used to locate
+ *  the required profile.
+ *
+ *  The observed xi is returned as drop.xi0 on rank 0.
  *
  *****************************************************************************/
 
-static void stats_sigma_find_sigma(drop_t drop, double results[2]) {
+static void stats_sigma_find_xi0(drop_t * drop) {
 
   int nlocal[3], noffset[3];
   int ic, jc, kc, index, n;
-  double rmin;
-  double rmax;
+  int nfit, nbestfit;
+
+  int nphi[NBIN], nphi_local[NBIN];      /* count for bins */
+  double phir[NBIN], phir_local[NBIN];   /* binned profile */
+
+  double rmin;                           /* Minimum radial profile r */
+  double rmax;                           /* Maximum radial profile r */
   double r0, dr, r[3];
 
-  double phimean[NBIN], phimeant[NBIN];
-  double femean[NBIN], femeant[NBIN];
-  double count[NBIN], countt[NBIN];
-
-  int nfit, nbestfit;
-  double fmin, fmax, cost, costmin, phi, xi0, xi0fit;
+  double cost, costmin, phi;             /* Best fit calculation */
+  double xi0, xi0fit;                    /* Expected and observed xi0 */
 
   MPI_Comm comm;
 
@@ -354,18 +376,17 @@ static void stats_sigma_find_sigma(drop_t drop, double results[2]) {
   coords_nlocal_offset(noffset);
   comm = pe_comm();
 
-  /* Set the bin widths etc */
+  /* Set the bin widths based on the expected xi0 */
 
   xi0 = symmetric_interfacial_width();
 
-  rmin = drop.radius - XIPROFILE*xi0;
-  rmax = drop.radius + XIPROFILE*xi0;
+  rmin = drop->radius - XIPROFILE*xi0;
+  rmax = drop->radius + XIPROFILE*xi0;
   dr = (rmax - rmin)/NBIN;
 
   for (n = 0; n < NBIN; n++) {
-    phimean[n] = 0.0;
-    femean[n] = 0.0;
-    count[n] = 0.0;
+    phir_local[n] = 0.0;
+    nphi_local[n] = 0;
   }
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -377,47 +398,34 @@ static void stats_sigma_find_sigma(drop_t drop, double results[2]) {
         /* Work out the displacement from the drop centre
            and hence the bin number */
 
-        r[X] = 1.0*(noffset[X] + ic) - drop.centre[X];
-        r[Y] = 1.0*(noffset[Y] + jc) - drop.centre[Y];
-        r[Z] = 1.0*(noffset[Z] + kc) - drop.centre[Z];
+        r[X] = 1.0*(noffset[X] + ic) - drop->centre[X];
+        r[Y] = 1.0*(noffset[Y] + jc) - drop->centre[Y];
+        r[Z] = 1.0*(noffset[Z] + kc) - drop->centre[Z];
 
         r0 = modulus(r);
         n = (r0 - rmin)/dr;
 
         if (n >= 0 && n < NBIN) {
-          phimean[n] += phi_get_phi_site(index);
-          femean[n]   += symmetric_free_energy_density(index);
-          count[n]   += 1.0;
+          phir_local[n] += phi_get_phi_site(index);
+          nphi_local[n] += 1;
         }
+
       }
     }
   }
 
-  /* Reduce to rank zero for output. */
+  /* Reduce to rank zero and compute the mean profile. */
 
-  MPI_Reduce(phimean, phimeant, NBIN, MPI_DOUBLE, MPI_SUM, 0, comm);
-  MPI_Reduce(femean, femeant, NBIN, MPI_DOUBLE, MPI_SUM, 0, comm);
-  MPI_Reduce(count, countt, NBIN, MPI_DOUBLE, MPI_SUM, 0, comm);
-
-  fmin = DBL_MAX;
-  fmax = -DBL_MAX;
+  MPI_Reduce(phir_local, phir, NBIN, MPI_DOUBLE, MPI_SUM, 0, comm);
+  MPI_Reduce(nphi_local, nphi, NBIN, MPI_INT, MPI_SUM, 0, comm);
 
   for (n = 0; n < NBIN; n++) {
-    phimeant[n] /= countt[n];
-    femeant[n] /= countt[n];
-    fmin = dmin(fmin, femeant[n]);
-    fmax = dmax(fmax, femeant[n]);
+    if (nphi[n] > 0) phir[n] = phir[n]/nphi[n];
   }
 
-  /* Fit the free energy density to sech^4 to get an estimate of the
-   * surface tension. Assume there is enough resolution to give a
-   * good estimate of fmax-fmin. */
-
-  info("\n");
-  info("Free energy density range: %g %g -> %g\n", fmin, fmax, fmax-fmin);
-
-  /* Try values 0 < xi < 2xi_0 and see which is best least squares fit
-   * to the measured mean phi; the (nfit + 1) is to avoid zero. */
+  /* Fit the mean order parameter profile to tanh((r - r0)/xi).
+     Try values 0 < xi < 2xi_0 and see which is best least squares fit
+     to the measured mean phi; the (nfit + 1) is to avoid zero. */
 
   nbestfit = -1;
   costmin =  DBL_MAX;
@@ -427,8 +435,8 @@ static void stats_sigma_find_sigma(drop_t drop, double results[2]) {
     xi0fit = 2.0*(nfit + 1)*xi0/NFITMAX;
     for (n = 0; n < NBIN; n++) {
       r0 = rmin + (n + 0.5)*dr;
-      phi = tanh((r0 - drop.radius)/xi0fit);
-      if (countt[n] != 0) cost += (phimeant[n] - phi)*(phimeant[n] - phi);
+      phi = tanh((r0 - drop->radius)/xi0fit);
+      if (nphi[n] > 0) cost += (phir[n] - phi)*(phir[n] - phi);
     }
     if (cost < costmin) {
       costmin = cost;
@@ -436,11 +444,87 @@ static void stats_sigma_find_sigma(drop_t drop, double results[2]) {
     }
   }
 
+  /* This assertion should not fail unless something is very wrong */
+
   assert(nbestfit > 0);
   xi0fit = 2.0*(nbestfit + 1)*xi0/NFITMAX;
-
-  info("Fit to interfacial width: %f\n", xi0fit);
-  info("Fit to sigma: %g\n", 2.0*sqrt(8.0/9.0)*xi0fit*(fmax-fmin));
+  drop->xi0 = xi0fit;
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  stats_sigma_find_sigma
+ *
+ *  Integrate the excess free energy density to estimate the actual
+ *  surface tension of the drop. The current drop.radius is used
+ *  to compute the circumference (2d) or area (3d) of the drop.
+ *
+ *  drop.sigma is updated with the value identified on rank 0.
+ *
+ *****************************************************************************/
+
+static void stats_sigma_find_sigma(drop_t * drop) {
+
+  int nlocal[3];
+  int ic, jc, kc, index;
+
+  double fe;
+  double fmin, fmin_local;      /* Minimum free energy */
+  double excess, excess_local;  /* Excess free energy */
+
+  MPI_Comm comm;
+
+  coords_nlocal(nlocal);
+  comm = pe_comm();
+
+  /* Find the local minimum of the free energy density */
+
+  fmin_local = FLT_MAX;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+
+        fe = symmetric_free_energy_density(index);
+	if (fe < fmin_local) fmin_local = fe;
+
+      }
+    }
+  }
+
+  /* Everyone needs fmin to compute the excess */
+
+  MPI_Allreduce(&fmin_local, &fmin, 1, MPI_DOUBLE, MPI_MIN, comm);
+
+  excess_local = 0.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+        fe = symmetric_free_energy_density(index);
+        excess_local += (fe - fmin);
+      }
+    }
+  }
+
+  /* Reduce to rank zero for result */
+
+  MPI_Reduce(&excess_local, &excess, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+  if (nlocal[Z] == 1) {
+    /* Assume 2d system */
+    drop->sigma = excess / (2.0*pi_*drop->radius);
+  }
+  else {
+    drop->sigma = excess / (4.0*pi_*drop->radius*drop->radius);
+  }
+
+  return;
+}
+
