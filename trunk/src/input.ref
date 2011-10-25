@@ -39,7 +39,7 @@
 
 N_start  0
 N_cycles 1
-propagation_ode no
+propagation_ode off
 propagation_ode_tstep 1.0
 propagation_ode_integrator rk2
 
