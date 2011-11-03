@@ -48,7 +48,7 @@ void blue_phase_run_time(void) {
   double amplitude;
   double xi;
   double zeta;
-  double w;
+  double w,w_wall;
   double redshift;
   double epsilon;
   double electric[3];
@@ -178,7 +178,7 @@ void blue_phase_run_time(void) {
     /* Surface free energy parameter (method two only) */
 
     RUN_get_double_parameter("lc_anchoring_strength", &w);
-
+    
     info("\n");
     info("Liquid crystal anchoring\n");
     info("Anchoring method:          = %14s\n", method);
@@ -202,11 +202,24 @@ void blue_phase_run_time(void) {
 	wall_anchoring_set(ANCHORING_FIXED);
       }
 
-      info("Anchoring type (walls)   : = %14s\n", type_wall);
-      info("Surface free energy w:     = %14.7e\n", w);
-      info("Ratio w/kappa0:            = %14.7e\n", w/kappa0);
-      colloids_q_anchoring_method_set(ANCHORING_METHOD_TWO);
+      /* Set the anchoring strength the same for colloid and wall */
       colloids_q_tensor_w_set(w);
+      w_wall = w;
+      wall_w_set(w_wall);
+      
+      /* Try if the specific parameter for colloid/wall exists */
+      n =  RUN_get_double_parameter("lc_anchoring_strength_colloid", &w);
+      if ( n == 1 ) colloids_q_tensor_w_set(w);
+      
+      n =  RUN_get_double_parameter("lc_anchoring_strength_wall", &w_wall);
+      if( n == 1 ) wall_w_set(w_wall);
+      
+      info("Anchoring type (walls):          = %14s\n", type_wall);
+      info("Surface free energy (colloid) w: = %14.7e\n", w);
+      info("Surface free energy (wall) w:    = %14.7e\n", w_wall);
+      info("Ratio (colloid) w/kappa0:        = %14.7e\n", w/kappa0);
+      info("Ratio (wall) w/kappa0:           = %14.7e\n", w_wall/kappa0);
+      colloids_q_anchoring_method_set(ANCHORING_METHOD_TWO);
     }
 
   }

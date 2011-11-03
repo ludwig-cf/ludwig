@@ -222,6 +222,11 @@ static void gradient_general(const double * field, double * grad,
 	  colloids_q_boundary_normal(index, bcs[n], dn);
 	  colloids_q_boundary(dn, qs, q0, status[n]);
 
+	  /* Check for wall/colloid */
+	  if (status[n] == COLLOID) w = colloids_q_tensor_w();
+	  if (status[n] == BOUNDARY) w = wall_w_get();
+	  assert(status[n] == COLLOID || status[n] == BOUNDARY);
+
 	  /* Compute c[n][a][b] */
 
 	  for (ia = 0; ia < 3; ia++) {

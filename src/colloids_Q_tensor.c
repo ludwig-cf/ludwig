@@ -38,6 +38,7 @@ static int anchoring_coll_ = ANCHORING_NORMAL;
 static int anchoring_wall_ = ANCHORING_NORMAL;
 static int anchoring_method_ = ANCHORING_METHOD_NONE;
 static double w_surface_ = 0.0; /* Anchoring strength in free energy */
+static double w_surface_wall_ = 0.0; /* Anchoring strength in free energy */
 
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
@@ -540,6 +541,17 @@ double colloids_q_tensor_w(void) {
 
 /*****************************************************************************
  *
+ *  wall_w_get
+ *
+ *****************************************************************************/
+
+double wall_w_get(void) {
+
+  return w_surface_wall_;
+}
+
+/*****************************************************************************
+ *
  *  colloids_q_tensor_w_set
  *
  *****************************************************************************/
@@ -547,6 +559,18 @@ double colloids_q_tensor_w(void) {
 void colloids_q_tensor_w_set(double w) {
 
   w_surface_ = w;
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  wall_w_set
+ *
+ *****************************************************************************/
+
+void wall_w_set(double w) {
+
+  w_surface_wall_ = w;
   return;
 }
 

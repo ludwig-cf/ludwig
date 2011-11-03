@@ -261,6 +261,8 @@ lc_anchoring_method none
 lc_wall_anchoring fixed
 lc_coll_anchoring normal
 lc_anchoring_strength 0.0
+lc_anchoring_strength_colloid 0.0
+lc_anchoring_strength_wall 0.0
 
 ###############################################################################
 #
