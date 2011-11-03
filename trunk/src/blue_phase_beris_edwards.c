@@ -626,10 +626,14 @@ static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
   double w;
   double qs[3][3], q0[3][3];
 
-  w = colloids_q_tensor_w();
+  w = colloids_q_tensor_w(); /* This is for colloid */
 
   index1 = coords_index(ic, jc, kc);
   status = site_map_get_status(ic - nhat[X], jc - nhat[Y], kc - nhat[Z]);
+  
+  /*Check if the status is wall */
+  if (status == BOUNDARY ) w = wall_w_get();
+
   phi_get_q_tensor(index1, qs);
   colloids_q_boundary(dn, qs, q0, status);
 
