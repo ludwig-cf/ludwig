@@ -183,14 +183,14 @@ The second term accounts for the rate of change due to local velocity gradients 
 \mathrm{Tr}({\mathbf Q W}),
 \label{eqn3}
 \end{eqnarray}
-where $\mathbf{Tr}$ denotes the tensorial trace, and
+where $\mathrm{Tr}$ denotes the tensorial trace, and
 ${\mathbf A}=({\mathbf W}+{\mathbf W}^T)/2$ and
 ${\boldsymbol \Omega}=({\mathbf W}-{\mathbf W}^T)/2$ are the symmetric and antisymmetric part of the velocity gradients, respectively. $\xi$ is a constant depending on the molecular details of the liquid crystal.
 Flow alignment occurs if $\xi \cos{2\theta}=\frac{3q_s}{2+q_s}$ has a real solution, where $\theta$ is the Leslie-angle: we select this case by setting $\xi=0.7$ in our simulations.
 ${\mathbf H}$ is the molecular field, which is a functional derivative of $\cal F$ that preserves the tracelessness of $\mathbf Q$:
 \begin{equation}
 {\bf H}=-\frac{\delta {\cal F}}{\delta {\bf Q}}+\frac{\bf I}{3}\,
-\mathbf{Tr} \left(\frac{\delta {\cal F}}{\delta {\bf Q}}\right).
+\mathrm{Tr} \left(\frac{\delta {\cal F}}{\delta {\bf Q}}\right).
 \label{eqn4}
 \end{equation}
 The rotational diffusion constant $\Gamma$ in Eq.~\ref{eqn2} is proportional
@@ -198,8 +198,9 @@ to the inverse of the rotational viscosity $\gamma_1=2 q_s^2/\Gamma$
 \cite{deGennes}.
 
 The time evolution of the fluid density and velocity are respectively governed
-by the continuity equation $\dot{\rho} = -\nabla_\alpha(\rho u_\alpha)$, and
-the following Navier-Stokes equation, 
+by the continuity equation
+$\partial_t \rho = -\partial_\alpha(\rho u_\alpha)$, and
+the following Navier-Stokes equation:
 \begin{eqnarray}
 \partial_t u_\alpha +\rho \,u_\beta \partial_\beta u_\alpha
 = \partial_\beta \Pi_{\alpha \beta}
