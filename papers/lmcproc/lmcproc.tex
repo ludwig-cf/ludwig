@@ -49,12 +49,27 @@
 \usepackage{float}
 \newcommand{\ex}[1]{\times10^{#1}}
 
+% TODO
+% OLIVER: Please check Olmsted reference: Mike says ``*not* in this paper''
+% at point of reference
+% DAVIDE (?): Page 6, sentence ``It is interesting to note that the
+% secondary flow in the BP does not match the direction...'' Mike says
+% ``incomprehensible''
+% ANYONE: Please add reference ''to explain strange p_0/rho bit in
+% equation 5''. 
+% OLIVER (lucky you): Please adjust to use standard rheological x,y,z
+% Cartesian coordinates. (y,z,x) at moment?
+
 \begin{document}
 
 \title[]{Confined Cubic Blue Phases under Shear}
 \author{O. Henrich$^{1}$, K. Stratford$^2$, D. Marenduzzo$^3$, P.V. Coveney$^1$ and M.E. Cates $^3$}
 
-\address{$^1$ Centre for Computational Science, University College London, UK\\$^2$ Edinburgh Parallel Computing Centre, The University of Edinburgh, UK\\$^3$ School of Physics and Astronomy, The University of Edinburgh, UK}
+\address{$^1$ Centre for Computational Science, Department of Chemistry,
+University College London, WC1H 0AJ, United Kingdom\\
+$^2$ Edinburgh Parallel Computing Centre and
+$^3$ School of Physics and Astronomy, The King's Buildings,
+The University of Edinburgh, EH9 3JZ, United Kingdom}
 \ead{o.henrich@ucl.ac.uk}
 
 \begin{abstract}
@@ -80,9 +95,9 @@ chaotic rearrangements under shear, irrespective of system size.
 \section{Introduction}
 % Put \label in argument of \section for cross-referencing
 %\section{\label{}}
-Cholesterics are liquid crystals in which the local director field spontaneously twist in thermodynamic equilibrium~\cite{deGennes}.
+Cholesterics are liquid crystals in which the local nematic director field spontaneously twist in thermodynamic equilibrium~\cite{deGennes}.
 The preferred configuration close to the isotropic boundary features twist around two perpendicular axes, as opposed to just one axis in the regular cholesteric state, and the corresponding deformation is denoted a ``double-twist cylinder''.
-As it is topologically impossible to patch continuously 3D space with double-twist cylinders, defects arise. These organise into a variety of regular periodic lattices, giving rise to the so-called cubic blue phases (BPs) \cite{Grebel:1984,Wright:1989}. There are two experimentally observed cubic blue phases, BPI and BPII (a third, BPIII, is thought to be amorphous~\cite{Henrich:2011a}).
+As it is topologically impossible to cover continuously 3D space with double-twist cylinders, defects arise. These organise into a variety of regular periodic lattices, giving rise to the so-called cubic blue phases (BPs) \cite{Grebel:1984,Wright:1989}. There are two experimentally observed cubic blue phases, BPI and BPII (a third, BPIII, is thought to be amorphous~\cite{Henrich:2011a}).
 
 BPs have been long considered as purely of academic interest due to their very narrow range of stability. This view has changed since the creation of
 polymer-stabilised and temperature-stabilised BPs~\cite{Kikuchi:2002,Coles:2005}, which has opened up the possibility of novel applications.
@@ -91,7 +106,7 @@ The kinetics of BP domain growth have been recently addressed in~\cite{Henrich:2
 very limited. The aim of this work is to address this issue by studying,
 for the first time, the response of confined BP samples to a shear flow.
 
-Flow in cholesterics is both strongly non-Newtonian and highly anisotropic.
+Flow response in cholesterics is both strongly non-Newtonian and highly anisotropic.
 For example, if a cholesteric helix is subjected to a Poiseuille flow along
 the helical axis, small pressure differences drive flow mainly through
 ``permeation'', first investigated by Helfrich \cite{Helfrich:1969}.
@@ -102,19 +117,22 @@ Rey \cite{Rey:1996a, Rey:1996b} studied shear in cholesterics oriented with the 
 Rey also studied cholesterics subjected to both steady flow and low frequency
 small amplitude oscillatory shear for different helix orientations
 \cite{Rey:2000, Rey:2002}. He found that splay/bend/twist deformations were
-excited when the helix was aligned along the flow direction, splay/bend
-deformation occured when the helix was aligned along the velocity gradient,
+excited when the helix was aligned along the flow direction; splay/bend
+deformation occured when the helix was aligned along the velocity gradient;
 but only twist deformations
 appeared when the helix wass aligned along the vorticity axis.
 
 Dupuis et al. \cite{Dupuis:2005} performed the first numerical investigation of BP rheology in Poiseuille flow, starting from equilibrium structures of BPI and BPII and a periodic array of doubly twisted cylinders.
 Under small forcing, the network opposed the flow giving rise to a significant increase in apparent viscosity.
 Upon increasing the forcing they found clear evidence of shear thinning.
-In the crossover region they predicted a novel oscillatory regime where the network continuously breaks and reforms as portions of the disclinations in the center of the channel move to neighboring cells and relink with the parts of the network left behind by the flow. Compared with the cholesteric case, the viscosity still decreases with forcing (the system shear thins) but much less than in cholesterics in the permeation mode, which is in agreement with experiments
+In the crossover region they predicted a novel oscillatory regime where the network continuously breaks and reforms as portions of the disclinations in the center of the channel move to neighboring cells and relink with the parts of the network left behind by the flow. Compared with the cholesteric case, the viscosity still decreases with forcing (the system shear thins) but much less than
+for cholesterics in the permeation mode, which is in agreement with experiments
 \cite{Zapotocky:1999, Ramos:2002}.
 
 This paper is organised as follows.
-In Sec.~\ref{sec_model} we introduce the Beris-Edwards model for hydrodynamics of liquid crystals, which is a generalisation of the Eriksen and Leslie's theory of nematodynamics~\cite{deGennes}.
+In Sec.~\ref{sec_model} we introduce the Beris-Edwards model for hydrodynamics
+of liquid crystals, which is a generalisation of the Ericksen and Leslie's
+theory of nematodynamics~\cite{deGennes}.
 In Sec.~\ref{sec_results} we describe the simulation methodology and the
 boundary conditions we applied.
 Results for a confined BPII in rectilinear shear flow are presented in
@@ -126,10 +144,14 @@ In Sec.~\ref{sec_bpi} we show corresponding results for BPI, which indicates fun
 
 Our approach is based on a well-established model for the hydrodynamics of
 cholesteric liquid crystals \cite{Beris:1994,Olmsted:1999}. The model
-describes their state in terms of a traceless, symmetric tensor order parameter ${\mathbf Q}({\mathbf r})$. 
-In the uniaxial approximation, the order parameter is given by $Q_{\alpha \beta}=\langle n_\alpha n_\beta - 1/3\; \delta_{\alpha\beta}\rangle$ with ${\mathbf n}$ the director field.
-Brackets indicate mesoscopic averaging over a large number of individual molecules.
-The largest eigenvalue of ${\mathbf Q}$, $0\le q_s\le\frac{2}{3}$ characterizes the local degree of orientational order.
+describes their state in terms of a traceless, symmetric tensor order
+parameter ${\mathbf Q}({\mathbf r})$. 
+In the uniaxial approximation, the order parameter is given by
+$Q_{\alpha \beta}= q_s ( n_\alpha n_\beta - 1/3\; \delta_{\alpha\beta})$
+with ${\mathbf n}$ the director field and $q_s$ the amplitude of nematic
+order. More generally,
+the largest eigenvalue of ${\mathbf Q}$, $0\le q_s\le\frac{2}{3}$
+characterizes the local degree of orientational order.
 The thermodynamic properties of the liquid crystal are determined by a free energy
 ${\cal F}$, whose density $f$ consists of a bulk contribution $f_b$ and a gradient part $f_g$, as follows,
 \begin{eqnarray}
@@ -137,7 +159,7 @@ f_b&=&\frac{A_0}{2}\left(1-\frac{\gamma}{3}\right) Q_{\alpha \beta}^2-\frac{A_0 
 f_g&=&\frac{K}{2}(\varepsilon_{\alpha\gamma\delta} \partial_\gamma Q_{\delta\beta}+2 q_0 Q_{\alpha \beta})^2+\frac{K}{2}(\partial_\beta Q_{\alpha \beta})^2.\label{FE}
 \end{eqnarray}
 The first term contains the bulk-free energy constant $A_0$ and the inverse temperature $\gamma$ which controls the magnitude of order.
-The second part quantifies the cost of elastic distortions, which are proportional to the elastic constant $K$ --
+The second part quantifies the cost of elastic distortions, which are proportional to the elastic constant $K$;
 we work for simplicity in the one-elastic constant approximation. The wavevector $q_0=2\pi/p_0$, where $p_0$ is the cholesteric pitch.
 The actual periodicity of the BP structure, $p$, does not need to be equal to $p_0$.
 The ``redshift'' $r=p/p_0$ is adjusted during the simulation by following a simple procedure similar to \cite{Alexander:2006}.
@@ -157,19 +179,27 @@ The first term on the left hand side of Eq.\ref{eqn2} is a material derivative, 
 The second term accounts for the rate of change due to local velocity gradients $W_{\alpha \beta}=\partial_\beta u_\alpha$,
 \begin{eqnarray}
 {\mathbf S}({\mathbf W}, {\mathbf Q}) &=& (\xi {\mathbf A} + {\boldsymbol \Omega})({\mathbf Q}+\frac{\mathbf I}{3})\nonumber\\
-& &\hspace*{-1.5cm}+ ({\mathbf Q}+\frac{\mathbf I}{3})(\xi {\mathbf A}  - {\boldsymbol \Omega})-2 \xi ({\mathbf Q}+\frac{\mathbf I}{3})Tr({\mathbf Q W}),
+& &\hspace*{-1.5cm}+ ({\mathbf Q}+\frac{\mathbf I}{3})(\xi {\mathbf A}  - {\boldsymbol \Omega})-2 \xi ({\mathbf Q}+\frac{\mathbf I}{3})
+\mathrm{Tr}({\mathbf Q W}),
 \label{eqn3}
 \end{eqnarray}
-where $Tr$ denotes the tensorial trace and ${\mathbf A}=({\mathbf W}+{\mathbf W}^T)/2$ and ${\boldsymbol \Omega}=({\mathbf W}-{\mathbf W}^T)/2$ are the symmetric and antisymmetric part of the velocity gradients, respectively. $\xi$ is a constant depending on the molecular details of the liquid crystal.
+where $\mathbf{Tr}$ denotes the tensorial trace, and
+${\mathbf A}=({\mathbf W}+{\mathbf W}^T)/2$ and
+${\boldsymbol \Omega}=({\mathbf W}-{\mathbf W}^T)/2$ are the symmetric and antisymmetric part of the velocity gradients, respectively. $\xi$ is a constant depending on the molecular details of the liquid crystal.
 Flow alignment occurs if $\xi \cos{2\theta}=\frac{3q_s}{2+q_s}$ has a real solution, where $\theta$ is the Leslie-angle: we select this case by setting $\xi=0.7$ in our simulations.
-${\mathbf H}$ is the molecular field, which is a functional derivative of $\cal F$ that preserves the tracelessness of $\mathbf Q$.
+${\mathbf H}$ is the molecular field, which is a functional derivative of $\cal F$ that preserves the tracelessness of $\mathbf Q$:
 \begin{equation}
-{\bf H}=-\frac{\delta {\cal F}}{\delta {\bf Q}}+\frac{\bf I}{3}\, Tr\left(\frac{\delta {\cal F}}{\delta {\bf Q}}\right).
+{\bf H}=-\frac{\delta {\cal F}}{\delta {\bf Q}}+\frac{\bf I}{3}\,
+\mathbf{Tr} \left(\frac{\delta {\cal F}}{\delta {\bf Q}}\right).
 \label{eqn4}
 \end{equation}
-The rotational diffusion constant $\Gamma$ is proportional to the inverse of the rotational viscosity $\gamma_1=2 q_s^2/\Gamma$.\\
-The time evolution of density and velocity are respectively governed by the continuity and the following 
-Navier-Stokes equation Eq.\ref{eqn6}, 
+The rotational diffusion constant $\Gamma$ in Eq.~\ref{eqn2} is proportional
+to the inverse of the rotational viscosity $\gamma_1=2 q_s^2/\Gamma$
+\cite{deGennes}.
+
+The time evolution of the fluid density and velocity are respectively governed
+by the continuity equation $\dot{\rho} = -\nabla_\alpha(\rho u_\alpha)$, and
+the following Navier-Stokes equation, 
 \begin{eqnarray}
 \partial_t u_\alpha +\rho \,u_\beta \partial_\beta u_\alpha
 = \partial_\beta \Pi_{\alpha \beta}
@@ -177,8 +207,8 @@ Navier-Stokes equation Eq.\ref{eqn6},
 +(1+3\frac{P_0}{\rho} )\partial_\mu u_\mu \delta_{\alpha \beta}\}. 
 \label{eqn6}
 \end{eqnarray}
-
-At low flow rates the fluid can be considered as incompressible, so that the last term on the righthand side of Eq.\ref{eqn6} can be safely neglected.
+At low flow rates the fluid can be considered as incompressible, so that the
+last term on the right hand side of Eq.~\ref{eqn6} remains small.
 $\eta$ is an isotropic background viscosity which is set to $\eta=0.8333$ in our case.
 The pressure tensor reads explicitly
 \begin{eqnarray}
@@ -187,14 +217,26 @@ The pressure tensor reads explicitly
 &+&Q_{\alpha \gamma}H_{\gamma \beta}-H_{\alpha \gamma} Q_{\gamma \beta}.
 \label{eqn7}
 \end{eqnarray}
-In the isotropic state ${\bf Q}\equiv 0$ and Eq.\ref{eqn7} is reduced to the scalar pressure, which is constant to a very good approximation.\\ 
-The system of coupled partial differential equations is solved by means of a hybrid scheme \cite{Marenduzzo:2007} that uses a lattice Boltzmann algorithm with predictor-corrector scheme for the continuity equation and Eq.\ref{eqn6} and a finite difference scheme for the equation of motion of the tensor order parameter Eq.\ref{eqn2}.
-More details on the algorithm can be found in \cite{Denniston:2001, Denniston:2004}.
+In the isotropic state ${\bf Q}\equiv 0$ and Eq.\ref{eqn7} is reduced to the
+scalar pressure which, in a system at rest, is constant to a very good
+approximation.
+ 
+The system of coupled partial differential equations Eqs.~\ref{eqn2}
+and~\ref{eqn6} is solved by means of a
+hybrid scheme \cite{Marenduzzo:2007}. This uses a lattice Boltzmann algorithm
+with predictor-corrector scheme for the continuity equation and
+Eq.~\ref{eqn6}, and a finite difference scheme for the equation of motion of
+the tensor order parameter Eq.\ref{eqn2}. More details on the algorithm can
+be found in \cite{Denniston:2001, Denniston:2004}.
 
 \section{Methodology and Results}\label{sec_results}
 
-In the following we present results from simulations of confined cubic blue phases in steady shear flow.
-Our system consists of $n_y\times n_z = 4\times4$ unit cells in y- and z-direction (flow and vorticity direction respectively) and a varying number $n_x$ of unit cells along a gap in x-direction (which is the flow gradient direction in our geometry).
+We present results from simulations of confined cubic blue
+phases in steady shear flow.
+Our system consists of $n_y\times n_z = 4\times4$ unit cells in $y$-direction
+and $z$-direction (flow and vorticity direction respectively) and a varying
+number $n_x$ of unit cells in $x$-direction (which is the flow gradient
+direction in our geometry).
 As is common in BP simulation work~\cite{Henrich:2010b,Henrich:2011a}, we initialised our simulations with analytical solutions that minimize the free energy functional Eq.\ref{FE} in the high-chirality limit, and equilibrated these (for 3000 LB timesteps) with periodic boundary conditions prior to starting the shear. During the equilibration run the optimal redshift $r$ was recalculated
 at every timestep.
 
@@ -209,9 +251,11 @@ A resolution of 32 lattice Boltzmann units (LBU) per pitch length
 (32 per unit cell) used for BPI.  
 This provided enough spatial resolution to track even complex rearrangements
 of the disclination networks in each case.
-A timestep and lattice spacing in LBU corresponds to $\sim 1 {\rm ns}$ and $\sim 10{\rm nm}$ in SI-units.
-The LBU of stress equals to about $10^8$~Pa. 
-More details about the conversion from LBU to SI-units can be found in \cite{Henrich:2010b,Henrich:2011a}.
+The timestep and lattice spacing in LBU corresponds roughly to
+$\sim 1 {\rm ns}$ and $\sim 10{\rm nm}$ in SI units. The LBU of stress
+is equal to about $10^8$~Pa. 
+More details about the conversion from LBU to SI units can be found in
+\cite{Henrich:2010b,Henrich:2011a}.
 
 \subsection{Blue Phase II}\label{sec_bpii}
 
@@ -230,7 +274,7 @@ $n_x=1 \mbox{ (yellow)}, n_x=2 \mbox{ (green)}, n_x=3 \mbox{ (red) and }
 n_x=4 \mbox{ (blue)}$. All cases show $n_y \times n_z =2 \times 2$ unit
 cells in flow and vorticity directions. The temperature and chirality are
 $\tau=-0.5$ and $\kappa=2$, respectively, where BPII is the equlibrium phase.
-The strain rate is $\dot{\gamma}=7.8125\ex{-5}$ in all cases.}
+The strain rate is $\dot{\gamma}=7.8125\ex{-5}$ LBU in all cases.}
 \label{fig1}
 \end{figure}
 
@@ -278,19 +322,19 @@ the page.  The reference state (blue, $\tau=-0.5, \kappa=2$), a high
 temperature state (red, $\tau=0.5, \kappa=2$) and a low chirality state
 (green, $\tau=-0.5, \kappa=1$) are shown; BPII is metastable in the later
 two parameter sets.
-The strain rate is $\dot{\gamma}=7.8125\ex{-5}$ in all three cases.
+The strain rate is $\dot{\gamma}=7.8125\ex{-5}$ LBU in all three cases.
 The pictures show a central cubic section consisting of 8 unit cells cut
 from a larger simulation with $n_x=4$.}
 \label{fig2}
 \end{figure*}
 
-The speed of the network in the vorticity direction depends on the
+The speed of the network migration in the vorticity direction depends on the
 thermodynamic state of the blue phase.
 A comparison between the state from Fig.~\ref{fig1} with a
 ``high temperature'' state at $\tau=0.5, \kappa=2$ and a
 ``low chirality state'' at $\tau=-0.5, \kappa=1$ is shown in
 Fig.~\ref{fig2}. Note that in both these states BPII is a metastable phase. 
-The images in Fig.~\ref{fig2} show a sequence of initially overlapping
+Fig.~\ref{fig2} shows a sequence of initially overlapping
 disclination networks which separate during the course of the simulation.
 The network moves fastest in the high temperature state, is slower in the
 reference state and slower still in the low chirality state.
@@ -305,32 +349,43 @@ from one to four unit cells.}
 \end{figure*}
 
 The total network displacement along the vorticity direction is more than
-a unit cell in $10^5$ timesteps for the ``high-temperature'' state.
+a unit cell in $10^5$ timesteps for the high temperature state.
 Typical average and maximum values of the scalar order parameter are
 $\bar{q}_s=0.338$, $q_{s,max}=0.383$ (low chirality state), 
 $\bar{q}_s=0.206$, $q_{s,max}=0.320$ (high temperature state) and
 $\bar{q}_s=0.304$, $q_{s,max}=0.408$ (reference state, in Fig.~\ref{fig1}).
-The average scalar order parameter of the ``low-chirality'' state is about
-$10\%$ higher compared with the reference state. The  relative differerence
+The average scalar order parameter of the low chirality state is about
+$10\%$ higher compared than reference state. The  relative differerence
 between the mean and the maximum value is about a factor $2.5$ smaller.
-We propose that the speed of the networks is different because permeation, which should be required for the ``stick-slip'' motion, may occur more easily in states with less order (``high-temperature'' state) and gentler spatial variation (``low-chirality'' state). Furthermore, the uneven, ``stick-slip'' nature of the network motion is possibly due to the anchoring at the boundaries which prevents network displacements at the wall. 
+We propose that the speed of network migration is different because
+permeation, which should be required for the stick-slip motion, may occur
+more easily in states with less order (high temperature state) and gentler
+spatial variation (low chirality state). Furthermore, the uneven stick-slip
+nature of the network motion is possibly due to the anchoring at the
+boundaries which prevents network displacements at the wall. 
 
 Fig. \ref{fig3} shows the spatially averaged shear stress $\langle \Pi_{xy}\rangle$ versus time, in the reference state and for different gap sizes.
 For gaps accommodating only one unit cell a regular periodic pattern emerges shortly after a transient start-up phase.
 Every cycle is related to a break-up and reformation of the network.
-The time-average in the steady state is about $\Pi_{xy}\simeq5.62\ex{-5}$ in LBU and yields an apparent viscosity $\eta_{app}=(1 +\Pi_{xy}/\eta\dot{\gamma})\simeq 1.86$. 
-When the gap contains $n_x\ge2$ unit cells, the average stress shows less regular oscillations, and fluctuates around a mean value which is about $10-15\%$ smaller, roughly $\eta_{app}=1.65$ for $n_x=4$. The fact that the average stress stabilises for $n_x\ge2$ indicates that bulk flow behaviour should occur for those thicknesses, but not in the single unit cell case.
-Different shear rates lead to similar generic features.
+The time-average in the steady state is about $\Pi_{xy}\simeq5.62\ex{-5}$
+in LBU and yields an apparent viscosity
+$\eta_{app}=(1 +\Pi_{xy}/\eta\dot{\gamma})\simeq 1.86$~LBU. This is
+significantly than our baseline Newtonian viscosity $\eta = 0.83$.
+When the gap contains $n_x\ge2$ unit cells, the average stress shows
+less regular oscillations, and fluctuates around a mean value which is
+about $10-15\%$ smaller, roughly $\eta_{app}=1.65$ for $n_x=4$. The fact
+that the average stress stabilises for $n_x\ge2$ indicates that bulk flow
+behaviour is already reached for those thicknesses, but not in the single
+unit cell case. Different shear rates lead to similar generic features.
 
 \subsection{Blue Phase I}\label{sec_bpi}
 
-We now compare and contrast the results just obtained for BPII with those
-pertaining to the rheology of blue phase I. In equilibrium, the topology
+We now compare and contrast the results obtained for BPII with those
+pertaining to the rheology of BPI. In equilibrium, the topology
 of the disclination network in BPI is very different from that of BPII.
-The main difference is presence of junction points where four disclination
-lines of topological charge -1/2 meet in BPII; no such junctions occur in BPI.
-
-In the following, we give representative results for BPI at $\tau=-0.5$
+The main difference is presence in BPII of junction points where four
+disclination lines of topological charge -1/2 meet; no such junctions
+occur in BPI. We give representative results for BPI at $\tau=-0.5$
 and $\kappa=1$, where it is the equilibrium phase.
 Fig.~\ref{fig4} shows the disclination network at timestep $t=4\ex{5}$
 for different gap sizes, with the viewing direction again chosen along
@@ -377,11 +432,18 @@ confined cubic blue phases in simple shear flow.
 The rheological behaviour of BPI and BPII was found to be strikingly different.
 
 Our simulations show that the disclination network of BPII continuously breaks and reforms while the network undergoes an affine deformation under shear. This process leads to an oscillatory shear stress in time, although the oscillations are only regular for gap sizes of a single unit cell across the flow gradient direction, where anchoring affects the physics of the system greatly, in agreement with recent simulations of quiescent BP networks \cite{Fukuda:2010a, Fukuda:2010b, Ravnik:2011b}.
-For larger gap sizes of two and more unit cells a ``stick-slip'' motion of the network arises, along the vorticity direction. The associated flow is not directly linked to mass flow, and is therefore somewhat akin to permeation flow in cholesterics. The average speed of this network translation depends on the thermodynamic parameters, and appears to be higher for higher temperature and lower chirality. 
+For larger gap sizes of two and more unit cells a ``stick-slip'' motion of
+the network arises, along the vorticity direction. The associated network
+migration is not directly linked to mass flow, and is therefore somewhat
+akin to permeation flow in cholesterics. The average speed of this network
+migration depends on the thermodynamic parameters, and appears to be higher
+for higher temperature and lower chirality. 
 
 In contrast to BPII, BPI shows no regular break-up and relinking of the unit cells and its disclination network undergoes chaotic rearrangements under shear.
-This behaviour was found for all gap sizes, and may be linked to the largely different topology in the equilibrium disclination patterns in BPI and BPII.
-We will adress the rheology of BPI more in detail in an upcoming publication \cite{Henrich:2012}.  
+This behaviour was found for all gap sizes, and may be linked to the
+strongly different topology in the equilibrium disclination patterns in
+BPI and BPII. We will adress the rheology of BPI more in detail in an
+upcoming publication \cite{Henrich:2012}.  
 
 % If you have acknowledgments, this puts in the proper section head.
 \ack
