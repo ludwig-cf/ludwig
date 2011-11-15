@@ -52,11 +52,6 @@
 % TODO
 % OLIVER: Please check Olmsted reference: Mike says ``*not* in this paper''
 % at point of reference
-% DAVIDE (?): Page 6, sentence ``It is interesting to note that the
-% secondary flow in the BP does not match the direction...'' Mike says
-% ``incomprehensible''
-% ANYONE: Please add reference ''to explain strange p_0/rho bit in
-% equation 5''. 
 % OLIVER (lucky you): Please adjust to use standard rheological x,y,z
 % Cartesian coordinates. (y,z,x) at moment?
 
@@ -205,15 +200,18 @@ the following Navier-Stokes equation:
 \partial_t u_\alpha +\rho \,u_\beta \partial_\beta u_\alpha
 = \partial_\beta \Pi_{\alpha \beta}
 +\eta\, \partial_\beta \{ \partial_\alpha u_\beta + \partial_\beta u_\alpha
-+(1+3\frac{P_0}{\rho} )\partial_\mu u_\mu \delta_{\alpha \beta}\}. 
++(1+3\frac{\partial P_0}{\partial\rho} )\partial_\mu u_\mu \delta_{\alpha \beta}\}. 
 \label{eqn6}
 \end{eqnarray}
+The final term in Eq.~\ref{eqn6} arises from the Chapman-Enskog expansion
+of the LB equations \cite{Denniston:2001}.
 At low flow rates the fluid can be considered as incompressible, so that the
 last term on the right hand side of Eq.~\ref{eqn6} remains small.
 $\eta$ is an isotropic background viscosity which is set to $\eta=0.8333$ in our case.
 The pressure tensor reads explicitly
 \begin{eqnarray}
-\Pi_{\alpha \beta}&=&P_0-\xi H_{\alpha \gamma}\left(Q_{\gamma \beta} +\frac{1}{3} \delta_{\gamma \beta}\right)-\xi \left(Q_{\alpha \gamma} +\frac{1}{3} \delta_{\alpha \gamma}\right) H_{\gamma \beta}\nonumber\\
+\Pi_{\alpha \beta}&=&P_0 \delta_{\alpha\beta}
+-\xi H_{\alpha \gamma}\left(Q_{\gamma \beta} +\frac{1}{3} \delta_{\gamma \beta}\right)-\xi \left(Q_{\alpha \gamma} +\frac{1}{3} \delta_{\alpha \gamma}\right) H_{\gamma \beta}\nonumber\\
 &+& 2 \xi  \left(Q_{\alpha \beta} +\frac{1}{3} \delta_{\alpha \beta}\right) Q_{\gamma \nu} H_{\gamma \nu}-\partial_\alpha Q_{\gamma \nu} \frac{\delta{\cal F}}{\delta \partial_{\beta} Q_{\gamma \nu}}\nonumber\\
 &+&Q_{\alpha \gamma}H_{\gamma \beta}-H_{\alpha \gamma} Q_{\gamma \beta}.
 \label{eqn7}
@@ -308,9 +306,6 @@ Hence the ``stick-slip'' motion is related to the chiral nature of the helix.
 This phenomenon may bear some similarity to the travelling wave motion in
 cholesterics sheared along the vorticity direction 
 below a critical Ericksen number \cite{Rey:1996a, Rey:1996b}.
-It is interesting to note that the secondary flow in the BP
-does {\em not} match the direction of the ``stick-slip'' motion of the network, which is then not connected to mass flow
-(in this respect this phenomenon is close to a permeation flow).
 
 \begin{figure*}[t]
 \centering
@@ -433,8 +428,8 @@ confined cubic blue phases in simple shear flow.
 The rheological behaviour of BPI and BPII was found to be strikingly different.
 
 Our simulations show that the disclination network of BPII continuously breaks and reforms while the network undergoes an affine deformation under shear. This process leads to an oscillatory shear stress in time, although the oscillations are only regular for gap sizes of a single unit cell across the flow gradient direction, where anchoring affects the physics of the system greatly, in agreement with recent simulations of quiescent BP networks \cite{Fukuda:2010a, Fukuda:2010b, Ravnik:2011b}.
-For larger gap sizes of two and more unit cells a ``stick-slip'' motion of
-the network arises, along the vorticity direction. The associated network
+For larger gap sizes (two and more unit cells) a ``stick-slip'' motion of
+the network arises along the vorticity direction. The associated network
 migration is not directly linked to mass flow, and is therefore somewhat
 akin to permeation flow in cholesterics. The average speed of this network
 migration depends on the thermodynamic parameters, and appears to be higher
