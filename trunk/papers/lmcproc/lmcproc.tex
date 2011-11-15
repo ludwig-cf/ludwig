@@ -49,12 +49,6 @@
 \usepackage{float}
 \newcommand{\ex}[1]{\times10^{#1}}
 
-% TODO
-% OLIVER: Please check Olmsted reference: Mike says ``*not* in this paper''
-% at point of reference
-% OLIVER (lucky you): Please adjust to use standard rheological x,y,z
-% Cartesian coordinates. (y,z,x) at moment?
-
 \begin{document}
 
 \title[]{Confined Cubic Blue Phases under Shear}
@@ -115,7 +109,7 @@ small amplitude oscillatory shear for different helix orientations
 excited when the helix was aligned along the flow direction; splay/bend
 deformation occured when the helix was aligned along the velocity gradient;
 but only twist deformations
-appeared when the helix wass aligned along the vorticity axis.
+appeared when the helix was aligned along the vorticity axis.
 
 Dupuis et al. \cite{Dupuis:2005} performed the first numerical investigation of BP rheology in Poiseuille flow, starting from equilibrium structures of BPI and BPII and a periodic array of doubly twisted cylinders.
 Under small forcing, the network opposed the flow giving rise to a significant increase in apparent viscosity.
@@ -138,7 +132,7 @@ In Sec.~\ref{sec_bpi} we show corresponding results for BPI, which indicates fun
 \section{Model}\label{sec_model}
 
 Our approach is based on a well-established model for the hydrodynamics of
-cholesteric liquid crystals \cite{Beris:1994,Olmsted:1999}. The model
+cholesteric liquid crystals \cite{Beris:1994}. The model
 describes their state in terms of a traceless, symmetric tensor order
 parameter ${\mathbf Q}({\mathbf r})$. 
 In the uniaxial approximation, the order parameter is given by
@@ -232,11 +226,11 @@ be found in \cite{Denniston:2001, Denniston:2004}.
 
 We present results from simulations of confined cubic blue
 phases in steady shear flow.
-Our system consists of $n_y\times n_z = 4\times4$ unit cells in $y$-direction
+Our system consists of $n_x\times n_z = 4\times4$ unit cells in $x$-direction
 and $z$-direction (flow and vorticity direction respectively) and a varying
-number $n_x$ of unit cells in $x$-direction (which is the flow gradient
+number $n_y$ of unit cells in $y$-direction (which is the flow gradient
 direction in our geometry).
-As is common in BP simulation work~\cite{Henrich:2010b,Henrich:2011a}, we initialised our simulations with analytical solutions that minimize the free energy functional Eq.\ref{FE} in the high-chirality limit, and equilibrated these (for 3000 LB timesteps) with periodic boundary conditions prior to starting the shear. During the equilibration run the optimal redshift $r$ was recalculated
+As is common in BP simulation work~\cite{Henrich:2011a,Henrich:2010b}, we initialised our simulations with analytical solutions that minimize the free energy functional Eq.\ref{FE} in the high-chirality limit, and equilibrated these (for 3000 LB timesteps) with periodic boundary conditions prior to starting the shear. During the equilibration run the optimal redshift $r$ was recalculated
 at every timestep.
 
 Shear flow was then started by applying shear boundary conditions to the LB distribution functions as in~\cite{Denniston:2004}. For ${\mathbf Q}$, the equilibrated order parameter was advected on the top and bottom boundary, according to the imposed wall velocities. Periodic boundary conditions were retained along the flow direction and the direction of vorticity.
@@ -244,7 +238,7 @@ This set-up is similar to the one Dupuis et al. used to simulate Poiseuille flow
 During shear flow the unit cell size was kept fixed and a constant redshift equal to the value at the end of the equilibration protocol was assumed.
 
 The total number of unit cells in our simulations of both BPI and BPII
-was $n_x\times n_y \times n_z= \{1,2,3,4\} \times 4\times 4$.
+was $n_x\times n_y \times n_z= 4 \times \{1,2,3,4\} \times 4$.
 A resolution of 32 lattice Boltzmann units (LBU) per pitch length
 (16 per unit cell) was used for BPII, and 64 LBU per pitch length
 (32 per unit cell) used for BPI.  
@@ -254,7 +248,7 @@ The timestep and lattice spacing in LBU corresponds roughly to
 $\sim 1 {\rm ns}$ and $\sim 10{\rm nm}$ in SI units. The LBU of stress
 is equal to about $10^8$~Pa. 
 More details about the conversion from LBU to SI units can be found in
-\cite{Henrich:2010b,Henrich:2011a}.
+\cite{Henrich:2011a,Henrich:2010b}.
 
 \subsection{Blue Phase II}\label{sec_bpii}
 
@@ -269,8 +263,8 @@ snapshots of a subset of the entire disclination network in a system
 with walls at top and bottom, and the flow direction into/out of the
 page. The different number of unit cells in the velocity gradient
 direction have been superposed and are shown in different colours:
-$n_x=1 \mbox{ (yellow)}, n_x=2 \mbox{ (green)}, n_x=3 \mbox{ (red) and }
-n_x=4 \mbox{ (blue)}$. All cases show $n_y \times n_z =2 \times 2$ unit
+$n_y=1 \mbox{ (yellow)}, n_y=2 \mbox{ (green)}, n_y=3 \mbox{ (red) and }
+n_y=4 \mbox{ (blue)}$. All cases show $n_x \times n_z =2 \times 2$ unit
 cells in flow and vorticity directions. The temperature and chirality are
 $\tau=-0.5$ and $\kappa=2$, respectively, where BPII is the equlibrium phase.
 The strain rate is $\dot{\gamma}=7.8125\ex{-5}$ LBU in all cases.}
@@ -289,14 +283,14 @@ BPII disclination network. Similar oscillations have been previously reported fo
 BPs in Poiseuille flow, with a gap of one unit cell size \cite{Dupuis:2005}.
 
 It is interesting to compare the results for different gap sizes.
-For $n_x=1$ we observe that the BPII-network is slightly deformed with
+For $n_y=1$ we observe that the BPII-network is slightly deformed with
 respect to the quiescent state, but always reforms at the same position.
-For $n_x > 1$, the BPII network distorts more under the same shear rate, 
+For $n_y > 1$, the BPII network distorts more under the same shear rate, 
 suggesting that the structure within the sample is strongly affected by
 the anchoring at the boundaries.
 Interestingly, when the sample is thicker than one unit cell, a movement
-of the network in the negative vorticity direction arises
-which is not observed for $n_x=1$.
+of the network in the positive vorticity direction arises
+which is not observed for $n_y=1$.
 This network motion does not proceed at a constant speed, but rather
 proceeds in a ``stick-slip'' fashion: elastic stresses first slowly build up,
 and are then quickly released as the network ``slips'' along the vorticity
@@ -320,7 +314,7 @@ temperature state (red, $\tau=0.5, \kappa=2$) and a low chirality state
 two parameter sets.
 The strain rate is $\dot{\gamma}=7.8125\ex{-5}$ LBU in all three cases.
 The pictures show a central cubic section consisting of 8 unit cells cut
-from a larger simulation with $n_x=4$.}
+from a larger simulation with $n_y=4$.}
 \label{fig2}
 \end{figure*}
 
@@ -337,7 +331,7 @@ reference state and slower still in the low chirality state.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.75\textwidth]{stress_bp2_fbc.pdf}
+\includegraphics[width=0.725\textwidth]{stress_bp2_fbc.pdf}
 \caption{BPII: ensemble-averaged shear stress $\langle \Pi_{xy}\rangle$
 versus time in the reference state ($\tau=-0.5, \kappa=2$) for gaps ranging
 from one to four unit cells.}
@@ -367,10 +361,10 @@ The time-average in the steady state is about $\Pi_{xy}\simeq5.62\ex{-5}$
 in LBU and yields an apparent viscosity
 $\eta_{app}=(1 +\Pi_{xy}/\eta\dot{\gamma})\simeq 1.86$~LBU. This is
 significantly than our baseline Newtonian viscosity $\eta = 0.83$.
-When the gap contains $n_x\ge2$ unit cells, the average stress shows
+When the gap contains $n_y\ge2$ unit cells, the average stress shows
 less regular oscillations, and fluctuates around a mean value which is
-about $10-15\%$ smaller, roughly $\eta_{app}=1.65$ for $n_x=4$. The fact
-that the average stress stabilises for $n_x\ge2$ indicates that bulk flow
+about $10-15\%$ smaller, roughly $\eta_{app}=1.65$ for $n_y=4$. The fact
+that the average stress stabilises for $n_y\ge2$ indicates that bulk flow
 behaviour is already reached for those thicknesses, but not in the single
 unit cell case. Different shear rates lead to similar generic features.
 
@@ -386,7 +380,7 @@ and $\kappa=1$, where it is the equilibrium phase.
 Fig.~\ref{fig4} shows the disclination network at timestep $t=4\ex{5}$
 for different gap sizes, with the viewing direction again chosen along
 the flow direction.
-For clarity we only show $n_x \times n_y \times n_z=\{1,2,3,4\}\times1\times2$
+For clarity we only show $n_x \times n_y \times n_z= 1 \times \{1,2,3,4\} \times 2$
 unit cells.
 
 \begin{figure*}[h]
@@ -404,7 +398,7 @@ unit cells.
 
 \begin{figure*}[h]
 \centering
-\includegraphics[width=0.75\textwidth]{stress_bp1_fbc.pdf}
+\includegraphics[width=0.725\textwidth]{stress_bp1_fbc.pdf}
 \caption{BPI: ensemble-averaged shear stress $\langle \Pi_{xy}\rangle$
 versus time in the reference state ($\tau=-0.5, \kappa=1$) for gaps
 ranging from one to four unit cells.}
