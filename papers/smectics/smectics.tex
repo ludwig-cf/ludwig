@@ -22,7 +22,6 @@
 \usepackage{fancyhdr}
 \usepackage{bm}
 \usepackage{float}
-%\usepackage{rsc}
 
 \pagestyle{fancy}
 
@@ -97,7 +96,7 @@ First published on the web Xth XXXXXXXXXX 200X}}}
 %Please use \dag to cite the ESI in the main text of the article.
 %If you article does not have ESI please remove the the \dag symbol from the title and the above footnotetext.
 
-\footnotetext{\textit{$^{a}$ Centre for Computational Science, University College London, INSERT ADDRESS HERE, UK}}
+\footnotetext{\textit{$^{a}$ Centre for Computational Science, University College London, 20 Gordon Street, London WC1H 0AJ, UK}}
 \footnotetext{\textit{$^{b}$ Edinburgh Parallel Computing Centre, School of Physics and Astronomy, University of Edinburgh, JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK}}
 \footnotetext{\textit{$^{c}$ SUPA, School of Physics and Astronomy, University of Edinburgh, JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK}}
 
@@ -105,9 +104,6 @@ First published on the web Xth XXXXXXXXXX 200X}}}
 %additional addresses can be cited as above using the lower-case letters, c, d, e... If all authors are from the same address, no letter is required
 
 %\footnotetext{\ddag~Additional footnotes to the title and authors can be included \emph{e.g.}\ `Present address:' or `These authors contributed equally to this work' as above using the symbols: \ddag, \textsection, and \P. Please place the appropriate symbol next to the author's name and include a \texttt{\textbackslash footnotetext} entry in the the correct place in the list.}
-
-
-SADLY, I THINK IT WOULD BE BEST TO REWRITE THIS PAPER WITH THE FLOW DIRECTION ALONG X, THE GRADIENT ALONG Y AND THE VORTICITY ALONG Z AS IS COMMONLY USED IN THE RHEOLOGICAL LITERATURE! I HAVE NOT STARTED TO MAKE THIS CHANGE AS IT WOULD CONFUSE THINGS TOO MUCH AND THE JOB REQUIRES CARE. ALSO THE CHEMICAL PRESSURE AND THE STRESS HAVE OPPOSITE SIGNS YET THE FIGURES SHOW THEM HAVING THE SAME SIGN. WHAT HAS HAPPENED?
 
 \section{Introduction}
 
@@ -117,18 +113,18 @@ such as electronic displays and sensors.
 The flow behaviour (rheology) of smectic liquid crystals affects many industrial and manufacturing processes; conversely, rheological measurements provide important probes of their macroscopic material properties.
 For a simple fluid the response to steady applied stress is quantified in the linear (Newtonian) regime by a single viscosity. Lamellar phases are anisotropic, and thus in principle have several viscosities as well as an elastic modulus related to layer compression. However, these linear response parameters become somewhat irrelevant when defects are present: unless their density is very low, the defects soon dominate the stress. Moreover, since the defect pattern is strongly dependent on flow rate, the rheology is generically nonlinear. On shearing, the effective viscosity (ratio of shear stress $\sigma_{xy}$  to strain rate $\dot\gamma$) may either increase or decrease, corresponding
 to shear thickening or shear thinning behaviour [Larson book]. Also if a defect texture is present in the system at rest, this may show a viscosity divergence at small $\dot \gamma$ --- i.e., a yield stress.
-Finally, in common with other complex fluids, lamellar phases can undergo transitions into heterogeneous states, for instance to form shear bands (layers of unequal $\sigma_{xy}$ or $\dot\gamma$) [P D Olmsted, Rheologica Acta 47, 283-300 (2008)]. 
+Finally, in common with other complex fluids, lamellar phases can undergo transitions into heterogeneous states, for instance to form shear bands (layers of unequal $\sigma_{xy}$ or $\dot\gamma$) \cite{Olmsted08}. 
 
 Lamellar liquid crystals provide an important paradigm for non-Newtonian fluids in which the microstructure of the material is strongly coupled to the flow. Crucially, the defect texture may depend on past history -- for instance, the strain rate in any prior flow that was suddenly switched off. This rheological hysteresis means that the precise flow protocol, including any pre-shearing applied prior to starting the experiment, needs to be specified. Such hysteresis can arise in polydomain liquid crystals of various types (not just smectics) such as nematics in which the existence and evolution of regions with misaligned directors creates rheological nonlinearity. A closely related example is the so-called `region I flow' in polymeric nematic liquid crystals, where it is thought that a defect network arises, with enhanced viscosity, but with
-marked shear thinning as this structure is sheared out at high flow rates [Larson book -- or Davide to supply references]. 
+marked shear thinning as this structure is sheared out at high flow rates \cite{Larson}. 
 
 An intriguing complication in addressing the dynamics of layered systems
 is permeation,
 where individual molecules in the fluid translate while keeping the
 layerwise order intact. In steady state, permeation leads to increased dissipation
-and hence to a large viscosity in any geometry where flow necessitates such motion [deGennes book]. (A well-known example of permeation flow
+and hence to a large viscosity in any geometry where flow necessitates such motion \cite{deGennes}. (A well-known example of permeation flow
 is found in cholesterics which are sheared or pushed along the direction
-of the cholesteric helix.) Permeation is often involved in defect motion such as the growth or shrinkage of incomplete layers at the sites of edge dislocations, and may also be implicated in other forms of topological reconstruction. Such reconstruction arises under shear, sometimes to an extreme degree, for instance in the shear-induced transition from an ordered lamellar stack to an onion phase in lyotropic smectics \cite{Diat93,Panizza96,Iwashita07}[ADD; M Gradzielski, JPCM 15, R655-R697 (2003)]. (The onion phase comprises a space-filling packing of multilayer vesicles; under some conditions similar defect textures can arise without shear \cite{Gomati87,Boltenhagen92,Fournier94,Ramos04}.) The mechanism underlying such global reconstructions under shear of the layer organization remains unclear. Most theoretical predictions have focussed on buckling and other instabilities of perfectly ordered smectics as the initial trigger for onion formation [A G Zilman and R Granek, EPJB 11, 593-608 (1999), L Courbin, J P Delville, J Rouch and P Panizza, PRL 89, 148305 (2002)]\cite{Guo2002,Soddemann2004, Stewart2009} but the pathway may also strongly involve the physics of defect motion [J Zipfel, J Berghause, P Lindner, W Richtering, J Phys Chem B 103, 2841-2849 (1999), A Leon, D Bonn, J Meunier, A Al-Kahlwaji, O Greffer, H Kellay, PRL 84, 1355-1338 (2000)]. Although we do not see onions in the simulations reported here, in two dimensions we do see a transition from a well ordered phase to a defect-rich phase, whose possible link to onion formation deserves to be explored in future work. Another interesting avenue connects with the observation, in block copolymers and some lyotropic surfactant systems, of a shear-induced
+of the cholesteric helix.) Permeation is often involved in defect motion such as the growth or shrinkage of incomplete layers at the sites of edge dislocations, and may also be implicated in other forms of topological reconstruction. Such reconstruction arises under shear, sometimes to an extreme degree, for instance in the shear-induced transition from an ordered lamellar stack to an onion phase in lyotropic smectics \cite{Diat93,Panizza96,Iwashita07,Gradzielski03}. (The onion phase comprises a space-filling packing of multilayer vesicles; under some conditions similar defect textures can arise without shear \cite{Gomati87,Boltenhagen92,Fournier94,Ramos04}.) The mechanism underlying such global reconstructions under shear of the layer organization remains unclear. Most theoretical predictions have focussed on buckling and other instabilities of perfectly ordered smectics as the initial trigger for onion formation \cite{Zilman99,Courbin02,Guo2002,Soddemann2004, Stewart2009} but the pathway may also strongly involve the physics of defect motion \cite{Zipfel99, Leon00}. Although we do not see onions in the simulations reported here, in two dimensions we do see a transition from a well ordered phase to a defect-rich phase, whose possible link to onion formation deserves to be explored in future work. Another interesting avenue connects with the observation, in block copolymers and some lyotropic surfactant systems, of a shear-induced
 phase transitions from a homogeneous state into to ordered phases
 like the lamellar one~\cite{Cates89,Koppi93,Fredrickson94}. However, theory suggests that thermal noise (causing local fluctuations about the mean state of order) play a central role in this transition~\cite{Cates89}. In the present work we focus on the simplest case in which such thermal fluctuations are ignored, and the time evolution of the microstructure is deterministic (though certainly chaotic and unpredictable
 once defects are present).
@@ -146,17 +142,16 @@ computational constraints have meant almost all these results are limited
 to two dimensions. Even in 2D, the number of layers simulated has often not been large enough to meaningfully explore the dynamics of defect textures which can have a controlling influence on rheology. Moreover, for technical reasons a number of these studies have used boundary conditions (BCs) that are not optimal if one wants to predict the behaviour of bulk samples, for example using solid moving walls to drive the fluid flow rather than periodic BCs. This choice does not minimize finite size effects and, when combined with lattice Boltzmann algorithms, severely limits the shear rates attainable in large systems. Moreover, solid walls have sometimes been used in conjunction with periodic BCs for the order parameter \cite{Xu06b} -- a somewhat inconsistent combination that make it difficult to disentangle bulk and boundary effects. 
 
 In this work, we try to overcome these technical obstacles, presenting systematic results for large two dimensional simulations with fully periodic boundary conditions.
-Guided by those results, we additionally report some very large three dimensional simulations at selected points in the parameter space. These 3D simulations are, we believe, of unprecedented scale for lamellar phases, although even larger ones have recently been used to address the rheology of cubic liquid crystals~\cite{Saksena09}. [ADD: R S Saksena and P V Coveney, Proc. Roy. Soc. A. 465, 1977-2002 (2009)).]
+Guided by those results, we additionally report some very large three dimensional simulations at selected points in the parameter space. These 3D simulations are, we believe, of unprecedented scale for lamellar phases, although even larger ones have recently been used to address the rheology of cubic liquid crystals \cite{Saksena09a, Saksena09b}.
 
-We describe smectics below via a widely-used free energy functional [G Gompper and M Schick, Phase Transitions and Critical Phenomena vol 16, C Domb and J L Lebowitz, Eds., Academic Press NY 1994; then cite all the lamellar simulation papers using this or similar functionals]. This provides a robust generic framework for addressing lamellar ordering without being tied to any specific class of materials (although we do become more specific when estimating suitable parameters for the simulations). The free energy is formulated in terms of a scalar order parameter $\phi({\bf r})$. This can be viewed as describing a composition variable in a binary fluid system stabilized by added amphiphiles; one can then speak of alternating layers of fluid and interfaces between these layers. A similar interpretation applies to block copolymers where the composition variable describes the relative local density of the two blocks. However, the same order parameter could equally describe the local number density of the midpoints of a rodlike mesogenic molecule (measured relative to the mean) which can develop a periodic density wave that represents the smectic state.
+We describe smectics below via a widely-used free energy functional \cite{Gompper, Gonnella97, Xu06b, Cencini07}. This provides a robust generic framework for addressing lamellar ordering without being tied to any specific class of materials (although we do become more specific when estimating suitable parameters for the simulations). The free energy is formulated in terms of a scalar order parameter $\phi({\bf r})$. This can be viewed as describing a composition variable in a binary fluid system stabilized by added amphiphiles; one can then speak of alternating layers of fluid and interfaces between these layers. A similar interpretation applies to block copolymers where the composition variable describes the relative local density of the two blocks. However, the same order parameter could equally describe the local number density of the midpoints of a rodlike mesogenic molecule (measured relative to the mean) which can develop a periodic density wave that represents the smectic state.
 
 The governing equations in our model are a convection-diffusion equation
 for the scalar order parameter, and the Navier-Stokes equation describing
 the hydrodynamics of fluid flow. The stress tensor for the fluid contains not only a Newtonian viscous term but extra contributions arising from local deviations of the order parameter from its state of least free energy. Diffusive relaxation of the order parameter then causes additional dissipation, resulting in an effective viscosity that can be much higher than the intrinsic Newtonian contribution.
 Our dynamical equations are solved using a combination of a finite
 difference scheme for the convection-diffusion equation, and the
-lattice Boltzmann method (LBM)~\cite{Succi} for the Navier-Stokes equation
-[CITE OUR PREVIOUS PAPERS USING HYBRID LB, ALSO THAT OF GONELLA ET AL WHO FIRST USED IT FOR SMECTICS].
+lattice Boltzmann method (LBM)~\cite{Succi} for the Navier-Stokes equation \cite{Marenduzzo07, Henrich10a,  Henrich10b, Henrich11a,Gonnella97}.
 We use sliding periodic (Lees-Edwards) boundary conditions for
 both the convection-diffusion and Navier-Stokes equations. Note that while these boundary conditions impose a fixed integrated strain rate across the whole system they do not impose a uniform strain rate locally; shear bands can therefore arise if the system so chooses. (As it happens, we do not observe shear bands in the range of shear rates we address here.)
 
@@ -169,14 +164,14 @@ both the convection-diffusion and Navier-Stokes equations. Note that while these
 
 %Copolymer consist of type-A polymers covalently bonded to type-B polymers and can self-organise in a variety of phases, ranging from spherical phases over hexagonal cylindrical phases to lamellar phases or bicontinuous gyroid phases \cite{Bates90}. 
 
-% KS: this following paragraph doesn't quite make sense to me yet.
+KS: THIS FOLLOWING PARAGRAPH DOESN'T QUITE MAKE SENSE TO ME YET.
 
 Our main finding is that, in two dimensions at least, sheared smectics can show two completely different types of rheological response. At modest rates
 of shear, where thermodynamic forces are relatively strong compared with
 flow effects,  shear quickly aligns the system into the perfect lamellar phase preferred by thermodynamics,
 with only a few defects. The rheology in this regime is quasi-Newtonian, with shear stress linear in the applied shear rate. (There is however a large first normal stress difference.) At higher shear rates, larger thermodynamic forces are generated as layers fail to keep up with the imposed flow. This leads to the nucleation of many new defects, balanced in steady state by annihilation when defects of opposite sign encounter each other. The strain rate $\dot\gamma_c$ needed to enter this nonlinear flow regime depends on thermodynamic and kinetic parameters; a comprehensive exploration of parameter space is not possible, but we give a scaling argument which relates $\dot\gamma_c$ to those parameters through an effective capillary number, formed as the ratio of viscous to thermodynamic stress.
 Within the defect proliferation regime, the macroscopic rheology is generically nonlinear, and shows shear thinning. The shear stress appears to vary as a sublinear power law, $\sigma_{xy}\propto\dot{\gamma}^m$, with $m\simeq 0.87$ for typical parameter values, although the dependence of $m$ on the parameters precludes interpretation of this as a universal scaling law.
-Such a behaviour is qualitatively reminiscent of the one found experimentally in [REFERENCE?], where the numerical value of $m$ was however different. In this strongly non-Newtonian regime we also find that the rheology is history dependent. 
+Such a behaviour is qualitatively reminiscent of the one found experimentally in [REFERENCE], where the numerical value of $m$ was however different. In this strongly non-Newtonian regime we also find that the rheology is history dependent. 
 
 Finally, and intriguingly, we find that dimensionality appears to play a key role. Within our 3D simulations, even when performed with parameter values identical to those used in 2D, we have so far not been able to enter the nonlinear flow regime associated with defect proliferation. Instead, we always observe shear-induced ordering into a lamellar phase with quasi-Newtonian rheology. Further research, requiring careful and systematic parameter steering, will be needed to map out quantitatively the onset of the defect proliferation regime, if one exists, in three dimensions.
  
@@ -193,15 +188,15 @@ A summary with conclusions closes the paper in Section \ref{conclusions}.
 
 \section{Model and Definitions} \label{themodel}
 
-The equilibrium phase in a system of volume $V$ is found for an order parameter field $\phi({\bm r})\equiv \phi$ that minimises the Landau-Brazovskii free energy functional \cite{Brazovskii75} [ADD: Gommper and Schick].
+The equilibrium phase in a system of volume $V$ is found for an order parameter field $\phi({\bm r})\equiv \phi$ that minimises the Landau-Brazovskii free energy functional \cite{Brazovskii75, Gompper}.
 %
 \begin{eqnarray}
 {\cal F}[\phi] &=& \int d^dx f(\phi,\nabla\phi,\nabla^2\phi) = V\bar f\\ &=& \int d^dx\left\{\frac{a}{2}\phi^2+\frac{b}{4}\phi^4+\frac{\kappa}{2} ({\nabla}\phi)^2+\frac{c}{2}(\nabla^2\phi)^2\right\}\nonumber\label{FE-functional}
 \end{eqnarray}
 %
-In minimizing this free energy at equilibrium, we ignore thermal fluctuations (treated in \cite{Brazovskii75,Cates89}), thereby adopting a mean-field approximation as in previous literature [Kendon et al JFM, relevant Gonnella papers]. This should be a good approximation far from the ordering transition at which $\phi$ first becomes nonuniform. The uniform state has $\phi = 0$ and hence ${\cal F}= 0$.
+In minimizing this free energy at equilibrium, we ignore thermal fluctuations (treated in \cite{Brazovskii75,Cates89}), thereby adopting a mean-field approximation as in previous literature \cite{Kendon01,Gonnella97, Gonnella98, Xu03, Xu05, Xu06a, Xu06b}. This should be a good approximation far from the ordering transition at which $\phi$ first becomes nonuniform. The uniform state has $\phi = 0$ and hence ${\cal F}= 0$.
 
-The parameter range relevant to lamellar phases has $\kappa < 0$ and $c>0$. Then, if we suppress the quartic term, the free energy density of a sinusoidal lamellar state $\phi({\bf r}) = \phi_k\cos({\bf k}.{\bf r})$ obeys $\bar f = (a+\kappa k^2+ c k^4)\phi_k^2/4$. This is minimized by choosing $k=q\equiv\sqrt{|\kappa|/2c}$; the free energy density is then $\bar f = (a-\kappa^2/4c)\phi_q^2/4$ so that ordering will occur for $a<a_c=\kappa^2/4c$. The amplitude $\phi_q$ is then unbounded without the (positive) quartic term, since $\bar f$ can in that manner become infinitely negative. Restoring the quartic term now causes saturation at $\phi_q\sim \sqrt{(a_c-a)/b}$, creating also nonlinear harmonics in the density profile. The final free energy density obeys $\bar f \simeq (a_c-a)^2/b$. By similar arguments, the characteristic elastic modulus associated with microstructural deformations is
+The parameter range relevant to lamellar phases has $\kappa < 0$ and $c>0$. Then, if we suppress the quartic term, the free energy density of a sinusoidal lamellar state $\phi({\bf r}) = \phi_k\cos({\bf k}.{\bf r})$ obeys $\bar f = (a+\kappa k^2+ c k^4)\phi_k^2/4$. This is minimized by choosing $k=q\equiv\sqrt{|\kappa|/2c}$; the free energy density is then $\bar f = (a-\kappa^2/4c)\phi_q^2/4$ so that ordering will occur for $a<a_c=\kappa^2/4c$. The amplitude $\phi_q$ is then unbounded without the (positive) quartic term, since $\bar f$ can in that manner become infinitely negative. Restoring the quartic term now causes saturation at $\phi_q\sim \sqrt{4(a_c-a)/3b}$, creating also nonlinear harmonics in the density profile. The final free energy density obeys $\bar f \simeq (a_c-a)^2/b$. By similar arguments, the characteristic elastic modulus associated with microstructural deformations is
 %
 \begin{equation}
 \bar g\sim \frac{(a_c-a)a_c}{4b}
@@ -216,7 +211,7 @@ The dynamics of the order parameter is governed by an advection-diffusion equati
 \partial_t \phi +{\nabla}({\bm u}\phi) = M \nabla^2 \frac{\delta \cal F}{\delta \phi}=M \nabla^2 \mu 
 \end{equation}
 %
-Here $M$ is a mobility coefficient. A wavevector-dependent linearized collective diffusivity $D_k$ can then be defined via $\dot\phi_k = -k^2D_k\phi_k$, whose value at the ordering wavevector obeys $D_q = M(a-a_c)/2$ [CONFIRM] (this is negative, signifying the instability). In contrast, an estimate of the molecular diffusivity can be made by considering zero wavevector, setting $b = -a$ (see below) and examining the relaxation equation for small deviations around the uniformly ordered state at $\phi = \pm 1$. This gives $\dot\phi = 2bM\nabla^2\phi$ so that the molecular diffusivity is of order $\tilde D = 2Mb$. 
+Here $M$ is a mobility coefficient. A wavevector-dependent linearized collective diffusivity $D_k$ can then be defined via $\dot\phi_k = -k^2D_k\phi_k$, whose value at the ordering wavevector obeys $D_q = M(a-a_c)/2$ (this is negative, signifying the instability). In contrast, an estimate of the molecular diffusivity can be made by considering zero wavevector, setting $b = -a$ (see below) and examining the relaxation equation for small deviations around the uniformly ordered state at $\phi = \pm 1$. This gives $\dot\phi = 2bM\nabla^2\phi$ so that the molecular diffusivity is of order $\tilde D = 2Mb$. 
 
 Treating the fluid as incompressible, the evolution of the velocity ${\bm u}$ obeys the Navier-Stokes equation
 %
@@ -233,17 +228,16 @@ where $\rho$ is the mass density. The stress tensor in this equation reads
 This consists of a Newtonian hydrodynamic part, which is proportional to the background viscosity $\eta$ and the symmetrized velocity gradient, a hydrostatic pressure term, which includes an isotropic stress contribution from the order parameter 
 %
 \begin{eqnarray}
-\Delta p&=& \frac{a}{2}\phi^2+\frac{3b}{4}\phi^4-\kappa\left(\phi(\nabla^2\phi)+\frac{1}{2}({\nabla}\phi)^2\right)\nonumber\\
+p&=& \frac{a}{2}\phi^2+\frac{3b}{4}\phi^4-\kappa\left(\phi(\nabla^2\phi)+\frac{1}{2}({\nabla}\phi)^2\right)\nonumber\\
 & &\quad+c\left(\phi(\nabla^2)^2\phi+\frac{1}{2}(\nabla^2\phi)^2+\partial_{\gamma}\phi\partial_\gamma(\nabla^2\phi)\right)
 \end{eqnarray}
 %
 and finally another term consisting of the order-parameter contribution to the deviatoric stress
-\cite{Evans79} [REFERENCE]
+\cite{Yang76,Evans79} [REFERENCE OK?]
 %
 \begin{equation}
 P_{\alpha \beta}=\kappa\partial_\alpha\phi\partial_\beta\phi -c \left(\partial_\alpha\phi\partial_\beta(\nabla^2\phi)+\partial_\beta\phi\partial_\alpha(\nabla^2\phi)\right).
 \end{equation}
-CONFIRM SIGN.
 
 In our hybrid LB scheme, the Navier-Stokes equation (\ref{NSE}) is solved at every timestep by means of a multi-relaxation time lattice-Boltzmann solver \cite{dHumieres02,Adhikari05} using the D3Q19 model.
 The velocity field is then used in the advection-diffusion equation Eq.\ref{OPEOM}, which is solved by a finite-difference method at the same timestep. We assume periodic boundary conditions along the flow and vorticity direction and Lees-Edwards sliding periodic boundary conditions\cite{leesedwards,Wagner02} along the direction of the velocity gradient.
@@ -289,27 +283,27 @@ The parameter space of the model is quite large. Although in exploratory work we
 
 As usual we set the lattice spacing $l$, time step $\Delta t$ and mass density of the fluid $\rho$ all to unity to define LB units (LBU). We need to calibrate these units (or equivalently, length, energy density and time) against real physical units. We do this first for thermotropic smectics, then consider the lyotropic case.
 
-To calibrate the LB length unit we equate $L$ the lamellar wavelength with that of a typical thermotropic smectic: $10$ LBU $= L = 4$nm. Hence the LB length unit is about $0.4$nm; and 1m$= 2.5\times 10^{10}$LBU. Free energy density parameters such as $a_c \simeq 10^{-4}$LBU should then be of order $\alpha^2k_BT/L^3$ where $\alpha =10$ is a molecular aspect ratio. Thus the LB unit of energy density is about $6\times 10^{10}$Pa, i.e. 1 Pa$= 1.6 \times 10^{-11}$ LBU.  
+To calibrate the LB length unit we equate $L$ the lamellar wavelength with that of a typical thermotropic smectic: $10$ LBU $= L = 4$nm. Hence the LB length unit is about $0.4$nm; and 1m$= 2.5\times 10^{9}$LBU. Free energy density parameters such as $a_c \simeq 10^{-4}$LBU should then be of order $\alpha^2k_BT/L^3$ where $\alpha =10$ is a molecular aspect ratio. Thus the LB unit of energy density is about $6\times 10^{10}$Pa, i.e. 1 Pa$= 1.6 \times 10^{-11}$ LBU.  
 
 Turning now to the fluid viscosity $\eta$, after pilot runs spanning a range of several decades, we selected $8.33\times 10^{-2}$LBU for the production runs reported here. This represents the baseline viscosity of the isotropic phase close to the transition (not the higher, effective viscosity of the smectic once formed). Requiring this to be about ten times the viscosity of water (which is $\eta_w = 8.9\times 10^{-4}$Pa s) we find that the LBU unit of viscosity is about $0.1$Pa s. Given the previous result for the energy density, we infer that 1s$= 6\times 10^{11}$ LBU. The LBU timestep is thus around $1.6\times 10^{-12}$s. 
 
-As detailed previously, an estimate of the molecular diffusivity is $\tilde D = 2Mb$; we set $M = 0.25$LBU throughout this study, so that $\tilde D$ lies in the range $2.5\times 10^{-5} - 2.5\times 10^{-4}$LBU. Taking a mid-range value of  $\tilde D = 10^{-4}$LBU and using the above conversion factors (1 m$= 2.5\times 10^9$LBU, 1s $= 6\times 10^{11}$LBU) gives $D\simeq 10^{-11}$m$^2$s$^{-1}$ which is a reasonable mesogenic value.
+As detailed previously, an estimate of the molecular diffusivity is $\tilde D = 2Mb$; we set $M = 0.25$LBU throughout this study, so that $\tilde D$ lies in the range $2.5\times 10^{-5} - 2.5\times 10^{-4}$LBU. Taking a mid-range value of  $\tilde D = 10^{-4}$LBU and using the above conversion factors (1 m$= 2.5\times 10^9$LBU, 1s $= 6\times 10^{12}$LBU) gives $D\simeq 10^{-10}$m$^2$s$^{-1}$ which is a reasonable mesogenic value.
 
-Recall that the mass density of our fluid is unity in LBU. However, combining the above conversion factors for length,  energy density, and time shows the physical and simulation units of mass density to be related via 1 kg m$^{-3} \equiv 1$ Pa s$^2$ m$^{-2} \simeq 10^{-8}$LBU. Thus our simulations address a fluid of mass density $10^8$kg m$^{-3}$ which is $10^5$ times larger than the true value for a typical material. The reason for this is that the LB algorithm uses fluid inertia to update the dynamics and the discretization should therefore involve replacing the real fluid with the densest one possible, while ensuring that the Reynolds number $Re \sim \rho\dot\gamma L^2/\eta$ (which for real smectics is exceedingly small) remains small enough for the simulation to faithfully describe the low $Re$ limit. As discussed elsewhere [CODEF,SOFT MATTER] $Re$ values up to about 0.1 are then admissable; our simulations comply with this requirement. 
+Recall that the mass density of our fluid is unity in LBU. However, combining the above conversion factors for length,  energy density, and time shows the physical and simulation units of mass density to be related via 1 kg m$^{-3} \equiv 1$ Pa s$^2$ m$^{-2} \simeq 10^{-8}$LBU. Thus our simulations address a fluid of mass density $10^8$kg m$^{-3}$ which is $10^5$ times larger than the true value for a typical material. The reason for this is that the LB algorithm uses fluid inertia to update the dynamics and the discretization should therefore involve replacing the real fluid with the densest one possible, while ensuring that the Reynolds number $Re \sim \rho\dot\gamma L^2/\eta$ (which for real smectics is exceedingly small) remains small enough for the simulation to faithfully describe the low $Re$ limit. As discussed elsewhere \cite{Cates04, Cates09} $Re$ values up to about 0.1 are then admissable; our simulations comply with this requirement. 
 
 Finally, our shear rates lie in the range 
-$10^{-5}-10^{-4}$LBU, so that the (dimensionless) Peclet number, $Pe =\dot\gamma L^2/\tilde D$, which expresses the relative importance of advective to diffusive transport, lies in the range $20-1600$ CONFIRM: WRONG VALUES GIVEN PREVIOUSLY?. These are moderate to high values where significant structural rearrangement can be expected. However, for thermotropic smectics, given our time unit of 1LBU$=1.6\times 10^{-12}$s, they correspond to strain rates of order $10^6$s$^{-1}$. This lies well above the range typically addressable with rheological experiments, but far below that addressed recently in molecular dynamics simulations [Guo,Sodderman,Stewart].
+$10^{-5}-10^{-4}$LBU, so that the (dimensionless) Peclet number, $Pe =\dot\gamma L^2/\tilde D$, which expresses the relative importance of advective to diffusive transport, lies in the range $5-800$. These are moderate to high values where significant structural rearrangement can be expected. However, for thermotropic smectics, given our time unit of 1LBU$=1.6\times 10^{-12}$s, they correspond to strain rates of order $10^6$s$^{-1}$. This lies well above the range typically addressable with rheological experiments, but below that recently given in a theoretical study \cite{Stewart2009}.
 
-The shear rates needed to achieve this range of $Pe$ falls dramatically when lyotropic smectics are considered. For lyotropics one has $L\sim 40$nm; the LB length unit is thus about 4nm. The factor $\alpha$ in the free energy density is now of order unity (since the main contributions are entropic and for flexible membranes there is about one relevant degree of freedom per cube of side $L$) [Lyotropic Review]. The LB unit of energy density is then about $6\times 10^{5}$Pa, i.e. 1 Pa$= 1.6 \times 10^{-6}$ LBU. Both the viscosity $\eta$ and the molecular diffusivity $\tilde D$ remain comparable (within one order of magnitude) to the thermotropic values; from the viscosity we then determine that 1s$=6\times 10^6$LBU or 1LB timestep $=1.6\times 10^{-7}$s. Accordingly the strain rates relevant to the $Pe$ range addressed here are of order 100 s$^{-1}$ and well within experimental reach. Note that for lyotropics we are effectively simulating a fluid of even higher mass density than for thermotropics; but since the simulated Reynolds numbers are unaffected by the change in parameter mapping, they are still irrelevantly small. 
+The shear rates needed to achieve this range of $Pe$ falls dramatically when lyotropic smectics are considered. For lyotropics one has $L\sim 40$nm; the LB length unit is thus about 4nm. The factor $\alpha$ in the free energy density is now of order unity (since the main contributions are entropic and for flexible membranes there is about one relevant degree of freedom per cube of side $L$) [REFERENCE LYOTROPIC REVIEW ?]. The LB unit of energy density is then about $6\times 10^{5}$Pa, i.e. 1 Pa$= 1.6 \times 10^{-6}$ LBU. Both the viscosity $\eta$ and the molecular diffusivity $\tilde D$ remain comparable (within one order of magnitude) to the thermotropic values; from the viscosity we then determine that 1s$=6\times 10^6$LBU or 1LB timestep $=1.6\times 10^{-7}$s. Accordingly the strain rates relevant to the $Pe$ range addressed here are of order $10^2$ s$^{-1}$ and well within experimental reach, but below that addressed in molecular dynamics simulations \cite{Guo2002,Soddemann2004}. Note that for lyotropics we are effectively simulating a fluid of even higher mass density than for thermotropics; but since the simulated Reynolds numbers are unaffected by the change in parameter mapping, they are still irrelevantly small. 
 
-To further simplify our parameter exploration, throughout what follows we restrict attention to  states with $b = -a$. This convention has been widely used to study bulk spinodal decomposition in binary fluids where it can be absorbed in a rescaling of the order parameter [KENDON JFM]: put differently, $b=-a$ ensures that coexisting bulk ordered phases have $\phi = \pm\phi_0$ with $\phi_0=1$. In lamellar states of $b= -a$ the amplitude of the lamellar ordering need not be unity but varies like $\phi_q \sim \sqrt{1+a_c/b}$ as stated previously. Thus the chosen value of $b$ can be thought of as controlling whether the peak order parameter variation is close to that arising for bulk coexistence (when $b\gg a_c$), or whether the amplitude $\phi_q$ is instead much larger ($b\ll a_c$) and determined by a competition between the gradient terms and a relatively weak quartic nonlinearity.  In this study we choose three values, $b = 5\times 10^{-4}, 1\times 10^{-4}$ and $5\times 10^{-5}$LBU so that the dimensionless quantity $\beta \equiv b/a_c$ is respectively $2.1,0.42,0.21$, lying near the crossover between these regimes. The observed $\phi_q$ range is about $1.2-1.5$, somewhat narrower than the range $1.1-1.8$ predicted from $\phi_q \sim \sqrt{1+a_c/b}$. However the latter estimate, which does not treat the nonlinear term exactly, is only a guideline.
+To further simplify our parameter exploration, throughout what follows we restrict attention to  states with $b = -a$. This convention has been widely used to study bulk spinodal decomposition in binary fluids where it can be absorbed in a rescaling of the order parameter \cite{Kendon01}: put differently, $b=-a$ ensures that coexisting bulk ordered phases have $\phi = \pm\phi_0$ with $\phi_0=1$. In lamellar states of $b= -a$ the amplitude of the lamellar ordering need not be unity but varies like $\phi_q \sim \sqrt{1+a_c/b}$ as stated previously. Thus the chosen value of $b$ can be thought of as controlling whether the peak order parameter variation is close to that arising for bulk coexistence (when $b\gg a_c$), or whether the amplitude $\phi_q$ is instead much larger ($b\ll a_c$) and determined by a competition between the gradient terms and a relatively weak quartic nonlinearity.  In this study we choose three values, $b = 5\times 10^{-4}, 1\times 10^{-4}$ and $5\times 10^{-5}$LBU so that the dimensionless quantity $\beta \equiv b/a_c$ is respectively $4.2,0.83,0.42$, lying near the crossover between these regimes. The observed $\phi_q$ range is about $1.2-1.5$, somewhat narrower than the range $1.1-1.8$ predicted from $\phi_q \sim \sqrt{1+a_c/b}$. However the latter estimate, which does not treat the nonlinear term exactly, is only a guideline.
 
-Alongside the Reynolds number (which we deem irrelevant), $\beta$, and the Peclet number, we can identify two further dimensionless numbers of interest. One is the Schmidt number $Sc = \eta/\rho\tilde D$, which is large when momentum can diffuse much more rapidly than molecules -- as applies in almost all dense fluids.  In our simulations $Sc$ is of order $100--1000$ which is safely large. (The work of [KumaranRamanPRE2011] instead addresses Schmidt numbers in the range $0.2-5$ where different physics may apply.) The second parameter controls the strength of feedback between distortions of the $\phi$ field and the fluid motion. This 
+Alongside the Reynolds number (which we deem irrelevant), $\beta$, and the Peclet number, we can identify two further dimensionless numbers of interest. One is the Schmidt number $Sc = \eta/\rho\tilde D$, which is large when momentum can diffuse much more rapidly than molecules - as applies in almost all dense fluids.  In our simulations $Sc$ is of order $100-1000$ which is safely large. (The work of Kumaran \cite{Kumaran2011} instead addresses Schmidt numbers in the range $0.2-5$ where different physics may apply.) The second parameter controls the strength of feedback between distortions of the $\phi$ field and the fluid motion. This 
 can be expressed in terms of a characteristic value of the Peclet number, $Pe^*$, at which the free energy density in the order parameter field that couples to deformation (Eq.\ref{barg}), $\bar g=(a_c+b)a_c/4b$, is comparable to the viscous stress $\sigma_v=\eta\dot\gamma = (\eta \tilde D/L^2)Pe$. Equating these gives
 \begin{equation}
-Pe^* =\frac{(a_c+b)a_c}{4b^2}\,\frac{L^2}{\eta M}\label{pestar}
+Pe^* =\frac{(a_c+b)a_c}{8b^2}\,\frac{L^2}{\eta M}\label{pestar}
 \end{equation}
-With our chosen parameters (in LBU, $a_c=1.2\times 10^{-4}, L = 10, \eta = 8.3\times 10^{-2}, M = 0.25$) we find $Pe^* \sim 1400$ at $\beta = 2.1$ and $Pe^* \sim 40000$ at $\beta = 0.21$. The maximum values of $Pe/Pe^*$ that we address below are of order 0.1 and 0.04 respectively in the two cases.
+With our chosen parameters (in LBU, $a_c=1.2\times 10^{-4}, L = 10, \eta = 8.3\times 10^{-2}, M = 0.25$) we find $Pe^* \sim 180$ at $\beta = 4.2$ and $Pe^* \sim 5000$ at $\beta = 0.42$. The maximum values of $Pe/Pe^*$ that we address below are of order 0.2 and 0.08 respectively in the two cases.
 
 For later convenience we may define a new dimensionless number,
 which we can call a capillary number. (The capillary number is conventionally defined as the ratio of viscous to interfacial forces in binary fluid flow.) We define this as:
@@ -323,61 +317,63 @@ We will argue below that this could be a more relevant choice than $Pe$ for unde
 
 \section{Results and Discussion}
 
-Below we first present detailed results for two parameter sets ($\beta = 2.1, 0.21$) in two dimensions which we call systems A-2D and B-2D. System lattice sizes and shear rates are reported in Table \ref{tab1}; all remaining parameters are the same in both systems as detailed above. 
+Below we first present detailed results for two parameter sets ($\beta = 4.2, 0.42$) in two dimensions which we call systems A-2D and B-2D. System lattice sizes and shear rates are reported in Table \ref{tab1}; all remaining parameters are the same in both systems as detailed above. 
 %As expected from the preceding discussion of $Pe^*(\beta)$, the stress response at a given flow rate is softer in the second system. 
-A third parameter set ($\beta = 0.42$, system C-2D) gave results broadly similar to B-2D. Note that we will later report simulations in three dimensions for systems A-3D and C-3D which share parameters with A-2D and C-2D (see Table \ref{tab1}).
+A third parameter set ($\beta = 0.83$, system C-2D) gave results broadly similar to B-2D. Note that we will later report simulations in three dimensions for systems A-3D and C-3D which share parameters with A-2D and C-2D (see Table \ref{tab1}).
 
 \begin{table}[htp]
 \small
-\caption{Simulation parameters: After initialization from a noisy uniform state, the systems were first equilibrated at zero shear rate (EQ), followed by a sequence of various shear rates, ranging from $\dot{\gamma}=1.25\times10^{-5}$ to $2\times10^{-4}$LBU. In some cases we performed a final switch off run (SO) at zero shear rate. The parameters $\kappa=-6\times10^{-4}, c=7.6\times10^{-4}, M=0.25$ and $\eta=8.33\times10^{-2}$ were the same throughout all simulations. ADD PE and CA COLUMNS!}
-\label{tab1}
-\begin{tabular*}{0.495\textwidth}{lllll}
+\begin{tabular*}{0.52\textwidth}{l|l|l|l|l|l|l}
 \hline
-run \# & $N_x\times N_y\times N_z$ & time $/10^3$ & $10^5b$ &  $10^5\dot\gamma$\\
+run \# & $N_x\times N_y\times N_z$ & time $/10^5$ & $10^5b$ & Ca & Pe & $10^5\dot\gamma$\\
 \hline
-A & & & &\\
+A & & & & & &\\
 \hline 
-703 & $512\times1024\times1$ & 0-320 & $50$ & 0 - EQ  \\
-704 & $512\times1024\times1$ & 320-640& $50$ & $10$\\
-705 & $512\times1024\times1$ & 640-960& $50$ & 0 - SO \\
+703 & $1024\times512\times1$ & 0-3.2 & $50$ &0 &0 & 0 \\
+704 & $1024\times512\times1$ & 3.2-6.4& $50$ & 0.224 & 40 &  $10$\\
+705 & $1024\times512\times1$ & 6.4-9.6& $50$ &0 & 0 &  0 \\
 \hline
-767 & $256\times512\times1$ & 0-320 & $50$  & 0 - EQ\\
-775 & $256\times512\times1$ & 320-640& $50$ & $20$ \\
-769 & $256\times512\times1$ & 320-2560& $50$ & $10$ \\
-771 & $256\times512\times1$ & 1280-3840& $50$ & $ 5$ \\
-772 & $256\times512\times1$ & 5120-7680& $50$ & $ 2.5$ \\
-774 & $256\times512\times1$ & 5120-10240& $50$ & $1.25$ \\
+767 & $512\times256\times1$ & 0-3.2 & $50$ &0 & 0 &  0\\
+775 & $512\times256\times1$ & 3.2-6.4& $50$ &0.448 & 80 &  $20$ \\
+769 & $512\times256\times1$ & 3.2-25.6& $50$ &0.224 & 40 &  $10$ \\
+771 & $512\times256\times1$ & 12.8-38.4& $50$ &0.112 & 20 &  $ 5$ \\
+772 & $512\times256\times1$ & 51.2-76.8& $50$ &0.056 & 10 &  $ 2.5$ \\
+774 & $512\times256\times1$ & 51.2-102.4& $50$ &0.028 & 5 &  $1.25$ \\
 \hline
-792 & $128\times256\times1$ & 320-1600& $50$ & $10$ \\
+792 & $256\times128\times1$ & 3.2-16.0& $50$ &0.22 & 40 &  $10$ \\
 \hline
-786 & $128\times256\times128$ & 0-640 & $50$ & 0 - EQ\\
-787 & $128\times256\times128$ & 320-640 & $50$ & $20$\\
-788 & $128\times256\times128$ & 320-960 & $50$ & $10$\\
-789 & $128\times256\times128$ & 640-1280 & $50$ & $5$\\
+786 & $256\times128\times128$ & 0-6.4 & $50$ &0 & 0 &  0\\
+787 & $256\times128\times128$ & 3.2-6.4 & $50$ &0.448 & 80 &  $20$\\
+788 & $256\times128\times128$ & 3.2-9.6 & $50$ &0.224 & 40 &  $10$\\
+789 & $256\times128\times128$ & 6.4-12.8 & $50$ &0.112 & 20 &  $5$\\
 \hline
-B & & & &\\
+B & & & & & &\\
 \hline
-707 & $512\times1024\times1$ & 0-320 & $5$ & 0 - EQ \\
-710 & $512\times1024\times1$ & 320-960& $5$ & $10$ \\
-765 & $512\times1024\times1$ & 960-1280& $5$ & 0 - SO \\
+707 & $1024\times512\times1$ & 0-3.2 & $5$ &0 & 0 &  0 \\
+710 & $1024\times512\times1$ & 3.2-9.6& $5$ &0.082 & 400 &  $10$ \\
+765 & $1024\times512\times1$ & 9.6-12.8& $5$ &0 & 0 &  0 \\
 \hline
-776 & $256\times512\times1$ & 0-320 & $5$ & 0 - EQ\\
-777 & $256\times512\times1$ & 320-960& $5$ & $20$ \\
-778 & $256\times512\times1$ & 320-2560& $5$ & $10$ \\
-780 & $256\times512\times1$ & 1280-3840& $5$ & $5$ \\
-781 & $256\times512\times1$ & 2560-6400& $5$ & $2.5$ \\
-782 & $256\times512\times1$ & 5120-7680& $5$ & $1.25$ \\
+776 & $512\times256\times1$ & 0-3.2 & $5$ & & 0 &  0 \\
+777 & $512\times256\times1$ & 3.2-9.6& $5$ &0.164 & 800 &  $20$ \\
+778 & $512\times256\times1$ & 3.2-25.6& $5$ &0.082 & 400 &  $10$ \\
+780 & $512\times256\times1$ & 12.8-38.4& $5$ &0.041 & 200 &  $5$ \\
+781 & $512\times256\times1$ & 25.6-64.0& $5$ &0.020 & 100 &  $2.5$ \\
+782 & $512\times256\times1$ & 51.2-76.8& $5$ &0.010 & 50 &  $1.25$ \\
 \hline
-C & & & &\\
+C & & & & & &\\
 \hline
-998 & $128\times256\times1$ & 0-320& $10$ & 0 - EQ \\
-1001 & $128\times256\times1$ & 320-960& $10$ & $20$ \\
-1000 & $128\times256\times1$ & 320-1280& $10$ & $10$ \\
-999 & $128\times256\times128$ & 0-320 & $10$ & 0 - EQ\\
-1003 & $128\times256\times128$ & 320-960 & $10$ & $20$\\
-1002 & $128\times256\times128$ & 320-1280 & $10$ & $10$\\
+998 & $256\times128\times1$ & 0-3.2& $10$ &0 & 0 & 0 \\
+1001 & $256\times128\times1$ & 3.2-9.6& $10$ &0.252 & 400 &  $20$ \\
+1000 & $256\times128\times1$ & 3.2-12.8& $10$ &0.126 & 200 &  $10$ \\
+\hline
+999 & $256\times128\times128$ & 0-3.2 & $10$ &0 & 0 &  0 \\
+1003 & $256\times128\times128$ & 3.2-9.6 & $10$ &0.252 & 400 &  $20$\\
+1002 & $256\times128\times128$ & 3.2-12.8 & $10$ &0.126 & 200 &  $10$\\
 \hline
 \end{tabular*}
+
+\caption{Simulation parameters: After initialization from a noisy uniform state, the systems were first equilibrated at zero shear rate, followed by a sequence of various shear rates, ranging from $\dot{\gamma}=1.25\times10^{-5}$ to $2\times10^{-4}$LBU. In some cases we performed a final switch off run at zero shear rate. The other model parameters $\kappa=-6\times10^{-4}, c=7.6\times10^{-4}, M=0.25$ and $\eta=8.33\times10^{-2}$ were the same throughout all simulations.}
+\label{tab1}
 \end{table}
 
 \subsection{Two Dimensions}
@@ -389,7 +385,9 @@ The nonequilibrium morphology of the lamellar structure, and the phase ordering 
 Formation and ripening of the lamellar structure is slower when $\beta$ is small, consistent with the reduced initial driving force for ordering in this case. Higher viscosities lead to more locally disordered structures in which there is a shorter separation between kinks or edge defects as one moves along the lamellae; conversely lower viscosities typically yield ``longer" lamellae.
 This effect has been reported before \cite{Gonnella97}; we found it to be more pronounced for softer (lower $\beta$) systems. At fixed $\dot\gamma$, higher values of $\eta$ were found to cause greater inhomogeneity of lamellar shape and thickness, consistent with the fact that $Ca\propto\eta$ (the larger the shear stress, the larger the lamellar deformation). 
 
-
+We turn now to system A-2D ($\beta = 4.2$) The top panel in Fig. \ref{fig1} shows the order parameter pattern $\phi$ at the end of the equilibration phase prior to shearing.
+Although the true equilibrium structure would show homogeneous alignment, this cannot be reached in a reasonable time scale unless shear is applied. The resulting metastable structure is amorphous and isotropic, but locally exhibits the same lamellar spacing $L = 10$ LBU as the fully ordered equilibrium state.
+If shear flow is imposed, the lamellae start to align in flow direction, which induces a morphological changes to the structure. A typical snapshot in the resulting steady state at $Pe = 40$ $(Ca = 0.22)$ is shown in the middle panel of Fig.~\ref{fig1}. In this and all subsequent images, the applied flow velocity is horizontal and the velocity gradient vertical, with the flow directed to the right in the upper half and to the left in the lower half of the picture. After a short transient during which the order parameter remains relatively homogenous (not shown) there emerge extended regions in which the smectic layers are either expanded or compressed, so that $L$ locally deviates from the equilibrium value. These mesoscopic inhomogeneities are inclined at an angle to the flow and remain continuously present in the steady state, but are not stationary: their local features are advected by the flow and evolve continuously by deformation. 
 \begin{figure}[htp]
 \centering
 \includegraphics[angle=0,width=0.5\textwidth]{phi_run703_320.jpg}\\
@@ -398,10 +396,6 @@ This effect has been reported before \cite{Gonnella97}; we found it to be more p
 \caption{Order parameter pattern $\phi({\bf r})$ of system A-2D (thresholded to enhance visibility): after equilibration (timestep $t=3.2\e{5}$, top), in steady shear at $\dot{\gamma}=1\times10^{-4}$ ($t=5\e{5}$, centre) and after switch-off ($t=1.28\e{6}$, bottom). Gray scaling from black to white corresponds to values of $-1\le\phi\le1$.}
 \label{fig1}
 \end{figure}
-
-We turn now to system A-2D ($\beta = 2.1$) The top panel in Fig. \ref{fig1} shows the order parameter pattern $\phi$ at the end of the equilibration phase prior to shearing.
-Although the true equilibrium structure would show homogeneous alignment, this cannot be reached in a reasonable time scale unless shear is applied. The resulting metastable structure is amorphous and isotropic, but locally exhibits the same lamellar spacing $L = 10$ LBU as the fully ordered equilibrium state.
-If shear flow is imposed, the lamellae start to align in flow direction, which induces a morphological changes to the structure. A typical snapshot in the resulting steady state at $Pe = 80$ $(Ca = 0.06)$ CONFIRM is shown in the middle panel of Fig.~\ref{fig1}. In this and all subsequent images, the applied flow velocity is horizontal and the velocity gradient vertical, with the flow directed to the right in the upper half and to the left in the lower half of the picture. After a short transient during which the order parameter remains relatively homogenous (not shown) there emerge extended regions in which the smectic layers are either expanded and compressed, so that $L$ locally deviates from the equilibrium value. These mesoscopic inhomogeneities are inclined at an angle to the flow and remain continuously present in the steady state, but are not stationary: their local features are advected by the flow and evolve continuously by deformation. 
 
 We found that after the shear flow was switched off the lamellar spacing returned to its equilibrium value everywhere, with expanded regions contracting and vice versa. The final state, after all relaxation has virtually come to a standstill, is shown in the bottom panel of Fig.~\ref{fig1}. 
 Most of the lamellae remain oriented along the flow direction, but depending on the local expansion and compression undergone during the previous flow, some regions retain strong misalignment which does not anneal away. The separation between defects as one moves along the lamellae varies considerably in space; both short and long separations can be seen. This applies both in the aligned layers and in layers that are misaligned with the flow. 
@@ -415,13 +409,13 @@ Most of the lamellae remain oriented along the flow direction, but depending on 
 \label{fig2}
 \end{figure}
 
-Fig. \ref{fig2} shows equivalent states for system B-2D ($\beta = 0.21$).
-The Peclet number during the shearing phase is now $Pe = 800$ $(Ca = 0.02)$ CONFIRM.
+Fig. \ref{fig2} shows equivalent states for system B-2D ($\beta = 0.42$).
+The Peclet number during the shearing phase is now $Pe = 400$ $(Ca = 0.082)$.
 All the generic results of Fig.~\ref{fig1} are the same, but the defect density, both during flow and after switchoff, is significantly reduced. (However the bands of misalignment in the flowing state are, if anything, even more apparent.) Consequently, the lamellar alignment along the flow direction after switch off is also more pronounced.
 
 It is notable that at the shear rate shown in these figures, the more ordered system is B-2D which has higher $Pe$ than A-2D but smaller $Ca$. Varying $\dot\gamma$ within system A-2D or B-2D establishes unambiguously that the steady state order decreases with shear rate at fixed thermodynamic parameters (Fig.\ref{fig6} below). This points strongly to $Ca$ as the more relevant measure of flow rate when discussing onset of the disordered phase. 
 
-In principle the dependence of the state of order on flow rate could be smooth, or could entail a nonequilibrium phase transition -- for instance if the perfectly ordered state ceased to be stable above a certain shear rate \cite{Gonnella98,Kumaran2001} [Ramaswamy,Granek]. In practice, however, starting as we do from an initially amorphous lamellar texture, a perfectly ordered state is generally not reached for large systems CONFIRM even if it might be stable once formed. In any case it seems likely that at high $Pe$, any defects introduced into the smectic state by deformation of an initially imperfect structure (whose layers are then dilated and compressed by the flow) cannot anneal away or annihilate each other rapidly. Such irregularities then build up until the steady state defect density is determined by a balance between their rate of introduction and rate of annealing. 
+In principle the dependence of the state of order on flow rate could be smooth, or could entail a nonequilibrium phase transition -- for instance if the perfectly ordered state ceased to be stable above a certain shear rate \cite{Gonnella98,Zilman99,Kumaran2001} [REFERENCE RAMASWAMY?]. In practice, however, starting as we do from an initially amorphous lamellar texture, a perfectly ordered state is generally not reached for large systems even if it might be stable once formed. In any case it seems likely that at high $Pe$, any defects introduced into the smectic state by deformation of an initially imperfect structure (whose layers are then dilated and compressed by the flow) cannot anneal away or annihilate each other rapidly. Such irregularities then build up until the steady state defect density is determined by a balance between their rate of introduction and rate of annealing. 
 
 Recently Kumaran and Raman studied a single shear rate and varied the Schmidt number $Sc$ and system size, reporting enhanced alignment on decreasing $Sc$ and in small systems \cite{Kumaran2011}. Our comparative studies on systems A and C have confirmed both trends (although, as mentioned previously, our $Sc$ values are much higher). The same authors also discuss a distinct mechanism of defect creation caused by layer compression and splitting. Although we have not checked this in detail, this may be consistent with our observation of a strongly compressed and heterogeneous morphology, with bands oriented normal to the compression axis, as shown in Figs.~\ref{fig1} and \ref{fig2}.
 
@@ -431,23 +425,23 @@ A somewhat different morphology in sheared lamellar systems was reported by Xu e
 \centering
 \includegraphics[angle=0,width=0.5\textwidth]{phi_defects_run774_5120.jpg}
 \includegraphics[angle=0,width=0.5\textwidth]{phi_defects_run774_10240.jpg}
-\caption{Defect structure of system A-2D:  at timestep $t=5.12\e{6}$ (top) and $1.024\e{7}$ (bottom) with an imposed shear rate $\dot{\gamma}=1.25\times10^{-5}$. The system has been pre-sheared at stepwise decreasing rates (see Table \ref{tab1}). Sites where the alignment function $X$ is smaller than $0.8$ are highlighted red.}
+\caption{Defect structure of system A-2D: at timestep $t=5.12\e{6}$ (top) and $1.024\e{7}$ (bottom) with an imposed shear rate $\dot{\gamma}=1.25\times10^{-5}$. The system has been pre-sheared at stepwise decreasing rates (see Table \ref{tab1}). Sites where the alignment function $X$ is smaller than $0.8$ are highlighted red. The system size was $N_x\times N_y \times N_z=512\times 256 \times 1$.}
 \label{fig3}
 \end{figure}
 
 To quantify our observed morphology more closely, we use the alignment function $X$ introduced in Eq.~\ref{alignment}.
 Fig.~\ref{fig3} shows snapshots of the time evolution of system A-2D at modest shear rate.
 All lattice sites with $X({\mathbf r})\le0.8$ are marked in red and they obviously coincide with lamellar endpoints (edge dislocations) or other local defects.
-The upper panel gives the situation at the lowest applied shear rate $\dot{\gamma}=1.25\e{-5}$, immediately following a pre-shearing protocol in which the strain rate was ramped down stepwise from higher values (see Table \ref{tab1}) IS THIS CROPPED OR THE WHOLE SYSTEM? WHAT SIZE?. While large aligned regions are present there are other regions of high defect density.
+The upper panel gives the situation at the lowest applied shear rate $\dot{\gamma}=1.25\e{-5}$, immediately following a pre-shearing protocol in which the strain rate was ramped down stepwise from higher values (see Table \ref{tab1}). While large aligned regions are present there are other regions of high defect density.
 The lower panel of Fig.~\ref{fig3} shows a later state with a total strain incremented by a further $10^{5}\%$. 
 Obviously many defects have annealed away and the smectic layers are now rather well aligned with the flow direction.
 
-Defect annihilation to this large extent is only found at low enough shear rates. A prerequisite seems to be that the defects can smoothly approach each other and then annihilate. This is prevented by the buckling of layers above a certain shear rate, beyond which the system shows a tendency to trip over itself, which results in the creation of new defects. The onset of defect proliferation arises at characteristic flow rates $\dot{\gamma}_c=2.5-5\e{-5}$LBU in system A-2D and around $\dot{\gamma}_c=1-2\e{-4}$LBU in B-2D. 
+Defect annihilation to this large extent is only found at low enough shear rates. A prerequisite seems to be that the defects can smoothly approach each other and then annihilate. This is prevented by the buckling of layers above a certain shear rate, beyond which the system shows a tendency to trip over itself, which results in the creation of new defects. The onset of defect proliferation arises at characteristic flow rates $\dot{\gamma}_c=1.25-2.5\e{-5}$LBU in system A-2D and around $\dot{\gamma}_c=1-2\e{-4}$LBU in B-2D. 
 (Here the subscript $c$ could stand for ``critical" or for ``crossover" depending on whether there is a singular transition or not; see above.)
 These values are for
-systems of size $256\times512\times1$; we found evidence of an increasing trend with system size, but the extremely long run-times involved ($\sim 10^7$ timesteps) precluded quantitative exploration. These results correspond respectively to values of the Peclet number, $Pe_c$, obeying $20<Pe_c<40$ (system A) and $800<Pe_c<1600$ (system B).  However, in terms of $Ca = Pe/Pe^*$ one has $0.014<Ca_c<0.028$ (system A) and $0.02<Ca_c<0.04$ (system B). Given the 40-fold difference in $Pe_c$, the similarity of $Ca_c$ in the two different systems is remarkable.
+systems of size $512\times256\times1$; we found evidence of an increasing trend with system size, but the extremely long run-times involved ($\sim 10^7$ LB timesteps) precluded quantitative exploration. These results correspond respectively to values of the Peclet number, $Pe_c$, obeying $5<Pe_c<10$ (system A) and $400<Pe_c<800$ (system B).  However, in terms of $Ca = Pe/Pe^*$ one has $0.056<Ca_c<0.112$ (system A) and $0.082<Ca_c<0.164$ (system B). Given the 80-fold difference in $Pe_c$, the similarity of $Ca_c$ in the two different systems is remarkable.
 
-Boldly extrapolating across parameter regimes that we have not explored in any detail, our results motivate the hypothesis that the onset of defect proliferation occurs generically in 2D at $Ca_c\simeq 0.03$.  Note that $Ca$, which comprises the ratio of a viscous stress to an elastic modulus, can also be viewed as a strain. In that context one can imagine that defects proliferate when the deformation of the smectic exceeds a yield strain value (for which a threshold of a few percent is reasonable). This makes sense if, at $Ca \simeq Ca_c$, the stress contributed from the order parameter is (a) comparable to the viscous stress from the background fluid -- essentially the force balance argument made above -- and (b) primarily elastic in character. The latter in turn requires that $Pe_c$ is large and hence that $Pe^*$ is larger still. A different mechanism might apply at small $Pe^*$, since in that case layers relax rapidly by diffusion on the time scale set by $Ca_c$.
+Boldly extrapolating across parameter regimes that we have not explored in any detail, our results motivate the hypothesis that the onset of defect proliferation occurs generically in 2D at $Ca_c\simeq 0.08$.  Note that $Ca$, which comprises the ratio of a viscous stress to an elastic modulus, can also be viewed as a strain. In that context one can imagine that defects proliferate when the deformation of the smectic exceeds a yield strain value (for which a threshold of a few percent is reasonable). This makes sense if, at $Ca \simeq Ca_c$, the stress contributed from the order parameter is (a) comparable to the viscous stress from the background fluid -- essentially the force balance argument made above -- and (b) primarily elastic in character. The latter in turn requires that $Pe_c$ is large and hence that $Pe^*$ is larger still. A different mechanism might apply at small $Pe^*$, since in that case layers relax rapidly by diffusion on the time scale set by $Ca_c$.
 
 \begin{figure}[htp]
 \centering
@@ -459,7 +453,7 @@ Boldly extrapolating across parameter regimes that we have not explored in any d
 \end{figure}
 
 In Fig.~\ref{fig4} we explore the correlation between the inhomogeneous morphology in the flowing state and locally defined rheological quantities.
-The pictures show the order parameter $\phi({\bm r})$, shear stress density $\sigma_{xy}({\bm r})$ and first normal stress difference density $N_1({\bm r})=\sigma_{yy}({\bm r})-\sigma_{xx}({\bm r})$ of system A-2D in steady shear flow at shear rate $\dot{\gamma}=1\e{-4}$ ($Pe = XX$, $Ca = YY$). (Here and below we adopt a COMPLETELY UNCONVENTIONAL coordinate system where $y$ is along the flow direction and $x$ the velocity gradient.)
+The pictures show the order parameter $\phi({\bm r})$, shear stress density $\sigma_{xy}({\bm r})$ and first normal stress difference density $N_1({\bm r})=\sigma_{xx}({\bm r})-\sigma_{yy}({\bm r})$ of system A-2D in steady shear flow at shear rate $\dot{\gamma}=1\e{-4}$ ($Pe = 40$, $Ca = 0.22$). Here and below we adopt a coordinate system where $x$ is along the flow direction and $y$ the velocity gradient.
 In regions where the lamellar width is larger than in the equilibrium state, shear stresses and first normal stress differences show low positive or negative values.
 Large positive values of both quantities coincide with regions where the lamellae are under compression.
 Peak values (in LBU) are in the region of $-2\e{-4}$ and $3\e{-4}$ for shear stress and  $-3.5\e{-4}$ and $7\e{-4}$ for the normal stress differences.
@@ -471,7 +465,7 @@ Very similar results, but with smaller peak magnitudes, are obtained for system 
 \includegraphics[angle=0,width=0.33\textwidth]{ck_run703_320.jpg}
 \includegraphics[angle=0,width=0.33\textwidth]{ck_run704_500.jpg}
 \includegraphics[angle=0,width=0.33\textwidth]{ck_run705_1280.jpg}
-\caption{Structure factor $C({\bm k})$ of system A-2D: Shown are states after equilibration at $t=3.2\e{5}$ (top); in steady shear at $\dot{\gamma}=1\times10^{-4}$ and $t=5\e{5}$ (centre) and after switch-off at $t=1.28\e{6}$ (bottom). The sections shown correspond to wave vectors on the interval $k_x, k_y \in [-\pi/2,\pi/2 ]$ LBU. LABEL THE AXES OTHERWISE X AND Y DIRECTIONS ARE NOT SPECIFIED.}
+\caption{Structure factor $C({\bm k})$ of system A-2D: Shown are states after equilibration at $t=3.2\e{5}$ (top); in steady shear at $\dot{\gamma}=1\times10^{-4}$ and $t=5\e{5}$ (centre) and after switch-off at $t=1.28\e{6}$ (bottom). The sections shown correspond to wave vectors on the interval $k_x, k_y \in [-\pi/2,\pi/2 ]$ LBU with $k_x$ and $k_y$ along the horizontal and vertical coodinate direction, respectively.}
 \label{fig5}
 \end{figure}
 
@@ -483,11 +477,10 @@ The wavevector at the peak has a small component in the $x$-direction, indicatin
 
 When the shear flow is switched off, the system relaxes again to its equilibrium layer spacing and the small tilt of the $C({\bm k})$ signal decreases to an undetectable level: this is consistent with the fact that, in Figs.~\ref{fig1} and \ref{fig2} (bottom panels) it is easy to see when the system has been sheared horizontally, but not in which sense. The intensity of the peak is slightly enhanced in the final state due to the improved orientation of the layers along the flow direction.
 
-
 Fig.~\ref{fig6} shows the time evolution of the defects density $\rho_D$ of system A-2D in the sequence of stepwise decreasing shear rates alluded to previously (starting at $\gd=2\e{-4}$ and ranging down to $\gd=2.5\e{-5}$, Table \ref{tab1}).
 The runs with the two highest shear rates were started from the amorphous, post-equilibration configuration, whereas all others were pre-sheared using the final configuration of the preceding run as the initial state.
 The total strain between the beginning and end of every individual run was at least $10^{5}\%$.
-Interestingly, following each step down in shear rate, both systems A-2D and B-2D continuously anneal to lower defect densities on a timescale $\simeq 10^6$LBU CONFIRM FOR B. If the shear rate is turned up again (not shown), the lamellae buckle and new defects recur on a timescale $XXX$LBU. 
+Interestingly, following each step down in shear rate, both systems A-2D and B-2D continuously anneal to lower defect densities on a timescale $\simeq 10^6$LBU. If the shear rate is turned up again (not shown), the lamellae buckle and new defects recur on a timescale corresponding to a stain of about 100\%. 
 This finding offers further support for a dynamical equilibrium between defect creation and annihilation above a critical (or crossover) shear rate, below which defects progressively annihiliate and near-perfect alignment eventually results.
 To test this assumption we performed simulations starting from a very well aligned state and increased the shear rate.
 The defect density indeed goes up (not shown) and reaches similar values to before. Note however that the defect annealing time (of order $10^6$LBU) is quite long compared to any inherent relaxation time; also, the final state after switchoff strongly depends on the previous flow. Thus the rheology and microstructure of these materials is inherently history dependent.
@@ -495,82 +488,87 @@ The defect density indeed goes up (not shown) and reaches similar values to befo
 \begin{figure}[htp]
 \centering
 \includegraphics[angle=0,width=0.5\textwidth]{defect_density_5e-4.pdf}
-\caption{Defect density $\rho_D$ vs time: The main picture shows data for system A-2D in a sequence of simulations with consecutively lowered shear rate $\dot{\gamma}=2\e{-4}$ (red solid), $1\e{-4}$ (green long-dashed),  $5\e{-5}$ (blue short-dashed),  $2.5\e{-5}$ (magenta dotted) and  $1.25\e{-5}$ (cyan dashed-dotted). Horizontal lines indicate time averages after entering the apparent steady state (where present). The inset gives data for the system A-3D and shear rates $\dot{\gamma}=2\times10^{-4}, 1\times10^{-4}$ and $5\times10^{-5}$ (left to right) CONFIRM.} 
+\caption{Defect density $\rho_D$ vs time: The main picture shows data for system A-2D in a sequence of simulations with consecutively lowered shear rate $\dot{\gamma}=2\e{-4}$ (red solid), $1\e{-4}$ (green long-dashed),  $5\e{-5}$ (blue short-dashed),  $2.5\e{-5}$ (magenta dotted) and  $1.25\e{-5}$ (cyan dashed-dotted). Horizontal lines indicate time averages after entering the apparent steady state (where present). The inset gives data for the system A-3D and shear rates $\dot{\gamma}=2\times10^{-4}, 1\times10^{-4}$ and $5\times10^{-5}$ (left to right).} 
 \label{fig6}
 \end{figure}
 
 
-Fig.~\ref{fig7} shows the spatially [CONFIRM] averaged total shear stress $\langle \sigma_{xy}({\bf r})\rangle \equiv\sigma_{xy} $.
+The top picture in Fig.~\ref{fig7} shows the spatially averaged total shear stress $\langle \sigma_{xy}({\bf r})\rangle \equiv\sigma_{xy} $.
 At low shear rates, stress fluctuations have longer temporal correlations but smaller amplitudes. (The latter dependence is obscured by the logarithmic vertical scale in this plot.) The root-mean-square temporal fluctuations can be reduced by increasing system size (by a factor 3 or so for the runs shown in Fig. \ref{fig1} and Fig. \ref{fig2}). In contrast, the averaged shear stress is almost independent of the system size, which makes it possible to simulate longer times using smaller system sizes while still giving accurate predictions for the bulk rheological behaviour. 
 We pursue this strategy here.
 
 \begin{figure}[htp!]
 \centering
-\includegraphics[angle=0,width=0.5\textwidth]{S_xy_tot_t_5e-4.pdf}
-\caption{Average total shear stress $\sigma_{xy}$ versus time for system A-2D: The horizontal lines are steady state time averages. For shear rate $\dot{\gamma}=1.25\e{-5}, 2.5\e{-5}, 5\e{-5}, 1\e{-4}, 2\e{-4}$, we find $\eta_{app}/\eta\equiv\sigma_{xy}/ \eta \dot{\gamma}=2.49, 2.25, 2.18, 1.93, 1.74$.
- }
+\includegraphics[angle=0,width=0.45\textwidth]{S_xy_tot_t_5e-4.pdf}
+\includegraphics[angle=0,width=0.45\textwidth]{P_xy_chem_t_5e-4.pdf}
+\includegraphics[angle=0,width=0.465\textwidth]{P_xy_defect_density.pdf}
+\caption{Top: average total shear stress $\sigma_{xy}$ versus time for system A-2D: The horizontal lines are steady state time averages. For shear rate $\dot{\gamma}=1.25\e{-5}, 2.5\e{-5}, 5\e{-5}, 1\e{-4}, 2\e{-4}$, we find $\eta_{app}/\eta\equiv\sigma_{xy}/ \eta \dot{\gamma}=2.49, 2.25, 2.18, 1.93, 1.74$; centre: average order parameter contribution to the pressure tensor $-P_{xy}$ vs time for system A-2D. The inset shows data for system A-3D and shear rates $\dot{\gamma}=2\times10^{-4}, 1\times10^{-4}$ and $5\times10^{-5}$ (left to right); bottom: average chemical contribution to the pressure tensor $-P_{xy}$ vs. defect density for system A-2D.}
 \label{fig7}
 \end{figure}
 
-\begin{figure}[htp!]
-\centering
-\includegraphics[angle=0,width=0.5\textwidth]{P_xy_chem_t_5e-4.pdf}
-\caption{Average order parameter contribution to the pressure tensor $P_{xy}$ vs time for system A-2D. The inset shows data for system A-3D and shear rates $\dot{\gamma}=2\times10^{-4}, 1\times10^{-4}$ and $5\times10^{-5}$ (left to right).}
-\label{fig8}
-\end{figure}
 
+System A-2D shows clear shear thinning behaviour; values of its apparent viscosity at various shear rates are given in the caption. The corresponding range of $Ca$ is 0.028-0.448. Using Eq.\ref{fullstress}, we can identify the stress contribution arising from the deviatoric part of the order parameter pressure tensor
+$\langle - P_{xy}({\bf r})\rangle\equiv - P_{xy}$; this is shown in the centre graph in Fig.~\ref{fig7}. The temporal fluctuations are in phase with those of the total stress and decrease with decreasing shear rate.
+The bottom image in Fig. \ref{fig7} plots $- P_{xy}$ against the defect density $\rho_D$; this shows a linear relation across almost the whole range of shear rates.
 
-\begin{figure}[htp!]
-\centering
-\includegraphics[angle=0,width=0.5\textwidth]{P_xy_defect_density.pdf}
-\caption{Average chemical contribution to the pressure tensor $ P_{xy}$ vs. defect density for system A-2D. REMOVE B-2D. PROBABLY MERGE 7, 8, 9 INTO SINGLE FIGURE.} 
-\label{fig9}
-\end{figure}
-
-System A-2D shows clear shear thinning behaviour; values of its apparent viscosity at various shear rates are given in the caption of Fig.~\ref{fig7}. The corresponding range of $Ca$ is XXXX-YYYY. Using Eq.\ref{fullstress}, we can identify the stress contribution arising from the deviatoric part of the order parameter pressure tensor
-$\langle P_{xy}({\bf r})\rangle\equiv P_{xy}$; this is shown in Fig.~\ref{fig8} RESOLVE SIGN ISSUE. The temporal fluctuations are in phase with those of the total stress in Fig.~\ref{fig7} and decrease with decreasing shear rate.
-Fig. \ref{fig9} plots $P_{xy}$ against the defect density $\rho_D$; this shows a linear relation across almost the whole range of shear rates.
-
-In contrast, system B-2D does not exhibit clear shear thinning; the apparent viscosities obey $\eta_{app}/\eta=1.57, 1.62, 1.55, 1.42, 1.87$ for the same set of shear rates as used in Fig.~\ref{fig7}. To within the measured accuracy, system B-2D is rheologically quasi-Newtonian. However, the range of $Ca$ in this case is lower, ZZZZ-TTTT, and the order parameter stress creates only a relatively modest uplift to the baseline viscosity. More significantly, $Ca\le Ca_c$ throughout this range CONFIRM so that the steady states found in system B-2D are far more ordered than in A-2D. This results from a defect annihilation process, occurring in the early stages of ramp-down, which we found to be accompanied by a sharp drop in $P_{xy}$ (not shown).
+In contrast, system B-2D does not exhibit clear shear thinning; the apparent viscosities obey $\eta_{app}/\eta=1.57, 1.62, 1.55, 1.42, 1.87$ for the same set of shear rates as used in Fig.~\ref{fig7}. To within the measured accuracy, system B-2D is rheologically quasi-Newtonian. However, the range of $Ca$ in this case is lower, 0.01-0.164, and the order parameter stress creates only a relatively modest uplift to the baseline viscosity. More significantly, $Ca\le Ca_c$ for all but the highest applied shear rate so that the steady states found in system B-2D are far more ordered than in A-2D. This results from a defect annihilation process, occurring in the early stages of ramp-down, which we found to be accompanied by a sharp drop in $P_{xy}$ (not shown).
 
 \begin{figure}[htp!]
 \centering
 \includegraphics[angle=0,width=0.5\textwidth]{N1_t_5e-4.pdf}
-\caption{Spatially averaged first normal stress differences $N_1= \sigma_{yy}-\sigma_{xx}$ vs time for system A-2D. The inset shows data for system A-3D and shear rates $\dot{\gamma}=2\times10^{-4}, 1\times10^{-4}$ and $5\times10^{-5}$ (left to right). Horizontal solid lines are time averages.}
-\label{fig10}
+\caption{Spatially averaged first normal stress differences $N_1= \sigma_{xx}-\sigma_{yy}$ vs time for system A-2D. The inset shows data for system A-3D and shear rates $\dot{\gamma}=2\times10^{-4}, 1\times10^{-4}$ and $5\times10^{-5}$ (left to right). Horizontal solid lines are time averages.}
+\label{fig8}
 \end{figure}
 
-Fig.~\ref{fig10} shows averaged first normal stress differences $\langle N_1({\bf r})\rangle \equiv N_1$ versus time for system A-2D, where we followed the same stepwise decreasing flow protocol as before.
+Fig.~\ref{fig8} shows averaged first normal stress differences $\langle N_1({\bf r})\rangle \equiv N_1$ versus time for system A-2D, where we followed the same stepwise decreasing flow protocol as before.
 For the first several steps $N_1$ decreases monotonously with decreasing shear rate.
 However, at the lowest shear rates the behaviour is not monotic: $N_1$ eventually rises again. (The resulting time averages, shown as horizontal lines, do not therefore reflect true steady states.)
 This somewhat surprising feature has a simple explanation. 
 The time sequence of the defect density in Fig. \ref{fig6} reveals that the rise in $N_1$ is correlated with a drop in $\rho_D$, and linked to the onset of defect annihilation (which happens only at low shear rates).
 When two defects meet and cancel, the local lamellar width alters by a certain amount. This causes frustration as the system is unable to snap back locally towards its equilibrium width. Hence the normal stresses $\sigma_{xx}$ falls, and may even attain negative values, leading to increasing values of $N_1$.
-This explanation is further supported by the fact that $\sigma_{xx}$ evolves anomalously slowly, whereas all other components of the stress tensor reach their steady state values more quickly. We have not explored the dependence on system size of this normal stress anomaly, but it may be partly a finite size effect caused by the relatively modest number of smectic layers within the simulated volume. IS THIS WHAT YOU MEANT?
+This explanation is further supported by the fact that $\sigma_{xx}$ evolves anomalously slowly, whereas all other components of the stress tensor reach their steady state values more quickly. We have not explored the dependence on system size of this normal stress anomaly, but it may be partly a finite size effect caused by the relatively modest number of smectic layers within the simulated volume.
 The normal stress in system B-2D (not shown) behaves differently: in this case $N_1$ falls monotonically during the defect annihilation phase. 
 It is not clear whether this difference should be attributed to the change in $\beta, Ca$ or $Pe$ between the two systems, or indeed a combination of those changes.
 
 \begin{figure}[htp!]
 \centering
 \includegraphics[angle=0,width=0.5\textwidth]{S_xy_N1_gammadot.pdf}
-\caption{Flow curves: Time-averaged shear stress $\langle \sigma_{xy}\rangle$ and first normal stress differences $\langle N_1 \rangle$ vs shear rate $\dot{\gamma}$ for system A-2D ($\eta=8.33\times10^{-2}, -a=b=5\times 10^{-4}$). LABEL THIS PROPERLY} 
-\label{fig11}
+\caption{Flow curves: Time-averaged shear stress $\langle \sigma_{xy}\rangle$ and first normal stress differences $\langle N_1 \rangle$ vs shear rate $\dot{\gamma}$ for system A-2D and B-2D. The dash-dotted lines are power-law fits to the data.} 
+\label{fig9}
 \end{figure}
 
-Fig.~\ref{fig11} shows `flow curves' representing the shear rate dependence of time averaged stresses $\sigma_{xy}$ and $N_1$. This is calculated from the stepwise ramp data as detailed previously, so the $N_1$ results at low shear rates should not be taken as definitive CONFIRM. System A-2D shows shear thinning as already discussed, apparently following a power law $\sigma_{xy}=\dot{\gamma}^m$ with exponent $m\simeq 0.87$. A recent experimental and theoretical work studies the nonlinear relation between shear stress and shear rate in lyotropic lamellar phases \cite{Lu08}; interestingly the authors identify the motion of screw defects as being responsible for the layer tilting, folding  and formation of defects. They report an experimental value of $m\simeq=1/1.44\simeq 0.694$, which is in good agreement with their theoretical prediction of $m=2/3$. Our value of $m=0.87$ for the disordered flow regime is larger. One possible explanation for this discrepancy is that screw defects, which do not exist in our 2D simulations, play a key role for this theory. 
-On the other hand the fitted power law must be treated with great caution since the fit includes data from both $\dot\gamma$ both above and below $\dot\gamma_c$ CONFIRM. It is somewhat surprising that the strong morphological changes around $\dot\gamma_c$ give no visible anomaly or feature in the flow curves. CONFIRM AGAIN -- THIS IS VERY ODD.
+Fig.~\ref{fig9} shows `flow curves' representing the shear rate dependence of time averaged stresses $\sigma_{xy}$ and $N_1$. This is calculated from the stepwise ramp data as detailed previously, so the $N_1$ results at low shear rates should not be taken as definitive. System A-2D shows shear thinning as already discussed, apparently following a power law $\sigma_{xy}=\dot{\gamma}^m$ with exponent $m\simeq 0.87$. A recent experimental and theoretical work studies the nonlinear relation between shear stress and shear rate in lyotropic lamellar phases \cite{Lu08}; interestingly the authors identify the motion of screw defects as being responsible for the layer tilting, folding  and formation of defects. They report an experimental value of $m\simeq=1/1.44\simeq 0.694$, which is in good agreement with their theoretical prediction of $m=2/3$. Our value of $m=0.87$ for the disordered flow regime is larger. One possible explanation for this discrepancy is that screw defects, which do not exist in our 2D simulations, play a key role for this theory. 
+On the other hand the fitted power law must be treated with great caution since the fit includes data from both $\dot\gamma$ both above and below $\dot\gamma_c$. It is somewhat surprising that the morphological changes around $1.25\e{-5}<\dot\gamma_c <2.5\e{-5}$ in system A give no visible anomaly or feature in the flow curves.
+This may be partly explained with a more crossover-like behaviour of system A at the lowest applied shear rate.
 %
 For system B-2D the data is consistent with an exponent $m=1$, indicating more or less constant viscosity and no pronounced shear thinning (as previously described). 
 This appears to be due to the decreasing number of defects at shear rates below $\dot{\gamma}\le2\e{-4}$; the order parameter stress $P_{xy}$ is then dominated by the background viscosity term $\eta\dot\gamma$. 
-THAT MAKES THE RESULT FOR A-2D STILL MORE SURPRISING, NO?
 
-In neither system does $\sigma_{xy}(\dot\gamma)$ offer any clear signature of a yield stress, as would be expected to arise for a frozen-in defect texture in the static state. This can be understood if, as detailed previously, that texture is replaced by a fully aligned state at the lowest shear rates studied here: with the layering wavevector perpendicular to the flow, such a state should have a purely viscous response. On the other hand, one would expect $N_1$ also to vanish in that case; if this happens, it is at lower strain rates than encountered here. WE HAVE TO UNDERSTAND WHY THE NORMAL STRESS IS SO LARGE, ESPECIALLY IN B-2D WHERE YOU ARE CLAIMING THAT THE CHEMICAL STRESS IS NEGLIGIBLE!!
+In neither system does $\sigma_{xy}(\dot\gamma)$ offer any clear signature of a yield stress, as would be expected to arise for a frozen-in defect texture in the static state. This can be understood if, as detailed previously, that texture is replaced by a fully aligned state at the lowest shear rates studied here: with the layering wavevector perpendicular to the flow, such a state should have a purely viscous response. On the other hand, one would expect $N_1$ also to vanish in that case; if this happens, it is at lower strain rates than encountered here. 
+
+WE HAVE TO UNDERSTAND WHY THE NORMAL STRESS IS SO LARGE, ESPECIALLY IN B-2D WHERE YOU ARE CLAIMING THAT THE CHEMICAL STRESS IS NEGLIGIBLE!!
+
+OH: I have performed simulations with a perfectly aligned state with different layer spacing. The viscous stress vanishes completely in all cases.
+However, the first normal stress difference seems to depend sensitively on the layer spacing.
+
+For a layer spacing equal to the Brazovskii equilibrium wavelength  (corresponding to 26 lamellae across the gradient direction at $N_x \times N_y \times N_z = 512 \times 256 \times 1$) $N_1$ is very small and positive of order $10^-6$.
+Interestingly, neither $P^{chem}_{xy}$ nor $N_1$ alter when the flow is switched on, but remain virtually constant.
+
+If the wavelength of the initial state is changed by 5-10\%, the number of layers decreases or increases by 2.
+Again, the viscous stress is zero, but in the compressed / expanded state we get positive /negative $N_1=P^{chem}_{yy}-P^{chem}_{xx}$ (using the conventional definition of flow-minus-gradient and the fact that the chemical pressure has a negative sign). 
+The magnitude of $N_1$ is higher for system B than for system A. This can be understood with difference in Brazvskii amplitude (A: $\phi_q\simeq1.28$, B: $\phi_q\simeq 2$).
+For system B $N_1$ is almost of order $10^{-4}$! 
+
+Therfore, our findings for $N_1$ correspond to a slightly compressed system with a layer spacing smaller than the equilibrium one. The fact that $N_1$ is already very small if equilibrium spacing is used suggests that the plateau is caused by finite size effects.
+
+The reason for the sensitivity of $N_1$ towards compression and expansion is not really clear yet to me. 
+It appears that $P_xx$ (x being the flow direction) is much more sensitive towards changes in the layer spacing than $P_yy$. Intuitively I would have expected it to be the other way round as changes in the layer spacing affect the y-gradients more than the x-gradients (after all the structure is translationally invariant in x-direction).
+At the moment I can only think of an explanation that draws on something beyond the single-mode expansion where gradients in flow direction pick up wavelengths in the velocity-gradient-direction.  
 
 \subsection{Three Dimensions}
 \label{results3D}
 
-The computational cost of repeating all the above studies in three dimensional systems of equivalent size remains prohibitive, particularly when addressing steady state properties which emerge only after a million or more timesteps. We therefore focus in 3D on smaller systems (Table \ref{tab1}), but still large enough in principle to show qualitatively similar structure under flow. Our studies use two sets of parameters. System A-3D is identicaly to A-2D except for the introduction of the third dimension. System C-3D has parameters intermediate between A-2D and B-2D (Table \ref{tab1}) and was chosen in preference to the latter because 
-preliminary studies on B-3D showed very rapid alignment into a fully ordered state. CONFIRM THAT, OR GIVE ANOTHER GOOD REASON. (We see below however that in fact this is a rather general outcome in 3D.)
+The computational cost of repeating all the above studies in three dimensional systems of equivalent size remains prohibitive, particularly when addressing steady state properties which emerge only after a million or more LB timesteps. We therefore focus in 3D on smaller systems (Table \ref{tab1}), but still large enough in principle to show qualitatively similar structure under flow. Our studies use two sets of parameters. System A-3D is identicaly to A-2D except for the introduction of the third dimension. System C-3D has parameters intermediate between A-2D and B-2D (Table \ref{tab1}) and was chosen in preference to the latter because B-2D ordered completely if the system size was matched to a slice of B-3D. (We see below however that in fact this is a rather general outcome in 3D.)
 
 \begin{figure*}[htp!]
 \centering
@@ -578,15 +576,15 @@ preliminary studies on B-3D showed very rapid alignment into a fully ordered sta
 \includegraphics[angle=0,width=0.45\textwidth]{phi_run1002_640k.png}
 \includegraphics[angle=0,width=0.45\textwidth]{phi_run1001_640k.png}
 \includegraphics[angle=0,width=0.45\textwidth]{phi_run1003_960k.png}
-\caption{Order parameter $\phi({\bf r})$ in two and three dimensions: Top pictures show system C-3D after equilibration (left) and in shear flow (right, $\dot{\gamma}=2\times10^{-4}$) at $t=6.4\e{5}$. The opacity of one phase has been reduced to enable a better view into the lamellar structure. The bottom left picture shows system C-2D at the same time step and shear rate. The bottom right picture is system A-2D at $\dot{\gamma}=1\times10^{-4}$ and time step $t=9.6\e{5}$. Results for A-3D are morphologically indistinguishable from those for C-3D. In all these images the flow direction is horizontal, to the right in the upper half of the sample and to the left in the lower half. CONFIRM} 
-\label{fig12}
+\caption{Order parameter $\phi({\bf r})$ in two and three dimensions: Top pictures show system C-3D after equilibration (left) and in shear flow (right, $\dot{\gamma}=2\times10^{-4}$) at $t=6.4\e{5}$. The opacity of one phase has been reduced to enable a better view into the lamellar structure. The bottom left picture shows system C-2D at the same time step and shear rate. The bottom right picture is system A-2D at $\dot{\gamma}=1\times10^{-4}$ and time step $t=9.6\e{5}$. Results for A-3D are morphologically indistinguishable from those for C-3D. In all these images the flow direction is horizontal, to the right in the upper half of the sample and to the left in the lower half.} 
+\label{fig10}
 \end{figure*}
 
 \begin{figure}[htp!]
 \centering
 \includegraphics[angle=0,width=0.40\textwidth]{ck_y-slice_run786_320.jpg}
-\caption{Structure factor $C({\mathbf k})$ of quiescent system A-3D, showing a cut along $k_y=0$ after equilibration at $t=3.2\e{5}$. Shown are wave vectors on the interval $k_x, k_z\in[-\pi/2 ,\pi/2 ]$. Data for C-3D (not shown) is almost the same. CONFIRM}
-\label{fig13}
+\caption{Structure factor $C({\mathbf k})$ of quiescent system A-3D, showing a cut along $k_x=0$ after equilibration at $t=3.2\e{5}$. Shown are wave vectors on the interval $k_y, k_z\in[-\pi/2 ,\pi/2 ]$ with $k_y$ and $k_z$ being the horizontal and vertical direction, respectively. Data for C-3D (not shown) is virtually the same.}
+\label{fig11}
 \end{figure}
 
 \begin{figure}[htp!]
@@ -594,77 +592,84 @@ preliminary studies on B-3D showed very rapid alignment into a fully ordered sta
 \includegraphics[angle=0,width=0.35\textwidth]{ck_x-slice_run788_960.jpg}
 \includegraphics[angle=0,width=0.35\textwidth]{ck_y-slice_run788_960.jpg}
 \includegraphics[angle=0,width=0.35\textwidth]{ck_z-slice_run788_960.jpg}
-\caption{Structure factor $C({\mathbf k})$ of system A-3D in shear flow ($\dot{\gamma}=1\times10^{-4}$) at t=960k: Cuts through along $k_x=0,k_y=0$ and $k_z=3\pi/16 $, respectively are shown for wave-vectors $k_x, k_y, k_z\in[-\pi/2 ,\pi/2]$. Note that in these images y is the flow direction, whereas the direction of the velocity gradient and vorticity are z and x, respectively.}
-\label{fig14}
+\caption{Structure factor $C({\mathbf k})$ of system A-3D in shear flow ($\dot{\gamma}=1\times10^{-4}$) at t=960k: Cuts through along $k_x=0,k_y=3\pi/16$ and $k_z=0$, respectively are shown for wave-vectors $k_x, k_y, k_z\in[-\pi/2 ,\pi/2]$.}
+\label{fig12}
 \end{figure}
 
-Fig.~\ref{fig12} shows the post-equilibration amorphous structure and the steady-state structure under flow in system C-3D (A-3D is similar) at system size $N_x\times N_y \times N_z=128\times256\times128$. The latter is compared with C-2D and A-2D in a system of the same $x$ and $y$ dimensions ($128\times256\times1$).  The quiescent metastable state of system C-3D after equilibration is more or less the same as it would be in two dimensions. 
-Indeed, a slice through the structure factor along $k_y=0$ (cuts along $k_x,k_z=0$ look identical) is shown in Fig. \ref{fig13} and resembles that in Fig.
+Fig.~\ref{fig10} shows the post-equilibration amorphous structure and the steady-state structure under flow in system C-3D (A-3D is similar) at system size $N_x\times N_y \times N_z=256\times128\times128$. The latter is compared with C-2D and A-2D in a system of the same $x$ and $y$ dimensions ($256\times128\times1$).  The quiescent metastable state of system C-3D after equilibration is more or less the same as it would be in two dimensions. 
+Indeed, a slice through the structure factor along $k_x=0$ (cuts along $k_y,k_z=0$ look identical) is shown in Fig. \ref{fig11} and resembles that in Fig.
 ~\ref{fig5}.
-However, under shear at $\dot\gamma = 2\times 10^{-4}$ ($Pe = XXX$, $Ca = YYY$) this structure anneals readily into a regular lamellar structure after a transient period of about XXX timesteps. This occurs for even the highest shear rates applied, indicating that there is a very strong tendency in three dimensions to form ordered lamellar arrays. The same behaviour was seen CONFIRM in system A-3D for which the highest flow rate used corresponds to $Pe = XXX$ and $Ca = YYY$. (In contrast, the 2D results at the same flow rates and system sizes feature the typical fluctuating pattern of breaking and merging lamellae that was described previously and is visible in the lower panels of Fig.~\ref{fig12}.) The structure factor seen in 3D is accordingly close to that of a perfectly ordered lamellar state (see Fig.~\ref{fig14}) in contrast to the corresponding results in 2D (Fig.~\ref{fig5}).
-These findings suggest that any characteristic strain rate $\dot\gamma_c$ at which defects proliferate must be markedly higher in 3D than in 2D. Specifically, if $Ca$ is the relevant control parameter, our results for A-3D imply that $Ca_c > YYY$ in three dimensions.
+However, under shear at $\dot\gamma = 2\times 10^{-4}$ ($Pe = 400$, $Ca = 0.252$) this structure anneals readily into a regular lamellar structure after a transient period of about $6\e{5}$ LB timesteps. This occurs for even the highest shear rates applied, indicating that there is a very strong tendency in three dimensions to form ordered lamellar arrays. The same behaviour was seen in system A-3D for which the highest flow rate used corresponds to $Pe = 80$ and $Ca = 0.448$. (In contrast, the 2D results at the same flow rates and system sizes feature the typical fluctuating pattern of breaking and merging lamellae that was described previously and is visible in the lower panels of Fig.~\ref{fig10}.) The structure factor seen in 3D is accordingly close to that of a perfectly ordered lamellar state (see Fig.~\ref{fig12}) in contrast to the corresponding results in 2D (Fig.~\ref{fig5}).
+These findings suggest that any characteristic strain rate $\dot\gamma_c$ at which defects proliferate must be markedly higher in 3D than in 2D. Specifically, if $Ca$ is the relevant control parameter, our results for A-3D imply that $Ca_c > 0.448 $ in three dimensions.
 
-Note however that the order we observe is not completely perfect and edge dislocations emerge spontaneously in pairs as a consequence of a mismatch between some of the layers. WHAT DOES THAT MEAN?
+[DESCRIPTION CLEAR?] Note however that the order we observe is not completely perfect as a mismatch of the layers occurs leading to branching points and edges (e.g. at the centre of the ordered 3D-system in Fig.~\ref{fig10}). 
 The Burgers vector is oriented along the gradient direction with edges along the flow direction.
 This forms a structure that is translationally invariant along the flow direction and in the final steady state the location of the edge defects does not change. Notably, the corresponding orientation of edge dislocations does not exist in two dimensions.
-A closer look at the kinetic evolution of the order parameter reveals that regions separated by different values of order parameter connect along a third direction by expelling regions with opposite order parameter.
-This is a direct consequence of the additional dimension and seems to play a key role in promoting the formation of the homogeneously layered structure.
-I DO NOT UNDERSTAND ALL THIS: DOES IT CORRESPOND TO MOTION OF THE ORIENTED EDGE DISLOCATIONS? IF NOT, WHAT ROLE DO THOSE PLAY DURING THE ANNEALING?
-EXPLAIN CAREFULLY WHY THIS MECHANISM SPEEDS THINGS UP IN 3D BUT NOT IN 2D.
+[TRYING TO EXPLAIN WHAT'S HAPPENING IN 3D. CLEAR?]
 
-We next quantify the time system A-3D takes to anneal into its final ordered structure starting from an isotropic initial configuration. (These and subsequent measurements are reported for A-3D only; C-3D is qualitatively similar CONFIRM.)  
+A closer look at the kinetic evolution of the order parameter reveals that the additional dimension seems to play a key role in promoting the formation of the homogeneously layered structure.
+The ordering process takes place in two consecutive steps: 
+Firstly, the equilibrated state undergoes a transition to a semi-ordered state, which consists of small patches of layered regions with the layer normals in gradient direction.
+Initially, the length of the lamellae is quite short but gets longer in flow direction as the simulation proceeds and the structure is advected.
+It remains, however, relatively short in vorticity direction with the individual layers being disconnected.
+In a second step the layers merge by linking up in vorticity direction and expelling regions with opposite order parameter, which is only possible due to the additional third dimension.
+
+We next quantify the time system A-3D takes to anneal into its final ordered structure starting from an isotropic initial configuration. (These and subsequent measurements are reported for A-3D only; C-3D is qualitatively similar.)  
 The inset of Fig.~\ref{fig6} gives the defect density as defined by Eq.~\ref{defect density} versus time for shear rates $\dot{\gamma}=5\times10^{-5}-2\times10^{-4}$. 
 Within a few hundred thousand LB timesteps the defect density decreases by two orders of magnitude, resembling the behaviour seen in system A-2D at shear rates one decade smaller.
-The total strain where the curves level off, and ordering is achieved, scales with the shear rate and is about $\gamma=1.3$ (at $\dot{\gamma}=2\times10^{-4}$), $\gamma=0.8$ (at $\dot{\gamma}=1\times10^{-4}$) and $\gamma=0.6$ (at $\dot{\gamma}=5\times10^{-5}$). CONFIRM THESE STRAIN NUMBERS, THEY SEEM UNBELIEVABLY SMALL!!!
+The total strain where the curves level off, and ordering is achieved, scales with the shear rate and is about $\gamma=160$ (at $\dot{\gamma}=2\times10^{-4}$), $\gamma=120$ (at $\dot{\gamma}=1\times10^{-4}$) and $\gamma=65$ (at $\dot{\gamma}=5\times10^{-5}$).
 
-The reduced number of defects is reflected in the magnitude of the order parameter stress contribution $P_{xy}$; the 3D behaviour is shown in the inset of Fig.~\ref{fig8}. The final contribution to the total stress is created by a small number of remaining defects (hence the inconsistent trend of the tiny plateau value with strain rate, which is not a concern here CONFIRM) and is quite negligible compared to the background viscosity contribution $\eta\dot\gamma$. The drop in $P_{xy}$ by three orders of magnitude during the defect annihilation process can formally be viewed as shear thinning of a quite extreme degree -- albeit one masked, in any macroscopic measurement of $\sigma_{xy}$, by the Newtonian background. 
+The reduced number of defects is reflected in the magnitude of the order parameter stress contribution $P_{xy}$; the 3D behaviour is shown in the inset of Fig.~\ref{fig8}. The final contribution to the total stress is created by a small number of remaining defects (hence the inconsistent trend of the tiny plateau value with strain rate, which is not a concern here) and is quite negligible compared to the background viscosity contribution $\eta\dot\gamma$. The drop in $P_{xy}$ by three orders of magnitude during the defect annihilation process can formally be viewed as shear thinning of a quite extreme degree -- albeit one masked, in any macroscopic measurement of $\sigma_{xy}$, by the Newtonian background. 
 
-First normal stress differences $N_1=\langle\sigma_{yy}-\sigma{zz}\rangle$ for system A-3D are shown in the inset of Fig.\ref{fig10}. THIS IS THE WRONG DEFINITION EVEN WITH THE CRAZY COORDINATE SYSTEM ADOPTED IN THIS PAPER. N1 IS FLOW MINUS GRADIENT NOT FLOW MINUS VORTICITY.
+First normal stress differences $N_1=\langle\sigma_{xx}-\sigma{yy}\rangle$ for system A-3D are shown in the inset of Fig.\ref{fig8}.
 For all shear rates addressed here system A-3D attains similar values of the normal stress; these are approached monotonically and about one decade smaller than those seen in system A-2D. The mechanism reported previously for the buildup of normal stress on approaching the ordered state in 2D systems seemingly does not apply in 3D, perhaps because of the much more efficient pathways to relaxation and mutual annihilation of defects.
 
 CAN WE PLEASE MEASURE THE NORMAL STRESS IN A COMPLETELY DEFECT FREE STATE AND COMPARE WITH THE OBSERVED VALUES. DOES THE PLATEAU CORRESPOND TO A FEW REMAINING DEFECTS OR DOES IT STEM FROM THE PERFECT BEHAVIOUR??
 
+
 \if{ 
 Finally we want to glimpse at the structure factor of system A-3D in shear flow.
-Fig. \ref{fig14} shows $C({\bm k})$ at shear rate $\gd=1\e{-4}$ for Fourier vectors on the interval $[-\pi/2 l, \pi/ 2 l]$.
+Fig. \ref{fig12} shows $C({\bm k})$ at shear rate $\gd=1\e{-4}$ for Fourier vectors on the interval $[-\pi/2 l, \pi/ 2 l]$.
 The leftmost picture is a cut along $k_x=0$ in with $k_y$ in horizontal and $k_z$ in vertical direction.
 It shows data in flow-velocity-gradient plane and can be directly compared with the left picture in Fig. \ref{fig5}.
 The other images give cuts along $k_y=0$ in $k_x-k_z$-plane and along $k_z$ in $k_x-k_y$-plane. 
 Note that for the centre picture a logarithmic colour map had to be adopted due to the strong ordering in 3D.
 There is a certain similarity between the 2D-structure factor {\it after} switch-off (Fig. \ref{fig5}) and the 3D-structure, but the latter shows a pronounced peak at $k_z\simeq\pm0.2\pi/l$ also during shear flow, which is slightly concealed by the logarithmic scale.The split nature is an effect of the relatively sparse discretization and was caused by the visualisation software.
 Although strongly peaked, the spatial dependence of the signal is best demonstrated in a 3D-representation. 
-Fig. \ref{fig15} depicts a close up of the 3D-structure factor, whereas the red area corresponds to an isosurface of about $C({\bm k})\simeq 10^3$.
+Fig. \ref{fig13} depicts a close up of the 3D-structure factor, whereas the red area corresponds to an isosurface of about $C({\bm k})\simeq 10^3$.
 It reveals a banana-shaped spatial dependence with some small appendices in flow direction at $k_x=0$.
 
 \begin{figure}[htp!]
 \centering
 \includegraphics[angle=0,width=0.45\textwidth]{ck_run788_960_zoom.jpg}
 \caption{Structure factor $C({\mathbf k})$ of system A-3D in shear flow: The picture gives a 3D-representation of the data in shear flow at $t=9.6\e{5}$ and $\dot{\gamma}=1\times10^{-4}$.}
-\label{fig15}
+\label{fig13}
 \end{figure}
 
 }\fi
 
 \section{Conclusions}\label{conclusions}
 
-Many earlier studies have proposed a picture in which a layer undulation instability in three-dimensional smectic liquid crystals emerges above a critical shear rate [A G Zilman and R Granek, EPJB 11, 593-608 (1999), L Courbin, J P Delville, J Rouch and P Panizza, PRL 89, 148305 (2002)]\cite{Gonnella98,Kumaran2001} [Ramaswamy]. Molecular dynamics simulations on thermotropic smectics place this in a regime of flow rates well above those we have applied in the present study \cite{Guo2002,Soddemann2004, Stewart2009}  CONFIRM THIS WITH NEW PARAMETER MAPPING -- IT COULD BE WRONG. The status of this instability and its effects on rheology in experiments remains somewhat unclear. Also unclear is its status in two dimensions.
+Many earlier studies have proposed a picture in which a layer undulation instability in three-dimensional smectic liquid crystals emerges above a critical shear rate \cite{Zilman99,Courbin02,Gonnella98,Kumaran2001} [Ramaswamy]. Molecular dynamics simulations on lyotropic smectics place this in a regime of flow rates well above those we have applied in the present study \cite{Guo2002,Soddemann2004}. The critical shear rate for thermotropic smectics that has been given in a theoretical approach \cite{Stewart2009} is slightly above ours [CHECKED]. The status of this instability and its effects on rheology in experiments remains somewhat unclear. Also unclear is its status in two dimensions.
 
-In the present work we have studied the nonlinear rheology of lamellar systems in two and three dimensions by means of large-scale simulations of a well-established model. After quenching from a homogeneous phase a metastable amorphous lamellar structure appears, similar to previous simulations in two dimensions using comparable models and parameters [REFS].
-Also in accord with some previous studies [REF], under flow in two dimensions we found the morphology of the order parameter to show two distinct regimes: one with very few defects which arises at low shear rates, and a defect rich phase at higher ones. We found that the critical (or crossover) strain rate $\dot\gamma_c$ separating these phases depends somewhat on system size, but much more strongly on thermodynamic and kinetic parameters. We have argued that this dependence might be summarized in terms of a capillary number $Ca$ (Eq.~\ref{capillary}) that is the ratio of viscous stress to the gradient free energy density of the lamellar phase. This controls a steady-state elastic strain in the smectic which, when it exceeds some characteristic value $Ca_c$, might cause yielding of layers and defect proliferation; our best estimate is $Ca_c \simeq 0.03$. However we emphasize that the evidence for $Ca$ as a control parameter is currently very limited and it would take a painstaking exploration of parameter space to confirm this picture. 
+In the present work we have studied the nonlinear rheology of lamellar systems in two and three dimensions by means of large-scale simulations of a well-established model. After quenching from a homogeneous phase a metastable amorphous lamellar structure appears, similar to previous simulations in two dimensions using comparable models and parameters [REFERENCES].
+Also in accord with some previous studies [REFERENCES], under flow in two dimensions we found the morphology of the order parameter to show two distinct regimes: one with very few defects which arises at low shear rates, and a defect rich phase at higher ones. We found that the critical (or crossover) strain rate $\dot\gamma_c$ separating these phases depends somewhat on system size, but much more strongly on thermodynamic and kinetic parameters. We have argued that this dependence might be summarized in terms of a capillary number $Ca$ (Eq.~\ref{capillary}) that is the ratio of viscous stress to the gradient free energy density of the lamellar phase. This controls a steady-state elastic strain in the smectic which, when it exceeds some characteristic value $Ca_c$, might cause yielding of layers and defect proliferation; our best estimate is $Ca_c \simeq 0.03$ (system A) and $0.01$ (system B). However we emphasize that the evidence for $Ca$ as a control parameter is currently very limited and it would take a painstaking exploration of parameter space to confirm this picture. 
 
 A notable feature of the disordered flow phase is our observation of striated heterogeneity in the state of smectic order, with strongly dilated and compressed regions oriented along the extensional axis of the flow.  These are present in steady state but are nonstationary. The extended regions with lamellar spacing larger than at equilibrium exhibit either negative or small positive shear stress and first normal stress difference, whereas positive peak values were found in the compressed domains.
-[PLEASE EXPLAIN THE FOLLOWING SENTENCE
-A similar dependence of these charactistic patterns on the system size has been recently reported in \cite{Kumaran2011}.]
-These distortions of the order parameter contribute a term $P_{xy}$ to the shear stress whose magnitude could be directly related to the density of defects. In one system we found shear thinning described by a power law dependence of stress on strain rate, $\sigma_{xy}=\gamma^m$ with $m=0.87$; however the simplicity of this result may be fortuitous since the range of strain rates studied spans $\dot\gamma_c$ CONFIRM. In another system, at strain rates primarily below $\dot\gamma_c$, the shear rheology was quasi-Newtonian ($m=1$) although a significant first normal stress difference $N_1$ was also present.
+[EXPLANATION CLEAR?]
+A similar dependence of the layer alignment in flow direction depending on the system size has been recently reported in \cite{Kumaran2011}.
+Smaller systems with 16 layers across the gradient direction, which is comparable with our systems consisting of  $N_x\times N_y \times N_z=256\times128\times1$ sites, showed a larger tendency to align in flow direction.
+For larger systems there was a clear trend to align at an angle with the flow direction.
+These distortions of the order parameter contribute a term $P_{xy}$ to the shear stress whose magnitude could be directly related to the density of defects. In one system we found shear thinning described by a power law dependence of stress on strain rate, $\sigma_{xy}=\gamma^m$ with $m=0.87$; however the simplicity of this result may be fortuitous since the range of strain rates studied spans $\dot\gamma_c$. In another system, at strain rates primarily below $\dot\gamma_c$, the shear rheology was quasi-Newtonian ($m=1$) although a significant first normal stress difference $N_1$ was also present.
 
-We then simulated the flow behaviour of directly comparable systems in three dimensions, and found striking differences between the two- and three-dimensional response under conditions of matched $\dot\gamma$. The 3D-system showed none of the distictive dilation/compression bands seen in 2D; moreover the microstructure, initially amorphous after quenching from the homogeneous phase, rapidly ordered under shear into a lamellar array with a low density of edge defects, all of which were oriented along the flow directions. This contrasts with the 2D case where numerous edge dislocations are present in the disordered phase ($\dot\gamma > \dot\gamma_c$) but, by virtue of the 2D geometry, all are oriented along the vorticity direction. (In saying this, we imagine a 3D continuation of the 2D structure which is translationally invariant along that direction.) Our 3D results do not rule out a transition or crossover from ordered to disordered structures, but this is not seen within the range of flow rates addressed here. This means that, if such a transition is controlled by capillary number, its value at onset in 3D obeys $Ca_c>YYY$, a value notably higher than that observed in 2D. Since identical parameter sets were chosen, the same applies to any other dimensionless number that might control the onset of the defect-rich phase. 
+We then simulated the flow behaviour of directly comparable systems in three dimensions, and found striking differences between the two- and three-dimensional response under conditions of matched $\dot\gamma$. The 3D-system showed none of the distictive dilation/compression bands seen in 2D; moreover the microstructure, initially amorphous after quenching from the homogeneous phase, rapidly ordered under shear into a lamellar array with a low density of edge defects, all of which were oriented along the flow directions. This contrasts with the 2D case where numerous edge dislocations are present in the disordered phase ($\dot\gamma > \dot\gamma_c$) but, by virtue of the 2D geometry, all are oriented along the vorticity direction. (In saying this, we imagine a 3D continuation of the 2D structure which is translationally invariant along that direction.) Our 3D results do not rule out a transition or crossover from ordered to disordered structures, but this is not seen within the range of flow rates addressed here. This means that, if such a transition is controlled by capillary number, its value at onset in 3D obeys $Ca_c>0.448$, a value notably higher than that observed in 2D. Since identical parameter sets were chosen, the same applies to any other dimensionless number that might control the onset of the defect-rich phase. 
 
-Finally, we note that one recent theory of smectic rheology [LU] suggests this is controlled by screw dislocations which have no 2D analogue. Moreover, the residual dislocations seen in the 3D ordered phase have an orientation that also does not exist in 2D. It should be remembered that, in 3D, edge dislocations and screw dislocations are interconvertible: they have the same topological status and the nomenclature merely describes whether the defect line is oriented normal or parallel to the smectic layers [CHAIKIN+LUBENSKY]. The ability of 3D defect lines to reorient as well as translate underscores their greater dynamical freedom compared to similar defects in a 2D geometry. It is thus tempting to attribute the marked difference in dynamics between 2D and 3D systems to the reduced constraints on defect motion that arise in 3D, allowing them to find and annihilate each other more easily.
+Finally, we note that one recent theory of smectic rheology \cite{Lu08} suggests this is controlled by screw dislocations which have no 2D analogue. Moreover, the residual dislocations seen in the 3D ordered phase have an orientation that also does not exist in 2D. It should be remembered that, in 3D, edge dislocations and screw dislocations are interconvertible: they have the same topological status and the nomenclature merely describes whether the defect line is oriented normal or parallel to the smectic layers \cite{ChaikinLubensky}. The ability of 3D defect lines to reorient as well as translate underscores their greater dynamical freedom compared to similar defects in a 2D geometry. It is thus tempting to attribute the marked difference in dynamics between 2D and 3D systems to the reduced constraints on defect motion that arise in 3D, allowing them to find and annihilate each other more easily.
 
 
 
 \section{Acknowledgements}
-We acknowledge support by EPSRC Grants No. EP/E045316 and No. EP/E030173 and computing time at the Argonne Leadership Computing Facility, Argonne, U.S.A. as well as on HECToR, U.K.
+We acknowledge support by EPSRC Grants No. EP/E045316 and No. EP/E030173, the MAPPER EU-FP7 project (grant no. RI-261507) and computing time at the Argonne Leadership Computing Facility, Argonne, U.S.A. as well as on HECToR, U.K.
 We like to thank A. Morozov for useful discussions. 
 M.E.C. holds a Royal Society Research Professorship.
 
@@ -738,7 +743,6 @@ step, restoring global order parameter and momentum conservation.
 
 
 \footnotesize{
-RSC STYLE FILE APPARENTLY STRIPS OUT MIDDLE INITIALS. THIS IS OFFENSIVE, PARTICULARLY TO AUTHORS LIKE AJ WAGNER WITH COMMON NAMES.
 \bibliography{smectics} %your .bib file
 \bibliographystyle{rsc} %the RSC's .bst file
 }
@@ -747,7 +751,7 @@ RSC STYLE FILE APPARENTLY STRIPS OUT MIDDLE INITIALS. THIS IS OFFENSIVE, PARTICU
 
 
 \if{
-In order to get a length scale we compare the average distance of two lamellae in Fig.\ref{fig12} with characteristic values of diblock copolymers in the lamellar phase or smectic liquid crystals.
+In order to get a length scale we compare the average distance of two lamellae in Fig.\ref{fig10} with characteristic values of diblock copolymers in the lamellar phase or smectic liquid crystals.
 Typical values for the lamellar width are roughly 50nm, which make about 10 LBU in our simulation.
 Therefore the unit length $l$ in LBU corresponds to about 5nm in physical space or $1 {\rm m}=2\times10^8$ LBU.
 
