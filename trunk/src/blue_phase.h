@@ -47,6 +47,7 @@ void   blue_phase_electric_field_set(const double e[3]);
 void   blue_phase_dielectric_anisotropy_set(double e);
 
 double blue_phase_amplitude(void);
+double blue_phase_amplitude_calculate(void);
 double blue_phase_get_xi(void);
 double blue_phase_get_zeta(void);
 double blue_phase_get_gamma(void);

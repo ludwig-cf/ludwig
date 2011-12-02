@@ -98,6 +98,20 @@ void blue_phase_amplitude_set(const double a) {
 
 /*****************************************************************************
  *
+ *  blue_phase_amplitude_calculate
+ *
+ *****************************************************************************/
+
+double blue_phase_amplitude_calculate(void) {
+  double amplitude;
+  
+  amplitude = 2.0/3.0*(0.25 + 0.75*sqrt(1.0 - 8.0/(3.0*gamma_)));
+
+  return amplitude;
+}
+
+/*****************************************************************************
+ *
  *  blue_phase_set_xi
  *
  *  Set the molecular aspect ratio.
@@ -1114,7 +1128,7 @@ void blue_set_random_q_init(void) {
 
 	phase1 = pi_*(0.5 - ran_parallel_uniform());
 	phase2 = pi_*(0.5 - ran_parallel_uniform());
-
+	
 	n[X] = cos(phase1)*sin(phase2);
 	n[Y] = sin(phase1)*sin(phase2);
 	n[Z] = cos(phase2);
