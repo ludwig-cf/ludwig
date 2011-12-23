@@ -97,6 +97,13 @@ static void phi_update_rt_fe(const char * stringfe) {
     RUN_get_int_parameter("fd_phi_fluctuations", &p);
     info("Order parameter noise = %3s\n", (p == 0) ? "off" : " on");
     if (p != 0) phi_fluctuations_on_set(p);
+
+    p = 1; /* Default is to use divergence method */
+    RUN_get_int_parameter("fd_force_divergence", &p);
+    info("Force calculation:      %s\n",
+         (p == 0) ? "phi grad mu method" : "divergence method");
+    phi_force_divergence_set(p);
+
   }
   else if (strcmp(stringfe, "symmetric_lb") == 0) {
   
@@ -116,6 +123,12 @@ static void phi_update_rt_fe(const char * stringfe) {
     RUN_get_double_parameter("mobility", &value);
     phi_cahn_hilliard_mobility_set(value);
     info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+
+    p = 1;
+    RUN_get_int_parameter("fd_force_divergence", &p);
+    info("Force caluclation:      %s\n",
+         (p == 0) ? "phi grad mu method" : "divergence method");
+    phi_force_divergence_set(p);
   }
   else if (strcmp(stringfe, "polar_active") == 0) {
 
