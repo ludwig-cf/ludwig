@@ -32,6 +32,7 @@
 #include "wall.h"
 
 static void phi_force_calculation_fluid(void);
+static void phi_force_fluid_phi_gradmu(void);
 static void phi_force_compute_fluxes(double * fe, double * fw, double * fy,
 				     double * fz);
 static void phi_force_flux_divergence(double * fe, double * fw, double * fy,
@@ -44,7 +45,8 @@ static void phi_force_wallx(double * fe, double * fw);
 static void phi_force_wally(double * fy);
 static void phi_force_wallz(double * fz);
 
-static int  force_required_ = 1;
+static int force_required_ = 1;
+static int force_divergence_ = 1;
 
 /*****************************************************************************
  *
@@ -60,13 +62,25 @@ void phi_force_required_set(const int flag) {
 
 /*****************************************************************************
  *
+ *  phi_force_divergence_set
+ *
+ *****************************************************************************/
+
+void phi_force_divergence_set(const int flag) {
+
+  force_divergence_ = flag;
+  return;
+}
+
+/*****************************************************************************
+ *
  *  phi_force_calculation
  *
  *  Driver routine to compute the body force on fluid from phi sector.
  *
  *****************************************************************************/
 
-void phi_force_calculation() {
+void phi_force_calculation(void) {
 
   if (force_required_ == 0) return;
 
@@ -76,7 +90,12 @@ void phi_force_calculation() {
     phi_force_flux();
   }
   else {
-    phi_force_calculation_fluid();
+    if (force_divergence_) {
+      phi_force_calculation_fluid();
+    }
+    else {
+      phi_force_fluid_phi_gradmu();
+    }
   }
 
   return;
@@ -95,7 +114,7 @@ void phi_force_calculation() {
  *
  *****************************************************************************/
 
-static void phi_force_calculation_fluid() {
+static void phi_force_calculation_fluid(void) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
@@ -161,6 +180,84 @@ static void phi_force_calculation_fluid() {
 	/* Store the force on lattice */
 
 	hydrodynamics_add_force_local(index, force);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_fluid_phi_gradmu
+ *
+ *  This computes and stores the force on the fluid via
+ *    f_a = - phi \nabla_a mu
+ *
+ *  which is appropriate for the symmtric and Brazovskii
+ *  free energies, It is provided as a choice.
+ *
+ *  The gradient of the chemical potential is computed as
+ *    grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
+ *  Lees-Edwards planes are allowed for.
+ *
+ *****************************************************************************/
+
+static void phi_force_fluid_phi_gradmu(void) {
+
+  int ic, jc, kc, icm1, icp1;
+  int index0, indexm1, indexp1;
+  int nhalo;
+  int nlocal[3];
+  int zs, ys;
+  double phi, mum1, mup1;
+  double force[3];
+
+  double (* chemical_potential)(const int index, const int nop);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  assert(nhalo >= 2);
+
+  /* Memory strides */
+  zs = 1;
+  ys = (nlocal[Z] + 2*nhalo)*zs;
+
+  chemical_potential = fe_chemical_potential_function();
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = le_site_index(ic, jc, kc);
+
+	phi = phi_get_phi_site(index0);
+
+        indexm1 = le_site_index(icm1, jc, kc);
+        indexp1 = le_site_index(icp1, jc, kc);
+
+        mum1 = chemical_potential(indexm1, 0);
+        mup1 = chemical_potential(indexp1, 0);
+
+        force[X] = -phi*0.5*(mup1 - mum1);
+
+        mum1 = chemical_potential(index0 - ys, 0);
+        mup1 = chemical_potential(index0 + ys, 0);
+
+        force[Y] = -phi*0.5*(mup1 - mum1);
+
+        mum1 = chemical_potential(index0 - zs, 0);
+        mup1 = chemical_potential(index0 + zs, 0);
+
+        force[Z] = -phi*0.5*(mup1 - mum1);
+
+	/* Store the force on lattice */
+
+	hydrodynamics_add_force_local(index0, force);
 
 	/* Next site */
       }

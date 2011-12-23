@@ -17,5 +17,6 @@
 
 void phi_force_calculation(void);
 void phi_force_required_set(const int flag);
+void phi_force_divergence_set(const int flag);
 
 #endif
