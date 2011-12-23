@@ -22,7 +22,9 @@
  *          + epsilon * ( phi(ic+1, jc+1) - phi(ic-1, jc+1) ) ]
  *
  *  and likewise for d_y phi. Again, this gives 5-point stencil for
- *  epsilon = 0.
+ *  epsilon = 0. For the gradient, the optimum value is epsilon = 0.25,
+ *  which gives weights consistent with Wolfram J. Stat. Phys {\bf 45},
+ *  471 (1986). See also Shan PRE {\bf 73} 047701 (2006).
  *
  *  Corrections for Lees-Edwards planes and plane wall in X are included.
  *
@@ -47,6 +49,7 @@
 #include "gradient_2d_tomita_fluid.h"
 
 static const double epsilon_ = 0.5;
+static const double epsilon1_ = 0.25;
 
 static void gradient_2d_tomita_fluid_operator(const int nop,
 					      const double * field,
@@ -149,6 +152,7 @@ static void gradient_2d_tomita_fluid_operator(const int nop,
   int index, indexm1, indexp1;
 
   const double rfactor = 1.0 / (1.0 + 2.0*epsilon_);
+  const double rfactor1 = 1.0 / (1.0 + 2.0*epsilon1_);
 
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
@@ -165,14 +169,14 @@ static void gradient_2d_tomita_fluid_operator(const int nop,
       indexp1 = le_site_index(icp1, jc, 1);
 
       for (n = 0; n < nop; n++) {
-	grad[3*(nop*index + n) + X] = 0.5*rfactor*
+	grad[3*(nop*index + n) + X] = 0.5*rfactor1*
 	  (field[nop*indexp1 + n] - field[nop*indexm1 + n]
-	   + epsilon_*
+	   + epsilon1_*
 	   (field[nop*(indexp1 + ys) + n] - field[nop*(indexm1 + ys) + n] +
 	    field[nop*(indexp1 - ys) + n] - field[nop*(indexm1 - ys) + n]));
-	grad[3*(nop*index + n) + Y] = 0.5*rfactor*
+	grad[3*(nop*index + n) + Y] = 0.5*rfactor1*
 	  (field[nop*(index + ys) + n] - field[nop*(index - ys) + n]
-	   + epsilon_*
+	   + epsilon1_*
 	   (field[nop*(indexp1 + ys) + n] - field[nop*(indexp1 - ys) + n] +
 	    field[nop*(indexm1 + ys) + n] - field[nop*(indexm1 - ys) + n]));
 	grad[3*(nop*index + n) + Z] = 0.0;
