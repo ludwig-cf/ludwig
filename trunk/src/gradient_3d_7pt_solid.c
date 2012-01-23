@@ -119,6 +119,12 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
  *
  *  General routine to deal with solid in all configurations.
  *
+ *  If we get to a situation where a fluid node has 5 solid
+ *  neighbours, then the iteration appears to be unstable,
+ *  and we have to prevent the gradients in directions which
+ *  are not 'open' (have solid neighbours at both index +/- 1)
+ *  from begin updated.
+ *
  *****************************************************************************/
 
 static void gradient_general(const double * field, double * grad,
@@ -147,6 +153,7 @@ static void gradient_general(const double * field, double * grad,
   double bc[NOP][NOP][3];                   /* Terms in boundary condition */
   double c[6][3][3];                        /* Constant terms in BC. */
   double dn[3];                             /* Unit normal. */
+  double tmp;
 
   double w;                                 /* Anchoring strength parameter */
   double q_0;                               /* Cholesteric pitch wavevector */
@@ -297,6 +304,16 @@ static void gradient_general(const double * field, double * grad,
 
 	    for (n1 = 0; n1 < NOP; n1++) {
 	      gradn[n1][normal[n]][nsolid[n]] = b[n1];
+	    }
+	  }
+
+	  /* Do not update gradients if solid neighbours in both directions */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    tmp = 1.0*(1 - (mask[2*ia] && mask[2*ia+1]));
+	    for (n1 = 0; n1 < NOP; n1++) {
+	      gradn[n1][ia][0] *= tmp;
+	      gradn[n1][ia][1] *= tmp;
 	    }
 	  }
 
