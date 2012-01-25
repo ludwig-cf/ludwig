@@ -111,9 +111,7 @@ static void ludwig_rt(void) {
   init_physics();
   le_init();
 
-  /* current initialisation of CTLB */ 
-  /* using the binary distribution */  
-  if (is_propagation_ode()) propagation_ode_init(); 
+  if (is_propagation_ode()) propagation_ode_init();
 
   distribution_run_time();
   collision_run_time();
@@ -388,6 +386,7 @@ void ludwig_run(const char * inputfile) {
       stats_distribution_print();
       phi_stats_print_stats();
       stats_free_energy_density();
+//      blue_phase_stats(step);
       ludwig_report_momentum();
       stats_velocity_minmax();
 
