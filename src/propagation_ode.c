@@ -1523,24 +1523,17 @@ void propagation_ode_init(void) {
 
   int n;
   char integrator[FILENAME_MAX];
-  int nlocal[3]; 
-
-  coords_nlocal(nlocal);
 
   n = RUN_get_string_parameter("propagation_ode_integrator", integrator, FILENAME_MAX);
 
-  if (strcmp(integrator, "rk2") == 0) {
-        propagation_ode_integrator_set(RK2);
-	// setting ndist_ for initialisation;
-	// it is set back to ndist_==1 in model.c
-	distribution_ndist_set(2);
-  }
+  // setting ndist_ for initialisation;
+  // it is set back to ndist_==1 in model.c
+  distribution_ndist_set(2);
+
+  propagation_ode_integrator_set(RK2);
 
   if (strcmp(integrator, "rk4") == 0) {
         propagation_ode_integrator_set(RK4);
-	// setting ndist_ for initialisation;
-	// it is set back to ndist_==1 in model.c
-	distribution_ndist_set(2);
   }
 
   n = RUN_get_double_parameter("propagation_ode_tstep", &dt_ode);
@@ -1550,15 +1543,13 @@ void propagation_ode_init(void) {
   info("Continuous-time-LB propagation\n");
   info("------------------------------\n");
   info("Time step size:  %g\n", dt_ode);
-  info("Integrator type: %s\n", integrator);
-
+  if (integrator_type == RK2) info("Integrator type: rk2\n");
+  if (integrator_type == RK4) info("Integrator type: rk4\n");
 
   return;
 }
 
 void propagation_ode_integrator_set(const int type) {
-
-  assert(type == RK2 || type == RK4);
 
   integrator_type = type;
   return;
