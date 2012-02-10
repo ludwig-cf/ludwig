@@ -219,20 +219,14 @@ lattice Boltzmann method (LBM)~\cite{Succi} for the Navier-Stokes equation \cite
 We use sliding periodic (Lees-Edwards) boundary conditions for
 both the convection-diffusion and the Navier-Stokes equations. Note that while these boundary conditions impose a fixed integrated strain rate across the whole system they do not impose a uniform strain rate locally; shear bands can therefore arise if the system so chooses. (As it happens, we do not observe shear bands in the range of shear rates we address here.)
 
-%This simulation strategy allows us to probe the bulk rheology of large systems at moderate to high shear rates, as quantified by an appropriate Peclet number, defined below.
-
-% KS: this can be moved to existing appendix
-%The LBM solves the Boltzmann equation on a regular lattice for a representative fluid that obey simplified dynamics in terms of a free propagation step of quasi-particles followed by a collision step, in which the particles interact.
-%The LBM solves the Navier-Stokes equation in the limit of small Mach numbers $Ma\ll1$ and has been largely applied to fluid flow in complex geometries, where it is superior to conventional methods of computational fluid dynamics.
-
-
-%Copolymer consist of type-A polymers covalently bonded to type-B polymers and can self-organise in a variety of phases, ranging from spherical phases over hexagonal cylindrical phases to lamellar phases or bicontinuous gyroid phases \cite{Bates90}. 
-
-
 Our main finding is that, in two dimensions at least, sheared smectics can show two completely different types of rheological response. At modest rates
 of shear, where thermodynamic forces are relatively strong compared with
 flow effects,  shear quickly aligns the system into the perfect lamellar phase preferred by thermodynamics,
-with only a few defects. The rheology in this regime is quasi-Newtonian, with shear stress linear in the applied shear rate. (There is however a large first normal stress difference.) At higher shear rates, larger thermodynamic forces are generated as layers fail to keep up with the imposed flow. This leads to the nucleation of many new defects, balanced in steady state by annihilation when defects of opposite sign encounter each other. The strain rate $\dot\gamma_c$ needed to enter this nonlinear flow regime depends on thermodynamic and kinetic parameters. A comprehensive exploration of parameter space is not possible, but we give a scaling argument which relates $\dot\gamma_c$ to those parameters through an effective capillary number, formed as the ratio of viscous to thermodynamic stress.
+with only a few defects. The rheology in this regime is quasi-Newtonian, with shear stress linear in the applied shear rate. (There is however a large first normal stress difference.) At higher shear rates, larger thermodynamic forces are generated as layers fail to keep up with the imposed flow. This leads to the nucleation of many new defects, balanced in steady state by annihilation when defects of opposite sign encounter each other. 
+
+The defects do not appear as a direct result of spontaneous thermal fluctuations. Instead they are a result of an undulation instability in our (deterministic) nonlinear dynamics. This occurs when viscous forces begin to dominate interfacial forces causing layers to pinch off and break, creating new defects in the process. The onset of a nontrivial topological pattern under deterministic evolution equations in a complex fluid is similar to the case of sheared binary fluids undergoing phase separation \cite{Stratford07}.
+
+The strain rate $\dot\gamma_c$ needed to enter this nonlinear flow regime depends on thermodynamic and kinetic parameters. A comprehensive exploration of parameter space is not possible, but we give a scaling argument which relates $\dot\gamma_c$ to those parameters through an effective capillary number, formed as the ratio of viscous to thermodynamic stress.
 Within the defect proliferation regime, the macroscopic rheology is generically nonlinear, and shows shear thinning. The shear stress appears to vary as a sublinear power law, $\sigma_{xy}\propto\dot{\gamma}^m$, with $m\simeq 0.87$ for typical parameter values, although the dependence of $m$ on the parameters precludes interpretation of this as a universal scaling law.
 Such a behaviour is qualitatively reminiscent of the one found experimentally in~\cite{Lu08}, where the numerical value of $m$ was however different. In this strongly non-Newtonian regime we also find that the rheology is history dependent. 
 
@@ -345,6 +339,10 @@ Here $\theta$ is the Heaviside function. The conversion factor between $\rho_D$ 
 \section{Parameter Mapping to Physical Units}
 \label{parametermap}
 
+The Landau-Brazovskii model belongs to the class of phenomenological models of liquid-crystalline materials.
+This means it features an isotropic-to-lamellar phase transition without explaining the underlying microscopic mechanism.
+Hence there is a many-to-one mapping between physical parameters and those of the phenomenological model. However, in the context of any particular system, it is possible to indicate physical parameters for which the chosen model is a good representation, and we do this below.
+
 The parameter space of the model is quite large. Although in exploratory work we performed studies across a wider range of parameter values, for simplicity in the results presented here we restrict attention to fixed values of $\kappa = -6\times 10^{-4}$LBU and $c = 7.6\times 10^{-4}$LBU (here LBU denotes LB units as defined below). These are chosen to give a lamellar wavelength of $L = 10$ LBU (that is, $q = \sqrt{|\kappa|/2c} = 2\pi/10$LBU) which offers suitable spatial resolution. Moreover the microphase separation point, set by $a_c = \kappa^2/4c = 1.2\times 10^{-4}$LBU, is then a fixed constant. 
 
 As usual we set the lattice spacing $l$, time step $\Delta t$ and mass density of the fluid $\rho$ all to unity to define LB units (LBU). We need to calibrate these units (or equivalently, length, energy density and time) against real physical units. We do this first for thermotropic smectics, then consider the lyotropic case.
@@ -381,12 +379,13 @@ Ca = \frac{Pe}{Pe^*} = \frac{4\eta\dot\gamma b}{(a_c+b)a_c}
 \end{equation}
 %
 We will argue below that this could be a more relevant choice than $Pe$ for understanding the dependence of morphology on flow rate in smectic systems, at least when $Pe^*\gg 1$.
+\vfill
 
 \section{Results and Discussion}
 
 We first present detailed results for two parameter sets ($\beta = 4.2, 0.42$) in two dimensions which we call systems A-2D and B-2D. System lattice sizes and shear rates are reported in Table \ref{tab1}; all remaining parameters are the same in both systems as detailed above. 
-%As expected from the preceding discussion of $Pe^*(\beta)$, the stress response at a given flow rate is softer in the second system. 
 A third parameter set ($\beta = 0.83$, system C-2D) gave results broadly similar to B-2D. We will later report simulations in three dimensions for systems A-3D and C-3D which share parameters with A-2D and C-2D (see Table \ref{tab1}).
+Note that our simulations in two dimensions are equivalent to assuming, in three dimensions, that the system maintains translational invariance in the vorticity direction. We find this is an increasingly good approximation at very low shear rates.
 
 \begin{table}[htp]
 \small
@@ -532,7 +531,7 @@ The upper panel gives the situation at the lowest applied shear rate $\dot{\gamm
 The lower panel of Fig.~\ref{fig3} shows a later state with a total strain incremented by a further $6400\%$ lattice units (i.e. by a displacement $64$ times the system size). 
 Obviously many defects have annealed away and the smectic layers are now rather well aligned with the flow direction.
 
-Defect annihilation to this large extent is only found at low enough shear rates. A prerequisite seems to be that the defects can smoothly approach each other and then annihilate. This is prevented by the buckling of layers above a certain shear rate; the undulations so formed ultimately pinch-off and break, resulting in the creation of new defects. The onset of defect proliferation arises at characteristic flow rates $\dot{\gamma}_c=1.25-2.5\e{-5}$LBU in system A-2D and around $\dot{\gamma}_c=1-2\e{-4}$LBU in B-2D. 
+Defect annihilation to this large extent is only found at low enough shear rates. A prerequisite seems to be that the defects can smoothly approach each other and then annihilate. This is prevented by the buckling of layers above a certain shear rate; the undulations so formed ultimately pinch off and break, resulting in the creation of new defects. The onset of defect proliferation arises at characteristic flow rates $\dot{\gamma}_c=1.25-2.5\e{-5}$LBU in system A-2D and around $\dot{\gamma}_c=1-2\e{-4}$LBU in B-2D. 
 (Here the subscript $c$ could stand for ``critical" or for ``crossover" depending on whether there is a singular transition or not; see above.)
 These values are for
 systems of size $512\times256\times1$; we found evidence of an increasing trend with system size, but the extremely long run-times involved ($\sim 10^7$ LB timesteps) precluded quantitative exploration. These results correspond respectively to values of the Peclet number, $Pe_c$, obeying $5<Pe_c<10$ (system A) and $400<Pe_c<800$ (system B).  However, in terms of $Ca = Pe/Pe^*$ one has $0.056<Ca_c<0.112$ (system A) and $0.082<Ca_c<0.164$ (system B). Given the 80-fold difference in $Pe_c$, the similarity of $Ca_c$ in the two different systems is remarkable.
