@@ -438,7 +438,7 @@ vel_format    ASCII
 ##############################################################################
 
 colloid_io_freq 1000
-colloids_io_grid 1_1_1
+colloid_io_grid 1_1_1
 colloid_io_format_input  BINARY
 colloid_io_format_output BINARY
 
