@@ -32,6 +32,7 @@ static int freq_phi        = 100000000;
 static int freq_vel        = 100000000;
 static int freq_shear_io   = 100000000;
 static int freq_shear_meas = 100000000;
+static int freq_colloid_io = 100000000;
 static int config_at_end   = 1;
 static int propagation_ode = 0;
 
@@ -62,6 +63,7 @@ void init_control() {
   n = RUN_get_int_parameter("freq_vel", &freq_vel);
   n = RUN_get_int_parameter("freq_shear_measurement", &freq_shear_meas);
   n = RUN_get_int_parameter("freq_shear_output", &freq_shear_io);
+  n = RUN_get_int_parameter("colloid_io_freq", &freq_colloid_io);
   n = RUN_get_string_parameter("config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
 
@@ -109,6 +111,10 @@ int is_measurement_step() {
 
 int is_config_step() {
   return ((t_current % freq_config) == 0);
+}
+
+int is_colloid_io_step() {
+  return ((t_current % freq_colloid_io) == 0);
 }
 
 /*****************************************************************************
