@@ -136,7 +136,7 @@ void COLL_update() {
 
 void COLL_init() {
 
-  int n;
+  int n, ncheck;
   int init_from_file;
   int init_random;
   int ncell[3];
@@ -233,7 +233,9 @@ void COLL_init() {
       RUN_get_double_parameter("colloid_random_dh", &dh);
 
       colloids_init_random(n, state0, dh);
-      info("Initialised %d colloid%s from input\n", n, (n > 1) ? "s" : "");
+      ncheck = colloid_ntotal();
+      info("Requested   %d colloid%s from input\n", n, (n > 1) ? "s" : "");
+      info("Initialised %d colloid%s\n", ncheck, (ncheck == 1) ? "" : "s");
 
       free(state0);
     }
