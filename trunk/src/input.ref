@@ -427,8 +427,8 @@ vel_format    ASCII
 #
 #  colloid i/o
 #
-#  colloid_io_freq           currently set to freq_measure internally
-#  colloid_io_grid           currently set to 1_1_1 internally
+#  colloid_io_freq           frequency of output (time steps)
+#  colloid_io_grid           io grid for colloids
 #  colloid_io_format_input   ASCII ASCII_SERIAL BINARY BINARY_SERIAL
 #  colloid_io_format_output  ASCII BINARY
 #

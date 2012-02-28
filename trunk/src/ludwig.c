@@ -336,7 +336,10 @@ void ludwig_run(const char * inputfile) {
       io_write(filename, distribution_io_info());
     }
 
-    if (is_config_step() || is_measurement_step()) {
+    /* is_measurement_step() is here to prevent 'breaking' old input
+     * files; it should really be removed. */
+
+    if (is_config_step() || is_measurement_step() || is_colloid_io_step()) {
       if (colloid_ntotal() > 0) {
 	info("Writing colloid output at step %d!\n", step);
 	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
@@ -386,7 +389,6 @@ void ludwig_run(const char * inputfile) {
       stats_distribution_print();
       phi_stats_print_stats();
       stats_free_energy_density();
-//      blue_phase_stats(step);
       ludwig_report_momentum();
       stats_velocity_minmax();
 
