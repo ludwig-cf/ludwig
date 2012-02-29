@@ -559,7 +559,7 @@ are determined by the value of the keys described below.
 This controls the the type of particle. Appropriate values are
 \texttt{inactive}, giving a standard fully resolved LB colloid;
 \texttt{active} switches on the correction to BBL appropriate
-for active particles (expecting parameters $b_0$ and $b_1$ to be
+for active particles (expecting parameters $b_1$ and $b_2$ to be
 set); \texttt{subgrid} gives unresolved particles (radius $< 1$
 lattice unit) and no BBL.
 
@@ -625,6 +625,26 @@ the input expected is \texttt{config.cds.init.001-001}.
 All colloid output is in serial (ie., a single file is produced)
 at the moment. Again, it may be ASCII or binary.
 
+\subsubsection{The colloid state}
+
+The full data structure for the colloid state is defined in
+\texttt{src/colloid.h} and the corresponding routines which read
+and write the values are in \texttt{src/colloid.c}
+(note colloid singular!). Most of the state corresponds clearly
+with physical properties, although there are a number of 'structural'
+elements which have no physical meaning. These include the
+\texttt{rebuild} flag, which instructs the code to reconstruct the
+boundary links if necessary, and \texttt{deltaphi} which is involved
+in accounting for conserved order parameter in the \texttt{symmetric\_lb}
+free energy. Further, not all the elements are relevant is all
+circumstances: e.g., the magnetic dipole is only relevant is magnetic
+interactions are required, and squirmer parameters are only relevant
+to active particles.
+
+Note that it is possible in principle to have magnetic active particles,
+in which case the dipole direction (\texttt{s}) and the direction of
+motion vector (\texttt{m}) are allowed to be distinct.
+
 \subsubsection{Initialisation at random}
 
 \inputkey{colloid\_random\_no} Sets the total number of particles
@@ -654,7 +674,10 @@ means of the keys:
 
 \inputkey{colloid\_random\_w0} initial angular velocity vector
 
-\inputkey{colloid\_random\_s0} initial spin vector
+\inputkey{colloid\_random\_s0} initial spin vector (only relevant in magnetic
+field)
+
+The 
 
 \inputkey{colloid\_random\_m0} initial direction of motion vector for active
 particles
@@ -664,10 +687,21 @@ particles
 \inputkey{colloid\_random\_b2} active parameter $b_2$ (should be combined
 with the \texttt{active} particle type key as discussed above).
 
+The squirmer parameters specify the surface boundary conditions in
+an approach originating with Lighthill \cite{lighthill} and Blake
+\cite{blake}. Briefly, $b_1$ sets the propulsion speed
+($U = {\frac{2}{3}} b_1$), while $b_2$ sets the
+particle stresslet. The ratio $\beta = b_2/b_1$ determines the
+mode of the squirmer motion; see \cite{isaac} for further details.
+
+
 There is one special case. If you want exactly one particle, you may
 set its initial position with
 
 \inputkey{colloid\_random\_r0} the initial position vector.
+
+This position must be within the current system, or no particle will
+be created.
 
 \subsubsection{Restarting at random!}
 
@@ -691,7 +725,7 @@ size may be different. This real radius is the hydrodynamic radius $a_h$.
 As a further complication, the hydrodynamic radius can also
 be a function of viscosity for a given input radius. Some values
 are given in Table~X. This values are computed using a calibration
-procedure described by Nguyen and Ladd \cite{nguyen2001}.
+procedure described by Nguyen and Ladd \cite{nguyen-ladd2002}.
 
 \begin{table}[h]
 \begin{center}
@@ -923,6 +957,29 @@ quantities can be reconstructed from the distribution output, if
 available. If only the velocity field is required, this method
 allows a considerable saving in storage.
 
+\subsubsection{Colloid I/O}
+
+Colloid I/O is controlled via a series of key value pairs. These are:
+
+\inputkey{colloid\_io\_freq}
+
+gives output at this frequency in time steps. Output is also generated
+at configuration steps (and measurement steps at the moment).
+
+\inputkey{colloid\_io\_grid} integer vector
+
+sets the colloid I/O grid. It must be accomodated by the current
+choice of \texttt{grid}.
+
+\inputkey{colloid\_io\_format\_input}
+
+One of \texttt{ASCII}, \texttt{ASCII\_SERIAL}, \texttt{BINARY}, or
+\texttt{BINARY\_SERIAL}
+
+\inputkey{colloid\_io\_format\_output}
+
+For output, only \texttt{ASCII} or \texttt{BINARY} are available.
+ 
 
 \subsubsection{I/O format}
 
@@ -933,7 +990,12 @@ allows a considerable saving in storage.
 
 May be either \texttt{ASCII} or \texttt{BINARY}. Default is \texttt{BINARY}.
 Configuration I/O is always in binary. It is recommended to use
-binary output for speed and disk space considerations.
+binary output for speed and disk space considerations. For a local
+sub-domain, the order of the output in the file follows the standard
+loop order in the code, i.e., with the $z$-direction running fastest,
+then $y$, and with $x$ running slowest. For vector quantities
+(anything with more components than a scalar), the vector at each
+lattice site appears contiguously.
 
 \subsubsection{Parallel I/O}
 
@@ -960,7 +1022,7 @@ may be particularly useful for the distribution data, which are
 much larger than the other lattice quantities. This means a
 finer decomposition may be appropriate. Clearly, the size of the
 I/O decomposition cannot exceed the processor decomposition.
-See the advice in section \cite{section-advice} for guidelines.
+See the advice in section \ref{section-advice} for guidelines.
 
 
 
@@ -1025,13 +1087,14 @@ tasks with close to ideal scaling, and there is no problem in
 principle to run larger decompositions.
 
 \subsection{Things to Remember and Things to Avoid}
-\ref{section-advice}
+\label{section-advice}
 
 There are a number of simple issues to get right:
 \begin{itemize}
 \item
-Make sure the assertions are switched off and appropriate optimisations
-are switched on for production runs (see Makefile).
+Make sure the assertions are switched off (via preprocessor option
+\texttt{-DNDEBUG}) and appropriate optimisations
+for the current compiler are switched on for production runs (see Makefile).
 \item
 Do not use too small a local domain size. Typically, 16$^3$ to 32$^3$
 cubic local domains will give resaonble scaling. Anything smaller may

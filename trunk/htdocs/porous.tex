@@ -58,6 +58,12 @@ case, the \texttt{char} status is augmented by a single \texttt{double}
 value which is the local value of $H$. The order is then
 $s_1,h_1, s_2, h_2, \ldots$.
 
+An example of how to construct a porous media file is provided in
+\texttt{util/capillary.c}, which builds an appropriate file for
+a square or circular capillary tube. Please see the comments in
+the file for further details. Note that the allowed
+solid/fluid status values are defined in \texttt{src/site\_map.h}.
+A solid boundary is \texttt{BOUNDARY}, while fluid is \texttt{FLUID}.
 
 \subsection{Permeability calculations}
 
