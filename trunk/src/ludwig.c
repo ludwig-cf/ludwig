@@ -387,8 +387,10 @@ void ludwig_run(const char * inputfile) {
     if (is_statistics_step()) {
 
       stats_distribution_print();
-      phi_stats_print_stats();
-      stats_free_energy_density();
+      if (phi_nop()) {
+	phi_stats_print_stats();
+	stats_free_energy_density();
+      }
       ludwig_report_momentum();
       stats_velocity_minmax();
 
