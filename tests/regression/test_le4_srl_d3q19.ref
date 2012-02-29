@@ -1,6 +1,6 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 1409M
+The SVN revision details are: 1514M
 Note assertions via standard C assert() are on.
 
 Read 64 user parameters from ../tests/regression/test_le4_input
@@ -24,6 +24,8 @@ Order parameter dynamics
 
 Using Cahn-Hilliard finite difference solver:
 Mobility M            =  1.50000e-01
+Order parameter noise = off
+Force calculation:      divergence method
 Advection scheme order: 3
 
 System details
@@ -92,7 +94,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 3.5661471e-04 -7.0752415e-02 5.8514142e-02
 
 Free energy density - timestep total fluid
-[fed]            200  4.0869765639e-06  4.0869765639e-06
+[fed]            200 -7.0657353366e-06 -7.0657353366e-06
 
 Momentum - x y z
 [total   ]  1.6469465e-14 -4.4312134e-05  0.0000000e+00
@@ -109,7 +111,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 1.0351126e-03 -1.1521379e-01 9.6349598e-02
 
 Free energy density - timestep total fluid
-[fed]            400  1.1761608089e-05  1.1761608089e-05
+[fed]            400 -2.0552105034e-05 -2.0552105034e-05
 
 Momentum - x y z
 [total   ]  3.5964287e-14 -2.5928277e-05  0.0000000e+00
@@ -126,7 +128,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 3.1551921e-03 -1.9508536e-01 1.6020622e-01
 
 Free energy density - timestep total fluid
-[fed]            600  3.5612701894e-05  3.5612701894e-05
+[fed]            600 -6.2558553200e-05 -6.2558553200e-05
 
 Momentum - x y z
 [total   ]  6.0580013e-14  2.0498980e-05  0.0000000e+00
@@ -143,7 +145,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 9.5058005e-03 -3.2702636e-01 2.9046924e-01
 
 Free energy density - timestep total fluid
-[fed]            800  1.0597983039e-04  1.0597983039e-04
+[fed]            800 -1.8712737646e-04 -1.8712737646e-04
 
 Momentum - x y z
 [total   ]  4.9418802e-14  5.4983384e-04  0.0000000e+00
@@ -160,7 +162,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 2.5620092e-02 -4.8957933e-01 4.4741070e-01
 
 Free energy density - timestep total fluid
-[fed]           1000  2.6758898155e-04  2.6758898155e-04
+[fed]           1000 -5.0621935694e-04 -5.0621935694e-04
 
 Momentum - x y z
 [total   ]  4.7444687e-14  3.9778715e-04  0.0000000e+00
@@ -177,7 +179,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 6.0230180e-02 -6.3197483e-01 5.9544052e-01
 
 Free energy density - timestep total fluid
-[fed]           1200  5.3915239500e-04  5.3915239500e-04
+[fed]           1200 -1.2149937615e-03 -1.2149937615e-03
 
 Momentum - x y z
 [total   ]  4.7281623e-14  1.1188328e-02  0.0000000e+00
@@ -194,7 +196,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 1.2050917e-01 -7.5085020e-01 7.5041541e-01
 
 Free energy density - timestep total fluid
-[fed]           1400  8.5596729760e-04  8.5596729760e-04
+[fed]           1400 -2.4807854108e-03 -2.4807854108e-03
 
 Momentum - x y z
 [total   ]  7.4478618e-14  3.7644252e-02  0.0000000e+00
@@ -211,7 +213,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 2.0113117e-01 -8.0071109e-01 8.1316451e-01
 
 Free energy density - timestep total fluid
-[fed]           1600  1.0724333145e-03  1.0724333145e-03
+[fed]           1600 -4.2072291015e-03 -4.2072291015e-03
 
 Momentum - x y z
 [total   ]  5.7964050e-14  4.0135304e-02  0.0000000e+00
@@ -228,7 +230,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 2.8901650e-01 -8.4390159e-01 8.6653585e-01
 
 Free energy density - timestep total fluid
-[fed]           1800  1.1595579417e-03  1.1595579417e-03
+[fed]           1800 -6.0414382176e-03 -6.0414382176e-03
 
 Momentum - x y z
 [total   ]  8.4508789e-14  5.5445181e-02  0.0000000e+00
@@ -245,7 +247,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 3.7191304e-01 -8.9098059e-01 8.9354426e-01
 
 Free energy density - timestep total fluid
-[fed]           2000  1.2441493813e-03  1.2441493813e-03
+[fed]           2000 -7.5790500799e-03 -7.5790500799e-03
 
 Momentum - x y z
 [total   ]  1.1197640e-13  1.2085827e-02  0.0000000e+00
@@ -262,7 +264,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 4.4627369e-01 -9.1510619e-01 9.4253232e-01
 
 Free energy density - timestep total fluid
-[fed]           2200  1.2560873284e-03  1.2560873284e-03
+[fed]           2200 -8.8554865165e-03 -8.8554865165e-03
 
 Momentum - x y z
 [total   ]  9.1145841e-14  9.2000777e-02  0.0000000e+00
@@ -279,7 +281,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 5.0836298e-01 -9.0382361e-01 9.7516019e-01
 
 Free energy density - timestep total fluid
-[fed]           2400  1.2083321745e-03  1.2083321745e-03
+[fed]           2400 -9.8561947685e-03 -9.8561947685e-03
 
 Momentum - x y z
 [total   ]  7.2261641e-14  1.3121156e-01  0.0000000e+00
@@ -296,7 +298,7 @@ Scalars - total mean variance min max
 [phi] -2.7646190e+00 -6.7495581e-04 5.5822331e-01 -9.2039867e-01 9.9720625e-01
 
 Free energy density - timestep total fluid
-[fed]           2600  1.2921728604e-03  1.2921728604e-03
+[fed]           2600 -1.0417241531e-02 -1.0417241531e-02
 
 Momentum - x y z
 [total   ]  9.2304636e-14  7.2721665e-02  0.0000000e+00
@@ -312,14 +314,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     70.950     70.950     70.950  70.950000 (1 call)
-      Time step loop:      0.020      0.040     70.860   0.027254 (2600 calls)
-         Propagation:      0.000      0.010      2.540   0.000977 (2600 calls)
-           Collision:      0.000      0.020     15.690   0.006035 (2600 calls)
-       Lattice halos:      0.000      0.010      3.900   0.001500 (2600 calls)
-       phi gradients:      0.000      0.010     12.460   0.004792 (2600 calls)
-     Lees Edwards BC:      0.000      0.010      0.790   0.000304 (2600 calls)
+               Total:     75.670     75.670     75.670  75.670000 (1 call)
+      Time step loop:      0.020      0.040     75.610   0.029081 (2600 calls)
+         Propagation:      0.000      0.010      2.720   0.001046 (2600 calls)
+           Collision:      0.000      0.010     15.600   0.006000 (2600 calls)
+       Lattice halos:      0.000      0.010      3.970   0.001527 (2600 calls)
+       phi gradients:      0.000      0.010     13.380   0.005146 (2600 calls)
+     Lees Edwards BC:      0.000      0.010      0.530   0.000204 (2600 calls)
                  BBL:      0.000      0.000      0.000   0.000000 (2600 calls)
-   Force calculation:      0.000      0.020     17.950   0.006904 (2600 calls)
-          phi update:      0.000      0.020     16.880   0.006492 (2600 calls)
+   Force calculation:      0.000      0.020     19.610   0.007542 (2600 calls)
+          phi update:      0.000      0.020     19.090   0.007342 (2600 calls)
 Ludwig finished normally.
