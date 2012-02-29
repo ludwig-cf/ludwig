@@ -1,6 +1,6 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 1409M
+The SVN revision details are: 1514M
 Note assertions via standard C assert() are on.
 
 Read 64 user parameters from ../tests/regression/test_le3_input
@@ -24,6 +24,8 @@ Order parameter dynamics
 
 Using Cahn-Hilliard finite difference solver:
 Mobility M            =  1.50000e-01
+Order parameter noise = off
+Force calculation:      divergence method
 Advection scheme order: 3
 
 System details
@@ -92,7 +94,7 @@ Scalars - total mean variance min max
 [phi]  6.9259365e+00  2.6420351e-05 1.1664593e-04 -4.3670686e-02 4.9000055e-02
 
 Free energy density - timestep total fluid
-[fed]            200  1.3908165550e-06  1.3908165550e-06
+[fed]            200 -2.2537596537e-06 -2.2537596537e-06
 
 Momentum - x y z
 [total   ]  9.1873731e-13 -2.4013660e-04  1.1306928e-14
@@ -109,7 +111,7 @@ Scalars - total mean variance min max
 [phi]  6.9259365e+00  2.6420351e-05 3.6427971e-04 -8.0514959e-02 8.6977860e-02
 
 Free energy density - timestep total fluid
-[fed]            400  4.2118802968e-06  4.2118802968e-06
+[fed]            400 -7.1657151101e-06 -7.1657151101e-06
 
 Momentum - x y z
 [total   ]  1.0269979e-12  1.6641047e-05 -8.1403634e-14
@@ -125,14 +127,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    341.970    341.970    341.970 341.970000 (1 call)
-      Time step loop:      0.840      0.880    341.120   0.852800 (400 calls)
-         Propagation:      0.060      0.070     25.390   0.063475 (400 calls)
-           Collision:      0.310      0.330    127.540   0.318850 (400 calls)
-       Lattice halos:      0.000      0.010      2.110   0.005275 (400 calls)
-       phi gradients:      0.080      0.100     32.240   0.080600 (400 calls)
-     Lees Edwards BC:      0.010      0.020      5.310   0.013275 (400 calls)
+               Total:    356.880    356.880    356.880 356.880000 (1 call)
+      Time step loop:      0.880      0.930    355.980   0.889950 (400 calls)
+         Propagation:      0.060      0.080     25.350   0.063375 (400 calls)
+           Collision:      0.310      0.330    125.050   0.312625 (400 calls)
+       Lattice halos:      0.000      0.010      2.100   0.005250 (400 calls)
+       phi gradients:      0.080      0.100     34.090   0.085225 (400 calls)
+     Lees Edwards BC:      0.010      0.020      5.600   0.014000 (400 calls)
                  BBL:      0.000      0.000      0.000   0.000000 (400 calls)
-   Force calculation:      0.160      0.190     70.400   0.176000 (400 calls)
-          phi update:      0.180      0.210     76.400   0.191000 (400 calls)
+   Force calculation:      0.190      0.220     80.910   0.202275 (400 calls)
+          phi update:      0.190      0.220     81.070   0.202675 (400 calls)
 Ludwig finished normally.
