@@ -1,18 +1,9 @@
-libibverbs: Fatal: couldn't read uverbs ABI version.
---------------------------------------------------------------------------
-[0,0,0]: OpenIB on host martensite was unable to find any HCAs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
---------------------------------------------------------------------------
-[0,0,0]: uDAPL on host martensite was unable to find any NICs.
-Another transport will be used instead, although this may result in 
-lower performance.
---------------------------------------------------------------------------
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 1201M
-Read 99 user parameters from input
+The SVN revision details are: 1514M
+Note assertions via standard C assert() are on.
+
+Read 99 user parameters from ../tests/regression/test_yukawa_input
 
 Free energy details
 -------------------
@@ -39,7 +30,7 @@ Body force density  0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
 -------------------------------
-Model:            d3q19
+Model:            d3q19  
 Number of sets:   1
 Halo type:        full
 Input format:     binary
@@ -58,16 +49,17 @@ Ghost relaxation time:    1.00000e+00
 Setting phi I/O format to ASCII
 Setting velocity I/O format to ASCII
 
+Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
+
+
 Colloid I/O settings
 --------------------
+Decomposition:   1  1  1
 Input format:  ascii
 Input file:    serial single file
 Output format: ascii
 
-
-Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
-
-colloid_io_read: reading from config.cds.init.001-001 etc
+colloid_io_read: reading from single file config.cds.init.001-001
 Read a total of 1000 colloids from file
 
 Colloid-colloid Yukawa potential
@@ -98,16 +90,13 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      203234.00  1.00000000000 6.3827076e-04  0.87654824667 1.11046487743
 
-Free energy density - timestep total fluid
-[fed]           1000  0.0000000e+00  0.0000000e+00
-
 Momentum - x y z
 [total   ] -2.7506886e-12  9.7744035e-13  5.0537352e-13
 [fluid   ] -5.8546428e-01  8.4571379e-01 -1.4914344e+00
 [colloids]  5.8546428e-01 -8.4571379e-01  1.4914344e+00
 
 Velocity - x y z
-[minimum ] -6.3389153e-02 -6.6992383e-02 -6.9980437e-02
+[minimum ] -6.3389153e-02 -6.5762110e-02 -6.9980437e-02
 [maximum ]  6.7973360e-02  6.5763018e-02  6.8268960e-02
 
 Isothermal fluctuations
@@ -126,16 +115,13 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      203143.00  1.00000000000 6.3746407e-04  0.88913816574 1.11871359347
 
-Free energy density - timestep total fluid
-[fed]           2000  0.0000000e+00  0.0000000e+00
-
 Momentum - x y z
 [total   ] -6.3671290e-12  3.0720981e-12  1.6966428e-12
 [fluid   ]  1.0149790e+00  7.4689973e-01  1.9778898e+00
 [colloids] -1.0149790e+00 -7.4689973e-01 -1.9778898e+00
 
 Velocity - x y z
-[minimum ] -6.9743546e-02 -6.6992383e-02 -7.3421189e-02
+[minimum ] -6.9743546e-02 -6.4975932e-02 -7.3421189e-02
 [maximum ]  6.3747451e-02  6.7760057e-02  7.2215717e-02
 
 Isothermal fluctuations
@@ -154,16 +140,13 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      203089.00  1.00000000000 6.3806842e-04  0.88240888577 1.11105305310
 
-Free energy density - timestep total fluid
-[fed]           3000  0.0000000e+00  0.0000000e+00
-
 Momentum - x y z
 [total   ] -8.4305896e-12  7.0392581e-12  4.3050008e-12
 [fluid   ] -8.6368463e-01 -2.1302575e+00 -3.2562199e+00
 [colloids]  8.6368463e-01  2.1302575e+00  3.2562199e+00
 
 Velocity - x y z
-[minimum ] -6.0225691e-02 -6.6992383e-02 -6.5587306e-02
+[minimum ] -6.0225691e-02 -6.0092780e-02 -6.5587306e-02
 [maximum ]  6.5948663e-02  7.3836920e-02  7.1291049e-02
 
 Isothermal fluctuations
@@ -182,16 +165,13 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      203229.00  1.00000000000 6.3791100e-04  0.87682295562 1.10708854452
 
-Free energy density - timestep total fluid
-[fed]           4000  0.0000000e+00  0.0000000e+00
-
 Momentum - x y z
 [total   ] -9.6109787e-12  8.5162988e-12  4.3121062e-12
 [fluid   ] -3.1062723e+00  3.7647979e+00 -6.9301582e+00
 [colloids]  3.1062723e+00 -3.7647979e+00  6.9301582e+00
 
 Velocity - x y z
-[minimum ] -6.8891823e-02 -6.6992383e-02 -6.7774929e-02
+[minimum ] -6.8891823e-02 -6.4498404e-02 -6.7774929e-02
 [maximum ]  6.8294104e-02  7.1519187e-02  6.5035297e-02
 
 Isothermal fluctuations
@@ -210,9 +190,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      203166.00  1.00000000000 6.3854703e-04  0.88031782693 1.10844922016
 
-Free energy density - timestep total fluid
-[fed]           5000  0.0000000e+00  0.0000000e+00
-
 Momentum - x y z
 [total   ] -8.1576967e-12  8.6042284e-12  4.8703264e-12
 [fluid   ]  1.9845608e+00 -6.9034952e-01 -2.8779068e+00
@@ -227,6 +204,7 @@ Isothermal fluctuations
 [measd/kT]  6.3907803e-04  6.3999990e-04
 
 Completed cycle 5000
+
 colloid_io_write:
 writing colloid information to config.cds00005000.001-001 etc
 
@@ -234,12 +212,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:   4215.435   4215.435   4215.435 4215.434695 (1 call)
-      Time step loop:      0.828      0.856   4213.718   0.842744 (5000 calls)
-         Propagation:      0.067      0.077    336.195   0.067239 (5000 calls)
-           Collision:      0.460      0.469   2314.784   0.462957 (5000 calls)
-       Lattice halos:      0.005      0.007     48.361   0.004836 (10000 calls)
-             Rebuild:      0.065      0.077    370.973   0.074195 (5000 calls)
-                 BBL:      0.166      0.176    860.785   0.172157 (5000 calls)
-      Particle halos:      0.003      0.004     14.982   0.002996 (5000 calls)
+               Total:   4045.800   4045.800   4045.800 4045.800000 (1 call)
+      Time step loop:      0.790      0.830   4043.990   0.808798 (5000 calls)
+         Propagation:      0.060      0.070    309.960   0.061992 (5000 calls)
+           Collision:      0.410      0.430   2090.180   0.418036 (5000 calls)
+       Lattice halos:      0.000      0.020     46.550   0.004655 (10000 calls)
+             Rebuild:      0.080      0.100    454.790   0.090958 (5000 calls)
+                 BBL:      0.160      0.190    852.900   0.170580 (5000 calls)
+      Particle halos:      0.000      0.020     16.630   0.003326 (5000 calls)
 Ludwig finished normally.
