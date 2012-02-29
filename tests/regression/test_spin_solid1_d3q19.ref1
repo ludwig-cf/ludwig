@@ -1,5 +1,6 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
+The SVN revision details are: 1514M
 Note assertions via standard C assert() are on.
 
 Read 57 user parameters from ../tests/regression/test_spin_solid1_input
@@ -9,7 +10,7 @@ Free energy details
 
 Symmetric phi^4 free energy selected.
 Single conserved order parameter nop = 1
-Requires up to del^2 derivatives so setting nhalo = 2
+Requires up to del^2 derivatives so setting nhalo = 1
 
 Parameters:
 Bulk parameter A      = -6.25000e-02
@@ -30,7 +31,7 @@ System size:    64 64 64
 Decomposition:  1 1 1
 Local domain:   64 64 64
 Periodic:       1 1 1
-Halo nhalo:     2
+Halo nhalo:     1
 Reorder:        true
 Initialised:    1
 
@@ -44,7 +45,7 @@ Body force density  0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
 -------------------------------
-Model:            d3q19
+Model:            d3q19  
 Number of sets:   2
 Halo type:        full
 Input format:     binary
@@ -61,15 +62,17 @@ Bulk relaxation time:     7.50000e-01
 Ghost relaxation time:    1.00000e+00
 [User   ] Random number seed: -7361237
 
+Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
+
+
 Colloid I/O settings
 --------------------
+Decomposition:   1  1  1
 Input format:       ascii serial
 Output format:      ascii
 
-
-Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
-
-Initialised 20 colloids from input
+Requested   20 colloids from input
+Initialised 20 colloids
 
 Colloid-colloid soft-sphere potential
 Soft sphere potential is switched on
@@ -95,6 +98,7 @@ Starting time step loop.
 
 Particle statistics:
 Inter-particle minimum h is: 3.25214e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -3.3416428e-06 -3.9228018e-06 -4.0338120e-06
 [maximum ]  2.8530601e-06  4.7197174e-06  6.6723634e-06
@@ -103,8 +107,8 @@ Scalars - total mean variance min max
 [rho]      261132.00  1.00000000000 7.9997786e-11  0.99972653124 1.00006451046
 [phi]  7.1045705e+00  2.7206817e-05 9.9462495e-05 -5.2350387e-02 6.3882184e-02
 
-Free energy density - timestep total fluid
-[fed]             40  1.1305731e-06  1.1305731e-06
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]             40 -5.1516283965e-01  2.6113200000e+05 -1.9728062422e-06  0.0000000000e+00
 
 Momentum - x y z
 [total   ] -4.8004461e-14  1.4923176e-14 -5.4898577e-15
@@ -119,6 +123,7 @@ Completed cycle 40
 
 Particle statistics:
 Inter-particle minimum h is: 3.25217e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -4.9402240e-06 -4.2474350e-06 -7.9299431e-06
 [maximum ]  6.0325567e-06  8.7606519e-06  1.1238222e-05
@@ -127,8 +132,8 @@ Scalars - total mean variance min max
 [rho]      261132.00  1.00000000000 5.4993343e-11  0.99973250594 1.00007446006
 [phi]  7.1045705e+00  2.7206817e-05 1.6000623e-04 -6.9810746e-02 7.0225461e-02
 
-Free energy density - timestep total fluid
-[fed]             80  1.8635593e-06  1.8635593e-06
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]             80 -8.1687964095e-01  2.6113200000e+05 -3.1282249627e-06  0.0000000000e+00
 
 Momentum - x y z
 [total   ] -2.0715038e-14 -2.9802766e-14 -7.4411397e-14
@@ -143,6 +148,7 @@ Completed cycle 80
 
 Particle statistics:
 Inter-particle minimum h is: 3.25213e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -1.1746582e-05 -1.1260391e-05 -1.4965751e-05
 [maximum ]  1.3770861e-05  1.8942851e-05  2.0768625e-05
@@ -151,8 +157,8 @@ Scalars - total mean variance min max
 [rho]      261132.00  1.00000000000 1.5540547e-10  0.99970489865 1.00016861248
 [phi]  7.1045705e+00  2.7206817e-05 3.1924472e-04 -1.0120394e-01 9.8724361e-02
 
-Free energy density - timestep total fluid
-[fed]            120  3.6885241e-06  3.6885241e-06
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]            120 -1.6369812828e+00  2.6113200000e+05 -6.2687885163e-06  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  5.4403313e-14 -9.9436084e-14 -2.1690115e-14
@@ -167,6 +173,7 @@ Completed cycle 120
 
 Particle statistics:
 Inter-particle minimum h is: 3.25201e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -2.4074055e-05 -2.6885551e-05 -3.0198578e-05
 [maximum ]  3.2286465e-05  3.9919369e-05  3.8082625e-05
@@ -175,8 +182,8 @@ Scalars - total mean variance min max
 [rho]      261131.00  1.00000000000 6.6478290e-10  0.99958930060 1.00040224212
 [phi]  7.1045705e+00  2.7206921e-05 6.8144216e-04 -1.4523640e-01 1.4615219e-01
 
-Free energy density - timestep total fluid
-[fed]            160  7.8160527e-06  7.8160285e-06
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]            160 -3.5061794654e+00  2.6113100000e+05 -1.3426898627e-05  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  1.0226672e-13 -1.3576813e-13 -1.8355976e-14
@@ -191,6 +198,7 @@ Completed cycle 160
 
 Particle statistics:
 Inter-particle minimum h is: 3.25166e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -5.5910465e-05 -6.1849080e-05 -6.2466089e-05
 [maximum ]  7.6685074e-05  8.7661577e-05  7.9184410e-05
@@ -199,8 +207,8 @@ Scalars - total mean variance min max
 [rho]      261131.00  1.00000000000 3.1898695e-09  0.99930261336 1.00089671743
 [phi]  7.1045705e+00  2.7206921e-05 1.5009420e-03 -2.0615355e-01 2.1182785e-01
 
-Free energy density - timestep total fluid
-[fed]            200  1.7122737e-05  1.7122712e-05
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]            200 -7.7321414954e+00  2.6113100000e+05 -2.9610201376e-05  0.0000000000e+00
 
 Momentum - x y z
 [total   ] -3.7756256e-15 -1.6329299e-13 -5.6291777e-14
@@ -215,6 +223,7 @@ Completed cycle 200
 
 Particle statistics:
 Inter-particle minimum h is: 3.25082e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -1.4038512e-04 -1.4117111e-04 -1.3296833e-04
 [maximum ]  1.7700148e-04  1.9423348e-04  1.7201301e-04
@@ -223,8 +232,8 @@ Scalars - total mean variance min max
 [rho]      261131.00  1.00000000000 1.5511008e-08  0.99876755511 1.00188629091
 [phi]  7.1045705e+00  2.7206921e-05 3.3526698e-03 -2.8610549e-01 2.9684506e-01
 
-Free energy density - timestep total fluid
-[fed]            240  3.8082477e-05  3.8082325e-05
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]            240 -1.7241141551e+01  2.6113100000e+05 -6.6024874682e-05  0.0000000000e+00
 
 Momentum - x y z
 [total   ] -1.3251813e-13 -1.3474291e-13 -1.9761970e-14
@@ -239,6 +248,7 @@ Completed cycle 240
 
 Particle statistics:
 Inter-particle minimum h is: 3.24871e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -3.3996034e-04 -3.1377252e-04 -2.8174315e-04
 [maximum ]  4.0337939e-04  4.0739389e-04  3.6028940e-04
@@ -247,8 +257,8 @@ Scalars - total mean variance min max
 [rho]      261129.00  1.00000000000 7.1759812e-08  0.99780895850 1.00358424232
 [phi]  7.1045705e+00  2.7207130e-05 7.4824446e-03 -3.8183724e-01 3.9662614e-01
 
-Free energy density - timestep total fluid
-[fed]            280  8.4637661e-05  8.4636361e-05
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]            280 -3.8221830460e+01  2.6112900000e+05 -1.4637145036e-04  0.0000000000e+00
 
 Momentum - x y z
 [total   ] -1.4137996e-13 -1.8390844e-13  1.2649604e-14
@@ -263,6 +273,7 @@ Completed cycle 280
 
 Particle statistics:
 Inter-particle minimum h is: 3.24386e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -7.7803686e-04 -6.6960099e-04 -5.8451593e-04
 [maximum ]  8.8374020e-04  8.2301716e-04  7.5890348e-04
@@ -271,8 +282,8 @@ Scalars - total mean variance min max
 [rho]      261128.00  1.00000000000 2.9186272e-07  0.99669719266 1.00621614449
 [phi]  7.1045705e+00  2.7207234e-05 1.6358571e-02 -4.8404656e-01 5.0068175e-01
 
-Free energy density - timestep total fluid
-[fed]            320  1.8409391e-04  1.8408443e-04
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]            320 -8.2298843478e+01  2.6112800000e+05 -3.1516667488e-04  0.0000000000e+00
 
 Momentum - x y z
 [total   ] -1.3002099e-13 -1.6942003e-13  3.4000580e-14
@@ -287,6 +298,7 @@ Completed cycle 320
 
 Particle statistics:
 Inter-particle minimum h is: 3.23303e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -1.6827656e-03 -1.4496625e-03 -1.1230907e-03
 [maximum ]  1.7813709e-03  1.5929254e-03  1.4778707e-03
@@ -295,8 +307,8 @@ Scalars - total mean variance min max
 [rho]      261122.00  1.00000000000 9.6488307e-07  0.99416556347 1.00879642051
 [phi]  7.1045705e+00  2.7207859e-05 3.4053955e-02 -5.9992412e-01 6.0336118e-01
 
-Free energy density - timestep total fluid
-[fed]            360  3.8022514e-04  3.8019412e-04
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]            360 -1.6657065985e+02  2.6112200000e+05 -6.3790358473e-04  0.0000000000e+00
 
 Momentum - x y z
 [total   ] -1.9149959e-13 -1.8804402e-13 -5.8314464e-14
@@ -311,6 +323,7 @@ Completed cycle 360
 
 Particle statistics:
 Inter-particle minimum h is: 3.21030e+00
+Potential energy is:         0.00000e+00
 Colloid velocities - x y z
 [minimum ] -3.4265536e-03 -3.1483446e-03 -2.0278176e-03
 [maximum ]  3.3184203e-03  2.9535437e-03  2.8044653e-03
@@ -319,8 +332,8 @@ Scalars - total mean variance min max
 [rho]      261118.00  1.00000000000 2.4983099e-06  0.98961370930 1.01351225605
 [phi]  7.1045705e+00  2.7208276e-05 6.5198953e-02 -7.0122069e-01 7.1888670e-01
 
-Free energy density - timestep total fluid
-[fed]            400  7.1816764e-04  7.1808922e-04
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]            400 -3.0557277519e+02  2.6111800000e+05 -1.1702478389e-03  0.0000000000e+00
 
 Momentum - x y z
 [total   ] -1.6275870e-13 -2.9393155e-13  1.4155344e-13
@@ -337,13 +350,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    483.900    483.900    483.900 483.900000 (1 call)
-      Time step loop:      1.200      1.240    481.320   1.203300 (400 calls)
-         Propagation:      0.140      0.160     60.020   0.150050 (400 calls)
-           Collision:      0.500      0.520    204.170   0.510425 (400 calls)
-       Lattice halos:      0.000      0.010      7.740   0.009675 (800 calls)
-       phi gradients:      0.490      0.510    200.280   0.500700 (400 calls)
-             Rebuild:      0.010      0.020      5.790   0.014475 (400 calls)
-                 BBL:      0.000      0.010      1.510   0.003775 (400 calls)
-      Particle halos:      0.000      0.010      0.030   0.000075 (400 calls)
+               Total:    503.470    503.470    503.470 503.470000 (1 call)
+      Time step loop:      1.250      1.280    500.850   1.252125 (400 calls)
+         Propagation:      0.140      0.150     57.310   0.143275 (400 calls)
+           Collision:      0.590      0.600    237.680   0.594200 (400 calls)
+       Lattice halos:      0.000      0.010      6.730   0.008412 (800 calls)
+       phi gradients:      0.470      0.480    190.570   0.476425 (400 calls)
+             Rebuild:      0.010      0.020      5.410   0.013525 (400 calls)
+                 BBL:      0.000      0.010      1.360   0.003400 (400 calls)
+      Particle halos:      0.000      0.010      0.060   0.000150 (400 calls)
 Ludwig finished normally.
