@@ -657,6 +657,15 @@ static void colloid_forces_check(void) {
     if (ifail == 1) {
       fatal("Particles too large for local domain (amax = %6.2f) \n", ahmax);
     }
+
+    /* However, we can't use this if cart size > 2 and periodic
+     * boundaries are present */
+
+    ifail = 0;
+    if (cart_size(X) > 2 && is_periodic(X)) ifail = 1;
+    if (cart_size(Y) > 2 && is_periodic(Y)) ifail = 1;
+    if (cart_size(Z) > 2 && is_periodic(Z)) ifail = 1;
+    if (ifail) fatal("Must have three cells for this system\n");
   }
   else {
 
