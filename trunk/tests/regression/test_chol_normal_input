@@ -359,7 +359,7 @@ distribution_io_grid 1_1_1
 phi_format    BINARY
 vel_format    BINARY
 
-colloid_io_freq 10
+colloid_io_freq 10000000
 colloids_io_grid 1_1_1
 colloid_io_format_input  ASCII
 colloid_io_format_output ASCII
