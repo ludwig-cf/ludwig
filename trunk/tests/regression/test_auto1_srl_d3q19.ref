@@ -1,6 +1,6 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 1356M
+The SVN revision details are: 1514M
 Note assertions via standard C assert() are on.
 
 Read 93 user parameters from ../tests/regression/test_auto1_input
@@ -58,7 +58,8 @@ Decomposition:   1  1  1
 Input format:  binary
 Output format: binary
 
-Initialised 1 colloid from input
+Requested   1 colloid from input
+Initialised 1 colloid
 
 Initial conditions.
 
@@ -80,9 +81,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262087.00  1.00000000000 4.3701692e-08  0.97682912093 1.02317087907
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              1  0.0000000000e+00  2.6208700000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.8185939e-12 -2.2168204e-17
 [fluid   ]  1.0349659e+00 -1.8185939e-12  0.0000000e+00
@@ -101,9 +99,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262087.00  1.00000000000 6.9664018e-08  0.98241659489 1.01753368365
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              2  0.0000000000e+00  2.6208700000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.8182662e-12 -4.7028918e-17
@@ -124,9 +119,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262087.00  1.00000000000 7.0289231e-08  0.98598078755 1.01368490655
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              3  0.0000000000e+00  2.6208700000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.7701661e-12 -2.1959666e-16
 [fluid   ]  1.5169412e+00 -1.7692132e-12 -4.1633363e-17
@@ -145,9 +137,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262087.00  1.00000000000 6.2451713e-08  0.98998130876 1.00996061633
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              4  0.0000000000e+00  2.6208700000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.7196527e-12  9.3096571e-17
@@ -168,9 +157,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 5.2233743e-08  0.99230758805 1.00767359897
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              5  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.7157900e-12  2.3589627e-16
 [fluid   ]  1.7668536e+00 -1.7157352e-12  3.5388359e-16
@@ -189,9 +175,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 4.2804839e-08  0.99402929224 1.00600720272
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              6  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.6669198e-12  4.0872607e-16
@@ -212,9 +195,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 3.6079571e-08  0.99505428897 1.00498790683
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              7  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.6651359e-12  1.7917290e-16
 [fluid   ]  1.8556743e+00 -1.6646302e-12  2.3592239e-16
@@ -233,9 +213,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 3.1409584e-08  0.99573870988 1.00435011107
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              8  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.6198447e-12 -2.0725870e-16
@@ -256,9 +233,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 2.8092092e-08  0.99646847439 1.00361431276
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]              9  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.6150452e-12  6.5493886e-17
 [fluid   ]  1.8933066e+00 -1.6146251e-12  3.1571967e-16
@@ -277,9 +251,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 2.5585725e-08  0.99695317028 1.00306052733
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             10  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.5691016e-12  1.7676596e-15
@@ -300,9 +271,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 2.3594594e-08  0.99731979555 1.00270802078
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             11  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.5656667e-12  1.8938965e-15
 [fluid   ]  1.9159839e+00 -1.5647865e-12  2.3592239e-15
@@ -321,9 +289,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 2.1925120e-08  0.99769643039 1.00231143702
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             12  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.5616828e-12  2.5789954e-15
@@ -344,9 +309,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 2.0571074e-08  0.99788569363 1.00213138223
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             13  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.5160552e-12  9.5987468e-16
 [fluid   ]  1.9455961e+00 -1.5145107e-12  1.3947177e-15
@@ -365,9 +327,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.9324860e-08  0.99813528005 1.00189379439
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             14  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.5152365e-12  2.6102514e-15
@@ -388,9 +347,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.8201445e-08  0.99835337661 1.00165306906
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             15  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.5087037e-12  2.9506505e-15
 [fluid   ]  1.9597177e+00 -1.5066629e-12  3.3063829e-15
@@ -409,9 +365,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.7174923e-08  0.99848292840 1.00152974138
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             16  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4961163e-12  2.4316496e-15
@@ -432,9 +385,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.6244124e-08  0.99865799309 1.00136295076
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             17  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4854560e-12  3.5212516e-16
 [fluid   ]  1.9765160e+00 -1.4855929e-12  5.7939764e-16
@@ -453,9 +403,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.5394035e-08  0.99874974271 1.00125705458
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             18  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4759175e-12 -1.0145224e-15
@@ -476,9 +423,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.4618606e-08  0.99885174872 1.00116238324
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             19  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4593244e-12 -4.8089292e-15
 [fluid   ]  1.9937651e+00 -1.4588157e-12 -4.4686477e-15
@@ -497,9 +441,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.3906961e-08  0.99897052638 1.00103535859
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             20  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4502211e-12 -1.0174248e-14
@@ -520,9 +461,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.3253196e-08  0.99902836910 1.00097916084
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             21  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4451169e-12  8.9565250e-16
 [fluid   ]  2.0100678e+00 -1.4444626e-12  9.7491459e-16
@@ -541,9 +479,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262095.00  1.00000000000 1.2649472e-08  0.99911212219 1.00090023178
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             22  0.0000000000e+00  2.6209500000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4445969e-12  4.6257501e-15
@@ -564,9 +499,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 1.2093239e-08  0.99917497725 1.00083062367
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             23  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4329699e-12  4.0308872e-15
 [fluid   ]  2.0185405e+00 -1.4320628e-12  4.1217030e-15
@@ -585,9 +517,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 1.1577258e-08  0.99922327286 1.00078529108
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             24  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.4108682e-12  7.8337818e-15
@@ -608,9 +537,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 1.1095693e-08  0.99929466874 1.00071667764
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             25  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.3794334e-12  9.5320519e-15
 [fluid   ]  2.0352574e+00 -1.3796429e-12  9.5617958e-15
@@ -629,9 +555,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 1.0646159e-08  0.99932582925 1.00067946094
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             26  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.3435280e-12  6.3320885e-15
@@ -652,9 +575,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 1.0226185e-08  0.99937033529 1.00063788555
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             27  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.3099810e-12  9.2400926e-15
 [fluid   ]  2.0486211e+00 -1.3098342e-12  9.3605679e-15
@@ -673,9 +593,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 9.8325188e-09  0.99941370737 1.00059153044
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             28  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.2597142e-12  8.7112953e-15
@@ -696,9 +613,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 9.4637904e-09  0.99944005855 1.00056589640
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             29  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.2076758e-12  3.3209732e-15
 [fluid   ]  2.0597359e+00 -1.2064204e-12  3.5527137e-15
@@ -717,9 +631,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 9.1171890e-09  0.99947969331 1.00052640809
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             30  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.1554911e-12  4.0307962e-15
@@ -740,9 +651,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 8.7916170e-09  0.99950516673 1.00049913370
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             31  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.1231812e-12  2.5082230e-15
 [fluid   ]  2.0693578e+00 -1.1228136e-12  2.2447322e-15
@@ -761,9 +669,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 8.4843719e-09  0.99952731234 1.00047624676
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             32  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.0949680e-12  5.2889269e-15
@@ -784,9 +689,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 8.1949261e-09  0.99956022312 1.00044265490
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             33  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.0750840e-12  4.3417491e-15
 [fluid   ]  2.0779017e+00 -1.0749734e-12  3.8406778e-15
@@ -805,9 +707,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 7.9213354e-09  0.99957450733 1.00042771373
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             34  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.0478962e-12 -1.2162630e-14
@@ -828,9 +727,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 7.6626117e-09  0.99960216909 1.00040274085
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             35  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.0233218e-12 -8.1776070e-15
 [fluid   ]  2.0855968e+00 -1.0242432e-12 -8.5140228e-15
@@ -849,9 +745,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 7.4174695e-09  0.99961221025 1.00038850003
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             36  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.0059856e-12 -3.1111142e-15
@@ -872,9 +765,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 7.1850432e-09  0.99963606883 1.00036754963
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             37  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -1.0052552e-12 -2.2546939e-15
 [fluid   ]  2.0925821e+00 -1.0055047e-12 -2.4320823e-15
@@ -893,9 +783,6 @@ Colloid velocities - x y z
 
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 6.9642800e-09  0.99964839135 1.00035149385
-
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             38  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
 [total   ]  2.2158700e+00 -9.9000523e-13 -6.8497818e-15
@@ -916,9 +803,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 6.7544943e-09  0.99966599593 1.00033389275
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             39  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -9.7472908e-13 -1.7910967e-14
 [fluid   ]  2.0989533e+00 -9.7526501e-13 -1.7857243e-14
@@ -938,9 +822,6 @@ Colloid velocities - x y z
 Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 6.5537580e-09  0.99967850437 1.00032051415
 
-Free energies - timestep f v f/v f_s a f_s/a
-[fe]             40  0.0000000000e+00  2.6209100000e+05  0.0000000000e+00  0.0000000000e+00
-
 Momentum - x y z
 [total   ]  2.2158700e+00 -9.7586101e-13 -2.1447429e-14
 [fluid   ]  2.1013425e+00 -9.7613931e-13 -2.1139340e-14
@@ -956,12 +837,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     30.490     30.490     30.490  30.490000 (1 call)
-      Time step loop:      0.590      0.620     24.000   0.600000 (40 calls)
-         Propagation:      0.060      0.070      2.480   0.062000 (40 calls)
-           Collision:      0.510      0.520     20.480   0.512000 (40 calls)
-       Lattice halos:      0.000      0.010      0.410   0.005125 (80 calls)
-             Rebuild:      0.010      0.020      0.460   0.011500 (40 calls)
-                 BBL:      0.000      0.000      0.000   0.000000 (40 calls)
+               Total:     28.880     28.880     28.880  28.880000 (1 call)
+      Time step loop:      0.570      0.580     22.900   0.572500 (40 calls)
+         Propagation:      0.060      0.070      2.510   0.062750 (40 calls)
+           Collision:      0.480      0.490     19.290   0.482250 (40 calls)
+       Lattice halos:      0.000      0.010      0.420   0.005250 (80 calls)
+             Rebuild:      0.010      0.020      0.500   0.012500 (40 calls)
+                 BBL:      0.000      0.010      0.010   0.000250 (40 calls)
       Particle halos:      0.000      0.000      0.000   0.000000 (40 calls)
 Ludwig finished normally.
