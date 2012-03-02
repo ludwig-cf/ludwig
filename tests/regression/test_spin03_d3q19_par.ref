@@ -1,5 +1,6 @@
 Welcome to Ludwig (MPI version running on 8 processes)
 
+The SVN revision details are: 1514M
 Note assertions via standard C assert() are on.
 
 Read 60 user parameters from ../tests/regression/test_spin03_input
@@ -9,7 +10,7 @@ Free energy details
 
 Symmetric phi^4 free energy selected.
 Single conserved order parameter nop = 1
-Requires up to del^2 derivatives so setting nhalo = 2
+Requires up to del^2 derivatives so setting nhalo = 1
 
 Parameters:
 Bulk parameter A      = -6.25000e-03
@@ -30,7 +31,7 @@ System size:    64 64 64
 Decomposition:  2 2 2
 Local domain:   32 32 32
 Periodic:       1 1 1
-Halo nhalo:     2
+Halo nhalo:     1
 Reorder:        true
 Initialised:    1
 
@@ -44,7 +45,7 @@ Body force density  0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
 -------------------------------
-Model:            d3q19
+Model:            d3q19  
 Number of sets:   2
 Halo type:        full
 Input format:     binary
@@ -60,12 +61,6 @@ Shear relaxation time:    5.18750e-01
 Bulk relaxation time:     5.18750e-01
 Ghost relaxation time:    1.00000e+00
 [User   ] Random number seed: 8361235
-
-Colloid I/O settings
---------------------
-Input format:       ascii serial
-Output format:      ascii
-
 
 Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
 
@@ -84,11 +79,11 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]      262144.00  1.00000000000 8.6861407e-11  0.99996396437 1.00002237666
+[rho]      262144.00  1.00000000000 8.6861629e-11  0.99996396437 1.00002237666
 [phi] -2.2902996e+01 -8.7367996e-05 4.2720038e-04 -4.7585681e-02 4.7765992e-02
 
 Free energy density - timestep total fluid
-[fed]             40  1.8658266e-07  1.8658266e-07
+[fed]             40 -1.1479053080e-06 -1.1479053080e-06
 
 Momentum - x y z
 [total   ]  7.7580303e-14  7.6865597e-14 -1.4287183e-14
@@ -101,11 +96,11 @@ Velocity - x y z
 Completed cycle 40
 
 Scalars - total mean variance min max
-[rho]      262144.00  1.00000000000 2.6598501e-11  0.99997484530 1.00001687443
+[rho]      262144.00  1.00000000000 2.6598723e-11  0.99997484530 1.00001687443
 [phi] -2.2902996e+01 -8.7367996e-05 2.5747936e-04 -4.6070345e-02 4.7495871e-02
 
 Free energy density - timestep total fluid
-[fed]             80  1.5035766e-07  1.5035766e-07
+[fed]             80 -6.5406872846e-07 -6.5406872846e-07
 
 Momentum - x y z
 [total   ]  7.4256573e-14  1.6200929e-13 -1.7999491e-14
@@ -122,7 +117,7 @@ Scalars - total mean variance min max
 [phi] -2.2902996e+01 -8.7367996e-05 1.8798257e-04 -4.6901533e-02 4.7196854e-02
 
 Free energy density - timestep total fluid
-[fed]            120  1.4190391e-07  1.4190391e-07
+[fed]            120 -4.4543038493e-07 -4.4543038493e-07
 
 Momentum - x y z
 [total   ]  1.8834587e-13  1.4164017e-13  1.7388868e-14
@@ -139,7 +134,7 @@ Scalars - total mean variance min max
 [phi] -2.2902996e+01 -8.7367996e-05 1.6613434e-04 -4.8884632e-02 4.7516901e-02
 
 Free energy density - timestep total fluid
-[fed]            160  1.4963549e-07  1.4963549e-07
+[fed]            160 -3.6944185587e-07 -3.6944185587e-07
 
 Momentum - x y z
 [total   ]  2.8911248e-13  1.2440743e-13 -5.9112437e-14
@@ -156,7 +151,7 @@ Scalars - total mean variance min max
 [phi] -2.2902996e+01 -8.7367996e-05 1.7108798e-04 -5.2464280e-02 5.2885755e-02
 
 Free energy density - timestep total fluid
-[fed]            200  1.6985563e-07  1.6985563e-07
+[fed]            200 -3.6468864396e-07 -3.6468864396e-07
 
 Momentum - x y z
 [total   ]  3.7319106e-13  1.4223692e-13 -1.1619872e-13
@@ -169,11 +164,11 @@ Velocity - x y z
 Completed cycle 200
 
 Scalars - total mean variance min max
-[rho]      262144.00  1.00000000000 3.2061021e-12  0.99998577712 1.00001416036
+[rho]      262144.00  1.00000000000 3.2063241e-12  0.99998577712 1.00001416036
 [phi] -2.2902996e+01 -8.7367996e-05 1.9525231e-04 -5.7205977e-02 5.9670639e-02
 
 Free energy density - timestep total fluid
-[fed]            240  2.0248025e-07  2.0248025e-07
+[fed]            240 -4.0753495150e-07 -4.0753495150e-07
 
 Momentum - x y z
 [total   ]  4.3552315e-13  1.2116350e-13 -1.6076723e-13
@@ -190,7 +185,7 @@ Scalars - total mean variance min max
 [phi] -2.2902996e+01 -8.7367996e-05 2.3730692e-04 -6.4789938e-02 6.7362802e-02
 
 Free energy density - timestep total fluid
-[fed]            280  2.4957766e-07  2.4957766e-07
+[fed]            280 -4.9177413541e-07 -4.9177413541e-07
 
 Momentum - x y z
 [total   ]  4.2646789e-13  1.3590171e-13 -8.3995311e-14
@@ -203,11 +198,11 @@ Velocity - x y z
 Completed cycle 280
 
 Scalars - total mean variance min max
-[rho]      262144.00  1.00000000000 3.8375969e-12  0.99998819635 1.00002211038
+[rho]      262144.00  1.00000000000 3.8378190e-12  0.99998819635 1.00002211038
 [phi] -2.2902996e+01 -8.7367996e-05 2.9958184e-04 -7.4519144e-02 7.6184309e-02
 
 Free energy density - timestep total fluid
-[fed]            320  3.1500519e-07  3.1500519e-07
+[fed]            320 -6.2080256595e-07 -6.2080256595e-07
 
 Momentum - x y z
 [total   ]  3.7989056e-13  1.1981388e-13 -1.2884138e-13
@@ -220,11 +215,11 @@ Velocity - x y z
 Completed cycle 320
 
 Scalars - total mean variance min max
-[rho]      262144.00  1.00000000000 5.4725113e-12  0.99998760415 1.00002844096
+[rho]      262144.00  1.00000000000 5.4727334e-12  0.99998760415 1.00002844096
 [phi] -2.2902996e+01 -8.7367996e-05 3.8725433e-04 -8.5750283e-02 8.6357962e-02
 
 Free energy density - timestep total fluid
-[fed]            360  4.0455823e-07  4.0455823e-07
+[fed]            360 -8.0495095619e-07 -8.0495095619e-07
 
 Momentum - x y z
 [total   ]  4.1441850e-13  1.0094009e-13 -1.2660012e-13
@@ -241,7 +236,7 @@ Scalars - total mean variance min max
 [phi] -2.2902996e+01 -8.7367996e-05 5.0842407e-04 -9.8741824e-02 9.8116573e-02
 
 Free energy density - timestep total fluid
-[fed]            400  5.2644567e-07  5.2644567e-07
+[fed]            400 -1.0612239388e-06 -1.0612239388e-06
 
 Momentum - x y z
 [total   ]  3.6318518e-13  1.2951792e-13 -1.3702928e-13
@@ -257,11 +252,11 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     52.775     53.005     52.903  52.903042 (1 call)
-      Time step loop:      0.122      0.141     52.192   0.130481 (400 calls)
-         Propagation:      0.026      0.042     11.809   0.029522 (400 calls)
-           Collision:      0.063      0.068     25.719   0.064297 (400 calls)
-       Lattice halos:      0.011      0.018      5.290   0.013226 (400 calls)
-       phi gradients:      0.015      0.033      8.894   0.022236 (400 calls)
-                 BBL:      0.000      0.000      0.001   0.000001 (400 calls)
+               Total:     51.276     51.496     51.398  51.398370 (1 call)
+      Time step loop:      0.123      0.134     50.700   0.126749 (400 calls)
+         Propagation:      0.027      0.028     10.932   0.027331 (400 calls)
+           Collision:      0.067      0.070     27.242   0.068105 (400 calls)
+       Lattice halos:      0.010      0.015      4.648   0.011620 (400 calls)
+       phi gradients:      0.017      0.022      7.426   0.018565 (400 calls)
+                 BBL:      0.000      0.000      0.001   0.000003 (400 calls)
 Ludwig finished normally.
