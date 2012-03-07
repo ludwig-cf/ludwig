@@ -42,7 +42,7 @@ static double w_surface_wall_ = 0.0; /* Anchoring strength in free energy */
 
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
-static void scalar_order_parameter_director(double q[3][3], double qs[4]);
+static void scalar_biaxial_order_parameter_director(double q[3][3], double qs[5]);
 
 void COLL_set_Q(){
 
@@ -61,7 +61,7 @@ void COLL_set_Q(){
   int index;
 
   double q[3][3];
-  double qs[4];
+  double qs[5];
   double director[3];
   double len_normal;
   double rlen_normal;
@@ -140,7 +140,7 @@ void COLL_set_Q(){
 	     */
 	  
 	    phi_get_q_tensor(index, q);
-	    scalar_order_parameter_director(q, qs);
+	    scalar_biaxial_order_parameter_director(q, qs);
 
 	    dir[X] = qs[1];
 	    dir[Y] = qs[2];
@@ -414,22 +414,23 @@ static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
 				    const int kc) {
   int index, n;
   double q[3][3];
-  double qs_dir[4];
+  double qs_dir[5];
 
   index = coords_index(ic, jc, kc);
 
   if (site_map_get_status_index(index) == FLUID) {
     phi_get_q_tensor(index, q);
-    scalar_order_parameter_director(q, qs_dir);
+    scalar_biaxial_order_parameter_director(q, qs_dir);
   }
   else {
     qs_dir[0] = 0.0;
     qs_dir[1] = 0.0;
     qs_dir[2] = 0.0;
     qs_dir[3] = 0.0;
+    qs_dir[4] = 0.0;
   }
 
-  n = fprintf(fp, "%le %le %le %le\n", qs_dir[0], qs_dir[1], qs_dir[2], qs_dir[3]);
+  n = fprintf(fp, "%le %le %le %le %le\n", qs_dir[0], qs_dir[1], qs_dir[2], qs_dir[3], qs_dir[4]);
   if (n < 0) fatal("fprintf(qs_dir) failed at index %d\n", index);
 
   return n;
@@ -448,36 +449,44 @@ static int scalar_q_dir_write(FILE * fp, const int ic, const int jc,
 			      const int kc) {
   int index, n;
   double q[3][3];
-  double qs_dir[4];
+  double qs_dir[5];
 
   index = coords_index(ic, jc, kc);
   phi_get_q_tensor(index, q);
-  scalar_order_parameter_director(q, qs_dir);
+  scalar_biaxial_order_parameter_director(q, qs_dir);
 
   if (site_map_get_status_index(index) != FLUID) {
     qs_dir[0] = 1.0;
   }
 
-  n = fwrite(qs_dir, sizeof(double), 4, fp);
-  if (n != 4) fatal("fwrite(qs_dir) failed at index %d\n", index);
+  n = fwrite(qs_dir, sizeof(double), 5, fp);
+  if (n != 5) fatal("fwrite(qs_dir) failed at index %d\n", index);
 
   return n;
 }
 
 /*****************************************************************************
  *
- *  scalar_order_parameter_director
+ *  scalar_biaxial_order_parameter_director
  *
- *  Return the value of the scalar order parameter and director for
+ *  Return the value of the scalar and biaxial order parameter and director for
  *  given Q tensor.
+ *
+ *  The biaxial OP is defined by B = sqrt(1 - 6*(tr(Q^3))^2 / (tr(Q^2))^3).
+ *  As Q is traceless and symmetric we get the following dependencies:
+ *
+ *              Q = ((s,0,0),(0,t,0)(0,0,-s-t))
+ *    (tr(Q^3))^2 = 9*s^2*t^2*(s^2 + 2*s*t + t^2)
+ *    (tr(Q^2))^3 = 8*(s^6 + 6*s^4t^2 + 6*s^2t^4 + t^6 + 3*s^5t + 3*st^5 + 7*s^3t^3)
  *
  *****************************************************************************/
 
-static void scalar_order_parameter_director(double q[3][3], double qs[4]) {
+static void scalar_biaxial_order_parameter_director(double q[3][3], double qs[5]) {
 
   int ifail;
   double eigenvalue[3];
   double eigenvector[3][3];
+  double s, t, Q3_2, Q2_3;
 
   ifail = util_jacobi_sort(q, eigenvalue, eigenvector);
 
@@ -486,12 +495,23 @@ static void scalar_order_parameter_director(double q[3][3], double qs[4]) {
     qs[1] = 0.0;
     qs[2] = 0.0;
     qs[3] = 0.0;
+    qs[4] = 0.0;
   }
   else {
     qs[0] = eigenvalue[0];
     qs[1] = eigenvector[X][0];
     qs[2] = eigenvector[Y][0];
     qs[3] = eigenvector[Z][0];
+
+    s = eigenvalue[0];
+    t = eigenvalue[1];
+    Q3_2 = 9.0*s*s*t*t*(s*s + 2.0*s*t + t*t);
+    Q2_3 = 8.0*(s*s*s*s*s*s + 6.0*s*s*s*s*t*t 
+	    + 6.0*s*s*t*t*t*t + t*t*t*t*t*t 
+	    + 3.0*s*s*s*s*s*t + 3.0*s*t*t*t*t*t 
+	    + 7.0*s*s*s*t*t*t);
+
+    qs[4] = sqrt(1.0-6.0*Q3_2/Q2_3);
   }
 
   return;
