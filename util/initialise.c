@@ -31,14 +31,14 @@
 /********************************************************
  All parameters below have to be given at compile time 
 ********************************************************/
-int ntime_ = 1; 			/* timestep */
+int ntime_ = 50000; 			/* timestep */
 
 int ntotal_in_[3] = {1, 32, 32};	/* total system size input file */
 int pe_in_[3] = {1, 2, 2}; 		/* Cartesian decomposition input file */
 int phi_in_io_[3] = {1, 1, 1}; 		/* I/O decomposition input file */
 
-int ntotal_[3] = {64, 64, 32}; 		/* total system size */
-int pe_[3] = {1, 2, 2}; 		/* Cartesian processor decomposition */
+int ntotal_[3] = {128, 128, 32}; 		/* total system size */
+int pe_[3] = {2, 2, 1}; 		/* Cartesian processor decomposition */
 int phi_io_[3] = {1, 1, 1}; 		/* I/O decomposition for order parameter */
 
 int dist_io_[3] = {1, 1, 1}; 		/* I/O decomposition for distributions */
@@ -46,6 +46,7 @@ int dist_io_[3] = {1, 1, 1}; 		/* I/O decomposition for distributions */
 double q0=2.0*Pi/32.0;			/* pitch wave vector */
 double amp=0.03333333;			/* initial amplitude */
 int NVEL_ = 19;				/* No. of lattice velocities */
+int N_torus_ = 2;			/* No. of tori in initial configuration */
 int file_input_ = 1; 			/* switch for file input */
 int input_binary_ = 1;			/* switch for format of input */
 int output_binary_ = 1;			/* switch for format of final output */
@@ -66,7 +67,9 @@ struct io_info {
   int nlocal[3];
 };
 
-void set_phi_torus(double ****, double ****);
+void set_phi_nematic(double, double, double, double ****);
+void set_torus_radius_centre(double *, double **);
+void set_phi_torus(double ****, double *, double **, double ****);
 void set_phi_cf1(double ****, double ****);
 void set_phi_cf2(double ****, double ****);
 void set_dist(double ****);
@@ -86,15 +89,24 @@ int main(int argc, char ** argv) {
   double **** phi;
   double **** phi_in;
   double **** dist;
+  double * R, ** Z; /* radii and centres of tori */
   int i, j, k, n; 
   struct io_info  phi_info, phi_in_info, dist_info;
   int pe_per_io;
 
-  /************************/
-  /* Create phi data file */
-  /************************/
+  R = (double *) calloc(N_torus_, sizeof(double));
+  if (R == NULL) printf("calloc(R) failed\n");
+  Z = (double **) calloc(N_torus_, sizeof(double));
+  if (Z == NULL) printf("calloc(Z) failed\n");
+  for (i = 0; i < N_torus_; i++){
+    Z[i] = (double *) calloc(3, sizeof(double));
+    if (Z[i] == NULL) printf("calloc(Z) failed\n");
+  }
 
-  /* Work out parallel decompsition that is used and the number of
+  ////////////////////////// 
+  /* Create phi data file */
+ 
+ /* Work out parallel decompsition that is used and the number of
      processors per I/O group and store in structure. */
 
   for (i = 0; i < 3; i++) {
@@ -178,11 +190,17 @@ int main(int argc, char ** argv) {
     }
   }
 
+  /*************************************/
+  /* Include subroutines here that set */
+  /*   and modify the order parameter  */ 
+  /*************************************/
 
-  /* Set and modify order parameter here */ 
 //  set_phi_cf1(phi_in,phi);
 //  set_phi_cf2(phi_in,phi);
-  set_phi_torus(phi_in,phi);
+
+  set_phi_nematic(0,0,1,phi);
+  set_torus_radius_centre(R,Z);
+  set_phi_torus(phi_in,R,Z,phi);
 
   /* write order parameter output */
   write_files(&phi_info,phi,datalocal);
@@ -192,9 +210,8 @@ int main(int argc, char ** argv) {
   free(phi);
   free(phi_in);
 
-  /****************************/
+  //////////////////////////////
   /* Create distribution file */
-  /****************************/
 
   dist_info.stub = "dist"; 
   dist_info.nrec = NVEL_; 
@@ -712,23 +729,48 @@ void set_phi_cf2(double **** phi_in, double **** phi){
 
 /****************************************************************************
  *
+ *  set_phi_nematic
+ *
+ * Set nematic configuration  
+ *
+ ****************************************************************************/
+void set_phi_nematic(double nx, double ny, double nz, double **** phi){
+
+  int i,j,k;
+
+  for (i=1; i<=ntotal_[0]; i++){
+    for (j=1; j<=ntotal_[1]; j++){
+      for (k=1; k<=ntotal_[2]; k++){
+
+	phi[i][j][k][0] = amp*(3.0/2.0*nx*nx-1.0/2.0);
+	phi[i][j][k][1] = amp*(3.0/2.0*nx*ny);
+	phi[i][j][k][2] = amp*(3.0/2.0*nx*nz);
+	phi[i][j][k][3] = amp*(3.0/2.0*ny*ny-1.0/2.0);
+	phi[i][j][k][4] = amp*(3.0/2.0*ny*nz);
+
+      }
+    }
+  }
+
+  return;
+}
+
+/****************************************************************************
+ *
  *  set_phi_torus
  *
  *  Creates toroidal order parameter configuration 
  *  from 2D cross section (y-z-slice)
  *
  ****************************************************************************/
-void set_phi_torus(double **** phi_in, double **** phi){
+void set_phi_torus(double **** phi_in, double * R, double ** Z, double **** phi){
 
-  double R = -ntotal_in_[1]; /* radius of torus measured from the edge */
-  double Z[3] = {ntotal_[0]/2.0, ntotal_[1]/2.0, 0}; /* centre of torus */
-  /* Note: R<0 means that the slice is on the lhs of the centre at alpha=0 */
 
   double x[3], xr[3]; /* 3D coordinate vector on 2D-slice and rotated vector */
   double y[3]; /* output coordinate */
   double Q[3][3], Qr[3][3]; /* OP-tensor on 2D-slice and rotated tensor */
 
-  int i,j,k,l;
+  int i,j,k,l,n;
   int ii, ij, ik;
   double **M, **Mt; /* rotation matrices */ 
   double alpha, dalpha=0.0001*Pi; /* rotation angle and increment */
@@ -742,95 +784,89 @@ void set_phi_torus(double **** phi_in, double **** phi){
   }
 
 
-  /* set output OP to zero */	
-  for (i=1; i<=ntotal_[0]; i++){
-    for (j=1; j<=ntotal_[1]; j++){
-      for (k=1; k<=ntotal_[2]; k++){
+  for (n=0; n< N_torus_; n++){
+    /* rotate 2D-slice to form a torus */
+    for (alpha=0; alpha<=2.0*Pi; alpha+=dalpha){
+    printf("Creating torus %d; alpha = %g\r",n, alpha);
 
-	phi[i][j][k][0] = thres;
-	phi[i][j][k][1] = thres;
-	phi[i][j][k][2] = thres;
-	phi[i][j][k][3] = thres;
-	phi[i][j][k][4] = thres;
+      Mz(M,Mt,alpha);
+   
+      /* sweep through input data and set OP on torus */
+      for (ii=1; ii<=ntotal_in_[0]; ii++){
+	if (ii>1) {printf("Torus creation failed: input is not 2D\n"); exit(1);}
+	for (ij=1; ij<=ntotal_in_[1]; ij++){
+	  for (ik=1; ik<=ntotal_in_[2]; ik++){
 
-      }
-    }
-  }
+	    /* local coordinate on 2D cross section */
+	    x[0] = ii-1;
+	    if (R[n]<0)  x[1] = R[n] + ij-1;
+	    else  x[1] = R[n] - ntotal_in_[1] + ij;
+	    x[2] = ik-1;
 
-  /* rotate 2D-slice to form a torus */
-  for (alpha=0; alpha<=2.0*Pi; alpha+=dalpha){
-  printf("Creating torus; alpha = %g\r",alpha);
+	    /* OP on 2D cross section */
+	    Q[0][0] = phi_in[ii][ij][ik][0];
+	    Q[0][1] = phi_in[ii][ij][ik][1]; 
+	    Q[0][2] = phi_in[ii][ij][ik][2]; 
+	    Q[1][1] = phi_in[ii][ij][ik][3]; 
+	    Q[1][2] = phi_in[ii][ij][ik][4]; 
+	    Q[1][0] = Q[0][1];
+	    Q[2][0] = Q[0][2];
+	    Q[2][1] = Q[1][2];
+	    Q[2][2] = -Q[0][0]-Q[1][1]; 
 
-    Mz(M,Mt,alpha);
- 
-    /* sweep through input data and set OP on torus */
-    for (ii=1; ii<=ntotal_in_[0]; ii++){
-      if (ii>1) {printf("Torus creation failed: input is not 2D\n"); exit(1);}
-      for (ij=1; ij<=ntotal_in_[1]; ij++){
-	for (ik=1; ik<=ntotal_in_[2]; ik++){
-
-	  /* coordinate on 2D cross section */
-	  x[0] = ii-1;
-	  if (R<0)  x[1] = R + ij-1;
-	  else  x[1] = R - ntotal_in_[1] + ij;
-	  x[2] = ik-1;
-
-	  /* OP on 2D cross section */
-	  Q[0][0] = phi_in[ii][ij][ik][0];
-	  Q[0][1] = phi_in[ii][ij][ik][1]; 
-	  Q[0][2] = phi_in[ii][ij][ik][2]; 
-	  Q[1][1] = phi_in[ii][ij][ik][3]; 
-	  Q[1][2] = phi_in[ii][ij][ik][4]; 
-	  Q[1][0] = Q[0][1];
-	  Q[2][0] = Q[0][2];
-	  Q[2][1] = Q[1][2];
-	  Q[2][2] = -Q[0][0]-Q[1][1]; 
-
-	  /* apply rotation to coordinate vector and tensor */
-	  for (i=0; i<3; i++){
-	    xr[i] = 0.0;
-	    for (j=0; j<3; j++){
-	      xr[i] += M[i][j] * x[j]; 
+	    /* apply rotation to coordinate vector and tensor */
+	    for (i=0; i<3; i++){
+	      xr[i] = 0.0;
+	      for (j=0; j<3; j++){
+		xr[i] += M[i][j] * x[j]; 
+	      }
 	    }
-	  }
 
-	  for (i=0; i<3; i++){
-	    for (j=0; j<3; j++){
-	      Qr[i][j] = 0.0;
-	      for (k=0; k<3; k++){
-		for (l=0; l<3; l++){
-		  Qr[i][j] += Mt[i][k] * Q[k][l] * M[l][j];
+	    for (i=0; i<3; i++){
+	      for (j=0; j<3; j++){
+		Qr[i][j] = 0.0;
+		for (k=0; k<3; k++){
+		  for (l=0; l<3; l++){
+		    Qr[i][j] += Mt[i][k] * Q[k][l] * M[l][j];
+		  }
 		}
 	      }
 	    }
-	  }
 
-	  /* determine output coordinate vector */
-	  y[0] = (xr[0] + Z[0]);
-	  if (y[0]<1) y[0] = 1;
-	  if (y[0]>ntotal_[0]) y[0] = ntotal_[0];
-	  y[1] = (xr[1] + Z[1]);
-	  if (y[1]<1) y[0] = 1;
-	  if (y[1]>ntotal_[1]) y[1] = ntotal_[1];
-	  y[2] = (xr[2] + Z[2]);
-	  if (y[2]<1) y[0] = 1;
-	  if (y[2]>ntotal_[2]) y[2] = ntotal_[2];
+	    /* determine output coordinate vector */
+	    y[0] = (xr[0] + Z[n][0]);
+	    if (y[0]<1) y[0] = 1;
+	    if (y[0]>ntotal_[0]) y[0] = ntotal_[0];
+	    y[1] = (xr[1] + Z[n][1]);
+	    if (y[1]<1) y[0] = 1;
+	    if (y[1]>ntotal_[1]) y[1] = ntotal_[1];
+	    y[2] = (xr[2] + Z[n][2]);
+	    if (y[2]<1) y[0] = 1;
+	    if (y[2]>ntotal_[2]) y[2] = ntotal_[2];
+ 
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][0] = Qr[0][0];
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][1] = Qr[0][1];
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][2] = Qr[0][2];
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][3] = Qr[1][1];
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][4] = Qr[1][2];
 
-	  phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][0] = Qr[0][0];
-	  phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][1] = Qr[0][1];
-	  phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][2] = Qr[0][2];
-	  phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][3] = Qr[1][1];
-	  phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][4] = Qr[1][2];
-
+	    }
 	  }
 	}
       }
-    }
-  printf("\n");
 
+    printf("\n");
+  }
   return;
 }
 
+/****************************************************************************
+ *
+ *  Mz
+ *
+ *  Rotation matrix and its inverse 
+ *
+ ****************************************************************************/
 void Mz(double ** M, double ** Mt, double alpha){
 
   M[0][0] = cos(alpha);
@@ -854,4 +890,31 @@ void Mz(double ** M, double ** Mt, double alpha){
   Mt[2][2] = M[2][2];
 
   return;
+}
+
+/****************************************************************************
+ *
+ *  set_torus_radius_centre
+ *
+ *  Sets the radii and centres of the tori that are created 
+ *  from 2D cross section (y-z-slice) in set_phi_torus
+ *
+ *  Note: radius R<0 means the slice of the cross
+ *        section is on the lhs at alpha=0 wrt Z.
+ *        This allows to create 'inside-out' tori.
+ *
+ ****************************************************************************/
+void set_torus_radius_centre(double * R, double ** Z){
+
+  R[0] = ntotal_in_[1];
+  Z[0][0] = ntotal_[0]/4.0; //2.0 
+  Z[0][1] = ntotal_[1]/4.0; //2.0
+  Z[0][2] = 0; 
+
+  R[1] = ntotal_in_[1];
+  Z[1][0] = 3.0*ntotal_[0]/4.0; 
+  Z[1][1] = 3.0*ntotal_[1]/4.0; 
+  Z[1][2] = 0; 
+
+return;
 }
