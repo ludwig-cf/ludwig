@@ -391,10 +391,10 @@ void scalar_q_io_info_set(struct io_info_t * info) {
   assert(info);
   io_info_scalar_q_ = info;
 
-  io_info_set_name(io_info_scalar_q_, "Scalar order parameter and director");
+  io_info_set_name(io_info_scalar_q_, "Scalar order parameter, director and biaxial order parameter");
   io_info_set_write_binary(io_info_scalar_q_, scalar_q_dir_write);
   io_info_set_write_ascii(io_info_scalar_q_, scalar_q_dir_write_ascii);
-  io_info_set_bytesize(io_info_scalar_q_, 4*sizeof(double));
+  io_info_set_bytesize(io_info_scalar_q_, 5*sizeof(double));
 
   io_info_set_format_binary(io_info_scalar_q_);
   io_write_metadata("qs_dir", io_info_scalar_q_);
