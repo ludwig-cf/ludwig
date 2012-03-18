@@ -212,17 +212,17 @@ if create_vtk_file==1:
 
 				if type[i]=='1' or type[i]=='4' or type[i]=='5':
 					xdata=float(datastring[x[i]])
-					out.write('%.5le\n' % xdata)
+					out.write('%14.6le\n' % xdata)
 				if type[i]=='2':
 					xdata=float(datastring[x[i]])
 					ydata=float(datastring[y[i]])
 					zdata=float(datastring[z[i]])
-					out.write('%.5le %.5le %.5le\n' % (xdata,ydata,zdata))
+					out.write('%14.6le %14.6le %14.6le\n' % (xdata,ydata,zdata))
 				if type[i]=='3':
 					xdata=float(datastring[x[i]])
 					ydata=float(datastring[y[i]])
 					zdata=float(datastring[z[i]])
-					out.write('%.5le %.5le %.5le\n' % (xdata,ydata,zdata))
+					out.write('%14.6le %14.6le %14.6le\n' % (xdata,ydata,zdata))
 
 	       		out.close
 			file.close
