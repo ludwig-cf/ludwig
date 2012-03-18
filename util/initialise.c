@@ -31,13 +31,13 @@
 /********************************************************
  All parameters below have to be given at compile time 
 ********************************************************/
-int ntime_ = 50000; 			/* timestep */
+int ntime_ = 1; 			/* timestep */
 
 int ntotal_in_[3] = {1, 32, 32};	/* total system size input file */
 int pe_in_[3] = {1, 2, 2}; 		/* Cartesian decomposition input file */
 int phi_in_io_[3] = {1, 1, 1}; 		/* I/O decomposition input file */
 
-int ntotal_[3] = {128, 128, 32}; 		/* total system size */
+int ntotal_[3] = {128, 128, 32};	 	/* total system size */
 int pe_[3] = {8, 8, 2}; 		/* Cartesian processor decomposition */
 int phi_io_[3] = {1, 1, 1}; 		/* I/O decomposition for order parameter */
 
@@ -46,8 +46,15 @@ int dist_io_[3] = {1, 1, 1}; 		/* I/O decomposition for distributions */
 double q0=2.0*Pi/32.0;			/* pitch wave vector */
 double amp=0.03333333;			/* initial amplitude */
 int NVEL_ = 19;				/* No. of lattice velocities */
-int N_torus_ = 1;			/* No. of tori in initial configuration */
-int file_input_ = 1; 			/* switch for file input */
+
+int cf1_ = 0;				/* switch for cholesteric finger 1st kind */ 
+int cf2_ = 0;				/* switch for cholesteric finger 2nd kind - requires CF1 input file */ 
+int nematic_ = 1;			/* switch for nematic background OP */ 
+int N_random_ = 0;			/* No. of random regions */
+int N_torus_ = 0;			/* No. of tori - requires input file */
+int N_segment_ = 0;			/* No. of segments - requires input file */
+
+int file_input_ = 0; 			/* switch for file input */
 int input_binary_ = 1;			/* switch for format of input */
 int output_binary_ = 1;			/* switch for format of final output */
 /*******************************************************/
@@ -67,10 +74,13 @@ struct io_info {
   int nlocal[3];
 };
 
-void set_phi_random(double ****);
+void set_phi_random(double ****, int **, int **, int **);
 void set_phi_nematic(double, double, double, double ****);
+void set_random_range(int **, int ** , int **);
 void set_torus_radius_centre(double *, double **);
+void set_segment_length_centre(double *, double **);
 void set_phi_torus(double ****, double *, double **, double ****);
+void set_phi_segment(double ****, double *, double **, double ****);
 void set_phi_cf1(double ****, double ****);
 void set_phi_cf2(double ****, double ****);
 void set_dist(double ****);
@@ -91,17 +101,49 @@ int main(int argc, char ** argv) {
   double **** phi_in;
   double **** dist;
   double * R, ** Z; /* radii and centres of tori */
+  double * L, ** C; /* length and centres of segments */
+  int ** xrange, ** yrange, ** zrange; /* ranges of random regions */
   int i, j, k, n; 
   struct io_info  phi_info, phi_in_info, dist_info;
   int pe_per_io;
 
-  R = (double *) calloc(N_torus_, sizeof(double));
-  if (R == NULL) printf("calloc(R) failed\n");
-  Z = (double **) calloc(N_torus_, sizeof(double));
-  if (Z == NULL) printf("calloc(Z) failed\n");
-  for (i = 0; i < N_torus_; i++){
-    Z[i] = (double *) calloc(3, sizeof(double));
-    if (Z[i] == NULL) printf("calloc(Z) failed\n");
+  if (N_torus_){
+    R = (double *) calloc(N_torus_, sizeof(double));
+    if (R == NULL) printf("calloc(R) failed\n");
+    Z = (double **) calloc(N_torus_, sizeof(double));
+    for (i = 0; i < N_torus_; i++){
+      Z[i] = (double *) calloc(3, sizeof(double));
+      if (Z[i] == NULL) printf("calloc(Z) failed\n");
+    }
+  }
+
+  if (N_segment_){
+    L = (double *) calloc(N_segment_, sizeof(double));
+    if (L == NULL) printf("calloc(L) failed\n");
+    C = (double **) calloc(N_segment_, sizeof(double));
+    for (i = 0; i < N_segment_; i++){
+      C[i] = (double *) calloc(3, sizeof(double));
+      if (C[i] == NULL) printf("calloc(C) failed\n");
+    }
+  }
+
+  if (N_random_){
+    xrange = (int **) calloc(N_random_, sizeof(int));
+    yrange = (int **) calloc(N_random_, sizeof(int));
+    zrange = (int **) calloc(N_random_, sizeof(int));
+    if (Z == NULL) printf("calloc(Z) failed\n");
+    if (xrange == NULL) printf("calloc(xrange) failed\n");
+    if (yrange == NULL) printf("calloc(yrange) failed\n");
+    if (zrange == NULL) printf("calloc(zrange) failed\n");
+
+    for (i = 0; i < N_random_; i++){
+      xrange[i] = (int *) calloc(2, sizeof(int));
+      yrange[i] = (int *) calloc(2, sizeof(int));
+      zrange[i] = (int *) calloc(2, sizeof(int));
+      if (xrange[i] == NULL) printf("calloc(xrange) failed\n");
+      if (yrange[i] == NULL) printf("calloc(yrange) failed\n");
+      if (zrange[i] == NULL) printf("calloc(zrange) failed\n");
+    }
   }
 
   ////////////////////////// 
@@ -196,13 +238,25 @@ int main(int argc, char ** argv) {
   /*   and modify the order parameter  */ 
   /*************************************/
 
-//  set_phi_cf1(phi_in,phi);
-//  set_phi_cf2(phi_in,phi);
-  set_phi_nematic(0,0,1,phi);
+  if(cf1_) set_phi_cf1(phi_in,phi);
+  if(cf2_) set_phi_cf2(phi_in,phi);
 
-//  set_phi_random(phi);
-  set_torus_radius_centre(R,Z);
-  set_phi_torus(phi_in,R,Z,phi);
+  if(nematic_) set_phi_nematic(0,0,1,phi);
+
+  if(N_segment_){
+    set_segment_length_centre(L,C);
+    set_phi_segment(phi_in,L,C,phi);
+  }
+
+  if(N_random_){
+    set_random_range(xrange,yrange,zrange);
+    set_phi_random(phi,xrange,yrange,zrange);
+  }
+
+  if(N_torus_){
+    set_torus_radius_centre(R,Z);
+    set_phi_torus(phi_in,R,Z,phi);
+  }
 
   /* write order parameter output */
   write_files(&phi_info,phi,datalocal);
@@ -664,7 +718,8 @@ void set_phi_cf1(double **** phi_in, double **** phi){
 
   int i,j,k;
   double alpha0, beta0, gamma0, nx,ny,nz;
-
+ 
+  printf("Creating cholesteric finger of first kind (CF1)\n");
 
   for (i=1; i<=ntotal_[0]; i++){
     for (j=1; j<=ntotal_[1]; j++){
@@ -704,6 +759,7 @@ void set_phi_cf1(double **** phi_in, double **** phi){
 void set_phi_cf2(double **** phi_in, double **** phi){
 
   int i,j,k;
+    printf("Creating cholesteric finger of second kind (CF2)\n");
 
   for (i=1; i<=ntotal_[0]; i++){
     for (j=1; j<=ntotal_[1]; j++){
@@ -740,6 +796,8 @@ void set_phi_nematic(double nx, double ny, double nz, double **** phi){
 
   int i,j,k;
 
+  printf("Setting nematic configuration: d=(%g,%g,%g)\n",nx,ny,nz);
+
   for (i=1; i<=ntotal_[0]; i++){
     for (j=1; j<=ntotal_[1]; j++){
       for (k=1; k<=ntotal_[2]; k++){
@@ -764,40 +822,107 @@ void set_phi_nematic(double nx, double ny, double nz, double **** phi){
  * Set random configuration  
  *
  ****************************************************************************/
-void set_phi_random(double **** phi){
+void set_phi_random(double **** phi, int **xr, int ** yr, int ** zr){
 
-  int i,j,k;
+  int i,j,k,n;
   double nx,ny,nz;
   double mag;
 
   printf("Randomising Q\n");
 
-  for (i=1; i<=ntotal_[0]; i++){
-    for (j=1; j<=ntotal_[1]; j++){
-      for (k=1; k<=ntotal_[2]; k++){
+  for (n=0; n<N_random_; n++){
+    for (i=xr[n][0]; i<=xr[n][1]; i++){
+      for (j=yr[n][0]; j<=yr[n][1]; j++){
+	for (k=zr[n][0]; k<=zr[n][1]; k++){
 
-	mag = 0.0;
+	  mag = 0.0;
 
-	nx = drand48();
-	ny = drand48();
-	nz = drand48();
+	  nx = drand48();
+	  ny = drand48();
+	  nz = drand48();
 
-	mag = sqrt(nx*nx + ny*ny + nz*nz);
+	  mag = sqrt(nx*nx + ny*ny + nz*nz);
 
-	nx /= mag;
-	ny /= mag;
-	nz /= mag;
+	  nx /= mag;
+	  ny /= mag;
+	  nz /= mag;
 
-	phi[i][j][k][0] = amp*(3.0/2.0*nx*nx-1.0/2.0);
-	phi[i][j][k][1] = amp*(3.0/2.0*nx*ny);
-	phi[i][j][k][2] = amp*(3.0/2.0*nx*nz);
-	phi[i][j][k][3] = amp*(3.0/2.0*ny*ny-1.0/2.0);
-	phi[i][j][k][4] = amp*(3.0/2.0*ny*nz);
+	  phi[i][j][k][0] = amp*(3.0/2.0*nx*nx-1.0/2.0);
+	  phi[i][j][k][1] = amp*(3.0/2.0*nx*ny);
+	  phi[i][j][k][2] = amp*(3.0/2.0*nx*nz);
+	  phi[i][j][k][3] = amp*(3.0/2.0*ny*ny-1.0/2.0);
+	  phi[i][j][k][4] = amp*(3.0/2.0*ny*nz);
 
+	}
       }
     }
   }
 
+  return;
+}
+
+/****************************************************************************
+ *
+ *  set_phi_segment
+ *
+ *  Creates segment of order parameter configuration 
+ *  from 2D cross section (y-z-slice)
+ *
+ ****************************************************************************/
+void set_phi_segment(double **** phi_in, double * L, double ** Z, double **** phi){
+
+  double x[3], xt[3]; /* 3D coordinate vector on 2D-slice and translated vector */
+  double y[3]; /* output coordinate */
+  double Q[3][3]; /* OP-tensor on 2D-slice */
+
+  int ii, ij, ik, n;
+  double l, dl=1; /* translation length and increment */
+
+  for (n=0; n< N_segment_; n++){
+    /* translate 2D-slice to form segment */
+    for (l=0; l<=L[n]; l+=dl){
+    printf("Creating segment %d; l = %g\r",n, l);
+
+      /* sweep through input data and set OP in segment */
+      for (ii=1; ii<=ntotal_in_[0]; ii++){
+	if (ii>1) {printf("Segment creation failed: input is not 2D\n"); exit(1);}
+	for (ij=1; ij<=ntotal_in_[1]; ij++){
+	  for (ik=1; ik<=ntotal_in_[2]; ik++){
+
+	    /* local coordinate on 2D cross section */
+	    x[0] = ii-1;
+	    x[1] = ij-1;
+	    x[2] = ik-1;
+
+	    /* apply translation to coordinate vector */
+	    xt[0] = x[0] + l;
+	    xt[1] = x[1];
+	    xt[2] = x[2];
+
+	    /* determine output coordinate vector */
+	    y[0] = (xt[0] + Z[n][0] - L[n]/2.0 - ntotal_in_[0]/2.0);
+	    if (y[0]<1) y[0] = 1;
+	    if (y[0]>ntotal_[0]) y[0] = ntotal_[0];
+	    y[1] = (xt[1] + Z[n][1] - ntotal_in_[1]/2.0);
+	    if (y[1]<1) y[0] = 1;
+	    if (y[1]>ntotal_[1]) y[1] = ntotal_[1];
+	    y[2] = (xt[2] + Z[n][2] - ntotal_in_[2]/2.0);
+	    if (y[2]<1) y[0] = 1;
+	    if (y[2]>ntotal_[2]) y[2] = ntotal_[2];
+
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][0] = phi_in[ii][ij][ik][0];
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][1] = phi_in[ii][ij][ik][1];
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][2] = phi_in[ii][ij][ik][2];
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][3] = phi_in[ii][ij][ik][3];
+	    phi[(int)(y[0])][(int)(y[1])][(int)(y[2])][4] = phi_in[ii][ij][ik][4];
+
+	    }
+	  }
+	}
+      }
+
+    printf("\n");
+  }
   return;
 }
 
@@ -843,7 +968,7 @@ void set_phi_torus(double **** phi_in, double * R, double ** Z, double **** phi)
 	    x[0] = ii-1;
 	    if (R[n]<0)  x[1] = R[n] + ij-1;
 	    else  x[1] = R[n] - ntotal_in_[1] + ij;
-	    x[2] = ik-1;
+	    x[2] = ik-1 - ntotal_in_[2]/2.0;
 
 	    /* OP on 2D cross section */
 	    Q[0][0] = phi_in[ii][ij][ik][0];
@@ -931,9 +1056,11 @@ void M_zrot(double ** M, double alpha){
  *  Sets the radii and centres of the tori that are created 
  *  from 2D cross section (y-z-slice) in set_phi_torus
  *
- *  Note: radius R<0 means the slice of the cross
+ *  NOTE: radius R<0 means the slice of the cross
  *        section is on the lhs at alpha=0 wrt Z.
  *        This allows to create 'inside-out' tori.
+ *
+ *  NOTE: No. of segments must match N_segment_ 
  *
  ****************************************************************************/
 void set_torus_radius_centre(double * R, double ** Z){
@@ -941,13 +1068,67 @@ void set_torus_radius_centre(double * R, double ** Z){
   R[0] = -1.0*ntotal_in_[1];
   Z[0][0] = ntotal_[0]/2.0; 
   Z[0][1] = ntotal_[1]/2.0;
-  Z[0][2] = 0; 
+  Z[0][2] = ntotal_[2]/2.0; 
 
-/*
-  R[1] = ntotal_in_[1];
-  Z[1][0] = 3.0*ntotal_[0]/4.0; 
-  Z[1][1] = 3.0*ntotal_[1]/4.0; 
-  Z[1][2] = 0; 
-*/
 return;
 }
+
+/****************************************************************************
+ *
+ *  set_segment_length_centre
+ *
+ *  Sets the length and centres of the segments that are created 
+ *  from 2D cross section (y-z-slice) in set_phi_segment
+ *
+ *  NOTE: No. of segments must match N_segment_ 
+ *
+ ****************************************************************************/
+void set_segment_length_centre(double * L, double ** Z){
+
+  L[0] = ntotal_[0]/4.0;
+  Z[0][0] = ntotal_[0]/2.0; 
+  Z[0][1] = ntotal_[1]/2.0;
+  Z[0][2] = ntotal_[2]/2.0; 
+
+return;
+}
+
+/****************************************************************************
+ *
+ *  set_random_range
+ *
+ *  Sets the x-, y- and z-range where the order parameter is 
+ *  initialised with a random configuration 
+ *
+ *  NOTE: No. of regions must match N_random_ 
+ *   
+ ****************************************************************************/
+void set_random_range(int ** x, int ** y, int ** z){
+
+  double dx=4.0, dy=13.0, dz=13.0;
+
+  /* first region */
+  x[0][0] = ntotal_[0]/4.0-dx;
+  x[0][1] = ntotal_[0]/4.0+dx;
+
+  y[0][0] = ntotal_[1]/2.0-dy;
+  y[0][1] = ntotal_[1]/2.0+dy;
+
+  z[0][0] = ntotal_[2]/2.0-dz;
+  z[0][1] = ntotal_[2]/2.0+dz;
+
+  /* second region */
+/*
+  x[1][0] = 3.0*ntotal_[0]/4.0-dx;
+  x[1][1] = 3.0*ntotal_[0]/4.0+dx;
+
+  y[1][0] = ntotal_[1]/2.0-dy;
+  y[1][1] = ntotal_[1]/2.0+dy;
+
+  z[1][0] = ntotal_[2]/2.0-dz;
+  z[1][1] = ntotal_[2]/2.0+dz;
+*/
+
+return;
+}
+
