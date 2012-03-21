@@ -242,6 +242,7 @@ void blue_phase_rt_initial_conditions(void) {
   char key1[FILENAME_MAX];
 
   double nhat[3] = {1.0, 0.0, 0.0};
+  double nhat2[3] = {64.0, 3.0, 1.0};
 
   info("\n");
 
@@ -315,6 +316,15 @@ void blue_phase_rt_initial_conditions(void) {
   if (strcmp(key1, "dtc") == 0) {
     info("Initialising Q_ab using DTC\n");
     blue_phase_DTC_init();
+  }
+
+  if (strcmp(key1, "bp3") == 0) {
+    info("Initialising Q_ab using BPIII\n");
+    RUN_get_double_parameter_vector("lc_init_bp3", nhat2);
+    info("BPIII specifications: N_DTC=%g,  R_DTC=%g,  ", nhat2[0], nhat2[1]);
+    if (nhat2[2] == 0) info("isotropic environment\n");
+    if (nhat2[2] == 1) info("cholesteric environment\n");
+    blue_phase_BPIII_init(nhat2);
   }
 
   if (strcmp(key1, "random") == 0) {

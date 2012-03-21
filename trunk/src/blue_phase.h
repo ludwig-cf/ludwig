@@ -41,6 +41,7 @@ void   blue_phase_H2D_init(void);
 void   blue_phase_H3DA_init(void);
 void   blue_phase_H3DB_init(void);
 void   blue_phase_DTC_init(void);
+void   blue_phase_BPIII_init(const double specs[3]);
 void   blue_phase_redshift_set(const double redshift);
 void   blue_phase_amplitude_set(const double amplitude);
 void   blue_phase_electric_field_set(const double e[3]);
@@ -71,5 +72,6 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 				      const double zmin,const double zmax);
 
 void blue_phase_set_active_region_gamma_zeta(const int index);
+void blue_phase_M_rot(double M[3][3], int dim, double alpha);
 #endif
  

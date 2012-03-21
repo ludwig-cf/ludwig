@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "util.h"
@@ -916,6 +917,207 @@ void blue_phase_DTC_init(void) {
 
   return;
 }
+
+
+/*****************************************************************************
+ *
+ *  blue_phase_BPIII_init
+ *
+ *  This initialisation is with Blue Phase III, randomly positioned
+ *  and oriented DTC-cylinders in isotropic (0) or cholesteric (1) environment.
+ *
+ *  NOTE: The rotations are not rigorously implemented; no cross-boundary 
+ *        communication is performed. 
+ *        Hence, the decomposition must consist of sufficiently large volumes.
+ *        
+ *****************************************************************************/
+
+void blue_phase_BPIII_init(const double specs[3]) {
+
+  int ic, jc, kc;
+  int ir, jr, kr; /* rotated indices */
+  int ia, ib, ik, il, in;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+  double q[3][3], q0[3][3], qr[3][3];
+  double x, y, z;
+  double *a, *b;  /* rotation angles */
+  double **C;     /* global coordinates of DTC-centres */
+  int N=64, R=3, ENV=1; /* default no. & radius of DTCs & environment */ 
+  double rc[3];	  /* distance DTC-centre - site */ 
+  double rc_r[3]; /* rotated vector */ 
+  double Mx[3][3], My[3][3]; /* rotation matrices */
+  double phase1, phase2;
+  double n[3]={0.0,0.0,0.0};
+
+  N = (int) specs[0];
+  R = (int) specs[1];
+  ENV = (int) specs[2];
+
+  a = (double*)calloc(N, sizeof(double));
+  b = (double*)calloc(N, sizeof(double));
+  C = (double**)calloc(N, sizeof(double));
+  for(in=0; in<N; in++){
+    C[in] = (double*)calloc(3, sizeof(double));
+  }
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  /* Initialise random rotation angles and centres; */
+  /* this is run in parallel, hence we need the serial RNG */
+  /* to get the same random numbers on all processes */
+  for(in = 0; in < N; in++){
+    a[in] = 2.0*pi_ * ran_serial_uniform();
+    b[in] = 2.0*pi_ * ran_serial_uniform();
+    C[in][X] = N_total(X) * ran_serial_uniform(); 
+    C[in][Y] = N_total(Y) * ran_serial_uniform(); 
+    C[in][Z] = N_total(Z) * ran_serial_uniform(); 
+  }
+
+  /* Setting configuration for environment */
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	if (ENV == 0){
+
+	  phase1 = pi_*(0.5 - ran_parallel_uniform());
+	  phase2 = pi_*(0.5 - ran_parallel_uniform());
+
+	  n[X] = cos(phase1)*sin(phase2);
+	  n[Y] = sin(phase1)*sin(phase2);
+	  n[Z] = cos(phase2);
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      q[ia][ib] *= 0.00001;
+	    }
+	  }
+
+	}
+	if (ENV == 1){
+
+	  n[X] = cos(q0_*y);
+	  n[Z] = -sin(q0_*y);
+	  
+	}
+
+	index = coords_index(ic, jc, kc);
+	blue_phase_q_uniaxial(n, q);
+	phi_set_q_tensor(index, q);
+
+      }
+    }
+  }
+
+  /* Replace configuration for DTC-sites */
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	for(in = 0; in<N; in++){
+
+	  rc[X] = x - C[in][X];
+	  rc[Y] = y - C[in][Y];
+	  rc[Z] = z - C[in][Z];
+
+	   /* If current site is in ROI perform a double rotation */
+	   /* around x- and y-axis (DTC is oriented along z-axis) */
+	  if(rc[0]*rc[0] + rc[1]*rc[1] + rc[2]*rc[2] < R*R){
+
+	    blue_phase_M_rot(Mx,0,a[in]);
+	    blue_phase_M_rot(My,1,b[in]);
+
+	    for(ia=0; ia<3; ia++){
+	      rc_r[ia] = 0.0;
+	      for(ib=0; ib<3; ib++){
+		for(il=0; il<3; il++){
+		  rc_r[ia] += My[ia][ib] * Mx[ib][il] *rc[il];
+		}
+	      }
+	    }
+
+	    q0[X][X] = -amplitude_*(cos(2*q0_*y));
+	    q0[X][Y] = 0.0;
+	    q0[X][Z] = amplitude_*sin(2.0*q0_*y);
+	    q0[Y][X] = q[X][Y];
+	    q0[Y][Y] = -amplitude_*(cos(2.0*q0_*x));
+	    q0[Y][Z] = -amplitude_*sin(2.0*q0_*x);
+	    q0[Z][X] = q[X][Z];
+	    q0[Z][Y] = q[Y][Z];
+	    q0[Z][Z] = - q[X][X] - q[Y][Y];
+
+
+            for (ia=0; ia<3; ia++){
+              for (ib=0; ib<3; ib++){
+                qr[ia][ib] = 0.0;
+                for (ik=0; ik<3; ik++){
+                  for (il=0; il<3; il++){
+                    qr[ia][ib] += Mx[ia][ik] * q0[ik][il] * Mx[ib][il];
+                  }
+                }
+              }
+            }
+
+            for (ia=0; ia<3; ia++){
+              for (ib=0; ib<3; ib++){
+                    q0[ia][ib] = qr[ia][ib];
+	      }
+	    }
+
+            for (ia=0; ia<3; ia++){
+              for (ib=0; ib<3; ib++){
+                qr[ia][ib] = 0.0;
+                for (ik=0; ik<3; ik++){
+                  for (il=0; il<3; il++){
+                    qr[ia][ib] += My[ia][ik] * q0[ik][il] * My[ib][il];
+                  }
+                }
+              }
+            }
+
+            /* Determine local output coordinate index */
+            ir = (int)(C[in][X] + rc_r[X] - noffset[X]);
+            jr = (int)(C[in][Y] + rc_r[Y] - noffset[Y]);
+            kr = (int)(C[in][Z] + rc_r[Z] - noffset[Z]);
+
+	    /* Replace if index is in local domain */
+	    if((1 <= ir && ir <= nlocal[X]) &&  
+	       (1 <= jr && jr <= nlocal[Y]) &&  
+               (1 <= kr && kr <= nlocal[Z]))
+	    {
+	      q[X][X] = qr[X][X];
+	      q[X][Y] = qr[X][Y];
+	      q[X][Z] = qr[X][Z];
+	      q[Y][X] = q[X][Y];
+	      q[Y][Y] = qr[Y][Y];
+	      q[Y][Z] = qr[Y][Z];
+	      q[Z][X] = q[X][Z];
+	      q[Z][Y] = q[Y][Z];
+	      q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	      index = coords_index(ir, jr, kr);
+	      phi_set_q_tensor(index, q);
+	    }
+
+	  }
+
+	}
+
+      }
+    }
+  }
+
+  return;
+}
+
+
 /*****************************************************************************
  *
  *  blue_phase_twist_init
@@ -1698,4 +1900,51 @@ void blue_phase_set_active_region_gamma_zeta(const int index) {
   }
   return;
 }
-    
+
+/****************************************************************************
+ *
+ *  M_rot
+ *
+ *  Matrix for rotation around specified axis
+ *
+ ****************************************************************************/
+void blue_phase_M_rot(double M[3][3], int dim, double alpha){
+
+  if(dim==0){
+    M[0][0] = 1.0;
+    M[0][1] = 0.0;
+    M[0][2] = 0.0;
+    M[1][0] = 0.0;
+    M[1][1] = cos(alpha);
+    M[1][2] = -sin(alpha);
+    M[2][0] = 0.0;
+    M[2][1] = sin(alpha);
+    M[2][2] = cos(alpha);
+  }
+
+  if(dim==1){
+    M[0][0] = cos(alpha);
+    M[0][1] = 0.0;
+    M[0][2] = -sin(alpha);
+    M[1][0] = 0.0;
+    M[1][1] = 1.0;
+    M[1][2] = 0.0;
+    M[2][0] = sin(alpha);
+    M[2][1] = 0.0;
+    M[2][2] = cos(alpha);
+  }
+
+  if(dim==2){
+    M[0][0] = cos(alpha);
+    M[0][1] = -sin(alpha);
+    M[0][2] = 0.0;
+    M[1][0] = sin(alpha);
+    M[1][1] = cos(alpha);
+    M[1][2] = 0.0;
+    M[2][0] = 0.0;
+    M[2][1] = 0.0;
+    M[2][2] = 1.0;
+  }
+
+  return;
+}
