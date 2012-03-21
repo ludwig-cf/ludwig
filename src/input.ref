@@ -209,6 +209,7 @@ surf_psi_b 0.01
 #			cholesteric: cholesteric_x,y,z 
 #                       cubic: o8m (BPI), o2 (BPII), o5
 #                       hexagonal BPs: h2d, h3da, h3db
+#                       amorphous BP: bp3
 #
 #  lc_q_init_amplitude  scalar order parameter amplitude for initialisation
 #
@@ -233,6 +234,9 @@ surf_psi_b 0.01
 #  lc_init_nematic      Initial director vector [default 1.0_0.0_0.0] when
 #                       nematic initialisation used (doesn't need to be
 #                       unit vector)
+#
+#  lc_init_bp3          Specifications of BP3: No. of DTCs, radius of DTCs, 
+#                       environment (0=isotropic, 1=cholesteric) [default 64_3_1]
 #
 #  lc_dielectric_anisotropy This value should probably remain unchanged.
 #

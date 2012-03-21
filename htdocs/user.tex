@@ -503,9 +503,19 @@ stress tensor.
 
 There are a number of useful choices here. The key value
 \texttt{twist} initialises a simple cholesteric with the
-helical axis in the $z-$direction;  \texttt{o8m}
-gives equilibrium BPI, \texttt{o2} gives BPII. The appropriate
-choices for the other parameters must be made correspondingly.
+helical axis in the $z-$direction, whereas the values 
+\texttt{cholesteric\_x\_y\_z} provide according initialisations 
+with twist along the other axes.
+The value \texttt{o8m} gives equilibrium BPI, \texttt{o2} gives BPII.
+Another, cubic body-centered BP is obtained by the value \texttt{o5}.
+Hexagonal BPs are initialised with \texttt{h2d, h3da} and \texttt{h3db}.\\
+BPIII emerges from randomly positioned and oriented DTCs 
+embedded into an isotropic or cholesteric environment.
+It is initialised with the key value \texttt{bp3}, whereas the number
+$N$ and radius $R$ of the DTCs and the type of the environment 
+$ENV=\{0,1\}$, (0 = isotropic, 1 = cholesteric), is specified with the key value
+\texttt{lc\_init\_bp3} $N\_R\_ENV$.\\
+The appropriate choices for the other parameters must be made correspondingly.
 
 An additional \texttt{lc\_q\_init\_amplitude} value sets the
 scalar order parameter  `amplitude' in each case.
