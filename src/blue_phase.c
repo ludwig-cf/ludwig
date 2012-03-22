@@ -935,18 +935,18 @@ void blue_phase_DTC_init(void) {
 void blue_phase_BPIII_init(const double specs[3]) {
 
   int ic, jc, kc;
-  int ir, jr, kr; /* indices for rotated output */
+  int ir, jr, kr; 	/* indices for rotated output */
   int ia, ib, ik, il, is, it, in;
   int nlocal[3];
   int noffset[3];
   int index;
   double q[3][3], q0[3][3], qr[3][3];
   double x, y, z;
-  double *a, *b;  /* rotation angles */
-  double *C;     /* global coordinates of DTC-centres */
-  int N=2, R=3, ENV=1; /* default no. & radius & environment */ 
-  double rc[3];	  /* distance DTC-centre - site */ 
-  double rc_r[3]; /* rotated vector */ 
+  double *a, *b;	/* rotation angles */
+  double *C;     	/* global coordinates of DTC-centres */
+  int N=2, R=3, ENV=1; 	/* default no. & radius & environment */ 
+  double rc[3];	  	/* distance DTC-centre - site */ 
+  double rc_r[3]; 	/* rotated vector */ 
   double Mx[3][3], My[3][3]; /* rotation matrices */
   double phase1, phase2;
   double n[3]={0.0,0.0,0.0};
@@ -962,9 +962,8 @@ void blue_phase_BPIII_init(const double specs[3]) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  /* Initialise random rotation angles and centres in serial */
-  /* to get the same random numbers on all processes */
-
+    /* Initialise random rotation angles and centres in serial */
+    /* to get the same random numbers on all processes */
     for(in = 0; in < N; in++){
 
       a[in] = 2.0*pi_ * ran_serial_uniform();
@@ -990,9 +989,11 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	  n[Y] = sin(phase1)*sin(phase2);
 	  n[Z] = cos(phase2);
 
+	  blue_phase_q_uniaxial(n, q);
+
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      q[ia][ib] *= 0.00001;
+	      q[ia][ib] *= 1.0e-6;
 	    }
 	  }
 
@@ -1000,20 +1001,28 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	if (ENV == 1){
 
 	  n[X] = cos(q0_*y);
+	  n[Y] = 0.0;
 	  n[Z] = -sin(q0_*y);
+
+	  blue_phase_q_uniaxial(n, q);
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      q[ia][ib] *= amplitude_;
+	    }
+	  }
 	  
 	}
 
 	index = coords_index(ic, jc, kc);
-	blue_phase_q_uniaxial(n, q);
 	phi_set_q_tensor(index, q);
 
       }
     }
   }
 
-  /* To replace configuration inside DTCs */
-  /* Sweep through all cylinders and local sites */
+  /* Replace configuration inside DTC-domains */
+  /* by sweeping through all local sites */
   for(in = 0; in<N; in++){
 
     blue_phase_M_rot(Mx,0,a[in]);
@@ -1030,30 +1039,31 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	  rc[Y] = y - C[3*in+1];
 	  rc[Z] = z - C[3*in+2];
 
-	  /* If current site is in ROI perform a double rotation */
-	  /* around x- and y-axis (DTC is oriented along z-axis) */
+	  /* If current site is in ROI perform double */
+	  /* rotation around local x- and y-axis */
 	  if(rc[0]*rc[0] + rc[1]*rc[1] + rc[2]*rc[2] < R*R){
 
 	    for(ia=0; ia<3; ia++){
 	      rc_r[ia] = 0.0;
-	      for(ib=0; ib<3; ib++){
+	      for(ik=0; ik<3; ik++){
 		for(il=0; il<3; il++){
-		  rc_r[ia] += My[ia][ib] * Mx[ib][il] * rc[il];
+		  rc_r[ia] += My[ia][ik] * Mx[ik][il] * rc[il];
 		}
 	      }
 	    }
 
-	    q0[X][X] = -amplitude_*(cos(2*q0_*y));
+	    /* DTC is symmetric wrt local z-axis */
+	    q0[X][X] = -amplitude_*(cos(2*q0_*rc[Y]));
 	    q0[X][Y] = 0.0;
-	    q0[X][Z] = amplitude_*sin(2.0*q0_*y);
+	    q0[X][Z] = amplitude_*sin(2.0*q0_*rc[Y]);
 	    q0[Y][X] = q[X][Y];
-	    q0[Y][Y] = -amplitude_*(cos(2.0*q0_*x));
-	    q0[Y][Z] = -amplitude_*sin(2.0*q0_*x);
+	    q0[Y][Y] = -amplitude_*(cos(2.0*q0_*rc[X]));
+	    q0[Y][Z] = -amplitude_*sin(2.0*q0_*rc[X]);
 	    q0[Z][X] = q[X][Z];
 	    q0[Z][Y] = q[Y][Z];
 	    q0[Z][Z] = - q[X][X] - q[Y][Y];
 
-
+	    /* Transform order parameter tensor */ 
             for (ia=0; ia<3; ia++){
               for (ib=0; ib<3; ib++){
                 qr[ia][ib] = 0.0;
