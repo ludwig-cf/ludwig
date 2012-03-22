@@ -41,10 +41,10 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = gcc 
-MPICC = mpicc
+CC = CC 
+MPICC = CC
 OPTS = -D_D3Q19_
-CFLAGS = -Wall -O3
+CFLAGS = -O3
 
 
 INC = -I.
