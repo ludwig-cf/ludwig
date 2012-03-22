@@ -935,16 +935,16 @@ void blue_phase_DTC_init(void) {
 void blue_phase_BPIII_init(const double specs[3]) {
 
   int ic, jc, kc;
-  int ir, jr, kr; /* rotated indices */
-  int ia, ib, ik, il, in;
+  int ir, jr, kr; /* indices for rotated output */
+  int ia, ib, ik, il, is, it, in;
   int nlocal[3];
   int noffset[3];
   int index;
   double q[3][3], q0[3][3], qr[3][3];
   double x, y, z;
   double *a, *b;  /* rotation angles */
-  double **C;     /* global coordinates of DTC-centres */
-  int N=64, R=3, ENV=1; /* default no. & radius of DTCs & environment */ 
+  double *C;     /* global coordinates of DTC-centres */
+  int N=2, R=3, ENV=1; /* default no. & radius & environment */ 
   double rc[3];	  /* distance DTC-centre - site */ 
   double rc_r[3]; /* rotated vector */ 
   double Mx[3][3], My[3][3]; /* rotation matrices */
@@ -957,26 +957,25 @@ void blue_phase_BPIII_init(const double specs[3]) {
 
   a = (double*)calloc(N, sizeof(double));
   b = (double*)calloc(N, sizeof(double));
-  C = (double**)calloc(N, sizeof(double));
-  for(in=0; in<N; in++){
-    C[in] = (double*)calloc(3, sizeof(double));
-  }
+  C = (double*)calloc(3*N, sizeof(double));
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  /* Initialise random rotation angles and centres; */
-  /* this is run in parallel, hence we need the serial RNG */
+  /* Initialise random rotation angles and centres in serial */
   /* to get the same random numbers on all processes */
-  for(in = 0; in < N; in++){
-    a[in] = 2.0*pi_ * ran_serial_uniform();
-    b[in] = 2.0*pi_ * ran_serial_uniform();
-    C[in][X] = N_total(X) * ran_serial_uniform(); 
-    C[in][Y] = N_total(Y) * ran_serial_uniform(); 
-    C[in][Z] = N_total(Z) * ran_serial_uniform(); 
-  }
 
-  /* Setting configuration for environment */
+    for(in = 0; in < N; in++){
+
+      a[in] = 2.0*pi_ * ran_serial_uniform();
+      b[in] = 2.0*pi_ * ran_serial_uniform();
+      C[3*in]   = N_total(X) * ran_serial_uniform(); 
+      C[3*in+1] = N_total(Y) * ran_serial_uniform(); 
+      C[3*in+2] = N_total(Z) * ran_serial_uniform(); 
+
+    }
+
+  /* Setting environment configuration */
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       y = noffset[Y] + jc;
@@ -1013,32 +1012,33 @@ void blue_phase_BPIII_init(const double specs[3]) {
     }
   }
 
-  /* Replace configuration for DTC-sites */
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic;
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc;
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc;
+  /* To replace configuration inside DTCs */
+  /* Sweep through all cylinders and local sites */
+  for(in = 0; in<N; in++){
 
-	for(in = 0; in<N; in++){
+    blue_phase_M_rot(Mx,0,a[in]);
+    blue_phase_M_rot(My,1,b[in]);
 
-	  rc[X] = x - C[in][X];
-	  rc[Y] = y - C[in][Y];
-	  rc[Z] = z - C[in][Z];
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      x = noffset[X] + ic;
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	y = noffset[Y] + jc;
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+	  z = noffset[Z] + kc;
 
-	   /* If current site is in ROI perform a double rotation */
-	   /* around x- and y-axis (DTC is oriented along z-axis) */
+	  rc[X] = x - C[3*in];
+	  rc[Y] = y - C[3*in+1];
+	  rc[Z] = z - C[3*in+2];
+
+	  /* If current site is in ROI perform a double rotation */
+	  /* around x- and y-axis (DTC is oriented along z-axis) */
 	  if(rc[0]*rc[0] + rc[1]*rc[1] + rc[2]*rc[2] < R*R){
-
-	    blue_phase_M_rot(Mx,0,a[in]);
-	    blue_phase_M_rot(My,1,b[in]);
 
 	    for(ia=0; ia<3; ia++){
 	      rc_r[ia] = 0.0;
 	      for(ib=0; ib<3; ib++){
 		for(il=0; il<3; il++){
-		  rc_r[ia] += My[ia][ib] * Mx[ib][il] *rc[il];
+		  rc_r[ia] += My[ia][ib] * Mx[ib][il] * rc[il];
 		}
 	      }
 	    }
@@ -1059,33 +1059,22 @@ void blue_phase_BPIII_init(const double specs[3]) {
                 qr[ia][ib] = 0.0;
                 for (ik=0; ik<3; ik++){
                   for (il=0; il<3; il++){
-                    qr[ia][ib] += Mx[ia][ik] * q0[ik][il] * Mx[ib][il];
+		    for (is=0; is<3; is++){
+		      for (it=0; it<3; it++){
+
+			qr[ia][ib] += My[ia][is] * Mx[is][ik] * q0[ik][il] * Mx[it][il] * My[ib][it];
+
+		      }
+		    }
                   }
                 }
               }
             }
 
-            for (ia=0; ia<3; ia++){
-              for (ib=0; ib<3; ib++){
-                    q0[ia][ib] = qr[ia][ib];
-	      }
-	    }
-
-            for (ia=0; ia<3; ia++){
-              for (ib=0; ib<3; ib++){
-                qr[ia][ib] = 0.0;
-                for (ik=0; ik<3; ik++){
-                  for (il=0; il<3; il++){
-                    qr[ia][ib] += My[ia][ik] * q0[ik][il] * My[ib][il];
-                  }
-                }
-              }
-            }
-
-            /* Determine local output coordinate index */
-            ir = (int)(C[in][X] + rc_r[X] - noffset[X]);
-            jr = (int)(C[in][Y] + rc_r[Y] - noffset[Y]);
-            kr = (int)(C[in][Z] + rc_r[Z] - noffset[Z]);
+            /* Determine local output index */
+            ir = (int)(C[3*in] + rc_r[X] - noffset[X]);
+            jr = (int)(C[3*in+1] + rc_r[Y] - noffset[Y]);
+            kr = (int)(C[3*in+2] + rc_r[Z] - noffset[Z]);
 
 	    /* Replace if index is in local domain */
 	    if((1 <= ir && ir <= nlocal[X]) &&  
@@ -1109,10 +1098,16 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	  }
 
 	}
-
       }
     }
+
   }
+
+  phi_halo();
+
+  free(a);
+  free(b);
+  free(C);
 
   return;
 }
