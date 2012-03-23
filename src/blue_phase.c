@@ -1000,6 +1000,7 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	}
 	if (ENV == 1){
 
+	  /* cholesteric helix along y-direction */
 	  n[X] = cos(q0_*y);
 	  n[Y] = 0.0;
 	  n[Z] = -sin(q0_*y);
@@ -1052,7 +1053,7 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	      }
 	    }
 
-	    /* DTC is symmetric wrt local z-axis */
+	    /* DTC symmetric wrt local z-axis */
 	    q0[X][X] = -amplitude_*(cos(2*q0_*rc[Y]));
 	    q0[X][Y] = 0.0;
 	    q0[X][Z] = amplitude_*sin(2.0*q0_*rc[Y]);
@@ -1064,6 +1065,13 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	    q0[Z][Z] = - q[X][X] - q[Y][Y];
 
 	    /* Transform order parameter tensor */ 
+/***************************************************************
+* NOTE: This has been commented out as a similar rotation of the
+*       order parameter leads to considerable instabilities in 
+*       the calculation of the gradients.
+*       BPIII emerges more reliably from an unrotated OP.
+***************************************************************/
+/*
             for (ia=0; ia<3; ia++){
               for (ib=0; ib<3; ib++){
                 qr[ia][ib] = 0.0;
@@ -1072,7 +1080,8 @@ void blue_phase_BPIII_init(const double specs[3]) {
 		    for (is=0; is<3; is++){
 		      for (it=0; it<3; it++){
 
-			qr[ia][ib] += My[ia][is] * Mx[is][ik] * q0[ik][il] * Mx[it][il] * My[ib][it];
+			qr[ia][ib] += My[ia][is] * Mx[is][ik] * \
+				q0[ik][il] * Mx[it][il] * My[ib][it];
 
 		      }
 		    }
@@ -1080,7 +1089,7 @@ void blue_phase_BPIII_init(const double specs[3]) {
                 }
               }
             }
-
+*/
             /* Determine local output index */
             ir = (int)(C[3*in] + rc_r[X] - noffset[X]);
             jr = (int)(C[3*in+1] + rc_r[Y] - noffset[Y]);
@@ -1091,12 +1100,26 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	       (1 <= jr && jr <= nlocal[Y]) &&  
                (1 <= kr && kr <= nlocal[Z]))
 	    {
+
+	      /* see comment above */
+/*
 	      q[X][X] = qr[X][X];
 	      q[X][Y] = qr[X][Y];
 	      q[X][Z] = qr[X][Z];
 	      q[Y][X] = q[X][Y];
 	      q[Y][Y] = qr[Y][Y];
 	      q[Y][Z] = qr[Y][Z];
+	      q[Z][X] = q[X][Z];
+	      q[Z][Y] = q[Y][Z];
+	      q[Z][Z] = - q[X][X] - q[Y][Y];
+*/
+
+	      q[X][X] = q0[X][X];
+	      q[X][Y] = q0[X][Y];
+	      q[X][Z] = q0[X][Z];
+	      q[Y][X] = q[X][Y];
+	      q[Y][Y] = q0[Y][Y];
+	      q[Y][Z] = q0[Y][Z];
 	      q[Z][X] = q[X][Z];
 	      q[Z][Y] = q[Y][Z];
 	      q[Z][Z] = - q[X][X] - q[Y][Y];
