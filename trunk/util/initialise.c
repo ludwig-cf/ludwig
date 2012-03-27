@@ -33,11 +33,11 @@
 ********************************************************/
 int ntime_ = 1; 			/* timestep */
 
-int ntotal_in_[3] = {1, 32, 32};	/* total system size input file */
-int pe_in_[3] = {1, 2, 2}; 		/* Cartesian decomposition input file */
-int phi_in_io_[3] = {1, 1, 1}; 		/* I/O decomposition input file */
+int ntotal_in_[3] = {1, 32, 32};	/* total system size phi input file */
+int pe_in_[3] = {1, 2, 2}; 		/* Cartesian decomposition phi input file */
+int phi_in_io_[3] = {1, 1, 1}; 		/* I/O decomposition phi input file */
 
-int ntotal_[3] = {128, 128, 32};	 	/* total system size */
+int ntotal_[3] = {128, 128, 32};	/* total system size output file */
 int pe_[3] = {8, 8, 2}; 		/* Cartesian processor decomposition */
 int phi_io_[3] = {1, 1, 1}; 		/* I/O decomposition for order parameter */
 
@@ -49,14 +49,15 @@ int NVEL_ = 19;				/* No. of lattice velocities */
 
 int cf1_ = 0;				/* switch for cholesteric finger 1st kind */ 
 int cf2_ = 0;				/* switch for cholesteric finger 2nd kind - requires CF1 input file */ 
-int nematic_ = 1;			/* switch for nematic background OP */ 
+int nematic_ = 0;			/* switch for nematic background OP */ 
 int N_random_ = 0;			/* No. of random regions */
 int N_torus_ = 0;			/* No. of tori - requires input file */
 int N_segment_ = 0;			/* No. of segments - requires input file */
 
 int file_input_ = 0; 			/* switch for file input */
-int input_binary_ = 1;			/* switch for format of input */
-int output_binary_ = 1;			/* switch for format of final output */
+int input_binary_ = 1;			/* switch for format of input data */
+int output_binary_ = 1;			/* switch for format of final output data */
+int output_dist_ = 0;			/* switch for output of distribution file */
 /*******************************************************/
 
 int input_isbigendian_ = 0;		/* If we have to deal with endianness - currently not supported */
@@ -269,47 +270,51 @@ int main(int argc, char ** argv) {
   //////////////////////////////
   /* Create distribution file */
 
-  dist_info.stub = "dist"; 
-  dist_info.nrec = NVEL_; 
+  if(output_dist_){
 
-  for (i = 0; i < 3; i++) {
-    dist_info.io_grid[i] = dist_io_[i];
-    dist_info.pe[i] = pe_[i];
-    dist_info.ntotal[i] = ntotal_[i];
-    dist_info.nlocal[i] = nlocal[i];
+     dist_info.stub = "dist"; 
+     dist_info.nrec = NVEL_; 
+
+     for (i = 0; i < 3; i++) {
+       dist_info.io_grid[i] = dist_io_[i];
+       dist_info.pe[i] = pe_[i];
+       dist_info.ntotal[i] = ntotal_[i];
+       dist_info.nlocal[i] = nlocal[i];
+     }
+     dist_info.nio = dist_io_[0]*dist_io_[1]*dist_io_[2];
+     dist_info.pe_per_io = pe_[0]*pe_[1]*pe_[2]/dist_info.nio;
+
+     /* Allocate storage */
+     n = dist_info.nrec*nlocal[0]*nlocal[1]*nlocal[2];
+     datalocal = (double *) calloc(n, sizeof(double));
+     if (datalocal == NULL) printf("calloc(datalocal) failed\n");
+
+     dist = (double ****) calloc(ntotal_[0]+2, sizeof(double));
+     if (dist == NULL) printf("calloc(dist) failed\n");
+
+     for (i = 0; i <= ntotal_[0]+1; i++){
+       dist[i] = (double ***) calloc(ntotal_[1]+2, sizeof(double));
+       if (dist[i] == NULL) printf("calloc(dist) failed\n");
+
+       for (j = 0; j <= ntotal_[1]+1; j++){
+	 dist[i][j] = (double **) calloc(ntotal_[2]+2, sizeof(double));
+	 if (dist[i][j] == NULL) printf("calloc(dist) failed\n");
+
+	 for (k = 0; k <= ntotal_[2]+1; k++){
+	   dist[i][j][k] = (double *) calloc(dist_info.nrec, sizeof(double));
+	   if (dist[i][j][k] == NULL) printf("calloc(dist) failed\n");
+	 }
+       }
+     }
+
+     /* Set initial values for distribution data (currently u=0)*/ 
+     set_dist(dist);
+     write_files(&dist_info,dist,datalocal);
+
+     free(datalocal);
+     free(dist);
   }
-  dist_info.nio = dist_io_[0]*dist_io_[1]*dist_io_[2];
-  dist_info.pe_per_io = pe_[0]*pe_[1]*pe_[2]/dist_info.nio;
 
-  /* Allocate storage */
-  n = dist_info.nrec*nlocal[0]*nlocal[1]*nlocal[2];
-  datalocal = (double *) calloc(n, sizeof(double));
-  if (datalocal == NULL) printf("calloc(datalocal) failed\n");
-
-  dist = (double ****) calloc(ntotal_[0]+2, sizeof(double));
-  if (dist == NULL) printf("calloc(dist) failed\n");
-
-  for (i = 0; i <= ntotal_[0]+1; i++){
-    dist[i] = (double ***) calloc(ntotal_[1]+2, sizeof(double));
-    if (dist[i] == NULL) printf("calloc(dist) failed\n");
-
-    for (j = 0; j <= ntotal_[1]+1; j++){
-      dist[i][j] = (double **) calloc(ntotal_[2]+2, sizeof(double));
-      if (dist[i][j] == NULL) printf("calloc(dist) failed\n");
-
-      for (k = 0; k <= ntotal_[2]+1; k++){
-	dist[i][j][k] = (double *) calloc(dist_info.nrec, sizeof(double));
-	if (dist[i][j][k] == NULL) printf("calloc(dist) failed\n");
-      }
-    }
-  }
-
-  /* Set initial values for distribution data (currently u=0)*/ 
-  set_dist(dist);
-  write_files(&dist_info,dist,datalocal);
-
-  free(datalocal);
-  free(dist);
 }
 
 /* end main routine */
