@@ -16,5 +16,6 @@
 #define STATS_FREE_ENERGY_H
 
 void stats_free_energy_density(void);
+void blue_phase_stats(int nstep);
 
 #endif
