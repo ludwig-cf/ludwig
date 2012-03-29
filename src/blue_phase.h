@@ -56,11 +56,16 @@ double blue_phase_chirality(void);
 double blue_phase_reduced_temperature(void);
 double blue_phase_redshift(void);
 double blue_phase_q0(void);
+double blue_phase_kappa0(void);
+double blue_phase_kappa1(void);
+double blue_phase_redshift(void);
+double blue_phase_rredshift(void);
+double blue_phase_a0(void);
+double blue_phase_gamma(void);
 double blue_phase_dimensionless_field_strength(void);
 
 void blue_phase_redshift_update_set(int onoff);
 void blue_phase_redshift_compute(void);
-void blue_phase_stats(int nstep);
 
 void blue_phase_q_uniaxial(const double n[3], double q[3][3]);
 void blue_phase_nematic_init(const double n[3]);
