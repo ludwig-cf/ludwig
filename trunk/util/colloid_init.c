@@ -14,7 +14,7 @@
  *  $ cd ../src
  *  $ make lib
  *  $ cd ../util
- *  $ $(CC) -I../mpi_s -I../src colloids_init.c -L../mpi_s -lmpi \
+ *  $ $(CC) -I../mpi_s -I../src colloid_init.c -L../mpi_s -lmpi \
  *          -L../src -lludwig -lm
  *
  *  $ ./a.out
@@ -57,8 +57,8 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
 int main(int argc, char ** argv) {
 
-  int ntotal[3] = {64.0, 256.0, 256.0};  /* Total system size (cf. input) */
-  int periodic[3] = {0, 1, 1};           /* 0 = wall, 1 = periodic */
+  int ntotal[3] = {32.0, 32.0, 32.0};  /* Total system size (cf. input) */
+  int periodic[3] = {1, 1, 1};           /* 0 = wall, 1 = periodic */
   int file_format = BINARY;
 
   int n;
@@ -66,8 +66,8 @@ int main(int argc, char ** argv) {
   int nrequest;
   int nactual;
 
-  double a0 = 2.30;                      /* Input radius */
-  double ah = 2.30;                      /* Hydrodynamic radius */ 
+  double a0 = 2.3;                      /* Input radius */
+  double ah = 2.3;                      /* Hydrodynamic radius */ 
   double vf = 0.01;                      /* Volume fraction */
   double dh = 1.0;                       /* "grace' distance */
 
@@ -222,7 +222,7 @@ void colloid_init_trial(double r[3], double dh) {
 void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 			     const int form) {
   int n;
-  const char * filename = "colloid-00000000.001-001";
+  const char * filename = "config.cds00000000.001-001";
   FILE * fp;
 
   fp = fopen(filename, "w");
