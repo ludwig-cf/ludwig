@@ -48,7 +48,7 @@ int main(int argc, char ** argv) {
   int ncolloid = 1;  /* Total number of colloids */
   int binary = 0;    /* Switch for binary output */
  
-  const char * filename = "colloid-00000000.001-001";
+  const char * filename = "config.cds00000000.001-001";
   FILE * fp;
 
   colloid_state_t state;        /* State to write */
