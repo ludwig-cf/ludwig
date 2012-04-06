@@ -100,11 +100,11 @@ static void phi_force_fast(void) {
 
   phi_force_stress_compute();
 
-  if (colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
-    phi_force_interpolation2();
+  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
+    phi_force_interpolation1();
   }
   else {
-    phi_force_interpolation1();
+    phi_force_interpolation2();
   }
 
   free(pth_);
