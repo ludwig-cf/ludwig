@@ -27,6 +27,7 @@
 #include "colloids_Q_tensor.h"
 #include "free_energy.h"
 #include "blue_phase.h"
+#include "blue_phase_init.h"
 #include "blue_phase_rt.h"
 
 /*****************************************************************************
@@ -105,7 +106,7 @@ void blue_phase_run_time(void) {
   assert(kappa0 == kappa1);
 
   blue_phase_set_free_energy_parameters(a0, gamma, kappa0, q0);
-  blue_phase_amplitude_set(amplitude);
+  blue_phase_init_amplitude_set(amplitude);
   blue_phase_set_xi(xi);
   blue_phase_redshift_set(redshift);
   blue_phase_redshift_update_set(redshift_update);
@@ -219,6 +220,12 @@ void blue_phase_run_time(void) {
       info("Surface free energy (wall) w:    = %14.7e\n", w_wall);
       info("Ratio (colloid) w/kappa0:        = %14.7e\n", w/kappa0);
       info("Ratio (wall) w/kappa0:           = %14.7e\n", w_wall/kappa0);
+      info("Computed surface order f(gamma)  = %14.7e\n",
+	   blue_phase_amplitude_compute());
+
+      /* For computed anchoring order [see blue_phase_amplitude_compute()] */
+      if (gamma < (8.0/3.0)) fatal("Please check anchoring amplitude\n");
+
       colloids_q_anchoring_method_set(ANCHORING_METHOD_TWO);
     }
 

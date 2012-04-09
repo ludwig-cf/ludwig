@@ -271,12 +271,12 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
   anchoring = anchoring_coll_;
   if (site_map_status == BOUNDARY) anchoring = anchoring_wall_;
 
-  if (anchoring == ANCHORING_FIXED) blue_phase_q_uniaxial(nfix, q0);
-  if (anchoring == ANCHORING_NORMAL) blue_phase_q_uniaxial(nhat, q0);
+  amplitude = blue_phase_amplitude_compute();
+
+  if (anchoring == ANCHORING_FIXED) blue_phase_q_uniaxial(amplitude, nfix, q0);
+  if (anchoring == ANCHORING_NORMAL) blue_phase_q_uniaxial(amplitude, nhat, q0);
 
   if (anchoring == ANCHORING_PLANAR) {
-
-    amplitude = blue_phase_amplitude();
 
     /* Planar: use the fluid Q_ab to find ~Q_ab */
 

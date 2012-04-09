@@ -34,21 +34,10 @@ void   blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 				 double h[3][3], double sth[3][3]);
 
 void   blue_phase_chemical_stress(const int, double sth[3][3]);
-void   blue_phase_O8M_init(void);
-void   blue_phase_O2_init(void);
-void   blue_phase_O5_init(void);
-void   blue_phase_H2D_init(void);
-void   blue_phase_H3DA_init(void);
-void   blue_phase_H3DB_init(void);
-void   blue_phase_DTC_init(void);
-void   blue_phase_BPIII_init(const double specs[3]);
 void   blue_phase_redshift_set(const double redshift);
-void   blue_phase_amplitude_set(const double amplitude);
 void   blue_phase_electric_field_set(const double e[3]);
 void   blue_phase_dielectric_anisotropy_set(double e);
-
-double blue_phase_amplitude(void);
-double blue_phase_amplitude_calculate(void);
+double blue_phase_amplitude_compute(void);
 double blue_phase_get_xi(void);
 double blue_phase_get_zeta(void);
 double blue_phase_get_gamma(void);
@@ -67,16 +56,9 @@ double blue_phase_dimensionless_field_strength(void);
 void blue_phase_redshift_update_set(int onoff);
 void blue_phase_redshift_compute(void);
 
-void blue_phase_q_uniaxial(const double n[3], double q[3][3]);
-void blue_phase_nematic_init(const double n[3]);
-void blue_phase_twist_init(const int helical_axis);
-void blue_phase_chi_edge(int N, double z0, double x0);
-void blue_set_random_q_init(void);
-void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
-				      const double ymin,const double ymax,
-				      const double zmin,const double zmax);
+void blue_phase_q_uniaxial(double amplitude, const double n[3], double q[3][3]);
 
 void blue_phase_set_active_region_gamma_zeta(const int index);
-void blue_phase_M_rot(double M[3][3], int dim, double alpha);
+
 #endif
  
