@@ -866,8 +866,8 @@ void blue_set_random_q_init(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	phase1 = pi_*(0.5 - ran_parallel_uniform());
-	phase2 = pi_*(0.5 - ran_parallel_uniform());
+	phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
+	phase2 = acos(2.0*ran_serial_uniform() - 1.0);
 	
 	n[X] = cos(phase1)*sin(phase2);
 	n[Y] = sin(phase1)*sin(phase2);
@@ -901,19 +901,9 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
   double n[3];
   double q[3][3];
   double phase1, phase2;
-  double amplitude_original;
-  double amplitude_local;
-
+  
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
-  
-  /* get the original amplitude 
-   * and set the new amplitude for
-   * the local operation 
-   */
-  amplitude_original = blue_phase_init_amplitude();
-  amplitude_local = 0.00001;
-  blue_phase_init_amplitude_set(amplitude_local);
   
   for (i = 1; i<=N_total(X); i++) {
     for (j = 1; j<=N_total(Y); j++) {
@@ -923,8 +913,8 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 	   (j>ymin) && (j<ymax) &&
 	   (k>zmin) && (k<zmax))
 	  {
-	    phase1 = pi_*(0.5 - ran_serial_uniform());
-	    phase2 = pi_*(0.5 - ran_serial_uniform());
+	    phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
+	    phase2 = acos(2.0*ran_serial_uniform() - 1.0);
 	    
 	    /* Only set values if within local box */
 	    if((i>offset[X]) && (i<=offset[X] + nlocal[X]) &&
@@ -937,16 +927,15 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 		n[Y] = sin(phase1)*sin(phase2);
 		n[Z] = cos(phase2);
 
-		blue_phase_q_uniaxial(amplitude0_, n, q);
+		/* Here we need something "small" for the order */
+		/*blue_phase_q_uniaxial(amplitude0_, n, q);*/
+		blue_phase_q_uniaxial(0.000001, n, q);
 		phi_set_q_tensor(index, q);
 	      }
 	  }
       }
     }
   }
-
-  /* set the amplitude to the original value */
-  blue_phase_init_amplitude_set(amplitude_original);
 
   return;
 }
