@@ -529,6 +529,8 @@ void blue_phase_BPIII_init(const double specs[3]) {
 
 	  blue_phase_q_uniaxial(amplitude0_, n, q);
 
+	 /* The amplitude of the orderparameter is hardwired */
+	 /* for the random and isotropic background configuration */     
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      q[ia][ib] *= 1.0e-6;
@@ -603,31 +605,6 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	    q0[Z][Z] = - q[X][X] - q[Y][Y];
 
 	    /* Transform order parameter tensor */ 
-/***************************************************************
-* NOTE: This has been commented out as a similar rotation of the
-*       order parameter leads to considerable instabilities in 
-*       the calculation of the gradients.
-*       BPIII emerges more reliably from an unrotated OP.
-***************************************************************/
-/*
-            for (ia=0; ia<3; ia++){
-              for (ib=0; ib<3; ib++){
-                qr[ia][ib] = 0.0;
-                for (ik=0; ik<3; ik++){
-                  for (il=0; il<3; il++){
-		    for (is=0; is<3; is++){
-		      for (it=0; it<3; it++){
-
-			qr[ia][ib] += My[ia][is] * Mx[is][ik] * \
-				q0[ik][il] * Mx[it][il] * My[ib][it];
-
-		      }
-		    }
-                  }
-                }
-              }
-            }
-*/
             /* Determine local output index */
             ir = (int)(C[3*in] + rc_r[X] - noffset[X]);
             jr = (int)(C[3*in+1] + rc_r[Y] - noffset[Y]);
@@ -638,19 +615,12 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	       (1 <= jr && jr <= nlocal[Y]) &&  
                (1 <= kr && kr <= nlocal[Z]))
 	    {
-
-	      /* see comment above */
-/*
-	      q[X][X] = qr[X][X];
-	      q[X][Y] = qr[X][Y];
-	      q[X][Z] = qr[X][Z];
-	      q[Y][X] = q[X][Y];
-	      q[Y][Y] = qr[Y][Y];
-	      q[Y][Z] = qr[Y][Z];
-	      q[Z][X] = q[X][Z];
-	      q[Z][Y] = q[Y][Z];
-	      q[Z][Z] = - q[X][X] - q[Y][Y];
-*/
+   /*******************************************************************
+   * NOTE: The individual componentes of the tensor order parameter are
+   *       not transformed, i.e. rotated, as this leads to considerable 
+   *       instabilities in the calculation of the gradients.
+   *       BPIII emerges more reliably from an unrotated OP.
+   *******************************************************************/
 
 	      q[X][X] = q0[X][X];
 	      q[X][Y] = q0[X][Y];
