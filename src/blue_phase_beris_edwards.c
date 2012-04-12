@@ -40,7 +40,8 @@ static double * fluxw;
 static double * fluxy;
 static double * fluxz;
 
-static const double r3 = (1.0/3.0);
+static const double r3 = (1.0/3.0);   /* Fraction 1/3 */
+static const int    use_hs_ = 0;      /* Switch for surface term h_s */
 
 static void blue_phase_be_update(double * hs5);
 static void blue_phase_be_colloid(double * hs5);
@@ -89,7 +90,7 @@ void blue_phase_beris_edwards(void) {
   advection_upwind(fluxe, fluxw, fluxy, fluxz);
   advection_bcs_no_normal_flux(fluxe, fluxw, fluxy, fluxz);
 
-  if (colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
+  if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     blue_phase_be_surface(hs5);
   }
 
