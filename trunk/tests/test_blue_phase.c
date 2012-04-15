@@ -26,6 +26,7 @@
 #include "gradient_3d_7pt_fluid.h"
 #include "gradient_3d_27pt_fluid.h"
 #include "blue_phase.h"
+#include "blue_phase_init.h"
 #include "leesedwards.h"
 #include "tests.h"
 
@@ -149,7 +150,7 @@ void test_o8m_struct(void) {
    * Note there are a limited number of unique order parameter values,
    * so an exhaustive test is probably not worth while. */
 
-  blue_phase_amplitude_set(amplitude);
+  blue_phase_init_amplitude_set(amplitude);
   blue_phase_O8M_init();
   blue_phase_redshift_set(1.0);
 
