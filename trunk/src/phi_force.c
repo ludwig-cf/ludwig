@@ -30,6 +30,9 @@
 #include "leesedwards.h"
 #include "free_energy.h"
 #include "wall.h"
+#include "phi_force_stress.h"
+
+static double * pth_;
 
 static void phi_force_calculation_fluid(void);
 static void phi_force_fluid_phi_gradmu(void);
@@ -126,9 +129,11 @@ static void phi_force_calculation_fluid(void) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
 
-  chemical_stress = fe_chemical_stress_function();
+  phi_force_stress_allocate();
+  phi_force_stress_compute();
+
+  chemical_stress = phi_force_stress;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -185,6 +190,8 @@ static void phi_force_calculation_fluid(void) {
       }
     }
   }
+
+  phi_force_stress_free();
 
   return;
 }

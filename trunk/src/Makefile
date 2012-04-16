@@ -79,7 +79,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o collision.o 
      leslie_ericksen.o magnetic_field.o magnetic_field_rt.o \
      model_le.o potential.o \
      phi.o phi_cahn_hilliard.o \
-     phi_force.o phi_force_colloid.o \
+     phi_force.o phi_force_colloid.o phi_force_stress.o \
      phi_fluctuations.o phi_gradients.o \
      phi_lb_coupler.o phi_stats.o \
      phi_update.o phi_update_rt.o \

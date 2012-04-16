@@ -56,14 +56,12 @@
 #include "wall.h"
 #include "colloids_Q_tensor.h"
 #include "free_energy.h"
+#include "phi_force_stress.h"
 
-static double * pth_; 
+static double * pth_;
 
 static void phi_force_interpolation1(void);
 static void phi_force_interpolation2(void);
-static void phi_force_stress(const int index, double p[3][3]);
-static void phi_force_stress_set(const int index, double p[3][3]);
-static void phi_force_stress_compute(void);
 static void phi_force_fast(void);
 
 /*****************************************************************************
@@ -108,88 +106,6 @@ static void phi_force_fast(void) {
   }
 
   free(pth_);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_stress_compute
- *
- *  Compute the stress everywhere and store.
- *
- *****************************************************************************/
-
-static void phi_force_stress_compute(void) {
-
-  int ic, jc, kc, index;
-  int nlocal[3];
-  int nextra = 1;
-
-  double pth_local[3][3];
-  void (* chemical_stress)(const int index, double s[3][3]);
-
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
-
-  chemical_stress = fe_chemical_stress_function();
-
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	chemical_stress(index, pth_local);
-	phi_force_stress_set(index, pth_local);
-
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_stress_set
- *
- *****************************************************************************/
-
-static void phi_force_stress_set(const int index, double p[3][3]) {
-
-  int ia, ib, n;
-
-  assert(pth_);
-
-  n = 0;
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      pth_[9*index + n++] = p[ia][ib];
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_stress
- *
- *****************************************************************************/
-
-static void phi_force_stress(const int index, double p[3][3]) {
-
-  int ia, ib, n;
-
-  assert(pth_);
-
-  n = 0;
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      p[ia][ib] = pth_[9*index + n++];
-    }
-  }
 
   return;
 }
