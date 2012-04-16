@@ -32,8 +32,6 @@
 #include "wall.h"
 #include "phi_force_stress.h"
 
-static double * pth_;
-
 static void phi_force_calculation_fluid(void);
 static void phi_force_fluid_phi_gradmu(void);
 static void phi_force_compute_fluxes(double * fe, double * fw, double * fy,

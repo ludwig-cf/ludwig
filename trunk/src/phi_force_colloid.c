@@ -58,8 +58,6 @@
 #include "free_energy.h"
 #include "phi_force_stress.h"
 
-static double * pth_;
-
 static void phi_force_interpolation1(void);
 static void phi_force_interpolation2(void);
 static void phi_force_fast(void);
@@ -89,13 +87,8 @@ static void phi_force_fast(void) {
 
   int n;
 
-  assert(coords_nhalo() >= 2);
 
-  n = coords_nsites();
-
-  pth_ = (double *) malloc(9*n*sizeof(double));
-  if (pth_ == NULL) fatal("malloc(pth_) failed\n");
-
+  phi_force_stress_allocate();
   phi_force_stress_compute();
 
   if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
@@ -105,7 +98,7 @@ static void phi_force_fast(void) {
     phi_force_interpolation2();
   }
 
-  free(pth_);
+  phi_force_stress_free();
 
   return;
 }
