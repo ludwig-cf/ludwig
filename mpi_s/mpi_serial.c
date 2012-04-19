@@ -404,6 +404,21 @@ int MPI_Comm_dup(MPI_Comm oldcomm, MPI_Comm * newcomm) {
 
 /*****************************************************************************
  *
+ *  MPI_Type_indexed
+ *
+ *****************************************************************************/
+
+int MPI_Type_indexed(int count, int * array_of_blocklengths,
+		     int * array_of_displacements, MPI_Datatype oldtype,
+		     MPI_Datatype * newtype) {
+
+  *newtype = MPI_UNDEFINED;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Type_contiguous
  *
  *****************************************************************************/

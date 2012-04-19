@@ -133,7 +133,9 @@ int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 	       MPI_Op op, int root, MPI_Comm comm);
 
 
-
+int MPI_Type_indexed(int count, int * array_of_blocklengths,
+		     int * array_of_displacements, MPI_Datatype oldtype,
+		     MPI_Datatype * newtype);
 int MPI_Type_contiguous(int count, MPI_Datatype oldtype,
 			MPI_Datatype * newtype);
 int MPI_Type_vector(int count, int blocklength, int stride,
