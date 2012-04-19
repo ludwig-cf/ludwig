@@ -20,7 +20,6 @@ static int test_charge1_set(psi_t * psi);
 static int test_charge1_exact(psi_t * obj);
 
 int util_gauss_jordan(const int n, double * a, double * b);
-static int util_gaussian(int n, double * a, double * xb);
 
 /*****************************************************************************
  *
@@ -55,6 +54,7 @@ int main(int argc, char ** argv) {
 
 static int do_test_sor1(void) {
 
+  /* Why am I using psi_ ? */
 
   coords_nhalo_set(1);
   coords_init();
@@ -63,6 +63,8 @@ static int do_test_sor1(void) {
   psi_valency_set(psi_, 1, -1.0);
 
   test_charge1_set(psi_);
+  psi_halo_psi(psi_);
+  psi_halo_rho(psi_);
   psi_sor_poisson(psi_);
   if (cart_size(Z) == 1) test_charge1_exact(psi_);
 
@@ -101,6 +103,7 @@ static int test_charge1_set(psi_t * psi) {
 
 	index = coords_index(ic, jc, kc);
 
+	psi_psi_set(psi, index, 0.0);
 	psi_rho_set(psi, index, 0, 0.0);
 	psi_rho_set(psi, index, 1, rho1);
       }
@@ -113,7 +116,7 @@ static int test_charge1_set(psi_t * psi) {
 
     kc = 1;
     for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
 	index = coords_index(ic, jc, kc);
 
 	psi_rho_set(psi, index, 0, rho0);
@@ -126,7 +129,7 @@ static int test_charge1_set(psi_t * psi) {
 
     kc = nlocal[Z];
     for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
 	index = coords_index(ic, jc, kc);
 
 	psi_rho_set(psi, index, 0, rho0);
@@ -142,6 +145,24 @@ static int test_charge1_set(psi_t * psi) {
  *
  *  test_charge1_exact
  *
+ *  Solve the tri-diagonal system appropriate for the 3-point stencil
+ *  in one dimension (which is the z-direction). In parallel, all
+ *  processes perform the whole solution.
+ *
+ *  The precise numerical solution is then obtained by solving the
+ *  linear system.
+ *
+ *  We compare this with the solution obtained via the SOR function.
+ *  Note that the linear system gives an answer which is different
+ *  by a constant offset \psi_0. (I think this is related to the
+ *  treatment of the periodic boundaries.)
+ *
+ *  The two solutions may then be compared to within (roughly) the
+ *  relative tolerance prescribed for the SOR.
+ *
+ *  We also recompute the RHS by differencing the SOR solution to
+ *  provide a final check.
+ *
  *****************************************************************************/
 
 static int test_charge1_exact(psi_t * obj) {
@@ -152,9 +173,9 @@ static int test_charge1_exact(psi_t * obj) {
   int ifail;
 
   double psi, psi0, rhotot, rhodiff;
-  double * a;
-  double * b = NULL;
-  double * c = NULL;
+  double * a = NULL;                   /* A is matrix for linear system */
+  double * b = NULL;                   /* B is RHS / solution vector */
+  double * c = NULL;                   /* Copy of the original RHS. */
 
   coords_nlocal(nlocal);
   n = nlocal[Z];
@@ -166,7 +187,8 @@ static int test_charge1_exact(psi_t * obj) {
   if (b == NULL) fatal("calloc(b) failed\n");
   if (c == NULL) fatal("calloc(c) failed\n");
 
-  /* Set tridiagonal elements for periodic solution. */
+  /* Set tridiagonal elements for periodic solution for the
+   * three-point stencil. */
 
   for (k = 0; k < n; k++) {
     a[k*n + k] = -2.0;
@@ -179,12 +201,13 @@ static int test_charge1_exact(psi_t * obj) {
     a[k*n + km1] = 1.0;
   }
 
-  /* Set the right hand side. */
+  /* Set the right hand side and solve the linear system. */
+
+  assert(cart_size(Z) == 1);
 
   for (k = 0; k < n; k++) {
     index = coords_index(1, 1, k + 1);
     psi_rho_elec(obj, index, b + k);
-    /*b[k] = sin(2.0*4.0*atan(1.0)*(0.5 + 1.0*k)/64.0);*/
     c[k] = b[k];
   }
 
@@ -194,7 +217,7 @@ static int test_charge1_exact(psi_t * obj) {
   for (k = 0; k < n; k++) {
     index = coords_index(1, 1, 1+k);
     psi_psi(obj, index, &psi);
-    if(k==0) psi0 = psi;
+    if (k==0) psi0 = psi;
     rhodiff = obj->psi[index-1] - 2.0*obj->psi[index] + obj->psi[index+1];
     rhotot += c[k];
     info("%2d %14.7e %14.7e %14.7e %14.7e\n", k, b[k]+psi0, psi, c[k], rhodiff);
@@ -302,91 +325,4 @@ int util_gauss_jordan(const int n, double * a, double * b) {
   free(ipivot);
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  util_gaussian
- *
- *  Solve linear system via Gaussian elimination. For the problems in this
- *  file, we only need to exchange rows, ie., have a partial pivot.
- *
- *  We solve Ax = b for A[NOP][NOP].
- *  xb is RHS on entry, and solution on exit.
- *  A is destroyed.
- *
- *  Returns zero on success.
- *
- *****************************************************************************/
-
-static int util_gaussian(int n, double * a, double * xb) {
-
-  int i, j, k;
-  int ifail = 0;
-  int iprow;
-  int * ipivot;
-
-  double tmp;
-
-  ipivot = malloc(n*sizeof(int));
-  if (ipivot == NULL) fatal("malloc(ipivot) failed\n");
-
-  iprow = -1;
-  for (k = 0; k < n; k++) {
-    ipivot[k] = -1;
-  }
-
-  for (k = 0; k < n; k++) {
-
-    /* Find pivot row */
-    tmp = 0.0;
-    for (i = 0; i < n; i++) {
-      if (ipivot[i] == -1) {
-        if (fabs(a[i*n + k]) >= tmp) {
-          tmp = fabs(a[i*n + k]);
-          iprow = i;
-        }
-      }
-    }
-    ipivot[k] = iprow;
-
-    /* divide pivot row by the pivot element a[iprow][k] */
-
-    if (a[iprow*n + k] == 0.0) {
-      fatal("Gaussian elimination failed in gradient calculation\n");
-    }
-
-    tmp = 1.0 / a[iprow*n + k];
-    for (j = k; j < n; j++) {
-      a[iprow*n + j] *= tmp;
-    }
-    xb[iprow] *= tmp;
-
-    /* Subtract the pivot row (scaled) from remaining rows */
-
-    for (i = 0; i < n; i++) {
-      if (ipivot[i] == -1) {
-        tmp = a[i*n + k];
-        for (j = k; j < n; j++) {
-          a[i*n + j] -= tmp*a[iprow*n + j];
-        }
-        xb[i] -= tmp*xb[iprow];
-      }
-    }
-  }
-
-  /* Now do the back substitution */
-
-  for (i = n - 1; i > -1; i--) {
-    iprow = ipivot[i];
-    tmp = xb[iprow];
-    for (k = i + 1; k < n; k++) {
-      tmp -= a[iprow*n + k]*xb[ipivot[k]];
-    }
-    xb[iprow] = tmp;
-  }
-
-  free(ipivot);
-
-  return ifail;
 }

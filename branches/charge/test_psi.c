@@ -2,6 +2,16 @@
  *
  *  test_psi.c
  *
+ *  Unit test for electrokinetic quantities.
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012 The University of Edinburgh
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -17,6 +27,7 @@
 typedef int (* halo_test_ft) (int, int, int, int, double *);
 
 static int testf1(int ic, int jc, int kc, int n, double * ref);
+static int testf2(int ic, int jc, int kc, int n, double * ref);
 static int do_test1(void);
 static int do_test2(void);
 static int do_test_halo1(void);
@@ -52,6 +63,8 @@ int main(int argc, char ** argv) {
 /*****************************************************************************
  *
  *  do_test1
+ *
+ *  Test object creation/deletion, and the various access functions.
  *
  *****************************************************************************/
 
@@ -92,6 +105,8 @@ static int do_test1(void) {
 /*****************************************************************************
  *
  *  do_test2
+ *
+ *  Check access to the lattice-based quantities.
  *
  *****************************************************************************/
 
@@ -150,6 +165,9 @@ static int do_test2(void) {
  *
  *  do_test_halo1
  *
+ *  Take the default system size with nhalo = 2 and nk = 3, and
+ *  check the halo swap.
+ *
  *****************************************************************************/
 
 static int do_test_halo1(void) {
@@ -172,6 +190,10 @@ static int do_test_halo1(void) {
   psi_halo(nk, psi->rho, psi->rhohalo);
   test_field_check(nk, psi->rho, testf1);
 
+  test_field_set(nk, psi->rho, testf2);
+  psi_halo(nk, psi->rho, psi->rhohalo);
+  test_field_check(nk, psi->rho, testf2);
+
   psi_free(psi);
   coords_finish();
 
@@ -181,6 +203,8 @@ static int do_test_halo1(void) {
 /*****************************************************************************
  *
  *  do_test_halo2
+ *
+ *  Check the halo swap in a one-dimensional decomposition.
  *
  *****************************************************************************/
 
@@ -246,7 +270,8 @@ static int do_test_io1(void) {
   psi_free(psi_);
   MPI_Barrier(pe_comm());
 
-  /* Recreate, and read */
+  /* Recreate, and read. This zeros out all the fields, so they
+   * must be read correctly to pass. */
 
   psi_create(nk, &psi_);
   psi_init_io_info(psi_, grid);
@@ -335,6 +360,9 @@ int test_field_check(int nf, double * f, halo_test_ft fref) {
 
 	for (n = 0; n < nf; n++) {
 	  fref(noffst[X]+ic, noffst[Y]+jc, noffst[Z]+kc, n, &ref);
+	  if (fabs(f[nf*index + n] - ref) > FLT_EPSILON) {
+	    verbose("%2d %2d %2d %2d %f %f\n", ic, jc, kc, n, ref, f[nf*index + n]);
+	  }
 	  assert(fabs(f[nf*index + n] - ref) < FLT_EPSILON);
 	}
 
@@ -357,6 +385,26 @@ static int testf1(int ic, int jc, int kc, int n, double * ref) {
   
   *ref = cos(2.0*pi_*ic/L(X)) + cos(2.0*pi_*jc/L(Y)) + cos(2.0*pi_*kc/L(Z));
   *ref += 1.0*n;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  testf2
+ *
+ *  A 'wall' function perioidic in z-direction.
+ *
+ *****************************************************************************/
+
+static int testf2(int ic, int jc, int kc, int n, double * ref) {
+
+  assert(ref);
+
+  *ref = -1.0;
+
+  if (kc == 1 || kc == 0) *ref = 1.0;
+  if (kc == N_total(Z) || kc == N_total(Z) + 1) *ref = 1.0;
 
   return 0;
 }
