@@ -2,9 +2,16 @@
  *
  *  psi_sor.c
  *
- *  A solution of the Poisson equation
+ *  A solution of the Poisson equation for the potenial and
+ *  charge densities stored in the psi_t object.
  *
- *  via a simple SOR method following Press et al.
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -29,6 +36,13 @@
  *  epsilon [ psi(i+1,j,k) - 2 psi(i,j,k) + psi(i-1,j,k)
  *          + psi(i,j+1,k) - 2 psi(i,j,k) + psi(i,j-1,k)
  *          + psi(i,j,k+1) - 2 psi(i,j,k) + psi(i,j,k-1) ] = rho_elec(i,j,k)
+ *
+ *  We use the asymphtotic estimate of the spectral radius for
+ *  the Jabcobi iteration
+ *      radius ~= 1 - (pi^2 / 2N^2)
+ *  where N is the linear dimension of the problem. It's important
+ *  to get this right to keep the number of iterations as small as
+ *  possible.
  *
  *****************************************************************************/
 
@@ -62,12 +76,21 @@ int psi_sor_poisson(psi_t * obj) {
   comm = cart_comm();
 
   assert(nhalo >= 1);
+  /* The red/black operation needs to be tested for odd numbers
+   * of points in parallel. */
+  assert(nlocal[X] % 2 == 0);
+  assert(nlocal[Y] % 2 == 0);
+  assert(nlocal[Z] % 2 == 0);
 
   zs = 1;
   ys = zs*(nlocal[Z] + 2*nhalo);
   xs = ys*(nlocal[Y] + 2*nhalo);
 
   /* Compute initial norm of the residual */
+
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
+  tol_abs = 10.0*DBL_EPSILON;
+  tol_rel = 1.00*FLT_EPSILON;
 
   niteration = 1000;
   epsilon = 1.0;
@@ -83,7 +106,7 @@ int psi_sor_poisson(psi_t * obj) {
 	dpsi = obj->psi[index + xs] + obj->psi[index - xs]
 	     + obj->psi[index + ys] + obj->psi[index - ys]
 	     + obj->psi[index + zs] + obj->psi[index - zs]
-	     - 6.0*obj->psi[index]; 
+	     - 6.0*obj->psi[index];
 	rnorm_local[0] += fabs(epsilon*dpsi - rho_elec);
       }
     }
@@ -92,9 +115,6 @@ int psi_sor_poisson(psi_t * obj) {
   /* Iterate to solution */
 
   omega = 1.0;
-  radius = 0.999;
-  tol_abs = 10.0*DBL_EPSILON;
-  tol_rel = 1.000*FLT_EPSILON;
 
   for (n = 0; n < niteration; n++) {
 
@@ -106,7 +126,7 @@ int psi_sor_poisson(psi_t * obj) {
 
       for (ic = 1; ic <= nlocal[X]; ic++) {
 	for (jc = 1; jc <= nlocal[Y]; jc++) {
-	  kst = 1 + (jc + pass) % 2;
+	  kst = 1 + (ic + jc + pass) % 2;
 	  for (kc = kst; kc <= nlocal[Z]; kc += 2) {
 
 	    index = coords_index(ic, jc, kc);
@@ -138,9 +158,8 @@ int psi_sor_poisson(psi_t * obj) {
     }
 
     /* Compare residual and iterate again if necessary */
-
     MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
-    printf("Iteration %4d rnorm %14.7e\n", n, rnorm[1]);
+    info("Iteration %4d %14.7e rnorm %14.7e\n", n, rnorm[0], rnorm[1]);
     if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) break;
   }
 
