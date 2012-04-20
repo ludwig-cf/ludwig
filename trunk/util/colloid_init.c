@@ -57,9 +57,9 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
 int main(int argc, char ** argv) {
 
-  int ntotal[3] = {32.0, 32.0, 32.0};  /* Total system size (cf. input) */
+  int ntotal[3] = {128.0, 128.0, 128.0};  /* Total system size (cf. input) */
   int periodic[3] = {1, 1, 1};           /* 0 = wall, 1 = periodic */
-  int file_format = BINARY;
+  int file_format = ASCII;
 
   int n;
   int index;
@@ -68,7 +68,7 @@ int main(int argc, char ** argv) {
 
   double a0 = 2.3;                      /* Input radius */
   double ah = 2.3;                      /* Hydrodynamic radius */ 
-  double vf = 0.01;                      /* Volume fraction */
+  double vf = 0.05;                       /* Volume fraction */
   double dh = 1.0;                       /* "grace' distance */
 
   colloid_state_t * state;
