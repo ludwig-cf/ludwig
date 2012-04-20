@@ -153,6 +153,8 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->valency = calloc(nk, sizeof(int));
   if (psi->valency == NULL) fatal("calloc(psi->valency) failed\n");
 
+  psi->e = e_unit_default;
+
   psi_init_mpi_indexed(psi);
   *pobj = psi; 
 
