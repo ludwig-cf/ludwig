@@ -2,6 +2,14 @@
  *
  *  psi.h
  *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012 The University of Edinburgh
+ *
  *****************************************************************************/
 
 #ifndef PSI_H
@@ -26,5 +34,6 @@ int psi_rho_set(psi_t * obj, int index, int n, double rho);
 int psi_psi(psi_t * obj, int index, double * psi);
 int psi_psi_set(psi_t * obj, int index, double psi);
 int psi_rho_elec(psi_t * obj, int index, double * rho_elec);
+int psi_unit_charge(psi_t * obj, double * uenit);
 
 #endif

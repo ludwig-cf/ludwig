@@ -2,6 +2,14 @@
  *
  *  psi_s.h
  *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012 The University of Edinburgh
+ *
  *****************************************************************************/
 
 #ifndef PSI_S_H
@@ -16,6 +24,7 @@ struct psi_s {
   double * psi;             /* Electric potential */
   double * rho;             /* Charge densities */
   double * diffusivity;     /* Diffusivity for each species */
+  double e;                 /* unit charge */
   int * valency;            /* Valency for each species */
   MPI_Datatype psihalo[3];  /* psi field halo */
   MPI_Datatype rhohalo[3];  /* charge densities halo */

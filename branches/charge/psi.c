@@ -33,12 +33,16 @@
  *  where Z_k is the valency for the species, and e is the unit
  *  charge.
  *
- *  Alternatively, store separately electric potential \psi(r)
- *  and nk solute charge density fields \rho_k(r).
- *
- *
  *  Note most of this has been coded  int function(...) in
  *  anticipation of exception handling.
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -53,7 +57,7 @@
 #include "psi.h"
 #include "psi_s.h"
 
-const double e_unit_ = 1.0; /* Unit charge */
+static const double e_unit_default = 1.0; /* Unit charge */
 
 psi_t * psi_ = NULL;
 
@@ -726,7 +730,7 @@ int psi_rho_elec(psi_t * obj, int index, double * rho) {
   assert(rho);
 
   for (n = 0; n < obj->nk; n++) {
-    rho_elec += e_unit_*obj->valency[n]*obj->rho[obj->nk*index + n];
+    rho_elec += obj->e*obj->valency[n]*obj->rho[obj->nk*index + n];
   }
 
   *rho = rho_elec;
@@ -794,6 +798,22 @@ int psi_psi_set(psi_t * obj, int index, double psi) {
   assert(obj);
 
   obj->psi[index] = psi;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_unit_charge
+ *
+ *****************************************************************************/
+
+int psi_unit_charge(psi_t * obj, double * eunit) {
+
+  assert(obj);
+  assert(eunit);
+
+  *eunit = obj->e;
 
   return 0;
 }
