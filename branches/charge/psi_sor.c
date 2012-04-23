@@ -44,13 +44,28 @@
  *  to get this right to keep the number of iterations as small as
  *  possible.
  *
+ *  If this is an initial solve, the initial norm of the resisdual
+ *  may be quite large (e.g., psi(t = 0)  = 0; rhs \neq 0); in this
+ *  case a relative tolerance would be appropriate to decide
+ *  termination. On subsequent calls, we might expect the initial
+ *  residual to be relatively small (psi not charged much since
+ *  previous solve), and an absolute tolerance might be appropriate.
+ *
+ *  The actual residual is checked against both at every 'ncheck'
+ *  iterations, and either condition met will result in termination
+ *  of the iteration. If neither criterion is met, the iteration will
+ *  finish after 'niteration' iterations.
+ *
  *****************************************************************************/
 
-int psi_sor_poisson(psi_t * obj) {
+int psi_sor_poisson(psi_t * obj, double tol_abs, double tol_rel) {
 
+  const int niteration = 1000; /* Maximum number of iterations */
+  const int ncheck = 5;        /* Check global residual every n iterations */
+  
   int ic, jc, kc, index;
   int nhalo;
-  int n, niteration;           /* Relaxation iterations */
+  int n;                       /* Relaxation iterations */
   int pass;                    /* Red/black iteration */
   int kst;                     /* Start kc index for red/black iteration */
   int nlocal[3];
@@ -66,8 +81,6 @@ int psi_sor_poisson(psi_t * obj) {
 
   double omega;                /* Over-relaxation parameter 1 < omega < 2 */
   double radius;               /* Spectral radius of Jacobi iteration */
-  double tol_abs;              /* Absolute tolerance */
-  double tol_rel;              /* Relative tolerance */
 
   MPI_Comm comm;               /* Cartesian communicator */
 
@@ -76,6 +89,7 @@ int psi_sor_poisson(psi_t * obj) {
   comm = cart_comm();
 
   assert(nhalo >= 1);
+
   /* The red/black operation needs to be tested for odd numbers
    * of points in parallel. */
   assert(nlocal[X] % 2 == 0);
@@ -89,10 +103,7 @@ int psi_sor_poisson(psi_t * obj) {
   /* Compute initial norm of the residual */
 
   radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
-  tol_abs = 10.0*DBL_EPSILON;
-  tol_rel = 1.00*FLT_EPSILON;
 
-  niteration = 1000;
   epsilon = 1.0;
   rnorm_local[0] = 0.0;
 
@@ -157,10 +168,11 @@ int psi_sor_poisson(psi_t * obj) {
       psi_halo_psi(obj);
     }
 
-    /* Compare residual and iterate again if necessary */
-    MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
-    info("Iteration %4d %14.7e rnorm %14.7e\n", n, rnorm[0], rnorm[1]);
-    if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) break;
+    if ((n % ncheck) == 0) {
+      /* Compare residual and exit if small enough */
+      MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
+      if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) break;
+    }
   }
 
   return 0;
