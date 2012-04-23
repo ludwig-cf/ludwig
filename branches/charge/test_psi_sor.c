@@ -2,22 +2,26 @@
  *
  *  test_psi_sor.c
  *
+ *  TODO: add tests via psi_stats_local()
+ *
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 
 #include "pe.h"
 #include "coords.h"
 #include "psi_s.h"
 #include "psi_sor.h"
 
+#include "psi_stats.h"
+
 static int do_test_sor1(void);
 static int test_charge1_set(psi_t * psi);
-static int test_charge1_exact(psi_t * obj);
+static int test_charge1_exact(psi_t * obj, double tolerance);
 
 int util_gauss_jordan(const int n, double * a, double * b);
 
@@ -54,6 +58,9 @@ int main(int argc, char ** argv) {
 
 static int do_test_sor1(void) {
 
+  double tol_abs = 0.01*FLT_EPSILON;
+  double tol_rel = 1.00*FLT_EPSILON;
+
   /* Why am I using psi_ ? */
 
   coords_nhalo_set(1);
@@ -65,8 +72,10 @@ static int do_test_sor1(void) {
   test_charge1_set(psi_);
   psi_halo_psi(psi_);
   psi_halo_rho(psi_);
-  psi_sor_poisson(psi_);
-  if (cart_size(Z) == 1) test_charge1_exact(psi_);
+  psi_sor_poisson(psi_, tol_abs, tol_rel);
+  psi_sor_poisson(psi_, tol_abs, tol_rel);
+
+  if (cart_size(Z) == 1) test_charge1_exact(psi_, tol_abs);
 
   psi_free(psi_);
   coords_finish();
@@ -165,7 +174,7 @@ static int test_charge1_set(psi_t * psi) {
  *
  *****************************************************************************/
 
-static int test_charge1_exact(psi_t * obj) {
+static int test_charge1_exact(psi_t * obj, double tolerance) {
 
   int k, kp1, km1, index;
   int nlocal[3];
@@ -178,6 +187,8 @@ static int test_charge1_exact(psi_t * obj) {
   double * c = NULL;                   /* Copy of the original RHS. */
 
   coords_nlocal(nlocal);
+
+  assert(cart_size(Z) == 1);
   n = nlocal[Z];
 
   a = calloc(n*n, sizeof(double));
@@ -203,8 +214,6 @@ static int test_charge1_exact(psi_t * obj) {
 
   /* Set the right hand side and solve the linear system. */
 
-  assert(cart_size(Z) == 1);
-
   for (k = 0; k < n; k++) {
     index = coords_index(1, 1, k + 1);
     psi_rho_elec(obj, index, b + k);
@@ -212,6 +221,7 @@ static int test_charge1_exact(psi_t * obj) {
   }
 
   ifail = util_gauss_jordan(n, a, b);
+  assert(ifail == 0);
 
   rhotot = 0.0;
   for (k = 0; k < n; k++) {
@@ -220,10 +230,13 @@ static int test_charge1_exact(psi_t * obj) {
     if (k==0) psi0 = psi;
     rhodiff = obj->psi[index-1] - 2.0*obj->psi[index] + obj->psi[index+1];
     rhotot += c[k];
-    info("%2d %14.7e %14.7e %14.7e %14.7e\n", k, b[k]+psi0, psi, c[k], rhodiff);
+
+    assert(fabs(b[k] + psi0 - psi) < tolerance);
+    assert(fabs(c[k] - rhodiff) < tolerance);
   }
-  info("Gauss Jordan returned %d\n", ifail);
-  info("Net charge: %14.7e\n", rhotot);
+
+  /* Total rho should be unchanged at zero. */
+  assert(fabs(rhotot) < tolerance);
 
   free(c);
   free(b);
@@ -241,7 +254,8 @@ static int test_charge1_exact(psi_t * obj) {
  *
  *  A is the n by n matrix, b is rhs on input and solution on output.
  *  We assume storage of A[i*n + j].
- *  A is column-scrambled inverse on exit.
+ *  A is column-scrambled inverse on exit. At the moment we don't bother
+ *  to recover the inverse.
  *
  *  Returns 0 on success.
  *
@@ -298,7 +312,10 @@ int util_gauss_jordan(const int n, double * a, double * b) {
       b[icol] = tmp;
     }
 
-    if (a[icol*n + icol] == 0.0) return -1;
+    if (a[icol*n + icol] == 0.0) {
+      free(ipivot);
+      return -1;
+    }
 
     rpivot = 1.0/a[icol*n + icol];
     a[icol*n + icol] = 1.0;
