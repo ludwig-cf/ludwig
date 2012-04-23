@@ -72,9 +72,10 @@ static int do_test1(void) {
 
   int nk;
   int iv, n;
-  double diff;
+  double e, diff;
   double valency[3] = {1, 2, 3};
   double diffusivity[3] = {1.0, 2.0, 3.0};
+  double eunit = -1.0;
 
   psi_t * psi;
 
@@ -94,6 +95,12 @@ static int do_test1(void) {
     psi_diffusivity(psi, n, &diff);
     assert(fabs(diff - diffusivity[n]) < DBL_EPSILON);
   }
+
+  psi_unit_charge(psi, &e);
+  assert(fabs(e - 1.0) < DBL_EPSILON); /* Default unit = 1.0 */
+  psi_unit_charge_set(psi, eunit);
+  psi_unit_charge(psi, &e);
+  assert(fabs(eunit - e) < DBL_EPSILON);
 
   psi_free(psi);
 
