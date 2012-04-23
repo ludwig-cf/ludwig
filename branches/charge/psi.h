@@ -34,6 +34,7 @@ int psi_rho_set(psi_t * obj, int index, int n, double rho);
 int psi_psi(psi_t * obj, int index, double * psi);
 int psi_psi_set(psi_t * obj, int index, double psi);
 int psi_rho_elec(psi_t * obj, int index, double * rho_elec);
-int psi_unit_charge(psi_t * obj, double * uenit);
+int psi_unit_charge(psi_t * obj, double * eunit);
+int psi_unit_charge_set(psi_t * obj, double eunit); 
 
 #endif

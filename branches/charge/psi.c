@@ -7,6 +7,7 @@
  *  
  *  electrokinetics [on|off]
  *  electrokinetic_species 2
+ *  electrokinetic_unit_charge 1.0
  *  electrokinetic_z1 +1
  *  electrokinetic_z2 -1
  *  electrokinetic_d1 diffusivity species 1
@@ -18,16 +19,6 @@
  *
  *
  *  Code for electrokinetic quantities.
- *
- *
- *  We store together the electric potential \psi(r), and a number
- *  of charge densities to represent an nk-component electrolyte
- *  species.
- *
- *  Schematically, we store the electric potential always as
- *  psi[0], and solute species psi[1], psi[2], ..., psi[nk].
- *  We note that nk is usually two for positively and negatively
- *  charged species.
  *
  *  The local charge density is then \rho_el = \sum_k psi_k Z_k e
  *  where Z_k is the valency for the species, and e is the unit
@@ -816,6 +807,21 @@ int psi_unit_charge(psi_t * obj, double * eunit) {
   assert(eunit);
 
   *eunit = obj->e;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_unit_charge_set
+ *
+ *****************************************************************************/
+
+int psi_unit_charge_set(psi_t * obj, double eunit) {
+
+  assert(obj);
+
+  obj->e = eunit;
 
   return 0;
 }
