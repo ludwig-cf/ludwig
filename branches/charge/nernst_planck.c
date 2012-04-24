@@ -65,7 +65,9 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_s.h"
+#include "advection_bcs.h"
 #include "nernst_planck.h"
+
 
 static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 				double * fy, double * fz);
@@ -92,9 +94,9 @@ int nernst_planck_driver(psi_t * psi) {
   psi_nk(psi, &nk);
   nsites = coords_nsites();
 
-  assert(0); /* TESTING REQUIRED */
+ 
 
-  /* Allocate fluxes */
+ /* Allocate fluxes */
 
   fw = calloc(nsites*nk, sizeof(double));
   fe = calloc(nsites*nk, sizeof(double));
@@ -108,6 +110,7 @@ int nernst_planck_driver(psi_t * psi) {
   /* U halo if required, and advection */
 
   nernst_planck_fluxes(psi, fe, fw, fy, fz);
+  advection_bcs_no_normal_flux(nk, fe, fw, fy, fz);
   nernst_planck_update(psi, fe, fw, fy, fz);
 
   free(fz);
@@ -166,7 +169,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 	  rho1 = psi->rho[nk*(index - xs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
-	  fe[nk*index] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho0 - rho1);
+	  fw[nk*index + n] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho0 - rho1);
 
 	  /* x-direction (between ic and ic+1) */
 
@@ -174,7 +177,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 	  rho1 = psi->rho[nk*(index + xs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
-	  fe[nk*index] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  fe[nk*index + n] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
 
 	  /* y-direction (between jc and jc+1) */
 
@@ -182,7 +185,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 	  rho1 = psi->rho[nk*(index + ys) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
-	  fy[nk*index] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  fy[nk*index + n] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
 
 	  /* z-direction (between kc and kc+1) */
 
@@ -190,7 +193,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 	  rho1 = psi->rho[nk*(index + zs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
-	  fz[nk*index] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  fz[nk*index + n] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
 	}
 
 	/* Next face */
