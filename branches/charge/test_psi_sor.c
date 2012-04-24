@@ -61,13 +61,16 @@ static int do_test_sor1(void) {
   double tol_abs = 0.01*FLT_EPSILON;
   double tol_rel = 1.00*FLT_EPSILON;
 
-  /* Why am I using psi_ ? */
-
   coords_nhalo_set(1);
   coords_init();
+
+  /* Use psi_ for the time being, as this will get used in the
+   * main program */
+
   psi_create(2, &psi_);
   psi_valency_set(psi_, 0, +1.0);
   psi_valency_set(psi_, 1, -1.0);
+  psi_epsilon_set(psi_, 1.0);
 
   test_charge1_set(psi_);
   psi_halo_psi(psi_);
@@ -87,6 +90,10 @@ static int do_test_sor1(void) {
  *
  *  test_charge1_set
  *
+ *  Sets a uniform 'wall' charge at z = 1 and z = L_z and a uniform
+ *  interior value elsewhere such that the system is overall charge
+ *  neutral.
+ *
  *  There is no sign, just a density. We expect valency[0] and valency[1]
  *  to be \pm 1.
  *
@@ -94,16 +101,24 @@ static int do_test_sor1(void) {
 
 static int test_charge1_set(psi_t * psi) {
 
+  int nk;
   int ic, jc, kc, index;
   int nlocal[3];
   
   double rho0, rho1;
 
+  double rho_min[4];  /* For psi_stats */
+  double rho_max[4];  /* For psi_stats */
+  double rho_tot[4];  /* For psi_stats */
+
   coords_nlocal(nlocal);
 
-  rho0 = 1.0 / (2.0*L(X)*L(Y));
-  rho1 = 1.0 / (L(X)*L(Y)*(L(Z) - 2.0));
+  rho0 = 1.0 / (2.0*L(X)*L(Y));           /* Edge values */
+  rho1 = 1.0 / (L(X)*L(Y)*(L(Z) - 2.0));  /* Interior values */
 
+  psi_nk(psi, &nk);
+  assert(nk == 2);
+  
   /* Throughout set to rho1 */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -147,6 +162,27 @@ static int test_charge1_set(psi_t * psi) {
     }
   }
 
+  psi_stats_reduce(psi, rho_min, rho_max, rho_tot, 0, pe_comm());
+
+  if (pe_rank() == 0) {
+    /* psi all zero */
+    assert(fabs(rho_min[0] - 0.0) < DBL_EPSILON);
+    assert(fabs(rho_max[0] - 0.0) < DBL_EPSILON);
+    assert(fabs(rho_tot[0] - 0.0) < DBL_EPSILON);
+    /* First rho0 interior */
+    assert(fabs(rho_min[1] - 0.0) < DBL_EPSILON);
+    assert(fabs(rho_max[1] - rho0) < DBL_EPSILON);
+    assert(fabs(rho_tot[1] - 1.0) < DBL_EPSILON);
+    /* Next rho1 edge */
+    assert(fabs(rho_min[2] - 0.0) < DBL_EPSILON);
+    assert(fabs(rho_max[2] - rho1) < DBL_EPSILON);
+    assert(fabs(rho_tot[2] - 1.0) < FLT_EPSILON);
+    /* Total rho_elec */
+    assert(fabs(rho_min[3] + rho1) < DBL_EPSILON); /* + because valency is - */
+    assert(fabs(rho_max[3] - rho0) < DBL_EPSILON);
+    assert(fabs(rho_tot[3] - 0.0) < FLT_EPSILON);
+  }
+
   return 0;
 }
 
@@ -167,7 +203,8 @@ static int test_charge1_set(psi_t * psi) {
  *  treatment of the periodic boundaries.)
  *
  *  The two solutions may then be compared to within (roughly) the
- *  relative tolerance prescribed for the SOR.
+ *  relative tolerance prescribed for the SOR. In turn, the solution
+ *  of the Gauss Jordan routine has been checked agaisnt NAG F04AAF.
  *
  *  We also recompute the RHS by differencing the SOR solution to
  *  provide a final check.

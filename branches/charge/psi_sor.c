@@ -104,7 +104,7 @@ int psi_sor_poisson(psi_t * obj, double tol_abs, double tol_rel) {
 
   radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
 
-  epsilon = 1.0;
+  psi_epsilon(obj, &epsilon);
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
