@@ -2,28 +2,6 @@
  *
  *  psi.c
  *
- *  How do we announce electrokinetics in the input file?
- *
- *  
- *  electrokinetics [on|off]
- *  electrokinetic_species 2
- *  electrokinetic_unit_charge 1.0
- *  electrokinetic_z1 +1
- *  electrokinetic_z2 -1
- *  electrokinetic_d1 diffusivity species 1
- *  electrokinetic_d2 diffusivity species 2
- *
- *  with no difference in the free energy section. I.e., the free energy
- *  must automatically pick up the appropriate stuff (which has no
- *  effect if electrokinetics off).
- *
- *
- *  Code for electrokinetic quantities.
- *
- *  The local charge density is then \rho_el = \sum_k psi_k Z_k e
- *  where Z_k is the valency for the species, and e is the unit
- *  charge.
- *
  *  Note most of this has been coded  int function(...) in
  *  anticipation of exception handling.
  *
@@ -40,6 +18,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <mpi.h>
 
 #include "pe.h"
@@ -48,7 +27,7 @@
 #include "psi.h"
 #include "psi_s.h"
 
-static const double e_unit_default = 1.0; /* Unit charge */
+static const double e_unit_default = 1.0; /* Default unit charge */
 
 psi_t * psi_ = NULL;
 
@@ -624,6 +603,8 @@ static int psi_write_ascii(FILE * fp, const int ic, const int jc,
   int index;
   int n, nwrite;
 
+  assert(fp);
+
   index = coords_index(ic, jc, kc);
 
   nwrite = fprintf(fp, "%22.15e ", psi_->psi[index]);
@@ -651,6 +632,8 @@ static int psi_read_ascii(FILE * fp, const int ic, const int jc,
   int index;
   int n, nread;
 
+  assert(fp);
+
   index = coords_index(ic, jc, kc);
 
   nread = fscanf(fp, "%le", psi_->psi + index);
@@ -675,6 +658,8 @@ static int psi_write(FILE * fp, const int ic, const int jc, const int kc) {
   int index;
   int n;
 
+  assert(fp);
+
   index = coords_index(ic, jc, kc);
   n = fwrite(psi_->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fwrite(psi) failed at index %d\n", index);
@@ -695,6 +680,8 @@ static int psi_read(FILE * fp, const int ic, const int jc, const int kc) {
 
   int index;
   int n;
+
+  assert(fp);
 
   index = coords_index(ic, jc, kc);
   n = fread(psi_->psi + index, sizeof(double), 1, fp);
@@ -822,6 +809,86 @@ int psi_unit_charge_set(psi_t * obj, double eunit) {
   assert(obj);
 
   obj->e = eunit;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_beta
+ *
+ *****************************************************************************/
+
+int psi_beta(psi_t * obj, double * beta) {
+
+  assert(obj);
+  assert(beta);
+
+  *beta = obj->beta;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_beta_set
+ *
+ *****************************************************************************/
+
+int psi_beta_set(psi_t * obj, double beta) {
+
+  assert(obj);
+
+  obj->beta = beta;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_epsilon
+ *
+ *****************************************************************************/
+
+int psi_epsilon(psi_t * obj, double * epsilon) {
+
+  assert(obj);
+  assert(epsilon);
+
+  *epsilon = obj->epsilon;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_epsilon_set
+ *
+ *****************************************************************************/
+
+int psi_epsilon_set(psi_t * obj, double epsilon) {
+
+  assert(obj);
+
+  obj->epsilon = epsilon;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_bjerrum_length
+ *
+ *  This is really just for information.
+ *
+ *****************************************************************************/
+
+int psi_bjerrum_length(psi_t * obj, double * lb) {
+
+  assert(obj);
+  assert(lb);
+
+  *lb = obj->e*obj->e*obj->beta / (4.0*M_PI*obj->epsilon);
 
   return 0;
 }

@@ -32,6 +32,7 @@ static int do_test1(void);
 static int do_test2(void);
 static int do_test_halo1(void);
 static int do_test_halo2(void);
+static int do_test_bjerrum(void);
 static int do_test_io1(void);
 
 int test_field_set(int nf, double * f, halo_test_ft fset);
@@ -53,6 +54,7 @@ int main(int argc, char ** argv) {
   do_test_halo1();
   do_test_halo2();
   do_test_io1();
+  do_test_bjerrum();
 
   pe_finalise();
   MPI_Finalize();
@@ -292,6 +294,55 @@ static int do_test_io1(void) {
   io_remove(filename, psi_->info);
 
   psi_free(psi_);
+  coords_finish();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_bjerrum
+ *
+ *  Test the bjerrum length comes out right.
+ *  l_B = e^2 / 4\pi epsilon KT
+ *
+ *  We set out unit charge to be 1 in lattice units, and a plausable
+ *  lattice Boltzmann temperature of 10^-05; the units of permeativity
+ *  are still somewhat open to investigation...
+ *
+ *  At the moment I have the famous 41.4 which is the dielectric
+ *  *isotropy* used for blue phases scaled by an arbitrary 1000.
+ *
+ *****************************************************************************/
+
+static int do_test_bjerrum(void) {
+
+  psi_t * psi = NULL;
+  double eref = 1.0;
+  double epsilonref = 41.4*1000.0;
+  double ktref = 0.00001;
+  double tmp, lbref;
+
+  coords_init();
+  psi_create(2, &psi);
+
+  psi_beta_set(psi, 1.0/ktref);
+  psi_beta(psi, &tmp);
+  assert(fabs(1.0/ktref - tmp) < DBL_EPSILON);
+
+  psi_epsilon_set(psi, epsilonref);
+  psi_epsilon(psi, &tmp);
+  assert(fabs(tmp - epsilonref) < DBL_EPSILON);
+
+  psi_unit_charge_set(psi, eref);
+  psi_unit_charge(psi, &tmp);
+  assert(fabs(tmp - eref) < DBL_EPSILON);
+
+  lbref = eref*eref / (4.0*M_PI*epsilonref*ktref);
+  psi_bjerrum_length(psi, &tmp);
+  assert(fabs(lbref - tmp) < DBL_EPSILON);
+
+  psi_free(psi);
   coords_finish();
 
   return 0;
