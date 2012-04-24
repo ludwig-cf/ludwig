@@ -94,8 +94,6 @@ int nernst_planck_driver(psi_t * psi) {
   psi_nk(psi, &nk);
   nsites = coords_nsites();
 
- 
-
  /* Allocate fluxes */
 
   fw = calloc(nsites*nk, sizeof(double));
@@ -128,6 +126,10 @@ int nernst_planck_driver(psi_t * psi) {
  *  Compute diffusive fluxes.
  *  IF WANT ADVECTIVE FLXUES THIS MUST BE AN ACCUMULATION!
  *
+ *  As we compute rho(n+1) = rho(n) - div.flux in the update routine,
+ *  there is an extra minus sign in the fluxes here. This conincides
+ *  with the sign of the advective fluxes, if present.
+ *
  *****************************************************************************/
 
 static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
@@ -146,6 +148,10 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+
+  zs = 1;
+  ys = zs*(nlocal[Z] + 2*nhalo);
+  xs = ys*(nlocal[Y] + 2*nhalo);
 
   psi_nk(psi, &nk);
   psi_unit_charge(psi, &eunit);
@@ -169,7 +175,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 	  rho1 = psi->rho[nk*(index - xs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
-	  fw[nk*index + n] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho0 - rho1);
+	  fw[nk*index + n] -= psi->diffusivity[n]*0.5*(b0 + b1)*(rho0 - rho1);
 
 	  /* x-direction (between ic and ic+1) */
 
@@ -177,7 +183,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 	  rho1 = psi->rho[nk*(index + xs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
-	  fe[nk*index + n] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  fe[nk*index + n] -= psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
 
 	  /* y-direction (between jc and jc+1) */
 
@@ -185,7 +191,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 	  rho1 = psi->rho[nk*(index + ys) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
-	  fy[nk*index + n] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  fy[nk*index + n] -= psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
 
 	  /* z-direction (between kc and kc+1) */
 
@@ -193,7 +199,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 	  rho1 = psi->rho[nk*(index + zs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
-	  fz[nk*index + n] = psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  fz[nk*index + n] -= psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
 	}
 
 	/* Next face */
