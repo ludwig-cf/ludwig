@@ -34,25 +34,17 @@
 int psi_stats_info(psi_t * obj) {
 
   int n, nk, nrho;
-  double * rho_min_local;
-  double * rho_max_local;
-  double * rho_tot_local;
   double * rho_min;
   double * rho_max;
   double * rho_tot;
 
   MPI_Comm comm;
 
+  assert(obj);
+
   psi_nk(obj, &nk);
   nrho = 2 + nk;
   comm = pe_comm();
-
-  rho_min_local = calloc(nrho, sizeof(double));
-  rho_max_local = calloc(nrho, sizeof(double));
-  rho_tot_local = calloc(nrho, sizeof(double));
-  if (rho_min_local == NULL) fatal("calloc(rho_min_local) failed\n");
-  if (rho_max_local == NULL) fatal("calloc(rho_max_local) failed\n");
-  if (rho_tot_local == NULL) fatal("calloc(rho_tot_local) failed\n");
 
   rho_min = calloc(nrho, sizeof(double));
   rho_max = calloc(nrho, sizeof(double));
@@ -61,13 +53,9 @@ int psi_stats_info(psi_t * obj) {
   if (rho_max == NULL) fatal("calloc(rho_max) failed\n");
   if (rho_tot == NULL) fatal("calloc(rho_tot) failed\n");
 
-  psi_stats_local(obj, rho_min_local, rho_max_local, rho_tot_local);
+  /* Reduce to rank 0 in pe_comm for info */
 
-  /* Reduction to rank 0 in pe_comm for info() */
-
-  MPI_Reduce(rho_min_local, rho_min, nrho, MPI_DOUBLE, MPI_MIN, 0, comm);
-  MPI_Reduce(rho_max_local, rho_max, nrho, MPI_DOUBLE, MPI_MAX, 0, comm);
-  MPI_Reduce(rho_tot_local, rho_tot, nrho, MPI_DOUBLE, MPI_SUM, 0, comm);
+  psi_stats_reduce(obj, rho_min, rho_max, rho_tot, 0, comm);
 
   info("[psi] %14.7e %14.7e %14.7e\n", rho_min[0], rho_max[0], rho_tot[0]);
   for (n = 0; n < nk; n++) {
@@ -80,6 +68,51 @@ int psi_stats_info(psi_t * obj) {
   free(rho_tot);
   free(rho_max);
   free(rho_min);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_stats_reduce
+ *
+ *  Reduce local contributions to psi totals to rank in comm.
+ *  The user must supply rho_min, rho_max, and rho_tot of at
+ *  least psi->nk + 2 in length, which are the returned global
+ *  quanitities on rank.
+ *
+ *  The returned values are not meaningful on other ranks.
+ *  Collective call in communicator comm.
+ *
+ *****************************************************************************/
+
+int psi_stats_reduce(psi_t * obj, double * rho_min, double * rho_max,
+		     double * rho_tot, int rank, MPI_Comm comm) {
+  int nk, nrho;
+  double * rho_min_local;
+  double * rho_max_local;
+  double * rho_tot_local;
+
+  assert(obj);
+  assert(rho_min);
+  assert(rho_max);
+  assert(rho_tot);
+
+  psi_nk(obj, &nk);
+  nrho = 2 + nk;
+
+  rho_min_local = calloc(nrho, sizeof(double));
+  rho_max_local = calloc(nrho, sizeof(double));
+  rho_tot_local = calloc(nrho, sizeof(double));
+  if (rho_min_local == NULL) fatal("calloc(rho_min_local) failed\n");
+  if (rho_max_local == NULL) fatal("calloc(rho_max_local) failed\n");
+  if (rho_tot_local == NULL) fatal("calloc(rho_tot_local) failed\n");
+
+  psi_stats_local(obj, rho_min_local, rho_max_local, rho_tot_local);
+
+  MPI_Reduce(rho_min_local, rho_min, nrho, MPI_DOUBLE, MPI_MIN, rank, comm);
+  MPI_Reduce(rho_max_local, rho_max, nrho, MPI_DOUBLE, MPI_MAX, rank, comm);
+  MPI_Reduce(rho_tot_local, rho_tot, nrho, MPI_DOUBLE, MPI_SUM, rank, comm);
 
   free(rho_tot_local);
   free(rho_max_local);
