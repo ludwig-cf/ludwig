@@ -5,6 +5,13 @@
  *  A solution of the Poisson equation for the potenial and
  *  charge densities stored in the psi_t object.
  *
+ *  The Poisson equation looks like
+ *
+ *    nabla^2 \psi = - rho_elec / epsilon
+ *
+ *  where psi is the potential, rho_elec is the free charge density, and
+ *  epsilon is a permeability.
+ *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -35,7 +42,7 @@
  *
  *  epsilon [ psi(i+1,j,k) - 2 psi(i,j,k) + psi(i-1,j,k)
  *          + psi(i,j+1,k) - 2 psi(i,j,k) + psi(i,j-1,k)
- *          + psi(i,j,k+1) - 2 psi(i,j,k) + psi(i,j,k-1) ] = rho_elec(i,j,k)
+ *          + psi(i,j,k+1) - 2 psi(i,j,k) + psi(i,j,k-1) ] = -rho_elec(i,j,k)
  *
  *  We use the asymphtotic estimate of the spectral radius for
  *  the Jabcobi iteration
@@ -118,7 +125,7 @@ int psi_sor_poisson(psi_t * obj, double tol_abs, double tol_rel) {
 	     + obj->psi[index + ys] + obj->psi[index - ys]
 	     + obj->psi[index + zs] + obj->psi[index - zs]
 	     - 6.0*obj->psi[index];
-	rnorm_local[0] += fabs(epsilon*dpsi - rho_elec);
+	rnorm_local[0] += fabs(epsilon*dpsi + rho_elec);
       }
     }
   }
@@ -147,7 +154,7 @@ int psi_sor_poisson(psi_t * obj, double tol_abs, double tol_rel) {
 	         + obj->psi[index + ys] + obj->psi[index - ys]
 	         + obj->psi[index + zs] + obj->psi[index - zs]
 	      - 6.0*obj->psi[index];
-	    residual = epsilon*dpsi - rho_elec;
+	    residual = epsilon*dpsi + rho_elec;
 	    obj->psi[index] -= omega*residual / (-6.0*epsilon);
 	    rnorm_local[1] += fabs(residual);
 	  }

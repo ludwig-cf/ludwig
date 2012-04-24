@@ -2,7 +2,13 @@
  *
  *  test_psi_sor.c
  *
- *  TODO: add tests via psi_stats_local()
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -254,6 +260,7 @@ static int test_charge1_exact(psi_t * obj, double tolerance) {
   for (k = 0; k < n; k++) {
     index = coords_index(1, 1, k + 1);
     psi_rho_elec(obj, index, b + k);
+    b[k] *= -1.0; /* Minus sign in RHS Poisson equation */
     c[k] = b[k];
   }
 
