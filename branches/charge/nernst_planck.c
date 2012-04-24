@@ -146,6 +146,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
 
   psi_nk(psi, &nk);
   psi_unit_charge(psi, &eunit);
+  psi_beta(psi, &beta);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
