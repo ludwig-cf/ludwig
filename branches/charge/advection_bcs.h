@@ -15,7 +15,7 @@
 #ifndef ADVECTION_BCS_H
 #define ADVECTION_BCS_H
 
-void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
+void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz);
 void advection_bcs_wall(void);
 
