@@ -689,3 +689,25 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  io_remove
+ *
+ *  Remove filename on each IO root.
+ *
+ *****************************************************************************/
+
+void io_remove(char * filename_stub, struct io_info_t * info) {
+
+  char subdirectory[FILENAME_MAX];
+  char filename[FILENAME_MAX];
+
+  if (info->io_comm->rank == 0) {
+    pe_subdirectory(subdirectory);
+    io_set_group_filename(filename, filename_stub, info);
+    remove(filename);
+  }
+
+  return;
+}

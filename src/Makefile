@@ -84,6 +84,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o collision.o 
      phi_lb_coupler.o phi_stats.o \
      phi_update.o phi_update_rt.o \
      polar_active.o polar_active_rt.o \
+     psi.o psi_stats.o psi_sor.o nernst_planck.o \
      lattice.o leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
@@ -122,7 +123,7 @@ mpi:
 	$(MAKE) code "OBJS=$(OBJS) $(MAIN).o" "CC=$(MPICC)"
 
 libar:	$(OBJS)
-	$(AR) $(ARFLAGS) -o $(LIBRARY) $(OBJS)
+	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS)
 lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
