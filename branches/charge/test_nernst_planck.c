@@ -66,8 +66,8 @@ static int do_test_gouy_chapman(void) {
   int ic, jc, kc, index, in;
   int nlocal[3], noff[3];
   int tstep;
-  double rho_w, rho_i, rho_el, ios;
-  double field[3], lb[1], ld[1], cont[1];
+  double rho_w, rho_i, rho_el, rho_b;
+  double field[3], lb[1], ld[1], sp[1], cont[1];
   double tol_abs = 0.01*FLT_EPSILON;
   double tol_rel = 1.00*FLT_EPSILON;
   double diffusivity[2] = {1.e-2, 1.e-2};
@@ -76,7 +76,7 @@ static int do_test_gouy_chapman(void) {
   double beta = 3.0e4;
   FILE * out;
   int n[3]={4,4,64};
-  int tmax = 101;
+  int tmax = 20001;
   char filename[30];
 
   coords_nhalo_set(1);
@@ -162,7 +162,7 @@ static int do_test_gouy_chapman(void) {
 
     if (tstep%1000==0){
 
-      printf("%d\n", tstep);
+      if (cart_rank() == 0) printf("%d\n", tstep);
       psi_stats_info(psi_);
       sprintf(filename,"np_test-%d.dat",tstep);
       out=fopen(filename,"w");
@@ -200,9 +200,9 @@ static int do_test_gouy_chapman(void) {
  
 	if(noff[0]+ic == 2 && noff[1]+jc ==2 && noff[2]+kc == 0.5*n[2]){
 	  for (in = 0; in < psi_->nk; in++) {
-	    ios += 0.5*psi_->valency[in]*psi_->valency[in]*psi_->rho[psi_->nk*index + in];
+	    rho_b += 1.0/psi_->nk*psi_->valency[in]*psi_->valency[in]*psi_->rho[psi_->nk*index + in];
 	  }
-	  psi_debye_length(psi_, ios, ld);
+	  psi_debye_length(psi_, rho_b, ld);
 	}
 
       }
@@ -211,11 +211,10 @@ static int do_test_gouy_chapman(void) {
 
   if (cart_rank() == 0){
     psi_bjerrum_length(psi_,lb);
+    psi_surface_potential(psi_,rho_w,rho_b,sp);
     printf("Bjerrum length is %le\n",lb[0]);
-  }
-
-  if (cart_rank() == 0){
     printf("Debye length is %le\n",ld[0]);
+    printf("Surface potential is %le\n",sp[0]);
   }
 
   psi_free(psi_);

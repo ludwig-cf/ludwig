@@ -879,8 +879,6 @@ int psi_epsilon_set(psi_t * obj, double epsilon) {
  *
  *  psi_bjerrum_length
  *
- *  This is really just for information.
- *
  *****************************************************************************/
 
 int psi_bjerrum_length(psi_t * obj, double * lb) {
@@ -897,12 +895,13 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
  *
  *  psi_debye_length
  *
- *  This is just for information.
- *  Note the Debye length needs a bulk ionic strength as input.
+ *  Returns the Debye length for a simple, symmetric electrolyte.
+ *  A bulk ionic strength (= charge density for simple electrolyte) 
+ *  is required as input.
  *
  *****************************************************************************/
 
-int psi_debye_length(psi_t * obj, double ios, double * ld) {
+int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
 
   double lb[1];
 
@@ -911,7 +910,34 @@ int psi_debye_length(psi_t * obj, double ios, double * ld) {
 
   psi_bjerrum_length(obj,lb);
 
-  *ld = 1.0/sqrt(8.0*M_PI*lb[0]*ios);
+  *ld = 1.0/sqrt(8.0*M_PI*lb[0]*rho_b);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_surface_potential
+ *
+ *  Returns the surface potential of a double layer for a simple,
+ *  symmetric electrolyte. The surface charge and bulk charge density
+ *  of one species are required as input.
+ *
+ *****************************************************************************/
+
+int psi_surface_potential(psi_t * obj, double sigma, double rho_b, double *sp) {
+
+  double p;
+
+  assert(obj);
+  assert(sp);
+  assert(obj->nk == 2);
+  assert(fabs(obj->valency[0]) == fabs(obj->valency[1]));
+
+  p = 1.0/sqrt(8.0*obj->epsilon*rho_b/obj->beta);
+
+  *sp = fabs(2.0/(obj->valency[0]*obj->e*obj->beta)*\
+	log(-p*sigma + sqrt(p*p*sigma*sigma+1.0)));
 
   return 0;
 }
