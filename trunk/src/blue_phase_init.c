@@ -814,14 +814,18 @@ void blue_phase_chi_edge(int N, double z0, double x0) {
 /*****************************************************************************
  *
  *  blue_set_random_q_init
- *  Setting q tensor to isotropic in chosen area of the simulation box
- * -Juho 12/11/09
+ *
+ *  Set a decomposition-independent random initial Q tensor
+ *  based on the initial order amplitude0_ and a randomly
+ *  chosen director at each site.
+ *
  *****************************************************************************/
 
 void blue_set_random_q_init(void) {
 
   int ic, jc, kc;
   int nlocal[3];
+  int offset[3];
   int index;
 
   double n[3];
@@ -829,22 +833,30 @@ void blue_set_random_q_init(void) {
   double phase1, phase2;
   
   coords_nlocal(nlocal);
+  coords_nlocal_offset(offset);
   
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
+  for (ic = 1; ic <= N_total(X); ic++) {
+    for (jc = 1; jc <= N_total(Y); jc++) {
+      for (kc = 1; kc <= N_total(Z); kc++) {
 
 	phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
 	phase2 = acos(2.0*ran_serial_uniform() - 1.0);
-	
-	n[X] = cos(phase1)*sin(phase2);
-	n[Y] = sin(phase1)*sin(phase2);
-	n[Z] = cos(phase2);
+	    
+	/* Only set values if within local subdomain */
 
-	blue_phase_q_uniaxial(amplitude0_, n, q);
-	phi_set_q_tensor(index, q);
+	if((ic > offset[X]) && (ic <= offset[X] + nlocal[X]) &&
+	   (jc > offset[Y]) && (jc <= offset[Y] + nlocal[Y]) &&
+	   (kc > offset[Z]) && (kc <= offset[Z] + nlocal[Z])) {
+
+	  index = coords_index(ic-offset[X], jc-offset[Y], kc-offset[Z]);
+	      
+	  n[X] = cos(phase1)*sin(phase2);
+	  n[Y] = sin(phase1)*sin(phase2);
+	  n[Z] = cos(phase2);
+
+	  blue_phase_q_uniaxial(amplitude0_, n, q);
+	  phi_set_q_tensor(index, q);
+	}
       }
     }
   }
@@ -855,14 +867,19 @@ void blue_set_random_q_init(void) {
 /*****************************************************************************
  *
  *  blue_set_random_q_rectangle_init
- *  Setting q tensor to isotropic in chosen area of the simulation box
+ *
+ *  Within the limits of the rectanular box provided, set the initial
+ *  Q tensor to a random value. The idea here is to 'melt' the order
+ *  set previously (e.g., to cholesteric), but only in a small region.
+ *
+ *  We should then have amplitude of order a0 << amplitude0_; we use
+ *  a0 = 1.0e-06. 
  * 
  *****************************************************************************/
 
 void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 				      const double ymin, const double ymax,
 				      const double zmin, const double zmax) {
-
   int i, j, k;
   int nlocal[3];
   int offset[3];
@@ -871,7 +888,8 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
   double n[3];
   double q[3][3];
   double phase1, phase2;
-  
+  double a0 = 0.000001;   /* Initial amplitude of order in 'box' */
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
   
@@ -897,9 +915,7 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 		n[Y] = sin(phase1)*sin(phase2);
 		n[Z] = cos(phase2);
 
-		/* Here we need something "small" for the order */
-		/*blue_phase_q_uniaxial(amplitude0_, n, q);*/
-		blue_phase_q_uniaxial(0.000001, n, q);
+		blue_phase_q_uniaxial(a0, n, q);
 		phi_set_q_tensor(index, q);
 	      }
 	  }
