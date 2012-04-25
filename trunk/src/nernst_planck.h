@@ -1,22 +1,22 @@
 /*****************************************************************************
  *
- *  advection_bcs.h
+ *  nernst_planck.h
  *
- *  $Id: advection_bcs.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009 The University of Edinburgh
+ *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef ADVECTION_BCS_H
-#define ADVECTION_BCS_H
+#ifndef NERNST_PLANCK_H
+#define NERNST_PLANCK_H
 
-void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
-				  double * fluxy, double * fluxz);
-void advection_bcs_wall(void);
+#include "psi.h"
+
+int nernst_planck_driver(psi_t * psi);
 
 #endif

@@ -15,6 +15,8 @@
 #ifndef IOHARNESS_H
 #define IOHARNESS_H
 
+#include <stdio.h>
+
 struct io_info_t * io_info_create(void);
 struct io_info_t * io_info_create_with_grid(const int *);
 void io_info_destroy(struct io_info_t *);
@@ -36,5 +38,6 @@ void io_info_set_format_binary(struct io_info_t *);
 void io_read(char *, struct io_info_t *);
 void io_write(char *, struct io_info_t *);
 void io_write_metadata(char *, struct io_info_t *);
+void io_remove(char *, struct io_info_t *);
 
 #endif

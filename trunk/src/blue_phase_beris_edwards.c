@@ -88,7 +88,7 @@ void blue_phase_beris_edwards(void) {
   colloids_fix_swd();
   hydrodynamics_leesedwards_transformation();
   advection_upwind(fluxe, fluxw, fluxy, fluxz);
-  advection_bcs_no_normal_flux(fluxe, fluxw, fluxy, fluxz);
+  advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
 
   if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     blue_phase_be_surface(hs5);

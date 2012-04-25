@@ -30,12 +30,11 @@
  *
  *****************************************************************************/
 
-void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
+void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz) {
 
   int nlocal[3];
   int ic, jc, kc, index, n;
-  int nop;
 
   double mask, maskw, maske, masky, maskz;
 
@@ -45,7 +44,6 @@ void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
   assert(fluxz);
 
   coords_nlocal(nlocal);
-  nop = phi_nop();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
@@ -59,11 +57,11 @@ void advection_bcs_no_normal_flux(double * fluxe, double * fluxw,
 	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
 	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
 
-	for (n = 0;  n < nop; n++) {
-	  fluxw[nop*index + n] *= mask*maskw;
-	  fluxe[nop*index + n] *= mask*maske;
-	  fluxy[nop*index + n] *= mask*masky;
-	  fluxz[nop*index + n] *= mask*maskz;
+	for (n = 0;  n < nf; n++) {
+	  fluxw[nf*index + n] *= mask*maskw;
+	  fluxe[nf*index + n] *= mask*maske;
+	  fluxy[nf*index + n] *= mask*masky;
+	  fluxz[nf*index + n] *= mask*maskz;
 	}
 
       }

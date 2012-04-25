@@ -85,9 +85,6 @@ void phi_force_colloid(void) {
 
 static void phi_force_fast(void) {
 
-  int n;
-
-
   phi_force_stress_allocate();
   phi_force_stress_compute();
 
