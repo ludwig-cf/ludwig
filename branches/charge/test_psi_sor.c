@@ -205,15 +205,16 @@ static int test_charge1_set(psi_t * psi) {
  *
  *  We compare this with the solution obtained via the SOR function.
  *  Note that the linear system gives an answer which is different
- *  by a constant offset \psi_0. (I think this is related to the
- *  treatment of the periodic boundaries.)
+ *  by a constant offset \psi_0. (All solutions of the Poisson equation
+ *  in periodic boundary conditions are the same to within an arbitrary
+ *  constant provided the 'unit cell' is charge neutral.)
  *
  *  The two solutions may then be compared to within (roughly) the
  *  relative tolerance prescribed for the SOR. In turn, the solution
  *  of the Gauss Jordan routine has been checked agaisnt NAG F04AAF.
  *
- *  We also recompute the RHS by differencing the SOR solution to
- *  provide a final check.
+ *  We also recompute the RHS by differencing the SOR solution with
+ *  a three point stencil in one dimension to provide a final check.
  *
  *****************************************************************************/
 
@@ -242,7 +243,10 @@ static int test_charge1_exact(psi_t * obj, double tolerance) {
   if (c == NULL) fatal("calloc(c) failed\n");
 
   /* Set tridiagonal elements for periodic solution for the
-   * three-point stencil. */
+   * three-point stencil. The logic is to remove the perioidic end
+   * points which prevent a solution of the linear system. This
+   * effectively sets a Dirichlet boundary condition with psi = 0
+   * at both ends. */
 
   for (k = 0; k < n; k++) {
     a[k*n + k] = -2.0;
