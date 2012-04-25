@@ -892,3 +892,26 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  psi_debye_length
+ *
+ *  This is just for information.
+ *  Note the Debye length needs a bulk ionic strength as input.
+ *
+ *****************************************************************************/
+
+int psi_debye_length(psi_t * obj, double ios, double * ld) {
+
+  double lb[1];
+
+  assert(obj);
+  assert(ld);
+
+  psi_bjerrum_length(obj,lb);
+
+  *ld = 1.0/sqrt(8.0*M_PI*lb[0]*ios);
+
+  return 0;
+}

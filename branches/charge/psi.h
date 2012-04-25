@@ -41,5 +41,6 @@ int psi_beta_set(psi_t * obj, double beta);
 int psi_epsilon(psi_t * obj, double * epsilon);
 int psi_epsilon_set(psi_t * obj, double epsilon);
 int psi_bjerrum_length(psi_t * obj, double * lb);
+int psi_debye_length(psi_t * obj, double ios, double * ld);
 
 #endif
