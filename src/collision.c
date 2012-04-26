@@ -325,7 +325,7 @@ void collision_binary_lb() {
 
   double    force_local[3];
   double    force_global[3];
-  double    f[NVEL];
+  /* double    f[NVEL]; */
 
   const double   r3     = (1.0/3.0);
 
@@ -354,179 +354,263 @@ void collision_binary_lb() {
   rtau2 = 2.0 / (1.0 + 6.0*mobility);
   fluctuations_off(shat, ghat);
 
+
+  int iv,base_index;
+  int nv,full_vec;
+
+  /* temporary structures for holding SIMD vectors */
+  double f_v[NVEL][SIMDVL];
+  double mode_v[NVEL][SIMDVL];
+  double u_v[3][SIMDVL];
+
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
-
+      /* loop over Z index in steps of size SIMDVL */
+      for (kc = 1; kc <= N[Z]; kc+=SIMDVL) {
+		
+	/* nv is the number of SIMD iterations: i.e. SIMDVL unless
+	 * this overflows the dimension, in which it becomes the number of
+	 * remaining valid sites. Note that, we need to use the CPP variable
+	 * SIMDVL rather than the runtime nv where possible in key loops to
+	 * help compiler optimisation */
+	nv=SIMDVL;
+	full_vec=1;
+	if ( kc > N[Z]-SIMDVL+1 ){
+	  full_vec=0;
+	  nv=N[Z]+1-kc;
+	}
+	
+	base_index=coords_index(ic, jc, kc);
+	
+	/* TO DO: update this for case where fluid boundary occurs within 
+           SIMD vector? */
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
-	index = coords_index(ic, jc, kc);
-
+	
+	
 	/* Compute all the modes */
-
-	distribution_index(index, 0, f);
-
+	
+	/* load SIMD vector of lattice sites */
+	if ( full_vec )
+	  distribution_multi_index(base_index, 0, f_v);
+	else
+	  distribution_multi_index_part(base_index, 0, f_v, nv);
+	
+	/* matrix multiplication for full SIMD vector */
 	for (m = 0; m < nmodes_; m++) {
-	  mode[m] = 0.0;
+	  for (iv = 0; iv < SIMDVL; iv++)
+	    mode_v[m][iv] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += f[p]*ma_[m][p];
-	  }
-	}
-
-	/* For convenience, write out the physical modes. */
-
-	rho = mode[0];
-	for (i = 0; i < 3; i++) {
-	  u[i] = mode[1 + i];
-	}
-	s[X][X] = mode[4];
-	s[X][Y] = mode[5];
-	s[X][Z] = mode[6];
-	s[Y][X] = s[X][Y];
-	s[Y][Y] = mode[7];
-	s[Y][Z] = mode[8];
-	s[Z][X] = s[X][Z];
-	s[Z][Y] = s[Y][Z];
-	s[Z][Z] = mode[9];
-
-	/* Compute the local velocity, taking account of any body force */
-
-	rrho = 1.0/rho;
-	hydrodynamics_get_force_local(index, force_local);
-
-	for (i = 0; i < 3; i++) {
-	  force[i] = (force_global[i] + force_local[i]);
-	  u[i] = rrho*(u[i] + 0.5*force[i]);  
-	}
-	hydrodynamics_set_velocity(index, u);
-
-	/* Compute the thermodynamic component of the stress */
-
-	chemical_stress(index, sth);
-
-	/* Relax stress with different shear and bulk viscosity */
-
-	tr_s   = 0.0;
-	tr_seq = 0.0;
-
-	for (i = 0; i < 3; i++) {
-	  /* Set equilibrium stress, which includes thermodynamic part */
-	  for (j = 0; j < 3; j++) {
-	    seq[i][j] = rho*u[i]*u[j] + sth[i][j];
-	  }
-	  /* Compute trace */
-	  tr_s   += s[i][i];
-	  tr_seq += seq[i][i];
-	}
-
-	/* Form traceless parts */
-	for (i = 0; i < 3; i++) {
-	  s[i][i]   -= r3*tr_s;
-	  seq[i][i] -= r3*tr_seq;
-	}
-
-	/* Relax each mode */
-	tr_s = tr_s - rtau_bulk*(tr_s - tr_seq);
-
-	for (i = 0; i < 3; i++) {
-	  for (j = 0; j < 3; j++) {
-	    s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
-	    s[i][j] += d_[i][j]*r3*tr_s;
-
-	    /* Correction from body force (assumes equal relaxation times) */
-
-	    s[i][j] += (2.0-rtau_shear)*(u[i]*force[j] + force[i]*u[j]);
-	    shat[i][j] = 0.0;
-	  }
-	}
-
-	if (isothermal_fluctuations_) {
-	  collision_fluctuations(index, shat, ghat);
-	}
-
-	/* Now reset the hydrodynamic modes to post-collision values */
-
-	mode[1] = mode[1] + force[X];    /* Conserved if no force */
-	mode[2] = mode[2] + force[Y];    /* Conserved if no force */
-	mode[3] = mode[3] + force[Z];    /* Conserved if no force */
-	mode[4] = s[X][X] + shat[X][X];
-	mode[5] = s[X][Y] + shat[X][Y];
-	mode[6] = s[X][Z] + shat[X][Z];
-	mode[7] = s[Y][Y] + shat[Y][Y];
-	mode[8] = s[Y][Z] + shat[Y][Z];
-	mode[9] = s[Z][Z] + shat[Z][Z];
-
-	/* Ghost modes are relaxed toward zero equilibrium. */
-
-	for (m = NHYDRO; m < nmodes_; m++) {
-	  mode[m] = mode[m] - rtau_[m]*(mode[m] - 0.0) + ghat[m];
-	}
-
-	/* Project post-collision modes back onto the distribution */
-
-	for (p = 0; p < NVEL; p++) {
-	  f[p] = 0.0;
-	  for (m = 0; m < nmodes_; m++) {
-	    f[p] += mi_[p][m]*mode[m];
-	  }
-	}
-
-	distribution_index_set(index, 0, f);
-
-	/* Now, the order parameter distribution */
-
-	phi = phi_get_phi_site(index);
-	mu = chemical_potential(index, 0);
-	distribution_index(index, 1, f);
-
-	jphi[X] = 0.0;
-	jphi[Y] = 0.0;
-	jphi[Z] = 0.0;
-	for (p = 1; p < NVEL; p++) {
-	  for (i = 0; i < 3; i++) {
-	    jphi[i] += f[p]*cv[p][i];
-	  }
-	}
-
-
-	/* Relax order parameters modes. See the comments above. */
-
-	for (i = 0; i < 3; i++) {
-	  for (j = 0; j < 3; j++) {
-	    sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
-	    /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
-	  }
-	  jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
-	  /* jphi[i] = phi*u[i];*/
-	}
-
-	/* Now update the distribution */
-
-	for (p = 0; p < NVEL; p++) {
-
-	  int dp0 = (p == 0);
-	  jdotc    = 0.0;
-	  sphidotq = 0.0;
-
-	  for (i = 0; i < 3; i++) {
-	    jdotc += jphi[i]*cv[p][i];
-	    for (j = 0; j < 3; j++) {
-	      sphidotq += sphi[i][j]*q_[p][i][j];
+	    for (iv = 0; iv < SIMDVL; iv++) {
+	      mode_v[m][iv] += f_v[p][iv]*ma_[m][p];
 	    }
 	  }
-
-	  /* Project all this back to the distributions. The magic
-	   * here is to move phi into the non-propagating distribution. */
-
-	  f[p] = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
+	  
 	}
+	
+	/* loop over SIMD vector of lattice sites */
+	for (iv = 0; iv < nv; iv++) {
+	  
+	  for (m = 0; m < nmodes_; m++) 
+	    mode[m]=mode_v[m][iv];
 
-	distribution_index_set(index, 1, f);
+	  index=base_index+iv;
+	  
+	  /* For convenience, write out the physical modes. */
+	  
+	  rho = mode[0];
+	  for (i = 0; i < 3; i++) {
+	    u[i] = mode[1 + i];
+	  }
+	  s[X][X] = mode[4];
+	  s[X][Y] = mode[5];
+	  s[X][Z] = mode[6];
+	  s[Y][X] = s[X][Y];
+	  s[Y][Y] = mode[7];
+	  s[Y][Z] = mode[8];
+	  s[Z][X] = s[X][Z];
+	  s[Z][Y] = s[Y][Z];
+	  s[Z][Z] = mode[9];
+	  
+	  /* Compute the local velocity, taking account of any body force */
+	  
+	  rrho = 1.0/rho;
+	  hydrodynamics_get_force_local(index, force_local);
+	  
+	  for (i = 0; i < 3; i++) {
+	    force[i] = (force_global[i] + force_local[i]);
+	    u[i] = rrho*(u[i] + 0.5*force[i]);  
+	  }
+	  hydrodynamics_set_velocity(index, u);
+	  
+	  /* Compute the thermodynamic component of the stress */
+	  
+	  chemical_stress(index, sth);
+	  
+	  /* Relax stress with different shear and bulk viscosity */
+	  
+	  tr_s   = 0.0;
+	  tr_seq = 0.0;
+	  
+	  for (i = 0; i < 3; i++) {
+	    /* Set equilibrium stress, which includes thermodynamic part */
+	    for (j = 0; j < 3; j++) {
+	      seq[i][j] = rho*u[i]*u[j] + sth[i][j];
+	    }
+	    /* Compute trace */
+	    tr_s   += s[i][i];
+	    tr_seq += seq[i][i];
+	  }
+	  
+	  /* Form traceless parts */
+	  for (i = 0; i < 3; i++) {
+	    s[i][i]   -= r3*tr_s;
+	    seq[i][i] -= r3*tr_seq;
+	  }
+	  
+	/* Relax each mode */
+	  tr_s = tr_s - rtau_bulk*(tr_s - tr_seq);
+	  
+	  for (i = 0; i < 3; i++) {
+	    for (j = 0; j < 3; j++) {
+	      s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
+	      s[i][j] += d_[i][j]*r3*tr_s;
+	      
+	      /* Correction from body force (assumes equal relaxation times) */
+	      
+	      s[i][j] += (2.0-rtau_shear)*(u[i]*force[j] + force[i]*u[j]);
+	      shat[i][j] = 0.0;
+	    }
+	  }
+	  
+	  if (isothermal_fluctuations_) {
+	    collision_fluctuations(index, shat, ghat);
+	  }
+	  
+	  /* Now reset the hydrodynamic modes to post-collision values */
+	  
+	  mode[1] = mode[1] + force[X];    /* Conserved if no force */
+	  mode[2] = mode[2] + force[Y];    /* Conserved if no force */
+	  mode[3] = mode[3] + force[Z];    /* Conserved if no force */
+	  mode[4] = s[X][X] + shat[X][X];
+	  mode[5] = s[X][Y] + shat[X][Y];
+	  mode[6] = s[X][Z] + shat[X][Z];
+	  mode[7] = s[Y][Y] + shat[Y][Y];
+	  mode[8] = s[Y][Z] + shat[Y][Z];
+	  mode[9] = s[Z][Z] + shat[Z][Z];
+	  
+
+
+	  /* Ghost modes are relaxed toward zero equilibrium. */
+	  
+	  for (m = NHYDRO; m < nmodes_; m++) {
+	    mode[m] = mode[m] - rtau_[m]*(mode[m] - 0.0) + ghat[m];
+	  }
+	  
+	  for (m = 0; m < nmodes_; m++) {
+	    mode_v[m][iv]=mode[m];
+	  }
+	  	  
+	  for (i = 0; i < 3; i++) {	    
+	    u_v[i][iv]=u[i];
+	  }
+
+	} /* end loop over SIMD vector */
+	
+	
+	/* Project post-collision modes back onto the distribution */
+	/* matrix multiplication for full SIMD vector */
+	for (p = 0; p < NVEL; p++) {
+	  for (iv = 0; iv < SIMDVL; iv++) 
+	    f_v[p][iv] = 0.0;
+	  for (m = 0; m < nmodes_; m++) {
+	    for (iv = 0; iv < SIMDVL; iv++) 
+	      f_v[p][iv] += mi_[p][m]*mode_v[m][iv];
+	  }
+	}
+	
+	/* store SIMD vector of lattice sites */
+	if ( full_vec )
+	  distribution_multi_index_set(base_index, 0, f_v);
+	else
+	  distribution_multi_index_set_part(base_index, 0, f_v, nv);
+	
+	/* load SIMD vector of lattice sites */
+	if ( full_vec )
+	  distribution_multi_index(base_index, 1, f_v);
+	else
+	  distribution_multi_index_part(base_index, 1, f_v, nv);
+	
+	
+	/* start loop over SIMD vector of lattice sites */ 
+	for (iv = 0; iv < nv; iv++) {
+	  
+	  index=base_index+iv;
+
+	  for (i = 0; i < 3; i++) {	    
+	    u[i]=u_v[i][iv];
+	  }
+	  
+	  /* Now, the order parameter distribution */
+	  
+	  phi = phi_get_phi_site(index);
+	  mu = chemical_potential(index, 0);
+	  
+	  jphi[X] = 0.0;
+	  jphi[Y] = 0.0;
+	  jphi[Z] = 0.0;
+	  for (p = 1; p < NVEL; p++) {
+	    for (i = 0; i < 3; i++) {
+	      jphi[i] += f_v[p][iv]*cv[p][i];
+	    }
+	  }
+	  
+	  
+	  /* Relax order parameters modes. See the comments above. */
+
+	  for (i = 0; i < 3; i++) {
+	    for (j = 0; j < 3; j++) {
+	      sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
+	      /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
+	    }
+	    jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
+	    /* jphi[i] = phi*u[i];*/
+	  }
+	  
+	  /* Now update the distribution */
+	  
+	  for (p = 0; p < NVEL; p++) {
+	    
+	    int dp0 = (p == 0);
+	    jdotc    = 0.0;
+	    sphidotq = 0.0;
+	    
+	    for (i = 0; i < 3; i++) {
+	      jdotc += jphi[i]*cv[p][i];
+	      for (j = 0; j < 3; j++) {
+		sphidotq += sphi[i][j]*q_[p][i][j];
+	      }
+	    }
+	    
+	    /* Project all this back to the distributions. The magic
+	     * here is to move phi into the non-propagating distribution. */
+	    
+	    f_v[p][iv] = wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
+	  }
+
+	} /* end loop over SIMD vector */ 
+	
+	/* store SIMD vector of lattice sites */
+	if ( full_vec )
+	  distribution_multi_index_set(base_index, 1, f_v);
+	else
+	  distribution_multi_index_set_part(base_index, 1, f_v, nv);
+	
 
 	/* Next site */
       }
     }
   }
-
+  
   return;
 }
 

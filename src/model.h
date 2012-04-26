@@ -23,6 +23,10 @@
 #error "You must define -D_D2Q9_, -D_D3Q15_ or -D_D3Q19_ in the Makefile" 
 #endif
 
+/* tunable vector length for SIMD auto-vectorisation over lattice sites */
+#define SIMDVL 8 
+
+
 /* Number of hydrodynamic modes */
 enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
@@ -54,8 +58,16 @@ void   distribution_halo_set_complete(void);
 void   distribution_halo_set_reduced(void);
 void   distribution_init_f(void);
 void   distribution_index(const int index, const int n, double f[NVEL]);
+void distribution_multi_index(const int index, const int n, 
+			      double f_vec[NVEL][SIMDVL]);
+void distribution_multi_index_part(const int index, const int n, 
+				   double f_vec[NVEL][SIMDVL],int nv);
 void   distribution_index_set(const int index, const int n,
 			      const double f[NVEL]);
+void distribution_multi_index_set(const int index, const int n,
+				  double f_vec[NVEL][SIMDVL]);
+void distribution_multi_index_set_part(const int index, const int n,
+				       double f_vec[NVEL][SIMDVL], int nv);
 
 struct io_info_t * distribution_io_info(void);
 void   distribution_io_info_set(struct io_info_t * io_info);
