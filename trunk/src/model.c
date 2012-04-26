@@ -895,6 +895,60 @@ void distribution_index(const int index, const int n, double f[NVEL]) {
   return;
 }
 
+
+/*****************************************************************************
+ *
+ *  distribution_multi_index
+ *
+ *  Return a vector of distributions starting at index 
+ *  where the vector length is fixed at SIMDVL
+ *
+ *****************************************************************************/
+void distribution_multi_index(const int index, const int n, 
+			      double f_vec[NVEL][SIMDVL]) {
+
+  int p,iv;
+
+  assert(initialised_);
+  assert(n >= 0 && n < ndist_);
+  assert(index >= 0 && index < nsite_);
+
+  for (p = 0; p < NVEL; p++) {
+        for (iv = 0; iv < SIMDVL; iv++) {
+	  f_vec[p][iv] = f_[ndist_*NVEL*(index+iv) + n*NVEL + p];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_multi_index_part
+ *
+ *  Return a vector of distributions starting at index 
+ *  where the vector length is passed in at runtime
+ *
+ *****************************************************************************/
+void distribution_multi_index_part(const int index, const int n, 
+				   double f_vec[NVEL][SIMDVL],int nv) {
+
+  int p,iv;
+
+  assert(initialised_);
+  assert(n >= 0 && n < ndist_);
+  assert(index >= 0 && index < nsite_);
+
+  for (p = 0; p < NVEL; p++) {
+    for (iv = 0; iv < nv; iv++) {
+      f_vec[p][iv] = f_[ndist_*NVEL*(index+iv) + n*NVEL + p];
+    }
+  }
+
+  return;
+}
+
+
 /*****************************************************************************
  *
  *  distribution_index_set
@@ -902,7 +956,6 @@ void distribution_index(const int index, const int n, double f[NVEL]) {
  *  Set distribution n and index.
  *
  *****************************************************************************/
-
 void distribution_index_set(const int index, const int n,
 			    const double f[NVEL]) {
   int p;
@@ -917,6 +970,63 @@ void distribution_index_set(const int index, const int n,
 
   return;
 }
+
+
+/*****************************************************************************
+ *
+ *  distribution_multi_index_set
+ *
+ *  Set a vector of distributions starting at index 
+ *  where the vector length is fixed at SIMDVL
+ *
+ *****************************************************************************/
+void distribution_multi_index_set(const int index, const int n,
+				double f_vec[NVEL][SIMDVL]) {
+  int p,iv;
+
+  assert(initialised_);
+  assert(n >= 0 && n < ndist_);
+  assert(index >= 0 && index < nsite_);
+
+
+
+  for (p = 0; p < NVEL; p++) {
+    for (iv = 0; iv < SIMDVL; iv++) {
+      f_[ndist_*NVEL*(index+iv) + n*NVEL + p] = f_vec[p][iv];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_multi_index_set_part
+ *
+ *  Set a vector of distributions starting at index 
+ *  where the vector length is passed in at runtime
+ *
+ *****************************************************************************/
+void distribution_multi_index_set_part(const int index, const int n,
+				double f_vec[NVEL][SIMDVL], int nv) {
+  int p,iv;
+
+  assert(initialised_);
+  assert(n >= 0 && n < ndist_);
+  assert(index >= 0 && index < nsite_);
+
+
+
+  for (p = 0; p < NVEL; p++) {
+    for (iv = 0; iv < nv; iv++) {
+      f_[ndist_*NVEL*(index+iv) + n*NVEL + p] = f_vec[p][iv];
+    }
+  }
+
+  return;
+}
+
+
 
 /*****************************************************************************
  *
