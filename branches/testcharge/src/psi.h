@@ -18,6 +18,7 @@
 typedef struct psi_s psi_t;
 
 int psi_create(int nk, psi_t ** pobj);
+int psi_init(int nk, psi_t ** refpsi_);
 void psi_free(psi_t * obj);
 int psi_init_io_info(psi_t * obj, int grid[3]);
 

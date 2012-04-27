@@ -41,22 +41,18 @@ static int psi_write_ascii(FILE * fp, const int, const int, const int);
  *
  *  psi_init
  *
- *  Initialise psi_
+ *  Initialise psi_ and return.
  *
  *****************************************************************************/
 
-void psi_init(int nk, double * valency, double * diffusivity) {
+int psi_init(int nk, psi_t ** refpsi_) {
 
-  int n;
+  assert(refpsi_);
 
   psi_create(nk, &psi_);
+  *refpsi_ = psi_;
 
-  for (n = 0; n < nk; n++) {
-    psi_valency_set(psi_, n, valency[n]);
-    psi_diffusivity_set(psi_, n, diffusivity[n]);
-  }
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
