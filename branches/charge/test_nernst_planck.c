@@ -1,18 +1,18 @@
 /*****************************************************************************
-*
-*  test_nernst_planck.c
-*
-*  Unit test for electrokinetic quantities.
-*
-*  $Id$
-*
-*  Edinburgh Soft Matter and Statistical Physics Group and
-*  Edinburgh Parallel Computing Centre
-*
-*  Kevin Stratford (kevin@epcc.ed.ac.uk)
-*  (c) 2012 The University of Edinburgh
-*
-*****************************************************************************/
+ *
+ *  test_nernst_planck.c
+ *
+ *  Unit test for electrokinetic quantities.
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Oliver Henrich (o.henrich@ucl.ac.uk)
+ *  (c) 2012 The University of Edinburgh
+ *
+ *****************************************************************************/
 
 #include <assert.h>
 #include <float.h>
@@ -49,13 +49,31 @@ int main(int argc, char ** argv) {
 
   return 0;
 }
+
 /*****************************************************************************
  *
  *  do_test_gouy_chapman
  *
- *  Set rho(z = 1)  = + (1/2NxNy)
- *      rho(z = Lz) = + (1/2NxNy)
- *      rho         = - 1/(NxNy*(Nz-2)) + electrolyte
+ *  A theory exists for symmetric electrolytes near a flat surface
+ *  owing to Gouy and Chapman. (See Lyklema "Fundamentals of
+ *  Interface and Colloid Science" Vol. II Section 3.5.)
+ *
+ *  Here we approximate this by a quasi-one dimensional system
+ *  with walls at each end in the z-direction. An initial
+ *  charge distribution is set up which must be net neutral,
+ *  and has +ve charge at the wall and a mixture in the
+ *  fluid. The resulting diffusion sets up a double layer in the
+ *  fluid near the walls.
+ *
+ *  Set rho(z = 1)  = + 1 / (2 Nx Ny)
+ *      rho(z = Lz) = + 1 / (2 Nx Ny)
+ *      rho         = - 1 / (Nx Ny*(Nz - 2)) + electrolyte
+ *
+ *  The time to reach equilibrium is diffusional: L_z^2 / D_eff
+ *  where D_eff ~= D_k e beta rho_k (from the Nernst Planck
+ *  equation). The parameters make 20,000 steps reasonable.
+ *
+ *  The tolerances on the SOR could be investigated.
  *
  *  This is a test of the Gouy-Chapman theory.
  *
@@ -63,33 +81,58 @@ int main(int argc, char ** argv) {
 
 static int do_test_gouy_chapman(void) {
 
-  int ic, jc, kc, index, in;
-  int nlocal[3], noff[3];
+  int nk = 2;          /* Number of species */
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int noffst[3];
   int tstep;
-  double rho_w, rho_i, rho_el, rho_b;
-  double field[3], lb[1], ld[1], sp[1], cont[1];
+  double rho_w;               /* wall charge density */
+  double rho_i;               /* Interior charge density */
+  double rho_b;               /* background ionic strength */
+
   double tol_abs = 0.01*FLT_EPSILON;
   double tol_rel = 1.00*FLT_EPSILON;
+  int valency[2] = {+1, -1};
   double diffusivity[2] = {1.e-2, 1.e-2};
-  double eunit = 1.;
-  double epsilon = 3.3e3;
-  double beta = 3.0e4;
-  FILE * out;
-  int n[3]={4,4,64};
+
+  double eunit = 1.;           /* Unit charge, ... */
+  double epsilon = 3.3e3;      /* ... epsilon, and ... */
+  double beta = 3.0e4;         /* ... the Boltzmann factor i.e., t ~ 10^5 */
+  double lb;                   /* ... make up the Bjerrum length */
+  double ldebye;               /* Debye length */
+  double rho_el = 1.0e-3;      /* charge density */
+  double yd;                   /* Dimensionless surface potential */
+
+  int ntotal[3] = {4, 4, 64};  /* Quasi-one-dimensional system */
+  int grid[3];                 /* Processor decomposition */
+
+  double * field;               /* 1-d field */
+  double * psifield;            /* 1-d psi field for output */
+  double * rho0field;           /* 1-d rho0 field for output */
+  double * rho1field;           /* 1-d rho0 field for output */
   int tmax = 20001;
   char filename[30];
+  FILE * out;
 
   coords_nhalo_set(1);
-  coords_ntotal_set(n);
+  coords_ntotal_set(ntotal);
+
+  grid[X] = 1;
+  grid[Y] = 1;
+  grid[Z] = pe_size();
+  coords_decomposition_set(grid);
+
   coords_init();
   coords_nlocal(nlocal);
+  coords_nlocal_offset(noffst);
 
   site_map_init();
 
-  psi_create(2, &psi_);
+  psi_create(nk, &psi_);
 
-  psi_valency_set(psi_, 0, +1);
-  psi_valency_set(psi_, 1, -1);
+  psi_valency_set(psi_, 0, valency[0]);
+  psi_valency_set(psi_, 1, valency[1]);
   psi_diffusivity_set(psi_, 0, diffusivity[0]);
   psi_diffusivity_set(psi_, 1, diffusivity[1]);
   psi_unit_charge_set(psi_, eunit);
@@ -98,10 +141,10 @@ static int do_test_gouy_chapman(void) {
 
   /* wall charge density */
   rho_w = 1.e+0 / (2.0*L(X)*L(Y));
-  rho_el = 1.e-3;
 
   /* counter charge density */
   rho_i = rho_w * (2.0*L(X)*L(Y)) / (L(X)*L(Y)*(L(Z) - 2.0));
+
 
   /* apply counter charges & electrolyte */
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -142,7 +185,7 @@ static int do_test_gouy_chapman(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	site_map_set_status(ic,jc,kc,BOUNDARY);
+	site_map_set_status(ic, jc, kc, BOUNDARY);
 
 	psi_rho_set(psi_, index, 0, rho_w);
 	psi_rho_set(psi_, index, 1, 0.0);
@@ -153,73 +196,114 @@ static int do_test_gouy_chapman(void) {
 
   site_map_halo();
 
-  for(tstep=0; tstep<tmax; tstep++){
+  for (tstep = 0; tstep < tmax; tstep++) {
 
     psi_halo_psi(psi_);
     psi_sor_poisson(psi_, tol_abs, tol_rel);
     psi_halo_rho(psi_);
     nernst_planck_driver(psi_);
 
-    if (tstep%1000==0){
+    if (tstep % 1000 == 0) {
 
-      if (cart_rank() == 0) printf("%d\n", tstep);
+      info("%d\n", tstep);
       psi_stats_info(psi_);
-      sprintf(filename,"np_test-%d.dat",tstep);
-      out=fopen(filename,"w");
 
-      ic=2;
-      jc=2;
+      ic = 2;
+      jc = 2;
 
-      for(kc=1; kc<=nlocal[Z]; kc++){
+      /* 1D output. calloc() is used to zero the arays, then
+       * MPI_Gather to get complete picture. */
 
-	index = coords_index(ic, jc, kc);
+      field = calloc(nlocal[Z], sizeof(double));
+      psifield = calloc(ntotal[Z], sizeof(double));
+      rho0field = calloc(ntotal[Z], sizeof(double));
+      rho1field = calloc(ntotal[Z], sizeof(double));
+      if (field == NULL) fatal("calloc(field) failed\n");
+      if (psifield == NULL) fatal("calloc(psifield) failed\n");
+      if (rho0field == NULL) fatal("calloc(rho0field) failed\n");
+      if (rho1field == NULL) fatal("calloc(rho1field) failed\n");
 
-	psi_psi(psi_,index,cont);
-	field[0] = cont[0];
-	psi_rho(psi_,index,0,cont);
-	field[1] = cont[0];
-	psi_rho(psi_,index,1,cont);
-	field[2] = cont[0];
-
-	fprintf(out,"%d %le %le %le\n", kc, field[0], field[1], field[2]);
-
-      }
-
-      fclose(out);
-
-    }
-  }
-
-  coords_nlocal_offset(noff);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
- 
-	if(noff[0]+ic == 2 && noff[1]+jc ==2 && noff[2]+kc == 0.5*n[2]){
-	  for (in = 0; in < psi_->nk; in++) {
-	    rho_b += 1.0/psi_->nk*psi_->valency[in]*psi_->valency[in]*psi_->rho[psi_->nk*index + in];
-	  }
-	  psi_debye_length(psi_, rho_b, ld);
-	}
+	psi_psi(psi_, index, field + kc - 1);
+      }
+
+      MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
+		 psifield, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = coords_index(ic, jc, kc);
+	psi_rho(psi_, index, 0, field + kc - 1);
 
       }
+
+      MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
+		 rho0field, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = coords_index(ic, jc, kc);
+	psi_rho(psi_, index, 1, field + kc - 1);
+      }
+
+      MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
+		 rho1field, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+
+      if (cart_rank() == 0) {
+
+	sprintf(filename, "np_test-%d.dat", tstep);
+	out = fopen(filename, "w");
+	if (out == NULL) fatal("Could not open %s\n", filename);
+
+	for (kc = 1; kc <= ntotal[Z]; kc++) {
+	  fprintf(out, "%d %le %le %le\n", kc, psifield[kc-1],
+		  rho0field[kc-1], rho1field[kc-1]);
+	  
+	}
+	fclose(out);
+      }
+
+      free(rho1field);
+      free(rho0field);
+      free(psifield);
+      free(field);
     }
   }
 
-  if (cart_rank() == 0){
-    psi_bjerrum_length(psi_,lb);
-    psi_surface_potential(psi_,rho_w,rho_b,sp);
-    printf("Bjerrum length is %le\n",lb[0]);
-    printf("Debye length is %le\n",ld[0]);
-    printf("Surface potential is %le\n",sp[0]);
+  ic = 2;
+  jc = 2;
+
+  for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+    index = coords_index(ic, jc, kc);
+ 
+    if (noffst[Z] + kc == ntotal[Z] / 2) {
+      psi_ionic_strength(psi_, index, &rho_b);
+    }
   }
 
+  psi_bjerrum_length(psi_, &lb);
+  psi_debye_length(psi_, rho_b, &ldebye);
+  psi_surface_potential(psi_, rho_w, rho_b, &yd);
+  info("Bjerrum length is %le\n", lb);
+  info("Debye length is %le\n", ldebye);
+  info("Surface potential is %le\n", yd);
+
+  site_map_finish();
   psi_free(psi_);
   coords_finish();
-  site_map_finish();
 
+  return 0;
 }
 
+/*****************************************************************************
+ *
+ *  test_io
+ *
+ *****************************************************************************/
+
+static int test_io(void) {
+
+
+  return 0;
+}
