@@ -18,6 +18,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <stdio.h>
 #include <math.h>
 #include <float.h>
 
@@ -351,4 +352,52 @@ static void util_swap(int ia, int ib, double a[3], double b[3][3]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  util_discrete_volume_sphere
+ *
+ *  What is the discrete volume of a sphere radius a0 at position
+ *  r0 on the unit lattice?
+ *
+ *  Lattice sites are assumed to be at integer positions. Points
+ *  exactly at a0 from r0 are deemed to be outside. This is
+ *  coincides with the criteria for colloid construction.
+ *
+ *  I don't think there's any way to do this except draw a box
+ *  round the outside and count each site.
+ *
+ *  Result vn returned as a double. Returns zero on success.
+ *
+ *****************************************************************************/
+
+int util_discrete_volume_sphere(double r0[3], double a0, double * vn) {
+
+  int ic, jc, kc, nr;
+  double x0, y0, z0;    /* Reduced coordinate of argument r0 */
+  double rsq;           /* test radius (squared) */
+  assert(vn);
+
+  *vn = 0.0;
+
+  /* Reduce the coordinates to 0 <= x < 1 etc */
+  x0 = r0[X] - floor(r0[X]);
+  y0 = r0[Y] - floor(r0[Y]);
+  z0 = r0[Z] - floor(r0[Z]);
+  assert(x0 < 1.0);
+  assert(0.0 <= x0);
+
+  nr = ceil(a0);
+
+  for (ic = -nr; ic <= nr; ic++) {
+    for (jc = -nr; jc <= nr; jc++) {
+      for (kc = -nr; kc <= nr; kc++) {
+	rsq = pow(1.0*ic - x0, 2) + pow(1.0*jc - y0, 2) + pow(1.0*kc - z0, 2);
+	if (rsq < a0*a0) *vn += 1.0;
+      }
+    }
+  }
+
+  return 0;
 }
