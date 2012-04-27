@@ -873,9 +873,32 @@ int psi_epsilon_set(psi_t * obj, double epsilon) {
 
 /*****************************************************************************
  *
+ *  psi_ionic_strength
+ *
+ *  This is (1/2) \sum_k z_k^2 rho_k. This is a number density, and
+ *  doesn't contain the unit charge.
+ *
+ *****************************************************************************/
+
+int psi_ionic_strength(psi_t * psi, int index, double * sion) {
+
+  int n;
+  assert(psi);
+  assert(sion);
+
+  *sion = 0.0;
+  for (n = 0; n < psi->nk; n++) {
+    *sion += 0.5*psi->valency[n]*psi->valency[n]*psi->rho[psi->nk*index + n];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_bjerrum_length
  *
- *  This is really just for information.
+ *  Is equal to e^2 / 4 pi epsilon k_B T
  *
  *****************************************************************************/
 
@@ -885,6 +908,60 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
   assert(lb);
 
   *lb = obj->e*obj->e*obj->beta / (4.0*M_PI*obj->epsilon);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_debye_length
+ *
+ *  Returns the Debye length for a simple, symmetric electrolyte.
+ *  An ionic strength is required as input (see above); this
+ *  accounts for the factor of 8 in the denominator.
+ *
+ *****************************************************************************/
+
+int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
+
+  double lb;
+
+  assert(obj);
+  assert(rho_b > 0.0);
+  assert(ld);
+
+  psi_bjerrum_length(obj, &lb);
+  *ld = 1.0 / sqrt(8.0*M_PI*lb*rho_b);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_surface_potential
+ *
+ *  Returns the surface potential of a double layer for a simple,
+ *  symmetric electrolyte. The surface charge sigma and bulk ionic
+ *  strength rho_b of one species are required as input.
+ *
+ *  See, e.g., Lyklema "Fundamentals of Interface and Colloid Science"
+ *             Volume II Eqs. 3.5.13 and 3.5.14.
+ *
+ *****************************************************************************/
+
+int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
+			  double *sp) {
+  double p;
+
+  assert(obj);
+  assert(sp);
+  assert(obj->nk == 2);
+  assert(obj->valency[0] == -obj->valency[1]);
+
+  p = 1.0 / sqrt(8.0*obj->epsilon*rho_b / obj->beta);
+
+  *sp = fabs(2.0 / (obj->valency[0]*obj->e*obj->beta)
+	     *log(-p*sigma + sqrt(p*p*sigma*sigma + 1.0)));
 
   return 0;
 }
