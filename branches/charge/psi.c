@@ -877,7 +877,34 @@ int psi_epsilon_set(psi_t * obj, double epsilon) {
 
 /*****************************************************************************
  *
+ *  psi_ionic_strength
+ *
+ *  This is (1/nk) \sum_k z_k^2 rho_k. This is a number density, and
+ *  doesn't contain the unit charge.
+ *
+ *****************************************************************************/
+
+int psi_ionic_strength(psi_t * psi, int index, double * sion) {
+
+  int n;
+  assert(psi);
+  assert(sion);
+
+  *sion = 0.0;
+  for (n = 0; n < psi->nk; n++) {
+    *sion += psi->valency[n]*psi->valency[n]*psi->rho[psi->nk*index + n];
+  }
+
+  *sion *= (1.0/psi->nk);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_bjerrum_length
+ *
+ *  Is equal to e^2 / 4 pi epsilon k_B T
  *
  *****************************************************************************/
 
@@ -903,14 +930,15 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
 
 int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
 
-  double lb[1];
+  double lb;
 
   assert(obj);
+  assert(rho_b > 0.0);
   assert(ld);
 
-  psi_bjerrum_length(obj,lb);
+  psi_bjerrum_length(obj, &lb);
 
-  *ld = 1.0/sqrt(8.0*M_PI*lb[0]*rho_b);
+  *ld = 1.0 / sqrt(8.0*M_PI*lb*rho_b);
 
   return 0;
 }
