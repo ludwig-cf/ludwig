@@ -54,12 +54,15 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->h);
   nread += fscanf(fp, vformat, &ps->dr[0], &ps->dr[1], &ps->dr[2]);
   nread += fscanf(fp, sformat, &ps->deltaphi);
-  nread += fscanf(fp, sformat, &ps->spare1);
-  nread += fscanf(fp, vformat, &ps->spare2[0], &ps->spare2[1], &ps->spare2[2]);
 
-  /* ... makes a total of 31 items for 1 structure */
+  nread += fscanf(fp, sformat, &ps->q);
+  nread += fscanf(fp, sformat, &ps->epsilon);
+  nread += fscanf(fp, vformat, &ps->spare[0], &ps->spare[1], &ps->spare[2]);
 
-  if (nread == 31) iread = 1;
+
+  /* ... makes a total of 32 items for 1 structure */
+
+  if (nread == 32) iread = 1;
 
   /* Always set the rebuild flag (even if file has zero) */
 
@@ -125,12 +128,15 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s.h);
   nwrite += fprintf(fp, vformat, s.dr[0], s.dr[1], s.dr[2]);
   nwrite += fprintf(fp, sformat, s.deltaphi);
-  nwrite += fprintf(fp, sformat, s.spare1);
-  nwrite += fprintf(fp, vformat, s.spare2[0], s.spare2[1], s.spare2[2]);
 
-  /* ... should be 31 items of 23 characters */
+  nwrite += fprintf(fp, sformat, s.q);
+  nwrite += fprintf(fp, sformat, s.epsilon);
+  nwrite += fprintf(fp, vformat, s.spare[0], s.spare[1], s.spare[2]);
 
-  if (nwrite == 31*23) iwrite = 1;
+
+  /* ... should be 32 items of 23 characters */
+
+  if (nwrite == 32*23) iwrite = 1;
 
   return iwrite;
 }
