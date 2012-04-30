@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <float.h>
 #include <mpi.h>
 
 #include "pe.h"
@@ -28,6 +29,8 @@
 #include "psi_s.h"
 
 static const double e_unit_default = 1.0; /* Default unit charge */
+static const double reltol_default = FLT_EPSILON; /* Solver tolerance */
+static const double abstol_default = 0.01*FLT_EPSILON;
 
 psi_t * psi_ = NULL;
 
@@ -120,6 +123,8 @@ int psi_create(int nk, psi_t ** pobj) {
   if (psi->valency == NULL) fatal("calloc(psi->valency) failed\n");
 
   psi->e = e_unit_default;
+  psi->reltol = reltol_default;
+  psi->abstol = abstol_default;
 
   psi_init_mpi_indexed(psi);
   *pobj = psi; 
@@ -962,6 +967,38 @@ int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
 
   *sp = fabs(2.0 / (obj->valency[0]*obj->e*obj->beta)
 	     *log(-p*sigma + sqrt(p*p*sigma*sigma + 1.0)));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_reltol
+ *
+ *****************************************************************************/
+
+int psi_reltol(psi_t * obj, double * reltol) {
+
+  assert(obj);
+  assert(reltol);
+
+  *reltol = obj->reltol;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_abstol
+ *
+ *****************************************************************************/
+
+int psi_abstol(psi_t * obj, double * abstol) {
+
+  assert(obj);
+  assert(abstol);
+
+  *abstol = obj->abstol;
 
   return 0;
 }

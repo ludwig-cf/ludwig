@@ -264,7 +264,7 @@ void ludwig_run(const char * inputfile) {
     /* Electrokinetics */
 
     if (psi_) {
-      psi_sor_poisson(psi_, 1.0e-9, 1.0e-7);
+      psi_sor_poisson(psi_);
       nernst_planck_driver(psi_);
       /* Accumulate force. */
     }
