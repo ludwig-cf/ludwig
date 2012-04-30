@@ -125,7 +125,7 @@ void collision_multirelaxation() {
 
   double    force_local[3];
   double    force_global[3];
-  double    f[NVEL];
+  /* double    f[NVEL]; */
 
   ndist = distribution_ndist();
   coords_nlocal(N);
@@ -168,7 +168,7 @@ void collision_multirelaxation() {
 	
 	/* TO DO: update this for case where fluid boundary occurs within 
            SIMD vector? */
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
+	/* if (site_map_get_status(ic, jc, kc) != FLUID) continue; */
 	
 	
 	/* Compute all the modes */
@@ -442,7 +442,7 @@ void collision_binary_lb() {
 	
 	/* TO DO: update this for case where fluid boundary occurs within 
            SIMD vector? */
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
+	/* if (site_map_get_status(ic, jc, kc) != FLUID) continue; */
 	
 	
 	/* Compute all the modes */
