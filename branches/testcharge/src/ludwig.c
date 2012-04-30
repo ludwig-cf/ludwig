@@ -238,9 +238,9 @@ void ludwig_run(const char * inputfile) {
 
   if (step == 0 && phi_nop() == 5) {
     blue_phase_rt_initial_conditions();
-    info("Writing scalar order parameter file at step %d!\n", step);
-    sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
-    io_write(filename, io_info_scalar_q_);
+    info("Writing order parameter file at step %d!\n", step);
+    sprintf(filename,"%sphi-%8.8d", subdirectory, step);
+    io_write(filename, io_info_phi);
   }
 
   info("Initial conditions.\n");
@@ -377,11 +377,6 @@ void ludwig_run(const char * inputfile) {
     /* Measurements */
 
     if (is_measurement_step()) {	  
-      if (phi_nop() == 5) {
-	info("Writing scalar order parameter file at step %d!\n", step);
-	sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
-	io_write(filename, io_info_scalar_q_);
-      }
       stats_sigma_measure(step);
     }
 

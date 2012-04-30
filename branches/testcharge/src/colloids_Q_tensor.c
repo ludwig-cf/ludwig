@@ -33,15 +33,12 @@
 #include "blue_phase.h"
 #include "colloids_Q_tensor.h"
 
-struct io_info_t * io_info_scalar_q_;
 static int anchoring_coll_ = ANCHORING_NORMAL;
 static int anchoring_wall_ = ANCHORING_NORMAL;
 static int anchoring_method_ = ANCHORING_METHOD_NONE;
 static double w_surface_ = 0.0; /* Anchoring strength in free energy */
 static double w_surface_wall_ = 0.0; /* Anchoring strength in free energy */
 
-static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
-static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
 static void scalar_biaxial_order_parameter_director(double q[3][3], double qs[5]);
 
 void COLL_set_Q(){
@@ -373,96 +370,6 @@ void colloids_fix_swd(void) {
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  scalar_q_io_init
- *
- *  Initialise the I/O information for the scalar order parameter and director
- *  output related to blue phase tensor order parameter.
- *
- *  This stuff lives here until a better home is found.
- *
- *****************************************************************************/
-
-void scalar_q_io_info_set(struct io_info_t * info) {
-
-  assert(info);
-  io_info_scalar_q_ = info;
-
-  io_info_set_name(io_info_scalar_q_, "Scalar order parameter, director and biaxial order parameter");
-  io_info_set_write_binary(io_info_scalar_q_, scalar_q_dir_write);
-  io_info_set_write_ascii(io_info_scalar_q_, scalar_q_dir_write_ascii);
-  io_info_set_bytesize(io_info_scalar_q_, 5*sizeof(double));
-
-  io_info_set_format_binary(io_info_scalar_q_);
-  io_write_metadata("qs_dir", io_info_scalar_q_);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  scalar_q_dir_write_ascii
- *
- *  Write the value of the scalar order parameter and director at (ic, jc, kc).
- *
- *****************************************************************************/
-
-static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
-				    const int kc) {
-  int index, n;
-  double q[3][3];
-  double qs_dir[5];
-
-  index = coords_index(ic, jc, kc);
-
-  if (site_map_get_status_index(index) == FLUID) {
-    phi_get_q_tensor(index, q);
-    scalar_biaxial_order_parameter_director(q, qs_dir);
-  }
-  else {
-    qs_dir[0] = 0.0;
-    qs_dir[1] = 0.0;
-    qs_dir[2] = 0.0;
-    qs_dir[3] = 0.0;
-    qs_dir[4] = 0.0;
-  }
-
-  n = fprintf(fp, "%le %le %le %le %le\n", qs_dir[0], qs_dir[1], qs_dir[2], qs_dir[3], qs_dir[4]);
-  if (n < 0) fatal("fprintf(qs_dir) failed at index %d\n", index);
-
-  return n;
-}
-
-
-/*****************************************************************************
- *
- *  scalar_q_dir_write
- *
- *  Write scalar order parameter and director in binary.
- *
- *****************************************************************************/
-
-static int scalar_q_dir_write(FILE * fp, const int ic, const int jc,
-			      const int kc) {
-  int index, n;
-  double q[3][3];
-  double qs_dir[5];
-
-  index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  scalar_biaxial_order_parameter_director(q, qs_dir);
-
-  if (site_map_get_status_index(index) != FLUID) {
-    qs_dir[0] = 1.0;
-  }
-
-  n = fwrite(qs_dir, sizeof(double), 5, fp);
-  if (n != 5) fatal("fwrite(qs_dir) failed at index %d\n", index);
-
-  return n;
 }
 
 /*****************************************************************************

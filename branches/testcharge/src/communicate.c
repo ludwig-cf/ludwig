@@ -65,21 +65,6 @@ void MODEL_init( void ) {
     info("Setting phi I/O format to ASCII\n");
   }
 
-
-  for (i = 0; i < 3; i++) {
-    io_grid[i] = io_grid_default[i];
-  }
-  RUN_get_int_parameter_vector("qs_dir_io_grid", io_grid);
-
-  io_info = io_info_create_with_grid(io_grid);
-  scalar_q_io_info_set(io_info);
-
-  ind = RUN_get_string_parameter("qs_dir_format", filename, FILENAME_MAX);
-  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
-    io_info_set_format_ascii(io_info_scalar_q_);
-    info("Setting qs_dir I/O format to ASCII\n");
-  }
-
   hydrodynamics_init();
   
   ind = RUN_get_string_parameter("vel_format", filename, FILENAME_MAX);
