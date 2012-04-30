@@ -58,8 +58,8 @@ ARFLAGS = -cru
 #
 ###############################################################################
 
-OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o collision.o \
-     physics.o \
+OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
+     collision.o physics.o \
      advection.o advection_bcs.o advection_rt.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
@@ -84,7 +84,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o collision.o 
      phi_lb_coupler.o phi_stats.o \
      phi_update.o phi_update_rt.o \
      polar_active.o polar_active_rt.o \
-     psi.o psi_stats.o psi_sor.o nernst_planck.o \
+     psi.o psi_rt.o psi_stats.o psi_sor.o nernst_planck.o \
      lattice.o leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
