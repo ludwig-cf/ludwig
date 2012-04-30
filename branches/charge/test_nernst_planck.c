@@ -30,6 +30,7 @@
 #include "nernst_planck.h"
 
 static int do_test_gouy_chapman(void);
+static int test_io(psi_t * psi, int tstep);
 
 /*****************************************************************************
  *
@@ -86,10 +87,11 @@ static int do_test_gouy_chapman(void) {
   int ic, jc, kc, index;
   int nlocal[3];
   int noffst[3];
+  int test_output_required = 0;
   int tstep;
   double rho_w;               /* wall charge density */
   double rho_i;               /* Interior charge density */
-  double rho_b;               /* background ionic strength */
+  double rho_b, rho_b_local;  /* background ionic strength */
 
   double tol_abs = 0.01*FLT_EPSILON;
   double tol_rel = 1.00*FLT_EPSILON;
@@ -107,13 +109,7 @@ static int do_test_gouy_chapman(void) {
   int ntotal[3] = {4, 4, 64};  /* Quasi-one-dimensional system */
   int grid[3];                 /* Processor decomposition */
 
-  double * field;               /* 1-d field */
-  double * psifield;            /* 1-d psi field for output */
-  double * rho0field;           /* 1-d rho0 field for output */
-  double * rho1field;           /* 1-d rho0 field for output */
   int tmax = 20001;
-  char filename[30];
-  FILE * out;
 
   coords_nhalo_set(1);
   coords_ntotal_set(ntotal);
@@ -207,80 +203,30 @@ static int do_test_gouy_chapman(void) {
 
       info("%d\n", tstep);
       psi_stats_info(psi_);
-
-      ic = 2;
-      jc = 2;
-
-      /* 1D output. calloc() is used to zero the arays, then
-       * MPI_Gather to get complete picture. */
-
-      field = calloc(nlocal[Z], sizeof(double));
-      psifield = calloc(ntotal[Z], sizeof(double));
-      rho0field = calloc(ntotal[Z], sizeof(double));
-      rho1field = calloc(ntotal[Z], sizeof(double));
-      if (field == NULL) fatal("calloc(field) failed\n");
-      if (psifield == NULL) fatal("calloc(psifield) failed\n");
-      if (rho0field == NULL) fatal("calloc(rho0field) failed\n");
-      if (rho1field == NULL) fatal("calloc(rho1field) failed\n");
-
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-	psi_psi(psi_, index, field + kc - 1);
-      }
-
-      MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
-		 psifield, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
-
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic, jc, kc);
-	psi_rho(psi_, index, 0, field + kc - 1);
-
-      }
-
-      MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
-		 rho0field, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
-
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic, jc, kc);
-	psi_rho(psi_, index, 1, field + kc - 1);
-      }
-
-      MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
-		 rho1field, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
-
-      if (cart_rank() == 0) {
-
-	sprintf(filename, "np_test-%d.dat", tstep);
-	out = fopen(filename, "w");
-	if (out == NULL) fatal("Could not open %s\n", filename);
-
-	for (kc = 1; kc <= ntotal[Z]; kc++) {
-	  fprintf(out, "%d %le %le %le\n", kc, psifield[kc-1],
-		  rho0field[kc-1], rho1field[kc-1]);
-	  
-	}
-	fclose(out);
-      }
-
-      free(rho1field);
-      free(rho0field);
-      free(psifield);
-      free(field);
+      if (test_output_required) test_io(psi_, tstep);
     }
   }
 
+  /* We adopt a rather simple way to extract the answer from the
+   * MPI task holding the centre of the system. The charge
+   * density must be > 0 to compute the debye length and the
+   * surface potential. */
+
   ic = 2;
   jc = 2;
+
+  rho_b_local = 0.0;
 
   for (kc = 1; kc <= nlocal[Z]; kc++) {
 
     index = coords_index(ic, jc, kc);
  
     if (noffst[Z] + kc == ntotal[Z] / 2) {
-      psi_ionic_strength(psi_, index, &rho_b);
+      psi_ionic_strength(psi_, index, &rho_b_local);
     }
   }
+
+  MPI_Allreduce(&rho_b_local, &rho_b, 1, MPI_DOUBLE, MPI_SUM, cart_comm());
 
   psi_bjerrum_length(psi_, &lb);
   psi_debye_length(psi_, rho_b, &ldebye);
@@ -288,6 +234,14 @@ static int do_test_gouy_chapman(void) {
   info("Bjerrum length is %le\n", lb);
   info("Debye length is %le\n", ldebye);
   info("Surface potential is %le\n", yd);
+
+  /* These are the reference answers. */
+
+  assert(tmax == 20001);
+  assert(ntotal[Z] == 64);
+  assert(fabs((lb - 7.234316e-01)/0.723431) < FLT_EPSILON);
+  assert(fabs((ldebye - 6.420075)/6.420075) < FLT_EPSILON);
+  assert(fabs((yd - 5.451449e-05)/5.45e-05) < FLT_EPSILON);
 
   site_map_finish();
   psi_free(psi_);
@@ -302,8 +256,80 @@ static int do_test_gouy_chapman(void) {
  *
  *****************************************************************************/
 
-static int test_io(void) {
+static int test_io(psi_t * psi, int tstep) {
 
+  int ntotalz;
+  int nlocal[3];
+  int ic, jc, kc, index;
+
+  double * field;               /* 1-d field (local) */
+  double * psifield;            /* 1-d psi field for output */
+  double * rho0field;           /* 1-d rho0 field for output */
+  double * rho1field;           /* 1-d rho0 field for output */
+
+  char filename[BUFSIZ];
+  FILE * out;
+
+  coords_nlocal(nlocal);
+  ntotalz = N_total(Z);
+
+  ic = 2;
+  jc = 2;
+
+  /* 1D output. calloc() is used to zero the arays, then
+   * MPI_Gather to get complete picture. */
+
+  field = calloc(nlocal[Z], sizeof(double));
+  psifield = calloc(ntotalz, sizeof(double));
+  rho0field = calloc(ntotalz, sizeof(double));
+  rho1field = calloc(ntotalz, sizeof(double));
+  if (field == NULL) fatal("calloc(field) failed\n");
+  if (psifield == NULL) fatal("calloc(psifield) failed\n");
+  if (rho0field == NULL) fatal("calloc(rho0field) failed\n");
+  if (rho1field == NULL) fatal("calloc(rho1field) failed\n");
+
+  for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+    index = coords_index(ic, jc, kc);
+    psi_psi(psi, index, field + kc - 1);
+  }
+
+  MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
+	     psifield, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+
+  for (kc = 1; kc <= nlocal[Z]; kc++) {
+    index = coords_index(ic, jc, kc);
+    psi_rho(psi, index, 0, field + kc - 1);
+  }
+
+  MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
+	     rho0field, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+
+  for (kc = 1; kc <= nlocal[Z]; kc++) {
+    index = coords_index(ic, jc, kc);
+    psi_rho(psi, index, 1, field + kc - 1);
+  }
+
+  MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
+	     rho1field, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+
+  if (cart_rank() == 0) {
+
+    sprintf(filename, "np_test-%d.dat", tstep);
+    out = fopen(filename, "w");
+    if (out == NULL) fatal("Could not open %s\n", filename);
+
+    for (kc = 1; kc <= ntotalz; kc++) {
+      fprintf(out, "%d %le %le %le\n", kc, psifield[kc-1],
+	      rho0field[kc-1], rho1field[kc-1]);
+    }
+    fclose(out);
+  }
+
+  free(rho1field);
+  free(rho0field);
+  free(psifield);
+  free(field);
 
   return 0;
 }
