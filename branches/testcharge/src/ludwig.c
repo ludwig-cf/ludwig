@@ -67,6 +67,11 @@
 #include "blue_phase_rt.h"
 #include "polar_active_rt.h"
 
+#include "psi_s.h"
+#include "psi_rt.h"
+#include "psi_sor.h"
+#include "nernst_planck.h"
+
 #include "stats_colloid.h"
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
@@ -127,6 +132,8 @@ static void ludwig_rt(void) {
     }
     phi_fluctuations_init(seed);
   }
+
+  psi_init_rt();
 
   MODEL_init();
   wall_init();
@@ -251,9 +258,18 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_STEPS);
     step = get_step();
     hydrodynamics_zero_force();
+
     COLL_update();
 
-    /* Collision stage */
+    /* Electrokinetics */
+
+    if (psi_) {
+      psi_sor_poisson(psi_, 1.0e-9, 1.0e-7);
+      nernst_planck_driver(psi_);
+      /* Accumulate force. */
+    }
+
+    /* Order parameter */
 
     if (phi_nop()) {
 
@@ -288,6 +304,9 @@ void ludwig_run(const char * inputfile) {
 
       }
     }
+
+    /* Collision stage */
+
     TIMER_start(TIMER_COLLIDE);
     collide();
     TIMER_stop(TIMER_COLLIDE);
