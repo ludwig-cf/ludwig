@@ -93,8 +93,6 @@ static int do_test_gouy_chapman(void) {
   double rho_i;               /* Interior charge density */
   double rho_b, rho_b_local;  /* background ionic strength */
 
-  double tol_abs = 0.01*FLT_EPSILON;
-  double tol_rel = 1.00*FLT_EPSILON;
   int valency[2] = {+1, -1};
   double diffusivity[2] = {1.e-2, 1.e-2};
 
@@ -195,7 +193,7 @@ static int do_test_gouy_chapman(void) {
   for (tstep = 0; tstep < tmax; tstep++) {
 
     psi_halo_psi(psi_);
-    psi_sor_poisson(psi_, tol_abs, tol_rel);
+    psi_sor_poisson(psi_);
     psi_halo_rho(psi_);
     nernst_planck_driver(psi_);
 

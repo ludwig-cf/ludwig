@@ -64,8 +64,7 @@ int main(int argc, char ** argv) {
 
 static int do_test_sor1(void) {
 
-  double tol_abs = 0.01*FLT_EPSILON;
-  double tol_rel = 1.00*FLT_EPSILON;
+  double tol_abs;  /* Use default from psi structure. */
 
   coords_nhalo_set(1);
   coords_init();
@@ -81,9 +80,10 @@ static int do_test_sor1(void) {
   test_charge1_set(psi_);
   psi_halo_psi(psi_);
   psi_halo_rho(psi_);
-  psi_sor_poisson(psi_, tol_abs, tol_rel);
-  psi_sor_poisson(psi_, tol_abs, tol_rel);
+  psi_sor_poisson(psi_);
+  psi_sor_poisson(psi_);
 
+  psi_abstol(psi_, &tol_abs);
   if (cart_size(Z) == 1) test_charge1_exact(psi_, tol_abs);
 
   psi_free(psi_);
