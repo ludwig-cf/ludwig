@@ -481,6 +481,32 @@ qs_dir_format BINARY
 
 ###############################################################################
 #
+#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
+#
+#  electrokinetics            [on|off]           default off
+#  electrokinetics_z0         valency species 0  default +1
+#  electrokinetics_z1         valency species 1  default -1
+#  electrokinetics_d0         diffusivity 0      default 0.0
+#  electrokinetics_d1         diffusivity 1      default 0.0
+#  electrokinetics_eunit      unit charge        default +1.0
+#  electrokinetics_epsilon    permeativity (ref) default 0.0
+#
+#  Also important
+#
+#  temperature                sets Boltzmann factor beta
+#
+###############################################################################
+
+electrokinetics         off
+electrokinetics_z0      +1
+electrokinetics_z1      -1
+electrokinetics_d0      0.01
+electrokinetics_d1      0.01
+electrokinetics_eunit   1.0
+electrokinetics_epsilon 1000.0
+
+###############################################################################
+#
 #  Miscellaneous
 #
 #  random_seed  +ve integer is the random number generator seed
