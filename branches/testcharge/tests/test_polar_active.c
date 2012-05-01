@@ -69,6 +69,7 @@ int main (int argc, char ** argv) {
 
   phi_gradients_finish();
   phi_finish();
+  le_finish();
   coords_finish();
   pe_finalise();
   MPI_Finalize();
