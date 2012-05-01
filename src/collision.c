@@ -164,12 +164,7 @@ void collision_multirelaxation() {
 	  nv=N[Z]+1-kc;
 	}
 	
-	base_index=coords_index(ic, jc, kc);
-	
-	/* TO DO: update this for case where fluid boundary occurs within 
-           SIMD vector? */
-	/* if (site_map_get_status(ic, jc, kc) != FLUID) continue; */
-	
+	base_index=coords_index(ic, jc, kc);	
 	
 	/* Compute all the modes */
 	
@@ -195,10 +190,12 @@ void collision_multirelaxation() {
 	/* loop over SIMD vector of lattice sites */
 	for (iv = 0; iv < nv; iv++) {
 	  
-	  for (m = 0; m < nmodes_; m++) 
-	    mode[m]=mode_v[m][iv];
-	  
-	  index=base_index+iv;
+	  index = base_index + iv;	
+	  if (site_map_get_status_index(index) != FLUID) continue;
+
+	  for (m = 0; m < nmodes_; m++) { 
+	    mode[m] = mode_v[m][iv];
+	  }
 	  
 	  /* For convenience, write out the physical modes, that is,
 	   * rho, NDIM components of velocity, independent components
@@ -439,11 +436,6 @@ void collision_binary_lb() {
 	}
 	
 	base_index=coords_index(ic, jc, kc);
-	
-	/* TO DO: update this for case where fluid boundary occurs within 
-           SIMD vector? */
-	/* if (site_map_get_status(ic, jc, kc) != FLUID) continue; */
-	
 	
 	/* Compute all the modes */
 	
