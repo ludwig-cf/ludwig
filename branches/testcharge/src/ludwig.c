@@ -68,8 +68,10 @@
 #include "polar_active_rt.h"
 
 #include "psi_s.h"
+#include "psi.h"
 #include "psi_rt.h"
 #include "psi_sor.h"
+#include "psi_stats.h"
 #include "nernst_planck.h"
 
 #include "stats_colloid.h"
@@ -374,6 +376,14 @@ void ludwig_run(const char * inputfile) {
       }
     }
 
+    if (is_psi_output_step()) {
+      if (psi_) {
+	info("Writing psi file at step %d!\n", step);
+	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
+	io_write(filename, psi_->info);
+      }
+    }
+
     /* Measurements */
 
     if (is_measurement_step()) {	  
@@ -404,6 +414,9 @@ void ludwig_run(const char * inputfile) {
       if (phi_nop()) {
 	phi_stats_print_stats();
 	stats_free_energy_density();
+      }
+      if (psi_) {
+	psi_stats_info(psi_);
       }
       ludwig_report_momentum();
       stats_velocity_minmax();

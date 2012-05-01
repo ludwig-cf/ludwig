@@ -17,7 +17,9 @@
 #include "pe.h"
 #include "runtime.h"
 #include "psi.h"
+#include "psi_s.h"
 #include "psi_rt.h"
+#include "io_harness.h"
 
 static int psi_do_init(void);
 
@@ -66,6 +68,9 @@ static int psi_do_init(void) {
   double temperature, beta;   /* Temperature (set by fluctuations) */
   double epsilon = 0.0;       /* Permeativity */
   double lb;                  /* Bjerrum length; derived, not input. */
+  int io_grid[3] = {1,1,1};
+
+  char filename[FILENAME_MAX];
 
   /* Local reference */
   psi_t * psi = NULL; 
@@ -111,7 +116,17 @@ static int psi_do_init(void) {
     info("Diffusivity species %d:     %14.7e\n", n, diffusivity[n]);
   }
 
-  fatal("Not ready yet\n");
+  n = RUN_get_int_parameter_vector("default_io_grid", io_grid);
+  psi_init_io_info(psi,io_grid);
+
+  n = RUN_get_string_parameter("psi_format", filename, FILENAME_MAX);
+  if (strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(psi->info);
+    info("Setting psi I/O format to ASCII\n");
+  }
+
+
+  //fatal("Not ready yet\n");
 
   return 0;
 }

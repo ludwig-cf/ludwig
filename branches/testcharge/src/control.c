@@ -29,6 +29,7 @@ static int freq_statistics = 100;
 static int freq_measure    = 1000;
 static int freq_config     = 10000;
 static int freq_phi        = 100000000;
+static int freq_psi        = 100000000;
 static int freq_vel        = 100000000;
 static int freq_shear_io   = 100000000;
 static int freq_shear_meas = 100000000;
@@ -60,6 +61,7 @@ void init_control() {
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
   n = RUN_get_int_parameter("freq_config", &freq_config);
   n = RUN_get_int_parameter("freq_phi", &freq_phi);
+  n = RUN_get_int_parameter("freq_psi", &freq_psi);
   n = RUN_get_int_parameter("freq_vel", &freq_vel);
   n = RUN_get_int_parameter("freq_shear_measurement", &freq_shear_meas);
   n = RUN_get_int_parameter("freq_shear_output", &freq_shear_io);
@@ -129,6 +131,16 @@ int is_phi_output_step() {
 
 /*****************************************************************************
  *
+ *  is_psi_output_step
+ *
+ *****************************************************************************/
+
+int is_psi_output_step() {
+  return ((t_current % freq_psi) == 0);
+}
+
+/*****************************************************************************
+ *
  *  is_vel_output_step
  *
  *****************************************************************************/
@@ -176,4 +188,3 @@ int is_shear_output_step() {
 int is_propagation_ode() {
   return propagation_ode;
 }
-

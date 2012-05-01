@@ -414,6 +414,7 @@ freq_statistics 50
 freq_measure 200000
 freq_config 5000000
 freq_phi    100000
+freq_psi    100000
 freq_vel    100000
 freq_shear_measurement 100000
 freq_shear_output      100000
@@ -426,6 +427,7 @@ distribution_io_input_format BINARY
 
 phi_io_grid 1_1_1
 phi_format    ASCII
+psi_format    ASCII
 vel_format    ASCII
 
 ##############################################################################
