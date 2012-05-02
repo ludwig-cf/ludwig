@@ -27,10 +27,12 @@
 #include "psi_init.h"
 
 static int gouy_chapman_set(void);
+static int liquid_junction_set(void);
 
 int psi_init_charges(void){
 
-  gouy_chapman_set();
+  liquid_junction_set();
+//  gouy_chapman_set();
 
   return 0;
 }
@@ -111,6 +113,52 @@ static int gouy_chapman_set(void) {
   }
 
   site_map_halo();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ * liquid_junction_set
+ *
+ *  Set rho(1 <= z <= Lz/2)    = 1.01 * electrolyte
+ *      rho(Lz/2+1 <= z <= Lz) = 0.99 * electrolyte
+ *
+ *  This sets up the system for liquid junction potential.
+ *
+ *****************************************************************************/
+
+static int liquid_junction_set(void) {
+
+  int ic, jc, kc, index;
+  int nlocal[3], noff[3];
+  double rho_el = 1.e-2, delta_el = 0.001;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noff);
+
+  /* Set electrolyte densities */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	psi_psi_set(psi_, index, 0.0);
+
+	if ((1 <= noff[2] + kc) && (noff[2] + kc < L(Z)/2)) {
+	  psi_rho_set(psi_, index, 0, rho_el * (1.0 + delta_el));
+	  psi_rho_set(psi_, index, 1, rho_el * (1.0 + delta_el));
+	}
+	else{
+	  psi_rho_set(psi_, index, 0, rho_el * (1.0 - delta_el));
+	  psi_rho_set(psi_, index, 1, rho_el * (1.0 - delta_el));
+	}
+      }
+    }
+  }
+
 
   return 0;
 }
