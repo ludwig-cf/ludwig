@@ -121,8 +121,8 @@ static int gouy_chapman_set(void) {
  *
  * liquid_junction_set
  *
- *  Set rho(1 <= z <= Lz/2)    = 1.01 * electrolyte
- *      rho(Lz/2+1 <= z <= Lz) = 0.99 * electrolyte
+ *  Set rho(1 <= x <= Lx/2)    = 1.01 * electrolyte
+ *      rho(Lx/2+1 <= x <= Lx) = 0.99 * electrolyte
  *
  *  This sets up the system for liquid junction potential.
  *
@@ -147,7 +147,7 @@ static int liquid_junction_set(void) {
 
 	psi_psi_set(psi_, index, 0.0);
 
-	if ((1 <= noff[2] + kc) && (noff[2] + kc < L(Z)/2)) {
+	if ((1 <= noff[0] + ic) && (noff[0] + ic < L(X)/2)) {
 	  psi_rho_set(psi_, index, 0, rho_el * (1.0 + delta_el));
 	  psi_rho_set(psi_, index, 1, rho_el * (1.0 + delta_el));
 	}
