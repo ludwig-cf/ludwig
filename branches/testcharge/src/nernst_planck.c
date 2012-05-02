@@ -69,7 +69,7 @@
 #include "nernst_planck.h"
 
 
-static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
+static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 				double * fy, double * fz);
 static int nernst_planck_update(psi_t * psi, double * fe, double * fw,
 				double * fy, double * fz);
@@ -132,7 +132,7 @@ int nernst_planck_driver(psi_t * psi) {
  *
  *****************************************************************************/
 
-static int nernst_planck_fluxes(psi_t * psi, double * fw, double * fe,
+static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 				double * fy, double * fz) {
   int ic, jc, kc, index;
   int nlocal[3];
