@@ -266,7 +266,9 @@ void ludwig_run(const char * inputfile) {
     /* Electrokinetics */
 
     if (psi_) {
+      psi_halo_psi(psi_);
       psi_sor_poisson(psi_);
+      psi_halo_rho(psi_);
       nernst_planck_driver(psi_);
       /* Accumulate force. */
     }

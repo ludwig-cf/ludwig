@@ -19,6 +19,7 @@
 #include "psi.h"
 #include "psi_s.h"
 #include "psi_rt.h"
+#include "psi_init.h"
 #include "io_harness.h"
 
 static int psi_do_init(void);
@@ -125,8 +126,7 @@ static int psi_do_init(void) {
     info("Setting psi I/O format to ASCII\n");
   }
 
-
-  //fatal("Not ready yet\n");
+  psi_init_charges();
 
   return 0;
 }
