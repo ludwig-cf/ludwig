@@ -329,10 +329,14 @@ static int is_valid_key_pair(const char * line) {
     struct key_pair * p_key = p_keylist;
 
     while (p_key) {
-      nmax = (strlen(p_key->key) > strlen(a)) ? strlen(p_key->key) : strlen(a);
-      if (strncmp(p_key->key, a, nmax) == 0) {
-	fatal("Duplication of parameters in input file: %s\n", a);
+
+      /* We must compare for exact equality against existing key. */
+      sscanf(p_key->key, "%s ", b);
+
+      if (strcmp(b, a) == 0) {
+	fatal("Duplication of parameters in input file: %s %s\n", a, b);
       }
+
       p_key = p_key->next;
     }
   }
