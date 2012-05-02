@@ -69,6 +69,7 @@ static int psi_do_init(void) {
   double temperature, beta;   /* Temperature (set by fluctuations) */
   double epsilon = 0.0;       /* Permeativity */
   double lb;                  /* Bjerrum length; derived, not input. */
+  double tolerance;           /* Numerical tolerance for SOR. */
   int io_grid[3] = {1,1,1};
 
   char filename[FILENAME_MAX];
@@ -116,6 +117,13 @@ static int psi_do_init(void) {
     info("Valency species %d:         %2d\n", n, valency[n]);
     info("Diffusivity species %d:     %14.7e\n", n, diffusivity[n]);
   }
+
+  /* Yet to be offered from input */
+  psi_reltol(psi, &tolerance);
+  info("Relative tolerance (SOR):  %14.7e\n", tolerance);
+  psi_abstol(psi, &tolerance);
+  info("Absolute Tolerance (SOR):  %14.7e\n", tolerance);
+
 
   n = RUN_get_int_parameter_vector("default_io_grid", io_grid);
   psi_init_io_info(psi,io_grid);
