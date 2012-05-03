@@ -134,6 +134,22 @@ int psi_create(int nk, psi_t ** pobj) {
 
 /*****************************************************************************
  *
+ *  psi_io_info
+ *
+ *****************************************************************************/
+
+int psi_io_info(psi_t * obj, struct io_info_t ** info) {
+
+  assert(obj);
+  assert(info);
+
+  *info = obj->info;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_nk
  *
  *****************************************************************************/
@@ -386,7 +402,7 @@ static int psi_init_mpi_indexed(psi_t * obj) {
  *
  *****************************************************************************/
 
-int psi_init_io_info(psi_t * obj, int grid[3]) {
+int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
 
   assert(obj);
   assert(grid);
@@ -402,7 +418,7 @@ int psi_init_io_info(psi_t * obj, int grid[3]) {
   io_info_set_write_ascii(obj->info, psi_write_ascii);
   io_info_set_bytesize(obj->info, (1 + obj->nk)*sizeof(double));
 
-  io_info_set_format_binary(obj->info);
+  io_info_format_set(obj->info, form_in, form_out);
 
   return 0;
 }

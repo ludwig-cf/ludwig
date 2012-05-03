@@ -51,8 +51,4 @@ struct psi_s {
 
 int psi_halo(int nf, double * f, MPI_Datatype halo[3]);
 
-/* Here for now. psi_ is providing the (opaque) object for the main code. */
-
-extern psi_t * psi_;
-
 #endif
