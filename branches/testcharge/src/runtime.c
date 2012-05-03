@@ -311,7 +311,6 @@ static int is_valid_key_pair(const char * line) {
 
   char a[NKEY_LENGTH];
   char b[NKEY_LENGTH];
-  int  nmax;
 
   if (strncmp("#",  line, 1) == 0) return 0;
   if (strncmp("\n", line, 1) == 0) return 0;
