@@ -335,9 +335,9 @@ static void io_set_group_filename(char * filename_io, const char * stub,
 
 static struct io_decomposition_t * io_decomposition_allocate() {
 
-  struct io_decomposition_t * p;
+  struct io_decomposition_t * p = NULL;
 
-  p = (struct io_decomposition_t *) malloc(sizeof(struct io_decomposition_t));
+  p = calloc(1, sizeof(struct io_decomposition_t));
   if (p == NULL) fatal("Failed to allocate io_decomposition_t\n");
 
   return p;
@@ -368,9 +368,9 @@ static void io_decomposition_destroy(struct io_decomposition_t * p) {
 
 struct io_info_t * io_info_allocate() {
 
-  struct io_info_t * p;
+  struct io_info_t * p = NULL;
 
-  p = (struct io_info_t *) malloc(sizeof(struct io_info_t));
+  p = calloc(1, sizeof(struct io_info_t));
   if (p == NULL) fatal("Failed to allocate io_info_t struct\n");
 
   return p;
@@ -585,6 +585,8 @@ static long int io_file_offset(int ic, int jc, struct io_info_t * info) {
   long int offset;
   int ifo, jfo, kfo;
 
+  assert(info);
+
   /* Work out the offset of local lattice site (ic, jc, kc=1) in the file */
   ifo = info->io_comm->offset[X] + ic - 1;
   jfo = info->io_comm->offset[Y] + jc - 1;
@@ -698,16 +700,115 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
  *
  *****************************************************************************/
 
-void io_remove(char * filename_stub, struct io_info_t * info) {
+int io_remove(char * filename_stub, struct io_info_t * obj) {
 
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
 
-  if (info->io_comm->rank == 0) {
+  assert(filename_stub);
+  assert(obj);
+
+  if (obj->io_comm->rank == 0) {
     pe_subdirectory(subdirectory);
-    io_set_group_filename(filename, filename_stub, info);
+    io_set_group_filename(filename, filename_stub, obj);
     remove(filename);
   }
 
-  return;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_format_set
+ *
+ *****************************************************************************/
+
+int io_info_format_set(struct io_info_t * obj, int form_in, int form_out) {
+
+  assert(obj);
+  assert(form_in >= 0);
+  assert(form_in <= IO_FORMAT_DEFAULT);
+  assert(form_out >= 0);
+  assert(form_out <= IO_FORMAT_DEFAULT);
+
+  /* Input */
+
+  io_info_format_in_set(obj, form_in);
+  io_info_format_out_set(obj, form_out);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_format_in_set
+ *
+ *  Set input format.
+ *
+ *****************************************************************************/
+
+int io_info_format_in_set(struct io_info_t * obj, int form_in) {
+
+  assert(obj);
+  assert(form_in >= 0);
+  assert(form_in <= IO_FORMAT_DEFAULT);
+
+  if (form_in == IO_FORMAT_NULL) return 0;
+
+  switch (form_in) {
+  case IO_FORMAT_ASCII_SERIAL:
+    obj->read_function = obj->read_function_a;
+    obj->processor_independent = 1;
+    break;
+  case IO_FORMAT_BINARY_SERIAL:
+    obj->read_function = obj->read_function_b;
+    obj->processor_independent = 1;
+    break;
+  case IO_FORMAT_ASCII:
+    obj->read_function = obj->read_function_a;
+    obj->processor_independent = 0;
+    break;
+  case IO_FORMAT_BINARY:
+  case IO_FORMAT_DEFAULT:
+    obj->read_function = obj->read_function_b;
+    obj->processor_independent = 0;
+    break;
+  default:
+    fatal("Bad i/o input format\n");
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_format_out_set
+ *
+ *  No serial output at the moment (unless one MPI task).
+ *
+ *****************************************************************************/
+
+int io_info_format_out_set(struct io_info_t * obj, int form_out) {
+
+  assert(obj);
+  assert(form_out >= 0);
+  assert(form_out <= IO_FORMAT_DEFAULT);
+
+  if (form_out == IO_FORMAT_NULL) return 0;
+
+  switch (form_out) {
+  case IO_FORMAT_ASCII:
+    obj->write_function = obj->write_function_a;
+    obj->processor_independent = 0;
+    break;
+  case IO_FORMAT_BINARY:
+  case IO_FORMAT_DEFAULT:
+    obj->write_function = obj->write_function_b;
+    obj->processor_independent = 0;
+    break;
+  default:
+    fatal("Bad i/o output format\n");
+  }
+
+  return 0;
 }

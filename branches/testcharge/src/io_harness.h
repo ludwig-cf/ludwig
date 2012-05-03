@@ -17,6 +17,13 @@
 
 #include <stdio.h>
 
+enum io_format_flag {IO_FORMAT_NULL,
+                     IO_FORMAT_ASCII,
+		     IO_FORMAT_BINARY,
+                     IO_FORMAT_ASCII_SERIAL,
+                     IO_FORMAT_BINARY_SERIAL,
+                     IO_FORMAT_DEFAULT};
+
 struct io_info_t * io_info_create(void);
 struct io_info_t * io_info_create_with_grid(const int *);
 void io_info_destroy(struct io_info_t *);
@@ -38,6 +45,10 @@ void io_info_set_format_binary(struct io_info_t *);
 void io_read(char *, struct io_info_t *);
 void io_write(char *, struct io_info_t *);
 void io_write_metadata(char *, struct io_info_t *);
-void io_remove(char *, struct io_info_t *);
+
+int io_remove(char *, struct io_info_t *);
+int io_info_format_set(struct io_info_t * obj, int form_in, int form_out); 
+int io_info_format_in_set(struct io_info_t * obj, int form_in); 
+int io_info_format_out_set(struct io_info_t * obj, int form_out); 
 
 #endif
