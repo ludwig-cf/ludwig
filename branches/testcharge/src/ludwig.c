@@ -67,7 +67,6 @@
 #include "blue_phase_rt.h"
 #include "polar_active_rt.h"
 
-#include "psi_s.h"
 #include "psi.h"
 #include "psi_rt.h"
 #include "psi_sor.h"
@@ -221,6 +220,7 @@ void ludwig_run(const char * inputfile) {
   char    filename[FILENAME_MAX];
   char    subdirectory[FILENAME_MAX];
   int     step = 0;
+  struct io_info_t * iohandler = NULL;
 
   pe_init();
   RUN_read_input_file(inputfile);
@@ -380,9 +380,10 @@ void ludwig_run(const char * inputfile) {
 
     if (is_psi_output_step()) {
       if (psi_) {
+	psi_io_info(psi_, &iohandler);
 	info("Writing psi file at step %d!\n", step);
 	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
-	io_write(filename, psi_->info);
+	io_write(filename, iohandler);
       }
     }
 
