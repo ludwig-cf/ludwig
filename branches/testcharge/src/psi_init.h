@@ -17,6 +17,9 @@
 #ifndef PSI_INIT_H
 #define PSI_INIT_H
 
-int psi_init_charges(void);
+#include "psi.h"
+
+int psi_init_gouy_chapman_set(psi_t * obj);
+int psi_init_liquid_junction_set(psi_t * obj);
 
 #endif 

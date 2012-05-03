@@ -17,7 +17,6 @@
 #include "pe.h"
 #include "runtime.h"
 #include "psi.h"
-#include "psi_s.h"
 #include "psi_rt.h"
 #include "psi_init.h"
 #include "io_harness.h"
@@ -70,11 +69,13 @@ static int psi_do_init(void) {
   double epsilon = 0.0;       /* Permeativity */
   double lb;                  /* Bjerrum length; derived, not input. */
   double tolerance;           /* Numerical tolerance for SOR. */
+
   int io_grid[3] = {1,1,1};
+  int io_format_in = IO_FORMAT_DEFAULT;
+  int io_format_out = IO_FORMAT_DEFAULT;
+  char value[BUFSIZ] = "BINARY";
 
-  char filename[FILENAME_MAX];
-
-  /* Local reference */
+  /* Local reference; initialise psi_ via psi_init(). */
   psi_t * psi = NULL; 
 
   psi_init(2, &psi);
@@ -118,23 +119,42 @@ static int psi_do_init(void) {
     info("Diffusivity species %d:     %14.7e\n", n, diffusivity[n]);
   }
 
-  /* Yet to be offered from input */
+  /* Tolerances. Yet to be offered from input */
+
   psi_reltol(psi, &tolerance);
   info("Relative tolerance (SOR):  %14.7e\n", tolerance);
   psi_abstol(psi, &tolerance);
   info("Absolute Tolerance (SOR):  %14.7e\n", tolerance);
 
+  /* I/O */
 
   n = RUN_get_int_parameter_vector("default_io_grid", io_grid);
-  psi_init_io_info(psi,io_grid);
+  n = RUN_get_string_parameter("psi_format", value, BUFSIZ);
 
-  n = RUN_get_string_parameter("psi_format", filename, FILENAME_MAX);
-  if (strcmp(filename, "ASCII") == 0) {
-    io_info_set_format_ascii(psi->info);
-    info("Setting psi I/O format to ASCII\n");
+  if (strcmp(value, "ASCII") == 0) {
+    io_format_in = IO_FORMAT_ASCII;
+    io_format_out = IO_FORMAT_ASCII;
   }
 
-  psi_init_charges();
+  info("I/O decomposition:          %d %d %d\n", io_grid[0], io_grid[1],
+       io_grid[2]);
+  info("I/O format:                 %s\n", value);
+
+  psi_init_io_info(psi, io_grid, io_format_in, io_format_out);
+
+  /* Initial charge densities */
+
+  n = RUN_get_string_parameter("electrokinetics_init", value, BUFSIZ);
+
+  if (strcmp(value, "gouy_chapman") == 0) {
+    psi_init_gouy_chapman_set(psi);
+    info("Initial conditions:         %s\n", "Gouy Chapman");
+  }
+
+  if (strcmp(value, "liquid_junction") == 0) {
+    psi_init_liquid_junction_set(psi);
+    info("Initial conditions:         %s\n", "Liquid junction");
+  }
 
   return 0;
 }

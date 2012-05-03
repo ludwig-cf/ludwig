@@ -21,25 +21,12 @@
 #include "pe.h"
 #include "coords.h"
 #include "site_map.h"
-#include "runtime.h"
 #include "psi.h"
-#include "psi_s.h"
 #include "psi_init.h"
-
-static int gouy_chapman_set(void);
-static int liquid_junction_set(void);
-
-int psi_init_charges(void){
-
-  liquid_junction_set();
-//  gouy_chapman_set();
-
-  return 0;
-}
 
 /*****************************************************************************
  *
- * gouy_chapman_set
+ * psi_init_gouy_chapman_set
  *
  *  Set rho(z = 1)  = + (1/2NxNy)
  *      rho(z = Lz) = + (1/2NxNy)
@@ -49,11 +36,13 @@ int psi_init_charges(void){
  *
  *****************************************************************************/
 
-static int gouy_chapman_set(void) {
+int psi_init_gouy_chapman_set(psi_t * obj) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   double rho_w, rho_i, rho_el;
+
+  assert(obj);
 
   coords_nlocal(nlocal);
 
@@ -71,9 +60,9 @@ static int gouy_chapman_set(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	psi_psi_set(psi_, index, 0.0);
-	psi_rho_set(psi_, index, 0, rho_el);
-	psi_rho_set(psi_, index, 1, rho_el + rho_i);
+	psi_psi_set(obj, index, 0.0);
+	psi_rho_set(obj, index, 0, rho_el);
+	psi_rho_set(obj, index, 1, rho_el + rho_i);
 
       }
     }
@@ -89,8 +78,8 @@ static int gouy_chapman_set(void) {
 
 	site_map_set_status(ic,jc,kc,BOUNDARY);
 
-	psi_rho_set(psi_, index, 0, rho_w);
-	psi_rho_set(psi_, index, 1, 0.0);
+	psi_rho_set(obj, index, 0, rho_w);
+	psi_rho_set(obj, index, 1, 0.0);
 
       }
     }
@@ -105,8 +94,8 @@ static int gouy_chapman_set(void) {
 
 	site_map_set_status(ic,jc,kc,BOUNDARY);
 
-	psi_rho_set(psi_, index, 0, rho_w);
-	psi_rho_set(psi_, index, 1, 0.0);
+	psi_rho_set(obj, index, 0, rho_w);
+	psi_rho_set(obj, index, 1, 0.0);
 
       }
     }
@@ -119,7 +108,7 @@ static int gouy_chapman_set(void) {
 
 /*****************************************************************************
  *
- * liquid_junction_set
+ *  psi_init_liquid_junction_set
  *
  *  Set rho(1 <= x <= Lx/2)    = 1.01 * electrolyte
  *      rho(Lx/2+1 <= x <= Lx) = 0.99 * electrolyte
@@ -128,11 +117,13 @@ static int gouy_chapman_set(void) {
  *
  *****************************************************************************/
 
-static int liquid_junction_set(void) {
+int psi_init_liquid_junction_set(psi_t * obj) {
 
   int ic, jc, kc, index;
   int nlocal[3], noff[3];
   double rho_el = 1.e-2, delta_el = 0.001;
+
+  assert(obj);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noff);
@@ -145,20 +136,19 @@ static int liquid_junction_set(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	psi_psi_set(psi_, index, 0.0);
+	psi_psi_set(obj, index, 0.0);
 
-	if ((1 <= noff[0] + ic) && (noff[0] + ic < L(X)/2)) {
-	  psi_rho_set(psi_, index, 0, rho_el * (1.0 + delta_el));
-	  psi_rho_set(psi_, index, 1, rho_el * (1.0 + delta_el));
+	if ((1 <= noff[0] + ic) && (noff[0] + ic < N_total(X)/2)) {
+	  psi_rho_set(obj, index, 0, rho_el * (1.0 + delta_el));
+	  psi_rho_set(obj, index, 1, rho_el * (1.0 + delta_el));
 	}
 	else{
-	  psi_rho_set(psi_, index, 0, rho_el * (1.0 - delta_el));
-	  psi_rho_set(psi_, index, 1, rho_el * (1.0 - delta_el));
+	  psi_rho_set(obj, index, 0, rho_el * (1.0 - delta_el));
+	  psi_rho_set(obj, index, 1, rho_el * (1.0 - delta_el));
 	}
       }
     }
   }
-
 
   return 0;
 }
