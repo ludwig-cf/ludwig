@@ -258,7 +258,9 @@ static int do_test_halo2(void) {
  *
  *  do_test_io1
  *
- *  Note that the io functions must use the psi_ object.
+ *  Note that the io functions must use the psi_ object at the moment.
+ *  Take default (i.e., binary) write, and specify explicitly binary
+ *  read.
  * 
  *****************************************************************************/
 
@@ -267,16 +269,26 @@ static int do_test_io1(void) {
   int nk;
   int grid[3] = {1, 1, 1};
   char * filename = "psi-test-io";
+  struct io_info_t * iohandler = NULL;
 
   coords_init();
 
+  if (pe_size() == 8) {
+    grid[X] = 2;
+    grid[Y] = 2;
+    grid[Z] = 2;
+  }
+
   nk = 2;
   psi_create(nk, &psi_);
-  psi_init_io_info(psi_, grid);
+  psi_init_io_info(psi_, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
 
   test_field_set(1, psi_->psi, testf1);
   test_field_set(nk, psi_->rho, testf1);
-  io_write(filename, psi_->info);
+
+  psi_io_info(psi_, &iohandler);
+  assert(iohandler);
+  io_write(filename, iohandler);
 
   psi_free(psi_);
   MPI_Barrier(pe_comm());
@@ -285,15 +297,18 @@ static int do_test_io1(void) {
    * must be read correctly to pass. */
 
   psi_create(nk, &psi_);
-  psi_init_io_info(psi_, grid);
-  io_read(filename, psi_->info);
+  psi_init_io_info(psi_, grid, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
+
+  psi_io_info(psi_, &iohandler);
+  assert(iohandler);
+  io_read(filename, iohandler);
 
   psi_halo_psi(psi_);
   psi_halo_rho(psi_);
 
   test_field_check(1, psi_->psi, testf1);
   test_field_check(nk, psi_->rho, testf1);
-  io_remove(filename, psi_->info);
+  io_remove(filename, iohandler);
 
   psi_free(psi_);
   coords_finish();
