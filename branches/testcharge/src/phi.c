@@ -27,7 +27,6 @@
 #include "util.h"
 #include "phi.h"
 
-struct io_info_t * io_info_phi;
 
 double * phi_site;
 
@@ -37,6 +36,7 @@ static int phi_finite_difference_ = 0;  /* Default is LB for order parameter */
 static MPI_Datatype phi_xy_t_;
 static MPI_Datatype phi_xz_t_;
 static MPI_Datatype phi_yz_t_;
+static struct io_info_t * io_info_phi = NULL;
 
 static void phi_init_mpi(void);
 static int  phi_read(FILE *, const int, const int, const int);
@@ -117,16 +117,35 @@ static void phi_init_mpi() {
 
 /*****************************************************************************
  *
- *  phi_io_info_set
- *
- *  Note this goes ahead, even if nop = 0.
+ *  phi_io_info
  *
  *****************************************************************************/
 
-void phi_io_info_set(struct io_info_t * info) {
+int phi_io_info(struct io_info_t ** info) {
 
   assert(info);
-  io_info_phi = info;
+  assert(io_info_phi);
+
+  *info = io_info_phi;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_init_io_info
+ *
+ *  No metadata file is produced if nop = 0.
+ *
+ *****************************************************************************/
+
+int phi_init_io_info(int grid[3], int form_in, int form_out) {
+
+  assert(grid);
+  assert(io_info_phi == NULL);
+
+  io_info_phi = io_info_create_with_grid(grid);
+  if (io_info_phi == NULL) fatal("io_info_create(phi) failed\n");
 
   io_info_set_name(io_info_phi, "Compositional order parameter");
   io_info_set_read_binary(io_info_phi, phi_read);
@@ -135,10 +154,10 @@ void phi_io_info_set(struct io_info_t * info) {
   io_info_set_write_ascii(io_info_phi, phi_write_ascii);
   io_info_set_bytesize(io_info_phi, nop_*sizeof(double));
 
-  io_info_set_format_binary(io_info_phi);
+  io_info_format_set(io_info_phi, form_in, form_out);
   if (nop_ > 0) io_write_metadata("phi", io_info_phi);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

@@ -104,17 +104,20 @@ void polar_active_run_time(void) {
 void polar_active_rt_initial_conditions(void) {
 
   char key[FILENAME_MAX];
+  struct io_info_t * iohandler = NULL;
 
   assert(phi_nop() == 3);
 
   RUN_get_string_parameter("polar_active_initialisation", key, FILENAME_MAX);
 
   if (strcmp(key, "from_file") == 0) {
+    phi_io_info(&iohandler);
+    assert(iohandler);
     info("Initial polar order parameter requested from file\n");
     info("Reading with serial file stub phi-init\n");
-    io_info_set_processor_independent(io_info_phi);
-    io_read("phi-init", io_info_phi);
-    io_info_set_processor_dependent(io_info_phi);
+    io_info_set_processor_independent(iohandler);
+    io_read("phi-init", iohandler);
+    io_info_set_processor_dependent(iohandler);
   }
 
   if (strcmp(key, "from_code") == 0) {

@@ -158,6 +158,7 @@ static void ludwig_init(void) {
   int n, nstat;
   char filename[FILENAME_MAX];
   char subdirectory[FILENAME_MAX];
+  struct io_info_t * iohandler = NULL;
 
   pe_subdirectory(subdirectory);
 
@@ -178,9 +179,11 @@ static void ludwig_init(void) {
     io_read(filename, distribution_io_info());
 
     if (phi_is_finite_difference()) {
+      phi_io_info(&iohandler);
+      assert(iohandler);
       sprintf(filename,"%sphi-%8.8d", subdirectory, get_step());
       info("Reading phi state from %s\n", filename);
-      io_read(filename, io_info_phi);
+      io_read(filename, iohandler);
     }
   }
 
@@ -239,10 +242,11 @@ void ludwig_run(const char * inputfile) {
   }
 
   if (step == 0 && phi_nop() == 5) {
+    phi_io_info(&iohandler);
     blue_phase_rt_initial_conditions();
     info("Writing order parameter file at step %d!\n", step);
     sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-    io_write(filename, io_info_phi);
+    io_write(filename, iohandler);
   }
 
   info("Initial conditions.\n");
@@ -372,9 +376,10 @@ void ludwig_run(const char * inputfile) {
 
     if (is_phi_output_step() || is_config_step()) {
       if (phi_nop() > 0) {
+	phi_io_info(&iohandler);
 	info("Writing phi file at step %d!\n", step);
 	sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-	io_write(filename, io_info_phi);
+	io_write(filename, iohandler);
       }
     }
 
@@ -446,8 +451,9 @@ void ludwig_run(const char * inputfile) {
     sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
     colloid_io_write(filename);
     if (phi_nop()) {
+      phi_io_info(&iohandler);
       sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-      io_write(filename, io_info_phi);
+      io_write(filename, iohandler);
     }
   }
 

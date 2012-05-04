@@ -20,8 +20,6 @@
 #include "phi_cahn_hilliard.h"
 #include "phi_stats.h"
 #include "symmetric.h"
-#include "control.h"
-#include "colloids_Q_tensor.h"
 
 #include "communicate.h"
 
@@ -32,42 +30,49 @@ void MODEL_init( void ) {
   int offset[3];
   int io_grid_default[3] = {1, 1, 1};
   int io_grid[3];
+  int form;
 
   double   phi;
   double   phi0;
-  char     filename[FILENAME_MAX];
+  char    value[BUFSIZ];
+  char    filename[FILENAME_MAX];
   double  noise0 = 0.1;   /* Initial noise amplitude    */
 
-  struct io_info_t * io_info;
+  struct io_info_t * iohandler;
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);
 
-  /* Now setup the rest of the simulation */
+  /* phi */
 
   RUN_get_int_parameter_vector("default_io_grid", io_grid_default);
-
   for (i = 0; i < 3; i++) {
     io_grid[i] = io_grid_default[i];
   }
   RUN_get_int_parameter_vector("phi_io_grid", io_grid);
 
-  io_info = io_info_create_with_grid(io_grid);
-  phi_io_info_set(io_info);
-
-  phi0 = get_phi0();
-
-  phi_init();
-
-  ind = RUN_get_string_parameter("phi_format", filename, FILENAME_MAX);
+  form = IO_FORMAT_DEFAULT;
+  ind = RUN_get_string_parameter("phi_format", value, BUFSIZ);
   if (ind != 0 && strcmp(filename, "ASCII") == 0) {
-    io_info_set_format_ascii(io_info_phi);
+    form = IO_FORMAT_ASCII;
     info("Setting phi I/O format to ASCII\n");
   }
 
+  phi_init();
+  phi_init_io_info(io_grid, form, form);
+
+  info("\n");
+  info("Other I/O\n");
+  info("---------\n");
+
+  info("phi I/O format:             %s\n", value);
+  info("phi I/O decomposition:      %d %d %d\n", io_grid[0], io_grid[1],
+       io_grid[2]);
+
+
   hydrodynamics_init();
   
-  ind = RUN_get_string_parameter("vel_format", filename, FILENAME_MAX);
+  ind = RUN_get_string_parameter("vel_format", value, BUFSIZ);
   if (ind != 0 && strcmp(filename, "ASCII") == 0) {
     io_info_set_format_ascii(io_info_velocity_);
     info("Setting velocity I/O format to ASCII\n"); 
@@ -80,6 +85,7 @@ void MODEL_init( void ) {
    * 6. set rho/phi/velocity to default values, automatically set etc.
    */
 
+  phi0 = get_phi0();
   RUN_get_double_parameter("noise", &noise0);
 
   if (phi_nop()){
@@ -127,11 +133,12 @@ void MODEL_init( void ) {
     }
 
     if (ind != 0 && strcmp(filename, "from_file") == 0) {
+      phi_io_info(&iohandler);
       info("Initial order parameter requested from file\n");
       info("Reading phi from serial file\n");
-      io_info_set_processor_independent(io_info_phi);
-      io_read("phi-init", io_info_phi);
-      io_info_set_processor_dependent(io_info_phi);
+      io_info_set_processor_independent(iohandler);
+      io_read("phi-init", iohandler);
+      io_info_set_processor_dependent(iohandler);
 
       if (distribution_ndist() > 1) {
 	/* Set the distribution from initial phi */
