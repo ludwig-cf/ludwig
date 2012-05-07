@@ -48,6 +48,12 @@
  *  The potential and charge species are available via the psi_s
  *  object.
  *
+ *  A uniform external electric field may be applied; this is done
+ *  by adding a contribution to the potential
+ *     psi -> psi - eE.r
+ *  which just appears as -eE in the calculation of grad psi.
+ *
+ *
  *  $Id$
  *
  *  Edinbrugh Soft Matter and Statistical Physics Group and
@@ -66,6 +72,7 @@
 #include "coords.h"
 #include "psi_s.h"
 #include "advection_bcs.h"
+#include "magnetic_field.h"  /* Actually used to get electric field */
 #include "nernst_planck.h"
 
 
@@ -105,7 +112,7 @@ int nernst_planck_driver(psi_t * psi) {
   if (fy == NULL) fatal("calloc(fy) failed\n");
   if (fz == NULL) fatal("calloc(fz) failed\n");
 
-  /* U halo if required, and advection */
+  /* advection_order_n(nk, psi->rho, fe, fw, fy, fz);*/
 
   nernst_planck_fluxes(psi, fe, fw, fy, fz);
   advection_bcs_no_normal_flux(nk, fe, fw, fy, fz);
@@ -145,9 +152,17 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
   double b0, b1;
   double mu0, mu1;
   double rho0, rho1;
+  double e0[3];
+
+  assert(psi);
+  assert(fe);
+  assert(fw);
+  assert(fy);
+  assert(fz);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+  assert(nhalo >= 1);
 
   zs = 1;
   ys = zs*(nlocal[Z] + 2*nhalo);
@@ -156,6 +171,15 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
   psi_nk(psi, &nk);
   psi_unit_charge(psi, &eunit);
   psi_beta(psi, &beta);
+
+  /* The external electric field appears in the potential as -E.r.
+   * So, e.g., if we write this external contribution as psi^ex_i,
+   * then the gradient
+   *   (psi^ex_{i} - psi^ex_{i-dx}) / dx = (-E.x - -E.(x-dx))/dx
+   *   = (-Ex + Ex - Edx)/dx = -E, ie., grad psi^ex = -E.
+   */
+
+  electric_field_e0(e0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
@@ -171,7 +195,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 
 	  /* x-direction (between ic-1 and ic) note sign (rho0 - rho1) */
 
-	  mu1 = psi->valency[n]*eunit*psi->psi[index - xs];
+	  mu1 = psi->valency[n]*eunit*(psi->psi[index - xs] + e0[X]);
 	  rho1 = psi->rho[nk*(index - xs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
@@ -179,7 +203,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 
 	  /* x-direction (between ic and ic+1) */
 
-	  mu1 = psi->valency[n]*eunit*psi->psi[index + xs];
+	  mu1 = psi->valency[n]*eunit*(psi->psi[index + xs] - e0[X]);
 	  rho1 = psi->rho[nk*(index + xs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
@@ -187,7 +211,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 
 	  /* y-direction (between jc and jc+1) */
 
-	  mu1 = psi->valency[n]*eunit*psi->psi[index + ys];
+	  mu1 = psi->valency[n]*eunit*(psi->psi[index + ys] - e0[Y]);
 	  rho1 = psi->rho[nk*(index + ys) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
@@ -195,7 +219,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 
 	  /* z-direction (between kc and kc+1) */
 
-	  mu1 = psi->valency[n]*eunit*psi->psi[index + zs];
+	  mu1 = psi->valency[n]*eunit*(psi->psi[index + zs] - e0[Z]);
 	  rho1 = psi->rho[nk*(index + zs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
