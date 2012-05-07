@@ -21,4 +21,7 @@ void magnetic_field_b0_set(const double b0[3]);
 void magnetic_field_force(const double mu[3], double force[3]);
 void magnetic_field_torque(const double mu[3], double torque[3]);
 
+int electric_field_e0(double e0[3]);
+int electric_field_e0_set(const double e0[3]);
+
 #endif
