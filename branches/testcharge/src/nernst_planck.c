@@ -71,15 +71,16 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_s.h"
+#include "advection.h"
 #include "advection_bcs.h"
 #include "magnetic_field.h"  /* Actually used to get electric field */
 #include "nernst_planck.h"
 
 
-static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
-				double * fy, double * fz);
-static int nernst_planck_update(psi_t * psi, double * fe, double * fw,
-				double * fy, double * fz);
+static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
+				double * fz);
+static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
+				double * fz);
 
 
 /*****************************************************************************
@@ -93,7 +94,6 @@ int nernst_planck_driver(psi_t * psi) {
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
 
-  double * fw = NULL;
   double * fe = NULL;
   double * fy = NULL;
   double * fz = NULL;
@@ -103,25 +103,24 @@ int nernst_planck_driver(psi_t * psi) {
 
  /* Allocate fluxes */
 
-  fw = calloc(nsites*nk, sizeof(double));
   fe = calloc(nsites*nk, sizeof(double));
   fy = calloc(nsites*nk, sizeof(double));
   fz = calloc(nsites*nk, sizeof(double));
-  if (fw == NULL) fatal("calloc(fw) failed\n");
   if (fe == NULL) fatal("calloc(fe) failed\n");
   if (fy == NULL) fatal("calloc(fy) failed\n");
   if (fz == NULL) fatal("calloc(fz) failed\n");
 
-  /* advection_order_n(nk, psi->rho, fe, fw, fy, fz);*/
+  /* The order of these calls is important. */
 
-  nernst_planck_fluxes(psi, fe, fw, fy, fz);
-  advection_bcs_no_normal_flux(nk, fe, fw, fy, fz);
-  nernst_planck_update(psi, fe, fw, fy, fz);
+  advective_fluxes(nk, psi->rho, fe, fy, fz);
+  nernst_planck_fluxes(psi, fe, fy, fz);
+
+  advective_bcs_no_flux(nk, fe, fy, fz);
+  nernst_planck_update(psi, fe, fy, fz);
 
   free(fz);
   free(fy);
   free(fe);
-  free(fw);
 
   return 0;
 }
@@ -131,7 +130,10 @@ int nernst_planck_driver(psi_t * psi) {
  *  nernst_planck_fluxes
  *
  *  Compute diffusive fluxes.
- *  IF WANT ADVECTIVE FLXUES THIS MUST BE AN ACCUMULATION!
+ *
+ *  At this point we assume we can accumulate the fluxes, ie., the
+ *  fluxes fe, fw, fy, and fz are zero, or have been set to hold the
+ *  advective contribution. 
  *
  *  As we compute rho(n+1) = rho(n) - div.flux in the update routine,
  *  there is an extra minus sign in the fluxes here. This conincides
@@ -139,8 +141,8 @@ int nernst_planck_driver(psi_t * psi) {
  *
  *****************************************************************************/
 
-static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
-				double * fy, double * fz) {
+static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
+				double * fz) {
   int ic, jc, kc, index;
   int nlocal[3];
   int nhalo;
@@ -156,7 +158,6 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 
   assert(psi);
   assert(fe);
-  assert(fw);
   assert(fy);
   assert(fz);
 
@@ -181,7 +182,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 
   electric_field_e0(e0);
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
+  for (ic = 0; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
@@ -192,14 +193,6 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
 	  mu0 = psi->valency[n]*eunit*psi->psi[index];
 	  rho0 = psi->rho[nk*index + n]*exp(beta*mu0);
 	  b0 = exp(-beta*mu0);
-
-	  /* x-direction (between ic-1 and ic) note sign (rho0 - rho1) */
-
-	  mu1 = psi->valency[n]*eunit*(psi->psi[index - xs] + e0[X]);
-	  rho1 = psi->rho[nk*(index - xs) + n]*exp(beta*mu1);
-	  b1 = exp(-beta*mu1);
-
-	  fw[nk*index + n] -= psi->diffusivity[n]*0.5*(b0 + b1)*(rho0 - rho1);
 
 	  /* x-direction (between ic and ic+1) */
 
@@ -242,19 +235,25 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fw,
  *
  *****************************************************************************/
 
-static int nernst_planck_update(psi_t * psi, double * fe, double * fw,
-				double * fy, double * fz) {
+static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
+				double * fz) {
   int ic, jc, kc, index;
   int nlocal[3];
   int nhalo;
-  int zs, ys;
+  int zs, ys, xs;
   int n, nk;
+
+  assert(psi);
+  assert(fe);
+  assert(fy);
+  assert(fz);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
   zs = 1;
   ys = zs*(nlocal[Z] + 2*nhalo);
+  xs = ys*(nlocal[Y] + 2*nhalo);
 
   psi_nk(psi, &nk);
 
@@ -266,7 +265,7 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fw,
 
 	for (n = 0; n < nk; n++) {
 	  psi->rho[nk*index + n]
-	    -= (+ fe[nk*index + n] - fw[nk*index + n]
+	    -= (+ fe[nk*index + n] - fe[nk*(index-xs) + n]
 		+ fy[nk*index + n] - fy[nk*(index-ys) + n]
 		+ fz[nk*index + n] - fz[nk*(index-zs) + n]);
 	}

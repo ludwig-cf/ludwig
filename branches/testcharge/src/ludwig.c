@@ -252,6 +252,7 @@ void ludwig_run(const char * inputfile) {
   info("Initial conditions.\n");
   stats_distribution_print();
   phi_stats_print_stats();
+  if (psi_) psi_stats_info(psi_);
   ludwig_report_momentum();
 
   /* Main time stepping loop */
@@ -273,8 +274,9 @@ void ludwig_run(const char * inputfile) {
       psi_halo_psi(psi_);
       psi_sor_poisson(psi_);
       psi_halo_rho(psi_);
+      hydrodynamics_halo_u(); /* Should not be repeated if phi active. */ 
       nernst_planck_driver(psi_);
-      /* Accumulate force. */
+      /* Accumulate force pending. */
     }
 
     /* Order parameter */
