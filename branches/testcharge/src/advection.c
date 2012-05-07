@@ -885,3 +885,103 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  advective_fluxes
+ *
+ *  General routine for nf fields at starting address f.
+ *  No Lees Edwards boundaries.
+ *
+ *  The storage of the field(s) for all the related routines is
+ *  assumed to be f[index][nf], where index is the spatial index.
+ *
+ *****************************************************************************/
+
+int advective_fluxes(int nf, double * f, double * fe, double * fy,
+		     double * fz) {
+  assert(nf > 0);
+  assert(f);
+  assert(fe);
+  assert(fy);
+  assert(fz);
+
+  advective_fluxes_2nd(nf, f, fe, fy, fz);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advective_fluxes_2nd
+ *
+ *  'Centred difference' advective fluxes.
+ *
+ *  Symmetric two-point stencil.
+ *
+ *****************************************************************************/
+
+int advective_fluxes_2nd(int nf, double * f, double * fe, double * fy,
+			 double * fz) {
+  int nlocal[3];
+  int ic, jc, kc;
+  int n;
+  int index0, index1;
+  double u0[3], u1[3], u;
+
+  assert(nf > 0);
+  assert(f);
+  assert(fe);
+  assert(fy);
+  assert(fz);
+
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 1);
+
+  for (ic = 0; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(ic, jc, kc);
+	hydrodynamics_get_velocity(index0, u0);
+
+	/* east face (ic and icp1) */
+
+	index1 = coords_index(ic+1, jc, kc);
+
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[X] + u1[X]);
+
+	for (n = 0; n < nf; n++) {
+	  fe[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
+	}
+
+	/* y direction */
+
+	index1 = coords_index(ic, jc+1, kc);
+
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[Y] + u1[Y]);
+
+	for (n = 0; n < nf; n++) {
+	  fy[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
+	}
+
+	/* z direction */
+
+	index1 = coords_index(ic, jc, kc+1);
+
+	hydrodynamics_get_velocity(index1, u1);
+	u = 0.5*(u0[Z] + u1[Z]);
+
+	for (n = 0; n < nf; n++) {
+	  fz[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
+	}
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}

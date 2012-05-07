@@ -19,4 +19,6 @@ void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz);
 void advection_bcs_wall(void);
 
+int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz);
+
 #endif

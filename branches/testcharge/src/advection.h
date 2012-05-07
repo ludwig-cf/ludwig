@@ -32,4 +32,10 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 				    double * fluxy, double * fluxz);
 
+
+int advective_fluxes(int nf, double * f, double * fe, double * fy,
+		     double * fz);
+int advective_fluxes_2nd(int nf, double * f, double * fe, double * fy,
+			 double * fz);
+
 #endif

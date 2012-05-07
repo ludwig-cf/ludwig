@@ -73,6 +73,52 @@ void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
 
 /*****************************************************************************
  *
+ *  advective_bcs_no_flux
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz) {
+
+  int nlocal[3];
+  int ic, jc, kc, index, n;
+
+  double mask, maskx, masky, maskz;
+
+  assert(nf > 0);
+  assert(fx);
+  assert(fy);
+  assert(fz);
+
+  coords_nlocal(nlocal);
+
+  for (ic = 0; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	mask  = (site_map_get_status_index(index)  == FLUID);
+	maskx = (site_map_get_status(ic+1, jc, kc) == FLUID);
+	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
+	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
+
+	for (n = 0;  n < nf; n++) {
+	  fx[nf*index + n] *= mask*maskx;
+	  fy[nf*index + n] *= mask*masky;
+	  fz[nf*index + n] *= mask*maskz;
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  advection_bcs_wall
  *
  *  For the case of flat walls, we kludge the order parameter advection
