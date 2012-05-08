@@ -92,6 +92,18 @@ temperature 0.00002133333
 
 ##############################################################################
 #
+#  Uniform external fields
+#
+#  magnetic_b0     Bx_By_Bz  e.g., for dipoles (default zero)
+#  electric_e0     Ex_Ey_Ez  e.g., for electrokinetics (default zero)
+#
+##############################################################################
+
+magnetic_b0 0.0_0.0_0.0
+electric_e0 0.0_0.0_0.0
+
+##############################################################################
+#
 #  Free energy parameters
 #
 #  free_energy none               single fluid only [the default]
@@ -241,7 +253,8 @@ surf_psi_b 0.01
 #
 #  lc_dielectric_anisotropy This value should probably remain unchanged.
 #
-#  electric_e0          External magnetic field appearing in free energy.
+#  See also
+#  electric_e0          External electric field appearing in free energy.
 #
 ###############################################################################
 
@@ -261,7 +274,6 @@ lc_init_redshift 0.83
 lc_redshift_update 0
 lc_init_nematic 1.0_0.0_0.0
 lc_dielectric_anisotropy 41.4
-# electric_e0 0.0_0.0_0.0
 
 lc_anchoring_method none
 lc_wall_anchoring fixed
