@@ -29,4 +29,4 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 /* Temporary global memory visible */
 extern hydro_t * hydro_;
 
-#endif HYDRO_H
+#endif
