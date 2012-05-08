@@ -34,13 +34,16 @@
  *
  *  This sets up the system for Gouy-Chapman.
  *
+ *  rho_el is the electrolyte (background) charge density.
+ *  rho_w, the wall charge density, is set by the system size.
+ *
  *****************************************************************************/
 
-int psi_init_gouy_chapman_set(psi_t * obj) {
+int psi_init_gouy_chapman_set(psi_t * obj, double rho_el) {
 
   int ic, jc, kc, index;
   int nlocal[3];
-  double rho_w, rho_i, rho_el;
+  double rho_w, rho_i;
 
   assert(obj);
 
@@ -48,7 +51,6 @@ int psi_init_gouy_chapman_set(psi_t * obj) {
 
   /* wall charge density */
   rho_w = 1.e+0 / (2.0*L(X)*L(Y));
-  rho_el = 1.e-2;
 
   /* counter charge density */
   rho_i = rho_w * (2.0*L(X)*L(Y)) / (L(X)*L(Y)*(L(Z) - 2.0));

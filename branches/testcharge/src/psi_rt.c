@@ -69,6 +69,7 @@ static int psi_do_init(void) {
   double epsilon = 0.0;       /* Permeativity */
   double lb;                  /* Bjerrum length; derived, not input. */
   double tolerance;           /* Numerical tolerance for SOR. */
+  double rho_el;              /* Charge density */
 
   int io_grid[3] = {1,1,1};
   int io_format_in = IO_FORMAT_DEFAULT;
@@ -147,8 +148,13 @@ static int psi_do_init(void) {
   n = RUN_get_string_parameter("electrokinetics_init", value, BUFSIZ);
 
   if (strcmp(value, "gouy_chapman") == 0) {
-    psi_init_gouy_chapman_set(psi);
     info("Initial conditions:         %s\n", "Gouy Chapman");
+
+    n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
+    if (n == 0) fatal("... please set electrokinetics_rho_el\n");
+    info("Initial condition rho_el: %14.7e\n", rho_el);
+
+    psi_init_gouy_chapman_set(psi, rho_el);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {
