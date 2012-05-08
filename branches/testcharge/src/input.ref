@@ -518,6 +518,8 @@ electrokinetics_d0      0.01
 electrokinetics_d1      0.01
 electrokinetics_eunit   1.0
 electrokinetics_epsilon 1000.0
+electrokinetics_init    gouy_chapman
+electrokinetics_init_rho_el 0.001
 
 ###############################################################################
 #
