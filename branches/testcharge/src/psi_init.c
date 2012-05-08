@@ -28,9 +28,9 @@
  *
  * psi_init_gouy_chapman_set
  *
- *  Set rho(z = 1)  = + (1/2NxNy)
- *      rho(z = Lz) = + (1/2NxNy)
- *      rho         = - 1/(NxNy*(Nz-2)) + electrolyte
+ *  Set rho(x = 1)  = + (1/2NyNz)
+ *      rho(x = Lx) = + (1/2NyNz)
+ *      rho         = - 1/(NyNz*(Nx-2)) + electrolyte
  *
  *  This sets up the system for Gouy-Chapman.
  *
@@ -49,11 +49,11 @@ int psi_init_gouy_chapman_set(psi_t * obj, double rho_el) {
 
   coords_nlocal(nlocal);
 
-  /* wall charge density */
-  rho_w = 1.e+0 / (2.0*L(X)*L(Y));
+  /* wall surface charge density */
+  rho_w = 0.03125;
 
   /* counter charge density */
-  rho_i = rho_w * (2.0*L(X)*L(Y)) / (L(X)*L(Y)*(L(Z) - 2.0));
+  rho_i = rho_w * 2.0 *L(Y)*L(Z) / (L(Y)*L(Z)*(L(X) - 2.0));
 
   /* apply counter charges & electrolyte */
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -71,10 +71,10 @@ int psi_init_gouy_chapman_set(psi_t * obj, double rho_el) {
   }
 
   /* apply wall charges */
-  if (cart_coords(Z) == 0) {
-    kc = 1;
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
+  if (cart_coords(X) == 0) {
+    ic = 1;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
@@ -87,10 +87,10 @@ int psi_init_gouy_chapman_set(psi_t * obj, double rho_el) {
     }
   }
 
-  if (cart_coords(Z) == cart_size(Z) - 1) {
-    kc = nlocal[Z];
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
+  if (cart_coords(X) == cart_size(X) - 1) {
+    ic = nlocal[X];
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
@@ -123,7 +123,7 @@ int psi_init_liquid_junction_set(psi_t * obj) {
 
   int ic, jc, kc, index;
   int nlocal[3], noff[3];
-  double rho_el = 1.e-2, delta_el = 0.001;
+  double rho_el = 1.0e-2, delta_el = 0.01;
 
   assert(obj);
 
