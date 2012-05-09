@@ -71,7 +71,9 @@
 #include "psi_rt.h"
 #include "psi_sor.h"
 #include "psi_stats.h"
+#include "psi_force.h"
 #include "nernst_planck.h"
+
 
 #include "stats_colloid.h"
 #include "stats_turbulent.h"
@@ -272,11 +274,11 @@ void ludwig_run(const char * inputfile) {
 
     if (psi_) {
       psi_halo_psi(psi_);
+      psi_force_grad_mu(psi_); /* Sum force for this step before update */
       psi_sor_poisson(psi_);
       psi_halo_rho(psi_);
       hydrodynamics_halo_u(); /* Should not be repeated if phi active. */ 
       nernst_planck_driver(psi_);
-      /* Accumulate force pending. */
     }
 
     /* Order parameter */
