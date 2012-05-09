@@ -35,12 +35,15 @@ int psi_force_grad_mu(psi_t * psi) {
 
   double rho_elec;
   double f[3];
+  double e0[3];
 
   assert(psi);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   assert(nhalo >= 1);
+
+  electric_field_e0(e0);
 
   /* Memory strides */
   zs = 1;
@@ -54,9 +57,9 @@ int psi_force_grad_mu(psi_t * psi) {
         index = coords_index(ic, jc, kc);
 	psi_rho_elec(psi, index, &rho_elec);
 
-	f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs]);
-	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys]);
-	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs]);
+	f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs] - 2.*e0[X]);
+	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys] - 2.*e0[Y]);
+	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs] - 2.*e0[Z]);
 
 	hydrodynamics_add_force_local(index, f);
       }
