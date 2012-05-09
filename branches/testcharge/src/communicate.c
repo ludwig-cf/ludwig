@@ -35,7 +35,6 @@ void MODEL_init( void ) {
   double   phi;
   double   phi0;
   char    value[BUFSIZ];
-  char    filename[FILENAME_MAX];
   double  noise0 = 0.1;   /* Initial noise amplitude    */
 
   struct io_info_t * iohandler;
@@ -53,7 +52,7 @@ void MODEL_init( void ) {
 
   form = IO_FORMAT_DEFAULT;
   ind = RUN_get_string_parameter("phi_format", value, BUFSIZ);
-  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+  if (ind != 0 && strcmp(value, "ASCII") == 0) {
     form = IO_FORMAT_ASCII;
     info("Setting phi I/O format to ASCII\n");
   }
@@ -73,7 +72,7 @@ void MODEL_init( void ) {
   hydrodynamics_init();
   
   ind = RUN_get_string_parameter("vel_format", value, BUFSIZ);
-  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+  if (ind != 0 && strcmp(value, "ASCII") == 0) {
     io_info_set_format_ascii(io_info_velocity_);
     info("Setting velocity I/O format to ASCII\n"); 
   }
@@ -113,26 +112,25 @@ void MODEL_init( void ) {
 
   if (phi_nop() == 1) {
 
-    ind = RUN_get_string_parameter("phi_initialisation", filename,
-				   FILENAME_MAX);
+    ind = RUN_get_string_parameter("phi_initialisation", value, BUFSIZ);
 
-    if (ind != 0 && strcmp(filename, "block") == 0) {
+    if (ind != 0 && strcmp(value, "block") == 0) {
       info("Initialisng phi as block\n");
       phi_init_block(symmetric_interfacial_width());
     }
 
-    if (ind != 0 && strcmp(filename, "bath") == 0) {
+    if (ind != 0 && strcmp(value, "bath") == 0) {
       info("Initialising phi for bath\n");
       phi_init_bath();
     }
 
     /* Assumes symmetric free energy */
-    if (ind != 0 && strcmp(filename, "drop") == 0) {
+    if (ind != 0 && strcmp(value, "drop") == 0) {
       info("Initialising droplet\n");
       phi_lb_init_drop(0.4*L(X), symmetric_interfacial_width());
     }
 
-    if (ind != 0 && strcmp(filename, "from_file") == 0) {
+    if (ind != 0 && strcmp(value, "from_file") == 0) {
       phi_io_info(&iohandler);
       info("Initial order parameter requested from file\n");
       info("Reading phi from serial file\n");
