@@ -333,12 +333,10 @@ colloid_random_c    0.0
 colloid_random_h    0.0
 
 # Constant body force on all colloids ("gravity") [default is zero]
-# Uniform magnetic field [default is zero]
 
 colloid_cell_list_interactions yes
 colloid_cell_min 8.0
 colloid_gravity  0.0_0.0_0.0
-magnetic_b0      0.0_0.0_0.0
 
 # Colloid-colloid lubrication corrections
 
