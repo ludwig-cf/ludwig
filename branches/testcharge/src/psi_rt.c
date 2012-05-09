@@ -70,6 +70,8 @@ static int psi_do_init(void) {
   double lb;                  /* Bjerrum length; derived, not input. */
   double tolerance;           /* Numerical tolerance for SOR. */
   double rho_el;              /* Charge density */
+  double delta_el;            /* Relative difference in charge densities */
+  double sigma;               /* Surface charge density */
 
   int io_grid[3] = {1,1,1};
   int io_format_in = IO_FORMAT_DEFAULT;
@@ -154,12 +156,25 @@ static int psi_do_init(void) {
     if (n == 0) fatal("... please set electrokinetics_rho_el\n");
     info("Initial condition rho_el: %14.7e\n", rho_el);
 
-    psi_init_gouy_chapman_set(psi, rho_el);
+    n = RUN_get_double_parameter("electrokinetics_init_sigma", &sigma);
+    if (n == 0) fatal("... please set electrokinetics_sigma\n");
+    info("Initial condition sigma: %14.7e\n", sigma);
+
+    psi_init_gouy_chapman_set(psi, rho_el, sigma);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {
-    psi_init_liquid_junction_set(psi);
     info("Initial conditions:         %s\n", "Liquid junction");
+
+    n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
+    if (n == 0) fatal("... please set electrokinetics_rho_el\n");
+    info("Initial condition rho_el: %14.7e\n", rho_el);
+
+    n = RUN_get_double_parameter("electrokinetics_init_delta_el", &delta_el);
+    if (n == 0) fatal("... please set electrokinetics_delta_el\n");
+    info("Initial condition delta_el: %14.7e\n", delta_el);
+
+    psi_init_liquid_junction_set(psi, rho_el, delta_el);
   }
 
   return 0;

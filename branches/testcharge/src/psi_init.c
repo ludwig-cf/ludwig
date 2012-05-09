@@ -35,11 +35,11 @@
  *  This sets up the system for Gouy-Chapman.
  *
  *  rho_el is the electrolyte (background) charge density.
- *  rho_w, the wall charge density, is set by the system size.
+ *  sigma is the sufrace charge density at the wall.
  *
  *****************************************************************************/
 
-int psi_init_gouy_chapman_set(psi_t * obj, double rho_el) {
+int psi_init_gouy_chapman_set(psi_t * obj, double rho_el, double sigma) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -50,7 +50,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, double rho_el) {
   coords_nlocal(nlocal);
 
   /* wall surface charge density */
-  rho_w = 0.03125;
+  rho_w = sigma;
 
   /* counter charge density */
   rho_i = rho_w * 2.0 *L(Y)*L(Z) / (L(Y)*L(Z)*(L(X) - 2.0));
@@ -117,13 +117,15 @@ int psi_init_gouy_chapman_set(psi_t * obj, double rho_el) {
  *
  *  This sets up the system for liquid junction potential.
  *
+ *  rho_el is the average electrolyte concentration.
+ *  delta_el is the relative difference of the concentrations.
+ *
  *****************************************************************************/
 
-int psi_init_liquid_junction_set(psi_t * obj) {
+int psi_init_liquid_junction_set(psi_t * obj, double rho_el, double delta_el) {
 
   int ic, jc, kc, index;
   int nlocal[3], noff[3];
-  double rho_el = 1.0e-2, delta_el = 0.01;
 
   assert(obj);
 
