@@ -21,7 +21,7 @@
 #include "psi_init.h"
 #include "io_harness.h"
 
-static int psi_do_init(void);
+static int psi_do_init(psi_t ** obj);
 
 /*****************************************************************************
  *
@@ -29,7 +29,7 @@ static int psi_do_init(void);
  *
  *****************************************************************************/
 
-int psi_init_rt(void) {
+int psi_init_rt(psi_t ** pobj) {
 
   int eswitch =  0;
   char str[BUFSIZ];
@@ -45,7 +45,7 @@ int psi_init_rt(void) {
   info("-----------------------------------\n");
   info("Electrokinetics: %s\n", (eswitch) ? "on" : "off");
 
-  if (eswitch) psi_do_init();
+  if (eswitch) psi_do_init(pobj);
 
   return 0;
 }
@@ -56,7 +56,9 @@ int psi_init_rt(void) {
  *
  *****************************************************************************/
 
-static int psi_do_init(void) {
+static int psi_do_init(psi_t ** pobj) {
+
+  psi_t * obj = NULL; 
 
   int n;
   int nk = 2;                 /* Number of charge densities always 2 for now */
@@ -78,11 +80,9 @@ static int psi_do_init(void) {
   int io_format_out = IO_FORMAT_DEFAULT;
   char value[BUFSIZ] = "BINARY";
 
-  /* Local reference; initialise psi_ via psi_init(). */
-  psi_t * psi = NULL; 
 
-  psi_init(2, &psi);
-  assert(psi);
+  psi_create(2, &obj);
+  assert(obj);
 
   n = RUN_get_int_parameter("electrokinetics_z0", valency);
   n = RUN_get_int_parameter("electrokinetics_z1", valency + 1);
@@ -90,15 +90,15 @@ static int psi_do_init(void) {
   n = RUN_get_double_parameter("electrokinetics_d1", diffusivity + 1);
 
   for (n = 0; n < nk; n++) {
-    psi_valency_set(psi, n, valency[n]);
-    psi_diffusivity_set(psi, n, diffusivity[n]);
+    psi_valency_set(obj, n, valency[n]);
+    psi_diffusivity_set(obj, n, diffusivity[n]);
   }
 
   n = RUN_get_double_parameter("electrokinetics_eunit", &eunit);
   n = RUN_get_double_parameter("electrokinetics_epsilon", &epsilon);
 
-  psi_unit_charge_set(psi, eunit);
-  psi_epsilon_set(psi, epsilon);
+  psi_unit_charge_set(obj, eunit);
+  psi_epsilon_set(obj, epsilon);
 
   n = RUN_get_double_parameter("temperature", &temperature);
 
@@ -108,8 +108,8 @@ static int psi_do_init(void) {
 
   beta = 1.0/temperature;
 
-  psi_beta_set(psi, beta);
-  psi_bjerrum_length(psi, &lb);
+  psi_beta_set(obj, beta);
+  psi_bjerrum_length(obj, &lb);
 
   info("Electrokinetic species:    %2d\n", nk);
   info("Boltzmann factor:          %14.7e (T = %14.7e)\n", beta, temperature);
@@ -124,9 +124,9 @@ static int psi_do_init(void) {
 
   /* Tolerances. Yet to be offered from input */
 
-  psi_reltol(psi, &tolerance);
+  psi_reltol(obj, &tolerance);
   info("Relative tolerance (SOR):  %14.7e\n", tolerance);
-  psi_abstol(psi, &tolerance);
+  psi_abstol(obj, &tolerance);
   info("Absolute Tolerance (SOR):  %14.7e\n", tolerance);
 
   /* I/O */
@@ -143,7 +143,7 @@ static int psi_do_init(void) {
        io_grid[2]);
   info("I/O format:                 %s\n", value);
 
-  psi_init_io_info(psi, io_grid, io_format_in, io_format_out);
+  psi_init_io_info(obj, io_grid, io_format_in, io_format_out);
 
   /* Initial charge densities */
 
@@ -160,7 +160,7 @@ static int psi_do_init(void) {
     if (n == 0) fatal("... please set electrokinetics_sigma\n");
     info("Initial condition sigma: %14.7e\n", sigma);
 
-    psi_init_gouy_chapman_set(psi, rho_el, sigma);
+    psi_init_gouy_chapman_set(obj, rho_el, sigma);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {
@@ -174,8 +174,10 @@ static int psi_do_init(void) {
     if (n == 0) fatal("... please set electrokinetics_delta_el\n");
     info("Initial condition delta_el: %14.7e\n", delta_el);
 
-    psi_init_liquid_junction_set(psi, rho_el, delta_el);
+    psi_init_liquid_junction_set(obj, rho_el, delta_el);
   }
+
+  *pobj = obj;
 
   return 0;
 }

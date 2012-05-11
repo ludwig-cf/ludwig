@@ -50,7 +50,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "lattice.h"
 #include "colloids.h"
 #include "site_map.h"
 #include "wall.h"
@@ -58,9 +57,9 @@
 #include "free_energy.h"
 #include "phi_force_stress.h"
 
-static void phi_force_interpolation1(void);
-static void phi_force_interpolation2(void);
-static void phi_force_fast(void);
+static int phi_force_interpolation1(hydro_t * hydro);
+static int phi_force_interpolation2(hydro_t * hydro);
+static int phi_force_fast(hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -70,11 +69,11 @@ static void phi_force_fast(void);
  *
  *****************************************************************************/
 
-void phi_force_colloid(void) {
+int phi_force_colloid(hydro_t * hydro) {
 
-  phi_force_fast();
+  phi_force_fast(hydro);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -83,21 +82,21 @@ void phi_force_colloid(void) {
  *
  *****************************************************************************/
 
-static void phi_force_fast(void) {
+static int phi_force_fast(hydro_t * hydro) {
 
   phi_force_stress_allocate();
   phi_force_stress_compute();
 
   if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
-    phi_force_interpolation1();
+    phi_force_interpolation1(hydro);
   }
   else {
-    phi_force_interpolation2();
+    phi_force_interpolation2(hydro);
   }
 
   phi_force_stress_free();
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -109,7 +108,7 @@ static void phi_force_fast(void) {
  *
  *****************************************************************************/
 
-static void phi_force_interpolation1(void) {
+static int phi_force_interpolation1(hydro_t * hydro) {
 
   int ia, ic, jc, kc;
   int index, index1;
@@ -122,6 +121,8 @@ static void phi_force_interpolation1(void) {
   colloid_t * colloid_at_site_index(int);
 
   void (* chemical_stress)(const int index, double s[3][3]);
+
+  assert(hydro);
 
   coords_nlocal(nlocal);
 
@@ -235,14 +236,14 @@ static void phi_force_interpolation1(void) {
 
 	/* Store the force on lattice */
 
-	hydrodynamics_add_force_local(index, force);
+	hydro_f_local_add(hydro, index, force);
 
 	/* Next site */
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -254,7 +255,7 @@ static void phi_force_interpolation1(void) {
  *
  *****************************************************************************/
 
-static void phi_force_interpolation2(void) {
+static int phi_force_interpolation2(hydro_t * hydro) {
 
   int ia, ic, jc, kc;
   int index, index1;
@@ -268,6 +269,8 @@ static void phi_force_interpolation2(void) {
   colloid_t * colloid_at_site_index(int);
 
   void (* chemical_stress)(const int index, double s[3][3]);
+
+  assert(hydro);
 
   coords_nlocal(nlocal);
 
@@ -438,7 +441,7 @@ static void phi_force_interpolation2(void) {
 
 	/* Store the force on lattice */
 
-	hydrodynamics_add_force_local(index, force);
+	hydro_f_local_add(hydro, index, force);
 	wall_accumulate_force(fw);
 
 	/* Next site */
@@ -446,5 +449,5 @@ static void phi_force_interpolation2(void) {
     }
   }
 
-  return;
+  return 0;
 }

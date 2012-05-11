@@ -23,7 +23,7 @@
 #include "io_harness.h"
 #include "site_map.h"
 
-struct io_info_t * io_info_site_map;
+io_info_t * io_info_site_map;
 
 static void site_map_init_mpi(void);
 static void site_map_init_io(void);

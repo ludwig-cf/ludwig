@@ -15,6 +15,8 @@
 #ifndef STATS_VELOCITY_H
 #define STATS_VELOCITY_H
 
-void stats_velocity_minmax(void);
+#include "hydro.h"
+
+int stats_velocity_minmax(hydro_t * hydro);
 
 #endif

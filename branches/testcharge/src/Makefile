@@ -41,7 +41,7 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = gcc 
+CC = gcc -g
 MPICC = mpicc
 OPTS = -D_D3Q19_
 CFLAGS = -Wall -O3
@@ -75,7 +75,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
-     interaction.o io_harness.o\
+     hydro.o hydro_rt.o interaction.o io_harness.o\
      leslie_ericksen.o magnetic_field.o magnetic_field_rt.o \
      model_le.o potential.o \
      phi.o phi_cahn_hilliard.o \
@@ -86,7 +86,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
      psi_force.o nernst_planck.o \
-     lattice.o leesedwards.o pe.o ran.o runtime.o \
+     leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
      site_map.o site_map_rt.o subgrid.o \

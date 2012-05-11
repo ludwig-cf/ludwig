@@ -24,14 +24,13 @@
 #include "coords.h"
 #include "physics.h"
 #include "interaction.h"
-#include "lattice.h"
 #include "colloids.h"
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
 
 static double d_peskin(double);
-static void   subgrid_interpolation(void);
+static int subgrid_interpolation(hydro_t * hydro);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
 static int subgrid_on_ = 0;  /* Subgrid particle flag */
 
@@ -44,7 +43,7 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
  *
  *****************************************************************************/
 
-void subgrid_force_from_particles() {
+int subgrid_force_from_particles(hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
@@ -54,6 +53,8 @@ void subgrid_force_from_particles() {
   double r[3], r0[3], force[3], g[3];
   double dr;
   colloid_t * p_colloid;
+
+  assert(hydro);
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);
@@ -106,7 +107,7 @@ void subgrid_force_from_particles() {
 		force[X] = g[X]*dr;
 		force[Y] = g[Y]*dr;
 		force[Z] = g[Z]*dr;
-		hydrodynamics_add_force_local(index, force);
+		hydro_f_local_add(hydro, index, force);
 	      }
 	    }
 	  }
@@ -120,7 +121,7 @@ void subgrid_force_from_particles() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -133,7 +134,7 @@ void subgrid_force_from_particles() {
  *
  *****************************************************************************/
 
-void subgrid_update() {
+int subgrid_update(hydro_t * hydro) {
 
   int ia;
   int ic, jc, kc;
@@ -141,7 +142,9 @@ void subgrid_update() {
   double g[3];
   colloid_t * p_colloid;
 
-  subgrid_interpolation();
+  assert(hydro);
+
+  subgrid_interpolation(hydro);
   colloid_sums_halo(COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
@@ -171,7 +174,7 @@ void subgrid_update() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -183,7 +186,7 @@ void subgrid_update() {
  *
  *****************************************************************************/
 
-static void subgrid_interpolation() {
+static int subgrid_interpolation(hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
@@ -193,6 +196,8 @@ static void subgrid_interpolation() {
   double r0[3], r[3], u[3];
   double dr;
   colloid_t * p_colloid;
+
+  assert(hydro);
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);
@@ -258,7 +263,7 @@ static void subgrid_interpolation() {
 		r[Z] = r0[Z] - 1.0*k;
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
-		hydrodynamics_get_velocity(index, u);
+		hydro_u(hydro, index, u);
 
 		p_colloid->fc0[X] += u[X]*dr;
 		p_colloid->fc0[Y] += u[Y]*dr;
@@ -276,7 +281,7 @@ static void subgrid_interpolation() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -312,10 +317,10 @@ static double d_peskin(double r) {
  *
  *****************************************************************************/
 
-void subgrid_on_set(void) {
+int subgrid_on_set(void) {
 
   subgrid_on_ = 1;
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -324,7 +329,10 @@ void subgrid_on_set(void) {
  *
  *****************************************************************************/
 
-int subgrid_on(void) {
+int subgrid_on(int * flag) {
 
-  return subgrid_on_;
+  assert(flag);
+
+  *flag = subgrid_on_;
+  return 0;
 }

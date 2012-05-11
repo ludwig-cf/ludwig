@@ -90,9 +90,13 @@ struct lubrication_struct {
  *
  *****************************************************************************/
 
-void COLL_update() {
+int COLL_update(hydro_t * hydro) {
 
-  if (colloid_ntotal() == 0) return;
+  int is_subgrid = 0;
+
+  if (colloid_ntotal() == 0) return 0;
+
+  subgrid_on(&is_subgrid);
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
@@ -102,9 +106,9 @@ void COLL_update() {
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
-  if (subgrid_on()) {
+  if (is_subgrid) {
     colloid_forces();
-    subgrid_force_from_particles();
+    subgrid_force_from_particles(hydro);
   }
   else {
 
@@ -123,7 +127,7 @@ void COLL_update() {
     colloid_forces();
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -265,9 +269,11 @@ void COLL_init() {
     /* Active */
     RUN_get_string_parameter("colloid_type", keyvalue, 128);
     if (strcmp(keyvalue, "active") == 0) bbl_active_on_set();
-    if (strcmp(keyvalue, "subgrid") == 0) subgrid_on_set();
 
-    if (subgrid_on() == 0) {
+    if (strcmp(keyvalue, "subgrid") == 0) {
+      subgrid_on_set();
+    }
+    else  {
       COLL_update_map();
       COLL_update_links();
     }

@@ -46,7 +46,8 @@ void advection_run_time(void) {
     n = RUN_get_int_parameter("fd_advection_scheme_order", &order);
 
     if (n == 0) {
-      info("%2d (default)\n", advection_order());
+      advection_order(&order);
+      info("%2d (default)\n", order);
     }
     else {
       info("%d\n", order);

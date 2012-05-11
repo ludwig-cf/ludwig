@@ -46,7 +46,7 @@ struct psi_s {
   double abstol;            /* Absolute tolerance for Poisson solver */
   MPI_Datatype psihalo[3];  /* psi field halo */
   MPI_Datatype rhohalo[3];  /* charge densities halo */
-  struct io_info_t * info;  /* I/O informtation */
+  io_info_t * info;         /* I/O informtation */
 };
 
 int psi_halo(int nf, double * f, MPI_Datatype halo[3]);

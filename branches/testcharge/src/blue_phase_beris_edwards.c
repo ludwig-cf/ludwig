@@ -23,7 +23,6 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "site_map.h"
-#include "lattice.h"
 #include "phi.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
@@ -43,7 +42,7 @@ static double * fluxz;
 static const double r3 = (1.0/3.0);   /* Fraction 1/3 */
 static const int    use_hs_ = 0;      /* Switch for surface term h_s */
 
-static void blue_phase_be_update(double * hs5);
+static void blue_phase_be_update(hydro_t * hydro, double * hs5);
 static void blue_phase_be_colloid(double * hs5);
 static void blue_phase_be_wallx(double * hs5);
 static void blue_phase_be_wally(double * hs5);
@@ -59,7 +58,7 @@ static void blue_phase_be_hs(int ic, int jc, int kc, const int nhat[3],
  *
  *****************************************************************************/
 
-void blue_phase_beris_edwards(void) {
+int blue_phase_beris_edwards(hydro_t * hydro) {
 
   int nsites;
   int nop;
@@ -70,31 +69,33 @@ void blue_phase_beris_edwards(void) {
   nsites = coords_nsites();
   nop = phi_nop();
 
-  fluxe = (double *) malloc(nop*nsites*sizeof(double));
-  fluxw = (double *) malloc(nop*nsites*sizeof(double));
-  fluxy = (double *) malloc(nop*nsites*sizeof(double));
-  fluxz = (double *) malloc(nop*nsites*sizeof(double));
-  if (fluxe == NULL) fatal("malloc(fluxe) failed");
-  if (fluxw == NULL) fatal("malloc(fluxw) failed");
-  if (fluxy == NULL) fatal("malloc(fluxy) failed");
-  if (fluxz == NULL) fatal("malloc(fluxz) failed");
+  fluxe = calloc(nop*nsites, sizeof(double));
+  fluxw = calloc(nop*nsites, sizeof(double));
+  fluxy = calloc(nop*nsites, sizeof(double));
+  fluxz = calloc(nop*nsites, sizeof(double));
+  if (fluxe == NULL) fatal("calloc(fluxe) failed");
+  if (fluxw == NULL) fatal("calloc(fluxw) failed");
+  if (fluxy == NULL) fatal("calloc(fluxy) failed");
+  if (fluxz == NULL) fatal("calloc(fluxz) failed");
 
   /* Allocate, and initialise to zero, the surface terms (calloc) */
 
   hs5 = (double *) calloc(nop*nsites, sizeof(double));
   if (hs5 == NULL) fatal("calloc(hs5) failed\n");
 
-  hydrodynamics_halo_u();
-  colloids_fix_swd();
-  hydrodynamics_leesedwards_transformation();
-  advection_upwind(fluxe, fluxw, fluxy, fluxz);
-  advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
+  if (hydro) {
+    hydro_u_halo(hydro); /* Can move this to main to make more obvious? */
+    colloids_fix_swd(hydro);
+    hydro_lees_edwards(hydro);
+    advection_upwind(hydro, fluxe, fluxw, fluxy, fluxz);
+    advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
+  }
 
   if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     blue_phase_be_surface(hs5);
   }
 
-  blue_phase_be_update(hs5);
+  blue_phase_be_update(hydro, hs5);
 
   free(hs5);
   free(fluxe);
@@ -102,7 +103,7 @@ void blue_phase_beris_edwards(void) {
   free(fluxy);
   free(fluxz);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -117,7 +118,7 @@ void blue_phase_beris_edwards(void) {
  *
  *****************************************************************************/
 
-static void blue_phase_be_update(double * hs) {
+static void blue_phase_be_update(hydro_t * hydro, double * hs) {
 
   int ic, jc, kc;
   int ia, ib, id;
@@ -142,6 +143,12 @@ static void blue_phase_be_update(double * hs) {
   xi = blue_phase_get_xi();
 
   assert(nop == 5);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      s[ia][ib] = 0.0;
+    }
+  }
 
   /* For first anchoring method (only) have evolution at solid sites. */
 
@@ -170,27 +177,30 @@ static void blue_phase_be_update(double * hs) {
 	}
 	else {
 
-	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
+	  if (hydro) {
 
-	  hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
+	    /* Velocity gradient tensor, symmetric and antisymmetric parts */
+
+	    hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
 	  
-	  trace_qw = 0.0;
+	    trace_qw = 0.0;
 
-	  for (ia = 0; ia < 3; ia++) {
-	    trace_qw += q[ia][ia]*w[ia][ia];
-	    for (ib = 0; ib < 3; ib++) {
-	      d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
-	      omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
+	    for (ia = 0; ia < 3; ia++) {
+	      trace_qw += q[ia][ia]*w[ia][ia];
+	      for (ib = 0; ib < 3; ib++) {
+		d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
+		omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
+	      }
 	    }
-	  }
 	  
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      s[ia][ib] = -2.0*xi*(q[ia][ib] + r3*d_[ia][ib])*trace_qw;
-	      for (id = 0; id < 3; id++) {
-		s[ia][ib] +=
-		  (xi*d[ia][id] + omega[ia][id])*(q[id][ib] + r3*d_[id][ib])
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		s[ia][ib] = -2.0*xi*(q[ia][ib] + r3*d_[ia][ib])*trace_qw;
+		for (id = 0; id < 3; id++) {
+		  s[ia][ib] +=
+		    (xi*d[ia][id] + omega[ia][id])*(q[id][ib] + r3*d_[id][ib])
 		  + (q[ia][id] + r3*d_[ia][id])*(xi*d[id][ib] - omega[id][ib]);
+		}
 	      }
 	    }
 	  }

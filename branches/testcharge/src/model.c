@@ -37,7 +37,7 @@ double * f_;
 static int ndist_ = 1;
 static int nsite_ = 0;
 static int initialised_ = 0;
-static struct io_info_t * io_info_distribution_; 
+static io_info_t * io_info_distribution_; 
 
 static MPI_Datatype plane_xy_full_;
 static MPI_Datatype plane_xz_full_;
@@ -399,7 +399,7 @@ void distribution_finish(void) {
  *
  *****************************************************************************/
 
-void distribution_io_info_set(struct io_info_t * io_info) {
+void distribution_io_info_set(io_info_t * io_info) {
 
   char string[FILENAME_MAX];
 
@@ -422,7 +422,7 @@ void distribution_io_info_set(struct io_info_t * io_info) {
  *
  *****************************************************************************/
 
-struct io_info_t * distribution_io_info(void) {
+io_info_t * distribution_io_info(void) {
 
   return io_info_distribution_;
 }

@@ -23,6 +23,8 @@
 #error "You must define -D_D2Q9_, -D_D3Q15_ or -D_D3Q19_ in the Makefile" 
 #endif
 
+#include "io_harness.h"
+
 /* Number of hydrodynamic modes */
 enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
@@ -57,7 +59,7 @@ void   distribution_index(const int index, const int n, double f[NVEL]);
 void   distribution_index_set(const int index, const int n,
 			      const double f[NVEL]);
 
-struct io_info_t * distribution_io_info(void);
-void   distribution_io_info_set(struct io_info_t * io_info);
+io_info_t * distribution_io_info(void);
+void   distribution_io_info_set(io_info_t * io_info);
 
 #endif

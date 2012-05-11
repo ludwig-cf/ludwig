@@ -14,7 +14,6 @@
 #include "physics.h"
 #include "phi.h"
 #include "model.h"
-#include "lattice.h"
 #include "ran.h"
 #include "phi_lb_coupler.h"
 #include "phi_cahn_hilliard.h"
@@ -37,7 +36,7 @@ void MODEL_init( void ) {
   char    value[BUFSIZ];
   double  noise0 = 0.1;   /* Initial noise amplitude    */
 
-  struct io_info_t * iohandler;
+  io_info_t * iohandler;
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);
@@ -68,7 +67,7 @@ void MODEL_init( void ) {
   info("phi I/O decomposition:      %d %d %d\n", io_grid[0], io_grid[1],
        io_grid[2]);
 
-
+  /*
   hydrodynamics_init();
   
   ind = RUN_get_string_parameter("vel_format", value, BUFSIZ);
@@ -76,6 +75,7 @@ void MODEL_init( void ) {
     io_info_set_format_ascii(io_info_velocity_);
     info("Setting velocity I/O format to ASCII\n"); 
   }
+  */
 
   /*
    * A number of options are offered to start a simulation:

@@ -49,7 +49,7 @@ struct io_decomposition_t {
   int offset[3];    /* Offset of the file on the lattice */
 };
 
-struct io_info_t {
+struct io_info_s {
   struct io_decomposition_t * io_comm;
   size_t bytesize;
   int processor_independent;
@@ -62,9 +62,9 @@ struct io_info_t {
   int (* read_function_b)  (FILE *, const int, const int, const int);
 };
 
-static struct io_info_t * io_info_allocate(void);
-static void io_set_group_filename(char *, const char *, struct io_info_t *);
-static long int io_file_offset(int, int, struct io_info_t *);
+static io_info_t * io_info_allocate(void);
+static void io_set_group_filename(char *, const char *, io_info_t *);
+static long int io_file_offset(int, int, io_info_t *);
 static struct io_decomposition_t * io_decomposition_allocate(void);
 static struct io_decomposition_t * io_decomposition_create(const int grid[3]);
 static void io_decomposition_destroy(struct io_decomposition_t *);
@@ -77,10 +77,10 @@ static void io_decomposition_destroy(struct io_decomposition_t *);
  *
  *****************************************************************************/
 
-struct io_info_t * io_info_create() {
+io_info_t * io_info_create() {
 
   int io_grid[3] = {1, 1, 1}; /* Default i/o grid */
-  struct io_info_t * p_info;
+  io_info_t * p_info;
 
   p_info = io_info_create_with_grid(io_grid);
 
@@ -95,9 +95,9 @@ struct io_info_t * io_info_create() {
  *
  *****************************************************************************/
 
-struct io_info_t * io_info_create_with_grid(const int grid[3]) {
+io_info_t * io_info_create_with_grid(const int grid[3]) {
 
-  struct io_info_t * p_info;
+  io_info_t * p_info;
   struct io_decomposition_t * p_decomp;
 
   p_info = io_info_allocate();
@@ -163,7 +163,7 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
  *
  *****************************************************************************/
 
-void io_write(char * filename_stub, struct io_info_t * io_info) {
+void io_write(char * filename_stub, io_info_t * io_info) {
 
   FILE *    fp_state;
   char      filename_io[FILENAME_MAX];
@@ -231,7 +231,7 @@ void io_write(char * filename_stub, struct io_info_t * io_info) {
  *
  *****************************************************************************/
 
-void io_read(char * filename_stub, struct io_info_t * io_info) {
+void io_read(char * filename_stub, io_info_t * io_info) {
 
   FILE *    fp_state;
   char      filename_io[FILENAME_MAX];
@@ -310,7 +310,7 @@ void io_read(char * filename_stub, struct io_info_t * io_info) {
  *****************************************************************************/
 
 static void io_set_group_filename(char * filename_io, const char * stub,
-				  struct io_info_t * info) {
+				  io_info_t * info) {
 
   assert(stub);
   assert(strlen(stub) < FILENAME_MAX/2);  /* stub should not be too long */
@@ -366,11 +366,11 @@ static void io_decomposition_destroy(struct io_decomposition_t * p) {
  *
  *****************************************************************************/
 
-struct io_info_t * io_info_allocate() {
+io_info_t * io_info_allocate() {
 
-  struct io_info_t * p = NULL;
+  io_info_t * p = NULL;
 
-  p = calloc(1, sizeof(struct io_info_t));
+  p = calloc(1, sizeof(io_info_t));
   if (p == NULL) fatal("Failed to allocate io_info_t struct\n");
 
   return p;
@@ -384,9 +384,9 @@ struct io_info_t * io_info_allocate() {
  *
  *****************************************************************************/
 
-void io_info_destroy(struct io_info_t * p) {
+void io_info_destroy(io_info_t * p) {
 
-  assert(p != (struct io_info_t *) NULL);
+  assert(p != (io_info_t *) NULL);
   io_decomposition_destroy(p->io_comm);
   free(p);
 
@@ -399,10 +399,10 @@ void io_info_destroy(struct io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_write(struct io_info_t * p,
+void io_info_set_write(io_info_t * p,
 		       int (* writer) (FILE *, int, int, int)) {
 
-  assert(p != (struct io_info_t *) NULL);
+  assert(p != (io_info_t *) NULL);
   p->write_function = writer;
 
   return;
@@ -414,7 +414,7 @@ void io_info_set_write(struct io_info_t * p,
  *
  *****************************************************************************/
 
-void io_info_set_read(struct io_info_t * p,
+void io_info_set_read(io_info_t * p,
 		      int (* reader) (FILE *, int, int, int)) {
 
   assert(p);
@@ -429,7 +429,7 @@ void io_info_set_read(struct io_info_t * p,
  *
  *****************************************************************************/
 
-void io_info_set_write_ascii(struct io_info_t * p,
+void io_info_set_write_ascii(io_info_t * p,
 			     int (* writer) (FILE *, int, int, int)) {
 
   assert(p);
@@ -444,7 +444,7 @@ void io_info_set_write_ascii(struct io_info_t * p,
  *
  *****************************************************************************/
 
-void io_info_set_read_ascii(struct io_info_t * p,
+void io_info_set_read_ascii(io_info_t * p,
 			    int (* reader) (FILE *, int, int, int)) {
 
   assert(p);
@@ -459,7 +459,7 @@ void io_info_set_read_ascii(struct io_info_t * p,
  *
  *****************************************************************************/
 
-void io_info_set_write_binary(struct io_info_t * p,
+void io_info_set_write_binary(io_info_t * p,
 			      int (* writer) (FILE *, int, int, int)) {
 
   assert(p);
@@ -474,7 +474,7 @@ void io_info_set_write_binary(struct io_info_t * p,
  *
  *****************************************************************************/
 
-void io_info_set_read_binary(struct io_info_t * p,
+void io_info_set_read_binary(io_info_t * p,
 			     int (* reader) (FILE *, int, int, int)) {
   assert(p);
   p->read_function_b = reader;
@@ -488,7 +488,7 @@ void io_info_set_read_binary(struct io_info_t * p,
  *
  *****************************************************************************/
 
-void io_info_set_format_ascii(struct io_info_t * p) {
+void io_info_set_format_ascii(io_info_t * p) {
 
   assert(p);
   assert(p->processor_independent == 0);
@@ -505,7 +505,7 @@ void io_info_set_format_ascii(struct io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_format_binary(struct io_info_t * p) {
+void io_info_set_format_binary(io_info_t * p) {
 
   assert(p);
   p->read_function = p->read_function_b;
@@ -520,7 +520,7 @@ void io_info_set_format_binary(struct io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_name(struct io_info_t * p, const char * name) {
+void io_info_set_name(io_info_t * p, const char * name) {
 
   assert(p);
   assert(strlen(name) < FILENAME_MAX);
@@ -535,7 +535,7 @@ void io_info_set_name(struct io_info_t * p, const char * name) {
  *
  *****************************************************************************/
 
-void io_info_set_processor_dependent(struct io_info_t * p) {
+void io_info_set_processor_dependent(io_info_t * p) {
 
   assert(p);
   p->processor_independent = 0;
@@ -549,7 +549,7 @@ void io_info_set_processor_dependent(struct io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_processor_independent(struct io_info_t * p) {
+void io_info_set_processor_independent(io_info_t * p) {
 
   assert(p);
   p->processor_independent = 1;
@@ -563,7 +563,7 @@ void io_info_set_processor_independent(struct io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_bytesize(struct io_info_t * p, size_t size) {
+void io_info_set_bytesize(io_info_t * p, size_t size) {
 
   assert(p);
   p->bytesize = size;
@@ -580,7 +580,7 @@ void io_info_set_bytesize(struct io_info_t * p, size_t size) {
  *
  *****************************************************************************/
 
-static long int io_file_offset(int ic, int jc, struct io_info_t * info) {
+static long int io_file_offset(int ic, int jc, io_info_t * info) {
 
   long int offset;
   int ifo, jfo, kfo;
@@ -608,7 +608,7 @@ static long int io_file_offset(int ic, int jc, struct io_info_t * info) {
  *
  *****************************************************************************/
 
-void io_write_metadata(char * filename_stub, struct io_info_t * info) {
+void io_write_metadata(char * filename_stub, io_info_t * info) {
 
   FILE * fp_meta;
   char filename_io[FILENAME_MAX];
@@ -700,7 +700,7 @@ void io_write_metadata(char * filename_stub, struct io_info_t * info) {
  *
  *****************************************************************************/
 
-int io_remove(char * filename_stub, struct io_info_t * obj) {
+int io_remove(char * filename_stub, io_info_t * obj) {
 
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
@@ -723,7 +723,7 @@ int io_remove(char * filename_stub, struct io_info_t * obj) {
  *
  *****************************************************************************/
 
-int io_info_format_set(struct io_info_t * obj, int form_in, int form_out) {
+int io_info_format_set(io_info_t * obj, int form_in, int form_out) {
 
   assert(obj);
   assert(form_in >= 0);
@@ -747,7 +747,7 @@ int io_info_format_set(struct io_info_t * obj, int form_in, int form_out) {
  *
  *****************************************************************************/
 
-int io_info_format_in_set(struct io_info_t * obj, int form_in) {
+int io_info_format_in_set(io_info_t * obj, int form_in) {
 
   assert(obj);
   assert(form_in >= 0);
@@ -788,7 +788,7 @@ int io_info_format_in_set(struct io_info_t * obj, int form_in) {
  *
  *****************************************************************************/
 
-int io_info_format_out_set(struct io_info_t * obj, int form_out) {
+int io_info_format_out_set(io_info_t * obj, int form_out) {
 
   assert(obj);
   assert(form_out >= 0);
@@ -809,6 +809,38 @@ int io_info_format_out_set(struct io_info_t * obj, int form_out) {
   default:
     fatal("Bad i/o output format\n");
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_read_set
+ *
+ *****************************************************************************/
+
+int io_info_read_set(io_info_t * obj, int format, io_rw_cb_ft f) {
+
+  assert(obj);
+  assert(format == IO_FORMAT_ASCII || format == IO_FORMAT_BINARY);
+
+  assert(0);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_write_set
+ *
+ *****************************************************************************/
+
+int io_info_write_set(io_info_t * obj, int format, io_rw_cb_ft f) {
+
+  assert(obj);
+  assert(format == IO_FORMAT_ASCII || format == IO_FORMAT_BINARY);
+
+  assert(0);
 
   return 0;
 }

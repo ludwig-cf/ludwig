@@ -34,7 +34,6 @@
 #include "leesedwards.h"
 #include "advection.h"
 #include "advection_bcs.h"
-#include "lattice.h"
 #include "free_energy.h"
 #include "phi_fluctuations.h"
 #include "phi.h"
@@ -67,9 +66,12 @@ static double mobility_  = 0.0; /* Order parameter mobility */
  *  cell must be handled spearately to take account of Lees Edwards
  *  boundaries.
  *
+ *  hydro is allowed to be NULL, in which case the dynamics is
+ *  just relaxational (no velocity field).
+ *
  *****************************************************************************/
 
-void phi_cahn_hilliard() {
+int phi_cahn_hilliard(hydro_t * hydro) {
 
   int nsites;
 
@@ -78,19 +80,20 @@ void phi_cahn_hilliard() {
 
   nsites = coords_nsites();
 
-  fluxe = (double *) malloc(nsites*sizeof(double));
-  fluxw = (double *) malloc(nsites*sizeof(double));
-  fluxy = (double *) malloc(nsites*sizeof(double));
-  fluxz = (double *) malloc(nsites*sizeof(double));
-  if (fluxe == NULL) fatal("malloc(fluxe) failed");
-  if (fluxw == NULL) fatal("malloc(fluxw) failed");
-  if (fluxy == NULL) fatal("malloc(fluxy) failed");
-  if (fluxz == NULL) fatal("malloc(fluxz) failed");
+  fluxe = calloc(nsites, sizeof(double));
+  fluxw = calloc(nsites, sizeof(double));
+  fluxy = calloc(nsites, sizeof(double));
+  fluxz = calloc(nsites, sizeof(double));
+  if (fluxe == NULL) fatal("calloc(fluxe) failed");
+  if (fluxw == NULL) fatal("calloc(fluxw) failed");
+  if (fluxy == NULL) fatal("calloc(fluxy) failed");
+  if (fluxz == NULL) fatal("calloc(fluxz) failed");
 
-  hydrodynamics_halo_u();
-  hydrodynamics_leesedwards_transformation();
-
-  advection_order_n(fluxe, fluxw, fluxy, fluxz);
+  if (hydro) {
+    hydro_u_halo(hydro);
+    hydro_lees_edwards(hydro);
+    advection_order_n(hydro, fluxe, fluxw, fluxy, fluxz);
+  }
 
   if (phi_fluctuations_on()) {
     phi_ch_diffusive_flux_noise();
@@ -99,7 +102,9 @@ void phi_cahn_hilliard() {
     phi_ch_diffusive_flux();
   }
 
+  /* No flux boundaries (diffusive fluxes, and hydro, if present) */
   advection_bcs_wall();
+
   if (phi_fluctuations_on()) phi_ch_random_flux();
 
   phi_ch_le_fix_fluxes();
@@ -110,7 +115,7 @@ void phi_cahn_hilliard() {
   free(fluxw);
   free(fluxe);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

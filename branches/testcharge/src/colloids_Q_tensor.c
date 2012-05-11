@@ -26,7 +26,6 @@
 #include "colloids.h"
 #include "phi.h"
 #include "io_harness.h"
-#include "lattice.h"
 #include "util.h"
 #include "model.h"
 #include "site_map.h"
@@ -313,7 +312,7 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
  *
  *****************************************************************************/
 
-void colloids_fix_swd(void) {
+int colloids_fix_swd(hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -326,6 +325,8 @@ void colloids_fix_swd(void) {
 
   colloid_t * p_c;
   colloid_t * colloid_at_site_index(int);
+
+  assert(hydro);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -343,7 +344,7 @@ void colloids_fix_swd(void) {
 	  u[X] = 0.0;
 	  u[Y] = 0.0;
 	  u[Z] = 0.0;
-	  hydrodynamics_set_velocity(index, u);
+	  hydro_u_set(hydro, index, u);
 	}
 
 	p_c = colloid_at_site_index(index);
@@ -362,14 +363,14 @@ void colloids_fix_swd(void) {
 	  u[Y] += p_c->s.v[Y];
 	  u[Z] += p_c->s.v[Z];
 
-	  hydrodynamics_set_velocity(index, u);
+	  hydro_u_set(hydro, index, u);
 
 	}
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

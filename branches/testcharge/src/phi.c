@@ -36,7 +36,7 @@ static int phi_finite_difference_ = 0;  /* Default is LB for order parameter */
 static MPI_Datatype phi_xy_t_;
 static MPI_Datatype phi_xz_t_;
 static MPI_Datatype phi_yz_t_;
-static struct io_info_t * io_info_phi = NULL;
+static io_info_t * io_info_phi = NULL;
 
 static void phi_init_mpi(void);
 static int  phi_read(FILE *, const int, const int, const int);
@@ -121,7 +121,7 @@ static void phi_init_mpi() {
  *
  *****************************************************************************/
 
-int phi_io_info(struct io_info_t ** info) {
+int phi_io_info(io_info_t ** info) {
 
   assert(info);
   assert(io_info_phi);

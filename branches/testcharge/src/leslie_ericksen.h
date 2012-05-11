@@ -15,8 +15,10 @@
 #ifndef LESLIE_ERICKSEN_H
 #define LESLIE_ERICKSEN_H
 
-void leslie_ericksen_update(void);
-void leslie_ericksen_gamma_set(const double gamma);
-void leslie_ericksen_swim_set(const double gamma);
+#include "hydro.h"
+
+int leslie_ericksen_update(hydro_t * hydro);
+int leslie_ericksen_gamma_set(const double gamma);
+int leslie_ericksen_swim_set(const double gamma);
 
 #endif

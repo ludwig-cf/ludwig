@@ -17,16 +17,33 @@
 #ifndef COLLOID_H
 #define COLLOID_H
 
+/* These describe the padding etc, and are really for internal
+ * unit test consumption. The total number of variables is
+ * useful to know to check the ASCII read/write. */
+
+#define NTOT_VAR (32+48)
+#define NPAD_INT  24
+#define NPAD_DBL  20
+
 #include <stdio.h>
 
 typedef struct colloid_state_type colloid_state_t;
 
 struct colloid_state_type {
 
-  int    index;         /* Unique global index for colloid */
-  int    rebuild;       /* Rebuild flag */
-  int    nbonds;        /* Number of bonds e.g. fene (always 2 at moment) */
-  int    nangles;       /* Number of angles, e.g., fene (1 at the moment) */
+  int index;            /* Unique global index for colloid */
+  int rebuild;          /* Rebuild flag */
+  int nbonds;           /* Number of bonds e.g. fene (always 2 at moment) */
+  int nangles;          /* Number of angles, e.g., fene (1 at the moment) */
+
+  int isfixedr;         /* Set to 1 for no position update */
+  int isfixedv;         /* Set to 1 for no velocity update */
+  int isfixedw;         /* Set to 1 for no angular velocity update */
+  int isfixeds;         /* Set to zero for no s, m update */
+
+  int intpad[NPAD_INT]; /* I'm going to pad to 32 ints to allow for future
+			 * expansion. Additions should be appended here,
+			 * and the padding reduced appropriately. */
 
   double a0;            /* Input radius (lattice units) */
   double ah;            /* Hydrodynamic radius (from calibration) */
@@ -42,11 +59,16 @@ struct colloid_state_type {
   double dr[3];         /* r update (pending refactor of move/build process) */
   double deltaphi;      /* order parameter bbl net; required to restart */
 
-  double q;             /* charge (total per 4/3 pi a^3) */
+  /* Charge densities. We allow two charge densities (cf a general
+   * number in the electrokinetics). rho0 will be associated with
+   * psi->rho[0] in the electrokinetics etc.  */
+
+  double rho0;          /* charge density (x 4/3 pi a0^3 for total) */
+  double rho1;          /* charge density (x 4/3 pi a0^3 for total) */
   double epsilon;       /* permeativity */
 
-  double spare[3];      /* Should pad to total of 256 bytes. */
-
+  double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
+			 * for future expansion. */
 };
 
 int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp);

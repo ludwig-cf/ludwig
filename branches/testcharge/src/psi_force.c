@@ -8,7 +8,8 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "lattice.h"
+#include "hydro.h"
+#include "magnetic_field.h"   /* Actually for electric field */
 #include "psi_s.h"
 
 /*****************************************************************************
@@ -26,7 +27,7 @@
  *
  ****************************************************************************/
 
-int psi_force_grad_mu(psi_t * psi) {
+int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int zs, ys, xs;
@@ -38,6 +39,7 @@ int psi_force_grad_mu(psi_t * psi) {
   double e0[3];
 
   assert(psi);
+  assert(hydro);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -61,7 +63,7 @@ int psi_force_grad_mu(psi_t * psi) {
 	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys] - 2.*e0[Y]);
 	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs] - 2.*e0[Z]);
 
-	hydrodynamics_add_force_local(index, f);
+	hydro_f_local_add(hydro, index, f);
       }
     }
   }

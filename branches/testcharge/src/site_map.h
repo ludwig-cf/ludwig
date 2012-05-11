@@ -15,6 +15,8 @@
 #ifndef SITEMAP_H
 #define SITEMAP_H
 
+#include "io_harness.h"
+
 void   site_map_init(void);
 void   site_map_finish(void);
 void   site_map_set_all(char);
@@ -33,5 +35,5 @@ void site_map_set_status(int, int, int, char);
 void site_map_io_status_with_h(void);
 
 enum lattice_type { FLUID, BOUNDARY, SOLID, COLLOID };
-extern struct io_info_t * io_info_site_map;
+extern io_info_t * io_info_site_map;
 #endif

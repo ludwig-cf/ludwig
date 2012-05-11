@@ -33,7 +33,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "lattice.h"
 #include "phi.h"
 #include "advection.h"
 
@@ -47,10 +46,10 @@ static int order_ = 1; /* Default is upwind (bad!) */
  *
  *****************************************************************************/
 
-void advection_order_set(const int n) {
+int advection_order_set(const int n) {
 
   order_ = n;
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -59,9 +58,13 @@ void advection_order_set(const int n) {
  *
  *****************************************************************************/
 
-int advection_order(void) {
+int advection_order(int * order) {
 
-  return order_;
+  assert(order);
+
+  *order = order_;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -73,33 +76,35 @@ int advection_order(void) {
  *
  *****************************************************************************/
 
-void advection_order_n(double * fluxe, double * fluxw, double * fluxy,
-		       double * fluxz) {
+int advection_order_n(hydro_t * hydro, double * fluxe, double * fluxw,
+		      double * fluxy, double * fluxz) {
+
+  assert(hydro);
 
   switch (order_) {
   case 1:
-    advection_upwind(fluxe, fluxw, fluxy, fluxz);
+    advection_upwind(hydro, fluxe, fluxw, fluxy, fluxz);
     break;
   case 2:
-    advection_second_order(fluxe, fluxw, fluxy, fluxz);
+    advection_second_order(hydro, fluxe, fluxw, fluxy, fluxz);
     break;
   case 3:
-    advection_upwind_third_order(fluxe, fluxw, fluxy, fluxz);
+    advection_upwind_third_order(hydro, fluxe, fluxw, fluxy, fluxz);
     break;
   case 4:
-    advection_fourth_order(fluxe, fluxw, fluxy, fluxz);
+    advection_fourth_order(hydro, fluxe, fluxw, fluxy, fluxz);
     break;
   case 5:
-    advection_upwind_fifth_order(fluxe, fluxw, fluxy, fluxz);
+    advection_upwind_fifth_order(hydro, fluxe, fluxw, fluxy, fluxz);
     break;
   case 7:
-    advection_upwind_seventh_order(fluxe, fluxw, fluxy, fluxz);
+    advection_upwind_seventh_order(hydro, fluxe, fluxw, fluxy, fluxz);
     break;
   default:
     fatal("Bad advection scheme set order = %d\n", order_);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -117,8 +122,8 @@ void advection_order_n(double * fluxe, double * fluxw, double * fluxy,
  *
  *****************************************************************************/
 
-void advection_upwind(double * fluxe, double * fluxw,
-		      double * fluxy, double * fluxz) {
+int advection_upwind(hydro_t * hydro, double * fluxe, double * fluxw,
+		     double * fluxy, double * fluxz) {
   int nop;
   int nlocal[3];
   int ic, jc, kc;            /* Counters over faces */
@@ -127,6 +132,7 @@ void advection_upwind(double * fluxe, double * fluxw,
   double u0[3], u1[3], u;
   double phi0;
 
+  assert(hydro);
   assert(fluxe);
   assert(fluxw);
   assert(fluxy);
@@ -146,12 +152,12 @@ void advection_upwind(double * fluxe, double * fluxw,
 	for (n = 0; n < nop; n++) {
 
 	  phi0 = phi_site[nop*index0 + n];
-	  hydrodynamics_get_velocity(index0, u0);
+	  hydro_u(hydro, index0, u0);
 
 	  /* west face (icm1 and ic) */
 
 	  index1 = le_site_index(icm1, jc, kc);
-	  hydrodynamics_get_velocity(index1, u1);
+	  hydro_u(hydro, index1, u1);
 	  u = 0.5*(u0[X] + u1[X]);
 
 	  if (u > 0.0) {
@@ -164,7 +170,7 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  /* east face (ic and icp1) */
 
 	  index1 = le_site_index(icp1, jc, kc);
-	  hydrodynamics_get_velocity(index1, u1);
+	  hydro_u(hydro, index1, u1);
 	  u = 0.5*(u0[X] + u1[X]);
 
 	  if (u < 0.0) {
@@ -177,7 +183,7 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  /* y direction */
 
 	  index1 = le_site_index(ic, jc+1, kc);
-	  hydrodynamics_get_velocity(index1, u1);
+	  hydro_u(hydro, index1, u1);
 	  u = 0.5*(u0[Y] + u1[Y]);
 
 	  if (u < 0.0) {
@@ -190,7 +196,7 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  /* z direction */
 
 	  index1 = le_site_index(ic, jc, kc+1);
-	  hydrodynamics_get_velocity(index1, u1);
+	  hydro_u(hydro, index1, u1);
 	  u = 0.5*(u0[Z] + u1[Z]);
 
 	  if (u < 0.0) {
@@ -205,7 +211,7 @@ void advection_upwind(double * fluxe, double * fluxw,
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -218,8 +224,8 @@ void advection_upwind(double * fluxe, double * fluxw,
  *
  *****************************************************************************/
 
-void advection_second_order(double * fluxe, double * fluxw,
-			    double * fluxy, double * fluxz) {
+int advection_second_order(hydro_t * hydro, double * fluxe, double * fluxw,
+			   double * fluxy, double * fluxz) {
   int nop;
   int nlocal[3];
   int ic, jc, kc;
@@ -228,6 +234,8 @@ void advection_second_order(double * fluxe, double * fluxw,
   int icp1, icm1;
   int ys;
   double u0[3], u1[3], u;
+
+  assert(hydro);
 
   nop = phi_nop();
   coords_nlocal(nlocal);
@@ -247,12 +255,12 @@ void advection_second_order(double * fluxe, double * fluxw,
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-	hydrodynamics_get_velocity(index0, u0);
+	hydro_u(hydro, index0, u0);
 
 	/* west face (icm1 and ic) */
 
 	index1 = le_site_index(icm1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	for (n = 0; n < nop; n++) {
@@ -264,7 +272,7 @@ void advection_second_order(double * fluxe, double * fluxw,
 
 	index1 = le_site_index(icp1, jc, kc);
 
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	for (n = 0; n < nop; n++) {
@@ -276,7 +284,7 @@ void advection_second_order(double * fluxe, double * fluxw,
 
 	index1 = le_site_index(ic, jc+1, kc);
 
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	for (n = 0; n < nop; n++) {
@@ -288,7 +296,7 @@ void advection_second_order(double * fluxe, double * fluxw,
 
 	index1 = le_site_index(ic, jc, kc+1);
 
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	for (n = 0; n < nop; n++) {
@@ -301,7 +309,7 @@ void advection_second_order(double * fluxe, double * fluxw,
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -318,8 +326,9 @@ void advection_second_order(double * fluxe, double * fluxw,
  *
  *****************************************************************************/
 
-void advection_upwind_third_order(double * fluxe, double * fluxw,
-				  double * fluxy, double * fluxz) {
+int advection_upwind_third_order(hydro_t * hydro, double * fluxe,
+				 double * fluxw,
+				 double * fluxy, double * fluxz) {
   int nop;
   int nlocal[3];
   int ic, jc, kc;
@@ -331,6 +340,8 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
   const double a1 = -0.213933;
   const double a2 =  0.927865;
   const double a3 =  0.286067;
+
+  assert(hydro);
 
   nop = phi_nop();
   coords_nlocal(nlocal);
@@ -350,12 +361,12 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-	hydrodynamics_get_velocity(index0, u0);
+	hydro_u(hydro, index0, u0);
 
 	/* west face (icm1 and ic) */
 
 	index1 = le_site_index(icm1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
@@ -378,7 +389,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 	/* east face (ic and icp1) */
 
 	index1 = le_site_index(icp1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
@@ -401,7 +412,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
@@ -424,7 +435,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
 	/* z direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
@@ -449,7 +460,7 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
     }
   }
 
-  return;
+  return 0;
 }
 
 /****************************************************************************
@@ -466,8 +477,9 @@ void advection_upwind_third_order(double * fluxe, double * fluxw,
  *
  ****************************************************************************/
 
-void advection_upwind_fifth_order(double * fluxe, double * fluxw,
-				  double * fluxy, double * fluxz) {
+int advection_upwind_fifth_order(hydro_t * hydro, double * fluxe,
+				 double * fluxw,
+				 double * fluxy, double * fluxz) {
   int nop;
   int nlocal[3];
   int ic, jc, kc;
@@ -481,6 +493,8 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
   const double a3 =  0.916054;
   const double a4 =  0.361520;
   const double a5 = -0.027880;
+
+  assert(hydro);
 
   nop = phi_nop();
   coords_nlocal(nlocal);
@@ -502,12 +516,12 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-	hydrodynamics_get_velocity(index0, u0);
+	hydro_u(hydro, index0, u0);
 
 	/* west face (icm1 and ic) */
 
 	index1 = le_site_index(icm1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
@@ -534,7 +548,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	/* east face */
 
 	index1 = le_site_index(icp1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
@@ -561,7 +575,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	/* y-direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
@@ -588,7 +602,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
 	/* z-direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
@@ -617,7 +631,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
     }
   }
 
-  return;
+  return 0;
 }
 
 /****************************************************************************
@@ -630,7 +644,7 @@ void advection_upwind_fifth_order(double * fluxe, double * fluxw,
  *
  ****************************************************************************/
 
-void advection_fourth_order(double * fluxe, double * fluxw,
+int advection_fourth_order(hydro_t * hydro, double * fluxe, double * fluxw,
 			    double * fluxy, double * fluxz) {
   int nop;
   int nlocal[3];
@@ -642,6 +656,8 @@ void advection_fourth_order(double * fluxe, double * fluxw,
 
   const double a1 = (1.0/16.0);
   const double a2 = (9.0/16.0);
+
+  assert(hydro);
 
   nop = phi_nop();
   coords_nlocal(nlocal);
@@ -662,12 +678,12 @@ void advection_fourth_order(double * fluxe, double * fluxw,
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-	hydrodynamics_get_velocity(index0, u0);
+	hydro_u(hydro, index0, u0);
 
 	/* west face (icm1 and ic) */
 
 	index1 = le_site_index(icm1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 	
 	for (n = 0; n < nop; n++) {
@@ -681,7 +697,7 @@ void advection_fourth_order(double * fluxe, double * fluxw,
 	/* east face */
 
 	index1 = le_site_index(icp1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	for (n = 0; n < nop; n++) {
@@ -695,7 +711,7 @@ void advection_fourth_order(double * fluxe, double * fluxw,
 	/* y-direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	for (n = 0; n < nop; n++) {
@@ -709,7 +725,7 @@ void advection_fourth_order(double * fluxe, double * fluxw,
 	/* z-direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	for (n = 0; n < nop; n++) {
@@ -725,7 +741,7 @@ void advection_fourth_order(double * fluxe, double * fluxw,
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -742,8 +758,9 @@ void advection_fourth_order(double * fluxe, double * fluxw,
  *
  *****************************************************************************/
 
-void advection_upwind_seventh_order(double * fluxe, double * fluxw,
-				    double * fluxy, double * fluxz) {
+int advection_upwind_seventh_order(hydro_t * hydro, double * fluxe,
+				   double * fluxw,
+				   double * fluxy, double * fluxz) {
   int nop;
   int nlocal[3];
   int ic, jc, kc;
@@ -760,6 +777,8 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
   const double a5 =  0.379291;
   const double a6 = -0.038383;
   const double a7 =  0.000842;
+
+  assert(hydro);
 
   nop = phi_nop();
   coords_nlocal(nlocal);
@@ -783,12 +802,12 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-	hydrodynamics_get_velocity(index0, u0);
+	hydro_u(hydro, index0, u0);
  
 	/* x direction */
 
 	index1 = le_site_index(icp1, jc, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
@@ -819,7 +838,7 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 	/* y-direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
@@ -850,7 +869,7 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
 	/* z-direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
@@ -883,7 +902,7 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -898,15 +917,17 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
  *
  *****************************************************************************/
 
-int advective_fluxes(int nf, double * f, double * fe, double * fy,
-		     double * fz) {
+int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
+		     double * fy, double * fz) {
+
+  assert(hydro);
   assert(nf > 0);
   assert(f);
   assert(fe);
   assert(fy);
   assert(fz);
 
-  advective_fluxes_2nd(nf, f, fe, fy, fz);
+  advective_fluxes_2nd(hydro, nf, f, fe, fy, fz);
 
   return 0;
 }
@@ -921,14 +942,15 @@ int advective_fluxes(int nf, double * f, double * fe, double * fy,
  *
  *****************************************************************************/
 
-int advective_fluxes_2nd(int nf, double * f, double * fe, double * fy,
-			 double * fz) {
+int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
+			 double * fy, double * fz) {
   int nlocal[3];
   int ic, jc, kc;
   int n;
   int index0, index1;
   double u0[3], u1[3], u;
 
+  assert(hydro);
   assert(nf > 0);
   assert(f);
   assert(fe);
@@ -943,13 +965,13 @@ int advective_fluxes_2nd(int nf, double * f, double * fe, double * fy,
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = coords_index(ic, jc, kc);
-	hydrodynamics_get_velocity(index0, u0);
+	hydro_u(hydro, index0, u0);
 
 	/* east face (ic and icp1) */
 
 	index1 = coords_index(ic+1, jc, kc);
 
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 
 	for (n = 0; n < nf; n++) {
@@ -960,7 +982,7 @@ int advective_fluxes_2nd(int nf, double * f, double * fe, double * fy,
 
 	index1 = coords_index(ic, jc+1, kc);
 
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	for (n = 0; n < nf; n++) {
@@ -971,7 +993,7 @@ int advective_fluxes_2nd(int nf, double * f, double * fe, double * fy,
 
 	index1 = coords_index(ic, jc, kc+1);
 
-	hydrodynamics_get_velocity(index1, u1);
+	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	for (n = 0; n < nf; n++) {

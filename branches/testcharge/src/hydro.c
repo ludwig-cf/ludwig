@@ -24,9 +24,6 @@ int field_init_mpi_indexed(int nlocal[3], int nhalo, int nhcomm, int nf,
 int field_halo(int nlocal[3], int nhalo, int nhcomm, int nf, double * f,
 	       MPI_Datatype halo[3], MPI_Comm comm);
 
-/* Temporary global memory supplied here. */
-hydro_t * hydro_ = NULL;
-
 static int hydro_lees_edwards_parallel(hydro_t * obj);
 
 static int hydro_u_write(FILE * fp, int ic, int jc, int kc);
@@ -448,7 +445,7 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
  *
  *****************************************************************************/
 
-int hydro_io_info(hydro_t * obj, struct io_info_t ** info) {
+int hydro_io_info(hydro_t * obj, io_info_t ** info) {
 
   assert(obj);
   assert(obj->info); /* Should have been initialised */
@@ -575,7 +572,7 @@ int hydro_f_zero(hydro_t * obj, const double uzero[3]) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	hydro_u_set(obj, index, uzero);
+	hydro_f_local_set(obj, index, uzero);
 
       }
     }
@@ -830,8 +827,6 @@ static int hydro_u_write(FILE * fp, int ic, int jc, int kc) {
   int index, n;
   hydro_t * obj = NULL; /* To be via opaque data arg */
 
-  obj = hydro_;
-
   assert(fp);
   assert(obj);
 
@@ -853,8 +848,6 @@ static int hydro_u_write_ascii(FILE * fp, int ic, int jc, int kc) {
 
   int index, n;
   hydro_t * obj = NULL; /* To be via opaque data arg */
-
-  obj = hydro_;
 
   assert(obj);
 
@@ -886,9 +879,9 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 
   assert(obj);
 
-  im1 = obj->nf*le_index_real_to_buffer(ic, -1);
+  im1 = le_index_real_to_buffer(ic, -1);
   im1 = obj->nf*le_site_index(im1, jc, kc);
-  ip1 = obj->nf*le_index_real_to_buffer(ic, +1);
+  ip1 = le_index_real_to_buffer(ic, +1);
   ip1 = obj->nf*le_site_index(ip1, jc, kc);
 
   w[X][X] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);

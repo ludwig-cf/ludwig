@@ -20,7 +20,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "lattice.h"
 #include "free_energy_vector.h"
 #include "phi.h"
 #include "advection.h"
@@ -34,8 +33,8 @@ static double * fluxw;
 static double * fluxy;
 static double * fluxz;
 
-static void leslie_ericksen_update_fluid(void);
-static void leslie_ericksen_add_swimming_velocity(void);
+static int leslie_ericksen_update_fluid(hydro_t * hydro);
+static int leslie_ericksen_add_swimming_velocity(hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -43,10 +42,10 @@ static void leslie_ericksen_add_swimming_velocity(void);
  *
  *****************************************************************************/
 
-void leslie_ericksen_gamma_set(const double gamma) {
+int leslie_ericksen_gamma_set(const double gamma) {
 
   Gamma_ = gamma;
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -55,22 +54,25 @@ void leslie_ericksen_gamma_set(const double gamma) {
  *
  *****************************************************************************/
 
-void leslie_ericksen_swim_set(const double s) {
+int leslie_ericksen_swim_set(const double s) {
 
   swim_ = s;
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  leslie_ericksen_update
  *
+ *  The hydro is allowed to be NULL, in which case the dynamics is
+ *  purely relaxational.
+ *
  *  Note there is a side effect on the velocity field here if the
  *  self-advection term is not zero.
  *
  *****************************************************************************/
 
-void leslie_ericksen_update(void) {
+int leslie_ericksen_update(hydro_t * hydro) {
 
   int nsites;
 
@@ -78,26 +80,29 @@ void leslie_ericksen_update(void) {
 
   nsites = coords_nsites();
 
-  fluxe = (double *) malloc(3*nsites*sizeof(double));
-  fluxw = (double *) malloc(3*nsites*sizeof(double));
-  fluxy = (double *) malloc(3*nsites*sizeof(double));
-  fluxz = (double *) malloc(3*nsites*sizeof(double));
-  if (fluxe == NULL) fatal("malloc(fluxe) failed\n");
-  if (fluxw == NULL) fatal("malloc(fluxw) failed\n");
-  if (fluxy == NULL) fatal("malloc(fluxy) failed\n");
-  if (fluxz == NULL) fatal("malloc(fluxz) failed\n");
+  fluxe = calloc(3*nsites, sizeof(double));
+  fluxw = calloc(3*nsites, sizeof(double));
+  fluxy = calloc(3*nsites, sizeof(double));
+  fluxz = calloc(3*nsites, sizeof(double));
+  if (fluxe == NULL) fatal("calloc(fluxe) failed\n");
+  if (fluxw == NULL) fatal("calloc(fluxw) failed\n");
+  if (fluxy == NULL) fatal("calloc(fluxy) failed\n");
+  if (fluxz == NULL) fatal("calloc(fluxz) failed\n");
 
-  if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity();
-  hydrodynamics_halo_u();
-  advection_order_n(fluxe, fluxw, fluxy, fluxz);
-  leslie_ericksen_update_fluid();
+  if (hydro) {
+    if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(hydro);
+    hydro_u_halo(hydro);
+    advection_order_n(hydro, fluxe, fluxw, fluxy, fluxz);
+  }
+
+  leslie_ericksen_update_fluid(hydro);
 
   free(fluxz);
   free(fluxy);
   free(fluxw);
   free(fluxe);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -106,7 +111,7 @@ void leslie_ericksen_update(void) {
  *
  *****************************************************************************/
 
-static void leslie_ericksen_update_fluid(void) {
+static int leslie_ericksen_update_fluid(hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int indexj, indexk;
@@ -129,6 +134,12 @@ static void leslie_ericksen_update_fluid(void) {
   fe_molecular_field_function = fe_v_molecular_field();
   lambda = fe_v_lambda();
 
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      w[ia][ib] = 0.0;
+    }
+  }
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -137,7 +148,7 @@ static void leslie_ericksen_update_fluid(void) {
 
 	phi_vector(index, p);
 	fe_molecular_field_function(index, h);
-	hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
+	if (hydro) hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
 
 	/* Note that the convection for Leslie Ericksen is that
 	 * w_ab = d_a u_b, which is the transpose of what the
@@ -176,7 +187,7 @@ static void leslie_ericksen_update_fluid(void) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -185,7 +196,7 @@ static void leslie_ericksen_update_fluid(void) {
  *
  *****************************************************************************/
 
-static void leslie_ericksen_add_swimming_velocity(void) {
+static int leslie_ericksen_add_swimming_velocity(hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int ia;
@@ -193,6 +204,8 @@ static void leslie_ericksen_add_swimming_velocity(void) {
 
   double p[3];
   double u[3];
+
+  assert(hydro);
 
   coords_nlocal(nlocal);
 
@@ -203,15 +216,15 @@ static void leslie_ericksen_add_swimming_velocity(void) {
 	index = coords_index(ic, jc, kc);
 
 	phi_vector(index, p);
-	hydrodynamics_get_velocity(index, u);
+	hydro_u(hydro, index, u);
 
 	for (ia = 0; ia < 3; ia++) {
 	  u[ia] += swim_*p[ia];
 	}
-	hydrodynamics_set_velocity(index, u);
+	hydro_u_set(hydro, index, u);
       }
     }
   }
 
-  return;
+  return 0;
 }

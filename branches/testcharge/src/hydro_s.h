@@ -20,7 +20,7 @@ struct hydro_s {
   double * u;              /* Velocity field */
   double * f;              /* Body force field */
   MPI_Datatype uhalo[3];   /* Halo exchange datatypes for velocity */
-  struct io_info_t * info;        /* I/O handler. */
+  io_info_t * info;        /* I/O handler. */
 };
 
 #endif

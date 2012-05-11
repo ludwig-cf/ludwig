@@ -42,7 +42,6 @@
 
 #include "site_map.h"
 #include "physics.h"
-#include "lattice.h"
 #include "cio.h"
 
 #include "io_harness.h"
@@ -74,6 +73,7 @@
 #include "psi_force.h"
 #include "nernst_planck.h"
 
+#include "hydro_rt.h"
 
 #include "stats_colloid.h"
 #include "stats_turbulent.h"
@@ -88,7 +88,13 @@
 
 #include "ludwig.h"
 
-static void ludwig_rt(void);
+typedef struct ludwig_s ludwig_t;
+struct ludwig_s {
+  hydro_t * hydro;
+  psi_t * psi;
+};
+
+static int ludwig_rt(ludwig_t * ludwig);
 static void ludwig_init(void);
 static void ludwig_report_momentum(void);
 
@@ -100,11 +106,13 @@ static void ludwig_report_momentum(void);
  *
  *****************************************************************************/
 
-static void ludwig_rt(void) {
+static int ludwig_rt(ludwig_t * ludwig) {
 
   int p;
   unsigned int seed;
 
+  assert(ludwig);
+  
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
 
@@ -136,7 +144,8 @@ static void ludwig_rt(void) {
     phi_fluctuations_init(seed);
   }
 
-  psi_init_rt();
+  psi_init_rt(&ludwig->psi);
+  hydro_rt(&ludwig->hydro);
 
   MODEL_init();
   wall_init();
@@ -144,7 +153,7 @@ static void ludwig_rt(void) {
 
   gradient_run_time();
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -160,7 +169,7 @@ static void ludwig_init(void) {
   int n, nstat;
   char filename[FILENAME_MAX];
   char subdirectory[FILENAME_MAX];
-  struct io_info_t * iohandler = NULL;
+  io_info_t * iohandler = NULL;
 
   pe_subdirectory(subdirectory);
 
@@ -225,12 +234,20 @@ void ludwig_run(const char * inputfile) {
   char    filename[FILENAME_MAX];
   char    subdirectory[FILENAME_MAX];
   int     step = 0;
-  struct io_info_t * iohandler = NULL;
+  int     is_subgrid = 0;
+  double  fzero[3] = {0.0, 0.0, 0.0};
+  io_info_t * iohandler = NULL;
+
+  ludwig_t * ludwig = NULL;
+
+  assert(0); /* Not a functional check in */
+  ludwig = calloc(1, sizeof(ludwig_t));
+  assert(ludwig);
 
   pe_init();
   RUN_read_input_file(inputfile);
 
-  ludwig_rt();
+  ludwig_rt(ludwig);
   ludwig_init();
 
   /* Report initial statistics */
@@ -254,31 +271,33 @@ void ludwig_run(const char * inputfile) {
   info("Initial conditions.\n");
   stats_distribution_print();
   phi_stats_print_stats();
-  if (psi_) psi_stats_info(psi_);
+  if (ludwig->psi) psi_stats_info(ludwig->psi);
   ludwig_report_momentum();
 
   /* Main time stepping loop */
 
   info("\n");
   info("Starting time step loop.\n");
+  subgrid_on(&is_subgrid);
 
   while (next_step()) {
 
     TIMER_start(TIMER_STEPS);
     step = get_step();
-    hydrodynamics_zero_force();
+    hydro_f_zero(ludwig->hydro, fzero);
 
-    COLL_update();
+    COLL_update(ludwig->hydro);
 
     /* Electrokinetics */
 
-    if (psi_) {
-      psi_halo_psi(psi_);
-      psi_force_grad_mu(psi_); /* Sum force for this step before update */
-      psi_sor_poisson(psi_);
-      psi_halo_rho(psi_);
-      hydrodynamics_halo_u(); /* Should not be repeated if phi active. */ 
-      nernst_planck_driver(psi_);
+    if (ludwig->psi) {
+      psi_halo_psi(ludwig->psi);
+      /* Sum force for this step before update */
+      psi_force_grad_mu(ludwig->psi, ludwig->hydro);
+      psi_sor_poisson(ludwig->psi);
+      psi_halo_rho(ludwig->psi);
+      hydro_u_halo(ludwig->hydro); /* Should not be repeated if phi active.*/ 
+      nernst_planck_driver(ludwig->psi);
     }
 
     /* Order parameter */
@@ -303,15 +322,15 @@ void ludwig_run(const char * inputfile) {
 	TIMER_start(TIMER_FORCE_CALCULATION);
 
 	if (colloid_ntotal() == 0) {
-	  phi_force_calculation();
+	  phi_force_calculation(ludwig->hydro);
 	}
 	else {
-	  phi_force_colloid();
+	  phi_force_colloid(ludwig->hydro);
 	}
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
 	TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
-	phi_update_dynamics();
+	phi_update_dynamics(ludwig->hydro);
 	TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
 
       }
@@ -320,7 +339,7 @@ void ludwig_run(const char * inputfile) {
     /* Collision stage */
 
     TIMER_start(TIMER_COLLIDE);
-    collide();
+    collide(ludwig->hydro);
     TIMER_stop(TIMER_COLLIDE);
 
     model_le_apply_boundary_conditions();
@@ -332,8 +351,8 @@ void ludwig_run(const char * inputfile) {
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
 
-    if (subgrid_on()) {
-      subgrid_update();
+    if (is_subgrid) {
+      subgrid_update(ludwig->hydro);
     }
     else {
       TIMER_start(TIMER_BBL);
@@ -388,8 +407,8 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_psi_output_step()) {
-      if (psi_) {
-	psi_io_info(psi_, &iohandler);
+      if (ludwig->psi) {
+	psi_io_info(ludwig->psi, &iohandler);
 	info("Writing psi file at step %d!\n", step);
 	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
 	io_write(filename, iohandler);
@@ -403,7 +422,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_shear_measurement_step()) {
-      stats_rheology_stress_profile_accumulate();
+      stats_rheology_stress_profile_accumulate(ludwig->hydro);
     }
 
     if (is_shear_output_step()) {
@@ -413,9 +432,10 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_vel_output_step()) {
+      hydro_io_info(ludwig->hydro, &iohandler);
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
-      io_write(filename, io_info_velocity_);
+      io_write(filename, iohandler);
     }
 
     /* Print progress report */
@@ -427,17 +447,17 @@ void ludwig_run(const char * inputfile) {
 	phi_stats_print_stats();
 	stats_free_energy_density();
       }
-      if (psi_) {
-	psi_stats_info(psi_);
+      if (ludwig->psi) {
+	psi_stats_info(ludwig->psi);
       }
       ludwig_report_momentum();
-      stats_velocity_minmax();
+      stats_velocity_minmax(ludwig->hydro);
 
       test_isothermal_fluctuations();
       info("\nCompleted cycle %d\n", step);
     }
 
-    stats_calibration_accumulate(step);
+    stats_calibration_accumulate(step, ludwig->hydro);
 
     /* Next time step */
   }

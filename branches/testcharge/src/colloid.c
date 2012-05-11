@@ -24,14 +24,15 @@
  *
  *  colloid_state_read_ascii
  *
- *  Returns the number of complete structures read (0 or 1).
+ *  Returns zero on success.
  *
  *****************************************************************************/
 
 int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
 
+  int n;
   int nread = 0;
-  int iread = 0;
+  int ifail = 0;
 
   const char * sformat = "%22le\n";
   const char * vformat = "%22le %22le %22le\n";
@@ -41,6 +42,15 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
 
   nread += fscanf(fp, "%22d\n", &ps->index);
   nread += fscanf(fp, "%22d\n", &ps->rebuild);
+  nread += fscanf(fp, "%22d\n", &ps->nbonds);
+  nread += fscanf(fp, "%22d\n", &ps->nangles);
+  nread += fscanf(fp, "%22d\n", &ps->isfixedr);
+  nread += fscanf(fp, "%22d\n", &ps->isfixedv);
+  nread += fscanf(fp, "%22d\n", &ps->isfixedw);
+  nread += fscanf(fp, "%22d\n", &ps->isfixeds);
+  for (n = 0; n < NPAD_INT; n++) {
+    nread += fscanf(fp, "%22d\n", &ps->intpad[n]);
+  }
   nread += fscanf(fp, sformat, &ps->a0);
   nread += fscanf(fp, sformat, &ps->ah);
   nread += fscanf(fp, vformat, &ps->r[0], &ps->r[1], &ps->r[2]);
@@ -55,27 +65,28 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, vformat, &ps->dr[0], &ps->dr[1], &ps->dr[2]);
   nread += fscanf(fp, sformat, &ps->deltaphi);
 
-  nread += fscanf(fp, sformat, &ps->q);
+  nread += fscanf(fp, sformat, &ps->rho0);
+  nread += fscanf(fp, sformat, &ps->rho1);
   nread += fscanf(fp, sformat, &ps->epsilon);
-  nread += fscanf(fp, vformat, &ps->spare[0], &ps->spare[1], &ps->spare[2]);
 
+  for (n = 0; n < NPAD_DBL; n++) {
+    nread += fscanf(fp, sformat, &ps->dpad[n]);
+  }
 
-  /* ... makes a total of 32 items for 1 structure */
-
-  if (nread == 32) iread = 1;
+  if (nread != NTOT_VAR) ifail = -1;
 
   /* Always set the rebuild flag (even if file has zero) */
 
   ps->rebuild = 1;
 
-  return iread;
+  return ifail;
 }
 
 /*****************************************************************************
  *
  *  colloid_state_read_binary
  *
- *  Returns the number of complete structures read (0 or 1)
+ *  Returns zero on success.
  *
  *****************************************************************************/
 
@@ -92,21 +103,22 @@ int colloid_state_read_binary(colloid_state_t * ps, FILE * fp) {
 
   ps->rebuild = 1;
 
-  return nread;
+  return (1 - nread);
 }
 
 /*****************************************************************************
  *
  *  colloid_state_write_ascii
  *
- *  Returns the number of complete structures written (0 or 1).
+ *  Returns zero on success.
  *
  *****************************************************************************/
 
 int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
 
+  int n;
   int nwrite = 0;
-  int iwrite = 0;
+  int ifail = 0;
 
   const char * sformat = "%22.15e\n";
   const char * vformat = "%22.15e %22.15e %22.15e\n";
@@ -115,6 +127,15 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
 
   nwrite += fprintf(fp, "%22d\n", s.index);
   nwrite += fprintf(fp, "%22d\n", s.rebuild);
+  nwrite += fprintf(fp, "%22d\n", s.nbonds);
+  nwrite += fprintf(fp, "%22d\n", s.nangles);
+  nwrite += fprintf(fp, "%22d\n", s.isfixedr);
+  nwrite += fprintf(fp, "%22d\n", s.isfixedv);
+  nwrite += fprintf(fp, "%22d\n", s.isfixedw);
+  nwrite += fprintf(fp, "%22d\n", s.isfixeds);
+  for (n = 0; n < NPAD_INT; n++) {
+    nwrite += fprintf(fp, "%22d\n", s.intpad[n]);
+  }
   nwrite += fprintf(fp, sformat, s.a0);
   nwrite += fprintf(fp, sformat, s.ah);
   nwrite += fprintf(fp, vformat, s.r[0], s.r[1], s.r[2]);
@@ -129,23 +150,26 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   nwrite += fprintf(fp, vformat, s.dr[0], s.dr[1], s.dr[2]);
   nwrite += fprintf(fp, sformat, s.deltaphi);
 
-  nwrite += fprintf(fp, sformat, s.q);
+  nwrite += fprintf(fp, sformat, s.rho0);
+  nwrite += fprintf(fp, sformat, s.rho1);
   nwrite += fprintf(fp, sformat, s.epsilon);
-  nwrite += fprintf(fp, vformat, s.spare[0], s.spare[1], s.spare[2]);
 
+  for (n = 0; n < NPAD_DBL; n++) {
+    nwrite += fprintf(fp, sformat, s.dpad[n]);
+  }
 
-  /* ... should be 32 items of 23 characters */
+  /* ... should be NTOT_VAR items of 23 characters */
 
-  if (nwrite == 32*23) iwrite = 1;
+  if (nwrite != NTOT_VAR*23) ifail = -1;
 
-  return iwrite;
+  return ifail;
 }
 
 /*****************************************************************************
  *
  *  colloid_state_write_binary
  *
- *  Returns the number of complete structures written (0 or 1)
+ *  Returns zero on success.
  *
  *****************************************************************************/
 
@@ -157,5 +181,5 @@ int colloid_state_write_binary(colloid_state_t s, FILE * fp) {
 
   nwrite = fwrite(&s, sizeof(colloid_state_t), 1, fp);
 
-  return nwrite;
+  return (1 - nwrite);
 }

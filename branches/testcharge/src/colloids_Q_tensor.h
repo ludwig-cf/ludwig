@@ -15,12 +15,14 @@
 #ifndef COLLOIDS_Q_TENSOR_H
 #define COLLOIDS_Q_TENSOR_H
 
+#include "hydro.h"
+
 enum colloid_anchoring {ANCHORING_PLANAR, ANCHORING_NORMAL, ANCHORING_FIXED};
 enum colloid_anchoring_method {ANCHORING_METHOD_NONE, ANCHORING_METHOD_ONE,
 			       ANCHORING_METHOD_TWO};
 
 void COLL_set_Q(void);
-void colloids_fix_swd(void);
+int  colloids_fix_swd(hydro_t * hydro);
 void colloids_q_tensor_anchoring_set(const int type);
 void colloids_q_tensor_w_set(double w);
 void wall_w_set(double w);
@@ -33,8 +35,5 @@ double wall_w_get(void);
 void colloids_q_anchoring_method_set(int method);
 int  colloids_q_anchoring_method(void);
 void wall_anchoring_set(const int type);
-
-extern struct io_info_t * io_info_scalar_q_;
-void scalar_q_io_info_set(struct io_info_t * info);
 
 #endif

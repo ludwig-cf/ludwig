@@ -28,7 +28,6 @@
 #include "util.h"
 #include "coords.h"
 #include "physics.h"
-#include "lattice.h"
 #include "model.h"
 #include "site_map.h"
 #include "collision.h"
@@ -54,12 +53,13 @@ static double noise_var[NVEL];  /* Noise variances */
 
 static fluctuations_t * fl_;
 
-static void collision_multirelaxation(void);
-static void collision_binary_lb(void);
+static int collision_multirelaxation(hydro_t * hydro);
+static int collision_binary_lb(hydro_t * hydro);
 
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
        void collision_fluctuations(int index, double shat[3][3],
 				   double ghat[NVEL]);
+
 /*****************************************************************************
  *
  *  collide
@@ -71,17 +71,17 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
  *
  *****************************************************************************/
 
-void collide(void) {
+int collide(hydro_t * hydro) {
 
   int ndist;
 
   ndist = distribution_ndist();
   collision_relaxation_times_set();
 
-  if (ndist == 1 || is_propagation_ode() == 1) collision_multirelaxation();
-  if (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb();
+  if (ndist == 1 || is_propagation_ode() == 1) collision_multirelaxation(hydro);
+  if (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb(hydro);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -103,7 +103,7 @@ void collide(void) {
  *
  *****************************************************************************/
 
-void collision_multirelaxation() {
+int collision_multirelaxation(hydro_t * hydro) {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
@@ -126,6 +126,8 @@ void collision_multirelaxation() {
   double    force_local[3];
   double    force_global[3];
   double    f[NVEL];
+
+  assert(hydro);
 
   ndist = distribution_ndist();
   coords_nlocal(N);
@@ -181,13 +183,13 @@ void collision_multirelaxation() {
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
-	hydrodynamics_get_force_local(index, force_local);
+	hydro_f_local(hydro, index, force_local);
 
 	for (ia = 0; ia < NDIM; ia++) {
 	  force[ia] = (force_global[ia] + force_local[ia]);
 	  u[ia] = rrho*(u[ia] + 0.5*force[ia]);
 	}
-	hydrodynamics_set_velocity(index, u);
+	hydro_u_set(hydro, index, u);
 
 	/* Relax stress with different shear and bulk viscosity */
 
@@ -265,7 +267,7 @@ void collision_multirelaxation() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -304,7 +306,7 @@ void collision_multirelaxation() {
  *
  *****************************************************************************/
 
-void collision_binary_lb() {
+int collision_binary_lb(hydro_t * hydro) {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
@@ -342,6 +344,7 @@ void collision_binary_lb() {
   void   (* chemical_stress)(const int index, double s[3][3]);
 
   assert (NDIM == 3);
+  assert(hydro);
 
   ndist = distribution_ndist();
   coords_nlocal(N);
@@ -391,13 +394,13 @@ void collision_binary_lb() {
 	/* Compute the local velocity, taking account of any body force */
 
 	rrho = 1.0/rho;
-	hydrodynamics_get_force_local(index, force_local);
+	hydro_f_local(hydro, index, force_local);
 
 	for (i = 0; i < 3; i++) {
 	  force[i] = (force_global[i] + force_local[i]);
 	  u[i] = rrho*(u[i] + 0.5*force[i]);  
 	}
-	hydrodynamics_set_velocity(index, u);
+	hydro_u_set(hydro, index, u);
 
 	/* Compute the thermodynamic component of the stress */
 
@@ -527,7 +530,7 @@ void collision_binary_lb() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

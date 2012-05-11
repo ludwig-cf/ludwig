@@ -15,8 +15,10 @@
 #ifndef INTERACTION_H
 #define INTERACTION_H
 
+#include "hydro.h"
+
 void      COLL_init(void);
-void      COLL_update(void);
+int       COLL_update(hydro_t * hydro);
 
 void      colloid_gravity(double f[3]);
 void      colloid_gravity_set(const double f[3]);

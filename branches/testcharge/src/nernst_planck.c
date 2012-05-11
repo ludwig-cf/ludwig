@@ -112,7 +112,8 @@ int nernst_planck_driver(psi_t * psi) {
 
   /* The order of these calls is important. */
 
-  advective_fluxes(nk, psi->rho, fe, fy, fz);
+  assert(0); /* Check advection has been set in advection_rt */
+  /* advective_fluxes(nk, psi->rho, fe, fy, fz);*/
   nernst_planck_fluxes(psi, fe, fy, fz);
 
   advective_bcs_no_flux(nk, fe, fy, fz);

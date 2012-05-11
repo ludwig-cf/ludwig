@@ -104,7 +104,7 @@ void polar_active_run_time(void) {
 void polar_active_rt_initial_conditions(void) {
 
   char key[FILENAME_MAX];
-  struct io_info_t * iohandler = NULL;
+  io_info_t * iohandler = NULL;
 
   assert(phi_nop() == 3);
 

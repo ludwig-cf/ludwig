@@ -1,14 +1,14 @@
 /*****************************************************************************
  *
- *  psi_rt.h
+ *  hydro_rt.h
  *
  *****************************************************************************/
 
-#ifndef PSI_RT_H
-#define PSI_RT_H
+#ifndef HYDRO_RT_H
+#define HYDRO_RT_H
 
-#include "psi.h"
+#include "hydro.h"
 
-int psi_init_rt(psi_t ** pobj);
+int hydro_rt(hydro_t ** phydro);
 
 #endif

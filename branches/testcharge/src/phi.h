@@ -40,6 +40,6 @@ void   phi_vector_set(const int index, const double q[3]);
 void   phi_vector(const int index, double q[3]);
 
 int phi_init_io_info(int grid[3], int form_in, int form_out);
-int phi_io_info(struct io_info_t ** info);
+int phi_io_info(io_info_t ** info);
 
 #endif

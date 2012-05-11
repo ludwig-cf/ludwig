@@ -22,7 +22,6 @@
 #include "ran.h"
 #include "util.h"
 #include "coords.h"
-#include "lattice.h"
 #include "physics.h"
 #include "colloids.h"
 #include "site_map.h"
@@ -47,7 +46,7 @@ typedef struct stats_calibration_type stats_calibration_t;
 
 static stats_calibration_t calib_;
 static double stats_calibration_hasimoto(double a, double length);
-static void   stats_calibration_measure(void);
+static int    stats_calibration_measure(hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -139,16 +138,18 @@ void stats_calibration_init(int nswitch) {
  *
  *****************************************************************************/
 
-void stats_calibration_accumulate(int ntime) {
+int stats_calibration_accumulate(int ntime, hydro_t * hydro) {
+
+  assert(hydro);
 
   if (ntime >= calib_.nstart) {
     if ((ntime % calib_.nfreq) == 0) {
       ++calib_.ndata;
-      stats_calibration_measure();
+      stats_calibration_measure(hydro);
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -261,7 +262,7 @@ static double stats_calibration_hasimoto(double a, double len) {
  *
  *****************************************************************************/
 
-static void stats_calibration_measure(void) {
+static int stats_calibration_measure(hydro_t * hydro) {
 
   int ic, jc, kc, ia, index;
   int nlocal[3];
@@ -272,6 +273,8 @@ static void stats_calibration_measure(void) {
   double ulocal[3];
   double datalocal[7], datasum[7];
   colloid_t * pc;
+
+  assert(hydro);
 
   volume = 0.0;
   for (ia = 0; ia < 3; ia++) {
@@ -310,7 +313,7 @@ static void stats_calibration_measure(void) {
         if (site_map_get_status(ic, jc, kc) != FLUID) continue;
         index = coords_index(ic, jc, kc);
 
-	hydrodynamics_get_velocity(index, ulocal);
+	hydro_u(hydro, index, ulocal);
 	volume = volume + 1.0;
       }
     }
@@ -336,5 +339,5 @@ static void stats_calibration_measure(void) {
     calib_.ubar[ia] += (upart[ia] - ulocal[ia]);
   }
 
-  return;
+  return 0;
 }

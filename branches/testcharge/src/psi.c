@@ -32,31 +32,11 @@ static const double e_unit_default = 1.0; /* Default unit charge */
 static const double reltol_default = FLT_EPSILON; /* Solver tolerance */
 static const double abstol_default = 0.01*FLT_EPSILON;
 
-psi_t * psi_ = NULL;
-
 static int psi_init_mpi_indexed(psi_t * obj);
 static int psi_read(FILE * fp, const int ic, const int jc, const int kc);
 static int psi_write(FILE * fp, const int ic, const int jc, const int kc);
 static int psi_read_ascii(FILE * fp, const int, const int, const int);
 static int psi_write_ascii(FILE * fp, const int, const int, const int);
-
-/*****************************************************************************
- *
- *  psi_init
- *
- *  Initialise psi_ and return.
- *
- *****************************************************************************/
-
-int psi_init(int nk, psi_t ** refpsi_) {
-
-  assert(refpsi_);
-
-  psi_create(nk, &psi_);
-  *refpsi_ = psi_;
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -138,7 +118,7 @@ int psi_create(int nk, psi_t ** pobj) {
  *
  *****************************************************************************/
 
-int psi_io_info(psi_t * obj, struct io_info_t ** info) {
+int psi_io_info(psi_t * obj, io_info_t ** info) {
 
   assert(obj);
   assert(info);
@@ -619,16 +599,18 @@ static int psi_write_ascii(FILE * fp, const int ic, const int jc,
 			   const int kc) {
   int index;
   int n, nwrite;
+  psi_t * obj = NULL;
 
+  assert(obj);
   assert(fp);
 
   index = coords_index(ic, jc, kc);
 
-  nwrite = fprintf(fp, "%22.15e ", psi_->psi[index]);
+  nwrite = fprintf(fp, "%22.15e ", obj->psi[index]);
   if (nwrite != 23) fatal("fprintf(psi) failed at index %d\n", index);
 
-  for (n = 0; n < psi_->nk; n++) {
-    nwrite = fprintf(fp, "%22.15e ", psi_->rho[psi_->nk*index + n]);
+  for (n = 0; n < obj->nk; n++) {
+    nwrite = fprintf(fp, "%22.15e ", obj->rho[obj->nk*index + n]);
     if (nwrite != 23) fatal("fprintf(psi) failed at index %d %d\n", index, n);
   }
 
@@ -648,16 +630,17 @@ static int psi_read_ascii(FILE * fp, const int ic, const int jc,
 			  const int kc) {
   int index;
   int n, nread;
+  psi_t * obj = NULL; /* TO come via argument */
 
   assert(fp);
 
   index = coords_index(ic, jc, kc);
 
-  nread = fscanf(fp, "%le", psi_->psi + index);
+  nread = fscanf(fp, "%le", obj->psi + index);
   if (nread != 1) fatal("fscanf(psi) failed for %d\n", index);
 
-  for (n = 0; n < psi_->nk; n++) {
-    nread = fscanf(fp, "%le", psi_->rho + psi_->nk*index + n);
+  for (n = 0; n < obj->nk; n++) {
+    nread = fscanf(fp, "%le", obj->rho + obj->nk*index + n);
     if (nread != 1) fatal("fscanf(rho) failed for %d %d\n", index, n);
   }
 
@@ -674,15 +657,16 @@ static int psi_write(FILE * fp, const int ic, const int jc, const int kc) {
 
   int index;
   int n;
+  psi_t * obj = NULL; /* To be set via argument */
 
   assert(fp);
 
   index = coords_index(ic, jc, kc);
-  n = fwrite(psi_->psi + index, sizeof(double), 1, fp);
+  n = fwrite(obj->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fwrite(psi) failed at index %d\n", index);
 
-  n = fwrite(psi_->rho + psi_->nk*index, sizeof(double), psi_->nk, fp);
-  if (n != psi_->nk) fatal("fwrite(rho) failed at index %d", index);
+  n = fwrite(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
+  if (n != obj->nk) fatal("fwrite(rho) failed at index %d", index);
 
   return n;
 }
@@ -697,15 +681,16 @@ static int psi_read(FILE * fp, const int ic, const int jc, const int kc) {
 
   int index;
   int n;
+  psi_t * obj = NULL;
 
   assert(fp);
 
   index = coords_index(ic, jc, kc);
-  n = fread(psi_->psi + index, sizeof(double), 1, fp);
+  n = fread(obj->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fread(psi) failed at index %d\n", index);
 
-  n = fread(psi_->rho + psi_->nk*index, sizeof(double), psi_->nk, fp);
-  if (n != psi_->nk) fatal("fread(rho) failed at index %d\n", index);
+  n = fread(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
+  if (n != obj->nk) fatal("fread(rho) failed at index %d\n", index);
 
   return n;
 }
