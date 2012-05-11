@@ -107,7 +107,7 @@ static int do_test_gouy_chapman(void) {
   int ntotal[3] = {4, 4, 64};  /* Quasi-one-dimensional system */
   int grid[3];                 /* Processor decomposition */
 
-  int tmax = 20001;
+  int tmax = 20000;
 
   coords_nhalo_set(1);
   coords_ntotal_set(ntotal);
@@ -123,15 +123,15 @@ static int do_test_gouy_chapman(void) {
 
   site_map_init();
 
-  psi_create(nk, &psi_);
+  psi_create(nk, &psi);
 
-  psi_valency_set(psi_, 0, valency[0]);
-  psi_valency_set(psi_, 1, valency[1]);
-  psi_diffusivity_set(psi_, 0, diffusivity[0]);
-  psi_diffusivity_set(psi_, 1, diffusivity[1]);
-  psi_unit_charge_set(psi_, eunit);
-  psi_epsilon_set(psi_, epsilon);
-  psi_beta_set(psi_, beta);
+  psi_valency_set(psi, 0, valency[0]);
+  psi_valency_set(psi, 1, valency[1]);
+  psi_diffusivity_set(psi, 0, diffusivity[0]);
+  psi_diffusivity_set(psi, 1, diffusivity[1]);
+  psi_unit_charge_set(psi, eunit);
+  psi_epsilon_set(psi, epsilon);
+  psi_beta_set(psi, beta);
 
   /* wall charge density */
   rho_w = 1.e+0 / (2.0*L(X)*L(Y));
@@ -147,9 +147,9 @@ static int do_test_gouy_chapman(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	psi_psi_set(psi_, index, 0.0);
-	psi_rho_set(psi_, index, 0, rho_el);
-	psi_rho_set(psi_, index, 1, rho_el + rho_i);
+	psi_psi_set(psi, index, 0.0);
+	psi_rho_set(psi, index, 0, rho_el);
+	psi_rho_set(psi, index, 1, rho_el + rho_i);
 
       }
     }
@@ -165,8 +165,8 @@ static int do_test_gouy_chapman(void) {
 
 	site_map_set_status(ic,jc,kc,BOUNDARY);
 
-	psi_rho_set(psi_, index, 0, rho_w);
-	psi_rho_set(psi_, index, 1, 0.0);
+	psi_rho_set(psi, index, 0, rho_w);
+	psi_rho_set(psi, index, 1, 0.0);
 
       }
     }
@@ -181,8 +181,8 @@ static int do_test_gouy_chapman(void) {
 
 	site_map_set_status(ic, jc, kc, BOUNDARY);
 
-	psi_rho_set(psi_, index, 0, rho_w);
-	psi_rho_set(psi_, index, 1, 0.0);
+	psi_rho_set(psi, index, 0, rho_w);
+	psi_rho_set(psi, index, 1, 0.0);
 
       }
     }
@@ -190,18 +190,18 @@ static int do_test_gouy_chapman(void) {
 
   site_map_halo();
 
-  for (tstep = 0; tstep < tmax; tstep++) {
+  for (tstep = 1; tstep <= tmax; tstep++) {
 
-    psi_halo_psi(psi_);
-    psi_sor_poisson(psi_);
-    psi_halo_rho(psi_);
-    nernst_planck_driver(psi_);
+    psi_halo_psi(psi);
+    psi_sor_poisson(psi);
+    psi_halo_rho(psi);
+    nernst_planck_driver(psi);
 
     if (tstep % 1000 == 0) {
 
       info("%d\n", tstep);
-      psi_stats_info(psi_);
-      if (test_output_required) test_io(psi_, tstep);
+      psi_stats_info(psi);
+      if (test_output_required) test_io(psi, tstep);
     }
   }
 
@@ -220,29 +220,32 @@ static int do_test_gouy_chapman(void) {
     index = coords_index(ic, jc, kc);
  
     if (noffst[Z] + kc == ntotal[Z] / 2) {
-      psi_ionic_strength(psi_, index, &rho_b_local);
+      psi_ionic_strength(psi, index, &rho_b_local);
     }
   }
 
   MPI_Allreduce(&rho_b_local, &rho_b, 1, MPI_DOUBLE, MPI_SUM, cart_comm());
 
-  psi_bjerrum_length(psi_, &lb);
-  psi_debye_length(psi_, rho_b, &ldebye);
-  psi_surface_potential(psi_, rho_w, rho_b, &yd);
+  psi_bjerrum_length(psi, &lb);
+  psi_debye_length(psi, rho_b, &ldebye);
+  psi_surface_potential(psi, rho_w, rho_b, &yd);
   info("Bjerrum length is %le\n", lb);
   info("Debye length is %le\n", ldebye);
   info("Surface potential is %le\n", yd);
 
   /* These are the reference answers. */
 
-  assert(tmax == 20001);
+  assert(tmax == 20000);
   assert(ntotal[Z] == 64);
-  assert(fabs((lb - 7.234316e-01)/0.723431) < FLT_EPSILON);
+  /*assert(fabs((lb - 7.234316e-01)/0.723431) < FLT_EPSILON);
   assert(fabs((ldebye - 6.420075)/6.420075) < FLT_EPSILON);
-  assert(fabs((yd - 5.451449e-05)/5.45e-05) < FLT_EPSILON);
+  assert(fabs((yd - 5.451449e-05)/5.45e-05) < FLT_EPSILON);*/
+  assert(fabs((lb - 7.234316e-01)/0.723431) < FLT_EPSILON);
+  assert(fabs((ldebye - 6.420068)/6.420068) < FLT_EPSILON);
+  assert(fabs((yd - 5.451444e-05)/5.45e-05) < FLT_EPSILON);
 
   site_map_finish();
-  psi_free(psi_);
+  psi_free(psi);
   coords_finish();
 
   return 0;

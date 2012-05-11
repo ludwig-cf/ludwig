@@ -22,7 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "lattice.h"
+#include "hydro.h"
 #include "site_map.h"
 
 #include "phi.h"
@@ -33,12 +33,14 @@
 
 #include "util.h"
 
-static void test_advection(void);
-static void test_set_velocity(const double *);
+static void test_advection(hydro_t * hydro);
+static int test_u_zero(hydro_t * hydro, const double *);
 static void test_set_drop(void);
 static void test_drop_difference(void);
 
 int main (int argc, char ** argv) {
+
+  hydro_t * hydro;
 
   MPI_Init(&argc, &argv);
   pe_init();
@@ -49,11 +51,12 @@ int main (int argc, char ** argv) {
   phi_nop_set(1);
   phi_init();
   phi_gradients_init();
-  hydrodynamics_init();
   gradient_3d_7pt_fluid_init();
+  hydro_create(1, &hydro);
 
-  test_advection();
+  test_advection(hydro);
 
+  hydro_free(hydro);
   phi_finish();
   pe_finalise();
   MPI_Finalize();
@@ -69,10 +72,12 @@ int main (int argc, char ** argv) {
  *
  *****************************************************************************/
 
-void test_advection() {
+void test_advection(hydro_t * hydro) {
 
   int n, ntmax;
   double u[3];
+
+  assert(hydro);
 
   u[X] = -0.25;
   u[Y] = 0.25;
@@ -80,7 +85,7 @@ void test_advection() {
   ntmax = -L(X)/u[X];
   info("Time steps: %d\n", ntmax);
 
-  test_set_velocity(u);
+  test_u_zero(hydro, u);
   test_set_drop();
 
   /* Steps */
@@ -88,7 +93,7 @@ void test_advection() {
   for (n = 0; n < ntmax; n++) {
     phi_halo();
     phi_gradients_compute();
-    phi_cahn_hilliard();
+    phi_cahn_hilliard(hydro);
   }
 
   test_drop_difference();
@@ -98,17 +103,19 @@ void test_advection() {
 
 /****************************************************************************
  *
- *  test_set_velocity
+ *  test_u_zero
  *
  *  Set the velocity (and hence Courant numbers) uniformly in the
  *  system.
  *
  ****************************************************************************/
 
-void test_set_velocity(const double u[3]) {
+int test_u_zero(hydro_t * hydro, const double u[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+
+  assert(hydro);
 
   coords_nlocal(nlocal);
 
@@ -117,12 +124,12 @@ void test_set_velocity(const double u[3]) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	hydrodynamics_set_velocity(index, u);
+	hydro_u_set(hydro, index, u);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

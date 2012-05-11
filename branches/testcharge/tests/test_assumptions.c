@@ -19,6 +19,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <float.h>
 #include <assert.h>
 
 #include "tests.h"
@@ -81,6 +82,11 @@ int main(int argc, char ** argv) {
     printf("malloc(0) returns non NULL pointer\n");
     free(p_int);
   }
+
+  /* Maths? */
+
+  printf("FLT_EPSILON is %14.7e\n", FLT_EPSILON);
+  printf("M_PI        is %14.7e\n", M_PI);
 
   test_util();
 

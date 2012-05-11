@@ -134,6 +134,7 @@ static int do_test_io1(void) {
   int grid[3] = {1, 1, 1};
   char * filename = "hydro-test-io";
   struct io_info_t * iohandler = NULL;
+  hydro_t * hydro;
 
   coords_init();
   le_init();
@@ -144,19 +145,20 @@ static int do_test_io1(void) {
     grid[Z] = 2;
   }
 
-  hydro_create(1, &hydro_);
-  assert(hydro_);
+  hydro_create(1, &hydro);
+  assert(hydro);
 
-  hydro_init_io_info(hydro_, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
-  test_field_set(hydro_->nf, hydro_->u, testf1);
+  hydro_init_io_info(hydro, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
+  test_field_set(hydro->nf, hydro->u, testf1);
 
-  hydro_io_info(hydro_, &iohandler);
+  hydro_io_info(hydro, &iohandler);
   assert(iohandler);
+
   io_write(filename, iohandler);
 
   io_remove(filename, iohandler);
 
-  hydro_free(hydro_);
+  hydro_free(hydro);
   le_finish();
   coords_finish();
 
