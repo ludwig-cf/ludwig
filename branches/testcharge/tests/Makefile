@@ -54,7 +54,8 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
               test_colloid.c test_colloids.c test_colloids_halo.c \
               test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
-              test_collision.c test_psi.c test_psi_sor.c test_hydro.c
+              test_collision.c test_psi.c test_psi_sor.c test_hydro.c \
+              test_nernst_planck.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}
