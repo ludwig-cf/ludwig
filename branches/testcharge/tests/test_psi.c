@@ -269,7 +269,9 @@ static int do_test_io1(void) {
   int nk;
   int grid[3] = {1, 1, 1};
   char * filename = "psi-test-io";
-  struct io_info_t * iohandler = NULL;
+
+  psi_t * psi = NULL;
+  io_info_t * iohandler = NULL;
 
   coords_init();
 
@@ -280,37 +282,38 @@ static int do_test_io1(void) {
   }
 
   nk = 2;
-  psi_create(nk, &psi_);
-  psi_init_io_info(psi_, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
+  psi_create(nk, &psi);
+  assert(psi);
+  psi_init_io_info(psi, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
 
-  test_field_set(1, psi_->psi, testf1);
-  test_field_set(nk, psi_->rho, testf1);
+  test_field_set(1, psi->psi, testf1);
+  test_field_set(nk, psi->rho, testf1);
 
-  psi_io_info(psi_, &iohandler);
+  psi_io_info(psi, &iohandler);
   assert(iohandler);
-  io_write(filename, iohandler);
+  io_write_data(iohandler, filename,  psi);
 
-  psi_free(psi_);
+  psi_free(psi);
   MPI_Barrier(pe_comm());
 
   /* Recreate, and read. This zeros out all the fields, so they
    * must be read correctly to pass. */
 
-  psi_create(nk, &psi_);
-  psi_init_io_info(psi_, grid, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
+  psi_create(nk, &psi);
+  psi_init_io_info(psi, grid, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
 
-  psi_io_info(psi_, &iohandler);
+  psi_io_info(psi, &iohandler);
   assert(iohandler);
-  io_read(filename, iohandler);
+  io_read_data(iohandler, filename, psi);
 
-  psi_halo_psi(psi_);
-  psi_halo_rho(psi_);
+  psi_halo_psi(psi);
+  psi_halo_rho(psi);
 
-  test_field_check(1, psi_->psi, testf1);
-  test_field_check(nk, psi_->rho, testf1);
+  test_field_check(1, psi->psi, testf1);
+  test_field_check(nk, psi->rho, testf1);
   io_remove(filename, iohandler);
 
-  psi_free(psi_);
+  psi_free(psi);
   coords_finish();
 
   return 0;
