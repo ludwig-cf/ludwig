@@ -236,6 +236,13 @@ void COLL_init() {
       RUN_get_double_parameter("colloid_random_b2", &state0->b2);
       RUN_get_double_parameter("colloid_random_dh", &dh);
 
+      RUN_get_int_parameter("colloid_random_isfixedr", &state0->isfixedr);
+      RUN_get_int_parameter("colloid_random_isfixedv", &state0->isfixedv);
+
+      RUN_get_double_parameter("colloid_random_q0", &state0->q0);
+      RUN_get_double_parameter("colloid_random_q1", &state0->q1);
+      RUN_get_double_parameter("colloid_random_epsilon", &state0->epsilon);
+
       colloids_init_random(n, state0, dh);
       ncheck = colloid_ntotal();
       info("Requested   %d colloid%s from input\n", n, (n > 1) ? "s" : "");
@@ -820,17 +827,19 @@ void coll_position_update(void) {
 
 	  while (p_colloid) {
 
-	    ifail = 0;
-	    for (ia = 0; ia < 3; ia++) {
-	      if (p_colloid->s.dr[ia] > drmax[ia]) ifail = 1;
-	      p_colloid->s.r[ia] += p_colloid->s.dr[ia];
-	    }
+	    if (p_colloid->s.isfixedr == 0) {
+	      ifail = 0;
+	      for (ia = 0; ia < 3; ia++) {
+		if (p_colloid->s.dr[ia] > drmax[ia]) ifail = 1;
+		p_colloid->s.r[ia] += p_colloid->s.dr[ia];
+	      }
 
-	    if (ifail == 1) {
-	      verbose("Colloid velocity exceeded maximum %7.3f %7.3f %7.3f\n",
-		      drmax[X], drmax[Y], drmax[Z]);
-	      colloid_state_write_ascii(p_colloid->s, stdout);
-	      fatal("Stopping\n");
+	      if (ifail == 1) {
+		verbose("Colloid velocity exceeded max %7.3f %7.3f %7.3f\n",
+			drmax[X], drmax[Y], drmax[Z]);
+		colloid_state_write_ascii(p_colloid->s, stdout);
+		fatal("Stopping\n");
+	      }
 	    }
 
 	    p_colloid = p_colloid->next;

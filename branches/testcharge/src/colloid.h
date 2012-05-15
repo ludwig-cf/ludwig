@@ -59,12 +59,15 @@ struct colloid_state_type {
   double dr[3];         /* r update (pending refactor of move/build process) */
   double deltaphi;      /* order parameter bbl net; required to restart */
 
-  /* Charge densities. We allow two charge densities (cf a general
-   * number in the electrokinetics). rho0 will be associated with
-   * psi->rho[0] in the electrokinetics etc.  */
+  /* Charges. We allow two charge valencies (cf a general number
+   * number in the electrokinetics section). q0 will be associated
+   * with psi->rho[0] and q1 to psi->rho[1] in the electrokinetics.
+   * The charge will
+   * be converted to a density by dividing by the current discrete
+   * volume to ensure conservation. */
 
-  double rho0;          /* charge density (x 4/3 pi a0^3 for total) */
-  double rho1;          /* charge density (x 4/3 pi a0^3 for total) */
+  double q0;            /* magnitude charge 0 */
+  double q1;            /* magnitude charge 1 */
   double epsilon;       /* permeativity */
 
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
