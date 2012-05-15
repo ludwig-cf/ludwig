@@ -25,7 +25,7 @@ enum io_format_flag {IO_FORMAT_NULL,
                      IO_FORMAT_DEFAULT};
 
 typedef struct io_info_s io_info_t;
-typedef int (*io_rw_cb_ft)(io_info_t * obj, FILE * fp, int index, void * self);
+typedef int (*io_rw_cb_ft)(FILE * fp, int index, void * self);
 
 io_info_t * io_info_create(void);
 io_info_t * io_info_create_with_grid(const int *);
@@ -56,5 +56,7 @@ int io_info_format_out_set(io_info_t * obj, int form_out);
 
 int io_info_read_set(io_info_t * obj, int format, io_rw_cb_ft);
 int io_info_write_set(io_info_t * obj, int format, io_rw_cb_ft);
+int io_write_data(io_info_t * obj, const char * filename_stub, void * data);
+int io_read_data(io_info_t * obj, const char * filename_stub, void * data);
 
 #endif

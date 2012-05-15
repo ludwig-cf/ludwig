@@ -60,6 +60,12 @@ struct io_info_s {
   int (* read_function_a)  (FILE *, const int, const int, const int);
   int (* write_function_b) (FILE *, const int, const int, const int);
   int (* read_function_b)  (FILE *, const int, const int, const int);
+  io_rw_cb_ft write_data;
+  io_rw_cb_ft write_ascii;
+  io_rw_cb_ft write_binary;
+  io_rw_cb_ft read_data;
+  io_rw_cb_ft read_ascii;
+  io_rw_cb_ft read_binary;
 };
 
 static io_info_t * io_info_allocate(void);
@@ -823,8 +829,12 @@ int io_info_read_set(io_info_t * obj, int format, io_rw_cb_ft f) {
 
   assert(obj);
   assert(format == IO_FORMAT_ASCII || format == IO_FORMAT_BINARY);
+  assert(f);
 
-  assert(0);
+  if (format == IO_FORMAT_ASCII) obj->read_ascii = f;
+  if (format == IO_FORMAT_BINARY) obj->read_binary = f;
+
+  obj->read_data = f;
 
   return 0;
 }
@@ -839,8 +849,170 @@ int io_info_write_set(io_info_t * obj, int format, io_rw_cb_ft f) {
 
   assert(obj);
   assert(format == IO_FORMAT_ASCII || format == IO_FORMAT_BINARY);
+  assert(f);
 
-  assert(0);
+  if (format == IO_FORMAT_ASCII) obj->write_ascii = f;
+  if (format == IO_FORMAT_BINARY) obj->write_binary = f;
+
+  obj->write_data = f;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_write
+ *
+ *  This is the driver to write lattice quantities on the lattice.
+ *  The arguments are the filename stub and the io_info struct
+ *  describing which quantity we are dealing with.
+ *
+ *  The third argument is an opaque pointer to the data object,
+ *  which will be passed to the callback which does the write.
+ *
+ *  All writes are processor decomposition dependent at the moment.
+ *
+ *****************************************************************************/
+
+int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
+
+  FILE *    fp_state;
+  char      filename_io[FILENAME_MAX];
+  int       token = 0;
+  int       ic, jc, kc, index;
+  int       nlocal[3];
+  const int io_tag = 140;
+
+  MPI_Status status;
+
+  assert(obj);
+  assert(data);
+  assert(obj->write_data);
+
+  coords_nlocal(nlocal);
+  io_set_group_filename(filename_io, filename_stub, obj);
+
+  if (obj->io_comm->rank == 0) {
+    /* Open the file anew */
+    fp_state = fopen(filename_io, "wb");
+  }
+  else {
+
+    /* Non-io-root process. Block until we receive the token from the
+     * previous process, after which we can re-open the file and write
+     * our own data. */
+
+    MPI_Recv(&token, 1, MPI_INT, obj->io_comm->rank - 1, io_tag,
+	     obj->io_comm->comm, &status);
+    fp_state = fopen(filename_io, "ab");
+  }
+
+  if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = coords_index(ic, jc, kc);
+	obj->write_data(fp_state, index, data);
+      }
+    }
+  }
+
+  /* Check the error indicator on the stream and close */
+
+  if (ferror(fp_state)) {
+    perror("perror: ");
+    fatal("File error on writing %s\n", filename_io);
+  }
+  fclose(fp_state);
+
+  /* Pass the token to the next process to write */
+
+  if (obj->io_comm->rank < obj->io_comm->size - 1) {
+    MPI_Ssend(&token, 1, MPI_INT, obj->io_comm->rank + 1, io_tag,
+	      obj->io_comm->comm);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_read_data
+ *
+ *  Driver for reads.
+ *
+ *****************************************************************************/
+
+int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
+
+  FILE *    fp_state;
+  char      filename_io[FILENAME_MAX];
+  long int  token = 0;
+  int       ic, jc, kc, index;
+  int       nlocal[3];
+  long int  offset;
+  const int io_tag = 141;
+
+  MPI_Status status;
+
+  assert(obj);
+  assert(filename_stub);
+  assert(data);
+
+  coords_nlocal(nlocal);
+
+  io_set_group_filename(filename_io, filename_stub, obj);
+
+  if (obj->io_comm->rank == 0) {
+
+    fp_state = fopen(filename_io, "r");
+  }
+  else {
+
+    /* Non-io-root process. Block until we receive the token from the
+     * previous process, after which we can re-open the file and read. */
+
+    MPI_Recv(&token, 1, MPI_LONG, obj->io_comm->rank - 1, io_tag,
+	     obj->io_comm->comm, &status);
+    fp_state = fopen(filename_io, "r");
+  }
+
+  if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
+  fseek(fp_state, token, SEEK_SET);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+      /* Work out where the read comes from if required */
+      offset = io_file_offset(ic, jc, obj);
+      if (obj->processor_independent) fseek(fp_state, offset, SEEK_SET);
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = coords_index(ic, jc, kc);
+	obj->read_data(fp_state, index, data);
+      }
+    }
+  }
+
+  /* The token is the current offset for processor-dependent output */
+
+  token = ftell(fp_state);
+
+  /* Check the error indicator on the stream and close */
+
+  if (ferror(fp_state)) {
+    perror("perror: ");
+    fatal("File error on reading %s\n", filename_io);
+  }
+  fclose(fp_state);
+
+  /* Pass the token to the next process to read */
+
+  if (obj->io_comm->rank < obj->io_comm->size - 1) {
+    MPI_Ssend(&token, 1, MPI_LONG, obj->io_comm->rank + 1, io_tag,
+	      obj->io_comm->comm);
+  }
 
   return 0;
 }
