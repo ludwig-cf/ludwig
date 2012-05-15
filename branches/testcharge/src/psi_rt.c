@@ -157,7 +157,7 @@ static int psi_do_init(psi_t ** pobj) {
     info("Initial condition rho_el: %14.7e\n", rho_el);
 
     n = RUN_get_double_parameter("electrokinetics_init_sigma", &sigma);
-    if (n == 0) fatal("... please set electrokinetics_sigma\n");
+    if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
     info("Initial condition sigma: %14.7e\n", sigma);
 
     psi_init_gouy_chapman_set(obj, rho_el, sigma);
