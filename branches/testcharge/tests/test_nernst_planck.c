@@ -104,17 +104,19 @@ static int do_test_gouy_chapman(void) {
   double rho_el = 1.0e-3;      /* charge density */
   double yd;                   /* Dimensionless surface potential */
 
-  int ntotal[3] = {4, 4, 64};  /* Quasi-one-dimensional system */
+  int ntotal[3] = {64, 4, 4};  /* Quasi-one-dimensional system */
   int grid[3];                 /* Processor decomposition */
 
   int tmax = 20000;
 
+  psi_t * psi = NULL;
+
   coords_nhalo_set(1);
   coords_ntotal_set(ntotal);
 
-  grid[X] = 1;
+  grid[X] = pe_size();
   grid[Y] = 1;
-  grid[Z] = pe_size();
+  grid[Z] = 1;
   coords_decomposition_set(grid);
 
   coords_init();
@@ -124,6 +126,7 @@ static int do_test_gouy_chapman(void) {
   site_map_init();
 
   psi_create(nk, &psi);
+  assert(psi);
 
   psi_valency_set(psi, 0, valency[0]);
   psi_valency_set(psi, 1, valency[1]);
@@ -134,10 +137,10 @@ static int do_test_gouy_chapman(void) {
   psi_beta_set(psi, beta);
 
   /* wall charge density */
-  rho_w = 1.e+0 / (2.0*L(X)*L(Y));
+  rho_w = 1.e+0 / (2.0*L(Y)*L(Z));
 
   /* counter charge density */
-  rho_i = rho_w * (2.0*L(X)*L(Y)) / (L(X)*L(Y)*(L(Z) - 2.0));
+  rho_i = rho_w * (2.0*L(Y)*L(Z)) / ((L(X) - 2.0)*L(Y)*L(Z));
 
 
   /* apply counter charges & electrolyte */
@@ -156,10 +159,10 @@ static int do_test_gouy_chapman(void) {
   }
 
   /* apply wall charges */
-  if (cart_coords(Z) == 0) {
-    kc = 1;
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
+  if (cart_coords(X) == 0) {
+    ic = 1;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
@@ -172,10 +175,10 @@ static int do_test_gouy_chapman(void) {
     }
   }
 
-  if (cart_coords(Z) == cart_size(Z) - 1) {
-    kc = nlocal[Z];
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
+  if (cart_coords(X) == cart_size(X) - 1) {
+    ic = nlocal[X];
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
@@ -195,7 +198,8 @@ static int do_test_gouy_chapman(void) {
     psi_halo_psi(psi);
     psi_sor_poisson(psi);
     psi_halo_rho(psi);
-    nernst_planck_driver(psi);
+    /* The test is run with no hydrodynamics, hence NULL here. */
+    nernst_planck_driver(psi, NULL);
 
     if (tstep % 1000 == 0) {
 
@@ -210,16 +214,16 @@ static int do_test_gouy_chapman(void) {
    * density must be > 0 to compute the debye length and the
    * surface potential. */
 
-  ic = 2;
   jc = 2;
+  kc = 2;
 
   rho_b_local = 0.0;
 
-  for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
 
     index = coords_index(ic, jc, kc);
  
-    if (noffst[Z] + kc == ntotal[Z] / 2) {
+    if (noffst[X] + ic == ntotal[X] / 2) {
       psi_ionic_strength(psi, index, &rho_b_local);
     }
   }
@@ -236,7 +240,7 @@ static int do_test_gouy_chapman(void) {
   /* These are the reference answers. */
 
   assert(tmax == 20000);
-  assert(ntotal[Z] == 64);
+  assert(ntotal[X] == 64);
   /*assert(fabs((lb - 7.234316e-01)/0.723431) < FLT_EPSILON);
   assert(fabs((ldebye - 6.420075)/6.420075) < FLT_EPSILON);
   assert(fabs((yd - 5.451449e-05)/5.45e-05) < FLT_EPSILON);*/
@@ -259,7 +263,7 @@ static int do_test_gouy_chapman(void) {
 
 static int test_io(psi_t * psi, int tstep) {
 
-  int ntotalz;
+  int ntotalx;
   int nlocal[3];
   int ic, jc, kc, index;
 
@@ -272,47 +276,47 @@ static int test_io(psi_t * psi, int tstep) {
   FILE * out;
 
   coords_nlocal(nlocal);
-  ntotalz = N_total(Z);
+  ntotalx = N_total(X);
 
-  ic = 2;
   jc = 2;
+  kc = 2;
 
   /* 1D output. calloc() is used to zero the arays, then
    * MPI_Gather to get complete picture. */
 
-  field = calloc(nlocal[Z], sizeof(double));
-  psifield = calloc(ntotalz, sizeof(double));
-  rho0field = calloc(ntotalz, sizeof(double));
-  rho1field = calloc(ntotalz, sizeof(double));
+  field = calloc(nlocal[X], sizeof(double));
+  psifield = calloc(ntotalx, sizeof(double));
+  rho0field = calloc(ntotalx, sizeof(double));
+  rho1field = calloc(ntotalx, sizeof(double));
   if (field == NULL) fatal("calloc(field) failed\n");
   if (psifield == NULL) fatal("calloc(psifield) failed\n");
   if (rho0field == NULL) fatal("calloc(rho0field) failed\n");
   if (rho1field == NULL) fatal("calloc(rho1field) failed\n");
 
-  for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
 
     index = coords_index(ic, jc, kc);
-    psi_psi(psi, index, field + kc - 1);
+    psi_psi(psi, index, field + ic - 1);
   }
 
-  MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
-	     psifield, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+  MPI_Gather(field, nlocal[X], MPI_DOUBLE,
+	     psifield, nlocal[X], MPI_DOUBLE, 0, cart_comm());
 
-  for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
     index = coords_index(ic, jc, kc);
-    psi_rho(psi, index, 0, field + kc - 1);
+    psi_rho(psi, index, 0, field + ic - 1);
   }
 
-  MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
-	     rho0field, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+  MPI_Gather(field, nlocal[X], MPI_DOUBLE,
+	     rho0field, nlocal[X], MPI_DOUBLE, 0, cart_comm());
 
-  for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
     index = coords_index(ic, jc, kc);
-    psi_rho(psi, index, 1, field + kc - 1);
+    psi_rho(psi, index, 1, field + ic - 1);
   }
 
-  MPI_Gather(field, nlocal[Z], MPI_DOUBLE,
-	     rho1field, nlocal[Z], MPI_DOUBLE, 0, cart_comm());
+  MPI_Gather(field, nlocal[X], MPI_DOUBLE,
+	     rho1field, nlocal[X], MPI_DOUBLE, 0, cart_comm());
 
   if (cart_rank() == 0) {
 
@@ -320,9 +324,9 @@ static int test_io(psi_t * psi, int tstep) {
     out = fopen(filename, "w");
     if (out == NULL) fatal("Could not open %s\n", filename);
 
-    for (kc = 1; kc <= ntotalz; kc++) {
-      fprintf(out, "%d %le %le %le\n", kc, psifield[kc-1],
-	      rho0field[kc-1], rho1field[kc-1]);
+    for (ic = 1; ic <= ntotalx; ic++) {
+      fprintf(out, "%d %le %le %le\n", ic, psifield[ic-1],
+	      rho0field[ic-1], rho1field[ic-1]);
     }
     fclose(out);
   }
