@@ -87,9 +87,12 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
  *
  *  nernst_planck_driver
  *
+ *  The hydro object is allowed to be NULL, in which case there is
+ *  no advection.
+ *
  *****************************************************************************/
 
-int nernst_planck_driver(psi_t * psi) {
+int nernst_planck_driver(psi_t * psi, hydro_t * hydro) {
 
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
@@ -112,8 +115,7 @@ int nernst_planck_driver(psi_t * psi) {
 
   /* The order of these calls is important. */
 
-  assert(0); /* Check advection has been set in advection_rt */
-  /* advective_fluxes(nk, psi->rho, fe, fy, fz);*/
+  if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
   nernst_planck_fluxes(psi, fe, fy, fz);
 
   advective_bcs_no_flux(nk, fe, fy, fz);
