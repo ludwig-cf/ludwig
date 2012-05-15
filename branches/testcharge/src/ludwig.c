@@ -240,7 +240,6 @@ void ludwig_run(const char * inputfile) {
 
   ludwig_t * ludwig = NULL;
 
-  assert(0); /* Not a functional check in */
   ludwig = calloc(1, sizeof(ludwig_t));
   assert(ludwig);
 
@@ -297,7 +296,7 @@ void ludwig_run(const char * inputfile) {
       psi_sor_poisson(ludwig->psi);
       psi_halo_rho(ludwig->psi);
       hydro_u_halo(ludwig->hydro); /* Should not be repeated if phi active.*/ 
-      nernst_planck_driver(ludwig->psi);
+      nernst_planck_driver(ludwig->psi, ludwig->hydro);
     }
 
     /* Order parameter */
@@ -411,7 +410,7 @@ void ludwig_run(const char * inputfile) {
 	psi_io_info(ludwig->psi, &iohandler);
 	info("Writing psi file at step %d!\n", step);
 	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
-	io_write(filename, iohandler);
+	io_write_data(iohandler, filename, ludwig->psi);
       }
     }
 
@@ -435,7 +434,7 @@ void ludwig_run(const char * inputfile) {
       hydro_io_info(ludwig->hydro, &iohandler);
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
-      io_write(filename, iohandler);
+      io_write_data(iohandler, filename, ludwig->hydro);
     }
 
     /* Print progress report */
