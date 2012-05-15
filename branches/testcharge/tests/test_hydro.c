@@ -133,7 +133,7 @@ static int do_test_io1(void) {
 
   int grid[3] = {1, 1, 1};
   char * filename = "hydro-test-io";
-  struct io_info_t * iohandler = NULL;
+  io_info_t * iohandler = NULL;
   hydro_t * hydro;
 
   coords_init();
@@ -154,7 +154,7 @@ static int do_test_io1(void) {
   hydro_io_info(hydro, &iohandler);
   assert(iohandler);
 
-  io_write(filename, iohandler);
+  io_write_data(iohandler, filename, hydro);
 
   io_remove(filename, iohandler);
 

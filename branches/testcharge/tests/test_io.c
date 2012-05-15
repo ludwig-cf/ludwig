@@ -62,7 +62,7 @@ int main (int argc, char ** argv) {
 
 void test_io_info_struct() {
 
-  struct io_info_t * io_info;
+  io_info_t * io_info;
   char stub[FILENAME_MAX];
 
   sprintf(stub, "%s", "ztest_file");
@@ -71,7 +71,7 @@ void test_io_info_struct() {
   info("Allocating one io_info object...");
 
   io_info = io_info_create();
-  test_assert(io_info != (struct io_info_t *) NULL);
+  test_assert(io_info != (io_info_t *) NULL);
   info("ok\n");
 
   info("Address of write function %p\n", test_write_1);
@@ -108,7 +108,7 @@ void test_io_info_struct() {
 
 void test_processor_independent() {
 
-  struct io_info_t * io_info;
+  io_info_t * io_info;
   char stub[FILENAME_MAX];
   int grid[3] = {1, 1, 1};
 
@@ -118,7 +118,7 @@ void test_processor_independent() {
   info("Allocating one io_info object...");
 
   io_info = io_info_create_with_grid(grid);
-  test_assert(io_info != (struct io_info_t *) NULL);
+  test_assert(io_info != (io_info_t *) NULL);
   info("ok\n");
 
   io_info_set_name(io_info, "Test int data");
@@ -156,7 +156,7 @@ void test_processor_independent() {
 
 void test_ascii() {
 
-  struct io_info_t * io_info;
+  io_info_t * io_info;
   char filestub[FILENAME_MAX];
   int grid[3] = {1, 1, 1};
 
