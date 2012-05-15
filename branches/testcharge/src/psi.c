@@ -33,10 +33,10 @@ static const double reltol_default = FLT_EPSILON; /* Solver tolerance */
 static const double abstol_default = 0.01*FLT_EPSILON;
 
 static int psi_init_mpi_indexed(psi_t * obj);
-static int psi_read(FILE * fp, const int ic, const int jc, const int kc);
-static int psi_write(FILE * fp, const int ic, const int jc, const int kc);
-static int psi_read_ascii(FILE * fp, const int, const int, const int);
-static int psi_write_ascii(FILE * fp, const int, const int, const int);
+static int psi_read(FILE * fp, int index, void * self);
+static int psi_write(FILE * fp, int index, void * self);
+static int psi_read_ascii(FILE * fp, int index, void * self);
+static int psi_write_ascii(FILE * fp, int index, void * self);
 
 /*****************************************************************************
  *
@@ -392,10 +392,10 @@ int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
   if (obj->info == NULL) fatal("io_info_create(psi) failed\n");
 
   io_info_set_name(obj->info, "Potential and charge densities");
-  io_info_set_read_binary(obj->info, psi_read);
-  io_info_set_write_binary(obj->info, psi_write);
-  io_info_set_read_ascii(obj->info, psi_read_ascii);
-  io_info_set_write_ascii(obj->info, psi_write_ascii);
+  io_info_read_set(obj->info, IO_FORMAT_BINARY, psi_read);
+  io_info_read_set(obj->info, IO_FORMAT_ASCII, psi_read_ascii);
+  io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
+  io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
   io_info_set_bytesize(obj->info, (1 + obj->nk)*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
@@ -593,18 +593,17 @@ int psi_halo(int nf, double * f, MPI_Datatype halo[3]) {
  *
  *  psi_write_ascii
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_write_ascii(FILE * fp, const int ic, const int jc,
-			   const int kc) {
-  int index;
+static int psi_write_ascii(FILE * fp, int index, void * self) {
+
   int n, nwrite;
-  psi_t * obj = NULL;
+  psi_t * obj = self;
 
   assert(obj);
   assert(fp);
-
-  index = coords_index(ic, jc, kc);
 
   nwrite = fprintf(fp, "%22.15e ", obj->psi[index]);
   if (nwrite != 23) fatal("fprintf(psi) failed at index %d\n", index);
@@ -617,24 +616,24 @@ static int psi_write_ascii(FILE * fp, const int ic, const int jc,
   nwrite = fprintf(fp, "\n");
   if (nwrite != 1) fatal("fprintf() failed at index %d\n", index);
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  psi_read_ascii
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_read_ascii(FILE * fp, const int ic, const int jc,
-			  const int kc) {
-  int index;
+static int psi_read_ascii(FILE * fp, int index, void * self) {
+
   int n, nread;
-  psi_t * obj = NULL; /* TO come via argument */
+  psi_t * obj = self;
 
   assert(fp);
-
-  index = coords_index(ic, jc, kc);
+  assert(self);
 
   nread = fscanf(fp, "%le", obj->psi + index);
   if (nread != 1) fatal("fscanf(psi) failed for %d\n", index);
@@ -644,55 +643,57 @@ static int psi_read_ascii(FILE * fp, const int ic, const int jc,
     if (nread != 1) fatal("fscanf(rho) failed for %d %d\n", index, n);
   }
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  psi_write
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_write(FILE * fp, const int ic, const int jc, const int kc) {
+static int psi_write(FILE * fp, int index, void * self) {
 
-  int index;
   int n;
-  psi_t * obj = NULL; /* To be set via argument */
+  psi_t * obj = self;
 
   assert(fp);
+  assert(obj);
 
-  index = coords_index(ic, jc, kc);
   n = fwrite(obj->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fwrite(psi) failed at index %d\n", index);
 
   n = fwrite(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
   if (n != obj->nk) fatal("fwrite(rho) failed at index %d", index);
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  psi_read
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_read(FILE * fp, const int ic, const int jc, const int kc) {
+static int psi_read(FILE * fp, int index, void * self) {
 
-  int index;
   int n;
-  psi_t * obj = NULL;
+  psi_t * obj = self;
 
   assert(fp);
+  assert(obj);
 
-  index = coords_index(ic, jc, kc);
   n = fread(obj->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fread(psi) failed at index %d\n", index);
 
   n = fread(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
   if (n != obj->nk) fatal("fread(rho) failed at index %d\n", index);
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************

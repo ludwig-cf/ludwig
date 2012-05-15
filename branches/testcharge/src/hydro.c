@@ -25,9 +25,8 @@ int field_halo(int nlocal[3], int nhalo, int nhcomm, int nf, double * f,
 	       MPI_Datatype halo[3], MPI_Comm comm);
 
 static int hydro_lees_edwards_parallel(hydro_t * obj);
-
-static int hydro_u_write(FILE * fp, int ic, int jc, int kc);
-static int hydro_u_write_ascii(FILE * fp, int ic, int jc, int kc);
+static int hydro_u_write(FILE * fp, int index, void * self);
+static int hydro_u_write_ascii(FILE * fp, int index, void * self);
 
 /*****************************************************************************
  *
@@ -428,10 +427,8 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
   if (obj->info == NULL) fatal("io_info_create(hydro) failed\n");
 
   io_info_set_name(obj->info, "Velocity field");
-  io_info_set_read_binary(obj->info, NULL);
-  io_info_set_write_binary(obj->info, hydro_u_write);
-  io_info_set_read_ascii(obj->info, NULL);
-  io_info_set_write_ascii(obj->info, hydro_u_write_ascii);
+  io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
+  io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
   io_info_set_bytesize(obj->info, obj->nf*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
@@ -822,20 +819,18 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
  *
  *****************************************************************************/
 
-static int hydro_u_write(FILE * fp, int ic, int jc, int kc) {
+static int hydro_u_write(FILE * fp, int index, void * arg) {
 
-  int index, n;
-  hydro_t * obj = NULL; /* To be via opaque data arg */
+  int n;
+  hydro_t * obj = arg;
 
   assert(fp);
   assert(obj);
 
-  index = le_site_index(ic, jc, kc);
   n = fwrite(&obj->u[obj->nf*index], sizeof(double), obj->nf, fp);
+  if (n != obj->nf) fatal("fwrite(hydro->u) failed\n");
 
-  if (n != obj->nf) fatal("fwrite(velocity) failed at %d %d %d\n", ic, jc, kc);
-
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
@@ -844,20 +839,21 @@ static int hydro_u_write(FILE * fp, int ic, int jc, int kc) {
  *
  *****************************************************************************/
 
-static int hydro_u_write_ascii(FILE * fp, int ic, int jc, int kc) {
+static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
 
-  int index, n;
-  hydro_t * obj = NULL; /* To be via opaque data arg */
+  int n;
+  hydro_t * obj = arg;
 
+  assert(fp);
   assert(obj);
 
-  index = le_site_index(ic, jc, kc);
   n = fprintf(fp, "%22.15e %22.15e %22.15e\n", obj->u[obj->nf*index + X],
 	      obj->u[obj->nf*index + Y], obj->u[obj->nf*index + Z]);
 
-  if (n != 69) fatal("fprintf(phi) failed at index %d\n", index);
+  /* Expect total of 69 characters ... */
+  if (n != 69) fatal("fprintf(hydro->u) failed\n");
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
