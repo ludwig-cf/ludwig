@@ -15,6 +15,8 @@
 #ifndef COORDS_H
 #define COORDS_H
 
+#include <mpi.h>
+
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
