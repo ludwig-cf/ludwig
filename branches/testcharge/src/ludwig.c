@@ -71,6 +71,7 @@
 #include "psi_sor.h"
 #include "psi_stats.h"
 #include "psi_force.h"
+#include "psi_colloid.h"
 #include "nernst_planck.h"
 
 #include "hydro_rt.h"
@@ -290,6 +291,7 @@ void ludwig_run(const char * inputfile) {
     /* Electrokinetics */
 
     if (ludwig->psi) {
+      psi_colloid_rho_set(ludwig->psi);
       psi_halo_psi(ludwig->psi);
       /* Sum force for this step before update */
       psi_force_grad_mu(ludwig->psi, ludwig->hydro);

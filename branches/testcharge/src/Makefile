@@ -85,7 +85,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      phi_update.o phi_update_rt.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
-     psi_force.o nernst_planck.o \
+     psi_force.o psi_colloid.o nernst_planck.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o \
