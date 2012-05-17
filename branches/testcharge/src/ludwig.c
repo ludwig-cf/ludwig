@@ -268,6 +268,13 @@ void ludwig_run(const char * inputfile) {
     io_write(filename, iohandler);
   }
 
+  /* Electroneutrality */
+
+  if (step == 0 && ludwig->psi) {
+    psi_colloid_rho_set(ludwig->psi);
+    psi_colloid_electroneutral(ludwig->psi);
+  }
+
   info("Initial conditions.\n");
   stats_distribution_print();
   phi_stats_print_stats();
