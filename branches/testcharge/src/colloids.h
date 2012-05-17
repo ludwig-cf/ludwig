@@ -73,5 +73,10 @@ void        colloid_free(colloid_t *);
 double      colloid_rho0(void);
 int         colloid_ntotal(void);
 int         colloid_nlocal(void);
+int         colloids_q_local(double q[2]);
+int         colloids_v_local(double * v);
+
+/* This is actually in build.c but should be here! */
+colloid_t * colloid_at_site_index(int index);
 
 #endif
