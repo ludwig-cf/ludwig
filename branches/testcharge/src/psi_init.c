@@ -26,6 +26,46 @@
 
 /*****************************************************************************
  *
+ *  psi_init_uniform
+ *
+ *  Set the charge density for all species to be rho_el everywhere.
+ *  The potential is initialised to zero.
+ *
+ *****************************************************************************/
+
+int psi_init_uniform(psi_t * obj, double rho_el) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int n, nk;
+
+  assert(obj);
+  assert(rho_el >= 0.0);
+
+  coords_nlocal(nlocal);
+  psi_nk(obj, &nk);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	psi_psi_set(obj, index, 0.0);
+
+	for (n = 0; n < nk; n++) {
+	  psi_rho_set(obj, index, n, rho_el);
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  * psi_init_gouy_chapman_set
  *
  *  Set rho(x = 1)  = + (1/2NyNz)

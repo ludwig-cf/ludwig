@@ -19,6 +19,7 @@
 
 #include "psi.h"
 
+int psi_init_uniform(psi_t * obj, double rho_el);
 int psi_init_gouy_chapman_set(psi_t * obj, double rho_el, double sigma);
 int psi_init_liquid_junction_set(psi_t * obj, double rho_el, double delta_el);
 

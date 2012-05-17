@@ -153,7 +153,7 @@ static int psi_do_init(psi_t ** pobj) {
     info("Initial conditions:         %s\n", "Gouy Chapman");
 
     n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
-    if (n == 0) fatal("... please set electrokinetics_rho_el\n");
+    if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el: %14.7e\n", rho_el);
 
     n = RUN_get_double_parameter("electrokinetics_init_sigma", &sigma);
@@ -167,14 +167,24 @@ static int psi_do_init(psi_t ** pobj) {
     info("Initial conditions:         %s\n", "Liquid junction");
 
     n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
-    if (n == 0) fatal("... please set electrokinetics_rho_el\n");
+    if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el: %14.7e\n", rho_el);
 
     n = RUN_get_double_parameter("electrokinetics_init_delta_el", &delta_el);
-    if (n == 0) fatal("... please set electrokinetics_delta_el\n");
+    if (n == 0) fatal("... please set electrokinetics_init_delta_el\n");
     info("Initial condition delta_el: %14.7e\n", delta_el);
 
     psi_init_liquid_junction_set(obj, rho_el, delta_el);
+  }
+
+  if (strcmp(value, "uniform") == 0) {
+    info("Initial conditions:         %s\n", "Uniform");
+
+    n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
+    if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
+    info("Initial condition rho_el: %14.7e\n", rho_el);
+
+    psi_init_uniform(obj, rho_el);
   }
 
   *pobj = obj;
