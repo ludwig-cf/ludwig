@@ -7,7 +7,7 @@
  *  Isothermal fluctuations following Adhikari et al., Europhys. Lett
  *  (2005).
  *
- *  The relaxation times can be set to give either 'm10', BGK, or
+ *  The relaxation times can be set to give either 'm10', BGK or
  *  'two-relaxation' time (TRT) models.
  *
  *  $Id$
@@ -42,7 +42,7 @@
 #include "propagation_ode.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
-static int nrelax_ = RELAXATION_M10;     /* Default is m10 */
+static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] Default is M10 */
 static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
 static double rtau_shear;       /* Inverse relaxation time for shear modes */
@@ -56,6 +56,7 @@ static fluctuations_t * fl_;
 
 static void collision_multirelaxation(void);
 static void collision_binary_lb(void);
+static void collision_bgk(void);
 
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
        void collision_fluctuations(int index, double shat[3][3],
@@ -78,8 +79,9 @@ void collide(void) {
   ndist = distribution_ndist();
   collision_relaxation_times_set();
 
-  if (ndist == 1 || is_propagation_ode() == 1) collision_multirelaxation();
-  if (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb();
+  if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_M10) collision_multirelaxation();
+  if  (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb();
+  if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_BGK) collision_bgk();
 
   return;
 }
@@ -666,6 +668,105 @@ void collision_binary_lb() {
 
 /*****************************************************************************
  *
+ *  collision_bgk
+ *
+ *  Standard version of BGK collision kernel with the same relaxation 
+ *  time for all modes.
+ *
+ *  Note: There is no transform onto the moment basis.
+ *  The collision is directly performed in the distribution basis.
+ *
+ *****************************************************************************/
+
+void collision_bgk() {
+
+  int       N[3];
+  int       ic, jc, kc, index;       /* site indices */
+  int       p;                       /* velocity index */
+  int       ia, ib;                  /* indices ("alphabeta") */
+  int       ndist;
+
+  double    rho, rrho;               /* Density, reciprocal density */
+  double    u[3];                    /* Velocity */
+
+  double    rdim;                    /* 1 / dimension */
+
+  double    force[3];                /* External force */
+  double    force_local[3];
+  double    force_global[3];
+
+  double    f[NVEL];
+  double    feq[NVEL];
+  double    ftemp;
+  double    udotc, sdotq;
+
+  ndist = distribution_ndist();
+  coords_nlocal(N);
+  fluid_body_force(force_global);
+
+  rdim = 1.0/NDIM;
+
+  for (ia = 0; ia < 3; ia++) {
+    u[ia] = 0.0;
+  }
+
+  for (ic = 1; ic <= N[X]; ic++) {
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+	
+	index=coords_index(ic, jc, kc);	
+	
+	/* Compute density and velocity */
+
+	rho = distribution_zeroth_moment(index,0);
+	distribution_first_moment(index,0,u);
+
+	/* Compute the local velocity, taking account of any body force */
+	  
+	rrho = 1.0/rho;
+	hydrodynamics_get_force_local(index, force_local);
+	
+	for (ia = 0; ia < NDIM; ia++) {
+	  force[ia] = (force_global[ia] + force_local[ia]);
+	  u[ia] = rrho*(u[ia] + 0.5*force[ia]);
+	}
+	hydrodynamics_set_velocity(index, u);
+
+	for (p = 0; p < NVEL; p++) {
+
+	/* Determine equilibrium distribution */
+
+	  udotc = 0.0;
+	  sdotq = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    udotc += u[ia]*cv[p][ia];
+	    for (ib = 0; ib < 3; ib++) {
+	      sdotq += q_[p][ia][ib]*u[ia]*u[ib];
+	    }
+	  }
+	  feq[p] = rho*wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
+
+	  /* Collide */
+
+	  f[p] = distribution_f(index,p,0);
+	  ftemp = f[p] - rtau_shear * (f[p] - feq[p]);
+
+	  /* Set post-collision values of distribution */
+
+	  distribution_f_set(index, p, 0, ftemp);
+
+	}
+
+	/* Next site */
+      }
+    }
+  }
+  
+  return;
+}
+
+/*****************************************************************************
+ *
  *  fluctuations_off
  *
  *  Return zero fluctuations for stress (shat) and ghost (ghat) modes.
@@ -860,7 +961,7 @@ void collision_relaxation_times_set(void) {
   }
 
   if (nrelax_ == RELAXATION_BGK) {
-    for (p = NHYDRO; p < NVEL; p++) {
+    for (p = 0; p < NVEL; p++) {
       rtau_[p] = rtau_shear;
     }
   }
