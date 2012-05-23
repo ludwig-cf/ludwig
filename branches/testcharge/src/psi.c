@@ -400,6 +400,8 @@ int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
 
   io_info_format_set(obj->info, form_in, form_out);
 
+  io_write_metadata("psi",obj->info);
+
   return 0;
 }
 
