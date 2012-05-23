@@ -392,10 +392,12 @@ int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
   if (obj->info == NULL) fatal("io_info_create(psi) failed\n");
 
   io_info_set_name(obj->info, "Potential and charge densities");
-  io_info_read_set(obj->info, IO_FORMAT_BINARY, psi_read);
-  io_info_read_set(obj->info, IO_FORMAT_ASCII, psi_read_ascii);
-  io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
-  io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
+
+  if (form_in == 5)  io_info_read_set(obj->info, IO_FORMAT_BINARY, psi_read);
+  if (form_in == 1)  io_info_read_set(obj->info, IO_FORMAT_ASCII, psi_read_ascii);
+  if (form_out == 5) io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
+  if (form_out == 1) io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
+
   io_info_set_bytesize(obj->info, (1 + obj->nk)*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);

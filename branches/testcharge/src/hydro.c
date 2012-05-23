@@ -427,8 +427,8 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
   if (obj->info == NULL) fatal("io_info_create(hydro) failed\n");
 
   io_info_set_name(obj->info, "Velocity field");
-  io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
-  io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
+  if (form_out == 5) io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
+  if (form_out == 1) io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
   io_info_set_bytesize(obj->info, obj->nf*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
