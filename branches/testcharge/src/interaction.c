@@ -247,6 +247,8 @@ void COLL_init() {
       ncheck = colloid_ntotal();
       info("Requested   %d colloid%s from input\n", n, (n > 1) ? "s" : "");
       info("Initialised %d colloid%s\n", ncheck, (ncheck == 1) ? "" : "s");
+      info("Colloid  radius a0 = %le\n", state0->a0);
+      info("Hydrodyn radius ah = %le\n", state0->ah);
       info("Colloid charges q0 = %le    q1 = %le\n", state0->q0, state0->q1);
 
       free(state0);
