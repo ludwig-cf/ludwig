@@ -23,8 +23,14 @@
 #error "You must define -D_D2Q9_, -D_D3Q15_ or -D_D3Q19_ in the Makefile" 
 #endif
 
-/* tunable vector length for SIMD auto-vectorisation over lattice sites */
-#define SIMDVL 8 
+/* Vector length for SIMD auto-vectorisation over lattice sites. */
+/* If not set in the Makefile, it defaults to 1, as larger values
+ * can result in adverse performance (e.g., if choice doesn't
+ * match hardware, or in 2d) */
+
+#if !defined (SIMDVL)
+#define SIMDVL 1
+#endif
 
 
 /* Number of hydrodynamic modes */
