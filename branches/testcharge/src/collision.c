@@ -69,11 +69,15 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
  *  Note that the ODE propagation currently uses ndist == 2, as
  *  well as the LB binary, hence the logic.
  *
+ *  We allow hydro to be NULL, in which case there is no hydrodynamics!
+ * 
  *****************************************************************************/
 
 int collide(hydro_t * hydro) {
 
   int ndist;
+
+  if (hydro == NULL) return 0;
 
   ndist = distribution_ndist();
   collision_relaxation_times_set();

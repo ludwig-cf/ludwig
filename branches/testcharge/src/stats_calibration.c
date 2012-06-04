@@ -140,7 +140,7 @@ void stats_calibration_init(int nswitch) {
 
 int stats_calibration_accumulate(int ntime, hydro_t * hydro) {
 
-  assert(hydro);
+  if (hydro == NULL) return 0;
 
   if (ntime >= calib_.nstart) {
     if ((ntime % calib_.nfreq) == 0) {

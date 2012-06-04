@@ -25,6 +25,8 @@
  *
  *  Electric field term?
  *
+ *  We allow hydro to be NULL, in which case there is no force.
+ *
  ****************************************************************************/
 
 int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
@@ -38,8 +40,8 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
   double f[3];
   double e0[3];
 
+  if (hydro == NULL) return 0;
   assert(psi);
-  assert(hydro);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);

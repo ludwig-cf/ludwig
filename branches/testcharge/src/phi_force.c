@@ -80,13 +80,15 @@ int phi_force_divergence_set(const int flag) {
  *
  *  Driver routine to compute the body force on fluid from phi sector.
  *
+ *  If hydro is NULL, we assume hydroynamics is not present, so there
+ *  is no force.
+ *
  *****************************************************************************/
 
 int phi_force_calculation(hydro_t * hydro) {
 
   if (force_required_ == 0) return 0;
-
-  assert(hydro); /* If hydro == NULL, no force. */
+  if (hydro == NULL) return 0;
 
   if (le_get_nplane_total() > 0 || wall_present()) {
     /* Must use the flux method for LE planes */

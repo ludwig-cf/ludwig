@@ -291,7 +291,7 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_STEPS);
     step = get_step();
-    hydro_f_zero(ludwig->hydro, fzero);
+    if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
 
     COLL_update(ludwig->hydro);
 
@@ -304,7 +304,8 @@ void ludwig_run(const char * inputfile) {
       psi_force_grad_mu(ludwig->psi, ludwig->hydro);
       psi_sor_poisson(ludwig->psi);
       psi_halo_rho(ludwig->psi);
-      hydro_u_halo(ludwig->hydro); /* Should not be repeated if phi active.*/ 
+      /* u halo should not be repeated if phi active... */ 
+      if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
       nernst_planck_driver(ludwig->psi, ludwig->hydro);
     }
 
@@ -459,7 +460,7 @@ void ludwig_run(const char * inputfile) {
 	psi_stats_info(ludwig->psi);
       }
       ludwig_report_momentum();
-      stats_velocity_minmax(ludwig->hydro);
+      if (ludwig->hydro) stats_velocity_minmax(ludwig->hydro);
 
       test_isothermal_fluctuations();
       info("\nCompleted cycle %d\n", step);

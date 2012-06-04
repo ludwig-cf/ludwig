@@ -113,7 +113,9 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro) {
   if (fy == NULL) fatal("calloc(fy) failed\n");
   if (fz == NULL) fatal("calloc(fz) failed\n");
 
-  /* The order of these calls is important. */
+  /* The order of these calls is important, as the diffusive
+   * (Nernst Planck) fluxes are added to the advective. The
+   * whole lot are then subject to no normal flux BCs. */
 
   if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
   nernst_planck_fluxes(psi, fe, fy, fz);
