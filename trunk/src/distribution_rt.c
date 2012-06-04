@@ -63,6 +63,7 @@ void distribution_run_time(void) {
   info("-------------------------------\n");
 
   info("Model:            d%dq%d %c\n", NDIM, NVEL, memory);
+  info("SIMD vector len:  %d\n", SIMDVL);
   info("Number of sets:   %d\n", distribution_ndist());
   info("Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
 
