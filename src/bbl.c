@@ -207,8 +207,8 @@ static void bounce_back_pass1() {
 	      /* ignore */
 	    }
 	    else {
-	      i = p_link->i;        /* index site i (inside) */
-	      j = p_link->j;        /* index site j (outside) */
+	      i = p_link->i;        /* index site i (outside) */
+	      j = p_link->j;        /* index site j (inside) */
 	      ij = p_link->p;       /* link velocity index i->j */
 	      ji = NVEL - ij;      /* link velocity index j->i */
 
