@@ -737,8 +737,6 @@ int io_info_format_set(io_info_t * obj, int form_in, int form_out) {
   assert(form_out >= 0);
   assert(form_out <= IO_FORMAT_DEFAULT);
 
-  /* Input */
-
   io_info_format_in_set(obj, form_in);
   io_info_format_out_set(obj, form_out);
 
@@ -763,20 +761,20 @@ int io_info_format_in_set(io_info_t * obj, int form_in) {
 
   switch (form_in) {
   case IO_FORMAT_ASCII_SERIAL:
-    obj->read_function = obj->read_function_a;
+    obj->read_data = obj->read_ascii;
     obj->processor_independent = 1;
     break;
   case IO_FORMAT_BINARY_SERIAL:
-    obj->read_function = obj->read_function_b;
+    obj->read_data = obj->read_binary;
     obj->processor_independent = 1;
     break;
   case IO_FORMAT_ASCII:
-    obj->read_function = obj->read_function_a;
+    obj->read_data = obj->read_ascii;
     obj->processor_independent = 0;
     break;
   case IO_FORMAT_BINARY:
   case IO_FORMAT_DEFAULT:
-    obj->read_function = obj->read_function_b;
+    obj->read_data = obj->read_binary;
     obj->processor_independent = 0;
     break;
   default:
@@ -804,12 +802,12 @@ int io_info_format_out_set(io_info_t * obj, int form_out) {
 
   switch (form_out) {
   case IO_FORMAT_ASCII:
-    obj->write_function = obj->write_function_a;
+    obj->write_data = obj->write_ascii;
     obj->processor_independent = 0;
     break;
   case IO_FORMAT_BINARY:
   case IO_FORMAT_DEFAULT:
-    obj->write_function = obj->write_function_b;
+    obj->write_data = obj->write_binary;
     obj->processor_independent = 0;
     break;
   default:
@@ -834,8 +832,6 @@ int io_info_read_set(io_info_t * obj, int format, io_rw_cb_ft f) {
   if (format == IO_FORMAT_ASCII) obj->read_ascii = f;
   if (format == IO_FORMAT_BINARY) obj->read_binary = f;
 
-  obj->read_data = f;
-
   return 0;
 }
 
@@ -853,8 +849,6 @@ int io_info_write_set(io_info_t * obj, int format, io_rw_cb_ft f) {
 
   if (format == IO_FORMAT_ASCII) obj->write_ascii = f;
   if (format == IO_FORMAT_BINARY) obj->write_binary = f;
-
-  obj->write_data = f;
 
   return 0;
 }

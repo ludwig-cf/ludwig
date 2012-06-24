@@ -380,6 +380,11 @@ static int psi_init_mpi_indexed(psi_t * obj) {
  *
  *  psi_init_io_info
  *
+ *  The I/O grid will be requested with Cartesian extent as given.
+ *
+ *  Register all the I/O functions, and set the input/output format
+ *  appropriately.
+ *
  *****************************************************************************/
 
 int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
@@ -393,16 +398,16 @@ int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
 
   io_info_set_name(obj->info, "Potential and charge densities");
 
-  if (form_in == 5)  io_info_read_set(obj->info, IO_FORMAT_BINARY, psi_read);
-  if (form_in == 1)  io_info_read_set(obj->info, IO_FORMAT_ASCII, psi_read_ascii);
-  if (form_out == 5) io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
-  if (form_out == 1) io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
+  io_info_read_set(obj->info, IO_FORMAT_BINARY, psi_read);
+  io_info_read_set(obj->info, IO_FORMAT_ASCII, psi_read_ascii);
+  io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
+  io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
 
   io_info_set_bytesize(obj->info, (1 + obj->nk)*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
 
-  io_write_metadata("psi",obj->info);
+  io_write_metadata("psi", obj->info);
 
   return 0;
 }
@@ -981,6 +986,8 @@ int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
  *
  *  psi_reltol
  *
+ *  Only returns the default value; there is no way to set as yet; no test.
+ *
  *****************************************************************************/
 
 int psi_reltol(psi_t * obj, double * reltol) {
@@ -996,6 +1003,8 @@ int psi_reltol(psi_t * obj, double * reltol) {
 /*****************************************************************************
  *
  *  psi_abstol
+ *
+ *  Only returns the default value; there is no way to set as yet; no test.
  *
  *****************************************************************************/
 
