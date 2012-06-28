@@ -42,7 +42,8 @@
 #include "propagation_ode.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
-static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] Default is M10 */
+static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
+                                         /* Default is M10 */
 static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
 static double rtau_shear;       /* Inverse relaxation time for shear modes */
@@ -127,7 +128,6 @@ void collision_multirelaxation() {
 
   double    force_local[3];
   double    force_global[3];
-  /* double    f[NVEL]; */
 
   ndist = distribution_ndist();
   coords_nlocal(N);
@@ -350,6 +350,12 @@ void collision_multirelaxation() {
  *       fix sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j]
  *       so the mobility enters with chemical potential (Kendon etal 2001).
  *
+ *       Note thare is an extra factor of cs^2 before the mobility,
+ *       which should be taken into account if quoting the actual
+ *       mobility. The factor is somewhat arbitrary and is there
+ *       to try to ensure both methods are stable for given input
+ *       mobility.
+ *
  *   As there seems to be little to choose between the two in terms of
  *   results, I prefer 2, as it avoids the calculation of jphi[i] from
  *   from the distributions g. However, keep 1 so tests don't break!
@@ -382,7 +388,6 @@ void collision_binary_lb() {
 
   double    force_local[3];
   double    force_global[3];
-  /* double    f[NVEL]; */
 
   const double   r3     = (1.0/3.0);
 
@@ -398,6 +403,14 @@ void collision_binary_lb() {
   double (* chemical_potential)(const int index, const int nop);
   void   (* chemical_stress)(const int index, double s[3][3]);
 
+  int iv,base_index;
+  int nv,full_vec;
+
+  /* temporary structures for holding SIMD vectors */
+  double f_v[NVEL][SIMDVL];
+  double mode_v[NVEL][SIMDVL];
+  double u_v[3][SIMDVL];
+
   assert (NDIM == 3);
 
   ndist = distribution_ndist();
@@ -407,18 +420,12 @@ void collision_binary_lb() {
   chemical_potential = fe_chemical_potential_function();
   chemical_stress = fe_chemical_stress_function();
 
+  /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
+   * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
+
   mobility = phi_cahn_hilliard_mobility();
-  rtau2 = 2.0 / (1.0 + 6.0*mobility);
+  rtau2 = 2.0 / (1.0 + 2.0*mobility);
   fluctuations_off(shat, ghat);
-
-
-  int iv,base_index;
-  int nv,full_vec;
-
-  /* temporary structures for holding SIMD vectors */
-  double f_v[NVEL][SIMDVL];
-  double mode_v[NVEL][SIMDVL];
-  double u_v[3][SIMDVL];
 
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
@@ -622,7 +629,7 @@ void collision_binary_lb() {
 	  for (i = 0; i < 3; i++) {
 	    for (j = 0; j < 3; j++) {
 	      sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
-	      /* sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j];*/
+	      /* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
 	    }
 	    jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
 	    /* jphi[i] = phi*u[i];*/
@@ -1038,11 +1045,9 @@ void collision_relaxation_times(double * tau) {
 
   assert(nrelax_ == RELAXATION_M10);
 
-  /* Density and momentum */
+  /* Density and momentum (modes 0, 1, .. NDIM) */
 
-  tau[0] = 0.0;
-
-  for (ia = 0; ia < NDIM; ia++) {
+  for (ia = 0; ia <= NDIM; ia++) {
     tau[ia] = 0.0;
   }
 
