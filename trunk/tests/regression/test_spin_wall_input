@@ -103,7 +103,7 @@ C 0.0
 #noise 0.2
 phi0 0.0
 phi_initialisation    spinodal
-mobility 1.25
+mobility 3.75
 
 fd_gradient_calculation 3d_27pt_solid
 

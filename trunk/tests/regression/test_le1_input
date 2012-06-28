@@ -104,7 +104,7 @@ C 0.0
 phi0 0.0
 fd_gradient_calculation 3d_27pt_fluid
 phi_initialisation    spinodal
-mobility 2.0
+mobility 6.0
 
 D 0.0003
 epsilon 0.0016
