@@ -28,8 +28,8 @@
 
 int field_init_mpi_indexed(int nlocal[3], int nhalo, int nhcomm, int nf,
 			   MPI_Datatype halo[3]);
-int field_halo(int nlocal[3], int nhalo, int nhcomm, int nf, double * f,
-	       MPI_Datatype halo[3], MPI_Comm comm);
+static int field_halo(int nlocal[3], int nhalo, int nhcomm, int nf, double * f,
+		      MPI_Datatype halo[3], MPI_Comm comm);
 
 static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
@@ -273,8 +273,8 @@ int field_init_mpi_indexed(int nlocal[3], int nhalo, int nhcomm, int nf,
  *
  *****************************************************************************/
 
-int field_halo(int nlocal[3], int nhalo, int nhcomm, int nf, double * f,
-	       MPI_Datatype halo[3], MPI_Comm comm) {
+static int field_halo(int nlocal[3], int nhalo, int nhcomm, int nf, double * f,
+		      MPI_Datatype halo[3], MPI_Comm comm) {
 
   int ic, jc, kc, ihalo, ireal;
   int pforw, pback;
