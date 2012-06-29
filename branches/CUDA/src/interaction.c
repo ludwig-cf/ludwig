@@ -70,6 +70,31 @@ struct lubrication_struct {
 
 static double epotential_;
 
+
+#ifdef _GPU_
+/* these declarations should probably be refactored to a header file */
+void initialise_gpu(void);
+void put_site_map_on_gpu(void);
+void put_f_on_gpu(void);
+void put_force_on_gpu(void);
+void put_phi_on_gpu(void);
+void put_grad_phi_on_gpu(void);
+void put_delsq_phi_on_gpu(void);
+void put_velocity_on_gpu(void);
+void get_f_from_gpu(void);
+void get_force_from_gpu(void);
+void get_velocity_from_gpu(void);
+void get_phi_from_gpu(void);
+void finalise_gpu(void);
+void collide_gpu(void);
+void propagation_gpu(void);
+void phi_compute_phi_site_gpu(void);
+void halo_swap_gpu(void);
+void phi_halo_swap_gpu(void);
+void phi_gradients_compute_gpu(void);
+#endif
+
+
 /*****************************************************************************
  *
  *  COLL_update
@@ -90,6 +115,7 @@ void COLL_update() {
 
   if (colloid_ntotal() == 0) return;
 
+
   TIMER_start(TIMER_PARTICLE_HALO);
 
   coll_position_update();
@@ -104,10 +130,26 @@ void COLL_update() {
   }
   else {
 
+
+#ifdef _GPU_
+    get_f_from_gpu();  
+#endif
+
+
+
+
     /* Removal or replacement of fluid requires a lattice halo update */
     TIMER_start(TIMER_HALO_LATTICE);
+    //#ifdef _GPU_
+    //    halo_swap_gpu();
+    //#else
     distribution_halo();
+    //#endif
     TIMER_stop(TIMER_HALO_LATTICE);
+
+
+
+
 
     TIMER_start(TIMER_REBUILD);
     COLL_update_map();
@@ -118,6 +160,10 @@ void COLL_update() {
 
     COLL_forces();
   }
+
+#ifdef _GPU_
+  put_f_on_gpu();  
+#endif
 
   return;
 }

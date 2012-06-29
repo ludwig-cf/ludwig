@@ -70,12 +70,15 @@ void ludwig_report_momentum(void);
 #ifdef _GPU_
 /* these declarations should probably be refactored to a header file */
 void initialise_gpu(void);
+void put_site_map_on_gpu(void);
 void put_f_on_gpu(void);
 void put_force_on_gpu(void);
 void put_phi_on_gpu(void);
 void put_grad_phi_on_gpu(void);
 void put_delsq_phi_on_gpu(void);
+void put_velocity_on_gpu(void);
 void get_f_from_gpu(void);
+void get_force_from_gpu(void);
 void get_velocity_from_gpu(void);
 void get_phi_from_gpu(void);
 void finalise_gpu(void);
@@ -218,6 +221,7 @@ int main( int argc, char **argv ) {
   initialise_gpu();
   put_f_on_gpu();
   put_force_on_gpu(); 
+  put_velocity_on_gpu(); 
   /* sync MPI tasks for timing purposes */
   MPI_Barrier(cart_comm());
 #endif
@@ -230,16 +234,42 @@ int main( int argc, char **argv ) {
 
 
 
-
+  //#undef _GPU_
   while (next_step()) {
 
 
     TIMER_start(TIMER_STEPS);
 
+ 
     step = get_step();
+
+#ifdef _GPU_
+    //get_f_from_gpu();
+    //get_force_from_gpu(); 
+    //get_velocity_from_gpu(); 
+#endif
+
     hydrodynamics_zero_force();
+
     COLL_update();
+
     wall_update();
+
+    
+#ifdef _GPU_
+    //put_f_on_gpu();
+    //put_force_on_gpu(); 
+    //put_velocity_on_gpu(); 
+#endif
+
+    //put_f_on_gpu();
+    //get_f_from_gpu();
+
+    //put_force_on_gpu();
+    //get_force_from_gpu();
+
+    //put_velocity_on_gpu();
+    //get_velocity_from_gpu();
 
     /* Collision stage */
 
@@ -310,11 +340,19 @@ int main( int argc, char **argv ) {
       }
     }
 
+
+    //HACK
+    //put_f_on_gpu();
+    //put_site_map_on_gpu(); 
+    //collide_gpu();
+
 #ifdef _GPU_
 
 /*     TIMER_start(FORCEPUT); */
 /*     put_force_on_gpu(); */
 /*     TIMER_stop(FORCEPUT); */
+
+    put_site_map_on_gpu(); 
 
     TIMER_start(TIMER_COLLIDE);
     collide_gpu();
@@ -327,18 +365,37 @@ int main( int argc, char **argv ) {
     TIMER_stop(TIMER_COLLIDE);
 
 #endif
+ 
+    //HACK
+
+/*     put_f_on_gpu(); */
+/*     put_force_on_gpu(); */
+/*     put_velocity_on_gpu(); */
+/*     put_phi_on_gpu(); */
+/*     put_site_map_on_gpu(); */
+/*     //put_grad_phi_on_gpu(); */
+/*     //put_delsq_phi_on_gpu(); */
+/*     collide_gpu(); */
+/*     //collide(); */
+/*     get_f_from_gpu(); */
+/*     get_velocity_from_gpu(); */
 
 
     model_le_apply_boundary_conditions();
 
+    //HACK
+    //put_f_on_gpu();
+    //halo_swap_gpu(); 
 
-    TIMER_start(TIMER_HALO_LATTICE);    
-#ifdef _GPU_
+
+    TIMER_start(TIMER_HALO_LATTICE);
+    #ifdef _GPU_
     halo_swap_gpu();
-#else
+    #else
     distribution_halo();
-#endif
-    TIMER_stop(TIMER_HALO_LATTICE);        
+    #endif
+    TIMER_stop(TIMER_HALO_LATTICE);
+
 
 
 
@@ -351,9 +408,29 @@ int main( int argc, char **argv ) {
       subgrid_update();
     }
     else {
+
       TIMER_start(TIMER_BBL);
+
+#ifdef _GPU_
+      //get_f_from_gpu();
+      //get_phi_from_gpu();
+      //get_velocity_from_gpu();
+#endif
+
+      //HACK
+      //put_f_on_gpu();
+
       bounce_back_on_links();
       wall_bounce_back();
+
+      //HACK
+      //get_f_from_gpu();
+
+#ifdef _GPU_
+      //put_f_on_gpu();
+      //put_velocity_on_gpu();
+#endif
+
       TIMER_stop(TIMER_BBL);
     }
 
@@ -362,7 +439,8 @@ int main( int argc, char **argv ) {
      * and propagation, as the halo regions are active */
 
 
-    #ifdef _GPU_
+
+#ifdef _GPU_
 
     TIMER_start(TIMER_PROPAGATE);
     propagation_gpu();
@@ -406,7 +484,6 @@ int main( int argc, char **argv ) {
       get_velocity_from_gpu();
       get_f_from_gpu();
 #endif
-
 
       sprintf(filename, "%s%8.8d", "config.cds", step);
       colloid_io_write(filename);
@@ -461,11 +538,19 @@ int main( int argc, char **argv ) {
 
     if (is_statistics_step()) {
 
+      //info("minimum1\n");
+      //hydrodynamics_stats();
+
 
 #ifdef _GPU_
       get_velocity_from_gpu();
       get_f_from_gpu();
 #endif
+
+      //info("minimum2\n");
+      //hydrodynamics_stats();
+
+
 
       stats_distribution_print();
       phi_stats_print_stats();

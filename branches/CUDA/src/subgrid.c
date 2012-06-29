@@ -148,6 +148,7 @@ void subgrid_update() {
 
   reta = 1.0/(6.0*pi_*get_eta_shear());
   colloid_gravity(g);
+  
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {

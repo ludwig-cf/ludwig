@@ -18,6 +18,7 @@
 #include "timer.h"
 
 
+
 //#define GPUS_PER_NODE 4
 #define GPUS_PER_NODE 1
 
@@ -85,22 +86,7 @@ void initialise_gpu()
   /* get global force from physics module */
   fluid_body_force(force_global);
 
-  /* get temp host copies of force and site_map_status arrays */
-  for (ic=0; ic<=N[X]; ic++)
-    {
-      for (jc=0; jc<=N[Y]; jc++)
-	{
-	  for (kc=0; kc<=N[Z]; kc++)
-	    {
-	      index = coords_index(ic, jc, kc); 
-
-	      site_map_status_temp[index] = site_map_get_status(ic, jc, kc);
-	     
-
-	    }
-	}
-    }
-
+  put_site_map_on_gpu();
 
   /* copy data from host to accelerator */
   cudaMemcpy(N_d, N, 3*sizeof(int), cudaMemcpyHostToDevice); 
@@ -112,8 +98,7 @@ void initialise_gpu()
   cudaMemcpy(q_d, q_, NVEL*3*3*sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpy(force_global_d, force_global, 3*sizeof(double), \
 	     cudaMemcpyHostToDevice);
-  cudaMemcpy(site_map_status_d, site_map_status_temp, nsites*sizeof(char), \
-	     cudaMemcpyHostToDevice);
+
   
 
   init_dist_gpu();
@@ -211,6 +196,37 @@ static void free_memory_on_gpu()
 
 }
 
+/* copy site map from host to accelerator */
+void put_site_map_on_gpu()
+{
+
+  int index, i, ic, jc, kc;
+	      
+
+  /* get temp host copies of arrays */
+  for (ic=1; ic<=N[X]; ic++)
+    {
+      for (jc=1; jc<=N[Y]; jc++)
+	{
+	  for (kc=1; kc<=N[Z]; kc++)
+	    {
+	      index = coords_index(ic, jc, kc); 
+
+	      site_map_status_temp[index] = site_map_get_status(ic, jc, kc);
+
+	    }
+	}
+    }
+
+  /* copy data from CPU to accelerator */
+  cudaMemcpy(site_map_status_d, site_map_status_temp, nsites*sizeof(char), \
+	     cudaMemcpyHostToDevice);
+
+  //checkCUDAError("put_force_on_gpu");
+
+}
+
+
 /* copy force from host to accelerator */
 void put_force_on_gpu()
 {
@@ -247,6 +263,43 @@ void put_force_on_gpu()
 
 }
 
+/* copy force from accelerator to host */
+void get_force_from_gpu()
+{
+
+  int index, i, ic, jc, kc;
+  double force[3];
+	      
+  /* copy data from accelerator to CPU */
+  cudaMemcpy(force_temp, force_d, nsites*3*sizeof(double), \
+	     cudaMemcpyDeviceToHost);
+
+  
+  for (ic=1; ic<=N[X]; ic++)
+    {
+      for (jc=1; jc<=N[Y]; jc++)
+	{
+	  for (kc=1; kc<=N[Z]; kc++)
+	    {
+	      index = coords_index(ic, jc, kc); 
+
+	      for (i=0;i<3;i++)
+		{
+		  force[i]=force_temp[index*3+i];
+		}
+
+	      hydrodynamics_set_force_local(index,force);
+	      	      
+	    }
+	}
+    }
+
+
+
+  //checkCUDAError("put_force_on_gpu");
+
+}
+
 
 void get_velocity_from_gpu()
 {
@@ -265,14 +318,49 @@ void get_velocity_from_gpu()
 	  for (kc=1; kc<=N[Z]; kc++)
 	    {
 	      index = coords_index(ic, jc, kc); 
+	      //index_ = get_linear_index(ic-1, jc-1, kc-1,N); 
 	      for (i=0;i<3;i++)
 		{		 
 		  velocity[i]=velocity_temp[index*3+i];
+		  //printf("%d %d %d %d %d %f\n",ic,jc,kc,i,index,velocity_temp[index*3+i]);
 		}     
 	      hydrodynamics_set_velocity(index,velocity);
 	    }
 	}
     }
+
+}
+
+void put_velocity_on_gpu()
+{
+  int index,i, ic,jc,kc; 
+  double velocity[3];
+
+  //checkCUDAError("get_velocity_from_gpu");
+
+  /* copy velocity from temporary array back to hydrodynamics module */
+  for (ic=1; ic<=N[X]; ic++)
+    {
+      for (jc=1; jc<=N[Y]; jc++)
+	{
+	  for (kc=1; kc<=N[Z]; kc++)
+	    {
+
+	      index = coords_index(ic, jc, kc); 
+	      hydrodynamics_get_velocity(index,velocity);
+
+	      for (i=0;i<3;i++)
+		{		 
+		  velocity_temp[index*3+i]=velocity[i];
+		  //printf("%d %d %d %d %d %d %f\n",ic,jc,kc,i,index,index_,velocity_temp[index*3+i]);
+		}     
+	    }
+	}
+    }
+
+  cudaMemcpy(velocity_d, velocity_temp, nsites*3*sizeof(double), 
+	    cudaMemcpyHostToDevice);
+
 
 }
 

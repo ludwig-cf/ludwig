@@ -20,6 +20,7 @@ extern "C" int coords_nhalo(void);
 extern "C" int coords_index(int,int,int);
 extern "C" int distribution_ndist(void);
 extern "C" void hydrodynamics_get_force_local(const int, double *);
+extern "C" void hydrodynamics_set_force_local(const int, double *);
 extern "C" void hydrodynamics_get_velocity(const int, double *);
 extern "C" void hydrodynamics_set_velocity(const int, double *);
 extern "C" void fluid_body_force(double f[3]);
@@ -40,12 +41,15 @@ extern "C" int    cart_rank(void);
 
 /* expose routines in this module to outside routines */
 extern "C" void initialise_gpu();
+extern "C" void put_site_map_on_gpu();
 extern "C" void put_f_on_gpu();
 extern "C" void put_force_on_gpu();
 extern "C" void put_phi_on_gpu();
 extern "C" void put_grad_phi_on_gpu();
 extern "C" void put_delsq_phi_on_gpu();
+extern "C" void put_velocity_on_gpu();
 extern "C" void get_f_from_gpu();
+extern "C" void get_force_from_gpu();
 extern "C" void get_velocity_from_gpu();
 extern "C" void get_phi_from_gpu();
 extern "C" void finalise_gpu();
@@ -57,6 +61,9 @@ extern "C" void get_phi_edges_from_gpu(void);
 extern "C" void put_phi_halos_on_gpu(void);
 extern "C" void phi_halo_swap_gpu(void);
 extern "C" void checkCUDAError(const char *msg);
+extern "C" void bounce_back_gpu(int *findexall, int *linktype,
+				double *dfall,
+				double *dmall, int nlink, int pass);
 
 
 /* forward declarations of host routines internal to this module */

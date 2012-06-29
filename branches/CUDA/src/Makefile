@@ -45,6 +45,7 @@ MPICC = mpicc
 #MPICC = /opt/mpich2/bin/mpicc
 OPTS = -D_D3Q19_
 CFLAGS = -O3 -Wall
+#CFLAGS = -g -O0 -fbounds-check -Wall
 
 INC = -I.
 LIBS = -lm
@@ -54,7 +55,8 @@ ARFLAGS = -cru
 #GPU compilation variables
 GPUCC = nvcc
 GPUOPTS = $(OPTS) -D_GPU_
-GPUCFLAGS = -O3 -arch=sm_20 
+GPUCFLAGS = -O3 -arch=sm_21 
+#GPUCFLAGS = -arch=sm_21  -g -G0
 #GPUINC = $(INC) -I../mpi_s
 #GPUINC = $(INC) -I /opt/mpich2/include
 GPUINC = $(INC) -I /export/mpich2/2-1.3-gcc/include

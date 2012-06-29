@@ -87,20 +87,22 @@ void collide_gpu() {
   if (ndist == 1){
 
     printf("collision_multirelaxation_gpu_d not yet fully tested\n");
-    exit(1);
+    //exit(1);
     
-      collision_multirelaxation_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo, 
-			  N_d,force_global_d, f_d, site_map_status_d, 
-				force_d, velocity_d, ma_d, d_d, mi_d);
-    
-    cudaThreadSynchronize();
+    collision_multirelaxation_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo, 
+    		  N_d,force_global_d, f_d, site_map_status_d, 
+    			force_d, velocity_d, ma_d, d_d, mi_d);
+
+    //cudaThreadSynchronize();
+
+    //checkCUDAError("collision_multirelaxation_gpu_d");    
     
   }
+  //exit(1);
 
   if (ndist == 2) 
     {
-     collision_binary_lb_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist, nhalo, N_d, 
-					      force_global_d, 
+      collision_binary_lb_gpu_d<<<BlockDims.x,GridDims.x>>>(ndist, nhalo, N_d, 					      force_global_d, 
 					      f_d, 
 					      site_map_status_d, 
 					       phi_site_d,		
@@ -210,6 +212,8 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 
   /* CUDA thread index */
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+
+  //printf (" %d %d %d %d\n",threadIndex,blockIdx.x,blockDim.x,threadIdx.x);
   
   /* Avoid going beyond problem domain */
   if (threadIndex < N[X]*N[Y]*N[Z])
@@ -225,7 +229,10 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
       
       index = get_linear_index_gpu_d(ii+1,jj+1,kk+1,Nall);
       
-      
+
+
+      if(blockIdx.x==0 && threadIdx.x==29) printf("GGG %d %d\n",threadIdx.x,site_map_status_d[index]);
+      if(blockIdx.x==0 && threadIdx.x==30) printf("GGG %d %d %d\n",threadIdx.x,site_map_status_d[index],FLUID);
       if (site_map_status_d[index] == FLUID)
 	{
 	  
@@ -237,9 +244,13 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	    mode[m] = 0.0;
 	    for (p = 0; p < NVEL; p++) {
 	      mode[m] += f_d[nsite*p + index]*ma_d[m][p];
+	      //mode[m] += 0.001*index;
 	    }
 	  }
 	  
+
+	if(ii==0 && jj==0 && kk==0) printf("GPU mode[1]=%1.18e\n",mode[1]);
+	
 	  
 	  /* For convenience, write out the physical modes, that is,
 	   * rho, NDIM components of velocity, independent components
@@ -282,6 +293,8 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  /* hydrodynamics_set_velocity(index, u); */
 	  for (ia = 0; ia < 3; ia++) {
 	    velocity_d[index][ia] = u[ia];
+	    //if (index==4453)  printf ("%f\n",velocity_d[index][ia]);
+	    //printf ("%d %d %d %d %d %f\n",ii+1,jj+1,kk+1,index,ia,velocity_d[index][ia]);
 	  }
 	  
 	  /* Relax stress with different shear and bulk viscosity */
@@ -328,11 +341,13 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  for (ia = 0; ia < NDIM; ia++) {
 	    mode[1 + ia] += force[ia];
 	  }
+
 	  
 	  m = 0;
 	  for (ia = 0; ia < NDIM; ia++) {
 	    for (ib = ia; ib < NDIM; ib++) {
 	      mode[1 + NDIM + m++] = s[ia][ib] + shat[ia][ib];
+	      //mode[1 + NDIM + m++] = 0.1;//shat[ia][ib];
 	    }
 	  }
 	  
@@ -347,7 +362,9 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  for (p = 0; p < NVEL; p++) {
 	    f_d[nsite*p + index] = 0.0;
 	    for (m = 0; m < NVEL; m++) {
+	      //for (m = 0; m < 2; m++) {
 	      f_d[nsite*p + index] += mi_d[p][m]*mode[m];
+	      //f_d[nsite*p + index] += mi_d[p][m]*0.0001;
 	    }
 	  }
 	  
@@ -463,6 +480,9 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
    * mobility = phi_cahn_hilliard_mobility();
    * rtau2 = 2.0 / (1.0 + 6.0*mobility); */
 
+
+  //printf (" GGG %d %d %d\n",blockIdx.x,blockDim.x,threadIdx.x);
+  //if (threadIdx.x==0) printf (" GGG %d %d %d\n",blockIdx.x,blockDim.x,threadIdx.x);
 
   fluctuations_off_gpu_d(shat, ghat);
 

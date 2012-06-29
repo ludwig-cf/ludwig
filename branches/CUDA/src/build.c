@@ -565,6 +565,8 @@ void COLL_remove_or_replace_fluid() {
   coords_nlocal(N);
   nhalo = coords_nhalo();
 
+  //int nns=0;
+
   for (i = 1 - nhalo; i <= N[X] + nhalo; i++) {
     for (j = 1 - nhalo; j <= N[Y] + nhalo; j++) {
       for (k = 1 - nhalo; k <= N[Z] + nhalo; k++) {
@@ -582,6 +584,7 @@ void COLL_remove_or_replace_fluid() {
 	  p_colloid->s.rebuild = 1;
 
 	  if (!halo) {
+	    //nns++;
 	    build_remove_fluid(index, p_colloid);
 	    build_remove_order_parameter(index, p_colloid);
 	  }
@@ -592,6 +595,7 @@ void COLL_remove_or_replace_fluid() {
 	  p_colloid->s.rebuild = 1;
 
 	  if (!halo) {
+	    //nns++;
 	    build_replace_fluid(index, p_colloid);
 	    build_replace_order_parameter(index, p_colloid);
 	  }
@@ -599,6 +603,8 @@ void COLL_remove_or_replace_fluid() {
       }
     }
   }
+
+  //info("LLL %d\n",nns);
 
   return;
 }
