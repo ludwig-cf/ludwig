@@ -33,6 +33,7 @@ static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
 static void mass_conservation_compute_force(void);
 static void update_colloids(void);
+static  int bbl_wall_lubrication_account(void);
 
 static int bbl_active_ = 0;  /* Flag for active particles. */
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
@@ -718,7 +719,53 @@ static void update_colloids() {
     }
   }
 
+  /* As the lubrication force is based on the updated velocity, but
+   * the old position, we can account for the total momentum here. */
+
+  bbl_wall_lubrication_account();
+
   return;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_wall_lubrication_account
+ *
+ *  This just updates the accounting for the total momentum when a
+ *  wall lubrication force is present. There is no change to the
+ *  dynamics.
+ *
+ *  The minus sign in the force is consistent with the sign returned
+ *  by wall_lubrication().
+ *
+ *****************************************************************************/
+
+static int bbl_wall_lubrication_account(void) {
+
+  int ic, jc, kc, ia;
+  double f[3] = {0.0, 0.0, 0.0};
+
+  colloid_t * pc = NULL;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+
+	while (pc) {
+	  for (ia = 0; ia < 3; ia++) {
+	    f[ia] -= pc->s.v[ia]*wall_lubrication(ia, pc->s.r, pc->s.ah);
+	  }
+	  pc = pc->next;
+	}
+      }
+    }
+  }
+
+  wall_accumulate_force(f);
+
+  return 0;
 }
 
 /*****************************************************************************
