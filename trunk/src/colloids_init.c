@@ -29,6 +29,7 @@
 #include "colloids.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
+#include "wall.h"
 
 static void colloids_init_check_state(double hmax);
 static void colloids_init_random_set(int n, const colloid_state_t * s,
@@ -69,7 +70,7 @@ void colloids_init_random(int np, const colloid_state_t * s0, double dh) {
     colloids_init_check_state(hmax);
   }
 
-  colloids_init_check_wall(dh);
+  if (wall_present()) colloids_init_check_wall(dh);
   colloids_ntotal_set();
 
   return;
