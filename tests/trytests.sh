@@ -141,9 +141,13 @@ echo Running PARALLEL RESTART TEST PART TWO
 mpirun -np 8 ./Ludwig.exe ../tests/regression/test_parallel_restart_input2 > /tmp/j9
 diff /tmp/j9 ../tests/regression/test_parallel_restart2_d3q19.ref8
 
-#echo Running Explicit surface free energy anchoring test
-#mpirun -np 1 ./Ludwig.exe ../tests/regression/test_chol_planar2_input > /tmp/j10
-#diff /tmp/j10 ../tests/regression/test_chol_planar2_d3q19.ref8
+echo Running Explicit surface free energy anchoring test normal
+mpirun -np 8 ./Ludwig.exe ../tests/regression/test_chol_normal_input > /tmp/j10
+diff /tmp/j10 ../tests/regression/test_chol_normal_d3q19.ref8
+
+echo Running Explicit surface free energy anchoring test planar
+mpirun -np 8 ./Ludwig.exe ../tests/regression/test_chol_planar_input > /tmp/j11
+diff /tmp/j11 ../tests/regression/test_chol_planar_d3q19.ref8
 
 make clean
 
