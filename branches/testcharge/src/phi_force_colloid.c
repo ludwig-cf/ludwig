@@ -23,13 +23,11 @@
  *
  *  etc (and likewise in the other directions).
  *
- *  The stress must be integrated over the colloid surface and the
- *  result added to the net force on a given colloid. Here the linear
- *  interpolation of the stress to the solid/fluid interface is again
- *  used. There are two options:
+ *  At an interface, we are not able to interpolate, and we just
+ *  use the value of P_ab from the fluid side.
  *
- *  1) If the interior stress is available, use the value;
- *  2) If no interior stress is available, interpolate using zero.
+ *  The stress must be integrated over the colloid surface and the
+ *  result added to the net force on a given colloid.
  *
  *  The procedure ensures total momentum is conserved, ie., that
  *  leaving the fluid enters the colloid and vice versa.
@@ -53,13 +51,11 @@
 #include "colloids.h"
 #include "site_map.h"
 #include "wall.h"
-#include "colloids_Q_tensor.h"
 #include "free_energy.h"
 #include "phi_force_stress.h"
+#include "phi_force_colloid.h"
 
-static int phi_force_interpolation1(hydro_t * hydro);
-static int phi_force_interpolation2(hydro_t * hydro);
-static int phi_force_fast(hydro_t * hydro);
+static int phi_force_interpolation(hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -71,28 +67,10 @@ static int phi_force_fast(hydro_t * hydro);
 
 int phi_force_colloid(hydro_t * hydro) {
 
-  phi_force_fast(hydro);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  phi_force_fast
- *
- *****************************************************************************/
-
-static int phi_force_fast(hydro_t * hydro) {
-
   phi_force_stress_allocate();
-  phi_force_stress_compute();
 
-  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
-    phi_force_interpolation1(hydro);
-  }
-  else {
-    phi_force_interpolation2(hydro);
-  }
+  phi_force_stress_compute();
+  phi_force_interpolation(hydro);
 
   phi_force_stress_free();
 
@@ -101,161 +79,13 @@ static int phi_force_fast(hydro_t * hydro) {
 
 /*****************************************************************************
  *
- *  phi_force_interpolation1
+ *  phi_force_interpolation
  *
- *  We assume values of the stress inside the particle are
- *  available.
- *
- *****************************************************************************/
-
-static int phi_force_interpolation1(hydro_t * hydro) {
-
-  int ia, ic, jc, kc;
-  int index, index1;
-  int nlocal[3];
-  double pth0[3][3];
-  double pth1[3][3];
-  double force[3];
-
-  colloid_t * p_c;
-  colloid_t * colloid_at_site_index(int);
-
-  void (* chemical_stress)(const int index, double s[3][3]);
-
-  assert(hydro);
-
-  coords_nlocal(nlocal);
-
-  chemical_stress = phi_force_stress;
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	/* If this is solid, then there's no contribution here. */
-
-	p_c = colloid_at_site_index(index);
-	if (p_c) continue;
-
-	/* Compute pth at current point */
-	chemical_stress(index, pth0);
-
-	/* Compute differences */
-	
-	index1 = coords_index(ic+1, jc, kc);
-	chemical_stress(index1, pth1);
-
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
-	}
-
-	p_c = colloid_at_site_index(index1);
-
-	if (p_c) {
-	  /* Compute the fluxes at solid/fluid boundary */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    p_c->force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
-	  }
-	}
-
-	index1 = coords_index(ic-1, jc, kc);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
-	}
-
-	p_c = colloid_at_site_index(index1);
-
-	if (p_c) {
-	  for (ia = 0; ia < 3; ia++) {
-	    p_c->force[ia] -= 0.5*(pth1[ia][X] + pth0[ia][X]);
-	  }
-	}
-
-
-
-	index1 = coords_index(ic, jc+1, kc);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	}
-
-	p_c = colloid_at_site_index(index1);
-
-	if (p_c) {
-	  for (ia = 0; ia < 3; ia++) {
-	    p_c->force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	  }
-	}
-
-	index1 = coords_index(ic, jc-1, kc);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	}
-
-	p_c = colloid_at_site_index(index1);
-
-	if (p_c) {
-	  for (ia = 0; ia < 3; ia++) {
-	    p_c->force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	  }
-	}
-
-
-	index1 = coords_index(ic, jc, kc+1);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	}
-
-	p_c = colloid_at_site_index(index1);
-
-	if (p_c) {
-	  for (ia = 0; ia < 3; ia++) {
-	    p_c->force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	  }
-	}
-
-	index1 = coords_index(ic, jc, kc-1);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	}
-
-	p_c = colloid_at_site_index(index1);
-
-	if (p_c) {
-	  for (ia = 0; ia < 3; ia++) {
-	    p_c->force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	  }
-	}
-
-	/* Store the force on lattice */
-
-	hydro_f_local_add(hydro, index, force);
-
-	/* Next site */
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  phi_force_interpolation2
- *
- *  General version which deals with solid interfaces by using P^th from
- *  the adjacent fluid site at the interface.
+ *  At solid interfaces use P^th from the adjacent fluid site.
  *
  *****************************************************************************/
 
-static int phi_force_interpolation2(hydro_t * hydro) {
+static int phi_force_interpolation(hydro_t * hydro) {
 
   int ia, ic, jc, kc;
   int index, index1;
