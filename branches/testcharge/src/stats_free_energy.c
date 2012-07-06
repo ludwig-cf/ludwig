@@ -140,8 +140,6 @@ void stats_free_energy_density(void) {
 
 static void stats_free_energy_wall(double * fs) {
 
-  if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
-
   if (wall_at_edge(X)) stats_free_energy_wallx(fs);
   if (wall_at_edge(Y)) stats_free_energy_wally(fs);
   if (wall_at_edge(Z)) stats_free_energy_wallz(fs);
@@ -403,8 +401,6 @@ static void stats_free_energy_colloid(double * fs) {
 
   fs[0] = 0.0;
   fs[1] = 0.0;
-
-  if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
 
   assert(phi_nop() == 5);
   assert(w >= 0.0);
