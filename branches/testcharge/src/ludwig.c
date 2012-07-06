@@ -88,11 +88,13 @@
 #include "stats_symmetric.h"
 
 #include "ludwig.h"
+#include "field.h"
 
 typedef struct ludwig_s ludwig_t;
 struct ludwig_s {
-  hydro_t * hydro;
-  psi_t * psi;
+  hydro_t * hydro;    /* Hydrodynamic quantities */
+  field_t * phi;      /* Order parameter */
+  psi_t * psi;        /* Electrokinetics */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -263,9 +265,10 @@ void ludwig_run(const char * inputfile) {
   if (step == 0 && phi_nop() == 5) {
     phi_io_info(&iohandler);
     blue_phase_rt_initial_conditions();
-    info("Writing order parameter file at step %d!\n", step);
+    /* To be replaced by io_write_data() */
+    /* info("Writing order parameter file at step %d!\n", step);
     sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-    io_write(filename, iohandler);
+    io_write(filename, iohandler);*/
   }
 
   /* Electroneutrality */
@@ -319,7 +322,6 @@ void ludwig_run(const char * inputfile) {
        * the halo swap, but before the gradient calculation. */
 
       phi_compute_phi_site();
-      if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) COLL_set_Q();
       phi_halo();
       phi_gradients_compute();
       if (phi_nop() == 5) blue_phase_redshift_compute();
@@ -486,7 +488,8 @@ void ludwig_run(const char * inputfile) {
     if (phi_nop()) {
       phi_io_info(&iohandler);
       sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-      io_write(filename, iohandler);
+      /* to be replaced by io_write_data(field)
+	 io_write(filename, iohandler);*/
     }
   }
 
