@@ -196,8 +196,6 @@ static void ludwig_init(void) {
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
   stats_sigma_init(nstat);
 
-  collision_init();
-
   return;
 }
 
