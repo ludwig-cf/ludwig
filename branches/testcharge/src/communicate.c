@@ -68,16 +68,6 @@ void MODEL_init( void ) {
        io_grid[2]);
 
   /*
-  hydrodynamics_init();
-  
-  ind = RUN_get_string_parameter("vel_format", value, BUFSIZ);
-  if (ind != 0 && strcmp(value, "ASCII") == 0) {
-    io_info_set_format_ascii(io_info_velocity_);
-    info("Setting velocity I/O format to ASCII\n"); 
-  }
-  */
-
-  /*
    * A number of options are offered to start a simulation:
    * 1. Read distribution functions site from file, then simply calculate
    *    all other properties (rho/phi/gradients/velocities)
