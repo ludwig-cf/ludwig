@@ -16,8 +16,7 @@
 #define FIELD_H
 
 #define NVECTOR 3    /* Storage requirement for vector (per site) */
-#define NQAB 5       /* Requirement for compressed symmetric, traceless */
-#define NTENSOR 6    /* Requirement for compressed symmetric tensor */
+#define NQAB 5       /* Storage requirement for symmetric, traceless tensor */
 
 #include "io_harness.h"
 
