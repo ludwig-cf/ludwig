@@ -698,10 +698,6 @@ void collision_bgk() {
 
   double    rdim;                    /* 1 / dimension */
 
-  double    force[3];                /* External force */
-  double    force_local[3];
-  double    force_global[3];
-
   double    f[NVEL];
   double    feq[NVEL];
   double    ftemp;
@@ -709,7 +705,6 @@ void collision_bgk() {
 
   ndist = distribution_ndist();
   coords_nlocal(N);
-  fluid_body_force(force_global);
 
   rdim = 1.0/NDIM;
 
@@ -731,11 +726,9 @@ void collision_bgk() {
 	/* Compute the local velocity, taking account of any body force */
 	  
 	rrho = 1.0/rho;
-	hydrodynamics_get_force_local(index, force_local);
 	
 	for (ia = 0; ia < NDIM; ia++) {
-	  force[ia] = (force_global[ia] + force_local[ia]);
-	  u[ia] = rrho*(u[ia] + 0.5*force[ia]);
+	  u[ia] = rrho*(u[ia]);
 	}
 	hydrodynamics_set_velocity(index, u);
 
