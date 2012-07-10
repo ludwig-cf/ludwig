@@ -453,18 +453,3 @@ static void gradient_3d_27pt_fluid_wall_correction(const int nop,
 
   return;
 }
-
-/*****************************************************************************
- *
- *  gradient_3d_27pt_dyadic
- *
- *  Use 7pt version.
- *
- *****************************************************************************/
-
-void gradient_3d_27pt_fluid_dyadic(const int nop, const double * field,
-				   double * grad, double * delsq) {
-
-  fatal("gradient_3d_27pt_fluid_dyadic not implemented: use 7pt\n");
-  return;
-}

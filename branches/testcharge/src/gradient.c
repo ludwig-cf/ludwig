@@ -10,8 +10,6 @@
  *    gradient_d2       grad_a field and \nabla^2 field
  *    gradient_d4       takes results \nabla^2 and computes
  *                      grad nabla^2 and nabla^4 field
- *    gradient_dyadic   for vector order parameters p_a,
- *                      computes grad_c p_a p_b, and nabla^2 p_a p_b
  *
  *  $Id: gradient.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
  *
@@ -31,8 +29,6 @@
 static void (* d2_function_)(const int nop, const double * field,
 			     double * grad, double * delsq) = NULL;
 static void (* d4_function_)(const int nop, const double * field,
-			     double * grad, double * delsq) = NULL;
-static void (* dy_function_)(const int nop, const double * field,
 			     double * grad, double * delsq) = NULL;
 
 /*****************************************************************************
@@ -63,19 +59,6 @@ void gradient_d4_set(void (* f)(const int nop, const double * field,
 
 /*****************************************************************************
  *
- *  gradient_d2_dyadic_set
- *
- *****************************************************************************/
-
-void gradient_d2_dyadic_set(void (* f)(const int nop, const double * field,
-				       double * grad, double * delsq)) {
-  assert(f);
-  dy_function_ = f;
-  return;
-}
-
-/*****************************************************************************
- *
  *  gradient_d2
  *
  *****************************************************************************/
@@ -99,19 +82,5 @@ void gradient_d4(const int nop, const double * field,
 
   assert(d4_function_);
   d4_function_(nop, field, grad, delsq);
-  return;
-}
-
-/****************************************************************************
- *
- *  gradient_d2_dyadic
- *
- ****************************************************************************/
-
-void gradient_d2_dyadic(const int nop, const double * field,
-			double * grad, double * delsq) {
-
-  assert(dy_function_);
-  dy_function_(nop, field, grad, delsq);
   return;
 }

@@ -24,16 +24,9 @@ void gradient_d4_set(void (* f)(const int nop,
 				double * grad,
 				double * delsq));
 
-void gradient_d2_dyadic_set(void (* f)(const int nop,
-				       const double * field,
-				       double * grad,
-				       double * delsq));
-
 void gradient_d2(const int nop, const double * field,
 		 double * grad, double * delsq);
 void gradient_d4(const int nop, const double * field,
 		 double * grad, double * delsq);
-void gradient_d2_dyadic(const int nop, const double * field,
-			double * grad, double * delsq);
 
 #endif

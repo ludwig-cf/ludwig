@@ -11,6 +11,21 @@
  *  This is an implemetation of a free energy with vector order
  *  parameter.
  *
+ *  For the time being, we demand delta = kappa2 = zero; this is until
+ *  a full implementation of the final two terms is available.
+ *
+ *  I note that the Liquid crystal term (1/2) kappa_2 (d_a P_b P_c)^2
+ *  may be computed as
+ *         (1/2) kappa_2 (P_b d_a P_c + P_c d_a P_b)^2
+ *
+ *  in which case the term in the molecular field remains
+ *        h_a = + 2 kappa_2 P_b (\nabla^2) P_b P_a
+ *  which may be equated to
+ *        h_a = + 2 kappa_2 [2 P_b d_c P_a d_c P_b + P_b P_b d^2 P_a
+ *                           + P_a P_b d^2 P_b]
+ *  and so can be computed from P_a, d_b P_a, and d^2 P_a (only).
+ *
+ *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -51,8 +66,11 @@ void polar_active_parameters_set(const double a, const double b,
   a_ = a;
   b_ = b;
   kappa1_ = k1;
-  delta_  = 0.0;   /* We assert this until molecular field is fixed */
-  kappa2_ = k2;
+  delta_  = 0.0;
+  kappa2_ = 0.0;
+
+  assert(delta_ == 0.0);
+  assert(kappa2_ == 0.0);
 
   return;
 }
@@ -75,19 +93,16 @@ double polar_active_free_energy_density(const int index) {
 
   double e;
   double p2;
-  double dp1, dp2, dp3;
+  double dp1, dp3;
   double p[3];
   double dp[3][3];
-  double dpp[3][3][3];
   double sum;
 
   phi_vector(index, p);
   phi_gradients_vector_gradient(index, dp);
-  phi_gradients_grad_dyadic(index, dpp);
 
   p2  = 0.0;
   dp1 = 0.0;
-  dp2 = 0.0;
   dp3 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
@@ -96,15 +111,13 @@ double polar_active_free_energy_density(const int index) {
     for (ib = 0; ib < 3; ib++) {
       dp1 += dp[ia][ib]*dp[ia][ib];
       for (ic = 0; ic < 3; ic++) {
-	dp2 += dpp[ia][ib][ic]*dpp[ia][ib][ic];
         sum += e_[ia][ib][ic]*dp[ib][ic];
       }
     }
     dp3 += sum*sum;
   }
 
-  e = 0.5*a_*p2 + 0.25*b_*p2*p2 + 0.5*kappa1_*dp1 + 0.5*delta_*kappa1_*dp3
-      + 0.5*kappa2_*dp2;
+  e = 0.5*a_*p2 + 0.25*b_*p2*p2 + 0.5*kappa1_*dp1 + 0.5*delta_*kappa1_*dp3;
 
   return e;
 }
@@ -182,24 +195,21 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
  *
  *  polar_active_molecular_field
  *
- *  H_a = A P_a + B (P_b)^2 P_a - 2 kappa1 \nabla^2 P_a
+ *  H_a = - A P_a - B (P_b)^2 P_a + kappa1 \nabla^2 P_a
  *        + 2 kappa2 P_c \nabla^2 P_c P_a 
  *  
  *****************************************************************************/
 
 void polar_active_molecular_field(const int index, double h[3]) {
 
-  int ia, ib;
+  int ia;
 
   double p2;
-  double dp2;
   double p[3];
   double dsqp[3];
-  double dsqpp[3][3];
 
   phi_vector(index, p);
   phi_gradients_vector_delsq(index, dsqp);
-  phi_gradients_delsq_dyadic(index, dsqpp);
 
   p2 = 0.0;
 
@@ -208,11 +218,7 @@ void polar_active_molecular_field(const int index, double h[3]) {
   }
 
   for (ia = 0; ia < 3; ia++) {
-    dp2 = 0.0;
-    for (ib = 0; ib < 3; ib++) {
-      dp2 += p[ib]*dsqpp[ib][ia];
-    }
-    h[ia] = -a_*p[ia] + -b_*p2*p[ia] + kappa1_*dsqp[ia] + 2.0*kappa2_*dp2;
+    h[ia] = -a_*p[ia] + -b_*p2*p[ia] + kappa1_*dsqp[ia];
   }
 
   return;

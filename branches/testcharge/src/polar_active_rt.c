@@ -70,9 +70,6 @@ void polar_active_run_time(void) {
   info("Vector order parameter nop = 3\n");
   info("Requires up to del^2 derivatives so setting nhalo = 2\n");
 
-  phi_gradients_dyadic_set(1);
-  info("Requires dyadic term in gradients\n");
-
   info("\n");
 
   info("Parameters:\n");
