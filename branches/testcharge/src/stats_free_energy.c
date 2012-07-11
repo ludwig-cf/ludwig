@@ -168,9 +168,10 @@ static void stats_free_energy_wallx(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
+  if (phi_nop() != 5) return;
+
   coords_nlocal(nlocal);
   w = wall_w_get();
-  assert(phi_nop() == 5);
 
   dn[Y] = 0.0;
   dn[Z] = 0.0;
@@ -243,10 +244,10 @@ static void stats_free_energy_wally(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
+  if (phi_nop() != 5) return;
+
   coords_nlocal(nlocal);
   w = wall_w_get();
-
-  assert(phi_nop() == 5);
 
   dn[X] = 0.0;
   dn[Z] = 0.0;
@@ -319,10 +320,10 @@ static void stats_free_energy_wallz(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
+  if (phi_nop() != 5) return;
+
   coords_nlocal(nlocal);
   w = wall_w_get();
-
-  assert(phi_nop() == 5);
 
   dn[X] = 0.0;
   dn[Y] = 0.0;
@@ -402,7 +403,7 @@ static void stats_free_energy_colloid(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  assert(phi_nop() == 5);
+  if (phi_nop() != 5) return;
   assert(w >= 0.0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
