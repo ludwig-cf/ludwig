@@ -30,13 +30,6 @@ int advection_fourth_order(hydro_t * hydro, double * fluxe, double * fluxw,
 int advection_upwind_third_order(hydro_t * hydro, double * fluxe,
 				 double * fluxw,
 				 double * fluxy, double * fluxz);
-int advection_upwind_fifth_order(hydro_t * hydro, double * fluxe,
-				 double * fluxw,
-				 double * fluxy, double * fluxz);
-int advection_upwind_seventh_order(hydro_t * hydro, double * fluxe,
-				   double * fluxw,
-				   double * fluxy, double * fluxz);
-
 
 int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
 		     double * fy, double * fz);
