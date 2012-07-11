@@ -25,6 +25,7 @@
 #include "distribution_rt.h"
 
 static void distribution_rt_2d_kelvin_helmholtz(void);
+static void distribution_rt_2d_shear_wave(void);
 
 /*****************************************************************************
  *
@@ -102,6 +103,10 @@ void distribution_rt_initial_conditions(void) {
     distribution_rt_2d_kelvin_helmholtz();
   }
 
+  if (strcmp("2d_shear_wave", key) == 0) {
+    distribution_rt_2d_shear_wave();
+  }
+
   return;
 }
 
@@ -173,6 +178,63 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
   info("Velocity magnitude:   %14.7e\n", u0);
   info("Shear layer kappa:    %14.7e\n", kappa);
   info("Perturbation delta:   %14.7e\n", delta);
+  info("\n");
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_rt_2d_shear_wave
+ *
+ *  The system in (x, y) is scaled to 0 <= x,y < 1 and then
+ *
+ *      u_x = U sin( kappa y)
+ *
+ *      where U is a maximum velocity, kappa is the (inverse) width of
+ *      the initial shear layer.
+ *
+ *****************************************************************************/
+
+static void distribution_rt_2d_shear_wave(void) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int noffset[3];
+
+  double rho = 1.0;
+  double u0 = 0.04;
+  double kappa;
+  double u[3];
+
+  double x, y;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  kappa = 2.0*pi_;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = (1.0*(noffset[X] + ic) - Lmin(X))/L(X);
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = (1.0*(noffset[Y] + jc) - Lmin(Y))/L(Y);
+
+      u[X] = u0*sin(kappa * y);
+      u[Y] = 0.0;
+      u[Z] = 0.0;
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+        distribution_rho_u_set_equilibrium(index, rho, u);
+      }
+    }
+  }
+
+  info("\n");
+  info("Initial distribution: 2d shear wave\n");
+  info("Velocity magnitude:   %14.7e\n", u0);
+  info("Shear layer kappa:    %14.7e\n", kappa);
   info("\n");
 
   return;
