@@ -195,6 +195,7 @@ lc_Gamma   0.1
 lc_q_initialisation o8m
 lc_q_init_amplitude -0.2
 lc_init_redshift 0.83
+lc_anchoring_method none
 
 ###############################################################################
 #
