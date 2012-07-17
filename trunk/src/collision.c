@@ -140,8 +140,6 @@ void collision_multirelaxation() {
     u[ia] = 0.0;
   }
 
-
-
   int iv,base_index;
   int nv,full_vec;
   
@@ -944,15 +942,18 @@ void collision_relaxation_times_set(void) {
   double tau_b;
   double tau_g;
 
-  double dt_ode=1.0;
   extern int is_propagation_ode(void);
  
-  if (is_propagation_ode()) dt_ode = propagation_ode_get_tstep();
+  if (is_propagation_ode()) {
+    rtau_shear = 1.0 / (3.0*get_eta_shear());
+    rtau_bulk  = 1.0 / (3.0*get_eta_bulk());
+  }
+  else {
+    rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear());
+    rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk());
+  }
 
   /* Initialise the relaxation times */
-
-  rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear()/dt_ode);
-  rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk()/dt_ode);
 
   if (nrelax_ == RELAXATION_M10) {
     for (p = NHYDRO; p < NVEL; p++) {

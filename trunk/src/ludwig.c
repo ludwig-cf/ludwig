@@ -286,9 +286,12 @@ void ludwig_run(const char * inputfile) {
 
       }
     }
-    TIMER_start(TIMER_COLLIDE);
-    collide();
-    TIMER_stop(TIMER_COLLIDE);
+
+    if(is_propagation_ode() == 0) {
+      TIMER_start(TIMER_COLLIDE);
+      collide();
+      TIMER_stop(TIMER_COLLIDE);
+    }
 
     model_le_apply_boundary_conditions();
 
