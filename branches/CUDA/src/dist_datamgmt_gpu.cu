@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include "pe.h"
+#include "dist_datamgmt_gpu.h"
 #include "utilities_gpu.h"
 #include "util.h"
 #include "model.h"
@@ -63,6 +64,7 @@ double * fhaloZHIGH;
 int * findexall_d;
 int * linktype_d;
 double * dfall_d;
+double * dgall_d;
 double * dmall_d;
 
 
@@ -77,6 +79,8 @@ static int npvel; /* number of velocity components when packed */
 static int nhalodataX;
 static int nhalodataY;
 static int nhalodataZ;
+
+#define FULL_HALO 1
 
 int nlinkmax=11000;
 
@@ -107,10 +111,9 @@ void finalise_dist_gpu()
 {
   free_dist_memory_on_gpu();
 
-  /* destroy CUDA streams*/
-  cudaStreamDestroy(streamX);
-  cudaStreamDestroy(streamY);
-  cudaStreamDestroy(streamZ);
+  //cudaStreamDestroy(streamX);
+  //cudaStreamDestroy(streamY);
+  //cudaStreamDestroy(streamZ);
 
 }
 
@@ -136,7 +139,7 @@ static void calculate_dist_data_sizes()
   npvel=0;
   for (p=0; p<NVEL; p++)
     {
-      if (cv[p][0] == 1) npvel++; 
+      if (cv[p][0] == 1 || FULL_HALO) npvel++; 
     }
 
   nhalodataX = N[Y] * N[Z] * nhalo * ndist * npvel;
@@ -221,6 +224,7 @@ static void allocate_dist_memory_on_gpu()
   cudaMalloc((void **) &findexall_d, nlinkmax*sizeof(int));  
   cudaMalloc((void **) &linktype_d, nlinkmax*sizeof(int));  
   cudaMalloc((void **) &dfall_d, nlinkmax*sizeof(double));  
+  cudaMalloc((void **) &dgall_d, nlinkmax*sizeof(double));  
   cudaMalloc((void **) &dmall_d, nlinkmax*sizeof(double));  
 
   
@@ -285,6 +289,7 @@ static void free_dist_memory_on_gpu()
  cudaFree(findexall_d);
  cudaFree(linktype_d);
  cudaFree(dfall_d);
+ if (distribution_ndist()>1) cudaFree(dgall_d);
  cudaFree(dmall_d);
 
 }
@@ -324,22 +329,23 @@ void copy_f_to_ftmp_on_gpu()
 
 __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d,
 					 double *dfall_d,
+					 double *dgall_d,
 					 double *dmall_d,
 					 double* f_d,
 					 int *N_d, 
-					 int nhalo, 
+					 int nhalo, int ndist,
 					 int* cv_ptr, int nlink, int pass);
 
 
 /* update distribution on accelerator for bounce back on links  */
 /* host wrapper */
-void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
+void bounce_back_gpu(int *findexall, int *linktype, double *dfall, 
+		     double *dgall,
 		     double *dmall, int nlink, int pass){
 
 
-  dim3 BlockDims;
-  dim3 GridDims;
   int nhalo = coords_nhalo();
+  int ndist = distribution_ndist();
   
   /* allocate data on accelerator */
   //cudaMalloc((void **) &findexall_d, nlink*sizeof(int));  
@@ -354,17 +360,17 @@ void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
   cudaMemcpy(linktype_d, linktype, nlink*sizeof(int),
 	     cudaMemcpyHostToDevice);
   cudaMemcpy(dfall_d, dfall, nlink*sizeof(double), cudaMemcpyHostToDevice);
+  if (ndist > 1 &&  pass==2)
+    cudaMemcpy(dgall_d, dgall, nlink*sizeof(double), cudaMemcpyHostToDevice);
   checkCUDAError("bounce_back_gpu: memcpy to GPU");
   
   
   /* run the GPU kernel */
-#define BLOCKSIZE 256
-  BlockDims.x=BLOCKSIZE;
-GridDims.x=(nlink+BlockDims.x-1)/BlockDims.x;
- bounce_back_gpu_d<<<GridDims.x,BlockDims.x>>>(findexall_d, linktype_d,
-					       dfall_d,
+  int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+ bounce_back_gpu_d<<<nblocks,DEFAULT_TPB>>>(findexall_d, linktype_d,
+					       dfall_d, dgall_d,
 					       dmall_d, f_d, N_d,
-					       nhalo, cv_d, nlink, pass);
+					       nhalo, ndist, cv_d, nlink, pass);
  
  cudaThreadSynchronize();
  checkCUDAError("bounce_back_gpu");
@@ -386,9 +392,9 @@ GridDims.x=(nlink+BlockDims.x-1)/BlockDims.x;
 /* update distribution on accelerator for bounce back on links */
 /* GPU kernel */
 __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d, 
-					 double *dfall_d,
+					 double *dfall_d, double *dgall_d,
 					 double *dmall_d, double* f_d, 
-					 int *N_d, int nhalo,
+					 int *N_d, int nhalo, int ndist,
 					 int *cv_ptr, int nlink, int pass){
 
 
@@ -426,7 +432,7 @@ __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d,
     int siteIndex_ = get_linear_index_gpu_d(ii_,jj_,kk_,Nall);
 
     /* get distribution for outside->inside link */
-    double fdist = f_d[nsite*ij + siteIndex];
+    double fdist = f_d[nsite*ndist*ij + siteIndex];
 
     if (linktype_d[threadIndex]==LINK_FLUID)
       {
@@ -437,11 +443,18 @@ __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d,
 	/* update distribution */
 	if (pass==1){
 	  fdist = fdist + dfall_d[threadIndex];
-	  f_d[nsite*ij+siteIndex]=fdist;
+	  f_d[nsite*ndist*ij+siteIndex]=fdist;
 	}
 	else if (pass==2){
 	  fdist = fdist - dfall_d[threadIndex];
-	  f_d[nsite*ji+siteIndex_]=fdist;
+	  f_d[nsite*ndist*ji+siteIndex_]=fdist;
+
+	  if (ndist>1){
+	    fdist = f_d[nsite*ndist*ij + nsite + siteIndex];
+	    fdist = fdist - dgall_d[threadIndex];
+	    f_d[nsite*ndist*ji + nsite + siteIndex_]=fdist;
+	  }
+
 	}
       }
     else
@@ -459,6 +472,7 @@ void halo_swap_gpu()
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 
   int ii,jj,kk,m,p,index_source,index_target;
+  int nblocks;
 
 #define OVERLAP
 
@@ -471,14 +485,6 @@ void halo_swap_gpu()
 
 
 
-
- static dim3 BlockDims;
- static dim3 GridDims;
-
-
-  #define BLOCKSIZE 256
-  /* 1D decomposition - use x grid and block dimension only */
-  BlockDims.x=BLOCKSIZE;
 
 
   /* the sizes of the packed structures */
@@ -503,18 +509,18 @@ void halo_swap_gpu()
 
 
  /* pack X edges on accelerator */
- GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
- pack_edgesX_gpu_d<<<GridDims.x,BlockDims.x,0,streamX>>>(ndist,nhalo,cv_d,
+ nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+ pack_edgesX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(ndist,nhalo,cv_d,
 						N_d,fedgeXLOW_d,
 						fedgeXHIGH_d,f_d);
  /* pack Y edges on accelerator */ 
- GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
- pack_edgesY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(ndist,nhalo,cv_d,
+ nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+ pack_edgesY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(ndist,nhalo,cv_d,
 					       N_d,fedgeYLOW_d,
 					       fedgeYHIGH_d,f_d);
  /* pack Z edges on accelerator */ 
- GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
- pack_edgesZ_gpu_d<<<GridDims.x,BlockDims.x,0,streamZ>>>(ndist,nhalo,cv_d,
+ nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
+ pack_edgesZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(ndist,nhalo,cv_d,
 							 N_d,fedgeZLOW_d,
 							 fedgeZHIGH_d,f_d); 
 
@@ -598,8 +604,8 @@ void halo_swap_gpu()
 	     cudaMemcpyHostToDevice,streamX);
   cudaMemcpyAsync(fhaloXHIGH_d, fhaloXHIGH, nhalodataX*sizeof(double), 
 	     cudaMemcpyHostToDevice,streamX);
-  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_halosX_gpu_d<<<GridDims.x,BlockDims.x,0,streamX>>>(ndist,nhalo,cv_d,
+  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  unpack_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(ndist,nhalo,cv_d,
 						  N_d,f_d,fhaloXLOW_d,
 						  fhaloXHIGH_d);
 
@@ -704,8 +710,8 @@ void halo_swap_gpu()
   cudaMemcpyAsync(fhaloYHIGH_d, fhaloYHIGH, nhalodataY*sizeof(double), 
 	     cudaMemcpyHostToDevice,streamY);
 
-  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_halosY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(ndist,nhalo,cv_d,
+  nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  unpack_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(ndist,nhalo,cv_d,
 						  N_d,f_d,fhaloYLOW_d,
 						  fhaloYHIGH_d);
 
@@ -866,8 +872,8 @@ void halo_swap_gpu()
 	     cudaMemcpyHostToDevice,streamZ);
   cudaMemcpyAsync(fhaloZHIGH_d, fhaloZHIGH, nhalodataZ*sizeof(double), 
 	     cudaMemcpyHostToDevice,streamZ);
-  GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-  unpack_halosZ_gpu_d<<<GridDims.x,BlockDims.x,0,streamZ>>>(ndist,nhalo,cv_d,
+  nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
+  unpack_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(ndist,nhalo,cv_d,
   						  N_d,f_d,fhaloZLOW_d,
   					  fhaloZHIGH_d);
 
@@ -934,11 +940,10 @@ __global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,
       int ud=-1; /* up or down */
       int pn=-1; /* positive 1 or negative 1 factor */
 
-      
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud )
+	if (cv_d[p][dirn] == ud || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      fedgeXLOW_d[ndist*npackedsite*packedp+m*npackedsite
@@ -955,7 +960,7 @@ __global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn )
+	if (cv_d[p][dirn] == ud*pn || FULL_HALO )
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1019,7 +1024,7 @@ __global__ static void unpack_halosX_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud)
+	if (cv_d[p][dirn] == ud || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	  
@@ -1038,7 +1043,7 @@ __global__ static void unpack_halosX_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn )
+	if (cv_d[p][dirn] == ud*pn || FULL_HALO )
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1101,7 +1106,7 @@ __global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud )
+	if (cv_d[p][dirn] == ud || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1119,7 +1124,7 @@ __global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn )
+	if (cv_d[p][dirn] == ud*pn || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1201,7 +1206,7 @@ __global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,
       packedp=0;
 
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud )
+	if (cv_d[p][dirn] == ud || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1221,7 +1226,7 @@ __global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn )
+	if (cv_d[p][dirn] == ud*pn || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1288,7 +1293,7 @@ __global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud )
+	if (cv_d[p][dirn] == ud || FULL_HALO )
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1306,7 +1311,7 @@ __global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn )
+	if (cv_d[p][dirn] == ud*pn || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1399,7 +1404,7 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud )
+	if (cv_d[p][dirn] == ud || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1417,7 +1422,7 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn )
+	if (cv_d[p][dirn] == ud*pn || FULL_HALO)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      

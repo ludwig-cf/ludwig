@@ -44,8 +44,6 @@ void phi_gradients_compute_gpu()
 
   int nop,N[3],Ngradcalc[3],nhalo;
 
-  static dim3 BlockDims;
-  static dim3 GridDims;
 
 
   nhalo = coords_nhalo();
@@ -60,14 +58,11 @@ void phi_gradients_compute_gpu()
   Ngradcalc[Y]=N[Y]+2*nextra;
   Ngradcalc[Z]=N[Z]+2*nextra;
   
-#define BLOCKSIZE 256
-  /* 1D decomposition - use x grid and block dimension only */ 
-  BlockDims.x=BLOCKSIZE;
-  GridDims.x=(Ngradcalc[X]*Ngradcalc[Y]*Ngradcalc[Z]+BlockDims.x-1)
-    /BlockDims.x;
+  int nblocks=(Ngradcalc[X]*Ngradcalc[Y]*Ngradcalc[Z]+DEFAULT_TPB-1)
+    /DEFAULT_TPB;
   
   /* run the kernel */
-  gradient_3d_7pt_fluid_operator_gpu_d<<<GridDims.x,BlockDims.x>>>
+  gradient_3d_7pt_fluid_operator_gpu_d<<<nblocks,DEFAULT_TPB>>>
     (nop, nhalo, N_d, phi_site_d,grad_phi_site_d,delsq_phi_site_d,
      le_index_real_to_buffer_d,nextra); 
   

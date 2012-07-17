@@ -13,6 +13,7 @@
 
 #include "pe.h"
 #include "utilities_gpu.h"
+#include "phi_datamgmt_gpu.h"
 #include "util.h"
 #include "model.h"
 #include "timer.h"
@@ -117,11 +118,6 @@ void init_phi_gpu(){
 void finalise_phi_gpu()
 {
   free_phi_memory_on_gpu();
-
-  /* destroy CUDA streams*/
-  cudaStreamDestroy(streamX);
-  cudaStreamDestroy(streamY);
-  cudaStreamDestroy(streamZ);
 
 }
 
@@ -435,6 +431,8 @@ void phi_halo_swap_gpu()
 
   int ii,jj,kk,m,index_source,index_target;
 
+  int nblocks;
+
 #define OVERLAP
 
   const int tagf = 903;
@@ -443,12 +441,6 @@ void phi_halo_swap_gpu()
   MPI_Request request[4];
   MPI_Status status[4];
   MPI_Comm comm = cart_comm();
-
-  static dim3 BlockDims;
-  static dim3 GridDims;
-  #define BLOCKSIZE 256
-  /* 1D decomposition - use x grid and block dimension only */
-  BlockDims.x=BLOCKSIZE;
 
 
   /* the sizes of the packed structures */
@@ -473,21 +465,21 @@ void phi_halo_swap_gpu()
    as and where possible */
 
  /* pack X edges on accelerator */
- GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
- pack_phi_edgesX_gpu_d<<<GridDims.x,BlockDims.x,0,streamX>>>(nop,nhalo,
+ nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+ pack_phi_edgesX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nop,nhalo,
 						N_d,phiedgeXLOW_d,
 						phiedgeXHIGH_d,phi_site_d);
 
 
  /* pack Y edges on accelerator */ 
-  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  pack_phi_edgesY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(nop,nhalo,
+  nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  pack_phi_edgesY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nop,nhalo,
 						N_d,phiedgeYLOW_d,
 						phiedgeYHIGH_d,phi_site_d);
 
  /* pack Z edges on accelerator */ 
-    GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-  pack_phi_edgesZ_gpu_d<<<GridDims.x,BlockDims.x,0,streamZ>>>(nop,nhalo,
+    nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
+  pack_phi_edgesZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nop,nhalo,
   						N_d,phiedgeZLOW_d,
   						phiedgeZHIGH_d,phi_site_d);
 
@@ -565,8 +557,8 @@ void phi_halo_swap_gpu()
 		  cudaMemcpyHostToDevice,streamX);
   cudaMemcpyAsync(phihaloXHIGH_d, phihaloXHIGH, nphihalodataX*sizeof(double),
 		  cudaMemcpyHostToDevice,streamX);
-  GridDims.x=(nhalo*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_phi_halosX_gpu_d<<<GridDims.x,BlockDims.x,0,streamX>>>(nop,nhalo,
+  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  unpack_phi_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nop,nhalo,
 						  N_d,phi_site_d,phihaloXLOW_d,
 						  phihaloXHIGH_d);
 
@@ -663,8 +655,8 @@ void phi_halo_swap_gpu()
 		  cudaMemcpyHostToDevice,streamY);
   cudaMemcpyAsync(phihaloYHIGH_d, phihaloYHIGH, nphihalodataY*sizeof(double),
 		  cudaMemcpyHostToDevice,streamY);
-  GridDims.x=(Nall[X]*nhalo*N[Z]+BlockDims.x-1)/BlockDims.x;
-  unpack_phi_halosY_gpu_d<<<GridDims.x,BlockDims.x,0,streamY>>>(nop,nhalo,
+  nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  unpack_phi_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nop,nhalo,
 						  N_d,phi_site_d,phihaloYLOW_d,
 						  phihaloYHIGH_d);
 
@@ -817,8 +809,8 @@ void phi_halo_swap_gpu()
   cudaMemcpyAsync(phihaloZHIGH_d, phihaloZHIGH, nphihalodataZ*sizeof(double),
 		  cudaMemcpyHostToDevice,streamZ);
 
-  GridDims.x=(Nall[X]*Nall[Y]*nhalo+BlockDims.x-1)/BlockDims.x;
-   unpack_phi_halosZ_gpu_d<<<GridDims.x,BlockDims.x,0,streamZ>>>(nop,nhalo,
+  nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
+   unpack_phi_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nop,nhalo,
   						  N_d,phi_site_d,phihaloZLOW_d,
   					  phihaloZHIGH_d);
 

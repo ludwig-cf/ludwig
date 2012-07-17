@@ -17,6 +17,8 @@
 #ifndef COLLISION_GPU_H
 #define COLLISION_GPU_H
 
+#include "common_gpu.h"
+
 /* Declarations for gpu kernel/device routines  */
 __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, 
 						int N[3],	      
@@ -70,10 +72,7 @@ void collision_relaxation_times_set_gpu(void);
 void copy_constants_to_gpu(void);
 
 /* declarations for required external (host) routines */
-extern "C" int    distribution_ndist(void);
 extern "C" void collision_relaxation_times_set(void);
-extern "C" void coords_nlocal(int n[3]);
-extern "C" int coords_nhalo(void);
 extern "C" double get_eta_shear(void);
 extern "C" double get_eta_bulk(void);
 extern "C" double fluid_kt(void);

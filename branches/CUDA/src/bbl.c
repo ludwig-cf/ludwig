@@ -28,6 +28,10 @@
 #include "phi.h"
 #include "bbl.h"
 
+#ifdef _GPU_
+#include "interface_gpu.h"
+#endif
+
 static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
 static void mass_conservation_compute_force(void);
@@ -40,29 +44,6 @@ static double wall_lubrication(const int dim, const double r[3],
 static int bbl_active_ = 0;  /* Flag for active particles. */
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
 static double stress_[3][3]; /* Surface stress */
-
-
-#ifdef _GPU_
-/* these declarations should probably be refactored to a header file */
-void initialise_gpu(void);
-void put_f_on_gpu(void);
-void put_force_on_gpu(void);
-void put_phi_on_gpu(void);
-void put_grad_phi_on_gpu(void);
-void put_delsq_phi_on_gpu(void);
-void get_f_from_gpu(void);
-void get_velocity_from_gpu(void);
-void get_phi_from_gpu(void);
-void finalise_gpu(void);
-void collide_gpu(void);
-void propagation_gpu(void);
-void phi_compute_phi_site_gpu(void);
-void halo_swap_gpu(void);
-void phi_halo_swap_gpu(void);
-void phi_gradients_compute_gpu(void);
-void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
-		     double *dmall, int nlink, int pass);
-#endif
 
 
 /*****************************************************************************
@@ -244,8 +225,6 @@ static void bounce_back_pass1() {
   
   int nlink=ilink;
 
-  info("nlink=%d\n",nlink);
-
   /* allocate memory to store info for each link */
   int *findexall = (int*) malloc(nlink*sizeof(int)); 
   int *linktype = (int*) malloc(nlink*sizeof(int)); 
@@ -363,7 +342,7 @@ static void bounce_back_pass1() {
   /* bounce back the links */ 
   
  #ifdef _GPU_
-  bounce_back_gpu(findexall,linktype,dm_aall,dmall,nlink,1);
+  bounce_back_gpu(findexall,linktype,dm_aall,NULL,dmall,nlink,1);
  #else
     
   ilink=0;
@@ -638,6 +617,9 @@ static void bounce_back_pass2() {
   int *findexall = (int*) malloc(nlink*sizeof(int)); 
   int *linktype = (int*) malloc(nlink*sizeof(int)); 
   double *dfall = (double*) malloc(nlink*sizeof(double)); 
+  double *dgall; 
+  if (distribution_ndist() > 1) 
+    dgall = (double*) malloc(nlink*sizeof(double)); 
   double *dmall = (double*) malloc(nlink*sizeof(double)); 
   
   ilink=0;
@@ -721,6 +703,7 @@ static void bounce_back_pass2() {
 	      findexall[ilink]=ij*nsite+i;
 
 	      dfall[ilink]=df;
+	      if (distribution_ndist() > 1) dgall[ilink]=dg;
 	    
 	      ilink++;
 	    }
@@ -746,7 +729,7 @@ static void bounce_back_pass2() {
   /* bounce back the links */ 
 
   #ifdef _GPU_
-  bounce_back_gpu(findexall,linktype,dfall,dmall,nlink,2);
+  bounce_back_gpu(findexall,linktype,dfall,dgall,dmall,nlink,2);
   #else
 
   ilink=0;
@@ -836,13 +819,14 @@ static void bounce_back_pass2() {
 
 	     
 	    
-/* 	    /\* This is slightly clunky. If the order parameter is */
-/* 	     * via LB, bounce back with correction. *\/ */
-/* 	    if (distribution_ndist() > 1) { */
-/* 	      fdist = distribution_f(i, ij, 1); */
-/* 	      fdist = fdist - dg; */
-/* 	      distribution_f_set(j, ji, 1, fdist); */
-/* 	    } */
+	    /* This is slightly clunky. If the order parameter is
+	     * via LB, bounce back with correction. */
+	    if (distribution_ndist() > 1) {
+	      dg=dgall[ilink];
+	      fdist = distribution_f(i, ij, 1);
+	      fdist = fdist - dg;
+	      distribution_f_set(j, ji, 1, fdist);
+	    }
 	    
 	    /* The stress is r_b f_b */
 	    for (ia = 0; ia < 3; ia++) {
@@ -905,6 +889,7 @@ static void bounce_back_pass2() {
   free(linktype);
   free(dmall);
   free(dfall);
+  if (distribution_ndist() > 1) free(dgall);
 
 
   return;

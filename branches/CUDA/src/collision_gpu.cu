@@ -28,11 +28,6 @@
 #include "site_map.h"
 #include "collision_gpu.h"
 
-
-
-/* from coords.h */
-enum cartesian_directions {X, Y, Z};
-
 /* using NVEL directly in below routines. */
 /*static int nmodes_ = NVEL; */          /* Modes to use in collision stage */
 
@@ -63,8 +58,6 @@ void collide_gpu() {
   int ndist, nhalo;
   double mobility;
   int N[3];
-  static dim3 BlockDims;
-  static dim3 GridDims;
 
   ndist = distribution_ndist();
   nhalo = coords_nhalo();
@@ -78,31 +71,22 @@ void collide_gpu() {
   copy_constants_to_gpu();
   
   /* set up CUDA grid */
-  #define BLOCKSIZE 256
   /* 1D decomposition - use x grid and block dimension only */ 
-  BlockDims.x=BLOCKSIZE;
-  GridDims.x=(N[X]*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+  int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
 
   /* run the kernel */
   if (ndist == 1){
 
-    printf("collision_multirelaxation_gpu_d not yet fully tested\n");
-    //exit(1);
     
-    collision_multirelaxation_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo, 
+    collision_multirelaxation_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist,nhalo, 
     		  N_d,force_global_d, f_d, site_map_status_d, 
     			force_d, velocity_d, ma_d, d_d, mi_d);
 
-    //cudaThreadSynchronize();
-
-    //checkCUDAError("collision_multirelaxation_gpu_d");    
-    
   }
-  //exit(1);
 
   if (ndist == 2) 
     {
-      collision_binary_lb_gpu_d<<<BlockDims.x,GridDims.x>>>(ndist, nhalo, N_d, 					      force_global_d, 
+      collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d, 					      force_global_d, 
 					      f_d, 
 					      site_map_status_d, 
 					       phi_site_d,		
@@ -123,6 +107,7 @@ void collide_gpu() {
 
     cudaThreadSynchronize();
 
+    //checkCUDAError("Collision");    
   return;
 }
 
@@ -763,11 +748,10 @@ void collision_relaxation_times_set_gpu(void) {
   void   copy_constants_to_gpu(){
 
     double a_,b_,kappa_;
-    int n;
 
-    n = RUN_get_double_parameter("A", &a_);
-    n = RUN_get_double_parameter("B", &b_);
-    n = RUN_get_double_parameter("K", &kappa_);
+    RUN_get_double_parameter("A", &a_);
+    RUN_get_double_parameter("B", &b_);
+    RUN_get_double_parameter("K", &kappa_);
 
    /* copy constant values to accelerator (on-chip read-only memory) */
     cudaMemcpyToSymbol(rtau_shear_d, &rtau_shear, sizeof(double), 0,	

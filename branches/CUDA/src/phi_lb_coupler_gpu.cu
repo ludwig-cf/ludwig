@@ -42,8 +42,6 @@
 void phi_compute_phi_site_gpu() {
 
   int N[3], ndist, nhalo;
-  static dim3 BlockDims;
-  static dim3 GridDims;
 
   if (phi_is_finite_difference()) return;
 
@@ -53,13 +51,10 @@ void phi_compute_phi_site_gpu() {
 
 /* set up CUDA grid */
   coords_nlocal(N); 
-  #define BLOCKSIZE 256
-  /* 1D decomposition - use x grid and block dimension only */ 
-  BlockDims.x=BLOCKSIZE;
-  GridDims.x=(N[X]*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
+  int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
 
   /* run the kernel */
-  phi_compute_phi_site_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist, N_d,nhalo, 
+  phi_compute_phi_site_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, N_d,nhalo, 
 							 f_d,	 
 							 site_map_status_d, 
 							 phi_site_d);

@@ -9,21 +9,12 @@
 #ifndef _GRADIENT_3D_7PT_FLUID_GPU_H
 #define _GRADIENT_3D_7PT_FLUID_GPU_H
 
-
-
-/* declarations for required external (host) routines */
-extern "C" void coords_nlocal(int n[3]);
-extern "C" int coords_nhalo(void);
-extern "C" int    phi_nop(void);
+#include "common_gpu.h"
 
 /* expose main routine in this module to outside routines */
 extern "C" void phi_gradients_compute_gpu(void);
 
-/* from coords.h */
-enum cartesian_directions {X, Y, Z};
-
 /* forward declarations of device routines */
-
 __global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo, 
 						     int N[3], 
 						     const double * field_d,

@@ -38,8 +38,6 @@ void propagation_gpu() {
 
   int ndist, nhalo;
   int N[3];
-  static dim3 BlockDims;
-  static dim3 GridDims;
 
   ndist = distribution_ndist();
   nhalo = coords_nhalo();
@@ -47,8 +45,6 @@ void propagation_gpu() {
 
   /* copy f to ftmp on accelerator */
   copy_f_to_ftmp_on_gpu();
-
-
 
   /* run the kernel */
   if (NVEL == 9){
@@ -61,11 +57,9 @@ void propagation_gpu() {
   }
   if (NVEL == 19){
   /* set up CUDA grid */
-  #define BLOCKSIZE 256
   /* 1D decomposition - use x grid and block dimension only */ 
-  BlockDims.x=BLOCKSIZE;
-  GridDims.x=(N[X]*N[Y]*N[Z]+BlockDims.x-1)/BlockDims.x;
-  propagate_d3q19_gpu_d<<<GridDims.x,BlockDims.x>>>(ndist,nhalo, 
+  int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  propagate_d3q19_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist,nhalo, 
   					      N_d,f_d,ftmp_d);
   cudaThreadSynchronize();
 
@@ -87,7 +81,7 @@ void propagation_gpu() {
 __global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
 					     double* fnew_d, double* fold_d) {
 
-  int ii, jj, kk, index, n, p, threadIndex, nsite, Nall[3];
+  int ii, jj, kk, index, n, threadIndex, nsite, Nall[3];
   int xstr, ystr, zstr, pstr, xfac, yfac;
 
 
@@ -169,18 +163,3 @@ __global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
 
 }
 
-/* get 3d coordinates from the index on the accelerator */
-__device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,int index,int N[3])
-
-{
-  
-  int yfac = N[Z];
-  int xfac = N[Y]*yfac;
-  
-  *ii = index/xfac;
-  *jj = ((index-xfac*(*ii))/yfac);
-  *kk = (index-(*ii)*xfac-(*jj)*yfac);
-
-  return;
-
-}

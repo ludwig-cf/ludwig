@@ -13,11 +13,11 @@
 
 #include "pe.h"
 #include "utilities_gpu.h"
+#include "phi_datamgmt_gpu.h"
+#include "dist_datamgmt_gpu.h"
 #include "util.h"
 #include "model.h"
 #include "timer.h"
-
-
 
 //#define GPUS_PER_NODE 4
 #define GPUS_PER_NODE 1
@@ -28,8 +28,6 @@ extern const double mi_[NVEL][NVEL];
 extern const double wv[NVEL];
 extern const int cv[NVEL][3];
 extern const double q_[NVEL][3][3];
-
-
 
 
 double * ma_d;
@@ -53,7 +51,6 @@ double * velocity_temp;
 /* data size variables */
 static int nhalo;
 static int nsites;
-static int ndist;
 static  int N[3];
 static  int Nall[3];
 
@@ -64,8 +61,6 @@ void initialise_gpu()
 
   double force_global[3];
 
-  int ic,jc,kc,index;
-  
 
   int devicenum=cart_rank()%GPUS_PER_NODE;
 
@@ -78,8 +73,6 @@ void initialise_gpu()
   //cudaGetDevice(&devicenum);
   //printf("rank %d running on device %d\n",cart_rank(),devicenum);
   
-
-
   calculate_data_sizes();
   allocate_memory_on_gpu();
 
@@ -105,7 +98,7 @@ void initialise_gpu()
   init_phi_gpu();
 
 
-  //checkCUDAError("Init GPU");  
+  checkCUDAError("Init GPU");  
 
 
 }
@@ -117,8 +110,10 @@ void finalise_gpu()
 
   free_memory_on_gpu();
   finalise_dist_gpu();
-  finalise_phi_gpu();
-  checkCUDAError("finalise");
+  //finalise_phi_gpu();
+ 
+
+  checkCUDAError("Finalise GPU");
 
 
 }
@@ -131,7 +126,6 @@ static void calculate_data_sizes()
 {
   coords_nlocal(N);  
   nhalo = coords_nhalo();  
-  ndist = distribution_ndist();
 
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
@@ -168,7 +162,7 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &N_d, sizeof(int)*3);
   cudaMalloc((void **) &force_global_d, sizeof(double)*3);
 
-  //   checkCUDAError("allocate_memory_on_gpu");
+  checkCUDAError("allocate_memory_on_gpu");
 
 }
 
@@ -194,13 +188,14 @@ static void free_memory_on_gpu()
   cudaFree(N_d);
   cudaFree(force_global_d);
 
+  checkCUDAError("free_memory_on_gpu");
 }
 
 /* copy site map from host to accelerator */
 void put_site_map_on_gpu()
 {
 
-  int index, i, ic, jc, kc;
+  int index, ic, jc, kc;
 	      
 
   /* get temp host copies of arrays */
@@ -222,7 +217,7 @@ void put_site_map_on_gpu()
   cudaMemcpy(site_map_status_d, site_map_status_temp, nsites*sizeof(char), \
 	     cudaMemcpyHostToDevice);
 
-  //checkCUDAError("put_force_on_gpu");
+  checkCUDAError("put_site_map_on_gpu");
 
 }
 
@@ -259,7 +254,7 @@ void put_force_on_gpu()
   cudaMemcpy(force_d, force_temp, nsites*3*sizeof(double), \
 	     cudaMemcpyHostToDevice);
 
-  //checkCUDAError("put_force_on_gpu");
+  checkCUDAError("put_force_on_gpu");
 
 }
 
@@ -296,7 +291,7 @@ void get_force_from_gpu()
 
 
 
-  //checkCUDAError("put_force_on_gpu");
+  checkCUDAError("get_force_from_gpu");
 
 }
 
@@ -308,7 +303,6 @@ void get_velocity_from_gpu()
 
   cudaMemcpy(velocity_temp, velocity_d, nsites*3*sizeof(double), 
 	    cudaMemcpyDeviceToHost);
-  //checkCUDAError("get_velocity_from_gpu");
 
   /* copy velocity from temporary array back to hydrodynamics module */
   for (ic=1; ic<=N[X]; ic++)
@@ -318,16 +312,16 @@ void get_velocity_from_gpu()
 	  for (kc=1; kc<=N[Z]; kc++)
 	    {
 	      index = coords_index(ic, jc, kc); 
-	      //index_ = get_linear_index(ic-1, jc-1, kc-1,N); 
 	      for (i=0;i<3;i++)
 		{		 
 		  velocity[i]=velocity_temp[index*3+i];
-		  //printf("%d %d %d %d %d %f\n",ic,jc,kc,i,index,velocity_temp[index*3+i]);
 		}     
 	      hydrodynamics_set_velocity(index,velocity);
 	    }
 	}
     }
+
+  checkCUDAError("get_velocity_from_gpu");
 
 }
 
@@ -336,7 +330,6 @@ void put_velocity_on_gpu()
   int index,i, ic,jc,kc; 
   double velocity[3];
 
-  //checkCUDAError("get_velocity_from_gpu");
 
   /* copy velocity from temporary array back to hydrodynamics module */
   for (ic=1; ic<=N[X]; ic++)
@@ -352,7 +345,6 @@ void put_velocity_on_gpu()
 	      for (i=0;i<3;i++)
 		{		 
 		  velocity_temp[index*3+i]=velocity[i];
-		  //printf("%d %d %d %d %d %d %f\n",ic,jc,kc,i,index,index_,velocity_temp[index*3+i]);
 		}     
 	    }
 	}
@@ -360,6 +352,8 @@ void put_velocity_on_gpu()
 
   cudaMemcpy(velocity_d, velocity_temp, nsites*3*sizeof(double), 
 	    cudaMemcpyHostToDevice);
+
+  checkCUDAError("put_velocity_on_gpu");
 
 
 }
