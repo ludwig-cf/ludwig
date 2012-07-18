@@ -1,0 +1,139 @@
+Welcome to Ludwig (Serial version running on 1 process)
+
+The SVN revision details are: 1514M
+Note assertions via standard C assert() are on.
+
+Read 65 user parameters from ../tests/regression/test_le6_input
+
+Free energy details
+-------------------
+
+Brazovskii free energy selected.
+Single conserved order parameter nop = 1
+Requires up to del^4 derivatives so setting nhalo = 3
+
+Brazovskii free energy parameters:
+Bulk parameter A      = -5.00000e-04
+Bulk parameter B      =  5.00000e-04
+Ext. parameter C      =  7.60000e-04
+Surface penalty kappa = -6.00000e-04
+Wavelength 2pi/q_0    =  1.00006e+01
+Amplitude             =  1.28418e+00
+
+Order parameter dynamics
+------------------------
+
+Using Cahn-Hilliard solver:
+Mobility M            =  2.50000e-01
+Force caluclation:      divergence method
+Advection scheme order: 5
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     3
+Reorder:        true
+Initialised:    1
+
+Fluid properties
+----------------
+Mean density:       1.00000e+00
+Shear viscosity     8.33333e-02
+Bulk viscosity      8.33333e-02
+Temperature         2.13333e-05
+Body force density  0.00000e+00  0.00000e+00  0.00000e+00
+
+Lees-Edwards boundary conditions are active:
+LE plane 1 is at x = 16 with speed 0.006400
+LE plane 2 is at x = 48 with speed 0.006400
+Overall shear rate = 0.000200
+
+Lees-Edwards time offset (time steps):        0
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
+
+Gradient calcaulation: 3d_27pt_fluid
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000-2.2204460e-16  1.00000000000 1.00000000000
+[phi]  6.9259365e+01  2.6420351e-04 8.3281808e-02 -4.9999901e-01 4.9999855e-01
+
+Momentum - x y z
+[total   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 3.3531367e-09  0.99958898555 1.00017119246
+[phi]  6.9259365e+01  2.6420351e-04 1.2685444e-02 -3.9861989e-01 4.0824923e-01
+
+Free energy density - timestep total fluid
+[fed]            200  1.7975706416e-05  1.7975706416e-05
+
+Momentum - x y z
+[total   ]  3.8831785e-12  1.0929360e-03 -2.4306945e-14
+[fluid   ]  3.8831785e-12  1.0929360e-03 -2.4306945e-14
+
+Velocity - x y z
+[minimum ] -1.4776826e-04 -3.0994338e-03 -1.5354006e-04
+[maximum ]  1.6190235e-04  3.0987002e-03  1.4483386e-04
+
+Completed cycle 200
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 6.0689165e-10  0.99979300983 1.00009350628
+[phi]  6.9259365e+01  2.6420351e-04 7.6327958e-03 -3.6263953e-01 3.5411134e-01
+
+Free energy density - timestep total fluid
+[fed]            400  4.8717664661e-06  4.8717664661e-06
+
+Momentum - x y z
+[total   ]  4.2649079e-12  6.1409501e-05 -2.5951463e-14
+[fluid   ]  4.2649079e-12  6.1409501e-05 -2.5951463e-14
+
+Velocity - x y z
+[minimum ] -9.6858893e-05 -3.1130584e-03 -1.1098222e-04
+[maximum ]  9.4874012e-05  3.1034356e-03  9.6628448e-05
+
+Completed cycle 400
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:    462.450    462.450    462.450 462.450000 (1 call)
+      Time step loop:      1.140      1.200    461.630   1.154075 (400 calls)
+         Propagation:      0.060      0.070     25.140   0.062850 (400 calls)
+           Collision:      0.320      0.330    128.890   0.322225 (400 calls)
+       Lattice halos:      0.000      0.020      2.060   0.005150 (400 calls)
+       phi gradients:      0.170      0.200     71.460   0.178650 (400 calls)
+     Lees Edwards BC:      0.010      0.020      5.730   0.014325 (400 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (400 calls)
+   Force calculation:      0.260      0.290    107.930   0.269825 (400 calls)
+          phi update:      0.280      0.310    118.720   0.296800 (400 calls)
+Ludwig finished normally.

@@ -1,0 +1,5 @@
+-0.00   0.0    0.0    0.0
+% first number is activity (negative is contractile; positive is extensile)
+% second number is self-advection coefficient
+% third number is imposed body force
+% fourth number is imposed shear velocity at the walls
