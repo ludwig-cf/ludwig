@@ -45,6 +45,8 @@ void phi_compute_phi_site_gpu() {
 
   if (phi_is_finite_difference()) return;
 
+  assert(distribution_ndist() == 2);
+
   ndist = distribution_ndist();
   nhalo = coords_nhalo();
   coords_nlocal(N);

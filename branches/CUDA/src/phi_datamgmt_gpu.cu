@@ -425,7 +425,7 @@ void get_phi_from_gpu()
 
 
 
-void phi_halo_swap_gpu()
+void phi_halo_gpu()
 {
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 

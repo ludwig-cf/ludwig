@@ -467,7 +467,7 @@ __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d,
 }
 
 
-void halo_swap_gpu()
+void distribution_halo_gpu()
 {
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 

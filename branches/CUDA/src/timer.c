@@ -7,7 +7,7 @@
  *  There are a number of separate 'timers', each of which can
  *  be started, and stopped, independently.
  *
- *  $Id: timer.c,v 1.5 2010-10-15 12:40:03 kevin Exp $
+ *  $Id: timer.c,v 1.5 2010/10/15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -24,7 +24,7 @@
 #include "util.h"
 #include "timer.h"
 
-#define NTIMERS  21
+#define NTIMERS  50
 
 struct timer_struct {
   double          t_start;
@@ -58,7 +58,31 @@ static const char * timer_name[] = {"Total",
 				    "phi update",
 				    "Free1",
 				    "Free2",
-                                    "Free3"};
+                                    "Free3",
+				    "Phi Comp",
+				    "Phi d->h",
+				    "Phi Halo",
+				    "Phi Grad Comp",
+				    "Force h->d",
+				    "Phi h->d",
+				    "Velocity d->h",
+				    "Edge pack d",
+				    "Edge d->h",
+				    "Phi Edge pack d",
+				    "Phi Edge d->h",
+				    "Halo CUDA Get X",
+				    "Halo CUDA Get Y",
+				    "Halo CUDA Get Z",
+				    "Halo CUDA Put X",
+				    "Halo CUDA Put Y",
+				    "Halo CUDA Put Z",
+				    "Halo MPI X",
+				    "Halo MPI Y",
+				    "Halo MPI Z",
+				    "Halo Y Corner",
+				    "Halo Z Corner",
+				    "Phi Halo h->d",
+				    "Phi Halo unpack d"};
 
 
 /****************************************************************************

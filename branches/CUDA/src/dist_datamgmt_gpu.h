@@ -18,11 +18,10 @@ extern "C" void get_f_from_gpu();
 extern "C" void copy_f_to_ftmp_on_gpu(void);
 extern "C" void get_f_edges_from_gpu(void);
 extern "C" void put_f_halos_on_gpu(void);
-extern "C" void halo_swap_gpu(void);
+extern "C" void distribution_halo_gpu(void);
 extern "C" void copy_f_to_ftmp_on_gpu(void);
 extern "C" void get_f_edges_from_gpu(void);
 extern "C" void put_f_halos_on_gpu(void);
-extern "C" void halo_swap_gpu(void);
 extern "C" void bounce_back_gpu(int *findexall, int *linktype,
 				double *dfall, double *dgall,
 				double *dmall, int nlink, int pass);

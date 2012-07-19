@@ -104,7 +104,7 @@ extern double * delsq_phi_site_d;
 /* constant variables on accelerator (on-chip read-only memory) */
 __constant__ double rtau_shear_d;
 __constant__ double rtau_bulk_d;
-__constant__ double rtau_ghost_d;
+__constant__ double rtau_d[NVEL];
 __constant__ double a_d;
 __constant__ double b_d;
 __constant__ double kappa_d;

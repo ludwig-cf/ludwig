@@ -37,5 +37,6 @@ extern "C" int    cart_size(const int);
 extern "C" int    cart_neighb(const int direction, const int dimension);
 extern "C" int    cart_rank(void);
 extern "C" int    phi_is_finite_difference(void);
+extern "C" int is_propagation_ode();
 
 #endif

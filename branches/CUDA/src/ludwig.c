@@ -80,6 +80,10 @@
 
 #include "ludwig.h"
 
+#ifdef _GPU_
+#include "interface_gpu.h"
+#endif
+
 static void ludwig_rt(void);
 static void ludwig_init(void);
 static void ludwig_report_momentum(void);
@@ -239,6 +243,18 @@ void ludwig_run(const char * inputfile) {
   phi_stats_print_stats();
   ludwig_report_momentum();
 
+#ifdef _GPU_
+  info("\n--Running using GPU acceleration--\n");
+  initialise_gpu();
+  put_f_on_gpu();
+  put_force_on_gpu(); 
+  put_velocity_on_gpu();
+ 
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+#endif
+
+
   /* Main time stepping loop */
 
   info("\n");
@@ -260,15 +276,51 @@ void ludwig_run(const char * inputfile) {
       /* Note that the liquid crystal boundary conditions must come after
        * the halo swap, but before the gradient calculation. */
 
+#ifdef _GPU_
+
+      TIMER_start(PHICOMP);
+      phi_compute_phi_site_gpu();
+      TIMER_stop(PHICOMP);
+
+      if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
+	info("Error: ANCHORING_METHOD_ONE not yet supported in GPU mode\n");
+	exit(1);
+      }
+
+
+      TIMER_start(PHIHALO);
+      phi_halo_gpu();
+      TIMER_stop(PHIHALO);
+
+
+      TIMER_start(PHIGRADCOMP);
+      phi_gradients_compute_gpu();
+      TIMER_stop(PHIGRADCOMP);
+
+      if (phi_nop() == 5) {
+	info("Error: phi_nop() == 5 not yet supported in GPU mode\n");
+	exit(1);
+      }
+
+#else
+
       phi_compute_phi_site();
       if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) COLL_set_Q();
       phi_halo();
       phi_gradients_compute();
       if (phi_nop() == 5) blue_phase_redshift_compute();
 
+
+#endif
+
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
       if (phi_is_finite_difference()) {
+
+#ifdef _GPU_
+	info("Error: phi_is_finite_difference not yet supported in GPU mode\n");
+	exit(1);
+#endif
 
 	TIMER_start(TIMER_FORCE_CALCULATION);
 
@@ -288,16 +340,46 @@ void ludwig_run(const char * inputfile) {
     }
 
     if(is_propagation_ode() == 0) {
-      TIMER_start(TIMER_COLLIDE);
-      collide();
-      TIMER_stop(TIMER_COLLIDE);
+
+#ifdef _GPU_
+
+    TIMER_start(TIMER_COLLIDE);
+    //put_f_on_gpu();
+    //put_phi_on_gpu();
+    //put_grad_phi_on_gpu();
+    //put_delsq_phi_on_gpu();
+    //put_force_on_gpu();
+    //put_velocity_on_gpu();
+    //put_site_map_on_gpu();
+    collide_gpu();
+    //get_f_from_gpu();
+    //get_velocity_from_gpu();
+    TIMER_stop(TIMER_COLLIDE);
+
+#else
+
+    TIMER_start(TIMER_COLLIDE);
+    collide();
+    TIMER_stop(TIMER_COLLIDE);
+
+#endif
+
     }
 
     model_le_apply_boundary_conditions();
 
+
+#ifdef _GPU_
+    TIMER_start(TIMER_HALO_LATTICE);
+    distribution_halo_gpu();
+    TIMER_stop(TIMER_HALO_LATTICE);
+#else
     TIMER_start(TIMER_HALO_LATTICE);
     distribution_halo();
     TIMER_stop(TIMER_HALO_LATTICE);
+#endif
+
+
 
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
@@ -318,12 +400,23 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_PROPAGATE);
 
+#ifdef _GPU_
+    if(is_propagation_ode()) {
+      info("Error: ODE propagation not yet supported in GPU version\n");
+      exit(1);
+    }
+    else {
+      propagation_gpu();
+    }
+
+#else
     if(is_propagation_ode()) {
       propagation_ode();
     }
     else {
       propagation();
     }
+#endif
 
     TIMER_stop(TIMER_PROPAGATE);
 
@@ -332,6 +425,11 @@ void ludwig_run(const char * inputfile) {
     /* Configuration dump */
 
     if (is_config_step()) {
+
+#ifdef _GPU_
+      get_f_from_gpu();
+#endif
+
       info("Writing distribution output at step %d!\n", step);
       sprintf(filename, "%sdist-%8.8d", subdirectory, step);
       io_write(filename, distribution_io_info());
@@ -341,6 +439,12 @@ void ludwig_run(const char * inputfile) {
      * files; it should really be removed. */
 
     if (is_config_step() || is_measurement_step() || is_colloid_io_step()) {
+
+#ifdef _GPU_
+      get_velocity_from_gpu();
+      get_f_from_gpu();
+#endif
+
       if (colloid_ntotal() > 0) {
 	info("Writing colloid output at step %d!\n", step);
 	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
@@ -349,6 +453,12 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_phi_output_step() || is_config_step()) {
+
+#ifdef _GPU_
+      get_velocity_from_gpu();
+      get_f_from_gpu();
+#endif
+
       if (phi_nop() > 0) {
 	info("Writing phi file at step %d!\n", step);
 	sprintf(filename,"%sphi-%8.8d", subdirectory, step);
@@ -359,6 +469,12 @@ void ludwig_run(const char * inputfile) {
     /* Measurements */
 
     if (is_measurement_step()) {	  
+
+#ifdef _GPU_
+      get_velocity_from_gpu();
+      get_f_from_gpu();
+#endif
+
       if (phi_nop() == 5) {
 	info("Writing scalar order parameter file at step %d!\n", step);
 	sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
@@ -368,16 +484,34 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_shear_measurement_step()) {
+
+#ifdef _GPU_
+      get_velocity_from_gpu();
+      get_f_from_gpu();
+#endif
+
       stats_rheology_stress_profile_accumulate();
     }
 
     if (is_shear_output_step()) {
+
+#ifdef _GPU_
+      get_velocity_from_gpu();
+      get_f_from_gpu();
+#endif
+
       sprintf(filename, "%sstr-%8.8d.dat", subdirectory, step);
       stats_rheology_stress_section(filename);
       stats_rheology_stress_profile_zero();
     }
 
     if (is_vel_output_step()) {
+
+#ifdef _GPU_
+      get_velocity_from_gpu();
+      get_f_from_gpu();
+#endif
+
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
       io_write(filename, io_info_velocity_);
@@ -386,6 +520,11 @@ void ludwig_run(const char * inputfile) {
     /* Print progress report */
 
     if (is_statistics_step()) {
+
+#ifdef _GPU_
+      get_velocity_from_gpu();
+      get_f_from_gpu();
+#endif
 
       stats_distribution_print();
       if (phi_nop()) {
@@ -403,6 +542,13 @@ void ludwig_run(const char * inputfile) {
 
     /* Next time step */
   }
+
+
+#ifdef _GPU_
+  get_velocity_from_gpu();
+  get_f_from_gpu();
+  finalise_gpu();
+#endif
 
   /* To prevent any conflict between the last regular dump, and
    * a final dump, there's a barrier here. */

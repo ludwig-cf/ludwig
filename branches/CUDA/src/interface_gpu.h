@@ -27,8 +27,8 @@ void finalise_gpu(void);
 void collide_gpu(void);
 void propagation_gpu(void);
 void phi_compute_phi_site_gpu(void);
-void halo_swap_gpu(void);
-void phi_halo_swap_gpu(void);
+void distribution_halo_gpu(void);
+void phi_halo_gpu(void);
 void phi_gradients_compute_gpu(void);
 void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
 		     double *dmall, double *dgall,int nlink, int pass);

@@ -46,7 +46,9 @@ void   distribution_init(void);
 void   distribution_finish(void);
 void   distribution_halo(void);
 
+#ifndef INCLUDING_FROM_GPU_SOURCE
 int    distribution_ndist(void);
+#endif
 int    distribution_order(void);
 void   distribution_ndist_set(const int ndist);
 double distribution_f(const int index, const int p, const int n);
