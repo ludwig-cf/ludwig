@@ -128,6 +128,7 @@ static int do_test3(void) {
   int index = 1;
   double ref[3] = {1.0, 2.0, 3.0};
   double value[3];
+  double array[3];
   field_t * phi = NULL;
 
   coords_nhalo_set(nhalo);
@@ -146,6 +147,11 @@ static int do_test3(void) {
   assert(fabs(value[0] - ref[0]) < DBL_EPSILON);
   assert(fabs(value[1] - ref[1]) < DBL_EPSILON);
   assert(fabs(value[2] - ref[2]) < DBL_EPSILON);
+
+  field_scalar_array(phi, index, array);
+  assert(fabs(array[0] - ref[0]) < DBL_EPSILON);
+  assert(fabs(array[1] - ref[1]) < DBL_EPSILON);
+  assert(fabs(array[2] - ref[2]) < DBL_EPSILON);
 
   /* Halo */
   test_field_halo(phi);
@@ -172,6 +178,7 @@ static int do_test5(void) {
   int index = 1;
   double qref[3][3] = {{1.0, 2.0, 3.0}, {2.0, 4.0, 5.0}, {3.0, 5.0, -5.0}};
   double qvalue[3][3];
+  double array[NQAB];
   field_t * phi = NULL;
 
   coords_nhalo_set(nhalo);
@@ -196,6 +203,15 @@ static int do_test5(void) {
   assert(fabs(qvalue[Z][X] - qref[Z][X]) < DBL_EPSILON);
   assert(fabs(qvalue[Z][Y] - qref[Z][Y]) < DBL_EPSILON);
   assert(fabs(qvalue[Z][Z] - qref[Z][Z]) < DBL_EPSILON);
+
+  /* This is the upper trianle minus the ZZ component */
+
+  field_scalar_array(phi, index, array);
+  assert(fabs(array[XX] - qref[X][X]) < DBL_EPSILON);
+  assert(fabs(array[XY] - qref[X][Y]) < DBL_EPSILON);
+  assert(fabs(array[XZ] - qref[X][Z]) < DBL_EPSILON);
+  assert(fabs(array[YY] - qref[Y][Y]) < DBL_EPSILON);
+  assert(fabs(array[YZ] - qref[Y][Z]) < DBL_EPSILON);
 
   /* Halo */
   test_field_halo(phi);
