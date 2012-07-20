@@ -102,6 +102,10 @@ void collide_gpu(void) {
   nhalo = coords_nhalo();
   coords_nlocal(N); 
 
+  //  if (isothermal_fluctuations_) {
+  //  info("Error: isothermal flctuations not yet supported in GPU mode\n");
+  //  exit(1);
+  //}
 
   //collision_relaxation_times_set();
   //we need a duplicate GPU copy of this routine, as things are set up, 
@@ -126,8 +130,11 @@ void collide_gpu(void) {
   if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_M10)
 
     {
-      
-      printf("a\n");
+
+   collision_multirelaxation_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist,nhalo, 
+    		  N_d,force_global_d, f_d, site_map_status_d, 
+    			force_d, velocity_d, ma_d, d_d, mi_d);
+
     }
 
   if  (ndist == 2 && is_propagation_ode() == 0) 
@@ -153,8 +160,8 @@ void collide_gpu(void) {
 
   if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_BGK)
     {
-      printf("c\n");
-
+      printf("Error, KGK collision not supported yet in GPU version\n");
+      exit(1);
 
     }
 
@@ -163,6 +170,278 @@ void collide_gpu(void) {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  collision_multirelaxation
+ *
+ *  Collision with (potentially) different relaxation times for each
+ *  different mode.
+ *
+ *  The matrices ma_ and mi_ project the distributions onto the
+ *  modes, and vice-versa, respectively, for the current LB model.
+ *
+ *  The collision conserves density, and momentum (to within any
+ *  body force present). The stress modes, and ghost modes, are
+ *  relaxed toward their equilibrium values.
+ *
+ *  If ghost modes are not required, nmodes_ can be set equal to
+ *  the number of hydrodynamic modes. Otherwise nmodes_ = NVEL.
+ * 
+ *  Adapted to run on GPU: Alan Gray / Alan Richardson  
+ *
+ *****************************************************************************/
+__global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3], 
+					      double* force_global_d, 
+					      double* f_d, 
+						char* site_map_status_d, 
+					      double* force_ptr, 
+    			       		      double* velocity_ptr, 
+					      double* ma_ptr,
+					      double* d_ptr,
+					      double* mi_ptr
+					      )
+{
+
+  int       index;       /* site indices */
+  int       p, m;                    /* velocity index */
+  int       ia, ib;                  /* indices ("alphabeta") */
+
+  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
+  double    rho, rrho;               /* Density, reciprocal density */
+  double    u[3];                    /* Velocity */
+  double    s[3][3];                 /* Stress */
+  double    seq[3][3];               /* Equilibrium stress */
+  double    shat[3][3];              /* random stress */
+  double    ghat[NVEL];              /* noise for ghosts */
+  double    rdim;                    /* 1 / dimension */
+
+  double    force[3];                /* External force */
+  double    tr_s, tr_seq;
+
+  double    force_local[3];
+
+  int threadIndex, nsite, Nall[3], ii, jj, kk, xfac, yfac;
+
+
+  /* cast dummy gpu memory pointers to pointers of right type (for 
+   * multidimensional arrays) */
+
+  double (*force_d)[3] = (double (*)[3]) force_ptr;
+  double (*velocity_d)[3] = (double (*)[3]) velocity_ptr;
+  double (*ma_d)[NVEL] = (double (*)[NVEL]) ma_ptr;
+  double (*mi_d)[NVEL] = (double (*)[NVEL]) mi_ptr;
+  double (*d_d)[3] = (double (*)[3]) d_ptr;
+
+
+  /* the below routines are now called from the driver routine 
+   * ndist = distribution_ndist();
+   * coords_nlocal(N);
+   * fluid_body_force(force_global); */
+  
+  fluctuations_off_gpu_d(shat, ghat);
+
+  rdim = 1.0/NDIM;
+
+  for (ia = 0; ia < 3; ia++) {
+    u[ia] = 0.0;
+  }
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+
+  nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  /* CUDA thread index */
+  threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+
+  //printf (" %d %d %d %d\n",threadIndex,blockIdx.x,blockDim.x,threadIdx.x);
+  
+  /* Avoid going beyond problem domain */
+  if (threadIndex < N[X]*N[Y]*N[Z])
+    {
+
+      /* calculate index from CUDA thread index */
+      yfac = N[Z];
+      xfac = N[Y]*yfac;
+      
+      ii = threadIndex/xfac;
+      jj = ((threadIndex-xfac*ii)/yfac);
+      kk = (threadIndex-ii*xfac-jj*yfac);
+      
+      index = get_linear_index_gpu_d(ii+1,jj+1,kk+1,Nall);
+      
+      if (site_map_status_d[index] == FLUID)
+	{
+	  
+	  
+	  
+	  /* Compute all the modes */
+	  
+	  for (m = 0; m < NVEL; m++) {
+	    mode[m] = 0.0;
+	    for (p = 0; p < NVEL; p++) {
+	      mode[m] += f_d[nsite*p + index]*ma_d[m][p];
+	    }
+	  }
+	  
+
+	  /* For convenience, write out the physical modes, that is,
+	   * rho, NDIM components of velocity, independent components
+	   * of stress (upper triangle), and lower triangle. */
+	  
+	  rho = mode[0];
+	  for (ia = 0; ia < NDIM; ia++) {
+	    u[ia] = mode[1 + ia];
+	  }
+	  
+	  
+	  m = 0;
+	  for (ia = 0; ia < NDIM; ia++) {
+	    for (ib = ia; ib < NDIM; ib++) {
+	      s[ia][ib] = mode[1 + NDIM + m++];
+	    }
+	  }
+	  
+	  for (ia = 1; ia < NDIM; ia++) {
+	    for (ib = 0; ib < ia; ib++) {
+	      s[ia][ib] = s[ib][ia];
+	    }
+	  }
+	  
+	  
+	  
+	  /* Compute the local velocity, taking account of any body force */
+	  
+	  rrho = 1.0/rho;
+	  /* hydrodynamics_get_force_local(index, force_local); */
+	  for (ia = 0; ia < 3; ia++) {
+	    force_local[ia] = force_d[index][ia];
+	  }
+	  
+	  for (ia = 0; ia < NDIM; ia++) {
+	    force[ia] = (force_global_d[ia] + force_local[ia]);
+	    u[ia] = rrho*(u[ia] + 0.5*force[ia]);
+	  }
+	  
+	  /* hydrodynamics_set_velocity(index, u); */
+	  for (ia = 0; ia < 3; ia++) {
+	    velocity_d[index][ia] = u[ia];
+	  }
+	  
+	  /* Relax stress with different shear and bulk viscosity */
+	  
+	  tr_s   = 0.0;
+	  tr_seq = 0.0;
+	  
+	  for (ia = 0; ia < NDIM; ia++) {
+	    /* Set equilibrium stress */
+	    for (ib = 0; ib < NDIM; ib++) {
+	      seq[ia][ib] = rho*u[ia]*u[ib];
+	    }
+	    /* Compute trace */
+	    tr_s   += s[ia][ia];
+	    tr_seq += seq[ia][ia];
+	  }
+	  
+	  /* Form traceless parts */
+	  for (ia = 0; ia < NDIM; ia++) {
+	    s[ia][ia]   -= rdim*tr_s;
+	    seq[ia][ia] -= rdim*tr_seq;
+	  }
+	  
+	  /* Relax each mode */
+	  tr_s = tr_s - rtau_bulk_d*(tr_s - tr_seq);
+	  
+	  for (ia = 0; ia < NDIM; ia++) {
+	    for (ib = 0; ib < NDIM; ib++) {
+	      s[ia][ib] -= rtau_shear_d*(s[ia][ib] - seq[ia][ib]);
+	      s[ia][ib] += d_d[ia][ib]*rdim*tr_s;
+	      
+	      /* Correction from body force (assumes equal relaxation times) */
+	      
+	      s[ia][ib] += (2.0-rtau_shear_d)*(u[ia]*force[ib] + force[ia]*u[ib]);
+	    }
+	  }
+	  
+	  //if (isothermal_fluctuations_) 	    collision_fluctuations(index, shat, ghat);
+	  
+	  /* Now reset the hydrodynamic modes to post-collision values:
+	   * rho is unchanged, velocity unchanged if no force,
+	   * independent components of stress, and ghosts. */
+	  
+	  for (ia = 0; ia < NDIM; ia++) {
+	    mode[1 + ia] += force[ia];
+	  }
+
+	  
+	  m = 0;
+	  for (ia = 0; ia < NDIM; ia++) {
+	    for (ib = ia; ib < NDIM; ib++) {
+	      mode[1 + NDIM + m++] = s[ia][ib] + shat[ia][ib];
+	    }
+	  }
+	  
+	  /* Ghost modes are relaxed toward zero equilibrium. */
+	  
+	  for (m = NHYDRO; m < NVEL; m++) {
+	    mode[m] = mode[m] - rtau_d[m]*(mode[m] - 0.0) + ghat[m];
+	  }
+	  
+	  /* Project post-collision modes back onto the distribution */
+	  
+	  for (p = 0; p < NVEL; p++) {
+	    f_d[nsite*p + index] = 0.0;
+	    for (m = 0; m < NVEL; m++) {
+	      f_d[nsite*p + index] += mi_d[p][m]*mode[m];
+	    }
+	  }
+	  
+	}
+      
+    }   
+  
+  
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  collision_binary_lb_gpu_d
+ *
+ *  Binary LB collision stage (here we are progressing toward
+ *  decoupled version).
+ *
+ *  This follows the single fluid version above, with the addition
+ *  that the equilibrium stress includes the thermodynamic term
+ *  following Swift etal.
+ *
+ *  We also have to update the second distribution g from the
+ *  order parameter modes phi, jphi[3], sphi[3][3].
+ *
+ *  There are two choices:
+ *    1. relax jphi[i] toward equilibrium phi*u[i] at rate rtau2
+ *       AND
+ *       fix sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j]
+ *       so the mobility enters through rtau2 (J. Stat. Phys. 2005).
+ *    2.
+ *       fix jphi[i] = phi*u[i] (i.e. relaxation time == 1.0)
+ *       AND
+ *       fix sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j]
+ *       so the mobility enters with chemical potential (Kendon etal 2001).
+ *
+ *   As there seems to be little to choose between the two in terms of
+ *   results, I prefer 2, as it avoids the calculation of jphi[i] from
+ *   from the distributions g. However, keep 1 so tests don't break!
+ *
+ *   However, for asymmetric quenches version 1 may be preferred.
+ *
+ *   The reprojection of g moves phi (mostly) into the non-propagating
+ *   distribution following J. Stat. Phys. (2005).
+ *
+ *  Adapted to run on GPU: Alan Gray / Alan Richardson  
+ *
+ *****************************************************************************/
 
 
 __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3], 

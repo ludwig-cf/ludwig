@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "pe.h"
@@ -29,15 +30,21 @@
 #include "phi.h"
 #include "bbl.h"
 
+#ifdef _GPU_
+#include "interface_gpu.h"
+#endif
+
 static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
 static void mass_conservation_compute_force(void);
 static void update_colloids(void);
 static  int bbl_wall_lubrication_account(void);
 
+
 static int bbl_active_ = 0;  /* Flag for active particles. */
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
 static double stress_[3][3]; /* Surface stress */
+
 
 /*****************************************************************************
  *
@@ -65,6 +72,7 @@ void bounce_back_on_links() {
 
   if (colloid_ntotal() == 0) return;
 
+ 
   colloid_sums_halo(COLLOID_SUM_STRUCTURE);
   bounce_back_pass1();
   colloid_sums_halo(COLLOID_SUM_DYNAMICS);
@@ -75,7 +83,13 @@ void bounce_back_on_links() {
   }
 
   update_colloids();
+
+
   bounce_back_pass2();
+
+
+  bbl_surface_stress();
+
 
   return;
 }
@@ -169,9 +183,56 @@ static void bounce_back_pass1() {
   double     delta;
   double     rsumw;
   double rho0 = colloid_rho0();
-
+  double fdist,dm_a;
+		  
   int       ic, jc, kc;
 
+  int ilink=0, ilinkfluid=0;
+
+  int N[3];
+  coords_nlocal(N);  
+  int nhalo = coords_nhalo();  
+  
+  int nsite=(N[X]+2*nhalo)*(N[X]+2*nhalo)*(N[X]+2*nhalo);
+
+  /* count the total number of links */
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+	
+	p_colloid = colloids_cell_list(ic, jc, kc);
+	
+	while (p_colloid != NULL) {
+	
+	  p_link = p_colloid->lnk;
+  
+	  while (p_link != NULL) {
+
+	    if (p_link->status != LINK_UNUSED) 
+	      ilink++;
+
+
+	    p_link = p_link->next;
+   
+	  }
+	  
+	  p_colloid = p_colloid->next;
+	  
+	}
+      }
+    }
+  }
+  
+  int nlink=ilink;
+
+  /* allocate memory to store info for each link */
+  int *findexall = (int*) malloc(nlink*sizeof(int)); 
+  int *linktype = (int*) malloc(nlink*sizeof(int)); 
+  double *dm_aall = (double*) malloc(nlink*sizeof(double)); 
+  double *dmall = (double*) malloc(nlink*sizeof(double)); 
+  double *deltaall = (double*) malloc(nlink*sizeof(double)); 
+
+  ilink=0;
   for (ic = 0; ic <= Ncell(X) + 1; ic++)
     for (jc = 0; jc <= Ncell(Y) + 1; jc++)
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
@@ -218,19 +279,25 @@ static void bounce_back_pass1() {
 	      /* For stationary link, the momentum transfer from the
 	       * fluid to the colloid is "dm" */
 
+	      findexall[ilink]=ij*nsite+i;		
+	      linktype[ilink]=p_link->status;
+
 	      if (p_link->status == LINK_FLUID) {
 		/* Bounce back of fluid on outside plus correction
 		 * arising from changes in shape at previous step. */
 
-		dm =  2.0*distribution_f(i, ij, 0)
-		  - wv[ij]*p_colloid->deltam; /* minus */
+		//dm is now calculated below 
+		//dm =  2.0*distribution_f(i, ij, 0)
+		//  - wv[ij]*p_colloid->deltam; /* minus */
+
 		delta = 2.0*rcs2*wv[ij]*rho0;
 
 		/* Squirmer section */
 		{
-		  double mod, rmod, dm_a, cost, plegendre, sint;
+		  double mod, rmod, cost, plegendre, sint;
 		  double tans[3], vector1[3];
-		  double fdist;
+
+
 
 		  /* We expect s.m to be a unit vector, but for floating
 		   * point purposes, we must make sure here. */
@@ -254,24 +321,154 @@ static void bounce_back_pass1() {
 		  dm_a = 0.0;
 		  for (ia = 0; ia < 3; ia++) {
 		    dm_a += -delta*plegendre*rmod*tans[ia]*cv[ij][ia];
-		  }
+		  } 
+		}
 
-		  fdist = distribution_f(i, ij, 0);
-		  fdist += dm_a;
-		  distribution_f_set(i, ij, 0, fdist);
+		dm_aall[ilink]=dm_a;
+		deltaall[ilink]=delta;
+		
+		ilink++;
 
-		  dm += dm_a;
+	      }
+
+	      if (p_link->status == LINK_COLLOID || 
+		  p_link->status == LINK_BOUNDARY) {
+		ilink++;
+	      }
+	    }
+	    
+	    /* Next link */
+	    p_link = p_link->next;
+	    
+	  }
+	  
+	  /* Next colloid */
+	  p_colloid = p_colloid->next;
+	}
+	
+	/* Next cell */
+      }
+  
+  
+
+  /* bounce back the links */ 
+  
+ #ifdef _GPU_
+  bounce_back_gpu(findexall,linktype,dm_aall,NULL,dmall,nlink,1);
+ #else
+    
+  ilink=0;
+  for (ic = 0; ic <= Ncell(X) + 1; ic++)
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++)
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+	
+	p_colloid = colloids_cell_list(ic, jc, kc);
+	
+	
+	/* Update solid -> fluid links for each colloid in the list */
+	
+	while (p_colloid != NULL) {
+	  
+	  /* Run through the links */
+
+	  p_link = p_colloid->lnk;
+
+	  while (p_link != NULL) {
+
+	    if (p_link->status == LINK_UNUSED) {
+	      /* ignore */
+	    }
+	    else {
+	    i = p_link->i;       /* index site i (outside) */
+	    j = p_link->j;       /* index site j (inside) */
+	    ij = p_link->p;      /* link velocity index i->j */
+	    ji = NVEL - ij;      /* link velocity index j->i */
+
+	    if (p_link->status == LINK_FLUID) {	      
+
+
+	      fdist = distribution_f(i, ij, 0);
+	      dmall[ilink] = fdist;
+	      fdist += dm_aall[ilink];
+	      distribution_f_set(i, ij, 0, fdist);
+
+	      ilink++;
+	    }
+
+	    if (p_link->status == LINK_COLLOID){
+	      dmall[ilink] = distribution_f(i, ij, 0) 
+		+ distribution_f(j, ji, 0);
+	      ilink++;
+	    }
+
+	    if (p_link->status == LINK_BOUNDARY) {
+	      ilink++;
+	    }
+
+	    }
+
+	    /* Next link */
+	    p_link = p_link->next;
+	  }
+
+	  /* Next colloid */
+	  p_colloid = p_colloid->next;
+	}
+
+	/* Next cell */
+      }
+
+#endif
+
+  ilink=0;
+  for (ic = 0; ic <= Ncell(X) + 1; ic++)
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++)
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+	
+	p_colloid = colloids_cell_list(ic, jc, kc);
+	
+	
+	/* Update solid -> fluid links for each colloid in the list */
+	
+	while (p_colloid != NULL) {
+	  
+	  /* Run through the links */
+
+	  p_link = p_colloid->lnk;
+
+	  while (p_link != NULL) {
+
+	    if (p_link->status == LINK_UNUSED) {
+	      /* ignore */
+	    }
+	    else {
+	    i = p_link->i;       /* index site i (outside) */
+	    j = p_link->j;       /* index site j (inside) */
+	    ij = p_link->p;      /* link velocity index i->j */
+	    ji = NVEL - ij;      /* link velocity index j->i */
+
+	    if (p_link->status == LINK_FLUID) {	      
+
+	      dm =  2.0*dmall[ilink]
+		- wv[ij]*p_colloid->deltam; /* minus */
+
+	      //dm = dmall[ilink];
+		  delta = deltaall[ilink];
+
+		  dm += dm_aall[ilink];
 
 		  /* needed for mass conservation   */
-                  p_colloid->sump += dm_a;
-		}
-	      }
+                  p_colloid->sump += dm_aall[ilink];
+		  ilink++;
+	    }
 	      else {
 		/* Virtual momentum transfer for solid->solid links,
 		 * but no contribution to drag maxtrix */
 
-		dm = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
+		//dm = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
+		dm = dmall[ilink];
 		delta = 0.0;
+		ilink++;
 	      }
 
 	      for (ia = 0; ia < 3; ia++) {
@@ -332,8 +529,17 @@ static void bounce_back_pass1() {
 	/* Next cell */
       }
 
+
   return;
+
+  free(findexall);
+  free(linktype);
+  free(dmall);
+  free(dm_aall);
+  free(deltaall);
+
 }
+
 
 
 /*****************************************************************************
@@ -380,6 +586,55 @@ static void bounce_back_pass2() {
     }
   }
 
+  int ilink=0;
+
+  int N[3];
+  coords_nlocal(N);  
+  int nhalo = coords_nhalo();  
+  
+  int nsite=(N[X]+2*nhalo)*(N[X]+2*nhalo)*(N[X]+2*nhalo);
+
+
+  /* count the total number of links */
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+	
+	p_colloid = colloids_cell_list(ic, jc, kc);
+	
+	while (p_colloid != NULL) {
+	
+	  p_link = p_colloid->lnk;
+  
+	  while (p_link != NULL) {
+
+	    if (p_link->status != LINK_UNUSED) 
+	      ilink++;
+	    
+	    p_link = p_link->next;
+   
+	  }
+	  
+	  p_colloid = p_colloid->next;
+	  
+	}
+      }
+    }
+  }
+  
+
+  int nlink=ilink;
+
+  /* allocate memory to store info for each link */
+  int *findexall = (int*) malloc(nlink*sizeof(int)); 
+  int *linktype = (int*) malloc(nlink*sizeof(int)); 
+  double *dfall = (double*) malloc(nlink*sizeof(double)); 
+  double *dgall; 
+  if (distribution_ndist() > 1) 
+    dgall = (double*) malloc(nlink*sizeof(double)); 
+  double *dmall = (double*) malloc(nlink*sizeof(double)); 
+  
+  ilink=0;
   for (ic = 0; ic <= Ncell(X) + 1; ic++)
     for (jc = 0; jc <= Ncell(Y) + 1; jc++)
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
@@ -418,10 +673,18 @@ static void bounce_back_pass2() {
 	    ij = p_link->p;      /* link velocity index i->j */
 	    ji = NVEL - ij;      /* link velocity index j->i */
 
+
+	    if (p_link->status != LINK_UNUSED) {
+	      findexall[ilink]=ij*nsite+i;		
+	      linktype[ilink]=p_link->status;
+	    }
+
 	    if (p_link->status == LINK_FLUID) {
 
-	      dm =  2.0*distribution_f(i, ij, 0)
-		- wv[ij]*p_colloid->deltam; /* minus */
+	      /* this dm calculation is now done below */
+	      //	      dm =  2.0*distribution_f(i, ij, 0)
+	      //  - wv[ij]*p_colloid->deltam; /* minus */
+
 
 	      /* Compute the self-consistent boundary velocity,
 	       * and add the correction term for changes in shape. */
@@ -437,7 +700,7 @@ static void bounce_back_pass2() {
 
 	      /* Contribution to mass conservation from squirmer */
 
-	      df += wv[ij]*p_colloid->sump; 
+	      df += wv[ij]*p_colloid->sump;
 
 	      dg = phi_get_phi_site(i)*vdotc;
 	      p_colloid->s.deltaphi += dg;
@@ -449,30 +712,151 @@ static void bounce_back_pass2() {
 
 	      /* The outside site actually undergoes BBL. */
 
-	      fdist = distribution_f(i, ij, 0);
-	      fdist = fdist - df;
-	      distribution_f_set(j, ji, 0, fdist);
+	      findexall[ilink]=ij*nsite+i;
 
-	      /* This is slightly clunky. If the order parameter is
-	       * via LB, bounce back with correction. */
-	      if (distribution_ndist() > 1) {
-		fdist = distribution_f(i, ij, 1);
-		fdist = fdist - dg;
-		distribution_f_set(j, ji, 1, fdist);
-	      }
-
-	      /* The stress is r_b f_b */
-	      for (ia = 0; ia < 3; ia++) {
-		stress_[ia][X] += p_link->rb[X]*(dm - df)*cv[ij][ia];
-		stress_[ia][Y] += p_link->rb[Y]*(dm - df)*cv[ij][ia];
-		stress_[ia][Z] += p_link->rb[Z]*(dm - df)*cv[ij][ia];
-	      }
+	      dfall[ilink]=df;
+	      if (distribution_ndist() > 1) dgall[ilink]=dg;
+	    
+	      ilink++;
 	    }
-	    else if (p_link->status == LINK_COLLOID) {
 
+	    if (p_link->status == LINK_COLLOID || 
+		  p_link->status == LINK_BOUNDARY) {
+	      ilink++;
+	    }
+	    
+	      /* Next link */
+	      p_link = p_link->next;
+
+	  }
+	  
+	  /* Next colloid */
+	  p_colloid = p_colloid->next;
+	}
+	
+	/* Next cell */
+      }
+	
+
+  /* bounce back the links */ 
+
+  #ifdef _GPU_
+  bounce_back_gpu(findexall,linktype,dfall,dgall,dmall,nlink,2);
+  #else
+
+  ilink=0;
+  for (ic = 0; ic <= Ncell(X) + 1; ic++)
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++)
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+	
+	p_colloid = colloids_cell_list(ic, jc, kc);
+	
+	
+	/* Update solid -> fluid links for each colloid in the list */
+	
+	while (p_colloid != NULL) {
+	  
+	  /* Run through the links */
+
+	  p_link = p_colloid->lnk;
+
+	  while (p_link != NULL) {
+
+	    i = p_link->i;       /* index site i (outside) */
+	    j = p_link->j;       /* index site j (inside) */
+	    ij = p_link->p;      /* link velocity index i->j */
+	    ji = NVEL - ij;      /* link velocity index j->i */
+
+	    if (p_link->status == LINK_FLUID) {	      
+	      
+	      fdist = distribution_f(i, ij, 0);
+	      dmall[ilink] = fdist;
+	      fdist = fdist - dfall[ilink];
+	      distribution_f_set(j, ji, 0, fdist);
+	     
+	      ilink++;
+	    }
+
+	    if (p_link->status == LINK_COLLOID){
+	      dmall[ilink] = distribution_f(i, ij, 0) 
+		+ distribution_f(j, ji, 0);
+	      ilink++;
+	    }
+
+	    if (p_link->status == LINK_BOUNDARY) {
+	      ilink++;
+	    }
+
+	      /* Next link */
+	      p_link = p_link->next;	      	   
+	  }
+	  
+	  /* Next colloid */
+	  p_colloid = p_colloid->next;
+	}
+	
+	/* Next cell */
+      }
+   
+#endif
+
+  ilink=0;
+  for (ic = 0; ic <= Ncell(X) + 1; ic++)
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++)
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+	
+	p_colloid = colloids_cell_list(ic, jc, kc);
+	
+	
+	/* Update solid -> fluid links for each colloid in the list */
+	
+	while (p_colloid != NULL) {
+	  
+	  /* Run through the links */
+
+	  p_link = p_colloid->lnk;
+
+	  while (p_link != NULL) {
+
+	    i = p_link->i;       /* index site i (outside) */
+	    j = p_link->j;       /* index site j (inside) */
+	    ij = p_link->p;      /* link velocity index i->j */
+	    ji = NVEL - ij;      /* link velocity index j->i */
+
+	    if (p_link->status == LINK_FLUID) {
+
+	      //dmall[ilink] =  2.0*distribution_f(i, ij, 0)
+	      dm =  2.0*dmall[ilink]
+	        - wv[ij]*p_colloid->deltam; /* minus */
+
+	     
+	    
+	    /* This is slightly clunky. If the order parameter is
+	     * via LB, bounce back with correction. */
+	    if (distribution_ndist() > 1) {
+	      dg=dgall[ilink];
+	      fdist = distribution_f(i, ij, 1);
+	      fdist = fdist - dg;
+	      distribution_f_set(j, ji, 1, fdist);
+	    }
+	    
+	    /* The stress is r_b f_b */
+	    for (ia = 0; ia < 3; ia++) {
+	      stress_[ia][X] += p_link->rb[X]*(dm - dfall[ilink])*cv[ij][ia];
+	      stress_[ia][Y] += p_link->rb[Y]*(dm - dfall[ilink])*cv[ij][ia];
+	      stress_[ia][Z] += p_link->rb[Z]*(dm - dfall[ilink])*cv[ij][ia];
+	    }
+	    ilink++;
+
+	  }
+	  else if (p_link->status == LINK_COLLOID) {
+
+	    
 	      /* The stress should include the solid->solid term */
 
-	      dm = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
+	      //dm = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
+	    dm = dmall[ilink];
+	    ilink++;
 
 	      for (ia = 0; ia < 3; ia++) {
 		stress_[ia][X] += p_link->rb[X]*dm*cv[ij][ia];
@@ -481,8 +865,14 @@ static void bounce_back_pass2() {
 	      }
 	    }
 
+	  else if (p_link->status == LINK_BOUNDARY){
+	    ilink++;
+	  }
+
 	    /* Next link */
 	    p_link = p_link->next;
+	  
+
 	  }
 
 	  /* Reset factors required for change of shape, etc */
@@ -501,10 +891,18 @@ static void bounce_back_pass2() {
 
 	  /* Next colloid */
 	  p_colloid = p_colloid->next;
+
 	}
 
 	/* Next cell */
       }
+
+  free(findexall);
+  free(linktype);
+  free(dmall);
+  free(dfall);
+  if (distribution_ndist() > 1) free(dgall);
+
 
   return;
 }
@@ -719,13 +1117,11 @@ static void update_colloids() {
     }
   }
 
-  /* As the lubrication force is based on the updated velocity, but
-   * the old position, we can account for the total momentum here. */
-
   bbl_wall_lubrication_account();
 
   return;
 }
+
 
 /*****************************************************************************
  *
@@ -767,6 +1163,7 @@ static int bbl_wall_lubrication_account(void) {
 
   return 0;
 }
+
 
 /*****************************************************************************
  *

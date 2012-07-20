@@ -267,6 +267,11 @@ void ludwig_run(const char * inputfile) {
     hydrodynamics_zero_force();
     COLL_update();
 
+#ifdef _GPU_
+    put_phi_on_gpu();
+    put_site_map_on_gpu();
+#endif
+
     /* Collision stage */
 
     if (phi_nop()) {
@@ -389,6 +394,9 @@ void ludwig_run(const char * inputfile) {
     }
     else {
       TIMER_start(TIMER_BBL);
+#ifdef _GPU_
+      get_phi_from_gpu();
+#endif
       wall_update();
       bounce_back_on_links();
       wall_bounce_back();

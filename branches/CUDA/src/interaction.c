@@ -50,6 +50,10 @@
 #include "colloids_init.h"
 #include "ewald.h"
 
+#ifdef _GPU_
+#include "interface_gpu.h"
+#endif
+
 static void colloid_forces_overlap(colloid_t *, colloid_t *);
 static void colloid_forces_fluid_gravity_set(void);
 static void colloid_forces_pairwise(double * h, double * e);
@@ -110,8 +114,16 @@ void COLL_update() {
 
     /* Removal or replacement of fluid requires a lattice halo update */
     TIMER_start(TIMER_HALO_LATTICE);
+    #ifdef _GPU_
+    distribution_halo_gpu();
+    #else
     distribution_halo();
+    #endif
     TIMER_stop(TIMER_HALO_LATTICE);
+
+#ifdef _GPU_
+    get_f_from_gpu();  
+#endif
 
     TIMER_start(TIMER_REBUILD);
     COLL_update_map();
@@ -121,7 +133,14 @@ void COLL_update() {
     TIMER_stop(TIMER_REBUILD);
 
     colloid_forces();
+
+#ifdef _GPU_
+  put_f_on_gpu();  
+#endif
+
   }
+
+
 
   return;
 }

@@ -43,8 +43,18 @@ void propagation_gpu() {
   nhalo = coords_nhalo();
   coords_nlocal(N); 
 
+
+  cudaFuncSetCacheConfig(propagate_d3q19_gpu_d,cudaFuncCachePreferL1);
+
   /* copy f to ftmp on accelerator */
   copy_f_to_ftmp_on_gpu();
+  
+  //double *tmpptr=ftmp_d;
+  //ftmp_d=f_d;
+  //f_d=tmpptr;
+
+
+
 
   /* run the kernel */
   if (NVEL == 9){
@@ -116,6 +126,8 @@ __global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
     
       for (n = 0; n < ndist; n++) {
 	
+	//fnew_d[0*pstr+n*nsite+index]=fold_d[0*pstr+n*nsite+index];
+
 	/* Distributions moving forward in memory. */
 
 	fnew_d[9*pstr+n*nsite+index]=fold_d[9*pstr+n*nsite+index+                    (-1)];
