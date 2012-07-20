@@ -21,4 +21,11 @@ void phi_init_drop(double r, double xi0);
 void phi_lb_init_drop(double r, double xi0);
 void phi_lb_coupler_phi_set(const int index, const double phi);
 
+#ifdef OLD_PHI
+#else
+#include "field.h"
+int phi_lb_to_field(field_t * phi);
+int phi_lb_from_field(field_t * phi);
+#endif
+
 #endif

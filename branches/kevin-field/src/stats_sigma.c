@@ -22,7 +22,13 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
+#else
+#include "field.h"
+#endif
+
 #include "phi_cahn_hilliard.h"
 #include "phi_lb_coupler.h"
 #include "symmetric.h"
@@ -239,7 +245,12 @@ static void stats_sigma_find_drop(drop_t * drop) {
 
         index = coords_index(ic, jc, kc);
 
+#ifdef OLD_PHI
         phi = phi_get_phi_site(index);
+#else
+	assert(0);
+	/* update interface */
+#endif
 
         if (phi <= 0.0) {
           c[X] += 1.0*(noffset[X] + ic);
@@ -295,7 +306,12 @@ static void stats_sigma_find_radius(drop_t * drop) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
         phi0 = phi_get_phi_site(index);
+#else
+	assert(0);
+	/* update interface */
+#endif
 
         /* Look around at the neighbours */
 
@@ -307,8 +323,12 @@ static void stats_sigma_find_radius(drop_t * drop) {
 	      if (!(ip || jp || kp)) continue;
 
               index = coords_index(ip, jp, kp);
+#ifdef OLD_PHI
               phi1 = phi_get_phi_site(index);
-
+#else
+	      assert(0);
+	      /* sort interface*/
+#endif
 	      /* Look for change in sign */
 
               if (phi0 < 0.0 && phi1 > 0.0) {
@@ -407,7 +427,12 @@ static void stats_sigma_find_xi0(drop_t * drop) {
         n = (r0 - rmin)/dr;
 
         if (n >= 0 && n < NBIN) {
+#ifdef OLD_PHI
           phir_local[n] += phi_get_phi_site(index);
+#else
+	  assert(0);
+	  /* sort interface */
+#endif
           nphi_local[n] += 1;
         }
 

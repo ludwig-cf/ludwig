@@ -20,4 +20,19 @@ void phi_stats_print_stats(void);
 void phi_init_block(const double xi0);
 void phi_init_bath(void);
 void phi_init_surfactant(double);
+
+#ifdef OLD_PHI
+#else
+#include <mpi.h>
+
+#include <field.h>
+
+int stats_field_info(field_t * obj);
+int stats_field_reduce(field_t * obj, double * fmin, double * fmax,
+		       double * fsum, double * fvar, double * fvol,
+		       int rank, MPI_Comm comm);
+int stats_field_local(field_t * obj, double * fmin, double * fmax,
+		      double * fsum, double * fvar, double * fvol);
+#endif
+
 #endif

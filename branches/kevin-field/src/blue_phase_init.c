@@ -24,9 +24,17 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
+#else
+#include "field.h"
+#include "field_grad.h"
+#endif
+
 #include "blue_phase.h"
 #include "blue_phase_init.h"
+
 #include "ran.h"
 
 static double amplitude0_ = 0.0; /* Magnitude of order (initial) */
@@ -109,7 +117,12 @@ void blue_phase_O8M_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 
       }
     }
@@ -160,7 +173,12 @@ void blue_phase_O2_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 
       }
     }
@@ -213,7 +231,12 @@ void blue_phase_H2D_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 
       }
     }
@@ -270,7 +293,12 @@ void blue_phase_H3DA_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 
       }
     }
@@ -327,7 +355,12 @@ void blue_phase_H3DB_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 
       }
     }
@@ -394,7 +427,12 @@ void blue_phase_O5_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 
       }
     }
@@ -444,7 +482,12 @@ void blue_phase_DTC_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 
       }
     }
@@ -556,7 +599,13 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	}
 
 	index = coords_index(ic, jc, kc);
+
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 
       }
     }
@@ -633,7 +682,13 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	      q[Z][Z] = - q[X][X] - q[Y][Y];
 
 	      index = coords_index(ir, jr, kr);
+
+#ifdef OLD_PHI
 	      phi_set_q_tensor(index, q);
+#else
+	      field_t * test_object = NULL;
+	      field_tensor_set(test_object, index, q);
+#endif
 	    }
 
 	  }
@@ -643,8 +698,12 @@ void blue_phase_BPIII_init(const double specs[3]) {
     }
 
   }
-
+#ifdef OLD_PHI
   phi_halo();
+#else
+  assert(0);
+  /* this halo swap should not be here / not be necessary at all! */
+#endif
 
   free(a);
   free(b);
@@ -715,7 +774,13 @@ void blue_phase_twist_init(const int helical_axis) {
 	}
 
 	blue_phase_q_uniaxial(amplitude0_, n, q);
+
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
       }
     }
   }
@@ -757,7 +822,12 @@ void blue_phase_nematic_init(const double n[3]) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
       }
     }
   }
@@ -803,7 +873,12 @@ void blue_phase_chi_edge(int N, double z0, double x0) {
 	n[Z] = 0.0;
 
 	blue_phase_q_uniaxial(amplitude0_, n, q);
+#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
       }
     }
   }
@@ -855,7 +930,13 @@ void blue_set_random_q_init(void) {
 	  n[Z] = cos(phase2);
 
 	  blue_phase_q_uniaxial(amplitude0_, n, q);
-	  phi_set_q_tensor(index, q);
+
+#ifdef OLD_PHI
+	phi_set_q_tensor(index, q);
+#else
+	field_t * test_object = NULL;
+	field_tensor_set(test_object, index, q);
+#endif
 	}
       }
     }
@@ -916,7 +997,12 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 		n[Z] = cos(phase2);
 
 		blue_phase_q_uniaxial(a0, n, q);
+#ifdef OLD_PHI
 		phi_set_q_tensor(index, q);
+#else
+		field_t * test_object = NULL;
+		field_tensor_set(test_object, index, q);
+#endif
 	      }
 	  }
       }

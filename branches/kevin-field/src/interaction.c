@@ -90,9 +90,13 @@ struct lubrication_struct {
  *
  *****************************************************************************/
 
-void COLL_update() {
+int COLL_update(hydro_t * hydro) {
 
-  if (colloid_ntotal() == 0) return;
+  int is_subgrid = 0;
+
+  if (colloid_ntotal() == 0) return 0;
+
+  subgrid_on(&is_subgrid);
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
@@ -102,9 +106,9 @@ void COLL_update() {
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
-  if (subgrid_on()) {
+  if (is_subgrid) {
     colloid_forces();
-    subgrid_force_from_particles();
+    subgrid_force_from_particles(hydro);
   }
   else {
 
@@ -123,7 +127,7 @@ void COLL_update() {
     colloid_forces();
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -232,10 +236,20 @@ void COLL_init() {
       RUN_get_double_parameter("colloid_random_b2", &state0->b2);
       RUN_get_double_parameter("colloid_random_dh", &dh);
 
+      RUN_get_int_parameter("colloid_random_isfixedr", &state0->isfixedr);
+      RUN_get_int_parameter("colloid_random_isfixedv", &state0->isfixedv);
+
+      RUN_get_double_parameter("colloid_random_q0", &state0->q0);
+      RUN_get_double_parameter("colloid_random_q1", &state0->q1);
+      RUN_get_double_parameter("colloid_random_epsilon", &state0->epsilon);
+
       colloids_init_random(n, state0, dh);
       ncheck = colloid_ntotal();
       info("Requested   %d colloid%s from input\n", n, (n > 1) ? "s" : "");
       info("Initialised %d colloid%s\n", ncheck, (ncheck == 1) ? "" : "s");
+      info("Colloid  radius a0 = %le\n", state0->a0);
+      info("Hydrodyn radius ah = %le\n", state0->ah);
+      info("Colloid charges q0 = %le    q1 = %le\n", state0->q0, state0->q1);
 
       free(state0);
     }
@@ -265,9 +279,11 @@ void COLL_init() {
     /* Active */
     RUN_get_string_parameter("colloid_type", keyvalue, 128);
     if (strcmp(keyvalue, "active") == 0) bbl_active_on_set();
-    if (strcmp(keyvalue, "subgrid") == 0) subgrid_on_set();
 
-    if (subgrid_on() == 0) {
+    if (strcmp(keyvalue, "subgrid") == 0) {
+      subgrid_on_set();
+    }
+    else  {
       COLL_update_map();
       COLL_update_links();
     }
@@ -814,17 +830,19 @@ void coll_position_update(void) {
 
 	  while (p_colloid) {
 
-	    ifail = 0;
-	    for (ia = 0; ia < 3; ia++) {
-	      if (p_colloid->s.dr[ia] > drmax[ia]) ifail = 1;
-	      p_colloid->s.r[ia] += p_colloid->s.dr[ia];
-	    }
+	    if (p_colloid->s.isfixedr == 0) {
+	      ifail = 0;
+	      for (ia = 0; ia < 3; ia++) {
+		if (p_colloid->s.dr[ia] > drmax[ia]) ifail = 1;
+		p_colloid->s.r[ia] += p_colloid->s.dr[ia];
+	      }
 
-	    if (ifail == 1) {
-	      verbose("Colloid velocity exceeded maximum %7.3f %7.3f %7.3f\n",
-		      drmax[X], drmax[Y], drmax[Z]);
-	      colloid_state_write_ascii(p_colloid->s, stdout);
-	      fatal("Stopping\n");
+	      if (ifail == 1) {
+		verbose("Colloid velocity exceeded max %7.3f %7.3f %7.3f\n",
+			drmax[X], drmax[Y], drmax[Z]);
+		colloid_state_write_ascii(p_colloid->s, stdout);
+		fatal("Stopping\n");
+	      }
 	    }
 
 	    p_colloid = p_colloid->next;

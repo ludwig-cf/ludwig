@@ -24,5 +24,14 @@ double brazovskii_chemical_potential(const int index, const int nop);
 double brazovskii_isotropic_pressure(const int index);
 void   brazovskii_chemical_stress(const int index, double s[3][3]);
 
+#ifdef OLD_PHI
+#else
+#include "field.h"
+#include "field_grad.h"
+
+int brazovskii_phi_set(field_t * phi, field_grad_t * phi_grad);
+
+#endif
+
 #endif
 

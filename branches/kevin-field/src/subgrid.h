@@ -15,9 +15,11 @@
 #ifndef SUBGRID_H
 #define SUBGRID_H
 
-void subgrid_update(void);
-void subgrid_force_from_particles(void);
-void subgrid_on_set(void);
-int  subgrid_on(void);
+#include "hydro.h"
+
+int subgrid_update(hydro_t * hydro);
+int subgrid_force_from_particles(hydro_t * hydro);
+int subgrid_on_set(void);
+int subgrid_on(int * flag);
 
 #endif

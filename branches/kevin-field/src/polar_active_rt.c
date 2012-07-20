@@ -21,8 +21,15 @@
 #include "pe.h"
 #include "runtime.h"
 #include "coords.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
 #include "phi_gradients.h"
+#else
+#include "field.h"
+#include "field_grad.h"
+#endif
+
 #include "io_harness.h"
 #include "free_energy_vector.h"
 #include "polar_active.h"
@@ -51,9 +58,18 @@ void polar_active_run_time(void) {
 
   /* Vector order parameter (nop = 3) and del^2 required. */
 
+  info("Polar active free energy selected.\n");
+
+#ifdef OLD_PHI
   phi_nop_set(3);
   phi_gradients_level_set(2);
   coords_nhalo_set(2);
+
+  info("Vector order parameter nop = 3\n");
+  info("Requires up to del^2 derivatives so setting nhalo = 2\n");
+#else
+  /* ok */
+#endif
 
   /* PARAMETERS */
 
@@ -65,13 +81,6 @@ void polar_active_run_time(void) {
   n = RUN_get_double_parameter("polar_active_klc", &klc);
   n = RUN_get_double_parameter("polar_active_zeta", &zeta);
   n = RUN_get_double_parameter("polar_active_lambda", &lambda);
-
-  info("Polar active free energy selected.\n");
-  info("Vector order parameter nop = 3\n");
-  info("Requires up to del^2 derivatives so setting nhalo = 2\n");
-
-  phi_gradients_dyadic_set(1);
-  info("Requires dyadic term in gradients\n");
 
   info("\n");
 
@@ -104,17 +113,23 @@ void polar_active_run_time(void) {
 void polar_active_rt_initial_conditions(void) {
 
   char key[FILENAME_MAX];
-
-  assert(phi_nop() == 3);
+  io_info_t * iohandler = NULL;
 
   RUN_get_string_parameter("polar_active_initialisation", key, FILENAME_MAX);
 
   if (strcmp(key, "from_file") == 0) {
+#ifdef OLD_PHI
+    phi_io_info(&iohandler);
+    assert(iohandler);
     info("Initial polar order parameter requested from file\n");
     info("Reading with serial file stub phi-init\n");
-    io_info_set_processor_independent(io_info_phi);
-    io_read("phi-init", io_info_phi);
-    io_info_set_processor_dependent(io_info_phi);
+    io_info_set_processor_independent(iohandler);
+    io_read("phi-init", iohandler);
+    io_info_set_processor_dependent(iohandler);
+#else
+    assert(0);
+    /* Read from file */
+#endif
   }
 
   if (strcmp(key, "from_code") == 0) {
@@ -160,7 +175,14 @@ static void polar_active_rt_init(void) {
         p[Y] = 0.0;
         p[Z] = 0.0; 
 
+#ifdef OLD_PHI
         phi_vector_set(index, p);
+#else
+	assert(0);
+	/* Set up field */
+	field_t * test_object = NULL;
+	field_vector_set(test_object, index, p);
+#endif
       }
     }
   }

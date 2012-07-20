@@ -33,7 +33,6 @@ static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
 static void mass_conservation_compute_force(void);
 static void update_colloids(void);
-static  int bbl_wall_lubrication_account(void);
 
 static int bbl_active_ = 0;  /* Flag for active particles. */
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
@@ -208,8 +207,8 @@ static void bounce_back_pass1() {
 	      /* ignore */
 	    }
 	    else {
-	      i = p_link->i;        /* index site i (outside) */
-	      j = p_link->j;        /* index site j (inside) */
+	      i = p_link->i;        /* index site i (inside) */
+	      j = p_link->j;        /* index site j (outside) */
 	      ij = p_link->p;       /* link velocity index i->j */
 	      ji = NVEL - ij;      /* link velocity index j->i */
 
@@ -438,8 +437,12 @@ static void bounce_back_pass2() {
 	      /* Contribution to mass conservation from squirmer */
 
 	      df += wv[ij]*p_colloid->sump; 
-
+#ifdef OLD_PHI
 	      dg = phi_get_phi_site(i)*vdotc;
+#else
+	      assert(0);
+	      /* Can we get rid of this dependency? */
+#endif
 	      p_colloid->s.deltaphi += dg;
 	      dg -= wv[ij]*dgtm1;
 
@@ -719,53 +722,7 @@ static void update_colloids() {
     }
   }
 
-  /* As the lubrication force is based on the updated velocity, but
-   * the old position, we can account for the total momentum here. */
-
-  bbl_wall_lubrication_account();
-
   return;
-}
-
-/*****************************************************************************
- *
- *  bbl_wall_lubrication_account
- *
- *  This just updates the accounting for the total momentum when a
- *  wall lubrication force is present. There is no change to the
- *  dynamics.
- *
- *  The minus sign in the force is consistent with the sign returned
- *  by wall_lubrication().
- *
- *****************************************************************************/
-
-static int bbl_wall_lubrication_account(void) {
-
-  int ic, jc, kc, ia;
-  double f[3] = {0.0, 0.0, 0.0};
-
-  colloid_t * pc = NULL;
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	pc = colloids_cell_list(ic, jc, kc);
-
-	while (pc) {
-	  for (ia = 0; ia < 3; ia++) {
-	    f[ia] -= pc->s.v[ia]*wall_lubrication(ia, pc->s.r, pc->s.ah);
-	  }
-	  pc = pc->next;
-	}
-      }
-    }
-  }
-
-  wall_accumulate_force(f);
-
-  return 0;
 }
 
 /*****************************************************************************

@@ -34,9 +34,10 @@
 #include "leesedwards.h"
 #include "advection.h"
 #include "advection_bcs.h"
-#include "lattice.h"
 #include "free_energy.h"
 #include "phi_fluctuations.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
 
 extern double * phi_site;
@@ -44,14 +45,21 @@ static double * fluxe;
 static double * fluxw;
 static double * fluxy;
 static double * fluxz;
+#else
+#include "field.h"
+#endif
 
-static void phi_ch_diffusive_flux(void);
-static void phi_ch_update_forward_step(void);
-static void phi_ch_le_fix_fluxes(void);
-static void phi_ch_le_fix_fluxes_parallel(void);
-static void phi_ch_random_flux(void);
+static void phi_ch_diffusive_flux(double * fe, double * fw, double * fy,
+				  double * fz);
+static void phi_ch_update_forward_step(double * fe, double * fw, double * fy,
+				       double * fz);
+static void phi_ch_le_fix_fluxes(int nf, double * fe, double * fw);
+static void phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw);
+static void phi_ch_random_flux(double * fe, double * fw, double * fy,
+			       double * fz);
 
-static void phi_ch_diffusive_flux_noise(void);
+static void phi_ch_diffusive_flux_noise(double * fe, double * fw, double * fy,
+					double * fz);
 
 static double mobility_  = 0.0; /* Order parameter mobility */
 
@@ -67,50 +75,90 @@ static double mobility_  = 0.0; /* Order parameter mobility */
  *  cell must be handled spearately to take account of Lees Edwards
  *  boundaries.
  *
+ *  hydro is allowed to be NULL, in which case the dynamics is
+ *  just relaxational (no velocity field).
+ *
  *****************************************************************************/
 
-void phi_cahn_hilliard() {
+int phi_cahn_hilliard(hydro_t * hydro) {
 
   int nsites;
 
+#ifdef OLD_PHI
   /* Single order parameter only */
   assert(phi_nop() == 1);
 
   nsites = coords_nsites();
 
-  fluxe = (double *) malloc(nsites*sizeof(double));
-  fluxw = (double *) malloc(nsites*sizeof(double));
-  fluxy = (double *) malloc(nsites*sizeof(double));
-  fluxz = (double *) malloc(nsites*sizeof(double));
-  if (fluxe == NULL) fatal("malloc(fluxe) failed");
-  if (fluxw == NULL) fatal("malloc(fluxw) failed");
-  if (fluxy == NULL) fatal("malloc(fluxy) failed");
-  if (fluxz == NULL) fatal("malloc(fluxz) failed");
+  fluxe = calloc(nsites, sizeof(double));
+  fluxw = calloc(nsites, sizeof(double));
+  fluxy = calloc(nsites, sizeof(double));
+  fluxz = calloc(nsites, sizeof(double));
+  if (fluxe == NULL) fatal("calloc(fluxe) failed");
+  if (fluxw == NULL) fatal("calloc(fluxw) failed");
+  if (fluxy == NULL) fatal("calloc(fluxy) failed");
+  if (fluxz == NULL) fatal("calloc(fluxz) failed");
 
-  hydrodynamics_halo_u();
-  hydrodynamics_leesedwards_transformation();
-
-  advection_order_n(fluxe, fluxw, fluxy, fluxz);
+  if (hydro) {
+    hydro_u_halo(hydro);
+    hydro_lees_edwards(hydro);
+    advection_order_n(hydro, fluxe, fluxw, fluxy, fluxz);
+  }
 
   if (phi_fluctuations_on()) {
-    phi_ch_diffusive_flux_noise();
+    phi_ch_diffusive_flux_noise(fluxe, fluxw, fluxy, fluxz);
   }
   else {
-    phi_ch_diffusive_flux();
+    phi_ch_diffusive_flux(fluxe, fluxw, fluxy, fluxz);
   }
 
+  /* No flux boundaries (diffusive fluxes, and hydro, if present) */
   advection_bcs_wall();
-  if (phi_fluctuations_on()) phi_ch_random_flux();
 
-  phi_ch_le_fix_fluxes();
-  phi_ch_update_forward_step();
+  if (phi_fluctuations_on()) phi_ch_random_flux(fluxe, fluxw, fluxy, fluxz);
+
+  phi_ch_le_fix_fluxes(phi_nop(), fluxe, fluxw);
+  phi_ch_update_forward_step(fluxe, fluxw, fluxy, fluxz);
 
   free(fluxz);
   free(fluxy);
   free(fluxw);
   free(fluxe);
+#else
 
-  return;
+  advflux_t * fluxes = NULL;
+  field_t * test_object = NULL;
+
+  assert(0); /* Sort me out */
+
+  if (hydro) {
+    hydro_u_halo(hydro);
+    hydro_lees_edwards(hydro);
+    advection_x(fluxes, hydro, test_object);
+  }
+
+  if (phi_fluctuations_on()) {
+    assert(0);
+    /* phi_ch_diffusive_flux_noise();*/
+  }
+  else {
+    assert(0);
+    /* phi_ch_diffusive_flux();*/
+  }
+
+  /* No flux boundaries (diffusive fluxes, and hydro, if present) */
+  assert(0);
+  /* advection_bcs_wall();*/
+
+  assert(0);
+  /* if (phi_fluctuations_on()) phi_ch_random_flux();*/
+
+  assert(0);
+  /*phi_ch_le_fix_fluxes();
+    phi_ch_update_forward_step();*/
+#endif
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -149,7 +197,8 @@ void phi_cahn_hilliard_mobility_set(const double m) {
  *
  *****************************************************************************/
 
-static void phi_ch_diffusive_flux(void) {
+static void phi_ch_diffusive_flux(double * fe, double * fw, double * fy,
+				  double * fz) {
 
   int nlocal[3];
   int ic, jc, kc;
@@ -178,25 +227,25 @@ static void phi_ch_diffusive_flux(void) {
 
 	index1 = le_site_index(icm1, jc, kc);
 	mu1 = chemical_potential(index1, 0);
-	fluxw[index0] -= mobility_*(mu0 - mu1);
+	fw[index0] -= mobility_*(mu0 - mu1);
 
 	/* ...and between ic and ic+1 */
 
 	index1 = le_site_index(icp1, jc, kc);
 	mu1 = chemical_potential(index1, 0);
-	fluxe[index0] -= mobility_*(mu1 - mu0);
+	fe[index0] -= mobility_*(mu1 - mu0);
 
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
 	mu1 = chemical_potential(index1, 0);
-	fluxy[index0] -= mobility_*(mu1 - mu0);
+	fy[index0] -= mobility_*(mu1 - mu0);
 
 	/* z direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
 	mu1 = chemical_potential(index1, 0);
-	fluxz[index0] -= mobility_*(mu1 - mu0);
+	fz[index0] -= mobility_*(mu1 - mu0);
 
 	/* Next site */
       }
@@ -224,7 +273,8 @@ static void phi_ch_diffusive_flux(void) {
  *
  *****************************************************************************/
 
-static void phi_ch_diffusive_flux_noise(void) {
+static void phi_ch_diffusive_flux_noise(double * fe, double * fw, double * fy,
+					double * fz) {
 
   int nhalo;
   int nlocal[3];
@@ -258,11 +308,11 @@ static void phi_ch_diffusive_flux_noise(void) {
 
 	/* x-direction (between ic-1 and ic) */
 
-	fluxw[index0] -= 0.25*mobility_*(mup1 + mu00 - mum1 - mum2);
+	fw[index0] -= 0.25*mobility_*(mup1 + mu00 - mum1 - mum2);
 
 	/* ...and between ic and ic+1 */
 
-	fluxe[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
+	fe[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
 
 	/* y direction between jc and jc+1 */
 
@@ -270,14 +320,14 @@ static void phi_ch_diffusive_flux_noise(void) {
 	mup1 = chemical_potential(index0 + 1*ys, 0);
 	mup2 = chemical_potential(index0 + 2*ys, 0);
 
-	fluxy[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
+	fy[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
 
 	/* z direction between kc and kc+1 */
 
 	mum1 = chemical_potential(index0 - 1*zs, 0);
 	mup1 = chemical_potential(index0 + 1*zs, 0);
 	mup2 = chemical_potential(index0 + 2*zs, 0);
-	fluxz[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
+	fz[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
 
 	/* Next site */
       }
@@ -296,7 +346,8 @@ static void phi_ch_diffusive_flux_noise(void) {
  *
  *****************************************************************************/
 
-static void phi_ch_random_flux(void) {
+static void phi_ch_random_flux(double * fe, double * fw, double * fy,
+			       double * fz) {
 
   int ic, jc, kc, index0, index1;
   int nsites;
@@ -327,20 +378,20 @@ static void phi_ch_random_flux(void) {
 	/* x-direction */
 
 	index1 = coords_index(ic-1, jc, kc);
-	fluxw[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
+	fw[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
 
 	index1 = coords_index(ic+1, jc, kc);
-	fluxe[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
+	fe[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
 
 	/* y direction */
 
 	index1 = coords_index(ic, jc+1, kc);
-	fluxy[index0] += 0.5*(rflux[3*index0 + Y] + rflux[3*index1 + Y]);
+	fy[index0] += 0.5*(rflux[3*index0 + Y] + rflux[3*index1 + Y]);
 
 	/* z direction */
 
 	index1 = coords_index(ic, jc, kc+1);
-	fluxz[index0] += 0.5*(rflux[3*index0 + Z] + rflux[3*index1 + Z]);
+	fz[index0] += 0.5*(rflux[3*index0 + Z] + rflux[3*index1 + Z]);
       }
     }
   }
@@ -366,9 +417,8 @@ static void phi_ch_random_flux(void) {
  *
  *****************************************************************************/
 
-static void phi_ch_le_fix_fluxes(void) {
+static void phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 
-  int nop;
   int nlocal[3]; /* Local system size */
   int ip;        /* Index of the plane */
   int ic;        /* Index x location in real system */
@@ -389,15 +439,14 @@ static void phi_ch_le_fix_fluxes(void) {
 
   if (cart_size(Y) > 1) {
     /* Parallel */
-    phi_ch_le_fix_fluxes_parallel();
+    phi_ch_le_fix_fluxes_parallel(nf, fe, fw);
   }
   else {
     /* Can do it directly */
 
-    nop = phi_nop();
     coords_nlocal(nlocal);
 
-    nbuffer = nop*nlocal[Y]*nlocal[Z];
+    nbuffer = nf*nlocal[Y]*nlocal[Z];
     buffere = (double *) malloc(nbuffer*sizeof(double));
     bufferw = (double *) malloc(nbuffer*sizeof(double));
     if (buffere == NULL) fatal("malloc(buffere) failed\n");
@@ -424,10 +473,10 @@ static void phi_ch_le_fix_fluxes(void) {
 	j2 = 1 + j1 % nlocal[Y];
 
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nop; n++) {
-	    index = nop*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-	    bufferw[index] = fr*fluxw[nop*le_site_index(ic+1,j1,kc) + n]
-	      + (1.0-fr)*fluxw[nop*le_site_index(ic+1,j2,kc) + n];
+	  for (n = 0; n < nf; n++) {
+	    index = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+	    bufferw[index] = fr*fw[nf*le_site_index(ic+1,j1,kc) + n]
+	      + (1.0-fr)*fw[nf*le_site_index(ic+1,j2,kc) + n];
 	  }
 	}
       }
@@ -446,10 +495,10 @@ static void phi_ch_le_fix_fluxes(void) {
 	j2 = 1 + j1 % nlocal[Y];
 
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nop; n++) {
-	    index = nop*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-	    buffere[index] = fr*fluxe[nop*le_site_index(ic,j1,kc) + n]
-	      + (1.0-fr)*fluxe[nop*le_site_index(ic,j2,kc) + n];
+	  for (n = 0; n < nf; n++) {
+	    index = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+	    buffere[index] = fr*fe[nf*le_site_index(ic,j1,kc) + n]
+	      + (1.0-fr)*fe[nf*le_site_index(ic,j2,kc) + n];
 	  }
 	}
       }
@@ -458,12 +507,12 @@ static void phi_ch_le_fix_fluxes(void) {
 
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nop; n++) {
-	    index = nop*le_site_index(ic,jc,kc) + n;
-	    index1 = nop*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-	    fluxe[index] = 0.5*(fluxe[index] + bufferw[index1]);
-	    index = nop*le_site_index(ic+1,jc,kc) + n;
-	    fluxw[index] = 0.5*(fluxw[index] + buffere[index1]);
+	  for (n = 0; n < nf; n++) {
+	    index = nf*le_site_index(ic,jc,kc) + n;
+	    index1 = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+	    fe[index] = 0.5*(fe[index] + bufferw[index1]);
+	    index = nf*le_site_index(ic+1,jc,kc) + n;
+	    fw[index] = 0.5*(fw[index] + buffere[index1]);
 	  }
 	}
       }
@@ -487,9 +536,8 @@ static void phi_ch_le_fix_fluxes(void) {
  *
  *****************************************************************************/
 
-static void phi_ch_le_fix_fluxes_parallel(void) {
+static void phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
-  int      nop;
   int      nhalo;
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
@@ -515,7 +563,6 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 
   int get_step(void);
 
-  nop = phi_nop();
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -524,7 +571,7 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 
   /* Allocate the temporary buffer */
 
-  n = nop*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo);
+  n = nf*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo);
   buffere = (double *) malloc(n*sizeof(double));
   bufferw = (double *) malloc(n*sizeof(double));
   if (buffere == NULL) fatal("malloc(buffere) failed\n");
@@ -566,17 +613,17 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
     assert(j2 > 0);
     assert(j2 <= nlocal[Y]);
 
-    n1 = nop*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
-    n2 = nop*j2*(nlocal[Z] + 2*nhalo);
+    n1 = nf*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = nf*j2*(nlocal[Z] + 2*nhalo);
 
     /* Post receives, sends (the wait is later). */
 
     MPI_Irecv(bufferw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
     MPI_Irecv(bufferw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 1);
-    MPI_Issend(fluxw + nop*le_site_index(ic+1,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fw + nf*le_site_index(ic+1,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 2);
-    MPI_Issend(fluxw + nop*le_site_index(ic+1,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fw + nf*le_site_index(ic+1,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 3);
 
 
@@ -603,8 +650,8 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 
     j2 = 1 + (j1 - 1) % nlocal[Y];
 
-    n1 = nop*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
-    n2 = nop*j2*(nlocal[Z] + 2*nhalo);
+    n1 = nf*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = nf*j2*(nlocal[Z] + 2*nhalo);
 
     /* Post new receives, sends, and wait for whole lot to finish. */
 
@@ -612,9 +659,9 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
 	      request + 4);
     MPI_Irecv(buffere+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
 	      request + 5);
-    MPI_Issend(fluxe + nop*le_site_index(ic,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
+    MPI_Issend(fe + nf*le_site_index(ic,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
 	       tag0, le_comm, request + 6);
-    MPI_Issend(fluxe + nop*le_site_index(ic,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
+    MPI_Issend(fe + nf*le_site_index(ic,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
 	       tag1, le_comm, request + 7);
 
     MPI_Waitall(8, request, status);
@@ -627,15 +674,15 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
       j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo);
       j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo);
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	for (n = 0; n < nop; n++) {
-	  fluxe[nop*le_site_index(ic,jc,kc) + n]
-	    = 0.5*(fluxe[nop*le_site_index(ic,jc,kc) + n]
-		   + frw*bufferw[nop*(j1 + kc+nhalo-1) + n]
-		   + (1.0-frw)*bufferw[nop*(j2 + kc+nhalo-1) + n]);
-	  fluxw[nop*le_site_index(ic+1,jc,kc) + n]
-	    = 0.5*(fluxw[nop*le_site_index(ic+1,jc,kc) + n]
-		   + fre*buffere[nop*(j1 + kc+nhalo-1) + n]
-		   + (1.0-fre)*buffere[nop*(j2 + kc+nhalo-1) + n]);
+	for (n = 0; n < nf; n++) {
+	  fe[nf*le_site_index(ic,jc,kc) + n]
+	    = 0.5*(fe[nf*le_site_index(ic,jc,kc) + n]
+		   + frw*bufferw[nf*(j1 + kc+nhalo-1) + n]
+		   + (1.0-frw)*bufferw[nf*(j2 + kc+nhalo-1) + n]);
+	  fw[nf*le_site_index(ic+1,jc,kc) + n]
+	    = 0.5*(fw[nf*le_site_index(ic+1,jc,kc) + n]
+		   + fre*buffere[nf*(j1 + kc+nhalo-1) + n]
+		   + (1.0-fre)*buffere[nf*(j2 + kc+nhalo-1) + n]);
 	}
       }
     }
@@ -664,7 +711,8 @@ static void phi_ch_le_fix_fluxes_parallel(void) {
  *
  *****************************************************************************/
 
-static void phi_ch_update_forward_step() {
+static void phi_ch_update_forward_step(double * fe, double * fw, double * fy,
+				       double * fz) {
 
   int nlocal[3];
   int ic, jc, kc, index;
@@ -684,11 +732,20 @@ static void phi_ch_update_forward_step() {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-
+#ifdef OLD_PHI
 	phi_site[index] -=
-	  (+ fluxe[index] - fluxw[index]
-	   + fluxy[index] - fluxy[index - ys]
-	   + wz*fluxz[index] - wz*fluxz[index - 1]);
+	  (+ fe[index] - fw[index]
+	   + fy[index] - fy[index - ys]
+	   + wz*fz[index] - wz*fz[index - 1]);
+#else
+	field_t * field = NULL;
+	double phi;
+	assert(0);
+	field_scalar(field, index, &phi);
+	phi -= (+ fe[index] - fw[index] + fy[index] - fy[index - ys]
+	   + wz*fz[index] - wz*fz[index - 1]);
+	field_scalar_set(field, index, phi);
+#endif
       }
     }
   }

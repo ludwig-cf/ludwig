@@ -60,5 +60,12 @@ void blue_phase_q_uniaxial(double amplitude, const double n[3], double q[3][3]);
 
 void blue_phase_set_active_region_gamma_zeta(const int index);
 
+#ifdef OLD_PHI
+#else
+#include "field.h"
+#include "field_grad.h"
+int blue_phase_q_set(field_t * q, field_grad_t * dq);
+#endif
+
 #endif
  

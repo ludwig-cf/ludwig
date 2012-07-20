@@ -19,8 +19,15 @@
 #include "pe.h"
 #include "coords.h"
 #include "runtime.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
 #include "phi_gradients.h"
+#else
+#include "field.h"
+#include "field_grad.h"
+#endif
+
 #include "free_energy.h"
 #include "brazovskii.h"
 #include "brazovskii_rt.h"
@@ -41,13 +48,19 @@ void brazovskii_run_time(void) {
 
   /* Single order parameter, del^4 phi required */
 
+  info("Brazovskii free energy selected.\n");
+
+#ifdef OLD_PHI
   phi_nop_set(1);
   phi_gradients_level_set(4);
-  coords_nhalo_set(3);
 
-  info("Brazovskii free energy selected.\n");
+  coords_nhalo_set(3);
   info("Single conserved order parameter nop = 1\n");
   info("Requires up to del^4 derivatives so setting nhalo = %1d\n", 3);
+#else
+  /* Pending move of function stuff? */
+#endif
+ 
   info("\n");
 
   /* Parameters */

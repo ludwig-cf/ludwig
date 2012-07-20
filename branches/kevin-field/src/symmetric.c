@@ -25,14 +25,46 @@
 #include <assert.h>
 #include <math.h>
 
+#ifdef OLD_PHI
 #include "phi.h"
 #include "phi_gradients.h"
+#else
+#include "field.h"
+#include "field_grad.h"
+#endif
+
 #include "util.h"
 #include "symmetric.h"
 
 static double a_     = -0.003125;
 static double b_     = +0.003125;
 static double kappa_ = +0.002;
+
+#ifdef OLD_PHI
+#else
+static field_t * phi_ = NULL;
+static field_grad_t * grad_phi_ = NULL;
+
+/****************************************************************************
+ *
+ *  symmetric_phi_set
+ *
+ *  Attach a reference to the order parameter field object, and the
+ *  associated gradient object.
+ *
+ ****************************************************************************/
+
+int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
+
+  assert(phi);
+  assert(dphi);
+
+  phi_ = phi;
+  grad_phi_ = dphi;
+
+  return 0;
+}
+#endif
 
 /****************************************************************************
  *
@@ -121,8 +153,13 @@ double symmetric_free_energy_density(const int index) {
   double dphi[3];
   double e;
 
+#ifdef OLD_PHI
   phi = phi_get_phi_site(index);
   phi_gradients_grad(index, dphi);
+#else
+  field_scalar(phi_, index, &phi);
+  field_grad_scalar_grad(grad_phi_, index, dphi);
+#endif
 
   e = 0.5*a_*phi*phi + 0.25*b_*phi*phi*phi*phi
 	+ 0.5*kappa_*dot_product(dphi, dphi);
@@ -145,10 +182,15 @@ double symmetric_chemical_potential(const int index, const int nop) {
   double delsq_phi;
   double mu;
 
+#ifdef OLD_PHI
   assert(nop == 0);
 
   phi = phi_get_phi_site(index);
   delsq_phi = phi_gradients_delsq(index);
+#else
+  field_scalar(phi_, index, &phi);
+  field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
+#endif
 
   mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi;
 
@@ -170,9 +212,15 @@ double symmetric_isotropic_pressure(const int index) {
   double grad_phi[3];
   double p0;
 
+#ifdef OLD_PHI
   phi = phi_get_phi_site(index);
   phi_gradients_grad(index, grad_phi);
   delsq_phi = phi_gradients_delsq(index);
+#else
+  field_scalar(phi_, index, &phi);
+  field_grad_scalar_grad(grad_phi_, index, grad_phi);
+  field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
+#endif
 
   p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
     - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
@@ -200,9 +248,15 @@ void symmetric_chemical_stress(const int index, double s[3][3]) {
   double grad_phi[3];
   double p0;
 
+#ifdef OLD_PHI
   phi = phi_get_phi_site(index);
   phi_gradients_grad(index, grad_phi);
   delsq_phi = phi_gradients_delsq(index);
+#else
+  field_scalar(phi_, index, &phi);
+  field_grad_scalar_grad(grad_phi_, index, grad_phi);
+  field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
+#endif
 
   p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
     - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);

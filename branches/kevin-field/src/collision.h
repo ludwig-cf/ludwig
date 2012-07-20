@@ -15,9 +15,11 @@
 #ifndef COLLISION_H
 #define COLLISION_H
 
+#include "hydro.h"
+
 enum relaxation {RELAXATION_M10, RELAXATION_BGK, RELAXATION_TRT};
 
-void collide(void);
+int collide(hydro_t * hydro);
 void test_isothermal_fluctuations(void);
 
 void collision_ghost_modes_on(void);

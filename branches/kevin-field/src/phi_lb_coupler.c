@@ -29,6 +29,85 @@
 
 extern double * phi_site;
 
+#ifdef OLD_PHI
+#else
+/*****************************************************************************
+ *
+ *  phi_lb_to_field
+ *
+ *****************************************************************************/
+
+int phi_lb_to_field(field_t * phi) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  double phi0;
+
+  assert(phi);
+  assert(distribution_ndist() == 2);
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	phi0 = distribution_zeroth_moment(index, 1);
+	field_scalar_set(phi, index, phi0);
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_lb_from_field
+ *
+ *  Move the scalar order parameter into the non-propagating part
+ *  of the distribution, and set other elements of distribution to
+ *  zero.
+ *
+ *****************************************************************************/
+
+int phi_lb_from_field(field_t * phi) {
+
+  int p;
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  double phi0;
+
+  assert(phi);
+  assert(distribution_ndist() == 2);
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	field_scalar(phi, index, &phi0);
+
+	distribution_f_set(index, p, 0, phi0);
+	for (p = 1; p < NVEL; p++) {
+	  distribution_f_set(index, p, 1, 0.0);
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+#endif
+
 /*****************************************************************************
  *
  *  phi_lb_coupler_phi_set
@@ -43,7 +122,12 @@ void phi_lb_coupler_phi_set(const int index, const double phi) {
   int p;
 
   if (distribution_ndist() == 1) {
+#ifdef OLD_PHI
     phi_op_set_phi_site(index, 0, phi);
+#else
+    assert(0);
+    /* set field from argument ALL specific for symmetric */
+#endif
   }
   else {
     assert(distribution_ndist() == 2);
@@ -81,7 +165,12 @@ void phi_compute_phi_site() {
   assert(distribution_ndist() == 2);
 
   coords_nlocal(nlocal);
+#ifdef OLD_PHI
   nop = phi_nop();
+#else
+  assert(0);
+  /* symmtric only nop = 1 */
+#endif
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -89,7 +178,12 @@ void phi_compute_phi_site() {
 
 	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_site[nop*index] = distribution_zeroth_moment(index, 1);
+#else
+	assert(0);
+	/* Set field value from distribution */
+#endif
       }
     }
   }

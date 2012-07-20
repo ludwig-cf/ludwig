@@ -39,7 +39,7 @@ void distribution_run_time(void) {
   char string[FILENAME_MAX];
   char memory = ' '; 
 
-  struct io_info_t * io_info;
+  io_info_t * io_info;
 
   RUN_get_string_parameter("free_energy", string, FILENAME_MAX);
   if (strcmp(string, "symmetric_lb") == 0) distribution_ndist_set(2);
@@ -63,7 +63,6 @@ void distribution_run_time(void) {
   info("-------------------------------\n");
 
   info("Model:            d%dq%d %c\n", NDIM, NVEL, memory);
-  info("SIMD vector len:  %d\n", SIMDVL);
   info("Number of sets:   %d\n", distribution_ndist());
   info("Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
 

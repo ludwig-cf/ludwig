@@ -20,9 +20,10 @@
 #include <stdlib.h>
 
 #include "pe.h"
+#include "hydro.h"
 #include "phi_update.h"
 
-static void (* fp_phi_dynamics_function_)(void) = NULL;
+static int (* fp_phi_dynamics_function_)(hydro_t * hydro) = NULL;
 
 /*****************************************************************************
  *
@@ -30,15 +31,15 @@ static void (* fp_phi_dynamics_function_)(void) = NULL;
  *
  *****************************************************************************/
 
-void phi_update_dynamics(void) {
+int phi_update_dynamics(hydro_t * hydro) {
 
   if (fp_phi_dynamics_function_) {
 
-    fp_phi_dynamics_function_();
+    fp_phi_dynamics_function_(hydro);
 
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -47,10 +48,10 @@ void phi_update_dynamics(void) {
  *
  *****************************************************************************/
 
-void phi_update_set(void (* f)(void)) {
+int phi_update_set(phi_dynamics_update_ft f) {
 
   assert(f);
   fp_phi_dynamics_function_ = f;
 
-  return;
+  return 0;
 }

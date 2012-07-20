@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <float.h>
 #include <mpi.h>
 
 #include "pe.h"
@@ -28,36 +29,14 @@
 #include "psi_s.h"
 
 static const double e_unit_default = 1.0; /* Default unit charge */
-
-psi_t * psi_ = NULL;
+static const double reltol_default = FLT_EPSILON; /* Solver tolerance */
+static const double abstol_default = 0.01*FLT_EPSILON;
 
 static int psi_init_mpi_indexed(psi_t * obj);
-static int psi_read(FILE * fp, const int ic, const int jc, const int kc);
-static int psi_write(FILE * fp, const int ic, const int jc, const int kc);
-static int psi_read_ascii(FILE * fp, const int, const int, const int);
-static int psi_write_ascii(FILE * fp, const int, const int, const int);
-
-/*****************************************************************************
- *
- *  psi_init
- *
- *  Initialise psi_
- *
- *****************************************************************************/
-
-void psi_init(int nk, double * valency, double * diffusivity) {
-
-  int n;
-
-  psi_create(nk, &psi_);
-
-  for (n = 0; n < nk; n++) {
-    psi_valency_set(psi_, n, valency[n]);
-    psi_diffusivity_set(psi_, n, diffusivity[n]);
-  }
-
-  return;
-}
+static int psi_read(FILE * fp, int index, void * self);
+static int psi_write(FILE * fp, int index, void * self);
+static int psi_read_ascii(FILE * fp, int index, void * self);
+static int psi_write_ascii(FILE * fp, int index, void * self);
 
 /*****************************************************************************
  *
@@ -124,9 +103,27 @@ int psi_create(int nk, psi_t ** pobj) {
   if (psi->valency == NULL) fatal("calloc(psi->valency) failed\n");
 
   psi->e = e_unit_default;
+  psi->reltol = reltol_default;
+  psi->abstol = abstol_default;
 
   psi_init_mpi_indexed(psi);
   *pobj = psi; 
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_io_info
+ *
+ *****************************************************************************/
+
+int psi_io_info(psi_t * obj, io_info_t ** info) {
+
+  assert(obj);
+  assert(info);
+
+  *info = obj->info;
 
   return 0;
 }
@@ -383,9 +380,14 @@ static int psi_init_mpi_indexed(psi_t * obj) {
  *
  *  psi_init_io_info
  *
+ *  The I/O grid will be requested with Cartesian extent as given.
+ *
+ *  Register all the I/O functions, and set the input/output format
+ *  appropriately.
+ *
  *****************************************************************************/
 
-int psi_init_io_info(psi_t * obj, int grid[3]) {
+int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
 
   assert(obj);
   assert(grid);
@@ -395,13 +397,17 @@ int psi_init_io_info(psi_t * obj, int grid[3]) {
   if (obj->info == NULL) fatal("io_info_create(psi) failed\n");
 
   io_info_set_name(obj->info, "Potential and charge densities");
-  io_info_set_read_binary(obj->info, psi_read);
-  io_info_set_write_binary(obj->info, psi_write);
-  io_info_set_read_ascii(obj->info, psi_read_ascii);
-  io_info_set_write_ascii(obj->info, psi_write_ascii);
+
+  io_info_read_set(obj->info, IO_FORMAT_BINARY, psi_read);
+  io_info_read_set(obj->info, IO_FORMAT_ASCII, psi_read_ascii);
+  io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
+  io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
+
   io_info_set_bytesize(obj->info, (1 + obj->nk)*sizeof(double));
 
-  io_info_set_format_binary(obj->info);
+  io_info_format_set(obj->info, form_in, form_out);
+
+  io_write_metadata("psi", obj->info);
 
   return 0;
 }
@@ -596,101 +602,107 @@ int psi_halo(int nf, double * f, MPI_Datatype halo[3]) {
  *
  *  psi_write_ascii
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_write_ascii(FILE * fp, const int ic, const int jc,
-			   const int kc) {
-  int index;
-  int n, nwrite;
+static int psi_write_ascii(FILE * fp, int index, void * self) {
 
+  int n, nwrite;
+  psi_t * obj = self;
+
+  assert(obj);
   assert(fp);
 
-  index = coords_index(ic, jc, kc);
-
-  nwrite = fprintf(fp, "%22.15e ", psi_->psi[index]);
+  nwrite = fprintf(fp, "%22.15e ", obj->psi[index]);
   if (nwrite != 23) fatal("fprintf(psi) failed at index %d\n", index);
 
-  for (n = 0; n < psi_->nk; n++) {
-    nwrite = fprintf(fp, "%22.15e ", psi_->rho[psi_->nk*index + n]);
+  for (n = 0; n < obj->nk; n++) {
+    nwrite = fprintf(fp, "%22.15e ", obj->rho[obj->nk*index + n]);
     if (nwrite != 23) fatal("fprintf(psi) failed at index %d %d\n", index, n);
   }
 
   nwrite = fprintf(fp, "\n");
   if (nwrite != 1) fatal("fprintf() failed at index %d\n", index);
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  psi_read_ascii
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_read_ascii(FILE * fp, const int ic, const int jc,
-			  const int kc) {
-  int index;
+static int psi_read_ascii(FILE * fp, int index, void * self) {
+
   int n, nread;
+  psi_t * obj = self;
 
   assert(fp);
+  assert(self);
 
-  index = coords_index(ic, jc, kc);
-
-  nread = fscanf(fp, "%le", psi_->psi + index);
+  nread = fscanf(fp, "%le", obj->psi + index);
   if (nread != 1) fatal("fscanf(psi) failed for %d\n", index);
 
-  for (n = 0; n < psi_->nk; n++) {
-    nread = fscanf(fp, "%le", psi_->rho + psi_->nk*index + n);
+  for (n = 0; n < obj->nk; n++) {
+    nread = fscanf(fp, "%le", obj->rho + obj->nk*index + n);
     if (nread != 1) fatal("fscanf(rho) failed for %d %d\n", index, n);
   }
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  psi_write
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_write(FILE * fp, const int ic, const int jc, const int kc) {
+static int psi_write(FILE * fp, int index, void * self) {
 
-  int index;
   int n;
+  psi_t * obj = self;
 
   assert(fp);
+  assert(obj);
 
-  index = coords_index(ic, jc, kc);
-  n = fwrite(psi_->psi + index, sizeof(double), 1, fp);
+  n = fwrite(obj->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fwrite(psi) failed at index %d\n", index);
 
-  n = fwrite(psi_->rho + psi_->nk*index, sizeof(double), psi_->nk, fp);
-  if (n != psi_->nk) fatal("fwrite(rho) failed at index %d", index);
+  n = fwrite(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
+  if (n != obj->nk) fatal("fwrite(rho) failed at index %d", index);
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  psi_read
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_read(FILE * fp, const int ic, const int jc, const int kc) {
+static int psi_read(FILE * fp, int index, void * self) {
 
-  int index;
   int n;
+  psi_t * obj = self;
 
   assert(fp);
+  assert(obj);
 
-  index = coords_index(ic, jc, kc);
-  n = fread(psi_->psi + index, sizeof(double), 1, fp);
+  n = fread(obj->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fread(psi) failed at index %d\n", index);
 
-  n = fread(psi_->rho + psi_->nk*index, sizeof(double), psi_->nk, fp);
-  if (n != psi_->nk) fatal("fread(rho) failed at index %d\n", index);
+  n = fread(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
+  if (n != obj->nk) fatal("fread(rho) failed at index %d\n", index);
 
-  return n;
+  return 0;
 }
 
 /*****************************************************************************
@@ -877,9 +889,32 @@ int psi_epsilon_set(psi_t * obj, double epsilon) {
 
 /*****************************************************************************
  *
+ *  psi_ionic_strength
+ *
+ *  This is (1/2) \sum_k z_k^2 rho_k. This is a number density, and
+ *  doesn't contain the unit charge.
+ *
+ *****************************************************************************/
+
+int psi_ionic_strength(psi_t * psi, int index, double * sion) {
+
+  int n;
+  assert(psi);
+  assert(sion);
+
+  *sion = 0.0;
+  for (n = 0; n < psi->nk; n++) {
+    *sion += 0.5*psi->valency[n]*psi->valency[n]*psi->rho[psi->nk*index + n];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_bjerrum_length
  *
- *  This is really just for information.
+ *  Is equal to e^2 / 4 pi epsilon k_B T
  *
  *****************************************************************************/
 
@@ -889,6 +924,96 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
   assert(lb);
 
   *lb = obj->e*obj->e*obj->beta / (4.0*M_PI*obj->epsilon);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_debye_length
+ *
+ *  Returns the Debye length for a simple, symmetric electrolyte.
+ *  An ionic strength is required as input (see above); this
+ *  accounts for the factor of 8 in the denominator.
+ *
+ *****************************************************************************/
+
+int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
+
+  double lb;
+
+  assert(obj);
+  assert(rho_b > 0.0);
+  assert(ld);
+
+  psi_bjerrum_length(obj, &lb);
+  *ld = 1.0 / sqrt(8.0*M_PI*lb*rho_b);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_surface_potential
+ *
+ *  Returns the surface potential of a double layer for a simple,
+ *  symmetric electrolyte. The surface charge sigma and bulk ionic
+ *  strength rho_b of one species are required as input.
+ *
+ *  See, e.g., Lyklema "Fundamentals of Interface and Colloid Science"
+ *             Volume II Eqs. 3.5.13 and 3.5.14.
+ *
+ *****************************************************************************/
+
+int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
+			  double *sp) {
+  double p;
+
+  assert(obj);
+  assert(sp);
+  assert(obj->nk == 2);
+  assert(obj->valency[0] == -obj->valency[1]);
+
+  p = 1.0 / sqrt(8.0*obj->epsilon*rho_b / obj->beta);
+
+  *sp = fabs(2.0 / (obj->valency[0]*obj->e*obj->beta)
+	     *log(-p*sigma + sqrt(p*p*sigma*sigma + 1.0)));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_reltol
+ *
+ *  Only returns the default value; there is no way to set as yet; no test.
+ *
+ *****************************************************************************/
+
+int psi_reltol(psi_t * obj, double * reltol) {
+
+  assert(obj);
+  assert(reltol);
+
+  *reltol = obj->reltol;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_abstol
+ *
+ *  Only returns the default value; there is no way to set as yet; no test.
+ *
+ *****************************************************************************/
+
+int psi_abstol(psi_t * obj, double * abstol) {
+
+  assert(obj);
+  assert(abstol);
+
+  *abstol = obj->abstol;
 
   return 0;
 }

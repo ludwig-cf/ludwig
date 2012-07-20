@@ -15,6 +15,11 @@
 #ifndef GRADIENT_RT_H
 #define GRADIENT_RT_H
 
+#ifdef OLD_PHI
 void gradient_run_time(void);
+#else
+#include "field_grad.h"
+int gradient_rt_init(field_grad_t * grad);
+#endif
 
 #endif

@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "util.h"
 #include "colloids.h"
 
 static const int nhalo_ = 1;      /* Number of halo cells (one at each end) */
@@ -592,4 +593,77 @@ int colloids_cell_count(const int ic, const int jc, const int kc) {
 int colloids_nalloc(void) {
 
   return nalloc_;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_q_local
+ *
+ *  Add up the local charge for exactly two valencies.
+ *
+ *****************************************************************************/
+
+int colloids_q_local(double q[2]) {
+
+  int ic, jc, kc;
+  colloid_t * pc;
+
+  q[0] = 0.0;
+  q[1] = 0.0;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+
+	while (pc) {
+	  q[0] += pc->s.q0;
+	  q[1] += pc->s.q1;
+	  pc = pc->next;
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_v_local
+ *
+ *  Add up and return the net volume of the colloids in the local domain.
+ *  Note this is not the volume occupied on the local lattice, it is
+ *  just the sum of the discrete volumes for all particles.
+ *
+ *  Returns 0 on success.
+ *
+ *****************************************************************************/
+
+int colloids_v_local(double * v) {
+
+  int ic, jc, kc;
+  double vol;
+  colloid_t * pc;
+
+  assert(v);
+  *v = 0.0;
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+
+	while (pc) {
+	  util_discrete_volume_sphere(pc->s.r, pc->s.a0, &vol);
+	  *v += vol;
+	  pc = pc->next;
+	}
+      }
+    }
+  }
+
+  return 0;
 }

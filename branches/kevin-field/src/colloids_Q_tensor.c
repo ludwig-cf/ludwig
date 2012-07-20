@@ -26,167 +26,16 @@
 #include "colloids.h"
 #include "phi.h"
 #include "io_harness.h"
-#include "lattice.h"
 #include "util.h"
 #include "model.h"
 #include "site_map.h"
 #include "blue_phase.h"
 #include "colloids_Q_tensor.h"
 
-struct io_info_t * io_info_scalar_q_;
 static int anchoring_coll_ = ANCHORING_NORMAL;
 static int anchoring_wall_ = ANCHORING_NORMAL;
-static int anchoring_method_ = ANCHORING_METHOD_NONE;
 static double w_surface_ = 0.0; /* Anchoring strength in free energy */
 static double w_surface_wall_ = 0.0; /* Anchoring strength in free energy */
-
-static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
-static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
-static void scalar_biaxial_order_parameter_director(double q[3][3], double qs[5]);
-
-void COLL_set_Q(){
-
-  int ia;
-  int ic,jc,kc;
-  
-  colloid_t * p_colloid;
-
-  double rsite0[3];
-  double normal[3];
-  double dir[3];
-
-  colloid_t * colloid_at_site_index(int);
-
-  int nlocal[3],offset[3];
-  int index;
-
-  double q[3][3];
-  double qs[5];
-  double director[3];
-  double len_normal;
-  double rlen_normal;
-  double amplitude;
-  double rdotd;
-  double dir_len;
-
-  amplitude = 0.33333333;
-
-
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
-  
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	
-	index = coords_index(ic, jc, kc);
-
-	p_colloid = colloid_at_site_index(index);
-	
-	/* check if this node is inside a colloid */
-
-	if (p_colloid != NULL){	  
-
-	  /* Need to translate the colloid position to "local"
-	   * coordinates, so that the correct range of lattice
-	   * nodes is found */
-
-	  rsite0[X] = 1.0*(offset[X] + ic);
-	  rsite0[Y] = 1.0*(offset[Y] + jc);
-	  rsite0[Z] = 1.0*(offset[Z] + kc);
-
-	  /* calculate the vector between the centre of mass of the
-	   * colloid and node i, j, k 
-	   * so need to calculate rsite0 - r0 */
-
-	  normal[X] = rsite0[X] - p_colloid->s.r[X];
-	  normal[Y] = rsite0[Y] - p_colloid->s.r[Y];
-	  normal[Z] = rsite0[Z] - p_colloid->s.r[Z];
-
-	  /* now for homeotropic anchoring only thing needed is to
-	   * normalise the the surface normal vector  */
-
-	  len_normal = modulus(normal);
-	  assert(len_normal <= p_colloid->s.ah);
-
-	  if (len_normal < 10e-8) {
-	    /* we are very close to the centre of the colloid.
-	     * set the q tensor to zero */
-	    q[X][X] = 0.0;
-	    q[X][Y] = 0.0;
-	    q[X][Z] = 0.0;
-	    q[Y][Y] = 0.0;
-	    q[Y][Z] = 0.0;
-	    phi_set_q_tensor(index,q);
-	    continue;
-	  }
-
-	  rlen_normal = 1.0/len_normal;
-
-	  /* Homeotropic anchoring (the default) */
-
-	  director[X] = normal[X]*rlen_normal;
-	  director[Y] = normal[Y]*rlen_normal;
-	  director[Z] = normal[Z]*rlen_normal;
-	  
-	  if (anchoring_coll_ == ANCHORING_PLANAR) {
-
-	    /* now we need set the director inside the colloid
-	     * perpendicular to the vector normal of of the surface
-	     * [i.e. it is confined in a plane] i.e.  
-	     * perpendicular to the vector r between the centre of the colloid
-	     * corresponding node i,j,k
-	     * -Juho
-	     */
-	  
-	    phi_get_q_tensor(index, q);
-	    scalar_biaxial_order_parameter_director(q, qs);
-
-	    dir[X] = qs[1];
-	    dir[Y] = qs[2];
-	    dir[Z] = qs[3];
-
-	    /* calculate the projection of the director along the surface
-	     * normal and remove that from the director to make the
-	     * director perpendicular to the surface */
-
-	    rdotd = dot_product(normal, dir)*rlen_normal*rlen_normal;
-	    
-	    dir[X] = dir[X] - rdotd*normal[X];
-	    dir[Y] = dir[Y] - rdotd*normal[Y];
-	    dir[Z] = dir[Z] - rdotd*normal[Z];
-	    
-	    dir_len = modulus(dir);
-
-	    if (dir_len < 10e-8) {
-	      /* the vectors were [almost] parallel.
-	       * now we use the direction of the previous node i,j,k
-	       * this fails if we are in the first node, so not great fix...
-	       */
-
-	      fatal("dir_len < 10-8 i,j,k, %d %d %d\n", ic,jc,kc);
-	    }
-
-	    for (ia = 0; ia < 3; ia++) {
-	      director[ia] = dir[ia] / dir_len;
-	    }
-	  }
-
-	  q[X][X] = 1.5*amplitude*(director[X]*director[X] - 1.0/3.0);
-	  q[X][Y] = 1.5*amplitude*(director[X]*director[Y]);
-	  q[X][Z] = 1.5*amplitude*(director[X]*director[Z]);
-	  q[Y][Y] = 1.5*amplitude*(director[Y]*director[Y] - 1.0/3.0);
-	  q[Y][Z] = 1.5*amplitude*(director[Y]*director[Z]);
-	    
-	  phi_set_q_tensor(index, q);
-
-	}
-	
-      }
-    }
-  }
-  return;
-}
 
 /*****************************************************************************
  *
@@ -316,7 +165,7 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
  *
  *****************************************************************************/
 
-void colloids_fix_swd(void) {
+int colloids_fix_swd(hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -329,6 +178,8 @@ void colloids_fix_swd(void) {
 
   colloid_t * p_c;
   colloid_t * colloid_at_site_index(int);
+
+  assert(hydro);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -346,7 +197,7 @@ void colloids_fix_swd(void) {
 	  u[X] = 0.0;
 	  u[Y] = 0.0;
 	  u[Z] = 0.0;
-	  hydrodynamics_set_velocity(index, u);
+	  hydro_u_set(hydro, index, u);
 	}
 
 	p_c = colloid_at_site_index(index);
@@ -365,156 +216,14 @@ void colloids_fix_swd(void) {
 	  u[Y] += p_c->s.v[Y];
 	  u[Z] += p_c->s.v[Z];
 
-	  hydrodynamics_set_velocity(index, u);
+	  hydro_u_set(hydro, index, u);
 
 	}
       }
     }
   }
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  scalar_q_io_init
- *
- *  Initialise the I/O information for the scalar order parameter and director
- *  output related to blue phase tensor order parameter.
- *
- *  This stuff lives here until a better home is found.
- *
- *****************************************************************************/
-
-void scalar_q_io_info_set(struct io_info_t * info) {
-
-  assert(info);
-  io_info_scalar_q_ = info;
-
-  io_info_set_name(io_info_scalar_q_, "Scalar order parameter, director and biaxial order parameter");
-  io_info_set_write_binary(io_info_scalar_q_, scalar_q_dir_write);
-  io_info_set_write_ascii(io_info_scalar_q_, scalar_q_dir_write_ascii);
-  io_info_set_bytesize(io_info_scalar_q_, 5*sizeof(double));
-
-  io_info_set_format_binary(io_info_scalar_q_);
-  io_write_metadata("qs_dir", io_info_scalar_q_);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  scalar_q_dir_write_ascii
- *
- *  Write the value of the scalar order parameter and director at (ic, jc, kc).
- *
- *****************************************************************************/
-
-static int scalar_q_dir_write_ascii(FILE * fp, const int ic, const int jc,
-				    const int kc) {
-  int index, n;
-  double q[3][3];
-  double qs_dir[5];
-
-  index = coords_index(ic, jc, kc);
-
-  if (site_map_get_status_index(index) == FLUID) {
-    phi_get_q_tensor(index, q);
-    scalar_biaxial_order_parameter_director(q, qs_dir);
-  }
-  else {
-    qs_dir[0] = 0.0;
-    qs_dir[1] = 0.0;
-    qs_dir[2] = 0.0;
-    qs_dir[3] = 0.0;
-    qs_dir[4] = 0.0;
-  }
-
-  n = fprintf(fp, "%le %le %le %le %le\n", qs_dir[0], qs_dir[1], qs_dir[2], qs_dir[3], qs_dir[4]);
-  if (n < 0) fatal("fprintf(qs_dir) failed at index %d\n", index);
-
-  return n;
-}
-
-
-/*****************************************************************************
- *
- *  scalar_q_dir_write
- *
- *  Write scalar order parameter and director in binary.
- *
- *****************************************************************************/
-
-static int scalar_q_dir_write(FILE * fp, const int ic, const int jc,
-			      const int kc) {
-  int index, n;
-  double q[3][3];
-  double qs_dir[5];
-
-  index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  scalar_biaxial_order_parameter_director(q, qs_dir);
-
-  if (site_map_get_status_index(index) != FLUID) {
-    qs_dir[0] = 1.0;
-  }
-
-  n = fwrite(qs_dir, sizeof(double), 5, fp);
-  if (n != 5) fatal("fwrite(qs_dir) failed at index %d\n", index);
-
-  return n;
-}
-
-/*****************************************************************************
- *
- *  scalar_biaxial_order_parameter_director
- *
- *  Return the value of the scalar and biaxial order parameter and director for
- *  given Q tensor.
- *
- *  The biaxial OP is defined by B = sqrt(1 - 6*(tr(Q^3))^2 / (tr(Q^2))^3).
- *  As Q is traceless and symmetric we get the following dependencies:
- *
- *              Q = ((s,0,0),(0,t,0)(0,0,-s-t))
- *    (tr(Q^3))^2 = 9*s^2*t^2*(s^2 + 2*s*t + t^2)
- *    (tr(Q^2))^3 = 8*(s^6 + 6*s^4t^2 + 6*s^2t^4 + t^6 + 3*s^5t + 3*st^5 + 7*s^3t^3)
- *
- *****************************************************************************/
-
-static void scalar_biaxial_order_parameter_director(double q[3][3], double qs[5]) {
-
-  int ifail;
-  double eigenvalue[3];
-  double eigenvector[3][3];
-  double s, t, Q3_2, Q2_3;
-
-  ifail = util_jacobi_sort(q, eigenvalue, eigenvector);
-
-  if (ifail != 0) {
-    qs[0] = 0.0;
-    qs[1] = 0.0;
-    qs[2] = 0.0;
-    qs[3] = 0.0;
-    qs[4] = 0.0;
-  }
-  else {
-    qs[0] = eigenvalue[0];
-    qs[1] = eigenvector[X][0];
-    qs[2] = eigenvector[Y][0];
-    qs[3] = eigenvector[Z][0];
-
-    s = eigenvalue[0];
-    t = eigenvalue[1];
-    Q3_2 = 9.0*s*s*t*t*(s*s + 2.0*s*t + t*t);
-    Q2_3 = 8.0*(s*s*s*s*s*s + 6.0*s*s*s*s*t*t 
-	    + 6.0*s*s*t*t*t*t + t*t*t*t*t*t 
-	    + 3.0*s*s*s*s*s*t + 3.0*s*t*t*t*t*t 
-	    + 7.0*s*s*s*t*t*t);
-
-    qs[4] = sqrt(1.0-6.0*Q3_2/Q2_3);
-  }
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -592,32 +301,4 @@ void wall_w_set(double w) {
 
   w_surface_wall_ = w;
   return;
-}
-
-/*****************************************************************************
- *
- *  colloids_q_anchoring_method_set
- *
- *****************************************************************************/
-
-void colloids_q_anchoring_method_set(int method) {
-
-  assert(method == ANCHORING_METHOD_NONE ||
-	 method == ANCHORING_METHOD_ONE ||
-	 method == ANCHORING_METHOD_TWO);
-
-  anchoring_method_ = method;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  colloids_q_anchoring_method
- *
- *****************************************************************************/
-
-int colloids_q_anchoring_method(void) {
-
-  return anchoring_method_;
 }

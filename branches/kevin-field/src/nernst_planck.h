@@ -16,7 +16,8 @@
 #define NERNST_PLANCK_H
 
 #include "psi.h"
+#include "hydro.h"
 
-int nernst_planck_driver(psi_t * psi);
+int nernst_planck_driver(psi_t * psi, hydro_t * hydro);
 
 #endif

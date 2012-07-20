@@ -15,6 +15,8 @@
 #ifndef PHI_H
 #define PHI_H
 
+#include "io_harness.h"
+
 void phi_init(void);
 void phi_finish(void);
 void phi_halo(void);
@@ -37,7 +39,7 @@ void   phi_get_q_tensor(const int, double q[3][3]);
 void   phi_vector_set(const int index, const double q[3]);
 void   phi_vector(const int index, double q[3]);
 
-extern struct io_info_t * io_info_phi;
-void   phi_io_info_set(struct io_info_t * info);
+int phi_init_io_info(int grid[3], int form_in, int form_out);
+int phi_io_info(io_info_t ** info);
 
 #endif

@@ -42,6 +42,8 @@ void surfactant_run_time(void) {
   double beta;
   double w;
 
+#ifdef OLD_PHI
+
   /* Two order parameters, del^2 phi / psi required. */
 
   phi_nop_set(2);
@@ -94,6 +96,11 @@ void surfactant_run_time(void) {
   fe_chemical_potential_set(surfactant_chemical_potential);
   fe_isotropic_pressure_set(surfactant_isotropic_pressure);
   fe_chemical_stress_set(surfactant_chemical_stress);
+
+#else
+  assert(0);
+  /* disable surfactant for the time being */
+#endif
 
   return;
 }

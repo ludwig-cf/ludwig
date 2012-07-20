@@ -22,8 +22,15 @@
 #include "pe.h"
 #include "coords.h"
 #include "runtime.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
 #include "phi_gradients.h"
+#else
+#include "field.h"
+#include "field_grad.h"
+#endif
+
 #include "colloids_Q_tensor.h"
 #include "free_energy.h"
 #include "blue_phase.h"
@@ -55,14 +62,18 @@ void blue_phase_run_time(void) {
   double electric[3];
 
   /* Tensor order parameter (nop = 5); del^2 required; */
+  info("Blue phase free energy selected.\n");
 
+#ifdef OLD_PHI
   phi_nop_set(5);
   phi_gradients_level_set(2);
   coords_nhalo_set(2);
 
-  info("Blue phase free energy selected.\n");
   info("Tensor order parameter nop = 5\n");
   info("Requires up to del^2 derivatives so setting nhalo = 2\n");
+#else
+  /* Pending move of function set? */
+#endif
 
   /* PARAMETERS */
 
@@ -146,11 +157,18 @@ void blue_phase_run_time(void) {
   fe_density_set(blue_phase_free_energy_density);
   fe_chemical_stress_set(blue_phase_chemical_stress);
 
-  /* Surface anchoring (default "none") */
+  /* Surface anchoring */
 
   RUN_get_string_parameter("lc_anchoring_method", method, FILENAME_MAX);
 
-  if (strcmp(method, "one") == 0 || strcmp(method, "two") == 0) {
+  if (strcmp(method, "two") != 0) {
+    /* There's a bit of an historical problem here, as 'two'
+     * is now the only valid choice. However, it is worth
+     * not getting a load a irrelevant output if no solids.
+     * So I assert 'none' is the only other option. */
+    if (strcmp(method, "none") != 0) fatal("Check anchoring method input\n");
+  }
+  else {
 
     /* Find out type */
 
@@ -172,10 +190,6 @@ void blue_phase_run_time(void) {
       colloids_q_tensor_anchoring_set(ANCHORING_PLANAR);
     }
 
-    if (strcmp(method, "one") == 0) {
-      colloids_q_anchoring_method_set(ANCHORING_METHOD_ONE);
-    }
-
     /* Surface free energy parameter (method two only) */
 
     RUN_get_double_parameter("lc_anchoring_strength", &w);
@@ -185,54 +199,47 @@ void blue_phase_run_time(void) {
     info("Anchoring method:          = %14s\n", method);
     info("Anchoring type (colloids): = %14s\n", type);
 
-    if (strcmp(method, "two") == 0) {
+    /* Walls (if present) separate type allowed but same strength */
 
-      /* Walls (if present) separate type allowed but same strength */
+    RUN_get_string_parameter("lc_wall_anchoring", type_wall, FILENAME_MAX);
 
-      RUN_get_string_parameter("lc_wall_anchoring", type_wall, FILENAME_MAX);
-
-      if (strcmp(type_wall, "normal") == 0) {
-	wall_anchoring_set(ANCHORING_NORMAL);
-      }
-
-      if (strcmp(type_wall, "planar") == 0) {
-	wall_anchoring_set(ANCHORING_PLANAR);
-      }
-
-      if (strcmp(type_wall, "fixed") == 0) {
-	wall_anchoring_set(ANCHORING_FIXED);
-      }
-
-      /* Set the anchoring strength the same for colloid and wall */
-      colloids_q_tensor_w_set(w);
-      w_wall = w;
-      wall_w_set(w_wall);
-      
-      /* Try if the specific parameter for colloid/wall exists */
-      n =  RUN_get_double_parameter("lc_anchoring_strength_colloid", &w);
-      if ( n == 1 ) colloids_q_tensor_w_set(w);
-      
-      n =  RUN_get_double_parameter("lc_anchoring_strength_wall", &w_wall);
-      if( n == 1 ) wall_w_set(w_wall);
-      
-      info("Anchoring type (walls):          = %14s\n", type_wall);
-      info("Surface free energy (colloid) w: = %14.7e\n", w);
-      info("Surface free energy (wall) w:    = %14.7e\n", w_wall);
-      info("Ratio (colloid) w/kappa0:        = %14.7e\n", w/kappa0);
-      info("Ratio (wall) w/kappa0:           = %14.7e\n", w_wall/kappa0);
-      info("Computed surface order f(gamma)  = %14.7e\n",
-	   blue_phase_amplitude_compute());
-
-      /* For computed anchoring order [see blue_phase_amplitude_compute()] */
-      if (gamma < (8.0/3.0)) fatal("Please check anchoring amplitude\n");
-
-      colloids_q_anchoring_method_set(ANCHORING_METHOD_TWO);
+    if (strcmp(type_wall, "normal") == 0) {
+      wall_anchoring_set(ANCHORING_NORMAL);
     }
 
+    if (strcmp(type_wall, "planar") == 0) {
+      wall_anchoring_set(ANCHORING_PLANAR);
+    }
+
+    if (strcmp(type_wall, "fixed") == 0) {
+      wall_anchoring_set(ANCHORING_FIXED);
+    }
+
+    /* Set the anchoring strength the same for colloid and wall */
+    colloids_q_tensor_w_set(w);
+    w_wall = w;
+    wall_w_set(w_wall);
+      
+    /* Try if the specific parameter for colloid/wall exists */
+    n =  RUN_get_double_parameter("lc_anchoring_strength_colloid", &w);
+    if ( n == 1 ) colloids_q_tensor_w_set(w);
+      
+    n =  RUN_get_double_parameter("lc_anchoring_strength_wall", &w_wall);
+    if( n == 1 ) wall_w_set(w_wall);
+      
+    info("Anchoring type (walls):          = %14s\n", type_wall);
+    info("Surface free energy (colloid) w: = %14.7e\n", w);
+    info("Surface free energy (wall) w:    = %14.7e\n", w_wall);
+    info("Ratio (colloid) w/kappa0:        = %14.7e\n", w/kappa0);
+    info("Ratio (wall) w/kappa0:           = %14.7e\n", w_wall/kappa0);
+    info("Computed surface order f(gamma)  = %14.7e\n",
+	 blue_phase_amplitude_compute());
+
+    /* For computed anchoring order [see blue_phase_amplitude_compute()] */
+    if (gamma < (8.0/3.0)) fatal("Please check anchoring amplitude\n");
   }
 
   return;
-
 }
 
 /*****************************************************************************

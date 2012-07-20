@@ -140,6 +140,8 @@ double surfactant_langmuir_isotherm(void) {
   return psi_c;
 }
 
+#ifdef OLD_PHI
+
 /****************************************************************************
  *
  *  surfactant_free_energy_density
@@ -324,3 +326,5 @@ void surfactant_chemical_stress(const int index, double s[3][3]) {
 
   return;
 }
+
+#endif

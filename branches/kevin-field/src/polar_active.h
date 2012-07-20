@@ -30,4 +30,12 @@ double polar_active_zeta(void);
 void   polar_active_region_radius_set(const double r);
 double polar_active_region(const int index);
 
+#ifdef OLD_PHI
+#else
+#include "field.h"
+#include "field_grad.h"
+
+int polar_active_p_set(field_t * p, field_grad_t * p_grad);
+#endif
+
 #endif

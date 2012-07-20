@@ -71,7 +71,12 @@ void free_energy_run_time(void) {
     brazovskii_run_time();
   }
   else if (strcmp(description, "surfactant") == 0) {
+#ifdef OLD_PHI
     surfactant_run_time();
+#else
+    assert(0);
+    /* Disable surfactant for the time being */
+#endif
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
     blue_phase_run_time();

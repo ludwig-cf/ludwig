@@ -13,6 +13,8 @@
  *
  *  regardless of position.
  *
+ *  Currently includes external electric field.
+ *
  *  $Id: magnetic_field.c,v 1.1 2010-03-24 11:43:09 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -30,6 +32,7 @@
 #include "magnetic_field.h"
 
 static double bzero_[3] = {0.0, 0.0, 0.0};
+static double ezero_[3] = {0.0, 0.0, 0.0};
 
 /*****************************************************************************
  *
@@ -89,4 +92,34 @@ void magnetic_field_torque(const double mu[3], double torque[3]) {
   torque[Z] = mu[X]*bzero_[Y] - mu[Y]*bzero_[X];
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  electric_field_e0
+ *
+ *****************************************************************************/
+
+int electric_field_e0(double e0[3]) {
+
+  e0[0] = ezero_[0];
+  e0[1] = ezero_[1];
+  e0[2] = ezero_[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  electric_field_e0_set
+ *
+ *****************************************************************************/
+
+int electric_field_e0_set(const double e0[3]) {
+
+  ezero_[0] = e0[0];
+  ezero_[1] = e0[1];
+  ezero_[2] = e0[2];
+
+  return 0;
 }

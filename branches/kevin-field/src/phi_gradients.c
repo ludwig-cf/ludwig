@@ -25,14 +25,11 @@
 #include "phi_gradients.h"
 
 static int      level_required_ = 2;
-static int      dyadic_required_ = 0;
 
 static double * phi_delsq_;
 static double * phi_grad_;
 static double * phi_delsq_delsq_;
 static double * phi_grad_delsq_;
-static double * phi_delsq_pp_;
-static double * phi_dpp_;
 
 
 /****************************************************************************
@@ -72,15 +69,6 @@ void phi_gradients_init(void) {
     if (phi_delsq_delsq_ == NULL) fatal("malloc(phi_delsq_delsq_) failed\n");
   }
 
-  if (dyadic_required_) {
-    assert(nop == 3);
-    phi_delsq_pp_ = (double *) malloc(18*nop*nsites*sizeof(double));
-    phi_dpp_ = (double *) malloc(6*nop*nsites*sizeof(double));
-
-    if (phi_delsq_pp_ == NULL) fatal("malloc(phi_delsq_pp_) failed\n");
-    if (phi_dpp_ == NULL) fatal("malloc(phi_dpp_) failed\n");
-  }
-
   return;
 }
 
@@ -96,8 +84,6 @@ void phi_gradients_finish(void) {
   if (phi_grad_) free(phi_grad_);
   if (phi_grad_delsq_) free(phi_grad_delsq_);
   if (phi_delsq_delsq_) free(phi_delsq_delsq_);
-  if (phi_delsq_pp_) free(phi_delsq_pp_);
-  if (phi_dpp_) free(phi_dpp_);
 
   return;
 }
@@ -111,18 +97,6 @@ void phi_gradients_finish(void) {
 void phi_gradients_level_set(const int level) {
 
   level_required_ = level;
-  return;
-}
-
-/****************************************************************************
- *
- *  phi_gradients_dyadic_set
- *
- ****************************************************************************/
-
-void phi_gradients_dyadic_set(const int level) {
-
-  dyadic_required_ = level;
   return;
 }
 
@@ -149,67 +123,6 @@ void phi_gradients_compute() {
   if (level_required_ > 2) {
     gradient_d4(nop, phi_delsq_, phi_grad_delsq_, phi_delsq_delsq_);
   }
-
-  if (dyadic_required_) {
-    gradient_d2_dyadic(nop, phi_site, phi_dpp_, phi_delsq_pp_);
-  }
-
-  return;
-}
-
-
-/*****************************************************************************
- *
- *  phi_gradients_grad_dyadic
- *
- *  Return d_c q_a q_b for vector order parameter.
- *
- *****************************************************************************/
-
-void phi_gradients_grad_dyadic(const int index, double dqq[3][3][3]) {
-
-  int ia;
-
-  assert(phi_dpp_);
-  assert(phi_nop() == 3);
-
-  for (ia = 0; ia < 3; ia++) {
-    dqq[ia][X][X] = phi_dpp_[18*index + 6*ia + XX];
-    dqq[ia][X][Y] = phi_dpp_[18*index + 6*ia + XY];
-    dqq[ia][X][Z] = phi_dpp_[18*index + 6*ia + XZ];
-    dqq[ia][Y][X] = dqq[X][X][Y];
-    dqq[ia][Y][Y] = phi_dpp_[18*index + 6*ia + YY];
-    dqq[ia][Y][Z] = phi_dpp_[18*index + 6*ia + YZ];
-    dqq[ia][Z][X] = dqq[X][X][Z];
-    dqq[ia][Z][Y] = dqq[X][Y][Z];
-    dqq[ia][Z][Z] = phi_dpp_[18*index + 6*ia + ZZ];
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_gradients_delsq_dyadic
- *
- *  Return nabla^2 q_a q_b for vector order parameter q_a
- *
- *****************************************************************************/
-
-void phi_gradients_delsq_dyadic(const int index, double delsq[3][3]) {
-
-  assert(phi_delsq_pp_);
-  assert(phi_nop() == 3);
-
-  delsq[X][X] = phi_delsq_pp_[6*index + XX];
-  delsq[X][Y] = phi_delsq_pp_[6*index + XY];
-  delsq[X][Z] = phi_delsq_pp_[6*index + XZ];
-  delsq[Y][X] = delsq[X][Y];
-  delsq[Y][Y] = phi_delsq_pp_[6*index + YY];
-  delsq[Y][Z] = phi_delsq_pp_[6*index + YZ];
-  delsq[Z][X] = delsq[X][Z];
-  delsq[Z][Y] = delsq[Y][Z];
-  delsq[Z][Z] = phi_delsq_pp_[6*index + ZZ];
 
   return;
 }

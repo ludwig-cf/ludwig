@@ -19,7 +19,12 @@
 
 #include "pe.h"
 #include "coords.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
+#else
+/* switch to field */
+#endif
 #include "control.h"
 #include "util.h"
 #include "surfactant.h"
@@ -36,6 +41,7 @@
  *****************************************************************************/
 
 void stats_surfactant_1d(void) {
+#ifdef OLD_PHI
 
   int index;
   int ic = 1, jc = 1, kc;
@@ -88,6 +94,10 @@ void stats_surfactant_1d(void) {
 
   info("Surfactant: %d %12.5e %12.5e %12.5e %12.5e\n", get_step(),
        sqrt(1.0*get_step()), psi_b, psi_0, sigma);
+#else
+  assert(0);
+  /* Disable surfactant for time being */
+#endif
 
   return;
 }

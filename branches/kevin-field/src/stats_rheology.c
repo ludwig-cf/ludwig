@@ -29,7 +29,6 @@
 #include "model.h"
 #include "util.h"
 #include "control.h"
-#include "lattice.h"
 #include "physics.h"
 #include "leesedwards.h"
 #include "free_energy.h"
@@ -294,7 +293,7 @@ void stats_rheology_stress_profile_zero(void) {
  *
  *****************************************************************************/
 
-void stats_rheology_stress_profile_accumulate(void) {
+int stats_rheology_stress_profile_accumulate(hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -306,6 +305,7 @@ void stats_rheology_stress_profile_accumulate(void) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(initialised_);
+  assert(hydro);
   coords_nlocal(nlocal);
 
   chemical_stress = fe_chemical_stress_function();
@@ -377,7 +377,7 @@ void stats_rheology_stress_profile_accumulate(void) {
 
 	assert(ndata == NSTAT2);
 
-	hydrodynamics_velocity_gradient_tensor(ic, jc,  kc, s);
+	hydro_u_gradient_tensor(hydro, ic, jc, kc, s);
 	sxy_[NSTAT1*(ic-1) + 6] += (s[X][Y] + s[Y][X]);
       }
     }
@@ -385,7 +385,7 @@ void stats_rheology_stress_profile_accumulate(void) {
 
   counter_sxy_++;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

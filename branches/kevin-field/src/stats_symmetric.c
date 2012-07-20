@@ -22,7 +22,11 @@
 #include "coords.h"
 #include "site_map.h"
 #include "symmetric.h"
+#ifdef OLD_PHI
 #include "phi_gradients.h"
+#else
+#include "field_grad.h"
+#endif
 
 /*****************************************************************************
  *
@@ -75,8 +79,14 @@ void stats_symmetric_length(int timestep) {
 	index = coords_index(ic, jc, kc);
 
 	if (site_map_get_status_index(index) != FLUID) continue;
-
+#ifdef OLD_PHI
 	phi_gradients_grad(index, dphi);
+#else
+	assert(0);
+	/* Adjust interface */
+	field_grad_t * test_object = NULL;
+	field_grad_scalar_grad(test_object, index, dphi);
+#endif
 
 	dphi_local[0] += dphi[X]*dphi[X];
         dphi_local[1] += dphi[X]*dphi[Y];

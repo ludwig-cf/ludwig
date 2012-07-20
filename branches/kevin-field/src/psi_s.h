@@ -42,15 +42,13 @@ struct psi_s {
   double e;                 /* unit charge */
   double epsilon;           /* reference permeativity */
   double beta;              /* Boltzmann factor (1 / k_B T) */
+  double reltol;            /* Relative tolerance for Poisson solver */
+  double abstol;            /* Absolute tolerance for Poisson solver */
   MPI_Datatype psihalo[3];  /* psi field halo */
   MPI_Datatype rhohalo[3];  /* charge densities halo */
-  struct io_info_t * info;  /* I/O informtation */
+  io_info_t * info;         /* I/O informtation */
 };
 
 int psi_halo(int nf, double * f, MPI_Datatype halo[3]);
-
-/* Here for now. psi_ is providing the (opaque) object for the main code. */
-
-extern psi_t * psi_;
 
 #endif

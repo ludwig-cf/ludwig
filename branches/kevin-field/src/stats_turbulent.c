@@ -20,7 +20,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "lattice.h"
 #include "leesedwards.h"
 #include "stats_turbulent.h"
 
@@ -128,7 +127,7 @@ void stats_turbulent_finish() {
  *
  *****************************************************************************/
 
-void stats_turbulent_ubar_accumulate() {
+int stats_turbulent_ubar_accumulate(hydro_t * hydro) {
 
   int nlocal[3];
   int ic, jc, kc;
@@ -136,6 +135,7 @@ void stats_turbulent_ubar_accumulate() {
   double u[3];
 
   assert(initialised_);
+  assert(hydro);
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -143,7 +143,7 @@ void stats_turbulent_ubar_accumulate() {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = le_site_index(ic, jc, kc);
-	hydrodynamics_get_velocity(index, u);
+	hydro_u(hydro, index, u);
 
 	for (ia = 0; ia < 3; ia++) {
 	  ubar_[3*(nlocal[Z]*(ic - 1) + kc - 1) + ia] += u[ia];
@@ -154,7 +154,7 @@ void stats_turbulent_ubar_accumulate() {
 
   time_counter_ += 1;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

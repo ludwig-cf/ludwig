@@ -20,7 +20,13 @@
 #include "coords.h"
 #include "physics.h"
 #include "model.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
+#else
+#include "field.h"
+#endif
+
 #include "timer.h"
 #include "colloids.h"
 #include "site_map.h"
@@ -678,12 +684,23 @@ static void build_remove_order_parameter(int index, colloid_t * p_colloid) {
 
   double phi;
 
+#ifdef OLD_PHI
   if (phi_is_finite_difference()) {
     phi = phi_get_phi_site(index);
   }
   else {
     phi = distribution_zeroth_moment(index, 1);
   }
+#else
+  if (distribution_ndist() == 2) {
+    phi = distribution_zeroth_moment(index, 1);
+  }
+  else {
+    /* symmetric only */
+    field_t * test_object = NULL;
+    field_scalar(test_object, index, &phi);
+  }
+#endif
 
   p_colloid->s.deltaphi += (phi - get_phi0());
 
@@ -805,7 +822,12 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
   double newg[NVEL];
   double * phi;
 
+#ifdef OLD_PHI
   nop = phi_nop();
+#else
+  field_t * test_object = NULL;
+  field_nf(test_object, &nop);
+#endif
   coords_index_to_ijk(index, ri);
 
   /* Check the surrounding sites that were linked to inode,
@@ -815,6 +837,7 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
     newg[p] = 0.0;
   }
 
+#ifdef OLD_PHI
   if (phi_is_finite_difference()) {
 
     phi = (double *) malloc(nop*sizeof(double));
@@ -875,6 +898,74 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
       newphi += newg[p];
     }
   }
+#else
+  if (distribution_ndist() == 2) {
+
+    /* Reset the distribution (distribution index 1) */
+
+    for (p = 1; p < NVEL; p++) {
+
+      indexn = coords_index(ri[X] + cv[p][X], ri[Y] + cv[p][Y],
+			      ri[Z] + cv[p][Z]);
+
+      /* Site must have been fluid before position update */
+      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+	continue;
+
+      for (pdash = 0; pdash < NVEL; pdash++) {
+	newg[pdash] += wv[p]*distribution_f(indexn, pdash, 1);
+      }
+      weight += wv[p];
+    }
+
+    /* Set new fluid distributions */
+
+    weight = 1.0/weight;
+
+    for (p = 0; p < NVEL; p++) {
+      newg[p] *= weight;
+      distribution_f_set(index, p, 1, newg[p]);
+
+      /* ... and remember the new fluid properties */
+      newphi += newg[p];
+    }
+  }
+  else {
+
+    /* SYMMETRIC, LC */
+
+    phi = (double *) malloc(nop*sizeof(double));
+    if (phi == NULL) fatal("malloc(phi) failed\n");
+
+    for (n = 0; n < nop; n++) {
+      phi[n] = 0.0;
+    }
+
+    for (p = 1; p < NVEL; p++) {
+
+      indexn = coords_index(ri[X] + cv[p][X], ri[Y] + cv[p][Y],
+			      ri[Z] + cv[p][Z]);
+
+      /* Site must have been fluid before position update */
+      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+	continue;
+      for (n = 0; n < nop; n++) {
+	assert(0);
+	/* NO REPLACEMENT YET FOR 
+	   phi[n] += wv[p]*phi_op_get_phi_site(indexn, n);*/
+      }
+      weight += wv[p];
+    }
+
+    weight = 1.0/weight;
+    for (n = 0; n < nop; n++) {
+      assert(0);
+      /* NO REPLACEMENT YET FOR 
+	 phi_op_set_phi_site(index, n, phi[n]*weight);*/
+    }
+    free(phi);
+  }
+#endif
 
   /* Set corrections arising from change in order parameter */
 

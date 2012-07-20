@@ -65,7 +65,7 @@
  *
  *****************************************************************************/
 
-int psi_sor_poisson(psi_t * obj, double tol_abs, double tol_rel) {
+int psi_sor_poisson(psi_t * obj) {
 
   const int niteration = 1000; /* Maximum number of iterations */
   const int ncheck = 5;        /* Check global residual every n iterations */
@@ -88,6 +88,9 @@ int psi_sor_poisson(psi_t * obj, double tol_abs, double tol_rel) {
 
   double omega;                /* Over-relaxation parameter 1 < omega < 2 */
   double radius;               /* Spectral radius of Jacobi iteration */
+
+  double tol_rel;              /* Relative tolerance */
+  double tol_abs;              /* Absolute tolerance */
 
   MPI_Comm comm;               /* Cartesian communicator */
 
@@ -112,6 +115,8 @@ int psi_sor_poisson(psi_t * obj, double tol_abs, double tol_rel) {
   radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
 
   psi_epsilon(obj, &epsilon);
+  psi_reltol(obj, &tol_rel);
+  psi_abstol(obj, &tol_abs);
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {

@@ -21,8 +21,15 @@
 #include "control.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
 #include "phi_gradients.h"
+#else
+#include "field.h"
+#include "field_grad.h"
+#endif
+
 #include "site_map.h"
 #include "wall.h"
 #include "free_energy.h"
@@ -140,8 +147,6 @@ void stats_free_energy_density(void) {
 
 static void stats_free_energy_wall(double * fs) {
 
-  if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
-
   if (wall_at_edge(X)) stats_free_energy_wallx(fs);
   if (wall_at_edge(Y)) stats_free_energy_wally(fs);
   if (wall_at_edge(Z)) stats_free_energy_wallz(fs);
@@ -170,9 +175,15 @@ static void stats_free_energy_wallx(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
+#ifdef OLD_PHI
+  if (phi_nop() != 5) return;
+#else
+  assert(0);
+  /* update interface */
+#endif
+
   coords_nlocal(nlocal);
   w = wall_w_get();
-  assert(phi_nop() == 5);
 
   dn[Y] = 0.0;
   dn[Z] = 0.0;
@@ -186,7 +197,13 @@ static void stats_free_energy_wallx(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
+#else
+	assert(0);
+	field_t * test_object = NULL;
+	field_tensor(test_object, index, qs);
+#endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -208,7 +225,13 @@ static void stats_free_energy_wallx(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
+#else
+	assert(0);
+	field_t * test_object = NULL;
+	field_tensor(test_object, index, qs);
+#endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -245,10 +268,15 @@ static void stats_free_energy_wally(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
+#ifdef OLD_PHI
+  if (phi_nop() != 5) return;
+#else
+  assert(0);
+  /* update interface */
+#endif
+
   coords_nlocal(nlocal);
   w = wall_w_get();
-
-  assert(phi_nop() == 5);
 
   dn[X] = 0.0;
   dn[Z] = 0.0;
@@ -262,7 +290,13 @@ static void stats_free_energy_wally(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
+#else
+	assert(0);
+	field_t * test_object = NULL;
+	field_tensor(test_object, index, qs);
+#endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -284,7 +318,13 @@ static void stats_free_energy_wally(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
+#else
+	assert(0);
+	field_t * test_object = NULL;
+	field_tensor(test_object, index, qs);
+#endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -321,10 +361,15 @@ static void stats_free_energy_wallz(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
+#ifdef OLD_PHI
+  if (phi_nop() != 5) return;
+#else
+  assert(0);
+  /* update interfaec */
+#endif
+
   coords_nlocal(nlocal);
   w = wall_w_get();
-
-  assert(phi_nop() == 5);
 
   dn[X] = 0.0;
   dn[Y] = 0.0;
@@ -338,7 +383,13 @@ static void stats_free_energy_wallz(double * fs) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
+#else
+	assert(0);
+	field_t * test_object = NULL;
+	field_tensor(test_object, index, qs);
+#endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -360,7 +411,13 @@ static void stats_free_energy_wallz(double * fs) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
+#else
+	assert(0);
+	field_t * test_object = NULL;
+	field_tensor(test_object, index, qs);
+#endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -404,9 +461,13 @@ static void stats_free_energy_colloid(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
+#ifdef OLD_PHI
+  if (phi_nop() != 5) return;
+#else
+  assert(0);
+  /* update interface */
+#endif
 
-  assert(phi_nop() == 5);
   assert(w >= 0.0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -416,7 +477,13 @@ static void stats_free_energy_colloid(double * fs) {
         index = coords_index(ic, jc, kc);
         if (site_map_get_status_index(index) != FLUID) continue;
 
+#ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
+#else
+	assert(0);
+	field_t * test_object = NULL;
+	field_tensor(test_object, index, qs);
+#endif
 
         nhat[Y] = 0;
         nhat[Z] = 0;
@@ -570,10 +637,18 @@ void blue_phase_stats(int nstep) {
 	index = coords_index(ic, jc, kc);
 	if (site_map_get_status_index(index) != FLUID) continue;
 
+#ifdef OLD_PHI
 	phi_get_q_tensor(index, q);
 	phi_gradients_tensor_gradient(index, dq);
 	phi_gradients_tensor_delsq(index, dsq);
-  
+#else
+	field_t * test_q = NULL;
+	field_grad_t * test_dq = NULL;
+	field_tensor(test_q, index, q);
+	field_grad_tensor_grad(test_dq, index, dq);
+	field_grad_tensor_delsq(test_dq, index, dsq);
+#endif
+
 	blue_phase_compute_h(q, dq, dsq, h);
 	blue_phase_compute_stress(q, dq, h, sth);
 
