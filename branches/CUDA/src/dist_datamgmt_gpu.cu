@@ -67,6 +67,7 @@ double * dfall_d;
 double * dgall_d;
 double * dmall_d;
 
+int * mask_with_neighbours;
 
 /* data size variables */
 static int ndata;
@@ -82,7 +83,7 @@ static int nhalodataZ;
 
 #define FULL_HALO 1
 
-int nlinkmax=11000;
+static int nlinkmax;
 
 /* handles for CUDA streams (for ovelapping)*/
 static cudaStream_t streamX,streamY, streamZ;
@@ -189,19 +190,9 @@ static void allocate_dist_memory_on_gpu()
   cudaHostAlloc( (void **)&fhaloZHIGH, nhalodataZ*sizeof(double), 
 		 cudaHostAllocDefault);
 
-  //fedgeXLOW = (double *) malloc(nhalodataX*sizeof(double));
-  //fedgeXHIGH = (double *) malloc(nhalodataX*sizeof(double));
-  //fedgeYLOW = (double *) malloc(nhalodataY*sizeof(double));
-  //fedgeYHIGH = (double *) malloc(nhalodataY*sizeof(double));
-  //fedgeZLOW = (double *) malloc(nhalodataZ*sizeof(double));
-  //fedgeZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
-  
-  //fhaloXLOW = (double *) malloc(nhalodataX*sizeof(double));
-  //fhaloXHIGH = (double *) malloc(nhalodataX*sizeof(double));
-  //fhaloYLOW = (double *) malloc(nhalodataY*sizeof(double));
-  //fhaloYHIGH = (double *) malloc(nhalodataY*sizeof(double));
-  //fhaloZLOW = (double *) malloc(nhalodataZ*sizeof(double));
-  //fhaloZHIGH = (double *) malloc(nhalodataZ*sizeof(double));
+  mask_with_neighbours = (int*) malloc(nsites*sizeof(int)); 
+
+
   
   /* arrays on accelerator */
   cudaMalloc((void **) &f_d, ndata*sizeof(double));
@@ -221,16 +212,40 @@ static void allocate_dist_memory_on_gpu()
   cudaMalloc((void **) &fhaloZLOW_d, nhalodataZ*sizeof(double));
   cudaMalloc((void **) &fhaloZHIGH_d, nhalodataZ*sizeof(double));
 
+
+
+
+  //   checkCUDAError("allocate_memory_on_gpu");
+
+}
+
+void bbl_init_temp_link_arrays_gpu(int nlink){
+
+  nlinkmax=nlink;
   cudaMalloc((void **) &findexall_d, nlinkmax*sizeof(int));  
   cudaMalloc((void **) &linktype_d, nlinkmax*sizeof(int));  
   cudaMalloc((void **) &dfall_d, nlinkmax*sizeof(double));  
   cudaMalloc((void **) &dgall_d, nlinkmax*sizeof(double));  
   cudaMalloc((void **) &dmall_d, nlinkmax*sizeof(double));  
 
-  
+}
 
 
-  //   checkCUDAError("allocate_memory_on_gpu");
+
+void bbl_finalise_temp_link_arrays_gpu(){
+
+  cudaFree(findexall_d);
+  cudaFree(linktype_d);
+  cudaFree(dfall_d);
+  cudaFree(dgall_d);
+  cudaFree(dmall_d);
+
+}
+
+void bbl_enlarge_temp_link_arrays_gpu(int nlink){
+
+  bbl_finalise_temp_link_arrays_gpu();
+  bbl_init_temp_link_arrays_gpu(nlink);
 
 }
 
@@ -255,6 +270,9 @@ static void free_dist_memory_on_gpu()
   cudaFreeHost(fhaloYHIGH);
   cudaFreeHost(fhaloZLOW);
   cudaFreeHost(fhaloZHIGH);
+
+  free(mask_with_neighbours);
+
 
 /*   free(fedgeYLOW); */
 /*   free(fedgeYHIGH); */
@@ -286,12 +304,6 @@ static void free_dist_memory_on_gpu()
   cudaFree(fhaloZLOW_d);
   cudaFree(fhaloZHIGH_d);
 
- cudaFree(findexall_d);
- cudaFree(linktype_d);
- cudaFree(dfall_d);
- if (distribution_ndist()>1) cudaFree(dgall_d);
- cudaFree(dmall_d);
-
 }
 
 
@@ -304,6 +316,275 @@ void put_f_on_gpu()
   //checkCUDAError("put_f_on_gpu");
 
 }
+
+
+
+
+
+void fill_mask_with_neighbours(int *mask)
+{
+
+  int i, ib[3], p;
+
+  for (i=0; i<nsites; i++)
+    mask_with_neighbours[i]=0;
+
+
+  for (i=0; i<nsites; i++){
+    if(mask[i]){
+      mask_with_neighbours[i]=1;
+      coords_index_to_ijk(i, ib);
+      /* if not a halo */
+      int halo = (ib[X] < 1 || ib[Y] < 1 || ib[Z] < 1 ||
+		  ib[X] > N[X] || ib[Y] > N[Y] || ib[Z] > N[Z]);
+      
+      if (!halo){
+	
+	for (p=1; p<NVEL; p++){
+	  int indexn = coords_index(ib[X] + cv[p][X], ib[Y] + cv[p][Y],
+				    ib[Z] + cv[p][Z]);
+	  mask_with_neighbours[indexn]=1;
+	}
+      }
+    }
+    
+  }
+  
+  
+
+}
+
+
+
+__global__ static void copy_f_partial_gpu_d(int ndist, int nhalo, int N[3],
+					    double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
+
+
+
+
+
+/* copy part of f_ from host to accelerator, using mask structure */
+void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
+{
+
+
+  int *mask;
+  int *mask_d, *packedindex_d;
+  int i, Nall[3];
+  int p, m;
+
+  int nhalo = coords_nhalo();
+  int ndist = distribution_ndist();
+  coords_nlocal(N);
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+
+  int nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  int *packedindex = (int*) malloc(nsite*sizeof(int)); 
+
+
+
+  if(include_neighbours){
+    fill_mask_with_neighbours(mask_in);
+    mask=mask_with_neighbours;
+  }
+  else{
+    mask=mask_in;
+  }
+
+
+  
+  int packedsize=0;
+  for (i=0; i<nsite; i++){
+    if(mask[i]) packedsize++;
+  }
+
+  double *ftmp = (double*) malloc(packedsize*ndist*NVEL*sizeof(double)); 
+
+  
+  int j=0;
+  for (i=0; i<nsite; i++){
+
+    if(mask[i]){
+
+      for (p=0; p<NVEL; p++){
+	for (m=0; m<ndist; m++){
+	  ftmp[packedsize*ndist*p+packedsize*m+j]
+	    =f_[nsite*ndist*p+nsite*m+i];
+	}
+      }
+      packedindex[i]=j;
+      j++;
+
+    }
+
+  }
+
+  cudaMemcpy(ftmp_d, ftmp, packedsize*ndist*NVEL*sizeof(double), cudaMemcpyHostToDevice);
+
+  cudaMalloc((void **) &mask_d, nsite*sizeof(int));
+  cudaMalloc((void **) &packedindex_d, nsite*sizeof(int));
+  
+  cudaMemcpy(mask_d, mask, nsite*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(packedindex_d, packedindex, nsite*sizeof(int), cudaMemcpyHostToDevice);
+
+  /* run the GPU kernel */
+  int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_f_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d,
+						f_d, ftmp_d, mask_d,
+						packedindex_d, packedsize, 1);
+  
+  cudaThreadSynchronize();
+  
+  free(packedindex);
+  free(ftmp);
+  cudaFree(mask_d);
+  cudaFree(packedindex_d);
+  
+  checkCUDAError("put_f_partial_on_gpu");
+
+}
+
+
+/* copy part of f_ from accelerator to host, using mask structure */
+void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
+{
+
+
+  int *mask;
+  int *mask_d, *packedindex_d;
+  int i, Nall[3];
+  int p, m, j;
+  int ib[3];
+
+
+  int nhalo = coords_nhalo();
+  int ndist = distribution_ndist();
+  coords_nlocal(N);
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+
+  
+
+  int nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+  int *packedindex = (int*) malloc(nsite*sizeof(int)); 
+
+
+  if(include_neighbours){
+    fill_mask_with_neighbours(mask_in);
+    mask=mask_with_neighbours;
+  }
+  else{
+    mask=mask_in;
+  }
+    
+  j=0;
+  for (i=0; i<nsite; i++){
+    if(mask[i]){
+      packedindex[i]=j;
+      j++;
+    }
+    
+  }
+
+  int packedsize=j;
+  double *ftmp = (double*) malloc(packedsize*ndist*NVEL*sizeof(double)); 
+
+
+  cudaMalloc((void **) &mask_d, nsite*sizeof(int));
+  cudaMalloc((void **) &packedindex_d, nsite*sizeof(int));
+  
+  cudaMemcpy(mask_d, mask, nsite*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(packedindex_d, packedindex, nsite*sizeof(int), cudaMemcpyHostToDevice);
+
+  /* run the GPU kernel */
+  int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_f_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d,
+						ftmp_d, f_d, mask_d,
+						packedindex_d, packedsize, 0);
+  
+  cudaThreadSynchronize();
+
+
+  cudaMemcpy(ftmp, ftmp_d, packedsize*ndist*NVEL*sizeof(double), cudaMemcpyDeviceToHost);
+
+
+  j=0;
+  for (i=0; i<nsite; i++){
+
+    if(mask[i]){
+
+      for (p=0; p<NVEL; p++){
+	for (m=0; m<ndist; m++){
+	  f_[nsite*ndist*p+nsite*m+i]=
+	    ftmp[packedsize*ndist*p+packedsize*m+j];	   
+	}
+      }
+      j++;
+    }
+
+  }
+
+
+  
+  free(packedindex);
+  free(ftmp);
+  cudaFree(mask_d);
+  cudaFree(packedindex_d);
+  
+  checkCUDAError("put_f_partial_on_gpu");
+
+}
+
+
+__global__ static void copy_f_partial_gpu_d(int ndist, int nhalo, int N[3],
+					    double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack) {
+
+  int ii, jj, kk, n, threadIndex, nsite, Nall[3];
+  int xstr, ystr, zstr, pstr, xfac, yfac;
+  int p, m;
+
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+
+  nsite = Nall[X]*Nall[Y]*Nall[Z];
+
+
+  /* CUDA thread index */
+  threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+
+
+  //Avoid going beyond problem domain
+  if ((threadIndex < Nall[X]*Nall[Y]*Nall[Z]) && mask_d[threadIndex])
+    {
+      
+      for (p=0;p<NVEL;p++)
+	{
+	  for (m=0;m<ndist;m++)
+	    
+	    if (inpack)
+	      f_out[ndist*nsite*p+m*nsite+threadIndex]
+		=f_in[ndist*packedsize*p+m*packedsize
+		      +packedindex_d[threadIndex]];
+	    else
+	      f_out[ndist*packedsize*p+m*packedsize
+		      +packedindex_d[threadIndex]]
+		=f_in[ndist*nsite*p+m*nsite+threadIndex];
+
+
+	}
+    }
+
+  return;
+}
+
+
 
 
 /* copy f_ from accelerator back to host */
@@ -346,7 +627,8 @@ void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
 
   int nhalo = coords_nhalo();
   int ndist = distribution_ndist();
-  
+  coords_nlocal(N);
+
   /* allocate data on accelerator */
   //cudaMalloc((void **) &findexall_d, nlink*sizeof(int));  
   //cudaMalloc((void **) &linktype_d, nlink*sizeof(int));  

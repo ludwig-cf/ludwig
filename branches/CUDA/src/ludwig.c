@@ -185,6 +185,8 @@ static void ludwig_init(void) {
   stats_rheology_init();
   stats_turbulent_init();
   collision_init();
+  bbl_init_temp_link_arrays();
+
 
   /* Calibration statistics for ah required? */
 
@@ -199,6 +201,10 @@ static void ludwig_init(void) {
   n = RUN_get_string_parameter("calibration_sigma", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
   stats_sigma_init(nstat);
+
+
+
+
 
   return;
 }
@@ -583,6 +589,7 @@ void ludwig_run(const char * inputfile) {
   stats_calibration_finish();
   colloids_finish();
   wall_finish();
+  bbl_finalise_temp_link_arrays();
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();

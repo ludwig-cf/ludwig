@@ -22,6 +22,7 @@ enum cartesian_neighbours {FORWARD, BACKWARD};
 extern "C" void coords_nlocal(int n[3]);
 extern "C" int coords_nhalo(void);
 extern "C" int coords_index(int,int,int);
+extern "C" void   coords_index_to_ijk(const int index, int coords[3]);
 extern "C" int distribution_ndist(void);
 extern "C" void TIMER_start(const int);
 extern "C" void TIMER_stop(const int);

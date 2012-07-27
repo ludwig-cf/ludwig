@@ -28,6 +28,11 @@
 #include "wall.h"
 #include "build.h"
 
+#ifdef _GPU_
+#include "interface_gpu.h"
+#endif
+
+
 static colloid_t ** coll_map;        /* colloid_t map. */
 static colloid_t ** coll_old;        /* Map at the previous time step */
 
@@ -572,6 +577,36 @@ void COLL_remove_or_replace_fluid() {
   coords_nlocal(N);
   nhalo = coords_nhalo();
 
+
+  //get_f_from_gpu
+
+#ifdef _GPU_
+
+  int *coll_diff = (int*) malloc((N[X] + 2*nhalo)*(N[Y] + 2*nhalo)*
+			     (N[Z] + 2*nhalo)*sizeof(int));
+  for (i = 1 - nhalo; i <= N[X] + nhalo; i++) {
+    for (j = 1 - nhalo; j <= N[Y] + nhalo; j++) {
+      for (k = 1 - nhalo; k <= N[Z] + nhalo; k++) {
+
+	index = coords_index(i, j, k);
+
+	if (coll_old[index] != coll_map[index]){
+	  coll_diff[index]=1;
+	}
+	
+	else
+	  coll_diff[index]=0;
+
+      }
+    }
+  }
+
+  get_f_partial_from_gpu(coll_diff,1);  
+  
+#endif
+
+
+
   for (i = 1 - nhalo; i <= N[X] + nhalo; i++) {
     for (j = 1 - nhalo; j <= N[Y] + nhalo; j++) {
       for (k = 1 - nhalo; k <= N[Z] + nhalo; k++) {
@@ -585,6 +620,7 @@ void COLL_remove_or_replace_fluid() {
 		i > N[X] || j > N[Y] || k > N[Z]);
 
 	if (sold == 0 && snew == 1) {
+
 	  p_colloid = coll_map[index];
 	  p_colloid->s.rebuild = 1;
 
@@ -595,6 +631,8 @@ void COLL_remove_or_replace_fluid() {
 	}
 
 	if (sold == 1 && snew == 0) {
+
+
 	  p_colloid = coll_old[index];
 	  p_colloid->s.rebuild = 1;
 
@@ -606,6 +644,13 @@ void COLL_remove_or_replace_fluid() {
       }
     }
   }
+
+#ifdef _GPU_
+  put_f_partial_on_gpu(coll_diff,0);  
+  free(coll_diff);
+#endif
+
+
 
   return;
 }

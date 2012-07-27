@@ -20,5 +20,8 @@ void bbl_surface_stress(void);
 void bbl_active_on_set(void);
 int  bbl_active_on(void);
 double bbl_order_parameter_deficit(void);
+void bbl_init_temp_link_arrays();
+void bbl_finalise_temp_link_arrays();
+void bbl_enlarge_temp_link_arrays(int newsize);
 
 #endif

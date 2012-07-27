@@ -110,6 +110,8 @@ __global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
   /* CUDA thread index */
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
 
+
+
   /* Avoid going beyond problem domain */
    if (threadIndex < N[X]*N[Y]*N[Z])
      {

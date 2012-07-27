@@ -121,22 +121,28 @@ void COLL_update() {
     #endif
     TIMER_stop(TIMER_HALO_LATTICE);
 
-#ifdef _GPU_
-    get_f_from_gpu();  
-#endif
 
     TIMER_start(TIMER_REBUILD);
     COLL_update_map();
+
+
+#ifdef _GPU_
+    //get_f_from_gpu();  
+#endif
+
     COLL_remove_or_replace_fluid();
+
+#ifdef _GPU_
+    //put_f_on_gpu();  
+#endif
+
+
     COLL_update_links();
 
     TIMER_stop(TIMER_REBUILD);
 
     colloid_forces();
 
-#ifdef _GPU_
-  put_f_on_gpu();  
-#endif
 
   }
 

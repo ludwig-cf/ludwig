@@ -163,6 +163,100 @@ static void mass_conservation_compute_force() {
   return;
 }
 
+
+
+static int *findexall;
+static int *linktype;
+static double *arr1;
+static double *arr2;
+static double *arr3;
+
+static int nlinkmax;
+
+void bbl_init_temp_link_arrays() {
+
+  int       ic, jc, kc;
+  colloid_t      * p_colloid;
+  colloid_link_t * p_link;
+  
+  int ilink=0;
+  
+  /* count the number of links */
+ for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+	
+	p_colloid = colloids_cell_list(ic, jc, kc);
+	
+	while (p_colloid != NULL) {
+	
+	  p_link = p_colloid->lnk;
+  
+	  while (p_link != NULL) {
+
+	    if (p_link->status != LINK_UNUSED) 
+	      ilink++;
+
+
+	    p_link = p_link->next;
+   
+	  }
+	  
+	  p_colloid = p_colloid->next;
+	  
+	}
+      }
+    }
+  }
+  
+ /* set maximum number of links to current number of links * 1.25 */
+ nlinkmax=ilink*1.25;
+
+  /* allocate memory to store info for each link */
+  findexall = (int*) malloc(nlinkmax*sizeof(int)); 
+  linktype = (int*) malloc(nlinkmax*sizeof(int)); 
+  arr1 = (double*) malloc(nlinkmax*sizeof(double)); 
+  arr2 = (double*) malloc(nlinkmax*sizeof(double)); 
+  arr3 = (double*) malloc(nlinkmax*sizeof(double)); 
+
+#ifdef _GPU_
+  bbl_init_temp_link_arrays_gpu(nlinkmax);
+#endif
+
+}
+
+ 
+
+void bbl_finalise_temp_link_arrays() {
+
+  free(findexall);
+  free(linktype);
+  free(arr1);
+  free(arr2);
+  free(arr3);
+
+#ifdef _GPU_
+  bbl_finalise_temp_link_arrays_gpu();
+#endif
+
+}
+
+
+void bbl_enlarge_temp_link_arrays(int newsize) {
+
+  findexall = (int*) realloc(findexall, newsize*sizeof(int)); 
+  linktype = (int*) realloc(linktype, newsize*sizeof(int)); 
+  arr1 = (double*) realloc(arr1, newsize*sizeof(double)); 
+  arr2 = (double*) realloc(arr2, newsize*sizeof(double)); 
+  arr3 = (double*) realloc(arr3, newsize*sizeof(double));
+
+  nlinkmax=newsize;
+
+#ifdef _GPU_
+  bbl_enlarge_temp_link_arrays_gpu(nlinkmax);
+#endif
+}
+
 /*****************************************************************************
  *
  *  bounce_back_pass1
@@ -225,12 +319,19 @@ static void bounce_back_pass1() {
   
   int nlink=ilink;
 
+  if (nlink > nlinkmax) bbl_enlarge_temp_link_arrays(nlink);
+
   /* allocate memory to store info for each link */
-  int *findexall = (int*) malloc(nlink*sizeof(int)); 
-  int *linktype = (int*) malloc(nlink*sizeof(int)); 
-  double *dm_aall = (double*) malloc(nlink*sizeof(double)); 
-  double *dmall = (double*) malloc(nlink*sizeof(double)); 
-  double *deltaall = (double*) malloc(nlink*sizeof(double)); 
+  //int *findexall = (int*) malloc(nlink*sizeof(int)); 
+  //int *linktype = (int*) malloc(nlink*sizeof(int)); 
+  //double *dm_aall = (double*) malloc(nlink*sizeof(double)); 
+  
+  double *dm_aall = arr1;
+  double *dmall = arr2;
+  double *deltaall = arr3;
+
+  //double *dmall = (double*) malloc(nlink*sizeof(double)); 
+  //double *deltaall = (double*) malloc(nlink*sizeof(double)); 
 
   ilink=0;
   for (ic = 0; ic <= Ncell(X) + 1; ic++)
@@ -532,11 +633,11 @@ static void bounce_back_pass1() {
 
   return;
 
-  free(findexall);
-  free(linktype);
-  free(dmall);
-  free(dm_aall);
-  free(deltaall);
+  //free(findexall);
+  //free(linktype);
+  //free(dmall);
+  //free(dm_aall);
+  //free(deltaall);
 
 }
 
@@ -625,14 +726,21 @@ static void bounce_back_pass2() {
 
   int nlink=ilink;
 
+  if (nlink > nlinkmax) bbl_enlarge_temp_link_arrays(nlink);
+
+
   /* allocate memory to store info for each link */
-  int *findexall = (int*) malloc(nlink*sizeof(int)); 
-  int *linktype = (int*) malloc(nlink*sizeof(int)); 
-  double *dfall = (double*) malloc(nlink*sizeof(double)); 
-  double *dgall; 
-  if (distribution_ndist() > 1) 
-    dgall = (double*) malloc(nlink*sizeof(double)); 
-  double *dmall = (double*) malloc(nlink*sizeof(double)); 
+  //int *findexall = (int*) malloc(nlink*sizeof(int)); 
+  //int *linktype = (int*) malloc(nlink*sizeof(int)); 
+  //double *dfall = (double*) malloc(nlink*sizeof(double)); 
+  //double *dgall; 
+  //if (distribution_ndist() > 1) 
+  //  dgall = (double*) malloc(nlink*sizeof(double)); 
+  //double *dmall = (double*) malloc(nlink*sizeof(double)); 
+
+  double *dfall = arr1;
+  double *dmall = arr2;
+  double *dgall = arr3;
   
   ilink=0;
   for (ic = 0; ic <= Ncell(X) + 1; ic++)
@@ -897,11 +1005,11 @@ static void bounce_back_pass2() {
 	/* Next cell */
       }
 
-  free(findexall);
-  free(linktype);
-  free(dmall);
-  free(dfall);
-  if (distribution_ndist() > 1) free(dgall);
+  //free(findexall);
+  //free(linktype);
+  //free(dmall);
+  //free(dfall);
+  //if (distribution_ndist() > 1) free(dgall);
 
 
   return;
