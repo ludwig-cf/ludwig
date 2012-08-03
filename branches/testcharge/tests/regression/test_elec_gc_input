@@ -511,6 +511,7 @@ electrokinetics_eunit   1.0
 electrokinetics_epsilon 3.3e3
 electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 0.001
+electrokinetics_init_sigma 0.03125
 
 ###############################################################################
 #
