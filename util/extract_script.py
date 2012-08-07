@@ -9,22 +9,22 @@
 # filelist name (default filelist)
 
 import sys, os, re, math
-Lx=32
-Ly=32
-Lz=32
+Lx=128
+Ly=128
+Lz=128
 
-nstart=0
-nint=1000
-nend=20000
-ngroup=1
+nstart=25000
+nint=25000
+nend=1400000
+ngroup=8
 
-op=0
+op=1
 vel=0
-dir=0
+dir=1
 phi=0
 biaxop=0
 colloid=0
-psi=1
+psi=0
 
 create_ascii_file=1
 create_paraview_file=1
@@ -42,33 +42,33 @@ if op==1:
 	x.append('1')
 	y.append('0')
 	z.append('0')
-	metafile.append('qs_dir.001-00%d.meta' % ngroup)
+	metafile.append('qs_dir.00%d-001.meta' % ngroup)
 	filelist.append('filelist_op')
 	os.system('rm filelist_op')
 	for i in range(nstart,nend+nint,nint):
-		os.system('ls -t1 qs_dir-%08.0d.001-00%d >> filelist_op' % (i,ngroup))
+		os.system('ls -t1 qs_dir-%08.0d.00%d-001 >> filelist_op' % (i,ngroup))
 
 if vel==1:
 	type.append('2')
 	x.append('1')
 	y.append('2')
 	z.append('3')
-	metafile.append('vel.001-00%d.meta' % ngroup)
+	metafile.append('vel.00%d-001.meta' % ngroup)
 	filelist.append('filelist_vel')
 	os.system('rm filelist_vel')
 	for i in range(nstart,nend+nint,nint):
-		os.system('ls -t1 vel-%08.0d.001-00%d >> filelist_vel' % (i,ngroup))
+		os.system('ls -t1 vel-%08.0d.00%d-001 >> filelist_vel' % (i,ngroup))
 
 if dir==1:
 	type.append('3')
 	x.append('2')
 	y.append('3')
 	z.append('4')
-	metafile.append('qs_dir.001-00%d.meta' % ngroup)
+	metafile.append('qs_dir.00%d-001.meta' % ngroup)
 	filelist.append('filelist_dir')
 	os.system('rm filelist_dir')
 	for i in range(nstart,nend+nint,nint):
-		os.system('ls -t1 qs_dir-%08.0d.001-00%d >> filelist_dir' % (i,ngroup))
+		os.system('ls -t1 qs_dir-%08.0d.00%d-001 >> filelist_dir' % (i,ngroup))
 
 if phi==1:
 	type.append('4')
@@ -86,11 +86,11 @@ if biaxop==1:
 	x.append('5')
 	y.append('0')
 	z.append('0')
-	metafile.append('qs_dir.001-00%d.meta' % ngroup)
+	metafile.append('qs_dir.00%d-001.meta' % ngroup)
 	filelist.append('filelist_biaxop')
 	os.system('rm filelist_biaxop')
 	for i in range(nstart,nend+nint,nint):
-		os.system('ls -t1 qs_dir-%08.0d.001-00%d >> filelist_biaxop' % (i,ngroup))
+		os.system('ls -t1 qs_dir-%08.0d.00%d-001 >> filelist_biaxop' % (i,ngroup))
 
 if psi==1:
         type.append('6')
