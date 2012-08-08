@@ -591,6 +591,7 @@ static void test_model_reduced_halo_swap() {
   }
 
   info("Reduced halo swapping... ok");
+  distribution_finish();
 
   return;
 }

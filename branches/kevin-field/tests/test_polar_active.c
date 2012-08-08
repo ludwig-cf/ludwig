@@ -24,14 +24,18 @@
 #include "tests.h"
 #include "coords.h"
 #include "leesedwards.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
 #include "phi_gradients.h"
+#else
+#include "field.h"
+#include "field_grad.h"
+#endif
+
 #include "gradient_2d_5pt_fluid.h"
 #include "polar_active.h"
 
-static void test_polar_active_aster(void);
-static void test_polar_active_terms(void);
-static void test_polar_active_init_aster(void);
 
 /*****************************************************************************
  *
@@ -40,7 +44,10 @@ static void test_polar_active_init_aster(void);
  *  This is a 2-d test in a system size 100 by 100.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
+static void test_polar_active_aster(void);
+static void test_polar_active_terms(void);
+static void test_polar_active_init_aster(void);
 int main (int argc, char ** argv) {
 
   int ntotal[3] = {100, 100, 1};
@@ -55,7 +62,6 @@ int main (int argc, char ** argv) {
 
   phi_nop_set(3);
   phi_init();
-  phi_gradients_dyadic_set(1);
   phi_gradients_init();
   gradient_2d_5pt_fluid_init();
 
@@ -69,12 +75,59 @@ int main (int argc, char ** argv) {
 
   phi_gradients_finish();
   phi_finish();
+  le_finish();
   coords_finish();
   pe_finalise();
   MPI_Finalize();
 
   return 0;
 }
+#else
+static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad);
+static int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad);
+static int test_polar_active_init_aster(field_t * fp);
+int main (int argc, char ** argv) {
+
+  int nf = NVECTOR;
+  int nhalo = 2;
+  int ntotal[3] = {100, 100, 1};
+
+  field_t * fp = NULL;
+  field_grad_t * fpgrad = NULL;
+
+  MPI_Init(&argc, &argv);
+  pe_init();
+
+  coords_nhalo_set(nhalo);
+  coords_ntotal_set(ntotal);
+  coords_init();
+  le_init();
+
+  field_create(nf, "p", &fp);
+  field_init(fp, nhalo);
+  field_grad_create(fp, 2, &fpgrad);
+  field_grad_set(fpgrad, gradient_2d_5pt_fluid_d2, NULL);
+  polar_active_p_set(fp, fpgrad);
+
+  if (pe_size() == 1) {
+    test_polar_active_aster(fp, fpgrad);
+    test_polar_active_terms(fp, fpgrad);
+  }
+  else {
+    info("Not running polar active tests in parallel yet.\n");
+  }
+
+  field_grad_free(fpgrad);
+  field_free(fp);
+
+  le_finish();
+  coords_finish();
+  pe_finalise();
+  MPI_Finalize();
+
+  return 0;
+}
+#endif
 
 /*****************************************************************************
  *
@@ -84,9 +137,11 @@ int main (int argc, char ** argv) {
  *  All z-components should be zero in this 2-d configuration.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void test_polar_active_aster(void) {
-
+#else
+static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
+#endif
   int index;
 
   double fed;
@@ -94,15 +149,26 @@ static void test_polar_active_aster(void) {
   double h[3];
   double s[3][3];
 
-  polar_active_parameters_set(-0.1, +0.1, 0.01, 0.02);
-  test_polar_active_init_aster();
+  /* Note that the k2 = 0.02 here is not effective, as all the terms
+   * the the polar active are not currently compluted. If all terms
+   * were present, the relevant results would be changed. */
 
+  polar_active_parameters_set(-0.1, +0.1, 0.01, 0.02);
+#ifdef OLD_PHI
+  test_polar_active_init_aster();
+#else
+  test_polar_active_init_aster(fp);
+#endif
   /* Order parameter */
 
   info("\nOrder parameter\n\n");
 
   index = coords_index(1, 1, 1);
+#ifdef OLD_PHI
   phi_vector(index, p);
+#else
+  field_vector(fp, index, p);
+#endif
   info("p_a(1, 1, 1) ...");
   test_assert(fabs(p[X] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
@@ -110,7 +176,11 @@ static void test_polar_active_aster(void) {
   info("ok\n");
 
   index = coords_index(2, 28, 1);
+#ifdef OLD_PHI
   phi_vector(index, p);
+#else
+  field_vector(fp, index, p);
+#endif
   info("p_a(2, 27, 1) ...");
   test_assert(fabs(p[X] - +9.0523694e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +4.2490714e-01) < TEST_FLOAT_TOLERANCE);
@@ -118,9 +188,13 @@ static void test_polar_active_aster(void) {
   info("ok\n");
 
   /* Gradient terms */
-
+#ifdef OLD_PHI
   phi_halo();
   phi_gradients_compute();
+#else
+  field_halo(fp);
+  field_grad_compute(fpgrad);
+#endif
 
   /* Free energy density (not computed in independent code) */
 
@@ -129,13 +203,12 @@ static void test_polar_active_aster(void) {
   index = coords_index(1, 50, 1);
   fed = polar_active_free_energy_density(index);
   info("free energy density at (1, 50, 1) ...");
-  test_assert(fabs(fed - -1.9979438e-02) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
   index = coords_index(100, 3, 1);
   fed = polar_active_free_energy_density(index);
   info("free energy density at (100, 3, 1) ...");
-  test_assert(fabs(fed - -1.2452523e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(fed - -2.2448448e-02) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
   /* Molecular field */
@@ -145,16 +218,16 @@ static void test_polar_active_aster(void) {
   index = coords_index(4, 78, 1);
   polar_active_molecular_field(index, h);
   info("h_a(4, 78, 1) ...");
-  test_assert(fabs(h[X] - -2.6571370e-05) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(h[Y] - +1.5253651e-05) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[X] - -2.9526261e-06) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[Y] - +1.6947361e-06) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Z]) < TEST_DOUBLE_TOLERANCE);
   info("ok\n");
 
   index = coords_index(49, 49, 1);
   polar_active_molecular_field(index, h);
   info("h_a(49, 49, 1) ...");
-  test_assert(fabs(h[X] - -8.8329259e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(h[Y] - -8.8329259e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[X] - -1.0003585e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(h[Y] - -1.0003585e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Z]) < TEST_DOUBLE_TOLERANCE);
   info("ok\n");
 
@@ -166,9 +239,9 @@ static void test_polar_active_aster(void) {
   polar_active_chemical_stress(index, s);
   info("s_ab(3, 90, 1) ...");
   test_assert(fabs(s[X][X] - +1.0398195e-06) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(s[X][Y] - +1.2809416e-06) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[X][Y] - +1.2798462e-06) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[X][Z]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(s[Y][X] - +1.2784085e-06) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[Y][X] - +1.2795039e-06) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[Y][Y] - +1.5748583e-06) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[Y][Z]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
@@ -180,9 +253,9 @@ static void test_polar_active_aster(void) {
   polar_active_chemical_stress(index, s);
   info("s_ab(100, 1, 1) ...");
   test_assert(fabs(s[X][X] - +4.8979804e-03) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(s[X][Y] - +3.5860889e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[X][Y] - -4.9469398e-05) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[X][Z]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(s[Y][X] - -4.5958755e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[Y][X] - -5.1509267e-05) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[Y][Y] - +5.0000000e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[Y][Z]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
@@ -191,8 +264,11 @@ static void test_polar_active_aster(void) {
   info("ok\n");
 
   info("2-d test ok\n\n");
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -203,9 +279,11 @@ static void test_polar_active_aster(void) {
  *  but the stress changes with lambda, zeta non-zero.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void test_polar_active_terms(void) {
-
+#else
+  int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad) {
+#endif
   int index;
   int ic, jc, kc;
   int nlocal[3];
@@ -217,11 +295,15 @@ void test_polar_active_terms(void) {
   fe_v_lambda_set(2.1);
   polar_active_parameters_set(-0.1, +0.1, 0.01, 0.02);
   polar_active_zeta_set(0.001);
-
+#ifdef OLD_PHI
   test_polar_active_init_aster();
-
   phi_halo();
   phi_gradients_compute();
+#else
+  test_polar_active_init_aster(fp);
+  field_halo(fp);
+  field_grad_compute(fpgrad);
+#endif
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -243,35 +325,38 @@ void test_polar_active_terms(void) {
   polar_active_chemical_stress(index, s);
   info("s_ab(3, 90, 1) ...");
 
-  test_assert(fabs(s[X][X] - +2.5676086e-04) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(s[X][Y] - -4.6394279e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[X][X] - +2.6858170e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[X][Y] - -4.8544429e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[X][Z]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(s[Y][X] - -4.6394532e-04) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(s[Y][Y] - +6.2712559e-05) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[Y][X] - -4.8544463e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[Y][Y] - +6.5535744e-05) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[Y][Z]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Y]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(s[Z][Z] - -3.1685874e-04) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[Z][Z] - -3.3150277e-04) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
   index = coords_index(100, 1, 1);
   polar_active_chemical_stress(index, s);
 
   info("s_ab(100, 1, 1) ...");
-  test_assert(fabs(s[X][X] - -2.8683785e-02) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(s[X][Y] - +1.0485591e-01) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[X][X] - -1.5237375e-03) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[X][Y] - +2.0447484e-02) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[X][Z]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(s[Y][X] - +1.0403771e-01) < TEST_FLOAT_TOLERANCE);
-  test_assert(fabs(s[Y][Y] - -3.1085746e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[Y][X] - +2.0445444e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[Y][Y] - -2.2456775e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[Y][Z]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Y]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(s[Z][Z] - +6.9667512e-02) < TEST_FLOAT_TOLERANCE);
+  test_assert(fabs(s[Z][Z] - +1.3667395e-02) < TEST_FLOAT_TOLERANCE);
   info("ok\n");
 
   info("Active stress ok\n\n");
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -282,9 +367,11 @@ void test_polar_active_terms(void) {
  *  the centre of the 2-d system.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void test_polar_active_init_aster(void) {
-
+#else
+int test_polar_active_init_aster(field_t * fp) {
+#endif
   int nlocal[3];
   int ic, jc, kc, index;
 
@@ -293,7 +380,6 @@ void test_polar_active_init_aster(void) {
   double x, y, z, x0, y0, z0;
 
   coords_nlocal(nlocal);
-  /* coords_noffset(noffset);*/
 
   x0 = 0.5*L(X);
   y0 = 0.5*L(Y);
@@ -319,10 +405,17 @@ void test_polar_active_init_aster(void) {
 	  p[Z] = -(z - z0)/r;
 	}
 	index = coords_index(ic, jc, kc);
+#ifdef OLD_PHI
 	phi_vector_set(index, p);
+#else
+	field_vector_set(fp, index, p);
+#endif
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }

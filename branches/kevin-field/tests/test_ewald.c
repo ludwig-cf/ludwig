@@ -433,6 +433,7 @@ int main (int argc, char ** argv) {
 
   info("Ewald tests ok\n");
 
+  colloids_finish();
   coords_finish();
   pe_finalise();
   MPI_Finalize();

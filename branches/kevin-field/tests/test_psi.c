@@ -33,6 +33,7 @@ static int do_test2(void);
 static int do_test_halo1(void);
 static int do_test_halo2(void);
 static int do_test_bjerrum(void);
+static int do_test_ionic_strength(void);
 static int do_test_io1(void);
 
 int test_field_set(int nf, double * f, halo_test_ft fset);
@@ -55,6 +56,7 @@ int main(int argc, char ** argv) {
   do_test_halo2();
   do_test_io1();
   do_test_bjerrum();
+  do_test_ionic_strength();
 
   pe_finalise();
   MPI_Finalize();
@@ -256,7 +258,9 @@ static int do_test_halo2(void) {
  *
  *  do_test_io1
  *
- *  Note that the io functions must use the psi_ object.
+ *  Note that the io functions must use the psi_ object at the moment.
+ *  Take default (i.e., binary) write, and specify explicitly binary
+ *  read.
  * 
  *****************************************************************************/
 
@@ -266,34 +270,50 @@ static int do_test_io1(void) {
   int grid[3] = {1, 1, 1};
   char * filename = "psi-test-io";
 
+  psi_t * psi = NULL;
+  io_info_t * iohandler = NULL;
+
   coords_init();
 
+  if (pe_size() == 8) {
+    grid[X] = 2;
+    grid[Y] = 2;
+    grid[Z] = 2;
+  }
+
   nk = 2;
-  psi_create(nk, &psi_);
-  psi_init_io_info(psi_, grid);
+  psi_create(nk, &psi);
+  assert(psi);
+  psi_init_io_info(psi, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
 
-  test_field_set(1, psi_->psi, testf1);
-  test_field_set(nk, psi_->rho, testf1);
-  io_write(filename, psi_->info);
+  test_field_set(1, psi->psi, testf1);
+  test_field_set(nk, psi->rho, testf1);
 
-  psi_free(psi_);
+  psi_io_info(psi, &iohandler);
+  assert(iohandler);
+  io_write_data(iohandler, filename,  psi);
+
+  psi_free(psi);
   MPI_Barrier(pe_comm());
 
   /* Recreate, and read. This zeros out all the fields, so they
    * must be read correctly to pass. */
 
-  psi_create(nk, &psi_);
-  psi_init_io_info(psi_, grid);
-  io_read(filename, psi_->info);
+  psi_create(nk, &psi);
+  psi_init_io_info(psi, grid, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
 
-  psi_halo_psi(psi_);
-  psi_halo_rho(psi_);
+  psi_io_info(psi, &iohandler);
+  assert(iohandler);
+  io_read_data(iohandler, filename, psi);
 
-  test_field_check(1, psi_->psi, testf1);
-  test_field_check(nk, psi_->rho, testf1);
-  io_remove(filename, psi_->info);
+  psi_halo_psi(psi);
+  psi_halo_rho(psi);
 
-  psi_free(psi_);
+  test_field_check(1, psi->psi, testf1);
+  test_field_check(nk, psi->rho, testf1);
+  io_remove(filename, iohandler);
+
+  psi_free(psi);
   coords_finish();
 
   return 0;
@@ -313,6 +333,9 @@ static int do_test_io1(void) {
  *  At the moment I have the famous 41.4 which is the dielectric
  *  *isotropy* used for blue phases scaled by an arbitrary 1000.
  *
+ *  Also test the Debye length for unit ionic strength while we
+ *  are at it.
+ *
  *****************************************************************************/
 
 static int do_test_bjerrum(void) {
@@ -321,7 +344,7 @@ static int do_test_bjerrum(void) {
   double eref = 1.0;
   double epsilonref = 41.4*1000.0;
   double ktref = 0.00001;
-  double tmp, lbref;
+  double tmp, lbref, ldebyeref;
 
   coords_init();
   psi_create(2, &psi);
@@ -341,6 +364,50 @@ static int do_test_bjerrum(void) {
   lbref = eref*eref / (4.0*M_PI*epsilonref*ktref);
   psi_bjerrum_length(psi, &tmp);
   assert(fabs(lbref - tmp) < DBL_EPSILON);
+
+  /* For unit ionic strength */
+  ldebyeref = 1.0 / sqrt(8.0*M_PI*lbref);
+  psi_debye_length(psi, 1.0, &tmp);
+  assert(fabs(ldebyeref - tmp) < DBL_EPSILON);
+
+  psi_free(psi);
+  coords_finish();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_ionic_strength
+ *
+ *  Test the calculation of the ionic strength. We require just
+ *  valency and charge density for a given number of species. 
+ *
+ *****************************************************************************/
+
+static int do_test_ionic_strength(void) {
+
+  int n, nk = 2;
+  psi_t * psi = NULL;
+
+  int index = 1;             /* Lattice point will be present */
+  int valency[2] = {+2, -2};
+  double rho[2] = {1.0, 2.0};
+  double rhoi;
+  double expect;
+
+  coords_init();
+  psi_create(nk, &psi);
+
+  for (n = 0; n < nk; n++) {
+    psi_valency_set(psi, n, valency[n]);
+    psi_rho_set(psi, index, n, rho[n]);
+  }
+
+  expect = 0.5*(pow(valency[0], 2)*rho[0] + pow(valency[1], 2)*rho[1]);
+
+  psi_ionic_strength(psi, index, &rhoi);
+  assert(fabs(expect - rhoi) < DBL_EPSILON);
 
   psi_free(psi);
   coords_finish();

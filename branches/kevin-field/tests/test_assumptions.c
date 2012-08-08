@@ -19,6 +19,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <float.h>
 #include <assert.h>
 
 #include "tests.h"
@@ -26,6 +27,8 @@
 
 void (* p_function)(void);
 void test_util(void);
+int test_util_discrete_volume(void);
+int test_discrete_volume_sphere(double r0[3], double a0, double answer);
 
 int main(int argc, char ** argv) {
 
@@ -79,6 +82,11 @@ int main(int argc, char ** argv) {
     printf("malloc(0) returns non NULL pointer\n");
     free(p_int);
   }
+
+  /* Maths? */
+
+  printf("FLT_EPSILON is %14.7e\n", FLT_EPSILON);
+  printf("M_PI        is %14.7e\n", M_PI);
 
   test_util();
 
@@ -162,5 +170,75 @@ void test_util(void) {
 
   printf("yes.\n");
 
+  test_util_discrete_volume();
+
   return;
+}
+
+/*****************************************************************************
+ *
+ *  test_util_discrete_volume
+ *
+ *  The test values come from an original program to compute the
+ *  varience of the discrete colloid size as a function of radius.
+ *
+ *****************************************************************************/
+
+int test_util_discrete_volume(void) {
+
+  double r[3];
+
+  r[0] = 0.0; r[1] = 0.0; r[2] = 0.0;
+  assert(test_discrete_volume_sphere(r, 1.0, 1.0) == 0);
+  r[0] = 0.5; r[1] = 0.5; r[2] = 0.5;
+  assert(test_discrete_volume_sphere(r, 1.0, 8.0) == 0);
+
+  r[0] = 0.52; r[1] = 0.10; r[2] = 0.99;
+  assert(test_discrete_volume_sphere(r, 1.25, 10.0) == 0);
+  r[0] = 0.52; r[1] = 0.25; r[2] = 0.99;
+  assert(test_discrete_volume_sphere(r, 1.25,  8.0) == 0);
+
+  r[0] = 0.0; r[1] = 0.0; r[2] = 0.0;
+  assert(test_discrete_volume_sphere(r, 2.3, 57.0) == 0);
+  r[0] = 0.5; r[1] = 0.5; r[2] = 0.5;
+  assert(test_discrete_volume_sphere(r, 2.3, 56.0) == 0);
+
+  r[0] = 0.52; r[1] = 0.10; r[2] = 0.99;
+  assert(test_discrete_volume_sphere(r, 4.77, 461.0) == 0);
+  r[0] = 0.52; r[1] = 0.25; r[2] = 0.99;
+  assert(test_discrete_volume_sphere(r, 4.77, 453.0) == 0);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_discrete_volume_sphere
+ *
+ *  Position is r0 (can be 0 <= x < 1 etc), a0 is radius, and answer
+ *  is the expected result.
+ *
+ *  Returns 0 on success.
+ *
+ *****************************************************************************/
+
+int test_discrete_volume_sphere(double r0[3], double a0, double answer) {
+
+  int ifail = 0;
+  double vn;
+
+  util_discrete_volume_sphere(r0, a0, &vn);
+  if (fabs(vn - answer) > TEST_DOUBLE_TOLERANCE) ifail++;
+
+  /* Move to +ve coords */
+  r0[0] += 100.; r0[1] += 100.0; r0[2] += 100.0;
+  util_discrete_volume_sphere(r0, a0, &vn);
+  if (fabs(vn - answer) > TEST_DOUBLE_TOLERANCE) ifail++;
+
+  /* Move to -ve coords */
+  r0[0] -= 200.; r0[1] -= 200.0; r0[2] -= 200.0;
+  util_discrete_volume_sphere(r0, a0, &vn);
+  if (fabs(vn - answer) > TEST_DOUBLE_TOLERANCE) ifail++;
+
+  return ifail;
 }
