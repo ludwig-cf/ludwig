@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  blue_phase_rt.h
+ *  advection_s.h
  *
  *  $Id$
  *
@@ -8,19 +8,20 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinbrugh
+ *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef BLUE_PHASE_RT_H
-#define BLUE_PHASE_RT_H
+#ifndef ADVECTION_S_H
+#define ADVECTION_S_H
 
-void blue_phase_run_time(void);
+#include "advection.h"
 
-#ifdef OLD_PHI
-void blue_phase_rt_initial_conditions(void);
-#else
-#include "field.h"
-int blue_phase_rt_initial_conditions(field_t * q);
-#endif
+struct advflux_s {
+  double * fe;   /* For LE planes */
+  double * fw;   /* For LE planes */
+  double * fy;
+  double * fz;
+};
+
 #endif

@@ -45,14 +45,19 @@ static double * fluxe;
 static double * fluxw;
 static double * fluxy;
 static double * fluxz;
-#else
-#include "field.h"
-#endif
 
 static void phi_ch_diffusive_flux(double * fe, double * fw, double * fy,
 				  double * fz);
 static void phi_ch_update_forward_step(double * fe, double * fw, double * fy,
 				       double * fz);
+
+#else
+#include "field.h"
+#include "advection_s.h"
+static int phi_ch_diffusive_flux(advflux_t * flux);
+static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux);
+#endif
+
 static void phi_ch_le_fix_fluxes(int nf, double * fe, double * fw);
 static void phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw);
 static void phi_ch_random_flux(double * fe, double * fw, double * fy,
@@ -79,12 +84,12 @@ static double mobility_  = 0.0; /* Order parameter mobility */
  *  just relaxational (no velocity field).
  *
  *****************************************************************************/
+#ifdef OLD_PHI
 
 int phi_cahn_hilliard(hydro_t * hydro) {
 
   int nsites;
 
-#ifdef OLD_PHI
   /* Single order parameter only */
   assert(phi_nop() == 1);
 
@@ -124,42 +129,51 @@ int phi_cahn_hilliard(hydro_t * hydro) {
   free(fluxy);
   free(fluxw);
   free(fluxe);
-#else
-
-  advflux_t * fluxes = NULL;
-  field_t * test_object = NULL;
-
-  assert(0); /* Sort me out */
-
-  if (hydro) {
-    hydro_u_halo(hydro);
-    hydro_lees_edwards(hydro);
-    advection_x(fluxes, hydro, test_object);
-  }
-
-  if (phi_fluctuations_on()) {
-    assert(0);
-    /* phi_ch_diffusive_flux_noise();*/
-  }
-  else {
-    assert(0);
-    /* phi_ch_diffusive_flux();*/
-  }
-
-  /* No flux boundaries (diffusive fluxes, and hydro, if present) */
-  assert(0);
-  /* advection_bcs_wall();*/
-
-  assert(0);
-  /* if (phi_fluctuations_on()) phi_ch_random_flux();*/
-
-  assert(0);
-  /*phi_ch_le_fix_fluxes();
-    phi_ch_update_forward_step();*/
-#endif
 
   return 0;
 }
+#else
+
+int phi_cahn_hilliard(field_t * phi, hydro_t * hydro) {
+
+  int nf;
+  advflux_t * fluxes = NULL;
+
+  assert(phi);
+
+  field_nf(phi, &nf);
+  assert(nf == 1);
+
+  advflux_create(nf, &fluxes);
+
+  if (hydro) {
+    hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
+    hydro_lees_edwards(hydro); /* Repoistion to main ditto */
+    advection_x(fluxes, hydro, phi);
+  }
+
+  if (phi_fluctuations_on()) {
+    phi_ch_diffusive_flux_noise(fluxes->fe,fluxes->fw,fluxes->fy,fluxes->fz);
+    phi_ch_random_flux(fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
+  }
+  else {
+    phi_ch_diffusive_flux(fluxes);
+  }
+
+  /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present) */
+
+  /* advection_bcs_wall(phi);*/
+  /* advection_bcs_no_flux(); Why isn't this called in original? */
+
+
+  phi_ch_le_fix_fluxes(nf, fluxes->fe, fluxes->fw);
+  phi_ch_update_forward_step(phi, fluxes);
+
+  advflux_free(fluxes);
+
+  return 0;
+}
+#endif
 
 /*****************************************************************************
  *
@@ -196,7 +210,7 @@ void phi_cahn_hilliard_mobility_set(const double m) {
  *  and the mobility is constant.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void phi_ch_diffusive_flux(double * fe, double * fw, double * fy,
 				  double * fz) {
 
@@ -254,7 +268,66 @@ static void phi_ch_diffusive_flux(double * fe, double * fw, double * fy,
 
   return;
 }
+#else
+static int phi_ch_diffusive_flux(advflux_t * flux) {
 
+  int nlocal[3];
+  int ic, jc, kc;
+  int index0, index1;
+  int icm1, icp1;
+  double mu0, mu1;
+
+  double (* chemical_potential)(const int index, const int nop);
+
+  assert(flux);
+
+  coords_nlocal(nlocal);
+  assert(coords_nhalo() >= 2);
+
+  chemical_potential = fe_chemical_potential_function();
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = le_site_index(ic, jc, kc);
+
+	mu0 = chemical_potential(index0, 0);
+
+	/* x-direction (between ic-1 and ic) */
+
+	index1 = le_site_index(icm1, jc, kc);
+	mu1 = chemical_potential(index1, 0);
+	flux->fw[index0] -= mobility_*(mu0 - mu1);
+
+	/* ...and between ic and ic+1 */
+
+	index1 = le_site_index(icp1, jc, kc);
+	mu1 = chemical_potential(index1, 0);
+	flux->fe[index0] -= mobility_*(mu1 - mu0);
+
+	/* y direction */
+
+	index1 = le_site_index(ic, jc+1, kc);
+	mu1 = chemical_potential(index1, 0);
+	flux->fy[index0] -= mobility_*(mu1 - mu0);
+
+	/* z direction */
+
+	index1 = le_site_index(ic, jc, kc+1);
+	mu1 = chemical_potential(index1, 0);
+	flux->fz[index0] -= mobility_*(mu1 - mu0);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+#endif
 /*****************************************************************************
  *
  *  phi_ch_diffusive_flux_noise
@@ -275,7 +348,6 @@ static void phi_ch_diffusive_flux(double * fe, double * fw, double * fy,
 
 static void phi_ch_diffusive_flux_noise(double * fe, double * fw, double * fy,
 					double * fz) {
-
   int nhalo;
   int nlocal[3];
   int ic, jc, kc;
@@ -710,7 +782,7 @@ static void phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
  *  It also avoids a conditional on solid/fluid status.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void phi_ch_update_forward_step(double * fe, double * fw, double * fy,
 				       double * fz) {
 
@@ -732,23 +804,51 @@ static void phi_ch_update_forward_step(double * fe, double * fw, double * fy,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-#ifdef OLD_PHI
+
 	phi_site[index] -=
 	  (+ fe[index] - fw[index]
 	   + fy[index] - fy[index - ys]
 	   + wz*fz[index] - wz*fz[index - 1]);
-#else
-	field_t * field = NULL;
-	double phi;
-	assert(0);
-	field_scalar(field, index, &phi);
-	phi -= (+ fe[index] - fw[index] + fy[index] - fy[index - ys]
-	   + wz*fz[index] - wz*fz[index - 1]);
-	field_scalar_set(field, index, phi);
-#endif
       }
     }
   }
 
   return;
 }
+#else
+static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
+
+  int nlocal[3];
+  int ic, jc, kc, index;
+  int ys;
+  double wz = 1.0;
+  double phi;
+
+  assert(phif);
+  assert(flux);
+
+  coords_nlocal(nlocal);
+  ys = nlocal[Z] + 2*coords_nhalo();
+
+  /* In 2-d systems need to eliminate the z fluxes (no chemical
+   * potential computed in halo region for 2d_5pt_fluid) */
+  if (nlocal[Z] == 1) wz = 0.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	field_scalar(phif, index, &phi);
+	phi -= (+ flux->fe[index] - flux->fw[index]
+		+ flux->fy[index] - flux->fy[index - ys]
+		+ wz*flux->fz[index] - wz*flux->fz[index - 1]);
+	field_scalar_set(phif, index, phi);
+      }
+    }
+  }
+
+  return 0;
+}
+#endif

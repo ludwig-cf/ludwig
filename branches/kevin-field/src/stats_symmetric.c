@@ -38,8 +38,13 @@
  *  The reduction is in pe_comm() for output.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void stats_symmetric_length(int timestep) {
+#else
+int stats_symmetric_length(field_grad_t * phi_grad, int timestep) {
+#endif
+
+#define NSTAT 7
 
   int ic, jc, kc, index, ia;
   int nlocal[3];
@@ -48,8 +53,8 @@ void stats_symmetric_length(int timestep) {
   double xi0;                           /* interfacial width */
 
   double dphi[3];                       /* grad phi */
-  double dphi_local[7];                 /* Local sum grad phi (plus volume) */
-  double dphi_total[7];                 /* Global sum (plus volume) */
+  double dphi_local[NSTAT];             /* Local sum grad phi (plus volume) */
+  double dphi_total[NSTAT];             /* Global sum (plus volume) */
   double dphiab[3][3];                  /* Gradient tensor d_a phi d_b phi */
 
   double lcoordinate[3];                /* Lengths in coordinate directions */
@@ -60,7 +65,10 @@ void stats_symmetric_length(int timestep) {
   double rvolume;
 
   MPI_Comm comm;
-
+#ifdef OLD_PHI
+#else
+  assert(phi_grad);
+#endif
   coords_nlocal(nlocal);
   comm = pe_comm();
 
@@ -68,7 +76,7 @@ void stats_symmetric_length(int timestep) {
   b = symmetric_b();
   xi0 = symmetric_interfacial_width();
 
-  for (ia = 0; ia < 7; ia++) {
+  for (ia = 0; ia < NSTAT; ia++) {
     dphi_local[ia] = 0.0;
   }
 
@@ -82,10 +90,7 @@ void stats_symmetric_length(int timestep) {
 #ifdef OLD_PHI
 	phi_gradients_grad(index, dphi);
 #else
-	assert(0);
-	/* Adjust interface */
-	field_grad_t * test_object = NULL;
-	field_grad_scalar_grad(test_object, index, dphi);
+	field_grad_scalar_grad(phi_grad, index, dphi);
 #endif
 
 	dphi_local[0] += dphi[X]*dphi[X];
@@ -99,7 +104,7 @@ void stats_symmetric_length(int timestep) {
     }
   }
 
-  MPI_Reduce(dphi_local, dphi_total, 7, MPI_DOUBLE, MPI_SUM, 0, comm);
+  MPI_Reduce(dphi_local, dphi_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, comm);
 
   /* Set up the normalised gradient tensor. */
 
@@ -140,6 +145,12 @@ void stats_symmetric_length(int timestep) {
        lnatural[0], lnatural[1], lnatural[2]);
   info("[angles abc] %8d %14.7e %14.7e\n", timestep, alpha, beta);
 
+#undef NSTAT
+
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 

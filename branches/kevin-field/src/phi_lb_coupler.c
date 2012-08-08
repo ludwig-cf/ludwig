@@ -94,7 +94,7 @@ int phi_lb_from_field(field_t * phi) {
 
 	field_scalar(phi, index, &phi0);
 
-	distribution_f_set(index, p, 0, phi0);
+	distribution_f_set(index, 0, 1, phi0);
 	for (p = 1; p < NVEL; p++) {
 	  distribution_f_set(index, p, 1, 0.0);
 	}

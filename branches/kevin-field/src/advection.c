@@ -38,7 +38,7 @@
 #ifdef OLD_PHI
 #include "phi.h"
 #else
-#include "field.h"
+#include "field_s.h"
 #endif
 
 #include "advection.h"
@@ -46,12 +46,19 @@
 #ifdef OLD_PHI
 extern double * phi_site;
 #else
-struct advflux_s {
-  double * fe;   /* For LE planes */
-  double * fw;   /* For LE planes */
-  double * fy;
-  double * fz;
-};
+
+#include "advection_s.h"
+static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
+			    double * f);
+static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
+			    double * f);
+static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
+			    double * f);
+static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
+			    double * f);
+static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
+			    double * f);
+
 #endif
 
 static int order_ = 1; /* Default is upwind (bad!) */
@@ -648,13 +655,37 @@ void advflux_free(advflux_t * obj) {
 
 int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
 
+  int nf;
+
   assert(obj);
   assert(hydro);
   assert(field);
 
+  field_nf(field, &nf);
+
   /* For given LE , and given order, compute fluxes */
 
-  assert(0);
+  switch (order_) {
+  case 1:
+    advection_le_1st(obj, hydro, nf, field->data);
+    break;
+  case 2:
+    advection_le_2nd(obj, hydro, nf, field->data);
+    break;
+  case 3:
+    advection_le_3rd(obj, hydro, nf, field->data);
+    break;
+  case 4:
+    advection_le_4th(obj, hydro, nf, field->data);
+    break;
+  case 5:
+    advection_le_5th(obj, hydro, nf, field->data);
+    break; 
+  default:
+    fatal("Unexpected advection scheme order\n");
+  }
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -1093,6 +1124,170 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 	}
 
 	/* Next interface. */
+      }
+    }
+  }
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  advection_le_5th
+ *
+ *  Advective fluxes, allowing for LE planes.
+ *
+ *  Formally fourth-order accurate wavenumber-extended scheme of
+ *  Li, J. Comp. Phys. 133 235-255 (1997).
+ *
+ *  The stencil is five points, biased in the upwind direction,
+ *  with weights a1--a5.
+ *
+ ****************************************************************************/
+
+static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
+			    double * f) {
+  int nlocal[3];
+  int ic, jc, kc;
+  int n;
+  int index0, index1;
+  int icm2, icm1, icp1, icp2, icm3, icp3;
+  double u0[3], u1[3], u;
+
+  const double a1 =  0.055453;
+  const double a2 = -0.305147;
+  const double a3 =  0.916054;
+  const double a4 =  0.361520;
+  const double a5 = -0.027880;
+
+  assert(flux);
+  assert(hydro);
+  assert(f);
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm3 = le_index_real_to_buffer(ic, -3);
+    icm2 = le_index_real_to_buffer(ic, -2);
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    icp2 = le_index_real_to_buffer(ic, +2);
+    icp3 = le_index_real_to_buffer(ic, +3);
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+        index0 = le_site_index(ic, jc, kc);
+        hydro_u(hydro, index0, u0);
+
+        /* west face (icm1 and ic) */
+
+        index1 = le_site_index(icm1, jc, kc);
+        hydro_u(hydro, index1, u1);
+        u = 0.5*(u0[X] + u1[X]);
+
+        if (u > 0.0) {
+          for (n = 0; n < nf; n++) {
+            flux->fw[nf*index0 + n] =
+              u*(a1*f[nf*le_site_index(icm3, jc, kc) + n]
+	       + a2*f[nf*le_site_index(icm2, jc, kc) + n]
+               + a3*f[nf*index1 + n]
+               + a4*f[nf*index0 + n]
+	       + a5*f[nf*le_site_index(icp1, jc, kc) + n]);
+          }
+        }
+        else {
+          for (n = 0; n < nf; n++) {
+            flux->fw[nf*index0 + n] =
+              u*(a1*f[nf*le_site_index(icp2, jc, kc) + n]
+	       + a2*f[nf*le_site_index(icp1, jc, kc) + n]
+               + a3*f[nf*index0 + n]
+               + a4*f[nf*index1 + n]
+	       + a5*f[nf*le_site_index(icm2, jc, kc) + n]);
+          }
+	}
+
+        /* east face */
+
+        index1 = le_site_index(icp1, jc, kc);
+        hydro_u(hydro, index1, u1);
+        u = 0.5*(u0[X] + u1[X]);
+
+        if (u < 0.0) {
+          for (n = 0; n < nf; n++) {
+            flux->fe[nf*index0 + n] =
+              u*(a1*f[nf*le_site_index(icp3, jc, kc) + n]
+	       + a2*f[nf*le_site_index(icp2, jc, kc) + n]
+               + a3*f[nf*index1 + n]
+               + a4*f[nf*index0 + n]
+	       + a5*f[nf*le_site_index(icm1, jc, kc) + n]);
+          }
+        }
+        else {
+          for (n = 0; n < nf; n++) {
+            flux->fe[nf*index0 + n] =
+              u*(a1*f[nf*le_site_index(icm2, jc, kc) + n]
+	       + a2*f[nf*le_site_index(icm1, jc, kc) + n]
+               + a3*f[nf*index0 + n]
+               + a4*f[nf*index1 + n]
+	       + a5*f[nf*le_site_index(icp2, jc, kc) + n]);
+          }
+        }
+
+        /* y-direction */
+
+        index1 = le_site_index(ic, jc+1, kc);
+        hydro_u(hydro, index1, u1);
+        u = 0.5*(u0[Y] + u1[Y]);
+
+        if (u < 0.0) {
+          for (n = 0; n < nf; n++) {
+            flux->fy[nf*index0 + n] =
+              u*(a1*f[nf*le_site_index(ic, jc+3, kc) + n]
+	       + a2*f[nf*le_site_index(ic, jc+2, kc) + n]
+               + a3*f[nf*index1 + n]
+               + a4*f[nf*index0 + n]
+	       + a5*f[nf*le_site_index(ic, jc-1, kc) + n]);
+          }
+        }
+        else {
+          for (n = 0; n < nf; n++) {
+            flux->fy[nf*index0 + n] =
+              u*(a1*f[nf*le_site_index(ic, jc-2, kc) + n]
+	       + a2*f[nf*le_site_index(ic, jc-1, kc) + n]
+               + a3*f[nf*index0 + n]
+               + a4*f[nf*index1 + n]
+	       + a5*f[nf*le_site_index(ic, jc+2, kc) + n]);
+          }
+        }
+
+        /* z-direction */
+
+        index1 = le_site_index(ic, jc, kc+1);
+        hydro_u(hydro, index1, u1);
+        u = 0.5*(u0[Z] + u1[Z]);
+
+        if (u < 0.0) {
+          for (n = 0; n < nf; n++) {
+            flux->fz[nf*index0 + n] =
+              u*(a1*f[nf*le_site_index(ic, jc, kc+3) + n]
+	       + a2*f[nf*le_site_index(ic, jc, kc+2) + n]
+               + a3*f[nf*index1 + n]
+               + a4*f[nf*index0 + n]
+	       + a5*f[nf*le_site_index(ic, jc, kc-1) + n]);
+          }
+        }
+        else {
+          for (n = 0; n < nf; n++) {
+            flux->fz[nf*index0 + n] =
+              u*(a1*f[nf*le_site_index(ic, jc, kc-2) + n]
+	       + a2*f[nf*le_site_index(ic, jc, kc-1) + n]
+               + a3*f[nf*index0 + n]
+               + a4*f[nf*index1 + n]
+	       + a5*f[nf*le_site_index(ic, jc, kc+2) + n]);
+          }
+        }
+
+        /* Next interface. */
       }
     }
   }

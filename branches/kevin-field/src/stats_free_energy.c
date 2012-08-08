@@ -37,11 +37,19 @@
 #include "blue_phase.h"
 #include "util.h"
 
+#ifdef OLD_PHI
 static void stats_free_energy_wall(double * fs);
 static void stats_free_energy_wallx(double * fs);
 static void stats_free_energy_wally(double * fs);
 static void stats_free_energy_wallz(double * fs);
 static void stats_free_energy_colloid(double * fs);
+#else
+static int stats_free_energy_wall(field_t * q, double * fs);
+static int stats_free_energy_wallx(field_t * q, double * fs);
+static int stats_free_energy_wally(field_t * q, double * fs);
+static int stats_free_energy_wallz(field_t * q, double * fs);
+static int stats_free_energy_colloid(field_t * q, double * fs);
+#endif
 
 static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
 
@@ -54,15 +62,20 @@ static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
  *  solid surface.
  *
  ****************************************************************************/
-
+#ifdef OLD_PHI
 void stats_free_energy_density(void) {
+#else
+int stats_free_energy_density(field_t * q) {
+#endif
+
+#define NSTAT 5
 
   int ic, jc, kc, index;
   int nlocal[3];
 
   double fed;
-  double fe_local[5];
-  double fe_total[5];
+  double fe_local[NSTAT];
+  double fe_total[NSTAT];
   double rv;
 
   double (* free_energy_density)(const int index);
@@ -96,9 +109,13 @@ void stats_free_energy_density(void) {
 
   if (wall_present()) {
 
+#ifdef OLD_PHI
     stats_free_energy_wall(fe_local + 3);
+#else
+    if (q) stats_free_energy_wall(q, fe_local + 3);
+#endif
 
-    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
     info("\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
     info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
@@ -107,9 +124,13 @@ void stats_free_energy_density(void) {
   }
   else if (colloid_ntotal() > 0) {
 
+#ifdef OLD_PHI
     stats_free_energy_colloid(fe_local + 3);
+#else
+    if (q) stats_free_energy_colloid(q, fe_local + 3);
+#endif
 
-    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
     info("\nFree energies - timestep f v f/v f_s a f_s/a\n");
 
@@ -134,7 +155,13 @@ void stats_free_energy_density(void) {
 	 fe_total[1]/fe_total[2]);
   }
 
+#undef NSTAT
+
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -144,7 +171,7 @@ void stats_free_energy_density(void) {
  *  Return f_s for bottom wall and top wall (and could add an area).
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void stats_free_energy_wall(double * fs) {
 
   if (wall_at_edge(X)) stats_free_energy_wallx(fs);
@@ -153,6 +180,18 @@ static void stats_free_energy_wall(double * fs) {
 
   return;
 }
+#else
+static int stats_free_energy_wall(field_t * q, double * fs) {
+
+  assert(q);
+
+  if (wall_at_edge(X)) stats_free_energy_wallx(q, fs);
+  if (wall_at_edge(Y)) stats_free_energy_wally(q, fs);
+  if (wall_at_edge(Z)) stats_free_energy_wallz(q, fs);
+
+  return 0;
+}
+#endif
 
 /*****************************************************************************
  *
@@ -162,7 +201,11 @@ static void stats_free_energy_wall(double * fs) {
  *
  *****************************************************************************/
 
+#ifdef OLD_PHI
 static void stats_free_energy_wallx(double * fs) {
+#else
+static int stats_free_energy_wallx(field_t * q, double * fs) {
+#endif
 
   int ic, jc, kc, index;
   int ia, ib;
@@ -178,8 +221,8 @@ static void stats_free_energy_wallx(double * fs) {
 #ifdef OLD_PHI
   if (phi_nop() != 5) return;
 #else
-  assert(0);
-  /* update interface */
+  assert(q);
+  assert(fs);
 #endif
 
   coords_nlocal(nlocal);
@@ -200,9 +243,7 @@ static void stats_free_energy_wallx(double * fs) {
 #ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
 #else
-	assert(0);
-	field_t * test_object = NULL;
-	field_tensor(test_object, index, qs);
+	field_tensor(q, index, qs);
 #endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
@@ -228,9 +269,7 @@ static void stats_free_energy_wallx(double * fs) {
 #ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
 #else
-	assert(0);
-	field_t * test_object = NULL;
-	field_tensor(test_object, index, qs);
+	field_tensor(q, index, qs);
 #endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
@@ -244,7 +283,11 @@ static void stats_free_energy_wallx(double * fs) {
     }
   }
 
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -255,7 +298,11 @@ static void stats_free_energy_wallx(double * fs) {
  *
  *****************************************************************************/
 
+#ifdef OLD_PHI
 static void stats_free_energy_wally(double * fs) {
+#else
+static int stats_free_energy_wally(field_t * q, double * fs) {
+#endif
 
   int ic, jc, kc, index;
   int ia, ib;
@@ -271,8 +318,8 @@ static void stats_free_energy_wally(double * fs) {
 #ifdef OLD_PHI
   if (phi_nop() != 5) return;
 #else
-  assert(0);
-  /* update interface */
+  assert(q);
+  assert(fs);
 #endif
 
   coords_nlocal(nlocal);
@@ -293,9 +340,7 @@ static void stats_free_energy_wally(double * fs) {
 #ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
 #else
-	assert(0);
-	field_t * test_object = NULL;
-	field_tensor(test_object, index, qs);
+	field_tensor(q, index, qs);
 #endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
@@ -321,9 +366,7 @@ static void stats_free_energy_wally(double * fs) {
 #ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
 #else
-	assert(0);
-	field_t * test_object = NULL;
-	field_tensor(test_object, index, qs);
+	field_tensor(q, index, qs);
 #endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
@@ -337,7 +380,11 @@ static void stats_free_energy_wally(double * fs) {
     }
   }
 
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -348,7 +395,11 @@ static void stats_free_energy_wally(double * fs) {
  *
  *****************************************************************************/
 
+#ifdef OLD_PHI
 static void stats_free_energy_wallz(double * fs) {
+#else
+static int stats_free_energy_wallz(field_t * q, double * fs) {
+#endif
 
   int ic, jc, kc, index;
   int ia, ib;
@@ -364,8 +415,8 @@ static void stats_free_energy_wallz(double * fs) {
 #ifdef OLD_PHI
   if (phi_nop() != 5) return;
 #else
-  assert(0);
-  /* update interfaec */
+  assert(q);
+  assert(fs);
 #endif
 
   coords_nlocal(nlocal);
@@ -386,9 +437,7 @@ static void stats_free_energy_wallz(double * fs) {
 #ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
 #else
-	assert(0);
-	field_t * test_object = NULL;
-	field_tensor(test_object, index, qs);
+	field_tensor(q, index, qs);
 #endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
@@ -414,9 +463,7 @@ static void stats_free_energy_wallz(double * fs) {
 #ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
 #else
-	assert(0);
-	field_t * test_object = NULL;
-	field_tensor(test_object, index, qs);
+	field_tensor(q, index, qs);
 #endif
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
@@ -430,7 +477,11 @@ static void stats_free_energy_wallz(double * fs) {
     }
   }
 
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -444,8 +495,11 @@ static void stats_free_energy_wallz(double * fs) {
  *
  *****************************************************************************/
 
+#ifdef OLD_PHI
 static void stats_free_energy_colloid(double * fs) {
-
+#else
+static int stats_free_energy_colloid(field_t *q, double * fs) {
+#endif
   int ic, jc, kc, index;
   int ia, ib;
   int nhat[3];
@@ -464,8 +518,8 @@ static void stats_free_energy_colloid(double * fs) {
 #ifdef OLD_PHI
   if (phi_nop() != 5) return;
 #else
-  assert(0);
-  /* update interface */
+  assert(q);
+  assert(fs);
 #endif
 
   assert(w >= 0.0);
@@ -480,9 +534,7 @@ static void stats_free_energy_colloid(double * fs) {
 #ifdef OLD_PHI
 	phi_get_q_tensor(index, qs);
 #else
-	assert(0);
-	field_t * test_object = NULL;
-	field_tensor(test_object, index, qs);
+	field_tensor(q, index, qs);
 #endif
 
         nhat[Y] = 0;
@@ -576,7 +628,11 @@ static void stats_free_energy_colloid(double * fs) {
     }
   }
 
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -589,9 +645,11 @@ static void stats_free_energy_colloid(double * fs) {
  *  what may be expected.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_stats(int nstep) {
-
+#else
+  int blue_phase_stats(field_t * qf, field_grad_t * dqf, int nstep) {
+#endif
   int ic, jc, kc, index;
   int ia, ib, id, ig;
   int nlocal[3];
@@ -605,6 +663,12 @@ void blue_phase_stats(int nstep) {
   double rv;
 
   FILE * fp_output;
+
+#ifdef OLD_PHI
+#else
+  assert(qf);
+  assert(dqf);
+#endif
 
   coords_nlocal(nlocal);
   rv = 1.0/(L(X)*L(Y)*L(Z));
@@ -642,11 +706,9 @@ void blue_phase_stats(int nstep) {
 	phi_gradients_tensor_gradient(index, dq);
 	phi_gradients_tensor_delsq(index, dsq);
 #else
-	field_t * test_q = NULL;
-	field_grad_t * test_dq = NULL;
-	field_tensor(test_q, index, q);
-	field_grad_tensor_grad(test_dq, index, dq);
-	field_grad_tensor_delsq(test_dq, index, dsq);
+	field_tensor(qf, index, q);
+	field_grad_tensor_grad(dqf, index, dq);
+	field_grad_tensor_delsq(dqf, index, dsq);
 #endif
 
 	blue_phase_compute_h(q, dq, dsq, h);
@@ -779,6 +841,10 @@ void blue_phase_stats(int nstep) {
 	  etotal[0] + etotal[1] + etotal[2] + etotal[3] + etotal[4]);
    }
 
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 

@@ -15,7 +15,12 @@
 #ifndef STATS_SIGMA_H
 #define STATS_SIGMA_H
 
+#ifdef OLD_PHI
 void stats_sigma_init(int nswitch);
 void stats_sigma_measure(int ntime);
-
+#else
+#include "field.h"
+int stats_sigma_init(field_t * phi, int nswtich);
+int stats_sigma_measure(field_t * phi, int ntime);
+#endif
 #endif

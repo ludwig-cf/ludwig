@@ -204,6 +204,7 @@ int field_io_info(field_t * obj, io_info_t ** info) {
 
 int field_halo(field_t * obj) {
 
+  assert(obj);
   field_phi_halo(obj);
 
   return 0;
@@ -622,6 +623,27 @@ int field_scalar_array(field_t * obj, int index, double * array) {
 
   for (n = 0; n < obj->nf; n++) {
     array[n] = obj->data[obj->nf*index + n];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_scalar_array_set
+ *
+ *****************************************************************************/
+
+int field_scalar_array_set(field_t * obj, int index, const double * array) {
+
+  int n;
+
+  assert(obj);
+  assert(obj->data);
+  assert(array);
+
+  for (n = 0; n < obj->nf; n++) {
+    obj->data[obj->nf*index + n] = array[n];
   }
 
   return 0;

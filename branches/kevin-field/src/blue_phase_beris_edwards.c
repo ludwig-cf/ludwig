@@ -24,26 +24,28 @@
 #include "leesedwards.h"
 #include "site_map.h"
 
-#ifdef OLD_PHI
-#include "phi.h"
-#else
-#include "field.h"
-#endif
-
 #include "colloids_Q_tensor.h"
 #include "advection.h"
 #include "advection_bcs.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 
-static double Gamma_;     /* Collective rotational diffusion constant */
+#ifdef OLD_PHI
+#include "phi.h"
+static void blue_phase_be_update(hydro_t * hydro);
 
 static double * fluxe;
 static double * fluxw;
 static double * fluxy;
 static double * fluxz;
+#else
+#include "field.h"
+#include "advection_s.h"
+static int blue_phase_be_update(field_t * fq, hydro_t * hydro, advflux_t * f);
+#endif
 
-static void blue_phase_be_update(hydro_t * hydro);
+static double Gamma_;     /* Collective rotational diffusion constant */
+
 
 /*****************************************************************************
  *
@@ -55,7 +57,7 @@ static void blue_phase_be_update(hydro_t * hydro);
  *  dynamics.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 int blue_phase_beris_edwards(hydro_t * hydro) {
 
   int nsites;
@@ -64,12 +66,7 @@ int blue_phase_beris_edwards(hydro_t * hydro) {
   /* Set up advective fluxes and do the update. */
 
   nsites = coords_nsites();
-#ifdef OLD_PHI
   nop = phi_nop();
-#else
-  nop = NQAB;
-  /* Could replace all occurances. */
-#endif
 
   fluxe = calloc(nop*nsites, sizeof(double));
   fluxw = calloc(nop*nsites, sizeof(double));
@@ -84,13 +81,8 @@ int blue_phase_beris_edwards(hydro_t * hydro) {
     hydro_u_halo(hydro); /* Can move this to main to make more obvious? */
     colloids_fix_swd(hydro);
     hydro_lees_edwards(hydro);
-#ifdef OLD_PHI
     advection_upwind(hydro, fluxe, fluxw, fluxy, fluxz);
     advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
-#else
-    assert(0);
-    /* Sort fluxes */
-#endif
   }
 
   blue_phase_be_update(hydro);
@@ -102,6 +94,37 @@ int blue_phase_beris_edwards(hydro_t * hydro) {
 
   return 0;
 }
+#else
+int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro) {
+
+  int nf;
+  advflux_t * flux = NULL;
+
+  assert(fq);
+
+  /* Set up advective fluxes (which default to zero),
+   * work out the hydrodynmaic stuff if required, and do the update. */
+
+  field_nf(fq, &nf);
+  assert(nf == NQAB);
+
+  advflux_create(nf, &flux);
+
+  if (hydro) {
+    hydro_u_halo(hydro); /* Can move this to main to make more obvious? */
+    colloids_fix_swd(hydro);
+    hydro_lees_edwards(hydro);
+
+    advection_x(flux, hydro, fq);
+    advection_bcs_no_normal_flux(nf, flux->fe, flux->fw, flux->fy, flux->fz);
+  }
+
+  blue_phase_be_update(fq, hydro, flux);
+  advflux_free(flux);
+
+  return 0;
+}
+#endif
 
 /*****************************************************************************
  *
@@ -117,8 +140,12 @@ int blue_phase_beris_edwards(hydro_t * hydro) {
  *  the order parameter inside, but with no hydrodynamics.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void blue_phase_be_update(hydro_t * hydro) {
+#else
+static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
+				advflux_t * flux) {
+#endif
 
   int ic, jc, kc;
   int ia, ib, id;
@@ -140,12 +167,14 @@ static void blue_phase_be_update(hydro_t * hydro) {
   coords_nlocal(nlocal);
 #ifdef OLD_PHI
   nop = phi_nop();
+  assert(nop == 5);
 #else
-  nop = NQAB;
+  assert(fq);
+  assert(flux);
+  field_nf(fq, &nop);
+  assert(nop == NQAB);
 #endif
   xi = blue_phase_get_xi();
-
-  assert(nop == 5);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -164,8 +193,7 @@ static void blue_phase_be_update(hydro_t * hydro) {
 #ifdef OLD_PHI
 	phi_get_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor(test_object, index, q);
+	field_tensor(fq, index, q);
 #endif
 	blue_phase_molecular_field(index, h);
 
@@ -202,6 +230,7 @@ static void blue_phase_be_update(hydro_t * hydro) {
 	indexj = le_site_index(ic, jc-1, kc);
 	indexk = le_site_index(ic, jc, kc-1);
 
+#ifdef OLD_PHI
 	q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
 		       - fluxe[nop*index + XX] + fluxw[nop*index  + XX]
 		       - fluxy[nop*index + XX] + fluxy[nop*indexj + XX]
@@ -226,10 +255,33 @@ static void blue_phase_be_update(hydro_t * hydro) {
 		       - fluxe[nop*index + YZ] + fluxw[nop*index  + YZ]
 		       - fluxy[nop*index + YZ] + fluxy[nop*indexj + YZ]
 		       - fluxz[nop*index + YZ] + fluxz[nop*indexk + YZ]);
-#ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_tensor_set(test_object, index, q);
+	q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
+		       - flux->fe[nop*index + XX] + flux->fw[nop*index  + XX]
+		       - flux->fy[nop*index + XX] + flux->fy[nop*indexj + XX]
+		       - flux->fz[nop*index + XX] + flux->fz[nop*indexk + XX]);
+
+	q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y]
+		       - flux->fe[nop*index + XY] + flux->fw[nop*index  + XY]
+		       - flux->fy[nop*index + XY] + flux->fy[nop*indexj + XY]
+		       - flux->fz[nop*index + XY] + flux->fz[nop*indexk + XY]);
+
+	q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z]
+		       - flux->fe[nop*index + XZ] + flux->fw[nop*index  + XZ]
+		       - flux->fy[nop*index + XZ] + flux->fy[nop*indexj + XZ]
+		       - flux->fz[nop*index + XZ] + flux->fz[nop*indexk + XZ]);
+
+	q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y]
+		       - flux->fe[nop*index + YY] + flux->fw[nop*index  + YY]
+		       - flux->fy[nop*index + YY] + flux->fy[nop*indexj + YY]
+		       - flux->fz[nop*index + YY] + flux->fz[nop*indexk + YY]);
+
+	q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z]
+		       - flux->fe[nop*index + YZ] + flux->fw[nop*index  + YZ]
+		       - flux->fy[nop*index + YZ] + flux->fy[nop*indexj + YZ]
+		       - flux->fz[nop*index + YZ] + flux->fz[nop*indexk + YZ]);
+	field_tensor_set(fq, index, q);
 #endif
 
 	/* Next site */
@@ -237,7 +289,11 @@ static void blue_phase_be_update(hydro_t * hydro) {
     }
   }
 
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************

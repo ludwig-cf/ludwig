@@ -17,7 +17,12 @@
 
 #include "hydro.h"
 
+#ifdef OLD_PHI
 int    phi_cahn_hilliard(hydro_t * hydro);
+#else
+#include "field.h"
+int phi_cahn_hilliard(field_t * phi, hydro_t * hydro);
+#endif
 void   phi_cahn_hilliard_mobility_set(const double);
 double phi_cahn_hilliard_mobility(void);
 

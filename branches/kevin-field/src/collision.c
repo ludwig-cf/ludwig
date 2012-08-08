@@ -495,6 +495,7 @@ int collision_binary_lb(hydro_t * hydro) {
 	  }
 	}
 
+	/* if (kc == 1) printf("%3d %3d %14.7e %14.7e\n", ic, jc, phi, mu);*/
 
 	/* Relax order parameters modes. See the comments above. */
 

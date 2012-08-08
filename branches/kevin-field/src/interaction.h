@@ -18,7 +18,12 @@
 #include "hydro.h"
 
 void      COLL_init(void);
+#ifdef OLD_PHI
 int       COLL_update(hydro_t * hydro);
+#else
+#include "field.h"
+int COLL_update(hydro_t * hydro, field_t * phi, field_t * p, field_t * q);
+#endif
 
 void      colloid_gravity(double f[3]);
 void      colloid_gravity_set(const double f[3]);

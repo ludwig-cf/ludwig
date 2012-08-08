@@ -25,7 +25,13 @@
 #include "pe.h"
 #include "coords.h"
 #include "hydro.h"
+
+#ifdef OLD_PHI
 #include "phi.h"
+#else
+#include "field.h"
+#endif
+
 #include "site_map.h"
 #include "leesedwards.h"
 #include "free_energy.h"
@@ -33,7 +39,6 @@
 #include "phi_force_stress.h"
 
 static int phi_force_calculation_fluid(hydro_t * hydro);
-static int phi_force_fluid_phi_gradmu(hydro_t * hydro);
 static int phi_force_compute_fluxes(double * fe, double * fw, double * fy,
 				    double * fz);
 static int phi_force_flux_divergence(hydro_t * hydro, double * fe,
@@ -47,6 +52,12 @@ static int phi_force_wallx(double * fe, double * fw);
 static int phi_force_wally(double * fy);
 static int phi_force_wallz(double * fz);
 
+#ifdef OLD_PHI
+static int phi_force_fluid_phi_gradmu(hydro_t * hydro);
+#else
+static int phi_force_fluid_phi_gradmu(field_t * phi, hydro_t * hydro);
+#endif
+
 static int force_required_ = 1;
 static int force_divergence_ = 1;
 
@@ -59,6 +70,21 @@ static int force_divergence_ = 1;
 int phi_force_required_set(const int flag) {
 
   force_required_ = flag;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_required
+ *
+ *****************************************************************************/
+
+int phi_force_required(int * flag) {
+
+  assert(flag);
+
+  *flag = force_required_;
+
   return 0;
 }
 
@@ -84,8 +110,11 @@ int phi_force_divergence_set(const int flag) {
  *  is no force.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 int phi_force_calculation(hydro_t * hydro) {
+#else
+int phi_force_calculation(field_t * phi, hydro_t * hydro) {
+#endif
 
   if (force_required_ == 0) return 0;
   if (hydro == NULL) return 0;
@@ -100,7 +129,12 @@ int phi_force_calculation(hydro_t * hydro) {
       phi_force_calculation_fluid(hydro);
     }
     else {
+#ifdef OLD_PHI
       phi_force_fluid_phi_gradmu(hydro);
+#else
+      assert(phi);
+      phi_force_fluid_phi_gradmu(phi, hydro);
+#endif
     }
   }
 
@@ -217,7 +251,11 @@ static int phi_force_calculation_fluid(hydro_t * hydro) {
  *
  *****************************************************************************/
 
+#ifdef OLD_PHI
 static int phi_force_fluid_phi_gradmu(hydro_t * hydro) {
+#else
+static int phi_force_fluid_phi_gradmu(field_t * fphi, hydro_t * hydro) {
+#endif
 
   int ic, jc, kc, icm1, icp1;
   int index0, indexm1, indexp1;
@@ -228,9 +266,13 @@ static int phi_force_fluid_phi_gradmu(hydro_t * hydro) {
   double force[3];
 
   double (* chemical_potential)(const int index, const int nop);
-
+#ifdef OLD_PHI
   assert(hydro);
-
+#else
+  assert(fphi);
+  assert(hydro);
+  /* Check nf == 1 sclar field. */
+#endif
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   assert(nhalo >= 2);
@@ -251,8 +293,7 @@ static int phi_force_fluid_phi_gradmu(hydro_t * hydro) {
 #ifdef OLD_PHI
 	phi = phi_get_phi_site(index0);
 #else
-	assert(0);
-	/* update interface */
+	field_scalar(fphi, index0, &phi);
 #endif
         indexm1 = le_site_index(icm1, jc, kc);
         indexp1 = le_site_index(icp1, jc, kc);

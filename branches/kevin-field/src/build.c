@@ -21,18 +21,24 @@
 #include "physics.h"
 #include "model.h"
 
-#ifdef OLD_PHI
-#include "phi.h"
-#else
-#include "field.h"
-#endif
-
 #include "timer.h"
 #include "colloids.h"
 #include "site_map.h"
 #include "util.h"
 #include "wall.h"
 #include "build.h"
+
+#ifdef OLD_PHI
+#include "phi.h"
+static void    build_remove_order_parameter(int index, colloid_t *);
+static void    build_replace_order_parameter(int indeex, colloid_t *);
+#else
+#include "field.h"
+static int build_remove_order_parameter(field_t * f, int index,
+					colloid_t * pc);
+static int build_replace_order_parameter(field_t * f, int index,
+					 colloid_t * pc);
+#endif
 
 static colloid_t ** coll_map;        /* colloid_t map. */
 static colloid_t ** coll_old;        /* Map at the previous time step */
@@ -44,9 +50,7 @@ static void    COLL_reconstruct_links(colloid_t *);
 static void    reconstruct_wall_links(colloid_t *);
 static void    COLL_reset_links(colloid_t *);
 static void    build_remove_fluid(int index, colloid_t *);
-static void    build_remove_order_parameter(int index, colloid_t *);
 static void    build_replace_fluid(int index, colloid_t *);
-static void    build_replace_order_parameter(int indeex, colloid_t *);
 
 /*****************************************************************************
  *
@@ -563,8 +567,11 @@ void COLL_reset_links(colloid_t * p_colloid) {
  *  implemented at the next step.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void COLL_remove_or_replace_fluid() {
+#else
+int build_remove_or_replace_fluid(field_t * fphi, field_t * fp, field_t * fq) {
+#endif
 
   colloid_t * p_colloid;
 
@@ -596,7 +603,13 @@ void COLL_remove_or_replace_fluid() {
 
 	  if (!halo) {
 	    build_remove_fluid(index, p_colloid);
+#ifdef OLD_PHI
 	    build_remove_order_parameter(index, p_colloid);
+#else
+	    /* Only scalar composition is conserved, and so require
+	     * accounting of removed order parameter */
+	    if (fphi) build_remove_order_parameter(fphi, index, p_colloid);
+#endif
 	  }
 	}
 
@@ -606,14 +619,24 @@ void COLL_remove_or_replace_fluid() {
 
 	  if (!halo) {
 	    build_replace_fluid(index, p_colloid);
+#ifdef OLD_PHI
 	    build_replace_order_parameter(index, p_colloid);
+#else
+	    if (fphi) build_replace_order_parameter(fphi, index, p_colloid);
+	    if (fp) build_replace_order_parameter(fp, index, p_colloid);
+	    if (fq) build_replace_order_parameter(fq, index, p_colloid);
+#endif
 	  }
 	}
       }
     }
   }
 
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /******************************************************************************
@@ -675,37 +698,49 @@ static void build_remove_fluid(int index, colloid_t * p_colloid) {
  *
  *  build_remove_order_parameter
  *
+ *  Conserved order parameters only.
+ *
  *  Remove order parameter(s) at the site inode. The old site information
  *  can be lost inside the particle, but we must record the correction.
  *
  *****************************************************************************/
 
+#ifdef OLD_PHI
 static void build_remove_order_parameter(int index, colloid_t * p_colloid) {
 
   double phi;
 
-#ifdef OLD_PHI
   if (phi_is_finite_difference()) {
     phi = phi_get_phi_site(index);
   }
   else {
     phi = distribution_zeroth_moment(index, 1);
   }
-#else
-  if (distribution_ndist() == 2) {
-    phi = distribution_zeroth_moment(index, 1);
-  }
-  else {
-    /* symmetric only */
-    field_t * test_object = NULL;
-    field_scalar(test_object, index, &phi);
-  }
-#endif
 
   p_colloid->s.deltaphi += (phi - get_phi0());
 
   return;
 }
+#else
+static int build_remove_order_parameter(field_t * f, int index,
+					colloid_t * pc) {
+  double phi;
+
+  assert(f);
+  assert(pc);
+
+  if (distribution_ndist() == 2) {
+    phi = distribution_zeroth_moment(index, 1);
+  }
+  else {
+    field_scalar(f, index, &phi);
+  }
+
+  pc->s.deltaphi += (phi - get_phi0());
+
+  return 0;
+}
+#endif
 
 /*****************************************************************************
  *
@@ -810,23 +845,26 @@ static void build_replace_fluid(int index, colloid_t * p_colloid) {
  *  Replace the order parameter(s) at a newly exposed site (index).
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
 
   int indexn, n, p, pdash;
-  int nop;
   int ri[3];
 
-  double newphi = 0.0;
   double weight = 0.0;
   double newg[NVEL];
-  double * phi;
+#define NQAB 5
+  double phi[NQAB];
+  double qs[NQAB];
 
 #ifdef OLD_PHI
+  int nop;
   nop = phi_nop();
 #else
+  int nf;
   field_t * test_object = NULL;
-  field_nf(test_object, &nop);
+  field_nf(test_object, &nf);
+  assert(nf <= NQAB);
 #endif
   coords_index_to_ijk(index, ri);
 
@@ -839,9 +877,6 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
 
 #ifdef OLD_PHI
   if (phi_is_finite_difference()) {
-
-    phi = (double *) malloc(nop*sizeof(double));
-    if (phi == NULL) fatal("malloc(phi) failed\n");
 
     for (n = 0; n < nop; n++) {
       phi[n] = 0.0;
@@ -865,7 +900,6 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
     for (n = 0; n < nop; n++) {
       phi_op_set_phi_site(index, n, phi[n]*weight);
     }
-    free(phi);
   }
   else {
 
@@ -889,13 +923,14 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
     /* Set new fluid distributions */
 
     weight = 1.0/weight;
+    phi[0] = 0.0;
 
     for (p = 0; p < NVEL; p++) {
       newg[p] *= weight;
       distribution_f_set(index, p, 1, newg[p]);
 
       /* ... and remember the new fluid properties */
-      newphi += newg[p];
+      phi[0] += newg[p];
     }
   }
 #else
@@ -921,23 +956,21 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
     /* Set new fluid distributions */
 
     weight = 1.0/weight;
+    phi[0] = 0.0;
 
     for (p = 0; p < NVEL; p++) {
       newg[p] *= weight;
       distribution_f_set(index, p, 1, newg[p]);
 
       /* ... and remember the new fluid properties */
-      newphi += newg[p];
+      phi[0] += newg[p];
     }
   }
   else {
 
     /* SYMMETRIC, LC */
 
-    phi = (double *) malloc(nop*sizeof(double));
-    if (phi == NULL) fatal("malloc(phi) failed\n");
-
-    for (n = 0; n < nop; n++) {
+    for (n = 0; n < nf; n++) {
       phi[n] = 0.0;
     }
 
@@ -947,33 +980,126 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
 			      ri[Z] + cv[p][Z]);
 
       /* Site must have been fluid before position update */
-      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+      if (coll_old[indexn] || site_map_get_status_index(indexn) == SOLID)
 	continue;
-      for (n = 0; n < nop; n++) {
-	assert(0);
-	/* NO REPLACEMENT YET FOR 
-	   phi[n] += wv[p]*phi_op_get_phi_site(indexn, n);*/
+
+      field_scalar_array(test, index, qs);
+      for (n = 0; n < nf; n++) {
+	phi[n] += wv[p]*qs[n];
       }
       weight += wv[p];
     }
 
-    weight = 1.0/weight;
-    for (n = 0; n < nop; n++) {
-      assert(0);
-      /* NO REPLACEMENT YET FOR 
-	 phi_op_set_phi_site(index, n, phi[n]*weight);*/
+    weight = 1.0 / weight;
+    for (n = 0; n < nf; n++) {
+      phi[n] *= weight;
     }
-    free(phi);
+    field_scalar_array_set(test, index, phi);
   }
 #endif
 
   /* Set corrections arising from change in order parameter */
 
-  p_colloid->s.deltaphi -= (newphi - get_phi0());
+  p_colloid->s.deltaphi -= (phi[0] - get_phi0());
+
 
   return;
 }
+#else
+static int build_replace_order_parameter(field_t * f, int index,
+					 colloid_t * pc) {
+  int indexn, n, p, pdash;
+  int ri[3];
+  int nf;
 
+  double weight = 0.0;
+  double newg[NVEL];
+  double phi[NQAB];
+  double qs[NQAB];
+
+  field_nf(f, &nf);
+  assert(nf <= NQAB);
+
+  coords_index_to_ijk(index, ri);
+
+  /* Check the surrounding sites that were linked to inode,
+   * and accumulate a (weighted) average distribution. */
+
+  for (p = 0; p < NVEL; p++) {
+    newg[p] = 0.0;
+  }
+
+  if (distribution_ndist() == 2) {
+
+    /* Reset the distribution (distribution index 1) */
+
+    for (p = 1; p < NVEL; p++) {
+
+      indexn = coords_index(ri[X] + cv[p][X], ri[Y] + cv[p][Y],
+			      ri[Z] + cv[p][Z]);
+
+      /* Site must have been fluid before position update */
+      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+	continue;
+
+      for (pdash = 0; pdash < NVEL; pdash++) {
+	newg[pdash] += wv[p]*distribution_f(indexn, pdash, 1);
+      }
+      weight += wv[p];
+    }
+
+    /* Set new fluid distributions */
+
+    weight = 1.0/weight;
+    phi[0] = 0.0;
+
+    for (p = 0; p < NVEL; p++) {
+      newg[p] *= weight;
+      distribution_f_set(index, p, 1, newg[p]);
+
+      /* ... and remember the new fluid properties */
+      phi[0] += newg[p];
+    }
+  }
+  else {
+
+    /* Replace field value(s), based on same average */
+
+    for (n = 0; n < nf; n++) {
+      phi[n] = 0.0;
+    }
+
+    for (p = 1; p < NVEL; p++) {
+
+      indexn = coords_index(ri[X] + cv[p][X], ri[Y] + cv[p][Y],
+			      ri[Z] + cv[p][Z]);
+
+      /* Site must have been fluid before position update */
+      if (coll_old[indexn] || site_map_get_status_index(indexn) == SOLID)
+	continue;
+
+      field_scalar_array(f, indexn, qs);
+      for (n = 0; n < nf; n++) {
+	phi[n] += wv[p]*qs[n];
+      }
+      weight += wv[p];
+    }
+
+    weight = 1.0 / weight;
+    for (n = 0; n < nf; n++) {
+      phi[n] *= weight;
+    }
+    field_scalar_array_set(f, index, phi);
+  }
+
+  /* Set corrections arising from change in conserved order parameter,
+   * which we assume means nf == 1 */
+
+  pc->s.deltaphi -= (phi[0] - get_phi0());
+
+  return 0;
+}
+#endif
 /****************************************************************************
  *
  *  build_virtual_distribution_set

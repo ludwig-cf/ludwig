@@ -89,8 +89,11 @@ struct lubrication_struct {
  *  proper locations (with halos up-to-date).
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 int COLL_update(hydro_t * hydro) {
+#else
+int COLL_update(hydro_t * hydro, field_t * fphi, field_t * fp, field_t * fq) {
+#endif
 
   int is_subgrid = 0;
 
@@ -119,7 +122,11 @@ int COLL_update(hydro_t * hydro) {
 
     TIMER_start(TIMER_REBUILD);
     COLL_update_map();
+#ifdef OLD_PHI
     COLL_remove_or_replace_fluid();
+#else
+    build_remove_or_replace_fluid(fphi, fp, fq);
+#endif
     COLL_update_links();
 
     TIMER_stop(TIMER_REBUILD);

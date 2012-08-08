@@ -439,12 +439,9 @@ static void bounce_back_pass2() {
 	      df += wv[ij]*p_colloid->sump; 
 #ifdef OLD_PHI
 	      dg = phi_get_phi_site(i)*vdotc;
-#else
-	      assert(0);
-	      /* Can we get rid of this dependency? */
-#endif
 	      p_colloid->s.deltaphi += dg;
 	      dg -= wv[ij]*dgtm1;
+#endif
 
 	      /* Correction owing to missing links "squeeze term" */
 
@@ -459,6 +456,12 @@ static void bounce_back_pass2() {
 	      /* This is slightly clunky. If the order parameter is
 	       * via LB, bounce back with correction. */
 	      if (distribution_ndist() > 1) {
+#ifdef OLD_PHI
+#else
+		dg = distribution_zeroth_moment(i, 1)*vdotc;
+		p_colloid->s.deltaphi += dg;
+		dg -= wv[ij]*dgtm1;
+#endif
 		fdist = distribution_f(i, ij, 1);
 		fdist = fdist - dg;
 		distribution_f_set(j, ji, 1, fdist);

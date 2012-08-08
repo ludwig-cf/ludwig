@@ -71,9 +71,11 @@ void blue_phase_init_amplitude_set(const double a) {
  *  BP I using the current free energy parameter q0
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_O8M_init(void) {
-
+#else
+int blue_phase_O8M_init(field_t * fq) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -84,7 +86,10 @@ void blue_phase_O8M_init(void) {
   double r2;
   double cosx, cosy, cosz, sinx, siny, sinz;
   double q0;
-
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -120,15 +125,17 @@ void blue_phase_O8M_init(void) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -138,9 +145,11 @@ void blue_phase_O8M_init(void) {
  *  This initialisation is for BP II.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_O2_init(void) {
-
+#else
+int blue_phase_O2_init(field_t * fq) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -149,6 +158,10 @@ void blue_phase_O2_init(void) {
   double q[3][3];
   double x, y, z;
   double q0;
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -176,15 +189,17 @@ void blue_phase_O2_init(void) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -194,9 +209,11 @@ void blue_phase_O2_init(void) {
  *  This initialisation is for 2D hexagonal BP.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_H2D_init(void) {
-
+#else
+int blue_phase_H2D_init(field_t * fq) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -206,6 +223,10 @@ void blue_phase_H2D_init(void) {
   double x, y;
   double r3;
   double q0;
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
 
   r3 = sqrt(3.0);
   q0 = blue_phase_q0();
@@ -234,15 +255,17 @@ void blue_phase_H2D_init(void) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -252,9 +275,11 @@ void blue_phase_H2D_init(void) {
  *  This initialisation is for 3D hexagonal BP A.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_H3DA_init(void) {
-
+#else
+int blue_phase_H3DA_init(field_t * fq) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -264,6 +289,10 @@ void blue_phase_H3DA_init(void) {
   double x, y, z;
   double r3;
   double q0;
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
 
   r3 = sqrt(3.0);
   q0 = blue_phase_q0();
@@ -296,15 +325,17 @@ void blue_phase_H3DA_init(void) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -314,9 +345,11 @@ void blue_phase_H3DA_init(void) {
  *  This initialisation is for 3D hexagonal BP B.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_H3DB_init(void) {
-
+#else
+int blue_phase_H3DB_init(field_t * fq) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -326,6 +359,10 @@ void blue_phase_H3DB_init(void) {
   double x, y, z;
   double r3;
   double q0;
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
 
   r3 = sqrt(3.0);
   q0 = blue_phase_q0();
@@ -358,15 +395,17 @@ void blue_phase_H3DB_init(void) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -376,9 +415,11 @@ void blue_phase_H3DB_init(void) {
  *  This initialisation is for O5.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_O5_init(void) {
-
+#else
+int blue_phase_O5_init(field_t * fq) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -387,6 +428,10 @@ void blue_phase_O5_init(void) {
   double q[3][3];
   double x, y, z;
   double q0;
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -430,15 +475,17 @@ void blue_phase_O5_init(void) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 /*****************************************************************************
  *
@@ -447,9 +494,11 @@ void blue_phase_O5_init(void) {
  *  This initialisation is with double twist cylinders.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_DTC_init(void) {
-
+#else
+int blue_phase_DTC_init(field_t * fq) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -458,6 +507,10 @@ void blue_phase_DTC_init(void) {
   double q[3][3];
   double x, y;
   double q0;
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -485,15 +538,17 @@ void blue_phase_DTC_init(void) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 
@@ -509,9 +564,11 @@ void blue_phase_DTC_init(void) {
  *        Hence, the decomposition must consist of sufficiently large volumes.
  *        
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_BPIII_init(const double specs[3]) {
-
+#else
+int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
+#endif
   int ic, jc, kc;
   int ir, jr, kr; 	/* indices for rotated output */
   int ia, ib, ik, il, in;
@@ -529,7 +586,11 @@ void blue_phase_BPIII_init(const double specs[3]) {
   double phase1, phase2;
   double n[3]={0.0,0.0,0.0};
   double q0_pitch;      /* Just q0 scalar */
-
+#ifdef OLD_PHI
+#else
+  assert(fq);
+  assert(specs);
+#endif
   N = (int) specs[0];
   R = (int) specs[1];
   ENV = (int) specs[2];
@@ -603,8 +664,7 @@ void blue_phase_BPIII_init(const double specs[3]) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 
       }
@@ -686,8 +746,7 @@ void blue_phase_BPIII_init(const double specs[3]) {
 #ifdef OLD_PHI
 	      phi_set_q_tensor(index, q);
 #else
-	      field_t * test_object = NULL;
-	      field_tensor_set(test_object, index, q);
+	      field_tensor_set(fq, index, q);
 #endif
 	    }
 
@@ -708,8 +767,11 @@ void blue_phase_BPIII_init(const double specs[3]) {
   free(a);
   free(b);
   free(C);
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 
@@ -723,9 +785,11 @@ void blue_phase_BPIII_init(const double specs[3]) {
  *     amplitude
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_twist_init(const int helical_axis) {
-  
+#else
+int blue_phase_twist_init(field_t * fq, const int helical_axis) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -735,13 +799,16 @@ void blue_phase_twist_init(const int helical_axis) {
   double q[3][3];
   double x, y, z;
   double q0;
- 
+#ifdef OLD_PHI
+#else
+  assert(fq);
+  assert(helical_axis == X || helical_axis == Y || helical_axis == Z);
+#endif
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
   q0 = blue_phase_q0();
-
-  assert(helical_axis == X || helical_axis == Y || helical_axis == Z);
  
   n[X] = 0.0;
   n[Y] = 0.0;
@@ -778,14 +845,16 @@ void blue_phase_twist_init(const int helical_axis) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -798,16 +867,22 @@ void blue_phase_twist_init(const int helical_axis) {
  *  convert to a unit vector here).
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_nematic_init(const double n[3]) {
-
+#else
+int blue_phase_nematic_init(field_t * fq, const double n[3]) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int ia, index;
 
   double nhat[3];
   double q[3][3];
-
+#ifdef OLD_PHI
+#else
+  assert(fq);
+  assert(n);
+#endif
   assert(modulus(n) > 0.0);
   coords_nlocal(nlocal);
 
@@ -825,13 +900,16 @@ void blue_phase_nematic_init(const double n[3]) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
       }
     }
   }
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -840,9 +918,11 @@ void blue_phase_nematic_init(const double n[3]) {
  *  Setting  chi edge disclination
  *  Using the current free energy parameter q0 (P=2pi/q0)
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_phase_chi_edge(int N, double z0, double x0) {
-  
+#else
+int blue_phase_chi_edge(field_t * fq, int N, double z0, double x0) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -853,7 +933,10 @@ void blue_phase_chi_edge(int N, double z0, double x0) {
   double n[3];
   double theta;
   double q0;
-  
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -876,14 +959,16 @@ void blue_phase_chi_edge(int N, double z0, double x0) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -895,9 +980,11 @@ void blue_phase_chi_edge(int N, double z0, double x0) {
  *  chosen director at each site.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_set_random_q_init(void) {
-
+#else
+int blue_set_random_q_init(field_t * fq) {
+#endif
   int ic, jc, kc;
   int nlocal[3];
   int offset[3];
@@ -906,6 +993,10 @@ void blue_set_random_q_init(void) {
   double n[3];
   double q[3][3];
   double phase1, phase2;
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
   
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
@@ -934,15 +1025,17 @@ void blue_set_random_q_init(void) {
 #ifdef OLD_PHI
 	phi_set_q_tensor(index, q);
 #else
-	field_t * test_object = NULL;
-	field_tensor_set(test_object, index, q);
+	field_tensor_set(fq, index, q);
 #endif
 	}
       }
     }
   }
-  
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -957,10 +1050,16 @@ void blue_set_random_q_init(void) {
  *  a0 = 1.0e-06. 
  * 
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 				      const double ymin, const double ymax,
 				      const double zmin, const double zmax) {
+#else
+int blue_set_random_q_rectangle_init(field_t * fq,
+				     const double xmin, const double xmax,
+				     const double ymin, const double ymax,
+				     const double zmin, const double zmax) {
+#endif
   int i, j, k;
   int nlocal[3];
   int offset[3];
@@ -970,7 +1069,10 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
   double q[3][3];
   double phase1, phase2;
   double a0 = 0.000001;   /* Initial amplitude of order in 'box' */
-
+#ifdef OLD_PHI
+#else
+  assert(fq);
+#endif
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
   
@@ -1000,16 +1102,18 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
 #ifdef OLD_PHI
 		phi_set_q_tensor(index, q);
 #else
-		field_t * test_object = NULL;
-		field_tensor_set(test_object, index, q);
+		field_tensor_set(fq, index, q);
 #endif
 	      }
 	  }
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 

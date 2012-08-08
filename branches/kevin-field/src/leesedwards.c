@@ -381,6 +381,7 @@ int le_nsites(void) {
   int nlocal[3];
   int nsites;
 
+  assert(initialised_);
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 

@@ -150,7 +150,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
   init_control();
 
   init_physics();
+
+#ifdef OLD_PHI
   le_init();
+#else
+  /* moved to free_energy_init_rt() with coords_init() */
+#endif
 
   if (is_propagation_ode()) propagation_ode_init();
 
@@ -179,6 +184,16 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
 
 #ifdef OLD_PHI
+    if (phi_fluctuations_on()) {
+      int seed;
+      RUN_get_int_parameter("fd_phi_fluctuations_seed", &p);
+      seed = 0;
+      if (p > 0) {
+	seed = p;
+	info("Order parameter noise seed: %u\n", seed);
+      }
+      phi_fluctuations_init(seed);
+    }
   phi_init();
   phi_init_io_info(io_grid, form, form);
 
@@ -206,11 +221,11 @@ static int ludwig_rt(ludwig_t * ludwig) {
     info("Order parameter I/O format:   %s\n", value);
     info("I/O decomposition:            %d %d %d\n", io_grid[0], io_grid[1],
 	 io_grid[2]);
+    advection_run_time();
   }
 
-  /* Can we move this down */
-  symmetric_rt_initial_conditions(ludwig->phi);
-  assert(0); /* Has old MODEL initialisation been done? For phi. */
+  /* Can we move this down - the routine is in this file */
+  if (ludwig->phi) symmetric_rt_initial_conditions(ludwig->phi);
 
 #endif
 
@@ -279,7 +294,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
   nstat = 0;
   n = RUN_get_string_parameter("calibration_sigma", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
+#ifdef OLD_PHI
   stats_sigma_init(nstat);
+#else
+  stats_sigma_init(ludwig->phi, nstat);
+  /* One call to this before start of time steps? */
+  if (distribution_ndist() == 2) phi_lb_from_field(ludwig->phi); 
+#endif
 
   collision_init();
 
@@ -299,7 +320,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     polar_active_rt_initial_conditions();
   }
   if (get_step() == 0 && ludwig->q) {
-    assert(0);
+    blue_phase_rt_initial_conditions(ludwig->q);
   }
 #endif
 
@@ -309,7 +330,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     psi_colloid_rho_set(ludwig->psi);
     psi_colloid_electroneutral(ludwig->psi);
   }
-
+2
   return 0;
 }
 
@@ -367,8 +388,11 @@ void ludwig_run(const char * inputfile) {
     step = get_step();
     if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
 
+#ifdef OLD_PHI
     COLL_update(ludwig->hydro);
-
+#else
+    COLL_update(ludwig->hydro, ludwig->phi, ludwig->p, ludwig->q);
+#endif
     /* Electrokinetics */
 
     if (ludwig->psi) {
@@ -398,8 +422,9 @@ void ludwig_run(const char * inputfile) {
       phi_gradients_compute();
       if (phi_nop() == 5) blue_phase_redshift_compute();
 #else
-      assert(0);
-      /* if symmetric lb store phi to field */
+      /* if symmetric_lb store phi to field */
+      if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
+
       if (ludwig->phi) {
 	field_halo(ludwig->phi);
 	field_grad_compute(ludwig->phi_grad);
@@ -433,8 +458,27 @@ void ludwig_run(const char * inputfile) {
       }
     }
 #else
-      assert(0);
-      /* order parameter dynamics (not if symmetric_lb) */
+    /* order parameter dynamics (not if symmetric_lb) */
+
+    if (distribution_ndist() == 2) {
+      /* dynamics are dealt with at the collision stage (below) */
+    }
+    else {
+
+      TIMER_start(TIMER_FORCE_CALCULATION);
+
+      if (colloid_ntotal() == 0) {
+	phi_force_calculation(ludwig->phi, ludwig->hydro);
+      }
+      else {
+	phi_force_colloid(ludwig->hydro);
+      }
+      TIMER_stop(TIMER_FORCE_CALCULATION);
+
+      if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro);
+      if (ludwig->p) assert(0);
+      if (ludwig->q) blue_phase_beris_edwards(ludwig->q, ludwig->hydro);
+    }
 #endif
 
     /* Collision stage */
@@ -508,12 +552,16 @@ void ludwig_run(const char * inputfile) {
       }
 #else
       if (ludwig->phi) {
-	assert(0);
-	/* Output order parameter */
+	field_io_info(ludwig->phi, &iohandler);
+	info("Writing phi file at step %d!\n", step);
+	sprintf(filename,"%sphi-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->phi);
       }
       if (ludwig->q) {
-	assert(0);
-	/* output Q_ab */
+	field_io_info(ludwig->q, &iohandler);
+	info("Writing qs file at step %d!\n", step);
+	sprintf(filename,"%sqs-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->q);
       }
 #endif
     }
@@ -530,7 +578,7 @@ void ludwig_run(const char * inputfile) {
     /* Measurements */
 
     if (is_measurement_step()) {	  
-      stats_sigma_measure(step);
+      stats_sigma_measure(ludwig->phi, step);
     }
 
     if (is_shear_measurement_step()) {
@@ -555,10 +603,18 @@ void ludwig_run(const char * inputfile) {
     if (is_statistics_step()) {
 
       stats_distribution_print();
+#ifdef OLD_PHI
       if (phi_nop()) {
 	phi_stats_print_stats();
 	stats_free_energy_density();
       }
+#else
+      if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
+      if (ludwig->phi) stats_field_info(ludwig->phi);
+      if (ludwig->p)   stats_field_info(ludwig->p);
+      if (ludwig->q)   stats_field_info(ludwig->q);
+      stats_free_energy_density(ludwig->q);
+#endif
       if (ludwig->psi) {
 	psi_stats_info(ludwig->psi);
       }
@@ -590,12 +646,20 @@ void ludwig_run(const char * inputfile) {
     if (phi_nop()) {
       phi_io_info(&iohandler);
       sprintf(filename,"%sphi-%8.8d", subdirectory, step);
-      /* to be replaced by io_write_data(field)
-	 io_write(filename, iohandler);*/
     }
 #else
-    assert(0);
-    /* Output order parameters as required. */
+    if (ludwig->phi) {
+      field_io_info(ludwig->phi, &iohandler);
+      info("Writing phi file at step %d!\n", step);
+      sprintf(filename,"%sphi-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->phi);
+    }
+    if (ludwig->q) {
+      field_io_info(ludwig->q, &iohandler);
+      info("Writing qs file at step %d!\n", step);
+      sprintf(filename,"%sqs-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->q);
+    }
 #endif
   }
 
@@ -606,6 +670,13 @@ void ludwig_run(const char * inputfile) {
   stats_calibration_finish();
   colloids_finish();
   wall_finish();
+
+  if (ludwig->phi_grad) field_grad_free(ludwig->phi_grad);
+  if (ludwig->p_grad)   field_grad_free(ludwig->p_grad);
+  if (ludwig->q_grad)   field_grad_free(ludwig->q_grad);
+  if (ludwig->phi)      field_free(ludwig->phi);
+  if (ludwig->p)        field_free(ludwig->p);
+  if (ludwig->q)        field_free(ludwig->q);
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
@@ -708,6 +779,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("No free energy selected\n");
     phi_force_required_set(0); /* Could reverse the default */
+
+    nhalo = 1;
+    coords_nhalo_set(nhalo);
+    coords_run_time();
+    le_init();
   }
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
@@ -721,12 +797,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Noise requires additional stencil point for Cahn Hilliard */
 
     if (strcmp(description, "symmetric_noise") == 0) {
-      assert(0); /* Please make sure consistent with fd_phi_fluctuations */
       nhalo = 3;
     }
 
     coords_nhalo_set(nhalo);
     coords_run_time();
+    le_init();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -752,6 +828,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (p != 0) phi_fluctuations_on_set(p);
 
     if (phi_fluctuations_on()) {
+      if (nhalo != 3) fatal("Fluctuations: use symmetric_noise\n");
       RUN_get_int_parameter("fd_phi_fluctuations_seed", &p);
       seed = 0;
       if (p > 0) {
@@ -769,18 +846,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
          (p == 0) ? "phi grad mu method" : "divergence method");
     phi_force_divergence_set(p);
 
-    info("Advection scheme order: ");
-    p = RUN_get_int_parameter("fd_advection_scheme_order", &order);
-
-    if (p == 0) {
-      advection_order(&order);
-      info("%2d (default)\n", order);
-    }
-    else {
-      info("%d\n", order);
-      advection_order_set(order);
-    }
-
   }
   else if (strcmp(description, "symmetric_lb") == 0) {
 
@@ -792,6 +857,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(nhalo);
     coords_run_time();
+    le_init();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -822,6 +888,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(nhalo);
     coords_run_time();
+    le_init();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -863,6 +930,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(nhalo);
     coords_run_time();
+    le_init();
 
     field_create(nf, "q", &ludwig->q);
     field_init(ludwig->q, nhalo);
@@ -895,6 +963,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(nhalo);
     coords_run_time();
+    le_init();
 
     field_create(nf, "p", &ludwig->p);
     field_init(ludwig->p, nhalo);
@@ -936,7 +1005,7 @@ int symmetric_rt_initial_conditions(field_t * phi) {
   int ntotal[3], nlocal[3];
   int offset[3];
   double phi0, phi1;
-  double noise0;
+  double noise0 = 0.1; /* Default value. */
   char value[BUFSIZ];
 
   assert(phi);
@@ -950,8 +1019,7 @@ int symmetric_rt_initial_conditions(field_t * phi) {
   phi0 = get_phi0();
   RUN_get_double_parameter("noise", &noise0);
 
-
-  /* Defaullt initialisation (always?) Note serial nature of this,
+  /* Default initialisation (always?) Note serial nature of this,
    * which could be replaced. */
 
   for (ic = 1; ic <= ntotal[X]; ic++) {
@@ -967,7 +1035,8 @@ int symmetric_rt_initial_conditions(field_t * phi) {
 	     (kc > offset[Z]) && (kc <= offset[Z] + nlocal[Z]) ) {
 
 	    index = coords_index(ic-offset[X], jc-offset[Y], kc-offset[Z]);
-	    phi_lb_coupler_phi_set(index, phi1);
+	    field_scalar_set(phi, index, phi1);
+	    
 	}
       }
     }
@@ -995,21 +1064,10 @@ int symmetric_rt_initial_conditions(field_t * phi) {
     info("Reading phi from serial file\n");
 
     assert(0);
-
-    if (distribution_ndist() > 1) {
-      /* Set the distribution from initial phi */
-      for (ic = 1; ic <= nlocal[X]; ic++) {
-	for (jc = 1; jc <= nlocal[Y]; jc++) {
-	  for (kc = 1; kc <= nlocal[Z]; kc++) {
-            
-	    index = coords_index(ic, jc, kc);
-	    field_scalar(phi, index, &phi0);
-	    distribution_zeroth_moment_set_equilibrium(index, 1, phi0);
-	  }
-	}
-      }
-    }
+    /* need to do something! */
   }
+
+  if (distribution_ndist() == 2) phi_lb_from_field(phi);
 
   return 0;
 }

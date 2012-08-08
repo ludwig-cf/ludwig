@@ -49,13 +49,18 @@ struct drop_type {
 typedef struct drop_type drop_t;
 
 static int initialised_ = 0;
-
+static void stats_sigma_find_sigma(drop_t * drop);
+#ifdef OLD_PHI
 static void stats_sigma_init_drop(drop_t drop);
 static void stats_sigma_find_drop(drop_t * drop);
 static void stats_sigma_find_radius(drop_t * drop);
 static void stats_sigma_find_xi0(drop_t * drop);
-static void stats_sigma_find_sigma(drop_t * drop);
-
+#else
+static int stats_sigma_init_drop(field_t * phi, drop_t drop);
+static int stats_sigma_find_drop(field_t * phi, drop_t * drop);
+static int stats_sigma_find_radius(field_t * phi, drop_t * drop);
+static int stats_sigma_find_xi0(field_t * phi, drop_t * drop);
+#endif
 /*****************************************************************************
  *
  *  stats_sigma_init
@@ -78,10 +83,14 @@ static void stats_sigma_find_sigma(drop_t * drop);
  *
  *  These values are reported below at run time.
  *
+ *  The field phi may be NULL if nswitch == 0.
+ *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void stats_sigma_init(int nswitch) {
-
+#else
+int stats_sigma_init(field_t * phi, int nswitch) {
+#endif
   drop_t drop;
   double datum;
 
@@ -90,6 +99,8 @@ void stats_sigma_init(int nswitch) {
     initialised_ = 0;
   }
   else {
+
+    assert(phi);
 
     /* Check we have a cubic system, or a square system (2d) */
 
@@ -116,9 +127,11 @@ void stats_sigma_init(int nswitch) {
     drop.phimax    = sqrt(-symmetric_a()/symmetric_b());
 
     /* Initialise the order parameter field */
-
+#ifdef OLD_PHI
     stats_sigma_init_drop(drop);
-
+#else
+    stats_sigma_init_drop(phi, drop);
+#endif
     /* Print some information */
 
     info("\n");
@@ -133,8 +146,11 @@ void stats_sigma_init(int nswitch) {
     datum = XIINIT*drop.xi0*XIINIT*drop.xi0/datum;
     info("Diffusion time:  %14.7e\n", datum); 
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -145,16 +161,25 @@ void stats_sigma_init(int nswitch) {
  *  The argument is just the time step.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 void stats_sigma_measure(int ntime) {
-
+#else
+  int stats_sigma_measure(field_t * fphi, int ntime) {
+#endif
   drop_t drop;
 
   if (initialised_) {
 
+#ifdef OLD_PHI
     stats_sigma_find_drop(&drop);
     stats_sigma_find_radius(&drop);
     stats_sigma_find_xi0(&drop);
+#else
+    assert(fphi);
+    stats_sigma_find_drop(fphi, &drop);
+    stats_sigma_find_radius(fphi, &drop);
+    stats_sigma_find_xi0(fphi, &drop);
+#endif
     stats_sigma_find_sigma(&drop);
 
     info("\n");
@@ -162,8 +187,11 @@ void stats_sigma_measure(int ntime) {
     info("[sigma] %14d %14.7e %14.7e %14.7e\n", ntime, drop.radius, drop.xi0,
 	 drop.sigma);
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -174,9 +202,11 @@ void stats_sigma_measure(int ntime) {
  *  Note phi = -drop.phimax in the centre.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void stats_sigma_init_drop(drop_t drop) {
-
+#else
+  static int stats_sigma_init_drop(field_t * fphi, drop_t drop) {
+#endif
   int nlocal[3];
   int noffset[3];
   int index, ic, jc, kc;
@@ -185,7 +215,10 @@ static void stats_sigma_init_drop(drop_t drop) {
   double phi;          /* order parameter value */
   double r;            /* radial distance */
   double rxi0;         /* 1/xi0 */
-
+#ifdef OLD_PHI
+#else
+  assert(fphi);
+#endif
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -204,12 +237,19 @@ static void stats_sigma_init_drop(drop_t drop) {
         r = modulus(position);
 
         phi = drop.phimax*tanh(rxi0*(r - drop.radius));
+#ifdef OLD_PHI
         phi_lb_coupler_phi_set(index, phi);
+#else
+	field_scalar_set(fphi, index, phi);
+#endif
       }
     }
   }
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -220,9 +260,11 @@ static void stats_sigma_init_drop(drop_t drop) {
  *  Expect phi < 0 at the centre.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void stats_sigma_find_drop(drop_t * drop) {
-
+#else
+static int stats_sigma_find_drop(field_t * fphi, drop_t * drop) {
+#endif
   int nlocal[3];
   int noffset[3];
   int index, ic, jc, kc;
@@ -230,7 +272,10 @@ static void stats_sigma_find_drop(drop_t * drop) {
   double c[3+1];              /* 3 space dimensions plus counter */
   double ctotal[3+1];
   double phi;
-
+#ifdef OLD_PHI
+#else
+  assert(fphi);
+#endif
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -248,8 +293,7 @@ static void stats_sigma_find_drop(drop_t * drop) {
 #ifdef OLD_PHI
         phi = phi_get_phi_site(index);
 #else
-	assert(0);
-	/* update interface */
+	field_scalar(fphi, index, &phi);
 #endif
 
         if (phi <= 0.0) {
@@ -268,8 +312,11 @@ static void stats_sigma_find_drop(drop_t * drop) {
   drop->centre[X] = ctotal[X]/ctotal[3];
   drop->centre[Y] = ctotal[Y]/ctotal[3];
   drop->centre[Z] = ctotal[Z]/ctotal[3];
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -280,9 +327,11 @@ static void stats_sigma_find_drop(drop_t * drop) {
  *  Expect phi < 0 on inside.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void stats_sigma_find_radius(drop_t * drop) {
-
+#else
+  static int stats_sigma_find_radius(field_t * fphi, drop_t * drop) {
+#endif
   int nlocal[3];
   int noffset[3];
   int ic, jc, kc, index;
@@ -292,7 +341,10 @@ static void stats_sigma_find_radius(drop_t * drop) {
   double result_total[2];              /* ditto after Allreduce() */
   double phi0, phi1;                   /* order parameter values */ 
   double fraction, r[3];               /* lengths */
-
+#ifdef OLD_PHI
+#else
+  assert(fphi);
+#endif
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -309,8 +361,7 @@ static void stats_sigma_find_radius(drop_t * drop) {
 #ifdef OLD_PHI
         phi0 = phi_get_phi_site(index);
 #else
-	assert(0);
-	/* update interface */
+	field_scalar(fphi, index, &phi0);
 #endif
 
         /* Look around at the neighbours */
@@ -326,8 +377,7 @@ static void stats_sigma_find_radius(drop_t * drop) {
 #ifdef OLD_PHI
               phi1 = phi_get_phi_site(index);
 #else
-	      assert(0);
-	      /* sort interface*/
+	      field_scalar(fphi, index, &phi1);
 #endif
 	      /* Look for change in sign */
 
@@ -356,8 +406,11 @@ static void stats_sigma_find_radius(drop_t * drop) {
   MPI_Allreduce(result, result_total, 2, MPI_DOUBLE, MPI_SUM, cart_comm());
 
   drop->radius = result_total[0]/result_total[1];
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
@@ -374,9 +427,11 @@ static void stats_sigma_find_radius(drop_t * drop) {
  *  The observed xi is returned as drop.xi0 on rank 0.
  *
  *****************************************************************************/
-
+#ifdef OLD_PHI
 static void stats_sigma_find_xi0(drop_t * drop) {
-
+#else
+static int stats_sigma_find_xi0(field_t * fphi, drop_t * drop) {
+#endif
   int nlocal[3], noffset[3];
   int ic, jc, kc, index, n;
   int nfit, nbestfit;
@@ -392,7 +447,11 @@ static void stats_sigma_find_xi0(drop_t * drop) {
   double xi0, xi0fit;                    /* Expected and observed xi0 */
 
   MPI_Comm comm;
-
+#ifdef OLD_PHI
+#else
+  assert(fphi);
+  assert(drop);
+#endif
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   comm = pe_comm();
@@ -430,8 +489,8 @@ static void stats_sigma_find_xi0(drop_t * drop) {
 #ifdef OLD_PHI
           phir_local[n] += phi_get_phi_site(index);
 #else
-	  assert(0);
-	  /* sort interface */
+	  field_scalar(fphi, index, &phi);
+	  phir_local[n] += phi;
 #endif
           nphi_local[n] += 1;
         }
@@ -475,8 +534,11 @@ static void stats_sigma_find_xi0(drop_t * drop) {
   assert(nbestfit > 0);
   xi0fit = 2.0*(nbestfit + 1)*xi0/NFITMAX;
   drop->xi0 = xi0fit;
-
+#ifdef OLD_PHI
   return;
+#else
+  return 0;
+#endif
 }
 
 /*****************************************************************************
