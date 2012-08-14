@@ -19,8 +19,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "runtime.h"
-#include "phi.h"
-#include "phi_gradients.h"
 #include "free_energy.h"
 #include "surfactant.h"
 #include "surfactant_rt.h"
@@ -41,12 +39,6 @@ void surfactant_run_time(void) {
   double epsilon;
   double beta;
   double w;
-
-  /* Two order parameters, del^2 phi / psi required. */
-
-  phi_nop_set(2);
-  phi_gradients_level_set(2);
-  coords_nhalo_set(2);
 
   /* Parameters */
 

@@ -33,7 +33,6 @@
 #include "collision.h"
 #include "fluctuations.h"
 
-#include "phi.h"
 #include "free_energy.h"
 #include "phi_cahn_hilliard.h"
 
@@ -481,19 +480,21 @@ int collision_binary_lb(hydro_t * hydro) {
 
 	/* Now, the order parameter distribution */
 
-	phi = phi_get_phi_site(index);
 	mu = chemical_potential(index, 0);
 	distribution_index(index, 1, f);
 
+	phi = f[0];
 	jphi[X] = 0.0;
 	jphi[Y] = 0.0;
 	jphi[Z] = 0.0;
 	for (p = 1; p < NVEL; p++) {
+	  phi += f[p];
 	  for (i = 0; i < 3; i++) {
 	    jphi[i] += f[p]*cv[p][i];
 	  }
 	}
 
+	/* if (kc == 1) printf("%3d %3d %14.7e %14.7e\n", ic, jc, phi, mu);*/
 
 	/* Relax order parameters modes. See the comments above. */
 

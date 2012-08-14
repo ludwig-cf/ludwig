@@ -90,7 +90,7 @@ struct lubrication_struct {
  *
  *****************************************************************************/
 
-int COLL_update(hydro_t * hydro) {
+int COLL_update(hydro_t * hydro, field_t * fphi, field_t * fp, field_t * fq) {
 
   int is_subgrid = 0;
 
@@ -119,7 +119,7 @@ int COLL_update(hydro_t * hydro) {
 
     TIMER_start(TIMER_REBUILD);
     COLL_update_map();
-    COLL_remove_or_replace_fluid();
+    build_remove_or_replace_fluid(fphi, fp, fq);
     COLL_update_links();
 
     TIMER_stop(TIMER_REBUILD);

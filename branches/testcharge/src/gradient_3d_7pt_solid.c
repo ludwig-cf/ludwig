@@ -55,7 +55,6 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "gradient.h"
 #include "site_map.h"
 #include "free_energy.h"
 #include "colloids.h"
@@ -77,19 +76,6 @@ static void util_q5_to_qab(double q[3][3], const double * phi);
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_solid_init
- *
- *****************************************************************************/
-
-void gradient_3d_7pt_solid_init(void) {
-
-  gradient_d2_set(gradient_3d_7pt_solid_d2);
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  gradient_3d_7pt_solid_operator
  *
  *  Compute the gradients in the fluid, and then correct for the presence
@@ -97,8 +83,8 @@ void gradient_3d_7pt_solid_init(void) {
  *
  *****************************************************************************/
 
-void gradient_3d_7pt_solid_d2(const int nop, const double * field,
-			      double * grad, double * delsq) {
+int gradient_3d_7pt_solid_d2(const int nop, const double * field,
+			     double * grad, double * delsq) {
   int nextra;
 
   assert(nop == NOP);
@@ -110,7 +96,7 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
   assert(nextra >= 0);
   gradient_general(field, grad, delsq, nextra);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

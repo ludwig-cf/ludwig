@@ -39,4 +39,7 @@ int field_vector_set(field_t * obj, int index, const double p[3]);
 int field_tensor(field_t * obj, int index, double q[3][3]);
 int field_tensor_set(field_t * obj, int index, double q[3][3]);
 
+int field_scalar_array(field_t * obj, int index, double * array);
+int field_scalar_array_set(field_t * obj, int index, const double * array);
+
 #endif

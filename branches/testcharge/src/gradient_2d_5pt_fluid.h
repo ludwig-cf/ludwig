@@ -15,10 +15,9 @@
 #ifndef GRADIENT_2D_5PT_FLUID_H
 #define GRADIENT_2D_5PT_FLUID_H
 
-void gradient_2d_5pt_fluid_init(void);
-void gradient_2d_5pt_fluid_d2(const int nop, const double * field,
-			      double * grad, double * delsq);
-void gradient_2d_5pt_fluid_d4(const int nop, const double * field,
-			      double * grad, double * delsq);
+int gradient_2d_5pt_fluid_d2(const int nop, const double * field,
+			     double * grad, double * delsq);
+int gradient_2d_5pt_fluid_d4(const int nop, const double * field,
+			     double * grad, double * delsq);
 
 #endif

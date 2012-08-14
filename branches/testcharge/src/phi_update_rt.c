@@ -52,8 +52,6 @@ void phi_update_run_time(void) {
   if (n == 0 || strcmp(stringfe, "none") == 0) {
     /* No order parameter, no update, no force... */
     phi_force_required_set(0);
-    /* KLUDGE: parts of code use this to check ndist = 1 */
-    phi_set_finite_difference();
   }
   else {
     /* Sort out free energy */
@@ -86,7 +84,7 @@ static void phi_update_rt_fe(const char * stringfe) {
       strcmp(stringfe, "symmetric_noise") == 0) {
 
     info("Using Cahn-Hilliard finite difference solver:\n");
-    phi_set_finite_difference();
+
     phi_update_set(phi_cahn_hilliard);
 
     RUN_get_double_parameter("mobility", &value);
@@ -117,7 +115,7 @@ static void phi_update_rt_fe(const char * stringfe) {
   else if (strcmp(stringfe, "brazovskii") == 0) {
 
     info("Using Cahn-Hilliard solver:\n");
-    phi_set_finite_difference();
+
     phi_update_set(phi_cahn_hilliard);
 
     RUN_get_double_parameter("mobility", &value);
@@ -147,7 +145,6 @@ static void phi_update_rt_fe(const char * stringfe) {
 
     info("Using Beris-Edwards solver:\n");
     phi_update_set(blue_phase_beris_edwards);
-    phi_set_finite_difference();
 
     p = RUN_get_double_parameter("lc_Gamma", &value);
     if (p != 0) {

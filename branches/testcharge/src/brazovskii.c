@@ -36,8 +36,9 @@
 #include <assert.h>
 #include <math.h>
 
-#include "phi.h"
-#include "phi_gradients.h"
+
+#include "field.h"
+#include "field_grad.h"
 #include "util.h"
 #include "brazovskii.h"
 
@@ -45,6 +46,29 @@ static double a_     = -0.00;
 static double b_     = +0.00;
 static double kappa_ = +0.00;
 static double c_     = -0.00;
+
+static field_t * phi_ = NULL;
+static field_grad_t * grad_phi_ = NULL;
+
+/*****************************************************************************
+ *
+ *  brazovskii_phi_set
+ *
+ *  Attach a reference to the order parameter field object, and the
+ *  associated field gradient object.
+ *
+ *****************************************************************************/
+
+int brazovskii_phi_set(field_t * phi, field_grad_t * phi_grad) {
+
+  assert(phi);
+  assert(phi_grad);
+
+  phi_ = phi;
+  grad_phi_ = phi_grad;
+
+  return 0;
+}
 
 /****************************************************************************
  *
@@ -114,9 +138,9 @@ double brazovskii_free_energy_density(const int index) {
   double delsq;
   double e;
 
-  phi = phi_get_phi_site(index);
-  phi_gradients_grad(index, dphi);
-  delsq = phi_gradients_delsq(index);
+  field_scalar(phi_, index, &phi);
+  field_grad_scalar_grad(grad_phi_, index, dphi);
+  field_grad_scalar_delsq(grad_phi_, index, &delsq);
 
   e = 0.5*a_*phi*phi + 0.25*b_*phi*phi*phi*phi
     + 0.5*kappa_*dot_product(dphi, dphi) + 0.5*c_*delsq*delsq;
@@ -141,11 +165,9 @@ double brazovskii_chemical_potential(const int index, const int nop) {
   double del4_phi;
   double mu;
 
-  assert(nop == 0);
-
-  phi      = phi_get_phi_site(index);
-  del2_phi = phi_gradients_delsq(index);
-  del4_phi = phi_gradients_delsq_delsq(index);
+  field_scalar(phi_, index, &phi);
+  field_grad_scalar_delsq(grad_phi_, index, &del2_phi);
+  field_grad_scalar_delsq_delsq(grad_phi_, index, &del4_phi);
 
   mu = a_*phi + b_*phi*phi*phi - kappa_*del2_phi + c_*del4_phi;
 
@@ -169,12 +191,11 @@ double brazovskii_isotropic_pressure(const int index) {
   double grad_del2_phi[3];
   double p0;
 
-  phi = phi_get_phi_site(index);
-  phi_gradients_grad(index, grad_phi);
-  del2_phi = phi_gradients_delsq(index);
-
-  del4_phi = phi_gradients_delsq_delsq(index);
-  phi_gradients_grad_delsq(index, grad_del2_phi);
+  field_scalar(phi_, index, &phi);
+  field_grad_scalar_grad(grad_phi_, index, grad_phi);
+  field_grad_scalar_delsq(grad_phi_, index, &del2_phi);
+  field_grad_scalar_delsq_delsq(grad_phi_, index, &del4_phi);
+  field_grad_scalar_grad_delsq(grad_phi_, index, grad_del2_phi);
 
   p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi - kappa_*phi*del2_phi
     + 0.5*kappa_*dot_product(grad_phi, grad_phi) + c_*phi*del4_phi
@@ -201,12 +222,11 @@ void brazovskii_chemical_stress(const int index, double s[3][3]) {
   double grad_del2_phi[3];
   double p0;
 
-  phi = phi_get_phi_site(index);
-  phi_gradients_grad(index, grad_phi);
-  del2_phi = phi_gradients_delsq(index);
-
-  del4_phi = phi_gradients_delsq_delsq(index);
-  phi_gradients_grad_delsq(index, grad_del2_phi);
+  field_scalar(phi_, index, &phi);
+  field_grad_scalar_grad(grad_phi_, index, grad_phi);
+  field_grad_scalar_delsq(grad_phi_, index, &del2_phi);
+  field_grad_scalar_delsq_delsq(grad_phi_, index, &del4_phi);
+  field_grad_scalar_grad_delsq(grad_phi_, index, grad_del2_phi);
 
   /* Isotropic part and tensor part */
 

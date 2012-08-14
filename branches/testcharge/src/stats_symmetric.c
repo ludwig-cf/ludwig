@@ -22,7 +22,7 @@
 #include "coords.h"
 #include "site_map.h"
 #include "symmetric.h"
-#include "phi_gradients.h"
+#include "field_grad.h"
 
 /*****************************************************************************
  *
@@ -35,7 +35,9 @@
  *
  *****************************************************************************/
 
-void stats_symmetric_length(int timestep) {
+int stats_symmetric_length(field_grad_t * phi_grad, int timestep) {
+
+#define NSTAT 7
 
   int ic, jc, kc, index, ia;
   int nlocal[3];
@@ -44,8 +46,8 @@ void stats_symmetric_length(int timestep) {
   double xi0;                           /* interfacial width */
 
   double dphi[3];                       /* grad phi */
-  double dphi_local[7];                 /* Local sum grad phi (plus volume) */
-  double dphi_total[7];                 /* Global sum (plus volume) */
+  double dphi_local[NSTAT];             /* Local sum grad phi (plus volume) */
+  double dphi_total[NSTAT];             /* Global sum (plus volume) */
   double dphiab[3][3];                  /* Gradient tensor d_a phi d_b phi */
 
   double lcoordinate[3];                /* Lengths in coordinate directions */
@@ -57,6 +59,8 @@ void stats_symmetric_length(int timestep) {
 
   MPI_Comm comm;
 
+  assert(phi_grad);
+
   coords_nlocal(nlocal);
   comm = pe_comm();
 
@@ -64,7 +68,7 @@ void stats_symmetric_length(int timestep) {
   b = symmetric_b();
   xi0 = symmetric_interfacial_width();
 
-  for (ia = 0; ia < 7; ia++) {
+  for (ia = 0; ia < NSTAT; ia++) {
     dphi_local[ia] = 0.0;
   }
 
@@ -76,7 +80,7 @@ void stats_symmetric_length(int timestep) {
 
 	if (site_map_get_status_index(index) != FLUID) continue;
 
-	phi_gradients_grad(index, dphi);
+	field_grad_scalar_grad(phi_grad, index, dphi);
 
 	dphi_local[0] += dphi[X]*dphi[X];
         dphi_local[1] += dphi[X]*dphi[Y];
@@ -89,7 +93,7 @@ void stats_symmetric_length(int timestep) {
     }
   }
 
-  MPI_Reduce(dphi_local, dphi_total, 7, MPI_DOUBLE, MPI_SUM, 0, comm);
+  MPI_Reduce(dphi_local, dphi_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, comm);
 
   /* Set up the normalised gradient tensor. */
 
@@ -130,6 +134,8 @@ void stats_symmetric_length(int timestep) {
        lnatural[0], lnatural[1], lnatural[2]);
   info("[angles abc] %8d %14.7e %14.7e\n", timestep, alpha, beta);
 
-  return;
+#undef NSTAT
+
+  return 0;
 }
 

@@ -22,8 +22,8 @@
 #include "pe.h"
 #include "coords.h"
 #include "runtime.h"
-#include "phi.h"
-#include "phi_gradients.h"
+#include "field.h"
+#include "field_grad.h"
 #include "colloids_Q_tensor.h"
 #include "free_energy.h"
 #include "blue_phase.h"
@@ -54,15 +54,7 @@ void blue_phase_run_time(void) {
   double epsilon;
   double electric[3];
 
-  /* Tensor order parameter (nop = 5); del^2 required; */
-
-  phi_nop_set(5);
-  phi_gradients_level_set(2);
-  coords_nhalo_set(2);
-
   info("Blue phase free energy selected.\n");
-  info("Tensor order parameter nop = 5\n");
-  info("Requires up to del^2 derivatives so setting nhalo = 2\n");
 
   /* PARAMETERS */
 
@@ -239,7 +231,7 @@ void blue_phase_run_time(void) {
  *
  *****************************************************************************/
 
-void blue_phase_rt_initial_conditions(void) {
+int blue_phase_rt_initial_conditions(field_t * q) {
 
   int  n;
   char key1[FILENAME_MAX];
@@ -258,67 +250,67 @@ void blue_phase_rt_initial_conditions(void) {
     /* This gives cholesteric_z (for backwards compatibility) */
     info("Initialising Q_ab to cholesteric\n");
     info("Helical axis Z\n");
-    blue_phase_twist_init(Z);
+    blue_phase_twist_init(q, Z);
   }
 
   if (strcmp(key1, "cholesteric_x") == 0) {
     info("Initialising Q_ab to cholesteric\n");
     info("Helical axis X\n");
-    blue_phase_twist_init(X);
+    blue_phase_twist_init(q, X);
   }
 
   if (strcmp(key1, "cholesteric_y") == 0) {
     info("Initialising Q_ab to cholesteric\n");
     info("Helical axis Y\n");
-    blue_phase_twist_init(Y);
+    blue_phase_twist_init(q, Y);
   }
 
   if (strcmp(key1, "cholesteric_z") == 0) {
     info("Initialising Q_ab to cholesteric\n");
     info("Helical axis Z\n");
-    blue_phase_twist_init(Z);
+    blue_phase_twist_init(q, Z);
   }
 
   if (strcmp(key1, "nematic") == 0) {
     info("Initialising Q_ab to nematic\n");
     RUN_get_double_parameter_vector("lc_init_nematic", nhat);
     info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
-    blue_phase_nematic_init(nhat);
+    blue_phase_nematic_init(q, nhat);
   }
 
   if (strcmp(key1, "o8m") == 0) {
     info("Initialising Q_ab using O8M (BPI)\n");
-    blue_phase_O8M_init();
+    blue_phase_O8M_init(q);
   }
 
   if (strcmp(key1, "o2") == 0) {
     info("Initialising Q_ab using O2 (BPII)\n");
-    blue_phase_O2_init();
+    blue_phase_O2_init(q);
   }
 
   if (strcmp(key1, "o5") == 0) {
     info("Initialising Q_ab using O5\n");
-    blue_phase_O5_init();
+    blue_phase_O5_init(q);
   }
 
   if (strcmp(key1, "h2d") == 0) {
     info("Initialising Q_ab using H2D\n");
-    blue_phase_H2D_init();
+    blue_phase_H2D_init(q);
   }
 
   if (strcmp(key1, "h3da") == 0) {
     info("Initialising Q_ab using H3DA\n");
-    blue_phase_H3DA_init();
+    blue_phase_H3DA_init(q);
   }
 
   if (strcmp(key1, "h3db") == 0) {
     info("Initialising Q_ab using H3DB\n");
-    blue_phase_H3DB_init();
+    blue_phase_H3DB_init(q);
   }
 
   if (strcmp(key1, "dtc") == 0) {
     info("Initialising Q_ab using DTC\n");
-    blue_phase_DTC_init();
+    blue_phase_DTC_init(q);
   }
 
   if (strcmp(key1, "bp3") == 0) {
@@ -327,13 +319,13 @@ void blue_phase_rt_initial_conditions(void) {
     info("BPIII specifications: N_DTC=%g,  R_DTC=%g,  ", nhat2[0], nhat2[1]);
     if (nhat2[2] == 0) info("isotropic environment\n");
     if (nhat2[2] == 1) info("cholesteric environment\n");
-    blue_phase_BPIII_init(nhat2);
+    blue_phase_BPIII_init(q, nhat2);
   }
 
   if (strcmp(key1, "random") == 0) {
     info("Initialising Q_ab randomly\n");
-    blue_set_random_q_init();
+    blue_set_random_q_init(q);
   }
 
-  return;
+  return 0;
 }

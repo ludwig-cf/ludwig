@@ -18,6 +18,9 @@
 /* 'Extension' of free energy (pending free_energy_tensor.h) */
 
 #include "free_energy.h"
+#include "field.h"
+#include "field_grad.h"
+int blue_phase_q_set(field_t * q, field_grad_t * dq);
 
 void   blue_phase_set_free_energy_parameters(double, double, double, double);
 void   blue_phase_set_xi(double);

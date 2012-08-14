@@ -37,7 +37,6 @@
 #include "coords.h"
 #include "site_map.h"
 #include "free_energy.h"
-#include "gradient.h"
 #include "gradient_3d_27pt_solid.h"
 
 /* These are the 'links' used to form the gradients at boundaries. */
@@ -62,25 +61,12 @@ static void gradient_3d_27pt_solid_op(const int nop,
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_solid_init
- *
- *****************************************************************************/
-
-void gradient_3d_27pt_solid_init(void) {
-
-  gradient_d2_set(gradient_3d_27pt_solid_d2);
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  gradient_3d_27pt_solid_d2
  *
  *****************************************************************************/
 
-void gradient_3d_27pt_solid_d2(const int nop, const double * field,
-			       double * grad, double * delsq) {
+int gradient_3d_27pt_solid_d2(const int nop, const double * field,
+			      double * grad, double * delsq) {
 
   int nextra;
 
@@ -89,7 +75,7 @@ void gradient_3d_27pt_solid_d2(const int nop, const double * field,
 
   gradient_3d_27pt_solid_op(nop, field, grad, delsq, nextra);
 
-  return;
+  return 0;
 }
 
 /****************************************************************************

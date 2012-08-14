@@ -17,9 +17,6 @@
 #include <assert.h>
 
 #include "pe.h"
-#include "coords.h"
-#include "phi.h"
-#include "phi_gradients.h"
 #include "runtime.h"
 #include "free_energy.h"
 #include "symmetric.h"
@@ -83,15 +80,7 @@ static void symmetric_init(const int nhalo) {
   double b;
   double kappa;
 
-  /* Single order parameter, del^2 phi required. */
-
-  phi_nop_set(1);
-  phi_gradients_level_set(2);
-  coords_nhalo_set(nhalo);
-
   info("Symmetric phi^4 free energy selected.\n");
-  info("Single conserved order parameter nop = 1\n");
-  info("Requires up to del^2 derivatives so setting nhalo = %1d\n", nhalo);
   info("\n");
 
   /* Parameters */

@@ -38,8 +38,8 @@
 #include <assert.h>
 #include <math.h>
 
-#include "phi.h"
-#include "phi_gradients.h"
+#include "field.h"
+#include "field_grad.h"
 #include "util.h"
 #include "surfactant.h"
 
@@ -160,9 +160,7 @@ double surfactant_free_energy_density(const int index) {
   double dphi[3];
   double dphisq;
 
-  phi = phi_op_get_phi_site(index, 0);
-  psi = phi_op_get_phi_site(index, 1);
-  phi_gradients_grad(index, dphi);
+  assert(0);
 
   dphisq = dot_product(dphi, dphi);
 
@@ -205,16 +203,13 @@ double surfactant_chemical_potential(const int index, const int nop) {
 
   assert(nop == 0 || nop == 1);
 
-  phi = phi_op_get_phi_site(index, 0);
-  psi = phi_op_get_phi_site(index, 1);
-  phi_gradients_grad_n(index, 0, dphi);
+  assert(0);
 
   /* There's a rather ugly switch here... */
 
   if (nop == 0) {
     /* mu_phi */
-    delsq_phi = phi_gradients_delsq_n(index, 0);
-    phi_gradients_grad_n(index, 1, dpsi);
+    assert(0); /* Set gradients */
 
     mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi
       + w_*phi*psi
@@ -252,11 +247,7 @@ double surfactant_isotropic_pressure(const int index) {
   double dpsi[3];
   double p0;
 
-  phi = phi_op_get_phi_site(index, 0);
-  psi = phi_op_get_phi_site(index, 1);
-  delsq_phi = phi_gradients_delsq_n(index, 0);
-  phi_gradients_grad_n(index, 0, dphi);
-  phi_gradients_grad_n(index, 1, dpsi);
+  assert(0);
 
   assert(psi < 1.0);
 
@@ -300,11 +291,7 @@ void surfactant_chemical_stress(const int index, double s[3][3]) {
   double dpsi[3];
   double p0;
 
-  phi = phi_op_get_phi_site(index, 0);
-  psi = phi_op_get_phi_site(index, 1);
-  delsq_phi = phi_gradients_delsq_n(index, 0);
-  phi_gradients_grad_n(index, 0, dphi);
-  phi_gradients_grad_n(index, 1, dpsi);
+  assert(0);
 
   assert(psi < 1.0);
 
@@ -324,3 +311,4 @@ void surfactant_chemical_stress(const int index, double s[3][3]) {
 
   return;
 }
+

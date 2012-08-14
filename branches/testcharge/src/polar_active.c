@@ -41,8 +41,8 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "phi.h"
-#include "phi_gradients.h"
+#include "field.h"
+#include "field_grad.h"
 #include "polar_active.h"
 #include "util.h"
 
@@ -54,6 +54,29 @@ static double kappa2_;            /* Free energy elastic constant */
 
 static double zeta_ = 0.0;        /* 'Activity' parameter */
 static double radius_ = FLT_MAX;  /* Used for spherical 'active region' */
+
+static field_t * p_ = NULL;           /* A reference to the order parameter */
+static field_grad_t * grad_p_ = NULL; /* Ditto for gradients */
+
+/*****************************************************************************
+ *
+ *  polar_active_p_set
+ *
+ *  Attach a reference to the order parameter field object and the
+ *  associated field gradient object.
+ *
+ *****************************************************************************/
+
+int polar_active_p_set(field_t * p, field_grad_t * p_grad) {
+
+  assert(p);
+  assert(p_grad);
+
+  p_ = p;
+  grad_p_ = p_grad;
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -98,8 +121,8 @@ double polar_active_free_energy_density(const int index) {
   double dp[3][3];
   double sum;
 
-  phi_vector(index, p);
-  phi_gradients_vector_gradient(index, dp);
+  field_vector(p_, index, p);
+  field_grad_vector_grad(grad_p_, index, dp);
 
   p2  = 0.0;
   dp1 = 0.0;
@@ -155,8 +178,8 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
 
   lambda = fe_v_lambda();
 
-  phi_vector(index, p);
-  phi_gradients_vector_gradient(index, dp);
+  field_vector(p_, index, p);
+  field_grad_vector_grad(grad_p_, index, dp);
   polar_active_molecular_field(index, h);
 
   p2 = 0.0;
@@ -208,8 +231,8 @@ void polar_active_molecular_field(const int index, double h[3]) {
   double p[3];
   double dsqp[3];
 
-  phi_vector(index, p);
-  phi_gradients_vector_delsq(index, dsqp);
+  field_vector(p_, index, p);
+  field_grad_vector_delsq(grad_p_, index, dsqp);
 
   p2 = 0.0;
 

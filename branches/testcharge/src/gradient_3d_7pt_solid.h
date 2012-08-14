@@ -15,8 +15,7 @@
 #ifndef GRADIENT_3D_7PT_SOLID_H
 #define GRADIENT_3D_7PT_SOLID_H
 
-void gradient_3d_7pt_solid_init(void);
-void gradient_3d_7pt_solid_d2(const int nop, const double * field,
-			      double * grad, double * delsq);
+int gradient_3d_7pt_solid_d2(const int nop, const double * field,
+			     double * grad, double * delsq);
 
 #endif

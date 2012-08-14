@@ -130,7 +130,7 @@ int field_init(field_t * obj, int nhcomm) {
   /* MPI datatypes for halo */
 
   obj->nhcomm = nhcomm;
-  phi_init_mpi(obj);
+  phi_init_mpi(obj); /* Old version until benchmarks available */
 
   return 0;
 }
@@ -204,6 +204,7 @@ int field_io_info(field_t * obj, io_info_t ** info) {
 
 int field_halo(field_t * obj) {
 
+  assert(obj);
   field_phi_halo(obj);
 
   return 0;
@@ -314,10 +315,6 @@ int field_leesedwards(field_t * obj) {
  *  Note that the sends only involve the 'real' system, so there is
  *  no requirement that the halos be up-to-date (although it is
  *  expected that they will be for the gradient calculation).
- *
- *  Effect:
- *    Buffer region of phi_site[] is updated with the interpolated
- *    values.
  *
  *****************************************************************************/
 
@@ -532,7 +529,7 @@ int field_vector(field_t * obj, int index, double p[3]) {
 
 /*****************************************************************************
  *
- *  fieldeter_vector_set
+ *  field_vector_set
  *
  *****************************************************************************/
 
@@ -584,7 +581,7 @@ int field_tensor(field_t * obj, int index, double q[3][3]) {
  *
  *  field_tensor_set
  *
- *  The tensor supplied should be traceless and symetric, as it will
+ *  The tensor supplied should be traceless and symmetric, as it will
  *  be stored in 'compressed' form.
  *
  *****************************************************************************/
@@ -601,6 +598,53 @@ int field_tensor_set(field_t * obj, int index, double q[3][3]) {
   obj->data[NQAB*index + XZ] = q[X][Z];
   obj->data[NQAB*index + YY] = q[Y][Y];
   obj->data[NQAB*index + YZ] = q[Y][Z];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_scalar_array
+ *
+ *  Return whatever field data there are for this index in a flattened
+ *  1d array of length obj->nf.
+ *
+ *  Array must be of at least obj->nf, but there is no check.
+ *
+ *****************************************************************************/
+
+int field_scalar_array(field_t * obj, int index, double * array) {
+
+  int n;
+
+  assert(obj);
+  assert(obj->data);
+  assert(array);
+
+  for (n = 0; n < obj->nf; n++) {
+    array[n] = obj->data[obj->nf*index + n];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_scalar_array_set
+ *
+ *****************************************************************************/
+
+int field_scalar_array_set(field_t * obj, int index, const double * array) {
+
+  int n;
+
+  assert(obj);
+  assert(obj->data);
+  assert(array);
+
+  for (n = 0; n < obj->nf; n++) {
+    obj->data[obj->nf*index + n] = array[n];
+  }
 
   return 0;
 }

@@ -15,9 +15,10 @@
 #ifndef PHI_CAHN_HILLIARD_H
 #define PHI_CAHN_HILLIARD_H
 
+#include "field.h"
 #include "hydro.h"
 
-int    phi_cahn_hilliard(hydro_t * hydro);
+int phi_cahn_hilliard(field_t * phi, hydro_t * hydro);
 void   phi_cahn_hilliard_mobility_set(const double);
 double phi_cahn_hilliard_mobility(void);
 

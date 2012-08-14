@@ -52,6 +52,7 @@
 #include "site_map.h"
 #include "wall.h"
 #include "free_energy.h"
+#include "phi_force.h"
 #include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 
@@ -67,12 +68,19 @@ static int phi_force_interpolation(hydro_t * hydro);
 
 int phi_force_colloid(hydro_t * hydro) {
 
-  phi_force_stress_allocate();
+  int required;
 
-  phi_force_stress_compute();
-  phi_force_interpolation(hydro);
+  phi_force_required(&required);
 
-  phi_force_stress_free();
+  if (required) {
+
+    phi_force_stress_allocate();
+
+    phi_force_stress_compute();
+    phi_force_interpolation(hydro);
+
+    phi_force_stress_free();
+  }
 
   return 0;
 }

@@ -25,7 +25,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "hydro.h"
-#include "phi.h"
+#include "field.h"
 #include "site_map.h"
 #include "leesedwards.h"
 #include "free_energy.h"
@@ -33,7 +33,6 @@
 #include "phi_force_stress.h"
 
 static int phi_force_calculation_fluid(hydro_t * hydro);
-static int phi_force_fluid_phi_gradmu(hydro_t * hydro);
 static int phi_force_compute_fluxes(double * fe, double * fw, double * fy,
 				    double * fz);
 static int phi_force_flux_divergence(hydro_t * hydro, double * fe,
@@ -47,6 +46,8 @@ static int phi_force_wallx(double * fe, double * fw);
 static int phi_force_wally(double * fy);
 static int phi_force_wallz(double * fz);
 
+static int phi_force_fluid_phi_gradmu(field_t * phi, hydro_t * hydro);
+
 static int force_required_ = 1;
 static int force_divergence_ = 1;
 
@@ -59,6 +60,21 @@ static int force_divergence_ = 1;
 int phi_force_required_set(const int flag) {
 
   force_required_ = flag;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_required
+ *
+ *****************************************************************************/
+
+int phi_force_required(int * flag) {
+
+  assert(flag);
+
+  *flag = force_required_;
+
   return 0;
 }
 
@@ -85,7 +101,7 @@ int phi_force_divergence_set(const int flag) {
  *
  *****************************************************************************/
 
-int phi_force_calculation(hydro_t * hydro) {
+int phi_force_calculation(field_t * phi, hydro_t * hydro) {
 
   if (force_required_ == 0) return 0;
   if (hydro == NULL) return 0;
@@ -100,7 +116,8 @@ int phi_force_calculation(hydro_t * hydro) {
       phi_force_calculation_fluid(hydro);
     }
     else {
-      phi_force_fluid_phi_gradmu(hydro);
+      assert(phi);
+      phi_force_fluid_phi_gradmu(phi, hydro);
     }
   }
 
@@ -217,7 +234,7 @@ static int phi_force_calculation_fluid(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static int phi_force_fluid_phi_gradmu(hydro_t * hydro) {
+static int phi_force_fluid_phi_gradmu(field_t * fphi, hydro_t * hydro) {
 
   int ic, jc, kc, icm1, icp1;
   int index0, indexm1, indexp1;
@@ -229,7 +246,9 @@ static int phi_force_fluid_phi_gradmu(hydro_t * hydro) {
 
   double (* chemical_potential)(const int index, const int nop);
 
+  assert(fphi);
   assert(hydro);
+  /* Could check nf == 1 sclar field. */
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -248,8 +267,7 @@ static int phi_force_fluid_phi_gradmu(hydro_t * hydro) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-
-	phi = phi_get_phi_site(index0);
+	field_scalar(fphi, index0, &phi);
 
         indexm1 = le_site_index(icm1, jc, kc);
         indexp1 = le_site_index(icp1, jc, kc);

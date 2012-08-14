@@ -15,10 +15,9 @@
 #ifndef GRADIENT_3D_27PT_FLUID_H
 #define GRADIENT_3D_27PT_FLUID_H
 
-void gradient_3d_27pt_fluid_init(void);
-void gradient_3d_27pt_fluid_d2(const int nop, const double * field,
-			       double * grad, double * delsq);
-void gradient_3d_27pt_fluid_d4(const int nop, const double * field,
-			       double * grad, double * delsq);
+int gradient_3d_27pt_fluid_d2(const int nop, const double * field,
+			      double * grad, double * delsq);
+int gradient_3d_27pt_fluid_d4(const int nop, const double * field,
+			      double * grad, double * delsq);
 
 #endif

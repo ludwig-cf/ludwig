@@ -15,7 +15,10 @@
 #ifndef STATS_FREE_ENERGY_H
 #define STATS_FREE_ENERGY_H
 
-void stats_free_energy_density(void);
-void blue_phase_stats(int nstep);
+#include "field.h"
+#include "field_grad.h"
+
+int stats_free_energy_density(field_t * q);
+int blue_phase_stats(field_t * q, field_grad_t * dq, int tstep);
 
 #endif

@@ -24,7 +24,6 @@
 #include "build.h"
 #include "coords.h"
 #include "colloids.h"
-#include "phi.h"
 #include "io_harness.h"
 #include "util.h"
 #include "model.h"

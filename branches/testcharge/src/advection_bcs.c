@@ -20,7 +20,7 @@
 #include "wall.h"
 #include "coords.h"
 #include "site_map.h"
-#include "phi.h"
+#include "field.h"
 
 /*****************************************************************************
  *
@@ -131,18 +131,20 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz) {
  *
  ****************************************************************************/
 
-void advection_bcs_wall(void) {
+int advection_bcs_wall(field_t * fphi) {
 
   int ic, jc, kc, index, index1;
   int nlocal[3];
-  int n, nop;
+  int nf;
+  double q[NQAB];
 
-  extern double * phi_site;
+  if (wall_at_edge(X) == 0) return 0;
 
-  if (wall_at_edge(X) == 0) return;
+  assert(fphi);
 
+  field_nf(fphi, &nf);
   coords_nlocal(nlocal);
-  nop = phi_nop();
+  assert(nf <= NQAB);
 
   if (cart_coords(X) == 0) {
     ic = 1;
@@ -153,9 +155,8 @@ void advection_bcs_wall(void) {
 	index  = coords_index(ic, jc, kc);
 	index1 = coords_index(ic-1, jc, kc);
 
-	for (n = 0; n < nop; n++) {
-	  phi_site[nop*index1 + n] = phi_site[nop*index + n];
-	}
+	field_scalar_array(fphi, index1, q);
+	field_scalar_array_set(fphi, index, q);
       }
     }
   }
@@ -170,12 +171,12 @@ void advection_bcs_wall(void) {
 	index = coords_index(ic, jc, kc);
 	index1 = coords_index(ic+1, jc, kc);
 
-	for (n = 0; n < nop; n++) {
-	  phi_site[nop*index1 + n] = phi_site[nop*index + n];
-	}
+	field_scalar_array(fphi, index1, q);
+	field_scalar_array_set(fphi, index, q);
+
       }
     }
   }
 
-  return;
+  return 0;
 }

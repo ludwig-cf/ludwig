@@ -38,7 +38,6 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
-#include "gradient.h"
 #include "gradient_3d_7pt_fluid.h"
 
 
@@ -58,26 +57,12 @@ static void gradient_3d_7pt_fluid_wall_correction(const int nop,
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_fluid_init
- *
- *****************************************************************************/
-
-void gradient_3d_7pt_fluid_init(void) {
-
-  gradient_d2_set(gradient_3d_7pt_fluid_d2);
-  gradient_d4_set(gradient_3d_7pt_fluid_d4);
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  gradient_3d_7pt_fluid_d2
  *
  *****************************************************************************/
 
-void gradient_3d_7pt_fluid_d2(const int nop, const double * field,
-			      double * grad, double * delsq) {
+int gradient_3d_7pt_fluid_d2(const int nop, const double * field,
+			     double * grad, double * delsq) {
 
   int nextra;
 
@@ -92,7 +77,7 @@ void gradient_3d_7pt_fluid_d2(const int nop, const double * field,
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -104,8 +89,8 @@ void gradient_3d_7pt_fluid_d2(const int nop, const double * field,
  *
  *****************************************************************************/
 
-void gradient_3d_7pt_fluid_d4(const int nop, const double * field,
-			      double * grad, double * delsq) {
+int gradient_3d_7pt_fluid_d4(const int nop, const double * field,
+			     double * grad, double * delsq) {
 
   int nextra;
 
@@ -120,7 +105,7 @@ void gradient_3d_7pt_fluid_d4(const int nop, const double * field,
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

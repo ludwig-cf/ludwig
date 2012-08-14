@@ -15,20 +15,22 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "pe.h"
 #include "runtime.h"
 #include "coords.h"
-#include "phi.h"
-#include "phi_gradients.h"
+#include "field.h"
+#include "field_grad.h"
 #include "io_harness.h"
 #include "free_energy_vector.h"
 #include "polar_active.h"
 #include "polar_active_rt.h"
 
-static void polar_active_rt_init(void);
+static int polar_active_init_code(field_t * p);
 
 /*****************************************************************************
  *
@@ -49,11 +51,7 @@ void polar_active_run_time(void) {
   double zeta;
   double lambda;
 
-  /* Vector order parameter (nop = 3) and del^2 required. */
-
-  phi_nop_set(3);
-  phi_gradients_level_set(2);
-  coords_nhalo_set(2);
+  info("Polar active free energy selected.\n");
 
   /* PARAMETERS */
 
@@ -65,10 +63,6 @@ void polar_active_run_time(void) {
   n = RUN_get_double_parameter("polar_active_klc", &klc);
   n = RUN_get_double_parameter("polar_active_zeta", &zeta);
   n = RUN_get_double_parameter("polar_active_lambda", &lambda);
-
-  info("Polar active free energy selected.\n");
-  info("Vector order parameter nop = 3\n");
-  info("Requires up to del^2 derivatives so setting nhalo = 2\n");
 
   info("\n");
 
@@ -98,31 +92,30 @@ void polar_active_run_time(void) {
  *
  *****************************************************************************/
 
-void polar_active_rt_initial_conditions(void) {
+int polar_active_rt_initial_conditions(field_t * p) {
 
-  char key[FILENAME_MAX];
-  io_info_t * iohandler = NULL;
+  char key[BUFSIZ];
 
-  assert(phi_nop() == 3);
+  assert(p);
 
-  RUN_get_string_parameter("polar_active_initialisation", key, FILENAME_MAX);
+  RUN_get_string_parameter("polar_active_initialisation", key, BUFSIZ);
 
   if (strcmp(key, "from_file") == 0) {
-    phi_io_info(&iohandler);
-    assert(iohandler);
-    info("Initial polar order parameter requested from file\n");
-    info("Reading with serial file stub phi-init\n");
-    io_info_set_processor_independent(iohandler);
-    io_read("phi-init", iohandler);
-    io_info_set_processor_dependent(iohandler);
+    assert(0);
+    /* Read from file */
   }
 
   if (strcmp(key, "from_code") == 0) {
     info("Initial polar order parameter from code\n");
-    polar_active_rt_init();
+    polar_active_init_code(p);
   }
 
-  return;
+  if (strcmp(key, "aster") == 0) {
+    info("Initialise standard aster\n");
+    polar_active_init_aster(p);
+  }
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -133,7 +126,7 @@ void polar_active_rt_initial_conditions(void) {
  *
  *****************************************************************************/
 
-static void polar_active_rt_init(void) {
+static int polar_active_init_code(field_t * fp) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -141,6 +134,8 @@ static void polar_active_rt_init(void) {
 
   double x, y, z;            /* Global coordinates */
   double p[3];               /* Local order parameter */
+
+  assert(fp);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -160,10 +155,63 @@ static void polar_active_rt_init(void) {
         p[Y] = 0.0;
         p[Z] = 0.0; 
 
-        phi_vector_set(index, p);
+	field_vector_set(fp, index, p);
       }
     }
   }
 
-  return;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  polar_active_init_aster
+ *
+ *****************************************************************************/
+
+int polar_active_init_aster(field_t * fp) {
+
+    int nlocal[3];
+    int noffset[3];
+    int ic, jc, kc, index;
+
+    double p[3];
+    double r;
+    double x, y, z, x0, y0, z0;
+
+    assert(fp);
+
+    coords_nlocal(nlocal);
+    coords_nlocal_offset(noffset);
+
+    x0 = 0.5*L(X);
+    y0 = 0.5*L(Y);
+    z0 = 0.5*L(Z);
+
+    if (nlocal[Z] == 1) z0 = 0.0;
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      x = 1.0*(noffset[X] + ic - 1);
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	y = 1.0*(noffset[Y] + jc - 1);
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+	  z = 1.0*(noffset[Z] + kc - 1);
+
+	  p[X] = 0.0;
+	  p[Y] = 1.0;
+	  p[Z] = 0.0;
+
+	  r = sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0) + (z-z0)*(z-z0));
+	  if (r > FLT_EPSILON) {
+	    p[X] = -(x - x0)/r;
+	    p[Y] = -(y - y0)/r;
+	    p[Z] = -(z - z0)/r;
+	  }
+	  index = coords_index(ic, jc, kc);
+	  field_vector_set(fp, index, p);
+	}
+      }
+    }
+
+    return 0;
 }

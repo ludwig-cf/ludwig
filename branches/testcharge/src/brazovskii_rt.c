@@ -17,10 +17,7 @@
 #include <assert.h>
 
 #include "pe.h"
-#include "coords.h"
 #include "runtime.h"
-#include "phi.h"
-#include "phi_gradients.h"
 #include "free_energy.h"
 #include "brazovskii.h"
 #include "brazovskii_rt.h"
@@ -39,15 +36,7 @@ void brazovskii_run_time(void) {
   double c;
   double kappa;
 
-  /* Single order parameter, del^4 phi required */
-
-  phi_nop_set(1);
-  phi_gradients_level_set(4);
-  coords_nhalo_set(3);
-
   info("Brazovskii free energy selected.\n");
-  info("Single conserved order parameter nop = 1\n");
-  info("Requires up to del^4 derivatives so setting nhalo = %1d\n", 3);
   info("\n");
 
   /* Parameters */

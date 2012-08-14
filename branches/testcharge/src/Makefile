@@ -66,23 +66,22 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      brazovskii.o brazovskii_rt.o \
      cio.o colloids_init.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
-     colloid_sums.o bbl.o build.o collision_rt.o communicate.o \
+     colloid_sums.o bbl.o build.o collision_rt.o \
      coords.o coords_rt.o \
      control.o distribution_rt.o \
-     ewald.o fluctuations.o \
-     free_energy.o free_energy_rt.o free_energy_vector.o \
-     gradient.o gradient_rt.o \
+     ewald.o field.o field_grad.o fluctuations.o \
+     free_energy.o free_energy_vector.o \
+     gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
-     hydro.o hydro_rt.o interaction.o io_harness.o\
+     hydro.o hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o magnetic_field.o magnetic_field_rt.o \
      model_le.o potential.o \
-     phi.o phi_cahn_hilliard.o \
+     phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_force_stress.o \
-     phi_fluctuations.o phi_gradients.o \
+     phi_fluctuations.o \
      phi_lb_coupler.o phi_stats.o \
-     phi_update.o phi_update_rt.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
      psi_force.o psi_colloid.o nernst_planck.o \

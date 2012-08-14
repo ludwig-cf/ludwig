@@ -20,7 +20,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "gradient.h"
 #include "field_s.h"
 #include "field_grad_s.h"
 
@@ -159,6 +158,7 @@ int field_grad_scalar_grad(field_grad_t * obj, int index, double grad[3]) {
   int ia;
 
   assert(obj);
+  assert(obj->nf == 1);
   assert(grad);
 
   for (ia = 0; ia < 3; ia++) {

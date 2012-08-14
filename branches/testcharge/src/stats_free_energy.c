@@ -21,8 +21,9 @@
 #include "control.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
-#include "phi.h"
-#include "phi_gradients.h"
+
+#include "field.h"
+#include "field_grad.h"
 #include "site_map.h"
 #include "wall.h"
 #include "free_energy.h"
@@ -30,11 +31,11 @@
 #include "blue_phase.h"
 #include "util.h"
 
-static void stats_free_energy_wall(double * fs);
-static void stats_free_energy_wallx(double * fs);
-static void stats_free_energy_wally(double * fs);
-static void stats_free_energy_wallz(double * fs);
-static void stats_free_energy_colloid(double * fs);
+static int stats_free_energy_wall(field_t * q, double * fs);
+static int stats_free_energy_wallx(field_t * q, double * fs);
+static int stats_free_energy_wally(field_t * q, double * fs);
+static int stats_free_energy_wallz(field_t * q, double * fs);
+static int stats_free_energy_colloid(field_t * q, double * fs);
 
 static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
 
@@ -48,14 +49,16 @@ static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
  *
  ****************************************************************************/
 
-void stats_free_energy_density(void) {
+int stats_free_energy_density(field_t * q) {
+
+#define NSTAT 5
 
   int ic, jc, kc, index;
   int nlocal[3];
 
   double fed;
-  double fe_local[5];
-  double fe_total[5];
+  double fe_local[NSTAT];
+  double fe_total[NSTAT];
   double rv;
 
   double (* free_energy_density)(const int index);
@@ -89,9 +92,9 @@ void stats_free_energy_density(void) {
 
   if (wall_present()) {
 
-    stats_free_energy_wall(fe_local + 3);
+    if (q) stats_free_energy_wall(q, fe_local + 3);
 
-    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
     info("\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
     info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
@@ -100,9 +103,9 @@ void stats_free_energy_density(void) {
   }
   else if (colloid_ntotal() > 0) {
 
-    stats_free_energy_colloid(fe_local + 3);
+    if (q) stats_free_energy_colloid(q, fe_local + 3);
 
-    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
     info("\nFree energies - timestep f v f/v f_s a f_s/a\n");
 
@@ -127,7 +130,9 @@ void stats_free_energy_density(void) {
 	 fe_total[1]/fe_total[2]);
   }
 
-  return;
+#undef NSTAT
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -138,13 +143,15 @@ void stats_free_energy_density(void) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_wall(double * fs) {
+static int stats_free_energy_wall(field_t * q, double * fs) {
 
-  if (wall_at_edge(X)) stats_free_energy_wallx(fs);
-  if (wall_at_edge(Y)) stats_free_energy_wally(fs);
-  if (wall_at_edge(Z)) stats_free_energy_wallz(fs);
+  assert(q);
 
-  return;
+  if (wall_at_edge(X)) stats_free_energy_wallx(q, fs);
+  if (wall_at_edge(Y)) stats_free_energy_wally(q, fs);
+  if (wall_at_edge(Z)) stats_free_energy_wallz(q, fs);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -155,7 +162,7 @@ static void stats_free_energy_wall(double * fs) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_wallx(double * fs) {
+static int stats_free_energy_wallx(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int ia, ib;
@@ -168,7 +175,8 @@ static void stats_free_energy_wallx(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  if (phi_nop() != 5) return;
+  assert(q);
+  assert(fs);
 
   coords_nlocal(nlocal);
   w = wall_w_get();
@@ -185,7 +193,7 @@ static void stats_free_energy_wallx(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
+	field_tensor(q, index, qs);
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -207,7 +215,7 @@ static void stats_free_energy_wallx(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
+	field_tensor(q, index, qs);
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -220,7 +228,7 @@ static void stats_free_energy_wallx(double * fs) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -231,7 +239,7 @@ static void stats_free_energy_wallx(double * fs) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_wally(double * fs) {
+static int stats_free_energy_wally(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int ia, ib;
@@ -244,7 +252,8 @@ static void stats_free_energy_wally(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  if (phi_nop() != 5) return;
+  assert(q);
+  assert(fs);
 
   coords_nlocal(nlocal);
   w = wall_w_get();
@@ -261,7 +270,7 @@ static void stats_free_energy_wally(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
+	field_tensor(q, index, qs);
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -283,7 +292,7 @@ static void stats_free_energy_wally(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
+	field_tensor(q, index, qs);
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -296,7 +305,7 @@ static void stats_free_energy_wally(double * fs) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -307,7 +316,7 @@ static void stats_free_energy_wally(double * fs) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_wallz(double * fs) {
+static int stats_free_energy_wallz(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int ia, ib;
@@ -320,7 +329,8 @@ static void stats_free_energy_wallz(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  if (phi_nop() != 5) return;
+  assert(q);
+  assert(fs);
 
   coords_nlocal(nlocal);
   w = wall_w_get();
@@ -337,7 +347,7 @@ static void stats_free_energy_wallz(double * fs) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
+	field_tensor(q, index, qs);
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -359,7 +369,7 @@ static void stats_free_energy_wallz(double * fs) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
+	field_tensor(q, index, qs);
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -372,7 +382,7 @@ static void stats_free_energy_wallz(double * fs) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -386,7 +396,7 @@ static void stats_free_energy_wallz(double * fs) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_colloid(double * fs) {
+static int stats_free_energy_colloid(field_t *q, double * fs) {
 
   int ic, jc, kc, index;
   int ia, ib;
@@ -403,7 +413,8 @@ static void stats_free_energy_colloid(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  if (phi_nop() != 5) return;
+  assert(q);
+  assert(fs);
   assert(w >= 0.0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -413,7 +424,7 @@ static void stats_free_energy_colloid(double * fs) {
         index = coords_index(ic, jc, kc);
         if (site_map_get_status_index(index) != FLUID) continue;
 
-	phi_get_q_tensor(index, qs);
+	field_tensor(q, index, qs);
 
         nhat[Y] = 0;
         nhat[Z] = 0;
@@ -506,7 +517,7 @@ static void stats_free_energy_colloid(double * fs) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -520,7 +531,7 @@ static void stats_free_energy_colloid(double * fs) {
  *
  *****************************************************************************/
 
-void blue_phase_stats(int nstep) {
+int blue_phase_stats(field_t * qf, field_grad_t * dqf, int nstep) {
 
   int ic, jc, kc, index;
   int ia, ib, id, ig;
@@ -535,6 +546,9 @@ void blue_phase_stats(int nstep) {
   double rv;
 
   FILE * fp_output;
+
+  assert(qf);
+  assert(dqf);
 
   coords_nlocal(nlocal);
   rv = 1.0/(L(X)*L(Y)*L(Z));
@@ -567,10 +581,10 @@ void blue_phase_stats(int nstep) {
 	index = coords_index(ic, jc, kc);
 	if (site_map_get_status_index(index) != FLUID) continue;
 
-	phi_get_q_tensor(index, q);
-	phi_gradients_tensor_gradient(index, dq);
-	phi_gradients_tensor_delsq(index, dsq);
-  
+	field_tensor(qf, index, q);
+	field_grad_tensor_grad(dqf, index, dq);
+	field_grad_tensor_delsq(dqf, index, dsq);
+
 	blue_phase_compute_h(q, dq, dsq, h);
 	blue_phase_compute_stress(q, dq, h, sth);
 
@@ -701,6 +715,6 @@ void blue_phase_stats(int nstep) {
 	  etotal[0] + etotal[1] + etotal[2] + etotal[3] + etotal[4]);
    }
 
-  return;
+  return 0;
 }
 

@@ -23,8 +23,8 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "phi.h"
-#include "phi_gradients.h"
+#include "field.h"
+#include "field_grad.h"
 #include "blue_phase.h"
 
 static double q0_;        /* Pitch = 2pi / q0_ */
@@ -44,6 +44,29 @@ static double epsilon_ = 0.0;    /* Dielectric anisotropy (e/12pi) */
 static double electric_[3] = {0.0, 0.0, 0.0}; /* Electric field */
 
 static const double redshift_min_ = 0.00000000001; 
+
+static field_t * q_ = NULL;
+static field_grad_t * grad_q_ = NULL;
+
+/*****************************************************************************
+ *
+ *  blue_phase_q_set
+ *
+ *  Attach a reference to the order parameter field object, and the
+ *  associated gradient object.
+ *
+ *****************************************************************************/
+
+int blue_phase_q_set(field_t * q, field_grad_t * dq) {
+
+  assert(q);
+  assert(dq);
+
+  q_ = q;
+  grad_q_ = dq;
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -179,9 +202,9 @@ double blue_phase_free_energy_density(const int index) {
   double q[3][3];
   double dq[3][3][3];
 
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
+
   e = blue_phase_compute_fed(q, dq);
 
   return e;
@@ -297,9 +320,9 @@ void blue_phase_molecular_field(int index, double h[3][3]) {
 
   assert(kappa0_ == kappa1_);
 
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
+  field_grad_tensor_delsq(grad_q_, index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
 
@@ -411,9 +434,9 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
   double dq[3][3][3];
   double dsq[3][3];
 
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
+  field_grad_tensor_delsq(grad_q_, index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, sth);
@@ -795,8 +818,8 @@ void blue_phase_redshift_compute(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	phi_get_q_tensor(index, q);
-	phi_gradients_tensor_gradient(index, dq);
+	field_tensor(q_, index, q);
+	field_grad_tensor_grad(grad_q_, index, dq);
 
 	/* kaapa0 (d_b Q_ab)^2 */
 

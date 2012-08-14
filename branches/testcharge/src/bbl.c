@@ -26,7 +26,6 @@
 #include "model.h"
 #include "util.h"
 #include "wall.h"
-#include "phi.h"
 #include "bbl.h"
 
 static void bounce_back_pass1(void);
@@ -438,10 +437,6 @@ static void bounce_back_pass2() {
 
 	      df += wv[ij]*p_colloid->sump; 
 
-	      dg = phi_get_phi_site(i)*vdotc;
-	      p_colloid->s.deltaphi += dg;
-	      dg -= wv[ij]*dgtm1;
-
 	      /* Correction owing to missing links "squeeze term" */
 
 	      df -= wv[ij]*dms;
@@ -455,6 +450,10 @@ static void bounce_back_pass2() {
 	      /* This is slightly clunky. If the order parameter is
 	       * via LB, bounce back with correction. */
 	      if (distribution_ndist() > 1) {
+		dg = distribution_zeroth_moment(i, 1)*vdotc;
+		p_colloid->s.deltaphi += dg;
+		dg -= wv[ij]*dgtm1;
+
 		fdist = distribution_f(i, ij, 1);
 		fdist = fdist - dg;
 		distribution_f_set(j, ji, 1, fdist);

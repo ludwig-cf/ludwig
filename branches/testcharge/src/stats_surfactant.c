@@ -19,7 +19,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "phi.h"
+#include "field.h"
 #include "control.h"
 #include "util.h"
 #include "surfactant.h"
@@ -35,7 +35,7 @@
  *
  *****************************************************************************/
 
-void stats_surfactant_1d(void) {
+int stats_surfactant_1d(field_t * fphi) {
 
   int index;
   int ic = 1, jc = 1, kc;
@@ -43,12 +43,14 @@ void stats_surfactant_1d(void) {
   double e, e0;
   double psi_0, psi_b;
   double sigma, sigma0;
+  double phi[2];
 
   /* This is not run in parallel, so assert it's serial.
    * We also require surfactant */
 
+  assert(fphi);
+  assert(0); /* Check nf = 2 in refactored version */
   assert(pe_size() == 1);
-  assert(phi_nop() == 2);
 
   coords_nlocal(nlocal);
 
@@ -59,7 +61,9 @@ void stats_surfactant_1d(void) {
   kc = 1;
   index = coords_index(ic, jc, kc);
   e0 = surfactant_free_energy_density(index);
-  psi_b = phi_op_get_phi_site(index, 1);
+  field_scalar_array(fphi, index, phi);
+
+  psi_b = phi[1];
 
   /* To compute the surface tension, run through both interfaces
    * and divide the final excess free energy by 2. We also record
@@ -74,7 +78,8 @@ void stats_surfactant_1d(void) {
 
     e = surfactant_free_energy_density(index);
     sigma += 0.5*(e - e0);
-    psi_0 = dmax(psi_0, phi_op_get_phi_site(index, 1));
+    field_scalar_array(fphi, index, phi);
+    psi_0 = dmax(psi_0, phi[1]);
   }
 
   /* Compute the fractional reduction in the surface tension
@@ -89,5 +94,5 @@ void stats_surfactant_1d(void) {
   info("Surfactant: %d %12.5e %12.5e %12.5e %12.5e\n", get_step(),
        sqrt(1.0*get_step()), psi_b, psi_0, sigma);
 
-  return;
+  return 0;
 }

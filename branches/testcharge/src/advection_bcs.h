@@ -15,10 +15,11 @@
 #ifndef ADVECTION_BCS_H
 #define ADVECTION_BCS_H
 
+#include "field.h"
+
 void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
 				  double * fluxy, double * fluxz);
-void advection_bcs_wall(void);
-
+int advection_bcs_wall(field_t * phi);
 int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz);
 
 #endif
