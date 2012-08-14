@@ -15,14 +15,15 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <math.h>
 
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "phi.h"
-#include "phi_gradients.h"
+#include "field.h"
+#include "field_grad.h"
 #include "gradient_3d_7pt_fluid.h"
 #include "gradient_3d_27pt_fluid.h"
 #include "blue_phase.h"
@@ -30,11 +31,15 @@
 #include "leesedwards.h"
 #include "tests.h"
 
-static void test_o8m_struct(void);
 static void multiply_gradient(double [3][3][3], double);
 static void multiply_delsq(double [3][3], double);
+static int test_o8m_struct(field_t * fq, field_grad_t * fqgrad);
 
 int main(int argc, char ** argv) {
+
+  int nhalo = 1;
+  field_t * fq = NULL;
+  field_grad_t * fqgrad = NULL;
 
   MPI_Init(&argc, &argv);
 
@@ -42,15 +47,17 @@ int main(int argc, char ** argv) {
   coords_init();
   le_init(); /* Must be initialised to compute gradients. */
 
-  phi_nop_set(5);
-  phi_init();
-  phi_gradients_init();
-  gradient_3d_27pt_fluid_init();
+  field_create(NQAB, "q", &fq);
+  field_init(fq, nhalo);
+  field_grad_create(fq, 2, &fqgrad);
+  field_grad_set(fqgrad, gradient_3d_27pt_fluid_d2, NULL);
 
-  test_o8m_struct();
+  blue_phase_q_set(fq, fqgrad);
 
-  phi_gradients_finish();
-  phi_finish();
+  test_o8m_struct(fq, fqgrad);
+
+  field_grad_free(fqgrad);
+  field_free(fq);
   le_finish();
   coords_finish();
   pe_finalise();
@@ -95,8 +102,9 @@ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-void test_o8m_struct(void) {
+int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
+  int nf;
   int ic, jc, kc, index;
   int numhalftwists = 1;
   int numunitcells = 16;
@@ -123,7 +131,12 @@ void test_o8m_struct(void) {
 
   info("Blue phase O8M struct test\n");
   info("Must have q order parameter (nop = 5)...");
-  test_assert(phi_nop() == 5);
+
+  assert(fq);
+  assert(fqgrad);
+  field_nf(fq, &nf);
+  assert(nf == NQAB);
+
   info("ok\n");
 
   q0 = sqrt(2.0)*4.0*atan(1.0)*numhalftwists*numunitcells / L(Y);
@@ -151,14 +164,14 @@ void test_o8m_struct(void) {
    * so an exhaustive test is probably not worth while. */
 
   blue_phase_init_amplitude_set(amplitude);
-  blue_phase_O8M_init();
+  blue_phase_O8M_init(fq);
   blue_phase_redshift_set(1.0);
 
   ic = 1;
   jc = 1;
   kc = 1;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
+  field_tensor(fq, index, q);
 
   info("Check q( 1, 1, 1)...");
   test_assert(fabs(q[X][X] -  0.00000000000000) < TEST_DOUBLE_TOLERANCE);
@@ -172,7 +185,7 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 2;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
+  field_tensor(fq, index, q);
 
   info("Check q( 1, 1, 2)...");
   test_assert(fabs(q[X][X] - +0.20000000000000) < TEST_DOUBLE_TOLERANCE);
@@ -186,7 +199,7 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 3;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
+  field_tensor(fq, index, q);
 
   info("Check q( 1, 1, 3)...");
   test_assert(fabs(q[X][X] -  0.00000000000000) < TEST_DOUBLE_TOLERANCE);
@@ -200,7 +213,7 @@ void test_o8m_struct(void) {
   jc = 12;
   kc = 4;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
+  field_tensor(fq, index, q);
 
   info("Check q( 1,12, 4)...");
   test_assert(fabs(q[X][X] - -0.20000000000000) < TEST_DOUBLE_TOLERANCE);
@@ -214,7 +227,7 @@ void test_o8m_struct(void) {
   jc = 7;
   kc = 6;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
+  field_tensor(fq, index, q);
 
   info("Check q( 2, 7, 6)...");
   test_assert(fabs(q[X][X] - -0.20000000000000) < TEST_DOUBLE_TOLERANCE);
@@ -234,7 +247,7 @@ void test_o8m_struct(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, q);
+	field_tensor(fq, index, q);
 
 	value = q[X][X] + q[Y][Y] + q[Z][Z];
 	test_assert(fabs(value - 0.0) < TEST_DOUBLE_TOLERANCE);
@@ -254,16 +267,15 @@ void test_o8m_struct(void) {
   info("Free energy density\n");
 
   blue_phase_set_xi(xi);
-  phi_halo();
-  phi_gradients_compute();
-
+  field_halo(fq);
+  field_grad_compute(fqgrad);
 
   ic = 1;
   jc = 1;
   kc = 1;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 1)...");
@@ -274,8 +286,8 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 2;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 2)...");
@@ -286,8 +298,8 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 3;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 3)...");
@@ -298,8 +310,8 @@ void test_o8m_struct(void) {
   jc = 12;
   kc = 4;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1,12, 4)...");
@@ -310,8 +322,8 @@ void test_o8m_struct(void) {
   jc = 7;
   kc = 6;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 2, 7, 6)...");
@@ -328,9 +340,10 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 1;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -347,9 +360,10 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 2;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -365,9 +379,10 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 3;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -383,9 +398,10 @@ void test_o8m_struct(void) {
   jc = 12;
   kc = 4;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -401,9 +417,10 @@ void test_o8m_struct(void) {
   jc = 7;
   kc = 6;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -443,9 +460,10 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 1;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -469,9 +487,10 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 2;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -493,9 +512,10 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 3;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -517,9 +537,10 @@ void test_o8m_struct(void) {
   jc = 12;
   kc = 4;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -541,9 +562,10 @@ void test_o8m_struct(void) {
   jc = 7;
   kc = 6;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
+
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h);
@@ -613,17 +635,16 @@ void test_o8m_struct(void) {
 
   /* Check F(1,1,1) */
 
-  gradient_3d_7pt_fluid_init();
-  phi_halo();
-  phi_gradients_compute();
-
+  field_halo(fq);
+  field_grad_set(fqgrad, gradient_3d_7pt_fluid_d2, NULL);
+  field_grad_compute(fqgrad);
 
   ic = 1;
   jc = 1;
   kc = 1;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 1, 1, 1)... %14.7e ", value);
   test_assert(fabs(value - 6.1626224e-03) < TEST_FLOAT_TOLERANCE);
@@ -633,8 +654,8 @@ void test_o8m_struct(void) {
   jc = 7;
   kc = 6;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
   value = blue_phase_compute_fed(q, dq);
   info("Check F( 2, 7, 6)... %14.7e ", value);
   test_assert(fabs(value - 6.7087074e-04) < TEST_FLOAT_TOLERANCE);
@@ -654,9 +675,9 @@ void test_o8m_struct(void) {
   jc = 1;
   kc = 1;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
   blue_phase_compute_h(q, dq, dsq, h);
   info("Check h( 1, 1, 1)...");
 
@@ -672,9 +693,9 @@ void test_o8m_struct(void) {
   jc = 7;
   kc = 6;
   index = coords_index(ic, jc, kc);
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(fq, index, q);
+  field_grad_tensor_grad(fqgrad, index, dq);
+  field_grad_tensor_delsq(fqgrad, index, dsq);
   blue_phase_compute_h(q, dq, dsq, h);
   info("Check h( 2, 7, 6)...");
 
@@ -688,8 +709,7 @@ void test_o8m_struct(void) {
 
   info("Blue phase O8M structure ok\n");
 
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************

@@ -109,7 +109,7 @@ temperature 0.00002133333
 
 free_energy lc_blue_phase
 
-fd_advection_scheme_order 3
+fd_advection_scheme_order 1
 fd_gradient_calculation 3d_7pt_solid
 
 ###############################################################################

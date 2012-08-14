@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "field_s.h"
 
 
@@ -84,6 +85,7 @@ int do_test1(void) {
 
   coords_nhalo_set(nhalo);
   coords_init();
+  le_init();
 
   field_create(nfref, "phi", &phi);
   assert(phi);
@@ -98,6 +100,11 @@ int do_test1(void) {
   field_scalar(phi, index, &value);
   assert(fabs(value - ref) < DBL_EPSILON);
 
+  ref = -1.0;
+  field_scalar_array_set(phi, index, &ref);
+  field_scalar_array(phi, index, &value);
+  assert(fabs(value - ref) < DBL_EPSILON);
+
   ref = 1.0/3.0;
   field_scalar_set(phi, index, ref);
   field_scalar(phi, index, &value);
@@ -107,6 +114,7 @@ int do_test1(void) {
   test_field_halo(phi);
   
   field_free(phi);
+  le_finish();
   coords_finish();
 
   return 0;
@@ -133,6 +141,7 @@ static int do_test3(void) {
 
   coords_nhalo_set(nhalo);
   coords_init();
+  le_init();
 
   field_create(nfref, "p", &phi);
   assert(phi);
@@ -157,6 +166,7 @@ static int do_test3(void) {
   test_field_halo(phi);
 
   field_free(phi);
+  le_finish();
   coords_finish();
 
   return 0;
@@ -183,6 +193,7 @@ static int do_test5(void) {
 
   coords_nhalo_set(nhalo);
   coords_init();
+  le_init();
 
   field_create(nfref, "q", &phi);
   assert(phi);
@@ -217,6 +228,7 @@ static int do_test5(void) {
   test_field_halo(phi);
 
   field_free(phi);
+  le_init();
   coords_finish();
 
   return 0;
@@ -254,6 +266,7 @@ static int do_test_io(int nf, int io_format) {
   io_info_t * iohandler = NULL;
 
   coords_init();
+  le_init();
 
   if (pe_size() == 8) {
     grid[X] = 2;
@@ -288,6 +301,7 @@ static int do_test_io(int nf, int io_format) {
   io_remove(filename, iohandler);
 
   field_free(phi);
+  le_finish();
   coords_finish();
 
   return 0;

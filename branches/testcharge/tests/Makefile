@@ -50,12 +50,12 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_runtime.c test_random.c \
               test_coords.c test_le.c test_io.c test_prop.c \
               test_model.c test_halo.c test_site_map.c \
-	      test_phi.c test_le.c test_magnetic.c \
+	      test_magnetic.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
               test_colloid.c test_colloids.c test_colloids_halo.c \
               test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
               test_collision.c test_psi.c test_psi_sor.c test_hydro.c \
-              test_nernst_planck.c
+              test_field.c test_field_grad.c test_nernst_planck.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}
@@ -82,7 +82,7 @@ tests_mpi:
 
 do_tests: tests
 	checks='$(TESTS)'; \
-	for file in $$checks; do ./$$file; echo; done
+	for file in $$checks; do ./$$file; echo "Test was $$file"; done
 
 do_tests_mpi: tests_mpi
 	checks='$(TESTS)'; \

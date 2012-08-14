@@ -24,14 +24,15 @@
 #include "tests.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "phi.h"
-#include "phi_gradients.h"
+
+#include "field.h"
+#include "field_grad.h"
 #include "gradient_2d_5pt_fluid.h"
 #include "polar_active.h"
 
-static void test_polar_active_aster(void);
-static void test_polar_active_terms(void);
-static void test_polar_active_init_aster(void);
+static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad);
+static int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad);
+static int test_polar_active_init_aster(field_t * fp);
 
 /*****************************************************************************
  *
@@ -43,31 +44,38 @@ static void test_polar_active_init_aster(void);
 
 int main (int argc, char ** argv) {
 
+  int nf = NVECTOR;
+  int nhalo = 2;
   int ntotal[3] = {100, 100, 1};
+
+  field_t * fp = NULL;
+  field_grad_t * fpgrad = NULL;
 
   MPI_Init(&argc, &argv);
   pe_init();
 
-  coords_nhalo_set(2);
+  coords_nhalo_set(nhalo);
   coords_ntotal_set(ntotal);
   coords_init();
   le_init();
 
-  phi_nop_set(3);
-  phi_init();
-  phi_gradients_init();
-  gradient_2d_5pt_fluid_init();
+  field_create(nf, "p", &fp);
+  field_init(fp, nhalo);
+  field_grad_create(fp, 2, &fpgrad);
+  field_grad_set(fpgrad, gradient_2d_5pt_fluid_d2, NULL);
+  polar_active_p_set(fp, fpgrad);
 
   if (pe_size() == 1) {
-    test_polar_active_aster();
-    test_polar_active_terms();
+    test_polar_active_aster(fp, fpgrad);
+    test_polar_active_terms(fp, fpgrad);
   }
   else {
     info("Not running polar active tests in parallel yet.\n");
   }
 
-  phi_gradients_finish();
-  phi_finish();
+  field_grad_free(fpgrad);
+  field_free(fp);
+
   le_finish();
   coords_finish();
   pe_finalise();
@@ -85,7 +93,7 @@ int main (int argc, char ** argv) {
  *
  *****************************************************************************/
 
-static void test_polar_active_aster(void) {
+static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
 
   int index;
 
@@ -99,14 +107,15 @@ static void test_polar_active_aster(void) {
    * were present, the relevant results would be changed. */
 
   polar_active_parameters_set(-0.1, +0.1, 0.01, 0.02);
-  test_polar_active_init_aster();
+  test_polar_active_init_aster(fp);
 
   /* Order parameter */
 
   info("\nOrder parameter\n\n");
 
   index = coords_index(1, 1, 1);
-  phi_vector(index, p);
+  field_vector(fp, index, p);
+
   info("p_a(1, 1, 1) ...");
   test_assert(fabs(p[X] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
@@ -114,7 +123,8 @@ static void test_polar_active_aster(void) {
   info("ok\n");
 
   index = coords_index(2, 28, 1);
-  phi_vector(index, p);
+  field_vector(fp, index, p);
+
   info("p_a(2, 27, 1) ...");
   test_assert(fabs(p[X] - +9.0523694e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +4.2490714e-01) < TEST_FLOAT_TOLERANCE);
@@ -123,8 +133,8 @@ static void test_polar_active_aster(void) {
 
   /* Gradient terms */
 
-  phi_halo();
-  phi_gradients_compute();
+  field_halo(fp);
+  field_grad_compute(fpgrad);
 
   /* Free energy density (not computed in independent code) */
 
@@ -195,7 +205,7 @@ static void test_polar_active_aster(void) {
 
   info("2-d test ok\n\n");
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -207,7 +217,7 @@ static void test_polar_active_aster(void) {
  *
  *****************************************************************************/
 
-void test_polar_active_terms(void) {
+int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad) {
 
   int index;
   int ic, jc, kc;
@@ -221,10 +231,9 @@ void test_polar_active_terms(void) {
   polar_active_parameters_set(-0.1, +0.1, 0.01, 0.02);
   polar_active_zeta_set(0.001);
 
-  test_polar_active_init_aster();
-
-  phi_halo();
-  phi_gradients_compute();
+  test_polar_active_init_aster(fp);
+  field_halo(fp);
+  field_grad_compute(fpgrad);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -274,7 +283,7 @@ void test_polar_active_terms(void) {
 
   info("Active stress ok\n\n");
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -286,7 +295,7 @@ void test_polar_active_terms(void) {
  *
  *****************************************************************************/
 
-void test_polar_active_init_aster(void) {
+int test_polar_active_init_aster(field_t * fp) {
 
   int nlocal[3];
   int ic, jc, kc, index;
@@ -296,7 +305,6 @@ void test_polar_active_init_aster(void) {
   double x, y, z, x0, y0, z0;
 
   coords_nlocal(nlocal);
-  /* coords_noffset(noffset);*/
 
   x0 = 0.5*L(X);
   y0 = 0.5*L(Y);
@@ -322,10 +330,10 @@ void test_polar_active_init_aster(void) {
 	  p[Z] = -(z - z0)/r;
 	}
 	index = coords_index(ic, jc, kc);
-	phi_vector_set(index, p);
+	field_vector_set(fp, index, p);
       }
     }
   }
 
-  return;
+  return 0;
 }

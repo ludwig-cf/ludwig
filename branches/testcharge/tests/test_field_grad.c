@@ -75,6 +75,7 @@ int do_test1(void) {
   field_grad_t * gradient = NULL;
 
   coords_init();
+  le_init();
 
   field_create(nfref, "scalar-field-test", &field);
   assert(field);
@@ -103,6 +104,8 @@ int do_test1(void) {
 
   field_grad_free(gradient);
   field_free(field);
+
+  le_finish();
   coords_finish();
 
   return 0;
@@ -124,6 +127,7 @@ static int do_test3(void) {
   field_grad_t * gradient = NULL;
 
   coords_init();
+  le_init();
 
   field_create(nf, "vector-field-test", &field);
   assert(field);
@@ -146,6 +150,8 @@ static int do_test3(void) {
 
   field_grad_free(gradient);
   field_free(field);
+
+  le_finish();
   coords_finish();
 
   return 0;
@@ -169,6 +175,7 @@ static int do_test5(void) {
   field_grad_t * gradient = NULL;
 
   coords_init();
+  le_init();
 
   field_create(nf, "tensor-field-test", &field);
   assert(field);
@@ -205,6 +212,8 @@ static int do_test5(void) {
 
   field_grad_free(gradient);
   field_free(field);
+
+  le_finish();
   coords_finish();
 
   return 0;
