@@ -93,6 +93,14 @@ echo Running Cholesteric planar anchoring test
 ./Ludwig.exe ../tests/regression/test_chol_planar_input > /tmp/junk
 diff /tmp/junk ../tests/regression/test_chol_planar_d3q19.ref1
 
+echo Running Polar active smoke test
+./Ludwig.exe ../tests/regression/test_polar1_input > /tmp/junk
+diff /tmp/junk ../tests/regression/test_polar1_d3q19.ref1
+
+echo Running Electrokinetic GC test
+./Ludwig.exe ../tests/regression/test_elec_gc_input > /tmp/junk
+diff /tmp/junk ../tests/regression/test_elec_srl.ref
+
 
 # Parallel unit tests
 
