@@ -725,6 +725,8 @@ static void update_colloids() {
  *  get_order_parameter_deficit
  *
  *  Returns the current order parameter deficit owing to BBL.
+ *  This is only relevant for full binary LB.
+ *  This is a local value for the local subdomain in parallel.
  *
  *****************************************************************************/
 
@@ -733,7 +735,7 @@ int bbl_order_parameter_deficit(double * delta) {
   assert(delta);
 
   delta[0] = 0.0;
-  if (distribution_ndist() == 2) delta[0] = 0.0;
+  if (distribution_ndist() == 2) delta[0] = deltag_;
 
   return 0;
 }
