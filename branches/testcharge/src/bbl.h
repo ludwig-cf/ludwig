@@ -19,6 +19,6 @@ void bounce_back_on_links(void);
 void bbl_surface_stress(void);
 void bbl_active_on_set(void);
 int  bbl_active_on(void);
-double bbl_order_parameter_deficit(void);
+int bbl_order_parameter_deficit(double * delta);
 
 #endif

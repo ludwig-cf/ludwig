@@ -728,8 +728,14 @@ static void update_colloids() {
  *
  *****************************************************************************/
 
-double bbl_order_parameter_deficit() {
-  return deltag_;
+int bbl_order_parameter_deficit(double * delta) {
+
+  assert(delta);
+
+  delta[0] = 0.0;
+  if (distribution_ndist() == 2) delta[0] = 0.0;
+
+  return 0;
 }
 
 /*****************************************************************************

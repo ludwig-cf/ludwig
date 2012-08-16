@@ -148,6 +148,12 @@ int stats_field_local(field_t * obj, double * fmin, double * fmax,
     fvar[n] = 0.0;
   }
 
+  /* This is really the special case of binary fluid via
+   * lb with particles; must account for BBL deficit at
+   * last time step. For other cases the correction is zero. */
+
+  bbl_order_parameter_deficit(fsum);
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
