@@ -144,6 +144,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   int io_grid_default[3] = {1, 1, 1};
   int io_grid[3];
 
+  io_info_t * iohandler = NULL;
+
   assert(ludwig);
   
   TIMER_init();
@@ -200,7 +202,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     advection_run_time();
   }
 
-  /* Can we move this down - the routine is in this file */
+  /* Can we move this down to t = 0 initialisation? */
   if (ludwig->phi) symmetric_rt_initial_conditions(ludwig->phi);
 
   wall_init();
@@ -226,8 +228,26 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
     io_read(filename, distribution_io_info());
 
-    assert(0);
-    /* Restart t != 0 */
+    /* Restart t != 0 for order parameter */
+
+    if (ludwig->phi) {
+      sprintf(filename, "%sphi-%8.8d", subdirectory, get_step());
+      info("files(s)\n", filename);
+      field_io_info(ludwig->phi, &iohandler);
+      io_read_data(iohandler, filename, ludwig->phi);
+    }
+    if (ludwig->p) {
+      sprintf(filename, "%sp-%8.8d", subdirectory, get_step());
+      info("files(s)\n", filename);
+      field_io_info(ludwig->p, &iohandler);
+      io_read_data(iohandler, filename, ludwig->p);
+    }
+    if (ludwig->q) {
+      sprintf(filename, "%sqs-%8.8d", subdirectory, get_step());
+      info("files(s)\n", filename);
+      field_io_info(ludwig->q, &iohandler);
+      io_read_data(iohandler, filename, ludwig->q);
+    }
   }
 
   /* gradient initialisation for field stuff */
@@ -252,9 +272,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   n = RUN_get_string_parameter("calibration_sigma", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
-  stats_sigma_init(ludwig->phi, nstat);
-  /* One call to this before start of time steps? */
-  if (distribution_ndist() == 2) phi_lb_from_field(ludwig->phi); 
+  if (get_step() == 0) {
+    stats_sigma_init(ludwig->phi, nstat);
+    if (distribution_ndist() == 2) phi_lb_from_field(ludwig->phi); 
+  }
 
   collision_init();
 
