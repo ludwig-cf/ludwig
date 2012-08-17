@@ -24,6 +24,7 @@ void wall_accumulate_force(const double f[3]);
 void wall_net_momentum(double g[3]);
 int  wall_present(void);
 int  wall_at_edge(const int dimension);
+int wall_pm(int * present);
 
 double wall_lubrication(const int dim, const double r[3], const double ah);
 
