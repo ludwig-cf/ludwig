@@ -32,7 +32,6 @@ static const double e_unit_default = 1.0; /* Default unit charge */
 static const double reltol_default = FLT_EPSILON; /* Solver tolerance */
 static const double abstol_default = 0.01*FLT_EPSILON;
 
-static int psi_init_mpi_indexed(psi_t * obj);
 static int psi_read(FILE * fp, int index, void * self);
 static int psi_write(FILE * fp, int index, void * self);
 static int psi_read_ascii(FILE * fp, int index, void * self);
@@ -48,7 +47,7 @@ int psi_halo_psi(psi_t * psi) {
 
   assert(psi);
 
-  psi_halo(1, psi->psi, psi->psihalo);
+  coords_field_halo(1, psi->psi, psi->psihalo);
 
   return 0;
 }
@@ -63,7 +62,7 @@ int psi_halo_rho(psi_t * psi) {
 
   assert(psi);
 
-  psi_halo(psi->nk, psi->rho, psi->rhohalo);
+  coords_field_halo(psi->nk, psi->rho, psi->rhohalo);
 
   return 0;
 }
@@ -106,7 +105,8 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->reltol = reltol_default;
   psi->abstol = abstol_default;
 
-  psi_init_mpi_indexed(psi);
+  coords_field_init_mpi_indexed(1, psi->psihalo);
+  coords_field_init_mpi_indexed(psi->nk, psi->rhohalo);
   *pobj = psi; 
 
   return 0;
@@ -211,173 +211,6 @@ int psi_diffusivity(psi_t * obj, int n, double * diff) {
 
 /*****************************************************************************
  *
- *  psi_init_mpi_indexed
- *
- *  Here we define MPI_Type_indexed structures to take care of the
- *  halo swaps. These structures may be understood by comparing
- *  the extents and strides with the loops in the 'serial' halo swap
- *  in psi_halo().
- *
- *  The indexed structures are used so that the recieves in the
- *  different coordinate directions do not overlap anywhere. The
- *  receives may then all be posted independently.
- *
- *  Assumes the field storage is f[index][nk] where index is the
- *  usual spatial index returned by coords_index(), and nk is the
- *  number of fields (always 1 for psi, and usually 2 for rho).
- *
- *****************************************************************************/
-
-static int psi_init_mpi_indexed(psi_t * obj) {
-
-  int nk;
-  int nhalo;
-  int nlocal[3], nh[3];
-  int ic, jc, n;
-
-  int ncount;        /* Count for the indexed type */
-  int * blocklen;    /* Array of block lengths */
-  int * displace;    /* Array of displacements */
-
-  assert(obj);
-
-  nk = obj->nk;
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  nh[X] = nlocal[X] + 2*nhalo;
-  nh[Y] = nlocal[Y] + 2*nhalo;
-  nh[Z] = nlocal[Z] + 2*nhalo;
-
-  /* X direction */
-  /* For psi, we require nlocal[Y] contiguous strips of length nlocal[Z],
-   * repeated for each halo layer. The strides start at zero, and
-   * increment nh[Z] for each strip. */
-
-  ncount = nhalo*nlocal[Y];
-
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] = nlocal[Z];
-  }
-
-  for (n = 0; n < nhalo; n++) {
-    for (jc = 0; jc < nlocal[Y]; jc++) {
-      displace[n*nlocal[Y] + jc] = n*nh[Y]*nh[Z] + jc*nh[Z];
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->psihalo[X]);
-  MPI_Type_commit(&obj->psihalo[X]);
-
-  /* For rho, just multiply block lengths and displacements by nk */
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] *= nk;
-  }
-
-  for (n = 0; n < nhalo; n++) {
-    for (jc = 0; jc < nlocal[Y]; jc++) {
-      displace[n*nlocal[Y] + jc] *= nk;
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->rhohalo[X]);
-  MPI_Type_commit(&obj->rhohalo[X]);
-
-  free(displace);
-  free(blocklen);
-
-  /* Y direction */
-  /* We can use nh[X] contiguous strips of nlocal[Z], repeated for
-   * each halo region. The strides start at zero, and increment by
-   * nh[Y]*nh[Z] for each strip. */
-
-  ncount = nhalo*nh[X];
-
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] = nlocal[Z];
-  }
-
-  for (n = 0; n < nhalo; n++) {
-    for (ic = 0; ic < nh[X] ; ic++) {
-      displace[n*nh[X] + ic] = n*nh[Z] + ic*nh[Y]*nh[Z];
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->psihalo[Y]);
-  MPI_Type_commit(&obj->psihalo[Y]);
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] *= nk;
-  }
-
-  for (n = 0; n < nhalo; n++) {
-    for (ic = 0; ic < nh[X] ; ic++) {
-      displace[n*nh[X] + ic] *= nk;
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->rhohalo[Y]);
-  MPI_Type_commit(&obj->rhohalo[Y]);
-
-  free(displace);
-  free(blocklen);
-
-  /* Z direction */
-  /* Here, we need nh[X]*nh[Y] small contiguous strips of nhalo, with
-   * a stride between each of nh[Z]. */
-
-  ncount = nh[X]*nh[Y];
-
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] = nhalo;
-  }
-
-  for (ic = 0; ic < nh[X]; ic++) {
-    for (jc = 0; jc < nh[Y]; jc++) {
-      displace[ic*nh[Y] + jc] = ic*nh[Y]*nh[Z]+ jc*nh[Z];
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->psihalo[Z]);
-  MPI_Type_commit(&obj->psihalo[Z]);
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] *= nk;
-  }
-
-  for (ic = 0; ic < nh[X]; ic++) {
-    for (jc = 0; jc < nh[Y]; jc++) {
-      displace[ic*nh[Y] + jc] *= nk;
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->rhohalo[Z]);
-  MPI_Type_commit(&obj->rhohalo[Z]);
-
-  free(displace);
-  free(blocklen);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  psi_init_io_info
  *
  *  The I/O grid will be requested with Cartesian extent as given.
@@ -439,163 +272,6 @@ void psi_free(psi_t * obj) {
   obj = NULL;
 
   return;
-}
-
-/*****************************************************************************
- *
- *  psi_halo
- *
- *  A general halo swap where:
- *    nf is the number of 3-D fields
- *    f is the base address of the field
- *    halo are thre X, Y, Z MPI datatypes for the swap
- *
- *****************************************************************************/
-
-int psi_halo(int nf, double * f, MPI_Datatype halo[3]) {
-
-  int n, nh;
-  int nhalo;
-  int nlocal[3];
-  int ic, jc, kc;
-  int pback, pforw;          /* MPI ranks of 'left' and 'right' neighbours */
-  int ihalo, ireal;          /* Indices of halo and 'real' lattice regions */
-  MPI_Comm comm;             /* Cartesian communicator */
-  MPI_Request req_recv[6];
-  MPI_Request req_send[6];
-  MPI_Status  status[6];
-
-  const int btagx = 639, btagy = 640, btagz = 641;
-  const int ftagx = 642, ftagy = 643, ftagz = 644;
-
-  assert(f);
-
-  comm = cart_comm();
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  for (n = 0; n < 6; n++) {
-    req_send[n] = MPI_REQUEST_NULL;
-    req_recv[n] = MPI_REQUEST_NULL;
-  }
-
-  /* Post all recieves */
-
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
-    ihalo = nf*coords_index(nlocal[X] + 1, 1, 1);
-    MPI_Irecv(f + ihalo,  1, halo[X], pforw, btagx, comm, req_recv);
-    ihalo = nf*coords_index(1 - nhalo, 1, 1);
-    MPI_Irecv(f + ihalo,  1, halo[X], pback, ftagx, comm, req_recv + 1);
-  }
-
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
-    ihalo = nf*coords_index(1 - nhalo, nlocal[Y] + 1, 1);
-    MPI_Irecv(f + ihalo,  1, halo[Y], pforw, btagy, comm, req_recv + 2);
-    ihalo = nf*coords_index(1 - nhalo, 1 - nhalo, 1);
-    MPI_Irecv(f + ihalo,  1, halo[Y], pback, ftagy, comm, req_recv + 3);
-  }
-
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
-    ihalo = nf*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
-    MPI_Irecv(f + ihalo,  1, halo[Z], pforw, btagz, comm, req_recv + 4);
-    ihalo = nf*coords_index(1 - nhalo, 1 - nhalo, 1 - nhalo);
-    MPI_Irecv(f + ihalo,  1, halo[Z], pback, ftagz, comm, req_recv + 5);
-  }
-
-  /* Now the sends */
-
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
-    ireal = nf*coords_index(1, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[X], pback, btagx, comm, req_send);
-    ireal = nf*coords_index(nlocal[X] - nhalo + 1, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[X], pforw, ftagx, comm, req_send + 1);
-  }
-  else {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-        for (kc = 1 ; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(0 - nh, jc, kc);
-            ireal = n + nf*coords_index(nlocal[X] - nh, jc, kc);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(nlocal[X] + 1 + nh, jc,kc);
-	    ireal = n + nf*coords_index(1 + nh, jc, kc);
-	    f[ihalo] = f[ireal];
-          }
-        }
-      }
-    }
-  }
-
-  /* X recvs to be complete before Y sends */
-  MPI_Waitall(2, req_recv, status);
-
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
-    ireal = nf*coords_index(1 - nhalo, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[Y], pback, btagy, comm, req_send + 2);
-    ireal = nf*coords_index(1 - nhalo, nlocal[Y] - nhalo + 1, 1);
-    MPI_Issend(f + ireal, 1, halo[Y], pforw, ftagy, comm, req_send + 3);
-  }
-  else {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (ic = 1-nhalo; ic <= nlocal[X] + nhalo; ic++) {
-        for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, 0 - nh, kc);
-	    ireal = n + nf*coords_index(ic, nlocal[Y] - nh, kc);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(ic, nlocal[Y] + 1 + nh, kc);
-	    ireal = n + nf*coords_index(ic, 1 + nh, kc);
-	    f[ihalo] = f[ireal];
-	  }
-        }
-      }
-    }
-  }
-
-  /* Y recvs to be complete before Z sends */
-  MPI_Waitall(2, req_recv + 2, status);
-
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
-    ireal = nf*coords_index(1 - nhalo, 1 - nhalo, 1);
-    MPI_Issend(f + ireal, 1, halo[Z], pback, btagz, comm, req_send + 4);
-    ireal = nf*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] - nhalo + 1);
-    MPI_Issend(f + ireal, 1, halo[Z], pforw, ftagz, comm, req_send + 5);
-  }
-  else {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
-        for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, jc, 0 - nh);
-	    ireal = n + nf*coords_index(ic, jc, nlocal[Z] - nh);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(ic, jc, nlocal[Z] + 1 + nh);
-	    ireal = n + nf*coords_index(ic, jc, 1 + nh);
-	    f[ihalo] = f[ireal];
-	  }
-	}
-      }
-    }
-  }
-
-  /* Finish */
-  MPI_Waitall(2, req_recv + 4, status);
-  MPI_Waitall(6, req_send, status);
-
-  return 0;
 }
 
 /*****************************************************************************
