@@ -29,6 +29,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "coords_field.h"
 #include "leesedwards.h"
 #include "io_harness.h"
 #include "util.h"
@@ -41,8 +42,6 @@ static int field_read(FILE * fp, int index, void * self);
 static int field_read_ascii(FILE * fp, int index, void * self);
 
 static int field_leesedwards_parallel(field_t * obj);
-static int phi_init_mpi(field_t * obj);
-static int field_phi_halo(field_t * obj);
 
 /*****************************************************************************
  *
@@ -130,7 +129,7 @@ int field_init(field_t * obj, int nhcomm) {
   /* MPI datatypes for halo */
 
   obj->nhcomm = nhcomm;
-  phi_init_mpi(obj); /* Old version until benchmarks available */
+  coords_field_init_mpi_indexed(obj->nf, obj->halo);
 
   return 0;
 }
@@ -205,7 +204,8 @@ int field_io_info(field_t * obj, io_info_t ** info) {
 int field_halo(field_t * obj) {
 
   assert(obj);
-  field_phi_halo(obj);
+  assert(obj->data);
+  coords_field_halo(obj->nf, obj->data, obj->halo);
 
   return 0;
 }
@@ -733,160 +733,6 @@ static int field_write_ascii(FILE * fp, int index, void * self) {
 
   nwrite = fprintf(fp, "\n");
   if (nwrite != 1) fatal("fprintf(%s) failed at index %d\n", obj->name, index);
-
-  return 0;
-}
-
-static int phi_init_mpi(field_t * obj) {
-
-  int nhalo, nf;
-  int nlocal[3], nh[3];
-
-  assert(obj);
-
-  nf = obj->nf;
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  nh[X] = nlocal[X] + 2*nhalo;
-  nh[Y] = nlocal[Y] + 2*nhalo;
-  nh[Z] = nlocal[Z] + 2*nhalo;
-
-  /* YZ planes in the X direction */
-  MPI_Type_vector(1, nh[Y]*nh[Z]*nhalo*nf, 1, MPI_DOUBLE, &obj->halo[X]);
-  MPI_Type_commit(&obj->halo[X]);
-
-  /* XZ planes in the Y direction */
-  MPI_Type_vector(nh[X], nh[Z]*nhalo*nf, nh[Y]*nh[Z]*nf, MPI_DOUBLE,
-		  &obj->halo[Y]);
-  MPI_Type_commit(&obj->halo[Y]);
-
-  /* XY planes in Z direction */
-  MPI_Type_vector(nh[X]*nh[Y], nhalo*nf, nh[Z]*nf, MPI_DOUBLE,
-		  &obj->halo[Z]);
-  MPI_Type_commit(&obj->halo[Z]);
-
-  return 0;
-
-}
-
-static int field_phi_halo(field_t * obj) {
-
-  int nf;
-  int nhalo;
-  int nlocal[3];
-  int ic, jc, kc, ihalo, ireal, nh, n;
-  int back, forw;
-  const int btag = 2061;
-  const int ftag = 2062;
-  MPI_Comm comm = cart_comm();
-  MPI_Request request[4];
-  MPI_Status status[4];
-
-  assert(obj);
-
-  field_nf(obj, &nf);
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  /* YZ planes in the X direction */
-
-  if (cart_size(X) == 1) {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-        for (kc = 1 ; kc <= nlocal[Z]; kc++) {
-          for (n = 0; n < nf; n++) {
-            obj->data[nf*le_site_index(0-nh, jc,kc) + n]
-              = obj->data[nf*le_site_index(nlocal[X]-nh, jc, kc) + n];
-            obj->data[nf*le_site_index(nlocal[X]+1+nh, jc,kc) + n]
-              = obj->data[nf*le_site_index(1+nh, jc, kc) + n];
-          }
-        }
-      }
-    }
-  }
-  else {
-
-    back = cart_neighb(BACKWARD, X);
-    forw = cart_neighb(FORWARD, X);
-
-    ihalo = nf*le_site_index(nlocal[X] + 1, 1-nhalo, 1-nhalo);
-    MPI_Irecv(&obj->data[ihalo],  1, obj->halo[X], forw, btag, comm, request);
-    ihalo = nf*le_site_index(1-nhalo, 1-nhalo, 1-nhalo);
-    MPI_Irecv(&obj->data[ihalo],  1, obj->halo[X], back, ftag, comm,
-	      request+1);
-    ireal = nf*le_site_index(1, 1-nhalo, 1-nhalo);
-    MPI_Issend(&obj->data[ireal], 1, obj->halo[X], back, btag, comm,
-	       request+2);
-    ireal = nf*le_site_index(nlocal[X] - nhalo + 1, 1-nhalo, 1-nhalo);
-    MPI_Issend(&obj->data[ireal], 1, obj->halo[X], forw, ftag, comm,
-	       request+3);
-    MPI_Waitall(4, request, status);
-  }
-
-  /* XZ planes in the Y direction */
-
-  if (cart_size(Y) == 1) {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (ic = 1-nhalo; ic <= nlocal[X] + nhalo; ic++) {
-        for (kc = 1; kc <= nlocal[Z]; kc++) {
-          for (n = 0; n < nf; n++) {
-            obj->data[nf*le_site_index(ic,0-nh, kc) + n]
-              = obj->data[nf*le_site_index(ic, nlocal[Y]-nh, kc) + n];
-            obj->data[nf*le_site_index(ic,nlocal[Y]+1+nh, kc) + n]
-              = obj->data[nf*le_site_index(ic, 1+nh, kc) + n];
-          }
-        }
-      }
-    }
-  }
-  else {
-
-    back = cart_neighb(BACKWARD, Y);
-    forw = cart_neighb(FORWARD, Y);
-
-    ihalo = nf*le_site_index(1-nhalo, nlocal[Y] + 1, 1-nhalo);
-    MPI_Irecv(&obj->data[ihalo],  1, obj->halo[Y], forw, btag, comm, request);
-    ihalo = nf*le_site_index(1-nhalo, 1-nhalo, 1-nhalo);
-    MPI_Irecv(&obj->data[ihalo],  1, obj->halo[Y], back, ftag, comm, request+1);
-    ireal = nf*le_site_index(1-nhalo, 1, 1-nhalo);
-    MPI_Issend(&obj->data[ireal], 1, obj->halo[Y], back, btag, comm, request+2);
-    ireal = nf*le_site_index(1-nhalo, nlocal[Y] - nhalo + 1, 1-nhalo);
-    MPI_Issend(&obj->data[ireal], 1, obj->halo[Y], forw, ftag, comm, request+3);
-    MPI_Waitall(4, request, status);
-  }
-
-  /* XY planes in the Z direction */
-
-  if (cart_size(Z) == 1) {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
-        for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-          for (n = 0; n < nf; n++) {
-            obj->data[nf*le_site_index(ic,jc, 0-nh) + n]
-              = obj->data[nf*le_site_index(ic, jc, nlocal[Z]-nh) + n];
-            obj->data[nf*le_site_index(ic,jc, nlocal[Z]+1+nh) + n]
-              = obj->data[nf*le_site_index(ic, jc, 1+nh) + n];
-          }
-        }
-      }
-    }
-  }
-  else {
-
-    back = cart_neighb(BACKWARD, Z);
-    forw = cart_neighb(FORWARD, Z);
-
-    ihalo = nf*le_site_index(1-nhalo, 1-nhalo, nlocal[Z] + 1);
-    MPI_Irecv(&obj->data[ihalo],  1, obj->halo[Z], forw, btag, comm, request);
-    ihalo = nf*le_site_index(1-nhalo, 1-nhalo, 1-nhalo);
-    MPI_Irecv(&obj->data[ihalo],  1, obj->halo[Z], back, ftag, comm, request+1);
-    ireal = nf*le_site_index(1-nhalo, 1-nhalo, 1);
-    MPI_Issend(&obj->data[ireal], 1, obj->halo[Z], back, btag, comm, request+2);
-    ireal = nf*le_site_index(1-nhalo, 1-nhalo, nlocal[Z] - nhalo + 1);
-    MPI_Issend(&obj->data[ireal], 1, obj->halo[Z], forw, ftag, comm, request+3);
-    MPI_Waitall(4, request, status);
-  }
 
   return 0;
 }
