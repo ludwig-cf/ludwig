@@ -67,7 +67,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      cio.o colloids_init.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o \
-     coords.o coords_rt.o \
+     coords.o coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      ewald.o field.o field_grad.o fluctuations.o \
      free_energy.o free_energy_vector.o \
