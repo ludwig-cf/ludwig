@@ -2,8 +2,8 @@
  *
  *  psi.c
  *
- *  Note most of this has been coded  int function(...) in
- *  anticipation of exception handling.
+ *  Electrokinetics: field quantites for potential and charge densities,
+ *  and a number of other relevant quantities.
  *
  *  $Id$
  *
@@ -24,6 +24,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "coords_field.h"
 #include "io_harness.h"
 #include "psi.h"
 #include "psi_s.h"
