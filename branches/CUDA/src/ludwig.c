@@ -269,14 +269,10 @@ void ludwig_run(const char * inputfile) {
   while (next_step()) {
 
     TIMER_start(TIMER_STEPS);
+
     step = get_step();
     hydrodynamics_zero_force();
     COLL_update();
-
-#ifdef _GPU_
-    put_phi_on_gpu();
-    put_site_map_on_gpu();
-#endif
 
     /* Collision stage */
 
@@ -400,17 +396,26 @@ void ludwig_run(const char * inputfile) {
     }
     else {
       TIMER_start(TIMER_BBL);
-#ifdef _GPU_
-      get_phi_from_gpu();
-#endif
+
+
+
       wall_update();
+
       bounce_back_on_links();
+
+
       wall_bounce_back();
+
+
       TIMER_stop(TIMER_BBL);
     }
 
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions are active */
+
+
+
+
 
     TIMER_start(TIMER_PROPAGATE);
 
@@ -433,6 +438,7 @@ void ludwig_run(const char * inputfile) {
 #endif
 
     TIMER_stop(TIMER_PROPAGATE);
+
 
     TIMER_stop(TIMER_STEPS);
 
@@ -469,6 +475,7 @@ void ludwig_run(const char * inputfile) {
     if (is_phi_output_step() || is_config_step()) {
 
 #ifdef _GPU_
+      get_phi_from_gpu();
       get_velocity_from_gpu();
       get_f_from_gpu();
 #endif
@@ -534,7 +541,6 @@ void ludwig_run(const char * inputfile) {
     /* Print progress report */
 
     if (is_statistics_step()) {
-
 #ifdef _GPU_
       get_velocity_from_gpu();
       get_f_from_gpu();
@@ -561,6 +567,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef _GPU_
   get_velocity_from_gpu();
   get_f_from_gpu();
+  get_phi_from_gpu();
   finalise_gpu();
 #endif
 

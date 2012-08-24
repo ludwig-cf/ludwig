@@ -33,7 +33,8 @@ void distribution_halo_gpu(void);
 void phi_halo_gpu(void);
 void phi_gradients_compute_gpu(void);
 void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
-		     double *dmall, double *dgall,int nlink, int pass);
+		     double *dmall, double *dgall1,double *dgall2,
+		     int nlink, int pass);
 void bbl_init_temp_link_arrays_gpu(int nlink);
 void bbl_finalise_temp_link_arrays_gpu();
 void bbl_enlarge_temp_link_arrays_gpu(int nlink);

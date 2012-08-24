@@ -64,7 +64,8 @@ double * fhaloZHIGH;
 int * findexall_d;
 int * linktype_d;
 double * dfall_d;
-double * dgall_d;
+double * dgall1_d;
+double * dgall2_d;
 double * dmall_d;
 
 int * mask_with_neighbours;
@@ -225,7 +226,8 @@ void bbl_init_temp_link_arrays_gpu(int nlink){
   cudaMalloc((void **) &findexall_d, nlinkmax*sizeof(int));  
   cudaMalloc((void **) &linktype_d, nlinkmax*sizeof(int));  
   cudaMalloc((void **) &dfall_d, nlinkmax*sizeof(double));  
-  cudaMalloc((void **) &dgall_d, nlinkmax*sizeof(double));  
+  cudaMalloc((void **) &dgall1_d, nlinkmax*sizeof(double));  
+  cudaMalloc((void **) &dgall2_d, nlinkmax*sizeof(double));  
   cudaMalloc((void **) &dmall_d, nlinkmax*sizeof(double));  
 
 }
@@ -237,7 +239,8 @@ void bbl_finalise_temp_link_arrays_gpu(){
   cudaFree(findexall_d);
   cudaFree(linktype_d);
   cudaFree(dfall_d);
-  cudaFree(dgall_d);
+  cudaFree(dgall1_d);
+  cudaFree(dgall2_d);
   cudaFree(dmall_d);
 
 }
@@ -604,15 +607,17 @@ void copy_f_to_ftmp_on_gpu()
   /* copy data on accelerator */
   cudaMemcpy(ftmp_d, f_d, ndata*sizeof(double), cudaMemcpyDeviceToDevice);
 
+
   //checkCUDAError("cp_f_to_ftmp_on_gpu");
 
 }
 
 __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d,
 					 double *dfall_d,
-					 double *dgall_d,
+					 double *dgall1_d,
+					 double *dgall2_d,
 					 double *dmall_d,
-					 double* f_d,
+					 double* f_d, double* phi_site_d,
 					 int *N_d, 
 					 int nhalo, int ndist,
 					 int* cv_ptr, int nlink, int pass);
@@ -621,7 +626,8 @@ __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d,
 /* update distribution on accelerator for bounce back on links  */
 /* host wrapper */
 void bounce_back_gpu(int *findexall, int *linktype, double *dfall, 
-		     double *dgall,
+		     double *dgall1,
+		     double *dgall2,
 		     double *dmall, int nlink, int pass){
 
 
@@ -642,16 +648,19 @@ void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
   cudaMemcpy(linktype_d, linktype, nlink*sizeof(int),
 	     cudaMemcpyHostToDevice);
   cudaMemcpy(dfall_d, dfall, nlink*sizeof(double), cudaMemcpyHostToDevice);
-  if (ndist > 1 &&  pass==2)
-    cudaMemcpy(dgall_d, dgall, nlink*sizeof(double), cudaMemcpyHostToDevice);
+  if (ndist > 1 &&  pass==2){
+    cudaMemcpy(dgall1_d, dgall1, nlink*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(dgall2_d, dgall2, nlink*sizeof(double), cudaMemcpyHostToDevice);
+  }
+
   checkCUDAError("bounce_back_gpu: memcpy to GPU");
   
   
   /* run the GPU kernel */
   int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
  bounce_back_gpu_d<<<nblocks,DEFAULT_TPB>>>(findexall_d, linktype_d,
-					       dfall_d, dgall_d,
-					       dmall_d, f_d, N_d,
+					       dfall_d, dgall1_d,dgall2_d,
+					    dmall_d, f_d, phi_site_d, N_d,
 					       nhalo, ndist, cv_d, nlink, pass);
  
  cudaThreadSynchronize();
@@ -661,6 +670,11 @@ void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
  /* copy data fom accelerator to host */
  cudaMemcpy(dmall, dmall_d, nlink*sizeof(double),
 	    cudaMemcpyDeviceToHost);
+  if (ndist > 1 &&  pass==2){
+    //dgall1 has been updated with multiplication by phi
+    cudaMemcpy(dgall1, dgall1_d, nlink*sizeof(double),
+	       cudaMemcpyDeviceToHost);
+  }
  checkCUDAError("bounce_back_gpu: memcpy from GPU");
  
  /* free memory on accelerator */
@@ -674,8 +688,10 @@ void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
 /* update distribution on accelerator for bounce back on links */
 /* GPU kernel */
 __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d, 
-					 double *dfall_d, double *dgall_d,
-					 double *dmall_d, double* f_d, 
+					 double *dfall_d, double *dgall1_d,
+					 double *dgall2_d,
+					 double *dmall_d, double* f_d,
+					 double *phi_site_d,
 					 int *N_d, int nhalo, int ndist,
 					 int *cv_ptr, int nlink, int pass){
 
@@ -732,8 +748,11 @@ __global__ static void bounce_back_gpu_d(int *findexall_d, int *linktype_d,
 	  f_d[nsite*ndist*ji+siteIndex_]=fdist;
 
 	  if (ndist>1){
+	    
+	    dgall1_d[threadIndex]=phi_site_d[siteIndex]*dgall1_d[threadIndex];
+	    
 	    fdist = f_d[nsite*ndist*ij + nsite + siteIndex];
-	    fdist = fdist - dgall_d[threadIndex];
+	    fdist = fdist - dgall1_d[threadIndex] + dgall2_d[threadIndex];
 	    f_d[nsite*ndist*ji + nsite + siteIndex_]=fdist;
 	  }
 

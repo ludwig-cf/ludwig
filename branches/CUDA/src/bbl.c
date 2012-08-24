@@ -170,6 +170,7 @@ static int *linktype;
 static double *arr1;
 static double *arr2;
 static double *arr3;
+static double *arr4;
 
 static int nlinkmax;
 
@@ -218,6 +219,7 @@ void bbl_init_temp_link_arrays() {
   arr1 = (double*) malloc(nlinkmax*sizeof(double)); 
   arr2 = (double*) malloc(nlinkmax*sizeof(double)); 
   arr3 = (double*) malloc(nlinkmax*sizeof(double)); 
+  arr4 = (double*) malloc(nlinkmax*sizeof(double)); 
 
 #ifdef _GPU_
   bbl_init_temp_link_arrays_gpu(nlinkmax);
@@ -234,6 +236,7 @@ void bbl_finalise_temp_link_arrays() {
   free(arr1);
   free(arr2);
   free(arr3);
+  free(arr4);
 
 #ifdef _GPU_
   bbl_finalise_temp_link_arrays_gpu();
@@ -249,6 +252,7 @@ void bbl_enlarge_temp_link_arrays(int newsize) {
   arr1 = (double*) realloc(arr1, newsize*sizeof(double)); 
   arr2 = (double*) realloc(arr2, newsize*sizeof(double)); 
   arr3 = (double*) realloc(arr3, newsize*sizeof(double));
+  arr4 = (double*) realloc(arr4, newsize*sizeof(double));
 
   nlinkmax=newsize;
 
@@ -455,7 +459,7 @@ static void bounce_back_pass1() {
   /* bounce back the links */ 
   
  #ifdef _GPU_
-  bounce_back_gpu(findexall,linktype,dm_aall,NULL,dmall,nlink,1);
+  bounce_back_gpu(findexall,linktype,dm_aall,NULL,NULL,dmall,nlink,1);
  #else
     
   ilink=0;
@@ -667,7 +671,7 @@ static void bounce_back_pass2() {
   double     dm;
   double     vdotc;
   double     dms;
-  double     df, dg;
+  double     df, dg1, dg2;
   double    fdist;
 
   double     dgtm1;
@@ -740,7 +744,8 @@ static void bounce_back_pass2() {
 
   double *dfall = arr1;
   double *dmall = arr2;
-  double *dgall = arr3;
+  double *dgall1 = arr3;
+  double *dgall2 = arr4;
   
   ilink=0;
   for (ic = 0; ic <= Ncell(X) + 1; ic++)
@@ -810,9 +815,16 @@ static void bounce_back_pass2() {
 
 	      df += wv[ij]*p_colloid->sump;
 
-	      dg = phi_get_phi_site(i)*vdotc;
-	      p_colloid->s.deltaphi += dg;
-	      dg -= wv[ij]*dgtm1;
+	      //dg1 = phi_get_phi_site(i)*vdotc;
+	      //p_colloid->s.deltaphi += dg1;
+
+	      dg1 = vdotc;
+
+	      //now done below
+	      //p_colloid->s.deltaphi +=  phi_get_phi_site(i)*dg1;
+
+
+	      dg2 = wv[ij]*dgtm1;
 
 	      /* Correction owing to missing links "squeeze term" */
 
@@ -823,7 +835,11 @@ static void bounce_back_pass2() {
 	      findexall[ilink]=ij*nsite+i;
 
 	      dfall[ilink]=df;
-	      if (distribution_ndist() > 1) dgall[ilink]=dg;
+	      if (distribution_ndist() > 1) 
+		{
+		  dgall1[ilink]=dg1;
+		  dgall2[ilink]=dg2;
+		}
 	    
 	      ilink++;
 	    }
@@ -849,7 +865,7 @@ static void bounce_back_pass2() {
   /* bounce back the links */ 
 
   #ifdef _GPU_
-  bounce_back_gpu(findexall,linktype,dfall,dgall,dmall,nlink,2);
+  bounce_back_gpu(findexall,linktype,dfall,dgall1,dgall2,dmall,nlink,2);
   #else
 
   ilink=0;
@@ -882,6 +898,11 @@ static void bounce_back_pass2() {
 	      fdist = fdist - dfall[ilink];
 	      distribution_f_set(j, ji, 0, fdist);
 	     
+	      if (distribution_ndist() > 1) 
+		{
+		  dgall1[ilink]=phi_get_phi_site(i)*dgall1[ilink];
+		}
+
 	      ilink++;
 	    }
 
@@ -938,14 +959,21 @@ static void bounce_back_pass2() {
 	        - wv[ij]*p_colloid->deltam; /* minus */
 
 	     
+
 	    
 	    /* This is slightly clunky. If the order parameter is
 	     * via LB, bounce back with correction. */
 	    if (distribution_ndist() > 1) {
-	      dg=dgall[ilink];
+
+	      dg1=dgall1[ilink];
+	      dg2=dgall2[ilink];
 	      fdist = distribution_f(i, ij, 1);
-	      fdist = fdist - dg;
+	      fdist = fdist - dg1 + dg2;
 	      distribution_f_set(j, ji, 1, fdist);
+
+	      //this line used to be above, but has to be here now
+	      //so to get correct contribution from phi.
+	      p_colloid->s.deltaphi +=  dgall1[ilink];
 	    }
 	    
 	    /* The stress is r_b f_b */

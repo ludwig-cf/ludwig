@@ -98,6 +98,7 @@ void COLL_update() {
 
   if (colloid_ntotal() == 0) return;
 
+
   TIMER_start(TIMER_PARTICLE_HALO);
 
   coll_position_update();
@@ -113,38 +114,48 @@ void COLL_update() {
   else {
 
     /* Removal or replacement of fluid requires a lattice halo update */
-    TIMER_start(TIMER_HALO_LATTICE);
-    #ifdef _GPU_
-    distribution_halo_gpu();
-    #else
-    distribution_halo();
-    #endif
-    TIMER_stop(TIMER_HALO_LATTICE);
 
+    /* Only need to do this every 10 timesteps, since colloids move slowly */
+    if ( (get_step()-1)%10 == 0 ){
 
-    TIMER_start(TIMER_REBUILD);
-    COLL_update_map();
+      if (get_step()>1) get_phi_from_gpu();
 
-
+      
+      
+      TIMER_start(TIMER_HALO_LATTICE);
 #ifdef _GPU_
-    //get_f_from_gpu();  
+      distribution_halo_gpu();
+#else
+      distribution_halo();
 #endif
-
-    COLL_remove_or_replace_fluid();
-
+      TIMER_stop(TIMER_HALO_LATTICE);
+      
+      
+      TIMER_start(TIMER_REBUILD);
+      COLL_update_map();
+      
+      COLL_remove_or_replace_fluid();
+      
+      COLL_update_links();
+      
 #ifdef _GPU_
-    //put_f_on_gpu();  
+      put_phi_on_gpu();
+      put_site_map_on_gpu();
 #endif
+      
+      TIMER_stop(TIMER_REBUILD);
+      
+      
+    }
 
-
-    COLL_update_links();
-
-    TIMER_stop(TIMER_REBUILD);
 
     colloid_forces();
 
 
   }
+
+
+
 
 
 

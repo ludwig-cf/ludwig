@@ -48,8 +48,8 @@ LIBRARY = libludwig.a
 
 CC = gcc 
 MPICC = mpicc
-OPTS = -D_D3Q19_
-CFLAGS = -Wall -O3 -g
+OPTS = -D_D3Q19_ -DNDEBUG
+CFLAGS = -Wall -O3 #-g
 
 
 INC = -I.
@@ -59,7 +59,7 @@ ARFLAGS = -cru
 
 GPUCC = nvcc
 GPUOPTS = $(OPTS) -D_GPU_
-GPUCFLAGS = -g -G -O3 -arch=sm_21 
+GPUCFLAGS = -O3 -arch=sm_21 #-g -G 
 GPUINC = $(INC) -I /export/mpich2/2-1.3-gcc/include
 GPULIBS= -L/usr/local/cuda/lib64 -lcudart
 

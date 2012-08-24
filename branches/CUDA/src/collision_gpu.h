@@ -71,6 +71,7 @@ __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]);
 void collision_relaxation_times_set_gpu(void);
 void copy_constants_to_gpu(void);
 
+
 /* declarations for required external (host) routines */
 extern "C" void collision_relaxation_times_set(void);
 extern "C" double get_eta_shear(void);
@@ -78,6 +79,8 @@ extern "C" double get_eta_bulk(void);
 extern "C" double fluid_kt(void);
 extern "C" double phi_cahn_hilliard_mobility(void);
 extern "C" int  RUN_get_double_parameter(const char *, double *);
+
+extern "C" void get_phi_from_gpu(void);
 
 /* expose main routine in this module to outside routines */
 extern "C" void collide_gpu();

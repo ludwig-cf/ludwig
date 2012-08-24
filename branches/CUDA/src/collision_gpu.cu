@@ -146,7 +146,7 @@ void collide_gpu(void) {
 					       phi_site_d,		
 					       grad_phi_site_d,	
 					       delsq_phi_site_d,	
-					      force_d, 
+							 force_d, 
     			       		      velocity_d, 
 					      ma_d, 
 					      d_d, 
@@ -165,7 +165,11 @@ void collide_gpu(void) {
 
     }
 
-    cudaThreadSynchronize();
+  // If colloids, we need phi for BBL stage. Overlap transfer with collision.
+  //if (colloid_ntotal() > 0) get_phi_from_gpu();      
+  //get_phi_from_gpu();      
+  
+  cudaThreadSynchronize();
 
   return;
 }
@@ -552,6 +556,13 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	    }
 	    mode[m] = mode_tmp;
 	  }
+
+/* 	  /\* Compute all the modes *\/ */
+/* 	  for (m = 0; m < NVEL; m++) { */
+/* 	    for (p = 0; p < NVEL; p++) { */
+/* 	      mode[m] += f_loc[p]*ma_d[m][p]; */
+/* 	    } */
+/* 	  } */
 	  
 	  /* For convenience, write out the physical modes. */
 	  
@@ -664,6 +675,11 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
  	    }
 	    f_d[nsite*NDIST*p + index] = f_tmp;
  	}
+/*  	  for (p = 0; p < NVEL; p++) { */
+/*  	    for (m = 0; m < NVEL; m++) { */
+/*  	     f_d[nsite*NDIST*p + index]  += mi_d[p][m]*mode[m]; */
+/*  	    } */
+/*  	} */
 
 	/* Now, the order parameter distribution */
 

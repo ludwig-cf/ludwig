@@ -401,8 +401,8 @@ void get_phi_from_gpu()
 	      
 
   /* copy data from accelerator to host */
-  cudaMemcpy(phi_site_temp, phi_site_d, nsites*sizeof(double), \
-	     cudaMemcpyDeviceToHost);
+  cudaMemcpy(phi_site_temp, phi_site_d, nsites*sizeof(double),	\
+         cudaMemcpyDeviceToHost);
 
   /* set phi */
   for (ic=1; ic<=N[X]; ic++)

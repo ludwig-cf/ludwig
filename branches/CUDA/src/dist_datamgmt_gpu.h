@@ -25,7 +25,7 @@ extern "C" void copy_f_to_ftmp_on_gpu(void);
 extern "C" void get_f_edges_from_gpu(void);
 extern "C" void put_f_halos_on_gpu(void);
 extern "C" void bounce_back_gpu(int *findexall, int *linktype,
-				double *dfall, double *dgall,
+				double *dfall, double *dgall1, double *dgall2,
 				double *dmall, int nlink, int pass);
 extern "C" void bbl_init_temp_link_arrays_gpu(int nlink);
 extern "C" void bbl_finalise_temp_link_arrays_gpu();
@@ -65,6 +65,8 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
 					   double* f_d, double* fhaloZLOW_d,
 					   double* fhaloZHIGH_d);
 
+
+extern double * phi_site_d;
 
 #endif
 
