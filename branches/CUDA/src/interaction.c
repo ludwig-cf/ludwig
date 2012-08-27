@@ -118,8 +118,9 @@ void COLL_update() {
     /* Only need to do this every 10 timesteps, since colloids move slowly */
     if ( (get_step()-1)%10 == 0 ){
 
+#ifdef _GPU_      
       if (get_step()>1) get_phi_from_gpu();
-
+#endif      
       
       
       TIMER_start(TIMER_HALO_LATTICE);

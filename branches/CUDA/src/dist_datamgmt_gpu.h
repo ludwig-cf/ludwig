@@ -40,27 +40,30 @@ void finalise_dist_gpu();
 
 
 /* forward declarations of accelerator routines internal to this module */
-__global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,
+__global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,int nreduced,
 					 int* cv_d, int N[3], 
 					 double* fedgeXLOW_d,
 					 double* fedgeXHIGH_d, double* f_d); 
-__global__ static void unpack_halosX_gpu_d(int ndist, int nhalo, int N[3],
+__global__ static void unpack_halosX_gpu_d(int ndist, int nhalo, int nreduced,
+					   int N[3],
 					 int* cv_d, 
 					   double* f_d, double* fhaloXLOW_d,
 					   double* fhaloXHIGH_d);
-__global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,
+__global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,int nreduced,
 					 int* cv_d, int N[3], 
 					 double* fedgeYLOW_d,
 					 double* fedgeYHIGH_d, double* f_d); 
-__global__ static void unpack_halosY_gpu_d(int ndist, int nhalo, int N[3],
+__global__ static void unpack_halosY_gpu_d(int ndist, int nhalo, int nreduced,
+					   int N[3],
 					 int* cv_d, 
 					   double* f_d, double* fhaloYLOW_d,
 					   double* fhaloYHIGH_d);
-__global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo, 
+__global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
+					 int nreduced, 
 					 int* cv_d, int N[3],  
 					 double* fedgeZLOW_d,
 					 double* fedgeZHIGH_d, double* f_d); 
-__global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo, 
+__global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,int nreduced, 
 					 int* cv_d, int N[3], 
 					   double* f_d, double* fhaloZLOW_d,
 					   double* fhaloZHIGH_d);

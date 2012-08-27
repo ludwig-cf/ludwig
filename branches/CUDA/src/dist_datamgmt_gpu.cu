@@ -20,6 +20,8 @@
 #include "timer.h"
 #include "colloid_link.h"
 
+extern "C" int  RUN_get_string_parameter(const char *, char *, const int);
+
 /* external pointers to data on host*/
 extern double * f_;
 
@@ -82,7 +84,7 @@ static int nhalodataX;
 static int nhalodataY;
 static int nhalodataZ;
 
-#define FULL_HALO 1
+//#define FULL_HALO 1
 
 static int nlinkmax;
 
@@ -90,13 +92,20 @@ static int nlinkmax;
 static cudaStream_t streamX,streamY, streamZ;
 
 
+static int nreduced=0;
+
 /* Perform tasks necessary to initialise accelerator */
 void init_dist_gpu()
 {
 
-
   calculate_dist_data_sizes();
   allocate_dist_memory_on_gpu();
+
+
+  char string[FILENAME_MAX];
+
+  RUN_get_string_parameter("reduced_halo", string, FILENAME_MAX);
+  if (strcmp(string, "yes") == 0) nreduced = 1;
   
   /* create CUDA streams (for ovelapping)*/
   cudaStreamCreate(&streamX);
@@ -141,7 +150,7 @@ static void calculate_dist_data_sizes()
   npvel=0;
   for (p=0; p<NVEL; p++)
     {
-      if (cv[p][0] == 1 || FULL_HALO) npvel++; 
+      if (cv[p][0] == 1 || !nreduced) npvel++; 
     }
 
   nhalodataX = N[Y] * N[Z] * nhalo * ndist * npvel;
@@ -811,17 +820,20 @@ void distribution_halo_gpu()
 
  /* pack X edges on accelerator */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
- pack_edgesX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(ndist,nhalo,cv_d,
+ pack_edgesX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(ndist,nhalo,nreduced,
+						      cv_d,
 						N_d,fedgeXLOW_d,
 						fedgeXHIGH_d,f_d);
  /* pack Y edges on accelerator */ 
  nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
- pack_edgesY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(ndist,nhalo,cv_d,
+ pack_edgesY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(ndist,nhalo,nreduced,
+						      cv_d,
 					       N_d,fedgeYLOW_d,
 					       fedgeYHIGH_d,f_d);
  /* pack Z edges on accelerator */ 
  nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
- pack_edgesZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(ndist,nhalo,cv_d,
+ pack_edgesZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(ndist,nhalo,nreduced,
+						      cv_d,
 							 N_d,fedgeZLOW_d,
 							 fedgeZHIGH_d,f_d); 
 
@@ -906,7 +918,8 @@ void distribution_halo_gpu()
   cudaMemcpyAsync(fhaloXHIGH_d, fhaloXHIGH, nhalodataX*sizeof(double), 
 	     cudaMemcpyHostToDevice,streamX);
   nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  unpack_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(ndist,nhalo,cv_d,
+  unpack_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(ndist,nhalo,nreduced,
+							 cv_d,
 						  N_d,f_d,fhaloXLOW_d,
 						  fhaloXHIGH_d);
 
@@ -1012,7 +1025,8 @@ void distribution_halo_gpu()
 	     cudaMemcpyHostToDevice,streamY);
 
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  unpack_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(ndist,nhalo,cv_d,
+  unpack_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(ndist,nhalo,nreduced,
+							 cv_d,
 						  N_d,f_d,fhaloYLOW_d,
 						  fhaloYHIGH_d);
 
@@ -1174,7 +1188,8 @@ void distribution_halo_gpu()
   cudaMemcpyAsync(fhaloZHIGH_d, fhaloZHIGH, nhalodataZ*sizeof(double), 
 	     cudaMemcpyHostToDevice,streamZ);
   nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
-  unpack_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(ndist,nhalo,cv_d,
+  unpack_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(ndist,nhalo,nreduced,
+							 cv_d,
   						  N_d,f_d,fhaloZLOW_d,
   					  fhaloZHIGH_d);
 
@@ -1199,7 +1214,7 @@ void distribution_halo_gpu()
 
 
 /* pack X edges on the accelerator */
-__global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,
+__global__ static void pack_edgesX_gpu_d(int ndist, int nhalo, int nreduced,
 					 int* cv_ptr, int N[3],
 					 double* fedgeXLOW_d,
 					 double* fedgeXHIGH_d, double* f_d)
@@ -1244,7 +1259,7 @@ __global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud || FULL_HALO)
+	if (cv_d[p][dirn] == ud || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      fedgeXLOW_d[ndist*npackedsite*packedp+m*npackedsite
@@ -1261,7 +1276,7 @@ __global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn || FULL_HALO )
+	if (cv_d[p][dirn] == ud*pn || !nreduced )
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1279,7 +1294,7 @@ __global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,
 }
 
 /* unpack X halos on the accelerator */
-__global__ static void unpack_halosX_gpu_d(int ndist, int nhalo,
+__global__ static void unpack_halosX_gpu_d(int ndist, int nhalo, int nreduced,
 					   int* cv_ptr,int N[3],
 					   double* f_d, double* fhaloXLOW_d,
 					   double* fhaloXHIGH_d)
@@ -1325,7 +1340,7 @@ __global__ static void unpack_halosX_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud || FULL_HALO)
+	if (cv_d[p][dirn] == ud || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	  
@@ -1344,7 +1359,7 @@ __global__ static void unpack_halosX_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn || FULL_HALO )
+	if (cv_d[p][dirn] == ud*pn || !nreduced )
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1363,7 +1378,7 @@ __global__ static void unpack_halosX_gpu_d(int ndist, int nhalo,
 
 
 /* pack Y edges on the accelerator */
-__global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,
+__global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,int nreduced,
 					 int* cv_ptr, int N[3], 					 double* fedgeYLOW_d,
 					 double* fedgeYHIGH_d, double* f_d) {
 
@@ -1407,7 +1422,7 @@ __global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud || FULL_HALO)
+	if (cv_d[p][dirn] == ud || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1425,7 +1440,7 @@ __global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn || FULL_HALO)
+	if (cv_d[p][dirn] == ud*pn || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1445,7 +1460,7 @@ __global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,
 
 
 /* unpack Y halos on the accelerator */
-__global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,
+__global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,int nreduced,
 					 int* cv_ptr, int N[3],
 					   double* f_d, double* fhaloYLOW_d,
 					   double* fhaloYHIGH_d)
@@ -1507,7 +1522,7 @@ __global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,
       packedp=0;
 
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud || FULL_HALO)
+	if (cv_d[p][dirn] == ud || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1527,7 +1542,7 @@ __global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn || FULL_HALO)
+	if (cv_d[p][dirn] == ud*pn || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1549,7 +1564,7 @@ __global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,
 
 
 /* pack Z edges on the accelerator */
-__global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
+__global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,int nreduced,
 					 int* cv_ptr, int N[3],
 					 double* fedgeZLOW_d,
 					 double* fedgeZHIGH_d, double* f_d)
@@ -1594,7 +1609,7 @@ __global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud || FULL_HALO )
+	if (cv_d[p][dirn] == ud || !nreduced )
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1612,7 +1627,7 @@ __global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn || FULL_HALO)
+	if (cv_d[p][dirn] == ud*pn || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1632,7 +1647,7 @@ __global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
 
 
 /* unpack Z halos on the accelerator */
-__global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
+__global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,int nreduced,
 					   int* cv_ptr, int N[3],
 					   double* f_d, double* fhaloZLOW_d,
 					   double* fhaloZHIGH_d)
@@ -1705,7 +1720,7 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud || FULL_HALO)
+	if (cv_d[p][dirn] == ud || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      
@@ -1723,7 +1738,7 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
-	if (cv_d[p][dirn] == ud*pn || FULL_HALO)
+	if (cv_d[p][dirn] == ud*pn || !nreduced)
 	  {
 	    for (m = 0; m < ndist; m++) {
 	      

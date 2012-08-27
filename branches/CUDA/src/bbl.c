@@ -88,7 +88,7 @@ void bounce_back_on_links() {
   bounce_back_pass2();
 
 
-  bbl_surface_stress();
+  //bbl_surface_stress();
 
 
   return;
