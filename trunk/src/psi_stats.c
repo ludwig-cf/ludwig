@@ -149,7 +149,7 @@ int psi_stats_local(psi_t * obj, double * rho_min, double * rho_max,
   int nrho;
   double psi, rho, rho_elec;
 
-  assert(psi);
+  assert(obj);
   assert(rho_min);
   assert(rho_max);
   assert(rho_tot);
