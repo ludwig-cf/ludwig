@@ -1960,5 +1960,6 @@ int propagation_ode_feq(double rho[1], double u[3], double feq[NVEL]) {
     }
     feq[p] = rho[0]*wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
   }
-  return;
+
+  return 0;
 }
