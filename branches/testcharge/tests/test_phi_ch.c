@@ -26,7 +26,7 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "hydro.h"
-#include "site_map.h"
+#include "map.h"
 #include "field.h"
 #include "gradient_3d_7pt_fluid.h"
 #include "phi_cahn_hilliard.h"
@@ -41,6 +41,8 @@ int main (int argc, char ** argv) {
 
   int nf = 1;
   int nhalo = 2;
+
+  map_t * map = NULL;
   hydro_t * hydro = NULL;
   field_t * phi = NULL;
 
@@ -49,7 +51,9 @@ int main (int argc, char ** argv) {
   coords_nhalo_set(nhalo);
   coords_init();
   le_init();
-  site_map_init();
+
+  map_create(0, &map);
+  assert(map);
 
   field_create(nf, "phi", &phi);
   field_init(phi, nhalo);
@@ -59,6 +63,7 @@ int main (int argc, char ** argv) {
 
   hydro_free(hydro);
   field_free(phi);
+  map_free(map);
 
   le_finish();
   coords_finish();

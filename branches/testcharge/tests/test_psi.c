@@ -24,10 +24,9 @@
 #include "psi.h"
 #include "psi_s.h"
 
-typedef int (* halo_test_ft) (int, int, int, int, double *);
+#include "test_coords_field.h"
 
-static int testf1(int ic, int jc, int kc, int n, double * ref);
-static int testf2(int ic, int jc, int kc, int n, double * ref);
+static int testf2(int ic, int jc, int kc, int n, void * ref);
 static int do_test1(void);
 static int do_test2(void);
 static int do_test_halo1(void);
@@ -35,9 +34,6 @@ static int do_test_halo2(void);
 static int do_test_bjerrum(void);
 static int do_test_ionic_strength(void);
 static int do_test_io1(void);
-
-int test_field_set(int nf, double * f, halo_test_ft fset);
-int test_field_check(int nf, double * f, halo_test_ft fref);
 
 /*****************************************************************************
  *
@@ -184,26 +180,27 @@ static int do_test2(void) {
 static int do_test_halo1(void) {
 
   int nk;
+  int nhalo = 2;
   psi_t * psi;
 
-  coords_nhalo_set(2);
+  coords_nhalo_set(nhalo);
   coords_init();
 
   nk = 3;
   psi_create(nk, &psi);
   assert(psi);
 
-  test_field_set(1, psi->psi, testf1);
-  psi_halo(1, psi->psi, psi->psihalo);
-  test_field_check(1, psi->psi, testf1);
+  test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  psi_halo_psi(psi);
+  test_coords_field_check(nhalo, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
 
-  test_field_set(nk, psi->rho, testf1);
-  psi_halo(nk, psi->rho, psi->rhohalo);
-  test_field_check(nk, psi->rho, testf1);
+  test_coords_field_set(nk, psi->rho, MPI_DOUBLE, test_ref_double1);
+  psi_halo_rho(psi);
+  test_coords_field_check(nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
 
-  test_field_set(nk, psi->rho, testf2);
-  psi_halo(nk, psi->rho, psi->rhohalo);
-  test_field_check(nk, psi->rho, testf2);
+  test_coords_field_set(nk, psi->rho, MPI_DOUBLE, testf2);
+  psi_halo_rho(psi);
+  test_coords_field_check(nhalo, nk, psi->rho, MPI_DOUBLE, testf2);
 
   psi_free(psi);
   coords_finish();
@@ -223,6 +220,7 @@ static int do_test_halo2(void) {
 
   int nk;
   int grid[3];
+  int nhalo = 3;
   psi_t * psi;
 
   /* Use a 1-d decomposition, which increases the number of
@@ -233,20 +231,20 @@ static int do_test_halo2(void) {
   grid[2] = 1;
 
   coords_decomposition_set(grid);
-  coords_nhalo_set(3);
+  coords_nhalo_set(nhalo);
   coords_init();
 
   nk = 2;
   psi_create(nk, &psi);
   assert(psi);
 
-  test_field_set(1, psi->psi, testf1);
+  test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
   psi_halo_psi(psi);
-  test_field_check(1, psi->psi, testf1);
+  test_coords_field_check(nhalo, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
 
-  test_field_set(nk, psi->rho, testf1);
+  test_coords_field_set(nk, psi->rho, MPI_DOUBLE, test_ref_double1);
   psi_halo_rho(psi);
-  test_field_check(nk, psi->rho, testf1);
+  test_coords_field_check(nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
 
   psi_free(psi);
   coords_finish();
@@ -286,8 +284,8 @@ static int do_test_io1(void) {
   assert(psi);
   psi_init_io_info(psi, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
 
-  test_field_set(1, psi->psi, testf1);
-  test_field_set(nk, psi->rho, testf1);
+  test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(nk, psi->rho, MPI_DOUBLE, test_ref_double1);
 
   psi_io_info(psi, &iohandler);
   assert(iohandler);
@@ -309,9 +307,13 @@ static int do_test_io1(void) {
   psi_halo_psi(psi);
   psi_halo_rho(psi);
 
-  test_field_check(1, psi->psi, testf1);
-  test_field_check(nk, psi->rho, testf1);
+  /* Zero halo region required */
+  test_coords_field_check(0, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(0, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
+
+  MPI_Barrier(pe_comm());
   io_remove(filename, iohandler);
+  io_remove_metadata(iohandler, "psi");
 
   psi_free(psi);
   coords_finish();
@@ -417,112 +419,15 @@ static int do_test_ionic_strength(void) {
 
 /*****************************************************************************
  *
- *  test_field_set
- *
- *****************************************************************************/
-
-int test_field_set(int nf, double * f, halo_test_ft fset) {
-
-  int n;
-  int nhalo;
-  int nlocal[3];
-  int noffst[3];
-  int ic, jc, kc, index;
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffst);
-
-  /* Set values in the domain proper (not halo regions) */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	for (n = 0; n < nf; n++) {
-	  fset(noffst[X]+ic, noffst[Y]+jc, noffst[Z]+kc, n, f + nf*index + n);
-	}
-
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  test_field_check
- *
- *****************************************************************************/
-
-int test_field_check(int nf, double * f, halo_test_ft fref) {
-
-  int n;
-  int nhalo;
-  int nlocal[3];
-  int noffst[3];
-  int ic, jc, kc, index;
-
-  double ref;               /* Reference function value */
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffst);
-
-  /* Check all points, i.e., interior points should not have changed,
-   * and halo point should be correctly updated. Some of the differences
-   * coming from periodic boundaries are slightly largely than DBL_EPSILON,
-   * but FLT_EPSILON should catch gross errors. */
-
-  for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
-    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	for (n = 0; n < nf; n++) {
-	  fref(noffst[X]+ic, noffst[Y]+jc, noffst[Z]+kc, n, &ref);
-	  if (fabs(f[nf*index + n] - ref) > FLT_EPSILON) {
-	    verbose("%2d %2d %2d %2d %f %f\n", ic, jc, kc, n, ref, f[nf*index + n]);
-	  }
-	  assert(fabs(f[nf*index + n] - ref) < FLT_EPSILON);
-	}
-
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  testf1
- *
- *****************************************************************************/
-
-static int testf1(int ic, int jc, int kc, int n, double * ref) {
-
-  assert(ref);
-  
-  *ref = cos(2.0*pi_*ic/L(X)) + cos(2.0*pi_*jc/L(Y)) + cos(2.0*pi_*kc/L(Z));
-  *ref += 1.0*n;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  testf2
  *
  *  A 'wall' function perioidic in z-direction.
  *
  *****************************************************************************/
 
-static int testf2(int ic, int jc, int kc, int n, double * ref) {
+static int testf2(int ic, int jc, int kc, int n, void * buf) {
+
+  double * ref = buf;
 
   assert(ref);
 

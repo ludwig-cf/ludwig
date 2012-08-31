@@ -59,6 +59,8 @@ int main(int argc, char ** argv) {
   assert(sizeof(double) == 8);
   printf("yes\n");
 
+  printf("sizeof(char) = %lu\n", sizeof(char));
+  printf("sizeof(unsigned char) = %lu\n", sizeof(unsigned char));
   printf("Checking sizeof(void *) ...\n");
   printf("%lu\n", sizeof(void *));
 

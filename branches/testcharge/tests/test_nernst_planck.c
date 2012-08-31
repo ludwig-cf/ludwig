@@ -22,7 +22,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "site_map.h"
+#include "map.h"
 #include "psi.h"
 #include "psi_s.h"
 #include "psi_sor.h"
@@ -109,6 +109,7 @@ static int do_test_gouy_chapman(void) {
 
   int tmax = 20000;
 
+  map_t * map = NULL;
   psi_t * psi = NULL;
 
   coords_nhalo_set(1);
@@ -123,7 +124,8 @@ static int do_test_gouy_chapman(void) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffst);
 
-  site_map_init();
+  map_create(0, &map);
+  assert(map);
 
   psi_create(nk, &psi);
   assert(psi);
@@ -165,8 +167,7 @@ static int do_test_gouy_chapman(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-
-	site_map_set_status(ic,jc,kc,BOUNDARY);
+	map_status_set(map, index, MAP_BOUNDARY); 
 
 	psi_rho_set(psi, index, 0, rho_w);
 	psi_rho_set(psi, index, 1, 0.0);
@@ -181,8 +182,7 @@ static int do_test_gouy_chapman(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-
-	site_map_set_status(ic, jc, kc, BOUNDARY);
+	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(psi, index, 0, rho_w);
 	psi_rho_set(psi, index, 1, 0.0);
@@ -191,7 +191,7 @@ static int do_test_gouy_chapman(void) {
     }
   }
 
-  site_map_halo();
+  map_halo(map);
 
   for (tstep = 1; tstep <= tmax; tstep++) {
 
@@ -199,7 +199,7 @@ static int do_test_gouy_chapman(void) {
     psi_sor_poisson(psi);
     psi_halo_rho(psi);
     /* The test is run with no hydrodynamics, hence NULL here. */
-    nernst_planck_driver(psi, NULL);
+    nernst_planck_driver(psi, NULL, map);
 
     if (tstep % 1000 == 0) {
 
@@ -248,7 +248,7 @@ static int do_test_gouy_chapman(void) {
   assert(fabs((ldebye - 6.420068)/6.420068) < FLT_EPSILON);
   assert(fabs((yd - 5.451444e-05)/5.45e-05) < FLT_EPSILON);
 
-  site_map_finish();
+  map_free(map);
   psi_free(psi);
   coords_finish();
 

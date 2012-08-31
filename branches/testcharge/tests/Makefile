@@ -49,8 +49,8 @@ MPILIB = -lmpi
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_runtime.c test_random.c \
               test_coords.c test_le.c test_io.c test_prop.c \
-              test_model.c test_halo.c test_site_map.c \
-	      test_magnetic.c \
+              test_model.c test_halo.c \
+	      test_magnetic.c test_map.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
               test_colloid.c test_colloids.c test_colloids_halo.c \
               test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
@@ -64,10 +64,10 @@ TESTOBJECTS = ${TESTSOURCES:.c=.o}
 #  Rules
 #------------------------------------------------------------------------------
 
-base: $(TESTOBJECTS) tests.o
+base: $(TESTOBJECTS) tests.o test_coords_field.o
 	test_sources='$(TESTS)'; \
 	for file in $$test_sources; \
-	do $(CC) $$file.o -o $$file tests.o \
+	do $(CC) $$file.o -o $$file tests.o test_coords_field.o \
 	-L$(SRC) -lludwig $(CLIBS); \
 	done
 
@@ -76,8 +76,7 @@ tests:
 	"CLIBS=$(CLIBS) $(MPI_STUB_LIB) $(LBLIBS)"
 
 tests_mpi:
-	$(MAKE) base "CC=$(MPICC) -D_MPI_" \
-	"CLIBS=$(CLIBS) $(LBLIBS)"
+	$(MAKE) base "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS)"
 
 
 do_tests: tests
