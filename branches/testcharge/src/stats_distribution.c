@@ -8,7 +8,7 @@
  *  If there is more than one distribution, it is assumed the relevant
  *  statistics are produced in the order parameter sector.
  *
- *  $Id: stats_distribution.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -18,13 +18,13 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <float.h>
 #include <math.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
-#include "site_map.h"
 #include "util.h"
 #include "stats_distribution.h"
 
@@ -37,10 +37,11 @@
  *
  *****************************************************************************/
 
-void stats_distribution_print(void) {
+int stats_distribution_print(map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int status;
 
   double stat_local[5];
   double stat_total[5];
@@ -49,6 +50,8 @@ void stats_distribution_print(void) {
   double rhovar;
 
   MPI_Comm comm;
+
+  assert(map);
 
   coords_nlocal(nlocal);
   comm = pe_comm();
@@ -63,8 +66,9 @@ void stats_distribution_print(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        if (site_map_get_status(ic, jc, kc) != FLUID) continue;
         index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	rho = distribution_zeroth_moment(index, 0);
 	stat_local[0] += 1.0;
@@ -90,7 +94,7 @@ void stats_distribution_print(void) {
   info("[rho] %14.2f %14.11f%14.7e %14.11f%14.11f\n",
        stat_total[1], rhomean, rhovar, stat_total[3], stat_total[4]); 
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -101,13 +105,17 @@ void stats_distribution_print(void) {
  *
  *****************************************************************************/
 
-void stats_distribution_momentum(double g[3]) {
+int stats_distribution_momentum(map_t * map, double g[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int status;
 
   double g_local[3];
   double g_site[3];
+
+  assert(map);
+  assert(g);
 
   coords_nlocal(nlocal);
 
@@ -119,8 +127,9 @@ void stats_distribution_momentum(double g[3]) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        if (site_map_get_status(ic, jc, kc) != FLUID) continue;
         index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	distribution_first_moment(index, 0, g_site);
 	g_local[X] += g_site[X];
@@ -132,5 +141,5 @@ void stats_distribution_momentum(double g[3]) {
 
   MPI_Reduce(g_local, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
-  return;
+  return 0;
 }

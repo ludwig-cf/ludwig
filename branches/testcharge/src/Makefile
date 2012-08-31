@@ -77,7 +77,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
      hydro.o hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o magnetic_field.o magnetic_field_rt.o \
-     model_le.o potential.o \
+     model_le.o map.o potential.o \
      phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_force_stress.o \
      phi_fluctuations.o \
@@ -87,8 +87,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      psi_force.o psi_colloid.o nernst_planck.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
-     symmetric.o symmetric_rt.o \
-     site_map.o site_map_rt.o subgrid.o \
+     symmetric.o symmetric_rt.o subgrid.o \
      stats_calibration.o stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \

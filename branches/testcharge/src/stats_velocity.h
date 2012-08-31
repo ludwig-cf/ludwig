@@ -16,7 +16,8 @@
 #define STATS_VELOCITY_H
 
 #include "hydro.h"
+#include "map.h"
 
-int stats_velocity_minmax(hydro_t * hydro);
+int stats_velocity_minmax(hydro_t * hydro, map_t * map);
 
 #endif

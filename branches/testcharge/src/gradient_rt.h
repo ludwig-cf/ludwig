@@ -16,7 +16,8 @@
 #define GRADIENT_RT_H
 
 #include "field_grad.h"
+#include "map.h"
 
-int gradient_rt_init(field_grad_t * grad);
+int gradient_rt_init(field_grad_t * grad, map_t * map);
 
 #endif

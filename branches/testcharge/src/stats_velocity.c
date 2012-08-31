@@ -19,7 +19,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "site_map.h"
 #include "util.h"
 #include "stats_velocity.h"
 
@@ -29,15 +28,20 @@
  *
  ****************************************************************************/
 
-int stats_velocity_minmax(hydro_t * hydro) {
+int stats_velocity_minmax(hydro_t * hydro, map_t * map) {
 
   int ic, jc, kc, ia, index;
   int nlocal[3];
+  int status;
+
   double umin[3];
   double umax[3];
   double utmp[3];
 
   MPI_Comm comm;
+
+  assert(hydro);
+  assert(map);
 
   coords_nlocal(nlocal);
   comm = pe_comm();
@@ -52,8 +56,10 @@ int stats_velocity_minmax(hydro_t * hydro) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
 
-	if (site_map_get_status_index(index) == FLUID) {
+	if (status == MAP_FLUID) {
+
 	  hydro_u(hydro, index, utmp);
 
 	  for (ia = 0; ia < 3; ia++) {

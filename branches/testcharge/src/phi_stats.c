@@ -21,10 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "site_map.h"
 #include "bbl.h"
-#include "field.h"
-#include "phi_lb_coupler.h"
 #include "util.h"
 #include "phi_stats.h"
 
@@ -34,7 +31,7 @@
  *
  *****************************************************************************/
 
-int stats_field_info(field_t * obj) {
+int stats_field_info(field_t * obj, map_t * map) {
 
   int n, nf;
   MPI_Comm comm;
@@ -46,12 +43,14 @@ int stats_field_info(field_t * obj) {
   double fvol, rvol;
   double fbar, f2;
 
+  assert(obj);
+  assert(map);
+
   field_nf(obj, &nf);
   assert(nf <= NQAB);
 
   comm = pe_comm();
-
-  stats_field_reduce(obj, fmin, fmax, fsum, fvar, &fvol, 0, comm);
+  stats_field_reduce(obj, map, fmin, fmax, fsum, fvar, &fvol, 0, comm);
 
   rvol = 1.0 / fvol;
 
@@ -78,9 +77,9 @@ int stats_field_info(field_t * obj) {
  *
  *****************************************************************************/
 
-int stats_field_reduce(field_t * obj, double * fmin, double * fmax,
-		       double * fsum, double * fvar, double * fvol,
-		       int rank, MPI_Comm comm) {
+int stats_field_reduce(field_t * obj, map_t * map, double * fmin,
+		       double * fmax,  double * fsum, double * fvar,
+		       double * fvol, int rank, MPI_Comm comm) {
   int nf;
 
   double fmin_local[NQAB];
@@ -89,10 +88,13 @@ int stats_field_reduce(field_t * obj, double * fmin, double * fmax,
   double fvar_local[NQAB];
   double fvol_local[1];
 
+  assert(obj);
+  assert(map);
+
   field_nf(obj, &nf);
   assert(nf <= NQAB);
 
-  stats_field_local(obj, fmin_local, fmax_local, fsum_local, fvar_local,
+  stats_field_local(obj, map, fmin_local, fmax_local, fsum_local, fvar_local,
 		    fvol_local);
 
   MPI_Reduce(fmin_local, fmin, nf, MPI_DOUBLE, MPI_MIN, rank, comm);
@@ -121,12 +123,13 @@ int stats_field_reduce(field_t * obj, double * fmin, double * fmax,
  *
  *****************************************************************************/
 
-int stats_field_local(field_t * obj, double * fmin, double * fmax,
+int stats_field_local(field_t * obj, map_t * map, double * fmin, double * fmax,
 		      double * fsum, double * fvar, double * fvol) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   int n, nf;
+  int status;
 
   double f0[NQAB];
 
@@ -134,6 +137,7 @@ int stats_field_local(field_t * obj, double * fmin, double * fmax,
   assert(fmin);
   assert(fmax);
   assert(fsum);
+  assert(map);
 
   coords_nlocal(nlocal);
   field_nf(obj, &nf);
@@ -159,7 +163,8 @@ int stats_field_local(field_t * obj, double * fmin, double * fmax,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	if (site_map_get_status_index(index) != FLUID) continue;
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	*fvol += 1.0;
 	field_scalar_array(obj, index, f0);

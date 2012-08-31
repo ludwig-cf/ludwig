@@ -15,7 +15,9 @@
 #ifndef GRADIENT_3D_7PT_SOLID_H
 #define GRADIENT_3D_7PT_SOLID_H
 
+#include "map.h"
+
+int gradient_3d_7pt_solid_map_set(map_t * map);
 int gradient_3d_7pt_solid_d2(const int nop, const double * field,
 			     double * grad, double * delsq);
-
 #endif

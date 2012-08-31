@@ -26,7 +26,6 @@
 #include "coords.h"
 #include "hydro.h"
 #include "field.h"
-#include "site_map.h"
 #include "leesedwards.h"
 #include "free_energy.h"
 #include "wall.h"

@@ -16,7 +16,8 @@
 #define PHI_FORCE_COLLOID_H
 
 #include "hydro.h"
+#include "map.h"
 
-int phi_force_colloid(hydro_t * hydro);
+int phi_force_colloid(hydro_t * hydro, map_t * map);
 
 #endif

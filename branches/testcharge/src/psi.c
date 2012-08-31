@@ -46,9 +46,11 @@ static int psi_write_ascii(FILE * fp, int index, void * self);
 
 int psi_halo_psi(psi_t * psi) {
 
+  int nhalo;
   assert(psi);
 
-  coords_field_halo(1, psi->psi, psi->psihalo);
+  nhalo = coords_nhalo();
+  coords_field_halo(nhalo, 1, psi->psi, MPI_DOUBLE, psi->psihalo);
 
   return 0;
 }
@@ -61,9 +63,11 @@ int psi_halo_psi(psi_t * psi) {
 
 int psi_halo_rho(psi_t * psi) {
 
+  int nhalo;
   assert(psi);
 
-  coords_field_halo(psi->nk, psi->rho, psi->rhohalo);
+  nhalo = coords_nhalo();
+  coords_field_halo(nhalo, psi->nk, psi->rho, MPI_DOUBLE, psi->rhohalo);
 
   return 0;
 }
@@ -79,12 +83,14 @@ int psi_halo_rho(psi_t * psi) {
 int psi_create(int nk, psi_t ** pobj) {
 
   int nsites;
+  int nhalo;
   psi_t * psi = NULL;
 
   assert(pobj);
   assert(nk > 1);
 
   nsites = coords_nsites();
+  nhalo = coords_nhalo();
 
   psi = calloc(1, sizeof(psi_t));
   if (psi == NULL) fatal("Allocation of psi failed\n");
@@ -106,8 +112,8 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->reltol = reltol_default;
   psi->abstol = abstol_default;
 
-  coords_field_init_mpi_indexed(1, psi->psihalo);
-  coords_field_init_mpi_indexed(psi->nk, psi->rhohalo);
+  coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
+  coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
   *pobj = psi; 
 
   return 0;

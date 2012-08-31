@@ -27,7 +27,6 @@
 #include "io_harness.h"
 #include "util.h"
 #include "model.h"
-#include "site_map.h"
 #include "blue_phase.h"
 #include "colloids_Q_tensor.h"
 
@@ -105,8 +104,8 @@ void colloids_q_boundary_normal(const int index, const int di[3],
  *
  *****************************************************************************/
 
-void colloids_q_boundary(const double nhat[3], double qs[3][3],
-			 double q0[3][3], char site_map_status) {
+int colloids_q_boundary(const double nhat[3], double qs[3][3],
+			double q0[3][3], int map_status) {
   int ia, ib, ic, id;
   int anchoring;
 
@@ -114,10 +113,10 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
   double amplitude;
   double  nfix[3] = {0.0, 1.0, 0.0};
 
-  assert(site_map_status == COLLOID || site_map_status == BOUNDARY);
+  assert(map_status == MAP_COLLOID || map_status == MAP_BOUNDARY);
 
   anchoring = anchoring_coll_;
-  if (site_map_status == BOUNDARY) anchoring = anchoring_wall_;
+  if (map_status == MAP_BOUNDARY) anchoring = anchoring_wall_;
 
   amplitude = blue_phase_amplitude_compute();
 
@@ -150,7 +149,7 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
 
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -164,11 +163,12 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
  *
  *****************************************************************************/
 
-int colloids_fix_swd(hydro_t * hydro) {
+int colloids_fix_swd(hydro_t * hydro, map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   int noffset[3];
+  int status;
   const int nextra = 1;
 
   double u[3];
@@ -179,6 +179,7 @@ int colloids_fix_swd(hydro_t * hydro) {
   colloid_t * colloid_at_site_index(int);
 
   assert(hydro);
+  assert(map);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -191,8 +192,9 @@ int colloids_fix_swd(hydro_t * hydro) {
 	z = noffset[Z] + kc;
 
 	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
 
-	if (site_map_get_status_index(index) != FLUID) {
+	if (status != MAP_FLUID) {
 	  u[X] = 0.0;
 	  u[Y] = 0.0;
 	  u[Z] = 0.0;

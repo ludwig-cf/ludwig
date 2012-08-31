@@ -38,7 +38,6 @@
 #include "colloid_io_rt.h"
 #include "interaction.h"
 #include "model.h"
-#include "site_map.h"
 #include "cio.h"
 #include "control.h"
 #include "subgrid.h"
@@ -50,12 +49,13 @@
 #include "colloids_init.h"
 #include "ewald.h"
 
+static int colloid_forces_fluid_gravity_set(map_t * map);
+static int colloid_forces(map_t * map);
+
 static void colloid_forces_overlap(colloid_t *, colloid_t *);
-static void colloid_forces_fluid_gravity_set(void);
 static void colloid_forces_pairwise(double * h, double * e);
 static void colloid_forces_zero_set(void);
 static void colloid_forces_single_particle_set(void);
-static void colloid_forces(void);
 
 void lubrication_sphere_sphere(double a1, double a2,
 			       const double u1[3], const double u2[3],
@@ -90,7 +90,8 @@ struct lubrication_struct {
  *
  *****************************************************************************/
 
-int COLL_update(hydro_t * hydro, field_t * fphi, field_t * fp, field_t * fq) {
+int COLL_update(hydro_t * hydro, map_t * map, field_t * fphi, field_t * fp,
+		field_t * fq) {
 
   int is_subgrid = 0;
 
@@ -107,7 +108,7 @@ int COLL_update(hydro_t * hydro, field_t * fphi, field_t * fp, field_t * fq) {
   TIMER_stop(TIMER_PARTICLE_HALO);
 
   if (is_subgrid) {
-    colloid_forces();
+    colloid_forces(map);
     subgrid_force_from_particles(hydro);
   }
   else {
@@ -118,13 +119,14 @@ int COLL_update(hydro_t * hydro, field_t * fphi, field_t * fp, field_t * fq) {
     TIMER_stop(TIMER_HALO_LATTICE);
 
     TIMER_start(TIMER_REBUILD);
-    COLL_update_map();
+
+    build_update_map(map);
     build_remove_or_replace_fluid(fphi, fp, fq);
-    COLL_update_links();
+    build_update_links(map);
 
     TIMER_stop(TIMER_REBUILD);
 
-    colloid_forces();
+    colloid_forces(map);
   }
 
   return 0;
@@ -138,7 +140,7 @@ int COLL_update(hydro_t * hydro, field_t * fphi, field_t * fp, field_t * fq) {
  *
  *****************************************************************************/
 
-void COLL_init() {
+int COLL_init(map_t * map) {
 
   int n, ncheck;
   int init_from_file;
@@ -284,8 +286,8 @@ void COLL_init() {
       subgrid_on_set();
     }
     else  {
-      COLL_update_map();
-      COLL_update_links();
+      build_update_map(map);
+      build_update_links(map);
     }
 
     /* Information */
@@ -297,7 +299,7 @@ void COLL_init() {
     info("\n");
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -342,7 +344,7 @@ static void lubrication_init(void) {
  *
  *****************************************************************************/
 
-static void colloid_forces(void) {
+static int colloid_forces(map_t * map) {
 
   int nc;
   double hmin, hminlocal;
@@ -356,7 +358,7 @@ static void colloid_forces(void) {
   if (nc > 0) {
     colloid_forces_zero_set();
     colloid_forces_single_particle_set();
-    colloid_forces_fluid_gravity_set();
+    colloid_forces_fluid_gravity_set(map);
 
     if (nc > 1) {
       colloid_forces_pairwise(&hminlocal, &elocal);
@@ -379,7 +381,7 @@ static void colloid_forces(void) {
     }
   }
 
-  return;
+  return 0;
 }
 
 
@@ -469,17 +471,19 @@ static void colloid_forces_single_particle_set(void) {
  *
  *****************************************************************************/
 
-static void colloid_forces_fluid_gravity_set(void) {
+static int colloid_forces_fluid_gravity_set(map_t * map) {
 
   int ia, nc;
+  int nsfluid;
   double rvolume;
   double f[3];
 
   nc = colloid_ntotal();
 
   if (gravity_ && nc > 0) {
-
-    rvolume = 1.0/site_map_volume(FLUID);
+    assert(map);
+    map_volume_allreduce(map, MAP_FLUID, &nsfluid);
+    rvolume = 1.0/nsfluid;
 
     /* Force per fluid node to balance is... */
 
@@ -489,7 +493,7 @@ static void colloid_forces_fluid_gravity_set(void) {
     fluid_body_force_set(f);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

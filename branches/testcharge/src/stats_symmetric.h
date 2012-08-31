@@ -15,6 +15,9 @@
 #ifndef STATS_SYMMETRIC_H
 #define STATS_SYMMETRIC_H
 
-void stats_symmetric_length(int timestep);
+#include "field_grad.h"
+#include "map.h"
+
+int stats_symmetric_length(field_grad_t * dphi, map_t * map, int timestep);
 
 #endif

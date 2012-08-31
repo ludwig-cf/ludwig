@@ -24,8 +24,8 @@
 #include "coords.h"
 #include "physics.h"
 #include "colloids.h"
-#include "site_map.h"
 #include "interaction.h"
+#include "stats_calibration.h"
 
 #define TARGET_REYNOLDS_NUMBER 0.05
 #define MEASUREMENTS_PER_STOKES_TIME 50
@@ -46,7 +46,7 @@ typedef struct stats_calibration_type stats_calibration_t;
 
 static stats_calibration_t calib_;
 static double stats_calibration_hasimoto(double a, double length);
-static int    stats_calibration_measure(hydro_t * hydro);
+static int    stats_calibration_measure(hydro_t * hydro, map_t * map);
 
 /*****************************************************************************
  *
@@ -136,16 +136,18 @@ void stats_calibration_init(int nswitch) {
  *
  *  stats_calibration_accumulate
  *
+ *  All arguments may be NULL if calibration is not active.
+ *
  *****************************************************************************/
 
-int stats_calibration_accumulate(int ntime, hydro_t * hydro) {
+int stats_calibration_accumulate(int ntime, hydro_t * hydro, map_t * map) {
 
   if (hydro == NULL) return 0;
 
   if (ntime >= calib_.nstart) {
     if ((ntime % calib_.nfreq) == 0) {
       ++calib_.ndata;
-      stats_calibration_measure(hydro);
+      stats_calibration_measure(hydro, map);
     }
   }
 
@@ -262,11 +264,12 @@ static double stats_calibration_hasimoto(double a, double len) {
  *
  *****************************************************************************/
 
-static int stats_calibration_measure(hydro_t * hydro) {
+static int stats_calibration_measure(hydro_t * hydro, map_t * map) {
 
   int ic, jc, kc, ia, index;
   int nlocal[3];
   int ncell[3];
+  int status;
 
   double volume;
   double upart[3];
@@ -275,6 +278,7 @@ static int stats_calibration_measure(hydro_t * hydro) {
   colloid_t * pc;
 
   assert(hydro);
+  assert(map);
 
   volume = 0.0;
   for (ia = 0; ia < 3; ia++) {
@@ -310,10 +314,12 @@ static int stats_calibration_measure(hydro_t * hydro) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        if (site_map_get_status(ic, jc, kc) != FLUID) continue;
         index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	hydro_u(hydro, index, ulocal);
+	assert(0); /* This looks like a bug; accumulate u? */
 	volume = volume + 1.0;
       }
     }

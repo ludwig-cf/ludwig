@@ -2,7 +2,7 @@
  *
  *  advection_bcs.h
  *
- *  $Id: advection_bcs.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,11 +15,12 @@
 #ifndef ADVECTION_BCS_H
 #define ADVECTION_BCS_H
 
+#include "advection.h"
 #include "field.h"
+#include "map.h"
 
-void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
-				  double * fluxy, double * fluxz);
+int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map);
 int advection_bcs_wall(field_t * phi);
-int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz);
-
+int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
+			  map_t * map);
 #endif

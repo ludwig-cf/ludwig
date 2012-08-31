@@ -4,7 +4,7 @@
  *
  *  Advection boundary conditions.
  *
- *  $Id: advection_bcs.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -19,8 +19,9 @@
 #include "pe.h"
 #include "wall.h"
 #include "coords.h"
-#include "site_map.h"
-#include "field.h"
+#include "coords_field.h"
+#include "advection_s.h"
+#include "advection_bcs.h"
 
 /*****************************************************************************
  *
@@ -30,18 +31,18 @@
  *
  *****************************************************************************/
 
-void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
-				  double * fluxy, double * fluxz) {
+int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
+  int n;
   int nlocal[3];
-  int ic, jc, kc, index, n;
+  int ic, jc, kc, index, indexf;
+  int status;
 
   double mask, maskw, maske, masky, maskz;
 
-  assert(fluxe);
-  assert(fluxw);
-  assert(fluxy);
-  assert(fluxz);
+  assert(nf > 0);
+  assert(flux);
+  assert(map);
 
   coords_nlocal(nlocal);
 
@@ -49,26 +50,38 @@ void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(ic-1, jc, kc);
+	map_status(map, index, &status);
+	maskw = (status == MAP_FLUID);
 
-	mask  = (site_map_get_status_index(index)  == FLUID);
-	maske = (site_map_get_status(ic+1, jc, kc) == FLUID);
-	maskw = (site_map_get_status(ic-1, jc, kc) == FLUID);
-	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
-	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
+	index = coords_index(ic+1, jc, kc);
+	map_status(map, index, &status);
+	maske = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc+1, kc);
+	map_status(map, index, &status);
+	masky = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc, kc+1);
+	map_status(map, index, &status);
+	maskz = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	mask = (status == MAP_FLUID);
 
 	for (n = 0;  n < nf; n++) {
-	  fluxw[nf*index + n] *= mask*maskw;
-	  fluxe[nf*index + n] *= mask*maske;
-	  fluxy[nf*index + n] *= mask*masky;
-	  fluxz[nf*index + n] *= mask*maskz;
+	  coords_field_index(index, n, nf, &indexf);
+	  flux->fw[indexf] *= mask*maskw;
+	  flux->fe[indexf] *= mask*maske;
+	  flux->fy[indexf] *= mask*masky;
+	  flux->fz[indexf] *= mask*maskz;
 	}
-
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -79,10 +92,12 @@ void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
  *
  *****************************************************************************/
 
-int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz) {
-
+int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
+			  map_t * map) {
+  int n;
   int nlocal[3];
-  int ic, jc, kc, index, n;
+  int ic, jc, kc, index, indexf;
+  int status;
 
   double mask, maskx, masky, maskz;
 
@@ -90,6 +105,7 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz) {
   assert(fx);
   assert(fy);
   assert(fz);
+  assert(map);
 
   coords_nlocal(nlocal);
 
@@ -97,17 +113,27 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(ic + 1, jc, jc);
+	map_status(map, index, &status);
+	maskx = (status == MAP_FLUID);
 
-	mask  = (site_map_get_status_index(index)  == FLUID);
-	maskx = (site_map_get_status(ic+1, jc, kc) == FLUID);
-	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
-	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
+	index = coords_index(ic, jc + 1, kc);
+	map_status(map, index, &status);
+	masky = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc, kc + 1);
+	map_status(map, index, &status);
+	maskz = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	mask = (status == MAP_FLUID);
 
 	for (n = 0;  n < nf; n++) {
-	  fx[nf*index + n] *= mask*maskx;
-	  fy[nf*index + n] *= mask*masky;
-	  fz[nf*index + n] *= mask*maskz;
+	  coords_field_index(index, n, nf, &indexf);
+	  fx[indexf] *= mask*maskx;
+	  fy[indexf] *= mask*masky;
+	  fz[indexf] *= mask*maskz;
 	}
 
       }

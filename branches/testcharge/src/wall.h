@@ -15,8 +15,11 @@
 #ifndef WALL_H
 #define WALL_H
 
-void wall_init(void);
-void wall_bounce_back(void);
+#include "map.h"
+
+int wall_init(map_t * map);
+int wall_bounce_back(map_t * map);
+
 void wall_finish(void);
 void wall_update(void);
 

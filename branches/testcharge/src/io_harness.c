@@ -16,7 +16,7 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id: io_harness.c,v 1.6 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -696,6 +696,33 @@ void io_write_metadata(char * filename_stub, io_info_t * info) {
  }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  io_remove_metadata
+ *
+ *  Largely to clean up after automated tests; usually want to keep!
+ *
+ *****************************************************************************/
+
+int io_remove_metadata(io_info_t * obj, const char * file_stub) {
+
+  char subdirectory[FILENAME_MAX];
+  char filename[FILENAME_MAX];
+  char filename_io[FILENAME_MAX];
+
+  assert(obj);
+  assert(file_stub);
+
+  if (obj->io_comm->rank == 0) {
+    pe_subdirectory(subdirectory);
+    io_set_group_filename(filename, file_stub, obj);
+    sprintf(filename_io, "%s%s.meta", subdirectory, filename);
+    remove(filename_io);
+  }
+
+  return 0;
 }
 
 /*****************************************************************************

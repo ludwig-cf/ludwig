@@ -20,8 +20,6 @@
  
 #include "pe.h"
 #include "coords.h"
-#include "site_map.h"
-#include "psi.h"
 #include "psi_init.h"
 
 /*****************************************************************************
@@ -79,13 +77,15 @@ int psi_init_uniform(psi_t * obj, double rho_el) {
  *
  *****************************************************************************/
 
-int psi_init_gouy_chapman_set(psi_t * obj, double rho_el, double sigma) {
+int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
+			      double sigma) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   double rho_w, rho_i;
 
   assert(obj);
+  assert(map);
 
   coords_nlocal(nlocal);
 
@@ -117,8 +117,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, double rho_el, double sigma) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-
-	site_map_set_status(ic,jc,kc,BOUNDARY);
+	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(obj, index, 0, rho_w);
 	psi_rho_set(obj, index, 1, 0.0);
@@ -133,8 +132,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, double rho_el, double sigma) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-
-	site_map_set_status(ic,jc,kc,BOUNDARY);
+	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(obj, index, 0, rho_w);
 	psi_rho_set(obj, index, 1, 0.0);
@@ -143,7 +141,8 @@ int psi_init_gouy_chapman_set(psi_t * obj, double rho_el, double sigma) {
     }
   }
 
-  site_map_halo();
+  map_halo(map);
+  map_pm_set(map, 1);
 
   return 0;
 }

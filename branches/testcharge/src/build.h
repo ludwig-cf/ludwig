@@ -2,17 +2,24 @@
  *
  *  build.h
  *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statisitical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef _BUILD_H
-#define _BUILD_H
+#ifndef BUILD_H
+#define BUILD_H
 
 #include "field.h"
+#include "map.h"
 
-void COLL_update_links(void);
-void COLL_update_map(void);
+int build_update_links(map_t * map);
+int build_update_map(map_t * map);
 void COLL_init_coordinates(void);
 int build_remove_or_replace_fluid(field_t * fphi, field_t * fp, field_t * fq);
 

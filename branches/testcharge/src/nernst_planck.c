@@ -82,7 +82,6 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 				double * fz);
 
-
 /*****************************************************************************
  *
  *  nernst_planck_driver
@@ -90,9 +89,12 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
  *  The hydro object is allowed to be NULL, in which case there is
  *  no advection.
  *
+ *  The map object is allowed to be NULL, in which case no boundary
+ *  condition corrections are attempted.
+ *
  *****************************************************************************/
 
-int nernst_planck_driver(psi_t * psi, hydro_t * hydro) {
+int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
 
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
@@ -120,7 +122,8 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro) {
   if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
   nernst_planck_fluxes(psi, fe, fy, fz);
 
-  advective_bcs_no_flux(nk, fe, fy, fz);
+  if (map) advective_bcs_no_flux(nk, fe, fy, fz, map);
+
   nernst_planck_update(psi, fe, fy, fz);
 
   free(fz);

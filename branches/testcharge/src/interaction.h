@@ -17,10 +17,11 @@
 
 #include "hydro.h"
 #include "field.h"
+#include "map.h"
 
-void      COLL_init(void);
-int COLL_update(hydro_t * hydro, field_t * phi, field_t * p, field_t * q);
-
+int COLL_init(map_t * map);
+int COLL_update(hydro_t * hydro, map_t * map, field_t * phi, field_t * p,
+		field_t * q);
 void      colloid_gravity(double f[3]);
 void      colloid_gravity_set(const double f[3]);
 double    colloid_forces_ahmax(void);

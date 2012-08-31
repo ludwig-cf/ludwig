@@ -2,6 +2,8 @@
  *
  *  gradient_3d_7pt_solid.c
  *
+ *  Liquid Crystal tensor order parameter Q_ab.
+ *
  *  Gradient operations for 3D seven point stencil.
  *
  *                        (ic, jc+1, kc)
@@ -55,24 +57,40 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "site_map.h"
 #include "free_energy.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
 #include "gradient_3d_7pt_solid.h"
 
+static map_t * map = NULL;
+
 /* Only tensor order parameter relevant */
 
-#define NOP 5
+#define NQAB 5
 #define NITERATION 40
 
 static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
-			 double dq[NOP][3], double bc[NOP][NOP][3]);
+			 double dq[NQAB][3], double bc[NQAB][NQAB][3]);
 
 static void gradient_general(const double * field, double * grad,
 			     double * del2, const int nextra);
-static int util_gaussian(double a[NOP][NOP], double xb[NOP]);
+static int util_gaussian(double a[NQAB][NQAB], double xb[NQAB]);
 static void util_q5_to_qab(double q[3][3], const double * phi);
+
+/*****************************************************************************
+ *
+ *  gradient_3d_7pt_solid_map_set
+ *
+ *****************************************************************************/
+
+int gradient_3d_7pt_solid_map_set(map_t * map_in) {
+
+  assert(map_in);
+
+  map = map_in;
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -87,7 +105,7 @@ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
 			     double * grad, double * delsq) {
   int nextra;
 
-  assert(nop == NOP);
+  assert(nop == NQAB);
   assert(field);
   assert(grad);
   assert(delsq);
@@ -124,19 +142,20 @@ static void gradient_general(const double * field, double * grad,
 
   int str[3];
   int mask[6];
-  char status[6];
+  int index1;
+  int status[6];
 
   const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
   const int normal[6] = {X, X, Y, Y, Z, Z};
   const int nsolid[6] = {0, 1, 0, 1, 0, 1};
 
-  double gradn[NOP][3][2];                  /* Partial gradients */
+  double gradn[NQAB][3][2];                  /* Partial gradients */
   double q0[3][3];                          /* Prefered surface Q_ab */
   double qs[3][3];                          /* 'Surface' Q_ab */
-  double a[NOP][NOP];                       /* Matrix for linear system */
-  double b[NOP];                            /* RHS / unknown */
-  double dq[NOP][3];                        /* normal/tangential gradients */
-  double bc[NOP][NOP][3];                   /* Terms in boundary condition */
+  double a[NQAB][NQAB];                       /* Matrix for linear system */
+  double b[NQAB];                            /* RHS / unknown */
+  double dq[NQAB][3];                        /* normal/tangential gradients */
+  double bc[NQAB][NQAB][3];                   /* Terms in boundary condition */
   double c[6][3][3];                        /* Constant terms in BC. */
   double dn[3];                             /* Unit normal. */
   double tmp;
@@ -147,8 +166,6 @@ static void gradient_general(const double * field, double * grad,
   double kappa1;
 
   double blue_phase_q0(void);
-
-  assert(NOP == 5);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -168,38 +185,45 @@ static void gradient_general(const double * field, double * grad,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	if (site_map_get_status_index(index) != FLUID) continue;
 
-	status[0] = site_map_get_status(ic+1, jc, kc);
-	status[1] = site_map_get_status(ic-1, jc, kc);
-	status[2] = site_map_get_status(ic, jc+1, kc);
-	status[3] = site_map_get_status(ic, jc-1, kc);
-	status[4] = site_map_get_status(ic, jc, kc+1);
-	status[5] = site_map_get_status(ic, jc, kc-1);
+	map_status(map, index, status);
+	if (status[0] != MAP_FLUID) continue;
+	index1 = coords_index(ic+1, jc, kc);
+	map_status(map, index1, status + 0);
+	index1 = coords_index(ic-1, jc, kc);
+	map_status(map, index1, status + 1);
+	index1 = coords_index(ic, jc+1, kc);
+	map_status(map, index1, status + 2);
+	index1 = coords_index(ic, jc-1, kc);
+	map_status(map, index1, status + 3);
+	index1 = coords_index(ic, jc, kc+1);
+	map_status(map, index1, status + 4);
+	index1 = coords_index(ic, jc, kc-1);
+	map_status(map, index1, status + 5);
 
 	/* Set up partial gradients, and gradients */
 
-	for (n1 = 0; n1 < NOP; n1++) {
+	for (n1 = 0; n1 < NQAB; n1++) {
 	  for (ia = 0; ia < 3; ia++) {
 	    gradn[n1][ia][0] =
-	      field[NOP*(index + str[ia]) + n1] - field[NOP*index + n1];
+	      field[NQAB*(index + str[ia]) + n1] - field[NQAB*index + n1];
 	    gradn[n1][ia][1] =
-	      field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
+	      field[NQAB*index + n1] - field[NQAB*(index - str[ia]) + n1];
 	  }
 	}
 
-	for (n1 = 0; n1 < NOP; n1++) {
-	  del2[NOP*index + n1] = 0.0;
+	for (n1 = 0; n1 < NQAB; n1++) {
+	  del2[NQAB*index + n1] = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
-	    grad[3*(NOP*index + n1) + ia] = 
+	    grad[3*(NQAB*index + n1) + ia] = 
 	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
-	    del2[NOP*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	    del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
 	  }
 	}
 
 	ns = 0;
 	for (n = 0; n < 6; n++) {
-	  mask[n] = (status[n] != FLUID);
+	  mask[n] = (status[n] != MAP_FLUID);
 	  ns += mask[n];
 	}
 
@@ -207,18 +231,18 @@ static void gradient_general(const double * field, double * grad,
 
 	/* Solid boundary condition corrections are required. */
 
-	util_q5_to_qab(qs, field + NOP*index);
+	util_q5_to_qab(qs, field + NQAB*index);
 
 	for (n = 0; n < 6; n++) {
-	  if (status[n] == FLUID) continue;
+	  if (status[n] == MAP_FLUID) continue;
 
 	  colloids_q_boundary_normal(index, bcs[n], dn);
 	  colloids_q_boundary(dn, qs, q0, status[n]);
 
 	  /* Check for wall/colloid */
-	  if (status[n] == COLLOID) w = colloids_q_tensor_w();
-	  if (status[n] == BOUNDARY) w = wall_w_get();
-	  assert(status[n] == COLLOID || status[n] == BOUNDARY);
+	  if (status[n] == MAP_COLLOID) w = colloids_q_tensor_w();
+	  if (status[n] == MAP_BOUNDARY) w = wall_w_get();
+	  assert(status[n] == MAP_COLLOID || status[n] == MAP_BOUNDARY);
 
 	  /* Compute c[n][a][b] */
 
@@ -239,11 +263,11 @@ static void gradient_general(const double * field, double * grad,
 	/* Set up initial approximation to grad using partial gradients
 	 * where solid sites are involved (or zero where none available) */
 
-	for (n1 = 0; n1 < NOP; n1++) {
+	for (n1 = 0; n1 < NQAB; n1++) {
 	  for (ia = 0; ia < 3; ia++) {
 	    gradn[n1][ia][0] *= (1 - mask[2*ia]);
 	    gradn[n1][ia][1] *= (1 - mask[2*ia + 1]);
-	    grad[3*(NOP*index + n1) + ia] =
+	    grad[3*(NQAB*index + n1) + ia] =
 	      0.5*(1.0 + ((mask[2*ia] + mask[2*ia+1]) % 2))*
 	      (gradn[n1][ia][0] + gradn[n1][ia][1]);
 	  }
@@ -254,12 +278,11 @@ static void gradient_general(const double * field, double * grad,
 	for (niterate = 0; niterate < NITERATION; niterate++) {
 
 	  for (n = 0; n < 6; n++) {
+	    if (status[n] == MAP_FLUID) continue;
 
-	    if (status[n] == FLUID) continue;
-
-	    for (n1 = 0; n1 < NOP; n1++) {
+	    for (n1 = 0; n1 < NQAB; n1++) {
 	      for (ia = 0; ia < 3; ia++) {
-		dq[n1][ia] = grad[3*(NOP*index + n1) + ia];
+		dq[n1][ia] = grad[3*(NQAB*index + n1) + ia];
 
 	      }
 	      dq[n1][normal[n]] = 1.0;
@@ -269,9 +292,9 @@ static void gradient_general(const double * field, double * grad,
 
 	    gradient_bcs(kappa0, kappa1, bcs[n], dq, bc);
 
-	    for (n1 = 0; n1 < NOP; n1++) {
+	    for (n1 = 0; n1 < NQAB; n1++) {
 	      b[n1] = 0.0;
-	      for (n2 = 0; n2 < NOP; n2++) {
+	      for (n2 = 0; n2 < NQAB; n2++) {
 		a[n1][n2] = bc[n1][n2][normal[n]];
 		b[n1] -= bc[n1][n2][normal[n]];
 		for (ia = 0; ia < 3; ia++) {
@@ -288,7 +311,7 @@ static void gradient_general(const double * field, double * grad,
 
 	    util_gaussian(a, b);
 
-	    for (n1 = 0; n1 < NOP; n1++) {
+	    for (n1 = 0; n1 < NQAB; n1++) {
 	      gradn[n1][normal[n]][nsolid[n]] = b[n1];
 	    }
 	  }
@@ -297,7 +320,7 @@ static void gradient_general(const double * field, double * grad,
 
 	  for (ia = 0; ia < 3; ia++) {
 	    tmp = 1.0*(1 - (mask[2*ia] && mask[2*ia+1]));
-	    for (n1 = 0; n1 < NOP; n1++) {
+	    for (n1 = 0; n1 < NQAB; n1++) {
 	      gradn[n1][ia][0] *= tmp;
 	      gradn[n1][ia][1] *= tmp;
 	    }
@@ -305,12 +328,12 @@ static void gradient_general(const double * field, double * grad,
 
 	  /* Now recompute gradients */
 
-	  for (n1 = 0; n1 < NOP; n1++) {
-	    del2[NOP*index + n1] = 0.0;
+	  for (n1 = 0; n1 < NQAB; n1++) {
+	    del2[NQAB*index + n1] = 0.0;
 	    for (ia = 0; ia < 3; ia++) {
-	      grad[3*(NOP*index + n1) + ia] =
+	      grad[3*(NQAB*index + n1) + ia] =
 		0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
-	      del2[NOP*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	      del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
 	    }
 	  }
 
@@ -333,7 +356,7 @@ static void gradient_general(const double * field, double * grad,
  *****************************************************************************/
 
 static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
-			 double dq[NOP][3], double bc[NOP][NOP][3]) {
+			 double dq[NQAB][3], double bc[NQAB][NQAB][3]) {
 
   double kappa2;
 
@@ -449,7 +472,7 @@ static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
  *  Solve linear system via Gaussian elimination. For the problems in this
  *  file, we only need to exchange rows, ie., have a partial pivot.
  *
- *  We solve Ax = b for A[NOP][NOP].
+ *  We solve Ax = b for A[NQAB][NQAB].
  *  xb is RHS on entry, and solution on exit.
  *  A is destroyed.
  *
@@ -457,25 +480,25 @@ static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
  *
  *****************************************************************************/
 
-static int util_gaussian(double a[NOP][NOP], double xb[NOP]) {
+static int util_gaussian(double a[NQAB][NQAB], double xb[NQAB]) {
 
   int i, j, k;
   int ifail = 0;
   int iprow;
-  int ipivot[NOP];
+  int ipivot[NQAB];
 
   double tmp;
 
   iprow = -1;
-  for (k = 0; k < NOP; k++) {
+  for (k = 0; k < NQAB; k++) {
     ipivot[k] = -1;
   }
 
-  for (k = 0; k < NOP; k++) {
+  for (k = 0; k < NQAB; k++) {
 
     /* Find pivot row */
     tmp = 0.0;
-    for (i = 0; i < NOP; i++) {
+    for (i = 0; i < NQAB; i++) {
       if (ipivot[i] == -1) {
 	if (fabs(a[i][k]) >= tmp) {
 	  tmp = fabs(a[i][k]);
@@ -492,17 +515,17 @@ static int util_gaussian(double a[NOP][NOP], double xb[NOP]) {
     }
 
     tmp = 1.0 / a[iprow][k];
-    for (j = k; j < NOP; j++) {
+    for (j = k; j < NQAB; j++) {
       a[iprow][j] *= tmp;
     }
     xb[iprow] *= tmp;
 
     /* Subtract the pivot row (scaled) from remaining rows */
 
-    for (i = 0; i < NOP; i++) {
+    for (i = 0; i < NQAB; i++) {
       if (ipivot[i] == -1) {
 	tmp = a[i][k];
-	for (j = k; j < NOP; j++) {
+	for (j = k; j < NQAB; j++) {
 	  a[i][j] -= tmp*a[iprow][j];
 	}
 	xb[i] -= tmp*xb[iprow];
@@ -512,10 +535,10 @@ static int util_gaussian(double a[NOP][NOP], double xb[NOP]) {
 
   /* Now do the back substitution */
 
-  for (i = NOP - 1; i > -1; i--) {
+  for (i = NQAB - 1; i > -1; i--) {
     iprow = ipivot[i];
     tmp = xb[iprow];
-    for (k = i + 1; k < NOP; k++) {
+    for (k = i + 1; k < NQAB; k++) {
       tmp -= a[iprow][k]*xb[ipivot[k]];
     }
     xb[iprow] = tmp;

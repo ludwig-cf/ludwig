@@ -49,14 +49,13 @@
 #include "pe.h"
 #include "coords.h"
 #include "colloids.h"
-#include "site_map.h"
 #include "wall.h"
 #include "free_energy.h"
 #include "phi_force.h"
 #include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 
-static int phi_force_interpolation(hydro_t * hydro);
+static int phi_force_interpolation(hydro_t * hydro, map_t * map);
 
 /*****************************************************************************
  *
@@ -66,7 +65,7 @@ static int phi_force_interpolation(hydro_t * hydro);
  *
  *****************************************************************************/
 
-int phi_force_colloid(hydro_t * hydro) {
+int phi_force_colloid(hydro_t * hydro, map_t * map) {
 
   int required;
 
@@ -77,7 +76,7 @@ int phi_force_colloid(hydro_t * hydro) {
     phi_force_stress_allocate();
 
     phi_force_stress_compute();
-    phi_force_interpolation(hydro);
+    phi_force_interpolation(hydro, map);
 
     phi_force_stress_free();
   }
@@ -93,11 +92,13 @@ int phi_force_colloid(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static int phi_force_interpolation(hydro_t * hydro) {
+static int phi_force_interpolation(hydro_t * hydro, map_t * map) {
 
   int ia, ic, jc, kc;
   int index, index1;
   int nlocal[3];
+  int status;
+
   double pth0[3][3];
   double pth1[3][3];
   double force[3];                  /* Accumulated force on fluid */
@@ -109,6 +110,7 @@ static int phi_force_interpolation(hydro_t * hydro) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(hydro);
+  assert(map);
 
   coords_nlocal(nlocal);
 
@@ -143,17 +145,20 @@ static int phi_force_interpolation(hydro_t * hydro) {
 	    p_c->force[ia] += pth0[ia][X];
 	  }
 	}
-	else if (site_map_get_status_index(index1) == BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -pth0[ia][X];
-	    fw[ia] = pth0[ia][X];
-	  }
-	}
 	else {
-	  /* This flux is fluid-fluid */ 
-	  chemical_stress(index1, pth1);
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+	  map_status(map, index1, &status);
+	  if (status == MAP_BOUNDARY) {
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] = -pth0[ia][X];
+	      fw[ia] = pth0[ia][X];
+	    }
+	  }
+	  else {
+	    /* This flux is fluid-fluid */ 
+	    chemical_stress(index1, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+	    }
 	  }
 	}
 
@@ -167,17 +172,20 @@ static int phi_force_interpolation(hydro_t * hydro) {
 	    p_c->force[ia] -= pth0[ia][X];
 	  }
 	}
-	else if (site_map_get_status_index(index1) == BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][X];
-	    fw[ia] -= pth0[ia][X];
-	  }
-	}
 	else {
-	  /* Fluid - fluid */
-	  chemical_stress(index1, pth1);
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  map_status(map, index1, &status);
+	  if (status == MAP_BOUNDARY) {
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += pth0[ia][X];
+	      fw[ia] -= pth0[ia][X];
+	    }
+	  }
+	  else {
+	    /* Fluid - fluid */
+	    chemical_stress(index1, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+	    }
 	  }
 	}
 
@@ -191,17 +199,20 @@ static int phi_force_interpolation(hydro_t * hydro) {
 	    p_c->force[ia] += pth0[ia][Y];
 	  }
 	}
-	else if (site_map_get_status_index(index1) == BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Y];
-	    fw[ia] += pth0[ia][Y];
-	  }
-	}
 	else {
-	  /* Fluid-fluid */
-	  chemical_stress(index1, pth1);
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  map_status(map, index1, &status);
+	  if (status == MAP_BOUNDARY) {
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] -= pth0[ia][Y];
+	      fw[ia] += pth0[ia][Y];
+	    }
+	  }
+	  else {
+	    /* Fluid-fluid */
+	    chemical_stress(index1, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	    }
 	  }
 	}
 
@@ -215,17 +226,20 @@ static int phi_force_interpolation(hydro_t * hydro) {
 	    p_c->force[ia] -= pth0[ia][Y];
 	  }
 	}
-	else if (site_map_get_status_index(index1) == BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Y];
-	    fw[ia] -= pth0[ia][Y];
-	  }
-	}
 	else {
-	  /* Fluid-fluid */
-	  chemical_stress(index1, pth1);
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  map_status(map, index1, &status);
+	  if (status == MAP_BOUNDARY) {
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += pth0[ia][Y];
+	      fw[ia] -= pth0[ia][Y];
+	    }
+	  }
+	  else {
+	    /* Fluid-fluid */
+	    chemical_stress(index1, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	    }
 	  }
 	}
 	
@@ -239,17 +253,20 @@ static int phi_force_interpolation(hydro_t * hydro) {
 	    p_c->force[ia] += pth0[ia][Z];
 	  }
 	}
-	else if (site_map_get_status_index(index1) == BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Z];
-	    fw[ia] += pth0[ia][Z];
-	  }
-	}
 	else {
-	  /* Fluid-fluid */
-	  chemical_stress(index1, pth1);
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  map_status(map, index1, &status);
+	  if (status == MAP_BOUNDARY) {
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] -= pth0[ia][Z];
+	      fw[ia] += pth0[ia][Z];
+	    }
+	  }
+	  else {
+	    /* Fluid-fluid */
+	    chemical_stress(index1, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	    }
 	  }
 	}
 
@@ -263,17 +280,20 @@ static int phi_force_interpolation(hydro_t * hydro) {
 	    p_c->force[ia] -= pth0[ia][Z];
 	  }
 	}
-	else if (site_map_get_status_index(index1) == BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Z];
-	    fw[ia] -= pth0[ia][Z];
-	  }
-	}
 	else {
-	  /* Fluid-fluid */
-	  chemical_stress(index1, pth1);
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  map_status(map, index1, &status);
+	  if (status == MAP_BOUNDARY) {
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += pth0[ia][Z];
+	      fw[ia] -= pth0[ia][Z];
+	    }
+	  }
+	  else {
+	    /* Fluid-fluid */
+	    chemical_stress(index1, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	    }
 	  }
 	}
 

@@ -41,10 +41,9 @@
 #include "distribution_rt.h"
 #include "collision_rt.h"
 
+#include "map.h"
 #include "wall.h"
 #include "interaction.h"
-
-#include "site_map.h"
 #include "physics.h"
 
 #include "hydro_rt.h"
@@ -83,7 +82,6 @@
 #include "subgrid.h"
 
 #include "advection_rt.h"
-#include "site_map_rt.h"
 
 /* Electrokinetics */
 #include "psi.h"
@@ -118,11 +116,13 @@ struct ludwig_s {
   field_grad_t * p_grad;    /* Gradients for p */
   field_grad_t * q_grad;    /* Gradients for q */
   psi_t * psi;              /* Electrokinetics */
+  map_t * map;              /* Site map for fluid/solid status etc. */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
-static void ludwig_report_momentum(void);
+static int ludwig_report_momentum(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
+int map_init_rt(map_t ** map);
 int symmetric_rt_initial_conditions(field_t * phi);
 int symmetric_init_drop(field_t * fphi, double radius, double xi0);
 
@@ -163,11 +163,11 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   distribution_run_time();
   collision_run_time();
-  site_map_run_time();
+  map_init_rt(&ludwig->map);
 
   ran_init();
 
-  psi_init_rt(&ludwig->psi);
+  psi_init_rt(&ludwig->psi, ludwig->map);
   hydro_rt(&ludwig->hydro);
 
   /* PHI I/O */
@@ -205,8 +205,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Can we move this down to t = 0 initialisation? */
   if (ludwig->phi) symmetric_rt_initial_conditions(ludwig->phi);
 
-  wall_init();
-  COLL_init();
+  wall_init(ludwig->map);
+  COLL_init(ludwig->map);
 
   /* NOW INITIAL CONDITIONS */
 
@@ -251,9 +251,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* gradient initialisation for field stuff */
-  if (ludwig->phi) gradient_rt_init(ludwig->phi_grad);
-  if (ludwig->p) gradient_rt_init(ludwig->p_grad);
-  if (ludwig->q) gradient_rt_init(ludwig->q_grad);
+
+  if (ludwig->phi) gradient_rt_init(ludwig->phi_grad, ludwig->map);
+  if (ludwig->p) gradient_rt_init(ludwig->p_grad, ludwig->map);
+  if (ludwig->q) gradient_rt_init(ludwig->q_grad, ludwig->map);
 
   stats_rheology_init();
   stats_turbulent_init();
@@ -328,14 +329,15 @@ void ludwig_run(const char * inputfile) {
   pe_subdirectory(subdirectory);
 
   info("Initial conditions.\n");
-  stats_distribution_print();
+
+  stats_distribution_print(ludwig->map);
 
   if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
-  if (ludwig->phi) stats_field_info(ludwig->phi);
-  if (ludwig->p)   stats_field_info(ludwig->p);
-  if (ludwig->q)   stats_field_info(ludwig->q);
+  if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
+  if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
+  if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
   if (ludwig->psi) psi_stats_info(ludwig->psi);
-  ludwig_report_momentum();
+  ludwig_report_momentum(ludwig);
 
   /* Main time stepping loop */
 
@@ -348,8 +350,7 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_STEPS);
     step = get_step();
     if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
-
-    COLL_update(ludwig->hydro, ludwig->phi, ludwig->p, ludwig->q);
+    COLL_update(ludwig->hydro, ludwig->map, ludwig->phi, ludwig->p, ludwig->q);
 
     /* Electrokinetics */
 
@@ -362,7 +363,7 @@ void ludwig_run(const char * inputfile) {
       psi_halo_rho(ludwig->psi);
       /* u halo should not be repeated if phi active... */ 
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
-      nernst_planck_driver(ludwig->psi, ludwig->hydro);
+      nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
     }
 
     /* Order parameter */
@@ -401,19 +402,20 @@ void ludwig_run(const char * inputfile) {
 	phi_force_calculation(ludwig->phi, ludwig->hydro);
       }
       else {
-	phi_force_colloid(ludwig->hydro);
+	phi_force_colloid(ludwig->hydro, ludwig->map);
       }
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro);
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
-      if (ludwig->q) blue_phase_beris_edwards(ludwig->q, ludwig->hydro);
+      if (ludwig->q) blue_phase_beris_edwards(ludwig->q, ludwig->hydro,
+					      ludwig->map);
     }
 
     /* Collision stage */
 
     TIMER_start(TIMER_COLLIDE);
-    collide(ludwig->hydro);
+    collide(ludwig->hydro, ludwig->map);
     TIMER_stop(TIMER_COLLIDE);
 
     model_le_apply_boundary_conditions();
@@ -432,7 +434,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_BBL);
       wall_update();
       bounce_back_on_links();
-      wall_bounce_back();
+      wall_bounce_back(ludwig->map);
       TIMER_stop(TIMER_BBL);
     }
 
@@ -522,24 +524,25 @@ void ludwig_run(const char * inputfile) {
     /* Print progress report */
 
     if (is_statistics_step()) {
+      stats_distribution_print(ludwig->map);
 
-      stats_distribution_print();
       if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
-      if (ludwig->phi) stats_field_info(ludwig->phi);
-      if (ludwig->p)   stats_field_info(ludwig->p);
-      if (ludwig->q)   stats_field_info(ludwig->q);
-      stats_free_energy_density(ludwig->q);
+      if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
+      if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
+      if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
+      stats_free_energy_density(ludwig->q, ludwig->map);
       if (ludwig->psi) {
 	psi_stats_info(ludwig->psi);
       }
-      ludwig_report_momentum();
-      if (ludwig->hydro) stats_velocity_minmax(ludwig->hydro);
+      ludwig_report_momentum(ludwig);
+      if (ludwig->hydro) stats_velocity_minmax(ludwig->hydro, ludwig->map);
 
-      test_isothermal_fluctuations();
+      collision_stats_kt(ludwig->map);
+
       info("\nCompleted cycle %d\n", step);
     }
 
-    stats_calibration_accumulate(step, ludwig->hydro);
+    stats_calibration_accumulate(step, ludwig->hydro, ludwig->map);
 
     /* Next time step */
   }
@@ -602,7 +605,7 @@ void ludwig_run(const char * inputfile) {
  *
  *****************************************************************************/
 
-static void ludwig_report_momentum(void) {
+static int ludwig_report_momentum(ludwig_t * ludwig) {
 
   int n;
 
@@ -618,7 +621,7 @@ static void ludwig_report_momentum(void) {
     gwall[n] = 0.0;
   }
 
-  stats_distribution_momentum(g);
+  stats_distribution_momentum(ludwig->map, g);
   stats_colloid_momentum(gc);
   if (wall_present()) wall_net_momentum(gwall);
 
@@ -637,7 +640,7 @@ static void ludwig_report_momentum(void) {
     info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
 
-  return;
+  return 0;
 }
 
 /******************************************************************************
@@ -896,6 +899,63 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       fatal("Please check and try again.\n");
     }
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  map_init_rt
+ *
+ *  Could do more work trapping duff input keys.
+ *
+ *****************************************************************************/
+
+int map_init_rt(map_t ** pmap) {
+
+  int is_porous_media = 0;
+  int ndata = 0;
+  int form_in = IO_FORMAT_DEFAULT;
+  int form_out = IO_FORMAT_DEFAULT;
+  int grid[3] = {1, 1, 1};
+
+  char status[BUFSIZ] = "";
+  char format[BUFSIZ] = "";
+  char filename[FILENAME_MAX];
+
+  io_info_t * iohandler = NULL;
+  map_t * map = NULL;
+
+  is_porous_media = RUN_get_string_parameter("porous_media_file", filename,
+					     FILENAME_MAX);
+  if (is_porous_media) {
+
+    RUN_get_string_parameter("porous_media_type", status, BUFSIZ);
+
+    if (strcmp(status, "status_only") == 0) ndata = 0;
+    if (strcmp(status, "status_with_h") == 0) ndata = 1;
+
+    RUN_get_string_parameter("porous_media_format", format, BUFSIZ);
+
+    if (strcmp(format, "ASCII") == 0) form_in = IO_FORMAT_ASCII_SERIAL;
+    if (strcmp(format, "BINARY") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
+
+    info("\n");
+    info("Porous media\n");
+    info("------------\n");
+    info("Porous media file requested:  %s\n", filename);
+    info("Porous media file type:       %s\n", status);
+    info("Porous media format (serial): %s\n", format);
+  }
+
+  map_create(ndata, &map);
+  map_init_io_info(map, grid, form_in, form_out);
+  map_io_info(map, &iohandler);
+
+  if (is_porous_media) io_read_data(iohandler, filename, map);
+  map_halo(map);
+
+  *pmap = map;
 
   return 0;
 }

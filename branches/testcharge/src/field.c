@@ -129,7 +129,7 @@ int field_init(field_t * obj, int nhcomm) {
   /* MPI datatypes for halo */
 
   obj->nhcomm = nhcomm;
-  coords_field_init_mpi_indexed(obj->nf, obj->halo);
+  coords_field_init_mpi_indexed(obj->nhcomm, obj->nf, MPI_DOUBLE, obj->halo);
 
   return 0;
 }
@@ -205,7 +205,7 @@ int field_halo(field_t * obj) {
 
   assert(obj);
   assert(obj->data);
-  coords_field_halo(obj->nf, obj->data, obj->halo);
+  coords_field_halo(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE, obj->halo);
 
   return 0;
 }

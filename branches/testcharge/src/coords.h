@@ -39,6 +39,7 @@ void   coords_nlocal(int n[3]);
 void   coords_nlocal_offset(int n[3]);
 void   coords_nhalo_set(const int nhalo);
 int    coords_nhalo(void);
+int    coords_ntotal(int ntotal[3]);
 void   coords_ntotal_set(const int n[3]);
 void   coords_decomposition_set(const int p[3]);
 void   coords_reorder_set(const int);

@@ -2,7 +2,7 @@
  *
  *  io_harness.h
  *
- *  $Id: io_harness.h,v 1.2 2008-08-24 16:55:42 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -49,7 +49,8 @@ void io_read(char *, io_info_t *);
 void io_write(char *, io_info_t *);
 void io_write_metadata(char *, io_info_t *);
 
-int io_remove(char *, io_info_t *);
+int io_remove(char * filename_stub, io_info_t * obj);
+int io_remove_metadata(io_info_t * obj, const char * file_stub);
 int io_info_format_set(io_info_t * obj, int form_in, int form_out); 
 int io_info_format_in_set(io_info_t * obj, int form_in); 
 int io_info_format_out_set(io_info_t * obj, int form_out); 

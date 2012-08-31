@@ -16,9 +16,10 @@
 #define STATS_CALIBRATION_H
 
 #include "hydro.h"
+#include "map.h"
 
 void stats_calibration_init(int nswitch);
-int  stats_calibration_accumulate(int ntimestep, hydro_t * hydro);
+int  stats_calibration_accumulate(int ntimestep, hydro_t * hydro, map_t * map);
 void stats_calibration_finish(void);
 
 #endif

@@ -22,17 +22,15 @@
 #include "util.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "site_map.h"
-
 #include "colloids_Q_tensor.h"
 #include "advection.h"
 #include "advection_bcs.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
-#include "field.h"
 #include "advection_s.h"
 
-static int blue_phase_be_update(field_t * fq, hydro_t * hydro, advflux_t * f);
+static int blue_phase_be_update(field_t * fq, hydro_t * hydro, advflux_t * f,
+				map_t * map);
 static double Gamma_;     /* Collective rotational diffusion constant */
 
 
@@ -47,12 +45,13 @@ static double Gamma_;     /* Collective rotational diffusion constant */
  *
  *****************************************************************************/
 
-int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro) {
+int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map) {
 
   int nf;
   advflux_t * flux = NULL;
 
   assert(fq);
+  assert(map);
 
   /* Set up advective fluxes (which default to zero),
    * work out the hydrodynmaic stuff if required, and do the update. */
@@ -64,14 +63,15 @@ int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro) {
 
   if (hydro) {
     hydro_u_halo(hydro); /* Can move this to main to make more obvious? */
-    colloids_fix_swd(hydro);
+    colloids_fix_swd(hydro, map);
+
     hydro_lees_edwards(hydro);
 
     advection_x(flux, hydro, fq);
-    advection_bcs_no_normal_flux(nf, flux->fe, flux->fw, flux->fy, flux->fz);
+    advection_bcs_no_normal_flux(nf, flux, map);
   }
 
-  blue_phase_be_update(fq, hydro, flux);
+  blue_phase_be_update(fq, hydro, flux, map);
   advflux_free(flux);
 
   return 0;
@@ -79,7 +79,7 @@ int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro) {
 
 /*****************************************************************************
  *
- *  blue_phase_be_update_fluid
+ *  blue_phase_be_update
  *
  *  Update q via Euler forward step. Note here we only update the
  *  5 independent elements of the Q tensor.
@@ -93,12 +93,13 @@ int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro) {
  *****************************************************************************/
 
 static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
-				advflux_t * flux) {
+				advflux_t * flux, map_t * map) {
   int ic, jc, kc;
   int ia, ib, id;
   int index, indexj, indexk;
   int nlocal[3];
   int nf;
+  int status;
 
   double q[3][3];
   double w[3][3];
@@ -113,6 +114,7 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
 
   assert(fq);
   assert(flux);
+  assert(map);
 
   coords_nlocal(nlocal);
   field_nf(fq, &nf);
@@ -132,7 +134,8 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
 
 	index = le_site_index(ic, jc, kc);
 
-	if (site_map_get_status_index(index) != FLUID) continue;
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	field_tensor(fq, index, q);
 	blue_phase_molecular_field(index, h);

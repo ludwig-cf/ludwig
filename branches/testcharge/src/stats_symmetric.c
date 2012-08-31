@@ -20,9 +20,8 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "site_map.h"
 #include "symmetric.h"
-#include "field_grad.h"
+#include "stats_symmetric.h"
 
 /*****************************************************************************
  *
@@ -35,12 +34,14 @@
  *
  *****************************************************************************/
 
-int stats_symmetric_length(field_grad_t * phi_grad, int timestep) {
+int stats_symmetric_length(field_grad_t * phi_grad, map_t * map,
+			   int timestep) {
 
 #define NSTAT 7
 
   int ic, jc, kc, index, ia;
   int nlocal[3];
+  int status;
 
   double a, b;                          /* Free energy parameters */
   double xi0;                           /* interfacial width */
@@ -60,6 +61,7 @@ int stats_symmetric_length(field_grad_t * phi_grad, int timestep) {
   MPI_Comm comm;
 
   assert(phi_grad);
+  assert(map);
 
   coords_nlocal(nlocal);
   comm = pe_comm();
@@ -77,8 +79,8 @@ int stats_symmetric_length(field_grad_t * phi_grad, int timestep) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-
-	if (site_map_get_status_index(index) != FLUID) continue;
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	field_grad_scalar_grad(phi_grad, index, dphi);
 

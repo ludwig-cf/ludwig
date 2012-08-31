@@ -40,7 +40,7 @@
  *
  *****************************************************************************/
 
-int gradient_rt_init(field_grad_t * grad) {
+int gradient_rt_init(field_grad_t * grad, map_t * map) {
 
   int n;
   char keyvalue[BUFSIZ];
@@ -77,6 +77,8 @@ int gradient_rt_init(field_grad_t * grad) {
       info("3d_7pt_solid\n");
       f2 = gradient_3d_7pt_solid_d2;
       f4 = NULL;
+      assert(map);
+      gradient_3d_7pt_solid_map_set(map);
     }
     else if (strcmp(keyvalue, "3d_27pt_fluid") == 0) {
       info("3d_27pt_fluid\n");
@@ -87,6 +89,8 @@ int gradient_rt_init(field_grad_t * grad) {
       info("3d_27pt_solid\n");
       f2 = gradient_3d_27pt_solid_d2;
       f4 = NULL;
+      assert(map);
+      gradient_3d_27pt_solid_map_set(map);
     }
     else {
       /* Not recognised */
@@ -99,4 +103,3 @@ int gradient_rt_init(field_grad_t * grad) {
 
   return 0;
 }
-

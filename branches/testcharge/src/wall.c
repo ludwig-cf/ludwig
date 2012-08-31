@@ -27,7 +27,6 @@
 #include "model.h"
 #include "util.h"
 #include "wall.h"
-#include "site_map.h"
 #include "runtime.h"
 
 typedef struct B_link_struct B_link;
@@ -49,8 +48,9 @@ static double fnet_[3];              /* Accumulated net force on walls */
 static double lubrication_rcnormal_; /* Wall normal lubrication cut off */
 
 static B_link * allocate_link(void);
-static void     init_links(void);
-static void     init_boundary_site_map(void);
+
+static int wall_init_links(map_t * map);
+static int wall_init_boundary_site_map(map_t * map);
 static void     init_boundary_speeds(const double, const double);
 static void     set_wall_velocity(void);
 static void     wall_shear_init(double utop, double ubottom);
@@ -62,10 +62,11 @@ static void     wall_checks(void);
  *
  ****************************************************************************/
 
-void wall_init(void) {
+int wall_init(map_t * map) {
 
   int init_shear = 0;
   int ntotal;
+  int porous_media = 0;
   double ux_bottom = 0.0;
   double ux_top = 0.0;
   double rc = 0.0;
@@ -88,8 +89,9 @@ void wall_init(void) {
     info("--------------\n");
 
     wall_checks();
-    init_boundary_site_map();
-    init_links();
+    wall_init_boundary_site_map(map);
+    wall_init_links(map);
+
     init_boundary_speeds(ux_bottom, ux_top);
     lubrication_rcnormal_ = rc;
 
@@ -110,11 +112,19 @@ void wall_init(void) {
     info("Boundary shear initialise:       %d\n", init_shear);
   }
 
+  /* Porous media, fixed walls. */
+  map_pm(map, &porous_media);
+  if (porous_media) {
+    wall_init_links(map);
+    MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
+    info("Wall boundary links allocated:  %d\n", ntotal);
+  }
+
   fnet_[X] = 0.0;
   fnet_[Y] = 0.0;
   fnet_[Z] = 0.0;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -235,15 +245,18 @@ void wall_finish() {
  *
  *****************************************************************************/
 
-void wall_bounce_back(void) {
+int wall_bounce_back(map_t * map) {
 
   B_link * p_link;
   int      i, j, ij, ji, ia;
   int      n, ndist;
-  char     status;
+  int     status;
+
   double   rho, cdotu;
   double   fp;
   double   force;
+
+  assert(map);
 
   p_link = link_list_;
   ndist = distribution_ndist();
@@ -256,10 +269,9 @@ void wall_bounce_back(void) {
     ji = NVEL - ij;   /* Opposite direction index */
 
     cdotu = cv[ij][X]*p_link->ux;
+    map_status(map, i, &status);
 
-    status = site_map_get_status_index(i);
-
-    if (status == COLLOID) {
+    if (status == MAP_COLLOID) {
 
       /* This matches the momentum exchange in colloid BBL. */
       /* This only affects the accounting (via anomaly, as below) */
@@ -298,25 +310,28 @@ void wall_bounce_back(void) {
     p_link = p_link->next;
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  init_links
+ *  wall_init_links
  *
  *  Look at the site map to determine fluid (strictly, non-solid)
  *  to solid links. Set once at the start of execution.
  *
  ****************************************************************************/
 
-static void init_links() {
+static int wall_init_links(map_t * map) {
 
-  int ic, jc, kc;
+  int ic, jc, kc, index;
   int ic1, jc1, kc1, p;
   int n[3];
+  int status;
 
   B_link * tmp;
+
+  assert(map);
 
   coords_nlocal(n);
 
@@ -324,7 +339,9 @@ static void init_links() {
     for (jc = 1; jc <= n[Y]; jc++) {
       for (kc = 1; kc <= n[Z]; kc++) {
 
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
+	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	/* Look for non-solid -> solid links */
 
@@ -333,8 +350,10 @@ static void init_links() {
 	  ic1 = ic + cv[p][X];
 	  jc1 = jc + cv[p][Y];
 	  kc1 = kc + cv[p][Z];
+	  index = coords_index(ic1, jc1, kc1);
+	  map_status(map, index, &status);
 
-	  if (site_map_get_status(ic1, jc1, kc1) == BOUNDARY) {
+	  if (status == MAP_BOUNDARY) {
 
 	    /* Add a link to head of the list */
 
@@ -354,24 +373,26 @@ static void init_links() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  init_boundary_site_map
+ *  wall_init_boundary_site_map
  *
  *  Set the site map to BOUNDARY for the boundary walls.
  *
  *****************************************************************************/
 
-static void init_boundary_site_map() {
+static int wall_init_boundary_site_map(map_t * map) {
 
-  int ic, jc, kc;
+  int ic, jc, kc, index;
   int ic_global, jc_global, kc_global;
   int nlocal[3];
   int noffset[3];
   int nextra;
+
+  assert(map);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -389,19 +410,22 @@ static void init_boundary_site_map() {
 
 	if (is_boundary_[Z]) {
 	  if (kc_global == 0 || kc_global == N_total(Z) + 1) {
-	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	    index = coords_index(ic, jc, kc);
+	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 
 	if (is_boundary_[Y]) {
 	  if (jc_global == 0 || jc_global == N_total(Y) + 1) {
-	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	    index = coords_index(ic, jc, kc);
+	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 
 	if (is_boundary_[X]) {
 	  if (ic_global == 0 || ic_global == N_total(X) + 1) {
-	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	    index = coords_index(ic, jc, kc);
+	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 	/* next site */
@@ -409,7 +433,7 @@ static void init_boundary_site_map() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /****************************************************************************

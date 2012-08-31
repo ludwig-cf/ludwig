@@ -7,6 +7,13 @@
  *  At the moment the number of species is set to 2 automatically
  *  if the electrokinetics is switched on.
  *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -16,12 +23,11 @@
 
 #include "pe.h"
 #include "runtime.h"
-#include "psi.h"
 #include "psi_rt.h"
 #include "psi_init.h"
 #include "io_harness.h"
 
-static int psi_do_init(psi_t ** obj);
+static int psi_do_init(psi_t ** obj, map_t * map);
 
 /*****************************************************************************
  *
@@ -29,7 +35,7 @@ static int psi_do_init(psi_t ** obj);
  *
  *****************************************************************************/
 
-int psi_init_rt(psi_t ** pobj) {
+int psi_init_rt(psi_t ** pobj, map_t * map) {
 
   int eswitch =  0;
   char str[BUFSIZ];
@@ -45,7 +51,7 @@ int psi_init_rt(psi_t ** pobj) {
   info("-----------------------------------\n");
   info("Electrokinetics: %s\n", (eswitch) ? "on" : "off");
 
-  if (eswitch) psi_do_init(pobj);
+  if (eswitch) psi_do_init(pobj, map);
 
   return 0;
 }
@@ -54,9 +60,12 @@ int psi_init_rt(psi_t ** pobj) {
  *
  *  psi_do_init
  *
+ *  The map object may be NULL, as it is only used in Gouy-Chapman,
+ *  in which case it must be avilable.
+ *
  *****************************************************************************/
 
-static int psi_do_init(psi_t ** pobj) {
+static int psi_do_init(psi_t ** pobj, map_t * map) {
 
   psi_t * obj = NULL; 
 
@@ -160,7 +169,7 @@ static int psi_do_init(psi_t ** pobj) {
     if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
     info("Initial condition sigma: %14.7e\n", sigma);
 
-    psi_init_gouy_chapman_set(obj, rho_el, sigma);
+    psi_init_gouy_chapman_set(obj, map, rho_el, sigma);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {

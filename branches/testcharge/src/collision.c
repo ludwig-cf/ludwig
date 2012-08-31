@@ -29,7 +29,6 @@
 #include "coords.h"
 #include "physics.h"
 #include "model.h"
-#include "site_map.h"
 #include "collision.h"
 #include "fluctuations.h"
 
@@ -52,9 +51,8 @@ static double noise_var[NVEL];  /* Noise variances */
 
 static fluctuations_t * fl_;
 
-static int collision_multirelaxation(hydro_t * hydro);
-static int collision_binary_lb(hydro_t * hydro);
-
+static int collision_mrt(hydro_t * hydro, map_t * map);
+static int collision_binary_lb(hydro_t * hydro, map_t * map);
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
        void collision_fluctuations(int index, double shat[3][3],
 				   double ghat[NVEL]);
@@ -72,17 +70,18 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
  * 
  *****************************************************************************/
 
-int collide(hydro_t * hydro) {
+int collide(hydro_t * hydro, map_t * map) {
 
   int ndist;
 
   if (hydro == NULL) return 0;
+  assert(map);
 
   ndist = distribution_ndist();
   collision_relaxation_times_set();
 
-  if (ndist == 1 || is_propagation_ode() == 1) collision_multirelaxation(hydro);
-  if (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb(hydro);
+  if (ndist == 1 || is_propagation_ode() == 1) collision_mrt(hydro, map);
+  if (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb(hydro, map);
 
   return 0;
 }
@@ -106,13 +105,14 @@ int collide(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-int collision_multirelaxation(hydro_t * hydro) {
+int collision_mrt(hydro_t * hydro, map_t * map) {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       ia, ib;                  /* indices ("alphabeta") */
   int       ndist;
+  int       status;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -131,6 +131,7 @@ int collision_multirelaxation(hydro_t * hydro) {
   double    f[NVEL];
 
   assert(hydro);
+  assert(map);
 
   ndist = distribution_ndist();
   coords_nlocal(N);
@@ -147,8 +148,9 @@ int collision_multirelaxation(hydro_t * hydro) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	/* Compute all the modes */
 
@@ -309,13 +311,14 @@ int collision_multirelaxation(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-int collision_binary_lb(hydro_t * hydro) {
+int collision_binary_lb(hydro_t * hydro, map_t * map) {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
   int       ndist;
+  int       status;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -348,6 +351,7 @@ int collision_binary_lb(hydro_t * hydro) {
 
   assert (NDIM == 3);
   assert(hydro);
+  assert(map);
 
   ndist = distribution_ndist();
   coords_nlocal(N);
@@ -364,8 +368,9 @@ int collision_binary_lb(hydro_t * hydro) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
 
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
 	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID);
 
 	/* Compute all the modes */
 
@@ -565,25 +570,27 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]) {
 
 /*****************************************************************************
  *
- *  test_isothermal_fluctuations
+ *  collision_stats_kt
  *
  *  Reports the equipartition of momentum, and the actual temperature
  *  cf. the expected (input) temperature.
  *
  *****************************************************************************/
 
-void test_isothermal_fluctuations(void) {
+int collision_stats_kt(map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   int n;
+  int status;
 
   double glocal[4];
   double gtotal[4];
   double rrho;
   double gsite[3];
 
-  if (isothermal_fluctuations_ == 0) return;
+  if (isothermal_fluctuations_ == 0) return 0;
+  assert(map);
 
   coords_nlocal(nlocal);
 
@@ -597,7 +604,8 @@ void test_isothermal_fluctuations(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	if (site_map_get_status_index(index) != FLUID) continue;
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	rrho = 1.0/distribution_zeroth_moment(index, 0);
 	distribution_first_moment(index, 0, gsite);
@@ -628,7 +636,7 @@ void test_isothermal_fluctuations(void) {
   info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z],
        get_kT()*NDIM);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
