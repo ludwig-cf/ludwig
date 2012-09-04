@@ -21,7 +21,7 @@
 %  Add 'draft' option to mark overfull boxes with black boxes
 %  Add 'showpacs' option to make PACS codes appear
 %  Add 'showkeys' option to make keywords appear
-\documentclass[aps,pre,reprint,superscriptaddress]{revtex4}
+\documentclass[aps,pre,reprint,superscriptaddress, twocolumn]{revtex4}
 %\documentclass[aps,pre,preprint,superscriptaddress]{revtex4}
 %\documentclass[aps,prl,reprint,groupedaddress]{revtex4}
 
@@ -187,7 +187,8 @@ characterizes the local degree of orientational order.
 The thermodynamic properties of the liquid crystal are determined by a free energy
 ${\cal F}$, whose density $f$ consists of a bulk contribution $f_b$ and a gradient part $f_g$, as follows,
 \begin{eqnarray}
-f_b&=&\frac{A_0}{2}\left(1-\frac{\gamma}{3}\right) Q_{\alpha \beta}^2-\frac{A_0 \gamma}{3}Q_{\alpha \beta} Q_{\beta \gamma} Q_{\gamma \alpha}+\frac{A_0 \gamma}{4}(Q_{\alpha \beta}^2)^2,\nonumber\\
+f_b&=&\frac{A_0}{2}\left(1-\frac{\gamma}{3}\right) Q_{\alpha \beta}^2\nonumber\\
+&-&\frac{A_0 \gamma}{3}Q_{\alpha \beta} Q_{\beta \gamma} Q_{\gamma \alpha}+\frac{A_0 \gamma}{4}(Q_{\alpha \beta}^2)^2,\nonumber\\
 f_g&=&\frac{K}{2}(\varepsilon_{\alpha\gamma\delta} \partial_\gamma Q_{\delta\beta}+2 q_0 Q_{\alpha \beta})^2+\frac{K}{2}(\partial_\beta Q_{\alpha \beta})^2.\label{FE}
 \end{eqnarray}
 The first term contains the bulk-free energy constant $A_0$ and the inverse temperature $\gamma$ which controls the magnitude of order.
@@ -205,15 +206,15 @@ which are given by
 The dynamical evolution of the order parameter is given by the equation 
 \begin{equation}
 \left(\partial_t+ u_\alpha \partial_\alpha \right){\mathbf Q} - {\mathbf S}({\mathbf W},{\mathbf Q}) = \Gamma {\mathbf H}.
-\label{eqn2}
+\label{op-eom}
 \end{equation}
-The first term on the left hand side of Eq.\ref{eqn2} is a material derivative, which describes the rate of change of a quantity moving along with the flow.
+The first term on the left hand side of Eq.\ref{op-eom} is a material derivative, which describes the rate of change of a quantity moving along with the flow.
 The second term accounts for the rate of change due to local velocity gradients $W_{\alpha \beta}=\partial_\beta u_\alpha$,
 \begin{eqnarray}
 {\mathbf S}({\mathbf W}, {\mathbf Q}) &=& (\xi {\mathbf A} + {\boldsymbol \Omega})({\mathbf Q}+\frac{\mathbf I}{3})\nonumber\\
 & &\hspace*{-1.5cm}+ ({\mathbf Q}+\frac{\mathbf I}{3})(\xi {\mathbf A}  - {\boldsymbol \Omega})-2 \xi ({\mathbf Q}+\frac{\mathbf I}{3})
 \mathrm{Tr}({\mathbf Q W}),
-\label{eqn3}
+\label{sw}
 \end{eqnarray}
 where $\mathrm{Tr}$ denotes the tensorial trace, while 
 ${\mathbf A}=({\mathbf W}+{\mathbf W}^T)/2$ and
@@ -225,9 +226,9 @@ ${\mathbf H}$ is the molecular field, which is a functional derivative of $\cal 
 \begin{equation}
 {\bf H}=-\frac{\delta {\cal F}}{\delta {\bf Q}}+\frac{\bf I}{3}\,
 \mathrm{Tr} \left(\frac{\delta {\cal F}}{\delta {\bf Q}}\right).
-\label{eqn4}
+\label{molfield}
 \end{equation}
-The rotational diffusion constant $\Gamma$ in Eq.~\ref{eqn2} is proportional
+The rotational diffusion constant $\Gamma$ in Eq.~\ref{op-eom} is proportional
 to the inverse of the rotational viscosity $\gamma_1=2 q_s^2/\Gamma$
 \cite{deGennes}.
 
@@ -237,35 +238,45 @@ $\partial_t \rho = -\partial_\alpha(\rho u_\alpha)$, and
 the following Navier-Stokes equation:
 \begin{eqnarray}
 \partial_t u_\alpha +\rho \,u_\beta \partial_\beta u_\alpha
-= \partial_\beta \Pi_{\alpha \beta}
-+\eta\, \partial_\beta \{ \partial_\alpha u_\beta + \partial_\beta u_\alpha
+&=& \partial_\beta \Pi_{\alpha \beta}+ \eta\, \partial_\beta \{ \partial_\alpha u_\beta \nonumber\\
+& &\hspace*{-1.5cm} +\; \partial_\beta u_\alpha
 +(1+3\frac{\partial P_0}{\partial\rho} )\partial_\mu u_\mu \delta_{\alpha \beta}\}. 
-\label{eqn6}
+\label{NSE}
 \end{eqnarray}
-The final term in Eq.~\ref{eqn6} arises from the Chapman-Enskog expansion
+The final term in Eq.~\ref{NSE} arises from the Chapman-Enskog expansion
 of the LB equations \cite{Denniston:2001}.
 At low flow rates the fluid can be considered as incompressible, so that the
-last term on the right hand side of Eq.~\ref{eqn6} remains small.
+last term on the right hand side of Eq.~\ref{NSE} remains small.
 $\eta$ is an isotropic background viscosity which is set to $\eta=0.8333$ in LBU.
 The pressure tensor reads explicitly
 \begin{eqnarray}
 \Pi_{\alpha \beta}&=&P_0 \delta_{\alpha\beta}
--\xi H_{\alpha \gamma}\left(Q_{\gamma \beta} +\frac{1}{3} \delta_{\gamma \beta}\right)-\xi \left(Q_{\alpha \gamma} +\frac{1}{3} \delta_{\alpha \gamma}\right) H_{\gamma \beta}\nonumber\\
-&+& 2 \xi  \left(Q_{\alpha \beta} +\frac{1}{3} \delta_{\alpha \beta}\right) Q_{\gamma \nu} H_{\gamma \nu}-\partial_\alpha Q_{\gamma \nu} \frac{\delta{\cal F}}{\delta \partial_{\beta} Q_{\gamma \nu}}\nonumber\\
-&+&Q_{\alpha \gamma}H_{\gamma \beta}-H_{\alpha \gamma} Q_{\gamma \beta}.
-\label{eqn7}
+-\xi H_{\alpha \gamma}\left(Q_{\gamma \beta} +\frac{1}{3} \delta_{\gamma \beta}\right)\nonumber\\
+&-&\xi \left(Q_{\alpha \gamma} +\frac{1}{3} \delta_{\alpha \gamma}\right) H_{\gamma \beta} + Q_{\alpha \gamma}H_{\gamma \beta}-H_{\alpha \gamma} Q_{\gamma \beta} \nonumber\\
+&+&2 \xi  \left(Q_{\alpha \beta} +\frac{1}{3} \delta_{\alpha \beta}\right) Q_{\gamma \nu} H_{\gamma \nu}
+- \partial_\alpha Q_{\gamma \nu} \frac{\delta{\cal F}}{\delta \partial_{\beta} Q_{\gamma \nu}}\nonumber\\
+\label{Pi}
 \end{eqnarray}
-In the isotropic state ${\bf Q}\equiv 0$ and Eq.\ref{eqn7} is reduced to the
+In the isotropic state ${\bf Q}\equiv 0$ and Eq.\ref{Pi} is reduced to the
 scalar pressure which, in a system at rest, is constant to a very good
 approximation.
- 
-The system of coupled partial differential equations Eqs.~\ref{eqn2}
-and~\ref{eqn6} is solved by means of a
+
+The spectrum $X_\omega$ of the deviatoric stress $\Pi_{xy}(t)$ was determined via discrete Fourier transformation accoring to
+\begin{equation}
+X_\omega=\frac{1}{\sqrt{N}}\sum_{n=0}^{N-1} \left[\Pi_{xy}(t_n) - \bar{\Pi}_{xy}\right] \exp(2\pi i \, \omega \,n\,/\,N),
+\label{spectrum}
+\end{equation}
+wheras we subtracted the average stress per cycle $\bar{\Pi}_{xy}$ from the signal.
+$N$ was the number of points in the time series, typically one for every 100 LB time steps. 
+
+The system of coupled partial differential equations Eqs.~\ref{op-eom}
+and~\ref{NSE} is solved by means of a
 hybrid scheme~\cite{Marenduzzo:2007}. This uses a lattice Boltzmann algorithm
 with predictor-corrector scheme for the continuity equation and
-Eq.~\ref{eqn6}, and a finite difference scheme for the equation of motion of
-the tensor order parameter Eq.\ref{eqn2}. More details on the algorithm can
+Eq.~\ref{NSE}, and a finite difference scheme for the equation of motion of
+the tensor order parameter Eq.\ref{op-eom}. More details on the algorithm can
 be found in~\cite{Denniston:2001, Denniston:2004}.
+
 
 \section{Results and Discussion}
 
@@ -311,38 +322,6 @@ We start the discussion with BPII, which shows comparably simpler flow behaviour
 BPII features simple cubic symmetry and consists of $\pi$-disclination lines that 
 intersect and form a characteristic network of nodes.
 
-\subsubsection{Low and intermediate shear rates}
-
-Fig \ref{bp2-med} shows the disclination network 
-undergoing an affine transformation under shear. The disclination lines break up and 
-reconnect further downstream forming a periodically recurring pattern. 
-The recurrence time in flow direction is $\tau_F=p/(2\, v_{LE})=p/(2\,\gd\, \Delta y_{LE})= 1/\gd$.
-Apart from the affine transformation the general appearance is very close to that 
-of the quiescent equilibrium phase.
-
-\begin{figure*}[h]
-\includegraphics[width=0.32\textwidth]{disc-160k_run902.png}
-\includegraphics[width=0.32\textwidth]{disc-164k_run902.png}
-\includegraphics[width=0.32\textwidth]{disc-165k_run902.png}
-\caption{Disclination network of BPII in shear flow: The pictures show a typical sequence 
-of shear-induced transformations in the steady state at 
-$\gd=1.56\e{-4}$ and time steps $t=1.60, 1.64,1.65\e{5}$. The velocity gradient 
-is oriented along the vertical direction, whereas the horizontal direction is the direction of flow. 
-The boundary conditions impose flow in such a way that network moves 
-to the right in the upper half and to the left in the lower half of the picture.}
-\label{bp2-med}
-\end{figure*}
-
-Interestingly, while being sheared the disclination network moves perpendicular to the flow and 
-the gradient direction in the direction of vorticity.
-Contrary to the stick-slip motion that has been observed for sheared blue phases in confined
-geometries~\cite{Henrich:2012b} the movement is steady and happens in such a way that the 
-positions of breakup and reconnection shown in Fig. \ref{bp2-med} are slightly offset, 
-making the network travel along the z-direction.
-The recurrence period in vorticity direction is exactly six times larger than that of reconnecting in flow direction.
-
-
-
 A quantitative analysis of the flow behaviour of BPII is shown in Fig. \ref{bp2-rheo}.
 The apparent viscosity $\eta_{app}=\Pi_{xy}/\eta\,\gd$ over time normalised to
 the isotropic background viscosity $\eta_{app}$ is given in the left image, whereas
@@ -356,13 +335,43 @@ The data for low and intermediate $\gd$ obeys a power law fit $\bar{\Pi}_{xy}=a 
 a very good approximation, exibiting a remarkably small degree of shear-thinning.
 This probably reflects the very regular and rather undisturbed affine transformation of the disclination network.  
 
-\begin{figure*}[h]
+\begin{figure}[ht!]
 \includegraphics[width=0.495\textwidth]{stress_bp2.pdf}
 \includegraphics[width=0.495\textwidth]{stress_vs_strain_bp2.pdf}
 \caption{Apparent viscosity $\eta_{app}=\Pi_{xy}/\eta\,\gd$ of BPII over time (left) and strain (right). The inset shows the flow curve $\bar{\Pi}_{xy}(\gd)$.}
 \label{bp2-rheo}
-\end{figure*}
+\end{figure}
 
+
+\subsubsection{Low and intermediate shear rates}
+
+Fig \ref{bp2-med} shows the disclination network 
+undergoing an affine transformation under shear. The disclination lines break up and 
+reconnect further downstream forming a periodically recurring pattern. 
+The recurrence time in flow direction is $\tau_F=p/(2\, v_{LE})=p/(2\,\gd\, \Delta y_{LE})= 1/\gd$.
+Apart from the affine transformation the general appearance is very close to that 
+of the quiescent equilibrium phase.
+
+\begin{figure}[ht]
+\includegraphics[width=0.4\textwidth]{disc-160k_run902.png}
+\includegraphics[width=0.4\textwidth]{disc-164k_run902.png}
+\includegraphics[width=0.4\textwidth]{disc-165k_run902.png}
+\caption{Disclination network of BPII in shear flow: The pictures show a typical sequence 
+of shear-induced transformations in the steady state at 
+$\gd=1.56\e{-4}$ and time steps $t=1.60, 1.64,1.65\e{5}$. The velocity gradient 
+is oriented along the vertical direction, whereas the horizontal direction is the direction of flow. 
+The boundary conditions impose flow in such a way that network moves 
+to the right in the upper half and to the left in the lower half of the picture.}
+\label{bp2-med}
+\end{figure}
+
+Interestingly, while being sheared the disclination network moves perpendicular to the flow and 
+the gradient direction in the direction of vorticity.
+Contrary to the stick-slip motion that has been observed for sheared blue phases in confined
+geometries~\cite{Henrich:2012b} the movement is steady and happens in such a way that the 
+positions of breakup and reconnection shown in Fig. \ref{bp2-med} are slightly offset, 
+making the network travel along the z-direction.
+The recurrence period in vorticity direction is exactly six times larger than that of reconnecting in flow direction.
 
 Fig. \ref{bp2-velo} shows the disclination network at a characteristic time step between reconnecting and another breakup.
 Superimposed are vectors which represent the velocity projected onto a plain perpendicular to the flow direction.
@@ -380,7 +389,7 @@ There is only a slight imbalance between the maximum and minimum velocity in z-d
 Hence the movement of the network in vorticity direction is predominantly permeative.
 Note that the imbalance is exaclty retained if the helicity is inverted.
 
-\begin{figure*}[h]
+\begin{figure*}[ht]
 \includegraphics[width=0.495\textwidth]{v_yz-v_z-160k_run902.png}
 \includegraphics[width=0.495\textwidth]{v_yz-v_z-160k_run903.png}
 \caption{Velocity patterns and disclination network in BPII for positive (left) and negative (right) helicity of the 
@@ -410,28 +419,130 @@ However, it is reasonable to assume that the critical shear rate depends on ther
 such as the effective temperature $\tau$, the chirality $\kappa$ and the rotational diffusion constant $\Gamma$.
 Due to a lack of computational resources we have not investigated these aspects any further.
 
-\begin{figure}[h]
+\begin{figure*}[h]
 \includegraphics[width=0.85\textwidth]{dir+y-250k_run949.png}
 \includegraphics[width=0.85\textwidth]{dir+y-253k_run949.png}
 \includegraphics[width=0.85\textwidth]{dir+y-255k_run949.png}
 \includegraphics[width=0.85\textwidth]{dir+y-257k_run949.png}
 \caption{Director field of BPII at high shear rate: The images show a sequence of time step $t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. The configuration is a helical wave that travels along the direction of vorticity. It is translationally invariant in gradient and flow direction.}
 \label{bp2-high}
-\end{figure}
+\end{figure*}
+
 \clearpage
 
 \subsection{Blue Phase I}
 
 In BPI the disclination lines are arranged in a body-centered-cubic array.
 Contrary to BPII, they are well separated and do not intersect. 
-This difference in topology leads to some stiking differences in the flow behaviour of both blue phases 
-as we will see in the following.
+There is strong evidence that these topological differences result in 
+a very different rheological response of BPI. In fact BPI exhibits some 
+peculiarities that are absent in BPII.
 
-We can identify three different regimes in the range of applied shear rates:
-At high shear rates a breakup of the network structure occurs, similar to that seen in BPII. 
-At intermediate shear rates BPI features seemingly chaotic but periodically recurring conformations.
-At low shear rates the network undergoes first an affine transformation, but becomes unstable
-at larger strains and adopts an amorphous configuration with well separated disclination lines.
+Just as before in a kind of overview we present rheological key quantities first and 
+will address the detail aspects further below. 
+Fig. \ref{bp1-rheo} shows the apparent viscosity over time (left graph) and 
+strain (right graph) for intermediate and high shear rates. In case of BPI the oscillatory patterns
+are no longer symmetric as it takes more time to build up stress and reach a maximum than to 
+relax. Shear-thinning is much more pronounced than for BPII. At the lowest shear rate $\gd=9.76\e{-6}$
+the apparent viscosity varies by almost a factor 8 during one cycle.
+The decrease in apparent viscosity is monontonous for decreasing shear rate, but does not 
+follow a simple power law. 
+
+The inset of shows the flow curve, i.e. shear stress over shear rate.
+The data points are averages over one cycle, whereas the error bars indicate the maximum and
+minmum values during one cycle. Depending on the shear rate three different regimes of flow emerge:
+At high shear rates the network breaks up similar to BPII. The director field in this state
+is effectively two-dimensional and translationally invariant along the neutral direction.
+At intermediate shear rates the BPI network flows with periodically recurring conformations.
+These complex flow-induced conformations are accompanied by large fluctuations that increase 
+in intensity for decreasing shear rate. At low shear rates the minimum shear stress contribution
+of the liquid crystal during one cycle is actually negative. 
+Initially, the network undergoes an affine transformation, but it becomes unstable at larger stages. 
+Finally it dissolves into an amorphous configuration that has separated disclination lines. This 
+end state is the same for all shear rates below a critical threshold, which was below $\gd=9.76\e{-5}$. 
+
+\begin{figure}[ht]
+\includegraphics[width=0.495\textwidth]{stress_bp1.pdf}
+\includegraphics[width=0.495\textwidth]{stress_vs_strain_bp1.pdf}
+\caption{Apparent viscosity $\eta_{app}=\Pi_{xy}/\dot{\gamma}$ of BPI over time (left) and strain (right). The inset shows the flow curve $\bar{\Pi}_{xy}(\gd)$. Three different regimes can be identified: amorphous BP network with yield stress (triangles), flow with recurring oscillatory patterns (open circles), breakup (solid circle). The error bars give the minimum and maximum shear stress during one cycle.}
+\label{bp1-rheo}
+\end{figure}
+
+The Fourier analysis of the time-dependent deviatoric stress $\Pi_{xy}$ 
+offers another perspective on this intricate flow behaviour at high and intermediate shear rates. 
+The spectrum $X_\omega$ according to Eq. \ref{spectrum} is shown in Fig. \ref{bp1-spectrum}.
+We observe a strong contribution of the first harmonic, which is directly related to the 
+recurrence period $T$, shear rate $\dot{\gamma}$ and unit cell size $l_{u}$ 
+via $\omega_0=2\pi/T=2\pi/(l_{u}\dot{\gamma})$.
+As the shear rates we applied always differ by a factor 2 the Fourier coefficients of the 
+individual runs with different shear rate coincide in such a way that the
+the fundamental mode is the same frequency as the first overtone of the next lower shear rate
+or the third overtone of the next-to-next lower shear rate 
+(viz. peak positions at $\gd=7.81, 3.91$ and $1.95\e{-5}$).
+Moreover, the magnitude of higher Fourier modes decreases monotonously.   
+However, the inset shows that this characteristic frequency relation is violated 
+for shear rates above $\gd=7.81\e{-5}$.
+Although the velocity of the primary flow component in x-direcition, listed in Tab. \ref{tab1},
+ is very well in accordance with the imposed shear rate, the fundamental mode appears 
+now at the same frequency.
+The contribution of higher Fourier modes increases and even exceeds that of
+the fundamental mode, which gives the shear stress generally a more jittering appearance.
+At the highest imposed shear rate where the breakup occurs the Fourier spectrum 
+becomes simple again and features a dominating fundamental mode at the 
+expected frequency just as described above for $\gd\le7.81\e{-5}$.
+The breakup occurs at exactly the same flow rate as those of BPII, 
+suggesting that this can be traced back to the rotational dynamics 
+of the order parameter.
+
+\begin{figure}[ht]
+\includegraphics[width=0.495\textwidth]{spectrum_bp1.pdf}
+\caption{Fourier analysis of the deviatoric stress $\Pi_{xy}$ of BPI at different shear rates: The main picture shows the frequency shift of the Fourier components in agreement with the imposed shear rate. The inset depicts the same analysis at higher shear rate, where the frequency shift is no longer observed. Instead the spectral contribution of higher modes grows until finally the breakup takes place.}
+\label{bp1-spectrum}
+\end{figure}
+
+\subsubsection{Low shear rates}
+
+The rheological response of BPI at low shear rate is strikingly 
+different from that of BPII.
+We want to explain these differences on the basis of a typical 
+appearance of BPI at low flow rate, which is depicted in Fig. \ref{bp1-low}.
+Three different stages can be distinguished. 
+With the onset of shearing the disclination lines 
+in BPI get more and more squeezed together which is incommensurable with 
+the defect topology of this blue phase. 
+Consequently, the network adopts a flow-induced conformation which consists 
+of intertwined helices that stretch during the affine transformation.
+This helical conformation that emerges already at strains $\gamma\simeq1$ 
+is shown in Fig. \ref{bp1-low} (top row).
+At a particular point in the cycle a non-helical configuration is
+observed (bottom left) before the network quickly returns
+to its helical state.
+There is no perceivable movement of the network in vorticity 
+direction at any stage of the cycle.
+
+However, this mode of flow proves unstable as after a few cycles 
+distortions appear which lead to further destabilisation.
+Finally, the network
+
+\begin{figure*}[ht]
+\includegraphics[width=0.32\textwidth]{disc-xy-400k_run1115.png}
+\includegraphics[width=0.32\textwidth]{disc-yz-400k_run1115.png}
+\includegraphics[width=0.32\textwidth]{disc-xy-700k_run1115.png}\\
+\includegraphics[width=0.32\textwidth]{disc-xy-750k_run1115.png}
+\includegraphics[width=0.32\textwidth]{disc-xy-1700k_run1115.png}
+\includegraphics[width=0.32\textwidth]{disc-xy-2200k_run1115.png}
+\caption{Snapshots of BPI disclination network at low shear rate ($\dot{\gamma}=4.88\e{-6}$): Depicted is the transition from flow-induced, intertwined helices that undergo a recurring affine transformation (top left and centre at time step $t=4.0\e{5}$, top right at $t=7.0\e{5}$) with an intermediate conformation that is non-helical (bottom left at time step $t=7.5\e{5}$) to a distorted state (bottom centre at time step $t=1.7\e{6}$) and finally to an amorphous network (bottom right at $t=2.2\e{6}$).}
+\label{bp1-low}
+\end{figure*}
+
+\begin{figure}[ht]
+\includegraphics[width=0.495\textwidth]{stress_fe_yield_bp1.pdf}
+\caption{}
+\label{bp1-fe-yield}
+\end{figure}
+
+
+
 
 \subsubsection{Intermediate shear rates}
 
@@ -443,7 +554,7 @@ There is again an offset in the position of the network at the begin and the end
 But neither the magnitude nor the direction of the offset seem to obey a clear rule.
 They are seemingly chaotic and different for every shear rate. 
 
-\begin{figure*}[h]
+\begin{figure*}[ht]
 \includegraphics[width=0.32\textwidth]{disc-365k_run914.png}
 \includegraphics[width=0.32\textwidth]{disc-367k_run914.png}
 \includegraphics[width=0.32\textwidth]{disc-375k_run914.png}\\
@@ -454,93 +565,45 @@ They are seemingly chaotic and different for every shear rate.
 \label{bp1-med}
 \end{figure*}
 
-The apparent viscosity of BPI in simple shear flow, depicted in Fig. \ref{bp1-rheo}, is larger for The degree of shear thinning, also visible in the inset in terms of average shear stress over
-flow rate 
-
-\begin{figure}[h]
-\includegraphics[width=0.495\textwidth]{stress_bp1.pdf}
-\includegraphics[width=0.495\textwidth]{stress_vs_strain_bp1.pdf}
-\caption{Apparent viscosity $\eta_{app}=\Pi_{xy}/\dot{\gamma}$ of BPI over time (left) and strain (right). The inset shows the flow curve $\bar{\Pi}_{xy}(\gd)$.}
-\label{bp1-rheo}
-\end{figure}
-
-Runs at smaller system sizes suggest that the individual conformation 
-can depend sensitively on the system size. Fig. \ref{bp1-2uc4uc} 
-
-
-\begin{figure}[h]
-\includegraphics[width=0.495\textwidth]{stress_bp1_2uc_4uc.pdf}
-\includegraphics[width=0.495\textwidth]{stress_fe_yield_bp1.pdf}
-\caption{}
-\label{bp1-2uc4uc}
-\end{figure}
-
-
-
-\begin{equation}
-X_\omega=\frac{1}{\sqrt{N}}\sum_{n=0}^{N-1} \left[\Pi_{xy}(t_n) - \bar{\Pi}_{xy}\right] \exp(2\pi i \, \omega \,n\,/\,N)
-\end{equation}
-
-A Fourier analysis of the time series of the deviatoric chemical stress $\sigma_{eff,xy}$ or alternatively the free energy density $f$ can provide a further insight into the flow behaviour of BPI.
-Fig. \ref{fig9} shows the Fourier spectrum of the time series of the chemical stress.
-For simplicity we have always doubled the shear rate, so that the first overtone ocoalesces with the fundamental mode of the next highest shear rate. 
-At low shear rates we observe a strong contribution of the first harmonic, which is directly related to the recurrence period $T$, shear rate $\dot{\gamma}$ and unit cell size $l_{u}$ via $\omega_0=2\pi/T=2\pi/(l_{u}\dot{\gamma})$.
-The magnitude of higher harmonics decreases monotonously with increasing frequency.
-Interestingly the inset of Fig. \ref{fig9} shows that at intermediate shear rates the contribution of higher harmonics becomes more pronounced until after a kind of gap and similar break up the fundamental mode dominates again and the former characteristics are restored.
-Remarkably the break up in case of BPI occurs in exactly the same flow rate window as BPII.
-
-
-
-\begin{figure}[h]
-\includegraphics[width=0.495\textwidth]{spectrum_bp1.pdf}
-\caption{Spectrum of the time series of the chemical stress over time. The frequency is given in units of $10^2\cdot 2\pi/T$ whereas $T$ is the recurrence period in LB time steps.}
-\label{bp1-spec}
-\end{figure}
-
-%%%%%%%%%%%%%%%%%%%
-The disclination network and the x- and z-component of the flow velocity are depicted in Fig. \ref{fig7}.
-Just as in the previous case of BPII inverting the helix in the initial configuration inverts the sense of motion of the network in z-direction.
-Equally it leads to an inversion of the velocities, shown here for a particular time steps, but due to the different topology and the complicated conformational changes there is no simple band structure as previously observed for BPII. 
-
-\begin{figure*}[h]
+\begin{figure*}[ht]
 \includegraphics[width=0.495\textwidth]{v_yz-v_z-360k_run914.png}
 \includegraphics[width=0.495\textwidth]{v_yz-v_z-360k_run922.png}
 \caption{Velocity patterns in BPI for positive (left) and negative (right) helicity: The pictures show a characteristic time step of the periodically recurring sequence and velocity vectors $(0,v_y,v_z)$ with the component in flow direction set to zero. The colour code gives the magnitude and sign of the z-component. The vertical and horizontal direction are the gradient and vorticity direction, respectivelty. Flow occurs in such a way that the network moves into (out of) the paper plane in the upper (lower) half of the images.}
 \label{bp1-velo}
 \end{figure*}
 
-\subsubsection{Low shear rates}
+Runs at smaller system sizes suggest that the individual conformation 
+can depend sensitively on the system size. Fig. \ref{bp1-low-fe} 
 
-At low shear rates the conformational changes of BPI in shear flow are very similar to 
-that of BPII descibed above. Fig. \ref{bp1-low} shows how the network undergoes an affine 
-transformation during one cycle. However, contrary to BPII the disclination lines of BPI 
-do not resemble those of the quiescent state, although they have the same topological
-structure. At one particular point (top-left and top-centre) 
-the disclination network are intertwined helices with the helical axis aligned
-along the gradient direction. This shear-induced conformation forms shortly after the
-flow has been switched on at strains $\gamma\simeq1$.
-During one cycle there is no perceivable movement of the network in vorticity direction.
 
-\begin{figure}[h]
-\includegraphics[width=0.32\textwidth]{disc-xy-400k_run1115.png}
-\includegraphics[width=0.32\textwidth]{disc-yz-400k_run1115.png}
-\includegraphics[width=0.32\textwidth]{disc-xy-725k_run1115.png}\\
-\includegraphics[width=0.32\textwidth]{disc-xy-750k_run1115.png}
-\includegraphics[width=0.32\textwidth]{disc-xy-1700k_run1115.png}
-\includegraphics[width=0.32\textwidth]{disc-xy-2200k_run1115.png}
-\caption{Disclination network of BPI at low shear rate: Depicted is a sequence of affine, shear-induced transformations at shear rate $\dot{\gamma}=4.88\e{-6}$ and time step $t=4.0, 4.0, 6.0, 7.25, 7.50, 7.75\e{5}$ (top-left to bottom-right). The horizontal and the vertical direction are the flow and the gradient direction in all but the top-centre picure. There, the network is depicted in gradient direction with the direction of vorticity oriented along the vertical axis.}
-\label{bp1-low}
+\begin{figure}[ht]
+\includegraphics[width=0.495\textwidth]{stress_bp1_2uc_4uc.pdf}
+\caption{}
+\label{bp0-2uc4uc-fe}
 \end{figure}
+
+\begin{figure}[ht]
+
+\caption{Spectrum of the time series of the chemical stress over time. The frequency is given in units of $10^2\cdot 2\pi/T$ whereas $T$ is the recurrence period in LB time steps.}
+\label{bp1-spec}
+\end{figure}
+
+
+The disclination network and the x- and z-component of the flow velocity are depicted in Fig. \ref{fig7}.
+Just as in the previous case of BPII inverting the helix in the initial configuration inverts the sense of motion of the network in z-direction.
+Equally it leads to an inversion of the velocities, shown here for a particular time steps, but due to the different topology and the complicated conformational changes there is no simple band structure as previously observed for BPII. 
+
 
 \subsubsection{High shear rates}
 
-\begin{figure}[h]
+
+\begin{figure*}[ht]
 \includegraphics[width=0.32\textwidth]{dir+z-300k_run916.png}
 \includegraphics[width=0.32\textwidth]{dir+z-301k_run916.png}
 \includegraphics[width=0.32\textwidth]{dir+z-302k_run916.png}
-\caption{Director field of BPI at high shear rate: The pictures show a slice of $L_x\times L_y = 64\times64$ lattice sites along the vorticity direction with the flow / gradient direction oriented along the horizontal / vertical axis. The colour code gives the magnitude of the in-plane component of the director field. The data is translationally invariant along the vorticity direction.}
+\caption{Director field of BPI at high shear rate: The pictures show a slice of $L_x\times L_y = 64\times64$ lattice sites along the vorticity direction with the flow / gradient direction oriented along the horizontal / vertical axis. The colour code gives the magnitude of the in-plane component of the director field. The data is translationally invariant in vorticity direction.}
 \label{bp1-high}
-\end{figure}
+\end{figure*}
  
 
 
