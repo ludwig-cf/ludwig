@@ -47,6 +47,7 @@ static void hydrodynamics_init_mpi(void);
 static void hydrodynamics_leesedwards_parallel(void);
 static void hydrodynamics_init_io(void);
 static int  hydrodynamics_u_write(FILE *, const int, const int, const int);
+static int  hydrodynamics_u_read(FILE *, const int, const int, const int);
 static int  hydrodynamics_u_write_ascii(FILE *, const int, const int,
 					const int);
 
@@ -129,6 +130,7 @@ static void hydrodynamics_init_io() {
   io_info_set_name(io_info_velocity_, "Velocity field");
   io_info_set_write_binary(io_info_velocity_, hydrodynamics_u_write);
   io_info_set_write_ascii(io_info_velocity_, hydrodynamics_u_write_ascii);
+  io_info_set_read_binary(io_info_velocity_, hydrodynamics_u_read);
   io_info_set_bytesize(io_info_velocity_, 3*sizeof(double));
 
   io_info_set_format_binary(io_info_velocity_);
@@ -637,6 +639,23 @@ static int hydrodynamics_u_write(FILE * fp, const int ic, const int jc,
   n = fwrite(u[index].c, sizeof(double), 3, fp);
 
   if (n != 3) fatal("fwrite(velocity) failed at %d %d %d\n", ic, jc, kc);
+
+  return n;
+}
+
+/*****************************************************************************
+ *
+ *  hydrodynamics_u_read
+ *
+ *****************************************************************************/
+
+static int hydrodynamics_u_read(FILE * fp, const int ic, const int jc,
+                                const int kc) {
+  int index, n;
+
+  index = le_site_index(ic, jc,  kc);
+  n = fread(u[index].c, sizeof(double), 3, fp);
+  if (n != 3) fatal("fread(velocity) failed\n");
 
   return n;
 }

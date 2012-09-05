@@ -159,6 +159,14 @@ static void ludwig_init(void) {
     RUN_get_int_parameter("LE_init_profile", &n);
 
     if (n != 0) model_le_init_shear_profile();
+
+    /* SPECIAL */
+    /*
+    sprintf(filename, "%sphi-%8.8d", subdirectory, 0);
+    io_info_set_processor_independent(io_info_phi);
+    io_read(filename, io_info_phi);
+    io_info_set_processor_dependent(io_info_phi);
+    */
   }
   else {
     /* Distributions */
@@ -174,6 +182,10 @@ static void ludwig_init(void) {
       info("Reading phi state from %s\n", filename);
       io_read(filename, io_info_phi);
     }
+    /* Required for consistent restart if order parameter dynamics */
+    sprintf(filename, "%svel-%8.8d", subdirectory, get_step());
+    info("Reading velocity field for restart %s\n", filename);
+    io_read(filename, io_info_velocity_);
   }
 
   phi_gradients_init();
@@ -377,7 +389,7 @@ void ludwig_run(const char * inputfile) {
       stats_rheology_stress_profile_zero();
     }
 
-    if (is_vel_output_step()) {
+    if (is_vel_output_step() || is_config_step()) {
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
       io_write(filename, io_info_velocity_);
@@ -392,6 +404,7 @@ void ludwig_run(const char * inputfile) {
 	phi_stats_print_stats();
 	stats_free_energy_density();
       }
+
       ludwig_report_momentum();
       stats_velocity_minmax();
 
@@ -420,6 +433,11 @@ void ludwig_run(const char * inputfile) {
       sprintf(filename,"%sphi-%8.8d", subdirectory, step);
       io_write(filename, io_info_phi);
     }
+
+    /* Only strictly required for order parameter dynamics */
+    info("Writing velocity output at step %d!\n", step);
+    sprintf(filename, "%svel-%8.8d", subdirectory, step);
+    io_write(filename, io_info_velocity_);
   }
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
