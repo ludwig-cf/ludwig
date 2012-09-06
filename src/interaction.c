@@ -159,9 +159,9 @@ void COLL_init() {
   if (strcmp(keyvalue, "random") == 0) init_random = 1;
   if (strcmp(keyvalue, "from_file") == 0) init_from_file = 1;
 
-  RUN_get_string_parameter("colloid_cell_list_interactions", keyvalue, 128);
+  /* Always use the cell list for the time being */
 
-  if (strcmp(keyvalue, "no") == 0) cell_list_interactions_ = 0;
+  cell_list_interactions_ = 1;
 
   if (cell_list_interactions_ == 0) {
     /* We use ncell = 2 */
@@ -817,6 +817,8 @@ void coll_position_update(void) {
 	    ifail = 0;
 	    for (ia = 0; ia < 3; ia++) {
 	      if (p_colloid->s.dr[ia] > drmax[ia]) ifail = 1;
+              /* This should trap NaNs */
+              if (p_colloid->s.dr[ia] != p_colloid->s.dr[ia]) ifail = 1;
 	      p_colloid->s.r[ia] += p_colloid->s.dr[ia];
 	    }
 
