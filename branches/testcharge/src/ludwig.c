@@ -232,21 +232,27 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
     if (ludwig->phi) {
       sprintf(filename, "%sphi-%8.8d", subdirectory, get_step());
-      info("files(s)\n", filename);
+      info("files(s) %s\n", filename);
       field_io_info(ludwig->phi, &iohandler);
       io_read_data(iohandler, filename, ludwig->phi);
     }
     if (ludwig->p) {
       sprintf(filename, "%sp-%8.8d", subdirectory, get_step());
-      info("files(s)\n", filename);
+      info("files(s) %s\n", filename);
       field_io_info(ludwig->p, &iohandler);
       io_read_data(iohandler, filename, ludwig->p);
     }
     if (ludwig->q) {
       sprintf(filename, "%sqs-%8.8d", subdirectory, get_step());
-      info("files(s)\n", filename);
+      info("files(s) %s\n", filename);
       field_io_info(ludwig->q, &iohandler);
       io_read_data(iohandler, filename, ludwig->q);
+    }
+    if (ludwig->hydro) {
+      sprintf(filename, "%svel-%8.8d", subdirectory, get_step());
+      info("hydro files(s) %s\n", filename);
+      hydro_io_info(ludwig->hydro, &iohandler);
+      io_read_data(iohandler, filename, ludwig->hydro);
     }
   }
 
@@ -361,7 +367,6 @@ void ludwig_run(const char * inputfile) {
       psi_force_grad_mu(ludwig->psi, ludwig->hydro);
       psi_sor_poisson(ludwig->psi);
       psi_halo_rho(ludwig->psi);
-      /* u halo should not be repeated if phi active... */ 
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
       nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
     }
@@ -514,7 +519,7 @@ void ludwig_run(const char * inputfile) {
       stats_rheology_stress_profile_zero();
     }
 
-    if (is_vel_output_step()) {
+    if (is_vel_output_step() || is_config_step()) {
       hydro_io_info(ludwig->hydro, &iohandler);
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
@@ -571,6 +576,13 @@ void ludwig_run(const char * inputfile) {
       info("Writing qs file at step %d!\n", step);
       sprintf(filename,"%sqs-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->q);
+    }
+    /* Only strictly required if have order parameter dynamics */ 
+    if (ludwig->hydro) {
+      hydro_io_info(ludwig->hydro, &iohandler);
+      info("Writing velocity output at step %d!\n", step);
+      sprintf(filename, "%svel-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->hydro);
     }
   }
 
