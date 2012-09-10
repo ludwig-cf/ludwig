@@ -30,6 +30,7 @@
 static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
 static int hydro_u_write_ascii(FILE * fp, int index, void * self);
+static int hydro_u_read(FILE * fp, int index, void * self);
 
 /*****************************************************************************
  *
@@ -131,6 +132,7 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
   io_info_set_name(obj->info, "Velocity field");
   io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
   io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
+  io_info_read_set(obj->info, IO_FORMAT_BINARY, hydro_u_read);
   io_info_set_bytesize(obj->info, obj->nf*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
@@ -555,6 +557,26 @@ static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
 
   /* Expect total of 69 characters ... */
   if (n != 69) fatal("fprintf(hydro->u) failed\n");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_u_read
+ *
+ *****************************************************************************/
+
+int hydro_u_read(FILE * fp, int index, void * self) {
+
+  int n;
+  hydro_t * obj = self;
+
+  assert(fp);
+  assert(obj);
+
+  n = fread(&obj->u[obj->nf*index], sizeof(double), obj->nf, fp);
+  if (n != obj->nf) fatal("fread(hydro->u) failed\n");
 
   return 0;
 }
