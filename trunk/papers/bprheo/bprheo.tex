@@ -367,15 +367,17 @@ are $q_s=0.18$ for BPI and $q_s=0.15$ for BPII.
 \begin{figure}[htpb]
 \includegraphics[width=0.495\textwidth]{stress_bp2.pdf}
 \includegraphics[width=0.495\textwidth]{stress_vs_strain_bp2.pdf}
-\caption{Apparent viscosity $\eta_{app}=\Pi_{xy}/\eta\,\gd$ of BPII over time (top) and strain (bottom). For clarity the individual curves have been shifted along the time and strain axis. The inset shows the flow curve $\bar{\Pi}_{xy}(\gd)$ and two different regimes of flow: regular periodic breakup and reconnecting of the discination lines (BPII-1, open circles) and break up of the network into a travelling helical wave (BPII-2, solid circle).}
+\caption{Apparent viscosity $\eta_{app}=\Pi_{xy}/\eta\,\gd$ of BPII over time (top) and strain (bottom). 
+For clarity the individual curves have been shifted along the time and strain axis. 
+The inset shows the flow curve $\bar{\Pi}_{xy}(\gd)$ and two different regimes of flow: 
+regular periodic breakup and reconnecting of the discination lines (BPII-1, open circles) 
+and break up of the network into a travelling helical wave (BPII-2, solid circle).}
 \label{bp2-rheo}
 \end{figure}
 
 We start our discussion with BPII as its flow behaviour turns out to be somewhat simpler 
 than that of BPI. BPII has simple cubic symmetry and the $\pi$-disclination lines intersect and form a characteristic network of nodes.
-
-As it might be easier to enter a discussion with the full picture in mind, we provide first a 
-quantitative analysis of the flow behaviour at all applied shear rates.
+Ahead of the more detailed discussion we provide first a general overview of the flow behaviour at all applied shear rates.
 Fig. \ref{bp2-rheo} shows the apparent viscosity, which is defined as the 
 deviatoric stress normalised to the isotropic background viscosity: 
 $\eta_{app}=\Pi_{xy}/\eta\,\gd$.
@@ -520,7 +522,7 @@ BPI has body-centered symmetry and contrary to BPII the disclination lines
 We believe that this topological difference is responsible for most of
 the differences between BPI and BPII regarding their rheological response. 
 
-Again, we present key aspects in a kind of overview before we 
+We present again key aspects in a kind of overview before we 
 address some features in more detail. Fig. \ref{bp1-rheo} shows the 
 apparent viscosity $\eta_{app}$ over time and strain for the same shear rates
 as in Fig. \ref{bp2-rheo}.
@@ -553,35 +555,33 @@ the time and strain axis.}
 \label{bp1-rheo}
 \end{figure}
 
-The Fourier analysis of the time-dependent deviatoric stress $\Pi_{xy}$ 
-offers another perspective on this intricate flow behaviour at high and intermediate shear rates. 
-The spectrum $X_\omega$ according to Eq. \ref{spectrum} is shown in Fig. \ref{bp1-spectrum}.
-We observe a strong contribution of the first harmonic, which is directly related to the 
-recurrence period $T$, shear rate $\dot{\gamma}$ and unit cell size $l_{u}$ 
-via $\omega_0=2\pi/T=2\pi/(l_{u}\dot{\gamma})$.
-As the shear rates we applied always differ by a factor 2 the Fourier coefficients of the 
-individual runs with different shear rate coincide in such a way that the
-the fundamental mode is the same frequency as the first overtone of the next lower shear rate
-or the third overtone of the next-to-next lower shear rate 
-(viz. peak positions at $\gd=7.81, 3.91$ and $1.95\e{-5}$).
-Moreover, the magnitude of higher Fourier modes decreases monotonously.   
-However, the inset shows that this characteristic frequency relation is violated 
-for shear rates above $\gd=7.81\e{-5}$.
-Although the velocity of the primary flow component in x-direcition, listed in Tab. \ref{tab1},
- is very well in accordance with the imposed shear rate, the fundamental mode appears 
-now at the same frequency.
-The contribution of higher Fourier modes increases and even exceeds that of
-the fundamental mode, which gives the shear stress generally a more jittering appearance.
-At the highest imposed shear rate where the breakup occurs the Fourier spectrum 
-becomes simple again and features a dominating fundamental mode at the 
-expected frequency just as described above for $\gd\le7.81\e{-5}$.
-The breakup occurs at exactly the same flow rate as those of BPII, 
-suggesting that this can be traced back to the rotational dynamics 
-of the order parameter.
+In order to gain a better understanding of the complex oscillatory behaviour in regime BPI-2 
+we performed a Fourier analysis of the deviatoric stress $\Pi_{xy}$ according to Eq. \ref{spectrum}. 
+The spectrum is shown in Fig. \ref{bp1-spectrum}. 
+
+There are two aspects which are worth mentioning. First of all, we observe a strong contribution of 
+the fundamental mode for the lowest two shear rates and a relatively small contribution of higher harmonics. 
+However, at $\gd=1.563\e{-4}$ and $3.125\e{-4}$ the relative contribution of higher harmonics is 
+significantly larger. 
+More surprisingly the frequency of the fundamental mode is the same 
+for all three shear rates $\gd=7.81\e{-5}, 1.563\e{-4}$ and $3.125\e{-4}$. This is completely 
+contrasted by what is observed at lower flow rates. By doubling the flow rate from 
+$\gd=3.91\e{-5}$ to $\gd=7.81\e{-5}$ the position of the peaks doubles in the spectrum 
+moves to the double frequency. This means that the fundamental mode at flowrate $\gd=7.81\e{-5}$ 
+coincides with the the first harmonic at $\gd=3.91\e{-5}$, the first harmonic with the third and so on,
+which is the expected behaviour. At higher shear rates in regime BPI-3 this lock-in of 
+flow modes disappears again.  
+ 
+Interestingly the lock-in has only a minor effect on the flow velocities themselves.
+The average velocities in Tab. \ref{tab1} reveal that only the magnitude of some of the secondary 
+flow components $v_y$ and $v_z$ appears to be relatively small compared to the primary component $v_x$. 
+The latter is directly linked to the imposed shear rate. 
 
 \begin{figure}[htpb]
 \includegraphics[width=0.495\textwidth]{spectrum_bp1.pdf}
-\caption{Fourier analysis of the deviatoric stress $\Pi_{xy}$ of BPI at different shear rates: The main picture shows the frequency shift of the Fourier components in agreement with the imposed shear rate. The inset depicts the same analysis at higher shear rate, where the frequency shift is no longer observed. Instead the spectral contribution of higher modes grows until finally the breakup takes place. The frequency is given in units of $10^2\cdot 2\pi/T$ with $T$ as period of one cycle in LB time steps.}
+\caption{Fourier analysis of the deviatoric stress $\Pi_{xy}$ of BPI: The main picture and inset show spectral
+components and the lock-in of flow modes, visible in the fixed peak position for certain flow rates. 
+The inset represents a blow-up of the same data. The frequency is given in radians.}
 \label{bp1-spectrum}
 \end{figure}
 
