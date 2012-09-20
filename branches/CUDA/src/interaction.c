@@ -115,14 +115,13 @@ void COLL_update() {
 
     /* Removal or replacement of fluid requires a lattice halo update */
 
-    /* Only need to do this every 10 timesteps, since colloids move slowly */
-    if ( (get_step()-1)%10 == 0 ){
-
-#ifdef _GPU_      
-      if (get_step()>1) get_phi_from_gpu();
-#endif      
-      
-      
+    //#define INFQ_REBUILD
+#ifdef INFQ_REBUILD
+    /* Only do this every 10 timesteps, since colloids move slowly */
+    if ( (get_step()-1)%10 == 0 )
+#endif
+      {
+	
       TIMER_start(TIMER_HALO_LATTICE);
 #ifdef _GPU_
       distribution_halo_gpu();
@@ -139,14 +138,9 @@ void COLL_update() {
       
       COLL_update_links();
       
-#ifdef _GPU_
-      put_phi_on_gpu();
-      put_site_map_on_gpu();
-#endif
-      
       TIMER_stop(TIMER_REBUILD);
       
-      
+
     }
 
 

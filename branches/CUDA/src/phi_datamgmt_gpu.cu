@@ -293,6 +293,9 @@ static void free_phi_memory_on_gpu()
 
 }
 
+
+
+
 /* copy phi from host to accelerator */
 void put_phi_on_gpu()
 {

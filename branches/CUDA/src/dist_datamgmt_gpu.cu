@@ -25,6 +25,8 @@ extern "C" int  RUN_get_string_parameter(const char *, char *, const int);
 /* external pointers to data on host*/
 extern double * f_;
 
+
+
 /* external pointers to data on accelerator*/
 extern int * cv_d;
 extern int * N_d;
@@ -32,6 +34,9 @@ extern int * N_d;
 /* accelerator memory address pointers for required data structures */
 double * f_d;
 double * ftmp_d;
+
+int *mask_d, *packedindex_d;
+
 
 /* edge and halo buffers on accelerator */
 double * fedgeXLOW_d;
@@ -61,6 +66,10 @@ double * fhaloYLOW;
 double * fhaloYHIGH;
 double * fhaloZLOW;
 double * fhaloZHIGH;
+
+static double * ftmp;
+static int * packedindex;
+
 
 /* buffers for bounce back on links */
 int * findexall_d;
@@ -173,6 +182,14 @@ static void allocate_dist_memory_on_gpu()
   //cudaMallocHost(&fedgeXLOW,nhalodataX*sizeof(double));
   //cudaMallocHost(&fedgeXHIGH,nhalodataX*sizeof(double));
 
+  cudaHostAlloc( (void **)&ftmp, ndata*sizeof(double), 
+		 cudaHostAllocDefault);
+
+  cudaHostAlloc( (void **)&packedindex, nsites*sizeof(int), 
+		 cudaHostAllocDefault);
+
+
+
   cudaHostAlloc( (void **)&fedgeXLOW, nhalodataX*sizeof(double), 
 		 cudaHostAllocDefault);
   cudaHostAlloc( (void **)&fedgeXHIGH, nhalodataX*sizeof(double), 
@@ -222,6 +239,9 @@ static void allocate_dist_memory_on_gpu()
   cudaMalloc((void **) &fhaloZLOW_d, nhalodataZ*sizeof(double));
   cudaMalloc((void **) &fhaloZHIGH_d, nhalodataZ*sizeof(double));
 
+  cudaMalloc((void **) &mask_d, nsites*sizeof(int));
+  cudaMalloc((void **) &packedindex_d, nsites*sizeof(int));
+
 
 
 
@@ -267,8 +287,9 @@ static void free_dist_memory_on_gpu()
 {
 
 
-  //free(fedgeXLOW);
-  //free(fedgeXHIGH);
+  cudaFreeHost(ftmp);
+  cudaFreeHost(packedindex);
+
   cudaFreeHost(fedgeXLOW);
   cudaFreeHost(fedgeXHIGH);
   cudaFreeHost(fedgeYLOW);
@@ -301,6 +322,10 @@ static void free_dist_memory_on_gpu()
   /* free memory on accelerator */
   cudaFree(f_d);
   cudaFree(ftmp_d);
+
+  cudaFree(mask_d);
+  cudaFree(packedindex_d);
+
 
   cudaFree(fedgeXLOW_d);
   cudaFree(fedgeXHIGH_d);
@@ -381,7 +406,6 @@ void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
 
 
   int *mask;
-  int *mask_d, *packedindex_d;
   int i, Nall[3];
   int p, m;
 
@@ -393,9 +417,6 @@ void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
   Nall[Z]=N[Z]+2*nhalo;
 
   int nsite = Nall[X]*Nall[Y]*Nall[Z];
-
-  int *packedindex = (int*) malloc(nsite*sizeof(int)); 
-
 
 
   if(include_neighbours){
@@ -412,8 +433,6 @@ void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
   for (i=0; i<nsite; i++){
     if(mask[i]) packedsize++;
   }
-
-  double *ftmp = (double*) malloc(packedsize*ndist*NVEL*sizeof(double)); 
 
   
   int j=0;
@@ -436,8 +455,6 @@ void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
 
   cudaMemcpy(ftmp_d, ftmp, packedsize*ndist*NVEL*sizeof(double), cudaMemcpyHostToDevice);
 
-  cudaMalloc((void **) &mask_d, nsite*sizeof(int));
-  cudaMalloc((void **) &packedindex_d, nsite*sizeof(int));
   
   cudaMemcpy(mask_d, mask, nsite*sizeof(int), cudaMemcpyHostToDevice);
   cudaMemcpy(packedindex_d, packedindex, nsite*sizeof(int), cudaMemcpyHostToDevice);
@@ -450,11 +467,6 @@ void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
   
   cudaThreadSynchronize();
   
-  free(packedindex);
-  free(ftmp);
-  cudaFree(mask_d);
-  cudaFree(packedindex_d);
-  
   checkCUDAError("put_f_partial_on_gpu");
 
 }
@@ -466,7 +478,6 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
 
 
   int *mask;
-  int *mask_d, *packedindex_d;
   int i, Nall[3];
   int p, m, j;
   int ib[3];
@@ -482,8 +493,6 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
   
 
   int nsite = Nall[X]*Nall[Y]*Nall[Z];
-
-  int *packedindex = (int*) malloc(nsite*sizeof(int)); 
 
 
   if(include_neighbours){
@@ -504,12 +513,7 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
   }
 
   int packedsize=j;
-  double *ftmp = (double*) malloc(packedsize*ndist*NVEL*sizeof(double)); 
 
-
-  cudaMalloc((void **) &mask_d, nsite*sizeof(int));
-  cudaMalloc((void **) &packedindex_d, nsite*sizeof(int));
-  
   cudaMemcpy(mask_d, mask, nsite*sizeof(int), cudaMemcpyHostToDevice);
   cudaMemcpy(packedindex_d, packedindex, nsite*sizeof(int), cudaMemcpyHostToDevice);
 
@@ -542,13 +546,7 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
   }
 
 
-  
-  free(packedindex);
-  free(ftmp);
-  cudaFree(mask_d);
-  cudaFree(packedindex_d);
-  
-  checkCUDAError("put_f_partial_on_gpu");
+  checkCUDAError("get_f_partial_from_gpu");
 
 }
 

@@ -255,6 +255,7 @@ void ludwig_run(const char * inputfile) {
   put_f_on_gpu();
   put_force_on_gpu(); 
   put_velocity_on_gpu();
+  put_phi_on_gpu();
  
   /* sync MPI tasks for timing purposes */
   MPI_Barrier(cart_comm());
