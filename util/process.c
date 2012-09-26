@@ -19,6 +19,12 @@
  *
  *  The output is a binary suitable for input to Ludwig.
  *
+ *  To compile (with your local C compiler $(CC)):
+ *      $ cd ../src
+ *      $ make lib
+ *      $ cd ../util
+ *      $ $(CC) -I../src process.c -L../src -lludwig -lm
+ *
  *   Usage:
  *      ./a.out input_file output_file
  *
@@ -39,12 +45,19 @@
 
 #include "../src/site_map.h"
 
+enum {X, Y, Z}; /* Co-ordinate directions */
+
 /* SYSTEM SIZE */
 /* This is the size of the original data to be read. */
 
-const int xinput = 64;
-const int yinput = 64;
-const int zinput = 64;
+const int xinput = 50;
+const int yinput = 100;
+const int zinput = 50;
+
+/* INPUT FORMAT */
+/* This is ASCII or BINARY; binary is 1 byte char per site */
+enum {ASCII, BINARY};
+const int format_input = BINARY;
 
 /* REFLECTION */
 /* Set this flag is a reflection of the data in the x-direction is
@@ -61,12 +74,14 @@ const int reflect = NO_REFLECTION;
  * wider in the y-direction and z-direction on output. */
 
 enum {PAD_NONE, PAD_OVERWRITE, PAD_ADD};
-const int pad = PAD_NONE;
+const int pad = PAD_OVERWRITE;
+const int padx[3] = {1, 0, 1}; /* If required, pad in x and z; not y. */
 
 int main (int argc, char ** argv) {
 
   char * data_in;
   char * data_out;
+  char tmpchar;
   int xout, yout, zout;
   int ic, jc, kc, index1, index2;
   int ntotal, nfluid, nsolid;
@@ -105,7 +120,11 @@ int main (int argc, char ** argv) {
     for (jc = 0; jc < yinput; jc++) {
       for (kc = 0; kc < zinput; kc++) {
 	index1 = yinput*zinput*ic + zinput*jc + kc;
-	n = fscanf(fp_file, "%d\n", &tmp);
+	if (format_input == ASCII) n = fscanf(fp_file, "%d\n", &tmp);
+	if (format_input == BINARY) {
+	  n = fread(&tmpchar, 1, sizeof(char), fp_file);
+	  tmp = tmpchar;
+	}
 	if (n != 1) printf("Error reading position %d %d %d\n", ic, jc, kc);
 	ntotal++;
 	if (tmp == 0) {
@@ -139,6 +158,10 @@ int main (int argc, char ** argv) {
   if (reflect == REFLECTION) {
     xout = 2*xinput;
     printf("The system will be reflected.\n");
+    if (padx[X] != 0) {
+      printf("Cant pad in x and reflect in x!\n");
+      exit(-1);
+    }
   }
 
   if (pad == PAD_NONE) {
@@ -152,8 +175,9 @@ int main (int argc, char ** argv) {
     printf("Padding will overwrite\n");
   }
   if (pad == PAD_ADD) {
-    yout = yinput + 2;
-    zout = zinput + 2;
+    xout = xinput + 2*padx[X];
+    yout = yinput + 2*padx[Y];
+    zout = zinput + 2*padx[Z];
     printf("Padding will add\n");
   }
 
@@ -169,7 +193,7 @@ int main (int argc, char ** argv) {
 
   /* Copy the input to output with appropriate padding */
 
-  for (ic = 0; ic < xinput; ic++) {
+  for (ic = 0; ic < xout; ic++) {
     for (jc = 0; jc < yout; jc++) {
       for (kc = 0; kc < zout; kc++) {
 	index1 = yout*zout*ic + zout*jc + kc;
@@ -190,11 +214,12 @@ int main (int argc, char ** argv) {
   }
 
   if (pad == PAD_OVERWRITE) {
-    for (ic = 0; ic < xinput; ic++) {
-      for (jc = 1; jc < yout - 1; jc++) {
-	for (kc = 1; kc < zout - 1; kc++) {
+    for (ic = padx[X]; ic < xinput - padx[X]; ic++) {
+      for (jc = padx[Y]; jc < yinput - padx[Y]; jc++) {
+	for (kc = padx[Z]; kc < zinput - padx[Z]; kc++) {
 	  index1 = yout*zout*ic + zout*jc + kc;
-	  data_out[index1] = data_in[index1];
+	  index2 = yinput*zinput*ic + zinput*jc + kc;
+	  data_out[index1] = data_in[index2];
 	}
       }
     }
@@ -204,7 +229,7 @@ int main (int argc, char ** argv) {
     for (ic = 0; ic < xinput; ic++) {
       for (jc = 0; jc < yinput; jc++) {
 	for (kc = 0; kc < zinput; kc++) {
-	  index1 = yout*zout*ic + zout*(jc+1) + kc+1;
+	  index1 = yout*zout*(ic+padx[X]) + zout*(jc+padx[Y]) + kc+padx[Z];
 	  index2 = yinput*zinput*ic + zinput*jc + kc;
 	  data_out[index1] = data_in[index2];
 	}
@@ -214,12 +239,14 @@ int main (int argc, char ** argv) {
 
   /* Do the reflection if required. */
 
-  for (ic = xinput; ic < xout; ic++) {
-    for (jc = 0; jc < yout; jc++) {
-      for (kc = 0; kc < zout; kc++) {
-	index1 = yout*zout*ic + zout*jc + kc;
-	index2 = yout*zout*(xout -  ic - 1) + zout*jc + kc;
-	data_out[index1] = data_out[index2];
+  if (reflect == REFLECTION) {
+    for (ic = xinput; ic < xout; ic++) {
+      for (jc = 0; jc < yout; jc++) {
+	for (kc = 0; kc < zout; kc++) {
+	  index1 = yout*zout*ic + zout*jc + kc;
+	  index2 = yout*zout*(xout -  ic - 1) + zout*jc + kc;
+	  data_out[index1] = data_out[index2];
+	}
       }
     }
   }
@@ -243,6 +270,7 @@ int main (int argc, char ** argv) {
 	ntotal++;
 	if (data_out[index1] == FLUID) nfluid++;
 	if (data_out[index1] == BOUNDARY) nsolid++;
+	tmp = data_out[index1];
       }
     }
   }
