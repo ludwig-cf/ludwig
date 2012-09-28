@@ -357,7 +357,7 @@ The shear rates were varied over more than two orders of magnitude from about
 $\gd=2.44\times \e{-6}$ to $6.25\times\e{-4}$ in LB units.
 For clarity we classify various subregimes, two in case of BPII and three in case of BPI. 
 They are BPII-1 ($\gd < 6.25\e{-4}$), BPII-2 ($\gd\ge 6.25\e{-4}$) and
-BPI-1 ($\gd < 3.91\e{-5}$), BPI-2 ($3.91\e{-5}\gd< 6.25\e{-4}$) and BPI-3 ($\gd\ge 6.25\e{-4}$). 
+BPI-1 ($\gd < 3.91\e{-5}$), BPI-2 ($3.91\e{-5}\le\gd< 6.25\e{-4}$) and BPI-3 ($\gd\ge 6.25\e{-4}$). 
 Disclination lines are plotted as isosurface of the scalar order parameter $q$. Typical values 
 are $q_s=0.18$ for BPI and $q_s=0.15$ for BPII.
 
@@ -587,8 +587,15 @@ The inset represents a blow-up of the same data. The frequency is given in radia
 
 \subsubsection{Regime BPI-1: low shear rates}
 
-The rheological response of BPI at low shear rate which exhibits a
-dynamic yield stress is strikingly different from that of BPII.
+\begin{figure}[htpb]
+\includegraphics[width=0.495\textwidth]{stress_fe_yield_bp1.pdf}
+\caption{Average deviatoric stress and free energy density of BPI at low shear rate: The negative branch in the stress is related to a local maximum and a following local minimum in free energy density. This creates unstable conditions that lead to a dissolving regular network and an amorphous state which features a yield stress.}
+\label{bp1-fe-yield}
+\end{figure}
+
+The rheological response of BPI at low shear rate $\gd<3.91\e{-5}$ 
+is strikingly different from that of BPII and exhibits a
+dynamic yield stress.
 An explanation for this strange behaviour can be found by 
 looking more closely at the average deviatoric stress and 
 free energy density, as shown in Fig. \ref{bp1-fe-yield}.
@@ -600,6 +607,26 @@ again, forming a complete cycle.
 This cycle is repeated for a couple of times before 
 the amorphous configuration emerges and any regular pattern
 disappears.
+
+\begin{figure*}[htpb]
+\includegraphics[width=0.32\textwidth]{disc-xy-400k_run1115.png}
+\includegraphics[width=0.32\textwidth]{disc-yz-400k_run1115.png}
+\includegraphics[width=0.32\textwidth]{disc-xy-700k_run1115.png}\\
+\includegraphics[width=0.32\textwidth]{disc-xy-750k_run1115.png}
+\includegraphics[width=0.32\textwidth]{disc-xy-1700k_run1115.png}
+\includegraphics[width=0.32\textwidth]{disc-xy-2200k_run1115.png}
+\caption{Snapshots of BPI disclination network at $\dot{\gamma}=4.88\e{-6}$): 
+Depicted is the transition from flow-induced, intertwined helices that 
+undergo a recurring affine transformation (top left and centre at 
+time step $t=4.0\e{5}$, top right at $t=7.0\e{5}$) with an intermediate 
+conformation that is non-helical (bottom left at time step $t=7.5\e{5}$) 
+to a distorted state (bottom centre at time step $t=1.7\e{6}$) and 
+finally to an amorphous network (bottom right at $t=2.2\e{6}$). 
+All pictures have the vie along the vorticity direction apart from the 
+one at the top centre which shows the network in gradient direction.}
+\label{bp1-low}
+\end{figure*}
+
 The negative branch in the deviatoric stress is connected
 to a local maximum followed by a local minimum in the average free energy.
 Hence, the region of negative stress can be 
@@ -612,9 +639,14 @@ create small distortions which finally break the symmetry of the
 flow-induced configuration.
 
 \begin{figure}[htpb]
-\includegraphics[width=0.495\textwidth]{stress_fe_yield_bp1.pdf}
-\caption{Average deviatoric stress and free energy density of BPI at low shear rate: The negative branch in the stress is related to a local maximum and a following local minimum in free energy density. This creates unstable conditions that lead to a dissolving regular network and an amorphous state which features a yield stress.}
-\label{bp1-fe-yield}
+\includegraphics[width=0.495\textwidth]{stress_bp1-1_bp1-2.pdf}
+\caption{Deviatoric stress $\Pi_{xy}$ over strain at the transition between regime
+BPI-1 and BPI-2. The shear rates are $\gd=1.95\e{-5}$ (red solid) 
+and $\gd=3.91\e{-5}$ (green dashed). Compared to lower shear rates in BPI-1 
+where the stress goes negative (viz. Fig. \ref{bp1-fe-yield}) the stress is 
+throughout positive, but exhibits still very large fluctuations during one cycle, 
+which are absent in regime BPI-2 at higher shear rates.}
+\label{bp1-1_bp1-2}
 \end{figure}
 
 We want to explain these differences on the basis of a typical 
@@ -634,37 +666,31 @@ There is no perceivable movement of the network in vorticity
 direction at any stage of the cycle.
 
 
-\begin{figure*}[htpb]
-\includegraphics[width=0.32\textwidth]{disc-xy-400k_run1115.png}
-\includegraphics[width=0.32\textwidth]{disc-yz-400k_run1115.png}
-\includegraphics[width=0.32\textwidth]{disc-xy-700k_run1115.png}\\
-\includegraphics[width=0.32\textwidth]{disc-xy-750k_run1115.png}
-\includegraphics[width=0.32\textwidth]{disc-xy-1700k_run1115.png}
-\includegraphics[width=0.32\textwidth]{disc-xy-2200k_run1115.png}
-\caption{Snapshots of BPI disclination network at low shear rate ($\dot{\gamma}=4.88\e{-6}$): Depicted is the transition from flow-induced, intertwined helices that undergo a recurring affine transformation (top left and centre at time step $t=4.0\e{5}$, top right at $t=7.0\e{5}$) with an intermediate conformation that is non-helical (bottom left at time step $t=7.5\e{5}$) to a distorted state (bottom centre at time step $t=1.7\e{6}$) and finally to an amorphous network (bottom right at $t=2.2\e{6}$). All pictures have the vie along the vorticity direction apart from the one at the top centre which shows the network in gradient direction.}
-\label{bp1-low}
-\end{figure*}
-
 However, this mode of flow proves unstable as after a few cycles 
 distortions appear which lead to further destabilisation.
 Finally, the network loses any residual order and 
 transforms into an amorphous state with virtually constant
-yield stress in the region of $\Pi_{xy}\simeq 1\e{-5}$ in LU.
+yield stress in the region of $\Pi_{xy}\simeq 1\e{-5}$ in LBU.
 
 \subsubsection{Regime BPI-2: intermediate shear rates}
 
-Intermediate shear rates in the sense of this study of BPI are characterised 
-by the missing negative branch in the deviatoric stress. It is unclear 
-why this feature is missing at higher flow rates. A possible explanation is that 
-above a certain flow rate the network simply skips the comparably small 
-window of negative stress in Fig. \ref{bp1-fe-yield} and finds a quicker 
-route to get back on the positive branch.
 
-\begin{figure}[htpb]
-\includegraphics[width=0.495\textwidth]{stress_bp1-1_bp1-2.pdf}
-\caption{}
-\label{bp1-1_bp1-2}
-\end{figure}
+Adjacent to regime BPI-1 ($\gd<3.91\e{-5}$) which features yield stress 
+behaviour at very low flow rates and the onset of power-law behaviour 
+at slightly larger shear rates (viz. Fig. \ref{bp1-rheo}) lies another 
+region ($3.91\e{-5}\le\gd< 6.25\e{-4}$) where the network flows with periodically 
+recurring patterns. The transition between these two regimes is shown
+in Fig. \ref{bp1-1_bp1-2} in terms of deviatoric stress over total strain. 
+
+The reason for this qualitative difference is rather obscur. A possible 
+explanation is that due to the larger flow rate the network kinetically 
+bypasses the relatively large stress fluctuations during one cycle which
+are typical in regime BPI-1. For even lower $\gd$ the deviatoric stress
+goes actually negative (viz. Fig. \ref{bp1-fe-yield}). This destabilises
+the periodic network very quickly and leads to an amorphous configuration
+in the steady state.
+
+
 
 Fig. \ref{bp1-med} shows snapshots of BPI in steady shear flow. 
 Contrary to BPII the flow-induced conformations of BPI differ significanly 
@@ -707,7 +733,7 @@ where large conformational changes take place.
 The complexity of flow-induced states and the seemingly chaotic but 
 periodic movement of the BPI network raises the question how robust 
 these results are with respect to the system size.
-Although the pitch length of 64 LU and the equivalent of 32 LU per
+Although the pitch length of 64 LBU and the equivalent of 32 LBU per
 unit cell provide enough resolution to track the motion of the 
 network in flow it is not clear whether 64 unit cells in total are enough to 
 mimick true bulk behaviour. 
@@ -731,9 +757,9 @@ Nevertheless, the chaotic behaviour and the recurrency seem to be a generic
 feature of BPI in this flow regime.
  
 \begin{figure}[htpb]
+\includegraphics[width=0.43\textwidth]{disc+y-600k-run911_run1163.png}\\
 \includegraphics[width=0.495\textwidth]{stress_bp1_2uc_4uc.pdf}
-\caption{Apparent viscosity $\eta_{app}$ for 8 (solid lines) and 64 unit cells (dashed lines)
-at $\gd=9.76\e{-6}$ and $1.95\e{-5}$. The shape of each curve differs largely, but the recurrence frequencies are hardly affected by the system size.}
+\caption{}
 \label{bp1-2uc4uc}
 \end{figure}
 
