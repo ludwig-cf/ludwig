@@ -57,9 +57,11 @@ LIBS = -lm
 AR = ar
 ARFLAGS = -cru
 
+
 GPUCC = nvcc
-GPUOPTS = $(OPTS) -D_GPU_
-GPUCFLAGS = -O3 -arch=sm_21 #-g -G 
+GPUCPPFLAG = #-D_GPU_
+GPUOPTS = $(OPTS) $(GPUCPPFLAG)
+GPUCFLAGS = -O3 -arch=sm_21 -g -G 
 GPUINC = $(INC) -I /export/mpich2/2-1.3-gcc/include
 GPULIBS= -L/usr/local/cuda/lib64 -lcudart
 
@@ -108,8 +110,8 @@ OBJS=d2q9.o d3q15.o d3q19.o model_r.o propagation.o propagation_ode.o collision.
      timer.o util.o wall.o colloids_Q_tensor.o ludwig.o
 
 GPUOBJS = collision_gpu.o propagation_gpu.o phi_lb_coupler_gpu.o \
-	gradient_3d_7pt_fluid_gpu.o utilities_gpu.o dist_datamgmt_gpu.o \
-	phi_datamgmt_gpu.o 
+	gradient_3d_7pt_fluid_gpu.o phi_force_gpu.o utilities_gpu.o dist_datamgmt_gpu.o \
+	phi_datamgmt_gpu.o  
 
 ###############################################################################
 #
@@ -139,7 +141,7 @@ serial:
 serialgpu: $(GPUOBJS)
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi $(GPULIBS)" "OBJS=$(OBJS) main.o $(GPUOBJS) " \
-	"OPTS=$(OPTS) -D_GPU_"
+	"OPTS=$(OPTS) $(GPUCPPFLAG)"
 
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) $(MAIN).o" "CC=$(MPICC)"

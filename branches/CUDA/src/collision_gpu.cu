@@ -273,7 +273,7 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
       jj = ((threadIndex-xfac*ii)/yfac);
       kk = (threadIndex-ii*xfac-jj*yfac);
       
-      index = get_linear_index_gpu_d(ii+1,jj+1,kk+1,Nall);
+      index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
       
       if (site_map_status_d[index] == FLUID)
 	{
@@ -534,7 +534,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
       jj = ((threadIndex-xfac*ii)/yfac);
       kk = (threadIndex-ii*xfac-jj*yfac);
       
-      index = get_linear_index_gpu_d(ii+1,jj+1,kk+1,Nall);
+      index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
       
 /*       if (site_map_status_d[index] == FLUID) */
 /* 	{ */

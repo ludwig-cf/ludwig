@@ -15,6 +15,7 @@
 /* from coords.h */
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
+enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
 #define DEFAULT_TPB 256 //default number of threads per bock
 

@@ -464,7 +464,7 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
   }
 
   /* The term in the isotropic pressure, plus that in qh */
-
+  //printf("RK %f\n",p0);
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       sth[ia][ib] = -p0*d_[ia][ib] + 2.0*xi_*(q[ia][ib] + r3_*d_[ia][ib])*qh;
@@ -870,6 +870,22 @@ void blue_phase_electric_field_set(const double e[3]) {
   return;
 }
 
+
+/*****************************************************************************
+ *
+ *  blue_phase_get_electric_field
+ *
+ *****************************************************************************/
+
+void blue_phase_get_electric_field(double e[3]) {
+
+  e[X] = electric_[X];
+  e[Y] = electric_[Y];
+  e[Z] = electric_[Z];
+
+  return;
+}
+
 /*****************************************************************************
  *
  *  blue_phase_dielectric_anisotropy_set
@@ -883,6 +899,17 @@ void blue_phase_dielectric_anisotropy_set(double e) {
   epsilon_ = (1.0/(12.0*pi_))*e;
 
   return;
+}
+
+/*****************************************************************************
+ *
+ * blue_phase_get_dielectric_anisotropy()
+ *
+ *****************************************************************************/
+
+double blue_phase_get_dielectric_anisotropy() {
+  
+  return epsilon_;
 }
 
 /*****************************************************************************

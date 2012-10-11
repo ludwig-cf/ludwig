@@ -32,7 +32,6 @@ extern const double q_[NVEL][3][3];
 
 double * ma_d;
 double * mi_d;
-double * d_d;
 int * cv_d;
 double * q_d;
 double * wv_d;
@@ -41,6 +40,12 @@ double * force_d;
 double * velocity_d;
 int * N_d;
 double * force_global_d;
+
+double * r3_d;
+double * d_d;
+double * e_d;
+
+double * electric_d;
 
 /* host memory address pointers for temporary staging of data */
 
@@ -85,12 +90,15 @@ void initialise_gpu()
   cudaMemcpy(N_d, N, 3*sizeof(int), cudaMemcpyHostToDevice); 
   cudaMemcpy(ma_d, ma_, NVEL*NVEL*sizeof(double), cudaMemcpyHostToDevice);
   cudaMemcpy(mi_d, mi_, NVEL*NVEL*sizeof(double), cudaMemcpyHostToDevice);
-  cudaMemcpy(d_d, d_, 3*3*sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpy(cv_d, cv, NVEL*3*sizeof(int), cudaMemcpyHostToDevice); 
   cudaMemcpy(wv_d, wv, NVEL*sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpy(q_d, q_, NVEL*3*3*sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpy(force_global_d, force_global, 3*sizeof(double), \
 	     cudaMemcpyHostToDevice);
+
+  cudaMemcpy(r3_d, &r3_, sizeof(double), cudaMemcpyHostToDevice); 
+  cudaMemcpy(d_d, d_, 3*3*sizeof(double), cudaMemcpyHostToDevice); 
+  cudaMemcpy(e_d, e_, 3*3*3*sizeof(double), cudaMemcpyHostToDevice); 
 
   
 
@@ -153,7 +161,6 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &site_map_status_d, nsites*sizeof(char));
   cudaMalloc((void **) &ma_d, NVEL*NVEL*sizeof(double));
   cudaMalloc((void **) &mi_d, NVEL*NVEL*sizeof(double));
-  cudaMalloc((void **) &d_d, 3*3*sizeof(double));
   cudaMalloc((void **) &cv_d, NVEL*3*sizeof(int));
   cudaMalloc((void **) &wv_d, NVEL*sizeof(double));
   cudaMalloc((void **) &q_d, NVEL*3*3*sizeof(double));
@@ -161,6 +168,12 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &velocity_d, nsites*3*sizeof(double));
   cudaMalloc((void **) &N_d, sizeof(int)*3);
   cudaMalloc((void **) &force_global_d, sizeof(double)*3);
+
+  cudaMalloc((void **) &r3_d, sizeof(double));
+  cudaMalloc((void **) &d_d, sizeof(double)*3*3);
+  cudaMalloc((void **) &e_d, sizeof(double)*3*3*3);
+
+  cudaMalloc((void **) &electric_d, sizeof(double)*3);
 
   checkCUDAError("allocate_memory_on_gpu");
 
@@ -178,7 +191,6 @@ static void free_memory_on_gpu()
 
   cudaFree(ma_d);
   cudaFree(mi_d);
-  cudaFree(d_d);
   cudaFree(cv_d);
   cudaFree(wv_d);
   cudaFree(q_d);
@@ -187,6 +199,12 @@ static void free_memory_on_gpu()
   cudaFree(velocity_d);
   cudaFree(N_d);
   cudaFree(force_global_d);
+
+  cudaFree(r3_d);
+  cudaFree(d_d);
+  cudaFree(e_d);
+
+  cudaFree(electric_d);
 
   checkCUDAError("free_memory_on_gpu");
 }

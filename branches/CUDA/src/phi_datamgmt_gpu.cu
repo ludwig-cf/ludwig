@@ -159,9 +159,9 @@ static void allocate_phi_memory_on_gpu()
 {
 
   /* temp arrays for staging data on  host */
-  phi_site_temp = (double *) malloc(nsites*sizeof(double));
-  grad_phi_site_temp = (double *) malloc(nsites*3*sizeof(double));
-  delsq_phi_site_temp = (double *) malloc(nsites*sizeof(double));
+  phi_site_temp = (double *) malloc(nsites*nop*sizeof(double));
+  grad_phi_site_temp = (double *) malloc(nsites*nop*3*sizeof(double));
+  delsq_phi_site_temp = (double *) malloc(nsites*nop*sizeof(double));
   le_index_real_to_buffer_temp = (int *) malloc(nlexbuf*sizeof(int));
 
   cudaHostAlloc( (void **)&phiedgeXLOW, nphihalodataX*sizeof(double), 
@@ -220,13 +220,13 @@ static void allocate_phi_memory_on_gpu()
   cudaMalloc((void **) &phihaloZLOW_d, nphihalodataZ*sizeof(double));
   cudaMalloc((void **) &phihaloZHIGH_d, nphihalodataZ*sizeof(double));
   
-  cudaMalloc((void **) &phi_site_d, nsites*sizeof(double));
-  cudaMalloc((void **) &delsq_phi_site_d, nsites*sizeof(double));
-  cudaMalloc((void **) &grad_phi_site_d, nsites*3*sizeof(double));
+  cudaMalloc((void **) &phi_site_d, nsites*nop*sizeof(double));
+  cudaMalloc((void **) &delsq_phi_site_d, nsites*nop*sizeof(double));
+  cudaMalloc((void **) &grad_phi_site_d, nsites*3*nop*sizeof(double));
   cudaMalloc((void **) &le_index_real_to_buffer_d, nlexbuf*sizeof(int));
 
 
-  //   checkCUDAError("allocate_memory_on_gpu");
+     checkCUDAError("allocate_phi_memory_on_gpu");
 
 }
 
@@ -300,55 +300,23 @@ static void free_phi_memory_on_gpu()
 void put_phi_on_gpu()
 {
 
-  int index, ic, jc, kc;
+  int index, ic, jc, kc, iop;
 	      
 
   /* get temp host copies of arrays */
-  for (ic=0; ic<=Nall[X]; ic++)
+  for (ic=0; ic<Nall[X]; ic++)
     {
-      for (jc=0; jc<=Nall[Y]; jc++)
+      for (jc=0; jc<Nall[Y]; jc++)
 	{
-	  for (kc=0; kc<=Nall[Z]; kc++)
+	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
+
 	      index = get_linear_index(ic, jc, kc, Nall); 
 
-	      phi_site_temp[index]=phi_get_phi_site(index);
-	    }
-	}
-    }
-
-
-  /* copy data from CPU to accelerator */
-  cudaMemcpy(phi_site_d, phi_site_temp, nsites*sizeof(double), \
-	     cudaMemcpyHostToDevice);
-
-  //checkCUDAError("put_phi_on_gpu");
-
-}
-
-/* copy phi from host to accelerator */
-void put_grad_phi_on_gpu()
-{
-
-  int index, i, ic, jc, kc;
-  double grad_phi[3];
-	      
-
-  /* get temp host copies of arrays */
-  for (ic=1; ic<=N[X]; ic++)
-    {
-      for (jc=1; jc<=N[Y]; jc++)
-	{
-	  for (kc=1; kc<=N[Z]; kc++)
-	    {
-	      index = coords_index(ic, jc, kc); 
-
-
-	      phi_gradients_grad(index, grad_phi);
-
-	      for (i=0;i<3;i++)
+	      for (iop=0; iop<nop; iop++)
 		{
-		  grad_phi_site_temp[index*3+i]=grad_phi[i];
+
+		  phi_site_temp[index*nop+iop]=phi_op_get_phi_site(index,iop);
 		}
 	    }
 	}
@@ -356,11 +324,51 @@ void put_grad_phi_on_gpu()
 
 
   /* copy data from CPU to accelerator */
-  cudaMemcpy(grad_phi_site_d, grad_phi_site_temp, nsites*3*sizeof(double), \
+  cudaMemcpy(phi_site_d, phi_site_temp, nsites*nop*sizeof(double), \
+	     cudaMemcpyHostToDevice);
+
+  checkCUDAError("put_phi_on_gpu");
+
+}
+
+/* copy phi from host to accelerator */
+void put_grad_phi_on_gpu()
+{
+
+  int index, i, ic, jc, kc, iop;
+  double grad_phi[3];
+	      
+
+  /* get temp host copies of arrays */
+  for (ic=0; ic<Nall[X]; ic++)
+    {
+      for (jc=0; jc<Nall[Y]; jc++)
+	{
+	  for (kc=0; kc<Nall[Z]; kc++)
+	    {
+
+	      index = get_linear_index(ic, jc, kc, Nall); 
+
+	      for (iop=0; iop<nop; iop++)
+		{
+		  phi_gradients_grad_n(index, iop, grad_phi);
+
+		  for (i=0;i<3;i++)
+		    {
+		      grad_phi_site_temp[3*(index*nop+iop)+i]=grad_phi[i];
+		    }
+		}
+	    }
+	}
+    }
+
+
+  /* copy data from CPU to accelerator */
+  cudaMemcpy(grad_phi_site_d, grad_phi_site_temp, nsites*nop*3*sizeof(double), \
 	     cudaMemcpyHostToDevice);
 
 
-  //checkCUDAError("put_phi_on_gpu");
+  checkCUDAError("put_grad_phi_on_gpu");
 
 }
 
@@ -368,29 +376,33 @@ void put_grad_phi_on_gpu()
 void put_delsq_phi_on_gpu()
 {
 
-  int index, ic, jc, kc;
+  int index, ic, jc, kc, iop;
 
   /* get temp host copies of arrays */
-  for (ic=1; ic<=N[X]; ic++)
+  for (ic=0; ic<Nall[X]; ic++)
     {
-      for (jc=1; jc<=N[Y]; jc++)
+      for (jc=0; jc<Nall[Y]; jc++)
 	{
-	  for (kc=1; kc<=N[Z]; kc++)
+	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
-	      index = coords_index(ic, jc, kc); 
 
-	      delsq_phi_site_temp[index] = phi_gradients_delsq(index);
+	      index = get_linear_index(ic, jc, kc, Nall); 
+
+	      for (iop=0; iop<nop; iop++){
+
+		delsq_phi_site_temp[index*nop+iop] = phi_gradients_delsq_n(index,iop);
 	      	      
+	      }
 	    }
 	}
     }
 
 
   /* copy data from CPU to accelerator */
-  cudaMemcpy(delsq_phi_site_d, delsq_phi_site_temp, nsites*sizeof(double), \
+  cudaMemcpy(delsq_phi_site_d, delsq_phi_site_temp, nsites*nop*sizeof(double), \
 	     cudaMemcpyHostToDevice);
 
-  //checkCUDAError("put_phi_on_gpu");
+  checkCUDAError("put_delsq_phi_on_gpu");
 
 }
 
@@ -400,11 +412,11 @@ void put_delsq_phi_on_gpu()
 void get_phi_from_gpu()
 {
 
-  int index, ic, jc, kc;
+  int index, ic, jc, kc, iop;
 	      
 
   /* copy data from accelerator to host */
-  cudaMemcpy(phi_site_temp, phi_site_d, nsites*sizeof(double),	\
+  cudaMemcpy(phi_site_temp, phi_site_d, nsites*nop*sizeof(double),	\
          cudaMemcpyDeviceToHost);
 
   /* set phi */
@@ -414,10 +426,16 @@ void get_phi_from_gpu()
 	{
 	  for (kc=1; kc<=N[Z]; kc++)
 	    {
+
 	      index = coords_index(ic, jc, kc); 
 
-	      phi_set_phi_site(index,phi_site_temp[index]);
+	      for (iop=0; iop<nop; iop++)
+		{
 
+		
+		  phi_op_set_phi_site(index,iop,phi_site_temp[index*nop+iop]);
+
+		}
 	    }
 	}
     }

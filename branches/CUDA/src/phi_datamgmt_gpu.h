@@ -14,9 +14,11 @@
 
 /* declarations for required external (host) routines */
 extern "C" double phi_get_phi_site(const int);
+extern "C" double phi_op_get_phi_site(const int index, const int nop);
 extern "C" void phi_set_phi_site(const int, const double);
-extern "C" void   phi_gradients_grad(const int index, double grad[3]);
-extern "C" double phi_gradients_delsq(const int index);
+extern "C" void phi_op_set_phi_site(const int, const int, const double);
+extern "C" void   phi_gradients_grad_n(const int index, const int iop, double grad[3]);
+extern "C" double phi_gradients_delsq_n(const int index, const int iop);
 extern "C" void TIMER_start(const int);
 extern "C" void TIMER_stop(const int);
 

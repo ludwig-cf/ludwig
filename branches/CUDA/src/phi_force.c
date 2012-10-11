@@ -333,7 +333,7 @@ static void phi_force_flux(void) {
  *  phi_force_compute_fluxes
  *
  *  Linearly interpolate the chemical stress to the cell faces to get
- *  the momentum fluxes. 
+ *  the momentum fluxes.
  *
  *****************************************************************************/
 
@@ -456,7 +456,7 @@ static void phi_force_flux_divergence(double * fluxe, double * fluxw,
  *
  *  It is intended that these fluxes are uncorrected, and that a
  *  global constraint on the total force is enforced. This costs
- *  one Allreduce in pe_comm() per call. 
+ *  one Allreduce in pe_comm() per call.
  *
  *****************************************************************************/
 
@@ -562,7 +562,7 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
   if (fbar == NULL) fatal("calloc(%d, fbar) failed\n", 3*nplane);
   if (fcor == NULL) fatal("calloc(%d, fcor) failed\n", 3*nplane);
 
-  for (ip = 0; ip < nplane; ip++) { 
+  for (ip = 0; ip < nplane; ip++) {
 
     ic = le_plane_location(ip);
 
@@ -583,7 +583,7 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
 
   ra = 0.5/(L(Y)*L(Z));
 
-  for (ip = 0; ip < nplane; ip++) { 
+  for (ip = 0; ip < nplane; ip++) {
 
     ic = le_plane_location(ip);
 
