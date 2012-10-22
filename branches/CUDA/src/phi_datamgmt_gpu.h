@@ -18,7 +18,9 @@ extern "C" double phi_op_get_phi_site(const int index, const int nop);
 extern "C" void phi_set_phi_site(const int, const double);
 extern "C" void phi_op_set_phi_site(const int, const int, const double);
 extern "C" void   phi_gradients_grad_n(const int index, const int iop, double grad[3]);
+extern "C" void   phi_gradients_set_grad_n(const int index, const int iop, double grad[3]);
 extern "C" double phi_gradients_delsq_n(const int index, const int iop);
+extern "C" void phi_gradients_set_delsq_n(const int index, const int iop, const double delsq);
 extern "C" void TIMER_start(const int);
 extern "C" void TIMER_stop(const int);
 
@@ -28,6 +30,8 @@ extern "C" void put_phi_on_gpu();
 extern "C" void put_grad_phi_on_gpu();
 extern "C" void put_delsq_phi_on_gpu();
 extern "C" void get_phi_from_gpu();
+extern "C" void get_grad_phi_from_gpu();
+extern "C" void get_delsq_phi_from_gpu();
 extern "C" void get_phi_edges_from_gpu(void);
 extern "C" void put_phi_halos_on_gpu(void);
 extern "C" void phi_halo_gpu(void);

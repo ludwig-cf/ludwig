@@ -780,6 +780,7 @@ void blue_phase_redshift_compute(void) {
   double egrad_local[2], egrad[2];    /* Gradient terms for redshift calc. */
   double rnew;
 
+
   if (redshift_update_ == 0) return;
 
   coords_nlocal(nlocal);

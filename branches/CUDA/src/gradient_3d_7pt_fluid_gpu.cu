@@ -120,11 +120,11 @@ __global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo,
       /* icm1 = le_index_real_to_buffer(ic, -1); */
       /* icp1 = le_index_real_to_buffer(ic, +1); */
       /*le_index_real_to_buffer_d holds -1 then +1 translation values */
-      icm1=le_index_real_to_buffer_d[ii+1];
-      icp1=le_index_real_to_buffer_d[Nall[X]+ii+1];      
-      
-      indexm1 = get_linear_index_gpu_d(icm1,jj+nhalo,kk+nhalo,Nall);
-      indexp1 = get_linear_index_gpu_d(icp1,jj+nhalo,kk+nhalo,Nall);
+      icm1=le_index_real_to_buffer_d[ii+nhalo-nextra];
+      icp1=le_index_real_to_buffer_d[Nall[X]+ii+nhalo-nextra];      
+
+      indexm1 = get_linear_index_gpu_d(icm1,jj+nhalo-nextra,kk+nhalo-nextra,Nall);
+      indexp1 = get_linear_index_gpu_d(icp1,jj+nhalo-nextra,kk+nhalo-nextra,Nall);
 
 
       for (n = 0; n < nop; n++) { 

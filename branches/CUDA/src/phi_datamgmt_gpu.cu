@@ -331,7 +331,7 @@ void put_phi_on_gpu()
 
 }
 
-/* copy phi from host to accelerator */
+/* copy grad phi from host to accelerator */
 void put_grad_phi_on_gpu()
 {
 
@@ -372,6 +372,50 @@ void put_grad_phi_on_gpu()
 
 }
 
+/* copy grad phi from accelerator to host*/
+void get_grad_phi_from_gpu()
+{
+
+  int index, i, ic, jc, kc, iop;
+  double grad_phi[3];
+	      
+
+  /* copy data from accelerator to CPU */
+  cudaMemcpy(grad_phi_site_temp, grad_phi_site_d, nsites*nop*3*sizeof(double), \
+	     cudaMemcpyDeviceToHost);
+
+
+  /* set grad phi */
+  for (ic=0; ic<Nall[X]; ic++)
+    {
+      for (jc=0; jc<Nall[Y]; jc++)
+	{
+	  for (kc=0; kc<Nall[Z]; kc++)
+	    {
+
+	      index = get_linear_index(ic, jc, kc, Nall); 
+
+	      for (iop=0; iop<nop; iop++)
+		{
+
+		  for (i=0;i<3;i++)
+		    {
+		      grad_phi[i]=grad_phi_site_temp[3*(index*nop+iop)+i];
+		    }
+
+		  phi_gradients_set_grad_n(index, iop, grad_phi);
+
+		}
+	    }
+	}
+    }
+
+
+
+  checkCUDAError("get_grad_phi_from_gpu");
+
+}
+
 /* copy phi from host to accelerator */
 void put_delsq_phi_on_gpu()
 {
@@ -403,6 +447,42 @@ void put_delsq_phi_on_gpu()
 	     cudaMemcpyHostToDevice);
 
   checkCUDAError("put_delsq_phi_on_gpu");
+
+}
+
+/* copy delsq phi from accelerator to host*/
+void get_delsq_phi_from_gpu()
+{
+
+  int index, ic, jc, kc, iop;
+
+
+
+  /* copy data from CPU to accelerator */
+  cudaMemcpy(delsq_phi_site_temp, delsq_phi_site_d, nsites*nop*sizeof(double), \
+	     cudaMemcpyDeviceToHost);
+
+  /* get temp host copies of arrays */
+  for (ic=0; ic<Nall[X]; ic++)
+    {
+      for (jc=0; jc<Nall[Y]; jc++)
+	{
+	  for (kc=0; kc<Nall[Z]; kc++)
+	    {
+
+	      index = get_linear_index(ic, jc, kc, Nall); 
+
+	      for (iop=0; iop<nop; iop++){
+
+		phi_gradients_set_delsq_n(index,iop,delsq_phi_site_temp[index*nop+iop]);
+	      	      
+	      }
+	    }
+	}
+    }
+
+
+  checkCUDAError("get_delsq_phi_from_gpu");
 
 }
 

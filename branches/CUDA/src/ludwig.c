@@ -284,10 +284,25 @@ void ludwig_run(const char * inputfile) {
       /* Note that the liquid crystal boundary conditions must come after
        * the halo swap, but before the gradient calculation. */
 
+#define _GPU_
 #ifdef _GPU_
 
+      phi_compute_phi_site();
+      phi_halo();
+      //phi_gradients_compute();
+
+
+    put_f_on_gpu();
+    put_phi_on_gpu();
+    //put_grad_phi_on_gpu();
+    //put_delsq_phi_on_gpu();
+    put_velocity_on_gpu();
+    put_site_map_on_gpu();
+    put_force_on_gpu();
+
+
       TIMER_start(PHICOMP);
-      phi_compute_phi_site_gpu();
+      //phi_compute_phi_site_gpu();
       TIMER_stop(PHICOMP);
 
       if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
@@ -297,7 +312,7 @@ void ludwig_run(const char * inputfile) {
 
 
       TIMER_start(PHIHALO);
-      phi_halo_gpu();
+      //phi_halo_gpu();
       TIMER_stop(PHIHALO);
 
 
@@ -305,10 +320,16 @@ void ludwig_run(const char * inputfile) {
       phi_gradients_compute_gpu();
       TIMER_stop(PHIGRADCOMP);
 
-      if (phi_nop() == 5) {
-	info("Error: phi_nop() == 5 not yet supported in GPU mode\n");
-	exit(1);
-      }
+
+      get_grad_phi_from_gpu();
+      get_delsq_phi_from_gpu();
+
+      //TO DO: implement this
+      //if (phi_nop() == 5) blue_phase_redshift_compute();
+      //if (phi_nop() == 5) {
+      //info("Error: phi_nop() == 5 not yet supported in GPU mode\n");
+      //exit(1);
+      //}
 
 #else
 
@@ -325,23 +346,10 @@ void ludwig_run(const char * inputfile) {
 
       if (phi_is_finite_difference()) {
 
-#ifdef _GPU_
-	info("Error: phi_is_finite_difference not yet supported in GPU mode\n");
-	exit(1);
-#endif
-
 	TIMER_start(TIMER_FORCE_CALCULATION);
 
-#define _GPU_
+	//#define _GPU_
 #ifdef _GPU_
-
-    put_f_on_gpu();
-    put_phi_on_gpu();
-    put_grad_phi_on_gpu();
-    put_delsq_phi_on_gpu();
-    put_velocity_on_gpu();
-    put_site_map_on_gpu();
-    put_force_on_gpu();
 
 	if (colloid_ntotal() == 0) {
 	  phi_force_calculation_gpu();

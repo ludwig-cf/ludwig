@@ -264,6 +264,20 @@ double phi_gradients_delsq_n(const int index, const int nop) {
 
 /*****************************************************************************
  *
+ *  phi_gradients_set_delsq_n
+ *
+ *****************************************************************************/
+
+void phi_gradients_set_delsq_n(const int index, const int nop, const double delsq) {
+
+  assert(phi_delsq_);
+  assert(nop < phi_nop());
+
+  phi_delsq_[phi_nop()*index + nop] = delsq;
+}
+
+/*****************************************************************************
+ *
  *  phi_gradients_grad_n
  *
  *****************************************************************************/
@@ -277,6 +291,26 @@ void phi_gradients_grad_n(const int index, const int nop, double grad[3]) {
 
   for (ia = 0; ia < 3; ia++) {
     grad[ia] = phi_grad_[3*(phi_nop()*index + nop) + ia];
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_gradients_set_grad_n
+ *
+ *****************************************************************************/
+
+void phi_gradients_set_grad_n(const int index, const int nop, double grad[3]) {
+
+  int ia;
+
+  assert(phi_grad_);
+  assert(nop < phi_nop());
+
+  for (ia = 0; ia < 3; ia++) {
+    phi_grad_[3*(phi_nop()*index + nop) + ia] = grad[ia];
   }
 
   return;
