@@ -505,7 +505,12 @@ qs_dir_format BINARY
 #
 #  Also important
 #
-#  temperature                sets Boltzmann factor beta
+#  temperature                	sets Boltzmann factor beta
+
+#  electrokinetics_init		  [gouy_chapman|liquid_junction]
+#  electrokinetics_init_rho_el	  electrolyte concentration
+#  electrokinetics_init_delta_el  concentration difference in ljp
+#  electrokinetics_init_sigma     surface charge density
 #
 ###############################################################################
 
@@ -518,6 +523,8 @@ electrokinetics_eunit   1.0
 electrokinetics_epsilon 1000.0
 electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 0.001
+electrokinetics_init_delta_el 0.01
+electrokinetics_init_sigma 0.01
 
 ###############################################################################
 #
