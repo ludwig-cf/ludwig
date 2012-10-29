@@ -27,13 +27,16 @@
 #include "field.h"
 #include "field_grad.h"
 
-enum encode {ENCODE_GRAD = 1, ENCODE_DELSQ, ENCODE_GRAD4, ENCODE_DELSQ4};
+enum encode {ENCODE_GRAD = 1, ENCODE_DELSQ, ENCODE_GRAD4, ENCODE_DELSQ4,
+             ENCODE_DAB};
 
 static int do_test1(void);
 static int do_test3(void);
 static int do_test5(void);
+static int do_test_dab(void);
 static int test_d2(int nf, const double * data, double * grad, double * delsq);
 static int test_d4(int nf, const double * data, double * grad, double * delsq);
+static int test_dab(int nf, const double * field, double * dab);
 static double test_encode(int code, int nf, int n, int iv);
 
 /*****************************************************************************
@@ -52,6 +55,7 @@ int main(int argc, char ** argv) {
   do_test1();
   do_test3();
   do_test5();
+  do_test_dab();
 
   pe_finalise();
   MPI_Finalize();
@@ -221,6 +225,59 @@ static int do_test5(void) {
 
 /*****************************************************************************
  *
+ *  do_test_dab
+ *
+ *****************************************************************************/
+
+int do_test_dab(void) {
+
+  int nf = 1;
+  int index = 1;
+  double dab[3][3];
+  double tol = DBL_EPSILON;
+
+  field_t * field = NULL;
+  field_grad_t * gradient = NULL;
+
+  coords_init();
+  le_init();
+
+  field_create(nf, "dab-field-test", &field);
+  assert(field);
+  field_init(field, 0);
+
+  field_grad_create(field, 3, &gradient);
+  assert(gradient);
+
+  field_grad_set(gradient, test_d2, NULL);
+  field_grad_dab_set(gradient, test_dab);
+  field_grad_compute(gradient);
+
+  field_grad_scalar_dab(gradient, index, dab);
+
+  assert(fabs(dab[X][X] - test_encode(ENCODE_DAB, nf, XX, 0) < DBL_EPSILON));
+  assert(fabs(dab[X][Y] - test_encode(ENCODE_DAB, nf, XY, 0) < DBL_EPSILON));
+  assert(fabs(dab[X][Z] - test_encode(ENCODE_DAB, nf, XZ, 0) < DBL_EPSILON));
+  assert(fabs(dab[Y][X] - test_encode(ENCODE_DAB, nf, XY, 0) < DBL_EPSILON));
+  assert(fabs(dab[Y][Y] - test_encode(ENCODE_DAB, nf, YY, 0) < DBL_EPSILON));
+  assert(fabs(dab[Y][Z] - test_encode(ENCODE_DAB, nf, YZ, 0) < DBL_EPSILON));
+  assert(fabs(dab[Z][X] - test_encode(ENCODE_DAB, nf, XZ, 0) < DBL_EPSILON));
+  assert(fabs(dab[Z][Y] - test_encode(ENCODE_DAB, nf, YZ, 0) < DBL_EPSILON));
+  assert(fabs(dab[Z][Z] - test_encode(ENCODE_DAB, nf, ZZ, 0) < DBL_EPSILON));
+
+  /* Clean up */
+
+  field_grad_free(gradient);
+  field_free(field);
+
+  le_finish();
+  coords_finish();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  test_d2
  *
  *****************************************************************************/
@@ -274,4 +331,31 @@ static double test_encode(int code, int nf, int iv, int n) {
   result = 1.0*code + 0.1*(n*nf + iv);
 
   return result;
+}
+
+/*****************************************************************************
+ *
+ *  test_dab
+ *
+ *****************************************************************************/
+
+static int test_dab(int nf, const double * field, double * dab) {
+
+  int n;
+  int index = 1;
+
+  assert(nf == 1);
+  assert(field);
+  assert(dab);
+
+  for (n = 0; n < nf; n++) {
+    dab[NSYMM*(nf*index + n) + XX] = test_encode(ENCODE_DAB, nf, XX, n);
+    dab[NSYMM*(nf*index + n) + XY] = test_encode(ENCODE_DAB, nf, XY, n);
+    dab[NSYMM*(nf*index + n) + XZ] = test_encode(ENCODE_DAB, nf, XZ, n);
+    dab[NSYMM*(nf*index + n) + YY] = test_encode(ENCODE_DAB, nf, YY, n);
+    dab[NSYMM*(nf*index + n) + YZ] = test_encode(ENCODE_DAB, nf, YZ, n);
+    dab[NSYMM*(nf*index + n) + ZZ] = test_encode(ENCODE_DAB, nf, ZZ, n);
+  }
+
+  return 0;
 }
