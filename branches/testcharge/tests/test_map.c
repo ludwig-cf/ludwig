@@ -130,9 +130,9 @@ int do_test1(void) {
   /* Test status set */
 
   index = coords_index(1, 1, 1);
-  map_status_set(map, index, MAP_SOLID);
+  map_status_set(map, index, MAP_BOUNDARY);
   map_status(map, index, &status);
-  assert(status == MAP_SOLID);
+  assert(status == MAP_BOUNDARY);
 
   map_free(map);
   coords_finish();
