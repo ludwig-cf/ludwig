@@ -74,6 +74,11 @@ static int field_grad_init(field_grad_t * obj) {
     if (obj->delsq == NULL) fatal("calloc(field_grad->delsq) failed");
   }
 
+  if (obj->level == 3) {
+    obj->d_ab = calloc(NSYMM*obj->nf*nsites, sizeof(double));
+    if (obj->d_ab == NULL) fatal("calloc(fieldgrad->d_ab) failed\n");
+  }
+
   if (obj->level >= 4) {
     obj->grad_delsq = calloc(NVECTOR*obj->nf*nsites, sizeof(double));
     obj->delsq_delsq = calloc(obj->nf*nsites, sizeof(double));
@@ -102,6 +107,23 @@ int field_grad_set(field_grad_t * obj, grad_ft f2, grad_ft f4) {
 
 /*****************************************************************************
  *
+ *  field_grad_dab_set
+ *
+ *  The function may be NULL.
+ *
+ *****************************************************************************/
+
+int field_grad_dab_set(field_grad_t * obj, dab_ft fdab) {
+
+  assert(obj);
+
+  obj->dab = fdab;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  field_grad_free
  *
  *  The caller is responsible for releasing the resources associated
@@ -117,6 +139,7 @@ void field_grad_free(field_grad_t * obj) {
   if (obj->delsq) free(obj->delsq);
   if (obj->grad_delsq) free(obj->grad_delsq);
   if (obj->delsq_delsq) free(obj->delsq_delsq);
+  if (obj->d_ab) free(obj->d_ab);
 
   obj->field = NULL;
   free(obj);
@@ -138,6 +161,11 @@ int field_grad_compute(field_grad_t * obj) {
   field_leesedwards(obj->field);
 
   obj->d2(obj->field->nf, obj->field->data, obj->grad, obj->delsq);
+
+  if (obj->level == 3) {
+    assert(obj->dab);
+    obj->dab(obj->field->nf, obj->field->data, obj->d_ab);
+  }
 
   if (obj->level >= 4) {
     assert(obj->d4);
@@ -219,6 +247,32 @@ int field_grad_scalar_delsq_delsq(field_grad_t * obj, int index, double * dd) {
   assert(dd);
 
   *dd = obj->delsq_delsq[index];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_scalar_dab
+ *
+ *  Return tensor d_a d_b for scalar field
+ *
+ *****************************************************************************/
+
+int field_grad_scalar_dab(field_grad_t * obj, int index, double dab[3][3]) {
+
+  assert(obj);
+  assert(obj->nf == 1);
+
+  dab[X][X] = obj->d_ab[NSYMM*index + XX];
+  dab[X][Y] = obj->d_ab[NSYMM*index + XY];
+  dab[X][Z] = obj->d_ab[NSYMM*index + XZ];
+  dab[Y][X] = dab[X][Y];
+  dab[Y][Y] = obj->d_ab[NSYMM*index + YY];
+  dab[Y][Z] = obj->d_ab[NSYMM*index + YZ];
+  dab[Z][X] = dab[X][Z];
+  dab[Z][Y] = dab[Y][Z];
+  dab[Z][Z] = obj->d_ab[NSYMM*index + ZZ];
 
   return 0;
 }

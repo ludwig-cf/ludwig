@@ -23,11 +23,13 @@ struct field_grad_s {
   int level;                /* Maximum derivative required */
   double * grad;            /* Gradient              \nabla f */
   double * delsq;           /* Laplacian             \nabla^2 f */
+  double * d_ab;            /* Gradient tensor d_a d_b f */
   double * grad_delsq;      /* Gradient of Laplacian grad \nabla^2 f */
   double * delsq_delsq;     /* Laplacian^2           \nabla^4 f */
 
   int (* d2) (int nf, const double * field, double * grad, double * delsq);
   int (* d4) (int nf, const double * field, double * grad, double * delsq);
+  int (* dab) (int nf, const double * field, double * d_ab);
 };
 
 #endif

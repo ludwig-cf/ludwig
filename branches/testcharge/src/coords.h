@@ -17,6 +17,8 @@
 
 #include <mpi.h>
 
+#define NSYMM 6      /* Elements for general symmetric tensor */
+
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
