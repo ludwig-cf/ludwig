@@ -431,61 +431,6 @@ void write_data(FILE * fp_data, int n[3], double * data) {
   return;
 }
 
-/****************************************************************************
- *
- *  write_data_cmf
- *
- *  Write contiguous block of (float) data.
- *
- ****************************************************************************/
-
-void write_data_old(FILE * fp_data, int n[3], double * data) {
-
-  int ic, jc, kc, index, nr;
-  double array[n[0]][n[1]][n[2]][nrec_];
-  double *ptr1;
-
-  index = 0;
-
-  for (ic = 0; ic < n[0]; ic++) {
-    for (jc = 0; jc < n[1]; jc++) {
-      for (kc = 0; kc < n[2]; kc++) {
-	for (nr = 0; nr < nrec_; nr++) {
-	  array[ic][jc][kc][nr]=*(data + index);
-	  index++;
-	}
-      }
-    }
-  }
-
-  if (output_binary_) {
-    for (kc = 0; kc < n[2]; kc++) {
-      for (jc = 0; jc < n[1]; jc++) {
-	for (ic = 0; ic < n[0]; ic++) {
-	  for (nr = 0; nr < nrec_; nr++) {
-	    ptr1=&array[ic][jc][kc][nr];
-	    fwrite(ptr1, sizeof(double), 1, fp_data);
-	  }
-	}
-      }
-    }
-  }
-  else {
-    for (kc = 0; kc < n[2]; kc++) {
-      for (jc = 0; jc < n[1]; jc++) {
-	for (ic = 0; ic < n[0]; ic++) {
-	  for (nr = 0; nr < nrec_ - 1; nr++) {
-	    fprintf(fp_data, "%13.6e ", array[ic][jc][kc][nr]);
-	  }
-	  fprintf(fp_data, "%13.6e\n", array[ic][jc][kc][nr]);
-	}
-      }
-    }
-  }
-
-  return;
-}
-
 /*****************************************************************************
  *
  *  write_data_cmf
