@@ -439,7 +439,7 @@ void write_data(FILE * fp_data, int n[3], double * data) {
  *
  ****************************************************************************/
 
-void write_data_cmf(FILE * fp_data, int n[3], double * data) {
+void write_data_old(FILE * fp_data, int n[3], double * data) {
 
   int ic, jc, kc, index, nr;
   double array[n[0]][n[1]][n[2]][nrec_];
@@ -478,6 +478,48 @@ void write_data_cmf(FILE * fp_data, int n[3], double * data) {
 	    fprintf(fp_data, "%13.6e ", array[ic][jc][kc][nr]);
 	  }
 	  fprintf(fp_data, "%13.6e\n", array[ic][jc][kc][nr]);
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  write_data_cmf
+ *
+ *  Loop around the sites in 'reverse' order (column major format).
+ *
+ *****************************************************************************/
+
+void write_data_cmf(FILE * fp_data, int n[3], double * data) {
+
+  int ic, jc, kc, index;
+  int nr;
+
+  if (output_binary_) {
+    for (kc = 0; kc < n[2]; kc++) {
+      for (jc = 0; jc < n[1]; jc++) {
+	for (ic = 0; ic < n[0]; ic++) {
+	  index = site_index(ic, jc, kc, n);
+	  for (nr = 0; nr < nrec_; nr++) {
+	    fwrite(data + nrec_*index + nr, sizeof(double), 1, fp_data);
+	  }
+	}
+      }
+    }
+  }
+  else {
+    for (kc = 0; kc < n[2]; kc++) {
+      for (jc = 0; jc < n[1]; jc++) {
+	for (ic = 0; ic < n[0]; ic++) {
+	  index = site_index(ic, jc, kc, n);
+	  for (nr = 0; nr < nrec_ - 1; nr++) {
+	    fprintf(fp_data, "%13.6e ", *(data + nrec_*index + nr));
+	  }
+	  fprintf(fp_data, "%13.6e\n", *(data + nrec_*index + nr));
 	}
       }
     }
