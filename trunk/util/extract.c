@@ -500,9 +500,9 @@ void write_data_cmf(FILE * fp_data, int n[3], double * data) {
   int nr;
 
   if (output_binary_) {
-    for (kc = 0; kc < n[2]; kc++) {
-      for (jc = 0; jc < n[1]; jc++) {
-	for (ic = 0; ic < n[0]; ic++) {
+    for (kc = 1; kc <= n[2]; kc++) {
+      for (jc = 1; jc <= n[1]; jc++) {
+	for (ic = 1; ic <= n[0]; ic++) {
 	  index = site_index(ic, jc, kc, n);
 	  for (nr = 0; nr < nrec_; nr++) {
 	    fwrite(data + nrec_*index + nr, sizeof(double), 1, fp_data);
@@ -512,9 +512,9 @@ void write_data_cmf(FILE * fp_data, int n[3], double * data) {
     }
   }
   else {
-    for (kc = 0; kc < n[2]; kc++) {
-      for (jc = 0; jc < n[1]; jc++) {
-	for (ic = 0; ic < n[0]; ic++) {
+    for (kc = 1; kc <= n[2]; kc++) {
+      for (jc = 1; jc <= n[1]; jc++) {
+	for (ic = 1; ic <= n[0]; ic++) {
 	  index = site_index(ic, jc, kc, n);
 	  for (nr = 0; nr < nrec_ - 1; nr++) {
 	    fprintf(fp_data, "%13.6e ", *(data + nrec_*index + nr));
