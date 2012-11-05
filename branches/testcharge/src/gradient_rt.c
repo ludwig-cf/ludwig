@@ -72,6 +72,7 @@ int gradient_rt_init(field_grad_t * grad, map_t * map) {
       info("3d_7pt_fluid\n");
       f2 = gradient_3d_7pt_fluid_d2;
       f4 = gradient_3d_7pt_fluid_d4;
+      field_grad_dab_set(grad, gradient_3d_7pt_fluid_dab);
     }
     else if (strcmp(keyvalue, "3d_7pt_solid") == 0) {
       info("3d_7pt_solid\n");

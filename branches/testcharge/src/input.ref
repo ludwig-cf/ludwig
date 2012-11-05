@@ -115,6 +115,7 @@ electric_e0 0.0_0.0_0.0
 #                                 surfactant
 #                                 polar_active
 #                                 lc_blue_phase
+#				  lc_droplet #coupling LC and binary fluid
 #
 #                                 symmetric_lb symmetric with 2 distributions
 #
@@ -297,6 +298,16 @@ polar_active_lambda  0.0
 
 leslie_ericksen_gamma 0.3
 leslie_ericksen_swim  0.0
+
+###############################################################################
+#
+#  liquid crystal droplet
+#
+###############################################################################
+
+lc_droplet_gamma 3.0
+lc_droplet_delta -0.25
+lc_droplet_W 0.04
 
 ###############################################################################
 #

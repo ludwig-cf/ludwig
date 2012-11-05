@@ -17,6 +17,13 @@
 #ifndef LC_DROPLET_H
 #define LC_DROPLET_H
 
+#include "free_energy.h"
+#include "field.h"
+#include "field_grad.h"
+
+int lc_droplet_phi_set(field_t * phi, field_grad_t * dphi);
+int lc_droplet_q_set(field_t * q, field_grad_t * dq);
+
 void lc_droplet_set_parameters(double gamma0, double delta, double W);
 double lc_droplet_get_gamma0(void);
 double lc_droplet_free_energy_density(const int index);

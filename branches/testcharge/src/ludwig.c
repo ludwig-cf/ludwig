@@ -69,6 +69,8 @@
 #include "brazovskii_rt.h"
 #include "polar_active_rt.h"
 #include "blue_phase_rt.h"
+#include "lc_droplet_rt.h"
+#include "lc_droplet.h"
 
 /* Dynamics */
 #include "phi_cahn_hilliard.h"
@@ -204,7 +206,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* Can we move this down to t = 0 initialisation? */
   if (ludwig->phi) symmetric_rt_initial_conditions(ludwig->phi);
-
+    
   wall_init(ludwig->map);
   COLL_init(ludwig->map);
 
@@ -243,7 +245,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
       io_read_data(iohandler, filename, ludwig->p);
     }
     if (ludwig->q) {
-      sprintf(filename, "%sqs-%8.8d", subdirectory, get_step());
+      sprintf(filename, "%sq-%8.8d", subdirectory, get_step());
       info("files(s) %s\n", filename);
       field_io_info(ludwig->q, &iohandler);
       io_read_data(iohandler, filename, ludwig->q);
@@ -488,8 +490,8 @@ void ludwig_run(const char * inputfile) {
       }
       if (ludwig->q) {
 	field_io_info(ludwig->q, &iohandler);
-	info("Writing qs file at step %d!\n", step);
-	sprintf(filename,"%sqs-%8.8d", subdirectory, step);
+	info("Writing q file at step %d!\n", step);
+	sprintf(filename,"%sq-%8.8d", subdirectory, step);
 	io_write_data(iohandler, filename, ludwig->q);
       }
     }
@@ -573,8 +575,8 @@ void ludwig_run(const char * inputfile) {
     }
     if (ludwig->q) {
       field_io_info(ludwig->q, &iohandler);
-      info("Writing qs file at step %d!\n", step);
-      sprintf(filename,"%sqs-%8.8d", subdirectory, step);
+      info("Writing q file at step %d!\n", step);
+      sprintf(filename,"%sq-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->q);
     }
     /* Only strictly required if have order parameter dynamics */ 
@@ -903,6 +905,102 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     leslie_ericksen_swim_set(value);
     info("Self-advection parameter = %12.5e\n", value);
   }
+  else if(strcmp(description, "lc_droplet") == 0){
+    
+    /* liquid crystal droplet */
+    info("\nliquid crystal droplet free energy chosen\n");
+    
+    /* first do the symmetric */
+    nf = 1;      /* 1 scalar order parameter */
+    nhalo = 2;   /* Require stress divergence. */
+    ngrad = 3;   /* \nabla^2 and d_a d_b required */
+
+    /* Noise requires additional stencil point for Cahn Hilliard */
+    if (strcmp(description, "symmetric_noise") == 0) {
+      nhalo = 3;
+    }
+
+    coords_nhalo_set(nhalo);
+    coords_run_time();
+    le_init();
+        
+    field_create(nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo);
+    field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    info("\n");
+    info("Free energy details\n");
+    info("-------------------\n\n");
+    symmetric_run_time();
+    
+    lc_droplet_phi_set(ludwig->phi, ludwig->phi_grad);
+
+    info("\n");
+    info("Using Cahn-Hilliard finite difference solver.\n");
+
+    RUN_get_double_parameter("mobility", &value);
+    phi_cahn_hilliard_mobility_set(value);
+    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+
+    /* This could be set via symmetric_noise, no? Or check consistent */
+    p = 0;
+    RUN_get_int_parameter("fd_phi_fluctuations", &p);
+    info("Order parameter noise = %3s\n", (p == 0) ? "off" : " on");
+    if (p != 0) phi_fluctuations_on_set(p);
+
+    if (phi_fluctuations_on()) {
+      if (nhalo != 3) fatal("Fluctuations: use symmetric_noise\n");
+      RUN_get_int_parameter("fd_phi_fluctuations_seed", &p);
+      seed = 0;
+      if (p > 0) {
+	seed = p;
+	info("Order parameter noise seed: %u\n", seed);
+      }
+      phi_fluctuations_init(seed);
+    }
+
+    /* Force */
+
+    p = 1; /* Default is to use divergence method */
+    RUN_get_int_parameter("fd_force_divergence", &p);
+    info("Force calculation:      %s\n",
+         (p == 0) ? "phi grad mu method" : "divergence method");
+    phi_force_divergence_set(p);
+  
+    /* Liquid crystal part */
+    nf = NQAB;   /* Tensor order parameter */
+    nhalo = 2;   /* Required for stress diveregnce. */
+    ngrad = 2;   /* (\nabla^2) required */
+
+    /*coords_nhalo_set(nhalo);
+    coords_run_time();
+    le_init();
+    */
+    
+    field_create(nf, "q", &ludwig->q);
+    field_init(ludwig->q, nhalo);
+    field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
+
+    info("\n");
+    info("Free energy details\n");
+    info("-------------------\n\n");
+
+    blue_phase_run_time();
+    lc_droplet_q_set(ludwig->q, ludwig->q_grad);
+
+    info("\n");
+    info("Using Beris-Edwards solver:\n");
+
+    p = RUN_get_double_parameter("lc_Gamma", &value);
+    if (p != 0) {
+      blue_phase_be_set_rotational_diffusion(value);
+      info("Rotational diffusion constant = %12.5e\n", value);
+    }
+    
+    /* finalise with the droplet specific init*/
+    lc_droplet_run_time();
+
+  }
   else {
     if (n == 1) {
       /* The user has put something which hasn't been recognised,
@@ -1040,7 +1138,8 @@ int symmetric_rt_initial_conditions(field_t * phi) {
 
   if (p != 0 && strcmp(value, "drop") == 0) {
     info("Initialising droplet\n");
-    symmetric_init_drop(phi, 0.4*L(X), symmetric_interfacial_width());
+    /*symmetric_init_drop(phi, 0.4*L(X), symmetric_interfacial_width());*/
+    symmetric_init_drop(phi, 9.0, symmetric_interfacial_width());
   }
 
   if (p != 0 && strcmp(value, "from_file") == 0) {

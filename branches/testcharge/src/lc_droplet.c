@@ -39,9 +39,52 @@ static field_grad_t * grad_phi_ = NULL;
 
 /*****************************************************************************
  *
- *  lc_droplet_set_gamma0
+ *  lc_droplet_phi_set
  *
- *  Set the gamma0.
+ *  Attach a reference to the order parameter field object, and the
+ *  associated gradient object.
+ *
+ *****************************************************************************/
+
+int lc_droplet_phi_set(field_t * phi, field_grad_t * dphi) {
+
+  assert(phi);
+  assert(dphi);
+  
+  phi_ = phi;
+  grad_phi_ = dphi;
+  symmetric_phi_set(phi, dphi);
+  
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lc_droplet_q_set
+ *
+ *  Attach a reference to the order parameter tensor object, and the
+ *  associated gradient object.
+ *
+ *****************************************************************************/
+
+int lc_droplet_q_set(field_t * q, field_grad_t * dq) {
+
+  assert(q);
+  assert(dq);
+  
+  q_ = q;
+  grad_q_ = dq;
+  blue_phase_q_set(q, dq);
+  
+  return 0;
+}
+    
+
+/*****************************************************************************
+ *
+ *  lc_droplet_set_parameters
+ *
+ *  Set the parameters.
  *
  *****************************************************************************/
 
@@ -198,7 +241,7 @@ void lc_droplet_anchoring_molecular_field(const int index, double h[3][3]) {
   field_grad_scalar_grad(grad_phi_, index, dphi);
   field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
   
-  for (ia = 0; ia < 3; ib++){
+  for (ia = 0; ia < 3; ia++){
     for (ib = 0; ib < 3; ib++){
       h[ia][ib] = -W_*(dphi[ia]*dphi[ib] - r3_*d_[ia][ib]*delsq_phi);
     }
