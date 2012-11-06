@@ -1,0 +1,199 @@
+\chapterauthor{Raphaël Couturier}{Femto-ST Institute, University of Franche-Comte}
+
+\chapter{Introduction to Cuda}
+\label{chapter2}
+
+\section{Introduction}
+\label{ch2:intro}
+
+In this chapter  we give some simple examples of Cuda  programming.  The goal is
+not to provide an exhaustive presentation of all the functionalities of Cuda but
+rather to give some basic elements. Of  course, readers that do not know Cuda are
+invited  to read  other  books that  are  specialized on  Cuda programming  (for
+example: \cite{ch2:Sanders:2010:CEI}).
+
+
+\section{First example}
+\label{ch2:1ex}
+
+This first example is  intented to show how to build a  very simple program with
+Cuda.  Its goal  is to perform the sum  of two arrays and put the  result into a
+third array.  A Cuda program consists in  a C code which calls Cuda kernels that
+are executed on a GPU. The listing of this code is in Listing~\ref{ch2:lst:ex1}.
+
+
+As GPUs have  their own memory, the first step consists  in allocating memory on
+the GPU.  A call to  \texttt{cudaMalloc}\index{Cuda~functions!cudaMalloc} allows
+to allocate memory on the GPU. The first parameter of this function is a pointer
+on a memory on the device (i.e. the GPU). In this example, \texttt{d\_} is added
+on each variable allocated  on the GPU, meaning this variable is  on the GPU. The
+second parameter represents the size of the allocated variables, this size is expressed in
+bits.
+
+In this example, we  want to compare the execution time of  the additions of two
+arrays in  CPU and  GPU. So  for both these  operations, a  timer is  created to
+measure the  time. Cuda proposes to  manipulate timers quite  easily.  The first
+step is to create the timer\index{Cuda~functions!timer}, then to start it and at
+the end to stop it. For each of these operations a dedicated function is used.
+
+In  order to  compute  the same  sum  with a  GPU, the  first  step consists  in
+transferring the data from the CPU (considered as the host with Cuda) to the GPU
+(considered as the  device with Cuda).  A call  to \texttt{cudaMemcpy} allows to
+copy the content of an array allocated in the host to the device when the fourth
+parameter                                 is                                 set
+to  \texttt{cudaMemcpyHostToDevice}\index{Cuda~functions!cudaMemcpy}.  The first
+parameter of the function is the  destination array, the second is the
+source  array and  the third  is the  number of  elements to  copy  (expressed in
+bytes).
+
+Now the  GPU contains the  data needed to  perform the addition.   In sequential
+programming, such  addition is  achieved out  with a loop  on all  the elements.
+With a GPU,  it is possible to perform  the addition of all the  elements of the
+two  arrays in  parallel (if  the number  of blocks  and threads  per  blocks is
+sufficient).   In Listing\ref{ch2:lst:ex1}  at the  beginning, a  simple kernel,
+called \texttt{addition} is defined to  compute in parallel the summation of the
+two     arrays.      With     Cuda,     a     kernel     starts     with     the
+keyword   \texttt{\_\_global\_\_}   \index{Cuda~keywords!\_\_shared\_\_}   which
+indicates that this kernel can be called from the C code.  The first instruction
+in this kernel is used to compute the variable \texttt{tid} which represents the
+thread index.   This thread index\index{thread  index} is computed  according to
+the           values            of           the           block           index
+(called  \texttt{blockIdx} \index{Cuda~keywords!blockIdx}  in Cuda)  and  of the
+thread   index   (called   \texttt{blockIdx}\index{Cuda~keywords!threadIdx}   in
+Cuda). Blocks of threads and thread  indexes can be decomposed into 1 dimension,
+2 dimensions or  3 dimensions.  According to the  dimension of manipulated data,
+the appropriate dimension  can be useful. In our example,  only one dimension is
+used.   Then using notation  \texttt{.x} we  can access  to the  first dimension
+(\texttt{.y}  and \texttt{.z}  respectively allow to access  to the  second and
+third dimension).   The variable \texttt{blockDim}\index{Cuda~keywords!blockDim}
+gives the size of each block.
+
+
+
+\lstinputlisting[label=ch2:lst:ex1,caption=A simple example]{Chapters/chapter2/ex1.cu}
+
+\section{Second example: using CUBLAS}
+\label{ch2:2ex}
+
+The Basic Linear Algebra Subprograms  (BLAS) allows programmers to use efficient
+routines  that are  often  required. Those  routines  are heavily  used in  many
+scientific applications  and are optimized for  vector operations, matrix-vector
+operations                           and                           matrix-matrix
+operations~\cite{ch2:journals/ijhpca/Dongarra02}. Some  of those operations seem
+to be  easy to  implement with Cuda.   Nevertheless, as  soon as a  reduction is
+needed, implementing an efficient reduction routine with Cuda is far from being
+simple. Roughly speaking, a reduction operation\index{reduction~operation} is an
+operation  which combines  all the  elements of  an array  and extracts  a number
+computed with all the  elements. For example, a sum, a maximum  or a dot product
+are reduction operations.
+
+In this second example, we consider that  we have two vectors $A$ and $B$. First
+of all, we want to compute the sum  of both vectors in a vector $C$. Then we want
+to compute the  scalar product between $1/C$ and $1/A$. This  is just an example
+which has no direct interest except to show how to program it with Cuda.
+
+Listing~\ref{ch2:lst:ex2} shows this example with Cuda. The first kernel for the
+addition  of two  arrays  is exactly  the same  as  the one  described in  the
+previous example.
+
+The  kernel  to  compute the  opposite  of  the  elements  of  an array  is  very
+simple. For  each thread index,  the inverse of  the array replaces  the initial
+array.
+
+In the main function,  the beginning is very similar to the  one in the previous
+example.  First,  the user is  askef to define  the number of elements.   Then a
+call  to \texttt{cublasCreate}  allows  to initialize  the  cublas library.   It
+creates a handle. Then all the arrays  are allocated in the host and the device,
+as in the  previous example.  Both arrays $A$ and $B$  are initialized.  The CPU
+computation is performed  and the time for this CPU  computation is measured. In
+order to  compute the same result  on the GPU, first  of all, data  from the CPU
+need to be  copied into the memory of  the GPU. For that, it is  possible to use
+cublas   function   \texttt{cublasSetVector}.    This   function   has   several
+arguments. More precisely, the first  argument represents the number of elements
+to transfer, the second arguments is the size of each element, the third element
+represents the source  of the array to  transfer (in the GPU), the  fourth is an
+offset between each element of the source  (usually this value is set to 1), the
+fifth is  the destination (in the  GPU) and the  last is an offset  between each
+element  of the  destination. Then  we call  the kernel  \texttt{addition} which
+computes the  sum of all elements  of arrays $A$ and  $B$.  The \texttt{inverse}
+kernel  is called twice,  once to  inverse elements  of array  $C$ and  once for
+$A$. Finally,  we call the  function \texttt{cublasDdot} which computes  the dot
+product  of two  vectors.   To use  this  routine, we  must  specify the  handle
+initialized by  Cuda, the number  of elements to  consider, then each  vector is
+followed by the offset between every  element.  After the GPU computation, it is
+possible to check that both computation produce the same result.
+
+\lstinputlisting[label=ch2:lst:ex2,caption=A simple example with cublas]{Chapters/chapter2/ex2.cu}
+
+\section{Third example: matrix-matrix multiplication}
+\label{ch2:3ex}
+
+
+
+Matrix-matrix multiplication is an operation  which is quite easy to parallelize
+with a GPU. If we consider that  a matrix is represented using a two dimensional
+array, $A[i][j]$ represents the element of  the $i^{th}$ row and of the $j^{th}$
+column. In  many cases, it is  easier to manipulate a  1D array instead  of a 2D
+array.   With Cuda,  even if  it is  possible to  manipulate 2D  arrays,  in the
+following we present an example based on a 1D array. For the sake of simplicity,
+we  consider we  have  a square  matrix of  size  \texttt{size}.  So  with a  1D
+array,  \texttt{A[i*size+j]} allows  us to  have access  to the  element  of the
+$i^{th}$ row and of the $j^{th}$ column.
+
+With  a sequential  programming, the  matrix multiplication  is  performed using
+three loops. We assume that $A$, $B$  represent two square matrices and the
+result   of    the   multiplication    of   $A   \times    B$   is    $C$.   The
+element \texttt{C[i*size+j]} is computed as follows:
+\begin{equation}
+C[i*size+j]=\sum_{k=0}^{size-1} A[i*size+k]*B[k*size+j];
+\end{equation}
+
+In Listing~\ref{ch2:lst:ex3},  the CPU computation  is performed using  3 loops,
+one  for $i$,  one for  $j$  and one  for $k$.   In  order to  perform the  same
+computation on a  GPU, a naive solution consists in  considering that the matrix
+$C$ is split into  2 dimensional blocks.  The size of each  block must be chosen
+such as the number of threads per block is inferior to $1,024$.
+
+
+In Listing~\ref{ch2:lst:ex3},  we consider that  a block contains 16  threads in
+each   dimension,  the   variable  \texttt{width}   is  used   for   that.   The
+variable \texttt{nbTh} represents the number of threads per block. So, to be able
+to compute the matrix-matrix product on a GPU, each block of threads is assigned
+to compute the result  of the product for the elements of  this block.  The main
+part of the code is quite similar to the previous code.  Arrays are allocated in
+the  CPU and  the GPU.   Matrices $A$  and $B$  are randomly  initialized.  Then
+arrays are  transferred inside the  GPU memory with call  to \texttt{cudaMemcpy}.
+So the first step for each thread of a block is to compute the corresponding row
+and   column.    With   a    2   dimensional   decomposition,   \texttt{int   i=
+blockIdx.y*blockDim.y+ threadIdx.y;} allows us to compute the corresponding line
+and  \texttt{int  j=   blockIdx.x*blockDim.x+  threadIdx.x;}  the  corresponding
+column. Then each  thread has to compute the  sum of the product of  the line of
+$A$   by   the  column   of   $B$.    In  order   to   use   a  register,   the
+kernel  \texttt{matmul}  uses a  variable  called  \texttt{sum}  to compute  the
+sum. Then the result is set into  the matrix at the right place. The computation
+of  CPU matrix-matrix multiplication  is performed  as described  previously.  A
+timer measures  the time.   In order to  use 2 dimensional  blocks, \texttt{dim3
+dimGrid(size/width,size/width);} allows us  to create \texttt{size/width} blocks
+in each  dimension.  Likewise,  \texttt{dim3 dimBlock(width,width);} is  used to
+create \texttt{width} thread  in each dimension. After that,  the kernel for the
+matrix  multiplication is  called. At  the end  of the  listing, the  matrix $C$
+computed by the GPU is transferred back  into the CPU and we check if both matrices
+C computed by the CPU and the GPU are identical with a precision of $10^{-4}$.
+
+
+With $1,024  \times 1,024$ matrices,  on a C2070M  Tesla card, this  code takes
+$37.68$ms to perform the multiplication. With an Intel Xeon E31245 at $3.30$GHz, it
+takes $2465$ms  without any parallelization (using only  one core). Consequently
+the speed up  between the CPU and GPU  version is about $65$ which  is very good
+regarding the difficulty of parallelizing this code.
+
+\lstinputlisting[label=ch2:lst:ex3,caption=simple Matrix-matrix multiplication with cuda]{Chapters/chapter2/ex3.cu}
+
+\section{Conclusion}
+In this chapter, three simple Cuda examples have been  presented. They are
+quite  simple. As we  cannot  present  all the  possibilities  of  the  Cuda
+programming, interested  readers  are  invited  to  consult  Cuda  programming
+introduction books if some issues regarding the Cuda programming are not clear.
+
+\putbib[Chapters/chapter2/biblio]
+

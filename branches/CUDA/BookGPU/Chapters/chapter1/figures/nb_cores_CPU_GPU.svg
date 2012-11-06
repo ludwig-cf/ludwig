@@ -1,0 +1,649 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="397.28427"
+   height="211.28427"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.47 r22583"
+   sodipodi:docname="nb_cores_CPU_GPU.svg">
+  <defs
+     id="defs4">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 526.18109 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="744.09448 : 526.18109 : 1"
+       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
+       id="perspective10" />
+    <inkscape:perspective
+       id="perspective2830"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2867"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2917"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2843"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2917-6"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2917-4"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2917-9"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3004"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3040"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3095"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3095-8"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3095-4"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3135"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3135-1"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3135-18"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3175"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3318"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.52"
+     inkscape:cx="303.23921"
+     inkscape:cy="59.131552"
+     inkscape:document-units="px"
+     inkscape:current-layer="g3279"
+     showgrid="true"
+     inkscape:snap-grids="true"
+     inkscape:snap-to-guides="true"
+     inkscape:snap-page="true"
+     inkscape:window-width="1467"
+     inkscape:window-height="955"
+     inkscape:window-x="66"
+     inkscape:window-y="25"
+     inkscape:window-maximized="0"
+     inkscape:snap-center="false"
+     showguides="true"
+     inkscape:snap-global="true">
+    <inkscape:grid
+       type="xygrid"
+       id="grid5061"
+       empspacing="5"
+       visible="true"
+       enabled="true"
+       snapvisiblegridlinesonly="true" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-28.920367,-49.979029)">
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1.28426683;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect5038"
+       width="175"
+       height="210"
+       x="29.5625"
+       y="50.621162" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.57897002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect2816"
+       width="70"
+       height="30.647432"
+       x="40"
+       y="99.973732" />
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+       x="49.581612"
+       y="121.33645"
+       id="text2815"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2817"
+         x="49.581612"
+         y="121.33645">Core 1</tspan></text>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot2819"
+       style="font-size:40px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"><flowRegion
+         id="flowRegion2821"><rect
+           id="rect2823"
+           width="97.651001"
+           height="95.202072"
+           x="10.71406"
+           y="25.649122" /></flowRegion><flowPara
+         id="flowPara2825" /></flowRoot>    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.57897002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect2816-1"
+       width="70"
+       height="30.647432"
+       x="125.41839"
+       y="99.973732" />
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+       x="135"
+       y="121.33645"
+       id="text2815-6"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2900"
+         x="135"
+         y="121.33645">Core 2</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="76.984375"
+       y="90.621162"
+       id="text2833"><tspan
+         sodipodi:role="line"
+         id="tspan2835"
+         x="76.984375"
+         y="90.621162">CPU</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1.28426683;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect5038-3"
+       width="175"
+       height="210"
+       x="250.5625"
+       y="50.62117" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="297.98438"
+       y="90.62117"
+       id="text2833-1"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan2907"
+         x="297.98438"
+         y="90.62117">GPU</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.57897002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect2816-3"
+       width="70"
+       height="30.647432"
+       x="40"
+       y="140.97372" />
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+       x="49.581619"
+       y="162.33644"
+       id="text2815-3"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2984"
+         x="49.581619"
+         y="162.33644">Core 3</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.57897002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect2816-1-6"
+       width="70"
+       height="30.647432"
+       x="125.41838"
+       y="140.97372" />
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+       x="135"
+       y="162.33644"
+       id="text2815-6-7"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2986"
+         x="135"
+         y="162.33644">Core 4</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.57897002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect2816-9"
+       width="70"
+       height="30.647432"
+       x="40"
+       y="180.97372" />
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+       x="49.581619"
+       y="202.33644"
+       id="text2815-7"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2988"
+         x="49.581619"
+         y="202.33644">Core 5</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.57897002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect2816-1-4"
+       width="70"
+       height="30.647432"
+       x="125.41838"
+       y="180.97372" />
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+       x="135"
+       y="202.33644"
+       id="text2815-6-3"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2990"
+         x="135"
+         y="202.33644">Core 6</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.57897002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect2816-29"
+       width="70"
+       height="30.647432"
+       x="40"
+       y="220.97372" />
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+       x="49.581619"
+       y="242.33644"
+       id="text2815-69"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2992"
+         x="49.581619"
+         y="242.33644">Core 7</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.57897002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect2816-1-0"
+       width="70"
+       height="30.647432"
+       x="125.41838"
+       y="220.97372" />
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+       x="135"
+       y="242.33644"
+       id="text2815-6-4"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2994"
+         x="135"
+         y="242.33644">Core 8</tspan></text>
+    <g
+       id="g3286"
+       transform="translate(-0.22538757,0)">
+      <rect
+         y="100.99391"
+         x="259.45078"
+         height="30.25898"
+         width="70"
+         id="rect2816-2"
+         style="fill:none;stroke:#000000;stroke-width:0.57528913;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text2815-2"
+         y="109.38237"
+         x="261.9368"
+         style="font-size:8px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+         xml:space="preserve"><tspan
+           y="109.38237"
+           x="261.9368"
+           id="tspan2901"
+           sodipodi:role="line">Multiprocessor 1</tspan></text>
+      <text
+         sodipodi:linespacing="125%"
+         id="text2903"
+         y="125.62116"
+         x="272.5625"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+           y="125.62116"
+           x="272.5625"
+           id="tspan2905"
+           sodipodi:role="line">32 cores</tspan></text>
+      <rect
+         y="140.3622"
+         x="259.5625"
+         height="30.25898"
+         width="70"
+         id="rect2816-2-0"
+         style="fill:none;stroke:#000000;stroke-width:0.57528913;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text2815-2-8"
+         y="148.75066"
+         x="262.04852"
+         style="font-size:8px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+         xml:space="preserve"><tspan
+           y="148.75066"
+           x="262.04852"
+           id="tspan3081"
+           sodipodi:role="line">Multiprocessor 3</tspan></text>
+      <text
+         sodipodi:linespacing="125%"
+         id="text2903-6"
+         y="164.98946"
+         x="272.67422"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+           y="164.98946"
+           x="272.67422"
+           id="tspan2905-1"
+           sodipodi:role="line">32 cores</tspan></text>
+    </g>
+    <g
+       id="g3298">
+      <rect
+         y="100.99391"
+         x="345"
+         height="30.25898"
+         width="70"
+         id="rect2816-2-9"
+         style="fill:none;stroke:#000000;stroke-width:0.57528913;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text2815-2-5"
+         y="109.38236"
+         x="347.48602"
+         style="font-size:8px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+         xml:space="preserve"><tspan
+           y="109.38236"
+           x="347.48602"
+           id="tspan3030"
+           sodipodi:role="line">Multiprocessor 2</tspan></text>
+      <text
+         sodipodi:linespacing="125%"
+         id="text2903-3"
+         y="125.62116"
+         x="358.11172"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+           y="125.62116"
+           x="358.11172"
+           id="tspan2905-3"
+           sodipodi:role="line">32 cores</tspan></text>
+      <rect
+         y="140.3622"
+         x="344.5625"
+         height="30.25898"
+         width="70"
+         id="rect2816-2-9-1"
+         style="fill:none;stroke:#000000;stroke-width:0.57528913;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text2815-2-5-8"
+         y="148.75064"
+         x="347.04852"
+         style="font-size:8px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+         xml:space="preserve"><tspan
+           y="148.75064"
+           x="347.04852"
+           id="tspan3083"
+           sodipodi:role="line">Multiprocessor 4</tspan></text>
+      <text
+         sodipodi:linespacing="125%"
+         id="text2903-3-8"
+         y="164.98944"
+         x="357.67422"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+           y="164.98944"
+           x="357.67422"
+           id="tspan2905-3-5"
+           sodipodi:role="line">32 cores</tspan></text>
+    </g>
+    <path
+       sodipodi:type="arc"
+       id="path3085"
+       sodipodi:cx="280"
+       sodipodi:cy="159.08493"
+       sodipodi:rx="5"
+       sodipodi:ry="5"
+       d="m 285,159.08493 c 0,2.76142 -2.23858,5 -5,5 -2.76142,0 -5,-2.23858 -5,-5 0,-2.76142 2.23858,-5 5,-5 2.76142,0 5,2.23858 5,5 z"
+       transform="matrix(0.5,0,0,0.50000002,154.28125,101.07869)" />
+    <path
+       sodipodi:type="arc"
+       id="path3085-3"
+       sodipodi:cx="280"
+       sodipodi:cy="159.08493"
+       sodipodi:rx="5"
+       sodipodi:ry="5"
+       d="m 285,159.08493 c 0,2.76142 -2.23858,5 -5,5 -2.76142,0 -5,-2.23858 -5,-5 0,-2.76142 2.23858,-5 5,-5 2.76142,0 5,2.23858 5,5 z"
+       transform="matrix(0.5,0,0,0.50000002,154.28125,131.07869)" />
+    <path
+       sodipodi:type="arc"
+       id="path3085-6"
+       sodipodi:cx="280"
+       sodipodi:cy="159.08493"
+       sodipodi:rx="5"
+       sodipodi:ry="5"
+       d="m 285,159.08493 c 0,2.76142 -2.23858,5 -5,5 -2.76142,0 -5,-2.23858 -5,-5 0,-2.76142 2.23858,-5 5,-5 2.76142,0 5,2.23858 5,5 z"
+       transform="matrix(0.5,0,0,0.50000002,154.28125,121.07869)" />
+    <path
+       sodipodi:type="arc"
+       id="path3085-1"
+       sodipodi:cx="280"
+       sodipodi:cy="159.08493"
+       sodipodi:rx="5"
+       sodipodi:ry="5"
+       d="m 285,159.08493 c 0,2.76142 -2.23858,5 -5,5 -2.76142,0 -5,-2.23858 -5,-5 0,-2.76142 2.23858,-5 5,-5 2.76142,0 5,2.23858 5,5 z"
+       transform="matrix(0.5,0,0,0.50000002,154.28125,111.07869)" />
+    <g
+       id="g3272"
+       transform="translate(0.28125,0)">
+      <rect
+         y="221.36218"
+         x="259"
+         height="30.25898"
+         width="70"
+         id="rect2816-2-0-6"
+         style="fill:none;stroke:#000000;stroke-width:0.57528913;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text2815-2-8-8"
+         y="229.75064"
+         x="261.48602"
+         style="font-size:8px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+         xml:space="preserve"><tspan
+           sodipodi:role="line"
+           id="tspan2906">Multiprocessor 15</tspan></text>
+      <text
+         sodipodi:linespacing="125%"
+         id="text2903-6-8"
+         y="245.98944"
+         x="272.11172"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+           y="245.98944"
+           x="272.11172"
+           id="tspan2905-1-2"
+           sodipodi:role="line">32 cores</tspan></text>
+    </g>
+    <g
+       id="g3279"
+       transform="translate(-0.21875,0)">
+      <rect
+         y="221.3622"
+         x="345"
+         height="30.25898"
+         width="70"
+         id="rect2816-2-9-1-4"
+         style="fill:none;stroke:#000000;stroke-width:0.57528913;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text2815-2-5-8-7"
+         y="229.75064"
+         x="347.48602"
+         style="font-size:8px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+         xml:space="preserve"><tspan
+           sodipodi:role="line"
+           id="tspan2908">Multiprocessor 16</tspan></text>
+      <text
+         sodipodi:linespacing="125%"
+         id="text2903-3-8-0"
+         y="245.98944"
+         x="358.11172"
+         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+           y="245.98944"
+           x="358.11172"
+           id="tspan2905-3-5-5"
+           sodipodi:role="line">32 cores</tspan></text>
+    </g>
+    <path
+       sodipodi:type="arc"
+       id="path3085-0"
+       sodipodi:cx="280"
+       sodipodi:cy="159.08493"
+       sodipodi:rx="5"
+       sodipodi:ry="5"
+       d="m 285,159.08493 c 0,2.76142 -2.23858,5 -5,5 -2.76142,0 -5,-2.23858 -5,-5 0,-2.76142 2.23858,-5 5,-5 2.76142,0 5,2.23858 5,5 z"
+       transform="matrix(0.5,0,0,0.50000002,239.78125,101.07869)" />
+    <path
+       sodipodi:type="arc"
+       id="path3085-3-8"
+       sodipodi:cx="280"
+       sodipodi:cy="159.08493"
+       sodipodi:rx="5"
+       sodipodi:ry="5"
+       d="m 285,159.08493 c 0,2.76142 -2.23858,5 -5,5 -2.76142,0 -5,-2.23858 -5,-5 0,-2.76142 2.23858,-5 5,-5 2.76142,0 5,2.23858 5,5 z"
+       transform="matrix(0.5,0,0,0.50000002,239.78125,131.07869)" />
+    <path
+       sodipodi:type="arc"
+       id="path3085-6-8"
+       sodipodi:cx="280"
+       sodipodi:cy="159.08493"
+       sodipodi:rx="5"
+       sodipodi:ry="5"
+       d="m 285,159.08493 c 0,2.76142 -2.23858,5 -5,5 -2.76142,0 -5,-2.23858 -5,-5 0,-2.76142 2.23858,-5 5,-5 2.76142,0 5,2.23858 5,5 z"
+       transform="matrix(0.5,0,0,0.50000002,239.78125,121.07869)" />
+    <path
+       sodipodi:type="arc"
+       id="path3085-1-4"
+       sodipodi:cx="280"
+       sodipodi:cy="159.08493"
+       sodipodi:rx="5"
+       sodipodi:ry="5"
+       d="m 285,159.08493 c 0,2.76142 -2.23858,5 -5,5 -2.76142,0 -5,-2.23858 -5,-5 0,-2.76142 2.23858,-5 5,-5 2.76142,0 5,2.23858 5,5 z"
+       transform="matrix(0.5,0,0,0.50000002,239.78125,111.07869)" />
+  </g>
+</svg>
