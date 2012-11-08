@@ -275,6 +275,9 @@ Er=\frac{\eta V L}{K}
 \end{equation}
 with $\eta$ and $K$ being the viscosity and elastic constant and
 $V$ and $L$ as typical velocity and length scale. 
+In the present work $L=p_0/2$ was assumed to be the unit cell size,
+whereas $V$ was taken to be the velocity difference
+across one unit cell, i.e. $V=\dot{\gamma} p_0/2$. 
 
 The spectrum $X_\omega$ of the deviatoric stress $\Pi_{xy}(t)$ was determined via discrete Fourier transformation according to
 \begin{equation}
@@ -300,54 +303,55 @@ be found in~\cite{Denniston:2001, Denniston:2004}.
 \hline
 BPI \\
 \hline
-AN & 0.244 & 0.08& 0.1388 &-15.79 &15.57 &1.04 &-0.89 &0.91 &0.95 &-1.59 &1.19 &1.27 \\
-AN & 0.488 & 0.17 & 0.1388 &-31.11 &31.25 &1.31 &-0.93 &0.98 &1.28 &-1.62 &1.10 &1.40 \\
-AN & 0.976 & 0.33 & 0.1388 &-62.24 &62.37 &2.51 &-1.31 &1.25 &2.68 &-1.24 &0.87 &2.65 \\
-AN & 1.95 & 0.67 & 0.1388 &-124.65 &124.82 &3.62&  -2.49 &2.50 &4.51 &-1.89 & 1.62 &3.51 \\
+BPI-1 & 0.244 & 0.04& 0.1388 &-15.79 &15.57 &1.04 &-0.89 &0.91 &0.95 &-1.59 &1.19 &1.27 \\
+BPI-1 & 0.488 & 0.08 & 0.1388 &-31.11 &31.25 &1.31 &-0.93 &0.98 &1.28 &-1.62 &1.10 &1.40 \\
+BPI-1 & 0.976 & 0.17 & 0.1388 &-62.24 &62.37 &2.51 &-1.31 &1.25 &2.68 &-1.24 &0.87 &2.65 \\
+BPI-1 & 1.95 & 0.33 & 0.1388 &-124.65 &124.82 &3.62&  -2.49 &2.50 &4.51 &-1.89 & 1.62 &3.51 \\
 \hline
-3D-PRC & 3.91 & 1.33 & 0.1388 &-248.69 &248.74 &3.90&  -3.31 &3.35 &4.21 &-2.56 & 2.88 &4.39 \\
-3D-PRC & 7.81 & 2.67 & 0.1388 &-497.22 &496.16 &4.46 &-6.49 &6.56 &7.99 &-5.31 & 7.46 &6.81 \\ 
-3D-PRC & 15.63 & 5.33 & 0.1388 &-992.46 &993.18 &10.36 &-3.08 &3.17 &10.49 &\bf{-2.87} & \bf{3.57} &10.54 \\
-3D-PRC & 15.63 & 5.33 & -0.1388 &-992.46 &993.18 &10.36 &-3.08 &3.17 &10.49 &\bf{-3.57} & \bf{2.87} &10.54 \\
-3D-PRC & 31.25 &10.67 & 0.1388 & -1988.36 &1986.71 &16.85 &-4.08 &4.46 &15.94 &-11.37 & 12.16 &19.38\\
-3D-PRC & 46.87 & 15.99 & 0.1388 & -3025.46 & 3003.05 &21.43 & -56.96 & 56.44  & 18.75 & -12.65 & 82.97  & 27.96\\
+BPI-2 & 3.91 & 0.67 & 0.1388 &-248.69 &248.74 &3.90&  -3.31 &3.35 &4.21 &-2.56 & 2.88 &4.39 \\
+BPI-2 & 7.81 & 1.33 & 0.1388 &-497.22 &496.16 &4.46 &-6.49 &6.56 &7.99 &-5.31 & 7.46 &6.81 \\ 
+BPI-2 & 15.63 & 2.67 & 0.1388 &-992.46 &993.18 &10.36 &-3.08 &3.17 &10.49 &\bf{-2.87} & \bf{3.57} &10.54 \\
+BPI-2 & 15.63 & 2.67 & -0.1388 &-992.46 &993.18 &10.36 &-3.08 &3.17 &10.49 &\bf{-3.57} & \bf{2.87} &10.54 \\
+BPI-2 & 31.25 &5.33 & 0.1388 & -1988.36 &1986.71 &16.85 &-4.08 &4.46 &15.94 &-11.37 & 12.16 &19.38\\
+BPI-2 & 46.87 & 8.00 & 0.1388 & -3025.46 & 3003.05 &21.43 & -56.96 & 56.44  & 18.75 & -12.65 & 82.97  & 27.96\\
 \hline
-2D-DTR & 62.50 & 21.33& 0.1388 & -4039.41 &3995.3  & 20.57 & -62.63 & 62.13 & 24.68 &-73.52 & 110.76 & 33.26 \\
-2D-DTR &78.125 &26.66 & 0.1388 & -4968.11 &4973.75 &20.89 &-60.61 &58.75 &23.66 &-84.93 &116.61 &34.75 \\
+BPI-3 & 62.50 & 10.67& 0.1388 & -4039.41 &3995.3  & 20.57 & -62.63 & 62.13 & 24.68 &-73.52 & 110.76 & 33.26 \\
+BPI-3 &78.13 &13.33 & 0.1388 & -4968.11 &4973.75 &20.89 &-60.61 &58.75 &23.66 &-84.93 &116.61 &34.75 \\
 \hline
-1D-CH & 93.75 &32.00 & 0.1388 & -5955.12 &5948.84 & 0.71 & -0.002 & 0.002 & -  & -16.45 & 16.03 &0.62 \\
-1D-CH & 125.0 & 42.66& 0.1388 & -7934.97 & 7935.41 & 0.36 & -0.005 & 0.005 & - &-22.73 & 21.12 & 0.07\\
+CHG & 93.75 &16.00 & 0.1388 & -5955.12 &5948.84 & 0.71 & -0.002 & 0.002 & -  & -16.45 & 16.03 &0.62 \\
+CHG & 125.0 & 21.33& 0.1388 & -7934.97 & 7935.41 & 0.36 & -0.005 & 0.005 & - &-22.73 & 21.12 & 0.07\\
 \hline
-FAN & 187.5 & 63.99& 0.1388 &-11906.4  &119064 &0.36 &- &- &- &-0.68 & 0.38 & 0.05\\
+FAN & 187.5 & 32.00& 0.1388 &-11906.4  &119064 &0.36 &- &- &- &-0.68 & 0.38 & 0.05\\
 \hline
 
 BPII \\
 \hline
-3D-PRC & 0.244 &0.04 & 0.1963 &-7.75 &7.70 &0.13 &-0.17 &0.17 &0.13 &-0.24 &0.23 &0.19 \\
-3D-PRC & 0.488 &0.08 & 0.1963 &-15.50 &15.40 &0.19 &-0.32 &0.30 &0.21 &-0.43 &0.42 &0.29 \\
-3D-PRC & 0.976 &0.17 & 0.1963 &-31.01 &30.80 &0.33 &-0.60 &0.58 &0.41 &-0.85 &0.79 &0.47 \\
-3D-PRC & 1.95 &0.33  & 0.1963 &-62.04  &61.60 & 0.97 & -1.09 &1.07 & 0.76 & -1.64 & 1.55 & 0.81\\
-3D-PRC &3.91 & 0.67& 0.1963 &-123.93 &123.18 & 1.76 &-1.66 &1.70 & 1.45 &-3.09& 2.73 &1.47\\
-3D-PRC &7.81 &1.33 & 0.1963  &-247.67 &246.45 & 3.20 &-2.62 &2.71 & 2.67 &-5.78 & 4.77 &2.74\\
-3D-PRC &15.63 & 2.67& 0.1963 &-494.85 &493.09 & 5.64 &-3.13 &3.31 &4.24 &\bf{-10.00} & \bf{7.66} &4.33\\
-3D-PRC & 15.63 & 2.67& -0.1963&-494.85 &493.09 & 5.64 & -3.13 &3.31 &4.24 &\bf{-7.66} & \bf{10.00} &4.33\\
-3D-PRC & 31.25 &5.34 & 0.1963 &-988.73 &985.93 &8.96  &-1.79 &1.82 &5.86 &-14.39 & 11.04 &6.35\\
+BPII-1 & 0.244 &0.02 & 0.1963 &-7.75 &7.70 &0.13 &-0.17 &0.17 &0.13 &-0.24 &0.23 &0.19 \\
+BPII-1 & 0.488 &0.04 & 0.1963 &-15.50 &15.40 &0.19 &-0.32 &0.30 &0.21 &-0.43 &0.42 &0.29 \\
+BPII-1 & 0.976 &0.08 & 0.1963 &-31.01 &30.80 &0.33 &-0.60 &0.58 &0.41 &-0.85 &0.79 &0.47 \\
+BPII-1 & 1.95 &0.17  & 0.1963 &-62.04  &61.60 & 0.97 & -1.09 &1.07 & 0.76 & -1.64 & 1.55 & 0.81\\
+BPII-1 &3.91 & 0.33& 0.1963 &-123.93 &123.18 & 1.76 &-1.66 &1.70 & 1.45 &-3.09& 2.73 &1.47\\
+BPII-1 &7.81 &0.67 & 0.1963  &-247.67 &246.45 & 3.20 &-2.62 &2.71 & 2.67 &-5.78 & 4.77 &2.74\\
+BPII-1 &15.63 & 1.33& 0.1963 &-494.85 &493.09 & 5.64 &-3.13 &3.31 &4.24 &\bf{-10.00} & \bf{7.66} &4.33\\
+BPII-1 & 15.63 & 1.33& -0.1963&-494.85 &493.09 & 5.64 & -3.13 &3.31 &4.24 &\bf{-7.66} & \bf{10.00} &4.33\\
+BPII-1 & 31.25 &2.67 & 0.1963 &-988.73 &985.93 &8.96  &-1.79 &1.82 &5.86 &-14.39 & 11.04 &6.35\\
 \hline
-1D-THW & 46.87 &8.00 & 0.1388 & -1476.75 & 1476.84 &1.69 &-0.35  &0.35  & 0.17 &-0.23 &0.23  & 0.22\\
-1D-THW & 62.50 & 10.67& 0.1963 & -1969.41  & 1969.41 & 3.07 & -1.20 & 1.20 & 0.38 &-0.96 & 1.48 &0.38 \\
+BPII-2 & 46.87 &4.00 & 0.1388 & -1476.75 & 1476.84 &1.69 &-0.35  &0.35  & 0.17 &-0.23 &0.23  & 0.22\\
+BPII-2 & 62.50 & 5.34& 0.1963 & -1969.41  & 1969.41 & 3.07 & -1.20 & 1.20 & 0.38 &-0.96 & 1.48 &0.38 \\
 \hline
-1D-CH & 78.125 & 13.33 &  0.1388 &-2458.60 & 2458.61  &0.37 &- &- &- &-18.54 &16.94 &0.32 \\
-1D-CH & 93.75 &16.00 & 0.1388 &-2950.2  &2950.2 &0.50 &- &- &- &-22.69 & 19.72 & 0.04\\
+CHG & 78.13 & 6.66 &  0.1388 &-2458.60 & 2458.61  &0.37 &- &- &- &-18.54 &16.94 &0.32 \\
+CHG & 93.75 &8.00 & 0.1388 &-2950.2  &2950.2 &0.50 &- &- &- &-22.69 & 19.72 & 0.04\\
 \hline
-FAN & 125.0 &21.33 & 0.1388 &-3937.31  & 3937.32 &0.28 &-  &-  &-  &-1.79 &1.15  &0.14 \\
+FAN & 125.0 &10.67 & 0.1388 &-3937.31  & 3937.32 &0.28 &-  &-  &-  &-1.79 &1.15  &0.14 \\
 \hline
 \end{tabular}
 \caption{Minima, maxima and standard deviation of time-averaged velocity components 
 for BPI ($\tau=-0.5, \kappa=1.0$) and BPII ($\tau=-0.5, \kappa=2.0$) in steady 
 shear flow: All values are given in $10^{-5}$ lattice units. The transient dynamics 
-has not been included in the averaging procedure. The regimes comprise periodically 
-recurring conformation (3D-PRC), two-dimensional double twist rolls (2D-DTR), 
-one-dimensional helix (1D-CH), one-dimensional travelling helical wave (1D-THW) 
+has not been included in the averaging procedure. The regimes comprise the formation
+of an amorphous network (BPI-1), periodically recurring conformations (BPI-2 and BPII-1), 
+two-dimensional double twist rolls (BPI-3), a one-dimensional travelling helical wave (BPII-2), 
+a cholesteric helix oriented along the gradient direction (CHG), 
 and a flow-aligned nematic state (FAN).}
 \label{tab1}
 \end{table*}
@@ -430,12 +434,17 @@ Hence, the degree of shear-thinning is remarkably small, but may depend
 on the exact direction in which the strain is applied, an aspect that we     
 leave for future work.
 
-For shear rates $\gd\ge6.25\e{-4}$ the network of disclination lines
+For shear rates $4.68\e{-4}\lesssim\gd\lesssim6.25\e{-4}$ the network of disclination lines
 breaks up and oscillations in the stress signal are absent.
 In this regime of shear rates, to which we refer as BPII-2, the 
 blue phase dissolves into a simple cholesteric liquid 
-crystal. The mode of flow is a travelling helical wave with the helical axis 
-oriented along the vorticity direction.
+crystal. The helical axis is oriented in vorticity direction and 
+the mode of flow is a travelling helical wave.
+
+At shear rates $7.81\e{-4}\lesssim\gd9.37\e{-4}$ the helix changes orientation.
+The helical axis is now oriented along the gradient direction with
+the liquid crystal flowing in 'nematic planes'. For even higher shear rates
+the system undergoes a transition to a flow-aligned nematic state.
 
 In the next paragraph we will investigate some of these aspects in more detail 
 by looking at the kinetics of the disclination network.
@@ -530,13 +539,13 @@ into a simple cholesteric helix and flows as a travelling
 helical wave with the helical axis oriented along the vorticity direction.
 The state is translationally invariant in flow and gradient direction.
 and is the preferred mode of flow of a cholesteric 
-liquid crystal at low Ericksen numbers below the uncoiling transition 
-to a nematic, flow-aligned state at even higher shear rates ~\cite{Rey:1996a, Rey:1996b}.
+liquid crystal in vorticity mode at low Ericksen numbers, i.e. below 
+the uncoiling transition to a nematic, flow-aligned state at even 
+higher shear rates ~\cite{Rey:1996a, Rey:1996b}.
 
-In our scenario the break-up occurs for shear rates $\gd>3.12\e{-4}$, which
-corresponds to Ericksen numbers of ${\it Er}\simeq10$, based on our
-parameters ($K=0.02, \eta=0.66$), typical velocities (viz. Tab. \ref{tab1}) 
-and length scales ($p/2$).
+In our scenario the break-up occurs for shear rates $\gd\simeq 4.68\e{-4}$, which
+corresponds to Ericksen numbers of ${\it Er}\simeq4$, based on our
+parameters for BPII ($K=0.02, \eta=0.666$, Tab. \ref{tab1} and $p_0/2=16$).
 
 \begin{figure}[htpb]
 \includegraphics[width=0.495\textwidth]{dir+y-250k_run949.png}
@@ -550,29 +559,43 @@ It is translationally invariant in gradient and flow direction.}
 \label{bp2-high}
 \end{figure}
 
+We observe another configuration between the travelling helical wave and the 
+flow-aligned nematic state at shear rates $7.81\e{-4}\lesssim\gd\lesssim9.37\e{-4}$, 
+which has so far not been reported to our knowledge \com{CHECK}.
+We will address this in section \ref{cholflow}.
+
 \subsection{Blue Phase I}
 
 BPI has body-centered symmetry and unlike BPII. The disclination lines
  are well separated and do not intersect.
 We believe that this topological difference is responsible for most of
 the differences between BPI and BPII regarding their rheological response. 
-
 We present again key aspects in an overview before we 
-address some features in more detail. Fig. \ref{bp1-rheo} shows the 
-apparent viscosity $\eta_{app}$ versus time and strain for the same shear rates
-as in Fig. \ref{bp2-rheo}.
-For shear rates in regime BPI-3, i.e. $\gd\ge6.25\e{-4}$ a breakup of 
-the disclination network occurs. This is the same critical shear rate as 
-the one observed in BPII-2. But this time the configuration is quasi 
-two-dimensional.
+address some features in more detail. 
 
-In regime BPI-2 at lower shear rates periodic oscillations emerge in the 
+Fig. \ref{bp1-rheo} shows the apparent viscosity $\eta_{app}$ versus time and 
+strain for the same shear rates as in Fig. \ref{bp2-rheo}.
+For shear rates $9.37\e{-4}\lesssim\gd\lesssim1.25\e{-3}$ we observe the same cholesteric 
+configuration with the helical axis along the gradient direction as for BPII (see
+section \ref{cholflow}).
+ 
+In regime BPI-3 $6.25\e{-4}\lesssim\gd\lesssim7.81\e{-4}$ a breakup of 
+the blue phase disclination network occurs. This is about the same critical shear rate 
+where we observe the transition to BPII-2. However, for BPI the configuration is not
+a travelling helical wave, but rather a quasi two-dimensional state consisting of
+double-twist rolls.
+
+At shear rates $3.91\e{-5}\lesssim\gd\lesssim4.68\e{-4}$ we find flow with 
+periodically recurring conformations. We refer to this regime as BPI-2. 
+The oscillations in the 
 deviatoric stress that are not sinusoidal, but show an increasingly complex
 pattern up to the breakup point.
-For even lower shear rates $\gd\le3.91\e{-5}$ in regime BPI-1 
-these oscillations become very erratic. There is no regular recurrence and 
-after a few cycles the stress pattern is completely irregular. 
-Shear-thinning is slightly stronger than in BPII. 
+For even lower shear rates $\gd\lesssim3.91\e{-5}$ in regime BPI-1 
+these oscillations become very erratic and unstable. 
+There is no regular recurrence and 
+after a few cycles the stress pattern is completely irregular.
+Finally, the system ends up in an amorphous configuration.
+Shear-thinning is slightly stronger than in BPII.
 The average shear stress during one cycle can be fitted reasonably 
 well by a power law $\bar{\Pi}_{xy}=a \gd^b$ with $a=0.019, b=0.63$.
 
@@ -659,14 +682,14 @@ emerges.
 \includegraphics[width=0.245\textwidth]{disc-xy-750k_run1115.png}
 \includegraphics[width=0.245\textwidth]{disc-xy-2200k_run1115.png}
 \caption{Snapshots of BPI disclination network at $\dot{\gamma}=4.88\e{-6}$: 
-Depicted is the transition from flow-induced, intertwined helices that 
-undergo a recurring affine transformation (top left and centre, both at 
-time step $t=4.0\e{5}$; top right at time step $t=7.0\e{5}$) with an intermediate 
-conformation that is non-helical (bottom left at time step $t=7.5\e{5}$) 
-to a distorted state (bottom centre at time step $t=1.7\e{6}$) and 
-finally to an amorphous network (bottom right at $t=2.2\e{6}$). 
-The picture at the top centre shows the network in gradient direction.
-All other pictures have the view along the vorticity direction.}
+Depicted is the transition from the quiescent state to flow-induced, intertwined 
+helices that undergo a recurring affine transformation. The top row
+shows a section of one unit cell for early times 
+$t=1\e{4}, 1.8\e{5}, 2.0\e{5}$ and $2.1\e{5}$. The bottom 
+pictures on the far left, centre left and centre right 
+show the situation at later time steps $t=4.0, 7.0$ and $7.5\e{5}$,
+which the system passes for several cycles before it ends up in
+an amorphous state (bottom row far right at time step $t=2.2\e{6}$).}
 \label{bp1-low}
 \end{figure*}
 
@@ -717,7 +740,7 @@ yield stress in the region of $\Pi_{xy}\simeq 1\e{-5}$ in LBU.
 
 Adjacent to regime BPI-1 ($\gd<3.91\e{-5}$) and 
 at slightly larger shear rates $3.91\e{-5}\le\gd< 6.25\e{-4}$
-and Ericksen numbers $0.5\le{\it Er}<10$ 
+and Ericksen numbers $0.67\le{\it Er}<8$ 
 lies another region where the network flows with periodically 
 recurring conformations (Fig. \ref{bp1-rheo}). 
 We refer to this region as BPI-2. The transition between BPI-1 and BPI-2 
@@ -839,17 +862,18 @@ were identical to the smaller run with 8 unit cells. The shear rate was $\gd=7.8
 
 \begin{figure}[htpb]
 \includegraphics[width=0.45\textwidth]{dir3d-z-302k_run916.png}
-\caption{Director field of BPI at high shear rate: The pictures show a slice 
-of $L_x\times L_y \times L_Z= 32\times32\times 32$ lattice sites along the vorticity direction 
-with the flow/gradient direction oriented along the horizontal/vertical axis. 
-The colour code gives the magnitude of the in-plane component of the director field. 
+\caption{Director field of BPI at high shear rate: The pictures show a region 
+of $L_x\times L_y \times L_Z= 32^3$ lattice sites with the flow/gradient 
+direction oriented along the horizontal/vertical axis. 
+The colour code gives the magnitude of the z-component of the director field. 
 The data is translationally invariant in vorticity direction.}
 \label{bp1-high}
 \end{figure}
  
-At high flow rates we observe a break-up of the flow-induced 
+At high flow rates $6.25\e{-4}\lesssim\gd\lesssim7.81\e{-4}$ 
+we observe a break-up of the flow-induced 
 disclination network of regime BPI-2. However, 
-contrary to BPII, where the configuration is a travelling helical 
+in contrast to BPII, where the configuration is a travelling helical 
 wave (viz. Fig. \ref{bp2-high}), BPI prefers a quasi 
 two-dimensional, translationally invariant state, which is shown in 
 Fig. \ref{bp1-high}. The snapshots visualise the affine 
@@ -859,21 +883,39 @@ predominantly oriented along the vorticity direction and
 other regions where it is oriented rather in flow-gradient plane. 
 Occasionally while moving past each other these rolls resemble 
 regions of local double twist.
-Interestingly the critical shear rate for the break-up lies in the same 
-window as that of transition between BPII-1 and BPII-2, 
- $3.125\e{-4}\le\gd_c\le 6.25\e{-4}$ and occurs at similar 
-Ericksen numbers ${\it Er}\simeq 10$.
+Interestingly the critical Ericksen number for the break-up lies in 
+about the same window as that of transition between BPII-1 and BPII-2. 
 
-\subsection{Transition to cholesteric helix and flow-aligned nematic state}
+\subsection{Transition to cholesteric helix and flow-aligned nematic state}\label{cholflow}
+
+At shear rates beyond the regimes BPI-3 and BPII-2 and below the transition to a 
+flow-aligned nematic state we found another regime where 
+both blue phases adopt the same configuration in steady shear flow, 
+independent of their initial state.
+The director field of this configuration is shown in Fig. \ref{cholflow}.
+It consists of a simple cholesteric helix with the helical axis oriented 
+along the gradient direction. The state is translational invariant in 
+flow and vorticity direction and therefore also one-dimensional. 
+However, in contrast to the travelling helical wave of BPII-2 the 
+director field is now static and there is no tumbling motion. 
+While flowing the director retains its relative orientation.
+Consequently, the shear stress is lower than for
+the 2D double-twist rolls of BPI-3 and the travelling helical wave
+(Fig. \ref{bp2-rheo} and \ref{bp1-rheo}) as there is less dissipation.
+ 
 
 \begin{figure}[htpb]
 \includegraphics[width=0.45\textwidth]{dir3d+y-200k_run1179.png}
-\caption{}
+\caption{Flow induced cholesteric state: The orientation of the helix is 
+along the gradient direction. The director field is quasi-static during 
+the flow, which occurs in 'nematic layers'. For clarity the picture shows 
+the director field along the y-direction for selected sites in the x-z-plane.}
 \label{cholflow}
 \end{figure}
 
 
-\clearpage
+
+%\clearpage
 
 \section{Conclusions}
 
@@ -884,7 +926,7 @@ flow properties of complex liquid-crystalline phases.
   
 We were able to characterise the rheology of cubic BPs and identified 
 two different flow regimes for BPII and three different ones in case of BPI. 
-Below Ericksen numbers ${\cal O}(10)$ BPII exhibits weak shear-thinning and 
+Below Ericksen numbers $Er\simeq3$ BPII exhibits weak shear-thinning and 
 obeys a power-law.  The BPII disclination network breaks up and reconnects 
 in the flow, which leads to a periodically recurring dependence 
 of the deviatoric shear stress. The flow-induced conformation look generally
@@ -893,20 +935,25 @@ While being affinely transformed due to the shear flow
 the disclination network moves in the vorticity direction. The sense of
 motion is directly linked to the helicity of the underlying cholesteric phase.
 
-At larger Ericksen numbers the flowing BPII network breaks up completely into 
-a simple cholesteric phase and flows as a travelling helical wave. 
+At larger Ericksen numbers $4\lesssim Er\lesssim 10$ the flowing BPII network 
+breaks up in a two-step scenario. First a simple cholesteric helix forms with the helical axis 
+in vorticity direction. The flow is in vorticity mode, i.e. as a travelling helical wave. 
+At slightly larger shear rates another cholesteric conformation emerges.
+However, this time the orientation of the helix is in gradient direction.
+The flow is in quasi-nematic layers with static orientation of the directior field. 
 
 Interestingly, BPI shows a flow behaviour that is very different to that of BPII.
 This is a direct consequence of the topological differences in both disclination 
-network. Below Ericksen numbers ${\cal O}(0.1)$ the BPI network cannot flow and 
-retain a regular appearance. Shortly after the onset of the shearing 
-very large stress fluctuations occur. At the lowest shear rates $\gd<9.76\e{-6}$
-the contribution of the network to the total deviatoric stress is actually temporarily 
-negative during one cycle. These fluctuations destabilise the network and 
+network. Below Ericksen numbers $Er<0.4$ the BPI network cannot flow and 
+retain a regular appearance. It dissolves eventually into an amorphous network and 
+features yield-stress behaviour. The reason is that shortly after the onset of the shearing 
+very large stress fluctuations occur. At the lowest shear rates
+the contribution of the network to the total deviatoric stress is temporarily 
+actually negative during one cycle. These fluctuations destabilise the network and 
 eventually trigger its dissolution into an amorphous state with 
 dynamic yield stress.
 
-At slightly larger Ericksen numbers $0.1<{\it Er}<10$ shear thinning is 
+At slightly larger Ericksen numbers $0.4<{\it Er}<8$ shear thinning is 
 slightly stronger than for BPII, but BPI does not show simple power-law 
 behaviour. 
 Instead, it appears BPI kinematically bypasses the large stress fluctuations and 
@@ -918,9 +965,13 @@ shear flow often restores a perfect equilibrium.
 It is possible to interpret these findings as an instance of 
 deterministic rheochaos.
 
-Just as in case of BPII, the BPI network breaks up at Ericksen numbers ${\cal O}(10)$,
-but adopts a quasi-two-dimensional configuration that is translationally 
-invariant in vorticity direction.  
+Just as in case of BPII, the BPI network breaks up at larger Ericksen numbers in
+a two-step process. First at $10\lesssim\gd\lesssim 15$, it adopts a 
+quasi-two-dimensional configuration that is translationally invariant in vorticity direction. 
+Then at $16\lesssim Er \lesssim 22$ it forms cholestric helix along the gradient 
+direction that emerges from BPII.  
+Finally, at $Er\gtrsim30$ (BPI) and $Er\gtrsim10$ (BPII) the configuration
+is a flow-aligned nematic state.
 
 % If in two-column mode, this environment will change to single-column
 % format so that long equations can be displayed. Use
