@@ -63,7 +63,7 @@
 % \affiliation can be followed by \email, \homepage, \thanks as well.
 
 \author{O. Henrich}
-\email[Corresponding author: ]{o.henrich@ucl.ac.uk}
+\email[Corresponding author: ]{ohenrich@epcc.ed.ac.uk}
 \affiliation{EPCC, School of Physics and Astronomy, University of Edinburgh,\\JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK}
 \affiliation{Centre for Computational Science, University College London,\\20 Gordon Street, London WC1H 0AJ, UK}
 
@@ -426,12 +426,16 @@ Simple shear flow was imposed by means of a Lees-Edwards boundary condition ~\ci
 the top (bottom) part of the system flowing in positive (negative) x-direction and the 
 velocity gradient along the y-direction.
 The shear rates were varied over more than two orders of magnitude from about 
-$\gd=2.44\times \e{-6}$ to $6.25\times\e{-4}$ in LB units.
+$\gd=2.44\times \e{-6}$ to $1.875\times\e{-3}$ in LB units.
 For clarity we classify various flow regimes, two in case of BPII and three in case of BPI. 
-They are BPII-1 ($\gd < 6.25\e{-4}$), BPII-2 ($\gd\ge 6.25\e{-4}$),
-BPI-1 ($\gd < 3.91\e{-5}$), BPI-2 ($3.91\e{-5}\le\gd< 6.25\e{-4}$) and BPI-3 ($\gd\ge 6.25\e{-4}$). 
-Disclination lines are plotted as isosurface of the scalar order parameter $q$. Typical choices 
-are $q_s=0.18$ for BPI and $q_s=0.15$ for BPII.
+They are BPII-1 ($\gd \lesssim 3.125\e{-4}$), BPII-2 ($4.687\lesssim \gd\lesssim 6.25\e{-4}$),
+BPI-1 ($\gd \lesssim 1.95\e{-5}$), BPI-2 ($3.91\e{-5}\lesssim \gd \lesssim 4.687\e{-4}$) and BPI-3 ($6.25\e{-4}\lesssim gd\lesssim 7.813\e{-4}$).
+Beyond these regimes both BPI and BPII form common configurations regardless 
+of the initial state, namely a cholesteric helix with helical axis 
+oriented along the direction of the velocity gradient (CHG), 
+and a flow-aligned nematic state (FAN).  
+Disclination lines are plotted as isosurface of the scalar order parameter $q$. 
+Typical choices are $q_s=0.18$ for BPI and $q_s=0.15$ for BPII.
 
 
 \subsection{Blue Phase II}
@@ -491,7 +495,7 @@ the flow excites travelling helical waves, such as those
 predicted in~\cite{Rey:1996a,Rey:1996b} when shearing a cholesteric helix along
 the vorticity axis.
 
-At shear rates $7.81\e{-4}\lesssim\gd9.37\e{-4}$ the helix changes orientation.
+At shear rates $7.81\e{-4}\lesssim\gd \lesssim 9.37\e{-4}$ the helix changes orientation.
 The helical axis is now oriented along the gradient direction with
 the liquid crystal flowing in 'nematic planes'. For even higher shear rates
 the system undergoes a transition to a flow-aligned nematic state.
@@ -669,37 +673,6 @@ the time and strain axis.}
 \label{bp1-rheo}
 \end{figure}
 
-In order to gain a better understanding of the complex oscillatory behaviour in regime BPI-2 
-we performed a Fourier analysis of the deviatoric stress $\Pi_{xy}$ according to Eq. \ref{spectrum}. 
-The spectrum is shown in Fig. \ref{bp1-spectrum}. 
-
-There are two aspects which are worth mentioning. First, we observe a strong contribution of 
-the fundamental mode for the lowest two shear rates and a relatively small contribution of higher harmonics. 
-However, at $\gd=1.563\e{-4}$ and $3.125\e{-4}$ the relative contribution of higher harmonics is 
-significantly larger. 
-Second, more surprisingly, the frequency of the fundamental mode is the same 
-for all three shear rates $\gd=7.81\e{-5}, 1.563\e{-4}$ and $3.125\e{-4}$. This is 
-in contrast to what is observed at lower flow rates. By doubling the flow rate from 
-$\gd=3.91\e{-5}$ to $\gd=7.81\e{-5}$ the peak position in the spectrum 
-moves to double the frequency. This means that the fundamental mode at flow rate $\gd=7.81\e{-5}$ 
-coincides with the the first harmonic at $\gd=3.91\e{-5}$, the first harmonic with the third and so on. 
-At higher shear rates in regime BPI-3 this 'lock-in' of flow modes disappears again.  
- 
-Interestingly the lock-in has only a minor effect on the flow velocities themselves.
-The average velocities in Tab. \ref{tab1} reveal that only the magnitude of some of the secondary 
-flow components $v_y$ and $v_z$ appears to be relatively small compared to the primary component $v_x$. 
-The latter is directly linked to the imposed shear rate. 
-
-\begin{figure}[htpb]
-\includegraphics[width=0.495\textwidth]{spectrum_bp1.pdf}
-\caption{Fourier analysis of the deviatoric stress $\Pi_{xy}$ of BPI: The main picture shows 
-spectral components and the 'lock-in' of flow modes, 
-visible in the fixed peak position for certain flow rates.  
-The inset shows a zoom of the same data over 
-a portion of the frequency range.
-The frequency is given in inverse time, in simulation units. TRUE?}
-\label{bp1-spectrum}
-\end{figure}
 
 \subsubsection{Regime BPI-1: low shear rates}
 
@@ -713,7 +686,7 @@ seemingly features a yield stress.}
 \label{bp1-fe-yield}
 \end{figure}
 
-The rheological response of BPI at low shear rate $\gd<3.91\e{-5}$ 
+The rheological response of BPI at low shear rate $\gd\lesssim1.95\e{-5}$ 
 is strikingly different from that of BPII and appears to show a
 yield stress. An explanation for this behaviour can be found by 
 looking more closely at the average deviatoric stress (where the
@@ -794,8 +767,8 @@ This helical conformation that emerges already at strains $\gamma\simeq1$
 is shown in Fig. \ref{bp1-low} (top row).
 At this point the original BPI has already been significantly deformed.
 Shortly afterwards regular oscillations set up temporarily,
-where the disclinations form double helices which tilt and realign under the shear
-TRUE? There is no perceivable movement of the 
+where the disclinations form double helices which tilt and realign under the shear.
+There is no perceivable movement of the 
 network along the vorticity direction at any stage of the cycle.
 
 This mode of flow proves unstable as after a few cycles 
@@ -806,13 +779,13 @@ transforms into an amorphous state with almost constant
 yield stress in the region of $\Pi_{xy}\simeq 1\e{-5}$ in LBU.
 If the shear is stopped, this flow-induced amorphous state
 gets stuck into a metastable phase, and cannot
-find its way back to the original BPI structure. 
+find its way back to the original BPI structure.
 
 \subsubsection{Regime BPI-2: intermediate shear rates}
 
-Adjacent to regime BPI-1 ($\gd<3.91\e{-5}$) and 
-at slightly larger shear rates $3.91\e{-5}\le\gd< 6.25\e{-4}$
-and Ericksen numbers $0.67\le{\it Er}<8$ 
+Adjacent to regime BPI-1 ($\gd\lesssim1.95\e{-5}$) and 
+at slightly larger shear rates $3.91\e{-5}\lesssim\gd\lesssim 4.687\e{-4}$
+and Ericksen numbers $0.67\lesssim{\it Er}\lesssim8$ 
 lies another region where the network flows with periodically 
 recurring conformations (Fig. \ref{bp1-rheo}). 
 We refer to this region as BPI-2. The transition between BPI-1 and BPI-2 
@@ -827,8 +800,27 @@ amorphous configuration in the steady state.] Hence, an explanation
 for the existence of the regular BPI-2 oscillations 
 could be that these are fast enough to bypass or suppress 
 large stress fluctuations -- this leads to
-a stabilisation of the oscillations found only transiently in
+a different order structure and to a stabilisation 
+compared to the oscillations found transiently in
 the BPI-1 regime.
+
+\begin{figure*}[htpb]
+\includegraphics[width=0.32\textwidth]{disc-365k_run914.png}
+\includegraphics[width=0.32\textwidth]{disc-367k_run914.png}
+\includegraphics[width=0.32\textwidth]{disc-375k_run914.png}\\
+\includegraphics[width=0.32\textwidth]{disc-380k_run914.png}
+\includegraphics[width=0.32\textwidth]{disc-384k_run914.png}
+\includegraphics[width=0.32\textwidth]{disc-389k_run914.png}
+\caption{Disclination network of BPI in regime BPI-2 (intermediate flow rates): 
+The sequence shows a typical cycle of shear-induced transformations in the 
+steady state at $\gd=1.56\e{-4}$ and time steps 
+$t=3.65, 3.67,3.75,3.80,3.84,3.89\e{5}$ with the flow into/out of the page. 
+During every cycle the network is displaced also along the gradient and vorticity direction, 
+but the magnitude and direction of the offset does not appear to obey a 
+simple rule.}
+\label{bp1-med}
+\end{figure*}
+
 
 Fig. \ref{bp1-med} shows snapshots of the periodically recurring 
 BPI in steady shear flow. Contrary to BPII-1 at these shear rates, 
@@ -857,23 +849,6 @@ network movement depends sensitively on the imposed shear rate.
 This suggests that BPI-2 constitutes an instance of 
 'rheochaos'~\cite{rheochaos}.
 
-\begin{figure*}[htpb]
-\includegraphics[width=0.32\textwidth]{disc-365k_run914.png}
-\includegraphics[width=0.32\textwidth]{disc-367k_run914.png}
-\includegraphics[width=0.32\textwidth]{disc-375k_run914.png}\\
-\includegraphics[width=0.32\textwidth]{disc-380k_run914.png}
-\includegraphics[width=0.32\textwidth]{disc-384k_run914.png}
-\includegraphics[width=0.32\textwidth]{disc-389k_run914.png}
-\caption{Disclination network of BPI in regime BPI-2 (intermediate flow rates): 
-The sequence shows a typical cycle of shear-induced transformations in the 
-steady state at $\gd=1.56\e{-4}$ and time steps 
-$t=3.65, 3.67,3.75,3.80,3.84,3.89\e{5}$ with the flow into/out of the page. 
-During every cycle the network is displaced also along the gradient and vorticity direction, 
-but the magnitude and direction of the offset does not appear to obey a 
-simple rule.}
-\label{bp1-med}
-\end{figure*}
-
 Fig. \ref{bp1-velo} depicts a snapshot of the secondary velocity 
 components $v_y$ and $v_z$ for left- and right-handed chirality of
 the blue phase. The emerging pattern is similar to that of BPII from 
@@ -894,6 +869,39 @@ vorticity direction, respectively, with the flow into/out of the plane in the
 upper/lower half of the images.}
 \label{bp1-velo}
 \end{figure*}
+
+In order to gain a better understanding of the complex oscillatory behaviour in regime BPI-2 
+we performed a Fourier analysis of the deviatoric stress $\Pi_{xy}$ according to Eq. \ref{spectrum}. 
+The spectrum is shown in Fig. \ref{bp1-spectrum}. 
+
+There are two aspects which are worth mentioning. First, we observe a strong contribution of 
+the fundamental mode for the lowest two shear rates and a relatively small contribution of higher harmonics. 
+However, at $\gd=1.563\e{-4}$ and $3.125\e{-4}$ the relative contribution of higher harmonics is 
+significantly larger. 
+Second, more surprisingly, the frequency of the fundamental mode is the same 
+for all three shear rates $\gd=7.81\e{-5}, 1.563\e{-4}$ and $3.125\e{-4}$. This is 
+in contrast to what is observed at lower flow rates. By doubling the flow rate from 
+$\gd=3.91\e{-5}$ to $\gd=7.81\e{-5}$ the peak position in the spectrum 
+moves to double the frequency. This means that the fundamental mode at flow rate $\gd=7.81\e{-5}$ 
+coincides with the the first harmonic at $\gd=3.91\e{-5}$, the first harmonic with the third and so on. 
+At higher shear rates in regime BPI-3 this 'lock-in' of flow modes disappears again.  
+ 
+Interestingly the lock-in has only a minor effect on the flow velocities themselves.
+The average velocities in Tab. \ref{tab1} reveal that only the magnitude of some of the secondary 
+flow components $v_y$ and $v_z$ appears to be relatively small compared to the primary component $v_x$. 
+The latter is directly linked to the imposed shear rate. 
+
+\begin{figure}[htpb]
+\includegraphics[width=0.495\textwidth]{spectrum_bp1.pdf}
+\caption{Fourier analysis of the deviatoric stress $\Pi_{xy}$ of BPI: The main picture shows 
+spectral components and the 'lock-in' of flow modes, 
+visible in the fixed peak position for certain flow rates.  
+The inset shows a zoom of the same data over 
+a portion of the frequency range.
+The frequency is given in inverse time, in simulation units. TRUE?
+OH: I WOULD SAY NO AS IT IS IN UNITS OF 2$\pi$ (RADIANS?).}
+\label{bp1-spectrum}
+\end{figure}
 
 The intricacy and periodic recurrence of the flow-induced conformations 
 in BPI raises the question: how robust are these results to variations in 
@@ -937,16 +945,6 @@ The shear rate was $\gd=7.81\e{-5}$.
 
 \subsubsection{Regime BPI-3: high shear rates}
 
-\begin{figure}[htpb]
-\includegraphics[width=0.45\textwidth]{dir3d-z-302k_run916.png}
-\caption{Director field of BPI at high shear rate: The pictures show a region 
-of $L_x\times L_y \times L_Z= 32^3$ lattice sites with the flow/gradient 
-direction oriented along the horizontal/vertical axis. 
-The colour code gives the magnitude of the z-component of the director field. 
-The data is translationally invariant along the vorticity direction.}
-\label{bp1-high}
-\end{figure}
- 
 At high flow rates, $6.25\e{-4}\lesssim\gd\lesssim7.81\e{-4}$, 
 we observe a break-up of the flow-induced 
 disclination network of regime BPI-2. However, 
@@ -963,7 +961,18 @@ regions of local double twist.
 Interestingly the critical Ericksen number for the break-up lies in 
 about the same window as that of transition between BPII-1 and BPII-2. 
 
+\begin{figure}[htpb]
+\includegraphics[width=0.45\textwidth]{dir3d-z-302k_run916.png}
+\caption{Director field of BPI at high shear rate: The pictures show a region 
+of $L_x\times L_y \times L_Z= 32^3$ lattice sites with the flow/gradient 
+direction oriented along the horizontal/vertical axis. 
+The colour code gives the magnitude of the z-component of the director field. 
+The data is translationally invariant along the vorticity direction.}
+\label{bp1-high}
+\end{figure}
+
 \subsection{Transition to cholesteric helix and flow-aligned nematic state}\label{cholflow}
+
 
 At shear rates beyond the regimes BPI-3 and BPII-2 and below the transition to a 
 flow-aligned nematic state we found another regime where 
@@ -980,7 +989,6 @@ Consequently, the shear stress is lower than for
 the 2D double-twist rolls of BPI-3 and the travelling helical wave
 (Fig. \ref{bp2-rheo} and \ref{bp1-rheo}) as there is less dissipation.
  
-
 \begin{figure}[htpb]
 \includegraphics[width=0.45\textwidth]{dir3d+y-200k_run1179.png}
 \caption{Flow induced cholesteric state: The orientation of the helix is 
@@ -1023,7 +1031,7 @@ cholesteric order and leave a standard flow-aligned nematic staete.
 
 Interestingly, BPI shows a flow behaviour that is very different to that of BPII.
 This is a direct consequence of the topological differences in both disclination 
-network. Below Ericksen numbers $Er<0.4$ the BPI network cannot both flow and 
+network. Below Ericksen numbers $Er\lesssim0.4$ the BPI network cannot both flow and 
 retain a regular appearance. It eventually collapses into an amorphous network and 
 features yield-stress behaviour. The reason is that shortly after the onset of the shearing 
 very large stress fluctuations occur. At the lowest shear rates
@@ -1032,7 +1040,7 @@ negative during one cycle. These fluctuations destabilise the network and
 eventually trigger the transition into an amorphous state with a residual yield
 stress. 
 
-At slightly larger Ericksen numbers $0.4<{\it Er}<8$,
+At slightly larger Ericksen numbers $0.4\lesssim Er \lesssim8$,
 BPI kinematically bypasses the large stress fluctuations and 
 flows with very complex, periodically recurring flow-induced conformations.
 These conformations entail regularly arrange helical disclinations which 
