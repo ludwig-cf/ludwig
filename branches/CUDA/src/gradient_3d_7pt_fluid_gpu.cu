@@ -99,6 +99,8 @@ __global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo,
   Nall[Y]=N_d[Y]+2*nhalo;
   Nall[Z]=N_d[Z]+2*nhalo;
 
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+
   Ngradcalc[X]=N_d[X]+2*nextra;
   Ngradcalc[Y]=N_d[Y]+2*nextra;
   Ngradcalc[Z]=N_d[Z]+2*nextra;
@@ -128,17 +130,18 @@ __global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo,
 
 
       for (n = 0; n < nop; n++) { 
+
 	  grad_d[3*(nop*index + n) + X]
-	    = 0.5*(field_d[nop*indexp1 + n] - field_d[nop*indexm1 + n]);
+	    = 0.5*(field_d[nsites*n+indexp1] - field_d[nsites*n+indexm1]);
 	  grad_d[3*(nop*index + n) + Y]
-	    = 0.5*(field_d[nop*(index + ys) + n] - field_d[nop*(index - ys) + n]);
+	    = 0.5*(field_d[nsites*n+(index + ys)] - field_d[nsites*n+(index - ys)]);
 	  grad_d[3*(nop*index + n) + Z]
-	    = 0.5*(field_d[nop*(index + 1) + n] - field_d[nop*(index - 1) + n]);
+	    = 0.5*(field_d[nsites*n+(index + 1)] - field_d[nsites*n+(index - 1)]);
 	  del2_d[nop*index + n]
-	    = field_d[nop*indexp1      + n] + field_d[nop*indexm1      + n]
-	    + field_d[nop*(index + ys) + n] + field_d[nop*(index - ys) + n]
-	    + field_d[nop*(index + 1)  + n] + field_d[nop*(index - 1)  + n]
-	    - 6.0*field_d[nop*index + n];
+	    = field_d[nsites*n+indexp1] + field_d[nsites*n+indexm1]
+	    + field_d[nsites*n+(index + ys)] + field_d[nsites*n+(index - ys)]
+	    + field_d[nsites*n+(index + 1)] + field_d[nsites*n+(index - 1)]
+	    - 6.0*field_d[nsites*n+index];
 		  } 
 
 

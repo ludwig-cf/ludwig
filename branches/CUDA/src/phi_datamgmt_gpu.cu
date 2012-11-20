@@ -256,20 +256,6 @@ static void free_phi_memory_on_gpu()
   cudaFreeHost(phihaloZHIGH);
 
 
- // free(phiedgeXLOW);
- // free(phiedgeXHIGH);
- // free(phiedgeYLOW);
- // free(phiedgeYHIGH);
- // free(phiedgeZLOW);
- // free(phiedgeZHIGH);
-
- // free(phihaloXLOW);
- // free(phihaloXHIGH);
- // free(phihaloYLOW);
- // free(phihaloYHIGH);
- // free(phihaloZLOW);
- // free(phihaloZHIGH);
-
   /* free memory on accelerator */
 
   cudaFree(phiedgeXLOW_d);
@@ -316,7 +302,8 @@ void put_phi_on_gpu()
 	      for (iop=0; iop<nop; iop++)
 		{
 
-		  phi_site_temp[index*nop+iop]=phi_op_get_phi_site(index,iop);
+		  //phi_site_temp[index*nop+iop]=phi_op_get_phi_site(index,iop);
+		  phi_site_temp[iop*nsites+index]=phi_op_get_phi_site(index,iop);
 		}
 	    }
 	}
@@ -513,7 +500,8 @@ void get_phi_from_gpu()
 		{
 
 		
-		  phi_op_set_phi_site(index,iop,phi_site_temp[index*nop+iop]);
+		  //phi_op_set_phi_site(index,iop,phi_site_temp[index*nop+iop]);
+		  phi_op_set_phi_site(index,iop,phi_site_temp[iop*nsites+index]);
 
 		}
 	    }

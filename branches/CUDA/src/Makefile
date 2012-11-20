@@ -62,7 +62,8 @@ GPUCC = nvcc
 GPUCPPFLAG = #-D_GPU_
 GPUOPTS = $(OPTS) $(GPUCPPFLAG)
 GPUCFLAGS = -O3 -arch=sm_21 -g -G 
-GPUINC = $(INC) -I /export/mpich2/2-1.3-gcc/include
+GPUINC = $(INC) -I ../mpi_s
+#-I /export/mpich2/2-1.3-gcc/include
 GPULIBS= -L/usr/local/cuda/lib64 -lcudart
 
 

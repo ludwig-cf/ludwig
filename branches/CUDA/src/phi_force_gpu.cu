@@ -514,7 +514,7 @@ __device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][
  *
  *****************************************************************************/
 
-__device__ void blue_phase_chemical_stress_gpu_d(int index, int nop,
+__device__ void blue_phase_chemical_stress_gpu_d(int index, int nsites,
 						 double *phi_site_d,
 						 double *grad_phi_site_d,
 						 double *delsq_phi_site_d,
@@ -550,12 +550,22 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index, int nop,
 
 
   /* load phi */
-  q[X][X] = phi_site_d[nop*index + XX];
-  q[X][Y] = phi_site_d[nop*index + XY];
-  q[X][Z] = phi_site_d[nop*index + XZ];
+  /* q[X][X] = phi_site_d[nop*index + XX]; */
+  /* q[X][Y] = phi_site_d[nop*index + XY]; */
+  /* q[X][Z] = phi_site_d[nop*index + XZ]; */
+  /* q[Y][X] = q[X][Y]; */
+  /* q[Y][Y] = phi_site_d[nop*index + YY]; */
+  /* q[Y][Z] = phi_site_d[nop*index + YZ]; */
+  /* q[Z][X] = q[X][Z]; */
+  /* q[Z][Y] = q[Y][Z]; */
+  /* q[Z][Z] = 0.0 - q[X][X] - q[Y][Y]; */
+
+  q[X][X] = phi_site_d[nsites*XX+index];
+  q[X][Y] = phi_site_d[nsites*XY+index];
+  q[X][Z] = phi_site_d[nsites*XZ+index];
   q[Y][X] = q[X][Y];
-  q[Y][Y] = phi_site_d[nop*index + YY];
-  q[Y][Z] = phi_site_d[nop*index + YZ];
+  q[Y][Y] = phi_site_d[nsites*YY+index];
+  q[Y][Z] = phi_site_d[nsites*YZ+index];
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
@@ -664,6 +674,8 @@ __global__ void phi_force_calculation_fluid_gpu_d(int nop,
  Nall[X]=N_d[X]+2*nhalo;
  Nall[Y]=N_d[Y]+2*nhalo;
  Nall[Z]=N_d[Z]+2*nhalo;
+
+ int nsites=Nall[X]*Nall[Y]*Nall[Z];
  
  /* CUDA thread index */
  threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
@@ -693,7 +705,7 @@ __global__ void phi_force_calculation_fluid_gpu_d(int nop,
 
 
 	/* Compute pth at current point */
-      blue_phase_chemical_stress_gpu_d(index, nop,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth0,redshift_,rredshift_,
+      blue_phase_chemical_stress_gpu_d(index, nsites,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth0,redshift_,rredshift_,
 				       q0_,a0_,
 				       kappa0_, kappa1_,xi_,zeta_,gamma_,
 				       electric_d,epsilon_,r3_d,d_d,e_d);
@@ -702,7 +714,7 @@ __global__ void phi_force_calculation_fluid_gpu_d(int nop,
 	
 	//index1 = coords_index(icp1, jc, kc);
 	index1 = get_linear_index_gpu_d(icp1,jj+nhalo,kk+nhalo,Nall);
-	blue_phase_chemical_stress_gpu_d(index1, nop,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth1,redshift_,rredshift_,
+	blue_phase_chemical_stress_gpu_d(index1, nsites,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth1,redshift_,rredshift_,
 				       q0_,a0_,
 				       kappa0_, kappa1_,xi_,zeta_,gamma_,
 				       electric_d,epsilon_,r3_d,d_d,e_d);
@@ -712,7 +724,7 @@ __global__ void phi_force_calculation_fluid_gpu_d(int nop,
 
 	//index1 = coords_index(icm1, jc, kc);
 	index1 = get_linear_index_gpu_d(icm1,jj+nhalo,kk+nhalo,Nall);
-	blue_phase_chemical_stress_gpu_d(index1, nop,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth1,redshift_,rredshift_,
+	blue_phase_chemical_stress_gpu_d(index1, nsites,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth1,redshift_,rredshift_,
 				       q0_,a0_,
 				       kappa0_, kappa1_,xi_,zeta_,gamma_,
 				       electric_d,epsilon_,r3_d,d_d,e_d);
@@ -723,7 +735,7 @@ __global__ void phi_force_calculation_fluid_gpu_d(int nop,
 	
 	//index1 = coords_index(ic, jc+1, kc);
 	index1 = get_linear_index_gpu_d(ii+nhalo,jj+nhalo+1,kk+nhalo,Nall);
-	blue_phase_chemical_stress_gpu_d(index1, nop,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1,redshift_,rredshift_,
+	blue_phase_chemical_stress_gpu_d(index1, nsites,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1,redshift_,rredshift_,
 				       q0_,a0_,
 				       kappa0_, kappa1_,xi_,zeta_,gamma_,
 				       electric_d,epsilon_,r3_d,d_d,e_d);
@@ -732,7 +744,7 @@ __global__ void phi_force_calculation_fluid_gpu_d(int nop,
 	}
 	//index1 = coords_index(ic, jc-1, kc);
 	index1 = get_linear_index_gpu_d(ii+nhalo,jj+nhalo-1,kk+nhalo,Nall);
-	blue_phase_chemical_stress_gpu_d(index1, nop,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1,redshift_,rredshift_,
+	blue_phase_chemical_stress_gpu_d(index1, nsites,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1,redshift_,rredshift_,
 				       q0_,a0_,
 				       kappa0_, kappa1_,xi_,zeta_,gamma_,
 				       electric_d,epsilon_,r3_d,d_d,e_d);
@@ -742,7 +754,7 @@ __global__ void phi_force_calculation_fluid_gpu_d(int nop,
 	
 	//index1 = coords_index(ic, jc, kc+1);
 	index1 = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo+1,Nall);
-	blue_phase_chemical_stress_gpu_d(index1, nop,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1,redshift_,rredshift_,
+	blue_phase_chemical_stress_gpu_d(index1, nsites,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1,redshift_,rredshift_,
 				       q0_,a0_,
 				       kappa0_, kappa1_,xi_,zeta_,gamma_,
 				       electric_d,epsilon_,r3_d,d_d,e_d);
@@ -751,7 +763,7 @@ __global__ void phi_force_calculation_fluid_gpu_d(int nop,
 	}
 	//index1 = coords_index(ic, jc, kc-1);
 	index1 = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo-1,Nall);
-	blue_phase_chemical_stress_gpu_d(index1, nop,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1,redshift_,rredshift_,
+	blue_phase_chemical_stress_gpu_d(index1, nsites,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1,redshift_,rredshift_,
 				       q0_,a0_,
 				       kappa0_, kappa1_,xi_,zeta_,gamma_,
 				       electric_d,epsilon_,r3_d,d_d,e_d);
