@@ -487,11 +487,11 @@ void get_phi_from_gpu()
          cudaMemcpyDeviceToHost);
 
   /* set phi */
-  for (ic=1; ic<=N[X]; ic++)
+  for (ic=0; ic<Nall[X]; ic++)
     {
-      for (jc=1; jc<=N[Y]; jc++)
+      for (jc=0; jc<Nall[Y]; jc++)
 	{
-	  for (kc=1; kc<=N[Z]; kc++)
+	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
 
 	      index = coords_index(ic, jc, kc); 
@@ -522,7 +522,7 @@ void phi_halo_gpu()
 
   int nblocks;
 
-#define OVERLAP
+  #define OVERLAP
 
   const int tagf = 903;
   const int tagb = 904;
@@ -647,9 +647,9 @@ void phi_halo_gpu()
   cudaMemcpyAsync(phihaloXHIGH_d, phihaloXHIGH, nphihalodataX*sizeof(double),
 		  cudaMemcpyHostToDevice,streamX);
   nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  unpack_phi_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nop,nhalo,
-						  N_d,phi_site_d,phihaloXLOW_d,
-						  phihaloXHIGH_d);
+     unpack_phi_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nop,nhalo,
+  						  N_d,phi_site_d,phihaloXLOW_d,
+  						  phihaloXHIGH_d);
 
 
 
@@ -681,7 +681,8 @@ void phi_halo_gpu()
 	      phihaloXLOW[npackedsiteX*m+index_source];
 	    
 	    /* xlow part of yhigh */
-	    index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);
+	    //index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);
+	    index_source = get_linear_index(ii,NedgeX[Y]-nhalo+jj,kk,NedgeX);
 	    index_target = get_linear_index(ii,jj,kk,NedgeY);
 	    
 	    phiedgeYHIGH[npackedsiteY*m+index_target] =
@@ -692,13 +693,16 @@ void phi_halo_gpu()
 	    
 	    /* xhigh part of ylow */
 	    index_source = get_linear_index(ii,jj,kk,NedgeX);
-	    index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+	    //index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+	    index_target = get_linear_index(NedgeY[X]-nhalo+ii,jj,kk,NedgeY);
 	    
 	    phiedgeYLOW[npackedsiteY*m+index_target] =
 	      phihaloXHIGH[npackedsiteX*m+index_source];
 	    
 	    /* xhigh part of yhigh */
-	    index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);			index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+	    // index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);		//	index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+	    
+	    index_source = get_linear_index(ii,NedgeX[Y]-nhalo+jj,kk,NedgeX);			index_target = get_linear_index(NedgeY[X]-nhalo+ii,jj,kk,NedgeY);
 	    
 	    phiedgeYHIGH[npackedsiteY*m+index_target] =
 	      phihaloXHIGH[npackedsiteX*m+index_source];
@@ -745,9 +749,9 @@ void phi_halo_gpu()
   cudaMemcpyAsync(phihaloYHIGH_d, phihaloYHIGH, nphihalodataY*sizeof(double),
 		  cudaMemcpyHostToDevice,streamY);
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  unpack_phi_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nop,nhalo,
-						  N_d,phi_site_d,phihaloYLOW_d,
-						  phihaloYHIGH_d);
+    unpack_phi_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nop,nhalo,
+  						  N_d,phi_site_d,phihaloYLOW_d,
+  						  phihaloYHIGH_d);
 
 
 
@@ -779,7 +783,8 @@ void phi_halo_gpu()
 	    
 	    
 	    /* xlow part of zhigh */
-	    index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
+	    //index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
+	    index_source = get_linear_index(ii,jj,NedgeX[Z]-nhalo+kk,NedgeX);
 	    index_target = get_linear_index(ii,jj+nhalo,kk,NedgeZ);
 	    
 	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
@@ -789,7 +794,9 @@ void phi_halo_gpu()
 	    
 	    /* xhigh part of zlow */
 	    index_source = get_linear_index(ii,jj,kk,NedgeX);
-	    index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+	    //index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+	    //				    NedgeZ);
+	    index_target = get_linear_index(NedgeZ[X]-nhalo+ii,jj+nhalo,kk,
 					    NedgeZ);
 	    
 	    phiedgeZLOW[npackedsiteZ*m+index_target] =
@@ -798,8 +805,12 @@ void phi_halo_gpu()
 	    
 	    /* xhigh part of zhigh */
 	    
-	    index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
-	    index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+	    //index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
+	    //index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+	    //				    NedgeZ);
+
+	    index_source = get_linear_index(ii,jj,NedgeX[Z]-nhalo+kk,NedgeX);
+	    index_target = get_linear_index(NedgeZ[X]-nhalo+ii,jj+nhalo,kk,
 					    NedgeZ);
 	    
 	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
@@ -837,7 +848,8 @@ void phi_halo_gpu()
 	    
 	    
 	    /* ylow part of zhigh */
-	    index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
+	    //index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
+	    index_source = get_linear_index(ii,jj,NedgeY[Z]-nhalo+kk,NedgeY);
 	    index_target = get_linear_index(ii,jj,kk,NedgeZ);
 	    
 	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
@@ -847,7 +859,8 @@ void phi_halo_gpu()
 	    
 	    /* yhigh part of zlow */
 	    index_source = get_linear_index(ii,jj,kk,NedgeY);
-	    index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+	    //index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+	    index_target = get_linear_index(ii,NedgeZ[Y]-nhalo+jj,kk,NedgeZ);
 	    
 	    phiedgeZLOW[npackedsiteZ*m+index_target] =
 	      phihaloYHIGH[npackedsiteY*m+index_source];
@@ -855,8 +868,11 @@ void phi_halo_gpu()
 	    
 	    /* yhigh part of zhigh */
 	    
-	    index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
-	    index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+	    //index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
+	    //index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+
+	    index_source = get_linear_index(ii,jj,NedgeY[Z]-nhalo+kk,NedgeY);
+	    index_target = get_linear_index(ii,NedgeZ[Y]-nhalo+jj,kk,NedgeZ);
 	    
 	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
 	      phihaloYHIGH[npackedsiteY*m+index_source];
@@ -898,10 +914,10 @@ void phi_halo_gpu()
   cudaMemcpyAsync(phihaloZHIGH_d, phihaloZHIGH, nphihalodataZ*sizeof(double),
 		  cudaMemcpyHostToDevice,streamZ);
 
-  nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
-   unpack_phi_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nop,nhalo,
-  						  N_d,phi_site_d,phihaloZLOW_d,
-  					  phihaloZHIGH_d);
+    nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
+     unpack_phi_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nop,nhalo,
+														  N_d,phi_site_d,phihaloZLOW_d,
+													  phihaloZHIGH_d);
 
 
   /* wait for all streams to complete */
@@ -956,7 +972,8 @@ __global__ static void pack_phi_edgesX_gpu_d(int nop, int nhalo,
       
   
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(Nall[X]-nhalo-1-ii,jj+nhalo,kk+nhalo,Nall);
+      //index = get_linear_index_gpu_d(Nall[X]-nhalo-1-ii,jj+nhalo,kk+nhalo,Nall);
+       index = get_linear_index_gpu_d(Nall[X]-2*nhalo+ii,jj+nhalo,kk+nhalo,Nall);
       /* copy data to packed structure */
 	    for (m = 0; m < nop; m++) {
 	      
@@ -1008,18 +1025,19 @@ __global__ static void unpack_phi_halosX_gpu_d(int nop, int nhalo,
 	    for (m = 0; m < nop; m++) {
 	  
 	      phi_site_d[nsite*m+index] =
-		phihaloXLOW_d[m*npackedsite+packed_index];
+	      phihaloXLOW_d[m*npackedsite+packed_index];
 
 	    }
            
   
       /* HIGH HALO */
-      index = get_linear_index_gpu_d(Nall[X]-1-ii,jj+nhalo,kk+nhalo,Nall);
+      //index = get_linear_index_gpu_d(Nall[X]-1-ii,jj+nhalo,kk+nhalo,Nall);
+      	    index = get_linear_index_gpu_d(Nall[X]-nhalo+ii,jj+nhalo,kk+nhalo,Nall);
       /* copy packed structure data to original array */
 	    for (m = 0; m < nop; m++) {
 	      
 	      phi_site_d[nsite*m+index] =
-		phihaloXHIGH_d[m*npackedsite+packed_index];
+	      phihaloXHIGH_d[m*npackedsite+packed_index];
 	      
 	    }
     }
@@ -1072,7 +1090,8 @@ __global__ static void pack_phi_edgesY_gpu_d(int nop, int nhalo,
       
       
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo-1-jj,kk+nhalo,Nall);
+      //index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo-1-jj,kk+nhalo,Nall);
+        index = get_linear_index_gpu_d(ii,Nall[Y]-2*nhalo+jj,kk+nhalo,Nall);
       /* copy data to packed structure */
 	    for (m = 0; m < nop; m++) {
 	      
@@ -1136,7 +1155,8 @@ __global__ static void unpack_phi_halosY_gpu_d(int nop, int nhalo,
 
       
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(ii,Nall[Y]-1-jj,kk+nhalo,Nall);
+      //index = get_linear_index_gpu_d(ii,Nall[Y]-1-jj,kk+nhalo,Nall);
+	    index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo+jj,kk+nhalo,Nall);
       /* copy packed structure data to original array */
 	    for (m = 0; m < nop; m++) {
 	      
@@ -1197,7 +1217,8 @@ __global__ static void pack_phi_edgesZ_gpu_d(int nop, int nhalo,
       
       
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo-1-kk,Nall);
+      //index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo-1-kk,Nall);
+	    index = get_linear_index_gpu_d(ii,jj,Nall[Z]-2*nhalo+kk,Nall);
       /* copy data to packed structure */
 	    for (m = 0; m < nop; m++) {
 	      
@@ -1252,18 +1273,19 @@ __global__ static void unpack_phi_halosZ_gpu_d(int nop, int nhalo,
 	    for (m = 0; m < nop; m++) {
 	      
 	      phi_site_d[nsite*m+index] =
-		phihaloZLOW_d[m*npackedsite+packed_index];
+	      phihaloZLOW_d[m*npackedsite+packed_index];
 	      
 	    }
       
       
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(ii,jj,Nall[Z]-1-kk,Nall);
+      //index = get_linear_index_gpu_d(ii,jj,Nall[Z]-1-kk,Nall);
+	    index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo+kk,Nall);
       /* copy packed structure data to original array */
 	    for (m = 0; m < nop; m++) {
 	      
 	      phi_site_d[nsite*m+index] =
-		phihaloZHIGH_d[m*npackedsite+packed_index];
+	      phihaloZHIGH_d[m*npackedsite+packed_index];
 	      
 	    }
       

@@ -294,6 +294,7 @@ void ludwig_run(const char * inputfile) {
 
     put_f_on_gpu();
     put_phi_on_gpu();
+    //get_phi_from_gpu();
     //put_grad_phi_on_gpu();
     //put_delsq_phi_on_gpu();
     put_velocity_on_gpu();
@@ -302,7 +303,7 @@ void ludwig_run(const char * inputfile) {
 
 
       TIMER_start(PHICOMP);
-      //phi_compute_phi_site_gpu();
+      phi_compute_phi_site_gpu();
       TIMER_stop(PHICOMP);
 
       if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
@@ -312,7 +313,7 @@ void ludwig_run(const char * inputfile) {
 
 
       TIMER_start(PHIHALO);
-      //phi_halo_gpu();
+      phi_halo_gpu();
       TIMER_stop(PHIHALO);
 
 
@@ -320,7 +321,7 @@ void ludwig_run(const char * inputfile) {
       phi_gradients_compute_gpu();
       TIMER_stop(PHIGRADCOMP);
 
-
+      //get_phi_from_gpu();
       get_grad_phi_from_gpu();
       get_delsq_phi_from_gpu();
 
@@ -399,9 +400,9 @@ void ludwig_run(const char * inputfile) {
 
 
     collide_gpu();
-    get_f_from_gpu();
-    get_velocity_from_gpu();
-    get_force_from_gpu();
+    //get_f_from_gpu();
+    //get_velocity_from_gpu();
+    //get_force_from_gpu();
     TIMER_stop(TIMER_COLLIDE);
 
 #else
@@ -411,11 +412,14 @@ void ludwig_run(const char * inputfile) {
     TIMER_stop(TIMER_COLLIDE);
 
 #endif
-#undef _GPU_
     }
 
     model_le_apply_boundary_conditions();
 
+#undef _GPU_
+    get_f_from_gpu();
+    get_velocity_from_gpu();
+    get_force_from_gpu();
 
 #ifdef _GPU_
     TIMER_start(TIMER_HALO_LATTICE);
@@ -426,6 +430,8 @@ void ludwig_run(const char * inputfile) {
     distribution_halo();
     TIMER_stop(TIMER_HALO_LATTICE);
 #endif
+
+
 
 
 
