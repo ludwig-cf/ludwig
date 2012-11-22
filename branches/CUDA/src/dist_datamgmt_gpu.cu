@@ -916,10 +916,10 @@ void distribution_halo_gpu()
   cudaMemcpyAsync(fhaloXHIGH_d, fhaloXHIGH, nhalodataX*sizeof(double), 
 	     cudaMemcpyHostToDevice,streamX);
   nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  unpack_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(ndist,nhalo,nreduced,
-							 cv_d,
-						  N_d,f_d,fhaloXLOW_d,
-						  fhaloXHIGH_d);
+   unpack_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(ndist,nhalo,nreduced,
+  							 cv_d,
+  						  N_d,f_d,fhaloXLOW_d,
+  						  fhaloXHIGH_d);
 
 #ifndef OVERLAP
   TIMER_start(HALOPUTX); 
@@ -955,7 +955,8 @@ void distribution_halo_gpu()
 		fhaloXLOW[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
 
 		/* xlow part of yhigh */
-		index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);
+		//index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);
+		index_source = get_linear_index(ii,NedgeX[Y]-nhalo+jj,kk,NedgeX);
 		index_target = get_linear_index(ii,jj,kk,NedgeY);
 
 		fedgeYHIGH[npackedsiteY*ndist*p+npackedsiteY*m+index_target] =
@@ -966,13 +967,16 @@ void distribution_halo_gpu()
 
 		/* xhigh part of ylow */
 		index_source = get_linear_index(ii,jj,kk,NedgeX);
-		index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+		//index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+		index_target = get_linear_index(NedgeY[X]-nhalo+ii,jj,kk,NedgeY);
 
 		fedgeYLOW[npackedsiteY*ndist*p+npackedsiteY*m+index_target] =
 		fhaloXHIGH[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
 
 		/* xhigh part of yhigh */
-		index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);			index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+		//index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);			index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
+		index_source = get_linear_index(ii,NedgeX[Y]-nhalo+jj,kk,NedgeX);
+		index_target = get_linear_index(NedgeY[X]-nhalo+ii,jj,kk,NedgeY);
 
 		fedgeYHIGH[npackedsiteY*ndist*p+npackedsiteY*m+index_target] =
 		fhaloXHIGH[npackedsiteX*ndist*p+npackedsiteX*m+index_source];
@@ -1023,10 +1027,10 @@ void distribution_halo_gpu()
 	     cudaMemcpyHostToDevice,streamY);
 
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  unpack_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(ndist,nhalo,nreduced,
-							 cv_d,
-						  N_d,f_d,fhaloYLOW_d,
-						  fhaloYHIGH_d);
+    unpack_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(ndist,nhalo,nreduced,
+  							 cv_d,
+  						  N_d,f_d,fhaloYLOW_d,
+  						  fhaloYHIGH_d);
 
 #ifndef OVERLAP
   TIMER_start(HALOPUTY); 
@@ -1061,7 +1065,8 @@ void distribution_halo_gpu()
 
 
 		/* xlow part of zhigh */
-		index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
+		//index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
+		index_source = get_linear_index(ii,jj,NedgeX[Z]-nhalo+kk,NedgeX);
 		index_target = get_linear_index(ii,jj+nhalo,kk,NedgeZ);
 
 		fedgeZHIGH[npackedsiteZ*ndist*p+npackedsiteZ*m+index_target] =
@@ -1071,7 +1076,8 @@ void distribution_halo_gpu()
 
 		/* xhigh part of zlow */
 		index_source = get_linear_index(ii,jj,kk,NedgeX);
-		index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+		//index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+		index_target = get_linear_index(NedgeZ[X]-nhalo+ii,jj+nhalo,kk,
 						NedgeZ);
 
 		fedgeZLOW[npackedsiteZ*ndist*p+npackedsiteZ*m+index_target] =
@@ -1080,8 +1086,11 @@ void distribution_halo_gpu()
 
 		/* xhigh part of zhigh */
 
-		index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
-		index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+		//index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
+		//index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
+		//				NedgeZ);
+		index_source = get_linear_index(ii,jj,NedgeX[Z]-nhalo+kk,NedgeX);
+		index_target = get_linear_index(NedgeZ[X]-nhalo+ii,jj+nhalo,kk,
 						NedgeZ);
 
 		fedgeZHIGH[npackedsiteZ*ndist*p+npackedsiteZ*m+index_target] =
@@ -1120,7 +1129,8 @@ void distribution_halo_gpu()
 
 
 		/* ylow part of zhigh */
-		index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
+		//index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
+		index_source = get_linear_index(ii,jj,NedgeY[Z]-nhalo+kk,NedgeY);
 		index_target = get_linear_index(ii,jj,kk,NedgeZ);
 
 		fedgeZHIGH[npackedsiteZ*ndist*p+npackedsiteZ*m+index_target] =
@@ -1130,7 +1140,8 @@ void distribution_halo_gpu()
 
 		/* yhigh part of zlow */
 		index_source = get_linear_index(ii,jj,kk,NedgeY);
-		index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+		//index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+		index_target = get_linear_index(ii,NedgeZ[Y]-nhalo+jj,kk,NedgeZ);
 
 		fedgeZLOW[npackedsiteZ*ndist*p+npackedsiteZ*m+index_target] =
 		  fhaloYHIGH[npackedsiteY*ndist*p+npackedsiteY*m+index_source];
@@ -1138,8 +1149,10 @@ void distribution_halo_gpu()
 
 		/* yhigh part of zhigh */
 
-		index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
-		index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+		//index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
+		//index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
+		index_source = get_linear_index(ii,jj,NedgeY[Z]-nhalo+kk,NedgeY);
+		index_target = get_linear_index(ii,NedgeZ[Y]-nhalo+jj,kk,NedgeZ);
 
 		fedgeZHIGH[npackedsiteZ*ndist*p+npackedsiteZ*m+index_target] =
 		  fhaloYHIGH[npackedsiteY*ndist*p+npackedsiteY*m+index_source];
@@ -1186,8 +1199,8 @@ void distribution_halo_gpu()
   cudaMemcpyAsync(fhaloZHIGH_d, fhaloZHIGH, nhalodataZ*sizeof(double), 
 	     cudaMemcpyHostToDevice,streamZ);
   nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
-  unpack_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(ndist,nhalo,nreduced,
-							 cv_d,
+    unpack_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(ndist,nhalo,nreduced,
+  							 cv_d,
   						  N_d,f_d,fhaloZLOW_d,
   					  fhaloZHIGH_d);
 
@@ -1270,7 +1283,8 @@ __global__ static void pack_edgesX_gpu_d(int ndist, int nhalo, int nreduced,
       
   
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(Nall[X]-nhalo-1-ii,jj+nhalo,kk+nhalo,Nall);
+      //index = get_linear_index_gpu_d(Nall[X]-nhalo-1-ii,jj+nhalo,kk+nhalo,Nall);
+      index = get_linear_index_gpu_d(Nall[X]-2*nhalo+ii,jj+nhalo,kk+nhalo,Nall);
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
@@ -1353,7 +1367,8 @@ __global__ static void unpack_halosX_gpu_d(int ndist, int nhalo, int nreduced,
            
   
       /* HIGH HALO */
-      index = get_linear_index_gpu_d(Nall[X]-1-ii,jj+nhalo,kk+nhalo,Nall);
+      //index = get_linear_index_gpu_d(Nall[X]-1-ii,jj+nhalo,kk+nhalo,Nall);
+      index = get_linear_index_gpu_d(Nall[X]-nhalo+ii,jj+nhalo,kk+nhalo,Nall);
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
@@ -1434,7 +1449,8 @@ __global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,int nreduced,
       
       
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo-1-jj,kk+nhalo,Nall);
+      //index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo-1-jj,kk+nhalo,Nall);
+      index = get_linear_index_gpu_d(ii,Nall[Y]-2*nhalo+jj,kk+nhalo,Nall);
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
@@ -1536,7 +1552,8 @@ __global__ static void unpack_halosY_gpu_d(int ndist, int nhalo,int nreduced,
 
       
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(ii,Nall[Y]-1-jj,kk+nhalo,Nall);
+      //index = get_linear_index_gpu_d(ii,Nall[Y]-1-jj,kk+nhalo,Nall);
+      index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo+jj,kk+nhalo,Nall);
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
@@ -1621,7 +1638,8 @@ __global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,int nreduced,
       
       
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo-1-kk,Nall);
+      //index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo-1-kk,Nall);
+      index = get_linear_index_gpu_d(ii,jj,Nall[Z]-2*nhalo+kk,Nall);
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < NVEL; p++) {
@@ -1732,7 +1750,8 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,int nreduced,
       
       
       /* HIGH EDGE */
-      index = get_linear_index_gpu_d(ii,jj,Nall[Z]-1-kk,Nall);
+      //index = get_linear_index_gpu_d(ii,jj,Nall[Z]-1-kk,Nall);
+      index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo+kk,Nall);
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < NVEL; p++) {

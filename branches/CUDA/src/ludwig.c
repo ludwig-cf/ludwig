@@ -271,9 +271,23 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_STEPS);
 
+#define _GPU_
+
+      put_phi_on_gpu();
+      put_f_on_gpu();
+      put_velocity_on_gpu();
+      put_site_map_on_gpu();
+
+
     step = get_step();
     hydrodynamics_zero_force();
+
+    put_force_on_gpu();
+
+
+
     COLL_update();
+
 
     /* Collision stage */
 
@@ -284,22 +298,8 @@ void ludwig_run(const char * inputfile) {
       /* Note that the liquid crystal boundary conditions must come after
        * the halo swap, but before the gradient calculation. */
 
-#define _GPU_
+
 #ifdef _GPU_
-
-      phi_compute_phi_site();
-      phi_halo();
-      //phi_gradients_compute();
-
-
-    put_f_on_gpu();
-    put_phi_on_gpu();
-    //get_phi_from_gpu();
-    //put_grad_phi_on_gpu();
-    //put_delsq_phi_on_gpu();
-    put_velocity_on_gpu();
-    put_site_map_on_gpu();
-    put_force_on_gpu();
 
 
       TIMER_start(PHICOMP);
@@ -315,13 +315,13 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(PHIHALO);
       phi_halo_gpu();
       TIMER_stop(PHIHALO);
-
+      
 
       TIMER_start(PHIGRADCOMP);
       phi_gradients_compute_gpu();
       TIMER_stop(PHIGRADCOMP);
 
-      //get_phi_from_gpu();
+      get_phi_from_gpu();
       get_grad_phi_from_gpu();
       get_delsq_phi_from_gpu();
 
@@ -387,7 +387,6 @@ void ludwig_run(const char * inputfile) {
 
     if(is_propagation_ode() == 0) {
 
-      //#define _GPU_
 #ifdef _GPU_
     TIMER_start(TIMER_COLLIDE);
     //put_f_on_gpu();
@@ -416,11 +415,6 @@ void ludwig_run(const char * inputfile) {
 
     model_le_apply_boundary_conditions();
 
-#undef _GPU_
-    get_f_from_gpu();
-    get_velocity_from_gpu();
-    get_force_from_gpu();
-
 #ifdef _GPU_
     TIMER_start(TIMER_HALO_LATTICE);
     distribution_halo_gpu();
@@ -430,10 +424,6 @@ void ludwig_run(const char * inputfile) {
     distribution_halo();
     TIMER_stop(TIMER_HALO_LATTICE);
 #endif
-
-
-
-
 
     /* Colloid bounce-back applied between collision and
      * propagation steps. */
@@ -485,6 +475,12 @@ void ludwig_run(const char * inputfile) {
 #endif
 
     TIMER_stop(TIMER_PROPAGATE);
+
+#undef _GPU_
+    get_f_from_gpu();
+    get_velocity_from_gpu();
+    get_force_from_gpu();
+
 
 
     TIMER_stop(TIMER_STEPS);

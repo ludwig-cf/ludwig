@@ -494,7 +494,7 @@ void get_phi_from_gpu()
 	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
 
-	      index = coords_index(ic, jc, kc); 
+	      index = get_linear_index(ic, jc, kc, Nall); 
 
 	      for (iop=0; iop<nop; iop++)
 		{

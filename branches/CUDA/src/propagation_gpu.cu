@@ -473,7 +473,7 @@ __global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
       jj = ((threadIndex-xfac*ii)/yfac);
       kk = (threadIndex-ii*xfac-jj*yfac);
       
-      index = get_linear_index_gpu_d(ii+1,jj+1,kk+1,Nall);
+      index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
     
       for (n = 0; n < ndist; n++) {
 	

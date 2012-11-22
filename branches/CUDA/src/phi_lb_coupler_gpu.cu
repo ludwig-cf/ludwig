@@ -43,7 +43,7 @@ void phi_compute_phi_site_gpu() {
 
   int N[3], ndist, nhalo;
 
-  if (phi_is_finite_difference()) return;
+  if (distribution_ndist() == 1) return;
 
   assert(distribution_ndist() == 2);
 
