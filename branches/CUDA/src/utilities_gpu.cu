@@ -314,6 +314,15 @@ void get_force_from_gpu()
 }
 
 
+void zero_force_on_gpu()
+{
+
+  int zero=0;
+  cudaMemset(force_d,zero,nsites*3*sizeof(double));
+  checkCUDAError("zero_force_on_gpu");
+}
+
+
 void get_velocity_from_gpu()
 {
   int index,i, ic,jc,kc; 

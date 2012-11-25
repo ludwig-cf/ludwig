@@ -23,6 +23,7 @@ void put_velocity_on_gpu(void);
 void get_f_from_gpu(void);
 void get_g_partial_from_gpu(int *mask, int include_neighbours);
 void get_force_from_gpu(void);
+void zero_force_on_gpu(void);
 void get_velocity_from_gpu(void);
 void get_phi_from_gpu(void);
 void finalise_gpu(void);

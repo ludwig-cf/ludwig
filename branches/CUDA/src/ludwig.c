@@ -249,7 +249,7 @@ void ludwig_run(const char * inputfile) {
   phi_stats_print_stats();
   ludwig_report_momentum();
 
-  //#ifdef _GPU_
+  #ifdef _GPU_
   info("\n--Running using GPU acceleration--\n");
   initialise_gpu();
   put_f_on_gpu();
@@ -259,7 +259,7 @@ void ludwig_run(const char * inputfile) {
  
   /* sync MPI tasks for timing purposes */
   MPI_Barrier(cart_comm());
-  //#endif
+  #endif
 
 
   /* Main time stepping loop */
@@ -271,22 +271,21 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_STEPS);
 
-#define _GPU_
-
-      put_phi_on_gpu();
-      put_f_on_gpu();
-      put_velocity_on_gpu();
-      put_site_map_on_gpu();
-
+/* #define _GPU_ */
 
     step = get_step();
+
+
+
+#ifdef _GPU_
+    zero_force_on_gpu();
+#else
     hydrodynamics_zero_force();
-
-    put_force_on_gpu();
-
-
+#endif
 
     COLL_update();
+
+
 
 
     /* Collision stage */
@@ -321,10 +320,6 @@ void ludwig_run(const char * inputfile) {
       phi_gradients_compute_gpu();
       TIMER_stop(PHIGRADCOMP);
 
-      get_phi_from_gpu();
-      get_grad_phi_from_gpu();
-      get_delsq_phi_from_gpu();
-
       //TO DO: implement this
       //if (phi_nop() == 5) blue_phase_redshift_compute();
       //if (phi_nop() == 5) {
@@ -343,15 +338,14 @@ void ludwig_run(const char * inputfile) {
 
 #endif
 
+
+
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
       if (phi_is_finite_difference()) {
 
 	TIMER_start(TIMER_FORCE_CALCULATION);
-
-	//#define _GPU_
 #ifdef _GPU_
-
 	if (colloid_ntotal() == 0) {
 	  phi_force_calculation_gpu();
 	}
@@ -360,9 +354,6 @@ void ludwig_run(const char * inputfile) {
 	exit(1);
 	//phi_force_colloid();
 	}
-
-	//put_force_on_gpu();
-
 #else
 
     if (colloid_ntotal() == 0) {
@@ -378,9 +369,22 @@ void ludwig_run(const char * inputfile) {
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
 
+    get_velocity_from_gpu();
+      get_phi_from_gpu();
+      get_grad_phi_from_gpu();
+      get_delsq_phi_from_gpu();
+
+
+
+
 	TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 	phi_update_dynamics();
 	TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
+
+    put_phi_on_gpu();
+
+
+
 
       }
     }
@@ -476,10 +480,10 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_stop(TIMER_PROPAGATE);
 
-#undef _GPU_
-    get_f_from_gpu();
-    get_velocity_from_gpu();
-    get_force_from_gpu();
+/* #undef _GPU_ */
+    //   get_f_from_gpu();
+    //get_velocity_from_gpu();
+    //get_force_from_gpu();
 
 
 

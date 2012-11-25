@@ -21,6 +21,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h> 
 
 #define INCLUDING_FROM_GPU_SOURCE
 #include "phi_force_gpu.h"
@@ -542,7 +543,7 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index, int nsites,
   double dq[3][3][3];
   double dsq[3][3];
 
-  //printf("in BPCS\n");
+  //  if(threadIdx.x==0 && blockIdx.x==0) printf("in BPCS\n");
 
 /*   phi_get_q_tensor(index, q); */
 /*   phi_gradients_tensor_gradient(index, dq); */
@@ -550,15 +551,6 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index, int nsites,
 
 
   /* load phi */
-  /* q[X][X] = phi_site_d[nop*index + XX]; */
-  /* q[X][Y] = phi_site_d[nop*index + XY]; */
-  /* q[X][Z] = phi_site_d[nop*index + XZ]; */
-  /* q[Y][X] = q[X][Y]; */
-  /* q[Y][Y] = phi_site_d[nop*index + YY]; */
-  /* q[Y][Z] = phi_site_d[nop*index + YZ]; */
-  /* q[Z][X] = q[X][Z]; */
-  /* q[Z][Y] = q[Y][Z]; */
-  /* q[Z][Z] = 0.0 - q[X][X] - q[Y][Y]; */
 
   q[X][X] = phi_site_d[nsites*XX+index];
   q[X][Y] = phi_site_d[nsites*XY+index];
@@ -570,14 +562,15 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index, int nsites,
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
 
+
   /* load grad phi */
   for (ia = 0; ia < 3; ia++) {
-    dq[ia][X][X] = grad_phi_site_d[3*(5*index + XX) + ia];
-    dq[ia][X][Y] = grad_phi_site_d[3*(5*index + XY) + ia];
-    dq[ia][X][Z] = grad_phi_site_d[3*(5*index + XZ) + ia];
+    dq[ia][X][X] = grad_phi_site_d[ia*nsites*5 + XX*nsites + index];
+    dq[ia][X][Y] = grad_phi_site_d[ia*nsites*5 + XY*nsites + index];
+    dq[ia][X][Z] = grad_phi_site_d[ia*nsites*5 + XZ*nsites + index];
     dq[ia][Y][X] = dq[ia][X][Y];
-    dq[ia][Y][Y] = grad_phi_site_d[3*(5*index + YY) + ia];
-    dq[ia][Y][Z] = grad_phi_site_d[3*(5*index + YZ) + ia];
+    dq[ia][Y][Y] = grad_phi_site_d[ia*nsites*5 + YY*nsites + index];
+    dq[ia][Y][Z] = grad_phi_site_d[ia*nsites*5 + YZ*nsites + index];
     dq[ia][Z][X] = dq[ia][X][Z];
     dq[ia][Z][Y] = dq[ia][Y][Z];
     dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
@@ -585,23 +578,23 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index, int nsites,
 
 
     /* load delsq phi */
-  dsq[X][X] = delsq_phi_site_d[5*index + XX];
-  dsq[X][Y] = delsq_phi_site_d[5*index + XY];
-  dsq[X][Z] = delsq_phi_site_d[5*index + XZ];
+  dsq[X][X] = delsq_phi_site_d[XX*nsites+index];
+  dsq[X][Y] = delsq_phi_site_d[XY*nsites+index];
+  dsq[X][Z] = delsq_phi_site_d[XZ*nsites+index];
   dsq[Y][X] = dsq[X][Y];
-  dsq[Y][Y] = delsq_phi_site_d[5*index + YY];
-  dsq[Y][Z] = delsq_phi_site_d[5*index + YZ];
+  dsq[Y][Y] = delsq_phi_site_d[YY*nsites+index];
+  dsq[Y][Z] = delsq_phi_site_d[YZ*nsites+index];
   dsq[Z][X] = dsq[X][Z];
   dsq[Z][Y] = dsq[Y][Z];
   dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
 
 
   blue_phase_compute_h_gpu_d(q, dq, dsq, h, redshift_,rredshift_,q0_,a0_,
-				      kappa0_, kappa1_,xi_,zeta_,gamma_,
-			   electric_d,epsilon_,r3_d,d_d,e_d);
+  				      kappa0_, kappa1_,xi_,zeta_,gamma_,
+  			   electric_d,epsilon_,r3_d,d_d,e_d);
   blue_phase_compute_stress_gpu_d(q, dq, h, sth, redshift_,rredshift_,q0_,a0_,
-				      kappa0_, kappa1_,xi_,zeta_,gamma_,
-				electric_d,epsilon_,r3_d,d_d,e_d);
+  				      kappa0_, kappa1_,xi_,zeta_,gamma_,
+  				electric_d,epsilon_,r3_d,d_d,e_d);
 
   return;
 }

@@ -342,7 +342,8 @@ void put_grad_phi_on_gpu()
 
 		  for (i=0;i<3;i++)
 		    {
-		      grad_phi_site_temp[3*(index*nop+iop)+i]=grad_phi[i];
+		      //grad_phi_site_temp[3*(index*nop+iop)+i]=grad_phi[i];
+		      grad_phi_site_temp[i*nsites*nop+iop*nsites+index]=grad_phi[i];
 		    }
 		}
 	    }
@@ -387,7 +388,7 @@ void get_grad_phi_from_gpu()
 
 		  for (i=0;i<3;i++)
 		    {
-		      grad_phi[i]=grad_phi_site_temp[3*(index*nop+iop)+i];
+		      grad_phi[i]=grad_phi_site_temp[i*nsites*nop+iop*nsites+index];
 		    }
 
 		  phi_gradients_set_grad_n(index, iop, grad_phi);
@@ -421,7 +422,7 @@ void put_delsq_phi_on_gpu()
 
 	      for (iop=0; iop<nop; iop++){
 
-		delsq_phi_site_temp[index*nop+iop] = phi_gradients_delsq_n(index,iop);
+		delsq_phi_site_temp[iop*nsites+index] = phi_gradients_delsq_n(index,iop);
 	      	      
 	      }
 	    }
@@ -461,7 +462,7 @@ void get_delsq_phi_from_gpu()
 
 	      for (iop=0; iop<nop; iop++){
 
-		phi_gradients_set_delsq_n(index,iop,delsq_phi_site_temp[index*nop+iop]);
+		phi_gradients_set_delsq_n(index,iop,delsq_phi_site_temp[iop*nsites+index]);
 	      	      
 	      }
 	    }

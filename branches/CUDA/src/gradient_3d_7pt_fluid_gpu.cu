@@ -131,13 +131,13 @@ __global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo,
 
       for (n = 0; n < nop; n++) { 
 
-	  grad_d[3*(nop*index + n) + X]
+	  grad_d[X*nsites*nop+n*nsites+index]
 	    = 0.5*(field_d[nsites*n+indexp1] - field_d[nsites*n+indexm1]);
-	  grad_d[3*(nop*index + n) + Y]
+	  grad_d[Y*nsites*nop+n*nsites+index]
 	    = 0.5*(field_d[nsites*n+(index + ys)] - field_d[nsites*n+(index - ys)]);
-	  grad_d[3*(nop*index + n) + Z]
+	  grad_d[Z*nsites*nop+n*nsites+index]
 	    = 0.5*(field_d[nsites*n+(index + 1)] - field_d[nsites*n+(index - 1)]);
-	  del2_d[nop*index + n]
+	  del2_d[n*nsites + index]
 	    = field_d[nsites*n+indexp1] + field_d[nsites*n+indexm1]
 	    + field_d[nsites*n+(index + ys)] + field_d[nsites*n+(index - ys)]
 	    + field_d[nsites*n+(index + 1)] + field_d[nsites*n+(index - 1)]

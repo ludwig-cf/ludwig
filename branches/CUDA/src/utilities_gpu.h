@@ -27,6 +27,7 @@ extern "C" void put_site_map_on_gpu();
 extern "C" void put_force_on_gpu();
 extern "C" void put_velocity_on_gpu();
 extern "C" void get_force_from_gpu();
+extern "C" void zero_force_on_gpu();
 extern "C" void get_velocity_from_gpu();
 extern "C" void finalise_gpu();
 extern "C" void checkCUDAError(const char *msg);
