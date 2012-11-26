@@ -50,29 +50,11 @@ extern int * N_d;
 extern int * le_index_real_to_buffer_d;
 
 /* forward declarations of device routines */
-__global__ void phi_force_calculation_fluid_gpu_d(int nop, 
-						  int nhalo, 
-						  int N_d[3], 
-						  int * le_index_real_to_buffer_d,
-						  int nextra,
+__global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_d,
 						  double *phi_site_d,
 						  double *grad_phi_site_d,
 						  double *delsq_phi_site_d,
-						  double *force_d,
-						  double redshift_,
-						  double rredshift_,
-						  double q0_,
-						  double a0_,
-						  double kappa0_,
-						  double kappa1_,
-						  double xi_,
-						  double zeta_,
-						  double gamma_,
-						  double electric_[3],
-						  double epsilon_,
-						  double *r3_d,
-						  double *d_d,
-						  double *e_d);
+						  double *force_d);
 
 __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]);
 __device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,
