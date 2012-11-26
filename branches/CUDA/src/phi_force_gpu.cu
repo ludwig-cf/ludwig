@@ -49,10 +49,10 @@ __constant__ int nhalo_cd;
 __constant__ int nsites_cd;
 __constant__ double redshift_cd;
 __constant__ double rredshift_cd;
-__constant__ double q0_cd;
+__constant__ double q0shift_cd;
 __constant__ double a0_cd;
-__constant__ double kappa0_cd;
-__constant__ double kappa1_cd;
+__constant__ double kappa0shift_cd;
+__constant__ double kappa1shift_cd;
 __constant__ double xi_cd;
 __constant__ double zeta_cd;
 __constant__ double gamma_cd;
@@ -119,6 +119,11 @@ void phi_force_calculation_gpu(void) {
   blue_phase_get_electric_field(electric_);
   epsilon_=blue_phase_get_dielectric_anisotropy();
 
+ q0_ = q0_*rredshift_;
+ kappa0_ = kappa0_*redshift_*redshift_;
+ kappa1_ = kappa1_*redshift_*redshift_;
+
+
   //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
@@ -127,10 +132,10 @@ void phi_force_calculation_gpu(void) {
  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(q0_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa0_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa1_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
@@ -152,9 +157,11 @@ void phi_force_calculation_gpu(void) {
   //else {
   //if (force_divergence_) {
 
-      int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
 
-      phi_force_calculation_fluid_gpu_d<<<nblocks,DEFAULT_TPB>>>
+  #define TPB 256
+      int nblocks=(N[X]*N[Y]*N[Z]+TPB-1)/TPB;
+
+      phi_force_calculation_fluid_gpu_d<<<nblocks,TPB>>>
 	(le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d,force_d);
       
       cudaThreadSynchronize();
@@ -185,16 +192,11 @@ __device__ void blue_phase_compute_h_gpu_d(double q[3][3], double dq[3][3][3],
 			      double dsq[3][3], double h[3][3]) {
   int ia, ib, ic, id;
 
-  double q0;              /* Redshifted value */
-  double kappa0, kappa1;  /* Redshifted values */
   double q2;
   double e2;
   double eq;
   double sum;
 
-  q0 = q0_cd*rredshift_cd;
-  kappa0 = kappa0_cd*redshift_cd*redshift_cd;
-  kappa1 = kappa1_cd*redshift_cd*redshift_cd;
 
   /* From the bulk terms in the free energy... */
 
@@ -240,9 +242,9 @@ __device__ void blue_phase_compute_h_gpu_d(double q[3][3], double dq[3][3][3],
 	    (e_cd[ia][ic][id]*dq[ic][ib][id] + e_cd[ib][ic][id]*dq[ic][ia][id]);
 	}
       }
-      h[ia][ib] += kappa0*dsq[ia][ib]
-	- 2.0*kappa1*q0*sum + 4.0*r3_cd*kappa1*q0*eq*d_cd[ia][ib]
-	- 4.0*kappa1*q0*q0*q[ia][ib];
+      h[ia][ib] += kappa0shift_cd*dsq[ia][ib]
+	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib]
+	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[ia][ib];
     }
   }
 
@@ -276,17 +278,11 @@ __device__ void blue_phase_compute_h_gpu_d(double q[3][3], double dq[3][3][3],
 __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3]){
 
   int ia, ib, ic, id;
-  double q0;
-  double kappa0, kappa1;
   double q2, q3;
   double dq0, dq1;
   double sum;
   double efield;
  
-  q0 = q0_cd*rredshift_cd;
-  kappa0 = kappa0_cd*redshift_cd*redshift_cd;
-  kappa1 = kappa1_cd*redshift_cd*redshift_cd;
-
   q2 = 0.0;
 
   /* Q_ab^2 */
@@ -335,7 +331,7 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
 	  sum += e_cd[ia][ic][id]*dq[ic][ib][id];
 	}
       }
-      sum += 2.0*q0*q[ia][ib];
+      sum += 2.0*q0shift_cd*q[ia][ib];
       dq1 += sum*sum;
     }
   }
@@ -350,7 +346,7 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
   }
 
   sum = 0.5*a0_cd*(1.0 - r3_cd*gamma_cd)*q2 - r3_cd*a0_cd*gamma_cd*q3 +
-    0.25*a0_cd*gamma_cd*q2*q2 + 0.5*kappa0*dq0 + 0.5*kappa1*dq1 - epsilon_cd*efield;;
+    0.25*a0_cd*gamma_cd*q2*q2 + 0.5*kappa0shift_cd*dq0 + 0.5*kappa1shift_cd*dq1 - epsilon_cd*efield;;
 
   return sum;
 }
@@ -373,35 +369,28 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
 __device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][3],
 				   double h[3][3], double sth[3][3]){
   int ia, ib, ic, id, ie;
-  double q0;
-  double kappa0;
-  double kappa1;
-  double qh;
-  double p0;
 
-  q0 = q0_cd*rredshift_cd;
-  kappa0 = kappa0_cd*redshift_cd*redshift_cd;
-  kappa1 = kappa1_cd*redshift_cd*redshift_cd;
+  double tmpdbl,tmpdbl2;
   
   /* We have ignored the rho T term at the moment, assumed to be zero
    * (in particular, it has no divergence if rho = const). */
 
-  p0 = 0.0 - blue_phase_compute_fed_gpu_d(q, dq);
+  tmpdbl = 0.0 - blue_phase_compute_fed_gpu_d(q, dq);
 
   /* The contraction Q_ab H_ab */
 
-  qh = 0.0;
+  tmpdbl2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      qh += q[ia][ib]*h[ia][ib];
+      tmpdbl2 += q[ia][ib]*h[ia][ib];
     }
   }
 
   /* The term in the isotropic pressure, plus that in qh */
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] = -p0*d_cd[ia][ib] + 2.0*xi_cd*(q[ia][ib] + r3_cd*d_cd[ia][ib])*qh;
+      sth[ia][ib] = -tmpdbl*d_cd[ia][ib] + 2.0*xi_cd*(q[ia][ib] + r3_cd*d_cd[ia][ib])*tmpdbl2;
     }
   }
 
@@ -409,11 +398,13 @@ __device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
+      tmpdbl=0.;
       for (ic = 0; ic < 3; ic++) {
-	sth[ia][ib] +=
-	  -xi_cd*h[ia][ic]*(q[ib][ic] + r3_cd*d_cd[ib][ic])
-	  -xi_cd*(q[ia][ic] + r3_cd*d_cd[ia][ic])*h[ib][ic];
+	tmpdbl+=
+  	  -xi_cd*h[ia][ic]*(q[ib][ic] + r3_cd*d_cd[ib][ic])
+  	  -xi_cd*(q[ia][ic] + r3_cd*d_cd[ia][ic])*h[ib][ic];
       }
+      sth[ia][ib] += tmpdbl;
     }
   }
 
@@ -421,20 +412,22 @@ __device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-
+      tmpdbl=0.;
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
-	  sth[ia][ib] +=
-	    - kappa0*dq[ia][ib][ic]*dq[id][ic][id]
-	    - kappa1*dq[ia][ic][id]*dq[ib][ic][id]
-	    + kappa1*dq[ia][ic][id]*dq[ic][ib][id];
-
+	  tmpdbl +=
+	    - kappa0shift_cd*dq[ia][ib][ic]*dq[id][ic][id]
+	    - kappa1shift_cd*dq[ia][ic][id]*dq[ib][ic][id]
+	    + kappa1shift_cd*dq[ia][ic][id]*dq[ic][ib][id];
+	  
+	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd*dq[ia][ic][id];
 	  for (ie = 0; ie < 3; ie++) {
-	    sth[ia][ib] +=
-	     -2.0*kappa1*q0*dq[ia][ic][id]*e_cd[ib][ic][ie]*q[id][ie];
+	    tmpdbl +=
+	     tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
 	  }
 	}
       }
+      sth[ia][ib]+=tmpdbl;
     }
   }
 
@@ -443,19 +436,16 @@ __device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
+      tmpdbl=0.;
       for (ic = 0; ic < 3; ic++) {
-	sth[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
+  	 tmpdbl += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
       }
-    }
-  }
-
-  /* This is the minus sign. */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib]+=tmpdbl;
+      /* This is the minus sign. */
       sth[ia][ib] = -sth[ia][ib];
     }
   }
+
 
   return;
 }
@@ -555,29 +545,11 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
 						  double *force_d
 					    ) {
 
-  int ia, ic, jc, kc, icm1, icp1;
+  int ia, icm1, icp1;
   int index, index1;
   double pth0[3][3];
   double pth1[3][3];
   double force[3];
-
-  //void (* chemical_stress)(const int index, double s[3][3]);
-
-  //coords_nlocal(nlocal);
-
-  //phi_force_stress_allocate();
-  //phi_force_stress_compute();
-
-  //chemical_stress = phi_force_stress;
-
-
-/*   for (ic = 1; ic <= nlocal[X]; ic++) { */
-/*     icm1 = le_index_real_to_buffer(ic, -1); */
-/*     icp1 = le_index_real_to_buffer(ic, +1); */
-/*     for (jc = 1; jc <= nlocal[Y]; jc++) { */
-/*       for (kc = 1; kc <= nlocal[Z]; kc++) { */
-
-
   int threadIndex,ii, jj, kk;
 
  /* CUDA thread index */
@@ -593,33 +565,20 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_cd);
       index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);      
       
-
-      /* icm1 = le_index_real_to_buffer(ic, -1); */
-      /* icp1 = le_index_real_to_buffer(ic, +1); */
-      /*le_index_real_to_buffer_d holds -1 then +1 translation values */
       icm1=le_index_real_to_buffer_d[ii+nhalo_cd];
       icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii+nhalo_cd];      
       
-
-
-	//printf("inphiforce\n");
-
-	//index = coords_index(ic, jc, kc);
-
 
 	/* Compute pth at current point */
       blue_phase_chemical_stress_gpu_d(index,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth0);
 
 	/* Compute differences */
-	
-	//index1 = coords_index(icp1, jc, kc);
 	index1 = get_linear_index_gpu_d(icp1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
 	blue_phase_chemical_stress_gpu_d(index1,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
-	//index1 = coords_index(icm1, jc, kc);
 	index1 = get_linear_index_gpu_d(icm1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
 	blue_phase_chemical_stress_gpu_d(index1,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth1);
 	for (ia = 0; ia < 3; ia++) {
@@ -627,26 +586,25 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
 	}
 
 	
-	//index1 = coords_index(ic, jc+1, kc);
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd+1,kk+nhalo_cd,Nall_cd);
 	blue_phase_chemical_stress_gpu_d(index1,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
-	//index1 = coords_index(ic, jc-1, kc);
+
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
 	blue_phase_chemical_stress_gpu_d(index1,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	
-	//index1 = coords_index(ic, jc, kc+1);
+
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd+1,Nall_cd);
 	blue_phase_chemical_stress_gpu_d(index1,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
-	//index1 = coords_index(ic, jc, kc-1);
+
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
 	blue_phase_chemical_stress_gpu_d(index1,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1);
 	for (ia = 0; ia < 3; ia++) {
@@ -654,21 +612,11 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
 	}
 
 	/* Store the force on lattice */
-
-/* 	hydrodynamics_add_force_local(index, force); */
 	for (ia=0;ia<3;ia++)
-	  force_d[index*3+ia]+=force[ia];
-
-
-/* 	/\* Next site *\/ */
-/*       } */
-/*     } */
-/*   } */
-
+	  force_d[ia*nsites_cd+index]+=force[ia];
 
     }
 
-  //phi_force_stress_free();
 
   return;
 }

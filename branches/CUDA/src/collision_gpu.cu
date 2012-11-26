@@ -198,7 +198,7 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 					      double* force_global_d, 
 					      double* f_d, 
 						char* site_map_status_d, 
-					      double* force_ptr, 
+					      double* force_d, 
     			       		      double* velocity_ptr, 
 					      double* ma_ptr,
 					      double* d_ptr,
@@ -230,7 +230,6 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
   /* cast dummy gpu memory pointers to pointers of right type (for 
    * multidimensional arrays) */
 
-  double (*force_d)[3] = (double (*)[3]) force_ptr;
   double (*velocity_d)[3] = (double (*)[3]) velocity_ptr;
   double (*ma_d)[NVEL] = (double (*)[NVEL]) ma_ptr;
   double (*mi_d)[NVEL] = (double (*)[NVEL]) mi_ptr;
@@ -320,7 +319,7 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  rrho = 1.0/rho;
 	  /* hydrodynamics_get_force_local(index, force_local); */
 	  for (ia = 0; ia < 3; ia++) {
-	    force_local[ia] = force_d[index][ia];
+	    force_local[ia] = force_d[ia*nsite+index];
 	  }
 	  
 	  for (ia = 0; ia < NDIM; ia++) {
@@ -455,7 +454,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 					  double* phi_site_d,		
 					  double* grad_phi_site_d,	
 					  double* delsq_phi_site_d,	
-					  double* force_ptr, 
+					  double* force_d, 
 					  double* velocity_ptr, 
 					  double* ma_ptr, 
 					  double* d_ptr, 
@@ -494,7 +493,6 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 
  /* cast dummy gpu memory pointers to pointers of right type (for 
    * multidimensional arrays) */
-  double (*force_d)[3] = (double (*)[3]) force_ptr;
   double (*velocity_d)[3] = (double (*)[3]) velocity_ptr;
   double (*ma_d)[NVEL] = (double (*)[NVEL]) ma_ptr;
   double (*mi_d)[NVEL] = (double (*)[NVEL]) mi_ptr;
@@ -585,7 +583,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  rrho = 1.0/rho;
 	  /* hydrodynamics_get_force_local(index, force_local); */
 	  for (i = 0; i < 3; i++) {
-	    force_local[i] = force_d[index][i];
+	    force_local[i] = force_d[i*nsite+index];
 	  }
 	  
 	  for (i = 0; i < 3; i++) {

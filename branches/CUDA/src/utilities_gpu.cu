@@ -261,7 +261,7 @@ void put_force_on_gpu()
 	      	      
 	      for (i=0;i<3;i++)
 		{
-		  force_temp[index*3+i]=force[i];
+		  force_temp[i*nsites+index]=force[i];
 		}
 	    }
 	}
@@ -298,7 +298,7 @@ void get_force_from_gpu()
 
 	      for (i=0;i<3;i++)
 		{
-		  force[i]=force_temp[index*3+i];
+		  force[i]=force_temp[i*nsites+index];
 		}
 
 	      hydrodynamics_set_force_local(index,force);
