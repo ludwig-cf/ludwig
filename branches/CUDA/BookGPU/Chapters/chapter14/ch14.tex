@@ -162,32 +162,32 @@ floating point multiplications per lattice site. In contrast, the
 propagation stage consists solely of moving the distribution values
 between lattice sites, and involves no floating point operations.
 
-In the CPU version, the \textit{Ludwig} implementation stores one
-time level of distribution values $f_i(\mathbf{r}; t)$. This distribution
-is stored as a flat array of C data type \texttt{double}, and laid out so
-that all elements of the velocity are contiguous at a given site (often
-referred to as ``array-of-structures'' order). This is appropriate
-for sums over
-the distribution required locally at the collision stage as illustrated
-schematically in Listing~\ref{ch14:listing1}. (The temporary scalar
-\texttt{a\_tmp} allows caching of the intermediate accumulated value
-in the innermost loop.)
-A variety of standard sequential optimisations are relevant for the
-collision stage (loop unrolling, inclusion of SIMD operations, and
-so on \cite{wellein2006}). 
-For example, the collision stage in \textit{Ludwig} includes explicit
-SIMD code, which is useful if the compiler on a given platform cannot
-identify it.
-The propagation stage is separate, and is organised as a ``pull''
-(again, various optimisation have been considered, e.g., 
-\cite{pohl2003,mattila2007,wittmann2012}).
-No further optimisation is done
-here beyond ensuring that the ordering of the discrete velocities allows
-memory access to be as efficient as possible. While these optimisations
-are important, it should be remembered that for some complex fluid
-problems, the hydrodynamics embodied in the LB calculation is a relatively
-small part of the total computational cost (at the 10\%-level in some cases).
-This means optimisation effort may be better concentrated elsewhere.
+In the CPU version, the \textit{Ludwig} implementation stores one time
+level of distribution values $f_i(\mathbf{r}; t)$. This distribution
+is stored as a flat array of C data type \texttt{double}, and laid out
+so that all elements of the velocity are contiguous at a given site
+(often referred to as ``array-of-structures'' order). This is
+appropriate for sums over the distribution required locally at the
+collision stage as illustrated schematically in
+Listing~\ref{ch14:listing1}: the fact that consecutive loads are from
+consecutive memory addresses allows the prefetcher to fully engage.
+(The temporary scalar \texttt{a\_tmp} allows caching of the
+intermediate accumulated value in the innermost loop.)  A variety of
+standard sequential optimisations are relevant for the collision stage
+(loop unrolling, inclusion of SIMD operations, and so on
+\cite{wellein2006}).  For example, the collision stage in
+\textit{Ludwig} includes explicit SIMD code, which is useful if the
+compiler on a given platform cannot identify it.  The propagation
+stage is separate, and is organised as a ``pull'' (again, various
+optimisation have been considered, e.g.,
+\cite{pohl2003,mattila2007,wittmann2012}).  No further optimisation is
+done here beyond ensuring that the ordering of the discrete velocities
+allows memory access to be as efficient as possible. While these
+optimisations are important, it should be remembered that for some
+complex fluid problems, the hydrodynamics embodied in the LB
+calculation is a relatively small part of the total computational cost
+(at the 10\%-level in some cases).  This means optimisation effort may
+be better concentrated elsewhere.
 
 \begin{lstlisting}[float, label=ch14:listing1,
 caption = Collision schematic for CPU.]
@@ -214,13 +214,14 @@ for (is = 0; is < nsites; is++) {
 \begin{figure}[!t]
 \centering
 \includegraphics[width=12cm]{Chapters/chapter14/figures/decomphalo}
-\caption{Left: the lattice is decomposed between MPI tasks. For clarity
-we show a 2D decomposition of a 3D lattice, but in practice we decompose
-in all 3 dimensions. Halo cells are added to each sub-domain (as shown on
-the right for a single slice) which store data retrieved from remote
-neighbours in the halo exchange. CAN WE ADD: Lower right: the D3Q19
-velocity set required 5 ``outgoing'' elements to be transferred at
-each edge.}
+\caption{Left: the lattice is decomposed between MPI tasks. For
+  clarity we show a 2D decomposition of a 3D lattice, but in practice
+  we decompose in all 3 dimensions. Halo cells are added to each
+  sub-domain (as shown on the upper right for a single slice) which store
+  data retrieved from remote neighbours in the halo exchange. Lower
+  right: the D3Q19 velocity set resident on a lattice site;
+  highlighted are the 5 ``outgoing'' elements to be transferred in a
+  specific direction.}
 \label{ch14:fig:decomphalo}
 \end{figure}
 
@@ -247,20 +248,22 @@ a vector of appropriately strided MPI datatypes for each direction.
 In this section we describe the steps taken to enable \textit{Ludwig}
 for the GPU. There are a number of crucial issues: first, the
 minimisation of data traffic between host and device; second, the
-maximisation of available parallelism and third, the issue of
-memory coalescing. We discuss each of these in turn.
+optimal mapping of available parallelism onto the architecure and
+third, the issue of memory coalescing. We discuss each of these in
+turn.
 
-While the most important section of the code in terms of floating-point
-performance is the collision stage, this cannot be the only consideration
-for a GPU implementation. It is essential to offload all computational
-activity which involves the main data structures (such as the distribution)
-to the GPU. This includes kernels with relatively low computational demand,
-such as the propagation stage. All relevant data then remain resident on
-the GPU, which avoids expensive host-device data transfer at each iteration
-of the algorithm. Such transfers would negate any benefit of GPU acceleration.
-We note that for a complex fluid code, this requirement can extend to a
-considerable number of kernels, although we limit the discussion to
-collision and propagation for brevity.
+While the most important section of the LB in terms of
+floating-point performance is the collision stage, this cannot be the
+only consideration for a GPU implementation. It is essential to
+offload all computational activity which involves the main data
+structures (such as the distribution) to the GPU. This includes
+kernels with relatively low computational demand, such as the
+propagation stage. All relevant data then remain resident on the GPU,
+to avoid expensive host-device data transfer at each iteration of
+the algorithm. Such transfers would negate any benefit of GPU
+acceleration.  We note that for a complex fluid code, this requirement
+can extend to a considerable number of kernels, although we limit the
+discussion to collision and propagation for brevity.
 
 To achieve optimal performance, it is vital to exploit fully the
 parallelism inherent in the GPU architecture, particularly for
@@ -396,13 +399,13 @@ where the local system size decreases as the number of GPUs increases.
 
 %\section{Performance}\label{ch14:sec:performance}
 
-To demonstrate the effectiveness of this approach, we compare the
+To demonstrate the effectiveness of our approach, we compare the
 performance of both CPU and GPU versions of \textit{Ludwig}. To
 test the complex fluid nature of the code, the problem is
 actually an immiscible fluid mixture which uses a second distribution
 function to introduce a composition variable. The interested reader
 is referred to \cite{ch14:stratford-jsp2005} for further details. The
-largest total problem size used is $1548\times 1764\times 1568$ ?PLEASE CHECK EXACTLY.
+largest total problem size used is $2548\times 1764\times 1568$.
 The CPU system features a Cray XE6 architecture with 2 16-core AMD Opteron
 CPUs per node, and with nodes interconnected using Cray Gemini technology.
 For GPU results, a Cray XK6 system is used: this is very similar to the
@@ -410,7 +413,7 @@ XE6, but has one CPU per node replaced with an NVIDIA X2090 GPU. Each
 node in the GPU system therefore features a single Opteron CPU acting
 as a host to a single GPU. The inter-node interconnect architecture is
 the same as for the Cray XE6. The GPU performance tests use a prototype
-Cray XK6 system with 936 nodes (the LARGEST AVAILABLE AT TIME OF WRITING?).
+Cray XK6 system with 936 nodes (the largest available at the time of writing).
 To provide a fair comparison, we compare scaling on a \textit{per node}
 basis. That is, we compare 1 fully occupied 32-core CPU node
 (running 32 MPI tasks) with 1 GPU node (host running 1 MPI task,
@@ -559,17 +562,17 @@ Minimisation of host-device data transfer would argue for moving the
 entire particle code to the GPU. However, the code in question involves
 largely conditional logic (e.g., identifying cut surface links) and
 irregular memory accesses (e.g., access to distribution elements around
-a spherical particle). These operations seems poorly suited to effective
+a spherical particle). These operations seem poorly suited to effective
 parallelisation on the GPU. As an additional complication, the sums
 required over the particle surface would involve potentially tricky
 and inefficient reductions in GPU memory.
 \item
 The alternative is to retain the relevant code on the CPU. While the
 transfer of the entire distribution $f_i(\mathbf{r};t)$ between host
-and device at each time step is unconscionable owing to memory bandwidth
+and device at each time step is unconscionable owing to PCIe bus bandwidth
 considerations, the transfer of only relevant distribution information
 to allow bounce-back on links is possible. At modest solid volumes
-fractions only a very small fraction of the distribution data is
+only a very small fraction of the distribution data is
 involved in bounce-back (e.g., a 2\% solid volume fraction of particles
 radius 2.3$\Delta r$ would involve approximately 1\% of the distribution
 data). This option also has the advantage that no further host-device
@@ -577,7 +580,7 @@ data transfers are necessary to allow the MPI exchanges required for
 particle information.
 \end{enumerate}
 
-ALAN PLEASE CHECK:
+
 We have implemented the second option as follows. For each sub-domain,
 a list of boundary-cutting links is assembled on the CPU which includes
 the identity of the relevant element of the distribution. This list,
