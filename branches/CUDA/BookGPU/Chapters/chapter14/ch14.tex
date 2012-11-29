@@ -1,6 +1,6 @@
 \chapterauthor{Alan Gray and Kevin Stratford}{EPCC, The University of Edinburgh}
 
-\chapter{Ludwig: GPU implementation of a complex fluid lattice Boltzmann
+\chapter{Ludwig: multiple GPUs for a complex fluid lattice Boltzmann
 application}
 
 %\putbib[biblio]
@@ -24,7 +24,7 @@ to application programmers at a time when many supercomputing services
 are moving
 toward clusters of GPU accelerated nodes. The design questions which
 arise when developing a lattice Boltzmann code for this type of
-heterogeneous system are therefore worth studying. However, similar
+heterogeneous system are therefore worth studying. Furthermore, similar
 questions also recur in many other types of stencil-based algorithms.
 
 The first applications of LB on GPUs were to achieve fluid-like
@@ -41,7 +41,7 @@ and CUDA~\cite{myre2011}, Posix threads and CUDA~\cite{obrecht2011},
 and MPI and CUDA for increasingly large GPU clusters
 \cite{bernaschi2010,xian2011,feichtinger2011}. The heterogeneous
 nature of these systems has also spurred interest in approaches
-including automatic code generation \cite{walshsaar2012} and autotuning
+including automatic code generation \cite{walshsaar2012} and auto-tuning
 \cite{williams2011} to aid application performance.
 
 Many of these authors make use of
@@ -59,9 +59,9 @@ programmer. Here, we consider the \textit{Ludwig} code \cite{desplat},
 an LB application developed specifically for complex fluids
 (\textit{Ludwig} was named for Boltzmann, 1844--1906).
 We will present the steps
-required to allow Ludwig to exploit efficiently both a single
+required to allow \textit{Ludwig} to exploit efficiently both a single
 GPU, and also many GPUs in parallel.  We show that
-Ludwig scales excellently to at least the one thousand GPU level
+\textit{Ludwig} scales excellently to at least the one thousand GPU level
 (the largest resource available at the time of writing) with
 indications that the code will scale to much larger systems as
 they become available. In addition, we consider the steps required
@@ -90,8 +90,9 @@ a typical benchmark for a fluid-only problem in Section
 \ref{ch14:sec:parallelgpu} to demonstrate the success of the approach.
 In Section \ref{ch14:sec:particles}, we describe the design choices
 which are relevant to a GPU implementation of moving particles. Finally,
-we include in the summary a number of general observations on software
+we include a number of general observations on software
 engineering and maintenance which arise from our experience.
+A summary is provided in Section~\ref{ch14:sec:summary}.
 
 
 \section{Background}\label{ch14:sec:background}
@@ -158,7 +159,9 @@ $\mathbf{c}_i$. The non-conserved hydrodynamic quantities are then
 relaxed toward their (known) equilibrium values, and are transformed
 back to new post-collision distributions via the inverse transformation
 ${\cal M}^{-1}_{ij}$. This gives rise to the need for a minimum of 2x19$^2$
-floating point multiplications per lattice site. In contrast, the
+floating point multiplications per lattice site. (Additional operations are
+required to implement, for example, the force $\mathbf{f}(\mathbf{r})$.)
+In contrast, the
 propagation stage consists solely of moving the distribution values
 between lattice sites, and involves no floating point operations.
 
@@ -170,7 +173,7 @@ so that all elements of the velocity are contiguous at a given site
 appropriate for sums over the distribution required locally at the
 collision stage as illustrated schematically in
 Listing~\ref{ch14:listing1}: the fact that consecutive loads are from
-consecutive memory addresses allows the prefetcher to fully engage.
+consecutive memory addresses allows the prefetcher to engage fully.
 (The temporary scalar \texttt{a\_tmp} allows caching of the
 intermediate accumulated value in the innermost loop.)  A variety of
 standard sequential optimisations are relevant for the collision stage
@@ -248,7 +251,7 @@ a vector of appropriately strided MPI datatypes for each direction.
 In this section we describe the steps taken to enable \textit{Ludwig}
 for the GPU. There are a number of crucial issues: first, the
 minimisation of data traffic between host and device; second, the
-optimal mapping of available parallelism onto the architecure and
+optimal mapping of available parallelism onto the architecture and
 third, the issue of memory coalescing. We discuss each of these in
 turn.
 
@@ -434,7 +437,7 @@ a simulation in terms of accounting budgets, or electricity.
 \begin{figure}[!t]
 \centering
 \includegraphics[width=10cm]{Chapters/chapter14/figures/two_graphs_ud}
-\caption{The weak (top) and strong (bottom) scaling of Ludwig.  Closed
+\caption{The weak (top) and strong (bottom) scaling of \textit{Ludwig}.  Closed
   shapes denote results using the CPU version run on the Cray
   XE6 (using two 16-core AMD Interlagos CPUs per node), while open
   shapes denote results using the GPU version on the Cray XK6 (using a
@@ -468,7 +471,7 @@ scaling of the CPU version shows a pronounced upward slope, the
 GPU version scales almost perfectly. The advantage of the GPU
 version over the CPU version is the fact that the GPU version
 has a factor of 32 fewer MPI tasks per node, so communications
-require a signifcantly smaller number of larger data transfers.
+require a significantly smaller number of larger data transfers.
 The performance
 advantage of the GPU version ranges from a factor of around 1.5 to
 around 1.8. Careful study by other authors \cite{williams2011} have
@@ -480,7 +483,7 @@ Perhaps of more interest is the strong scaling picture (lower
 panel in Figure \ref{ch14:fig:scaling}) where the performance
 as a function of the number of nodes is measured for fixed problem
 size. We consider four different fixed problem sizes on both CPU
-(up to 1024 nodes) and GPU (up to 768 nodes). To allow comparison,
+(up to 512 nodes shown) and GPU (up to 768 nodes). To allow comparison,
 the results are scaled by total system size in each case. For strong
 scaling, the disparity in the number of MPI tasks is clearly revealed
 in the failure of the CPU version to provide any significant benefit
@@ -493,13 +496,25 @@ scaling for the larger systems.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=10cm]{Chapters/chapter14/figures/bbl}
-\caption{A 2D illustration of colloidal particles (grey circles)
-  interacting with the lattice, where each lattice point is
-  represented by a cross. Left: each particle spans multiple sites.
-  Right: the particle-facing distribution components are moved inside
-  the particle with the direction reversed, such that the ``bounce
-  back'' will be completed when the fluid propagates.}
+%\includegraphics[width=10cm]{Chapters/chapter14/figures/bbl}
+\includegraphics[width=10cm]{Chapters/chapter14/figures/colloid_new}
+\caption{
+A two-dimensional schematic picture of spherical particles on the lattice.
+Left: a particle is allowed
+to move continuously across the lattice, and the position of the
+surface defines fluid lattice sites (light blue) and solid lattice
+sites (dark red). The discrete surface is defined by links
+where propagation would intersect the surface (arrows). Note the
+discrete shape of the two particles is different. Right: post-collision
+distributions are reversed at the surface by the process of bounce-back
+on links, which replaces the propagation.
+%A 2D illustration of colloidal particles (grey circles)
+%  interacting with the lattice, where each lattice point is
+%  represented by a cross. Left: each particle spans multiple sites.
+%  Right: the particle-facing distribution components are moved inside
+%  the particle with the direction reversed, such that the ``bounce
+%  back'' will be completed when the fluid propagates.
+}
 \label{ch14:fig:bbl}
 \end{figure}
 
@@ -593,12 +608,11 @@ to the CPU, where the reduction over the surface links is computed.
 The change of particle shape may be dealt with in a similar manner:
 the relatively small number of updates required at any one time step
 (or however frequently the particle position is updated) can be
-marshaled to the GPU as necessary.
-CAN WE SAY SOMETHING LIKE: This preliminary implementation
-is found to be effective on problems involving up to X per cent solid
-volume fraction.
+marshaled to the GPU as necessary. This preliminary implementation
+is found to be effective on problems involving up to 4\%
+solid volume fraction.
 
-Finally, we note that the CPU version actually avoids the collision calculation
+We note that the CPU version actually avoids the collision calculation
 at solid lattice points by consulting a look-up table of solid/fluid
 status. On the GPU, it is perhaps preferable to perform the collision
 stage everywhere instead of moving the look-up table to the GPU and
@@ -752,66 +766,79 @@ keep the entire problem resident on the device.
 
 
 \section{Summary}
+\label{ch14:sec:summary}
 
-The \textit{Ludwig} LB application, which specializes
-in complex fluid problems, has undergone the developments required to
-use large-scale parallel GPU accelerated supercomputers effectively.
-The new functionality augments the original code, so that
-\textit{Ludwig} can run on either CPU-based or GPU-accelerated systems. 
-Using the NVIDIA CUDA programming language, all the computational
-kernels were offloaded to the GPU. This included not only those
-responsible for the majority of the compute time, but any that
-accessed the relevant data structures. This allows data to be kept
-resident on the GPU and avoids expensive data transfers. We described
-steps taken to optimise the performance on the GPU architecture by
-reducing off-chip memory accesses and restructuring the data layout
-in memory to ensure the available memory bandwidth was exploited fully.
+We have described the steps take to implement, on both single and
+multiple GPUs, the \textit{Ludwig} code which was originally
+designed for complex fluid problems on a conventional CPU
+architecture. We have added the necessary functionality using
+NVIDIA CUDA and discussed the important changes to the main
+data structures. By retaining domain decomposition and message
+passing via MPI, we have demonstrated it is possible to scale
+complex fluid problems to large numbers of GPUs in parallel.
+By following the key design criteria of maximising parallelism
+and minimising host-device data transfers, we have confirmed
+the mixed MPI-GPU approach is viable for scientific applications.
+For the more intricate problem of moving solid particles, we find
+it is possible to retain the more serial elements related to
+particle link operations on the CPU, while offloading only the
+parallel lattice-based operations involving the LB distribution
+to the GPU. Again, this minimises host-device movement of data.
 
-A new halo-exchange communication phase for the code was developed to
-allow efficient parallel scaling to many GPUs. The CPU version
-relies on MPI datatype functionality for CPU to CPU communication; we
-have explicitly written buffer packing/unpacking and transfer
-operations to for GPU to GPU data exchange, staged through the host
-CPUs. This includes the filtering of velocity components to only
-transfer those required in a specific direction, hence reducing the
-overall volume of data transferred. We used CUDA stream functionality
-to overlap separate stages within the communication phase, and reduce
-the overall communication time. The effect was measured to be more
-profound for smaller local system sizes, i.e. it is especially useful
-in aiding strong scaling.
+From the software engineering viewpoint, some duplication of code
+to allow efficient implementation on both host and device is
+currently required. This issue might be addressed by approaches
+such as automatic kernel generation, but may also be addressed
+naturally in time as GPU and CPU hardware converge. Portable
+abstractions and APIs, perhaps based on approaches such as OpenCL,
+will also facilitate the development and maintenance of portable
+codes which also exhibit portable performance (perhaps in conjunction
+with automatic tuning approaches).
 
-We described work to enable colloidal particles in the simulation with
-minimal overhead. We implemented these in such a way that we avoid a
-major diversion of the CPU and GPU codebases, whilst minimising data
-transfers between the CPU and GPU at each timestep. We keep the
-majority of the (relatively inexpensive) particle related code on the
-CPU, while offloading only those parts responsible for the interaction
-with the fluid to the GPU (where the fluid data resides).
-
-Our resulting package is able to exploit the largest of GPU
-accelerated architectures to address a wide range of complex problems.
+So, while the challenges in designing portable and efficient scientific
+applications remain very real, this work provides some hope the large
+clusters of GPU machines can be used effectively for a wide range of
+complex fluid problems.
 
 
+%The \textit{Ludwig} LB application, which specializes
+%in complex fluid problems, has undergone the developments required to
+%use large-scale parallel GPU accelerated supercomputers effectively.
+%The new functionality augments the original code, so that
+%\textit{Ludwig} can run on either CPU-based or GPU-accelerated systems. 
+%Using the NVIDIA CUDA programming language, all the computational
+%kernels were offloaded to the GPU. This included not only those
+%responsible for the majority of the compute time, but any that
+%accessed the relevant data structures. This allows data to be kept
+%resident on the GPU and avoids expensive data transfers. We described
+%steps taken to optimise the performance on the GPU architecture by
+%reducing off-chip memory accesses and restructuring the data layout
+%in memory to ensure the available memory bandwidth was exploited fully.
 
-%\section{Introduction}
-%% no \IEEEPARstart
-%This demo file is intended to serve as a ``starter file''
-%for IEEE conference papers produced under \LaTeX\ using
-%IEEEtran.cls version 1.7 and later.
-%% You must have at least 2 lines in the paragraph with the drop letter
-%% (should never be an issue)
-%I wish you the best of success.
+%A new halo-exchange communication phase for the code was developed to
+%allow efficient parallel scaling to many GPUs. The CPU version
+%relies on MPI datatype functionality for CPU to CPU communication; we
+%have explicitly written buffer packing/unpacking and transfer
+%operations to for GPU to GPU data exchange, staged through the host
+%CPUs. This includes the filtering of velocity components to only
+%transfer those required in a specific direction, hence reducing the
+%overall volume of data transferred. We used CUDA stream functionality
+%to overlap separate stages within the communication phase, and reduce
+%the overall communication time. The effect was measured to be more
+%profound for smaller local system sizes, i.e. it is especially useful
+%in aiding strong scaling.
 
-%\hfill mds
- 
-%\hfill January 11, 2007
+%We described work to enable colloidal particles in the simulation with
+%minimal overhead. We implemented these in such a way that we avoid a
+%major diversion of the CPU and GPU codebases, whilst minimising data
+%transfers between the CPU and GPU at each timestep. We keep the
+%majority of the (relatively inexpensive) particle related code on the
+%CPU, while offloading only those parts responsible for the interaction
+%with the fluid to the GPU (where the fluid data resides).
 
-%\subsection{Subsection Heading Here}
-%Subsection text here.
+%Our resulting package is able to exploit the largest of GPU
+%accelerated architectures to address a wide range of complex problems.
 
-
-%\subsubsection{Subsubsection Heading Here}
-%Subsubsection text here.
 
 
 % An example of a floating figure using the graphicx package.
@@ -977,7 +1004,7 @@ Ann. Rev. Fluid Mech., \textbf{42} 439--472 (2010).
 \bibitem{stratford2008}
 K. Stratford and I. Pagonabarraga,
 Parallel domain decomposition for lattice Boltzmann with moving particles,
-CAMWA REF \textbf{55}, 1585 (2008).
+\textit{Comput. Math. with Applications} \textbf{55}, 1585 (2008).
 
 %\bibitem{xe6}
 %Cray XE6 Product Brochure, available from
