@@ -1,7 +1,7 @@
 # Script for creating ASCII data file with io_sort.c
 # and creating vtk-data files for visualization
 
-# input as follows:
+# input as follows: 
 # size; NOTE: correct system size has to be also given in io_sort.c 
 # type: 1 scalar, 2 vector
 # no of files in output grouping

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *  initialise.c
+ *  initialise.c 
  *
  *  Toolkit to create parallel input files of the 
  *  tensor order parameter phi and LB-distributions in 
