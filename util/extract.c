@@ -47,6 +47,7 @@ int nplanes_ = 0;
 int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
+int reverse_byte_order_ = 0;   /* Switch to deal with different endianess of input */
 int input_binary_ = 1;         /* Switch for format of input */
 int output_binary_ = 0;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
@@ -73,6 +74,7 @@ int copy_data(double *, double *);
 int le_displacement(int, int);
 void le_set_displacements(void);
 void le_unroll(double *);
+double reverse_byte_order_double(char *);
 
 int main(int argc, char ** argv) {
 
@@ -355,6 +357,8 @@ void read_data(FILE * fp_data, int n[3], double * data) {
 
   int ic, jc, kc, index, nr;
   double phi;
+  double revphi;
+
 
   if (input_binary_) {
     for (ic = 1; ic <= n[0]; ic++) {
@@ -364,6 +368,10 @@ void read_data(FILE * fp_data, int n[3], double * data) {
 
 	  for (nr = 0; nr < nrec_; nr++) {
 	    fread(&phi, sizeof(double), 1, fp_data);
+	    if(reverse_byte_order_){
+	       revphi = reverse_byte_order_double((char *) &phi); 
+	       phi = revphi;
+	    }
 	    *(data + nrec_*index + nr) = phi;
 	  }
 	}
@@ -637,4 +645,25 @@ void le_unroll(double * data) {
   free(buffer);
 
   return;
+}
+
+/****************************************************************************
+ *
+ *  reverse_byte_order_double
+ *
+ *  Reverse the bytes in the char argument to make a double.
+ *
+ *****************************************************************************/
+
+double reverse_byte_order_double(char * c) {
+
+  double result;
+  char * p = (char *) &result;
+  int b;
+
+  for (b = 0; b < sizeof(double); b++) {
+    p[b] = c[sizeof(double) - (b + 1)];
+  }
+
+  return result;
 }
