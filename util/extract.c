@@ -47,7 +47,7 @@ int nplanes_ = 0;
 int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
-int reverse_byte_order_ = 0;   /* Switch to deal with different endianess of input */
+int reverse_byte_order_ = 0;   /* Switch for bigendian input */
 int input_binary_ = 1;         /* Switch for format of input */
 int output_binary_ = 0;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
