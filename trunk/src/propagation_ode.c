@@ -33,6 +33,7 @@
 #include "runtime.h"
 #include "timer.h"
 #include "physics.h"
+#include "lattice.h"
 
 static void propagation_ode_d2q9_rk2(void);
 static void propagation_ode_d3q19_rk2(void);
