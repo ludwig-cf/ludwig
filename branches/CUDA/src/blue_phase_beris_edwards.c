@@ -35,10 +35,17 @@
 
 static double Gamma_;     /* Collective rotational diffusion constant */
 
-static double * fluxe;
-static double * fluxw;
-static double * fluxy;
-static double * fluxz;
+/* static double * fluxe; */
+/* static double * fluxw; */
+/* static double * fluxy; */
+/* static double * fluxz; */
+
+/* expose these to the outside world for GPU version */
+double * fluxe;
+double * fluxw;
+double * fluxy;
+double * fluxz;
+
 
 static const double r3 = (1.0/3.0);   /* Fraction 1/3 */
 static const int    use_hs_ = 0;      /* Switch for surface term h_s */
@@ -107,6 +114,9 @@ void blue_phase_beris_edwards(void) {
     //blue_phase_be_surface(hs5);
   //}
 
+
+  put_fluxes_on_gpu();
+  get_fluxes_from_gpu();
   blue_phase_be_update(hs5);
 
   put_phi_on_gpu();

@@ -36,6 +36,7 @@ extern "C" void hydrodynamics_add_force_local(const int index, const double forc
 
 /* external variables holding device memory addresses */
 extern double * phi_site_d;
+extern double * phi_site_full_d;
 extern double * grad_phi_site_d;
 extern double * delsq_phi_site_d;
 extern double * force_d;
@@ -52,6 +53,7 @@ extern int * le_index_real_to_buffer_d;
 /* forward declarations of device routines */
 __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_d,
 						  double *phi_site_d,
+						  double *phi_site_full_d,
 						  double *grad_phi_site_d,
 						  double *delsq_phi_site_d,
 						  double *force_d);

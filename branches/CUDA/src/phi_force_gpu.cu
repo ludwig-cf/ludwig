@@ -42,11 +42,6 @@
 
 
 __constant__ double electric_cd[3];
-__constant__ int nop_cd;
-//__constant__ int N_cd[3];
-//__constant__ int Nall_cd[3];
-//__constant__ int nhalo_cd;
-//__constant__ int nsites_cd;
 __constant__ double redshift_cd;
 __constant__ double rredshift_cd;
 __constant__ double q0shift_cd;
@@ -125,11 +120,13 @@ void phi_force_calculation_gpu(void) {
 
 
   //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
+
+cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
+ 
   cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
@@ -158,11 +155,25 @@ void phi_force_calculation_gpu(void) {
   //if (force_divergence_) {
 
 
-  #define TPB 256
-      int nblocks=(N[X]*N[Y]*N[Z]+TPB-1)/TPB;
+  cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
 
-      phi_force_calculation_fluid_gpu_d<<<nblocks,TPB>>>
-	(le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d,force_d);
+  // #define TPB 256
+  //#define TPBX 4 
+  //#define TPBY 4
+  //#define TPBZ 8
+
+  #define TPBX 4 
+  #define TPBY 4
+  #define TPBZ 8
+
+    //int nblocks=(N[X]*N[Y]*N[Z]+TPB-1)/TPB;
+  
+  dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
+  dim3 threadsperblock(TPBZ,TPBY,TPBX);
+
+  phi_force_calculation_fluid_gpu_d<<<nblocks,threadsperblock>>>
+  //phi_force_calculation_fluid_gpu_d<<<nblocks,TPB>>>
+	(le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d);
       
       cudaThreadSynchronize();
       checkCUDAError("phi_force_calculation_fluid_gpu_d");
@@ -188,9 +199,9 @@ void phi_force_calculation_gpu(void) {
  *****************************************************************************/
 
 
-__device__ void blue_phase_compute_h_gpu_d(double q[3][3], double dq[3][3][3],
-			      double dsq[3][3], double h[3][3]) {
-  int ia, ib, ic, id;
+__device__ void blue_phase_compute_h_gpu_d(double h[3][3], double *phi_site_full_d, 
+					   int index, int indexm1, int indexp1) {
+  int ia, ib, ic;
 
   double q2;
   double e2;
@@ -200,11 +211,22 @@ __device__ void blue_phase_compute_h_gpu_d(double q[3][3], double dq[3][3][3],
 
   /* From the bulk terms in the free energy... */
 
-  /* q2 = 0.0; */
+  q2 = 0.0;
+  eq = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      q2 += q[ia][ib]*q[ia][ib];
+      q2 += phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
+
+
+      eq += e_cd[0][ib][ia]*0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+indexp1] -
+				 phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+indexm1]);
+      eq += e_cd[1][ib][ia]*0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+index+N_cd[Z]+2*nhalo_cd] -
+				 phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+index-N_cd[Z]-2*nhalo_cd]);
+      eq += e_cd[2][ib][ia]*0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+index+1] -
+				 phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+index-1]);
+
+
     }
   }
 
@@ -212,181 +234,61 @@ __device__ void blue_phase_compute_h_gpu_d(double q[3][3], double dq[3][3][3],
     for (ib = 0; ib < 3; ib++) {
       sum = 0.0;
       for (ic = 0; ic < 3; ic++) {
-  	sum += q[ia][ic]*q[ib][ic];
+  	sum +=  phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index]* phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index];
       }
-      h[ia][ib] = -a0_cd*(1.0 - r3_cd*gamma_cd)*q[ia][ib]
-  	+ a0_cd*gamma_cd*(sum - r3_cd*q2*d_cd[ia][ib]) - a0_cd*gamma_cd*q2*q[ia][ib];
+      h[ia][ib] = -a0_cd*(1.0 - r3_cd*gamma_cd)* phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]
+  	+ a0_cd*gamma_cd*(sum - r3_cd*q2*d_cd[ia][ib]) - a0_cd*gamma_cd*q2*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
     }
   }
+
 
   /* From the gradient terms ... */
   /* First, the sum e_abc d_b Q_ca. With two permutations, we
    * may rewrite this as e_bca d_b Q_ca */
-
-  eq = 0.0;
-  for (ib = 0; ib < 3; ib++) {
-    for (ic = 0; ic < 3; ic++) {
-      for (ia = 0; ia < 3; ia++) {
-  	eq += e_cd[ib][ic][ia]*dq[ib][ic][ia];
-      }
-    }
-  }
-
-
-  /* d_c Q_db written as d_c Q_bd etc */
-  //for (ia = 0; ia < 3; ia++) {
-    //for (ib = 0; ib < 3; ib++) {
-      /* sum = 0.0; */
-      /* for (ic = 0; ic < 3; ic++) { */
-      /* 	for (id = 0; id < 3; id++) { */
-      /* 	  sum += */
-      /* 	    (e_cd[ia][ic][id]*dq[ic][ib][id] + e_cd[ib][ic][id]*dq[ic][ia][id]); */
-      /* 	} */
-      /* } */
-      /* h[ia][ib] +=  kappa0shift_cd*dsq[ia][ib] */
-      /* 	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib] */
-      /* 	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[ia][ib]; */
-
-      // }
+  //now above
+  //  eq = 0.0;
+  //  for (ia = 0; ia < 3; ia++) {
+  //	for (ib = 0; ib < 3; ib++) {
+  // }
   //}
 
+
+
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
       sum = 0.0;
-      sum += (e_cd[0][0][0]*dq[0][0][0] + e_cd[0][0][0]*dq[0][0][0]);
-      sum += (e_cd[0][0][1]*dq[0][0][1] + e_cd[0][0][1]*dq[0][0][1]);
-      sum += (e_cd[0][0][2]*dq[0][0][2] + e_cd[0][0][2]*dq[0][0][2]);
-      sum += (e_cd[0][1][0]*dq[1][0][0] + e_cd[0][1][0]*dq[1][0][0]);
-      sum += (e_cd[0][1][1]*dq[1][0][1] + e_cd[0][1][1]*dq[1][0][1]);
-      sum += (e_cd[0][1][2]*dq[1][0][2] + e_cd[0][1][2]*dq[1][0][2]);
-      sum += (e_cd[0][2][0]*dq[2][0][0] + e_cd[0][2][0]*dq[2][0][0]);
-      sum += (e_cd[0][2][1]*dq[2][0][1] + e_cd[0][2][1]*dq[2][0][1]);
-      sum += (e_cd[0][2][2]*dq[2][0][2] + e_cd[0][2][2]*dq[2][0][2]);
+      for (ic = 0; ic < 3; ic++) {
 
-      h[0][0] +=  kappa0shift_cd*dsq[0][0]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[0][0]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[0][0];
+      	  sum +=
+      	    (e_cd[ia][0][ic]*0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+indexp1] -
+	  			  phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+indexm1]) +
+	     e_cd[ib][0][ic]*0.5*(phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+indexp1] -
+	  			  phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+indexm1]));
+      	  sum +=
+      	    (e_cd[ia][1][ic]* 0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index+N_cd[Z]+2*nhalo_cd] -
+	  			   phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index-N_cd[Z]-2*nhalo_cd])
+	     + e_cd[ib][1][ic]* 0.5*(phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index+N_cd[Z]+2*nhalo_cd] -
+	  			     phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index-N_cd[Z]-2*nhalo_cd]));
+      	  sum +=
+      	    (e_cd[ia][2][ic]* 0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index+1] -
+	  			   phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index-1])
+	     + e_cd[ib][2][ic]* 0.5*(phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index+1] -
+	  			     phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index-1]));
+      }
+      h[ia][ib] +=  kappa0shift_cd*
+	(phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+indexp1] 
+	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+indexm1]
+	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index+N_cd[Z]+2*nhalo_cd] 
+	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index-N_cd[Z]-2*nhalo_cd]
+	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index+1] 
+	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index-1]
+	 - 6*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index])
+      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib]
+      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
 
-      sum = 0.0;
-      sum += (e_cd[0][0][0]*dq[0][1][0] + e_cd[1][0][0]*dq[0][0][0]);
-      sum += (e_cd[0][0][1]*dq[0][1][1] + e_cd[1][0][1]*dq[0][0][1]);
-      sum += (e_cd[0][0][2]*dq[0][1][2] + e_cd[1][0][2]*dq[0][0][2]);
-      sum += (e_cd[0][1][0]*dq[1][1][0] + e_cd[1][1][0]*dq[1][0][0]);
-      sum += (e_cd[0][1][1]*dq[1][1][1] + e_cd[1][1][1]*dq[1][0][1]);
-      sum += (e_cd[0][1][2]*dq[1][1][2] + e_cd[1][1][2]*dq[1][0][2]);
-      sum += (e_cd[0][2][0]*dq[2][1][0] + e_cd[1][2][0]*dq[2][0][0]);
-      sum += (e_cd[0][2][1]*dq[2][1][1] + e_cd[1][2][1]*dq[2][0][1]);
-      sum += (e_cd[0][2][2]*dq[2][1][2] + e_cd[1][2][2]*dq[2][0][2]);
-
-      h[0][1] +=  kappa0shift_cd*dsq[0][1]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[0][1]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[0][1];
-
-      sum = 0.0;
-      sum += (e_cd[0][0][0]*dq[0][2][0] + e_cd[2][0][0]*dq[0][0][0]);
-      sum += (e_cd[0][0][1]*dq[0][2][1] + e_cd[2][0][1]*dq[0][0][1]);
-      sum += (e_cd[0][0][2]*dq[0][2][2] + e_cd[2][0][2]*dq[0][0][2]);
-      sum += (e_cd[0][1][0]*dq[1][2][0] + e_cd[2][1][0]*dq[1][0][0]);
-      sum += (e_cd[0][1][1]*dq[1][2][1] + e_cd[2][1][1]*dq[1][0][1]);
-      sum += (e_cd[0][1][2]*dq[1][2][2] + e_cd[2][1][2]*dq[1][0][2]);
-      sum += (e_cd[0][2][0]*dq[2][2][0] + e_cd[2][2][0]*dq[2][0][0]);
-      sum += (e_cd[0][2][1]*dq[2][2][1] + e_cd[2][2][1]*dq[2][0][1]);
-      sum += (e_cd[0][2][2]*dq[2][2][2] + e_cd[2][2][2]*dq[2][0][2]);
-
-      h[0][2] +=  kappa0shift_cd*dsq[0][2]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[0][2]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[0][2];
-
-      ////////
-      sum = 0.0;
-      sum += (e_cd[1][0][0]*dq[0][0][0] + e_cd[0][0][0]*dq[0][1][0]);
-      sum += (e_cd[1][0][1]*dq[0][0][1] + e_cd[0][0][1]*dq[0][1][1]);
-      sum += (e_cd[1][0][2]*dq[0][0][2] + e_cd[0][0][2]*dq[0][1][2]);
-      sum += (e_cd[1][1][0]*dq[1][0][0] + e_cd[0][1][0]*dq[1][1][0]);
-      sum += (e_cd[1][1][1]*dq[1][0][1] + e_cd[0][1][1]*dq[1][1][1]);
-      sum += (e_cd[1][1][2]*dq[1][0][2] + e_cd[0][1][2]*dq[1][1][2]);
-      sum += (e_cd[1][2][0]*dq[2][0][0] + e_cd[0][2][0]*dq[2][1][0]);
-      sum += (e_cd[1][2][1]*dq[2][0][1] + e_cd[0][2][1]*dq[2][1][1]);
-      sum += (e_cd[1][2][2]*dq[2][0][2] + e_cd[0][2][2]*dq[2][1][2]);
-
-      h[1][0] +=  kappa0shift_cd*dsq[1][0]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[1][0]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[1][0];
-
-      sum = 0.0;
-      sum += (e_cd[1][0][0]*dq[0][1][0] + e_cd[1][0][0]*dq[0][1][0]);
-      sum += (e_cd[1][0][1]*dq[0][1][1] + e_cd[1][0][1]*dq[0][1][1]);
-      sum += (e_cd[1][0][2]*dq[0][1][2] + e_cd[1][0][2]*dq[0][1][2]);
-      sum += (e_cd[1][1][0]*dq[1][1][0] + e_cd[1][1][0]*dq[1][1][0]);
-      sum += (e_cd[1][1][1]*dq[1][1][1] + e_cd[1][1][1]*dq[1][1][1]);
-      sum += (e_cd[1][1][2]*dq[1][1][2] + e_cd[1][1][2]*dq[1][1][2]);
-      sum += (e_cd[1][2][0]*dq[2][1][0] + e_cd[1][2][0]*dq[2][1][0]);
-      sum += (e_cd[1][2][1]*dq[2][1][1] + e_cd[1][2][1]*dq[2][1][1]);
-      sum += (e_cd[1][2][2]*dq[2][1][2] + e_cd[1][2][2]*dq[2][1][2]);
-
-      h[1][1] +=  kappa0shift_cd*dsq[1][1]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[1][1]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[1][1];
-
-      sum = 0.0;
-      sum += (e_cd[1][0][0]*dq[0][2][0] + e_cd[2][0][0]*dq[0][1][0]);
-      sum += (e_cd[1][0][1]*dq[0][2][1] + e_cd[2][0][1]*dq[0][1][1]);
-      sum += (e_cd[1][0][2]*dq[0][2][2] + e_cd[2][0][2]*dq[0][1][2]);
-      sum += (e_cd[1][1][0]*dq[1][2][0] + e_cd[2][1][0]*dq[1][1][0]);
-      sum += (e_cd[1][1][1]*dq[1][2][1] + e_cd[2][1][1]*dq[1][1][1]);
-      sum += (e_cd[1][1][2]*dq[1][2][2] + e_cd[2][1][2]*dq[1][1][2]);
-      sum += (e_cd[1][2][0]*dq[2][2][0] + e_cd[2][2][0]*dq[2][1][0]);
-      sum += (e_cd[1][2][1]*dq[2][2][1] + e_cd[2][2][1]*dq[2][1][1]);
-      sum += (e_cd[1][2][2]*dq[2][2][2] + e_cd[2][2][2]*dq[2][1][2]);
-
-      h[1][2] +=  kappa0shift_cd*dsq[1][2]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[1][2]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[1][2];
-
-      /////
-      sum = 0.0;
-      sum += (e_cd[2][0][0]*dq[0][0][0] + e_cd[0][0][0]*dq[0][2][0]);
-      sum += (e_cd[2][0][1]*dq[0][0][1] + e_cd[0][0][1]*dq[0][2][1]);
-      sum += (e_cd[2][0][2]*dq[0][0][2] + e_cd[0][0][2]*dq[0][2][2]);
-      sum += (e_cd[2][1][0]*dq[1][0][0] + e_cd[0][1][0]*dq[1][2][0]);
-      sum += (e_cd[2][1][1]*dq[1][0][1] + e_cd[0][1][1]*dq[1][2][1]);
-      sum += (e_cd[2][1][2]*dq[1][0][2] + e_cd[0][1][2]*dq[1][2][2]);
-      sum += (e_cd[2][2][0]*dq[2][0][0] + e_cd[0][2][0]*dq[2][2][0]);
-      sum += (e_cd[2][2][1]*dq[2][0][1] + e_cd[0][2][1]*dq[2][2][1]);
-      sum += (e_cd[2][2][2]*dq[2][0][2] + e_cd[0][2][2]*dq[2][2][2]);
-
-      h[2][0] +=  kappa0shift_cd*dsq[2][0]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[2][0]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[2][0];
-
-      sum = 0.0;
-      sum += (e_cd[2][0][0]*dq[0][1][0] + e_cd[1][0][0]*dq[0][2][0]);
-      sum += (e_cd[2][0][1]*dq[0][1][1] + e_cd[1][0][1]*dq[0][2][1]);
-      sum += (e_cd[2][0][2]*dq[0][1][2] + e_cd[1][0][2]*dq[0][2][2]);
-      sum += (e_cd[2][1][0]*dq[1][1][0] + e_cd[1][1][0]*dq[1][2][0]);
-      sum += (e_cd[2][1][1]*dq[1][1][1] + e_cd[1][1][1]*dq[1][2][1]);
-      sum += (e_cd[2][1][2]*dq[1][1][2] + e_cd[1][1][2]*dq[1][2][2]);
-      sum += (e_cd[2][2][0]*dq[2][1][0] + e_cd[1][2][0]*dq[2][2][0]);
-      sum += (e_cd[2][2][1]*dq[2][1][1] + e_cd[1][2][1]*dq[2][2][1]);
-      sum += (e_cd[2][2][2]*dq[2][1][2] + e_cd[1][2][2]*dq[2][2][2]);
-
-      h[2][1] +=  kappa0shift_cd*dsq[2][1]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[2][1]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[2][1];
-
-      sum = 0.0;
-      sum += (e_cd[2][0][0]*dq[0][2][0] + e_cd[2][0][0]*dq[0][2][0]);
-      sum += (e_cd[2][0][1]*dq[0][2][1] + e_cd[2][0][1]*dq[0][2][1]);
-      sum += (e_cd[2][0][2]*dq[0][2][2] + e_cd[2][0][2]*dq[0][2][2]);
-      sum += (e_cd[2][1][0]*dq[1][2][0] + e_cd[2][1][0]*dq[1][2][0]);
-      sum += (e_cd[2][1][1]*dq[1][2][1] + e_cd[2][1][1]*dq[1][2][1]);
-      sum += (e_cd[2][1][2]*dq[1][2][2] + e_cd[2][1][2]*dq[1][2][2]);
-      sum += (e_cd[2][2][0]*dq[2][2][0] + e_cd[2][2][0]*dq[2][2][0]);
-      sum += (e_cd[2][2][1]*dq[2][2][1] + e_cd[2][2][1]*dq[2][2][1]);
-      sum += (e_cd[2][2][2]*dq[2][2][2] + e_cd[2][2][2]*dq[2][2][2]);
-
-      h[2][2] +=  kappa0shift_cd*dsq[2][2]
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[2][2]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*q[2][2];
-
+      }
+  }
 
 
 
@@ -605,6 +507,7 @@ __device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][
 __device__ void blue_phase_chemical_stress_gpu_d(int index,
 						 int *le_index_real_to_buffer_d,
 						 double *phi_site_d,
+						 double *phi_site_full_d,
 						 double *grad_phi_site_d,
 						 double *delsq_phi_site_d,
 						 double sth[3][3]){
@@ -619,9 +522,9 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index,
 
   //  if(threadIdx.x==0 && blockIdx.x==0) printf("in BPCS\n");
 
-/*   phi_get_q_tensor(index, q); */
-/*   phi_gradients_tensor_gradient(index, dq); */
-/*   phi_gradients_tensor_delsq(index, dsq); */
+  //phi_get_q_tensor(index, q);
+  //phi_gradients_tensor_gradient(index, dq);
+  //phi_gradients_tensor_delsq(index, dsq);
 
 
   /* load phi */
@@ -650,21 +553,6 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index,
     dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
   }
 
-
-    /* load delsq phi */
-  dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
-  dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
-  dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
-  dsq[Y][X] = dsq[X][Y];
-  dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
-  dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
-  dsq[Z][X] = dsq[X][Z];
-  dsq[Z][Y] = dsq[Y][Z];
-  dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
-
-
-  //DEV
- 
   int i,j,k,icm1,icp1,indexm1,indexp1;
   get_coords_from_index_gpu_d(&i,&j,&k,index,Nall_cd);
   icm1=le_index_real_to_buffer_d[i];
@@ -673,31 +561,8 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index,
   indexm1 = get_linear_index_gpu_d(icm1,j,k,Nall_cd);
   indexp1 = get_linear_index_gpu_d(icp1,j,k,Nall_cd);
 
-     dq[0][X][X]
-       = 0.5*(phi_site_d[nsites_cd*XX+indexp1] - phi_site_d[nsites_cd*XX+indexm1]);
-     dq[0][X][Y]
-       = 0.5*(phi_site_d[nsites_cd*XY+indexp1] - phi_site_d[nsites_cd*XY+indexm1]);
-     dq[0][X][Z]
-       = 0.5*(phi_site_d[nsites_cd*XZ+indexp1] - phi_site_d[nsites_cd*XZ+indexm1]);
-     dq[0][Y][X]
-       = 0.5*(phi_site_d[nsites_cd*XY+indexp1] - phi_site_d[nsites_cd*XY+indexm1]);
-     dq[0][Y][Y]
-       = 0.5*(phi_site_d[nsites_cd*YY+indexp1] - phi_site_d[nsites_cd*YY+indexm1]);
-     dq[0][Y][Z]
-       = 0.5*(phi_site_d[nsites_cd*YZ+indexp1] - phi_site_d[nsites_cd*YZ+indexm1]);
-     dq[0][Z][X]
-       = 0.5*(phi_site_d[nsites_cd*XZ+indexp1] - phi_site_d[nsites_cd*XZ+indexm1]);
-     dq[0][Z][Y]
-       = 0.5*(phi_site_d[nsites_cd*YZ+indexp1] - phi_site_d[nsites_cd*YZ+indexm1]);
-     dq[0][Z][Z]
-       = 0. - 0.5*(phi_site_d[nsites_cd*XX+indexp1] - phi_site_d[nsites_cd*XX+indexm1])
-       - 0.5*(phi_site_d[nsites_cd*YY+indexp1] - phi_site_d[nsites_cd*YY+indexm1]);
-
- //END DEV
-
-
-     blue_phase_compute_h_gpu_d(q, dq, dsq, h);
-     //blue_phase_compute_h_gpu_d_test2(q, dq, dsq, h);
+   blue_phase_compute_h_gpu_d(h, phi_site_full_d, index, indexm1, indexp1);
+  //blue_phase_compute_h_gpu_d(sth, phi_site_full_d, index, indexm1, indexp1);
   blue_phase_compute_stress_gpu_d(q, dq, h, sth);
 
   return;
@@ -719,6 +584,7 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index,
 
 __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_d,
 						  double *phi_site_d,
+						  double *phi_site_full_d,
 						  double *grad_phi_site_d,
 						  double *delsq_phi_site_d,
 						  double *force_d
@@ -729,62 +595,68 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
   double pth0[3][3];
   double pth1[3][3];
   double force[3];
-  int threadIndex,ii, jj, kk;
+  int ii, jj, kk;
+  //int threadIndex,ii, jj, kk;
 
  /* CUDA thread index */
- threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  //threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
  
  /* Avoid going beyond problem domain */
- if (threadIndex < N_cd[X]*N_cd[Y]*N_cd[Z])
+  // if (threadIndex < N_cd[X]*N_cd[Y]*N_cd[Z])
+
+  if (ii < N_cd[X] && jj < N_cd[Y] && kk < N_cd[Z] )
     {
 
 
       /* calculate index from CUDA thread index */
 
-      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_cd);
+      //get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_cd);
       index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);      
       icm1=le_index_real_to_buffer_d[ii+nhalo_cd];
       icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii+nhalo_cd];      
       
 
 	/* Compute pth at current point */
-      blue_phase_chemical_stress_gpu_d(index,le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth0);
+      blue_phase_chemical_stress_gpu_d(index,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,pth0);
 
 	/* Compute differences */
 	index1 = get_linear_index_gpu_d(icp1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth1);
+	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	index1 = get_linear_index_gpu_d(icm1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d,pth1);
+	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd+1,kk+nhalo_cd,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1);
+	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1);
+	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	
 
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd+1,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1);
+	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d, pth1);
+	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}

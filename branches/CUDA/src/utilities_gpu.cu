@@ -29,6 +29,10 @@ extern const double wv[NVEL];
 extern const int cv[NVEL][3];
 extern const double q_[NVEL][3][3];
 
+extern double * fluxe;
+extern double * fluxw;
+extern double * fluxy;
+extern double * fluxz;
 
 double * ma_d;
 double * mi_d;
@@ -47,6 +51,12 @@ double * e_d;
 
 double * electric_d;
 
+double * fluxe_d;
+double * fluxw_d;
+double * fluxy_d;
+double * fluxz_d;
+
+
 /* host memory address pointers for temporary staging of data */
 
 char * site_map_status_temp;
@@ -56,6 +66,7 @@ double * velocity_temp;
 /* data size variables */
 static int nhalo;
 static int nsites;
+static int nop;
 static  int N[3];
 static  int Nall[3];
 
@@ -160,7 +171,7 @@ static void calculate_data_sizes()
   Nall[Z]=N[Z]+2*nhalo;
 
   nsites = Nall[X]*Nall[Y]*Nall[Z];
-
+  nop = phi_nop();
 
 
 }
@@ -186,6 +197,14 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &q_d, NVEL*3*3*sizeof(double));
   cudaMalloc((void **) &force_d, nsites*3*sizeof(double));
   cudaMalloc((void **) &velocity_d, nsites*3*sizeof(double));
+
+  cudaMalloc((void **) &fluxe_d, nop*nsites*sizeof(double));
+  cudaMalloc((void **) &fluxw_d, nop*nsites*sizeof(double));
+  cudaMalloc((void **) &fluxy_d, nop*nsites*sizeof(double));
+  cudaMalloc((void **) &fluxz_d, nop*nsites*sizeof(double));
+ 
+  
+
   cudaMalloc((void **) &N_d, sizeof(int)*3);
   cudaMalloc((void **) &force_global_d, sizeof(double)*3);
 
@@ -220,6 +239,11 @@ static void free_memory_on_gpu()
   cudaFree(N_d);
   cudaFree(force_global_d);
 
+  cudaFree(fluxe_d);
+  cudaFree(fluxw_d);
+  cudaFree(fluxy_d);
+  cudaFree(fluxz_d);
+
   cudaFree(r3_d);
   cudaFree(d_d);
   cudaFree(e_d);
@@ -228,6 +252,7 @@ static void free_memory_on_gpu()
 
   checkCUDAError("free_memory_on_gpu");
 }
+
 
 /* copy site map from host to accelerator */
 void put_site_map_on_gpu()
@@ -260,6 +285,17 @@ void put_site_map_on_gpu()
 }
 
 
+
+void zero_force_on_gpu()
+{
+
+  int zero=0;
+  cudaMemset(force_d,zero,nsites*3*sizeof(double));
+  checkCUDAError("zero_force_on_gpu");
+}
+
+
+
 /* copy force from host to accelerator */
 void put_force_on_gpu()
 {
@@ -269,13 +305,13 @@ void put_force_on_gpu()
 	      
 
   /* get temp host copies of arrays */
-  for (ic=1; ic<=N[X]; ic++)
+  for (ic=0; ic<Nall[X]; ic++)
     {
-      for (jc=1; jc<=N[Y]; jc++)
+      for (jc=0; jc<Nall[Y]; jc++)
 	{
-	  for (kc=1; kc<=N[Z]; kc++)
+	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
-	      index = coords_index(ic, jc, kc); 
+	      index = coords_index(ic, jc, kc);
 
 	      hydrodynamics_get_force_local(index,force);
 	      	      
@@ -308,13 +344,13 @@ void get_force_from_gpu()
 	     cudaMemcpyDeviceToHost);
 
   
-  for (ic=1; ic<=N[X]; ic++)
+  for (ic=0; ic<Nall[X]; ic++)
     {
-      for (jc=1; jc<=N[Y]; jc++)
+      for (jc=0; jc<Nall[Y]; jc++)
 	{
-	  for (kc=1; kc<=N[Z]; kc++)
+	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
-	      index = coords_index(ic, jc, kc); 
+	      index = coords_index(ic, jc, kc);
 
 	      for (i=0;i<3;i++)
 		{
@@ -333,36 +369,26 @@ void get_force_from_gpu()
 
 }
 
-
-void zero_force_on_gpu()
-{
-
-  int zero=0;
-  cudaMemset(force_d,zero,nsites*3*sizeof(double));
-  checkCUDAError("zero_force_on_gpu");
-}
-
-
 void get_velocity_from_gpu()
 {
-  int index,i, ic,jc,kc; 
+  int index,i, ic,jc,kc;
   double velocity[3];
 
-  cudaMemcpy(velocity_temp, velocity_d, nsites*3*sizeof(double), 
+  cudaMemcpy(velocity_temp, velocity_d, nsites*3*sizeof(double),
 	    cudaMemcpyDeviceToHost);
 
   /* copy velocity from temporary array back to hydrodynamics module */
-  for (ic=1; ic<=N[X]; ic++)
+  for (ic=0; ic<Nall[X]; ic++)
     {
-      for (jc=1; jc<=N[Y]; jc++)
+      for (jc=0; jc<Nall[Y]; jc++)
 	{
-	  for (kc=1; kc<=N[Z]; kc++)
+	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
-	      index = coords_index(ic, jc, kc); 
+	      index = coords_index(ic, jc, kc);
 	      for (i=0;i<3;i++)
-		{		 
+		{
 		  velocity[i]=velocity_temp[index*3+i];
-		}     
+		}
 	      hydrodynamics_set_velocity(index,velocity);
 	    }
 	}
@@ -374,30 +400,30 @@ void get_velocity_from_gpu()
 
 void put_velocity_on_gpu()
 {
-  int index,i, ic,jc,kc; 
+  int index,i, ic,jc,kc;
   double velocity[3];
 
 
   /* copy velocity from temporary array back to hydrodynamics module */
-  for (ic=1; ic<=N[X]; ic++)
+  for (ic=0; ic<Nall[X]; ic++)
     {
-      for (jc=1; jc<=N[Y]; jc++)
+      for (jc=0; jc<Nall[Y]; jc++)
 	{
-	  for (kc=1; kc<=N[Z]; kc++)
+	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
 
-	      index = coords_index(ic, jc, kc); 
+	      index = coords_index(ic, jc, kc);
 	      hydrodynamics_get_velocity(index,velocity);
 
 	      for (i=0;i<3;i++)
-		{		 
+		{
 		  velocity_temp[index*3+i]=velocity[i];
-		}     
+		}
 	    }
 	}
     }
 
-  cudaMemcpy(velocity_d, velocity_temp, nsites*3*sizeof(double), 
+  cudaMemcpy(velocity_d, velocity_temp, nsites*3*sizeof(double),
 	    cudaMemcpyHostToDevice);
 
   checkCUDAError("put_velocity_on_gpu");
@@ -405,6 +431,34 @@ void put_velocity_on_gpu()
 
 }
 
+
+void put_fluxes_on_gpu(){
+
+  cudaMemcpy(fluxe_d, fluxe, nsites*nop*sizeof(double),
+	    cudaMemcpyHostToDevice);
+  cudaMemcpy(fluxw_d, fluxw, nsites*nop*sizeof(double),
+	    cudaMemcpyHostToDevice);
+  cudaMemcpy(fluxy_d, fluxy, nsites*nop*sizeof(double),
+	    cudaMemcpyHostToDevice);
+  cudaMemcpy(fluxz_d, fluxz, nsites*nop*sizeof(double),
+	    cudaMemcpyHostToDevice);
+
+
+}
+
+void get_fluxes_from_gpu(){
+
+  cudaMemcpy(fluxe, fluxe_d, nsites*nop*sizeof(double),
+	    cudaMemcpyDeviceToHost);
+  cudaMemcpy(fluxw, fluxw_d, nsites*nop*sizeof(double),
+	    cudaMemcpyDeviceToHost);
+  cudaMemcpy(fluxy, fluxy_d, nsites*nop*sizeof(double),
+	    cudaMemcpyDeviceToHost);
+  cudaMemcpy(fluxz, fluxz_d, nsites*nop*sizeof(double),
+	    cudaMemcpyDeviceToHost);
+
+
+}
 
 
 /* get linear index from 3d coordinates (host) */

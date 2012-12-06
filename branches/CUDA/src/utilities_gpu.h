@@ -29,6 +29,8 @@ extern "C" void put_velocity_on_gpu();
 extern "C" void get_force_from_gpu();
 extern "C" void zero_force_on_gpu();
 extern "C" void get_velocity_from_gpu();
+extern "C" void get_fluxes_from_gpu();
+extern "C" void put_fluxes_on_gpu();
 extern "C" void finalise_gpu();
 extern "C" void checkCUDAError(const char *msg);
 
