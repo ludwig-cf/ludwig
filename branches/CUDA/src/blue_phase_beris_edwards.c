@@ -45,7 +45,7 @@ double * fluxe;
 double * fluxw;
 double * fluxy;
 double * fluxz;
-
+double * hs5;
 
 static const double r3 = (1.0/3.0);   /* Fraction 1/3 */
 static const int    use_hs_ = 0;      /* Switch for surface term h_s */
@@ -70,7 +70,7 @@ void blue_phase_beris_edwards(void) {
 
   int nsites;
   int nop;
-  double * hs5;
+  //double * hs5;
 
   /* Set up advective fluxes and do the update. */
 
@@ -102,9 +102,6 @@ void blue_phase_beris_edwards(void) {
 
 
   get_phi_from_gpu();
-  get_grad_phi_from_gpu();
-  get_delsq_phi_from_gpu();
-
   advection_upwind(fluxe, fluxw, fluxy, fluxz);  
   
 
@@ -116,10 +113,15 @@ void blue_phase_beris_edwards(void) {
 
 
   put_fluxes_on_gpu();
-  get_fluxes_from_gpu();
-  blue_phase_be_update(hs5);
+  put_velocity_on_gpu();
+  put_site_map_on_gpu();
+  //get_fluxes_from_gpu();
+  //blue_phase_be_update(hs5);
 
-  put_phi_on_gpu();
+  //expand_phi_on_gpu();
+  blue_phase_be_update_gpu(hs5);
+
+  //put_phi_on_gpu();
 
   free(hs5);
   free(fluxe);

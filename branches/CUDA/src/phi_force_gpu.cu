@@ -35,7 +35,7 @@
 #include "free_energy.h"
 #include "wall.h"
 #include "phi_force_stress.h"
-
+#include "colloids_Q_tensor.h"
 // FROM util.c
 #include "util.h"
 //static const double r3_ = (1.0/3.0);
@@ -55,7 +55,9 @@ __constant__ double epsilon_cd;
 __constant__ double r3_cd;
 __constant__ double d_cd[3][3];
 __constant__ double e_cd[3][3][3];
-
+__constant__ double dt_solid_cd;
+__constant__ double dt_cd;
+__constant__ double Gamma_cd;
 
 extern "C" void checkCUDAError(const char *msg);
 
@@ -173,7 +175,7 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
 
   phi_force_calculation_fluid_gpu_d<<<nblocks,threadsperblock>>>
   //phi_force_calculation_fluid_gpu_d<<<nblocks,TPB>>>
-	(le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d);
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d);
       
       cudaThreadSynchronize();
       checkCUDAError("phi_force_calculation_fluid_gpu_d");
@@ -187,6 +189,121 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
   return;
 }
 
+
+
+void blue_phase_be_update_gpu(void) {
+
+  int N[3],nhalo,Nall[3];
+  
+  nhalo = coords_nhalo();
+  coords_nlocal(N); 
+
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+ 
+
+  
+
+  // FROM blue_phase.c
+  double q0_;        /* Pitch = 2pi / q0_ */
+  double a0_;        /* Bulk free energy parameter A_0 */
+  double gamma_;     /* Controls magnitude of order */
+  double kappa0_;    /* Elastic constant \kappa_0 */
+  double kappa1_;    /* Elastic constant \kappa_1 */
+  
+  double xi_;        /* effective molecular aspect ratio (<= 1.0) */
+  double redshift_;  /* redshift parameter */
+  double rredshift_; /* reciprocal */
+  double zeta_;      /* Apolar activity parameter \zeta */
+  
+  double epsilon_; /* Dielectric anisotropy (e/12pi) */
+  
+  double electric_[3]; /* Electric field */
+  
+
+
+  redshift_ = blue_phase_redshift(); 
+  rredshift_ = blue_phase_rredshift(); 
+  q0_=blue_phase_q0();
+  a0_=blue_phase_a0();
+  kappa0_=blue_phase_kappa0();
+  kappa1_=blue_phase_kappa1();
+  xi_=blue_phase_get_xi();
+  zeta_=blue_phase_get_zeta();
+  gamma_=blue_phase_gamma();
+  blue_phase_get_electric_field(electric_);
+  epsilon_=blue_phase_get_dielectric_anisotropy();
+
+ q0_ = q0_*rredshift_;
+ kappa0_ = kappa0_*redshift_*redshift_;
+ kappa1_ = kappa1_*redshift_*redshift_;
+
+
+  int nop = phi_nop();
+  assert(nop == 5);
+
+  /* For first anchoring method (only) have evolution at solid sites. */
+  const double dt = 1.0;
+  double dt_solid;
+  dt_solid = 0;
+  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) dt_solid = dt;
+
+  double Gamma_=blue_phase_be_get_rotational_diffusion();
+
+
+  //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
+
+cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice); 
+ 
+  cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(epsilon_cd, &epsilon_, sizeof(double), 0, cudaMemcpyHostToDevice);
+ cudaMemcpyToSymbol(r3_cd, &r3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(dt_solid_cd, &dt_solid, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(dt_cd, &dt, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(Gamma_cd, &Gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+
+ 
+ checkCUDAError("blue_phase_be_update cudaMemcpyToSymbol");
+
+
+
+  cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
+
+  #define TPBX 4 
+  #define TPBY 4
+  #define TPBZ 8
+
+  dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
+  dim3 threadsperblock(TPBZ,TPBY,TPBX);
+
+  blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d, hs5_d);
+      
+  cudaThreadSynchronize();
+  checkCUDAError("blue_phase_be_update_gpu_d");
+
+
+  return;
+}
 
 
 /*****************************************************************************
@@ -670,6 +787,196 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
 
   return;
 }
+
+
+__global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
+						  double *phi_site_d,
+						  double *phi_site_full_d,
+						  double *grad_phi_site_d,
+						  double *delsq_phi_site_d,
+					   double *force_d,
+					   double *velocity_d,
+					   int *site_map_status_d,
+					   double *fluxe_d,
+					   double *fluxw_d,
+					   double *fluxy_d,
+					   double *fluxz_d,
+					   double *hs5_d
+					    ) {
+
+  int ia, icm1, icp1;
+  int index, index1, indexm1, indexp1;
+  double pth0[3][3];
+  double pth1[3][3];
+  double force[3];
+  int ii, jj, kk;
+  //int threadIndex,ii, jj, kk;
+
+
+
+ /* CUDA thread index */
+  //threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
+ 
+ /* Avoid going beyond problem domain */
+  // if (threadIndex < N_cd[X]*N_cd[Y]*N_cd[Z])
+
+  if (ii < N_cd[X] && jj < N_cd[Y] && kk < N_cd[Z] )
+    {
+
+
+      /* calculate index from CUDA thread index */
+
+      //get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_cd);
+      index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);      
+      icm1=le_index_real_to_buffer_d[ii+nhalo_cd];
+      icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii+nhalo_cd];      
+
+      indexm1 = get_linear_index_gpu_d(icm1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+      indexp1 = get_linear_index_gpu_d(icp1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+
+
+
+      int ia, ib, ic, id;
+
+  double q[3][3];
+  double d[3][3];
+  double h[3][3];
+  double s[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+  double w[3][3];
+  double omega[3][3];
+  double trace_qw;
+
+  /* load phi */
+
+  q[X][X] = phi_site_d[nsites_cd*XX+index];
+  q[X][Y] = phi_site_d[nsites_cd*XY+index];
+  q[X][Z] = phi_site_d[nsites_cd*XZ+index];
+  q[Y][X] = q[X][Y];
+  q[Y][Y] = phi_site_d[nsites_cd*YY+index];
+  q[Y][Z] = phi_site_d[nsites_cd*YZ+index];
+  q[Z][X] = q[X][Z];
+  q[Z][Y] = q[Y][Z];
+  q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+
+
+   blue_phase_compute_h_gpu_d(h, phi_site_full_d, index, indexm1, indexp1);
+
+
+   //SOMETHING WRONG WITH THIS - NEEDS FIXED
+   /* if (site_map_status_d[index] != FLUID) {  */
+
+   /* 	  /\* Solid: diffusion only. *\/ */
+     
+   /*   q[X][X] += dt_solid_cd*Gamma_cd*h[X][X]; */
+   /*   q[X][Y] += dt_solid_cd*Gamma_cd*h[X][Y]; */
+   /*   q[X][Z] += dt_solid_cd*Gamma_cd*h[X][Z]; */
+   /*   q[Y][Y] += dt_solid_cd*Gamma_cd*h[Y][Y]; */
+   /*   q[Y][Z] += dt_solid_cd*Gamma_cd*h[Y][Z]; */
+     
+   /*    }  */
+   /*    else {  */
+     
+
+	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
+
+     // hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);	  
+
+       w[X][X] = 0.5*(velocity_d[indexp1*3+X] - velocity_d[indexm1*3+X]);
+       w[Y][X] = 0.5*(velocity_d[indexp1*3+Y] - velocity_d[indexm1*3+Y]);
+       w[Z][X] = 0.5*(velocity_d[indexp1*3+Z] - velocity_d[indexm1*3+Z]);
+       
+       indexm1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
+       indexp1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd+1,kk+nhalo_cd,Nall_cd);
+
+       w[X][Y] = 0.5*(velocity_d[indexp1*3+X] - velocity_d[indexm1*3+X]);
+       w[Y][Y] = 0.5*(velocity_d[indexp1*3+Y] - velocity_d[indexm1*3+Y]);
+       w[Z][Y] = 0.5*(velocity_d[indexp1*3+Z] - velocity_d[indexm1*3+Z]);
+
+       indexm1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
+       indexp1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd+1,Nall_cd);
+
+       w[X][Z] = 0.5*(velocity_d[indexp1*3+X] - velocity_d[indexm1*3+X]);
+       w[Y][Z] = 0.5*(velocity_d[indexp1*3+Y] - velocity_d[indexm1*3+Y]);
+       w[Z][Z] = 0.5*(velocity_d[indexp1*3+Z] - velocity_d[indexm1*3+Z]);
+       
+     //end  hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
+	  trace_qw = 0.0;
+
+	  for (ia = 0; ia < 3; ia++) {
+	    trace_qw += q[ia][ia]*w[ia][ia];
+	    for (ib = 0; ib < 3; ib++) {
+	      d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
+	      omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
+	    }
+	  }
+	  
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      s[ia][ib] = -2.0*xi_cd*(q[ia][ib] + r3_cd*d_cd[ia][ib])*trace_qw;
+	      for (id = 0; id < 3; id++) {
+		s[ia][ib] +=
+		  (xi_cd*d[ia][id] + omega[ia][id])*(q[id][ib] + r3_cd*d_cd[id][ib])
+		  + (q[ia][id] + r3_cd*d_cd[ia][id])*(xi_cd*d[id][ib] - omega[id][ib]);
+	      }
+	    }
+	  }
+	     
+	  /* Here's the full hydrodynamic update. */
+	  
+
+	/*   indexj = le_site_index(ic, jc-1, kc); */
+	/*   indexk = le_site_index(ic, jc, kc-1); */
+
+	  int indexj, indexk;
+	  indexj = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);      
+	  indexk = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);      
+
+	  q[X][X] += dt_cd*(s[X][X] + Gamma_cd*(h[X][X] + hs5_d[nop_cd*index + XX])
+	  		 - fluxe_d[nop_cd*index + XX] + fluxw_d[nop_cd*index  + XX]
+	  		 - fluxy_d[nop_cd*index + XX] + fluxy_d[nop_cd*indexj + XX]
+	  		 - fluxz_d[nop_cd*index + XX] + fluxz_d[nop_cd*indexk + XX]);
+
+	  q[X][Y] += dt_cd*(s[X][Y] + Gamma_cd*(h[X][Y] + hs5_d[nop_cd*index + XY])
+	  		 - fluxe_d[nop_cd*index + XY] + fluxw_d[nop_cd*index  + XY]
+	  		 - fluxy_d[nop_cd*index + XY] + fluxy_d[nop_cd*indexj + XY]
+	  		 - fluxz_d[nop_cd*index + XY] + fluxz_d[nop_cd*indexk + XY]);
+
+	  q[X][Z] += dt_cd*(s[X][Z] + Gamma_cd*(h[X][Z] + hs5_d[nop_cd*index + XZ])
+	  		 - fluxe_d[nop_cd*index + XZ] + fluxw_d[nop_cd*index  + XZ]
+	  		 - fluxy_d[nop_cd*index + XZ] + fluxy_d[nop_cd*indexj + XZ]
+	  		 - fluxz_d[nop_cd*index + XZ] + fluxz_d[nop_cd*indexk + XZ]);
+
+	  q[Y][Y] += dt_cd*(s[Y][Y] + Gamma_cd*(h[Y][Y] + hs5_d[nop_cd*index + YY])
+	  		 - fluxe_d[nop_cd*index + YY] + fluxw_d[nop_cd*index  + YY]
+	  		 - fluxy_d[nop_cd*index + YY] + fluxy_d[nop_cd*indexj + YY]
+	  		 - fluxz_d[nop_cd*index + YY] + fluxz_d[nop_cd*indexk + YY]);
+
+	  q[Y][Z] += dt_cd*(s[Y][Z] + Gamma_cd*(h[Y][Z] + hs5_d[nop_cd*index + YZ])
+	  		 - fluxe_d[nop_cd*index + YZ] + fluxw_d[nop_cd*index  + YZ]
+	  		 - fluxy_d[nop_cd*index + YZ] + fluxy_d[nop_cd*indexj + YZ]
+	  		 - fluxz_d[nop_cd*index + YZ] + fluxz_d[nop_cd*indexk + YZ]);
+	
+	/* phi_set_q_tensor(index, q); */
+
+	  // }
+	 phi_site_d[nsites_cd*XX+index] = q[X][X];
+	 phi_site_d[nsites_cd*XY+index] = q[X][Y];
+	 phi_site_d[nsites_cd*XZ+index] = q[X][Z];
+	 phi_site_d[nsites_cd*YY+index] = q[Y][Y];
+	 phi_site_d[nsites_cd*YZ+index] = q[Y][Z];
+
+
+    }
+
+
+  return;
+}
+
 
 
 /* get linear index from 3d coordinates */
