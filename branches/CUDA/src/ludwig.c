@@ -344,6 +344,8 @@ void ludwig_run(const char * inputfile) {
 
       if (phi_is_finite_difference()) {
 
+	expand_phi_on_gpu();
+
 	TIMER_start(TIMER_FORCE_CALCULATION);
 #ifdef _GPU_
 	if (colloid_ntotal() == 0) {
@@ -369,10 +371,10 @@ void ludwig_run(const char * inputfile) {
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
 
-    get_velocity_from_gpu();
-      get_phi_from_gpu();
-      get_grad_phi_from_gpu();
-      get_delsq_phi_from_gpu();
+	//get_velocity_from_gpu();
+	//get_phi_from_gpu();
+	//get_grad_phi_from_gpu();
+	//get_delsq_phi_from_gpu();
 
 
 
@@ -381,7 +383,7 @@ void ludwig_run(const char * inputfile) {
 	phi_update_dynamics();
 	TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
 
-    put_phi_on_gpu();
+	//put_phi_on_gpu();
 
 
 

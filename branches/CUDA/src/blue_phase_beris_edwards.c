@@ -84,17 +84,32 @@ void blue_phase_beris_edwards(void) {
   hs5 = (double *) calloc(nop*nsites, sizeof(double));
   if (hs5 == NULL) fatal("calloc(hs5) failed\n");
 
-  hydrodynamics_halo_u();
-  colloids_fix_swd();
-  hydrodynamics_leesedwards_transformation();
-  advection_upwind(fluxe, fluxw, fluxy, fluxz);
-  advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
+  get_velocity_from_gpu();
+  
 
-  if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
-    blue_phase_be_surface(hs5);
-  }
+  //to do - GPU implement commented out stuff below
+
+  hydrodynamics_halo_u();
+  //colloids_fix_swd();
+  //hydrodynamics_leesedwards_transformation();
+
+
+  get_phi_from_gpu();
+  get_grad_phi_from_gpu();
+  get_delsq_phi_from_gpu();
+
+  advection_upwind(fluxe, fluxw, fluxy, fluxz);  
+  
+
+  //advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
+
+  //if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
+    //blue_phase_be_surface(hs5);
+  //}
 
   blue_phase_be_update(hs5);
+
+  put_phi_on_gpu();
 
   free(hs5);
   free(fluxe);

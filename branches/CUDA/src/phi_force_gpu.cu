@@ -43,10 +43,10 @@
 
 __constant__ double electric_cd[3];
 __constant__ int nop_cd;
-__constant__ int N_cd[3];
-__constant__ int Nall_cd[3];
-__constant__ int nhalo_cd;
-__constant__ int nsites_cd;
+//__constant__ int N_cd[3];
+//__constant__ int Nall_cd[3];
+//__constant__ int nhalo_cd;
+//__constant__ int nsites_cd;
 __constant__ double redshift_cd;
 __constant__ double rredshift_cd;
 __constant__ double q0shift_cd;

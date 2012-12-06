@@ -60,6 +60,7 @@ static  int N[3];
 static  int Nall[3];
 
 
+
 /* Perform tasks necessary to initialise accelerator */
 void initialise_gpu()
 {
@@ -99,6 +100,25 @@ void initialise_gpu()
   cudaMemcpy(r3_d, &r3_, sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpy(d_d, d_, 3*3*sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpy(e_d, e_, 3*3*3*sizeof(double), cudaMemcpyHostToDevice); 
+
+  /* int N[3],nhalo,Nall[3]; */
+  
+  /* nhalo = coords_nhalo(); */
+  /* coords_nlocal(N);  */
+
+
+  /* Nall[X]=N[X]+2*nhalo; */
+  /* Nall[Y]=N[Y]+2*nhalo; */
+  /* Nall[Z]=N[Z]+2*nhalo; */
+  
+  /* int nsites=Nall[X]*Nall[Y]*Nall[Z]; */
+
+  /* printf("XXXX %d\n",nsites); */
+   cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);  
+  /* cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice);  */
+  /* cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice);  */
+  /* cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice) */; 
+ 
 
   
 

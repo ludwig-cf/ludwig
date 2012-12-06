@@ -41,4 +41,11 @@ extern "C" int    cart_rank(void);
 extern "C" int    phi_is_finite_difference(void);
 extern "C" int is_propagation_ode();
 
+/* variables for GPU constant memory */
+__constant__ int N_cd[3];
+__constant__ int Nall_cd[3];
+__constant__ int nhalo_cd;
+__constant__ int nsites_cd;
+
+
 #endif

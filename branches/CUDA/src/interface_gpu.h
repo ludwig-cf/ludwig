@@ -27,6 +27,7 @@ void zero_force_on_gpu(void);
 void get_velocity_from_gpu(void);
 void get_phi_from_gpu(void);
 void finalise_gpu(void);
+void expand_phi_on_gpu(void);
 void collide_gpu(void);
 void propagation_gpu(void);
 void phi_compute_phi_site_gpu(void);
