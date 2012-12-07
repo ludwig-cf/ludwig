@@ -305,6 +305,121 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
   return;
 }
 
+void advection_upwind_gpu(void) {
+
+  int N[3],nhalo,Nall[3];
+  
+  nhalo = coords_nhalo();
+  coords_nlocal(N); 
+
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+ 
+
+  
+
+  // FROM blue_phase.c
+  double q0_;        /* Pitch = 2pi / q0_ */
+  double a0_;        /* Bulk free energy parameter A_0 */
+  double gamma_;     /* Controls magnitude of order */
+  double kappa0_;    /* Elastic constant \kappa_0 */
+  double kappa1_;    /* Elastic constant \kappa_1 */
+  
+  double xi_;        /* effective molecular aspect ratio (<= 1.0) */
+  double redshift_;  /* redshift parameter */
+  double rredshift_; /* reciprocal */
+  double zeta_;      /* Apolar activity parameter \zeta */
+  
+  double epsilon_; /* Dielectric anisotropy (e/12pi) */
+  
+  double electric_[3]; /* Electric field */
+  
+
+
+  redshift_ = blue_phase_redshift(); 
+  rredshift_ = blue_phase_rredshift(); 
+  q0_=blue_phase_q0();
+  a0_=blue_phase_a0();
+  kappa0_=blue_phase_kappa0();
+  kappa1_=blue_phase_kappa1();
+  xi_=blue_phase_get_xi();
+  zeta_=blue_phase_get_zeta();
+  gamma_=blue_phase_gamma();
+  blue_phase_get_electric_field(electric_);
+  epsilon_=blue_phase_get_dielectric_anisotropy();
+
+ q0_ = q0_*rredshift_;
+ kappa0_ = kappa0_*redshift_*redshift_;
+ kappa1_ = kappa1_*redshift_*redshift_;
+
+
+  int nop = phi_nop();
+  assert(nop == 5);
+
+  /* For first anchoring method (only) have evolution at solid sites. */
+  const double dt = 1.0;
+  double dt_solid;
+  dt_solid = 0;
+  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) dt_solid = dt;
+
+  double Gamma_=blue_phase_be_get_rotational_diffusion();
+
+
+  //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
+
+cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice); 
+ 
+  cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(epsilon_cd, &epsilon_, sizeof(double), 0, cudaMemcpyHostToDevice);
+ cudaMemcpyToSymbol(r3_cd, &r3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(dt_solid_cd, &dt_solid, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(dt_cd, &dt, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(Gamma_cd, &Gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+
+ 
+ checkCUDAError("advection_upwind cudaMemcpyToSymbol");
+
+
+
+ cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
+
+  #define TPBX 4 
+  #define TPBY 4
+  #define TPBZ 8
+
+ /* two sfastest moving dimensions have cover a single lower width-one halo here */
+ dim3 nblocks(((N[Z]+1)+TPBZ-1)/TPBZ,((N[Y]+1)+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
+  dim3 threadsperblock(TPBZ,TPBY,TPBX);
+
+  advection_upwind_gpu_d<<<nblocks,threadsperblock>>>
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d, hs5_d);
+      
+  cudaThreadSynchronize();
+  checkCUDAError("advection_upwind_gpu_d");
+
+
+  return;
+}
+
 
 /*****************************************************************************
  *
@@ -973,6 +1088,113 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 
     }
 
+
+  return;
+}
+
+
+__global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
+						  double *phi_site_d,
+						  double *phi_site_full_d,
+						  double *grad_phi_site_d,
+						  double *delsq_phi_site_d,
+					   double *force_d,
+					   double *velocity_d,
+					   int *site_map_status_d,
+					   double *fluxe_d,
+					   double *fluxw_d,
+					   double *fluxy_d,
+					   double *fluxz_d,
+					   double *hs5_d
+					    ) {
+
+  int ia, icm1, icp1;
+  int index, index1, index0;
+  int ii, jj, kk, n;
+  double u, phi0;
+  //int threadIndex,ii, jj, kk;
+
+
+
+ /* CUDA thread index */
+  //threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
+ 
+ /* Avoid going beyond problem domain */
+  // if (threadIndex < N_cd[X]*N_cd[Y]*N_cd[Z])
+
+  if (ii < N_cd[X] && jj < (N_cd[Y]+1) && kk < (N_cd[Z]+1) )
+    {
+
+
+      /* calculate index from CUDA thread index */
+
+      //get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_cd);
+      index0 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);      
+      icm1=le_index_real_to_buffer_d[ii+nhalo_cd];
+      icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii+nhalo_cd];      
+
+
+      
+      for (n = 0; n < nop_cd; n++) {
+
+	phi0 = phi_site_d[nsites_cd*n+index0];
+	index1=get_linear_index_gpu_d(icm1,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);
+	u = 0.5*(velocity_d[3*index0+X] + velocity_d[3*index1+X]);
+	
+	if (u > 0.0) {
+	  fluxw_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
+	}
+	else {
+	  fluxw_d[nop_cd*index0 + n] = u*phi0;
+	}
+
+	  /* east face (ic and icp1) */
+
+	index1=get_linear_index_gpu_d(icp1,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);
+	  u = 0.5*(velocity_d[3*index0+X] + velocity_d[3*index1+X]);
+
+	  if (u < 0.0) {
+	    fluxe_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
+	  }
+	  else {
+	    fluxe_d[nop_cd*index0 + n] = u*phi0;
+	  }
+
+
+	  /* y direction */
+
+	index1=get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
+	  u = 0.5*(velocity_d[3*index0+Y] + velocity_d[3*index1+Y]);
+
+
+	  if (u < 0.0) {
+	    fluxy_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
+	  }
+	  else {
+	    fluxy_d[nop_cd*index0 + n] = u*phi0;
+	  }
+
+
+	  /* z direction */
+
+
+      index1=get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
+      u = 0.5*(velocity_d[3*index0+Z] + velocity_d[3*index1+Z]);
+
+      if (u < 0.0) {
+	fluxz_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
+      }
+      else {
+	fluxz_d[nop_cd*index0 + n] = u*phi0;
+      }
+
+
+
+      }
+    }
 
   return;
 }

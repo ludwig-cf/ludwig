@@ -180,6 +180,7 @@ void advection_upwind(double * fluxe, double * fluxw,
 	  hydrodynamics_get_velocity(index1, u1);
 	  u = 0.5*(u0[Y] + u1[Y]);
 
+
 	  if (u < 0.0) {
 	    fluxy[nop*index0 + n] = u*phi_site[nop*index1 + n];
 	  }

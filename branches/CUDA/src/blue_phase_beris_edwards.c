@@ -91,37 +91,33 @@ void blue_phase_beris_edwards(void) {
   hs5 = (double *) calloc(nop*nsites, sizeof(double));
   if (hs5 == NULL) fatal("calloc(hs5) failed\n");
 
-  get_velocity_from_gpu();
+
   
 
   //to do - GPU implement commented out stuff below
 
+  get_velocity_from_gpu();
   hydrodynamics_halo_u();
+  put_velocity_on_gpu();
+
   //colloids_fix_swd();
   //hydrodynamics_leesedwards_transformation();
 
 
-  get_phi_from_gpu();
-  advection_upwind(fluxe, fluxw, fluxy, fluxz);  
+  //advection_upwind(fluxe, fluxw, fluxy, fluxz);  
   
-
   //advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
 
   //if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     //blue_phase_be_surface(hs5);
   //}
 
+  //put_site_map_on_gpu();
 
-  put_fluxes_on_gpu();
-  put_velocity_on_gpu();
-  put_site_map_on_gpu();
-  //get_fluxes_from_gpu();
+  advection_upwind_gpu();
+
   //blue_phase_be_update(hs5);
-
-  //expand_phi_on_gpu();
   blue_phase_be_update_gpu(hs5);
-
-  //put_phi_on_gpu();
 
   free(hs5);
   free(fluxe);
