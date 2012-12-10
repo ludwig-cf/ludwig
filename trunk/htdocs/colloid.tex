@@ -1,0 +1,135 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  colloid.tex
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Colloid Examples}
+
+
+\subsection{Initialisation from file}
+
+We present a number of examples taken from the regression tests, the inputs
+for which are found in
+\begin{verbatim}
+trunk/tests/regression
+\end{verbatim}
+For each test there is an input file, and an ASCII file containing the
+details of the initial colloid state which is read at run time by means
+of the key value pair
+\begin{verbatim}
+colloid_init    from_file
+\end{verbatim}
+
+A file of colloid information may be created with the utility
+\begin{verbatim}
+util/colloid_file.c
+\end{verbatim}
+As a minimum, this file must specify:
+\begin{enumerate}
+\item
+A unique integer id for each particle;
+\item
+a radius and hydrodynamic radius $a_0$ and $a_h$ (use the same value
+if unsure);
+\item
+an initial position ($x_{min} < x < x_{max}$) with $x_{min} = 0.5$
+and $x_{max} = L_x + 0.5$ etc, where $L_x$ is the appropriate system
+size for the problem at hand;
+\item
+the initial velocity etc may be safely initialised to zero.
+\end{enumerate}
+Note that is an inter-particle potential is to be specified at run time,
+the initial position of the particles should not be so close that a
+large force is experienced at time $t=0$. This can destabilise the
+dynamics.
+
+A single file of colloid information is produced in either ASCII or binary
+format, which can be read in by specifying the appropriate
+\begin{verbatim}
+colloid_io_format_input   ASCII_SERIAL
+\end{verbatim}
+or \texttt{BINARY\_SERIAL} key value in both serial and parallel.
+
+
+\subsubsection{Very short range potential}
+
+See
+\begin{verbatim}
+tests/regression/test_spin_solid2_input
+tests/regression/config.cds.init.001-001
+tests/regression/test_spin_solid2_d3q19.ref*
+\end{verbatim}
+
+An example of a moderate volume fraction of particles is given for
+a binary fluid undergoing spinodal decomposition. Here,
+the capillary interaction between the neutrally wetting colloids
+causes a strong effective attraction between particles. It is therefore
+necessary to ensure the particles do not collide to the point of
+overlapping at their hard-sphere radius. A counterbalancing short-range
+soft-sphere potential is then defined in the input file:
+\begin{verbatim}
+soft_sphere_on 1
+soft_sphere_epsilon 0.0004
+soft_sphere_sigma 0.1
+soft_sphere_nu 1.0
+soft_sphere_cutoff 0.25
+\end{verbatim}
+where, following Eq.~\ref{eq_ss_shift}, we have
+$v(r) \sim \epsilon (\sigma /r)^\nu$ ``cut-and-shifted'' so that
+both potential and force smoothly match to zero at the cut-off
+distance $r_c$ (here $0.25\Delta x$). The energy scale $\epsilon$
+will need to be adjusted depending on the exact problem at hand
+(here it will be related to the fluid-fluid interfacial tension).
+
+Other relevant parameters here are
+\begin{verbatim}
+colloid_cell_min 8.0
+lubrication_on 0
+\end{verbatim}
+which control, respectively, the minimum cell list width used to
+help identify interactions, and the lubrication correction (here
+switched off).
+
+
+\subsubsection{Short-range potential}
+
+See
+\begin{verbatim}
+tests/regression/test_yukawa_input
+tests/regression/test_yukawa_cds.001-001
+tests/regression/test_yukawa_d3q10.ref1
+\end{verbatim}
+
+This example involves a number of interacting particles in a simple
+fluid including Brownian motion. The potential is Yukawa-like,
+representative of a screened Coulomb interaction.
+
+We have the parameters:
+\begin{verbatim}
+yukawa_on 1
+yukawa_epsilon  1.330764285
+yukawa_kappa 0.72463768115
+yukawa_cutoff 16.0
+\end{verbatim}
+where the potential is $v(r) \sim \epsilon (-\kappa r) / r$. Again,
+both potential and force are smoothly matched to zero at the
+cut-off distance $r_c$ (here $r_c = 16\Delta x$). The relatively
+long cut-off distance means that the minimum cell list cell width
+must be correspondingly large (16 lattice units) which limits the
+minimum parallel domain size.
+
+This example also includes Brownian motion by means of fluctuating
+hydrodynamics. The relevant parameters in the input are:
+\begin{verbatim}
+isothermal_fluctuations on 
+temperature 0.0002133333
+\end{verbatim}
+Note that the \texttt{temperature} parameter here specifies
+$k_BT = \langle c_x^2\rangle = \langle c_y^2 \rangle = \langle c_z^2 \rangle$
+in three dimensions (at equilibrium);
+this is reported in the output of the code at run time.
+
+\subsubsection{Long range forces}
+
+An Ewald sum is available for magnetic dipoles.
