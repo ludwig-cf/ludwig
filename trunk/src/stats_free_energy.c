@@ -195,6 +195,20 @@ static void stats_free_energy_wallx(double * fs) {
 	  }
 	}
 
+        if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+          amplitude = blue_phase_amplitude_compute(); 
+          w_2 = colloids_q_tensor_w_2();
+
+          tmp = 0.0;
+          for (ia = 0; ia < 3; ia++) {
+            for (ib = 0; ib < 3; ib++) {
+              qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+              tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+            }   
+          }
+
+
       }
     }
   }
@@ -216,6 +230,20 @@ static void stats_free_energy_wallx(double * fs) {
 	    fs[1] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
 	  }
 	}
+
+        if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+          amplitude = blue_phase_amplitude_compute(); 
+          w_2 = colloids_q_tensor_w_2();
+
+          tmp = 0.0;
+          for (ia = 0; ia < 3; ia++) {
+            for (ib = 0; ib < 3; ib++) {
+              qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+              tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+            }   
+          }
+
 
       }
     }
@@ -271,7 +299,21 @@ static void stats_free_energy_wally(double * fs) {
 	  }
 	}
 
+        if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+          amplitude = blue_phase_amplitude_compute(); 
+          w_2 = colloids_q_tensor_w_2();
+
+          tmp = 0.0;
+          for (ia = 0; ia < 3; ia++) {
+            for (ib = 0; ib < 3; ib++) {
+              qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+              tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+            }   
+          }
+
       }
+
     }
   }
 
@@ -292,6 +334,19 @@ static void stats_free_energy_wally(double * fs) {
 	    fs[1] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
 	  }
 	}
+
+        if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+          amplitude = blue_phase_amplitude_compute(); 
+          w_2 = colloids_q_tensor_w_2();
+
+          tmp = 0.0;
+          for (ia = 0; ia < 3; ia++) {
+            for (ib = 0; ib < 3; ib++) {
+              qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+              tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+            }   
+          }
 
       }
     }
@@ -347,7 +402,20 @@ static void stats_free_energy_wallz(double * fs) {
 	  }
 	}
 
+        if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+          amplitude = blue_phase_amplitude_compute(); 
+          w_2 = colloids_q_tensor_w_2();
+
+          tmp = 0.0;
+          for (ia = 0; ia < 3; ia++) {
+            for (ib = 0; ib < 3; ib++) {
+              qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+              tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+            }   
+          }
       }
+
     }
   }
 
@@ -369,7 +437,20 @@ static void stats_free_energy_wallz(double * fs) {
 	  }
 	}
 
-      }
+        if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+          amplitude = blue_phase_amplitude_compute(); 
+          w_2 = colloids_q_tensor_w_2();
+
+          tmp = 0.0;
+          for (ia = 0; ia < 3; ia++) {
+            for (ib = 0; ib < 3; ib++) {
+              qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+              tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+            }   
+          }
+        }
+
     }
   }
 
@@ -431,6 +512,21 @@ static void stats_free_energy_colloid(double * fs) {
 		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
 	    }
 	  }
+
+	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+	    amplitude = blue_phase_amplitude_compute(); 
+	    w_2 = colloids_q_tensor_w_2();
+
+	    tmp = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+	      }   
+	    }
+	  }
+
 	  fs[1] += 1.0;
         }
 
@@ -444,6 +540,21 @@ static void stats_free_energy_colloid(double * fs) {
 		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
 	    }
 	  }
+
+	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+	    amplitude = blue_phase_amplitude_compute(); 
+	    w_2 = colloids_q_tensor_w_2();
+
+	    tmp = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+	      }   
+	    }
+	  }
+
 	  fs[1] += 1.0;
         }
 
@@ -460,6 +571,21 @@ static void stats_free_energy_colloid(double * fs) {
 		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
 	    }
 	  }
+
+	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+	    amplitude = blue_phase_amplitude_compute(); 
+	    w_2 = colloids_q_tensor_w_2();
+
+	    tmp = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+	      }   
+	    }
+	  }
+
 	  fs[1] += 1.0;
         }
 
@@ -473,6 +599,21 @@ static void stats_free_energy_colloid(double * fs) {
 		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
 	    }
 	  }
+
+	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+	    amplitude = blue_phase_amplitude_compute(); 
+	    w_2 = colloids_q_tensor_w_2();
+
+	    tmp = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+	      }   
+	    }
+	  }
+
 	  fs[1] += 1.0;
         }
 
@@ -489,6 +630,21 @@ static void stats_free_energy_colloid(double * fs) {
 		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
 	    }
 	  }
+
+	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+	    amplitude = blue_phase_amplitude_compute(); 
+	    w_2 = colloids_q_tensor_w_2();
+
+	    tmp = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+	      }   
+	    }
+	  }
+
 	  fs[1] += 1.0;
         }
 
@@ -502,6 +658,21 @@ static void stats_free_energy_colloid(double * fs) {
 		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
 	    }
 	  }
+
+	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+	    amplitude = blue_phase_amplitude_compute(); 
+	    w_2 = colloids_q_tensor_w_2();
+
+	    tmp = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+	      }   
+	    }
+	  }
+
 	  fs[1] += 1.0;
         }
 	

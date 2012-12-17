@@ -74,7 +74,7 @@ void blue_phase_set_free_energy_parameters(double a0, double gamma,
  *
  *  blue_phase_amplitude_compute
  *
- *  Linutuori to comment on the origin of this expression.
+ *  Scalar order parameter in the nematic state, minimum of bulk free energy 
  *
  *****************************************************************************/
 

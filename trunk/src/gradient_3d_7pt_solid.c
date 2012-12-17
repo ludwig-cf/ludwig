@@ -156,11 +156,16 @@ static void gradient_general(const double * field, double * grad,
   double tmp;
 
   double w;                                 /* Anchoring strength parameter */
+  double w_2;                               /* Second planar degenerate anchoring parameter */
   double q_0;                               /* Cholesteric pitch wavevector */
   double kappa0;                            /* Elastic constants */
   double kappa1;
 
+
   double blue_phase_q0(void);
+  double blue_phase_amplitude_compute(void);
+  double amplitude;                         /* Scalar order parameter */
+  double qtilde[3][3];
 
   assert(NOP == 5);
 
@@ -248,6 +253,29 @@ static void gradient_general(const double * field, double * grad,
 	      c[n][ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
 	    }
 	  }
+	}
+
+
+	/* Compute additional term for planar degenerate anchoring */
+	if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
+
+	  amplitude = blue_phase_amplitude_compute(); 
+	  w_2 = colloids_q_tensor_w_2();
+
+	  tmp = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
+	      tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      c[n][ia][ib] -= w_2*4.0*(tmp - 2.25*amplitude) * qtilde[ia][ib];
+	    }
+	  }
+
 	}
 
 	/* Set up initial approximation to grad using partial gradients
