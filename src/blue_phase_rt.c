@@ -49,7 +49,7 @@ void blue_phase_run_time(void) {
   double amplitude;
   double xi;
   double zeta;
-  double w,w_wall;
+  double w,w_2,w_wall;
   double redshift;
   double epsilon;
   double electric[3];
@@ -179,6 +179,7 @@ void blue_phase_run_time(void) {
     /* Surface free energy parameter (method two only) */
 
     RUN_get_double_parameter("lc_anchoring_strength", &w);
+    RUN_get_double_parameter("lc_anchoring_strength_2", &w_2);
     
     info("\n");
     info("Liquid crystal anchoring\n");
@@ -205,6 +206,7 @@ void blue_phase_run_time(void) {
 
       /* Set the anchoring strength the same for colloid and wall */
       colloids_q_tensor_w_set(w);
+      colloids_q_tensor_w_2_set(w_2);
       w_wall = w;
       wall_w_set(w_wall);
       
