@@ -163,9 +163,13 @@ static void stats_free_energy_wallx(double * fs) {
   int ia, ib;
   int nlocal[3];
 
-  double w;
+  double w, w_2;
   double dn[3];
   double qs[3][3], q0[3][3];
+
+  double tmp;
+  double amplitude;                         /* Scalar order parameter */
+  double qtilde[3][3];
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -209,6 +213,7 @@ static void stats_free_energy_wallx(double * fs) {
           }
 
 
+	}
       }
     }
   }
@@ -245,10 +250,10 @@ static void stats_free_energy_wallx(double * fs) {
           }
 
 
+	}
       }
     }
   }
-
   return;
 }
 
@@ -266,9 +271,13 @@ static void stats_free_energy_wally(double * fs) {
   int ia, ib;
   int nlocal[3];
 
-  double w;
+  double w, w_2;
   double dn[3];
   double qs[3][3], q0[3][3];
+
+  double tmp;
+  double amplitude;                         /* Scalar order parameter */
+  double qtilde[3][3];
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -312,8 +321,9 @@ static void stats_free_energy_wally(double * fs) {
             }   
           }
 
-      }
+	}
 
+      }
     }
   }
 
@@ -348,10 +358,10 @@ static void stats_free_energy_wally(double * fs) {
             }   
           }
 
+	}
       }
     }
   }
-
   return;
 }
 
@@ -369,9 +379,13 @@ static void stats_free_energy_wallz(double * fs) {
   int ia, ib;
   int nlocal[3];
 
-  double w;
+  double w, w_2;
   double dn[3];
   double qs[3][3], q0[3][3];
+
+  double tmp;
+  double amplitude;                         /* Scalar order parameter */
+  double qtilde[3][3];
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -414,8 +428,9 @@ static void stats_free_energy_wallz(double * fs) {
               tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
             }   
           }
-      }
+	}
 
+      }
     }
   }
 
@@ -449,11 +464,11 @@ static void stats_free_energy_wallz(double * fs) {
               tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
             }   
           }
-        }
+	}
 
+      }
     }
   }
-
   return;
 }
 
@@ -477,7 +492,11 @@ static void stats_free_energy_colloid(double * fs) {
 
   double dn[3];
   double q0[3][3], qs[3][3];
-  double w;
+  double w, w_2;
+
+  double tmp;
+  double amplitude;                         /* Scalar order parameter */
+  double qtilde[3][3];
 
   coords_nlocal(nlocal);
   w = colloids_q_tensor_w();
