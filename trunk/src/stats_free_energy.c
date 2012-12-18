@@ -212,10 +212,13 @@ static void stats_free_energy_wallx(double * fs) {
             }   
           }
 
+	  fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	}
+
       }
     }
+
   }
 
   if (cart_coords(X) == cart_size(X) - 1) {
@@ -249,10 +252,13 @@ static void stats_free_energy_wallx(double * fs) {
             }   
           }
 
+	  fs[1] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	}
+
       }
     }
+
   }
   return;
 }
@@ -321,10 +327,13 @@ static void stats_free_energy_wally(double * fs) {
             }   
           }
 
+	  fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	}
 
       }
     }
+
   }
 
   if (cart_coords(Y) == cart_size(Y) - 1) {
@@ -358,9 +367,13 @@ static void stats_free_energy_wally(double * fs) {
             }   
           }
 
+	  fs[1] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	}
+
       }
     }
+
   }
   return;
 }
@@ -428,10 +441,14 @@ static void stats_free_energy_wallz(double * fs) {
               tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
             }   
           }
+
+	  fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	}
 
       }
     }
+
   }
 
   if (cart_coords(Z) == cart_size(Z) - 1) {
@@ -464,10 +481,14 @@ static void stats_free_energy_wallz(double * fs) {
               tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
             }   
           }
+
+	  fs[1] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	}
 
       }
     }
+
   }
   return;
 }
@@ -544,6 +565,9 @@ static void stats_free_energy_colloid(double * fs) {
 		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
 	      }   
 	    }
+
+	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	  }
 
 	  fs[1] += 1.0;
@@ -572,6 +596,9 @@ static void stats_free_energy_colloid(double * fs) {
 		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
 	      }   
 	    }
+
+	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	  }
 
 	  fs[1] += 1.0;
@@ -603,6 +630,9 @@ static void stats_free_energy_colloid(double * fs) {
 		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
 	      }   
 	    }
+
+	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	  }
 
 	  fs[1] += 1.0;
@@ -631,6 +661,9 @@ static void stats_free_energy_colloid(double * fs) {
 		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
 	      }   
 	    }
+
+	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	  }
 
 	  fs[1] += 1.0;
@@ -662,6 +695,9 @@ static void stats_free_energy_colloid(double * fs) {
 		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
 	      }   
 	    }
+
+	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	  }
 
 	  fs[1] += 1.0;
@@ -690,6 +726,9 @@ static void stats_free_energy_colloid(double * fs) {
 		tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
 	      }   
 	    }
+
+	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
+
 	  }
 
 	  fs[1] += 1.0;

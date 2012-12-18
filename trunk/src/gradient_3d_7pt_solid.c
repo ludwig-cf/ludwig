@@ -269,10 +269,11 @@ static void gradient_general(const double * field, double * grad,
 	      tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
 	    }
 	  }
-
+          
+          /* Add -w_2*4.0*((~Q_ab^2)-S_0^2)*(~Q_ab); S_0=3/2*amplitude */  
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      c[n][ia][ib] -= w_2*4.0*(tmp - 2.25*amplitude) * qtilde[ia][ib];
+	      c[n][ia][ib] -= w_2*4.0*(tmp - 2.25*amplitude*amplitude)*qtilde[ia][ib];
 	    }
 	  }
 
