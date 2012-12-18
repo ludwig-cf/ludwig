@@ -58,6 +58,7 @@
 #include "gradient.h"
 #include "site_map.h"
 #include "free_energy.h"
+#include "blue_phase.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
 #include "gradient_3d_7pt_solid.h"
@@ -155,17 +156,19 @@ static void gradient_general(const double * field, double * grad,
   double dn[3];                             /* Unit normal. */
   double tmp;
 
-  double w;                                 /* Anchoring strength parameter */
-  double w_2;                               /* Second planar degenerate anchoring parameter */
+  double w1_coll;                           /* Anchoring strength parameter */
+  double w2_coll;                           /* Second anchoring parameter */
+  double w1_wall;
+  double w2_wall;
+  double w1;
+  double w2;
   double q_0;                               /* Cholesteric pitch wavevector */
   double kappa0;                            /* Elastic constants */
   double kappa1;
 
-
-  double blue_phase_q0(void);
-  double blue_phase_amplitude_compute(void);
   double amplitude;                         /* Scalar order parameter */
-  double qtilde[3][3];
+  double qtilde[3][3];                      /* For planar anchoring */
+  double q2;                                /* Contraction Q_ab Q_ab */
 
   assert(NOP == 5);
 
@@ -180,7 +183,9 @@ static void gradient_general(const double * field, double * grad,
   kappa1 = fe_kappa(); /* One elastic constant */ 
 
   q_0 = blue_phase_q0();
-  w = colloids_q_tensor_w();
+  blue_phase_coll_w12(&w1_coll, &w2_coll);
+  blue_phase_wall_w12(&w1_wall, &w2_wall);
+  amplitude = blue_phase_amplitude_compute(); 
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -228,6 +233,19 @@ static void gradient_general(const double * field, double * grad,
 
 	util_q5_to_qab(qs, field + NOP*index);
 
+	/* For planar anchoring we require qtilde_ab of Fournier and
+	 * Galatola, and its square */
+
+	q2 = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
+	    q2 += qtilde[ia][ib]*qtilde[ia][ib]; 
+	  }
+	}
+
+        /* Look at the neighbours */
+
 	for (n = 0; n < 6; n++) {
 	  if (status[n] == FLUID) continue;
 
@@ -235,8 +253,15 @@ static void gradient_general(const double * field, double * grad,
 	  colloids_q_boundary(dn, qs, q0, status[n]);
 
 	  /* Check for wall/colloid */
-	  if (status[n] == COLLOID) w = colloids_q_tensor_w();
-	  if (status[n] == BOUNDARY) w = wall_w_get();
+	  if (status[n] == COLLOID) {
+	    w1 = w1_coll;
+	    w2 = w2_coll;
+	  }
+
+	  if (status[n] == BOUNDARY) {
+	    w1 = w1_wall;
+	    w2 = w2_wall;
+	  }
 	  assert(status[n] == COLLOID || status[n] == BOUNDARY);
 
 	  /* Compute c[n][a][b] */
@@ -250,33 +275,16 @@ static void gradient_general(const double * field, double * grad,
 		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
 		}
 	      }
-	      c[n][ia][ib] -= w*(qs[ia][ib] - q0[ia][ib]);
+	      /* Normal anchoring: w2 must be zero and q0 is preferred Q
+	       * Planar anchoring: in w1 term q0 is effectively
+	       *                   (Qtilde^perp - 0.5S_0) while in w2 we
+	       *                   have Qtilde appearing explicitly.
+               *                   See colloids_q_boundary() etc */
+	      c[n][ia][ib] +=
+		-w1*(qs[ia][ib] - q0[ia][ib])
+		-w2*(2.0*q2 - 4.5*amplitude*amplitude)*qtilde[ia][ib];
 	    }
 	  }
-	}
-
-
-	/* Compute additional term for planar degenerate anchoring */
-	if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
-
-	  amplitude = blue_phase_amplitude_compute(); 
-	  w_2 = colloids_q_tensor_w_2();
-
-	  tmp = 0.0;
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      qtilde[ia][ib] = qs[ia][ib]+0.5*amplitude*d_[ia][ib];
-	      tmp += qtilde[ia][ib]*qtilde[ia][ib]; 
-	    }
-	  }
-          
-          /* Add -w_2*4.0*((~Q_ab^2)-S_0^2)*(~Q_ab); S_0=3/2*amplitude */  
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      c[n][ia][ib] -= w_2*4.0*(tmp - 2.25*amplitude*amplitude)*qtilde[ia][ib];
-	    }
-	  }
-
 	}
 
 	/* Set up initial approximation to grad using partial gradients
