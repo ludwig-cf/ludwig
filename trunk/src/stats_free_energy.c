@@ -166,6 +166,7 @@ static void stats_free_energy_wallx(double * fs) {
   double w, w_2;
   double dn[3];
   double qs[3][3], q0[3][3];
+  double fes;
 
   double tmp;
   double amplitude;                         /* Scalar order parameter */
@@ -175,7 +176,9 @@ static void stats_free_energy_wallx(double * fs) {
   fs[1] = 0.0;
 
   coords_nlocal(nlocal);
+#ifdef OLD
   w = wall_w_get();
+#endif
   assert(phi_nop() == 5);
 
   dn[Y] = 0.0;
@@ -191,6 +194,7 @@ static void stats_free_energy_wallx(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
+#ifdef OLD
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -216,7 +220,10 @@ static void stats_free_energy_wallx(double * fs) {
 	  fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	}
-
+#else
+	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	fs[0] += fes;
+#endif
       }
     }
 
@@ -232,6 +239,7 @@ static void stats_free_energy_wallx(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
+#ifdef OLD
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -257,7 +265,10 @@ static void stats_free_energy_wallx(double * fs) {
 	  fs[1] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	}
-
+#else
+	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	fs[1] += fes;
+#endif
       }
     }
 
@@ -282,6 +293,7 @@ static void stats_free_energy_wally(double * fs) {
   double w, w_2;
   double dn[3];
   double qs[3][3], q0[3][3];
+  double fes;
 
   double tmp;
   double amplitude;                         /* Scalar order parameter */
@@ -291,8 +303,9 @@ static void stats_free_energy_wally(double * fs) {
   fs[1] = 0.0;
 
   coords_nlocal(nlocal);
+#ifdef OLD
   w = wall_w_get();
-
+#endif
   assert(phi_nop() == 5);
 
   dn[X] = 0.0;
@@ -308,6 +321,7 @@ static void stats_free_energy_wally(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
+#ifdef OLD
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -333,7 +347,10 @@ static void stats_free_energy_wally(double * fs) {
 	  fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	}
-
+#else
+	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	fs[0] += fes;
+#endif
       }
     }
 
@@ -349,6 +366,7 @@ static void stats_free_energy_wally(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
+#ifdef OLD
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -374,7 +392,10 @@ static void stats_free_energy_wally(double * fs) {
 	  fs[1] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	}
-
+#else
+	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	fs[1] += fes;
+#endif
       }
     }
 
@@ -399,6 +420,7 @@ static void stats_free_energy_wallz(double * fs) {
   double w, w_2;
   double dn[3];
   double qs[3][3], q0[3][3];
+  double fes;
 
   double tmp;
   double amplitude;                         /* Scalar order parameter */
@@ -408,8 +430,9 @@ static void stats_free_energy_wallz(double * fs) {
   fs[1] = 0.0;
 
   coords_nlocal(nlocal);
+#ifdef OLD
   w = wall_w_get();
-
+#endif
   assert(phi_nop() == 5);
 
   dn[X] = 0.0;
@@ -425,6 +448,7 @@ static void stats_free_energy_wallz(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
+#ifdef OLD
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -450,7 +474,10 @@ static void stats_free_energy_wallz(double * fs) {
 	  fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	}
-
+#else
+	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	fs[0] += fes;
+#endif
       }
     }
 
@@ -466,6 +493,7 @@ static void stats_free_energy_wallz(double * fs) {
 
         index = coords_index(ic, jc, kc);
 	phi_get_q_tensor(index, qs);
+#ifdef OLD
 	colloids_q_boundary(dn, qs, q0, BOUNDARY);
 	
 	for (ia = 0; ia < 3; ia++) {
@@ -491,7 +519,10 @@ static void stats_free_energy_wallz(double * fs) {
 	  fs[1] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	}
-
+#else
+	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	fs[1] += fes;
+#endif
       }
     }
 
@@ -520,21 +551,22 @@ static void stats_free_energy_colloid(double * fs) {
   double dn[3];
   double q0[3][3], qs[3][3];
   double w, w_2;
+  double fes;
 
   double tmp;
   double amplitude;                         /* Scalar order parameter */
   double qtilde[3][3];
 
   coords_nlocal(nlocal);
+#ifdef OLD
   w = colloids_q_tensor_w();
-
+#endif
   fs[0] = 0.0;
   fs[1] = 0.0;
 
   if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
 
   assert(phi_nop() == 5);
-  assert(w >= 0.0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -551,6 +583,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic+1, jc, kc) == COLLOID) {
           nhat[X] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
+#ifdef OLD
 	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
@@ -576,13 +609,17 @@ static void stats_free_energy_colloid(double * fs) {
 	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	  }
-
+#else
+	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  fs[0] += fes;
+#endif
 	  fs[1] += 1.0;
         }
 
         if (site_map_get_status(ic-1, jc, kc) == COLLOID) {
           nhat[X] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
+#ifdef OLD
 	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
@@ -608,7 +645,10 @@ static void stats_free_energy_colloid(double * fs) {
 	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	  }
-
+#else
+	blue_phase_fs(dn, qs, COLLOID, &fes);
+	fs[0] += fes;
+#endif
 	  fs[1] += 1.0;
         }
 
@@ -618,6 +658,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic, jc+1, kc) == COLLOID) {
           nhat[Y] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
+#ifdef OLD
 	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
@@ -643,13 +684,17 @@ static void stats_free_energy_colloid(double * fs) {
 	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	  }
-
+#else
+	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  fs[0] += fes;
+#endif
 	  fs[1] += 1.0;
         }
 
         if (site_map_get_status(ic, jc-1, kc) == COLLOID) {
           nhat[Y] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
+#ifdef OLD
 	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
@@ -675,7 +720,11 @@ static void stats_free_energy_colloid(double * fs) {
 	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	  }
+#else
+	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  fs[0] += fes;
 
+#endif
 	  fs[1] += 1.0;
         }
 
@@ -685,6 +734,7 @@ static void stats_free_energy_colloid(double * fs) {
         if (site_map_get_status(ic, jc, kc+1) == COLLOID) {
           nhat[Z] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
+#ifdef OLD
 	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
@@ -710,13 +760,17 @@ static void stats_free_energy_colloid(double * fs) {
 	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	  }
-
+#else
+	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  fs[0] += fes;
+#endif
 	  fs[1] += 1.0;
         }
 
         if (site_map_get_status(ic, jc, kc-1) == COLLOID) {
           nhat[Z] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
+#ifdef OLD
 	  colloids_q_boundary(dn, qs, q0, COLLOID);
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
@@ -742,7 +796,10 @@ static void stats_free_energy_colloid(double * fs) {
 	    fs[0] += 0.5*w_2*(tmp - 2.25*amplitude*amplitude)*(tmp - 2.25*amplitude*amplitude);
 
 	  }
-
+#else
+	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  fs[0] += fes;
+#endif
 	  fs[1] += 1.0;
         }
 	
