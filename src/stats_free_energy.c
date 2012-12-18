@@ -199,6 +199,7 @@ static void stats_free_energy_wallx(double * fs) {
 	  }
 	}
 
+        /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
         if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
           amplitude = blue_phase_amplitude_compute(); 
@@ -239,6 +240,7 @@ static void stats_free_energy_wallx(double * fs) {
 	  }
 	}
 
+        /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
         if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
           amplitude = blue_phase_amplitude_compute(); 
@@ -314,6 +316,7 @@ static void stats_free_energy_wally(double * fs) {
 	  }
 	}
 
+        /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
         if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
           amplitude = blue_phase_amplitude_compute(); 
@@ -354,6 +357,7 @@ static void stats_free_energy_wally(double * fs) {
 	  }
 	}
 
+        /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
         if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
           amplitude = blue_phase_amplitude_compute(); 
@@ -429,6 +433,7 @@ static void stats_free_energy_wallz(double * fs) {
 	  }
 	}
 
+        /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
         if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
           amplitude = blue_phase_amplitude_compute(); 
@@ -469,6 +474,7 @@ static void stats_free_energy_wallz(double * fs) {
 	  }
 	}
 
+        /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
         if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
           amplitude = blue_phase_amplitude_compute(); 
@@ -553,6 +559,7 @@ static void stats_free_energy_colloid(double * fs) {
 	    }
 	  }
 
+          /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
 	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
 	    amplitude = blue_phase_amplitude_compute(); 
@@ -584,6 +591,7 @@ static void stats_free_energy_colloid(double * fs) {
 	    }
 	  }
 
+          /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
 	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
 	    amplitude = blue_phase_amplitude_compute(); 
@@ -618,6 +626,7 @@ static void stats_free_energy_colloid(double * fs) {
 	    }
 	  }
 
+          /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
 	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
 	    amplitude = blue_phase_amplitude_compute(); 
@@ -649,6 +658,7 @@ static void stats_free_energy_colloid(double * fs) {
 	    }
 	  }
 
+          /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
 	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
 	    amplitude = blue_phase_amplitude_compute(); 
@@ -683,6 +693,7 @@ static void stats_free_energy_colloid(double * fs) {
 	    }
 	  }
 
+          /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
 	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
 	    amplitude = blue_phase_amplitude_compute(); 
@@ -714,6 +725,7 @@ static void stats_free_energy_colloid(double * fs) {
 	    }
 	  }
 
+          /* Add 0.5*w_2*((~Q_ab^2)-S_0^2)^2; S_0=3/2*amplitude */
 	  if (colloids_q_tensor_anchoring() == ANCHORING_PLANAR){
 
 	    amplitude = blue_phase_amplitude_compute(); 
