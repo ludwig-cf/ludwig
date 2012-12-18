@@ -656,15 +656,16 @@ int blue_phase_fs(const double dn[3], double qs[3][3], char status,
   double amplitude;
   double f1, f2, s0;
 
+  assert(status == BOUNDARY || status == COLLOID);
+
   colloids_q_boundary(dn, qs, q0, status);
+
+  w1 = w1_colloid_;
+  w2 = w2_colloid_;
 
   if (status == BOUNDARY) {
     w1 = w1_wall_;
     w2 = w2_wall_;
-  }
-  if (status == COLLOID) {
-    w1 = w1_colloid_;
-    w2 = w2_colloid_;
   }
 
   amplitude = blue_phase_amplitude_compute(); 

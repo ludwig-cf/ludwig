@@ -238,7 +238,7 @@ void blue_phase_run_time(void) {
       blue_phase_wall_w12_set(w1_wall, w2_wall);
       
       info("Anchoring type (walls):          = %14s\n", type_wall);
-      info("Surface free energy (colloid) w: = %14.7e\n", w1);
+      info("Surface free energy (colloid)w1: = %14.7e\n", w1);
       info("Surface free energy (colloid)w2: = %14.7e\n", w2);
       info("Surface free energy (wall) w1:   = %14.7e\n", w1_wall);
       info("Surface free energy (wall) w2:   = %14.7e\n", w2_wall);
