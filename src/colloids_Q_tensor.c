@@ -37,9 +37,22 @@ struct io_info_t * io_info_scalar_q_;
 static int anchoring_coll_ = ANCHORING_NORMAL;
 static int anchoring_wall_ = ANCHORING_NORMAL;
 static int anchoring_method_ = ANCHORING_METHOD_NONE;
-static double w_surface_ = 0.0; /* Anchoring strength in free energy */
-static double w_2_surface_ = 0.0; /* Second planar degenerate anchoring strength */
-static double w_surface_wall_ = 0.0; /* Anchoring strength in free energy */
+
+/*
+ * Normal anchoring free energy
+ * f_s = (1/2) w_1 ( Q_ab - Q^0_ab )^2  with Q^0_ab prefered orientation.
+ *
+ * Planar anchoring free energy (Fournier and Galatola EPL (2005).
+ * f_s = (1/2) w_1 ( Q^tilde_ab - Q^tidle_perp_ab )^2
+ *     + (1/2) w_2 ( Q^tidle^2 - S_0^2 )^2
+ *
+ * so w_2 must be zero for normal anchoring.
+ */
+
+static double w1_colloid_ = 0.0;
+static double w2_colloid_ = 0.0;
+static double w1_wall_ = 0.0;
+static double w2_wall_ = 0.0;
 
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
@@ -562,73 +575,116 @@ void wall_anchoring_set(const int type) {
 
 /*****************************************************************************
  *
- *  colloids_q_tensor_w
+ *  blue_phase_coll_w12
  *
  *****************************************************************************/
 
-double colloids_q_tensor_w(void) {
+int blue_phase_coll_w12(double * w1, double * w2) {
 
-  return w_surface_;
+  assert(w1);
+  assert(w2);
+
+  *w1 = w1_colloid_;
+  *w2 = w2_colloid_;
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  colloids_q_tensor_w
+ *  blue_phase_wall_w12
  *
  *****************************************************************************/
 
-double colloids_q_tensor_w_2(void) {
+int blue_phase_wall_w12(double * w1, double * w2) {
 
-  return w_2_surface_;
-}
+  assert(w1);
+  assert(w2);
 
+  *w1 = w1_wall_;
+  *w2 = w2_wall_;
 
-/*****************************************************************************
- *
- *  wall_w_get
- *
- *****************************************************************************/
-
-double wall_w_get(void) {
-
-  return w_surface_wall_;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  colloids_q_tensor_w_set
+ *  blue_phase_wall_w12_set
  *
  *****************************************************************************/
 
-void colloids_q_tensor_w_set(double w) {
+int blue_phase_wall_w12_set(double w1, double w2) {
 
-  w_surface_ = w;
-  return;
+  w1_wall_ = w1;
+  w2_wall_ = w2;
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  colloids_q_tensor_w_2_set
+ *  blue_phase_coll_w12_set
  *
  *****************************************************************************/
 
-void colloids_q_tensor_w_2_set(double w_2) {
+int blue_phase_coll_w12_set(double w1, double w2) {
 
-  w_2_surface_ = w_2;
-  return;
+  w1_colloid_ = w1;
+  w2_colloid_ = w2;
+
+  return 0;
 }
-
 
 /*****************************************************************************
  *
- *  wall_w_set
+ *  blue_phase_fs
  *
+ *  Compute and return surface free energy area density given
+ *    outward normal nhat[3]
+ *    fluid Q_ab qs
+ *    site map status
+ * 
  *****************************************************************************/
 
-void wall_w_set(double w) {
+int blue_phase_fs(const double dn[3], double qs[3][3], char status,
+		  double *fe) {
 
-  w_surface_wall_ = w;
-  return;
+  int ia, ib;
+  double w1, w2;
+  double q0[3][3];
+  double qtilde;
+  double amplitude;
+  double f1, f2, s0;
+
+  colloids_q_boundary(dn, qs, q0, status);
+
+  if (status == BOUNDARY) {
+    w1 = w1_wall_;
+    w2 = w2_wall_;
+  }
+  if (status == COLLOID) {
+    w1 = w1_colloid_;
+    w2 = w2_colloid_;
+  }
+
+  amplitude = blue_phase_amplitude_compute(); 
+  s0 = 1.5*amplitude;  /* Fournier & Galatola S_0 = (3/2)A */
+
+  /* Free energy density */
+
+  f1 = 0.0;
+  f2 = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      f1 += (qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
+      qtilde = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
+      f2 += (qtilde*qtilde - s0*s0)*(qtilde*qtilde - s0*s0);
+    }
+  }
+
+  *fe = 0.5*w1*f1 + 0.5*w2*f2;
+
+  return 0;
 }
 
 /*****************************************************************************
