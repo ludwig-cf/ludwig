@@ -28,10 +28,25 @@ The cholesteric pitch $p = 2\pi/q_0$.
 
 There is also a surface term (an area density)
 \begin{equation}
-f_s = {\textstyle\frac{1}{2}} w (Q_{\alpha\beta} - Q_{\alpha\beta}^0)^2
+f_s = {\textstyle\frac{1}{2}} w_1 (Q_{\alpha\beta} - Q_{\alpha\beta}^0)^2
 \end{equation}
 where $Q^0_{\alpha\beta}$ is the preferred order parameter configuration
-at the surface (to be either normal or planar).
+at the surface (in the case of normal anchoring or fixed planar anchoring).
+For degenerate planar anchoring,
+following Fournier and Galatola \cite{fournier2005}, we have
+\begin{equation}
+f_s = {\textstyle\frac{1}{2}} w_1 (\tilde{Q}_{\alpha\beta}
+    - \tilde{Q}^\perp_{\alpha\beta})^2
+    + {\textstyle\frac{1}{2}} w_2 (\tilde{Q}_{\alpha\beta}
+                      \tilde{Q}_{\alpha\beta} - S^2_0)^2
+\end{equation}
+where $\tilde{Q}_{\alpha\beta} + (1/3)S_0 \delta_{\alpha\beta}$, $S_0$ is
+is a fixed surface amplitude; to obtain a prefered degenerate
+configuration we take the fluid order parameter $Q_{\alpha\beta}$ and
+project $\tilde{Q}^\perp_{\alpha\beta} = P_{\alpha\gamma}
+\tilde{Q}_{\gamma\sigma}
+P_{\sigma\beta}$, where $P_{\alpha\beta} = \delta_{\alpha\beta}
+- n_\alpha n_\beta$ and $n_\alpha$ is the local unit surface normal.
 
 The boundary condition we wish to apply are the Euler-Lagrange equations. 
 They are at the surface of the particle
@@ -84,9 +99,16 @@ for the gradient of the tensor order parameter at the solid-fluid boundary:
 \\
 - \kappa_1 q_0 n_\gamma (\epsilon_{\alpha\gamma\sigma} Q_{\sigma\beta}
 + \epsilon_{\beta\gamma\sigma}Q_{\sigma\alpha})
-- w(Q_{\alpha\beta} - Q_{\alpha\beta}^0) = 0.
+- w_1(Q_{\alpha\beta} - Q_{\alpha\beta}^0) = 0.
 \label{cholesteric_bc}
 \end{eqnarray}
+Note that for planar generate anchoring, the final term (the `surface
+molecular field') is replaced by
+\begin{equation}
+- w_1 (\tilde{Q}_{\alpha\beta} - \tilde{Q}^\perp_{\alpha\beta})
+- 2w_2 (\tilde{Q}_{\gamma\sigma} \tilde{Q}_{\gamma\sigma} - S^2_0)
+  \tilde{Q}_{\alpha\beta}. 
+\end{equation}
 
 \subsection{Discrete implementation}
 
