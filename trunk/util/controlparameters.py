@@ -10,7 +10,6 @@ try:
 	e=float(sys.argv[3])
 	L1_0=float(sys.argv[4])
 	L_uc=float(sys.argv[5])
-	Lz=float(sys.argv[6])
 
 except:
 	print
@@ -21,7 +20,6 @@ except:
 	print "* e: effective field strength"
 	print "* L1_0: elastic constant (use 0.02 as default)"
 	print "* L_uc: dimension of unit cell (1/2 pitch length)"
-	print "* Lz: z-dimension of actual simulation box (for voltage input)"
 	print
 	sys.exit(1)
 
@@ -36,19 +34,19 @@ def gamma(tau):
 def A0(tau,kappa):
 	return 16.0*(L1_0*q0*q0)*(0.25*tau+2.25)/kappa/kappa
 
-def deltaVz(tau,kappa,e):
-	return e*(Lz-1.0)*8.0/9.0*math.sqrt(math.pi*A0(tau,kappa)*gamma(tau)*3.0/2.0/epsa)
+def E(tau,kappa,e):
+	return e*math.sqrt((32.0*math.pi*A0(tau,kappa)*gamma(tau))/(27.0*epsa))
 
 # pitch = Pi over unit cell size
 q0=math.pi/L_uc
 
 gam=gamma(tau)
 Abulk=A0(tau,kappa)
-delVz=deltaVz(tau,kappa,e)
+E=E(tau,kappa,e)
 
 print 'A0 = %.12f ' % Abulk
 print 'gamma = %.12f ' % gam
-print 'delVz = %.12f ' % delVz
+print 'E = %.12f ' % E
 print ('L1 = %g (BP1 - rescaled to retain chirality); = %g (BP2)' % (0.5*L1_0,L1_0))
 print ('pitch = %.12f (BP1); = %.12f (BP2)' % (math.sqrt(2.)*q0, q0))
 
