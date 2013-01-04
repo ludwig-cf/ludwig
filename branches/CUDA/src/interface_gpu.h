@@ -33,6 +33,7 @@ void propagation_gpu(void);
 void phi_compute_phi_site_gpu(void);
 void distribution_halo_gpu(void);
 void phi_halo_gpu(void);
+void velocity_halo_gpu(void);
 void phi_gradients_compute_gpu(void);
 void bounce_back_gpu(int *findexall, int *linktype, double *dfall,
 		     double *dmall, double *dgall1,double *dgall2,

@@ -389,10 +389,11 @@ void get_velocity_from_gpu()
 	{
 	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
-	      index = coords_index(ic, jc, kc);
+	      index = get_linear_index(ic, jc, kc, Nall); 
+
 	      for (i=0;i<3;i++)
 		{
-		  velocity[i]=velocity_temp[index*3+i];
+		  velocity[i]=velocity_temp[nsites*i+index];
 		}
 	      hydrodynamics_set_velocity(index,velocity);
 	    }
@@ -417,12 +418,12 @@ void put_velocity_on_gpu()
 	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
 
-	      index = coords_index(ic, jc, kc);
+	      index = get_linear_index(ic, jc, kc, Nall); 
 	      hydrodynamics_get_velocity(index,velocity);
 
 	      for (i=0;i<3;i++)
 		{
-		  velocity_temp[index*3+i]=velocity[i];
+		  velocity_temp[i*nsites+index]=velocity[i];
 		}
 	    }
 	}

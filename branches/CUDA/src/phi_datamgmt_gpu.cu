@@ -21,18 +21,18 @@
 
 /* edge and halo buffers on accelerator */
 
-double * phiedgeXLOW_d;
-double * phiedgeXHIGH_d;
-double * phiedgeYLOW_d;
-double * phiedgeYHIGH_d;
-double * phiedgeZLOW_d;
-double * phiedgeZHIGH_d;
-double * phihaloXLOW_d;
-double * phihaloXHIGH_d;
-double * phihaloYLOW_d;
-double * phihaloYHIGH_d;
-double * phihaloZLOW_d;
-double * phihaloZHIGH_d;
+double * edgeXLOW_d;
+double * edgeXHIGH_d;
+double * edgeYLOW_d;
+double * edgeYHIGH_d;
+double * edgeZLOW_d;
+double * edgeZHIGH_d;
+double * haloXLOW_d;
+double * haloXHIGH_d;
+double * haloYLOW_d;
+double * haloYHIGH_d;
+double * haloZLOW_d;
+double * haloZHIGH_d;
 
 
 /* host memory address pointers for temporary staging of data */
@@ -43,18 +43,18 @@ double * delsq_phi_site_temp;
 
 /* edge and  halo buffers on host */
 
-double * phiedgeXLOW;
-double * phiedgeXHIGH;
-double * phiedgeYLOW;
-double * phiedgeYHIGH;
-double * phiedgeZLOW;
-double * phiedgeZHIGH;
-double * phihaloXLOW;
-double * phihaloXHIGH;
-double * phihaloYLOW;
-double * phihaloYHIGH;
-double * phihaloZLOW;
-double * phihaloZHIGH;
+double * edgeXLOW;
+double * edgeXHIGH;
+double * edgeYLOW;
+double * edgeYHIGH;
+double * edgeZLOW;
+double * edgeZHIGH;
+double * haloXLOW;
+double * haloXHIGH;
+double * haloYLOW;
+double * haloYHIGH;
+double * haloZLOW;
+double * haloZHIGH;
 
 
 /* pointers to data resident on accelerator */
@@ -78,9 +78,9 @@ static int nsites;
 static int nop;
 static  int N[3];
 static  int Nall[3];
-static int nphihalodataX;
-static int nphihalodataY;
-static int nphihalodataZ;
+static int nhalodataX;
+static int nhalodataY;
+static int nhalodataZ;
 static int nlexbuf;
 
 /* handles for CUDA streams (for ovelapping)*/
@@ -140,9 +140,9 @@ static void calculate_phi_data_sizes()
 
   nop = phi_nop();
 
-  nphihalodataX = N[Y] * N[Z] * nhalo * nop ;
-  nphihalodataY = Nall[X] * N[Z] * nhalo * nop;
-  nphihalodataZ = Nall[X] * Nall[Y] * nhalo * nop;
+  nhalodataX = N[Y] * N[Z] * nhalo * nop ;
+  nhalodataY = Nall[X] * N[Z] * nhalo * nop;
+  nhalodataZ = Nall[X] * Nall[Y] * nhalo * nop;
 
 
 
@@ -169,61 +169,47 @@ static void allocate_phi_memory_on_gpu()
   delsq_phi_site_temp = (double *) malloc(nsites*nop*sizeof(double));
   le_index_real_to_buffer_temp = (int *) malloc(nlexbuf*sizeof(int));
 
-  cudaHostAlloc( (void **)&phiedgeXLOW, nphihalodataX*sizeof(double), 
+  cudaHostAlloc( (void **)&edgeXLOW, nhalodataX*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phiedgeXHIGH, nphihalodataX*sizeof(double), 
+  cudaHostAlloc( (void **)&edgeXHIGH, nhalodataX*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phiedgeYLOW, nphihalodataY*sizeof(double), 
+  cudaHostAlloc( (void **)&edgeYLOW, nhalodataY*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phiedgeYHIGH, nphihalodataY*sizeof(double), 
+  cudaHostAlloc( (void **)&edgeYHIGH, nhalodataY*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phiedgeZLOW, nphihalodataZ*sizeof(double), 
+  cudaHostAlloc( (void **)&edgeZLOW, nhalodataZ*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phiedgeZHIGH, nphihalodataZ*sizeof(double), 
+  cudaHostAlloc( (void **)&edgeZHIGH, nhalodataZ*sizeof(double), 
 		 cudaHostAllocDefault);
 
 
-  cudaHostAlloc( (void **)&phihaloXLOW, nphihalodataX*sizeof(double), 
+  cudaHostAlloc( (void **)&haloXLOW, nhalodataX*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phihaloXHIGH, nphihalodataX*sizeof(double), 
+  cudaHostAlloc( (void **)&haloXHIGH, nhalodataX*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phihaloYLOW, nphihalodataY*sizeof(double), 
+  cudaHostAlloc( (void **)&haloYLOW, nhalodataY*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phihaloYHIGH, nphihalodataY*sizeof(double), 
+  cudaHostAlloc( (void **)&haloYHIGH, nhalodataY*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phihaloZLOW, nphihalodataZ*sizeof(double), 
+  cudaHostAlloc( (void **)&haloZLOW, nhalodataZ*sizeof(double), 
 		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&phihaloZHIGH, nphihalodataZ*sizeof(double), 
+  cudaHostAlloc( (void **)&haloZHIGH, nhalodataZ*sizeof(double), 
 		 cudaHostAllocDefault);
   
 
-//  phiedgeXLOW = (double *) malloc(nphihalodataX*sizeof(double));
-//  phiedgeXHIGH = (double *) malloc(nphihalodataX*sizeof(double));
-//  phiedgeYLOW = (double *) malloc(nphihalodataY*sizeof(double));
-//  phiedgeYHIGH = (double *) malloc(nphihalodataY*sizeof(double));
-//  phiedgeZLOW = (double *) malloc(nphihalodataZ*sizeof(double));
-//  phiedgeZHIGH = (double *) malloc(nphihalodataZ*sizeof(double));
+  cudaMalloc((void **) &edgeXLOW_d, nhalodataX*sizeof(double));
+  cudaMalloc((void **) &edgeXHIGH_d, nhalodataX*sizeof(double));
+  cudaMalloc((void **) &edgeYLOW_d, nhalodataY*sizeof(double));
+  cudaMalloc((void **) &edgeYHIGH_d, nhalodataY*sizeof(double));
+  cudaMalloc((void **) &edgeZLOW_d, nhalodataZ*sizeof(double));
+  cudaMalloc((void **) &edgeZHIGH_d, nhalodataZ*sizeof(double));
   
-//  phihaloXLOW = (double *) malloc(nphihalodataX*sizeof(double));
-//  phihaloXHIGH = (double *) malloc(nphihalodataX*sizeof(double));
-//  phihaloYLOW = (double *) malloc(nphihalodataY*sizeof(double));
-//  phihaloYHIGH = (double *) malloc(nphihalodataY*sizeof(double));
-//  phihaloZLOW = (double *) malloc(nphihalodataZ*sizeof(double));
-//  phihaloZHIGH = (double *) malloc(nphihalodataZ*sizeof(double));
-
-  cudaMalloc((void **) &phiedgeXLOW_d, nphihalodataX*sizeof(double));
-  cudaMalloc((void **) &phiedgeXHIGH_d, nphihalodataX*sizeof(double));
-  cudaMalloc((void **) &phiedgeYLOW_d, nphihalodataY*sizeof(double));
-  cudaMalloc((void **) &phiedgeYHIGH_d, nphihalodataY*sizeof(double));
-  cudaMalloc((void **) &phiedgeZLOW_d, nphihalodataZ*sizeof(double));
-  cudaMalloc((void **) &phiedgeZHIGH_d, nphihalodataZ*sizeof(double));
-  
-  cudaMalloc((void **) &phihaloXLOW_d, nphihalodataX*sizeof(double));
-  cudaMalloc((void **) &phihaloXHIGH_d, nphihalodataX*sizeof(double));
-  cudaMalloc((void **) &phihaloYLOW_d, nphihalodataY*sizeof(double));
-  cudaMalloc((void **) &phihaloYHIGH_d, nphihalodataY*sizeof(double));
-  cudaMalloc((void **) &phihaloZLOW_d, nphihalodataZ*sizeof(double));
-  cudaMalloc((void **) &phihaloZHIGH_d, nphihalodataZ*sizeof(double));
+  cudaMalloc((void **) &haloXLOW_d, nhalodataX*sizeof(double));
+  cudaMalloc((void **) &haloXHIGH_d, nhalodataX*sizeof(double));
+  cudaMalloc((void **) &haloYLOW_d, nhalodataY*sizeof(double));
+  cudaMalloc((void **) &haloYHIGH_d, nhalodataY*sizeof(double));
+  cudaMalloc((void **) &haloZLOW_d, nhalodataZ*sizeof(double));
+  cudaMalloc((void **) &haloZHIGH_d, nhalodataZ*sizeof(double));
   
   cudaMalloc((void **) &phi_site_d, nsites*nop*sizeof(double));
   cudaMalloc((void **) &phi_site_full_d, nsites*9*sizeof(double));
@@ -247,36 +233,36 @@ static void free_phi_memory_on_gpu()
   free(delsq_phi_site_temp);
   free(le_index_real_to_buffer_temp);
 
-  cudaFreeHost(phiedgeXLOW);
-  cudaFreeHost(phiedgeXHIGH);
-  cudaFreeHost(phiedgeYLOW);
-  cudaFreeHost(phiedgeYHIGH);
-  cudaFreeHost(phiedgeZLOW);
-  cudaFreeHost(phiedgeZHIGH);
+  cudaFreeHost(edgeXLOW);
+  cudaFreeHost(edgeXHIGH);
+  cudaFreeHost(edgeYLOW);
+  cudaFreeHost(edgeYHIGH);
+  cudaFreeHost(edgeZLOW);
+  cudaFreeHost(edgeZHIGH);
 
-  cudaFreeHost(phihaloXLOW);
-  cudaFreeHost(phihaloXHIGH);
-  cudaFreeHost(phihaloYLOW);
-  cudaFreeHost(phihaloYHIGH);
-  cudaFreeHost(phihaloZLOW);
-  cudaFreeHost(phihaloZHIGH);
+  cudaFreeHost(haloXLOW);
+  cudaFreeHost(haloXHIGH);
+  cudaFreeHost(haloYLOW);
+  cudaFreeHost(haloYHIGH);
+  cudaFreeHost(haloZLOW);
+  cudaFreeHost(haloZHIGH);
 
 
   /* free memory on accelerator */
 
-  cudaFree(phiedgeXLOW_d);
-  cudaFree(phiedgeXHIGH_d);
-  cudaFree(phiedgeYLOW_d);
-  cudaFree(phiedgeYHIGH_d);
-  cudaFree(phiedgeZLOW_d);
-  cudaFree(phiedgeZHIGH_d);
+  cudaFree(edgeXLOW_d);
+  cudaFree(edgeXHIGH_d);
+  cudaFree(edgeYLOW_d);
+  cudaFree(edgeYHIGH_d);
+  cudaFree(edgeZLOW_d);
+  cudaFree(edgeZHIGH_d);
 
-  cudaFree(phihaloXLOW_d);
-  cudaFree(phihaloXHIGH_d);
-  cudaFree(phihaloYLOW_d);
-  cudaFree(phihaloYHIGH_d);
-  cudaFree(phihaloZLOW_d);
-  cudaFree(phihaloZHIGH_d);
+  cudaFree(haloXLOW_d);
+  cudaFree(haloXHIGH_d);
+  cudaFree(haloYLOW_d);
+  cudaFree(haloYHIGH_d);
+  cudaFree(haloZLOW_d);
+  cudaFree(haloZHIGH_d);
 
   cudaFree(phi_site_d);
   cudaFree(phi_site_full_d);
@@ -309,7 +295,6 @@ void put_phi_on_gpu()
 	      for (iop=0; iop<nop; iop++)
 		{
 
-		  //phi_site_temp[index*nop+iop]=phi_op_get_phi_site(index,iop);
 		  phi_site_temp[iop*nsites+index]=phi_op_get_phi_site(index,iop);
 		}
 	    }
@@ -349,7 +334,6 @@ void put_grad_phi_on_gpu()
 
 		  for (i=0;i<3;i++)
 		    {
-		      //grad_phi_site_temp[3*(index*nop+iop)+i]=grad_phi[i];
 		      grad_phi_site_temp[i*nsites*nop+iop*nsites+index]=grad_phi[i];
 		    }
 		}
@@ -508,7 +492,6 @@ void get_phi_from_gpu()
 		{
 
 		
-		  //phi_op_set_phi_site(index,iop,phi_site_temp[index*nop+iop]);
 		  phi_op_set_phi_site(index,iop,phi_site_temp[iop*nsites+index]);
 
 		}
@@ -580,7 +563,7 @@ void expand_phi_on_gpu()
 }
 
 
-void phi_halo_gpu()
+void halo_gpu(int nfields, double * data_d)
 {
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 
@@ -621,29 +604,29 @@ void phi_halo_gpu()
 
  /* pack X edges on accelerator */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
- pack_phi_edgesX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nop,nhalo,
-						N_d,phiedgeXLOW_d,
-						phiedgeXHIGH_d,phi_site_d);
+ pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields,nhalo,
+						N_d,edgeXLOW_d,
+						     edgeXHIGH_d,data_d,X);
 
 
  /* pack Y edges on accelerator */ 
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  pack_phi_edgesY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nop,nhalo,
-						N_d,phiedgeYLOW_d,
-						phiedgeYHIGH_d,phi_site_d);
+  pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields,nhalo,
+						N_d,edgeYLOW_d,
+						     edgeYHIGH_d,data_d,Y);
 
  /* pack Z edges on accelerator */ 
     nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
-  pack_phi_edgesZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nop,nhalo,
-  						N_d,phiedgeZLOW_d,
-  						phiedgeZHIGH_d,phi_site_d);
+  pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nfields,nhalo,
+  						N_d,edgeZLOW_d,
+						     edgeZHIGH_d,data_d,Z);
 
 
   /* get X low edges */
-  cudaMemcpyAsync(phiedgeXLOW, phiedgeXLOW_d, nphihalodataX*sizeof(double),
+  cudaMemcpyAsync(edgeXLOW, edgeXLOW_d, nhalodataX*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamX);
  /* get X high edges */
-  cudaMemcpyAsync(phiedgeXHIGH, phiedgeXHIGH_d, nphihalodataX*sizeof(double),
+  cudaMemcpyAsync(edgeXHIGH, edgeXHIGH_d, nhalodataX*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamX);
 
 
@@ -652,10 +635,10 @@ void phi_halo_gpu()
 #endif
 
  /* get Y low edges */
-  cudaMemcpyAsync(phiedgeYLOW, phiedgeYLOW_d, nphihalodataY*sizeof(double),
+  cudaMemcpyAsync(edgeYLOW, edgeYLOW_d, nhalodataY*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamY);
  /* get Y high edges */
-  cudaMemcpyAsync(phiedgeYHIGH, phiedgeYHIGH_d, nphihalodataY*sizeof(double),
+  cudaMemcpyAsync(edgeYHIGH, edgeYHIGH_d, nhalodataY*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamY);
 
 
@@ -664,10 +647,10 @@ void phi_halo_gpu()
 #endif
 
   /* get Z low edges */
-  cudaMemcpyAsync(phiedgeZLOW, phiedgeZLOW_d, nphihalodataZ*sizeof(double),
+  cudaMemcpyAsync(edgeZLOW, edgeZLOW_d, nhalodataZ*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamZ);
   /* get Z high edges */
-  cudaMemcpyAsync(phiedgeZHIGH, phiedgeZHIGH_d, nphihalodataZ*sizeof(double),
+  cudaMemcpyAsync(edgeZHIGH, edgeZHIGH_d, nhalodataZ*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamZ);
 
 
@@ -683,22 +666,22 @@ void phi_halo_gpu()
 
    if (cart_size(X) == 1) {
      /* x up */
-     memcpy(phihaloXLOW,phiedgeXHIGH,nphihalodataX*sizeof(double));
+     memcpy(haloXLOW,edgeXHIGH,nhalodataX*sizeof(double));
      
      /* x down */
-     memcpy(phihaloXHIGH,phiedgeXLOW,nphihalodataX*sizeof(double));
+     memcpy(haloXHIGH,edgeXLOW,nhalodataX*sizeof(double));
      
       }
   else
     {
       /* initiate transfers */
-      MPI_Irecv(phihaloXLOW, nphihalodataX, MPI_DOUBLE,
+      MPI_Irecv(haloXLOW, nhalodataX, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,X), tagf, comm, &request[0]);
-      MPI_Irecv(phihaloXHIGH, nphihalodataX, MPI_DOUBLE,
+      MPI_Irecv(haloXHIGH, nhalodataX, MPI_DOUBLE,
 	      cart_neighb(FORWARD,X), tagb, comm, &request[1]);
-      MPI_Isend(phiedgeXHIGH, nphihalodataX, MPI_DOUBLE,
+      MPI_Isend(edgeXHIGH, nhalodataX, MPI_DOUBLE,
 	      cart_neighb(FORWARD,X), tagf, comm, &request[2]);
-      MPI_Isend(phiedgeXLOW,  nphihalodataX, MPI_DOUBLE,
+      MPI_Isend(edgeXLOW,  nhalodataX, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,X), tagb, comm, &request[3]);
      }
 
@@ -708,14 +691,14 @@ void phi_halo_gpu()
 
 
  /* put X halos back on device, and unpack */
-  cudaMemcpyAsync(phihaloXLOW_d, phihaloXLOW, nphihalodataX*sizeof(double),
+  cudaMemcpyAsync(haloXLOW_d, haloXLOW, nhalodataX*sizeof(double),
 		  cudaMemcpyHostToDevice,streamX);
-  cudaMemcpyAsync(phihaloXHIGH_d, phihaloXHIGH, nphihalodataX*sizeof(double),
+  cudaMemcpyAsync(haloXHIGH_d, haloXHIGH, nhalodataX*sizeof(double),
 		  cudaMemcpyHostToDevice,streamX);
   nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-     unpack_phi_halosX_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nop,nhalo,
-  						  N_d,phi_site_d,phihaloXLOW_d,
-  						  phihaloXHIGH_d);
+     unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields,nhalo,
+  						  N_d,data_d,haloXLOW_d,
+							      haloXHIGH_d,X);
 
 
 
@@ -729,7 +712,7 @@ void phi_halo_gpu()
 
   /* fill in corners of Y edge data  */
 
-  for (m=0;m<nop;m++)
+  for (m=0;m<nfields;m++)
     {
       
       
@@ -743,35 +726,32 @@ void phi_halo_gpu()
 	    index_source = get_linear_index(ii,jj,kk,NedgeX);
 	    index_target = get_linear_index(ii,jj,kk,NedgeY);
 	    
-	    phiedgeYLOW[npackedsiteY*m+index_target] =
-	      phihaloXLOW[npackedsiteX*m+index_source];
+	    edgeYLOW[npackedsiteY*m+index_target] =
+	      haloXLOW[npackedsiteX*m+index_source];
 	    
 	    /* xlow part of yhigh */
-	    //index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);
 	    index_source = get_linear_index(ii,NedgeX[Y]-nhalo+jj,kk,NedgeX);
 	    index_target = get_linear_index(ii,jj,kk,NedgeY);
 	    
-	    phiedgeYHIGH[npackedsiteY*m+index_target] =
-	      phihaloXLOW[npackedsiteX*m+index_source];
+	    edgeYHIGH[npackedsiteY*m+index_target] =
+	      haloXLOW[npackedsiteX*m+index_source];
 	    
 	    
 	    /* get high X data */
 	    
 	    /* xhigh part of ylow */
 	    index_source = get_linear_index(ii,jj,kk,NedgeX);
-	    //index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
 	    index_target = get_linear_index(NedgeY[X]-nhalo+ii,jj,kk,NedgeY);
 	    
-	    phiedgeYLOW[npackedsiteY*m+index_target] =
-	      phihaloXHIGH[npackedsiteX*m+index_source];
+	    edgeYLOW[npackedsiteY*m+index_target] =
+	      haloXHIGH[npackedsiteX*m+index_source];
 	    
 	    /* xhigh part of yhigh */
-	    // index_source = get_linear_index(ii,NedgeX[Y]-1-jj,kk,NedgeX);		//	index_target = get_linear_index(NedgeY[X]-1-ii,jj,kk,NedgeY);
 	    
 	    index_source = get_linear_index(ii,NedgeX[Y]-nhalo+jj,kk,NedgeX);			index_target = get_linear_index(NedgeY[X]-nhalo+ii,jj,kk,NedgeY);
 	    
-	    phiedgeYHIGH[npackedsiteY*m+index_target] =
-	      phihaloXHIGH[npackedsiteX*m+index_source];
+	    edgeYHIGH[npackedsiteY*m+index_target] =
+	      haloXHIGH[npackedsiteX*m+index_source];
 	    
 	    
 	    
@@ -786,22 +766,22 @@ void phi_halo_gpu()
   /* The y-direction (XZ plane) */
    if (cart_size(Y) == 1) {
   /* y up */
-  memcpy(phihaloYLOW,phiedgeYHIGH,nphihalodataY*sizeof(double));
+  memcpy(haloYLOW,edgeYHIGH,nhalodataY*sizeof(double));
   
   /* y down */
-  memcpy(phihaloYHIGH,phiedgeYLOW,nphihalodataY*sizeof(double));
+  memcpy(haloYHIGH,edgeYLOW,nhalodataY*sizeof(double));
   
       }
   else
     {
       /* initiate transfers */
-      MPI_Irecv(phihaloYLOW, nphihalodataY, MPI_DOUBLE,
+      MPI_Irecv(haloYLOW, nhalodataY, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Y), tagf, comm, &request[0]);
-      MPI_Irecv(phihaloYHIGH, nphihalodataY, MPI_DOUBLE,
+      MPI_Irecv(haloYHIGH, nhalodataY, MPI_DOUBLE,
 	      cart_neighb(FORWARD,Y), tagb, comm, &request[1]);
-      MPI_Isend(phiedgeYHIGH, nphihalodataY, MPI_DOUBLE,
+      MPI_Isend(edgeYHIGH, nhalodataY, MPI_DOUBLE,
 	      cart_neighb(FORWARD,Y), tagf, comm, &request[2]);
-      MPI_Isend(phiedgeYLOW,  nphihalodataY, MPI_DOUBLE,
+      MPI_Isend(edgeYLOW,  nhalodataY, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Y), tagb, comm, &request[3]);
     }
 
@@ -810,14 +790,14 @@ void phi_halo_gpu()
     if (cart_size(Y) > 1)       MPI_Waitall(4, request, status); 
 
  /* put Y halos back on device, and unpack */
-  cudaMemcpyAsync(phihaloYLOW_d, phihaloYLOW, nphihalodataY*sizeof(double),
+  cudaMemcpyAsync(haloYLOW_d, haloYLOW, nhalodataY*sizeof(double),
 		  cudaMemcpyHostToDevice,streamY);
-  cudaMemcpyAsync(phihaloYHIGH_d, phihaloYHIGH, nphihalodataY*sizeof(double),
+  cudaMemcpyAsync(haloYHIGH_d, haloYHIGH, nhalodataY*sizeof(double),
 		  cudaMemcpyHostToDevice,streamY);
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-    unpack_phi_halosY_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nop,nhalo,
-  						  N_d,phi_site_d,phihaloYLOW_d,
-  						  phihaloYHIGH_d);
+    unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields,nhalo,
+  						  N_d,data_d,haloYLOW_d,
+							 haloYHIGH_d,Y);
 
 
 
@@ -831,7 +811,7 @@ void phi_halo_gpu()
 
   /* fill in corners of Z edge data: from Xhalo  */
     
-  for (m=0;m<nop;m++)
+  for (m=0;m<nfields;m++)
     {
       
       for (ii = 0; ii < nhalo; ii++) {
@@ -844,43 +824,35 @@ void phi_halo_gpu()
 	    index_source = get_linear_index(ii,jj,kk,NedgeX);
 	    index_target = get_linear_index(ii,jj+nhalo,kk,NedgeZ);
 	    
-	    phiedgeZLOW[npackedsiteZ*m+index_target] =
-	      phihaloXLOW[npackedsiteX*m+index_source];
+	    edgeZLOW[npackedsiteZ*m+index_target] =
+	      haloXLOW[npackedsiteX*m+index_source];
 	    
 	    
 	    /* xlow part of zhigh */
-	    //index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
 	    index_source = get_linear_index(ii,jj,NedgeX[Z]-nhalo+kk,NedgeX);
 	    index_target = get_linear_index(ii,jj+nhalo,kk,NedgeZ);
 	    
-	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
-	      phihaloXLOW[npackedsiteX*m+index_source];
+	    edgeZHIGH[npackedsiteZ*m+index_target] =
+	      haloXLOW[npackedsiteX*m+index_source];
 	    
 	    
 	    
 	    /* xhigh part of zlow */
 	    index_source = get_linear_index(ii,jj,kk,NedgeX);
-	    //index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
-	    //				    NedgeZ);
 	    index_target = get_linear_index(NedgeZ[X]-nhalo+ii,jj+nhalo,kk,
 					    NedgeZ);
 	    
-	    phiedgeZLOW[npackedsiteZ*m+index_target] =
-	      phihaloXHIGH[npackedsiteX*m+index_source];
+	    edgeZLOW[npackedsiteZ*m+index_target] =
+	      haloXHIGH[npackedsiteX*m+index_source];
 	    
 	    
 	    /* xhigh part of zhigh */
-	    
-	    //index_source = get_linear_index(ii,jj,NedgeX[Z]-1-kk,NedgeX);
-	    //index_target = get_linear_index(NedgeZ[X]-1-ii,jj+nhalo,kk,
-	    //				    NedgeZ);
-
 	    index_source = get_linear_index(ii,jj,NedgeX[Z]-nhalo+kk,NedgeX);
 	    index_target = get_linear_index(NedgeZ[X]-nhalo+ii,jj+nhalo,kk,
 					    NedgeZ);
 	    
-	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
-	      phihaloXHIGH[npackedsiteX*m+index_source];
+	    edgeZHIGH[npackedsiteZ*m+index_target] =
+	      haloXHIGH[npackedsiteX*m+index_source];
 	    
 	    
 	  }
@@ -894,7 +866,7 @@ void phi_halo_gpu()
   
   
   
-  for (m=0;m<nop;m++)
+  for (m=0;m<nfields;m++)
     {
       
       
@@ -909,39 +881,34 @@ void phi_halo_gpu()
 	    index_source = get_linear_index(ii,jj,kk,NedgeY);
 	    index_target = get_linear_index(ii,jj,kk,NedgeZ);
 	    
-	    phiedgeZLOW[npackedsiteZ*m+index_target] =
-	      phihaloYLOW[npackedsiteY*m+index_source];
+	    edgeZLOW[npackedsiteZ*m+index_target] =
+	      haloYLOW[npackedsiteY*m+index_source];
 	    
 	    
 	    /* ylow part of zhigh */
-	    //index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
 	    index_source = get_linear_index(ii,jj,NedgeY[Z]-nhalo+kk,NedgeY);
 	    index_target = get_linear_index(ii,jj,kk,NedgeZ);
 	    
-	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
-	      phihaloYLOW[npackedsiteY*m+index_source];
+	    edgeZHIGH[npackedsiteZ*m+index_target] =
+	      haloYLOW[npackedsiteY*m+index_source];
 	    
 	    
 	    
 	    /* yhigh part of zlow */
 	    index_source = get_linear_index(ii,jj,kk,NedgeY);
-	    //index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
 	    index_target = get_linear_index(ii,NedgeZ[Y]-nhalo+jj,kk,NedgeZ);
 	    
-	    phiedgeZLOW[npackedsiteZ*m+index_target] =
-	      phihaloYHIGH[npackedsiteY*m+index_source];
+	    edgeZLOW[npackedsiteZ*m+index_target] =
+	      haloYHIGH[npackedsiteY*m+index_source];
 	    
 	    
 	    /* yhigh part of zhigh */
 	    
-	    //index_source = get_linear_index(ii,jj,NedgeY[Z]-1-kk,NedgeY);
-	    //index_target = get_linear_index(ii,NedgeZ[Y]-1-jj,kk,NedgeZ);
-
 	    index_source = get_linear_index(ii,jj,NedgeY[Z]-nhalo+kk,NedgeY);
 	    index_target = get_linear_index(ii,NedgeZ[Y]-nhalo+jj,kk,NedgeZ);
 	    
-	    phiedgeZHIGH[npackedsiteZ*m+index_target] =
-	      phihaloYHIGH[npackedsiteY*m+index_source];
+	    edgeZHIGH[npackedsiteZ*m+index_target] =
+	      haloYHIGH[npackedsiteY*m+index_source];
 	    
 	    
 	  }
@@ -955,35 +922,35 @@ void phi_halo_gpu()
   /* The z-direction (xy plane) */
    if (cart_size(Z) == 1) {
   /* z up */
-  memcpy(phihaloZLOW,phiedgeZHIGH,nphihalodataZ*sizeof(double));
+  memcpy(haloZLOW,edgeZHIGH,nhalodataZ*sizeof(double));
 
   /* z down */
-  memcpy(phihaloZHIGH,phiedgeZLOW,nphihalodataZ*sizeof(double));
+  memcpy(haloZHIGH,edgeZLOW,nhalodataZ*sizeof(double));
       }
   else
     {
-      MPI_Irecv(phihaloZLOW, nphihalodataZ, MPI_DOUBLE,
+      MPI_Irecv(haloZLOW, nhalodataZ, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Z), tagf, comm, &request[0]);
-      MPI_Irecv(phihaloZHIGH, nphihalodataZ, MPI_DOUBLE,
+      MPI_Irecv(haloZHIGH, nhalodataZ, MPI_DOUBLE,
 	      cart_neighb(FORWARD,Z), tagb, comm, &request[1]);
-      MPI_Isend(phiedgeZHIGH, nphihalodataZ, MPI_DOUBLE,
+      MPI_Isend(edgeZHIGH, nhalodataZ, MPI_DOUBLE,
 	      cart_neighb(FORWARD,Z), tagf, comm, &request[2]);
-      MPI_Isend(phiedgeZLOW,  nphihalodataZ, MPI_DOUBLE,
+      MPI_Isend(edgeZLOW,  nhalodataZ, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Z), tagb, comm, &request[3]);
       MPI_Waitall(4, request, status);
 
     }
 
  /* put Z halos back on device, and unpack */
-  cudaMemcpyAsync(phihaloZLOW_d, phihaloZLOW, nphihalodataZ*sizeof(double),
+  cudaMemcpyAsync(haloZLOW_d, haloZLOW, nhalodataZ*sizeof(double),
 		  cudaMemcpyHostToDevice,streamZ);
-  cudaMemcpyAsync(phihaloZHIGH_d, phihaloZHIGH, nphihalodataZ*sizeof(double),
+  cudaMemcpyAsync(haloZHIGH_d, haloZHIGH, nhalodataZ*sizeof(double),
 		  cudaMemcpyHostToDevice,streamZ);
 
     nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
-     unpack_phi_halosZ_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nop,nhalo,
-														  N_d,phi_site_d,phihaloZLOW_d,
-													  phihaloZHIGH_d);
+     unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nfields,nhalo,
+							  N_d,data_d,haloZLOW_d,
+							  haloZHIGH_d,Z);
 
 
   /* wait for all streams to complete */
@@ -994,12 +961,25 @@ void phi_halo_gpu()
 
 }
 
+void phi_halo_gpu(){
 
-/* pack X edges on the accelerator */
-__global__ static void pack_phi_edgesX_gpu_d(int nop, int nhalo,
+  halo_gpu(nop,phi_site_d);
+
+}
+
+extern double * velocity_d;
+void velocity_halo_gpu(){
+
+  halo_gpu(3,velocity_d);
+
+}
+
+
+/* pack edge on the accelerator */
+__global__ static void pack_edge_gpu_d(int nfields, int nhalo,
 					 int N[3],
-					 double* phiedgeXLOW_d,
-					 double* phiedgeXHIGH_d, double* phi_site_d)
+					 double* edgeLOW_d,
+				       double* edgeHIGH_d, double* data_d, int dirn)
 {
 
   int m,index,ii,jj,kk,packed_index;
@@ -1011,9 +991,22 @@ __global__ static void pack_phi_edgesX_gpu_d(int nop, int nhalo,
   int nsite = Nall[X]*Nall[Y]*Nall[Z];
  
   int Nedge[3];
-  Nedge[X]=nhalo;
-  Nedge[Y]=N[Y];
-  Nedge[Z]=N[Z];
+
+  if (dirn == X){
+    Nedge[X]=nhalo;
+    Nedge[Y]=N[Y];
+    Nedge[Z]=N[Z];
+  }
+  else if (dirn == Y){
+    Nedge[X]=Nall[X];
+    Nedge[Y]=nhalo;
+    Nedge[Z]=N[Z];
+  }
+  else if (dirn == Z){
+    Nedge[X]=Nall[X];
+    Nedge[Y]=Nall[Y];
+    Nedge[Z]=nhalo;
+  }
 
   int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
   
@@ -1027,35 +1020,50 @@ __global__ static void pack_phi_edgesX_gpu_d(int nop, int nhalo,
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
       
       /* LOW EDGE */
-      index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
-
+      if (dirn == X){
+	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
+      }
+      else if (dirn == Y){
+	index = get_linear_index_gpu_d(ii,jj+nhalo,kk+nhalo,Nall);
+      }
+      else if (dirn == Z){
+	index = get_linear_index_gpu_d(ii,jj,kk+nhalo,Nall);
+      }
       
       /* copy data to packed structure */
-	    for (m = 0; m < nop; m++) {
-	      phiedgeXLOW_d[m*npackedsite+packed_index]
-		= phi_site_d[nsite*m+index];
-	    }
+      for (m = 0; m < nfields; m++) {
+	edgeLOW_d[m*npackedsite+packed_index]
+	  = data_d[nsite*m+index];
+      }
       
-  
+      
       /* HIGH EDGE */
-      //index = get_linear_index_gpu_d(Nall[X]-nhalo-1-ii,jj+nhalo,kk+nhalo,Nall);
-       index = get_linear_index_gpu_d(Nall[X]-2*nhalo+ii,jj+nhalo,kk+nhalo,Nall);
+      if (dirn == X){
+	index = get_linear_index_gpu_d(Nall[X]-2*nhalo+ii,jj+nhalo,kk+nhalo,Nall);
+      }
+      else if (dirn == Y){
+        index = get_linear_index_gpu_d(ii,Nall[Y]-2*nhalo+jj,kk+nhalo,Nall);
+      }
+      else if (dirn == Z){
+	index = get_linear_index_gpu_d(ii,jj,Nall[Z]-2*nhalo+kk,Nall);
+      }
+
       /* copy data to packed structure */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phiedgeXHIGH_d[m*npackedsite+packed_index]
-		= phi_site_d[nsite*m+index];
-	      
-	    }
+      for (m = 0; m < nfields; m++) {
+	
+	edgeHIGH_d[m*npackedsite+packed_index]
+	  = data_d[nsite*m+index];
+	
+      }
     }
   
 }
 
-/* unpack X halos on the accelerator */
-__global__ static void unpack_phi_halosX_gpu_d(int nop, int nhalo,
+/* unpack halo on the accelerator */
+__global__ static void unpack_halo_gpu_d(int nfields, int nhalo,
 					   int N[3],
-					   double* phi_site_d, double* phihaloXLOW_d,
-					   double* phihaloXHIGH_d)
+					   double* data_d, double* haloLOW_d,
+					 double* haloHIGH_d, int dirn)
 {
 
 
@@ -1069,9 +1077,21 @@ __global__ static void unpack_phi_halosX_gpu_d(int nop, int nhalo,
   int nsite = Nall[X]*Nall[Y]*Nall[Z];
 
   int Nedge[3];
-  Nedge[X]=nhalo;
-  Nedge[Y]=N[Y];
-  Nedge[Z]=N[Z];
+  if (dirn == X){
+    Nedge[X]=nhalo;
+    Nedge[Y]=N[Y];
+    Nedge[Z]=N[Z];
+  }
+  else if (dirn == Y){
+    Nedge[X]=Nall[X];
+    Nedge[Y]=nhalo;
+    Nedge[Z]=N[Z];
+  }
+  else if (dirn == Z){
+    Nedge[X]=Nall[X];
+    Nedge[Y]=Nall[Y];
+    Nedge[Z]=nhalo;
+  }
 
   int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
   
@@ -1085,281 +1105,50 @@ __global__ static void unpack_phi_halosX_gpu_d(int nop, int nhalo,
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
 
       /* LOW HALO */
-      index = get_linear_index_gpu_d(ii,jj+nhalo,kk+nhalo,Nall);
+      if (dirn == X){
+	index = get_linear_index_gpu_d(ii,jj+nhalo,kk+nhalo,Nall);
+      }
+      else if (dirn == Y){
+	index = get_linear_index_gpu_d(ii,jj,kk+nhalo,Nall);
+      }
+      else if (dirn == Z){
+	index = get_linear_index_gpu_d(ii,jj,kk,Nall);
+      }
+
+
       
       /* copy packed structure data to original array */
-	    for (m = 0; m < nop; m++) {
+	    for (m = 0; m < nfields; m++) {
 	  
-	      phi_site_d[nsite*m+index] =
-	      phihaloXLOW_d[m*npackedsite+packed_index];
+	      data_d[nsite*m+index] =
+	      haloLOW_d[m*npackedsite+packed_index];
 
 	    }
            
   
       /* HIGH HALO */
-      //index = get_linear_index_gpu_d(Nall[X]-1-ii,jj+nhalo,kk+nhalo,Nall);
-      	    index = get_linear_index_gpu_d(Nall[X]-nhalo+ii,jj+nhalo,kk+nhalo,Nall);
+      if (dirn == X){
+	index = get_linear_index_gpu_d(Nall[X]-nhalo+ii,jj+nhalo,kk+nhalo,Nall);
+      }
+      else if (dirn == Y){
+	index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo+jj,kk+nhalo,Nall);	
+      }
+      else if (dirn == Z){
+	index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo+kk,Nall);
+      }
+
+
       /* copy packed structure data to original array */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phi_site_d[nsite*m+index] =
-	      phihaloXHIGH_d[m*npackedsite+packed_index];
-	      
-	    }
+      for (m = 0; m < nfields; m++) {
+	
+	data_d[nsite*m+index] =
+	  haloHIGH_d[m*npackedsite+packed_index];
+	
+      }
     }
   
   
 }
-
-
-/* pack Y edges on the accelerator */
-__global__ static void pack_phi_edgesY_gpu_d(int nop, int nhalo,
-					 int N[3], 					 double* phiedgeYLOW_d,
-					 double* phiedgeYHIGH_d, double* phi_site_d) {
-
-  int m,index,ii,jj,kk,packed_index;
-
-
-  int Nall[3];
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-  int nsite = Nall[X]*Nall[Y]*Nall[Z];
-
-  int Nedge[3];
-  Nedge[X]=Nall[X];
-  Nedge[Y]=nhalo;
-  Nedge[Z]=N[Z];
-
-  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
-  
-  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
-  
-  if (threadIndex < npackedsite)
-    {
-      
-      packed_index = threadIndex;
-      
-      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
-
-      
-      /* LOW EDGE */
-      index = get_linear_index_gpu_d(ii,jj+nhalo,kk+nhalo,Nall);
-      
-      /* copy data to packed structure */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phiedgeYLOW_d[m*npackedsite+packed_index]
-		= phi_site_d[nsite*m+index];
-	      
-	    }
-      
-      
-      /* HIGH EDGE */
-      //index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo-1-jj,kk+nhalo,Nall);
-        index = get_linear_index_gpu_d(ii,Nall[Y]-2*nhalo+jj,kk+nhalo,Nall);
-      /* copy data to packed structure */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phiedgeYHIGH_d[m*npackedsite+packed_index]
-		= phi_site_d[nsite*m+index];
-	      
-	    }
-    }
-  
-  
-}
-
-
-
-
-/* unpack Y halos on the accelerator */
-__global__ static void unpack_phi_halosY_gpu_d(int nop, int nhalo,
-					  int N[3],
-					   double* phi_site_d, double* phihaloYLOW_d,
-					   double* phihaloYHIGH_d)
-{
-
-  int m,index,ii,jj,kk,packed_index;
-
-  int Nall[3];
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-  int nsite = Nall[X]*Nall[Y]*Nall[Z];
-
-  int Nedge[3];
-  Nedge[X]=Nall[X];
-  Nedge[Y]=nhalo;
-  Nedge[Z]=N[Z];
-
-  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
-  
-  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
-  
-  if (threadIndex < npackedsite)
-    {
-      
-      packed_index = threadIndex;
-      
-      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
-
-
-
-      /* LOW EDGE */
-      index = get_linear_index_gpu_d(ii,jj,kk+nhalo,Nall);
-      
-       /* copy packed structure data to original array */
-
-	    for (m = 0; m < nop; m++) {
-	      
-	      phi_site_d[nsite*m+index] =
-	      phihaloYLOW_d[m*npackedsite+packed_index];
-	      
-	    }
-      
-
-      
-      /* HIGH EDGE */
-      //index = get_linear_index_gpu_d(ii,Nall[Y]-1-jj,kk+nhalo,Nall);
-	    index = get_linear_index_gpu_d(ii,Nall[Y]-nhalo+jj,kk+nhalo,Nall);
-      /* copy packed structure data to original array */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phi_site_d[nsite*m+index] =
-		phihaloYHIGH_d[m*npackedsite+packed_index];
-	      
-	    }
-      
-    }
-  
-  
-  
-}
-
-
-
-/* pack Z edges on the accelerator */
-__global__ static void pack_phi_edgesZ_gpu_d(int nop, int nhalo,
-					 int N[3],
-					 double* phiedgeZLOW_d,
-					 double* phiedgeZHIGH_d, double* phi_site_d)
-{
-
-  int m,index,ii,jj,kk,packed_index;
-
-  int Nall[3];
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-  int nsite = Nall[X]*Nall[Y]*Nall[Z];
-
-  int Nedge[3];
-  Nedge[X]=Nall[X];
-  Nedge[Y]=Nall[Y];
-  Nedge[Z]=nhalo;
-
-  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
-  
-  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
-  
-  if (threadIndex < npackedsite)
-    {
-      
-      packed_index = threadIndex;
-      
-      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
-      
-      /* LOW EDGE */
-      index = get_linear_index_gpu_d(ii,jj,kk+nhalo,Nall);
-      
-      /* copy data to packed structure */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phiedgeZLOW_d[m*npackedsite+packed_index]
-		= phi_site_d[nsite*m+index];
-	      
-	    }
-      
-      
-      /* HIGH EDGE */
-      //index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo-1-kk,Nall);
-	    index = get_linear_index_gpu_d(ii,jj,Nall[Z]-2*nhalo+kk,Nall);
-      /* copy data to packed structure */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phiedgeZHIGH_d[m*npackedsite+packed_index]
-		= phi_site_d[nsite*m+index];
-	      
-	    }
-    }
-  
-  
-}
-
-
-
-
-/* unpack Z halos on the accelerator */
-__global__ static void unpack_phi_halosZ_gpu_d(int nop, int nhalo,
-					   int N[3],
-					   double* phi_site_d, double* phihaloZLOW_d,
-					   double* phihaloZHIGH_d)
-{
-
-  int m,index,ii,jj,kk,packed_index;
-  
-  int Nall[3];
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-  int nsite = Nall[X]*Nall[Y]*Nall[Z];
-
-  int Nedge[3];
-  Nedge[X]=Nall[X];
-  Nedge[Y]=Nall[Y];
-  Nedge[Z]=nhalo;
-  
-  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
-  
-  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
-  
-  if (threadIndex < npackedsite)
-    {
-      
-      packed_index = threadIndex;
-      
-      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
-
-      
-      /* LOW EDGE */
-      index = get_linear_index_gpu_d(ii,jj,kk,Nall);
-      
-      /* copy packed structure data to original array */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phi_site_d[nsite*m+index] =
-	      phihaloZLOW_d[m*npackedsite+packed_index];
-	      
-	    }
-      
-      
-      /* HIGH EDGE */
-      //index = get_linear_index_gpu_d(ii,jj,Nall[Z]-1-kk,Nall);
-	    index = get_linear_index_gpu_d(ii,jj,Nall[Z]-nhalo+kk,Nall);
-      /* copy packed structure data to original array */
-	    for (m = 0; m < nop; m++) {
-	      
-	      phi_site_d[nsite*m+index] =
-	      phihaloZHIGH_d[m*npackedsite+packed_index];
-	      
-	    }
-      
-    }
-  
-}
-
-
 
 
 /* get 3d coordinates from the index on the accelerator */

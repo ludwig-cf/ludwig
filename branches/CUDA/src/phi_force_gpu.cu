@@ -1001,23 +1001,23 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 
      // hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);	  
 
-       w[X][X] = 0.5*(velocity_d[indexp1*3+X] - velocity_d[indexm1*3+X]);
-       w[Y][X] = 0.5*(velocity_d[indexp1*3+Y] - velocity_d[indexm1*3+Y]);
-       w[Z][X] = 0.5*(velocity_d[indexp1*3+Z] - velocity_d[indexm1*3+Z]);
+       w[X][X] = 0.5*(velocity_d[X*nsites_cd+indexp1] - velocity_d[X*nsites_cd+indexm1]);
+       w[Y][X] = 0.5*(velocity_d[Y*nsites_cd+indexp1] - velocity_d[Y*nsites_cd+indexm1]);
+       w[Z][X] = 0.5*(velocity_d[Z*nsites_cd+indexp1] - velocity_d[Z*nsites_cd+indexm1]);
        
        indexm1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
        indexp1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd+1,kk+nhalo_cd,Nall_cd);
 
-       w[X][Y] = 0.5*(velocity_d[indexp1*3+X] - velocity_d[indexm1*3+X]);
-       w[Y][Y] = 0.5*(velocity_d[indexp1*3+Y] - velocity_d[indexm1*3+Y]);
-       w[Z][Y] = 0.5*(velocity_d[indexp1*3+Z] - velocity_d[indexm1*3+Z]);
+       w[X][Y] = 0.5*(velocity_d[X*nsites_cd+indexp1] - velocity_d[X*nsites_cd+indexm1]);
+       w[Y][Y] = 0.5*(velocity_d[Y*nsites_cd+indexp1] - velocity_d[Y*nsites_cd+indexm1]);
+       w[Z][Y] = 0.5*(velocity_d[Z*nsites_cd+indexp1] - velocity_d[Z*nsites_cd+indexm1]);
 
        indexm1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
        indexp1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd+1,Nall_cd);
 
-       w[X][Z] = 0.5*(velocity_d[indexp1*3+X] - velocity_d[indexm1*3+X]);
-       w[Y][Z] = 0.5*(velocity_d[indexp1*3+Y] - velocity_d[indexm1*3+Y]);
-       w[Z][Z] = 0.5*(velocity_d[indexp1*3+Z] - velocity_d[indexm1*3+Z]);
+       w[X][Z] = 0.5*(velocity_d[X*nsites_cd+indexp1] - velocity_d[X*nsites_cd+indexm1]);
+       w[Y][Z] = 0.5*(velocity_d[Y*nsites_cd+indexp1] - velocity_d[Y*nsites_cd+indexm1]);
+       w[Z][Z] = 0.5*(velocity_d[Z*nsites_cd+indexp1] - velocity_d[Z*nsites_cd+indexm1]);
        
      //end  hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
 	  trace_qw = 0.0;
@@ -1142,7 +1142,7 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 
 	phi0 = phi_site_d[nsites_cd*n+index0];
 	index1=get_linear_index_gpu_d(icm1,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);
-	u = 0.5*(velocity_d[3*index0+X] + velocity_d[3*index1+X]);
+	u = 0.5*(velocity_d[X*nsites_cd+index0] + velocity_d[X*nsites_cd+index1]);
 	
 	if (u > 0.0) {
 	  fluxw_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
@@ -1154,7 +1154,7 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 	  /* east face (ic and icp1) */
 
 	index1=get_linear_index_gpu_d(icp1,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);
-	  u = 0.5*(velocity_d[3*index0+X] + velocity_d[3*index1+X]);
+	  u = 0.5*(velocity_d[X*nsites_cd+index0] + velocity_d[X*nsites_cd+index1]);
 
 	  if (u < 0.0) {
 	    fluxe_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
@@ -1167,7 +1167,7 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 	  /* y direction */
 
 	index1=get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
-	  u = 0.5*(velocity_d[3*index0+Y] + velocity_d[3*index1+Y]);
+	  u = 0.5*(velocity_d[Y*nsites_cd+index0] + velocity_d[Y*nsites_cd+index1]);
 
 
 	  if (u < 0.0) {
@@ -1182,7 +1182,7 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 
 
       index1=get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
-      u = 0.5*(velocity_d[3*index0+Z] + velocity_d[3*index1+Z]);
+      u = 0.5*(velocity_d[Z*nsites_cd+index0] + velocity_d[Z*nsites_cd+index1]);
 
       if (u < 0.0) {
 	fluxz_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];

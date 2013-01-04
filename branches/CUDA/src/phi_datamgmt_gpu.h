@@ -35,6 +35,7 @@ extern "C" void get_delsq_phi_from_gpu();
 extern "C" void get_phi_edges_from_gpu(void);
 extern "C" void put_phi_halos_on_gpu(void);
 extern "C" void phi_halo_gpu(void);
+extern "C" void velocity_halo_gpu(void);
 extern "C" void expand_phi_on_gpu();
 
 /* forward declarations of host routines internal to this module */
@@ -46,26 +47,14 @@ void finalise_phi_gpu();
 
 
 /* forward declarations of accelerator routines internal to this module */
-__global__ static void pack_phi_edgesX_gpu_d(int ndist, int nhalo,
-					 int N[3], 
-					 double* phiedgeXLOW_d,
-					 double* phiedgeXHIGH_d, double* phi_d); 
-__global__ static void unpack_phi_halosX_gpu_d(int ndist, int nhalo, int N[3],
-					 double* phi_d, double* phihaloXLOW_d,
-					   double* phihaloXHIGH_d);
-__global__ static void pack_phi_edgesY_gpu_d(int ndist, int nhalo,
-					 int N[3], 
-					 double* phiedgeYLOW_d,
-					 double* phiedgeYHIGH_d, double* phi_d); 
-__global__ static void unpack_phi_halosY_gpu_d(int ndist, int nhalo, int N[3],
-					   double* phi_d, double* phihaloYLOW_d,					   double* phihaloYHIGH_d);
-__global__ static void pack_phi_edgesZ_gpu_d(int ndist, int nhalo, 
-					 int N[3],  
-					 double* phiedgeZLOW_d,
-					 double* phiedgeZHIGH_d, double* phi_d); 
-__global__ static void unpack_phi_halosZ_gpu_d(int ndist, int nhalo, 
-					 int N[3], 
-					   double* phi_d, double* phihaloZLOW_d,					   double* phihaloZHIGH_d);
+__global__ static void pack_edge_gpu_d(int nfields, int nhalo,
+					 int N[3],
+					 double* edgeLOW_d,
+				       double* edgeHIGH_d, double* data_d, int dirn);
+__global__ static void unpack_halo_gpu_d(int nfields, int nhalo,
+					   int N[3],
+					   double* data_d, double* haloLOW_d,
+					 double* haloHIGH_d, int dirn);
 
 
 

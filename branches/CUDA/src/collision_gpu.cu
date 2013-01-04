@@ -199,7 +199,7 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 					      double* f_d, 
 						char* site_map_status_d, 
 					      double* force_d, 
-    			       		      double* velocity_ptr, 
+    			       		      double* velocity_d, 
 					      double* ma_ptr,
 					      double* d_ptr,
 					      double* mi_ptr
@@ -230,7 +230,6 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
   /* cast dummy gpu memory pointers to pointers of right type (for 
    * multidimensional arrays) */
 
-  double (*velocity_d)[3] = (double (*)[3]) velocity_ptr;
   double (*ma_d)[NVEL] = (double (*)[NVEL]) ma_ptr;
   double (*mi_d)[NVEL] = (double (*)[NVEL]) mi_ptr;
   double (*d_d)[3] = (double (*)[3]) d_ptr;
@@ -329,7 +328,7 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  
 	  /* hydrodynamics_set_velocity(index, u); */
 	  for (ia = 0; ia < 3; ia++) {
-	    velocity_d[index][ia] = u[ia];
+	    velocity_d[ia*nsite+index] = u[ia];
 	  }
 	  
 	  /* Relax stress with different shear and bulk viscosity */
@@ -455,7 +454,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 					  double* grad_phi_site_d,	
 					  double* delsq_phi_site_d,	
 					  double* force_d, 
-					  double* velocity_ptr, 
+					  double* velocity_d, 
 					  double* ma_ptr, 
 					  double* d_ptr, 
 					  double* mi_ptr, 
@@ -493,7 +492,6 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 
  /* cast dummy gpu memory pointers to pointers of right type (for 
    * multidimensional arrays) */
-  double (*velocity_d)[3] = (double (*)[3]) velocity_ptr;
   double (*ma_d)[NVEL] = (double (*)[NVEL]) ma_ptr;
   double (*mi_d)[NVEL] = (double (*)[NVEL]) mi_ptr;
   double (*d_d)[3] = (double (*)[3]) d_ptr;
@@ -592,7 +590,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  }
 	  /* hydrodynamics_set_velocity(index, u); */
 	  for (i = 0; i < 3; i++) {
-	    velocity_d[index][i] = u[i];
+	    velocity_d[i*nsite+index] = u[i];
 	  }
 	  
 	  /* Compute the thermodynamic component of the stress */

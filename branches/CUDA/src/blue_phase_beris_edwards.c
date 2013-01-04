@@ -96,9 +96,11 @@ void blue_phase_beris_edwards(void) {
 
   //to do - GPU implement commented out stuff below
 
-  get_velocity_from_gpu();
-  hydrodynamics_halo_u();
-  put_velocity_on_gpu();
+  //get_velocity_from_gpu();
+  //hydrodynamics_halo_u();
+  //put_velocity_on_gpu();
+
+  velocity_halo_gpu();
 
   //colloids_fix_swd();
   //hydrodynamics_leesedwards_transformation();
