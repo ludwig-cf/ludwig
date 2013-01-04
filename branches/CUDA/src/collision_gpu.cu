@@ -597,7 +597,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  
 	  symmetric_chemical_stress_gpu_d(index, sth, phi_site_d,
 					  grad_phi_site_d,
-					  delsq_phi_site_d,d_d);
+					  delsq_phi_site_d,d_d,nsite);
 
 	  /* Relax stress with different shear and bulk viscosity */
 	  
@@ -910,7 +910,7 @@ __device__ void symmetric_chemical_stress_gpu_d(const int index,
 						double *phi_site_d, 
 						double *grad_phi_site_d, 
 						double *delsq_phi_site_d,
-						double d_d[3][3]) {
+						double d_d[3][3], int nsite) {
 
   int ia, ib;
   double phi;
@@ -920,7 +920,7 @@ __device__ void symmetric_chemical_stress_gpu_d(const int index,
 
   phi = phi_site_d[index];
   delsq_phi = delsq_phi_site_d[index];
-  for (ia = 0; ia < 3; ia++) grad_phi[ia]=grad_phi_site_d[3*index+ia];
+  for (ia = 0; ia < 3; ia++) grad_phi[ia]=grad_phi_site_d[ia*nsite+index];
 
   p0 = 0.5*a_d*phi*phi + 0.75*b_d*phi*phi*phi*phi
     - kappa_d*phi*delsq_phi - 

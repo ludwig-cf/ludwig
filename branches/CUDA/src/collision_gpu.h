@@ -56,7 +56,7 @@ __device__ void symmetric_chemical_stress_gpu_d(const int index,
 						double *phi_site_d, 
 						double *grad_phi_site_d, 
 						double *delsq_phi_site_d,
-						double d_d[3][3]);
+						double d_d[3][3], int nsite);
 __device__ double dot_product_gpu_d(const double a[3], const double b[3]);
 __device__ double phi_get_delsq_delsq_phi_site_gpu_d(const int index,	
 					  double *delsq_delsq_phi_site_d);

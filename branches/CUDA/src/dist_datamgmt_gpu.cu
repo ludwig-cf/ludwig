@@ -93,7 +93,7 @@ static int nhalodataX;
 static int nhalodataY;
 static int nhalodataZ;
 
-//#define FULL_HALO 1
+#define FULL_HALO 1
 
 static int nlinkmax;
 
