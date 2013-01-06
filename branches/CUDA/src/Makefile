@@ -139,7 +139,7 @@ serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi" "OBJS=$(OBJS) $(MAIN).o"
 
-serialgpu: $(GPUOBJS)
+serialgpu: $(GPUOBJS) 
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi $(GPULIBS)" "OBJS=$(OBJS) main.o $(GPUOBJS) " \
 	"OPTS=$(OPTS) $(GPUCPPFLAG)"

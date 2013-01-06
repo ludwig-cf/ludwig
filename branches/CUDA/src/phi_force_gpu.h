@@ -44,7 +44,7 @@ extern double * phi_site_full_d;
 extern double * grad_phi_site_d;
 extern double * delsq_phi_site_d;
 extern double * force_d;
-extern int * site_map_status_d;
+extern char * site_map_status_d;
 extern double * fluxe_d;
 extern double * fluxw_d;
 extern double * fluxy_d;
@@ -77,7 +77,7 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 						  double *delsq_phi_site_d,
 					   double *force_d, 
 					   double *velocity_d,
-					   int *site_map_status_d,
+					   char *site_map_status_d,
 					   double *fluxe_d,
 					   double *fluxw_d,
 					   double *fluxy_d,
@@ -92,7 +92,7 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 						  double *delsq_phi_site_d,
 					   double *force_d, 
 					   double *velocity_d,
-					   int *site_map_status_d,
+					   char *site_map_status_d,
 					   double *fluxe_d,
 					   double *fluxw_d,
 					   double *fluxy_d,

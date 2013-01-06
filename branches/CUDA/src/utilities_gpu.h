@@ -19,6 +19,7 @@ extern "C" void hydrodynamics_get_velocity(const int, double *);
 extern "C" void hydrodynamics_set_velocity(const int, double *);
 extern "C" void fluid_body_force(double f[3]);
 extern "C" char site_map_get_status(int,int,int);
+extern "C" char site_map_get_status_index(int);
 
 
 /* expose routines in this module to outside routines */

@@ -295,6 +295,7 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
   dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
   dim3 threadsperblock(TPBZ,TPBY,TPBX);
 
+
   blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d, hs5_d);
       
@@ -911,7 +912,7 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 						  double *delsq_phi_site_d,
 					   double *force_d,
 					   double *velocity_d,
-					   int *site_map_status_d,
+					   char *site_map_status_d,
 					   double *fluxe_d,
 					   double *fluxw_d,
 					   double *fluxy_d,
@@ -946,6 +947,7 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 
       //get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_cd);
       index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);      
+
       icm1=le_index_real_to_buffer_d[ii+nhalo_cd];
       icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii+nhalo_cd];      
 
@@ -982,19 +984,16 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
    blue_phase_compute_h_gpu_d(h, phi_site_full_d, index, indexm1, indexp1);
 
 
-   //SOMETHING WRONG WITH THIS - NEEDS FIXED
-   /* if (site_map_status_d[index] != FLUID) {  */
-
-   /* 	  /\* Solid: diffusion only. *\/ */
+   if (site_map_status_d[index] != FLUID) {
      
-   /*   q[X][X] += dt_solid_cd*Gamma_cd*h[X][X]; */
-   /*   q[X][Y] += dt_solid_cd*Gamma_cd*h[X][Y]; */
-   /*   q[X][Z] += dt_solid_cd*Gamma_cd*h[X][Z]; */
-   /*   q[Y][Y] += dt_solid_cd*Gamma_cd*h[Y][Y]; */
-   /*   q[Y][Z] += dt_solid_cd*Gamma_cd*h[Y][Z]; */
+     q[X][X] += dt_solid_cd*Gamma_cd*h[X][X];
+     q[X][Y] += dt_solid_cd*Gamma_cd*h[X][Y];
+     q[X][Z] += dt_solid_cd*Gamma_cd*h[X][Z];
+     q[Y][Y] += dt_solid_cd*Gamma_cd*h[Y][Y];
+     q[Y][Z] += dt_solid_cd*Gamma_cd*h[Y][Z];
      
-   /*    }  */
-   /*    else {  */
+   }
+   else {
      
 
 	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
@@ -1078,7 +1077,7 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 	
 	/* phi_set_q_tensor(index, q); */
 
-	  // }
+	   }
 	 phi_site_d[nsites_cd*XX+index] = q[X][X];
 	 phi_site_d[nsites_cd*XY+index] = q[X][Y];
 	 phi_site_d[nsites_cd*XZ+index] = q[X][Z];
@@ -1100,7 +1099,7 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 						  double *delsq_phi_site_d,
 					   double *force_d,
 					   double *velocity_d,
-					   int *site_map_status_d,
+					   char *site_map_status_d,
 					   double *fluxe_d,
 					   double *fluxw_d,
 					   double *fluxy_d,

@@ -258,6 +258,11 @@ static void free_memory_on_gpu()
   checkCUDAError("free_memory_on_gpu");
 }
 
+__global__ void printsitemap4421(char * site_map_status_d){
+
+  printf("PPP %d\n",site_map_status_d[4421]);
+
+}
 
 /* copy site map from host to accelerator */
 void put_site_map_on_gpu()
@@ -266,24 +271,26 @@ void put_site_map_on_gpu()
   int index, ic, jc, kc;
 	      
 
-  /* get temp host copies of arrays */
-  for (ic=1; ic<=N[X]; ic++)
+  for (ic=0; ic<Nall[X]; ic++)
     {
-      for (jc=1; jc<=N[Y]; jc++)
+      for (jc=0; jc<Nall[Y]; jc++)
 	{
-	  for (kc=1; kc<=N[Z]; kc++)
+	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
-	      index = coords_index(ic, jc, kc); 
+	      
 
-	      site_map_status_temp[index] = site_map_get_status(ic, jc, kc);
+	      index = get_linear_index(ic, jc, kc, Nall); 
+	      site_map_status_temp[index] = site_map_get_status_index(index);
 
 	    }
 	}
     }
 
+
   /* copy data from CPU to accelerator */
   cudaMemcpy(site_map_status_d, site_map_status_temp, nsites*sizeof(char), \
 	     cudaMemcpyHostToDevice);
+
 
   checkCUDAError("put_site_map_on_gpu");
 
@@ -316,7 +323,9 @@ void put_force_on_gpu()
 	{
 	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
-	      index = coords_index(ic, jc, kc);
+
+
+	      index = get_linear_index(ic, jc, kc, Nall); 
 
 	      hydrodynamics_get_force_local(index,force);
 	      	      
@@ -355,7 +364,9 @@ void get_force_from_gpu()
 	{
 	  for (kc=0; kc<Nall[Z]; kc++)
 	    {
-	      index = coords_index(ic, jc, kc);
+
+	      index = get_linear_index(ic, jc, kc, Nall); 
+
 
 	      for (i=0;i<3;i++)
 		{
@@ -447,6 +458,8 @@ void put_fluxes_on_gpu(){
   cudaMemcpy(fluxy_d, fluxy, nsites*nop*sizeof(double),
 	    cudaMemcpyHostToDevice);
   cudaMemcpy(fluxz_d, fluxz, nsites*nop*sizeof(double),
+	    cudaMemcpyHostToDevice);
+  cudaMemcpy(hs5_d, hs5, nsites*nop*sizeof(double),
 	    cudaMemcpyHostToDevice);
 
 
