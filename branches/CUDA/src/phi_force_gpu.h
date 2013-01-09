@@ -15,6 +15,7 @@
 extern "C" void phi_force_calculation_gpu(void);
 extern "C" void blue_phase_be_update_gpu(void);
 extern "C" void advection_upwind_gpu(void);
+extern "C" void advection_bcs_no_normal_flux_gpu(void);
 
 
 

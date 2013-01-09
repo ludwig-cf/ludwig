@@ -421,6 +421,52 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
   return;
 }
 
+__global__ void advection_bcs_no_normal_flux_gpu_d(const int nop,
+					   char *site_map_status_d,
+					   double *fluxe_d,
+					   double *fluxw_d,
+					   double *fluxy_d,
+					   double *fluxz_d
+						   );
+
+
+void advection_bcs_no_normal_flux_gpu(void){
+
+  int N[3],nhalo,Nall[3];
+  
+  nhalo = coords_nhalo();
+  coords_nlocal(N); 
+
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+  int nop = phi_nop();
+  
+  cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
+  
+#define TPBX 4 
+#define TPBY 4
+#define TPBZ 8
+  
+  /* two sfastest moving dimensions have cover a single lower width-one halo here */
+  dim3 nblocks(((N[Z]+1)+TPBZ-1)/TPBZ,((N[Y]+1)+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
+  dim3 threadsperblock(TPBZ,TPBY,TPBX);
+  
+  advection_bcs_no_normal_flux_gpu_d<<<nblocks,threadsperblock>>>
+    (nop, site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
+  
+  cudaThreadSynchronize();
+  checkCUDAError("advection_bcs_no_normal_flux_gpu");
+  
+  return;
+
+}
+
 
 /*****************************************************************************
  *
@@ -1196,6 +1242,85 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
     }
 
   return;
+}
+
+
+__global__ void advection_bcs_no_normal_flux_gpu_d(const int nop,
+					   char *site_map_status_d,
+					   double *fluxe_d,
+					   double *fluxw_d,
+					   double *fluxy_d,
+					   double *fluxz_d
+					    ) {
+
+  int ia, icm1, icp1;
+  int index, index1, index0;
+  int ii, jj, kk, n;
+  double u, phi0;
+  //int threadIndex,ii, jj, kk;
+  double mask, maske, maskw, masky, maskz;
+
+
+ /* CUDA thread index */
+  //threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
+ 
+ /* Avoid going beyond problem domain */
+  // if (threadIndex < N_cd[X]*N_cd[Y]*N_cd[Z])
+
+  if (ii < N_cd[X] && jj < (N_cd[Y]+1) && kk < (N_cd[Z]+1) )
+    {
+
+
+      /* calculate index from CUDA thread index */
+
+
+      /* mask  = (site_map_get_status_index(index)  == FLUID); */
+      /* maske = (site_map_get_status(ic+1, jc, kc) == FLUID); */
+      /* maskw = (site_map_get_status(ic-1, jc, kc) == FLUID); */
+      /* masky = (site_map_get_status(ic, jc+1, kc) == FLUID); */
+      /* maskz = (site_map_get_status(ic, jc, kc+1) == FLUID); */
+      
+      
+      index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);      
+      mask  = (site_map_status_d[index]  == FLUID); 
+
+      index0 = get_linear_index_gpu_d(ii+nhalo_cd+1,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);      
+      maske  = (site_map_status_d[index0]  == FLUID); 
+
+      index0 = get_linear_index_gpu_d(ii+nhalo_cd-1,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);      
+      maskw  = (site_map_status_d[index0]  == FLUID); 
+
+      index0 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);      
+      masky  = (site_map_status_d[index0]  == FLUID); 
+
+      index0 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);      
+      maskz  = (site_map_status_d[index0]  == FLUID); 
+
+
+
+
+	/* for (n = 0;  n < nf; n++) { */
+	/*   fluxw[nf*index + n] *= mask*maskw; */
+	/*   fluxe[nf*index + n] *= mask*maske; */
+	/*   fluxy[nf*index + n] *= mask*masky; */
+	/*   fluxz[nf*index + n] *= mask*maskz; */
+	/* } */
+
+
+	for (n = 0;  n < nop; n++) { 
+	   fluxw_d[nop*index + n] *= mask*maskw; 
+	   fluxe_d[nop*index + n] *= mask*maske;
+	   fluxy_d[nop*index + n] *= mask*masky; 
+	   fluxz_d[nop*index + n] *= mask*maskz; 
+	 } 
+      
+      
+
+
+    }
 }
 
 
