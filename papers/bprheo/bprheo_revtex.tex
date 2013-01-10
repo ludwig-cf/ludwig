@@ -1,124 +1,126 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%This is the article LaTeX template for RSC journals
-%Copyright The Royal Society of Chemistry 2010
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ****** Start of file apstemplate.tex ****** %
+%%
+%%
+%%   This file is part of the APS files in the REVTeX 4 distribution.
+%%   Version 4.1r of REVTeX, August 2010
+%%
+%%
+%%   Copyright (c) 2001, 2009, 2010 The American Physical Society.
+%%
+%%   See the REVTeX 4 README file for restrictions and more information.
+%%
+%
+% This is a template for producing manuscripts for use with REVTEX 4.0
+% Copy this file to another name and then work on that file.
+% That way, you always have this original template file to use.
+%
+% Group addresses by affiliation; use superscriptaddress for long
+% author lists, or if there are many overlapping affiliations.
+% For Phys. Rev. appearance, change preprint to twocolumn.
+% Choose pra, prb, prc, prd, pre, prl, prstab, prstper, or rmp for journal
+%  Add 'draft' option to mark overfull boxes with black boxes
+%  Add 'showpacs' option to make PACS codes appear
+%  Add 'showkeys' option to make keywords appear
+\documentclass[aps,pre,reprint,superscriptaddress, twocolumn]{revtex4}
+%\documentclass[aps,pre,preprint,superscriptaddress]{revtex4}
+%\documentclass[aps,prl,reprint,groupedaddress]{revtex4}
 
+% You should use BibTeX and apsrev.bst for references
+% Choosing a journal automatically selects the correct APS
+% BibTeX style file (bst file), so only uncomment the line
+% below if necessary.
+\bibliographystyle{apsrev4-1}
 
-\documentclass[8.5pt,twoside,twocolumn]{article}
-\oddsidemargin -1.2cm
-\evensidemargin -1.2cm
-\textwidth 18cm
-\headheight 1.0in
-\topmargin -3.5cm
-\textheight 22cm
-\usepackage[super,sort&compress,comma]{natbib} 
-\usepackage{mhchem}
-\usepackage{times,mathptmx}
-%\usepackage{times}
-% feel free not to use mathptmx if it causes difficulties
-\usepackage{sectsty}
-\usepackage{balance} 
-
+\usepackage{graphicx}
 \usepackage{amsmath}
-\usepackage{amssymb}
 \usepackage{float}
+
 \newcommand{\e}[1]{\times10^{#1}}
 \newcommand{\gd}{\dot{\gamma}}
 \newcommand{\com}[1]{{\bf {#1}}}
 
-\usepackage{graphicx} %eps figures can be used instead
-\usepackage{lastpage}
-\usepackage[format=plain,justification=raggedright,singlelinecheck=false,font=small,labelfont=bf,labelsep=space]{caption} 
-\usepackage{fancyhdr}
-\pagestyle{fancy}
-
 \begin{document}
 
-\thispagestyle{plain}
-\fancypagestyle{plain}{
-\fancyhead[L]{\includegraphics[height=8pt]{headers/LH}}
-\fancyhead[C]{\hspace{-1cm}\includegraphics[height=20pt]{headers/CH}}
-\fancyhead[R]{\includegraphics[height=10pt]{headers/RH}\vspace{-0.2cm}}
-\renewcommand{\headrulewidth}{1pt}}
-\renewcommand{\thefootnote}{\fnsymbol{footnote}}
-\renewcommand\footnoterule{\vspace*{1pt}% 
-\hrule width 3.4in height 0.4pt \vspace*{5pt}} 
-\setcounter{secnumdepth}{5}
+% Use the \preprint command to place your local institutional report
+% number in the upper righthand corner of the title page in preprint mode.
+% Multiple \preprint commands are allowed.
+% Use the 'preprintnumbers' class option to override journal defaults
+% to display numbers if necessary
+%\preprint{}
+
+%Title of paper
+\title{Rheology of Cubic Blue Phases}
+
+% repeat the \author .. \affiliation  etc. as needed
+% \email, \thanks, \homepage, \altaffiliation all apply to the current
+% author. Explanatory text should go in the []'s, actual e-mail
+% address or url should go in the {}'s for \email and \homepage.
+% Please use the appropriate macro foreach each type of information
+
+% \affiliation command applies to all authors since the last
+% \affiliation command. The \affiliation command should follow the
+% other information
+% \affiliation can be followed by \email, \homepage, \thanks as well.
+
+\author{O. Henrich}
+\email[Corresponding author: ]{ohenrich@epcc.ed.ac.uk}
+\affiliation{EPCC, School of Physics and Astronomy, University of Edinburgh,\\JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK}
+\affiliation{Centre for Computational Science, University College London,\\20 Gordon Street, London WC1H 0AJ, UK}
+
+\author{K. Stratford}
+\affiliation{EPCC, School of Physics and Astronomy, University of Edinburgh,\\JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK}
+
+\author{P.V. Coveney}
+\affiliation{Centre for Computational Science, University College London,\\20 Gordon Street, London WC1H 0AJ, UK}
+
+\author{M.E. Cates}
+\affiliation{SUPA, School of Physics and Astronomy, University of Edinburgh,\\JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK}
+
+\author{D. Marenduzzo}
+\affiliation{SUPA, School of Physics and Astronomy, University of Edinburgh,\\JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK}
 
 
+%\homepage[]{Your web page}
+%\thanks{}
+%\altaffiliation{}
 
-\makeatletter 
-\def\subsubsection{\@startsection{subsubsection}{3}{10pt}{-1.25ex plus -1ex minus -.1ex}{0ex plus 0ex}{\normalsize\bf}} 
-\def\paragraph{\@startsection{paragraph}{4}{10pt}{-1.25ex plus -1ex minus -.1ex}{0ex plus 0ex}{\normalsize\textit}} 
-\renewcommand\@biblabel[1]{#1}            
-\renewcommand\@makefntext[1]% 
-{\noindent\makebox[0pt][r]{\@thefnmark\,}#1}
-\makeatother 
-\renewcommand{\figurename}{\small{Fig.}~}
-\sectionfont{\large}
-\subsectionfont{\normalsize} 
+%Collaboration name if desired (requires use of superscriptaddress
+%option in \documentclass). \noaffiliation is required (may also be
+%used with the \author command).
+%\collaboration can be followed by \email, \homepage, \thanks as well.
+%\collaboration{}
 
-\fancyfoot{}
-\fancyfoot[LO,RE]{\vspace{-7pt}\includegraphics[height=9pt]{headers/LF}}
-\fancyfoot[CO]{\vspace{-7.2pt}\hspace{12.2cm}\includegraphics{headers/RF}}
-\fancyfoot[CE]{\vspace{-7.5pt}\hspace{-13.5cm}\includegraphics{headers/RF}}
-\fancyfoot[RO]{\footnotesize{\sffamily{1--\pageref{LastPage} ~\textbar  \hspace{2pt}\thepage}}}
-\fancyfoot[LE]{\footnotesize{\sffamily{\thepage~\textbar\hspace{3.45cm} 1--\pageref{LastPage}}}}
-\fancyhead{}
-\renewcommand{\headrulewidth}{1pt} 
-\renewcommand{\footrulewidth}{1pt}
-\setlength{\arrayrulewidth}{1pt}
-\setlength{\columnsep}{6.5mm}
-\setlength\bibsep{1pt}
+%\noaffiliation
 
-\twocolumn[
-  \begin{@twocolumnfalse}
-\noindent\LARGE{\textbf{Rheology of Cubic Blue Phases$^\dag$}}
-\vspace{0.6cm}
+\date{\today}
 
-\noindent\large{\textbf{Oliver Henrich $^{\ast}$\textit{$^{a,b}$}, Kevin Stratford \textit{$^{a}$}, Peter V. Coveney \textit{$^{b}$}, Michael E. Cates \textit{$^{c}$}, Davide Marenduzzo \textit{$^{c}$}}}\vspace{0.5cm}
-%Please note that \ast indicates the corresponding author(s) but no footnote text is required. 
-
-
-\noindent\textit{\small{\textbf{Received Xth XXXXXXXXXX 20XX, Accepted Xth XXXXXXXXX 20XX\newline
-First published on the web Xth XXXXXXXXXX 200X}}}
-
-\noindent \textbf{\small{DOI: }}
-\vspace{0.6cm}
-%Please do not change this text.
-
-\noindent \normalsize{We study the behaviour of cubic blue phases under shear flow 
+\begin{abstract}
+We study the behaviour of cubic blue phases under shear flow
 via lattice Boltzmann simulations. We focus on the two experimentally observed
 phases, Blue Phase I (BPI) and Blue Phase II (BPII). The disclination network of Blue Phase 
 II continuously breaks and reforms under steady shear, leading to an oscillatory stress response in time.
 For larger shear rates, the structure breaks up into a cholesteric helix, lying either along the
 vorticity or the flow gradient direction according to the imposed flow.
-BPI leads to a very different response. Here, oscillations are only possible for intermediate
+BPI leads to a very different response. Here, oscillations are only possible for intermediate 
 shear rates -- very slow flow leads to a transition into an amorphous network 
 with a residual stress. The flow-induced oscillation regime features a novel arrangement
 of double helical disclinations which rotate due to the shear. Large flow can, 
 just as in the BPII case, lead to the rupture of the network and the stabilisation
 of less ordered cholesteric structures. Our results provide the first 
 theoretical investigation of sheared blue phases in large systems, and
-are relevant to understanding the bulk rheology of these materials.}
-\vspace{0.5cm}
- \end{@twocolumnfalse}
-  ]
+are relevant to understanding the bulk rheology of these materials. 
+\end{abstract}
 
-%\footnotetext{\dag~Electronic Supplementary Information (ESI) available: [details of any supplementary information available should be included here]. See DOI: 10.1039/b000000x/}
+% insert suggested PACS numbers in braces on next line
+\pacs{47.11.Qr, 47.57.Lj, 47.57.Qk, 61.30.Dk, 61.30.Pq, 61.30.Jf, 83.80.Xz}
+% insert suggested keywords - APS authors don't need to do this
+\keywords{blue phase, cholesterics, chiral nematics, rheology}
 
-%Please use \dag to cite the ESI in the main text of the article.
-%If you article does not have ESI please remove the the \dag symbol from the title and the above footnotetext.
+%\maketitle must follow title, authors, abstract, \pacs, and \keywords
+\maketitle
 
-\footnotetext{\textit{$^{a}$~EPCC, School of Physics and Astronomy, University of Edinburgh,\\JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK; E-mail: ohenrich@epcc.ed.ac.uk}}
-\footnotetext{\textit{$^{b}$~Centre for Computational Science, University College London,\\20 Gordon Street, London WC1H 0AJ, UK}}
-\footnotetext{\textit{$^{c}$~SUPA, School of Physics and Astronomy, University of Edinburgh,\\JCMB Kings Buildings, Mayfield Road, Edinburgh EH9 3JZ, UK}}
-
-%additional addresses can be cited as above using the lower-case letters, c, d, e... If all authors are from the same address, no letter is required
-
-%\footnotetext{\ddag~Additional footnotes to the title and authors can be included \emph{e.g.}\ `Present address:' or `These authors contributed equally to this work' as above using the symbols: \ddag, \textsection, and \P. Please place the appropriate symbol next to the author's name and include a \texttt{\textbackslash footnotetext} entry in the the correct place in the list.}
-
-
+% body of paper here - Use proper section commands
+% References should be done using the \cite, \ref, and \label commands
 \section{Introduction}
 % Put \label in argument of \section for cross-referencing
 %\section{\label{}}
@@ -465,10 +467,9 @@ period needed for a pattern to break up and
 reform along the flow direction is $\tau_F = 1/\gd$.
 
 \begin{figure}[htpb]
-\center
-\includegraphics[width=0.35\textwidth]{disc-160k_run902.png}
-\includegraphics[width=0.35\textwidth]{disc-164k_run902.png}
-\includegraphics[width=0.35\textwidth]{disc-165k_run902.png}
+\includegraphics[width=0.41\textwidth]{disc-160k_run902.png}
+\includegraphics[width=0.41\textwidth]{disc-164k_run902.png}
+\includegraphics[width=0.41\textwidth]{disc-165k_run902.png}
 \caption{Disclination network of BPII in shear flow: 
 The pictures show a typical sequence of snapshots in the steady state 
 at $\gd=1.56\e{-4}$ and time steps $t=1.60, 1.64,1.65\e{5}$. The velocity 
@@ -1123,14 +1124,15 @@ on the flow properties of complex liquid-crystalline phases.
 %\section{}
 
 % If you have acknowledgments, this puts in the proper section head.
-\section*{Acknowledgments}
+\begin{acknowledgments}
 We acknowledge support by EPSRC grant nos. EP/E045316 and EP/E030173, 
 the MAPPER EU-FP7 project (grant no. RI-261507) and computing time on HECToR.
 We thank Peter J. Collings for very stimulating discussions. 
 MEC holds a Royal Society Research Professorship.
+\end{acknowledgments}
 
 \appendix
-\section*{Appendix}
+\section{}
 
 In this Appendix we give some more details on our simulations,
 including the importance and effect of boundary conditions. 
@@ -1224,9 +1226,12 @@ where the response of the network depends less on
 the details of the boundary conditions used at the wall.
 \newpage
 
-\footnotesize{
-\bibliography{bprheo} %your .bib file
-\bibliographystyle{rsc} %the RSC's .bst file
-}
+
+% Create the reference section using BibTeX:
+\bibliographystyle{rsc}
+\bibliography{bprheo}
 
 \end{document}
+%
+% ****** End of file apstemplate.tex ******
+
