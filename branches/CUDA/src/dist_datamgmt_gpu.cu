@@ -24,6 +24,7 @@ extern "C" int  RUN_get_string_parameter(const char *, char *, const int);
 
 /* external pointers to data on host*/
 extern double * f_;
+extern double * velocity_d;
 
 
 
@@ -393,9 +394,8 @@ void fill_mask_with_neighbours(int *mask)
 
 
 
-__global__ static void copy_f_partial_gpu_d(int ndist, int nhalo, int N[3],
-					    double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
-
+__global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3],
+						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
 
 
 
@@ -406,17 +406,9 @@ void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
 
 
   int *mask;
-  int i, Nall[3];
+  int i;
   int p, m;
 
-  int nhalo = coords_nhalo();
-  int ndist = distribution_ndist();
-  coords_nlocal(N);
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-
-  int nsite = Nall[X]*Nall[Y]*Nall[Z];
 
 
   if(include_neighbours){
@@ -430,20 +422,20 @@ void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
 
   
   int packedsize=0;
-  for (i=0; i<nsite; i++){
+  for (i=0; i<nsites; i++){
     if(mask[i]) packedsize++;
   }
 
   
   int j=0;
-  for (i=0; i<nsite; i++){
+  for (i=0; i<nsites; i++){
 
     if(mask[i]){
 
       for (p=0; p<NVEL; p++){
 	for (m=0; m<ndist; m++){
 	  ftmp[packedsize*ndist*p+packedsize*m+j]
-	    =f_[nsite*ndist*p+nsite*m+i];
+	    =f_[nsites*ndist*p+nsites*m+i];
 	}
       }
       packedindex[i]=j;
@@ -456,14 +448,14 @@ void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
   cudaMemcpy(ftmp_d, ftmp, packedsize*ndist*NVEL*sizeof(double), cudaMemcpyHostToDevice);
 
   
-  cudaMemcpy(mask_d, mask, nsite*sizeof(int), cudaMemcpyHostToDevice);
-  cudaMemcpy(packedindex_d, packedindex, nsite*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(mask_d, mask, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
 
   /* run the GPU kernel */
   int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  copy_f_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d,
-						f_d, ftmp_d, mask_d,
-						packedindex_d, packedsize, 1);
+    copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist*NVEL, nhalo, N_d,
+  						f_d, ftmp_d, mask_d,
+  						packedindex_d, packedsize, 1);
   
   cudaThreadSynchronize();
   
@@ -478,21 +470,10 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
 
 
   int *mask;
-  int i, Nall[3];
+  int i;
   int p, m, j;
   int ib[3];
 
-
-  int nhalo = coords_nhalo();
-  int ndist = distribution_ndist();
-  coords_nlocal(N);
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-
-  
-
-  int nsite = Nall[X]*Nall[Y]*Nall[Z];
 
 
   if(include_neighbours){
@@ -504,7 +485,7 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
   }
     
   j=0;
-  for (i=0; i<nsite; i++){
+  for (i=0; i<nsites; i++){
     if(mask[i]){
       packedindex[i]=j;
       j++;
@@ -514,12 +495,12 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
 
   int packedsize=j;
 
-  cudaMemcpy(mask_d, mask, nsite*sizeof(int), cudaMemcpyHostToDevice);
-  cudaMemcpy(packedindex_d, packedindex, nsite*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(mask_d, mask, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
 
   /* run the GPU kernel */
   int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  copy_f_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d,
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist*NVEL, nhalo, N_d,
 						ftmp_d, f_d, mask_d,
 						packedindex_d, packedsize, 0);
   
@@ -530,13 +511,13 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
 
 
   j=0;
-  for (i=0; i<nsite; i++){
+  for (i=0; i<nsites; i++){
 
     if(mask[i]){
 
       for (p=0; p<NVEL; p++){
 	for (m=0; m<ndist; m++){
-	  f_[nsite*ndist*p+nsite*m+i]=
+	  f_[nsites*ndist*p+nsites*m+i]=
 	    ftmp[packedsize*ndist*p+packedsize*m+j];	   
 	}
       }
@@ -550,13 +531,151 @@ void get_f_partial_from_gpu(int *mask_in, int include_neighbours)
 
 }
 
+__global__ void printgpuint(int *array_d, int index){
 
-__global__ static void copy_f_partial_gpu_d(int ndist, int nhalo, int N[3],
+  printf("GPU array [%d] = %d \n",index,array_d[index]);
+
+}
+
+__global__ void printgpudouble(double *array_d, int index){
+
+  printf("GPU array [%d] = %e \n",index,array_d[index]);
+
+}
+
+/* copy part of velocity_ from host to accelerator, using mask structure */
+void put_velocity_partial_on_gpu(int *mask_in, int include_neighbours)
+{
+
+
+  int *mask;
+  int i;
+  int index;
+
+  if(include_neighbours){
+    fill_mask_with_neighbours(mask_in);
+    mask=mask_with_neighbours;
+  }
+  else{
+    mask=mask_in;
+  }
+
+
+
+  int packedsize=0;
+  for (index=0; index<nsites; index++){
+    if(mask[index]) packedsize++;
+  }
+
+
+  double velocity[3];
+  int j=0;
+  for (index=0; index<nsites; index++){
+    
+    if(mask[index]){
+ 
+      hydrodynamics_get_velocity(index,velocity);
+      
+      for (i=0;i<3;i++)
+	{
+	  ftmp[i*packedsize+j]=velocity[i];
+	}
+      
+      packedindex[index]=j;
+      j++;
+
+    }
+
+  }
+
+    cudaMemcpy(ftmp_d, ftmp, packedsize*3*sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(mask_d, mask, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
+
+  /* run the GPU kernel */
+
+  int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(3, nhalo, N_d,
+  						velocity_d, ftmp_d, mask_d,
+  						packedindex_d, packedsize, 1);
+  cudaThreadSynchronize();
+  checkCUDAError("put_velocity_partial_on_gpu");
+
+}
+
+
+/* copy part of velocity_ from accelerator to host, using mask structure */
+void get_velocity_partial_from_gpu(int *mask_in, int include_neighbours)
+{
+
+
+  int *mask;
+  int i;
+  int index;
+
+  if(include_neighbours){
+    fill_mask_with_neighbours(mask_in);
+    mask=mask_with_neighbours;
+  }
+  else{
+    mask=mask_in;
+  }
+
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(mask[i]){
+      packedindex[i]=j;
+      j++;
+    }
+    
+  }
+
+  int packedsize=j;
+
+  cudaMemcpy(mask_d, mask, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
+
+  int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+ copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(3, nhalo, N_d,
+  						ftmp_d, velocity_d, mask_d,
+  						packedindex_d, packedsize, 0);
+  cudaThreadSynchronize();
+
+  cudaMemcpy(ftmp, ftmp_d, packedsize*3*sizeof(double), cudaMemcpyDeviceToHost); 
+
+  double velocity[3];
+  j=0;
+  for (index=0; index<nsites; index++){
+    
+    if(mask[index]){
+ 
+      for (i=0;i<3;i++)
+	{
+	  velocity[i]=ftmp[i*packedsize+j];
+	}
+      hydrodynamics_set_velocity(index,velocity);       
+      j++;
+
+    }
+
+  }
+
+
+
+  /* run the GPU kernel */
+
+  checkCUDAError("get_velocity_partial_from_gpu");
+
+}
+
+
+
+__global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3],
 					    double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack) {
 
   int ii, jj, kk, n, threadIndex, nsite, Nall[3];
   int xstr, ystr, zstr, pstr, xfac, yfac;
-  int p, m;
+  int i;
 
 
   Nall[X]=N[X]+2*nhalo;
@@ -569,27 +688,29 @@ __global__ static void copy_f_partial_gpu_d(int ndist, int nhalo, int N[3],
   /* CUDA thread index */
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
 
+  //if (threadIndex==0)printf("x %d\n ",mask_d[8660]);
 
   //Avoid going beyond problem domain
   if ((threadIndex < Nall[X]*Nall[Y]*Nall[Z]) && mask_d[threadIndex])
     {
-      
-      for (p=0;p<NVEL;p++)
+
+      //printf("XXY %d %d %d\n",threadIndex,packedindex_d[threadIndex],mask_d[threadIndex]);         
+      //if (threadIndex==8660) printf("XXY %d %d %d\n",threadIndex,packedindex_d[threadIndex],mask_d[threadIndex]);         
+      //if (threadIndex==5662 )printf("XXY %d\n",packedindex_d[threadIndex]);      
+
+      for (i=0;i<nPerSite;i++)
 	{
-	  for (m=0;m<ndist;m++)
 	    
-	    if (inpack)
-	      f_out[ndist*nsite*p+m*nsite+threadIndex]
-		=f_in[ndist*packedsize*p+m*packedsize
-		      +packedindex_d[threadIndex]];
-	    else
-	      f_out[ndist*packedsize*p+m*packedsize
-		      +packedindex_d[threadIndex]]
-		=f_in[ndist*nsite*p+m*nsite+threadIndex];
-
-
+	  if (inpack)
+	    f_out[i*nsite+threadIndex]
+	    =f_in[i*packedsize+packedindex_d[threadIndex]];
+	  else
+	   f_out[i*packedsize+packedindex_d[threadIndex]]
+	      =f_in[i*nsite+threadIndex];
+	  
 	}
     }
+
 
   return;
 }

@@ -449,6 +449,7 @@ void put_velocity_on_gpu()
 }
 
 
+
 void put_fluxes_on_gpu(){
 
   cudaMemcpy(fluxe_d, fluxe, nsites*nop*sizeof(double),

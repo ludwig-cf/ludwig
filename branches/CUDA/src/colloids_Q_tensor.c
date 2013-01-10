@@ -333,6 +333,7 @@ void colloids_fix_swd(void) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
+
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     x = noffset[X] + ic;
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -371,6 +372,28 @@ void colloids_fix_swd(void) {
       }
     }
   }
+
+#ifdef _GPU_
+  int nhalo=coords_nhalo();
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;
+  Nall[Y]=nlocal[Y]+2*nhalo;
+  Nall[Z]=nlocal[Z]+2*nhalo;
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+
+  int *mask = (int*) calloc(nsites,sizeof(int));
+
+   for (index=0; index<nsites; index++) { 
+
+     if (site_map_get_status_index(index) != FLUID || 
+	 colloid_at_site_index(index) ) 
+       mask[index]=1; 
+
+   }    
+
+   put_velocity_partial_on_gpu(mask,0);
+   free(mask);
+#endif
 
   return;
 }

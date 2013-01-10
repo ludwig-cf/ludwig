@@ -100,65 +100,11 @@ void blue_phase_beris_edwards(void) {
 
   //to do - GPU implement commented out stuff below
   velocity_halo_gpu();
-  //hydrodynamics_halo_u();
-
-  //HACK
-  get_f_from_gpu();
-  get_phi_from_gpu();
-  get_grad_phi_from_gpu();
-  get_delsq_phi_from_gpu();
-  get_force_from_gpu();
-  get_velocity_from_gpu();
-  //END HACK
-
-
   colloids_fix_swd();
-
-  //HACK
-  put_f_on_gpu();
-  put_phi_on_gpu();
-  put_grad_phi_on_gpu();
-  put_delsq_phi_on_gpu();
-  put_force_on_gpu();
-  put_velocity_on_gpu();
-  put_fluxes_on_gpu();
-  expand_phi_on_gpu();
-  put_site_map_on_gpu();
-  //END HACK
-
-
+  
   //hydrodynamics_leesedwards_transformation();
   advection_upwind_gpu();  
-  //advection_upwind(fluxe, fluxw, fluxy, fluxz);
-
   advection_bcs_no_normal_flux_gpu(); 
-
-  /* //HACK */
-  /* get_f_from_gpu(); */
-  /* get_phi_from_gpu(); */
-  /* get_grad_phi_from_gpu(); */
-  /* get_delsq_phi_from_gpu(); */
-  /* get_force_from_gpu(); */
-  /* get_velocity_from_gpu(); */
-  /* get_fluxes_from_gpu(); */
-  /* //END HACK */
-
-
-  /* //this needs ported to gpu */
-  /* advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz); */
-
-  /* //HACK */
-  /* put_f_on_gpu(); */
-  /* put_phi_on_gpu(); */
-  /* put_grad_phi_on_gpu(); */
-  /* put_delsq_phi_on_gpu(); */
-  /* put_force_on_gpu(); */
-  /* put_velocity_on_gpu(); */
-  /* put_fluxes_on_gpu(); */
-  /* expand_phi_on_gpu(); */
-  /* put_site_map_on_gpu(); */
-  /* //END HACK */
-
 
   if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     	info("Error: blue_phase_be_surface not yet supported in GPU mode\n");
@@ -166,10 +112,7 @@ void blue_phase_beris_edwards(void) {
     //blue_phase_be_surface(hs5);
   }
 
-
-
   blue_phase_be_update_gpu(hs5);
-
 
 #else
 
