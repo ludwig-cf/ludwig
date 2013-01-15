@@ -404,6 +404,10 @@ __global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3
 						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
 
 
+__global__ static void copy_field_partial_gpu_d_TEST(int nPerSite, int nhalo, int N[3],
+						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
+
+
 
 
 /* copy part of f_ from host to accelerator, using mask structure */

@@ -584,9 +584,9 @@ void advection_bcs_no_normal_flux_gpu(void){
  *****************************************************************************/
 
 
-__device__ void blue_phase_compute_h_gpu_d(double h[3][3], double *phi_site_full_d, 
+__device__ void blue_phase_compute_h_gpu_d(double h[3][3], double dq[3][3][3], double dsq[3][3],double *phi_site_full_d, 
 					   int index, int indexm1, int indexp1) {
-  int ia, ib, ic;
+  int ia, ib, ic, id;
 
   double q2;
   double e2;
@@ -603,14 +603,9 @@ __device__ void blue_phase_compute_h_gpu_d(double h[3][3], double *phi_site_full
     for (ib = 0; ib < 3; ib++) {
       q2 += phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
 
-
-      eq += e_cd[0][ib][ia]*0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+indexp1] -
-				 phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+indexm1]);
-      eq += e_cd[1][ib][ia]*0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+index+N_cd[Z]+2*nhalo_cd] -
-				 phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+index-N_cd[Z]-2*nhalo_cd]);
-      eq += e_cd[2][ib][ia]*0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+index+1] -
-				 phi_site_full_d[3*nsites_cd*ib+nsites_cd*ia+index-1]);
-
+      for (ic = 0; ic < 3; ic++) {
+	eq += e_cd[ia][ib][ic]*dq[ia][ib][ic];
+      }
 
     }
   }
@@ -627,57 +622,21 @@ __device__ void blue_phase_compute_h_gpu_d(double h[3][3], double *phi_site_full
   }
 
 
-  /* From the gradient terms ... */
-  /* First, the sum e_abc d_b Q_ca. With two permutations, we
-   * may rewrite this as e_bca d_b Q_ca */
-  //now above
-  //  eq = 0.0;
-  //  for (ia = 0; ia < 3; ia++) {
-  //	for (ib = 0; ib < 3; ib++) {
-  // }
-  //}
-
-
-
-
+  /* d_c Q_db written as d_c Q_bd etc */
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       sum = 0.0;
       for (ic = 0; ic < 3; ic++) {
-
-      	  sum +=
-      	    (e_cd[ia][0][ic]*0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+indexp1] -
-	  			  phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+indexm1]) +
-	     e_cd[ib][0][ic]*0.5*(phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+indexp1] -
-	  			  phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+indexm1]));
-      	  sum +=
-      	    (e_cd[ia][1][ic]* 0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index+N_cd[Z]+2*nhalo_cd] -
-	  			   phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index-N_cd[Z]-2*nhalo_cd])
-	     + e_cd[ib][1][ic]* 0.5*(phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index+N_cd[Z]+2*nhalo_cd] -
-	  			     phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index-N_cd[Z]-2*nhalo_cd]));
-      	  sum +=
-      	    (e_cd[ia][2][ic]* 0.5*(phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index+1] -
-	  			   phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index-1])
-	     + e_cd[ib][2][ic]* 0.5*(phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index+1] -
-	  			     phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index-1]));
+	for (id = 0; id < 3; id++) {
+	  sum +=
+	    (e_cd[ia][ic][id]*dq[ic][ib][id] + e_cd[ib][ic][id]*dq[ic][ia][id]);
+	}
       }
-      h[ia][ib] +=  kappa0shift_cd*
-	(phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+indexp1] 
-	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+indexm1]
-	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index+N_cd[Z]+2*nhalo_cd] 
-	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index-N_cd[Z]-2*nhalo_cd]
-	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index+1] 
-	+ phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index-1]
-	 - 6*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index])
-      	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib]
-      	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
-
-      }
+      h[ia][ib] += kappa0shift_cd*dsq[ia][ib]
+	- 2.0*kappa1shift_cd*q0shift_cd*sum + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib]
+	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
+    }
   }
-
-
-
-
 
   /* Electric field term */
 
@@ -691,6 +650,7 @@ __device__ void blue_phase_compute_h_gpu_d(double h[3][3], double *phi_site_full
       h[ia][ib] +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib] - r3_cd*d_cd[ia][ib]*e2);
     }
   }
+
 
   return;
 }
@@ -938,6 +898,19 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index,
     dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
   }
 
+    /* load delsq phi */
+  dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
+  dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
+  dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
+  dsq[Y][X] = dsq[X][Y];
+  dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
+  dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
+  dsq[Z][X] = dsq[X][Z];
+  dsq[Z][Y] = dsq[Y][Z];
+  dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+
+
+
   int i,j,k,icm1,icp1,indexm1,indexp1;
   get_coords_from_index_gpu_d(&i,&j,&k,index,Nall_cd);
   icm1=le_index_real_to_buffer_d[i];
@@ -946,7 +919,7 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index,
   indexm1 = get_linear_index_gpu_d(icm1,j,k,Nall_cd);
   indexp1 = get_linear_index_gpu_d(icp1,j,k,Nall_cd);
 
-   blue_phase_compute_h_gpu_d(h, phi_site_full_d, index, indexm1, indexp1);
+  blue_phase_compute_h_gpu_d(h, dq, dsq, phi_site_full_d, index, indexm1, indexp1);
   //blue_phase_compute_h_gpu_d(sth, phi_site_full_d, index, indexm1, indexp1);
   blue_phase_compute_stress_gpu_d(q, dq, h, sth);
 
@@ -1308,8 +1281,32 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
 
+  /* load grad phi */
+  for (ia = 0; ia < 3; ia++) {
+    dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
+    dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
+    dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
+    dq[ia][Y][X] = dq[ia][X][Y];
+    dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
+    dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
+    dq[ia][Z][X] = dq[ia][X][Z];
+    dq[ia][Z][Y] = dq[ia][Y][Z];
+    dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+  }
 
-   blue_phase_compute_h_gpu_d(h, phi_site_full_d, index, indexm1, indexp1);
+    /* load delsq phi */
+  dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
+  dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
+  dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
+  dsq[Y][X] = dsq[X][Y];
+  dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
+  dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
+  dsq[Z][X] = dsq[X][Z];
+  dsq[Z][Y] = dsq[Y][Z];
+  dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+
+
+  blue_phase_compute_h_gpu_d(h, dq, dsq, phi_site_full_d, index, indexm1, indexp1);
 
 
    if (site_map_status_d[index] != FLUID) {
