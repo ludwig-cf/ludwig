@@ -37,7 +37,7 @@ double * f_d;
 double * ftmp_d;
 
 int *mask_d, *packedindex_d;
-
+int *mask_;
 
 /* edge and halo buffers on accelerator */
 double * fedgeXLOW_d;
@@ -67,6 +67,8 @@ double * fhaloYLOW;
 double * fhaloYHIGH;
 double * fhaloZLOW;
 double * fhaloZHIGH;
+
+
 
 static double * ftmp;
 static int * packedindex;
@@ -189,6 +191,9 @@ static void allocate_dist_memory_on_gpu()
   cudaHostAlloc( (void **)&packedindex, nsites*sizeof(int), 
 		 cudaHostAllocDefault);
 
+  cudaHostAlloc( (void **)&mask_, nsites*sizeof(int), 
+		 cudaHostAllocDefault);
+
 
 
   cudaHostAlloc( (void **)&fedgeXLOW, nhalodataX*sizeof(double), 
@@ -290,6 +295,7 @@ static void free_dist_memory_on_gpu()
 
   cudaFreeHost(ftmp);
   cudaFreeHost(packedindex);
+  cudaFreeHost(mask_);
 
   cudaFreeHost(fedgeXLOW);
   cudaFreeHost(fedgeXHIGH);
@@ -665,6 +671,136 @@ void get_velocity_partial_from_gpu(int *mask_in, int include_neighbours)
   /* run the GPU kernel */
 
   checkCUDAError("get_velocity_partial_from_gpu");
+
+}
+
+void update_colloid_force_from_gpu()
+{
+  int index,index1,i, ic,jc,kc;
+  double velocity[3];
+  colloid_t * p_c;
+
+  for (i=0; i<nsites; i++) mask_[i]=0;
+
+
+  //set mask
+  for (ic=nhalo; ic<Nall[X]-nhalo; ic++)
+    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++)
+      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++)
+	{
+
+	  index = get_linear_index(ic, jc, kc, Nall); 	      
+
+	  if (!colloid_at_site_index(index)){
+	        if (
+		  colloid_at_site_index(get_linear_index(ic+1, jc, kc, Nall))
+		  || colloid_at_site_index(get_linear_index(ic-1, jc, kc, Nall))
+		  || colloid_at_site_index(get_linear_index(ic, jc+1, kc, Nall))
+		  || colloid_at_site_index(get_linear_index(ic, jc-1, kc, Nall))
+		  || colloid_at_site_index(get_linear_index(ic, jc, kc+1, Nall))
+		  || colloid_at_site_index(get_linear_index(ic, jc, kc-1, Nall))
+		   )
+		  mask_[index]=1;
+		}
+	  
+	}
+
+
+
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(mask_[i]){
+      packedindex[i]=j;
+      j++;
+    }
+    
+  }
+
+  int packedsize=j;
+
+  cudaMemcpy(mask_d, mask_, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
+
+  int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+ copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(3*6, nhalo, N_d,
+  						ftmp_d, colloid_force_d, mask_d,
+  						packedindex_d, packedsize, 0);
+  cudaThreadSynchronize();
+
+  cudaMemcpy(ftmp, ftmp_d, packedsize*3*6*sizeof(double), cudaMemcpyDeviceToHost);
+
+  j=0;
+  for (ic=nhalo; ic<Nall[X]-nhalo; ic++)
+    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++)
+      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++)
+	{
+	  
+	  index = get_linear_index(ic, jc, kc, Nall); 	      
+	  p_c = colloid_at_site_index(index);
+	  
+	  if (p_c) continue;
+	  
+	  
+	  index1 = get_linear_index(ic+1, jc, kc, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += ftmp[0*packedsize*3+packedsize*i+j];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic-1, jc, kc, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += ftmp[1*packedsize*3+packedsize*i+j];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic, jc+1, kc, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += ftmp[2*packedsize*3+packedsize*i+j];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic, jc-1, kc, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += ftmp[3*packedsize*3+packedsize*i+j];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic, jc, kc+1, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += ftmp[4*packedsize*3+packedsize*i+j];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic, jc, kc-1, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += ftmp[5*packedsize*3+packedsize*i+j];
+	    }
+	  }
+	  
+
+	  if(mask_[index]) j++;
+	  
+	  
+	}
+
+      checkCUDAError("update_colloid_force_from_gpu");
 
 }
 

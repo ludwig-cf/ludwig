@@ -15,6 +15,7 @@
 #include "utilities_gpu.h"
 #include "phi_datamgmt_gpu.h"
 #include "dist_datamgmt_gpu.h"
+//#include "colloids.h"
 #include "util.h"
 #include "model.h"
 #include "timer.h"
@@ -41,7 +42,9 @@ int * cv_d;
 double * q_d;
 double * wv_d;
 char * site_map_status_d;
+char * colloid_map_d;
 double * force_d;
+double * colloid_force_d;
 double * velocity_d;
 int * N_d;
 double * force_global_d;
@@ -62,6 +65,7 @@ double * hs5_d;
 /* host memory address pointers for temporary staging of data */
 
 char * site_map_status_temp;
+char * colloid_map_temp;
 double * force_temp;
 double * velocity_temp;
 
@@ -190,14 +194,17 @@ static void allocate_memory_on_gpu()
   force_temp = (double *) malloc(nsites*3*sizeof(double));
   velocity_temp = (double *) malloc(nsites*3*sizeof(double));
   site_map_status_temp = (char *) malloc(nsites*sizeof(char));
+  colloid_map_temp = (char *) calloc(nsites,sizeof(char));
   
   cudaMalloc((void **) &site_map_status_d, nsites*sizeof(char));
+  cudaMalloc((void **) &colloid_map_d, nsites*sizeof(char));
   cudaMalloc((void **) &ma_d, NVEL*NVEL*sizeof(double));
   cudaMalloc((void **) &mi_d, NVEL*NVEL*sizeof(double));
   cudaMalloc((void **) &cv_d, NVEL*3*sizeof(int));
   cudaMalloc((void **) &wv_d, NVEL*sizeof(double));
   cudaMalloc((void **) &q_d, NVEL*3*3*sizeof(double));
   cudaMalloc((void **) &force_d, nsites*3*sizeof(double));
+  cudaMalloc((void **) &colloid_force_d, nsites*6*3*sizeof(double));
   cudaMalloc((void **) &velocity_d, nsites*3*sizeof(double));
 
   cudaMalloc((void **) &fluxe_d, nop*nsites*sizeof(double));
@@ -231,6 +238,7 @@ static void free_memory_on_gpu()
   free(force_temp);
   free(velocity_temp);
   free(site_map_status_temp);
+  free(colloid_map_temp);
 
   cudaFree(ma_d);
   cudaFree(mi_d);
@@ -238,7 +246,9 @@ static void free_memory_on_gpu()
   cudaFree(wv_d);
   cudaFree(q_d);
   cudaFree(site_map_status_d);
+  cudaFree(colloid_map_d);
   cudaFree(force_d);
+ cudaFree(colloid_force_d);
   cudaFree(velocity_d);
   cudaFree(N_d);
   cudaFree(force_global_d);
@@ -297,6 +307,78 @@ void put_site_map_on_gpu()
 }
 
 
+#define MAX_COLLOIDS 500
+void* colloid_list[MAX_COLLOIDS];
+
+/* copy colloid map from host to accelerator */
+void put_colloid_map_on_gpu()
+{
+  
+  int index;
+  
+  void *ptr;
+  int icolloid;
+  int ncolloids=0;
+
+  // build list of colloids, one entry for each, stored as memory addresses
+  for (index=0;index<nsites;index++){
+    
+    ptr=colloid_at_site_index(index);  
+    if(ptr){
+
+      int match=0;
+      for (icolloid=0;icolloid<ncolloids;icolloid++){
+	
+	if(ptr==colloid_list[icolloid]){
+	  match=1;
+	  continue;
+	}
+	
+      }
+      if (match==0)
+	{
+	  colloid_list[ncolloids]=ptr;
+	  ncolloids++;
+	}
+      
+    }
+    
+  }
+
+
+  for (index=0;index<nsites;index++){
+    
+    ptr=colloid_at_site_index(index);  
+    if(ptr){
+      
+      //find out which colloid
+      for (icolloid=0;icolloid<ncolloids;icolloid++){
+	//printf("%d %d %d %d\n", index, icolloid,ptr,colloid_list[icolloid]);
+	if(ptr==colloid_list[icolloid])	  break;
+      }
+      colloid_map_temp[index]=icolloid;
+      
+      //printf("%d %d\n", index,colloid_map_temp[index]);
+    }
+
+  }
+  
+  //for (icolloid=0;icolloid<ncolloids;icolloid++)printf("colloid %d %d\n",icolloid,colloid_list[icolloid]);
+  
+  
+
+  //exit(1);
+
+  /* copy data from CPU to accelerator */
+  cudaMemcpy(colloid_map_d, colloid_map_temp, nsites*sizeof(char), \
+  	     cudaMemcpyHostToDevice);
+
+
+  checkCUDAError("put_colloid_map_on_gpu");
+
+}
+
+
 
 void zero_force_on_gpu()
 {
@@ -304,6 +386,14 @@ void zero_force_on_gpu()
   int zero=0;
   cudaMemset(force_d,zero,nsites*3*sizeof(double));
   checkCUDAError("zero_force_on_gpu");
+}
+
+void zero_colloid_force_on_gpu()
+{
+
+  int zero=0;
+  cudaMemset(colloid_force_d,zero,nsites*6*3*sizeof(double));
+  checkCUDAError("zero_colloid_force_on_gpu");
 }
 
 
@@ -385,6 +475,8 @@ void get_force_from_gpu()
 
 }
 
+
+
 void get_velocity_from_gpu()
 {
   int index,i, ic,jc,kc;
@@ -414,6 +506,8 @@ void get_velocity_from_gpu()
   checkCUDAError("get_velocity_from_gpu");
 
 }
+
+
 
 void put_velocity_on_gpu()
 {

@@ -88,6 +88,8 @@ static void phi_force_fast(void) {
   phi_force_stress_allocate();
   phi_force_stress_compute();
 
+
+
   if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
     phi_force_interpolation1();
   }
@@ -272,6 +274,10 @@ static void phi_force_interpolation2(void) {
   coords_nlocal(nlocal);
 
   chemical_stress = phi_force_stress;
+
+  //printf("in interpolation 2\n"); exit(1);
+
+  put_colloid_map_on_gpu();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {

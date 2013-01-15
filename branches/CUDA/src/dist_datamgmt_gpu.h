@@ -19,6 +19,7 @@ extern "C" void put_f_partial_on_gpu(int *mask, int include_neighbours);
 extern "C" void get_f_partial_from_gpu(int *mask, int include_neighbours);
 extern "C" void put_velocity_partial_on_gpu(int *mask, int include_neighbours);
 extern "C" void get_velocity_partial_from_gpu(int *mask, int include_neighbours);
+extern "C" void update_colloid_force_from_gpu();
 extern "C" void copy_f_to_ftmp_on_gpu(void);
 extern "C" void get_f_edges_from_gpu(void);
 extern "C" void put_f_halos_on_gpu(void);
@@ -72,6 +73,8 @@ __global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,int nreduced,
 
 
 extern double * phi_site_d;
+
+extern double * colloid_force_d;
 
 #endif
 

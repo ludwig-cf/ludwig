@@ -11,6 +11,7 @@
 #define UTILITIES_GPU_H
 
 #include "common_gpu.h"
+#include "colloids.h"
 
 /* declarations for required external (host) routines */
 extern "C" void hydrodynamics_get_force_local(const int, double *);
@@ -20,15 +21,18 @@ extern "C" void hydrodynamics_set_velocity(const int, double *);
 extern "C" void fluid_body_force(double f[3]);
 extern "C" char site_map_get_status(int,int,int);
 extern "C" char site_map_get_status_index(int);
-
+//extern "C" void * colloid_at_site_index(int index);
+extern "C" colloid_t * colloid_at_site_index(int index);
 
 /* expose routines in this module to outside routines */
 extern "C" void initialise_gpu();
 extern "C" void put_site_map_on_gpu();
+extern "C" void put_colloid_map_on_gpu();
 extern "C" void put_force_on_gpu();
 extern "C" void put_velocity_on_gpu();
 extern "C" void get_force_from_gpu();
 extern "C" void zero_force_on_gpu();
+extern "C" void zero_colloid_force_on_gpu();
 extern "C" void get_velocity_from_gpu();
 extern "C" void get_fluxes_from_gpu();
 extern "C" void put_fluxes_on_gpu();

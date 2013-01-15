@@ -190,6 +190,112 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
 }
 
 
+void phi_force_colloid_gpu(void) {
+
+  int N[3],nhalo,Nall[3];
+  
+  nhalo = coords_nhalo();
+  coords_nlocal(N); 
+
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+ 
+
+  
+
+  // FROM blue_phase.c
+  double q0_;        /* Pitch = 2pi / q0_ */
+  double a0_;        /* Bulk free energy parameter A_0 */
+  double gamma_;     /* Controls magnitude of order */
+  double kappa0_;    /* Elastic constant \kappa_0 */
+  double kappa1_;    /* Elastic constant \kappa_1 */
+  
+  double xi_;        /* effective molecular aspect ratio (<= 1.0) */
+  double redshift_;  /* redshift parameter */
+  double rredshift_; /* reciprocal */
+  double zeta_;      /* Apolar activity parameter \zeta */
+  
+  double epsilon_; /* Dielectric anisotropy (e/12pi) */
+  
+  double electric_[3]; /* Electric field */
+  
+
+
+  redshift_ = blue_phase_redshift(); 
+  rredshift_ = blue_phase_rredshift(); 
+  q0_=blue_phase_q0();
+  a0_=blue_phase_a0();
+  kappa0_=blue_phase_kappa0();
+  kappa1_=blue_phase_kappa1();
+  xi_=blue_phase_get_xi();
+  zeta_=blue_phase_get_zeta();
+  gamma_=blue_phase_gamma();
+  blue_phase_get_electric_field(electric_);
+  epsilon_=blue_phase_get_dielectric_anisotropy();
+
+ q0_ = q0_*rredshift_;
+ kappa0_ = kappa0_*redshift_*redshift_;
+ kappa1_ = kappa1_*redshift_*redshift_;
+
+
+  //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
+
+cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
+ 
+  cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(epsilon_cd, &epsilon_, sizeof(double), 0, cudaMemcpyHostToDevice);
+ cudaMemcpyToSymbol(r3_cd, &r3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+
+ 
+  checkCUDAError("phi_force_colloid cudaMemcpyToSymbol");
+
+  // TODO
+  /* if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) { */
+  /*   phi_force_interpolation1(); */
+  /* } */
+  /* else { */
+  /*   phi_force_interpolation2(); */
+  /* } */
+
+
+  cudaFuncSetCacheConfig(phi_force_colloid_gpu_d,cudaFuncCachePreferL1);
+
+  #define TPBX 4 
+  #define TPBY 4
+  #define TPBZ 8
+
+  
+  dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
+  dim3 threadsperblock(TPBZ,TPBY,TPBX);
+
+  phi_force_colloid_gpu_d<<<nblocks,threadsperblock>>>
+    (le_index_real_to_buffer_d,site_map_status_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d,colloid_force_d);
+      
+      cudaThreadSynchronize();
+      checkCUDAError("phi_force_colloid_gpu_d");
+
+  return;
+}
+
+
 
 void blue_phase_be_update_gpu(void) {
 
@@ -947,6 +1053,182 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
     }
 
 
+  return;
+}
+
+
+
+__global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
+					char * site_map_status_d,
+						  double *phi_site_d,
+						  double *phi_site_full_d,
+						  double *grad_phi_site_d,
+						  double *delsq_phi_site_d,
+					double *force_d,
+						  double *colloid_force_d
+					    ) {
+
+  int ia, icm1, icp1;
+  int index, index1;
+  double pth0[3][3];
+  double pth1[3][3];
+  double force[3];
+  int ii, jj, kk;
+  //int threadIndex,ii, jj, kk;
+
+ /* CUDA thread index */
+  //threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
+ 
+ /* Avoid going beyond problem domain */
+  // if (threadIndex < N_cd[X]*N_cd[Y]*N_cd[Z])
+
+  if (ii < N_cd[X] && jj < N_cd[Y] && kk < N_cd[Z] )
+    {
+
+
+      /* calculate index from CUDA thread index */
+
+      //get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_cd);
+      index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);      
+
+      if (site_map_status_d[index1] != COLLOID){
+	/* If this is solid, then there's no contribution here. */
+      
+	/* Compute pth at current point */
+      blue_phase_chemical_stress_gpu_d(index,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,pth0);
+
+	/* Compute differences */
+	index1 = get_linear_index_gpu_d(ii+nhalo_cd+1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+
+	if (site_map_status_d[index1] == COLLOID){
+	  /* Compute the fluxes at solid/fluid boundary */
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] = -pth0[ia][X];
+	    colloid_force_d[0*nsites_cd*3+nsites_cd*ia+index]+=pth0[ia][X];
+	  }
+	}
+	else
+	  {
+	  /* This flux is fluid-fluid */ 
+
+	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+	    }
+
+	  }
+
+
+
+	index1 = get_linear_index_gpu_d(ii+nhalo_cd-1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+
+	if (site_map_status_d[index1] == COLLOID){
+	  /* Solid-fluid */
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][X];
+	    colloid_force_d[1*nsites_cd*3+nsites_cd*ia+index]-=pth0[ia][X];
+	  }
+	}
+	else
+	  {
+	    /* Fluid - fluid */
+	    
+	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+	    }
+	  }
+
+	
+	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd+1,kk+nhalo_cd,Nall_cd);
+	
+	if (site_map_status_d[index1] == COLLOID){
+	  /* Solid-fluid */
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] -= pth0[ia][Y];
+	    colloid_force_d[2*nsites_cd*3+nsites_cd*ia+index]+=pth0[ia][Y];
+	  }
+	}
+	else
+	  {
+	    /* Fluid - fluid */
+	    
+	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	    }
+	  }
+	
+	
+	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
+	
+	if (site_map_status_d[index1] == COLLOID){
+	  /* Solid-fluid */
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][Y];
+	    colloid_force_d[3*nsites_cd*3+nsites_cd*ia+index]-=pth0[ia][Y];
+	  }
+	}
+	else
+	  {
+	    /* Fluid - fluid */
+	    
+	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	    }
+	  }	
+	
+	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd+1,Nall_cd);
+	
+	if (site_map_status_d[index1] == COLLOID){
+	  /* Solid-fluid */
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] -= pth0[ia][Z];
+	    colloid_force_d[4*nsites_cd*3+nsites_cd*ia+index]+=pth0[ia][Z];
+	  }
+	}
+	else
+	  {
+	    /* Fluid - fluid */
+	    
+	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	    }
+	    
+	  }
+	
+	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
+	if (site_map_status_d[index1] == COLLOID){
+	  /* Solid-fluid */
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][Z];
+	    colloid_force_d[5*nsites_cd*3+nsites_cd*ia+index]-=pth0[ia][Z];
+	  }
+	}
+	else
+	  {
+	    /* Fluid - fluid */
+	    	    
+	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d, pth1);
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	    }
+	    
+	  }
+
+	/* Store the force on lattice */
+	for (ia=0;ia<3;ia++)
+	  force_d[ia*nsites_cd+index]+=force[ia];
+	
+      }
+    }
+  
+  
   return;
 }
 

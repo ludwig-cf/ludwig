@@ -13,6 +13,7 @@
 
 /* expose main routine in this module to outside routines */
 extern "C" void phi_force_calculation_gpu(void);
+extern "C" void phi_force_colloid_gpu(void);
 extern "C" void blue_phase_be_update_gpu(void);
 extern "C" void advection_upwind_gpu(void);
 extern "C" void advection_bcs_no_normal_flux_gpu(void);
@@ -45,6 +46,7 @@ extern double * phi_site_full_d;
 extern double * grad_phi_site_d;
 extern double * delsq_phi_site_d;
 extern double * force_d;
+extern double * colloid_force_d;
 extern char * site_map_status_d;
 extern double * fluxe_d;
 extern double * fluxw_d;
@@ -69,6 +71,15 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
 						  double *grad_phi_site_d,
 						  double *delsq_phi_site_d,
 						  double *force_d);
+
+__global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
+					char * site_map_status_d,
+					double *phi_site_d,
+					double *phi_site_full_d,
+					double *grad_phi_site_d,
+					double *delsq_phi_site_d,
+					double *force_d,
+					double *colloid_force_d);
 
 
 __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
