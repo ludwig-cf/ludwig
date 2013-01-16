@@ -73,7 +73,7 @@
 
 \twocolumn[
   \begin{@twocolumnfalse}
-\noindent\LARGE{\textbf{Rheology of Cubic Blue Phases$^\dag$}}
+\noindent\LARGE{\textbf{Rheology of Cubic Blue Phases}}
 \vspace{0.6cm}
 
 \noindent\large{\textbf{Oliver Henrich $^{\ast}$\textit{$^{a,b}$}, Kevin Stratford \textit{$^{a}$}, Peter V. Coveney \textit{$^{b}$}, Michael E. Cates \textit{$^{c}$}, Davide Marenduzzo \textit{$^{c}$}}}\vspace{0.5cm}
@@ -95,8 +95,8 @@ For larger shear rates, the structure breaks up into a cholesteric helix, lying 
 vorticity or the flow gradient direction according to the imposed flow.
 BPI leads to a very different response. Here, oscillations are only possible for intermediate
 shear rates -- very slow flow leads to a transition into an amorphous network 
-with a residual stress. The flow-induced oscillation regime features a novel arrangement
-of double helical disclinations which rotate due to the shear. Large flow can, 
+with an apparent yield stress. The flow-induced oscillation regime features a novel arrangement
+of double helical disclinations which rotate due to the shear. Large flow rates can, 
 just as in the BPII case, lead to the rupture of the network and the stabilisation
 of less ordered cholesteric structures. Our results provide the first 
 theoretical investigation of sheared blue phases in large systems, and
@@ -148,7 +148,7 @@ During the last few years considerable progress has been achieved regarding the 
 of BPs in confined geometries~\cite{Fukuda:2010a, Fukuda:2010b, Ravnik:2011b}, under 
 external fields ~\cite{Alexander:2008,Fukuda:2009,Henrich:2010a,Castles:2010,Tiribocchi:2011a}, 
 and in the presence of colloidal particles~\cite{Ravnik:2011a}.
-The kinetics of BP domain growth have been recently addressed in~\cite{Henrich:2010b}. 
+The kinetics of BP domain growth have been recently addressed ~\cite{Henrich:2010b}. 
 However, our understanding of their dynamical behaviour under flow remains
 very limited. The aim of this work is to address this issue by studying,
 for the first time, the response of large BP samples to a shear flow.
@@ -188,19 +188,19 @@ The viscosity still decreases with forcing
 for cholesterics in the permeation mode, which is in agreement with experiments
 ~\cite{Zapotocky:1999, Ramos:2002}.
 
-Our work differs from these earlier efforts as it addresses shear flows, 
+Our work differs from these earlier efforts as it addresses homogeneous shear flows, 
 and focuses on flow-induced reconstruction and nonequilibrium transition
 between different blue phase networks, which appear at intermediate or
 high shear. Our simulations employ Lees-Edwards boundary conditions, which
 are naturally suited to address these regimes, and bulk as opposed
 to boundary-dominated flow. 
 Our simulations are large scale and parallel, so that we can study
-significantly larger systems than previously possible, so that our
+significantly larger systems than previously possible, and our
 results can in principle be compared with bulk rheology experiments. 
 
 Our paper is organised as follows. 
 In Section II, we describe the method we use and review
-the hydrodynamic equation of motion which we aim to solve. In Section III, 
+the hydrodynamic equations of motion which we aim to solve. In Section III, 
 we report our numerical results, separating them into subsections referring to
 Blue Phase I and Blue Phase II, and corresponding to low, intermediate, and
 high shear. Finally, we draw our conclusions in Section IV.
@@ -227,8 +227,9 @@ The first term contains a bulk-free energy constant $A_0$ and the temperature-re
 The second part quantifies the cost of elastic distortions, which is proportional to the elastic constant $K$;
 we work for simplicity in the one-elastic constant approximation~\cite{deGennes}. The wavevector $q_0$ is equal to $2\pi/p_0$, where $p_0$ is the cholesteric pitch.
 The actual periodicity of the BP structure, $p$, does not need to be equal to $p_0$.
-Indeed, the ``redshift'' $r=p/p_0$ is adjusted during the simulation, to optimise the free energy density
-at all times -- this is done by following the procedure
+Indeed, the ``redshift'' $r=p/p_0$ is adjusted during the equilibration phase of the 
+simulation, to optimise the free energy density
+before shearing begins -- this is done by following the procedure
 previously described in~\cite{Alexander:2006}.
 
 A thermodynamic state is specified by two dimensionless quantities: the reduced temperature 
@@ -260,7 +261,7 @@ where $\mathrm{Tr}$ denotes the tensorial trace, while
 ${\mathbf A}=({\mathbf W}+{\mathbf W}^T)/2$ and
 ${\boldsymbol \Omega}=({\mathbf W}-{\mathbf W}^T)/2$ are the symmetric and antisymmetric part of the velocity gradient, respectively. $\xi$ 
 is a constant depending on the molecular details of the liquid crystal.
-Flow alignment occurs if $\xi \cos{2\theta}=(3q_s)/(2+q_s)$ has a real solution, where $\theta$ is the 
+Flow alignment occurs if $\xi \cos{2\theta}=(3q_s)/(2+q_s)$ has a real solution for $\theta$, the 
 so-called Leslie angle: we select this case by 
 setting $\xi=0.7$ in our simulations.
 ${\mathbf H}$ is the molecular field, which is a functional derivative of $\cal F$ that respects the tracelessness of $\mathbf Q$:
@@ -284,10 +285,10 @@ the following Navier-Stokes equation:
 \end{eqnarray}
 This emerges from the Chapman-Enskog expansion
 of the Lattice Boltzmann (LB) equations 
-that we solve numerically. A further term $\eta(1+3\frac{\partial P_0}{\partial\rho} )\partial_\mu v_\mu \delta_{\alpha \beta})$ that formally appears
+that we solve numerically. A further term $\eta(1+3\frac{\partial P_0}{\partial\rho} )\partial_\mu v_\mu \delta_{\alpha \beta}$ that formally appears
 in this expansion is negligible under the slow flows considered here
 for which the the fluid motion is almost incompressible~\cite{Denniston:2001}.
-$\eta$ is an isotropic background viscosity which is set to $\eta=0.8333$ in LB units (these are discussed below, see~\cite{Henrich:2011a,Henrich:2010b}.
+$\eta$ is an isotropic background viscosity which is set to $\eta=0.8333$ in LB units (these are discussed below, see~\cite{Henrich:2011a,Henrich:2010b}).
 The thermodynamic stress tensor reads explicitly
 \begin{eqnarray}
 \Pi_{\alpha \beta}&=&P_0 \delta_{\alpha\beta}
@@ -347,13 +348,13 @@ from the cholesteric-isotropic transition. Thus, temperature and chirality were
 $\tau=-0.5, \kappa=1.0$ in case of BPI and $\tau=-0.5, \kappa=2.0$ for BPII, respectively.
 For these parameters the total free energy density $f$ remained always negative at all flow rates
 simulated. 
-Since by Eq.~\ref{FE} $f=0$ for an isotropic phase with ${\mathbf Q}={\mathbf 0}$, this means that our sytem, which is never far from equilibrium locally even under flow, always remains in a liquid crystalline state. 
+Since by Eq.~\ref{FE} $f=0$ for an isotropic phase with ${\mathbf Q}\equiv 0$, this means that our sytem, which is never far from equilibrium locally even under flow, always remains in a liquid crystalline state. 
 We performed also selected simulations on metastable states at higher and lower temperatures, 
 and at different chiralities, but did not find any significant differences in the 
 general flow behaviour from that described below.
-The only quantitative difference we found was that, for thermodynamic states that are closer to the phase boundary than the one we focused on (and describe below), the disclination 
-network broke up into cholesteric/Newtonian states beyond a critical shear rate
-which was lower. This is expected as these states have on average higher free energy densities and smaller order parameters than those we focus on in what follows, and cannot therefore withstand the same external forces before breaking down.
+The only quantitative difference we found was that, for thermodynamic states that are closer to the phase boundary than the one we focused on (and describe below), the critical shear
+rate at wich the disclination 
+network broke up into chiral nematic states was lower. This is expected as these states have on average higher free energy densities and smaller order parameters than those we focus on in what follows, and cannot therefore withstand the same external forces before breaking down.
 
 As usual in BP simulation studies~\cite{Henrich:2011a,Henrich:2010b}, we initialised our runs with 
 analytical solutions that minimise the free energy functional Eq.\ref{FE} in the high-chirality limit 
@@ -365,7 +366,7 @@ We chose a pitch length of 32 LBU for BPII and 64 LBU in case of BPI, and we con
 4 unit cells along each coordinate direction, for a total of 64 unit cells in our simulation box.
 Runs with higher resolution confirmed that this choice was adequate to track  
 all kinematic details of the blue phase networks in shear flow. This includes
-reconstruction of the unit cell not acessible in simulation with only
+reconstruction of the unit cell not accessible in simulation with only
 few cells~\cite{Dupuis:2005}.
 
 Simple shear flow was imposed by means of a Lees-Edwards boundary condition ~\cite{Wagner:2002} with
@@ -373,17 +374,19 @@ the top (bottom) part of the system flowing in the positive (negative) $x$-direc
 velocity gradient along the $y$-direction.
 The shear rates were varied over more than two orders of magnitude from about 
 $\gd=2.44\times \e{-6}$ to $1.875\times\e{-3}$ LBU.
-For clarity we classify various flow regimes, two in case of BPII and three in case of BPI. 
+For clarity we classify various flow regimes, two in the case of BPII and three in the 
+case of BPI. 
 They are BPII-1 ($\gd \lesssim 3.125\e{-4}$, corresponding to ${\it Er} \lesssim 2.67$), 
 BPII-2 ($4.687\lesssim \gd\lesssim 6.25\e{-4}$; $4\lesssim {\it Er} \lesssim 5.34$), ),
 BPI-1 ($\gd \lesssim 1.95\e{-5}$; ${\it Er} \lesssim 0.33$), ), BPI-2 ($3.91\e{-5}\lesssim \gd \lesssim 4.687\e{-4}$; $0.67\lesssim {\it Er} \lesssim 8$) and BPI-3 ($6.25\e{-4}\lesssim \gd\lesssim 7.813\e{-4}$; $10.67 \lesssim {\it Er} \lesssim 13.33$).
-Beyond these regimes both BPI and BPII form common configurations regardless 
-of the initial state, namely a cholesteric helix with helical axis 
+Beyond these regimes, and prior to the ultimate breakdown into an isotropic phase, 
+both BPI and BPII form common configurations regardless 
+of the initial state. These are a cholesteric helix with helical axis 
 oriented along the direction of the velocity gradient (CHG), 
 and a flow-aligned nematic state (FAN).  
-Disclination lines are represented by plotting an isosurface of the scalar order parameter $q_s$. 
+As is standard \cite{Henrich:2010b,Henrich:2012b} disclination lines are represented by plotting an isosurface of the scalar order parameter $q_s$. 
 Typical choices are $q_s=0.18$ for BPI and $q_s=0.15$ for BPII.
-(Note that $q_s$ is small but non-zero at the disclination core.)
+(Note that $q_s$ is small but non-zero at the disclination core. The director is undefinded there because the largest and second largest eigenvalues of ${\mathbf Q}$ coincide.)
 
 \subsection{Blue Phase II}
 
@@ -395,8 +398,10 @@ of BPII versus time (top) and strain (bottom).
 For clarity the individual curves have been shifted along the time and strain axis. 
 The inset in the top panel 
 shows the flow curve $\bar{\Pi}_{xy}(\gd)$ and two different regimes of flow: 
-regular periodic breakup and reconnecting of the disclination lines (BPII-1, open circles) 
-and break up of the network into a travelling helical wave (BPII-2, solid circle).
+regular periodic breakup and reconnecting of the disclination lines (BPII-1, open circles), 
+break up of the network into a travelling helical wave (BPII-2, solid circle), 
+cholesteric helix with axis in gradient direction (CHG, open squares)
+and flow-aligned nematic state (FAN, solid square).
 The error bars indicate the maximum and minimum stresses that occur during one cycle.}
 \label{bp2-rheo}
 \end{figure}
@@ -409,7 +414,7 @@ flow behaviour at all applied shear rates.
 Fig. \ref{bp2-rheo} shows the ratio between the apparent viscosity, 
 defined as 
 $\eta_{app}=\langle \Pi_{xy} \rangle/\gd$, and $\eta$.
-A numerical value of $\eta_{app}=1$ corresponds to a fully Newtonian flow,
+A numerical value of $\eta_{app}/\eta=1$ corresponds to a fully Newtonian flow,
 without any additional contribution from the liquid crystal.
 The top picture shows the data over time, whereas the graph at the bottom gives 
 the same data versus accumulated strain.
@@ -432,7 +437,7 @@ choice of boundary conditions.
 %the wall~\cite{Marenduzzo:2006a,Marenduzzo:2006b}.}
 
 The inset to Fig. 1 (top) shows a flow curve, defined as time averages of 
-the deviatoric stress tensor $\bar{\Pi}_{xy}$ as a function of shear rate $\gd$.
+the shear stress $\bar{\Pi}_{xy}$ as a function of shear rate $\gd$.
 For all but the largest shear rates a power law fit $\bar{\Pi}_{xy}=a \gd^b$ with 
 $a=0.35, b=0.95$ describes the data to a very good approximation. 
 Hence, the degree of shear-thinning is remarkably small in BPII, in
@@ -455,7 +460,7 @@ the system undergoes a transition to a flow-aligned nematic state.
 In the next sections we investigate the BPII-1 and BPII-2 flow regimes in more detail 
 by looking at the kinetics of the disclination network.
 
-\subsubsection{Regime BPII-1: low and intermediate shear rates}
+\subsubsection{Regime BPII-1: low and intermediate shear rates }
 
 Fig. \ref{bp2-med} shows the disclination network in shear flow as
 it undergoes homogeneous shearing in the BPII-1 flow regime. 
@@ -463,6 +468,33 @@ The disclination lines break up and
 reconnect further downstream, forming a periodically recurring pattern. The
 period needed for a pattern to break up and 
 reform along the flow direction is $\tau_F = 1/\gd$.
+
+The general appearance of the flowing network is, apart from the homogeneous distortion,
+very close to that of the quiescent blue phase at equilibrium. This holds for all
+shear rates in the BPII-1 regime.
+
+Interestingly, while being displaced with the flow the entire network moves 
+along the vorticity direction (z) as well.  A similar behaviour has been recently 
+observed for blue phases in shear flow in confined geometries ~\cite{Henrich:2012b}.
+In contrast to the stick-slip motion that has been reported there,
+in this case the movement is steady. 
+The vorticity motion occurs in such a way that the positions of breakup and reconnection 
+point in the network, visible in Fig. \ref{bp2-med}, are slightly offset and allow the network 
+to travel along the $z$-direction. The periodicity of the motion along the vorticity direction
+is $\tau_V=6\tau_F$, 
+i.e. it takes a displacement of six unit cells along $x$ (the flow direction) 
+for the network to move one unit cell along $z$ (the vorticity direction).
+
+Fig. \ref{bp2-velo} shows the disclination network in the middle of a breakup-reconnection
+cycle, with superimposed velocity vectors.
+The plot shows the secondary velocity components, obtained by projecting the
+velocity onto a plane perpendicular to the flow direction.
+This gets rid of the dominating velocity component along the flow, $v_x$, and 
+allows to visualise the patterns in the 
+two much smaller components $v_y$ and $v_z$.
+The magnitude of the secondary components is typically in the range of a 
+few percent of the primary flow component, for the shear rates 
+and system sizes simulated here.
 
 \begin{figure}[htpb]
 \center
@@ -496,33 +528,6 @@ it takes the network to reconnect along the flow direction.}
 \label{bp2-velo}
 \end{figure*}
 
-The general appearance of the flowing network is, apart from the homogeneous distortion,
-very close to that of the quiescent blue phase at equilibrium. This holds for all
-shear rates in the BPII-1 regime.
-
-Interestingly, while being displaced with the flow the entire network moves 
-along the vorticity direction as well.  A similar behaviour has been recently 
-observed for blue phases in shear flow in confined geometries ~\cite{Henrich:2012b}.
-In contrast to the stick-slip motion that has been reported there,
-in this case the movement is steady. 
-The vorticity motion occurs in such a way that the positions of breakup and reconnection 
-point in the network, visible in Fig. \ref{bp2-med}, are slightly offset and allow the network 
-to travel along the $z$-direction. The periodicity of the motion along the vorticity direction
-is $\tau_V=6\tau_F$, 
-i.e. it takes a displacement of six unit cells along $x$ (the flow direction) 
-for the network to move one unit cell along $z$ (the vorticity direction).
-
-Fig. \ref{bp2-velo} shows the disclination network in the middle of a breakup-reconnection
-cycle, with superimposed velocity vectors.
-The plot shows the secondary velocity components, obtained by projecting the
-velocity onto a plane perpendicular to the flow direction.
-This gets rid of the dominating velocity component along the flow, $v_x$, and 
-allows to visualise the patterns in the 
-two much smaller components $v_y$ and $v_z$.
-The magnitude of the secondary components is typically in the range of a 
-few percent of the primary flow component, for the shear rates 
-and system sizes simulated here.
-
 Characteristic bands are visible in Fig. \ref{bp2-velo}, which are 
 oriented along the vorticity direction. The direction of the flow
 in each of the bands depends on the helicity of the underlying cholesteric
@@ -532,7 +537,7 @@ the other.
 Further quantitative evidence for a direct link between the sense of motion 
 and the helicity can be gained by time-averaging over individual cycles.
 
-Tab. \ref{tab1} in the Appendix 
+Table \ref{tab1} in the Appendix 
 gives minima, maxima, averages and standard deviations 
 of the velocity components.
 All values for the two runs with inverted helicity are identical apart 
@@ -546,7 +551,7 @@ flow of the network along the vorticity
 direction is permeative (i.e. the fluid moves but the network as a whole 
 moves much less). 
 
-\subsubsection{Regime BPII-2: high shear rates}
+\subsubsection{Regime BPII-2: high shear rates }
 
 If the flow rate exceeds a certain critical value BPII does not undergo the 
 homogeneous deformation described above and adopts another mode of flow. 
@@ -563,7 +568,7 @@ higher shear rates ~\cite{Rey:1996a, Rey:1996b}.
 In our scenario the BP to cholesteric transition occurs for shear rates $\gd\simeq 4.68\e{-4}$, which
 corresponds to Ericksen numbers of ${\it Er}\simeq4$, based on our
 parameters for BPII ($K=0.02, \eta=0.666$, and $p_0/2=16$;
-see Tab. \ref{tab1} in the Appendix).
+see Table \ref{tab1} in the Appendix).
 
 \begin{figure}[htpb]
 \includegraphics[width=0.495\textwidth]{dir+y-250k_run949.png}
@@ -571,7 +576,7 @@ see Tab. \ref{tab1} in the Appendix).
 \includegraphics[width=0.495\textwidth]{dir+y-255k_run949.png}
 \includegraphics[width=0.495\textwidth]{dir+y-257k_run949.png}
 \caption{Director field of BPII at high shear rate: The images show snapshots at time steps 
-$t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. 
+$t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. The colour code gives the alignment of the director field in flow direction (x) with red fully aligned and blue out of plane. 
 The configuration is a helical wave that travels along the direction of vorticity.
 It is translationally invariant along the gradient and flow direction.}
 \label{bp2-high}
@@ -582,11 +587,11 @@ and the  flow-aligned nematic state at shear rates
 $7.81\e{-4}\lesssim\gd\lesssim9.37\e{-4}$ ($6.66\lesssim {\it Er} \lesssim 8$). In this interval
 the helical axis now lies along the flow gradient direction (the so-called
 Grandjean texture~\cite{deGennes}).
-We will address this in section \ref{cholflow}, as it is common to BPI and BPII.
+We will address this regime in section \ref{cholflow}, as it is common to BPI and BPII.
 
 \subsection{Blue Phase I}
 
-BPI has body-centered symmetry and, unlike BPII, the disclination lines
+BPI has body-centered cubic symmetry and, unlike BPII, the disclination lines
 characterising its equilibrium structure are well separated and do not 
 intersect. (The quiescent state resembles the first frame in Fig.~\ref{bp1-low}
 below.)
@@ -613,7 +618,7 @@ cycles the disclination pattern becomes amorphous. We refer to this
 flow regime as BPI-1. 
 The BPI-2 regime is also unstable if the shear is increased {\em above} 
 a critical value -- close to this breakup point the oscillations in the 
-deviatoric stress show an increasingly complex
+shear stress show an increasingly complex
 pattern, until the network breaks up completely and a new regime, BPI-3, is entered.
 In regime BPI-3 ($6.25\e{-4}\lesssim\gd\lesssim7.81\e{-4}$; $10.67 \lesssim {\it Er} \lesssim 13.33$) 
 we observe that the BPI network transforms under shear into
@@ -629,12 +634,14 @@ section \ref{cholflow}).
 \begin{figure}[htpb]
 \includegraphics[width=0.495\textwidth]{stress_bp1.pdf}
 \includegraphics[width=0.495\textwidth]{stress_vs_strain_bp1.pdf}
-\caption{Apparent viscosity (normalised by $\eta$) $\eta_{app}/\eta=\langle \Pi_{xy}\rangle/\dot{\gamma}$ of BPI versus time (top) 
+\caption{Apparent viscosity $\eta_{app}=\langle \Pi_{xy}\rangle/\dot{\gamma}$ (normalised by $\eta$) of BPI versus time (top) 
 and strain (bottom). The inset shows the flow curve $\bar{\Pi}_{xy}(\gd)$. 
 Depending on the configuration in steady shear flow three different regimes 
 can be identified: amorphous BP network with yield stress (BPI-1, triangles), 
-steady flow with recurring patterns (BPI-2, open circles) and 
-breakup of the disclination network (BPI-3, solid circle). 
+steady flow with recurring patterns (BPI-2, open circles), 
+breakup of the disclination network (BPI-3, solid circle), 
+cholesteric helix with axis in gradient direction (CHG, open squares) 
+and flow-aligned nematic state (FAN, solid square). 
 The error bars represent the minimum and maximum shear stress 
 during one cycle. For clarity the individual curves have been shifted along
 the time and strain axis.}
@@ -642,23 +649,25 @@ the time and strain axis.}
 \end{figure}
 
 
-\subsubsection{Regime BPI-1: low shear rates}
+\subsubsection{Regime BPI-1: low shear rates }
 
 \begin{figure}[htpb]
 \includegraphics[width=0.495\textwidth]{stress_fe_yield_bp1.pdf}
-\caption{Average deviatoric stress and free energy density of BPI at low shear rate: 
-The negative branch in the stress is related to a local maximum and a following local 
+\caption{Average thermodynamic shear stress and free energy density of BPI at shear rate 
+$\gd=4.88\e{-5}, Er=0.08$: The negative branch in the stress is related to a local maximum and a following local 
 minimum in average free energy density. This creates unstable conditions that lead 
-to a dissolving regular network and an amorphous state which 
+to reconstruction of the defect lattice into an amorphous network state which 
 seemingly features a yield stress.}
 \label{bp1-fe-yield}
 \end{figure}
+
+
 
 The rheological response of BPI at low shear rate, $\gd\lesssim1.95\e{-5}$
 (${\it Er} \lesssim 0.33$), 
 is strikingly different from that of BPII and appears to show a
 yield stress. An explanation for this behaviour can be found by 
-looking more closely at the average deviatoric stress (where the
+looking more closely at the average shear stress (where the
 background viscosity contribution has been subtracted) and 
 free energy density as a function of time, as shown in Fig. \ref{bp1-fe-yield}.
 When the quiescent and equilibrated BPI network begins to flow
@@ -670,17 +679,27 @@ The amplitude of the excursions in these stress oscillations, and
 the presence of a part of the period where the thermodynamic
 contribution to the stress is negative, suggest that the
 BPI network is subject to large forces. Seemingly, these eventually
-cause the flow-induced collapse to the amorphous state with
+cause the flow-induced collapse to an amorphous network state with
 an apparent yield stress. We should underscore that this
-low shear regime, might be brought about by the boundary
-conditions, which in practice is equivalent to having infinitely
-distant walls which the network is anchored to (see discussion
+low shear regime, might depend on our choice of boundary
+conditions, which in practice are equivalent to having infinitely
+distant walls to which the network is anchored (see discussion
 in the Appendix).
-With free boundary conditions,
-one may imagine that, for very low wall velocity, 
-permeative flows may be possible which allow for
+With free boundary conditions and for very low wall velocity, 
+permeative flows might instead allow for
 some slip of the BPI network, as in cholesterics sheared
 along their axis~\cite{Marenduzzo:2006b}.
+
+\begin{figure}[htpb]
+\includegraphics[width=0.495\textwidth]{stress_bp1-1_bp1-2.pdf}
+\caption{Thermodynamic shear stress $\Pi_{xy}$ versus strain near the transition between regime
+BPI-1 and BPI-2. The shear rates are $\gd=1.95\e{-5}$ (red solid) 
+and $\gd=3.91\e{-5}$ (green dashed). Compared to lower shear rates in BPI-1 
+where the stress goes negative (Fig. \ref{bp1-fe-yield}) the stress is 
+throughout positive, but exhibits very large fluctuations during one cycle, 
+which are absent in regime BPI-2 at higher shear rates than shown here.}
+\label{bp1-1_bp1-2}
+\end{figure}
 
 \begin{figure*}[htpb]
 \includegraphics[width=0.245\textwidth]{disc-xy-10k_run1115.png}
@@ -703,7 +722,7 @@ an amorphous state (bottom row far right, at time step $t=2.2\e{6}$).}
 \label{bp1-low}
 \end{figure*}
 
-\if{The negative branch in the deviatoric stress is connected
+\if{The negative branch in the shear stress is connected
 to a local maximum followed by a local minimum in the 
 average free energy. Hence, the region of negative stress can be 
 regarded as a phase during which elastic forces exert a 
@@ -714,16 +733,6 @@ elastic forces for a relatively long time, long enough to
 create small distortions which finally break the symmetry of the
 flow-induced configuration.}\fi
 
-\begin{figure}[htpb]
-\includegraphics[width=0.495\textwidth]{stress_bp1-1_bp1-2.pdf}
-\caption{Shear stress $\Pi_{xy}$ versus strain near the transition between regime
-BPI-1 and BPI-2. The shear rates are $\gd=1.95\e{-5}$ (red solid) 
-and $\gd=3.91\e{-5}$ (green dashed). Compared to lower shear rates in BPI-1 
-where the stress goes negative (Fig. \ref{bp1-fe-yield}) the stress is 
-throughout positive, but exhibits very large fluctuations during one cycle, 
-which are absent in regime BPI-2 at higher shear rates than shown here.}
-\label{bp1-1_bp1-2}
-\end{figure}
 
 To gain further insight into the flow-induced deformation, and eventual
 breakdown, of BPI, it is instructive to follow the dynamics of 
@@ -733,7 +742,7 @@ Just after the onset of the shear flow, the disclination lines
 in BPI get more and more squeezed together, and this is incompatible with
 the defect topology in this phase.
 Consequently, the network adopts a flow-induced conformation which consists 
-of intertwined helices that stretch during the affine transformation.
+of intertwined helices that stretch during the shear transformation.
 This helical conformation that emerges already at strains $\gamma\simeq1$ 
 is shown in Fig. \ref{bp1-low} (top row).
 At this point the original BPI has already been significantly deformed.
@@ -746,25 +755,25 @@ network along the vorticity direction at any stage of the cycle.
 This mode of flow proves unstable, as after a few cycles 
 distortions appear which lead to further destabilisation -- presumably in
 view of the large stress fluctuations discussed above. 
-Finally, the network loses order and 
-transforms into an amorphous state with almost constant
-yield stress in the region of $\Pi_{xy}\simeq 1\e{-5}$ LBU.
+Finally, the system loses order and 
+transforms into an amorphous network state with almost constant
+stress in the region of $\Pi_{xy}\simeq 1\e{-5}$ LBU.
 If the shear is stopped, this flow-induced amorphous state
 remains arrested and metastable, and cannot
 find its way back to the original BPI structure.
 
-\subsubsection{Regime BPI-2: intermediate shear rates}
+\subsubsection{Regime BPI-2: intermediate shear rates }
 
-Adjacent to regime BPI-1 ($\gd\lesssim1.95\e{-5}$; $ {\it Er}\lesssim 0.33$) and 
+Adjacent to regime BPI-1 ($\gd\lesssim1.95\e{-5}$; $ {\it Er}\lesssim 0.33$) but 
 at slightly larger shear rates ($3.91\e{-5}\lesssim\gd\lesssim 4.687\e{-4}$; $0.67\lesssim{\it Er}\lesssim8$)
 lies another region where the network flows with periodically 
 recurring conformations (Fig. \ref{bp1-rheo}). 
 We refer to this region as BPI-2. The transition between BPI-1 and BPI-2 
 is clear when looking at Fig. \ref{bp1-1_bp1-2} 
-which shows the deviatoric stress versus total strain. 
+which shows the shear stress versus total strain. 
 A qualitative difference between these two is the absence in BPI-2 of the 
 large stress fluctuations that occur during the early cycles in regime BPI-1.
-(Recall that for even lower $\gd$ the deviatoric thermodynamic stress becomes 
+(Recall that for even lower $\gd$ the thermodynamic shear stress becomes 
 temporarily negative (Fig. \ref{bp1-fe-yield}), which 
 caused destabilisation of the periodic network and led to the 
 amorphous configuration in the steady state.)
@@ -793,6 +802,18 @@ simple rule.}
 \label{bp1-med}
 \end{figure*}
 
+\begin{figure*}[htpb]
+\includegraphics[width=0.495\textwidth]{v_yz-v_z-360k_run914.png}
+\includegraphics[width=0.495\textwidth]{v_yz-v_z-360k_run922.png}
+\caption{Velocity patterns in BPI for positive (left) and negative (right) helicity: 
+The pictures show a snapshot of the periodically recurring patterns in the 
+secondary velocity components $(v_y,v_z)$. 
+The colour code gives the magnitude and sign 
+of the $z$-component. The vertical and horizontal direction are the gradient and 
+vorticity direction, respectively, with the flow into/out of the plane in the 
+upper/lower half of the images.}
+\label{bp1-velo}
+\end{figure*}
 
 Fig. \ref{bp1-med} shows snapshots of the periodically recurring 
 BPI in steady shear flow. Contrary to BPII-1 at these shear rates, 
@@ -823,31 +844,19 @@ rates for which the recurrence period is much longer and far more irregular,
 with seemingly intermittent dynamics (e.g. at $\gd=1.3671875\e{-4}$ the
 network configuration repeats itself after $6/\gd$, $12/\gd$, $22/\gd$).
 Taken together, all this evidence very much suggests that 
-BPI-2 constitutes an instance of ``rheochaos''~\cite{rheochaos}.
+the BPI-2 range includes at least some instances of ``rheochaos''~\cite{rheochaos,Cates:2002}.
 
 Fig. \ref{bp1-velo} depicts a snapshot of the secondary velocity 
 components $v_y$ and $v_z$ for left- and right-handed chirality of
 the blue phase. The emerging pattern is similar to that of BPII from 
-Fig. \ref{bp2-velo}, but differs in that there is no band
-arrangement. However, just as in the case of BPII, both patterns
+Fig. \ref{bp2-velo}, but differs in that there is no simple
+separation into bands with opposite secondary velocity. 
+However, just as in the case of BPII, both patterns
 are mirror images and feature the highest velocities in the regions where 
 the largest conformational changes take place. 
 
-\begin{figure*}[htpb]
-\includegraphics[width=0.495\textwidth]{v_yz-v_z-360k_run914.png}
-\includegraphics[width=0.495\textwidth]{v_yz-v_z-360k_run922.png}
-\caption{Velocity patterns in BPI for positive (left) and negative (right) helicity: 
-The pictures show a snapshot of the periodically recurring patterns in the 
-secondary velocity components $(0,v_y,v_z)$, i.e. the component $v_x$ in flow direction 
-has been projected out. The colour code gives the magnitude and sign 
-of the $z$-component. The vertical and horizontal direction are the gradient and 
-vorticity direction, respectively, with the flow into/out of the plane in the 
-upper/lower half of the images.}
-\label{bp1-velo}
-\end{figure*}
-
 \if{In order to gain a better understanding of the complex oscillatory behaviour in regime BPI-2 
-we performed a Fourier analysis of the deviatoric stress $\Pi_{xy}$ according to Eq. \ref{spectrum}. 
+we performed a Fourier analysis of the shear stress $\Pi_{xy}$ according to Eq. \ref{spectrum}. 
 The spectrum is shown in Fig. \ref{bp1-spectrum}. 
 
 There are two aspects which are worth mentioning. First, we observe a strong contribution of 
@@ -870,7 +879,7 @@ The latter is directly linked to the imposed shear rate. }\fi
 \if{
 \begin{figure}[htpb]
 \includegraphics[width=0.495\textwidth]{spectrum_bp1.pdf}
-\caption{Fourier analysis of the deviatoric stress $\Pi_{xy}$ of BPI: The main picture shows 
+\caption{Fourier analysis of the shear stress $\Pi_{xy}$ of BPI: The main picture shows 
 spectral components and the 'lock-in' of flow modes, 
 visible in the fixed peak position for certain flow rates.  
 The inset shows a zoom of the same data over 
@@ -891,37 +900,37 @@ prohibitive, given that large strains have to
 be simulated in order to reach a steady state. Therefore we opted for a 
 comparison with smaller runs.
 
-Fig. \ref{bp1-2uc4uc} shows a comparison of the disclination network and 
-deviatoric stress $\Pi_{xy}$ of two different runs, one consisting of 8 
-unit cells and the other one with 64 unit cells.
-We observe that there are deviations in both the visual appearance of the 
-network as well as in the time-dependence of the deviatoric stress.
-Perhaps surprisingly, the smaller run with 8 unit cells takes longer 
-to reach the steady state with its flow-induced recurring disclination network. 
-These results indicate that we cannot know with certainty if the individual 
-flow-induced conformations that we find for 64 unit cells are not affected 
-by the imposed periodicity -- quite possibly the details of the oscillations
-would actually differ in an even large simulation. 
-Nevertheless, the comparison suggests that 
-the recurrence period and the complexity of the network in flow are  
-generic features of BPI in this regime of flow.
- 
 \begin{figure}[htpb]
 \includegraphics[width=0.43\textwidth]{disc+y-600k-run911_run1163.png}\\
 \includegraphics[width=0.495\textwidth]{stress_bp1_2uc_4uc.pdf}
-\caption{Disclination network and deviatoric stress $\Pi_{xy}$ in BPI: 
+\caption{Disclination network and shear stress $\Pi_{xy}$ in BPI: 
 The dark (red) network in top picture shows a snapshot of run that consists 
 of $2^3=8$ unit cells, whereas the light (cyan) network displays the 
 central section of 8 unit cells in a bigger run with $4^3=64$ unit cells altogether. 
-The bottom picture shows the deviatoric stress over time. (Interestingly, 
+The bottom picture shows the shear stress over time. (Interestingly, 
 an intermediate sized run with $3^3=27$ unit cells led to results that 
 were virtually identical to the smaller run with 8 unit cells.) 
 The shear rate was $\gd=7.81\e{-5}$.
 }
 \label{bp1-2uc4uc}
 \end{figure}
+ 
+Fig. \ref{bp1-2uc4uc} shows a comparison of the disclination network and 
+shear stress $\Pi_{xy}$ of two different runs, one consisting of 8 
+unit cells and the other one with 64 unit cells.
+We observe that there are deviations in the visual appearance of the 
+network as well as in the time-dependence of the shear stress.
+Perhaps surprisingly, the smaller run with 8 unit cells takes longer 
+to reach the steady state with its flow-induced recurring disclination network. 
+These results indicate that we cannot know with certainty whether the individual 
+flow-induced conformations that we find for 64 unit cells are affected 
+by the imposed periodicity -- quite possibly the details of the oscillations
+would differ in an even larger simulation. 
+Nevertheless, the comparison suggests that 
+the recurrence period and the complexity of the network in flow are  
+generic features of BPI in this regime of flow.
 
-\subsubsection{Regime BPI-3: high shear rates}
+\subsubsection{Regime BPI-3: high shear rates }
 
 At high flow rates, $6.25\e{-4}\lesssim\gd\lesssim7.81\e{-4}$ ($10.67\lesssim {\it Er}\lesssim 13.33$), 
 we observe a break-up of the flow-induced 
@@ -951,7 +960,6 @@ along the vorticity direction.}
 \end{figure}
 
 \subsection{Transition to cholesteric helix and flow-aligned nematic state}\label{cholflow}
-
 
 At shear rates beyond the regimes BPI-3 and BPII-2, but below the transition to a 
 flow-aligned nematic state at still higher shear rates, we found another regime where 
@@ -985,16 +993,16 @@ the structure is translationally invariant).}
 
 \section{Conclusions}
 
-In summary, our work constitutes the first simulation of bulk flow behaviour 
+In summary, our work constitutes the first large scale simulation of bulk flow behaviour 
 of cubic BPs in simple shear flow. 
   
 We were able to characterise the rheology of cubic BPs, and identified 
 two different flow regimes for BPII and three different ones for BPI. 
 Below an Ericksen number of $Er\simeq3$, BPII exhibits weak shear-thinning and 
-obeys a power-law flow curve.  
+obeys a power-law flow curve with exponent close to unity.  
 The BPII disclination network breaks up and reconnects 
 in the flow, which leads to a periodically recurring dependence 
-of the deviatoric shear stress. The flow-induced conformation looks generally
+of the shear stress. The flow-induced conformation looks generally
 very similar to the quiescent network at equilibrium. 
 While being homogeneously transformed due to the shear flow
 the disclination network moves steadily in the vorticity direction
@@ -1006,11 +1014,10 @@ breaks up in a two-step manner. First a simple cholesteric helix forms with the 
 along the vorticity direction. The flow excites a travelling helical wave,
 as predicted theoretically in Ref.~\cite{Rey:1996a,Rey:1996b}.
 Upon increasing the shear, the helix rotates and orients along the
-gradient direction, where it can support larger flows due to the translational
-symmetry along the flow direction. Still larger flows break this residual
+gradient direction, where it can support larger flow rates due to the translational
+symmetry along the flow direction. Still larger flow rates break this residual
 cholesteric order and leave a standard flow-aligned nematic state,
 at the highest shear rate studied.
-
 
 Interestingly, BPI shows a flow behaviour that is very different to that of BPII.
 This is a direct consequence of the topological differences between their disclination 
@@ -1018,7 +1025,7 @@ networks. Below an Ericksen number of $Er\sim 0.4$, the BPI network cannot both 
 retain a regular appearance. It eventually reorganises into an amorphous network that
 features yield-stress behaviour. The apparent reason is that shortly after the onset of the shearing 
 very large stress fluctuations occur. At the lowest shear rates
-the thermodynamic contribution to the deviatoric (shear) stress becomes temporarily 
+the thermodynamic contribution to the shear stress becomes temporarily 
 negative during each cycle. These fluctuations seem to destabilise the network and 
 eventually trigger the transition into an amorphous state with a residual yield
 stress. 
@@ -1035,8 +1042,8 @@ is not given by a simple formula as for BPII.
 Despite their complex appearance, the flow-induced conformations are 
 topologically connected to the quiescent BPI and after switching off of the 
 shear flow a defect-free blue phase reforms. It is tempting to
-interpret all these finding as an instance of 
-deterministic rheological chaos~\cite{fielding}.
+interpret the unsteady oscillations seen in this regime as an instance of 
+deterministic rheological chaos~\cite{fielding, Cates:2002}.
 
 Just as in the case of BPII, the BPI network breaks up at larger Ericksen numbers in
 a two-step process. First, at $10\lesssim\ Er\lesssim 15$, it adopts a 
@@ -1126,7 +1133,10 @@ on the flow properties of complex liquid-crystalline phases.
 \section*{Acknowledgments}
 We acknowledge support by EPSRC grant nos. EP/E045316 and EP/E030173, 
 the MAPPER EU-FP7 project (grant no. RI-261507) and computing time on HECToR.
-We thank Peter J. Collings for very stimulating discussions. 
+This work was granted access to the HPC resource of CSC, Finland, made available 
+within DECI by the PRACE-2IP, funded by the European Community's 7th Framework 
+Program under grand agreement No. RI-283493. We thank Peter J. Collings 
+for very stimulating discussions. 
 MEC holds a Royal Society Research Professorship.
 
 \appendix
@@ -1135,7 +1145,7 @@ MEC holds a Royal Society Research Professorship.
 In this Appendix we give some more details on our simulations,
 including the importance and effect of boundary conditions. 
 
-Tab. \ref{tab1} lists the parameters chosen for our runs (values of
+Table \ref{tab1} lists the parameters chosen for our runs (values of
 the reduced temperature and reduced chirality are given in the caption),
 together with the minima, maxima, and standard deviations of the velocity
 field in the three directions (discussed further in the main text). 
@@ -1214,12 +1224,12 @@ but anchored wall along the $xy$ plane. In other words, due to
 the periodic boundary conditions along the flow gradient direction, 
 there can be no slip in the network deformation (or strain) at any point. 
 Effectively, this disallows permeation flows, which on the other
-hand require a non-zero velocity field and, symultaneously,
-negligible (ideally zero) perturbations of the blue phase network.
+hand require a non-zero velocity field and, simultaneously,
+much lower (ideally zero) perturbations of the blue phase network.
 Consequently our results are effectively valid for sheared bulk 
-BPs which are anchored at the walls. However, permeation flows are 
-only restricted to very slow flows, and are unstable for intermediate 
-and high flows~\cite{Dupuis:2005}, 
+BPs which are anchored at the walls. In practice, permeation flows are 
+only restricted to very low flow rates, and are unstable for intermediate 
+and fast flows~\cite{Dupuis:2005}, 
 where the response of the network depends less on
 the details of the boundary conditions used at the wall.
 \newpage
