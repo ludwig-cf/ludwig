@@ -317,6 +317,10 @@ void ludwig_run(const char * inputfile) {
       
 
       TIMER_start(PHIGRADCOMP);
+      //HACK
+      put_colloid_map_on_gpu();
+      put_colloid_properties_on_gpu();
+
       phi_gradients_compute_gpu();
       TIMER_stop(PHIGRADCOMP);
 

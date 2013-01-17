@@ -32,5 +32,8 @@ extern double * grad_phi_site_d;
 extern double * delsq_phi_site_d;
 extern int * N_d;
 extern int * le_index_real_to_buffer_d;
+extern char * site_map_status_d;
+extern char * colloid_map_d;
+extern double * colloid_r_d;
 
 #endif

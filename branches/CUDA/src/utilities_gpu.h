@@ -28,6 +28,7 @@ extern "C" colloid_t * colloid_at_site_index(int index);
 extern "C" void initialise_gpu();
 extern "C" void put_site_map_on_gpu();
 extern "C" void put_colloid_map_on_gpu();
+extern "C" void put_colloid_properties_on_gpu();
 extern "C" void put_force_on_gpu();
 extern "C" void put_velocity_on_gpu();
 extern "C" void get_force_from_gpu();

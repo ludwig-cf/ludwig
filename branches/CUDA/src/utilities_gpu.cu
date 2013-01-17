@@ -20,6 +20,8 @@
 #include "model.h"
 #include "timer.h"
 
+#define MAX_COLLOIDS 500
+
 //#define GPUS_PER_NODE 4
 #define GPUS_PER_NODE 1
 
@@ -43,6 +45,7 @@ double * q_d;
 double * wv_d;
 char * site_map_status_d;
 char * colloid_map_d;
+double * colloid_r_d;
 double * force_d;
 double * colloid_force_d;
 double * velocity_d;
@@ -198,6 +201,7 @@ static void allocate_memory_on_gpu()
   
   cudaMalloc((void **) &site_map_status_d, nsites*sizeof(char));
   cudaMalloc((void **) &colloid_map_d, nsites*sizeof(char));
+  cudaMalloc((void **) &colloid_r_d, MAX_COLLOIDS*3*sizeof(double));
   cudaMalloc((void **) &ma_d, NVEL*NVEL*sizeof(double));
   cudaMalloc((void **) &mi_d, NVEL*NVEL*sizeof(double));
   cudaMalloc((void **) &cv_d, NVEL*3*sizeof(int));
@@ -247,6 +251,7 @@ static void free_memory_on_gpu()
   cudaFree(q_d);
   cudaFree(site_map_status_d);
   cudaFree(colloid_map_d);
+  cudaFree(colloid_r_d);
   cudaFree(force_d);
  cudaFree(colloid_force_d);
   cudaFree(velocity_d);
@@ -307,29 +312,27 @@ void put_site_map_on_gpu()
 }
 
 
-#define MAX_COLLOIDS 500
-void* colloid_list[MAX_COLLOIDS];
+colloid_t* colloid_list[MAX_COLLOIDS];
+double colloid_r[MAX_COLLOIDS*3];
 
-/* copy colloid map from host to accelerator */
-void put_colloid_map_on_gpu()
+int build_colloid_list()
 {
-  
-  int index;
-  
-  void *ptr;
-  int icolloid;
+
+  int index, icolloid;
+  colloid_t *p_c;
   int ncolloids=0;
 
   // build list of colloids, one entry for each, stored as memory addresses
   for (index=0;index<nsites;index++){
     
-    ptr=colloid_at_site_index(index);  
-    if(ptr){
+    p_c=colloid_at_site_index(index);  
+    if(p_c){
 
+      //printf("HHH %f\n", p_c->s.r[0]);
       int match=0;
       for (icolloid=0;icolloid<ncolloids;icolloid++){
 	
-	if(ptr==colloid_list[icolloid]){
+	if(p_c==colloid_list[icolloid]){
 	  match=1;
 	  continue;
 	}
@@ -337,7 +340,7 @@ void put_colloid_map_on_gpu()
       }
       if (match==0)
 	{
-	  colloid_list[ncolloids]=ptr;
+	  colloid_list[ncolloids]=p_c;
 	  ncolloids++;
 	}
       
@@ -345,16 +348,29 @@ void put_colloid_map_on_gpu()
     
   }
 
+  return ncolloids;
+
+}
+
+
+/* copy colloid map from host to accelerator */
+void put_colloid_map_on_gpu()
+{
+  
+  int index;
+  
+  colloid_t *p_c;
+  int icolloid;
+  int ncolloids=build_colloid_list();
 
   for (index=0;index<nsites;index++){
     
-    ptr=colloid_at_site_index(index);  
-    if(ptr){
+    p_c=colloid_at_site_index(index);  
+    if(p_c){
       
       //find out which colloid
       for (icolloid=0;icolloid<ncolloids;icolloid++){
-	//printf("%d %d %d %d\n", index, icolloid,ptr,colloid_list[icolloid]);
-	if(ptr==colloid_list[icolloid])	  break;
+	if(p_c==colloid_list[icolloid])	  break;
       }
       colloid_map_temp[index]=icolloid;
       
@@ -363,20 +379,46 @@ void put_colloid_map_on_gpu()
 
   }
   
-  //for (icolloid=0;icolloid<ncolloids;icolloid++)printf("colloid %d %d\n",icolloid,colloid_list[icolloid]);
-  
-  
-
-  //exit(1);
+  //  for (icolloid=0;icolloid<ncolloids;icolloid++)printf("colloid %d %d\n",icolloid,colloid_list[icolloid]);
 
   /* copy data from CPU to accelerator */
-  cudaMemcpy(colloid_map_d, colloid_map_temp, nsites*sizeof(char), \
+    cudaMemcpy(colloid_map_d, colloid_map_temp, nsites*sizeof(char),	\
   	     cudaMemcpyHostToDevice);
 
 
   checkCUDAError("put_colloid_map_on_gpu");
 
 }
+
+/* copy colloid map from host to accelerator */
+void put_colloid_properties_on_gpu()
+{
+  
+  int index, ia;
+  colloid_t *p_c;
+  void *ptr;
+  int icolloid;
+  int ncolloids=build_colloid_list();
+      
+   for (icolloid=0;icolloid<ncolloids;icolloid++){
+    
+     p_c=(colloid_t*) colloid_list[icolloid]; 
+     
+     //printf("NNN %f\n", p_c->s.r[0]);
+     for (ia=0; ia<3; ia++)
+       colloid_r[3*icolloid+ia]=p_c->s.r[ia]; 
+
+   } 
+  
+  /* copy data from CPU to accelerator */
+  cudaMemcpy(colloid_r_d, colloid_r, ncolloids*3*sizeof(double), \
+  	     cudaMemcpyHostToDevice);
+
+
+  checkCUDAError("put_colloid_map_on_gpu");
+
+}
+
 
 
 
