@@ -234,7 +234,6 @@ int do_test_dab(void) {
   int nf = 1;
   int index = 1;
   double dab[3][3];
-  double tol = DBL_EPSILON;
 
   field_t * field = NULL;
   field_grad_t * gradient = NULL;

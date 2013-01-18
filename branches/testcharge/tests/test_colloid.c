@@ -54,8 +54,17 @@ int main(int argc, char ** argv) {
 			   37.0, 38.0, 39.0, 40.0, 41.0, 42.0, 43.0, 44.0,
 			   45.0, 46.0, 47.0, 48.0}};
 
-  const char * file_ascii = "/tmp/colloid_ascii.dat";
-  const char * file_binary = "/tmp/colloid_binary.dat";
+  char * tmp_ascii = NULL;
+  char * tmp_binary = NULL;
+
+  /* Use a unique temporary file to prevent i/o collisions if this
+   * serial code is started in parallel. */
+
+  tmp_ascii = tmpnam(NULL);
+  tmp_binary = tmpnam(NULL);
+
+  assert(tmp_ascii);
+  assert(tmp_binary);
 
   printf("sizeof(colloid_state_t) = %ld\n", sizeof(colloid_state_t));
 
@@ -63,8 +72,8 @@ int main(int argc, char ** argv) {
    * change it without sorting out the padding. */
   assert(sizeof(colloid_state_t) == 512);
 
-  test_colloid_ascii_io(sref, file_ascii);
-  test_colloid_binary_io(sref, file_binary);
+  test_colloid_ascii_io(sref, tmp_ascii);
+  test_colloid_binary_io(sref, tmp_binary);
 
   return 0;
 }
