@@ -1050,12 +1050,15 @@ int map_init_rt(map_t ** pmap) {
     if (strcmp(format, "ASCII") == 0) form_in = IO_FORMAT_ASCII_SERIAL;
     if (strcmp(format, "BINARY") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
 
+    RUN_get_int_parameter_vector("porous_media_io_grid", grid);
+
     info("\n");
     info("Porous media\n");
     info("------------\n");
     info("Porous media file requested:  %s\n", filename);
     info("Porous media file type:       %s\n", status);
     info("Porous media format (serial): %s\n", format);
+    info("Porous media io grid:         %d %d %d\n", grid[X], grid[Y], grid[Z]);
   }
 
   map_create(ndata, &map);
