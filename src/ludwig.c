@@ -221,6 +221,7 @@ void ludwig_run(const char * inputfile) {
 
   char    filename[FILENAME_MAX];
   char    subdirectory[FILENAME_MAX];
+  int     is_porous_media = 0;
   int     step = 0;
 
   pe_init();
@@ -234,6 +235,7 @@ void ludwig_run(const char * inputfile) {
   pe_subdirectory(subdirectory);
 
   step = get_step();
+  wall_pm(&is_porous_media);
 
   if (step == 0 && phi_nop() == 3) {
     polar_active_rt_initial_conditions();
@@ -406,7 +408,8 @@ void ludwig_run(const char * inputfile) {
       }
 
       ludwig_report_momentum();
-      stats_velocity_minmax();
+
+      stats_velocity_minmax(is_porous_media);
 
       test_isothermal_fluctuations();
       info("\nCompleted cycle %d\n", step);
