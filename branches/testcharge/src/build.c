@@ -44,6 +44,7 @@ static int build_colloid_wall_links(colloid_t * pc, map_t * map);
 static int build_reset_links(colloid_t * pc, map_t * map);
 static int build_replace_fluid(int index, colloid_t *);
 static int build_remove_fluid(int index, colloid_t *);
+int build_count_links_local(colloid_t * colloid, int * nlinks);
 
 /*****************************************************************************
  *
@@ -1109,4 +1110,29 @@ colloid_t * colloid_at_site_index(int index) {
 
   if (coll_map == NULL) return NULL;
   return coll_map[index];
+}
+
+/*****************************************************************************
+ *
+ *  build_count_links_local
+ *
+ *  A utility.
+ *
+ *****************************************************************************/
+
+int build_count_links_local(colloid_t * colloid, int * nlinks) {
+
+  colloid_link_t * pl = NULL;
+  int nlink = 0;
+
+  assert(colloid);
+  assert(nlinks);
+
+  for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
+    nlink += 1;
+  }
+
+  *nlinks = nlink;
+
+  return 0;
 }
