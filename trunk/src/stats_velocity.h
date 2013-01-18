@@ -15,6 +15,6 @@
 #ifndef STATS_VELOCITY_H
 #define STATS_VELOCITY_H
 
-void stats_velocity_minmax(void);
+int stats_velocity_minmax(int print_volume_flux);
 
 #endif

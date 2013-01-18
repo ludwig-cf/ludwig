@@ -37,7 +37,7 @@
  *
  ****************************************************************************/
 
-void stats_velocity_minmax(void) {
+int stats_velocity_minmax(int print_volume_flux) {
 
   int ic, jc, kc, ia, index;
   int nlocal[3];
@@ -94,7 +94,10 @@ void stats_velocity_minmax(void) {
   info("Velocity - x y z\n");
   info("[minimum ] %14.7e %14.7e %14.7e\n", umin[X], umin[Y], umin[Z]);
   info("[maximum ] %14.7e %14.7e %14.7e\n", umax[X], umax[Y], umax[Z]);
-  info("[vol flux] %14.7e %14.7e %14.7e\n", usum[X], usum[Y], usum[Z]);
 
-  return;
+  if (print_volume_flux) {
+    info("[vol flux] %14.7e %14.7e %14.7e\n", usum[X], usum[Y], usum[Z]);
+  }
+
+  return 0;
 }
