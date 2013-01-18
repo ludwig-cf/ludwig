@@ -43,6 +43,7 @@ extern "C" double blue_phase_be_get_rotational_diffusion(void);
 /* external variables holding device memory addresses */
 extern double * phi_site_d;
 extern double * phi_site_full_d;
+extern double * h_site_d;
 extern double * grad_phi_site_d;
 extern double * delsq_phi_site_d;
 extern double * force_d;
@@ -70,6 +71,7 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
 						  double *phi_site_full_d,
 						  double *grad_phi_site_d,
 						  double *delsq_phi_site_d,
+						  double *h_site_d,
 						  double *force_d);
 
 __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
@@ -78,6 +80,7 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 					double *phi_site_full_d,
 					double *grad_phi_site_d,
 					double *delsq_phi_site_d,
+					double *h_site_d,
 					double *force_d,
 					double *colloid_force_d);
 
@@ -111,6 +114,11 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxz_d,
 					   double *hs5_d
 );
+__global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
+						 double *phi_site_full_d,
+						 double *grad_phi_site_d,
+						 double *delsq_phi_site_d,
+						 double *h_site_d);
 
 __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]);
 __device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,
