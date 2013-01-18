@@ -142,6 +142,7 @@ void test_processor_independent() {
   MPI_Barrier(MPI_COMM_WORLD);
 
   info("Release io_info struct...");
+  io_remove(stub, io_info);
   io_info_destroy(io_info);
   info("ok\n");
 
@@ -179,6 +180,7 @@ void test_ascii() {
   io_read(filestub, io_info);
   info("ASCII read ok\n");
 
+  io_remove(filestub, io_info);
   io_info_destroy(io_info);
 
   return;
