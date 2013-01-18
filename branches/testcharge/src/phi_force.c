@@ -46,7 +46,6 @@ static int phi_force_wally(double * fy);
 static int phi_force_wallz(double * fz);
 
 static int phi_force_fluid_phi_gradmu(field_t * phi, hydro_t * hydro);
-static int phi_force_fluid_phi_gradmu1(field_t * phi, hydro_t * hydro);
 
 static int force_required_ = 1;
 static int force_divergence_ = 1;
@@ -286,97 +285,6 @@ static int phi_force_fluid_phi_gradmu(field_t * fphi, hydro_t * hydro) {
         mup1 = chemical_potential(index0 + zs, 0);
 
         force[Z] = -phi*0.5*(mup1 - mum1);
-
-	/* Store the force on lattice */
-
-	hydro_f_local_add(hydro, index0, force);
-
-	/* Next site */
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  phi_force_fluid_phi_gradmu1
- *
- *  A computation of f = - phi grad mu with differencing:
- *      phi(+) = [ phi(i) + phi(i+1) ] / 2
- *      phi(-) = [ phi(i-1) + phi(i) ] / 2
- *      f = - [ phi(-)*[mu(i) - mu(i-1)] + phi(+)*[mu(i+1) - mu(i)] ] / 2 
- *  in each coordinate direction.
- *
- *****************************************************************************/
-
-static int phi_force_fluid_phi_gradmu1(field_t * fphi, hydro_t * hydro) {
-
-  int ic, jc, kc, icm1, icp1;
-  int index0, indexm1, indexp1;
-  int nhalo;
-  int nlocal[3];
-  int zs, ys;
-  double phi, phim1, phip1;
-  double mu0, mum1, mup1;
-  double force[3];
-
-  double (* chemical_potential)(const int index, const int nop);
-
-  assert(fphi);
-  assert(hydro);
-  /* Could check nf == 1 sclar field. */
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  assert(nhalo >= 2);
-
-  /* Memory strides */
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
-
-  chemical_potential = fe_chemical_potential_function();
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index0 = le_site_index(ic, jc, kc);
-	field_scalar(fphi, index0, &phi);
-
-        indexm1 = le_site_index(icm1, jc, kc);
-        indexp1 = le_site_index(icp1, jc, kc);
-
-	mu0  = chemical_potential(index0, 0);
-        mum1 = chemical_potential(indexm1, 0);
-        mup1 = chemical_potential(indexp1, 0);
-
-	field_scalar(fphi, indexp1, &phip1);
-	field_scalar(fphi, indexm1, &phim1);
-	phip1 = 0.5*(phi + phip1);
-	phim1 = 0.5*(phi + phim1);
-	force[X] = -0.5*(phip1*(mup1 - mu0) + phim1*(mu0 - mum1));
-
-        mum1 = chemical_potential(index0 - ys, 0);
-        mup1 = chemical_potential(index0 + ys, 0);
-
-	field_scalar(fphi, index0 + ys, &phip1);
-	field_scalar(fphi, index0 - ys, &phim1);
-	phip1 = 0.5*(phi + phip1);
-	phim1 = 0.5*(phi + phim1);
-	force[Y] = -0.5*(phip1*(mup1 - mu0) + phim1*(mu0 - mum1));
-
-        mum1 = chemical_potential(index0 - zs, 0);
-        mup1 = chemical_potential(index0 + zs, 0);
-
-	field_scalar(fphi, index0 + zs, &phip1);
-	field_scalar(fphi, index0 - zs, &phim1);
-	phip1 = 0.5*(phi + phip1);
-	phim1 = 0.5*(phi + phim1);
-	force[Z] = -0.5*(phip1*(mup1 - mu0) + phim1*(mu0 - mum1));
 
 	/* Store the force on lattice */
 
