@@ -169,13 +169,21 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
   #define TPBZ 8
 
     //int nblocks=(N[X]*N[Y]*N[Z]+TPB-1)/TPB;
+
+  dim3 nblocks1((Nall[Z]+TPBZ-1)/TPBZ,(Nall[Y]+TPBY-1)/TPBY,(Nall[X]+TPBX-1)/TPBX);
+  dim3 threadsperblock1(TPBZ,TPBY,TPBX);
+
+blue_phase_compute_h_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d);
+
+ blue_phase_compute_stress_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
+
   
   dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
   dim3 threadsperblock(TPBZ,TPBY,TPBX);
 
   phi_force_calculation_fluid_gpu_d<<<nblocks,threadsperblock>>>
   //phi_force_calculation_fluid_gpu_d<<<nblocks,TPB>>>
-    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,force_d);
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,stress_site_d,force_d);
       
       cudaThreadSynchronize();
       checkCUDAError("phi_force_calculation_fluid_gpu_d");
@@ -288,12 +296,14 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
 
 blue_phase_compute_h_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d);
 
+ blue_phase_compute_stress_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
+
 
   dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
   dim3 threadsperblock(TPBZ,TPBY,TPBX);
 
   phi_force_colloid_gpu_d<<<nblocks,threadsperblock>>>
-    (le_index_real_to_buffer_d,site_map_status_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,force_d,colloid_force_d);
+    (le_index_real_to_buffer_d,site_map_status_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,stress_site_d,force_d,colloid_force_d);
       
       cudaThreadSynchronize();
       checkCUDAError("phi_force_colloid_gpu_d");
@@ -762,11 +772,19 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
  *
  *****************************************************************************/
 
-__device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][3],
-				   double h[3][3], double sth[3][3]){
+__device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][3], double sth[3][3], double *h_site_d, int index){
   int ia, ib, ic, id, ie;
 
   double tmpdbl,tmpdbl2;
+
+  double h[3][3];
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      h[ia][ib]=h_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
+    }
+  }
+
   
   /* We have ignored the rho T term at the moment, assumed to be zero
    * (in particular, it has no divergence if rho = const). */
@@ -925,15 +943,17 @@ __device__ void blue_phase_chemical_stress_gpu_d(int index,
   indexm1 = get_linear_index_gpu_d(icm1,j,k,Nall_cd);
   indexp1 = get_linear_index_gpu_d(icp1,j,k,Nall_cd);
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      h[ia][ib]=h_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
-    }
-  }
 
   //blue_phase_compute_h_gpu_d(h, dq, dsq, phi_site_full_d, index);
   //blue_phase_compute_h_gpu_d(sth, phi_site_full_d, index, indexm1, indexp1);
-  blue_phase_compute_stress_gpu_d(q, dq, h, sth);
+  blue_phase_compute_stress_gpu_d(q, dq, sth, h_site_d, index);
+
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=sth[ia][ib]; */
+  /*   } */
+  /* } */
+
 
   return;
 }
@@ -959,10 +979,11 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
 						  double *grad_phi_site_d,
 						  double *delsq_phi_site_d,
 						  double *h_site_d,
+						  double *stress_site_d,
 						  double *force_d
 					    ) {
 
-  int ia, icm1, icp1;
+  int ia, ib, icm1, icp1;
   int index, index1;
   double pth0[3][3];
   double pth1[3][3];
@@ -992,43 +1013,78 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
       
 
 	/* Compute pth at current point */
-      blue_phase_chemical_stress_gpu_d(index,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth0);
+      //      blue_phase_chemical_stress_gpu_d(index,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth0);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth0[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
+      	}
+      }
 
 	/* Compute differences */
 	index1 = get_linear_index_gpu_d(icp1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth1);
+	//blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	index1 = get_linear_index_gpu_d(icm1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth1);
+	//blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd+1,kk+nhalo_cd,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+	//blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+	//blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	
 
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd+1,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+	//blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
-	blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+	//blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
@@ -1052,11 +1108,12 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 						  double *grad_phi_site_d,
 						  double *delsq_phi_site_d,
 						  double *h_site_d,
+						  double *stress_site_d,
 					double *force_d,
 						  double *colloid_force_d
 					    ) {
 
-  int ia, icm1, icp1;
+  int ia, ib, icm1, icp1;
   int index, index1;
   double pth0[3][3];
   double pth1[3][3];
@@ -1086,7 +1143,15 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 	/* If this is solid, then there's no contribution here. */
       
 	/* Compute pth at current point */
-      blue_phase_chemical_stress_gpu_d(index,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth0);
+
+
+      //blue_phase_chemical_stress_gpu_d(index,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth0);
+
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth0[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
+      	}
+      }
 
 	/* Compute differences */
 	index1 = get_linear_index_gpu_d(ii+nhalo_cd+1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
@@ -1102,7 +1167,14 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 	  {
 	  /* This flux is fluid-fluid */ 
 
-	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth1);
+	    //	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
+
+
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	    }
@@ -1124,7 +1196,14 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 	  {
 	    /* Fluid - fluid */
 	    
-	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth1);
+	    //blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
+
+
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	    }
@@ -1144,7 +1223,14 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 	  {
 	    /* Fluid - fluid */
 	    
-	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+	    //	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
+
+
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	    }
@@ -1164,7 +1250,14 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 	  {
 	    /* Fluid - fluid */
 	    
-	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+	    //	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
+
+
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	    }
@@ -1183,7 +1276,14 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 	  {
 	    /* Fluid - fluid */
 	    
-	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+	    //	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
+
+
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	    }
@@ -1202,7 +1302,14 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 	  {
 	    /* Fluid - fluid */
 	    	    
-	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+	    //	    blue_phase_chemical_stress_gpu_d(index1,le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, pth1);
+      for (ia = 0; ia < 3; ia++) {
+      	for (ib = 0; ib < 3; ib++) {
+      	  pth1[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index1];
+      	}
+      }
+
+
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	    }
@@ -1688,6 +1795,85 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
 	  h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=h[ia][ib];
+	}
+      }
+    }
+
+  return;
+}
+
+__global__ void blue_phase_compute_stress_all_gpu_d(  double *phi_site_d,
+						 double *phi_site_full_d,
+						 double *grad_phi_site_d,
+						 double *delsq_phi_site_d,
+						 double *h_site_d,
+						 double *stress_site_d){
+
+  int ia, ib;
+  int index;
+  double q[3][3];
+  double sth[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  int ii, jj, kk;
+ 
+ /* CUDA thread index */
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
+ 
+  if (ii < Nall_cd[X] && jj < Nall_cd[Y] && kk < Nall_cd[Z] )
+    {
+
+
+      /* calculate index from CUDA thread index */
+      //index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+      index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
+      
+      /* load phi */
+      
+      q[X][X] = phi_site_d[nsites_cd*XX+index];
+      q[X][Y] = phi_site_d[nsites_cd*XY+index];
+      q[X][Z] = phi_site_d[nsites_cd*XZ+index];
+      q[Y][X] = q[X][Y];
+      q[Y][Y] = phi_site_d[nsites_cd*YY+index];
+      q[Y][Z] = phi_site_d[nsites_cd*YZ+index];
+      q[Z][X] = q[X][Z];
+      q[Z][Y] = q[Y][Z];
+      q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+      
+      
+      /* load grad phi */
+      for (ia = 0; ia < 3; ia++) {
+	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
+	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
+	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
+	dq[ia][Y][X] = dq[ia][X][Y];
+	dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
+	dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
+	dq[ia][Z][X] = dq[ia][X][Z];
+	dq[ia][Z][Y] = dq[ia][Y][Z];
+	dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+      }
+      
+      /* load delsq phi */
+      dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
+      dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
+      dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
+      dsq[Y][X] = dsq[X][Y];
+      dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
+      dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
+      dsq[Z][X] = dsq[X][Z];
+      dsq[Z][Y] = dsq[Y][Z];
+      dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+                  
+      
+      blue_phase_compute_stress_gpu_d(q, dq, sth, h_site_d, index);
+
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=sth[ia][ib];
 	}
       }
     }

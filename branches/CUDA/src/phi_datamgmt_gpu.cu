@@ -63,6 +63,7 @@ extern int * N_d;
 double * phi_site_d;
 double * phi_site_full_d;
 double * h_site_d;
+double * stress_site_d;
 double * grad_phi_site_d;
 double * delsq_phi_site_d;
 double * le_index_real_to_buffer_d;
@@ -215,6 +216,7 @@ static void allocate_phi_memory_on_gpu()
   cudaMalloc((void **) &phi_site_d, nsites*nop*sizeof(double));
   cudaMalloc((void **) &phi_site_full_d, nsites*9*sizeof(double));
   cudaMalloc((void **) &h_site_d, nsites*9*sizeof(double));
+  cudaMalloc((void **) &stress_site_d, nsites*9*sizeof(double));
   cudaMalloc((void **) &delsq_phi_site_d, nsites*nop*sizeof(double));
   cudaMalloc((void **) &grad_phi_site_d, nsites*3*nop*sizeof(double));
   cudaMalloc((void **) &le_index_real_to_buffer_d, nlexbuf*sizeof(int));
@@ -269,6 +271,7 @@ static void free_phi_memory_on_gpu()
   cudaFree(phi_site_d);
   cudaFree(phi_site_full_d);
   cudaFree(h_site_d);
+  cudaFree(stress_site_d);
   cudaFree(delsq_phi_site_d);
   cudaFree(grad_phi_site_d);
   cudaFree(le_index_real_to_buffer_d);
