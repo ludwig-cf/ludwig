@@ -51,6 +51,8 @@ double * colloid_force_d;
 double * velocity_d;
 int * N_d;
 double * force_global_d;
+double * tmpscal1_d;
+double * tmpscal2_d;
 
 double * r3_d;
 double * d_d;
@@ -210,6 +212,8 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &force_d, nsites*3*sizeof(double));
   cudaMalloc((void **) &colloid_force_d, nsites*6*3*sizeof(double));
   cudaMalloc((void **) &velocity_d, nsites*3*sizeof(double));
+  cudaMalloc((void **) &tmpscal1_d, nsites*sizeof(double));
+  cudaMalloc((void **) &tmpscal2_d, nsites*sizeof(double));
 
   cudaMalloc((void **) &fluxe_d, nop*nsites*sizeof(double));
   cudaMalloc((void **) &fluxw_d, nop*nsites*sizeof(double));
@@ -222,6 +226,8 @@ static void allocate_memory_on_gpu()
 
   cudaMalloc((void **) &N_d, sizeof(int)*3);
   cudaMalloc((void **) &force_global_d, sizeof(double)*3);
+
+
 
   cudaMalloc((void **) &r3_d, sizeof(double));
   cudaMalloc((void **) &d_d, sizeof(double)*3*3);
@@ -257,6 +263,9 @@ static void free_memory_on_gpu()
   cudaFree(velocity_d);
   cudaFree(N_d);
   cudaFree(force_global_d);
+
+  cudaFree(tmpscal1_d);
+  cudaFree(tmpscal2_d);
 
   cudaFree(fluxe_d);
   cudaFree(fluxw_d);

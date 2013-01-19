@@ -57,6 +57,9 @@ extern double * fluxz_d;
 extern double * hs5_d;
 extern double * velocity_d;
 
+extern double * tmpscal1_d;
+extern double * tmpscal2_d;
+
 extern double * r3_d;
 extern double * d_d;
 extern double * e_d;
@@ -118,11 +121,22 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxz_d,
 					   double *hs5_d
 );
+__global__ void blue_phase_compute_q2_eq_all_gpu_d(  double *phi_site_d,
+						 double *phi_site_full_d,
+						 double *grad_phi_site_d,
+						 double *delsq_phi_site_d,
+						 double *h_site_d,
+						 double *q2_site_d,
+						     double *eq_site_d);
+
 __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,
 						 double *grad_phi_site_d,
 						 double *delsq_phi_site_d,
-						 double *h_site_d);
+						 double *h_site_d,
+						 double *tmpscal1_d,
+						 double *tmpscal2_d
+);
 
 __global__ void blue_phase_compute_stress_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,
