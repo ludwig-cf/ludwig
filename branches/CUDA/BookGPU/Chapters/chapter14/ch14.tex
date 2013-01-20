@@ -6,7 +6,7 @@ application}
 %\putbib[biblio]
 
 
-\section{Introduction}
+\section{Introduction} \index{lattice Boltzmann} \index{complex fluids}
 The lattice Boltzmann (LB) method (for an overview see, e.g.,
 \cite{succi-book}) has become a popular approach to a variety of fluid
 dynamics problems.  It provides a way to solve the incompressible,
@@ -95,7 +95,7 @@ engineering and maintenance which arise from our experience.
 A summary is provided in Section~\ref{ch14:sec:summary}.
 
 
-\section{Background}\label{ch14:sec:background}
+\section{Background}\label{ch14:sec:background} \index{lattice Boltzmann} \index{complex fluids} \index{MPI}
 
 %\begin{figure}[!t]
 %\centering
@@ -217,14 +217,14 @@ for (is = 0; is < nsites; is++) {
 \begin{figure}[!t]
 \centering
 \includegraphics[width=12cm]{Chapters/chapter14/figures/decomphalo}
-\caption{Left: the lattice is decomposed between MPI tasks. For
-  clarity we show a 2D decomposition of a 3D lattice, but in practice
-  we decompose in all 3 dimensions. Halo cells are added to each
-  sub-domain (as shown on the upper right for a single slice) which store
-  data retrieved from remote neighbours in the halo exchange. Lower
-  right: the D3Q19 velocity set resident on a lattice site;
-  highlighted are the 5 ``outgoing'' elements to be transferred in a
-  specific direction.}
+\caption[Parallel decomposition of D3Q19 lattice.]{Left: the lattice is
+  decomposed between MPI tasks. For clarity we show a 2D decomposition
+  of a 3D lattice, but in practice we decompose in all 3 dimensions.
+  Halo cells are added to each sub-domain (as shown on the upper right
+  for a single slice) which store data retrieved from remote
+  neighbours in the halo exchange. Lower right: the D3Q19 velocity set
+  resident on a lattice site; highlighted are the 5 ``outgoing''
+  elements to be transferred in a specific direction.}
 \label{ch14:fig:decomphalo}
 \end{figure}
 
@@ -245,7 +245,7 @@ version, the necessary transfers are implemented in place using
 a vector of appropriately strided MPI datatypes for each direction.
 
 
-\section{Single GPU Implementation}\label{ch14:sec:singlegpu}
+\section{Single GPU Implementation}\label{ch14:sec:singlegpu} \index{CUDA}
 
 
 In this section we describe the steps taken to enable \textit{Ludwig}
@@ -333,7 +333,7 @@ defer some further comments on software engineering aspects of the code to
 the summary.
 
 
-\section{Multiple GPU Implementation}\label{ch14:sec:parallelgpu}
+\section{Multiple GPU Implementation}\label{ch14:sec:parallelgpu} \index{multi-GPU programming} \index{MPI} \index{parallel scaling}
 
 To execute on multiple GPUs, we use the same domain decomposition
 and message passing framework as the CPU version. Within each
@@ -437,15 +437,16 @@ a simulation in terms of accounting budgets, or electricity.
 \begin{figure}[!t]
 \centering
 \includegraphics[width=10cm]{Chapters/chapter14/figures/two_graphs_ud}
-\caption{The weak (top) and strong (bottom) scaling of \textit{Ludwig}.  Closed
-  shapes denote results using the CPU version run on the Cray
-  XE6 (using two 16-core AMD Interlagos CPUs per node), while open
-  shapes denote results using the GPU version on the Cray XK6 (using a
-  single NVIDIA X2090 GPU per node). Top: the benchmark time is shown
-  where the problem size per node is constant. Bottom: performance is
-  shown where, for each of the four problem sizes presented, the
-  results are scaled by the lattice volume, and all results are
-  normalized by the same arbitrary constant.  }
+\caption[Scaling of Ludwig to many GPUs in parallel.]{The weak (top)
+  and strong (bottom) scaling of \textit{Ludwig}.  Closed shapes
+  denote results using the CPU version run on the Cray XE6 (using two
+  16-core AMD Interlagos CPUs per node), while open shapes denote
+  results using the GPU version on the Cray XK6 (using a single NVIDIA
+  X2090 GPU per node). Top: the benchmark time is shown where the
+  problem size per node is constant. Bottom: performance is shown
+  where, for each of the four problem sizes presented, the results are
+  scaled by the lattice volume, and all results are normalized by the
+  same arbitrary constant.  }
 \label{ch14:fig:scaling}
 \end{figure}
 
@@ -492,13 +493,13 @@ In contrast, the GPU version shows
 reasonably robust scaling even for the smaller system sizes and good
 scaling for the larger systems.
 
-\section{Moving Solid Particles}\label{ch14:sec:particles}
+\section{Moving Solid Particles}\label{ch14:sec:particles} \index{particle-fluid interaction} \index{molecular dynamics}
 
 \begin{figure}[t]
 \centering
 %\includegraphics[width=10cm]{Chapters/chapter14/figures/bbl}
 \includegraphics[width=10cm]{Chapters/chapter14/figures/colloid_new}
-\caption{
+\caption[Interaction of spherical particles with lattice Boltzmann fluid.]{
 A two-dimensional schematic picture of spherical particles on the lattice.
 Left: a particle is allowed
 to move continuously across the lattice, and the position of the
