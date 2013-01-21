@@ -180,6 +180,8 @@ void test_ascii() {
   io_read(filestub, io_info);
   info("ASCII read ok\n");
 
+  MPI_Barrier(MPI_COMM_WORLD);
+
   io_remove(filestub, io_info);
   io_info_destroy(io_info);
 
