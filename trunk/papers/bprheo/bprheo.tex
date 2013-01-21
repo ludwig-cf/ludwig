@@ -146,9 +146,9 @@ stabilised BPs~\cite{Kikuchi:2002,Coles:2005}, which has opened up the
 possibility of novel applications.
 During the last few years considerable progress has been achieved regarding the behaviour 
 of BPs in confined geometries~\cite{Fukuda:2010a, Fukuda:2010b, Ravnik:2011b}, under 
-external fields ~\cite{Alexander:2008,Fukuda:2009,Henrich:2010a,Castles:2010,Tiribocchi:2011a}, 
+external fields~\cite{Alexander:2008,Fukuda:2009,Henrich:2010a,Castles:2010,Tiribocchi:2011a}, 
 and in the presence of colloidal particles~\cite{Ravnik:2011a}.
-The kinetics of BP domain growth have been recently addressed ~\cite{Henrich:2010b}. 
+The kinetics of BP domain growth have been recently addressed~\cite{Henrich:2010b}. 
 However, our understanding of their dynamical behaviour under flow remains
 very limited. The aim of this work is to address this issue by studying,
 for the first time, the response of large BP samples to a shear flow.
@@ -284,7 +284,7 @@ the following Navier-Stokes equation:
 \label{NSE}
 \end{eqnarray}
 This emerges from the Chapman-Enskog expansion
-of the Lattice Boltzmann (LB) equations 
+of the lattice Boltzmann (LB) equations 
 that we solve numerically. A further term $\eta(1+3\frac{\partial P_0}{\partial\rho} )\partial_\mu v_\mu \delta_{\alpha \beta}$ that formally appears
 in this expansion is negligible under the slow flows considered here
 for which the the fluid motion is almost incompressible~\cite{Denniston:2001}.
@@ -328,12 +328,14 @@ gradient and vorticity direction -- therefore $\Pi_{xy}$ is the shear stress.
 
 The system of coupled partial differential equations Eqs.~\ref{op-eom}
 and~\ref{NSE} is solved by means of a
-hybrid scheme~\cite{Marenduzzo:2007}. 
-More details on the algorithm can
-be found in~\cite{Denniston:2001, Denniston:2004}.
+hybrid scheme~\cite{Marenduzzo:2007}, which combines different numerical schemes
+and provides a way to address the multiscale nature of the problem.
+More details on the algorithm and the boundary conditions can
+be found in~\cite{Denniston:2001, Denniston:2004, Henrich:2012a}.
 
 In the following we report results of simulations of the bulk flow behaviour of the cubic blue 
-phases BPI and BPII. 
+phases BPI and BPII.
+Typical runtimes for system size $L_x\times L_y\times L_z=128^3$ on 512 processes were in the region of 18 to 24 hours.  
 The timestep and lattice spacing in lattice Boltzmann units (LBU) can be mapped
 approximately to $\sim 1 {\rm ns}$ and $\sim 10{\rm nm}$ in SI units, respectively. The LB unit of stress
 is equal to about $10^8$~Pa. Further details about the conversion 
@@ -348,12 +350,12 @@ from the cholesteric-isotropic transition. Thus, temperature and chirality were
 $\tau=-0.5, \kappa=1.0$ in case of BPI and $\tau=-0.5, \kappa=2.0$ for BPII, respectively.
 For these parameters the total free energy density $f$ remained always negative at all flow rates
 simulated. 
-Since by Eq.~\ref{FE} $f=0$ for an isotropic phase with ${\mathbf Q}\equiv 0$, this means that our sytem, which is never far from equilibrium locally even under flow, always remains in a liquid crystalline state. 
+Since by Eq.~\ref{FE} $f=0$ for an isotropic phase with ${\mathbf Q}\equiv 0$, this means that our system, which is never far from equilibrium locally even under flow, always remains in a liquid crystalline state. 
 We performed also selected simulations on metastable states at higher and lower temperatures, 
 and at different chiralities, but did not find any significant differences in the 
 general flow behaviour from that described below.
 The only quantitative difference we found was that, for thermodynamic states that are closer to the phase boundary than the one we focused on (and describe below), the critical shear
-rate at wich the disclination 
+rate at which the disclination 
 network broke up into chiral nematic states was lower. This is expected as these states have on average higher free energy densities and smaller order parameters than those we focus on in what follows, and cannot therefore withstand the same external forces before breaking down.
 
 As usual in BP simulation studies~\cite{Henrich:2011a,Henrich:2010b}, we initialised our runs with 
@@ -386,7 +388,7 @@ oriented along the direction of the velocity gradient (CHG),
 and a flow-aligned nematic state (FAN).  
 As is standard \cite{Henrich:2010b,Henrich:2012b} disclination lines are represented by plotting an isosurface of the scalar order parameter $q_s$. 
 Typical choices are $q_s=0.18$ for BPI and $q_s=0.15$ for BPII.
-(Note that $q_s$ is small but non-zero at the disclination core. The director is undefinded there because the largest and second largest eigenvalues of ${\mathbf Q}$ coincide.)
+(Note that $q_s$ is small but non-zero at the disclination core. The director is undefined there because the largest and second largest eigenvalues of ${\mathbf Q}$ coincide.)
 
 \subsection{Blue Phase II}
 
@@ -504,9 +506,9 @@ and system sizes simulated here.
 \caption{Disclination network of BPII in shear flow: 
 The pictures show a typical sequence of snapshots in the steady state 
 at $\gd=1.56\e{-4}$ and time steps $t=1.60, 1.64,1.65\e{5}$. The velocity 
-gradient is oriented along the vertical direction, whereas the 
-horizontal direction is the flow direction. Lees-Edwards boundary 
-conditions have been imposed in such a way that network moves to the 
+gradient is oriented along the vertical direction (y), whereas the 
+horizontal direction (x) is the flow direction. Lees-Edwards boundary 
+conditions have been imposed in such a way that the network moves to the 
 right in the upper half and to the left in the lower half of the picture.}
 \label{bp2-med}
 \end{figure}
@@ -576,7 +578,7 @@ see Table \ref{tab1} in the Appendix).
 \includegraphics[width=0.495\textwidth]{dir+y-255k_run949.png}
 \includegraphics[width=0.495\textwidth]{dir+y-257k_run949.png}
 \caption{Director field of BPII at high shear rate: The images show snapshots at time steps 
-$t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. The colour code gives the alignment of the director field in flow direction (x) with red fully aligned and blue out of plane. 
+$t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. The colour code gives the alignment of the director field in the flow direction (x) with red fully aligned and blue out of plane. 
 The configuration is a helical wave that travels along the direction of vorticity.
 It is translationally invariant along the gradient and flow direction.}
 \label{bp2-high}
@@ -591,7 +593,7 @@ We will address this regime in section \ref{cholflow}, as it is common to BPI an
 
 \subsection{Blue Phase I}
 
-BPI has body-centered cubic symmetry and, unlike BPII, the disclination lines
+BPI has body-centred cubic symmetry and, unlike BPII, the disclination lines
 characterising its equilibrium structure are well separated and do not 
 intersect. (The quiescent state resembles the first frame in Fig.~\ref{bp1-low}
 below.)
@@ -681,8 +683,8 @@ contribution to the stress is negative, suggest that the
 BPI network is subject to large forces. Seemingly, these eventually
 cause the flow-induced collapse to an amorphous network state with
 an apparent yield stress. We should underscore that this
-low shear regime, might depend on our choice of boundary
-conditions, which in practice are equivalent to having infinitely
+low shear regime might depend on our choice of boundary
+conditions which in practice are equivalent to having infinitely
 distant walls to which the network is anchored (see discussion
 in the Appendix).
 With free boundary conditions and for very low wall velocity, 
@@ -896,7 +898,8 @@ system size? Although a pitch length of 64 LBU provides enough resolution
 for tracking the network in flow it is not clear whether $4^3=64$ unit cells 
 in total are actually sufficient to avoid finite size effects.
 Unfortunately the computational costs of larger simulations are still
-prohibitive, given that large strains have to
+quite prohibitive (in the region of ${\it O}(10^5)$ core hours per run at
+doubled system size), given that large strains have to
 be simulated in order to reach a steady state. Therefore we opted for a 
 comparison with smaller runs.
 
@@ -942,7 +945,7 @@ Fig. \ref{bp1-high}.
 There are distinctive regions where the director field is 
 predominantly oriented along the vorticity direction and 
 other regions where it is oriented rather in flow-gradient plane. 
-Occasionally while moving past each other these rolls resemble 
+Occasionally, while moving past each other, these rolls resemble 
 regions of local double twist.
 Interestingly the critical Ericksen number for the break-up lies in 
 about the same window as that of transition between BPII-1 and BPII-2. 
@@ -950,7 +953,7 @@ about the same window as that of transition between BPII-1 and BPII-2.
 \begin{figure}[htpb]
 \includegraphics[width=0.45\textwidth]{dir3d-z-302k_run916.png}
 \caption{Director field of BPI at high shear rate: The pictures show a region 
-of $L_x\times L_y \times L_Z= 32^3$ lattice sites with the flow/gradient 
+of $L_x\times L_y \times L_z= 32^3$ lattice sites with the flow/gradient 
 direction oriented along the horizontal/vertical axis. 
 The colour code gives the magnitude of the z-component of the director field. 
 The data show that the structure is quasi-2D, with rolling double twist
@@ -980,7 +983,7 @@ the 2D double-twist rolls of BPI-3 and the travelling helical wave
 \includegraphics[width=0.45\textwidth]{dir3d+y-200k_run1179.png}
 \caption{Flow induced cholesteric state. The orientation of the helix is 
 along the gradient direction. The director field is quasi-static during 
-the flow, which occurs in ``nematic layers''. Color coding indicates the 
+the flow, which occurs in ``nematic layers''. Colour coding indicates the 
 $x$ component of the director field (see colorbar on the right).
 For clarity only selected sites are shown along the $y$-direction (along which
 the structure is translationally invariant).}
@@ -1040,7 +1043,7 @@ The oscillatory dynamics is in some cases intermittent, and the
 recurrence period for the network conformations and stress patterns
 is not given by a simple formula as for BPII.
 Despite their complex appearance, the flow-induced conformations are 
-topologically connected to the quiescent BPI and after switching off of the 
+topologically connected to the quiescent BPI and after switching off the 
 shear flow a defect-free blue phase reforms. It is tempting to
 interpret the unsteady oscillations seen in this regime as an instance of 
 deterministic rheological chaos~\cite{fielding, Cates:2002}.
@@ -1048,7 +1051,7 @@ deterministic rheological chaos~\cite{fielding, Cates:2002}.
 Just as in the case of BPII, the BPI network breaks up at larger Ericksen numbers in
 a two-step process. First, at $10\lesssim\ Er\lesssim 15$, it adopts a 
 quasi-two-dimensional configuration that is translationally invariant along vorticity direction. 
-Then, at $16\lesssim Er \lesssim 22$, it forms a cholestric helix along the flow gradient 
+Then, at $16\lesssim Er \lesssim 22$, it forms a cholesteric helix along the flow gradient 
 direction.  Finally, at $Er\gtrsim30$ (BPI) and $Er\gtrsim10$ (BPII) the configuration
 is a flow-aligned nematic state.
 Although experimental evidence to support
@@ -1095,7 +1098,7 @@ on the flow properties of complex liquid-crystalline phases.
 % that you will use with \ref{} command in the braces of the \label{} command.
 % Insert the column specifiers (l, r, c, d, etc.) in the empty braces of the
 % \begin{tabular}{} command.
-% The ruledtabular enviroment adds doubled rules to table and sets a
+% The ruledtabular environment adds doubled rules to table and sets a
 % reasonable default table settings.
 % Use the table* environment to get a full-width table in two-column
 % Add \usepackage{longtable} and the longtable (or longtable*}
