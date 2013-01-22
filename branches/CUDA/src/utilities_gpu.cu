@@ -36,7 +36,6 @@ extern double * fluxe;
 extern double * fluxw;
 extern double * fluxy;
 extern double * fluxz;
-extern double * hs5;
 
 double * ma_d;
 double * mi_d;
@@ -64,7 +63,6 @@ double * fluxe_d;
 double * fluxw_d;
 double * fluxy_d;
 double * fluxz_d;
-double * hs5_d;
 
 
 /* host memory address pointers for temporary staging of data */
@@ -219,11 +217,7 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &fluxw_d, nop*nsites*sizeof(double));
   cudaMalloc((void **) &fluxy_d, nop*nsites*sizeof(double));
   cudaMalloc((void **) &fluxz_d, nop*nsites*sizeof(double));
-  cudaMalloc((void **) &hs5_d, nop*nsites*sizeof(double));
-  int zero=0;
-  cudaMemset(hs5_d,zero,nop*nsites*sizeof(double)); 
   
-
   cudaMalloc((void **) &N_d, sizeof(int)*3);
   cudaMalloc((void **) &force_global_d, sizeof(double)*3);
 
@@ -271,8 +265,7 @@ static void free_memory_on_gpu()
   cudaFree(fluxw_d);
   cudaFree(fluxy_d);
   cudaFree(fluxz_d);
-  cudaFree(hs5_d);
-
+ 
   cudaFree(r3_d);
   cudaFree(d_d);
   cudaFree(e_d);
@@ -605,8 +598,6 @@ void put_fluxes_on_gpu(){
 	    cudaMemcpyHostToDevice);
   cudaMemcpy(fluxz_d, fluxz, nsites*nop*sizeof(double),
 	    cudaMemcpyHostToDevice);
-  cudaMemcpy(hs5_d, hs5, nsites*nop*sizeof(double),
-	    cudaMemcpyHostToDevice);
 
 
 }
@@ -621,9 +612,6 @@ void get_fluxes_from_gpu(){
 	    cudaMemcpyDeviceToHost);
   cudaMemcpy(fluxz, fluxz_d, nsites*nop*sizeof(double),
 	    cudaMemcpyDeviceToHost);
-  cudaMemcpy(hs5, hs5_d, nsites*nop*sizeof(double),
-	    cudaMemcpyDeviceToHost);
-
 
 
 }

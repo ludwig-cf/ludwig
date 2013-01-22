@@ -54,7 +54,6 @@ extern double * fluxe_d;
 extern double * fluxw_d;
 extern double * fluxy_d;
 extern double * fluxz_d;
-extern double * hs5_d;
 extern double * velocity_d;
 
 extern double * tmpscal1_d;
@@ -103,8 +102,7 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxe_d,
 					   double *fluxw_d,
 					   double *fluxy_d,
-					   double *fluxz_d,
-					   double *hs5_d
+					   double *fluxz_d
 );
 
 __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
@@ -118,8 +116,7 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxe_d,
 					   double *fluxw_d,
 					   double *fluxy_d,
-					   double *fluxz_d,
-					   double *hs5_d
+					   double *fluxz_d
 );
 __global__ void blue_phase_compute_q2_eq_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,

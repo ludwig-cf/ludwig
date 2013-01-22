@@ -466,7 +466,7 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
 
 
   blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
-    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d, hs5_d);
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
       
   cudaThreadSynchronize();
   checkCUDAError("blue_phase_be_update_gpu_d");
@@ -581,7 +581,7 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
   dim3 threadsperblock(TPBZ,TPBY,TPBX);
 
   advection_upwind_gpu_d<<<nblocks,threadsperblock>>>
-    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d, hs5_d);
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
       
   cudaThreadSynchronize();
   checkCUDAError("advection_upwind_gpu_d");
@@ -1179,8 +1179,7 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxe_d,
 					   double *fluxw_d,
 					   double *fluxy_d,
-					   double *fluxz_d,
-					   double *hs5_d
+					   double *fluxz_d
 					    ) {
 
   int ia, icm1, icp1;
@@ -1324,27 +1323,27 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 	  indexj = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);      
 	  indexk = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);      
 
-	  q[X][X] += dt_cd*(s[X][X] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*X+index] + hs5_d[nop_cd*index + XX])
+	  q[X][X] += dt_cd*(s[X][X] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*X+index])
 	  		 - fluxe_d[XX*nsites_cd+index] + fluxw_d[XX*nsites_cd+index]
 	  		 - fluxy_d[XX*nsites_cd+index] + fluxy_d[XX*nsites_cd+indexj]
 	  		 - fluxz_d[XX*nsites_cd+index] + fluxz_d[XX*nsites_cd+indexk]);
 
-	  q[X][Y] += dt_cd*(s[X][Y] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*Y+index] + hs5_d[nop_cd*index + XY])
+	  q[X][Y] += dt_cd*(s[X][Y] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*Y+index])
 	  		 - fluxe_d[XY*nsites_cd+index] + fluxw_d[XY*nsites_cd+index]
 	  		 - fluxy_d[XY*nsites_cd+index] + fluxy_d[XY*nsites_cd+indexj]
 	  		 - fluxz_d[XY*nsites_cd+index] + fluxz_d[XY*nsites_cd+indexk]);
 
-	  q[X][Z] += dt_cd*(s[X][Z] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*Z+index] + hs5_d[nop_cd*index + XZ])
+	  q[X][Z] += dt_cd*(s[X][Z] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*Z+index])
 	  		 - fluxe_d[XZ*nsites_cd+index] + fluxw_d[XZ*nsites_cd+index]
 	  		 - fluxy_d[XZ*nsites_cd+index] + fluxy_d[XZ*nsites_cd+indexj]
 	  		 - fluxz_d[XZ*nsites_cd+index] + fluxz_d[XZ*nsites_cd+indexk]);
 
-	  q[Y][Y] += dt_cd*(s[Y][Y] + Gamma_cd*(h_site_d[3*nsites_cd*Y+nsites_cd*Y+index] + hs5_d[nop_cd*index + YY])
+	  q[Y][Y] += dt_cd*(s[Y][Y] + Gamma_cd*(h_site_d[3*nsites_cd*Y+nsites_cd*Y+index])
 	  		 - fluxe_d[YY*nsites_cd+index] + fluxw_d[YY*nsites_cd+index]
 	  		 - fluxy_d[YY*nsites_cd+index] + fluxy_d[YY*nsites_cd+indexj]
 	  		 - fluxz_d[YY*nsites_cd+index] + fluxz_d[YY*nsites_cd+indexk]);
 
-	  q[Y][Z] += dt_cd*(s[Y][Z] + Gamma_cd*(h_site_d[3*nsites_cd*Y+nsites_cd*Z+index] + hs5_d[nop_cd*index + YZ])
+	  q[Y][Z] += dt_cd*(s[Y][Z] + Gamma_cd*(h_site_d[3*nsites_cd*Y+nsites_cd*Z+index])
 	  		 - fluxe_d[YZ*nsites_cd+index] + fluxw_d[YZ*nsites_cd+index]
 	  		 - fluxy_d[YZ*nsites_cd+index] + fluxy_d[YZ*nsites_cd+indexj]
 	  		 - fluxz_d[YZ*nsites_cd+index] + fluxz_d[YZ*nsites_cd+indexk]);
@@ -1376,8 +1375,7 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxe_d,
 					   double *fluxw_d,
 					   double *fluxy_d,
-					   double *fluxz_d,
-					   double *hs5_d
+					   double *fluxz_d
 					    ) {
 
   int ia, icm1, icp1;
