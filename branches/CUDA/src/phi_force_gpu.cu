@@ -1325,29 +1325,29 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 	  indexk = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);      
 
 	  q[X][X] += dt_cd*(s[X][X] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*X+index] + hs5_d[nop_cd*index + XX])
-	  		 - fluxe_d[nop_cd*index + XX] + fluxw_d[nop_cd*index  + XX]
-	  		 - fluxy_d[nop_cd*index + XX] + fluxy_d[nop_cd*indexj + XX]
-	  		 - fluxz_d[nop_cd*index + XX] + fluxz_d[nop_cd*indexk + XX]);
+	  		 - fluxe_d[XX*nsites_cd+index] + fluxw_d[XX*nsites_cd+index]
+	  		 - fluxy_d[XX*nsites_cd+index] + fluxy_d[XX*nsites_cd+indexj]
+	  		 - fluxz_d[XX*nsites_cd+index] + fluxz_d[XX*nsites_cd+indexk]);
 
 	  q[X][Y] += dt_cd*(s[X][Y] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*Y+index] + hs5_d[nop_cd*index + XY])
-	  		 - fluxe_d[nop_cd*index + XY] + fluxw_d[nop_cd*index  + XY]
-	  		 - fluxy_d[nop_cd*index + XY] + fluxy_d[nop_cd*indexj + XY]
-	  		 - fluxz_d[nop_cd*index + XY] + fluxz_d[nop_cd*indexk + XY]);
+	  		 - fluxe_d[XY*nsites_cd+index] + fluxw_d[XY*nsites_cd+index]
+	  		 - fluxy_d[XY*nsites_cd+index] + fluxy_d[XY*nsites_cd+indexj]
+	  		 - fluxz_d[XY*nsites_cd+index] + fluxz_d[XY*nsites_cd+indexk]);
 
 	  q[X][Z] += dt_cd*(s[X][Z] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*Z+index] + hs5_d[nop_cd*index + XZ])
-	  		 - fluxe_d[nop_cd*index + XZ] + fluxw_d[nop_cd*index  + XZ]
-	  		 - fluxy_d[nop_cd*index + XZ] + fluxy_d[nop_cd*indexj + XZ]
-	  		 - fluxz_d[nop_cd*index + XZ] + fluxz_d[nop_cd*indexk + XZ]);
+	  		 - fluxe_d[XZ*nsites_cd+index] + fluxw_d[XZ*nsites_cd+index]
+	  		 - fluxy_d[XZ*nsites_cd+index] + fluxy_d[XZ*nsites_cd+indexj]
+	  		 - fluxz_d[XZ*nsites_cd+index] + fluxz_d[XZ*nsites_cd+indexk]);
 
 	  q[Y][Y] += dt_cd*(s[Y][Y] + Gamma_cd*(h_site_d[3*nsites_cd*Y+nsites_cd*Y+index] + hs5_d[nop_cd*index + YY])
-	  		 - fluxe_d[nop_cd*index + YY] + fluxw_d[nop_cd*index  + YY]
-	  		 - fluxy_d[nop_cd*index + YY] + fluxy_d[nop_cd*indexj + YY]
-	  		 - fluxz_d[nop_cd*index + YY] + fluxz_d[nop_cd*indexk + YY]);
+	  		 - fluxe_d[YY*nsites_cd+index] + fluxw_d[YY*nsites_cd+index]
+	  		 - fluxy_d[YY*nsites_cd+index] + fluxy_d[YY*nsites_cd+indexj]
+	  		 - fluxz_d[YY*nsites_cd+index] + fluxz_d[YY*nsites_cd+indexk]);
 
 	  q[Y][Z] += dt_cd*(s[Y][Z] + Gamma_cd*(h_site_d[3*nsites_cd*Y+nsites_cd*Z+index] + hs5_d[nop_cd*index + YZ])
-	  		 - fluxe_d[nop_cd*index + YZ] + fluxw_d[nop_cd*index  + YZ]
-	  		 - fluxy_d[nop_cd*index + YZ] + fluxy_d[nop_cd*indexj + YZ]
-	  		 - fluxz_d[nop_cd*index + YZ] + fluxz_d[nop_cd*indexk + YZ]);
+	  		 - fluxe_d[YZ*nsites_cd+index] + fluxw_d[YZ*nsites_cd+index]
+	  		 - fluxy_d[YZ*nsites_cd+index] + fluxy_d[YZ*nsites_cd+indexj]
+	  		 - fluxz_d[YZ*nsites_cd+index] + fluxz_d[YZ*nsites_cd+indexk]);
 	
 
 	   }
@@ -1417,10 +1417,10 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 	u = 0.5*(velocity_d[X*nsites_cd+index0] + velocity_d[X*nsites_cd+index1]);
 	
 	if (u > 0.0) {
-	  fluxw_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
+	  fluxw_d[n*nsites_cd+index0] = u*phi_site_d[nsites_cd*n+index1];
 	}
 	else {
-	  fluxw_d[nop_cd*index0 + n] = u*phi0;
+	  fluxw_d[n*nsites_cd+index0] = u*phi0;
 	}
 
 	  /* east face (ic and icp1) */
@@ -1429,10 +1429,10 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 	  u = 0.5*(velocity_d[X*nsites_cd+index0] + velocity_d[X*nsites_cd+index1]);
 
 	  if (u < 0.0) {
-	    fluxe_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
+	    fluxe_d[n*nsites_cd+index0] = u*phi_site_d[nsites_cd*n+index1];
 	  }
 	  else {
-	    fluxe_d[nop_cd*index0 + n] = u*phi0;
+	    fluxe_d[n*nsites_cd+index0] = u*phi0;
 	  }
 
 
@@ -1443,10 +1443,10 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 
 
 	  if (u < 0.0) {
-	    fluxy_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
+	    fluxy_d[n*nsites_cd+index0] = u*phi_site_d[nsites_cd*n+index1];
 	  }
 	  else {
-	    fluxy_d[nop_cd*index0 + n] = u*phi0;
+	    fluxy_d[n*nsites_cd+index0] = u*phi0;
 	  }
 
 
@@ -1457,10 +1457,10 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
       u = 0.5*(velocity_d[Z*nsites_cd+index0] + velocity_d[Z*nsites_cd+index1]);
 
       if (u < 0.0) {
-	fluxz_d[nop_cd*index0 + n] = u*phi_site_d[nsites_cd*n+index1];
+	fluxz_d[n*nsites_cd+index0] = u*phi_site_d[nsites_cd*n+index1];
       }
       else {
-	fluxz_d[nop_cd*index0 + n] = u*phi0;
+	fluxz_d[n*nsites_cd+index0] = u*phi0;
       }
 
 
@@ -1529,19 +1529,12 @@ __global__ void advection_bcs_no_normal_flux_gpu_d(const int nop,
 
 
 
-	/* for (n = 0;  n < nf; n++) { */
-	/*   fluxw[nf*index + n] *= mask*maskw; */
-	/*   fluxe[nf*index + n] *= mask*maske; */
-	/*   fluxy[nf*index + n] *= mask*masky; */
-	/*   fluxz[nf*index + n] *= mask*maskz; */
-	/* } */
-
 
 	for (n = 0;  n < nop; n++) { 
-	   fluxw_d[nop*index + n] *= mask*maskw; 
-	   fluxe_d[nop*index + n] *= mask*maske;
-	   fluxy_d[nop*index + n] *= mask*masky; 
-	   fluxz_d[nop*index + n] *= mask*maskz; 
+	   fluxw_d[n*nsites_cd+index] *= mask*maskw; 
+	   fluxe_d[n*nsites_cd+index] *= mask*maske;
+	   fluxy_d[n*nsites_cd+index] *= mask*masky; 
+	   fluxz_d[n*nsites_cd+index] *= mask*maskz; 
 	 } 
       
       
