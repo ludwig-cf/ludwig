@@ -13,6 +13,7 @@
 
 /* expose main routine in this module to outside routines */
 extern "C" void phi_gradients_compute_gpu(void);
+extern "C" void set_gradient_option_gpu(char option);
 
 /* forward declarations of device routines */
 __global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo, 

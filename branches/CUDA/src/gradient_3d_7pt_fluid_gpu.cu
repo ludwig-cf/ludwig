@@ -47,11 +47,13 @@
 __constant__ double q_0_cd;
 __constant__ double kappa0_cd;
 __constant__ double kappa1_cd;
+__constant__ double kappa2_cd;
 __constant__ double w_cd;
 __constant__ double amplitude_cd;
 __constant__ double e_cd[3][3][3];
 __constant__ int noffset_cd[3];
 __constant__ double d_cd[3][3];
+__constant__ char bcs_cd[6][3];
 
 extern "C" double blue_phase_q0(void);
 extern "C" double blue_phase_kappa0(void);
@@ -60,6 +62,7 @@ extern "C" double colloids_q_tensor_w(void);
 extern "C" void coords_nlocal_offset(int n[3]);
 extern "C" double blue_phase_amplitude_compute(void);
 
+extern "C" void checkCUDAError(const char *msg);
 __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo, 
 						     int N_d[3], 
 						     const double * field_d,
@@ -71,6 +74,18 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 					    int nextra);
 
 
+extern "C" void gradient_run_time(void);
+
+
+enum gradent_options_gpu {OPTION_3D_7PT_FLUID,OPTION_3D_7PT_SOLID};
+
+static char gradient_gpu=-1;
+
+void set_gradient_option_gpu(char option){
+
+  gradient_gpu=option;
+
+}
 
 void phi_gradients_compute_gpu()
 {
@@ -106,7 +121,7 @@ void phi_gradients_compute_gpu()
   double gamma_;     /* Controls magnitude of order */
   double kappa0_;    /* Elastic constant \kappa_0 */
   double kappa1_;    /* Elastic constant \kappa_1 */
-  
+  double kappa2_;
   double xi_;        /* effective molecular aspect ratio (<= 1.0) */
   double redshift_;  /* redshift parameter */
   double rredshift_; /* reciprocal */
@@ -125,33 +140,52 @@ void phi_gradients_compute_gpu()
   q0_=blue_phase_q0();
   kappa0_=blue_phase_kappa0();
   kappa1_=blue_phase_kappa1();
+  kappa2_=kappa0_+kappa1_;
   w = colloids_q_tensor_w();
   amplitude = blue_phase_amplitude_compute();
 
   int noffset[3];
   coords_nlocal_offset(noffset);
 
+  char bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+
  cudaMemcpyToSymbol(q_0_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice);  
 cudaMemcpyToSymbol(kappa0_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(kappa1_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(kappa2_cd, &kappa2_, sizeof(double), 0, cudaMemcpyHostToDevice); 
 cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
 cudaMemcpyToSymbol(noffset_cd, noffset, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
 
  cudaMemcpyToSymbol(w_cd, &w, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(amplitude_cd, &amplitude, sizeof(double), 0, cudaMemcpyHostToDevice); 
 cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+checkCUDAError("gradient_3d_7pt1");  
+cudaMemcpyToSymbol(bcs_cd, bcs, 6*3*sizeof(char), 0, cudaMemcpyHostToDevice); 
+checkCUDAError("gradient_3d_7pt2");  
+cudaFuncSetCacheConfig(gradient_3d_7pt_solid_gpu_d,cudaFuncCachePreferL1);
 
-
+ if (gradient_gpu==OPTION_3D_7PT_FLUID){
+  gradient_3d_7pt_fluid_operator_gpu_d<<<nblocks,DEFAULT_TPB>>>
+    (nop, nhalo, N_d, phi_site_d,grad_phi_site_d,delsq_phi_site_d,
+     le_index_real_to_buffer_d,nextra); 
+ }
+ else if (gradient_gpu==OPTION_3D_7PT_SOLID){
   gradient_3d_7pt_solid_gpu_d<<<nblocks,DEFAULT_TPB>>>
     (nop, nhalo, N_d, phi_site_d,grad_phi_site_d,delsq_phi_site_d,
-     site_map_status_d,colloid_map_d, colloid_r_d,nextra); 
+     site_map_status_d,colloid_map_d, colloid_r_d,nextra);
+ }
+ else
+   {
+    printf("The chosen gradient scheme is not yet supported in GPU mode. Exiting\n");
+    exit(1);
+  }
+    
   
   cudaThreadSynchronize();
-  
-  return;
-  
-  }
 
+checkCUDAError("gradient_3d_7pt");  
+  return;
+}
 
 /*****************************************************************************
  *
@@ -232,109 +266,106 @@ __global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo,
 __device__ static void gradient_bcs_gpu_d(const double kappa0, const double kappa1, const int dn[3],
 			 double dq[NOP][3], double bc[NOP][NOP][3]) {
 
-  double kappa2;
-
-  kappa2 = kappa0 + kappa1;
 
   /* XX equation */
 
-  bc[XX][XX][X] =  kappa0*dn[X]*dq[XX][X];
-  bc[XX][XY][X] = -kappa1*dn[Y]*dq[XY][X];
-  bc[XX][XZ][X] = -kappa1*dn[Z]*dq[XZ][X];
+  bc[XX][XX][X] =  kappa0_cd*dn[X]*dq[XX][X];
+  bc[XX][XY][X] = -kappa1_cd*dn[Y]*dq[XY][X];
+  bc[XX][XZ][X] = -kappa1_cd*dn[Z]*dq[XZ][X];
   bc[XX][YY][X] =  0.0;
   bc[XX][YZ][X] =  0.0;
 
-  bc[XX][XX][Y] = kappa1*dn[Y]*dq[XX][Y];
-  bc[XX][XY][Y] = kappa0*dn[X]*dq[XY][Y];
+  bc[XX][XX][Y] = kappa1_cd*dn[Y]*dq[XX][Y];
+  bc[XX][XY][Y] = kappa0_cd*dn[X]*dq[XY][Y];
   bc[XX][XZ][Y] = 0.0;
   bc[XX][YY][Y] = 0.0;
   bc[XX][YZ][Y] = 0.0;
 
-  bc[XX][XX][Z] = kappa1*dn[Z]*dq[XX][Z];
+  bc[XX][XX][Z] = kappa1_cd*dn[Z]*dq[XX][Z];
   bc[XX][XY][Z] = 0.0;
-  bc[XX][XZ][Z] = kappa0*dn[X]*dq[XZ][Z];
+  bc[XX][XZ][Z] = kappa0_cd*dn[X]*dq[XZ][Z];
   bc[XX][YY][Z] = 0.0;
   bc[XX][YZ][Z] = 0.0;
 
   /* XY equation */
 
-  bc[XY][XX][X] =  kappa0*dn[Y]*dq[XX][X];
-  bc[XY][XY][X] =  kappa2*dn[X]*dq[XY][X];
+  bc[XY][XX][X] =  kappa0_cd*dn[Y]*dq[XX][X];
+  bc[XY][XY][X] =  kappa2_cd*dn[X]*dq[XY][X];
   bc[XY][XZ][X] =  0.0;
-  bc[XY][YY][X] = -kappa1*dn[Y]*dq[YY][X];
-  bc[XY][YZ][X] = -kappa1*dn[Z]*dq[YZ][X];
+  bc[XY][YY][X] = -kappa1_cd*dn[Y]*dq[YY][X];
+  bc[XY][YZ][X] = -kappa1_cd*dn[Z]*dq[YZ][X];
 
-  bc[XY][XX][Y] = -kappa1*dn[X]*dq[XX][Y];
-  bc[XY][XY][Y] =  kappa2*dn[Y]*dq[XY][Y];
-  bc[XY][XZ][Y] = -kappa1*dn[Z]*dq[XZ][Y];
-  bc[XY][YY][Y] =  kappa0*dn[X]*dq[YY][Y];
+  bc[XY][XX][Y] = -kappa1_cd*dn[X]*dq[XX][Y];
+  bc[XY][XY][Y] =  kappa2_cd*dn[Y]*dq[XY][Y];
+  bc[XY][XZ][Y] = -kappa1_cd*dn[Z]*dq[XZ][Y];
+  bc[XY][YY][Y] =  kappa0_cd*dn[X]*dq[YY][Y];
   bc[XY][YZ][Y] =  0.0;
 
   bc[XY][XX][Z] = 0.0;
-  bc[XY][XY][Z] = 2.0*kappa1*dn[Z]*dq[XY][Z];
-  bc[XY][XZ][Z] = kappa0*dn[Y]*dq[XZ][Z];
+  bc[XY][XY][Z] = 2.0*kappa1_cd*dn[Z]*dq[XY][Z];
+  bc[XY][XZ][Z] = kappa0_cd*dn[Y]*dq[XZ][Z];
   bc[XY][YY][Z] = 0.0;
-  bc[XY][YZ][Z] = kappa0*dn[X]*dq[YZ][Z];
+  bc[XY][YZ][Z] = kappa0_cd*dn[X]*dq[YZ][Z];
 
   /* XZ equation */
 
-  bc[XZ][XX][X] =  kappa2*dn[Z]*dq[XX][X];
+  bc[XZ][XX][X] =  kappa2_cd*dn[Z]*dq[XX][X];
   bc[XZ][XY][X] =  0.0;
-  bc[XZ][XZ][X] =  kappa2*dn[X]*dq[XZ][X];
-  bc[XZ][YY][X] =  kappa1*dn[Z]*dq[YY][X];
-  bc[XZ][YZ][X] = -kappa1*dn[Y]*dq[YZ][X];
+  bc[XZ][XZ][X] =  kappa2_cd*dn[X]*dq[XZ][X];
+  bc[XZ][YY][X] =  kappa1_cd*dn[Z]*dq[YY][X];
+  bc[XZ][YZ][X] = -kappa1_cd*dn[Y]*dq[YZ][X];
 
   bc[XZ][XX][Y] = 0.0;
-  bc[XZ][XY][Y] = kappa0*dn[Z]*dq[XY][Y];
-  bc[XZ][XZ][Y] = 2.0*kappa1*dn[Y]*dq[XZ][Y];
+  bc[XZ][XY][Y] = kappa0_cd*dn[Z]*dq[XY][Y];
+  bc[XZ][XZ][Y] = 2.0*kappa1_cd*dn[Y]*dq[XZ][Y];
   bc[XZ][YY][Y] = 0.0;
-  bc[XZ][YZ][Y] = kappa0*dn[X]*dq[YZ][Y];
+  bc[XZ][YZ][Y] = kappa0_cd*dn[X]*dq[YZ][Y];
 
-  bc[XZ][XX][Z] = -kappa2*dn[X]*dq[XX][Z];
-  bc[XZ][XY][Z] = -kappa1*dn[Y]*dq[XY][Z];
-  bc[XZ][XZ][Z] =  kappa2*dn[Z]*dq[XZ][Z];
-  bc[XZ][YY][Z] = -kappa0*dn[X]*dq[YY][Z];
+  bc[XZ][XX][Z] = -kappa2_cd*dn[X]*dq[XX][Z];
+  bc[XZ][XY][Z] = -kappa1_cd*dn[Y]*dq[XY][Z];
+  bc[XZ][XZ][Z] =  kappa2_cd*dn[Z]*dq[XZ][Z];
+  bc[XZ][YY][Z] = -kappa0_cd*dn[X]*dq[YY][Z];
   bc[XZ][YZ][Z] =  0.0;
 
   /* YY equation */
 
   bc[YY][XX][X] = 0.0;
-  bc[YY][XY][X] = kappa0*dn[Y]*dq[XY][X];
+  bc[YY][XY][X] = kappa0_cd*dn[Y]*dq[XY][X];
   bc[YY][XZ][X] = 0.0;
-  bc[YY][YY][X] = kappa1*dn[X]*dq[YY][X];
+  bc[YY][YY][X] = kappa1_cd*dn[X]*dq[YY][X];
   bc[YY][YZ][X] = 0.0;
 
   bc[YY][XX][Y] =  0.0;
-  bc[YY][XY][Y] = -kappa1*dn[X]*dq[XY][Y];
+  bc[YY][XY][Y] = -kappa1_cd*dn[X]*dq[XY][Y];
   bc[YY][XZ][Y] =  0.0;
-  bc[YY][YY][Y] =  kappa0*dn[Y]*dq[YY][Y];
-  bc[YY][YZ][Y] = -kappa1*dn[Z]*dq[YZ][Y];
+  bc[YY][YY][Y] =  kappa0_cd*dn[Y]*dq[YY][Y];
+  bc[YY][YZ][Y] = -kappa1_cd*dn[Z]*dq[YZ][Y];
 
   bc[YY][XX][Z] = 0.0;
   bc[YY][XY][Z] = 0.0;
   bc[YY][XZ][Z] = 0.0;
-  bc[YY][YY][Z] = kappa1*dn[Z]*dq[YY][Z];
-  bc[YY][YZ][Z] = kappa0*dn[Y]*dq[YZ][Z];
+  bc[YY][YY][Z] = kappa1_cd*dn[Z]*dq[YY][Z];
+  bc[YY][YZ][Z] = kappa0_cd*dn[Y]*dq[YZ][Z];
 
   /* YZ equation */
 
   bc[YZ][XX][X] = 0.0;
-  bc[YZ][XY][X] = kappa0*dn[Z]*dq[XY][X];
-  bc[YZ][XZ][X] = kappa0*dn[Y]*dq[XZ][X];
+  bc[YZ][XY][X] = kappa0_cd*dn[Z]*dq[XY][X];
+  bc[YZ][XZ][X] = kappa0_cd*dn[Y]*dq[XZ][X];
   bc[YZ][YY][X] = 0.0;
-  bc[YZ][YZ][X] = 2.0*kappa1*dn[X]*dq[YZ][X];
+  bc[YZ][YZ][X] = 2.0*kappa1_cd*dn[X]*dq[YZ][X];
 
-  bc[YZ][XX][Y] =  kappa1*dn[Z]*dq[XX][Y];
+  bc[YZ][XX][Y] =  kappa1_cd*dn[Z]*dq[XX][Y];
   bc[YZ][XY][Y] =  0.0;
-  bc[YZ][XZ][Y] = -kappa1*dn[X]*dq[XZ][Y];
-  bc[YZ][YY][Y] =  kappa2*dn[Z]*dq[YY][Y];
-  bc[YZ][YZ][Y] =  kappa2*dn[Y]*dq[YZ][Y];
+  bc[YZ][XZ][Y] = -kappa1_cd*dn[X]*dq[XZ][Y];
+  bc[YZ][YY][Y] =  kappa2_cd*dn[Z]*dq[YY][Y];
+  bc[YZ][YZ][Y] =  kappa2_cd*dn[Y]*dq[YZ][Y];
 
-  bc[YZ][XX][Z] = -kappa0*dn[Y]*dq[XX][Z];
-  bc[YZ][XY][Z] = -kappa1*dn[X]*dq[XY][Z];
+  bc[YZ][XX][Z] = -kappa0_cd*dn[Y]*dq[XX][Z];
+  bc[YZ][XY][Z] = -kappa1_cd*dn[X]*dq[XY][Z];
   bc[YZ][XZ][Z] =  0.0;
-  bc[YZ][YY][Z] = -kappa2*dn[Y]*dq[YY][Z];
-  bc[YZ][YZ][Z] =  kappa2*dn[Z]*dq[YZ][Z];
+  bc[YZ][YY][Z] = -kappa2_cd*dn[Y]*dq[YY][Z];
+  bc[YZ][YZ][Z] =  kappa2_cd*dn[Z]*dq[YZ][Z];
 
   return;
 }
@@ -652,22 +683,123 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	/* Iterate to a solution. */
 
 	for (niterate = 0; niterate < NITERATION; niterate++) {
+
 	  
 	  for (n = 0; n < 6; n++) {
 	    
 	    if (status[n] != FLUID) {
 	      
 	      for (n1 = 0; n1 < NOP; n1++) {
-	  	for (ia = 0; ia < 3; ia++) {
-	  	  dq[n1][ia] = grad_d[ia*nsites*nop+n1*nsites+index];		  
-	  	}
-	  	dq[n1][normal[n]] = 1.0;
+		for (ia = 0; ia < 3; ia++) {
+		  dq[n1][ia] = grad_d[ia*nsites*nop+n1*nsites+index];
+		}
+		dq[n1][normal[n]] = 1.0;
 	      }
+
 	      
 	      /* Construct boundary condition terms. */
 	      
-	      gradient_bcs_gpu_d(kappa0_cd, kappa1_cd, bcs[n], dq, bc);
-
+	      //gradient_bcs_gpu_d(kappa0_cd, kappa1_cd, bcs[n], dq, bc);
+	      /* XX equation */
+	      
+	      bc[XX][XX][X] =  kappa0_cd*bcs_cd[n][X]*dq[XX][X];
+	      bc[XX][XY][X] = -kappa1_cd*bcs_cd[n][Y]*dq[XY][X];
+	      bc[XX][XZ][X] = -kappa1_cd*bcs_cd[n][Z]*dq[XZ][X];
+	      bc[XX][YY][X] =  0.0;
+	      bc[XX][YZ][X] =  0.0;
+	      
+	      bc[XX][XX][Y] = kappa1_cd*bcs_cd[n][Y]*dq[XX][Y];
+	      bc[XX][XY][Y] = kappa0_cd*bcs_cd[n][X]*dq[XY][Y];
+	      bc[XX][XZ][Y] = 0.0;
+	      bc[XX][YY][Y] = 0.0;
+	      bc[XX][YZ][Y] = 0.0;
+	      
+	      bc[XX][XX][Z] = kappa1_cd*bcs_cd[n][Z]*dq[XX][Z];
+	      bc[XX][XY][Z] = 0.0;
+	      bc[XX][XZ][Z] = kappa0_cd*bcs_cd[n][X]*dq[XZ][Z];
+	      bc[XX][YY][Z] = 0.0;
+	      bc[XX][YZ][Z] = 0.0;
+	      
+	      /* XY equation */
+	      
+	      bc[XY][XX][X] =  kappa0_cd*bcs_cd[n][Y]*dq[XX][X];
+	      bc[XY][XY][X] =  kappa2_cd*bcs_cd[n][X]*dq[XY][X];
+	      bc[XY][XZ][X] =  0.0;
+	      bc[XY][YY][X] = -kappa1_cd*bcs_cd[n][Y]*dq[YY][X];
+	      bc[XY][YZ][X] = -kappa1_cd*bcs_cd[n][Z]*dq[YZ][X];
+	      
+	      bc[XY][XX][Y] = -kappa1_cd*bcs_cd[n][X]*dq[XX][Y];
+	      bc[XY][XY][Y] =  kappa2_cd*bcs_cd[n][Y]*dq[XY][Y];
+	      bc[XY][XZ][Y] = -kappa1_cd*bcs_cd[n][Z]*dq[XZ][Y];
+	      bc[XY][YY][Y] =  kappa0_cd*bcs_cd[n][X]*dq[YY][Y];
+	      bc[XY][YZ][Y] =  0.0;
+	      
+	      bc[XY][XX][Z] = 0.0;
+	      bc[XY][XY][Z] = 2.0*kappa1_cd*bcs_cd[n][Z]*dq[XY][Z];
+	      bc[XY][XZ][Z] = kappa0_cd*bcs_cd[n][Y]*dq[XZ][Z];
+	      bc[XY][YY][Z] = 0.0;
+	      bc[XY][YZ][Z] = kappa0_cd*bcs_cd[n][X]*dq[YZ][Z];
+	      
+	      /* XZ equation */
+	      
+	      bc[XZ][XX][X] =  kappa2_cd*bcs_cd[n][Z]*dq[XX][X];
+	      bc[XZ][XY][X] =  0.0;
+	      bc[XZ][XZ][X] =  kappa2_cd*bcs_cd[n][X]*dq[XZ][X];
+	      bc[XZ][YY][X] =  kappa1_cd*bcs_cd[n][Z]*dq[YY][X];
+	      bc[XZ][YZ][X] = -kappa1_cd*bcs_cd[n][Y]*dq[YZ][X];
+	      
+	      bc[XZ][XX][Y] = 0.0;
+	      bc[XZ][XY][Y] = kappa0_cd*bcs_cd[n][Z]*dq[XY][Y];
+	      bc[XZ][XZ][Y] = 2.0*kappa1_cd*bcs_cd[n][Y]*dq[XZ][Y];
+	      bc[XZ][YY][Y] = 0.0;
+	      bc[XZ][YZ][Y] = kappa0_cd*bcs_cd[n][X]*dq[YZ][Y];
+	      
+	      bc[XZ][XX][Z] = -kappa2_cd*bcs_cd[n][X]*dq[XX][Z];
+	      bc[XZ][XY][Z] = -kappa1_cd*bcs_cd[n][Y]*dq[XY][Z];
+	      bc[XZ][XZ][Z] =  kappa2_cd*bcs_cd[n][Z]*dq[XZ][Z];
+	      bc[XZ][YY][Z] = -kappa0_cd*bcs_cd[n][X]*dq[YY][Z];
+	      bc[XZ][YZ][Z] =  0.0;
+	      
+	      /* YY equation */
+	      
+	      bc[YY][XX][X] = 0.0;
+	      bc[YY][XY][X] = kappa0_cd*bcs_cd[n][Y]*dq[XY][X];
+	      bc[YY][XZ][X] = 0.0;
+	      bc[YY][YY][X] = kappa1_cd*bcs_cd[n][X]*dq[YY][X];
+	      bc[YY][YZ][X] = 0.0;
+	      
+	      bc[YY][XX][Y] =  0.0;
+	      bc[YY][XY][Y] = -kappa1_cd*bcs_cd[n][X]*dq[XY][Y];
+	      bc[YY][XZ][Y] =  0.0;
+	      bc[YY][YY][Y] =  kappa0_cd*bcs_cd[n][Y]*dq[YY][Y];
+	      bc[YY][YZ][Y] = -kappa1_cd*bcs_cd[n][Z]*dq[YZ][Y];
+	      
+	      bc[YY][XX][Z] = 0.0;
+	      bc[YY][XY][Z] = 0.0;
+	      bc[YY][XZ][Z] = 0.0;
+	      bc[YY][YY][Z] = kappa1_cd*bcs_cd[n][Z]*dq[YY][Z];
+	      bc[YY][YZ][Z] = kappa0_cd*bcs_cd[n][Y]*dq[YZ][Z];
+	      
+	      /* YZ equation */
+	      
+	      bc[YZ][XX][X] = 0.0;
+	      bc[YZ][XY][X] = kappa0_cd*bcs_cd[n][Z]*dq[XY][X];
+	      bc[YZ][XZ][X] = kappa0_cd*bcs_cd[n][Y]*dq[XZ][X];
+	      bc[YZ][YY][X] = 0.0;
+	      bc[YZ][YZ][X] = 2.0*kappa1_cd*bcs_cd[n][X]*dq[YZ][X];
+	      
+	      bc[YZ][XX][Y] =  kappa1_cd*bcs_cd[n][Z]*dq[XX][Y];
+	      bc[YZ][XY][Y] =  0.0;
+	      bc[YZ][XZ][Y] = -kappa1_cd*bcs_cd[n][X]*dq[XZ][Y];
+	      bc[YZ][YY][Y] =  kappa2_cd*bcs_cd[n][Z]*dq[YY][Y];
+	      bc[YZ][YZ][Y] =  kappa2_cd*bcs_cd[n][Y]*dq[YZ][Y];
+	      
+	      bc[YZ][XX][Z] = -kappa0_cd*bcs_cd[n][Y]*dq[XX][Z];
+	      bc[YZ][XY][Z] = -kappa1_cd*bcs_cd[n][X]*dq[XY][Z];
+	      bc[YZ][XZ][Z] =  0.0;
+	      bc[YZ][YY][Z] = -kappa2_cd*bcs_cd[n][Y]*dq[YY][Z];
+	      bc[YZ][YZ][Z] =  kappa2_cd*bcs_cd[n][Z]*dq[YZ][Z];
+	      
 
 	      
 	      for (n1 = 0; n1 < NOP; n1++) {
@@ -677,7 +809,6 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	  	  b[n1] -= bc[n1][n2][normal[n]];
 	  	  for (ia = 0; ia < 3; ia++) {
 	  	    b[n1] += bc[n1][n2][ia];
-		    //b[n1] =0.01;
 	  	  }
 	  	}
 	      }

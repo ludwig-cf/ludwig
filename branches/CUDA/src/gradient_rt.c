@@ -62,10 +62,16 @@ void gradient_run_time(void) {
     else if (strcmp(key1, "3d_7pt_fluid") == 0) {
       info("3d_7pt_fluid\n");
       gradient_3d_7pt_fluid_init();
+      #ifdef _GPU_
+      set_gradient_option_gpu(0);
+      #endif
     }
     else if (strcmp(key1, "3d_7pt_solid") == 0) {
       info("3d_7pt_solid\n");
       gradient_3d_7pt_solid_init();
+      #ifdef _GPU_
+      set_gradient_option_gpu(1);
+      #endif
     }
     else if (strcmp(key1, "3d_27pt_fluid") == 0) {
       info("3d_27pt_fluid\n");
