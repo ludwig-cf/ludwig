@@ -39,6 +39,8 @@ extern "C" void phi_get_q_tensor(int index, double q[3][3]);
 extern "C" void hydrodynamics_add_force_local(const int index, const double force[3]);
 extern "C" int  colloids_q_anchoring_method(void);
 extern "C" double blue_phase_be_get_rotational_diffusion(void);
+extern "C" void checkCUDAError(const char *msg);
+
 
 /* external variables holding device memory addresses */
 extern double * phi_site_d;
@@ -68,7 +70,10 @@ extern double * electric_d;
 extern int * N_d;
 extern int * le_index_real_to_buffer_d;
 
-/* forward declarations of device routines */
+/* forward declarations */
+
+void put_phi_force_constants_on_gpu();
+
 __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_d,
 						  double *phi_site_d,
 						  double *phi_site_full_d,
@@ -146,26 +151,31 @@ __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]);
 __device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,
 						   int index,int N[3]);
 
+/* constant memory symbols internal to this module */
+__constant__ double electric_cd[3];
+__constant__ double redshift_cd;
+__constant__ double rredshift_cd;
+__constant__ double q0shift_cd;
+__constant__ double a0_cd;
+__constant__ double kappa0shift_cd;
+__constant__ double kappa1shift_cd;
+__constant__ double xi_cd;
+__constant__ double zeta_cd;
+__constant__ double gamma_cd;
+__constant__ double epsilon_cd;
+__constant__ double r3_cd;
+__constant__ double d_cd[3][3];
+__constant__ double e_cd[3][3][3];
+__constant__ double dt_solid_cd;
+__constant__ double dt_cd;
+__constant__ double Gamma_cd;
+__constant__ double e2_cd;
 
-
-
-
-/* /\* forward declarations of device routines *\/ */
-/* __global__ void phi_force_calculation_fluid_gpu_d(int nop, int nhalo,  */
-/* 						     int N[3],  */
-/* 						     const double * field_d, */
-/* 						     double * grad_d, */
-/* 						     double * del2_d, */
-/* 						     int * le_index_real_to_buffer_d); */
-/* __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]); */
-/* __device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk, */
-/* 						   int index,int N[3]); */
-
-/* /\* external variables holding device memory addresses *\/ */
-/* extern double * phi_site_d; */
-/* extern double * grad_phi_site_d; */
-/* extern double * delsq_phi_site_d; */
-/* extern int * N_d; */
-/* extern int * le_index_real_to_buffer_d; */
+__constant__ double cd1;
+__constant__ double cd2;
+__constant__ double cd3;
+__constant__ double cd4;
+__constant__ double cd5;
+__constant__ double cd6;
 
 #endif

@@ -17,7 +17,13 @@ enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
-#define DEFAULT_TPB 256 //default number of threads per bock
+//default number of threads per block in each dir
+#define DEFAULT_TPB_X 4 
+#define DEFAULT_TPB_Y 4 
+#define DEFAULT_TPB_Z 8 
+
+//default number of threads per block
+#define DEFAULT_TPB (DEFAULT_TPB_X*DEFAULT_TPB_Y*DEFAULT_TPB_Z) 
 
 /* declarations for required external (host) routines */
 extern "C" void coords_nlocal(int n[3]);

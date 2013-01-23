@@ -1,20 +1,8 @@
 /*****************************************************************************
  *
- *  phi_force.c
+ *  phi_force_gpu.cu
  *
- *  Computes the force on the fluid from the thermodynamic sector
- *  via the divergence of the chemical stress. Its calculation as
- *  a divergence ensures momentum is conserved.
- *
- *  Note that the stress may be asymmetric.
- *
- *  $Id: phi_force.c 1728 2012-07-18 08:41:51Z agray3 $
- *
- *  Edinburgh Soft Matter and Statistical Physics Group and
- *  Edinburgh Parallel Computing Centre
- *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  Alan Gray
  *
  *****************************************************************************/
 
@@ -41,33 +29,8 @@
 //static const double r3_ = (1.0/3.0);
 
 
-__constant__ double electric_cd[3];
-__constant__ double redshift_cd;
-__constant__ double rredshift_cd;
-__constant__ double q0shift_cd;
-__constant__ double a0_cd;
-__constant__ double kappa0shift_cd;
-__constant__ double kappa1shift_cd;
-__constant__ double xi_cd;
-__constant__ double zeta_cd;
-__constant__ double gamma_cd;
-__constant__ double epsilon_cd;
-__constant__ double r3_cd;
-__constant__ double d_cd[3][3];
-__constant__ double e_cd[3][3][3];
-__constant__ double dt_solid_cd;
-__constant__ double dt_cd;
-__constant__ double Gamma_cd;
-__constant__ double e2_cd;
+dim3 nblocks, threadsperblock;
 
-__constant__ double cd1;
-__constant__ double cd2;
-__constant__ double cd3;
-__constant__ double cd4;
-__constant__ double cd5;
-__constant__ double cd6;
-
-extern "C" void checkCUDAError(const char *msg);
 
 /*****************************************************************************
  *
@@ -80,87 +43,14 @@ extern "C" void checkCUDAError(const char *msg);
 void phi_force_calculation_gpu(void) {
 
   int N[3],nhalo,Nall[3];
-  
   nhalo = coords_nhalo();
   coords_nlocal(N); 
-
-
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
   Nall[Z]=N[Z]+2*nhalo;
-  
   int nsites=Nall[X]*Nall[Y]*Nall[Z];
- 
 
-  
-
-  // FROM blue_phase.c
-  double q0_;        /* Pitch = 2pi / q0_ */
-  double a0_;        /* Bulk free energy parameter A_0 */
-  double gamma_;     /* Controls magnitude of order */
-  double kappa0_;    /* Elastic constant \kappa_0 */
-  double kappa1_;    /* Elastic constant \kappa_1 */
-  
-  double xi_;        /* effective molecular aspect ratio (<= 1.0) */
-  double redshift_;  /* redshift parameter */
-  double rredshift_; /* reciprocal */
-  double zeta_;      /* Apolar activity parameter \zeta */
-  
-  double epsilon_; /* Dielectric anisotropy (e/12pi) */
-  
-  double electric_[3]; /* Electric field */
-  
-
-
-  redshift_ = blue_phase_redshift(); 
-  rredshift_ = blue_phase_rredshift(); 
-  q0_=blue_phase_q0();
-  a0_=blue_phase_a0();
-  kappa0_=blue_phase_kappa0();
-  kappa1_=blue_phase_kappa1();
-  xi_=blue_phase_get_xi();
-  zeta_=blue_phase_get_zeta();
-  gamma_=blue_phase_gamma();
-  blue_phase_get_electric_field(electric_);
-  epsilon_=blue_phase_get_dielectric_anisotropy();
-
- q0_ = q0_*rredshift_;
- kappa0_ = kappa0_*redshift_*redshift_;
- kappa1_ = kappa1_*redshift_*redshift_;
-
- int ia;
- double e2=0;
-  for (ia = 0; ia < 3; ia++) 
-    e2 += electric_[ia]*electric_[ia];   /* Electric field term */
-
-
-
-  //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
-
-cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
- 
-  cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(epsilon_cd, &epsilon_, sizeof(double), 0, cudaMemcpyHostToDevice);
- cudaMemcpyToSymbol(r3_cd, &r3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(e2_cd, &e2, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
-
- 
-  checkCUDAError("phi_force cudaMemcpyToSymbol");
-
+  //TO DO
   //if (force_required_ == 0) return;
 
   //if (le_get_nplane_total() > 0 || wall_present()) {
@@ -171,35 +61,60 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
   //else {
   //if (force_divergence_) {
 
+  put_phi_force_constants_on_gpu();
 
   cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
 
-  // #define TPB 256
-  //#define TPBX 4 
-  //#define TPBY 4
-  //#define TPBZ 8
+  /* compute q2 and eq */
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
 
-  #define TPBX 4 
-  #define TPBY 4
-  #define TPBZ 8
+  nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
-    //int nblocks=(N[X]*N[Y]*N[Z]+TPB-1)/TPB;
+  blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
 
-  dim3 nblocks1((Nall[Z]+TPBZ-1)/TPBZ,(Nall[Y]+TPBY-1)/TPBY,(Nall[X]+TPBX-1)/TPBX);
-  dim3 threadsperblock1(TPBZ,TPBY,TPBX);
 
-  blue_phase_compute_q2_eq_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
+  /* compute h */
+  #define TPSITE 9
+  threadsperblock.x=DEFAULT_TPB;
+  threadsperblock.y=1;
+  threadsperblock.z=1;
 
-  blue_phase_compute_h_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
+  nblocks.x=(TPSITE*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
+  nblocks.y=1;
+  nblocks.z=1;
 
- blue_phase_compute_stress_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
+  blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
 
-  
-  dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
-  dim3 threadsperblock(TPBZ,TPBY,TPBX);
+
+  /* compute stress */
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
+
+  nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+
+
+ blue_phase_compute_stress_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
+
+
+
+  /* compute force */
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
+
+  nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+
 
   phi_force_calculation_fluid_gpu_d<<<nblocks,threadsperblock>>>
-  //phi_force_calculation_fluid_gpu_d<<<nblocks,TPB>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,stress_site_d,force_d);
       
       cudaThreadSynchronize();
@@ -218,99 +133,13 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
 void phi_force_colloid_gpu(void) {
 
   int N[3],nhalo,Nall[3];
-  
   nhalo = coords_nhalo();
   coords_nlocal(N); 
-
-
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
   Nall[Z]=N[Z]+2*nhalo;
-  
   int nsites=Nall[X]*Nall[Y]*Nall[Z];
- 
-
-  
-
-  // FROM blue_phase.c
-  double q0_;        /* Pitch = 2pi / q0_ */
-  double a0_;        /* Bulk free energy parameter A_0 */
-  double gamma_;     /* Controls magnitude of order */
-  double kappa0_;    /* Elastic constant \kappa_0 */
-  double kappa1_;    /* Elastic constant \kappa_1 */
-  
-  double xi_;        /* effective molecular aspect ratio (<= 1.0) */
-  double redshift_;  /* redshift parameter */
-  double rredshift_; /* reciprocal */
-  double zeta_;      /* Apolar activity parameter \zeta */
-  
-  double epsilon_; /* Dielectric anisotropy (e/12pi) */
-  
-  double electric_[3]; /* Electric field */
-  
-
-
-  redshift_ = blue_phase_redshift(); 
-  rredshift_ = blue_phase_rredshift(); 
-  q0_=blue_phase_q0();
-  a0_=blue_phase_a0();
-  kappa0_=blue_phase_kappa0();
-  kappa1_=blue_phase_kappa1();
-  xi_=blue_phase_get_xi();
-  zeta_=blue_phase_get_zeta();
-  gamma_=blue_phase_gamma();
-  blue_phase_get_electric_field(electric_);
-  epsilon_=blue_phase_get_dielectric_anisotropy();
-
- q0_ = q0_*rredshift_;
- kappa0_ = kappa0_*redshift_*redshift_;
- kappa1_ = kappa1_*redshift_*redshift_;
-
- int ia;
- double e2=0;
-  for (ia = 0; ia < 3; ia++) 
-    e2 += electric_[ia]*electric_[ia];   /* Electric field term */
-
-
-  double cd1_=-a0_*(1.0 - r3_*gamma_);
-  double cd2_=a0_*gamma_;
-  double cd3_=2.0*kappa1_*q0_;
-  double cd4_=r3_*kappa1_*q0_;
-  double cd5_=4.0*kappa1_*q0_*q0_;
-  double cd6_=r3_*e2;
-
-
-  //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
-
-cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
- 
-  cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(epsilon_cd, &epsilon_, sizeof(double), 0, cudaMemcpyHostToDevice);
- cudaMemcpyToSymbol(r3_cd, &r3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
-
- 
- cudaMemcpyToSymbol(cd1, &cd1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(cd2, &cd2_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(cd3, &cd3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(cd4, &cd4_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(cd5, &cd5_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(cd6, &cd6_, sizeof(double), 0, cudaMemcpyHostToDevice); 
-
-  checkCUDAError("phi_force_colloid cudaMemcpyToSymbol");
+   
 
   // TODO
   /* if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) { */
@@ -321,33 +150,60 @@ cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
   /* } */
 
 
+  put_phi_force_constants_on_gpu();
+
   cudaFuncSetCacheConfig(phi_force_colloid_gpu_d,cudaFuncCachePreferL1);
 
   cudaFuncSetCacheConfig( blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferShared);
 
-  #define TPBX 4 
-  #define TPBY 4
-  #define TPBZ 8
+  /* compute q2 and eq */
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
 
-  
-  dim3 nblocks1((Nall[Z]+TPBZ-1)/TPBZ,(Nall[Y]+TPBY-1)/TPBY,(Nall[X]+TPBX-1)/TPBX);
-  dim3 threadsperblock1(TPBZ,TPBY,TPBX);
+  nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
-  blue_phase_compute_q2_eq_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
+  blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
 
 
+  /* compute h */
   #define TPSITE 9
+  threadsperblock.x=DEFAULT_TPB;
+  threadsperblock.y=1;
+  threadsperblock.z=1;
 
-  dim3 blocks3(TPSITE*Nall[X]*Nall[Y]*Nall[Z]/DEFAULT_TPB,1,1);
-  dim3 threadsperblock3(DEFAULT_TPB,1,1);
+  nblocks.x=(TPSITE*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
+  nblocks.y=1;
+  nblocks.z=1;
 
-  blue_phase_compute_h_all_gpu_d<<<blocks3,threadsperblock3>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
-
- blue_phase_compute_stress_all_gpu_d<<<nblocks1,threadsperblock1>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
+  blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
 
 
-  dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
-  dim3 threadsperblock(TPBZ,TPBY,TPBX);
+  /* compute stress */
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
+
+  nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+
+
+ blue_phase_compute_stress_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
+
+
+
+  /* compute force */
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
+
+  nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+
 
   phi_force_colloid_gpu_d<<<nblocks,threadsperblock>>>
     (le_index_real_to_buffer_d,site_map_status_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,stress_site_d,force_d,colloid_force_d);
@@ -375,95 +231,17 @@ void blue_phase_be_update_gpu(void) {
   int nsites=Nall[X]*Nall[Y]*Nall[Z];
  
 
-  
-
-  // FROM blue_phase.c
-  double q0_;        /* Pitch = 2pi / q0_ */
-  double a0_;        /* Bulk free energy parameter A_0 */
-  double gamma_;     /* Controls magnitude of order */
-  double kappa0_;    /* Elastic constant \kappa_0 */
-  double kappa1_;    /* Elastic constant \kappa_1 */
-  
-  double xi_;        /* effective molecular aspect ratio (<= 1.0) */
-  double redshift_;  /* redshift parameter */
-  double rredshift_; /* reciprocal */
-  double zeta_;      /* Apolar activity parameter \zeta */
-  
-  double epsilon_; /* Dielectric anisotropy (e/12pi) */
-  
-  double electric_[3]; /* Electric field */
-  
-
-
-  redshift_ = blue_phase_redshift(); 
-  rredshift_ = blue_phase_rredshift(); 
-  q0_=blue_phase_q0();
-  a0_=blue_phase_a0();
-  kappa0_=blue_phase_kappa0();
-  kappa1_=blue_phase_kappa1();
-  xi_=blue_phase_get_xi();
-  zeta_=blue_phase_get_zeta();
-  gamma_=blue_phase_gamma();
-  blue_phase_get_electric_field(electric_);
-  epsilon_=blue_phase_get_dielectric_anisotropy();
-
- q0_ = q0_*rredshift_;
- kappa0_ = kappa0_*redshift_*redshift_;
- kappa1_ = kappa1_*redshift_*redshift_;
-
-
-  int nop = phi_nop();
-  assert(nop == 5);
-
-  /* For first anchoring method (only) have evolution at solid sites. */
-  const double dt = 1.0;
-  double dt_solid;
-  dt_solid = 0;
-  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) dt_solid = dt;
-
-  double Gamma_=blue_phase_be_get_rotational_diffusion();
-
-
-  //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
-
-cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice); 
- 
-  cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(epsilon_cd, &epsilon_, sizeof(double), 0, cudaMemcpyHostToDevice);
- cudaMemcpyToSymbol(r3_cd, &r3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(dt_solid_cd, &dt_solid, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(dt_cd, &dt, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(Gamma_cd, &Gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
-
- 
- checkCUDAError("blue_phase_be_update cudaMemcpyToSymbol");
-
-
+  put_phi_force_constants_on_gpu();  
 
   cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
 
-  #define TPBX 4 
-  #define TPBY 4
-  #define TPBZ 8
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
 
-  dim3 nblocks((N[Z]+TPBZ-1)/TPBZ,(N[Y]+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
-  dim3 threadsperblock(TPBZ,TPBY,TPBX);
-
+  nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
   blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
@@ -492,93 +270,19 @@ void advection_upwind_gpu(void) {
 
   
 
-  // FROM blue_phase.c
-  double q0_;        /* Pitch = 2pi / q0_ */
-  double a0_;        /* Bulk free energy parameter A_0 */
-  double gamma_;     /* Controls magnitude of order */
-  double kappa0_;    /* Elastic constant \kappa_0 */
-  double kappa1_;    /* Elastic constant \kappa_1 */
-  
-  double xi_;        /* effective molecular aspect ratio (<= 1.0) */
-  double redshift_;  /* redshift parameter */
-  double rredshift_; /* reciprocal */
-  double zeta_;      /* Apolar activity parameter \zeta */
-  
-  double epsilon_; /* Dielectric anisotropy (e/12pi) */
-  
-  double electric_[3]; /* Electric field */
-  
-
-
-  redshift_ = blue_phase_redshift(); 
-  rredshift_ = blue_phase_rredshift(); 
-  q0_=blue_phase_q0();
-  a0_=blue_phase_a0();
-  kappa0_=blue_phase_kappa0();
-  kappa1_=blue_phase_kappa1();
-  xi_=blue_phase_get_xi();
-  zeta_=blue_phase_get_zeta();
-  gamma_=blue_phase_gamma();
-  blue_phase_get_electric_field(electric_);
-  epsilon_=blue_phase_get_dielectric_anisotropy();
-
- q0_ = q0_*rredshift_;
- kappa0_ = kappa0_*redshift_*redshift_;
- kappa1_ = kappa1_*redshift_*redshift_;
-
-
-  int nop = phi_nop();
-  assert(nop == 5);
-
-  /* For first anchoring method (only) have evolution at solid sites. */
-  const double dt = 1.0;
-  double dt_solid;
-  dt_solid = 0;
-  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) dt_solid = dt;
-
-  double Gamma_=blue_phase_be_get_rotational_diffusion();
-
-
-  //cudaMemcpy(electric_d, electric_, 3*sizeof(double), cudaMemcpyHostToDevice); 
-
-cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice); 
- 
-  cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(epsilon_cd, &epsilon_, sizeof(double), 0, cudaMemcpyHostToDevice);
- cudaMemcpyToSymbol(r3_cd, &r3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(dt_solid_cd, &dt_solid, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(dt_cd, &dt, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(Gamma_cd, &Gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
-
- 
- checkCUDAError("advection_upwind cudaMemcpyToSymbol");
-
-
 
  cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
 
-  #define TPBX 4 
-  #define TPBY 4
-  #define TPBZ 8
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
 
- /* two sfastest moving dimensions have cover a single lower width-one halo here */
- dim3 nblocks(((N[Z]+1)+TPBZ-1)/TPBZ,((N[Y]+1)+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
-  dim3 threadsperblock(TPBZ,TPBY,TPBX);
+ /* two fastest moving dimensions have cover a single lower width-one halo here */
+
+  nblocks.x=(N[Z]+1+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(N[Y]+1+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+
 
   advection_upwind_gpu_d<<<nblocks,threadsperblock>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
@@ -1851,6 +1555,100 @@ __global__ void blue_phase_compute_stress_all_gpu_d(  double *phi_site_d,
     }
 
   return;
+}
+
+void put_phi_force_constants_on_gpu(){
+
+
+  int N[3],nhalo,Nall[3];
+  
+  nhalo = coords_nhalo();
+  coords_nlocal(N); 
+
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+  int nop = phi_nop();
+
+
+  double redshift_ = blue_phase_redshift(); 
+  double rredshift_ = blue_phase_rredshift(); 
+  double q0_=blue_phase_q0();
+  q0_ = q0_*rredshift_;
+
+  double a0_=blue_phase_a0();
+  double kappa0_=blue_phase_kappa0();
+  double kappa1_=blue_phase_kappa1();
+  kappa0_ = kappa0_*redshift_*redshift_;
+  kappa1_ = kappa1_*redshift_*redshift_;
+
+  double xi_=blue_phase_get_xi();
+  double zeta_=blue_phase_get_zeta();
+  double gamma_=blue_phase_gamma();
+  double epsilon_=blue_phase_get_dielectric_anisotropy();
+  double Gamma_=blue_phase_be_get_rotational_diffusion();
+
+  double electric_[3];
+  blue_phase_get_electric_field(electric_);  
+  int ia;
+  double e2=0;
+  for (ia = 0; ia < 3; ia++) 
+    e2 += electric_[ia]*electric_[ia];   /* Electric field term */
+
+  /* For first anchoring method (only) have evolution at solid sites. */
+  const double dt = 1.0;
+  double dt_solid;
+  dt_solid = 0;
+  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) dt_solid = dt;
+
+
+  double cd1_=-a0_*(1.0 - r3_*gamma_);
+  double cd2_=a0_*gamma_;
+  double cd3_=2.0*kappa1_*q0_;
+  double cd4_=r3_*kappa1_*q0_;
+  double cd5_=4.0*kappa1_*q0_*q0_;
+  double cd6_=r3_*e2;
+
+  /* copy to constant memory on device */
+  cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  
+  cudaMemcpyToSymbol(electric_cd, electric_, 3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(redshift_cd, &redshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(rredshift_cd, &rredshift_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(q0shift_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(a0_cd, &a0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(kappa0shift_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(kappa1shift_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(xi_cd, &xi_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(zeta_cd, &zeta_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(gamma_cd, &gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(epsilon_cd, &epsilon_, sizeof(double), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(r3_cd, &r3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(e2_cd, &e2, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice);
+  		
+  cudaMemcpyToSymbol(cd1, &cd1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(cd2, &cd2_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(cd3, &cd3_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(cd4, &cd4_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(cd5, &cd5_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(cd6, &cd6_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(dt_solid_cd, &dt_solid, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(dt_cd, &dt, sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Gamma_cd, &Gamma_, sizeof(double), 0, cudaMemcpyHostToDevice); 
+
+ 
+  checkCUDAError("phi_force cudaMemcpyToSymbol");
+
+
 }
 
 
