@@ -80,9 +80,6 @@ static int nsites;
 static int nop;
 static  int N[3];
 static  int Nall[3];
-static int nhalodataX;
-static int nhalodataY;
-static int nhalodataZ;
 static int nlexbuf;
 
 /* handles for CUDA streams (for ovelapping)*/
@@ -142,10 +139,6 @@ static void calculate_phi_data_sizes()
 
   nop = phi_nop();
 
-  nhalodataX = N[Y] * N[Z] * nhalo * nop ;
-  nhalodataY = Nall[X] * N[Z] * nhalo * nop;
-  nhalodataZ = Nall[X] * Nall[Y] * nhalo * nop;
-
 
 
   //nlexbuf = le_get_nxbuffer();
@@ -170,48 +163,6 @@ static void allocate_phi_memory_on_gpu()
   grad_phi_site_temp = (double *) malloc(nsites*nop*3*sizeof(double));
   delsq_phi_site_temp = (double *) malloc(nsites*nop*sizeof(double));
   le_index_real_to_buffer_temp = (int *) malloc(nlexbuf*sizeof(int));
-
-  cudaHostAlloc( (void **)&edgeXLOW, nhalodataX*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&edgeXHIGH, nhalodataX*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&edgeYLOW, nhalodataY*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&edgeYHIGH, nhalodataY*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&edgeZLOW, nhalodataZ*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&edgeZHIGH, nhalodataZ*sizeof(double), 
-		 cudaHostAllocDefault);
-
-
-  cudaHostAlloc( (void **)&haloXLOW, nhalodataX*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&haloXHIGH, nhalodataX*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&haloYLOW, nhalodataY*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&haloYHIGH, nhalodataY*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&haloZLOW, nhalodataZ*sizeof(double), 
-		 cudaHostAllocDefault);
-  cudaHostAlloc( (void **)&haloZHIGH, nhalodataZ*sizeof(double), 
-		 cudaHostAllocDefault);
-  
-
-  cudaMalloc((void **) &edgeXLOW_d, nhalodataX*sizeof(double));
-  cudaMalloc((void **) &edgeXHIGH_d, nhalodataX*sizeof(double));
-  cudaMalloc((void **) &edgeYLOW_d, nhalodataY*sizeof(double));
-  cudaMalloc((void **) &edgeYHIGH_d, nhalodataY*sizeof(double));
-  cudaMalloc((void **) &edgeZLOW_d, nhalodataZ*sizeof(double));
-  cudaMalloc((void **) &edgeZHIGH_d, nhalodataZ*sizeof(double));
-  
-  cudaMalloc((void **) &haloXLOW_d, nhalodataX*sizeof(double));
-  cudaMalloc((void **) &haloXHIGH_d, nhalodataX*sizeof(double));
-  cudaMalloc((void **) &haloYLOW_d, nhalodataY*sizeof(double));
-  cudaMalloc((void **) &haloYHIGH_d, nhalodataY*sizeof(double));
-  cudaMalloc((void **) &haloZLOW_d, nhalodataZ*sizeof(double));
-  cudaMalloc((void **) &haloZHIGH_d, nhalodataZ*sizeof(double));
   
   cudaMalloc((void **) &phi_site_d, nsites*nop*sizeof(double));
   cudaMalloc((void **) &phi_site_full_d, nsites*9*sizeof(double));
@@ -237,36 +188,6 @@ static void free_phi_memory_on_gpu()
   free(delsq_phi_site_temp);
   free(le_index_real_to_buffer_temp);
 
-  cudaFreeHost(edgeXLOW);
-  cudaFreeHost(edgeXHIGH);
-  cudaFreeHost(edgeYLOW);
-  cudaFreeHost(edgeYHIGH);
-  cudaFreeHost(edgeZLOW);
-  cudaFreeHost(edgeZHIGH);
-
-  cudaFreeHost(haloXLOW);
-  cudaFreeHost(haloXHIGH);
-  cudaFreeHost(haloYLOW);
-  cudaFreeHost(haloYHIGH);
-  cudaFreeHost(haloZLOW);
-  cudaFreeHost(haloZHIGH);
-
-
-  /* free memory on accelerator */
-
-  cudaFree(edgeXLOW_d);
-  cudaFree(edgeXHIGH_d);
-  cudaFree(edgeYLOW_d);
-  cudaFree(edgeYHIGH_d);
-  cudaFree(edgeZLOW_d);
-  cudaFree(edgeZHIGH_d);
-
-  cudaFree(haloXLOW_d);
-  cudaFree(haloXHIGH_d);
-  cudaFree(haloYLOW_d);
-  cudaFree(haloYHIGH_d);
-  cudaFree(haloZLOW_d);
-  cudaFree(haloZHIGH_d);
 
   cudaFree(phi_site_d);
   cudaFree(phi_site_full_d);

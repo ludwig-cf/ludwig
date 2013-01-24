@@ -48,15 +48,15 @@ void finalise_dist_gpu();
 __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 				       int nhalo, int nreduced,
 					 int N[3],
-					 double* fedgeXLOW_d,
-				       double* fedgeXHIGH_d, 
+					 double* fedgeLOW_d,
+				       double* fedgeHIGH_d, 
 				       double* f_d, int dirn);
 
 __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 					 int nhalo, int nreduced,
 					   int N[3],
-					   double* f_d, double* fhaloXLOW_d,
-					 double* fhaloXHIGH_d, int dirn);
+					   double* f_d, double* fhaloLOW_d,
+					 double* fhaloHIGH_d, int dirn);
 
 
 

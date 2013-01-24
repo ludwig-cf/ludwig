@@ -77,28 +77,30 @@ void phi_force_calculation_gpu(void) {
   blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
 
 
-  /* compute h */
-  #define TPSITE 9
-  threadsperblock.x=DEFAULT_TPB;
-  threadsperblock.y=1;
-  threadsperblock.z=1;
+  /* /\* compute h *\/ */
+  /* #define TPSITE 9 */
+  /* threadsperblock.x=DEFAULT_TPB; */
+  /* threadsperblock.y=1; */
+  /* threadsperblock.z=1; */
 
-  nblocks.x=(TPSITE*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
-  nblocks.y=1;
-  nblocks.z=1;
+  /* nblocks.x=(TPSITE*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1; */
+  /* nblocks.y=1; */
+  /* nblocks.z=1; */
+
+  /* blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d); */
+
+
+  /* /\* compute stress *\/ */
+  /* threadsperblock.x=DEFAULT_TPB_Z; */
+  /* threadsperblock.y=DEFAULT_TPB_Y; */
+  /* threadsperblock.z=DEFAULT_TPB_X; */
+
+  /* nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z; */
+  /* nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y; */
+  /* nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X; */
+
 
   blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
-
-
-  /* compute stress */
-  threadsperblock.x=DEFAULT_TPB_Z;
-  threadsperblock.y=DEFAULT_TPB_Y;
-  threadsperblock.z=DEFAULT_TPB_X;
-
-  nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
-  nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
-  nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
-
 
  blue_phase_compute_stress_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
@@ -168,27 +170,30 @@ void phi_force_colloid_gpu(void) {
   blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
 
 
-  /* compute h */
-  #define TPSITE 9
-  threadsperblock.x=DEFAULT_TPB;
-  threadsperblock.y=1;
-  threadsperblock.z=1;
+  /* /\* compute h *\/ */
+  /* #define TPSITE 9 */
+  /* threadsperblock.x=DEFAULT_TPB; */
+  /* threadsperblock.y=1; */
+  /* threadsperblock.z=1; */
 
-  nblocks.x=(TPSITE*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
-  nblocks.y=1;
-  nblocks.z=1;
+  /* nblocks.x=(TPSITE*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1; */
+  /* nblocks.y=1; */
+  /* nblocks.z=1; */
+
+  /* blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d); */
+
+
+  /* /\* compute stress *\/ */
+  /* threadsperblock.x=DEFAULT_TPB_Z; */
+  /* threadsperblock.y=DEFAULT_TPB_Y; */
+  /* threadsperblock.z=DEFAULT_TPB_X; */
+
+  /* nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z; */
+  /* nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y; */
+  /* nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X; */
+
 
   blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
-
-
-  /* compute stress */
-  threadsperblock.x=DEFAULT_TPB_Z;
-  threadsperblock.y=DEFAULT_TPB_Y;
-  threadsperblock.z=DEFAULT_TPB_X;
-
-  nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
-  nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
-  nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
 
  blue_phase_compute_stress_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
@@ -1342,6 +1347,7 @@ __global__ void blue_phase_compute_q2_eq_all_gpu_d(  double *phi_site_d,
   return;
 }
 
+
 __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,
 						 double *grad_phi_site_d,
@@ -1351,132 +1357,244 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
 						 double *eq_site_d
 						 ){
 
-  int ic, id;
+  int ia, ib, ic, id;
   int index;
+  double q[3][3];
+  double h[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
 
-                        
-  double e2;
-  double sum, sum1,htmp;
-
+  int ii, jj, kk;
  
-  int threadIndex=blockIdx.x*blockDim.x+threadIdx.x; 
-
-
-  int i=threadIndex/(Nall_cd[Y]*Nall_cd[Z]*TPSITE);
-  int j=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE)/(Nall_cd[Y]*TPSITE);
-  int k=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE-j*Nall_cd[Y]*TPSITE)/TPSITE;
-  int iw=threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE-j*Nall_cd[Y]*TPSITE-k*TPSITE;
-
-  int ia=iw/3;
-  int ib=iw-ia*3;
-
-  int threadIndexStart=blockIdx.x*blockDim.x; 
-
-
-  int iStart=threadIndexStart/(Nall_cd[Y]*Nall_cd[Z]*TPSITE);
-  int jStart=(threadIndexStart-iStart*Nall_cd[Y]*Nall_cd[Z]*TPSITE)/(Nall_cd[Y]*TPSITE);
-  int kStart=(threadIndexStart-iStart*Nall_cd[Y]*Nall_cd[Z]*TPSITE-jStart*Nall_cd[Y]*TPSITE)/TPSITE;
-
-
-
-  index=get_linear_index_gpu_d(i,j,k,Nall_cd);
-
-  int indexStart=get_linear_index_gpu_d(iStart,jStart,kStart,Nall_cd);
-
-#define SPB (((DEFAULT_TPB+TPSITE-1)/TPSITE)+1)
-
-  __shared__ double q_sm[3][3][SPB];
-  __shared__ double dsq_sm[3][3][SPB];
-  __shared__ double dq_sm[3][3][3][SPB];
-  
-  __shared__ double q2_sm[SPB];
-  __shared__ double eq_sm[SPB];
+ /* CUDA thread index */
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
  
-  if ((threadIdx.x < SPB) && (threadIdx.x < nsites_cd)){
-    q_sm[X][X][threadIdx.x] = phi_site_d[nsites_cd*XX+(indexStart+threadIdx.x)];
-      q_sm[X][Y][threadIdx.x] = phi_site_d[nsites_cd*XY+(indexStart+threadIdx.x)];
-      q_sm[X][Z][threadIdx.x] = phi_site_d[nsites_cd*XZ+(indexStart+threadIdx.x)];
-      q_sm[Y][X][threadIdx.x] = q_sm[X][Y][threadIdx.x];
-      q_sm[Y][Y][threadIdx.x] = phi_site_d[nsites_cd*YY+(indexStart+threadIdx.x)];
-      q_sm[Y][Z][threadIdx.x] = phi_site_d[nsites_cd*YZ+(indexStart+threadIdx.x)];
-      q_sm[Z][X][threadIdx.x] = q_sm[X][Z][threadIdx.x];
-      q_sm[Z][Y][threadIdx.x] = q_sm[Y][Z][threadIdx.x];
-      q_sm[Z][Z][threadIdx.x] = 0.0 - q_sm[X][X][threadIdx.x] - q_sm[Y][Y][threadIdx.x];
-      /* load grad phi */
-      for (ic = 0; ic < 3; ic++) {
-      	dq_sm[ic][X][X][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XX*nsites_cd + indexStart+threadIdx.x];
-      	dq_sm[ic][X][Y][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XY*nsites_cd + indexStart+threadIdx.x];
-      	dq_sm[ic][X][Z][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XZ*nsites_cd + indexStart+threadIdx.x];
-      	dq_sm[ic][Y][X][threadIdx.x] = dq_sm[ic][X][Y][threadIdx.x];
-      	dq_sm[ic][Y][Y][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + YY*nsites_cd + indexStart+threadIdx.x];
-      	dq_sm[ic][Y][Z][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + YZ*nsites_cd + indexStart+threadIdx.x];
-      	dq_sm[ic][Z][X][threadIdx.x] = dq_sm[ic][X][Z][threadIdx.x];
-      	dq_sm[ic][Z][Y][threadIdx.x] = dq_sm[ic][Y][Z][threadIdx.x];
-      	dq_sm[ic][Z][Z][threadIdx.x] = 0.0 - dq_sm[ic][X][X][threadIdx.x] - dq_sm[ic][Y][Y][threadIdx.x];
-      }
-      //load delsq phi
-    dsq_sm[X][X][threadIdx.x] = delsq_phi_site_d[nsites_cd*XX+(indexStart+threadIdx.x)];
-      dsq_sm[X][Y][threadIdx.x] = delsq_phi_site_d[nsites_cd*XY+(indexStart+threadIdx.x)];
-      dsq_sm[X][Z][threadIdx.x] = delsq_phi_site_d[nsites_cd*XZ+(indexStart+threadIdx.x)];
-      dsq_sm[Y][X][threadIdx.x] = dsq_sm[X][Y][threadIdx.x];
-      dsq_sm[Y][Y][threadIdx.x] = delsq_phi_site_d[nsites_cd*YY+(indexStart+threadIdx.x)];
-      dsq_sm[Y][Z][threadIdx.x] = delsq_phi_site_d[nsites_cd*YZ+(indexStart+threadIdx.x)];
-      dsq_sm[Z][X][threadIdx.x] = dsq_sm[X][Z][threadIdx.x];
-      dsq_sm[Z][Y][threadIdx.x] = dsq_sm[Y][Z][threadIdx.x];
-      dsq_sm[Z][Z][threadIdx.x] = 0.0 - dsq_sm[X][X][threadIdx.x] - dsq_sm[Y][Y][threadIdx.x];
-
-
-    q2_sm[threadIdx.x] = q2_site_d[indexStart+threadIdx.x];
-    eq_sm[threadIdx.x] = eq_site_d[indexStart+threadIdx.x];
-
-  }
-
-      syncthreads();
-
-
-  if (index < Nall_cd[X]*Nall_cd[Y]*Nall_cd[Y] && ia<3 && ib <3)
+  if (ii < Nall_cd[X] && jj < Nall_cd[Y] && kk < Nall_cd[Z] )
     {
-            
-      int index_sm=index-indexStart;
-      
 
+
+      /* calculate index from CUDA thread index */
+      //index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+      index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
+      
+      /* load phi */
+      
+      q[X][X] = phi_site_d[nsites_cd*XX+index];
+      q[X][Y] = phi_site_d[nsites_cd*XY+index];
+      q[X][Z] = phi_site_d[nsites_cd*XZ+index];
+      q[Y][X] = q[X][Y];
+      q[Y][Y] = phi_site_d[nsites_cd*YY+index];
+      q[Y][Z] = phi_site_d[nsites_cd*YZ+index];
+      q[Z][X] = q[X][Z];
+      q[Z][Y] = q[Y][Z];
+      q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+      
+      
+      /* load grad phi */
+      for (ia = 0; ia < 3; ia++) {
+	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
+	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
+	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
+	dq[ia][Y][X] = dq[ia][X][Y];
+	dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
+	dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
+	dq[ia][Z][X] = dq[ia][X][Z];
+	dq[ia][Z][Y] = dq[ia][Y][Z];
+	dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+      }
+      
+      /* load delsq phi */
+      dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
+      dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
+      dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
+      dsq[Y][X] = dsq[X][Y];
+      dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
+      dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
+      dsq[Z][X] = dsq[X][Z];
+      dsq[Z][Y] = dsq[Y][Z];
+      dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+                  
+  double e2;
+  double sum, sum1;
+
+  double q2=q2_site_d[index];
+  double eq=eq_site_d[index];
+
+
+  double cd1=-a0_cd*(1.0 - r3_cd*gamma_cd);
+  double cd2=a0_cd*gamma_cd;
+  double cd3=2.0*kappa1shift_cd*q0shift_cd;
+  
   /* d_c Q_db written as d_c Q_bd etc */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
       sum = 0.0;
       sum1 = 0.0;
       for (ic = 0; ic < 3; ic++) {
 
-  	sum +=  q_sm[ia][ic][index_sm]*q_sm[ib][ic][index_sm];
+  	sum +=  phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index]* phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index];
 
 	for (id = 0; id < 3; id++) {
 	  sum1 +=
-	    (e_cd[ia][ic][id]*dq_sm[ic][ib][id][index_sm] + e_cd[ib][ic][id]*dq_sm[ic][ia][id][index_sm]);
+	    (e_cd[ia][ic][id]*dq[ic][ib][id] + e_cd[ib][ic][id]*dq[ic][ia][id]);
 	}
       }
 
-      htmp = cd1*q_sm[ia][ib][index_sm]
-  	+ cd2*(sum - r3_cd*q2_sm[index_sm]*d_cd[ia][ib]) 
-	- cd2*q2_sm[index_sm]*q_sm[ia][ib][index_sm];
+      h[ia][ib] = cd1* phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]
+  	+ cd2*(sum - r3_cd*q2*d_cd[ia][ib]) - cd2*q2*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
 
-      htmp += kappa0shift_cd*dsq_sm[ia][ib][index_sm]
-	- cd3*sum1 + 4.0*cd4*eq_sm[index_sm]*d_cd[ia][ib]
-	- cd5*q_sm[ia][ib][index_sm];
+      h[ia][ib] += kappa0shift_cd*dsq[ia][ib]
+	- cd3*sum1 + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib]
+	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
 
-      htmp +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib] 
-				- cd6*d_cd[ia][ib]);
-
-      h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=htmp;
-
-      //h_site_d[index*3*3+3*ia+ib]=htmp;
+      h[ia][ib] +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib] - r3_cd*d_cd[ia][ib]*e2_cd);
+      h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=h[ia][ib];
 
     }
+  }
+  
+    }
+
+  return;
+}
+
+/* __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d, */
+/* 						 double *phi_site_full_d, */
+/* 						 double *grad_phi_site_d, */
+/* 						 double *delsq_phi_site_d, */
+/* 						 double *h_site_d, */
+/* 						 double *q2_site_d, */
+/* 						 double *eq_site_d */
+/* 						 ){ */
+
+/*   int ic, id; */
+/*   int index; */
+
+                        
+/*   double e2; */
+/*   double sum, sum1,htmp; */
+
+ 
+/*   int threadIndex=blockIdx.x*blockDim.x+threadIdx.x;  */
+
+
+/*   int i=threadIndex/(Nall_cd[Y]*Nall_cd[Z]*TPSITE); */
+/*   int j=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE)/(Nall_cd[Y]*TPSITE); */
+/*   int k=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE-j*Nall_cd[Y]*TPSITE)/TPSITE; */
+/*   int iw=threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE-j*Nall_cd[Y]*TPSITE-k*TPSITE; */
+
+/*   int ia=iw/3; */
+/*   int ib=iw-ia*3; */
+
+/*   int threadIndexStart=blockIdx.x*blockDim.x;  */
+
+
+/*   int iStart=threadIndexStart/(Nall_cd[Y]*Nall_cd[Z]*TPSITE); */
+/*   int jStart=(threadIndexStart-iStart*Nall_cd[Y]*Nall_cd[Z]*TPSITE)/(Nall_cd[Y]*TPSITE); */
+/*   int kStart=(threadIndexStart-iStart*Nall_cd[Y]*Nall_cd[Z]*TPSITE-jStart*Nall_cd[Y]*TPSITE)/TPSITE; */
+
+
+
+/*   index=get_linear_index_gpu_d(i,j,k,Nall_cd); */
+
+/*   int indexStart=get_linear_index_gpu_d(iStart,jStart,kStart,Nall_cd); */
+
+/* #define SPB (((DEFAULT_TPB+TPSITE-1)/TPSITE)+1) */
+
+/*   __shared__ double q_sm[3][3][SPB]; */
+/*   __shared__ double dsq_sm[3][3][SPB]; */
+/*   __shared__ double dq_sm[3][3][3][SPB]; */
+  
+/*   __shared__ double q2_sm[SPB]; */
+/*   __shared__ double eq_sm[SPB]; */
+ 
+/*   if ((threadIdx.x < SPB) && (threadIdx.x < nsites_cd)){ */
+/*     q_sm[X][X][threadIdx.x] = phi_site_d[nsites_cd*XX+(indexStart+threadIdx.x)]; */
+/*       q_sm[X][Y][threadIdx.x] = phi_site_d[nsites_cd*XY+(indexStart+threadIdx.x)]; */
+/*       q_sm[X][Z][threadIdx.x] = phi_site_d[nsites_cd*XZ+(indexStart+threadIdx.x)]; */
+/*       q_sm[Y][X][threadIdx.x] = q_sm[X][Y][threadIdx.x]; */
+/*       q_sm[Y][Y][threadIdx.x] = phi_site_d[nsites_cd*YY+(indexStart+threadIdx.x)]; */
+/*       q_sm[Y][Z][threadIdx.x] = phi_site_d[nsites_cd*YZ+(indexStart+threadIdx.x)]; */
+/*       q_sm[Z][X][threadIdx.x] = q_sm[X][Z][threadIdx.x]; */
+/*       q_sm[Z][Y][threadIdx.x] = q_sm[Y][Z][threadIdx.x]; */
+/*       q_sm[Z][Z][threadIdx.x] = 0.0 - q_sm[X][X][threadIdx.x] - q_sm[Y][Y][threadIdx.x]; */
+/*       /\* load grad phi *\/ */
+/*       for (ic = 0; ic < 3; ic++) { */
+/*       	dq_sm[ic][X][X][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XX*nsites_cd + indexStart+threadIdx.x]; */
+/*       	dq_sm[ic][X][Y][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XY*nsites_cd + indexStart+threadIdx.x]; */
+/*       	dq_sm[ic][X][Z][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XZ*nsites_cd + indexStart+threadIdx.x]; */
+/*       	dq_sm[ic][Y][X][threadIdx.x] = dq_sm[ic][X][Y][threadIdx.x]; */
+/*       	dq_sm[ic][Y][Y][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + YY*nsites_cd + indexStart+threadIdx.x]; */
+/*       	dq_sm[ic][Y][Z][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + YZ*nsites_cd + indexStart+threadIdx.x]; */
+/*       	dq_sm[ic][Z][X][threadIdx.x] = dq_sm[ic][X][Z][threadIdx.x]; */
+/*       	dq_sm[ic][Z][Y][threadIdx.x] = dq_sm[ic][Y][Z][threadIdx.x]; */
+/*       	dq_sm[ic][Z][Z][threadIdx.x] = 0.0 - dq_sm[ic][X][X][threadIdx.x] - dq_sm[ic][Y][Y][threadIdx.x]; */
+/*       } */
+/*       //load delsq phi */
+/*     dsq_sm[X][X][threadIdx.x] = delsq_phi_site_d[nsites_cd*XX+(indexStart+threadIdx.x)]; */
+/*       dsq_sm[X][Y][threadIdx.x] = delsq_phi_site_d[nsites_cd*XY+(indexStart+threadIdx.x)]; */
+/*       dsq_sm[X][Z][threadIdx.x] = delsq_phi_site_d[nsites_cd*XZ+(indexStart+threadIdx.x)]; */
+/*       dsq_sm[Y][X][threadIdx.x] = dsq_sm[X][Y][threadIdx.x]; */
+/*       dsq_sm[Y][Y][threadIdx.x] = delsq_phi_site_d[nsites_cd*YY+(indexStart+threadIdx.x)]; */
+/*       dsq_sm[Y][Z][threadIdx.x] = delsq_phi_site_d[nsites_cd*YZ+(indexStart+threadIdx.x)]; */
+/*       dsq_sm[Z][X][threadIdx.x] = dsq_sm[X][Z][threadIdx.x]; */
+/*       dsq_sm[Z][Y][threadIdx.x] = dsq_sm[Y][Z][threadIdx.x]; */
+/*       dsq_sm[Z][Z][threadIdx.x] = 0.0 - dsq_sm[X][X][threadIdx.x] - dsq_sm[Y][Y][threadIdx.x]; */
+
+
+/*     q2_sm[threadIdx.x] = q2_site_d[indexStart+threadIdx.x]; */
+/*     eq_sm[threadIdx.x] = eq_site_d[indexStart+threadIdx.x]; */
+
+/*   } */
+
+/*       syncthreads(); */
+
+
+/*   if (index < Nall_cd[X]*Nall_cd[Y]*Nall_cd[Y] && ia<3 && ib <3) */
+/*     { */
+            
+/*       int index_sm=index-indexStart; */
+      
+
+/*   /\* d_c Q_db written as d_c Q_bd etc *\/ */
+/*       sum = 0.0; */
+/*       sum1 = 0.0; */
+/*       for (ic = 0; ic < 3; ic++) { */
+
+/*   	sum +=  q_sm[ia][ic][index_sm]*q_sm[ib][ic][index_sm]; */
+
+/* 	for (id = 0; id < 3; id++) { */
+/* 	  sum1 += */
+/* 	    (e_cd[ia][ic][id]*dq_sm[ic][ib][id][index_sm] + e_cd[ib][ic][id]*dq_sm[ic][ia][id][index_sm]); */
+/* 	} */
+/*       } */
+
+/*       htmp = cd1*q_sm[ia][ib][index_sm] */
+/*   	+ cd2*(sum - r3_cd*q2_sm[index_sm]*d_cd[ia][ib])  */
+/* 	- cd2*q2_sm[index_sm]*q_sm[ia][ib][index_sm]; */
+
+/*       htmp += kappa0shift_cd*dsq_sm[ia][ib][index_sm] */
+/* 	- cd3*sum1 + 4.0*cd4*eq_sm[index_sm]*d_cd[ia][ib] */
+/* 	- cd5*q_sm[ia][ib][index_sm]; */
+
+/*       htmp +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib]  */
+/* 				- cd6*d_cd[ia][ib]); */
+
+/*       h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=htmp; */
+
+/*       //h_site_d[index*3*3+3*ia+ib]=htmp; */
+
+/*     } */
 
 
 
 
    
 
-  return;
-}
+/*   return; */
+/* } */
 
 __global__ void blue_phase_compute_stress_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,

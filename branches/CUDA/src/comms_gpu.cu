@@ -87,6 +87,7 @@ static int ndata;
 static int nhalo;
 static int nsites;
 static int ndist;
+static int nop;
 static  int N[3];
 static  int Nall[3];
 static int npvel; /* number of velocity components when packed */
@@ -121,15 +122,7 @@ void init_dist_gpu()
 
 
   cudaMemcpyToSymbol(cv_cd, cv, NVEL*3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-
-  int p,m;
-  for (p=0;p<1;p++)
-    for (m=0;m<3;m++)
-	  //p=0;m=1;
-	  printf("TTT %d %d %d\n",p,m,cv[p][m]);
-	//exit(1);
-	//printf("LLL %d \n",cv[0][1]);
-
+ 
   //checkCUDAError("Init GPU");  
 
 
@@ -152,6 +145,7 @@ static void calculate_dist_data_sizes()
   coords_nlocal(N);  
   nhalo = coords_nhalo();  
   ndist = distribution_ndist();
+  nop = phi_nop();
 
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
@@ -160,7 +154,7 @@ static void calculate_dist_data_sizes()
   nsites = Nall[X]*Nall[Y]*Nall[Z];
   ndata = nsites * ndist * NVEL;
 
-
+  
 
   /* calculate number of velocity components when packed */
   int p;
@@ -170,9 +164,12 @@ static void calculate_dist_data_sizes()
       if (cv[p][0] == 1 || !nreduced) npvel++; 
     }
 
-  nhalodataX = N[Y] * N[Z] * nhalo * ndist * npvel;
-  nhalodataY = Nall[X] * N[Z] * nhalo * ndist * npvel;
-  nhalodataZ = Nall[X] * Nall[Y] * nhalo * ndist * npvel;
+  int n1=ndist*npvel;
+  if (nop > n1) n1=nop;
+
+  nhalodataX = N[Y] * N[Z] * nhalo * n1;
+  nhalodataY = Nall[X] * N[Z] * nhalo * n1;
+  nhalodataZ = Nall[X] * Nall[Y] * nhalo * n1;
 
 
 
@@ -1454,8 +1451,8 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 				       int nhalo, int nreduced,
 					  int N[3],
-					 double* edgeXLOW_d,
-				       double* edgeXHIGH_d, 
+					 double* edgeLOW_d,
+				       double* edgeHIGH_d, 
 				       double* f_d, int dirn)
 {
 
@@ -1529,7 +1526,7 @@ __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 	if (cv_cd[p][dirn] == ud || !nreduced)
 	  {
 	    for (m = 0; m < nfields2; m++) {
-	      edgeXLOW_d[nfields2*npackedsite*packedp+m*npackedsite
+	      edgeLOW_d[nfields2*npackedsite*packedp+m*npackedsite
 	      	  +packed_index]
 	      	= f_d[nfields2*nsite*p+nsite*m+index];
 	    }
@@ -1556,7 +1553,7 @@ __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 	  {
 	    for (m = 0; m < nfields2; m++) {
 	      
-	      edgeXHIGH_d[nfields2*npackedsite*packedp+m*npackedsite
+	      edgeHIGH_d[nfields2*npackedsite*packedp+m*npackedsite
 			   +packed_index]
 		= f_d[nfields2*nsite*p+nsite*m+index];
 	      
@@ -1575,8 +1572,8 @@ __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 					 int nhalo, int nreduced,
 					   int N[3],
-					   double* f_d, double* haloXLOW_d,
-					 double* haloXHIGH_d, int dirn)
+					   double* f_d, double* haloLOW_d,
+					 double* haloHIGH_d, int dirn)
 {
 
 
@@ -1679,7 +1676,7 @@ __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 	    for (m = 0; m < nfields2; m++) {
 	  
 	      f_d[nfields2*nsite*p+nsite*m+index] =
-	      haloXLOW_d[nfields2*npackedsite*packedp+m*npackedsite
+	      haloLOW_d[nfields2*npackedsite*packedp+m*npackedsite
 	      	    +packed_index];
 
 	    }
@@ -1706,7 +1703,7 @@ __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 	    for (m = 0; m < nfields2; m++) {
 	      
 	      f_d[nfields2*nsite*p+nsite*m+index] =
-	      haloXHIGH_d[nfields2*npackedsite*packedp+m*npackedsite
+	      haloHIGH_d[nfields2*npackedsite*packedp+m*npackedsite
 	           +packed_index];
 	      
 	    }
