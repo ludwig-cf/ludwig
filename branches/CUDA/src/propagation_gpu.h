@@ -10,7 +10,7 @@
 #define _PROPAGATION_GPU_H
 
 #include "common_gpu.h"
-#include "dist_datamgmt_gpu.h"
+//#include "dist_datamgmt_gpu.h"
 
 /* expose main routine in this module to outside routines */
 extern "C" void propagation_gpu();

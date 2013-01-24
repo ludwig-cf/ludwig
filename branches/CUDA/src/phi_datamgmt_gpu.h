@@ -23,6 +23,7 @@ extern "C" double phi_gradients_delsq_n(const int index, const int iop);
 extern "C" void phi_gradients_set_delsq_n(const int index, const int iop, const double delsq);
 extern "C" void TIMER_start(const int);
 extern "C" void TIMER_stop(const int);
+extern "C" void halo_gpu(int nfields1, int nfields2, int packfield1, double * data_d);
 
 /* expose routines in this module to outside routines */
 extern "C" void put_phi_on_gpu();
@@ -44,19 +45,6 @@ static void allocate_phi_memory_on_gpu(void);
 static void free_phi_memory_on_gpu(void);
 void init_phi_gpu();
 void finalise_phi_gpu();
-
-
-/* forward declarations of accelerator routines internal to this module */
-__global__ static void pack_edge_gpu_d(int nfields, int nhalo,
-					 int N[3],
-					 double* edgeLOW_d,
-				       double* edgeHIGH_d, double* data_d, int dirn);
-__global__ static void unpack_halo_gpu_d(int nfields, int nhalo,
-					   int N[3],
-					   double* data_d, double* haloLOW_d,
-					 double* haloHIGH_d, int dirn);
-
-
 
 
 #endif

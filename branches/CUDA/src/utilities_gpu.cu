@@ -14,7 +14,7 @@
 #include "pe.h"
 #include "utilities_gpu.h"
 #include "phi_datamgmt_gpu.h"
-#include "dist_datamgmt_gpu.h"
+#include "comms_gpu.h"
 //#include "colloids.h"
 #include "util.h"
 #include "model.h"
@@ -106,6 +106,13 @@ void initialise_gpu()
   fluid_body_force(force_global);
 
   put_site_map_on_gpu();
+
+  int p,m;
+  for (p=0;p<NVEL;p++)
+    for (m=0;m<3;m++)
+	  //p=0;m=1;
+      //printf("TT1 %d %d %d\n",p,m,cv[p][m]);
+      //exit(1);
 
   /* copy data from host to accelerator */
   cudaMemcpy(N_d, N, 3*sizeof(int), cudaMemcpyHostToDevice); 

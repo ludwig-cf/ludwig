@@ -11,6 +11,7 @@
 #define DISTUTILITIES_GPU_H
 
 #include "common_gpu.h"
+#include "model.h"
 
 /* expose routines in this module to outside routines */
 extern "C" void put_f_on_gpu();
@@ -33,6 +34,7 @@ extern "C" void bounce_back_gpu(int *findexall, int *linktype,
 extern "C" void bbl_init_temp_link_arrays_gpu(int nlink);
 extern "C" void bbl_finalise_temp_link_arrays_gpu();
 extern "C" void bbl_enlarge_temp_link_arrays_gpu(int nlink);
+extern "C" void halo_gpu(int nfields1, int nfields2, int packfield1, double * data_d);
 
 /* forward declarations of host routines internal to this module */
 static void calculate_dist_data_sizes(void);
@@ -43,38 +45,27 @@ void finalise_dist_gpu();
 
 
 /* forward declarations of accelerator routines internal to this module */
-__global__ static void pack_edgesX_gpu_d(int ndist, int nhalo,int nreduced,
-					 int* cv_d, int N[3], 
+__global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
+				       int nhalo, int nreduced,
+					 int N[3],
 					 double* fedgeXLOW_d,
-					 double* fedgeXHIGH_d, double* f_d); 
-__global__ static void unpack_halosX_gpu_d(int ndist, int nhalo, int nreduced,
+				       double* fedgeXHIGH_d, 
+				       double* f_d, int dirn);
+
+__global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
+					 int nhalo, int nreduced,
 					   int N[3],
-					 int* cv_d, 
 					   double* f_d, double* fhaloXLOW_d,
-					   double* fhaloXHIGH_d);
-__global__ static void pack_edgesY_gpu_d(int ndist, int nhalo,int nreduced,
-					 int* cv_d, int N[3], 
-					 double* fedgeYLOW_d,
-					 double* fedgeYHIGH_d, double* f_d); 
-__global__ static void unpack_halosY_gpu_d(int ndist, int nhalo, int nreduced,
-					   int N[3],
-					 int* cv_d, 
-					   double* f_d, double* fhaloYLOW_d,
-					   double* fhaloYHIGH_d);
-__global__ static void pack_edgesZ_gpu_d(int ndist, int nhalo,
-					 int nreduced, 
-					 int* cv_d, int N[3],  
-					 double* fedgeZLOW_d,
-					 double* fedgeZHIGH_d, double* f_d); 
-__global__ static void unpack_halosZ_gpu_d(int ndist, int nhalo,int nreduced, 
-					 int* cv_d, int N[3], 
-					   double* f_d, double* fhaloZLOW_d,
-					   double* fhaloZHIGH_d);
+					 double* fhaloXHIGH_d, int dirn);
 
 
+
+/* external variables holding device memory addresses */
 extern double * phi_site_d;
-
 extern double * colloid_force_d;
 
+
+/* constant memory symbols internal to this module */
+__constant__ int cv_cd[NVEL][3];
 #endif
 
