@@ -104,7 +104,7 @@ void phi_force_calculation_gpu(void) {
 
   blue_phase_compute_stress1_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
-  blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
+  blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,grad_phi_float_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
 
 
@@ -133,6 +133,7 @@ void phi_force_calculation_gpu(void) {
   return;
 }
 
+texture<float,1,cudaReadModeElementType> texreference;
 
 void phi_force_colloid_gpu(void) {
 
@@ -213,7 +214,17 @@ void phi_force_colloid_gpu(void) {
   nblocks.z=1;
 
 
-  blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
+
+
+cudaBindTexture(0,texreference,grad_phi_float_d,sizeof(float)*nsites*27); 
+
+ blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,grad_phi_float_d,delsq_phi_site_d,h_site_d, stress_site_d);
+
+
+//unbind texture reference to free resource
+cudaUnbindTexture(texreference);
+
+
 
 
 
@@ -1685,6 +1696,7 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,
 						 double *grad_phi_site_d,
 						 double *grad_phi_site_full_d,
+						 float *grad_phi_float_d,
 						 double *delsq_phi_site_d,
 						 double *h_site_d,
 						 double *stress_site_d){
@@ -1710,8 +1722,8 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
   int j=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9)/(Nall_cd[Y]*9);
   int k=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Y]*9)/9;
   int iw=threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Y]*9-k*9;
-  int ia=iw/3;
-  int ib=iw-ia*3;
+  int ib=iw/3;
+  int ia=iw-ib*3;
 
  
   if (i < Nall_cd[X] && j < Nall_cd[Y] && k < Nall_cd[Z] && ia<3 && ib <3)
@@ -1799,20 +1811,72 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
 	  /* } */
 
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*grad_phi_site_full_d[index*27+ia*9 + ib*3+ ic]* */
+	  /*   grad_phi_site_full_d[index*27+id*9 + ic*3+ id] */
+	  /*   - kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]* */
+	  /*   grad_phi_site_full_d[index*27+ib*9 + ic*3+ id] */
+	  /*   + kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]* */
+	  /*   grad_phi_site_full_d[index*27+ic*9 + ib*3+ id]; */
+	  
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
+	  /*   *grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]; */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /*   tmpdbl += */
+	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
+
+
+
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*grad_phi_site_full_d[index*27+ic*9 + ib*3+ ia]* */
+	  /*   grad_phi_site_full_d[index*27+id*9 + ic*3+ id] */
+	  /*   - kappa1shift_cd*grad_phi_site_full_d[index*27+id*9 + ic*3+ ia]* */
+	  /*   grad_phi_site_full_d[index*27+id*9 + ic*3+ ib] */
+	  /*   + kappa1shift_cd*grad_phi_site_full_d[index*27+id*9 + ic*3+ ia]* */
+	  /*   grad_phi_site_full_d[index*27+id*9 + ib*3+ ic]; */
+	  
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
+	  /*   *grad_phi_site_full_d[index*27+id*9 + ic*3+ ia]; */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /* tmpdbl += */
+	  /*  tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
+
+
+	  //doarray[index]=tex1Dfetch(texreference,index);
+
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*grad_phi_float_d[index*27+ic*9 + ib*3+ ia]* */
+	  /*   grad_phi_float_d[index*27+id*9 + ic*3+ id] */
+	  /*   - kappa1shift_cd*grad_phi_float_d[index*27+id*9 + ic*3+ ia]* */
+	  /*   grad_phi_float_d[index*27+id*9 + ic*3+ ib] */
+	  /*   + kappa1shift_cd*grad_phi_float_d[index*27+id*9 + ic*3+ ia]* */
+	  /*   grad_phi_float_d[index*27+id*9 + ib*3+ ic]; */
+	  
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
+	  /*   *grad_phi_float_d[index*27+id*9 + ic*3+ ia]; */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /* tmpdbl += */
+	  /*  tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
+
+
 	  tmpdbl +=
-	    - kappa0shift_cd*grad_phi_site_full_d[index*27+ia*9 + ib*3+ ic]*
-	    grad_phi_site_full_d[index*27+id*9 + ic*3+ id]
-	    - kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]*
-	    grad_phi_site_full_d[index*27+ib*9 + ic*3+ id]
-	    + kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]*
-	    grad_phi_site_full_d[index*27+ic*9 + ib*3+ id];
+	    - kappa0shift_cd*tex1Dfetch(texreference,index*27+ic*9 + ib*3+ ia)*
+	    tex1Dfetch(texreference,index*27+id*9 + ic*3+ id)
+	    - kappa1shift_cd*tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia)*
+	    tex1Dfetch(texreference,index*27+id*9 + ic*3+ ib)
+	    + kappa1shift_cd*tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia)*
+	    tex1Dfetch(texreference,index*27+id*9 + ib*3+ ic);
 	  
 	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd
-	    *grad_phi_site_full_d[index*27+ia*9 + ic*3+ id];
+	    *tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia);
 	  for (ie = 0; ie < 3; ie++) {
-	    tmpdbl +=
-	     tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
+	  tmpdbl +=
+	   tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
 	  }
+
 
 
 
@@ -1827,7 +1891,7 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 
       //for (ia = 0; ia < 3; ia++) {
       //for (ib = 0; ib < 3; ib++) {
-	  stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=sth[ia][ib];
+      stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=sth[ia][ib];
 	  //	}
   //}
     }
