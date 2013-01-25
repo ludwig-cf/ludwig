@@ -505,29 +505,63 @@ __global__ void expand_grad_phi_on_gpu_d(double* grad_phi_site_d,double* grad_ph
     {
       
       
+      /* /\* calculate index from CUDA thread index *\/ */
+      /* int ia; */
+      /* for(ia=0;ia<3;ia++){ */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index] */
+      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XX+index]; */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index] */
+      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XY+index]; */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index] */
+      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XZ+index]; */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+X*nsites_cd+index] */
+      /* 	  =  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index]; */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index] */
+      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YY+index]; */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index] */
+      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YZ+index]; */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+X*nsites_cd+index] */
+      /* 	  = grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index]; */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Y*nsites_cd+index] */
+      /* 	  = grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index]; */
+      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Z*nsites_cd+index] */
+      /* 	  = 0.0 -  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index] */
+      /* 	  -  grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index]; */
+      /* } */
+
+
       /* calculate index from CUDA thread index */
       int ia;
       for(ia=0;ia<3;ia++){
-	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index]
+	grad_phi_site_full_d[index*27+ia*9+3*X+X]
 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XX+index];
-	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index]
+
+	grad_phi_site_full_d[index*27+ia*9+3*X+Y]
 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XY+index];
-	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index]
+
+	grad_phi_site_full_d[index*27+ia*9+3*X+Z]
 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XZ+index];
-	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+X*nsites_cd+index]
-	  =  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index];
-	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index]
+
+	grad_phi_site_full_d[index*27+ia*9+3*Y+X]
+	  =  grad_phi_site_full_d[index*27+ia*9+3*X+Y];
+
+	grad_phi_site_full_d[index*27+ia*9+3*Y+Y]
 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YY+index];
-	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index]
+
+	grad_phi_site_full_d[index*27+ia*9+3*Y+Z]
 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YZ+index];
-	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+X*nsites_cd+index]
-	  = grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index];
-	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Y*nsites_cd+index]
-	  = grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index];
-	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Z*nsites_cd+index]
-	  = 0.0 -  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index]
-	  -  grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index];
+
+	grad_phi_site_full_d[index*27+ia*9+3*Z+X]
+	  = grad_phi_site_full_d[index*27+ia*9+3*X+Z];
+
+	grad_phi_site_full_d[index*27+ia*9+3*Z+Y]
+	  = grad_phi_site_full_d[index*27+ia*9+3*Y+Z];
+
+	grad_phi_site_full_d[index*27+ia*9+3*Z+Z]
+	  = 0.0 -  grad_phi_site_full_d[index*27+ia*9+3*X+X]
+	  -  grad_phi_site_full_d[index*27+ia*9+3*Y+Y];
       }
+
 
     }
 

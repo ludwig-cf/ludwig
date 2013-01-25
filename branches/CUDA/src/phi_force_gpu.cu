@@ -202,6 +202,17 @@ void phi_force_colloid_gpu(void) {
 
   blue_phase_compute_stress1_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
+
+
+  threadsperblock.x=DEFAULT_TPB;
+  threadsperblock.y=1;
+  threadsperblock.z=1;
+
+  nblocks.x=(9*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
+  nblocks.y=1;
+  nblocks.z=1;
+
+
   blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
 
@@ -399,8 +410,8 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
   for (ia = 0; ia < 3; ia++) {
     sum = 0.0;
     for (ib = 0; ib < 3; ib++) {
-      //sum += dq[ib][ia][ib];
-      sum += grad_phi_site_full_d[ib*nsites_cd*9 + ia*nsites_cd*3+ ib*nsites_cd + index];
+      sum += dq[ib][ia][ib];
+      //sum += grad_phi_site_full_d[ib*nsites_cd*9 + ia*nsites_cd*3+ ib*nsites_cd + index];
     }
     dq0 += sum*sum;
   }
@@ -415,8 +426,8 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
       sum = 0.0;
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
-	  //sum += e_cd[ia][ic][id]*dq[ic][ib][id];
-	  sum += e_cd[ia][ic][id]*grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
+	  sum += e_cd[ia][ic][id]*dq[ic][ib][id];
+	  //sum += e_cd[ia][ic][id]*grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
 	}
       }
       sum += 2.0*q0shift_cd*q[ia][ib];
@@ -523,73 +534,6 @@ __device__ void blue_phase_compute_stress1_gpu_d(double q[3][3], double dq[3][3]
 
 
 
-
-  return;
-}
-
-__device__ void blue_phase_compute_stress2_gpu_d(double q[3][3], double dq[3][3][3], double sth[3][3], double *grad_phi_site_full_d, double *h_site_d, int index){
-  int ia, ib, ic, id, ie;
-
-  double tmpdbl,tmpdbl2;
-
-  /* Dot product term d_a Q_cd . dF/dQ_cd,b */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      tmpdbl=0.;
-      for (ic = 0; ic < 3; ic++) {
-	for (id = 0; id < 3; id++) {
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*dq[ia][ib][ic]*dq[id][ic][id] */
-	  /*   - kappa1shift_cd*dq[ia][ic][id]*dq[ib][ic][id] */
-	  /*   + kappa1shift_cd*dq[ia][ic][id]*dq[ic][ib][id]; */
-	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd*dq[ia][ic][id]; */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /*   tmpdbl += */
-	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
-
-	  tmpdbl +=
-	    - kappa0shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index]*
-	    grad_phi_site_full_d[id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
-	    - kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
-	    grad_phi_site_full_d[ib*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
-	    + kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
-	    grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
-	  
-	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd
-	    *grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index];
-	  for (ie = 0; ie < 3; ie++) {
-	    tmpdbl +=
-	     tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
-	  }
-
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*grad_phi_site_full_d[index*27+ia*9 + ib*3+ ic]* */
-	  /*   grad_phi_site_full_d[index*27+id*9 + ic*3+ id] */
-	  /*   - kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]* */
-	  /*   grad_phi_site_full_d[index*27+ib*9 + ic*3+ id] */
-	  /*   + kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]* */
-	  /*   grad_phi_site_full_d[index*27+ic*9 + ib*3+ id]; */
-	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
-	  /*   *grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]; */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /*   tmpdbl += */
-	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
-
-
-
-	}
-      }
-      sth[ia][ib]+=tmpdbl;
-
-      sth[ia][ib]=-sth[ia][ib];
-
-    }
-  }
 
   return;
 }
@@ -1696,23 +1640,23 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
       
       
       /* load grad phi */
-      //      for (ia = 0; ia < 3; ia++) {
+            for (ia = 0; ia < 3; ia++) {
       //for (ib = 0; ib <3; ib++){
       //  for (ic = 0; ic <3; ic++){
       //    dq[ia][ib][ic] = grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index];
       //  }
       //}
 
-	/* dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index]; */
-	/* dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index]; */
-	/* dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index]; */
-	/* dq[ia][Y][X] = dq[ia][X][Y]; */
-	/* dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index]; */
-	/* dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index]; */
-	/* dq[ia][Z][X] = dq[ia][X][Z]; */
-	/* dq[ia][Z][Y] = dq[ia][Y][Z]; */
-	/* dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y]; */
-      //      }
+	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
+	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
+	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
+	dq[ia][Y][X] = dq[ia][X][Y];
+	dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
+	dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
+	dq[ia][Z][X] = dq[ia][X][Z];
+	dq[ia][Z][Y] = dq[ia][Y][Z];
+	dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+           }
       
       /* load delsq phi */
       dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
@@ -1727,8 +1671,6 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
                   
       
       blue_phase_compute_stress1_gpu_d(q, dq, sth, grad_phi_site_full_d,h_site_d, index);
-
-      //      blue_phase_compute_stress2_gpu_d(q, dq, sth, grad_phi_site_full_d,h_site_d, index);
 
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
@@ -1747,7 +1689,8 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 						 double *h_site_d,
 						 double *stress_site_d){
 
-  int ia, ib, ic;
+   //int ia, ib, ic;
+   int ic;
   int index;
   double q[3][3];
   double sth[3][3];
@@ -1760,14 +1703,24 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
   kk = blockIdx.x*blockDim.x+threadIdx.x;
   jj = blockIdx.y*blockDim.y+threadIdx.y;
   ii = blockIdx.z*blockDim.z+threadIdx.z;
+
+  
+  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+  int i=threadIndex/(Nall_cd[Y]*Nall_cd[Z]*9);
+  int j=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9)/(Nall_cd[Y]*9);
+  int k=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Y]*9)/9;
+  int iw=threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Y]*9-k*9;
+  int ia=iw/3;
+  int ib=iw-ia*3;
+
  
-  if (ii < Nall_cd[X] && jj < Nall_cd[Y] && kk < Nall_cd[Z] )
+  if (i < Nall_cd[X] && j < Nall_cd[Y] && k < Nall_cd[Z] && ia<3 && ib <3)
     {
 
 
       /* calculate index from CUDA thread index */
       //index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
-      index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
+      index = get_linear_index_gpu_d(i,j,k,Nall_cd);
       
       /* load phi */
       
@@ -1801,34 +1754,82 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 	/* dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y]; */
       //      }
       
-      /* load delsq phi */
-      dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
-      dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
-      dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
-      dsq[Y][X] = dsq[X][Y];
-      dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
-      dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
-      dsq[Z][X] = dsq[X][Z];
-      dsq[Z][Y] = dsq[Y][Z];
-      dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
-                  
-      
-      //      blue_phase_compute_stress1_gpu_d(q, dq, sth, grad_phi_site_full_d,h_site_d, index);
 
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
+      //for (ia = 0; ia < 3; ia++) {
+      //for (ib = 0; ib < 3; ib++) {
 	  sth[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
+	  //}
+	  //}
+
+
+  int ic, id, ie;
+
+  double tmpdbl,tmpdbl2;
+
+  /* Dot product term d_a Q_cd . dF/dQ_cd,b */
+
+  //for (ia = 0; ia < 3; ia++) {
+  //for (ib = 0; ib < 3; ib++) {
+      tmpdbl=0.;
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*dq[ia][ib][ic]*dq[id][ic][id] */
+	  /*   - kappa1shift_cd*dq[ia][ic][id]*dq[ib][ic][id] */
+	  /*   + kappa1shift_cd*dq[ia][ic][id]*dq[ic][ib][id]; */
+	  
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd*dq[ia][ic][id]; */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /*   tmpdbl += */
+	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
+
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index]* */
+	  /*   grad_phi_site_full_d[id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index] */
+	  /*   - kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]* */
+	  /*   grad_phi_site_full_d[ib*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index] */
+	  /*   + kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]* */
+	  /*   grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index]; */
+	  
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
+	  /*   *grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]; */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /*   tmpdbl += */
+	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
+
+	  tmpdbl +=
+	    - kappa0shift_cd*grad_phi_site_full_d[index*27+ia*9 + ib*3+ ic]*
+	    grad_phi_site_full_d[index*27+id*9 + ic*3+ id]
+	    - kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]*
+	    grad_phi_site_full_d[index*27+ib*9 + ic*3+ id]
+	    + kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]*
+	    grad_phi_site_full_d[index*27+ic*9 + ib*3+ id];
+	  
+	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd
+	    *grad_phi_site_full_d[index*27+ia*9 + ic*3+ id];
+	  for (ie = 0; ie < 3; ie++) {
+	    tmpdbl +=
+	     tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
+	  }
+
+
+
 	}
       }
+      sth[ia][ib]+=tmpdbl;
 
+      sth[ia][ib]=-sth[ia][ib];
 
-      blue_phase_compute_stress2_gpu_d(q, dq, sth, grad_phi_site_full_d,h_site_d, index);
+      //}
+      //}
 
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
+      //for (ia = 0; ia < 3; ia++) {
+      //for (ib = 0; ib < 3; ib++) {
 	  stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=sth[ia][ib];
-	}
-      }
+	  //	}
+  //}
     }
 
   return;
