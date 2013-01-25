@@ -62,6 +62,7 @@ double * haloZHIGH;
 extern int * N_d;
 double * phi_site_d;
 double * phi_site_full_d;
+double * grad_phi_site_full_d;
 double * h_site_d;
 double * stress_site_d;
 double * grad_phi_site_d;
@@ -166,6 +167,7 @@ static void allocate_phi_memory_on_gpu()
   
   cudaMalloc((void **) &phi_site_d, nsites*nop*sizeof(double));
   cudaMalloc((void **) &phi_site_full_d, nsites*9*sizeof(double));
+  cudaMalloc((void **) &grad_phi_site_full_d, nsites*27*sizeof(double));
   cudaMalloc((void **) &h_site_d, nsites*9*sizeof(double));
   cudaMalloc((void **) &stress_site_d, nsites*9*sizeof(double));
   cudaMalloc((void **) &delsq_phi_site_d, nsites*nop*sizeof(double));
@@ -191,6 +193,7 @@ static void free_phi_memory_on_gpu()
 
   cudaFree(phi_site_d);
   cudaFree(phi_site_full_d);
+  cudaFree(grad_phi_site_full_d);
   cudaFree(h_site_d);
   cudaFree(stress_site_d);
   cudaFree(delsq_phi_site_d);
@@ -485,9 +488,74 @@ void expand_phi_on_gpu()
   
   expand_phi_on_gpu_d<<<nblocks,DEFAULT_TPB>>>
     (phi_site_d,phi_site_full_d);
+  cudaThreadSynchronize();
 
+checkCUDAError("expand_phi_on_gpu");
  
 }
+
+__global__ void expand_grad_phi_on_gpu_d(double* grad_phi_site_d,double* grad_phi_site_full_d)
+{
+  
+  
+  int index = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  /* Avoid going beyond problem domain */
+  if (index < Nall_cd[X]*Nall_cd[Y]*Nall_cd[Z])
+    {
+      
+      
+      /* calculate index from CUDA thread index */
+      int ia;
+      for(ia=0;ia<3;ia++){
+	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index]
+	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XX+index];
+	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index]
+	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XY+index];
+	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index]
+	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XZ+index];
+	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+X*nsites_cd+index]
+	  =  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index];
+	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index]
+	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YY+index];
+	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index]
+	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YZ+index];
+	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+X*nsites_cd+index]
+	  = grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index];
+	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Y*nsites_cd+index]
+	  = grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index];
+	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Z*nsites_cd+index]
+	  = 0.0 -  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index]
+	  -  grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index];
+      }
+
+    }
+
+}
+void expand_grad_phi_on_gpu()
+{
+  int N[3],nhalo,Nall[3];
+  nhalo = coords_nhalo();
+  coords_nlocal(N);
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+  
+  cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  
+  int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  
+    expand_grad_phi_on_gpu_d<<<nblocks,DEFAULT_TPB>>>
+  (grad_phi_site_d,grad_phi_site_full_d);
+
+checkCUDAError("expand_grad_phi_on_gpu");
+ 
+}
+
 
 void phi_halo_gpu(){
 

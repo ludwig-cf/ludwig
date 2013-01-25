@@ -40,7 +40,7 @@ extern "C" void hydrodynamics_add_force_local(const int index, const double forc
 extern "C" int  colloids_q_anchoring_method(void);
 extern "C" double blue_phase_be_get_rotational_diffusion(void);
 extern "C" void checkCUDAError(const char *msg);
-
+extern "C" void expand_grad_phi_on_gpu();
 
 /* external variables holding device memory addresses */
 extern double * phi_site_d;
@@ -48,6 +48,7 @@ extern double * phi_site_full_d;
 extern double * h_site_d;
 extern double * stress_site_d;
 extern double * grad_phi_site_d;
+extern double * grad_phi_site_full_d;
 extern double * delsq_phi_site_d;
 extern double * force_d;
 extern double * colloid_force_d;
@@ -143,6 +144,7 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
 __global__ void blue_phase_compute_stress_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,
 						 double *grad_phi_site_d,
+						 double *grad_phi_site_full_d,
 						 double *delsq_phi_site_d,
 						      double *h_site_d,
 						      double *stress_site_d);

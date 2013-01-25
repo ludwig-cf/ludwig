@@ -102,7 +102,7 @@ void phi_force_calculation_gpu(void) {
 
   blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
 
- blue_phase_compute_stress_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
+  blue_phase_compute_stress_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
 
 
@@ -154,6 +154,8 @@ void phi_force_colloid_gpu(void) {
 
   put_phi_force_constants_on_gpu();
 
+  expand_grad_phi_on_gpu();
+
   cudaFuncSetCacheConfig(phi_force_colloid_gpu_d,cudaFuncCachePreferL1);
 
   cudaFuncSetCacheConfig( blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferShared);
@@ -196,7 +198,7 @@ void phi_force_colloid_gpu(void) {
   blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
 
 
- blue_phase_compute_stress_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, stress_site_d);
+  blue_phase_compute_stress_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
 
 
@@ -355,7 +357,7 @@ void advection_bcs_no_normal_flux_gpu(void){
  *
  *****************************************************************************/
 
-__device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3]){
+__device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3], double *grad_phi_site_full_d, int index){
 
   int ia, ib, ic, id;
   double q2, q3;
@@ -393,7 +395,8 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
   for (ia = 0; ia < 3; ia++) {
     sum = 0.0;
     for (ib = 0; ib < 3; ib++) {
-      sum += dq[ib][ia][ib];
+      //sum += dq[ib][ia][ib];
+      sum += grad_phi_site_full_d[ib*nsites_cd*9 + ia*nsites_cd*3+ ib*nsites_cd + index];
     }
     dq0 += sum*sum;
   }
@@ -408,7 +411,8 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
       sum = 0.0;
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
-	  sum += e_cd[ia][ic][id]*dq[ic][ib][id];
+	  //sum += e_cd[ia][ic][id]*dq[ic][ib][id];
+	  sum += e_cd[ia][ic][id]*grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
 	}
       }
       sum += 2.0*q0shift_cd*q[ia][ib];
@@ -446,7 +450,7 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
  *
  *****************************************************************************/
 
-__device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][3], double sth[3][3], double *h_site_d, int index){
+__device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][3], double sth[3][3], double *grad_phi_site_full_d, double *h_site_d, int index){
   int ia, ib, ic, id, ie;
 
   double tmpdbl,tmpdbl2;
@@ -463,7 +467,7 @@ __device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][
   /* We have ignored the rho T term at the moment, assumed to be zero
    * (in particular, it has no divergence if rho = const). */
 
-  tmpdbl = 0.0 - blue_phase_compute_fed_gpu_d(q, dq);
+  tmpdbl = 0.0 - blue_phase_compute_fed_gpu_d(q, dq,grad_phi_site_full_d, index);
 
   /* The contraction Q_ab H_ab */
 
@@ -503,16 +507,49 @@ __device__ void blue_phase_compute_stress_gpu_d(double q[3][3], double dq[3][3][
       tmpdbl=0.;
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
-	  tmpdbl +=
-	    - kappa0shift_cd*dq[ia][ib][ic]*dq[id][ic][id]
-	    - kappa1shift_cd*dq[ia][ic][id]*dq[ib][ic][id]
-	    + kappa1shift_cd*dq[ia][ic][id]*dq[ic][ib][id];
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*dq[ia][ib][ic]*dq[id][ic][id] */
+	  /*   - kappa1shift_cd*dq[ia][ic][id]*dq[ib][ic][id] */
+	  /*   + kappa1shift_cd*dq[ia][ic][id]*dq[ic][ib][id]; */
 	  
-	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd*dq[ia][ic][id];
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd*dq[ia][ic][id]; */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /*   tmpdbl += */
+	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
+
+	  tmpdbl +=
+	    - kappa0shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index]*
+	    grad_phi_site_full_d[id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
+	    - kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
+	    grad_phi_site_full_d[ib*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
+	    + kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
+	    grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
+	  
+	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd
+	    *grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index];
 	  for (ie = 0; ie < 3; ie++) {
 	    tmpdbl +=
 	     tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
 	  }
+
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*grad_phi_site_full_d[index*27+ia*9 + ib*3+ ic]* */
+	  /*   grad_phi_site_full_d[index*27+id*9 + ic*3+ id] */
+	  /*   - kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]* */
+	  /*   grad_phi_site_full_d[index*27+ib*9 + ic*3+ id] */
+	  /*   + kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]* */
+	  /*   grad_phi_site_full_d[index*27+ic*9 + ib*3+ id]; */
+	  
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
+	  /*   *grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]; */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /*   tmpdbl += */
+	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
+
+
+
 	}
       }
       sth[ia][ib]+=tmpdbl;
@@ -1599,11 +1636,12 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
 __global__ void blue_phase_compute_stress_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,
 						 double *grad_phi_site_d,
+						 double *grad_phi_site_full_d,
 						 double *delsq_phi_site_d,
 						 double *h_site_d,
 						 double *stress_site_d){
 
-  int ia, ib;
+  int ia, ib, ic;
   int index;
   double q[3][3];
   double sth[3][3];
@@ -1639,17 +1677,23 @@ __global__ void blue_phase_compute_stress_all_gpu_d(  double *phi_site_d,
       
       
       /* load grad phi */
-      for (ia = 0; ia < 3; ia++) {
-	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
-	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
-	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
-	dq[ia][Y][X] = dq[ia][X][Y];
-	dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
-	dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
-	dq[ia][Z][X] = dq[ia][X][Z];
-	dq[ia][Z][Y] = dq[ia][Y][Z];
-	dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
-      }
+      //      for (ia = 0; ia < 3; ia++) {
+      //for (ib = 0; ib <3; ib++){
+      //  for (ic = 0; ic <3; ic++){
+      //    dq[ia][ib][ic] = grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index];
+      //  }
+      //}
+
+	/* dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index]; */
+	/* dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index]; */
+	/* dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index]; */
+	/* dq[ia][Y][X] = dq[ia][X][Y]; */
+	/* dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index]; */
+	/* dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index]; */
+	/* dq[ia][Z][X] = dq[ia][X][Z]; */
+	/* dq[ia][Z][Y] = dq[ia][Y][Z]; */
+	/* dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y]; */
+      //      }
       
       /* load delsq phi */
       dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
@@ -1663,7 +1707,7 @@ __global__ void blue_phase_compute_stress_all_gpu_d(  double *phi_site_d,
       dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
                   
       
-      blue_phase_compute_stress_gpu_d(q, dq, sth, h_site_d, index);
+      blue_phase_compute_stress_gpu_d(q, dq, sth, grad_phi_site_full_d,h_site_d, index);
 
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {

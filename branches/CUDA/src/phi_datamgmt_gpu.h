@@ -38,6 +38,7 @@ extern "C" void put_phi_halos_on_gpu(void);
 extern "C" void phi_halo_gpu(void);
 extern "C" void velocity_halo_gpu(void);
 extern "C" void expand_phi_on_gpu();
+extern "C" void expand_grad_phi_on_gpu();
 
 /* forward declarations of host routines internal to this module */
 static void calculate_phi_data_sizes(void);
