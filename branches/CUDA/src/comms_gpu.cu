@@ -100,7 +100,7 @@ static int nlinkmax;
 static cudaStream_t streamX,streamY, streamZ;
 
 
-static int nreduced=0;
+static int reduced_halo=0;
 
 /* Perform tasks necessary to initialise accelerator */
 void init_dist_gpu()
@@ -113,7 +113,7 @@ void init_dist_gpu()
   char string[FILENAME_MAX];
 
   RUN_get_string_parameter("reduced_halo", string, FILENAME_MAX);
-  if (strcmp(string, "yes") == 0) nreduced = 1;
+  if (strcmp(string, "yes") == 0) reduced_halo = 1;
   
   /* create CUDA streams (for ovelapping)*/
   cudaStreamCreate(&streamX);
@@ -161,7 +161,7 @@ static void calculate_dist_data_sizes()
   npvel=0;
   for (p=0; p<NVEL; p++)
     {
-      if (cv[p][0] == 1 || !nreduced) npvel++; 
+      if (cv[p][0] == 1 || !reduced_halo) npvel++; 
     }
 
   int n1=ndist*npvel;
@@ -344,8 +344,16 @@ static void free_dist_memory_on_gpu()
 /* copy f_ from host to accelerator */
 void put_f_on_gpu()
 {
+  int index;
+  //for (index=0; index<nsites; index++)
+  //if(index==4423)
+  //index=4423;
+  //printf("%d %e %e\n",index,f_[index],ftmp[index]);
+
   /* copy data from CPU to accelerator */
   cudaMemcpy(f_d, f_, ndata*sizeof(double), cudaMemcpyHostToDevice);
+
+
 
   //checkCUDAError("put_f_on_gpu");
 
@@ -903,6 +911,8 @@ void get_f_from_gpu()
   cudaMemcpy(f_, f_d, ndata*sizeof(double), cudaMemcpyDeviceToHost);
   //checkCUDAError("get_f_from_gpu");
 
+  //memcpy(ftmp, f_, ndata*sizeof(double));
+
 
 }
 
@@ -1082,6 +1092,8 @@ void distribution_halo_gpu(){
 void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 {
 
+
+  int pack_field1=packablefield1*reduced_halo;
   int nfields1packed;
   if (packablefield1){
     /* calculate number of velocity components when packed */
@@ -1089,12 +1101,13 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
     nfields1packed=0;
     for (p=0; p<NVEL; p++)
       {
-	if (cv[p][0] == 1 || !nreduced) nfields1packed++; 
+	if (cv[p][0] == 1 || !reduced_halo) nfields1packed++; 
       }
   }
   else{
     nfields1packed=nfields1;
   }
+
 
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 
@@ -1136,20 +1149,20 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
  /* pack X edges on accelerator */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
  pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields1,nfields2,nhalo,
-						packablefield1, N_d,edgeXLOW_d,
+						pack_field1, N_d,edgeXLOW_d,
 						     edgeXHIGH_d,data_d,X);
 
 
  /* pack Y edges on accelerator */
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
   pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields1,nfields2,nhalo,
-						packablefield1, N_d,edgeYLOW_d,
+						pack_field1, N_d,edgeYLOW_d,
 						     edgeYHIGH_d,data_d,Y);
 
  /* pack Z edges on accelerator */
     nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
   pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nfields1,nfields2,nhalo,
-  						packablefield1, N_d,edgeZLOW_d,
+  						pack_field1, N_d,edgeZLOW_d,
 						     edgeZHIGH_d,data_d,Z);
 
 
@@ -1228,7 +1241,7 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyHostToDevice,streamX);
   nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
      unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields1,nfields2,nhalo,
-  						  packablefield1, N_d,data_d,haloXLOW_d,
+  						  pack_field1, N_d,data_d,haloXLOW_d,
 							      haloXHIGH_d,X);
 
 
@@ -1327,7 +1340,7 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyHostToDevice,streamY);
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
     unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields1,nfields2,nhalo,
-  						  packablefield1, N_d,data_d,haloYLOW_d,
+  						  pack_field1, N_d,data_d,haloYLOW_d,
 							 haloYHIGH_d,Y);
 
 
@@ -1480,7 +1493,7 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 
     nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
      unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nfields1,nfields2,nhalo,
-							  packablefield1, N_d,data_d,haloZLOW_d,
+							  pack_field1, N_d,data_d,haloZLOW_d,
 							  haloZHIGH_d,Z);
 
 
@@ -1496,7 +1509,7 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 /* pack edges on the accelerator */
 __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
-				       int nhalo, int nreduced,
+				       int nhalo, int pack_field1,
 					  int N[3],
 					 double* edgeLOW_d,
 				       double* edgeHIGH_d, 
@@ -1570,7 +1583,7 @@ __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < nfields1; p++) {
-	if (cv_cd[p][dirn] == ud || !nreduced)
+	if (cv_cd[p][dirn] == ud || !pack_field1)
 	  {
 	    for (m = 0; m < nfields2; m++) {
 	      edgeLOW_d[nfields2*npackedsite*packedp+m*npackedsite
@@ -1596,7 +1609,7 @@ __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
       /* copy data to packed structure */
       packedp=0;
       for (p = 0; p < nfields1; p++) {
-	if (cv_cd[p][dirn] == ud*pn || !nreduced )
+	if (cv_cd[p][dirn] == ud*pn || !pack_field1 )
 	  {
 	    for (m = 0; m < nfields2; m++) {
 	      
@@ -1617,7 +1630,7 @@ __global__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 
 /* unpack halos on the accelerator */
 __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
-					 int nhalo, int nreduced,
+					 int nhalo, int pack_field1,
 					   int N[3],
 					   double* f_d, double* haloLOW_d,
 					 double* haloHIGH_d, int dirn)
@@ -1718,7 +1731,7 @@ __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < nfields1; p++) {
-	if (cv_cd[p][dirn] == ud || !nreduced)
+	if (cv_cd[p][dirn] == ud || !pack_field1)
 	  {
 	    for (m = 0; m < nfields2; m++) {
 	  
@@ -1745,7 +1758,7 @@ __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
       /* copy packed structure data to original array */
       packedp=0;
       for (p = 0; p < nfields1; p++) {
-	if (cv_cd[p][dirn] == ud*pn || !nreduced )
+	if (cv_cd[p][dirn] == ud*pn || !pack_field1 )
 	  {
 	    for (m = 0; m < nfields2; m++) {
 	      

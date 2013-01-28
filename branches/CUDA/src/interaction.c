@@ -123,17 +123,18 @@ void COLL_update() {
       {
 	
       TIMER_start(TIMER_HALO_LATTICE);
+
 #ifdef _GPU_
       distribution_halo_gpu();
 #else
       distribution_halo();
 #endif
+
       TIMER_stop(TIMER_HALO_LATTICE);
       
       
       TIMER_start(TIMER_REBUILD);
       COLL_update_map();
-      
       COLL_remove_or_replace_fluid();
       
       COLL_update_links();

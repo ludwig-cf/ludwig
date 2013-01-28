@@ -577,32 +577,35 @@ void COLL_remove_or_replace_fluid() {
   coords_nlocal(N);
   nhalo = coords_nhalo();
 
-
   //get_f_from_gpu
 
 #ifdef _GPU_
 
   int *coll_diff = (int*) malloc((N[X] + 2*nhalo)*(N[Y] + 2*nhalo)*
 			     (N[Z] + 2*nhalo)*sizeof(int));
+
+  //for(index=0;index<nsites;index++)
   for (i = 1 - nhalo; i <= N[X] + nhalo; i++) {
     for (j = 1 - nhalo; j <= N[Y] + nhalo; j++) {
       for (k = 1 - nhalo; k <= N[Z] + nhalo; k++) {
 
-	index = coords_index(i, j, k);
+  	index = coords_index(i, j, k);
 
-	if (coll_old[index] != coll_map[index]){
-	  coll_diff[index]=1;
-	}
+  	if (coll_old[index] != coll_map[index]){
+  	  coll_diff[index]=1;
+  	}
 	
-	else
-	  coll_diff[index]=0;
+  	else
+  	  coll_diff[index]=1;
 
       }
     }
   }
 
-  get_f_partial_from_gpu(coll_diff,1);  
+  get_f_partial_from_gpu(coll_diff,1);
   //get_phi_partial_from_gpu();  
+
+  //get_f_from_gpu();
   get_phi_from_gpu();  
 #endif
 
@@ -648,6 +651,7 @@ void COLL_remove_or_replace_fluid() {
 
 #ifdef _GPU_
   put_f_partial_on_gpu(coll_diff,0);  
+  //put_f_on_gpu();  
   put_phi_on_gpu();
   put_site_map_on_gpu();
   free(coll_diff);
