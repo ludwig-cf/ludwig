@@ -42,7 +42,6 @@ int main (int argc, char ** argv) {
   int nf = 1;
   int nhalo = 2;
 
-  map_t * map = NULL;
   hydro_t * hydro = NULL;
   field_t * phi = NULL;
 
@@ -52,9 +51,6 @@ int main (int argc, char ** argv) {
   coords_init();
   le_init();
 
-  map_create(0, &map);
-  assert(map);
-
   field_create(nf, "phi", &phi);
   field_init(phi, nhalo);
 
@@ -63,7 +59,6 @@ int main (int argc, char ** argv) {
 
   hydro_free(hydro);
   field_free(phi);
-  map_free(map);
 
   le_finish();
   coords_finish();
@@ -107,7 +102,8 @@ int test_advection(field_t * phi, hydro_t * hydro) {
 
   for (n = 0; n < ntmax; n++) {
     field_halo(phi);
-    phi_cahn_hilliard(phi, hydro);
+    /* The map_t argument can be NULL here, as there is no solid */
+    phi_cahn_hilliard(phi, hydro, NULL);
   }
 
   test_drop_difference(phi, r0, xi0);
