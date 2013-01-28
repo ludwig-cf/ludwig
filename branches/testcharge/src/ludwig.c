@@ -413,7 +413,8 @@ void ludwig_run(const char * inputfile) {
       }
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
-      if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro);
+      if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
+					 ludwig->map);
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
       if (ludwig->q) blue_phase_beris_edwards(ludwig->q, ludwig->hydro,
 					      ludwig->map);

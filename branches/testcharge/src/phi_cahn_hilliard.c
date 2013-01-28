@@ -38,6 +38,7 @@
 #include "phi_fluctuations.h"
 #include "field.h"
 #include "advection_s.h"
+#include "advection_bcs.h"
 
 static int phi_ch_diffusive_flux(advflux_t * flux);
 static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux);
@@ -67,9 +68,14 @@ static double mobility_  = 0.0; /* Order parameter mobility */
  *  hydro is allowed to be NULL, in which case the dynamics is
  *  just relaxational (no velocity field).
  *
+ *  map is also allowed to be NULL, in which case there is no
+ *  check for for the surface no flux condition. (This still
+ *  may be relevant for diffusive fluxes only, so does not
+ *  depend on hydrodynamics.)
+ *
  *****************************************************************************/
 
-int phi_cahn_hilliard(field_t * phi, hydro_t * hydro) {
+int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map) {
 
   int nf;
   advflux_t * fluxes = NULL;
@@ -84,6 +90,7 @@ int phi_cahn_hilliard(field_t * phi, hydro_t * hydro) {
   if (hydro) {
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
     hydro_lees_edwards(hydro); /* Repoistion to main ditto */
+    advection_bcs_wall(phi);
     advection_x(fluxes, hydro, phi);
   }
 
@@ -97,8 +104,7 @@ int phi_cahn_hilliard(field_t * phi, hydro_t * hydro) {
 
   /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present) */
 
-  /* advection_bcs_wall(phi);*/
-  /* advection_bcs_no_flux(); Why isn't this called in original? */
+  if (map) advection_bcs_no_normal_flux(nf, fluxes, map);
 
   phi_ch_le_fix_fluxes(nf, fluxes->fe, fluxes->fw);
   phi_ch_update_forward_step(phi, fluxes);
