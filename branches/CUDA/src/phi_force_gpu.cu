@@ -61,9 +61,13 @@ void phi_force_calculation_gpu(void) {
   //else {
   //if (force_divergence_) {
 
+  expand_grad_phi_on_gpu();
+  expand_phi_on_gpu();
+
+
   put_phi_force_constants_on_gpu();
 
-  cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
+  //  cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
 
   /* compute q2 and eq */
   threadsperblock.x=DEFAULT_TPB_Z;
@@ -104,7 +108,23 @@ void phi_force_calculation_gpu(void) {
 
   blue_phase_compute_stress1_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
-  blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,grad_phi_float_d,delsq_phi_site_d,h_site_d, stress_site_d);
+  //  blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
+
+  threadsperblock.x=DEFAULT_TPB;
+  threadsperblock.y=1;
+  threadsperblock.z=1;
+
+  nblocks.x=(9*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
+  nblocks.y=1;
+  nblocks.z=1;
+
+
+
+
+  //cudaBindTexture(0,texreference,grad_phi_float_d,sizeof(float)*nsites*27); 
+
+ blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,grad_phi_site_full_d,stress_site_d);
+
 
 
 
@@ -158,10 +178,11 @@ void phi_force_colloid_gpu(void) {
   put_phi_force_constants_on_gpu();
 
   expand_grad_phi_on_gpu();
+  expand_phi_on_gpu();
 
-  cudaFuncSetCacheConfig(phi_force_colloid_gpu_d,cudaFuncCachePreferL1);
+  //  cudaFuncSetCacheConfig(phi_force_colloid_gpu_d,cudaFuncCachePreferL1);
 
-  cudaFuncSetCacheConfig( blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferShared);
+  //  cudaFuncSetCacheConfig( blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferShared);
 
   /* compute q2 and eq */
   threadsperblock.x=DEFAULT_TPB_Z;
@@ -216,13 +237,13 @@ void phi_force_colloid_gpu(void) {
 
 
 
-cudaBindTexture(0,texreference,grad_phi_float_d,sizeof(float)*nsites*27); 
+  //cudaBindTexture(0,texreference,grad_phi_float_d,sizeof(float)*nsites*27); 
 
- blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,grad_phi_float_d,delsq_phi_site_d,h_site_d, stress_site_d);
+ blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,grad_phi_site_full_d,stress_site_d);
 
 
 //unbind texture reference to free resource
-cudaUnbindTexture(texreference);
+//cudaUnbindTexture(texreference);
 
 
 
@@ -266,7 +287,7 @@ void blue_phase_be_update_gpu(void) {
 
   put_phi_force_constants_on_gpu();  
 
-  cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
+  //  cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
 
   threadsperblock.x=DEFAULT_TPB_Z;
   threadsperblock.y=DEFAULT_TPB_Y;
@@ -304,7 +325,7 @@ void advection_upwind_gpu(void) {
   
 
 
- cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
+  // cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
 
   threadsperblock.x=DEFAULT_TPB_Z;
   threadsperblock.y=DEFAULT_TPB_Y;
@@ -353,7 +374,7 @@ void advection_bcs_no_normal_flux_gpu(void){
 
   int nop = phi_nop();
   
-  cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
+  //  cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
   
 #define TPBX 4 
 #define TPBY 4
@@ -1693,28 +1714,26 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
   return;
 }
  __global__ void blue_phase_compute_stress2_all_gpu_d(  double *phi_site_d,
-						 double *phi_site_full_d,
-						 double *grad_phi_site_d,
 						 double *grad_phi_site_full_d,
-						 float *grad_phi_float_d,
-						 double *delsq_phi_site_d,
-						 double *h_site_d,
 						 double *stress_site_d){
 
    //int ia, ib, ic;
    int ic;
   int index;
   double q[3][3];
-  double sth[3][3];
-  double dq[3][3][3];
-  double dsq[3][3];
+  //  double sth[3][3];
+  
+  double sth_tmp;
 
-  int ii, jj, kk;
+  //double dq[3][3][3];
+  //double dsq[3][3];
+
+  //int ii, jj, kk;
  
  /* CUDA thread index */
-  kk = blockIdx.x*blockDim.x+threadIdx.x;
-  jj = blockIdx.y*blockDim.y+threadIdx.y;
-  ii = blockIdx.z*blockDim.z+threadIdx.z;
+  //kk = blockIdx.x*blockDim.x+threadIdx.x;
+  //jj = blockIdx.y*blockDim.y+threadIdx.y;
+  //ii = blockIdx.z*blockDim.z+threadIdx.z;
 
   
   int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
@@ -1725,6 +1744,7 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
   int ib=iw/3;
   int ia=iw-ib*3;
 
+  
  
   if (i < Nall_cd[X] && j < Nall_cd[Y] && k < Nall_cd[Z] && ia<3 && ib <3)
     {
@@ -1748,28 +1768,28 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
       
       
       /* load grad phi */
-      //      for (ia = 0; ia < 3; ia++) {
-      //for (ib = 0; ib <3; ib++){
-      //  for (ic = 0; ic <3; ic++){
-      //    dq[ia][ib][ic] = grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index];
-      //  }
+      //            for (ic = 0; ic < 3; ic++) {
+      // for (ib = 0; ib <3; ib++){
+      //for (ic = 0; ic <3; ic++){
+      //  dq[ia][ib][ic] = grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index];
+      //}
       //}
 
-	/* dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index]; */
-	/* dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index]; */
-	/* dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index]; */
-	/* dq[ia][Y][X] = dq[ia][X][Y]; */
-	/* dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index]; */
-	/* dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index]; */
-	/* dq[ia][Z][X] = dq[ia][X][Z]; */
-	/* dq[ia][Z][Y] = dq[ia][Y][Z]; */
-	/* dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y]; */
-      //      }
+	/* dq[ic][X][X] = grad_phi_site_d[ic*nsites_cd*5 + XX*nsites_cd + index]; */
+	/* dq[ic][X][Y] = grad_phi_site_d[ic*nsites_cd*5 + XY*nsites_cd + index]; */
+	/* dq[ic][X][Z] = grad_phi_site_d[ic*nsites_cd*5 + XZ*nsites_cd + index]; */
+	/* dq[ic][Y][X] = dq[ic][X][Y]; */
+	/* dq[ic][Y][Y] = grad_phi_site_d[ic*nsites_cd*5 + YY*nsites_cd + index]; */
+	/* dq[ic][Y][Z] = grad_phi_site_d[ic*nsites_cd*5 + YZ*nsites_cd + index]; */
+	/* dq[ic][Z][X] = dq[ic][X][Z]; */
+	/* dq[ic][Z][Y] = dq[ic][Y][Z]; */
+	/* dq[ic][Z][Z] = 0.0 - dq[ic][X][X] - dq[ic][Y][Y]; */
+      //}
       
 
       //for (ia = 0; ia < 3; ia++) {
       //for (ib = 0; ib < 3; ib++) {
-	  sth[ia][ib]=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
+	  sth_tmp=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
 	  //}
 	  //}
 
@@ -1782,34 +1802,35 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 
   //for (ia = 0; ia < 3; ia++) {
   //for (ib = 0; ib < 3; ib++) {
-      tmpdbl=0.;
+       tmpdbl=0.; 
       for (ic = 0; ic < 3; ic++) {
-	for (id = 0; id < 3; id++) {
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*dq[ia][ib][ic]*dq[id][ic][id] */
-	  /*   - kappa1shift_cd*dq[ia][ic][id]*dq[ib][ic][id] */
-	  /*   + kappa1shift_cd*dq[ia][ic][id]*dq[ic][ib][id]; */
+      	for (id = 0; id < 3; id++) {
+      /* 	  tmpdbl += */
+      /* 	    - kappa0shift_cd*dq[ia][ib][ic]*dq[id][ic][id] */
+      /* 	    - kappa1shift_cd*dq[ia][ic][id]*dq[ib][ic][id] */
+      /* 	    + kappa1shift_cd*dq[ia][ic][id]*dq[ic][ib][id]; */
 	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd*dq[ia][ic][id]; */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /*   tmpdbl += */
-	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
+      /* 	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd*dq[ia][ic][id]; */
+      /* 	  for (ie = 0; ie < 3; ie++) { */
+      /* 	    tmpdbl += */
+      /* 	     tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+      /* 	  } */
 
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index]* */
-	  /*   grad_phi_site_full_d[id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index] */
-	  /*   - kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]* */
-	  /*   grad_phi_site_full_d[ib*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index] */
-	  /*   + kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]* */
-	  /*   grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index]; */
+	  tmpdbl +=
+	    - kappa0shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index]*
+	    grad_phi_site_full_d[id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
+	    - kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
+	    grad_phi_site_full_d[ib*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
+	    + kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
+	    grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
 	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
-	  /*   *grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]; */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /*   tmpdbl += */
-	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
+	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd
+	    *grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index];
+	  for (ie = 0; ie < 3; ie++) {
+	    tmpdbl +=
+	      tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
+	    //	      tmpdbl2*e_cd[ib][ic][ie]*phi_site_full_d[id*nsites_cd*3+ie*nsites_cd+index];
+	  }
 
 	  /* tmpdbl += */
 	  /*   - kappa0shift_cd*grad_phi_site_full_d[index*27+ia*9 + ib*3+ ic]* */
@@ -1862,36 +1883,52 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 	  /* } */
 
 
-	  tmpdbl +=
-	    - kappa0shift_cd*tex1Dfetch(texreference,index*27+ic*9 + ib*3+ ia)*
-	    tex1Dfetch(texreference,index*27+id*9 + ic*3+ id)
-	    - kappa1shift_cd*tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia)*
-	    tex1Dfetch(texreference,index*27+id*9 + ic*3+ ib)
-	    + kappa1shift_cd*tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia)*
-	    tex1Dfetch(texreference,index*27+id*9 + ib*3+ ic);
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*tex1Dfetch(texreference,index*27+ic*9 + ib*3+ ia)* */
+	  /*   tex1Dfetch(texreference,index*27+id*9 + ic*3+ id) */
+	  /*   - kappa1shift_cd*tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia)* */
+	  /*   tex1Dfetch(texreference,index*27+id*9 + ic*3+ ib) */
+	  /*   + kappa1shift_cd*tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia)* */
+	  /*   tex1Dfetch(texreference,index*27+id*9 + ib*3+ ic); */
 	  
-	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd
-	    *tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia);
-	  for (ie = 0; ie < 3; ie++) {
-	  tmpdbl +=
-	   tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
-	  }
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
+	  /*   *tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia); */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /* tmpdbl += */
+	  /*  tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
+
+
+	  /* tmpdbl += */
+	  /*   - kappa0shift_cd*tex1Dfetch(texreference,ic*nsites_cd*9 + ib*nsites_cd*3+ ia*nsites_cd + index)* */
+	  /*   tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index) */
+	  /*   - kappa1shift_cd*tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ ia*nsites_cd + index)* */
+	  /*   tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ ib*nsites_cd + index) */
+	  /*   + kappa1shift_cd*tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ ia*nsites_cd + index)* */
+	  /*   tex1Dfetch(texreference,id*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index); */
+	  
+	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
+	  /*   *tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ ia*nsites_cd + index); */
+	  /* for (ie = 0; ie < 3; ie++) { */
+	  /* tmpdbl += */
+	  /*  tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
+	  /* } */
 
 
 
 
 	}
       }
-      sth[ia][ib]+=tmpdbl;
+      sth_tmp+=tmpdbl;
 
-      sth[ia][ib]=-sth[ia][ib];
+      sth_tmp=-sth_tmp;
 
       //}
       //}
 
       //for (ia = 0; ia < 3; ia++) {
       //for (ib = 0; ib < 3; ib++) {
-      stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=sth[ia][ib];
+      stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=sth_tmp;
 	  //	}
   //}
     }

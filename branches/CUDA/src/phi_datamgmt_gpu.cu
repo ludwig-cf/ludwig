@@ -509,28 +509,28 @@ __global__ void expand_grad_phi_on_gpu_d(double* grad_phi_site_d,double* grad_ph
       
       
       /* /\* calculate index from CUDA thread index *\/ */
-      /* int ia; */
-      /* for(ia=0;ia<3;ia++){ */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index] */
-      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XX+index]; */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index] */
-      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XY+index]; */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index] */
-      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XZ+index]; */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+X*nsites_cd+index] */
-      /* 	  =  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index]; */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index] */
-      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YY+index]; */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index] */
-      /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YZ+index]; */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+X*nsites_cd+index] */
-      /* 	  = grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index]; */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Y*nsites_cd+index] */
-      /* 	  = grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index]; */
-      /* 	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Z*nsites_cd+index] */
-      /* 	  = 0.0 -  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index] */
-      /* 	  -  grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index]; */
-      /* } */
+      int ia;
+      for(ia=0;ia<3;ia++){
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index]
+      	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XX+index];
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index]
+      	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XY+index];
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index]
+      	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XZ+index];
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+X*nsites_cd+index]
+      	  =  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Y*nsites_cd+index];
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index]
+      	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YY+index];
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index]
+      	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YZ+index];
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+X*nsites_cd+index]
+      	  = grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+Z*nsites_cd+index];
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Y*nsites_cd+index]
+      	  = grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Z*nsites_cd+index];
+      	grad_phi_site_full_d[ia*nsites_cd*9+3*Z*nsites_cd+Z*nsites_cd+index]
+      	  = 0.0 -  grad_phi_site_full_d[ia*nsites_cd*9+3*X*nsites_cd+X*nsites_cd+index]
+      	  -  grad_phi_site_full_d[ia*nsites_cd*9+3*Y*nsites_cd+Y*nsites_cd+index];
+      }
 
 
       /* /\* calculate index from CUDA thread index *\/ */
@@ -566,44 +566,44 @@ __global__ void expand_grad_phi_on_gpu_d(double* grad_phi_site_d,double* grad_ph
       /* } */
 
 
-      /* calculate index from CUDA thread index */
-      int ia,ib,ic;
-      for(ia=0;ia<3;ia++){
-	grad_phi_site_full_d[index*27+X*9+3*X+ia]
-	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XX+index];
+    /*   /\* calculate index from CUDA thread index *\/ */
+    /*   int ia,ib,ic; */
+    /*   for(ia=0;ia<3;ia++){ */
+    /* 	grad_phi_site_full_d[index*27+X*9+3*X+ia] */
+    /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XX+index]; */
 
-	grad_phi_site_full_d[index*27+Y*9+3*X+ia]
-	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XY+index];
+    /* 	grad_phi_site_full_d[index*27+Y*9+3*X+ia] */
+    /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XY+index]; */
 
-	grad_phi_site_full_d[index*27+Z*9+3*X+ia]
-	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XZ+index];
+    /* 	grad_phi_site_full_d[index*27+Z*9+3*X+ia] */
+    /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*XZ+index]; */
 
-	grad_phi_site_full_d[index*27+X*9+3*Y+ia]
-	  =  grad_phi_site_full_d[index*27+Y*9+3*X+ia];
+    /* 	grad_phi_site_full_d[index*27+X*9+3*Y+ia] */
+    /* 	  =  grad_phi_site_full_d[index*27+Y*9+3*X+ia]; */
 
-	grad_phi_site_full_d[index*27+Y*9+3*Y+ia]
-	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YY+index];
+    /* 	grad_phi_site_full_d[index*27+Y*9+3*Y+ia] */
+    /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YY+index]; */
 
-	grad_phi_site_full_d[index*27+Z*9+3*Y+ia]
-	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YZ+index];
+    /* 	grad_phi_site_full_d[index*27+Z*9+3*Y+ia] */
+    /* 	  = grad_phi_site_d[ia*nsites_cd*5+nsites_cd*YZ+index]; */
 
-	grad_phi_site_full_d[index*27+X*9+3*Z+ia]
-	  = grad_phi_site_full_d[index*27+Z*9+3*X+ia];
+    /* 	grad_phi_site_full_d[index*27+X*9+3*Z+ia] */
+    /* 	  = grad_phi_site_full_d[index*27+Z*9+3*X+ia]; */
 
-	grad_phi_site_full_d[index*27+Y*9+3*Z+ia]
-	  = grad_phi_site_full_d[index*27+Z*9+3*Y+ia];
+    /* 	grad_phi_site_full_d[index*27+Y*9+3*Z+ia] */
+    /* 	  = grad_phi_site_full_d[index*27+Z*9+3*Y+ia]; */
 
-	grad_phi_site_full_d[index*27+Z*9+3*Z+ia]
-	  = 0.0 -  grad_phi_site_full_d[index*27+X*9+3*X+ia]
-	  -  grad_phi_site_full_d[index*27+Y*9+3*Y+ia];
-      }
+    /* 	grad_phi_site_full_d[index*27+Z*9+3*Z+ia] */
+    /* 	  = 0.0 -  grad_phi_site_full_d[index*27+X*9+3*X+ia] */
+    /* 	  -  grad_phi_site_full_d[index*27+Y*9+3*Y+ia]; */
+    /*   } */
       
-      for (ia=0;ia<3;ia++)
-	for (ib=0;ib<3;ib++)
-	  for (ic=0;ic<3;ic++)
-	    grad_phi_float_d[index*27+ic*9+3*ib+ia]=grad_phi_site_full_d[index*27+ic*9+3*ib+ia];
+    /*   for (ia=0;ia<3;ia++) */
+    /* 	for (ib=0;ib<3;ib++) */
+    /* 	  for (ic=0;ic<3;ic++) */
+    /* 	    grad_phi_float_d[index*27+ic*9+3*ib+ia]=grad_phi_site_full_d[index*27+ic*9+3*ib+ia]; */
 
-    }
+    } 
 
 }
 void expand_grad_phi_on_gpu()
@@ -626,7 +626,7 @@ void expand_grad_phi_on_gpu()
     expand_grad_phi_on_gpu_d<<<nblocks,DEFAULT_TPB>>>
       (grad_phi_site_d,grad_phi_site_full_d,grad_phi_float_d);
 
-texture<float,1,cudaReadModeElementType> texreference;
+    //texture<float,1,cudaReadModeElementType> texreference;
 
 checkCUDAError("expand_grad_phi_on_gpu");
 

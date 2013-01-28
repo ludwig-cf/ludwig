@@ -674,44 +674,88 @@ void update_colloid_force_from_gpu()
   double velocity[3];
   colloid_t * p_c;
 
+
+
   for (i=0; i<nsites; i++) mask_[i]=0;
 
 
+
+
   //set mask
-  for (ic=nhalo; ic<Nall[X]-nhalo; ic++)
-    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++)
-      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++)
-	{
-
-	  index = get_linear_index(ic, jc, kc, Nall); 	      
-
-	  if (!colloid_at_site_index(index)){
-	        if (
-		  colloid_at_site_index(get_linear_index(ic+1, jc, kc, Nall))
-		  || colloid_at_site_index(get_linear_index(ic-1, jc, kc, Nall))
-		  || colloid_at_site_index(get_linear_index(ic, jc+1, kc, Nall))
-		  || colloid_at_site_index(get_linear_index(ic, jc-1, kc, Nall))
-		  || colloid_at_site_index(get_linear_index(ic, jc, kc+1, Nall))
-		  || colloid_at_site_index(get_linear_index(ic, jc, kc-1, Nall))
-		   )
-		  mask_[index]=1;
-		}
+  /* for (ic=nhalo; ic<Nall[X]-nhalo; ic++){ */
+  /*   for (jc=nhalo; jc<Nall[Y]-nhalo; jc++){ */
+  /*     for (kc=nhalo; kc<Nall[Z]-nhalo; kc++){ */
+	
+  /* 	index = get_linear_index(ic, jc, kc, Nall); */
+	
+  /* 	if (!colloid_at_site_index(index)){ */
+  /* 	  if ( */
+  /* 	      colloid_at_site_index(get_linear_index(ic+1, jc, kc, Nall)) */
+  /* 	      || colloid_at_site_index(get_linear_index(ic-1, jc, kc, Nall)) */
+  /* 	      || colloid_at_site_index(get_linear_index(ic, jc+1, kc, Nall)) */
+  /* 	      || colloid_at_site_index(get_linear_index(ic, jc-1, kc, Nall)) */
+  /* 	      || colloid_at_site_index(get_linear_index(ic, jc, kc+1, Nall)) */
+  /* 	      || colloid_at_site_index(get_linear_index(ic, jc, kc-1, Nall)) */
+  /* 	      ){ */
+  /* 	    mask_[index]=1; */
+  /*  	  } */
+  /* 	} */
 	  
-	}
+  /*     } */
+  /*   } */
+  /* } */
 
+  for (ic=nhalo; ic<Nall[X]-nhalo; ic++){
+    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++){
+      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++){
+	
+  	index = get_linear_index(ic, jc, kc, Nall);
 
+	
+  	if (colloid_at_site_index(index)){
+	  
+  	  index1=get_linear_index(ic+1, jc, kc, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic-1, jc, kc, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic, jc+1, kc, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic, jc-1, kc, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic, jc, kc+1, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic, jc, kc-1, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	}
+	  
+      }
+    }
+  }
+  
 
   int j=0;
-  for (i=0; i<nsites; i++){
-    if(mask_[i]){
-      packedindex[i]=j;
-      j++;
-    }
-    
+  for (index=0; index<nsites;index++){
+    if (mask_[index]){
+	packedindex[index]=j;
+	j++;
+      }
   }
 
-  int packedsize=j;
 
+  int packedsize=j;
+  
   cudaMemcpy(mask_d, mask_, nsites*sizeof(int), cudaMemcpyHostToDevice);
   cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
 
@@ -730,6 +774,9 @@ void update_colloid_force_from_gpu()
 	{
 	  
 	  index = get_linear_index(ic, jc, kc, Nall); 	      
+
+	  if (!mask_[index]) continue;
+
 	  p_c = colloid_at_site_index(index);
 	  
 	  if (p_c) continue;
@@ -789,7 +836,7 @@ void update_colloid_force_from_gpu()
 	  }
 	  
 
-	  if(mask_[index]) j++;
+	  j++;
 	  
 	  
 	}
