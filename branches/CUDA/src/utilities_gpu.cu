@@ -13,7 +13,7 @@
 
 #include "pe.h"
 #include "utilities_gpu.h"
-#include "phi_datamgmt_gpu.h"
+#include "field_datamgmt_gpu.h"
 #include "comms_gpu.h"
 //#include "colloids.h"
 #include "util.h"

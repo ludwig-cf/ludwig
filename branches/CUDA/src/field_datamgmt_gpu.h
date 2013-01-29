@@ -1,8 +1,8 @@
 /*****************************************************************************
  * 
- * phi_datamgmt_gpu.h
+ * field_datamgmt_gpu.h
  * 
- * Phi data management utilities for GPU adaptation of Ludwig
+ * Field data management utilities for GPU adaptation of Ludwig
  * Alan Gray
  *
  *****************************************************************************/
@@ -45,6 +45,8 @@ extern "C" void expand_phi_on_gpu();
 extern "C" void expand_grad_phi_on_gpu();
 extern "C" void put_velocity_partial_on_gpu(int include_neighbours);
 extern "C" void get_velocity_partial_from_gpu(int include_neighbours);
+extern "C" void put_phi_partial_on_gpu(int include_neighbours);
+extern "C" void get_phi_partial_from_gpu(int include_neighbours);
 
 /* forward declarations of host routines internal to this module */
 static void calculate_phi_data_sizes(void);

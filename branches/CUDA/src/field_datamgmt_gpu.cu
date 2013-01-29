@@ -1,8 +1,8 @@
 /*****************************************************************************
  *
- * phi_datamgmt_gpu.cu
+ * field_datamgmt_gpu.cu
  *  
- * Phi data management for GPU adaptation of Ludwig
+ * Field data management for GPU adaptation of Ludwig
  * Alan Gray 
  *
  *****************************************************************************/
@@ -13,7 +13,7 @@
 
 #include "pe.h"
 #include "utilities_gpu.h"
-#include "phi_datamgmt_gpu.h"
+#include "field_datamgmt_gpu.h"
 #include "util.h"
 #include "model.h"
 #include "timer.h"
@@ -205,34 +205,51 @@ static void free_phi_memory_on_gpu()
 
 }
 
+double field_tmp[50];
 
+void get_phi_site(int index, double *field){
+
+  int nop=phi_nop();
+  int iop;
+  for (iop=0; iop<nop; iop++)
+    {
+      
+      field[iop]=phi_op_get_phi_site(index,iop);
+    }
+  
+
+}
+
+
+
+void set_phi_site(int index, double *field){
+
+  int nop=phi_nop();
+  int iop;
+  for (iop=0; iop<nop; iop++)
+    {
+      phi_op_set_phi_site(index,iop,field[iop]);      
+
+    }
+  
+
+}
 
 
 /* copy phi from host to accelerator */
 void put_phi_on_gpu()
 {
 
-  int index, ic, jc, kc, iop;
+  int index, iop;
 	      
+  for (index=0;index<nsites;index++){
 
-  /* get temp host copies of arrays */
-  for (ic=0; ic<Nall[X]; ic++)
-    {
-      for (jc=0; jc<Nall[Y]; jc++)
-	{
-	  for (kc=0; kc<Nall[Z]; kc++)
-	    {
+    get_phi_site(index,field_tmp);
 
-	      index = get_linear_index(ic, jc, kc, Nall); 
+    for (iop=0; iop<nop; iop++) 
+      phi_site_temp[iop*nsites+index]=field_tmp[iop]; 
 
-	      for (iop=0; iop<nop; iop++)
-		{
-
-		  phi_site_temp[iop*nsites+index]=phi_op_get_phi_site(index,iop);
-		}
-	    }
-	}
-    }
+  }
 
 
   /* copy data from CPU to accelerator */
@@ -242,6 +259,32 @@ void put_phi_on_gpu()
   checkCUDAError("put_phi_on_gpu");
 
 }
+
+
+/* copy phi from accelerator to host */
+void get_phi_from_gpu()
+{
+
+  int index, iop;
+	      
+
+  /* copy data from accelerator to host */
+  cudaMemcpy(phi_site_temp, phi_site_d, nsites*nop*sizeof(double),	\
+         cudaMemcpyDeviceToHost);
+
+  for (index=0;index<nsites;index++){
+
+    for (iop=0; iop<nop; iop++)
+      {
+	field_tmp[iop]=phi_site_temp[iop*nsites+index];
+	set_phi_site(index,field_tmp);
+      }
+  }
+
+  checkCUDAError("get_phi_from_gpu");
+
+}
+
 
 /* copy grad phi from host to accelerator */
 void put_grad_phi_on_gpu()
@@ -399,42 +442,6 @@ void get_delsq_phi_from_gpu()
 }
 
 
-
-/* copy phi from accelerator to host */
-void get_phi_from_gpu()
-{
-
-  int index, ic, jc, kc, iop;
-	      
-
-  /* copy data from accelerator to host */
-  cudaMemcpy(phi_site_temp, phi_site_d, nsites*nop*sizeof(double),	\
-         cudaMemcpyDeviceToHost);
-
-  /* set phi */
-  for (ic=0; ic<Nall[X]; ic++)
-    {
-      for (jc=0; jc<Nall[Y]; jc++)
-	{
-	  for (kc=0; kc<Nall[Z]; kc++)
-	    {
-
-	      index = get_linear_index(ic, jc, kc, Nall); 
-
-	      for (iop=0; iop<nop; iop++)
-		{
-
-		
-		  phi_op_set_phi_site(index,iop,phi_site_temp[iop*nsites+index]);
-
-		}
-	    }
-	}
-    }
-
-  //checkCUDAError("get_phi_site_from_gpu");
-
-}
 
 __global__ void expand_phi_on_gpu_d(double* phi_site_d,double* phi_site_full_d)
 {
@@ -675,6 +682,36 @@ void get_velocity_partial_from_gpu(int include_neighbours)
   void (* access_function)(const int, double *);
 
   access_function= hydrodynamics_set_velocity;
+  
+  get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+}
+
+/* copy part of velocity_ from host to accelerator, using mask structure */
+void put_phi_partial_on_gpu(int include_neighbours)
+{
+
+  int nfields1=1;
+  int nfields2=phi_nop();
+  double *data_d=phi_site_d;
+  void (* access_function)(const int, double *);
+
+  access_function=get_phi_site;
+  
+  put_field_partial_on_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+}
+
+/* copy part of velocity_ from host to accelerator, using mask structure */
+void get_phi_partial_from_gpu(int include_neighbours)
+{
+
+  int nfields1=1;
+  int nfields2=phi_nop();
+  double *data_d=phi_site_d;
+  void (* access_function)(const int, double *);
+
+  access_function=set_phi_site;
   
   get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
 
