@@ -398,16 +398,6 @@ void fill_mask_with_neighbours(int *mask)
 
 
 
-__global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3],
-						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
-
-
-__global__ static void copy_field_partial_gpu_d_TEST(int nPerSite, int nhalo, int N[3],
-						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
-
-
-
-
 /* copy part of f_ from host to accelerator, using mask structure */
 void put_f_partial_on_gpu(int *mask_in, int include_neighbours)
 {
@@ -552,39 +542,6 @@ __global__ void printgpudouble(double *array_d, int index){
 }
 
 
-void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
-
-void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
-
-/* copy part of velocity_ from host to accelerator, using mask structure */
-void put_velocity_partial_on_gpu(int include_neighbours)
-{
-
-  int nfields1=1;
-  int nfields2=3;
-  double *data_d=velocity_d;
-  void (* access_function)(const int, double *);
-
-  access_function= hydrodynamics_get_velocity;
-  
-  put_field_partial_on_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
-
-}
-
-/* copy part of velocity_ from host to accelerator, using mask structure */
-void get_velocity_partial_from_gpu(int include_neighbours)
-{
-
-  int nfields1=1;
-  int nfields2=3;
-  double *data_d=velocity_d;
-  void (* access_function)(const int, double *);
-
-  access_function= hydrodynamics_set_velocity;
-  
-  get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
-
-}
 
 void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *)){
 

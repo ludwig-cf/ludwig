@@ -112,7 +112,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model_r.o propagation.o propagation_ode.o collision.
 
 GPUOBJS = collision_gpu.o propagation_gpu.o phi_lb_coupler_gpu.o \
 	gradient_gpu.o phi_force_gpu.o utilities_gpu.o comms_gpu.o \
-	phi_datamgmt_gpu.o  
+	field_datamgmt_gpu.o  
 
 ###############################################################################
 #

@@ -18,8 +18,6 @@ extern "C" void put_f_on_gpu();
 extern "C" void get_f_from_gpu();
 extern "C" void put_f_partial_on_gpu(int *mask, int include_neighbours);
 extern "C" void get_f_partial_from_gpu(int *mask, int include_neighbours);
-extern "C" void put_velocity_partial_on_gpu(int include_neighbours);
-extern "C" void get_velocity_partial_from_gpu(int include_neighbours);
 extern "C" void update_colloid_force_from_gpu();
 extern "C" void copy_f_to_ftmp_on_gpu(void);
 extern "C" void get_f_edges_from_gpu(void);
@@ -35,6 +33,9 @@ extern "C" void bbl_init_temp_link_arrays_gpu(int nlink);
 extern "C" void bbl_finalise_temp_link_arrays_gpu();
 extern "C" void bbl_enlarge_temp_link_arrays_gpu(int nlink);
 extern "C" void halo_gpu(int nfields1, int nfields2, int packfield1, double * data_d);
+extern "C" void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
+
+extern "C" void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
 
 /* forward declarations of host routines internal to this module */
 static void calculate_dist_data_sizes(void);
@@ -57,6 +58,16 @@ __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 					   int N[3],
 					   double* f_d, double* fhaloLOW_d,
 					 double* fhaloHIGH_d, int dirn);
+
+
+__global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3],
+						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
+
+
+__global__ static void copy_field_partial_gpu_d_TEST(int nPerSite, int nhalo, int N[3],
+						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
+
+
 
 
 

@@ -648,3 +648,34 @@ void velocity_halo_gpu(){
   halo_gpu(1,3,0,velocity_d);
 
 }
+
+
+/* copy part of velocity_ from host to accelerator, using mask structure */
+void put_velocity_partial_on_gpu(int include_neighbours)
+{
+
+  int nfields1=1;
+  int nfields2=3;
+  double *data_d=velocity_d;
+  void (* access_function)(const int, double *);
+
+  access_function= hydrodynamics_get_velocity;
+  
+  put_field_partial_on_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+}
+
+/* copy part of velocity_ from host to accelerator, using mask structure */
+void get_velocity_partial_from_gpu(int include_neighbours)
+{
+
+  int nfields1=1;
+  int nfields2=3;
+  double *data_d=velocity_d;
+  void (* access_function)(const int, double *);
+
+  access_function= hydrodynamics_set_velocity;
+  
+  get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+}
