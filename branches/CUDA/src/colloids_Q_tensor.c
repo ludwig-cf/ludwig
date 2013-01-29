@@ -316,6 +316,10 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
  *
  *****************************************************************************/
 
+#ifdef _GPU_
+extern int* mask_;
+#endif 
+
 void colloids_fix_swd(void) {
 
   int ic, jc, kc, index;
@@ -381,18 +385,16 @@ void colloids_fix_swd(void) {
   Nall[Z]=nlocal[Z]+2*nhalo;
   int nsites=Nall[X]*Nall[Y]*Nall[Z];
 
-  int *mask = (int*) calloc(nsites,sizeof(int));
-
+  memset(mask_,0,nsites*sizeof(int));
    for (index=0; index<nsites; index++) { 
-
      if (site_map_get_status_index(index) != FLUID || 
 	 colloid_at_site_index(index) ) 
-       mask[index]=1; 
+       mask_[index]=1; 
 
    }    
 
-   put_velocity_partial_on_gpu(mask,0);
-   free(mask);
+      put_velocity_partial_on_gpu(0);
+      
 #endif
 
   return;

@@ -551,21 +551,54 @@ __global__ void printgpudouble(double *array_d, int index){
 
 }
 
+
+void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
+
+void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
+
 /* copy part of velocity_ from host to accelerator, using mask structure */
-void put_velocity_partial_on_gpu(int *mask_in, int include_neighbours)
+void put_velocity_partial_on_gpu(int include_neighbours)
 {
 
+  int nfields1=1;
+  int nfields2=3;
+  double *data_d=velocity_d;
+  void (* access_function)(const int, double *);
+
+  access_function= hydrodynamics_get_velocity;
+  
+  put_field_partial_on_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+}
+
+/* copy part of velocity_ from host to accelerator, using mask structure */
+void get_velocity_partial_from_gpu(int include_neighbours)
+{
+
+  int nfields1=1;
+  int nfields2=3;
+  double *data_d=velocity_d;
+  void (* access_function)(const int, double *);
+
+  access_function= hydrodynamics_set_velocity;
+  
+  get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+}
+
+void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *)){
 
   int *mask;
   int i;
   int index;
-
+  double field_tmp[50];
+  
   if(include_neighbours){
-    fill_mask_with_neighbours(mask_in);
+    fill_mask_with_neighbours(mask_);
     mask=mask_with_neighbours;
   }
   else{
-    mask=mask_in;
+    mask=mask_;
   }
 
 
@@ -576,17 +609,16 @@ void put_velocity_partial_on_gpu(int *mask_in, int include_neighbours)
   }
 
 
-  double velocity[3];
   int j=0;
   for (index=0; index<nsites; index++){
     
     if(mask[index]){
  
-      hydrodynamics_get_velocity(index,velocity);
+      access_function(index,field_tmp);
       
-      for (i=0;i<3;i++)
+      for (i=0;i<(nfields1*nfields2);i++)
 	{
-	  ftmp[i*packedsize+j]=velocity[i];
+	  ftmp[i*packedsize+j]=field_tmp[i];
 	}
       
       packedindex[index]=j;
@@ -596,37 +628,38 @@ void put_velocity_partial_on_gpu(int *mask_in, int include_neighbours)
 
   }
 
-    cudaMemcpy(ftmp_d, ftmp, packedsize*3*sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(ftmp_d, ftmp, packedsize*nfields1*nfields2*sizeof(double), cudaMemcpyHostToDevice);
   cudaMemcpy(mask_d, mask, nsites*sizeof(int), cudaMemcpyHostToDevice);
   cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
 
   /* run the GPU kernel */
 
   int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(3, nhalo, N_d,
-  						velocity_d, ftmp_d, mask_d,
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(nfields1*nfields2, nhalo, N_d,
+  						data_d, ftmp_d, mask_d,
   						packedindex_d, packedsize, 1);
   cudaThreadSynchronize();
-  checkCUDAError("put_velocity_partial_on_gpu");
+  checkCUDAError("put_partial_field_on_gpu");
 
 }
 
 
 /* copy part of velocity_ from accelerator to host, using mask structure */
-void get_velocity_partial_from_gpu(int *mask_in, int include_neighbours)
+void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *))
 {
 
 
   int *mask;
   int i;
   int index;
+  double field_tmp[50];
 
   if(include_neighbours){
-    fill_mask_with_neighbours(mask_in);
+    fill_mask_with_neighbours(mask_);
     mask=mask_with_neighbours;
   }
   else{
-    mask=mask_in;
+    mask=mask_;
   }
 
   int j=0;
@@ -644,24 +677,23 @@ void get_velocity_partial_from_gpu(int *mask_in, int include_neighbours)
   cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
 
   int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
- copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(3, nhalo, N_d,
-  						ftmp_d, velocity_d, mask_d,
+ copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(nfields1*nfields2, nhalo, N_d,
+  						ftmp_d, data_d, mask_d,
   						packedindex_d, packedsize, 0);
   cudaThreadSynchronize();
 
-  cudaMemcpy(ftmp, ftmp_d, packedsize*3*sizeof(double), cudaMemcpyDeviceToHost); 
+  cudaMemcpy(ftmp, ftmp_d, packedsize*nfields1*nfields2*sizeof(double), cudaMemcpyDeviceToHost); 
 
-  double velocity[3];
   j=0;
   for (index=0; index<nsites; index++){
     
     if(mask[index]){
  
-      for (i=0;i<3;i++)
+      for (i=0;i<nfields1*nfields2;i++)
 	{
-	  velocity[i]=ftmp[i*packedsize+j];
+	  field_tmp[i]=ftmp[i*packedsize+j];
 	}
-      hydrodynamics_set_velocity(index,velocity);       
+      access_function(index,field_tmp);       
       j++;
 
     }
@@ -672,7 +704,7 @@ void get_velocity_partial_from_gpu(int *mask_in, int include_neighbours)
 
   /* run the GPU kernel */
 
-  checkCUDAError("get_velocity_partial_from_gpu");
+  checkCUDAError("get_field_partial_from_gpu");
 
 }
 
