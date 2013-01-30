@@ -13,7 +13,6 @@
 #include "model.h"
 
 /* expose routines in this module to outside routines */
-extern "C" void update_colloid_force_from_gpu();
 extern "C" void halo_gpu(int nfields1, int nfields2, int packfield1, double * data_d);
 extern "C" void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
 
@@ -51,11 +50,6 @@ __global__ static void copy_field_partial_gpu_d_TEST(int nPerSite, int nhalo, in
 
 
 
-
-
-/* external variables holding device memory addresses */
-extern double * phi_site_d;
-extern double * colloid_force_d;
 
 
 /* constant memory symbols internal to this module */

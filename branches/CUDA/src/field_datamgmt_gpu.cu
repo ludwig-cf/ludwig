@@ -20,6 +20,7 @@
 
 /* host memory address pointers for temporary staging of data */
 double * phi_site_temp;
+double * colloid_force_tmp;
 double * grad_phi_site_temp;
 double * delsq_phi_site_temp;
 double * ftmp;
@@ -27,8 +28,11 @@ double * ftmp;
 
 extern double * f_;
 
+
 /* pointers to data resident on accelerator */
 extern int * N_d;
+
+extern int * mask_;
 
 /* accelerator memory address pointers for required data structures */
 double * f_d;
@@ -42,6 +46,7 @@ double * stress_site_d;
 double * grad_phi_site_d;
 double * delsq_phi_site_d;
 double * le_index_real_to_buffer_d;
+double * colloid_force_d;
 
 int * le_index_real_to_buffer_temp;
 
@@ -59,12 +64,12 @@ static double field_tmp[100];
 
 
 
-void init_phi_gpu(){
+void init_field_gpu(){
 
   int ic;
 
-  calculate_phi_data_sizes();
-  allocate_phi_memory_on_gpu();
+  calculate_field_data_sizes();
+  allocate_field_memory_on_gpu();
   
 
   /* get le_index_to_real_buffer values */
@@ -87,14 +92,14 @@ le_index_real_to_buffer(ic,+1);
 }
 
 
-void finalise_phi_gpu()
+void finalise_field_gpu()
 {
-  free_phi_memory_on_gpu();
+  free_field_memory_on_gpu();
 
 }
 
 /* calculate sizes of data - needed for memory copies to accelerator */
-static void calculate_phi_data_sizes()
+static void calculate_field_data_sizes()
 {
   coords_nlocal(N);  
   nhalo = coords_nhalo();  
@@ -127,10 +132,13 @@ static void calculate_phi_data_sizes()
 
 
 /* Allocate memory on accelerator */
-static void allocate_phi_memory_on_gpu()
+static void allocate_field_memory_on_gpu()
 {
 
   cudaHostAlloc( (void **)&ftmp, ndata*sizeof(double), 
+		 cudaHostAllocDefault);
+
+  cudaHostAlloc( (void **)&colloid_force_tmp, nsites*6*3*sizeof(double), 
 		 cudaHostAllocDefault);
 
 
@@ -154,7 +162,7 @@ static void allocate_phi_memory_on_gpu()
   cudaMalloc((void **) &delsq_phi_site_d, nsites*nop*sizeof(double));
   cudaMalloc((void **) &grad_phi_site_d, nsites*3*nop*sizeof(double));
   cudaMalloc((void **) &le_index_real_to_buffer_d, nlexbuf*sizeof(int));
-
+ cudaMalloc((void **) &colloid_force_d, nsites*6*3*sizeof(double));
 
      checkCUDAError("allocate_phi_memory_on_gpu");
 
@@ -162,7 +170,7 @@ static void allocate_phi_memory_on_gpu()
 
 
 /* Free memory on accelerator */
-static void free_phi_memory_on_gpu()
+static void free_field_memory_on_gpu()
 {
 
   /* free temp memory on host */
@@ -173,6 +181,7 @@ static void free_phi_memory_on_gpu()
 
 
   cudaFreeHost(ftmp);
+  cudaFreeHost(colloid_force_tmp);
 
   cudaFree(f_d);
   cudaFree(ftmp_d);
@@ -185,6 +194,7 @@ static void free_phi_memory_on_gpu()
   cudaFree(delsq_phi_site_d);
   cudaFree(grad_phi_site_d);
   cudaFree(le_index_real_to_buffer_d);
+  cudaFree(colloid_force_d);
 
 }
 
@@ -669,3 +679,148 @@ void get_f_partial_from_gpu(int include_neighbours)
   get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
 
 }
+
+void set_colloid_force_site(int index, double *field){
+
+  int i;
+  for (i=0; i<(3*6); i++)
+      colloid_force_tmp[i*nsites+index]=field[i];
+}
+
+
+void update_colloid_force_from_gpu()
+{
+  int index,index1,i, ic,jc,kc;
+  colloid_t * p_c;
+
+
+
+  for (i=0; i<nsites; i++) mask_[i]=0;
+
+
+  for (ic=nhalo; ic<Nall[X]-nhalo; ic++){
+    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++){
+      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++){
+	
+  	index = get_linear_index(ic, jc, kc, Nall);
+
+	
+  	if (colloid_at_site_index(index)){
+	  
+  	  index1=get_linear_index(ic+1, jc, kc, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic-1, jc, kc, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic, jc+1, kc, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic, jc-1, kc, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic, jc, kc+1, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	  index1=get_linear_index(ic, jc, kc-1, Nall);
+  	  if (!colloid_at_site_index(index1))
+	    mask_[index1]=1;
+
+  	}
+	  
+      }
+    }
+  }
+  
+
+
+  int include_neighbours=0;
+  int nfields1=6;
+  int nfields2=3;
+  double *data_d=colloid_force_d;
+  void (* access_function)(const int, double *);
+
+  access_function=set_colloid_force_site;
+  
+    get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+  for (ic=nhalo; ic<Nall[X]-nhalo; ic++)
+    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++)
+      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++)
+	{
+	  
+	  index = get_linear_index(ic, jc, kc, Nall); 	      
+
+	  if (!mask_[index]) continue;
+
+	  p_c = colloid_at_site_index(index);
+	  
+	  if (p_c) continue;
+	  
+	  
+	  index1 = get_linear_index(ic+1, jc, kc, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += colloid_force_tmp[0*nsites*3+nsites*i+index];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic-1, jc, kc, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += colloid_force_tmp[1*nsites*3+nsites*i+index];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic, jc+1, kc, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += colloid_force_tmp[2*nsites*3+nsites*i+index];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic, jc-1, kc, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += colloid_force_tmp[3*nsites*3+nsites*i+index];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic, jc, kc+1, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += colloid_force_tmp[4*nsites*3+nsites*i+index];
+	    }
+	  }
+	  
+	  
+	  index1 = get_linear_index(ic, jc, kc-1, Nall);
+	  p_c = colloid_at_site_index(index1);
+	  if (p_c) {
+	    for (i=0;i<3;i++){
+	      p_c->force[i] += colloid_force_tmp[5*nsites*3+nsites*i+index];
+	    }
+	  }
+	  
+	}
+
+      checkCUDAError("update_colloid_force_from_gpu");
+
+}
+
+
+

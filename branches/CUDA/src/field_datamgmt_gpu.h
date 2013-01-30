@@ -49,13 +49,15 @@ extern "C" void put_phi_partial_on_gpu(int include_neighbours);
 extern "C" void get_phi_partial_from_gpu(int include_neighbours);
 extern "C" void put_f_partial_on_gpu(int include_neighbours);
 extern "C" void get_f_partial_from_gpu(int include_neighbours);
+extern "C" void copy_f_to_ftmp_on_gpu(void);
+extern "C" void update_colloid_force_from_gpu();
 
 /* forward declarations of host routines internal to this module */
-static void calculate_phi_data_sizes(void);
-static void allocate_phi_memory_on_gpu(void);
-static void free_phi_memory_on_gpu(void);
-void init_phi_gpu();
-void finalise_phi_gpu();
+static void calculate_field_data_sizes(void);
+static void allocate_field_memory_on_gpu(void);
+static void free_field_memory_on_gpu(void);
+void init_field_gpu();
+void finalise_field_gpu();
 
 
 #endif

@@ -46,7 +46,6 @@ char * site_map_status_d;
 char * colloid_map_d;
 double * colloid_r_d;
 double * force_d;
-double * colloid_force_d;
 double * velocity_d;
 int * N_d;
 double * force_global_d;
@@ -79,6 +78,7 @@ static int nop;
 static  int N[3];
 static  int Nall[3];
 
+extern double * colloid_force_d;
 
 
 /* Perform tasks necessary to initialise accelerator */
@@ -150,7 +150,7 @@ void initialise_gpu()
   
 
   init_comms_gpu();
-  init_phi_gpu();
+  init_field_gpu();
 
 
   checkCUDAError("Init GPU");  
@@ -164,7 +164,7 @@ void finalise_gpu()
 
 
   free_memory_on_gpu();
-  finalise_comms_gpu();
+  finalise_field_gpu();
   //finalise_phi_gpu();
  
 
@@ -215,8 +215,7 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &wv_d, NVEL*sizeof(double));
   cudaMalloc((void **) &q_d, NVEL*3*3*sizeof(double));
   cudaMalloc((void **) &force_d, nsites*3*sizeof(double));
-  cudaMalloc((void **) &colloid_force_d, nsites*6*3*sizeof(double));
-  cudaMalloc((void **) &velocity_d, nsites*3*sizeof(double));
+   cudaMalloc((void **) &velocity_d, nsites*3*sizeof(double));
   cudaMalloc((void **) &tmpscal1_d, nsites*sizeof(double));
   cudaMalloc((void **) &tmpscal2_d, nsites*sizeof(double));
 
@@ -260,7 +259,6 @@ static void free_memory_on_gpu()
   cudaFree(colloid_map_d);
   cudaFree(colloid_r_d);
   cudaFree(force_d);
- cudaFree(colloid_force_d);
   cudaFree(velocity_d);
   cudaFree(N_d);
   cudaFree(force_global_d);

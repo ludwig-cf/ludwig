@@ -25,6 +25,7 @@ extern "C" int  RUN_get_string_parameter(const char *, char *, const int);
 /* external pointers to data on host*/
 extern double * f_;
 extern double * ftmp;
+extern double * colloid_force_tmp;
 extern double * velocity_d;
 
 /* external pointers to data on accelerator*/
@@ -74,7 +75,6 @@ static int * packedindex;
 
 
 /* data size variables */
-static int ndata;
 static int nhalo;
 static int nsites;
 static int ndist;
@@ -85,7 +85,6 @@ static int npvel; /* number of velocity components when packed */
 static int nhalodataX;
 static int nhalodataY;
 static int nhalodataZ;
-static int nlinkmax;
 
 /* handles for CUDA streams (for ovelapping)*/
 static cudaStream_t streamX,streamY, streamZ;
@@ -143,7 +142,6 @@ static void calculate_comms_data_sizes()
   Nall[Z]=N[Z]+2*nhalo;
 
   nsites = Nall[X]*Nall[Y]*Nall[Z];
-  ndata = nsites * ndist * NVEL;
 
   
 
@@ -448,190 +446,11 @@ void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbou
 
 }
 
-void update_colloid_force_from_gpu()
-{
-  int index,index1,i, ic,jc,kc;
-  double velocity[3];
-  colloid_t * p_c;
-
-
-
-  for (i=0; i<nsites; i++) mask_[i]=0;
-
-
-
-
-  //set mask
-  /* for (ic=nhalo; ic<Nall[X]-nhalo; ic++){ */
-  /*   for (jc=nhalo; jc<Nall[Y]-nhalo; jc++){ */
-  /*     for (kc=nhalo; kc<Nall[Z]-nhalo; kc++){ */
-	
-  /* 	index = get_linear_index(ic, jc, kc, Nall); */
-	
-  /* 	if (!colloid_at_site_index(index)){ */
-  /* 	  if ( */
-  /* 	      colloid_at_site_index(get_linear_index(ic+1, jc, kc, Nall)) */
-  /* 	      || colloid_at_site_index(get_linear_index(ic-1, jc, kc, Nall)) */
-  /* 	      || colloid_at_site_index(get_linear_index(ic, jc+1, kc, Nall)) */
-  /* 	      || colloid_at_site_index(get_linear_index(ic, jc-1, kc, Nall)) */
-  /* 	      || colloid_at_site_index(get_linear_index(ic, jc, kc+1, Nall)) */
-  /* 	      || colloid_at_site_index(get_linear_index(ic, jc, kc-1, Nall)) */
-  /* 	      ){ */
-  /* 	    mask_[index]=1; */
-  /*  	  } */
-  /* 	} */
-	  
-  /*     } */
-  /*   } */
-  /* } */
-
-  for (ic=nhalo; ic<Nall[X]-nhalo; ic++){
-    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++){
-      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++){
-	
-  	index = get_linear_index(ic, jc, kc, Nall);
-
-	
-  	if (colloid_at_site_index(index)){
-	  
-  	  index1=get_linear_index(ic+1, jc, kc, Nall);
-  	  if (!colloid_at_site_index(index1))
-	    mask_[index1]=1;
-
-  	  index1=get_linear_index(ic-1, jc, kc, Nall);
-  	  if (!colloid_at_site_index(index1))
-	    mask_[index1]=1;
-
-  	  index1=get_linear_index(ic, jc+1, kc, Nall);
-  	  if (!colloid_at_site_index(index1))
-	    mask_[index1]=1;
-
-  	  index1=get_linear_index(ic, jc-1, kc, Nall);
-  	  if (!colloid_at_site_index(index1))
-	    mask_[index1]=1;
-
-  	  index1=get_linear_index(ic, jc, kc+1, Nall);
-  	  if (!colloid_at_site_index(index1))
-	    mask_[index1]=1;
-
-  	  index1=get_linear_index(ic, jc, kc-1, Nall);
-  	  if (!colloid_at_site_index(index1))
-	    mask_[index1]=1;
-
-  	}
-	  
-      }
-    }
-  }
-  
-
-  int j=0;
-  for (index=0; index<nsites;index++){
-    if (mask_[index]){
-	packedindex[index]=j;
-	j++;
-      }
-  }
-
-
-  int packedsize=j;
-  
-  cudaMemcpy(mask_d, mask_, nsites*sizeof(int), cudaMemcpyHostToDevice);
-  cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
-
-  int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
- copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(3*6, nhalo, N_d,
-  						ftmp_d, colloid_force_d, mask_d,
-  						packedindex_d, packedsize, 0);
-  cudaThreadSynchronize();
-
-  cudaMemcpy(ftmp, ftmp_d, packedsize*3*6*sizeof(double), cudaMemcpyDeviceToHost);
-
-  j=0;
-  for (ic=nhalo; ic<Nall[X]-nhalo; ic++)
-    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++)
-      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++)
-	{
-	  
-	  index = get_linear_index(ic, jc, kc, Nall); 	      
-
-	  if (!mask_[index]) continue;
-
-	  p_c = colloid_at_site_index(index);
-	  
-	  if (p_c) continue;
-	  
-	  
-	  index1 = get_linear_index(ic+1, jc, kc, Nall);
-	  p_c = colloid_at_site_index(index1);
-	  if (p_c) {
-	    for (i=0;i<3;i++){
-	      p_c->force[i] += ftmp[0*packedsize*3+packedsize*i+j];
-	    }
-	  }
-	  
-	  
-	  index1 = get_linear_index(ic-1, jc, kc, Nall);
-	  p_c = colloid_at_site_index(index1);
-	  if (p_c) {
-	    for (i=0;i<3;i++){
-	      p_c->force[i] += ftmp[1*packedsize*3+packedsize*i+j];
-	    }
-	  }
-	  
-	  
-	  index1 = get_linear_index(ic, jc+1, kc, Nall);
-	  p_c = colloid_at_site_index(index1);
-	  if (p_c) {
-	    for (i=0;i<3;i++){
-	      p_c->force[i] += ftmp[2*packedsize*3+packedsize*i+j];
-	    }
-	  }
-	  
-	  
-	  index1 = get_linear_index(ic, jc-1, kc, Nall);
-	  p_c = colloid_at_site_index(index1);
-	  if (p_c) {
-	    for (i=0;i<3;i++){
-	      p_c->force[i] += ftmp[3*packedsize*3+packedsize*i+j];
-	    }
-	  }
-	  
-	  
-	  index1 = get_linear_index(ic, jc, kc+1, Nall);
-	  p_c = colloid_at_site_index(index1);
-	  if (p_c) {
-	    for (i=0;i<3;i++){
-	      p_c->force[i] += ftmp[4*packedsize*3+packedsize*i+j];
-	    }
-	  }
-	  
-	  
-	  index1 = get_linear_index(ic, jc, kc-1, Nall);
-	  p_c = colloid_at_site_index(index1);
-	  if (p_c) {
-	    for (i=0;i<3;i++){
-	      p_c->force[i] += ftmp[5*packedsize*3+packedsize*i+j];
-	    }
-	  }
-	  
-
-	  j++;
-	  
-	  
-	}
-
-      checkCUDAError("update_colloid_force_from_gpu");
-
-}
-
-
 
 __global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3],
 					    double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack) {
 
-  int ii, jj, kk, n, threadIndex, nsite, Nall[3];
-  int xstr, ystr, zstr, pstr, xfac, yfac;
+  int threadIndex, nsite, Nall[3];
   int i;
 
 
@@ -645,15 +464,9 @@ __global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3
   /* CUDA thread index */
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
 
-  //if (threadIndex==0)printf("x %d\n ",mask_d[8660]);
-
   //Avoid going beyond problem domain
   if ((threadIndex < Nall[X]*Nall[Y]*Nall[Z]) && mask_d[threadIndex])
     {
-
-      //printf("XXY %d %d %d\n",threadIndex,packedindex_d[threadIndex],mask_d[threadIndex]);         
-      //if (threadIndex==8660) printf("XXY %d %d %d\n",threadIndex,packedindex_d[threadIndex],mask_d[threadIndex]);         
-      //if (threadIndex==5662 )printf("XXY %d\n",packedindex_d[threadIndex]);      
 
       for (i=0;i<nPerSite;i++)
 	{
