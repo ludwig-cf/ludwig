@@ -599,10 +599,8 @@ void COLL_remove_or_replace_fluid() {
     }
   }
 
-  get_f_partial_from_gpu(mask_,1);
+  get_f_partial_from_gpu(1);
   get_phi_partial_from_gpu(1);  
-
-  //get_phi_from_gpu();  
 #endif
 
 
@@ -646,9 +644,8 @@ void COLL_remove_or_replace_fluid() {
   }
 
 #ifdef _GPU_
-  put_f_partial_on_gpu(mask_,0);  
+  put_f_partial_on_gpu(0);  
   put_phi_partial_on_gpu(0);
-  //put_phi_on_gpu();
   put_site_map_on_gpu();
 #endif
 

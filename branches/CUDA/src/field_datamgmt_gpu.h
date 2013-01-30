@@ -30,23 +30,25 @@ extern "C" void get_field_partial_from_gpu(int nfields1, int nfields2, int inclu
 
 
 /* expose routines in this module to outside routines */
-extern "C" void put_phi_on_gpu();
+extern "C" void put_f_on_gpu();
+extern "C" void get_f_from_gpu();
 extern "C" void put_phi_on_gpu();
 extern "C" void put_grad_phi_on_gpu();
 extern "C" void put_delsq_phi_on_gpu();
 extern "C" void get_phi_from_gpu();
 extern "C" void get_grad_phi_from_gpu();
 extern "C" void get_delsq_phi_from_gpu();
-extern "C" void get_phi_edges_from_gpu(void);
-extern "C" void put_phi_halos_on_gpu(void);
 extern "C" void phi_halo_gpu(void);
 extern "C" void velocity_halo_gpu(void);
+extern "C" void distribution_halo_gpu(void);
 extern "C" void expand_phi_on_gpu();
 extern "C" void expand_grad_phi_on_gpu();
 extern "C" void put_velocity_partial_on_gpu(int include_neighbours);
 extern "C" void get_velocity_partial_from_gpu(int include_neighbours);
 extern "C" void put_phi_partial_on_gpu(int include_neighbours);
 extern "C" void get_phi_partial_from_gpu(int include_neighbours);
+extern "C" void put_f_partial_on_gpu(int include_neighbours);
+extern "C" void get_f_partial_from_gpu(int include_neighbours);
 
 /* forward declarations of host routines internal to this module */
 static void calculate_phi_data_sizes(void);

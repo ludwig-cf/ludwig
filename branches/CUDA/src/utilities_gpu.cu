@@ -149,7 +149,7 @@ void initialise_gpu()
 
   
 
-  init_dist_gpu();
+  init_comms_gpu();
   init_phi_gpu();
 
 
@@ -164,7 +164,7 @@ void finalise_gpu()
 
 
   free_memory_on_gpu();
-  finalise_dist_gpu();
+  finalise_comms_gpu();
   //finalise_phi_gpu();
  
 
@@ -620,6 +620,20 @@ void get_fluxes_from_gpu(){
   cudaMemcpy(fluxz, fluxz_d, nsites*nop*sizeof(double),
 	    cudaMemcpyDeviceToHost);
 
+
+}
+
+
+
+__global__ void printgpuint(int *array_d, int index){
+
+  printf("GPU array [%d] = %d \n",index,array_d[index]);
+
+}
+
+__global__ void printgpudouble(double *array_d, int index){
+
+  printf("GPU array [%d] = %e \n",index,array_d[index]);
 
 }
 

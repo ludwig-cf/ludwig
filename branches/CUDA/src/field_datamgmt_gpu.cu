@@ -22,9 +22,17 @@
 double * phi_site_temp;
 double * grad_phi_site_temp;
 double * delsq_phi_site_temp;
+double * ftmp;
+
+
+extern double * f_;
 
 /* pointers to data resident on accelerator */
 extern int * N_d;
+
+/* accelerator memory address pointers for required data structures */
+double * f_d;
+double * ftmp_d;
 double * phi_site_d;
 double * phi_site_full_d;
 double * grad_phi_site_full_d;
@@ -40,10 +48,16 @@ int * le_index_real_to_buffer_temp;
 /* data size variables */
 static int nhalo;
 static int nsites;
+static int ndata;
+static int ndist;
 static int nop;
 static  int N[3];
 static  int Nall[3];
 static int nlexbuf;
+
+static double field_tmp[100];
+
+
 
 void init_phi_gpu(){
 
@@ -84,6 +98,8 @@ static void calculate_phi_data_sizes()
 {
   coords_nlocal(N);  
   nhalo = coords_nhalo();  
+  ndist = distribution_ndist();
+  nop = phi_nop();
 
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
@@ -91,7 +107,9 @@ static void calculate_phi_data_sizes()
 
   nsites = Nall[X]*Nall[Y]*Nall[Z];
 
-  nop = phi_nop();
+  ndata = nsites * ndist * NVEL;
+
+
 
 
 
@@ -112,11 +130,20 @@ static void calculate_phi_data_sizes()
 static void allocate_phi_memory_on_gpu()
 {
 
+  cudaHostAlloc( (void **)&ftmp, ndata*sizeof(double), 
+		 cudaHostAllocDefault);
+
+
   /* temp arrays for staging data on  host */
   phi_site_temp = (double *) malloc(nsites*nop*sizeof(double));
   grad_phi_site_temp = (double *) malloc(nsites*nop*3*sizeof(double));
   delsq_phi_site_temp = (double *) malloc(nsites*nop*sizeof(double));
   le_index_real_to_buffer_temp = (int *) malloc(nlexbuf*sizeof(int));
+
+  /* arrays on accelerator */
+  cudaMalloc((void **) &f_d, ndata*sizeof(double));
+  cudaMalloc((void **) &ftmp_d, ndata*sizeof(double));
+
   
   cudaMalloc((void **) &phi_site_d, nsites*nop*sizeof(double));
   cudaMalloc((void **) &phi_site_full_d, nsites*9*sizeof(double));
@@ -145,6 +172,10 @@ static void free_phi_memory_on_gpu()
   free(le_index_real_to_buffer_temp);
 
 
+  cudaFreeHost(ftmp);
+
+  cudaFree(f_d);
+  cudaFree(ftmp_d);
   cudaFree(phi_site_d);
   cudaFree(phi_site_full_d);
   cudaFree(grad_phi_site_full_d);
@@ -157,7 +188,39 @@ static void free_phi_memory_on_gpu()
 
 }
 
-double field_tmp[50];
+
+
+/* copy f_ from host to accelerator */
+void put_f_on_gpu()
+{
+  int index;
+
+  /* copy data from CPU to accelerator */
+  cudaMemcpy(f_d, f_, ndata*sizeof(double), cudaMemcpyHostToDevice);
+
+}
+
+
+/* copy f_ from accelerator back to host */
+void get_f_from_gpu()
+{
+
+  /* copy data from accelerator to host */
+  cudaMemcpy(f_, f_d, ndata*sizeof(double), cudaMemcpyDeviceToHost);
+
+}
+
+/* copy f to ftmp on accelerator */
+void copy_f_to_ftmp_on_gpu()
+{
+  /* copy data on accelerator */
+  cudaMemcpy(ftmp_d, f_d, ndata*sizeof(double), cudaMemcpyDeviceToDevice);
+
+
+  //checkCUDAError("cp_f_to_ftmp_on_gpu");
+
+}
+
 
 void get_phi_site(int index, double *field){
 
@@ -486,6 +549,12 @@ void velocity_halo_gpu(){
 
 }
 
+void distribution_halo_gpu(){
+
+  halo_gpu(NVEL,ndist,1,f_d);
+
+}
+
 
 /* copy part of velocity_ from host to accelerator, using mask structure */
 void put_velocity_partial_on_gpu(int include_neighbours)
@@ -542,6 +611,60 @@ void get_phi_partial_from_gpu(int include_neighbours)
   void (* access_function)(const int, double *);
 
   access_function=set_phi_site;
+  
+  get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+}
+
+
+void get_f_site(int index, double *field){
+
+  int i;
+  for (i=0; i<(NVEL*ndist); i++)
+    {
+      field[i]=f_[nsites*i+index];    
+    }
+  
+
+}
+
+
+
+void set_f_site(int index, double *field){
+
+  int i;
+  for (i=0; i<(NVEL*ndist); i++)
+    {
+      f_[nsites*i+index]=field[i];
+    }
+  
+}
+
+
+void put_f_partial_on_gpu(int include_neighbours)
+{
+
+  int nfields1=NVEL;
+  int nfields2=ndist;
+  double *data_d=f_d;
+  void (* access_function)(const int, double *);
+
+  access_function=get_f_site;
+  
+  put_field_partial_on_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
+
+}
+
+/* copy part of f from host to accelerator, using mask structure */
+void get_f_partial_from_gpu(int include_neighbours)
+{
+
+  int nfields1=NVEL;
+  int nfields2=ndist;
+  double *data_d=f_d;
+  void (* access_function)(const int, double *);
+
+  access_function=set_f_site;
   
   get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
 

@@ -1,8 +1,7 @@
 /*****************************************************************************
  * 
- * dist_datamgmt_gpu.h
+ * comms_gpu.h
  * 
- * Distribution data management utilities for GPU adaptation of Ludwig
  * Alan Gray
  *
  *****************************************************************************/
@@ -14,35 +13,18 @@
 #include "model.h"
 
 /* expose routines in this module to outside routines */
-extern "C" void put_f_on_gpu();
-extern "C" void get_f_from_gpu();
-extern "C" void put_f_partial_on_gpu(int *mask, int include_neighbours);
-extern "C" void get_f_partial_from_gpu(int *mask, int include_neighbours);
 extern "C" void update_colloid_force_from_gpu();
-extern "C" void copy_f_to_ftmp_on_gpu(void);
-extern "C" void get_f_edges_from_gpu(void);
-extern "C" void put_f_halos_on_gpu(void);
-extern "C" void distribution_halo_gpu(void);
-extern "C" void copy_f_to_ftmp_on_gpu(void);
-extern "C" void get_f_edges_from_gpu(void);
-extern "C" void put_f_halos_on_gpu(void);
-extern "C" void bounce_back_gpu(int *findexall, int *linktype,
-				double *dfall, double *dgall1, double *dgall2,
-				double *dmall, int nlink, int pass);
-extern "C" void bbl_init_temp_link_arrays_gpu(int nlink);
-extern "C" void bbl_finalise_temp_link_arrays_gpu();
-extern "C" void bbl_enlarge_temp_link_arrays_gpu(int nlink);
 extern "C" void halo_gpu(int nfields1, int nfields2, int packfield1, double * data_d);
 extern "C" void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
 
 extern "C" void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *));
 
 /* forward declarations of host routines internal to this module */
-static void calculate_dist_data_sizes(void);
-static void allocate_dist_memory_on_gpu(void);
-static void free_dist_memory_on_gpu(void);
-void init_dist_gpu();
-void finalise_dist_gpu();
+static void calculate_comms_data_sizes(void);
+static void allocate_comms_memory_on_gpu(void);
+static void free_comms_memory_on_gpu(void);
+void init_comms_gpu();
+void finalise_comms_gpu();
 
 
 /* forward declarations of accelerator routines internal to this module */

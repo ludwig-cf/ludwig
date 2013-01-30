@@ -14,14 +14,12 @@
 void initialise_gpu(void);
 void put_site_map_on_gpu(void);
 void put_f_on_gpu(void);
-void put_f_partial_on_gpu(int *mask, int include_neighbours);
 void put_force_on_gpu(void);
 void put_phi_on_gpu(void);
 void put_grad_phi_on_gpu(void);
 void put_delsq_phi_on_gpu(void);
 void put_velocity_on_gpu(void);
 void get_f_from_gpu(void);
-void get_g_partial_from_gpu(int *mask, int include_neighbours);
 void get_force_from_gpu(void);
 void zero_force_on_gpu(void);
 void get_velocity_from_gpu(void);
