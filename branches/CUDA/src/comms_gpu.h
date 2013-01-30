@@ -42,14 +42,7 @@ __global__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 
 
 __global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3],
-						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
-
-
-__global__ static void copy_field_partial_gpu_d_TEST(int nPerSite, int nhalo, int N[3],
-						double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack);
-
-
-
+						double* f_out, double* f_in, char *mask_d, int *packedindex_d, int packedsize, int inpack);
 
 
 /* constant memory symbols internal to this module */

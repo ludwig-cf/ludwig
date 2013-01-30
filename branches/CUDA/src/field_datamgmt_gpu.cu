@@ -32,7 +32,7 @@ extern double * f_;
 /* pointers to data resident on accelerator */
 extern int * N_d;
 
-extern int * mask_;
+extern char * mask_;
 
 /* accelerator memory address pointers for required data structures */
 double * f_d;
@@ -694,9 +694,7 @@ void update_colloid_force_from_gpu()
   colloid_t * p_c;
 
 
-
-  for (i=0; i<nsites; i++) mask_[i]=0;
-
+  memset(mask_,0,nsites*sizeof(char));
 
   for (ic=nhalo; ic<Nall[X]-nhalo; ic++){
     for (jc=nhalo; jc<Nall[Y]-nhalo; jc++){

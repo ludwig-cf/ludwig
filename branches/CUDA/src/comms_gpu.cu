@@ -34,9 +34,10 @@ extern int * N_d;
 extern double * f_d;
 extern double * ftmp_d;
 
-int *mask_d, *packedindex_d;
-int *mask_;
-int * mask_with_neighbours;
+int *packedindex_d;
+char *mask_d;
+char *mask_;
+char *mask_with_neighbours;
 
 
 /* edge and halo buffers on accelerator */
@@ -174,10 +175,10 @@ static void allocate_comms_memory_on_gpu()
   cudaHostAlloc( (void **)&packedindex, nsites*sizeof(int), 
 		 cudaHostAllocDefault);
 
-  cudaHostAlloc( (void **)&mask_, nsites*sizeof(int), 
+  cudaHostAlloc( (void **)&mask_, nsites*sizeof(char), 
 		 cudaHostAllocDefault);
 
-  cudaHostAlloc( (void **)&mask_with_neighbours, nsites*sizeof(int), 
+  cudaHostAlloc( (void **)&mask_with_neighbours, nsites*sizeof(char), 
 		 cudaHostAllocDefault);
 
   cudaHostAlloc( (void **)&edgeXLOW, nhalodataX*sizeof(double), 
@@ -226,7 +227,7 @@ static void allocate_comms_memory_on_gpu()
   cudaMalloc((void **) &haloZLOW_d, nhalodataZ*sizeof(double));
   cudaMalloc((void **) &haloZHIGH_d, nhalodataZ*sizeof(double));
 
-  cudaMalloc((void **) &mask_d, nsites*sizeof(int));
+  cudaMalloc((void **) &mask_d, nsites*sizeof(char));
   cudaMalloc((void **) &packedindex_d, nsites*sizeof(int));
 
 
@@ -288,7 +289,7 @@ static void free_comms_memory_on_gpu()
 
 
 
-void fill_mask_with_neighbours(int *mask)
+void fill_mask_with_neighbours(char *mask)
 {
 
   int i, ib[3], p;
@@ -326,7 +327,7 @@ void fill_mask_with_neighbours(int *mask)
 
 void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *)){
 
-  int *mask;
+  char *mask;
   int i;
   int index;
   double field_tmp[50];
@@ -367,7 +368,7 @@ void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours
   }
 
   cudaMemcpy(ftmp_d, ftmp, packedsize*nfields1*nfields2*sizeof(double), cudaMemcpyHostToDevice);
-  cudaMemcpy(mask_d, mask, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(mask_d, mask, nsites*sizeof(char), cudaMemcpyHostToDevice);
   cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
 
   /* run the GPU kernel */
@@ -387,7 +388,7 @@ void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbou
 {
 
 
-  int *mask;
+  char *mask;
   int i;
   int index;
   double field_tmp[50];
@@ -411,7 +412,7 @@ void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbou
 
   int packedsize=j;
 
-  cudaMemcpy(mask_d, mask, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(mask_d, mask, nsites*sizeof(char), cudaMemcpyHostToDevice);
   cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
 
   int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
@@ -448,7 +449,7 @@ void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbou
 
 
 __global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3],
-					    double* f_out, double* f_in, int *mask_d, int *packedindex_d, int packedsize, int inpack) {
+					    double* f_out, double* f_in, char *mask_d, int *packedindex_d, int packedsize, int inpack) {
 
   int threadIndex, nsite, Nall[3];
   int i;

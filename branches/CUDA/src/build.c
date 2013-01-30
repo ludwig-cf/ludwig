@@ -563,7 +563,7 @@ void COLL_reset_links(colloid_t * p_colloid) {
  *
  *****************************************************************************/
 #ifdef _GPU_
-extern int* mask_;
+extern char* mask_;
 #endif
 
 void COLL_remove_or_replace_fluid() {
@@ -581,23 +581,20 @@ void COLL_remove_or_replace_fluid() {
   nhalo = coords_nhalo();
 
 #ifdef _GPU_
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
 
-  for (i = 1 - nhalo; i <= N[X] + nhalo; i++) {
-    for (j = 1 - nhalo; j <= N[Y] + nhalo; j++) {
-      for (k = 1 - nhalo; k <= N[Z] + nhalo; k++) {
+  memset(mask_,0,nsites*sizeof(char));
 
-  	index = coords_index(i, j, k);
-
-  	if (coll_old[index] != coll_map[index]){
+  for (index=0;index<nsites;index++)
+    {
+  	if (coll_old[index] != coll_map[index])
   	  mask_[index]=1;
-  	}
-	
-  	else
-  	  mask_[index]=0;
-
-      }
+  	
     }
-  }
 
   get_f_partial_from_gpu(1);
   get_phi_partial_from_gpu(1);  
