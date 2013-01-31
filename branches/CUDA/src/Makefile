@@ -60,7 +60,7 @@ ARFLAGS = -cru
 
 GPUCC = nvcc
 GPUCPPFLAG = -D_GPU_
-GPUOPTS = $(OPTS) $(GPUCPPFLAG) -Xptxas -v #,-abi=no
+GPUOPTS = $(OPTS) $(GPUCPPFLAG) #-Xptxas -v #,-abi=no
 GPUCFLAGS = -O3 -arch=sm_21 
 #GPUCFLAGS = -arch=sm_21 -g -G 
 GPUINC = $(INC) -I ../mpi_s

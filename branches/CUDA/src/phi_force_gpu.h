@@ -42,6 +42,8 @@ extern "C" double blue_phase_be_get_rotational_diffusion(void);
 extern "C" void checkCUDAError(const char *msg);
 extern "C" void expand_grad_phi_on_gpu();
 extern "C" void expand_phi_on_gpu();
+extern "C" int  wall_present(void);
+extern "C" int le_get_nplane_total(void);
 
 /* external variables holding device memory addresses */
 extern double * phi_site_d;
@@ -126,6 +128,15 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxy_d,
 					   double *fluxz_d
 );
+
+__global__ void advection_bcs_no_normal_flux_gpu_d(const int nop,
+					   char *site_map_status_d,
+					   double *fluxe_d,
+					   double *fluxw_d,
+					   double *fluxy_d,
+					   double *fluxz_d
+						   );
+
 __global__ void blue_phase_compute_q2_eq_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,
 						 double *grad_phi_site_d,
@@ -142,6 +153,8 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
 						 double *tmpscal1_d,
 						 double *tmpscal2_d
 );
+
+
 
 __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,

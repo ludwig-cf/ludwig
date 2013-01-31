@@ -2,6 +2,8 @@
  *
  *  phi_force_gpu.cu
  *
+ *  GPU implementation of phi force and update functionality 
+ *
  *  Alan Gray
  *
  *****************************************************************************/
@@ -32,13 +34,8 @@
 dim3 nblocks, threadsperblock;
 
 
-/*****************************************************************************
- *
- *  phi_force_calculation
- *
- *  Driver routine to compute the body force on fluid from phi sector.
- *
- *****************************************************************************/
+
+/*  phi_force_calculation_gpu - see CPU version in phi_force.c */
 
 void phi_force_calculation_gpu(void) {
 
@@ -48,113 +45,82 @@ void phi_force_calculation_gpu(void) {
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
   Nall[Z]=N[Z]+2*nhalo;
-  int nsites=Nall[X]*Nall[Y]*Nall[Z];
 
-  //TO DO
-  //if (force_required_ == 0) return;
+  if (le_get_nplane_total() > 0 ) {
+    printf("le_get_nplane_total() > 0 not yet supported in GPU mode. Exiting.\n");
+    exit(1);
+  }
+  else if (wall_present()) {
+    printf("wall_present()  not yet supported in GPU mode. Exiting.\n");
+    exit(1);
+  }
+  else {
 
-  //if (le_get_nplane_total() > 0 || wall_present()) {
-    /* Must use the flux method for LE planes */
-    /* Also convenient for plane walls */
-    //phi_force_flux();
-  //}
-  //else {
-  //if (force_divergence_) {
-
-  expand_grad_phi_on_gpu();
-  expand_phi_on_gpu();
-
-
-  put_phi_force_constants_on_gpu();
-
-  //  cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
-
-  /* compute q2 and eq */
-  threadsperblock.x=DEFAULT_TPB_Z;
-  threadsperblock.y=DEFAULT_TPB_Y;
-  threadsperblock.z=DEFAULT_TPB_X;
-
-  nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
-  nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
-  nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
-
-  blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
+    expand_grad_phi_on_gpu();
+    expand_phi_on_gpu();
+      
+      
+      put_phi_force_constants_on_gpu();
+      
+      
+      /* compute q2 and eq */
+      threadsperblock.x=DEFAULT_TPB_Z;
+      threadsperblock.y=DEFAULT_TPB_Y;
+      threadsperblock.z=DEFAULT_TPB_X;
+      
+      nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+      nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+      nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
 
-  /* /\* compute h *\/ */
-  /* #define TPSITE 9 */
-  /* threadsperblock.x=DEFAULT_TPB; */
-  /* threadsperblock.y=1; */
-  /* threadsperblock.z=1; */
+      cudaFuncSetCacheConfig(blue_phase_compute_q2_eq_all_gpu_d,cudaFuncCachePreferL1);      
+      blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
+      
+      cudaFuncSetCacheConfig(blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferL1);      
+      blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
+      
+      cudaFuncSetCacheConfig(blue_phase_compute_stress1_all_gpu_d,cudaFuncCachePreferL1);      
+      blue_phase_compute_stress1_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
-  /* nblocks.x=(TPSITE*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1; */
-  /* nblocks.y=1; */
-  /* nblocks.z=1; */
-
-  /* blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d); */
-
-
-  /* /\* compute stress *\/ */
-  /* threadsperblock.x=DEFAULT_TPB_Z; */
-  /* threadsperblock.y=DEFAULT_TPB_Y; */
-  /* threadsperblock.z=DEFAULT_TPB_X; */
-
-  /* nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z; */
-  /* nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y; */
-  /* nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X; */
-
-
-  blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
-
-  blue_phase_compute_stress1_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
-
-  //  blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
-
-  threadsperblock.x=DEFAULT_TPB;
-  threadsperblock.y=1;
-  threadsperblock.z=1;
-
-  nblocks.x=(9*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
-  nblocks.y=1;
-  nblocks.z=1;
-
-
-
-
-  //cudaBindTexture(0,texreference,grad_phi_float_d,sizeof(float)*nsites*27); 
-
- blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,grad_phi_site_full_d,stress_site_d);
-
-
-
-
-  /* compute force */
-  threadsperblock.x=DEFAULT_TPB_Z;
-  threadsperblock.y=DEFAULT_TPB_Y;
-  threadsperblock.z=DEFAULT_TPB_X;
-
-  nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
-  nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
-  nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
-
-
-  phi_force_calculation_fluid_gpu_d<<<nblocks,threadsperblock>>>
-    (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,stress_site_d,force_d);
+      
+      /* decompose by a further factor of 9 for this part of stress calc for performance */
+      
+      threadsperblock.x=DEFAULT_TPB;
+      threadsperblock.y=1;
+      threadsperblock.z=1;
+      
+      /* can't do simple linear decomposition since gridDim.x gets too large. Need to use other grid dimentions and roll back in in kernel.*/
+      
+      nblocks.x=(9*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
+      nblocks.y=Nall[Y];
+      nblocks.z=Nall[X];
+      
+      cudaFuncSetCacheConfig(blue_phase_compute_stress2_all_gpu_d,cudaFuncCachePreferL1);      
+      blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,grad_phi_site_full_d,stress_site_d);
+      
+      
+      /* compute force */
+      threadsperblock.x=DEFAULT_TPB_Z;
+      threadsperblock.y=DEFAULT_TPB_Y;
+      threadsperblock.z=DEFAULT_TPB_X;
+      
+      nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+      nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+      nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+      
+      
+      cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);      
+      phi_force_calculation_fluid_gpu_d<<<nblocks,threadsperblock>>>
+	(le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,stress_site_d,force_d);
       
       cudaThreadSynchronize();
       checkCUDAError("phi_force_calculation_fluid_gpu_d");
-
-      //}
-      //else {
-     //hi_force_fluid_phi_gradmu();
-      //}
-      //}
-
+      
+  }
   return;
 }
 
-texture<float,1,cudaReadModeElementType> texreference;
-
+/*  phi_force_colloid_gpu - see CPU version in phi_force_coloid.c */
 void phi_force_colloid_gpu(void) {
 
   int N[3],nhalo,Nall[3];
@@ -163,26 +129,23 @@ void phi_force_colloid_gpu(void) {
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
   Nall[Z]=N[Z]+2*nhalo;
-  int nsites=Nall[X]*Nall[Y]*Nall[Z];
    
-
-  // TODO
-  /* if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) { */
-  /*   phi_force_interpolation1(); */
-  /* } */
-  /* else { */
-  /*   phi_force_interpolation2(); */
-  /* } */
+  if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) {
+    //phi_force_interpolation1();
+    printf("ANCHORING_METHOD_ONE not yet supported in GPU mode. Exiting.\n");
+    exit(1);
+  }
+  else {
 
 
-  put_phi_force_constants_on_gpu();
+    //phi_force_interpolation2();
 
-  expand_grad_phi_on_gpu();
-  expand_phi_on_gpu();
 
-  //  cudaFuncSetCacheConfig(phi_force_colloid_gpu_d,cudaFuncCachePreferL1);
+    put_phi_force_constants_on_gpu();
 
-  //  cudaFuncSetCacheConfig( blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferShared);
+    expand_grad_phi_on_gpu();
+    expand_phi_on_gpu();
+
 
   /* compute q2 and eq */
   threadsperblock.x=DEFAULT_TPB_Z;
@@ -193,60 +156,30 @@ void phi_force_colloid_gpu(void) {
   nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
   nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
+  cudaFuncSetCacheConfig(blue_phase_compute_q2_eq_all_gpu_d,cudaFuncCachePreferL1);      
   blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
 
-
-  /* /\* compute h *\/ */
-  /* #define TPSITE 9 */
-  /* threadsperblock.x=DEFAULT_TPB; */
-  /* threadsperblock.y=1; */
-  /* threadsperblock.z=1; */
-
-  /* nblocks.x=(TPSITE*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1; */
-  /* nblocks.y=1; */
-  /* nblocks.z=1; */
-
-  /* blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d); */
-
-
-  /* /\* compute stress *\/ */
-  /* threadsperblock.x=DEFAULT_TPB_Z; */
-  /* threadsperblock.y=DEFAULT_TPB_Y; */
-  /* threadsperblock.z=DEFAULT_TPB_X; */
-
-  /* nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z; */
-  /* nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y; */
-  /* nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X; */
-
-
+  cudaFuncSetCacheConfig(blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferL1);      
   blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
 
-
+  cudaFuncSetCacheConfig(blue_phase_compute_stress1_all_gpu_d,cudaFuncCachePreferL1);      
   blue_phase_compute_stress1_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,grad_phi_site_full_d,delsq_phi_site_d,h_site_d, stress_site_d);
 
 
+  /* decompose by a further factor of 9 for this part of stress calc for performance */
 
   threadsperblock.x=DEFAULT_TPB;
   threadsperblock.y=1;
   threadsperblock.z=1;
 
-  nblocks.x=(9*Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
-  nblocks.y=1;
-  nblocks.z=1;
+  /* can't do simple linear decomposition since gridDim.x gets too large. Need to use other grid dimentions and roll back in in kernel.*/
 
+  nblocks.x=(9*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
+  nblocks.y=Nall[Y];
+  nblocks.z=Nall[X];
 
-
-
-  //cudaBindTexture(0,texreference,grad_phi_float_d,sizeof(float)*nsites*27); 
-
- blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,grad_phi_site_full_d,stress_site_d);
-
-
-//unbind texture reference to free resource
-//cudaUnbindTexture(texreference);
-
-
-
+  cudaFuncSetCacheConfig(blue_phase_compute_stress2_all_gpu_d,cudaFuncCachePreferL1);      
+  blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,grad_phi_site_full_d,stress_site_d);
 
 
   /* compute force */
@@ -258,36 +191,29 @@ void phi_force_colloid_gpu(void) {
   nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
   nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
-
+  cudaFuncSetCacheConfig(phi_force_colloid_gpu_d,cudaFuncCachePreferL1);      
   phi_force_colloid_gpu_d<<<nblocks,threadsperblock>>>
     (le_index_real_to_buffer_d,site_map_status_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,stress_site_d,force_d,colloid_force_d);
       
-      cudaThreadSynchronize();
-      checkCUDAError("phi_force_colloid_gpu_d");
+  cudaThreadSynchronize();
+  checkCUDAError("phi_force_colloid_gpu_d");
+
+  }
 
   return;
 }
 
 
-
+/*   blue_phase_be_update_gpu - see CPU version in blue_phase_beris_edwards.c */
 void blue_phase_be_update_gpu(void) {
 
-  int N[3],nhalo,Nall[3];
+  int N[3];;
   
-  nhalo = coords_nhalo();
   coords_nlocal(N); 
-
-
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-  
-  int nsites=Nall[X]*Nall[Y]*Nall[Z];
- 
 
   put_phi_force_constants_on_gpu();  
 
-  //  cudaFuncSetCacheConfig(phi_force_calculation_fluid_gpu_d,cudaFuncCachePreferL1);
+
 
   threadsperblock.x=DEFAULT_TPB_Z;
   threadsperblock.y=DEFAULT_TPB_Y;
@@ -297,6 +223,7 @@ void blue_phase_be_update_gpu(void) {
   nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
   nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
+  cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
   blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
       
@@ -307,24 +234,12 @@ void blue_phase_be_update_gpu(void) {
   return;
 }
 
+/* advection_upwind_gpu - see CPU version in advection.c */
 void advection_upwind_gpu(void) {
 
-  int N[3],nhalo,Nall[3];
-  
-  nhalo = coords_nhalo();
+  int N[3];
   coords_nlocal(N); 
-
-
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
   
-  int nsites=Nall[X]*Nall[Y]*Nall[Z];
- 
-
-  
-
-
   // cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
 
   threadsperblock.x=DEFAULT_TPB_Z;
@@ -337,7 +252,7 @@ void advection_upwind_gpu(void) {
   nblocks.y=(N[Y]+1+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
   nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
-
+  cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
   advection_upwind_gpu_d<<<nblocks,threadsperblock>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,force_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
       
@@ -348,42 +263,21 @@ void advection_upwind_gpu(void) {
   return;
 }
 
-__global__ void advection_bcs_no_normal_flux_gpu_d(const int nop,
-					   char *site_map_status_d,
-					   double *fluxe_d,
-					   double *fluxw_d,
-					   double *fluxy_d,
-					   double *fluxz_d
-						   );
 
-
+/* advection_bcs_no_normal_flux_gpu - see CPU version in advection_bcs.c */
 void advection_bcs_no_normal_flux_gpu(void){
 
-  int N[3],nhalo,Nall[3];
+  int N[3];
   
-  nhalo = coords_nhalo();
   coords_nlocal(N); 
-
-
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
   
-  int nsites=Nall[X]*Nall[Y]*Nall[Z];
-
-
   int nop = phi_nop();
   
-  //  cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
+  /* two fastest moving dimensions have cover a single lower width-one halo here */
+  dim3 nblocks(((N[Z]+1)+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z,((N[Y]+1)+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y,(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X);
+  dim3 threadsperblock(DEFAULT_TPB_Z,DEFAULT_TPB_Y,DEFAULT_TPB_X);
   
-#define TPBX 4 
-#define TPBY 4
-#define TPBZ 8
-  
-  /* two sfastest moving dimensions have cover a single lower width-one halo here */
-  dim3 nblocks(((N[Z]+1)+TPBZ-1)/TPBZ,((N[Y]+1)+TPBY-1)/TPBY,(N[X]+TPBX-1)/TPBX);
-  dim3 threadsperblock(TPBZ,TPBY,TPBX);
-  
+  cudaFuncSetCacheConfig(advection_bcs_no_normal_flux_gpu_d,cudaFuncCachePreferL1);
   advection_bcs_no_normal_flux_gpu_d<<<nblocks,threadsperblock>>>
     (nop, site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
   
@@ -443,8 +337,7 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
     sum = 0.0;
     for (ib = 0; ib < 3; ib++) {
       sum += dq[ib][ia][ib];
-      //sum += grad_phi_site_full_d[ib*nsites_cd*9 + ia*nsites_cd*3+ ib*nsites_cd + index];
-    }
+     }
     dq0 += sum*sum;
   }
 
@@ -459,7 +352,6 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
 	  sum += e_cd[ia][ic][id]*dq[ic][ib][id];
-	  //sum += e_cd[ia][ic][id]*grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
 	}
       }
       sum += 2.0*q0shift_cd*q[ia][ib];
@@ -498,7 +390,7 @@ __device__ double blue_phase_compute_fed_gpu_d(double q[3][3], double dq[3][3][3
  *****************************************************************************/
 
 __device__ void blue_phase_compute_stress1_gpu_d(double q[3][3], double dq[3][3][3], double sth[3][3], double *grad_phi_site_full_d, double *h_site_d, int index){
-  int ia, ib, ic, id, ie;
+  int ia, ib, ic;
 
   double tmpdbl,tmpdbl2;
 
@@ -557,8 +449,10 @@ __device__ void blue_phase_compute_stress1_gpu_d(double q[3][3], double dq[3][3]
   	 tmpdbl += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
       }
       sth[ia][ib]+=tmpdbl;
+
       /* This is the minus sign. */
-      //sth[ia][ib] = -sth[ia][ib];
+      // now done in second part of stress calc
+      //sth[ia][ib] = -sth[ia][ib]; 
     }
   }
 
@@ -603,7 +497,6 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
   double force[3];
   int ii, jj, kk;
 
- /* CUDA thread index */
   kk = blockIdx.x*blockDim.x+threadIdx.x;
   jj = blockIdx.y*blockDim.y+threadIdx.y;
   ii = blockIdx.z*blockDim.z+threadIdx.z;
@@ -611,9 +504,6 @@ __global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_
  /* Avoid going beyond problem domain */
   if (ii < N_cd[X] && jj < N_cd[Y] && kk < N_cd[Z] )
     {
-
-
-      /* calculate index from CUDA thread index */
 
       index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);      
       icm1=le_index_real_to_buffer_d[ii+nhalo_cd];
@@ -714,14 +604,13 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
 						  double *colloid_force_d
 					    ) {
 
-  int ia, ib, icm1, icp1;
+  int ia, ib;
   int index, index1;
   double pth0[3][3];
   double pth1[3][3];
   double force[3];
   int ii, jj, kk;
 
- /* CUDA thread index */
   kk = blockIdx.x*blockDim.x+threadIdx.x;
   jj = blockIdx.y*blockDim.y+threadIdx.y;
   ii = blockIdx.z*blockDim.z+threadIdx.z;
@@ -735,7 +624,7 @@ __global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
       /* calculate index from CUDA thread index */
       index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);      
 
-      if (site_map_status_d[index1] != COLLOID){
+      if (site_map_status_d[index] != COLLOID){
 	/* If this is solid, then there's no contribution here. */
       
 	/* Compute pth at current point */
@@ -923,11 +812,8 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxz_d
 					    ) {
 
-  int ia, icm1, icp1;
-  int index, index1, indexm1, indexp1;
-  double pth0[3][3];
-  double pth1[3][3];
-  double force[3];
+  int icm1, icp1;
+  int index, indexm1, indexp1;
   int ii, jj, kk;
 
  /* CUDA thread index */
@@ -952,11 +838,10 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
 
 
 
-      int ia, ib, ic, id;
+      int ia, ib, id;
 
   double q[3][3];
   double d[3][3];
-  double h[3][3];
   double s[3][3];
   double dq[3][3][3];
   double dsq[3][3];
@@ -1000,8 +885,6 @@ __global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
   dsq[Z][Y] = dsq[Y][Z];
   dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
 
-
-  //blue_phase_compute_h_gpu_d(h, dq, dsq, phi_site_full_d, index);
 
 
    if (site_map_status_d[index] != FLUID) {
@@ -1119,30 +1002,20 @@ __global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
 					   double *fluxz_d
 					    ) {
 
-  int ia, icm1, icp1;
-  int index, index1, index0;
+  int icm1, icp1;
+  int index1, index0;
   int ii, jj, kk, n;
   double u, phi0;
-  //int threadIndex,ii, jj, kk;
 
-
-
- /* CUDA thread index */
-  //threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   kk = blockIdx.x*blockDim.x+threadIdx.x;
   jj = blockIdx.y*blockDim.y+threadIdx.y;
   ii = blockIdx.z*blockDim.z+threadIdx.z;
  
  /* Avoid going beyond problem domain */
-  // if (threadIndex < N_cd[X]*N_cd[Y]*N_cd[Z])
-
   if (ii < N_cd[X] && jj < (N_cd[Y]+1) && kk < (N_cd[Z]+1) )
     {
 
 
-      /* calculate index from CUDA thread index */
-
-      //get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_cd);
       index0 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);      
       icm1=le_index_real_to_buffer_d[ii+nhalo_cd];
       icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii+nhalo_cd];      
@@ -1219,37 +1092,20 @@ __global__ void advection_bcs_no_normal_flux_gpu_d(const int nop,
 					   double *fluxz_d
 					    ) {
 
-  int ia, icm1, icp1;
-  int index, index1, index0;
+  int index,  index0;
   int ii, jj, kk, n;
-  double u, phi0;
-  //int threadIndex,ii, jj, kk;
   double mask, maske, maskw, masky, maskz;
 
 
- /* CUDA thread index */
-  //threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   kk = blockIdx.x*blockDim.x+threadIdx.x;
   jj = blockIdx.y*blockDim.y+threadIdx.y;
   ii = blockIdx.z*blockDim.z+threadIdx.z;
  
  /* Avoid going beyond problem domain */
-  // if (threadIndex < N_cd[X]*N_cd[Y]*N_cd[Z])
-
   if (ii < N_cd[X] && jj < (N_cd[Y]+1) && kk < (N_cd[Z]+1) )
     {
 
 
-      /* calculate index from CUDA thread index */
-
-
-      /* mask  = (site_map_get_status_index(index)  == FLUID); */
-      /* maske = (site_map_get_status(ic+1, jc, kc) == FLUID); */
-      /* maskw = (site_map_get_status(ic-1, jc, kc) == FLUID); */
-      /* masky = (site_map_get_status(ic, jc+1, kc) == FLUID); */
-      /* maskz = (site_map_get_status(ic, jc, kc+1) == FLUID); */
-      
-      
       index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd-1,Nall_cd);      
       mask  = (site_map_status_d[index]  == FLUID); 
 
@@ -1291,10 +1147,9 @@ __global__ void blue_phase_compute_q2_eq_all_gpu_d(  double *phi_site_d,
 						 double *eq_site_d
 						 ){
 
-  int ia, ib, ic, id;
+  int ia, ib, ic;
   int index;
   double q[3][3];
-  double h[3][3];
   double dq[3][3][3];
   double dsq[3][3];
 
@@ -1310,7 +1165,6 @@ __global__ void blue_phase_compute_q2_eq_all_gpu_d(  double *phi_site_d,
 
 
       /* calculate index from CUDA thread index */
-      //index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
       index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
       
       /* load phi */
@@ -1351,11 +1205,7 @@ __global__ void blue_phase_compute_q2_eq_all_gpu_d(  double *phi_site_d,
       dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
                   
   double q2;
-  double e2;
   double eq;
-  double sum, sum1;
-
-
   /* From the bulk terms in the free energy... */
 
   q2 = 0.0;
@@ -1392,9 +1242,9 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
   int ia, ib, ic, id;
   int index;
   double q[3][3];
-  double h[3][3];
   double dq[3][3][3];
   double dsq[3][3];
+  double htmp;
 
   int ii, jj, kk;
  
@@ -1407,8 +1257,6 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
     {
 
 
-      /* calculate index from CUDA thread index */
-      //index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
       index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
       
       /* load phi */
@@ -1448,7 +1296,6 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
       dsq[Z][Y] = dsq[Y][Z];
       dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
                   
-  double e2;
   double sum, sum1;
 
   double q2=q2_site_d[index];
@@ -1474,15 +1321,15 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
 	}
       }
 
-      h[ia][ib] = cd1* phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]
+      htmp = cd1* phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]
   	+ cd2*(sum - r3_cd*q2*d_cd[ia][ib]) - cd2*q2*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
 
-      h[ia][ib] += kappa0shift_cd*dsq[ia][ib]
+      htmp += kappa0shift_cd*dsq[ia][ib]
 	- cd3*sum1 + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib]
 	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
 
-      h[ia][ib] +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib] - r3_cd*d_cd[ia][ib]*e2_cd);
-      h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=h[ia][ib];
+      htmp +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib] - r3_cd*d_cd[ia][ib]*e2_cd);
+      h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=htmp;
 
     }
   }
@@ -1492,141 +1339,6 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
   return;
 }
 
-/* __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d, */
-/* 						 double *phi_site_full_d, */
-/* 						 double *grad_phi_site_d, */
-/* 						 double *delsq_phi_site_d, */
-/* 						 double *h_site_d, */
-/* 						 double *q2_site_d, */
-/* 						 double *eq_site_d */
-/* 						 ){ */
-
-/*   int ic, id; */
-/*   int index; */
-
-                        
-/*   double e2; */
-/*   double sum, sum1,htmp; */
-
- 
-/*   int threadIndex=blockIdx.x*blockDim.x+threadIdx.x;  */
-
-
-/*   int i=threadIndex/(Nall_cd[Y]*Nall_cd[Z]*TPSITE); */
-/*   int j=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE)/(Nall_cd[Y]*TPSITE); */
-/*   int k=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE-j*Nall_cd[Y]*TPSITE)/TPSITE; */
-/*   int iw=threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*TPSITE-j*Nall_cd[Y]*TPSITE-k*TPSITE; */
-
-/*   int ia=iw/3; */
-/*   int ib=iw-ia*3; */
-
-/*   int threadIndexStart=blockIdx.x*blockDim.x;  */
-
-
-/*   int iStart=threadIndexStart/(Nall_cd[Y]*Nall_cd[Z]*TPSITE); */
-/*   int jStart=(threadIndexStart-iStart*Nall_cd[Y]*Nall_cd[Z]*TPSITE)/(Nall_cd[Y]*TPSITE); */
-/*   int kStart=(threadIndexStart-iStart*Nall_cd[Y]*Nall_cd[Z]*TPSITE-jStart*Nall_cd[Y]*TPSITE)/TPSITE; */
-
-
-
-/*   index=get_linear_index_gpu_d(i,j,k,Nall_cd); */
-
-/*   int indexStart=get_linear_index_gpu_d(iStart,jStart,kStart,Nall_cd); */
-
-/* #define SPB (((DEFAULT_TPB+TPSITE-1)/TPSITE)+1) */
-
-/*   __shared__ double q_sm[3][3][SPB]; */
-/*   __shared__ double dsq_sm[3][3][SPB]; */
-/*   __shared__ double dq_sm[3][3][3][SPB]; */
-  
-/*   __shared__ double q2_sm[SPB]; */
-/*   __shared__ double eq_sm[SPB]; */
- 
-/*   if ((threadIdx.x < SPB) && (threadIdx.x < nsites_cd)){ */
-/*     q_sm[X][X][threadIdx.x] = phi_site_d[nsites_cd*XX+(indexStart+threadIdx.x)]; */
-/*       q_sm[X][Y][threadIdx.x] = phi_site_d[nsites_cd*XY+(indexStart+threadIdx.x)]; */
-/*       q_sm[X][Z][threadIdx.x] = phi_site_d[nsites_cd*XZ+(indexStart+threadIdx.x)]; */
-/*       q_sm[Y][X][threadIdx.x] = q_sm[X][Y][threadIdx.x]; */
-/*       q_sm[Y][Y][threadIdx.x] = phi_site_d[nsites_cd*YY+(indexStart+threadIdx.x)]; */
-/*       q_sm[Y][Z][threadIdx.x] = phi_site_d[nsites_cd*YZ+(indexStart+threadIdx.x)]; */
-/*       q_sm[Z][X][threadIdx.x] = q_sm[X][Z][threadIdx.x]; */
-/*       q_sm[Z][Y][threadIdx.x] = q_sm[Y][Z][threadIdx.x]; */
-/*       q_sm[Z][Z][threadIdx.x] = 0.0 - q_sm[X][X][threadIdx.x] - q_sm[Y][Y][threadIdx.x]; */
-/*       /\* load grad phi *\/ */
-/*       for (ic = 0; ic < 3; ic++) { */
-/*       	dq_sm[ic][X][X][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XX*nsites_cd + indexStart+threadIdx.x]; */
-/*       	dq_sm[ic][X][Y][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XY*nsites_cd + indexStart+threadIdx.x]; */
-/*       	dq_sm[ic][X][Z][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + XZ*nsites_cd + indexStart+threadIdx.x]; */
-/*       	dq_sm[ic][Y][X][threadIdx.x] = dq_sm[ic][X][Y][threadIdx.x]; */
-/*       	dq_sm[ic][Y][Y][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + YY*nsites_cd + indexStart+threadIdx.x]; */
-/*       	dq_sm[ic][Y][Z][threadIdx.x] = grad_phi_site_d[ic*nsites_cd*5 + YZ*nsites_cd + indexStart+threadIdx.x]; */
-/*       	dq_sm[ic][Z][X][threadIdx.x] = dq_sm[ic][X][Z][threadIdx.x]; */
-/*       	dq_sm[ic][Z][Y][threadIdx.x] = dq_sm[ic][Y][Z][threadIdx.x]; */
-/*       	dq_sm[ic][Z][Z][threadIdx.x] = 0.0 - dq_sm[ic][X][X][threadIdx.x] - dq_sm[ic][Y][Y][threadIdx.x]; */
-/*       } */
-/*       //load delsq phi */
-/*     dsq_sm[X][X][threadIdx.x] = delsq_phi_site_d[nsites_cd*XX+(indexStart+threadIdx.x)]; */
-/*       dsq_sm[X][Y][threadIdx.x] = delsq_phi_site_d[nsites_cd*XY+(indexStart+threadIdx.x)]; */
-/*       dsq_sm[X][Z][threadIdx.x] = delsq_phi_site_d[nsites_cd*XZ+(indexStart+threadIdx.x)]; */
-/*       dsq_sm[Y][X][threadIdx.x] = dsq_sm[X][Y][threadIdx.x]; */
-/*       dsq_sm[Y][Y][threadIdx.x] = delsq_phi_site_d[nsites_cd*YY+(indexStart+threadIdx.x)]; */
-/*       dsq_sm[Y][Z][threadIdx.x] = delsq_phi_site_d[nsites_cd*YZ+(indexStart+threadIdx.x)]; */
-/*       dsq_sm[Z][X][threadIdx.x] = dsq_sm[X][Z][threadIdx.x]; */
-/*       dsq_sm[Z][Y][threadIdx.x] = dsq_sm[Y][Z][threadIdx.x]; */
-/*       dsq_sm[Z][Z][threadIdx.x] = 0.0 - dsq_sm[X][X][threadIdx.x] - dsq_sm[Y][Y][threadIdx.x]; */
-
-
-/*     q2_sm[threadIdx.x] = q2_site_d[indexStart+threadIdx.x]; */
-/*     eq_sm[threadIdx.x] = eq_site_d[indexStart+threadIdx.x]; */
-
-/*   } */
-
-/*       syncthreads(); */
-
-
-/*   if (index < Nall_cd[X]*Nall_cd[Y]*Nall_cd[Y] && ia<3 && ib <3) */
-/*     { */
-            
-/*       int index_sm=index-indexStart; */
-      
-
-/*   /\* d_c Q_db written as d_c Q_bd etc *\/ */
-/*       sum = 0.0; */
-/*       sum1 = 0.0; */
-/*       for (ic = 0; ic < 3; ic++) { */
-
-/*   	sum +=  q_sm[ia][ic][index_sm]*q_sm[ib][ic][index_sm]; */
-
-/* 	for (id = 0; id < 3; id++) { */
-/* 	  sum1 += */
-/* 	    (e_cd[ia][ic][id]*dq_sm[ic][ib][id][index_sm] + e_cd[ib][ic][id]*dq_sm[ic][ia][id][index_sm]); */
-/* 	} */
-/*       } */
-
-/*       htmp = cd1*q_sm[ia][ib][index_sm] */
-/*   	+ cd2*(sum - r3_cd*q2_sm[index_sm]*d_cd[ia][ib])  */
-/* 	- cd2*q2_sm[index_sm]*q_sm[ia][ib][index_sm]; */
-
-/*       htmp += kappa0shift_cd*dsq_sm[ia][ib][index_sm] */
-/* 	- cd3*sum1 + 4.0*cd4*eq_sm[index_sm]*d_cd[ia][ib] */
-/* 	- cd5*q_sm[ia][ib][index_sm]; */
-
-/*       htmp +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib]  */
-/* 				- cd6*d_cd[ia][ib]); */
-
-/*       h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=htmp; */
-
-/*       //h_site_d[index*3*3+3*ia+ib]=htmp; */
-
-/*     } */
-
-
-
-
-   
-
-/*   return; */
-/* } */
 
 __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 						 double *phi_site_full_d,
@@ -1636,7 +1348,7 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 						 double *h_site_d,
 						 double *stress_site_d){
 
-  int ia, ib, ic;
+  int ia, ib;
   int index;
   double q[3][3];
   double sth[3][3];
@@ -1645,7 +1357,6 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 
   int ii, jj, kk;
  
- /* CUDA thread index */
   kk = blockIdx.x*blockDim.x+threadIdx.x;
   jj = blockIdx.y*blockDim.y+threadIdx.y;
   ii = blockIdx.z*blockDim.z+threadIdx.z;
@@ -1653,9 +1364,6 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
   if (ii < Nall_cd[X] && jj < Nall_cd[Y] && kk < Nall_cd[Z] )
     {
 
-
-      /* calculate index from CUDA thread index */
-      //index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
       index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
       
       /* load phi */
@@ -1672,13 +1380,8 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
       
       
       /* load grad phi */
-            for (ia = 0; ia < 3; ia++) {
-      //for (ib = 0; ib <3; ib++){
-      //  for (ic = 0; ic <3; ic++){
-      //    dq[ia][ib][ic] = grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index];
-      //  }
-      //}
-
+      for (ia = 0; ia < 3; ia++) {
+ 
 	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
 	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
 	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
@@ -1717,26 +1420,19 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 						 double *grad_phi_site_full_d,
 						 double *stress_site_d){
 
-   //int ia, ib, ic;
-   int ic;
   int index;
   double q[3][3];
-  //  double sth[3][3];
   
   double sth_tmp;
-
-  //double dq[3][3][3];
-  //double dsq[3][3];
-
-  //int ii, jj, kk;
- 
- /* CUDA thread index */
-  //kk = blockIdx.x*blockDim.x+threadIdx.x;
-  //jj = blockIdx.y*blockDim.y+threadIdx.y;
-  //ii = blockIdx.z*blockDim.z+threadIdx.z;
-
   
-  int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+
+    //int threadIndex = (blockIdx.x*blockDim.x+threadIdx.x);
+
+    int threadIndex = blockIdx.z*gridDim.y*gridDim.x*blockDim.x
+    + blockIdx.y*gridDim.x*blockDim.x 
+    + (blockIdx.x*blockDim.x+threadIdx.x);
+
+
   int i=threadIndex/(Nall_cd[Y]*Nall_cd[Z]*9);
   int j=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9)/(Nall_cd[Y]*9);
   int k=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Y]*9)/9;
@@ -1749,9 +1445,6 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
   if (i < Nall_cd[X] && j < Nall_cd[Y] && k < Nall_cd[Z] && ia<3 && ib <3)
     {
 
-
-      /* calculate index from CUDA thread index */
-      //index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
       index = get_linear_index_gpu_d(i,j,k,Nall_cd);
       
       /* load phi */
@@ -1767,55 +1460,20 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
       q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
       
       
-      /* load grad phi */
-      //            for (ic = 0; ic < 3; ic++) {
-      // for (ib = 0; ib <3; ib++){
-      //for (ic = 0; ic <3; ic++){
-      //  dq[ia][ib][ic] = grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index];
-      //}
-      //}
 
-	/* dq[ic][X][X] = grad_phi_site_d[ic*nsites_cd*5 + XX*nsites_cd + index]; */
-	/* dq[ic][X][Y] = grad_phi_site_d[ic*nsites_cd*5 + XY*nsites_cd + index]; */
-	/* dq[ic][X][Z] = grad_phi_site_d[ic*nsites_cd*5 + XZ*nsites_cd + index]; */
-	/* dq[ic][Y][X] = dq[ic][X][Y]; */
-	/* dq[ic][Y][Y] = grad_phi_site_d[ic*nsites_cd*5 + YY*nsites_cd + index]; */
-	/* dq[ic][Y][Z] = grad_phi_site_d[ic*nsites_cd*5 + YZ*nsites_cd + index]; */
-	/* dq[ic][Z][X] = dq[ic][X][Z]; */
-	/* dq[ic][Z][Y] = dq[ic][Y][Z]; */
-	/* dq[ic][Z][Z] = 0.0 - dq[ic][X][X] - dq[ic][Y][Y]; */
-      //}
+      sth_tmp=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
+
+
+      int ic, id, ie;
       
-
-      //for (ia = 0; ia < 3; ia++) {
-      //for (ib = 0; ib < 3; ib++) {
-	  sth_tmp=stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
-	  //}
-	  //}
-
-
-  int ic, id, ie;
-
-  double tmpdbl,tmpdbl2;
-
-  /* Dot product term d_a Q_cd . dF/dQ_cd,b */
-
-  //for (ia = 0; ia < 3; ia++) {
-  //for (ib = 0; ib < 3; ib++) {
-       tmpdbl=0.; 
+      double tmpdbl,tmpdbl2;
+      
+      /* Dot product term d_a Q_cd . dF/dQ_cd,b */
+      
+      tmpdbl=0.; 
       for (ic = 0; ic < 3; ic++) {
       	for (id = 0; id < 3; id++) {
-      /* 	  tmpdbl += */
-      /* 	    - kappa0shift_cd*dq[ia][ib][ic]*dq[id][ic][id] */
-      /* 	    - kappa1shift_cd*dq[ia][ic][id]*dq[ib][ic][id] */
-      /* 	    + kappa1shift_cd*dq[ia][ic][id]*dq[ic][ib][id]; */
 	  
-      /* 	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd*dq[ia][ic][id]; */
-      /* 	  for (ie = 0; ie < 3; ie++) { */
-      /* 	    tmpdbl += */
-      /* 	     tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-      /* 	  } */
-
 	  tmpdbl +=
 	    - kappa0shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index]*
 	    grad_phi_site_full_d[id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
@@ -1829,91 +1487,7 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
 	  for (ie = 0; ie < 3; ie++) {
 	    tmpdbl +=
 	      tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
-	    //	      tmpdbl2*e_cd[ib][ic][ie]*phi_site_full_d[id*nsites_cd*3+ie*nsites_cd+index];
 	  }
-
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*grad_phi_site_full_d[index*27+ia*9 + ib*3+ ic]* */
-	  /*   grad_phi_site_full_d[index*27+id*9 + ic*3+ id] */
-	  /*   - kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]* */
-	  /*   grad_phi_site_full_d[index*27+ib*9 + ic*3+ id] */
-	  /*   + kappa1shift_cd*grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]* */
-	  /*   grad_phi_site_full_d[index*27+ic*9 + ib*3+ id]; */
-	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
-	  /*   *grad_phi_site_full_d[index*27+ia*9 + ic*3+ id]; */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /*   tmpdbl += */
-	  /*    tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
-
-
-
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*grad_phi_site_full_d[index*27+ic*9 + ib*3+ ia]* */
-	  /*   grad_phi_site_full_d[index*27+id*9 + ic*3+ id] */
-	  /*   - kappa1shift_cd*grad_phi_site_full_d[index*27+id*9 + ic*3+ ia]* */
-	  /*   grad_phi_site_full_d[index*27+id*9 + ic*3+ ib] */
-	  /*   + kappa1shift_cd*grad_phi_site_full_d[index*27+id*9 + ic*3+ ia]* */
-	  /*   grad_phi_site_full_d[index*27+id*9 + ib*3+ ic]; */
-	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
-	  /*   *grad_phi_site_full_d[index*27+id*9 + ic*3+ ia]; */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /* tmpdbl += */
-	  /*  tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
-
-
-	  //doarray[index]=tex1Dfetch(texreference,index);
-
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*grad_phi_float_d[index*27+ic*9 + ib*3+ ia]* */
-	  /*   grad_phi_float_d[index*27+id*9 + ic*3+ id] */
-	  /*   - kappa1shift_cd*grad_phi_float_d[index*27+id*9 + ic*3+ ia]* */
-	  /*   grad_phi_float_d[index*27+id*9 + ic*3+ ib] */
-	  /*   + kappa1shift_cd*grad_phi_float_d[index*27+id*9 + ic*3+ ia]* */
-	  /*   grad_phi_float_d[index*27+id*9 + ib*3+ ic]; */
-	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
-	  /*   *grad_phi_float_d[index*27+id*9 + ic*3+ ia]; */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /* tmpdbl += */
-	  /*  tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
-
-
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*tex1Dfetch(texreference,index*27+ic*9 + ib*3+ ia)* */
-	  /*   tex1Dfetch(texreference,index*27+id*9 + ic*3+ id) */
-	  /*   - kappa1shift_cd*tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia)* */
-	  /*   tex1Dfetch(texreference,index*27+id*9 + ic*3+ ib) */
-	  /*   + kappa1shift_cd*tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia)* */
-	  /*   tex1Dfetch(texreference,index*27+id*9 + ib*3+ ic); */
-	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
-	  /*   *tex1Dfetch(texreference,index*27+id*9 + ic*3+ ia); */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /* tmpdbl += */
-	  /*  tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
-
-
-	  /* tmpdbl += */
-	  /*   - kappa0shift_cd*tex1Dfetch(texreference,ic*nsites_cd*9 + ib*nsites_cd*3+ ia*nsites_cd + index)* */
-	  /*   tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index) */
-	  /*   - kappa1shift_cd*tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ ia*nsites_cd + index)* */
-	  /*   tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ ib*nsites_cd + index) */
-	  /*   + kappa1shift_cd*tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ ia*nsites_cd + index)* */
-	  /*   tex1Dfetch(texreference,id*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index); */
-	  
-	  /* tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd */
-	  /*   *tex1Dfetch(texreference,id*nsites_cd*9 + ic*nsites_cd*3+ ia*nsites_cd + index); */
-	  /* for (ie = 0; ie < 3; ie++) { */
-	  /* tmpdbl += */
-	  /*  tmpdbl2*e_cd[ib][ic][ie]*q[id][ie]; */
-	  /* } */
-
 
 
 
@@ -1922,15 +1496,7 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
       sth_tmp+=tmpdbl;
 
       sth_tmp=-sth_tmp;
-
-      //}
-      //}
-
-      //for (ia = 0; ia < 3; ia++) {
-      //for (ib = 0; ib < 3; ib++) {
       stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=sth_tmp;
-	  //	}
-  //}
     }
 
   return;
@@ -2039,21 +1605,5 @@ void put_phi_force_constants_on_gpu(){
   int xfac = N_d[Y]*yfac;
 
   return ii*xfac + jj*yfac + kk;
-
-}
-
-/* get 3d coordinates from the index on the accelerator */
-__device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,int index,int N_d[3])
-
-{
-  
-  int yfac = N_d[Z];
-  int xfac = N_d[Y]*yfac;
-  
-  *ii = index/xfac;
-  *jj = ((index-xfac*(*ii))/yfac);
-  *kk = (index-(*ii)*xfac-(*jj)*yfac);
-
-  return;
 
 }
