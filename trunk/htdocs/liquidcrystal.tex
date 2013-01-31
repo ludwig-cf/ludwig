@@ -1,0 +1,91 @@
+\section{Liquid Crystal}
+
+\subsection{User input}
+
+\inputkey{free\_energy lc\_blue\_phase}
+
+Here, we have a tensor order parameter $Q_{\alpha\beta}$.
+The free energy density is
+\begin{eqnarray}
+f = {\textstyle\frac{1}{2}}A_0(1 - \gamma/3)Q^2_{\alpha\beta}
+  - {\textstyle\frac{1}{3}}A_0 \gamma
+Q_{\alpha\beta}Q_{\beta\delta}Q_{\delta\alpha}
+ + {\textstyle\frac{1}{4}}A_0 \gamma (Q^2_{\alpha\beta})^2
+\nonumber
+\\
++ {\textstyle\frac{1}{2}} \Big(
+\kappa_0 (\epsilon_{\alpha\delta\sigma} \partial_\delta Q_{\sigma\beta} +
+2q_0 Q_{\alpha\beta})^2 + \kappa_1(\partial_\alpha Q_{\alpha\beta})^2 \Big)
+\end{eqnarray}
+
+The corresponding input parameters are:
+
+\inputkey{lc\_a0} The bulk free energy parameter $A_0$
+
+\inputkey{lc\_gamma} The bulk free energy parameter $\gamma$
+
+\inputkey{lc\_q0} The pitch wavenumber $q_0 = 2\pi / p$, where p
+is the pitch.
+
+\inputkey{lc\_kappa0} Elastic constant $\kappa_0$ in distortion free energy
+
+\inputkey{lc\_kappa1} Elastic constant $\kappa_1$ in distortion free energy
+
+Note that the code currently enforces the `one elastic constant'
+approximation ($\kappa_0 = \kappa_1$), so both these values must
+be equal in the input. This constraint may be relaxed in the future.
+
+
+\inputkey{lc\_Gamma} The rotational diffusion constant appearing in
+the Beris Edwards equation (note \texttt{lc\_gamma} and \texttt{lc\_Gamma}
+are different).
+
+\inputkey{lc\_xi} Aspect ratio for rod lie molecules appearing in the
+stress tensor.
+
+\inputkey{lc\_active\_zeta} Apolar liquid crystal activity constant.
+
+\subsubsection{Initial LC order parameter $Q_{\alpha\beta}$}
+
+\inputkey{lc\_q\_initialisation}
+
+There are a number of useful choices here. The key value
+\texttt{twist} initialises a simple cholesteric with the
+helical axis in the $z-$direction, whereas the values 
+\texttt{cholesteric\_x\_y\_z} provide similar initialisations 
+with twist along the other axes.
+The values \texttt{o8m} and \texttt{o2} give equilibrim BPI and BPII.
+Another, cubic body-centered BP is obtained by the value \texttt{o5}.
+Hexagonal BPs are initialised with \texttt{h2d, h3da} and \texttt{h3db}.\\
+BPIII emerges from a start configuration of randomly positioned 
+and oriented DTCs embedded into an isotropic or cholesteric environment.
+This is initialised with the key value \texttt{bp3}, whereas the number
+$N$ and radius $R$ of the DTCs and the type of the environment 
+$ENV=\{0,1\}$, (0 = isotropic, 1 = cholesteric) is specified 
+with the key value \texttt{lc\_init\_bp3} $N\_R\_ENV$. 
+Note that calculations can become surprisingly unstable if the 
+start configuration consits of too many and too large DTC-regions 
+with respect to system size and decomposition.\\
+The appropriate choices for the other parameters must be made correspondingly.
+
+An additional \texttt{lc\_q\_init\_amplitude} value sets the
+scalar order parameter  `amplitude' in each case. Typical
+values are given in the input file. Values which are too large can
+equally lead to instability.
+
+\subsubsection{The redshift}
+
+\inputkey{lc\_init\_redshift}
+
+Sets the initial value of the redshift parameter. For example,
+for the \texttt{o8m} initialisation, the redshift can be set to 0.83,
+and for the \texttt{o2} initialisation, the redshift can be set to 0.91.
+The default redshift is unity.
+
+\inputkey{lc\_redshift\_update [0|1]}
+
+Switches on (default is off) the dynamic computation of the redshift
+from the order parameter gradient terms in the free energy. The
+caluclation is performed at every time step, and override any
+initial value specified in the above. It is also robust to restarts.
+

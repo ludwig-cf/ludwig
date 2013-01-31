@@ -8,7 +8,7 @@
 
 TEX_SOURCE = ludwig.tex
 
-LATEX = latex
+LATEX = pdflatex
 RM = /bin/rm
 
 docs:	ludwig.tex Makefile

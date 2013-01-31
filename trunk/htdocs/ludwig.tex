@@ -21,6 +21,10 @@
 \usepackage{moreverb}
 \usepackage{lscape}
 \usepackage{epic}
+\usepackage[pdftex]{graphicx}
+\usepackage{bm}
+\usepackage{hyperref}
+\usepackage{color}
 
 \setlength{\hoffset}{-1in}
 \setlength{\voffset}{-1in}
@@ -37,6 +41,14 @@
 
 
 \newcommand{\inputkey}[1]{\framebox{\textbf{\texttt{#1}}}}
+\newcommand{\e}[1]{\cdot10^{#1}}
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+\newcommand{\beqa}{\begin{eqnarray}}
+\newcommand{\eeqa}{\end{eqnarray}}
+\newcommand{\com}[1]{\textcolor{red}{#1}}
+\newcommand{\cur}[1]{{\textit{#1}}}
+
 \begin{document}
 
 \setcounter{page}{1}
@@ -47,20 +59,58 @@
 
 \setcounter{page}{1}
 
-\input{user.tex}
+\input{intro.tex}
 
-\vfil\pagebreak
+\clearpage
+\vfill\pagebreak
+\input{code.tex}
+
+\clearpage
+\vfill\pagebreak
+\input{lb.tex}
+
+\clearpage
+\vfill\pagebreak
+\input{hybrid.tex}
+
+\clearpage
+\vfill\pagebreak
+\input{basicuser.tex}
+
+\clearpage
+\vfill\pagebreak
+\input{binary.tex}
+
+\clearpage
+\vfill\pagebreak
 \input{colloid.tex}
-\vfil\pagebreak
+
+\clearpage
+\vfill\pagebreak
+\input{liquidcrystal.tex}
+
+\clearpage
+\vfill\pagebreak
+\input{polaractive.tex}
+
+\clearpage
+\vfill\pagebreak
 \input{porous.tex}
 
-\vfil\pagebreak
-\input{sigma.tex}
+\clearpage
+\vfill\pagebreak
+\input{surfactant.tex}
 
-\vfil\pagebreak
-\input{sections.tex}
+\clearpage
+\vfill\pagebreak
+\input{electrokinetic.tex}
 
-\vfil\pagebreak
+\clearpage
+\vfill\pagebreak
+\input{plan.tex}
+
+\clearpage
+\vfill\pagebreak
 \input{references.tex}
 
 \end{document}

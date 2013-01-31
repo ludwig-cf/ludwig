@@ -8,6 +8,129 @@
 
 \section{Surfactants}
 
+This section describes the approach taken to study surfactants. Here,
+we always adopt the hydrid method, i.e., LB for the hydrodynmic
+equations and finite difference for the associated Cahn-Hilliard
+equations. Coupling between the two sectors is via the velocity
+field and the external force on the fluid computed via the
+divergence of the `chemical stress'.
+
+In this model the surfactant appears as a concentration field
+$\psi(\mathbf{r};t)$, alongside the compositional order parameter
+$\phi(\mathbf{r};t)$ as appears in the binary fluid. There are
+two corresponding Cahn-Hilliard equations: first,
+
+\begin{equation}
+\partial_t \phi + \partial_\alpha \phi u_\alpha = 
+\partial_\alpha M_\phi \partial_\alpha \mu_\phi,
+\end{equation}
+and second
+\begin{equation}
+\partial_t \psi + \partial_\alpha \psi u_\alpha = 
+\partial_\alpha M_\psi \partial_\alpha \mu_\psi.
+\end{equation}
+
+\subsection{Free Energy}
+
+A number of different free energies have been used to study
+surfactants [cite Yeomans]. Here, the free energy is based on
+that used by van der Graff and van der Sman and others [cite].
+There are a number of different contributions to the free
+energy density:
+\begin{equation}
+f = f_\phi + f_\psi +f_1 + f_{ex}.
+\end{equation}
+The first is exactly that used for the binary fluid, i.e.,
+\begin{equation}
+f_\phi (\phi, \partial_\alpha\phi) =
+{\textstyle \frac{1}{2}} A \phi^2 + {\textstyle \frac{1}{4}} B \phi^4
++ {\textstyle \frac{1}{2}} \kappa (\partial_\alpha \phi)^2.
+\end{equation}
+The surface tension and the interfacial width are determined from the
+choice of parameters $A,B,\kappa$ as before.
+The second term in the free energy density
+represents the entropic
+energy of mixing of the surfactant with the bulk phases
+\begin{equation}
+f_\psi (\psi) = kT \left[ \psi \ln\psi + (1 - \psi)\ln(1-\psi) \right]
+\end{equation}
+where the parameter $kT$ sets the energy scale for the whole system.
+The surfactant order parameter, $\psi$, is unity for a saturated
+interface and zero for a plain interface.
+
+The surfactant lowers the energy of the interface where it is adsorbed
+there, represented by the term
+\begin{equation}
+f_1(\psi, \partial_\alpha \phi) 
+= -{\textstyle \frac{1}{2}} \epsilon \psi (\partial_\alpha \phi)^2
+  -{\textstyle \frac{1}{2}} \beta  \psi^2 (\partial_\alpha \phi)^2
+\end{equation}
+where $\epsilon$ and $\beta$ are parameters. Note that only the
+first term appears in \cite{vandergraaf}, while the second term is
+based on that appearing in, e.g., \cite{diamant}. If $\beta = 0$,
+the surfactant profile at the interface is symmetric (so-called
+Langmuir adsoption) whereas the term in $\beta$ induces an
+asymmetry (Frumpkin adsorption).
+Finally,  $f_{ex}$ is [van der Sman claims]
+an enthalpic contribution introduced 
+to stabilise the interface \cite{theissengompper}
+\begin{equation}
+f_{ex} (\psi, \partial_\alpha \phi) = {\textstyle\frac{1}{2}} W \psi \phi^2,
+\end{equation}
+with $W$ a parameter.
+
+\subsection{Chemical potentials}
+
+The respective chemical potentials are obtained from the functional
+derivatives of the free energy $\mu_\phi = \delta F / \delta \phi$ and
+$\mu_\psi = \delta F / \delta \psi$. We obtain:
+\begin{equation}
+\mu_\phi =
+A\phi + B\phi^3 -\kappa \partial_\alpha^2 \phi
++ W\psi\phi + \epsilon\psi\partial_\alpha^2 \phi
++ \epsilon \partial_\alpha \phi \partial_\alpha \psi
++ 2\beta \psi\partial_\alpha\phi \partial_\alpha \psi
++ \beta \psi^2 \partial_\alpha^2 \phi,
+\end{equation}
+and
+\begin{equation}
+\mu_\psi = kT \left[ \ln\psi - \ln(1-\psi) \right]
++ {\textstyle \frac{1}{2}}W\phi^2
+- {\textstyle \frac{1}{2}}\epsilon (\partial_\alpha \phi)^2
+- \beta\psi (\partial_\alpha \phi)^2.
+\end{equation}
+As before, the pressure tensor is $P_{\alpha\beta} = p_0\delta_{\alpha\beta}
++ \tilde{P}_{\alpha\beta}$ with the isotropic part being determined as (e.g.,
+\cite{theissengompper})
+\begin{equation}
+p_0 = \phi \mu_\phi + \psi \mu_\psi - f(\phi, \psi, \partial_\alpha \phi).
+\end{equation}
+There is no closed form for the tensor part, which must be chosen to
+comply with the constraint that in mechanical equilibrium
+\begin{equation}
+\partial_\alpha P_{\alpha\beta} = (\phi\partial_\alpha\mu_\phi +
+\psi\partial_\alpha\mu_\psi)\delta_{\alpha\beta}.
+\end{equation}
+In this way we obtain for the isotropic contribution
+\begin{eqnarray}
+p_0 = {\textstyle \frac{1}{2}}A\phi^2 + {\textstyle \frac{3}{4}}B\phi^4 
+- {\textstyle\frac{1}{2}}\kappa (\partial_\alpha\phi)^2 
+- \kappa \phi \partial_\alpha^2 \phi
+- kT \ln(1-\psi) + W\psi\phi^2
+\nonumber\\
++ \epsilon \phi \partial_\alpha \phi \partial_\alpha \psi
++ \epsilon\phi\psi \partial_\alpha^2 \phi
++ 2 \beta\phi\psi \partial_\alpha \phi \partial_\alpha\psi
++ \beta \phi \psi^2 \partial_\alpha^2 \phi
+- {\textstyle\frac{1}{2}} \beta \psi^2 (\partial_\alpha \phi)^2
+\end{eqnarray}
+and for the tensor part we can have
+\begin{equation}
+\tilde{P}_{\alpha\beta} =
+(\kappa - \epsilon \psi - \beta\psi^2) 
+\partial_\alpha \phi \partial_\beta \phi.
+\end{equation}
+
 \subsection{Note on Experimental Measurements}
 
 Experimental measurements have generally been based on mechanical
@@ -726,6 +849,212 @@ $\psi >> \psi_b$ so that the peak value is missed.}
 \subsubsection{Dynamics}
 
 Solve the Ward-Tordai equation.
+
+\subsection{Calibration of the Surface Tension}
+
+The binary fluid model introduces an interfacial tension $\sigma$ which
+can be predicted from the choice of free energy \cite{swift,kendon}.
+In particular, Kendon et al. 2000 described the process of calibrating
+the actual interfacial tension of the model fluid. This was based on
+a measurement of the Laplace pressure difference between the fluid
+inside and outside a spherical droplet via
+\begin{equation}
+\Delta p = 2 \sigma / R
+\end{equation}
+where $R$ is the radius of the spherical drop at equilibrium. This
+measurement appears quite difficult in practice owing to tendency of
+any initial drop to evaporate \cite{yue2007}.
+
+\subsubsection{New measurement}
+
+Here, we prefer a measure based on the expected profile of the
+order parameter $\phi$ and the free energy density at a flat interface.
+In order to sample all orientations of the interface with respect to
+the lattice we again take a large droplet of fluid A initialised at
+rest in fluid B. We assume that the interface is locally flat and so
+the procedure holds.
+
+If a droplet with radius $r_0$ is constructed with an initial interfacial
+profile of $\phi(r) = \tanh{(r - r_0) / \xi_0}$
+with $r$ in the radial direction,  then the free energy density will be
+(with $-A = B$)
+\begin{equation}
+ e(r) = -{\scriptstyle \frac{1}{4}} |A| [1 - \mathrm{sech}^4 (r-r_0)/\xi_0]
++ {\scriptstyle \frac{1}{2}}
+ (\kappa/\xi_0^2)\, \mathrm{sech}^4{(r-r_0)/\xi_0}.
+\end{equation}
+Obtaining a fit to $\xi_0$ from the measured interfacial profile of
+$\phi (r)$ and to $ e_0 = \kappa / 2 \xi_0^2$ from the peak in the measured
+profile of free energy
+density allows an estimate of the interfacial tension to be made:
+\begin{equation}
+\sigma = 2(8/9)^{1/2} \xi_0 |e_0|.
+\end{equation}
+This measurement is taken after the initial profile has been allowed
+to relax for at least 10 times the larger of the diffusion time
+$\xi_0^2 / M$ or the momentum diffusion time $\xi_0^2 / \eta$.
+
+
+We have measured the surface tension using the following approaches.
+
+\textit{Method 1}.
+
+LB for two distributions with relaxation of order parameter
+following Kendon etal. The force on the fluid is applied
+via the equilibrium stress following Swift et al.
+
+\textit{Method 2}.
+
+As method 1 but using the realxation of order parameter
+following Stratford etal.
+
+\textit{Method 3}.
+
+As Method 1 but with force via divergence of the chemical stress.
+
+\textit{Method 4}.
+
+As Method 3 but with force via divergence of the chemical stress.
+
+\textit{Method 5}.
+
+Using finite difference (1st order upwind) for the order parameter.
+
+\textit{Method 6}.
+
+Using finite difference (3rd order upwind).
+
+\subsubsection{Results}
+
+We follow the parameter sets in Kendon et al Table~2. These
+are reproduced here in Table~\ref{tab:r1}. Measured values for
+Run028 parameters are show in Table~\ref{tab:newr028}.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{llllllll}
+\hline
+Run & $-A, B$ & $\kappa$ & $\eta$ & $M$ & $\sigma$  & $L_0$ & $T_0$ \\
+\hline
+Rks001 & 0.00625 & 0.004 & 1.41 & 0.05 & 0.0047 & 422 & 1.26e10$^5$\\
+Rks002 & 0.00625 & 0.004 & 0.65 & 0.25 & 0.0047 & 89.7 & 1.24e10$^4$\\
+Run028 & 0.083 & 0.053 & 1.41 & 0.05  & 0.0625 & 31.8 & 718 \\
+Run022 & 0.0625 & 0.04 & 0.5 & 0.25   & 0.0471 & 5.31 & 56.3 \\
+Run029 & 0.0625 & 0.04 & 0.2 & 0.15   & 0.0471 & 0.849 & 3.61 \\
+Run020 & 0.00625 & 0.004 & 0.025 & 2.00 & 0.00471 & 0.133 & 0.704 \\
+Run030 & 0.00625 & 0.004 & 0.0065 & 1.25 & 0.00471 & 0.00829 & 0.0124 \\
+Run019 & 0.003125 & 0.002 & 0.0014 & 4.00 & 0.00236 & 0.000831 & 0.000493 \\
+Run032 & 0.00125  & 0.0008 & 0.0005 & 5.0 & 0.000943 & 0.000265 & 0.000141\\
+\hline  
+\end{tabular}
+\end{center}
+\caption{Table showing common parameter values following Kendon et al.
+with the theoretical interfacial tension, $L_0$ and $T_0$. Note that
+the order parameter mobility is used here (cf $\tilde{M} = 2M$) in
+Kendon et al. (KS values are extra sets used to low 1/$\dot{\gamma}T_0$.)}
+\label{tab:r1}
+\end{table} 
+
+\begin{table}
+\begin{tabular}{lllllll}
+\hline
+Method & $\xi_0$ & $e_{min}$ & $e_{max}$ & $\sigma$  & $\phi_{min}$
+& $\phi_{max}$\\
+\hline
+\multicolumn{7}{c}{Run028}\\
+\hline
+Theory   & 1.13 & -0.0207 &  0.0207 & 0.0625 & -1.0 & 1.0 \\
+Method 1 & 1.00 & -0.0207 & 0.0128 & 0.063(3) & -1.0091 & 1.0028 \\
+Method 2 & 1.00 & -0.0207 & 0.0126 & 0.063(1) & -1.0113 & 0.9993 \\
+Method 3 & && & & & \\
+Method 4 & && & & & \\
+Method 5 & && & & & \\
+Method 6 & --& --& --& --& --& --\\
+\hline
+\multicolumn{7}{c}{Run029}\\
+\hline
+Theory & 1.13 & -0.0156 & 0.0156 & 0.0471  & -1.0 & 1.0\\
+Method 2 & 0.99 & -0.0156 & 0.010(?) & 0.048(4) & -1.0110 & 1.0003\\ 
+Method 6 & 1.02 & -0.0156 & 0.0099 & 0.049(0) & -1.0048 & 1.0002\\
+\hline
+\multicolumn{7}{c}{Run030}\\
+\hline
+Theory & 1.13 & -0.00156 & 0.00156 & 0.00471 & -1.0 & 1.0\\
+Method 2 & 1.04 & -0.00156 & 0.0008(?) & 0.0047(1) & -1.0167 & 1.0063\\
+Method 6 & 1.08 & -0.00156 & 0.0007(?) & 0.0048(0) & -1.0028 & 1.0031\\
+\hline
+\multicolumn{7}{c}{Run019}\\
+\hline
+Theory & 1.13 & -0.000781 & 0.000781 & 0.00236 & -1.0 & 1.0\\
+Method 2 & 1.29(?) & -0.000781 & 0.00015(?) & 0.0022(8) & -1.0312 & 1.0242\\
+Method 6 & 1.23(?) & 0.0010(?) &&  0.0024(?) & -1.0085 & 1.0019\\
+\hline 
+\multicolumn{7}{c}{Run032}\\
+\hline
+Theory   & 1.13 &  -0.000312 & 0.000312 & 0.000943  & -1.0 &1.0\\
+Method 2 & 1.07  & -0.000312& 0.000157 & 0.00094(7) & -1.0511 & 1.0311\\
+Method 6 & 1.6(5)& -0.000312 & not st. & 0.0010(7) &-1.0056 & 1.0010\\
+\hline
+\end{tabular}
+\caption{Results for the different methods for Run208 parameters.}
+\end{table}
+
+\subsection{User input}
+
+\inputkey{free\_energy surfactant}
+
+Currently under reconstruction.
+
+This is for use with a two order parameter model the first of
+which is the composition, as for the symmetric free energy,
+while the second $\psi$ represents surfactant concentration.
+The free energy density is made up of a number of terms:
+
+\begin{equation}
+{\textstyle \frac{1}{2}}A\phi^2
++ {\textstyle \frac{1}{4}}B\phi^4
++ {\textstyle \frac{1}{2}}\kappa (\mathbf{\nabla}\phi)^2
+\end{equation}
+is the standard symmetric term related to the composition.
+These parameters are represented in the input as
+
+\inputkey{surf\_A}
+\inputkey{surf\_B}
+\inputkey{surf\_kappa}
+
+\begin{equation}
+D \left(\psi \ln\psi + (1 - \psi) \ln(1-\psi)\right)
+\end{equation}
+represents the energy of surfactant in the bulk phase with surfactant
+concentration $0 < \psi < 1$ with a single parameter $D$;
+\begin{equation}
+-{\textstyle \frac{1}{2}} \epsilon \psi (\mathbf{\nabla} \phi)^2
+-{\textstyle \frac{1}{2}} \beta \psi^2  (\mathbf{\nabla} \phi)^2
+\end{equation}
+where the term in $\epsilon$ represents the energy reduction by
+adsorbing surfactant at the interface and the term in $\beta$
+provides an additional favourable term modelling the fact that
+the molecules like to line up; finally, there is an extra term
+\begin{equation}
++{\textstyle \frac{1}{2}} W \psi \phi^2
+\end{equation}
+which is included to stabilise the interface \cite{theissengompper}.
+
+The corresponding keys for the input file are:
+
+\inputkey{D} is the bulk surfactant contribution parameter
+
+\inputkey{epsilon} is the parameter $\epsilon$
+
+\inputkey{W} is the parameter $W$
+
+\inputkey{beta} is the value of the parameter $\beta$.
+
+\inputkey{phi\_b} the initial, uniform, background surfactant
+concentration $\psi_b$.
+
+\inputkey{mobility\_psi} Sets the (uniform) mobility for the surfactant
+as appropriate for the Cahn-Hilliard equation.
 
 
 

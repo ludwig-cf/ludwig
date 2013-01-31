@@ -1,0 +1,93 @@
+\section{Polar Active Gel}
+
+
+Here we consider a polar vector field model to study active gels. 
+The order parameter is this time a vector $P_\alpha$
+(with variable magnitude) as there is no longer head-tail symmetry
+in the system as was the case for the ${\bf Q}$ tensor formulation. 
+The equation of motion as:
+\begin{equation}
+\partial_t P_\alpha  \partial_\beta (u_{\beta} + wP_{\beta}) P_{\alpha}
+= \lambda D_{\alpha\beta} P_{\beta} - \omega_{\alpha\beta} P_{\beta}
++\Gamma' h_{\alpha}.
+\end{equation}
+
+In this equation, $w$ is an active term, due to swimming, which causes
+self-advection of the order parameter, while $\lambda$ is a material
+dependent constant -- positive for rod-like molecules. If $|\lambda|>1$
+the liquid crystalline passive phase is flow-aligning, otherwise it is
+flow-tumbling. 
+
+Note that the convection for the Leslie-Ericksen is that the
+velocity gradient tensor should be writen $W_{\alpha\beta}
+= \partial_\alpha u_\beta$ (and not the other way round, which
+is usual).
+
+The molecular field is given by
+$h_{\alpha}=-\delta {\cal F}_{\rm pol}/\delta p_{\alpha}$
+where ${\cal F}_{\rm pol}$ is the free energy for a polar active nematic,
+whose density we can take to be:
+\begin{equation}
+f =  \frac{\alpha_2}{2} |{\mathbf P}|^2 + \frac{\alpha_4}{4}|{\mathbf P}|^4
++ \frac{K}{2}\left(\partial_\alpha P_{\beta}\right)^2 + 
+\frac{K_{LC}}{2}\left[\partial_\alpha (P_{\beta}P_{\gamma})\right]^2 
+\end{equation}
+where $K$ and $K_{LC}$ are elastic constants, $\alpha_4>0$, and $\alpha_2$ 
+can be positive (isotropic phase) or negative (polar nematic phase).
+
+The molecular field is explicitly given by:
+\begin{equation}
+h_{\alpha}=-\alpha_2 P_{\alpha} -\alpha_4 P_{\alpha} P_{\beta}P_{\beta}+
+K \partial_{\beta}\partial_{\beta} P_{\alpha}+2 K_{LC}
+P_{\gamma}\partial_{\beta}\partial_{\beta} (P_{\gamma}P_{\alpha}).
+\end{equation}
+
+
+The Navier-Stokes equation is:
+\begin{equation}
+\rho \left(\partial_t+v_{\beta}\partial_{\beta}\right) v_{\alpha} =
+\partial_{\beta} \Pi_{\alpha\beta} 
++\eta \partial_{\beta}\partial_{\beta} v_{\alpha}.
+\end{equation}
+
+
+The stress tensor this time is 
+\begin{eqnarray}
+\Pi_{\alpha\beta} =
+\frac{1}{2}\left(P_\alpha h_\beta - P_\beta h_\alpha \right)
+- \lambda\left( (P_\alpha h_\beta + P_\beta h_\alpha)/2 
+- (1/3)P_\gamma P_\gamma \delta_{\alpha\beta} \right)
+\\
+-  \zeta ( P_\alpha P_\beta - (1/3)P_\gamma P_\gamma \delta_{\alpha\beta})
+- K \partial_\alpha P_\gamma \partial_\beta P_\gamma.
+\end{eqnarray}
+The active term in the stress tensor, proportional
+to $\zeta$, has the same form for apolar and polar active gels. 
+
+\subsection{User input}
+
+\inputkey{free\_energy polar\_active}
+
+This models a polar active gel with vector order parameter $P_\alpha$.
+The free energy density is:
+
+
+The corresponding input parameters are:
+
+\inputkey{polar\_active\_a}
+
+\inputkey{polar\_active\_b}
+
+\inputkey{polar\_active\_k}
+
+\inputkey{polar\_active\_klc}
+
+\inputkey{polar\_active\_zeta}
+
+\inputkey{polar\_active\_lambda}
+
+\inputkey{leslie\_ericksen\_gamma}
+
+\inputkey{leslie\_ericksen\_swim}
+
+
