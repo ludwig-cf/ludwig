@@ -2,23 +2,9 @@
  *
  *  collision_gpu.c
  *
- *  Collision stage routines and associated data.
- *
- *  Isothermal fluctuations following Adhikari et al., Europhys. Lett
- *  (2005).
- *
- *  The relaxation times can be set to give either 'm10', BGK or
- *  'two-relaxation' time (TRT) models.
- *
- *  $Id: collision.c 1728 2012-07-18 08:41:51Z agray3 $
- *
- *  Edinburgh Soft Matter and Statistical Physics Group and
- *  Edinburgh Parallel Computing Centre
- *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
- *
- *  Adapted to run on GPU: Alan Gray
+ *  GPU implementation of collision functionality
+ * 
+ *  Alan Gray
  * 
  *****************************************************************************/
 
@@ -42,7 +28,6 @@
 #include "control.h"
 #include "propagation_ode.h"
 
-static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
 static int isothermal_fluctuations_ = 0; /* Flag for noise. */
@@ -54,43 +39,7 @@ static double var_bulk;         /* Variance for bulk mode fluctuations */
 static double rtau_[NVEL];      /* Inverse relaxation times */
 static double noise_var[NVEL];  /* Noise variances */
 
-static fluctuations_t * fl_;
-
 static double rtau2;
-
-/* static void collision_multirelaxation(void); */
-/* static void collision_binary_lb(void); */
-/* static void collision_bgk(void); */
-
-/* static void fluctuations_off(double shat[3][3], double ghat[NVEL]); */
-/*        void collision_fluctuations(int index, double shat[3][3], */
-/* 				   double ghat[NVEL]); */
-
-
-/*****************************************************************************
- *
- *  collide
- *
- *  Driver routine for the collision stage.
- *
- *  Note that the ODE propagation currently uses ndist == 2, as
- *  well as the LB binary, hence the logic.
- *
- *****************************************************************************/
-
-/* void collide(void) { */
-
-/*   int ndist; */
-
-/*   ndist = distribution_ndist(); */
-/*   collision_relaxation_times_set(); */
-
-/*   if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_M10) collision_multirelaxation(); */
-/*   if  (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb(); */
-/*   if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_BGK) collision_bgk(); */
-
-/*   return; */
-/* } */
 
 void collide_gpu(void) {
 
@@ -102,23 +51,11 @@ void collide_gpu(void) {
   nhalo = coords_nhalo();
   coords_nlocal(N); 
 
-  //  if (isothermal_fluctuations_) {
-  //  info("Error: isothermal flctuations not yet supported in GPU mode\n");
-  //  exit(1);
-  //}
-
-  //collision_relaxation_times_set();
-  //we need a duplicate GPU copy of this routine, as things are set up, 
-  // to set the right copy of static (file scope) variables
   collision_relaxation_times_set_gpu();
 
   mobility = phi_cahn_hilliard_mobility();
   rtau2 = 2.0 / (1.0 + 2.0*mobility);
 
-
-/*   if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_M10) collision_multirelaxation(); */
-/*   if  (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb(); */
-/*   if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_BGK) collision_bgk(); */
 
 /* copy constants to accelerator (constant on-chip read-only memory) */
   copy_constants_to_gpu();
@@ -165,9 +102,6 @@ void collide_gpu(void) {
 
     }
 
-  // If colloids, we need phi for BBL stage. Overlap transfer with collision.
-  //if (colloid_ntotal() > 0) get_phi_from_gpu();      
-  //get_phi_from_gpu();      
   
   cudaThreadSynchronize();
 
@@ -281,10 +215,11 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  /* Compute all the modes */
 	  
 	  for (m = 0; m < NVEL; m++) {
-	    mode[m] = 0.0;
+	    double dtmp = 0.;
 	    for (p = 0; p < NVEL; p++) {
-	      mode[m] += f_d[nsite*p + index]*ma_d[m][p];
+	      dtmp += f_d[nsite*p + index]*ma_d[m][p];
 	    }
+	    mode[m] = dtmp;
 	  }
 	  
 
@@ -393,10 +328,11 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  /* Project post-collision modes back onto the distribution */
 	  
 	  for (p = 0; p < NVEL; p++) {
-	    f_d[nsite*p + index] = 0.0;
+	    double dtmp = 0.;
 	    for (m = 0; m < NVEL; m++) {
-	      f_d[nsite*p + index] += mi_d[p][m]*mode[m];
+	      dtmp += mi_d[p][m]*mode[m];
 	    }
+	    f_d[nsite*p + index] = dtmp;
 	  }
 	  
 	}
