@@ -514,7 +514,7 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 
   int nblocks;
 
-  #define OVERLAP
+#define OVERLAP
 
   const int tagf = 903;
   const int tagb = 904;

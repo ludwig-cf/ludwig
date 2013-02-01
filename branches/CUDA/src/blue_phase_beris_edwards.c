@@ -91,7 +91,6 @@ void blue_phase_beris_edwards(void) {
   hs5 = (double *) calloc(nop*nsites, sizeof(double));
   if (hs5 == NULL) fatal("calloc(hs5) failed\n");
 
-  
 
   
 #ifdef _GPU_
@@ -103,8 +102,8 @@ void blue_phase_beris_edwards(void) {
   colloids_fix_swd();
   
   //hydrodynamics_leesedwards_transformation();
-  advection_upwind_gpu();  
-  advection_bcs_no_normal_flux_gpu(); 
+  advection_upwind_gpu();
+  advection_bcs_no_normal_flux_gpu();
 
   if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     	info("Error: blue_phase_be_surface not yet supported in GPU mode\n");
@@ -129,8 +128,8 @@ void blue_phase_beris_edwards(void) {
   blue_phase_be_update(hs5);
 
 
-      //         blue_phase_be_update_gpu(hs5);
 #endif
+
 
 
 

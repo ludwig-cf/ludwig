@@ -63,7 +63,9 @@ GPUCPPFLAG = -D_GPU_
 GPUOPTS = $(OPTS) $(GPUCPPFLAG) #-Xptxas -v #,-abi=no
 GPUCFLAGS = -O3 -arch=sm_21 
 #GPUCFLAGS = -arch=sm_21 -g -G 
-GPUINC = $(INC) -I ../mpi_s
+GPUINC = $(INC) -I/usr/include/mpich2-x86_64
+
+# -I ../mpi_s
 #-I /export/mpich2/2-1.3-gcc/include
 GPULIBS= -L/usr/local/cuda/lib64 -lcudart
 
@@ -151,7 +153,7 @@ mpi:
 mpigpu: $(GPUOBJS)
 	$(MAKE) code "INC=$(INC)" "LIBS=$(LIBS) \
 	$(GPULIBS)" "OBJS=$(OBJS) main.o $(GPUOBJS) " \
-	"OPTS=$(OPTS) -D_GPU_" "CC=$(MPICC)"
+	"OPTS=$(OPTS) $(GPUCPPFLAG)" "CC=$(MPICC)"
 
 libar:	$(OBJS)
 	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS)

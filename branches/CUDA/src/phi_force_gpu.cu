@@ -94,9 +94,10 @@ void phi_force_calculation_gpu(void) {
       nblocks.x=(9*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
       nblocks.y=Nall[Y];
       nblocks.z=Nall[X];
+
       
       cudaFuncSetCacheConfig(blue_phase_compute_stress2_all_gpu_d,cudaFuncCachePreferL1);      
-      blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,grad_phi_site_full_d,stress_site_d);
+                  blue_phase_compute_stress2_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,grad_phi_site_full_d,stress_site_d);
       
       
       /* compute force */
@@ -174,7 +175,7 @@ void phi_force_colloid_gpu(void) {
 
   /* can't do simple linear decomposition since gridDim.x gets too large. Need to use other grid dimentions and roll back in in kernel.*/
 
-  nblocks.x=(9*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB,1,1;
+  nblocks.x=(9*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
   nblocks.y=Nall[Y];
   nblocks.z=Nall[X];
 
@@ -207,12 +208,34 @@ void phi_force_colloid_gpu(void) {
 /*   blue_phase_be_update_gpu - see CPU version in blue_phase_beris_edwards.c */
 void blue_phase_be_update_gpu(void) {
 
-  int N[3];;
-  
+ 
+ int N[3],nhalo,Nall[3];
+  nhalo = coords_nhalo();
   coords_nlocal(N); 
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
 
+ 
   put_phi_force_constants_on_gpu();  
+  expand_phi_on_gpu();
+  expand_grad_phi_on_gpu();
 
+      /* compute q2 and eq */
+      threadsperblock.x=DEFAULT_TPB_Z;
+      threadsperblock.y=DEFAULT_TPB_Y;
+      threadsperblock.z=DEFAULT_TPB_X;
+      
+      nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+      nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+      nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+
+
+      cudaFuncSetCacheConfig(blue_phase_compute_q2_eq_all_gpu_d,cudaFuncCachePreferL1);      
+      blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
+      
+      cudaFuncSetCacheConfig(blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferL1);      
+      blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
 
 
   threadsperblock.x=DEFAULT_TPB_Z;
@@ -240,6 +263,9 @@ void advection_upwind_gpu(void) {
   int N[3];
   coords_nlocal(N); 
   
+
+  put_phi_force_constants_on_gpu();
+
   // cudaFuncSetCacheConfig(advection_upwind_gpu_d,cudaFuncCachePreferL1);
 
   threadsperblock.x=DEFAULT_TPB_Z;
@@ -270,7 +296,9 @@ void advection_bcs_no_normal_flux_gpu(void){
   int N[3];
   
   coords_nlocal(N); 
-  
+
+  put_phi_force_constants_on_gpu();
+
   int nop = phi_nop();
   
   /* two fastest moving dimensions have cover a single lower width-one halo here */
@@ -1329,7 +1357,8 @@ __global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
 	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
 
       htmp +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib] - r3_cd*d_cd[ia][ib]*e2_cd);
-      h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=htmp;
+
+       h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=htmp;
 
     }
   }
@@ -1426,17 +1455,17 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
   double sth_tmp;
   
 
-    //int threadIndex = (blockIdx.x*blockDim.x+threadIdx.x);
+  //    int threadIndex = (blockIdx.x*blockDim.x+threadIdx.x);
 
     int threadIndex = blockIdx.z*gridDim.y*gridDim.x*blockDim.x
-    + blockIdx.y*gridDim.x*blockDim.x 
+    + blockIdx.y*gridDim.x*blockDim.x
     + (blockIdx.x*blockDim.x+threadIdx.x);
 
 
   int i=threadIndex/(Nall_cd[Y]*Nall_cd[Z]*9);
-  int j=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9)/(Nall_cd[Y]*9);
-  int k=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Y]*9)/9;
-  int iw=threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Y]*9-k*9;
+  int j=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9)/(Nall_cd[Z]*9);
+  int k=(threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Z]*9)/9;
+  int iw=threadIndex-i*Nall_cd[Y]*Nall_cd[Z]*9-j*Nall_cd[Z]*9-k*9;
   int ib=iw/3;
   int ia=iw-ib*3;
 
@@ -1448,7 +1477,7 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
       index = get_linear_index_gpu_d(i,j,k,Nall_cd);
       
       /* load phi */
-      
+
       q[X][X] = phi_site_d[nsites_cd*XX+index];
       q[X][Y] = phi_site_d[nsites_cd*XY+index];
       q[X][Z] = phi_site_d[nsites_cd*XZ+index];
@@ -1470,28 +1499,28 @@ __global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
       
       /* Dot product term d_a Q_cd . dF/dQ_cd,b */
       
-      tmpdbl=0.; 
+      tmpdbl=0.;
       for (ic = 0; ic < 3; ic++) {
       	for (id = 0; id < 3; id++) {
 	  
-	  tmpdbl +=
-	    - kappa0shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index]*
-	    grad_phi_site_full_d[id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
-	    - kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
-	    grad_phi_site_full_d[ib*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
-	    + kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
-	    grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
+      	  tmpdbl +=
+      	    - kappa0shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ib*nsites_cd*3+ ic*nsites_cd + index]*
+      	    grad_phi_site_full_d[id*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
+      	    - kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
+      	    grad_phi_site_full_d[ib*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]
+      	    + kappa1shift_cd*grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index]*
+      	    grad_phi_site_full_d[ic*nsites_cd*9 + ib*nsites_cd*3+ id*nsites_cd + index];
 	  
-	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd
-	    *grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index];
-	  for (ie = 0; ie < 3; ie++) {
-	    tmpdbl +=
-	      tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
-	  }
+      	  tmpdbl2= -2.0*kappa1shift_cd*q0shift_cd
+      	    *grad_phi_site_full_d[ia*nsites_cd*9 + ic*nsites_cd*3+ id*nsites_cd + index];
+      	  for (ie = 0; ie < 3; ie++) {
+      	    tmpdbl +=
+      	      tmpdbl2*e_cd[ib][ic][ie]*q[id][ie];
+      	  }
 
 
 
-	}
+      	}
       }
       sth_tmp+=tmpdbl;
 

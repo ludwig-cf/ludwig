@@ -198,7 +198,28 @@ static void free_field_memory_on_gpu()
 
 }
 
+void put_all_fields_on_gpu()
+{
+  put_f_on_gpu();
+  put_phi_on_gpu();
+  put_grad_phi_on_gpu();
+  put_force_on_gpu();
+  put_delsq_phi_on_gpu();
+  put_velocity_on_gpu();
+  put_site_map_on_gpu();
+  //put_fluxes_on_gpu();
+}
 
+
+void get_all_fields_from_gpu()
+{
+  get_f_from_gpu();
+  get_phi_from_gpu();
+  get_grad_phi_from_gpu();
+  get_force_from_gpu();
+  get_delsq_phi_from_gpu();
+  get_velocity_from_gpu();
+}
 
 /* copy f_ from host to accelerator */
 void put_f_on_gpu()

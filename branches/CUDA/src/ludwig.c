@@ -346,9 +346,13 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
+      //    put_all_fields_on_gpu();
+      //#define _GPU_
+
+
       if (phi_is_finite_difference()) {
 
-	expand_phi_on_gpu();
+	//	expand_phi_on_gpu();
 
 	TIMER_start(TIMER_FORCE_CALCULATION);
 #ifdef _GPU_
@@ -383,6 +387,8 @@ void ludwig_run(const char * inputfile) {
     }
 
 
+
+
     if(is_propagation_ode() == 0) {
 
 #ifdef _GPU_
@@ -400,6 +406,10 @@ void ludwig_run(const char * inputfile) {
 #endif
 
     }
+
+    //    get_all_fields_from_gpu();
+    //#undef _GPU_
+
 
     model_le_apply_boundary_conditions();
 
@@ -463,6 +473,9 @@ void ludwig_run(const char * inputfile) {
 #endif
 
     TIMER_stop(TIMER_PROPAGATE);
+
+
+
 
     TIMER_stop(TIMER_STEPS);
 
@@ -588,6 +601,12 @@ void ludwig_run(const char * inputfile) {
   }
 
 
+
+  /* To prevent any conflict between the last regular dump, and
+   * a final dump, there's a barrier here. */
+
+  MPI_Barrier(pe_comm()); 
+
 #ifdef _GPU_
   get_velocity_from_gpu();
   get_f_from_gpu();
@@ -595,10 +614,8 @@ void ludwig_run(const char * inputfile) {
   finalise_gpu();
 #endif
 
-  /* To prevent any conflict between the last regular dump, and
-   * a final dump, there's a barrier here. */
-
   MPI_Barrier(pe_comm()); 
+
 
   /* Dump the final configuration if required. */
 

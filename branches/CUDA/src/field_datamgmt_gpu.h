@@ -30,6 +30,8 @@ extern "C" void get_field_partial_from_gpu(int nfields1, int nfields2, int inclu
 
 
 /* expose routines in this module to outside routines */
+extern "C" void put_all_fields_on_gpu();
+extern "C" void get_all_fields_from_gpu();
 extern "C" void put_f_on_gpu();
 extern "C" void get_f_from_gpu();
 extern "C" void put_phi_on_gpu();

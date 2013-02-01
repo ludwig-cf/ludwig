@@ -592,34 +592,74 @@ void put_velocity_on_gpu()
 }
 
 
-
+extern double * ftmp;
 void put_fluxes_on_gpu(){
 
-  cudaMemcpy(fluxe_d, fluxe, nsites*nop*sizeof(double),
+  int nop=phi_nop();
+  int index,n;
+
+  //transpose
+  for (index=0;index<nsites;index++){
+    for (n=0;n<nop;n++){
+      ftmp[n*nsites+index]=fluxe[nop*index+n];
+	}
+  }
+  cudaMemcpy(fluxe_d, ftmp, nsites*nop*sizeof(double),
 	    cudaMemcpyHostToDevice);
-  cudaMemcpy(fluxw_d, fluxw, nsites*nop*sizeof(double),
+
+
+
+  for (index=0;index<nsites;index++){
+    for (n=0;n<nop;n++){
+      ftmp[n*nsites+index]=fluxw[nop*index+n];
+	}
+  }
+  cudaMemcpy(fluxw_d, ftmp, nsites*nop*sizeof(double),
 	    cudaMemcpyHostToDevice);
-  cudaMemcpy(fluxy_d, fluxy, nsites*nop*sizeof(double),
+
+
+  for (index=0;index<nsites;index++){
+    for (n=0;n<nop;n++){
+      ftmp[n*nsites+index]=fluxy[nop*index+n];
+	}
+  }
+  cudaMemcpy(fluxy_d, ftmp, nsites*nop*sizeof(double),
 	    cudaMemcpyHostToDevice);
-  cudaMemcpy(fluxz_d, fluxz, nsites*nop*sizeof(double),
+
+
+
+  for (index=0;index<nsites;index++){
+    for (n=0;n<nop;n++){
+      ftmp[n*nsites+index]=fluxz[nop*index+n];
+	}
+  }
+  cudaMemcpy(fluxz_d, ftmp, nsites*nop*sizeof(double),
 	    cudaMemcpyHostToDevice);
+
+
+  /* cudaMemcpy(fluxw_d, fluxw, nsites*nop*sizeof(double), */
+  /* 	    cudaMemcpyHostToDevice); */
+  /* cudaMemcpy(fluxy_d, fluxy, nsites*nop*sizeof(double), */
+  /* 	    cudaMemcpyHostToDevice); */
+  /* cudaMemcpy(fluxz_d, fluxz, nsites*nop*sizeof(double), */
+  /* 	    cudaMemcpyHostToDevice); */
 
 
 }
 
-void get_fluxes_from_gpu(){
+/* void get_fluxes_from_gpu(){ */
 
-  cudaMemcpy(fluxe, fluxe_d, nsites*nop*sizeof(double),
-	    cudaMemcpyDeviceToHost);
-  cudaMemcpy(fluxw, fluxw_d, nsites*nop*sizeof(double),
-	    cudaMemcpyDeviceToHost);
-  cudaMemcpy(fluxy, fluxy_d, nsites*nop*sizeof(double),
-	    cudaMemcpyDeviceToHost);
-  cudaMemcpy(fluxz, fluxz_d, nsites*nop*sizeof(double),
-	    cudaMemcpyDeviceToHost);
+/*   cudaMemcpy(fluxe, fluxe_d, nsites*nop*sizeof(double), */
+/* 	    cudaMemcpyDeviceToHost); */
+/*   cudaMemcpy(fluxw, fluxw_d, nsites*nop*sizeof(double), */
+/* 	    cudaMemcpyDeviceToHost); */
+/*   cudaMemcpy(fluxy, fluxy_d, nsites*nop*sizeof(double), */
+/* 	    cudaMemcpyDeviceToHost); */
+/*   cudaMemcpy(fluxz, fluxz_d, nsites*nop*sizeof(double), */
+/* 	    cudaMemcpyDeviceToHost); */
 
 
-}
+/* } */
 
 
 
