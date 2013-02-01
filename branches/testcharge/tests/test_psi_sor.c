@@ -23,13 +23,12 @@
 #include "psi_s.h"
 #include "psi_sor.h"
 
+#include "util.h"
 #include "psi_stats.h"
 
 static int do_test_sor1(void);
 static int test_charge1_set(psi_t * psi);
 static int test_charge1_exact(psi_t * obj, double tolerance);
-
-int util_gauss_jordan(const int n, double * a, double * b);
 
 /*****************************************************************************
  *
@@ -288,105 +287,6 @@ static int test_charge1_exact(psi_t * obj, double tolerance) {
   free(c);
   free(b);
   free(a);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  util_gauss_jordan
- *
- *  Solve linear system via Gauss Jordan elimination with full pivoting.
- *  See, e.g., Press et al page 39.
- *
- *  A is the n by n matrix, b is rhs on input and solution on output.
- *  We assume storage of A[i*n + j].
- *  A is column-scrambled inverse on exit. At the moment we don't bother
- *  to recover the inverse.
- *
- *  Returns 0 on success.
- *
- *****************************************************************************/
-
-int util_gauss_jordan(const int n, double * a, double * b) {
-
-  int i, j, k, ia, ib;
-  int irow, icol;
-  int * ipivot = NULL;
-
-  double rpivot, tmp;
-
-  ipivot = calloc(n, sizeof(int));
-  if (ipivot == NULL) return -3;
-
-  icol = -1;
-  irow = -1;
-
-  for (j = 0; j < n; j++) {
-    ipivot[j] = -1;
-  }
-
-  for (i = 0; i < n; i++) {
-    tmp = 0.0;
-    for (j = 0; j < n; j++) {
-      if (ipivot[j] != 0) {
-	for (k = 0; k < n; k++) {
-
-	  if (ipivot[k] == -1) {
-	    if (fabs(a[j*n + k]) >= tmp) {
-	      tmp = fabs(a[j*n + k]);
-	      irow = j;
-	      icol = k;
-	    }
-	  }
-	}
-      }
-    }
-
-    assert(icol != -1);
-    assert(irow != -1);
-
-    ipivot[icol] += 1;
-
-    if (irow != icol) {
-      for (ia = 0; ia < n; ia++) {
-	tmp = a[irow*n + ia];
-	a[irow*n + ia] = a[icol*n + ia];
-	a[icol*n + ia] = tmp;
-      }
-      tmp = b[irow];
-      b[irow] = b[icol];
-      b[icol] = tmp;
-    }
-
-    if (a[icol*n + icol] == 0.0) {
-      free(ipivot);
-      return -1;
-    }
-
-    rpivot = 1.0/a[icol*n + icol];
-    a[icol*n + icol] = 1.0;
-
-    for (ia = 0; ia < n; ia++) {
-      a[icol*n + ia] *= rpivot;
-    }
-    b[icol] *= rpivot;
-
-    for (ia = 0; ia < n; ia++) {
-      if (ia != icol) {
-	tmp = a[ia*n + icol];
-	a[ia*n + icol] = 0.0;
-	for (ib = 0; ib < n; ib++) {
-	  a[ia*n + ib] -= a[icol*n + ib]*tmp;
-	}
-	b[ia] -= b[icol]*tmp;
-      }
-    }
-  }
-
-  /* Could recover the inverse here if required. */
-
-  free(ipivot);
 
   return 0;
 }
