@@ -28,7 +28,11 @@
 
 static int do_test_sor1(void);
 static int test_charge1_set(psi_t * psi);
-static int test_charge1_exact(psi_t * obj, double tolerance);
+static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon);
+
+#define REF_PERMEATIVITY 1.0
+static int fepsilon_constant(int index, double * epsilon);
+static int fepsilon_sinz(int index, double * epsilon);
 
 /*****************************************************************************
  *
@@ -63,8 +67,7 @@ int main(int argc, char ** argv) {
 
 static int do_test_sor1(void) {
 
-  double tol_abs;      /* Use default from psi structure. */
-  psi_t * psi = NULL;
+   psi_t * psi = NULL;
 
   coords_nhalo_set(1);
   coords_init();
@@ -73,16 +76,23 @@ static int do_test_sor1(void) {
   assert(psi);
   psi_valency_set(psi, 0, +1.0);
   psi_valency_set(psi, 1, -1.0);
-  psi_epsilon_set(psi, 1.0);
+  psi_epsilon_set(psi, REF_PERMEATIVITY);
 
   test_charge1_set(psi);
   psi_halo_psi(psi);
   psi_halo_rho(psi);
   psi_sor_poisson(psi);
-  psi_sor_poisson(psi);
 
-  psi_abstol(psi, &tol_abs);
-  if (cart_size(Z) == 1) test_charge1_exact(psi, tol_abs);
+  if (cart_size(Z) == 1) test_charge1_exact(psi, fepsilon_constant);
+
+  /* Varying permeativity */
+
+  test_charge1_set(psi);
+  psi_halo_psi(psi);
+  psi_halo_rho(psi);
+  psi_sor_vare_poisson(psi, fepsilon_sinz);
+
+  if (cart_size(Z) == 1) test_charge1_exact(psi, fepsilon_sinz);
 
   psi_free(psi);
   coords_finish();
@@ -214,16 +224,31 @@ static int test_charge1_set(psi_t * psi) {
  *  We also recompute the RHS by differencing the SOR solution with
  *  a three point stencil in one dimension to provide a final check.
  *
+ *  For variable epsilon, described by the f_vare_t fepsilon,
+ *  we set up a difference scheme using a three-point stencil:
+ *
+ *  e(i+1/2) psi(i+1) - [ e(i+1/2) + e(i-1/2) ] psi(i) + e(i-1/2) psi(i-1)
+ *
+ *  which is the same as that used in psi_cor.c and which collapses to the
+ *  uniform case if e(r) is constant.
+ *
  *****************************************************************************/
 
-static int test_charge1_exact(psi_t * obj, double tolerance) {
+static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   int k, kp1, km1, index;
   int nlocal[3];
   int n;
   int ifail;
 
-  double psi, psi0, rhotot, rhodiff;
+  double * epsilon = NULL;             /* 1-d e = e(z) from fepsilon */
+  double eph;                          /* epsilon(k + 1/2) */
+  double emh;                          /* epsilon(k - 1/2) */
+  double psi, psi0;                    /* Potential values */
+  double tolerance;                    /* Absolute tolerance from psi_t */
+  double rhotot;                       /* Charge conservation check */
+  double rhodiff;                      /* Difference RHS check */
+
   double * a = NULL;                   /* A is matrix for linear system */
   double * b = NULL;                   /* B is RHS / solution vector */
   double * c = NULL;                   /* Copy of the original RHS. */
@@ -232,6 +257,18 @@ static int test_charge1_exact(psi_t * obj, double tolerance) {
 
   assert(cart_size(Z) == 1);
   n = nlocal[Z];
+
+  /* Compute and store the permeativity values for convenience */
+
+  epsilon = calloc(n, sizeof(double));
+  if (epsilon == NULL) fatal("calloc(epsilon) failed\n");
+
+  for (k = 0; k < n; k++) {
+    index = coords_index(1, 1, 1+k);
+    fepsilon(index, epsilon + k);
+  }
+
+  /* Allocate space for exact solution */
 
   a = calloc(n*n, sizeof(double));
   b = calloc(n, sizeof(double));
@@ -247,14 +284,18 @@ static int test_charge1_exact(psi_t * obj, double tolerance) {
    * at both ends. */
 
   for (k = 0; k < n; k++) {
-    a[k*n + k] = -2.0;
+    
     kp1 = k + 1;
     km1 = k - 1;
     if (k == 0) km1 = kp1;
     if (k == n-1) kp1 = km1;
 
-    a[k*n + kp1] = 1.0;
-    a[k*n + km1] = 1.0;
+    eph = 0.5*(epsilon[k] + epsilon[kp1]);
+    emh = 0.5*(epsilon[km1] + epsilon[k]);
+
+    a[k*n + kp1] = eph;
+    a[k*n + km1] = emh;
+    a[k*n + k] = -(eph + emh);
   }
 
   /* Set the right hand side and solve the linear system. */
@@ -263,22 +304,37 @@ static int test_charge1_exact(psi_t * obj, double tolerance) {
     index = coords_index(1, 1, k + 1);
     psi_rho_elec(obj, index, b + k);
     b[k] *= -1.0; /* Minus sign in RHS Poisson equation */
+
     c[k] = b[k];
   }
 
   ifail = util_gauss_jordan(n, a, b);
   assert(ifail == 0);
 
+  /* Check the Gauss Jordan answer against the answer from psi_t */
+
+  psi_abstol(obj, &tolerance);
   rhotot = 0.0;
+
   for (k = 0; k < n; k++) {
     index = coords_index(1, 1, 1+k);
     psi_psi(obj, index, &psi);
-    if (k==0) psi0 = psi;
-    rhodiff = obj->psi[index-1] - 2.0*obj->psi[index] + obj->psi[index+1];
-    rhotot += c[k];
+    if (k == 0) psi0 = psi;
 
     assert(fabs(b[k] + psi0 - psi) < tolerance);
+    
+    kp1 = k + 1;
+    km1 = k - 1;
+    if (k == 0) km1 = kp1;
+    if (k == n-1) kp1 = km1;
+
+    eph = 0.5*(epsilon[k] + epsilon[kp1]);
+    emh = 0.5*(epsilon[km1] + epsilon[k]);
+    rhodiff = emh*obj->psi[index-1] - (emh + eph)*obj->psi[index]
+      + eph*obj->psi[index+1];
+
     assert(fabs(c[k] - rhodiff) < tolerance);
+    rhotot += c[k];
   }
 
   /* Total rho should be unchanged at zero. */
@@ -287,6 +343,47 @@ static int test_charge1_exact(psi_t * obj, double tolerance) {
   free(c);
   free(b);
   free(a);
+  free(epsilon);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fepsilon_constant
+ *
+ *  Returns constant epsilon REF_PERMEATIVITY
+ *
+ *****************************************************************************/
+
+static int fepsilon_constant(int index, double * epsilon) {
+
+  assert(epsilon);
+
+  *epsilon = REF_PERMEATIVITY;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fepsilon_sinz
+ *
+ *  Permeativity is a function of z only:
+ *
+ *    e = e0 sin(pi z / Lz)
+ *
+ *  The - 0.5 is to make it symmetric about the centre line.
+ *
+ *****************************************************************************/
+
+static int fepsilon_sinz(int index, double * epsilon) {
+
+  int coords[3];
+
+  coords_index_to_ijk(index, coords);
+
+  *epsilon = REF_PERMEATIVITY*sin(M_PI*(1.0*coords[Z] - 0.5)/L(Z));
 
   return 0;
 }
