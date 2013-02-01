@@ -35,5 +35,6 @@ double dmax(const double a, const double b);
 int    util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
 int    util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
 int    util_discrete_volume_sphere(double r0[3], double a0, double * vn);
+int    util_gauss_jordan(const int n, double * a, double * b);
 
 #endif
