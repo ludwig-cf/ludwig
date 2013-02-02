@@ -285,13 +285,13 @@ static void bounce_back_pass1() {
 		  
   int       ic, jc, kc;
 
-  int ilink=0, ilinkfluid=0;
+  int ilink=0;
 
   int N[3];
   coords_nlocal(N);  
   int nhalo = coords_nhalo();  
   
-  int nsite=(N[X]+2*nhalo)*(N[X]+2*nhalo)*(N[X]+2*nhalo);
+  int nsite=(N[X]+2*nhalo)*(N[Y]+2*nhalo)*(N[Z]+2*nhalo);
 
   /* count the total number of links */
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
@@ -697,7 +697,7 @@ static void bounce_back_pass2() {
   coords_nlocal(N);  
   int nhalo = coords_nhalo();  
   
-  int nsite=(N[X]+2*nhalo)*(N[X]+2*nhalo)*(N[X]+2*nhalo);
+  int nsite=(N[X]+2*nhalo)*(N[Y]+2*nhalo)*(N[Z]+2*nhalo);
 
 
   /* count the total number of links */

@@ -42,17 +42,7 @@ double * dmall_d;
 
 
 /* data size variables */
-static int ndata;
-static int nhalo;
-static int nsites;
-static int ndist;
-static int nop;
 static  int N[3];
-static  int Nall[3];
-static int npvel; /* number of velocity components when packed */
-static int nhalodataX;
-static int nhalodataY;
-static int nhalodataZ;
 static int nlinkmax;
 
 
