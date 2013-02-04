@@ -12,6 +12,13 @@
 
 #include "pe.h"
 
+
+#define MAX_COLLOIDS 500
+
+#define GPUS_PER_NODE 4
+//#define GPUS_PER_NODE 1
+
+
 /* from coords.h */
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};

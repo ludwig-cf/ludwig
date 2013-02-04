@@ -19,6 +19,7 @@
 #include "model.h"
 #include "site_map.h"
 #include "collision_gpu.h"
+#include "collision_internal_gpu.h"
 #include "collision.h"
 #include "fluctuations.h"
 

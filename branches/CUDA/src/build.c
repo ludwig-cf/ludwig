@@ -29,7 +29,7 @@
 #include "build.h"
 
 #ifdef _GPU_
-#include "interface_gpu.h"
+#include "ludwig_gpu.h"
 #endif
 
 

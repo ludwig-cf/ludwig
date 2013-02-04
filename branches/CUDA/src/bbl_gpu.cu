@@ -12,6 +12,7 @@
 
 #include "pe.h"
 #include "bbl_gpu.h"
+#include "bbl_internal_gpu.h"
 #include "utilities_gpu.h"
 #include "util.h"
 #include "model.h"

@@ -2,8 +2,7 @@
  *
  * utilities_gpu.cu
  *  
- * Data management and other utilities for GPU adaptation of Ludwig
- * Alan Gray/ Alan Richardson 
+ * Alan Gray
  *
  *****************************************************************************/
 
@@ -11,19 +10,15 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "common_gpu.h"
 #include "pe.h"
 #include "utilities_gpu.h"
+#include "utilities_internal_gpu.h"
 #include "field_datamgmt_gpu.h"
 #include "comms_gpu.h"
-//#include "colloids.h"
 #include "util.h"
 #include "model.h"
 #include "timer.h"
-
-#define MAX_COLLOIDS 500
-
-//#define GPUS_PER_NODE 4
-#define GPUS_PER_NODE 1
 
 /* external pointers to data on host*/
 extern const double ma_[NVEL][NVEL];
@@ -45,8 +40,6 @@ double * wv_d;
 char * site_map_status_d;
 char * colloid_map_d;
 double * colloid_r_d;
-double * force_d;
-double * velocity_d;
 int * N_d;
 double * force_global_d;
 double * tmpscal1_d;
@@ -68,8 +61,6 @@ double * fluxz_d;
 
 char * site_map_status_temp;
 char * colloid_map_temp;
-double * force_temp;
-double * velocity_temp;
 
 /* data size variables */
 static int nhalo;
@@ -90,10 +81,6 @@ void initialise_gpu()
 
   int devicenum=cart_rank()%GPUS_PER_NODE;
 
-  //FERMI0 hack
-  //if (devicenum ==1 ) devicenum=4;
-  //devicenum=0;
-
   cudaSetDevice(devicenum);
 
   //cudaGetDevice(&devicenum);
@@ -106,13 +93,6 @@ void initialise_gpu()
   fluid_body_force(force_global);
 
   put_site_map_on_gpu();
-
-  int p,m;
-  for (p=0;p<NVEL;p++)
-    for (m=0;m<3;m++)
-	  //p=0;m=1;
-      //printf("TT1 %d %d %d\n",p,m,cv[p][m]);
-      //exit(1);
 
   /* copy data from host to accelerator */
   cudaMemcpy(N_d, N, 3*sizeof(int), cudaMemcpyHostToDevice); 
@@ -127,25 +107,6 @@ void initialise_gpu()
   cudaMemcpy(r3_d, &r3_, sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpy(d_d, d_, 3*3*sizeof(double), cudaMemcpyHostToDevice); 
   cudaMemcpy(e_d, e_, 3*3*3*sizeof(double), cudaMemcpyHostToDevice); 
-
-  /* int N[3],nhalo,Nall[3]; */
-  
-  /* nhalo = coords_nhalo(); */
-  /* coords_nlocal(N);  */
-
-
-  /* Nall[X]=N[X]+2*nhalo; */
-  /* Nall[Y]=N[Y]+2*nhalo; */
-  /* Nall[Z]=N[Z]+2*nhalo; */
-  
-  /* int nsites=Nall[X]*Nall[Y]*Nall[Z]; */
-
-  /* printf("XXXX %d\n",nsites); */
-   cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);  
-  /* cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice);  */
-  /* cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice);  */
-  /* cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice) */; 
- 
 
   
 
@@ -201,8 +162,6 @@ static void allocate_memory_on_gpu()
 {
 
   /* temp arrays for staging data on  host */
-  force_temp = (double *) malloc(nsites*3*sizeof(double));
-  velocity_temp = (double *) malloc(nsites*3*sizeof(double));
   site_map_status_temp = (char *) malloc(nsites*sizeof(char));
   colloid_map_temp = (char *) calloc(nsites,sizeof(char));
   
@@ -214,8 +173,6 @@ static void allocate_memory_on_gpu()
   cudaMalloc((void **) &cv_d, NVEL*3*sizeof(int));
   cudaMalloc((void **) &wv_d, NVEL*sizeof(double));
   cudaMalloc((void **) &q_d, NVEL*3*3*sizeof(double));
-  cudaMalloc((void **) &force_d, nsites*3*sizeof(double));
-   cudaMalloc((void **) &velocity_d, nsites*3*sizeof(double));
   cudaMalloc((void **) &tmpscal1_d, nsites*sizeof(double));
   cudaMalloc((void **) &tmpscal2_d, nsites*sizeof(double));
 
@@ -245,8 +202,6 @@ static void free_memory_on_gpu()
 {
 
   /* free temp memory on host */
-  free(force_temp);
-  free(velocity_temp);
   free(site_map_status_temp);
   free(colloid_map_temp);
 
@@ -258,8 +213,6 @@ static void free_memory_on_gpu()
   cudaFree(site_map_status_d);
   cudaFree(colloid_map_d);
   cudaFree(colloid_r_d);
-  cudaFree(force_d);
-  cudaFree(velocity_d);
   cudaFree(N_d);
   cudaFree(force_global_d);
 
@@ -401,9 +354,8 @@ void put_colloid_map_on_gpu()
 void put_colloid_properties_on_gpu()
 {
   
-  int index, ia;
+  int ia;
   colloid_t *p_c;
-  void *ptr;
   int icolloid;
   int ncolloids=build_colloid_list();
       
@@ -429,13 +381,6 @@ void put_colloid_properties_on_gpu()
 
 
 
-void zero_force_on_gpu()
-{
-
-  int zero=0;
-  cudaMemset(force_d,zero,nsites*3*sizeof(double));
-  checkCUDAError("zero_force_on_gpu");
-}
 
 void zero_colloid_force_on_gpu()
 {
@@ -446,150 +391,6 @@ void zero_colloid_force_on_gpu()
 }
 
 
-
-/* copy force from host to accelerator */
-void put_force_on_gpu()
-{
-
-  int index, i, ic, jc, kc;
-  double force[3];
-	      
-
-  /* get temp host copies of arrays */
-  for (ic=0; ic<Nall[X]; ic++)
-    {
-      for (jc=0; jc<Nall[Y]; jc++)
-	{
-	  for (kc=0; kc<Nall[Z]; kc++)
-	    {
-
-
-	      index = get_linear_index(ic, jc, kc, Nall); 
-
-	      hydrodynamics_get_force_local(index,force);
-	      	      
-	      for (i=0;i<3;i++)
-		{
-		  force_temp[i*nsites+index]=force[i];
-		}
-	    }
-	}
-    }
-
-
-  /* copy data from CPU to accelerator */
-  cudaMemcpy(force_d, force_temp, nsites*3*sizeof(double), \
-	     cudaMemcpyHostToDevice);
-
-  checkCUDAError("put_force_on_gpu");
-
-}
-
-/* copy force from accelerator to host */
-void get_force_from_gpu()
-{
-
-  int index, i, ic, jc, kc;
-  double force[3];
-	      
-  /* copy data from accelerator to CPU */
-  cudaMemcpy(force_temp, force_d, nsites*3*sizeof(double), \
-	     cudaMemcpyDeviceToHost);
-
-  
-  for (ic=0; ic<Nall[X]; ic++)
-    {
-      for (jc=0; jc<Nall[Y]; jc++)
-	{
-	  for (kc=0; kc<Nall[Z]; kc++)
-	    {
-
-	      index = get_linear_index(ic, jc, kc, Nall); 
-
-
-	      for (i=0;i<3;i++)
-		{
-		  force[i]=force_temp[i*nsites+index];
-		}
-
-	      hydrodynamics_set_force_local(index,force);
-	      	      
-	    }
-	}
-    }
-
-
-
-  checkCUDAError("get_force_from_gpu");
-
-}
-
-
-
-void get_velocity_from_gpu()
-{
-  int index,i, ic,jc,kc;
-  double velocity[3];
-
-  cudaMemcpy(velocity_temp, velocity_d, nsites*3*sizeof(double),
-	    cudaMemcpyDeviceToHost);
-
-  /* copy velocity from temporary array back to hydrodynamics module */
-  for (ic=0; ic<Nall[X]; ic++)
-    {
-      for (jc=0; jc<Nall[Y]; jc++)
-	{
-	  for (kc=0; kc<Nall[Z]; kc++)
-	    {
-	      index = get_linear_index(ic, jc, kc, Nall); 
-
-	      for (i=0;i<3;i++)
-		{
-		  velocity[i]=velocity_temp[nsites*i+index];
-		}
-	      hydrodynamics_set_velocity(index,velocity);
-	    }
-	}
-    }
-
-  checkCUDAError("get_velocity_from_gpu");
-
-}
-
-
-
-void put_velocity_on_gpu()
-{
-  int index,i, ic,jc,kc;
-  double velocity[3];
-
-
-  /* copy velocity from temporary array back to hydrodynamics module */
-  for (ic=0; ic<Nall[X]; ic++)
-    {
-      for (jc=0; jc<Nall[Y]; jc++)
-	{
-	  for (kc=0; kc<Nall[Z]; kc++)
-	    {
-
-	      index = get_linear_index(ic, jc, kc, Nall); 
-	      hydrodynamics_get_velocity(index,velocity);
-
-	      for (i=0;i<3;i++)
-		{
-		  velocity_temp[i*nsites+index]=velocity[i];
-		}
-	    }
-	}
-    }
-
-  cudaMemcpy(velocity_d, velocity_temp, nsites*3*sizeof(double),
-	    cudaMemcpyHostToDevice);
-
-  checkCUDAError("put_velocity_on_gpu");
-
-
-}
 
 
 extern double * ftmp;

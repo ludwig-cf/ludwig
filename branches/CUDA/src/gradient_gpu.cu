@@ -1,7 +1,8 @@
 /*****************************************************************************
  *
- * GPU versions of gradient schemes 
+ * gradient_gpu.cu
  *
+ * GPU versions of gradient schemes 
  * Alan Gray
  * 
  *****************************************************************************/
@@ -12,6 +13,7 @@
 #include "colloids.h"
 #include "site_map.h"
 #include "gradient_gpu.h"
+#include "gradient_internal_gpu.h"
 #include "util.h"
 
 

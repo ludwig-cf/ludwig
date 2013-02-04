@@ -7,16 +7,15 @@
  *
  *****************************************************************************/
 
-#include <assert.h>
-#include <stdio.h>
-#include <math.h>
 
-#include "pe.h"
+#include <stdio.h>
+
 #include "utilities_gpu.h"
 #include "field_datamgmt_gpu.h"
+#include "field_datamgmt_internal_gpu.h"
 #include "util.h"
 #include "model.h"
-#include "timer.h"
+#include "colloids.h"
 
 /* host memory address pointers for temporary staging of data */
 double * phi_site_temp;
@@ -24,6 +23,8 @@ double * colloid_force_tmp;
 double * grad_phi_site_temp;
 double * delsq_phi_site_temp;
 double * ftmp;
+double * force_temp;
+double * velocity_temp;
 
 
 extern double * f_;
@@ -47,6 +48,8 @@ double * grad_phi_site_d;
 double * delsq_phi_site_d;
 double * le_index_real_to_buffer_d;
 double * colloid_force_d;
+double * force_d;
+double * velocity_d;
 
 int * le_index_real_to_buffer_temp;
 
@@ -147,6 +150,10 @@ static void allocate_field_memory_on_gpu()
   grad_phi_site_temp = (double *) malloc(nsites*nop*3*sizeof(double));
   delsq_phi_site_temp = (double *) malloc(nsites*nop*sizeof(double));
   le_index_real_to_buffer_temp = (int *) malloc(nlexbuf*sizeof(int));
+  force_temp = (double *) malloc(nsites*3*sizeof(double));
+  velocity_temp = (double *) malloc(nsites*3*sizeof(double));
+
+
 
   /* arrays on accelerator */
   cudaMalloc((void **) &f_d, ndata*sizeof(double));
@@ -163,6 +170,8 @@ static void allocate_field_memory_on_gpu()
   cudaMalloc((void **) &grad_phi_site_d, nsites*3*nop*sizeof(double));
   cudaMalloc((void **) &le_index_real_to_buffer_d, nlexbuf*sizeof(int));
  cudaMalloc((void **) &colloid_force_d, nsites*6*3*sizeof(double));
+  cudaMalloc((void **) &force_d, nsites*3*sizeof(double));
+   cudaMalloc((void **) &velocity_d, nsites*3*sizeof(double));
 
      checkCUDAError("allocate_phi_memory_on_gpu");
 
@@ -178,6 +187,8 @@ static void free_field_memory_on_gpu()
   free(grad_phi_site_temp);
   free(delsq_phi_site_temp);
   free(le_index_real_to_buffer_temp);
+  free(force_temp);
+  free(velocity_temp);
 
 
   cudaFreeHost(ftmp);
@@ -195,6 +206,9 @@ static void free_field_memory_on_gpu()
   cudaFree(grad_phi_site_d);
   cudaFree(le_index_real_to_buffer_d);
   cudaFree(colloid_force_d);
+  cudaFree(force_d);
+  cudaFree(velocity_d);
+
 
 }
 
@@ -224,7 +238,6 @@ void get_all_fields_from_gpu()
 /* copy f_ from host to accelerator */
 void put_f_on_gpu()
 {
-  int index;
 
   /* copy data from CPU to accelerator */
   cudaMemcpy(f_d, f_, ndata*sizeof(double), cudaMemcpyHostToDevice);
@@ -564,6 +577,116 @@ checkCUDAError("expand_grad_phi_on_gpu");
 
 
  
+}
+
+
+
+void zero_force_on_gpu()
+{
+
+  int zero=0;
+  cudaMemset(force_d,zero,nsites*3*sizeof(double));
+  checkCUDAError("zero_force_on_gpu");
+}
+
+
+/* copy force from host to accelerator */
+void put_force_on_gpu()
+{
+
+  int index, i;
+  double force[3];
+	      
+
+  for (index=0;index<nsites;index++){
+    
+    hydrodynamics_get_force_local(index,force);
+    
+    for (i=0;i<3;i++)
+	force_temp[i*nsites+index]=force[i];
+    
+  }
+
+  /* copy data from CPU to accelerator */
+  cudaMemcpy(force_d, force_temp, nsites*3*sizeof(double), \
+	     cudaMemcpyHostToDevice);
+
+  checkCUDAError("put_force_on_gpu");
+
+}
+
+/* copy force from accelerator to host */
+void get_force_from_gpu()
+{
+
+  int index, i;
+  double force[3];
+	      
+  /* copy data from accelerator to CPU */
+  cudaMemcpy(force_temp, force_d, nsites*3*sizeof(double), \
+	     cudaMemcpyDeviceToHost);
+
+  
+  for (index=0;index<nsites;index++){
+
+    for (i=0;i<3;i++)
+      force[i]=force_temp[i*nsites+index];
+    
+    hydrodynamics_set_force_local(index,force);
+    
+  }
+
+
+
+  checkCUDAError("get_force_from_gpu");
+
+}
+
+
+
+void get_velocity_from_gpu()
+{
+  int index,i;
+  double velocity[3];
+
+  cudaMemcpy(velocity_temp, velocity_d, nsites*3*sizeof(double),
+	    cudaMemcpyDeviceToHost);
+
+  for (index=0;index<nsites;index++){
+
+    for (i=0;i<3;i++)
+      velocity[i]=velocity_temp[nsites*i+index];
+
+    hydrodynamics_set_velocity(index,velocity);
+  }
+
+  checkCUDAError("get_velocity_from_gpu");
+
+}
+
+
+
+void put_velocity_on_gpu()
+{
+  int index,i;
+  double velocity[3];
+
+
+  for (index=0;index<nsites;index++){
+
+    hydrodynamics_get_velocity(index,velocity);
+
+    for (i=0;i<3;i++)
+      velocity_temp[i*nsites+index]=velocity[i];
+
+  }
+
+  cudaMemcpy(velocity_d, velocity_temp, nsites*3*sizeof(double),
+	    cudaMemcpyHostToDevice);
+
+  checkCUDAError("put_velocity_on_gpu");
+
+
 }
 
 

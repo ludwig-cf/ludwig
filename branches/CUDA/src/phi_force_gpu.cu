@@ -15,6 +15,7 @@
 
 #define INCLUDING_FROM_GPU_SOURCE
 #include "phi_force_gpu.h"
+#include "phi_force_internal_gpu.h"
 
 #include "pe.h"
 //#include "coords.h"

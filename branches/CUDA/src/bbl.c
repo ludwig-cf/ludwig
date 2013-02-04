@@ -31,7 +31,7 @@
 #include "bbl.h"
 
 #ifdef _GPU_
-#include "interface_gpu.h"
+#include "ludwig_gpu.h"
 #endif
 
 static void bounce_back_pass1(void);

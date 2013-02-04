@@ -4,22 +4,16 @@
  * 
  * Alan Gray
  *
- * TO DO: move several items out of here to field_datamgmt.cu
  * 
  *****************************************************************************/
 
-#include <assert.h>
 #include <stdio.h>
-#include <math.h>
 
-#include "pe.h"
 #include "comms_gpu.h"
+#include "comms_internal_gpu.h"
 #include "utilities_gpu.h"
-#include "util.h"
-#include "model.h"
-#include "timer.h"
-#include "colloid_link.h"
-
+#include "common_gpu.h"
+#include "model.h" 
 extern "C" int  RUN_get_string_parameter(const char *, char *, const int);
 
 /* external pointers to data on host*/
@@ -92,6 +86,10 @@ static cudaStream_t streamX,streamY, streamZ;
 
 
 static int reduced_halo=0;
+
+/* constant memory symbols internal to this module */
+__constant__ int cv_cd[NVEL][3];
+
 
 /* Perform tasks necessary to initialise accelerator */
 void init_comms_gpu()

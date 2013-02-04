@@ -2,15 +2,7 @@
  *
  *  propagation_gpu.c
  *
- *  Propagation schemes for the different models.
- *
- *  Edinburgh Soft Matter and Statistical Physics Group and
- *  Edinburgh Parallel Computing Centre
- *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
- *
- *   Adapted to run on GPU: Alan Gray
+ *  Alan Gray
  * 
  *****************************************************************************/
 
@@ -22,6 +14,7 @@
 
 #include "model.h"
 #include "propagation_gpu.h"
+#include "propagation_internal_gpu.h"
 
 extern "C" void checkCUDAError(const char *msg);
 

@@ -1,17 +1,8 @@
 /****************************************************************************
  *
  *  phi_lb_coupler_gpu.cu
- *
- *  In cases where the order parameter is via "full LB", this couples
- *  the scalar order parameter phi_site[] to the distributions.
- *
- *  Edinburgh Soft Matter and Statistical Physics Group and
- *  Edinburgh Parallel Computing Centre
- *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
- *
- *  Adapted to run on GPU: Alan Gray
+ * 
+ *  Alan Gray
  * 
  ****************************************************************************/
 
@@ -19,6 +10,7 @@
 #include <math.h>
 
 #include "phi_lb_coupler_gpu.h"
+#include "phi_lb_coupler_internal_gpu.h"
 
 /* below define needed to stop repeated declaration of distribution_ndist */
 #define INCLUDING_FROM_GPU_SOURCE 

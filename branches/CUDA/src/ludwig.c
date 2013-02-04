@@ -81,7 +81,7 @@
 #include "ludwig.h"
 
 #ifdef _GPU_
-#include "interface_gpu.h"
+#include "ludwig_gpu.h"
 #endif
 
 static void ludwig_rt(void);
@@ -249,8 +249,12 @@ void ludwig_run(const char * inputfile) {
   phi_stats_print_stats();
   ludwig_report_momentum();
 
-  //#ifdef _GPU_
-  info("\n--Running using GPU acceleration--\n");
+  #ifdef _GPU_
+  info("\n**********************************************************\n");
+  info("\n* This is the GPU-accelerated version of Ludwig          *\n");
+  info("\n* IMPORTANT: Test any new simulation against CPU version *\n");
+  info("\n* for a few timesteps                                    *\n");
+  info("\n**********************************************************\n");
   initialise_gpu();
   put_f_on_gpu();
   put_force_on_gpu(); 
@@ -259,7 +263,7 @@ void ludwig_run(const char * inputfile) {
  
   /* sync MPI tasks for timing purposes */
   MPI_Barrier(cart_comm());
-  //#endif
+  #endif
 
 
   /* Main time stepping loop */
@@ -270,8 +274,6 @@ void ludwig_run(const char * inputfile) {
   while (next_step()) {
 
     TIMER_start(TIMER_STEPS);
-
-/* #define _GPU_ */
 
     step = get_step();
 
@@ -317,7 +319,7 @@ void ludwig_run(const char * inputfile) {
       
 
       TIMER_start(PHIGRADCOMP);
-      //HACK
+
       put_colloid_map_on_gpu();
       put_colloid_properties_on_gpu();
 
@@ -342,17 +344,9 @@ void ludwig_run(const char * inputfile) {
 
 #endif
 
-
-
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
-      //    put_all_fields_on_gpu();
-      //#define _GPU_
-
-
       if (phi_is_finite_difference()) {
-
-	//	expand_phi_on_gpu();
 
 	TIMER_start(TIMER_FORCE_CALCULATION);
 #ifdef _GPU_
@@ -407,9 +401,6 @@ void ludwig_run(const char * inputfile) {
 
     }
 
-    //    get_all_fields_from_gpu();
-    //#undef _GPU_
-
 
     model_le_apply_boundary_conditions();
 
@@ -432,15 +423,9 @@ void ludwig_run(const char * inputfile) {
     else {
       TIMER_start(TIMER_BBL);
 
-
-
       wall_update();
-
       bounce_back_on_links();
-
-
       wall_bounce_back();
-
 
       TIMER_stop(TIMER_BBL);
     }
