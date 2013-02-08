@@ -223,8 +223,8 @@ surf_psi_b 0.01
 #  lc_anchoring         [normal|planar|fixed] anchoring boundary conditions
 #                       for solid (if present; defualt is normal)
 #
-#  lc_anchoring_strength the parameter w in the surface free energy
-#                        [Default is zero = 'free' anchoring]
+#  lc_anchoring_strength    the parameter w1 and w2 in the surface free energy
+#  lc_anchoring_strength_2  [Default is zero = 'free' anchoring]
 #
 #  lc_init_redshift     Initial value of redshift.
 #
@@ -267,6 +267,7 @@ lc_anchoring_method none
 lc_wall_anchoring fixed
 lc_coll_anchoring normal
 lc_anchoring_strength 0.0
+lc_anchoring_strength_2 0.0
 lc_anchoring_strength_colloid 0.0
 lc_anchoring_strength_wall 0.0
 
