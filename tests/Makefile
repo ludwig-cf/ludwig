@@ -47,7 +47,7 @@ MPILIB = -lmpi
 #------------------------------------------------------------------------------
 
 TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
-              test_runtime.c test_random.c \
+              test_runtime.c test_random.c test_util.c \
               test_coords.c test_le.c test_io.c test_prop.c \
               test_model.c test_halo.c test_site_map.c \
 	      test_phi.c test_le.c test_magnetic.c \
