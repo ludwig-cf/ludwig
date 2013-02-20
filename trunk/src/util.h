@@ -34,5 +34,12 @@ double dmax(const double a, const double b);
 
 int    util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
 int    util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
+int    util_dpythag(double a, double b, double * p);
+int    util_svd(int m, int n, double ** u, double * w, double ** v);
+int    util_svd_solve(int m, int n, double ** a, double * b, double * x);
+int    util_matrix_create(int m, int n, double *** p);
+int    util_vector_create(int m, double ** p);
+int    util_matrix_free(int m, double *** p);
+int    util_vector_free(double ** p);
 
 #endif
