@@ -76,6 +76,18 @@ static void gradient_general(const double * field, double * grad,
 static int util_gaussian(double a[NOP][NOP], double xb[NOP]);
 static void util_q5_to_qab(double q[3][3], const double * phi);
 
+
+static void gradient_bcs6(double kappa0, double kappa1, const int dn[3],
+			  double dq[6][3], double bc[6][6][3]);
+static int util_gaussian6(double a[6][6], double xb[6]);
+static void gradient_general6(const double * field, double * grad,
+			     double * del2, const int nextra);
+
+static void gradient_general6x5(const double * field, double * grad,
+				double * del2, const int nextra);
+static void gradient_bcs6x5(double kappa0, double kappa1, const int dn[3],
+			    double dq[NOP][3], double bc[6][NOP][3]);
+
 /*****************************************************************************
  *
  *  gradient_3d_7pt_solid_init
@@ -101,6 +113,7 @@ void gradient_3d_7pt_solid_init(void) {
 void gradient_3d_7pt_solid_d2(const int nop, const double * field,
 			      double * grad, double * delsq) {
   int nextra;
+  int method = 0;
 
   assert(nop == NOP);
   assert(field);
@@ -109,7 +122,9 @@ void gradient_3d_7pt_solid_d2(const int nop, const double * field,
 
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
-  gradient_general(field, grad, delsq, nextra);
+  if (method == 0) gradient_general(field, grad, delsq, nextra);
+  if (method == 1) gradient_general6(field, grad, delsq, nextra);
+  if (method == 2) gradient_general6x5(field, grad, delsq, nextra);
 
   return;
 }
@@ -169,6 +184,9 @@ static void gradient_general(const double * field, double * grad,
   double amplitude;                         /* Scalar order parameter */
   double qtilde[3][3];                      /* For planar anchoring */
   double q2;                                /* Contraction Q_ab Q_ab */
+
+  double del2m1[NOP];
+  double del2diff;
 
   assert(NOP == 5);
 
@@ -316,7 +334,12 @@ static void gradient_general(const double * field, double * grad,
 	      dq[n1][normal[n]] = 1.0;
 	    }
 
-	    /* Construct boundary condition terms. */
+	    /* Construct boundary condition linear algebra problem.
+	     * Estimated terms are moved to the right-hand side b[],
+	     * while the coefficients of the unkonwn terms are set
+	     * up in matrix a[][]. Finally, the constant terms are
+	     * also added to the right-hand side (with a factor of
+	     * two in the off-diagaonal parts). */
 
 	    gradient_bcs(kappa0, kappa1, bcs[n], dq, bc);
 
@@ -367,6 +390,13 @@ static void gradient_general(const double * field, double * grad,
 
 	  /* No iteration required if only one boundary. */
 	  if (ns < 2) break;
+
+	  /* This can be used (but isn't) to determine convergence */
+	  del2diff = 0.0;
+	  for (n1 = 0; n1 < NOP; n1++) {
+	    del2diff += fabs(del2[NOP*index + n1] - del2m1[n1]);
+	  }
+
 	}
 
 	/* Next site. */
@@ -379,7 +409,571 @@ static void gradient_general(const double * field, double * grad,
 
 /*****************************************************************************
  *
+ *  Here's the 6x6 version which fixes the trace post-hoc.
+ *
+ *****************************************************************************/
+
+static void gradient_general6(const double * field, double * grad,
+			      double * del2, const int nextra) {
+  int nlocal[3];
+  int nhalo;
+  int ic, jc, kc;
+  int ia, ib, ig, ih;
+  int index, n, ns, n1, n2;
+  int niterate;
+
+  int str[3];
+  int mask[6];
+  char status[6];
+
+  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+  const int normal[6] = {X, X, Y, Y, Z, Z};
+  const int nsolid[6] = {0, 1, 0, 1, 0, 1};
+
+  double gradn[6][3][2];                    /* Partial gradients */
+  double q0[3][3];                          /* Prefered surface Q_ab */
+  double qs[3][3];                          /* 'Surface' Q_ab */
+  double a[6][6];                           /* Matrix for linear system */
+  double b[6];                            /* RHS / unknown */
+  double dq[6][3];                        /* normal/tangential gradients */
+  double bc[6][6][3];                   /* Terms in boundary condition */
+  double c[6][3][3];                        /* Constant terms in BC. */
+  double dn[3];                             /* Unit normal. */
+  double tmp;
+
+  double w1_coll;                           /* Anchoring strength parameter */
+  double w2_coll;                           /* Second anchoring parameter */
+  double w1_wall;
+  double w2_wall;
+  double w1;
+  double w2;
+  double q_0;                               /* Cholesteric pitch wavevector */
+  double kappa0;                            /* Elastic constants */
+  double kappa1;
+
+  double amplitude;                         /* Scalar order parameter */
+  double qtilde[3][3];                      /* For planar anchoring */
+  double q2;                                /* Contraction Q_ab Q_ab */
+
+  assert(NOP == 5);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+
+  str[Z] = 1;
+  str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
+  str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
+
+  kappa0 = fe_kappa();
+  kappa1 = fe_kappa(); /* One elastic constant */ 
+
+  q_0 = blue_phase_q0();
+  blue_phase_coll_w12(&w1_coll, &w2_coll);
+  blue_phase_wall_w12(&w1_wall, &w2_wall);
+  amplitude = blue_phase_amplitude_compute(); 
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	if (site_map_get_status_index(index) != FLUID) continue;
+
+	status[0] = site_map_get_status(ic+1, jc, kc);
+	status[1] = site_map_get_status(ic-1, jc, kc);
+	status[2] = site_map_get_status(ic, jc+1, kc);
+	status[3] = site_map_get_status(ic, jc-1, kc);
+	status[4] = site_map_get_status(ic, jc, kc+1);
+	status[5] = site_map_get_status(ic, jc, kc-1);
+
+	/* Set up partial gradients, and gradients */
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[n1][ia][0] =
+	      field[NOP*(index + str[ia]) + n1] - field[NOP*index + n1];
+	    gradn[n1][ia][1] =
+	      field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
+	  }
+	}
+
+	for (ia = 0; ia < 3; ia++) {
+	  gradn[ZZ][ia][0] = -gradn[XX][ia][0] - gradn[YY][ia][0];
+	  gradn[ZZ][ia][1] = -gradn[XX][ia][1] - gradn[YY][ia][1];
+	}
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  del2[NOP*index + n1] = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad[3*(NOP*index + n1) + ia] = 
+	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	    del2[NOP*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	  }
+	}
+
+	ns = 0;
+	for (n = 0; n < 6; n++) {
+	  mask[n] = (status[n] != FLUID);
+	  ns += mask[n];
+	}
+
+	if (ns == 0) continue;
+
+	/* Solid boundary condition corrections are required. */
+
+	util_q5_to_qab(qs, field + NOP*index);
+
+	/* For planar anchoring we require qtilde_ab of Fournier and
+	 * Galatola, and its square */
+
+	q2 = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
+	    q2 += qtilde[ia][ib]*qtilde[ia][ib]; 
+	  }
+	}
+
+        /* Look at the neighbours */
+
+	for (n = 0; n < 6; n++) {
+	  if (status[n] == FLUID) continue;
+
+	  colloids_q_boundary_normal(index, bcs[n], dn);
+	  colloids_q_boundary(dn, qs, q0, status[n]);
+
+	  /* Check for wall/colloid */
+	  if (status[n] == COLLOID) {
+	    w1 = w1_coll;
+	    w2 = w2_coll;
+	  }
+
+	  if (status[n] == BOUNDARY) {
+	    w1 = w1_wall;
+	    w2 = w2_wall;
+	  }
+	  assert(status[n] == COLLOID || status[n] == BOUNDARY);
+
+	  /* Compute c[n][a][b] */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      c[n][ia][ib] = 0.0;
+	      for (ig = 0; ig < 3; ig++) {
+		for (ih = 0; ih < 3; ih++) {
+		  c[n][ia][ib] -= kappa1*q_0*bcs[n][ig]*
+		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+		}
+	      }
+	      /* Normal anchoring: w2 must be zero and q0 is preferred Q
+	       * Planar anchoring: in w1 term q0 is effectively
+	       *                   (Qtilde^perp - 0.5S_0) while in w2 we
+	       *                   have Qtilde appearing explicitly.
+               *                   See colloids_q_boundary() etc */
+	      c[n][ia][ib] +=
+		-w1*(qs[ia][ib] - q0[ia][ib])
+		-w2*(2.0*q2 - 4.5*amplitude*amplitude)*qtilde[ia][ib];
+	    }
+	  }
+	}
+
+	/* Set up initial approximation to grad using partial gradients
+	 * where solid sites are involved (or zero where none available) */
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[n1][ia][0] *= (1 - mask[2*ia]);
+	    gradn[n1][ia][1] *= (1 - mask[2*ia + 1]);
+	    grad[3*(NOP*index + n1) + ia] =
+	      0.5*(1.0 + ((mask[2*ia] + mask[2*ia+1]) % 2))*
+	      (gradn[n1][ia][0] + gradn[n1][ia][1]);
+	  }
+	}
+
+	for (ia = 0; ia < 3; ia++) {
+	  gradn[ZZ][ia][0] = - gradn[XX][ia][0] - gradn[YY][ia][0];
+	  gradn[ZZ][ia][1] = - gradn[XX][ia][1] - gradn[YY][ia][1];
+	}
+
+	/* Iterate to a solution. */
+
+	for (niterate = 0; niterate < NITERATION; niterate++) {
+
+	  for (n = 0; n < 6; n++) {
+
+	    if (status[n] == FLUID) continue;
+
+	    for (n1 = 0; n1 < NOP; n1++) {
+	      for (ia = 0; ia < 3; ia++) {
+		dq[n1][ia] = grad[3*(NOP*index + n1) + ia];
+
+	      }
+	      dq[n1][normal[n]] = 1.0;
+	    }
+
+	    for (ia = 0; ia < 3; ia++) {
+	      dq[ZZ][ia] = - dq[XX][ia] - dq[YY][ia];
+	    }
+	    dq[ZZ][normal[n]] = 1.0;
+
+	    /* Construct boundary condition linear algebra problem.
+	     * Estimated terms are moved to the right-hand side b[],
+	     * while the coefficients of the unkonwn terms are set
+	     * up in matrix a[][]. Finally, the constant terms are
+	     * also added to the right-hand side (with a factor of
+	     * two in the off-diagaonal parts). */
+
+	    gradient_bcs6(kappa0, kappa1, bcs[n], dq, bc);
+
+	    for (n1 = 0; n1 < 6; n1++) {
+	      b[n1] = 0.0;
+	      for (n2 = 0; n2 < 6; n2++) {
+		a[n1][n2] = bc[n1][n2][normal[n]];
+		b[n1] -= bc[n1][n2][normal[n]];
+		for (ia = 0; ia < 3; ia++) {
+		  b[n1] += bc[n1][n2][ia];
+		}
+	      }
+	    }
+
+	    b[XX] = -(b[XX] +     c[n][X][X]);
+	    b[XY] = -(b[XY] + 2.0*c[n][X][Y]);
+	    b[XZ] = -(b[XZ] + 2.0*c[n][X][Z]);
+	    b[YY] = -(b[YY] +     c[n][Y][Y]);
+	    b[YZ] = -(b[YZ] + 2.0*c[n][Y][Z]);
+	    b[ZZ] = -(b[ZZ] +     c[n][Z][Z]);
+
+	    util_gaussian6(a, b);
+
+	    /* FIX TRACE */
+	    {
+	      double sum;
+	      sum = (b[XX] + b[YY] + b[ZZ])/3.0;
+	      b[XX] -= sum;
+	      b[YY] -= sum;
+	      b[ZZ] -= sum;
+	    }
+
+	    for (n1 = 0; n1 < 6; n1++) {
+	      gradn[n1][normal[n]][nsolid[n]] = b[n1];
+	    }
+	  }
+
+	  /* Do not update gradients if solid neighbours in both directions */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    tmp = 1.0*(1 - (mask[2*ia] && mask[2*ia+1]));
+	    for (n1 = 0; n1 < 6; n1++) {
+	      gradn[n1][ia][0] *= tmp;
+	      gradn[n1][ia][1] *= tmp;
+	    }
+	  }
+
+	  /* Now recompute gradients */
+
+	  for (n1 = 0; n1 < NOP; n1++) {
+	    del2[NOP*index + n1] = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      grad[3*(NOP*index + n1) + ia] =
+		0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	      del2[NOP*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	    }
+	  }
+
+	  /* No iteration required if only one boundary. */
+	  if (ns < 2) break;
+	}
+
+	/* Next site. */
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  Here's the 6x5 version solved via SVD.
+ *
+ *****************************************************************************/
+
+static void gradient_general6x5(const double * field, double * grad,
+				double * del2, const int nextra) {
+  int nlocal[3];
+  int nhalo;
+  int ic, jc, kc;
+  int ia, ib, ig, ih;
+  int index, n, ns, n1, n2;
+  int niterate;
+
+  int str[3];
+  int mask[6];
+  char status[6];
+
+  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+  const int normal[6] = {X, X, Y, Y, Z, Z};
+  const int nsolid[6] = {0, 1, 0, 1, 0, 1};
+
+  double gradn[NOP][3][2];                  /* Partial gradients */
+  double q0[3][3];                          /* Prefered surface Q_ab */
+  double qs[3][3];                          /* 'Surface' Q_ab */
+  double ** a;                         /* Matrix for linear system */
+  double b[6];                              /* RHS */
+  double x[NOP];                            /* Solution */
+  double dq[NOP][3];                        /* normal/tangential gradients */
+  double bc[6][NOP][3];                   /* Terms in boundary condition */
+  double c[6][3][3];                        /* Constant terms in BC. */
+  double dn[3];                             /* Unit normal. */
+  double tmp;
+
+  double w1_coll;                           /* Anchoring strength parameter */
+  double w2_coll;                           /* Second anchoring parameter */
+  double w1_wall;
+  double w2_wall;
+  double w1;
+  double w2;
+  double q_0;                               /* Cholesteric pitch wavevector */
+  double kappa0;                            /* Elastic constants */
+  double kappa1;
+
+  double amplitude;                         /* Scalar order parameter */
+  double qtilde[3][3];                      /* For planar anchoring */
+  double q2;                                /* Contraction Q_ab Q_ab */
+
+  assert(NOP == 5);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  util_matrix_create(6, NOP, &a);
+
+  str[Z] = 1;
+  str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
+  str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
+
+  kappa0 = fe_kappa();
+  kappa1 = fe_kappa(); /* One elastic constant */ 
+
+  q_0 = blue_phase_q0();
+  blue_phase_coll_w12(&w1_coll, &w2_coll);
+  blue_phase_wall_w12(&w1_wall, &w2_wall);
+  amplitude = blue_phase_amplitude_compute(); 
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	if (site_map_get_status_index(index) != FLUID) continue;
+
+	status[0] = site_map_get_status(ic+1, jc, kc);
+	status[1] = site_map_get_status(ic-1, jc, kc);
+	status[2] = site_map_get_status(ic, jc+1, kc);
+	status[3] = site_map_get_status(ic, jc-1, kc);
+	status[4] = site_map_get_status(ic, jc, kc+1);
+	status[5] = site_map_get_status(ic, jc, kc-1);
+
+	/* Set up partial gradients, and gradients */
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[n1][ia][0] =
+	      field[NOP*(index + str[ia]) + n1] - field[NOP*index + n1];
+	    gradn[n1][ia][1] =
+	      field[NOP*index + n1] - field[NOP*(index - str[ia]) + n1];
+	  }
+	}
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  del2[NOP*index + n1] = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad[3*(NOP*index + n1) + ia] = 
+	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	    del2[NOP*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	  }
+	}
+
+	ns = 0;
+	for (n = 0; n < 6; n++) {
+	  mask[n] = (status[n] != FLUID);
+	  ns += mask[n];
+	}
+
+	if (ns == 0) continue;
+
+	/* Solid boundary condition corrections are required. */
+
+	util_q5_to_qab(qs, field + NOP*index);
+
+	/* For planar anchoring we require qtilde_ab of Fournier and
+	 * Galatola, and its square */
+
+	q2 = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
+	    q2 += qtilde[ia][ib]*qtilde[ia][ib]; 
+	  }
+	}
+
+        /* Look at the neighbours */
+
+	for (n = 0; n < 6; n++) {
+	  if (status[n] == FLUID) continue;
+
+	  colloids_q_boundary_normal(index, bcs[n], dn);
+	  colloids_q_boundary(dn, qs, q0, status[n]);
+
+	  /* Check for wall/colloid */
+	  if (status[n] == COLLOID) {
+	    w1 = w1_coll;
+	    w2 = w2_coll;
+	  }
+
+	  if (status[n] == BOUNDARY) {
+	    w1 = w1_wall;
+	    w2 = w2_wall;
+	  }
+	  assert(status[n] == COLLOID || status[n] == BOUNDARY);
+
+	  /* Compute c[n][a][b] */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      c[n][ia][ib] = 0.0;
+	      for (ig = 0; ig < 3; ig++) {
+		for (ih = 0; ih < 3; ih++) {
+		  c[n][ia][ib] -= kappa1*q_0*bcs[n][ig]*
+		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+		}
+	      }
+	      /* Normal anchoring: w2 must be zero and q0 is preferred Q
+	       * Planar anchoring: in w1 term q0 is effectively
+	       *                   (Qtilde^perp - 0.5S_0) while in w2 we
+	       *                   have Qtilde appearing explicitly.
+               *                   See colloids_q_boundary() etc */
+	      c[n][ia][ib] +=
+		-w1*(qs[ia][ib] - q0[ia][ib])
+		-w2*(2.0*q2 - 4.5*amplitude*amplitude)*qtilde[ia][ib];
+	    }
+	  }
+	}
+
+	/* Set up initial approximation to grad using partial gradients
+	 * where solid sites are involved (or zero where none available) */
+
+	for (n1 = 0; n1 < NOP; n1++) {
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[n1][ia][0] *= (1 - mask[2*ia]);
+	    gradn[n1][ia][1] *= (1 - mask[2*ia + 1]);
+	    grad[3*(NOP*index + n1) + ia] =
+	      0.5*(1.0 + ((mask[2*ia] + mask[2*ia+1]) % 2))*
+	      (gradn[n1][ia][0] + gradn[n1][ia][1]);
+	  }
+	}
+
+	/* Iterate to a solution. */
+
+	for (niterate = 0; niterate < NITERATION; niterate++) {
+
+	  for (n = 0; n < 6; n++) {
+
+	    if (status[n] == FLUID) continue;
+
+	    for (n1 = 0; n1 < NOP; n1++) {
+	      for (ia = 0; ia < 3; ia++) {
+		dq[n1][ia] = grad[3*(NOP*index + n1) + ia];
+
+	      }
+	      dq[n1][normal[n]] = 1.0;
+	    }
+
+	    /* Construct boundary condition linear algebra problem.
+	     * Estimated terms are moved to the right-hand side b[],
+	     * while the coefficients of the unkonwn terms are set
+	     * up in matrix a[][]. Finally, the constant terms are
+	     * also added to the right-hand side (with a factor of
+	     * two in the off-diagaonal parts). */
+
+	    gradient_bcs6x5(kappa0, kappa1, bcs[n], dq, bc);
+
+	    for (n1 = 0; n1 < 6; n1++) {
+	      b[n1] = 0.0;
+	      for (n2 = 0; n2 < NOP; n2++) {
+		a[n1][n2] = bc[n1][n2][normal[n]];
+		b[n1] -= bc[n1][n2][normal[n]];
+		for (ia = 0; ia < 3; ia++) {
+		  b[n1] += bc[n1][n2][ia];
+		}
+	      }
+	    }
+
+	    b[XX] = -(b[XX] +     c[n][X][X]);
+	    b[XY] = -(b[XY] + 2.0*c[n][X][Y]);
+	    b[XZ] = -(b[XZ] + 2.0*c[n][X][Z]);
+	    b[YY] = -(b[YY] +     c[n][Y][Y]);
+	    b[YZ] = -(b[YZ] + 2.0*c[n][Y][Z]);
+	    b[ZZ] = -(b[ZZ] +     c[n][Z][Z]);
+
+	    {
+	      int ifail;
+	      ifail = util_svd_solve(6, NOP, a, b, x);
+	      if (ifail != 0) fatal("SVD failed\n");
+	    }
+
+	    for (n1 = 0; n1 < NOP; n1++) {
+	      gradn[n1][normal[n]][nsolid[n]] = x[n1];
+	    }
+	  }
+
+	  /* Do not update gradients if solid neighbours in both directions */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    tmp = 1.0*(1 - (mask[2*ia] && mask[2*ia+1]));
+	    for (n1 = 0; n1 < NOP; n1++) {
+	      gradn[n1][ia][0] *= tmp;
+	      gradn[n1][ia][1] *= tmp;
+	    }
+	  }
+
+	  /* Now recompute gradients */
+
+	  for (n1 = 0; n1 < NOP; n1++) {
+	    del2[NOP*index + n1] = 0.0;
+	    for (ia = 0; ia < 3; ia++) {
+	      grad[3*(NOP*index + n1) + ia] =
+		0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	      del2[NOP*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	    }
+	  }
+
+	  /* No iteration required if only one boundary. */
+	  if (ns < 2) break;
+	}
+
+	/* Next site. */
+      }
+    }
+  }
+
+  util_matrix_free(6, &a);
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  gradient_bcs
+ *
+ *  These are the coefficients of the d_c Q_ab terms in the
+ *  boundary condition equation.
+ *
+ *  For the XX equation the coefficent of d_c Q_ab is bc[XX][ab][c]
+ *  and so on. For known terms dq is unity, otherwise it is an
+ *  estimate of the gradient d_c Q_ab which will end up on the
+ *  right-hand side.
+ *
+ *  The XY, XZ, and YZ equations are multiplied a factor of two.
  *
  *****************************************************************************/
 
@@ -495,6 +1089,296 @@ static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
 
 /*****************************************************************************
  *
+ *  Here is a version which treats the 6x6 problem
+ *
+ *****************************************************************************/
+
+static void gradient_bcs6(double kappa0, double kappa1, const int dn[3],
+			 double dq[6][3], double bc[6][6][3]) {
+
+  double kappa2;
+
+  kappa2 = kappa0 + kappa1;
+
+  /* XX equation */
+
+  bc[XX][XX][X] =  kappa0*dn[X]*dq[XX][X];
+  bc[XX][XY][X] = -kappa1*dn[Y]*dq[XY][X];
+  bc[XX][XZ][X] = -kappa1*dn[Z]*dq[XZ][X];
+  bc[XX][YY][X] =  0.0;
+  bc[XX][YZ][X] =  0.0;
+  bc[XX][ZZ][X] =  0.0;
+
+  bc[XX][XX][Y] = kappa1*dn[Y]*dq[XX][Y];
+  bc[XX][XY][Y] = kappa0*dn[X]*dq[XY][Y];
+  bc[XX][XZ][Y] = 0.0;
+  bc[XX][YY][Y] = 0.0;
+  bc[XX][YZ][Y] = 0.0;
+  bc[XX][ZZ][Y] = 0.0;
+
+  bc[XX][XX][Z] = kappa1*dn[Z]*dq[XX][Z];
+  bc[XX][XY][Z] = 0.0;
+  bc[XX][XZ][Z] = kappa0*dn[X]*dq[XZ][Z];
+  bc[XX][YY][Z] = 0.0;
+  bc[XX][YZ][Z] = 0.0;
+  bc[XX][ZZ][Z] = 0.0;
+
+  /* XY equation */
+
+  bc[XY][XX][X] =  kappa0*dn[Y]*dq[XX][X];
+  bc[XY][XY][X] =  kappa2*dn[X]*dq[XY][X];
+  bc[XY][XZ][X] =  0.0;
+  bc[XY][YY][X] = -kappa1*dn[Y]*dq[YY][X];
+  bc[XY][YZ][X] = -kappa1*dn[Z]*dq[YZ][X];
+  bc[XY][ZZ][X] = 0.0;
+
+  bc[XY][XX][Y] = -kappa1*dn[X]*dq[XX][Y];
+  bc[XY][XY][Y] =  kappa2*dn[Y]*dq[XY][Y];
+  bc[XY][XZ][Y] = -kappa1*dn[Z]*dq[XZ][Y];
+  bc[XY][YY][Y] =  kappa0*dn[X]*dq[YY][Y];
+  bc[XY][YZ][Y] =  0.0;
+  bc[XY][ZZ][Y] =  0.0;
+
+  bc[XY][XX][Z] = 0.0;
+  bc[XY][XY][Z] = 2.0*kappa1*dn[Z]*dq[XY][Z];
+  bc[XY][XZ][Z] = kappa0*dn[Y]*dq[XZ][Z];
+  bc[XY][YY][Z] = 0.0;
+  bc[XY][YZ][Z] = kappa0*dn[X]*dq[YZ][Z];
+  bc[XY][ZZ][Z] = 0.0;
+
+  /* XZ equation */
+
+  bc[XZ][XX][X] =  kappa0*dn[Z]*dq[XX][X];
+  bc[XZ][XY][X] =  0.0;
+  bc[XZ][XZ][X] =  kappa2*dn[X]*dq[XZ][X];
+  bc[XZ][YY][X] =  0.0;
+  bc[XZ][YZ][X] = -kappa1*dn[Y]*dq[YZ][X];
+  bc[XZ][ZZ][X] = -kappa1*dn[Z]*dq[ZZ][X];
+
+  bc[XZ][XX][Y] = 0.0;
+  bc[XZ][XY][Y] = kappa0*dn[Z]*dq[XY][Y];
+  bc[XZ][XZ][Y] = 2.0*kappa1*dn[Y]*dq[XZ][Y];
+  bc[XZ][YY][Y] = 0.0;
+  bc[XZ][YZ][Y] = kappa0*dn[X]*dq[YZ][Y];
+  bc[XZ][ZZ][Y] = 0.0;
+
+  bc[XZ][XX][Z] = -kappa1*dn[X]*dq[XX][Z];
+  bc[XZ][XY][Z] = -kappa1*dn[Y]*dq[XY][Z];
+  bc[XZ][XZ][Z] =  kappa2*dn[Z]*dq[XZ][Z];
+  bc[XZ][YY][Z] =  0.0;
+  bc[XZ][YZ][Z] =  0.0;
+  bc[XZ][ZZ][Z] =  kappa0*dn[X]*dq[ZZ][Z];
+
+  /* YY equation */
+
+  bc[YY][XX][X] = 0.0;
+  bc[YY][XY][X] = kappa0*dn[Y]*dq[XY][X];
+  bc[YY][XZ][X] = 0.0;
+  bc[YY][YY][X] = kappa1*dn[X]*dq[YY][X];
+  bc[YY][YZ][X] = 0.0;
+  bc[YY][ZZ][X] = 0.0;
+
+  bc[YY][XX][Y] =  0.0;
+  bc[YY][XY][Y] = -kappa1*dn[X]*dq[XY][Y];
+  bc[YY][XZ][Y] =  0.0;
+  bc[YY][YY][Y] =  kappa0*dn[Y]*dq[YY][Y];
+  bc[YY][YZ][Y] = -kappa1*dn[Z]*dq[YZ][Y];
+  bc[YY][ZZ][Y] =  0.0;
+
+  bc[YY][XX][Z] = 0.0;
+  bc[YY][XY][Z] = 0.0;
+  bc[YY][XZ][Z] = 0.0;
+  bc[YY][YY][Z] = kappa1*dn[Z]*dq[YY][Z];
+  bc[YY][YZ][Z] = kappa0*dn[Y]*dq[YZ][Z];
+  bc[YY][ZZ][Z] = 0.0;
+
+  /* YZ equation */
+
+  bc[YZ][XX][X] = 0.0;
+  bc[YZ][XY][X] = kappa0*dn[Z]*dq[XY][X];
+  bc[YZ][XZ][X] = kappa0*dn[Y]*dq[XZ][X];
+  bc[YZ][YY][X] = 0.0;
+  bc[YZ][YZ][X] = 2.0*kappa1*dn[X]*dq[YZ][X];
+  bc[YZ][ZZ][X] = 0.0;
+
+  bc[YZ][XX][Y] =  0.0;
+  bc[YZ][XY][Y] =  0.0;
+  bc[YZ][XZ][Y] = -kappa1*dn[X]*dq[XZ][Y];
+  bc[YZ][YY][Y] =  kappa0*dn[Z]*dq[YY][Y];
+  bc[YZ][YZ][Y] =  kappa2*dn[Y]*dq[YZ][Y];
+  bc[YZ][ZZ][Y] = -kappa1*dn[Z]*dq[ZZ][Y];
+
+  bc[YZ][XX][Z] =  0.0;
+  bc[YZ][XY][Z] = -kappa1*dn[X]*dq[XY][Z];
+  bc[YZ][XZ][Z] =  0.0;
+  bc[YZ][YY][Z] = -kappa1*dn[Y]*dq[YY][Z];
+  bc[YZ][YZ][Z] =  kappa2*dn[Z]*dq[YZ][Z];
+  bc[YZ][ZZ][Z] =  kappa0*dn[Y]*dq[ZZ][Z];
+
+  /* ZZ equation */
+
+  bc[ZZ][XX][X] = 0.0;
+  bc[ZZ][XY][X] = 0.0;
+  bc[ZZ][XZ][X] = kappa0*dn[Z]*dq[XZ][X];
+  bc[ZZ][YY][X] = 0.0;
+  bc[ZZ][YZ][X] = 0.0;
+  bc[ZZ][ZZ][X] = kappa1*dn[X]*dq[ZZ][X];
+  
+  bc[ZZ][XX][Y] = 0.0;
+  bc[ZZ][XY][Y] = 0.0;
+  bc[ZZ][XZ][Y] = 0.0;
+  bc[ZZ][YY][Y] = 0.0;
+  bc[ZZ][YZ][Y] = kappa0*dn[Z]*dq[YZ][Y];
+  bc[ZZ][ZZ][Y] = kappa1*dn[Y]*dq[ZZ][Y];
+  
+  bc[ZZ][XX][Z] =  0.0;
+  bc[ZZ][XY][Z] =  0.0;
+  bc[ZZ][XZ][Z] = -kappa1*dn[X]*dq[XZ][Z];
+  bc[ZZ][YY][Z] =  0.0;
+  bc[ZZ][YZ][Z] = -kappa1*dn[Y]*dq[YZ][Z];
+  bc[ZZ][ZZ][Z] =  kappa0*dn[Z]*dq[ZZ][Z];
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  Here is a version which treats the 6x5 problem
+ *
+ *****************************************************************************/
+
+static void gradient_bcs6x5(double kappa0, double kappa1, const int dn[3],
+			 double dq[NOP][3], double bc[6][NOP][3]) {
+
+  double kappa2;
+
+  kappa2 = kappa0 + kappa1;
+
+  /* XX equation */
+
+  bc[XX][XX][X] =  kappa0*dn[X]*dq[XX][X];
+  bc[XX][XY][X] = -kappa1*dn[Y]*dq[XY][X];
+  bc[XX][XZ][X] = -kappa1*dn[Z]*dq[XZ][X];
+  bc[XX][YY][X] =  0.0;
+  bc[XX][YZ][X] =  0.0;
+
+  bc[XX][XX][Y] = kappa1*dn[Y]*dq[XX][Y];
+  bc[XX][XY][Y] = kappa0*dn[X]*dq[XY][Y];
+  bc[XX][XZ][Y] = 0.0;
+  bc[XX][YY][Y] = 0.0;
+  bc[XX][YZ][Y] = 0.0;
+
+  bc[XX][XX][Z] = kappa1*dn[Z]*dq[XX][Z];
+  bc[XX][XY][Z] = 0.0;
+  bc[XX][XZ][Z] = kappa0*dn[X]*dq[XZ][Z];
+  bc[XX][YY][Z] = 0.0;
+  bc[XX][YZ][Z] = 0.0;
+
+  /* XY equation */
+
+  bc[XY][XX][X] =  kappa0*dn[Y]*dq[XX][X];
+  bc[XY][XY][X] =  kappa2*dn[X]*dq[XY][X];
+  bc[XY][XZ][X] =  0.0;
+  bc[XY][YY][X] = -kappa1*dn[Y]*dq[YY][X];
+  bc[XY][YZ][X] = -kappa1*dn[Z]*dq[YZ][X];
+
+  bc[XY][XX][Y] = -kappa1*dn[X]*dq[XX][Y];
+  bc[XY][XY][Y] =  kappa2*dn[Y]*dq[XY][Y];
+  bc[XY][XZ][Y] = -kappa1*dn[Z]*dq[XZ][Y];
+  bc[XY][YY][Y] =  kappa0*dn[X]*dq[YY][Y];
+  bc[XY][YZ][Y] =  0.0;
+
+  bc[XY][XX][Z] = 0.0;
+  bc[XY][XY][Z] = 2.0*kappa1*dn[Z]*dq[XY][Z];
+  bc[XY][XZ][Z] = kappa0*dn[Y]*dq[XZ][Z];
+  bc[XY][YY][Z] = 0.0;
+  bc[XY][YZ][Z] = kappa0*dn[X]*dq[YZ][Z];
+
+  /* XZ equation */
+
+  bc[XZ][XX][X] =  kappa2*dn[Z]*dq[XX][X];
+  bc[XZ][XY][X] =  0.0;
+  bc[XZ][XZ][X] =  kappa2*dn[X]*dq[XZ][X];
+  bc[XZ][YY][X] =  kappa1*dn[Z]*dq[YY][X];
+  bc[XZ][YZ][X] = -kappa1*dn[Y]*dq[YZ][X];
+
+  bc[XZ][XX][Y] = 0.0;
+  bc[XZ][XY][Y] = kappa0*dn[Z]*dq[XY][Y];
+  bc[XZ][XZ][Y] = 2.0*kappa1*dn[Y]*dq[XZ][Y];
+  bc[XZ][YY][Y] = 0.0;
+  bc[XZ][YZ][Y] = kappa0*dn[X]*dq[YZ][Y];
+
+  bc[XZ][XX][Z] = -kappa2*dn[X]*dq[XX][Z];
+  bc[XZ][XY][Z] = -kappa1*dn[Y]*dq[XY][Z];
+  bc[XZ][XZ][Z] =  kappa2*dn[Z]*dq[XZ][Z];
+  bc[XZ][YY][Z] = -kappa0*dn[X]*dq[YY][Z];
+  bc[XZ][YZ][Z] =  0.0;
+
+  /* YY equation */
+
+  bc[YY][XX][X] = 0.0;
+  bc[YY][XY][X] = kappa0*dn[Y]*dq[XY][X];
+  bc[YY][XZ][X] = 0.0;
+  bc[YY][YY][X] = kappa1*dn[X]*dq[YY][X];
+  bc[YY][YZ][X] = 0.0;
+
+  bc[YY][XX][Y] =  0.0;
+  bc[YY][XY][Y] = -kappa1*dn[X]*dq[XY][Y];
+  bc[YY][XZ][Y] =  0.0;
+  bc[YY][YY][Y] =  kappa0*dn[Y]*dq[YY][Y];
+  bc[YY][YZ][Y] = -kappa1*dn[Z]*dq[YZ][Y];
+
+  bc[YY][XX][Z] = 0.0;
+  bc[YY][XY][Z] = 0.0;
+  bc[YY][XZ][Z] = 0.0;
+  bc[YY][YY][Z] = kappa1*dn[Z]*dq[YY][Z];
+  bc[YY][YZ][Z] = kappa0*dn[Y]*dq[YZ][Z];
+
+  /* YZ equation */
+
+  bc[YZ][XX][X] = 0.0;
+  bc[YZ][XY][X] = kappa0*dn[Z]*dq[XY][X];
+  bc[YZ][XZ][X] = kappa0*dn[Y]*dq[XZ][X];
+  bc[YZ][YY][X] = 0.0;
+  bc[YZ][YZ][X] = 2.0*kappa1*dn[X]*dq[YZ][X];
+
+  bc[YZ][XX][Y] =  kappa1*dn[Z]*dq[XX][Y];
+  bc[YZ][XY][Y] =  0.0;
+  bc[YZ][XZ][Y] = -kappa1*dn[X]*dq[XZ][Y];
+  bc[YZ][YY][Y] =  kappa2*dn[Z]*dq[YY][Y];
+  bc[YZ][YZ][Y] =  kappa2*dn[Y]*dq[YZ][Y];
+
+  bc[YZ][XX][Z] = -kappa0*dn[Y]*dq[XX][Z];
+  bc[YZ][XY][Z] = -kappa1*dn[X]*dq[XY][Z];
+  bc[YZ][XZ][Z] =  0.0;
+  bc[YZ][YY][Z] = -kappa2*dn[Y]*dq[YY][Z];
+  bc[YZ][YZ][Z] =  kappa2*dn[Z]*dq[YZ][Z];
+
+  /* ZZ equation */
+
+  bc[ZZ][XX][X] = -kappa1*dn[X]*dq[XX][X];
+  bc[ZZ][XY][X] =  0.0;
+  bc[ZZ][XZ][X] =  kappa0*dn[Z]*dq[XZ][X];
+  bc[ZZ][YY][X] = -kappa1*dn[X]*dq[YY][X];
+  bc[ZZ][YZ][X] =  0.0;
+  
+  bc[ZZ][XX][Y] = -kappa1*dn[Y]*dq[XX][Y];
+  bc[ZZ][XY][Y] =  0.0;
+  bc[ZZ][XZ][Y] =  0.0;
+  bc[ZZ][YY][Y] = -kappa1*dn[Y]*dq[YY][Y];
+  bc[ZZ][YZ][Y] =  kappa0*dn[Z]*dq[YZ][Y];
+  
+  bc[ZZ][XX][Z] = -kappa0*dn[Z]*dq[XX][Z];
+  bc[ZZ][XY][Z] =  0.0;
+  bc[ZZ][XZ][Z] = -kappa1*dn[X]*dq[XZ][Z];
+  bc[ZZ][YY][Z] = -kappa0*dn[Z]*dq[YY][Z];
+  bc[ZZ][YZ][Z] = -kappa1*dn[Y]*dq[YZ][Z];
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  util_gaussian
  *
  *  Solve linear system via Gaussian elimination. For the problems in this
@@ -567,6 +1451,73 @@ static int util_gaussian(double a[NOP][NOP], double xb[NOP]) {
     iprow = ipivot[i];
     tmp = xb[iprow];
     for (k = i + 1; k < NOP; k++) {
+      tmp -= a[iprow][k]*xb[ipivot[k]];
+    }
+    xb[iprow] = tmp;
+  }
+
+  return ifail;
+}
+
+static int util_gaussian6(double a[6][6], double xb[6]) {
+
+  int i, j, k;
+  int ifail = 0;
+  int iprow;
+  int ipivot[6];
+
+  double tmp;
+
+  iprow = -1;
+  for (k = 0; k < 6; k++) {
+    ipivot[k] = -1;
+  }
+
+  for (k = 0; k < 6; k++) {
+
+    /* Find pivot row */
+    tmp = 0.0;
+    for (i = 0; i < 6; i++) {
+      if (ipivot[i] == -1) {
+	if (fabs(a[i][k]) >= tmp) {
+	  tmp = fabs(a[i][k]);
+	  iprow = i;
+	}
+      }
+    }
+    ipivot[k] = iprow;
+
+    /* divide pivot row by the pivot element a[iprow][k] */
+
+    if (a[iprow][k] == 0.0) {
+      fatal("Gaussian elimination failed in gradient calculation\n");
+    }
+
+    tmp = 1.0 / a[iprow][k];
+    for (j = k; j < 6; j++) {
+      a[iprow][j] *= tmp;
+    }
+    xb[iprow] *= tmp;
+
+    /* Subtract the pivot row (scaled) from remaining rows */
+
+    for (i = 0; i < 6; i++) {
+      if (ipivot[i] == -1) {
+	tmp = a[i][k];
+	for (j = k; j < 6; j++) {
+	  a[i][j] -= tmp*a[iprow][j];
+	}
+	xb[i] -= tmp*xb[iprow];
+      }
+    }
+  }
+
+  /* Now do the back substitution */
+
+  for (i = 6 - 1; i > -1; i--) {
+    iprow = ipivot[i];
+    tmp = xb[iprow];
+    for (k = i + 1; k < 6; k++) {
       tmp -= a[iprow][k]*xb[ipivot[k]];
     }
     xb[iprow] = tmp;
