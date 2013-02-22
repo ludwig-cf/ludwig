@@ -60,8 +60,8 @@ ARFLAGS = -cru
 
 GPUCC = nvcc
 GPUCPPFLAG = -D_GPU_
-GPUOPTS = $(OPTS) $(GPUCPPFLAG) #-Xptxas -v #,-abi=no
-GPUCFLAGS = -O3 -arch=sm_21 
+GPUOPTS = $(OPTS) $(GPUCPPFLAG) -Xptxas -v #,-abi=no
+GPUCFLAGS = -O3 -arch=sm_35
 #GPUCFLAGS = -arch=sm_21 -g -G 
 GPUINC = $(INC) -I/usr/include/mpich2-x86_64
 

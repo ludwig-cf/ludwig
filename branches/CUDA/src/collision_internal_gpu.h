@@ -17,10 +17,7 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo,
 						double* f_d,		
 						char* site_map_status_d, 
 					      double* force_ptr, 
-						double* velocity_ptr,	
-						double* ma_ptr,		
-						double* d_ptr,		
-						double* mi_ptr);
+						double* velocity_ptr);
 
 __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3], 
 					  double* force_global_d, 
@@ -94,6 +91,9 @@ extern double * delsq_phi_site_d;
 __constant__ double rtau_shear_d;
 __constant__ double rtau_bulk_d;
 __constant__ double rtau_d[NVEL];
+__constant__ double ma_cd[NVEL][NVEL];
+__constant__ double mi_cd[NVEL][NVEL];
+__constant__ double d_cd[3][3];
 __constant__ double a_d;
 __constant__ double b_d;
 __constant__ double kappa_d;

@@ -1,4 +1,4 @@
-/*****************************************************************************
+ /*****************************************************************************
  *
  *  collision_gpu.c
  *
@@ -42,6 +42,8 @@ static double noise_var[NVEL];  /* Noise variances */
 
 static double rtau2;
 
+extern const double d_[3][3];
+
 void collide_gpu(void) {
 
   int ndist,nhalo;
@@ -71,7 +73,7 @@ void collide_gpu(void) {
 
    collision_multirelaxation_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist,nhalo, 
     		  N_d,force_global_d, f_d, site_map_status_d, 
-    			force_d, velocity_d, ma_d, d_d, mi_d);
+    			force_d, velocity_d);
 
     }
 
@@ -134,10 +136,7 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 					      double* f_d, 
 						char* site_map_status_d, 
 					      double* force_d, 
-    			       		      double* velocity_d, 
-					      double* ma_ptr,
-					      double* d_ptr,
-					      double* mi_ptr
+    			       		      double* velocity_d
 					      )
 {
 
@@ -161,19 +160,6 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 
   int threadIndex, nsite, Nall[3], ii, jj, kk, xfac, yfac;
 
-
-  /* cast dummy gpu memory pointers to pointers of right type (for 
-   * multidimensional arrays) */
-
-  double (*ma_d)[NVEL] = (double (*)[NVEL]) ma_ptr;
-  double (*mi_d)[NVEL] = (double (*)[NVEL]) mi_ptr;
-  double (*d_d)[3] = (double (*)[3]) d_ptr;
-
-
-  /* the below routines are now called from the driver routine 
-   * ndist = distribution_ndist();
-   * coords_nlocal(N);
-   * fluid_body_force(force_global); */
   
   fluctuations_off_gpu_d(shat, ghat);
 
@@ -192,8 +178,6 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
   /* CUDA thread index */
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
 
-  //printf (" %d %d %d %d\n",threadIndex,blockIdx.x,blockDim.x,threadIdx.x);
-  
   /* Avoid going beyond problem domain */
   if (threadIndex < N[X]*N[Y]*N[Z])
     {
@@ -216,11 +200,11 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  /* Compute all the modes */
 	  
 	  for (m = 0; m < NVEL; m++) {
-	    double dtmp = 0.;
-	    for (p = 0; p < NVEL; p++) {
-	      dtmp += f_d[nsite*p + index]*ma_d[m][p];
-	    }
-	    mode[m] = dtmp;
+	   double dtmp = 0.;
+	  for (p = 0; p < NVEL; p++) {
+	    dtmp += f_d[nsite*p + index]*ma_cd[m][p];
+	  }
+	  mode[m] = dtmp;
 	  }
 	  
 
@@ -294,7 +278,7 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  for (ia = 0; ia < NDIM; ia++) {
 	    for (ib = 0; ib < NDIM; ib++) {
 	      s[ia][ib] -= rtau_shear_d*(s[ia][ib] - seq[ia][ib]);
-	      s[ia][ib] += d_d[ia][ib]*rdim*tr_s;
+	      s[ia][ib] += d_cd[ia][ib]*rdim*tr_s;
 	      
 	      /* Correction from body force (assumes equal relaxation times) */
 	      
@@ -329,11 +313,11 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  /* Project post-collision modes back onto the distribution */
 	  
 	  for (p = 0; p < NVEL; p++) {
-	    double dtmp = 0.;
-	    for (m = 0; m < NVEL; m++) {
-	      dtmp += mi_d[p][m]*mode[m];
-	    }
-	    f_d[nsite*p + index] = dtmp;
+	   double dtmp = 0.;
+	  for (m = 0; m < NVEL; m++) {
+	    dtmp += mi_cd[p][m]*mode[m];
+	  }
+	  f_d[nsite*p + index] = dtmp;
 	  }
 	  
 	}
@@ -791,6 +775,14 @@ void collision_relaxation_times_set_gpu(void) {
 		       cudaMemcpyHostToDevice);
     cudaMemcpyToSymbol(rtau_d, rtau_, NVEL*sizeof(double), 0,	
 		       cudaMemcpyHostToDevice);
+
+    cudaMemcpyToSymbol(ma_cd, ma_, NVEL*NVEL*sizeof(double), 0,	
+		       cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(mi_cd, mi_, NVEL*NVEL*sizeof(double), 0,	
+		       cudaMemcpyHostToDevice);
+     cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0,	
+    		       cudaMemcpyHostToDevice);
+
     cudaMemcpyToSymbol(rtau2_d, &rtau2, sizeof(double), 0,	
 		       cudaMemcpyHostToDevice);
     cudaMemcpyToSymbol(rcs2_d, &rcs2, sizeof(double), 0,	
