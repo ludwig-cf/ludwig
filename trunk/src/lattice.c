@@ -686,7 +686,8 @@ static int hydrodynamics_u_write_ascii(FILE * fp, const int ic, const int jc,
  *  Return the velocity gradient tensor w_ab = d_b u_a at
  *  the site (ic, jc, kc).
  *
- *  The differencing is 2nd order centred.
+ *  The differencing is 2nd order centred. We demand that
+ *  Tr w_ab = 0, i.e., there is no divergence.
  *
  *  This must take account of the Lees Edwards planes in  the x-direction.
  *
@@ -697,6 +698,7 @@ void hydrodynamics_velocity_gradient_tensor(const int ic,
 					    const int kc,
 					    double w[3][3]) {
   int im1, ip1;
+  double tr;
 
   assert(initialised_);
 
@@ -722,6 +724,13 @@ void hydrodynamics_velocity_gradient_tensor(const int ic,
   w[X][Z] = 0.5*(u[ip1].c[X] - u[im1].c[X]);
   w[Y][Z] = 0.5*(u[ip1].c[Y] - u[im1].c[Y]);
   w[Z][Z] = 0.5*(u[ip1].c[Z] - u[im1].c[Z]);
+
+  /* Tracelessness */
+
+  tr = r3_*(w[X][X] + w[Y][Y] + w[Z][Z]);
+  w[X][X] -= tr;
+  w[Y][Y] -= tr;
+  w[Z][Z] -= tr;
 
   return;
 }
