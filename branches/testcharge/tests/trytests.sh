@@ -101,6 +101,10 @@ echo Running Electrokinetic GC test
 ./Ludwig.exe ../tests/regression/test_elec_gc_input > /tmp/junk
 diff /tmp/junk ../tests/regression/test_elec_srl.ref
 
+echo Running Electrokinetic EO test
+./Ludwig.exe ../tests/regression/test_elec_eo_input > /tmp/junk
+diff /tmp/junk ../tests/regression/test_elec_eo_d3q19.ref1
+
 
 # Parallel unit tests
 
