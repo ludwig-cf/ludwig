@@ -110,11 +110,11 @@ make mpi
 
 echo Running BPI test
 mpirun -np 8 ./Ludwig.exe ../tests/regression/test_bp1_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_bp1_par.ref
+diff /tmp/junk ../tests/regression/test_bp1_d3q19.ref8
 
 echo Running BPII test
 mpirun -np 8 ./Ludwig.exe ../tests/regression/test_bp2_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_bp2_par.ref
+diff /tmp/junk ../tests/regression/test_bp2_d3q19.ref8
 
 echo Running spin03 parallel test
 mpirun -np 8 ./Ludwig.exe ../tests/regression/test_spin03_input > /tmp/junk
