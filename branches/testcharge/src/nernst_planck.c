@@ -73,6 +73,7 @@
 #include "psi_s.h"
 #include "advection.h"
 #include "advection_bcs.h"
+#include "free_energy.h"
 #include "magnetic_field.h"  /* Actually used to get electric field */
 #include "nernst_planck.h"
 
@@ -162,6 +163,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
   double b0, b1;
   double mu0, mu1;
   double rho0, rho1;
+  double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
   double e0[3];
 
   assert(psi);
@@ -198,13 +200,15 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 
 	for (n = 0; n < nk; n++) {
 
-	  mu0 = psi->valency[n]*eunit*psi->psi[index];
+	  fe_mu_solv(index, n, &mu_s0);
+	  mu0 = mu_s0 + psi->valency[n]*eunit*psi->psi[index];
 	  rho0 = psi->rho[nk*index + n]*exp(beta*mu0);
 	  b0 = exp(-beta*mu0);
 
 	  /* x-direction (between ic and ic+1) */
 
-	  mu1 = psi->valency[n]*eunit*(psi->psi[index + xs] - e0[X]);
+	  fe_mu_solv(index + xs, n, &mu_s1);
+	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + xs] - e0[X]);
 	  rho1 = psi->rho[nk*(index + xs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
@@ -212,7 +216,8 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 
 	  /* y-direction (between jc and jc+1) */
 
-	  mu1 = psi->valency[n]*eunit*(psi->psi[index + ys] - e0[Y]);
+	  fe_mu_solv(index + ys, n, &mu_s1);
+	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + ys] - e0[Y]);
 	  rho1 = psi->rho[nk*(index + ys) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
@@ -220,7 +225,8 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 
 	  /* z-direction (between kc and kc+1) */
 
-	  mu1 = psi->valency[n]*eunit*(psi->psi[index + zs] - e0[Z]);
+	  fe_mu_solv(index + zs, n, &mu_s1);
+	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + zs] - e0[Z]);
 	  rho1 = psi->rho[nk*(index + zs) + n]*exp(beta*mu1);
 	  b1 = exp(-beta*mu1);
 
