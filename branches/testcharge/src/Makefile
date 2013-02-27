@@ -70,7 +70,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      coords.o coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      ewald.o field.o field_grad.o fluctuations.o \
-     free_energy.o free_energy_vector.o \
+     free_energy.o free_energy_vector.o fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
