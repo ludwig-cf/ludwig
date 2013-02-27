@@ -620,12 +620,22 @@ molecular field') is replaced by
 \subsubsection{Discrete implementation}
 
 In three dimensions, the boundary condition Eq.~\ref{cholesteric_bc}
-contains (potentially) 15 unknown derivatives
+provides six equations containing (potentially) 18 unknown derivatives
 $\partial_\gamma Q_{\alpha\beta}$
-corresponding to the 5 independent elements of the order parameter
-tensor $Q_{xx}$, $Q_{xy}$, $Q_{xz}$, $Q_{yy}$, and $Q_{yz}$. At a
-flat surface with, e.g., $n = (1, 0, 0)$, this is reduced to five unknown
-gradients $\partial_x Q_{\alpha\beta}$ at the
+corresponding to the 6 independent elements of the order parameter
+tensor $Q_{xx}$, $Q_{xy}$, $Q_{xz}$, $Q_{yy}$, $Q_{yz}$, $Q_{zz}$.
+Note that the equation corresponding to $Q_{zz}$ must appear to
+retain isotropy. However, $Q_{zz}$ itself, and its derivatives,
+ may be replaced via the
+constraint on the trace of $Q_{\alpha\beta}$. We can therefore either
+solve a fully determined system including $Q_{zz}$, and then impose
+tracelessness on the result, or replace $Q_{zz}$ and solve six
+equations for five unknowns, with the sixth equation acting as the
+constraint. These methods provide the same answer for cases where
+the surface normal is along the coordinate directions.
+
+At a flat surface with, e.g., $n = (1, 0, 0)$, the number of unknowns
+are the gradients $\partial_x Q_{\alpha\beta}$ at the
 boundary if we assume the tangential gradients $\partial_y Q_{\alpha\beta}$
 and $\partial_z Q_{\alpha\beta}$ can be approximated
 using the standard differencing method involving only fluid values of
@@ -666,59 +676,67 @@ and the process is iterated.
 \begin{table}
 \begin{center}
 
-\begin{tabular}{|c|ccccc|}
+\begin{tabular}{|c|cccccc|}
 
 \hline
 &
-$Q_{xx,x}$ & $Q_{xy,x}$ & $Q_{xz,x}$ & $Q_{yy,x}$ & $Q_{yz,x}$ \\
+$Q_{xx,x}$ & $Q_{xy,x}$ & $Q_{xz,x}$ & $Q_{yy,x}$ & $Q_{yz,x}$ & $Q_{zz,x}$\\
 \hline
 $Q_{xx}$ &
-$\kappa_0 n_x$ & $-\kappa_1 n_y$ & $-\kappa_1 n_z$ & & \\
+$\kappa_0 n_x$ & $-\kappa_1 n_y$ & $-\kappa_1 n_z$ & & &\\
 $Q_{xy}$ &
-$\kappa_0 n_y$ & $\kappa' n_x$ & & $-\kappa_1 n_y$  & $-\kappa_1 n_z$  \\
+$\kappa_0 n_y$ & $\kappa' n_x$ & & $-\kappa_1 n_y$  & $-\kappa_1 n_z$ & \\
 $Q_{xz}$ &
-$\kappa' n_z$ & & $\kappa' n_x$ & $\kappa_1 n_z$ & $-\kappa_1 n_y$ \\
+$\kappa_0 n_z$ & & $\kappa' n_x$ & & $-\kappa_1 n_y$ &$ -\kappa_1 n_z$\\
 $Q_{yy}$ &
- & $\kappa_0 n_y$ & & $\kappa_1 n_x$ & \\
+ & $\kappa_0 n_y$ & & $\kappa_1 n_x$ & &\\
 $Q_{yz}$ &
- & $\kappa_0 n_z$ & $\kappa_0 n_y$ & & $2\kappa_1 n_x$ \\
+ & $\kappa_0 n_z$ & $\kappa_0 n_y$ & & $2\kappa_1 n_x$ & \\
+$Q_{zz}$ &
+ & & $\kappa_0 n_z$ & & & $\kappa_1 n_x$\\
 \hline
 \hline
 &
-$Q_{xx,y}$ & $Q_{xy,y}$ & $Q_{xz,y}$ & $Q_{yy,y}$ & $Q_{yz,y}$ \\
+$Q_{xx,y}$ & $Q_{xy,y}$ & $Q_{xz,y}$ & $Q_{yy,y}$ & $Q_{yz,y}$ & $Q_{zz,y}$\\
 \hline
 $Q_{xx}$ &
-$\kappa_1 n_y$ & $\kappa_0 n_x$ & & & \\
+$\kappa_1 n_y$ & $\kappa_0 n_x$ & & & &\\
 $Q_{xy}$ &
-$-\kappa_1 n_x$ & $\kappa' n_y$ & $-\kappa_1 n_z$ & $\kappa_0 n_x$ & \\
+$-\kappa_1 n_x$ & $\kappa' n_y$ & $-\kappa_1 n_z$ & $\kappa_0 n_x$ & &\\
 $Q_{xz}$ &
- & $\kappa_0 n_z$ & $2\kappa_1 n_y$ & & $\kappa_0 n_x$ \\
+ & $\kappa_0 n_z$ & $2\kappa_1 n_y$ & & $\kappa_0 n_x$ & \\
 $Q_{yy}$ &
- & $-\kappa_1 n_x$ & & $\kappa_0 n_y$ & $-\kappa_1 n_z$\\
+ & $-\kappa_1 n_x$ & & $\kappa_0 n_y$ & $-\kappa_1 n_z$ & \\
 $Q_{yz}$ &
-$\kappa_1 n_z$ & & $-\kappa_1 n_x$ & $\kappa' n_z$ & $\kappa' n_y$\\
+ & & $-\kappa_1 n_x$ & $\kappa_0 n_z$ & $\kappa' n_y$ & $-\kappa_1 n_z$\\
+$Q_{zz}$ &
+ & & & & $\kappa_0 n_z$ & $\kappa_1 n_y$\\
 \hline
 \hline
 &
-$Q_{xx,z}$ & $Q_{xy,z}$ & $Q_{xz,z}$ & $Q_{yy,z}$ & $Q_{yz,z}$ \\
+$Q_{xx,z}$ & $Q_{xy,z}$ & $Q_{xz,z}$ & $Q_{yy,z}$ & $Q_{yz,z}$ & $Q_{zz,z}$\\
 \hline
 $Q_{xx}$ &
-$\kappa_1 n_z$ & & $\kappa_0 n_x$ & & \\
+$\kappa_1 n_z$ & & $\kappa_0 n_x$ & & & \\
 $Q_{xy}$ &
- & $2\kappa_1 n_z$ & $\kappa_0 n_y$ & & $\kappa_0 n_x$ \\
+ & $2\kappa_1 n_z$ & $\kappa_0 n_y$ & & $\kappa_0 n_x$ & \\
 $Q_{xz}$ &
-$-\kappa' n_x$ & $-\kappa_1 n_y$ & $\kappa' n_z$ & $-\kappa_0 n_x$ & \\
+$-\kappa_1 n_x$ & $-\kappa_1 n_y$ & $\kappa' n_z$ & & & $\kappa_0 n_x$  \\
 $Q_{yy}$ &
- & & & $\kappa_1 n_z$ & $\kappa_0 n_y$  \\
+ & & & $\kappa_1 n_z$ & $\kappa_0 n_y$ & \\
 $Q_{yz}$ &
-$-\kappa_0 n_y$ & $-\kappa_1 n_x$ & & $-\kappa' n_y$ & $\kappa' n_z$ \\
+ & $-\kappa_1 n_x$ & & $-\kappa_1 n_y$ & $\kappa' n_z$ & $\kappa_0 n_y$ \\
+$Q_{zz}$ &
+ & & $-\kappa_1 n_x$ & & $-\kappa_1 n_y $ & $\kappa_0 n_z$\\
 \hline
 \end{tabular}
 \end{center}
 \caption{Coefficients of the various derivatives of the order parameter
-tensor appearing in five equations for the independent elements of the
-order parameter. Note $\kappa_0 + \kappa_1 = \kappa'$ and all the
-coefficients have been multiplied by a factor of 2.}
+tensor appearing in six equations for the elements of the
+order parameter (including $Q_{zz}$).
+Note $\kappa_0 + \kappa_1 = \kappa'$ and all the
+coefficients have been multiplied by a factor of 2 in the off-diagonal
+equations.}
 \label{tab:cholesteric_bcs}
 \end{table} 
 }
