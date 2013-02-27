@@ -700,3 +700,30 @@ int psi_abstol(psi_t * obj, double * abstol) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  psi_electric_field
+ *
+ *  Return the electric field associated with the current potential.
+ *
+ *  The gradient of the potential is differenced as
+ *      E_x = - (1/2) [ psi(i+1,j,k) - psi(i-1,j,k ]
+ *  etc
+ *
+ *****************************************************************************/
+
+int psi_electric_field(psi_t * psi, int index, double e[3]) {
+
+  int xs, ys, zs;
+
+  assert(psi);
+
+  coords_strides(&xs, &ys, &zs);
+
+  e[X] = -0.5*(psi->psi[index + xs] - psi->psi[index - xs]);
+  e[Y] = -0.5*(psi->psi[index + ys] - psi->psi[index - ys]);
+  e[Z] = -0.5*(psi->psi[index + zs] - psi->psi[index - zs]);
+
+  return 0;
+}
