@@ -469,7 +469,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  for (m = 0; m < NVEL; m++) {
 	    double mode_tmp = 0.0;
 	    for (p = 0; p < NVEL; p++) {
-	      mode_tmp += f_loc[p]*ma_d[m][p];
+	      mode_tmp += f_loc[p]*ma_cd[m][p];
 	    }
 	    mode[m] = mode_tmp;
 	  }
@@ -588,7 +588,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
  	  for (p = 0; p < NVEL; p++) {
  	    f_tmp = 0.0;
  	    for (m = 0; m < NVEL; m++) {
- 	      f_tmp += mi_d[p][m]*mode[m];
+ 	      f_tmp += mi_cd[p][m]*mode[m];
  	    }
 	    f_d[nsite*NDIST*p + index] = f_tmp;
  	}
@@ -617,7 +617,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	
 	for (i = 0; i < 3; i++) {
 	  for (j = 0; j < 3; j++) {
-	    sphi[i][j] = phi*u[i]*u[j] + mu*d_d[i][j];
+	    sphi[i][j] = phi*u[i]*u[j] + mu*d_cd[i][j];
 	  }
 	  jphi[i] = jphi[i] - rtau2_d*(jphi[i] - phi*u[i]);
 	}
