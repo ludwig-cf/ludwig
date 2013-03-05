@@ -784,40 +784,6 @@ static int gradient_no_iteration(const double * field, double * grad,
 	index = coords_index(ic, jc, kc);
 	if (site_map_get_status_index(index) != FLUID) continue;
 
-	n = 0;
-	status[n] = site_map_get_status(ic+1, jc, kc);
-	if (status[n] != FLUID) {
-	  normal[n] = 0; /* +X */
-	  n += 1;
-	};
-	status[n] = site_map_get_status(ic-1, jc, kc);
-	if (status[n] != FLUID) {
-	  normal[n] = 1; /* -X */
-	  n += 1;
-	}
-	status[n] = site_map_get_status(ic, jc+1, kc);
-	if (status[n] != FLUID) {
-	  normal[n] = 2; /* +Y */
-	  n += 1;
-	}
-	status[n] = site_map_get_status(ic, jc-1, kc);
-	if (status[n] != FLUID) {
-	  normal[n] = 3; /* -Y */
-	  n += 1;
-	}
-	status[n] = site_map_get_status(ic, jc, kc+1);
-	if (status[n] != FLUID) {
-	  normal[n] = 4; /* +Z */
-	  n += 1;
-	}
-	status[n] = site_map_get_status(ic, jc, kc-1);
-	if (status[n] != FLUID) {
-	  normal[n] = 5; /* -Z */
-	  n += 1;
-	}
-
-	nunknown = n;
-
 	/* Set up partial gradients */
 
 	for (n1 = 0; n1 < NOP; n1++) {
@@ -829,6 +795,71 @@ static int gradient_no_iteration(const double * field, double * grad,
 	    dq[n1][ia] = 0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
 	  }
 	}
+
+	/* Identify solid neighbours. If neighbours in both +/- given
+	 * coordinate direction are solid, set gradient to zero and
+	 * treat as known. */
+
+	n = 0;
+	status[n] = site_map_get_status(ic+1, jc, kc);
+	if (status[n] != FLUID) {
+	  normal[n] = 0; /* +X */
+	  n += 1;
+	};
+	status[n] = site_map_get_status(ic-1, jc, kc);
+	if (status[n] != FLUID) {
+	  normal[n] = 1; /* -X */
+	  n += 1;
+	}
+
+	if (n == 2) {
+	  for (n1 = 0; n1 < NOP; n1++) {
+	    gradn[n1][X][0] = 0.0;
+	    gradn[n1][X][1] = 0.0;
+	  }
+	  n -= 2;
+	}
+	nunknown = n;
+
+	status[n] = site_map_get_status(ic, jc+1, kc);
+	if (status[n] != FLUID) {
+	  normal[n] = 2; /* +Y */
+	  n += 1;
+	}
+	status[n] = site_map_get_status(ic, jc-1, kc);
+	if (status[n] != FLUID) {
+	  normal[n] = 3; /* -Y */
+	  n += 1;
+	}
+
+	if (n - nunknown == 2) {
+	  for (n1 = 0; n1 < NOP; n1++) {
+	    gradn[n1][Y][0] = 0.0;
+	    gradn[n1][Y][1] = 0.0;
+	  }
+	  n -= 2;
+	}
+	nunknown = n;
+
+	status[n] = site_map_get_status(ic, jc, kc+1);
+	if (status[n] != FLUID) {
+	  normal[n] = 4; /* +Z */
+	  n += 1;
+	}
+	status[n] = site_map_get_status(ic, jc, kc-1);
+	if (status[n] != FLUID) {
+	  normal[n] = 5; /* -Z */
+	  n += 1;
+	}
+
+	if (n - nunknown == 2) {
+	  for (n = 0; n1 < NOP; n1++) {
+	    gradn[n1][Z][0] = 0.0;
+	    gradn[n1][Z][1] = 0.0;
+	  }
+	  n -= 2;
+	}
+	nunknown = n;
 
 	if (nunknown == 0) {
 	  /* No boundaries, so fall through to compute fainal answer */
