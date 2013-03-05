@@ -89,13 +89,10 @@ void blue_phase_beris_edwards(void) {
 
 /*****************************************************************************
  *
- *  blue_phase_be_update_fluid
+ *  blue_phase_be_update
  *
  *  Update q via Euler forward step. Note here we only update the
  *  5 independent elements of the Q tensor.
- *
- *  Note that solid objects (colloids) are currently treated by evolving
- *  the order parameter inside, but with no hydrodynamics.
  *
  *****************************************************************************/
 
@@ -155,12 +152,12 @@ static void blue_phase_be_update(void) {
 	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
 	  hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
-	  
+
 	  trace_qw = 0.0;
 
 	  for (ia = 0; ia < 3; ia++) {
-	    trace_qw += q[ia][ia]*w[ia][ia];
 	    for (ib = 0; ib < 3; ib++) {
+	      trace_qw += q[ia][ib]*w[ib][ia];
 	      d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
 	      omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
 	    }
@@ -176,7 +173,7 @@ static void blue_phase_be_update(void) {
 	      }
 	    }
 	  }
-	     
+
 	  /* Here's the full hydrodynamic update. */
 	  
 	  indexj = le_site_index(ic, jc-1, kc);
