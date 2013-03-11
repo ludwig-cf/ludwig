@@ -323,15 +323,44 @@ X_\omega=\frac{1}{\sqrt{N}}\sum_{n=0}^{N-1} \left[\Pi_{xy}(t_n) - \bar{\Pi}_{xy}
 where we subtract the average stress $\bar{\Pi}_{xy}$ from the signal.
 $N$ was the number of points in the time series, typically one for every 100 LB time steps. }\fi
 
-In what follows, $x$, $y$ and $z$ denote respectively the velocity, velocity
-gradient and vorticity direction -- therefore $\Pi_{xy}$ is the shear stress.
+The system of coupled partial differential equations~\ref{op-eom}
+and~\ref{NSE} is solved by means of a hybrid method~\cite{Marenduzzo:2007}
+which uses a combination of lattice Boltzmann and finite difference schemes.
+(This is in contrast with some earlier methods using solely
+LB~\cite{Denniston:2001, Denniston:2004}.)
+The Navier-Stokes
+equation is solved via the lattice Boltzmann approach, using a standard
+three-dimensional model with 19 discrete velocities (D3Q19).
+A regular lattice with spacing $\Delta x = \Delta y = \Delta z = 1$ is
+used and the time step is $\Delta t = 1$ in lattice units.
+Coupling to the thermodynamic sector is via a
+local body force computed as the divergence of the thermodynamic
+stress Eq.~\ref{Pi}; the resulting velocity field is used in the computation
+of the time evolution of $\mathbf{Q}$ via a standard finite difference
+method using the same grid and the same time step as the LB. The system
+is periodic in all three coordinate directions. Sliding
+boundary conditions, or Lees-Edwards planes, are explicitly implemented
+in both hydrodynamic and thermodynamic sectors to impose shear on the
+system. On
+crossing a Lees-Edwards boundary a Galilean transformation is applied
+with a velocity increment which is fixed in time (and limited in size by the
+low Mach number constraint of LB). An appropriate transformation
+of LB distributions which propagate across a boundary~\cite{Wagner:2002}
+must be applied at each time step, and appropriate
+adjustment to $W_{\alpha\beta}$ is required to compute cross-plane
+gradients of the velocity field used in the update to ${\mathbf Q}$.
+In both cases interpolation of the
+relevant quantities is required to cope with the relative displacement
+of neighbouring lattice sites separated by a sliding plane (the
+displacement may be a fraction of a lattice unit at any given time
+step). The use of multiple sliding planes equally spaced in a single
+system allows
+the overall shear rate to be maintained indefinitely as the system
+becomes larger
+in the velocity gradient direction (in contrast with the use of solid
+walls to impose shear). This hybrid method with Lees-Edwards planes
+has been used successfully to study e.g., smectics~\cite{Henrich:2012a}.
 
-The system of coupled partial differential equations Eqs.~\ref{op-eom}
-and~\ref{NSE} is solved by means of a
-hybrid scheme~\cite{Marenduzzo:2007}, which combines different numerical schemes
-and provides a way to address the multiscale nature of the problem.
-More details on the algorithm and the boundary conditions can
-be found in~\cite{Denniston:2001, Denniston:2004, Henrich:2012a}.
 
 In the following we report results of simulations of the bulk flow behaviour of the cubic blue 
 phases BPI and BPII.
@@ -339,7 +368,9 @@ Typical runtimes for system size $L_x\times L_y\times L_z=128^3$ on 512 processe
 The timestep and lattice spacing in lattice Boltzmann units (LBU) can be mapped
 approximately to $\sim 1 {\rm ns}$ and $\sim 10{\rm nm}$ in SI units, respectively. The LB unit of stress
 is equal to about $10^8$~Pa. Further details about the conversion 
-from LBU to SI units can be found in ~\cite{Henrich:2011a,Henrich:2010b}.
+from LBU to SI units can be found elsewhere~\cite{Henrich:2011a,Henrich:2010b}.
+In what follows, $x$, $y$ and $z$ denote respectively the velocity, velocity
+gradient and vorticity direction; $\Pi_{xy}$ is therefore the shear stress.
 
 \section{Results and Discussion}
 
@@ -351,7 +382,7 @@ $\tau=-0.5, \kappa=1.0$ in case of BPI and $\tau=-0.5, \kappa=2.0$ for BPII, res
 For these parameters the total free energy density $f$ remained always negative at all flow rates
 simulated. 
 Since by Eq.~\ref{FE} $f=0$ for an isotropic phase with ${\mathbf Q}\equiv 0$, this means that our system, which is never far from equilibrium locally even under flow, always remains in a liquid crystalline state. 
-We performed also selected simulations on metastable states at higher and lower temperatures, 
+We also performed selected simulations on metastable states at higher and lower temperatures, 
 and at different chiralities, but did not find any significant differences in the 
 general flow behaviour from that described below.
 The only quantitative difference we found was that, for thermodynamic states that are closer to the phase boundary than the one we focused on (and describe below), the critical shear
@@ -371,7 +402,8 @@ all kinematic details of the blue phase networks in shear flow. This includes
 reconstruction of the unit cell not accessible in simulation with only
 few cells~\cite{Dupuis:2005}.
 
-Simple shear flow was imposed by means of a Lees-Edwards boundary condition ~\cite{Wagner:2002} with
+Simple shear flow was imposed by means of the Lees-Edwards boundary
+conditions with
 the top (bottom) part of the system flowing in the positive (negative) $x$-direction and the 
 velocity gradient along the $y$-direction.
 The shear rates were varied over more than two orders of magnitude from about 
@@ -1146,7 +1178,8 @@ MEC holds a Royal Society Research Professorship.
 \section*{Appendix}
 
 In this Appendix we give some more details on our simulations,
-including the importance and effect of boundary conditions. 
+including the relationship between boundary conditions and
+permeation flow.
 
 Table \ref{tab1} lists the parameters chosen for our runs (values of
 the reduced temperature and reduced chirality are given in the caption),
