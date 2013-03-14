@@ -21,6 +21,8 @@
 /* scheme in use */
 static char gradient_gpu=-1;
 
+__constant__ int Ngradcalc_cd[3];
+__constant__ int nextra_cd;
 
 void phi_gradients_compute_gpu()
 {
@@ -48,8 +50,8 @@ void phi_gradients_compute_gpu()
 
  if (gradient_gpu==OPTION_3D_7PT_FLUID){
   gradient_3d_7pt_fluid_operator_gpu_d<<<nblocks,DEFAULT_TPB>>>
-    (nop, nhalo, N_d, phi_site_d,grad_phi_site_d,delsq_phi_site_d,
-     le_index_real_to_buffer_d,nextra); 
+    ( phi_site_d,grad_phi_site_d,delsq_phi_site_d,
+     le_index_real_to_buffer_d); 
  }
  else if (gradient_gpu==OPTION_3D_7PT_SOLID){
   gradient_3d_7pt_solid_gpu_d<<<nblocks,DEFAULT_TPB>>>
@@ -74,68 +76,55 @@ checkCUDAError("gradient_3d_7pt");
  *  gradient_3d_7pt_fluid_operator_gpu_d
  *
  *****************************************************************************/
-__global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo, 
-						     int N_d[3], 
-						     const double * field_d,
+__global__ void gradient_3d_7pt_fluid_operator_gpu_d(const double * field_d,
 						     double * grad_d,
 						     double * del2_d,
-						     int * le_index_real_to_buffer_d,
-						     int nextra) {
+						     int * le_index_real_to_buffer_d) {
 
   int n, icm1, icp1;
   int index, indexm1, indexp1;
 
-  int threadIndex, Nall[3], Ngradcalc[3],ii, jj, kk;
+  int threadIndex,ii, jj, kk;
 
-  int ys = N_d[Z] + 2*nhalo;
-
-  Nall[X]=N_d[X]+2*nhalo;
-  Nall[Y]=N_d[Y]+2*nhalo;
-  Nall[Z]=N_d[Z]+2*nhalo;
-
-  int nsites=Nall[X]*Nall[Y]*Nall[Z];
-
-  Ngradcalc[X]=N_d[X]+2*nextra;
-  Ngradcalc[Y]=N_d[Y]+2*nextra;
-  Ngradcalc[Z]=N_d[Z]+2*nextra;
+  int ys = N_cd[Z] + 2*nhalo_cd;
 
   /* CUDA thread index */
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
 
   /* Avoid going beyond problem domain */
-  if (threadIndex < Ngradcalc[X]*Ngradcalc[Y]*Ngradcalc[Z])
+  if (threadIndex < Ngradcalc_cd[X]*Ngradcalc_cd[Y]*Ngradcalc_cd[Z])
     {
 
       /* calculate index from CUDA thread index */
 
-      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Ngradcalc);
-      index = get_linear_index_gpu_d(ii+nhalo-nextra,jj+nhalo-nextra,
-				     kk+nhalo-nextra,Nall);      
+      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Ngradcalc_cd);
+      index = get_linear_index_gpu_d(ii+nhalo_cd-nextra_cd,jj+nhalo_cd-nextra_cd,
+				     kk+nhalo_cd-nextra_cd,Nall_cd);      
       
 
       /* icm1 = le_index_real_to_buffer(ic, -1); */
       /* icp1 = le_index_real_to_buffer(ic, +1); */
       /*le_index_real_to_buffer_d holds -1 then +1 translation values */
-      icm1=le_index_real_to_buffer_d[ii+nhalo-nextra];
-      icp1=le_index_real_to_buffer_d[Nall[X]+ii+nhalo-nextra];      
+      icm1=le_index_real_to_buffer_d[ii+nhalo_cd-nextra_cd];
+      icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii+nhalo_cd-nextra_cd];      
 
-      indexm1 = get_linear_index_gpu_d(icm1,jj+nhalo-nextra,kk+nhalo-nextra,Nall);
-      indexp1 = get_linear_index_gpu_d(icp1,jj+nhalo-nextra,kk+nhalo-nextra,Nall);
+      indexm1 = get_linear_index_gpu_d(icm1,jj+nhalo_cd-nextra_cd,kk+nhalo_cd-nextra_cd,Nall_cd);
+      indexp1 = get_linear_index_gpu_d(icp1,jj+nhalo_cd-nextra_cd,kk+nhalo_cd-nextra_cd,Nall_cd);
 
 
-      for (n = 0; n < nop; n++) { 
+      for (n = 0; n < nop_cd; n++) { 
 
-	  grad_d[X*nsites*nop+n*nsites+index]
-	    = 0.5*(field_d[nsites*n+indexp1] - field_d[nsites*n+indexm1]);
-	  grad_d[Y*nsites*nop+n*nsites+index]
-	    = 0.5*(field_d[nsites*n+(index + ys)] - field_d[nsites*n+(index - ys)]);
-	  grad_d[Z*nsites*nop+n*nsites+index]
-	    = 0.5*(field_d[nsites*n+(index + 1)] - field_d[nsites*n+(index - 1)]);
-	  del2_d[n*nsites + index]
-	    = field_d[nsites*n+indexp1] + field_d[nsites*n+indexm1]
-	    + field_d[nsites*n+(index + ys)] + field_d[nsites*n+(index - ys)]
-	    + field_d[nsites*n+(index + 1)] + field_d[nsites*n+(index - 1)]
-	    - 6.0*field_d[nsites*n+index];
+	  grad_d[X*nsites_cd*nop_cd+n*nsites_cd+index]
+	    = 0.5*(field_d[nsites_cd*n+indexp1] - field_d[nsites_cd*n+indexm1]);
+	  grad_d[Y*nsites_cd*nop_cd+n*nsites_cd+index]
+	    = 0.5*(field_d[nsites_cd*n+(index + ys)] - field_d[nsites_cd*n+(index - ys)]);
+	  grad_d[Z*nsites_cd*nop_cd+n*nsites_cd+index]
+	    = 0.5*(field_d[nsites_cd*n+(index + 1)] - field_d[nsites_cd*n+(index - 1)]);
+	  del2_d[n*nsites_cd + index]
+	    = field_d[nsites_cd*n+indexp1] + field_d[nsites_cd*n+indexm1]
+	    + field_d[nsites_cd*n+(index + ys)] + field_d[nsites_cd*n+(index - ys)]
+	    + field_d[nsites_cd*n+(index + 1)] + field_d[nsites_cd*n+(index - 1)]
+	    - 6.0*field_d[nsites_cd*n+index];
 		  } 
 
 
@@ -760,6 +749,36 @@ void put_gradient_constants_on_gpu(){
 
   double w;                                 /* Anchoring strength parameter */
   double amplitude;
+
+  int N[3],nhalo,Nall[3], Ngradcalc[3];
+  
+  nhalo = coords_nhalo();
+  coords_nlocal(N); 
+
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+
+
+  int nextra=nhalo-1;
+  Ngradcalc[X]=N[X]+2*nextra;
+  Ngradcalc[Y]=N[Y]+2*nextra;
+  Ngradcalc[Z]=N[Z]+2*nextra;
+
+
+  
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+  int nop = phi_nop();
+  /* copy to constant memory on device */
+  cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Ngradcalc_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
+cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(nextra_cd, &nextra, sizeof(int), 0, cudaMemcpyHostToDevice); 
+
 
 
   q0_=blue_phase_q0();

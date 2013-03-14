@@ -30,13 +30,10 @@ extern "C" void checkCUDAError(const char *msg);
 void set_gradient_option_gpu(char option);
 void put_gradient_constants_on_gpu();
 
-__global__ void gradient_3d_7pt_fluid_operator_gpu_d(int nop, int nhalo, 
-						     int N[3], 
-						     const double * field_d,
+__global__ void gradient_3d_7pt_fluid_operator_gpu_d(const double * field_d,
 						     double * grad_d,
 						     double * del2_d,
-						     int * le_index_real_to_buffer_d,
-						     int nextra);
+						     int * le_index_real_to_buffer_d);
 
 __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo, 
 						     int N_d[3], 
