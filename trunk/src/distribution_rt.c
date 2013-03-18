@@ -26,6 +26,7 @@
 
 static void distribution_rt_2d_kelvin_helmholtz(void);
 static void distribution_rt_2d_shear_wave(void);
+static int distribution_init_uniform(double rho0, const double u0[3]);
 
 /*****************************************************************************
  *
@@ -96,6 +97,8 @@ void distribution_run_time(void) {
 void distribution_rt_initial_conditions(void) {
 
   char key[FILENAME_MAX];
+  double rho0 = 1.0;
+  double u0[3] = {0.0, 0.0, 0.0};
 
   RUN_get_string_parameter("distribution_initialisation", key, FILENAME_MAX);
 
@@ -105,6 +108,11 @@ void distribution_rt_initial_conditions(void) {
 
   if (strcmp("2d_shear_wave", key) == 0) {
     distribution_rt_2d_shear_wave();
+  }
+
+  if (strcmp("3d_uniform_u", key) == 0) {
+    RUN_get_double_parameter_vector("distribution_uniform_u", u0);
+    distribution_init_uniform(rho0, u0);
   }
 
   return;
@@ -238,4 +246,37 @@ static void distribution_rt_2d_shear_wave(void) {
   info("\n");
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_init_uniform
+ *
+ *****************************************************************************/
+
+static int distribution_init_uniform(double rho0, const double u0[3]) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	distribution_rho_u_set_equilibrium(index, rho0, u0);
+
+      }
+    }
+  }
+
+  info("\n");
+  info("Initial distribution: 3d uniform desnity/velocity\n");
+  info("Density:              %14.7e\n", rho0);
+  info("Velocity:             %14.7e %14.7e %14.7e\n", u0[X], u0[Y], u0[Z]);
+  info("\n");
+
+  return 0;
 }
