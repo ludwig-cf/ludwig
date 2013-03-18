@@ -27,6 +27,7 @@
 static void distribution_rt_2d_kelvin_helmholtz(void);
 static void distribution_rt_2d_shear_wave(void);
 static int distribution_init_uniform(double rho0, const double u0[3]);
+static int distribution_init_poiseuille(double rho0, const double umax[3]);
 
 /*****************************************************************************
  *
@@ -113,6 +114,11 @@ void distribution_rt_initial_conditions(void) {
   if (strcmp("3d_uniform_u", key) == 0) {
     RUN_get_double_parameter_vector("distribution_uniform_u", u0);
     distribution_init_uniform(rho0, u0);
+  }
+
+  if (strcmp("1d_poiseuille", key) == 0) {
+    RUN_get_double_parameter_vector("distribution_poiseuille_umax", u0);
+    distribution_init_poiseuille(rho0, u0);
   }
 
   return;
@@ -252,6 +258,8 @@ static void distribution_rt_2d_shear_wave(void) {
  *
  *  distribution_init_uniform
  *
+ *  Set the initial distribution consistent with fixed (rho_0, u_0).
+ *
  *****************************************************************************/
 
 static int distribution_init_uniform(double rho0, const double u0[3]) {
@@ -276,6 +284,64 @@ static int distribution_init_uniform(double rho0, const double u0[3]) {
   info("Initial distribution: 3d uniform desnity/velocity\n");
   info("Density:              %14.7e\n", rho0);
   info("Velocity:             %14.7e %14.7e %14.7e\n", u0[X], u0[Y], u0[Z]);
+  info("\n");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_init_poiseuille
+ *
+ *  A 1-d Poiseuille parabolic profile based on, e.g.,
+ *    u(x) ~ umax[X] x (Lx - x)
+ *
+ *  The umax[3] should have only one non-zero component.
+ *
+ *****************************************************************************/
+
+static int distribution_init_poiseuille(double rho0, const double umax[3]) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int noffset[3];
+
+  double u0[3];
+  double x, y, z;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+
+    /* The - Lmin() in each direction centres the profile symmetrically,
+     * and the 4/L^2 normalises to umax at centre */
+
+    x = 1.0*(noffset[X] + ic) - Lmin(X);
+    u0[X] = umax[X]*x*(L(X) - x)*4.0/(L(X)*L(X));
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+      y = 1.0*(noffset[Y] + jc) - Lmin(Y);
+      u0[Y] = umax[Y]*y*(L(Y) - y)*4.0/(L(Y)*L(Y));
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	z = 1.0*(noffset[Z] + kc) - Lmin(Z);
+	u0[Z] = umax[Z]*z*(L(Z) - z)*4.0/(L(Z)*L(Z));
+
+	index = coords_index(ic, jc, kc);
+	distribution_rho_u_set_equilibrium(index, rho0, u0);
+
+      }
+    }
+  }
+
+  info("\n");
+  info("Initial distribution: 1d Poiseuille profile\n");
+  info("Density:              %14.7e\n", rho0);
+  info("Velocity (max):       %14.7e %14.7e %14.7e\n", umax[X], umax[Y],
+       umax[Z]);
   info("\n");
 
   return 0;
