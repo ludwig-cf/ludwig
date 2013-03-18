@@ -79,6 +79,11 @@ reduced_halo no
 #  ghost_modes           [on|off] Default is on.
 #  force FX_FY_FZ        Uniform body force on fluid (default zero)
 #
+#  distribution_initialisation    Default is fluid uniformly at rest
+#                                 3d_uniform_u   uniform velocity
+#                                 2d_kelvin_helmholtz
+#                                 2d_shear_wave
+#  
 ##############################################################################
 
 viscosity 0.1
@@ -89,6 +94,9 @@ temperature 0.00002133333
 
 # ghost_modes off
 # force 0.00_0.0_0.0
+
+# distribution_initialisation 3d_uniform_u
+# distribution_uniform_u      0.0_0.0_0.0
 
 ##############################################################################
 #
