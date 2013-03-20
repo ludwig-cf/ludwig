@@ -39,5 +39,5 @@ void io_read(char *, struct io_info_t *);
 void io_write(char *, struct io_info_t *);
 void io_write_metadata(char *, struct io_info_t *);
 void io_remove(char *, struct io_info_t *);
-
+void io_info_single_file_set(struct io_info_t * info);
 #endif
