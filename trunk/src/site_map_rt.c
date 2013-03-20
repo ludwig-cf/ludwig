@@ -31,14 +31,17 @@
 void site_map_run_time(void) {
 
   int n;
+  int grd[3] = {1, 1, 1};
   char filename[FILENAME_MAX];
   char key[FILENAME_MAX];
 
-  site_map_init();
 
   n = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
 
-  if (n != 0) {
+  if (n == 0) {
+    site_map_init_grid(grd);
+  }
+  else {
 
     /* A porous media file is present. */
     /* By default, this is expected to be a single serial file in BINARY
@@ -48,6 +51,12 @@ void site_map_run_time(void) {
     info("Porous media\n");
     info("------------\n");
     info("Porous media file requested: %s\n", filename);
+
+    RUN_get_int_parameter_vector("porous_media_io_grid", grd);
+    site_map_init_grid(grd);
+
+    /* Always a single file read at the moment */
+    io_info_single_file_set(io_info_site_map);
 
     RUN_get_string_parameter("porous_media_type", key, FILENAME_MAX);
 
@@ -68,7 +77,10 @@ void site_map_run_time(void) {
     else {
       info("Porous media format:         BINARY\n");
     }
-    
+
+    info("Porous media io grid:       %2d %2d %2d\n", grd[0], grd[1], grd[2]);
+    info("Reading file...\n");
+
     io_read(filename, io_info_site_map);
     site_map_halo();
   }
