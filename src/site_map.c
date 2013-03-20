@@ -26,7 +26,7 @@
 struct io_info_t * io_info_site_map;
 
 static void site_map_init_mpi(void);
-static void site_map_init_io(void);
+static void site_map_init_io(const int grid[3]);
 static int site_map_read(FILE *, const int, const int, const int);
 static int site_map_write(FILE *, const int, const int, const int);
 static int site_map_read_ascii(FILE *, const int, const int, const int);
@@ -50,11 +50,28 @@ static MPI_Datatype mpi_yz_t_;
  *
  *  site_map_init
  *
+ *  Without explicit io_grid specified.
+ *
+ *****************************************************************************/
+
+void site_map_init(void) {
+
+  int grid[3] = {1, 1, 1};
+
+  site_map_init_grid(grid);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  site_map_init_grid
+ *
  *  Allocate, and read site information from file if required.
  *
  *****************************************************************************/
 
-void site_map_init() {
+void site_map_init_grid(const int grid[3]) {
 
   int nsites;
 
@@ -63,7 +80,7 @@ void site_map_init() {
   site_map = (struct site_info_t *) malloc(nsites*sizeof(struct site_info_t));
   if (site_map == NULL) fatal("malloc(site_map) failed\n");
 
-  site_map_init_io();
+  site_map_init_io(grid);
   site_map_init_mpi();
 
   initialised_ = 1;
@@ -82,9 +99,7 @@ void site_map_init() {
  *
  *****************************************************************************/
 
-static void site_map_init_io() {
-
-  int grid[3] = {1, 1, 1};
+static void site_map_init_io(const int grid[3]) {
 
   io_info_site_map = io_info_create_with_grid(grid);
 

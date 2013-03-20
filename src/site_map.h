@@ -16,6 +16,7 @@
 #define SITEMAP_H
 
 void   site_map_init(void);
+void   site_map_init_grid(const int io_grid[3]);
 void   site_map_finish(void);
 void   site_map_set_all(char);
 void   site_map_halo(void);
