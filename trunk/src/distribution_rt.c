@@ -221,7 +221,7 @@ static void distribution_rt_2d_shear_wave(void) {
   double kappa;
   double u[3];
 
-  double x, y;
+  double y;
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -229,7 +229,6 @@ static void distribution_rt_2d_shear_wave(void) {
   kappa = 2.0*pi_;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = (1.0*(noffset[X] + ic) - Lmin(X))/L(X);
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       y = (1.0*(noffset[Y] + jc) - Lmin(Y))/L(Y);
 

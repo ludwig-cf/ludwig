@@ -112,7 +112,6 @@ void collision_multirelaxation() {
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       ia, ib;                  /* indices ("alphabeta") */
-  int       ndist;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -129,7 +128,6 @@ void collision_multirelaxation() {
   double    force_local[3];
   double    force_global[3];
 
-  ndist = distribution_ndist();
   coords_nlocal(N);
   fluctuations_off(shat, ghat);
   fluid_body_force(force_global);
@@ -371,7 +369,6 @@ void collision_binary_lb() {
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
-  int       ndist;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -411,7 +408,6 @@ void collision_binary_lb() {
 
   assert (NDIM == 3);
 
-  ndist = distribution_ndist();
   coords_nlocal(N);
   fluid_body_force(force_global);
 
@@ -689,22 +685,16 @@ void collision_bgk() {
   int       ic, jc, kc, index;       /* site indices */
   int       p;                       /* velocity index */
   int       ia, ib;                  /* indices ("alphabeta") */
-  int       ndist;
 
   double    rho, rrho;               /* Density, reciprocal density */
   double    u[3];                    /* Velocity */
-
-  double    rdim;                    /* 1 / dimension */
 
   double    f[NVEL];
   double    feq[NVEL];
   double    ftemp;
   double    udotc, sdotq;
 
-  ndist = distribution_ndist();
   coords_nlocal(N);
-
-  rdim = 1.0/NDIM;
 
   for (ia = 0; ia < 3; ia++) {
     u[ia] = 0.0;

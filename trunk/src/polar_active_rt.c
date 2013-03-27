@@ -40,7 +40,6 @@ static void polar_active_rt_init(void);
 
 void polar_active_run_time(void) {
 
-  int n;
   double a;
   double b;
   double k1;
@@ -57,14 +56,14 @@ void polar_active_run_time(void) {
 
   /* PARAMETERS */
 
-  n = RUN_get_double_parameter("polar_active_a", &a);
-  n = RUN_get_double_parameter("polar_active_b", &b);
-  n = RUN_get_double_parameter("polar_active_k", &k1);
-  n = RUN_get_double_parameter("polar_active_dk", &delta);
+  RUN_get_double_parameter("polar_active_a", &a);
+  RUN_get_double_parameter("polar_active_b", &b);
+  RUN_get_double_parameter("polar_active_k", &k1);
+  RUN_get_double_parameter("polar_active_dk", &delta);
   delta = 0.0; /* Pending molecular field */
-  n = RUN_get_double_parameter("polar_active_klc", &klc);
-  n = RUN_get_double_parameter("polar_active_zeta", &zeta);
-  n = RUN_get_double_parameter("polar_active_lambda", &lambda);
+  RUN_get_double_parameter("polar_active_klc", &klc);
+  RUN_get_double_parameter("polar_active_zeta", &zeta);
+  RUN_get_double_parameter("polar_active_lambda", &lambda);
 
   info("Polar active free energy selected.\n");
   info("Vector order parameter nop = 3\n");
@@ -156,9 +155,9 @@ static void polar_active_rt_init(void) {
 
         /* Set p as a function of true position (x,y,z) as required */
 
-        p[X] = 1.0;
-        p[Y] = 0.0;
-        p[Z] = 0.0; 
+        p[X] = 1.0 + 0.0*x;
+        p[Y] = 0.0 + 0.0*y;
+        p[Z] = 0.0 + 0.0*z; 
 
         phi_vector_set(index, p);
       }
