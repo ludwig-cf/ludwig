@@ -24,6 +24,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "io_harness.h"
+#include "util.h"
 #include "psi.h"
 #include "psi_s.h"
 
@@ -888,7 +889,7 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
   assert(obj);
   assert(lb);
 
-  *lb = obj->e*obj->e*obj->beta / (4.0*M_PI*obj->epsilon);
+  *lb = obj->e*obj->e*obj->beta / (4.0*pi_*obj->epsilon);
 
   return 0;
 }
