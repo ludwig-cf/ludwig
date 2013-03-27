@@ -33,7 +33,6 @@
 
 void surfactant_run_time(void) {
 
-  int n;
   double a;
   double b;
   double kappa;
@@ -50,14 +49,14 @@ void surfactant_run_time(void) {
 
   /* Parameters */
 
-  n = RUN_get_double_parameter("surf_A", &a);
-  n = RUN_get_double_parameter("surf_B", &b);
-  n = RUN_get_double_parameter("surf_K", &kappa);
+  RUN_get_double_parameter("surf_A", &a);
+  RUN_get_double_parameter("surf_B", &b);
+  RUN_get_double_parameter("surf_K", &kappa);
 
-  n = RUN_get_double_parameter("surf_kt", &kt);
-  n = RUN_get_double_parameter("surf_epsilon", &epsilon);
-  n = RUN_get_double_parameter("surf_beta", &beta);
-  n = RUN_get_double_parameter("surf_w", &w);
+  RUN_get_double_parameter("surf_kt", &kt);
+  RUN_get_double_parameter("surf_epsilon", &epsilon);
+  RUN_get_double_parameter("surf_beta", &beta);
+  RUN_get_double_parameter("surf_w", &w);
 
   info("Surfactant free energy parameters:\n");
   info("Bulk parameter A      = %12.5e\n", a);

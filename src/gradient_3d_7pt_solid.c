@@ -965,7 +965,7 @@ static int gradient_no_iteration(const double * field, double * grad,
 	  }
 	  else if (nunknown == 2) {
 
-	    int ida, idb, na, nb;
+	    int idb, na, nb;
 	    double dq1[NOP];
 	    double bc1[6][NOP];
 	    double b2[2*6];
@@ -983,12 +983,11 @@ static int gradient_no_iteration(const double * field, double * grad,
 	    for (ia = 0; ia < nunknown; ia++) {
 
 	      na = normal[ia];    /* normal for unknown ia */
-	      ida = normal[ia]/2; /* coordinate direction for unknown ia */
 
 	      for (ib = 0; ib < nunknown; ib++) {
 
 		nb = normal[ib];
-		idb = normal[ib]/2;
+		idb = normal[ib]/2; /* coordinate direction of normal */
 
 		/* Compute 6x5 block (ia,ib) in system matrix */
 
@@ -1062,7 +1061,7 @@ static int gradient_no_iteration(const double * field, double * grad,
 	  }
 	  else if (nunknown == 3) {
 
-	    int ida, idb, na, nb;
+	    int idb, na, nb;
 	    double dq1[NOP];
 	    double bc1[6][NOP];
 	    double b3[3*6];
@@ -1076,12 +1075,11 @@ static int gradient_no_iteration(const double * field, double * grad,
 	    for (ia = 0; ia < nunknown; ia++) {
 
 	      na = normal[ia];    /* normal for unknown ia */
-	      ida = normal[ia]/2; /* coordinate direction for unknown ia */
 
 	      for (ib = 0; ib < nunknown; ib++) {
 
 		nb = normal[ib];
-		idb = normal[ib]/2;
+		idb = normal[ib]/2; /* coordinate direction of normal */
 
 		/* Compute 6x5 block (ia,ib) in system matrix */
 

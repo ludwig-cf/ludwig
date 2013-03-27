@@ -226,7 +226,6 @@ void advection_second_order(double * fluxe, double * fluxw,
   int n;
   int index0, index1;
   int icp1, icm1;
-  int ys;
   double u0[3], u1[3], u;
 
   nop = phi_nop();
@@ -237,8 +236,6 @@ void advection_second_order(double * fluxe, double * fluxw,
   assert(fluxw);
   assert(fluxy);
   assert(fluxz);
-
-  ys = nlocal[Z] + 2*coords_nhalo();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -748,7 +745,7 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
   int nlocal[3];
   int ic, jc, kc;
   int icm1, icm2, icm3, icm4;
-  int icp1, icp2, icp3, icp4;
+  int icp1, icp2, icp3;
   int index0, index1;
   int n;
   double u0[3], u1[3], u;
@@ -778,7 +775,6 @@ void advection_upwind_seventh_order(double * fluxe, double * fluxw,
     icp1 = le_index_real_to_buffer(ic, +1);
     icp2 = le_index_real_to_buffer(ic, +2);
     icp3 = le_index_real_to_buffer(ic, +3);
-    icp4 = le_index_real_to_buffer(ic, +4);
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 

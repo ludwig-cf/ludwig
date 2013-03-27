@@ -78,7 +78,6 @@ void symmetric_run_time_noise(void) {
 
 static void symmetric_init(const int nhalo) {
 
-  int n;
   double a;
   double b;
   double kappa;
@@ -96,9 +95,9 @@ static void symmetric_init(const int nhalo) {
 
   /* Parameters */
 
-  n = RUN_get_double_parameter("A", &a);
-  n = RUN_get_double_parameter("B", &b);
-  n = RUN_get_double_parameter("K", &kappa);
+  RUN_get_double_parameter("A", &a);
+  RUN_get_double_parameter("B", &b);
+  RUN_get_double_parameter("K", &kappa);
 
   info("Parameters:\n");
   info("Bulk parameter A      = %12.5e\n", a);
