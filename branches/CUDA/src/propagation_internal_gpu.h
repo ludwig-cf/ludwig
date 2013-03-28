@@ -13,7 +13,7 @@
 
 /* forward declarations of device routines */
 __global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3], \
-					     double* fnew_d, double* fold_d);
+					     double* __restrict__ fnew_d, const double* __restrict__ fold_d);
 __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]);
 __device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,int index,int N[3]);
 

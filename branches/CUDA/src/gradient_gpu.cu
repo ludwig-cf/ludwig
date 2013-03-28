@@ -76,10 +76,10 @@ checkCUDAError("gradient_3d_7pt");
  *  gradient_3d_7pt_fluid_operator_gpu_d
  *
  *****************************************************************************/
-__global__ void gradient_3d_7pt_fluid_operator_gpu_d(const double * field_d,
-						     double * grad_d,
-						     double * del2_d,
-						     int * le_index_real_to_buffer_d) {
+__global__ void gradient_3d_7pt_fluid_operator_gpu_d(const double* __restrict__ field_d,
+						     double* __restrict__ grad_d,
+						     double* __restrict__ del2_d,
+						     const int* __restrict__ le_index_real_to_buffer_d) {
 
   int n, icm1, icp1;
   int index, indexm1, indexp1;
@@ -138,12 +138,12 @@ __global__ void gradient_3d_7pt_fluid_operator_gpu_d(const double * field_d,
 
 __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo, 
 						     int N_d[3], 
-						     const double * field_d,
-						     double * grad_d,
-						     double * del2_d,
-						     char * site_map_status_d,
-					    char * colloid_map_d,
-					    double * colloid_r_d,
+						     const double* __restrict__ field_d,
+						     double* __restrict__ grad_d,
+						     double* __restrict__ del2_d,
+						     char* __restrict__ site_map_status_d,
+					    const char* __restrict__ colloid_map_d,
+					    const double* __restrict__ colloid_r_d,
 					    int nextra
 					    ) {
   int n;
@@ -685,8 +685,8 @@ __device__ static int util_gaussian_gpu_d(double a[NOP][NOP], double xb[NOP]) {
 
 
 __device__ void colloids_q_boundary_normal_gpu_d(const int di[3],
-						 double dn[3], int Nall[3], int nhalo, int nextra, int ii, int jj, int kk, char *site_map_status_d,					    char * colloid_map_d,
-						 double * colloid_r_d) {
+						 double dn[3], int Nall[3], int nhalo, int nextra, int ii, int jj, int kk, const char* __restrict__ site_map_status_d,					    const char* __restrict__ colloid_map_d,
+						 const double* __restrict__ colloid_r_d) {
   int ia, index1;
   int index;
   double rd;
@@ -772,7 +772,7 @@ void put_gradient_constants_on_gpu(){
   int nop = phi_nop();
   /* copy to constant memory on device */
   cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(Ngradcalc_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(Ngradcalc_cd, Ngradcalc, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
   cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
   cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
 cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice); 

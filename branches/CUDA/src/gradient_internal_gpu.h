@@ -30,20 +30,21 @@ extern "C" void checkCUDAError(const char *msg);
 void set_gradient_option_gpu(char option);
 void put_gradient_constants_on_gpu();
 
-__global__ void gradient_3d_7pt_fluid_operator_gpu_d(const double * field_d,
-						     double * grad_d,
-						     double * del2_d,
-						     int * le_index_real_to_buffer_d);
+__global__ void gradient_3d_7pt_fluid_operator_gpu_d(const double* __restrict__ field_d,
+						     double* __restrict__ grad_d,
+						     double* __restrict__ del2_d,
+						     const int* __restrict__ le_index_real_to_buffer_d);
 
 __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo, 
 						     int N_d[3], 
-						     const double * field_d,
-						     double * grad_d,
-						     double * del2_d,
-						     char * site_map_status_d,
-					    char * colloid_map_d,
-					    double * colloid_r_d,
-					    int nextra);
+						     const double* __restrict__ field_d,
+						     double* __restrict__ grad_d,
+						     double* __restrict__ del2_d,
+						     char* __restrict__ site_map_status_d,
+					    const char* __restrict__ colloid_map_d,
+					    const double* __restrict__ colloid_r_d,
+					    int nextra );
+
 
 __device__ static void gradient_bcs_gpu_d(const double kappa0, 
 					  const double kappa1, 
@@ -51,15 +52,10 @@ __device__ static void gradient_bcs_gpu_d(const double kappa0,
 					  double dq[NOP][3], 
 					  double bc[NOP][NOP][3]);
 __device__ static int util_gaussian_gpu_d(double a[NOP][NOP], double xb[NOP]);
-__device__ void colloids_q_boundary_normal_gpu_d(const int di[3],
-						 double dn[3], 
-						 int Nall[3], 
-						 int nhalo, int nextra, 
-						 int ii, int jj, int kk, 
-						 char *site_map_status_d,
-						 char * colloid_map_d,
-						 double * colloid_r_d);
 
+__device__ void colloids_q_boundary_normal_gpu_d(const int di[3],
+						 double dn[3], int Nall[3], int nhalo, int nextra, int ii, int jj, int kk, const char* __restrict__ site_map_status_d,					    const char* __restrict__ colloid_map_d,
+						 const double* __restrict__ colloid_r_d);
 
 
 

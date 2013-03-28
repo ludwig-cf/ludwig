@@ -431,7 +431,7 @@ void propagation_gpu() {
 
 
 __global__ static void propagate_d3q19_gpu_d(int ndist, int nhalo, int N[3],
-					     double* fnew_d, double* fold_d) {
+					     double* __restrict__ fnew_d, const double* __restrict__ fold_d) {
 
   int ii, jj, kk, index, n, threadIndex, nsite, Nall[3];
   int xstr, ystr, zstr, pstr, xfac, yfac;

@@ -13,21 +13,21 @@
 /* Declarations for gpu kernel/device routines  */
 __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, 
 						int N[3],	      
-						double* force_global_d, 
-						double* f_d,		
-						char* site_map_status_d, 
-					      double* force_ptr, 
-						double* velocity_ptr);
+						const double* __restrict__ force_global_d, 
+						double* __restrict__ f_d,		
+						const char* __restrict__ site_map_status_d, 
+					      const double* __restrict__ force_ptr, 
+						double* __restrict__ velocity_ptr);
 
 __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3], 
-					  double* force_global_d, 
-					  double* f_d,			
-					  char* site_map_status_d, 
-					  double* phi_site_d,		
-					  double* grad_phi_site_d,	
-					  double* delsq_phi_site_d,	
-					  double* force_ptr, 
-					  double* velocity_ptr, 
+					  const double* __restrict__ force_global_d, 
+					  double* __restrict__ f_d,			
+					  const char* __restrict__ site_map_status_d, 
+					  const double* __restrict__ phi_site_d,		
+					  const double* __restrict__ grad_phi_site_d,	
+					  const double* __restrict__ delsq_phi_site_d,	
+					  const double* __restrict__ force_ptr, 
+					  double* __restrict__ velocity_ptr, 
 					  double* ma_ptr, 
 					  double* d_ptr, 
 					  double* mi_ptr, 
@@ -37,13 +37,13 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 
 __device__ void fluctuations_off_gpu_d(double shat[3][3], double ghat[NVEL]);
 __device__ double symmetric_chemical_potential_gpu_d(const int index,	
-						     double *phi_site_d,
-						     double *delsq_phi_site_d);
+						     const double* __restrict__ phi_site_d,
+						     const double* __restrict__ delsq_phi_site_d);
 __device__ void symmetric_chemical_stress_gpu_d(const int index, 
 						double s[3][3],
-						double *phi_site_d, 
-						double *grad_phi_site_d, 
-						double *delsq_phi_site_d,
+						const double* __restrict__ phi_site_d, 
+						const double* __restrict__ grad_phi_site_d, 
+						const double* __restrict__ delsq_phi_site_d,
 						double d_d[3][3], int nsite);
 __device__ double dot_product_gpu_d(const double a[3], const double b[3]);
 __device__ double phi_get_delsq_delsq_phi_site_gpu_d(const int index,	

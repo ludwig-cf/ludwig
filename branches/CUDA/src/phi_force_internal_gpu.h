@@ -69,93 +69,91 @@ extern int * le_index_real_to_buffer_d;
 
 void put_phi_force_constants_on_gpu();
 
-__global__ void phi_force_calculation_fluid_gpu_d(int * le_index_real_to_buffer_d,
-						  double *phi_site_d,
-						  double *phi_site_full_d,
-						  double *grad_phi_site_d,
-						  double *delsq_phi_site_d,
-						  double *h_site_d,
-						  double *stress_site_d,
-						  double *force_d);
+__global__ void phi_force_calculation_fluid_gpu_d(const int* __restrict__ le_index_real_to_buffer_d,
+						  const double* __restrict__ phi_site_d,
+						  const double* __restrict__ phi_site_full_d,
+						  const double* __restrict__ grad_phi_site_d,
+						  const double* __restrict__ delsq_phi_site_d,
+						  const double* __restrict__ h_site_d,
+						  const double* __restrict__ stress_site_d,
+						  double* __restrict__ force_d);
 
-__global__ void phi_force_colloid_gpu_d(int * le_index_real_to_buffer_d,
-					char * site_map_status_d,
-					double *phi_site_d,
-					double *phi_site_full_d,
-					double *grad_phi_site_d,
-					double *delsq_phi_site_d,
-					double *h_site_d,
-					double *stress_site_d,
-					double *force_d,
-					double *colloid_force_d);
+__global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
+					const char * __restrict__ site_map_status_d,
+					const double* __restrict__ phi_site_d,
+					const double* __restrict__ phi_site_full_d,
+					const double* __restrict__ grad_phi_site_d,
+					const double* __restrict__ delsq_phi_site_d,
+					const double* __restrict__ h_site_d,
+					const double* __restrict__ stress_site_d,
+					double* __restrict__ force_d,
+					double* __restrict__ colloid_force_d);
 
 
-__global__ void blue_phase_be_update_gpu_d(int * le_index_real_to_buffer_d,
-						  double *phi_site_d,
-						  double *phi_site_full_d,
-						  double *grad_phi_site_d,
-						  double *delsq_phi_site_d,
-						  double *h_site_d,
-					   double *force_d, 
-					   double *velocity_d,
-					   char *site_map_status_d,
-					   double *fluxe_d,
-					   double *fluxw_d,
-					   double *fluxy_d,
-					   double *fluxz_d
+__global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
+					   double* __restrict__ phi_site_d,
+					   const double* __restrict__ grad_phi_site_d,
+					   const double* __restrict__ delsq_phi_site_d,
+					   const double* __restrict__ h_site_d,
+					   const double* __restrict__ velocity_d,
+					   const char* __restrict__ site_map_status_d,
+					   const double* __restrict__ fluxe_d,
+					   const double* __restrict__ fluxw_d,
+					   const double* __restrict__ fluxy_d,
+					   const double* __restrict__ fluxz_d
 );
 
-__global__ void advection_upwind_gpu_d(int * le_index_real_to_buffer_d,
-						  double *phi_site_d,
-						  double *phi_site_full_d,
-						  double *grad_phi_site_d,
-						  double *delsq_phi_site_d,
-					   double *force_d, 
-					   double *velocity_d,
-					   char *site_map_status_d,
-					   double *fluxe_d,
-					   double *fluxw_d,
-					   double *fluxy_d,
-					   double *fluxz_d
+__global__ void advection_upwind_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
+				       const double* __restrict__ phi_site_d,
+				       const double* __restrict__ phi_site_full_d,
+				       const double* __restrict__ grad_phi_site_d,
+				       const double* __restrict__ delsq_phi_site_d,
+				       const double* __restrict__ force_d, 
+				       const double* __restrict__ velocity_d,
+				       const char* __restrict__site_map_status_d,
+				       double* __restrict__ fluxe_d,
+				       double* __restrict__ fluxw_d,
+				       double* __restrict__ fluxy_d,
+				       double* __restrict__ fluxz_d
 );
 
 __global__ void advection_bcs_no_normal_flux_gpu_d(const int nop,
-					   char *site_map_status_d,
-					   double *fluxe_d,
-					   double *fluxw_d,
-					   double *fluxy_d,
-					   double *fluxz_d
+					   const char* __restrict__ site_map_status_d,
+					   double* __restrict__ fluxe_d,
+					   double* __restrict__ fluxw_d,
+					   double* __restrict__ fluxy_d,
+					   double* __restrict__ fluxz_d
 						   );
 
-__global__ void blue_phase_compute_q2_eq_all_gpu_d(  double *phi_site_d,
-						 double *phi_site_full_d,
-						 double *grad_phi_site_d,
-						 double *delsq_phi_site_d,
-						 double *h_site_d,
-						 double *q2_site_d,
-						     double *eq_site_d);
+__global__ void blue_phase_compute_q2_eq_all_gpu_d( const double* __restrict__ phi_site_d,
+						 const double* __restrict__ phi_site_full_d,
+						 const double* __restrict__ grad_phi_site_d,
+						 const double* __restrict__ delsq_phi_site_d,
+						 const double* __restrict__ h_site_d,
+						 double* __restrict__ q2_site_d,
+						     double* __restrict__ eq_site_d);
 
-__global__ void blue_phase_compute_h_all_gpu_d(  double *phi_site_d,
-						 double *phi_site_full_d,
-						 double *grad_phi_site_d,
-						 double *delsq_phi_site_d,
-						 double *h_site_d,
-						 double *tmpscal1_d,
-						 double *tmpscal2_d
+__global__ void blue_phase_compute_h_all_gpu_d(  const double* __restrict__ phi_site_d,
+						 const double* __restrict__ phi_site_full_d,
+						 const double* __restrict__ grad_phi_site_d,
+						 const double* __restrict__ delsq_phi_site_d,
+						 double* __restrict__ h_site_d,
+						 const double* __restrict__ tmpscal1_d,
+						 const double* __restrict__ tmpscal2_d
 );
 
 
 
-__global__ void blue_phase_compute_stress1_all_gpu_d(  double *phi_site_d,
-						 double *phi_site_full_d,
-						 double *grad_phi_site_d,
-						 double *grad_phi_site_full_d,
-						 double *delsq_phi_site_d,
-						      double *h_site_d,
-						      double *stress_site_d);
-__global__ void blue_phase_compute_stress2_all_gpu_d(  double *phi_site_d,
-						 double *grad_phi_site_full_d,
-						      double *stress_site_d);
+__global__ void blue_phase_compute_stress1_all_gpu_d(const  double* __restrict__ phi_site_d,
+						 const double* __restrict__ phi_site_full_d,
+						 const double* __restrict__ grad_phi_site_d,
+						 const double* __restrict__ grad_phi_site_full_d,
+						 const double* __restrict__ delsq_phi_site_d,
+						 const     double* __restrict__ h_site_d,
+						     double* __restrict__ stress_site_d);
+__global__ void blue_phase_compute_stress2_all_gpu_d(const  double* __restrict__ phi_site_d,
+						 const double* __restrict__ grad_phi_site_full_d,
+						      double* __restrict__ stress_site_d);
 
 __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]);
 __device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,
