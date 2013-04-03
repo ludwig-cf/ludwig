@@ -39,7 +39,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 1
+N_cycles 4000
 propagation_ode off
 propagation_ode_tstep 1.0
 propagation_ode_integrator rk2
@@ -61,9 +61,9 @@ propagation_ode_integrator rk2
 # 
 ##############################################################################
 
-size 32_32_32
+size 24_24_24
 #grid 1_2_1
-periodicity 1_1_1
+periodicity 0_0_0
 reduced_halo no
 
 ##############################################################################
@@ -133,7 +133,7 @@ temperature 0.00002133333
 #
 ###############################################################################
 
-free_energy lc_blue_phase
+free_energy none
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
@@ -314,7 +314,7 @@ leslie_ericksen_swim  0.0
 #
 ###############################################################################
 
-colloid_init        none
+colloid_init        random
 colloid_type        inactive
 
 colloid_random_no   1
@@ -322,9 +322,11 @@ colloid_random_dh   0.4
 
 colloid_random_a0   2.3
 colloid_random_ah   2.3
-colloid_random_r0   64.0_64.0_32.0
+#colloid_random_r0  15.2935_23.36198_8.348894
+colloid_random_r0   12.2_12.7_4.0
+#colloid_random_r0   3.3_12.2_3.2
 colloid_random_v0   0.0_0.0_0.0
-colloid_random_s0   1.0_0.0_0.0
+colloid_random_s0   0.0_0.0_0.
 colloid_random_m0   1.0_0.0_0.0
 colloid_random_c    0.0
 colloid_random_h    0.0
@@ -333,14 +335,14 @@ colloid_random_h    0.0
 # Uniform magnetic field [default is zero]
 
 colloid_cell_list_interactions yes
-colloid_cell_min 8.0
-colloid_gravity  0.0_0.0_0.0
+colloid_cell_min 5.0
+colloid_gravity  0.0_0.0_-0.1
 magnetic_b0      0.0_0.0_0.0
 
 # Colloid-colloid lubrication corrections
 
 lubrication_on 0
-lubrication_normal_cutoff 0.3
+lubrication_normal_cutoff 0.5
 lubrication_tangential_cutoff 0.0
 
 ###############################################################################
@@ -387,11 +389,11 @@ boundary_walls 0_0_0
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
 boundary_shear_init 0
-boundary_lubrication_rcnormal 0.0
+boundary_lubrication_rcnormal 0.5
 
-#porous_media_format BINARY
-#porous_media_file   capillary_8_8_32.dat
-#porous_media_type   status_only
+porous_media_format BINARY
+porous_media_file   cylinder_z
+porous_media_type   status_only
 
 ###############################################################################
 #
@@ -419,14 +421,14 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics 50
+freq_statistics 100
 freq_measure 200000
-freq_config 5000000
-freq_phi    100000
-freq_vel    100000
+freq_config 100000
+freq_phi    10000
+freq_vel    10000
 freq_shear_measurement 100000
 freq_shear_output      100000
-config_at_end no
+config_at_end yes
 
 default_io_grid 1_1_1
 
@@ -434,8 +436,8 @@ distribution_io_grid 1_1_1
 distribution_io_input_format BINARY
 
 phi_io_grid 1_1_1
-phi_format    ASCII
-vel_format    ASCII
+phi_format    BINARY
+vel_format    BINARY
 
 ##############################################################################
 #
@@ -451,10 +453,10 @@ vel_format    ASCII
 #
 ##############################################################################
 
-colloid_io_freq 1000
+colloid_io_freq 100
 colloid_io_grid 1_1_1
-colloid_io_format_input  BINARY
-colloid_io_format_output BINARY
+colloid_io_format_input  ASCII
+colloid_io_format_output ASCII
 
 qs_dir_io_grid 1_1_1
 qs_dir_format BINARY
