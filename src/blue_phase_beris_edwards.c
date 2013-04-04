@@ -130,7 +130,10 @@ static void blue_phase_be_update(void) {
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-
+#ifdef COMPARE_KLUDGE
+    if (cart_coords(Z) == 0 && kc == 1) continue;
+    if (cart_coords(Z) == cart_size(Z) - 1 && kc == nlocal[Z]) continue;
+#endif
 	index = le_site_index(ic, jc, kc);
 
 	phi_get_q_tensor(index, q);
