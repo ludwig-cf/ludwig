@@ -138,10 +138,6 @@ static void phi_force_calculation_fluid(void) {
     icp1 = le_index_real_to_buffer(ic, +1);
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-#ifdef COMPARE_KLUDGE
-    if (cart_coords(Z) == 0 && kc == 1) continue;
-    if (cart_coords(Z) == cart_size(Z) - 1 && kc == nlocal[Z]) continue;
-#endif
 
 	index = le_site_index(ic, jc, kc);
 
