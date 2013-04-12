@@ -314,6 +314,13 @@ void blue_phase_rt_initial_conditions(void) {
     blue_phase_nematic_init(nhat);
   }
 
+  if (strcmp(key1, "active_nematic") == 0) {
+    info("Initialising Q_ab to active nematic\n");
+    RUN_get_double_parameter_vector("lc_init_nematic", nhat);
+    info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
+    blue_phase_active_nematic_init(nhat);
+  }
+
   if (strcmp(key1, "o8m") == 0) {
     info("Initialising Q_ab using O8M (BPI)\n");
     blue_phase_O8M_init();
