@@ -447,7 +447,7 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
   q0 = q0_*rredshift_;
   kappa0 = kappa0_*redshift_*redshift_;
   kappa1 = kappa1_*redshift_*redshift_;
-  
+
   /* We have ignored the rho T term at the moment, assumed to be zero
    * (in particular, it has no divergence if rho = const). */
 
@@ -512,6 +512,14 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
       for (ic = 0; ic < 3; ic++) {
 	sth[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
       }
+    }
+  }
+
+  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] -= zeta_*(q[ia][ib] + r3_*d_[ia][ib]);
     }
   }
 
