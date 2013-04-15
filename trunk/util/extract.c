@@ -51,6 +51,7 @@ int reverse_byte_order_ = 0;   /* Switch for bigendian input */
 int input_binary_ = 1;         /* Switch for format of input */
 int output_binary_ = 0;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
+int output_index_ = 1;         /* For ASCII output, include (i,j,k) indices */
 
 int le_t0_ = 0;                /* LE offset start time (time steps) */ 
 
@@ -425,6 +426,12 @@ void write_data(FILE * fp_data, int n[3], double * data) {
     for (ic = 0; ic < n[0]; ic++) {
       for (jc = 0; jc < n[1]; jc++) {
 	for (kc = 0; kc < n[2]; kc++) {
+
+	  if (output_index_) {
+	    /* Add the global (i,j,k) index starting at 1 each way */
+	    fprintf(fp_data, "%4d %4d %4d ", 1 + ic, 1 + jc, 1 + kc);
+	  }
+
 	  for (nr = 0; nr < nrec_ - 1; nr++) {
 	    fprintf(fp_data, "%13.6e ", *(data + index));
 	    index++;
