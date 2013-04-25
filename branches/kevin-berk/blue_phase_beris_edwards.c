@@ -17,6 +17,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "util.h"
@@ -43,6 +44,7 @@ static double * fluxz;
 static const double r3 = (1.0/3.0);   /* Fraction 1/3 */
 
 static void blue_phase_be_update(void);
+static void be_rk(double dt, const double * qn);
 
 /*****************************************************************************
  *
@@ -56,6 +58,8 @@ void blue_phase_beris_edwards(void) {
 
   int nsites;
   int nop;
+  int euler = 1;
+  extern double * phi_site;
 
   /* Set up advective fluxes and do the update. */
 
@@ -74,10 +78,35 @@ void blue_phase_beris_edwards(void) {
   hydrodynamics_halo_u();
   colloids_fix_swd();
   hydrodynamics_leesedwards_transformation();
-  advection_upwind(fluxe, fluxw, fluxy, fluxz);
-  advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
 
-  blue_phase_be_update();
+  if (euler) {
+    advection_upwind(fluxe, fluxw, fluxy, fluxz);
+    advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
+
+    blue_phase_be_update();
+  }
+  else {
+    double dt = 1.0;
+    double * yn = NULL;
+
+    yn = malloc(nop*nsites*sizeof(double));
+    memcpy(yn, phi_site, nop*nsites*sizeof(double));
+
+    advection_fourth_order(fluxe, fluxw, fluxy, fluxz);
+    advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
+
+    be_rk(0.5*dt, yn);
+
+    phi_halo();
+    phi_gradients();
+
+    advection_fourth_order(fluxe, fluxw, fluxy, fluxz);
+    advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
+
+    be_rk(dt, yn);
+
+    free(yn);
+  }
 
   free(fluxe);
   free(fluxw);
@@ -238,4 +267,113 @@ void blue_phase_be_set_rotational_diffusion(double gamma) {
 double blue_phase_be_get_rotational_diffusion(void) {
 
   return Gamma_;
+}
+
+
+/*****************************************************************************
+ *
+ *  RK TEST
+ *
+ *****************************************************************************/
+
+
+static void be_rk(double dt, const double * qn) {
+
+  int ic, jc, kc;
+  int ia, ib, id;
+  int index, indexj, indexk;
+  int nlocal[3];
+  int nop;
+
+  double q[3][3];
+  double w[3][3];
+  double d[3][3];
+  double h[3][3];
+  double s[3][3];
+  double omega[3][3];
+  double trace_qw;
+  double xi;
+
+  coords_nlocal(nlocal);
+  nop = phi_nop();
+  xi = blue_phase_get_xi();
+
+  assert(nop == 5);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+#ifdef COMPARE_KLUDGE
+    if (cart_coords(Z) == 0 && kc == 1) continue;
+    if (cart_coords(Z) == cart_size(Z) - 1 && kc == nlocal[Z]) continue;
+#endif
+	index = le_site_index(ic, jc, kc);
+
+	phi_get_q_tensor(index, q);
+	blue_phase_molecular_field(index, h);
+
+	/* Velocity gradient tensor, symmetric and antisymmetric parts */
+
+	hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
+
+	trace_qw = 0.0;
+
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    trace_qw += q[ia][ib]*w[ib][ia];
+	    d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
+	    omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
+	  }
+	}
+	  
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    s[ia][ib] = -2.0*xi*(q[ia][ib] + r3*d_[ia][ib])*trace_qw;
+	    for (id = 0; id < 3; id++) {
+	      s[ia][ib] +=
+		(xi*d[ia][id] + omega[ia][id])*(q[id][ib] + r3*d_[id][ib])
+		+ (q[ia][id] + r3*d_[ia][id])*(xi*d[id][ib] - omega[id][ib]);
+	    }
+	  }
+	}
+
+	/* Here's the full hydrodynamic update. */
+	  
+	indexj = le_site_index(ic, jc-1, kc);
+	indexk = le_site_index(ic, jc, kc-1);
+
+	q[X][X] = qn[nop*index + XX] + dt*(s[X][X] + Gamma_*h[X][X]
+			 - fluxe[nop*index + XX] + fluxw[nop*index  + XX]
+			 - fluxy[nop*index + XX] + fluxy[nop*indexj + XX]
+			 - fluxz[nop*index + XX] + fluxz[nop*indexk + XX]);
+
+	q[X][Y] = qn[nop*index + XY] + dt*(s[X][Y] + Gamma_*h[X][Y]
+			 - fluxe[nop*index + XY] + fluxw[nop*index  + XY]
+			 - fluxy[nop*index + XY] + fluxy[nop*indexj + XY]
+			 - fluxz[nop*index + XY] + fluxz[nop*indexk + XY]);
+
+	q[X][Z] = qn[nop*index + XZ] + dt*(s[X][Z] + Gamma_*h[X][Z]
+			 - fluxe[nop*index + XZ] + fluxw[nop*index  + XZ]
+			 - fluxy[nop*index + XZ] + fluxy[nop*indexj + XZ]
+			 - fluxz[nop*index + XZ] + fluxz[nop*indexk + XZ]);
+
+	q[Y][Y] = qn[nop*index + YY] + dt*(s[Y][Y] + Gamma_*h[Y][Y]
+			 - fluxe[nop*index + YY] + fluxw[nop*index  + YY]
+			 - fluxy[nop*index + YY] + fluxy[nop*indexj + YY]
+			 - fluxz[nop*index + YY] + fluxz[nop*indexk + YY]);
+
+	q[Y][Z] = qn[nop*index + YZ] + dt*(s[Y][Z] + Gamma_*h[Y][Z]
+			 - fluxe[nop*index + YZ] + fluxw[nop*index  + YZ]
+			 - fluxy[nop*index + YZ] + fluxy[nop*indexj + YZ]
+			 - fluxz[nop*index + YZ] + fluxz[nop*indexk + YZ]);
+	
+	phi_set_q_tensor(index, q);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return;
 }
