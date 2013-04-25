@@ -403,7 +403,9 @@ int util_svd_solve(int m, int n, double ** a, double * b, double * x) {
   }
   wmin = DBL_EPSILON*wmax;
 
-  /* Do backsubstitution */
+  /* Do backsubstitution; k counts 'non-zero' singular values */
+
+  k = 0;
 
   for (j = 0; j < n; j++) {
     sum = 0.0;
@@ -412,9 +414,12 @@ int util_svd_solve(int m, int n, double ** a, double * b, double * x) {
 	sum += u[i][j]*b[i];
       }
       sum /= w[j];
+      k += 1;
     }
     tmp[j] = sum;
   }
+
+  if (k != n) ifail += 1;
 
   for (j = 0; j < n; j++) {
     sum = 0.0;
