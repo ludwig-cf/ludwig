@@ -476,6 +476,12 @@ void write_data_cmf(FILE * fp_data, int n[3], double * data) {
       for (jc = 1; jc <= n[1]; jc++) {
 	for (ic = 1; ic <= n[0]; ic++) {
 	  index = site_index(ic, jc, kc, n);
+      
+	  if (output_index_) {
+             /* Add the global (i,j,k) index starting at 1 each way */
+             fprintf(fp_data, "%4d %4d %4d ", ic, jc, kc);
+           }
+
 	  for (nr = 0; nr < nrec_ - 1; nr++) {
 	    fprintf(fp_data, "%13.6e ", *(data + nrec_*index + nr));
 	  }
