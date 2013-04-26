@@ -15,4 +15,4 @@ docs:	ludwig.tex Makefile
 	$(LATEX) $(TEX_SOURCE)
 
 clean:
-	$(RM) -f *aux *dvi *log *toc 
+	$(RM) -f *aux *dvi *log *toc *out 
