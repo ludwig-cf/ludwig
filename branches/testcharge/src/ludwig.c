@@ -366,7 +366,8 @@ void ludwig_run(const char * inputfile) {
       psi_colloid_rho_set(ludwig->psi);
       psi_halo_psi(ludwig->psi);
       /* Sum force for this step before update */
-      psi_force_grad_mu(ludwig->psi, ludwig->hydro);
+//      psi_force_grad_mu(ludwig->psi, ludwig->hydro);
+      phi_force_calculation(ludwig->phi, ludwig->hydro);
       psi_sor_poisson(ludwig->psi);
       psi_halo_rho(ludwig->psi);
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);

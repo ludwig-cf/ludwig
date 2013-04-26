@@ -157,8 +157,8 @@ double fe_electro_fed(const int index) {
   for (n = 0; n < nk; n++) {
 
     psi_rho(fe->psi, index, n, &rho);
-    assert(rho > 0.0); /* For log(rho) */
-
+    assert(rho >= 0.0); /* For log(rho) */
+    if (rho == 0) continue;
     fed += rho*(fe->kt*(log(rho) - 1.0)	+ fe->psi->valency[n]*epsi);
   }
 
@@ -186,7 +186,9 @@ double fe_electro_mu(const int index, const int n) {
 
   rho = fe->psi->rho[fe->psi->nk*index + n];
 
-  assert(rho > 0.0); /* For log(rho) */
+  assert(rho >= 0.0); /* For log(rho) */
+  if (rho == 0) return 0;
+  
   mu = fe->kt*log(rho) + fe->psi->valency[n]*fe->psi->e*fe->psi->psi[index];
 
   return mu;
@@ -215,6 +217,8 @@ void fe_electro_stress(const int index, double s[3][3]) {
 
   psi_epsilon(fe->psi, &epsilon);
   psi_electric_field(fe->psi, index, etot);
+
+printf("%le %le %le %le\n",epsilon, etot[0], etot[1], etot[2]); 
 
   /* Add the external field, and compute E^2, and then the stress */
 

@@ -113,7 +113,7 @@ int phi_force_calculation(field_t * phi, hydro_t * hydro) {
   else {
     if (force_divergence_) {
       phi_force_calculation_fluid(hydro);
-    }
+   }
     else {
       assert(phi);
       phi_force_fluid_phi_gradmu(phi, hydro);

@@ -26,6 +26,8 @@
 #include "psi_rt.h"
 #include "psi_init.h"
 #include "io_harness.h"
+#include "fe_electro.h"
+
 
 static int psi_do_init(psi_t ** obj, map_t * map);
 
@@ -37,8 +39,9 @@ static int psi_do_init(psi_t ** obj, map_t * map);
 
 int psi_init_rt(psi_t ** pobj, map_t * map) {
 
-  int eswitch =  0;
+  int n, eswitch =  0;
   char str[BUFSIZ];
+  double electric[3];
 
   if (RUN_get_string_parameter("electrokinetics", str, BUFSIZ)) {
     if (strcmp(str, "on") == 0) eswitch = 1;
@@ -52,6 +55,15 @@ int psi_init_rt(psi_t ** pobj, map_t * map) {
   info("Electrokinetics: %s\n", (eswitch) ? "on" : "off");
 
   if (eswitch) psi_do_init(pobj, map);
+
+  n = RUN_get_double_parameter_vector("electric_e0", electric);
+
+  fe_electro_create(*pobj);
+  phi_force_required_set(1);
+  fe_electro_ext_set(electric);
+  fe_density_set(fe_electro_fed);
+  fe_chemical_potential_set(fe_electro_mu);
+  fe_chemical_stress_set(fe_electro_stress);
 
   return 0;
 }
