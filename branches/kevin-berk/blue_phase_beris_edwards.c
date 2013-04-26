@@ -58,7 +58,7 @@ void blue_phase_beris_edwards(void) {
 
   int nsites;
   int nop;
-  int euler = 1;
+  int euler = 0;
   extern double * phi_site;
 
   /* Set up advective fluxes and do the update. */
@@ -86,26 +86,38 @@ void blue_phase_beris_edwards(void) {
     blue_phase_be_update();
   }
   else {
-    double dt = 1.0;
-    double * yn = NULL;
 
-    yn = malloc(nop*nsites*sizeof(double));
-    memcpy(yn, phi_site, nop*nsites*sizeof(double));
+    /* This is RK2 with phi_site used to store the half-way state
+     * and the final state.
+     *
+     *    phi(t + dt) = phi(dt) + dt*RHS[ phi(t + 0.5*dt) ]
+     *    with
+     *    phi(t + 0.5*dt) = phi(dt) + 0.5*dt*RHS[ phi(t) ]
+     *
+     *  qn is used to keep a copy of phi(t). The velocity field
+     *  is fixed for the whole step. */
+
+    double dt = 1.0;
+    double * qn = NULL;
+
+    qn = malloc(nop*nsites*sizeof(double));
+    if (qn == NULL) fatal("malloc(qn) failed\n");
+    memcpy(qn, phi_site, nop*nsites*sizeof(double));
 
     advection_fourth_order(fluxe, fluxw, fluxy, fluxz);
     advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
 
-    be_rk(0.5*dt, yn);
+    be_rk(0.5*dt, qn);
 
     phi_halo();
-    phi_gradients();
+    phi_gradients_compute();
 
     advection_fourth_order(fluxe, fluxw, fluxy, fluxz);
     advection_bcs_no_normal_flux(nop, fluxe, fluxw, fluxy, fluxz);
 
-    be_rk(dt, yn);
+    be_rk(dt, qn);
 
-    free(yn);
+    free(qn);
   }
 
   free(fluxe);
