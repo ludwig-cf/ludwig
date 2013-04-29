@@ -21,9 +21,6 @@
 
 void phi_set_mean_phi(double);
 void phi_stats_print_stats(void);
-void phi_init_block(const double xi0);
-void phi_init_bath(void);
-void phi_init_surfactant(double);
 
 int stats_field_info(field_t * obj, map_t * map);
 int stats_field_reduce(field_t * obj, map_t * map, double * fmin,
