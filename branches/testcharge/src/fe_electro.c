@@ -39,6 +39,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -135,6 +136,9 @@ int fe_electro_ext_set(double ext_field[3]) {
  *
  *  \sum_a  rho_a [ kT(log(rho_a) - 1) + (1/2) Z_a e psi ]
  *
+ *  If rho = 0, rho log(rho) gives 0 x -inf = nan, so use
+ *  rho*log(rho + DBL_EPSILON); rho < 0 is erroneous.
+ *
  *****************************************************************************/
 
 double fe_electro_fed(const int index) {
@@ -157,9 +161,10 @@ double fe_electro_fed(const int index) {
   for (n = 0; n < nk; n++) {
 
     psi_rho(fe->psi, index, n, &rho);
-    assert(rho >= 0.0); /* For log(rho) */
-    if (rho == 0) continue;
-    fed += rho*(fe->kt*(log(rho) - 1.0)	+ fe->psi->valency[n]*epsi);
+    assert(rho >= 0.0); /* For log(rho + epsilon) */
+
+    fed += rho*(fe->kt*(log(rho + DBL_EPSILON) - 1.0)
+		+ fe->psi->valency[n]*epsi);
   }
 
   return fed;
@@ -186,10 +191,10 @@ double fe_electro_mu(const int index, const int n) {
 
   rho = fe->psi->rho[fe->psi->nk*index + n];
 
-  assert(rho >= 0.0); /* For log(rho) */
-  if (rho == 0) return 0;
+  assert(rho >= 0.0); /* For log(rho + epsilon) */
   
-  mu = fe->kt*log(rho) + fe->psi->valency[n]*fe->psi->e*fe->psi->psi[index];
+  mu = fe->kt*log(rho + DBL_EPSILON)
+    + fe->psi->valency[n]*fe->psi->e*fe->psi->psi[index];
 
   return mu;
 }
@@ -198,7 +203,7 @@ double fe_electro_mu(const int index, const int n) {
  *
  *  fe_electro_stress
  *
- *  The stress is S_ab = epsilon ( E_a E_b - (1/2) d_ab E^2)
+ *  The stress is S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2)
  *  where epsilon is the (uniform) permeativity.
  *
  *  E_a is the total electric field, which is made up of the
@@ -218,8 +223,6 @@ void fe_electro_stress(const int index, double s[3][3]) {
   psi_epsilon(fe->psi, &epsilon);
   psi_electric_field(fe->psi, index, etot);
 
-printf("%le %le %le %le\n",epsilon, etot[0], etot[1], etot[2]); 
-
   /* Add the external field, and compute E^2, and then the stress */
 
   e2 = 0.0;
@@ -231,7 +234,7 @@ printf("%le %le %le %le\n",epsilon, etot[0], etot[1], etot[2]);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = epsilon*(etot[ia]*etot[ib] - 0.5*d_[ia][ib]*e2);
+      s[ia][ib] = -epsilon*(etot[ia]*etot[ib] - 0.5*d_[ia][ib]*e2);
     }
   }
 

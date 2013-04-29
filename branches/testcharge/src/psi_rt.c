@@ -13,6 +13,8 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
+ *
  *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
@@ -26,63 +28,17 @@
 #include "psi_rt.h"
 #include "psi_init.h"
 #include "io_harness.h"
-#include "fe_electro.h"
-
-
-static int psi_do_init(psi_t ** obj, map_t * map);
 
 /*****************************************************************************
  *
- *  psi_init_rt
+ *  psi_param_init_rt
  *
  *****************************************************************************/
 
-int psi_init_rt(psi_t ** pobj, map_t * map) {
-
-  int n, eswitch =  0;
-  char str[BUFSIZ];
-  double electric[3];
-
-  if (RUN_get_string_parameter("electrokinetics", str, BUFSIZ)) {
-    if (strcmp(str, "on") == 0) eswitch = 1;
-    if (strcmp(str, "yes") == 0) eswitch = 1;
-    if (strcmp(str, "1") == 0) eswitch = 1;
-  }
-
-  info("\n");
-  info("Electrokinetics using Nernst Planck\n");
-  info("-----------------------------------\n");
-  info("Electrokinetics: %s\n", (eswitch) ? "on" : "off");
-
-  if (eswitch) psi_do_init(pobj, map);
-
-  n = RUN_get_double_parameter_vector("electric_e0", electric);
-
-  fe_electro_create(*pobj);
-  phi_force_required_set(1);
-  fe_electro_ext_set(electric);
-  fe_density_set(fe_electro_fed);
-  fe_chemical_potential_set(fe_electro_mu);
-  fe_chemical_stress_set(fe_electro_stress);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_do_init
- *
- *  The map object may be NULL, as it is only used in Gouy-Chapman,
- *  in which case it must be avilable.
- *
- *****************************************************************************/
-
-static int psi_do_init(psi_t ** pobj, map_t * map) {
-
-  psi_t * obj = NULL; 
+int psi_init_param_rt(psi_t * obj) {
 
   int n;
-  int nk = 2;                 /* Number of charge densities always 2 for now */
+  int nk;
 
   int valency[2] = {+1, -1};  /* Valencies (should be +/-!)*/
   double diffusivity[2] = {0.01, 0.01};
@@ -92,9 +48,6 @@ static int psi_do_init(psi_t ** pobj, map_t * map) {
   double epsilon = 0.0;       /* Permeativity */
   double lb;                  /* Bjerrum length; derived, not input. */
   double tolerance;           /* Numerical tolerance for SOR. */
-  double rho_el;              /* Charge density */
-  double delta_el;            /* Relative difference in charge densities */
-  double sigma;               /* Surface charge density */
 
   int io_grid[3] = {1,1,1};
   int io_format_in = IO_FORMAT_DEFAULT;
@@ -102,8 +55,8 @@ static int psi_do_init(psi_t ** pobj, map_t * map) {
   char value[BUFSIZ] = "BINARY";
 
 
-  psi_create(2, &obj);
-  assert(obj);
+  psi_nk(obj, &nk);
+  assert(nk == 2); /* nk must be two for the time being */
 
   n = RUN_get_int_parameter("electrokinetics_z0", valency);
   n = RUN_get_int_parameter("electrokinetics_z1", valency + 1);
@@ -166,7 +119,35 @@ static int psi_do_init(psi_t ** pobj, map_t * map) {
 
   psi_init_io_info(obj, io_grid, io_format_in, io_format_out);
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_init_rho_rt
+ *
+ *  Initial configurations of the charge density.
+ *
+ *  - Gouy Chapman test (flow between two parallel plates)
+ *  - "Liquid junction" test
+ *  - uniform charge densities
+ *
+ *****************************************************************************/
+
+int psi_init_rho_rt(psi_t * obj, map_t * map) {
+
+  int n;
+  char value[BUFSIZ];
+
+  double rho_el;              /* Charge density */
+  double delta_el;            /* Relative difference in charge densities */
+  double sigma;               /* Surface charge density */
+
   /* Initial charge densities */
+
+  info("\n");
+  info("Initial charge densities\n");
+  info("------------------------\n");
 
   n = RUN_get_string_parameter("electrokinetics_init", value, BUFSIZ);
 
@@ -175,11 +156,11 @@ static int psi_do_init(psi_t ** pobj, map_t * map) {
 
     n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
-    info("Initial condition rho_el: %14.7e\n", rho_el);
+    info("Initial condition rho_el:  %14.7e\n", rho_el);
 
     n = RUN_get_double_parameter("electrokinetics_init_sigma", &sigma);
     if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
-    info("Initial condition sigma: %14.7e\n", sigma);
+    info("Initial condition sigma:   %14.7e\n", sigma);
 
     psi_init_gouy_chapman_set(obj, map, rho_el, sigma);
   }
@@ -207,8 +188,6 @@ static int psi_do_init(psi_t ** pobj, map_t * map) {
 
     psi_init_uniform(obj, rho_el);
   }
-
-  *pobj = obj;
 
   return 0;
 }
