@@ -71,6 +71,7 @@
 #include "blue_phase_rt.h"
 #include "lc_droplet_rt.h"
 #include "lc_droplet.h"
+#include "fe_electro.h"
 
 /* Dynamics */
 #include "phi_cahn_hilliard.h"
@@ -125,8 +126,6 @@ static int ludwig_rt(ludwig_t * ludwig);
 static int ludwig_report_momentum(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
 int map_init_rt(map_t ** map);
-int symmetric_rt_initial_conditions(field_t * phi);
-int symmetric_init_drop(field_t * fphi, double radius, double xi0);
 
 /*****************************************************************************
  *
@@ -168,8 +167,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   map_init_rt(&ludwig->map);
 
   ran_init();
-
-  psi_init_rt(&ludwig->psi, ludwig->map);
   hydro_rt(&ludwig->hydro);
 
   /* PHI I/O */
@@ -205,8 +202,14 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* Can we move this down to t = 0 initialisation? */
-  if (ludwig->phi) symmetric_rt_initial_conditions(ludwig->phi);
-    
+  if (ludwig->phi) {
+    symmetric_rt_initial_conditions(ludwig->phi);
+    if (distribution_ndist() == 2) phi_lb_from_field(ludwig->phi);
+  }
+
+  /* To be called before wall_init() */
+  psi_init_rho_rt(ludwig->psi, ludwig->map);
+
   wall_init(ludwig->map);
   COLL_init(ludwig->map);
 
@@ -365,9 +368,18 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->psi) {
       psi_colloid_rho_set(ludwig->psi);
       psi_halo_psi(ludwig->psi);
+
       /* Sum force for this step before update */
-//      psi_force_grad_mu(ludwig->psi, ludwig->hydro);
-      phi_force_calculation(ludwig->phi, ludwig->hydro);
+
+      TIMER_start(TIMER_FORCE_CALCULATION);
+      if (coords_nhalo() == 1) {
+	psi_force_grad_mu(ludwig->psi, ludwig->hydro);
+      }
+      else {
+	phi_force_calculation(ludwig->phi, ludwig->hydro);
+      }
+      TIMER_stop(TIMER_FORCE_CALCULATION);
+
       psi_sor_poisson(ludwig->psi);
       psi_halo_rho(ludwig->psi);
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
@@ -402,6 +414,9 @@ void ludwig_run(const char * inputfile) {
     if (distribution_ndist() == 2) {
       /* dynamics are dealt with at the collision stage (below) */
     }
+    else if (ludwig->psi) {
+      /* Force is computed above */
+    }
     else {
 
       TIMER_start(TIMER_FORCE_CALCULATION);
@@ -412,6 +427,7 @@ void ludwig_run(const char * inputfile) {
       else {
 	phi_force_colloid(ludwig->hydro, ludwig->map);
       }
+
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
@@ -539,10 +555,10 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
       if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
       if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
+      if (ludwig->psi) psi_stats_info(ludwig->psi);
+
       stats_free_energy_density(ludwig->q, ludwig->map);
-      if (ludwig->psi) {
-	psi_stats_info(ludwig->psi);
-      }
+
       ludwig_report_momentum(ludwig);
       if (ludwig->hydro) stats_velocity_minmax(ludwig->hydro, ludwig->map);
 
@@ -587,6 +603,12 @@ void ludwig_run(const char * inputfile) {
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->hydro);
+    }
+    if (ludwig->psi) {
+      psi_io_info(ludwig->psi, &iohandler);
+      info("Writing psi file at step %d!\n", step);
+      sprintf(filename,"%spsi-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->psi);
     }
   }
 
@@ -845,7 +867,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
 
-    /* Brazovskii (always finite difference). */
+    /* Liquid crystal (always finite difference). */
 
     nf = NQAB;   /* Tensor order parameter */
     nhalo = 2;   /* Required for stress diveregnce. */
@@ -973,11 +995,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nf = NQAB;   /* Tensor order parameter */
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
-
-    /*coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
-    */
     
     field_create(nf, "q", &ludwig->q);
     field_init(ludwig->q, nhalo);
@@ -1002,6 +1019,53 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* finalise with the droplet specific init*/
     lc_droplet_run_time();
 
+  }
+  else if(strcmp(description, "fe_electro") == 0) {
+
+    int nk = 2;    /* Number of charge densities always 2 for now */
+    double e0[3];  /* External field */
+
+    /* Single fluid electrokinetic free energy */
+
+    p = 1; /* Default is to use divergence method for force, requires ... */
+    nhalo = 2;
+
+    /* If not, use nhalo = 1 and psi grad mu method */
+    RUN_get_int_parameter("fd_force_divergence", &p);
+    if (p == 0) nhalo = 1;
+
+    coords_nhalo_set(nhalo);
+    coords_run_time();
+    le_init();
+
+    info("\n");
+    info("Free energy details\n");
+    info("-------------------\n\n");
+    info("Electrokinetics (single fluid) selected\n");
+
+    info("\n");
+    info("Parameters:\n");
+
+    psi_create(nk, &ludwig->psi);
+    psi_init_param_rt(ludwig->psi);
+
+    if (nhalo == 2) phi_force_required_set(1);
+
+    info("Force calculation:          %s\n",
+         (p == 0) ? "psi grad mu method" : "Divergence method");
+
+    /* Free energy object */
+
+    fe_electro_create(ludwig->psi);
+
+    fe_density_set(fe_electro_fed);
+    fe_chemical_potential_set(fe_electro_mu);
+    fe_chemical_stress_set(fe_electro_stress);
+
+    /* External field */
+
+    n = RUN_get_double_parameter_vector("electric_e0", e0);
+    fe_electro_ext_set(e0);
   }
   else {
     if (n == 1) {
@@ -1071,132 +1135,6 @@ int map_init_rt(map_t ** pmap) {
   map_halo(map);
 
   *pmap = map;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  symmetric_rt_initial_conditions
- *
- *  To be moved to symmtric_rt.c
- *
- *****************************************************************************/
-
-int symmetric_rt_initial_conditions(field_t * phi) {
-
-  int p;
-  int ic, jc, kc, index;
-  int ntotal[3], nlocal[3];
-  int offset[3];
-  double phi0, phi1;
-  double noise0 = 0.1; /* Default value. */
-  char value[BUFSIZ];
-
-  assert(phi);
-
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
-  ntotal[X] = N_total(X);
-  ntotal[Y] = N_total(Y);
-  ntotal[Z] = N_total(Z);
-
-  phi0 = get_phi0();
-  RUN_get_double_parameter("noise", &noise0);
-
-  /* Default initialisation (always?) Note serial nature of this,
-   * which could be replaced. */
-
-  for (ic = 1; ic <= ntotal[X]; ic++) {
-    for (jc = 1; jc <= ntotal[Y]; jc++) {
-      for (kc = 1; kc <= ntotal[Z]; kc++) {
-
-	phi1 = phi0 + noise0*(ran_serial_uniform() - 0.5);
-
-	/* For computation with single fluid and no noise */
-	/* Only set values if within local box */
-	if ( (ic > offset[X]) && (ic <= offset[X] + nlocal[X]) &&
-	     (jc > offset[Y]) && (jc <= offset[Y] + nlocal[Y]) &&
-	     (kc > offset[Z]) && (kc <= offset[Z] + nlocal[Z]) ) {
-
-	    index = coords_index(ic-offset[X], jc-offset[Y], kc-offset[Z]);
-	    field_scalar_set(phi, index, phi1);
-	    
-	}
-      }
-    }
-  }
-
-  p = RUN_get_string_parameter("phi_initialisation", value, BUFSIZ);
-
-  if (p != 0 && strcmp(value, "block") == 0) {
-    info("Initialisng phi as block\n");
-    assert(0);
-    phi_init_block(symmetric_interfacial_width());
-  }
-
-  if (p != 0 && strcmp(value, "bath") == 0) {
-    info("Initialising phi for bath\n");
-    assert(0);
-    phi_init_bath();
-  }
-
-  if (p != 0 && strcmp(value, "drop") == 0) {
-    info("Initialising droplet\n");
-    /*symmetric_init_drop(phi, 0.4*L(X), symmetric_interfacial_width());*/
-    symmetric_init_drop(phi, 9.0, symmetric_interfacial_width());
-  }
-
-  if (p != 0 && strcmp(value, "from_file") == 0) {
-    info("Initial order parameter requested from file\n");
-    info("Reading phi from serial file\n");
-
-    assert(0);
-    /* need to do something! */
-  }
-
-  if (distribution_ndist() == 2) phi_lb_from_field(phi);
-
-  return 0;
-}
-
-int symmetric_init_drop(field_t * fphi, double radius, double xi0) {
-
-  int nlocal[3];
-  int noffset[3];
-  int index, ic, jc, kc;
-
-  double position[3];
-  double centre[3];
-  double phi, r, rxi0;
-
-  assert(fphi);
-
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-
-  rxi0 = 1.0/xi0;
-
-  centre[X] = 0.5*L(X);
-  centre[Y] = 0.5*L(Y);
-  centre[Z] = 0.5*L(Z);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        index = coords_index(ic, jc, kc);
-        position[X] = 1.0*(noffset[X] + ic) - centre[X];
-        position[Y] = 1.0*(noffset[Y] + jc) - centre[Y];
-        position[Z] = 1.0*(noffset[Z] + kc) - centre[Z];
-
-        r = sqrt(dot_product(position, position));
-
-        phi = tanh(rxi0*(r - radius));
-	field_scalar_set(fphi, index, phi);
-      }
-    }
-  }
 
   return 0;
 }
