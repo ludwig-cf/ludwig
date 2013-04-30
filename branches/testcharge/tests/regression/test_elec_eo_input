@@ -137,13 +137,13 @@ electric_e0 0.0_1.0e-6_0.0
 #
 ###############################################################################
 
-free_energy none
+free_energy fe_electro
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
 fd_phi_fluctuations_seed 17
-
+fd_force_divergence 0
 
 ###############################################################################
 #
@@ -496,7 +496,6 @@ qs_dir_format BINARY
 #
 #  Electrokinetics ALWAYS 2 SPECIES FOR NOW
 #
-#  electrokinetics            [on|off]           default off
 #  electrokinetics_z0         valency species 0  default +1
 #  electrokinetics_z1         valency species 1  default -1
 #  electrokinetics_d0         diffusivity 0      default 0.0
@@ -510,7 +509,6 @@ qs_dir_format BINARY
 #
 ###############################################################################
 
-electrokinetics         on
 electrokinetics_z0      +1
 electrokinetics_z1      -1
 electrokinetics_d0      0.01

@@ -39,6 +39,7 @@
 ###############################################################################
 
 N_start  0
+#N_cycles 2
 N_cycles 20001
 
 propagation_ode off
@@ -106,6 +107,7 @@ temperature 3.33333333333333333e-5
 #                                 surfactant
 #                                 polar_active
 #                                 lc_blue_phase
+#                                 fe_electro
 #
 #                                 symmetric_lb symmetric with 2 distributions
 #
@@ -128,13 +130,13 @@ temperature 3.33333333333333333e-5
 #
 ###############################################################################
 
-free_energy none
+free_energy fe_electro
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
 fd_phi_fluctuations_seed 17
-
+fd_force_divergence 0
 
 ###############################################################################
 #
@@ -488,7 +490,6 @@ qs_dir_format BINARY
 #
 #  Electrokinetics ALWAYS 2 SPECIES FOR NOW
 #
-#  electrokinetics            [on|off]           default off
 #  electrokinetics_z0         valency species 0  default +1
 #  electrokinetics_z1         valency species 1  default -1
 #  electrokinetics_d0         diffusivity 0      default 0.0
@@ -502,7 +503,6 @@ qs_dir_format BINARY
 #
 ###############################################################################
 
-electrokinetics         on
 electrokinetics_z0      +1
 electrokinetics_z1      -1
 electrokinetics_d0      0.01
