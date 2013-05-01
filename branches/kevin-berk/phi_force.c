@@ -31,6 +31,8 @@
 #include "free_energy.h"
 #include "wall.h"
 #include "phi_force_stress.h"
+#include "phi_gradients.h"
+#include "blue_phase.h"
 
 static void phi_force_calculation_fluid(void);
 static void phi_force_fluid_phi_gradmu(void);
@@ -123,6 +125,9 @@ static void phi_force_calculation_fluid(void) {
   double pth0[3][3];
   double pth1[3][3];
   double force[3];
+  double h[3][3];
+  double dq[3][3][3];
+  int id, ib;
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
@@ -143,6 +148,10 @@ static void phi_force_calculation_fluid(void) {
 
 	/* Compute pth at current point */
 	chemical_stress(index, pth0);
+
+        /* Compute h and gradient of q-tensor for body force */
+        blue_phase_molecular_field(index, h);
+        phi_gradients_tensor_gradient(index, dq);
 
 	/* Compute differences */
 	
@@ -178,6 +187,15 @@ static void phi_force_calculation_fluid(void) {
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	}
+
+        /* Functional derivative part added as body force */
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    for (id = 0; id < 3; id++) {
+	      force[ia] -= h[ib][id] * dq[ia][ib][id];
+	    }
+	  }
 	}
 
 	/* Store the force on lattice */

@@ -232,7 +232,7 @@ void collision_multirelaxation() {
 	  
 	  tr_s   = 0.0;
 	  tr_seq = 0.0;
-	  
+
 	  for (ia = 0; ia < NDIM; ia++) {
 	    /* Set equilibrium stress */
 	    for (ib = 0; ib < NDIM; ib++) {

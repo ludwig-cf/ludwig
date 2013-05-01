@@ -57,8 +57,8 @@ void blue_phase_redshift_update_set(int onoff);
 void blue_phase_redshift_compute(void);
 
 void blue_phase_q_uniaxial(double amplitude, const double n[3], double q[3][3]);
-
 void blue_phase_set_active_region_gamma_zeta(const int index);
-
+void blue_phase_compute_stress_wofd(double q[3][3], double dq[3][3][3],
+				 double h[3][3], double sth[3][3]);
 #endif
  

@@ -26,6 +26,7 @@
 #include "site_map.h"
 #include "lattice.h"
 #include "phi.h"
+#include "phi_gradients.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
 #include "wall.h"
@@ -58,7 +59,7 @@ void blue_phase_beris_edwards(void) {
 
   int nsites;
   int nop;
-  int euler = 0;
+  int euler = 1;
   extern double * phi_site;
 
   /* Set up advective fluxes and do the update. */

@@ -48,7 +48,7 @@ LIBRARY = libludwig.a
 
 CC = gcc 
 MPICC = mpicc
-OPTS = -D_D3Q19_
+OPTS = -D_D3Q19_ -DNDEBUG
 CFLAGS = -Wall -O3
 
 
@@ -122,8 +122,8 @@ verbose:
 code:	svn $(OBJS)
 	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
 serial:
-	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi" "OBJS=$(OBJS) $(MAIN).o"
+	$(MAKE) code "INC=$(INC) -I../../trunk/mpi_s" "LIBS=$(LIBS) \
+	-L../../trunk/mpi_s -lmpi" "OBJS=$(OBJS) $(MAIN).o"
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) $(MAIN).o" "CC=$(MPICC)"
 

@@ -416,10 +416,15 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
   phi_gradients_tensor_delsq(index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
-  blue_phase_compute_stress(q, dq, h, sth);
+//  blue_phase_compute_stress(q, dq, h, sth);
+
+  /* The contribution of the functional 
+     derivative terms is treated as a bodyforce */
+  blue_phase_compute_stress_wofd(q, dq, h, sth);
 
   return;
 }
+
 
 /*****************************************************************************
  *
@@ -500,6 +505,100 @@ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 	      -2.0*kappa1*q0*dq[ia][ic][id]*e_[ib][ic][ie]*q[id][ie];
 	  }
 	}
+      }
+    }
+  }
+
+  /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
+   * rewrite it as q_ac h_bc - h_ac q_bc. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
+      }
+    }
+  }
+
+  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] -= zeta_*(q[ia][ib] + r3_*d_[ia][ib]);
+    }
+  }
+
+  /* This is the minus sign. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_compute_stress_wofd
+ *
+ *  Compute the stress as a function of the q tensor, the q tensor
+ *  gradient and the molecular field. This is like the above routine,
+ *  but the dot product terms that depend on the functional derivative
+ *  are treated as a body force.
+ *
+ *  Note the definition here has a minus sign included to allow
+ *  computation of the force as minus the divergence (which often
+ *  appears as plus in the liquid crystal literature). This is a
+ *  separate operation at the end to avoid confusion.
+ *
+ *****************************************************************************/
+
+void blue_phase_compute_stress_wofd(double q[3][3], double dq[3][3][3],
+			       double h[3][3], double sth[3][3]) {
+  int ia, ib, ic;
+  double q0;
+  double kappa0;
+  double kappa1;
+  double qh;
+  double p0;
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
+
+  /* We have ignored the rho T term at the moment, assumed to be zero
+   * (in particular, it has no divergence if rho = const). */
+
+  p0 = 0.0;
+
+  /* The contraction Q_ab H_ab */
+
+  qh = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      qh += q[ia][ib]*h[ia][ib];
+    }
+  }
+
+  /* The term in the isotropic pressure, plus that in qh */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] = -p0*d_[ia][ib] + 2.0*xi_*(q[ia][ib] + r3_*d_[ia][ib])*qh;
+    }
+  }
+
+  /* Remaining two terms in xi and molecular field */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] +=
+	  -xi_*h[ia][ic]*(q[ib][ic] + r3_*d_[ib][ic])
+	  -xi_*(q[ia][ic] + r3_*d_[ia][ic])*h[ib][ic];
       }
     }
   }
