@@ -39,7 +39,8 @@
 ###############################################################################
 
 N_start  0
-N_cycles 1
+N_cycles 100001
+
 propagation_ode off
 propagation_ode_tstep 1.0
 propagation_ode_integrator rk2
@@ -61,9 +62,9 @@ propagation_ode_integrator rk2
 # 
 ##############################################################################
 
-size 32_32_32
-#grid 1_2_1
-periodicity 1_1_1
+size 64_2_2
+grid 4_1_1
+periodicity 0_1_1
 reduced_halo no
 
 ##############################################################################
@@ -74,7 +75,8 @@ reduced_halo no
 #  viscosity_bulk bulk viscosity  [default = shear viscosity]
 #
 #  isothermal_fluctuations  [on|off] Default is off.
-#  temperature              isothermal fluctuation 'temperature'
+#  temperature              isothermal fluctuation 'temperature' &
+#			    beta = k_B T in electrokinetics	
 #
 #  ghost_modes           [on|off] Default is on.
 #  force FX_FY_FZ        Uniform body force on fluid (default zero)
@@ -85,22 +87,11 @@ viscosity 0.1
 viscosity_bulk 0.1
 
 isothermal_fluctuations off
-temperature 0.00002133333
+#temperature 0.00002133333
+temperature 3.33333333333333333e-5
 
 # ghost_modes off
 # force 0.00_0.0_0.0
-
-##############################################################################
-#
-#  Uniform external fields
-#
-#  magnetic_b0     Bx_By_Bz  e.g., for dipoles (default zero)
-#  electric_e0     Ex_Ey_Ez  e.g., for electrokinetics (default zero)
-#
-##############################################################################
-
-magnetic_b0 0.0_0.0_0.0
-electric_e0 0.0_0.0_0.0
 
 ##############################################################################
 #
@@ -115,7 +106,7 @@ electric_e0 0.0_0.0_0.0
 #                                 surfactant
 #                                 polar_active
 #                                 lc_blue_phase
-#				  lc_droplet #coupling LC and binary fluid
+#				  fe_electro	
 #
 #                                 symmetric_lb symmetric with 2 distributions
 #
@@ -132,19 +123,24 @@ electric_e0 0.0_0.0_0.0
 #
 #  fd_phi_fluctuations            [0/1] Cahn Hilliard only at the moment
 #  fd_phi_fluctuations_seed       RNG seed for order parameter fluctuations
+#  fd_force_divergence		  [0/1] method for force calculation in
+#					electrokinetic module
+#					0 = gradient of chemical potential
+#					1 = divergence of Maxwell stress tensor
 #
 #  Note: only parameters for the currently selected free energy at
 #  run time are meaningful; you don't have to comment out all the others.
 #
 ###############################################################################
 
-free_energy lc_blue_phase
+free_energy fe_electro
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
 fd_phi_fluctuations_seed 17
 
+fd_force_divergence 1
 
 ###############################################################################
 #
@@ -254,8 +250,7 @@ surf_psi_b 0.01
 #
 #  lc_dielectric_anisotropy This value should probably remain unchanged.
 #
-#  See also
-#  electric_e0          External electric field appearing in free energy.
+#  electric_e0          External magnetic field appearing in free energy.
 #
 ###############################################################################
 
@@ -275,6 +270,8 @@ lc_init_redshift 0.83
 lc_redshift_update 0
 lc_init_nematic 1.0_0.0_0.0
 lc_dielectric_anisotropy 41.4
+
+electric_e0 0.0_1.0e-6_0.0
 
 lc_anchoring_method none
 lc_wall_anchoring fixed
@@ -298,16 +295,6 @@ polar_active_lambda  0.0
 
 leslie_ericksen_gamma 0.3
 leslie_ericksen_swim  0.0
-
-###############################################################################
-#
-#  liquid crystal droplet
-#
-###############################################################################
-
-lc_droplet_gamma 3.0
-lc_droplet_delta -0.25
-lc_droplet_W 0.04
 
 ###############################################################################
 #
@@ -344,10 +331,12 @@ colloid_random_c    0.0
 colloid_random_h    0.0
 
 # Constant body force on all colloids ("gravity") [default is zero]
+# Uniform magnetic field [default is zero]
 
 colloid_cell_list_interactions yes
 colloid_cell_min 8.0
 colloid_gravity  0.0_0.0_0.0
+magnetic_b0      0.0_0.0_0.0
 
 # Colloid-colloid lubrication corrections
 
@@ -395,7 +384,7 @@ lj_epsilon 0.0003
 #
 ###############################################################################
 
-boundary_walls 0_0_0
+boundary_walls 1_0_0
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
 boundary_shear_init 0
@@ -431,15 +420,15 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics 50
+freq_statistics 500
 freq_measure 200000
-freq_config 5000000
-freq_phi    100000
-freq_psi    100000
-freq_vel    100000
-freq_shear_measurement 100000
-freq_shear_output      100000
-config_at_end no
+freq_config 100000
+freq_phi    1000000
+freq_psi    10000
+freq_vel    10000
+freq_shear_measurement 1000000
+freq_shear_output      1000000
+config_at_end yes
 
 default_io_grid 1_1_1
 
@@ -447,9 +436,9 @@ distribution_io_grid 1_1_1
 distribution_io_input_format BINARY
 
 phi_io_grid 1_1_1
-phi_format    ASCII
-psi_format    ASCII
-vel_format    ASCII
+phi_format    BINARY
+psi_format    BINARY
+vel_format    BINARY
 
 ##############################################################################
 #
@@ -506,7 +495,6 @@ qs_dir_format BINARY
 #
 #  Electrokinetics ALWAYS 2 SPECIES FOR NOW
 #
-#  electrokinetics            [on|off]           default off
 #  electrokinetics_z0         valency species 0  default +1
 #  electrokinetics_z1         valency species 1  default -1
 #  electrokinetics_d0         diffusivity 0      default 0.0
@@ -514,28 +502,24 @@ qs_dir_format BINARY
 #  electrokinetics_eunit      unit charge        default +1.0
 #  electrokinetics_epsilon    permeativity (ref) default 0.0
 #
-#  Also important
+#  electrokinetics_init		[gouy_chapman|liquid_junction|uniform]
+#  electrokinetics_init_rho_el	electrolyte concentration
+#  electrokinetics_init_sigma	surface charge density
 #
-#  temperature                	sets Boltzmann factor beta
-
-#  electrokinetics_init		  [gouy_chapman|liquid_junction]
-#  electrokinetics_init_rho_el	  electrolyte concentration
-#  electrokinetics_init_delta_el  concentration difference in ljp
-#  electrokinetics_init_sigma     surface charge density
+#  Also important:
+#  temperature			sets Boltzmann factor beta
 #
 ###############################################################################
 
-electrokinetics         off
 electrokinetics_z0      +1
 electrokinetics_z1      -1
 electrokinetics_d0      0.01
 electrokinetics_d1      0.01
 electrokinetics_eunit   1.0
-electrokinetics_epsilon 1000.0
+electrokinetics_epsilon 3.3e3
 electrokinetics_init    gouy_chapman
-electrokinetics_init_rho_el 0.001
-electrokinetics_init_delta_el 0.01
-electrokinetics_init_sigma 0.01
+electrokinetics_init_rho_el 0.0
+electrokinetics_init_sigma 0.0125
 
 ###############################################################################
 #
