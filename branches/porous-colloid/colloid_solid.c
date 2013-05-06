@@ -29,7 +29,7 @@ static void lubrication_sphere_sphere_wall(const double a1, const double a2,
 				    const double h, const double hcut,
 				    const double rhat[3], double f[3]);
 
-static double wall_sphere_radius_ = 0.5;
+static double wall_sphere_radius_ = 0.6;
 static double wall_sphere_lubrication_cutoff_ = 0.25;
 
 void solid_lubrication(colloid_t * pc, double force[3]) {
@@ -46,13 +46,12 @@ void solid_lubrication(colloid_t * pc, double force[3]) {
   double a1, a2;
   double h, hcut;
   double rhat[3];
-  double force12[3];
   char status;
   double fmod;
-  
+
   coords_nlocal(N);
   coords_nlocal_offset(offset);
-  
+
   force[0] = 0.0;
   force[1] = 0.0;
   force[2] = 0.0;
@@ -93,45 +92,25 @@ void solid_lubrication(colloid_t * pc, double force[3]) {
 	h = rsep - a1 - a2;
 
 	/*sanity check */
+
 	if (h < hcut ){
-	  /*
-	  printf("mur mur: (dit ours finlandaise)\n");
-	  printf("horror error h < 0.0\n");
-	  printf("colloid id: %d\n",pc->s.index);
-	  printf("%lf %lf %lf %lf\n",h, rsep, a1, a2);
-	  printf("solid: %d %d %d\n", i, j, k);
-	  printf("colloid: %lf %lf %lf\n", r0[0], r0[1], r0[2]);
-	  printf("colloid: %lf %lf %lf\n", pc->s.r[0], pc->s.r[1], pc->s.r[2]);
-	  printf("r12: %lf %lf %lf\n", r12[0], r12[1], r12[2]);
-	  printf("vc: %lf %lf %lf\n", pc->s.v[0],pc->s.v[1],pc->s.v[2]);
-	  */
+
 	  if(h<0.0)fatal("Stopping");
 	  
-	  //if (h < hcut ) {
-	  //printf("hip\n");
 	  for (ia = 0; ia < 3; ia++) {
 	    rhat[ia] = r12[ia]/rsep;
 	  }
-	  fmod = 0.0;
+
 	  fmod = soft_sphere_force(h);
-	  /*printf("f: %lf %lf\n",fmod, h);*/
+
 	  for (ia = 0; ia < 3; ia++) {
 	    pc->force[ia] += fmod*rhat[ia];
-	    force[ia] += fmod*rhat[ia];
-	    /*printf("fc[%d]: %lf\n", ia, fmod*rhat[ia]);*/
 	  }
-	  
-	  //lubrication_sphere_sphere_wall(a1, a2, h, hcut, rhat, force12);
-	  //printf("fc: %lf %lf %lf\n", force12[0],force12[1],force12[2]);
-	  //for (ia = 0; ia < 3; ia++ ) {
-	  //force[ia] += force12[ia];
-	  //}
-	  
-	  //}
 	}
       }
     }
   }
+
   return;
 }
 	
@@ -157,79 +136,6 @@ void lubrication_sphere_sphere_wall(const double a1, const double a2,
   return;
 }
  
- 
-
-/*
-
-  while (p_link) {
-    //printf("link status %d\n",p_link->status);
-    //printf("cv: %d %d %d\n",cv[p_link->p][X],cv[p_link->p][Y],cv[p_link->p][Z]);
-    if (p_link->status == LINK_BOUNDARY) {
-*/
-      /* for (i = 0; i < 3; i++ ){
-	force_link[i] = 0.0;
-      }
-      */
-
-      //along_axis = 0;
-
-      /* consider only links along coordinate axis */
-      //if (cv[p_link->p][X] == 1 && cv[p_link->p][Y] == 0 && cv[p_link->p][Z] == 0 ) {
-	/* along x */
-	//along_axis = 1;
-//}
-//    else if (cv[p_link->p][X] == 0 && cv[p_link->p][Y] == 1 && cv[p_link->p][Z] == 0 ) {
-	/*along y */
-/*
-	along_axis = 1;
-      }
-      else if (cv[p_link->p][X] == 0 && cv[p_link->p][Y] == 0 && cv[p_link->p][Z] == 1 ) {*/
-	/* along z */
-/*
-	along_axis = 1;
-      }
-      
-      test = 0;
-      along_axis = 1;
-      if (along_axis == 1 ) {
-	
-	coords_index_to_ijk(p_link->i, isite);
-	for (ia = 0; ia < 3; ia++) {
-	  rsite[ia] = 1.0*isite[ia]*cv[p_link->p][ia];
-	  r0[ia] = (p_link->rb[ia] - 1.0*offset[ia])*cv[p_link->p][ia];
-	  printf("r0[ia] cv[ia] %lf %d %d\n", r0[ia], cv[p_link->p][ia],ia);
-	}
-	
-	coords_minimum_distance(r0, rsite, rsep);
-	
-	test = solid_lubrication_force(r0 ,pc->s.ah, force_link);
-      
-	//if (test == 1){
-	  printf("error: r < ah\n");
-	  printf("colloid: %d\n", pc->s.index);
-	  printf("x,y,z: %lf %lf %lf\n",pc->s.r[0],pc->s.r[1],pc->s.r[2]);
-	  printf("x,y,z: %lf %lf %lf\n",r0[0], r0[1], r0[2]);
-	  printf("x,y,z: %lf %lf %lf\n",p_link->rb[0], p_link->rb[1], p_link->rb[2]);
-	  printf("vx,vy,vz: %lf %lf %lf\n",pc->s.v[0],pc->s.v[1],pc->s.v[2]);
-	  printf("cv: %d %d %d\n",cv[p_link->p][X],cv[p_link->p][Y],cv[p_link->p][Z]);
-	  coords_index_to_ijk(p_link->i, isite);
-	  printf("link: %d %d %d\n", isite[0], isite[1], isite[2]);
-	  coords_index_to_ijk(p_link->j, isite);
-	  printf("inside: %d %d %d\n", isite[0], isite[1], isite[2]);
-	  if(test==1)exit(0);
-	  //}
-	for (ia = 0; ia < 3; ia++ ){
-	  force[ia] += force_link[ia];
-	}  
-      }
-      }*/
-    /* Next link */
-/*
-    p_link = p_link->next;
-  }
-  return ;
-}
-*/
 
 int solid_lubrication_force(const double r[3], const double ah, double force[3]) {
   

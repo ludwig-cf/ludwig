@@ -380,25 +380,27 @@ static void colloid_forces(void) {
 static void colloid_forces_zero_set(void) {
 
   int       ic, jc, kc, ia;
-  colloid_t * p_colloid;
-  double force[3];
+  colloid_t * pc;
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
       for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
 
-	p_colloid = colloids_cell_list(ic, jc, kc);
+	pc = colloids_cell_list(ic, jc, kc);
 
-	while (p_colloid) {
+	while (pc) {
 
 	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->force[ia] = 0.0;
-	    p_colloid->torque[ia] = 0.0;
+	    pc->force[ia] = 0.0;
+	    pc->torque[ia] = 0.0;
 	  }
-	  solid_lubrication(p_colloid, force);
-	  /*printf("col: %d %lf %lf %lf\n",p_colloid->s.index, force[0],force[1], force[2]);*/
-	  p_colloid = p_colloid->next;
-	  /*printf("\n");*/
+
+	  {
+	    double force[3];
+	    solid_lubrication(pc, force);
+	  }
+
+	  pc = pc->next;
 	}
       }
     }
@@ -435,7 +437,7 @@ static void colloid_forces_single_particle_set(void) {
 	    pc->force[ia] += g_[ia];
 	    pc->torque[ia] += btorque[ia];
 	  }
-	  /*solid_lubrication(pc, btorque);*/
+
 	  pc = pc->next;
 	}
       }

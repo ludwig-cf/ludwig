@@ -540,8 +540,6 @@ static void update_colloids() {
   double tmp;
   double rho0 = colloid_rho0();
 
-  double force[3];
-
   /* Loop round cells and update each particle velocity */
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
@@ -584,12 +582,8 @@ static void update_colloids() {
 	  a[4][5] =          pc->zeta[19];
 	  a[5][5] = moment + pc->zeta[20];
 
-	  solid_lubrication(pc, force);
 	  for (k = 0; k < 3; k++) {
 	    a[k][k] -= wall_lubrication(k, pc->s.r, pc->s.ah);
-	    //a[k][k] -= force[k];
-	    //printf("f[k]_i [%d]_%d %lf\n",k, pc->s.index,force[k]);
-	    //printf("wall force: %d %lf\n", k, wall_lubrication(k, pc->s.r, pc->s.ah));
 	  }
 
 	  /* Lower triangle */
@@ -689,7 +683,6 @@ static void update_colloids() {
 
 	  for (ia = 0; ia < 3; ia++) {
 	    pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
-	    /*pc->s.dr[ia] = 0.5*pc->s.v[ia];*/
 	    pc->s.v[ia] = xb[ia];
 	    pc->s.w[ia] = xb[3+ia];
 	  }

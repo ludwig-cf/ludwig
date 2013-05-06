@@ -374,16 +374,23 @@ void COLL_reconstruct_links(colloid_t * p_colloid) {
 	      build_link_mean(p_colloid, p, p_link->rb);
 	    }
 	    else {
-	      double ub[3];
+	      double ub[3] = {0.0, 0.0, 0.0};
 	      double wxrb[3];
-	      if (status1 == COLLOID) p_link->status = LINK_COLLOID;
-	      if (status1 == BOUNDARY) p_link->status = LINK_BOUNDARY;
 
+	      if (status1 == BOUNDARY) {
+		p_link->status = LINK_BOUNDARY;
+		build_virtual_distribution_set(p_link->i, p_link->p, ub);
+	      }
+
+	      if (status1 == COLLOID) {
+		p_link->status = LINK_COLLOID;
+	      }
 	      cross_product(p_colloid->s.w, p_link->rb, wxrb);
 	      ub[X] = p_colloid->s.v[X] + wxrb[X];
 	      ub[Y] = p_colloid->s.v[Y] + wxrb[Y];
 	      ub[Z] = p_colloid->s.v[Z] + wxrb[Z];
 	      build_virtual_distribution_set(p_link->j, p_link->p, ub);
+
 	    }
 
 	    /* Next link */
@@ -409,10 +416,17 @@ void COLL_reconstruct_links(colloid_t * p_colloid) {
 	      build_link_mean(p_colloid, p, p_link->rb);
 	    }
 	    else {
-	      double ub[3];
+	      double ub[3] = {0.0, 0.0, 0.0};
 	      double wxrb[3];
-	      if (status1 == COLLOID) p_link->status = LINK_COLLOID;
-	      if (status1 == BOUNDARY) p_link->status = LINK_BOUNDARY;
+
+	      if (status1 == BOUNDARY) {
+		p_link->status = LINK_BOUNDARY;
+		build_virtual_distribution_set(p_link->i, p_link->p, ub);
+	      }
+
+	      if (status1 == COLLOID) {
+		p_link->status = LINK_COLLOID;
+	      }
 
 	      cross_product(p_colloid->s.w, p_link->rb, wxrb);
 	      ub[X] = p_colloid->s.v[X] + wxrb[X];
@@ -525,10 +539,17 @@ void COLL_reset_links(colloid_t * p_colloid) {
 	build_link_mean(p_colloid, p_link->p, p_link->rb);
       }
       else {
-	double ub[3];
+	double ub[3] = {0.0, 0.0, 0.0};
 	double wxrb[3];
-	if (status == COLLOID) p_link->status = LINK_COLLOID;
-	if (status == BOUNDARY) p_link->status = LINK_BOUNDARY;
+
+	if (status == BOUNDARY) {
+	  p_link->status = LINK_BOUNDARY;
+	  build_virtual_distribution_set(p_link->i, p_link->p, ub);
+	}
+
+	if (status == COLLOID) {
+	  p_link->status = LINK_COLLOID;
+	}
 
 	cross_product(p_colloid->s.w, p_link->rb, wxrb);
 	ub[X] = p_colloid->s.v[X] + wxrb[X];
