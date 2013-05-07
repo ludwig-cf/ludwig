@@ -600,8 +600,6 @@ int MPI_Cart_rank(MPI_Comm comm, int * coords, int * rank) {
  *
  *  MPI_Cart_shift
  *
- *  No attempt is made to deal with non-periodic boundaries.
- *
  *****************************************************************************/
 
 int MPI_Cart_shift(MPI_Comm comm, int direction, int disp, int * rank_source,
@@ -612,6 +610,11 @@ int MPI_Cart_shift(MPI_Comm comm, int direction, int disp, int * rank_source,
 
   *rank_source = 0;
   *rank_dest = 0;
+
+  if (periods_[direction] == 0) {
+    *rank_source = MPI_PROC_NULL;
+    *rank_dest = MPI_PROC_NULL;
+  }
 
   return MPI_SUCCESS;
 }
