@@ -737,7 +737,7 @@ static void build_replace_fluid(int index, colloid_t * p_colloid) {
 			  ib[Z] + cv[p][Z]);
 
     /* Site must have been fluid before position update */
-    if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID) continue;
+    if (coll_old[indexn] || site_map_get_status_index(indexn)!=FLUID) continue;
 
     for (pdash = 0; pdash < NVEL; pdash++) {
       newf[pdash] += wv[p]*distribution_f(indexn, pdash, 0);
@@ -830,7 +830,7 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
 			      ri[Z] + cv[p][Z]);
 
       /* Site must have been fluid before position update */
-      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+      if (coll_old[indexn] || site_map_get_status_index(indexn) != FLUID)
 	continue;
       for (n = 0; n < nop; n++) {
 	phi[n] += wv[p]*phi_op_get_phi_site(indexn, n);
@@ -854,7 +854,7 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
 			      ri[Z] + cv[p][Z]);
 
       /* Site must have been fluid before position update */
-      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+      if (coll_old[indexn] || site_map_get_status_index(indexn) != FLUID)
 	continue;
 
       for (pdash = 0; pdash < NVEL; pdash++) {
