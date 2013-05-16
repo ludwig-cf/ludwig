@@ -154,6 +154,12 @@ static void phi_update_rt_fe(const char * stringfe) {
       blue_phase_be_set_rotational_diffusion(value);
       info("Rotational diffusion constant = %12.5e\n", value);
     }
+
+    p = 0;
+    RUN_get_int_parameter("fd_phi_fluctuations", &p);
+    info("Order parameter noise = %3s\n", (p == 0) ? "off" : " on");
+    if (p != 0) phi_fluctuations_on_set(p);
+
   }
 
   return;
