@@ -17,6 +17,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "pe.h"
 #include "util.h"
@@ -32,6 +33,7 @@
 #include "advection_bcs.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
+#include "phi_fluctuations.h"
 
 static double Gamma_;     /* Collective rotational diffusion constant */
 
@@ -43,6 +45,10 @@ static double * fluxz;
 static const double r3 = (1.0/3.0);   /* Fraction 1/3 */
 
 static void blue_phase_be_update(void);
+
+int blue_phase_be_noise_contraction(double *chi, double (*chi_qab)[3]);
+int blue_phase_be_noise_set_Tmatrix(void);
+double T[5][3][3];
 
 /*****************************************************************************
  *
@@ -116,6 +122,11 @@ static void blue_phase_be_update(void) {
   const double dt = 1.0;
   double dt_solid;
 
+  double chi[5], chi_qab[3][3];
+  double kt, var;
+  extern double get_kT(void);
+
+
   coords_nlocal(nlocal);
   nop = phi_nop();
   xi = blue_phase_get_xi();
@@ -126,6 +137,13 @@ static void blue_phase_be_update(void) {
 
   dt_solid = 0;
   if (colloids_q_anchoring_method() == ANCHORING_METHOD_ONE) dt_solid = dt;
+
+  /* Get kBT, variance of noise and set basis of traceless, symmetric matrices for contraction */
+  if (phi_fluctuations_on()){
+    kt = get_kT();
+    var = sqrt(2.0*kt*Gamma_);
+    blue_phase_be_noise_set_Tmatrix();
+  }
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -177,32 +195,39 @@ static void blue_phase_be_update(void) {
 	    }
 	  }
 
+	  /* Fluctuating tensor order parameter */
+
+	  if (phi_fluctuations_on()){
+	    phi_fluctuations_qab(index, var, chi);
+	    blue_phase_be_noise_contraction(chi, chi_qab);
+	  }
+
 	  /* Here's the full hydrodynamic update. */
 	  
 	  indexj = le_site_index(ic, jc-1, kc);
 	  indexk = le_site_index(ic, jc, kc-1);
 
-	  q[X][X] += dt*(s[X][X] + Gamma_*h[X][X]
+	  q[X][X] += dt*(s[X][X] + Gamma_*h[X][X] + chi_qab[X][X]
 			 - fluxe[nop*index + XX] + fluxw[nop*index  + XX]
 			 - fluxy[nop*index + XX] + fluxy[nop*indexj + XX]
 			 - fluxz[nop*index + XX] + fluxz[nop*indexk + XX]);
 
-	  q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y]
+	  q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y] + chi_qab[X][Y]
 			 - fluxe[nop*index + XY] + fluxw[nop*index  + XY]
 			 - fluxy[nop*index + XY] + fluxy[nop*indexj + XY]
 			 - fluxz[nop*index + XY] + fluxz[nop*indexk + XY]);
 
-	  q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z]
+	  q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z] + chi_qab[X][Z]
 			 - fluxe[nop*index + XZ] + fluxw[nop*index  + XZ]
 			 - fluxy[nop*index + XZ] + fluxy[nop*indexj + XZ]
 			 - fluxz[nop*index + XZ] + fluxz[nop*indexk + XZ]);
 
-	  q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y]
+	  q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y] + chi_qab[Y][Y]
 			 - fluxe[nop*index + YY] + fluxw[nop*index  + YY]
 			 - fluxy[nop*index + YY] + fluxy[nop*indexj + YY]
 			 - fluxz[nop*index + YY] + fluxz[nop*indexk + YY]);
 
-	  q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z]
+	  q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z] + chi_qab[Y][Z]
 			 - fluxe[nop*index + YZ] + fluxw[nop*index  + YZ]
 			 - fluxy[nop*index + YZ] + fluxy[nop*indexj + YZ]
 			 - fluxz[nop*index + YZ] + fluxz[nop*indexk + YZ]);
@@ -238,4 +263,74 @@ void blue_phase_be_set_rotational_diffusion(double gamma) {
 double blue_phase_be_get_rotational_diffusion(void) {
 
   return Gamma_;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_be_noise_set_Tmatrix
+ *
+ *  Sets the elements of the traceless, symmetric base matrices  
+ *
+ *****************************************************************************/
+
+int blue_phase_be_noise_set_Tmatrix(){
+
+  int ia, ib, in;
+
+  for(in=0; in<5; in++){
+    for(ia=0; ia<3; ia++){
+      for(ib=0; ib<3; ib++){
+      	T[in][ia][ib] = 0.0;  
+      }
+    }
+  }
+
+  T[0][0][0] = -sqrt(1.5)*r3;  
+  T[0][1][1] = -sqrt(1.5)*r3;  
+  T[0][2][2] =  sqrt(1.5)*2.0*r3;  
+
+  T[1][0][0] = sqrt(0.5)*1.0;
+  T[1][1][1] = sqrt(0.5)*1.0;
+
+  T[2][0][1] = sqrt(2.0)*0.5;
+  T[2][1][0] = T[2][0][1];
+
+  T[3][0][2] = sqrt(2.0)*0.5; 
+  T[3][2][0] = T[3][0][2];
+
+  T[4][1][2] = sqrt(2.0)*0.5;
+  T[4][2][1] = T[4][1][2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_be_noise_contraction
+ *
+ *  Calculates the contraction of Gaussian white noise with base matrices
+ *  for fluctuating Beris-Edwards equation of motion.  
+ *
+ *****************************************************************************/
+
+int blue_phase_be_noise_contraction(double *chi, double (*chi_qab)[3]){
+
+  int ia, ib, in;
+
+  for(ia=0; ia<3; ia++){
+    for(ib=0; ib<3; ib++){
+      chi_qab[ia][ib] = 0.0;
+    }
+  }
+
+
+  for(ia=0; ia<3; ia++){
+    for(ib=0; ib<3; ib++){
+      for(in=0; in<5; in++){
+	chi_qab[ia][ib] += chi[in] * T[in][ia][ib];
+      }
+    }
+  }
+
+  return 0;
 }

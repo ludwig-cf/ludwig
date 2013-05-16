@@ -814,7 +814,7 @@ void blue_phase_active_nematic_init(const double n[3]) {
     nkink2[2] =  nhat[0]*cos(ang);
   }
   /* Kink for primary alignment along y */	 
-/*
+
   if (nhat[1] == 1.0) {
     nkink1[0] = nhat[0];
     nkink1[1] = nhat[1]*sin(ang);
@@ -824,7 +824,7 @@ void blue_phase_active_nematic_init(const double n[3]) {
     nkink2[1] = -nhat[1]*sin(ang);
     nkink2[2] =  nhat[1]*cos(ang);
   }
-*/
+
   /* Kink for primary alignment along z */	 
 /*
   if (nhat[2] == 1.0) {
@@ -867,7 +867,7 @@ void blue_phase_active_nematic_init(const double n[3]) {
 
         /* If alignment along y region around 
 	   z=N_total(Z)/2 is being replaced */
-/*
+
 	if(nhat[1] == 1.0){
 	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
 	    if(y<=N_total(Y)/2.0) {
@@ -878,7 +878,7 @@ void blue_phase_active_nematic_init(const double n[3]) {
 	    }
 	  }
 	}
-*/
+
         /* If alignment along z region around 
 	   x=N_total(X)/2 is being replaced */
 /*
