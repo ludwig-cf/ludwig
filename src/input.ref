@@ -218,6 +218,7 @@ surf_psi_b 0.01
 #                       cubic: o8m (BPI), o2 (BPII), o5
 #                       hexagonal BPs: h2d, h3da, h3db
 #                       amorphous BP: bp3
+#			active_nematic
 #
 #  lc_q_init_amplitude  scalar order parameter amplitude for initialisation
 #
@@ -403,6 +404,7 @@ boundary_lubrication_rcnormal 0.0
 #                           N steps (can be large!)
 #  freq_phi        N        phi data output frequency
 #  freq_vel        N        velocity data output frequency
+#  freq_fed        N        free energy density output frequency
 #  freq_shear_measurement   stress profile accumulator
 #  freq_shear_output        stress profile output
 #  config_at_end            [yes|no] write full configuration at end of run
@@ -424,6 +426,7 @@ freq_measure 200000
 freq_config 5000000
 freq_phi    100000
 freq_vel    100000
+freq_fed    100000
 freq_shear_measurement 100000
 freq_shear_output      100000
 config_at_end no
@@ -436,6 +439,7 @@ distribution_io_input_format BINARY
 phi_io_grid 1_1_1
 phi_format    ASCII
 vel_format    ASCII
+fed_format    ASCII
 
 ##############################################################################
 #

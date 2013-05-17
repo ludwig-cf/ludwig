@@ -22,6 +22,7 @@
 #include "symmetric.h"
 #include "control.h"
 #include "colloids_Q_tensor.h"
+#include "blue_phase.h"
 
 #include "communicate.h"
 
@@ -86,6 +87,15 @@ void MODEL_init( void ) {
   if (ind != 0 && strcmp(filename, "ASCII") == 0) {
     io_info_set_format_ascii(io_info_velocity_);
     info("Setting velocity I/O format to ASCII\n"); 
+  }
+
+  io_info = io_info_create_with_grid(io_grid);
+  fed_io_info_set(io_info);
+
+  ind = RUN_get_string_parameter("fed_format", filename, FILENAME_MAX);
+  if (ind != 0 && strcmp(filename, "ASCII") == 0) {
+    io_info_set_format_ascii(io_info_fed);
+    info("Setting free energy density I/O format to ASCII\n"); 
   }
 
   /*
