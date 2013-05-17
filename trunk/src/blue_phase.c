@@ -26,6 +26,8 @@
 #include "phi.h"
 #include "phi_gradients.h"
 #include "blue_phase.h"
+#include "io_harness.h"
+#include "leesedwards.h"
 
 static double q0_;        /* Pitch = 2pi / q0_ */
 static double a0_;        /* Bulk free energy parameter A_0 */
@@ -44,6 +46,10 @@ static double epsilon_ = 0.0;    /* Dielectric anisotropy (e/12pi) */
 static double electric_[3] = {0.0, 0.0, 0.0}; /* Electric field */
 
 static const double redshift_min_ = 0.00000000001; 
+
+struct io_info_t * io_info_fed;
+static int  fed_write(FILE *, const int, const int, const int);
+static int  fed_write_ascii(FILE *, const int, const int, const int);
 
 /*****************************************************************************
  *
@@ -274,6 +280,62 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
 
   sum = 0.5*a0_*(1.0 - r3_*gamma_)*q2 - r3_*a0_*gamma_*q3 +
     0.25*a0_*gamma_*q2*q2 + 0.5*kappa0*dq0 + 0.5*kappa1*dq1 - epsilon_*efield;;
+
+  return sum;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_compute_gradient_fed
+ *
+ *  Compute the gradient contribution to the free energy density 
+ *  as a function of q and the q gradient tensor dq.
+ *
+ *****************************************************************************/
+
+double blue_phase_compute_gradient_fed(double q[3][3], double dq[3][3][3]) {
+
+  int ia, ib, ic, id;
+  double q0;
+  double kappa0, kappa1;
+  double dq0, dq1;
+  double sum;
+
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
+
+  /* (d_b Q_ab)^2 */
+
+  dq0 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    sum = 0.0;
+    for (ib = 0; ib < 3; ib++) {
+      sum += dq[ib][ia][ib];
+    }
+    dq0 += sum*sum;
+  }
+
+  /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
+  /* With symmetric Q_db write Q_bd */
+
+  dq1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sum += e_[ia][ic][id]*dq[ic][ib][id];
+	}
+      }
+      sum += 2.0*q0*q[ia][ib];
+      dq1 += sum*sum;
+    }
+  }
+
+  sum = 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
 
   return sum;
 }
@@ -806,7 +868,7 @@ void blue_phase_redshift_compute(void) {
 	phi_get_q_tensor(index, q);
 	phi_gradients_tensor_gradient(index, dq);
 
-	/* kaapa0 (d_b Q_ab)^2 */
+	/* kappa0 (d_b Q_ab)^2 */
 
 	dq0 = 0.0;
 
@@ -923,4 +985,74 @@ void blue_phase_set_active_region_gamma_zeta(const int index) {
     blue_phase_set_gamma(gamma_outside);
   }
   return;
+}
+
+/*****************************************************************************
+ *
+ *  fed_io_info_set
+ *
+ *****************************************************************************/
+
+void fed_io_info_set(struct io_info_t * info) {
+
+  assert(info);
+  io_info_fed = info;
+
+  io_info_set_name(io_info_fed, "Free energy density");
+  io_info_set_write_ascii(io_info_fed, fed_write_ascii);
+  io_info_set_write_binary(io_info_fed, fed_write);
+  io_info_set_bytesize(io_info_fed, 2*sizeof(double));
+ 
+  io_info_set_format_binary(io_info_fed);
+  io_write_metadata("fed", io_info_fed);
+
+  return;
+}
+
+/*****************************************************************************
+*
+*  fed_write_ascii
+*
+*****************************************************************************/
+
+static int fed_write_ascii(FILE * fp, const int ic, const int jc, const int kc) {
+
+  double q[3][3], dq[3][3][3];
+  double fed[2];
+  int index, n;
+  
+  index = le_site_index(ic, jc, kc);
+
+  phi_get_q_tensor(index, q);
+  phi_gradients_tensor_gradient(index, dq);
+  fed[0] = blue_phase_compute_fed(q, dq);
+  fed[1] = blue_phase_compute_gradient_fed(q, dq);
+
+  fprintf(fp, "%22.15e %22.15e\n", fed[0], fed[1]);
+
+  return n;
+}
+
+/*****************************************************************************
+*
+*  fed_write
+*
+*****************************************************************************/
+
+static int fed_write(FILE * fp, const int ic, const int jc, const int kc) {
+
+  double q[3][3], dq[3][3][3];
+  double fed[2];
+  int index, n;
+  
+  index = le_site_index(ic, jc, kc);
+
+  phi_get_q_tensor(index, q);
+  phi_gradients_tensor_gradient(index, dq);
+  fed[0] = blue_phase_compute_fed(q, dq);
+  fed[1] = blue_phase_compute_gradient_fed(q, dq);
+
+  fwrite(fed, sizeof(double), 2, fp);
+
+  return n;
 }
