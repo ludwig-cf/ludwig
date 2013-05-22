@@ -1093,7 +1093,8 @@ static int fed_write_ascii(FILE * fp, const int ic, const int jc, const int kc) 
   fed[1] = blue_phase_compute_bulk_fed(q);
   fed[2] = blue_phase_compute_gradient_fed(q, dq);
 
-  fprintf(fp, "%22.15le  %22.15le  %22.15le\n", fed[0], fed[1], fed[2]);
+  n = fprintf(fp, "%22.15le  %22.15le  %22.15le\n", fed[0], fed[1], fed[2]);
+  if (n < 0) fatal("fprintf(fed) failed at index %d\n", index);
 
   return n;
 }
