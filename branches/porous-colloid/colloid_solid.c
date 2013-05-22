@@ -29,7 +29,7 @@ static void lubrication_sphere_sphere_wall(const double a1, const double a2,
 				    const double h, const double hcut,
 				    const double rhat[3], double f[3]);
 
-static double wall_sphere_radius_ = 0.6;
+static double wall_sphere_radius_ = 0.5;
 static double wall_sphere_lubrication_cutoff_ = 0.25;
 
 void solid_lubrication(colloid_t * pc, double force[3]) {
@@ -169,5 +169,62 @@ int solid_lubrication_force(const double r[3], const double ah, double force[3])
   return 0;
 }
 
-
+/******************************************************************************
+ *
+ *  cylinder_lubrication
+ *
+ * This gives the normal lubrication correction for colloid of hydrodynamic
+ * radius ah at position near a cylinder wall (circular confinement in 2D)
+ * Top and bottom are taken care of by wall lubrication.
+ *
+ * The correction is based on sphere-wall correction:
+ * wall_lubrication (in wall.c)
+ *
+ *
+ *****************************************************************************/
   
+double cylinder_lubrication(const int dim, const double r[3], const double ah) {
+  
+  double force;
+  double hlub;
+  double h[3], hlength, gap;
+  double rdim;
+  double centre[3];
+  double eta;
+  int i;
+  double lubrication_rcnormal_ = 0.5;
+  
+  double cylinder_radius_ = 31.0;
+  int long_axis_ = Z; /*X, Y or Z */
+
+  force = 0.0;
+  hlub = lubrication_rcnormal_;
+  eta = get_eta_shear();
+  
+  if (dim != long_axis_ ) {
+    hlength = 0.0;
+    
+    for (i = 0; i < 3; i++ ) {
+      if (i == long_axis_ )continue;
+      
+      centre[i] = Lmin(i) + 0.5*L(i);
+      h[i] = centre[i] - r[i];
+      hlength += h[i] * h[i];
+    }
+    
+    hlength = sqrt(hlength);
+    gap = cylinder_radius_ - (hlength + ah);
+    
+    assert(gap > 0.0);
+    
+    if (gap < hlub) {
+      force = -6.0*pi_*eta*ah*ah*(1.0/gap - 1.0/hlub)*h[dim]/hlength;
+      /*printf("hlub f: %lf %lf\n", gap, force);*/
+    }
+  }
+
+  return force;
+}
+    
+    
+    
