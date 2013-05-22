@@ -174,8 +174,8 @@ static void gradient_general6(const double * field, double * grad,
   double w2_coll;                           /* Second anchoring parameter */
   double w1_wall;
   double w2_wall;
-  double w1;
-  double w2;
+  double w1=0.0;
+  double w2=0.0;
   double q_0;                               /* Cholesteric pitch wavevector */
   double kappa0;                            /* Elastic constants */
   double kappa1;

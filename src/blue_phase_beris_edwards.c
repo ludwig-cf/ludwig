@@ -123,7 +123,7 @@ static void blue_phase_be_update(void) {
   double dt_solid;
 
   double chi[5], chi_qab[3][3];
-  double kt, var;
+  double kt, var=0;
   extern double get_kT(void);
 
 
