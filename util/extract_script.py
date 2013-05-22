@@ -9,22 +9,25 @@
 # filelist name (default filelist)
 
 import sys, os, re, math
-Lx=128
-Ly=128
-Lz=128
+Lx=32
+Ly=32
+Lz=32
 
-nstart=25000
-nint=25000
-nend=1400000
-ngroup=8
+nstart=1000
+nint=1000
+nend=1000
+ngroup=1
 
-op=1
+op=0
 vel=0
-dir=1
+dir=0
 phi=0
 biaxop=0
 colloid=0
 psi=0
+fed=0
+bfed=0
+gfed=0
 
 create_ascii_file=1
 create_paraview_file=1
@@ -103,6 +106,39 @@ if psi==1:
         for i in range(nstart,nend+nint,nint):
                 os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_psi' % (i,ngroup))
 
+if fed==1:
+        type.append('7')
+        x.append('1')
+        y.append('0')
+        z.append('0')
+        metafile.append('fed.%03.0d-001.meta' % ngroup)
+        filelist.append('filelist_fed')
+        os.system('rm filelist_fed')
+        for i in range(nstart,nend+nint,nint):
+                os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_fed' % (i,ngroup))
+
+if bfed==1:
+        type.append('8')
+        x.append('2')
+        y.append('0')
+        z.append('0')
+        metafile.append('fed.%03.0d-001.meta' % ngroup)
+        filelist.append('filelist_bfed')
+        os.system('rm filelist_bfed')
+        for i in range(nstart,nend+nint,nint):
+                os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_bfed' % (i,ngroup))
+
+if gfed==1:
+        type.append('9')
+        x.append('3')
+        y.append('0')
+        z.append('0')
+        metafile.append('fed.%03.0d-001.meta' % ngroup)
+        filelist.append('filelist_gfed')
+        os.system('rm filelist_gfed')
+        for i in range(nstart,nend+nint,nint):
+                os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_gfed' % (i,ngroup))
+
 os.system('gcc -o extract extract.c -lm')
 
 if colloid==1:
@@ -163,6 +199,18 @@ if create_paraview_file==1:
                 os.system('rm filelist_psi')
                 for i in range(nstart,nend+nint,nint):
                                 os.system('ls -t1 psi-%08.0d >> filelist_psi' % i)
+        if fed==1:
+                os.system('rm filelist_fed')
+                for i in range(nstart,nend+nint,nint):
+                                os.system('ls -t1 fed-%08.0d >> filelist_fed' % i)
+        if bfed==1:
+                os.system('rm filelist_bfed')
+                for i in range(nstart,nend+nint,nint):
+                                os.system('ls -t1 fed-%08.0d >> filelist_bfed' % i)
+        if gfed==1:
+                os.system('rm filelist_gfed')
+                for i in range(nstart,nend+nint,nint):
+                                os.system('ls -t1 fed-%08.0d >> filelist_gfed' % i)
 
 	# create vtk-header
 	for i in range(len(type)):
@@ -183,7 +231,7 @@ if create_paraview_file==1:
 			headerlines.append('ORIGIN 0 0 0')
 			headerlines.append('SPACING 1 1 1')
 			headerlines.append('POINT_DATA %d' %(Lx*Ly*Lz))
-		if type[i]=='1' or type[i]=='4' or type[i]=='5':
+		if type[i]=='1' or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9':
 			headerlines.append('SCALARS scalar%d float 1' %i)
 			headerlines.append('LOOKUP_TABLE default')
 		if type[i]=='2' or type[i]=='3':
@@ -228,6 +276,21 @@ if create_paraview_file==1:
 				datafilename=linestring[0]
 				outputfilename= datafilename + '.dat-psi.vtk'
 
+			if type[i]=='7':
+				linestring=line.split()
+				datafilename=linestring[0]
+				outputfilename= datafilename + '.dat-fed.vtk'
+
+			if type[i]=='8':
+				linestring=line.split()
+				datafilename=linestring[0]
+				outputfilename= datafilename + '.dat-bfed.vtk'
+
+			if type[i]=='9':
+				linestring=line.split()
+				datafilename=linestring[0]
+				outputfilename= datafilename + '.dat-gfed.vtk'
+
 			if type[i]=='99':
 				linestring=line.split()
 				datafilename=linestring[0]
@@ -255,9 +318,10 @@ if create_paraview_file==1:
 
 					datastring=line.split()
 
-					if type[i]=='1' or type[i]=='4' or type[i]=='5' or type[i]=='6':
+					if type[i]=='1' or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9':
 						xdata=float(datastring[x[i]])
-						out.write('%.5le\n' % xdata)
+#						if abs(xdata)<1e-25: xdata=1e-25
+						out.write('%12.5le\n' % xdata)
 					if type[i]=='2' or type[i]=='3':
 						xdata=float(datastring[x[i]])
 						ydata=float(datastring[y[i]])
@@ -272,5 +336,6 @@ if create_paraview_file==1:
 
 		datafilenames.close
 
+os.system('rm filelist*')
 
 print('# done')
