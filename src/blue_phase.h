@@ -26,6 +26,7 @@ void   blue_phase_set_gamma(double);
 
 double blue_phase_free_energy_density(const int);
 double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]);
+double blue_phase_compute_bulk_fed(double q[3][3]);
 double blue_phase_compute_gradient_fed(double q[3][3], double dq[3][3][3]);
 
 void   blue_phase_molecular_field(const int, double h[3][3]);

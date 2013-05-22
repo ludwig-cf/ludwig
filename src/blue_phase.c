@@ -279,7 +279,60 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
   }
 
   sum = 0.5*a0_*(1.0 - r3_*gamma_)*q2 - r3_*a0_*gamma_*q3 +
-    0.25*a0_*gamma_*q2*q2 + 0.5*kappa0*dq0 + 0.5*kappa1*dq1 - epsilon_*efield;;
+    0.25*a0_*gamma_*q2*q2 + 0.5*kappa0*dq0 + 0.5*kappa1*dq1 - epsilon_*efield;
+
+  return sum;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_compute_bulk_fed
+ *
+ *  Compute the bulk free energy density as a function of q.
+ *
+ *  Note: This function contains also the part quadratic in q 
+ *        which is normally part of the gradient free energy. 
+ *
+ *****************************************************************************/
+
+double blue_phase_compute_bulk_fed(double q[3][3]) {
+
+  int ia, ib, ic;
+  double q0;
+  double kappa1;
+  double q2, q3;
+  double sum;
+
+  q0 = q0_*rredshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
+
+  q2 = 0.0;
+
+  /* Q_ab^2 */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q2 += q[ia][ib]*q[ia][ib];
+    }
+  }
+
+  /* Q_ab Q_bc Q_ca */
+
+  q3 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	/* We use here the fact that q[ic][ia] = q[ia][ic] */
+	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
+      }
+    }
+  }
+
+  sum = 0.5*a0_*(1.0 - r3_*gamma_)*q2 - r3_*a0_*gamma_*q3 + 0.25*a0_*gamma_*q2*q2;
+
+  /* Add terms quadratic in q from gradient free energy */ 
+  sum += 0.5*kappa1*4.0*q0*q0*q2;
 
   return sum;
 }
@@ -291,6 +344,8 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
  *  Compute the gradient contribution to the free energy density 
  *  as a function of q and the q gradient tensor dq.
  *
+ *  Note: The part quadratic in q has been added to the bulk free energy.
+ *
  *****************************************************************************/
 
 double blue_phase_compute_gradient_fed(double q[3][3], double dq[3][3][3]) {
@@ -299,6 +354,7 @@ double blue_phase_compute_gradient_fed(double q[3][3], double dq[3][3][3]) {
   double q0;
   double kappa0, kappa1;
   double dq0, dq1;
+  double q2;
   double sum;
 
   q0 = q0_*rredshift_;
@@ -321,10 +377,15 @@ double blue_phase_compute_gradient_fed(double q[3][3], double dq[3][3][3]) {
   /* With symmetric Q_db write Q_bd */
 
   dq1 = 0.0;
+  q2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
+
       sum = 0.0;
+  
+      q2 += q[ia][ib]*q[ia][ib];
+
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
 	  sum += e_[ia][ic][id]*dq[ic][ib][id];
@@ -334,6 +395,9 @@ double blue_phase_compute_gradient_fed(double q[3][3], double dq[3][3][3]) {
       dq1 += sum*sum;
     }
   }
+
+  /* Subtract part that is quadratic in q */
+  dq1 -= 4.0*q0*q0*q2;
 
   sum = 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
 
@@ -1001,7 +1065,7 @@ void fed_io_info_set(struct io_info_t * info) {
   io_info_set_name(io_info_fed, "Free energy density");
   io_info_set_write_ascii(io_info_fed, fed_write_ascii);
   io_info_set_write_binary(io_info_fed, fed_write);
-  io_info_set_bytesize(io_info_fed, 2*sizeof(double));
+  io_info_set_bytesize(io_info_fed, 3*sizeof(double));
  
   io_info_set_format_binary(io_info_fed);
   io_write_metadata("fed", io_info_fed);
@@ -1018,7 +1082,7 @@ void fed_io_info_set(struct io_info_t * info) {
 static int fed_write_ascii(FILE * fp, const int ic, const int jc, const int kc) {
 
   double q[3][3], dq[3][3][3];
-  double fed[2];
+  double fed[3];
   int index, n;
   
   index = le_site_index(ic, jc, kc);
@@ -1026,9 +1090,10 @@ static int fed_write_ascii(FILE * fp, const int ic, const int jc, const int kc) 
   phi_get_q_tensor(index, q);
   phi_gradients_tensor_gradient(index, dq);
   fed[0] = blue_phase_compute_fed(q, dq);
-  fed[1] = blue_phase_compute_gradient_fed(q, dq);
+  fed[1] = blue_phase_compute_bulk_fed(q);
+  fed[2] = blue_phase_compute_gradient_fed(q, dq);
 
-  fprintf(fp, "%22.15e %22.15e\n", fed[0], fed[1]);
+  fprintf(fp, "%22.15le  %22.15le  %22.15le\n", fed[0], fed[1], fed[2]);
 
   return n;
 }
@@ -1042,7 +1107,7 @@ static int fed_write_ascii(FILE * fp, const int ic, const int jc, const int kc) 
 static int fed_write(FILE * fp, const int ic, const int jc, const int kc) {
 
   double q[3][3], dq[3][3][3];
-  double fed[2];
+  double fed[3];
   int index, n;
   
   index = le_site_index(ic, jc, kc);
@@ -1050,9 +1115,11 @@ static int fed_write(FILE * fp, const int ic, const int jc, const int kc) {
   phi_get_q_tensor(index, q);
   phi_gradients_tensor_gradient(index, dq);
   fed[0] = blue_phase_compute_fed(q, dq);
-  fed[1] = blue_phase_compute_gradient_fed(q, dq);
+  fed[1] = blue_phase_compute_bulk_fed(q);
+  fed[2] = blue_phase_compute_gradient_fed(q, dq);
 
-  fwrite(fed, sizeof(double), 2, fp);
+  n = fwrite(fed, sizeof(double), 3, fp);
+  if (n != 3) fatal("fwrite(fed) failed at index %d\n", index);
 
   return n;
 }
