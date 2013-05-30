@@ -18,6 +18,7 @@
 % feel free not to use mathptmx if it causes difficulties
 \usepackage{sectsty}
 \usepackage{balance} 
+\usepackage{color} 
 
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -25,6 +26,7 @@
 \newcommand{\e}[1]{\times10^{#1}}
 \newcommand{\gd}{\dot{\gamma}}
 \newcommand{\com}[1]{{\bf {#1}}}
+\newcommand{\rev}[1]{{\textcolor{red}{#1}}}
 
 \usepackage{graphicx} %eps figures can be used instead
 \usepackage{lastpage}
@@ -288,7 +290,7 @@ of the lattice Boltzmann (LB) equations
 that we solve numerically. A further term $\eta(1+3\frac{\partial P_0}{\partial\rho} )\partial_\mu v_\mu \delta_{\alpha \beta}$ that formally appears
 in this expansion is negligible under the slow flows considered here
 for which the the fluid motion is almost incompressible~\cite{Denniston:2001}.
-$\eta$ is an isotropic background viscosity which is set to $\eta=0.8333$ in LB units (these are discussed below, see~\cite{Henrich:2011a,Henrich:2010b}).
+$\eta$ is an isotropic background viscosity which is set to $\eta=0.6666$ in LB units (these are discussed below, see~\cite{Henrich:2011a,Henrich:2010b}).
 The thermodynamic stress tensor reads explicitly
 \begin{eqnarray}
 \Pi_{\alpha \beta}&=&P_0 \delta_{\alpha\beta}
@@ -311,9 +313,9 @@ Er=\frac{\eta v l}{K}
 \end{equation}
 with $\eta$ and $K$ defined previously, and 
 $v$ and $l$ a typical velocity and length scale. 
-In the present work $l=p_0/2$ was used as this is the approximate size of
+In the present work $l=p_0/2=\pi/q_0$ was used as this is the approximate size of
 the BP unit cell. Likewise, $v$ was taken to be the velocity difference
-across one unit cell, i.e. $v=\dot{\gamma} p_0/2$. 
+across one unit cell, i.e. $v=\dot{\gamma} l$. The elastic constant was taken as $K=0.02$ (BPII) and $K=0.04$ (BPI), respectively. 
 
 \if{The spectrum $X_\omega$ of the shear stress $\Pi_{xy}(t)$ was determined via discrete Fourier transformation according to
 \begin{equation}
@@ -448,7 +450,7 @@ Ahead of the more detailed discussion we provide first a general overview of the
 flow behaviour at all applied shear rates.
 Fig. \ref{bp2-rheo} shows the ratio between the apparent viscosity, 
 defined as 
-$\eta_{app}=\langle \Pi_{xy} \rangle/\gd$, and $\eta$.
+$\eta_{app}=\langle \Pi_{xy} \rangle/\gd +\eta$, and $\eta$.
 A numerical value of $\eta_{app}/\eta=1$ corresponds to a fully Newtonian flow,
 without any additional contribution from the liquid crystal.
 The top picture shows the data over time, whereas the graph at the bottom gives 
@@ -533,9 +535,9 @@ and system sizes simulated here.
 
 \begin{figure}[htpb]
 \center
-\includegraphics[width=0.35\textwidth]{disc-160k_run902.png}
-\includegraphics[width=0.35\textwidth]{disc-164k_run902.png}
-\includegraphics[width=0.35\textwidth]{disc-165k_run902.png}
+\includegraphics[width=0.35\textwidth]{disc-160k_run902r.png}
+\includegraphics[width=0.35\textwidth]{disc-164k_run902r.png}
+\includegraphics[width=0.35\textwidth]{disc-165k_run902r.png}
 \caption{Disclination network of BPII in shear flow: 
 The pictures show a typical sequence of snapshots in the steady state 
 at $\gd=1.56\e{-4}$ and time steps $t=1.60, 1.64,1.65\e{5}$. The velocity 
@@ -547,8 +549,8 @@ right in the upper half and to the left in the lower half of the picture.}
 \end{figure}
 
 \begin{figure*}[htpb]
-\includegraphics[width=0.495\textwidth]{v_yz-v_z-160k_run902.png}
-\includegraphics[width=0.495\textwidth]{v_yz-v_z-160k_run903.png}
+\includegraphics[width=0.495\textwidth]{v_yz-v_z-160k_run902r.png}
+\includegraphics[width=0.495\textwidth]{v_yz-v_z-160k_run903r.png}
 \caption{Velocity patterns and disclination network in BPII for positive (left) and negative (right) helicity of the 
 underlying cholesteric helix: The pictures show velocity vectors $(0,v_y,v_z)$.
 The view is along the x-direction. This means the velocity ${\mathbf v}$ 
@@ -588,34 +590,34 @@ moves much less).
 
 \subsubsection{Regime BPII-2: high shear rates }
 
-If the flow rate exceeds a certain critical value BPII does not undergo the 
-homogeneous deformation described above and adopts another mode of flow. 
-Fig. \ref{bp2-high} shows a sequence of cuts through the director 
-field at high shear rate. The entire blue phase network has broken up 
-into a simple cholesteric helix and flows as a travelling 
-helical wave with the helical axis oriented along the vorticity direction.
-The state is translationally invariant in the flow and gradient directions.
-It is the preferred mode of flow of a standard cholesteric phase
-in vorticity mode at low Ericksen numbers. This is followed by
-the uncoiling transition to a nematic, flow-aligned state at even 
-higher shear rates ~\cite{Rey:1996a, Rey:1996b}.
+%If the flow rate exceeds a certain critical value BPII does not undergo the 
+%homogeneous deformation described above and adopts another mode of flow. 
+%Fig. \ref{bp2-high} shows a sequence of cuts through the director 
+%field at high shear rate. The entire blue phase network has broken up 
+%into a simple cholesteric helix and flows as a travelling 
+%helical wave with the helical axis oriented along the vorticity direction.
+%The state is translationally invariant in the flow and gradient directions.
+%It is the preferred mode of flow of a standard cholesteric phase
+%in vorticity mode at low Ericksen numbers. This is followed by
+%the uncoiling transition to a nematic, flow-aligned state at even 
+%higher shear rates ~\cite{Rey:1996a, Rey:1996b}.
 
-In our scenario the BP to cholesteric transition occurs for shear rates $\gd\simeq 4.68\e{-4}$, which
-corresponds to Ericksen numbers of ${\it Er}\simeq4$, based on our
-parameters for BPII ($K=0.02, \eta=0.666$, and $p_0/2=16$;
-see Table \ref{tab1} in the Appendix).
+%In our scenario the BP to cholesteric transition occurs for shear rates $\gd\simeq 4.68\e{-4}$, which
+%corresponds to Ericksen numbers of ${\it Er}\simeq4$, based on our
+%parameters for BPII ($K=0.02, \eta=0.666$, and $p_0/2=16$;
+%see Table \ref{tab1} in the Appendix).
 
-\begin{figure}[htpb]
-\includegraphics[width=0.495\textwidth]{dir+y-250k_run949.png}
-\includegraphics[width=0.495\textwidth]{dir+y-253k_run949.png}
-\includegraphics[width=0.495\textwidth]{dir+y-255k_run949.png}
-\includegraphics[width=0.495\textwidth]{dir+y-257k_run949.png}
-\caption{Director field of BPII at high shear rate: The images show snapshots at time steps 
-$t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. The colour code gives the alignment of the director field in the flow direction (x) with red fully aligned and blue out of plane. 
-The configuration is a helical wave that travels along the direction of vorticity.
-It is translationally invariant along the gradient and flow direction.}
-\label{bp2-high}
-\end{figure}
+%\begin{figure}[htpb]
+%\includegraphics[width=0.495\textwidth]{dir+y-250k_run949.png}
+%\includegraphics[width=0.495\textwidth]{dir+y-253k_run949.png}
+%\includegraphics[width=0.495\textwidth]{dir+y-255k_run949.png}
+%\includegraphics[width=0.495\textwidth]{dir+y-257k_run949.png}
+%\caption{Director field of BPII at high shear rate: The images show snapshots at time steps 
+%$t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. The colour code gives the alignment of the director field in the flow direction (x) with red fully aligned and blue out of plane. 
+%The configuration is a helical wave that travels along the direction of vorticity.
+%It is translationally invariant along the gradient and flow direction.}
+%\label{bp2-high}
+%\end{figure}
 
 We observe another configuration, lying between the travelling helical wave 
 and the  flow-aligned nematic state at shear rates 
@@ -1198,46 +1200,78 @@ leads to in steady state.
 \hline
 BPI & & & & $\times 10^5$\\
 \hline
-BPI-1 & 0.244 & 0.04& 0.1388 &-15.79 &15.57 &1.04 &-0.89 &0.91 &0.95 &-1.59 &1.19 &1.27 \\
-BPI-1 & 0.488 & 0.08 & 0.1388 &-31.11 &31.25 &1.31 &-0.93 &0.98 &1.28 &-1.62 &1.10 &1.40 \\
-BPI-1 & 0.976 & 0.17 & 0.1388 &-62.24 &62.37 &2.51 &-1.31 &1.25 &2.68 &-1.24 &0.87 &2.65 \\
-BPI-1 & 1.95 & 0.33 & 0.1388 &-124.65 &124.82 &3.62&  -2.49 &2.50 &4.51 &-1.89 & 1.62 &3.51 \\
+BPI-1 &0.24 &0.02 & 0.1388 & & & & & & & & & \\
+BPI-1 &0.49 &0.04 & 0.1388 & & & & & & & & & \\
+BPI-1 &0.98 &0.08 & 0.1388 & & & & & & & & & \\
+BPI-1 &1.95 &0.17 & 0.1388 & & & & & & & & & \\
+%BPI-1 & 0.244 & 0.04& 0.1388 &-15.79 &15.57 &1.04 &-0.89 &0.91 &0.95 &-1.59 &1.19 &1.27 \\
+%BPI-1 & 0.488 & 0.08 & 0.1388 &-31.11 &31.25 &1.31 &-0.93 &0.98 &1.28 &-1.62 &1.10 &1.40 \\
+%BPI-1 & 0.976 & 0.17 & 0.1388 &-62.24 &62.37 &2.51 &-1.31 &1.25 &2.68 &-1.24 &0.87 &2.65 \\
+%BPI-1 & 1.95 & 0.33 & 0.1388 &-124.65 &124.82 &3.62&  -2.49 &2.50 &4.51 &-1.89 & 1.62 &3.51 \\
 \hline
-BPI-2 & 3.91 & 0.67 & 0.1388 &-248.69 &248.74 &3.90&  -3.31 &3.35 &4.21 &-2.56 & 2.88 &4.39 \\
-BPI-2 & 7.81 & 1.33 & 0.1388 &-497.22 &496.16 &4.46 &-6.49 &6.56 &7.99 &-5.31 & 7.46 &6.81 \\ 
-BPI-2 & 15.63 & 2.67 & 0.1388 &-992.46 &993.18 &10.36 &-3.08 &3.17 &10.49 &\bf{-2.87} & \bf{3.57} &10.54 \\
-BPI-2 & 15.63 & 2.67 & -0.1388 &-992.46 &993.18 &10.36 &-3.08 &3.17 &10.49 &\bf{-3.57} & \bf{2.87} &10.54 \\
-BPI-2 & 31.25 &5.33 & 0.1388 & -1988.36 &1986.71 &16.85 &-4.08 &4.46 &15.94 &-11.37 & 12.16 &19.38\\
-BPI-2 & 46.87 & 8.00 & 0.1388 & -3025.46 & 3003.05 &21.43 & -56.96 & 56.44  & 18.75 & -12.65 & 82.97  & 27.96\\
+BPI-2 &3.91 &0.33 & 0.1388 & & & & & & & & & \\
+BPI-2 &7.81 &0.67 & 0.1388 & & & & & & & & & \\
+BPI-2 &15.63 &1.33 & 0.1388 & & & & & & & & & \\
+BPI-2 &15.63 &1.33 & -0.1388 & & & & & & & & & \\
+BPI-2 &23.44 &2.00 & 0.1388 & & & & & & & & & \\
+%BPI-2 & 7.81 & 1.33 & 0.1388 &-497.22 &496.16 &4.46 &-6.49 &6.56 &7.99 &-5.31 & 7.46 &6.81 \\ 
+%BPI-2 & 15.63 & 2.67 & 0.1388 &-992.46 &993.18 &10.36 &-3.08 &3.17 &10.49 &\bf{-2.87} & \bf{3.57} &10.54 \\
+%BPI-2 & 15.63 & 2.67 & -0.1388 &-992.46 &993.18 &10.36 &-3.08 &3.17 &10.49 &\bf{-3.57} & \bf{2.87} &10.54 \\
+%BPI-2 & 31.25 &5.33 & 0.1388 & -1988.36 &1986.71 &16.85 &-4.08 &4.46 &15.94 &-11.37 & 12.16 &19.38\\
+%BPI-2 & 46.87 & 8.00 & 0.1388 & -3025.46 & 3003.05 &21.43 & -56.96 & 56.44  & 18.75 & -12.65 & 82.97  & 27.96\\
 \hline
-BPI-3 & 62.50 & 10.67& 0.1388 & -4039.41 &3995.3  & 20.57 & -62.63 & 62.13 & 24.68 &-73.52 & 110.76 & 33.26 \\
-BPI-3 &78.13 &13.33 & 0.1388 & -4968.11 &4973.75 &20.89 &-60.61 &58.75 &23.66 &-84.93 &116.61 &34.75 \\
+BPI-3 &31.25 &2.66 & 0.1388 & & & & & & & & & \\
+BPI-3 &46.87 &4.00 & 0.1388 & & & & & & & & & \\
+BPI-3 &54.69 &4.67 & 0.1388 & & & & & & & & & \\
+BPI-3 &62.50 &5.33 & 0.1388 & & & & & & & & & \\
+BPI-3 &78.13 &6.01 & 0.1388 & & & & & & & & & \\
+%BPI-3 &78.13 &13.33 & 0.1388 & -4968.11 &4973.75 &20.89 &-60.61 &58.75 &23.66 &-84.93 &116.61 &34.75 \\
 \hline
-CHG & 93.75 &16.00 & 0.1388 & -5955.12 &5948.84 & 0.71 & -0.002 & 0.002 & -  & -16.45 & 16.03 &0.62 \\
-CHG & 125.0 & 21.33& 0.1388 & -7934.97 & 7935.41 & 0.36 & -0.005 & 0.005 & - &-22.73 & 21.12 & 0.07\\
+GJT (BPI-4) &93.75 &8.00 & 0.1388 & & & & & & & & & \\
+GJT (BPI-4) &125.0 &10.66 & 0.1388 & & & & & & & & & \\
+GJT (BPI-4) &187.5 &16.00 & 0.1388 & & & & & & & & & \\
+%GJT (BPI-4)& 125.0 & 21.33& 0.1388 & -7934.97 & 7935.41 & 0.36 & -0.005 & 0.005 & - &-22.73 & 21.12 & 0.07\\
 \hline
-FAN & 187.5 & 32.00& 0.1388 &-11906.4  &119064 &0.36 &- &- &- &-0.68 & 0.38 & 0.05\\
+FAN & 250.0 &21.33 & 0.1388 & & & & & & & & & \\
+FAN & 375.0 &32.00 & 0.1388 & & & & & & & & & \\
+%FAN & 187.5 & 32.00& 0.1388 &-11906.4  &119064 &0.36 &- &- &- &-0.68 & 0.38 & 0.05\\
 \hline
 
 BPII  & & & & $\times 10^5$ \\
 \hline
-BPII-1 & 0.244 &0.02 & 0.1963 &-7.75 &7.70 &0.13 &-0.17 &0.17 &0.13 &-0.24 &0.23 &0.19 \\
-BPII-1 & 0.488 &0.04 & 0.1963 &-15.50 &15.40 &0.19 &-0.32 &0.30 &0.21 &-0.43 &0.42 &0.29 \\
-BPII-1 & 0.976 &0.08 & 0.1963 &-31.01 &30.80 &0.33 &-0.60 &0.58 &0.41 &-0.85 &0.79 &0.47 \\
-BPII-1 & 1.95 &0.17  & 0.1963 &-62.04  &61.60 & 0.97 & -1.09 &1.07 & 0.76 & -1.64 & 1.55 & 0.81\\
-BPII-1 &3.91 & 0.33& 0.1963 &-123.93 &123.18 & 1.76 &-1.66 &1.70 & 1.45 &-3.09& 2.73 &1.47\\
-BPII-1 &7.81 &0.67 & 0.1963  &-247.67 &246.45 & 3.20 &-2.62 &2.71 & 2.67 &-5.78 & 4.77 &2.74\\
-BPII-1 &15.63 & 1.33& 0.1963 &-494.85 &493.09 & 5.64 &-3.13 &3.31 &4.24 &\bf{-10.00} & \bf{7.66} &4.33\\
-BPII-1 & 15.63 & 1.33& -0.1963&-494.85 &493.09 & 5.64 & -3.13 &3.31 &4.24 &\bf{-7.66} & \bf{10.00} &4.33\\
-BPII-1 & 31.25 &2.67 & 0.1963 &-988.73 &985.93 &8.96  &-1.79 &1.82 &5.86 &-14.39 & 11.04 &6.35\\
+BPII-1 &0.24 &0.02 & 0.1963 & & & & & & & & & \\
+BPII-1 &0.49 &0.04 & 0.1963 & & & & & & & & & \\
+BPII-1 &0.98 &0.08 & 0.1963 & & & & & & & & & \\
+BPII-1 &1.95 &0.17 & 0.1963 & & & & & & & & & \\
+BPII-1 &3.91 &0.33 & 0.1963 & & & & & & & & & \\
+BPII-1 &7.81 &0.67 & 0.1963 & & & & & & & & & \\
+BPII-1 &15.63 &1.33 & 0.1963 & & & & & & & & & \\
+BPII-1 &15.63 &1.33 & -0.1963 & & & & & & & & & \\
+BPII-1 &31.25 &2.66 & 0.1963 & & & & & & & & & \\
+BPII-1 &39.06 &3.33 & 0.1963 & & & & & & & & & \\
+%BPII-1 & 0.244 &0.02 & 0.1963 &-7.75 &7.70 &0.13 &-0.17 &0.17 &0.13 &-0.24 &0.23 &0.19 \\
+%BPII-1 & 0.488 &0.04 & 0.1963 &-15.50 &15.40 &0.19 &-0.32 &0.30 &0.21 &-0.43 &0.42 &0.29 \\
+%BPII-1 & 0.976 &0.08 & 0.1963 &-31.01 &30.80 &0.33 &-0.60 &0.58 &0.41 &-0.85 &0.79 &0.47 \\
+%BPII-1 & 1.95 &0.17  & 0.1963 &-62.04  &61.60 & 0.97 & -1.09 &1.07 & 0.76 & -1.64 & 1.55 & 0.81\\
+%BPII-1 &3.91 & 0.33& 0.1963 &-123.93 &123.18 & 1.76 &-1.66 &1.70 & 1.45 &-3.09& 2.73 &1.47\\
+%BPII-1 &7.81 &0.67 & 0.1963  &-247.67 &246.45 & 3.20 &-2.62 &2.71 & 2.67 &-5.78 & 4.77 &2.74\\
+%BPII-1 &15.63 & 1.33& 0.1963 &-494.85 &493.09 & 5.64 &-3.13 &3.31 &4.24 &\bf{-10.00} & \bf{7.66} &4.33\\
+%BPII-1 & 15.63 & 1.33& -0.1963&-494.85 &493.09 & 5.64 & -3.13 &3.31 &4.24 &\bf{-7.66} & \bf{10.00} &4.33\\
+%BPII-1 & 31.25 &2.67 & 0.1963 &-988.73 &985.93 &8.96  &-1.79 &1.82 &5.86 &-14.39 & 11.04 &6.35\\
 \hline
-BPII-2 & 46.87 &4.00 & 0.1388 & -1476.75 & 1476.84 &1.69 &-0.35  &0.35  & 0.17 &-0.23 &0.23  & 0.22\\
-BPII-2 & 62.50 & 5.34& 0.1963 & -1969.41  & 1969.41 & 3.07 & -1.20 & 1.20 & 0.38 &-0.96 & 1.48 &0.38 \\
+GJT (BPII-2)&46.87 &4.00 & 0.1963 & & & & & & & & & \\
+GJT (BPII-2)&54.69 &4.67 & 0.1963 & & & & & & & & & \\
+GJT (BPII-2)&62.5 &5.33 & 0.1963 & & & & & & & & & \\
+GJT (BPII-2)&78.13 &6.01 & 0.1963 & & & & & & & & & \\
+GJT (BPII-2)&93.75 &8.00 & 0.1963 & & & & & & & & & \\
+GJT (BPII-2)&125.0 &10.66 & 0.1963 & & & & & & & & & \\
+%GJT (BPII-2)& 62.50 & 5.34& 0.1963 & -1969.41  & 1969.41 & 3.07 & -1.20 & 1.20 & 0.38 &-0.96 & 1.48 &0.38 \\
+%GJT (BPII-2) & 78.13 & 6.66 &  0.1388 &-2458.60 & 2458.61  &0.37 &- &- &- &-18.54 &16.94 &0.32 \\
+%GJT (BPII-2)& 93.75 &8.00 & 0.1388 &-2950.2  &2950.2 &0.50 &- &- &- &-22.69 & 19.72 & 0.04\\
 \hline
-CHG & 78.13 & 6.66 &  0.1388 &-2458.60 & 2458.61  &0.37 &- &- &- &-18.54 &16.94 &0.32 \\
-CHG & 93.75 &8.00 & 0.1388 &-2950.2  &2950.2 &0.50 &- &- &- &-22.69 & 19.72 & 0.04\\
-\hline
-FAN & 125.0 &10.67 & 0.1388 &-3937.31  & 3937.32 &0.28 &-  &-  &-  &-1.79 &1.15  &0.14 \\
+FAN &187.5 &16.00 & 0.1963 &  & & &  &  &  & & & \\
+FAN &250.0 &21.33 & 0.1963 &  & & &  &  &  & & & \\
+%FAN & 125.0 &10.67 & 0.1388 &-3937.31  & 3937.32 &0.28 &-  &-  &-  &-1.79 &1.15  &0.14 \\
 \hline
 \end{tabular}
 \caption{Minima, maxima and standard deviation of time-averaged velocity components 
