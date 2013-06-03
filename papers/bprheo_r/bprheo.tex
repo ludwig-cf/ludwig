@@ -34,6 +34,9 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 
+\newif\ifold
+\oldtrue
+
 \begin{document}
 
 \thispagestyle{plain}
@@ -590,34 +593,36 @@ moves much less).
 
 \subsubsection{Regime BPII-2: high shear rates }
 
-%If the flow rate exceeds a certain critical value BPII does not undergo the 
-%homogeneous deformation described above and adopts another mode of flow. 
-%Fig. \ref{bp2-high} shows a sequence of cuts through the director 
-%field at high shear rate. The entire blue phase network has broken up 
-%into a simple cholesteric helix and flows as a travelling 
-%helical wave with the helical axis oriented along the vorticity direction.
-%The state is translationally invariant in the flow and gradient directions.
-%It is the preferred mode of flow of a standard cholesteric phase
-%in vorticity mode at low Ericksen numbers. This is followed by
-%the uncoiling transition to a nematic, flow-aligned state at even 
-%higher shear rates ~\cite{Rey:1996a, Rey:1996b}.
+% New conformation is presumably metastable %
+\ifold{If the flow rate exceeds a certain critical value BPII does not undergo the 
+homogeneous deformation described above and adopts another mode of flow. 
+Fig. \ref{bp2-high} shows a sequence of cuts through the director 
+field at high shear rate. The entire blue phase network has broken up 
+into a simple cholesteric helix and flows as a travelling 
+helical wave with the helical axis oriented along the vorticity direction.
+The state is translationally invariant in the flow and gradient directions.
+It is the preferred mode of flow of a standard cholesteric phase
+in vorticity mode at low Ericksen numbers. This is followed by
+the uncoiling transition to a nematic, flow-aligned state at even 
+higher shear rates ~\cite{Rey:1996a, Rey:1996b}.
 
-%In our scenario the BP to cholesteric transition occurs for shear rates $\gd\simeq 4.68\e{-4}$, which
-%corresponds to Ericksen numbers of ${\it Er}\simeq4$, based on our
-%parameters for BPII ($K=0.02, \eta=0.666$, and $p_0/2=16$;
-%see Table \ref{tab1} in the Appendix).
+In our scenario the BP to cholesteric transition occurs for shear rates $\gd\simeq 4.68\e{-4}$, which
+corresponds to Ericksen numbers of ${\it Er}\simeq4$, based on our
+parameters for BPII ($K=0.02, \eta=0.666$, and $p_0/2=16$;
+see Table \ref{tab1} in the Appendix).
 
-%\begin{figure}[htpb]
+\begin{figure}[htpb]
 %\includegraphics[width=0.495\textwidth]{dir+y-250k_run949.png}
 %\includegraphics[width=0.495\textwidth]{dir+y-253k_run949.png}
 %\includegraphics[width=0.495\textwidth]{dir+y-255k_run949.png}
 %\includegraphics[width=0.495\textwidth]{dir+y-257k_run949.png}
-%\caption{Director field of BPII at high shear rate: The images show snapshots at time steps 
-%$t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. The colour code gives the alignment of the director field in the flow direction (x) with red fully aligned and blue out of plane. 
-%The configuration is a helical wave that travels along the direction of vorticity.
-%It is translationally invariant along the gradient and flow direction.}
-%\label{bp2-high}
-%\end{figure}
+\caption{Director field of BPII at high shear rate: The images show snapshots at time steps 
+$t=2.50, 2.53,2.55, 2.57\e{5}$ (from top to bottom) with flow into/out of the page. The colour code gives the alignment of the director field in the flow direction (x) with red fully aligned and blue out of plane. 
+The configuration is a helical wave that travels along the direction of vorticity.
+It is translationally invariant along the gradient and flow direction.}
+\label{bp2-high}
+\end{figure}
+\fi
 
 We observe another configuration, lying between the travelling helical wave 
 and the  flow-aligned nematic state at shear rates 
@@ -761,7 +766,7 @@ an amorphous state (bottom row far right, at time step $t=2.4\e{6}$).}
 \label{bp1-low}
 \end{figure*}
 
-\if{The negative branch in the shear stress is connected
+\ifold{The negative branch in the shear stress is connected
 to a local maximum followed by a local minimum in the 
 average free energy. Hence, the region of negative stress can be 
 regarded as a phase during which elastic forces exert a 
@@ -899,7 +904,7 @@ However, just as in the case of BPII, both patterns
 are mirror images and feature the highest velocities in the regions where 
 the largest conformational changes take place. 
 
-\if{In order to gain a better understanding of the complex oscillatory behaviour in regime BPI-2 
+\ifold{In order to gain a better understanding of the complex oscillatory behaviour in regime BPI-2 
 we performed a Fourier analysis of the shear stress $\Pi_{xy}$ according to Eq. \ref{spectrum}. 
 The spectrum is shown in Fig. \ref{bp1-spectrum}. 
 
@@ -934,7 +939,8 @@ OH: I WOULD SAY NO AS IT IS IN UNITS OF 2$\pi$ (RADIANS?).}
 \end{figure}
 }\fi 
 
-The intricacy and periodic recurrence of the flow-induced conformations 
+% No differences in retake %
+\ifold{The intricacy and periodic recurrence of the flow-induced conformations 
 in BPI raises the question: how robust are these results to variations in 
 system size? Although a pitch length of 64 LBU provides enough resolution 
 for tracking the network in flow it is not clear whether $4^3=64$ unit cells 
@@ -946,8 +952,8 @@ be simulated in order to reach a steady state. Therefore we opted for a
 comparison with smaller runs.
 
 \begin{figure}[htpb]
-\includegraphics[width=0.43\textwidth]{disc+y-600k-run911_run1163.png}\\
-\includegraphics[width=0.495\textwidth]{stress_bp1_2uc_4uc.pdf}
+%\includegraphics[width=0.43\textwidth]{disc+y-600k-run911_run1163.png}\\
+%\includegraphics[width=0.495\textwidth]{stress_bp1_2uc_4uc.pdf}
 \caption{Disclination network and shear stress $\Pi_{xy}$ in BPI: 
 The dark (red) network in top picture shows a snapshot of run that consists 
 of $2^3=8$ unit cells, whereas the light (cyan) network displays the 
@@ -974,10 +980,12 @@ would differ in an even larger simulation.
 Nevertheless, the comparison suggests that 
 the recurrence period and the complexity of the network in flow are  
 generic features of BPI in this regime of flow.
+\fi
 
 \subsubsection{Regime BPI-3: high shear rates }
 
-At high flow rates, $6.25\e{-4}\lesssim\gd\lesssim7.81\e{-4}$ ($10.67\lesssim {\it Er}\lesssim 13.33$), 
+
+\ifold At high flow rates, $6.25\e{-4}\lesssim\gd\lesssim7.81\e{-4}$ ($10.67\lesssim {\it Er}\lesssim 13.33$), 
 we observe a break-up of the flow-induced 
 disclination network of regime BPI-2. However, 
 in contrast to BPII, where the configuration is a travelling helical 
@@ -992,17 +1000,18 @@ regions of local double twist.
 Interestingly the critical Ericksen number for the break-up lies in 
 about the same window as that of transition between BPII-1 and BPII-2. 
 
-%\begin{figure}[htpb]
+\begin{figure}[htpb]
 %\includegraphics[width=0.45\textwidth]{dir3d-z-302k_run916.png}
-%\caption{Director field of BPI at high shear rate: The pictures show a region 
-%of $L_x\times L_y \times L_z= 32^3$ lattice sites with the flow/gradient 
-%direction oriented along the horizontal/vertical axis. 
-%The colour code gives the magnitude of the z-component of the director field. 
-%The data show that the structure is quasi-2D, with rolling double twist
-%patterns in the $xy$ plane, and an approximate translational symmetry 
-%along the vorticity direction.}
-%\label{bp1-high}
-%\end{figure}
+\caption{Director field of BPI at high shear rate: The pictures show a region 
+of $L_x\times L_y \times L_z= 32^3$ lattice sites with the flow/gradient 
+direction oriented along the horizontal/vertical axis. 
+The colour code gives the magnitude of the z-component of the director field. 
+The data show that the structure is quasi-2D, with rolling double twist
+patterns in the $xy$ plane, and an approximate translational symmetry 
+along the vorticity direction.}
+\label{bp1-high}
+\end{figure}
+\fi
 
 \subsection{Transition to cholesteric helix and flow-aligned nematic state}\label{cholflow}
 
@@ -1022,7 +1031,7 @@ the 2D double-twist rolls of BPI-3 and the travelling helical wave
 (Fig. \ref{bp2-rheo} and \ref{bp1-rheo}) as there is less dissipation.
  
 \begin{figure}[htpb]
-\includegraphics[width=0.45\textwidth]{dir3d+y-200k_run1179.png}
+\includegraphics[width=0.475\textwidth]{dir3d+y-200k_run1179r.png}
 \caption{Flow induced cholesteric state. The orientation of the helix is 
 along the gradient direction. The director field is quasi-static during 
 the flow, which occurs in ``nematic layers''. Colour coding indicates the 
@@ -1176,12 +1185,12 @@ on the flow properties of complex liquid-crystalline phases.
 
 % If you have acknowledgments, this puts in the proper section head.
 \section*{Acknowledgments}
-We acknowledge support by EPSRC grant nos. EP/E045316 and EP/E030173, 
-the MAPPER EU-FP7 project (grant no. RI-261507) and computing time on HECToR.
+
 This work was granted access to the HPC resource of CSC, Finland, made available 
 within DECI by the PRACE-2IP, funded by the European Community's 7th Framework 
-Program under grand agreement No. RI-283493. We thank Peter J. Collings 
-for very stimulating discussions. 
+Program under grand agreement No. RI-283493. We also acknowledge support by 
+EPSRC grant nos. EP/E045316 and EP/E030173 and the MAPPER EU-FP7 project 
+(grant no. RI-261507).We thank Peter J. Collings for stimulating discussions. 
 MEC holds a Royal Society Research Professorship.
 
 \appendix
