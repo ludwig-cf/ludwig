@@ -1,0 +1,52 @@
+Dear Editor,
+
+we would like to submit the attached manuscript,
+'Rheology of Cubic Blue Phases' for consideration for 
+publication in Soft Matter.
+
+We believe our work is suitable for the following reasons:
+
+We study the behaviour of cubic blue phases under shear flow 
+via lattice Boltzmann simulations. We focus on the two 
+experimentally observed phases, Blue Phase I (BPI) and 
+Blue Phase II (BPII). The disclination network of Blue Phase II 
+continuously breaks and reforms under steady shear, leading to 
+an oscillatory stress response in time. For larger shear rates, 
+the structure breaks up into a cholesteric helix, lying either 
+along the vorticity or the flow gradient direction according to 
+the imposed flow. BPI leads to a very different response. Here, 
+oscillations are only possible for intermediate shear rates – 
+very slow flow leads to a transition into an amorphous network 
+with an apparent yield stress. The flow-induced oscillation 
+regime features a novel arrangement of double helical disclinations 
+which rotate due to the shear. Large flow rates can, just as in 
+the BPII case, lead to the rupture of the network and the 
+stabilisation of less ordered cholesteric structures. 
+
+Our results provide the first theoretical investigation of sheared 
+blue phases in large systems, and are relevant to understanding 
+the bulk rheology of these materials. We therefore believe our work 
+should be of broad interest to soft and condensed matter 
+physicists, as well as to theoreticians and experimentalists 
+working in liquid crystal physics.
+
+With best wishes,
+
+O. Henrich, K. Stratford, P.V. Coveney, M. E. Cates, D. Marenduzzo
+
+Suggested referees are:
+
+G.P. Alexander
+e-mail: g.p.alexander@warwick.ac.uk
+
+E. Orlandini
+e-mail: orlandini@pd.infn.it
+
+J. Harting
+email: j.d.r.harting@tue.nl
+
+Kyongok Kang
+email: k.kang@fz-juelich.de
+
+C. Denniston
+e-mail: cdennisti@uwo.ca
