@@ -1,4 +1,0 @@
-Text: Simulations of blue phases in cholesteric liquid crystals reveal complex rheological behaviour.  
-
-Figure: Please use figure v_yz-v_z-160k_run903.png.
-

@@ -1,0 +1,962 @@
+This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.10.29)  4 JUN 2013 08:47
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**bprheo.tex
+(./bprheo.tex
+LaTeX2e <2011/06/27>
+Babel <v3.8m> and hyphenation patterns for english, dumylang, nohyphenation, ge
+rman-x-2012-05-30, ngerman-x-2012-05-30, afrikaans, ancientgreek, ibycus, arabi
+c, armenian, basque, bulgarian, catalan, pinyin, coptic, croatian, czech, danis
+h, dutch, ukenglish, usenglishmax, esperanto, estonian, ethiopic, farsi, finnis
+h, french, friulan, galician, german, ngerman, swissgerman, monogreek, greek, h
+ungarian, icelandic, assamese, bengali, gujarati, hindi, kannada, malayalam, ma
+rathi, oriya, panjabi, tamil, telugu, indonesian, interlingua, irish, italian, 
+kurmanji, latin, latvian, lithuanian, mongolian, mongolianlmc, bokmal, nynorsk,
+ polish, portuguese, romanian, romansh, russian, sanskrit, serbian, serbianc, s
+lovak, slovenian, spanish, swedish, turkish, turkmen, ukrainian, uppersorbian, 
+welsh, loaded.
+(/usr/local/texlive/2012/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2007/10/19 v1.4h Standard LaTeX document class
+(/usr/local/texlive/2012/texmf-dist/tex/latex/base/size10.clo
+File: size10.clo 2007/10/19 v1.4h Standard LaTeX file (size option)
+)
+\c@part=\count79
+\c@section=\count80
+\c@subsection=\count81
+\c@subsubsection=\count82
+\c@paragraph=\count83
+\c@subparagraph=\count84
+\c@figure=\count85
+\c@table=\count86
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/natbib/natbib.sty
+Package: natbib 2010/09/13 8.31b (PWD, AO)
+\bibhang=\skip43
+\bibsep=\skip44
+LaTeX Info: Redefining \cite on input line 694.
+\c@NAT@ctr=\count87
+) (./mhchem.sty
+Package: mhchem 2007/05/19 v3.07 for typesetting chemical formulae
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/base/ifthen.sty
+Package: ifthen 2001/05/26 v1.1c Standard LaTeX ifthen package (DPC)
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/tools/calc.sty
+Package: calc 2007/08/22 v4.3 Infix arithmetic (KKT,FJ)
+\calc@Acount=\count88
+\calc@Bcount=\count89
+\calc@Adimen=\dimen103
+\calc@Bdimen=\dimen104
+\calc@Askip=\skip45
+\calc@Bskip=\skip46
+LaTeX Info: Redefining \setlength on input line 76.
+LaTeX Info: Redefining \addtolength on input line 77.
+\calc@Ccount=\count90
+\calc@Cskip=\skip47
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/oberdiek/twoopt.sty
+Package: twoopt 2008/08/11 v1.5 Definitions with two optional arguments (HO)
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2000/07/18 v2.13 AMS math features
+\@mathmargin=\skip48
+
+For additional information on amsmath, use the `?' option.
+(/usr/local/texlive/2012/texmf-dist/tex/latex/amsmath/amstext.sty
+Package: amstext 2000/06/29 v2.01
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/amsmath/amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0
+\@emptytoks=\toks14
+\ex@=\dimen105
+))
+(/usr/local/texlive/2012/texmf-dist/tex/latex/amsmath/amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d
+\pmbraise@=\dimen106
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/amsmath/amsopn.sty
+Package: amsopn 1999/12/14 v2.01 operator names
+)
+\inf@bad=\count91
+LaTeX Info: Redefining \frac on input line 211.
+\uproot@=\count92
+\leftroot@=\count93
+LaTeX Info: Redefining \overline on input line 307.
+\classnum@=\count94
+\DOTSCASE@=\count95
+LaTeX Info: Redefining \ldots on input line 379.
+LaTeX Info: Redefining \dots on input line 382.
+LaTeX Info: Redefining \cdots on input line 467.
+\Mathstrutbox@=\box26
+\strutbox@=\box27
+\big@size=\dimen107
+LaTeX Font Info:    Redeclaring font encoding OML on input line 567.
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 568.
+\macc@depth=\count96
+\c@MaxMatrixCols=\count97
+\dotsspace@=\muskip10
+\c@parentequation=\count98
+\dspbrk@lvl=\count99
+\tag@help=\toks15
+\row@=\count100
+\column@=\count101
+\maxfields@=\count102
+\andhelp@=\toks16
+\eqnshift@=\dimen108
+\alignsep@=\dimen109
+\tagshift@=\dimen110
+\tagwidth@=\dimen111
+\totwidth@=\dimen112
+\lineht@=\dimen113
+\@envbody=\toks17
+\multlinegap=\skip49
+\multlinetaggap=\skip50
+\mathdisplay@stack=\toks18
+LaTeX Info: Redefining \[ on input line 2666.
+LaTeX Info: Redefining \] on input line 2667.
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 1999/03/16 v1.13 key=value parser (DPC)
+\KV@toks@=\toks19
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2009/02/05 v1.0o Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/latexconfig/graphics.cfg
+File: graphics.cfg 2010/04/23 v1.9 graphics configuration of TeX Live
+)
+Package graphics Info: Driver file: pdftex.def on input line 91.
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/pdftex-def/pdftex.def
+File: pdftex.def 2011/05/27 v0.06d Graphics/color for pdfTeX
+
+(/usr/local/texlive/2012/texmf-dist/tex/generic/oberdiek/infwarerr.sty
+Package: infwarerr 2010/04/08 v1.3 Providing info/warning/error messages (HO)
+)
+(/usr/local/texlive/2012/texmf-dist/tex/generic/oberdiek/ltxcmds.sty
+Package: ltxcmds 2011/11/09 v1.22 LaTeX kernel commands for general use (HO)
+)
+\Gread@gobject=\count103
+))
+\tok@mhchem@ce@iii=\toks20
+\mhchem@arrowminlength=\skip51
+\mhchem@arrows@box=\box28
+\mhchem@arrowlength@pgf=\skip52
+\mhchem@arrowminlength@pgf=\skip53
+\mhchem@bondwidth=\skip54
+\mhchem@bondheight=\skip55
+\mhchem@smallbondwidth@tmpA=\skip56
+\mhchem@smallbondwidth@tmpB=\skip57
+\mhchem@smallbondwidth=\skip58
+\mhchem@cf@element=\toks21
+\mhchem@cf@number=\toks22
+\mhchem@cf@sup=\toks23
+\tok@mhchem@cf@i=\toks24
+\c@mhchem@cf@length=\count104
+\mhchem@cf@replaceminus@tok=\toks25
+\mhchem@option@minussidebearingleft=\skip59
+\mhchem@option@minussidebearingright=\skip60
+
+
+Package mhchem Warning: You did not specify a 'version' option for the mhchem
+(mhchem)                package. This means you EITHER have an existing
+(mhchem)                document and mhchem was updated to a newer version.
+(mhchem)                Please check the mhchem manual in that case! OR, you
+(mhchem)                are about to create a new document; in this case,
+(mhchem)                please write \usepackage[version=3]{mhchem} in your pre
+amble in
+(mhchem)                order to use the most recent version of mhchem.
+
+) (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/times.sty
+Package: times 2005/04/12 PSNFSS-v9.2a (SPQR) 
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/mathptmx.sty
+Package: mathptmx 2005/04/12 PSNFSS-v9.2a Times w/ Math, improved (SPQR, WaS) 
+LaTeX Font Info:    Redeclaring symbol font `operators' on input line 28.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
+(Font)                  OT1/cmr/m/n --> OT1/ztmcm/m/n on input line 28.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/ztmcm/m/n on input line 28.
+LaTeX Font Info:    Redeclaring symbol font `letters' on input line 29.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `normal'
+(Font)                  OML/cmm/m/it --> OML/ztmcm/m/it on input line 29.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `bold'
+(Font)                  OML/cmm/b/it --> OML/ztmcm/m/it on input line 29.
+LaTeX Font Info:    Redeclaring symbol font `symbols' on input line 30.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `normal'
+(Font)                  OMS/cmsy/m/n --> OMS/ztmcm/m/n on input line 30.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `bold'
+(Font)                  OMS/cmsy/b/n --> OMS/ztmcm/m/n on input line 30.
+LaTeX Font Info:    Redeclaring symbol font `largesymbols' on input line 31.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `normal'
+(Font)                  OMX/cmex/m/n --> OMX/ztmcm/m/n on input line 31.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `bold'
+(Font)                  OMX/cmex/m/n --> OMX/ztmcm/m/n on input line 31.
+\symbold=\mathgroup4
+\symitalic=\mathgroup5
+LaTeX Font Info:    Redeclaring math alphabet \mathbf on input line 34.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
+(Font)                  OT1/cmr/bx/n --> OT1/ptm/bx/n on input line 34.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/ptm/bx/n on input line 34.
+LaTeX Font Info:    Redeclaring math alphabet \mathit on input line 35.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
+(Font)                  OT1/cmr/m/it --> OT1/ptm/m/it on input line 35.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
+(Font)                  OT1/cmr/bx/it --> OT1/ptm/m/it on input line 35.
+LaTeX Info: Redefining \hbar on input line 50.
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/sectsty/sectsty.sty
+Package: sectsty 2002/02/25 v2.0.2 Commands to change all sectional heading sty
+les
+)
+(./balance.sty
+Package: balance 1999/02/23 4.3 (PWD)
+\oldvsize=\dimen114
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/graphics/color.sty
+Package: color 2005/11/14 v1.0j Standard LaTeX Color (DPC)
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/latexconfig/color.cfg
+File: color.cfg 2007/01/18 v1.5 color configuration of teTeX/TeXLive
+)
+Package color Info: Driver file: pdftex.def on input line 130.
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/amsfonts/amssymb.sty
+Package: amssymb 2009/06/22 v3.00
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/amsfonts/amsfonts.sty
+Package: amsfonts 2009/06/22 v3.00 Basic AMSFonts support
+\symAMSa=\mathgroup6
+\symAMSb=\mathgroup7
+LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
+(Font)                  U/euf/m/n --> U/euf/b/n on input line 96.
+))
+(/usr/local/texlive/2012/texmf-dist/tex/latex/float/float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count105
+\float@exts=\toks26
+\float@box=\box29
+\@float@everytoks=\toks27
+\@floatcapt=\box30
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
+\Gin@req@height=\dimen115
+\Gin@req@width=\dimen116
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/lastpage/lastpage.sty
+Package: lastpage 2011/09/01 v1.2k Refers to last page's name (HMM; JPG)
+)
+(./caption.sty
+Package: caption 2008/04/01 v3.1h Customizing captions (AR)
+ (./caption3.sty
+Package: caption3 2009/10/09 v3.1k caption3 kernel (AR)
+\captionmargin=\dimen117
+\captionmargin@=\dimen118
+\captionwidth=\dimen119
+\caption@indent=\dimen120
+\caption@parindent=\dimen121
+\caption@hangindent=\dimen122
+)
+\c@ContinuedFloat=\count106
+Package caption Info: float package is loaded.
+) (./fancyhdr.sty
+\fancy@headwidth=\skip61
+\f@ncyO@elh=\skip62
+\f@ncyO@erh=\skip63
+\f@ncyO@olh=\skip64
+\f@ncyO@orh=\skip65
+\f@ncyO@elf=\skip66
+\f@ncyO@erf=\skip67
+\f@ncyO@olf=\skip68
+\f@ncyO@orf=\skip69
+)
+
+LaTeX Warning: Unused global option(s):
+    [8.5pt].
+
+(./bprheo.aux)
+\openout1 = `bprheo.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Try loading font information for OT1+ptm on input line 40.
+ (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/ot1ptm.fd
+File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
+)
+(/usr/local/texlive/2012/texmf-dist/tex/context/base/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count107
+\scratchdimen=\dimen123
+\scratchbox=\box31
+\nofMPsegments=\count108
+\nofMParguments=\count109
+\everyMPshowfont=\toks28
+\MPscratchCnt=\count110
+\MPscratchDim=\dimen124
+\MPnumerator=\count111
+\makeMPintoPDFobject=\count112
+\everyMPtoPDFconversion=\toks29
+) (/usr/local/texlive/2012/texmf-dist/tex/generic/oberdiek/pdftexcmds.sty
+Package: pdftexcmds 2011/11/29 v0.20 Utility functions of pdfTeX for LuaTeX (HO
+)
+
+(/usr/local/texlive/2012/texmf-dist/tex/generic/oberdiek/ifluatex.sty
+Package: ifluatex 2010/03/01 v1.3 Provides the ifluatex switch (HO)
+Package ifluatex Info: LuaTeX not detected.
+)
+(/usr/local/texlive/2012/texmf-dist/tex/generic/oberdiek/ifpdf.sty
+Package: ifpdf 2011/01/30 v2.3 Provides the ifpdf switch (HO)
+Package ifpdf Info: pdfTeX in PDF mode is detected.
+)
+Package pdftexcmds Info: LuaTeX not detected.
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+)
+(/usr/local/texlive/2012/texmf-dist/tex/latex/oberdiek/epstopdf-base.sty
+Package: epstopdf-base 2010/02/09 v2.5 Base part for package epstopdf
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/oberdiek/grfext.sty
+Package: grfext 2010/08/19 v1.1 Manage graphics extensions (HO)
+
+(/usr/local/texlive/2012/texmf-dist/tex/generic/oberdiek/kvdefinekeys.sty
+Package: kvdefinekeys 2011/04/07 v1.3 Define keys (HO)
+))
+(/usr/local/texlive/2012/texmf-dist/tex/latex/oberdiek/kvoptions.sty
+Package: kvoptions 2011/06/30 v3.11 Key value format for package options (HO)
+
+(/usr/local/texlive/2012/texmf-dist/tex/generic/oberdiek/kvsetkeys.sty
+Package: kvsetkeys 2012/04/25 v1.16 Key value parser (HO)
+
+(/usr/local/texlive/2012/texmf-dist/tex/generic/oberdiek/etexcmds.sty
+Package: etexcmds 2011/02/16 v1.5 Avoid name clashes with e-TeX commands (HO)
+Package etexcmds Info: Could not find \expanded.
+(etexcmds)             That can mean that you are not using pdfTeX 1.50 or
+(etexcmds)             that some package has redefined \expanded.
+(etexcmds)             In the latter case, load this package earlier.
+)))
+Package grfext Info: Graphics extension search list:
+(grfext)             [.png,.pdf,.jpg,.mps,.jpeg,.jbig2,.jb2,.PNG,.PDF,.JPG,.JPE
+G,.JBIG2,.JB2,.eps]
+(grfext)             \AppendGraphicsExtensions on input line 452.
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
+e
+))
+Package lastpage Info: Please have a look at the pageslts package at
+(lastpage)             http://www.ctan.org/tex-archive/ 
+(lastpage)             macros/latex/contrib/pageslts/ 
+(lastpage)             or
+(lastpage)             http://www.ctan.org/tex-archive/ 
+(lastpage)             install/macros/latex/contrib/pageslts.tds.zip
+(lastpage)             ! on input line 40.
+Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: End \AtBeginDocument code.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17.28> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 111.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 111.
+LaTeX Font Info:    Try loading font information for OT1+ztmcm on input line 11
+1.
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/ot1ztmcm.fd
+File: ot1ztmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OT1/ztmcm.
+)
+LaTeX Font Info:    Try loading font information for OML+ztmcm on input line 11
+1.
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omlztmcm.fd
+File: omlztmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OML/ztmcm.
+)
+LaTeX Font Info:    Try loading font information for OMS+ztmcm on input line 11
+1.
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omsztmcm.fd
+File: omsztmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OMS/ztmcm.
+)
+LaTeX Font Info:    Try loading font information for OMX+ztmcm on input line 11
+1.
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omxztmcm.fd
+File: omxztmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OMX/ztmcm.
+)
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <9> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 111.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 111.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 111.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <9> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 111.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 118.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <6> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 118.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <5> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 118.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <14.4> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 127.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 132.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7.4> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 132.
+
+Overfull \vbox (3.72491pt too high) has occurred while \output is active []
+
+
+Underfull \hbox (badness 3240) in paragraph at lines 161--181
+[]\OT1/ptm/m/n/10 Flow re-sponse in cholester-ics is both strongly non-
+ []
+
+<headers/LH.pdf, id=1, 56.21pt x 7.02625pt>
+File: headers/LH.pdf Graphic file (type pdf)
+ <use headers/LH.pdf>
+Package pdftex.def Info: headers/LH.pdf used on input line 195.
+(pdftex.def)             Requested size: 64.00714pt x 8.0pt.
+
+<headers/CH.pdf, id=2, 255.95625pt x 17.06375pt>
+File: headers/CH.pdf Graphic file (type pdf)
+ <use headers/CH.pdf>
+Package pdftex.def Info: headers/CH.pdf used on input line 195.
+(pdftex.def)             Requested size: 300.01828pt x 20.0pt.
+
+<headers/RH.pdf, id=3, 140.525pt x 10.0375pt>
+File: headers/RH.pdf Graphic file (type pdf)
+ <use headers/RH.pdf>
+Package pdftex.def Info: headers/RH.pdf used on input line 195.
+(pdftex.def)             Requested size: 140.00359pt x 10.0pt.
+
+<headers/LF.pdf, id=4, 154.5775pt x 8.03pt>
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 195.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+
+<headers/RF.pdf, id=5, 90.3375pt x 7.02625pt>
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 195.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+LaTeX Font Info:    Try loading font information for OT1+phv on input line 195.
+
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/ot1phv.fd
+File: ot1phv.fd 2001/06/04 scalable font definitions for OT1/phv.
+)
+LaTeX Font Info:    Try loading font information for OMS+phv on input line 195.
+
+
+(/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omsphv.fd
+File: omsphv.fd 
+)
+LaTeX Font Info:    Font shape `OMS/phv/m/n' in size <8> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 195.
+ [1{/usr/local/texlive/2012/texmf-var/fonts/map/pdftex/updmap/pdftex.map}
+
+
+ <./headers/LH.pdf> <./headers/CH.pdf> <./headers/RH.pdf> <./headers/LF.pdf> <.
+/headers/RF.pdf>]
+Underfull \hbox (badness 1769) in paragraph at lines 282--286
+\OT1/ptm/m/n/10 re-spec-tively gov-erned by the con-ti-nu-ity equa-tion $\OML/z
+tmcm/m/it/10 @[]^^Z \OT1/ztmcm/m/n/10 =
+ []
+
+File: headers/RF.pdf Graphic file (type pdf)
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 298.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 298.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [2]
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 396.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 396.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+ [3] <flowcurve_bp2.pdf, id=102, 361.35pt x 252.945pt>
+File: flowcurve_bp2.pdf Graphic file (type pdf)
+
+<use flowcurve_bp2.pdf>
+Package pdftex.def Info: flowcurve_bp2.pdf used on input line 433.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+<app_visc_strain_bp2_a.pdf, id=103, 361.35pt x 252.945pt>
+File: app_visc_strain_bp2_a.pdf Graphic file (type pdf)
+
+<use app_visc_strain_bp2_a.pdf>
+Package pdftex.def Info: app_visc_strain_bp2_a.pdf used on input line 434.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+<app_visc_strain_bp2_b.pdf, id=104, 361.35pt x 252.945pt>
+File: app_visc_strain_bp2_b.pdf Graphic file (type pdf)
+
+<use app_visc_strain_bp2_b.pdf>
+Package pdftex.def Info: app_visc_strain_bp2_b.pdf used on input line 435.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 433--445
+[][] 
+ []
+
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 433--445
+[] 
+ []
+
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 433--445
+[] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 433--445
+
+ []
+
+
+LaTeX Warning: Float too large for page by 41.41286pt on input line 447.
+
+File: headers/RF.pdf Graphic file (type pdf)
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 478.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 478.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [4 <./flowcurve_bp2.pdf> <./app_visc_strain_bp2_a.pdf> <./app_visc_strain_bp2_
+b.pdf>]
+<disc-160k_run902r.png, id=139, 826.08624pt x 822.07124pt>
+File: disc-160k_run902r.png Graphic file (type png)
+
+<use disc-160k_run902r.png>
+Package pdftex.def Info: disc-160k_run902r.png used on input line 541.
+(pdftex.def)             Requested size: 179.25548pt x 178.3851pt.
+
+<disc-164k_run902r.png, id=140, 826.08624pt x 822.07124pt>
+File: disc-164k_run902r.png Graphic file (type png)
+
+<use disc-164k_run902r.png>
+Package pdftex.def Info: disc-164k_run902r.png used on input line 542.
+(pdftex.def)             Requested size: 179.25548pt x 178.3851pt.
+
+<disc-165k_run902r.png, id=141, 826.08624pt x 822.07124pt>
+File: disc-165k_run902r.png Graphic file (type png)
+
+<use disc-165k_run902r.png>
+Package pdftex.def Info: disc-165k_run902r.png used on input line 543.
+(pdftex.def)             Requested size: 179.25548pt x 178.3851pt.
+
+
+LaTeX Warning: Float too large for page by 10.19469pt on input line 552.
+
+<v_yz-v_z-160k_run902r.png, id=142, 830.10126pt x 712.6625pt>
+File: v_yz-v_z-160k_run902r.png Graphic file (type png)
+
+<use v_yz-v_z-160k_run902r.png>
+Package pdftex.def Info: v_yz-v_z-160k_run902r.png used on input line 555.
+(pdftex.def)             Requested size: 253.51154pt x 217.63904pt.
+
+<v_yz-v_z-160k_run903r.png, id=143, 830.10126pt x 712.6625pt>
+File: v_yz-v_z-160k_run903r.png Graphic file (type png)
+
+<use v_yz-v_z-160k_run903r.png>
+Package pdftex.def Info: v_yz-v_z-160k_run903r.png used on input line 556.
+(pdftex.def)             Requested size: 253.51154pt x 217.63904pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 644.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 644.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+
+[5] <flowcurve_bp1.pdf, id=147, 361.35pt x 252.945pt>
+File: flowcurve_bp1.pdf Graphic file (type pdf)
+ <use flowcurve_bp1.pdf>
+Package pdftex.def Info: flowcurve_bp1.pdf used on input line 677.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+<app_visc_strain_bp1_a.pdf, id=148, 361.35pt x 252.945pt>
+File: app_visc_strain_bp1_a.pdf Graphic file (type pdf)
+
+<use app_visc_strain_bp1_a.pdf>
+Package pdftex.def Info: app_visc_strain_bp1_a.pdf used on input line 678.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+<app_visc_strain_bp1_b.pdf, id=149, 361.35pt x 252.945pt>
+File: app_visc_strain_bp1_b.pdf Graphic file (type pdf)
+
+<use app_visc_strain_bp1_b.pdf>
+Package pdftex.def Info: app_visc_strain_bp1_b.pdf used on input line 679.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+<app_visc_strain_bp1_c.pdf, id=150, 361.35pt x 252.945pt>
+File: app_visc_strain_bp1_c.pdf Graphic file (type pdf)
+
+<use app_visc_strain_bp1_c.pdf>
+Package pdftex.def Info: app_visc_strain_bp1_c.pdf used on input line 680.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 677--691
+[][] 
+ []
+
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 677--691
+[] 
+ []
+
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 677--691
+[] 
+ []
+
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 677--691
+[] 
+ []
+
+
+LaTeX Warning: Float too large for page by 218.87068pt on input line 693.
+
+<stress_fe_yield_bp1.pdf, id=151, 361.35pt x 252.945pt>
+File: stress_fe_yield_bp1.pdf Graphic file (type pdf)
+
+<use stress_fe_yield_bp1.pdf>
+Package pdftex.def Info: stress_fe_yield_bp1.pdf used on input line 699.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 699--704
+[][] 
+ []
+
+File: headers/RF.pdf Graphic file (type pdf)
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 736.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 736.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [6 <./v_yz-v_z-160k_run902r.png (PNG copy)> <./v_yz-v_z-160k_run903r.png (PNG 
+copy)>]
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 736.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 736.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+ [7 <./disc-160k_run902r.png (PNG copy)> <./disc-164k_run902r.png (PNG copy)> <
+./disc-165k_run902r.png (PNG copy)> <./flowcurve_bp1.pdf> <./app_visc_strain_bp
+1_a.pdf> <./app_visc_strain_bp1_b.pdf> <./app_visc_strain_bp1_c.pdf>] <stress_b
+p1-1_bp1-2.pdf, id=200, 361.35pt x 252.945pt>
+File: stress_bp1-1_bp1-2.pdf Graphic file (type pdf)
+
+<use stress_bp1-1_bp1-2.pdf>
+Package pdftex.def Info: stress_bp1-1_bp1-2.pdf used on input line 738.
+(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 738--744
+[][] 
+ []
+
+<disc-xy-10k_run1115r.png, id=201, 736.7525pt x 778.91pt>
+File: disc-xy-10k_run1115r.png Graphic file (type png)
+
+<use disc-xy-10k_run1115r.png>
+Package pdftex.def Info: disc-xy-10k_run1115r.png used on input line 749.
+(pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
+
+<disc-xy-180k_run1115r.png, id=202, 736.7525pt x 778.91pt>
+File: disc-xy-180k_run1115r.png Graphic file (type png)
+
+<use disc-xy-180k_run1115r.png>
+Package pdftex.def Info: disc-xy-180k_run1115r.png used on input line 750.
+(pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
+
+<disc-xy-200k_run1115r.png, id=203, 736.7525pt x 778.91pt>
+File: disc-xy-200k_run1115r.png Graphic file (type png)
+
+<use disc-xy-200k_run1115r.png>
+Package pdftex.def Info: disc-xy-200k_run1115r.png used on input line 751.
+(pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
+
+<disc-xy-210k_run1115r.png, id=204, 736.7525pt x 778.91pt>
+File: disc-xy-210k_run1115r.png Graphic file (type png)
+
+<use disc-xy-210k_run1115r.png>
+Package pdftex.def Info: disc-xy-210k_run1115r.png used on input line 752.
+(pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
+
+<disc-xy-1650k_run1115r.png, id=205, 736.7525pt x 778.91pt>
+File: disc-xy-1650k_run1115r.png Graphic file (type png)
+
+<use disc-xy-1650k_run1115r.png>
+Package pdftex.def Info: disc-xy-1650k_run1115r.png used on input line 753.
+(pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
+
+<disc-xy-1800k_run1115r.png, id=206, 736.7525pt x 778.91pt>
+File: disc-xy-1800k_run1115r.png Graphic file (type png)
+
+<use disc-xy-1800k_run1115r.png>
+Package pdftex.def Info: disc-xy-1800k_run1115r.png used on input line 754.
+(pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
+
+<disc-xy-2000k_run1115r.png, id=207, 736.7525pt x 778.91pt>
+File: disc-xy-2000k_run1115r.png Graphic file (type png)
+
+<use disc-xy-2000k_run1115r.png>
+Package pdftex.def Info: disc-xy-2000k_run1115r.png used on input line 755.
+(pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
+
+<disc-xy-2400k_run1115r.png, id=208, 736.7525pt x 778.91pt>
+File: disc-xy-2400k_run1115r.png Graphic file (type png)
+
+<use disc-xy-2400k_run1115r.png>
+Package pdftex.def Info: disc-xy-2400k_run1115r.png used on input line 756.
+(pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
+
+<disc-364k_run914r.png, id=209, 850.17625pt x 866.23625pt>
+File: disc-364k_run914r.png Graphic file (type png)
+
+<use disc-364k_run914r.png>
+Package pdftex.def Info: disc-364k_run914r.png used on input line 833.
+(pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
+
+<disc-366k_run914r.png, id=210, 850.17625pt x 866.23625pt>
+File: disc-366k_run914r.png Graphic file (type png)
+
+<use disc-366k_run914r.png>
+Package pdftex.def Info: disc-366k_run914r.png used on input line 834.
+(pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
+
+<disc-368k_run914r.png, id=211, 850.17625pt x 866.23625pt>
+File: disc-368k_run914r.png Graphic file (type png)
+
+<use disc-368k_run914r.png>
+Package pdftex.def Info: disc-368k_run914r.png used on input line 835.
+(pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
+
+<disc-370k_run914r.png, id=212, 850.17625pt x 866.23625pt>
+File: disc-370k_run914r.png Graphic file (type png)
+
+<use disc-370k_run914r.png>
+Package pdftex.def Info: disc-370k_run914r.png used on input line 836.
+(pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
+
+<disc-372k_run914r.png, id=213, 850.17625pt x 866.23625pt>
+File: disc-372k_run914r.png Graphic file (type png)
+
+<use disc-372k_run914r.png>
+Package pdftex.def Info: disc-372k_run914r.png used on input line 837.
+(pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
+
+<disc-374k_run914r.png, id=214, 850.17625pt x 866.23625pt>
+File: disc-374k_run914r.png Graphic file (type png)
+
+<use disc-374k_run914r.png>
+Package pdftex.def Info: disc-374k_run914r.png used on input line 838.
+(pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
+
+<v_yz-v_z-364k_run914r.png, id=215, 850.17625pt x 750.805pt>
+File: v_yz-v_z-364k_run914r.png Graphic file (type png)
+
+<use v_yz-v_z-364k_run914r.png>
+Package pdftex.def Info: v_yz-v_z-364k_run914r.png used on input line 848.
+(pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
+
+<v_yz-v_z-366k_run914r.png, id=216, 850.17625pt x 750.805pt>
+File: v_yz-v_z-366k_run914r.png Graphic file (type png)
+
+<use v_yz-v_z-366k_run914r.png>
+Package pdftex.def Info: v_yz-v_z-366k_run914r.png used on input line 849.
+(pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
+
+<v_yz-v_z-368k_run914r.png, id=217, 850.17625pt x 750.805pt>
+File: v_yz-v_z-368k_run914r.png Graphic file (type png)
+
+<use v_yz-v_z-368k_run914r.png>
+Package pdftex.def Info: v_yz-v_z-368k_run914r.png used on input line 850.
+(pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
+
+<v_yz-v_z-370k_run914r.png, id=218, 850.17625pt x 750.805pt>
+File: v_yz-v_z-370k_run914r.png Graphic file (type png)
+
+<use v_yz-v_z-370k_run914r.png>
+Package pdftex.def Info: v_yz-v_z-370k_run914r.png used on input line 851.
+(pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
+
+<v_yz-v_z-372k_run914r.png, id=219, 850.17625pt x 750.805pt>
+File: v_yz-v_z-372k_run914r.png Graphic file (type png)
+
+<use v_yz-v_z-372k_run914r.png>
+Package pdftex.def Info: v_yz-v_z-372k_run914r.png used on input line 852.
+(pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
+
+<v_yz-v_z-374k_run914r.png, id=220, 850.17625pt x 750.805pt>
+File: v_yz-v_z-374k_run914r.png Graphic file (type png)
+
+<use v_yz-v_z-374k_run914r.png>
+Package pdftex.def Info: v_yz-v_z-374k_run914r.png used on input line 853.
+(pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 848--863
+[][] [] []
+ []
+
+File: headers/RF.pdf Graphic file (type pdf)
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 878.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 878.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [8 <./stress_fe_yield_bp1.pdf> <./stress_bp1-1_bp1-2.pdf>]
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 878.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 878.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+ [9 <./disc-xy-10k_run1115r.png (PNG copy)> <./disc-xy-180k_run1115r.png (PNG c
+opy)> <./disc-xy-200k_run1115r.png (PNG copy)> <./disc-xy-210k_run1115r.png (PN
+G copy)> <./disc-xy-1650k_run1115r.png (PNG copy)> <./disc-xy-1800k_run1115r.pn
+g (PNG copy)> <./disc-xy-2000k_run1115r.png (PNG copy)> <./disc-xy-2400k_run111
+5r.png (PNG copy)>]
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 878.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 878.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [10 <./disc-364k_run914r.png (PNG copy)> <./disc-366k_run914r.png (PNG copy)> 
+<./disc-368k_run914r.png (PNG copy)> <./disc-370k_run914r.png (PNG copy)> <./di
+sc-372k_run914r.png (PNG copy)> <./disc-374k_run914r.png (PNG copy)>]
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 878.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 878.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+
+[11 <./v_yz-v_z-364k_run914r.png (PNG copy)> <./v_yz-v_z-366k_run914r.png (PNG 
+copy)> <./v_yz-v_z-368k_run914r.png (PNG copy)> <./v_yz-v_z-370k_run914r.png (P
+NG copy)> <./v_yz-v_z-372k_run914r.png (PNG copy)> <./v_yz-v_z-374k_run914r.png
+ (PNG copy)>] <dir3d+y-200k_run1179r.png, id=253, 959.585pt x 909.3975pt>
+File: dir3d+y-200k_run1179r.png Graphic file (type png)
+
+<use dir3d+y-200k_run1179r.png>
+Package pdftex.def Info: dir3d+y-200k_run1179r.png used on input line 1034.
+(pdftex.def)             Requested size: 243.27417pt x 230.54036pt.
+
+Underfull \vbox (badness 3536) has occurred while \output is active []
+
+File: headers/RF.pdf Graphic file (type pdf)
+
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1075.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1075.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [12 <./dir3d+y-200k_run1179r.png (PNG copy)>]
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1309.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1309.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+ [13]
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1309.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+
+<use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1309.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [14] (./bprheo.bbl) 
+AED: lastpage setting LastPage
+File: headers/LF.pdf Graphic file (type pdf)
+<use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1316.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1316.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+ [15
+
+] (./bprheo.aux) ) 
+Here is how much of TeX's memory you used:
+ 4931 strings out of 493488
+ 73633 string characters out of 3141325
+ 182941 words of memory out of 3000000
+ 8062 multiletter control sequences out of 15000+200000
+ 64284 words of font info for 137 fonts, out of 3000000 for 9000
+ 957 hyphenation exceptions out of 8191
+ 38i,15n,43p,1044b,406s stack positions out of 5000i,500n,10000p,200000b,50000s
+{/usr/local/texlive/2012/texmf-dist/fonts/enc/dvips/base/8r.e
+nc}</usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pf
+b></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb
+></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><
+/usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></
+usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></us
+r/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb>
+</usr/local/texlive/2012/texmf-dist/fonts/type1/public/rsfs/rsfs10.pfb></usr/lo
+cal/texlive/2012/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/tex
+live/2012/texmf-dist/fonts/type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/t
+exmf-dist/fonts/type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/texmf-dist/f
+onts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1
+/urw/times/utmbi8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/time
+s/utmr8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmri8a.
+pfb>
+Output written on bprheo.pdf (15 pages, 10945198 bytes).
+PDF statistics:
+ 313 PDF objects out of 1000 (max. 8388607)
+ 196 compressed objects within 2 object streams
+ 0 named destinations out of 1000 (max. 500000)
+ 201 words of extra memory for PDF output out of 10000 (max. 10000000)
+
