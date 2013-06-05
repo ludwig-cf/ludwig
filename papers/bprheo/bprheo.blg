@@ -3,46 +3,46 @@ Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: bprheo.aux
 The style file: rsc.bst
 Database file #1: bprheo.bib
-Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
-You've used 37 entries,
-            3085 wiz_defined-function locations,
-            865 strings with 8240 characters,
-and the built_in function-call counts, 12237 in all, are:
-= -- 916
-> -- 827
-< -- 16
-+ -- 258
-- -- 218
-* -- 1287
-:= -- 1872
-add.period$ -- 37
-call.type$ -- 37
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+You've used 38 entries,
+            3045 wiz_defined-function locations,
+            863 strings with 8231 characters,
+and the built_in function-call counts, 12561 in all, are:
+= -- 944
+> -- 844
+< -- 17
++ -- 263
+- -- 222
+* -- 1319
+:= -- 1918
+add.period$ -- 38
+call.type$ -- 38
 change.case$ -- 0
-chr.to.int$ -- 34
-cite$ -- 37
-duplicate$ -- 539
-empty$ -- 835
-format.name$ -- 275
-if$ -- 2421
+chr.to.int$ -- 35
+cite$ -- 38
+duplicate$ -- 553
+empty$ -- 858
+format.name$ -- 282
+if$ -- 2488
 int.to.chr$ -- 4
 int.to.str$ -- 1
 missing$ -- 0
-newline$ -- 243
-num.names$ -- 111
-pop$ -- 117
+newline$ -- 249
+num.names$ -- 114
+pop$ -- 120
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 286
+skip$ -- 295
 stack$ -- 0
-substring$ -- 633
-swap$ -- 258
-text.length$ -- 74
+substring$ -- 654
+swap$ -- 266
+text.length$ -- 76
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 253
+type$ -- 260
 warning$ -- 0
-while$ -- 109
+while$ -- 112
 width$ -- 0
-write$ -- 538
+write$ -- 552

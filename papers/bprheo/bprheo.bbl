@@ -1,7 +1,7 @@
 \providecommand*{\mcitethebibliography}{\thebibliography}
 \csname @ifundefined\endcsname{endmcitethebibliography}
 {\let\endmcitethebibliography\endthebibliography}{}
-\begin{mcitethebibliography}{37}
+\begin{mcitethebibliography}{38}
 \providecommand*{\natexlab}[1]{#1}
 \providecommand*{\mciteSetBstSublistMode}[1]{}
 \providecommand*{\mciteSetBstMaxWidthForm}[2]{}
@@ -138,6 +138,13 @@ O.~Henrich, K.~Stratford, D.~Marenduzzo and M.~E. Cates, \emph{Proc. Natl.
 \EndOfBibitem
 \bibitem[Helfrich(1969)]{Helfrich:1969}
 W.~Helfrich, \emph{Phys. Rev. Lett.}, 1969, \textbf{23}, 372\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Press and Arrot(1978)]{Press:1978}
+M.~J. Press and A.~S. Arrot, \emph{J. Phys. France}, 1978, \textbf{39},
+  750--759\relax
 \mciteBstWouldAddEndPuncttrue
 \mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
 {\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
