@@ -569,7 +569,7 @@ it takes the network to reconnect along the flow direction.}
 \label{bp2-1-velo}
 \end{figure*}
 
-Characteristic bands are visible in Fig. \ref{bp2-velo}, which are 
+Characteristic bands are visible in Fig. \ref{bp2-1-velo}, which are 
 oriented along the vorticity direction. The direction of the flow
 in each of the bands depends on the helicity of the underlying cholesteric
 liquid crystal (i.e. on the sign of $q_0$ in Eq.~\ref{FE}), and the velocity
@@ -578,19 +578,21 @@ the other.
 Further quantitative evidence for a direct link between the sense of motion 
 and the helicity can be gained by time-averaging over individual cycles.
 
-Table \ref{tab1} in the Appendix 
+Table~\ref{tab1} in the Appendix 
 gives minima, maxima, averages and standard deviations 
 of the velocity components.
 All values for the two runs with inverted helicity are identical apart 
 from a change of sign in the $z$-components.
 There is only a slight imbalance in magnitude 
 between the maximum and minimum velocities 
-along the $z$-direction. Therefore the averaged flow along the vorticity
-direction, leading to network motion, is very small, and much smaller than
+along the $z$-direction. \rev{Therefore the averaged flow along the vorticity
+direction is very small, and much smaller than
 the local velocity flow. This suggests that the
 flow of the network along the vorticity 
-direction is permeative (i.e. the fluid moves but the network as a whole 
-moves much less). 
+direction is permeative. This claim is further supported by the characteristic 
+velocity bands in the secondary flow, visible in Fig.~\ref{bp2-1-velo}. 
+The flow in vorticity direction takes clearly place in positive {\em and} in negative z-direction, 
+whereas the network as a whole moves only in one direction.} 
 
 \subsection{Blue Phase I}
 
@@ -603,30 +605,38 @@ the differences between BPI and BPII regarding their rheological response.
 We present again key aspects in an overview before we address specific features 
 in more detail. 
 
-Fig. \ref{bp1-rheo} shows the ratio between the 
-apparent viscosity $\eta_{app}$ and $\eta$ versus time and 
-strain for the same shear rates as in Fig. \ref{bp2-rheo}. The plot
-shows that there is more shear thinning in BPI than in BPII, for
-the shear rate range we considered. 
-Through much of the flow range we studied,
-the average shear stress versus shear rate can be fitted reasonably 
-well by a power law $\bar{\Pi}_{xy}=a \gd^b$ with $a=0.019, b=0.63$.
+\rev{Fig. \ref{bp1-flowcurve} shows the flow curve of BPI for the same range of
+shear rates as in Fig.~\ref{bp2-flowcurve}. 
+The plot shows that there is more shear thinning in BPI than in BPII, for
+the shear rate range we considered.} 
 
 For intermediate (but not low) shear rates, we once more find regular oscillations in the stress
 response versus time, and in the network morphology -- we label this 
 regime BPI-2. 
+\rev{This is also depicted in the centre picture of Fig.~\ref{bp1-appvisc} for the
+ratio of the apparent viscosity $\eta_{app}$ and $\eta$ versus strain.}
+
 The BPI-2 regime now does not persist to arbitrarily low shear: there the
 oscillations become irregular and seemingly chaotic, and after a few
-cycles the disclination pattern becomes amorphous. We refer to this 
-flow regime as BPI-1. 
+cycles the disclination pattern becomes amorphous.
+\rev{For these very low shear rates the flow curve in Fig. \ref{bp1-flowcurve}
+develops a horizontal branch, which suggest the existence of a yield stress.} 
+We refer to this flow regime as BPI-1.
+
 The BPI-2 regime is also unstable if the shear is increased {\em above} 
-a critical value -- close to this breakup point the oscillations in the 
-shear stress show an increasingly complex
-pattern, until the network breaks up completely and a new regime, BPI-3, is entered.
-In regime BPI-3 ($6.25\e{-4}\lesssim\gd\lesssim7.81\e{-4}$; $10.67 \lesssim {\it Er} \lesssim 13.33$) 
-we observe that the BPI network transforms under shear into
-a  quasi two-dimensional state consisting of
-double-twist rolls.
+a critical value 
+\rev{in the region of Ericksen numbers $Er \simeq O(1)$
+where viscous and elastic forces are of the same magnitude. 
+Close to this breakup point the network seems to become
+increasingly sensitive towards small perturbations in the flow field
+that cause irregularities in the order parameter structure.
+These distortions couple back to the flow and form a possible
+route towards "rheochaos"~\cite{rheochaos,Cates:2002}.}
+
+We also observe that 
+
+regime BPI-3 ($3.125\e{-4}\lesssim\gd\lesssim7.81\e{-4}$; $2.67 \lesssim {\it Er} \lesssim 6.01$) 
+
 Finally, for shear rates such that
 $9.37\e{-4}\lesssim\gd\lesssim1.25\e{-3}$ ($16 \lesssim {\it Er} \lesssim 21.33$) we observe the same cholesteric 
 configuration with the helical axis along the gradient direction as 
@@ -654,7 +664,7 @@ during one cycle in regime BPI-2.}}
 \includegraphics[width=0.495\textwidth]{app_visc_strain_bp1_c.pdf}
 \caption{Apparent viscosity $\eta_{app}=\langle \Pi_{xy}\rangle/\dot{\gamma}$ (normalised by $\eta$) of BPI versus time (top) 
 and strain (bottom).}
-\label{bp1-rheo}
+\label{bp1-appvisc}
 \end{figure}
 
 
@@ -728,19 +738,6 @@ which the system passes for several cycles before it ends up in
 an amorphous state (bottom row far right, at time step $t=2.4\e{6}$).}
 \label{bp1-1-disc}
 \end{figure*}
-
-%%%  %%%%%%%%%%%%%
-\ifold{The negative branch in the shear stress is connected
-to a local maximum followed by a local minimum in the 
-average free energy. Hence, the region of negative stress can be 
-regarded as a phase during which elastic forces exert a 
-'pull' on the network while it tries to reach a more 
-favourable configuration. However, the low flow rate
-causes this unstable intermediate state to be exposed to these
-elastic forces for a relatively long time, long enough to 
-create small distortions which finally break the symmetry of the
-flow-induced configuration.}\fi
-
 
 To gain further insight into the flow-induced deformation, and eventual
 breakdown, of BPI, it is instructive to follow the dynamics of 
@@ -857,7 +854,7 @@ rates for which the recurrence period is much longer and far more irregular,
 with seemingly intermittent dynamics (e.g. at $\gd=1.3671875\e{-4}$ the
 network configuration repeats itself after $6/\gd$, $12/\gd$, $22/\gd$).
 Taken together, all this evidence very much suggests that 
-the BPI-2 range includes at least some instances of ``rheochaos''~\cite{rheochaos,Cates:2002}.
+the BPI-2 range includes at least some instances of "rheochaos"~\cite{rheochaos,Cates:2002}.
 
 Fig. \ref{bp1-velo} depicts a snapshot of the secondary velocity 
 components $v_y$ and $v_z$ for left- and right-handed chirality of
@@ -1166,7 +1163,7 @@ BPI-2 (PRC) &23.44 &2.00 & 0.1388 & & & & & & & & & \\
 %BPI-2 & 31.25 &5.33 & 0.1388 & -1988.36 &1986.71 &16.85 &-4.08 &4.46 &15.94 &-11.37 & 12.16 &19.38\\
 %BPI-2 & 46.87 & 8.00 & 0.1388 & -3025.46 & 3003.05 &21.43 & -56.96 & 56.44  & 18.75 & -12.65 & 82.97  & 27.96\\
 \hline
-BPI-3 (AMS) &31.25 &2.66 & 0.1388 & & & & & & & & & \\
+BPI-3 (AMS) &31.25 &2.67 & 0.1388 & & & & & & & & & \\
 BPI-3 (AMS) &46.87 &4.00 & 0.1388 & & & & & & & & & \\
 BPI-3 (AMS) &54.69 &4.67 & 0.1388 & & & & & & & & & \\
 BPI-3 (AMS) &62.50 &5.33 & 0.1388 & & & & & & & & & \\
@@ -1174,7 +1171,7 @@ BPI-3 (AMS) &78.13 &6.01 & 0.1388 & & & & & & & & & \\
 %BPI-3 &78.13 &13.33 & 0.1388 & -4968.11 &4973.75 &20.89 &-60.61 &58.75 &23.66 &-84.93 &116.61 &34.75 \\
 \hline
 BPI-4 (GJ) &93.75 &8.00 & 0.1388 & & & & & & & & & \\
-BPI-4 (GJ) &125.0 &10.66 & 0.1388 & & & & & & & & & \\
+BPI-4 (GJ) &125.0 &10.67 & 0.1388 & & & & & & & & & \\
 BPI-4 (GJ) &187.5 &16.00 & 0.1388 & & & & & & & & & \\
 %GJT (BPI-4)& 125.0 & 21.33& 0.1388 & -7934.97 & 7935.41 & 0.36 & -0.005 & 0.005 & - &-22.73 & 21.12 & 0.07\\
 \hline
