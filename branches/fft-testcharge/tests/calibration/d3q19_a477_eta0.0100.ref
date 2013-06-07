@@ -1,0 +1,331 @@
+Welcome to Ludwig (MPI version running on 8 processes)
+
+The SVN revision details are: 1225M
+Note assertions via standard C assert() are on.
+
+Read 58 user parameters from ./input_a477_eta0.0100
+
+Free energy details
+-------------------
+
+None selected
+
+System details
+--------------
+System size:    48 48 48
+Decomposition:  2 2 2
+Local domain:   24 24 24
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Fluid properties
+----------------
+Mean density:       1.00000e+00
+Shear viscosity     1.00000e-02
+Bulk viscosity      1.00000e-02
+Temperature         2.13333e-05
+Body force density  0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    5.30000e-01
+Bulk relaxation time:     5.30000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+Setting phi I/O format to ASCII
+Setting velocity I/O format to ASCII
+
+Colloid I/O settings
+--------------------
+Input format:  binary
+Input file:    serial single file
+Output format: binary
+
+
+Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
+
+Initialised 1 colloid from input
+
+
+
+Calibration information:
+Target Reynolds number:     5.0000e-02
+Target particle speed:      1.0482e-04
+Force applied:              1.3051e-04
+Spin-up T_diffusion:            230400
+Stokes time (timesteps):         45505
+Measurement frequency:             910
+
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      110134.00  1.00000000000-2.2204460e-16  1.00000000000 1.00000000000
+
+Momentum - x y z
+[total   ]  1.5284163e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  1.5284163e-12  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9396510e-05 -1.0052109e-05 -8.3941716e-05
+[maximum ]  4.9396510e-05 -1.0052109e-05 -8.3941716e-05
+
+Scalars - total mean variance min max
+[rho]      110135.00  1.00000000000 5.2180482e-15  0.99999859198 1.00000139075
+
+Free energy density - timestep total fluid
+[fed]          50000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -1.5836155e-09  1.5165582e-09  3.6626447e-10
+[fluid   ] -2.2455455e-02  4.5695920e-03  3.8159553e-02
+[colloids]  2.2455454e-02 -4.5695905e-03 -3.8159552e-02
+
+Velocity - x y z
+[minimum ] -9.0596217e-06 -2.4196786e-05 -8.4806955e-05
+[maximum ]  5.2949724e-05  1.4605871e-05  1.5419094e-05
+
+Completed cycle 50000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9766323e-05 -1.0427699e-05 -8.4995390e-05
+[maximum ]  4.9766323e-05 -1.0427699e-05 -8.4995390e-05
+
+Scalars - total mean variance min max
+[rho]      110133.00  0.99999999999-2.2204460e-16  0.99999862207 1.00000144932
+
+Free energy density - timestep total fluid
+[fed]         100000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -3.0968349e-09  3.1088499e-09  8.8553574e-10
+[fluid   ] -2.2624477e-02  4.7405970e-03  3.8640096e-02
+[colloids]  2.2624474e-02 -4.7405939e-03 -3.8640096e-02
+
+Velocity - x y z
+[minimum ] -9.0522491e-06 -2.4743745e-05 -8.5643192e-05
+[maximum ]  5.4436175e-05  1.4133740e-05  1.5384919e-05
+
+Completed cycle 100000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9319757e-05 -1.0382596e-05 -8.4145340e-05
+[maximum ]  4.9319757e-05 -1.0382596e-05 -8.4145340e-05
+
+Scalars - total mean variance min max
+[rho]      110136.00  0.99999999999 5.2180482e-15  0.99999858592 1.00000140408
+
+Free energy density - timestep total fluid
+[fed]         150000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -4.5275489e-09  4.2631882e-09  8.3722090e-10
+[fluid   ] -2.2421420e-02  4.7200328e-03  3.8254003e-02
+[colloids]  2.2421416e-02 -4.7200286e-03 -3.8254002e-02
+
+Velocity - x y z
+[minimum ] -9.0738203e-06 -2.4323728e-05 -8.5442087e-05
+[maximum ]  5.3501100e-05  1.4406125e-05  1.5416499e-05
+
+Completed cycle 150000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9056214e-05 -1.0309353e-05 -8.4698218e-05
+[maximum ]  4.9056214e-05 -1.0309353e-05 -8.4698218e-05
+
+Scalars - total mean variance min max
+[rho]      110136.00  0.99999999999 6.4392935e-15  0.99999856453 1.00000135519
+
+Free energy density - timestep total fluid
+[fed]         200000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -5.3796702e-09  6.6759270e-09  1.1735662e-09
+[fluid   ] -2.2301980e-02  4.6866708e-03  3.8504132e-02
+[colloids]  2.2301975e-02 -4.6866641e-03 -3.8504131e-02
+
+Velocity - x y z
+[minimum ] -9.0558418e-06 -2.4708959e-05 -8.5442087e-05
+[maximum ]  5.3178268e-05  1.4342333e-05  1.5397754e-05
+
+Completed cycle 200000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9426785e-05 -1.0267778e-05 -8.4249857e-05
+[maximum ]  4.9426785e-05 -1.0267778e-05 -8.4249857e-05
+
+Scalars - total mean variance min max
+[rho]      110137.00  0.99999999999 9.2148511e-15  0.99999854769 1.00000144850
+
+Free energy density - timestep total fluid
+[fed]         250000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -6.9372591e-09  8.2042769e-09  1.2147786e-09
+[fluid   ] -2.2467126e-02  4.6661058e-03  3.8295490e-02
+[colloids]  2.2467120e-02 -4.6660976e-03 -3.8295489e-02
+
+Velocity - x y z
+[minimum ] -9.0608063e-06 -2.4546635e-05 -8.5855765e-05
+[maximum ]  5.3697952e-05  1.4559013e-05  1.5411773e-05
+
+Completed cycle 250000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9884033e-05 -1.0414580e-05 -8.5302044e-05
+[maximum ]  4.9884033e-05 -1.0414580e-05 -8.5302044e-05
+
+Scalars - total mean variance min max
+[rho]      110142.00  0.99999999998 8.6597396e-15  0.99999866051 1.00000132783
+
+Free energy density - timestep total fluid
+[fed]         300000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -8.9677494e-09  9.6461196e-09  1.1608583e-09
+[fluid   ] -2.2678764e-02  4.7347168e-03  3.8780812e-02
+[colloids]  2.2678755e-02 -4.7347072e-03 -3.8780811e-02
+
+Velocity - x y z
+[minimum ] -9.0597450e-06 -2.4933191e-05 -8.5855765e-05
+[maximum ]  5.4297112e-05  1.4434841e-05  1.5387045e-05
+
+Completed cycle 300000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9274912e-05 -1.0415656e-05 -8.4282401e-05
+[maximum ]  4.9274912e-05 -1.0415656e-05 -8.4282401e-05
+
+Scalars - total mean variance min max
+[rho]      110142.00  0.99999999998 6.5503158e-15  0.99999858710 1.00000149485
+
+Free energy density - timestep total fluid
+[fed]         350000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -1.0253180e-08  1.1760275e-08  1.4439722e-09
+[fluid   ] -2.2399899e-02  4.7348005e-03  3.8314028e-02
+[colloids]  2.2399889e-02 -4.7347887e-03 -3.8314027e-02
+
+Velocity - x y z
+[minimum ] -9.0725870e-06 -2.4463971e-05 -8.5510181e-05
+[maximum ]  5.3331344e-05  1.4103606e-05  1.5426923e-05
+
+Completed cycle 350000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9154521e-05 -1.0282634e-05 -8.4550291e-05
+[maximum ]  4.9154521e-05 -1.0282634e-05 -8.4550291e-05
+
+Scalars - total mean variance min max
+[rho]      110134.00  0.99999999998 2.2204460e-15  0.99999858266 1.00000138986
+
+Free energy density - timestep total fluid
+[fed]         400000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -1.1615033e-08  1.3916620e-08  2.4274115e-09
+[fluid   ] -2.2345475e-02  4.6745332e-03  3.8436553e-02
+[colloids]  2.2345463e-02 -4.6745193e-03 -3.8436550e-02
+
+Velocity - x y z
+[minimum ] -9.0559651e-06 -2.5039721e-05 -8.5510181e-05
+[maximum ]  5.4080856e-05  1.4661812e-05  1.5423514e-05
+
+Completed cycle 400000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.8907622e-05 -1.0274807e-05 -8.4042198e-05
+[maximum ]  4.8907622e-05 -1.0274807e-05 -8.4042198e-05
+
+Scalars - total mean variance min max
+[rho]      110133.00  0.99999999998 9.7699626e-15  0.99999867211 1.00000140362
+
+Free energy density - timestep total fluid
+[fed]         450000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -1.3674802e-08  1.5825604e-08  2.5403619e-09
+[fluid   ] -2.2233726e-02  4.6707550e-03  3.8206401e-02
+[colloids]  2.2233712e-02 -4.6707392e-03 -3.8206399e-02
+
+Velocity - x y z
+[minimum ] -9.0671767e-06 -2.4454149e-05 -8.5535100e-05
+[maximum ]  5.3510013e-05  1.4245061e-05  1.5418152e-05
+
+Completed cycle 450000
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  4.9843163e-05 -1.0367534e-05 -8.4368757e-05
+[maximum ]  4.9843163e-05 -1.0367534e-05 -8.4368757e-05
+
+Scalars - total mean variance min max
+[rho]      110139.00  0.99999999997 1.1879386e-14  0.99999855411 1.00000136696
+
+Free energy density - timestep total fluid
+[fed]         500000  0.0000000e+00  0.0000000e+00
+
+Momentum - x y z
+[total   ] -1.5289325e-08  1.7748948e-08  2.8698638e-09
+[fluid   ] -2.2658150e-02  4.7129951e-03  3.8352896e-02
+[colloids]  2.2658134e-02 -4.7129773e-03 -3.8352893e-02
+
+Velocity - x y z
+[minimum ] -9.0676005e-06 -2.4794370e-05 -8.5535100e-05
+[maximum ]  5.3181743e-05  1.4559555e-05  1.5407493e-05
+
+Completed cycle 500000
+
+
+Calibration result
+Number of measurements:            296
+Run time (Stokes times):    5.9193e+00
+
+Actual force:               1.3087e-04
+Actual speed:               9.8242e-05
+Hasimoto correction (a/L):  7.0870e-01
+Input radius:               4.7700e+00
+Hydrodynamic radius:        5.0085e+00
+Stokes equation rhs:        9.2749e-05
+Stokes equation lhs:        9.2749e-05
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:  26138.276  26138.286  26138.284 26138.283593 (1 call)
+      Time step loop:      0.029      3.437  26136.549   0.052273 (500000 calls)
+         Propagation:      0.002      1.710   2272.337   0.004545 (500000 calls)
+           Collision:      0.016      1.094   9133.854   0.018268 (500000 calls)
+       Lattice halos:      0.002      1.877   9135.679   0.009136 (1000000 calls)
+             Rebuild:      0.001      0.144    504.526   0.001009 (500000 calls)
+                 BBL:      0.000      1.457   1816.944   0.003634 (500000 calls)
+      Particle halos:      0.000      1.997   1885.108   0.003770 (500000 calls)
+Ludwig finished normally.

@@ -1,0 +1,74 @@
+/*****************************************************************************
+ *
+ *  psi_force.c
+ *
+ *****************************************************************************/
+
+#include <assert.h>
+
+#include "pe.h"
+#include "coords.h"
+#include "hydro.h"
+#include "magnetic_field.h"   /* Actually for electric field */
+#include "psi_s.h"
+
+/*****************************************************************************
+ *
+ *  psi_force_grad_mu
+ *
+ *  The force density is
+ *    f_a = - \sum_k rho_k grad_a mu^ex_k
+ *  where mu_ex is the excess chemical potential (above ideal gas part).
+ *  So
+ *    f_a = - \sum_k rho_k grad_a z_k e psi
+ *        = - rho_el grad_a psi
+ *
+ *  Electric field term?
+ *
+ *  We allow hydro to be NULL, in which case there is no force.
+ *
+ ****************************************************************************/
+
+int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
+
+  int ic, jc, kc, index;
+  int zs, ys, xs;
+  int nhalo;
+  int nlocal[3];
+
+  double rho_elec;
+  double f[3];
+  double e0[3];
+
+  if (hydro == NULL) return 0;
+  assert(psi);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  assert(nhalo >= 1);
+
+  electric_field_e0(e0);
+
+  /* Memory strides */
+  zs = 1;
+  ys = (nlocal[Z] + 2*nhalo)*zs;
+  xs = (nlocal[Y] + 2*nhalo)*ys;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+	psi_rho_elec(psi, index, &rho_elec);
+
+	f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs] - 2.*e0[X]);
+	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys] - 2.*e0[Y]);
+	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs] - 2.*e0[Z]);
+
+	hydro_f_local_add(hydro, index, f);
+      }
+    }
+  }
+
+  return 0;
+}

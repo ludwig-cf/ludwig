@@ -1,0 +1,223 @@
+Welcome to Ludwig (Serial version running on 1 process)
+
+The SVN revision details are: 1514M
+Note assertions via standard C assert() are on.
+
+Read 99 user parameters from ../tests/regression/test_yukawa_input
+
+Free energy details
+-------------------
+
+None selected
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Fluid properties
+----------------
+Mean density:       1.00000e+00
+Shear viscosity     2.00000e-02
+Bulk viscosity      2.00000e-02
+Temperature         2.13333e-04
+Body force density  0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  on
+Shear relaxation time:    5.60000e-01
+Bulk relaxation time:     5.60000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+Setting phi I/O format to ASCII
+Setting velocity I/O format to ASCII
+
+Uniform external magnetic field:  0.00000e+00  0.00000e+00  0.00000e+00
+
+
+Colloid I/O settings
+--------------------
+Decomposition:   1  1  1
+Input format:  ascii
+Input file:    serial single file
+Output format: ascii
+
+colloid_io_read: reading from single file config.cds.init.001-001
+Read a total of 1000 colloids from file
+
+Colloid-colloid Yukawa potential
+Yukawa potential is switched on
+[User   ] Yukawa energy (epsilon) is 1.330764 (6237.958561 kT)
+[User   ] Yukawa width (kappa) is 0.724638
+[User   ] Yukawa cutoff range is 16.000000 (22.08 x kappa)
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      202992.00  1.00000000000-2.2204460e-16  1.00000000000 1.00000000000
+
+Momentum - x y z
+[total   ]  2.8170799e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  2.8170799e-12  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Inter-particle minimum h is: 8.00443e-01
+Potential energy is:         7.06182e+00
+Colloid velocities - x y z
+[minimum ] -4.9530276e-03 -5.9529357e-03 -6.5596422e-03
+[maximum ]  5.2037951e-03  5.8870965e-03  4.9411456e-03
+
+Scalars - total mean variance min max
+[rho]      203234.00  1.00000000000 6.3827076e-04  0.87654824667 1.11046487743
+
+Momentum - x y z
+[total   ] -2.7506886e-12  9.7744035e-13  5.0537352e-13
+[fluid   ] -5.8546428e-01  8.4571379e-01 -1.4914344e+00
+[colloids]  5.8546428e-01 -8.4571379e-01  1.4914344e+00
+
+Velocity - x y z
+[minimum ] -6.3389153e-02 -6.5762110e-02 -6.9980437e-02
+[maximum ]  6.7973360e-02  6.5763018e-02  6.8268960e-02
+
+Isothermal fluctuations
+[eqipart.]  2.1290438e-04  2.1251660e-04  2.1175805e-04
+[measd/kT]  6.3717902e-04  6.3999990e-04
+
+Completed cycle 1000
+
+Particle statistics:
+Inter-particle minimum h is: 5.76413e-01
+Potential energy is:         7.04468e+00
+Colloid velocities - x y z
+[minimum ] -4.7406477e-03 -5.0876278e-03 -5.0392896e-03
+[maximum ]  6.5298123e-03  5.1558997e-03  5.5280000e-03
+
+Scalars - total mean variance min max
+[rho]      203143.00  1.00000000000 6.3746407e-04  0.88913816574 1.11871359347
+
+Momentum - x y z
+[total   ] -6.3671290e-12  3.0720981e-12  1.6966428e-12
+[fluid   ]  1.0149790e+00  7.4689973e-01  1.9778898e+00
+[colloids] -1.0149790e+00 -7.4689973e-01 -1.9778898e+00
+
+Velocity - x y z
+[minimum ] -6.9743546e-02 -6.4975932e-02 -7.3421189e-02
+[maximum ]  6.3747451e-02  6.7760057e-02  7.2215717e-02
+
+Isothermal fluctuations
+[eqipart.]  2.1359361e-04  2.1227494e-04  2.1251850e-04
+[measd/kT]  6.3838705e-04  6.3999990e-04
+
+Completed cycle 2000
+
+Particle statistics:
+Inter-particle minimum h is: 5.70574e-01
+Potential energy is:         7.02965e+00
+Colloid velocities - x y z
+[minimum ] -6.1188744e-03 -4.7320211e-03 -5.0476420e-03
+[maximum ]  5.1408232e-03  4.6591578e-03  5.8275764e-03
+
+Scalars - total mean variance min max
+[rho]      203089.00  1.00000000000 6.3806842e-04  0.88240888577 1.11105305310
+
+Momentum - x y z
+[total   ] -8.4305896e-12  7.0392581e-12  4.3050008e-12
+[fluid   ] -8.6368463e-01 -2.1302575e+00 -3.2562199e+00
+[colloids]  8.6368463e-01  2.1302575e+00  3.2562199e+00
+
+Velocity - x y z
+[minimum ] -6.0225691e-02 -6.0092780e-02 -6.5587306e-02
+[maximum ]  6.5948663e-02  7.3836920e-02  7.1291049e-02
+
+Isothermal fluctuations
+[eqipart.]  2.1366711e-04  2.1328004e-04  2.1287307e-04
+[measd/kT]  6.3982023e-04  6.3999990e-04
+
+Completed cycle 3000
+
+Particle statistics:
+Inter-particle minimum h is: 6.55283e-01
+Potential energy is:         7.02120e+00
+Colloid velocities - x y z
+[minimum ] -4.7627978e-03 -4.5200470e-03 -5.4810881e-03
+[maximum ]  5.2460728e-03  4.6418135e-03  5.4136892e-03
+
+Scalars - total mean variance min max
+[rho]      203229.00  1.00000000000 6.3791100e-04  0.87682295562 1.10708854452
+
+Momentum - x y z
+[total   ] -9.6109787e-12  8.5162988e-12  4.3121062e-12
+[fluid   ] -3.1062723e+00  3.7647979e+00 -6.9301582e+00
+[colloids]  3.1062723e+00 -3.7647979e+00  6.9301582e+00
+
+Velocity - x y z
+[minimum ] -6.8891823e-02 -6.4498404e-02 -6.7774929e-02
+[maximum ]  6.8294104e-02  7.1519187e-02  6.5035297e-02
+
+Isothermal fluctuations
+[eqipart.]  2.1228520e-04  2.1358345e-04  2.1360906e-04
+[measd/kT]  6.3947772e-04  6.3999990e-04
+
+Completed cycle 4000
+
+Particle statistics:
+Inter-particle minimum h is: 8.13639e-01
+Potential energy is:         7.00684e+00
+Colloid velocities - x y z
+[minimum ] -5.8923669e-03 -6.3281715e-03 -5.3699306e-03
+[maximum ]  4.7421290e-03  4.8525928e-03  4.8616105e-03
+
+Scalars - total mean variance min max
+[rho]      203166.00  1.00000000000 6.3854703e-04  0.88031782693 1.10844922016
+
+Momentum - x y z
+[total   ] -8.1576967e-12  8.6042284e-12  4.8703264e-12
+[fluid   ]  1.9845608e+00 -6.9034952e-01 -2.8779068e+00
+[colloids] -1.9845608e+00  6.9034952e-01  2.8779068e+00
+
+Velocity - x y z
+[minimum ] -6.4387843e-02 -6.9347248e-02 -6.9511350e-02
+[maximum ]  6.2964048e-02  6.0591473e-02  6.9768868e-02
+
+Isothermal fluctuations
+[eqipart.]  2.1248785e-04  2.1266942e-04  2.1392076e-04
+[measd/kT]  6.3907803e-04  6.3999990e-04
+
+Completed cycle 5000
+
+colloid_io_write:
+writing colloid information to config.cds00005000.001-001 etc
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:   4045.800   4045.800   4045.800 4045.800000 (1 call)
+      Time step loop:      0.790      0.830   4043.990   0.808798 (5000 calls)
+         Propagation:      0.060      0.070    309.960   0.061992 (5000 calls)
+           Collision:      0.410      0.430   2090.180   0.418036 (5000 calls)
+       Lattice halos:      0.000      0.020     46.550   0.004655 (10000 calls)
+             Rebuild:      0.080      0.100    454.790   0.090958 (5000 calls)
+                 BBL:      0.160      0.190    852.900   0.170580 (5000 calls)
+      Particle halos:      0.000      0.020     16.630   0.003326 (5000 calls)
+Ludwig finished normally.
