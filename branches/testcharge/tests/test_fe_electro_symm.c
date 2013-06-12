@@ -20,6 +20,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "fe_electro_symmetric.h"
 
 static int do_test1(void);
