@@ -98,7 +98,7 @@ int symmetric_rt_initial_conditions(field_t * phi) {
   ntotal[Y] = N_total(Y);
   ntotal[Z] = N_total(Z);
 
-  phi0 = get_phi0();
+  physics_phi0(&phi0);
   RUN_get_double_parameter("noise", &noise0);
 
   /* Default initialisation (always?) Note serial nature of this,

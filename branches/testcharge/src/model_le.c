@@ -595,15 +595,16 @@ void model_le_init_shear_profile() {
   int ic, jc, kc, index;
   int i, j, p;
   int N[3];
-  double rho, u[NDIM], gradu[NDIM][NDIM];
+  double rho0, u[NDIM], gradu[NDIM][NDIM];
   double eta;
 
   info("Initialising shear profile\n");
 
   /* Initialise the density, velocity, gradu; ghost modes are zero */
 
-  rho = get_rho0();
-  eta = get_eta_shear();
+  physics_rho0(&rho0);
+  physics_eta_shear(&eta);
+
   coords_nlocal(N);
 
   for (i = 0; i< NDIM; i++) {
@@ -636,10 +637,10 @@ void model_le_init_shear_profile() {
 	  for (i = 0; i < NDIM; i++) {
 	    cdotu += cv[p][i]*u[i];
 	    for (j = 0; j < NDIM; j++) {
-	      sdotq += (rho*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
+	      sdotq += (rho0*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
 	    }
 	  }
-	  f = wv[p]*(rho + rcs2*rho*cdotu + 0.5*rcs2*rcs2*sdotq);
+	  f = wv[p]*(rho0 + rcs2*rho0*cdotu + 0.5*rcs2*rcs2*sdotq);
 	  distribution_f_set(index, p, 0, f);
 	}
 	/* Next site */

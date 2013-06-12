@@ -136,7 +136,7 @@ int collision_mrt(hydro_t * hydro, map_t * map) {
   ndist = distribution_ndist();
   coords_nlocal(N);
   fluctuations_off(shat, ghat);
-  fluid_body_force(force_global);
+  physics_fbody(force_global);
 
   rdim = 1.0/NDIM;
 
@@ -355,7 +355,7 @@ int collision_binary_lb(hydro_t * hydro, map_t * map) {
 
   ndist = distribution_ndist();
   coords_nlocal(N);
-  fluid_body_force(force_global);
+  physics_fbody(force_global);
 
   chemical_potential = fe_chemical_potential_function();
   chemical_stress = fe_chemical_stress_function();
@@ -588,6 +588,7 @@ int collision_stats_kt(map_t * map) {
   double gtotal[4];
   double rrho;
   double gsite[3];
+  double kt;
 
   if (isothermal_fluctuations_ == 0) return 0;
   assert(map);
@@ -633,8 +634,10 @@ int collision_stats_kt(map_t * map) {
   info("\n");
   info("Isothermal fluctuations\n");
   info("[eqipart.] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
-  info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z],
-       get_kT()*NDIM);
+
+  physics_kt(&kt);
+  kt *= NDIM;
+  info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z], kt);
 
   return 0;
 }
@@ -721,6 +724,8 @@ void collision_relaxation_times_set(void) {
 
   int p;
   double kt;
+  double eta_shear;
+  double eta_bulk;
   double tau_s;
   double tau_b;
   double tau_g;
@@ -728,12 +733,14 @@ void collision_relaxation_times_set(void) {
   double dt_ode=1.0;
   extern int is_propagation_ode(void);
  
+  physics_eta_shear(&eta_shear);
+  physics_eta_bulk(&eta_bulk);
   if (is_propagation_ode()) dt_ode = propagation_ode_get_tstep();
 
   /* Initialise the relaxation times */
 
-  rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear()/dt_ode);
-  rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk()/dt_ode);
+  rtau_shear = 2.0 / (1.0 + 6.0*eta_shear/dt_ode);
+  rtau_bulk  = 2.0 / (1.0 + 6.0*eta_bulk/dt_ode);
 
   if (nrelax_ == RELAXATION_M10) {
     for (p = NHYDRO; p < NVEL; p++) {
@@ -782,7 +789,7 @@ void collision_relaxation_times_set(void) {
 
     /* Initialise the stress variances */
 
-    kt = fluid_kt();
+    physics_kt(&kt);
     kt = kt*rcs2; /* Without normalisation kT = cs^2 */
 
     var_bulk =

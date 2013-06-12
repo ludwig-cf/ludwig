@@ -61,6 +61,9 @@ static struct yukawa_struct {
 void soft_sphere_init() {
 
   int n;
+  double kt;
+
+  physics_kt(&kt);
 
   soft_sphere.on = 0;
   n = RUN_get_int_parameter("soft_sphere_on", &soft_sphere.on);
@@ -71,7 +74,7 @@ void soft_sphere_init() {
     n = RUN_get_double_parameter("soft_sphere_epsilon", &soft_sphere.epsilon);
     info((n == 0) ? "[Default] " : "[User   ] ");
     info("Soft-sphere energy (epsilon) is %f (%f kT)\n", soft_sphere.epsilon,
-	 soft_sphere.epsilon/get_kT());
+	 soft_sphere.epsilon/kt);
 
     n = RUN_get_double_parameter("soft_sphere_sigma", &soft_sphere.sigma);
     info((n == 0) ? "[Default] " : "[User   ] ");
@@ -102,6 +105,9 @@ void soft_sphere_init() {
 void lennard_jones_init() {
 
   int n;
+  double kt;
+
+  physics_kt(&kt);
 
   lennard_jones.on = 0;
   n = RUN_get_int_parameter("lennard_jones_on", &lennard_jones.on);
@@ -112,7 +118,7 @@ void lennard_jones_init() {
     n = RUN_get_double_parameter("lj_epsilon", &lennard_jones.epsilon);
     info((n == 0) ? "[Default] " : "[User   ] ");
     info("Lennard Jones energy (epsilon) is %f (%f kT)\n",
-	 lennard_jones.epsilon, lennard_jones.epsilon/get_kT());
+	 lennard_jones.epsilon, lennard_jones.epsilon/kt);
 
     n = RUN_get_double_parameter("lj_sigma", &lennard_jones.sigma);
     info((n == 0) ? "[Default] " : "[User   ] ");
@@ -136,6 +142,9 @@ void lennard_jones_init() {
 void yukawa_init() {
 
   int n;
+  double kt;
+
+  physics_kt(&kt);
 
   yukawa.on = 0;
 
@@ -147,7 +156,7 @@ void yukawa_init() {
     n = RUN_get_double_parameter("yukawa_epsilon", &yukawa.epsilon);
     info((n == 0) ? "[Default] " : "[User   ] ");
     info("Yukawa energy (epsilon) is %f (%f kT)\n",
-	 yukawa.epsilon, yukawa.epsilon/get_kT());
+	 yukawa.epsilon, yukawa.epsilon/kt);
 
     n = RUN_get_double_parameter("yukawa_kappa", &yukawa.kappa);
     info((n == 0) ? "[Default] " : "[User   ] ");

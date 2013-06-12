@@ -90,8 +90,8 @@ void stats_calibration_init(int nswitch) {
     assert(colloid_ntotal() == 1);
 
     length = 1.0*L(Z);
-    rho = get_rho0();
-    eta = get_eta_shear();
+    physics_rho0(&rho);
+    physics_eta_shear(&eta);
     a = colloid_forces_ahmax();
 
     calib_.a0 = a;
@@ -178,7 +178,7 @@ void stats_calibration_finish(void) {
 
   if (calib_.nstart < INT_MAX) {
 
-    eta = get_eta_shear();
+    physics_eta_shear(&eta);
     t = 1.0*calib_.ndata*calib_.nfreq/calib_.nstokes;
 
     info("\n\n");

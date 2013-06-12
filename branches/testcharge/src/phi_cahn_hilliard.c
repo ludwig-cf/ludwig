@@ -37,6 +37,7 @@
 #include "free_energy.h"
 #include "phi_fluctuations.h"
 #include "field.h"
+#include "physics.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
 
@@ -308,15 +309,15 @@ static void phi_ch_random_flux(double * fe, double * fw, double * fy,
 
   double * rflux;
   double kt, var;
-  extern double get_kT(void);
 
   assert(le_get_nplane_local() == 0);
+
+  physics_kt(&kt);
 
   nsites = coords_nsites();
   rflux = (double *) malloc(3*nsites*sizeof(double));
   if (rflux == NULL) fatal("malloc(rflux) failed\n");
 
-  kt = get_kT();
   var = sqrt(2.0*kt*mobility_);
   phi_fluctuations_site(3, var, rflux);
 

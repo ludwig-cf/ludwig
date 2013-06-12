@@ -652,9 +652,12 @@ static int build_remove_fluid(int index, colloid_t * p_colloid) {
   double r0[3];           /* Local coords of colloid centre */
   double rb[3];           /* Boundary vector at lattice site index */
   double rtmp[3];
+  double rho0;
 
   coords_nlocal_offset(noffset);
   coords_index_to_ijk(index, ib);
+
+  physics_rho0(&rho0);
 
   /* Get the properties of the old fluid at inode */
 
@@ -664,7 +667,7 @@ static int build_remove_fluid(int index, colloid_t * p_colloid) {
   /* Set the corrections for colloid motion. This requires
    * the local boundary vector rb for the torque */
 
-  p_colloid->deltam -= (rho - get_rho0());
+  p_colloid->deltam -= (rho - rho0);
 
   for (ia = 0; ia < 3; ia++) {
     p_colloid->f0[ia] += g[ia];
@@ -696,9 +699,12 @@ static int build_remove_fluid(int index, colloid_t * p_colloid) {
 static int build_remove_order_parameter(field_t * f, int index,
 					colloid_t * pc) {
   double phi;
+  double phi0;
 
   assert(f);
   assert(pc);
+
+  physics_phi0(&phi0);
 
   if (distribution_ndist() == 2) {
     phi = distribution_zeroth_moment(index, 1);
@@ -707,7 +713,7 @@ static int build_remove_order_parameter(field_t * f, int index,
     field_scalar(f, index, &phi);
   }
 
-  pc->s.deltaphi += (phi - get_phi0());
+  pc->s.deltaphi += (phi - phi0);
 
   return 0;
 }
@@ -735,11 +741,14 @@ static int build_replace_fluid(int index, colloid_t * p_colloid) {
   double rb[3];               /* Boundary vector at site index */
   double rtmp[3];
   double newf[NVEL];          /* Replacement distributions */
+  double rho0;
 
   assert(p_colloid);
 
   coords_nlocal_offset(noffset);
   coords_index_to_ijk(index, ib);
+
+  physics_rho0(&rho0);
 
   newrho = 0.0;
   weight = 0.0;
@@ -792,7 +801,7 @@ static int build_replace_fluid(int index, colloid_t * p_colloid) {
    * correction to the torque, we need the appropriate
    * boundary vector rb */
 
-  p_colloid->deltam += (newrho - get_rho0());
+  p_colloid->deltam += (newrho - rho0);
 
   for (ia = 0; ia < 3; ia++) {
     p_colloid->f0[ia] += g[ia];
@@ -828,11 +837,13 @@ static int build_replace_order_parameter(field_t * f, int index,
   double newg[NVEL];
   double phi[NQAB];
   double qs[NQAB];
+  double phi0;
 
   field_nf(f, &nf);
   assert(nf <= NQAB);
 
   coords_index_to_ijk(index, ri);
+  physics_phi0(&phi0);
 
   /* Check the surrounding sites that were linked to inode,
    * and accumulate a (weighted) average distribution. */
@@ -905,7 +916,7 @@ static int build_replace_order_parameter(field_t * f, int index,
   /* Set corrections arising from change in conserved order parameter,
    * which we assume means nf == 1 */
 
-  pc->s.deltaphi -= (phi[0] - get_phi0());
+  pc->s.deltaphi -= (phi[0] - phi0);
 
   return 0;
 }

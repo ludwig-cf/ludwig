@@ -419,7 +419,7 @@ void stats_rheology_stress_profile(const char * filename) {
   double * sxymean;
   double rmean;
   double uy;
-  double eta = get_eta_shear();
+  double eta;
 
   const int tag_token = 728;
   int rank;
@@ -431,6 +431,8 @@ void stats_rheology_stress_profile(const char * filename) {
   assert(initialised_);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
+
+  physics_eta_shear(&eta);
 
   sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxymean == NULL) fatal("malloc(sxymean) failed\n");
@@ -547,7 +549,7 @@ void stats_rheology_stress_section(const char * filename) {
   assert(initialised_);
   coords_nlocal(nlocal);
 
-  eta = get_eta_shear();
+  physics_eta_shear(&eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
@@ -688,7 +690,7 @@ void stats_rheology_mean_stress(const char * filename) {
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
-  eta = get_eta_shear();
+  physics_eta_shear(&eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   coords_nlocal(nlocal);

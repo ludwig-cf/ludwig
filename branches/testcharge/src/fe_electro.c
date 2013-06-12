@@ -31,10 +31,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) The University of Edinburgh (2013)
- *  Contributing Authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -44,7 +43,7 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "coords.h"
+#include "physics.h"
 #include "util.h"
 #include "psi_s.h"
 #include "fe_electro.h"
@@ -53,9 +52,8 @@ typedef struct fe_electro_s fe_electro_t;
 
 struct fe_electro_s {
   psi_t * psi;       /* A reference to the electrokinetic quantities */
-  double kt;         /* k_B T */
+  physics_t * param; /* For external field, temperature */
   double * mu_ref;   /* Reference potential currently unused (set to zero). */ 
-  double ex[3];      /* External field */
 };
 
 static fe_electro_t * fe = NULL;
@@ -67,14 +65,10 @@ static fe_electro_t * fe = NULL;
  *  A single static instance.
  *
  *  Retain a reference to the electrokinetics object psi.
- *  The Boltzmann factor beta is used to compute a local copy
- *  of kT.
  *
  *****************************************************************************/
 
 int fe_electro_create(psi_t * psi) {
-
-  double beta;
 
   assert(fe == NULL);
   assert(psi);
@@ -83,9 +77,7 @@ int fe_electro_create(psi_t * psi) {
   if (fe == NULL) fatal("calloc() failed\n");
 
   fe->psi = psi;
-
-  psi_beta(psi, &beta);
-  fe->kt = 1.0/beta;
+  physics_ref(&fe->param);
 
   fe_density_set(fe_electro_fed);
   fe_chemical_potential_set(fe_electro_mu);
@@ -113,23 +105,6 @@ int fe_electro_free(void) {
 
 /*****************************************************************************
  *
- *  fe_electro_ext_set
- *
- *****************************************************************************/
-
-int fe_electro_ext_set(double ext_field[3]) {
-
-  assert(fe);
-
-  fe->ex[X] = ext_field[X];
-  fe->ex[Y] = ext_field[Y];
-  fe->ex[Z] = ext_field[Z];
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  fe_electro_fed
  *
  *  The free energy density at position index:
@@ -145,6 +120,7 @@ double fe_electro_fed(const int index) {
 
   int n;
   int nk;
+  double kt;
   double fed;
   double psi;
   double rho;
@@ -154,6 +130,7 @@ double fe_electro_fed(const int index) {
   assert(fe->psi);
 
   fed = 0.0;
+  physics_kt(&kt);
   psi_nk(fe->psi, &nk);
   psi_psi(fe->psi, index, &psi);
   epsi = 0.5*fe->psi->e*psi;
@@ -163,8 +140,7 @@ double fe_electro_fed(const int index) {
     psi_rho(fe->psi, index, n, &rho);
     assert(rho >= 0.0); /* For log(rho + epsilon) */
 
-    fed += rho*(fe->kt*(log(rho + DBL_EPSILON) - 1.0)
-		+ fe->psi->valency[n]*epsi);
+    fed += rho*(kt*(log(rho + DBL_EPSILON) - 1.0) + fe->psi->valency[n]*epsi);
   }
 
   return fed;
@@ -183,6 +159,7 @@ double fe_electro_fed(const int index) {
 double fe_electro_mu(const int index, const int n) {
 
   double mu;
+  double kt;
   double rho;
 
   assert(fe);
@@ -190,10 +167,11 @@ double fe_electro_mu(const int index, const int n) {
   assert(n < fe->psi->nk);
 
   rho = fe->psi->rho[fe->psi->nk*index + n];
+  physics_kt(&kt);
 
   assert(rho >= 0.0); /* For log(rho + epsilon) */
   
-  mu = fe->kt*log(rho + DBL_EPSILON)
+  mu = kt*log(rho + DBL_EPSILON)
     + fe->psi->valency[n]*fe->psi->e*fe->psi->psi[index];
 
   return mu;
@@ -215,11 +193,13 @@ void fe_electro_stress(const int index, double s[3][3]) {
 
   int ia, ib;
   double epsilon;    /* Permeativity */
+  double ex[3];      /* External field */
   double etot[3];    /* Total electric field */
   double e2;         /* Magnitude squared */
 
   assert(fe);
 
+  physics_e0(ex);
   psi_epsilon(fe->psi, &epsilon);
   psi_electric_field(fe->psi, index, etot);
 
@@ -228,7 +208,7 @@ void fe_electro_stress(const int index, double s[3][3]) {
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
-    etot[ia] += fe->ex[ia];
+    etot[ia] += ex[ia];
     e2 += etot[ia]*etot[ia];
   }
 

@@ -9,7 +9,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "hydro.h"
-#include "magnetic_field.h"   /* Actually for electric field */
+#include "physics.h"
 #include "psi_s.h"
 
 /*****************************************************************************
@@ -47,7 +47,7 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
   coords_nlocal(nlocal);
   assert(nhalo >= 1);
 
-  electric_field_e0(e0);
+  physics_e0(e0);
 
   /* Memory strides */
   zs = 1;

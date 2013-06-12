@@ -140,6 +140,7 @@ int subgrid_update(hydro_t * hydro) {
   int ic, jc, kc;
   double drag, reta;
   double g[3];
+  double eta;
   colloid_t * p_colloid;
 
   assert(hydro);
@@ -149,7 +150,8 @@ int subgrid_update(hydro_t * hydro) {
 
   /* Loop through all cells (including the halo cells) */
 
-  reta = 1.0/(6.0*pi_*get_eta_shear());
+  physics_eta_shear(&eta);
+  reta = 1.0/(6.0*pi_*eta);
   colloid_gravity(g);
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {

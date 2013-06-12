@@ -30,8 +30,7 @@
 #include "bbl.h"
 #include "build.h"
 #include "physics.h"
-#include "magnetic_field.h"
-#include "magnetic_field_rt.h"
+
 #include "potential.h"
 
 #include "colloids.h"
@@ -198,7 +197,6 @@ int COLL_init(map_t * map) {
   }
 
   colloids_init();
-  magnetic_field_runtime();
 
   if (init_random || init_from_file) {
 
@@ -432,8 +430,11 @@ static void colloid_forces_zero_set(void) {
 static void colloid_forces_single_particle_set(void) {
 
   int ic, jc, kc, ia;
+  double b0[3];
   double btorque[3];
   colloid_t * pc;
+
+  physics_b0(b0);
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -443,7 +444,9 @@ static void colloid_forces_single_particle_set(void) {
 
 	while (pc) {
 
-	  magnetic_field_torque(pc->s.s,  btorque);
+	  btorque[X] = pc->s.s[Y]*b0[Z] - pc->s.s[Z]*b0[Y];
+	  btorque[Y] = pc->s.s[Z]*b0[X] - pc->s.s[X]*b0[Z];
+	  btorque[Z] = pc->s.s[X]*b0[Y] - pc->s.s[Y]*b0[X];
 
 	  for (ia = 0; ia < 3; ia++) {
 	    pc->force[ia] += g_[ia];
@@ -490,7 +493,8 @@ static int colloid_forces_fluid_gravity_set(map_t * map) {
     for (ia = 0; ia < 3; ia++) {
       f[ia] = -g_[ia]*rvolume*nc;
     }
-    fluid_body_force_set(f);
+
+    physics_fbody_set(f);
   }
 
   return 0;
@@ -731,6 +735,7 @@ void lubrication_sphere_sphere(double a1, double a2,
   double rh, rhr;
   double rdotdu;
   double rhat[3];
+  double kt;
 
   double rn = 1.0/lubrication.cutoff_norm;
   double rt = 1.0/lubrication.cutoff_tang;
@@ -743,15 +748,17 @@ void lubrication_sphere_sphere(double a1, double a2,
 
     h = modulus(r12);
     hr = h - a1 - a2;
-    eta = get_eta_shear();
 
     if (hr < lubrication.cutoff_norm) {
+
+      physics_kt(&kt);
+      physics_eta_shear(&eta);
 
       rhr = 1.0/hr;
       fmod = -6.0*pi_*eta*a1*a1*a2*a2*(rhr - rn)/((a1 + a1)*(a2 + a2));
 
       /* Fluctuation/dissipation contribution */
-      fmod += ran_parallel_gaussian()*sqrt(-2.0*get_kT()*fmod);
+      fmod += ran_parallel_gaussian()*sqrt(-2.0*kt*fmod);
 
       rh = 1.0/h;
       rdotdu = 0.0;

@@ -74,7 +74,7 @@
 #include "advection.h"
 #include "advection_bcs.h"
 #include "free_energy.h"
-#include "magnetic_field.h"  /* Actually used to get electric field */
+#include "physics.h"
 #include "nernst_planck.h"
 
 
@@ -190,7 +190,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
    *   = (-Ex + Ex - Edx)/dx = -E, ie., grad psi^ex = -E.
    */
 
-  electric_field_e0(e0);
+  physics_e0(e0);
 
   for (ic = 0; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {

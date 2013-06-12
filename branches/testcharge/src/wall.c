@@ -506,7 +506,7 @@ static void set_wall_velocity() {
   double   rho;
   int      p;
 
-  rho = get_rho0();
+  physics_rho0(&rho);
   p_link = link_list_;
 
   while (p_link) {
@@ -593,8 +593,9 @@ static void wall_shear_init(double uxtop, double uxbottom) {
 
   /* Initialise the density, velocity, gradu; ghost modes are zero */
 
-  rho = get_rho0();
-  eta = get_eta_shear();
+  physics_rho0(&rho);
+  physics_eta_shear(&eta);
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -668,16 +669,18 @@ double wall_lubrication(const int dim, const double r[3], const double ah) {
   double force;
   double hlub;
   double h;
+  double eta;
 
+  physics_eta_shear(&eta);
   force = 0.0;
   hlub = lubrication_rcnormal_;
 
   if (is_boundary_[dim]) {
     /* Lower, then upper */
     h = r[dim] - Lmin(dim) - ah; 
-    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+    if (h < hlub) force = -6.0*pi_*eta*ah*ah*(1.0/h - 1.0/hlub);
     h = Lmin(dim) + L(dim) - r[dim] - ah;
-    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+    if (h < hlub) force = -6.0*pi_*eta*ah*ah*(1.0/h - 1.0/hlub);
   }
 
   return force;
