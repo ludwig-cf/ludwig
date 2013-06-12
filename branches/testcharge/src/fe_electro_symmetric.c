@@ -45,6 +45,7 @@
 
 #include "pe.h"
 #include "util.h"
+#include "physics.h"
 #include "symmetric.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
@@ -227,6 +228,9 @@ int fe_es_deltamu_set(int nk, double * deltamu) {
  *
  *  epsilon(r) = epsilonbar [ 1 - gamma phi(r) ]
  *
+ *  If phi = +1 then epsilon(r) = epsilon2, as set in the call to
+ *  fe_es_epsilon_set().
+ *
  *  The function is of signature f_vare_t (see psi_sor.h).
  *
  *****************************************************************************/
@@ -252,11 +256,14 @@ int fe_es_var_epsilon(int index, double * epsilon) {
  *
  *  S^full = S^elec + S^symmetric + S^coupling
  *
- *  S^elec_ab = epsilon (E_a E_b - (1/2) d_ab E^2) following fe_electro.c
+ *  S^elec_ab = - epsilon (E_a E_b - (1/2) d_ab E^2) following fe_electro.c
  *  S^symmetric = S(phi, grad phi) following symmetric.c
  *
  *  S^coupling =
  *    (1/2) phi d_ab [ epsilonbar gamma E^2 + \sum_k rho_k deltamu_k ]
+ *
+ *  Note that the sign of the electro- and symmetric- parts of the
+ *  stress is already accounted for in the relevant functions.
  *
  *****************************************************************************/
 
@@ -272,6 +279,7 @@ void fe_es_stress(const int index, double s[3][3]) {
   double ex[3];         /* External electric field */
   double e2;
 
+  physics_e0(ex);
   fe_electro_stress(index, s_el);
   symmetric_chemical_stress(index, s_symm); 
 
@@ -295,7 +303,7 @@ void fe_es_stress(const int index, double s[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = s_el[ia][ib] + s_symm[ia][ib] - d_[ia][ib]*s_couple;
+      s[ia][ib] = s_el[ia][ib] + s_symm[ia][ib] + d_[ia][ib]*s_couple;
     }
   }
 
