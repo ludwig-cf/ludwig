@@ -23,6 +23,7 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+#include "physics.h"
 #include "fe_electro.h"
 
 static int do_test1(void);
@@ -37,9 +38,12 @@ static int do_test3(void);
 
 int main(int argc, char ** argv) {
 
+  physics_t * param = NULL;
+
   MPI_Init(&argc, &argv);
   pe_init();
   coords_init();
+  physics_ref(&param);
 
   do_test1();
   do_test2();
@@ -64,7 +68,7 @@ static int do_test1(void) {
 
   int nk = 2;
   double valency[2] = {1, 2};
-  double beta = 0.5;
+  double kt = 2.0;
   double eunit = 3.0;
   psi_t * psi = NULL;
 
@@ -75,8 +79,8 @@ static int do_test1(void) {
   double fed;
 
   psi_create(nk, &psi);
-  psi_beta_set(psi, beta);
   psi_unit_charge_set(psi, eunit);
+  physics_kt_set(kt);
 
   fe_electro_create(psi);
 
@@ -84,8 +88,8 @@ static int do_test1(void) {
 
   rho0 = 1.0;
   rho1 = 1.0;
-  fed0 = rho0*(1.0/beta)*(log(rho0) - 1.0);
-  fed1 = rho0*(1.0/beta)*(log(rho1) - 1.0);
+  fed0 = rho0*kt*(log(rho0 + DBL_EPSILON) - 1.0);
+  fed1 = rho0*kt*(log(rho1 + DBL_EPSILON) - 1.0);
 
   psi_rho_set(psi, index, 0, rho0);
   psi_rho_set(psi, index, 1, rho1);
@@ -95,14 +99,14 @@ static int do_test1(void) {
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   rho0 = exp(1.0);
-  fed0 = rho0*(1.0/beta)*(log(rho0) - 1.0);
+  fed0 = rho0*kt*(log(rho0) - 1.0);
 
   psi_rho_set(psi, index, 0, rho0);
   fed = fe_electro_fed(index);
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   rho1 = exp(2.0);
-  fed1 = rho1*(1.0/beta)*(log(rho1) - 1.0);
+  fed1 = rho1*kt*(log(rho1) - 1.0);
 
   psi_rho_set(psi, index, 1, rho1);
   fed = fe_electro_fed(index);
@@ -138,7 +142,7 @@ int do_test2(void) {
 
   int n;
   int nk = 3;
-  double beta = 10.0;
+  double kt = 0.1;
   double eunit = 1.0;
   double valency[3] = {3, 2, 1};
   psi_t * psi = NULL;
@@ -150,8 +154,8 @@ int do_test2(void) {
   double mu;      /* Actual chemical potential */
 
   psi_create(nk, &psi);
-  psi_beta_set(psi, beta);
   psi_unit_charge_set(psi, eunit);
+  physics_kt_set(kt);
 
   fe_electro_create(psi);
 
@@ -163,14 +167,14 @@ int do_test2(void) {
     /* For psi = 0, have mu_a = kT log(rho_a) */
     psi0 = 0.0;
     psi_psi_set(psi, index, psi0);
-    mu0 = (1.0/beta)*log(rho0);
+    mu0 = kt*log(rho0);
     mu = fe_electro_mu(index, n);
     assert(fabs(mu - mu0) < DBL_EPSILON);
 
     /* Complete mu_a = kT log(rho) + Z_a e psi */
     psi0 = 1.0;
     psi_psi_set(psi, index, psi0);
-    mu0 = (1.0/beta)*log(rho0) + valency[n]*eunit*psi0;
+    mu0 = kt*log(rho0) + valency[n]*eunit*psi0;
     mu = fe_electro_mu(index, n);
     assert(fabs(mu - mu0) < DBL_EPSILON);
   }
@@ -223,13 +227,13 @@ static int do_test3(void) {
 
   /* External field, no potential */
 
-  fe_electro_ext_set(ex);
+  physics_e0_set(ex);
   fe_electro_stress(index, s);
   emod = modulus(ex);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sexpect = epsilon*(ex[ia]*ex[ib] - 0.5*d_[ia][ib]*emod*emod);
+      sexpect = -epsilon*(ex[ia]*ex[ib] - 0.5*d_[ia][ib]*emod*emod);
       assert(fabs(s[ia][ib] - sexpect) < DBL_EPSILON);
     }
   }
@@ -240,7 +244,7 @@ static int do_test3(void) {
   ex[X] = 0.0;
   ex[Y] = 0.0;
   ex[Z] = 0.0;
-  fe_electro_ext_set(ex);
+  physics_e0_set(ex);
 
   /* The 'true' field */
 
@@ -267,7 +271,7 @@ static int do_test3(void) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sexpect = epsilon*(e0[ia]*e0[ib] - 0.5*d_[ia][ib]*emod*emod);
+      sexpect = -epsilon*(e0[ia]*e0[ib] - 0.5*d_[ia][ib]*emod*emod);
       assert(fabs(s[ia][ib] - sexpect) < DBL_EPSILON);
     }
   }

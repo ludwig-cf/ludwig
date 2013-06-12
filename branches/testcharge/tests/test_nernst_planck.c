@@ -22,6 +22,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "physics.h"
 #include "map.h"
 #include "psi.h"
 #include "psi_s.h"
@@ -111,7 +112,9 @@ static int do_test_gouy_chapman(void) {
 
   map_t * map = NULL;
   psi_t * psi = NULL;
+  physics_t * phys = NULL;
 
+  physics_ref(&phys);
   coords_nhalo_set(1);
   coords_ntotal_set(ntotal);
 
@@ -251,6 +254,7 @@ static int do_test_gouy_chapman(void) {
   map_free(map);
   psi_free(psi);
   coords_finish();
+  physics_free();
 
   return 0;
 }

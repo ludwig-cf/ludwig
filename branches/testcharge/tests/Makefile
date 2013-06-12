@@ -50,7 +50,7 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_runtime.c test_random.c \
               test_coords.c test_le.c test_io.c test_prop.c \
               test_model.c test_halo.c \
-	      test_magnetic.c test_map.c \
+	      test_map.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
               test_colloid.c test_colloids.c test_colloids_halo.c \
               test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
