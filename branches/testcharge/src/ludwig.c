@@ -44,7 +44,7 @@
 #include "map.h"
 #include "wall.h"
 #include "interaction.h"
-#include "physics.h"
+#include "physics_rt.h"
 
 #include "hydro_rt.h"
 
@@ -72,6 +72,7 @@
 #include "lc_droplet_rt.h"
 #include "lc_droplet.h"
 #include "fe_electro.h"
+#include "fe_electro_symmetric.h"
 
 /* Dynamics */
 #include "phi_cahn_hilliard.h"
@@ -111,6 +112,7 @@
 
 typedef struct ludwig_s ludwig_t;
 struct ludwig_s {
+  physics_t * param;        /* Physical parameters */
   hydro_t * hydro;          /* Hydrodynamic quantities */
   field_t * phi;            /* Scalar order parameter */
   field_t * p;              /* Vector order parameter */
@@ -158,7 +160,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   free_energy_init_rt(ludwig);
 
   init_control();
-  init_physics();
+
+  physics_ref(&ludwig->param);
+  physics_init_rt(ludwig->param);
+  physics_info(ludwig->param);
 
   if (is_propagation_ode()) propagation_ode_init();
 
@@ -208,7 +213,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* To be called before wall_init() */
-  psi_init_rho_rt(ludwig->psi, ludwig->map);
+  if (ludwig->psi) psi_init_rho_rt(ludwig->psi, ludwig->map);
 
   wall_init(ludwig->map);
   COLL_init(ludwig->map);
@@ -709,6 +714,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   int n = 0;
   int p;
   int nf;
+  int nk;
   int ngrad;
   int nhalo;
   double value;
@@ -1022,8 +1028,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "fe_electro") == 0) {
 
-    int nk = 2;    /* Number of charge densities always 2 for now */
-    double e0[3];  /* External field */
+    nk = 2;    /* Number of charge densities always 2 for now */
 
     /* Single fluid electrokinetic free energy */
 
@@ -1061,11 +1066,96 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_density_set(fe_electro_fed);
     fe_chemical_potential_set(fe_electro_mu);
     fe_chemical_stress_set(fe_electro_stress);
+  }
+  else if(strcmp(description, "fe_electro_symmetric") == 0) {
 
-    /* External field */
+    double e1, e2;
+    double mu[2];
 
-    n = RUN_get_double_parameter_vector("electric_e0", e0);
-    fe_electro_ext_set(e0);
+    /* Binary fluid plus electrokinetics */
+
+    nf = 1;      /* Single scalar order parameter phi */
+    nk = 2;      /* Two charge species */
+    nhalo = 2;   /* Require stress divergence. */
+    ngrad = 2;   /* \nabla^2 phi */
+
+    /* First, the symmetric part. */
+
+    coords_nhalo_set(nhalo);
+    coords_run_time();
+    le_init();
+
+    field_create(nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo);
+    field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    info("\n");
+    info("Charged binary fluid 'Electrosymmetric' free energy\n");
+    info("---------------------------------------------------\n");
+
+    info("\n");
+    info("Symmetric part\n");
+    info("--------------\n\n");
+    symmetric_run_time();
+
+    info("\n");
+    info("Using Cahn-Hilliard finite difference solver.\n");
+
+    RUN_get_double_parameter("mobility", &value);
+    phi_cahn_hilliard_mobility_set(value);
+    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+
+    /* Electrokinetic part */
+
+    info("\n");
+    info("Electrokinetic part\n");
+    info("-------------------\n\n");
+
+    info("Parameters:\n");
+
+    psi_create(nk, &ludwig->psi);
+    psi_init_param_rt(ludwig->psi);
+
+    /* Coupling part */
+
+    info("\n");
+    info("Coupling part\n");
+    info("-------------\n");
+
+    fe_es_create(ludwig->phi, ludwig->phi_grad, ludwig->psi);
+
+    /* Dielectric contrast */
+    /* Read in the second dielectric constant, and use the first
+     * from the electrokinetic sector as default (both e1 and e2) */
+
+    psi_epsilon(ludwig->psi, &e1);
+    e2 = e1;
+
+    RUN_get_double_parameter("electrosymmetric_epsilon2", &e2);
+
+    fe_es_epsilon_set(e1, e2);
+
+    /* Solvation free energy difference: nk = 2 */
+
+    mu[0] = 0.0;
+    mu[1] = 0.0;
+
+    RUN_get_double_parameter("electrosymmetric_delta_mu0", mu);
+    RUN_get_double_parameter("electrosymmetric_delta_mu1", mu + 1);
+
+    fe_es_deltamu_set(nk, mu);
+
+    info("Second permeativity:      %15.7e\n", e2);
+    info("Dielectric average:       %15.7e\n", 0.5*(e1 + e2));
+    info("Dielectric contrast:      %15.7e\n", (e1-e2)/(e1+e2));
+    info("Solvation dmu species 0:  %15.7e\n", mu[0]);
+    info("Solvation dmu species 1:  %15.7e\n", mu[1]);
+
+    /* f_vare_t function */
+
+
+
+    fatal("fe_electro_symmetric pending\n");
   }
   else {
     if (n == 1) {

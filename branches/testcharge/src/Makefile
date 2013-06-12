@@ -59,7 +59,7 @@ ARFLAGS = -cru
 ###############################################################################
 
 OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
-     collision.o physics.o \
+     collision.o physics.o physics_rt.o \
      advection.o advection_bcs.o advection_rt.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
@@ -76,7 +76,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
      hydro.o hydro_rt.o interaction.o io_harness.o \
-     leslie_ericksen.o magnetic_field.o magnetic_field_rt.o \
+     leslie_ericksen.o \
      lc_droplet.o lc_droplet_rt.o model_le.o map.o potential.o \
      phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_force_stress.o \

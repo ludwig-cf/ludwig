@@ -108,6 +108,9 @@ temperature 3.33333333333333333e-5
 #                                 lc_blue_phase
 #				  fe_electro	
 #
+#                                 fe_electro
+#                                 fe_electrosymmetric
+#
 #                                 symmetric_lb symmetric with 2 distributions
 #
 #  fd_advection_scheme_order      1-7
@@ -509,6 +512,13 @@ qs_dir_format BINARY
 #  Also important:
 #  temperature			sets Boltzmann factor beta
 #
+#  fe_electrosymmetric has a number of additional coupling parameters
+#                      for the binary problem:
+#
+#  electrosymmetric_epsilon2      additional permeativity to set contrast
+#  electrosymmetric_delta_mu0     solvation free energy diff species 0
+#  electrosymmetric_delta_mu1     solvation free energy diff species 1
+#
 ###############################################################################
 
 electrokinetics_z0      +1
@@ -520,6 +530,10 @@ electrokinetics_epsilon 3.3e3
 electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 0.0
 electrokinetics_init_sigma 0.0125
+
+electrosymmetric_epsilon2   2000.0
+electrosymmetric_delta_mu0  1.0
+electrosymmetric_delta_mu1  2.0
 
 ###############################################################################
 #
