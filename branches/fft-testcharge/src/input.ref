@@ -39,8 +39,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 100001
-
+N_cycles 1
 propagation_ode off
 propagation_ode_tstep 1.0
 propagation_ode_integrator rk2
@@ -62,9 +61,9 @@ propagation_ode_integrator rk2
 # 
 ##############################################################################
 
-size 64_2_2
-grid 4_1_1
-periodicity 0_1_1
+size 32_32_32
+#grid 1_2_1
+periodicity 1_1_1
 reduced_halo no
 
 ##############################################################################
@@ -75,23 +74,29 @@ reduced_halo no
 #  viscosity_bulk bulk viscosity  [default = shear viscosity]
 #
 #  isothermal_fluctuations  [on|off] Default is off.
-#  temperature              isothermal fluctuation 'temperature' &
-#			    beta = k_B T in electrokinetics	
+#  temperature              isothermal fluctuation 'temperature'
 #
 #  ghost_modes           [on|off] Default is on.
 #  force FX_FY_FZ        Uniform body force on fluid (default zero)
 #
+#  distribution_initialisation    Default is fluid uniformly at rest
+#                                 3d_uniform_u   uniform velocity
+#                                 2d_kelvin_helmholtz
+#                                 2d_shear_wave
+#  
 ##############################################################################
 
 viscosity 0.1
 viscosity_bulk 0.1
 
 isothermal_fluctuations off
-#temperature 0.00002133333
-temperature 3.33333333333333333e-5
+temperature 0.00002133333
 
 # ghost_modes off
 # force 0.00_0.0_0.0
+
+# distribution_initialisation 3d_uniform_u
+# distribution_uniform_u      0.0_0.0_0.0
 
 ##############################################################################
 #
@@ -106,7 +111,6 @@ temperature 3.33333333333333333e-5
 #                                 surfactant
 #                                 polar_active
 #                                 lc_blue_phase
-#				  fe_electro	
 #
 #                                 symmetric_lb symmetric with 2 distributions
 #
@@ -123,24 +127,19 @@ temperature 3.33333333333333333e-5
 #
 #  fd_phi_fluctuations            [0/1] Cahn Hilliard only at the moment
 #  fd_phi_fluctuations_seed       RNG seed for order parameter fluctuations
-#  fd_force_divergence		  [0/1] method for force calculation in
-#					electrokinetic module
-#					0 = gradient of chemical potential
-#					1 = divergence of Maxwell stress tensor
 #
 #  Note: only parameters for the currently selected free energy at
 #  run time are meaningful; you don't have to comment out all the others.
 #
 ###############################################################################
 
-free_energy fe_electro
+free_energy lc_blue_phase
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
 fd_phi_fluctuations_seed 17
 
-fd_force_divergence 1
 
 ###############################################################################
 #
@@ -219,6 +218,7 @@ surf_psi_b 0.01
 #                       cubic: o8m (BPI), o2 (BPII), o5
 #                       hexagonal BPs: h2d, h3da, h3db
 #                       amorphous BP: bp3
+#			active_nematic
 #
 #  lc_q_init_amplitude  scalar order parameter amplitude for initialisation
 #
@@ -232,8 +232,8 @@ surf_psi_b 0.01
 #  lc_anchoring         [normal|planar|fixed] anchoring boundary conditions
 #                       for solid (if present; defualt is normal)
 #
-#  lc_anchoring_strength the parameter w in the surface free energy
-#                        [Default is zero = 'free' anchoring]
+#  lc_anchoring_strength    the parameter w1 and w2 in the surface free energy
+#  lc_anchoring_strength_2  [Default is zero = 'free' anchoring]
 #
 #  lc_init_redshift     Initial value of redshift.
 #
@@ -270,13 +270,13 @@ lc_init_redshift 0.83
 lc_redshift_update 0
 lc_init_nematic 1.0_0.0_0.0
 lc_dielectric_anisotropy 41.4
-
-electric_e0 0.0_1.0e-6_0.0
+# electric_e0 0.0_0.0_0.0
 
 lc_anchoring_method none
 lc_wall_anchoring fixed
 lc_coll_anchoring normal
 lc_anchoring_strength 0.0
+lc_anchoring_strength_2 0.0
 lc_anchoring_strength_colloid 0.0
 lc_anchoring_strength_wall 0.0
 
@@ -384,7 +384,7 @@ lj_epsilon 0.0003
 #
 ###############################################################################
 
-boundary_walls 1_0_0
+boundary_walls 0_0_0
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
 boundary_shear_init 0
@@ -404,6 +404,7 @@ boundary_lubrication_rcnormal 0.0
 #                           N steps (can be large!)
 #  freq_phi        N        phi data output frequency
 #  freq_vel        N        velocity data output frequency
+#  freq_fed        N        free energy density output frequency
 #  freq_shear_measurement   stress profile accumulator
 #  freq_shear_output        stress profile output
 #  config_at_end            [yes|no] write full configuration at end of run
@@ -420,15 +421,15 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics 500
+freq_statistics 50
 freq_measure 200000
-freq_config 100000
-freq_phi    1000000
-freq_psi    10000
-freq_vel    10000
-freq_shear_measurement 1000000
-freq_shear_output      1000000
-config_at_end yes
+freq_config 5000000
+freq_phi    100000
+freq_vel    100000
+freq_fed    100000
+freq_shear_measurement 100000
+freq_shear_output      100000
+config_at_end no
 
 default_io_grid 1_1_1
 
@@ -436,9 +437,9 @@ distribution_io_grid 1_1_1
 distribution_io_input_format BINARY
 
 phi_io_grid 1_1_1
-phi_format    BINARY
-psi_format    BINARY
-vel_format    BINARY
+phi_format    ASCII
+vel_format    ASCII
+fed_format    ASCII
 
 ##############################################################################
 #
@@ -490,36 +491,6 @@ qs_dir_format BINARY
 #LE_init_profile 1
 #LE_oscillation_period 0
 #LE_time_offset 0
-
-###############################################################################
-#
-#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
-#
-#  electrokinetics_z0         valency species 0  default +1
-#  electrokinetics_z1         valency species 1  default -1
-#  electrokinetics_d0         diffusivity 0      default 0.0
-#  electrokinetics_d1         diffusivity 1      default 0.0
-#  electrokinetics_eunit      unit charge        default +1.0
-#  electrokinetics_epsilon    permeativity (ref) default 0.0
-#
-#  electrokinetics_init		[gouy_chapman|liquid_junction|uniform]
-#  electrokinetics_init_rho_el	electrolyte concentration
-#  electrokinetics_init_sigma	surface charge density
-#
-#  Also important:
-#  temperature			sets Boltzmann factor beta
-#
-###############################################################################
-
-electrokinetics_z0      +1
-electrokinetics_z1      -1
-electrokinetics_d0      0.01
-electrokinetics_d1      0.01
-electrokinetics_eunit   1.0
-electrokinetics_epsilon 3.3e3
-electrokinetics_init    gouy_chapman
-electrokinetics_init_rho_el 0.0
-electrokinetics_init_sigma 0.0125
 
 ###############################################################################
 #
