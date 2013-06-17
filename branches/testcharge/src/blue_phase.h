@@ -20,6 +20,8 @@
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
+#include "io_harness.h"
+
 int blue_phase_q_set(field_t * q, field_grad_t * dq);
 
 void   blue_phase_set_free_energy_parameters(double, double, double, double);
@@ -29,6 +31,8 @@ void   blue_phase_set_gamma(double);
 
 double blue_phase_free_energy_density(const int);
 double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]);
+double blue_phase_compute_bulk_fed(double q[3][3]);
+double blue_phase_compute_gradient_fed(double q[3][3], double dq[3][3][3]);
 
 void   blue_phase_molecular_field(const int, double h[3][3]);
 void   blue_phase_compute_h(double q[3][3], double dq[3][3][3],
@@ -62,6 +66,8 @@ void blue_phase_redshift_compute(void);
 void blue_phase_q_uniaxial(double amplitude, const double n[3], double q[3][3]);
 
 void blue_phase_set_active_region_gamma_zeta(const int index);
+
+void fed_io_info_set(io_info_t * info);
 
 #endif
  

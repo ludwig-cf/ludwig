@@ -44,6 +44,7 @@ struct B_link_struct {
 static int nalloc_links_ = 0;        /* Current number of links allocated */
 static B_link * link_list_ = NULL;   /* Boundary links. */
 static int is_boundary_[3];          /* Any boundaries present? */
+static int is_pm_ = 0;               /* Is porous media present? */
 static double fnet_[3];              /* Accumulated net force on walls */
 static double lubrication_rcnormal_; /* Wall normal lubrication cut off */
 
@@ -107,22 +108,39 @@ int wall_init(map_t * map) {
     info("Boundary normal lubrication rc: %14.7e\n", lubrication_rcnormal_);
 
     MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
-    info("Boundary links allocated:        %d\n", ntotal);
+    info("Wall boundary links allocated:   %d\n", ntotal);
     info("Memory (total, bytes):           %d\n", ntotal*sizeof(B_link));
     info("Boundary shear initialise:       %d\n", init_shear);
   }
 
-  /* Porous media, fixed walls. */
+  /* Porous media from file */
+
   map_pm(map, &porous_media);
+
   if (porous_media) {
     wall_init_links(map);
     MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
-    info("Wall boundary links allocated:  %d\n", ntotal);
+    info("Porous media boundary links allocated:  %d\n", ntotal);
   }
 
   fnet_[X] = 0.0;
   fnet_[Y] = 0.0;
   fnet_[Z] = 0.0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  wall_pm
+ *
+ *****************************************************************************/
+
+int wall_pm(int * present) {
+
+  assert(present);
+
+  *present = is_pm_;
 
   return 0;
 }

@@ -29,10 +29,12 @@
 #include "colloids.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
+#include "wall.h"
 
 static void colloids_init_check_state(double hmax);
 static void colloids_init_random_set(int n, const colloid_state_t * s,
 				     double amax);
+static int  colloids_init_check_wall(double dh);
 
 /*****************************************************************************
  *
@@ -68,6 +70,7 @@ void colloids_init_random(int np, const colloid_state_t * s0, double dh) {
     colloids_init_check_state(hmax);
   }
 
+  if (wall_present()) colloids_init_check_wall(dh);
   colloids_ntotal_set();
 
   return;
@@ -183,4 +186,50 @@ static void colloids_init_check_state(double hmax) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_init_check_wall
+ *
+ *  If the boundary is not periodic, assume there is a wall at coordinate
+ *  position at Lmin and Lmax.
+ *
+ *  An additional excluded volume of width dh is allowed.
+ *
+ *****************************************************************************/
+
+static int colloids_init_check_wall(double dh) {
+
+  int ic, jc, kc, ia;
+  int ifailocal = 0;
+  int ifail;
+
+  colloid_t * pc = NULL;
+
+  assert(dh >= 0.0);
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+
+	while (pc) {
+	  for (ia = 0; ia < 3; ia++) {
+	    if (pc->s.r[ia] <= Lmin(ia) + pc->s.ah + dh) ifailocal = 1;
+	    if (pc->s.r[ia] >= Lmin(ia) + L(ia) - pc->s.ah - dh) ifailocal = 1;
+	  }
+	  pc = pc->next;
+	}
+
+      }
+    }
+  }
+
+  MPI_Allreduce(&ifailocal, &ifail, 1, MPI_INT, MPI_SUM, pe_comm());
+
+  if (ifail) fatal("Colloid initial position overlaps wall\n");
+
+  return 0;
 }

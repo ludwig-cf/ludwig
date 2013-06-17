@@ -291,7 +291,6 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
   int n;
   int index0, index1;
   int icp1, icm1;
-  int ys;
   double u0[3], u1[3], u;
 
   assert(flux);
@@ -300,8 +299,6 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 1);
-
-  ys = nlocal[Z] + 2*coords_nhalo();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);

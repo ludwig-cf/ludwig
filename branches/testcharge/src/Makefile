@@ -15,6 +15,11 @@
 # -DNDEBUG               Switch off standard C assert()
 #                        The assertions can make the code much slower.
 #
+# -DSIMDVL=N             SIMD vector length for collision code; this
+#                        defaults to 1 if not set. Optimum value will
+#                        depend on hardware: try 2, 4, 8, and 16.
+#                        For 2d systems, use SIMDVL=1.
+#
 # make serial            for serial code
 # make mpi               for parallel code
 #

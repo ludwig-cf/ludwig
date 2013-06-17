@@ -81,6 +81,11 @@ reduced_halo no
 #  ghost_modes           [on|off] Default is on.
 #  force FX_FY_FZ        Uniform body force on fluid (default zero)
 #
+#  distribution_initialisation    Default is fluid uniformly at rest
+#                                 3d_uniform_u   uniform velocity
+#                                 2d_kelvin_helmholtz
+#                                 2d_shear_wave
+#  
 ##############################################################################
 
 viscosity 0.1
@@ -92,6 +97,9 @@ temperature 3.33333333333333333e-5
 
 # ghost_modes off
 # force 0.00_0.0_0.0
+
+# distribution_initialisation 3d_uniform_u
+# distribution_uniform_u      0.0_0.0_0.0
 
 ##############################################################################
 #
@@ -222,6 +230,7 @@ surf_psi_b 0.01
 #                       cubic: o8m (BPI), o2 (BPII), o5
 #                       hexagonal BPs: h2d, h3da, h3db
 #                       amorphous BP: bp3
+#			active_nematic
 #
 #  lc_q_init_amplitude  scalar order parameter amplitude for initialisation
 #
@@ -235,8 +244,8 @@ surf_psi_b 0.01
 #  lc_anchoring         [normal|planar|fixed] anchoring boundary conditions
 #                       for solid (if present; defualt is normal)
 #
-#  lc_anchoring_strength the parameter w in the surface free energy
-#                        [Default is zero = 'free' anchoring]
+#  lc_anchoring_strength    the parameter w1 and w2 in the surface free energy
+#  lc_anchoring_strength_2  [Default is zero = 'free' anchoring]
 #
 #  lc_init_redshift     Initial value of redshift.
 #
@@ -280,6 +289,7 @@ lc_anchoring_method none
 lc_wall_anchoring fixed
 lc_coll_anchoring normal
 lc_anchoring_strength 0.0
+lc_anchoring_strength_2 0.0
 lc_anchoring_strength_colloid 0.0
 lc_anchoring_strength_wall 0.0
 
@@ -407,6 +417,7 @@ boundary_lubrication_rcnormal 0.0
 #                           N steps (can be large!)
 #  freq_phi        N        phi data output frequency
 #  freq_vel        N        velocity data output frequency
+#  freq_fed        N        free energy density output frequency
 #  freq_shear_measurement   stress profile accumulator
 #  freq_shear_output        stress profile output
 #  config_at_end            [yes|no] write full configuration at end of run
@@ -425,13 +436,15 @@ boundary_lubrication_rcnormal 0.0
 
 freq_statistics 500
 freq_measure 200000
-freq_config 100000
-freq_phi    1000000
-freq_psi    10000
-freq_vel    10000
+
+freq_config 5000000
+freq_phi    100000
+freq_psi    100000
+freq_vel    100000
+freq_fed    100000
 freq_shear_measurement 1000000
 freq_shear_output      1000000
-config_at_end yes
+config_at_end no
 
 default_io_grid 1_1_1
 
@@ -442,6 +455,7 @@ phi_io_grid 1_1_1
 phi_format    BINARY
 psi_format    BINARY
 vel_format    BINARY
+fed_format    ASCII
 
 ##############################################################################
 #

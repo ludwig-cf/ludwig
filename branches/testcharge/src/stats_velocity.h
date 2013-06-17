@@ -18,6 +18,6 @@
 #include "hydro.h"
 #include "map.h"
 
-int stats_velocity_minmax(hydro_t * hydro, map_t * map);
+int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux);
 
 #endif

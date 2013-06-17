@@ -37,7 +37,7 @@ void io_info_set_read(io_info_t *, int (*) (FILE *, int, int, int));
 void io_info_set_bytesize(io_info_t * p, size_t);
 void io_info_set_processor_independent(io_info_t *);
 void io_info_set_processor_dependent(io_info_t *);
-
+void io_info_single_file_set(io_info_t * info);
 void io_info_set_read_ascii(io_info_t *, int(*)(FILE *,int,int,int));
 void io_info_set_read_binary(io_info_t *, int(*)(FILE *,int,int,int));
 void io_info_set_write_ascii(io_info_t *, int(*)(FILE *,int,int,int));

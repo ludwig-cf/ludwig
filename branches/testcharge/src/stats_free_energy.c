@@ -166,12 +166,11 @@ static int stats_free_energy_wall(field_t * q, double * fs) {
 static int stats_free_energy_wallx(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
-  int ia, ib;
   int nlocal[3];
 
-  double w;
   double dn[3];
-  double qs[3][3], q0[3][3];
+  double qs[3][3];
+  double fes;
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -180,7 +179,6 @@ static int stats_free_energy_wallx(field_t * q, double * fs) {
   assert(fs);
 
   coords_nlocal(nlocal);
-  w = wall_w_get();
 
   dn[Y] = 0.0;
   dn[Z] = 0.0;
@@ -195,14 +193,8 @@ static int stats_free_energy_wallx(field_t * q, double * fs) {
 
         index = coords_index(ic, jc, kc);
 	field_tensor(q, index, qs);
-	colloids_q_boundary(dn, qs, q0, MAP_BOUNDARY);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    fs[0] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	  }
-	}
-
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
+	fs[0] += fes;
       }
     }
   }
@@ -217,14 +209,8 @@ static int stats_free_energy_wallx(field_t * q, double * fs) {
 
         index = coords_index(ic, jc, kc);
 	field_tensor(q, index, qs);
-	colloids_q_boundary(dn, qs, q0, MAP_BOUNDARY);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    fs[1] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	  }
-	}
-
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
+	fs[1] += fes;
       }
     }
   }
@@ -243,12 +229,11 @@ static int stats_free_energy_wallx(field_t * q, double * fs) {
 static int stats_free_energy_wally(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
-  int ia, ib;
   int nlocal[3];
 
-  double w;
   double dn[3];
-  double qs[3][3], q0[3][3];
+  double qs[3][3];
+  double fes;
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -257,8 +242,6 @@ static int stats_free_energy_wally(field_t * q, double * fs) {
   assert(fs);
 
   coords_nlocal(nlocal);
-  w = wall_w_get();
-
   dn[X] = 0.0;
   dn[Z] = 0.0;
 
@@ -272,14 +255,8 @@ static int stats_free_energy_wally(field_t * q, double * fs) {
 
         index = coords_index(ic, jc, kc);
 	field_tensor(q, index, qs);
-	colloids_q_boundary(dn, qs, q0, MAP_BOUNDARY);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    fs[0] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	  }
-	}
-
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
+	fs[0] += fes;
       }
     }
   }
@@ -294,14 +271,8 @@ static int stats_free_energy_wally(field_t * q, double * fs) {
 
         index = coords_index(ic, jc, kc);
 	field_tensor(q, index, qs);
-	colloids_q_boundary(dn, qs, q0, MAP_BOUNDARY);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    fs[1] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	  }
-	}
-
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
+	fs[1] += fes;
       }
     }
   }
@@ -320,12 +291,11 @@ static int stats_free_energy_wally(field_t * q, double * fs) {
 static int stats_free_energy_wallz(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
-  int ia, ib;
   int nlocal[3];
 
-  double w;
   double dn[3];
-  double qs[3][3], q0[3][3];
+  double qs[3][3];
+  double fes;
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -334,8 +304,6 @@ static int stats_free_energy_wallz(field_t * q, double * fs) {
   assert(fs);
 
   coords_nlocal(nlocal);
-  w = wall_w_get();
-
   dn[X] = 0.0;
   dn[Y] = 0.0;
 
@@ -349,14 +317,8 @@ static int stats_free_energy_wallz(field_t * q, double * fs) {
 
         index = coords_index(ic, jc, kc);
 	field_tensor(q, index, qs);
-	colloids_q_boundary(dn, qs, q0, MAP_BOUNDARY);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    fs[0] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	  }
-	}
-
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
+	fs[0] += fes;
       }
     }
   }
@@ -371,14 +333,8 @@ static int stats_free_energy_wallz(field_t * q, double * fs) {
 
         index = coords_index(ic, jc, kc);
 	field_tensor(q, index, qs);
-	colloids_q_boundary(dn, qs, q0, MAP_BOUNDARY);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    fs[1] += 0.5*w*(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	  }
-	}
-
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
+	fs[1] += fes;
       }
     }
   }
@@ -400,24 +356,21 @@ static int stats_free_energy_wallz(field_t * q, double * fs) {
 static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
 
   int ic, jc, kc, index, index1;
-  int ia, ib;
   int nhat[3];
   int nlocal[3];
   int status;
 
   double dn[3];
-  double q0[3][3], qs[3][3];
-  double w;
+  double qs[3][3];
+  double fes;
 
   coords_nlocal(nlocal);
-  w = colloids_q_tensor_w();
 
   fs[0] = 0.0;
   fs[1] = 0.0;
 
   assert(q);
   assert(fs);
-  assert(w >= 0.0);
   assert(map);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -439,14 +392,8 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
 	if (status == MAP_COLLOID) {
           nhat[X] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0, MAP_COLLOID);
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      fs[0] += 0.5*w*
-		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	    }
-	  }
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
+	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 
@@ -456,14 +403,8 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
         if (status == MAP_COLLOID) {
           nhat[X] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0, MAP_COLLOID);
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      fs[0] += 0.5*w*
-		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	    }
-	  }
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
+	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 
@@ -476,14 +417,8 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
         if (status == MAP_COLLOID) {
           nhat[Y] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0, MAP_COLLOID);
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      fs[0] += 0.5*w*
-		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	    }
-	  }
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
+	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 
@@ -493,14 +428,8 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
         if (status == MAP_COLLOID) {
           nhat[Y] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0, MAP_COLLOID);	  
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      fs[0] += 0.5*w*
-		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	    }
-	  }
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
+	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 
@@ -513,14 +442,8 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
         if (status == MAP_COLLOID) {
           nhat[Z] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0, MAP_COLLOID);
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      fs[0] += 0.5*w*
-		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	    }
-	  }
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
+	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 
@@ -530,14 +453,8 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
         if (status == MAP_COLLOID) {
           nhat[Z] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  colloids_q_boundary(dn, qs, q0, MAP_COLLOID);
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      fs[0] += 0.5*w*
-		(qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-	    }
-	  }
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
+	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 	

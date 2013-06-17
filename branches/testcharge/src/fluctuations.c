@@ -109,7 +109,6 @@ void fluctuations_state_set(fluctuations_t * f, const int index,
   assert(index < f->nsites);
 
   for (ia = 0; ia < NFLUCTUATION_STATE; ia++) {
-    assert(newstate[ia] >= 0);
     f->state[NFLUCTUATION_STATE*index + ia] = newstate[ia];
   }
 

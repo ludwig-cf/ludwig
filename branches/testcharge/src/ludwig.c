@@ -228,6 +228,14 @@ static int ludwig_rt(ludwig_t * ludwig) {
     RUN_get_int_parameter("LE_init_profile", &n);
 
     if (n != 0) model_le_init_shear_profile();
+
+    /* SPECIAL */
+    /*
+    sprintf(filename, "%sphi-%8.8d", subdirectory, 0);
+    io_info_set_processor_independent(io_info_phi);
+    io_read(filename, io_info_phi);
+    io_info_set_processor_dependent(io_info_phi);
+    */
   }
   else {
     /* Distributions */
@@ -246,6 +254,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
       field_io_info(ludwig->phi, &iohandler);
       io_read_data(iohandler, filename, ludwig->phi);
     }
+
     if (ludwig->p) {
       sprintf(filename, "%sp-%8.8d", subdirectory, get_step());
       info("files(s) %s\n", filename);
@@ -325,8 +334,10 @@ void ludwig_run(const char * inputfile) {
 
   char    filename[FILENAME_MAX];
   char    subdirectory[FILENAME_MAX];
+  int     is_porous_media = 0;
   int     step = 0;
   int     is_subgrid = 0;
+  int     is_pm = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
   io_info_t * iohandler = NULL;
 
@@ -345,6 +356,7 @@ void ludwig_run(const char * inputfile) {
   pe_subdirectory(subdirectory);
 
   info("Initial conditions.\n");
+  wall_pm(&is_porous_media);
 
   stats_distribution_print(ludwig->map);
 
@@ -442,11 +454,17 @@ void ludwig_run(const char * inputfile) {
 					      ludwig->map);
     }
 
-    /* Collision stage */
+    /* Collision stage (ODE collision is combined with propagation) */
 
-    TIMER_start(TIMER_COLLIDE);
-    collide(ludwig->hydro, ludwig->map);
-    TIMER_stop(TIMER_COLLIDE);
+    if (is_propagation_ode() == 0) {
+
+      TIMER_start(TIMER_COLLIDE);
+      collide(ludwig->hydro, ludwig->map);
+      TIMER_stop(TIMER_COLLIDE);
+
+    }
+
+    /* Boundary coniditions */
 
     model_le_apply_boundary_conditions();
 
@@ -474,7 +492,7 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_PROPAGATE);
 
     if(is_propagation_ode()) {
-      propagation_ode();
+      propagation_ode(ludwig->hydro);
     }
     else {
       propagation();
@@ -550,7 +568,13 @@ void ludwig_run(const char * inputfile) {
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->hydro);
     }
-
+#ifdef OLD
+    if (is_fed_output_step()) {
+      info("Writing free energy density output at step %d!\n", step);
+      sprintf(filename, "%sfed-%8.8d", subdirectory, step);
+      io_write(filename, io_info_fed);
+    }
+#endif /* PENDING RETHINK OF FED SECTOR */
     /* Print progress report */
 
     if (is_statistics_step()) {
@@ -562,10 +586,13 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
       if (ludwig->psi) psi_stats_info(ludwig->psi);
 
+      ludwig_report_momentum(ludwig);
       stats_free_energy_density(ludwig->q, ludwig->map);
 
-      ludwig_report_momentum(ludwig);
-      if (ludwig->hydro) stats_velocity_minmax(ludwig->hydro, ludwig->map);
+      if (ludwig->hydro) {
+	wall_pm(&is_pm);
+	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
+      }
 
       collision_stats_kt(ludwig->map);
 
@@ -596,6 +623,7 @@ void ludwig_run(const char * inputfile) {
       sprintf(filename,"%sphi-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->phi);
     }
+
     if (ludwig->q) {
       field_io_info(ludwig->q, &iohandler);
       info("Writing q file at step %d!\n", step);

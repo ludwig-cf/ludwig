@@ -31,6 +31,7 @@ static int freq_config     = 10000;
 static int freq_phi        = 100000000;
 static int freq_psi        = 100000000;
 static int freq_vel        = 100000000;
+static int freq_fed        = 100000000;
 static int freq_shear_io   = 100000000;
 static int freq_shear_meas = 100000000;
 static int freq_colloid_io = 100000000;
@@ -63,6 +64,7 @@ void init_control() {
   n = RUN_get_int_parameter("freq_phi", &freq_phi);
   n = RUN_get_int_parameter("freq_psi", &freq_psi);
   n = RUN_get_int_parameter("freq_vel", &freq_vel);
+  n = RUN_get_int_parameter("freq_fed", &freq_fed);
   n = RUN_get_int_parameter("freq_shear_measurement", &freq_shear_meas);
   n = RUN_get_int_parameter("freq_shear_output", &freq_shear_io);
   n = RUN_get_int_parameter("colloid_io_freq", &freq_colloid_io);
@@ -147,6 +149,16 @@ int is_psi_output_step() {
 
 int is_vel_output_step() {
   return ((t_current % freq_vel) == 0);
+}
+
+/*****************************************************************************
+ *
+ *  is_fed_output_step
+ *
+ *****************************************************************************/
+
+int is_fed_output_step() {
+  return ((t_current % freq_fed) == 0);
 }
 
 /*****************************************************************************

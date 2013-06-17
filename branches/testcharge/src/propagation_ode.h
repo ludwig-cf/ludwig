@@ -15,7 +15,9 @@
 #ifndef PROPAGATION_ODE_H
 #define PROPAGATION_ODE_H
 
-void   propagation_ode(void);
+#include "hydro.h"
+
+void   propagation_ode(hydro_t * hydro);
 void   propagation_ode_init(void);
 double propagation_ode_get_tstep(void);
 enum   propagation_ode_integrator_type {RK2, RK4};

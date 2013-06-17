@@ -976,6 +976,16 @@ static void build_link_mean(colloid_t * p_colloid, int p, const double rb[3]) {
  *
  *  This constructs links between colloid and fixed wall.
  *
+ *  Some notes.
+ *
+ *  This is intended for the inbuilt walls, which occupy the halo
+ *  regions. Initialisation with coll_recontruct_links will not
+ *  indentify BOUNDARY links because it does not look into the
+ *  halo region. This routine does.
+ *
+ *  coll_reset_links() examines exsiting links and sets the
+ *  BOUNDARY status as appropriate. See issue 871.
+ *
  *****************************************************************************/
 
 int build_colloid_wall_links(colloid_t * p_colloid, map_t * map) {

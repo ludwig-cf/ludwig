@@ -55,4 +55,6 @@ int    coords_strides(int * xs, int * ys, int * zs);
 
 void coords_active_region_radius_set(const double r);
 double coords_active_region(const int index);
+int    coords_periodic_comm(MPI_Comm * comm);
+int    coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank);
 #endif

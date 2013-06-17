@@ -49,7 +49,8 @@ void blue_phase_run_time(void) {
   double amplitude;
   double xi;
   double zeta;
-  double w,w_wall;
+  double w1, w2;
+  double w1_wall, w2_wall;
   double redshift;
   double epsilon;
   double electric[3];
@@ -171,10 +172,13 @@ void blue_phase_run_time(void) {
       colloids_q_tensor_anchoring_set(ANCHORING_PLANAR);
     }
 
-    /* Surface free energy parameter (method two only) */
+    /* Surface free energy parameter */
 
-    RUN_get_double_parameter("lc_anchoring_strength", &w);
-    
+    w1 = 0.0;
+    w2 = 0.0;
+    RUN_get_double_parameter("lc_anchoring_strength", &w1);
+    RUN_get_double_parameter("lc_anchoring_strength_2", &w2);
+
     info("\n");
     info("Liquid crystal anchoring\n");
     info("Anchoring method:          = %14s\n", method);
@@ -186,33 +190,53 @@ void blue_phase_run_time(void) {
 
     if (strcmp(type_wall, "normal") == 0) {
       wall_anchoring_set(ANCHORING_NORMAL);
+      w1_wall = w1;
+      w2_wall = 0.0;
     }
 
     if (strcmp(type_wall, "planar") == 0) {
       wall_anchoring_set(ANCHORING_PLANAR);
+      w1_wall = w1;
+      w2_wall = w2;
     }
 
     if (strcmp(type_wall, "fixed") == 0) {
       wall_anchoring_set(ANCHORING_FIXED);
+      w1_wall = w1;
+      w2_wall = 0.0;
     }
 
-    /* Set the anchoring strength the same for colloid and wall */
-    colloids_q_tensor_w_set(w);
-    w_wall = w;
-    wall_w_set(w_wall);
+    /* Colloids default, then look for specific value */
+
+    if (strcmp(type, "normal") == 0) w2 = 0.0;
+    if (strcmp(type, "fixed")  == 0) w2 = 0.0;
       
-    /* Try if the specific parameter for colloid/wall exists */
-    n =  RUN_get_double_parameter("lc_anchoring_strength_colloid", &w);
-    if ( n == 1 ) colloids_q_tensor_w_set(w);
-      
-    n =  RUN_get_double_parameter("lc_anchoring_strength_wall", &w_wall);
-    if( n == 1 ) wall_w_set(w_wall);
-      
-    info("Anchoring type (walls):          = %14s\n", type_wall);
-    info("Surface free energy (colloid) w: = %14.7e\n", w);
-    info("Surface free energy (wall) w:    = %14.7e\n", w_wall);
-    info("Ratio (colloid) w/kappa0:        = %14.7e\n", w/kappa0);
-    info("Ratio (wall) w/kappa0:           = %14.7e\n", w_wall/kappa0);
+    n =  RUN_get_double_parameter("lc_anchoring_strength_colloid", &w1);
+
+    if ( n == 1 ) {
+      if (strcmp(type, "normal") == 0) w2 = 0.0;
+      if (strcmp(type, "planar") == 0) w2 = w1;
+      if (strcmp(type, "fixed")  == 0) w2 = 0.0;
+    }
+    blue_phase_coll_w12_set(w1, w2);
+
+    /* Wall */
+
+    n =  RUN_get_double_parameter("lc_anchoring_strength_wall", &w1_wall);
+    if ( n == 1 ) {
+      if (strcmp(type_wall, "normal") == 0) w2_wall = 0.0;
+      if (strcmp(type_wall, "planar") == 0) w2_wall = w1_wall;
+      if (strcmp(type_wall, "fixed")  == 0) w2_wall = 0.0;
+    }
+    blue_phase_wall_w12_set(w1_wall, w2_wall);
+
+    info("Anchoring type (walls):          = %14s\n",   type_wall);
+    info("Surface free energy (colloid)w1: = %14.7e\n", w1);
+    info("Surface free energy (colloid)w2: = %14.7e\n", w2);
+    info("Surface free energy (wall) w1:   = %14.7e\n", w1_wall);
+    info("Surface free energy (wall) w2:   = %14.7e\n", w2_wall);
+    info("Ratio (colloid) w1/kappa0:       = %14.7e\n", w1/kappa0);
+    info("Ratio (wall) w1/kappa0:          = %14.7e\n", w1_wall/kappa0);
     info("Computed surface order f(gamma)  = %14.7e\n",
 	 blue_phase_amplitude_compute());
 
@@ -276,6 +300,13 @@ int blue_phase_rt_initial_conditions(field_t * q) {
     RUN_get_double_parameter_vector("lc_init_nematic", nhat);
     info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
     blue_phase_nematic_init(q, nhat);
+  }
+
+  if (strcmp(key1, "active_nematic") == 0) {
+    info("Initialising Q_ab to active nematic\n");
+    RUN_get_double_parameter_vector("lc_init_nematic", nhat);
+    info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
+    blue_phase_active_nematic_init(q, nhat);
   }
 
   if (strcmp(key1, "o8m") == 0) {

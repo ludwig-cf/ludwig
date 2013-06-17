@@ -597,6 +597,7 @@ int hydro_u_read(FILE * fp, int index, void * self) {
 int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 			    double w[3][3]) {
   int im1, ip1;
+  double tr;
 
   assert(obj);
 
@@ -622,6 +623,13 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
   w[X][Z] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
   w[Y][Z] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
   w[Z][Z] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
+
+  /* Enforce tracelessness */
+
+  tr = r3_*(w[X][X] + w[Y][Y] + w[Z][Z]);
+  w[X][X] -= tr;
+  w[Y][Y] -= tr;
+  w[Z][Z] -= tr;
 
   return 0;
 }

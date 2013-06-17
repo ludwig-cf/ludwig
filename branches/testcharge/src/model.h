@@ -25,6 +25,16 @@
 
 #include "io_harness.h"
 
+/* Vector length for SIMD auto-vectorisation over lattice sites. */
+/* If not set in the Makefile, it defaults to 1, as larger values
+ * can result in adverse performance (e.g., if choice doesn't
+ * match hardware, or in 2d) */
+
+#if !defined (SIMDVL)
+#define SIMDVL 1
+#endif
+
+
 /* Number of hydrodynamic modes */
 enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
@@ -56,8 +66,16 @@ void   distribution_halo_set_complete(void);
 void   distribution_halo_set_reduced(void);
 void   distribution_init_f(void);
 void   distribution_index(const int index, const int n, double f[NVEL]);
+void distribution_multi_index(const int index, const int n, 
+			      double f_vec[NVEL][SIMDVL]);
+void distribution_multi_index_part(const int index, const int n, 
+				   double f_vec[NVEL][SIMDVL],int nv);
 void   distribution_index_set(const int index, const int n,
 			      const double f[NVEL]);
+void distribution_multi_index_set(const int index, const int n,
+				  double f_vec[NVEL][SIMDVL]);
+void distribution_multi_index_set_part(const int index, const int n,
+				       double f_vec[NVEL][SIMDVL], int nv);
 
 io_info_t * distribution_io_info(void);
 void   distribution_io_info_set(io_info_t * io_info);

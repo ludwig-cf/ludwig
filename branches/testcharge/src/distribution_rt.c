@@ -25,6 +25,9 @@
 #include "distribution_rt.h"
 
 static void distribution_rt_2d_kelvin_helmholtz(void);
+static void distribution_rt_2d_shear_wave(void);
+static int distribution_init_uniform(double rho0, const double u0[3]);
+static int distribution_init_poiseuille(double rho0, const double umax[3]);
 
 /*****************************************************************************
  *
@@ -63,6 +66,7 @@ void distribution_run_time(void) {
   info("-------------------------------\n");
 
   info("Model:            d%dq%d %c\n", NDIM, NVEL, memory);
+  info("SIMD vector len:  %d\n", SIMDVL);
   info("Number of sets:   %d\n", distribution_ndist());
   info("Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
 
@@ -94,11 +98,27 @@ void distribution_run_time(void) {
 void distribution_rt_initial_conditions(void) {
 
   char key[FILENAME_MAX];
+  double rho0 = 1.0;
+  double u0[3] = {0.0, 0.0, 0.0};
 
   RUN_get_string_parameter("distribution_initialisation", key, FILENAME_MAX);
 
   if (strcmp("2d_kelvin_helmholtz", key) == 0) {
     distribution_rt_2d_kelvin_helmholtz();
+  }
+
+  if (strcmp("2d_shear_wave", key) == 0) {
+    distribution_rt_2d_shear_wave();
+  }
+
+  if (strcmp("3d_uniform_u", key) == 0) {
+    RUN_get_double_parameter_vector("distribution_uniform_u", u0);
+    distribution_init_uniform(rho0, u0);
+  }
+
+  if (strcmp("1d_poiseuille", key) == 0) {
+    RUN_get_double_parameter_vector("distribution_poiseuille_umax", u0);
+    distribution_init_poiseuille(rho0, u0);
   }
 
   return;
@@ -175,4 +195,153 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
   info("\n");
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_rt_2d_shear_wave
+ *
+ *  The system in (x, y) is scaled to 0 <= x,y < 1 and then
+ *
+ *      u_x = U sin( kappa y)
+ *
+ *      where U is a maximum velocity, kappa is the (inverse) width of
+ *      the initial shear layer.
+ *
+ *****************************************************************************/
+
+static void distribution_rt_2d_shear_wave(void) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int noffset[3];
+
+  double rho = 1.0;
+  double u0 = 0.04;
+  double kappa;
+  double u[3];
+
+  double y;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  kappa = 2.0*pi_;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = (1.0*(noffset[Y] + jc) - Lmin(Y))/L(Y);
+
+      u[X] = u0*sin(kappa * y);
+      u[Y] = 0.0;
+      u[Z] = 0.0;
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+        distribution_rho_u_set_equilibrium(index, rho, u);
+      }
+    }
+  }
+
+  info("\n");
+  info("Initial distribution: 2d shear wave\n");
+  info("Velocity magnitude:   %14.7e\n", u0);
+  info("Shear layer kappa:    %14.7e\n", kappa);
+  info("\n");
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_init_uniform
+ *
+ *  Set the initial distribution consistent with fixed (rho_0, u_0).
+ *
+ *****************************************************************************/
+
+static int distribution_init_uniform(double rho0, const double u0[3]) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	distribution_rho_u_set_equilibrium(index, rho0, u0);
+
+      }
+    }
+  }
+
+  info("\n");
+  info("Initial distribution: 3d uniform desnity/velocity\n");
+  info("Density:              %14.7e\n", rho0);
+  info("Velocity:             %14.7e %14.7e %14.7e\n", u0[X], u0[Y], u0[Z]);
+  info("\n");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_init_poiseuille
+ *
+ *  A 1-d Poiseuille parabolic profile based on, e.g.,
+ *    u(x) ~ umax[X] x (Lx - x)
+ *
+ *  The umax[3] should have only one non-zero component.
+ *
+ *****************************************************************************/
+
+static int distribution_init_poiseuille(double rho0, const double umax[3]) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int noffset[3];
+
+  double u0[3];
+  double x, y, z;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+
+    /* The - Lmin() in each direction centres the profile symmetrically,
+     * and the 4/L^2 normalises to umax at centre */
+
+    x = 1.0*(noffset[X] + ic) - Lmin(X);
+    u0[X] = umax[X]*x*(L(X) - x)*4.0/(L(X)*L(X));
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+      y = 1.0*(noffset[Y] + jc) - Lmin(Y);
+      u0[Y] = umax[Y]*y*(L(Y) - y)*4.0/(L(Y)*L(Y));
+
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	z = 1.0*(noffset[Z] + kc) - Lmin(Z);
+	u0[Z] = umax[Z]*z*(L(Z) - z)*4.0/(L(Z)*L(Z));
+
+	index = coords_index(ic, jc, kc);
+	distribution_rho_u_set_equilibrium(index, rho0, u0);
+
+      }
+    }
+  }
+
+  info("\n");
+  info("Initial distribution: 1d Poiseuille profile\n");
+  info("Density:              %14.7e\n", rho0);
+  info("Velocity (max):       %14.7e %14.7e %14.7e\n", umax[X], umax[Y],
+       umax[Z]);
+  info("\n");
+
+  return 0;
 }

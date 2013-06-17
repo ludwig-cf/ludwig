@@ -53,6 +53,7 @@ struct io_info_s {
   struct io_decomposition_t * io_comm;
   size_t bytesize;
   int processor_independent;
+  int single_file_read;
   char name[FILENAME_MAX];
   int (* write_function)   (FILE *, const int, const int, const int);
   int (* read_function)    (FILE *, const int, const int, const int);
@@ -110,6 +111,7 @@ io_info_t * io_info_create_with_grid(const int grid[3]) {
   p_decomp = io_decomposition_create(grid);
   p_info->io_comm = p_decomp;
   io_info_set_processor_dependent(p_info);
+  p_info->single_file_read = 0;
 
   return p_info;
 }
@@ -327,6 +329,10 @@ static void io_set_group_filename(char * filename_io, const char * stub,
 
   sprintf(filename_io, "%s.%3.3d-%3.3d", stub, info->io_comm->n_io,
 	  info->io_comm->index + 1);
+
+  if (info->single_file_read) {
+    sprintf(filename_io, "%s.%3.3d-%3.3d", stub, 1, 1);
+  }
 
   return;
 }
@@ -590,6 +596,7 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
 
   long int offset;
   int ifo, jfo, kfo;
+  int noffset[3];
 
   assert(info);
 
@@ -601,6 +608,16 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
   offset = (ifo*info->io_comm->nsite[Y]*info->io_comm->nsite[Z]
 	  + jfo*info->io_comm->nsite[Z]
 	  + kfo)*info->bytesize;
+
+  /* Single file offset */
+
+  if (info->single_file_read) {
+    coords_nlocal_offset(noffset);
+    ifo = noffset[X] + ic - 1;
+    jfo = noffset[Y] + jc - 1;
+    kfo = noffset[Z];
+    offset = info->bytesize*(ifo*N_total(Y)*N_total(Z) + jfo*N_total(Z) + kfo);
+  }
 
   return offset;
 }
@@ -1036,4 +1053,19 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_single_file_set
+ *
+ *****************************************************************************/
+
+void io_info_single_file_set(io_info_t * info) {
+
+  assert(info);
+
+  info->single_file_read = 1;
+
+  return;
 }
