@@ -568,13 +568,14 @@ void ludwig_run(const char * inputfile) {
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->hydro);
     }
-#ifdef OLD
+
     if (is_fed_output_step()) {
+      fed_io_info(&iohandler);
       info("Writing free energy density output at step %d!\n", step);
       sprintf(filename, "%sfed-%8.8d", subdirectory, step);
-      io_write(filename, io_info_fed);
+      io_write(filename, iohandler);
     }
-#endif /* PENDING RETHINK OF FED SECTOR */
+
     /* Print progress report */
 
     if (is_statistics_step()) {
