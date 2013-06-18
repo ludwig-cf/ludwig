@@ -14,6 +14,10 @@
  *
  *****************************************************************************/
 
+/* In theory should be able to adapt this into a function that will change the decompositions.
+ * However it may be necessary to change the actual MPI sends/recvs to a seperate routine as this will allow them to be done seperately in future 
+ */
+
 #include <stdio.h>
 #include <mpi.h>
 #include <assert.h>
@@ -24,7 +28,8 @@
 
 enum {X,Y,Z};
 
-int find_recv_proc (int local_coord[3], int nlocal[3]);
+int find_recv_proc (int global_coord[], int nlocal[]);
+int index (int x, int y, int z, int isize[]);
 
 int main() {
   
@@ -38,34 +43,33 @@ int main() {
   int nlocal[3];
   int coords[3];
   int i, j, k;
+  int print = 0;
 
-/* ludwig decomposition */
+/* ludwig decomposition setup*/
 
-  printf("initialise coords\n");
   pe_init();
   coords_init();
 
   ludwig_comm = cart_comm();
   MPI_Comm_size(ludwig_comm, &num_procs);
   MPI_Comm_rank(ludwig_comm, &rank);
+  MPI_Status status;
 
-  printf("set nlocal\n");
   coords_nlocal(nlocal);
   for(i=0; i<3; i++) {
     coords[i] = cart_coords(i);
   }
 
-  double test_array[nlocal[X]] [nlocal[Y]] [nlocal[Z]];
+  double send_array[nlocal[X]] [nlocal[Y]] [nlocal[Z]];
   for(k=0; k<nlocal[X]; k++) {
     for(j=0; j<nlocal[Y]; j++) {
       for(i=0; i<nlocal[Z]; i++) {
-        test_array[k][j][i] = rank;
+        send_array[k][j][i] = rank;
       }
     }
   }
 
-//  printf("rank %d, nlocals %d %d %d\n coords: (%d,%d,%d)\n", rank, nlocal[X], nlocal[Y], nlocal[Z], coords[0], coords[1], coords[2]);
-/* p3dfft decomposition */
+/* p3dfft decomposition setup */
   p3dfft_comm = MPI_COMM_WORLD;
 
   int nx,ny,nz;
@@ -78,8 +82,16 @@ int main() {
   MPI_Comm_rank(p3dfft_comm, &rank);
 
   int proc_dims[2];
-  nx = ny = nz = 16;
+  nx = ny = nz = 64;
 
+  int *dest_proc = malloc(sizeof(int));;
+  int *recv_proc = malloc(sizeof(int));;
+  int send_count, recv_count;
+  MPI_Request *request = malloc(sizeof(MPI_Request));
+  MPI_Datatype *send_subarray = malloc(sizeof(MPI_Datatype));
+  MPI_Datatype *recv_subarray = malloc(sizeof(MPI_Datatype));
+
+  double *recv_array; /* The size of this is unknown until p3dfft_get_dims is called */
 
 /* transferring data from cartesian to pencil */
   if(cart_size(2) == 1) { /* already in a pencil decomposition! */
@@ -91,21 +103,19 @@ int main() {
 
     p3dfft_get_dims(istart, iend, isize, 1);
 
-  //  printf("rank: %d, istart %d %d %d, iend %d %d %d\n", rank, istart[0], istart[1], istart[2], iend[0], iend[1], iend[2]);
-    printf("sizes %d %d %d \n", isize[0], isize[1], isize[2]); 
-    double recv_array[isize[0]] [isize[1]] [isize[2]];
+    recv_array = malloc(isize[0]*isize[1]*isize[2]*sizeof(double));
     for(k=0; k<nlocal[X]; k++) {
       for(j=0; j<nlocal[Y]; j++) {
         for(i=0; i<nlocal[Z]; i++) {
-          recv_array[k][j][i] = test_array[k][j][i];
+          recv_array[index(k,j,i,isize)] = send_array[k][j][i];
         }
       }
     }
-    if(rank == 0) {
-      for(k=0; k<isize[X]; k++) {
+    if(rank == print) {
+      for(i=0; i<isize[X]; i++) {
         for(j=0; j<isize[Y]; j++) {
-          for(i=0; i<isize[Z]; i++) {
-            printf("%f ", recv_array[k][j][i]);
+          for(k=0; k<isize[Z]; k++) {
+            printf("%.0f ", recv_array[index(k,j,i,isize)]);
           }
           printf("\t");
         }
@@ -116,12 +126,12 @@ int main() {
   }
   else { /*we need to do some work */
     if(rank == 0) { printf("Moving data from cartesian to pencil decomposition.\n"); }
+/* It will be necessary to allow the user specify the grid they want */
     proc_dims[0] = num_procs/4;
     proc_dims[1] = 4;
 
     
-    if(rank == 0) { printf("before proc_dims %d %d\n", proc_dims[0], proc_dims[1]); }
-/* for now will only consider good decompositions of new fft grid */
+/* for now will only consider pencil decompositions that divide evenly into the lattice */
     assert(ny%proc_dims[1] == 0);
     assert(nz%proc_dims[0] == 0);
 
@@ -130,21 +140,12 @@ int main() {
 
     p3dfft_get_dims(istart, iend, isize, 1);
 
-
-  //  printf("rank: %d, istart %d %d %d, iend %d %d %d\n", rank, istart[0], istart[1], istart[2], iend[0], iend[1], iend[2]);
-    printf("sizes %d %d %d \n", isize[0], isize[1], isize[2]); 
-
   /* now will create the subarrays for the mapping of data */
-    double recv_array[isize[2]] [isize[1]] [isize[0]];
     int local_coord[3] = {0, 0, 0};
-    int global_coord[2];
+    int global_coord[3];
     int fft_proc_coord[2];
     int array_of_sizes[3], array_of_subsizes[3], array_of_starts[3];
-    int dest_proc;
-    int send_count, recv_count;
-    MPI_Request *request = malloc(sizeof(MPI_Request));
-    MPI_Datatype *send_subarray = malloc(sizeof(MPI_Datatype));
-    MPI_Datatype *recv_subarray = malloc(sizeof(MPI_Datatype));
+    recv_array = malloc(isize[0]*isize[1]*isize[2]*sizeof(double));
   
     recv_count = send_count = 1;
 
@@ -152,10 +153,11 @@ int main() {
       while(local_coord[1] < nlocal[1]) {
         if(local_coord[0] != 0 || local_coord[1] !=0) {
           send_count ++;
+          realloc(dest_proc, send_count*sizeof(int));
           realloc(send_subarray, send_count*sizeof(MPI_Datatype));
           realloc(request, send_count*sizeof(MPI_Request));
         }
-        /* compute destination proc */
+        /* compute destination proc (put this in fn) */
         for(i=0; i<3; i++) {
           coords[i] = cart_coords(i);
           array_of_sizes[i] = nlocal[i];
@@ -169,15 +171,14 @@ int main() {
           if(array_of_subsizes[i] > nlocal[i]) {
             array_of_subsizes[i] = nlocal[i];
           }
-          printf("subsize[%d] %d\n", i, array_of_subsizes[i]);
           array_of_starts[i] = local_coord[i];
 
           assert(array_of_starts[i] >= 0);
           assert(array_of_starts[i] <= (array_of_sizes[i] - array_of_subsizes[i]) );
         }
 
-        dest_proc = fft_proc_coord[0]*proc_dims[1] + fft_proc_coord[1];
-        assert(dest_proc < num_procs);
+        dest_proc[send_count-1] = fft_proc_coord[0]*proc_dims[1] + fft_proc_coord[1];
+        assert(dest_proc[send_count-1] < num_procs);
 
         /* set up subarray to be sent, mostly already done*/
         array_of_subsizes[2] = nlocal[2];
@@ -190,13 +191,9 @@ int main() {
         MPI_Type_commit(&send_subarray[send_count-1]);
         
         /* send the data */
-        MPI_Isend(array_of_subsizes, 3, MPI_INT, dest_proc, 1, ludwig_comm, &request[send_count-1]);
-        MPI_Isend(test_array, 1, send_subarray[send_count-1], dest_proc, 2, ludwig_comm, &request[send_count-1]);
-        printf("array of starts %d %d %d \n", array_of_starts[0], array_of_starts[1], array_of_starts[2]);
+        MPI_Isend(array_of_subsizes, 3, MPI_INT, dest_proc[send_count-1], 1, ludwig_comm, &request[send_count-1]);
+        MPI_Isend(send_array, 1, send_subarray[send_count-1], dest_proc[send_count-1], 2, ludwig_comm, &request[send_count-1]);
 
-        /* clean up */
-        /* Do I need to? - No want to keep this structure for sending back to original decomposition*/
-//        MPI_Type_free(send_subarray[send_count-1]);
         /* increment to the next row that needs to be checked */
         local_coord[1] += array_of_subsizes[1];
       }
@@ -207,15 +204,12 @@ int main() {
 
     /* prepare to receive */
     int recv_size[3];
-    int *recv_proc = malloc(sizeof(int));;
-    MPI_Status status;
 
     /* first receive the messages detailing sizes */
     for(i=0; i<3; i++) {
       local_coord[i] = 0;
     }
 
-/* processors currently try to receive from the same remote proc more than once, need to fix this */
     while(local_coord[0] < isize[2]) {
       while(local_coord[1] < isize[1]) {
         while(local_coord[2] < isize[0]) {
@@ -223,17 +217,14 @@ int main() {
             recv_count++;
             realloc(recv_subarray, recv_count*sizeof(MPI_Datatype));
             realloc(recv_proc, recv_count*sizeof(int));
-  //          realloc(request, recv_count*sizeof(MPI_Request));
           }
-          for(i=0; i<2; i++) {
-            global_coord[i] = istart[2-i] + local_coord[i];
+          for(i=0; i<3; i++) {
+            /* istart is global coord in fortran code (ie starts at 1*/
+            global_coord[i] = istart[2-i] - 1 + local_coord[i];
           }
-/* look at why this doesn't give correct values */
           recv_proc[recv_count-1] = find_recv_proc(global_coord, nlocal);
 
-          printf("proc %d receiving from %d, count %d\n", rank, recv_proc[recv_count-1], recv_count);
           MPI_Recv(recv_size, 3, MPI_INT, recv_proc[recv_count-1], 1, ludwig_comm, &status);
-          if(rank == 0) { printf("recv_size %d %d %d, isize %d %d %d \n", recv_size[0], recv_size[1], recv_size[2], isize[0], isize[1], isize[2]); }
           assert(recv_size[2] <= isize[0]);
           assert(recv_size[1] <= isize[1]);
           assert(recv_size[0] <= isize[2]);
@@ -263,11 +254,17 @@ int main() {
       local_coord[0] += recv_size[0];
     }
 
-    if(rank == 0) {
-      for(k=0; k<isize[X]; k++) {
+/*wait on sends*/
+
+  }
+  if(rank == 0) { printf("Data now in pencil decomposition\n"); }
+
+/* this print is for testing purposes, the order is such that it is relatively nice to view, not for performance. */
+    if(rank == print) {
+      for(i=0; i<isize[X]; i++) {
         for(j=0; j<isize[Y]; j++) {
-          for(i=0; i<isize[Z]; i++) {
-            printf("%.1f ", recv_array[k][j][i]);
+          for(k=0; k<isize[Z]; k++) {
+            printf("%.0f ", recv_array[index(k,j,i,isize)]);
           }
           printf("\t");
         }
@@ -275,9 +272,44 @@ int main() {
       }
     }
 
+
+  /*send the data back to cartesian decomp */
+  if(cart_size(2) == 1) { /* already in a pencil decomposition! */
+
+  }
+  else {
+    if(rank == 0) { printf("Transferring data back to cartesian processor decomposition\n"); }
+    MPI_Request pencil_cart_request[recv_count];
+
+    for(i=0; i<recv_count; i++) {
+      MPI_Isend(recv_array, 1, recv_subarray[i], recv_proc[i], 2, ludwig_comm, &pencil_cart_request[i]);
+    }
+    for(i=0; i<send_count; i++) {
+      MPI_Recv(send_array, 1, send_subarray[i], dest_proc[i], 2, ludwig_comm, &status);
+    }
   }
 
+    for(k=0; k<nlocal[X]; k++) {
+      for(j=0; j<nlocal[Y]; j++) {
+        for(i=0; i<nlocal[Z]; i++) {
+          if(send_array[k][j][i] != rank) {
+            printf("error: send array[%d][%d][%d] is wrong, %d and should be %d\n", k, j, i, send_array[k][j][i], rank);
+          }
+        }
+      }
+    }
 
+  if(rank == 0) { printf("Data now in cartesian processor decomposition\n"); }
+
+
+/* careful about this freeing, ideally we would have these be static and when the decomposition is next to be changed the messages can simply be sent, without the need for calculating the destinations again*/
+
+  free(recv_subarray);
+  free(send_subarray);
+  free(dest_proc);
+  free(recv_proc);
+  free(request);
+  free(recv_array);
 
   MPI_Finalize();
 
@@ -285,18 +317,24 @@ int main() {
 }
 
 
-int find_recv_proc (int global_coord[3], int nlocal[3]) {
+int find_recv_proc (int global_coord[], int nlocal[]) {
  
   int i;
-  int coords[3];
+  int coords[3] = {0,0,0};
   int recv_proc;
 
-  for(i=0; i<2; i++) {
+  for(i=0; i<3; i++) {
 /*    assert(global_coord[i] < ntotal_[i]); */
     coords[i] = global_coord[i]/nlocal[i];
   }
 
-  recv_proc = ( coords[2]*cart_size(2) + coords[1]*cart_size(1) ) + coords[0] * (cart_size(1)*cart_size(2));
+  recv_proc = coords[0]*cart_size(1)*cart_size(2) + coords[1]*cart_size(2) + coords[2];  
+
 
   return recv_proc;
+}
+
+int index (int x, int y, int z, int isize[]) {
+
+  return x*isize[1]*isize[0] + y*isize[0] + z; 
 }
