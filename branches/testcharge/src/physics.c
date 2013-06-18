@@ -73,7 +73,7 @@ static int physics_create(void) {
   if (phys == NULL) fatal("calloc(physics_t) failed\n");
 
   phys->eta_shear = ETA_DEFAULT;
-  phys->eta_shear = ETA_DEFAULT;
+  phys->eta_bulk  = ETA_DEFAULT;
   phys->rho0      = RHO_DEFAULT;
 
   /* Everything else defaults to zero. */
