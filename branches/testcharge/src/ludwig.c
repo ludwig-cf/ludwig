@@ -24,6 +24,7 @@
 #include "pe.h"
 #include "runtime.h"
 #include "ran.h"
+#include "noise.h"
 #include "timer.h"
 #include "coords_rt.h"
 #include "coords.h"
@@ -52,7 +53,6 @@
 #include "phi_stats.h"
 #include "phi_force.h"
 #include "phi_force_colloid.h"
-#include "phi_fluctuations.h"
 #include "phi_lb_coupler.h"
 
 /* Order parameter fields */
@@ -122,6 +122,7 @@ struct ludwig_s {
   field_grad_t * q_grad;    /* Gradients for q */
   psi_t * psi;              /* Electrokinetics */
   map_t * map;              /* Site map for fluid/solid status etc. */
+  noise_t * noise;          /* Lattice fluctuation generator */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -161,16 +162,16 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   init_control();
 
-  physics_ref(&ludwig->param);
   physics_init_rt(ludwig->param);
   physics_info(ludwig->param);
 
   if (is_propagation_ode()) propagation_ode_init();
 
   distribution_run_time();
-  collision_run_time();
+  collision_run_time(ludwig->noise);
   map_init_rt(&ludwig->map);
 
+  noise_init(ludwig->noise, 0);
   ran_init();
   hydro_rt(&ludwig->hydro);
 
@@ -283,7 +284,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   stats_rheology_init();
   stats_turbulent_init();
-  collision_init();
 
   /* Calibration statistics for ah required? */
 
@@ -302,8 +302,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
     stats_sigma_init(ludwig->phi, nstat);
     if (distribution_ndist() == 2) phi_lb_from_field(ludwig->phi); 
   }
-
-  collision_init();
 
   /* Initial Q_ab field required, apparently More GENERAL? */
 
@@ -448,10 +446,10 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
-					 ludwig->map);
+					 ludwig->map, ludwig->noise);
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
       if (ludwig->q) blue_phase_beris_edwards(ludwig->q, ludwig->hydro,
-					      ludwig->map);
+					      ludwig->map, ludwig->noise);
     }
 
     /* Collision stage (ODE collision is combined with propagation) */
@@ -459,7 +457,7 @@ void ludwig_run(const char * inputfile) {
     if (is_propagation_ode() == 0) {
 
       TIMER_start(TIMER_COLLIDE);
-      collide(ludwig->hydro, ludwig->map);
+      collide(ludwig->hydro, ludwig->map, ludwig->noise);
       TIMER_stop(TIMER_COLLIDE);
 
     }
@@ -587,15 +585,15 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
       if (ludwig->psi) psi_stats_info(ludwig->psi);
 
-      ludwig_report_momentum(ludwig);
       stats_free_energy_density(ludwig->q, ludwig->map);
+      ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
 	wall_pm(&is_pm);
 	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
       }
 
-      collision_stats_kt(ludwig->map);
+      collision_stats_kt(ludwig->noise, ludwig->map);
 
       info("\nCompleted cycle %d\n", step);
     }
@@ -746,11 +744,14 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   int nk;
   int ngrad;
   int nhalo;
+  int noise_on = 0;
   double value;
   char description[BUFSIZ];
-  unsigned int seed;
 
   assert(ludwig);
+
+  physics_ref(&ludwig->param);
+  noise_create(&ludwig->noise);
 
   n = RUN_get_string_parameter("free_energy", description, BUFSIZ);
 
@@ -798,24 +799,18 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using Cahn-Hilliard finite difference solver.\n");
 
     RUN_get_double_parameter("mobility", &value);
-    phi_cahn_hilliard_mobility_set(value);
-    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+    physics_mobility_set(value);
+    info("Mobility M            = %12.5e\n", value);
 
-    /* This could be set via symmetric_noise, no? Or check consistent */
-    p = 0;
-    RUN_get_int_parameter("fd_phi_fluctuations", &p);
-    info("Order parameter noise = %3s\n", (p == 0) ? "off" : " on");
-    if (p != 0) phi_fluctuations_on_set(p);
+    /* Order parameter noise */
 
-    if (phi_fluctuations_on()) {
+    RUN_get_int_parameter("fd_phi_fluctuations", &noise_on);
+    info("Order parameter noise = %3s\n", (noise_on == 0) ? "off" : " on");
+
+    noise_present_set(ludwig->noise, NOISE_PHI, noise_on);
+
+    if (noise_on) {
       if (nhalo != 3) fatal("Fluctuations: use symmetric_noise\n");
-      RUN_get_int_parameter("fd_phi_fluctuations_seed", &p);
-      seed = 0;
-      if (p > 0) {
-	seed = p;
-	info("Order parameter noise seed: %u\n", seed);
-      }
-      phi_fluctuations_init(seed);
     }
 
     /* Force */
@@ -854,8 +849,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     phi_force_required_set(0);
 
     RUN_get_double_parameter("mobility", &value);
-    phi_cahn_hilliard_mobility_set(value);
-    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+    physics_mobility_set(value);
+    info("Mobility M            = %12.5e\n", value);
 
   }
   else if (strcmp(description, "brazovskii") == 0) {
@@ -884,8 +879,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using Cahn-Hilliard solver:\n");
 
     RUN_get_double_parameter("mobility", &value);
-    phi_cahn_hilliard_mobility_set(value);
-    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+    physics_mobility_set(value);
+    info("Mobility M            = %12.5e\n", value);
 
     p = 1;
     RUN_get_int_parameter("fd_force_divergence", &p);
@@ -928,9 +923,14 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     p = RUN_get_double_parameter("lc_Gamma", &value);
     if (p != 0) {
-      blue_phase_be_set_rotational_diffusion(value);
-      info("Rotational diffusion constant = %12.5e\n", value);
+      physics_lc_gamma_rot_set(value);
+      info("Rotational diffusion const = %14.7e\n", value);
     }
+
+    p = 0;
+    RUN_get_int_parameter("lc_noise", &p);
+    noise_present_set(ludwig->noise, NOISE_QAB, p);
+    info("LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
 
   }
   else if (strcmp(description, "polar_active") == 0) {
@@ -998,25 +998,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using Cahn-Hilliard finite difference solver.\n");
 
     RUN_get_double_parameter("mobility", &value);
-    phi_cahn_hilliard_mobility_set(value);
-    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
-
-    /* This could be set via symmetric_noise, no? Or check consistent */
-    p = 0;
-    RUN_get_int_parameter("fd_phi_fluctuations", &p);
-    info("Order parameter noise = %3s\n", (p == 0) ? "off" : " on");
-    if (p != 0) phi_fluctuations_on_set(p);
-
-    if (phi_fluctuations_on()) {
-      if (nhalo != 3) fatal("Fluctuations: use symmetric_noise\n");
-      RUN_get_int_parameter("fd_phi_fluctuations_seed", &p);
-      seed = 0;
-      if (p > 0) {
-	seed = p;
-	info("Order parameter noise seed: %u\n", seed);
-      }
-      phi_fluctuations_init(seed);
-    }
+    physics_mobility_set(value);
+    info("Mobility M            = %12.5e\n", value);
 
     /* Force */
 
@@ -1047,7 +1030,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     p = RUN_get_double_parameter("lc_Gamma", &value);
     if (p != 0) {
-      blue_phase_be_set_rotational_diffusion(value);
+      physics_lc_gamma_rot_set(value);
       info("Rotational diffusion constant = %12.5e\n", value);
     }
     
@@ -1131,8 +1114,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using Cahn-Hilliard finite difference solver.\n");
 
     RUN_get_double_parameter("mobility", &value);
-    phi_cahn_hilliard_mobility_set(value);
-    info("Mobility M            = %12.5e\n", phi_cahn_hilliard_mobility());
+    physics_mobility_set(value);
+    info("Mobility M            = %12.5e\n", value);
 
     /* Electrokinetic part */
 

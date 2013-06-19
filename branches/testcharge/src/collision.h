@@ -17,20 +17,18 @@
 
 #include "hydro.h"
 #include "map.h"
+#include "noise.h"
 
-enum relaxation {RELAXATION_M10, RELAXATION_BGK, RELAXATION_TRT};
+typedef enum {RELAXATION_M10, RELAXATION_BGK, RELAXATION_TRT}
+  lb_relaxation_enum_t;
 
-int collide(hydro_t * hydro, map_t * map);
-int collision_stats_kt(map_t * map);
+int collide(hydro_t * hydro, map_t * map, noise_t * noise);
+int collision_stats_kt(noise_t * noise, map_t * map);
+int collision_relaxation_times_set(noise_t * noise);
 
 void collision_ghost_modes_on(void);
 void collision_ghost_modes_off(void);
-void collision_fluctuations_on(void);
-void collision_fluctuations_off(void);
-void collision_relaxation_times_set(void);
 void collision_relaxation_times(double * tau);
 void collision_relaxation_set(const int nrelax);
-void collision_init(void);
-void collision_finish(void);
 
 #endif

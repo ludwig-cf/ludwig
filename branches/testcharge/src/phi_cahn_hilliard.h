@@ -18,9 +18,9 @@
 #include "field.h"
 #include "hydro.h"
 #include "map.h"
+#include "noise.h"
 
-int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map);
-void   phi_cahn_hilliard_mobility_set(const double);
-double phi_cahn_hilliard_mobility(void);
+int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map,
+		      noise_t * noise);
 
 #endif

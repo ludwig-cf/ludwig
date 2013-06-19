@@ -74,7 +74,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      colloid_sums.o bbl.o build.o collision_rt.o \
      coords.o coords_field.o coords_rt.o \
      control.o distribution_rt.o \
-     ewald.o field.o field_grad.o fluctuations.o \
+     ewald.o field.o field_grad.o \
      free_energy.o free_energy_vector.o fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
@@ -82,10 +82,10 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
      hydro.o hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o \
-     lc_droplet.o lc_droplet_rt.o model_le.o map.o potential.o \
+     lc_droplet.o lc_droplet_rt.o model_le.o map.o \
+     noise.o potential.o \
      phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_force_stress.o \
-     phi_fluctuations.o \
      phi_lb_coupler.o phi_stats.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \

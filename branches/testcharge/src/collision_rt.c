@@ -31,19 +31,19 @@
  *
  ****************************************************************************/
 
-void collision_run_time(void) {
+int collision_run_time(noise_t * noise) {
 
   int p;
-  int noise;
+  int noise_on = 0;
   int nghost;
   char tmp[128];
   double rtau[NVEL];
 
   p = RUN_get_string_parameter("isothermal_fluctuations", tmp, 128);
-  noise = 0;
+
   if (p == 1 && strcmp(tmp, "on") == 0) {
-    noise = 1;
-    collision_fluctuations_on();
+    noise_on = 1;
+    noise_present_set(noise, NOISE_RHO, noise_on);
   }
 
   /* Ghost modes */
@@ -55,7 +55,7 @@ void collision_run_time(void) {
     collision_ghost_modes_off();
   }
 
-  collision_relaxation_times_set();
+  collision_relaxation_times_set(noise);
   collision_relaxation_times(rtau);
 
   info("\n");
@@ -63,10 +63,10 @@ void collision_run_time(void) {
   info("---------------------------\n");
   info("Hydrodynamic modes:       on\n");
   info("Ghost modes:              %s\n", (nghost == 1) ? "on" : "off");
-  info("Isothermal fluctuations:  %s\n", (noise == 1) ? "on" : "off");
+  info("Isothermal fluctuations:  %s\n", (noise_on == 1) ? "on" : "off");
   info("Shear relaxation time:   %12.5e\n", 1.0/rtau[1 + NDIM]);
   info("Bulk relaxation time:    %12.5e\n", 1.0/rtau[1 + NDIM + 1]);
   info("Ghost relaxation time:   %12.5e\n", 1.0/rtau[NVEL-1]);
 
-  return;
+  return 0;
 }

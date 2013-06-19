@@ -23,7 +23,7 @@
 #include "util.h"
 #include "coords.h"
 #include "field.h"
-#include "phi_cahn_hilliard.h"
+#include "physics.h"
 #include "symmetric.h"
  
 #define NBIN      128
@@ -78,6 +78,7 @@ int stats_sigma_init(field_t * phi, int nswitch) {
 
   drop_t drop;
   double datum;
+  double mobility;
 
   if (nswitch == 0) {
     /* No measurement required. */
@@ -85,6 +86,7 @@ int stats_sigma_init(field_t * phi, int nswitch) {
   }
   else {
     assert(phi);
+    physics_mobility(&mobility);
 
     /* Check we have a cubic system, or a square system (2d) */
 
@@ -122,7 +124,7 @@ int stats_sigma_init(field_t * phi, int nswitch) {
     info("Drop radius:     %14.7e\n", drop.radius);
     datum = symmetric_interfacial_width()/drop.radius;
     info("Cahn number:     %14.7e\n", datum);
-    datum = -phi_cahn_hilliard_mobility()*symmetric_a();
+    datum = -mobility*symmetric_a();
     info("Diffusivity:     %14.7e\n", datum);
     /* The relevant diffusion time is for the interfacial width ... */
     datum = XIINIT*drop.xi0*XIINIT*drop.xi0/datum;

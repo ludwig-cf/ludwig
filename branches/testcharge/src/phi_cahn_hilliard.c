@@ -12,14 +12,26 @@
  *  order parameter mobility. The chemical potential mu is set via
  *  the choice of free energy.
  *
- *  Random fluxes \hat{xi} can be included if required via
- *  phi_fluctuations.c with variance 2 M kT.
+ *  Random fluxes \hat{xi} can be included if required using the
+ *  lattice noise generator with variance 2 M kT. The implementation
+ *  is (broadly) based on that of Sumesh PT et al, Phys Rev E 84
+ *  046709 (2011).
+ *
+ *  The important thing for the noise is that an expanded stencil
+ *  is required for the diffusive fluxes, here via phi_ch_flux_mu2().
+ *
+ *  Lees-Edwards planes are allowed (but not with noise, at present).
+ *  This requires fixes at the plane boudaries to get consistent
+ *  fluxes.
+ *
  *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Contributions:
+ *  Thanks to Markus Gross, who hepled to validate the noise implemantation.
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2010 The University of Edinburgh
  *
@@ -33,33 +45,27 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "advection.h"
-#include "advection_bcs.h"
 #include "free_energy.h"
-#include "phi_fluctuations.h"
-#include "field.h"
 #include "physics.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
+#include "phi_cahn_hilliard.h"
 
-static int phi_ch_diffusive_flux(advflux_t * flux);
+static int phi_ch_flux_mu1(advflux_t * flux);
+static int phi_ch_flux_mu2(double * fe, double * fw, double * fy, double * fz);
 static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux);
 
-static void phi_ch_le_fix_fluxes(int nf, double * fe, double * fw);
-static void phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw);
-static void phi_ch_random_flux(double * fe, double * fw, double * fy,
-			       double * fz);
-
-static void phi_ch_diffusive_flux_noise(double * fe, double * fw, double * fy,
-					double * fz);
-
-static double mobility_  = 0.0; /* Order parameter mobility */
+static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw);
+static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw);
+static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
+			      double * fy, double * fz);
 
 /*****************************************************************************
  *
  *  phi_cahn_hilliard
  *
  *  Compute the fluxes (advective/diffusive) and compute the update
- *  to phi_site[].
+ *  to the order parameter field phi.
  *
  *  Conservation is ensured by face-flux uniqueness. However, in the
  *  x-direction, the fluxes at the east face and west face of a given
@@ -74,19 +80,27 @@ static double mobility_  = 0.0; /* Order parameter mobility */
  *  may be relevant for diffusive fluxes only, so does not
  *  depend on hydrodynamics.)
  *
+ *  The noise_t structure controls random fluxes, if required;
+ *  it can be NULL in which case no noise.
+ *
  *****************************************************************************/
 
-int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map) {
-
+int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map,
+		      noise_t * noise) {
   int nf;
+  int noise_phi = 0;
   advflux_t * fluxes = NULL;
 
   assert(phi);
+  if (noise) noise_present(noise, NOISE_PHI, &noise_phi);
 
   field_nf(phi, &nf);
   assert(nf == 1);
 
   advflux_create(nf, &fluxes);
+
+  /* Compute any advective fluxes first, then accumulate diffusive
+   * and random fluxes. */
 
   if (hydro) {
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
@@ -95,12 +109,12 @@ int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map) {
     advection_x(fluxes, hydro, phi);
   }
 
-  if (phi_fluctuations_on()) {
-    phi_ch_diffusive_flux_noise(fluxes->fe,fluxes->fw,fluxes->fy,fluxes->fz);
-    phi_ch_random_flux(fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
+  if (noise_phi) {
+    phi_ch_flux_mu2(fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
+    phi_ch_random_flux(noise, fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
   }
   else {
-    phi_ch_diffusive_flux(fluxes);
+    phi_ch_flux_mu1(fluxes);
   }
 
   /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present) */
@@ -117,30 +131,7 @@ int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map) {
 
 /*****************************************************************************
  *
- *  phi_cahn_hilliard_mobility
- *
- *****************************************************************************/
-
-double phi_cahn_hilliard_mobility() {
-
-  return mobility_;
-}
-
-/*****************************************************************************
- *
- *  phi_cahn_hilliard_mobility_set
- *
- *****************************************************************************/
-
-void phi_cahn_hilliard_mobility_set(const double m) {
-
-  mobility_ = m;
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_ch_diffusive_flux
+ *  phi_ch_flux_mu1
  *
  *  Accumulate [add to a previously computed advective flux] the
  *  'diffusive' contribution related to the chemical potential. It's
@@ -151,13 +142,14 @@ void phi_cahn_hilliard_mobility_set(const double m) {
  *
  *****************************************************************************/
 
-static int phi_ch_diffusive_flux(advflux_t * flux) {
+static int phi_ch_flux_mu1(advflux_t * flux) {
 
   int nlocal[3];
   int ic, jc, kc;
   int index0, index1;
   int icm1, icp1;
   double mu0, mu1;
+  double mobility;
 
   double (* chemical_potential)(const int index, const int nop);
 
@@ -166,6 +158,7 @@ static int phi_ch_diffusive_flux(advflux_t * flux) {
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
 
+  physics_mobility(&mobility);
   chemical_potential = fe_chemical_potential_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -182,25 +175,25 @@ static int phi_ch_diffusive_flux(advflux_t * flux) {
 
 	index1 = le_site_index(icm1, jc, kc);
 	mu1 = chemical_potential(index1, 0);
-	flux->fw[index0] -= mobility_*(mu0 - mu1);
+	flux->fw[index0] -= mobility*(mu0 - mu1);
 
 	/* ...and between ic and ic+1 */
 
 	index1 = le_site_index(icp1, jc, kc);
 	mu1 = chemical_potential(index1, 0);
-	flux->fe[index0] -= mobility_*(mu1 - mu0);
+	flux->fe[index0] -= mobility*(mu1 - mu0);
 
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
 	mu1 = chemical_potential(index1, 0);
-	flux->fy[index0] -= mobility_*(mu1 - mu0);
+	flux->fy[index0] -= mobility*(mu1 - mu0);
 
 	/* z direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
 	mu1 = chemical_potential(index1, 0);
-	flux->fz[index0] -= mobility_*(mu1 - mu0);
+	flux->fz[index0] -= mobility*(mu1 - mu0);
 
 	/* Next site */
       }
@@ -212,7 +205,7 @@ static int phi_ch_diffusive_flux(advflux_t * flux) {
 
 /*****************************************************************************
  *
- *  phi_ch_diffusive_flux_noise
+ *  phi_ch_flux_mu2
  *
  *  Accumulate [add to previously computed advective fluxes]
  *  diffusive fluxes related to the mobility.
@@ -228,20 +221,23 @@ static int phi_ch_diffusive_flux(advflux_t * flux) {
  *
  *****************************************************************************/
 
-static void phi_ch_diffusive_flux_noise(double * fe, double * fw, double * fy,
-					double * fz) {
+static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
+			   double * fz) {
   int nhalo;
   int nlocal[3];
   int ic, jc, kc;
   int index0;
   int xs, ys, zs;
   double mum2, mum1, mu00, mup1, mup2;
+  double mobility;
 
   double (* chemical_potential)(const int index, const int nop);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   assert(nhalo >= 3);
+
+  physics_mobility(&mobility);
 
   zs = 1;
   ys = (nlocal[Z] + 2*nhalo)*zs;
@@ -262,11 +258,11 @@ static void phi_ch_diffusive_flux_noise(double * fe, double * fw, double * fy,
 
 	/* x-direction (between ic-1 and ic) */
 
-	fw[index0] -= 0.25*mobility_*(mup1 + mu00 - mum1 - mum2);
+	fw[index0] -= 0.25*mobility*(mup1 + mu00 - mum1 - mum2);
 
 	/* ...and between ic and ic+1 */
 
-	fe[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
+	fe[index0] -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* y direction between jc and jc+1 */
 
@@ -274,21 +270,21 @@ static void phi_ch_diffusive_flux_noise(double * fe, double * fw, double * fy,
 	mup1 = chemical_potential(index0 + 1*ys, 0);
 	mup2 = chemical_potential(index0 + 2*ys, 0);
 
-	fy[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
+	fy[index0] -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* z direction between kc and kc+1 */
 
 	mum1 = chemical_potential(index0 - 1*zs, 0);
 	mup1 = chemical_potential(index0 + 1*zs, 0);
 	mup2 = chemical_potential(index0 + 2*zs, 0);
-	fz[index0] -= 0.25*mobility_*(mup2 + mup1 - mu00 - mum1);
+	fz[index0] -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* Next site */
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -300,28 +296,53 @@ static void phi_ch_diffusive_flux_noise(double * fe, double * fw, double * fy,
  *
  *****************************************************************************/
 
-static void phi_ch_random_flux(double * fe, double * fw, double * fy,
-			       double * fz) {
+static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
+			      double * fy, double * fz) {
 
   int ic, jc, kc, index0, index1;
-  int nsites;
+  int nsites, nextra;
   int nlocal[3];
+  int ia;
 
   double * rflux;
-  double kt, var;
+  double reap[3];
+  double kt, mobility, var;
 
   assert(le_get_nplane_local() == 0);
+  assert(coords_nhalo() >= 1);
+
+  /* Variance of the noise from fluctuation dissipation relation */
 
   physics_kt(&kt);
+  physics_mobility(&mobility);
+  var = sqrt(2.0*kt*mobility);
 
   nsites = coords_nsites();
   rflux = (double *) malloc(3*nsites*sizeof(double));
   if (rflux == NULL) fatal("malloc(rflux) failed\n");
 
-  var = sqrt(2.0*kt*mobility_);
-  phi_fluctuations_site(3, var, rflux);
-
   coords_nlocal(nlocal);
+
+  /* We go one site into the halo region to allow all the fluxes to
+   * be comupted locally. */
+  nextra = 1;
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+        index0 = coords_index(ic, jc, kc);
+        noise_reap_n(noise, index0, 3, reap);
+
+        for (ia = 0; ia < 3; ia++) {
+          rflux[3*index0 + ia] = var*reap[ia];
+        }
+
+      }
+    }
+  }
+
+  /* Now accumulate the mid-point fluxes */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
@@ -352,7 +373,7 @@ static void phi_ch_random_flux(double * fe, double * fw, double * fy,
 
   free(rflux);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -371,7 +392,7 @@ static void phi_ch_random_flux(double * fe, double * fw, double * fy,
  *
  *****************************************************************************/
 
-static void phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
+static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 
   int nlocal[3]; /* Local system size */
   int ip;        /* Index of the plane */
@@ -478,7 +499,7 @@ static void phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
     free(buffere);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -490,7 +511,7 @@ static void phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
  *
  *****************************************************************************/
 
-static void phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
+static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
   int      nhalo;
   int      nlocal[3];      /* Local system size */
@@ -647,7 +668,7 @@ static void phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   free(bufferw);
   free(buffere);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

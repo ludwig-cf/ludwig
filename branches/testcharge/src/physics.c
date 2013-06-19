@@ -35,6 +35,9 @@ struct physics_s {
   double e0[3];       /* External electric field */
   double b0[3];       /* External magnetic field */
   double fgravity[3]; /* Gravitational force (on objects) */
+
+  double mobility;    /* Order parameter mobility (binary fluid) */
+  double lc_gamma_rot;/* Liquid crystal rotational diffusion coefficient */
 };
 
 static physics_t * phys = NULL;
@@ -350,6 +353,69 @@ int physics_fbody_set(double f[3]) {
   phys->fbody[0] = f[0];
   phys->fbody[1] = f[1];
   phys->fbody[2] = f[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_mobility
+ *
+ *****************************************************************************/
+
+int physics_mobility(double * mobility) {
+
+  assert(phys);
+  assert(mobility);
+
+  *mobility = phys->mobility;
+ 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_mobility_set
+ *
+ *****************************************************************************/
+
+int physics_mobility_set(double mobility) {
+
+  assert(mobility);
+
+  phys->mobility = mobility;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_lc_gamma_rot
+ *
+ *****************************************************************************/
+
+int physics_lc_gamma_rot(double * gamma) {
+
+  assert(phys);
+  assert(gamma);
+
+  *gamma = phys->lc_gamma_rot;
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  physics_lc_gamma_rot_set
+ *
+ *****************************************************************************/
+
+int physics_lc_gamma_rot_set(double gamma) {
+
+  assert(phys);
+
+  phys->lc_gamma_rot = gamma;
 
   return 0;
 }

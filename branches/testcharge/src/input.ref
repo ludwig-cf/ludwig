@@ -92,7 +92,6 @@ viscosity 0.1
 viscosity_bulk 0.1
 
 isothermal_fluctuations off
-#temperature 0.00002133333
 temperature 3.33333333333333333e-5
 
 # ghost_modes off
@@ -132,8 +131,7 @@ temperature 3.33333333333333333e-5
 #                                 3d_27pt_fluid
 #                                 3d_27pt_solid
 #
-#  fd_phi_fluctuations            [0/1] Cahn Hilliard only at the moment
-#  fd_phi_fluctuations_seed       RNG seed for order parameter fluctuations
+#  fd_phi_fluctuations            [0/1] Cahn Hilliard fluctuations
 #  fd_force_divergence		  [0/1] method for force calculation in
 #					electrokinetic module
 #					0 = gradient of chemical potential
@@ -149,7 +147,6 @@ free_energy fe_electro
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
-fd_phi_fluctuations_seed 17
 
 fd_force_divergence 1
 
@@ -274,6 +271,7 @@ lc_kappa1  0.01
 lc_xi      0.7
 
 lc_Gamma   0.3
+lc_noise   0
 lc_active_zeta 0.0
 
 lc_q_initialisation o8m

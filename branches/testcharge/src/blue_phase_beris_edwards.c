@@ -9,13 +9,23 @@
  *
  *  d_t Q_ab + div . (u Q_ab) + S(W, Q) = -Gamma H_ab + xi_ab
  *
- *  where S(W, Q) is ...
+ *  where S(W, Q) allows for the rotation of rod-like molecules.
+ *  W_ab is the velocity gradient tensor. H_ab is the molecular
+ *  field.
+ *
+ *  S(W, Q) = (xi D_ab + Omega_ab)(Q_ab + (1/3) d_ab)
+ *          + (Q_ab + (1/3) d_ab)(xiD_ab - Omega_ab)
+ *          - 2xi(Q_ab + (1/3) d_ab) Tr (QW)
+ *
+ *  D_ab = (1/2) (W_ab + W_ba) and Omega_ab = (1/2) (W_ab - W_ba);
+ *  the final term renders the whole thing traceless.
+ *  xi is defined with the free energy.
  *
  *  The noise term xi_ab is treated following Bhattacharjee et al.
  *  J. Chem. Phys. 133 044112 (2010). We need to define five constant
  *  matrices T_ab; these are used in association with five random
  *  variates at each lattice site to generate consistent noise. The
- *  variance is 2 kT Gamma.
+ *  variance is 2 kT Gamma from fluctuation dissipation.
  *
  *  $Id$
  *
@@ -42,12 +52,9 @@
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 #include "advection_s.h"
-#include "phi_fluctuations.h"
 
 static int blue_phase_be_update(field_t * fq, hydro_t * hydro, advflux_t * f,
-				map_t * map);
-
-static double Gamma_;     /* Collective rotational diffusion constant */
+				map_t * map, noise_t * noise);
 
 /*****************************************************************************
  *
@@ -60,7 +67,8 @@ static double Gamma_;     /* Collective rotational diffusion constant */
  *
  *****************************************************************************/
 
-int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map) {
+int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map,
+			     noise_t * noise) {
 
   int nf;
   advflux_t * flux = NULL;
@@ -86,7 +94,7 @@ int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map) {
     advection_bcs_no_normal_flux(nf, flux, map);
   }
 
-  blue_phase_be_update(fq, hydro, flux, map);
+  blue_phase_be_update(fq, hydro, flux, map, noise);
   advflux_free(flux);
 
   return 0;
@@ -105,13 +113,15 @@ int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map) {
  *****************************************************************************/
 
 static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
-				advflux_t * flux, map_t * map) {
+				advflux_t * flux, map_t * map,
+				noise_t * noise) {
   int ic, jc, kc;
   int ia, ib, id;
   int index, indexj, indexk;
   int nlocal[3];
   int nf;
   int status;
+  int noise_on = 0;
 
   double q[3][3];
   double w[3][3];
@@ -121,9 +131,11 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
   double omega[3][3];
   double trace_qw;
   double xi;
+  double gamma;
+
   double chi[NQAB], chi_qab[3][3];
   double tmatrix[3][3][NQAB];
-  double kt, var=0;
+  double kt, var = 0.0;
 
   const double dt = 1.0;
 
@@ -136,6 +148,7 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
   assert(nf == NQAB);
 
   xi = blue_phase_get_xi();
+  physics_lc_gamma_rot(&gamma);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -147,9 +160,10 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
   /* Get kBT, variance of noise and set basis of traceless,
    * symmetric matrices for contraction */
 
-  if (phi_fluctuations_on()) {
+  if (noise) noise_present(noise, NOISE_QAB, &noise_on);
+  if (noise_on) {
     physics_kt(&kt);
-    var = sqrt(2.0*kt*Gamma_);
+    var = sqrt(2.0*kt*gamma);
     blue_phase_be_tmatrix_set(tmatrix);
   }
 
@@ -178,7 +192,6 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
 	      trace_qw += q[ia][ib]*w[ib][ia];
 	      d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
 	      omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
-	      chi_qab[ia][ib] = 0.0;
 	    }
 	  }
 	  
@@ -196,8 +209,11 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
 
 	/* Fluctuating tensor order parameter */
 
-	if (phi_fluctuations_on()) {
-	  phi_fluctuations_qab(index, var, chi);
+	if (noise_on) {
+	  noise_reap_n(noise, index, NQAB, chi);
+	  for (id = 0; id < NQAB; id++) {
+	    chi[id] = var*chi[id];
+	  }
 
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
@@ -214,27 +230,27 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
 	indexj = le_site_index(ic, jc-1, kc);
 	indexk = le_site_index(ic, jc, kc-1);
 
-	q[X][X] += dt*(s[X][X] + Gamma_*h[X][X] + chi_qab[X][X]
+	q[X][X] += dt*(s[X][X] + gamma*h[X][X] + chi_qab[X][X]
 		       - flux->fe[nf*index + XX] + flux->fw[nf*index  + XX]
 		       - flux->fy[nf*index + XX] + flux->fy[nf*indexj + XX]
 		       - flux->fz[nf*index + XX] + flux->fz[nf*indexk + XX]);
 
-	q[X][Y] += dt*(s[X][Y] + Gamma_*h[X][Y] + chi_qab[X][Y]
+	q[X][Y] += dt*(s[X][Y] + gamma*h[X][Y] + chi_qab[X][Y]
 		       - flux->fe[nf*index + XY] + flux->fw[nf*index  + XY]
 		       - flux->fy[nf*index + XY] + flux->fy[nf*indexj + XY]
 		       - flux->fz[nf*index + XY] + flux->fz[nf*indexk + XY]);
 
-	q[X][Z] += dt*(s[X][Z] + Gamma_*h[X][Z] + chi_qab[X][Z]
+	q[X][Z] += dt*(s[X][Z] + gamma*h[X][Z] + chi_qab[X][Z]
 		       - flux->fe[nf*index + XZ] + flux->fw[nf*index  + XZ]
 		       - flux->fy[nf*index + XZ] + flux->fy[nf*indexj + XZ]
 		       - flux->fz[nf*index + XZ] + flux->fz[nf*indexk + XZ]);
 
-	q[Y][Y] += dt*(s[Y][Y] + Gamma_*h[Y][Y] + chi_qab[Y][Y]
+	q[Y][Y] += dt*(s[Y][Y] + gamma*h[Y][Y] + chi_qab[Y][Y]
 		       - flux->fe[nf*index + YY] + flux->fw[nf*index  + YY]
 		       - flux->fy[nf*index + YY] + flux->fy[nf*indexj + YY]
 		       - flux->fz[nf*index + YY] + flux->fz[nf*indexk + YY]);
 
-	q[Y][Z] += dt*(s[Y][Z] + Gamma_*h[Y][Z] + chi_qab[Y][Z]
+	q[Y][Z] += dt*(s[Y][Z] + gamma*h[Y][Z] + chi_qab[Y][Z]
 		       - flux->fe[nf*index + YZ] + flux->fw[nf*index  + YZ]
 		       - flux->fy[nf*index + YZ] + flux->fy[nf*indexj + YZ]
 		       - flux->fz[nf*index + YZ] + flux->fz[nf*indexk + YZ]);
@@ -247,28 +263,6 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
   }
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_be_set_rotational_diffusion
- *
- *****************************************************************************/
-
-void blue_phase_be_set_rotational_diffusion(double gamma) {
-
-  Gamma_ = gamma;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_be_get_rotational_diffusion
- *
- *****************************************************************************/
-
-double blue_phase_be_get_rotational_diffusion(void) {
-
-  return Gamma_;
 }
 
 /*****************************************************************************
@@ -286,13 +280,13 @@ double blue_phase_be_get_rotational_diffusion(void) {
  *
  *  Where x, y, z, are unit vectors, and the square brackets should
  *  be interpreted as
- *     [t_ab] = (1/2) (t_ab + t_ba) - (1/3) Tr (t_ab).
+ *     [t_ab] = (1/2) (t_ab + t_ba) - (1/3) Tr (t_ab) d_ab.
  *
- *  Note T^i_ab T^j_ab = d_ij
+ *  Note the contraction T^i_ab T^j_ab = d_ij.
  *
  *****************************************************************************/
 
-int blue_phase_be_tmatrix_set(double t[3][3][NQAB]){
+int blue_phase_be_tmatrix_set(double t[3][3][NQAB]) {
 
   int ia, ib, id;
 

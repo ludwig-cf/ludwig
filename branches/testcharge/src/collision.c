@@ -29,19 +29,14 @@
 #include "coords.h"
 #include "physics.h"
 #include "model.h"
-#include "collision.h"
-#include "fluctuations.h"
-
 #include "free_energy.h"
-#include "phi_cahn_hilliard.h"
-
 #include "control.h"
 #include "propagation_ode.h"
+#include "collision.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
-static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
 static double rtau_shear;       /* Inverse relaxation time for shear modes */
 static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
@@ -50,13 +45,11 @@ static double var_bulk;         /* Variance for bulk mode fluctuations */
 static double rtau_[NVEL];      /* Inverse relaxation times */
 static double noise_var[NVEL];  /* Noise variances */
 
-static fluctuations_t * fl_;
-
-static int collision_mrt(hydro_t * hydro, map_t * map);
-static int collision_binary_lb(hydro_t * hydro, map_t * map);
+static int collision_mrt(hydro_t * hydro, map_t * map, noise_t * noise);
+static int collision_binary_lb(hydro_t * hydro, map_t * map, noise_t * noise);
 static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
-       void collision_fluctuations(int index, double shat[3][3],
-				   double ghat[NVEL]);
+static int collision_fluctuations(noise_t * noise, int index,
+				  double shat[3][3], double ghat[NVEL]);
 
 /*****************************************************************************
  *
@@ -71,7 +64,7 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
  * 
  *****************************************************************************/
 
-int collide(hydro_t * hydro, map_t * map) {
+int collide(hydro_t * hydro, map_t * map, noise_t * noise) {
 
   int ndist;
 
@@ -79,10 +72,16 @@ int collide(hydro_t * hydro, map_t * map) {
   assert(map);
 
   ndist = distribution_ndist();
-  collision_relaxation_times_set();
+  collision_relaxation_times_set(noise);
 
-  if (ndist == 1 || is_propagation_ode() == 1) collision_mrt(hydro, map);
-  if (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb(hydro, map);
+  if (ndist == 1 || is_propagation_ode() == 1) {
+    collision_mrt(hydro, map, noise);
+  }
+
+
+  if (ndist == 2 && is_propagation_ode() == 0) {
+    collision_binary_lb(hydro, map, noise);
+  }
 
   return 0;
 }
@@ -106,13 +105,14 @@ int collide(hydro_t * hydro, map_t * map) {
  *
  *****************************************************************************/
 
-int collision_mrt(hydro_t * hydro, map_t * map) {
+int collision_mrt(hydro_t * hydro, map_t * map, noise_t * noise) {
 
   int       nlocal[3];
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       ia, ib;                  /* indices ("alphabeta") */
   int       status;
+  int       noise_on = 0;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -148,7 +148,9 @@ int collision_mrt(hydro_t * hydro, map_t * map) {
   for (ia = 0; ia < 3; ia++) {
     u[ia] = 0.0;
   }
-  
+
+  noise_present(noise, NOISE_RHO, &noise_on);
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
 
@@ -274,9 +276,7 @@ int collision_mrt(hydro_t * hydro, map_t * map) {
 	    }
 	  }
 	  
-	  if (isothermal_fluctuations_) {
-	    collision_fluctuations(index, shat, ghat);
-	  }
+	  if (noise_on) collision_fluctuations(noise, index, shat, ghat);
 	  
 	  /* Now reset the hydrodynamic modes to post-collision values:
 	   * rho is unchanged, velocity unchanged if no force,
@@ -377,12 +377,13 @@ int collision_mrt(hydro_t * hydro, map_t * map) {
  *
  *****************************************************************************/
 
-int collision_binary_lb(hydro_t * hydro, map_t * map) {
+int collision_binary_lb(hydro_t * hydro, map_t * map, noise_t * noise) {
 
   int       nlocal[3];
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
+  int noise_on = 0;                  /* Fluctuations switch */
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -397,9 +398,6 @@ int collision_binary_lb(hydro_t * hydro, map_t * map) {
 
   double    force_local[3];
   double    force_global[3];
-
-  const double   r3     = (1.0/3.0);
-
 
   double    phi, jdotc, sphidotq;    /* modes */
   double    jphi[3];
@@ -433,8 +431,10 @@ int collision_binary_lb(hydro_t * hydro, map_t * map) {
   /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
    * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
 
-  mobility = phi_cahn_hilliard_mobility();
+  physics_mobility(&mobility);
   rtau2 = 2.0 / (1.0 + 2.0*mobility);
+
+  noise_present(noise, NOISE_RHO, &noise_on);
   fluctuations_off(shat, ghat);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -540,8 +540,8 @@ int collision_binary_lb(hydro_t * hydro, map_t * map) {
 	  
 	  /* Form traceless parts */
 	  for (i = 0; i < 3; i++) {
-	    s[i][i]   -= r3*tr_s;
-	    seq[i][i] -= r3*tr_seq;
+	    s[i][i]   -= r3_*tr_s;
+	    seq[i][i] -= r3_*tr_seq;
 	  }
 	  
 	/* Relax each mode */
@@ -550,7 +550,7 @@ int collision_binary_lb(hydro_t * hydro, map_t * map) {
 	  for (i = 0; i < 3; i++) {
 	    for (j = 0; j < 3; j++) {
 	      s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
-	      s[i][j] += d_[i][j]*r3*tr_s;
+	      s[i][j] += d_[i][j]*r3_*tr_s;
 	      
 	      /* Correction from body force (assumes equal relaxation times) */
 	      
@@ -559,9 +559,7 @@ int collision_binary_lb(hydro_t * hydro, map_t * map) {
 	    }
 	  }
 	  
-	  if (isothermal_fluctuations_) {
-	    collision_fluctuations(index, shat, ghat);
-	  }
+	  if (noise_on) collision_fluctuations(noise, index, shat, ghat);
 	  
 	  /* Now reset the hydrodynamic modes to post-collision values */
 	  
@@ -734,7 +732,7 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]) {
  *
  *****************************************************************************/
 
-int collision_stats_kt(map_t * map) {
+int collision_stats_kt(noise_t * noise, map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -747,8 +745,11 @@ int collision_stats_kt(map_t * map) {
   double gsite[3];
   double kt;
 
-  if (isothermal_fluctuations_ == 0) return 0;
   assert(map);
+  assert(noise);
+
+  noise_present(noise, NOISE_RHO, &status);
+  if (status == 0) return 0;
 
   coords_nlocal(nlocal);
 
@@ -827,32 +828,6 @@ void collision_ghost_modes_off(void) {
 
 /*****************************************************************************
  *
- *  collision_fluctuations_on
- *
- *****************************************************************************/
-
-void collision_fluctuations_on(void) {
-
-  isothermal_fluctuations_ = 1;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  collision_fluctuations_off
- *
- *****************************************************************************/
-
-void collision_fluctuations_off(void) {
-
-  isothermal_fluctuations_ = 0;
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  collision_relaxation_set
  *
  *****************************************************************************/
@@ -877,9 +852,10 @@ void collision_relaxation_set(const int nrelax) {
  *
  *****************************************************************************/
 
-void collision_relaxation_times_set(void) {
+int collision_relaxation_times_set(noise_t * noise) {
 
   int p;
+  int noise_on = 0;
   double kt;
   double eta_shear;
   double eta_bulk;
@@ -889,6 +865,9 @@ void collision_relaxation_times_set(void) {
   double dt_ode = 1.0;
 
   extern int is_propagation_ode(void);
+
+  assert(noise);
+  noise_present(noise, NOISE_RHO, &noise_on);
 
   /* Initialise the relaxation times */
  
@@ -945,7 +924,7 @@ void collision_relaxation_times_set(void) {
     }
   }
 
-  if (isothermal_fluctuations_) {
+  if (noise_on) {
 
     tau_s = 1.0/rtau_shear;
     tau_b = 1.0/rtau_bulk;
@@ -969,7 +948,7 @@ void collision_relaxation_times_set(void) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -1023,77 +1002,6 @@ void collision_relaxation_times(double * tau) {
 
 /*****************************************************************************
  *
- *  collision_init
- *
- *  Set up the noise generator.
- *
- *****************************************************************************/
-
-void collision_init(void) {
-
-  int nsites;
-  int ic, jc, kc, index;
-  int is_local;
-  int nlocal[3];
-  int noffset[3];
-  int ntotal[3];
-
-  unsigned int serial[4] = {13, 829, 2441, 22383979};
-  unsigned int state[4];
-
-  ntotal[X] = N_total(X);
-  ntotal[Y] = N_total(Y);
-  ntotal[Z] = N_total(Z);
-
-  nsites = coords_nsites();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-
-  /* This is slightly incestuous; we are going to use the uniform
-   * generator from fluctuations to generate, in serial, the
-   * initial states for the fluctuation generator. The initialisation
-   * of the serial state is absolutely fixed, as above. */
-
-  fl_ = fluctuations_create(nsites);
-
-  for (ic = 1; ic <= ntotal[X]; ic++) {
-    for (jc = 1; jc <= ntotal[Y]; jc++) {
-      for (kc = 1; kc <= ntotal[Z]; kc++) {
-	state[0] = fluctuations_uniform(serial);
-	state[1] = fluctuations_uniform(serial);
-	state[2] = fluctuations_uniform(serial);
-	state[3] = fluctuations_uniform(serial);
-	is_local = 1;
-	if (ic <= noffset[X] || ic > noffset[X] + nlocal[X]) is_local = 0;
-	if (jc <= noffset[Y] || jc > noffset[Y] + nlocal[Y]) is_local = 0;
-	if (kc <= noffset[Z] || kc > noffset[Z] + nlocal[Z]) is_local = 0;
-	if (is_local) {
-	  index = coords_index(ic-noffset[X], jc-noffset[Y], kc-noffset[Z]);
-	  fluctuations_state_set(fl_, index, state);
-	}
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  collision_finish
- *
- *****************************************************************************/
-
-void collision_finish(void) {
-
-  assert(fl_);
-  fluctuations_destroy(fl_);
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  collision_fluctuations
  *
  *  Compute that fluctuating contributions to the distribution at
@@ -1104,20 +1012,20 @@ void collision_finish(void) {
  *
  *****************************************************************************/
 
-void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
-
+static int collision_fluctuations(noise_t * noise, int index,
+				  double shat[3][3], double ghat[NVEL]) {
   int ia;
   double tr;
-  double random[NFLUCTUATION];
-  const double r3 = (1.0/3.0);
+  double random[NNOISE_MAX];
 
-  assert(fl_);
-  assert(NFLUCTUATION >= NDIM*(NDIM+1)/2);
-  assert(NFLUCTUATION >= (NVEL - NHYDRO));
+  assert(noise);
+  assert(NNOISE_MAX >= NDIM*(NDIM+1)/2);
+  assert(NNOISE_MAX >= (NVEL - NHYDRO));
 
-  /* Set symetric random stress matrix (elements with unit variance) */
+  /* Set symetric random stress matrix (elements with unit variance);
+   * in practice always 3d (= 6 elements) required */
 
-  fluctuations_reap(fl_, index, random);
+  noise_reap_n(noise, index, 6, random);
 
   shat[X][X] = random[0];
   shat[X][Y] = random[1];
@@ -1133,7 +1041,7 @@ void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
 
   /* Compute the trace and the traceless part */
 
-  tr = r3*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
+  tr = r3_*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
   shat[X][X] -= tr;
   shat[Y][Y] -= tr;
   shat[Z][Z] -= tr;
@@ -1163,11 +1071,11 @@ void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
   /* Ghost modes */
 
   if (nmodes_ == NVEL) {
-    fluctuations_reap(fl_, index, random);
+    noise_reap_n(noise, index, NVEL-NHYDRO, random);
     for (ia = NHYDRO; ia < nmodes_; ia++) {
       ghat[ia] = noise_var[ia]*random[ia - NHYDRO];
     }
   }
 
-  return;
+  return 0;
 }
