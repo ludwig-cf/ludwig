@@ -42,11 +42,10 @@ int main(int argc, char ** argv) {
   MPI_Init(&argc, &argv);
   pe_init();
 
-  info("\nMap tests\n");
+  info("Map tests\n\n");
 
   do_test1();
   do_test2();
-  /* do_test_halo(0);*/
   do_test_halo(1);
   do_test_halo(2);
 

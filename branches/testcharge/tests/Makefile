@@ -53,10 +53,11 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
 	      test_map.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
               test_colloid.c test_colloids.c test_colloids_halo.c \
-              test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
-              test_collision.c test_psi.c test_psi_sor.c test_hydro.c \
+              test_colloid_sums.c test_blue_phase.c \
+              test_psi.c test_psi_sor.c test_hydro.c \
               test_field.c test_field_grad.c test_nernst_planck.c \
-              test_fe_electro.c test_fe_electro_symm.c test_be.c
+              test_fe_electro.c test_fe_electro_symm.c test_be.c \
+              test_noise.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}

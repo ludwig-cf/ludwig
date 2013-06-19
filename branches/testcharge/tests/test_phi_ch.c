@@ -24,6 +24,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "physics.h"
 #include "leesedwards.h"
 #include "hydro.h"
 #include "map.h"
@@ -44,11 +45,13 @@ int main (int argc, char ** argv) {
 
   hydro_t * hydro = NULL;
   field_t * phi = NULL;
+  physics_t * phys = NULL;
 
   MPI_Init(&argc, &argv);
   pe_init();
   coords_nhalo_set(nhalo);
   coords_init();
+  physics_ref(&phys);
   le_init();
 
   field_create(nf, "phi", &phi);
@@ -102,8 +105,9 @@ int test_advection(field_t * phi, hydro_t * hydro) {
 
   for (n = 0; n < ntmax; n++) {
     field_halo(phi);
-    /* The map_t argument can be NULL here, as there is no solid */
-    phi_cahn_hilliard(phi, hydro, NULL);
+    /* The map_t argument can be NULL here, as there is no solid;
+     * the same is true for noise */
+    phi_cahn_hilliard(phi, hydro, NULL, NULL);
   }
 
   test_drop_difference(phi, r0, xi0);
