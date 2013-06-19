@@ -24,8 +24,8 @@
 
 static int nhalo_ = 1;
 /*temporarily changing from 64 to 16 for testing */
-//static int ntotal_[3]                  = {16, 16, 16};
-static int ntotal_[3]                  = {64, 64, 64};
+static int ntotal_[3]                  = {4, 8, 16};
+//static int ntotal_[3]                  = {64, 64, 64};
 static int periodic[3]                 = {1, 1, 1};
 static int pe_cartesian_size[3]        = {1, 1, 1};
 static MPI_Comm cartesian_communicator = MPI_COMM_NULL;

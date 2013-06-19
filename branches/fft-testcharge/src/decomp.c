@@ -19,6 +19,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <mpi.h>
 #include <assert.h>
 
@@ -26,18 +27,18 @@
 #include "config.h"
 #include "p3dfft.h"
 
-enum {X,Y,Z};
+//enum {X,Y,Z};
 
 int find_recv_proc (int global_coord[], int nlocal[]);
-int index (int x, int y, int z, int isize[]);
+int ar_index (int x, int y, int z, int isize[]);
 
 int main() {
   
   MPI_Init(NULL, NULL);
 
   int num_procs, rank;
-  MPI_Comm p3dfft_comm;
   MPI_Comm ludwig_comm;
+  MPI_Comm p3dfft_comm;
 
 
   int nlocal[3];
@@ -75,14 +76,20 @@ int main() {
   int nx,ny,nz;
   int istart[3], iend[3], isize[3], ip;
   int overwrite, memsize[3];
+  
 
-  overwrite = 0;
+  overwrite = 0; /* don't allow overwriting input of btran */
 
   MPI_Comm_size(p3dfft_comm, &num_procs);
   MPI_Comm_rank(p3dfft_comm, &rank);
 
   int proc_dims[2];
-  nx = ny = nz = 64;
+/* these are in Fortran ordering
+ * as such x is the direction of stride-1 memory
+ */
+  nx = 16;
+  ny = 8;
+  nz = 4;
 
   int *dest_proc = malloc(sizeof(int));;
   int *recv_proc = malloc(sizeof(int));;
@@ -101,25 +108,16 @@ int main() {
 
     p3dfft_setup(proc_dims, nx, ny, nz, overwrite, memsize);
 
-    p3dfft_get_dims(istart, iend, isize, 1);
+    ip = 1;
+    p3dfft_get_dims(istart, iend, isize, ip);
 
     recv_array = malloc(isize[0]*isize[1]*isize[2]*sizeof(double));
+    assert(isize[0] == nlocal[Z]);
     for(k=0; k<nlocal[X]; k++) {
       for(j=0; j<nlocal[Y]; j++) {
         for(i=0; i<nlocal[Z]; i++) {
-          recv_array[index(k,j,i,isize)] = send_array[k][j][i];
+          recv_array[ar_index(k,j,i,isize)] = send_array[k][j][i];
         }
-      }
-    }
-    if(rank == print) {
-      for(i=0; i<isize[X]; i++) {
-        for(j=0; j<isize[Y]; j++) {
-          for(k=0; k<isize[Z]; k++) {
-            printf("%.0f ", recv_array[index(k,j,i,isize)]);
-          }
-          printf("\t");
-        }
-        printf("\n");
       }
     }
 
@@ -138,24 +136,25 @@ int main() {
     /* note that this routine swaps the elements of proc_dims */
     p3dfft_setup(proc_dims, nx, ny, nz, overwrite, memsize);
 
-    p3dfft_get_dims(istart, iend, isize, 1);
+    ip = 1;
+    p3dfft_get_dims(istart, iend, isize, ip);
 
   /* now will create the subarrays for the mapping of data */
     int local_coord[3] = {0, 0, 0};
     int global_coord[3];
     int fft_proc_coord[2];
     int array_of_sizes[3], array_of_subsizes[3], array_of_starts[3];
-    recv_array = malloc(isize[0]*isize[1]*isize[2]*sizeof(double));
-  
     recv_count = send_count = 1;
+
+    recv_array = malloc(isize[0]*isize[1]*isize[2]*sizeof(double));
 
     while(local_coord[0] < nlocal[0]) {
       while(local_coord[1] < nlocal[1]) {
         if(local_coord[0] != 0 || local_coord[1] !=0) {
           send_count ++;
-          realloc(dest_proc, send_count*sizeof(int));
-          realloc(send_subarray, send_count*sizeof(MPI_Datatype));
-          realloc(request, send_count*sizeof(MPI_Request));
+          dest_proc = realloc(dest_proc, send_count*sizeof(int));
+          send_subarray = realloc(send_subarray, send_count*sizeof(MPI_Datatype));
+          request = realloc(request, send_count*sizeof(MPI_Request));
         }
         /* compute destination proc (put this in fn) */
         for(i=0; i<3; i++) {
@@ -215,15 +214,14 @@ int main() {
         while(local_coord[2] < isize[0]) {
           if(local_coord[2] != 0 || local_coord[1] !=0 || local_coord[0] !=0) {
             recv_count++;
-            realloc(recv_subarray, recv_count*sizeof(MPI_Datatype));
-            realloc(recv_proc, recv_count*sizeof(int));
+            recv_subarray = realloc(recv_subarray, recv_count*sizeof(MPI_Datatype));
+            recv_proc = realloc(recv_proc, recv_count*sizeof(int));
           }
           for(i=0; i<3; i++) {
             /* istart is global coord in fortran code (ie starts at 1*/
             global_coord[i] = istart[2-i] - 1 + local_coord[i];
           }
           recv_proc[recv_count-1] = find_recv_proc(global_coord, nlocal);
-
           MPI_Recv(recv_size, 3, MPI_INT, recv_proc[recv_count-1], 1, ludwig_comm, &status);
           assert(recv_size[2] <= isize[0]);
           assert(recv_size[1] <= isize[1]);
@@ -259,19 +257,64 @@ int main() {
   }
   if(rank == 0) { printf("Data now in pencil decomposition\n"); }
 
-/* this print is for testing purposes, the order is such that it is relatively nice to view, not for performance. */
-    if(rank == print) {
-      for(i=0; i<isize[X]; i++) {
+/* this print is for testing purposes. 
+    if(rank == print) { 
+      for(k=0; k<isize[Z]; k++) {
         for(j=0; j<isize[Y]; j++) {
-          for(k=0; k<isize[Z]; k++) {
-            printf("%.0f ", recv_array[index(k,j,i,isize)]);
+          for(i=0; i<isize[X]; i++) {
+            printf("%.0f ", recv_array[ar_index(k,j,i,isize)]);
           }
           printf("\t");
         }
         printf("\n");
       }
     }
+*/
 
+/* do FFT here */
+  /* need dimensions of complex array */
+  int fstart[3], fend[3], fsize[3];
+  unsigned char op_f[3]="fft", op_b[3]="tff";
+
+
+  ip = 2;
+  p3dfft_get_dims(fstart, fend, fsize, ip);
+  if(rank == print) { printf("fsize %d %d %d\n", fsize[0], fsize[1], fsize[2]); }
+
+  double *transf_array = malloc(2*fsize[0]*fsize[1]*fsize[2] * sizeof(double)); /* x2 since they will be complex numbers */
+  double *end_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
+
+  if(rank == 0) { printf("Performing forward fft\n"); }
+  p3dfft_ftran_r2c(recv_array, transf_array, op_f);
+
+/*
+  if(rank == print) {
+    for(k=0; k<fsize[Z]; k++) {
+      for(j=0; j<fsize[Y]; j++) {
+        for(i=0; i<fsize[X]; i+=2) { 
+          printf("%.0f %.0f  ", transf_array[ar_index(k,j,i,fsize)], transf_array[ar_index(k,j,i+1,fsize)]);}
+        }
+        printf("\t\t\t");
+      }
+      printf("\n");
+    }
+  }
+*/
+  
+  if(rank == 0) { printf("Performing backward fft\n"); }
+  p3dfft_btran_c2r(transf_array, end_array, op_b);
+
+/* checking the array is the same after transforming back also dividing by (nx*ny*nz)*/
+      for(k=0; k<isize[Z]; k++) {
+        for(j=0; j<isize[Y]; j++) {
+          for(i=0; i<isize[X]; i++) {
+            end_array[ar_index(k,j,i,isize)] = end_array[ar_index(k,j,i,isize)]/(nx*ny*nz);
+            if(abs(recv_array[ar_index(k,j,i,isize)] - end_array[ar_index(k,j,i,isize)] ) > 0.1e-5) {
+              printf("error: rank %d, end array[%d][%d][%d] is wrong, %f and should be %f\n", rank, k, j, i, end_array[ar_index(k,j,i,isize)], recv_array[ar_index(k,j,i,isize)]);
+            }
+          }
+        }
+      }
 
   /*send the data back to cartesian decomp */
   if(cart_size(2) == 1) { /* already in a pencil decomposition! */
@@ -293,7 +336,7 @@ int main() {
       for(j=0; j<nlocal[Y]; j++) {
         for(i=0; i<nlocal[Z]; i++) {
           if(send_array[k][j][i] != rank) {
-            printf("error: send array[%d][%d][%d] is wrong, %d and should be %d\n", k, j, i, send_array[k][j][i], rank);
+//            printf("error: send array[%d][%d][%d] is wrong, %d and should be %d\n", k, j, i, send_array[k][j][i], rank);
           }
         }
       }
@@ -304,8 +347,6 @@ int main() {
 
 /* careful about this freeing, ideally we would have these be static and when the decomposition is next to be changed the messages can simply be sent, without the need for calculating the destinations again*/
 
-  free(recv_subarray);
-  free(send_subarray);
   free(dest_proc);
   free(recv_proc);
   free(request);
@@ -334,7 +375,7 @@ int find_recv_proc (int global_coord[], int nlocal[]) {
   return recv_proc;
 }
 
-int index (int x, int y, int z, int isize[]) {
+int ar_index (int x, int y, int z, int isize[]) {
 
   return x*isize[1]*isize[0] + y*isize[0] + z; 
 }
