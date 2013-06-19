@@ -371,9 +371,9 @@ double surfactant_isotropic_pressure(const int index) {
 void surfactant_chemical_stress(const int index, double s[3][3]) {
 
   int ia, ib;
-  double phi;
-  double psi;
-  double delsq_phi;
+  double phi = 0.5;
+  double psi = 0.5;
+  double delsq_phi = 0.0;
   double dphi[3];
   double dpsi[3];
   double p0;
