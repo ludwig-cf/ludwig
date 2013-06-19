@@ -329,7 +329,7 @@ static int test_io(psi_t * psi, int tstep) {
     if (out == NULL) fatal("Could not open %s\n", filename);
 
     for (ic = 1; ic <= ntotalx; ic++) {
-      fprintf(out, "%d %le %le %le\n", ic, psifield[ic-1],
+      fprintf(out, "%d %14.7e %14.7e %14.7e\n", ic, psifield[ic-1],
 	      rho0field[ic-1], rho1field[ic-1]);
     }
     fclose(out);
