@@ -116,7 +116,7 @@ void propagation_ode_d2q9_rk2(hydro_t * hydro) {
 
 	index = coords_index(ic, jc, kc);
 
-        // Determine feq for BGK-collision at RK-step using f_[p] 
+        /* Determine feq for BGK-collision at RK-step using f_[p] */
 	rho[0] = distribution_zeroth_moment(index,0);
 	distribution_first_moment(index,0,u);
 	propagation_ode_feq(rho, u, feq);
@@ -192,7 +192,7 @@ void propagation_ode_d2q9_rk2(hydro_t * hydro) {
 
       index = coords_index(ic, jc, kc);
 
-      // Determine feq for BGK-collision at RK-step using f_[pdash] 
+      /* Determine feq for BGK-collision at RK-step using f_[pdash] */
       rho[0] = distribution_zeroth_moment(index,1);
       distribution_first_moment(index,1,u);
       propagation_ode_feq(rho, u, feq);
@@ -280,11 +280,11 @@ void propagation_ode_d2q9_rk2(hydro_t * hydro) {
 
 void propagation_ode_d2q9_rk4(hydro_t * hydro) {
 
-   int ndist=2; // local scope 
+   int ndist=2;
    int ic, jc, kc, index, p, pdash, pt, m;
    int nlocal[3]; 
    int nhalo; 
-   int nsites; // including halo regions 
+   int nsites; /* including halo regions */ 
    int xstr, ystr, zstr; 
    double dt;
    extern double *f_;
@@ -321,7 +321,7 @@ void propagation_ode_d2q9_rk4(hydro_t * hydro) {
 
        index = coords_index(ic, jc, kc);
 
-       // Determine feq for BGK-collision at RK-step using f_[p] 
+       /* Determine feq for BGK-collision at RK-step using f_[p] */
        rho[0] = distribution_zeroth_moment(index,0);
        distribution_first_moment(index,0,u);
        propagation_ode_feq(rho, u, feq);
@@ -441,7 +441,7 @@ void propagation_ode_d2q9_rk4(hydro_t * hydro) {
 
        index = coords_index(ic, jc, kc);
 
-       // Determine feq for BGK-collision at RK-step using f_[pdash] 
+       /* Determine feq for BGK-collision at RK-step using f_[pdash] */
        rho[0] = distribution_zeroth_moment(index,1);
        distribution_first_moment(index,1,u);
        propagation_ode_feq(rho, u, feq);
@@ -556,7 +556,7 @@ void propagation_ode_d2q9_rk4(hydro_t * hydro) {
 
        index = coords_index(ic, jc, kc);
 
-       // Determine feq for BGK-collision at RK-step using f_[pdash] 
+       /* Determine feq for BGK-collision at RK-step using f_[pdash] */
        rho[0] = distribution_zeroth_moment(index,1);
        distribution_first_moment(index,1,u);
        propagation_ode_feq(rho, u, feq);
@@ -671,7 +671,7 @@ void propagation_ode_d2q9_rk4(hydro_t * hydro) {
 
        index = coords_index(ic, jc, kc);
 
-       // Determine feq for BGK-collision at RK-step using f_[pdash] 
+       /* Determine feq for BGK-collision at RK-step using f_[pdash] */
        rho[0] = distribution_zeroth_moment(index,1);
        distribution_first_moment(index,1,u);
        propagation_ode_feq(rho, u, feq);
@@ -779,7 +779,7 @@ void propagation_ode_d2q9_rk4(hydro_t * hydro) {
 
 void propagation_ode_d3q19_rk2(hydro_t * hydro) {
 
-   int ndist=2; // local scope 
+   int ndist=2;
    int ic, jc, kc, index, p, pdash, m;
    int nlocal[3]; 
    int nhalo; 
@@ -810,7 +810,7 @@ void propagation_ode_d3q19_rk2(hydro_t * hydro) {
 
 	 index = coords_index(ic, jc, kc);
 
-         // Determine feq for BGK-collision at RK-step using f_[p] 
+         /* Determine feq for BGK-collision at RK-step using f_[p] */
          rho[0] = distribution_zeroth_moment(index,0);
          distribution_first_moment(index,0,u);
          propagation_ode_feq(rho, u, feq);
@@ -947,7 +947,7 @@ void propagation_ode_d3q19_rk2(hydro_t * hydro) {
 
 	 index = coords_index(ic, jc, kc);
 
-         // Determine feq for BGK-collision at RK-step using f_[pdash] 
+         /* Determine feq for BGK-collision at RK-step using f_[pdash] */
          rho[0] = distribution_zeroth_moment(index,1);
          distribution_first_moment(index,1,u);
          propagation_ode_feq(rho, u, feq);
@@ -1095,11 +1095,11 @@ void propagation_ode_d3q19_rk2(hydro_t * hydro) {
 
 void propagation_ode_d3q19_rk4(hydro_t * hydro) {
 
-   int ndist=2; // local scope 
+   int ndist=2;
    int ic, jc, kc, index, p, pdash, pt, m;
    int nlocal[3]; 
    int nhalo; 
-   int nsites; // including halo regions 
+   int nsites;
    int xstr, ystr, zstr; 
    double dt;
    extern double *f_;
@@ -1135,7 +1135,7 @@ void propagation_ode_d3q19_rk4(hydro_t * hydro) {
 
 	 index = coords_index(ic, jc, kc);
 
-         // Determine feq for BGK-collision at RK-step using f_[p] 
+         /* Determine feq for BGK-collision at RK-step using f_[p] */
          rho[0] = distribution_zeroth_moment(index,0);
          distribution_first_moment(index,0,u);
          propagation_ode_feq(rho, u, feq);
@@ -1339,7 +1339,7 @@ void propagation_ode_d3q19_rk4(hydro_t * hydro) {
 
 	 index = coords_index(ic, jc, kc);
 
-         // Determine feq for BGK-collision at RK-step using f_[pdash] 
+         /* Determine feq for BGK-collision at RK-step using f_[pdash] */
          rho[0] = distribution_zeroth_moment(index,1);
          distribution_first_moment(index,1,u);
          propagation_ode_feq(rho, u, feq);
@@ -1539,7 +1539,7 @@ void propagation_ode_d3q19_rk4(hydro_t * hydro) {
 
 	 index = coords_index(ic, jc, kc);
 
-         // Determine feq for BGK-collision at RK-step using f_[pdash] 
+         /* Determine feq for BGK-collision at RK-step using f_[pdash] */
          rho[0] = distribution_zeroth_moment(index,1);
          distribution_first_moment(index,1,u);
          propagation_ode_feq(rho, u, feq);
@@ -1738,7 +1738,7 @@ void propagation_ode_d3q19_rk4(hydro_t * hydro) {
 
 	 index = coords_index(ic, jc, kc);
 
-         // Determine feq for BGK-collision at RK-step using f_[pdash] 
+         /* Determine feq for BGK-collision at RK-step using f_[pdash] */
          rho[0] = distribution_zeroth_moment(index,1);
          distribution_first_moment(index,1,u);
          propagation_ode_feq(rho, u, feq);
@@ -1904,7 +1904,7 @@ void propagation_ode_init(void) {
 
   n = RUN_get_string_parameter("propagation_ode_integrator", integrator, FILENAME_MAX);
 
-  // setting ndist_ for initialisation;
+  /* setting ndist_ for initialisation */
   distribution_ndist_set(2);
 
   propagation_ode_integrator_set(RK2);

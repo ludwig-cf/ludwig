@@ -380,6 +380,14 @@ int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  coords_field_halo
+ *
+ *  Here is a general case allowing MPI_CHAR or MPI_DOUBLE
+ *
+ *****************************************************************************/
+
 int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
 		      MPI_Datatype halo[3]) {
 
@@ -460,10 +468,10 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
 	  for (n = 0; n < nf; n++) {
 	    ihalo = n + nf*coords_index(0 - nh, jc, kc);
 	    ireal = n + nf*coords_index(nlocal[X] - nh, jc, kc);
-	    memcpy(mbuf + sz*ihalo, buf + sz*ireal, sz);
+	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	    ihalo = n + nf*coords_index(nlocal[X] + 1 + nh, jc, kc);
 	    ireal = n + nf*coords_index(1 + nh, jc, kc);
-	    memcpy(mbuf + sz*ihalo, buf + sz*ireal, sz);
+	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	  }
 	}
       }
@@ -488,10 +496,10 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
 	  for (n = 0; n < nf; n++) {
 	    ihalo = n + nf*coords_index(ic, 0 - nh, kc);
 	    ireal = n + nf*coords_index(ic, nlocal[Y] - nh, kc);
-	    memcpy(mbuf + sz*ihalo, buf + sz*ireal, sz);
+	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	    ihalo = n + nf*coords_index(ic, nlocal[Y] + 1 + nh, kc);
 	    ireal = n + nf*coords_index(ic, 1 + nh, kc);
-	    memcpy(mbuf + sz*ihalo, buf + sz*ireal, sz);
+	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	  }
 	}
       }
@@ -516,10 +524,10 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
 	  for (n = 0; n < nf; n++) {
 	    ihalo = n + nf*coords_index(ic, jc, 0 - nh);
 	    ireal = n + nf*coords_index(ic, jc, nlocal[Z] - nh);
-	    memcpy(mbuf + sz*ihalo, buf + sz*ireal, sz);
+	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	    ihalo = n + nf*coords_index(ic, jc, nlocal[Z] + 1 + nh);
 	    ireal = n + nf*coords_index(ic, jc, 1 + nh);
-	    memcpy(mbuf + sz*ihalo, buf + sz*ireal, sz);
+	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	  }
 	}
       }

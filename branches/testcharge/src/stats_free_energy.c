@@ -632,15 +632,15 @@ int blue_phase_stats(field_t * qf, field_grad_t * dqf, map_t * map,
        if (fp_output == NULL) fatal("fopen(free_energy.dat) failed\n");
 
        /* timestep, total FE, gradient FE, redhsift */
-       fprintf(fp_output, "%d %12.6le %12.6le %12.6le ", nstep, 
+       fprintf(fp_output, "%d %12.6e %12.6e %12.6e ", nstep, 
 	       etotal[0] + etotal[1] + etotal[2] + etotal[3] + etotal[4],
 	       etotal[3] + etotal[4], redshift);
        /* Stress xx, xy, xz, ... */
-       fprintf(fp_output, "%12.6le %12.6le %12.6le ",
+       fprintf(fp_output, "%12.6e %12.6e %12.6e ",
 	       etotal[5], etotal[6], etotal[7]);
-       fprintf(fp_output, "%12.6le %12.6le %12.6le ",
+       fprintf(fp_output, "%12.6e %12.6e %12.6e ",
 	       etotal[8], etotal[9], etotal[10]);
-       fprintf(fp_output, "%12.6le %12.6le %12.6le\n",
+       fprintf(fp_output, "%12.6e %12.6e %12.6e\n",
 	       etotal[11], etotal[12], etotal[13]);
        
        fclose(fp_output);
