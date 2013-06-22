@@ -87,14 +87,7 @@ void collide_gpu(void) {
 					       grad_phi_site_d,	
 					       delsq_phi_site_d,	
 							 force_d, 
-    			       		      velocity_d, 
-					      ma_d, 
-					      d_d, 
-					      mi_d, 
-					      cv_d, 
-					       q_d, 
-					       wv_d);
-   
+							 velocity_d);   
 
     }
 
@@ -375,13 +368,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 					  const double* __restrict__ grad_phi_site_d,	
 					  const double* __restrict__ delsq_phi_site_d,	
 					  const double* __restrict__ force_d, 
-					  double* __restrict__ velocity_d, 
-					  double* ma_ptr, 
-					  double* d_ptr, 
-					  double* mi_ptr, 
-					  int* cv_ptr, 
-					  double* q_ptr, 
-					  double* wv_d) 
+					  double* __restrict__ velocity_d) 
 {
 
   int       index;                   /* site indices */
@@ -411,24 +398,14 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
   double    mu;                      /* Chemical potential */
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
- /* cast dummy gpu memory pointers to pointers of right type (for 
-   * multidimensional arrays) */
-  double (*ma_d)[NVEL] = (double (*)[NVEL]) ma_ptr;
-  double (*mi_d)[NVEL] = (double (*)[NVEL]) mi_ptr;
-  double (*d_d)[3] = (double (*)[3]) d_ptr;
-  int (*cv_d)[3] = (int (*)[3]) cv_ptr;
-  double (*q_d)[3][3] = (double (*)[3][3]) q_ptr;
 
   int threadIndex, nsite, Nall[3], ii, jj, kk, xfac, yfac;
 
   /* ndist is always 2 in this routine. Use of hash define may help compiler */
 #define NDIST 2
 
-  //chemical_potential = fe_chemical_potential_function();
-  // chemical_stress = fe_chemical_stress_function();
 
-
-   fluctuations_off_gpu_d(shat, ghat); 
+  fluctuations_off_gpu_d(shat, ghat); 
 
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
@@ -474,12 +451,6 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	    mode[m] = mode_tmp;
 	  }
 
-/* 	  /\* Compute all the modes *\/ */
-/* 	  for (m = 0; m < NVEL; m++) { */
-/* 	    for (p = 0; p < NVEL; p++) { */
-/* 	      mode[m] += f_loc[p]*ma_d[m][p]; */
-/* 	    } */
-/* 	  } */
 	  
 	  /* For convenience, write out the physical modes. */
 	  
@@ -518,7 +489,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  
 	  symmetric_chemical_stress_gpu_d(index, sth, phi_site_d,
 					  grad_phi_site_d,
-					  delsq_phi_site_d,d_d,nsite);
+					  delsq_phi_site_d,nsite);
 
 	  /* Relax stress with different shear and bulk viscosity */
 	  
@@ -547,7 +518,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  for (i = 0; i < 3; i++) {
 	    for (j = 0; j < 3; j++) {
 	      s[i][j] -= rtau_shear_d*(s[i][j] - seq[i][j]);
-	      s[i][j] += d_d[i][j]*r3*tr_s;
+	      s[i][j] += d_cd[i][j]*r3*tr_s;
 	      
 	      /* Correction from body force (assumes equal relaxation times) */
 	      
@@ -578,10 +549,6 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  
 	  /* Project post-collision modes back onto the distribution */
 
-	  /* the below syncthreads is required, otherwise the above
-	     summation goes wrong. This is NOT UNDERSTOOD yet and under
-	     investigation - Alan Gray */
-	  __syncthreads();
 
   	  double f_tmp;
 	  
@@ -592,11 +559,6 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
  	    }
 	    f_d[nsite*NDIST*p + index] = f_tmp;
  	}
-/*  	  for (p = 0; p < NVEL; p++) { */
-/*  	    for (m = 0; m < NVEL; m++) { */
-/*  	     f_d[nsite*NDIST*p + index]  += mi_d[p][m]*mode[m]; */
-/*  	    } */
-/*  	} */
 
 	/* Now, the order parameter distribution */
 
@@ -609,7 +571,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	jphi[Z] = 0.0;
 	for (p = 1; p < NVEL; p++) {
 	  for (i = 0; i < 3; i++) {
-	    jphi[i] += f_loc[NVEL + p]*cv_d[p][i];
+	    jphi[i] += f_loc[NVEL + p]*cv_cd[p][i];
 	  }
 	}
 	
@@ -631,9 +593,9 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	  sphidotq = 0.0;
 	  
 	  for (i = 0; i < 3; i++) {
-	    jdotc += jphi[i]*cv_d[p][i];
+	    jdotc += jphi[i]*cv_cd[p][i];
 	    for (j = 0; j < 3; j++) {
-	      sphidotq += sphi[i][j]*q_d[p][i][j];
+	      sphidotq += sphi[i][j]*q_cd[p][i][j];
 	    }
 	  }
 	  
@@ -641,7 +603,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	   * here is to move phi into the non-propagating distribution. */
 	  
 	  f_d[nsite*NDIST*p+nsite+index]
-	    = wv_d[p]*(jdotc*rcs2_d + sphidotq*r2rcs4) + phi*dp0;
+	    = wv_cd[p]*(jdotc*rcs2_d + sphidotq*r2rcs4) + phi*dp0;
 	  
 	}
 	
@@ -775,6 +737,8 @@ void collision_relaxation_times_set_gpu(void) {
 		       cudaMemcpyHostToDevice);
     cudaMemcpyToSymbol(rtau_d, rtau_, NVEL*sizeof(double), 0,	
 		       cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(wv_cd, wv, NVEL*sizeof(double), 0,	
+		       cudaMemcpyHostToDevice);
 
     cudaMemcpyToSymbol(ma_cd, ma_, NVEL*NVEL*sizeof(double), 0,	
 		       cudaMemcpyHostToDevice);
@@ -782,8 +746,11 @@ void collision_relaxation_times_set_gpu(void) {
 		       cudaMemcpyHostToDevice);
      cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0,	
     		       cudaMemcpyHostToDevice);
-
-    cudaMemcpyToSymbol(rtau2_d, &rtau2, sizeof(double), 0,	
+     cudaMemcpyToSymbol(cv_cd, cv, NVEL*3*sizeof(int), 0,
+			cudaMemcpyHostToDevice);
+     cudaMemcpyToSymbol(q_cd, q_, NVEL*3*3*sizeof(double), 0,
+			cudaMemcpyHostToDevice);
+     cudaMemcpyToSymbol(rtau2_d, &rtau2, sizeof(double), 0,	
 		       cudaMemcpyHostToDevice);
     cudaMemcpyToSymbol(rcs2_d, &rcs2, sizeof(double), 0,	
 		       cudaMemcpyHostToDevice);
@@ -839,7 +806,7 @@ __device__ void symmetric_chemical_stress_gpu_d(const int index,
 						const double* __restrict__ phi_site_d, 
 						const double* __restrict__ grad_phi_site_d, 
 						const double* __restrict__ delsq_phi_site_d,
-						double d_d[3][3], int nsite) {
+						int nsite) {
 
   int ia, ib;
   double phi;
@@ -857,7 +824,7 @@ __device__ void symmetric_chemical_stress_gpu_d(const int index,
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = p0*d_d[ia][ib]	+ kappa_d*grad_phi[ia]*grad_phi[ib];
+      s[ia][ib] = p0*d_cd[ia][ib]	+ kappa_d*grad_phi[ia]*grad_phi[ib];
     }
   }
 

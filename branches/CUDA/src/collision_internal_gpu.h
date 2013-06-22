@@ -27,14 +27,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 					  const double* __restrict__ grad_phi_site_d,	
 					  const double* __restrict__ delsq_phi_site_d,	
 					  const double* __restrict__ force_ptr, 
-					  double* __restrict__ velocity_ptr, 
-					  double* ma_ptr, 
-					  double* d_ptr, 
-					  double* mi_ptr, 
-					  int* cv_ptr, 
-					  double* q_ptr, 
-					  double* wv_d);
-
+					  double* __restrict__ velocity_ptr);
 __device__ void fluctuations_off_gpu_d(double shat[3][3], double ghat[NVEL]);
 __device__ double symmetric_chemical_potential_gpu_d(const int index,	
 						     const double* __restrict__ phi_site_d,
@@ -44,7 +37,7 @@ __device__ void symmetric_chemical_stress_gpu_d(const int index,
 						const double* __restrict__ phi_site_d, 
 						const double* __restrict__ grad_phi_site_d, 
 						const double* __restrict__ delsq_phi_site_d,
-						double d_d[3][3], int nsite);
+						int nsite);
 __device__ double dot_product_gpu_d(const double a[3], const double b[3]);
 __device__ double phi_get_delsq_delsq_phi_site_gpu_d(const int index,	
 					  double *delsq_delsq_phi_site_d);
@@ -91,8 +84,11 @@ extern double * delsq_phi_site_d;
 __constant__ double rtau_shear_d;
 __constant__ double rtau_bulk_d;
 __constant__ double rtau_d[NVEL];
+__constant__ double wv_cd[NVEL];
 __constant__ double ma_cd[NVEL][NVEL];
 __constant__ double mi_cd[NVEL][NVEL];
+__constant__ double q_cd[NVEL][3][3];
+__constant__ int cv_cd[NVEL][3];
 __constant__ double d_cd[3][3];
 __constant__ double a_d;
 __constant__ double b_d;
