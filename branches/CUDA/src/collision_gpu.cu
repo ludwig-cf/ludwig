@@ -360,6 +360,228 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
  *****************************************************************************/
 
 
+__device__ void collision_binary_lb_site_gpu_d(const double* __restrict__ force_global_d, 
+					  double* __restrict__ f_d, 
+					  const char* __restrict__ site_map_status_d, 
+					  const double* __restrict__ phi_site_d,		
+					  const double* __restrict__ grad_phi_site_d,	
+					  const double* __restrict__ delsq_phi_site_d,	
+					  const double* __restrict__ force_d, 
+					       double* __restrict__ velocity_d, const int nsite, const int index) 
+{
+  int       p, m;                    /* velocity index */
+  int       i, j;                    /* summed over indices ("alphabeta") */
+
+  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
+  double    rho, rrho;               /* Density, reciprocal density */
+  double    u[3];                    /* Velocity */
+  double    s[3][3];                 /* Stress */
+  double    seq[3][3];               /* equilibrium stress */
+  double    shat[3][3];              /* random stress */
+  double    ghat[NVEL];              /* noise for ghosts */
+
+  double    force[3];                /* External force */
+  double    tr_s, tr_seq;
+
+  double    force_local[3];
+
+  double f_loc[2*NVEL]; /* thread local copy of f_ data */
+
+  const double   r3     = (1.0/3.0);
+
+  double    phi, jdotc, sphidotq;    /* modes */
+  double    jphi[3];
+  double    sth[3][3], sphi[3][3];
+  double    mu;                      /* Chemical potential */
+  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
+
+
+  /* ndist is always 2 in this routine. Use of hash define may help compiler */
+#define NDIST 2
+
+
+
+  /* load data into registers */
+  for(p = 0; p < NVEL; p++) {
+    for(m = 0; m < NDIST; m++) {
+      f_loc[NVEL*m+p] = f_d[nsite*NDIST*p + nsite*m + index];
+    }
+  }
+  
+  
+  /* Compute all the modes */
+  for (m = 0; m < NVEL; m++) {
+    double mode_tmp = 0.0;
+    for (p = 0; p < NVEL; p++) {
+      mode_tmp += f_loc[p]*ma_cd[m][p];
+    }
+    mode[m] = mode_tmp;
+  }
+  
+  
+  /* For convenience, write out the physical modes. */
+  
+  rho = mode[0];
+  for (i = 0; i < 3; i++) {
+    u[i] = mode[1 + i];
+  }
+  s[X][X] = mode[4];
+  s[X][Y] = mode[5];
+  s[X][Z] = mode[6];
+  s[Y][X] = s[X][Y];
+  s[Y][Y] = mode[7];
+  s[Y][Z] = mode[8];
+  s[Z][X] = s[X][Z];
+  s[Z][Y] = s[Y][Z];
+  s[Z][Z] = mode[9];
+  
+  /* Compute the local velocity, taking account of any body force */
+  
+  rrho = 1.0/rho;
+  /* hydrodynamics_get_force_local(index, force_local); */
+  for (i = 0; i < 3; i++) {
+    force_local[i] = force_d[i*nsite+index];
+  }
+  
+  for (i = 0; i < 3; i++) {
+    force[i] = (force_global_d[i] + force_local[i]);
+    u[i] = rrho*(u[i] + 0.5*force[i]);
+  }
+  /* hydrodynamics_set_velocity(index, u); */
+  for (i = 0; i < 3; i++) {
+    velocity_d[i*nsite+index] = u[i];
+  }
+  
+  /* Compute the thermodynamic component of the stress */
+  
+  symmetric_chemical_stress_gpu_d(index, sth, phi_site_d,
+				  grad_phi_site_d,
+				  delsq_phi_site_d,nsite);
+  
+  /* Relax stress with different shear and bulk viscosity */
+  
+  tr_s   = 0.0;
+  tr_seq = 0.0;
+  
+  for (i = 0; i < 3; i++) {
+    /* Set equilibrium stress, which includes thermodynamic part */
+    for (j = 0; j < 3; j++) {
+      seq[i][j] = rho*u[i]*u[j] + sth[i][j];
+    }
+    /* Compute trace */
+    tr_s   += s[i][i];
+    tr_seq += seq[i][i];
+  }
+  
+  /* Form traceless parts */
+  for (i = 0; i < 3; i++) {
+    s[i][i]   -= r3*tr_s;
+    seq[i][i] -= r3*tr_seq;
+  }
+  
+  /* Relax each mode */
+  tr_s = tr_s - rtau_bulk_d*(tr_s - tr_seq);
+  
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      s[i][j] -= rtau_shear_d*(s[i][j] - seq[i][j]);
+      s[i][j] += d_cd[i][j]*r3*tr_s;
+      
+      /* Correction from body force (assumes equal relaxation times) */
+      
+      s[i][j] += (2.0-rtau_shear_d)*(u[i]*force[j] + force[i]*u[j]);
+      shat[i][j] = 0.0;
+    }
+  }
+  
+  //if (isothermal_fluctuations_) fluctuations_on(shat, ghat);
+  
+  /* Now reset the hydrodynamic modes to post-collision values */
+  
+  mode[1] = mode[1] + force[X];    /* Conserved if no force */
+  mode[2] = mode[2] + force[Y];    /* Conserved if no force */
+  mode[3] = mode[3] + force[Z];    /* Conserved if no force */
+  mode[4] = s[X][X] + shat[X][X];
+  mode[5] = s[X][Y] + shat[X][Y];
+  mode[6] = s[X][Z] + shat[X][Z];
+  mode[7] = s[Y][Y] + shat[Y][Y];
+  mode[8] = s[Y][Z] + shat[Y][Z];
+  mode[9] = s[Z][Z] + shat[Z][Z];
+  
+  /* Ghost modes are relaxed toward zero equilibrium. */
+  
+  for (m = NHYDRO; m < NVEL; m++) {
+    mode[m] = mode[m] - rtau_d[m]*(mode[m] - 0.0) + ghat[m];
+  }
+  
+  /* Project post-collision modes back onto the distribution */
+  
+  
+  double f_tmp;
+  
+  for (p = 0; p < NVEL; p++) {
+    f_tmp = 0.0;
+    for (m = 0; m < NVEL; m++) {
+      f_tmp += mi_cd[p][m]*mode[m];
+    }
+    f_d[nsite*NDIST*p + index] = f_tmp;
+  }
+  
+  /* Now, the order parameter distribution */
+  
+  phi = phi_site_d[index];
+  mu = symmetric_chemical_potential_gpu_d(index, phi_site_d,
+					  delsq_phi_site_d);
+  
+  jphi[X] = 0.0;
+  jphi[Y] = 0.0;
+  jphi[Z] = 0.0;
+  for (p = 1; p < NVEL; p++) {
+    for (i = 0; i < 3; i++) {
+      jphi[i] += f_loc[NVEL + p]*cv_cd[p][i];
+    }
+  }
+  
+  /* Relax order parameters modes. See the comments above. */
+  
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      sphi[i][j] = phi*u[i]*u[j] + mu*d_cd[i][j];
+    }
+    jphi[i] = jphi[i] - rtau2_d*(jphi[i] - phi*u[i]);
+  }
+  
+  /* Now update the distribution */
+	
+  for (p = 0; p < NVEL; p++) {
+    
+    int dp0 = (p == 0);
+    jdotc    = 0.0;
+    sphidotq = 0.0;
+    
+    for (i = 0; i < 3; i++) {
+      jdotc += jphi[i]*cv_cd[p][i];
+      for (j = 0; j < 3; j++) {
+	sphidotq += sphi[i][j]*q_cd[p][i][j];
+      }
+    }
+    
+    /* Project all this back to the distributions. The magic
+     * here is to move phi into the non-propagating distribution. */
+    
+    f_d[nsite*NDIST*p+nsite+index]
+      = wv_cd[p]*(jdotc*rcs2_d + sphidotq*r2rcs4) + phi*dp0;
+    
+  }
+  
+  
+
+
+  return;
+}
+
+
+
 __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3], 
 					  const double* __restrict__ force_global_d, 
 					  double* __restrict__ f_d, 
@@ -429,186 +651,17 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
       kk = (threadIndex-ii*xfac-jj*yfac);
       
       index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
-      
-/*       if (site_map_status_d[index] == FLUID) */
-/* 	{ */
 	  
 	  
-	  /* load data into registers */
-	  for(p = 0; p < NVEL; p++) {
-	    for(m = 0; m < NDIST; m++) {
-	      f_loc[NVEL*m+p] = f_d[nsite*NDIST*p + nsite*m + index];
-	    }
-	  }
-	  
-	  
-	  /* Compute all the modes */
-	  for (m = 0; m < NVEL; m++) {
-	    double mode_tmp = 0.0;
-	    for (p = 0; p < NVEL; p++) {
-	      mode_tmp += f_loc[p]*ma_cd[m][p];
-	    }
-	    mode[m] = mode_tmp;
-	  }
 
-	  
-	  /* For convenience, write out the physical modes. */
-	  
-	  rho = mode[0];
-	  for (i = 0; i < 3; i++) {
-	    u[i] = mode[1 + i];
-	  }
-	  s[X][X] = mode[4];
-	  s[X][Y] = mode[5];
-	  s[X][Z] = mode[6];
-	  s[Y][X] = s[X][Y];
-	  s[Y][Y] = mode[7];
-	  s[Y][Z] = mode[8];
-	  s[Z][X] = s[X][Z];
-	  s[Z][Y] = s[Y][Z];
-	  s[Z][Z] = mode[9];
-	  
-	  /* Compute the local velocity, taking account of any body force */
-	  
-	  rrho = 1.0/rho;
-	  /* hydrodynamics_get_force_local(index, force_local); */
-	  for (i = 0; i < 3; i++) {
-	    force_local[i] = force_d[i*nsite+index];
-	  }
-	  
-	  for (i = 0; i < 3; i++) {
-	    force[i] = (force_global_d[i] + force_local[i]);
-	    u[i] = rrho*(u[i] + 0.5*force[i]);
-	  }
-	  /* hydrodynamics_set_velocity(index, u); */
-	  for (i = 0; i < 3; i++) {
-	    velocity_d[i*nsite+index] = u[i];
-	  }
-	  
-	  /* Compute the thermodynamic component of the stress */
-	  
-	  symmetric_chemical_stress_gpu_d(index, sth, phi_site_d,
-					  grad_phi_site_d,
-					  delsq_phi_site_d,nsite);
-
-	  /* Relax stress with different shear and bulk viscosity */
-	  
-	  tr_s   = 0.0;
-	  tr_seq = 0.0;
-	  
-	  for (i = 0; i < 3; i++) {
-	    /* Set equilibrium stress, which includes thermodynamic part */
-	    for (j = 0; j < 3; j++) {
-	      seq[i][j] = rho*u[i]*u[j] + sth[i][j];
-	    }
-	  /* Compute trace */
-	    tr_s   += s[i][i];
-	    tr_seq += seq[i][i];
-	  }
-	  
-	  /* Form traceless parts */
-	  for (i = 0; i < 3; i++) {
-	    s[i][i]   -= r3*tr_s;
-	    seq[i][i] -= r3*tr_seq;
-	  }
-	  
-	  /* Relax each mode */
-	  tr_s = tr_s - rtau_bulk_d*(tr_s - tr_seq);
-	  
-	  for (i = 0; i < 3; i++) {
-	    for (j = 0; j < 3; j++) {
-	      s[i][j] -= rtau_shear_d*(s[i][j] - seq[i][j]);
-	      s[i][j] += d_cd[i][j]*r3*tr_s;
-	      
-	      /* Correction from body force (assumes equal relaxation times) */
-	      
-	      s[i][j] += (2.0-rtau_shear_d)*(u[i]*force[j] + force[i]*u[j]);
-	      shat[i][j] = 0.0;
-	    }
-	  }
-	  
-	  //if (isothermal_fluctuations_) fluctuations_on(shat, ghat);
-	  
-	  /* Now reset the hydrodynamic modes to post-collision values */
-	  
-	  mode[1] = mode[1] + force[X];    /* Conserved if no force */
-	  mode[2] = mode[2] + force[Y];    /* Conserved if no force */
-	  mode[3] = mode[3] + force[Z];    /* Conserved if no force */
-	  mode[4] = s[X][X] + shat[X][X];
-	  mode[5] = s[X][Y] + shat[X][Y];
-	  mode[6] = s[X][Z] + shat[X][Z];
-	  mode[7] = s[Y][Y] + shat[Y][Y];
-	  mode[8] = s[Y][Z] + shat[Y][Z];
-	  mode[9] = s[Z][Z] + shat[Z][Z];
-	  
-	  /* Ghost modes are relaxed toward zero equilibrium. */
-	  
-	  for (m = NHYDRO; m < NVEL; m++) {
-	    mode[m] = mode[m] - rtau_d[m]*(mode[m] - 0.0) + ghat[m];
-	  }
-	  
-	  /* Project post-collision modes back onto the distribution */
-
-
-  	  double f_tmp;
-	  
- 	  for (p = 0; p < NVEL; p++) {
- 	    f_tmp = 0.0;
- 	    for (m = 0; m < NVEL; m++) {
- 	      f_tmp += mi_cd[p][m]*mode[m];
- 	    }
-	    f_d[nsite*NDIST*p + index] = f_tmp;
- 	}
-
-	/* Now, the order parameter distribution */
-
-	phi = phi_site_d[index];
-	mu = symmetric_chemical_potential_gpu_d(index, phi_site_d,
-						delsq_phi_site_d);
-	
-	jphi[X] = 0.0;
-	jphi[Y] = 0.0;
-	jphi[Z] = 0.0;
-	for (p = 1; p < NVEL; p++) {
-	  for (i = 0; i < 3; i++) {
-	    jphi[i] += f_loc[NVEL + p]*cv_cd[p][i];
-	  }
-	}
-	
-	/* Relax order parameters modes. See the comments above. */
-	
-	for (i = 0; i < 3; i++) {
-	  for (j = 0; j < 3; j++) {
-	    sphi[i][j] = phi*u[i]*u[j] + mu*d_cd[i][j];
-	  }
-	  jphi[i] = jphi[i] - rtau2_d*(jphi[i] - phi*u[i]);
-	}
-	
-	/* Now update the distribution */
-	
-	for (p = 0; p < NVEL; p++) {
-	  
-	  int dp0 = (p == 0);
-	  jdotc    = 0.0;
-	  sphidotq = 0.0;
-	  
-	  for (i = 0; i < 3; i++) {
-	    jdotc += jphi[i]*cv_cd[p][i];
-	    for (j = 0; j < 3; j++) {
-	      sphidotq += sphi[i][j]*q_cd[p][i][j];
-	    }
-	  }
-	  
-	  /* Project all this back to the distributions. The magic
-	   * here is to move phi into the non-propagating distribution. */
-	  
-	  f_d[nsite*NDIST*p+nsite+index]
-	    = wv_cd[p]*(jdotc*rcs2_d + sphidotq*r2rcs4) + phi*dp0;
-	  
-	}
-	
-	
-/* 	} */
+      collision_binary_lb_site_gpu_d(force_global_d, 
+					      f_d, 
+					      site_map_status_d, 
+					       phi_site_d,		
+					       grad_phi_site_d,	
+					       delsq_phi_site_d,	
+							 force_d, 
+				     velocity_d, nsite, index);   
       
     }
   
