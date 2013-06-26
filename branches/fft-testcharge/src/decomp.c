@@ -29,7 +29,6 @@
 
 
 struct holder {
-  double *recv_array;
 
   int *dest_proc;
   int  send_count;
@@ -59,6 +58,7 @@ int main() {
   
   MPI_Init(NULL, NULL);
 
+
   int num_procs, rank;
   MPI_Comm ludwig_comm;
   MPI_Comm p3dfft_comm;
@@ -66,13 +66,14 @@ int main() {
   int nlocal[3];
   int coords[3];
   int i, j, k;
-  int isize[3];
+  int istart[3], iend[3], isize[3];
   int ip;
+
+  int fstart[3], fend[3], fsize[3];
+  unsigned char op_f[3]="fft", op_b[3]="tff";
 
   struct holder *data = malloc(sizeof(struct holder));
 
-  double send_array[nlocal[X]] [nlocal[Y]] [nlocal[Z]];
-  double final_array[nlocal[X]] [nlocal[Y]] [nlocal[Z]];
 
 /* ludwig decomposition setup*/
 
@@ -88,14 +89,20 @@ int main() {
     coords[i] = cart_coords(i);
   }
 
+  double send_array[nlocal[X]] [nlocal[Y]] [nlocal[Z]];
+  double final_array[nlocal[X]] [nlocal[Y]] [nlocal[Z]];
+  double *recv_array;
+  double *end_array;
+  double *transf_array;
+
   for(k=0; k<nlocal[X]; k++) {
     for(j=0; j<nlocal[Y]; j++) {
       for(i=0; i<nlocal[Z]; i++) {
         send_array[k][j][i] = rank;
-        final_array[k][j][i] = rank;
       }
     }
   }
+
 
 /* p3dfft decomposition setup */
   p3dfft_comm = MPI_COMM_WORLD;
@@ -109,17 +116,29 @@ int main() {
     initialised_ = 1;
   }
 
+  ip = 1;
+  p3dfft_get_dims(istart, iend, isize, ip);
+
+  recv_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
+  end_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
+
+  ip = 2;
+  p3dfft_get_dims(fstart, fend, fsize, ip);
+
+  transf_array = malloc(2*fsize[0]*fsize[1]*fsize[2] * sizeof(double)); /* x2 since they will be complex numbers */
+
   MPI_Request send_request[data->send_count];
   MPI_Status send_status[data->send_count];
   MPI_Status recv_status;
 
   if(rank == 0) { printf("Executing swap\n"); } 
+//  cart_to_pencil(send_array, recv_array, data, nlocal, ludwig_comm, isize)
   if(cart_size(2) == 1) { /* already in a pencil decomposition! */
 /* copy data or move pointer */
     for(k=0; k<nlocal[X]; k++) {
       for(j=0; j<nlocal[Y]; j++) {
         for(i=0; i<nlocal[Z]; i++) {
-          data->recv_array[index_3d(k,j,i,isize)] = send_array[k][j][i];
+          recv_array[index_3d(k,j,i,isize)] = send_array[k][j][i];
         }
       }
     }
@@ -131,7 +150,7 @@ int main() {
 
     if(rank == 0) { printf("Posting receives\n"); }
     for(i=0; i<data->recv_count; i++) {
-      MPI_Recv(data->recv_array, 1, data->recv_subarray[i], data->recv_proc[i], 2, ludwig_comm, &recv_status);
+      MPI_Recv(recv_array, 1, data->recv_subarray[i], data->recv_proc[i], 2, ludwig_comm, &recv_status);
     }
   }
 
@@ -144,18 +163,9 @@ int main() {
 
 /* do FFT here */
   /* need dimensions of complex array */
-  int fstart[3], fend[3], fsize[3];
-  unsigned char op_f[3]="fft", op_b[3]="tff";
-
-
-  ip = 2;
-  p3dfft_get_dims(fstart, fend, fsize, ip);
-
-  double *transf_array = malloc(2*fsize[0]*fsize[1]*fsize[2] * sizeof(double)); /* x2 since they will be complex numbers */
-  double *end_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
 
   if(rank == 0) { printf("Performing forward fft\n"); }
-  p3dfft_ftran_r2c(data->recv_array, transf_array, op_f);
+  p3dfft_ftran_r2c(recv_array, transf_array, op_f);
 
   
   if(rank == 0) { printf("Performing backward fft\n"); }
@@ -166,8 +176,8 @@ int main() {
         for(j=0; j<isize[Y]; j++) {
           for(i=0; i<isize[X]; i++) {
             end_array[index_3d(k,j,i,isize)] = end_array[index_3d(k,j,i,isize)]/(N_total(0)*N_total(1)*N_total(2));
-            if(abs(data->recv_array[index_3d(k,j,i,isize)] - end_array[index_3d(k,j,i,isize)] ) > 0.1e-10) {
-              printf("error: rank %d, end array[%d][%d][%d] is wrong, %f and should be %f\n", rank, k, j, i, end_array[index_3d(k,j,i,isize)], data->recv_array[index_3d(k,j,i,isize)]);
+            if(abs(recv_array[index_3d(k,j,i,isize)] - end_array[index_3d(k,j,i,isize)] ) > 0.1e-10) {
+              printf("error: rank %d, end array[%d][%d][%d] is wrong, %f and should be %f\n", rank, k, j, i, end_array[index_3d(k,j,i,isize)], recv_array[index_3d(k,j,i,isize)]);
             }
           }
         }
@@ -175,6 +185,7 @@ int main() {
 
 
   /*send the data back to cartesian decomp */
+//  pencil_to_cart(end_array, final_array, data, nlocal, ludwig_comm, isize);
   if(cart_size(2) == 1) { /* already in a pencil decomposition! */
 /* copy data back (or move pointer) */
     for(k=0; k<nlocal[X]; k++) {
@@ -197,7 +208,7 @@ int main() {
       MPI_Recv(final_array, 1, data->send_subarray[i], data->dest_proc[i], 2, ludwig_comm, &send_status[i]);
     }
 
-    MPI_Waitall(data->send_count, pencil_cart_request, pencil_cart_status);
+    MPI_Waitall(data->recv_count, pencil_cart_request, pencil_cart_status);
   }
 
 
@@ -476,12 +487,12 @@ void initialise_decomposition_swap(struct holder *data, int nlocal[], int num_pr
 
     p3dfft_setup(proc_dims, nsize[0], nsize[1], nsize[2], overwrite, memsize);
 
-    ip = 1;
+/*    ip = 1;
     p3dfft_get_dims(istart, iend, isize, ip);
 
     data->recv_array = malloc(isize[0]*isize[1]*isize[2]*sizeof(double));
     assert(isize[0] == nlocal[Z] && isize[1] == nlocal[Y] && isize[2] == nlocal[X]);
-
+*/
   }
   else { /*we need to do some work */
     if(rank == 0) { printf("Moving data from cartesian to pencil decomposition.\n"); }
@@ -503,7 +514,7 @@ void initialise_decomposition_swap(struct holder *data, int nlocal[], int num_pr
   /* now will create the subarrays for the mapping of data */
     int array_of_sizes[3], array_of_subsizes[3], array_of_starts[3];
 
-    data->recv_array = malloc(isize[0]*isize[1]*isize[2]*sizeof(double));
+//    data->recv_array = malloc(isize[0]*isize[1]*isize[2]*sizeof(double));
 /* finds the number of destination processors, and also sets subarray and find subsizes to be sent */
     data->send_count = find_number_cart_dest_procs(isize, proc_dims, nlocal, num_procs, data);
     
