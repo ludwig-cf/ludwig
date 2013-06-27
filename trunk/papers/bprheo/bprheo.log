@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.10.29)  9 JUN 2013 18:14
+This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.10.29)  27 JUN 2013 16:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -373,58 +373,58 @@ Package lastpage Info: Please have a look at the pageslts package at
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: End \AtBeginDocument code.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17.28> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 110.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 113.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 110.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 113.
 LaTeX Font Info:    Try loading font information for OT1+ztmcm on input line 11
-0.
+3.
 
 (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/ot1ztmcm.fd
 File: ot1ztmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OT1/ztmcm.
 )
 LaTeX Font Info:    Try loading font information for OML+ztmcm on input line 11
-0.
+3.
 
 (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omlztmcm.fd
 File: omlztmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OML/ztmcm.
 )
 LaTeX Font Info:    Try loading font information for OMS+ztmcm on input line 11
-0.
+3.
 
 (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omsztmcm.fd
 File: omsztmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OMS/ztmcm.
 )
 LaTeX Font Info:    Try loading font information for OMX+ztmcm on input line 11
-0.
+3.
 
 (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omxztmcm.fd
 File: omxztmcm.fd 2000/01/03 Fontinst v1.801 font definitions for OMX/ztmcm.
 )
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <9> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 110.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 113.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 110.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 113.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <12> not available
-(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 110.
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 113.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <9> not available
-(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 110.
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 113.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 117.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 120.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <6> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 117.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 120.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <5> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 117.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 120.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <14.4> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 126.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 129.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 131.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 134.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7.4> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 131.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 134.
 
 Overfull \vbox (1.67491pt too high) has occurred while \output is active []
 
 
-Underfull \hbox (badness 3240) in paragraph at lines 160--184
+Underfull \hbox (badness 3240) in paragraph at lines 163--192
 []\OT1/ptm/m/n/10 Flow re-sponse in cholester-ics is both strongly non-
  []
 
@@ -435,46 +435,46 @@ Underfull \vbox (badness 7796) has occurred while \output is active []
 <headers/LH.pdf, id=1, 56.21pt x 7.02625pt>
 File: headers/LH.pdf Graphic file (type pdf)
  <use headers/LH.pdf>
-Package pdftex.def Info: headers/LH.pdf used on input line 184.
+Package pdftex.def Info: headers/LH.pdf used on input line 192.
 (pdftex.def)             Requested size: 64.00714pt x 8.0pt.
 
 <headers/CH.pdf, id=2, 255.95625pt x 17.06375pt>
 File: headers/CH.pdf Graphic file (type pdf)
  <use headers/CH.pdf>
-Package pdftex.def Info: headers/CH.pdf used on input line 184.
+Package pdftex.def Info: headers/CH.pdf used on input line 192.
 (pdftex.def)             Requested size: 300.01828pt x 20.0pt.
 
 <headers/RH.pdf, id=3, 140.525pt x 10.0375pt>
 File: headers/RH.pdf Graphic file (type pdf)
  <use headers/RH.pdf>
-Package pdftex.def Info: headers/RH.pdf used on input line 184.
+Package pdftex.def Info: headers/RH.pdf used on input line 192.
 (pdftex.def)             Requested size: 140.00359pt x 10.0pt.
 
 <headers/LF.pdf, id=4, 154.5775pt x 8.03pt>
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 184.
+Package pdftex.def Info: headers/LF.pdf used on input line 192.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 
 <headers/RF.pdf, id=5, 90.3375pt x 7.02625pt>
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 184.
+Package pdftex.def Info: headers/RF.pdf used on input line 192.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
-LaTeX Font Info:    Try loading font information for OT1+phv on input line 184.
+LaTeX Font Info:    Try loading font information for OT1+phv on input line 192.
 
 
 (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/ot1phv.fd
 File: ot1phv.fd 2001/06/04 scalable font definitions for OT1/phv.
 )
-LaTeX Font Info:    Try loading font information for OMS+phv on input line 184.
+LaTeX Font Info:    Try loading font information for OMS+phv on input line 192.
 
 
 (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omsphv.fd
 File: omsphv.fd 
 )
 LaTeX Font Info:    Font shape `OMS/phv/m/n' in size <8> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 184.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 192.
  [1{/usr/local/texlive/2012/texmf-var/fonts/map/pdftex/updmap/pdftex.map}
 
 
@@ -485,34 +485,41 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 File: headers/RF.pdf Graphic file (type pdf)
 
 <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 280.
+Package pdftex.def Info: headers/RF.pdf used on input line 288.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 280.
+Package pdftex.def Info: headers/LF.pdf used on input line 288.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
  [2]
-Underfull \hbox (badness 1769) in paragraph at lines 285--289
+Underfull \hbox (badness 1769) in paragraph at lines 293--297
 \OT1/ptm/m/n/10 re-spec-tively gov-erned by the con-ti-nu-ity equa-tion $\OML/z
 tmcm/m/it/10 @[]^^Z \OT1/ztmcm/m/n/10 =
  []
 
 File: headers/LF.pdf Graphic file (type pdf)
 <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 391.
+Package pdftex.def Info: headers/LF.pdf used on input line 402.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 391.
+Package pdftex.def Info: headers/RF.pdf used on input line 402.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
  [3]
+Underfull \hbox (badness 1194) in paragraph at lines 440--441
+\OT1/ztmcm/m/n/10 10[]; 4\OML/ztmcm/m/it/10 :\OT1/ztmcm/m/n/10 67 \U/msa/m/n/10
+ . [] . \OT1/ztmcm/m/n/10 16)$ \OT1/ptm/m/n/10 and BPI-5 (FAN) ($\OT1/ztmcm/m/n
+/10 2\OML/ztmcm/m/it/10 :\OT1/ztmcm/m/n/10 5 \OMS/ztmcm/m/n/10 ^^B \OT1/ztmcm/m
+/n/10 10[] \U/msa/m/n/10 .
+ []
+
 <flowcurve_bp2.pdf, id=102, 361.35pt x 252.945pt>
 File: flowcurve_bp2.pdf Graphic file (type pdf)
  <use flowcurve_bp2.pdf>
-Package pdftex.def Info: flowcurve_bp2.pdf used on input line 431.
+Package pdftex.def Info: flowcurve_bp2.pdf used on input line 449.
 (pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
 
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 431--435
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 449--457
 [][] 
  []
 
@@ -520,104 +527,104 @@ Overfull \hbox (6.68388pt too wide) in paragraph at lines 431--435
 File: app_visc_strain_bp2_a.pdf Graphic file (type pdf)
 
 <use app_visc_strain_bp2_a.pdf>
-Package pdftex.def Info: app_visc_strain_bp2_a.pdf used on input line 440.
+Package pdftex.def Info: app_visc_strain_bp2_a.pdf used on input line 462.
 (pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
 
 <app_visc_strain_bp2_b.pdf, id=104, 361.35pt x 252.945pt>
 File: app_visc_strain_bp2_b.pdf Graphic file (type pdf)
 
 <use app_visc_strain_bp2_b.pdf>
-Package pdftex.def Info: app_visc_strain_bp2_b.pdf used on input line 441.
+Package pdftex.def Info: app_visc_strain_bp2_b.pdf used on input line 463.
 (pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
 
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 440--444
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 462--472
 [][] 
  []
 
 
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 440--444
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 462--472
 [] 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 440--444
+Underfull \hbox (badness 10000) in paragraph at lines 462--472
 
  []
 
 File: headers/RF.pdf Graphic file (type pdf)
 <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 473.
+Package pdftex.def Info: headers/RF.pdf used on input line 503.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 473.
+Package pdftex.def Info: headers/LF.pdf used on input line 503.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
  [4 <./flowcurve_bp2.pdf>]
 File: headers/LF.pdf Graphic file (type pdf)
 
 <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 528.
+Package pdftex.def Info: headers/LF.pdf used on input line 565.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 528.
+Package pdftex.def Info: headers/RF.pdf used on input line 565.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
  [5 <./app_visc_strain_bp2_a.pdf> <./app_visc_strain_bp2_b.pdf>]
 <disc-160k_run902r.png, id=142, 826.08624pt x 822.07124pt>
 File: disc-160k_run902r.png Graphic file (type png)
 
 <use disc-160k_run902r.png>
-Package pdftex.def Info: disc-160k_run902r.png used on input line 542.
+Package pdftex.def Info: disc-160k_run902r.png used on input line 579.
 (pdftex.def)             Requested size: 179.25548pt x 178.3851pt.
 
 <disc-164k_run902r.png, id=143, 826.08624pt x 822.07124pt>
 File: disc-164k_run902r.png Graphic file (type png)
 
 <use disc-164k_run902r.png>
-Package pdftex.def Info: disc-164k_run902r.png used on input line 543.
+Package pdftex.def Info: disc-164k_run902r.png used on input line 580.
 (pdftex.def)             Requested size: 179.25548pt x 178.3851pt.
 
 <disc-165k_run902r.png, id=144, 826.08624pt x 822.07124pt>
 File: disc-165k_run902r.png Graphic file (type png)
 
 <use disc-165k_run902r.png>
-Package pdftex.def Info: disc-165k_run902r.png used on input line 544.
+Package pdftex.def Info: disc-165k_run902r.png used on input line 581.
 (pdftex.def)             Requested size: 179.25548pt x 178.3851pt.
 
 
-LaTeX Warning: Float too large for page by 10.19469pt on input line 553.
+LaTeX Warning: Float too large for page by 10.19469pt on input line 590.
 
 <v_yz-v_z-160k_run902r.png, id=145, 1019.81pt x 921.4425pt>
 File: v_yz-v_z-160k_run902r.png Graphic file (type png)
 
 <use v_yz-v_z-160k_run902r.png>
-Package pdftex.def Info: v_yz-v_z-160k_run902r.png used on input line 556.
+Package pdftex.def Info: v_yz-v_z-160k_run902r.png used on input line 593.
 (pdftex.def)             Requested size: 253.51154pt x 229.05247pt.
 
 <v_yz-v_z-160k_run903r.png, id=146, 1019.81pt x 921.4425pt>
 File: v_yz-v_z-160k_run903r.png Graphic file (type png)
 
 <use v_yz-v_z-160k_run903r.png>
-Package pdftex.def Info: v_yz-v_z-160k_run903r.png used on input line 557.
+Package pdftex.def Info: v_yz-v_z-160k_run903r.png used on input line 594.
 (pdftex.def)             Requested size: 253.51154pt x 229.05247pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 618.
+Package pdftex.def Info: headers/RF.pdf used on input line 662.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 618.
+Package pdftex.def Info: headers/LF.pdf used on input line 662.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 
 [6 <./disc-160k_run902r.png (PNG copy)> <./disc-164k_run902r.png (PNG copy)> <.
 /disc-165k_run902r.png (PNG copy)>]
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 618.
+Package pdftex.def Info: headers/LF.pdf used on input line 662.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 618.
+Package pdftex.def Info: headers/RF.pdf used on input line 662.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 
 [7 <./v_yz-v_z-160k_run902r.png (PNG copy)> <./v_yz-v_z-160k_run903r.png (PNG c
@@ -625,15 +632,15 @@ opy)>] <flowcurve_bp1.pdf, id=154, 361.35pt x 252.945pt>
 File: flowcurve_bp1.pdf Graphic file (type pdf)
 
 <use flowcurve_bp1.pdf>
-Package pdftex.def Info: flowcurve_bp1.pdf used on input line 647.
+Package pdftex.def Info: flowcurve_bp1.pdf used on input line 702.
 (pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
 
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 647--658
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 702--720
 [][] 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 647--658
+Underfull \hbox (badness 10000) in paragraph at lines 702--720
 
  []
 
@@ -641,377 +648,399 @@ Underfull \hbox (badness 10000) in paragraph at lines 647--658
 File: app_visc_strain_bp1_a.pdf Graphic file (type pdf)
 
 <use app_visc_strain_bp1_a.pdf>
-Package pdftex.def Info: app_visc_strain_bp1_a.pdf used on input line 663.
-(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+Package pdftex.def Info: app_visc_strain_bp1_a.pdf used on input line 725.
+(pdftex.def)             Requested size: 230.46574pt x 161.3246pt.
 
 <app_visc_strain_bp1_b.pdf, id=156, 361.35pt x 252.945pt>
 File: app_visc_strain_bp1_b.pdf Graphic file (type pdf)
 
 <use app_visc_strain_bp1_b.pdf>
-Package pdftex.def Info: app_visc_strain_bp1_b.pdf used on input line 664.
-(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
+Package pdftex.def Info: app_visc_strain_bp1_b.pdf used on input line 726.
+(pdftex.def)             Requested size: 230.46574pt x 161.3246pt.
 
 <app_visc_strain_bp1_c.pdf, id=157, 361.35pt x 252.945pt>
 File: app_visc_strain_bp1_c.pdf Graphic file (type pdf)
 
 <use app_visc_strain_bp1_c.pdf>
-Package pdftex.def Info: app_visc_strain_bp1_c.pdf used on input line 665.
-(pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
-
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 663--667
-[][] 
- []
-
-
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 663--667
-[] 
- []
-
-
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 663--667
-[] 
- []
+Package pdftex.def Info: app_visc_strain_bp1_c.pdf used on input line 727.
+(pdftex.def)             Requested size: 230.46574pt x 161.3246pt.
 
 <stress_fe_yield_bp1.pdf, id=158, 361.35pt x 252.945pt>
 File: stress_fe_yield_bp1.pdf Graphic file (type pdf)
 
 <use stress_fe_yield_bp1.pdf>
-Package pdftex.def Info: stress_fe_yield_bp1.pdf used on input line 675.
+Package pdftex.def Info: stress_fe_yield_bp1.pdf used on input line 749.
 (pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
 
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 675--680
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 749--756
 [][] 
  []
 
-<stress_bp1-1_bp1-2.pdf, id=159, 361.35pt x 252.945pt>
+File: headers/RF.pdf Graphic file (type pdf)
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 788.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 788.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [8 <./flowcurve_bp1.pdf>]
+<stress_bp1-1_bp1-2.pdf, id=172, 361.35pt x 252.945pt>
 File: stress_bp1-1_bp1-2.pdf Graphic file (type pdf)
 
 <use stress_bp1-1_bp1-2.pdf>
-Package pdftex.def Info: stress_bp1-1_bp1-2.pdf used on input line 712.
+Package pdftex.def Info: stress_bp1-1_bp1-2.pdf used on input line 790.
 (pdftex.def)             Requested size: 253.51154pt x 177.45782pt.
 
-Overfull \hbox (6.68388pt too wide) in paragraph at lines 712--718
+Overfull \hbox (6.68388pt too wide) in paragraph at lines 790--797
 [][] 
  []
 
-<disc-xy-10k_run1115r.png, id=160, 736.7525pt x 778.91pt>
+<disc-xy-10k_run1115r.png, id=173, 736.7525pt x 778.91pt>
 File: disc-xy-10k_run1115r.png Graphic file (type png)
 
 <use disc-xy-10k_run1115r.png>
-Package pdftex.def Info: disc-xy-10k_run1115r.png used on input line 723.
+Package pdftex.def Info: disc-xy-10k_run1115r.png used on input line 802.
 (pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
 
-<disc-xy-180k_run1115r.png, id=161, 736.7525pt x 778.91pt>
+<disc-xy-180k_run1115r.png, id=174, 736.7525pt x 778.91pt>
 File: disc-xy-180k_run1115r.png Graphic file (type png)
 
 <use disc-xy-180k_run1115r.png>
-Package pdftex.def Info: disc-xy-180k_run1115r.png used on input line 724.
+Package pdftex.def Info: disc-xy-180k_run1115r.png used on input line 803.
 (pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
 
-<disc-xy-200k_run1115r.png, id=162, 736.7525pt x 778.91pt>
+<disc-xy-200k_run1115r.png, id=175, 736.7525pt x 778.91pt>
 File: disc-xy-200k_run1115r.png Graphic file (type png)
 
 <use disc-xy-200k_run1115r.png>
-Package pdftex.def Info: disc-xy-200k_run1115r.png used on input line 725.
+Package pdftex.def Info: disc-xy-200k_run1115r.png used on input line 804.
 (pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
 
-<disc-xy-210k_run1115r.png, id=163, 736.7525pt x 778.91pt>
+<disc-xy-210k_run1115r.png, id=176, 736.7525pt x 778.91pt>
 File: disc-xy-210k_run1115r.png Graphic file (type png)
 
 <use disc-xy-210k_run1115r.png>
-Package pdftex.def Info: disc-xy-210k_run1115r.png used on input line 726.
+Package pdftex.def Info: disc-xy-210k_run1115r.png used on input line 805.
 (pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
 
-<disc-xy-1650k_run1115r.png, id=164, 736.7525pt x 778.91pt>
+<disc-xy-1650k_run1115r.png, id=177, 736.7525pt x 778.91pt>
 File: disc-xy-1650k_run1115r.png Graphic file (type png)
 
 <use disc-xy-1650k_run1115r.png>
-Package pdftex.def Info: disc-xy-1650k_run1115r.png used on input line 727.
+Package pdftex.def Info: disc-xy-1650k_run1115r.png used on input line 806.
 (pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
 
-<disc-xy-1800k_run1115r.png, id=165, 736.7525pt x 778.91pt>
+<disc-xy-1800k_run1115r.png, id=178, 736.7525pt x 778.91pt>
 File: disc-xy-1800k_run1115r.png Graphic file (type png)
 
 <use disc-xy-1800k_run1115r.png>
-Package pdftex.def Info: disc-xy-1800k_run1115r.png used on input line 728.
+Package pdftex.def Info: disc-xy-1800k_run1115r.png used on input line 807.
 (pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
 
-<disc-xy-2000k_run1115r.png, id=166, 736.7525pt x 778.91pt>
+<disc-xy-2000k_run1115r.png, id=179, 736.7525pt x 778.91pt>
 File: disc-xy-2000k_run1115r.png Graphic file (type png)
 
 <use disc-xy-2000k_run1115r.png>
-Package pdftex.def Info: disc-xy-2000k_run1115r.png used on input line 729.
+Package pdftex.def Info: disc-xy-2000k_run1115r.png used on input line 808.
 (pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
 
-<disc-xy-2400k_run1115r.png, id=167, 736.7525pt x 778.91pt>
+<disc-xy-2400k_run1115r.png, id=180, 736.7525pt x 778.91pt>
 File: disc-xy-2400k_run1115r.png Graphic file (type png)
 
 <use disc-xy-2400k_run1115r.png>
-Package pdftex.def Info: disc-xy-2400k_run1115r.png used on input line 730.
+Package pdftex.def Info: disc-xy-2400k_run1115r.png used on input line 809.
 (pdftex.def)             Requested size: 125.47414pt x 132.65065pt.
-File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 760.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 760.
-(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
-
-[8 <./flowcurve_bp1.pdf>]
-File: headers/LF.pdf Graphic file (type pdf)
- <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 760.
+Package pdftex.def Info: headers/LF.pdf used on input line 872.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 760.
+Package pdftex.def Info: headers/RF.pdf used on input line 872.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [9 <./disc-xy-10k_run1115r.png (PNG copy)> <./disc-xy-180k_run1115r.png (PNG c
-opy)> <./disc-xy-200k_run1115r.png (PNG copy)> <./disc-xy-210k_run1115r.png (PN
-G copy)> <./disc-xy-1650k_run1115r.png (PNG copy)> <./disc-xy-1800k_run1115r.pn
-g (PNG copy)> <./disc-xy-2000k_run1115r.png (PNG copy)> <./disc-xy-2400k_run111
-5r.png (PNG copy)>]
+
+[9 <./app_visc_strain_bp1_a.pdf> <./app_visc_strain_bp1_b.pdf> <./app_visc_stra
+in_bp1_c.pdf> <./stress_fe_yield_bp1.pdf>]
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 760.
+Package pdftex.def Info: headers/RF.pdf used on input line 872.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
- <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 760.
+
+<use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 872.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
- [10 <./app_visc_strain_bp1_a.pdf> <./app_visc_strain_bp1_b.pdf> <./app_visc_st
-rain_bp1_c.pdf> <./stress_fe_yield_bp1.pdf> <./stress_bp1-1_bp1-2.pdf>]
-
-LaTeX Warning: Reference `bp1-rheo' on page 11 undefined on input line 776.
-
-<disc-364k_run914r.png, id=238, 850.17625pt x 866.23625pt>
+ [10 <./disc-xy-10k_run1115r.png (PNG copy)> <./disc-xy-180k_run1115r.png (PNG 
+copy)> <./disc-xy-200k_run1115r.png (PNG copy)> <./disc-xy-210k_run1115r.png (P
+NG copy)> <./disc-xy-1650k_run1115r.png (PNG copy)> <./disc-xy-1800k_run1115r.p
+ng (PNG copy)> <./disc-xy-2000k_run1115r.png (PNG copy)> <./disc-xy-2400k_run11
+15r.png (PNG copy)>]
+<disc-364k_run914r.png, id=228, 850.17625pt x 866.23625pt>
 File: disc-364k_run914r.png Graphic file (type png)
 
 <use disc-364k_run914r.png>
-Package pdftex.def Info: disc-364k_run914r.png used on input line 795.
+Package pdftex.def Info: disc-364k_run914r.png used on input line 874.
 (pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
 
-<disc-366k_run914r.png, id=239, 850.17625pt x 866.23625pt>
+<disc-366k_run914r.png, id=229, 850.17625pt x 866.23625pt>
 File: disc-366k_run914r.png Graphic file (type png)
 
 <use disc-366k_run914r.png>
-Package pdftex.def Info: disc-366k_run914r.png used on input line 796.
+Package pdftex.def Info: disc-366k_run914r.png used on input line 875.
 (pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
 
-<disc-368k_run914r.png, id=240, 850.17625pt x 866.23625pt>
+<disc-368k_run914r.png, id=230, 850.17625pt x 866.23625pt>
 File: disc-368k_run914r.png Graphic file (type png)
 
 <use disc-368k_run914r.png>
-Package pdftex.def Info: disc-368k_run914r.png used on input line 797.
+Package pdftex.def Info: disc-368k_run914r.png used on input line 876.
 (pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
 
-<disc-370k_run914r.png, id=241, 850.17625pt x 866.23625pt>
+<disc-370k_run914r.png, id=231, 850.17625pt x 866.23625pt>
 File: disc-370k_run914r.png Graphic file (type png)
 
 <use disc-370k_run914r.png>
-Package pdftex.def Info: disc-370k_run914r.png used on input line 798.
+Package pdftex.def Info: disc-370k_run914r.png used on input line 877.
 (pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
 
-<disc-372k_run914r.png, id=242, 850.17625pt x 866.23625pt>
+<disc-372k_run914r.png, id=232, 850.17625pt x 866.23625pt>
 File: disc-372k_run914r.png Graphic file (type png)
 
 <use disc-372k_run914r.png>
-Package pdftex.def Info: disc-372k_run914r.png used on input line 799.
+Package pdftex.def Info: disc-372k_run914r.png used on input line 878.
 (pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
 
-<disc-374k_run914r.png, id=243, 850.17625pt x 866.23625pt>
+<disc-374k_run914r.png, id=233, 850.17625pt x 866.23625pt>
 File: disc-374k_run914r.png Graphic file (type png)
 
 <use disc-374k_run914r.png>
-Package pdftex.def Info: disc-374k_run914r.png used on input line 800.
+Package pdftex.def Info: disc-374k_run914r.png used on input line 879.
 (pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
 
-<v_yz-v_z-364k_run914r.png, id=244, 850.17625pt x 750.805pt>
+<v_yz-v_z-364k_run914r.png, id=234, 850.17625pt x 750.805pt>
 File: v_yz-v_z-364k_run914r.png Graphic file (type png)
 
 <use v_yz-v_z-364k_run914r.png>
-Package pdftex.def Info: v_yz-v_z-364k_run914r.png used on input line 810.
+Package pdftex.def Info: v_yz-v_z-364k_run914r.png used on input line 893.
 (pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
 
-<v_yz-v_z-366k_run914r.png, id=245, 850.17625pt x 750.805pt>
+<v_yz-v_z-366k_run914r.png, id=235, 850.17625pt x 750.805pt>
 File: v_yz-v_z-366k_run914r.png Graphic file (type png)
 
 <use v_yz-v_z-366k_run914r.png>
-Package pdftex.def Info: v_yz-v_z-366k_run914r.png used on input line 811.
+Package pdftex.def Info: v_yz-v_z-366k_run914r.png used on input line 894.
 (pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
 
-<v_yz-v_z-368k_run914r.png, id=246, 850.17625pt x 750.805pt>
+<v_yz-v_z-368k_run914r.png, id=236, 850.17625pt x 750.805pt>
 File: v_yz-v_z-368k_run914r.png Graphic file (type png)
 
 <use v_yz-v_z-368k_run914r.png>
-Package pdftex.def Info: v_yz-v_z-368k_run914r.png used on input line 812.
+Package pdftex.def Info: v_yz-v_z-368k_run914r.png used on input line 895.
 (pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
 
-<v_yz-v_z-370k_run914r.png, id=247, 850.17625pt x 750.805pt>
+<v_yz-v_z-370k_run914r.png, id=237, 850.17625pt x 750.805pt>
 File: v_yz-v_z-370k_run914r.png Graphic file (type png)
 
 <use v_yz-v_z-370k_run914r.png>
-Package pdftex.def Info: v_yz-v_z-370k_run914r.png used on input line 813.
+Package pdftex.def Info: v_yz-v_z-370k_run914r.png used on input line 896.
 (pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
 
-<v_yz-v_z-372k_run914r.png, id=248, 850.17625pt x 750.805pt>
+<v_yz-v_z-372k_run914r.png, id=238, 850.17625pt x 750.805pt>
 File: v_yz-v_z-372k_run914r.png Graphic file (type png)
 
 <use v_yz-v_z-372k_run914r.png>
-Package pdftex.def Info: v_yz-v_z-372k_run914r.png used on input line 814.
+Package pdftex.def Info: v_yz-v_z-372k_run914r.png used on input line 897.
 (pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
 
-<v_yz-v_z-374k_run914r.png, id=249, 850.17625pt x 750.805pt>
+<v_yz-v_z-374k_run914r.png, id=239, 850.17625pt x 750.805pt>
 File: v_yz-v_z-374k_run914r.png Graphic file (type png)
 
 <use v_yz-v_z-374k_run914r.png>
-Package pdftex.def Info: v_yz-v_z-374k_run914r.png used on input line 815.
+Package pdftex.def Info: v_yz-v_z-374k_run914r.png used on input line 898.
 (pdftex.def)             Requested size: 163.89162pt x 144.72803pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 810--825
+Underfull \hbox (badness 10000) in paragraph at lines 893--911
 [][] [] []
  []
 
+<disc-600k_run915r.png, id=240, 848.16875pt x 755.82375pt>
+File: disc-600k_run915r.png Graphic file (type png)
 
-LaTeX Warning: Reference `bp2-velo' on page 11 undefined on input line 825.
+<use disc-600k_run915r.png>
+Package pdftex.def Info: disc-600k_run915r.png used on input line 963.
+(pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
+<disc-675k_run915r.png, id=241, 848.16875pt x 755.82375pt>
+File: disc-675k_run915r.png Graphic file (type png)
 
-LaTeX Warning: Reference `bp2-velo' on page 11 undefined on input line 863.
+<use disc-675k_run915r.png>
+Package pdftex.def Info: disc-675k_run915r.png used on input line 964.
+(pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
-<dir3d+y-450k_run916r.png, id=250, 952.55875pt x 859.21pt>
-File: dir3d+y-450k_run916r.png Graphic file (type png)
+<disc-700k_run915r.png, id=242, 848.16875pt x 755.82375pt>
+File: disc-700k_run915r.png Graphic file (type png)
 
-<use dir3d+y-450k_run916r.png>
-Package pdftex.def Info: dir3d+y-450k_run916r.png used on input line 932.
-(pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
+<use disc-700k_run915r.png>
+Package pdftex.def Info: disc-700k_run915r.png used on input line 965.
+(pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
-<dir3d+y-510k_run916r.png, id=251, 952.55875pt x 859.21pt>
-File: dir3d+y-510k_run916r.png Graphic file (type png)
+<disc-725k_run915r.png, id=243, 848.16875pt x 755.82375pt>
+File: disc-725k_run915r.png Graphic file (type png)
 
-<use dir3d+y-510k_run916r.png>
-Package pdftex.def Info: dir3d+y-510k_run916r.png used on input line 933.
-(pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
+<use disc-725k_run915r.png>
+Package pdftex.def Info: disc-725k_run915r.png used on input line 966.
+(pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
-<dir3d+y-800k_run916r.png, id=252, 952.55875pt x 859.21pt>
-File: dir3d+y-800k_run916r.png Graphic file (type png)
+<disc-1000k_run915r.png, id=244, 848.16875pt x 755.82375pt>
+File: disc-1000k_run915r.png Graphic file (type png)
 
-<use dir3d+y-800k_run916r.png>
-Package pdftex.def Info: dir3d+y-800k_run916r.png used on input line 934.
-(pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
+<use disc-1000k_run915r.png>
+Package pdftex.def Info: disc-1000k_run915r.png used on input line 967.
+(pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
+<disc-1200k_run915r.png, id=245, 848.16875pt x 755.82375pt>
+File: disc-1200k_run915r.png Graphic file (type png)
 
-LaTeX Warning: Reference `bp2-rheo' on page 11 undefined on input line 961.
+<use disc-1200k_run915r.png>
+Package pdftex.def Info: disc-1200k_run915r.png used on input line 968.
+(pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
-
-LaTeX Warning: Reference `bp1-rheo' on page 11 undefined on input line 961.
-
-<dir3d+y-200k_run1179r.png, id=253, 930.47626pt x 801.99625pt>
+<dir3d+y-200k_run1179r.png, id=246, 930.47626pt x 801.99625pt>
 File: dir3d+y-200k_run1179r.png Graphic file (type png)
 
 <use dir3d+y-200k_run1179r.png>
-Package pdftex.def Info: dir3d+y-200k_run1179r.png used on input line 964.
+Package pdftex.def Info: dir3d+y-200k_run1179r.png used on input line 1003.
 (pdftex.def)             Requested size: 243.27417pt x 209.67665pt.
 
-Underfull \vbox (badness 10000) has occurred while \output is active []
+<dir3d+y-450k_run916r.png, id=247, 952.55875pt x 859.21pt>
+File: dir3d+y-450k_run916r.png Graphic file (type png)
 
-File: headers/LF.pdf Graphic file (type pdf)
+<use dir3d+y-450k_run916r.png>
+Package pdftex.def Info: dir3d+y-450k_run916r.png used on input line 1015.
+(pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
 
-<use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 983.
-(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
-File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 983.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [11]
-File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 983.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
-File: headers/LF.pdf Graphic file (type pdf)
+<dir3d+y-510k_run916r.png, id=248, 952.55875pt x 859.21pt>
+File: dir3d+y-510k_run916r.png Graphic file (type png)
 
-<use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 983.
-(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
- [12 <./disc-364k_run914r.png (PNG copy)> <./disc-366k_run914r.png (PNG copy)> 
-<./disc-368k_run914r.png (PNG copy)> <./disc-370k_run914r.png (PNG copy)> <./di
-sc-372k_run914r.png (PNG copy)> <./disc-374k_run914r.png (PNG copy)>]
+<use dir3d+y-510k_run916r.png>
+Package pdftex.def Info: dir3d+y-510k_run916r.png used on input line 1016.
+(pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
+
+<dir3d+y-800k_run916r.png, id=249, 952.55875pt x 859.21pt>
+File: dir3d+y-800k_run916r.png Graphic file (type png)
+
+<use dir3d+y-800k_run916r.png>
+Package pdftex.def Info: dir3d+y-800k_run916r.png used on input line 1017.
+(pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 983.
+Package pdftex.def Info: headers/LF.pdf used on input line 1048.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 983.
+Package pdftex.def Info: headers/RF.pdf used on input line 1048.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+
+[11 <./stress_bp1-1_bp1-2.pdf>]
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1048.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1048.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+
+[12 <./disc-364k_run914r.png (PNG copy)> <./disc-366k_run914r.png (PNG copy)> <
+./disc-368k_run914r.png (PNG copy)> <./disc-370k_run914r.png (PNG copy)> <./dis
+c-372k_run914r.png (PNG copy)> <./disc-374k_run914r.png (PNG copy)>]
+File: headers/LF.pdf Graphic file (type pdf)
+
+<use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1048.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1048.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
  [13 <./v_yz-v_z-364k_run914r.png (PNG copy)> <./v_yz-v_z-366k_run914r.png (PNG
  copy)> <./v_yz-v_z-368k_run914r.png (PNG copy)> <./v_yz-v_z-370k_run914r.png (
 PNG copy)> <./v_yz-v_z-372k_run914r.png (PNG copy)> <./v_yz-v_z-374k_run914r.pn
-g (PNG copy)> <./dir3d+y-450k_run916r.png (PNG copy)> <./dir3d+y-510k_run916r.p
-ng (PNG copy)> <./dir3d+y-800k_run916r.png (PNG copy)>]
-Underfull \vbox (badness 1205) has occurred while \output is active []
-
+g (PNG copy)>]
 File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1048.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
 
-<use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1132.
+<use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1048.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [14 <./disc-600k_run915r.png (PNG copy)> <./disc-675k_run915r.png (PNG copy)> 
+<./disc-700k_run915r.png (PNG copy)> <./disc-725k_run915r.png (PNG copy)> <./di
+sc-1000k_run915r.png (PNG copy)> <./disc-1200k_run915r.png (PNG copy)> <./dir3d
++y-450k_run916r.png (PNG copy)> <./dir3d+y-510k_run916r.png (PNG copy)> <./dir3
+d+y-800k_run916r.png (PNG copy)>]
+Underfull \vbox (badness 1694) has occurred while \output is active []
+
+File: headers/LF.pdf Graphic file (type pdf)
+
+<use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1283.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1283.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+ [15 <./dir3d+y-200k_run1179r.png (PNG copy)>]
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1283.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1132.
+Package pdftex.def Info: headers/LF.pdf used on input line 1283.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
- [14 <./dir3d+y-200k_run1179r.png (PNG copy)>] (./bprheo.bbl) 
+ [16] (./bprheo.bbl)
+
 AED: lastpage setting LastPage
 File: headers/LF.pdf Graphic file (type pdf)
 <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1245.
+Package pdftex.def Info: headers/LF.pdf used on input line 1290.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1245.
+Package pdftex.def Info: headers/RF.pdf used on input line 1290.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [15]
-File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1245.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
-File: headers/LF.pdf Graphic file (type pdf)
-
-<use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1245.
-(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
- [16] (./bprheo.aux)
-
-LaTeX Warning: There were undefined references.
-
- ) 
+ [17] (./bprheo.aux) ) 
 Here is how much of TeX's memory you used:
- 4955 strings out of 493488
- 74188 string characters out of 3141325
- 188007 words of memory out of 3000000
- 8083 multiletter control sequences out of 15000+200000
+ 4983 strings out of 493488
+ 74924 string characters out of 3141325
+ 186016 words of memory out of 3000000
+ 8105 multiletter control sequences out of 15000+200000
  64284 words of font info for 137 fonts, out of 3000000 for 9000
  957 hyphenation exceptions out of 8191
- 38i,15n,43p,1228b,406s stack positions out of 5000i,500n,10000p,200000b,50000s
-{/usr/local/texlive/2012/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
-exlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/te
-xlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/tex
-live/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texli
-ve/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texliv
-e/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
-2012/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/texl
-ive/2012/texmf-dist/fonts/type1/public/rsfs/rsfs10.pfb></usr/local/texlive/2012
-/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/2012/texmf-
-dist/fonts/type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/texmf-dist/fonts/
-type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/t
-imes/utmb8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmbi
-8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></u
-sr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on bprheo.pdf (16 pages, 13819373 bytes).
+ 38i,15n,43p,1397b,406s stack positions out of 5000i,500n,10000p,200000b,50000s
+{/usr/local/texlive/2012/texmf-dist/fonts/enc/dvips/base/
+8r.enc}</usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmex1
+0.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10
+.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.p
+fb></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pf
+b></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb>
+</usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.
+pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/public/rsfs/rsfs10.pfb></us
+r/local/texlive/2012/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local
+/texlive/2012/texmf-dist/fonts/type1/urw/symbol/usyr.pfb></usr/local/texlive/20
+12/texmf-dist/fonts/type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/texmf-di
+st/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/t
+ype1/urw/times/utmbi8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/
+times/utmr8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmr
+i8a.pfb>
+Output written on bprheo.pdf (17 pages, 16294035 bytes).
 PDF statistics:
- 319 PDF objects out of 1000 (max. 8388607)
- 198 compressed objects within 2 object streams
+ 328 PDF objects out of 1000 (max. 8388607)
+ 200 compressed objects within 2 object streams
  0 named destinations out of 1000 (max. 500000)
- 216 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 246 words of extra memory for PDF output out of 10000 (max. 10000000)
 
