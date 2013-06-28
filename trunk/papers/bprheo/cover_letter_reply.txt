@@ -1,0 +1,54 @@
+Dear Editor and Referees,
+
+We would like to submit the attached manuscript  ID SM-ART-01-2013-050228 
+'Rheology of Cubic Blue Phases' as revised for publication in Soft Matter.
+
+After the earlier version of the manuscript had already been recommended 
+for publication by the referees we discovered a major problem in our code 
+that needed further investigation. It turned out that a contraction of 
+two tensors has been implemented incorrectly. This would have an effect 
+on order-flow coupling and caused simulations for larger flow rates 
+to deviate from our previous results.
+
+We have regenerated all simulation data and verified the code against 
+an alternative implementation of the same model up to the level where
+deviations between both codes could be tracked down to different implementations
+of boundary conditions, bounce-back or different discretisations.
+
+Fortunately, the majority of our results did not change. This is particularly
+true for very low shear rates, where the above mentioned coupling between order
+and flow is small, and at very high shear rates, where the director field in the
+steady state is constant and does not induce time-depending changes in the 
+order parameter structure.
+
+Another positive aspect of this revision was that the entire rheological picture
+became somewhat simpler and more consistent.
+
+There is generally more consistency between BPI and BPII and 
+between simulations at different system sizes
+
+Things that changed are
+
+- BPII-3 (THW): is a metastable flow state and is not 
+directly reached after the revision
+- regime BPI-3 (rheochaos): is replaced with PRC, ARC or metastable flow states (MS)
+- BPI-4 (newly found conformation): is presumably metastable (?) and is not 
+directly reached after the revision
+- 2uc/3uc comparison: discrepancies between both unit cell sizes disappear
+
+Things that remained unchanged are
+
+- BPI-1: formation of amorphous network at low shear rates
+- BPII-2: weak shear thinning at intermediate and down to the lowest shear rates
+- existence of regimes with PRC (BPII-1, BPI-2) at intermediate shear rates 
+- existence of a regime with ARC at Ericksen numbers Er O(1)
+- breakup into GJ at larger flow rates Er ~ 5-15 ?
+- formation of FAN at Er ~ 20
+ 
+THW travelling helical wave
+PRC periodically recurring conformations
+ARC amorphous rheochaos
+GJ Grandjean texture
+FAN flow-alinged nematic state
+
+

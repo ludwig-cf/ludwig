@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.10.29)  27 JUN 2013 16:31
+This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.10.29)  27 JUN 2013 18:35
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -864,180 +864,188 @@ Underfull \hbox (badness 10000) in paragraph at lines 893--911
 [][] [] []
  []
 
+
+LaTeX Warning: Reference `disc-bp1-1' on page 11 undefined on input line 965.
+
 <disc-600k_run915r.png, id=240, 848.16875pt x 755.82375pt>
 File: disc-600k_run915r.png Graphic file (type png)
 
 <use disc-600k_run915r.png>
-Package pdftex.def Info: disc-600k_run915r.png used on input line 963.
+Package pdftex.def Info: disc-600k_run915r.png used on input line 968.
 (pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
 <disc-675k_run915r.png, id=241, 848.16875pt x 755.82375pt>
 File: disc-675k_run915r.png Graphic file (type png)
 
 <use disc-675k_run915r.png>
-Package pdftex.def Info: disc-675k_run915r.png used on input line 964.
+Package pdftex.def Info: disc-675k_run915r.png used on input line 969.
 (pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
 <disc-700k_run915r.png, id=242, 848.16875pt x 755.82375pt>
 File: disc-700k_run915r.png Graphic file (type png)
 
 <use disc-700k_run915r.png>
-Package pdftex.def Info: disc-700k_run915r.png used on input line 965.
+Package pdftex.def Info: disc-700k_run915r.png used on input line 970.
 (pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
 <disc-725k_run915r.png, id=243, 848.16875pt x 755.82375pt>
 File: disc-725k_run915r.png Graphic file (type png)
 
 <use disc-725k_run915r.png>
-Package pdftex.def Info: disc-725k_run915r.png used on input line 966.
+Package pdftex.def Info: disc-725k_run915r.png used on input line 971.
 (pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
 <disc-1000k_run915r.png, id=244, 848.16875pt x 755.82375pt>
 File: disc-1000k_run915r.png Graphic file (type png)
 
 <use disc-1000k_run915r.png>
-Package pdftex.def Info: disc-1000k_run915r.png used on input line 967.
+Package pdftex.def Info: disc-1000k_run915r.png used on input line 972.
 (pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
 <disc-1200k_run915r.png, id=245, 848.16875pt x 755.82375pt>
 File: disc-1200k_run915r.png Graphic file (type png)
 
 <use disc-1200k_run915r.png>
-Package pdftex.def Info: disc-1200k_run915r.png used on input line 968.
+Package pdftex.def Info: disc-1200k_run915r.png used on input line 973.
 (pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 
 <dir3d+y-200k_run1179r.png, id=246, 930.47626pt x 801.99625pt>
 File: dir3d+y-200k_run1179r.png Graphic file (type png)
 
 <use dir3d+y-200k_run1179r.png>
-Package pdftex.def Info: dir3d+y-200k_run1179r.png used on input line 1003.
+Package pdftex.def Info: dir3d+y-200k_run1179r.png used on input line 1018.
 (pdftex.def)             Requested size: 243.27417pt x 209.67665pt.
 
 <dir3d+y-450k_run916r.png, id=247, 952.55875pt x 859.21pt>
 File: dir3d+y-450k_run916r.png Graphic file (type png)
 
 <use dir3d+y-450k_run916r.png>
-Package pdftex.def Info: dir3d+y-450k_run916r.png used on input line 1015.
+Package pdftex.def Info: dir3d+y-450k_run916r.png used on input line 1030.
 (pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
 
 <dir3d+y-510k_run916r.png, id=248, 952.55875pt x 859.21pt>
 File: dir3d+y-510k_run916r.png Graphic file (type png)
 
 <use dir3d+y-510k_run916r.png>
-Package pdftex.def Info: dir3d+y-510k_run916r.png used on input line 1016.
+Package pdftex.def Info: dir3d+y-510k_run916r.png used on input line 1031.
 (pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
 
 <dir3d+y-800k_run916r.png, id=249, 952.55875pt x 859.21pt>
 File: dir3d+y-800k_run916r.png Graphic file (type png)
 
 <use dir3d+y-800k_run916r.png>
-Package pdftex.def Info: dir3d+y-800k_run916r.png used on input line 1017.
+Package pdftex.def Info: dir3d+y-800k_run916r.png used on input line 1032.
 (pdftex.def)             Requested size: 163.89162pt x 147.82057pt.
-File: headers/LF.pdf Graphic file (type pdf)
- <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1048.
-(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
-File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1048.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 
-[11 <./stress_bp1-1_bp1-2.pdf>]
-File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1048.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
-File: headers/LF.pdf Graphic file (type pdf)
- <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1048.
-(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
-[12 <./disc-364k_run914r.png (PNG copy)> <./disc-366k_run914r.png (PNG copy)> <
-./disc-368k_run914r.png (PNG copy)> <./disc-370k_run914r.png (PNG copy)> <./dis
-c-372k_run914r.png (PNG copy)> <./disc-374k_run914r.png (PNG copy)>]
 File: headers/LF.pdf Graphic file (type pdf)
 
 <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1048.
+Package pdftex.def Info: headers/LF.pdf used on input line 1056.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1048.
+Package pdftex.def Info: headers/RF.pdf used on input line 1056.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [13 <./v_yz-v_z-364k_run914r.png (PNG copy)> <./v_yz-v_z-366k_run914r.png (PNG
- copy)> <./v_yz-v_z-368k_run914r.png (PNG copy)> <./v_yz-v_z-370k_run914r.png (
-PNG copy)> <./v_yz-v_z-372k_run914r.png (PNG copy)> <./v_yz-v_z-374k_run914r.pn
-g (PNG copy)>]
+ [11 <./stress_bp1-1_bp1-2.pdf>]
 File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1048.
+
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1056.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1056.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+ [12 <./disc-364k_run914r.png (PNG copy)> <./disc-366k_run914r.png (PNG copy)> 
+<./disc-368k_run914r.png (PNG copy)> <./disc-370k_run914r.png (PNG copy)> <./di
+sc-372k_run914r.png (PNG copy)> <./disc-374k_run914r.png (PNG copy)>]
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1056.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1056.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 
-<use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1048.
+[13 <./v_yz-v_z-364k_run914r.png (PNG copy)> <./v_yz-v_z-366k_run914r.png (PNG 
+copy)> <./v_yz-v_z-368k_run914r.png (PNG copy)> <./v_yz-v_z-370k_run914r.png (P
+NG copy)> <./v_yz-v_z-372k_run914r.png (PNG copy)> <./v_yz-v_z-374k_run914r.png
+ (PNG copy)>]
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1056.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+File: headers/LF.pdf Graphic file (type pdf)
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1056.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
  [14 <./disc-600k_run915r.png (PNG copy)> <./disc-675k_run915r.png (PNG copy)> 
 <./disc-700k_run915r.png (PNG copy)> <./disc-725k_run915r.png (PNG copy)> <./di
 sc-1000k_run915r.png (PNG copy)> <./disc-1200k_run915r.png (PNG copy)> <./dir3d
 +y-450k_run916r.png (PNG copy)> <./dir3d+y-510k_run916r.png (PNG copy)> <./dir3
 d+y-800k_run916r.png (PNG copy)>]
-Underfull \vbox (badness 1694) has occurred while \output is active []
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
 File: headers/LF.pdf Graphic file (type pdf)
 
 <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1283.
+Package pdftex.def Info: headers/LF.pdf used on input line 1130.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1283.
+Package pdftex.def Info: headers/RF.pdf used on input line 1130.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [15 <./dir3d+y-200k_run1179r.png (PNG copy)>]
+ [15 <./dir3d+y-200k_run1179r.png (PNG copy)>] (./bprheo.bbl) 
+AED: lastpage setting LastPage
 File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1283.
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1242.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1283.
+Package pdftex.def Info: headers/LF.pdf used on input line 1242.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
- [16] (./bprheo.bbl)
-
-AED: lastpage setting LastPage
+ [16]
 File: headers/LF.pdf Graphic file (type pdf)
-<use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1290.
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1242.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1290.
+
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1242.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [17] (./bprheo.aux) ) 
+ [17] (./bprheo.aux)
+
+LaTeX Warning: There were undefined references.
+
+ ) 
 Here is how much of TeX's memory you used:
- 4983 strings out of 493488
- 74924 string characters out of 3141325
- 186016 words of memory out of 3000000
- 8105 multiletter control sequences out of 15000+200000
+ 4984 strings out of 493488
+ 74936 string characters out of 3141325
+ 189016 words of memory out of 3000000
+ 8106 multiletter control sequences out of 15000+200000
  64284 words of font info for 137 fonts, out of 3000000 for 9000
  957 hyphenation exceptions out of 8191
- 38i,15n,43p,1397b,406s stack positions out of 5000i,500n,10000p,200000b,50000s
-{/usr/local/texlive/2012/texmf-dist/fonts/enc/dvips/base/
-8r.enc}</usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmex1
-0.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10
-.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.p
-fb></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pf
-b></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb>
-</usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.
-pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/public/rsfs/rsfs10.pfb></us
-r/local/texlive/2012/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local
-/texlive/2012/texmf-dist/fonts/type1/urw/symbol/usyr.pfb></usr/local/texlive/20
-12/texmf-dist/fonts/type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/texmf-di
-st/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/t
-ype1/urw/times/utmbi8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/
-times/utmr8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmr
-i8a.pfb>
-Output written on bprheo.pdf (17 pages, 16294035 bytes).
+ 38i,15n,43p,1396b,406s stack positions out of 5000i,500n,10000p,200000b,50000s
+{/usr/local/texlive/2012/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
+exlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/te
+xlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/tex
+live/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texli
+ve/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texliv
+e/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
+2012/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/texl
+ive/2012/texmf-dist/fonts/type1/public/rsfs/rsfs10.pfb></usr/local/texlive/2012
+/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/2012/texmf-
+dist/fonts/type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/texmf-dist/fonts/
+type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/t
+imes/utmb8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmbi
+8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></u
+sr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on bprheo.pdf (17 pages, 16295615 bytes).
 PDF statistics:
  328 PDF objects out of 1000 (max. 8388607)
  200 compressed objects within 2 object streams
