@@ -44,7 +44,11 @@ static double rtau2;
 
 extern const double d_[3][3];
 
-void collide_gpu(void) {
+/* handles for CUDA streams (for ovelapping)*/
+static cudaStream_t streamCOLL;
+
+
+void collide_gpu(int async=0) {
 
   int ndist,nhalo;
   double mobility;
@@ -68,6 +72,8 @@ void collide_gpu(void) {
 
 /* copy constants to accelerator (constant on-chip read-only memory) */
   copy_constants_to_gpu();
+
+  cudaStreamCreate(&streamCOLL);
   
   /* set up CUDA grid */
   /* 1D decomposition - use x grid and block dimension only */ 
@@ -77,7 +83,7 @@ void collide_gpu(void) {
 
     {
 
-   collision_multirelaxation_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist,nhalo, 
+   collision_multirelaxation_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist,nhalo, 
     		  N_d,force_global_d, f_d, site_map_status_d, 
     			force_d, velocity_d);
 
@@ -87,9 +93,11 @@ void collide_gpu(void) {
     { 
 
 
+
+
  /* X edges */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB>>>(nhalo,
+ collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -101,7 +109,7 @@ void collide_gpu(void) {
 
  /* Y edges */
   nblocks=((N[X]-2*nhalo)*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB>>>(nhalo,
+  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -113,7 +121,7 @@ void collide_gpu(void) {
 
  /* Z edges */
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
-  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB>>>(nhalo,
+  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -123,11 +131,14 @@ void collide_gpu(void) {
  							 force_d,
  						       velocity_d,Z);
 
+  if (async==1)
+    cudaStreamSynchronize(streamCOLL);
+
 
   /* Bulk */
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
 
-  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d, 					      force_global_d,
+  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
   					      f_d,
   					      site_map_status_d,
   					       phi_site_d,
@@ -139,7 +150,7 @@ void collide_gpu(void) {
  /*  /\* Bulk *\/ */
  /* nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
 
- /*  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d, 					      force_global_d, */
+ /*  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d, */
  /*  					      f_d, */
  /*  					      site_map_status_d, */
  /*  					       phi_site_d, */
@@ -147,6 +158,8 @@ void collide_gpu(void) {
  /*  					       delsq_phi_site_d, */
  /*  							 force_d, */
  /*  						     velocity_d,ALL); */
+
+
 
 
     }
@@ -158,10 +171,22 @@ void collide_gpu(void) {
 
     }
 
-  
-  cudaThreadSynchronize();
+  //cudaThreadSynchronize();
+
+  if (async==0){
+  cudaStreamSynchronize(streamCOLL);
+  cudaStreamDestroy(streamCOLL);
+  }
 
   return;
+}
+
+void collide_wait_gpu()
+{
+   cudaStreamSynchronize(streamCOLL);
+   cudaStreamDestroy(streamCOLL);
+
+   return;
 }
 
 /*****************************************************************************

@@ -16,7 +16,8 @@
 #endif
 
 /* expose main routine in this module to outside routines */
-CFUNC void collide_gpu();
+CFUNC void collide_gpu(int async);
+CFUNC void collide_wait_gpu();
 
 
 #endif

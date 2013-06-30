@@ -382,13 +382,15 @@ void ludwig_run(const char * inputfile) {
 
 
 
+    int async=1;
 
     if(is_propagation_ode() == 0) {
 
 #ifdef _GPU_
 
     TIMER_start(TIMER_COLLIDE);
-    collide_gpu();
+    collide_gpu(async);
+    //collide_wait_gpu();
     TIMER_stop(TIMER_COLLIDE);
 
 #else
@@ -408,6 +410,13 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_HALO_LATTICE);
     distribution_halo_gpu();
     TIMER_stop(TIMER_HALO_LATTICE);
+
+    if(async==1){
+      TIMER_start(TIMER_COLLIDE);
+      collide_wait_gpu();
+      TIMER_stop(TIMER_COLLIDE);
+    }
+
 #else
     TIMER_start(TIMER_HALO_LATTICE);
     distribution_halo();
