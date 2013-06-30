@@ -87,66 +87,6 @@ void collide_gpu(void) {
     { 
 
 
-
- /* /\* pack X edges on accelerator *\/ */
- /* nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
- /*  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB>>>(nhalo, */
- /* 						       N_d,force_global_d, */
- /* 					      f_d, */
- /* 					      site_map_status_d, */
- /* 					       phi_site_d, */
- /* 					       grad_phi_site_d, */
- /* 					       delsq_phi_site_d, */
- /* 							 force_d, */
- /* 						       velocity_d,X); */
-
-
- /* pack Y edges on accelerator */
- /*  nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
- /* collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB>>>(nhalo, */
- /* 						       N_d,force_global_d, */
- /* 					      f_d, */
- /* 					      site_map_status_d, */
- /* 					       phi_site_d, */
- /* 					       grad_phi_site_d, */
- /* 					       delsq_phi_site_d, */
- /* 							 force_d, */
- /* 						       velocity_d,Y); */
-
-
- /* /\* pack Z edges on accelerator *\/ */
- /*    nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB; */
- /* collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB>>>(nhalo, */
- /* 						       N_d,force_global_d,  */
- /* 					      f_d,  */
- /* 					      site_map_status_d,  */
- /* 					       phi_site_d,		 */
- /* 					       grad_phi_site_d,	 */
- /* 					       delsq_phi_site_d,	 */
- /* 							 force_d,  */
- /* 						       velocity_d,Z); */
-
-
-  /* nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
-
-  /* collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d, 					      force_global_d, */
-  /* 					      f_d, */
-  /* 					      site_map_status_d, */
-  /* 					       phi_site_d, */
-  /* 					       grad_phi_site_d, */
-  /* 					       delsq_phi_site_d, */
-  /* 							 force_d, */
-  /* 						     velocity_d,ALL); */
-
-  /* collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d, 					      force_global_d, */
-  /* 					      f_d, */
-  /* 					      site_map_status_d, */
-  /* 					       phi_site_d, */
-  /* 					       grad_phi_site_d, */
-  /* 					       delsq_phi_site_d, */
-  /* 							 force_d, */
-  /* 						     velocity_d,EDGES); */
-
  /* X edges */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
   collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB>>>(nhalo,
@@ -185,7 +125,7 @@ void collide_gpu(void) {
 
 
   /* Bulk */
- nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; 
+  nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
 
   collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d, 					      force_global_d,
   					      f_d,
@@ -195,6 +135,19 @@ void collide_gpu(void) {
   					       delsq_phi_site_d,
   							 force_d,
   						     velocity_d,INTERIOR);
+
+ /*  /\* Bulk *\/ */
+ /* nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
+
+ /*  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d, 					      force_global_d, */
+ /*  					      f_d, */
+ /*  					      site_map_status_d, */
+ /*  					       phi_site_d, */
+ /*  					       grad_phi_site_d, */
+ /*  					       delsq_phi_site_d, */
+ /*  							 force_d, */
+ /*  						     velocity_d,ALL); */
+
 
     }
 
@@ -854,34 +807,35 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 
   nsite = Nall[X]*Nall[Y]*Nall[Z];
 
+  int N_[3];
+
+
+
+  if (latchunk==INTERIOR){
+    N_[X]=N[X]-2*nhalo;  N_[Y]=N[Y]-2*nhalo;  N_[Z]=N[Z]-2*nhalo;    
+  }
+  else{
+    N_[X]=N[X];  N_[Y]=N[Y];  N_[Z]=N[Z];
+  }
+
   /* CUDA thread index */
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
 
   /* Avoid going beyond problem domain */
-  if (threadIndex < N[X]*N[Y]*N[Z])
+  if (threadIndex < N_[X]*N_[Y]*N_[Z])
     {
-      
-      get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N);
 
-      int includesite;
 
-      if (latchunk==INTERIOR)
+	get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_);
 
-	includesite= (ii >= nhalo &&  ii < N[X]-nhalo && \
-		      jj >= nhalo &&  jj < N[Y]-nhalo  && \
-		      kk >= nhalo &&  kk < N[Z]-nhalo  ); 
-	
-      else if(latchunk==EDGES)
-      	includesite= !(ii >= nhalo && jj >= nhalo && kk >= nhalo &&
-      		      ii < N[X]-nhalo && jj < N[Y]-nhalo && kk < N[Z]-nhalo);
-      else
-      	includesite=1;
 
-      if (includesite){ 
-      
-      index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
-	  
-      get_coords_from_index_gpu_d(&ii_,&jj_,&kk_,index,Nall);
+      if (latchunk==INTERIOR){
+	index = get_linear_index_gpu_d(ii+2*nhalo,jj+2*nhalo,kk+2*nhalo,Nall);
+      }
+      else{
+	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
+      }
+
 
       collision_binary_lb_site_gpu_d(force_global_d,
       					      f_d,
@@ -893,9 +847,8 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
       				     velocity_d, nsite, index);
 
 
-      //if (jj_==1 && kk_==1) printf("interiour %d %d %d %f\n",ii_,jj_,kk_,f_d[index]);
 
-       } 
+      //      } 
       
     }
   
