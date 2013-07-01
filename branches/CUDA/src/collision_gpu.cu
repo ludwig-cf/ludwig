@@ -18,6 +18,7 @@
 
 #include "model.h"
 #include "site_map.h"
+#include "comms_gpu.h"
 #include "collision_gpu.h"
 #include "collision_internal_gpu.h"
 #include "collision.h"
@@ -45,7 +46,7 @@ static double rtau2;
 extern const double d_[3][3];
 
 /* handles for CUDA streams (for ovelapping)*/
-static cudaStream_t streamCOLL;
+static cudaStream_t streamCOLL, streamX, streamY, streamZ;
 
 
 void collide_gpu(int async=0) {
@@ -93,11 +94,13 @@ void collide_gpu(int async=0) {
     { 
 
 
-
+      streamX=getXstream();
+      streamY=getYstream();
+      streamZ=getZstream();
 
  /* X edges */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
- collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(nhalo,
+ collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -109,7 +112,7 @@ void collide_gpu(int async=0) {
 
  /* Y edges */
   nblocks=((N[X]-2*nhalo)*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(nhalo,
+  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -121,7 +124,7 @@ void collide_gpu(int async=0) {
 
  /* Z edges */
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
-  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(nhalo,
+  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -131,8 +134,8 @@ void collide_gpu(int async=0) {
  							 force_d,
  						       velocity_d,Z);
 
-  if (async==1)
-    cudaStreamSynchronize(streamCOLL);
+  //if (async==1)
+  //  cudaStreamSynchronize(streamCOLL);
 
 
   /* Bulk */
@@ -174,7 +177,11 @@ void collide_gpu(int async=0) {
   //cudaThreadSynchronize();
 
   if (async==0){
+  cudaStreamSynchronize(streamX);
+  cudaStreamSynchronize(streamY);
+  cudaStreamSynchronize(streamZ);
   cudaStreamSynchronize(streamCOLL);
+
   cudaStreamDestroy(streamCOLL);
   }
 

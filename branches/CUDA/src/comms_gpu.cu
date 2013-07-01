@@ -90,6 +90,15 @@ static int reduced_halo=0;
 /* constant memory symbols internal to this module */
 __constant__ int cv_cd[NVEL][3];
 
+cudaStream_t getXstream(){
+  return streamX;
+}
+cudaStream_t getYstream(){
+  return streamY;
+}
+cudaStream_t getZstream(){
+  return streamZ;
+}
 
 /* Perform tasks necessary to initialise accelerator */
 void init_comms_gpu()
