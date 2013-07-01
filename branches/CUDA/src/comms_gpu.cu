@@ -14,6 +14,7 @@
 #include "utilities_gpu.h"
 #include "common_gpu.h"
 #include "model.h" 
+
 extern "C" int  RUN_get_string_parameter(const char *, char *, const int);
 
 /* external pointers to data on host*/
@@ -90,9 +91,17 @@ static int reduced_halo=0;
 /* constant memory symbols internal to this module */
 __constant__ int cv_cd[NVEL][3];
 
+/* void getXYZstreamptr(void* Xptr,void* Yptr,void* Zptr){ */
+/*   //void getXstreamptr(void* ptr){   */
+/*   *Xptr=streamX; Yptr=streamY;Zptr=streamZ; */
+/*   return ; */
+/* } */
+
+
 cudaStream_t getXstream(){
   return streamX;
 }
+
 cudaStream_t getYstream(){
   return streamY;
 }

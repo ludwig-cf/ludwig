@@ -49,6 +49,8 @@ extern const double d_[3][3];
 static cudaStream_t streamCOLL, streamX, streamY, streamZ;
 
 
+
+
 void collide_gpu(int async=0) {
 
   int ndist,nhalo;
@@ -93,10 +95,18 @@ void collide_gpu(int async=0) {
   if  (ndist == 2 && is_propagation_ode() == 0) 
     { 
 
+      void* streamXptr;
+      void* streamYptr;
+      void* streamZptr;
+
+      //getXYZstreamptr(&streamX,&streamY,&streamZ);
 
       streamX=getXstream();
       streamY=getYstream();
       streamZ=getZstream();
+      
+      //printf("%d %d %d %d\n",streamX, streamY, streamZ, streamCOLL);
+
 
  /* X edges */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
