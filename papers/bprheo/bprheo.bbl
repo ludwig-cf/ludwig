@@ -1,7 +1,7 @@
 \providecommand*{\mcitethebibliography}{\thebibliography}
 \csname @ifundefined\endcsname{endmcitethebibliography}
 {\let\endmcitethebibliography\endthebibliography}{}
-\begin{mcitethebibliography}{38}
+\begin{mcitethebibliography}{41}
 \providecommand*{\natexlab}[1]{#1}
 \providecommand*{\mciteSetBstSublistMode}[1]{}
 \providecommand*{\mciteSetBstMaxWidthForm}[2]{}
@@ -255,6 +255,29 @@ C.~Denniston, D.~Marenduzzo, E.~Orlandini and J.~M. Yeomans, \emph{Philos.
 \bibitem[Wagner and Pagonabarraga(2002)]{Wagner:2002}
 A.~J. Wagner and I.~Pagonabarraga, \emph{J. Stat. Phys.}, 2002, \textbf{107},
   521--537\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[MacMeccan \emph{et~al.}(2009)MacMeccan, Clausen, Neitzel, and
+  Aidun]{MacMeccan:2009}
+R.~M. MacMeccan, J.~R. Clausen, G.~P. Neitzel and C.~K. Aidun, \emph{J. Fluid
+  Mech.}, 2009, \textbf{618}, 13--39\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Aidun and Clausen(2010)]{Aidun:2010}
+C.~K. Aidun and J.~R. Clausen, \emph{Ann. Rev. Fluid Mech.}, 2010, \textbf{42},
+  439--472\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem[Frijters \emph{et~al.}(2012)Frijters, Gunther, and
+  Harting]{Frijters:2012}
+S.~Frijters, F.~Gunther and J.~Harting, \emph{Soft Matter}, 2012, \textbf{8},
+  6542--6556\relax
 \mciteBstWouldAddEndPuncttrue
 \mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
 {\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
