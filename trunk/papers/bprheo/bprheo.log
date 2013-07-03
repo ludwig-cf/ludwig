@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.10.29)  2 JUL 2013 19:09
+This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.10.29)  3 JUL 2013 09:20
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -421,7 +421,105 @@ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7.4> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 139.
 
+
+Package natbib Warning: Citation `deGennes' on page 1 undefined on input line 1
+39.
+
+
+Package natbib Warning: Citation `Grebel:1984' on page 1 undefined on input lin
+e 151.
+
+
+Package natbib Warning: Citation `Wright:1989' on page 1 undefined on input lin
+e 151.
+
+
+Package natbib Warning: Citation `Henrich:2011a' on page 1 undefined on input l
+ine 153.
+
+
+Package natbib Warning: Citation `Kikuchi:2002' on page 1 undefined on input li
+ne 157.
+
+
+Package natbib Warning: Citation `Coles:2005' on page 1 undefined on input line
+ 157.
+
+
+Package natbib Warning: Citation `Fukuda:2010a' on page 1 undefined on input li
+ne 160.
+
+
+Package natbib Warning: Citation `Fukuda:2010b' on page 1 undefined on input li
+ne 160.
+
+
+Package natbib Warning: Citation `Ravnik:2011b' on page 1 undefined on input li
+ne 160.
+
+
+Package natbib Warning: Citation `Alexander:2008' on page 1 undefined on input 
+line 161.
+
+
+Package natbib Warning: Citation `Fukuda:2009' on page 1 undefined on input lin
+e 161.
+
+
+Package natbib Warning: Citation `Henrich:2010a' on page 1 undefined on input l
+ine 161.
+
+
+Package natbib Warning: Citation `Castles:2010' on page 1 undefined on input li
+ne 161.
+
+
+Package natbib Warning: Citation `Tiribocchi:2011a' on page 1 undefined on inpu
+t line 161.
+
+
+Package natbib Warning: Citation `Ravnik:2011a' on page 1 undefined on input li
+ne 162.
+
+
+Package natbib Warning: Citation `Henrich:2010b' on page 1 undefined on input l
+ine 163.
+
+
 Overfull \vbox (3.72491pt too high) has occurred while \output is active []
+
+
+
+Package natbib Warning: Citation `Helfrich:1969' on page 1 undefined on input l
+ine 171.
+
+
+Package natbib Warning: Citation `Marenduzzo:2006a' on page 1 undefined on inpu
+t line 174.
+
+
+Package natbib Warning: Citation `Marenduzzo:2006b' on page 1 undefined on inpu
+t line 174.
+
+
+Package natbib Warning: Citation `Press:1978' on page 1 undefined on input line
+ 181.
+
+
+Package natbib Warning: Citation `Rey:1996a' on page 1 undefined on input line 
+182.
+
+
+Package natbib Warning: Citation `Rey:1996b' on page 1 undefined on input line 
+182.
+
+
+Package natbib Warning: Citation `Rey:2000' on page 1 undefined on input line 1
+92.
+
+
+Package natbib Warning: Citation `Rey:2002' on page 1 undefined on input line 1
+92.
 
 
 Underfull \hbox (badness 3240) in paragraph at lines 168--197
@@ -467,8 +565,10 @@ LaTeX Font Info:    Try loading font information for OT1+phv on input line 197.
 (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/ot1phv.fd
 File: ot1phv.fd 2001/06/04 scalable font definitions for OT1/phv.
 )
-LaTeX Font Info:    Try loading font information for OMS+phv on input line 197.
 
+LaTeX Warning: Reference `LastPage' on page 1 undefined on input line 197.
+
+LaTeX Font Info:    Try loading font information for OMS+phv on input line 197.
 
 (/usr/local/texlive/2012/texmf-dist/tex/latex/psnfss/omsphv.fd
 File: omsphv.fd 
@@ -480,10 +580,45 @@ LaTeX Font Info:    Font shape `OMS/phv/m/n' in size <8> not available
 
  <./headers/LH.pdf> <./headers/CH.pdf> <./headers/RH.pdf> <./headers/LF.pdf> <.
 /headers/RF.pdf>]
+
+Package natbib Warning: Citation `Dupuis:2005' on page 2 undefined on input lin
+e 198.
+
+
+Package natbib Warning: Citation `Zapotocky:1999' on page 2 undefined on input 
+line 210.
+
+
+Package natbib Warning: Citation `Ramos:2002' on page 2 undefined on input line
+ 210.
+
+
+Package natbib Warning: Citation `Beris:1994' on page 2 undefined on input line
+ 232.
+
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-File: headers/RF.pdf Graphic file (type pdf)
 
+
+Package natbib Warning: Citation `deGennes' on page 2 undefined on input line 2
+49.
+
+
+Package natbib Warning: Citation `Alexander:2006' on page 2 undefined on input 
+line 254.
+
+
+LaTeX Warning: Reference `op-eom' on page 2 undefined on input line 272.
+
+
+Package natbib Warning: Citation `Beris:1994' on page 2 undefined on input line
+ 274.
+
+
+LaTeX Warning: Reference `LastPage' on page 2 undefined on input line 293.
+
+File: headers/RF.pdf Graphic file (type pdf)
 <use headers/RF.pdf>
 Package pdftex.def Info: headers/RF.pdf used on input line 293.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
@@ -492,26 +627,136 @@ File: headers/LF.pdf Graphic file (type pdf)
 Package pdftex.def Info: headers/LF.pdf used on input line 293.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
  [2]
+
+LaTeX Warning: Reference `op-eom' on page 3 undefined on input line 294.
+
+
+Package natbib Warning: Citation `deGennes' on page 3 undefined on input line 2
+96.
+
+
 Underfull \hbox (badness 1769) in paragraph at lines 298--302
 \OT1/ptm/m/n/10 re-spec-tively gov-erned by the con-ti-nu-ity equa-tion $\OML/z
 tmcm/m/it/10 @[]^^Z \OT1/ztmcm/m/n/10 =
  []
 
+
+Package natbib Warning: Citation `Denniston:2001' on page 3 undefined on input 
+line 311.
+
+
+Package natbib Warning: Citation `Henrich:2011a' on page 3 undefined on input l
+ine 312.
+
+
+Package natbib Warning: Citation `Henrich:2010b' on page 3 undefined on input l
+ine 312.
+
+
+LaTeX Warning: Reference `Pi' on page 3 undefined on input line 323.
+
+
+LaTeX Warning: Reference `NSE' on page 3 undefined on input line 324.
+
+
+LaTeX Warning: Reference `op-eom' on page 3 undefined on input line 342.
+
+
+LaTeX Warning: Reference `NSE' on page 3 undefined on input line 343.
+
+
+Package natbib Warning: Citation `Marenduzzo:2007' on page 3 undefined on input
+ line 343.
+
+
+Package natbib Warning: Citation `Denniston:2001' on page 3 undefined on input 
+line 346.
+
+
+Package natbib Warning: Citation `Denniston:2004' on page 3 undefined on input 
+line 346.
+
+
+LaTeX Warning: Reference `Pi' on page 3 undefined on input line 354.
+
+
+Package natbib Warning: Citation `Wagner:2002' on page 3 undefined on input lin
+e 358.
+
+
+Package natbib Warning: Citation `MacMeccan:2009' on page 3 undefined on input 
+line 367.
+
+
+Package natbib Warning: Citation `Aidun:2010' on page 3 undefined on input line
+ 367.
+
+
+Package natbib Warning: Citation `Frijters:2012' on page 3 undefined on input l
+ine 367.
+
+
+Package natbib Warning: Citation `Henrich:2012a' on page 3 undefined on input l
+ine 367.
+
+
+Package natbib Warning: Citation `Henrich:2011a' on page 3 undefined on input l
+ine 375.
+
+
+Package natbib Warning: Citation `Henrich:2010b' on page 3 undefined on input l
+ine 375.
+
+
+LaTeX Warning: Reference `FE' on page 3 undefined on input line 388.
+
 File: headers/LF.pdf Graphic file (type pdf)
 <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 396.
+Package pdftex.def Info: headers/LF.pdf used on input line 395.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 396.
+Package pdftex.def Info: headers/RF.pdf used on input line 395.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [3]
+
+
+LaTeX Warning: Reference `LastPage' on page 3 undefined on input line 395.
+
+[3]
+
+Package natbib Warning: Citation `Henrich:2011a' on page 4 undefined on input l
+ine 396.
+
+
+Package natbib Warning: Citation `Henrich:2010b' on page 4 undefined on input l
+ine 396.
+
+
+LaTeX Warning: Reference `FE' on page 4 undefined on input line 397.
+
+
+Package natbib Warning: Citation `Dupuis:2005' on page 4 undefined on input lin
+e 407.
+
+
 Underfull \hbox (badness 1194) in paragraph at lines 433--434
 \OT1/ztmcm/m/n/10 10[]; 4\OML/ztmcm/m/it/10 :\OT1/ztmcm/m/n/10 67 \U/msa/m/n/10
  . [] . \OT1/ztmcm/m/n/10 16)$ \OT1/ptm/m/n/10 and BPI-5 (FAN) ($\OT1/ztmcm/m/n
 /10 2\OML/ztmcm/m/it/10 :\OT1/ztmcm/m/n/10 5 \OMS/ztmcm/m/n/10 ^^B \OT1/ztmcm/m
 /n/10 10[] \U/msa/m/n/10 .
  []
+
+
+Package natbib Warning: Citation `Henrich:2010b' on page 4 undefined on input l
+ine 435.
+
+
+Package natbib Warning: Citation `Henrich:2012b' on page 4 undefined on input l
+ine 435.
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
 
 <flowcurve_bp2.pdf, id=102, 361.35pt x 252.945pt>
 File: flowcurve_bp2.pdf Graphic file (type pdf)
@@ -575,6 +820,16 @@ Package pdftex.def Info: disc-165k_run902r.png used on input line 480.
 
 LaTeX Warning: Float too large for page by 10.19469pt on input line 489.
 
+
+LaTeX Warning: Reference `bp2-flowcurve' on page 4 undefined on input line 491.
+
+
+
+LaTeX Warning: Reference `bp2-appvisc' on page 4 undefined on input line 516.
+
+
+LaTeX Warning: Reference `LastPage' on page 4 undefined on input line 517.
+
 File: headers/RF.pdf Graphic file (type pdf)
 <use headers/RF.pdf>
 Package pdftex.def Info: headers/RF.pdf used on input line 517.
@@ -593,9 +848,31 @@ File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
 Package pdftex.def Info: headers/RF.pdf used on input line 517.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [5 <./app_visc_strain_bp2_a.pdf> <./app_visc_strain_bp2_b.pdf> <./disc-160k_ru
-n902r.png (PNG copy)> <./disc-164k_run902r.png (PNG copy)> <./disc-165k_run902r
-.png (PNG copy)>]
+
+
+LaTeX Warning: Reference `LastPage' on page 5 undefined on input line 517.
+
+[5 <./app_visc_strain_bp2_a.pdf> <./app_visc_strain_bp2_b.pdf> <./disc-160k_run
+902r.png (PNG copy)> <./disc-164k_run902r.png (PNG copy)> <./disc-165k_run902r.
+png (PNG copy)>]
+
+Package natbib Warning: Citation `deGennes' on page 6 undefined on input line 5
+28.
+
+
+LaTeX Warning: Reference `bp2-appvisc' on page 6 undefined on input line 528.
+
+
+LaTeX Warning: Reference `gj-fan' on page 6 undefined on input line 528.
+
+
+Package natbib Warning: Citation `Rey:1996a' on page 6 undefined on input line 
+535.
+
+
+Package natbib Warning: Citation `Rey:1996b' on page 6 undefined on input line 
+535.
+
 <v_yz-v_z-160k_run902r.png, id=145, 1019.81pt x 921.4425pt>
 File: v_yz-v_z-160k_run902r.png Graphic file (type png)
 
@@ -619,16 +896,61 @@ Overfull \hbox (6.68388pt too wide) in paragraph at lines 544--556
 [] 
  []
 
+
+LaTeX Warning: Reference `FE' on page 6 undefined on input line 556.
+
+
+LaTeX Warning: Reference `bp2-1-disc' on page 6 undefined on input line 561.
+
+
+Package natbib Warning: Citation `Henrich:2012b' on page 6 undefined on input l
+ine 574.
+
+
+LaTeX Warning: Reference `bp2-1-disc' on page 6 undefined on input line 578.
+
+
+LaTeX Warning: Reference `LastPage' on page 6 undefined on input line 583.
+
 File: headers/RF.pdf Graphic file (type pdf)
 <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 594.
+Package pdftex.def Info: headers/RF.pdf used on input line 583.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 594.
+Package pdftex.def Info: headers/LF.pdf used on input line 583.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
  [6 <./v_yz-v_z-160k_run902r.png (PNG copy)> <./v_yz-v_z-160k_run903r.png (PNG 
 copy)>]
+
+LaTeX Warning: Reference `bp2-1-velo' on page 7 undefined on input line 584.
+
+
+LaTeX Warning: Reference `bp2-1-velo' on page 7 undefined on input line 595.
+
+
+LaTeX Warning: Reference `FE' on page 7 undefined on input line 598.
+
+
+LaTeX Warning: Reference `tab1' on page 7 undefined on input line 604.
+
+
+LaTeX Warning: Reference `bp2-1-velo' on page 7 undefined on input line 621.
+
+
+LaTeX Warning: Reference `bp1-1-disc' on page 7 undefined on input line 628.
+
+
+LaTeX Warning: Reference `bp1-flowcurve' on page 7 undefined on input line 639.
+
+
+
+LaTeX Warning: Reference `bp2-flowcurve' on page 7 undefined on input line 639.
+
+
+
+LaTeX Warning: Reference `bp1-appvisc' on page 7 undefined on input line 639.
+
 <flowcurve_bp1.pdf, id=150, 361.35pt x 252.945pt>
 File: flowcurve_bp1.pdf Graphic file (type pdf)
  <use flowcurve_bp1.pdf>
@@ -644,15 +966,37 @@ Underfull \hbox (badness 10000) in paragraph at lines 642--659
 
  []
 
+
+LaTeX Warning: Reference `bp1-appvisc' on page 7 undefined on input line 670.
+
 File: headers/LF.pdf Graphic file (type pdf)
 <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 672.
+Package pdftex.def Info: headers/LF.pdf used on input line 671.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 672.
+Package pdftex.def Info: headers/RF.pdf used on input line 671.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [7 <./flowcurve_bp1.pdf>]
+
+
+LaTeX Warning: Reference `LastPage' on page 7 undefined on input line 671.
+
+[7 <./flowcurve_bp1.pdf>]
+
+LaTeX Warning: Reference `bp1-flowcurve' on page 8 undefined on input line 681.
+
+
+
+Package natbib Warning: Citation `rheochaos' on page 8 undefined on input line 
+694.
+
+
+Package natbib Warning: Citation `Cates:2002' on page 8 undefined on input line
+ 694.
+
+
+LaTeX Warning: Reference `gj-fan' on page 8 undefined on input line 705.
+
 <app_visc_strain_bp1_a.pdf, id=165, 361.35pt x 252.945pt>
 File: app_visc_strain_bp1_a.pdf Graphic file (type pdf)
 
@@ -685,6 +1029,9 @@ Overfull \hbox (6.68388pt too wide) in paragraph at lines 733--740
 [][] 
  []
 
+
+LaTeX Warning: Reference `bp1-fe-yield' on page 8 undefined on input line 750.
+
 <stress_bp1-1_bp1-2.pdf, id=169, 361.35pt x 252.945pt>
 File: stress_bp1-1_bp1-2.pdf Graphic file (type pdf)
 
@@ -695,6 +1042,18 @@ Package pdftex.def Info: stress_bp1-1_bp1-2.pdf used on input line 767.
 Overfull \hbox (6.68388pt too wide) in paragraph at lines 767--774
 [][] 
  []
+
+
+LaTeX Warning: Reference `bp1-fe-yield' on page 8 undefined on input line 774.
+
+
+LaTeX Warning: Reference `bp1-1-disc' on page 8 undefined on input line 780.
+
+
+LaTeX Warning: Reference `bp1-1-disc' on page 8 undefined on input line 788.
+
+
+LaTeX Warning: Reference `LastPage' on page 8 undefined on input line 792.
 
 File: headers/RF.pdf Graphic file (type pdf)
 <use headers/RF.pdf>
@@ -804,6 +1163,15 @@ File: disc-374k_run914r.png Graphic file (type png)
 Package pdftex.def Info: disc-374k_run914r.png used on input line 830.
 (pdftex.def)             Requested size: 163.89162pt x 166.97899pt.
 
+
+LaTeX Warning: Reference `bp1-2-disc' on page 9 undefined on input line 848.
+
+
+LaTeX Warning: Reference `bp1-1_bp1-2' on page 9 undefined on input line 850.
+
+
+LaTeX Warning: Reference `bp1-fe-yield' on page 9 undefined on input line 855.
+
 <v_yz-v_z-364k_run914r.png, id=218, 850.17625pt x 750.805pt>
 File: v_yz-v_z-364k_run914r.png Graphic file (type png)
 
@@ -850,6 +1218,18 @@ Underfull \hbox (badness 10000) in paragraph at lines 869--886
 [][] [] []
  []
 
+
+LaTeX Warning: Reference `bp1-2-disc' on page 9 undefined on input line 886.
+
+
+LaTeX Warning: Reference `bp2-1-velo' on page 9 undefined on input line 886.
+
+
+LaTeX Warning: Reference `bp1-2-disc' on page 9 undefined on input line 890.
+
+
+LaTeX Warning: Reference `bp1-1-disc' on page 9 undefined on input line 900.
+
 <disc-600k_run915r.png, id=224, 848.16875pt x 755.82375pt>
 File: disc-600k_run915r.png Graphic file (type png)
 
@@ -893,21 +1273,27 @@ Package pdftex.def Info: disc-1200k_run915r.png used on input line 908.
 (pdftex.def)             Requested size: 163.89162pt x 146.04144pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 947.
+Package pdftex.def Info: headers/LF.pdf used on input line 929.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 947.
+Package pdftex.def Info: headers/RF.pdf used on input line 929.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [9 <./stress_fe_yield_bp1.pdf> <./stress_bp1-1_bp1-2.pdf>]
+
+
+LaTeX Warning: Reference `LastPage' on page 9 undefined on input line 929.
+
+[9 <./stress_fe_yield_bp1.pdf> <./stress_bp1-1_bp1-2.pdf>]
+
+LaTeX Warning: Reference `LastPage' on page 10 undefined on input line 929.
+
 File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 947.
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 929.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
-
-<use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 947.
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 929.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
  [10 <./disc-xy-10k_run1115r.png (PNG copy)> <./disc-xy-180k_run1115r.png (PNG 
 copy)> <./disc-xy-200k_run1115r.png (PNG copy)> <./disc-xy-210k_run1115r.png (P
@@ -915,43 +1301,74 @@ NG copy)> <./disc-xy-1650k_run1115r.png (PNG copy)> <./disc-xy-1800k_run1115r.p
 ng (PNG copy)> <./disc-xy-2000k_run1115r.png (PNG copy)> <./disc-xy-2400k_run11
 15r.png (PNG copy)>]
 File: headers/LF.pdf Graphic file (type pdf)
- <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 947.
+
+<use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 929.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
-
-<use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 947.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [11 <./disc-364k_run914r.png (PNG copy)> <./disc-366k_run914r.png (PNG copy)> 
-<./disc-368k_run914r.png (PNG copy)> <./disc-370k_run914r.png (PNG copy)> <./di
-sc-372k_run914r.png (PNG copy)> <./disc-374k_run914r.png (PNG copy)>]
-File: headers/RF.pdf Graphic file (type pdf)
  <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 947.
+Package pdftex.def Info: headers/RF.pdf used on input line 929.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+
+
+LaTeX Warning: Reference `LastPage' on page 11 undefined on input line 929.
+
+[11 <./disc-364k_run914r.png (PNG copy)> <./disc-366k_run914r.png (PNG copy)> <
+./disc-368k_run914r.png (PNG copy)> <./disc-370k_run914r.png (PNG copy)> <./dis
+c-372k_run914r.png (PNG copy)> <./disc-374k_run914r.png (PNG copy)>]
+
+LaTeX Warning: Reference `LastPage' on page 12 undefined on input line 929.
+
+File: headers/RF.pdf Graphic file (type pdf)
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 929.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 947.
+Package pdftex.def Info: headers/LF.pdf used on input line 929.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
  [12 <./v_yz-v_z-364k_run914r.png (PNG copy)> <./v_yz-v_z-366k_run914r.png (PNG
  copy)> <./v_yz-v_z-368k_run914r.png (PNG copy)> <./v_yz-v_z-370k_run914r.png (
 PNG copy)> <./v_yz-v_z-372k_run914r.png (PNG copy)> <./v_yz-v_z-374k_run914r.pn
 g (PNG copy)>]
 File: headers/LF.pdf Graphic file (type pdf)
-
-<use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 947.
+ <use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 929.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 947.
+
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 929.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [13 <./disc-600k_run915r.png (PNG copy)> <./disc-675k_run915r.png (PNG copy)> 
-<./disc-700k_run915r.png (PNG copy)> <./disc-725k_run915r.png (PNG copy)> <./di
-sc-1000k_run915r.png (PNG copy)> <./disc-1200k_run915r.png (PNG copy)>]
+
+
+LaTeX Warning: Reference `LastPage' on page 13 undefined on input line 929.
+
+[13 <./disc-600k_run915r.png (PNG copy)> <./disc-675k_run915r.png (PNG copy)> <
+./disc-700k_run915r.png (PNG copy)> <./disc-725k_run915r.png (PNG copy)> <./dis
+c-1000k_run915r.png (PNG copy)> <./disc-1200k_run915r.png (PNG copy)>]
+
+LaTeX Warning: Reference `bp1-2-velo' on page 14 undefined on input line 930.
+
+
+LaTeX Warning: Reference `bp1-2-disc' on page 14 undefined on input line 931.
+
+
+LaTeX Warning: Reference `bp2-1-velo' on page 14 undefined on input line 933.
+
+
+LaTeX Warning: Reference `bp1-3-disc' on page 14 undefined on input line 962.
+
 
 LaTeX Warning: Reference `disc-bp1-1' on page 14 undefined on input line 962.
+
+
+Package natbib Warning: Citation `rheochaos' on page 14 undefined on input line
+ 971.
+
+
+Package natbib Warning: Citation `Cates:2002' on page 14 undefined on input lin
+e 971.
 
 <dir3d+y-200k_run1179r.png, id=266, 930.47626pt x 801.99625pt>
 File: dir3d+y-200k_run1179r.png Graphic file (type png)
@@ -959,6 +1376,17 @@ File: dir3d+y-200k_run1179r.png Graphic file (type png)
 <use dir3d+y-200k_run1179r.png>
 Package pdftex.def Info: dir3d+y-200k_run1179r.png used on input line 976.
 (pdftex.def)             Requested size: 243.27417pt x 209.67665pt.
+
+
+LaTeX Warning: Reference `grandjean' on page 14 undefined on input line 1003.
+
+
+Package natbib Warning: Citation `Rey:1996a' on page 14 undefined on input line
+ 1003.
+
+
+Package natbib Warning: Citation `Rey:1996b' on page 14 undefined on input line
+ 1003.
 
 <dir3d+y-450k_run916r.png, id=267, 952.55875pt x 859.21pt>
 File: dir3d+y-450k_run916r.png Graphic file (type png)
@@ -978,6 +1406,17 @@ Overfull \hbox (4.12062pt too wide) in paragraph at lines 1006--1013
 [][][] 
  []
 
+
+LaTeX Warning: Reference `bp1-4-frust' on page 14 undefined on input line 1030.
+
+
+
+LaTeX Warning: Reference `bp1-flowcurve' on page 14 undefined on input line 103
+0.
+
+
+LaTeX Warning: Reference `LastPage' on page 14 undefined on input line 1031.
+
 File: headers/RF.pdf Graphic file (type pdf)
 <use headers/RF.pdf>
 Package pdftex.def Info: headers/RF.pdf used on input line 1031.
@@ -988,45 +1427,112 @@ Package pdftex.def Info: headers/LF.pdf used on input line 1031.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
  [14 <./dir3d+y-200k_run1179r.png (PNG copy)> <./dir3d+y-450k_run916r.png (PNG 
 copy)> <./dir3d+y-800k_run916r.png (PNG copy)>]
+
+Package natbib Warning: Citation `Rey:1996a' on page 15 undefined on input line
+ 1064.
+
+
+Package natbib Warning: Citation `Rey:1996b' on page 15 undefined on input line
+ 1064.
+
+
+Package natbib Warning: Citation `fielding' on page 15 undefined on input line 
+1100.
+
+
+Package natbib Warning: Citation `Cates:2002' on page 15 undefined on input lin
+e 1100.
+
+
+LaTeX Warning: Reference `tab1' on page 15 undefined on input line 1122.
+
+File: headers/LF.pdf Graphic file (type pdf)
+<use headers/LF.pdf>
+Package pdftex.def Info: headers/LF.pdf used on input line 1128.
+(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
+File: headers/RF.pdf Graphic file (type pdf)
+ <use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1128.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+
+
+LaTeX Warning: Reference `LastPage' on page 15 undefined on input line 1128.
+
+[15]
+
+Package natbib Warning: Citation `Wagner:2002' on page 16 undefined on input li
+ne 1239.
+
+
+Package natbib Warning: Citation `Henrich:2012a' on page 16 undefined on input 
+line 1239.
+
+
+Package natbib Warning: Citation `Dupuis:2005' on page 16 undefined on input li
+ne 1239.
+
+
+Package natbib Warning: Citation `Marenduzzo:2006a' on page 16 undefined on inp
+ut line 1239.
+
+
+Package natbib Warning: Citation `Marenduzzo:2006b' on page 16 undefined on inp
+ut line 1239.
+
+(./bprheo.bbl)
+
+Package natbib Warning: There were undefined citations.
+
+
+Package lastpage Warning: Rerun to get the references right on input line 1247.
+
+
+
+AED: lastpage setting LastPage
+
+LaTeX Warning: Reference `LastPage' on page 16 undefined on input line 1247.
+
+File: headers/RF.pdf Graphic file (type pdf)
+<use headers/RF.pdf>
+Package pdftex.def Info: headers/RF.pdf used on input line 1247.
+(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
 File: headers/LF.pdf Graphic file (type pdf)
  <use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1240.
+Package pdftex.def Info: headers/LF.pdf used on input line 1247.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
-File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1240.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [15]
-File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
-Package pdftex.def Info: headers/RF.pdf used on input line 1240.
-(pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
+ [16]
 File: headers/LF.pdf Graphic file (type pdf)
-
-<use headers/LF.pdf>
-Package pdftex.def Info: headers/LF.pdf used on input line 1240.
-(pdftex.def)             Requested size: 173.26239pt x 9.0pt.
- [16] (./bprheo.bbl) 
-AED: lastpage setting LastPage
-File: headers/LF.pdf Graphic file (type pdf)
-<use headers/LF.pdf>
+ <use headers/LF.pdf>
 Package pdftex.def Info: headers/LF.pdf used on input line 1247.
 (pdftex.def)             Requested size: 173.26239pt x 9.0pt.
 File: headers/RF.pdf Graphic file (type pdf)
- <use headers/RF.pdf>
+
+<use headers/RF.pdf>
 Package pdftex.def Info: headers/RF.pdf used on input line 1247.
 (pdftex.def)             Requested size: 90.33727pt x 7.02621pt.
- [17] (./bprheo.aux)
+
+
+LaTeX Warning: Reference `LastPage' on page 17 undefined on input line 1247.
+
+[17] (./bprheo.aux
+
+Package natbib Warning: Citation(s) may have changed.
+(natbib)                Rerun to get citations correct.
+
+)
 
 LaTeX Warning: There were undefined references.
 
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
  ) 
 Here is how much of TeX's memory you used:
- 4988 strings out of 493488
- 74983 string characters out of 3141325
- 190197 words of memory out of 3000000
+ 4989 strings out of 493488
+ 74989 string characters out of 3141325
+ 188768 words of memory out of 3000000
  8111 multiletter control sequences out of 15000+200000
- 64284 words of font info for 137 fonts, out of 3000000 for 9000
+ 65391 words of font info for 138 fonts, out of 3000000 for 9000
  957 hyphenation exceptions out of 8191
  38i,15n,43p,1402b,406s stack positions out of 5000i,500n,10000p,200000b,50000s
 {/usr/local/texlive/2012/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
@@ -1043,7 +1549,7 @@ type1/urw/symbol/usyr.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/t
 imes/utmb8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmbi
 8a.pfb></usr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></u
 sr/local/texlive/2012/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on bprheo.pdf (17 pages, 15449238 bytes).
+Output written on bprheo.pdf (17 pages, 15449806 bytes).
 PDF statistics:
  327 PDF objects out of 1000 (max. 8388607)
  200 compressed objects within 2 object streams
