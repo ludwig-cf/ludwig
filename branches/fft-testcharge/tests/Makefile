@@ -34,13 +34,16 @@ NPROCS = 8
 SRC     = ../src
 INCLUDE = -I$(SRC)
 OPTS    = -D_D3Q19_
-CFLAGS  = -Wall
+#CFLAGS  = -Wall
 
 MPI_STUB_INCLUDE = -I../mpi_s
 MPI_STUB_LIB = -L../mpi_s -lmpi
 
-CLIBS  = -lm
+FFTLIBS = -L../lib -lp3dfft -lfftw3 -pgf90libs
+
+CLIBS  = -lm $(FFTLIBS)
 MPILIB = -lmpi
+
 
 #------------------------------------------------------------------------------
 # Files
@@ -56,7 +59,8 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
               test_collision.c test_psi.c test_psi_sor.c test_hydro.c \
               test_field.c test_field_grad.c test_nernst_planck.c \
-              test_fe_electro.c test_fe_electro_symm.c
+              test_fe_electro.c test_fe_electro_symm.c \
+							test_decomp.c test_psi_fft.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}
@@ -77,7 +81,7 @@ tests:
 	"CLIBS=$(CLIBS) $(MPI_STUB_LIB) $(LBLIBS)"
 
 tests_mpi:
-	$(MAKE) base "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS)"
+	$(MAKE) base "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS) $(FFTLIBS)"
 
 
 do_tests: tests
