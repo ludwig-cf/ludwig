@@ -103,11 +103,13 @@ into a Grandjean texture with a
 cholesteric helix lying along the flow gradient direction with respect to the imposed flow.
 }
 Blue Phase I leads to a very different response. Here, oscillations are only possible for intermediate
-shear rates -- very slow flow leads to a transition into an amorphous network 
-with an apparent yield stress. 
+shear rates -- 
 \rev{
-Larger shear rates can make the network sensitive
-to flow-induced transitions to metastable and amorphous states.
+very slow flow causes a transition of the initially 
+ordered structure with oscillatory response into an amorphous network 
+with an apparent yield stress. 
+Larger shear rates lead to another amorphous state with different structure of 
+the defect network.
 }
 For even larger flow rates the same break-up into a Grandjean texture as for Blue Phase II is observed.
 At the highest imposed flow rates both cubic blue phases adopt a flow-aligned nematic state.
@@ -275,7 +277,7 @@ and is explicitly given by~\cite{Beris:1994}
 \begin{eqnarray}
 {\mathbf S}({\mathbf W}, {\mathbf Q}) &=& (\xi {\mathbf A} + {\boldsymbol \Omega})({\mathbf Q}+\frac{\mathbf I}{3})\nonumber\\
 & &\hspace*{-1.5cm}+ ({\mathbf Q}+\frac{\mathbf I}{3})(\xi {\mathbf A}  - {\boldsymbol \Omega})-2 \xi ({\mathbf Q}+\frac{\mathbf I}{3})
-\mathrm{Tr}({\mathbf Q W}),
+\mathrm{Tr}({\mathbf Q \mathbf W}),
 \label{sw}
 \end{eqnarray}
 where $\mathrm{Tr}$ denotes the tensorial trace, while 
@@ -334,7 +336,7 @@ with $\eta$ and $K$ defined previously, and
 $v$ and $l$ a typical velocity and length scale. 
 In the present work $l=p_0/2=\pi/q_0$ was used as this is the approximate size of
 the BP unit cell. Likewise, $v$ was taken to be the velocity difference
-across one unit cell, i.e. $v=\dot{\gamma} l$. 
+across one unit cell, i.e. $v=\dot{\gamma}\, l$. 
 \rev{
 The elastic constants were $K=0.02$ (BPII) and $K=0.04$ (BPI), respectively.
 } 
@@ -640,8 +642,9 @@ the apparent viscosity ratio $\eta_{app}/\eta$ over total strain.
 
 \begin{figure}[htpb]
 \includegraphics[width=0.495\textwidth]{flowcurve_bp1.pdf}\\
-\caption{Flow curve $\bar{\Pi}_{xy}(\gd)$: 
+\caption{
 \rev{
+Flow curve $\bar{\Pi}_{xy}(\gd)$: 
 Depending on the configuration in steady shear flow five different regimes 
 can be distinguished: amorphous BP network with apparent yield stress (BPI-1, solid squares), 
 steady flow with periodically recurring patterns (BPI-2, open squares), 
@@ -918,13 +921,15 @@ along the vorticity direction.
 \label{bp1-3-disc}
 \end{figure*}
 
-\com{Still need to check:} 
+\com{This is currently under investigation:} 
 \rev{
 Surprisingly, if the shear is switched off in
 the BPI-2 regime at some point during an oscillation, 
-the flow-induced configuration usually
-reverts to a perfect quiescent BPI -- in stark contrast with
-what happens in BPI-1 for lower shear rates or BPI-3 for higher shear rates. 
+the flow-induced configuration can revert to a perfect quiescent BPI -- in stark contrast with
+what happens in BPI-1 for lower shear rates or BPI-3 for higher shear rates.
+We also see the network being stuck in metastable states with 
+helicoidal disclinations similar to the bottom left picture in Fig.~\ref{bp1-1-disc} 
+and the top left image in Fig.~\ref{bp1-3-disc}.
 }
 
 Fig. \ref{bp1-2-velo} depicts a snapshot of the secondary velocity 
@@ -957,7 +962,7 @@ with the helical axis lying along the flow direction.
 However, this mode of flow proves equally unstable as the regular formations dissolve into 
 an irregular state with helicoidal disclination lines of varying 
 appearance. The morphology is different from the amorphous network of
-regime BPI-1 (cf. Fig. \ref{disc-bp1-1}) where the disclination lines are 
+regime BPI-1 (cf. Fig.~\ref{bp1-1-disc}) where the disclination lines are 
 well separated but do not have a clear orientation with respect to the flow. 
 }
 
@@ -1198,7 +1203,7 @@ and a flow-aligned nematic state (FAN, BPI-5 and BPII-3).
 \end{table*}
 
 \rev{
-In all our runs we used Lees-Edwards boundary conditions \cite{Wagner:2002}.
+In all our runs we used Lees-Edwards boundary conditions (LEBCs)~\cite{Wagner:2002}.
 This is the sheared equivalence of periodic boundary conditions, for both the 
 velocity and the order parameter field. 
 On crossing a Lees-Edwards boundary a Galilean transformation is applied
@@ -1212,7 +1217,11 @@ used in the update to ${\mathbf Q}$. In both cases interpolation of the
 relevant quantities is required to cope with the relative displacement
 of neighbouring lattice sites separated by a sliding plane (the
 displacement may be a fraction of a lattice unit at any given time
-step) \cite{Henrich:2012a}. The use of multiple sliding planes equally spaced in a single
+step) \cite{Henrich:2012a}. It is worth mentioning that apart from 
+the Galilean transformation LEBCs do not impose any further constraint.
+This means that order parameter field is free to follow its own kinetic pathway
+at the Lees-Edwards plane. 
+The use of multiple sliding planes equally spaced in a single
 system allows the overall shear rate to be maintained indefinitely as the system
 becomes larger in the velocity gradient direction (in contrast with the use of solid
 walls to impose shear).
@@ -1221,18 +1230,20 @@ note that these boundary conditions impose macroscopic distortion
 of the network. They do not allow for a free-standing network as
 in flow-gradient direction there can be no slip in the network deformation 
 or strain at any point.
-This is effectively equivalent to infinitely distant
-walls along the $xy-$plane where the liquid crystal is anchored. 
+The boundary condition is equivalent to infinitely distant
+walls along the $xy-$plane where the liquid crystal is anchored,
+not unlike the situation found in a rheometer with no-slip
+boundary conditions at the walls.
 Effectively, this disallows permeation flows, which on the other
-hand require a non-zero velocity field and, simultaneously,
+hand require a non-zero velocity field and simultaneously
 much lower (ideally zero) perturbations of the blue phase network.
-Consequently our results are effectively valid for sheared bulk 
-BPs which are anchored at the walls. In practice, permeation flows are 
+In practice, permeation flows are 
 only restricted to very low flow rates, and are unstable for intermediate 
 and fast flows~\cite{Dupuis:2005}, 
 where the response of the network depends less on
 the details of the boundary conditions used at the wall.
-With free boundary conditions and for very low flow velocity, 
+With free boundary conditions that do not impose a macroscopic distortion 
+and for very low flow velocity, 
 permeative flows might instead allow for
 some slip of the BPI network, as in cholesterics sheared
 along their axis~\cite{Marenduzzo:2006a, Marenduzzo:2006b}.
