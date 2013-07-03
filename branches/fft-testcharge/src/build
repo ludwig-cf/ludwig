@@ -1,8 +1,8 @@
 #! /bin/bash
 
-mpicc -c -I. -I../../../../p3dfft/include/ decomp.c 
-mpicc -c svn.c
-mpicc -c pe.c
-mpicc -c coords.c
-mpicc -o test svn.o pe.o coords.o decomp.o ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
+mpicc -g -c -I. -I../../../../p3dfft/include/ decomp.c 
+mpicc -g -c svn.c
+mpicc -g -c pe.c
+mpicc -g -c coords.c
+mpicc -g -o test svn.o pe.o coords.o decomp.o ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
 

@@ -44,11 +44,12 @@ LIBRARY = libludwig.a
 CC = gcc -g
 MPICC = mpicc
 OPTS = -D_D3Q19_
-CFLAGS = -Wall -O3
+#CFLAGS = -Wall -O3
+CFLAGS = -O3
 
 
 INC = -I.
-LIBS = -lm
+LIBS = -lm -L../lib -lp3dfft -lfftw3 -pgf90libs
 AR = ar
 ARFLAGS = -cru
 
@@ -68,7 +69,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o \
      coords.o coords_field.o coords_rt.o \
-     control.o distribution_rt.o \
+     control.o decomp.o distribution_rt.o \
      ewald.o field.o field_grad.o fluctuations.o \
      free_energy.o free_energy_vector.o fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \
@@ -84,7 +85,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      phi_lb_coupler.o phi_stats.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
-     psi_force.o psi_colloid.o nernst_planck.o \
+     psi_fft.o psi_force.o psi_colloid.o nernst_planck.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o subgrid.o \
@@ -93,6 +94,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      stats_sigma.o stats_symmetric.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
      timer.o util.o wall.o colloids_Q_tensor.o ludwig.o
+
 
 ###############################################################################
 #
@@ -114,7 +116,7 @@ verbose:
             "\t Check the Makefile for further details\n"	
 
 code:	svn $(OBJS)
-	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(INC) $(LIBS)
 serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi" "OBJS=$(OBJS) $(MAIN).o"
