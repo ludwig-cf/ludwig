@@ -142,6 +142,13 @@ W.~Helfrich, \emph{Phys. Rev. Lett.}, 1969, \textbf{23}, 372\relax
 \mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
 {\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
 \EndOfBibitem
+\bibitem[Press and Arrot(1978)]{Press:1978}
+M.~J. Press and A.~S. Arrot, \emph{J. Phys. France}, 1978, \textbf{39},
+  750--759\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
 \bibitem[Marenduzzo \emph{et~al.}(2004)Marenduzzo, Orlandini, and
   Yeomans]{Marenduzzo:2006a}
 D.~Marenduzzo, E.~Orlandini and J.~M. Yeomans, \emph{Phys. Rev. Lett.}, 2004,
@@ -154,13 +161,6 @@ D.~Marenduzzo, E.~Orlandini and J.~M. Yeomans, \emph{Phys. Rev. Lett.}, 2004,
   Yeomans]{Marenduzzo:2006b}
 D.~Marenduzzo, E.~Orlandini and J.~M. Yeomans, \emph{J. Chem. Phys.}, 2006,
   \textbf{124}, 204906\relax
-\mciteBstWouldAddEndPuncttrue
-\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
-{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
-\EndOfBibitem
-\bibitem[Press and Arrot(1978)]{Press:1978}
-M.~J. Press and A.~S. Arrot, \emph{J. Phys. France}, 1978, \textbf{39},
-  750--759\relax
 \mciteBstWouldAddEndPuncttrue
 \mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
 {\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
