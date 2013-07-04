@@ -173,14 +173,14 @@ its helical axis, small pressure differences drive flow mainly through
 ``permeation'', as first investigated by Helfrich~\cite{Helfrich:1969}.
 In the permeation mode the liquid crystal flows while leaving the director
 field virtually unchanged, which leads to high dissipation and large
-viscosities. Marenduzzo et al.~\cite{Marenduzzo:2006a,Marenduzzo:2006b} simulated 
-shear and Poiseuille flow in cholesteric liquid crystals in the permeation mode, and 
-showed the importance of the boundary conditions in determining the apparent viscosity of the fluid. 
-They also found that a strong secondary flow appears.
-\rev{
+viscosities. \rev{
 Early experiments with cholesteric liquid crystals
 showed that flow can also give rise to conformational transitions. \cite{Press:1978}.
 }
+Marenduzzo et al.~\cite{Marenduzzo:2006a,Marenduzzo:2006b} simulated 
+shear and Poiseuille flow in cholesteric liquid crystals in the permeation mode, and 
+showed the importance of the boundary conditions in determining the apparent viscosity of the fluid. 
+They also found that a strong secondary flow appears.
 Rey~\cite{Rey:1996a, Rey:1996b} studied shear in cholesterics oriented with the helix along 
 the vorticity axis and found that, at low Ericksen number, travelling twist waves appear which 
 lead to the rotation of the cholesteric helix. At higher forcing, the helix uncoils, creating a flow-induced nematic phase. 
@@ -364,8 +364,7 @@ system.
 The same hybrid method with Lees-Edwards planes
 has been used successfully to study binary mixtures, particle suspensions~\cite{MacMeccan:2009, Aidun:2010}, 
 emulsions~\cite{Frijters:2012} and smectic liquid crystals~\cite{Henrich:2012a}.
-A more detailed discussion of our use of Lees-Edwards boundary conditions can be found in the Appendix 
-of this paper.
+A more detailed discussion of our use of Lees-Edwards boundary conditions can be found in the Appendix.
 }
 
 In the following we report results of simulations of the bulk flow behaviour of the cubic Blue 
@@ -422,17 +421,26 @@ may be partly frustrated (FGJ) and a flow-aligned nematic state (FAN).
 GJ and FAN occur in both blue phases as steady states regardless of the initial state.
 }
 
-\rev{
-These regimes are characterised by the following flow rates: 
-For Blue Phase II BPII-1 (PRC) ($\gd \lesssim 3.91\e{-4}$, corresponding to ${\it Er} \lesssim 3.33$), 
-BPII-2 (GJ) ($4.69\lesssim \gd\lesssim 1.25\e{-3}; 4\lesssim {\it Er} \lesssim 10.67$), 
-BPII-3 (FAN) ($1.875\e{-3}\lesssim \gd; 16 \lesssim {\it Er}$) 
-and for Blue Phase I BPI-1 (AN) ($\gd \lesssim 1.95\e{-5}; {\it Er} \lesssim 0.17$),  
-BPI-2 (PRC) ($3.91\e{-5}\lesssim \gd \lesssim 2.344\e{-4}; 0.33\lesssim {\it Er} \lesssim 2$),
-BPI-3 (AN) ($3.125\e{-4}\lesssim \gd\lesssim 4.69\e{-4}; 2.67 \lesssim {\it Er} \lesssim 4$),
-BPI-4 (GJ and FGJ) ($5.47\e{-4} \lesssim \gd \lesssim 1.875\e{-3}; 4.67\lesssim {\it Er} \lesssim 16)$ and
-BPI-5 (FAN) ($2.5\e{-3}\lesssim \gd, 21.33\lesssim {\it Er}$).
-}
+These regimes are characterised by the following approximate flow rates: 
+
+\begin{table}[htpb]
+\begin{tabular}{|c|c|c|}
+\hline
+Name & $\gd$ & $Er$ \\
+\hline
+BPI-1 (AN) & $ \lesssim 1.95\e{-5}$ & $\lesssim 0.17$ \\
+BPI-2 (PRC) & $3.91\e{-5} \dots 2.34\e{-4}$ & $0.33 \dots 2$ \\
+BPI-3 (AN) & $3.13\e{-4}\dots 4.69\e{-4}$ & $2.67 \dots 4$ \\
+BPI-4 (GJ, FGJ) & $5.47\e{-4} \dots 1.88\e{-3}$ & $4.67 \dots 16$ \\
+BPI-5 (FAN) & $\gtrsim 2.5\e{-3}$ & $ \gtrsim 21.33$ \\
+\hline
+BPII-1 (PRC) & $\lesssim 3.91\e{-4}$ & $ \lesssim 3.33$\\
+BPII-2 (GJ) & $4.69\dots 1.25\e{-3}$ & $4 \dots 10.67$ \\
+BPII-3 (FAN) &$\gtrsim 1.88\e{-3}$ & $ \gtrsim 16$ \\ 
+\hline
+\end{tabular}
+\label{table2}
+\end{table}
 
 As is standard \cite{Henrich:2010b,Henrich:2012b} disclination lines are represented by plotting an isosurface of the scalar order parameter $q_s$. 
 Typical choices are $q_s=0.17$ for BPI and $q_s=0.15$ for BPII.
@@ -495,7 +503,7 @@ the shear stress $\bar{\Pi}_{xy}$ as a function of shear rate $\gd$.
 \rev{
 Time averages were taken as average over one stress cycle in the steady state.
 Where no oscillations occurred we used the final value at the end of the run.
-For intermediate down to the lowest shear rates, the regime we refer to as BPII-1, a 
+For the lowest up to intermediate shear rates, the regime we refer to as BPII-1, a 
 power law fit $\bar{\Pi}_{xy}=a \gd^b$ with $a=0.30, b=0.95$ describes 
 the data to a very good approximation.
 This holds true even in regime BPII-2, where the network breaks up and 
@@ -530,9 +538,9 @@ We will address these regimes in section \ref{gj-fan}, as they are common to bot
 }
 
 \rev{
-The travelling helical waves which was identified in~\cite{Rey:1996a,Rey:1996b} when shearing a cholesteric helix along
+The travelling helical wave which was identified in~\cite{Rey:1996a,Rey:1996b} when shearing a cholesteric helix along
 the vorticity axis turns out to be a metastable flow state as it features larger free energies, higher stresses and dissipation due 
-to the tumbling motion of the director field, which is completely absent in the Grandjean texture.
+to the tumbling motion of the director field, which are completely absent in the Grandjean texture.
 For even higher shear rates the system undergoes a transition to a flow-aligned nematic state.
 }
 
@@ -921,15 +929,15 @@ along the vorticity direction.
 \label{bp1-3-disc}
 \end{figure*}
 
-\com{This is currently under investigation:} 
 \rev{
-Surprisingly, if the shear is switched off in
+If the shear is switched off in
 the BPI-2 regime at some point during an oscillation, 
-the flow-induced configuration can revert to a perfect quiescent BPI -- in stark contrast with
-what happens in BPI-1 for lower shear rates or BPI-3 for higher shear rates.
-We also see the network being stuck in metastable states with 
-helicoidal disclinations similar to the bottom left picture in Fig.~\ref{bp1-1-disc} 
-and the top left image in Fig.~\ref{bp1-3-disc}.
+the flow-induced configuration cannot revert to a perfect quiescent BPI.
+Instead the network is stuck in a metastable states with 
+helicoidal intertwined disclinations similar to those in the bottom left 
+picture of Fig.~\ref{bp1-1-disc} or those in the top left picture of Fig.~\ref{bp1-3-disc}.
+However, the orientation of the helical axis after switch-off is always 
+along the vorticity ($z-$) direction.
 }
 
 Fig. \ref{bp1-2-velo} depicts a snapshot of the secondary velocity 
@@ -1124,13 +1132,6 @@ MEC holds a Royal Society Research Professorship.
 \appendix
 \section*{Appendix}
 
-Table \ref{tab1} lists the parameters chosen for our runs (values of
-the reduced temperature and reduced chirality are given in the caption),
-together with the minima, maxima, and standard deviations of the velocity
-field in the three directions (discussed further in the main text). 
-The first column also describes what flow regime each simulation
-leads to in steady state.
-
 \begin{table*}[htpb]
 \begin{tabular}{|c||c|| c || c || c |c |c||c| c| c||c| c| c|}
 \hline
@@ -1201,10 +1202,17 @@ and a flow-aligned nematic state (FAN, BPI-5 and BPII-3).
 }
 \label{tab1}
 \end{table*}
+\clearpage
+Table \ref{tab1} lists the parameters chosen for our runs (values of
+the reduced temperature and reduced chirality are given in the caption),
+together with the minima, maxima, and standard deviations of the velocity
+field in the three directions (discussed further in the main text). 
+The first column also describes what flow regime each simulation
+leads to in steady state.
 
 \rev{
 In all our runs we used Lees-Edwards boundary conditions (LEBCs)~\cite{Wagner:2002}.
-This is the sheared equivalence of periodic boundary conditions, for both the 
+This is the sheared equivalent of periodic boundary conditions, for both the 
 velocity and the order parameter field. 
 On crossing a Lees-Edwards boundary a Galilean transformation is applied
 with a velocity increment which is fixed in time (and limited in size by the
