@@ -54,6 +54,7 @@ int main() {
   struct holder *data        = malloc(sizeof(struct holder));
   MPI_Comm ludwig_comm       = cart_comm();
   double global_coord[3]     = {0, 0, 0};
+  int nlocal_offset[3]       = {0, 0, 0};
   int nlocal[3]              = {0, 0, 0};
   int isize[3]               = {0, 0, 0};
   int istart[3]              = {0, 0, 0};
@@ -72,16 +73,17 @@ int main() {
   psi_create(2, &end_psi);
   assert(start_psi);
   assert(end_psi);
-  
+
+  coords_nlocal_offset(nlocal_offset);
 
   /* initialise elements of send_array to binary evaluation of global coordinates */
-  for(i=0; i<nlocal[X]; i++) {
-    global_coord[X] = (cart_coords(X)*nlocal[X] + i); 
-    for(j=0; j<nlocal[Y]; j++) {
-      global_coord[Y] = (cart_coords(Y)*nlocal[Y] + j); 
-      for(k=0; k<nlocal[Z]; k++) {
-        global_coord[Z] = (cart_coords(Z)*nlocal[Z] + k); 
-        start_psi->psi[index_3d_c(i,j,k,nlocal)] = hash(global_coord);
+  for(i=1; i<=nlocal[X]; i++) {
+    global_coord[X] = (nlocal_offset[X] + i - 1); 
+    for(j=1; j<=nlocal[Y]; j++) {
+      global_coord[Y] = (nlocal_offset[Y] + j - 1); 
+      for(k=1; k<=nlocal[Z]; k++) {
+        global_coord[Z] = (nlocal_offset[Z] + k - 1); 
+        start_psi->psi[coords_index(i,j,k)] = hash(global_coord);
       }
     }
   }
@@ -111,10 +113,10 @@ int main() {
   pencil_to_cart(recv_array, end_psi->psi);
 
   /*test final array is the same as the original*/
-  for(i=0; i<nlocal[X]; i++) {
-    for(j=0; j<nlocal[Y]; j++) {
-      for(k=0; k<nlocal[Z]; k++) {
-        assert(start_psi->psi[index_3d_c(i,j,k,nlocal)] == end_psi->psi[index_3d_c(i,j,k,nlocal)]);
+  for(i=1; i<=nlocal[X]; i++) {
+    for(j=1; j<=nlocal[Y]; j++) {
+      for(k=1; k<=nlocal[Z]; k++) {
+        assert(start_psi->psi[coords_index(i,j,k)] == end_psi->psi[coords_index(i,j,k)]);
       }
     }
   }
