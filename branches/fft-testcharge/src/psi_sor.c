@@ -117,6 +117,7 @@ int psi_sor_poisson(psi_t * obj) {
   psi_epsilon(obj, &epsilon);
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
+  if(pe_rank() == 0) printf("tolrel %f, tolabs %f\n", tol_rel, tol_abs);
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {

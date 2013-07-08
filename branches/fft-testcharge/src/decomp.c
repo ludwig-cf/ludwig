@@ -43,9 +43,20 @@ static int index_2d (int x, int y, int size);
 static void find_cart_global_coord(int global_coord[], int local_coord[], int coords[]);
 static void find_cart_subarray_subsizes(int array_of_subsizes[], int global_coord[]);
 static void find_cart_subarray_starts(int array_of_starts[], int local_coord[]);
+static void find_cart_subarray_sizes(int array_of_sizes[], int local_coord[]);
 static int find_cart_dest_proc(int global_coord[]);
 static int find_number_cart_dest_procs();
 static int find_number_pencil_recv_procs();
+
+/*****************************************************************************
+ *
+ *  initialise_decomposition_swap
+ *
+ *  Set up the Pencil decomposition for the current state.
+ *  Also initialise P3DFFT, and create the data structures
+ *  necessary to swap between cartesian and pencil
+ *
+ *****************************************************************************/
 
 void initialise_decomposition_swap(int input_proc_dims[]) {
 
@@ -93,6 +104,13 @@ void initialise_decomposition_swap(int input_proc_dims[]) {
   /* for now will only consider pencil decompositions that divide evenly into the lattice */
       assert(nsize[1]%proc_dims[1] == 0);
       assert(nsize[2]%proc_dims[0] == 0);
+      
+      if(nsize[1]/proc_dims[1] <= 1 || nsize[2]/proc_dims[0] <= 1) {
+        if(pe_rank == 0) {
+          printf("error: nsites too small for chosen number of processors. Please use a bigger grid or less processors\n");
+          MPI_Abort(ludwig_comm, 2);
+        }
+      }
 
       /* note that this routine swaps the elements of proc_dims */
       p3dfft_setup(proc_dims, nsize[0], nsize[1], nsize[2], overwrite, memsize);
@@ -106,7 +124,7 @@ void initialise_decomposition_swap(int input_proc_dims[]) {
   /* finds the number of destination processors, and also sets subarray and find subsizes to be sent */
       data->send_count = find_number_cart_dest_procs();
       
-  /* send the data */
+  /* send the subsizes */
       MPI_Request send_request[data->send_count];
       MPI_Status send_status[data->send_count];
       for(i=0; i<data->send_count; i++) {
@@ -127,12 +145,18 @@ void initialise_decomposition_swap(int input_proc_dims[]) {
   input_proc_dims[1] = proc_dims[1];
 }
 
+/*****************************************************************************
+ *
+ *  cart_to_pencil
+ *
+ *  Swap from cartesian to pencil decomposition.
+ *  Note: arrays must be allocated before this call
+ *
+ *****************************************************************************/
+
 void cart_to_pencil(double *send_array, double *recv_array) {
 
   int i,j,k;
-  int num_procs;
-
-  num_procs = pe_size();
   
   assert(initialised_);
   if(initialised_ == 0) {
@@ -140,12 +164,13 @@ void cart_to_pencil(double *send_array, double *recv_array) {
       MPI_Abort(ludwig_comm, 1);
   }
 
+  
   if(cart_size(2) == 1) { /* already in a pencil decomposition! */
-/* copy data or move pointer */
-    for(i=0; i<nlocal[X]; i++) {
-      for(j=0; j<nlocal[Y]; j++) {
-        for(k=0; k<nlocal[Z]; k++) {
-          recv_array[index_3d_f(i,j,k,isize)] = send_array[index_3d_c(i,j,k,nlocal)];
+/* copy data, remember send_array has halos! */
+    for(i=1; i<=nlocal[X]; i++) {
+      for(j=1; j<=nlocal[Y]; j++) {
+        for(k=1; k<=nlocal[Z]; k++) {
+          recv_array[index_3d_f(i-1,j-1,k-1,isize)] = send_array[coords_index(i,j,k)];
         }
       }
     }
@@ -168,7 +193,15 @@ void cart_to_pencil(double *send_array, double *recv_array) {
 }
 
 
-  /*send the data back to cartesian decomp */
+/*****************************************************************************
+ *
+ *  pencil_to_cart
+ *
+ *  Swap from pencil to cartesian decomposition.
+ *  Note: arrays must be allocated before this call
+ *
+ *****************************************************************************/
+
 void pencil_to_cart(double *end_array, double *final_array) {
 
   int i,j,k;
@@ -179,11 +212,11 @@ void pencil_to_cart(double *end_array, double *final_array) {
   }
 
   if(cart_size(2) == 1) { /* already in a pencil decomposition! */
-/* copy data back (or move pointer) */
-    for(i=0; i<nlocal[X]; i++) {
-      for(j=0; j<nlocal[Y]; j++) {
-        for(k=0; k<nlocal[Z]; k++) {
-          final_array[index_3d_c(i,j,k,nlocal)] = end_array[index_3d_f(i,j,k,isize)];
+/* copy data back, remember final_array has halos! */
+    for(i=1; i<=nlocal[X]; i++) {
+      for(j=1; j<=nlocal[Y]; j++) {
+        for(k=1; k<=nlocal[Z]; k++) {
+          final_array[coords_index(i,j,k)] = end_array[index_3d_f(i-1,j-1,k-1,isize)];
         }
       }
     }
@@ -201,11 +234,17 @@ void pencil_to_cart(double *end_array, double *final_array) {
       MPI_Recv(final_array, 1, data->send_subarray[i], data->dest_proc[i], 2, ludwig_comm, &status);
     }
 
-    printf("hi\n");
     MPI_Waitall(data->recv_count, pencil_cart_request, pencil_cart_status);
   }
 }
 
+/*****************************************************************************
+ *
+ *  find_recv_proc
+ *
+ *  returns the processor to receive from, given a global coordinate
+ *
+ *****************************************************************************/
 
 int find_recv_proc (int global_coord[]) {
  
@@ -231,7 +270,7 @@ int index_2d (int x, int y, int size) {
 }
 
 /*
- *  returns the index of an array with direction z contiguous in memory and size[2] corrsponding the the extent of z
+ *  returns the index of an array with direction z contiguous in memory and size[0] corresponding the the extent of z
  */
 int index_3d_f (int x, int y, int z, int size[]) {
 
@@ -239,14 +278,14 @@ int index_3d_f (int x, int y, int z, int size[]) {
 }
 
 /*
- *  returns the index of an array with direction z contiguous in memory and size[0] corrsponding the the extent of z
+ *  returns the index of an array with direction z contiguous in memory and size[2] corresponding the the extent of z
  */
 int index_3d_c (int x, int y, int z, int size[]) {
 
   return (x*size[1] + y)*size[2] + z; 
 }
 
-
+/*could just use coords_nlocal_offset()*/
 void find_cart_global_coord(int global_coord[], int local_coord[], int coords[]) {
   int i;
   for(i=0; i<2; i++) { 
@@ -272,14 +311,30 @@ void find_cart_subarray_subsizes(int array_of_subsizes[], int global_coord[]) {
 void find_cart_subarray_starts(int array_of_starts[], int local_coord[]) {
   int i;
   for(i=0; i<3; i++) {
-    if(i != 3) {
-      array_of_starts[i] = local_coord[i];
+    if(i != 2) {
+      array_of_starts[i] = local_coord[i] + coords_nhalo();;
     }
     else {
-      array_of_starts[i] = 0;
+      array_of_starts[i] = coords_nhalo();
     }
   }
 }
+
+void find_cart_subarray_sizes(int array_of_sizes[], int local_coord[]) {
+  int i;
+  for(i=0; i<3; i++) {
+    array_of_sizes[i] = nlocal[i] + 2;
+  }
+}
+
+/*****************************************************************************
+ *
+ *  find_cart_dest_proc
+ *
+ *  returns the processor to send to, given a global coordinate in
+ *  the cartesian decomposition
+ *
+ *****************************************************************************/
 
 int find_cart_dest_proc(int global_coord[]) {
   int i;
@@ -291,13 +346,21 @@ int find_cart_dest_proc(int global_coord[]) {
   return fft_proc_coord[0]*proc_dims[1] + fft_proc_coord[1];
 }
 
-/*returns numnber of destination processors */
+/*****************************************************************************
+ *
+ *  find_number_cart_dest_procs
+ *
+ *  Returns the number of processes that need to have messages sent to them.
+ *  While doing this it creates the subarrays for sending to each of these
+ *
+ *****************************************************************************/
+
 int find_number_cart_dest_procs() {
 
   int global_coord[3] = {0, 0, 0};
   int local_coord[3] = {0, 0, 0};
   int coords[3];
-  int array_of_subsizes[3], array_of_starts[3];
+  int array_of_subsizes[3], array_of_starts[3], array_of_sizes[3];
   int send_count = 0;
   int iter = 0;
   int i;
@@ -338,17 +401,20 @@ int find_number_cart_dest_procs() {
       find_cart_global_coord(global_coord, local_coord, coords);
       find_cart_subarray_subsizes(array_of_subsizes, global_coord);
       find_cart_subarray_starts(array_of_starts, local_coord);
+      find_cart_subarray_sizes(array_of_sizes, nlocal);
 
       for(i=0; i<3; i++) {
+        assert(array_of_subsizes[i] >= 1);
+        assert(array_of_subsizes[i] <= array_of_sizes[i]);
         assert(array_of_starts[i] >= 0);
-        assert(array_of_starts[i] <= (nlocal[i] - array_of_subsizes[i]) );
+        assert(array_of_starts[i] <= (array_of_sizes[i] - array_of_subsizes[i]) );
       }
 
       data->dest_proc[iter] = find_cart_dest_proc(global_coord);
       assert(data->dest_proc[iter] < num_procs);
 
       /* set up subarray to be sent */
-      MPI_Type_create_subarray(3, nlocal, array_of_subsizes, array_of_starts, MPI_ORDER_C, MPI_DOUBLE, &data->send_subarray[iter]);
+      MPI_Type_create_subarray(3, array_of_sizes, array_of_subsizes, array_of_starts, MPI_ORDER_C, MPI_DOUBLE, &data->send_subarray[iter]);
       MPI_Type_commit(&data->send_subarray[iter]);
 
       assert(&data->send_subarray[send_count] != NULL);
@@ -369,6 +435,17 @@ int find_number_cart_dest_procs() {
 
   return send_count;
 }
+
+/*****************************************************************************
+ *
+ *  find_number_pencil_recv_procs
+ *
+ *  Returns the number of processes that will send messages to the calling
+ *  process.
+ *  While doing this it creates the subarrays for receiveing from each of these
+ *  by receiving messages from each of them detailing the subsizes
+ *
+ *****************************************************************************/
 
 int find_number_pencil_recv_procs() {
 
@@ -414,6 +491,7 @@ int find_number_pencil_recv_procs() {
 
         /* create subarray for receiving */
         for(i=0; i<3; i++) {
+//          array_of_starts[i] = local_coord[i];
           array_of_starts[i] = local_coord[i];
           array_of_subsizes[i] = data->recv_subsizes[index_2d(recv_count,i,3)];
           array_of_sizes[i] = isize[2-i];
