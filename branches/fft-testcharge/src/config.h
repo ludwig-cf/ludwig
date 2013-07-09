@@ -5,7 +5,7 @@
 /* #undef CC */
 
 /* arguments passed to configure script */
-#define CONFIGURE_ARGS " '--prefix=/Home/s1256564/Documents/Project/code/p3dfft' '--enable-pgi' '--enable-fftw' '--with-fftw=/Home/s1256564/Documents/Project/code/fftw/' '--enable-stride1' 'CC=mpicc'"
+#define CONFIGURE_ARGS " '--prefix=/Home/s1256564/Documanets/Projects/code/p3dfft/' '--enable-pgi' '--enable-fftw' '--with-fftw=/Home/s1256564/Documents/Project/code/fftw' '--enable-stride1' 'CC=mpicc'"
 
 /* Define if you want to enable C convention for processor dimensions */
 /* #undef DIMS_C */

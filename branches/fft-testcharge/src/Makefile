@@ -48,8 +48,8 @@ OPTS = -D_D3Q19_
 #CFLAGS = -O3
 
 
-INC = -I.
-LIBS = -lm -L../lib -lp3dfft -lfftw3 -pgf90libs
+INC = -I. -I../../../../p3dfft/include/
+LIBS = -lm -L../../../../p3dfft/lib/ -L../../../../fftw/lib/ -lp3dfft -lfftw3 -pgf90libs
 AR = ar
 ARFLAGS = -cru
 

@@ -1,5 +1,5 @@
 
-struct holder {
+struct decomp_comms {
   int *dest_proc;
   int  send_count;
   int *send_subsizes;
@@ -12,11 +12,12 @@ struct holder {
 
 };
 
-void initialise_decomposition_swap(int input_proc_dims[]);
-void cart_to_pencil(double *send_array, double *recv_array);
-void pencil_to_cart(double *end_array, double *final_array);
+void decomp_initialise(int input_proc_dims[]);
+void decomp_cart_to_pencil(double *in_array, double *out_array);
+void decomp_pencil_to_cart(double *in_array, double *out_array);
 int index_3d_f (int x, int y, int z, int size[]);
 int index_3d_c (int x, int y, int z, int size[]);
-void pencil_sizess(int size[3]);
-void pencil_starts(int start[3]);
+void decomp_pencil_sizes(int size[3]);
+void decomp_pencil_starts(int start[3]);
+void decomp_finish();
 

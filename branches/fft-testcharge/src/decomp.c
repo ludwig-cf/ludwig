@@ -28,7 +28,7 @@
 
 static int initialised_                = 0;
 static MPI_Comm ludwig_comm            = MPI_COMM_NULL;
-static struct holder *data             = NULL;
+static struct decomp_comms *data       = NULL;
 static int nlocal[3]                   = {0, 0, 0};
 
 static int pe_rank                     = 0;
@@ -58,7 +58,7 @@ static int find_number_pencil_recv_procs();
  *
  *****************************************************************************/
 
-void initialise_decomposition_swap(int input_proc_dims[]) {
+void decomp_initialise(int input_proc_dims[]) {
 
   if(initialised_ == 0) {
     int nsize[3];
@@ -69,14 +69,14 @@ void initialise_decomposition_swap(int input_proc_dims[]) {
     int i;
    
     overwrite = 0; /* don't allow overwriting input of btran */
+
 /* initialise the necessary static variables */
     ludwig_comm = cart_comm();
     pe_rank = cart_rank();
     num_procs = pe_size();
     coords_nlocal(nlocal);
-    data = malloc(sizeof(struct holder));
+    data = malloc(sizeof(struct decomp_comms));
 
-/*have not allowed for user to change anything by passing input_proc_dims yet*/
 
     for(i=0; i<3; i++) {
       nsize[i] = N_total(2-i);
@@ -94,16 +94,16 @@ void initialise_decomposition_swap(int input_proc_dims[]) {
       p3dfft_get_dims(istart, iend, isize, ip);
 
     }
-    else { /*we need to do some work */
+    else {
       if(pe_rank == 0) { printf("Moving data from cartesian to pencil decomposition.\n"); }
-  /* It will be necessary to allow the user specify the grid they want */
-      proc_dims[0] = num_procs/4;
-      proc_dims[1] = 4;
+/*have not allowed for user to change anything by passing input_proc_dims yet*/
+      proc_dims[0] = 4;
+      proc_dims[1] = num_procs/4;
 
       
   /* for now will only consider pencil decompositions that divide evenly into the lattice */
       assert(nsize[1]%proc_dims[1] == 0);
-      assert(nsize[2]%proc_dims[0] == 0);
+      assert(nsize[2] == 1 || nsize[2]%proc_dims[0] == 0);
       
       if(nsize[1]/proc_dims[1] <= 1 || nsize[2]/proc_dims[0] <= 1) {
         if(pe_rank == 0) {
@@ -121,7 +121,6 @@ void initialise_decomposition_swap(int input_proc_dims[]) {
     /* now will create the subarrays for the mapping of data */
       int array_of_sizes[3], array_of_subsizes[3], array_of_starts[3];
 
-  /* finds the number of destination processors, and also sets subarray and find subsizes to be sent */
       data->send_count = find_number_cart_dest_procs();
       
   /* send the subsizes */
@@ -131,7 +130,6 @@ void initialise_decomposition_swap(int input_proc_dims[]) {
         MPI_Isend(&data->send_subsizes[i*3], 3, MPI_INT, data->dest_proc[i], 1, ludwig_comm, &send_request[i]);
       }
 
-  /* finds the number of receiving processors, and also sets subarray and find subsizes to be received */
       data->recv_count = find_number_pencil_recv_procs();
 
     MPI_Waitall(data->send_count, send_request, send_status);
@@ -147,14 +145,14 @@ void initialise_decomposition_swap(int input_proc_dims[]) {
 
 /*****************************************************************************
  *
- *  cart_to_pencil
+ *  decomp_cart_to_pencil
  *
  *  Swap from cartesian to pencil decomposition.
  *  Note: arrays must be allocated before this call
  *
  *****************************************************************************/
 
-void cart_to_pencil(double *send_array, double *recv_array) {
+void decomp_cart_to_pencil(double *in_array, double *out_array) {
 
   int i,j,k;
   
@@ -166,11 +164,11 @@ void cart_to_pencil(double *send_array, double *recv_array) {
 
   
   if(cart_size(2) == 1) { /* already in a pencil decomposition! */
-/* copy data, remember send_array has halos! */
+/* copy data, remember in_array has halos! */
     for(i=1; i<=nlocal[X]; i++) {
       for(j=1; j<=nlocal[Y]; j++) {
         for(k=1; k<=nlocal[Z]; k++) {
-          recv_array[index_3d_f(i-1,j-1,k-1,isize)] = send_array[coords_index(i,j,k)];
+          out_array[index_3d_f(i-1,j-1,k-1,isize)] = in_array[coords_index(i,j,k)];
         }
       }
     }
@@ -180,11 +178,11 @@ void cart_to_pencil(double *send_array, double *recv_array) {
     MPI_Status send_status[data->send_count];
     MPI_Status recv_status;
     for(i=0; i<data->send_count; i++) {
-      MPI_Isend(send_array, 1, data->send_subarray[i], data->dest_proc[i], 2, ludwig_comm, &send_request[i]);
+      MPI_Isend(in_array, 1, data->send_subarray[i], data->dest_proc[i], 2, ludwig_comm, &send_request[i]);
     }
 
     for(i=0; i<data->recv_count; i++) {
-      MPI_Recv(recv_array, 1, data->recv_subarray[i], data->recv_proc[i], 2, ludwig_comm, &recv_status);
+      MPI_Recv(out_array, 1, data->recv_subarray[i], data->recv_proc[i], 2, ludwig_comm, &recv_status);
     }
 
     MPI_Waitall(data->send_count, send_request, send_status);
@@ -195,14 +193,14 @@ void cart_to_pencil(double *send_array, double *recv_array) {
 
 /*****************************************************************************
  *
- *  pencil_to_cart
+ *  decomp_pencil_to_cart
  *
  *  Swap from pencil to cartesian decomposition.
  *  Note: arrays must be allocated before this call
  *
  *****************************************************************************/
 
-void pencil_to_cart(double *end_array, double *final_array) {
+void decomp_pencil_to_cart(double *in_array, double *out_array) {
 
   int i,j,k;
       
@@ -212,11 +210,11 @@ void pencil_to_cart(double *end_array, double *final_array) {
   }
 
   if(cart_size(2) == 1) { /* already in a pencil decomposition! */
-/* copy data back, remember final_array has halos! */
+/* copy data back, remember out_array has halos! */
     for(i=1; i<=nlocal[X]; i++) {
       for(j=1; j<=nlocal[Y]; j++) {
         for(k=1; k<=nlocal[Z]; k++) {
-          final_array[coords_index(i,j,k)] = end_array[index_3d_f(i-1,j-1,k-1,isize)];
+          out_array[coords_index(i,j,k)] = in_array[index_3d_f(i-1,j-1,k-1,isize)];
         }
       }
     }
@@ -228,10 +226,10 @@ void pencil_to_cart(double *end_array, double *final_array) {
     MPI_Status status;
 
     for(i=0; i<data->recv_count; i++) {
-      MPI_Isend(end_array, 1, data->recv_subarray[i], data->recv_proc[i], 2, ludwig_comm, &pencil_cart_request[i]);
+      MPI_Isend(in_array, 1, data->recv_subarray[i], data->recv_proc[i], 2, ludwig_comm, &pencil_cart_request[i]);
     }
     for(i=0; i<data->send_count; i++) {
-      MPI_Recv(final_array, 1, data->send_subarray[i], data->dest_proc[i], 2, ludwig_comm, &status);
+      MPI_Recv(out_array, 1, data->send_subarray[i], data->dest_proc[i], 2, ludwig_comm, &status);
     }
 
     MPI_Waitall(data->recv_count, pencil_cart_request, pencil_cart_status);
@@ -253,7 +251,6 @@ int find_recv_proc (int global_coord[]) {
   int recv_proc;
 
   for(i=0; i<3; i++) {
-/*    assert(global_coord[i] < ntotal_[i]); */
     coords[i] = global_coord[i]/nlocal[i];
   }
 
@@ -285,13 +282,31 @@ int index_3d_c (int x, int y, int z, int size[]) {
   return (x*size[1] + y)*size[2] + z; 
 }
 
-/*could just use coords_nlocal_offset()*/
+/*****************************************************************************
+ *
+ *  find_cart_global_coord
+ *
+ *  finds the global coordinates of a given point in the local array in the
+ *  cartesian decomposition
+ *
+ *****************************************************************************/
+
 void find_cart_global_coord(int global_coord[], int local_coord[], int coords[]) {
   int i;
-  for(i=0; i<2; i++) { 
+
+  for(i=0; i<3; i++) { 
     global_coord[i] = (coords[i]*nlocal[i]) + local_coord[i];
   }
 }
+
+/*****************************************************************************
+ *
+ *  find_cart_subarray_subsizes
+ *
+ *  finds the subarray subsizes for sending and receiving in the cartesian 
+ *  decomposition
+ *
+ *****************************************************************************/
 
 void find_cart_subarray_subsizes(int array_of_subsizes[], int global_coord[]) {
   int i;
@@ -308,6 +323,15 @@ void find_cart_subarray_subsizes(int array_of_subsizes[], int global_coord[]) {
   }
 }
 
+/*****************************************************************************
+ *
+ *  find_cart_subarray_starts
+ *
+ *  finds the subarray starts for sending and receiving in the cartesian 
+ *  decomposition
+ *
+ *****************************************************************************/
+
 void find_cart_subarray_starts(int array_of_starts[], int local_coord[]) {
   int i;
   for(i=0; i<3; i++) {
@@ -319,6 +343,15 @@ void find_cart_subarray_starts(int array_of_starts[], int local_coord[]) {
     }
   }
 }
+
+/*****************************************************************************
+ *
+ *  find_cart_subarray_sizes
+ *
+ *  finds the subarray sizes for sending and receiving in the cartesian 
+ *  decomposition
+ *
+ *****************************************************************************/
 
 void find_cart_subarray_sizes(int array_of_sizes[], int local_coord[]) {
   int i;
@@ -491,7 +524,6 @@ int find_number_pencil_recv_procs() {
 
         /* create subarray for receiving */
         for(i=0; i<3; i++) {
-//          array_of_starts[i] = local_coord[i];
           array_of_starts[i] = local_coord[i];
           array_of_subsizes[i] = data->recv_subsizes[index_2d(recv_count,i,3)];
           array_of_sizes[i] = isize[2-i];
@@ -519,14 +551,14 @@ int find_number_pencil_recv_procs() {
 }
 
 /***************************************************************************************
- * pencil_sizes
+ * decomp_pencil_sizes
  *
  * gives the extents of the local arrays on each processor
  * important to note that the ordering is fortran and this does not attempt to change it
  * That is: isize[0] is the size of the direction that is contiguous in memory
  *
  ****************************************************************************************/
-void pencil_sizes(int size[3]) {
+void decomp_pencil_sizes(int size[3]) {
   int i;
   for(i=0; i<3; i++) {
     size[i] = isize[i];
@@ -538,13 +570,33 @@ void pencil_sizes(int size[3]) {
  *
  * gives the global starts of the local arrays on each processor, 0 indexed
  * important to note that the ordering is fortran and this does not attempt to change it
- * That is: istart0] is the start of the direction that is contiguous in memory
+ * That is: istart[0] is the start of the direction that is contiguous in memory
  *
  ****************************************************************************************/
-void pencil_starts(int start[3]) {
+void decomp_pencil_starts(int start[3]) {
   int i;
   for(i=0; i<3; i++) {
     start[i] = istart[i];
   }
 }
 
+/***************************************************************************************
+ * decomp_finish
+ *
+ * cleans up memory. Should be called after all other decomp calls
+ *
+ ****************************************************************************************/
+
+void decomp_finish() {
+  
+  if(cart_size(2) != 1) {
+    free(data->dest_proc);
+    free(data->send_subsizes);
+    free(data->send_subarray);
+    free(data->recv_proc);
+    free(data->recv_subsizes);
+    free(data->recv_subarray);
+  }
+
+  free(data);
+}

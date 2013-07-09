@@ -56,6 +56,8 @@ static const char * timer_name[] = {"Total",
 				    "Ewald_Fourier",
 				    "Force calculation",
 				    "phi update",
+            "psi sor update",
+            "psi fft update",
 				    "Free1",
 				    "Free2",
                                     "Free3"};

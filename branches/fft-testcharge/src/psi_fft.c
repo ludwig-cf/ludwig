@@ -32,11 +32,10 @@
 #include "psi.h"
 
 
-static void multiply_by_k(double *transf_array, double epsilon, int fstart[], int fsize[]);
+static void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize[]);
 
 int psi_fft_poisson(psi_t *obj){
   
-//  MPI_Init(NULL, NULL);
 
   int num_procs, rank;
   MPI_Comm ludwig_comm;
@@ -53,17 +52,12 @@ int psi_fft_poisson(psi_t *obj){
   int fstart[3], fend[3], fsize[3];
   unsigned char op_f[3]="fft", op_b[3]="tff";
 
-/* ludwig decomposition setup*/
-//  pe_init();
-//  coords_init();
-
   ludwig_comm = cart_comm();
   num_procs = pe_size();
   rank = cart_rank();
 
   coords_nlocal(nlocal);
 
-  double *final_array;
   double *recv_array;
   double *end_array;
   double *transf_array;
@@ -80,12 +74,11 @@ int psi_fft_poisson(psi_t *obj){
         index = coords_index(i, j, k);
         psi_rho_elec(obj, index, &rho);
         rho_elec[index] = rho;
-        printf("rho %8.5f\n", rho_elec[index]);
       }
     }
   }
 
-  initialise_decomposition_swap(proc_dims);
+  decomp_initialise(proc_dims);
 
 /*  if(pe_rank() == 0) { printf("printing array in psi_fft!\n"); }
   for(i=1; i<=nlocal[X]; i++) {
@@ -99,8 +92,8 @@ int psi_fft_poisson(psi_t *obj){
     }
   }*/
 
-  pencil_sizes(isize); 
-  pencil_starts(istart);
+  decomp_pencil_sizes(isize); 
+  decomp_pencil_starts(istart);
 
   recv_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
   end_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
@@ -112,7 +105,7 @@ int psi_fft_poisson(psi_t *obj){
   transf_array = malloc(2*fsize[0]*fsize[1]*fsize[2] * sizeof(double)); /* x2 since they will be complex numbers */
 
 /*arrays need to be malloc'd before this call*/
-  cart_to_pencil(rho_elec, recv_array);
+  decomp_cart_to_pencil(rho_elec, recv_array);
   if(rank == 0) { printf("Proccessors now in pencil decomposition\n"); }
 
     for(k=0; k<isize[Z]; k++) {
@@ -143,14 +136,14 @@ int psi_fft_poisson(psi_t *obj){
     for(j=0; j<farray_size[Y]; j++) {
       for(k=0; k<farray_size[X]; k+=2) {
         if(pe_rank() == 0) {
-          printf("%d %d %d %f %f\n", i,j,k,transf_array[index_3d_f(i,j,k,farray_size)], transf_array[index_3d_f(i,j,k+1,farray_size)]);
+//          printf("%d %d %d %f %f\n", i,j,k,transf_array[index_3d_f(i,j,k,farray_size)], transf_array[index_3d_f(i,j,k+1,farray_size)]);
         }
 //        assert(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)] < 1e-5);
       }
     }
   }
 
-  multiply_by_k(transf_array, obj->epsilon, fstart, fsize);
+  solve_poisson(transf_array, obj->epsilon, fstart, fsize);
 
 
   if(pe_rank() == 0) printf("after k\n");
@@ -158,7 +151,7 @@ int psi_fft_poisson(psi_t *obj){
     for(j=0; j<farray_size[Y]; j++) {
       for(k=0; k<farray_size[X]; k+=2) {
         if(pe_rank() == 0) {
-          printf("%d %d %d %f %f\n", i,j,k,transf_array[index_3d_f(i,j,k,farray_size)], transf_array[index_3d_f(i,j,k+1,farray_size)]);
+//          printf("%d %d %d %f %f\n", i,j,k,transf_array[index_3d_f(i,j,k,farray_size)], transf_array[index_3d_f(i,j,k+1,farray_size)]);
         }
 //        assert(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)] < 1e-5);
       }
@@ -181,7 +174,7 @@ int psi_fft_poisson(psi_t *obj){
         }
       }
 
-  pencil_to_cart(end_array, obj->psi);
+  decomp_pencil_to_cart(end_array, obj->psi);
 
 
 /*  for(k=0; k<nlocal[X]; k++) {
@@ -198,13 +191,15 @@ int psi_fft_poisson(psi_t *obj){
 
 
 /* need to free memory */
-
-//  MPI_Finalize();
+  free(rho_elec);
+  free(recv_array);
+  free(transf_array);
+  free(end_array);
 
   return 0;
 }
 
-void multiply_by_k (double *transf_array, double epsilon, int fstart[], int fsize[]) {
+void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize[]) {
 
   int i,j,k;
   int ix, iy, iz;
@@ -218,17 +213,17 @@ void multiply_by_k (double *transf_array, double epsilon, int fstart[], int fsiz
 
   pi = 4.0*atan(1.0);
 
-#ifndef STRIDE1
-/*stride 1 enable, thus fsize array ordering is {X,Y,Z}*/
+/*#ifdef STRIDE1*/
+/*stride 1 enabled, thus fsize array ordering is {X,Y,Z}*/
 /*first find global address of first element*/
   for(i=0; i<3; i++) {
     global_coord[i] = fstart[i] - 1;
     n_total[i] = N_total(i);
-    if(i != X) {
-      farray_size[i] = fsize[i];
+    if(i == X) {
+      farray_size[i] = 2*fsize[i];
     }
     else {
-      farray_size[i] = 2*fsize[i];
+      farray_size[i] = fsize[i];
     }
   }
 
@@ -255,10 +250,10 @@ void multiply_by_k (double *transf_array, double epsilon, int fstart[], int fsiz
         }
         transf_array[index_3d_f(i,j,k,farray_size)] = -transf_array[index_3d_f(i,j,k,farray_size)]*k_square;
         /* complex numbers so need to multiply both parts of the number */
-        transf_array[index_3d_f(i+1,j,k,farray_size)] = -transf_array[index_3d_f(i+1,j,k,farray_size)]*k_square;
+        transf_array[index_3d_f(i,j,k+1,farray_size)] = -transf_array[index_3d_f(i,j,k+1,farray_size)]*k_square;
         if(pe_rank() == 1) {
-          printf("global %d %d %d\n", global_coord[X], global_coord[Y], global_coord[Z]); 
-          printf("x:%2d %2d %8.5f y:%2d %2d %8.5f z:%2d %2d %8.5f %8.5f\n", k, ix, kx, j, iy, ky, i, iz, kz, k_square);
+//          printf("global %d %d %d\n", global_coord[X], global_coord[Y], global_coord[Z]); 
+//          printf("x:%2d %2d %8.5f y:%2d %2d %8.5f z:%2d %2d %8.5f %8.5f\n", k, ix, kx, j, iy, ky, i, iz, kz, k_square);
         }
         global_coord[X] ++;
       }
@@ -268,18 +263,60 @@ void multiply_by_k (double *transf_array, double epsilon, int fstart[], int fsiz
     global_coord[Y] = fstart[Y] - 1;
     global_coord[Z] ++; 
   } 
-#else
-/*stride 1 not enabled so ordering of fsize array is now {Z,Y,X}.*/
- /* for(i=0; i<fsize[Z]; i++) {
+
+//#else
+/*stride 1 not enabled, thus fsize array ordering is {Z,Y,X}*/
+/*first find global address of first element*/
+/*  for(i=0; i<3; i++) {
+    global_coord[i] = fstart[i] - 1;
+    n_total[i] = N_total(i);
+    if(i == X) {
+      farray_size[i] = 2*fsize[i];
+    }
+    else {
+      farray_size[i] = fsize[i];
+    }
+  }
+stride 1 not enabled so ordering of fsize array is now {Z,Y,X}.
+  for(i=0; i<farray_size[Z]; i++) {
     ix = global_coord[X] - n_total[X]*(2*global_coord[X]/n_total[X]);
     kx = (2.0*pi/n_total[X])*ix;
-    for(j=0; j<fsize[Y]; j++) {
+    for(j=0; j<farray_size[Y]; j++) {
       iy = global_coord[Y] - n_total[Y]*(2*global_coord[Y]/n_total[Y]);
       ky = (2.0*pi/n_total[Y])*iy;
-      for(k=0; k<fsize[X]*2; k+=2) {
+      for(k=0; k<farray_size[X]; k+=2) {
         iz = global_coord[Z] - n_total[Z]*(2*global_coord[Z]/n_total[Z]);
-        kz = (2.0*pi/n_total[Z])*iz;*/
+        kz = (2.0*pi/n_total[Z])*iz;
 
-#endif
+        if(kz == 0 && ky == 0 && kx == 0) {
+          k_square = 0;
+        }
+        else {
+          k_square = 1/((kx*kx + ky*ky + kz*kz)*epsilon);
+        }
+        transf_array[index_3d_f(i,j,k,farray_size)] = -transf_array[index_3d_f(i,j,k,farray_size)]*k_square;
+        // complex numbers so need to multiply both parts of the number 
+        transf_array[index_3d_f(i,j,k+1,farray_size)] = -transf_array[index_3d_f(i,j,k+1,farray_size)]*k_square;
+        if(pe_rank() == 1) {
+          printf("test global %d %d %d\n", global_coord[X], global_coord[Y], global_coord[Z]); 
+          printf("x:%2d %2d %8.5f y:%2d %2d %8.5f z:%2d %2d %8.5f %8.5f\n", k, ix, kx, j, iy, ky, i, iz, kz, k_square);
+        }
+        global_coord[Z] ++;
+      }
+      global_coord[Z] = fstart[Z] - 1;
+      global_coord[Y] ++;
+    }
+    global_coord[Y] = fstart[Y] - 1;
+    global_coord[X] ++; 
+  } 
+#endif*/
 
 }
+
+void psi_fft_clean() {
+
+  decomp_finish();
+  p3dfft_clean();
+
+}
+
