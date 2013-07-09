@@ -11,7 +11,7 @@ the trace operation). From the nature of this problem it was clear that
 this would have an effect on order-flow coupling and might cause deviations 
 from our previous results at larger flow rates.
 
-We have regenerated all simulation data and verified the code agains an 
+We have regenerated all simulation data and verified the code against an 
 alternative implementation of the same model down to the level where the 
 minor numerical discrepancies that remained could be attributed to clearly 
 understood differences in the precise implementation of boundary conditions 
@@ -39,7 +39,7 @@ PRC periodically recurring conformations
 AN  amorphous network
 GJ  Grandjean texture
 FGJ frustrated Grandjean texture
-FAN flow-alinged nematic state
+FN flow-alinged nematic state
 
 Things that have changed are
 
@@ -55,12 +55,12 @@ We have also applied the following modifications which were requested by the ref
 - The overall presentation of some results has been changed in order to improve 
 comprehensibility. We show for instance time-dependent shear stress over strain 
 and increased the size of the flow curve pictures to give a clearer overview 
-of the different steady states we obtained. We think this is clearer than a schematic
-picture and the type of steady state is explained in the captions.
+of the different steady states we obtained. We think a table with summarising all
+steady states is clearer than a schematic picture.
 - We extended our description of the boundary conditions and added a paragraph 
-to the appendix. We think it is better to refer to these technicalities in the main
-body of the text rather than going into a detailed discussion, which only distracts
-from the results.
+to the Appendix. We think it is better to discuss these technicalities in a 
+dedicated section of the Appendix rather than going into a detailed discussion 
+in the main body of the text.
 - We completed the labelling of the Cartesian trihedron in all pictures to improve 
 readability and comprehensibility.
 
@@ -71,7 +71,7 @@ Things that remained unchanged are
 - existence of regimes with PRC (BPII-1, BPI-2) at intermediate shear rates
 - existence of a regime with 'rheochaos' at Ericksen numbers Er O(1)
 - breakup into GJ at Ericksen numbers Er ~ 5-15
-- formation of FAN at Er ~ 20
+- formation of FN at Er ~ 20
 
 All authors of this paper regret the extra time and effort for Editorial staff 
 and referees created by these rather extensive post-review changes to our paper. 
