@@ -90,22 +90,19 @@ void collide_gpu(int async=0) {
     		  N_d,force_global_d, f_d, site_map_status_d, 
     			force_d, velocity_d);
 
+   // still need to finalise comms/calc overlap for single fuid 
+  cudaStreamSynchronize(streamCOLL);
+
     }
 
   if  (ndist == 2 && is_propagation_ode() == 0) 
     { 
 
-      void* streamXptr;
-      void* streamYptr;
-      void* streamZptr;
-
-      //getXYZstreamptr(&streamX,&streamY,&streamZ);
 
       streamX=getXstream();
       streamY=getYstream();
       streamZ=getZstream();
       
-      //printf("%d %d %d %d\n",streamX, streamY, streamZ, streamCOLL);
 
 
  /* X edges */

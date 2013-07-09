@@ -939,12 +939,22 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
        w[Y][Z] = 0.5*(velocity_d[Y*nsites_cd+indexp1] - velocity_d[Y*nsites_cd+indexm1]);
        w[Z][Z] = 0.5*(velocity_d[Z*nsites_cd+indexp1] - velocity_d[Z*nsites_cd+indexm1]);
        
+
+       /* Tracelessness */
+
+       double tr = r3_cd*(w[X][X] + w[Y][Y] + w[Z][Z]);
+       w[X][X] -= tr;
+       w[Y][Y] -= tr;
+       w[Z][Z] -= tr;
+
+
+
      //end  hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
 	  trace_qw = 0.0;
 
 	  for (ia = 0; ia < 3; ia++) {
-	    trace_qw += q[ia][ia]*w[ia][ia];
 	    for (ib = 0; ib < 3; ib++) {
+	      trace_qw += q[ia][ib]*w[ib][ia];
 	      d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
 	      omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
 	    }
