@@ -22,6 +22,7 @@
 #include "coords.h"
 #include "psi_s.h"
 #include "psi_sor.h"
+#include "timer.h"
 
 #include "psi_fft.h"
 
@@ -43,6 +44,8 @@ int main() {
   pe_init();
   coords_init();
 
+  TIMER_init();
+
   psi_t *psi_sor = NULL;
   psi_t *psi_fft = NULL;
   
@@ -60,6 +63,7 @@ int main() {
   psi_epsilon_set(psi_fft, REF_PERMEATIVITY);
 
   coords_info();
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(global_coord);
   coords_nlocal_offset(global_coord_save);
@@ -92,24 +96,25 @@ int main() {
     global_coord[X] ++;
   } 
 
-  for(i=0; i<nlocal[X]+2; i++) {
-    for(j=0; j<nlocal[Y]+2; j++) {
-      for(k=0; k<nlocal[Z]+2; k++) {
-        if(pe_rank() == 0) {
-//          printf("%d %d %d %f %f\n", i,j,k,psi_fft->psi[coords_index(i,j,k)], psi_sor->psi[coords_index(i,j,k)]);
-        }
-//        assert(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)] < 1e-5);
-      }
-    }
-  }
 
-  /*use psi_sor_poisson to solve*/
+for(i=0; i<3; i++) { 
+ /*use psi_sor_poisson to solve*/
+   TIMER_start(TIMER_PSI_SOR_UPDATE);
   if(pe_rank() == 0) { printf("Solving with SOR\n"); }
-  psi_sor_poisson(psi_sor);
+    psi_sor_poisson(psi_sor);
+   TIMER_stop(TIMER_PSI_SOR_UPDATE);
+}
 
+
+for(i=0; i<3; i++) { 
   /*use psi_fft_poisson to solve*/
+   TIMER_start(TIMER_PSI_FFT_UPDATE);
   if(pe_rank() == 0) { printf("Solving with FFT\n"); }
   psi_fft_poisson(psi_fft);
+   TIMER_stop(TIMER_PSI_FFT_UPDATE);
+}  
+
+  TIMER_statistics();
 
   if(pe_rank() == 0) { printf("Checking results\n"); }
   /*check results are acceptably similar */
@@ -117,7 +122,7 @@ int main() {
     for(j=1; j<=nlocal[Y]; j++) {
       for(k=1; k<=nlocal[Z]; k++) {
         if(pe_rank() == 0) {
-          printf("%f %f\n", psi_fft->psi[coords_index(i,j,k)], psi_sor->psi[coords_index(i,j,k)]);
+//          printf("%f %f\n", psi_fft->psi[coords_index(i,j,k)], psi_sor->psi[coords_index(i,j,k)]);
         }
 //        assert(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)] < 1e-5);
       }
@@ -128,6 +133,7 @@ int main() {
   psi_free(psi_sor);
   psi_free(psi_fft);
 
+  psi_fft_clean();
   coords_finish();
   pe_finalise();
   MPI_Finalize();

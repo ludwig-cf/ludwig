@@ -24,7 +24,6 @@
 #include "coords.h"
 #include "decomp.h"
 
-static int num_procs          = 0;
 
 /*****************************************************************************
  *
@@ -51,7 +50,6 @@ int main() {
   pe_init();
   coords_init();
 
-  struct holder *data        = malloc(sizeof(struct holder));
   MPI_Comm ludwig_comm       = cart_comm();
   double global_coord[3]     = {0, 0, 0};
   int nlocal_offset[3]       = {0, 0, 0};
@@ -59,10 +57,10 @@ int main() {
   int isize[3]               = {0, 0, 0};
   int istart[3]              = {0, 0, 0};
   int proc_dims[2]           = {0, 0};
-  int i, j, k;
   int rank                   = cart_rank();
+  int num_procs              = pe_size();
+  int i, j, k;
 
-  num_procs = pe_size();
   coords_nlocal(nlocal);
 
 
@@ -74,9 +72,10 @@ int main() {
   assert(start_psi);
   assert(end_psi);
 
+  coords_info();
   coords_nlocal_offset(nlocal_offset);
 
-  /* initialise elements of send_array to binary evaluation of global coordinates */
+  /* initialise elements of send_array to hash evaluation of global coordinates */
   for(i=1; i<=nlocal[X]; i++) {
     global_coord[X] = (nlocal_offset[X] + i - 1); 
     for(j=1; j<=nlocal[Y]; j++) {
@@ -88,14 +87,14 @@ int main() {
     }
   }
 
-  initialise_decomposition_swap(proc_dims);
+  decomp_initialise(proc_dims);
 
-  pencil_starts(istart);
-  pencil_sizes(isize);
+  decomp_pencil_starts(istart);
+  decomp_pencil_sizes(isize);
 
   double *recv_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
 
-  cart_to_pencil(start_psi->psi, recv_array);
+  decomp_cart_to_pencil(start_psi->psi, recv_array);
 
 
   /*test global coordinates of all points are correct */
@@ -110,7 +109,7 @@ int main() {
     }
   }
 
-  pencil_to_cart(recv_array, end_psi->psi);
+  decomp_pencil_to_cart(recv_array, end_psi->psi);
 
   /*test final array is the same as the original*/
   for(i=1; i<=nlocal[X]; i++) {
@@ -126,6 +125,7 @@ int main() {
   psi_free(start_psi);
   psi_free(end_psi);
 
+  decomp_finish();
   coords_finish();
   pe_finalise();
   p3dfft_clean();

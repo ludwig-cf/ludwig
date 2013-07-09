@@ -32,14 +32,14 @@ MPIRUN = mpirun -np
 NPROCS = 8
 
 SRC     = ../src
-INCLUDE = -I$(SRC)
+INCLUDE = -I$(SRC) -I../../../../p3dfft/include
 OPTS    = -D_D3Q19_
 #CFLAGS  = -Wall
 
 MPI_STUB_INCLUDE = -I../mpi_s
 MPI_STUB_LIB = -L../mpi_s -lmpi
 
-FFTLIBS = -L../lib -lp3dfft -lfftw3 -pgf90libs
+FFTLIBS = -L../../../../p3dfft/lib -L../../../../fftw/lib -lp3dfft -lfftw3 -pgf90libs
 
 CLIBS  = -lm $(FFTLIBS)
 MPILIB = -lmpi
