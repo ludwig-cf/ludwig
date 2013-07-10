@@ -34,6 +34,23 @@
 
 static void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize[]);
 
+/*****************************************************************************
+ *
+ *  psi_sor_poisson
+ *
+ *
+ *  First attempt.
+ *
+ *  If this is an initial solve, the decomp_initialise() call 
+ *  will have some work to do determining the communication patterns.
+ *  Subsequent calls can use the values determined the first time
+ *  and thus are much faster
+ *
+ *  Currently considering moving the decomp_initialise() call further up the
+ *  call tree to improve clarity of timings
+ *
+ *****************************************************************************/
+
 int psi_fft_poisson(psi_t *obj){
   
 
@@ -58,7 +75,7 @@ int psi_fft_poisson(psi_t *obj){
 
   coords_nlocal(nlocal);
 
-  double *recv_array;
+  double *pencil_array;
   double *end_array;
   double *transf_array;
 
@@ -78,48 +95,36 @@ int psi_fft_poisson(psi_t *obj){
     }
   }
 
+/* could call this higher up the call tree, allowing for 
+ * the timnings for each stage to be clearer.
+ * Currently, the first time this is called it takes up a significant portion
+ * of the time that the psi_fft_poisson routine takes up
+ */
   decomp_initialise(proc_dims);
 
-/*  if(pe_rank() == 0) { printf("printing array in psi_fft!\n"); }
-  for(i=1; i<=nlocal[X]; i++) {
-    for(j=1; j<=nlocal[Y]; j++) {
-      for(k=1; k<=nlocal[Z]; k++) {
-        if(pe_rank() == 0) {
-          printf("%8.5f\n", obj->psi[coords_index(i,j,k)]);
-        }
-//        assert(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)] < 1e-5);
-      }
-    }
-  }*/
 
   decomp_pencil_sizes(isize); 
-  decomp_pencil_starts(istart);
 
-  recv_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
+  pencil_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
+/* 
+ * temporarily using end_array, in future will replace this with pencil_array
+ * to reduce memory needed
+ */
   end_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
 
   ip = 2;
   p3dfft_get_dims(fstart, fend, fsize, ip);
-  if(pe_rank() == 0) { printf("fsizes %d %d %d, isizes %d %d %d\n", fsize[0], fsize[1], fsize[2], isize[0], isize[1], isize[2]); }
 
   transf_array = malloc(2*fsize[0]*fsize[1]*fsize[2] * sizeof(double)); /* x2 since they will be complex numbers */
 
 /*arrays need to be malloc'd before this call*/
-  decomp_cart_to_pencil(rho_elec, recv_array);
+  decomp_cart_to_pencil(rho_elec, pencil_array);
   if(rank == 0) { printf("Proccessors now in pencil decomposition\n"); }
 
-    for(k=0; k<isize[Z]; k++) {
-      for(j=0; j<isize[Y]; j++) {
-        for(i=0; i<isize[X]; i++) {
-//          printf("%8.5f\n", recv_array[index_3d_f(k,j,i,isize)]);
-        }
-      }
-    }
 
   if(rank == 0) { printf("Performing forward fft\n"); }
-  p3dfft_ftran_r2c(recv_array, transf_array, op_f);
+  p3dfft_ftran_r2c(pencil_array, transf_array, op_f);
 
-//  double *p = transf_array;
   int farray_size[3];
 
   for(i=0; i<3; i++) {
@@ -132,43 +137,19 @@ int psi_fft_poisson(psi_t *obj){
   }
 
 
-  for(i=0; i<farray_size[Z]; i++) {
-    for(j=0; j<farray_size[Y]; j++) {
-      for(k=0; k<farray_size[X]; k+=2) {
-        if(pe_rank() == 0) {
-//          printf("%d %d %d %f %f\n", i,j,k,transf_array[index_3d_f(i,j,k,farray_size)], transf_array[index_3d_f(i,j,k+1,farray_size)]);
-        }
-//        assert(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)] < 1e-5);
-      }
-    }
-  }
-
   solve_poisson(transf_array, obj->epsilon, fstart, fsize);
-
-
-  if(pe_rank() == 0) printf("after k\n");
-  for(i=0; i<farray_size[Z]; i++) {
-    for(j=0; j<farray_size[Y]; j++) {
-      for(k=0; k<farray_size[X]; k+=2) {
-        if(pe_rank() == 0) {
-//          printf("%d %d %d %f %f\n", i,j,k,transf_array[index_3d_f(i,j,k,farray_size)], transf_array[index_3d_f(i,j,k+1,farray_size)]);
-        }
-//        assert(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)] < 1e-5);
-      }
-    }
-  }
-
   
   if(rank == 0) { printf("Performing backward fft\n"); }
   p3dfft_btran_c2r(transf_array, end_array, op_b);
 
-/* checking the array is the same after transforming back also dividing by (nx*ny*nz)*/
+/* dividing by (nx*ny*nz) 
+ * could do this in solve_poisson()?*/
       for(k=0; k<isize[Z]; k++) {
         for(j=0; j<isize[Y]; j++) {
           for(i=0; i<isize[X]; i++) {
             end_array[index_3d_f(k,j,i,isize)] = end_array[index_3d_f(k,j,i,isize)]/(N_total(0)*N_total(1)*N_total(2));
-//        if(fabs(recv_array[index_3d_f(k,j,i,isize)] - end_array[index_3d_f(k,j,i,isize)] ) > 0.1e-10) {
-//              printf("error: rank %d, end array[%d][%d][%d] is wrong, %f and should be %f\n", rank, k, j, i, end_array[index_3d_f(k,j,i,isize)], recv_array[index_3d_f(k,j,i,isize)]);
+//        if(fabs(pencil_array[index_3d_f(k,j,i,isize)] - end_array[index_3d_f(k,j,i,isize)] ) > 0.1e-10) {
+//              printf("error: rank %d, end array[%d][%d][%d] is wrong, %f and should be %f\n", rank, k, j, i, end_array[index_3d_f(k,j,i,isize)], pencil_array[index_3d_f(k,j,i,isize)]);
 //            }
           }
         }
@@ -176,28 +157,35 @@ int psi_fft_poisson(psi_t *obj){
 
   decomp_pencil_to_cart(end_array, obj->psi);
 
-
-/*  for(k=0; k<nlocal[X]; k++) {
-    for(j=0; j<nlocal[Y]; j++) {
-      for(i=0; i<nlocal[Z]; i++) {
-        if(abs(obj->psi[index_3d_c(k,j,i,nlocal)] - final_array[index_3d_c(k,j,i,nlocal)]) > 1e-10) {
-          printf("rank %d, error: final array[%d][%d][%d] is wrong, %f and should be %f\n", rank, k, j, i, final_array[index_3d_c(k,j,i,nlocal)], obj->psi[index_3d_c(k,j,i,nlocal)]);
-        }
-      }
-    }
-  }*/
-
   if(rank == 0) { printf("Data now in cartesian processor decomposition\n"); }
 
 
 /* need to free memory */
   free(rho_elec);
-  free(recv_array);
+  free(pencil_array);
   free(transf_array);
   free(end_array);
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  solve_poisson
+ *
+ *  In Fourier Space, Poisson's equation looks like
+ *
+ *  Theta(k) = Sigma(k)/(k^2 epsilon)
+ *
+ *  Where Theta(k) = F(psi) and Sigma(k) = F(rho).
+ *  Thus multiplying the transform of rho by 1/(k^2 epsilon) before transforming
+ *  back to real space solves Poisson's equation
+ *
+ *
+ *  Multiply the transformed array by 1/(k^2)epsilon in order to 
+ *  solve Poisson's equation
+ *
+ *****************************************************************************/
 
 void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize[]) {
 
@@ -227,7 +215,7 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
     }
   }
 
-/*loop over elements, computing and multiplying by 1/k at each*/
+/*loop over elements, computing and multiplying by 1/k at each lattice point*/
 /* the ordering here is important, depending on whether P3DFFT was built
  * with stride 1 defined or not will change the sizes of each array dimension.
  * stride 1 allows the transposed data to be contiguous in the Z direction
@@ -248,9 +236,9 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
         else {
           k_square = 1/((kx*kx + ky*ky + kz*kz)*epsilon);
         }
-        transf_array[index_3d_f(i,j,k,farray_size)] = -transf_array[index_3d_f(i,j,k,farray_size)]*k_square;
+        transf_array[index_3d_f(i,j,k,farray_size)] = transf_array[index_3d_f(i,j,k,farray_size)]*k_square;
         /* complex numbers so need to multiply both parts of the number */
-        transf_array[index_3d_f(i,j,k+1,farray_size)] = -transf_array[index_3d_f(i,j,k+1,farray_size)]*k_square;
+        transf_array[index_3d_f(i,j,k+1,farray_size)] = transf_array[index_3d_f(i,j,k+1,farray_size)]*k_square;
         if(pe_rank() == 1) {
 //          printf("global %d %d %d\n", global_coord[X], global_coord[Y], global_coord[Z]); 
 //          printf("x:%2d %2d %8.5f y:%2d %2d %8.5f z:%2d %2d %8.5f %8.5f\n", k, ix, kx, j, iy, ky, i, iz, kz, k_square);
@@ -313,6 +301,14 @@ stride 1 not enabled so ordering of fsize array is now {Z,Y,X}.
 
 }
 
+/************
+ *
+ * psi_fft_clean
+ *
+ * ensure all memory is freed
+ * should be moved up with decomp_initialise()
+ *
+ */
 void psi_fft_clean() {
 
   decomp_finish();

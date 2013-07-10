@@ -187,6 +187,7 @@ int psi_sor_poisson(psi_t * obj) {
     }
   }
 
+  if(pe_rank() == 0) printf("n: %d tolrel: %f tolabs: %f\n", n, tol_rel, tol_abs);
   return 0;
 }
 
@@ -381,6 +382,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
       if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) break;
     }
   }
+
 
   return 0;
 }
