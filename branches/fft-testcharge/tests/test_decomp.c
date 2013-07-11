@@ -59,6 +59,7 @@ int main() {
   int proc_dims[2]           = {0, 0};
   int rank                   = cart_rank();
   int num_procs              = pe_size();
+  int ip                     = 1;
   int i, j, k;
 
   coords_nlocal(nlocal);
@@ -89,8 +90,9 @@ int main() {
 
   decomp_initialise(proc_dims);
 
-  decomp_pencil_starts(istart);
-  decomp_pencil_sizes(isize);
+  ip = 1;
+  decomp_pencil_starts(istart, ip);
+  decomp_pencil_sizes(isize, ip);
 
   double *recv_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
 
