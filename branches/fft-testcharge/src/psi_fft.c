@@ -15,9 +15,6 @@
  *
  *****************************************************************************/
 
- /*
- * want to have a psi_fft function which can call the decomposition swap
- */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,7 +33,7 @@ static void solve_poisson(double *transf_array, double epsilon, int fstart[], in
 
 /*****************************************************************************
  *
- *  psi_sor_poisson
+ *  psi_fft_poisson
  *
  *
  *  First attempt.
@@ -47,20 +44,20 @@ static void solve_poisson(double *transf_array, double epsilon, int fstart[], in
  *  and thus are much faster
  *
  *  Currently considering moving the decomp_initialise() call further up the
- *  call tree to improve clarity of timings
+ *  call tree to improve clarity of timings and make it easier to pass proc_dims
  *
  *****************************************************************************/
 
 int psi_fft_poisson(psi_t *obj){
   
 
-  int num_procs, rank;
+  int num_procs;
   MPI_Comm ludwig_comm;
   MPI_Comm p3dfft_comm;
 
   int nlocal[3];
   int coords[3];
-  int proc_dims[2];
+  int proc_dims[2] = {0, 0};
   int i, j, k;
   int istart[3], iend[3], isize[3];
   int ip;
@@ -71,7 +68,6 @@ int psi_fft_poisson(psi_t *obj){
 
   ludwig_comm = cart_comm();
   num_procs = pe_size();
-  rank = cart_rank();
 
   coords_nlocal(nlocal);
 
@@ -102,8 +98,12 @@ int psi_fft_poisson(psi_t *obj){
  */
   decomp_initialise(proc_dims);
 
+  ip = 1;
+  decomp_pencil_sizes(isize, ip); 
 
-  decomp_pencil_sizes(isize); 
+  ip = 2;
+  decomp_pencil_sizes(fsize, ip);
+  decomp_pencil_starts(fstart, ip);
 
   pencil_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
 /* 
@@ -112,34 +112,20 @@ int psi_fft_poisson(psi_t *obj){
  */
   end_array = malloc(isize[0]*isize[1]*isize[2] * sizeof(double));
 
-  ip = 2;
-  p3dfft_get_dims(fstart, fend, fsize, ip);
-
   transf_array = malloc(2*fsize[0]*fsize[1]*fsize[2] * sizeof(double)); /* x2 since they will be complex numbers */
 
 /*arrays need to be malloc'd before this call*/
   decomp_cart_to_pencil(rho_elec, pencil_array);
-  if(rank == 0) { printf("Proccessors now in pencil decomposition\n"); }
+  if(cart_rank() == 0) { printf("Proccessors now in pencil decomposition\n"); }
 
 
-  if(rank == 0) { printf("Performing forward fft\n"); }
+  if(cart_rank() == 0) { printf("Performing forward fft\n"); }
   p3dfft_ftran_r2c(pencil_array, transf_array, op_f);
-
-  int farray_size[3];
-
-  for(i=0; i<3; i++) {
-    if(i != X) {
-      farray_size[i] = fsize[i];
-    }
-    else {
-      farray_size[i] = 2*fsize[i];
-    }
-  }
 
 
   solve_poisson(transf_array, obj->epsilon, fstart, fsize);
   
-  if(rank == 0) { printf("Performing backward fft\n"); }
+  if(cart_rank() == 0) { printf("Performing backward fft\n"); }
   p3dfft_btran_c2r(transf_array, end_array, op_b);
 
 /* dividing by (nx*ny*nz) 
@@ -148,16 +134,13 @@ int psi_fft_poisson(psi_t *obj){
         for(j=0; j<isize[Y]; j++) {
           for(i=0; i<isize[X]; i++) {
             end_array[index_3d_f(k,j,i,isize)] = end_array[index_3d_f(k,j,i,isize)]/(N_total(0)*N_total(1)*N_total(2));
-//        if(fabs(pencil_array[index_3d_f(k,j,i,isize)] - end_array[index_3d_f(k,j,i,isize)] ) > 0.1e-10) {
-//              printf("error: rank %d, end array[%d][%d][%d] is wrong, %f and should be %f\n", rank, k, j, i, end_array[index_3d_f(k,j,i,isize)], pencil_array[index_3d_f(k,j,i,isize)]);
-//            }
           }
         }
       }
 
   decomp_pencil_to_cart(end_array, obj->psi);
 
-  if(rank == 0) { printf("Data now in cartesian processor decomposition\n"); }
+  if(cart_rank() == 0) { printf("Data now in cartesian processor decomposition\n"); }
 
 
 /* need to free memory */
@@ -239,10 +222,7 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
         transf_array[index_3d_f(i,j,k,farray_size)] = transf_array[index_3d_f(i,j,k,farray_size)]*k_square;
         /* complex numbers so need to multiply both parts of the number */
         transf_array[index_3d_f(i,j,k+1,farray_size)] = transf_array[index_3d_f(i,j,k+1,farray_size)]*k_square;
-        if(pe_rank() == 1) {
-//          printf("global %d %d %d\n", global_coord[X], global_coord[Y], global_coord[Z]); 
-//          printf("x:%2d %2d %8.5f y:%2d %2d %8.5f z:%2d %2d %8.5f %8.5f\n", k, ix, kx, j, iy, ky, i, iz, kz, k_square);
-        }
+
         global_coord[X] ++;
       }
       global_coord[X] = fstart[X] - 1;
@@ -285,7 +265,7 @@ stride 1 not enabled so ordering of fsize array is now {Z,Y,X}.
         transf_array[index_3d_f(i,j,k,farray_size)] = -transf_array[index_3d_f(i,j,k,farray_size)]*k_square;
         // complex numbers so need to multiply both parts of the number 
         transf_array[index_3d_f(i,j,k+1,farray_size)] = -transf_array[index_3d_f(i,j,k+1,farray_size)]*k_square;
-        if(pe_rank() == 1) {
+        if(cart_rank() == 1) {
           printf("test global %d %d %d\n", global_coord[X], global_coord[Y], global_coord[Z]); 
           printf("x:%2d %2d %8.5f y:%2d %2d %8.5f z:%2d %2d %8.5f %8.5f\n", k, ix, kx, j, iy, ky, i, iz, kz, k_square);
         }
@@ -308,7 +288,7 @@ stride 1 not enabled so ordering of fsize array is now {Z,Y,X}.
  * ensure all memory is freed
  * should be moved up with decomp_initialise()
  *
- */
+ **************/
 void psi_fft_clean() {
 
   decomp_finish();
