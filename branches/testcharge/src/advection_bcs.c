@@ -113,7 +113,7 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic + 1, jc, jc);
+	index = coords_index(ic + 1, jc, kc);
 	map_status(map, index, &status);
 	maskx = (status == MAP_FLUID);
 
