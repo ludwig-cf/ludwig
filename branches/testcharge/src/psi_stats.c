@@ -57,13 +57,11 @@ int psi_stats_info(psi_t * obj) {
 
   psi_stats_reduce(obj, rho_min, rho_max, rho_tot, 0, comm);
 
-  info("[psi] %14.7e %14.7e %14.7e\n", rho_min[0], rho_max[0], rho_tot[0]);
+  info("[psi] %14.7e %14.7e %14.7e\n", rho_tot[0], rho_min[0], rho_max[0]);
   for (n = 0; n < nk; n++) {
-    info("[rho] %14.7e %14.7e %14.7e\n", rho_min[1+n], rho_max[1+n],
-	 rho_tot[1+n]);
+    info("[rho] %14.7e %14.7e %14.7e\n", rho_tot[1+n], rho_min[1+n], rho_max[1+n]);
   }
-  info("[elc] %14.7e %14.7e %14.7e\n", rho_min[1+nk], rho_max[1+nk],
-       rho_tot[1+nk]);
+  info("[elc] %14.7e %14.7e %14.7e\n",  rho_tot[1+nk], rho_min[1+nk], rho_max[1+nk]);
 
   free(rho_tot);
   free(rho_max);

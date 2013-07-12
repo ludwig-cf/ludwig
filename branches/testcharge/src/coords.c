@@ -388,7 +388,6 @@ static int is_ok_decomposition() {
 
 int coords_index(const int ic, const int jc, const int kc) {
 
-
   assert(initialised_);
   assert(ic >= 1-nhalo_);
   assert(jc >= 1-nhalo_);
