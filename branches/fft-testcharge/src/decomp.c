@@ -61,7 +61,7 @@ static void get_proc_dims(int input_proc_dims[]);
  *
  *****************************************************************************/
 
-void decomp_initialise(int input_proc_dims[2]) {
+void decomp_init(int input_proc_dims[2]) {
 
   if(initialised_ == 0) {
     int nsize[3];
@@ -674,4 +674,7 @@ void decomp_finish() {
   }
 
   free(data);
+
+  p3dfft_clean();
 }
+

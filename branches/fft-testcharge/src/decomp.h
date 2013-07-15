@@ -12,7 +12,7 @@ struct decomp_comms {
 
 };
 
-void decomp_initialise(int input_proc_dims[]);
+void decomp_init(int input_proc_dims[]);
 void decomp_cart_to_pencil(double *in_array, double *out_array);
 void decomp_pencil_to_cart(double *in_array, double *out_array);
 int index_3d_f (int x, int y, int z, int size[]);

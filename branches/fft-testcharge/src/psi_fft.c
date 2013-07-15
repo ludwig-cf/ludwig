@@ -78,7 +78,9 @@ int psi_fft_poisson(psi_t *obj){
 /* initial data to be solved, with halos
  * (could strip them off here and make the subarrays easier)
  */
-  double *rho_elec = malloc(coords_nsites()*sizeof(double));
+  double *rho_elec;
+
+  rho_elec = malloc(coords_nsites()*sizeof(double));
   double rho;
 
   for(i=1; i<=nlocal[X]; i++) {
@@ -91,12 +93,6 @@ int psi_fft_poisson(psi_t *obj){
     }
   }
 
-/* could call this higher up the call tree, allowing for 
- * the timnings for each stage to be clearer.
- * Currently, the first time this is called it takes up a significant portion
- * of the time that the psi_fft_poisson routine takes up
- */
-  decomp_initialise(proc_dims);
 
   ip = 1;
   decomp_pencil_sizes(isize, ip); 
@@ -116,16 +112,16 @@ int psi_fft_poisson(psi_t *obj){
 
 /*arrays need to be malloc'd before this call*/
   decomp_cart_to_pencil(rho_elec, pencil_array);
-  if(cart_rank() == 0) { printf("Proccessors now in pencil decomposition\n"); }
+//  if(cart_rank() == 0) { printf("Proccessors now in pencil decomposition\n"); }
 
 
-  if(cart_rank() == 0) { printf("Performing forward fft\n"); }
+//  if(cart_rank() == 0) { printf("Performing forward fft\n"); }
   p3dfft_ftran_r2c(pencil_array, transf_array, op_f);
 
 
   solve_poisson(transf_array, obj->epsilon, fstart, fsize);
   
-  if(cart_rank() == 0) { printf("Performing backward fft\n"); }
+//  if(cart_rank() == 0) { printf("Performing backward fft\n"); }
   p3dfft_btran_c2r(transf_array, end_array, op_b);
 
 /* dividing by (nx*ny*nz) 
@@ -140,7 +136,9 @@ int psi_fft_poisson(psi_t *obj){
 
   decomp_pencil_to_cart(end_array, obj->psi);
 
-  if(cart_rank() == 0) { printf("Data now in cartesian processor decomposition\n"); }
+//  if(cart_rank() == 0) { printf("Data now in cartesian processor decomposition\n"); }
+
+  psi_halo_psi(obj);
 
 
 /* need to free memory */
@@ -278,21 +276,6 @@ stride 1 not enabled so ordering of fsize array is now {Z,Y,X}.
     global_coord[X] ++; 
   } 
 #endif*/
-
-}
-
-/************
- *
- * psi_fft_clean
- *
- * ensure all memory is freed
- * should be moved up with decomp_initialise()
- *
- **************/
-void psi_fft_clean() {
-
-  decomp_finish();
-  p3dfft_clean();
 
 }
 

@@ -94,6 +94,8 @@
 #include "psi_force.h"
 #include "psi_colloid.h"
 #include "nernst_planck.h"
+#include "psi_fft.h"
+#include "decomp.h"
 
 /* Statistics */
 #include "stats_colloid.h"
@@ -331,6 +333,8 @@ void ludwig_run(const char * inputfile) {
   assert(ludwig);
 
   pe_init();
+
+  int proc_dims[2] = {0, 0};
   RUN_read_input_file(inputfile);
 
   ludwig_rt(ludwig);
@@ -356,6 +360,8 @@ void ludwig_run(const char * inputfile) {
   info("Starting time step loop.\n");
   subgrid_on(&is_subgrid);
 
+  decomp_init(proc_dims);
+
   while (next_step()) {
 
     TIMER_start(TIMER_STEPS);
@@ -380,7 +386,8 @@ void ludwig_run(const char * inputfile) {
       }
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
-      psi_sor_poisson(ludwig->psi);
+//      psi_sor_poisson(ludwig->psi);
+      psi_fft_poisson(ludwig->psi);      
       psi_halo_rho(ludwig->psi);
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
       nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
@@ -614,6 +621,7 @@ void ludwig_run(const char * inputfile) {
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 
+  decomp_finish();
   stats_rheology_finish();
   stats_turbulent_finish();
   stats_calibration_finish();
