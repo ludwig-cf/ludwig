@@ -105,6 +105,19 @@ void collide_gpu(int async=0) {
       
 
 
+  /* Bulk */
+  nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
+
+  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
+  					      f_d,
+  					      site_map_status_d,
+  					       phi_site_d,
+  					       grad_phi_site_d,
+  					       delsq_phi_site_d,
+  							 force_d,
+  						     velocity_d,INTERIOR);
+
+
  /* X edges */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nhalo,
@@ -141,21 +154,15 @@ void collide_gpu(int async=0) {
  							 force_d,
  						       velocity_d,Z);
 
+
+  //KEEP THESE SYNC POINTS IN JUST NOW UNTL SURE RACE-FREE RE. CORNERS
+  cudaStreamSynchronize(streamX);
+  cudaStreamSynchronize(streamY);
+  cudaStreamSynchronize(streamZ);
+
   //if (async==1)
   //  cudaStreamSynchronize(streamCOLL);
 
-
-  /* Bulk */
-  nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
-
-  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
-  					      f_d,
-  					      site_map_status_d,
-  					       phi_site_d,
-  					       grad_phi_site_d,
-  					       delsq_phi_site_d,
-  							 force_d,
-  						     velocity_d,INTERIOR);
 
  /*  /\* Bulk *\/ */
  /* nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
@@ -184,9 +191,9 @@ void collide_gpu(int async=0) {
   //cudaThreadSynchronize();
 
   if (async==0){
-  cudaStreamSynchronize(streamX);
-  cudaStreamSynchronize(streamY);
-  cudaStreamSynchronize(streamZ);
+    //cudaStreamSynchronize(streamX);
+    //cudaStreamSynchronize(streamY);
+    //cudaStreamSynchronize(streamZ);
   cudaStreamSynchronize(streamCOLL);
 
   cudaStreamDestroy(streamCOLL);

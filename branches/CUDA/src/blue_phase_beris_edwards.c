@@ -108,7 +108,7 @@ void blue_phase_beris_edwards(void) {
   if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     	info("Error: blue_phase_be_surface not yet supported in GPU mode\n");
 	exit(1);
-    //blue_phase_be_surface(hs5);
+    //blue_phase_be_surface(hs5;
   }
 
   blue_phase_be_update_gpu(hs5);
