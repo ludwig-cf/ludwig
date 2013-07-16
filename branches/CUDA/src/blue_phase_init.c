@@ -835,9 +835,15 @@ void blue_set_random_q_init(void) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
   
+#ifdef TITAN
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+#else
   for (ic = 1; ic <= N_total(X); ic++) {
     for (jc = 1; jc <= N_total(Y); jc++) {
       for (kc = 1; kc <= N_total(Z); kc++) {
+#endif
 
 	phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
 	phase2 = acos(2.0*ran_serial_uniform() - 1.0);
@@ -893,9 +899,15 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
   
-  for (i = 1; i<=N_total(X); i++) {
-    for (j = 1; j<=N_total(Y); j++) {
-      for (k = 1; k<=N_total(Z); k++) {
+#ifdef TITAN
+  for (i = 1; i <= nlocal[X]; i++) {
+    for (j = 1; j <= nlocal[Y]; j++) {
+      for (k = 1; k <= nlocal[Z]; k++) {
+#else
+  for (i = 1; i <= N_total(X); i++) {
+    for (j = 1; j <= N_total(Y); j++) {
+      for (k = 1; k <= N_total(Z); k++) {
+#endif
 
 	if((i>xmin) && (i<xmax) &&
 	   (j>ymin) && (j<ymax) &&

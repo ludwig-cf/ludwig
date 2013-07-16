@@ -1106,9 +1106,17 @@ void collision_init(void) {
 
   fl_ = fluctuations_create(nsites);
 
+
+#ifdef TITAN
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+#else
   for (ic = 1; ic <= ntotal[X]; ic++) {
     for (jc = 1; jc <= ntotal[Y]; jc++) {
       for (kc = 1; kc <= ntotal[Z]; kc++) {
+#endif
+
 	state[0] = fluctuations_uniform(serial);
 	state[1] = fluctuations_uniform(serial);
 	state[2] = fluctuations_uniform(serial);

@@ -136,7 +136,9 @@ void phi_io_info_set(struct io_info_t * info) {
   io_info_set_bytesize(io_info_phi, nop_*sizeof(double));
 
   io_info_set_format_binary(io_info_phi);
+#ifndef TITAN
   if (nop_ > 0) io_write_metadata("phi", io_info_phi);
+#endif
 
   return;
 }

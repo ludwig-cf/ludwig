@@ -101,9 +101,15 @@ void MODEL_init( void ) {
 
     /* Initialise phi with initial value +- noise */
 
+#ifdef TITAN
+    for(i=1; i<=N[X]; i++)
+      for(j=1; j<=N[Y]; j++)
+	for(k=1; k<=N[Z]; k++) {
+#else
     for(i=1; i<=N_total(X); i++)
       for(j=1; j<=N_total(Y); j++)
 	for(k=1; k<=N_total(Z); k++) {
+#endif
 
 	  phi = phi0 + noise0*(ran_serial_uniform() - 0.5);
 

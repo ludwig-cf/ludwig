@@ -422,7 +422,9 @@ void scalar_q_io_info_set(struct io_info_t * info) {
   io_info_set_bytesize(io_info_scalar_q_, 5*sizeof(double));
 
   io_info_set_format_binary(io_info_scalar_q_);
+#ifndef TITAN
   io_write_metadata("qs_dir", io_info_scalar_q_);
+#endif
 
   return;
 }

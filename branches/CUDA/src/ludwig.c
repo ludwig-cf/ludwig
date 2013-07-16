@@ -237,15 +237,20 @@ void ludwig_run(const char * inputfile) {
     polar_active_rt_initial_conditions();
   }
 
+#ifndef TITAN
   if (step == 0 && phi_nop() == 5) {
     blue_phase_rt_initial_conditions();
     info("Writing scalar order parameter file at step %d!\n", step);
     sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
     io_write(filename, io_info_scalar_q_);
   }
+#endif
 
   info("Initial conditions.\n");
+
+  #ifndef TITAN
   stats_distribution_print();
+  #endif
   phi_stats_print_stats();
   ludwig_report_momentum();
 

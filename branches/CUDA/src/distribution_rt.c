@@ -81,7 +81,10 @@ void distribution_run_time(void) {
 
   distribution_init();
 
+#ifndef TITAN
   io_write_metadata("dist", distribution_io_info());
+#endif
+
   if (nreduced == 1) distribution_halo_set_reduced();
 
   return;

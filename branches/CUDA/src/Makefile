@@ -48,8 +48,19 @@ LIBRARY = libludwig.a
 
 CC = gcc 
 MPICC = mpicc
-OPTS = -D_D3Q19_ -DNDEBUG
-CFLAGS = -Wall -O3 #-g
+CFLAGS = -O3 -Wall #-g
+MPIDIR=/usr/include/mpich2-x86_64
+
+
+ifeq ($(MYHOSTNAME),titan)
+CC = cc #gcc 
+MPICC = cc #mpicc
+CFLAGS = -O3 
+MPIDIR=$(MPICH_DIR)
+TITANFLAG=-DTITAN
+endif
+
+OPTS = -D_D3Q19_ -DNDEBUG $(TITANFLAG)
 
 
 INC = -I.
@@ -63,7 +74,7 @@ GPUCPPFLAG = -D_GPU_
 GPUOPTS = $(OPTS) $(GPUCPPFLAG) -Xptxas -v #,-abi=no
 GPUCFLAGS = -O3 -arch=sm_35
 #GPUCFLAGS = -arch=sm_21 -g -G 
-GPUINC = $(INC) -I/usr/include/mpich2-x86_64
+GPUINC = $(INC) -I$(MPIDIR)/include 
 
 # -I ../mpi_s
 #-I /export/mpich2/2-1.3-gcc/include

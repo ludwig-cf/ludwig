@@ -132,8 +132,9 @@ static void hydrodynamics_init_io() {
   io_info_set_bytesize(io_info_velocity_, 3*sizeof(double));
 
   io_info_set_format_binary(io_info_velocity_);
+#ifndef TITAN
   io_write_metadata("vel", io_info_velocity_);
-
+#endif
   return;
 }
 
