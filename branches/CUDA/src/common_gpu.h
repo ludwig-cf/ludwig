@@ -15,8 +15,8 @@
 
 #define MAX_COLLOIDS 500
 
-#define GPUS_PER_NODE 4
-//#define GPUS_PER_NODE 1
+//#define GPUS_PER_NODE 4
+#define GPUS_PER_NODE 1
 
 
 /* from coords.h */
