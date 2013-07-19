@@ -41,6 +41,7 @@ static const char * timer_name[] = {"Total",
 				    "Time step loop",
 				    "Propagation",
 				    "Collision",
+				    "Collision Wait",
 				    "Lattice halos",
 				    "phi gradients",
 				    "Lees Edwards BC",
@@ -82,7 +83,8 @@ static const char * timer_name[] = {"Total",
 				    "Halo Y Corner",
 				    "Halo Z Corner",
 				    "Phi Halo h->d",
-				    "Phi Halo unpack d"};
+				    "Phi Halo unpack d",
+				    "Velocity Halo"};
 
 
 /****************************************************************************

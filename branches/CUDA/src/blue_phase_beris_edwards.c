@@ -32,6 +32,7 @@
 #include "advection_bcs.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
+#include "timer.h"
 
 static double Gamma_;     /* Collective rotational diffusion constant */
 
@@ -98,7 +99,9 @@ void blue_phase_beris_edwards(void) {
 
 
   //to do - GPU implement commented out stuff below
+  TIMER_start(TIMER_HALO_VELOCITY);
   velocity_halo_gpu();
+  TIMER_stop(TIMER_HALO_VELOCITY);
   colloids_fix_swd();
   
   //hydrodynamics_leesedwards_transformation();

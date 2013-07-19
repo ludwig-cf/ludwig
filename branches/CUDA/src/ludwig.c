@@ -417,9 +417,9 @@ void ludwig_run(const char * inputfile) {
     TIMER_stop(TIMER_HALO_LATTICE);
 
     if(async==1){
-      TIMER_start(TIMER_COLLIDE);
+      TIMER_start(TIMER_COLLIDE_WAIT);
       collide_wait_gpu();
-      TIMER_stop(TIMER_COLLIDE);
+      TIMER_stop(TIMER_COLLIDE_WAIT);
     }
 
 #else

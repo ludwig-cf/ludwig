@@ -27,6 +27,7 @@ enum timer_id {TIMER_TOTAL,
 	       TIMER_STEPS,
 	       TIMER_PROPAGATE,
 	       TIMER_COLLIDE,
+	       TIMER_COLLIDE_WAIT,
 	       TIMER_HALO_LATTICE,
 	       TIMER_PHI_GRADIENTS,
 	       TIMER_LE,
@@ -68,6 +69,8 @@ enum timer_id {TIMER_TOTAL,
 	       HALOYCORNER,
 	       HALOZCORNER,
 	       PHIHALOPUT,
-	       PHIHALOUNPACK};
+	       PHIHALOUNPACK,
+	       TIMER_HALO_VELOCITY
+};
 
 #endif

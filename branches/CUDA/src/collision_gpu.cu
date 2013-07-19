@@ -115,7 +115,7 @@ void collide_gpu(int async=0) {
   					       grad_phi_site_d,
   					       delsq_phi_site_d,
   							 force_d,
-  						     velocity_d,INTERIOR);
+  						     velocity_d,BULK);
 
 
  /* X edges */
@@ -174,7 +174,7 @@ void collide_gpu(int async=0) {
  /*  					       grad_phi_site_d, */
  /*  					       delsq_phi_site_d, */
  /*  							 force_d, */
- /*  						     velocity_d,ALL); */
+  /*  						     velocity_d,ALL); */
 
 
 
@@ -857,7 +857,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 
 
 
-  if (latchunk==INTERIOR){
+  if (latchunk==BULK){
     N_[X]=N[X]-2*nhalo;  N_[Y]=N[Y]-2*nhalo;  N_[Z]=N[Z]-2*nhalo;    
   }
   else{
@@ -875,7 +875,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 	get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,N_);
 
 
-      if (latchunk==INTERIOR){
+      if (latchunk==BULK){
 	index = get_linear_index_gpu_d(ii+2*nhalo,jj+2*nhalo,kk+2*nhalo,Nall);
       }
       else{

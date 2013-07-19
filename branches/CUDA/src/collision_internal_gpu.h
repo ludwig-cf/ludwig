@@ -11,7 +11,7 @@
 
 #include "common_gpu.h"
 
-enum lattchunks {ALL,INTERIOR,EDGES};
+enum lattchunks {ALL,BULK,EDGES};
 
 
 /* Declarations for gpu kernel/device routines  */

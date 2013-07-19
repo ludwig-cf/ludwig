@@ -56,7 +56,7 @@ ifeq ($(MYHOSTNAME),titan)
 CC = cc #gcc 
 MPICC = cc #mpicc
 CFLAGS = -O3 
-MPIDIR=$(MPICH_DIR)
+MPIDIR=$(MPICH_DIR)/include
 TITANFLAG=-DTITAN
 endif
 
@@ -74,7 +74,7 @@ GPUCPPFLAG = -D_GPU_
 GPUOPTS = $(OPTS) $(GPUCPPFLAG) -Xptxas -v #,-abi=no
 GPUCFLAGS = -O3 -arch=sm_35
 #GPUCFLAGS = -arch=sm_21 -g -G 
-GPUINC = $(INC) -I$(MPIDIR)/include 
+GPUINC = $(INC) -I$(MPIDIR)
 
 # -I ../mpi_s
 #-I /export/mpich2/2-1.3-gcc/include
