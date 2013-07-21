@@ -78,49 +78,85 @@ void collide_gpu(int async=0) {
 
   cudaStreamCreate(&streamCOLL);
   
+  int colltype;
+
+  int nblocks;
   /* set up CUDA grid */
   /* 1D decomposition - use x grid and block dimension only */ 
-  int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  //int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
 
   if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_M10)
 
     {
 
-   collision_multirelaxation_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist,nhalo, 
-    		  N_d,force_global_d, f_d, site_map_status_d, 
-    			force_d, velocity_d);
+      colltype=MULTIRELAXATION;
+    }
+      
+  else if  (ndist == 2 && is_propagation_ode() == 0) 
+    { 
 
-   // still need to finalise comms/calc overlap for single fuid 
-  cudaStreamSynchronize(streamCOLL);
+      colltype=BINARY;
+    }
+
+  //if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_BGK)
+  //  {
+  //    printf("Error, KGK collision not supported yet in GPU version\n");
+  //    exit(1);
+
+  //   }
+
+
+  else
+    {
+      printf("Error, the requested collision is not supported yet in GPU version\n");
+      exit(1);
 
     }
 
-  if  (ndist == 2 && is_propagation_ode() == 0) 
-    { 
 
 
-      streamX=getXstream();
-      streamY=getYstream();
-      streamZ=getZstream();
+  /* collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d, */
+  /* 					      f_d, */
+  /* 					      site_map_status_d, */
+  /* 					       phi_site_d, */
+  /* 					       grad_phi_site_d, */
+  /* 					       delsq_phi_site_d, */
+  /* 							 force_d, */
+  /* 								  velocity_d,MULTIRELAXATION,ALL); */
+
+  //   collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist,nhalo, 
+  //		  N_d,force_global_d, f_d, site_map_status_d, 
+  //							 force_d, velocity_d, MULTIRELAXATION, ALL);
+
+   // still need to finalise comms/calc overlap for single fuid 
+  //cudaStreamSynchronize(streamCOLL);
+
+  //    }
+
+
+
+  streamX=getXstream();
+  streamY=getYstream();
+  streamZ=getZstream();
       
 
 
   /* Bulk */
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
 
-  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
+  collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
   					      f_d,
   					      site_map_status_d,
   					       phi_site_d,
   					       grad_phi_site_d,
   					       delsq_phi_site_d,
   							 force_d,
-  						     velocity_d,BULK);
+							   velocity_d,colltype, BULK);
 
 
  /* X edges */
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
- collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nhalo,
+ collision_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -128,11 +164,11 @@ void collide_gpu(int async=0) {
  					       grad_phi_site_d,
  					       delsq_phi_site_d,
  							 force_d,
- 						       velocity_d,X);
+							 velocity_d,colltype, X);
 
  /* Y edges */
   nblocks=((N[X]-2*nhalo)*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nhalo,
+  collision_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -140,11 +176,11 @@ void collide_gpu(int async=0) {
  					       grad_phi_site_d,
  					       delsq_phi_site_d,
  							 force_d,
- 						       velocity_d,Y);
+							  velocity_d,colltype, Y);
 
  /* Z edges */
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
-  collision_binary_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nhalo,
+  collision_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d,
  					      site_map_status_d,
@@ -152,7 +188,7 @@ void collide_gpu(int async=0) {
  					       grad_phi_site_d,
  					       delsq_phi_site_d,
  							 force_d,
- 						       velocity_d,Z);
+							  velocity_d,colltype, Z);
 
 
   //KEEP THESE SYNC POINTS IN JUST NOW UNTL SURE RACE-FREE RE. CORNERS
@@ -179,14 +215,8 @@ void collide_gpu(int async=0) {
 
 
 
-    }
+  //}
 
-  if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_BGK)
-    {
-      printf("Error, KGK collision not supported yet in GPU version\n");
-      exit(1);
-
-    }
 
   //cudaThreadSynchronize();
 
@@ -210,36 +240,15 @@ void collide_wait_gpu()
    return;
 }
 
-/*****************************************************************************
- *
- *  collision_multirelaxation
- *
- *  Collision with (potentially) different relaxation times for each
- *  different mode.
- *
- *  The matrices ma_ and mi_ project the distributions onto the
- *  modes, and vice-versa, respectively, for the current LB model.
- *
- *  The collision conserves density, and momentum (to within any
- *  body force present). The stress modes, and ghost modes, are
- *  relaxed toward their equilibrium values.
- *
- *  If ghost modes are not required, nmodes_ can be set equal to
- *  the number of hydrodynamic modes. Otherwise nmodes_ = NVEL.
- * 
- *  Adapted to run on GPU: Alan Gray / Alan Richardson  
- *
- *****************************************************************************/
-__global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3], 
+__device__ void collision_multirelaxation_site_gpu_d(
 					      const double* __restrict__ force_global_d, 
 					      double* __restrict__ f_d, 
 					      const char* __restrict__ site_map_status_d, 
 					      const double* __restrict__ force_d, 
-    			       		      double* __restrict__ velocity_d
+    			       		      double* __restrict__ velocity_d, const int nsite, const int index
 					      )
 {
 
-  int       index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       ia, ib;                  /* indices ("alphabeta") */
 
@@ -257,43 +266,9 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 
   double    force_local[3];
 
-  int threadIndex, nsite, Nall[3], ii, jj, kk, xfac, yfac;
+  /* int threadIndex, nsite, Nall[3], ii, jj, kk, xfac, yfac; */
 
   
-  fluctuations_off_gpu_d(shat, ghat);
-
-  rdim = 1.0/NDIM;
-
-  for (ia = 0; ia < 3; ia++) {
-    u[ia] = 0.0;
-  }
-
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-
-  nsite = Nall[X]*Nall[Y]*Nall[Z];
-
-  /* CUDA thread index */
-  threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
-
-  /* Avoid going beyond problem domain */
-  if (threadIndex < N[X]*N[Y]*N[Z])
-    {
-
-      /* calculate index from CUDA thread index */
-      yfac = N[Z];
-      xfac = N[Y]*yfac;
-      
-      ii = threadIndex/xfac;
-      jj = ((threadIndex-xfac*ii)/yfac);
-      kk = (threadIndex-ii*xfac-jj*yfac);
-      
-      index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
-      
-      if (site_map_status_d[index] == FLUID)
-	{
-	  
 	  
 	  
 	  /* Compute all the modes */
@@ -418,52 +393,11 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo, int N[3],
 	  }
 	  f_d[nsite*p + index] = dtmp;
 	  }
-	  
-	}
-      
-    }   
   
   
   return;
 }
 
-/*****************************************************************************
- *
- *  collision_binary_lb_gpu_d
- *
- *  Binary LB collision stage (here we are progressing toward
- *  decoupled version).
- *
- *  This follows the single fluid version above, with the addition
- *  that the equilibrium stress includes the thermodynamic term
- *  following Swift etal.
- *
- *  We also have to update the second distribution g from the
- *  order parameter modes phi, jphi[3], sphi[3][3].
- *
- *  There are two choices:
- *    1. relax jphi[i] toward equilibrium phi*u[i] at rate rtau2
- *       AND
- *       fix sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j]
- *       so the mobility enters through rtau2 (J. Stat. Phys. 2005).
- *    2.
- *       fix jphi[i] = phi*u[i] (i.e. relaxation time == 1.0)
- *       AND
- *       fix sphi[i][j] = phi*u[i]*u[j] + mobility*mu*d_[i][j]
- *       so the mobility enters with chemical potential (Kendon etal 2001).
- *
- *   As there seems to be little to choose between the two in terms of
- *   results, I prefer 2, as it avoids the calculation of jphi[i] from
- *   from the distributions g. However, keep 1 so tests don't break!
- *
- *   However, for asymmetric quenches version 1 may be preferred.
- *
- *   The reprojection of g moves phi (mostly) into the non-propagating
- *   distribution following J. Stat. Phys. (2005).
- *
- *  Adapted to run on GPU: Alan Gray / Alan Richardson  
- *
- *****************************************************************************/
 
 
 __device__ void collision_binary_lb_site_gpu_d(const double* __restrict__ force_global_d, 
@@ -688,7 +622,7 @@ __device__ void collision_binary_lb_site_gpu_d(const double* __restrict__ force_
 
 
 /* pack edges on the accelerator */
-__global__ static void collision_binary_edge_gpu_d(int nhalo, 
+__global__ static void collision_edge_gpu_d(int nhalo, 
 						   int N[3],
 						   const double* __restrict__ force_global_d, 
 						   double* __restrict__ f_d, 
@@ -697,7 +631,7 @@ __global__ static void collision_binary_edge_gpu_d(int nhalo,
 						   const double* __restrict__ grad_phi_site_d,	
 						   const double* __restrict__ delsq_phi_site_d,	
 						   const double* __restrict__ force_d, 
-						   double* __restrict__ velocity_d,int dirn)
+					    double* __restrict__ velocity_d,int colltype, int dirn)
 {
 
 
@@ -755,6 +689,7 @@ __global__ static void collision_binary_edge_gpu_d(int nhalo,
       get_coords_from_index_gpu_d(&ii_,&jj_,&kk_,index,Nall);
       /* printf("low dir=%d %d %d %d\n",dirn,ii_,jj_,kk_); */
 
+      if (colltype==BINARY){
       collision_binary_lb_site_gpu_d(force_global_d,
       					      f_d,
       					      site_map_status_d,
@@ -763,6 +698,18 @@ __global__ static void collision_binary_edge_gpu_d(int nhalo,
       					       delsq_phi_site_d,
       							 force_d,
       				     velocity_d, nsite, index);
+	}
+      else if (colltype==MULTIRELAXATION)
+	{
+
+	  
+	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, 
+					       site_map_status_d, 
+					       force_d, velocity_d, nsite, 
+					       index);
+
+	}
+
  
       /* printf("%f\n",f_d[index]); */
 
@@ -783,14 +730,26 @@ __global__ static void collision_binary_edge_gpu_d(int nhalo,
 
       //printf("high dir=%d %d %d %d\n",dirn,ii,jj,kk);
 
+      if (colltype==BINARY){
       collision_binary_lb_site_gpu_d(force_global_d,
       					      f_d,
-      				      site_map_status_d,
-      				       phi_site_d,
-      				       grad_phi_site_d,
-      				       delsq_phi_site_d,
-      						 force_d,
-      			     velocity_d, nsite, index);
+      					      site_map_status_d,
+      					       phi_site_d,
+      					       grad_phi_site_d,
+      					       delsq_phi_site_d,
+      							 force_d,
+      				     velocity_d, nsite, index);
+	}
+      else if (colltype==MULTIRELAXATION)
+	{
+
+	  
+	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, 
+					       site_map_status_d, 
+					       force_d, velocity_d, nsite, 
+					       index);
+
+	}
 
 
     }
@@ -800,7 +759,7 @@ __global__ static void collision_binary_edge_gpu_d(int nhalo,
 
 
 
-__global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3], 
+__global__ void collision_lb_gpu_d(int ndist, int nhalo, int N[3], 
 					  const double* __restrict__ force_global_d, 
 					  double* __restrict__ f_d, 
 					  const char* __restrict__ site_map_status_d, 
@@ -808,7 +767,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
 					  const double* __restrict__ grad_phi_site_d,	
 					  const double* __restrict__ delsq_phi_site_d,	
 					  const double* __restrict__ force_d, 
-					  double* __restrict__ velocity_d, int latchunk) 
+				   double* __restrict__ velocity_d, int colltype, int latchunk) 
 {
 
   int       index;                   /* site indices */
@@ -883,6 +842,7 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
       }
 
 
+      if (colltype==BINARY){
       collision_binary_lb_site_gpu_d(force_global_d,
       					      f_d,
       					      site_map_status_d,
@@ -891,6 +851,17 @@ __global__ void collision_binary_lb_gpu_d(int ndist, int nhalo, int N[3],
       					       delsq_phi_site_d,
       							 force_d,
       				     velocity_d, nsite, index);
+      }
+      else if (colltype==MULTIRELAXATION)
+	{
+
+	  
+	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, 
+					       site_map_status_d, 
+					       force_d, velocity_d, nsite, 
+					       index);
+
+	}
 
 
 
