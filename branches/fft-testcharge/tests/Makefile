@@ -49,7 +49,7 @@ MPILIB = -lmpi
 # Files
 #------------------------------------------------------------------------------
 
-TESTSOURCES = test_decomp.c test_psi_fft.c
+TESTSOURCES = test_decomp.c test_psi_fft.c \
 							test_assumptions.c test_pe.c test_timer.c \
               test_runtime.c test_random.c \
               test_coords.c test_le.c test_io.c test_prop.c \
@@ -60,7 +60,7 @@ TESTSOURCES = test_decomp.c test_psi_fft.c
               test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
               test_collision.c test_psi.c test_psi_sor.c test_hydro.c \
               test_field.c test_field_grad.c test_nernst_planck.c \
-              test_fe_electro.c test_fe_electro_symm.c \
+              test_fe_electro.c test_fe_electro_symm.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}

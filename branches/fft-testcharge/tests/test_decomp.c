@@ -24,6 +24,8 @@
 #include "coords.h"
 #include "decomp.h"
 
+#include "runtime.h"
+
 
 /*****************************************************************************
  *
@@ -42,28 +44,36 @@ static double hash(double global_coord[]) {
  *
  *  main
  *
+ *  should also test the decomposition generator if possible
+ *
  *****************************************************************************/
 
-int main() {
+int main(int argc, char ** argv) {
 
-  MPI_Init(NULL, NULL);
-  pe_init();
-  coords_init();
-
+  char inputfile[FILENAME_MAX] = "input";
   MPI_Comm ludwig_comm       = cart_comm();
   double global_coord[3]     = {0, 0, 0};
   int nlocal_offset[3]       = {0, 0, 0};
   int nlocal[3]              = {0, 0, 0};
   int isize[3]               = {0, 0, 0};
   int istart[3]              = {0, 0, 0};
-  int proc_dims[2]           = {0, 0};
   int rank                   = cart_rank();
   int num_procs              = pe_size();
   int ip                     = 1;
   int i, j, k;
 
-  coords_nlocal(nlocal);
+  MPI_Init(&argc, &argv);
 
+  if (argc > 1) sprintf(inputfile, "%s", argv[1]);
+
+  pe_init();
+
+  RUN_read_input_file(inputfile);
+
+  coords_init();
+  decomp_init();
+
+  coords_nlocal(nlocal);
 
   psi_t *start_psi = NULL;
   psi_t *end_psi = NULL;
@@ -73,7 +83,6 @@ int main() {
   assert(start_psi);
   assert(end_psi);
 
-  coords_info();
   coords_nlocal_offset(nlocal_offset);
 
   /* initialise elements of send_array to hash evaluation of global coordinates */
@@ -87,8 +96,6 @@ int main() {
       }
     }
   }
-
-  decomp_initialise(proc_dims);
 
   ip = 1;
   decomp_pencil_starts(istart, ip);
@@ -130,7 +137,6 @@ int main() {
   decomp_finish();
   coords_finish();
   pe_finalise();
-  p3dfft_clean();
 
   MPI_Finalize();
 

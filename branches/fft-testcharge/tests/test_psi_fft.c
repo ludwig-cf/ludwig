@@ -31,10 +31,14 @@
 #include "util.h"
 #include "psi_stats.h"
 
+#include "runtime.h"
+#include "coords_rt.h"
+
 #define REF_PERMEATIVITY 1.0
 
-int main() {
+int main(int argc, char ** argv) {
 
+  char inputfile[FILENAME_MAX] = "input";
   int i,j,k;
   int index = 0;
   int nlocal[3] = {0, 0, 0};
@@ -44,12 +48,19 @@ int main() {
   double pi = 4.0*atan(1.0); 
   double max;
 
-  MPI_Init(NULL, NULL);
+  MPI_Init(&argc, &argv);
+
+  if (argc > 1) sprintf(inputfile, "%s", argv[1]);
+
   
   pe_init();
-  coords_init();
+ 
+  RUN_read_input_file(inputfile);
 
-  TIMER_init();
+  coords_run_time();
+
+//  coords_init();
+  decomp_init();
 
   psi_t *psi_sor = NULL;
   psi_t *psi_fft = NULL;
@@ -67,13 +78,11 @@ int main() {
   psi_valency_set(psi_fft, 1, -1.0);
   psi_epsilon_set(psi_fft, REF_PERMEATIVITY);
 
-  coords_info();
-
   coords_nlocal(nlocal);
   coords_nlocal_offset(global_coord);
   coords_nlocal_offset(global_coord_save);
 
-  /*set up psi_sor and psi_fft to be cos functions*/ 
+  /*set up psi_sor and psi_fft to be sin functions, these will be charge neutral as they are over one period*/ 
   for(i=1; i<=nlocal[X]; i++) {
     for(j=1; j<=nlocal[Y]; j++) {
       for(k=1; k<=nlocal[Z]; k++) {
@@ -81,18 +90,10 @@ int main() {
           psi_psi_set(psi_fft, index, 0.0);
           psi_psi_set(psi_sor, index, 0.0);
 
-/*         if(global_coord[0] == N_total(0)/2 && global_coord[1] == N_total(1)/2 && global_coord[2] == N_total(2)/2) {
-            psi_rho_set(psi_fft, index, 1, 10.0);
-            psi_rho_set(psi_sor, index, 1, 10.0);
-            psi_rho_set(psi_sor, index, 0, 0.0);
-            psi_rho_set(psi_fft, index, 0, 0.0);
-          }
-        else {*/
-          psi_rho_set(psi_fft, index, 1, sin(2*pi*global_coord[Z]/N_total(Z))*sin(2*pi*global_coord[Y]/N_total(Y))*sin(2*pi*global_coord[X]/N_total(X)) );
-          psi_rho_set(psi_sor, index, 1, sin(2*pi*global_coord[Z]/N_total(Z))*sin(2*pi*global_coord[Y]/N_total(Y))*sin(2*pi*global_coord[X]/N_total(X)) );
+          psi_rho_set(psi_fft, index, 1, sin(2*pi*global_coord[Z]/N_total(Z))* sin(2*pi*global_coord[Y]/N_total(Y))* sin(2*pi*global_coord[X]/N_total(X)) );
+          psi_rho_set(psi_sor, index, 1, sin(2*pi*global_coord[Z]/N_total(Z))* sin(2*pi*global_coord[Y]/N_total(Y))* sin(2*pi*global_coord[X]/N_total(X)) );
           psi_rho_set(psi_sor, index, 0, 0.0);
           psi_rho_set(psi_fft, index, 0, 0.0);
-//        }
         global_coord[Z] ++;
       }
       global_coord[Z] = global_coord_save[Z];
@@ -103,52 +104,51 @@ int main() {
   } 
 
 
-for(i=0; i<iter; i++) { 
- /*use psi_sor_poisson to solve*/
-   TIMER_start(TIMER_PSI_SOR_UPDATE);
-  if(pe_rank() == 0) { printf("Solving with SOR\n"); }
-    psi_sor_poisson(psi_sor);
-   TIMER_stop(TIMER_PSI_SOR_UPDATE);
-}
+  for(i=0; i<iter; i++) { 
+   /*use psi_sor_poisson to solve*/
+    if(pe_rank() == 0) { printf("Solving with SOR\n"); }
+      psi_sor_poisson(psi_sor);
+  }
 
 
-for(i=0; i<iter; i++) { 
-  /*use psi_fft_poisson to solve*/
-   TIMER_start(TIMER_PSI_FFT_UPDATE);
-  if(pe_rank() == 0) { printf("Solving with FFT\n"); }
-  psi_fft_poisson(psi_fft);
-   TIMER_stop(TIMER_PSI_FFT_UPDATE);
-}  
+  for(i=0; i<iter; i++) { 
+    /*use psi_fft_poisson to solve*/
+    if(pe_rank() == 0) { printf("Solving with FFT\n"); }
+    psi_fft_poisson(psi_fft);
+  }  
 
-  TIMER_statistics();
 
-  max = 0.0;
-  double store = 0.0;
-  if(pe_rank() == 0) { printf("Checking results\n"); }
+/*  for(i=1; i<=nlocal[X]; i++) {
+    for(j=1; j<=nlocal[Y]; j++) {
+      for(k=1; k<=nlocal[Z]; k++) {
+        printf("%d %d %f %f\n", i, j, psi_fft->psi[coords_index(i,j,k)], psi_sor->psi[coords_index(i,j,k)]);
+      }
+    }
+  }*/
+
   /*check results are acceptably similar */
   for(i=1; i<=nlocal[X]; i++) {
     for(j=1; j<=nlocal[Y]; j++) {
       for(k=1; k<=nlocal[Z]; k++) {
-        if(pe_rank() == 0) {
-/*          printf("%f %f\n", psi_fft->psi[coords_index(i,j,k)], psi_sor->psi[coords_index(i,j,k)]);*/
-          }
-
-        if(fabs(psi_fft->psi[coords_index(i,j,k)] - psi_sor->psi[coords_index(i,j,k)]) > max) {
-          max = fabs(psi_fft->psi[coords_index(i,j,k)] - psi_sor->psi[coords_index(i,j,k)]);
-          store = psi_fft->psi[coords_index(i,j,k)]; 
+        if(fabs(psi_sor->psi[coords_index(i,j,k)]) > 1e-10) {
+          if(fabs( (2* fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)] + psi_fft->psi[coords_index(i,j,k)]) > 0.01 )) printf("fft: %f, sor: %f diff %f\n", psi_sor->psi[coords_index(i,j,k)], psi_fft->psi[coords_index(i,j,k)], fabs( (2* fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)] + psi_fft->psi[coords_index(i,j,k)])) );
+          assert( fabs( (2* fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)] + psi_fft->psi[coords_index(i,j,k)]) ) < 0.01);
         }
-//        assert(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)] < 1e-5);
+        else {
+//          printf("%f\n", psi_fft->psi[coords_index(i,j,k)]);
+          assert( fabs(psi_fft->psi[coords_index(i,j,k)]) < 1e-10);
+        }
       }
     }
   }
 
-  printf("rank: %d, max: %f, store: %f\n", pe_rank(), max, store);
+
 
 
   psi_free(psi_sor);
   psi_free(psi_fft);
 
-  psi_fft_clean();
+  decomp_finish();
   coords_finish();
   pe_finalise();
   MPI_Finalize();
