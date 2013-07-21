@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <math.h>
 
+#include "pe.h"
 #include "coords.h"
 #include "decomp.h"
 
@@ -38,13 +39,10 @@ static void solve_poisson(double *transf_array, double epsilon, int fstart[], in
  *
  *  First attempt.
  *
- *  If this is an initial solve, the decomp_initialise() call 
- *  will have some work to do determining the communication patterns.
- *  Subsequent calls can use the values determined the first time
- *  and thus are much faster
- *
- *  Currently considering moving the decomp_initialise() call further up the
- *  call tree to improve clarity of timings and make it easier to pass proc_dims
+ *  Requires best decomp_init to have been called before this function is called
+ *  Transfers the data from cartesian to pencil decompositions, and then performs
+ *  FFTs. The solve_poisson function does the actual solve and then the data 
+ *  is transformed back to the original layout
  *
  *****************************************************************************/
 
@@ -53,17 +51,14 @@ int psi_fft_poisson(psi_t *obj){
 
   int num_procs;
   MPI_Comm ludwig_comm;
-  MPI_Comm p3dfft_comm;
 
   int nlocal[3];
-  int coords[3];
-  int proc_dims[2] = {0, 0};
   int i, j, k;
-  int istart[3], iend[3], isize[3];
+  int isize[3];
   int ip;
   int index;
 
-  int fstart[3], fend[3], fsize[3];
+  int fstart[3], fsize[3],fend[3];
   unsigned char op_f[3]="fft", op_b[3]="tff";
 
   ludwig_comm = cart_comm();
@@ -81,7 +76,9 @@ int psi_fft_poisson(psi_t *obj){
   double *rho_elec;
 
   rho_elec = malloc(coords_nsites()*sizeof(double));
+
   double rho;
+  int n;
 
   for(i=1; i<=nlocal[X]; i++) {
     for(j=1; j<=nlocal[Y]; j++) {
@@ -89,6 +86,13 @@ int psi_fft_poisson(psi_t *obj){
         index = coords_index(i, j, k);
         psi_rho_elec(obj, index, &rho);
         rho_elec[index] = rho;
+
+
+/*        for(n=0; n<2; n++) {
+          psi_rho(obj, index, n ,&rho);
+          if(rho<0.0) printf("%f\n", rho);
+          assert(rho>=0.0);
+        }*/
       }
     }
   }
@@ -112,33 +116,29 @@ int psi_fft_poisson(psi_t *obj){
 
 /*arrays need to be malloc'd before this call*/
   decomp_cart_to_pencil(rho_elec, pencil_array);
-//  if(cart_rank() == 0) { printf("Proccessors now in pencil decomposition\n"); }
 
-
-//  if(cart_rank() == 0) { printf("Performing forward fft\n"); }
   p3dfft_ftran_r2c(pencil_array, transf_array, op_f);
-
 
   solve_poisson(transf_array, obj->epsilon, fstart, fsize);
   
-//  if(cart_rank() == 0) { printf("Performing backward fft\n"); }
   p3dfft_btran_c2r(transf_array, end_array, op_b);
-
-/* dividing by (nx*ny*nz) 
- * could do this in solve_poisson()?*/
-      for(k=0; k<isize[Z]; k++) {
-        for(j=0; j<isize[Y]; j++) {
-          for(i=0; i<isize[X]; i++) {
-            end_array[index_3d_f(k,j,i,isize)] = end_array[index_3d_f(k,j,i,isize)]/(N_total(0)*N_total(1)*N_total(2));
-          }
-        }
-      }
 
   decomp_pencil_to_cart(end_array, obj->psi);
 
-//  if(cart_rank() == 0) { printf("Data now in cartesian processor decomposition\n"); }
 
-  psi_halo_psi(obj);
+/*  for(i=1; i<=nlocal[X]; i++) {
+    for(j=1; j<=nlocal[Y]; j++) {
+      for(k=1; k<=nlocal[Z]; k++) {
+        index = coords_index(i, j, k);
+
+        if( fabs(fabs(test[index]) - fabs(rho_elec[index])) < 1e-5) {
+          printf("i: %d, t: %f, p: %f\n", i, test[index], rho_elec[index]);
+        }
+
+        assert(fabs(fabs(test[index]) - fabs(rho_elec[index])) > 1e-5);
+      }
+    }
+  }*/
 
 
 /* need to free memory */
@@ -176,11 +176,13 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
   double k_square;
   double pi;
   int global_coord[3];
-  int local_coord[3] = {0, 0, 0};
   int n_total[3] = {0, 0, 0};
   int farray_size[3] = {0, 0, 0};
 
   pi = 4.0*atan(1.0);
+
+
+//printf("rank %d, fstart: %d %d %d\n", pe_rank(), fstart[0], fstart[1], fstart[2]);
 
 /*#ifdef STRIDE1*/
 /*stride 1 enabled, thus fsize array ordering is {X,Y,Z}*/
@@ -215,7 +217,7 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
           k_square = 0;
         }
         else {
-          k_square = 1/((kx*kx + ky*ky + kz*kz)*epsilon);
+          k_square = 1/((kx*kx + ky*ky + kz*kz)*epsilon*(N_total(0)*N_total(1)*N_total(2)));
         }
         transf_array[index_3d_f(i,j,k,farray_size)] = transf_array[index_3d_f(i,j,k,farray_size)]*k_square;
         /* complex numbers so need to multiply both parts of the number */

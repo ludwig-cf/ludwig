@@ -20,7 +20,10 @@
 #include <math.h>
 #include <assert.h>
 
+#include "pe.h"
 #include "coords.h"
+#include "runtime.h"
+
 #include "config.h"
 #include "p3dfft.h"
 #include "decomp.h"
@@ -32,8 +35,9 @@ static MPI_Comm ludwig_comm            = MPI_COMM_NULL;
 static struct decomp_comms *data       = NULL;
 static int nlocal[3]                   = {0, 0, 0};
 
+static int pencil                      = 0;
 static int num_procs                   = 0;
-static int proc_dims[2]                = {0, 0};
+static int proc_dims[3]                = {0, 0, 0};
 static int isize[3]                    = {0, 0, 0};
 static int istart[3]                   = {0, 0, 0};
 static int fsize[3]                    = {0, 0, 0};
@@ -49,7 +53,6 @@ static void find_cart_subarray_sizes(int array_of_sizes[], int local_coord[]);
 static int find_cart_dest_proc(int global_coord[]);
 static int find_number_cart_dest_procs();
 static int find_number_pencil_recv_procs();
-static void get_proc_dims(int input_proc_dims[]);
 
 /*****************************************************************************
  *
@@ -61,15 +64,17 @@ static void get_proc_dims(int input_proc_dims[]);
  *
  *****************************************************************************/
 
-void decomp_init(int input_proc_dims[2]) {
+void decomp_init() {
 
   if(initialised_ == 0) {
     int nsize[3];
 
     int overwrite, memsize[3];
     int iend[3], fend[3];
+    int temp[3];
     int ip;
-    int i;
+    int i, j, tmp;
+    int n;
    
     overwrite = 0; /* don't allow overwriting input of btran */
 
@@ -84,11 +89,35 @@ void decomp_init(int input_proc_dims[2]) {
       nsize[i] = N_total(2-i);
     }   
 
+    n = RUN_get_int_parameter_vector("pencil_grid", proc_dims);
+
   /* transferring data from cartesian to pencil */
-    if(cart_size(2) == 1) { /* already in a pencil decomposition! */
+
+    if(pe_rank() == 0) printf("proc_dims: %d %d, cart_size: %d %d %d\n", proc_dims[0], proc_dims[1], cart_size(0), cart_size(1), cart_size(2));
+
+  /* already in a pencil decomposition, the user has not specified an acceptable grid, or has specified the same grid */
+    if( ( cart_size(2) == 1 && (proc_dims[0] == 0 || proc_dims[1] == 0 || n == 0 || proc_dims[0]*proc_dims[1] != num_procs) ) || (cart_size(2) == 1 && cart_size(1) == proc_dims[1] && cart_size(0) == proc_dims[0]) ) {
+
+      pencil = 1;
       if(cart_rank() == 0) { printf("already in pencil decomposition!\n"); }
       proc_dims[1] = cart_size(0);
       proc_dims[0] = cart_size(1); 
+
+  /* for now will only consider pencil decompositions that divide evenly into the lattice */
+      assert(nsize[1]%proc_dims[0] == 0);
+      assert(nsize[2]%proc_dims[1] == 0);
+      assert(nsize[2]%proc_dims[0] == 0);
+        
+      for(i=0; i<3; i++) {
+        for(j=0; j<2; j++) {
+          if(nsize[i]/proc_dims[j] < 1) {
+            if(cart_rank() == 0) {
+              printf("error: nsites too small for chosen number of processors. Please use a bigger grid or less processors\n");
+              MPI_Abort(ludwig_comm, 2);
+            }
+          }
+        }
+      }
 
       p3dfft_setup(proc_dims, nsize[0], nsize[1], nsize[2], overwrite, memsize);
 
@@ -98,41 +127,45 @@ void decomp_init(int input_proc_dims[2]) {
       ip = 2;
       p3dfft_get_dims(fstart, fend, fsize, ip);
 
+//printf("rank %d, isize: %d %d %d, istart %d %d %d\n", pe_rank(), isize[0], isize[1], isize[2], istart[0], istart[1], istart[2]);
+//printf("rank %d, fsize: %d %d %d, fstart %d %d %d\n", pe_rank(), fsize[0], fsize[1], fsize[2], fstart[0], fstart[1], fstart[2]);
+
     }
     else {
       if(cart_rank() == 0) { printf("Moving data from cartesian to pencil decomposition.\n"); }
-/*have not allowed for user to change anything by passing input_proc_dims yet
-      proc_dims[0] = 4;
-      proc_dims[1] = num_procs/4;
-*/
 
 /* 
  * if the user has specified empty proc_dims in either direction, try and find the best one
- * otherwise will use the users input_proc_dims
+ * otherwise will use the users proc_dims
  */
-      if(input_proc_dims[0] == 0 || input_proc_dims[1] == 0) {
-        get_proc_dims(input_proc_dims);
+
+      if(proc_dims[0] == 0 || proc_dims[1] == 0 || n == 0 || proc_dims[0]*proc_dims[1] != num_procs) {
+        proc_dims[0] = proc_dims[1] = 0;
+        MPI_Dims_create(num_procs, 2, proc_dims);
       }
 
-      if(cart_rank() == 0) { printf("Using Processor Grid: %d %d\n", input_proc_dims[1], input_proc_dims[0]);  }
-
+      tmp = proc_dims[0];
+      proc_dims[0] = proc_dims[1];
+      proc_dims[1] = tmp;
       
   /* for now will only consider pencil decompositions that divide evenly into the lattice */
-      assert(nsize[1]%input_proc_dims[1] == 0);
-      assert(nsize[2] == 1 || nsize[2]%input_proc_dims[0] == 0);
+      assert(nsize[1]%proc_dims[0] == 0);
+      assert(nsize[2]%proc_dims[1] == 0);
+      assert(nsize[2]%proc_dims[0] == 0);
       
-      if(nsize[1]/input_proc_dims[1] <= 1 || nsize[2]/input_proc_dims[0] <= 1) {
-        if(cart_rank() == 0) {
-          printf("error: nsites too small for chosen number of processors. Please use a bigger grid or less processors\n");
-          MPI_Abort(ludwig_comm, 2);
+      for(i=0; i<3; i++) {
+        for(j=0; j<2; j++) {
+          if(nsize[i]/proc_dims[j] < 1) {
+            if(cart_rank() == 0) {
+              printf("error: nsites too small for chosen number of processors. Please use a bigger grid or less processors\n");
+              MPI_Abort(ludwig_comm, 2);
+            }
+          }
         }
       }
 
       /* note that this routine swaps the elements of proc_dims */
-      p3dfft_setup(input_proc_dims, nsize[0], nsize[1], nsize[2], overwrite, memsize);
-
-      proc_dims[0] = input_proc_dims[0];
-      proc_dims[1] = input_proc_dims[1];
+      p3dfft_setup(proc_dims, nsize[0], nsize[1], nsize[2], overwrite, memsize);
 
       ip = 1;
       p3dfft_get_dims(istart, iend, isize, ip);
@@ -140,8 +173,8 @@ void decomp_init(int input_proc_dims[2]) {
       ip = 2;
       p3dfft_get_dims(fstart, fend, fsize, ip);
 
-    /* now will create the subarrays for the mapping of data */
-      int array_of_sizes[3], array_of_subsizes[3], array_of_starts[3];
+//      if(pe_rank() == 0) printf("isize: %d %d %d\n", isize[0], isize[1], isize[2]);
+//      if(pe_rank() == 0) printf("fsize: %d %d %d\n", fsize[0], fsize[1], fsize[2]);
 
       data->send_count = find_number_cart_dest_procs();
       
@@ -159,11 +192,7 @@ void decomp_init(int input_proc_dims[2]) {
     }
     initialised_ = 1;
   }
-  else {
-/* need to have input_proc_dims contain the processor dimensions */
-    input_proc_dims[0] = proc_dims[0];
-    input_proc_dims[1] = proc_dims[1];
-  }
+
 }
 
 /*****************************************************************************
@@ -186,7 +215,7 @@ void decomp_cart_to_pencil(double *in_array, double *out_array) {
   }
 
   
-  if(cart_size(2) == 1) { /* already in a pencil decomposition! */
+  if(pencil) { /* already in a pencil decomposition! */
 /* copy data, remember in_array has halos! */
     for(i=1; i<=nlocal[X]; i++) {
       for(j=1; j<=nlocal[Y]; j++) {
@@ -232,7 +261,7 @@ void decomp_pencil_to_cart(double *in_array, double *out_array) {
     MPI_Abort(ludwig_comm, 1);
   }
 
-  if(cart_size(2) == 1) { /* already in a pencil decomposition! */
+  if(pencil) { /* already in a pencil decomposition! */
 /* copy data back, remember out_array has halos! */
     for(i=1; i<=nlocal[X]; i++) {
       for(j=1; j<=nlocal[Y]; j++) {
@@ -243,7 +272,7 @@ void decomp_pencil_to_cart(double *in_array, double *out_array) {
     }
   }
   else {
-    if(cart_rank() == 0) { printf("Transferring data back to cartesian processor decomposition\n"); }
+//    if(cart_rank() == 0) { printf("Transferring data back to cartesian processor decomposition\n"); }
     MPI_Request pencil_cart_request[data->recv_count];
     MPI_Status pencil_cart_status[data->recv_count];
     MPI_Status status;
@@ -528,7 +557,6 @@ int find_number_pencil_recv_procs() {
     while(local_coord[1] < isize[1]) {
       while(local_coord[2] < isize[0]) {
         if(recv_count == array_size) {
-          printf("Resizing\n");
           data->recv_subsizes = realloc(data->recv_subsizes, 3*2*array_size*sizeof(int));
           data->recv_subarray = realloc(data->recv_subarray, 2*array_size*sizeof(MPI_Datatype));
           data->recv_proc = realloc(data->recv_proc, 2*array_size*sizeof(int));
@@ -624,34 +652,6 @@ void decomp_pencil_starts(int start[3], int ip) {
       start[i] = fstart[i];
     }
   }
-}
-
-/***************************************************************************************
- * get_proc_dims
- *
- * Attempts to find the best processor dimensions for the current number
- * of processes.
- *
- * This is done by taking the square root of the number of processors
- * and iteratating down until a factor is found
- *
- ****************************************************************************************/
-
-void get_proc_dims(int input_proc_dims[2]) {
-
-  int i;
-
-  input_proc_dims[1] = (int) sqrt(num_procs);
-
-  for(i=input_proc_dims[1]; i>=input_proc_dims[1]/2; i--) {
-    if(num_procs%i == 0) {
-      input_proc_dims[0] = i;
-      break;
-    }
-  }
-
-  input_proc_dims[1] = num_procs/input_proc_dims[0];
-
 }
 
 

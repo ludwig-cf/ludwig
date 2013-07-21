@@ -334,7 +334,6 @@ void ludwig_run(const char * inputfile) {
 
   pe_init();
 
-  int proc_dims[2] = {0, 0};
   RUN_read_input_file(inputfile);
 
   ludwig_rt(ludwig);
@@ -354,13 +353,14 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->psi) psi_stats_info(ludwig->psi);
   ludwig_report_momentum(ludwig);
 
+  decomp_init();
+
   /* Main time stepping loop */
 
   info("\n");
   info("Starting time step loop.\n");
   subgrid_on(&is_subgrid);
 
-  decomp_init(proc_dims);
 
   while (next_step()) {
 
