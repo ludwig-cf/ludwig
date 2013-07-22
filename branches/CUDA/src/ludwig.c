@@ -355,6 +355,10 @@ void ludwig_run(const char * inputfile) {
 
 #endif
 
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
+
       TIMER_stop(TIMER_PHI_GRADIENTS);
 
       if (phi_is_finite_difference()) {
@@ -380,12 +384,17 @@ void ludwig_run(const char * inputfile) {
 	
 #endif
 	
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
 
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
 
 	TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 	phi_update_dynamics();
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
 	TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
 
       }
@@ -401,6 +410,9 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_COLLIDE);
     collide_gpu(async);
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
     TIMER_stop(TIMER_COLLIDE);
 
 #else
@@ -419,10 +431,16 @@ void ludwig_run(const char * inputfile) {
 #ifdef _GPU_
     TIMER_start(TIMER_HALO_LATTICE);
     distribution_halo_gpu();
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
     TIMER_stop(TIMER_HALO_LATTICE);
 
     TIMER_start(TIMER_COLLIDE_WAIT);
     collide_wait_gpu(async);
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
     TIMER_stop(TIMER_COLLIDE_WAIT);
 
 #else
@@ -474,14 +492,17 @@ void ludwig_run(const char * inputfile) {
     }
 #endif
 
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
     TIMER_stop(TIMER_PROPAGATE);
 
 
 
-#ifdef _GPU_
+    //#ifdef _GPU_
     /* sync MPI tasks for timing purposes */
-    MPI_Barrier(cart_comm());
-#endif
+    //MPI_Barrier(cart_comm());
+    //#endif
 
     TIMER_stop(TIMER_STEPS);
 
