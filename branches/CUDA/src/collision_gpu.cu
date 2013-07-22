@@ -192,6 +192,9 @@ void collide_gpu(int async=0) {
   					       delsq_phi_site_d,
   							 force_d,
 							   velocity_d,colltype, ALL);
+
+  cudaThreadSynchronize();
+
   }
 
   return;
