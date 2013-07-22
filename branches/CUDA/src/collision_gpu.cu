@@ -156,7 +156,7 @@ void collide_gpu(int async=0) {
 							 velocity_d,colltype, X);
 
  /* Y edges */
-  nblocks=((N[X]-2*nhalo)*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+  nblocks=(N[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
   collision_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d, ftmp_d,
@@ -168,7 +168,7 @@ void collide_gpu(int async=0) {
 							  velocity_d,colltype, Y);
 
  /* Z edges */
-  nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
+  nblocks=(N[X]*N[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
   collision_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nhalo,
  						       N_d,force_global_d,
  					      f_d, ftmp_d,
@@ -181,9 +181,9 @@ void collide_gpu(int async=0) {
 
 
   //KEEP THESE SYNC POINTS IN JUST NOW UNTL SURE RACE-FREE RE. CORNERS
-  cudaStreamSynchronize(streamX);
-  cudaStreamSynchronize(streamY);
-  cudaStreamSynchronize(streamZ);
+  //cudaStreamSynchronize(streamX);
+  //cudaStreamSynchronize(streamY);
+  //cudaStreamSynchronize(streamZ);
 
   //if (async==1)
   //  cudaStreamSynchronize(streamCOLL);
@@ -191,9 +191,9 @@ void collide_gpu(int async=0) {
 
 
   if (async==0){
-    //cudaStreamSynchronize(streamX);
-    //cudaStreamSynchronize(streamY);
-    //cudaStreamSynchronize(streamZ);
+    cudaStreamSynchronize(streamX);
+    cudaStreamSynchronize(streamY);
+    cudaStreamSynchronize(streamZ);
   cudaStreamSynchronize(streamCOLL);
 
   cudaStreamDestroy(streamCOLL);
@@ -624,14 +624,13 @@ __global__ static void collision_edge_gpu_d(int nhalo,
     Nedge[Z]=N[Z];
   }
   else if (dirn == Y){
-    //Nedge[X]=Nall[X];
-    Nedge[X]=N[X]-2*nhalo;
+    Nedge[X]=N[X];
     Nedge[Y]=nhalo;
     Nedge[Z]=N[Z];
   }
   else if (dirn == Z){
-    Nedge[X]=N[X]-2*nhalo;
-    Nedge[Y]=N[Y]-2*nhalo;
+    Nedge[X]=N[X];
+    Nedge[Y]=N[Y];
     Nedge[Z]=nhalo;
   }
 
@@ -653,10 +652,10 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
       }
       else if (dirn == Y){
-	index = get_linear_index_gpu_d(ii+2*nhalo,jj+nhalo,kk+nhalo,Nall);
+	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
       }
       else if (dirn == Z){
-	index = get_linear_index_gpu_d(ii+2*nhalo,jj+2*nhalo,kk+nhalo,Nall);
+	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
       }
 
 
@@ -696,10 +695,10 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 	index = get_linear_index_gpu_d(Nall[X]-2*nhalo+ii,jj+nhalo,kk+nhalo,Nall);
       }
       else if (dirn == Y){
-	index = get_linear_index_gpu_d(ii+2*nhalo,Nall[Y]-2*nhalo+jj,kk+nhalo,Nall);
+	index = get_linear_index_gpu_d(ii+nhalo,Nall[Y]-2*nhalo+jj,kk+nhalo,Nall);
       }
       else if (dirn == Z){
-	index = get_linear_index_gpu_d(ii+2*nhalo,jj+2*nhalo,Nall[Z]-2*nhalo+kk,Nall);
+	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,Nall[Z]-2*nhalo+kk,Nall);
       }
 
       //printf("high dir=%d %d %d %d\n",dirn,ii,jj,kk);
