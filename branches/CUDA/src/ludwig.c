@@ -393,7 +393,7 @@ void ludwig_run(const char * inputfile) {
 
 
 
-    int async=1;
+    int async=0;
 
     if(is_propagation_ode() == 0) {
 
@@ -401,7 +401,6 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_COLLIDE);
     collide_gpu(async);
-    //collide_wait_gpu();
     TIMER_stop(TIMER_COLLIDE);
 
 #else
@@ -424,7 +423,7 @@ void ludwig_run(const char * inputfile) {
 
     if(async==1){
       TIMER_start(TIMER_COLLIDE_WAIT);
-      collide_wait_gpu();
+      collide_wait_gpu(async);
       TIMER_stop(TIMER_COLLIDE_WAIT);
     }
 

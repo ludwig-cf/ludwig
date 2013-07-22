@@ -123,6 +123,7 @@ void collide_gpu(int async=0) {
 
 
 
+  if (async==1){
 
   streamX=getXstream();
   streamY=getYstream();
@@ -179,33 +180,30 @@ void collide_gpu(int async=0) {
  							 force_d,
 							  velocity_d,colltype, Z);
 
+  }
+  else{
+  nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
 
-  //KEEP THESE SYNC POINTS IN JUST NOW UNTL SURE RACE-FREE RE. CORNERS
-  //cudaStreamSynchronize(streamX);
-  //cudaStreamSynchronize(streamY);
-  //cudaStreamSynchronize(streamZ);
-
-  //if (async==1)
-  //  cudaStreamSynchronize(streamCOLL);
-
-
-
-  if (async==0){
-    cudaStreamSynchronize(streamX);
-    cudaStreamSynchronize(streamY);
-    cudaStreamSynchronize(streamZ);
-  cudaStreamSynchronize(streamCOLL);
-
-  cudaStreamDestroy(streamCOLL);
+  collision_lb_gpu_d<<<nblocks,DEFAULT_TPB>>>(ndist, nhalo, N_d, 					      force_global_d,
+  					      f_d, ftmp_d,
+  					      site_map_status_d,
+  					       phi_site_d,
+  					       grad_phi_site_d,
+  					       delsq_phi_site_d,
+  							 force_d,
+							   velocity_d,colltype, ALL);
   }
 
   return;
 }
 
-void collide_wait_gpu()
+void collide_wait_gpu(int async)
 {
-   cudaStreamSynchronize(streamCOLL);
-   cudaStreamDestroy(streamCOLL);
+
+  if (async==1){
+    cudaStreamSynchronize(streamCOLL);
+    cudaStreamDestroy(streamCOLL);
+  }
 
    return;
 }
