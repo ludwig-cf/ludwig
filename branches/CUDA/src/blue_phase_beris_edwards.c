@@ -106,6 +106,9 @@ void blue_phase_beris_edwards(void) {
   //to do - GPU implement commented out stuff below
   TIMER_start(TIMER_HALO_VELOCITY);
   velocity_halo_gpu();
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
   TIMER_stop(TIMER_HALO_VELOCITY);
   colloids_fix_swd();
   

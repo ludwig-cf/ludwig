@@ -326,6 +326,9 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(PHIHALO);
       phi_halo_gpu();
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
       TIMER_stop(PHIHALO);
       
 
