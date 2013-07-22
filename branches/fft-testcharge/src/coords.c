@@ -27,6 +27,7 @@ static int ntotal_[3]                  = {64, 64, 64};
 static int periodic[3]                 = {1, 1, 1};
 static int pe_cartesian_size[3]        = {1, 1, 1};
 static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
+static MPI_Comm cart_periodic          = MPI_COMM_NULL;
 static int reorder_                    = 1;
 static int initialised_                = 0;
 
@@ -62,16 +63,9 @@ static int  is_ok_decomposition(void);
 void coords_init() {
 
   int n;
-  int tmp;
-  int iperiodic[3];
+  int iperiodic[3] = {1, 1, 1};
 
   assert(initialised_ == 0);
-
-  /* Set up the communicator and the Cartesian neighbour lists */
-
-  for (n = 0; n < 3; n++) {
-    iperiodic[n] = is_periodic(n);
-  }
 
   if (is_ok_decomposition()) {
     /* The user decomposition is selected */
@@ -81,23 +75,28 @@ void coords_init() {
     default_decomposition();
   }
 
+  /* A communicator which is always periodic: */
+
+  MPI_Cart_create(pe_comm(), 3, pe_cartesian_size, iperiodic, reorder_,
+		  &cart_periodic);
+
+  /* Set up the communicator and the Cartesian neighbour lists for
+   * the requested communicator. */
+
+  for (n = 0; n < 3; n++) {
+    iperiodic[n] = is_periodic(n);
+  }
+
   MPI_Cart_create(pe_comm(), 3, pe_cartesian_size, iperiodic, reorder_,
 		  &cartesian_communicator);
   MPI_Comm_rank(cartesian_communicator, &pe_cartesian_rank);
   MPI_Cart_coords(cartesian_communicator, pe_cartesian_rank, 3,
 		  pe_cartesian_coordinates);
 
-  /* We use a temporary here, as MPI_Cart_shift can change the actual
-   * argument for the rank of the source of the recieve, but we only
-   * want destination of send. */
-
   for (n = 0; n < 3; n++) {
-    tmp = pe_cartesian_coordinates[n];
-    MPI_Cart_shift(cartesian_communicator, n, -1, &tmp,
-		   &pe_cartesian_neighbours[BACKWARD][n]);
-    tmp = pe_cartesian_coordinates[n];
-    MPI_Cart_shift(cartesian_communicator, n, +1, &tmp,
-		   &pe_cartesian_neighbours[FORWARD][n]);
+    MPI_Cart_shift(cartesian_communicator, n, 1,
+		   pe_cartesian_neighbours[BACKWARD] + n,
+		   pe_cartesian_neighbours[FORWARD] + n);
   }
 
   /* Set local number of lattice sites and offsets. */
@@ -128,6 +127,10 @@ void coords_finish(void) {
   assert(initialised_);
 
   MPI_Comm_free(&cartesian_communicator);
+  MPI_Comm_free(&cart_periodic);
+
+  cartesian_communicator = MPI_COMM_NULL;
+  cart_periodic = MPI_COMM_NULL;
 
   for (ia = 0; ia < 3; ia++) {
     ntotal_[ia] = 64;
@@ -606,4 +609,53 @@ double coords_active_region(const int index) {
   if ((x*x + y*y + z*z) > radius_*radius_) active = 0.0;
 
   return active;
+}
+
+/*****************************************************************************
+ *
+ *  coords_periodic_comm
+ *
+ *****************************************************************************/
+
+int coords_periodic_comm(MPI_Comm * comm) {
+
+  assert(initialised_);
+  assert(comm);
+
+  *comm = cart_periodic;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  coords_cart_shift
+ *
+ *  A convenience to work out the rank of Cartesian neighbours in one
+ *  go from the Cartesian communicator.
+ *
+ *  The shift is always +/- 1 in the given direction.
+ *
+ *****************************************************************************/
+
+int coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank) {
+
+  int crank;       /* Rank in the Cartesian communicator */
+  int shift;       /* Shift is +/- 1 in direction dim */
+  int coords[3];   /* Cartesian coordinates this rank */
+
+  assert(initialised_);
+  assert(dim == X || dim == Y || dim == Z);
+  assert(direction == FORWARD || direction == BACKWARD);
+  assert(rank);
+
+  MPI_Comm_rank(comm, &crank);
+  MPI_Cart_coords(comm, crank, 3, coords);
+
+  if (direction == FORWARD) shift = +1;
+  if (direction == BACKWARD) shift = -1;
+
+  MPI_Cart_shift(comm, dim, shift, coords, rank);
+
+  return 0;
 }
