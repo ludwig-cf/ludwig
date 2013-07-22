@@ -80,6 +80,7 @@ void blue_phase_beris_edwards(void) {
 
   TIMER_start(TIMER_PHI_UPDATE_MALLOC);
 
+#ifndef _GPU_
   fluxe = (double *) malloc(nop*nsites*sizeof(double));
   fluxw = (double *) malloc(nop*nsites*sizeof(double));
   fluxy = (double *) malloc(nop*nsites*sizeof(double));
@@ -93,6 +94,7 @@ void blue_phase_beris_edwards(void) {
 
   hs5 = (double *) calloc(nop*nsites, sizeof(double));
   if (hs5 == NULL) fatal("calloc(hs5) failed\n");
+#endif
 
   TIMER_stop(TIMER_PHI_UPDATE_MALLOC);
 
@@ -146,12 +148,13 @@ void blue_phase_beris_edwards(void) {
 
 
 
-
+#ifndef _GPU_
   free(hs5);
   free(fluxe);
   free(fluxw);
   free(fluxy);
   free(fluxz);
+#endif
 
   return;
 }
