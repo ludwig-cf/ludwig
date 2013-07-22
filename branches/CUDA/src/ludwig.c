@@ -278,6 +278,12 @@ void ludwig_run(const char * inputfile) {
 
   while (next_step()) {
 
+#ifdef _GPU_
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+#endif
+
+
     TIMER_start(TIMER_STEPS);
 
     step = get_step();
@@ -475,6 +481,10 @@ void ludwig_run(const char * inputfile) {
 
 
 
+#ifdef _GPU_
+    /* sync MPI tasks for timing purposes */
+    MPI_Barrier(cart_comm());
+#endif
 
     TIMER_stop(TIMER_STEPS);
 
