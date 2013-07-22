@@ -78,6 +78,8 @@ void blue_phase_beris_edwards(void) {
   nsites = coords_nsites();
   nop = phi_nop();
 
+  TIMER_start(TIMER_PHI_UPDATE_MALLOC);
+
   fluxe = (double *) malloc(nop*nsites*sizeof(double));
   fluxw = (double *) malloc(nop*nsites*sizeof(double));
   fluxy = (double *) malloc(nop*nsites*sizeof(double));
@@ -92,6 +94,7 @@ void blue_phase_beris_edwards(void) {
   hs5 = (double *) calloc(nop*nsites, sizeof(double));
   if (hs5 == NULL) fatal("calloc(hs5) failed\n");
 
+  TIMER_stop(TIMER_PHI_UPDATE_MALLOC);
 
   
 #ifdef _GPU_
@@ -105,8 +108,14 @@ void blue_phase_beris_edwards(void) {
   colloids_fix_swd();
   
   //hydrodynamics_leesedwards_transformation();
+
+  TIMER_start(TIMER_PHI_UPDATE_UPWIND);
   advection_upwind_gpu();
+  TIMER_stop(TIMER_PHI_UPDATE_UPWIND);
+
+  TIMER_start(TIMER_PHI_UPDATE_ADVEC);
   advection_bcs_no_normal_flux_gpu();
+  TIMER_stop(TIMER_PHI_UPDATE_ADVEC);
 
   if (use_hs_ && colloids_q_anchoring_method() == ANCHORING_METHOD_TWO) {
     	info("Error: blue_phase_be_surface not yet supported in GPU mode\n");
@@ -114,7 +123,9 @@ void blue_phase_beris_edwards(void) {
     //blue_phase_be_surface(hs5;
   }
 
+  TIMER_start(TIMER_PHI_UPDATE_BE);
   blue_phase_be_update_gpu(hs5);
+  TIMER_stop(TIMER_PHI_UPDATE_BE);
 
 #else
 
