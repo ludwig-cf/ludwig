@@ -20,13 +20,15 @@ __global__ void collision_multirelaxation_gpu_d(int ndist, int nhalo,
 						int N[3],	      
 						const double* __restrict__ force_global_d, 
 						double* __restrict__ f_d,		
+						const double* __restrict__ ftmp_d,		
 						const char* __restrict__ site_map_status_d, 
 					      const double* __restrict__ force_ptr, 
 						double* __restrict__ velocity_ptr);
 
 __global__ void collision_lb_gpu_d(int ndist, int nhalo, int N[3], 
 					  const double* __restrict__ force_global_d, 
-					  double* __restrict__ f_d,			
+					  double* __restrict__ f_d,
+				   const double* __restrict__ ftmp_d,					
 					  const char* __restrict__ site_map_status_d, 
 					  const double* __restrict__ phi_site_d,		
 					  const double* __restrict__ grad_phi_site_d,	
@@ -39,6 +41,7 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 						   int N[3],
 						   const double* __restrict__ force_global_d, 
 						   double* __restrict__ f_d, 
+					    const double* __restrict__ ftmp_d,		
 						   const char* __restrict__ site_map_status_d, 
 						   const double* __restrict__ phi_site_d,		
 						   const double* __restrict__ grad_phi_site_d,	
@@ -83,6 +86,7 @@ extern "C" int  RUN_get_double_parameter(const char *, double *);
 
 /* external variables holding GPU memory addresses */
 extern double * f_d;
+extern double * ftmp_d;
 extern double * ma_d;
 extern double * mi_d;
 extern double * d_d;

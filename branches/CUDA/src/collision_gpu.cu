@@ -73,6 +73,14 @@ void collide_gpu(int async=0) {
   rtau2 = 2.0 / (1.0 + 2.0*mobility);
 
 
+  /* copy f to ftmp on accelerator */
+  //copy_f_to_ftmp_on_gpu();
+  
+  double *tmpptr=ftmp_d;
+  ftmp_d=f_d;
+  f_d=tmpptr;
+
+
 /* copy constants to accelerator (constant on-chip read-only memory) */
   copy_constants_to_gpu();
 
@@ -115,25 +123,6 @@ void collide_gpu(int async=0) {
 
 
 
-  /* collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d, */
-  /* 					      f_d, */
-  /* 					      site_map_status_d, */
-  /* 					       phi_site_d, */
-  /* 					       grad_phi_site_d, */
-  /* 					       delsq_phi_site_d, */
-  /* 							 force_d, */
-  /* 								  velocity_d,MULTIRELAXATION,ALL); */
-
-  //   collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist,nhalo, 
-  //		  N_d,force_global_d, f_d, site_map_status_d, 
-  //							 force_d, velocity_d, MULTIRELAXATION, ALL);
-
-   // still need to finalise comms/calc overlap for single fuid 
-  //cudaStreamSynchronize(streamCOLL);
-
-  //    }
-
-
 
   streamX=getXstream();
   streamY=getYstream();
@@ -145,7 +134,7 @@ void collide_gpu(int async=0) {
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
 
   collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
-  					      f_d,
+  					      f_d, ftmp_d,
   					      site_map_status_d,
   					       phi_site_d,
   					       grad_phi_site_d,
@@ -158,7 +147,7 @@ void collide_gpu(int async=0) {
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
  collision_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nhalo,
  						       N_d,force_global_d,
- 					      f_d,
+ 					      f_d, ftmp_d,
  					      site_map_status_d,
  					       phi_site_d,
  					       grad_phi_site_d,
@@ -170,7 +159,7 @@ void collide_gpu(int async=0) {
   nblocks=((N[X]-2*nhalo)*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
   collision_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nhalo,
  						       N_d,force_global_d,
- 					      f_d,
+ 					      f_d, ftmp_d,
  					      site_map_status_d,
  					       phi_site_d,
  					       grad_phi_site_d,
@@ -182,7 +171,7 @@ void collide_gpu(int async=0) {
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
   collision_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nhalo,
  						       N_d,force_global_d,
- 					      f_d,
+ 					      f_d, ftmp_d,
  					      site_map_status_d,
  					       phi_site_d,
  					       grad_phi_site_d,
@@ -200,25 +189,6 @@ void collide_gpu(int async=0) {
   //  cudaStreamSynchronize(streamCOLL);
 
 
- /*  /\* Bulk *\/ */
- /* nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
-
- /*  collision_binary_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d, */
- /*  					      f_d, */
- /*  					      site_map_status_d, */
- /*  					       phi_site_d, */
- /*  					       grad_phi_site_d, */
- /*  					       delsq_phi_site_d, */
- /*  							 force_d, */
-  /*  						     velocity_d,ALL); */
-
-
-
-
-  //}
-
-
-  //cudaThreadSynchronize();
 
   if (async==0){
     //cudaStreamSynchronize(streamX);
@@ -243,6 +213,8 @@ void collide_wait_gpu()
 __device__ void collision_multirelaxation_site_gpu_d(
 					      const double* __restrict__ force_global_d, 
 					      double* __restrict__ f_d, 
+					      const double* __restrict__ ftmp_d, 
+
 					      const char* __restrict__ site_map_status_d, 
 					      const double* __restrict__ force_d, 
     			       		      double* __restrict__ velocity_d, const int nsite, const int index
@@ -276,7 +248,7 @@ __device__ void collision_multirelaxation_site_gpu_d(
 	  for (m = 0; m < NVEL; m++) {
 	   double dtmp = 0.;
 	  for (p = 0; p < NVEL; p++) {
-	    dtmp += f_d[nsite*p + index]*ma_cd[m][p];
+	    dtmp += ftmp_d[nsite*p + index]*ma_cd[m][p];
 	  }
 	  mode[m] = dtmp;
 	  }
@@ -402,6 +374,7 @@ __device__ void collision_multirelaxation_site_gpu_d(
 
 __device__ void collision_binary_lb_site_gpu_d(const double* __restrict__ force_global_d, 
 					  double* __restrict__ f_d, 
+					  const double* __restrict__ ftmp_d, 
 					  const char* __restrict__ site_map_status_d, 
 					  const double* __restrict__ phi_site_d,		
 					  const double* __restrict__ grad_phi_site_d,	
@@ -444,7 +417,7 @@ __device__ void collision_binary_lb_site_gpu_d(const double* __restrict__ force_
   /* load data into registers */
   for(p = 0; p < NVEL; p++) {
     for(m = 0; m < NDIST; m++) {
-      f_loc[NVEL*m+p] = f_d[nsite*NDIST*p + nsite*m + index];
+      f_loc[NVEL*m+p] = ftmp_d[nsite*NDIST*p + nsite*m + index];
     }
   }
   
@@ -626,6 +599,7 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 						   int N[3],
 						   const double* __restrict__ force_global_d, 
 						   double* __restrict__ f_d, 
+					    const double* __restrict__ ftmp_d, 
 						   const char* __restrict__ site_map_status_d, 
 						   const double* __restrict__ phi_site_d,		
 						   const double* __restrict__ grad_phi_site_d,	
@@ -691,7 +665,7 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 
       if (colltype==BINARY){
       collision_binary_lb_site_gpu_d(force_global_d,
-      					      f_d,
+      					      f_d, ftmp_d,
       					      site_map_status_d,
       					       phi_site_d,
       					       grad_phi_site_d,
@@ -703,7 +677,7 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 	{
 
 	  
-	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, 
+	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, ftmp_d, 
 					       site_map_status_d, 
 					       force_d, velocity_d, nsite, 
 					       index);
@@ -732,7 +706,7 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 
       if (colltype==BINARY){
       collision_binary_lb_site_gpu_d(force_global_d,
-      					      f_d,
+      					      f_d, ftmp_d,
       					      site_map_status_d,
       					       phi_site_d,
       					       grad_phi_site_d,
@@ -744,7 +718,7 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 	{
 
 	  
-	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, 
+	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, ftmp_d, 
 					       site_map_status_d, 
 					       force_d, velocity_d, nsite, 
 					       index);
@@ -762,6 +736,7 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 __global__ void collision_lb_gpu_d(int ndist, int nhalo, int N[3], 
 					  const double* __restrict__ force_global_d, 
 					  double* __restrict__ f_d, 
+					  const double* __restrict__ ftmp_d, 
 					  const char* __restrict__ site_map_status_d, 
 					  const double* __restrict__ phi_site_d,		
 					  const double* __restrict__ grad_phi_site_d,	
@@ -844,7 +819,7 @@ __global__ void collision_lb_gpu_d(int ndist, int nhalo, int N[3],
 
       if (colltype==BINARY){
       collision_binary_lb_site_gpu_d(force_global_d,
-      					      f_d,
+      					      f_d, ftmp_d,
       					      site_map_status_d,
       					       phi_site_d,
       					       grad_phi_site_d,
@@ -856,7 +831,7 @@ __global__ void collision_lb_gpu_d(int ndist, int nhalo, int N[3],
 	{
 
 	  
-	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, 
+	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, ftmp_d, 
 					       site_map_status_d, 
 					       force_d, velocity_d, nsite, 
 					       index);
