@@ -27,6 +27,7 @@
 #define NTIMERS  50
 
 struct timer_struct {
+  double          t_last;
   double          t_start;
   double          t_sum;
   double          t_max;
@@ -145,6 +146,7 @@ void TIMER_stop(const int t_id) {
 
     t_elapse = MPI_Wtime() - timer[t_id].t_start;
 
+    timer[t_id].t_last = t_elapse;
     timer[t_id].t_sum += t_elapse;
     timer[t_id].t_max  = dmax(timer[t_id].t_max, t_elapse);
     timer[t_id].t_min  = dmin(timer[t_id].t_min, t_elapse);
@@ -188,17 +190,43 @@ void TIMER_statistics() {
       t_sum = timer[n].t_sum;
 
       
-      //USE MPI ROOT ONLY JUST NOW 
-      //MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
-      //MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
-      //MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+      MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+      MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+      MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-      //t_sum /= pe_size();
+      t_sum /= pe_size();
 
-      //info("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
-      info("%20s: %10.5f %10.5f %10.5f %10.6f", timer_name[n],
+      info("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
 	   t_min, t_max, t_sum, t_sum/(double) timer[n].nsteps);
       info(" (%d call%s)\n", timer[n].nsteps, timer[n].nsteps > 1 ? "s" : ""); 
+    }
+  }
+
+  return;
+}
+
+
+/* print last recorded timings on MPI root task */
+void TIMER_statistics_last() {
+
+  int    n;
+  double r;
+
+  MPI_Comm comm = pe_comm();
+
+  r = MPI_Wtick();
+
+  info("\nTimer resolution: %g second\n", r);
+  info("\nTimer statistics **ON MPI ROOT TASK**\n");
+  info("%20s: %10s %10s\n", "Section", "  tlast", "step");
+
+  for (n = 0; n < NTIMERS; n++) {
+
+    /* Report the stats for active timers */
+        
+    if (timer[n].nsteps != 0) {
+      info("%20s: %10.5f %d\n", timer_name[n],timer[n].t_last,get_step());
+
     }
   }
 

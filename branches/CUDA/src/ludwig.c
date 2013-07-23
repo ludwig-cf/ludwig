@@ -509,6 +509,7 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_stop(TIMER_STEPS);
 
+    TIMER_statistics_last();
     /* Configuration dump */
 
     if (is_config_step()) {

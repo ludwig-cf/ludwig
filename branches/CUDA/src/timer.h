@@ -22,6 +22,7 @@ void TIMER_init(void);
 void TIMER_start(const int);
 void TIMER_stop(const int);
 void TIMER_statistics(void);
+void TIMER_statistics_last(void);
 
 enum timer_id {TIMER_TOTAL,
 	       TIMER_STEPS,
