@@ -14,7 +14,8 @@
  *  $ cd ../src
  *  $ make lib
  *  $ cd ../util
- *  $ $(CC) -I../mpi_s -I../src extract_colloids.c -L../mpi_s -lmpi -L../src -lludwig -lm
+ *  $ $(CC) -I../mpi_s -I../src extract_colloids.c \
+ *          -L../mpi_s -lmpi -L../src -lludwig -lm
  *
  *  $ ./a.out <colloid file name> <csv file name>
  *
