@@ -173,26 +173,30 @@ void TIMER_statistics() {
   r = MPI_Wtick();
 
   info("\nTimer resolution: %g second\n", r);
-  info("\nTimer statistics\n");
+  info("\nTimer statistics **ON MPI ROOT TASK**\n");
   info("%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
 
   for (n = 0; n < NTIMERS; n++) {
 
     /* Report the stats for active timers */
-
+        
     if (timer[n].nsteps != 0) {
 
+      
       t_min = timer[n].t_min;
       t_max = timer[n].t_max;
       t_sum = timer[n].t_sum;
 
-      MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
-      MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
-      MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+      
+      //USE MPI ROOT ONLY JUST NOW 
+      //MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+      //MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+      //MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-      t_sum /= pe_size();
+      //t_sum /= pe_size();
 
-      info("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
+      //info("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
+      info("%20s: %10.5f %10.5f %10.5f %10.6f", timer_name[n],
 	   t_min, t_max, t_sum, t_sum/(double) timer[n].nsteps);
       info(" (%d call%s)\n", timer[n].nsteps, timer[n].nsteps > 1 ? "s" : ""); 
     }
