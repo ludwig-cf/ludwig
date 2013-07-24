@@ -405,7 +405,7 @@ void ludwig_run(const char * inputfile) {
 
 
 
-    int async=0;
+    int async=1;
 
     if(is_propagation_ode() == 0) {
 

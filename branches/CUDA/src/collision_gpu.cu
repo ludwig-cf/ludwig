@@ -131,17 +131,6 @@ void collide_gpu(int async=0) {
       
 
 
-  /* Bulk */
-  nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
-
-  collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
-  					      f_d, ftmp_d,
-  					      site_map_status_d,
-  					       phi_site_d,
-  					       grad_phi_site_d,
-  					       delsq_phi_site_d,
-  							 force_d,
-							   velocity_d,colltype, BULK);
 
 
  /* X edges */
@@ -179,6 +168,19 @@ void collide_gpu(int async=0) {
  					       delsq_phi_site_d,
  							 force_d,
 							  velocity_d,colltype, Z);
+
+  /* Bulk */
+  nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
+
+  collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
+  					      f_d, ftmp_d,
+  					      site_map_status_d,
+  					       phi_site_d,
+  					       grad_phi_site_d,
+  					       delsq_phi_site_d,
+  							 force_d,
+							   velocity_d,colltype, BULK);
+
 
   }
   else{
@@ -649,19 +651,9 @@ __global__ static void collision_edge_gpu_d(int nhalo,
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);
       
       /* LOW EDGE */
-      if (dirn == X){
-	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
-      }
-      else if (dirn == Y){
-	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
-      }
-      else if (dirn == Z){
-	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
-      }
-
+      index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,kk+nhalo,Nall);
 
       get_coords_from_index_gpu_d(&ii_,&jj_,&kk_,index,Nall);
-      /* printf("low dir=%d %d %d %d\n",dirn,ii_,jj_,kk_); */
 
       if (colltype==BINARY){
       collision_binary_lb_site_gpu_d(force_global_d,
@@ -685,11 +677,6 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 	}
 
  
-      /* printf("%f\n",f_d[index]); */
-
-      //if (jj_==1 && kk_==1)printf("X low %d %d %d %f\n",ii_,jj_,kk_,f_d[index]);
-
-
         
       /* HIGH EDGE */
       if (dirn == X){
@@ -702,7 +689,6 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 	index = get_linear_index_gpu_d(ii+nhalo,jj+nhalo,Nall[Z]-2*nhalo+kk,Nall);
       }
 
-      //printf("high dir=%d %d %d %d\n",dirn,ii,jj,kk);
 
       if (colltype==BINARY){
       collision_binary_lb_site_gpu_d(force_global_d,
