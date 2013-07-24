@@ -46,7 +46,7 @@ static double rtau2;
 extern const double d_[3][3];
 
 /* handles for CUDA streams (for ovelapping)*/
-static cudaStream_t streamCOLL, streamX, streamY, streamZ;
+static cudaStream_t streamBULK, streamX, streamY, streamZ;
 
 
 
@@ -84,7 +84,7 @@ void collide_gpu(int async=0) {
 /* copy constants to accelerator (constant on-chip read-only memory) */
   copy_constants_to_gpu();
 
-  cudaStreamCreate(&streamCOLL);
+  //cudaStreamCreate(&streamCOLL);
   
   int colltype;
 
@@ -128,6 +128,7 @@ void collide_gpu(int async=0) {
   streamX=getXstream();
   streamY=getYstream();
   streamZ=getZstream();
+  streamBULK=getZstream();
       
 
 
@@ -172,7 +173,7 @@ void collide_gpu(int async=0) {
   /* Bulk */
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
 
-  collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamCOLL>>>(ndist, nhalo, N_d, 					      force_global_d,
+  collision_lb_gpu_d<<<nblocks,DEFAULT_TPB,0,streamBULK>>>(ndist, nhalo, N_d, 					      force_global_d,
   					      f_d, ftmp_d,
   					      site_map_status_d,
   					       phi_site_d,
@@ -206,8 +207,7 @@ void collide_wait_gpu(int async)
 {
 
   if (async==1){
-    cudaStreamSynchronize(streamCOLL);
-    cudaStreamDestroy(streamCOLL);
+    cudaStreamSynchronize(streamBULK);
   }
 
    return;
@@ -640,12 +640,9 @@ __global__ static void collision_edge_gpu_d(int nhalo,
 
   int p,m, index,ii,jj,kk,ii_,jj_,kk_;
  
-  int npackedsite = Nedge[X]*Nedge[Y]*Nedge[Z];
-  
-
   int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   
-  if (threadIndex < npackedsite)
+  if (threadIndex < Nedge[X]*Nedge[Y]*Nedge[Z])
     {
       
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Nedge);

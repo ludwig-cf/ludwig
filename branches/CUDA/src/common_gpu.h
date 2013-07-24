@@ -18,6 +18,7 @@
 //#define GPUS_PER_NODE 4
 #define GPUS_PER_NODE 1
 
+enum lattchunks {ALL,BULK,EDGES};
 
 /* from coords.h */
 enum cartesian_directions {X, Y, Z};

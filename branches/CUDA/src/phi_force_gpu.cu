@@ -215,6 +215,8 @@ void blue_phase_be_update_gpu(void) {
   Nall[Y]=N[Y]+2*nhalo;
   Nall[Z]=N[Z]+2*nhalo;
 
+
+
  
   put_phi_force_constants_on_gpu();  
   expand_phi_on_gpu();
@@ -237,6 +239,70 @@ void blue_phase_be_update_gpu(void) {
       blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
 
 
+  /* /\* copy phi_site to phi_site_tmp on accelerator *\/ */
+  /* double *tmpptr=phi_site_temp_d; phi_site_temp_d=phi_site_d; phi_site_d=tmpptr; */
+
+  /* threadsperblock.x=DEFAULT_TPB_Z; */
+  /* threadsperblock.y=DEFAULT_TPB_Y; */
+  /* threadsperblock.z=DEFAULT_TPB_X; */
+
+  /* nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z; */
+  /* nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y; */
+  /* nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X; */
+
+
+  /* cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1); */
+  /* blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>> */
+  /*   (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,ALL); */
+
+
+  /* copy phi_site to phi_site_tmp on accelerator */
+  double *tmpptr=phi_site_temp_d; phi_site_temp_d=phi_site_d; phi_site_d=tmpptr;
+
+
+  /* need to make the edges 1D */
+
+  /* X edges */
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=nhalo;
+
+  nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=1;
+
+  cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
+  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock>>>
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,X);
+
+  /* Y edges */
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=nhalo;
+  threadsperblock.z=DEFAULT_TPB_X;;
+
+  nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=1;
+  nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;;
+
+  cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
+  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock>>>
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,Y);
+
+  /* Z edges */
+  threadsperblock.x=nhalo;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;;
+
+  nblocks.x=1;
+  nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+
+  cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
+  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock>>>
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,Z);
+
+
+
   threadsperblock.x=DEFAULT_TPB_Z;
   threadsperblock.y=DEFAULT_TPB_Y;
   threadsperblock.z=DEFAULT_TPB_X;
@@ -245,9 +311,10 @@ void blue_phase_be_update_gpu(void) {
   nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
   nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
+
   cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
   blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
-    (le_index_real_to_buffer_d,phi_site_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d);
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,BULK);
       
   cudaThreadSynchronize();
   checkCUDAError("blue_phase_be_update_gpu_d");
@@ -819,8 +886,9 @@ __global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_t
   return;
 }
 
-__global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
+__device__ void blue_phase_be_update_site_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					   double* __restrict__ phi_site_d,
+					   const double* __restrict__ phi_site_temp_d,
 					   const double* __restrict__ grad_phi_site_d,
 					   const double* __restrict__ delsq_phi_site_d,
 					   const double* __restrict__ h_site_d,
@@ -829,37 +897,27 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
 					   const double* __restrict__ fluxe_d,
 					   const double* __restrict__ fluxw_d,
 					   const double* __restrict__ fluxy_d,
-					   const double* __restrict__ fluxz_d
+						const double* __restrict__ fluxz_d,
+						const int ii,const int jj,const int kk 
 					   ){
 
   int icm1, icp1;
   int index, indexm1, indexp1;
-  int ii, jj, kk;
 
- /* CUDA thread index */
-  kk = blockIdx.x*blockDim.x+threadIdx.x;
-  jj = blockIdx.y*blockDim.y+threadIdx.y;
-  ii = blockIdx.z*blockDim.z+threadIdx.z;
- 
- /* Avoid going beyond problem domain */
-  if (ii < N_cd[X] && jj < N_cd[Y] && kk < N_cd[Z] )
-    {
-
-
-      /* calculate index from CUDA thread index */
-
-      index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);      
-
-      icm1=le_index_real_to_buffer_d[ii+nhalo_cd];
-      icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii+nhalo_cd];      
-
-      indexm1 = get_linear_index_gpu_d(icm1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
-      indexp1 = get_linear_index_gpu_d(icp1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
-
-
-
-      int ia, ib, id;
-
+  /* calculate index from CUDA thread index */
+  
+  index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);      
+  
+  icm1=le_index_real_to_buffer_d[ii];
+  icp1=le_index_real_to_buffer_d[Nall_cd[X]+ii];      
+  
+  indexm1 = get_linear_index_gpu_d(icm1,jj,kk,Nall_cd);
+  indexp1 = get_linear_index_gpu_d(icp1,jj,kk,Nall_cd);
+  
+  
+  
+  int ia, ib, id;
+  
   double q[3][3];
   double d[3][3];
   double s[3][3];
@@ -871,12 +929,12 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
 
   /* load phi */
 
-  q[X][X] = phi_site_d[nsites_cd*XX+index];
-  q[X][Y] = phi_site_d[nsites_cd*XY+index];
-  q[X][Z] = phi_site_d[nsites_cd*XZ+index];
+  q[X][X] = phi_site_temp_d[nsites_cd*XX+index];
+  q[X][Y] = phi_site_temp_d[nsites_cd*XY+index];
+  q[X][Z] = phi_site_temp_d[nsites_cd*XZ+index];
   q[Y][X] = q[X][Y];
-  q[Y][Y] = phi_site_d[nsites_cd*YY+index];
-  q[Y][Z] = phi_site_d[nsites_cd*YZ+index];
+  q[Y][Y] = phi_site_temp_d[nsites_cd*YY+index];
+  q[Y][Z] = phi_site_temp_d[nsites_cd*YZ+index];
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
@@ -925,15 +983,15 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
        w[Y][X] = 0.5*(velocity_d[Y*nsites_cd+indexp1] - velocity_d[Y*nsites_cd+indexm1]);
        w[Z][X] = 0.5*(velocity_d[Z*nsites_cd+indexp1] - velocity_d[Z*nsites_cd+indexm1]);
        
-       indexm1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
-       indexp1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd+1,kk+nhalo_cd,Nall_cd);
+       indexm1 = get_linear_index_gpu_d(ii,jj-1,kk,Nall_cd);
+       indexp1 = get_linear_index_gpu_d(ii,jj+1,kk,Nall_cd);
 
        w[X][Y] = 0.5*(velocity_d[X*nsites_cd+indexp1] - velocity_d[X*nsites_cd+indexm1]);
        w[Y][Y] = 0.5*(velocity_d[Y*nsites_cd+indexp1] - velocity_d[Y*nsites_cd+indexm1]);
        w[Z][Y] = 0.5*(velocity_d[Z*nsites_cd+indexp1] - velocity_d[Z*nsites_cd+indexm1]);
 
-       indexm1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
-       indexp1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd+1,Nall_cd);
+       indexm1 = get_linear_index_gpu_d(ii,jj,kk-1,Nall_cd);
+       indexp1 = get_linear_index_gpu_d(ii,jj,kk+1,Nall_cd);
 
        w[X][Z] = 0.5*(velocity_d[X*nsites_cd+indexp1] - velocity_d[X*nsites_cd+indexm1]);
        w[Y][Z] = 0.5*(velocity_d[Y*nsites_cd+indexp1] - velocity_d[Y*nsites_cd+indexm1]);
@@ -974,8 +1032,8 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
 	  /* Here's the full hydrodynamic update. */
 
 	  int indexj, indexk;
-	  indexj = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);      
-	  indexk = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);      
+	  indexj = get_linear_index_gpu_d(ii,jj-1,kk,Nall_cd);      
+	  indexk = get_linear_index_gpu_d(ii,jj,kk-1,Nall_cd);      
 
 	  q[X][X] += dt_cd*(s[X][X] + Gamma_cd*(h_site_d[3*nsites_cd*X+nsites_cd*X+index])
 	  		 - fluxe_d[XX*nsites_cd+index] + fluxw_d[XX*nsites_cd+index]
@@ -1009,6 +1067,130 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
 	 phi_site_d[nsites_cd*XZ+index] = q[X][Z];
 	 phi_site_d[nsites_cd*YY+index] = q[Y][Y];
 	 phi_site_d[nsites_cd*YZ+index] = q[Y][Z];
+
+
+    
+
+
+  return;
+}
+
+
+__global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
+					   double* __restrict__ phi_site_d,
+					   const double* __restrict__ phi_site_temp_d,
+					   const double* __restrict__ grad_phi_site_d,
+					   const double* __restrict__ delsq_phi_site_d,
+					   const double* __restrict__ h_site_d,
+					   const double* __restrict__ velocity_d,
+					   const char* __restrict__ site_map_status_d,
+					   const double* __restrict__ fluxe_d,
+					   const double* __restrict__ fluxw_d,
+					   const double* __restrict__ fluxy_d,
+					   const double* __restrict__ fluxz_d,
+					   int latchunk
+					   ){
+
+  int icm1, icp1;
+  int index, indexm1, indexp1;
+  int ii, jj, kk;
+
+
+  int edgeoffset;
+  if (latchunk==BULK)
+    edgeoffset=2*nhalo_cd;
+  else
+    edgeoffset=nhalo_cd;
+
+ /* CUDA thread index */
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
+ 
+ /* Avoid going beyond problem domain */
+  if (ii < (Nall_cd[X]-2*edgeoffset) && jj < (Nall_cd[Y]-2*edgeoffset) && kk < (Nall_cd[X]-2*edgeoffset) )
+    {
+
+      
+      blue_phase_be_update_site_gpu_d(le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,ii+edgeoffset,jj+edgeoffset,kk+edgeoffset);
+
+
+    }
+
+
+  return;
+}
+
+__global__ void blue_phase_be_update_edge_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
+					   double* __restrict__ phi_site_d,
+					   const double* __restrict__ phi_site_temp_d,
+					   const double* __restrict__ grad_phi_site_d,
+					   const double* __restrict__ delsq_phi_site_d,
+					   const double* __restrict__ h_site_d,
+					   const double* __restrict__ velocity_d,
+					   const char* __restrict__ site_map_status_d,
+					   const double* __restrict__ fluxe_d,
+					   const double* __restrict__ fluxw_d,
+					   const double* __restrict__ fluxy_d,
+					   const double* __restrict__ fluxz_d,
+					   int dirn
+					   ){
+
+  int icm1, icp1;
+  int index, indexm1, indexp1;
+  int ii, jj, kk;
+
+  int Nedge[3];
+  int edgeoffset; 
+
+  if (dirn == X){
+    Nedge[X]=nhalo_cd;
+    Nedge[Y]=N_cd[Y];
+    Nedge[Z]=N_cd[Z];
+  }
+  else if (dirn == Y){
+    Nedge[X]=N_cd[X];
+    Nedge[Y]=nhalo_cd;
+    Nedge[Z]=N_cd[Z];
+  }
+  else if (dirn == Z){
+    Nedge[X]=N_cd[X];
+    Nedge[Y]=N_cd[Y];
+    Nedge[Z]=nhalo_cd;
+  }
+
+
+ /* CUDA thread index */
+  kk = blockIdx.x*blockDim.x+threadIdx.x;
+  jj = blockIdx.y*blockDim.y+threadIdx.y;
+  ii = blockIdx.z*blockDim.z+threadIdx.z;
+
+       int ii_,jj_,kk_;
+ 
+ /* Avoid going beyond problem domain */
+  if (ii < Nedge[X] && jj < Nedge[Y] && kk < Nedge[Z] )
+    {
+
+      
+      ii_= ii+nhalo_cd;jj_=jj+nhalo_cd;kk_=kk+nhalo_cd;
+
+      /* LOW EDGE */
+
+      blue_phase_be_update_site_gpu_d(le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,ii_,jj_,kk_);
+
+        
+      /* HIGH EDGE */
+      if (dirn == X){
+      	ii_=Nall_cd[X]-2*nhalo_cd+ii;jj_=jj+nhalo_cd;kk_=kk+nhalo_cd;
+      }
+      else if (dirn == Y){
+      	ii_=ii+nhalo_cd;jj_=Nall_cd[Y]-2*nhalo_cd+jj;kk_=kk+nhalo_cd;
+      }
+      else if (dirn == Z){
+      	ii_=ii+nhalo_cd;;jj_=jj+nhalo_cd;;kk_=Nall_cd[Z]-2*nhalo_cd+kk;
+      }
+
+      blue_phase_be_update_site_gpu_d(le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,ii_,jj_,kk_);
 
 
     }

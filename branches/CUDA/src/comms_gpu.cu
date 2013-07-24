@@ -83,7 +83,7 @@ static int nhalodataY;
 static int nhalodataZ;
 
 /* handles for CUDA streams (for ovelapping)*/
-static cudaStream_t streamX,streamY, streamZ;
+static cudaStream_t streamX,streamY, streamZ, streamBULK;
 
 
 static int reduced_halo=0;
@@ -108,6 +108,9 @@ cudaStream_t getYstream(){
 cudaStream_t getZstream(){
   return streamZ;
 }
+cudaStream_t getBULKstream(){
+  return streamBULK;
+}
 
 /* Perform tasks necessary to initialise accelerator */
 void init_comms_gpu()
@@ -126,6 +129,7 @@ void init_comms_gpu()
   cudaStreamCreate(&streamX);
   cudaStreamCreate(&streamY);
   cudaStreamCreate(&streamZ);
+  cudaStreamCreate(&streamBULK);
 
 
   cudaMemcpyToSymbol(cv_cd, cv, NVEL*3*sizeof(int), 0, cudaMemcpyHostToDevice); 
@@ -142,6 +146,7 @@ void finalise_comms_gpu()
   cudaStreamDestroy(streamX);
   cudaStreamDestroy(streamY);
   cudaStreamDestroy(streamZ);
+  cudaStreamDestroy(streamBULK);
 
 }
 

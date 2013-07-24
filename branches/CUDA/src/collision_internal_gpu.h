@@ -11,7 +11,6 @@
 
 #include "common_gpu.h"
 
-enum lattchunks {ALL,BULK,EDGES};
 enum colltype {MULTIRELAXATION,BINARY};
 
 

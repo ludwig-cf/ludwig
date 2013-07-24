@@ -37,6 +37,7 @@ extern "C" int le_get_nplane_total(void);
 
 /* external variables holding device memory addresses */
 extern double * phi_site_d;
+extern double * phi_site_temp_d;
 extern double * phi_site_full_d;
 extern double * h_site_d;
 extern double * stress_site_d;
@@ -92,6 +93,7 @@ __global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_t
 
 __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					   double* __restrict__ phi_site_d,
+					   const double* __restrict__ phi_site_temp_d,
 					   const double* __restrict__ grad_phi_site_d,
 					   const double* __restrict__ delsq_phi_site_d,
 					   const double* __restrict__ h_site_d,
@@ -100,8 +102,23 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
 					   const double* __restrict__ fluxe_d,
 					   const double* __restrict__ fluxw_d,
 					   const double* __restrict__ fluxy_d,
-					   const double* __restrict__ fluxz_d
+					   const double* __restrict__ fluxz_d,
+					   int latchunk
 );
+__global__ void blue_phase_be_update_edge_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
+					   double* __restrict__ phi_site_d,
+					   const double* __restrict__ phi_site_temp_d,
+					   const double* __restrict__ grad_phi_site_d,
+					   const double* __restrict__ delsq_phi_site_d,
+					   const double* __restrict__ h_site_d,
+					   const double* __restrict__ velocity_d,
+					   const char* __restrict__ site_map_status_d,
+					   const double* __restrict__ fluxe_d,
+					   const double* __restrict__ fluxw_d,
+					   const double* __restrict__ fluxy_d,
+					   const double* __restrict__ fluxz_d,
+					   int dirn
+						);
 
 __global__ void advection_upwind_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 				       const double* __restrict__ phi_site_d,

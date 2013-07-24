@@ -24,6 +24,7 @@ CFUNC void finalise_comms_gpu();
 CFUNC cudaStream_t getXstream();
 CFUNC cudaStream_t getYstream();
 CFUNC cudaStream_t getZstream();
+CFUNC cudaStream_t getBULKstream();
 #endif
 
 //CFUNC void get_XYZstreams(cudaStream_t *streamXptr,cudaStream_t *streamYptr,cudaStream_t *streamZptr);

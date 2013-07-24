@@ -39,6 +39,7 @@ extern char * mask_;
 double * f_d;
 double * ftmp_d;
 double * phi_site_d;
+double * phi_site_temp_d;
 double * phi_site_full_d;
 double * grad_phi_site_full_d;
 float * grad_phi_float_d;
@@ -160,7 +161,9 @@ static void allocate_field_memory_on_gpu()
   cudaMalloc((void **) &ftmp_d, ndata*sizeof(double));
 
   
+
   cudaMalloc((void **) &phi_site_d, nsites*nop*sizeof(double));
+  cudaMalloc((void **) &phi_site_temp_d, nsites*nop*sizeof(double));
   cudaMalloc((void **) &phi_site_full_d, nsites*9*sizeof(double));
   cudaMalloc((void **) &grad_phi_site_full_d, nsites*27*sizeof(double));
   cudaMalloc((void **) &grad_phi_float_d, nsites*27*sizeof(float)); 
@@ -197,6 +200,7 @@ static void free_field_memory_on_gpu()
   cudaFree(f_d);
   cudaFree(ftmp_d);
   cudaFree(phi_site_d);
+  cudaFree(phi_site_temp_d);
   cudaFree(phi_site_full_d);
   cudaFree(grad_phi_site_full_d);
   cudaFree(grad_phi_float_d);
