@@ -1,0 +1,39 @@
+#!/bin/sh --login
+#PBS -N ludwigsor_timing
+#PBS -l mppwidth=32
+#PBS -l mppnppn=32
+#PBS -j oe
+#PBS -A d45
+#PBS -l walltime=01:00:00
+
+# Flags explanation
+# -----------------
+# -N           -->  give a name to the job, easier to track
+# -l mppwidth  -->  total number of tasks
+# -l mppnppn   -->  how many jobs per node (takes values of 1 to 32)
+# -j oe        -->  merge std error and std output files
+# -A d45       -->  name of the budget
+# -l walltime  -->  how much time I expect to take, in case of a problem this will
+#                   save us from wasting AUs
+
+# Go to directory the "qsub" is executed
+cd $PBS_O_WORKDIR
+
+for t in 2
+#for t in 4 8 16 32
+#for t in 64 128 256 512
+#for t in 1024 2048
+do
+
+aprun -n $t ./sorLudwig.exe LJinput > time/time_sor_256_$t 
+
+done
+
+exit 0
+
+#mpiexec -n $1 ./test_psi_fft
+# | sed 's:timesteps took::' | sed 's:seconds::') > $(pwd | sed 's:/Home/s1256564/Documents/labs2/PFP/MD/src/::')_time
+
+
+
+
