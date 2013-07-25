@@ -353,7 +353,9 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->psi) psi_stats_info(ludwig->psi);
   ludwig_report_momentum(ludwig);
 
+  TIMER_start(TIMER_DECOMP);
   decomp_init();
+  TIMER_stop(TIMER_DECOMP);
 
   /* Main time stepping loop */
 
@@ -386,11 +388,19 @@ void ludwig_run(const char * inputfile) {
       }
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
-//      psi_sor_poisson(ludwig->psi);
+			TIMER_start(TIMER_PSI_UPDATE);
+      psi_sor_poisson(ludwig->psi);
+			TIMER_stop(TIMER_PSI_UPDATE);
+
+/*			TIMER_start(TIMER_PSI_UPDATE);
       psi_fft_poisson(ludwig->psi);      
+			TIMER_stop(TIMER_PSI_UPDATE);*/
+
       psi_halo_rho(ludwig->psi);
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
+			TIMER_start(TIMER_NERNST);
       nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
+			TIMER_stop(TIMER_NERNST);
     }
 
     /* Order parameter */

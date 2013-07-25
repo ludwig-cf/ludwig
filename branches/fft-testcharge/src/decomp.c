@@ -93,8 +93,6 @@ void decomp_init() {
 
   /* transferring data from cartesian to pencil */
 
-    if(pe_rank() == 0) printf("proc_dims: %d %d, cart_size: %d %d %d\n", proc_dims[0], proc_dims[1], cart_size(0), cart_size(1), cart_size(2));
-
   /* already in a pencil decomposition, the user has not specified an acceptable grid, or has specified the same grid */
     if( ( cart_size(2) == 1 && (proc_dims[0] == 0 || proc_dims[1] == 0 || n == 0 || proc_dims[0]*proc_dims[1] != num_procs) ) || (cart_size(2) == 1 && cart_size(1) == proc_dims[1] && cart_size(0) == proc_dims[0]) ) {
 
