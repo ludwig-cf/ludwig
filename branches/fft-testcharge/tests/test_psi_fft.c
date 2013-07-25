@@ -130,13 +130,16 @@ int main(int argc, char ** argv) {
   for(i=1; i<=nlocal[X]; i++) {
     for(j=1; j<=nlocal[Y]; j++) {
       for(k=1; k<=nlocal[Z]; k++) {
-        if(fabs(psi_sor->psi[coords_index(i,j,k)]) > 1e-10) {
-          if(fabs( (2* fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)] + psi_fft->psi[coords_index(i,j,k)]) > 0.01 )) printf("fft: %f, sor: %f diff %f\n", psi_sor->psi[coords_index(i,j,k)], psi_fft->psi[coords_index(i,j,k)], fabs( (2* fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)] + psi_fft->psi[coords_index(i,j,k)])) );
-          assert( fabs( (2* fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)] + psi_fft->psi[coords_index(i,j,k)]) ) < 0.01);
+        if(fabs(psi_sor->psi[coords_index(i,j,k)]) > 1e-8) {
+          if(fabs( (fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)]) >= 0.01 )) { 
+            printf("fft: %e, sor: %e diff %f\n", psi_fft->psi[coords_index(i,j,k)], psi_sor->psi[coords_index(i,j,k)], fabs( (fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)]) ) );
+          }
+
+          assert( fabs( (fabs(psi_sor->psi[coords_index(i,j,k)] - psi_fft->psi[coords_index(i,j,k)])) / (psi_sor->psi[coords_index(i,j,k)]) ) < 0.01);
         }
         else {
 //          printf("%f\n", psi_fft->psi[coords_index(i,j,k)]);
-          assert( fabs(psi_fft->psi[coords_index(i,j,k)]) < 1e-10);
+          assert( fabs(psi_fft->psi[coords_index(i,j,k)]) < 5e-8);
         }
       }
     }
