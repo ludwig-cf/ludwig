@@ -146,7 +146,6 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 	index = coords_index(ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
-	map_data(map, index, wet);
 
 	/* Set solid/fluid flag to index neighbours */
 
@@ -196,6 +195,7 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 
 	      ia = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
 				 kc + bs_cv[p][Z]);
+	      map_data(map, ia, wet);
 	      c = wet[0];
 	      h = wet[1];
 
