@@ -42,15 +42,16 @@ EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
 CC = gcc -g
-#MPICC = mpicc
-MPICC = cc
+MPICC = mpicc
+#MPICC = cc
 OPTS = -DNDEBUG -D_D3Q19_
 #CFLAGS = -Wall -O3
 CFLAGS = -O3
 
 
-INC = -I. -I../../build/p3dfft-2.5/include/
-LIBS = -lm ../../build/p3dfft-2.5/lib/libp3dfft.a /opt/fftw/3.3.0.1/interlagos/lib/libfftw3.a -pgf90libs
+INC = -I. -I../../../../p3dfft/include/
+#LIBS = -lm ../../build/p3dfft-2.5/lib/libp3dfft.a /opt/fftw/3.3.0.1/interlagos/lib/libfftw3.a -pgf90libs
+LIBS = -lm ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
 AR = ar
 ARFLAGS = -cru
 

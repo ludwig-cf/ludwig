@@ -76,7 +76,7 @@ void decomp_init() {
     int i, j, tmp;
     int n;
    
-    overwrite = 0; /* don't allow overwriting input of btran */
+    overwrite = 1; /* don't allow overwriting input of btran */
 
 /* initialise the necessary static variables */
     ludwig_comm = cart_comm();
@@ -652,6 +652,28 @@ void decomp_pencil_starts(int start[3], int ip) {
   }
 }
 
+/***************************************************************************************
+ * compute_arr_size
+ *
+ * returns the size of the larger of the arrays involved in the fft routines
+ * this allows for only one array to be allocated.
+ *
+ ****************************************************************************************/
+
+int decomp_fftarr_size() {
+
+  int i,f;
+
+  i = isize[0]*isize[1]*isize[2];
+  f = fsize[0]*fsize[1]*fsize[2]*2;
+  
+  if(f >= i) {
+    return f;
+  }
+  else {
+    return i;
+  }
+}
 
 /***************************************************************************************
  * decomp_finish
