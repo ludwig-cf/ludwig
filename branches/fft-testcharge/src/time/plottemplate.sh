@@ -1,6 +1,6 @@
 #! /bin/bash
 
-function plotdata() {
+function plotspeedup() {
 for t in 128 256 512; do
 cat <<EOF
   set style fill solid 1.0 border -1
@@ -27,7 +27,28 @@ done
 #  echo "\"timings.dat\" using $i_end:xticlabels(1)"
 }
 
-plotdata | gnuplot
+function plottime() {
+for t in 128 256 512; do
+cat <<EOF
+  set style fill solid 1.0 border -1
+  set pointsize 2
+  set log y
+  set log x
+  set xlabel "MPI Tasks"
+  set ylabel "Time (s)"
+  set term png
+  set output "abstime${t}.png"
+#  set term epslatex color
+#  set output "codegraph.tex"
+EOF
+  echo "plot \\"
+  echo "\"ffttime_${t}\" u 1:7, \"sortime_${t}\" u 1:7"
+
+done 
+}
+
+plotspeedup | gnuplot
+plottime | gnuplot
 
 
 #epstopdf codegraph.eps
