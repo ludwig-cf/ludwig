@@ -3,16 +3,16 @@
 for t in 128 256; do
 for i in sor fft; do
 
-#extract lines with 'psi update' and remove the filename and :
+#extract lines with 'psi update', remove the filename and the :
 grep 'psi update' time_${i}_$t* | sed 's/time.*._//g' | sed 's/://g' > ${i}time_$t
 
 #grep 'nerst planck' time_${i}_$t* | sed 's/time.*._//g' | sed 's/://g' > ${i}plancktime_$t
 
-#extract lines with [psi] and put into .dat file for printing the electric field of the system
+#extract lines with '[psi]' and put into .dat file for printing the electric field of the system
 grep '\[psi\]' time_${i}_${t}_128 > psi_${i}_${t}.dat
 
 
-#this bit finds the time on 2 procs and pastes it back into the itimefile
+#this bit finds the time on 2 procs and pastes it back into the timefile
 x=$(wc -l < ${i}time_${t})
 
 y=$(grep 'psi update' time_${i}_${t}_2 |  awk 'BEGIN {} { print $6 } END {}' | tail -1)

@@ -24,7 +24,7 @@
 #include "util.h"
 #include "timer.h"
 
-#define NTIMERS  21
+#define NTIMERS  25
 
 struct timer_struct {
   double          t_start;
