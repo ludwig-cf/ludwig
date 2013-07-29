@@ -42,16 +42,22 @@ EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
 CC = gcc -g
-MPICC = mpicc
-#MPICC = cc
 OPTS = -DNDEBUG -D_D3Q19_
 #CFLAGS = -Wall -O3
 CFLAGS = -O3
 
 
-INC = -I. -I../../../../p3dfft/include/
+#MPICC = mpicc
+#INC = -I. -I../../../../p3dfft/include/
+#LIBS = -lm ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
+
+#MPICC = cc
+#INC = -I. -I../../build/p3dfft-2.5/include/
 #LIBS = -lm ../../build/p3dfft-2.5/lib/libp3dfft.a /opt/fftw/3.3.0.1/interlagos/lib/libfftw3.a -pgf90libs
-LIBS = -lm ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
+
+MPICC = mpixlc_r
+INC = -I. -I${HOME}/p3dfft/include/
+LIBS = -lm  ${HOME}/p3dfft/lib/libp3dfft.a /opt/ibmmath/lib64/libesslbg.a -L/bgsys/drivers/V1R1M2/ppc64/comm/xl/lib -L/bgsys/drivers/V1R1M2/ppc64/comm/sys/lib -L/bgsys/drivers/V1R1M2/ppc64/spi/lib -L/opt/ibmcmp/xlsmp/bg/3.1/bglib64 -L/opt/ibmcmp/xlmass/bg/7.3/bglib64 -L/opt/ibmcmp/xlf/bg/14.1/bglib64 -R/opt/ibmcmp/lib64/bg/bglib64 -L/bgsys/drivers/toolchain/V1R1M2/gnu-linux/lib/gcc/powerpc64-bgq-linux/4.4.6 -L/bgsys/drivers/toolchain/V1R1M2/gnu-linux/lib/gcc -L/bgsys/drivers/toolchain/V1R1M2/gnu-linux/lib/gcc/powerpc64-bgq-linux/4.4.6/../../../../powerpc64-bgq-linux/lib -lmpich -lopa -lmpl -lpami -lSPI -lSPI_cnk -lpthread -lrt -lstdc++ -lmpichf90 -lxlf90_r -lxlopt -lxlomp_ser -lxl -lxlfmath -ldl -lm -lnss_files -lnss_dns -lresolv
 AR = ar
 ARFLAGS = -cru
 
