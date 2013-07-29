@@ -78,8 +78,6 @@ int psi_fft_poisson(psi_t *obj){
       for(k=1; k<=nlocal[Z]; k++) {
         index = coords_index(i, j, k);
         psi_rho_elec(obj, index, &rho_elec[index]);
-//        rho_elec[index] = rho;
-
       }
     }
   }
@@ -123,10 +121,18 @@ int psi_fft_poisson(psi_t *obj){
  *  Thus multiplying the transform of rho by 1/(k^2 epsilon) before transforming
  *  back to real space solves Poisson's equation
  *
+ *  Note that we use the following:
+ *  kx=(2*pi*x/Nx)
+ *  k^2 = kx^2 + ky^2 + kz^2
  *
- *  Multiply the transformed array by 1/(k^2)epsilon in order to 
- *  solve Poisson's equation
- *
+ *  Following Press et al., which is the convention used by FFTW, and thus P3DFFT,
+ *  if we have i = 0, .., nx-1 then we get:
+ *  0 frequency at i = 0,
+ *  positive frequencies at            1 ... (nx/2) - 1
+ *  negative fequencies at             (nx/2) + 1 ... n-1
+ *  and
+ *  frequency at nx/2 is periodic = +/- pi, below -pi.
+ *  
  *****************************************************************************/
 
 void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize[]) {
@@ -143,11 +149,11 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
   pi = 4.0*atan(1.0);
 
 
-//printf("rank %d, fstart: %d %d %d\n", pe_rank(), fstart[0], fstart[1], fstart[2]);
-
 #ifdef STRIDE1
-/*stride 1 enabled, thus fsize array ordering is {X,Y,Z}
- * => fsize[0] still corresponds to the contiguous memory, but the x direction*/
+/*stride 1 enabled, thus fsize and fstart array ordering is {X,Y,Z}
+ * e.g. fsize[0] corresponds to the contiguous memory, and the x direction.
+ * Would be nice to reduce the amount of code duplication but it is difficult
+ * to maintain good ordering of the loops if that is done*/
 
 /*first find global address of first element*/
   for(i=0; i<3; i++) {
@@ -164,16 +170,16 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
 /*loop over elements, computing and multiplying by 1/k at each lattice point*/
 /* the ordering here is important, depending on whether P3DFFT was built
  * with stride 1 defined or not will change the sizes of each array dimension.
- * stride 1 allows the transposed data to be contiguous in the Z direction
- * (from Fortran's perspective)
+ * stride 1 allows the transposed data to be contiguous in the pencil direction
+ * i.e. the x-direction will now be contiguous
  */
-  for(i=0; i<farray_size[Z]; i++) {
+  for(i=0; i<farray_size[2]; i++) {
     iz = global_coord[Z] - n_total[Z]*(2*global_coord[Z]/n_total[Z]);
     kz = (2.0*pi/n_total[Z])*iz;
-    for(j=0; j<farray_size[Y]; j++) {
+    for(j=0; j<farray_size[1]; j++) {
       iy = global_coord[Y] - n_total[Y]*(2*global_coord[Y]/n_total[Y]);
       ky = (2.0*pi/n_total[Y])*iy;
-      for(k=0; k<farray_size[X]; k+=2) {
+      for(k=0; k<farray_size[0]; k+=2) {
         ix = global_coord[X] - n_total[X]*(2*global_coord[X]/n_total[X]);
         kx = (2.0*pi/n_total[X])*ix;
         if(kz == 0 && ky == 0 && kx == 0) {
@@ -196,12 +202,12 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
   } 
 
 #else
-/*stride 1 not enabled, thus fsize array ordering is {Z,Y,X}
- * => fsize[0] still corresponds to the contiguous memory, but the z direction*/
+/*stride 1 not enabled, thus fsize and fstart array ordering is {Z,Y,X}
+ * e.g. fsize[0] corresponds to the contiguous memory, and the z direction*/
 
 /*first find global address of first element*/
   for(i=0; i<3; i++) {
-    global_coord[i] = fstart[i] - 1;
+    global_coord[i] = fstart[2-i] - 1;
     n_total[i] = N_total(i);
     if(i == X) {
       farray_size[i] = 2*fsize[i];
@@ -211,13 +217,13 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
     }
   }
 
-  for(i=0; i<farray_size[Z]; i++) {
+  for(i=0; i<farray_size[2]; i++) {
     ix = global_coord[X] - n_total[X]*(2*global_coord[X]/n_total[X]);
     kx = (2.0*pi/n_total[X])*ix;
-    for(j=0; j<farray_size[Y]; j++) {
+    for(j=0; j<farray_size[1]; j++) {
       iy = global_coord[Y] - n_total[Y]*(2*global_coord[Y]/n_total[Y]);
       ky = (2.0*pi/n_total[Y])*iy;
-      for(k=0; k<farray_size[X]; k+=2) {
+      for(k=0; k<farray_size[0]; k+=2) {
         iz = global_coord[Z] - n_total[Z]*(2*global_coord[Z]/n_total[Z]);
         kz = (2.0*pi/n_total[Z])*iz;
 
@@ -225,7 +231,7 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
           k_square = 0;
         }
         else {
-          k_square = 1/((kx*kx + ky*ky + kz*kz)*epsilon);
+          k_square = 1/((kx*kx + ky*ky + kz*kz)*epsilon*(N_total(0)*N_total(1)*N_total(2)));
         }
         transf_array[index_3d_f(i,j,k,farray_size)] = transf_array[index_3d_f(i,j,k,farray_size)]*k_square;
         // complex numbers so need to multiply both parts of the number 
@@ -233,10 +239,10 @@ void solve_poisson(double *transf_array, double epsilon, int fstart[], int fsize
 
         global_coord[Z] ++;
       }
-      global_coord[Z] = fstart[Z] - 1;
+      global_coord[Z] = fstart[2-Z] - 1;
       global_coord[Y] ++;
     }
-    global_coord[Y] = fstart[Y] - 1;
+    global_coord[Y] = fstart[2-Y] - 1;
     global_coord[X] ++; 
   } 
 #endif /*STRIDE1*/
