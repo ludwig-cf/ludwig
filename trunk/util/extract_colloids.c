@@ -44,11 +44,12 @@
 
 #define NX 256
 #define NY 256
-#define NZ 56
+#define NZ 256
 
 static const int    iread_ascii = 0;      /* Read ascii or binary */
 
-static const char * format3_ = " %9.5f, %9.5f, %9.5f";
+static const char * format3_    = "%10.5f, %10.5f, %10.5f,";
+static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
 
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
@@ -84,7 +85,7 @@ int main(int argc, char ** argv) {
     exit(0);
   }
 
-  colloids_to_csv_header(fp_csv);
+  colloids_to_csv_header_with_m(fp_csv);
 
   for (nf = 1; nf <= nfile; nf++) {
 
@@ -128,7 +129,7 @@ int main(int argc, char ** argv) {
       s2.r[2] = s1.r[0] - 0.5;
 
       fprintf(fp_csv, format3_, s2.r[0], s2.r[1], s2.r[2]);
-      fprintf(fp_csv, "\n");
+      fprintf(fp_csv, format3end_, s1.s[0], s1.s[1], s1.s[2]);
       ncount += 1;
     }
   }
@@ -160,21 +161,21 @@ void colloids_to_csv_header(FILE * fp) {
   r[2] = 0.0;
 
   fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp_csv, "\n");
+  fprintf(fp, "\n");
 
   r[0] = 0.0;
   r[1] = 1.0*NY - 1.0;
   r[2] = 0.0;
 
   fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp_csv, "\n");
+  fprintf(fp, "\n");
 
   r[0] = 0.0;
   r[1] = 0.0;
   r[2] = 1.0*NZ - 1.0;
 
   fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp_csv, "\n");
+  fprintf(fp, "\n");
 
   return;
 }
@@ -201,8 +202,7 @@ void colloids_to_csv_header_with_m(FILE * fp) {
   m[2] = 0.0;
 
   fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, format3_, m[0], m[1], m[2]);
-  fprintf(fp_csv, "\n");
+  fprintf(fp, format3end_, m[0], m[1], m[2]);
 
   r[0] = 0.0;
   r[1] = 1.0*NY - 1.0;
@@ -213,8 +213,7 @@ void colloids_to_csv_header_with_m(FILE * fp) {
   m[2] = 0.0;
 
   fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, format3_, m[0], m[1], m[2]);
-  fprintf(fp_csv, "\n");
+  fprintf(fp, format3end_, m[0], m[1], m[2]);
 
   r[0] = 0.0;
   r[1] = 0.0;
@@ -225,8 +224,7 @@ void colloids_to_csv_header_with_m(FILE * fp) {
   m[2] = 1.0;
 
   fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, format3_, m[0], m[1], m[2]);
-  fprintf(fp_csv, "\n");
+  fprintf(fp, format3end_, m[0], m[1], m[2]);
 
   return;
 }
