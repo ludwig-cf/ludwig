@@ -4,11 +4,12 @@
  *
  *  Convert an output file to a csv file suitable for Paraview.
  *  The csv file uses three extra particles at (xmax, 0, 0)
- *  (0, ymax, 0) and (0, 0, zmax) to define the extend of the
+ *  (0, ymax, 0) and (0, 0, zmax) to define the extent of the
  *  system.
- * 
- *  NOTE: This script is a first version. It does not work with 
- *        parallel input, i.e. more than one input file.
+ *
+ *  If you want a different set of colloid properties, you need
+ *  to arrange the header, and the output appropriately. The read
+ *  can be ascii or binary and is set by the switch below.
  *
  *  Compile against the ludwig library, e.g.,
  *  $ cd ../src
@@ -17,7 +18,16 @@
  *  $ $(CC) -I../mpi_s -I../src extract_colloids.c \
  *          -L../mpi_s -lmpi -L../src -lludwig -lm
  *
- *  $ ./a.out <colloid file name> <csv file name>
+ *  $ ./a.out <colloid file name> <nfile> <csv file name>
+ *
+ *  where the first argument is the file name stub
+ *        the second is the number of parallel files
+ *        and the third is the (single) ouput file name
+ *
+ *  If you have a set of files, try (eg. here with 4 parallel output files),
+ *
+ *  $ for f in config.cds*004-001; do g=`echo $f | sed s/.004-001//`; \
+ *  echo $g; ~/ludwig/trunk/util/extract_colloids $g 4 $g.csv; done
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,70 +42,103 @@
 
 #include "colloid.h"
 
-#define NX 128
-#define NY 128
-#define NZ 128
+#define NX 256
+#define NY 256
+#define NZ 56
 
-static const char * format_ = "%9.5f, %9.5f, %9.5f, %9.5f, %9.5f, %9.5f\n";
+static const int    iread_ascii = 0;      /* Read ascii or binary */
+
+static const char * format3_ = " %9.5f, %9.5f, %9.5f";
 
 void colloids_to_csv_header(FILE * fp);
+void colloids_to_csv_header_with_m(FILE * fp);
 
 int main(int argc, char ** argv) {
 
-  int n;
+  int n, np;
+  int nf, nfile;
   int ncolloid;
+  int ncount = 0;
 
   colloid_state_t s1;
   colloid_state_t s2;
 
   FILE * fp_colloids;
   FILE * fp_csv;
+  char filename[FILENAME_MAX];
 
-  if (argc != 3) {
-    printf("Usage: %s <colloid file> <csv file>\n", argv[0]);
+  if (argc != 4) {
+    printf("Usage: %s <colloid file> <n file> <csv file>\n", argv[0]);
     exit(0);
   }
 
-  /* Open existing file, and csv file */
+  nfile = atoi(argv[2]);
+  printf("Number of files: %d\n", nfile);
 
-  fp_colloids = fopen(argv[1], "r");
-  fp_csv = fopen(argv[2], "w");
+  /* Open csv file */
 
-  if (fp_colloids == NULL) {
-    printf("fopen(%s) failed\n", argv[1]);
-    exit(0);
-  }
+  fp_csv = fopen(argv[3], "w");
 
   if (fp_csv == NULL) {
     printf("fopen(%s) failed\n", argv[2]);
     exit(0);
   }
 
-
-  fscanf(fp_colloids, "%d22\n", &ncolloid);
-  printf("Reading %d colloids from %s\n", ncolloid, argv[1]);
-
   colloids_to_csv_header(fp_csv);
 
-  /* Read and rewrite the data */
+  for (nf = 1; nf <= nfile; nf++) {
 
-  for (n = 0; n < ncolloid; n++) {
-    colloid_state_read_ascii(&s1, fp_colloids);
-    /* Reverse coordinates and offset the positions */
-    s2.r[0] = s1.r[2] - 0.5;
-    s2.r[1] = s1.r[1] - 0.5;
-    s2.r[2] = s1.r[0] - 0.5;
-    s2.m[0] = s1.m[2];
-    s2.m[1] = s1.m[1];
-    s2.m[2] = s1.m[0];
-    fprintf(fp_csv, format_, s2.r[0], s2.r[1], s2.r[2],
-	    s2.m[0], s2.m[1], s2.m[2]);
+    /* We expect extensions 00n-001 00n-002 ... 00n-00n */ 
+
+    sprintf(filename, "%s.%3.3d-%3.3d", argv[1], nfile, nf);
+    printf("Filename: %s\n", filename);
+
+    fp_colloids = fopen(filename, "r");
+
+
+    if (fp_colloids == NULL) {
+        printf("fopen(%s) failed\n", filename);
+        exit(0);
+    }
+
+    if (iread_ascii) {
+      fscanf(fp_colloids, "%d22\n", &ncolloid);
+    }
+    else {
+      fread(&ncolloid, sizeof(int), 1, fp_colloids);
+    }
+
+    printf("Reading %d colloids from %s\n", ncolloid, argv[1]);
+
+    /* Read and rewrite the data */
+
+    for (n = 0; n < ncolloid; n++) {
+
+      if (iread_ascii) {
+	colloid_state_read_ascii(&s1, fp_colloids);
+      }
+      else {
+	colloid_state_read_binary(&s1, fp_colloids);
+      }
+
+      /* Reverse coordinates and offset the positions */
+
+      s2.r[0] = s1.r[2] - 0.5;
+      s2.r[1] = s1.r[1] - 0.5;
+      s2.r[2] = s1.r[0] - 0.5;
+
+      fprintf(fp_csv, format3_, s2.r[0], s2.r[1], s2.r[2]);
+      fprintf(fp_csv, "\n");
+      ncount += 1;
+    }
   }
 
   /* Finish. */
 
   fclose(fp_csv);
   fclose(fp_colloids);
+
+  printf("Wrote %d actual colloids + 3 reference colloids in header\n", ncount);
 
   return 0;
 }
@@ -107,6 +150,42 @@ int main(int argc, char ** argv) {
  *****************************************************************************/
 
 void colloids_to_csv_header(FILE * fp) {
+
+  double r[3];
+
+  fprintf(fp, "%s", "x, y, z\n");
+
+  r[0] = 1.0*NX - 1.0;
+  r[1] = 0.0;
+  r[2] = 0.0;
+
+  fprintf(fp, format3_, r[0], r[1], r[2]);
+  fprintf(fp_csv, "\n");
+
+  r[0] = 0.0;
+  r[1] = 1.0*NY - 1.0;
+  r[2] = 0.0;
+
+  fprintf(fp, format3_, r[0], r[1], r[2]);
+  fprintf(fp_csv, "\n");
+
+  r[0] = 0.0;
+  r[1] = 0.0;
+  r[2] = 1.0*NZ - 1.0;
+
+  fprintf(fp, format3_, r[0], r[1], r[2]);
+  fprintf(fp_csv, "\n");
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_to_csv_header_with_m
+ *
+ *****************************************************************************/
+
+void colloids_to_csv_header_with_m(FILE * fp) {
 
   double r[3];
   double m[3];
@@ -121,7 +200,9 @@ void colloids_to_csv_header(FILE * fp) {
   m[1] = 0.0;
   m[2] = 0.0;
 
-  fprintf(fp, format_, r[0], r[1], r[2], m[0], m[1], m[2]);
+  fprintf(fp, format3_, r[0], r[1], r[2]);
+  fprintf(fp, format3_, m[0], m[1], m[2]);
+  fprintf(fp_csv, "\n");
 
   r[0] = 0.0;
   r[1] = 1.0*NY - 1.0;
@@ -131,7 +212,9 @@ void colloids_to_csv_header(FILE * fp) {
   m[1] = 1.0;
   m[2] = 0.0;
 
-  fprintf(fp, format_, r[0], r[1], r[2], m[0], m[1], m[2]);
+  fprintf(fp, format3_, r[0], r[1], r[2]);
+  fprintf(fp, format3_, m[0], m[1], m[2]);
+  fprintf(fp_csv, "\n");
 
   r[0] = 0.0;
   r[1] = 0.0;
@@ -141,7 +224,9 @@ void colloids_to_csv_header(FILE * fp) {
   m[1] = 0.0;
   m[2] = 1.0;
 
-  fprintf(fp, format_, r[0], r[1], r[2], m[0], m[1], m[2]);
+  fprintf(fp, format3_, r[0], r[1], r[2]);
+  fprintf(fp, format3_, m[0], m[1], m[2]);
+  fprintf(fp_csv, "\n");
 
   return;
 }
