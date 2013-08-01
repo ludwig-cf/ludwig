@@ -262,5 +262,85 @@ The multigrid algorithm can be very efficently formulated in terms of a nested p
 %\COMMENT{<text>}
 %\AND, \OR, \XOR, \NOT, \TO, \TRUE, \FALSE
 
+\section{Speculation}
+
+The following remarks are relevant for the branch of the code living
+in the \texttt{testcharge} directory, where we have SOR (both uniform
+permitivity and heterogenous permitivity) and should shortly have a
+Fourier solver (uniform permeativity) available.
+
+\subsection{Coordinate system}
+
+The existing code has a single coordinaite system which corresponds
+to the fine grid $\Omega_h$ in the multipgrid picture. Details of the
+coordinate system (global and local extent; MPI communicators; 3d-to-1d
+indexing functions, etc) are encapsulated in \texttt{coords.c}.
+\begin{enumerate}
+\item
+As a first step towards a multigrid implementation, it would be
+desirable to ``objectify'' formally a \texttt{coods\_t} data type.
+This would be explicitly referenced in all existing fine grid
+contexts (and is desirable on other grounds as well).
+\item
+For multigrid, one could then instantiate one \texttt{coords\_t}
+object for each level of the grid $\Omega_k$ to allow corresponding
+grid operations at a given level.
+\item
+A second option would be to retain a single \texttt{coords\_t} object,
+but add functionality to recognise a ggrid level $k$ and perform the
+necessary arithmetic/logic assuning uniform refinement. (This is
+probably a less elegant and flexible solution, if more compact.)
+\end{enumerate}
+
+\subsection{Grid data structure(s)}
+
+Each level of the grid $\Omega_k$ requires coordinate information,
+but also local storage for three-dimensional field quantities, eg.,
+$f_k(x,y,z)$. Local field quantities are expected to require a halo
+region of extent \texttt{nhalo} cf. existing field quantities on the
+fine grid. This allows interpolation and restriction operators to be
+evalautated locally.
+
+So, a grid-level structure might contain
+\begin{verbatim}
+  struct grid_s {
+    int k;               /* the grid level */
+    coords_t * coords;   /* coordinate information this level */
+    field_t * f;         /* rhs */
+    ...
+  }
+\end{verbatim}
+A multigrid structure would then contain an array of grids for levels
+$k = 1, \ldots, k_{max}$, information replicated on all MPI tasks:
+\begin{verbatim}
+  struct mgrid_s {
+    int kmax;         /* the number of levels */
+    grid_t ** level;  /* array of grid objects */
+    ...
+  }
+\end{verbatim}
+
+\subsection{The limit of local cosrsening}
+
+For a given uniform domain decomposition of the fine grid, local
+restriction or coarsening can be carried out to the point where
+there is a grid of extent one in the local domain. This limits
+the extent of local coarsening. At this point, further coarsening
+might be based on coarsening the processor grid in the same spirit
+as the computational grid.
+
+\subsection{Issues}
+
+\begin{enumerate}
+\item
+Can we use e.g., PetSc to test some options/performance before starting to
+code?
+\item
+Do we want to limit ourselves to regular system sizes (i.e., 2$^n$)
+and processor decompositions?
+\item
+Can the approach be extended to a threaded model (e.g., GPU)?
+\end{enumerate}
+
 \end{document}
 
