@@ -339,6 +339,8 @@ int index_3d_c (int x, int y, int z, int size[]) {
  *  finds the global coordinates of a given point in the local array in the
  *  cartesian decomposition
  *
+ *  could use the routine in coords.c instead!
+ *
  *****************************************************************************/
 
 void find_cart_global_coord(int global_coord[], int local_coord[], int coords[]) {
