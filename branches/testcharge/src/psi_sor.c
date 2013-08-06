@@ -34,6 +34,25 @@
 
 /*****************************************************************************
  *
+ *  psi_sor_solve
+ *
+ *  If the f_vare_t argument is NULL, the uniform epsilon solver is used.
+ *  If the argument is present, the non-uniform solver is used.
+ *
+ *****************************************************************************/
+
+int psi_sor_solve(psi_t * obj, f_vare_t fepsilon) {
+
+  assert(obj);
+
+  if (fepsilon == NULL) psi_sor_poisson(obj);
+  if (fepsilon != NULL) psi_sor_vare_poisson(obj, fepsilon);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_sor_poisson
  *
  *

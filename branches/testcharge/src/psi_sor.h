@@ -25,5 +25,6 @@ typedef int (* f_vare_t)(int index, double * epsilon);
 
 int psi_sor_poisson(psi_t * obj);
 int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon);
+int psi_sor_solve(psi_t * obj, f_vare_t fepsilon);
 
 #endif
