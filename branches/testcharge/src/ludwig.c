@@ -123,6 +123,7 @@ struct ludwig_s {
   psi_t * psi;              /* Electrokinetics */
   map_t * map;              /* Site map for fluid/solid status etc. */
   noise_t * noise;          /* Lattice fluctuation generator */
+  f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -395,7 +396,7 @@ void ludwig_run(const char * inputfile) {
       }
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
-      psi_sor_poisson(ludwig->psi);
+      psi_sor_solve(ludwig->psi, ludwig->epsilon);
       psi_halo_rho(ludwig->psi);
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
       nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
@@ -1109,6 +1110,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Symmetric part\n");
     info("--------------\n\n");
     symmetric_run_time();
+    symmetric_phi_set(ludwig->phi, ludwig->phi_grad);
 
     info("\n");
     info("Using Cahn-Hilliard finite difference solver.\n");
@@ -1165,9 +1167,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* f_vare_t function */
 
+    info("Poisson solver:           %15s\n",
+	 (e1 == e2) ? "uniform" : "heterogeneous");
+    if (e1 != e2) ludwig->epsilon = fe_es_var_epsilon;
 
-
-    fatal("fe_electro_symmetric pending\n");
   }
   else {
     if (n == 1) {
