@@ -377,7 +377,8 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_STEPS);
     step = get_step();
     if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
-    COLL_update(ludwig->hydro, ludwig->map, ludwig->phi, ludwig->p, ludwig->q);
+    COLL_update(ludwig->hydro, ludwig->map, ludwig->phi, ludwig->p,
+		ludwig->q, ludwig->psi);
 
     /* Electrokinetics */
 

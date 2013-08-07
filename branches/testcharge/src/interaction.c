@@ -49,12 +49,12 @@
 #include "ewald.h"
 
 static int colloid_forces_fluid_gravity_set(map_t * map);
-static int colloid_forces(map_t * map);
+static int colloid_forces(map_t * map, psi_t * psi);
 
 static void colloid_forces_overlap(colloid_t *, colloid_t *);
 static void colloid_forces_pairwise(double * h, double * e);
 static void colloid_forces_zero_set(void);
-static void colloid_forces_single_particle_set(void);
+static void colloid_forces_single_particle_set(psi_t * psi);
 
 void lubrication_sphere_sphere(double a1, double a2,
 			       const double u1[3], const double u2[3],
@@ -90,7 +90,7 @@ struct lubrication_struct {
  *****************************************************************************/
 
 int COLL_update(hydro_t * hydro, map_t * map, field_t * fphi, field_t * fp,
-		field_t * fq) {
+		field_t * fq, psi_t * psi) {
 
   int is_subgrid = 0;
 
@@ -107,7 +107,7 @@ int COLL_update(hydro_t * hydro, map_t * map, field_t * fphi, field_t * fp,
   TIMER_stop(TIMER_PARTICLE_HALO);
 
   if (is_subgrid) {
-    colloid_forces(map);
+    colloid_forces(map, psi);
     subgrid_force_from_particles(hydro);
   }
   else {
@@ -125,7 +125,7 @@ int COLL_update(hydro_t * hydro, map_t * map, field_t * fphi, field_t * fp,
 
     TIMER_stop(TIMER_REBUILD);
 
-    colloid_forces(map);
+    colloid_forces(map, psi);
   }
 
   return 0;
@@ -342,7 +342,7 @@ static void lubrication_init(void) {
  *
  *****************************************************************************/
 
-static int colloid_forces(map_t * map) {
+static int colloid_forces(map_t * map, psi_t * psi) {
 
   int nc;
   double hmin, hminlocal;
@@ -355,7 +355,7 @@ static int colloid_forces(map_t * map) {
 
   if (nc > 0) {
     colloid_forces_zero_set();
-    colloid_forces_single_particle_set();
+    colloid_forces_single_particle_set(psi);
     colloid_forces_fluid_gravity_set(map);
 
     if (nc > 1) {
@@ -425,16 +425,29 @@ static void colloid_forces_zero_set(void) {
  *
  *  Accumulate single particle force contributions.
  *
+ *  psi may be NULL, in which case, assume no charged species, otherwise
+ *  we assume two.
+ *
  *****************************************************************************/
 
-static void colloid_forces_single_particle_set(void) {
+static void colloid_forces_single_particle_set(psi_t * psi) {
 
   int ic, jc, kc, ia;
-  double b0[3];
+  int nk;
+  int v[2] = {0, 0};     /* valancies for charged species, if present */
+  double e0[3], b0[3];   /* external fields */
   double btorque[3];
   colloid_t * pc;
 
+  physics_e0(e0);
   physics_b0(b0);
+
+  if (psi) {
+    psi_nk(psi, &nk);
+    assert(nk == 2);
+    psi_valency(psi, 0, v);
+    psi_valency(psi, 1, v + 1);
+  }
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -449,8 +462,10 @@ static void colloid_forces_single_particle_set(void) {
 	  btorque[Z] = pc->s.s[X]*b0[Y] - pc->s.s[Y]*b0[X];
 
 	  for (ia = 0; ia < 3; ia++) {
-	    pc->force[ia] += g_[ia];
-	    pc->torque[ia] += btorque[ia];
+	    pc->force[ia] += g_[ia];               /* Gravity */
+	    pc->force[ia] += pc->s.q0*v[0]*e0[ia]; /* Electric field */
+	    pc->force[ia] += pc->s.q1*v[1]*e0[ia]; /* Electric field */
+	    pc->torque[ia] += btorque[ia];         /* Magnetic field */
 	  }
 
 	  pc = pc->next;
