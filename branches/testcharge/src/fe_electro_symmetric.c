@@ -295,11 +295,18 @@ int fe_es_var_epsilon(int index, double * epsilon) {
  *
  *  S^full = S^elec + S^symmetric + S^coupling
  *
- *  S^elec_ab = - epsilon (E_a E_b - (1/2) d_ab E^2) following fe_electro.c
+ *  S^elec_ab = - [epsilon(r) E_a E_b - (1/2) epsilonbar d_ab E^2)]
  *  S^symmetric = S(phi, grad phi) following symmetric.c
  *
  *  S^coupling =
  *    (1/2) phi d_ab [ epsilonbar gamma E^2 + \sum_k rho_k deltamu_k ]
+ *
+ *  The field term comes from
+ *
+ *  S^elec = - [D_a E_b - (1/2) epsilonbar d_ab E^2]
+ * 
+ *    where D_a is the electric displacement. The functional form of
+ *    epsilon(r) agrees with fe_es_var_epsilon() above.
  *
  *  Note that the sign of the electro- and symmetric- parts of the
  *  stress is already accounted for in the relevant functions.
@@ -311,16 +318,14 @@ void fe_es_stress(const int index, double s[3][3]) {
   int ia, ib;
 
   double phi, rho;
-  double s_el[3][3];
-  double s_symm[3][3];
   double s_couple;
+  double s_el;
   double e[3];          /* Electric field. */
   double ex[3];         /* External electric field */
   double e2;
 
   physics_e0(ex);
-  fe_electro_stress(index, s_el);
-  symmetric_chemical_stress(index, s_symm); 
+  symmetric_chemical_stress(index, s); 
 
   /* Coupling part, requires phi, total field */
 
@@ -342,7 +347,8 @@ void fe_es_stress(const int index, double s[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = s_el[ia][ib] + s_symm[ia][ib] + d_[ia][ib]*s_couple;
+      s_el = (1.0 - fe->gamma*phi)*e[ia]*e[ib] - 0.5*d_[ia][ib]*e2;
+      s[ia][ib] += -fe->epsilonbar*s_el + d_[ia][ib]*s_couple;
     }
   }
 
