@@ -410,6 +410,7 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->psi) {
       psi_colloid_rho_set(ludwig->psi);
       psi_halo_psi(ludwig->psi);
+      psi_halo_rho(ludwig->psi);
 
       /* Force for this step before update. Note that nhalo = 1
        * is indicating grad mu method and nhalo = 2 the divergence
@@ -432,7 +433,6 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
       psi_sor_solve(ludwig->psi, ludwig->epsilon);
-      psi_halo_rho(ludwig->psi);
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
       nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
     }
