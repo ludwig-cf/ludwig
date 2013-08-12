@@ -311,6 +311,10 @@ int fe_es_var_epsilon(int index, double * epsilon) {
  *  Note that the sign of the electro- and symmetric- parts of the
  *  stress is already accounted for in the relevant functions.
  *
+ *  Finally, the true Maxwell stress includes the total electric
+ *  field. Here the external field is dealt with separately in that
+ *  a force is computed via rho E_0 explicitly.
+ *
  *****************************************************************************/
 
 void fe_es_stress(const int index, double s[3][3]) {
@@ -321,10 +325,8 @@ void fe_es_stress(const int index, double s[3][3]) {
   double s_couple;
   double s_el;
   double e[3];          /* Electric field. */
-  double ex[3];         /* External electric field */
   double e2;
 
-  physics_e0(ex);
   symmetric_chemical_stress(index, s); 
 
   /* Coupling part, requires phi, total field */
@@ -334,7 +336,6 @@ void fe_es_stress(const int index, double s[3][3]) {
 
   e2 = 0.0;
   for (ia = 0; ia < 3; ia++) {
-    e[ia] += ex[ia];
     e2 += e[ia]*e[ia];
   }
 
