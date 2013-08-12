@@ -19,8 +19,6 @@
  *
  *  mu_a = kT log(rho_a) + Z_a e psi
  *
- *  We may also have an (external) electric field E.
- *
  *  See, e.g., Rotenberg et al. Coarse-grained simualtions of charge,
  *  current and flow in heterogeneous media,
  *  Faraday Discussions \textbf{14}, 223--243 (2010).
@@ -184,37 +182,31 @@ double fe_electro_mu(const int index, const int n) {
  *  The stress is S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2)
  *  where epsilon is the (uniform) permeativity.
  *
- *  E_a is the total electric field, which is made up of the
- *  -grad psi and external field contributions.
- * 
+ *  This does not include the external field.
+ *
  *****************************************************************************/
 
 void fe_electro_stress(const int index, double s[3][3]) {
 
   int ia, ib;
   double epsilon;    /* Permeativity */
-  double ex[3];      /* External field */
-  double etot[3];    /* Total electric field */
+  double e[3];       /* Electric field */
   double e2;         /* Magnitude squared */
 
   assert(fe);
 
-  physics_e0(ex);
   psi_epsilon(fe->psi, &epsilon);
-  psi_electric_field(fe->psi, index, etot);
-
-  /* Add the external field, and compute E^2, and then the stress */
+  psi_electric_field(fe->psi, index, e);
 
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
-    etot[ia] += ex[ia];
-    e2 += etot[ia]*etot[ia];
+    e2 += e[ia]*e[ia];
   }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = -epsilon*(etot[ia]*etot[ib] - 0.5*d_[ia][ib]*e2);
+      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
     }
   }
 
