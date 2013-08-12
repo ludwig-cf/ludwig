@@ -316,6 +316,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Electroneutrality */
 
   if (get_step() == 0 && ludwig->psi) {
+    info("Arranging initial charge neutrality.\n\n");
     psi_colloid_rho_set(ludwig->psi);
     psi_colloid_electroneutral(ludwig->psi);
   }
@@ -386,14 +387,23 @@ void ludwig_run(const char * inputfile) {
       psi_colloid_rho_set(ludwig->psi);
       psi_halo_psi(ludwig->psi);
 
-      /* Sum force for this step before update */
+      /* Force for this step before update. Note that nhalo = 1
+       * is indicating grad mu method and nhalo = 2 the divergence
+       * method. */
 
       TIMER_start(TIMER_FORCE_CALCULATION);
       if (coords_nhalo() == 1) {
 	psi_force_grad_mu(ludwig->psi, ludwig->hydro);
       }
       else {
-	phi_force_calculation(ludwig->phi, ludwig->hydro);
+	if (colloid_ntotal() == 0) {
+	  psi_force_external_field(ludwig->psi, ludwig->hydro);
+	  phi_force_calculation(ludwig->phi, ludwig->hydro);
+	}
+	else {
+	  psi_force_external_field(ludwig->psi, ludwig->hydro);
+	  phi_force_colloid(ludwig->hydro, ludwig->map);
+	}
       }
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
