@@ -202,7 +202,6 @@ static int do_test3(void) {
   psi_t * psi = NULL;
 
   double epsilon = 0.5;             /* Permeativity */
-  double ex[3] = {1.0, 2.0, 3.0};   /* External field */
   double s[3][3];                   /* A stress */
   double e0[3];                     /* A field */
 
@@ -225,28 +224,8 @@ static int do_test3(void) {
     }
   }
 
-  /* External field, no potential */
-
-  physics_e0_set(ex);
-  fe_electro_stress(index, s);
-  emod = modulus(ex);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      sexpect = -epsilon*(ex[ia]*ex[ib] - 0.5*d_[ia][ib]*emod*emod);
-      assert(fabs(s[ia][ib] - sexpect) < DBL_EPSILON);
-    }
-  }
-
   /* With a potential (only): explicitly set the relevant terms
    * (we need to know the differencing scheme in fe_electro.c). */
-
-  ex[X] = 0.0;
-  ex[Y] = 0.0;
-  ex[Z] = 0.0;
-  physics_e0_set(ex);
-
-  /* The 'true' field */
 
   psi0 = 1.0;
   psi1 = 2.0;
