@@ -239,16 +239,22 @@ int psi_sor_poisson(psi_t * obj) {
  *  (surface) charge which must be accounted for even if rho is
  *  uniformly zero. This looks like:
  *
- *     d_x [ epsilon(r) . (d_x psi + E_x) ] = -rho(r)
+ *     d_x [ epsilon(r) . (d_x psi + E_0) ] = -rho(r)
  *
- *  and so on. So all estimates of grad psi are increased by the
- *  relevant external field component.
+ *  and so on. So here we can write an effective induced charge
+ *  which is constant throughout the iteration:
+ *
+ *     d_x [ epsilon(r) d_x psi ] = -rho(r) - rho_s(r)
+ *
+ *  with
+ *
+ *     rho_s(r) = div [ epsilon(r) E_0 ]
  *
  ****************************************************************************/
 
 int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
-  const int niteration = 1000; /* Maximum number of iterations */
+  const int niteration = 2000; /* Maximum number of iterations */
   const int ncheck = 5;        /* Check global residual every n iterations */
   
   int ic, jc, kc, index;
@@ -260,6 +266,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   int xs, ys, zs;              /* Memory strides */
 
   double rho_elec;             /* Right-hand side */
+  double rho_s;                /* Induced charge. */
   double residual;             /* Residual at given point */
   double rnorm[2];             /* Initial and current norm of residual */
   double rnorm_local[2];       /* Local values */
@@ -311,21 +318,28 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	psi_rho_elec(obj, index, &rho_elec);
 	fepsilon(index, &ep0);
 	depsi = 0.0;
+	rho_s = 0.0;
 
 	fepsilon(index + xs, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index + xs] - obj->psi[index] + e[X]);
+	depsi += (ep0 + ep1)*(obj->psi[index + xs] - obj->psi[index]);
+	rho_s += e[X]*ep1; 
 	fepsilon(index - xs, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index - xs] - obj->psi[index] + e[X]);
+	depsi += (ep0 + ep1)*(obj->psi[index - xs] - obj->psi[index]);
+	rho_s -= e[X]*ep1;
 	fepsilon(index + ys, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index + ys] - obj->psi[index] + e[Y]);
+	depsi += (ep0 + ep1)*(obj->psi[index + ys] - obj->psi[index]);
+	rho_s += e[Y]*ep1;
 	fepsilon(index - ys, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index - ys] - obj->psi[index] + e[Y]);
+	depsi += (ep0 + ep1)*(obj->psi[index - ys] - obj->psi[index]);
+	rho_s -= e[Y]*ep1;
 	fepsilon(index + zs, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index + zs] - obj->psi[index] + e[Z]);
+	depsi += (ep0 + ep1)*(obj->psi[index + zs] - obj->psi[index]);
+	rho_s += e[Z]*ep1;
 	fepsilon(index - zs, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index - zs] - obj->psi[index] + e[Z]);
+	depsi += (ep0 + ep1)*(obj->psi[index - zs] - obj->psi[index]);
+	rho_s += e[Z]*ep1;
 
-	rnorm_local[0] += fabs(0.5*depsi + rho_elec);
+	rnorm_local[0] += fabs(0.5*depsi + rho_elec + 0.5*rho_s);
       }
     }
   }
@@ -352,39 +366,46 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	    psi_rho_elec(obj, index, &rho_elec);
 	    fepsilon(index, &ep0);
 	    depsi = 0.0;
+	    rho_s = 0.0;
 	    epstot = 0.0;
 
 	    fepsilon(index + xs, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + xs] - obj->psi[index] + e[X]);
+	    depsi += epsh*(obj->psi[index + xs] - obj->psi[index]);
+	    rho_s += epsh*e[X];
 
 	    fepsilon(index - xs, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - xs] - obj->psi[index] + e[X]);
+	    depsi += epsh*(obj->psi[index - xs] - obj->psi[index]);
+	    rho_s -= epsh*e[X];
 
 	    fepsilon(index + ys, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + ys] - obj->psi[index] + e[Y]);
+	    depsi += epsh*(obj->psi[index + ys] - obj->psi[index]);
+	    rho_s += epsh*e[Y];
 
 	    fepsilon(index - ys, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - ys] - obj->psi[index] + e[Y]);
+	    depsi += epsh*(obj->psi[index - ys] - obj->psi[index]);
+	    rho_s -= epsh*e[Y];
 
 	    fepsilon(index + zs, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + zs] - obj->psi[index] + e[Z]);
+	    depsi += epsh*(obj->psi[index + zs] - obj->psi[index]);
+	    rho_s += epsh*e[Z];
 
 	    fepsilon(index - zs, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - zs] - obj->psi[index] + e[Z]);
+	    depsi += epsh*(obj->psi[index - zs] - obj->psi[index]);
+	    rho_s -= epsh*e[Z];
 
-	    residual = depsi + rho_elec;
+	    residual = depsi + rho_elec + rho_s;
 	    obj->psi[index] -= omega*residual / (-1.0*epstot);
 	    rnorm_local[1] += fabs(residual);
 	  }
