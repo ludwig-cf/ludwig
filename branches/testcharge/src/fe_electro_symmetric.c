@@ -99,6 +99,7 @@ int fe_es_create(field_t * phi, field_grad_t * gradphi, psi_t * psi) {
 
   fe_electro_create(psi);
   fe_mu_solv_set(fe_es_mu_solv);
+  fe_chemical_potential_set(fe_es_mu);
   fe_chemical_stress_set(fe_es_stress);
 
   return 0;
@@ -150,6 +151,44 @@ double fe_es_fed(int index) {
   }
 
   return fed;
+}
+
+/*****************************************************************************
+ *
+ *  fe_es_mu
+ *
+ *  The chemical potential mu_phi
+ *
+ *      mu_phi = mu_mix + mu_solv + mu_el
+ *
+ *****************************************************************************/
+
+double fe_es_mu(const int index, const int nop) {
+
+  int n;
+  double phi;       /* Compositional order parameter */
+  double e[3];      /* External electric field */
+  double mu;        /* Result */
+
+  assert(fe);
+  assert(nop == 0); /* Only zero if relevant */
+
+  physics_e0(e);
+
+  mu = symmetric_chemical_potential(index, 0);
+
+  /* Solvation piece needs to agree with fe_es_mu_solv() below */
+
+  field_scalar(fe->phi, index, &phi);
+  for (n = 0; n < fe->nk; n++) {
+    mu += 0.5*fe->deltamu[n]*(1.0 + phi);
+  }
+
+  /* External field contribution. */
+
+  mu += -0.5*fe->gamma*fe->epsilonbar*(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
+
+  return mu;
 }
 
 /*****************************************************************************
