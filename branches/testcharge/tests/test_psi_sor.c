@@ -20,6 +20,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "physics.h"
 #include "psi_s.h"
 #include "psi_sor.h"
 
@@ -42,8 +43,11 @@ static int fepsilon_sinz(int index, double * epsilon);
 
 int main(int argc, char ** argv) {
 
+  physics_t * phys = NULL;
+
   MPI_Init(&argc, &argv);
   pe_init();
+  physics_ref(&phys);
 
   do_test_sor1();
 
