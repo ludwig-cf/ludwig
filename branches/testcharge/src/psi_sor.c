@@ -29,6 +29,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "physics.h"
 #include "psi_s.h"
 #include "psi_sor.h"
 
@@ -234,6 +235,15 @@ int psi_sor_poisson(psi_t * obj) {
  *
  *  is used to get the mid-point values in each coordinate direction.
  *
+ *  A constant external field gives rise to an effective additional
+ *  (surface) charge which must be accounted for even if rho is
+ *  uniformly zero. This looks like:
+ *
+ *     d_x [ epsilon(r) . (d_x psi + E_x) ] = -rho(r)
+ *
+ *  and so on. So all estimates of grad psi are increased by the
+ *  relevant external field component.
+ *
  ****************************************************************************/
 
 int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
@@ -264,6 +274,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
+  double e[3];                 /* External field (constant) */
 
   MPI_Comm comm;               /* Cartesian communicator */
 
@@ -272,16 +283,16 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   comm = cart_comm();
 
   assert(nhalo >= 1);
+  physics_e0(e);
 
   /* The red/black operation needs to be tested for odd numbers
    * of points in parallel. */
+
   assert(nlocal[X] % 2 == 0);
   assert(nlocal[Y] % 2 == 0);
   assert(nlocal[Z] % 2 == 0);
 
-  zs = 1;
-  ys = zs*(nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
+  coords_strides(&xs, &ys, &zs);
 
   /* Compute initial norm of the residual */
 
@@ -302,19 +313,19 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	depsi = 0.0;
 
 	fepsilon(index + xs, &ep1);
-	depsi += 0.5*(ep0 + ep1)*(obj->psi[index + xs] - obj->psi[index]);
+	depsi += (ep0 + ep1)*(obj->psi[index + xs] - obj->psi[index] + e[X]);
 	fepsilon(index - xs, &ep1);
-	depsi += 0.5*(ep0 + ep1)*(obj->psi[index - xs] - obj->psi[index]);
+	depsi += (ep0 + ep1)*(obj->psi[index - xs] - obj->psi[index] + e[X]);
 	fepsilon(index + ys, &ep1);
-	depsi += 0.5*(ep0 + ep1)*(obj->psi[index + ys] - obj->psi[index]);
+	depsi += (ep0 + ep1)*(obj->psi[index + ys] - obj->psi[index] + e[Y]);
 	fepsilon(index - ys, &ep1);
-	depsi += 0.5*(ep0 + ep1)*(obj->psi[index - ys] - obj->psi[index]);
+	depsi += (ep0 + ep1)*(obj->psi[index - ys] - obj->psi[index] + e[Y]);
 	fepsilon(index + zs, &ep1);
-	depsi += 0.5*(ep0 + ep1)*(obj->psi[index + zs] - obj->psi[index]);
+	depsi += (ep0 + ep1)*(obj->psi[index + zs] - obj->psi[index] + e[Z]);
 	fepsilon(index - zs, &ep1);
-	depsi += 0.5*(ep0 + ep1)*(obj->psi[index - zs] - obj->psi[index]);
+	depsi += (ep0 + ep1)*(obj->psi[index - zs] - obj->psi[index] + e[Z]);
 
-	rnorm_local[0] += fabs(depsi + rho_elec);
+	rnorm_local[0] += fabs(0.5*depsi + rho_elec);
       }
     }
   }
@@ -346,32 +357,32 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	    fepsilon(index + xs, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + xs] - obj->psi[index]);
+	    depsi += epsh*(obj->psi[index + xs] - obj->psi[index] + e[X]);
 
 	    fepsilon(index - xs, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - xs] - obj->psi[index]);
+	    depsi += epsh*(obj->psi[index - xs] - obj->psi[index] + e[X]);
 
 	    fepsilon(index + ys, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + ys] - obj->psi[index]);
+	    depsi += epsh*(obj->psi[index + ys] - obj->psi[index] + e[Y]);
 
 	    fepsilon(index - ys, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - ys] - obj->psi[index]);
+	    depsi += epsh*(obj->psi[index - ys] - obj->psi[index] + e[Y]);
 
 	    fepsilon(index + zs, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + zs] - obj->psi[index]);
+	    depsi += epsh*(obj->psi[index + zs] - obj->psi[index] + e[Z]);
 
 	    fepsilon(index - zs, &ep1);
 	    epsh = 0.5*(ep0 + ep1);
 	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - zs] - obj->psi[index]);
+	    depsi += epsh*(obj->psi[index - zs] - obj->psi[index] + e[Z]);
 
 	    residual = depsi + rho_elec;
 	    obj->psi[index] -= omega*residual / (-1.0*epstot);
