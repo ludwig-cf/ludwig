@@ -381,7 +381,31 @@ void ludwig_run(const char * inputfile) {
     COLL_update(ludwig->hydro, ludwig->map, ludwig->phi, ludwig->p,
 		ludwig->q, ludwig->psi);
 
-    /* Electrokinetics */
+    /* Order parameter gradients */
+
+    TIMER_start(TIMER_PHI_GRADIENTS);
+
+    /* if symmetric_lb store phi to field */
+    if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
+
+    if (ludwig->phi) {
+      field_halo(ludwig->phi);
+      field_grad_compute(ludwig->phi_grad);
+    }
+    if (ludwig->p) {
+      field_halo(ludwig->p);
+      field_grad_compute(ludwig->p_grad);
+      }
+    if (ludwig->q) {
+      field_halo(ludwig->q);
+      field_grad_compute(ludwig->q_grad);
+      blue_phase_redshift_compute(); /* if redshift required? */
+    }
+
+    TIMER_stop(TIMER_PHI_GRADIENTS);
+
+    /* Electrokinetics (including electro/symmetric requiring above
+     * gradients for phi) */
 
     if (ludwig->psi) {
       psi_colloid_rho_set(ludwig->psi);
@@ -413,46 +437,25 @@ void ludwig_run(const char * inputfile) {
       nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
     }
 
-    /* Order parameter */
-
-    TIMER_start(TIMER_PHI_GRADIENTS);
-
-    /* if symmetric_lb store phi to field */
-    if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
-
-    if (ludwig->phi) {
-      field_halo(ludwig->phi);
-      field_grad_compute(ludwig->phi_grad);
-    }
-    if (ludwig->p) {
-      field_halo(ludwig->p);
-      field_grad_compute(ludwig->p_grad);
-      }
-    if (ludwig->q) {
-      field_halo(ludwig->q);
-      field_grad_compute(ludwig->q_grad);
-      blue_phase_redshift_compute(); /* if redshift required? */
-    }
-
-    TIMER_stop(TIMER_PHI_GRADIENTS);
-
     /* order parameter dynamics (not if symmetric_lb) */
 
     if (distribution_ndist() == 2) {
       /* dynamics are dealt with at the collision stage (below) */
     }
-    else if (ludwig->psi) {
-      /* Force is computed above */
-    }
     else {
 
       TIMER_start(TIMER_FORCE_CALCULATION);
 
-      if (colloid_ntotal() == 0) {
-	phi_force_calculation(ludwig->phi, ludwig->hydro);
+      if (ludwig->psi) {
+	/* Force is computed above */
       }
       else {
-	phi_force_colloid(ludwig->hydro, ludwig->map);
+	if (colloid_ntotal() == 0) {
+	  phi_force_calculation(ludwig->phi, ludwig->hydro);
+	}
+	else {
+	  phi_force_colloid(ludwig->hydro, ludwig->map);
+	}
       }
 
       TIMER_stop(TIMER_FORCE_CALCULATION);
