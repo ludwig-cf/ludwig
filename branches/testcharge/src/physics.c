@@ -419,3 +419,37 @@ int physics_lc_gamma_rot_set(double gamma) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  physics_fgrav
+ *
+ *****************************************************************************/
+
+int physics_fgrav(double g[3]) {
+
+  assert(phys);
+
+  g[0] = phys->fgravity[0];
+  g[1] = phys->fgravity[1];
+  g[2] = phys->fgravity[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_fgrav_set
+ *
+ *****************************************************************************/
+
+int physics_fgrav_set(double g[3]) {
+
+  assert(phys);
+
+  phys->fgravity[0] = g[0];
+  phys->fgravity[1] = g[1];
+  phys->fgravity[2] = g[2];
+
+  return 0;
+}

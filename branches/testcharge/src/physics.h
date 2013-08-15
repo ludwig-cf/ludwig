@@ -38,6 +38,8 @@ int physics_e0(double e0[3]);
 int physics_e0_set(double e0[3]);
 int physics_fbody(double f[3]);
 int physics_fbody_set(double f[3]);
+int physics_fgrav(double g[3]);
+int physics_fgrav_set(double g[3]);
 
 int physics_mobility(double * mobility);
 int physics_mobility_set(double mobility);
