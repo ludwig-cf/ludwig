@@ -116,7 +116,7 @@ void stats_calibration_init(int nswitch) {
     }
     calib_.ndata = 0;
 
-    colloid_gravity_set(f);
+    physics_fgrav_set(f);
 
     info("\n\n");
     info("Calibration information:\n");
