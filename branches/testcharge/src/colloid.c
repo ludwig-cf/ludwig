@@ -48,9 +48,15 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, "%22d\n", &ps->isfixedv);
   nread += fscanf(fp, "%22d\n", &ps->isfixedw);
   nread += fscanf(fp, "%22d\n", &ps->isfixeds);
+  nread += fscanf(fp, "%22d\n", &ps->type);
+
+  for (n = 0; n < NBOND_MAX; n++) {
+    nread += fscanf(fp, "%22d\n", &ps->bond[n]);
+  }
   for (n = 0; n < NPAD_INT; n++) {
     nread += fscanf(fp, "%22d\n", &ps->intpad[n]);
   }
+
   nread += fscanf(fp, sformat, &ps->a0);
   nread += fscanf(fp, sformat, &ps->ah);
   nread += fscanf(fp, vformat, &ps->r[0], &ps->r[1], &ps->r[2]);
@@ -68,6 +74,11 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, sformat, &ps->q0);
   nread += fscanf(fp, sformat, &ps->q1);
   nread += fscanf(fp, sformat, &ps->epsilon);
+
+  nread += fscanf(fp, sformat, &ps->deltaq0);
+  nread += fscanf(fp, sformat, &ps->deltaq1);
+  nread += fscanf(fp, sformat, &ps->sa);
+  nread += fscanf(fp, sformat, &ps->saf);
 
   for (n = 0; n < NPAD_DBL; n++) {
     nread += fscanf(fp, sformat, &ps->dpad[n]);
@@ -133,9 +144,15 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   nwrite += fprintf(fp, "%22d\n", s.isfixedv);
   nwrite += fprintf(fp, "%22d\n", s.isfixedw);
   nwrite += fprintf(fp, "%22d\n", s.isfixeds);
+  nwrite += fprintf(fp, "%22d\n", s.type);
+
+  for (n = 0; n < NBOND_MAX; n++) {
+    nwrite += fprintf(fp, "%22d\n", s.bond[n]);
+  }
   for (n = 0; n < NPAD_INT; n++) {
     nwrite += fprintf(fp, "%22d\n", s.intpad[n]);
   }
+
   nwrite += fprintf(fp, sformat, s.a0);
   nwrite += fprintf(fp, sformat, s.ah);
   nwrite += fprintf(fp, vformat, s.r[0], s.r[1], s.r[2]);
@@ -153,6 +170,11 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s.q0);
   nwrite += fprintf(fp, sformat, s.q1);
   nwrite += fprintf(fp, sformat, s.epsilon);
+
+  nwrite += fprintf(fp, sformat, s.deltaq0);
+  nwrite += fprintf(fp, sformat, s.deltaq1);
+  nwrite += fprintf(fp, sformat, s.sa);
+  nwrite += fprintf(fp, sformat, s.saf);
 
   for (n = 0; n < NPAD_DBL; n++) {
     nwrite += fprintf(fp, sformat, s.dpad[n]);

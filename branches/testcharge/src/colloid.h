@@ -22,10 +22,14 @@
  * useful to know to check the ASCII read/write. */
 
 #define NTOT_VAR (32+48)
-#define NPAD_INT  24
-#define NPAD_DBL  20
+#define NPAD_INT  21
+#define NPAD_DBL  16
+#define NBOND_MAX  2
 
 #include <stdio.h>
+
+enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
+			COLLOID_TYPE_JANUS};
 
 typedef struct colloid_state_type colloid_state_t;
 
@@ -33,13 +37,16 @@ struct colloid_state_type {
 
   int index;            /* Unique global index for colloid */
   int rebuild;          /* Rebuild flag */
-  int nbonds;           /* Number of bonds e.g. fene (always 2 at moment) */
+  int nbonds;           /* Number of bonds e.g. fene (to NBOND_MAX) */
   int nangles;          /* Number of angles, e.g., fene (1 at the moment) */
 
   int isfixedr;         /* Set to 1 for no position update */
   int isfixedv;         /* Set to 1 for no velocity update */
   int isfixedw;         /* Set to 1 for no angular velocity update */
   int isfixeds;         /* Set to zero for no s, m update */
+
+  int type;             /* Particle type */
+  int bond[NBOND_MAX];  /* Bonded neighbours ids (index) */
 
   int intpad[NPAD_INT]; /* I'm going to pad to 32 ints to allow for future
 			 * expansion. Additions should be appended here,
@@ -69,6 +76,11 @@ struct colloid_state_type {
   double q0;            /* magnitude charge 0 */
   double q1;            /* magnitude charge 1 */
   double epsilon;       /* permeativity */
+
+  double deltaq0;       /* surplus/deficit of charge 0 at change of shape */
+  double deltaq1;       /* surplus/deficit of charge 1 at change of shape */
+  double sa;            /* surface area (finite difference) */
+  double saf;           /* surface area to fluid (finite difference grid) */
 
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
 			 * for future expansion. */
