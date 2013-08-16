@@ -161,3 +161,118 @@ int psi_colloid_electroneutral(psi_t * obj) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  psi_colloid_zetapotential
+ *
+ *****************************************************************************/
+
+
+int psi_colloid_zetapotential(psi_t * obj, double * psi_zeta) {
+
+  int ic, jc, kc;
+  int index, index1;
+  int nlocal[3];
+
+  int nsl_local, nsl_total; /* number of local and total nearest neighbour surface links */
+
+  double psi0; /* potential at fluid site */
+  double psi1; /* potential at adjacent solid site */
+  double psic_local, psic_total; /* local and global cummulative potential */
+
+  colloid_t * p_c;
+  colloid_t * colloid_at_site_index(int);
+
+  MPI_Comm comm = cart_comm();
+
+  assert(obj);
+  coords_nlocal(nlocal);
+
+  nsl_local = 0;
+  nsl_total = 0;
+
+  psic_local = 0.0;
+  psic_total = 0.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	/* If this is a solid site, there's no contribution here. */
+	p_c = colloid_at_site_index(index);
+	if (p_c) continue;
+
+	/* Get potential at fluid site */
+	psi_psi(obj, index, &psi0);
+
+	/* Check if adjacent site is solid and add contribution */
+
+	index1 = coords_index(ic+1, jc, kc);
+	p_c = colloid_at_site_index(index1);
+
+	if (p_c) {
+	  psi_psi(obj, index1, &psi1);
+	  psic_local += 0.5*(psi0+psi1);
+	  nsl_local ++;
+	}
+
+	index1 = coords_index(ic-1, jc, kc);
+	p_c = colloid_at_site_index(index1);
+
+	if (p_c) {
+	  psi_psi(obj, index1, &psi1);
+	  psic_local += 0.5*(psi0+psi1);
+	  nsl_local ++;
+	}
+
+	index1 = coords_index(ic, jc+1, kc);
+	p_c = colloid_at_site_index(index1);
+
+	if (p_c) {
+	  psi_psi(obj, index1, &psi1);
+	  psic_local += 0.5*(psi0+psi1);
+	  nsl_local ++;
+	}
+
+	index1 = coords_index(ic, jc-1, kc);
+	p_c = colloid_at_site_index(index1);
+
+	if (p_c) {
+	  psi_psi(obj, index1, &psi1);
+	  psic_local += 0.5*(psi0+psi1);
+	  nsl_local ++;
+	}
+	
+	index1 = coords_index(ic, jc, kc+1);
+	p_c = colloid_at_site_index(index1);
+
+	if (p_c) {
+	  psi_psi(obj, index1, &psi1);
+	  psic_local += 0.5*(psi0+psi1);
+	  nsl_local ++;
+	}
+
+	index1 = coords_index(ic, jc, kc-1);
+	p_c = colloid_at_site_index(index1);
+
+	if (p_c) {
+	  psi_psi(obj, index1, &psi1);
+	  psic_local += 0.5*(psi0+psi1);
+	  nsl_local ++;
+	}
+
+	/* Next site */
+      }
+    }
+  }
+
+  MPI_Reduce(&nsl_local, &nsl_total, 1, MPI_INT, MPI_SUM, 0, comm);
+  MPI_Reduce(&psic_local, &psic_total, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+  if (cart_rank() == 0) psi_zeta[0] = psic_total/nsl_total;
+
+  return 0;
+}

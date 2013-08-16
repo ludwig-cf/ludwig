@@ -24,6 +24,7 @@
 #include "util.h"
 #include "psi.h"
 #include "psi_stats.h"
+#include "psi_colloid.h"
 
 /*****************************************************************************
  *
@@ -37,6 +38,7 @@ int psi_stats_info(psi_t * obj) {
   double * rho_min;
   double * rho_max;
   double * rho_tot;
+  double psi_zeta;
 
   MPI_Comm comm;
 
@@ -56,12 +58,14 @@ int psi_stats_info(psi_t * obj) {
   /* Reduce to rank 0 in pe_comm for info */
 
   psi_stats_reduce(obj, rho_min, rho_max, rho_tot, 0, comm);
+  psi_colloid_zetapotential(obj, &psi_zeta);
 
   info("[psi] %14.7e %14.7e %14.7e\n", rho_tot[0], rho_min[0], rho_max[0]);
   for (n = 0; n < nk; n++) {
     info("[rho] %14.7e %14.7e %14.7e\n", rho_tot[1+n], rho_min[1+n], rho_max[1+n]);
   }
   info("[elc] %14.7e %14.7e %14.7e\n",  rho_tot[1+nk], rho_min[1+nk], rho_max[1+nk]);
+  info("[psi_zeta] %14.7e\n",  psi_zeta);
 
   free(rho_tot);
   free(rho_max);
