@@ -47,14 +47,15 @@
 
 #define NKEY_LENGTH 128           /* Maximum key / value string length */
 
-static void add_key_pair(const char *);
+static void add_key_pair(const char *, int lineno);
 static void key_broadcast(int);
-static int  is_valid_key_pair(const char *);
+static int  is_valid_key_pair(const char *, int lineno);
 static int  look_up_key(const char *, char *);
 
 struct key_pair {
   char key[NKEY_LENGTH];
   int  is_active;
+  int  input_line_no;
   struct key_pair * next;
 };
 
@@ -73,6 +74,7 @@ void RUN_read_input_file(const char * input_file_name) {
 
   FILE * fp_input;
   int    nkeys = 0;
+  int    nline = 0;
   char   line[NKEY_LENGTH];
 
   /* Read the file and work out number of valid key lines */
@@ -87,9 +89,10 @@ void RUN_read_input_file(const char * input_file_name) {
     else {
 
       while (fgets(line, NKEY_LENGTH, fp_input)) {
+	nline += 1;
 	/* Look at the line and add it if it's a key. */
-	if (is_valid_key_pair(line)) {
-	  add_key_pair(line);
+	if (is_valid_key_pair(line, nline)) {
+	  add_key_pair(line, nline);
 	  ++nkeys;
 	}
       }
@@ -145,7 +148,7 @@ static void key_broadcast(int nkeys) {
 
   if (pe_rank() != 0) {
     for (n = 0; n < nkeys; n++) {
-      add_key_pair(packed_keys + n*NKEY_LENGTH);
+      add_key_pair(packed_keys + n*NKEY_LENGTH, 0);
     }
   }
 
@@ -307,7 +310,7 @@ int RUN_get_active_keys() {
  *
  *****************************************************************************/
 
-static int is_valid_key_pair(const char * line) {
+static int is_valid_key_pair(const char * line, int lineno) {
 
   char a[NKEY_LENGTH];
   char b[NKEY_LENGTH];
@@ -320,7 +323,7 @@ static int is_valid_key_pair(const char * line) {
 
   if (sscanf(line, "%s %s", a, b) != 2) {
     /* This does not look like a key value pair... */
-    fatal("Please check input file syntax at line:\n %s\n", line);
+    fatal("Please check input file syntax at line %d:\n %s\n", lineno, line);
   }
   else {
     /* Check against existing keys for duplicate definitions. */
@@ -333,6 +336,7 @@ static int is_valid_key_pair(const char * line) {
       sscanf(p_key->key, "%s ", b);
 
       if (strcmp(b, a) == 0) {
+	info("At line %d: %s\n", lineno, line); 
 	fatal("Duplication of parameters in input file: %s %s\n", a, b);
       }
 
@@ -351,7 +355,7 @@ static int is_valid_key_pair(const char * line) {
  *
  *****************************************************************************/
 
-static void add_key_pair(const char * key) {
+static void add_key_pair(const char * key, int lineno) {
 
   struct key_pair * p_new;
 
@@ -365,6 +369,7 @@ static void add_key_pair(const char * key) {
 
     strncpy(p_new->key, key, NKEY_LENGTH);
     p_new->is_active = 1;
+    p_new->input_line_no = lineno;
     p_new->next = p_keylist;
 
     p_keylist = p_new;
