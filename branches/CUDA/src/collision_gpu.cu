@@ -128,7 +128,7 @@ void collide_gpu(int async=0) {
   streamX=getXstream();
   streamY=getYstream();
   streamZ=getZstream();
-  streamBULK=getZstream();
+  streamBULK=getBULKstream();
       
 
 

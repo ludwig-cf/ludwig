@@ -128,8 +128,9 @@ void blue_phase_beris_edwards(void) {
     //blue_phase_be_surface(hs5;
   }
 
+  int async=1;
   TIMER_start(TIMER_PHI_UPDATE_BE);
-  blue_phase_be_update_gpu(hs5);
+  blue_phase_be_update_gpu(async);
   TIMER_stop(TIMER_PHI_UPDATE_BE);
 
 #else

@@ -16,6 +16,7 @@
 #define INCLUDING_FROM_GPU_SOURCE
 #include "phi_force_gpu.h"
 #include "phi_force_internal_gpu.h"
+#include "comms_gpu.h"
 
 #include "pe.h"
 //#include "coords.h"
@@ -34,6 +35,8 @@
 
 dim3 nblocks, threadsperblock;
 
+/* handles for CUDA streams (for ovelapping)*/
+static cudaStream_t streamBULK, streamX, streamY, streamZ;
 
 
 /*  phi_force_calculation_gpu - see CPU version in phi_force.c */
@@ -205,7 +208,7 @@ void phi_force_colloid_gpu(void) {
 
 
 /*   blue_phase_be_update_gpu - see CPU version in blue_phase_beris_edwards.c */
-void blue_phase_be_update_gpu(void) {
+void blue_phase_be_update_gpu(int async=0) {
 
  
  int N[3],nhalo,Nall[3];
@@ -260,7 +263,19 @@ void blue_phase_be_update_gpu(void) {
   double *tmpptr=phi_site_temp_d; phi_site_temp_d=phi_site_d; phi_site_d=tmpptr;
 
 
-  /* need to make the edges 1D */
+  /* need to make the edges 1D? */
+
+
+ if (async==1){
+
+   printf("ASYNC BE\n");
+
+  streamX=getXstream();
+  streamY=getYstream();
+  streamZ=getZstream();
+  streamBULK=getBULKstream();
+      
+
 
   /* X edges */
   threadsperblock.x=DEFAULT_TPB_Z;
@@ -272,7 +287,7 @@ void blue_phase_be_update_gpu(void) {
   nblocks.z=1;
 
   cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
-  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock>>>
+  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock,0,streamX>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,X);
 
   /* Y edges */
@@ -285,7 +300,7 @@ void blue_phase_be_update_gpu(void) {
   nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;;
 
   cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
-  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock>>>
+  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock,0,streamY>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,Y);
 
   /* Z edges */
@@ -298,7 +313,7 @@ void blue_phase_be_update_gpu(void) {
   nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
   cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
-  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock>>>
+  blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock,0,streamZ>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,Z);
 
 
@@ -313,8 +328,29 @@ void blue_phase_be_update_gpu(void) {
 
 
   cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
-  blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
+  blue_phase_be_update_gpu_d<<<nblocks,threadsperblock,0,streamBULK>>>
     (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,BULK);
+
+  }
+  else{
+
+  threadsperblock.x=DEFAULT_TPB_Z;
+  threadsperblock.y=DEFAULT_TPB_Y;
+  threadsperblock.z=DEFAULT_TPB_X;
+
+  nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
+  nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
+  nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
+
+
+  cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
+  blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
+    (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,ALL);
+
+  cudaThreadSynchronize();
+  }
+
+
       
   cudaThreadSynchronize();
   checkCUDAError("blue_phase_be_update_gpu_d");

@@ -18,7 +18,7 @@
 /* expose main routine in this module to outside routines */
 CFUNC void phi_force_calculation_gpu(void);
 CFUNC void phi_force_colloid_gpu(void);
-CFUNC void blue_phase_be_update_gpu(void);
+CFUNC void blue_phase_be_update_gpu(int async);
 CFUNC void advection_upwind_gpu(void);
 CFUNC void advection_bcs_no_normal_flux_gpu(void);
 
