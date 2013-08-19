@@ -128,7 +128,15 @@ void blue_phase_beris_edwards(void) {
     //blue_phase_be_surface(hs5;
   }
 
+
   int async=0;
+
+  // get environment variable
+  char* tmpstr;
+  tmpstr = getenv ("ASYNC");
+  if (tmpstr!=NULL)
+      async=atoi(tmpstr);
+
   TIMER_start(TIMER_PHI_UPDATE_BE);
   blue_phase_be_update_gpu(async);
   TIMER_stop(TIMER_PHI_UPDATE_BE);

@@ -219,15 +219,11 @@ void blue_phase_be_update_gpu(int async=0) {
   Nall[Z]=N[Z]+2*nhalo;
 
 
-  cudaFuncSetCacheConfig(blue_phase_compute_q2_eq_all_gpu_d,cudaFuncCachePreferL1);      
-  cudaFuncSetCacheConfig(blue_phase_compute_h_all_gpu_d,cudaFuncCachePreferL1);      
   cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
-
+  cudaFuncSetCacheConfig(blue_phase_be_update_edge_gpu_d,cudaFuncCachePreferL1);
 
   put_phi_force_constants_on_gpu();  
-  expand_phi_on_gpu();
-  expand_grad_phi_on_gpu();
-
+ 
   /* compute q2 and eq */
   threadsperblock.x=DEFAULT_TPB_Z;
   threadsperblock.y=DEFAULT_TPB_Y;
@@ -236,13 +232,7 @@ void blue_phase_be_update_gpu(int async=0) {
   nblocks.x=(Nall[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
   nblocks.y=(Nall[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
   nblocks.z=(Nall[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
-  
-  
-  
-  blue_phase_compute_q2_eq_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,tmpscal1_d,tmpscal2_d);
-  
-  blue_phase_compute_h_all_gpu_d<<<nblocks,threadsperblock>>>(phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d, tmpscal1_d, tmpscal2_d);
-
+ 
 
   /* copy phi_site to phi_site_tmp on accelerator */
   double *tmpptr=phi_site_temp_d; phi_site_temp_d=phi_site_d; phi_site_d=tmpptr;
@@ -256,8 +246,7 @@ void blue_phase_be_update_gpu(int async=0) {
     
     streamX=getXstream();streamY=getYstream();streamZ=getZstream();streamBULK=getBULKstream();
     
-    
-    
+       
     /* X edges */
     threadsperblock.x=DEFAULT_TPB_Z; threadsperblock.y=DEFAULT_TPB_Y; threadsperblock.z=nhalo;
     
@@ -267,7 +256,10 @@ void blue_phase_be_update_gpu(int async=0) {
   
     
     blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock,0,streamX>>>
-      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,BE_UPDATE,X);
+      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,X);
+
+    //cudaStreamSynchronize(streamX);   
+
     
     /* Y edges */
     threadsperblock.x=DEFAULT_TPB_Z;
@@ -278,10 +270,12 @@ void blue_phase_be_update_gpu(int async=0) {
     nblocks.y=1;
     nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;;
     
-    cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
+
     blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock,0,streamY>>>
-      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,BE_UPDATE,Y);
+      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,Y);
     
+    //cudaStreamSynchronize(streamY);   
+
     /* Z edges */
     threadsperblock.x=nhalo;
     threadsperblock.y=DEFAULT_TPB_Y;
@@ -292,8 +286,9 @@ void blue_phase_be_update_gpu(int async=0) {
     nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
     
     blue_phase_be_update_edge_gpu_d<<<nblocks,threadsperblock,0,streamZ>>>
-      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,BE_UPDATE,Z);
-    
+      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,Z);
+   
+    //cudaStreamSynchronize(streamZ);    
     
     
     threadsperblock.x=DEFAULT_TPB_Z;
@@ -305,10 +300,11 @@ void blue_phase_be_update_gpu(int async=0) {
     nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
     
     
-    cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
     blue_phase_be_update_gpu_d<<<nblocks,threadsperblock,0,streamBULK>>>
-      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,BE_UPDATE,BULK);
-    
+      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,BULK);
+    //cudaStreamSynchronize(streamBULK);      
+
+ 
   }
   else{
     
@@ -321,16 +317,15 @@ void blue_phase_be_update_gpu(int async=0) {
     nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
     
     
-    cudaFuncSetCacheConfig(blue_phase_be_update_gpu_d,cudaFuncCachePreferL1);
     blue_phase_be_update_gpu_d<<<nblocks,threadsperblock>>>
-      (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,BE_UPDATE,ALL);
+     (le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,ALL);
     
     cudaThreadSynchronize();
   }
 
 
       
-  cudaThreadSynchronize();
+  //cudaThreadSynchronize();
   checkCUDAError("blue_phase_be_update_gpu_d");
 
 
@@ -900,6 +895,200 @@ __global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_t
   return;
 }
 
+
+__device__ void blue_phase_compute_q2_eq_site_gpu_d( const double* __restrict__ phi_site_d,
+						 const double* __restrict__ phi_site_full_d,
+						 const double* __restrict__ grad_phi_site_d,
+						 const double* __restrict__ delsq_phi_site_d,
+						 const double* __restrict__ h_site_d,
+						 double* __restrict__ q2_site_d,
+						     double* __restrict__ eq_site_d,
+						  const int ii, const int jj, const int kk){
+
+  int ia, ib, ic;
+  int index;
+  double q[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+ 
+  if (ii < Nall_cd[X] && jj < Nall_cd[Y] && kk < Nall_cd[Z] )
+    {
+
+
+      /* calculate index from CUDA thread index */
+      index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
+      
+      /* load phi */
+      
+      q[X][X] = phi_site_d[nsites_cd*XX+index];
+      q[X][Y] = phi_site_d[nsites_cd*XY+index];
+      q[X][Z] = phi_site_d[nsites_cd*XZ+index];
+      q[Y][X] = q[X][Y];
+      q[Y][Y] = phi_site_d[nsites_cd*YY+index];
+      q[Y][Z] = phi_site_d[nsites_cd*YZ+index];
+      q[Z][X] = q[X][Z];
+      q[Z][Y] = q[Y][Z];
+      q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+      
+      
+      /* load grad phi */
+      for (ia = 0; ia < 3; ia++) {
+	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
+	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
+	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
+	dq[ia][Y][X] = dq[ia][X][Y];
+	dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
+	dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
+	dq[ia][Z][X] = dq[ia][X][Z];
+	dq[ia][Z][Y] = dq[ia][Y][Z];
+	dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+      }
+      
+      /* load delsq phi */
+      dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
+      dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
+      dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
+      dsq[Y][X] = dsq[X][Y];
+      dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
+      dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
+      dsq[Z][X] = dsq[X][Z];
+      dsq[Z][Y] = dsq[Y][Z];
+      dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+                  
+  double q2;
+  double eq;
+  /* From the bulk terms in the free energy... */
+
+  q2 = 0.0;
+  eq = 0.0;
+  
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+
+      q2 += phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
+      
+      for (ic = 0; ic < 3; ic++) {
+	eq += e_cd[ia][ib][ic]*dq[ia][ib][ic];
+      }
+      
+    }
+  }
+
+  q2_site_d[index]=q2;
+  eq_site_d[index]=eq;
+    }
+  return;
+}
+
+
+
+
+__device__ void blue_phase_compute_h_site_gpu_d(  const double* __restrict__ phi_site_d,
+						 const double* __restrict__ phi_site_full_d,
+						 const double* __restrict__ grad_phi_site_d,
+						 const double* __restrict__ delsq_phi_site_d,
+						 double* __restrict__ h_site_d,
+						 const double* __restrict__ q2_site_d,
+						  const double* __restrict__ eq_site_d,
+						  const int ii, const int jj, const int kk
+						 ){
+
+  int ia, ib, ic, id;
+  int index;
+  double q[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+  double htmp;
+
+ 
+  if (ii < Nall_cd[X] && jj < Nall_cd[Y] && kk < Nall_cd[Z] )
+    {
+
+
+      index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
+      
+      /* load phi */
+      
+      q[X][X] = phi_site_d[nsites_cd*XX+index];
+      q[X][Y] = phi_site_d[nsites_cd*XY+index];
+      q[X][Z] = phi_site_d[nsites_cd*XZ+index];
+      q[Y][X] = q[X][Y];
+      q[Y][Y] = phi_site_d[nsites_cd*YY+index];
+      q[Y][Z] = phi_site_d[nsites_cd*YZ+index];
+      q[Z][X] = q[X][Z];
+      q[Z][Y] = q[Y][Z];
+      q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+      
+      
+      /* load grad phi */
+      for (ia = 0; ia < 3; ia++) {
+	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
+	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
+	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
+	dq[ia][Y][X] = dq[ia][X][Y];
+	dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
+	dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
+	dq[ia][Z][X] = dq[ia][X][Z];
+	dq[ia][Z][Y] = dq[ia][Y][Z];
+	dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+      }
+      
+      /* load delsq phi */
+      dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
+      dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
+      dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
+      dsq[Y][X] = dsq[X][Y];
+      dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
+      dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
+      dsq[Z][X] = dsq[X][Z];
+      dsq[Z][Y] = dsq[Y][Z];
+      dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+                  
+  double sum, sum1;
+
+  double q2=q2_site_d[index];
+  double eq=eq_site_d[index];
+
+
+  double cd1=-a0_cd*(1.0 - r3_cd*gamma_cd);
+  double cd2=a0_cd*gamma_cd;
+  double cd3=2.0*kappa1shift_cd*q0shift_cd;
+  
+  /* d_c Q_db written as d_c Q_bd etc */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      sum1 = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+
+  	sum +=  phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index]* phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index];
+
+	for (id = 0; id < 3; id++) {
+	  sum1 +=
+	    (e_cd[ia][ic][id]*dq[ic][ib][id] + e_cd[ib][ic][id]*dq[ic][ia][id]);
+	}
+      }
+
+      htmp = cd1* phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]
+  	+ cd2*(sum - r3_cd*q2*d_cd[ia][ib]) - cd2*q2*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
+
+      htmp += kappa0shift_cd*dsq[ia][ib]
+	- cd3*sum1 + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib]
+	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
+
+      htmp +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib] - r3_cd*d_cd[ia][ib]*e2_cd);
+
+       h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=htmp;
+
+    }
+  }
+  
+    }
+
+  return;
+}
+
+
 __device__ void blue_phase_be_update_site_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					   double* __restrict__ phi_site_d,
 					   const double* __restrict__ phi_site_temp_d,
@@ -1102,11 +1291,9 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
 					   const double* __restrict__ fluxw_d,
 					   const double* __restrict__ fluxy_d,
 					   const double* __restrict__ fluxz_d,
-					   const int calcstep, const int latchunk
+					   const int latchunk
 					   ){
 
-  int icm1, icp1;
-  int index, indexm1, indexp1;
   int ii, jj, kk;
 
 
@@ -1125,11 +1312,8 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
   if (ii < (Nall_cd[X]-2*edgeoffset) && jj < (Nall_cd[Y]-2*edgeoffset) && kk < (Nall_cd[X]-2*edgeoffset) )
     {
 
-      if (calcstep == BE_UPDATE){
       blue_phase_be_update_site_gpu_d(le_index_real_to_buffer_d,phi_site_d,phi_site_temp_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,velocity_d,site_map_status_d, fluxe_d, fluxw_d, fluxy_d, fluxz_d,ii+edgeoffset,jj+edgeoffset,kk+edgeoffset);
-      }
-
-
+      
     }
 
 
@@ -1148,7 +1332,7 @@ __global__ void blue_phase_be_update_edge_gpu_d(const int * __restrict__ le_inde
 					   const double* __restrict__ fluxw_d,
 					   const double* __restrict__ fluxy_d,
 					   const double* __restrict__ fluxz_d,
-					   const int calcstep, const int dirn
+					   const int dirn
 					   ){
 
   int icm1, icp1;
@@ -1363,89 +1547,6 @@ __global__ void advection_bcs_no_normal_flux_gpu_d(const int nop,
     }
 }
 
-__device__ void blue_phase_compute_q2_eq_site_gpu_d( const double* __restrict__ phi_site_d,
-						 const double* __restrict__ phi_site_full_d,
-						 const double* __restrict__ grad_phi_site_d,
-						 const double* __restrict__ delsq_phi_site_d,
-						 const double* __restrict__ h_site_d,
-						 double* __restrict__ q2_site_d,
-						     double* __restrict__ eq_site_d,
-						  const int ii, const int jj, const int kk){
-
-  int ia, ib, ic;
-  int index;
-  double q[3][3];
-  double dq[3][3][3];
-  double dsq[3][3];
- 
-  if (ii < Nall_cd[X] && jj < Nall_cd[Y] && kk < Nall_cd[Z] )
-    {
-
-
-      /* calculate index from CUDA thread index */
-      index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
-      
-      /* load phi */
-      
-      q[X][X] = phi_site_d[nsites_cd*XX+index];
-      q[X][Y] = phi_site_d[nsites_cd*XY+index];
-      q[X][Z] = phi_site_d[nsites_cd*XZ+index];
-      q[Y][X] = q[X][Y];
-      q[Y][Y] = phi_site_d[nsites_cd*YY+index];
-      q[Y][Z] = phi_site_d[nsites_cd*YZ+index];
-      q[Z][X] = q[X][Z];
-      q[Z][Y] = q[Y][Z];
-      q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
-      
-      
-      /* load grad phi */
-      for (ia = 0; ia < 3; ia++) {
-	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
-	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
-	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
-	dq[ia][Y][X] = dq[ia][X][Y];
-	dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
-	dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
-	dq[ia][Z][X] = dq[ia][X][Z];
-	dq[ia][Z][Y] = dq[ia][Y][Z];
-	dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
-      }
-      
-      /* load delsq phi */
-      dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
-      dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
-      dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
-      dsq[Y][X] = dsq[X][Y];
-      dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
-      dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
-      dsq[Z][X] = dsq[X][Z];
-      dsq[Z][Y] = dsq[Y][Z];
-      dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
-                  
-  double q2;
-  double eq;
-  /* From the bulk terms in the free energy... */
-
-  q2 = 0.0;
-  eq = 0.0;
-  
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-
-      q2 += phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
-      
-      for (ic = 0; ic < 3; ic++) {
-	eq += e_cd[ia][ib][ic]*dq[ia][ib][ic];
-      }
-      
-    }
-  }
-
-  q2_site_d[index]=q2;
-  eq_site_d[index]=eq;
-    }
-  return;
-}
 
 
 __global__ void blue_phase_compute_q2_eq_all_gpu_d( const double* __restrict__ phi_site_d,
@@ -1478,113 +1579,6 @@ __global__ void blue_phase_compute_q2_eq_all_gpu_d( const double* __restrict__ p
 
 
 
-
-
-
-__device__ void blue_phase_compute_h_site_gpu_d(  const double* __restrict__ phi_site_d,
-						 const double* __restrict__ phi_site_full_d,
-						 const double* __restrict__ grad_phi_site_d,
-						 const double* __restrict__ delsq_phi_site_d,
-						 double* __restrict__ h_site_d,
-						 const double* __restrict__ q2_site_d,
-						  const double* __restrict__ eq_site_d,
-						  const int ii, const int jj, const int kk
-						 ){
-
-  int ia, ib, ic, id;
-  int index;
-  double q[3][3];
-  double dq[3][3][3];
-  double dsq[3][3];
-  double htmp;
-
- 
-  if (ii < Nall_cd[X] && jj < Nall_cd[Y] && kk < Nall_cd[Z] )
-    {
-
-
-      index = get_linear_index_gpu_d(ii,jj,kk,Nall_cd);
-      
-      /* load phi */
-      
-      q[X][X] = phi_site_d[nsites_cd*XX+index];
-      q[X][Y] = phi_site_d[nsites_cd*XY+index];
-      q[X][Z] = phi_site_d[nsites_cd*XZ+index];
-      q[Y][X] = q[X][Y];
-      q[Y][Y] = phi_site_d[nsites_cd*YY+index];
-      q[Y][Z] = phi_site_d[nsites_cd*YZ+index];
-      q[Z][X] = q[X][Z];
-      q[Z][Y] = q[Y][Z];
-      q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
-      
-      
-      /* load grad phi */
-      for (ia = 0; ia < 3; ia++) {
-	dq[ia][X][X] = grad_phi_site_d[ia*nsites_cd*5 + XX*nsites_cd + index];
-	dq[ia][X][Y] = grad_phi_site_d[ia*nsites_cd*5 + XY*nsites_cd + index];
-	dq[ia][X][Z] = grad_phi_site_d[ia*nsites_cd*5 + XZ*nsites_cd + index];
-	dq[ia][Y][X] = dq[ia][X][Y];
-	dq[ia][Y][Y] = grad_phi_site_d[ia*nsites_cd*5 + YY*nsites_cd + index];
-	dq[ia][Y][Z] = grad_phi_site_d[ia*nsites_cd*5 + YZ*nsites_cd + index];
-	dq[ia][Z][X] = dq[ia][X][Z];
-	dq[ia][Z][Y] = dq[ia][Y][Z];
-	dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
-      }
-      
-      /* load delsq phi */
-      dsq[X][X] = delsq_phi_site_d[XX*nsites_cd+index];
-      dsq[X][Y] = delsq_phi_site_d[XY*nsites_cd+index];
-      dsq[X][Z] = delsq_phi_site_d[XZ*nsites_cd+index];
-      dsq[Y][X] = dsq[X][Y];
-      dsq[Y][Y] = delsq_phi_site_d[YY*nsites_cd+index];
-      dsq[Y][Z] = delsq_phi_site_d[YZ*nsites_cd+index];
-      dsq[Z][X] = dsq[X][Z];
-      dsq[Z][Y] = dsq[Y][Z];
-      dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
-                  
-  double sum, sum1;
-
-  double q2=q2_site_d[index];
-  double eq=eq_site_d[index];
-
-
-  double cd1=-a0_cd*(1.0 - r3_cd*gamma_cd);
-  double cd2=a0_cd*gamma_cd;
-  double cd3=2.0*kappa1shift_cd*q0shift_cd;
-  
-  /* d_c Q_db written as d_c Q_bd etc */
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      sum = 0.0;
-      sum1 = 0.0;
-      for (ic = 0; ic < 3; ic++) {
-
-  	sum +=  phi_site_full_d[3*nsites_cd*ia+nsites_cd*ic+index]* phi_site_full_d[3*nsites_cd*ib+nsites_cd*ic+index];
-
-	for (id = 0; id < 3; id++) {
-	  sum1 +=
-	    (e_cd[ia][ic][id]*dq[ic][ib][id] + e_cd[ib][ic][id]*dq[ic][ia][id]);
-	}
-      }
-
-      htmp = cd1* phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index]
-  	+ cd2*(sum - r3_cd*q2*d_cd[ia][ib]) - cd2*q2*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
-
-      htmp += kappa0shift_cd*dsq[ia][ib]
-	- cd3*sum1 + 4.0*r3_cd*kappa1shift_cd*q0shift_cd*eq*d_cd[ia][ib]
-	- 4.0*kappa1shift_cd*q0shift_cd*q0shift_cd*phi_site_full_d[3*nsites_cd*ia+nsites_cd*ib+index];
-
-      htmp +=  epsilon_cd*(electric_cd[ia]*electric_cd[ib] - r3_cd*d_cd[ia][ib]*e2_cd);
-
-       h_site_d[3*nsites_cd*ia+nsites_cd*ib+index]=htmp;
-
-    }
-  }
-  
-    }
-
-  return;
-}
 
 __global__ void blue_phase_compute_h_all_gpu_d(  const double* __restrict__ phi_site_d,
 						 const double* __restrict__ phi_site_full_d,

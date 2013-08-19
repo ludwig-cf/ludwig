@@ -105,7 +105,7 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
 					   const double* __restrict__ fluxw_d,
 					   const double* __restrict__ fluxy_d,
 					   const double* __restrict__ fluxz_d,
-					   const int calcstep, const int latchunk
+					   const int latchunk
 );
 __global__ void blue_phase_be_update_edge_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					   double* __restrict__ phi_site_d,
@@ -119,7 +119,7 @@ __global__ void blue_phase_be_update_edge_gpu_d(const int * __restrict__ le_inde
 					   const double* __restrict__ fluxw_d,
 					   const double* __restrict__ fluxy_d,
 					   const double* __restrict__ fluxz_d,
-						const int calcstep, const int dirn
+					const int dirn
 						);
 
 __global__ void advection_upwind_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,

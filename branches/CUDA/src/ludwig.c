@@ -405,7 +405,13 @@ void ludwig_run(const char * inputfile) {
 
 
 
-    int async=1;
+    int async=0;
+    // get environment variable
+    char* tmpstr;
+    tmpstr = getenv ("ASYNC");
+    if (tmpstr!=NULL)
+      async=atoi(tmpstr);
+
 
     if(is_propagation_ode() == 0) {
 
