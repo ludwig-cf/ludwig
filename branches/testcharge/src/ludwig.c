@@ -275,6 +275,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
       hydro_io_info(ludwig->hydro, &iohandler);
       io_read_data(iohandler, filename, ludwig->hydro);
     }
+    if (ludwig->psi) {
+      psi_io_info(ludwig->psi, &iohandler);
+      sprintf(filename,"%spsi-%8.8d", subdirectory, get_step());
+      info("electrokinetics files(s) %s\n", filename);
+      io_read_data(iohandler, filename, ludwig->psi);
+    }
   }
 
   /* gradient initialisation for field stuff */
