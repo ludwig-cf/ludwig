@@ -543,6 +543,9 @@ electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 0.0
 electrokinetics_init_sigma 0.0125
 
+electrokinetics_sor_rel_tol 0.0002
+electrokinetics_sor_abs_tol 0.0000000003
+
 electrosymmetric_epsilon2   2000.0
 electrosymmetric_delta_mu0  1.0
 electrosymmetric_delta_mu1  2.0

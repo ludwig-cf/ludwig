@@ -96,7 +96,12 @@ int psi_init_param_rt(psi_t * obj) {
     info("Diffusivity species %d:     %14.7e\n", n, diffusivity[n]);
   }
 
-  /* Tolerances. Yet to be offered from input */
+  /* Tolerances. */
+
+  n = RUN_get_double_parameter("electrokinetics_sor_rel_tol", &tolerance);
+  if (n == 1) psi_reltol_set(obj, tolerance);
+  n = RUN_get_double_parameter("electrokinetics_sor_abs_tol", &tolerance);
+  if (n == 1) psi_abstol_set(obj, tolerance);
 
   psi_reltol(obj, &tolerance);
   info("Relative tolerance (SOR):  %14.7e\n", tolerance);

@@ -728,3 +728,33 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  psi_reltol_set
+ *
+ *****************************************************************************/
+
+int psi_reltol_set(psi_t * obj, double reltol) {
+
+  assert(obj);
+
+  obj->reltol = reltol;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_abstol_set
+ *
+ *****************************************************************************/
+
+int psi_abstol_set(psi_t * obj, double abstol) {
+
+  assert(obj);
+
+  obj->abstol = abstol;
+
+  return 0;
+}
