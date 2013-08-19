@@ -11,6 +11,8 @@
 
 #include "common_gpu.h"
 
+enum calcstep {CALC_Q2EQ,CALC_H,BE_UPDATE};
+
 /* declarations for required external (host) routines */
 extern "C" double blue_phase_redshift(void);
 extern "C" double blue_phase_rredshift(void);
@@ -103,7 +105,7 @@ __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_rea
 					   const double* __restrict__ fluxw_d,
 					   const double* __restrict__ fluxy_d,
 					   const double* __restrict__ fluxz_d,
-					   int latchunk
+					   const int calcstep, const int latchunk
 );
 __global__ void blue_phase_be_update_edge_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					   double* __restrict__ phi_site_d,
@@ -117,7 +119,7 @@ __global__ void blue_phase_be_update_edge_gpu_d(const int * __restrict__ le_inde
 					   const double* __restrict__ fluxw_d,
 					   const double* __restrict__ fluxy_d,
 					   const double* __restrict__ fluxz_d,
-					   int dirn
+						const int calcstep, const int dirn
 						);
 
 __global__ void advection_upwind_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
