@@ -92,11 +92,13 @@ struct lubrication_struct {
 int COLL_update(hydro_t * hydro, map_t * map, field_t * fphi, field_t * fp,
 		field_t * fq, psi_t * psi) {
 
+  int iconserve ;
   int is_subgrid = 0;
 
   if (colloid_ntotal() == 0) return 0;
 
   subgrid_on(&is_subgrid);
+  iconserve = (psi || (fphi && distribution_ndist() == 1));
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
@@ -120,10 +122,13 @@ int COLL_update(hydro_t * hydro, map_t * map, field_t * fphi, field_t * fp,
     TIMER_start(TIMER_REBUILD);
 
     build_update_map(map);
-    build_remove_or_replace_fluid(fphi, fp, fq);
+    build_remove_or_replace_fluid(fphi, fp, fq, psi);
     build_update_links(map);
 
     TIMER_stop(TIMER_REBUILD);
+
+    if (iconserve) colloid_sums_halo(COLLOID_SUM_CONSERVATION);
+    if (iconserve) build_conservation(fphi, psi);
 
     colloid_forces(map, psi);
   }

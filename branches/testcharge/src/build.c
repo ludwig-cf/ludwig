@@ -26,6 +26,7 @@
 #include "util.h"
 #include "wall.h"
 #include "field.h"
+#include "psi_colloid.h"
 #include "build.h"
 
 static int build_remove_order_parameter(field_t * f, int index,
@@ -45,6 +46,8 @@ static int build_reset_links(colloid_t * pc, map_t * map);
 static int build_replace_fluid(int index, colloid_t *);
 static int build_remove_fluid(int index, colloid_t *);
 int build_count_links_local(colloid_t * colloid, int * nlinks);
+int build_count_links_local(colloid_t * colloid, int * nlinks);
+int build_count_faces_local(colloid_t * colloid, double * sa, double * saf);
 
 /*****************************************************************************
  *
@@ -134,7 +137,6 @@ int build_update_map(map_t * map) {
 	  wet[1] = 0.0;
 	  map_data_set(map, index, wet);
 	}
-
       }
     }
   }
@@ -264,6 +266,8 @@ int build_update_links(map_t * map) {
 	    build_reset_links(p_colloid, map);
 	  }
 
+	  build_count_faces_local(p_colloid, &p_colloid->s.sa,
+				  &p_colloid->s.saf);
 
 	  /* Next colloid */
 
@@ -571,7 +575,8 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
  *
  *****************************************************************************/
 
-int build_remove_or_replace_fluid(field_t * fphi, field_t * fp, field_t * fq) {
+int build_remove_or_replace_fluid(field_t * fphi, field_t * fp, field_t * fq,
+				  psi_t * psi) {
 
   colloid_t * p_colloid;
 
@@ -606,6 +611,7 @@ int build_remove_or_replace_fluid(field_t * fphi, field_t * fp, field_t * fq) {
 	    /* Only scalar composition is conserved, and so require
 	     * accounting of removed order parameter */
 	    if (fphi) build_remove_order_parameter(fphi, index, p_colloid);
+	    if (psi) psi_colloid_remove_charge(psi, p_colloid, index);
 	  }
 	}
 
@@ -618,6 +624,7 @@ int build_remove_or_replace_fluid(field_t * fphi, field_t * fp, field_t * fq) {
 	    if (fphi) build_replace_order_parameter(fphi, index, p_colloid);
 	    if (fp) build_replace_order_parameter(fp, index, p_colloid);
 	    if (fq) build_replace_order_parameter(fq, index, p_colloid);
+	    if (psi) psi_colloid_replace_charge(psi, p_colloid, index);
 	  }
 	}
       }
@@ -1154,6 +1161,127 @@ int build_count_links_local(colloid_t * colloid, int * nlinks) {
   }
 
   *nlinks = nlink;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  build_count_faces_local
+ *
+ *  Count number of faces (local) for this colloid. This is the 'surface
+ *  area' on the finite difference grid.
+ *
+ *  Count both total, and those faces which have fluid neighbours.
+ *
+ *****************************************************************************/
+
+int build_count_faces_local(colloid_t * colloid, double * sa, double * saf) {
+
+  int p;
+  colloid_link_t * pl = NULL;
+
+  assert(colloid);
+  assert(sa);
+  assert(saf);
+
+  *sa = 0.0;
+  *saf = 0.0;
+
+  for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
+    if (pl->status == LINK_UNUSED) continue;
+    p = pl->p;
+    p = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+    if (p == 1) {
+      *sa += 1.0;
+      if (pl->status == LINK_FLUID) *saf += 1.0;
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  build_conservation
+ *
+ *  Restore conserved order parameters (phi, charge) after change of
+ *  shape in the finite volume picture.
+ *
+ *  Either phi or psi are allowed to be NULL, in which case, they are
+ *  ignored. If both are NULL, don't need to call this at all!
+ *
+ *  For each particle, we replace a proportion of the conservered
+ *  surplus or deficit at each fluid face.
+ *
+ *****************************************************************************/
+
+int build_conservation(field_t * phi, psi_t * psi) {
+
+  int ic, jc, kc;
+  int ncell[3];
+  int p;
+
+  double value;
+  double dphi, dq0, dq1;
+
+  colloid_t * colloid = NULL;
+  colloid_link_t * pl = NULL;
+
+  colloids_cell_ncell(ncell);
+
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
+
+        /* Set the cell index */
+
+        colloid = colloids_cell_list(ic, jc, kc);
+
+        /* For each colloid in this cell, check solid/fluid status */
+
+        for (; colloid != NULL; colloid = colloid->next) {
+
+          dphi = colloid->s.deltaphi / colloid->s.saf;
+          dq0  = colloid->s.deltaq0  / colloid->s.saf;
+          dq1  = colloid->s.deltaq1  / colloid->s.saf;
+
+	  if (dq0 == 0.0 && dq1 == 0.0) break;
+
+          for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
+
+	    if (pl->status == LINK_UNUSED) continue;
+
+            p = pl->p;
+            p = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+
+            if (p == 1) {
+              /* Replace */
+              if (phi) {
+                field_scalar(phi, pl->i, &value);
+                field_scalar_set(phi, pl->i, value + dphi);
+              }
+	      /* For charge, do not drop densities below zero. */
+              if (psi) {
+                psi_rho(psi, pl->i, 0, &value);
+                if ((value + dq0) >= 0.0) {
+		  colloid->s.deltaq0 -= dq0;
+		  psi_rho_set(psi, pl->i, 0, value + dq0);
+		}
+                psi_rho(psi, pl->i, 1, &value);
+                if ((value + dq1) >=  0.0) {
+		  colloid->s.deltaq1 -= dq1;
+		  psi_rho_set(psi, pl->i, 1, value + dq1);
+		}
+              }
+            }
+          }
+        }
+
+        /* Next cell */
+      }
+    }
+  }
 
   return 0;
 }

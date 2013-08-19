@@ -604,7 +604,10 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
       if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
       if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
-      if (ludwig->psi) psi_stats_info(ludwig->psi);
+      if (ludwig->psi) {
+	psi_colloid_rho_set(ludwig->psi);
+	psi_stats_info(ludwig->psi);
+      }
 
       stats_free_energy_density(ludwig->q, ludwig->map);
       ludwig_report_momentum(ludwig);
