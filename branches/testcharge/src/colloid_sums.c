@@ -43,6 +43,10 @@ static void colloid_sums_process(int dim, const int ncount[2]);
  *  3. Active squirmer force and torque corrections: fc0, tc0
  *     Also used for subgrid total force: fc0
  *
+ *  4. Used to work out order parameter / charge correction
+ *     for conserved quantities to be replaced after colloid
+ *     movement.
+ *
  *  For each message type, the index is passed as a double
  *  for simplicity. The following keep track of the different
  *  messages...
@@ -53,8 +57,12 @@ static int colloid_sums_m0(int, int, int, int); /* DUMMY */
 static int colloid_sums_m1(int, int, int, int); /* STRUCTURE */
 static int colloid_sums_m2(int, int, int, int); /* DYNAMICS */
 static int colloid_sums_m3(int, int, int, int); /* ACTIVE and SUBGRID */
+static int colloid_sums_m4(int, int, int, int); /* CONSERVATION */
 
-static const int msize_[3] = {10, 35, 7};       /* Message sizes (doubles) */
+/* Message sizes (doubles) */
+
+enum message_type_enum {MTYPE_MAX = 4};
+static const int msize_[MTYPE_MAX] = {10, 35, 7, 6};
 
 /* The following are used for internal communication */
 
@@ -102,7 +110,7 @@ void colloid_sums_dim(const int dim, const int mtype) {
   MPI_Request send_req[2];
   MPI_Status  status[2];
 
-  assert(mtype >=0 && mtype < 3);
+  assert(mtype >=0 && mtype < MTYPE_MAX);
   mtype_ = mtype;
   nsize = msize_[mtype];
 
@@ -292,6 +300,7 @@ static void colloid_sums_process(int dim, const int ncount[2]) {
   if (mtype_ == COLLOID_SUM_STRUCTURE) message_loaderf = colloid_sums_m1;
   if (mtype_ == COLLOID_SUM_DYNAMICS) message_loaderf = colloid_sums_m2;
   if (mtype_ == COLLOID_SUM_ACTIVE) message_loaderf = colloid_sums_m3;
+  if (mtype_ == COLLOID_SUM_CONSERVATION) message_loaderf = colloid_sums_m4;
 
   assert(message_loaderf);
   message_loaderb = message_loaderf;
@@ -530,6 +539,60 @@ static int colloid_sums_m3(int ic, int jc, int kc, int noff) {
 	pc->fc0[ia] += recv_[n++];
 	pc->tc0[ia] += recv_[n++];
       }
+      assert(n == (noff + npart + 1)*msize_[mtype_]);
+    }
+
+    npart++;
+    pc = pc->next;
+  }
+
+  return npart;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_m4
+ *
+ *  See comments for m1 above.
+ *
+ *  This is for conserved order parameters and related information.
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m4(int ic, int jc, int kc, int noff) {
+
+  int n, npart;
+  int index;
+  colloid_t * pc;
+
+  n = msize_[mtype_]*noff;
+  npart = 0;
+  pc = colloids_cell_list(ic, jc, kc);
+
+  while (pc) {
+
+    if (mload_ == MESSAGE_LOAD) {
+      send_[n++] = 1.0*pc->s.index;
+      send_[n++] = pc->s.deltaphi;
+      send_[n++] = pc->s.deltaq0;
+      send_[n++] = pc->s.deltaq1;
+      send_[n++] = pc->s.sa;
+      send_[n++] = pc->s.saf;
+
+      assert(n == (noff + npart + 1)*msize_[mtype_]);
+    }
+    else {
+
+      /* unload and check incoming index (a fatal error) */
+      index = (int) recv_[n++];
+      if (index != pc->s.index) fatal("Sum mismatch m4 (%d)\n", index);
+
+      pc->s.deltaphi += recv_[n++];
+      pc->s.deltaq0  += recv_[n++];
+      pc->s.deltaq1  += recv_[n++];
+      pc->s.sa       += recv_[n++];
+      pc->s.saf      += recv_[n++];
+
       assert(n == (noff + npart + 1)*msize_[mtype_]);
     }
 

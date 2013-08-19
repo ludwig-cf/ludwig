@@ -20,7 +20,8 @@
 enum sum_message_type {COLLOID_SUM_STRUCTURE = 0,
 		       COLLOID_SUM_DYNAMICS = 1,
 		       COLLOID_SUM_ACTIVE = 2,
-                       COLLOID_SUM_SUBGRID = 2};
+                       COLLOID_SUM_SUBGRID = 2,
+                       COLLOID_SUM_CONSERVATION = 3};
 
 void colloid_sums_halo(const int message_type);
 void colloid_sums_dim(const int dim, const int message_type);
