@@ -13,6 +13,9 @@
 #include "psi.h"
 #include "colloids.h"
 
+static int psi_colloid_charge_accum(psi_t * psi,
+                                    int index, double * rho, double * weight);
+
 /*****************************************************************************
  *
  *  psi_colloid_rho_set
@@ -164,10 +167,130 @@ int psi_colloid_electroneutral(psi_t * obj) {
 
 /*****************************************************************************
  *
- *  psi_colloid_zetapotential
+ *  psi_colloid_remove_charge
+ *
+ *  Accumulate charge densities removed from previously fluid site index.
+ *  This is for nk = 2 only.
  *
  *****************************************************************************/
 
+int psi_colloid_remove_charge(psi_t * psi, colloid_t * colloid, int index) {
+
+  double rho0, rho1;
+
+  assert(psi);
+  assert(colloid);
+
+  psi_rho(psi, index, 0, &rho0);
+  colloid->s.deltaq0 += rho0;
+  psi_rho(psi, index, 1, &rho1);
+  colloid->s.deltaq1 += rho1;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_colloid_replace_charge
+ *
+ *  Compute charge densities around newly fluid site at index. This is
+ *  based on an average of surrounding fluid sites.
+ *
+ *****************************************************************************/
+
+int psi_colloid_replace_charge(psi_t * psi, colloid_t * colloid, int index) {
+
+  int n, nk;
+  int xs, ys, zs;
+  double rho[2];
+  double weight;
+
+  assert(psi);
+  assert(colloid);
+
+  psi_nk(psi, &nk);
+  assert(nk == 2);
+
+  coords_strides(&xs, &ys, &zs);
+
+  weight = 0.0;
+  for (n = 0; n < nk; n++) {
+    rho[n] = 0.0;
+  }
+
+  /* Look at SIX neighbours */
+
+  psi_colloid_charge_accum(psi, index - xs, rho, &weight); 
+  psi_colloid_charge_accum(psi, index + xs, rho, &weight);
+  psi_colloid_charge_accum(psi, index - ys, rho, &weight);
+  psi_colloid_charge_accum(psi, index + ys, rho, &weight);
+  psi_colloid_charge_accum(psi, index - zs, rho, &weight);
+  psi_colloid_charge_accum(psi, index + zs, rho, &weight);
+
+  /* Add the resultant value to the new fluid site */
+
+  assert(weight > 0.0);
+
+  weight = 1.0 / weight;
+  for (n = 0; n < nk; n++) {
+    rho[n] *= weight;
+    psi_rho_set(psi, index, n, rho[n]);
+  }
+
+  /* Set corrections arising from addition of charge density to fluid */
+
+  colloid->s.deltaq0 -= rho[0];
+  colloid->s.deltaq1 -= rho[1];
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  psi_colloid_charge_accum
+ *
+ *  Accumulate charge densities from site index, along with a
+ *  counter of fluid sites 'weight'.
+ *
+ *  Solid (porous media, wall) sites are excluded by virtue of
+ *  never being occupied by a colloid. The site must have been
+ *  fluid at the previous step.
+ *
+ *  This assumes always two charge densities.
+ *
+ *****************************************************************************/
+
+static int psi_colloid_charge_accum(psi_t * psi,
+                                    int index, double * rho, double * weight) {
+  int n, nk = 2;
+  double rho0;
+  colloid_t * pc = NULL;
+  colloid_t * colloid_at_site_index(int);
+
+  assert(psi);
+
+  assert(rho);
+  assert(weight);
+
+  pc = colloid_at_site_index(index);
+
+  if (pc == NULL) {
+    for (n = 0; n < nk; n++) {
+      psi_rho(psi, index, n, &rho0);
+      *(rho + n) += rho0;
+    }
+    *weight += 1.0;
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_colloid_zetapotential
+ *
+ *****************************************************************************/
 
 int psi_colloid_zetapotential(psi_t * obj, double * psi_zeta) {
 
