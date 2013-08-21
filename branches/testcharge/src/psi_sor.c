@@ -17,8 +17,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2013-2013 The University of Edinburgh
+ *
+ *  Contributing Authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Ignacio Pagonabarraga (ipagonabarraga@ub.edu)
  *
  *****************************************************************************/
 
@@ -56,8 +59,7 @@ int psi_sor_solve(psi_t * obj, f_vare_t fepsilon) {
  *
  *  psi_sor_poisson
  *
- *
- *  First attempt. Uniform permeativity. The differencing is a seven
+ *  Uniform permeativity. The differencing is a seven
  *  point stencil for \nabla^2 \psi. So
  *
  *  epsilon [ psi(i+1,j,k) - 2 psi(i,j,k) + psi(i-1,j,k)
@@ -82,6 +84,8 @@ int psi_sor_solve(psi_t * obj, f_vare_t fepsilon) {
  *  iterations, and either condition met will result in termination
  *  of the iteration. If neither criterion is met, the iteration will
  *  finish after 'niteration' iterations.
+ *
+ *  See, e.g., Press et al. Chapter 19.
  *
  *****************************************************************************/
 
@@ -430,6 +434,65 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
       /* Compare residual and exit if small enough */
       MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
       if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) break;
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_sor_offset
+ *
+ *  Shift the potential by the current mean value. This may be required
+ *  to prevent long-term drift included in SOR.
+ *
+ *****************************************************************************/
+
+int psi_sor_offset(psi_t * psi) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  double psi0;
+  double sum_local;
+  double psi_offset;                  
+
+  MPI_Comm comm;
+
+  assert(psi);
+
+  coords_nlocal(nlocal);  
+  comm = cart_comm();
+
+  sum_local = 0.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	psi_psi(psi, index, &psi0);
+	sum_local += psi0;
+      }
+    }
+  }
+
+  MPI_Allreduce(&sum_local, &psi_offset, 1, MPI_DOUBLE, MPI_SUM, comm);
+
+  psi_offset /= (L(X)*L(Y)*L(Z));
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	psi_psi(psi, index, &psi0);
+	psi0 -= psi_offset;
+	psi_psi_set(psi, index, psi0);
+      }
     }
   }
 
