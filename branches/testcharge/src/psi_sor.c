@@ -2,7 +2,7 @@
  *
  *  psi_sor.c
  *
- *  A solution of the Poisson equation for the potenial and
+ *  A solution of the Poisson equation for the potential and
  *  charge densities stored in the psi_t object.
  *
  *  The Poisson equation looks like
@@ -59,21 +59,21 @@ int psi_sor_solve(psi_t * obj, f_vare_t fepsilon) {
  *
  *  psi_sor_poisson
  *
- *  Uniform permeativity. The differencing is a seven
+ *  Uniform permittivity. The differencing is a seven
  *  point stencil for \nabla^2 \psi. So
  *
  *  epsilon [ psi(i+1,j,k) - 2 psi(i,j,k) + psi(i-1,j,k)
  *          + psi(i,j+1,k) - 2 psi(i,j,k) + psi(i,j-1,k)
  *          + psi(i,j,k+1) - 2 psi(i,j,k) + psi(i,j,k-1) ] = -rho_elec(i,j,k)
  *
- *  We use the asymphtotic estimate of the spectral radius for
- *  the Jabcobi iteration
+ *  We use the asymptotic estimate of the spectral radius for
+ *  the Jacobi iteration
  *      radius ~= 1 - (pi^2 / 2N^2)
  *  where N is the linear dimension of the problem. It's important
  *  to get this right to keep the number of iterations as small as
  *  possible.
  *
- *  If this is an initial solve, the initial norm of the resisdual
+ *  If this is an initial solve, the initial norm of the residual
  *  may be quite large (e.g., psi(t = 0)  = 0; rhs \neq 0); in this
  *  case a relative tolerance would be appropriate to decide
  *  termination. On subsequent calls, we might expect the initial
@@ -107,7 +107,7 @@ int psi_sor_poisson(psi_t * obj) {
   double rnorm[2];             /* Initial and current norm of residual */
   double rnorm_local[2];       /* Local values */
 
-  double epsilon;              /* Uniform permeativity */
+  double epsilon;              /* Uniform permittivity */
   double dpsi;
 
   double omega;                /* Over-relaxation parameter 1 < omega < 2 */
@@ -190,7 +190,7 @@ int psi_sor_poisson(psi_t * obj) {
 	}
       }
 
-      /* Recompute relation parameter and next pass */
+      /* Recompute relaxation parameter and next pass */
 
       if (n == 0 && pass == 0) {
 	omega = 1.0 / (1.0 - 0.5*radius*radius);
@@ -218,8 +218,8 @@ int psi_sor_poisson(psi_t * obj) {
  *
  *  psi_sor_vare_poisson
  *
- *  This is essentislly a copy of the above, but it allows a spatially
- *  varying permeativity epsilon:
+ *  This is essentially a copy of the above, but it allows a spatially
+ *  varying permittivity epsilon:
  *
  *    div [epsilon(r) grad phi(r) ] = -rho(r)
  *
@@ -232,7 +232,7 @@ int psi_sor_poisson(psi_t * obj) {
  *  is straightforwardly extended to three dimensions to give the five
  *  point stencil.
  *
- *  Permeativity is provided via a function of f_vare_t which returns
+ *  Permittivity is provided via a function of f_vare_t which returns
  *  values at index = (i,j,k); a simple average
  *
  *    epsilon(i+1/2,j,k) = (1/2) [ epsilon(i,j,k) + epsilon(i+1,j,k) ]
@@ -276,8 +276,8 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   double rnorm_local[2];       /* Local values */
 
   double depsi;                /* Differenced left-hand side */
-  double ep0, ep1;             /* Permeativity values */
-  double epsh;                 /* Permeativity value half-way */
+  double ep0, ep1;             /* Permittivity values */
+  double epsh;                 /* Permittivity value half-way */
   double epstot;               /* Net coefficient of the psi(i,j,k) term */
 
   double omega;                /* Over-relaxation parameter 1 < omega < 2 */
