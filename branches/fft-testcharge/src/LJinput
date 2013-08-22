@@ -39,7 +39,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 10000
+N_cycles 000010
 
 propagation_ode off
 propagation_ode_tstep 1.0
@@ -68,7 +68,7 @@ propagation_ode_integrator rk2
 # 
 ##############################################################################
 
-size 128_8_8
+size 256_256_256
 #grid 8_8_1
 #pencil_grid 8_8_0
 periodicity 1_1_1
@@ -522,7 +522,7 @@ qs_dir_format BINARY
 #
 ###############################################################################
 
-electrokinetics_fft     1
+electrokinetics_fft	1
 
 electrokinetics_z0      +1
 electrokinetics_z1      -1

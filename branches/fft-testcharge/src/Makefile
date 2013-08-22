@@ -47,14 +47,14 @@ OPTS = -DNDEBUG -D_D3Q19_
 CFLAGS = -O3
 
 #MORAR
-MPICC = mpicc
-INC = -I. -I../../../../p3dfft/include/
-LIBS = -lm ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
+#MPICC = mpicc
+#INC = -I. -I../../../../p3dfft/include/
+#LIBS = -lm ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
 
 #HECToR
-#MPICC = cc
-#INC = -I. -I../../build/p3dfft-2.5/include/
-#LIBS = -lm ../../build/p3dfft-2.5/lib/libp3dfft.a /opt/fftw/3.3.0.1/interlagos/lib/libfftw3.a -pgf90libs
+MPICC = cc
+INC = -I. -I../../build/p3dfft-2.5/include/
+LIBS = -lm ../../build/p3dfft-2.5/lib/libp3dfft.a /opt/fftw/3.3.0.1/interlagos/lib/libfftw3.a -pgf90libs
 
 #BlueGene/Q
 #MPICC = mpixlc_r

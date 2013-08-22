@@ -748,9 +748,7 @@ int psi_solver_set(psi_t * obj, int use_fft) {
   assert(obj);
 
   if(use_fft) {
-//    TIMER_start(TIMER_DECOMP);
     decomp_init();
-//    TIMER_stop(TIMER_DECOMP);
     obj->psi_poisson_func = &psi_fft_poisson;
   }
   

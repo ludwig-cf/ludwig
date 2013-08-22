@@ -35,6 +35,7 @@
 
 /*decomposition switching*/
 #include "decomp.h"
+#include "timer.h"
 
 /*needed to determine whether the stride1 flag is set*/
 #include "config.h"
@@ -116,7 +117,9 @@ int psi_fft_poisson(psi_t *obj) {
   
   p3dfft_btran_c2r(pencil_array, pencil_array, op_b);
 
+//  TIMER_start(TIMER_DECOMP_SWITCH);
   decomp_pencil_to_cart(pencil_array, obj->psi);
+//  TIMER_stop(TIMER_DECOMP_SWITCH);
 
   free(rho_elec);
   free(pencil_array);

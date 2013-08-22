@@ -1,6 +1,6 @@
 #! /bin/bash
 
-for t in 128 256; do
+for t in 64 128 256 512 1024 16_256 8_256; do
 for i in sor fft; do
 
 #extract lines with 'psi update', remove the filename and the :

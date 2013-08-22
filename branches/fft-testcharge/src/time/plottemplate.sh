@@ -1,7 +1,7 @@
 #! /bin/bash
 
 function plotspeedup() {
-for t in 128 256 512; do
+for t in 64 128 256 512; do
 cat <<EOF
   set style fill solid 1.0 border -1
   set pointsize 2
@@ -14,8 +14,14 @@ cat <<EOF
 #  set term epslatex color
 #  set output "codegraph.tex"
 EOF
-  echo "plot \\"
-  echo "\"ffttime_${t}\" u 1:(\$10*2/\$7), \"sortime_${t}\" u 1:(\$10*2/\$7), x"
+  if [ $t = 256 ]; then
+    echo "plot \\"
+    echo "\"ffttime_${t}\" u 1:(\$10*2/\$7), \"sortime_${t}\" u 1:(\$10*2/\$7), x,\\"
+    echo "\"ffttime_16_${t}\" u 1:(\$10*2/\$7), \"ffttime_8_${t}\" u 1:(\$10*2/\$7)"
+  else
+    echo "plot \\"
+    echo "\"ffttime_${t}\" u 1:(\$10*2/\$7), \"sortime_${t}\" u 1:(\$10*2/\$7), x"
+  fi
 
 done 
 
@@ -28,7 +34,7 @@ done
 }
 
 function plottime() {
-for t in 128 256 512; do
+for t in 64 128 256 512; do
 cat <<EOF
   set style fill solid 1.0 border -1
   set pointsize 2

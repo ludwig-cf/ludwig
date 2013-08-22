@@ -356,7 +356,6 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->psi) psi_stats_info(ludwig->psi);
   ludwig_report_momentum(ludwig);
 
-
   /* Main time stepping loop */
 
   info("\n");

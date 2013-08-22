@@ -1,0 +1,23 @@
+#!/bin/sh --login
+#PBS -N ludwig_timing
+#PBS -l mppwidth=32
+#PBS -l mppnppn=32
+#PBS -j oe
+#PBS -A d45
+#PBS -l walltime=00:20:00
+
+# Flags explanation
+# -----------------
+# -N           -->  give a name to the job, easier to track
+# -l mppwidth  -->  total number of tasks
+# -l mppnppn   -->  how many jobs per node (takes values of 1 to 32)
+# -j oe        -->  merge std error and std output files
+# -A d45       -->  name of the budget
+# -l walltime  -->  how much time I expect to take, in case of a problem this will
+#                   save us from wasting AUs
+
+# Go to directory the "qsub" is executed
+cd $PBS_O_WORKDIR
+
+aprun -n 32 ./Ludwig.exe GCinput
+
