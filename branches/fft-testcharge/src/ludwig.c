@@ -88,6 +88,7 @@
 
 /* Electrokinetics */
 #include "psi.h"
+#include "psi_s.h"
 #include "psi_rt.h"
 #include "psi_sor.h"
 #include "psi_stats.h"
@@ -309,6 +310,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
     psi_colloid_electroneutral(ludwig->psi);
   }
 
+
+
   return 0;
 }
 
@@ -353,9 +356,6 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->psi) psi_stats_info(ludwig->psi);
   ludwig_report_momentum(ludwig);
 
-  TIMER_start(TIMER_DECOMP);
-  decomp_init();
-  TIMER_stop(TIMER_DECOMP);
 
   /* Main time stepping loop */
 
@@ -373,6 +373,7 @@ void ludwig_run(const char * inputfile) {
 
     /* Electrokinetics */
 
+
     if (ludwig->psi) {
       psi_colloid_rho_set(ludwig->psi);
       psi_halo_psi(ludwig->psi);
@@ -388,12 +389,8 @@ void ludwig_run(const char * inputfile) {
       }
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
-/*			TIMER_start(TIMER_PSI_UPDATE);
-      psi_sor_poisson(ludwig->psi);
-			TIMER_stop(TIMER_PSI_UPDATE);*/
-
 			TIMER_start(TIMER_PSI_UPDATE);
-      psi_fft_poisson(ludwig->psi);      
+      ludwig->psi->psi_poisson_func(ludwig->psi);
 			TIMER_stop(TIMER_PSI_UPDATE);
 
       psi_halo_rho(ludwig->psi);
@@ -631,7 +628,7 @@ void ludwig_run(const char * inputfile) {
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 
-  decomp_finish();
+  if(ludwig->psi->psi_poisson_func == &psi_fft_poisson)  decomp_finish();
   stats_rheology_finish();
   stats_turbulent_finish();
   stats_calibration_finish();

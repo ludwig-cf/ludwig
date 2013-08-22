@@ -1,16 +1,20 @@
+/*****************************************************************************
+ *
+ *  decomp.h
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) The University of Edinburgh (2012)
+ *  Contributing Authors:
+ *    Ruairi Short (Rshort@sms.ed.ac.uk)
+ *
+ *****************************************************************************/
 
-struct decomp_comms {
-  int *dest_proc;
-  int  send_count;
-  int *send_subsizes;
-  MPI_Datatype *send_subarray;
-
-  int *recv_proc;
-  int recv_count;
-  int *recv_subsizes;
-  MPI_Datatype *recv_subarray;
-
-};
+#ifndef DECOMP_H
+#define DECOMP_H
 
 void decomp_init();
 void decomp_cart_to_pencil(double *in_array, double *out_array);
@@ -22,3 +26,4 @@ void decomp_pencil_starts(int start[3], int ip);
 int decomp_fftarr_size();
 void decomp_finish();
 
+#endif

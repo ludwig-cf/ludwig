@@ -53,4 +53,6 @@ int psi_electric_field(psi_t * psi, int index, double e[3]);
 int psi_reltol(psi_t * obj, double * reltol);
 int psi_abstol(psi_t * obj, double * abstol);
 
+int psi_solver_set(psi_t *obj, int use_fft);
+
 #endif

@@ -187,6 +187,8 @@ int psi_sor_poisson(psi_t * obj) {
     }
   }
 
+//  if( pe_rank() == 0) printf("n iterations: %d\n", n);
+
   return 0;
 }
 

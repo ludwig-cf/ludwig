@@ -44,6 +44,7 @@ struct psi_s {
   double beta;              /* Boltzmann factor (1 / k_B T) */
   double reltol;            /* Relative tolerance for Poisson solver */
   double abstol;            /* Absolute tolerance for Poisson solver */
+  int (*psi_poisson_func) (psi_t * obj); /* function pointer to either sor or fft solver*/
   MPI_Datatype psihalo[3];  /* psi field halo */
   MPI_Datatype rhohalo[3];  /* charge densities halo */
   io_info_t * info;         /* I/O informtation */

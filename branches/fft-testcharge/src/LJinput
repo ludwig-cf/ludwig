@@ -39,7 +39,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 00100
+N_cycles 10000
 
 propagation_ode off
 propagation_ode_tstep 1.0
@@ -62,7 +62,7 @@ propagation_ode_integrator rk2
 # 
 ##############################################################################
 
-size 128_128_128
+size 128_8_8
 #grid 8_8_1
 #pencil_grid 8_8_0
 periodicity 1_1_1

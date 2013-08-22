@@ -23,7 +23,7 @@
 /* The effective state here is, with default values: */
 
 static int nhalo_ = 1;
-static int ntotal_[3]                  = {128, 128, 128};
+static int ntotal_[3]                  = {64, 64, 64};
 static int periodic[3]                 = {1, 1, 1};
 static int pe_cartesian_size[3]        = {1, 1, 1};
 static MPI_Comm cartesian_communicator = MPI_COMM_NULL;

@@ -19,6 +19,5 @@
 #include "psi.h"
 
 int psi_fft_poisson(psi_t * obj);
-void psi_fft_clean();
 
 #endif

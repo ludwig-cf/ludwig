@@ -41,6 +41,7 @@ int psi_init_param_rt(psi_t * obj) {
   int nk;
 
   int valency[2] = {+1, -1};  /* Valencies (should be +/-!)*/
+  int use_fft = 0; /*variable used to determine whether to use fft solver or not*/
   double diffusivity[2] = {0.01, 0.01};
 
   double eunit = 1.0;         /* Unit charge */
@@ -55,8 +56,14 @@ int psi_init_param_rt(psi_t * obj) {
   char value[BUFSIZ] = "BINARY";
 
 
+
   psi_nk(obj, &nk);
   assert(nk == 2); /* nk must be two for the time being */
+
+  /*Choose between fft and sor, sor is the default*/
+  n = RUN_get_int_parameter("electrokinetics_fft", &use_fft);
+
+  psi_solver_set(obj, use_fft);
 
   n = RUN_get_int_parameter("electrokinetics_z0", valency);
   n = RUN_get_int_parameter("electrokinetics_z1", valency + 1);
@@ -85,6 +92,7 @@ int psi_init_param_rt(psi_t * obj) {
   psi_beta_set(obj, beta);
   psi_bjerrum_length(obj, &lb);
 
+  info("Using FFT solver:          %2d\n", use_fft);
   info("Electrokinetic species:    %2d\n", nk);
   info("Boltzmann factor:          %14.7e (T = %14.7e)\n", beta, temperature);
   info("Unit charge:               %14.7e\n", eunit);

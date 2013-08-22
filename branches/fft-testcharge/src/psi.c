@@ -28,6 +28,10 @@
 #include "io_harness.h"
 #include "psi.h"
 #include "psi_s.h"
+#include "psi_sor.h"
+
+#include "decomp.h"
+#include "psi_fft.h"
 
 static const double e_unit_default = 1.0; /* Default unit charge */
 static const double reltol_default = FLT_EPSILON; /* Solver tolerance */
@@ -111,6 +115,9 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->e = e_unit_default;
   psi->reltol = reltol_default;
   psi->abstol = abstol_default;
+
+  /*Set default solver to be SOR. */
+  psi->psi_poisson_func = &psi_sor_poisson;
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
   coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
@@ -725,5 +732,27 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
   e[Y] = -0.5*(psi->psi[index + ys] - psi->psi[index - ys]);
   e[Z] = -0.5*(psi->psi[index + zs] - psi->psi[index - zs]);
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_solver_set
+ *
+ *  Use the FFT solver if the use_fft flag is set
+ *
+ *****************************************************************************/
+
+int psi_solver_set(psi_t * obj, int use_fft) {
+  
+  assert(obj);
+
+  if(use_fft) {
+//    TIMER_start(TIMER_DECOMP);
+    decomp_init();
+//    TIMER_stop(TIMER_DECOMP);
+    obj->psi_poisson_func = &psi_fft_poisson;
+  }
+  
   return 0;
 }
