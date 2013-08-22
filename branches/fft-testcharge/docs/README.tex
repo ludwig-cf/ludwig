@@ -1,0 +1,138 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{verbatim}
+
+\begin{document}
+
+%AC%\pagestyle{myheadings}
+%AC%\markright{D.~S.~Henty}
+
+%\title{A Latex thesis example}
+%\author{D.~S.~Henty}
+%\date{\today}
+
+\setcounter{secnumdepth}{3}
+
+\pagenumbering{roman}
+
+%\begin{center}
+
+\title{Ludwig electrokinetics module - FFT solver with P3DFFT:\\ Instructions}
+\author{Ruairi Short}
+\date{\today}
+
+\maketitle
+
+\tableofcontents
+\clearpage
+
+%\end{center}
+
+
+\section{Installing libraries}
+Two libraries need to be installed in order to use the FFT solver in Ludwig.
+One of ESSL or FFTW must be installed and P3DFFT built on the appropriate one of these.
+
+\subsection{Install FFTW (optional)}
+If you choose to use FFTW and it is not already installed on your system the following is how to install it.
+  \begin{itemize}
+  \item extract the fftw-3.3.3.tar file of the FFTw library to a directory of your choice. This location will be needed to install P3DFFT.
+  \item move to the new directory and run the following commands:
+    \begin{verbatim}
+      ./configure
+      make
+      make install
+    \end{verbatim}
+  \end{itemize}
+
+For an overview on possible arguments to \texttt{configure} see the FFTW documentation: \textit{http://www.fftw.org/fftw3\_doc/}
+
+\subsection{Install P3DFFT}
+  This step has been tested on HECToR and BlueGene/Q. Specific instructions are given for these particular machines. For other machines the steps should be similar but it is not guaranteed to be simple.
+
+\subsubsection{HECToR}
+  \begin{itemize}
+    \item extract the p3dfft.2.5.1.tar file of the library to a folder of your choice.
+    \item go to the P3DFFT directory and run the following commands:
+      \begin{verbatim}
+        module switch PrgEnv-cray PrgEnv-pgi
+        $ ./configure --prefix=$INSTALL_DESTINATION
+          --enable-pgi --enable-stride1 --enable-fftw 
+          --with-fftw=$FFTW_HOME FC=ftn CC=cc
+         FCFLAGS=-O3 CFLAGS=-O3
+        $ make
+        $ make install
+      \end{verbatim}
+    \item The \texttt{module switch} command ensures the PGI compiler will be used.
+    \item \texttt{INSTALL\_DESTINATION} is the location P3DFFT will be installed to. The default is \texttt{/usr/local}
+    \item \texttt{FFTW\_HOME} is the location of the FFTW library. On HECToR the FFTW library is already installed and located at \texttt{/opt/fftw/3.3.0.1/interlagos}
+    \item copy \texttt{config.h} from the P3DFFT directory to \texttt{INSTALL\_DESTINATION/include}.
+  \end{itemize}
+
+To see further flags that can be passed to \texttt{configure} see the P3DFFT users guide and wiki: \textit{http://code.google.com/p/p3dfft/wiki/Install}.
+
+\subsubsection{BlueGene/Q}
+  \begin{itemize}
+    \item extract the p3dfft.2.5.1.tar file of the library to a folder of your choice.
+    \item extract p3dfftbgqedit.tar to the same directory. This will overwrite some of the files in this directory in order to successfully install P3DFFT.
+    \item go to the P3DFFT directory and run the following commands:
+      \begin{verbatim}
+        $ ./configure --prefix=$INSTALL_DESTINATION
+          --enable-ibm --enable-stride1 --enable-essl 
+          FC=mpixlf90_r CC=mpixlc_r
+          FCFLAGS=-O3 CFLAGS=-O3
+        $ make
+        $ make install
+      \end{verbatim}
+    \item \texttt{INSTALL\_DESTINATION} is the location P3DFFT will be installed to. The default is \texttt{/usr/local}
+    \item The ESSL library is located at \texttt{/opt/ibmmath/lib64/libesslbg.a}. This will be needed later.
+    \item copy \texttt{config.h} from the P3DFFT directory to \texttt{INSTALL\_DESTINATION/include}.
+  \end{itemize}
+    
+To see further flags that can be passed to \texttt{configure} see the P3DFFT users guide and wiki: \textit{http://code.google.com/p/p3dfft/wiki/Install}.
+
+\section{Compiling Ludwig}
+The steps in order to succesfully compile Ludwig and the unit tests are now outlined.
+
+\subsection{Edit Makefile}
+  The Makefiles in the \texttt{src/} and \texttt{tests/} directories contain the compiler flags necessary to compile Ludwig on HECToR and BlueGene/Q. The appropriate section should be uncommented.\\
+  The user must also ensure that the link to the P3DFFT library is correct, along with the links to the FFTW or ESSL libraries.
+
+\subsection{Compile Ludwig}
+  Ludwig is compiled in the \texttt{src/} directory using the command:
+  \begin{verbatim}
+    $ make mpi
+  \end{verbatim}
+  This wil create an executable \texttt{Ludwig.exe} in this directory.
+
+\subsection{Compile tests}
+  To compile the unit tests, in the \texttt{src/} directory run the command
+  \begin{verbatim}
+    $ make libmpi
+  \end{verbatim}
+  Then in the \texttt{tests/} directory run
+  \begin{verbatim}
+    $ make tests_mpi
+  \end{verbatim}
+  If desired, and the option is available, the tests can be run on the front end by using
+  \begin{verbatim}
+    $ make do_tests_mpi
+  \end{verbatim}
+  in the \texttt{tests/} directory. This may take a long time to complete.
+
+
+\section{Execute program}
+  Ludwig can now be executed.
+  Ludwig uses an input file to decide what parameters to use upon execution.
+  By default it reads input from the file \texttt{input}, though the user can provide a different one at runtime.
+  As an example, on HECToR the command
+  \begin{verbatim}
+    $ aprun -n 8 ./Ludwig.exe input
+  \end{verbatim}
+  will run Ludwig on 8 cores using the input file \texttt{input}.
+  A file, \texttt{input.ref}, has been included as an example input file.
+  Also included are the files used to run the Gouy Chapman and liquid junction potential problems, \texttt{GCinput} and \texttt{LJinput} respectively.\\
+  Finally sample submission scripts are included for both HECToR and BlueGene/Q, \texttt{hectorludwig.pbs} and \texttt{bgqludwig.pbs} respectively. 
+
+\end{document}
+

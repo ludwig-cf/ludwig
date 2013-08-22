@@ -1,0 +1,90 @@
+Ludwig electrokinetics module - FFT solver with P3DFFT:
+   Instructions}
+
+Ruairi Short
+August 22, 2013
+
+A PDF version of this file is also included. It is recommended over this file for readability, though the content is identical.
+
+Installing libraries:
+  Two libraries need to be installed in order to use the FFT solver in Ludwig.
+  One of ESSL or FFTW must be installed and P3DFFT built on the appropriate one of these.
+
+Install FFTW (optional):
+  If you choose to use FFTW and it is not already installed on your system the following is how to install it.
+    - extract the fftw-3.3.3.tar file of the FFTw library to a directory of your choice. This location will be needed to install P3DFFT.
+    - move to the new directory and run the following commands:
+        $ ./configure
+        $ make
+        $ make install
+
+  For an overview on possible arguments to \texttt{configure} see the FFTW documentation: \textit{http://www.fftw.org/fftw3\_doc/}
+
+Install P3DFFT}
+  This step has been tested on HECToR and BlueGene/Q. Specific instructions are given for these particular machines. For other machines the steps should be similar but it is not guaranteed to be simple.
+
+  HECToR:
+    - extract the p3dfft.2.5.1.tar file of the library to a folder of your choice.
+    - go to the P3DFFT directory and run the following commands:
+        $ module switch PrgEnv-cray PrgEnv-pgi
+        $ ./configure --prefix=$INSTALL_DESTINATION
+          --enable-pgi --enable-stride1 --enable-fftw 
+          --with-fftw=$FFTW_HOME FC=ftn CC=cc
+         FCFLAGS=-O3 CFLAGS=-O3
+        $ make
+        $ make install
+    - The 'module switch command ensures the PGI compiler will be used.
+    - INSTALL_DESTINATION is the location P3DFFT will be installed to. The default is /usr/local
+    - FFTW_HOME is the location of the FFTW library. On HECToR the FFTW library is already installed and located at /opt/fftw/3.3.0.1/interlagos
+    - copy config.h from the P3DFFT directory to INSTALL\_DESTINATION/include.
+
+  BlueGene/Q:
+    - extract the p3dfft.2.5.1.tar file of the library to a folder of your choice.
+    - extract p3dfftbgqedit.tar to the same directory. This will overwrite some of the files in this directory in order to successfully install P3DFFT.
+    - go to the P3DFFT directory and run the following commands:
+        $ ./configure --prefix=$INSTALL_DESTINATION
+          --enable-ibm --enable-stride1 --enable-essl 
+          FC=mpixlf90_r CC=mpixlc_r
+          FCFLAGS=-O3 CFLAGS=-O3
+        $ make
+        $ make install
+    - INSTALL_DESTINATION is the location P3DFFT will be installed to. The default is /usr/local
+    - The ESSL library is located at /opt/ibmmath/lib64/libesslbg.a. This will be needed later.
+    - copy config.h from the P3DFFT directory to INSTALL\_DESTINATION/include.
+    
+  To see further flags that can be passed to configure see the P3DFFT users guide and wiki: http://code.google.com/p/p3dfft/wiki/Install.
+
+Compiling Ludwig:
+  The steps in order to succesfully compile Ludwig and the unit tests are now outlined.
+
+  Edit Makefile:
+    The Makefiles in the src/ and tests/ directories contain the compiler flags necessary to compile Ludwig on HECToR and BlueGene/Q. The appropriate section should be uncommented.\
+    The user must also ensure that the link to the P3DFFT library is correct, along with the links to the FFTW or ESSL libraries.
+
+  Compile Ludwig:
+    Ludwig is compiled in the src/ directory using the command:
+      $ make mpi
+    This wil create an executable Ludwig.exe in this directory.
+
+  Compile tests:
+    To compile the unit tests, in the src/ directory run the command
+      $ make libmpi
+    Then, in the tests/ directory run
+      $ make tests_mpi
+    If desired, and the option is available, the tests can be run on the front end by using
+      $ make do_tests_mpi
+    in the tests/ directory. This may take a long time to complete.
+
+
+  Execute program:
+    Ludwig can now be executed.
+    Ludwig uses an input file to decide what parameters to use upon execution.
+    By default it reads input from the file input, though the user can provide a different one at runtime.
+    As an example, on HECToR the command
+      $ aprun -n 8 ./Ludwig.exe sampleinput
+    will run Ludwig on 8 cores using the input file sampleinput.
+    A file, input.ref, has been included as an example input file.
+    Also included are the files used to run the Gouy Chapman and liquid junction potential problems, GCinput and LJinput respectively.
+    Finally, sample submission scripts are included for both HECToR and BlueGene/Q, hectorludwig.pbs and bgqludwig.pbs respectively. 
+
+
