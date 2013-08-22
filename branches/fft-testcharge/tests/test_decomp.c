@@ -24,8 +24,6 @@
 #include "coords.h"
 #include "decomp.h"
 
-#include "runtime.h"
-
 
 /*****************************************************************************
  *
@@ -44,7 +42,11 @@ static double hash(double global_coord[]) {
  *
  *  main
  *
- *  should also test the decomposition generator if possible
+ *  Test the decomposition switching algorithm
+ * 
+ *  Give each lattice point a unique value from its global coordinate.
+ *  Transform to the pencil grid and test this value.
+ *  Transform back and test again
  *
  *****************************************************************************/
 
@@ -64,17 +66,15 @@ int main(int argc, char ** argv) {
 
   MPI_Init(&argc, &argv);
 
-  if (argc > 1) sprintf(inputfile, "%s", argv[1]);
-
   pe_init();
 
-  RUN_read_input_file(inputfile);
+  info("Testing decomposition switching\n");
 
   coords_init();
   decomp_init();
 
-  coords_nlocal(nlocal);
 
+  /*create two psi_t objects to compare at the end*/
   psi_t *start_psi = NULL;
   psi_t *end_psi = NULL;
 
@@ -83,6 +83,7 @@ int main(int argc, char ** argv) {
   assert(start_psi);
   assert(end_psi);
 
+  coords_nlocal(nlocal);
   coords_nlocal_offset(nlocal_offset);
 
   /* initialise elements of send_array to hash evaluation of global coordinates */
