@@ -39,7 +39,22 @@ OPTS    = -D_D3Q19_
 MPI_STUB_INCLUDE = -I../mpi_s
 MPI_STUB_LIB = -L../mpi_s -lmpi
 
-FFTLIBS = -L../../../../p3dfft/lib -L../../../../fftw/lib -lp3dfft -lfftw3 -pgf90libs
+#FFTLIBS = -L../../../../p3dfft/lib -L../../../../fftw/lib -lp3dfft -lfftw3 -pgf90libs
+
+#MORAR
+MPICC = mpicc
+INC = -I. -I../../../../p3dfft/include/
+FFTLIBS = -lm ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
+
+#HECToR
+#MPICC = cc
+#INC = -I. -I../../build/p3dfft-2.5/include/
+#FFTLIBS = -lm ../../build/p3dfft-2.5/lib/libp3dfft.a /opt/fftw/3.3.0.1/interlagos/lib/libfftw3.a -pgf90libs
+
+#BlueGene/Q
+#MPICC = mpixlc_r
+#INC = -I. -I${HOME}/p3dfft/include/
+#FFTLIBS = -lm  ${HOME}/p3dfft/lib/libp3dfft.a /opt/ibmmath/lib64/libesslbg.a -L/bgsys/drivers/V1R1M2/ppc64/comm/xl/lib -L/bgsys/drivers/V1R1M2/ppc64/comm/sys/lib -L/bgsys/drivers/V1R1M2/ppc64/spi/lib -L/opt/ibmcmp/xlsmp/bg/3.1/bglib64 -L/opt/ibmcmp/xlmass/bg/7.3/bglib64 -L/opt/ibmcmp/xlf/bg/14.1/bglib64 -R/opt/ibmcmp/lib64/bg/bglib64 -L/bgsys/drivers/toolchain/V1R1M2/gnu-linux/lib/gcc/powerpc64-bgq-linux/4.4.6 -L/bgsys/drivers/toolchain/V1R1M2/gnu-linux/lib/gcc -L/bgsys/drivers/toolchain/V1R1M2/gnu-linux/lib/gcc/powerpc64-bgq-linux/4.4.6/../../../../powerpc64-bgq-linux/lib -lmpich -lopa -lmpl -lpami -lSPI -lSPI_cnk -lpthread -lrt -lstdc++ -lmpichf90 -lxlf90_r -lxlopt -lxlomp_ser -lxl -lxlfmath -ldl -lm -lnss_files -lnss_dns -lresolv
 
 CLIBS  = -lm $(FFTLIBS)
 MPILIB = -lmpi
@@ -49,18 +64,18 @@ MPILIB = -lmpi
 # Files
 #------------------------------------------------------------------------------
 
-TESTSOURCES = test_decomp.c test_psi_fft.c 
-#							test_assumptions.c test_pe.c test_timer.c \
-#              test_runtime.c test_random.c \
-#              test_coords.c test_le.c test_io.c test_prop.c \
-#              test_model.c test_halo.c \
-#							test_magnetic.c test_map.c \
-#							test_ewald.c test_polar_active.c test_phi_ch.c \
-#              test_colloid.c test_colloids.c test_colloids_halo.c \
-#              test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
-#              test_collision.c test_psi.c test_psi_sor.c test_hydro.c \
-#              test_field.c test_field_grad.c test_nernst_planck.c \
-#              test_fe_electro.c test_fe_electro_symm.c
+TESTSOURCES = test_decomp.c test_psi_fft.c \
+							test_assumptions.c test_pe.c test_timer.c \
+              test_runtime.c test_random.c \
+              test_coords.c test_le.c test_io.c test_prop.c \
+              test_model.c test_halo.c \
+							test_magnetic.c test_map.c \
+							test_ewald.c test_polar_active.c test_phi_ch.c \
+              test_colloid.c test_colloids.c test_colloids_halo.c \
+              test_colloid_sums.c test_blue_phase.c test_fluctuations.c \
+              test_collision.c test_psi.c test_psi_sor.c test_hydro.c \
+              test_field.c test_field_grad.c test_nernst_planck.c \
+              test_fe_electro.c test_fe_electro_symm.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}
