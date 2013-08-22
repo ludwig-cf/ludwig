@@ -317,7 +317,7 @@ static void solve_poisson_alt(double *transf_array, double epsilon, int fstart[]
   double kx, ky, kz;
   double k_square;
   double pi;
-  double div[3] = 2.0*pi/n_total[X];
+  double div[3];
   double denom[3];
   pi = 4.0*atan(1.0);
 
