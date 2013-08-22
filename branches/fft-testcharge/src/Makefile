@@ -47,9 +47,9 @@ OPTS = -DNDEBUG -D_D3Q19_
 CFLAGS = -O3
 
 #MORAR
-#MPICC = mpicc
-#INC = -I. -I../../../../p3dfft/include/
-#LIBS = -lm ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
+MPICC = mpicc
+INC = -I. -I../../../../p3dfft/include/
+LIBS = -lm ../../../../p3dfft/lib/libp3dfft.a ../../../../fftw/lib/libfftw3.a -pgf90libs
 
 #HECToR
 #MPICC = cc
