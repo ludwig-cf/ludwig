@@ -54,6 +54,12 @@ propagation_ode_integrator rk2
 #                If PX*PY*PZ is not equal to the number of processors,
 #                MPI will choose a default (may be implementation-dependent).
 #
+#  pencil_grid PX_PY_0  is the pencil processor decomposition
+#                     If PX*PY is not equal to the number of processors,
+#                     MPI will choose a default (may be implementation-dependent).
+#                     Important to ensure PX and PY are both greater than the 
+#                     the size in any dimension.
+#
 #  periodicity   Periodicity of MPI Cartesian communicator
 #
 #  reduced_halo  [yes|no] use reduced or full halos. Using reduced halos
@@ -496,6 +502,10 @@ qs_dir_format BINARY
 #
 #  Electrokinetics ALWAYS 2 SPECIES FOR NOW
 #
+#  electrokinetics_fft   if set to true the fft update routine will be used.
+#            otherwise the sor solver will be used
+#            default is to use the sor solver.
+#
 #  electrokinetics_z0         valency species 0  default +1
 #  electrokinetics_z1         valency species 1  default -1
 #  electrokinetics_d0         diffusivity 0      default 0.0
@@ -511,6 +521,8 @@ qs_dir_format BINARY
 #  temperature			sets Boltzmann factor beta
 #
 ###############################################################################
+
+electrokinetics_fft     1
 
 electrokinetics_z0      +1
 electrokinetics_z1      -1

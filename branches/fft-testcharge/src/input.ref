@@ -53,6 +53,7 @@ propagation_ode_integrator rk2
 #  grid PX_PY_PZ is the processor decomposition
 #                If PX*PY*PZ is not equal to the number of processors,
 #                MPI will choose a default (may be implementation-dependent).
+
 #  pencil_grid PX_PY_0  is the pencil processor decomposition
 #                     If PX*PY is not equal to the number of processors,
 #                     MPI will choose a default (may be implementation-dependent).
@@ -521,7 +522,7 @@ qs_dir_format BINARY
 #
 ###############################################################################
 
-electrokinetics_fft     0
+electrokinetics_fft     1
 
 electrokinetics_z0      +1
 electrokinetics_z1      -1
