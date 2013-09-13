@@ -51,7 +51,7 @@ static cudaStream_t streamBULK, streamX, streamY, streamZ;
 
 
 
-void collide_gpu(int async=0) {
+void collide_edges_gpu() {
 
   int ndist,nhalo;
   double mobility;
@@ -72,17 +72,10 @@ void collide_gpu(int async=0) {
   mobility = phi_cahn_hilliard_mobility();
   rtau2 = 2.0 / (1.0 + 2.0*mobility);
 
-
-  /* copy f to ftmp on accelerator */
-  //copy_f_to_ftmp_on_gpu();
-  
-  double *tmpptr=ftmp_d;
-  ftmp_d=f_d;
-  f_d=tmpptr;
-
-
 /* copy constants to accelerator (constant on-chip read-only memory) */
   copy_constants_to_gpu();
+
+
 
   //cudaStreamCreate(&streamCOLL);
   
@@ -123,15 +116,10 @@ void collide_gpu(int async=0) {
 
 
 
-  if (async==1){
 
   streamX=getXstream();
   streamY=getYstream();
   streamZ=getZstream();
-  streamBULK=getBULKstream();
-      
-
-
 
 
  /* X edges */
@@ -170,6 +158,82 @@ void collide_gpu(int async=0) {
  							 force_d,
 							  velocity_d,colltype, Z);
 
+
+  return;
+}
+
+
+
+void collide_bulk_gpu(int async=0) {
+
+  int ndist,nhalo;
+  double mobility;
+  int N[3];
+
+  int Nall[3];
+
+  ndist = distribution_ndist();
+  nhalo = coords_nhalo();
+  coords_nlocal(N); 
+
+  Nall[X]=N[X]+2*nhalo;
+  Nall[Y]=N[Y]+2*nhalo;
+  Nall[Z]=N[Z]+2*nhalo;
+
+  collision_relaxation_times_set_gpu();
+
+  mobility = phi_cahn_hilliard_mobility();
+  rtau2 = 2.0 / (1.0 + 2.0*mobility);
+
+
+
+
+/* copy constants to accelerator (constant on-chip read-only memory) */
+  copy_constants_to_gpu();
+
+  
+  int colltype;
+
+  int nblocks;
+  /* set up CUDA grid */
+  /* 1D decomposition - use x grid and block dimension only */ 
+  //int nblocks=(N[X]*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+
+  if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_M10)
+
+    {
+
+      colltype=MULTIRELAXATION;
+    }
+      
+  else if  (ndist == 2 && is_propagation_ode() == 0) 
+    { 
+
+      colltype=BINARY;
+    }
+
+  //if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_BGK)
+  //  {
+  //    printf("Error, KGK collision not supported yet in GPU version\n");
+  //    exit(1);
+
+  //   }
+
+
+  else
+    {
+      printf("Error, the requested collision is not supported yet in GPU version\n");
+      exit(1);
+
+    }
+
+
+
+  if (async==1){
+
+  streamBULK=getBULKstream();
+      
+
   /* Bulk */
   nblocks=((N[X]-2*nhalo)*(N[Y]-2*nhalo)*(N[Z]-2*nhalo)+DEFAULT_TPB-1)/DEFAULT_TPB;
 
@@ -199,6 +263,27 @@ void collide_gpu(int async=0) {
   cudaThreadSynchronize();
 
   }
+
+  return;
+}
+
+
+void collide_gpu(int async=0) {
+
+
+  /* copy f to ftmp on accelerator */
+  //copy_f_to_ftmp_on_gpu();
+  
+  double *tmpptr=ftmp_d;
+  ftmp_d=f_d;
+  f_d=tmpptr;
+
+
+/* /\* copy constants to accelerator (constant on-chip read-only memory) *\/ */
+/*   copy_constants_to_gpu(); */
+
+  collide_edges_gpu();
+  collide_bulk_gpu(async);
 
   return;
 }
