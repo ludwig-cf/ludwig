@@ -83,9 +83,11 @@ void initialise_gpu()
 
   cudaSetDevice(devicenum);
 
-  //cudaGetDevice(&devicenum);
-  //printf("rank %d running on device %d\n",cart_rank(),devicenum);
-  
+  if (cart_rank()==0){
+    cudaGetDevice(&devicenum);
+    printf("master rank running on device %d\n",devicenum);
+  }
+
   calculate_data_sizes();
   allocate_memory_on_gpu();
 

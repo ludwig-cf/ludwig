@@ -262,9 +262,7 @@ void blue_phase_be_update_gpu(int async=0) {
 
     
     /* Y edges */
-    threadsperblock.x=DEFAULT_TPB_Z;
-    threadsperblock.y=nhalo;
-    threadsperblock.z=DEFAULT_TPB_X;;
+    threadsperblock.x=DEFAULT_TPB_Z;threadsperblock.y=nhalo;threadsperblock.z=DEFAULT_TPB_X;
     
     nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
     nblocks.y=1;
@@ -291,9 +289,7 @@ void blue_phase_be_update_gpu(int async=0) {
     //cudaStreamSynchronize(streamZ);    
     
     
-    threadsperblock.x=DEFAULT_TPB_Z;
-    threadsperblock.y=DEFAULT_TPB_Y;
-    threadsperblock.z=DEFAULT_TPB_X;
+    threadsperblock.x=DEFAULT_TPB_Z;threadsperblock.y=DEFAULT_TPB_Y;threadsperblock.z=DEFAULT_TPB_X;
     
     nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
     nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
@@ -308,9 +304,7 @@ void blue_phase_be_update_gpu(int async=0) {
   }
   else{
     
-    threadsperblock.x=DEFAULT_TPB_Z;
-    threadsperblock.y=DEFAULT_TPB_Y;
-    threadsperblock.z=DEFAULT_TPB_X;
+    threadsperblock.x=DEFAULT_TPB_Z;threadsperblock.y=DEFAULT_TPB_Y;threadsperblock.z=DEFAULT_TPB_X;
     
     nblocks.x=(N[Z]+DEFAULT_TPB_Z-1)/DEFAULT_TPB_Z;
     nblocks.y=(N[Y]+DEFAULT_TPB_Y-1)/DEFAULT_TPB_Y;
