@@ -512,7 +512,7 @@ __global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3
 void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 {
 
-
+  
   int pack_field1=packablefield1*reduced_halo;
   int nfields1packed;
   if (packablefield1){
@@ -626,7 +626,12 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
  /* wait for X data from accelerator*/
   cudaStreamSynchronize(streamX);
 
-  //collide_gpu(1);
+  //HACK
+  if (nfields1==19) 
+    launch_bulk_calc_gpu();
+
+  // collide_bulk_gpu(1);
+
 
 
 

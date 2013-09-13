@@ -165,13 +165,21 @@ void collide_edges_gpu() {
 
 
 
-void collide_bulk_gpu(int async=0) {
+void collide_bulk_gpu() {
 
   int ndist,nhalo;
   double mobility;
   int N[3];
 
   int Nall[3];
+
+  int async=0;
+  // get environment variable
+  char* tmpstr;
+  tmpstr = getenv ("ASYNC");
+  if (tmpstr!=NULL)
+    async=atoi(tmpstr);
+
 
   ndist = distribution_ndist();
   nhalo = coords_nhalo();
@@ -268,6 +276,21 @@ void collide_bulk_gpu(int async=0) {
   return;
 }
 
+void launch_bulk_calc_gpu(){
+
+  int async=0;
+  // get environment variable
+  char* tmpstr;
+  tmpstr = getenv ("ASYNC");
+  if (tmpstr!=NULL)
+    async=atoi(tmpstr);
+
+  
+  if (async==1) collide_bulk_gpu();
+
+  return;
+
+}
 
 void collide_gpu(int async=0) {
 
@@ -285,7 +308,7 @@ void collide_gpu(int async=0) {
 /*   copy_constants_to_gpu(); */
 
   if (async==1) collide_edges_gpu();
-  collide_bulk_gpu(async);
+  collide_bulk_gpu();
 
   return;
 }

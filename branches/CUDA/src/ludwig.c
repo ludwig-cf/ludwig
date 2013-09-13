@@ -449,13 +449,14 @@ void ludwig_run(const char * inputfile) {
 #ifdef _GPU_
     TIMER_start(TIMER_HALO_LATTICE);
     distribution_halo_gpu();
+    //collide_bulk_gpu(1);
   /* sync MPI tasks for timing purposes */
   MPI_Barrier(cart_comm());
 
     TIMER_stop(TIMER_HALO_LATTICE);
 
     TIMER_start(TIMER_COLLIDE_WAIT);
-    collide_bulk_gpu(async);
+    //collide_bulk_gpu(async);
     collide_wait_gpu(async);
   /* sync MPI tasks for timing purposes */
   MPI_Barrier(cart_comm());

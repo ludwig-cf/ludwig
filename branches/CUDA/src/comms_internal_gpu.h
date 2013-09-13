@@ -40,7 +40,7 @@ __device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,
 __device__ static int get_linear_index_gpu_d(int ii,int jj,int kk,int N[3]);
 
 
-extern "C" void collide_bulk_gpu(int);
+extern "C" void launch_bulk_calc_gpu();
 
 #endif
 
