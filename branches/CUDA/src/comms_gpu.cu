@@ -659,10 +659,16 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyHostToDevice,streamX);
   cudaMemcpyAsync(haloXHIGH_d, haloXHIGH, nhalodataX*sizeof(double),
 		  cudaMemcpyHostToDevice,streamX);
-  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-     unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields1,nfields2,nhalo,
-  						  pack_field1, N_d,data_d,haloXLOW_d,
-							      haloXHIGH_d,X);
+
+
+
+  //NOW doing this at end to allow overlapping comms-calc 
+  /* nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
+     /* unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields1,nfields2, */
+     /* 							  nhalo, */
+     /* 							  pack_field1, N_d, */
+     /* 							  data_d,haloXLOW_d, */
+     /* 							  haloXHIGH_d,X); */
 
 
 
@@ -758,10 +764,12 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyHostToDevice,streamY);
   cudaMemcpyAsync(haloYHIGH_d, haloYHIGH, nhalodataY*sizeof(double),
 		  cudaMemcpyHostToDevice,streamY);
-  nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
-    unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields1,nfields2,nhalo,
-  						  pack_field1, N_d,data_d,haloYLOW_d,
-							 haloYHIGH_d,Y);
+
+  // now doing this at end to allow overlapping
+  /* nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
+  /*   unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields1,nfields2,nhalo, */
+  /* 						  pack_field1, N_d,data_d,haloYLOW_d, */
+  /* 							 haloYHIGH_d,Y); */
 
 
 
@@ -905,11 +913,27 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 
     }
 
- /* put Z halos back on device, and unpack */
+ /* put Z halos back on device*/
   cudaMemcpyAsync(haloZLOW_d, haloZLOW, nhalodataZ*sizeof(double),
 		  cudaMemcpyHostToDevice,streamZ);
   cudaMemcpyAsync(haloZHIGH_d, haloZHIGH, nhalodataZ*sizeof(double),
 		  cudaMemcpyHostToDevice,streamZ);
+
+
+  /* unpack all halos on device */
+  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+     unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields1,nfields2,
+							  nhalo,
+							  pack_field1, N_d,
+							  data_d,haloXLOW_d,
+							  haloXHIGH_d,X);
+
+
+  nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
+    unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields1,nfields2,nhalo,
+  						  pack_field1, N_d,data_d,haloYLOW_d,
+							 haloYHIGH_d,Y);
+
 
     nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
      unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nfields1,nfields2,nhalo,
