@@ -43,6 +43,7 @@ CFUNC void put_phi_partial_on_gpu(int include_neighbours);
 CFUNC void get_phi_partial_from_gpu(int include_neighbours);
 CFUNC void put_f_partial_on_gpu(int include_neighbours);
 CFUNC void get_f_partial_from_gpu(int include_neighbours);
+CFUNC void switch_f_and_ftmp_on_gpu(void);
 CFUNC void copy_f_to_ftmp_on_gpu(void);
 CFUNC void update_colloid_force_from_gpu();
 CFUNC void init_field_gpu();

@@ -418,7 +418,16 @@ void ludwig_run(const char * inputfile) {
 #ifdef _GPU_
 
     TIMER_start(TIMER_COLLIDE);
-    collide_gpu(async);
+
+    if (async==1){
+      switch_f_and_ftmp_on_gpu();
+      collide_edges_gpu();
+      //collide_bulk_gpu(async);
+    }
+    else{
+      collide_gpu(async);
+    }
+
   /* sync MPI tasks for timing purposes */
   MPI_Barrier(cart_comm());
 
@@ -446,6 +455,7 @@ void ludwig_run(const char * inputfile) {
     TIMER_stop(TIMER_HALO_LATTICE);
 
     TIMER_start(TIMER_COLLIDE_WAIT);
+    collide_bulk_gpu(async);
     collide_wait_gpu(async);
   /* sync MPI tasks for timing purposes */
   MPI_Barrier(cart_comm());

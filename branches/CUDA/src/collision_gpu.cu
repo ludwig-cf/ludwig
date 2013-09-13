@@ -23,6 +23,7 @@
 #include "collision_internal_gpu.h"
 #include "collision.h"
 #include "fluctuations.h"
+#include "field_datamgmt_gpu.h"
 
 //#include "free_energy.h"
 //#include "phi_cahn_hilliard.h"
@@ -273,16 +274,17 @@ void collide_gpu(int async=0) {
 
   /* copy f to ftmp on accelerator */
   //copy_f_to_ftmp_on_gpu();
-  
-  double *tmpptr=ftmp_d;
-  ftmp_d=f_d;
-  f_d=tmpptr;
+
+  switch_f_and_ftmp_on_gpu();
+  //double *tmpptr=ftmp_d;
+  //ftmp_d=f_d;
+  //f_d=tmpptr;
 
 
 /* /\* copy constants to accelerator (constant on-chip read-only memory) *\/ */
 /*   copy_constants_to_gpu(); */
 
-  collide_edges_gpu();
+  if (async==1) collide_edges_gpu();
   collide_bulk_gpu(async);
 
   return;

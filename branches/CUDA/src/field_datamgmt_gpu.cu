@@ -258,6 +258,15 @@ void get_f_from_gpu()
 
 }
 
+void switch_f_and_ftmp_on_gpu()
+{
+
+  double *tmpptr=ftmp_d;
+  ftmp_d=f_d;
+  f_d=tmpptr;
+
+}
+
 /* copy f to ftmp on accelerator */
 void copy_f_to_ftmp_on_gpu()
 {
