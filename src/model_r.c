@@ -33,6 +33,15 @@
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
 
+typedef struct model_r_s model_r_t;
+
+struct model_r_s {
+  MPI_Datatype halo[2][3];        /* [forw | back][X|Y|Z] */
+  MPI_Datatype halo_full[3];      /* For complete halo exchanges [X|Y|Z] */
+};
+
+static model_r_t model;
+
 double * f_;
 
 static int ndist_ = 1;
@@ -42,6 +51,10 @@ static struct io_info_t * io_info_distribution_;
 
 static int distributions_read(FILE *, const int, const int, const int);
 static int distributions_write(FILE *, const int, const int, const int);
+
+static int distribution_mpi_init(void);
+static int distribution_halo_mpi(void);
+static void distribution_halo_packed(void);
 
 /***************************************************************************
  *
@@ -68,6 +81,7 @@ void distribution_init(void) {
 
   initialised_ = 1;
 
+  distribution_mpi_init();
   distribution_halo_set_complete();
   distribution_init_f();
 
@@ -118,6 +132,10 @@ void distribution_finish(void) {
 
   if (io_info_distribution_) io_info_destroy(io_info_distribution_);
   free(f_);
+
+  MPI_Type_free(&(model.halo_full[X]));
+  MPI_Type_free(&(model.halo_full[Y]));
+  MPI_Type_free(&(model.halo_full[Z]));
 
   initialised_ = 0;
   ndist_ = 1;
@@ -193,14 +211,350 @@ void distribution_get_stress_at_site(int index, double s[3][3]) {
 
 /*****************************************************************************
  *
+ *  distribution_mpi_init
+ *
+ *  Initialise the MPI datatypes required for the halo swap.
+ *
+ *  The 'full' halo swap, with all distribution elements, is here.
+ *  A 'reduced' datatype is pending.
+ *
+ *  Full datatype
+ *  X direction
+ *    Requires ndist*NVEL blocks of distribution, each consisting
+ *    one contiguous block ny*nz*nhalolocal stride nsites;
+ *  Y direction
+ *    Requires a strided MPI_Type_struct() which encodes the
+ *    poistions of nx blocks of nz MPI_DOUBLE for each distribution.
+ *  Z direction
+ *    As for Y, but have nx*ny blocks of length nhalolocal which
+ *    stride nz for each distribution
+ *
+ *  Again, this uses the assumption that a halo of width 1 is
+ *  always used for the distribution (nhalolocal) whatever the
+ *  situation in coords().
+ *
+ *****************************************************************************/
+
+static int distribution_mpi_init(void) {
+
+  int n;
+  int nlocal[3];
+  int nhalo;
+  int nx, ny, nz;
+  int nhalolocal = 1;
+
+  int ic, jc, count;
+  int blocksz;
+  int stride;
+
+  int * blocklen = NULL;
+  MPI_Datatype * type = NULL;
+  MPI_Aint * displ = NULL;
+  MPI_Aint displ0, displ1;
+
+  assert(initialised_);
+
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+
+  nx = nlocal[X] + 2*nhalo;
+  ny = nlocal[Y] + 2*nhalo;
+  nz = nlocal[Z] + 2*nhalo;
+
+  /* X direction */
+
+  count = NVEL*ndist_;
+  blocksz = ny*nz*nhalolocal;
+  stride = nsite_;
+
+  MPI_Type_vector(count, blocksz, stride, MPI_DOUBLE, &(model.halo_full[X]));
+  MPI_Type_commit(&(model.halo_full[X]));
+
+  /* Y direction */
+
+  /* Add 2 for MPI_LB, MPI_UB */
+  count = 2 + ndist_*NVEL*nx;
+
+  type = (MPI_Datatype *) calloc(count, sizeof(MPI_Datatype));
+  blocklen = (int *) calloc(count, sizeof(int));
+  displ = (MPI_Aint *) calloc(count, sizeof(MPI_Aint));
+  if (type == NULL) fatal("calloc(count, type) failed\n");
+  if (blocklen == NULL) fatal("calloc(count, blocklen) failed");
+  if (displ == NULL) fatal("calloc(count, displ) failed\n");
+
+  type[0] = MPI_LB;
+  blocklen[0] = 1;
+  MPI_Address(f_, &displ0);
+  displ[0] = 0;
+
+  for (n = 0; n < NVEL*ndist_; n++) {
+    for (ic = 0; ic < nx; ic++) {
+      type[1 + n*nx + ic] = MPI_DOUBLE;
+      blocklen[1 + n*nx + ic] = nz*nhalolocal;
+      MPI_Address(f_ + n*nsite_ + ic*ny*nz, &displ1);
+      displ[1 + n*nx + ic] = displ1 - displ0;
+    }
+  }
+
+  type[count - 1] = MPI_UB;
+  blocklen[count - 1] = 1;
+  MPI_Address(f_ + NVEL*ndist_*nx*ny*nz, &displ1);
+  displ[count - 1] = displ1 - displ0;
+
+  MPI_Type_struct(count, blocklen, displ, type, &(model.halo_full[Y]));
+  MPI_Type_commit(&(model.halo_full[Y]));
+
+  free(displ);
+  free(blocklen);
+  free(type);
+
+  /* Z direction */
+
+  count = 2 + NVEL*ndist_*nx*ny;
+  info("COUNT IS %d\n", count);
+
+  type = NULL; blocklen = NULL; displ = NULL;
+  type = (MPI_Datatype *) calloc(count, sizeof(MPI_Datatype));
+  blocklen = (int *) calloc(count, sizeof(int));
+  displ = (MPI_Aint *) calloc(count, sizeof(MPI_Aint));
+  if (type == NULL) fatal("calloc(count, type) failed\n");
+  if (blocklen == NULL) fatal("calloc(count, blocklen) failed");
+  if (displ == NULL) fatal("calloc(count, displ) failed\n");
+
+  type[0] = MPI_LB;
+  blocklen[0] = 1;
+  MPI_Address(f_, &displ0);
+  displ[0] = 0;
+
+  for (n = 0; n < NVEL*ndist_; n++) {
+    for (ic = 0; ic < nx; ic++) {
+      for (jc = 0; jc < ny; jc++) {
+	type[1 + n*nx*ny + ic*ny + jc] = MPI_DOUBLE;
+	blocklen[1 + n*nx*ny + ic*ny + jc] = nhalolocal;
+	MPI_Address(f_ + n*nsite_ + ic*ny*nz + jc*nz, &displ1);
+	displ[1 + n*nx*ny + ic*ny + jc] = displ1 - displ0;
+      }
+    }
+  }
+
+  type[count - 1] = MPI_UB;
+  blocklen[count - 1] = 1;
+  MPI_Address(f_ + NVEL*ndist_*nx*ny*nz, &displ1);
+  displ[count - 1] = displ1 - displ0;
+
+  MPI_Type_struct(count, blocklen, displ, type, &(model.halo_full[Z]));
+  MPI_Type_commit(&(model.halo_full[Z]));
+
+  free(displ);
+  free(blocklen);
+  free(type);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  distribution_halo
  *
  *  Swap the distributions at the periodic/processor boundaries
- *  in each direction.
+ *  in each direction. The routine using MPI_Datatypes has
+ *  superceded the 'packed' version, although a 'reduced'
+ *  Datatype is pending.
  *
  *****************************************************************************/
 
 void distribution_halo() {
+
+  int packed = 0; /* Packed avoids use of MPI Datatypes */
+
+  assert(initialised_);
+
+  if (packed) {
+    distribution_halo_packed();
+  }
+  else {
+    distribution_halo_mpi();
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_halo_mpi
+ *
+ *****************************************************************************/
+
+static int distribution_halo_mpi(void) {
+
+  int nlocal[3];
+  int nhalo;
+  int pforw, pback;
+  int ireal, ihalo, indexreal;
+  int ic, jc, kc;
+  int n, p;
+
+  const int tagf = 900;
+  const int tagb = 901;
+
+  MPI_Request recv_request[2];
+  MPI_Request send_request[6];
+  MPI_Status status[2];
+  MPI_Comm comm = cart_comm();
+
+  assert(initialised_);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+
+  /* The x-direction (YZ plane) */
+
+  if (cart_size(X) == 1) {
+
+    for (p = 0; p < NVEL; p++) {
+      for (n = 0; n < ndist_; n++) {
+	ireal = p*ndist_*nsite_ + n*nsite_;
+	for (jc = 1; jc <= nlocal[Y]; jc++) {
+	  for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	    indexreal = ireal + coords_index(nlocal[X], jc, kc);
+	    f_[ireal + coords_index(0, jc, kc)] =  f_[indexreal];
+
+	    indexreal = ireal + coords_index(1, jc, kc);
+	    f_[ireal + coords_index(nlocal[X] + 1, jc, kc)] = f_[indexreal];
+	  }
+	}
+      }
+    }
+
+  }
+  else {
+
+    pforw = cart_neighb(FORWARD, X);
+    pback = cart_neighb(BACKWARD, X);
+
+    ihalo = coords_index(nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
+    MPI_Irecv(f_ + ihalo, 1, model.halo[BACKWARD][X], pforw, tagb, comm,
+	      recv_request);
+    ihalo = coords_index(0, 1 - nhalo, 1 - nhalo);
+    MPI_Irecv(f_ + ihalo, 1, model.halo[FORWARD][X], pback, tagf, comm,
+	      recv_request + 1);
+
+    ireal = coords_index(1, 1 - nhalo, 1 - nhalo);
+    MPI_Issend(f_ + ireal, 1, model.halo[BACKWARD][X], pback, tagb, comm,
+	       send_request);
+    ireal = coords_index(nlocal[X], 1 - nhalo, 1 - nhalo);
+    MPI_Issend(f_ + ireal, 1, model.halo[FORWARD][X], pforw, tagf, comm,
+	       send_request + 1);
+
+    /* Wait for receives */
+    MPI_Waitall(2, recv_request, status);
+  }
+
+  /* The y-direction (XZ plane) */
+
+  if (cart_size(Y) == 1) {
+
+    for (p = 0; p < NVEL; p++) {
+      for (n = 0; n < ndist_; n++) {
+	ireal = p*ndist_*nsite_ + n*nsite_;
+	for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	  for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	    indexreal = ireal + coords_index(ic, nlocal[Y], kc);
+	    f_[ireal + coords_index(ic, 0, kc)] = f_[indexreal];
+
+	    indexreal = ireal + coords_index(ic, 1, kc);
+	    f_[ireal + coords_index(ic, nlocal[Y] + 1, kc)] = f_[indexreal];
+	  }
+	}
+      }
+    }
+  }
+  else {
+
+    pforw = cart_neighb(FORWARD, Y);
+    pback = cart_neighb(BACKWARD, Y);
+
+    ihalo = coords_index(1 - nhalo, nlocal[Y] + 1, 1 - nhalo);
+    MPI_Irecv(f_ + ihalo, 1, model.halo[BACKWARD][Y], pforw, tagb, comm,
+	      recv_request);
+    ihalo = coords_index(1 - nhalo, 0, 1 - nhalo);
+    MPI_Irecv(f_ + ihalo, 1, model.halo[FORWARD][Y], pback, tagf, comm,
+	      recv_request + 1);
+
+    ireal = coords_index(1 - nhalo, 1, 1 - nhalo);
+    MPI_Issend(f_ + ireal, 1, model.halo[BACKWARD][Y], pback, tagb, comm,
+	       send_request + 2);
+    ireal = coords_index(1 - nhalo, nlocal[Y], 1 - nhalo);
+    MPI_Issend(f_ + ireal, 1, model.halo[FORWARD][Y], pforw, tagf, comm,
+	       send_request + 3);
+
+    /* Wait of receives */
+    MPI_Waitall(2, recv_request, status);
+  }
+
+  /* Finally, z-direction (XY plane) */
+
+  if (cart_size(Z) == 1) {
+
+    for (p = 0; p < NVEL; p++) {
+      for (n = 0; n < ndist_; n++) {
+	ireal = p*ndist_*nsite_ + n*nsite_;
+	for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	  for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
+
+	    indexreal = ireal + coords_index(ic, jc, nlocal[Z]);
+	    f_[ireal + coords_index(ic, jc, 0)] = f_[indexreal];
+
+	    indexreal = ireal + coords_index(ic, jc, 1);
+	    f_[ireal + coords_index(ic, jc, nlocal[Z] + 1)] = f_[indexreal];
+	  }
+	}
+      }
+    }
+  }
+  else {
+
+    pforw = cart_neighb(FORWARD, Z);
+    pback = cart_neighb(BACKWARD, Z);
+
+    ihalo = coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
+    MPI_Irecv(f_ + ihalo, 1, model.halo[BACKWARD][Z], pforw, tagb, comm,
+	      recv_request);
+    ihalo = coords_index(1 - nhalo, 1 - nhalo, 0);
+    MPI_Irecv(f_ + ihalo, 1, model.halo[FORWARD][Z], pback, tagf, comm,
+	      recv_request + 1);
+
+    ireal = coords_index(1 - nhalo, 1 - nhalo, 1);
+    MPI_Issend(f_ + ireal, 1, model.halo[BACKWARD][Z], pback, tagb, comm,
+	       send_request + 4);
+    ireal = coords_index(1 - nhalo, 1 - nhalo, nlocal[Z]);
+    MPI_Issend(f_ + ireal, 1, model.halo[FORWARD][Z], pforw, tagf, comm,
+	       send_request + 5);
+
+    /* Wait for receives */
+    MPI_Waitall(2, recv_request, status);
+  }
+
+  /* Finish sends */
+
+  if (cart_size(X) > 1) MPI_Waitall(2, send_request, status);
+  if (cart_size(Y) > 1) MPI_Waitall(2, send_request + 2, status);
+  if (cart_size(Z) > 1) MPI_Waitall(2, send_request + 4, status);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  distribution_halo_packed
+ *
+ *  Uses explicit buffer packing/unpacking and no user MPI Datatypes.
+ *
+ *****************************************************************************/
+
+static void distribution_halo_packed(void) {
 
   int ic, jc, kc;
   int n, p;
@@ -541,6 +895,13 @@ static int distributions_write(FILE * fp, const int ic , const int jc,
 void distribution_halo_set_complete(void) {
 
   assert(initialised_);
+
+  model.halo[FORWARD][X]  = model.halo_full[X];
+  model.halo[FORWARD][Y]  = model.halo_full[Y];
+  model.halo[FORWARD][Z]  = model.halo_full[Z];
+  model.halo[BACKWARD][X] = model.halo_full[X];
+  model.halo[BACKWARD][Y] = model.halo_full[Y];
+  model.halo[BACKWARD][Z] = model.halo_full[Z];
 
   return;
 }
