@@ -93,7 +93,9 @@ phase diagram of the blue phases in bulk cholesteric liquid crystals
 \cite{blue1,oliver1}.
 
 In this work, the chirality and reduced temperature are always set to lie
-within the blue phase I region of the equilibrium phase diagram. EXCEPT?
+within the blue phase I region of the equilibrium phase diagram, except
+for Fig. 3 in the main manuscript, where the switching of colloids in
+blue phase III is studied. 
 
 In addition to the fluid free density density $f(Q_{\alpha\beta})$, a surface
 free energy density is also present to represent the energetic cost of
@@ -322,7 +324,7 @@ initialised randomly. The free energy parameters (see Table~\ref{table:params})
 are again appropriate for (equilibrium) blue phase I
 (chirality $\kappa = 0.8$ and
 reduced temperature $\tau = -0.25$). The cholesteric pitch is set
-to be $p = 64$, providing a slight better resolution than the bulk
+to be $p = 64$, providing a slightly better resolution than the bulk
 simulations.
 
 The surface anchoring for colloids is as before: always normal, but with
@@ -364,7 +366,7 @@ Bulk Quench & 0.01 & 3.086 & 0.007061 & 32$\sqrt{2}$ & 0.6902 & -0.2500 &
 \hline
 Confined & 0.01 & 3.086 & 0.01897 & 64 & 0.8 & -0.2500 & 0.23, 2.3\\
 \hline
-External field & 0.004& 3.086 & 0.02 & 32 & -0.25 & 2.6 & 0.23\\ 
+External field & 0.004& 3.086 & 0.02 & 32 & 2.6 & -0.2500 & 0.23\\ 
 \hline
 \end{tabular}
 \end{center}
@@ -374,6 +376,8 @@ geometries are shown in Fig.~2; and the external field case is
 relevant for Fig.~3.}
 \label{table:params}
 \end{table}
+
+{\bf 4.4 Disclination rendering}
 
 In all cases visualisation of the defect lines is carried out via
 an isosurface of the scalar order parameter $q$ determined from the
@@ -401,10 +405,6 @@ From the energy and length scales one can map elastic constants to
 physical units: for instance, the simulation in Fig.~1 corresponds to
 a liquid crystal with splay, bend and twist (Frank) elastic constants
 equal to 35 pN (or equivalently $K=$70~pN). That is,
-\begin{equation}
-\frac{a}{b^2} = \frac{27}{2 A_0\gamma} \sim 2-5 \times 10^{-6}
-{\rm J}^{-1}\, {\rm m}^{3}.
-\end{equation}
 WHAT ARE a/b???
 
 For the timescale calibration we use the formula (see e.g.~\cite{denniston})
@@ -425,10 +425,11 @@ millisecond range.
 To calibrate the electric field strength 
 we equate the value of the dimensionless parameter ${\cal E}$ in our 
 simulations with that of a hypothetical experiment.
-Given the previous value for $A_0$, and a dielectric anisotropy of 10
-(or equivalently $\epsilon_a=10\epsilon_0$, with $\epsilon_0$ the
+Given the previous value for $A_0$, and a dielectric anisotropy of 20
+(or equivalently $\epsilon_a=20\epsilon_0$, with $\epsilon_0$ the
 dielectric permittivity of vacuum), we then obtain that an electric field
-of 5~V/$\mu$m corresponds to a value of ${\cal E}\sim$0.01. 
+of 100 V/$\mu$m corresponds to a value of ${\cal E}\sim 0.4$ (considering
+a value of $\gamma=3.0857$ as in Fig. 3 of the main text.
 
 Given these mappings, all quantities can be easily transformed from
 simulation to physical units and vice versa. For example Figs.~1 and~2
@@ -531,9 +532,9 @@ O. Henrich, K. Stratford, D. Marenduzzo, M. E. Cates,
 
 {\bf Supporting Figures and Animations}
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \begin{center}
-\includegraphics[scale=0.8]{doubletwist.pdf}
+\includegraphics[scale=0.8]{support-fig1.png}
 \end{center}
 \caption{
 (A) Schematic representation of the director field
@@ -543,10 +544,11 @@ blue phase I structure. (C) Same as (B) for an amorphous blue phase III
 network.}
 \end{figure}
 
-\vfill\pagebreak
+\newpage
 
+%\vfill\pagebreak
 
-\begin{figure}[h]
+\begin{figure}[!h]
 \begin{center}
 \includegraphics[scale=0.35]{support-fig2.pdf}
 \end{center}
@@ -562,7 +564,9 @@ particle at the bottom left in each panel which does not take part
 in the simulation.}
 \end{figure}
 
-\begin{figure}[t]
+\newpage
+
+\begin{figure}[!h]
 \begin{center}
 \includegraphics[scale=0.35]{support-fig3.pdf}
 \end{center}
@@ -576,9 +580,23 @@ particle at the bottom left in each case which does not take part
 in the simulation.}
 \end{figure}
 
-\begin{figure}[t]
+\newpage
+
+\begin{figure}[!h]
 \begin{center}
-\includegraphics[scale=0.42]{support-fig4.pdf}
+\includegraphics[scale=0.49]{support-fig4.png}
+\end{center}
+\caption{Plot of the free energy (per BP unit cell) versus time
+for the simulations corresponding to Fig. 1A-H in the main text
+(the labels correspond to those in Fig. 1).
+}
+\end{figure}
+
+\newpage
+
+\begin{figure}[!h]
+\begin{center}
+\includegraphics[scale=0.42]{support-fig5.pdf}
 \end{center}
 \caption{As for main manuscript Fig.~2 A--D (confined geometry with normal
 anchoring walls at both top and bottom), but for the entire simulation
@@ -589,9 +607,11 @@ and weak anchoring; (B) 4\% solid volume fraction and weak anchoring;
 volume fraction and strong anchoring.}
 \end{figure}
 
-\begin{figure}[t]
+\newpage
+
+\begin{figure}[!h]
 \begin{center}
-\includegraphics[scale=0.42]{support-fig5.pdf}
+\includegraphics[scale=0.42]{support-fig6.pdf}
 \end{center}
 \caption{As for main manuscript Fig.~2 E--H (confined geometry with planar
 anchoring walls at both top and bottom), but for the entire simulation
@@ -602,17 +622,46 @@ and weak anchoring; (F) 4\% solid volume fraction and weak anchoring;
 volume fraction and strong anchoring.}
 \end{figure}
 
-\begin{figure}[t]
+\newpage
+
+
+\if{\begin{figure}[!h]
 \begin{center}
 %%\includegraphics[width=0.95\columnwidth]{s5.jpg}
 \end{center}
 \caption{Pair correlation function for weak ($WR/K=0.23$) and strong ($WR/K=2.3$) anchoring cases considered in the manuscript. (A,B) BPI initialisation with A) volume fraction $\phi=1${\%} and B) $\phi=5${\%}. (C,D) ``quenched system'' with C) $\phi=1${\%} and D) $\phi=5${\%}.}
 \end{figure}
+}\fi
 
+%\newpage
+ 
+{\bf Captions for Supplementary Movies} \\
 
+{\bf Supplementary Movie 1:} 
+Final state of the end of the simulation in Fig.~1A. The movie
+shows a rotation of the configuration to better appreciate details.\\
 
-%{\bf Captions for Supplementary Movies}
+{\bf Supplementary Movie 2:} 
+Final state of the end of the simulation in Fig.~1B. The movie
+shows a rotation of the configuration to better appreciate details.\\
 
+{\bf Supplementary Movie 3:} 
+Final state of the end of the simulation in Fig.~1C. The movie
+shows a rotation of the configuration to better appreciate details. \\
 
+{\bf Supplementary Movie 4:} 
+Final state of the end of the simulation in Fig.~1D. The movie
+shows a rotation of the configuration to better appreciate details. \\ 
+
+{\bf Supplementary Movie 5:} 
+Final state at the end of the initial relaxation phase in Fig.~3. The movie
+shows a rotation of the configuration to better appreciate details. The distribution of the colloidal particles is isotropic with the particles forming clusters and having a tendency to occupy positions a the intersection of the BPIII disclination lines.\\
+
+{\bf Supplementary Movie 6:} 
+Configuration in a homogeneous electric field with strength
+corresponding to ${\cal E}=0.8$. The movie
+shows a rotation of the configuration to better appreciate details.
+A hexagonal pattern emerges where the particles form chains
+situated at the vertices of the honeycomb-like structure. \\
 
 \end{document}
