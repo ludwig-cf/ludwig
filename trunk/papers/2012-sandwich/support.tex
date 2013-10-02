@@ -92,12 +92,23 @@ chirality and reduced temperature may be used to characterise an equilibrium
 phase diagram of the blue phases in bulk cholesteric liquid crystals
 \cite{blue1,oliver1}.
 
-In this work, the chirality and reduced temperature are always set to lie
-within the blue phase I region of the equilibrium phase diagram, except
-for Fig. 3 in the main manuscript, where the switching of colloids in
-blue phase III is studied. 
+The effect of an electric field can be modelled by including the following
+term in the bulk free energy density:
+\begin{equation}
+-\frac{\epsilon_a}{12\pi} E_{\alpha}Q_{\alpha\beta}E_{\beta},
+\end{equation} 
+where $E_{\alpha}$ are the components of the electric field, and 
+$\epsilon_a$ (here assumed positive) is the dielectric anisotropy of the liquid
+crystal. The strength of the electric field is quantified via
+one further dimensionless number
+\begin{equation}
+{\cal E}^2 = \frac{27 \epsilon_a}{32 \pi A_0 \gamma} E_\alpha E_\alpha.
+\end{equation}
+The quantity ${\cal E}$ will be referred to as the reduced field strength.
 
-In addition to the fluid free density density $f(Q_{\alpha\beta})$, a surface
+{\bf 1.1 Surface free energy}
+
+In addition to the fluid free energy density $f(Q_{\alpha\beta})$, a surface
 free energy density is also present to represent the energetic cost of
 anchoring at a solid surface. If the preferred order parameter tensor
 at the solid surface is $Q^0_{\alpha\beta}$, then the surface free energy
@@ -113,19 +124,6 @@ anchoring compared which the bulk fluid elastic constant may be quantified
 by the dimensionless parameter $Wa/K$. For small values of this parameter,
 the presence of a colloid surface should have little impact on the local
 fluid LC ordering.
-
-The effect of an electric field can be modelled by including the following
-term in the bulk free energy density:
-\begin{equation}
--\frac{\epsilon_a}{12\pi} E_{\alpha}Q_{\alpha\beta}E_{\beta},
-\end{equation} 
-where $E_{\alpha}$ are the components of the electric field, and 
-$\epsilon_a$ (here assumed positive) is the dielectric anisotropy of the liquid
-crystal. The strength of the electric field is quantified via
-a further dimensionless number, 
-\begin{equation}
-{\cal E}^2 = \frac{27 \epsilon_a}{32 \pi A_0 \gamma} E_\alpha E_\alpha.
-\end{equation}
 
 % NO REDSHIFT
 
@@ -196,7 +194,7 @@ of a generalised stress $P_{\alpha\beta}$:
 \begin{equation}
 \label{nse}
 \rho\,\partial_tu_\alpha +\rho \,u_\beta \partial_\beta u_\alpha
-=\partial_\beta P_{\alpha\beta}
+=\partial_\beta P_{\alpha\beta}.
 \end{equation}
 The pressure tensor $P_{\alpha\beta}$ is, in general, asymmetric and includes
 both viscous and thermodynamic components:
@@ -231,7 +229,7 @@ Hydrodynamic boundary conditions for solid objects are handled via
 the lattice Boltzmann solver. In particular, the standard method of
 bounce-back on links is used for both colloids and confining walls
 \cite{ladd94,nguyen2002}. Boundary conditions for the order parameter
-are set out in the following.
+are set out in \cite{juho}.
 
 {\bf 3.1 Colloids}
 
@@ -335,22 +333,25 @@ time steps.
 
 {\bf 4.3 External electric field}
 
-The following protocol was used for the simulations of BPIII with
-colloidal particles: First, we started from a configuration of
-randomly oriented and positioned double twist cylinders from which an
-amorphous BPIII network emerged. The structure
-was equilibrated for $6\times10^{5}$ LB time steps until the relaxation came
-virtually to a standstill. Then the colloidal particles featuring week
-normal anchoring were randomly inserted and the composite system was
-equilibrated for another $1.2\times10^{6}$ time steps.
-At the end of the equilibration phase the homogenous electric field
-with reduced field strength $e=\sqrt{\frac{27\epsilon_a}{32\pi A_0\gamma}} E=0.8$ 
-was switched on along the z-direction for $1.2\times10^{6}$ time steps.
-This was found to be sufficiently long for the hexagonal structure to emerge and saturate.
-After the electric field has been switched off the system quickly relaxed
-to a metastable state which showed a residual anisotropy in the
-colloid distribution. The total length of this final relaxation phase
-was $1\times10^6$ LB time steps.
+The following protocol is used for the simulations of BPIII with
+colloidal particles. An initial configuration of
+randomly oriented and positioned double twist cylinders is used,
+from which an amorphous BPIII network emerges \cite{oliver-bp3}. This structure
+is equilibrated for $6\times10^{5}$ LB time steps until no significant
+further evolution is observed. The colloidal particles, with weak
+normal anchoring, are then inserted with random chosen positions,
+and the composite system is equilibrated for another $1.2\times10^{6}$
+time steps.
+At the end of the equilibration phase the uniform electric field
+with reduced field strength ${\cal E} = 0.8$ 
+is switched on (oriented along the $z$-direction), and the simulation
+run for a further $1.2\times10^{6}$ time steps.
+This is found to be sufficiently long for a hexagonal structure to
+emerge and saturate.
+If the electric field is then switched off, and the system quickly relaxes
+to a metastable state which shows a residual anisotropy in the
+colloidal distribution. The total length of this final relaxation phase
+is $1\times10^6$ LB time steps.
 
 \begin{table}
 \begin{center}
@@ -387,49 +388,50 @@ unambiguously identifies the disclinations.
 
 {\bf 5. Parameter mapping to physical units}
 
-To get from simulation to physical units, we need to calibrate scales of
-length, energy and time in the simulations. For similar mappings see,
+To get from simulation to physical units, a calibration of scales of
+length, energy and time in the simulations is required. For similar
+mappings see,
 e.g.~\cite{denniston2}.
 
-The length scale can be set by mapping our half pitch to a realistic blue
-phase unit cell size, which are in the 100-500 nm range \cite{blue1}. 
+The length scale can be set by mapping the half pitch to a realistic blue
+phase unit cell size, which is in the 100--500~nm range \cite{blue1}. 
 For bulk simulations (Fig.~1 and Fig.~3 in the main text), a suitable choice
 is one where one simulation unit (lattice site) corresponds to 10~nm. Therefore
 the colloidal size in Figs.~1 and~3 corresponds to $\sim$ 50~nm. 
 
-To obtain an energy scale, we choose $A_0 \simeq 10^6$~Pa, which is 
-reasonable from Ref.~\cite{blue1} (this is also the choice in
+To obtain an energy scale, it is possible to choose $A_0 \simeq 10^6$~Pa,
+which is reasonable following Ref.~\cite{blue1} (this is also the choice in
 Ref.~\cite{oliver2}). This choice leads to a simulation unit of
 free energy (or stress) equal to $10^{8}$~Pa in Figs.~1 and~3.
 From the energy and length scales one can map elastic constants to
 physical units: for instance, the simulation in Fig.~1 corresponds to
 a liquid crystal with splay, bend and twist (Frank) elastic constants
-equal to 35 pN (or equivalently $K=$70~pN). That is,
-WHAT ARE a/b???
+equal to 35 pN (or equivalently $K=70$~pN).
 
-For the timescale calibration we use the formula (see e.g.~\cite{denniston})
+The timescale calibration may be obtained from (see e.g.~\cite{denniston})
 \begin{equation}
-\gamma_1=\frac{2q^2}{\Gamma}
+\gamma_1=\frac{2q^2}{\Gamma},
 \end{equation}
-which relates the rotational viscosity $\gamma_1$, to the ordering strength
+which relates the rotational viscosity $\gamma_1$ to the ordering strength
 $q$ and the order parameter mobility $\Gamma$.
-In our simulations, we choose $\Gamma = 0.5$, while the value of $\gamma$
-used in Fig.~1 leads to $q=1/2$.   
+In the present simulations, $\Gamma = 0.5$ and the value of $\gamma$
+for the simulation in Fig.~1 leads to $q=1/2$.   
 For real liquid crystalline materials, $\gamma_1$ usually lies in range
-$10^{-2}-1$ Pa s~\cite{deGennes}; we choose for definiteness
+$10^{-2}-1$ Pa s~\cite{deGennes}; for definiteness say
 $\gamma_1 = 1$~Pa~s (equivalently 10 poise). Given the previous mapping for
 free energy (or stress) units, this leads to a simulation unit of time equal
 to $10^{-8}$~s. The total simulated time in Figs. 1-3 is therefore in the
 millisecond range. 
 
 To calibrate the electric field strength 
-we equate the value of the dimensionless parameter ${\cal E}$ in our 
+one can equate the value of the dimensionless parameter ${\cal E}$ in the 
 simulations with that of a hypothetical experiment.
 Given the previous value for $A_0$, and a dielectric anisotropy of 20
 (or equivalently $\epsilon_a=20\epsilon_0$, with $\epsilon_0$ the
-dielectric permittivity of vacuum), we then obtain that an electric field
-of 100 V/$\mu$m corresponds to a value of ${\cal E}\sim 0.4$ (considering
-a value of $\gamma=3.0857$ as in Fig. 3 of the main text.
+dielectric permittivity of vacuum), an electric field
+of 100 V/$\mu$m is obtained. This corresponds to a value of
+${\cal E}\sim 0.4$ (considering a value of $\gamma=3.0857$ as in
+Fig.~3 of the main text).
 
 Given these mappings, all quantities can be easily transformed from
 simulation to physical units and vice versa. For example Figs.~1 and~2
@@ -438,20 +440,18 @@ which translate into $0.01-0.1$~Pa~s respectively. This is sensible (if
 slightly low) for a molecular nematogen in the isotropic phase. 
 The effective viscosity in ordered phases is higher, but this is ensured
 in our model by the coupling to the order parameter.
-We note that the density is set to unity in our simulations: this
+Note that the density is set to unity in the simulations: this
 corresponds to a fluid density which is about a thousand times larger
-than in experiments. This however makes no difference in practice as
+than in experiments. This makes no difference in practice as
 the Reynolds number $= \rho V\Lambda/\eta$ (where $V$ is a typical
 velocity, in our simulations around $10^{-5}$ in simulation units) 
 remains small enough~\cite{codef}. 
 
-To summarize, our simulations represent BP-forming materials, with the
+To summarize, the simulations represent BP-forming materials, with the
 interpretation of the simulation units for length, time, and energy
 density being close to 10~nm, 10~ns, and 100~MPa respectively.
 
 %ISSUE: Temperature?  Temperature: $T = 2.133333 10^{-9}$ CHECK
-
-%ISSUE: do we want some free energy numbers?
 
 \vfill
 \pagebreak
@@ -505,6 +505,10 @@ A.J.C. Ladd,
 N.-Q. Nguyen and A.J.C. Ladd,
 \textit{Phys. Rev. E} \textbf{66} 046708 (2002).
 
+\bibitem{juho}
+J.S. Lintuvuori, D. Marenduzzo, K. Stratford, and M.E. Cates,
+\textit{J. Mater. Chem.} \textbf{20}, 10547 (2010).
+
 \bibitem{denniston}
 C. Denniston, E. Orlandini, J. M. Yeomans, 
 \textit{Phys. Rev. E} \textbf{63}, 056702 (2001).
@@ -516,6 +520,11 @@ C. Denniston, D. Marenduzzo, E. Orlandini, J. M.  Yeomans,
 \bibitem{fournier2005}
 J.-B. Fournier and P. Galatola,
 \textit{Europhys. Lett.} \textbf{72}, 403 (2005).
+
+\bibitem{oliver-bp3}
+O. Henrich, K. Stratford, M.~E. Cates, D. Marenduzzo,
+{\it Phys. Rev. Lett.} {\bf 106}, 107802 (2011).
+
 
 \bibitem{oliver2}
 O. Henrich, K. Stratford, D. Marenduzzo, M. E. Cates, 
@@ -545,8 +554,6 @@ network.}
 \end{figure}
 
 \newpage
-
-%\vfill\pagebreak
 
 \begin{figure}[!h]
 \begin{center}
@@ -625,42 +632,52 @@ volume fraction and strong anchoring.}
 \newpage
 
 
-\if{\begin{figure}[!h]
+\begin{figure}[!h]
 \begin{center}
-%%\includegraphics[width=0.95\columnwidth]{s5.jpg}
+\includegraphics[width=0.95\columnwidth]{support-fig7.pdf}
 \end{center}
-\caption{Pair correlation function for weak ($WR/K=0.23$) and strong ($WR/K=2.3$) anchoring cases considered in the manuscript. (A,B) BPI initialisation with A) volume fraction $\phi=1${\%} and B) $\phi=5${\%}. (C,D) ``quenched system'' with C) $\phi=1${\%} and D) $\phi=5${\%}.}
+\caption{Panels A and B as for Fig. 3, but with the disclination lines
+removed for clarity. Panel C shows the situation when the field is
+switched off: a residual anisotropic structure remains which reflects the
+structure induced by the electric field. The electric field direction
+when switched on (panel B) is into the plane of the paper.}
 \end{figure}
-}\fi
+
 
 %\newpage
  
 {\bf Captions for Supplementary Movies} \\
 
 {\bf Supplementary Movie 1:} 
-Final state of the end of the simulation in Fig.~1A. The movie
-shows a rotation of the configuration to better appreciate details.\\
+The final state of the simulation as shown in Fig.~1A. The movie
+rotates the configuration to reveal more clearly its structure.\\
 
 {\bf Supplementary Movie 2:} 
-Final state of the end of the simulation in Fig.~1B. The movie
-shows a rotation of the configuration to better appreciate details.\\
+The final state of the simulation as shown in Fig.~1B. The movie
+rotates the configuration to reveal more clearly its structure.\\
+
 
 {\bf Supplementary Movie 3:} 
-Final state of the end of the simulation in Fig.~1C. The movie
-shows a rotation of the configuration to better appreciate details. \\
+The final state of the simulation as shown in Fig.~1C. The movie
+rotates the configuration to reveal more clearly its structure.\\
+
 
 {\bf Supplementary Movie 4:} 
-Final state of the end of the simulation in Fig.~1D. The movie
-shows a rotation of the configuration to better appreciate details. \\ 
+The final state of the simulation as shown in Fig.~1D. The movie
+rotates the configuration to reveal more clearly its structure.\\
+
 
 {\bf Supplementary Movie 5:} 
-Final state at the end of the initial relaxation phase in Fig.~3. The movie
-shows a rotation of the configuration to better appreciate details. The distribution of the colloidal particles is isotropic with the particles forming clusters and having a tendency to occupy positions a the intersection of the BPIII disclination lines.\\
+The configuration after the initial relaxation phase in Fig.~3. The movie
+shows a rotation of the configuration. The distribution of the colloidal
+particles is isotropic, with the particles forming clusters and having a
+tendency to occupy positions at the intersection of the BPIII disclination
+lines.\\
 
 {\bf Supplementary Movie 6:} 
 Configuration in a homogeneous electric field with strength
 corresponding to ${\cal E}=0.8$. The movie
-shows a rotation of the configuration to better appreciate details.
+shows a rotation of the configuration.
 A hexagonal pattern emerges where the particles form chains
 situated at the vertices of the honeycomb-like structure. \\
 
