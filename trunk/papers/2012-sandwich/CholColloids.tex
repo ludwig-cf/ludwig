@@ -38,8 +38,7 @@ planar structures~\cite{tanaka}, or 3D amorphous glasses~\cite{tiffany}.
 Besides being of fundamental interest to materials science, these
 structures have tunable elastic and optical properties~\cite{stark}. Hence 
 they offer exciting prospects for applications as biosensors~\cite{abbott}, or
-as new-generation display devices as they can exploit the bistability
-inherent in liquid crystal devices~\cite{colloiddevice,choldevice}.
+as new-generation devices~\cite{colloiddevice,electrophoresis}.
 
 But one may also choose to disperse colloidal particles in a cholesteric, 
 rather than nematic, liquid crystal. The molecules making up this material are
@@ -67,11 +66,11 @@ corresponding to different topologies of the defect network~\cite{adriano}, with
 Adding particles is likely to further enrich the free energy landscape, creating composites that might be promising candidates for bistable or multistable devices, in which energy is needed only to switch optical properties and not to maintain them. (This is the e-paper paradigm~\cite{epaper}, and can lead to huge energy savings.)
 To explore such metastability, and switching strategies between states, we require multi-unit-cell, time-dependent simulations. These go beyond previous studies of colloid-BP composites~\cite{miha} but follow comparable simulations of pure BPs~\cite{domaingrowth,bp3,henrichfield}, and isolated and dimeric colloids in cholesterics~\cite{juho1,juho2}. Our methodology and simulation parameters are summarized in the Supporting Information.
 
-We show in Fig.~1 A-D the final state structures of four simulations in which we first equilibrated a stable BPI disclination network in bulk (with periodic boundary conditions) and then dispersed colloidal particles within it. Among dimensionless control parameters are the colloid volume fraction $\phi$  ($\phi = 1\%$ or $5\%$); the ratio $r = R/\lambda$ of particle radius to the BP lattice parameter $\lambda$ (here $r\simeq 0.10$) and the ratio $w = WR/K$ where $W$ is the anchoring strength of the cholesteric at the particle surface, and $K$ is the elastic constant of the liquid crystal (defined such that $W>0$ gives preferential perpendicular orientation of the director field at the particle surface). For the latter we choose $w = 0.23, 2.3$ which are within typical experimental range~\cite{tiffany}. This parameter can be viewed as the ratio of the anchoring energy, $WR^2$, to the elastic energy scale for distortion $KR$. 
+We show in Fig.~1 A-D the final state structures of four simulations in which we first equilibrated a stable BPI disclination network in bulk (with periodic boundary conditions) and then dispersed colloidal particles within it. Among dimensionless control parameters are the colloid volume fraction $\phi$  ($\phi = 1\%$ or $5\%$); the ratio $r = R/\lambda$ of particle radius to the BP lattice parameter $\lambda$ (here $r\simeq 0.14$) and the ratio $w = WR/K$ where $W$ is the anchoring strength of the cholesteric at the particle surface, and $K$ is the elastic constant of the liquid crystal (defined such that $W>0$ gives preferential perpendicular orientation of the director field at the particle surface). For the latter we choose $w = 0.23, 2.3$ which are within typical experimental range~\cite{tiffany}. This parameter can be viewed as the ratio of the anchoring energy, $WR^2$, to the elastic energy scale for distortion $KR$. 
 
 For a single colloidal particle in a nematic fluid, $w$ controls the formation of a local topological defect at the particle surface~\cite{stark}, with weak distortion of the nearby fluid at small $w$. In the colloid-BP system, $w$ also plays a determining role in the final composite structure. When $w$ is small (Fig.~ 1A,B), the attraction of particles to the disclination lattice causes
  the lattice to become covered by particles, with little disruption of its
- long-range order. Thus a templated colloidal crystal is created, as first reported in~\cite{miha}. Interestingly, the weak but finite anchoring apparently creates an elastic force between the colloids which leads to the formation of small colloidal lines within disclinations, especially for dilute samples (Fig. 1A). It seems likely that polymer-stabilised  blue phases~\cite{kikuchi} work by a similar principle to this small $w$ case, with a weak segregation of monomers towards the defect regions.
+ long-range order. Thus a templated colloidal crystal is created, as first reported in~\cite{miha}. Interestingly, the weak but finite anchoring apparently creates an elastic force between the colloids which leads to very slow dynamics (Fig. S4) and the formation of small colloidal lines within disclinations, especially for dilute samples (Fig. 1A). It seems likely that polymer-stabilised  blue phases~\cite{kikuchi} work by a similar principle to this small $w$ case, with a weak segregation of monomers towards the defect regions.
 
 For large $w$ (Fig.~1C,D), the picture changes dramatically.
 Each colloidal particle now disrupts significantly the order of the nearby fluid, with defect formation close to its surface~\cite{stark}. The resulting strong disruption of local liquid crystalline order around each particle leads now to 
@@ -98,12 +97,13 @@ Increasing the volume fraction (Fig.~1F) leads to a more even coverage with
 a better defined particle spacing. 
 For large $w$, on the other hand, strong interparticle forces again dictate
 the self-assembly. At low concentrations, discrete particle clusters decorate an amorphous defect lattice (Fig.~1G) whereas at higher $\phi$ a percolating network of colloid strands (the gel in Fig.~1H) is again seen. 
-The structures in Fig. 1A-H have been followed for about 20 ms 
-(see Supporting Information for the mapping between simulation and physical 
-time); they correspond to deep metastable minima (elastic interactions are of
-order $KR$ and dwarf thermal motion~\cite{stark,lavrentovich}).
+The structures in Fig. 1A-H have been followed for $\sim$20 ms 
+(see Fig. S4); they correspond to either very slowly evolving states or 
+deep metastable minima (elastic interactions are of
+order $KR$ and dwarf thermal motion, see
+Fig. S4 and Ref.~\cite{stark,lavrentovich}).
 
-In display devices and other optical applications, it is typical for liquid crystals to be strongly confined (and subject to strong boundary effects), in contrast to the bulk geometries considered above. We therefore next describe how colloidal suspensions self assemble in thin sandwiches (thickness $h = 3.5 \lambda$), whose confining walls can favour either tangential (planar degenerate) or normal (homeotropic) orientation of the director field. For simplicity we here impose one or the other as a strict boundary condition.
+In display devices and other optical applications, it is typical for liquid crystals to be strongly confined (and subject to strong boundary effects), in contrast to the bulk geometries considered above. We therefore next describe how colloidal suspensions self assemble in thin sandwiches (thickness $h = 1.75 \lambda$), whose confining walls can favour either tangential (planar degenerate) or normal (homeotropic) orientation of the director field. For simplicity we here impose one or the other as a strict boundary condition.
 
 Fig.~2A-D shows the case of normal wall anchoring on varying $\phi$ and $w$. We quench from the isotropic to the ordered phase as was done in Fig.~1E-H, and again find a metastable, amorphous disclination network (see Supporting Information). The resulting colloid-cholesteric composites are somewhat similar to those seen in the bulk: for small $w$ the particles are templated by the network (Fig.~2A,B), whereas for large $w$ we observe isolated clusters (Fig.~2C) and percolated colloidal gels (Fig.~2D), for $\phi = 1\%$ and $4\%$ respectively. There are, however, significant effects of the confining walls.
 First, the normal anchoring at the wall recruits particles there,  giving (for the chosen $h$) a density enhancement of the colloids at both walls and also in the midplane (see side-views in Fig.~2A-D). Second, the clusters formed at large $w$ are themselves anisotropic with an oblate habit. These clusters
@@ -175,9 +175,12 @@ W.~C.~K. Poon. A Self-Quenched Defect Glass in a Colloid-Nematic Liquid Crystal 
 \bibitem{abbott} I.~H. Lin, D.~S. Miller, P.~J. Bertics, C.~J. Murphy, J.~J. de Pablo, N.~L. Abbott. Endotoxin-Induced Structural Transformations in Liquid Crystalline Droplet. {\it Science} {\bf 332}, 1297-1300 (2011).
 \bibitem{colloiddevice} K. Chari, C. M. Rankin, D. M. Johnson, T. N. Blanton,
 R. G. Capurso. Single-substrate cholesteric liquid crystal displays by colloidal self-assembly. {\it Appl. Phys. Lett.} {\bf 88}, 043502 (2006).
-\bibitem{choldevice} D.-K. Yang, X.-Y. Huang, Y.-M. Zhu. 
-Bistable cholesteric reflective displays: Materials and Drive Schemes,
-{\it Annu. Rev. Mater. Sci.} {\bf 27}, 117-146 (1997).
+\bibitem{electrophoresis}  O. D. Lavrentovich,	I. Lazo, O. P. Pishnyak.
+Nonlinear electrophoresis of dielectric and metal spheres in a nematic liquid 
+crystal. {\it Nature} {\bf 467}, 947-950 (2010).
+%D.-K. Yang, X.-Y. Huang, Y.-M. Zhu. 
+%Bistable cholesteric reflective displays: Materials and Drive Schemes,
+%{\it Annu. Rev. Mater. Sci.} {\bf 27}, 117-146 (1997).
 %\bibitem{crooker} D. K. Yang and P. P. Crooker, {\it Phys. Rev. A}
 %{\bf 35}, 4419 (1987).
 \bibitem{kikuchi} H. Kikuchi, M. Yokota, Y. Hisakado, H. Yang, T. Kajiyama.
