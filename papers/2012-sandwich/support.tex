@@ -119,9 +119,9 @@ f_s(Q_{\alpha\beta}, Q^0_{\alpha\beta})
 \end{equation}
 where $W$ is a constant determining the strength of the anchoring.
 The determination of $Q^0_{\alpha\beta}$ for normal and planar anchoring is
-discussed below. For a colloid of radius $a$, the strength of the surface
+discussed below. For a colloid of radius $R$, the strength of the surface
 anchoring compared which the bulk fluid elastic constant may be quantified
-by the dimensionless parameter $Wa/K$. For small values of this parameter,
+by the dimensionless parameter $WR/K$. For small values of this parameter,
 the presence of a colloid surface should have little impact on the local
 fluid LC ordering.
 
@@ -253,7 +253,7 @@ which corresponds to the bulk order in a defect-free nematically ordered
 sample~\cite{denniston} (this is also very close to the value of the order 
 parameter in a cholesteric or in a blue phase away from disclinations).
 
-In all simulations the colloidal (hard sphere) radius is $a = 2.3$. To
+In all simulations the colloidal (hard sphere) radius is $R = 2.3$. To
 prevent colloids overlapping at the hard sphere radius, an additional
 short range soft potential is included. This takes the form of
 $V(h) = \epsilon (\sigma/h)$ where $h$ is the surface to surface separation.
@@ -292,7 +292,7 @@ initialised from an approximation in high chirality limit
 used with a pitch length of $p = 32\sqrt{2}$, which accommodates 4$^3$
 unit cells with fully periodic boundary conditions.
 Simulations at different solid volume fractions (1\% and 4\%), and different 
-surface anchoring strengths ($Wa/K = 0.23$ and $Wa/K = 2.3$) representing
+surface anchoring strengths ($WR/K = 0.23$ and $WR/K = 2.3$) representing
 ``weak'' and ``strong'' anchoring are run for two million simulation
 time steps.
 The initial distribution of the colloid positions is set at random
@@ -307,7 +307,7 @@ provide an order parameter.
 We avoid the mean-field spinodal point at $\gamma = 3.0$:
 the parameters are the same as for the initial simulations with
 pitch $p = 32\sqrt{2}$. The chirality and reduced temperature (see
-Table~\ref{table:params}) remain appropriate for blue phase I.
+Table~\ref{table:params}) remain appropriate for BPI.
 Colloids are added as before and the simulations run for 2 million
 simulation steps.
 
@@ -331,20 +331,25 @@ to be $p = 64$, providing a slightly better resolution than the bulk
 simulations.
 
 The surface anchoring for colloids is as before: always normal, but with
-$Wa/K = 0.23$ and $Wa/K = 2.3$. The colloid solid volume fractions are
+$WR/K = 0.23$ and $WR/K = 2.3$. The colloid solid volume fractions are
 1\% and 4\%. Wall anchoring is either normal or planar with $W/K = 1$
 in simulation units. All simulations are run for two million simulation
 time steps.
 
 {\bf 4.3 External electric field}
 
-The following protocol is used for the simulations of BPIII with
-colloidal particles. An initial configuration of
+For the simulations of BPIII with colloidal particles a system size of
+$128^3$ is used with a cholesteric pitch of $p=32$ in lattice units. 
+The simulations are
+performed at chirality $\kappa=2.6$ and reduced temperature $\tau=-0.25$.  
+An initial configuration of
 randomly oriented and positioned double twist cylinders is used,
 from which an amorphous BPIII network emerges \cite{oliver-bp3}. This structure
 is equilibrated for $6\times10^{5}$ LB time steps until no significant
-further evolution is observed. The colloidal particles, with weak
-normal anchoring, are then inserted with random chosen positions,
+further evolution is observed. 
+
+The colloidal particles with weak
+normal anchoring ($WR / K= 0.23$), are then inserted with randomly chosen positions,
 and the composite system is equilibrated for another $1.2\times10^{6}$
 time steps.
 At the end of the equilibration phase the uniform electric field
@@ -358,11 +363,11 @@ to a metastable state which shows a residual anisotropy in the
 colloidal distribution. The total length of this final relaxation phase
 is $1\times10^6$ LB time steps.
 
-\begin{table}
+\begin{table}[h]
 \begin{center}
 \begin{tabular}{|l|c|c|c|c|c|c|c|}
 \hline
-         & $A_0$ & $\gamma$ & $K$ & $p$ & $\kappa$ & $\tau$ & $Wa/K$\\
+         & $A_0$ & $\gamma$ & $K$ & $p$ & $\kappa$ & $\tau$ & $WR/K$\\
 \hline 
 Bulk BPI & 0.01 & 3.086 & 0.007061 & 32$\sqrt{2}$ & 0.6902 & -0.2500 &
 0.23, 2.3\\
@@ -449,7 +454,8 @@ Note that the density is set to unity in the simulations: this
 corresponds to a fluid density which is about a thousand times larger
 than in experiments. This makes no difference in practice as
 the Reynolds number $= \rho V\Lambda/\eta$ (where $V$ is a typical
-velocity, in our simulations around $10^{-5}$ in simulation units) 
+velocity, in our simulations around $10^{-5}$ in lattice units, 
+and $\Lambda$ is a typical length scale, e.g. the size of a unit cell) 
 remains small enough~\cite{codef}. 
 
 To summarize, the simulations represent BP-forming materials, with the
@@ -468,73 +474,57 @@ density being close to 10~nm, 10~ns, and 100~MPa respectively.
 D.C. Wright and N.D. Mermin,
 %  Crystalline liquids -- the blue phases.
 {\it Rev. Mod. Phys.} {\bf 61,} 385-432 (1989).
-
+\bibitem{deGennes}
+P.-G. de Gennes, J. Prost,
+{\it The Physics of Liquid Crystals} (Oxford Univ. Press, New York, 1993).
 %\bibitem{marendu1}
 %D. Marenduzzo, E.  Orlandini, M. E. Cates, J. M. Yeomans,
 %{\rm Steady-state hydrodynamic instabilities of active liquid crystals:
 %Hybrid lattice Boltzmann simulations.}
 %{\it Phys. Rev. E} {\bf 76}, 031921 (2007).
-
 %\bibitem{marendu2}
 %O. Henrich, D. Marenduzzo, K. Stratford, M. E. Cates, 
 %{\rm Domain growth in cholesteric blue phases:
 %hybrid lattice Boltzmann simulations}.
 %{\it Comput. Math. Appl.}, doi:10.1016/j.camwa.2009.08.047[dx.doi.org] (2009).
-
 %\bibitem{marendu3}
 %M. E. Cates, O. Henrich, D. Marenduzzo, K. Stratford,
 %{\rm  Lattice Boltzmann simulations of liquid crystalline fluids:
 %active gels and blue phases.}
 %{\it Soft Matter} {\bf 5}, 3791-3800 (2009).
-
 \bibitem{oliver1}
 O. Henrich, D. Marenduzzo, K. Stratford, and M.E. Cates,
 %Thermodynamics of blue phases in electric fields
 \textit{Phys. Rev. E}, \textbf{81} 031706 (2010).
-
 \bibitem{beris}
 A. N. Beris, B. J. Edwards, 
 {\it Thermodynamics of Flowing Systems with Internal Microstructure}
 (Oxford Univ. Press, New York, 1994).
-
-\bibitem{deGennes}
-P.-G. de Gennes, J. Prost,
-{\it The Physics of Liquid Crystals} (Oxford Univ. Press, New York, 1993).
-
 \bibitem{ladd94}
 A.J.C. Ladd,
 \textit{J. Fluid Mech.} \textbf{271}, 285 (1994); \textit{ibid.} \textbf{271}
 311 (1994).
-
 \bibitem{nguyen2002}
 N.-Q. Nguyen and A.J.C. Ladd,
 \textit{Phys. Rev. E} \textbf{66} 046708 (2002).
-
 \bibitem{juho}
 J.S. Lintuvuori, D. Marenduzzo, K. Stratford, and M.E. Cates,
 \textit{J. Mater. Chem.} \textbf{20}, 10547 (2010).
-
 \bibitem{denniston}
 C. Denniston, E. Orlandini, J. M. Yeomans, 
 \textit{Phys. Rev. E} \textbf{63}, 056702 (2001).
-
-\bibitem{denniston2}
-C. Denniston, D. Marenduzzo, E. Orlandini, J. M.  Yeomans, 
-\textit{Philos. Trans. R. Soc. London, Ser. A} \textbf{362}, 1745 (2004).
-
 \bibitem{fournier2005}
 J.-B. Fournier and P. Galatola,
 \textit{Europhys. Lett.} \textbf{72}, 403 (2005).
-
 \bibitem{oliver-bp3}
 O. Henrich, K. Stratford, M.~E. Cates, D. Marenduzzo,
 {\it Phys. Rev. Lett.} {\bf 106}, 107802 (2011).
-
-
+\bibitem{denniston2}
+C. Denniston, D. Marenduzzo, E. Orlandini, J. M.  Yeomans, 
+\textit{Philos. Trans. R. Soc. London, Ser. A} \textbf{362}, 1745 (2004).
 \bibitem{oliver2}
 O. Henrich, K. Stratford, D. Marenduzzo, M. E. Cates, 
 \textit{Proc. Acad. Sci. USA} \textbf{107}, 1312 (2010).
-
 \bibitem{codef} M. E. Cates,  et al., 
 \textit{J. Phys. Condens. Matter} \textbf{16},  3903 (2004). 
 
