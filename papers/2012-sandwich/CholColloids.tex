@@ -52,7 +52,7 @@ lead to geometric frustration because it is impossible to tile the whole 3D
 space with DTCs without also introducing disclination lines: singular topological defects on which the director field is undefined. In blue phases these disclination lines themselves either form a 3D periodic regular lattice (in so called BPI and BPII), or remain disordered (BPIII)~\cite{bp3}. 
 %
 BPs are stabilised by the tendency of chiral molecules to twist, but destabilised by the cost of forming topological defects (which locally diminish the molecular alignment). In conventional cholesteric materials~\cite{mermin} this balance is only achievable in a narrow temperature range of a few degrees, around the onset of liquid crystalline ordering. However, recent advances in formulation have widened this stability range enormously (up to 250K) paving the way to
-applications of BPs in display devices~\cite{kikuchi,coleswidetrange,bpdevice}.
+applications of BPs in display devices~\cite{kikuchi,bplasers,coleswidetrange,bpdevice,coles}.
 
 Besides being remarkable materials in themselves, BPs offer significant promise as hosts for dispersing colloidal particles. Because BPs contain a disclination network even in the absence of
 particles, they can potentially template colloidal self-assembly. 
@@ -64,7 +64,7 @@ A second compelling reason to study colloid-BP composites is that, even without 
 corresponding to different topologies of the defect network~\cite{adriano}, with a strong dependence on applied electric or magnetic fields~\cite{henrichfield}.
 % 
 Adding particles is likely to further enrich the free energy landscape, creating composites that might be promising candidates for bistable or multistable devices, in which energy is needed only to switch optical properties and not to maintain them. (This is the e-paper paradigm~\cite{epaper}, and can lead to huge energy savings.)
-To explore such metastability, and switching strategies between states, we require multi-unit-cell, time-dependent simulations. These go beyond previous studies of colloid-BP composites~\cite{miha} but follow comparable simulations of pure BPs~\cite{domaingrowth,bp3,henrichfield}, and isolated and dimeric colloids in cholesterics~\cite{juho1,juho2}. Our methodology and simulation parameters are summarized in the Supporting Information.
+To explore such metastability, and switching strategies between states, we require multi-unit-cell, time-dependent simulations. These go beyond previous studies of colloid-BP composites~\cite{miha} but follow comparable simulations of pure BPs~\cite{bp3,henrichfield,domaingrowth}, and isolated and dimeric colloids in cholesterics~\cite{juho1,juho2}. Our methodology and simulation parameters are summarized in the Supporting Information.
 
 We show in Fig.~1 A-D the final state structures of four simulations in which we first equilibrated a stable BPI disclination network in bulk (with periodic boundary conditions) and then dispersed colloidal particles within it. Among dimensionless control parameters are the colloid volume fraction $\phi$  ($\phi = 1\%$ or $5\%$); the ratio $r = R/\lambda$ of particle radius to the BP lattice parameter $\lambda$ (here $r\simeq 0.14$) and the ratio $w = WR/K$ where $W$ is the anchoring strength of the cholesteric at the particle surface, and $K$ is the elastic constant of the liquid crystal (defined such that $W>0$ gives preferential perpendicular orientation of the director field at the particle surface). For the latter we choose $w = 0.23, 2.3$ which are within typical experimental range~\cite{tiffany}. This parameter can be viewed as the ratio of the anchoring energy, $WR^2$, to the elastic energy scale for distortion $KR$. 
 
@@ -124,7 +124,7 @@ underlying fluid. On increasing the density they develop branch points and final
 
 An interesting question, relevant for applications to devices, is whether 
 these structures can be modified, or switched, with electric fields.
-Fig.~3 addresses this question, starting again from an amorphous blue phase,
+Fig.~3 addresses this question, starting from amorphous Blue Phase III,
 this time at a higher chirality. Dispersing colloids in this networks
 results in the particle occupying the available nodes, where the order
 parameter is low (Fig.~3A). Applying a high enough field along the $z$ 
@@ -152,7 +152,7 @@ appliances, smart glass, and e-paper to cite just a few examples.
 The surprising wealth of colloid-BP composites obtained in Figs.~1-3 is the complex consequence of a simple competition between two self-assembly principles. 
 First, blue phases provide a three-dimensional template onto which colloidal particles are attracted so as to reduce the elastic stresses arising at the disclination cores~\cite{miha}. Second, colloidal intrusions in a liquid crystal raise the free energy locally; sharing this cost creates a generic tendency to aggregate into clusters~\cite{tiffany}. Which of these factors dominates depends on $w$, a dimensionless measure of the anchoring strength of the director field at the colloidal surface. For $w\ll 1$, the templating principle dominates. Colloidal crystals, gels or twisted rings can then arise. For $w \gg 1$, interparticle attractions defeat the templating tendency, and we predict disconnected aggregates, percolating gels, or helical colloidal ropes. In both cases, control is offered by the process route, colloid concentration, and the anchoring conditions at sample walls. We have also shown that electric fields can be used to switch between metastable states, providing a route to future multistable energy-saving devices. 
 %This variety of metastable structures, with tunable properties that can combine the mechanical and optical features of colloids and liquid crystals~\cite{lavrentovich}, offers promise for the design of multistable liquid crystal devices, which are at the forefront of current technological developments in this field. 
-We have not explored in this work their switchability by flow, but this could again be inherited from the underlying BP dynamics \cite{permeation2,adriano}, in which case they may also be relevant to the emerging technology of optofluidics~\cite{optofluidics}.
+We have not explored in this work their switchability by flow \cite{flowswitch}, but this could again be inherited from the underlying BP dynamics \cite{adriano,permeation2}, in which case they may also be relevant to the emerging technology of optofluidics~\cite{optofluidics}.
 
 \begin{thebibliography}{99}
 \bibitem{stark} H. Stark. Physics of
@@ -168,8 +168,11 @@ blue phases. {\it Proc. Natl. Acad. Sci. USA} {\bf 108}, 5188-5192 (2011).
 \bibitem{epaper} J. Heikenfeld, P. Drzaic,  J.~S. Yeo, T. Koch.
 A critical review of the present and future prospects for electronic paper.
 {\it J. Soc. Inf. Display} {\bf 19}, 129-156 (2011).
+\bibitem{wiresmiha} M. Ravnik, M. Skarabot, S. Zumer, U. Tkalec, I. Poberaj, D. Babic, N. Osterman, I. Musevic.  Entangled nematic colloidal dimers and wires. 
+{\it Phys. Rev. Lett.} {\bf 99}, 247801 (2007).
 \bibitem{zumer} I. Musevic, M. Skarabot, U. Tkalec, M. Ravnik,
 S. Zumer. Two-dimensional nematic colloidal crystals self-assembled by topological defects. {\it Science} {\bf 313}, 954-958 (2006).
+\bibitem{tanaka} T. Araki, H. Tanaka.  Colloidal aggregation in a nematic liquid crystal: Topological arrest of particles by a single-stroke disclination line. {\it Phys. Rev. Lett.} {\bf 97}, 127801 (2006).
 \bibitem{tiffany} T.~A. Wood, J.~S. Lintuvuori, A.~B. Schofield, D. Marenduzzo,
 W.~C.~K. Poon. A Self-Quenched Defect Glass in a Colloid-Nematic Liquid Crystal Composite. {\it Science} {\bf 333}, 79-83 (2011).
 \bibitem{abbott} I.~H. Lin, D.~S. Miller, P.~J. Bertics, C.~J. Murphy, J.~J. de Pablo, N.~L. Abbott. Endotoxin-Induced Structural Transformations in Liquid Crystalline Droplet. {\it Science} {\bf 332}, 1297-1300 (2011).
@@ -183,18 +186,37 @@ crystal. {\it Nature} {\bf 467}, 947-950 (2010).
 %{\it Annu. Rev. Mater. Sci.} {\bf 27}, 117-146 (1997).
 %\bibitem{crooker} D. K. Yang and P. P. Crooker, {\it Phys. Rev. A}
 %{\bf 35}, 4419 (1987).
+\bibitem{bp3} O. Henrich, K. Stratford, M.~E. Cates, D. Marenduzzo.
+ Structure of Blue Phase III of Cholesteric Liquid Crystals.
+{\it Phys. Rev. Lett.} {\bf 106}, 107802 (2011).
 \bibitem{kikuchi} H. Kikuchi, M. Yokota, Y. Hisakado, H. Yang, T. Kajiyama.
 Polymer-stabilized liquid crystal blue phases.
 {\it Nat. Mat.} {\bf 1}, 64-68 (2002).
+\bibitem{bplasers} W. Y. Cao, A. Munoz, P. Palffy-Muhoray, B. Taheri.
+Lasing in a three-dimensional photonic crystal of the liquid crystal blue 
+phase II. {\it Nat. Mat.} {\bf 1}, 111-113 (2002).
 \bibitem{coleswidetrange} H.~J. Coles, M.~N. Pivnenko.
 Liquid crystal 'blue phases' with a wide temperature range.
 {\it Nature} {\bf 436}, 997-1000 (2005).
 \bibitem{bpdevice} Z.~B. Ge, S. Gauza, M.~Z. Jiao, H.~Q. Xianyu, S.~T. Wu.
  Electro-optics of polymer-stabilized blue phase liquid crystal displays.
 {\it Appl. Phys. Lett.} {\bf 94}, 101104 (2009).
-\bibitem{bplasers} W. Y. Cao, A. Munoz, P. Palffy-Muhoray, B. Taheri.
-Lasing in a three-dimensional photonic crystal of the liquid crystal blue 
-phase II. {\it Nat. Mat.} {\bf 1}, 111-113 (2002).
+\bibitem{coles} F. Castles, F.~V. Day, S.~M. Morris, D-H. Ko, D.~J. Gardiner, M.~M. Qasim, S. Nosheen, P.~J.~W. Hands, S.~S. Choi, R.~H. Friend, H.~J. Coles.
+Blue-phase templated fabrication of three-dimensional nanostructures for photonic applications. {\it Nat. Mat.} {\bf 11}, 599-603 (2012).
+\bibitem{adriano} A. Tiribocchi, G. Gonnella, D. Marenduzzo, E. Orlandini,
+F. Salvadore. Bistable Defect Structures In Blue Phase Devices. 
+ {\it Phys. Rev. Lett.} {\bf 107}, 237803 (2011).
+\bibitem{henrichfield}  O. Henrich, D. Marenduzzo, K. Stratford, 
+M. E. Cates. Thermodynamics of blue phases in electric fields.
+{\it Phys. Rev. E} {\bf 81}, 031706 (2010).
+\bibitem{domaingrowth} O. Henrich, K. Stratford, D. Marenduzzo, M.~E. Cates.
+ Ordering dynamics of blue phases entails kinetic stabilization of amorphous networks. {\it Proc. Natl. Acad. Sci. USA} {\bf 107}, 13212-13215 (2010).
+\bibitem{juho1} J. S. Lintuvuori, K. Stratford, M. E. Cates,
+D. Marenduzzo.   Colloids in Cholesterics: Size-Dependent Defects and Non-Stokesian Microrheology. {\it Phys. Rev. Lett.} {\bf 105}, 178302 (2010).
+\bibitem{juho2}  J. S. Lintuvuori, K. Stratford, M. E. Cates,
+D. Marenduzzo. 
+Self-Assembly and Nonlinear Dynamics of Dimeric Colloidal Rotors in 
+Cholesterics. {\it Phys. Rev. Lett.} {\bf 107}, 267802 (2011).
 \bibitem{permeation1} 	W. Helfrich. Capillary flow of cholesteric
 and smectic liquid crystals. {\it Phys. Rev. Lett.} {\bf 23}, 372-374 (1969).
 \bibitem{permeation2} A. Dupuis, D. Marenduzzo, E. Orlandini, J.~M. Yeomans.
@@ -202,37 +224,16 @@ Rheology of cholesteric blue phases. {\it Phys. Rev. Lett.} {\bf 95},
 097801 (2005).
 \bibitem{lubensky} M. Zapotocky, L. Ramos, P. Poulin, T.~C. Lubensky, 
 D.~A. Weitz.Particle-stabilized defect gel in cholesteric liquid crystals.  {\it Science} {\bf 283}, 209-212 (1999).
-\bibitem{coles} F. Castles, F.~V. Day, S.~M. Morris, D-H. Ko, D.~J. Gardiner, M.~M. Qasim, S. Nosheen, P.~J.~W. Hands, S.~S. Choi, R.~H. Friend, H.~J. Coles.
-Blue-phase templated fabrication of three-dimensional nanostructures for photonic applications. {\it Nat. Mat.} {\bf 11}, 599-603 (2012).
-\bibitem{domaingrowth} O. Henrich, K. Stratford, D. Marenduzzo, M.~E. Cates.
- Ordering dynamics of blue phases entails kinetic stabilization of amorphous networks. {\it Proc. Natl. Acad. Sci. USA} {\bf 107}, 13212-13215 (2010).
-\bibitem{bp3} O. Henrich, K. Stratford, M.~E. Cates, D. Marenduzzo.
- Structure of Blue Phase III of Cholesteric Liquid Crystals.
-{\it Phys. Rev. Lett.} {\bf 106}, 107802 (2011).
-\bibitem{wiresmiha} M. Ravnik, M. Skarabot, S. Zumer, U. Tkalec, I. Poberaj, D. Babic, N. Osterman, I. Musevic.  Entangled nematic colloidal dimers and wires. 
-{\it Phys. Rev. Lett.} {\bf 99}, 247801 (2007).
-\bibitem{tanaka} T. Araki, H. Tanaka.  Colloidal aggregation in a nematic liquid crystal: Topological arrest of particles by a single-stroke disclination line. {\it Phys. Rev. Lett.} {\bf 97}, 127801 (2006).
-\bibitem{tanakanatmat} T. Araki, M. Buscaglia, T. Bellini, H. Tanaka.
-Memory and topological frustration in nematic liquid crystals confined in porous materials. {\it Nat. Mat.} {\bf 10}, 303-309 (2011).
-\bibitem{adriano} A. Tiribocchi, G. Gonnella, D. Marenduzzo, E. Orlandini,
-F. Salvadore. Bistable Defect Structures In Blue Phase Devices. 
- {\it Phys. Rev. Lett.} {\bf 107}, 237803 (2011).
-\bibitem{fukuda} J.-I. Fukuda, S. Zumer.
-Quasi-two-dimensional Skyrmion lattices in a chiral nematic liquid crystal. 
-{\it Nat. Comm.} {\bf 2}, 246 (2011).
+%\bibitem{tanakanatmat} T. Araki, M. Buscaglia, T. Bellini, H. Tanaka.
+%Memory and topological frustration in nematic liquid crystals confined in porous materials. {\it Nat. Mat.} {\bf 10}, 303-309 (2011).
+%\bibitem{fukuda} J.-I. Fukuda, S. Zumer.
+%Quasi-two-dimensional Skyrmion lattices in a chiral nematic liquid crystal. 
+%{\it Nat. Comm.} {\bf 2}, 246 (2011).
 \bibitem{niek} N. Hijnen, T. A. Wood, D. Wilson, P. S. Clegg, 
 Self-Organization of Particles with Planar Surface Anchoring in a Cholesteric
  Liquid Crystal. {\it Langmuir} {\bf 26}, 13502-13510 (2010).
-\bibitem{henrichfield}  O. Henrich, D. Marenduzzo, K. Stratford, 
-M. E. Cates. Thermodynamics of blue phases in electric fields.
-{\it Phys. Rev. E} {\bf 81}, 031706 (2010).
-\bibitem{juho1} J. S. Lintuvuori, K. Stratford, M. E. Cates,
-D. Marenduzzo.   Colloids in Cholesterics: Size-Dependent Defects and Non-Stokesian Microrheology. {\it Phys. Rev. Lett.} {\bf 105}, 178302 (2010).
-\bibitem{juho2}  J. S. Lintuvuori, K. Stratford, M. E. Cates,
-D. Marenduzzo. 
-Self-Assembly and Nonlinear Dynamics of Dimeric Colloidal Rotors in 
-Cholesterics. {\it Phys. Rev. Lett.} {\bf 107}, 267802 (2011).
-%\bibitem{flowswitch} Davide et al on flow reorganization of BPs
+\bibitem{flowswitch} O. Henrich, K. Stratford, P.V. Coveney, M.E. Cates, D. Marenduzzo,
+Rheology of cubic blue phases. {\it Soft Matter} (2013), DOI: 10.1039/C3SM50228G 
 \bibitem{optofluidics} D. Psaltis, S. R. Quake, C. Yang, Developing optofluidic technology through the fusion of microfluidics and optics {\it Nature} {\bf 442}, 381-386 (2006).
 
 \end{thebibliography}
@@ -275,7 +276,7 @@ the full structures are shown in Fig. S5 and S6.}
 
 \begin{figure}
 \centerline{\includegraphics[width=\textwidth]{text-fig3.jpg}}
-\caption{Snapshots of the steady states obtained when a dispersion of colloids in the isotropic phase, then quenched into a regime where BPIII is stable in the bulk (A), and finally subjected to an electric field along the vertical direction (B). The electric field leads to the formation of a honeycomb structure with hexagonal ordering perpendicular to the field direction. 
+\caption{Snapshots of the steady states obtained when a dispersion of colloids is inserted into a thermodynamically stable bulk-BPIII (A), and finally subjected to an electric field along the vertical direction (B). The electric field leads to the formation of a honeycomb structure with hexagonal ordering perpendicular to the field direction. 
 Structures correspond to $w=0.23$ and $\phi=1\%$ (see Supporting Information
 for full list of parameters). }
 \end{figure}
