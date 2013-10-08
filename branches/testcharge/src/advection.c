@@ -552,7 +552,7 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
 	
-	for (n = 0; n < n; n++) {
+	for (n = 0; n < nf; n++) {
 	  flux->fw[nf*index0 + n] =
 	    u*(- a1*f[nf*le_site_index(icm2, jc, kc) + n]
 	       + a2*f[nf*index1 + n]
