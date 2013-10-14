@@ -48,3 +48,5 @@ testc:	mpi_tests.c $(LIBNAME) Makefile
 libcpp:	mpi_serial.c Makefile
 	$(CXX) $(INCLUDE) $(CXXFLAGS) -c mpi_serial.cpp
 	$(AR) $(LIBNAME) mpi_serial.o
+clean:
+	rm -rf mpi_serial.o libmpi.a a.out
