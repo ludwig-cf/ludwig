@@ -396,6 +396,26 @@ largest eigenvalue of the local order parameter tensor. A low value
 of the scalar order parameter $q$ (typically in the range 0.12--0.14)
 unambiguously identifies the disclinations.
 
+{\bf 4.4 Computation of the structure factor}
+
+In order to demonstrate structural information about the field-aligned 
+states and the residual anisotropy after switch off we followed a 
+procedure similar to the one described in \cite{oliver-bp3}.
+The structure factor in the current approach is defined via
+the Fourier transform of the colloid density:
+
+\begin{eqnarray}
+S({\bf k})&=&|F({\bf k})|^2\\
+F({\bf k})&=&\int_V d{\bf r} \rho({\bf r}) e^{i {\bf k r}}
+\end{eqnarray}
+
+The colloid density $\rho({\bf r})$ is a discretised density and taken to be
+$\rho({\bf r})=1$ if a lattice site at ${\bf r}$ is part of a colloid
+and $\rho({\bf r})=0$ otherwise. This definition, which deviates from the 
+standard definition of a structure factor and does not consider the colloids 
+as pointlike objects, allows to gain the same structural information
+in a simpler way.
+
 {\bf 5. Parameter mapping to physical units}
 
 To get from simulation to physical units, a calibration of scales of
@@ -645,12 +665,12 @@ when switched on (panel B) is into the plane of the paper and along z.}
 \includegraphics[width=0.24\columnwidth]{support-fig8c.png}
 \includegraphics[width=0.24\columnwidth]{support-fig8d.png}
 \end{center}
-\caption{Particle distribution for switched electric field direction: 
-The field is now oriented along x (it was oriented along z in Fig.7 and Fig.3 main article). 
-The leftmost panel shows the configuration with the disclination lines removed 
-for clarity. The centre left picture shows the Fourier transform of the colloids for   
-wavevectors $k_y, k_z\in [-3\pi/8,3\pi/8]$. The centre right panels depicts the residual 
-anisotropy after switch off.}
+\caption{Particle distribution during and after switched electric field direction: 
+The above images show the ordering with the electric field along the x-direction 
+after a previous run that had the field along z. For clarity disclination lines have
+been removed. The left panels show the configuration and the structure factor 
+while the field is on, whereas the righ panels show the same quantities after 
+switch-off. The structure factor data shows wave vectors $k_y, k_z \in [-3\pi/8 , 3\pi/8]$.}
 \end{figure}
 
 %\newpage
