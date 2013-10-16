@@ -1,0 +1,128 @@
+Welcome to Ludwig (Serial version running on 1 process)
+
+The SVN revision details are: 2179M
+Note assertions via standard C assert() are on.
+
+Read 130 user parameters from ../tests/regression/serial-elec-gc1.inp
+
+System details
+--------------
+System size:    64 4 4
+Decomposition:  1 1 1
+Local domain:   64 4 4
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Electrokinetics (single fluid) selected
+
+Parameters:
+Electrokinetic species:     2
+Boltzmann factor:           3.0000000e+04 (T =  3.3333333e-05)
+Unit charge:                1.0000000e+00
+Reference permeativity:     3.3000000e+03
+Bjerrum length:             7.2343156e-01
+Valency species 0:          1
+Diffusivity species 0:      1.0000000e-02
+Valency species 1:         -1
+Diffusivity species 1:      1.0000000e-02
+Relative tolerance (SOR):   1.1920929e-07
+Absolute Tolerance (SOR):   1.1920929e-09
+I/O decomposition:          1 1 1
+I/O format:                 BINARY
+Force calculation:          psi grad mu method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   3.33333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        reduced
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Initial charge densities
+------------------------
+Initial conditions:         Gouy Chapman
+Initial condition rho_el:   1.0000000e-03
+Initial condition sigma:    3.1250000e-02
+Porous media boundary links allocated:  160
+Arranging initial charge neutrality.
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]         992.00  1.00000000000-2.2204460e-16  1.00000000000 1.00000000000
+[psi]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[rho]  1.9920000e+00  1.0000000e-03  3.1250000e-02
+[rho]  1.9920000e+00  0.0000000e+00  2.0080645e-03
+[elc] -1.2878587e-14 -1.0080645e-03  3.1250000e-02
+
+Momentum - x y z
+[total   ]  1.3766766e-14  0.0000000e+00  0.0000000e+00
+[fluid   ]  1.3766766e-14  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]         992.00  1.00000000000 1.4765966e-14  0.99999988100 1.00000032304
+[psi]  3.6580764e-14 -4.0248702e-05  8.1507272e-05
+[rho]  1.9920000e+00  4.5245968e-04  3.1250000e-02
+[rho]  1.9920000e+00  0.0000000e+00  3.8175240e-03
+[elc] -5.5511151e-16 -3.3650643e-03  3.1250000e-02
+
+Free energy density - timestep total fluid
+[fed]           1000 -8.3267244555e-07 -7.5055681141e-07
+
+Momentum - x y z
+[total   ] -4.8006044e-13  2.2204460e-16  0.0000000e+00
+[fluid   ] -4.8006044e-13  2.2204460e-16  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.5126443e-08 -6.9388947e-18  0.0000000e+00
+[maximum ]  3.5126441e-08  6.9388947e-18  1.1754944e-38
+
+Completed cycle 1000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     19.860     19.860     19.860  19.860000 (1 call)
+      Time step loop:      0.010      0.030     19.860   0.019860 (1000 calls)
+         Propagation:      0.000      0.010      0.060   0.000060 (1000 calls)
+           Collision:      0.000      0.010      1.790   0.001790 (1000 calls)
+       Lattice halos:      0.000      0.010      0.010   0.000010 (1000 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
+                 BBL:      0.000      0.010      0.010   0.000010 (1000 calls)
+   Force calculation:      0.000      0.010      0.060   0.000030 (2000 calls)
+Ludwig finished normally.
