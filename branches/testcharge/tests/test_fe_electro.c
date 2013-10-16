@@ -197,7 +197,7 @@ int do_test2(void) {
 static int do_test3(void) {
 
   int nk = 2;
-  int index = 1;
+  int index;
   int ia, ib;
   psi_t * psi = NULL;
 
@@ -213,8 +213,10 @@ static int do_test3(void) {
   psi_epsilon_set(psi, epsilon);
   fe_electro_create(psi);
 
-  /* No external field, no potential */
+  /* No external field, no potential; note index must allow for a
+   * spatial gradient */
 
+  index = coords_index(1, 1, 1);
   fe_electro_stress(index, s);
 
   for (ia = 0; ia < 3; ia++) {
