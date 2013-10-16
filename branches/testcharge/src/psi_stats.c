@@ -65,7 +65,7 @@ int psi_stats_info(psi_t * obj) {
     info("[rho] %14.7e %14.7e %14.7e\n", rho_tot[1+n], rho_min[1+n], rho_max[1+n]);
   }
   info("[elc] %14.7e %14.7e %14.7e\n",  rho_tot[1+nk], rho_min[1+nk], rho_max[1+nk]);
-  info("[psi_zeta] %14.7e\n",  psi_zeta);
+  if (colloid_ntotal() == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
 
   free(rho_tot);
   free(rho_max);

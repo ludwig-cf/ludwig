@@ -290,6 +290,9 @@ static int psi_colloid_charge_accum(psi_t * psi,
  *
  *  psi_colloid_zetapotential
  *
+ *  Compute zeta potential, intended for cases where a single
+ *  colloid is present.
+ *
  *****************************************************************************/
 
 int psi_colloid_zetapotential(psi_t * obj, double * psi_zeta) {
@@ -311,6 +314,11 @@ int psi_colloid_zetapotential(psi_t * obj, double * psi_zeta) {
 
   assert(obj);
   coords_nlocal(nlocal);
+
+  /* Set result to zero and escape if there is not one particle. */
+
+  *psi_zeta = 0.0;
+  if (colloid_ntotal() != 1) return 0;
 
   nsl_local = 0;
   nsl_total = 0;
@@ -395,7 +403,7 @@ int psi_colloid_zetapotential(psi_t * obj, double * psi_zeta) {
   MPI_Reduce(&nsl_local, &nsl_total, 1, MPI_INT, MPI_SUM, 0, comm);
   MPI_Reduce(&psic_local, &psic_total, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-  if (cart_rank() == 0) psi_zeta[0] = psic_total/nsl_total;
+  if (nsl_total > 0) psi_zeta[0] = psic_total/nsl_total;
 
   return 0;
 }
