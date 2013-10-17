@@ -1,6 +1,6 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 2179M
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
 Read 132 user parameters from ../tests/regression/serial-elec-eo1.inp
@@ -91,7 +91,7 @@ Arranging initial charge neutrality.
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]         248.00  1.00000000000-2.2204460e-16  1.00000000000 1.00000000000
+[rho]         248.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
 [psi]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [rho]  1.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  1.0000000e-01  0.0000000e+00  4.0322581e-04
@@ -129,12 +129,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      6.990      6.990      6.990   6.990000 (1 call)
-      Time step loop:      0.000      0.010      6.990   0.006990 (1000 calls)
-         Propagation:      0.000      0.000      0.000   0.000000 (1000 calls)
-           Collision:      0.000      0.010      0.560   0.000560 (1000 calls)
+               Total:      6.960      6.960      6.960   6.960000 (1 call)
+      Time step loop:      0.000      0.010      6.960   0.006960 (1000 calls)
+         Propagation:      0.000      0.010      0.010   0.000010 (1000 calls)
+           Collision:      0.000      0.010      0.450   0.000450 (1000 calls)
        Lattice halos:      0.000      0.010      0.010   0.000010 (1000 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
                  BBL:      0.000      0.010      0.010   0.000010 (1000 calls)
-   Force calculation:      0.000      0.010      0.040   0.000020 (2000 calls)
+   Force calculation:      0.000      0.010      0.020   0.000010 (2000 calls)
 Ludwig finished normally.

@@ -1,9 +1,9 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 2185:2186M
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 93 user parameters from ../tests/regression/serial-auto-c01.inp
+Read 43 user parameters from ../tests/regression/serial-auto-c01.inp
 
 No free energy selected
 
@@ -98,14 +98,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     11.507     11.507     11.507  11.507038 (1 call)
-      Time step loop:      0.279      0.292     11.324   0.283108 (40 calls)
-         Propagation:      0.019      0.021      0.793   0.019822 (40 calls)
-           Collision:      0.248      0.261     10.087   0.252168 (40 calls)
-       Lattice halos:      0.001      0.002      0.116   0.001449 (80 calls)
-       phi gradients:      0.000      0.000      0.000   0.000001 (40 calls)
-             Rebuild:      0.005      0.006      0.228   0.005695 (40 calls)
-                 BBL:      0.000      0.000      0.007   0.000181 (40 calls)
-      Particle halos:      0.000      0.000      0.001   0.000030 (40 calls)
-   Force calculation:      0.000      0.000      0.000   0.000001 (40 calls)
+               Total:     20.510     20.510     20.510  20.510000 (1 call)
+      Time step loop:      0.500      0.520     20.360   0.509000 (40 calls)
+         Propagation:      0.020      0.030      1.030   0.025750 (40 calls)
+           Collision:      0.460      0.480     18.790   0.469750 (40 calls)
+       Lattice halos:      0.000      0.010      0.150   0.001875 (80 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (40 calls)
+             Rebuild:      0.000      0.010      0.280   0.007000 (40 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (40 calls)
+      Particle halos:      0.000      0.000      0.000   0.000000 (40 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (40 calls)
 Ludwig finished normally.
