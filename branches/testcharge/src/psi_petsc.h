@@ -1,3 +1,4 @@
+#ifdef PETSC
 /*****************************************************************************
  *
  *  psi_petsc.h
@@ -25,3 +26,5 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon);
 int psi_petsc_poisson(psi_t * obj);
 
 #endif
+#endif
+

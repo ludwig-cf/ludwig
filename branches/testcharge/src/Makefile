@@ -32,8 +32,6 @@
 # MPICC     C compiler (make mpi)
 # LDFLAGS   Link time flags [-lm included by default]
 #
-# PETSc library is enabled by setting PETSC = no_empty_value
-#
 # $Id$
 #
 # Edinburgh Soft Matter and Statistical Physics Group and
@@ -58,12 +56,22 @@ LIBS = -lm
 AR = ar
 ARFLAGS = -cru
 
+###############################################################################
+#
+# Compilation with PETSc is enabled by setting 'PETSC = some_non_empty_value'.
+#
+# For explicit libraries and includes the correct paths are obtained with
+# 'make getincludedirs' and 'make getlinklibs' in $PETSC_DIR.
+#
+###############################################################################
+
 PETSC = 
 ifdef PETSC
 OPTS += -DPETSC
 INC  += -I/Users/ohenrich/petsc-3.4.2/include -I/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/include -I/opt/X11/include -I/usr/local/include
 LIBS += -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -L/opt/X11/lib -lX11 -lpthread -L/usr/local/lib -L/usr/llvm-gcc-4.2/lib/gcc/i686-apple-darwin11/4.2.1/x86_64 -L/usr/llvm-gcc-4.2/lib/gcc/i686-apple-darwin11/4.2.1 -L/usr/llvm-gcc-4.2/lib/gcc -L/usr/llvm-gcc-4.2/lib -lmpi_cxx -lstdc++ -ldl -lmpi -lopen-rte -lopen-pal -lutil -lSystem -ldl
 endif 
+###############################################################################
 
 ###############################################################################
 #
