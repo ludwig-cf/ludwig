@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  psi_sor.h
+ *  psi_petsc.h
  *
  *  $Id$
  *
@@ -10,19 +10,18 @@
  *  (c) 2012-2013 The University of Edinburgh
  *
  *  Contributing Authors:
+ *    Oliver Henrich (ohenrich@epcc.ed.ac.uk)
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    Ignacio Pagonabarraga (ipagonabarraga@ub.edu)
  *
  *****************************************************************************/
 
-#ifndef PSI_SOR_H
-#define PSI_SOR_H
+#ifndef PSI_PETSC_H
+#define PSI_PETSC_H
 
 #include "psi.h"
 
-int psi_sor_poisson(psi_t * obj);
-int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon);
-int psi_sor_solve(psi_t * obj, f_vare_t fepsilon);
-int psi_sor_offset(psi_t * obj);
+int psi_petsc_init(psi_t * obj);
+int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon);
+int psi_petsc_poisson(psi_t * obj);
 
 #endif

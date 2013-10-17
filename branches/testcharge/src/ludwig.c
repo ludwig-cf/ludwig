@@ -95,6 +95,7 @@
 #include "psi_force.h"
 #include "psi_colloid.h"
 #include "nernst_planck.h"
+#include "psi_petsc.h"
 
 /* Statistics */
 #include "stats_colloid.h"
@@ -1094,6 +1095,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     info("Force calculation:          %s\n",
          (p == 0) ? "psi grad mu method" : "Divergence method");
+
+#ifdef PETSC
+    psi_petsc_init(ludwig->psi);
+#endif
 
     /* Free energy object */
 

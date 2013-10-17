@@ -32,6 +32,8 @@
 # MPICC     C compiler (make mpi)
 # LDFLAGS   Link time flags [-lm included by default]
 #
+# PETSc library is enabled by setting PETSC = no_empty_value
+#
 # $Id$
 #
 # Edinburgh Soft Matter and Statistical Physics Group and
@@ -51,11 +53,17 @@ MPICC = mpicc
 OPTS = -D_D3Q19_ 
 CFLAGS = -Wall -O3
 
-
 INC = -I.
 LIBS = -lm
 AR = ar
 ARFLAGS = -cru
+
+PETSC = 
+ifdef PETSC
+OPTS += -DPETSC
+INC  += -I/Users/ohenrich/petsc-3.4.2/include -I/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/include -I/opt/X11/include -I/usr/local/include
+LIBS += -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -L/opt/X11/lib -lX11 -lpthread -L/usr/local/lib -L/usr/llvm-gcc-4.2/lib/gcc/i686-apple-darwin11/4.2.1/x86_64 -L/usr/llvm-gcc-4.2/lib/gcc/i686-apple-darwin11/4.2.1 -L/usr/llvm-gcc-4.2/lib/gcc -L/usr/llvm-gcc-4.2/lib -lmpi_cxx -lstdc++ -ldl -lmpi -lopen-rte -lopen-pal -lutil -lSystem -ldl
+endif 
 
 ###############################################################################
 #
@@ -89,7 +97,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      phi_lb_coupler.o phi_stats.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
-     psi_force.o psi_colloid.o nernst_planck.o \
+     psi_force.o psi_colloid.o nernst_planck.o psi_petsc.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o subgrid.o \
