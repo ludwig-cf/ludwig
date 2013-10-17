@@ -87,12 +87,15 @@ int stats_distribution_print(map_t * map) {
   /* Compute mean density, and the variance, and print. We
    * assume the fluid volume (stat_total[0]) is not zero... */ 
 
+  /* In a uniform state the variance can be a truncation error
+   * below zero, hence fabs(rhovar) */
+
   rhomean = stat_total[1]/stat_total[0];
   rhovar  = (stat_total[2]/stat_total[0]) - rhomean*rhomean;
 
   info("\nScalars - total mean variance min max\n");
   info("[rho] %14.2f %14.11f%14.7e %14.11f%14.11f\n",
-       stat_total[1], rhomean, rhovar, stat_total[3], stat_total[4]); 
+       stat_total[1], rhomean, fabs(rhovar), stat_total[3], stat_total[4]); 
 
   return 0;
 }
