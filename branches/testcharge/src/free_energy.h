@@ -33,5 +33,6 @@ int    fe_mu_solv_set(f_mu_solv_t function);
 int    fe_mu_solv(int index, int n, double * mu);
 double fe_kappa(void);
 void   fe_kappa_set(const double kappa);
+int    fe_set(void);
 
 #endif

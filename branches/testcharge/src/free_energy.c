@@ -34,6 +34,7 @@
 #include "free_energy.h"
 
 
+static int set_ = 0;
 static double fe_fed_null(const int index);
 static double fe_mu_null(const int index, const int nop);
 static double fe_iso_null(const int index);
@@ -50,9 +51,23 @@ static double kappa_ = 1.0;
 
 /****************************************************************************
  *
+ *  fe_set
+ *
+ *  Return 0 if there is no free energy
+ *
+ ****************************************************************************/
+
+int fe_set(void) {
+
+  return set_;
+}
+
+/****************************************************************************
+ *
  *  fe_density_set
  *
  *  Set the function pointer for the required free_energy density.
+ *  Sets the 'set' flag' to say there is a free energy.
  *
  ****************************************************************************/
 
@@ -60,6 +75,7 @@ void fe_density_set(double (* f)(const int)) {
 
   assert(f);
   fp_fed = f;
+  set_ = 1;
   return;
 }
 

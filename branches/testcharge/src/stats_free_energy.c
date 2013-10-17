@@ -62,6 +62,8 @@ int stats_free_energy_density(field_t * q, map_t * map) {
 
   assert(map);
 
+  if (fe_set() == 0) return 0;
+
   coords_nlocal(nlocal);
   free_energy_density = fe_density_function();
 
