@@ -1,0 +1,128 @@
+Welcome to Ludwig (Serial version running on 1 process)
+
+The SVN revision details are: 2191M
+Note assertions via standard C assert() are on.
+
+Read 21 user parameters from serial-spin-fd2.inp
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       0 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-03
+Bulk parameter B      =  6.25000e-03
+Surface penalty kappa =  4.00000e-03
+Surface tension       =  4.71405e-03
+Interfacial width     =  1.13137e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  1.25000e+00
+Order parameter noise = off
+Force calculation:      divergence method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               6.25000e-03
+Bulk viscosity                6.25000e-03
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    5.18750e-01
+Bulk relaxation time:     5.18750e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Advection scheme order: 1
+
+Boundary walls
+--------------
+Boundary walls:                  X - -
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   40960
+Memory (total, bytes):           1310720
+Boundary shear initialise:       0
+Gradient calcaulation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[phi] -2.2902996e+01 -8.7367996e-05 8.3184864e-04 -4.9998611e-02 4.9999983e-02
+
+Momentum - x y z
+[total   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000 1.5593971e-11  0.99998089307 1.00001606006
+[phi] -2.2902996e+01 -8.7367996e-05 3.8719420e-04 -5.2003060e-02 4.9812647e-02
+
+Free energies - timestep f v f/v f_s1 fs_s2 
+[fe]             10 -2.6053627248e-01  2.6214400000e+05 -9.9386700621e-07  0.0000000000e+00  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  3.6228469e-12  1.1523307e-15  2.1304439e-14
+[fluid   ] -5.7992552e-04  9.1069307e-05  7.4167136e-06
+[walls   ]  5.7992552e-04 -9.1069307e-05 -7.4167135e-06
+
+Velocity - x y z
+[minimum ] -1.2413799e-05 -1.2523657e-05 -1.2979063e-05
+[maximum ]  1.3394729e-05  1.3548677e-05  1.4129507e-05
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      6.059      6.059      6.059   6.058845 (1 call)
+      Time step loop:      0.569      0.589      5.796   0.579575 (10 calls)
+         Propagation:      0.019      0.021      0.206   0.020607 (10 calls)
+           Collision:      0.149      0.156      1.522   0.152227 (10 calls)
+       Lattice halos:      0.001      0.002      0.013   0.001268 (10 calls)
+       phi gradients:      0.201      0.208      2.041   0.204128 (10 calls)
+                 BBL:      0.002      0.002      0.019   0.001938 (10 calls)
+   Force calculation:      0.094      0.105      0.962   0.096249 (10 calls)
+Ludwig finished normally.
