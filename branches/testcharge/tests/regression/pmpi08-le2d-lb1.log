@@ -1,0 +1,121 @@
+Welcome to Ludwig (MPI version running on 8 processes)
+
+The SVN revision details are: 
+Note assertions via standard C assert() are on.
+
+Read 24 user parameters from ../tests/regression/pmpi08-le2d-lb1.inp
+
+System details
+--------------
+System size:    64 64 1
+Decomposition:  2 4 1
+Local domain:   32 16 1
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Lees-Edwards boundary conditions are active:
+LE plane 1 is at x = 16 with speed 0.050000
+LE plane 2 is at x = 48 with speed 0.050000
+Overall shear rate = 0.001563
+
+Lees-Edwards time offset (time steps):        0
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  4.50000e-01
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Initialising shear profile
+Gradient calcaulation: 3d_27pt_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000 0.0000000e+00  1.00000000000 1.00000000000
+[phi] -2.7646190e+00 -6.7495581e-04 8.2924942e-04 -4.9948973e-02 4.9996627e-02
+
+Momentum - x y z
+[total   ]  1.5099033e-14 -1.5543122e-14  0.0000000e+00
+[fluid   ]  1.5099033e-14 -1.5543122e-14  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000 1.2334937e-04  0.97365618163 1.06278121357
+[phi] -2.7646190e+00 -6.7495581e-04 7.4601419e-01 -1.0237806e+00 1.0159345e+00
+
+Free energy density - timestep total fluid
+[fed]           2600 -1.1263877564e-02 -1.1263877564e-02
+
+Momentum - x y z
+[total   ] -2.2248869e-13 -2.8446638e-01  0.0000000e+00
+[fluid   ] -2.2248869e-13 -2.8446638e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.7524987e-02 -6.5363293e-02  0.0000000e+00
+[maximum ]  5.9392185e-02  7.5097960e-02  1.1754944e-38
+
+Completed cycle 2600
+
+Timer resolution: 0.001 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      3.527      3.527      3.527   3.526591 (1 call)
+      Time step loop:      0.001      0.002      3.505   0.001348 (2600 calls)
+         Propagation:      0.000      0.000      0.122   0.000047 (2600 calls)
+           Collision:      0.001      0.001      1.703   0.000655 (2600 calls)
+       Lattice halos:      0.000      0.001      0.801   0.000308 (2600 calls)
+       phi gradients:      0.000      0.001      0.634   0.000244 (2600 calls)
+     Lees Edwards BC:      0.000      0.001      0.225   0.000086 (2600 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (2600 calls)
+Ludwig finished normally.

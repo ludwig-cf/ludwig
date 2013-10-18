@@ -1,0 +1,115 @@
+Welcome to Ludwig (MPI version running on 8 processes)
+
+The SVN revision details are: 
+Note assertions via standard C assert() are on.
+
+Read 43 user parameters from ../tests/regression/pmpi08-auto-c02.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  2 2 2
+Local domain:   32 32 32
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  on
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Colloid I/O settings
+--------------------
+Decomposition:   1  1  1
+Input format:  binary
+Output format: binary
+
+Requested   1 colloid from input
+Initialised 1 colloid
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      262087.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+
+Momentum - x y z
+[total   ]  2.2158700e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6371878e-12  0.0000000e+00  0.0000000e+00
+[colloids]  2.2158700e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ]  1.3675763e-03 -5.6482729e-04  5.1186310e-04
+[maximum ]  1.3675763e-03 -5.6482729e-04  5.1186310e-04
+
+Scalars - total mean variance min max
+[rho]      262091.00  1.00000000000 6.3519338e-05  0.96361208587 1.03533858441
+
+Momentum - x y z
+[total   ]  2.2158700e+00  1.7273726e-14  4.0794625e-14
+[fluid   ]  2.1321758e+00  1.3760202e-03 -3.8498072e-03
+[colloids]  8.3694239e-02 -1.3760202e-03  3.8498072e-03
+
+Velocity - x y z
+[minimum ] -2.2651159e-02 -2.0201971e-02 -2.2199155e-02
+[maximum ]  2.2262575e-02  2.0391258e-02  2.4334011e-02
+
+Isothermal fluctuations
+[eqipart.]  2.1335610e-05  2.1257847e-05  2.1371772e-05
+[measd/kT]  6.3965230e-05  6.3999990e-05
+
+Completed cycle 40
+
+Timer resolution: 0.001 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      2.871      2.871      2.871   2.871440 (1 call)
+      Time step loop:      0.070      0.079      2.823   0.070586 (40 calls)
+         Propagation:      0.002      0.004      0.097   0.002424 (40 calls)
+           Collision:      0.062      0.067      2.484   0.062090 (40 calls)
+       Lattice halos:      0.001      0.007      0.148   0.001856 (80 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (40 calls)
+             Rebuild:      0.001      0.001      0.038   0.000959 (40 calls)
+                 BBL:      0.000      0.000      0.009   0.000217 (40 calls)
+      Particle halos:      0.000      0.002      0.032   0.000810 (40 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (40 calls)
+Ludwig finished normally.

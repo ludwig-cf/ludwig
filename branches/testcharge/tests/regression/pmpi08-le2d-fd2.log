@@ -1,0 +1,124 @@
+Welcome to Ludwig (MPI version running on 8 processes)
+
+The SVN revision details are: 
+Note assertions via standard C assert() are on.
+
+Read 27 user parameters from ../tests/regression/pmpi08-le2d-fd2.inp
+
+System details
+--------------
+System size:    64 64 1
+Decomposition:  2 4 1
+Local domain:   32 16 1
+Periodic:       1 1 1
+Halo nhalo:     3
+Reorder:        true
+Initialised:    1
+
+Lees-Edwards boundary conditions are active:
+LE plane 1 is at x = 16 with speed 0.006400
+LE plane 2 is at x = 48 with speed 0.006400
+Overall shear rate = 0.000200
+
+Lees-Edwards time offset (time steps):        0
+
+Free energy details
+-------------------
+
+Brazovskii free energy selected.
+
+Brazovskii free energy parameters:
+Bulk parameter A      = -5.00000e-04
+Bulk parameter B      =  5.00000e-04
+Ext. parameter C      =  7.60000e-04
+Surface penalty kappa = -6.00000e-04
+Wavelength 2pi/q_0    =  1.00006e+01
+Amplitude             =  1.28418e+00
+
+Using Cahn-Hilliard solver:
+Mobility M            =  2.50000e-01
+Force caluclation:      divergence method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-02
+Bulk viscosity                8.33333e-02
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Advection scheme order: 5
+Gradient calcaulation: 2d_5pt_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[phi] -2.7646190e+01 -6.7495581e-03 8.2924942e-02 -4.9948973e-01 4.9996627e-01
+
+Momentum - x y z
+[total   ]  5.6843419e-14  0.0000000e+00  0.0000000e+00
+[fluid   ]  5.6843419e-14  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000 2.6946867e-10  0.99995412214 1.00008315985
+[phi] -2.7646190e+01 -6.7495581e-03 1.5073721e-02 -4.3842274e-01 3.7843827e-01
+
+Free energy density - timestep total fluid
+[fed]           2600 -1.7903224859e-06 -1.7903224859e-06
+
+Momentum - x y z
+[total   ] -3.5936532e-14 -2.9063479e-07  0.0000000e+00
+[fluid   ] -3.5936532e-14 -2.9063479e-07  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.9894489e-04 -3.2285072e-03  0.0000000e+00
+[maximum ]  2.6652023e-04  3.1818324e-03  1.1754944e-38
+
+Completed cycle 2600
+
+Timer resolution: 0.001 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      7.863      7.863      7.863   7.862578 (1 call)
+      Time step loop:      0.003      0.005      7.796   0.002999 (2600 calls)
+         Propagation:      0.000      0.000      0.092   0.000035 (2600 calls)
+           Collision:      0.000      0.001      1.270   0.000488 (2600 calls)
+       Lattice halos:      0.000      0.001      0.752   0.000289 (2600 calls)
+       phi gradients:      0.000      0.001      0.874   0.000336 (2600 calls)
+     Lees Edwards BC:      0.000      0.000      0.205   0.000079 (2600 calls)
+                 BBL:      0.000      0.000      0.001   0.000000 (2600 calls)
+   Force calculation:      0.000      0.001      1.389   0.000534 (2600 calls)
+Ludwig finished normally.
