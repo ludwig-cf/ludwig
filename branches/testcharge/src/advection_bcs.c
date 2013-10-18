@@ -153,7 +153,9 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
  *  The official explanation is this may be viewed as a no gradient
  *  condition on the order parameter near the wall.
  *
- *  This will be effective for fluxes up to fourth order.
+ *  This allows third and fourth order (x-direction) advective fluxes
+ *  to be computed at interface one cell away from wall. Fluxes at
+ *  the wall will always be zero.
  *
  ****************************************************************************/
 
@@ -181,8 +183,8 @@ int advection_bcs_wall(field_t * fphi) {
 	index  = coords_index(ic, jc, kc);
 	index1 = coords_index(ic-1, jc, kc);
 
-	field_scalar_array(fphi, index1, q);
-	field_scalar_array_set(fphi, index, q);
+	field_scalar_array(fphi, index, q);
+	field_scalar_array_set(fphi, index1, q);
       }
     }
   }
@@ -197,8 +199,8 @@ int advection_bcs_wall(field_t * fphi) {
 	index = coords_index(ic, jc, kc);
 	index1 = coords_index(ic+1, jc, kc);
 
-	field_scalar_array(fphi, index1, q);
-	field_scalar_array_set(fphi, index, q);
+	field_scalar_array(fphi, index, q);
+	field_scalar_array_set(fphi, index1, q);
 
       }
     }
