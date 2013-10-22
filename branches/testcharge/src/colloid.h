@@ -75,7 +75,7 @@ struct colloid_state_type {
 
   double q0;            /* magnitude charge 0 */
   double q1;            /* magnitude charge 1 */
-  double epsilon;       /* permeativity */
+  double epsilon;       /* permittivity */
 
   double deltaq0;       /* surplus/deficit of charge 0 at change of shape */
   double deltaq1;       /* surplus/deficit of charge 1 at change of shape */

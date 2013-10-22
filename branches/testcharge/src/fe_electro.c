@@ -180,7 +180,7 @@ double fe_electro_mu(const int index, const int n) {
  *  fe_electro_stress
  *
  *  The stress is S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2)
- *  where epsilon is the (uniform) permeativity.
+ *  where epsilon is the (uniform) permittivity.
  *
  *  This does not include the external field.
  *
@@ -189,7 +189,7 @@ double fe_electro_mu(const int index, const int n) {
 void fe_electro_stress(const int index, double s[3][3]) {
 
   int ia, ib;
-  double epsilon;    /* Permeativity */
+  double epsilon;    /* Permittivity */
   double e[3];       /* Electric field */
   double e2;         /* Magnitude squared */
 

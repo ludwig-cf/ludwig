@@ -1187,7 +1187,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     fe_es_deltamu_set(nk, mu);
 
-    info("Second permeativity:      %15.7e\n", e2);
+    info("Second permittivity:      %15.7e\n", e2);
     info("Dielectric average:       %15.7e\n", 0.5*(e1 + e2));
     info("Dielectric contrast:      %15.7e\n", (e1-e2)/(e1+e2));
     info("Solvation dmu species 0:  %15.7e\n", mu[0]);

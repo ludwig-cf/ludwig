@@ -45,7 +45,7 @@ int psi_init_param_rt(psi_t * obj) {
 
   double eunit = 1.0;         /* Unit charge */
   double temperature, beta;   /* Temperature (set by fluctuations) */
-  double epsilon = 0.0;       /* Permeativity */
+  double epsilon = 0.0;       /* Permittivity */
   double lb;                  /* Bjerrum length; derived, not input. */
   double tolerance;           /* Numerical tolerance for SOR. */
 
@@ -88,7 +88,7 @@ int psi_init_param_rt(psi_t * obj) {
   info("Electrokinetic species:    %2d\n", nk);
   info("Boltzmann factor:          %14.7e (T = %14.7e)\n", beta, temperature);
   info("Unit charge:               %14.7e\n", eunit);
-  info("Reference permeativity:    %14.7e\n", epsilon);
+  info("Reference permittivity:    %14.7e\n", epsilon);
   info("Bjerrum length:            %14.7e\n", lb);
 
   for (n = 0; n < nk; n++) {
