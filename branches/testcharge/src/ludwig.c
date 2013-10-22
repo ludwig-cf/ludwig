@@ -439,7 +439,11 @@ void ludwig_run(const char * inputfile) {
       }
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
+#ifdef PETSC
+      psi_petsc_solve(ludwig->psi, ludwig->epsilon);
+#else
       psi_sor_solve(ludwig->psi, ludwig->epsilon);
+#endif
       if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
       nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
     }

@@ -46,16 +46,17 @@ Mat	A;            /* linear system matrix */
 KSP	ksp;          /* linear solver context */
 PC      pc;           /* preconditioner context */
 
-PetscReal  norm,tol=1.e-14;  /* norm of solution error */
-PetscErrorCode ierr;
-PetscBool  nonzeroguess = PETSC_FALSE;
-
+PetscReal   norm, tol=1.e-14;  /* norm of solution error */
+PetscInt    i, n = 10, col[3], its; 
+PetscMPIInt size; 
+PetscScalar neg_one=-1.0, one=1.0, value[3]; 
+PetscBool   nonzeroguess = PETSC_FALSE; 
 
 /*****************************************************************************
  *
  *  psi_petsc_init
  *
- *  Initialises PETSc KSP solver
+ *  Initialises PETSc vectors, matrices and KSP solver context
  *
  *****************************************************************************/
 
@@ -66,27 +67,79 @@ int psi_petsc_init(psi_t * obj){
 
   assert(obj);
 
-  N = N_total(X)*N_total(Y)*N_total(Z);
+  N = coords_nsites();
   comm = cart_comm();
 
-  /* Initialising PETSc vectors and matrix */
   info("\nUsing PETSc Kyrlov Subspace Solver\n");
 
-  ierr = VecCreate(comm,&x);CHKERRQ(ierr);
-//  ierr = PetscObjectSetName((PetscObject) x, "Solution");CHKERRQ(ierr);
-  ierr = VecSetSizes(x,PETSC_DECIDE,N);CHKERRQ(ierr);
-  ierr = VecSetFromOptions(x);CHKERRQ(ierr);
-  ierr = VecDuplicate(x,&b);CHKERRQ(ierr);
-  ierr = VecDuplicate(x,&u);CHKERRQ(ierr);
+  /* Allocate PETSc vectors and matrix */
+  VecCreate(comm,&x);
+  VecSetSizes(x,PETSC_DECIDE,N);
+  VecSetFromOptions(x);
+  VecDuplicate(x,&b);
+  VecDuplicate(x,&u);
 
-  ierr = MatCreate(comm,&A);CHKERRQ(ierr);
-  ierr = MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,N,N);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(A);CHKERRQ(ierr);
-  ierr = MatSetUp(A);CHKERRQ(ierr);
+  MatCreate(comm,&A);
+  MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,N,N);
+  MatSetType(A,MATAIJ);  
+  MatSetFromOptions(A);
+  MatSetUp(A);
+
+  /* Create matrix */
+  psi_petsc_assemble_matrix(obj);
+
+  /* Initialise solver context and preconditioner */
+  KSPCreate(comm,&ksp);	
+  KSPSetOperators(ksp,A,A,DIFFERENT_NONZERO_PATTERN);
+
+  KSPGetPC(ksp,&pc);
+  PCSetType(pc,PCJACOBI);
+
+  KSPSetTolerances(ksp,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
 
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  psi_petsc_assemble_matrix
+ *
+ *  Creates the matrix.
+ *
+ *****************************************************************************/
+
+int psi_petsc_assemble_matrix(psi_t * obj) {
+
+  assert(obj);
+
+  MatZeroEntries(A);
+
+  value[0] = -1.0; value[1] = 2.0; value[2] = -1.0;
+
+  for (i=1; i<n-1; i++) {
+    col[0] = i-1;
+    col[1] = i;
+    col[2] = i+1;
+    MatSetValues(A,1,&i,3,col,value,INSERT_VALUES);
+  }
+
+  i = n -1;
+  col[0]=n-2;
+  col[1]=n-1;
+  MatSetValues(A,1,&i,2,col,value,INSERT_VALUES); 
+
+  i = 0;
+  col[0] = 0;
+  col[1] = 1;
+  value[0] = 2.0;
+  value[1] = -1.0;
+  MatSetValues(A,1,&i,2,col,value,INSERT_VALUES);
+
+  MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
+
+  return 0;
+}
 /*****************************************************************************
  *
  *  psi_petsc_solve
@@ -115,6 +168,19 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
 int psi_petsc_poisson(psi_t * obj) {
 
   assert(obj);
+
+  KSPSolve(ksp,b,x);
+  info("\nPETSc info:\n");
+  KSPView(ksp,PETSC_VIEWER_STDOUT_WORLD);
+
+  /* Check the error */
+  VecAXPY(x,neg_one,u);
+  VecNorm(x,NORM_2,&norm);
+  KSPGetIterationNumber(ksp,&its);
+
+  if (norm > tol) {
+    PetscPrintf(PETSC_COMM_WORLD,"Norm of error %G, Iterations %D\n",norm,its);
+  }
 
   return 0;
 }

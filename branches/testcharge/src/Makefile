@@ -65,11 +65,11 @@ ARFLAGS = -cru
 #
 ###############################################################################
 
-PETSC = 
+PETSC = 1
 ifdef PETSC
 OPTS += -DPETSC
-INC  += -I/Users/ohenrich/petsc-3.4.2/include -I/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/include -I/opt/X11/include -I/usr/local/include
-LIBS += -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.2/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -L/opt/X11/lib -lX11 -lpthread -L/usr/local/lib -L/usr/llvm-gcc-4.2/lib/gcc/i686-apple-darwin11/4.2.1/x86_64 -L/usr/llvm-gcc-4.2/lib/gcc/i686-apple-darwin11/4.2.1 -L/usr/llvm-gcc-4.2/lib/gcc -L/usr/llvm-gcc-4.2/lib -lmpi_cxx -lstdc++ -ldl -lmpi -lopen-rte -lopen-pal -lutil -lSystem -ldl
+INC  += -I/Users/ohenrich/petsc-3.4.3/include -I/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/include -I/opt/X11/include -I/usr/local/include
+LIBS += -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -L/opt/X11/lib -lX11 -lpthread -L/usr/local/lib -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/5.0/lib/darwin -lclang_rt.osx -lmpi_cxx -lstdc++ -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/5.0/lib/darwin -lclang_rt.osx -ldl -lmpi -lopen-rte -lopen-pal -lutil -lSystem -lclang_rt.osx -ldl
 endif 
 ###############################################################################
 
