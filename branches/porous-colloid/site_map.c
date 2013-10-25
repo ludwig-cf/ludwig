@@ -390,6 +390,13 @@ double site_map_volume(char status) {
  *
  *  Swap the site_map values.
  *
+ *  This will always be in a periodic communicator, irrespective of
+ *  what physical periodicity has been requested by the user. This
+ *  is to ensure porous media data are consistent everywhere.
+ *
+ *  This is important if the porous media defines a closed box,
+ *  for example.
+ *
  *****************************************************************************/
 
 void site_map_halo() {
@@ -400,13 +407,14 @@ void site_map_halo() {
   int back, forw;
   const int btag = 151;
   const int ftag = 152;
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
   MPI_Request request[4];
   MPI_Status status[4];
 
   assert(initialised_);
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+  coords_periodic_comm(&comm);
 
   /* YZ planes in X direction */
 
@@ -429,8 +437,8 @@ void site_map_halo() {
   }
   else {
 
-    back = cart_neighb(BACKWARD, X);
-    forw = cart_neighb(FORWARD, X);
+    coords_cart_shift(comm, X, BACKWARD, &back);
+    coords_cart_shift(comm, X, FORWARD, &forw);
 
     ihalo = coords_index(nlocal[X] + 1, 1-nhalo, 1-nhalo);
     MPI_Irecv(site_map + ihalo,  1, mpi_yz_t_, forw, btag, comm, request);
@@ -464,8 +472,8 @@ void site_map_halo() {
   }
   else {
 
-    back = cart_neighb(BACKWARD, Y);
-    forw = cart_neighb(FORWARD, Y);
+    coords_cart_shift(comm, Y, BACKWARD, &back);
+    coords_cart_shift(comm, Y, FORWARD, &forw);
 
     ihalo = coords_index(1-nhalo, nlocal[Y] + 1, 1-nhalo);
     MPI_Irecv(site_map + ihalo,  1, mpi_xz_t_, forw, btag, comm, request);
@@ -499,8 +507,8 @@ void site_map_halo() {
   }
   else {
 
-    back = cart_neighb(BACKWARD, Z);
-    forw = cart_neighb(FORWARD, Z);
+    coords_cart_shift(comm, Z, BACKWARD, &back);
+    coords_cart_shift(comm, Z, FORWARD, &forw);
 
     ihalo = coords_index(1-nhalo, 1-nhalo, nlocal[Z] + 1);
     MPI_Irecv(site_map + ihalo,  1, mpi_xy_t_, forw, btag, comm, request);
