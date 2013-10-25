@@ -760,7 +760,7 @@ static void build_replace_fluid(int index, colloid_t * p_colloid) {
 			  ib[Z] + cv[p][Z]);
 
     /* Site must have been fluid before position update */
-    if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID) continue;
+    if (coll_old[indexn] || site_map_get_status_index(indexn) == BOUNDARY) continue;
 
     for (pdash = 0; pdash < NVEL; pdash++) {
       newf[pdash] += wv[p]*distribution_f(indexn, pdash, 0);
@@ -853,7 +853,7 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
 			      ri[Z] + cv[p][Z]);
 
       /* Site must have been fluid before position update */
-      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+      if (coll_old[indexn] || site_map_get_status_index(indexn) == BOUNDARY)
 	continue;
       for (n = 0; n < nop; n++) {
 	phi[n] += wv[p]*phi_op_get_phi_site(indexn, n);
@@ -877,7 +877,7 @@ static void build_replace_order_parameter(int index, colloid_t * p_colloid) {
 			      ri[Z] + cv[p][Z]);
 
       /* Site must have been fluid before position update */
-      if (coll_old[indexn] || site_map_get_status_index(indexn)==SOLID)
+      if (coll_old[indexn] || site_map_get_status_index(indexn) == BOUNDARY)
 	continue;
 
       for (pdash = 0; pdash < NVEL; pdash++) {
@@ -977,6 +977,16 @@ static void build_link_mean(colloid_t * p_colloid, int p, const double rb[3]) {
  *  build_wall_links
  *
  *  This constructs links between colloid and fixed wall.
+ *
+ *  Some notes.
+ *
+ *  This is intended for the inbuilt walls, which occupy the halo
+ *  regions. Initialisation with coll_recontruct_links will not
+ *  indentify BOUNDARY links because it does not look into the
+ *  halo region. This routine does.
+ *
+ *  coll_reset_links() examines exsiting links and sets the
+ *  BOUNDARY status as appropriate. See issue 871.
  *
  *****************************************************************************/
 
