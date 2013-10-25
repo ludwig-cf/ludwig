@@ -114,14 +114,22 @@ void wall_init(void) {
     info("Boundary shear initialise:       %d\n", init_shear);
   }
 
-  /* Porous media? */
+  /* Porous media */
+  /* Care here. At this point we should have loaded the porous
+   * media data, so we may have initialised the links above. */
+
   n = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
 
   if (n != 0) {
     is_pm_ = 1;
-    init_links();
-    MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
-    info("Porous media boundary links allocated:  %d\n", ntotal);
+    if (wall_present()) {
+      info("Includes porous media links:     yes\n");
+    }
+    else {
+      init_links();
+      MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
+      info("Porous media boundary links allocated:  %d\n", ntotal);
+    }
   }
 
   fnet_[X] = 0.0;
