@@ -770,7 +770,17 @@ static void build_replace_fluid(int index, colloid_t * p_colloid) {
 
   /* Set new fluid distributions */
 
-  weight = 1.0/weight;
+  if (weight > 0.0) {
+    weight = 1.0/weight;
+  }
+  else {
+    /* If there is no information, replace an equilibrium
+     * distribution with rho = 1 and u = 0 (weight 1) */
+    for (p = 0; p < NVEL; p++) {
+      newf[p] = wv[p];
+    }
+    weight = 1.0;
+  }
 
   for (p = 0; p < NVEL; p++) {
     newf[p] *= weight;
