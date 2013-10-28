@@ -40,17 +40,14 @@
 #include "map.h"
 #include "psi_petsc.h"
 #include "petscksp.h"
+#include "petscdmda.h"
 
-Vec	x, b, u;      /* approx solution, RHS, exact solution */
-Mat	A;            /* linear system matrix */
-KSP	ksp;          /* linear solver context */
-PC      pc;           /* preconditioner context */
-
-PetscReal   norm, tol=1.e-14;  /* norm of solution error */
-PetscInt    i, n = 10, col[3], its; 
-PetscMPIInt size; 
-PetscScalar neg_one=-1.0, one=1.0, value[3]; 
-PetscBool   nonzeroguess = PETSC_FALSE; 
+DM             da;            /* distributed array */
+Vec            x,b,u;         /* approx solution, RHS, exact solution */
+Mat            A;             /* linear system matrix */
+KSP            ksp;           /* linear solver context */
+PetscReal      norm;          /* norm of solution error */
+PetscInt       i,j,its;
 
 /*****************************************************************************
  *
@@ -62,78 +59,92 @@ PetscBool   nonzeroguess = PETSC_FALSE;
 
 int psi_petsc_init(psi_t * obj){
 
-  int N;
-  MPI_Comm comm;
-
+  int nhalo;
   assert(obj);
 
-  N = coords_nsites();
-  comm = cart_comm();
+  nhalo = coords_nhalo();
 
   info("\nUsing PETSc Kyrlov Subspace Solver\n");
 
-  /* Allocate PETSc vectors and matrix */
-  VecCreate(comm,&x);
-  VecSetSizes(x,PETSC_DECIDE,N);
-  VecSetFromOptions(x);
-  VecDuplicate(x,&b);
-  VecDuplicate(x,&u);
+ /* Create 3D distributed array */ 
+  DMDACreate3d(PETSC_COMM_WORLD, \
+	DMDA_BOUNDARY_PERIODIC,	DMDA_BOUNDARY_PERIODIC, DMDA_BOUNDARY_PERIODIC,	\
+	DMDA_STENCIL_BOX, N_total(X), N_total(Y), N_total(Z), \
+	cart_size(X), cart_size(Y), cart_size(Z), 1, nhalo, \
+	NULL, NULL, NULL, &da);
 
-  MatCreate(comm,&A);
-  MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,N,N);
-  MatSetType(A,MATAIJ);  
-  MatSetFromOptions(A);
-  MatSetUp(A);
+  /* Create global vectors */
+  DMCreateGlobalVector(da,&u);
+  VecDuplicate(u,&b);
+  VecDuplicate(u,&x);
 
-  /* Create matrix */
-  psi_petsc_assemble_matrix(obj);
+  /* Create matrix pre-allocated according to the DMDA */
+  DMCreateMatrix(da,MATAIJ,&A);
 
   /* Initialise solver context and preconditioner */
-  KSPCreate(comm,&ksp);	
+  KSPCreate(PETSC_COMM_WORLD,&ksp);	
   KSPSetOperators(ksp,A,A,DIFFERENT_NONZERO_PATTERN);
-
-  KSPGetPC(ksp,&pc);
-  PCSetType(pc,PCJACOBI);
-
   KSPSetTolerances(ksp,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
+  KSPSetFromOptions(ksp);
+  KSPSetUp(ksp);
+
+  psi_petsc_compute_matrix(obj);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  psi_petsc_assemble_matrix
+ *  psi_petsc_compute_matrix
  *
- *  Creates the matrix.
+ *  Creates the matrix for KSP solver. 
+ *  Note that the matrix ought to be pre-allocated to achieve good performance.
  *
  *****************************************************************************/
 
-int psi_petsc_assemble_matrix(psi_t * obj) {
+int psi_petsc_compute_matrix(psi_t * obj) {
+
+  PetscInt    i,j,k;
+  PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
+  PetscInt    nx,ny,nz;
+  PetscScalar v[7];
+  MatStencil  row, col[3];
 
   assert(obj);
 
-  MatZeroEntries(A);
+  DMDAGetInfo(da,0,&nx,&ny,&nz,0,0,0,0,0,0,0,0,0);
+  DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
 
-  value[0] = -1.0; value[1] = 2.0; value[2] = -1.0;
+  xe = xs + xw;
+  ye = ys + yw;
+  ze = zs + zw;
 
-  for (i=1; i<n-1; i++) {
-    col[0] = i-1;
-    col[1] = i;
-    col[2] = i+1;
-    MatSetValues(A,1,&i,3,col,value,INSERT_VALUES);
+  for(k=zs; k<ze; k++){
+    for(j=ys; j<ye; j++){
+      for(i=xs; i<xe; i++){
+
+	row.i = i;
+	row.j = j;
+	row.k = k;
+
+	if (i==0 || j==0 || k==0 || i==nx-1 || j==ny-1 || k==nz-1) {
+	  v[0] = 2.0;
+	  MatSetValuesStencil(A,1,&row,1,&row,v,INSERT_VALUES);
+	}
+	else{
+	  col[0].i = i; col[0].j = j; col[0].k = k-1; v[0] = -1.0;
+	  col[1].i = i; col[1].j = j-1; col[1].k = k; v[1] = -1.0;
+	  col[2].i = i-1; col[2].j = j; col[2].k = k; v[2] = -1.0;
+	  col[3].i = row.i; col[3].j = row.j; col[3].k = row.k; v[3] = 2.0;
+	  col[4].i = i+1; col[4].j = j; col[4].k = k; v[4] = -1.0;
+	  col[5].i = i; col[5].j = j+1; col[5].k = k; v[5] = -1.0;
+	  col[6].i = i; col[6].j = j; col[6].k = k+1; v[6] = -1.0;
+	  MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
+	}
+
+      }
+    }
   }
-
-  i = n -1;
-  col[0]=n-2;
-  col[1]=n-1;
-  MatSetValues(A,1,&i,2,col,value,INSERT_VALUES); 
-
-  i = 0;
-  col[0] = 0;
-  col[1] = 1;
-  value[0] = 2.0;
-  value[1] = -1.0;
-  MatSetValues(A,1,&i,2,col,value,INSERT_VALUES);
 
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
@@ -162,25 +173,41 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
  *
  *  psi_petsc_poisson
  *
- *
  *****************************************************************************/
 
 int psi_petsc_poisson(psi_t * obj) {
 
   assert(obj);
 
+  KSPSetInitialGuessNonzero(ksp,PETSC_TRUE);
   KSPSolve(ksp,b,x);
-  info("\nPETSc info:\n");
-  KSPView(ksp,PETSC_VIEWER_STDOUT_WORLD);
 
-  /* Check the error */
-  VecAXPY(x,neg_one,u);
+  /* Error check */
+  VecAXPY(x,-1.,u);
   VecNorm(x,NORM_2,&norm);
   KSPGetIterationNumber(ksp,&its);
 
-  if (norm > tol) {
-    PetscPrintf(PETSC_COMM_WORLD,"Norm of error %G, Iterations %D\n",norm,its);
-  }
+  PetscPrintf(PETSC_COMM_WORLD,"Norm of error %G iterations %D\n",norm,its);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_petsc_finish
+ *
+ *  Destroys the solver context and distributed matrix and vectors.
+ *
+ *****************************************************************************/
+
+int psi_petsc_finish() {
+
+  KSPDestroy(&ksp);
+  VecDestroy(&u);
+  VecDestroy(&x);
+  VecDestroy(&b);
+  MatDestroy(&A);
+  DMDestroy(&da);
 
   return 0;
 }

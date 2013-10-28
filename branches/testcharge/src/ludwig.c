@@ -674,6 +674,9 @@ void ludwig_run(const char * inputfile) {
   }
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
+#ifdef PETSC
+  psi_petsc_finish();
+#endif
 
   stats_rheology_finish();
   stats_turbulent_finish();
