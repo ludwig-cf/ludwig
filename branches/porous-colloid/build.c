@@ -1015,6 +1015,7 @@ void reconstruct_wall_links(colloid_t * p_colloid) {
   double     rsep[3];
   int         N[3];
   int         offset[3];
+  int halo;
 
   coords_nlocal(N);
   coords_nlocal_offset(offset);
@@ -1056,6 +1057,14 @@ void reconstruct_wall_links(colloid_t * p_colloid) {
 
 	if (coll_map[index1] != p_colloid) continue;
 
+	/* Do not consider domain-proper points, as this may
+	 * erroneously identify porous media */
+
+	halo = (i + offset[X] < 1 || i + offset[X] > N_total(X) ||
+		j + offset[Y] < 1 || j + offset[Y] > N_total(Y) ||
+		k + offset[Z] < 1 || k + offset[Z] > N_total(Z));
+	if (!halo) continue;
+
 	rsite1[X] = 1.0*i;
 	rsite1[Y] = 1.0*j;
 	rsite1[Z] = 1.0*k;
@@ -1072,6 +1081,7 @@ void reconstruct_wall_links(colloid_t * p_colloid) {
 	  index0 = coords_index(ii, jj, kk);
 
 	  if (site_map_get_status_index(index0) != BOUNDARY) continue;
+
 
 	  /* Add a link */
 
