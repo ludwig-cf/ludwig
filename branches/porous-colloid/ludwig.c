@@ -397,6 +397,12 @@ void ludwig_run(const char * inputfile) {
       io_write(filename, io_info_velocity_);
     }
 
+    if (is_fed_output_step()) {
+      info("Writing free energy density output at step %d!\n", step);
+      sprintf(filename, "%sfed-%8.8d", subdirectory, step);
+      io_write(filename, io_info_fed);
+    }
+
     /* Print progress report */
 
     if (is_statistics_step()) {
@@ -405,6 +411,7 @@ void ludwig_run(const char * inputfile) {
       if (phi_nop()) {
 	phi_stats_print_stats();
 	stats_free_energy_density();
+//        blue_phase_stats(step);
       }
 
       ludwig_report_momentum();
@@ -470,11 +477,14 @@ void ludwig_run(const char * inputfile) {
 static void ludwig_report_momentum(void) {
 
   int n;
+  int is_pm;
 
   double g[3];         /* Fluid momentum (total) */
   double gc[3];        /* Colloid momentum (total) */
   double gwall[3];     /* Wall momentum (for accounting purposes only) */
   double gtotal[3];
+
+  wall_pm(&is_pm);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = 0.0;
@@ -485,7 +495,7 @@ static void ludwig_report_momentum(void) {
 
   stats_distribution_momentum(g);
   stats_colloid_momentum(gc);
-  if (wall_present()) wall_net_momentum(gwall);
+  if (wall_present() || is_pm) wall_net_momentum(gwall);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = g[n] + gc[n] + gwall[n];
@@ -498,7 +508,7 @@ static void ludwig_report_momentum(void) {
   if (colloid_ntotal()) {
     info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
   }
-  if (wall_present()) {
+  if (wall_present() || is_pm) {
     info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
 
