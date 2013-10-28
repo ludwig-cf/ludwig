@@ -26,6 +26,7 @@ int  is_colloid_io_step(void);
 
 int  is_phi_output_step(void);
 int  is_vel_output_step(void);
+int  is_fed_output_step(void);
 int  is_shear_measurement_step(void);
 int  is_shear_output_step(void);
 int  is_propagation_ode(void);
