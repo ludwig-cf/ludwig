@@ -188,13 +188,12 @@ double cylinder_lubrication(const int dim, const double r[3], const double ah) {
   double force;
   double hlub;
   double h[3], hlength, gap;
-  double rdim;
   double centre[3];
   double eta;
   int i;
   double lubrication_rcnormal_ = 0.5;
   
-  double cylinder_radius_ = 31.0;
+  double cylinder_radius_ = 11.0;
   int long_axis_ = Z; /*X, Y or Z */
 
   force = 0.0;
@@ -210,6 +209,11 @@ double cylinder_lubrication(const int dim, const double r[3], const double ah) {
       centre[i] = Lmin(i) + 0.5*L(i);
       h[i] = centre[i] - r[i];
       hlength += h[i] * h[i];
+      
+      /* we want the the positive component 
+       * ie. opposite to the velocity direction
+       */
+      h[i] = fabs(h[i]);
     }
     
     hlength = sqrt(hlength);
@@ -219,7 +223,6 @@ double cylinder_lubrication(const int dim, const double r[3], const double ah) {
     
     if (gap < hlub) {
       force = -6.0*pi_*eta*ah*ah*(1.0/gap - 1.0/hlub)*h[dim]/hlength;
-      /*printf("hlub f: %lf %lf\n", gap, force);*/
     }
   }
 
