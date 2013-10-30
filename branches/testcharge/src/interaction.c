@@ -64,8 +64,6 @@ static void    lubrication_init(void);
 static void    colloid_forces_check(void);
 
 static int    cell_list_interactions_ = 1;
-static int    gravity_ = 0;            /* Switch */
-static double g_[3] = {0.0, 0.0, 0.0}; /* External gravitational force */
 
 struct lubrication_struct {
   int corrections_on;
@@ -150,6 +148,7 @@ int COLL_init(map_t * map) {
   int init_from_file;
   int init_random;
   int ncell[3];
+  int gravity;
   char filename[FILENAME_MAX];
   char subdirectory[FILENAME_MAX];
   char keyvalue[128];
@@ -260,11 +259,7 @@ int COLL_init(map_t * map) {
     }
 
     n = RUN_get_double_parameter_vector("colloid_gravity", g);
-    if (n != 0) {
-      if (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0) {
-	colloid_gravity_set(g);
-      }
-    }
+    if (n != 0) physics_fgrav_set(g);
 
     /* ewald_init(0.285, 16.0);*/
 
@@ -294,10 +289,12 @@ int COLL_init(map_t * map) {
     }
 
     /* Information */
-    if (gravity_) {
+    gravity = 0;
+    gravity = (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0);
+
+    if (gravity) {
       info("Sedimentation force on:   yes\n");
-      info("Sedimentation force:      %14.7e %14.7e %14.7e",
-	   g_[X], g_[Y], g_[Z]);
+      info("Sedimentation force:      %14.7e %14.7e %14.7e", g[X], g[Y], g[Z]);
     }
     info("\n");
   }
@@ -440,12 +437,14 @@ static void colloid_forces_single_particle_set(psi_t * psi) {
   int ic, jc, kc, ia;
   int nk;
   int v[2] = {0, 0};     /* valancies for charged species, if present */
+  double g[3];           /* 'Gravity' */
   double e0[3], b0[3];   /* external fields */
   double btorque[3];
   colloid_t * pc;
 
   physics_e0(e0);
   physics_b0(b0);
+  physics_fgrav(g);
 
   if (psi) {
     psi_nk(psi, &nk);
@@ -467,7 +466,7 @@ static void colloid_forces_single_particle_set(psi_t * psi) {
 	  btorque[Z] = pc->s.s[X]*b0[Y] - pc->s.s[Y]*b0[X];
 
 	  for (ia = 0; ia < 3; ia++) {
-	    pc->force[ia] += g_[ia];               /* Gravity */
+	    pc->force[ia] += g[ia];                /* Gravity */
 	    pc->force[ia] += pc->s.q0*v[0]*e0[ia]; /* Electric field */
 	    pc->force[ia] += pc->s.q1*v[1]*e0[ia]; /* Electric field */
 	    pc->torque[ia] += btorque[ia];         /* Magnetic field */
@@ -498,12 +497,16 @@ static int colloid_forces_fluid_gravity_set(map_t * map) {
 
   int ia, nc;
   int nsfluid;
+  int gravity = 0;
+  double g[3];
   double rvolume;
   double f[3];
 
   nc = colloid_ntotal();
+  physics_fgrav(g);
+  gravity = (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0);
 
-  if (gravity_ && nc > 0) {
+  if (gravity && nc > 0) {
     assert(map);
     map_volume_allreduce(map, MAP_FLUID, &nsfluid);
     rvolume = 1.0/nsfluid;
@@ -511,7 +514,7 @@ static int colloid_forces_fluid_gravity_set(map_t * map) {
     /* Force per fluid node to balance is... */
 
     for (ia = 0; ia < 3; ia++) {
-      f[ia] = -g_[ia]*rvolume*nc;
+      f[ia] = -g[ia]*rvolume*nc;
     }
 
     physics_fbody_set(f);
@@ -922,35 +925,4 @@ double colloid_forces_ahmax(void) {
   MPI_Allreduce(&ahmax_local, &ahmax, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
 
   return ahmax;
-}
-
-/*****************************************************************************
- *
- *  colloid_gravity
- *
- *****************************************************************************/
-
-void colloid_gravity(double f[3]) {
-
-  f[X] = g_[X];
-  f[Y] = g_[Y];
-  f[Z] = g_[Z];
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  colloid_gravity_set
- *
- *****************************************************************************/
-
-void colloid_gravity_set(const double f[3]) {
-
-  g_[X] = f[X];
-  g_[Y] = f[Y];
-  g_[Z] = f[Z];
-  gravity_ = 1;
-
-  return;
 }

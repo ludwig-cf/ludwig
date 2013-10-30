@@ -23,7 +23,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "interaction.h"
 #include "colloids.h"
 #include "colloid_sums.h"
 #include "util.h"
@@ -59,7 +58,7 @@ int subgrid_force_from_particles(hydro_t * hydro) {
   coords_nlocal(N);
   coords_nlocal_offset(offset);
 
-  colloid_gravity(g);
+  physics_fgrav(g);
 
   /* Loop through all cells (including the halo cells) */
 
@@ -152,7 +151,7 @@ int subgrid_update(hydro_t * hydro) {
 
   physics_eta_shear(&eta);
   reta = 1.0/(6.0*pi_*eta);
-  colloid_gravity(g);
+  physics_fgrav(g);
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
     for (jc = 0; jc <= Ncell(Y) + 1; jc++) {

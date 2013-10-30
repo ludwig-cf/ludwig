@@ -272,6 +272,7 @@ static int stats_calibration_measure(hydro_t * hydro, map_t * map) {
   int status;
 
   double volume;
+  double u[3];
   double upart[3];
   double ulocal[3];
   double datalocal[7], datasum[7];
@@ -318,8 +319,10 @@ static int stats_calibration_measure(hydro_t * hydro, map_t * map) {
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
-	hydro_u(hydro, index, ulocal);
-	assert(0); /* This looks like a bug; accumulate u? */
+	hydro_u(hydro, index, u);
+	ulocal[X] += u[X];
+	ulocal[Y] += u[Y];
+	ulocal[Z] += u[Z];
 	volume = volume + 1.0;
       }
     }
