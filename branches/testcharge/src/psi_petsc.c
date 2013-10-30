@@ -60,13 +60,16 @@ PetscInt       i,j,its;
 int psi_petsc_init(psi_t * obj){
 
   int nhalo;
-  assert(obj);
-
-  nhalo = coords_nhalo();
 
   info("\nUsing PETSc Kyrlov Subspace Solver\n");
 
+  assert(obj);
+
  /* Create 3D distributed array */ 
+ /* Optimise DMDA_STENCIL_STAR */ 
+
+  nhalo = coords_nhalo();
+
   DMDACreate3d(PETSC_COMM_WORLD, \
 	DMDA_BOUNDARY_PERIODIC,	DMDA_BOUNDARY_PERIODIC, DMDA_BOUNDARY_PERIODIC,	\
 	DMDA_STENCIL_BOX, N_total(X), N_total(Y), N_total(Z), \
@@ -78,10 +81,11 @@ int psi_petsc_init(psi_t * obj){
   VecDuplicate(u,&b);
   VecDuplicate(u,&x);
 
-  /* Create matrix pre-allocated according to the DMDA */
+  /* Create matrix pre-allocated according to distributed array structure */
   DMCreateMatrix(da,MATAIJ,&A);
 
   /* Initialise solver context and preconditioner */
+  /* Optimise SAME_NONZERO_PATTERN */
   KSPCreate(PETSC_COMM_WORLD,&ksp);	
   KSPSetOperators(ksp,A,A,DIFFERENT_NONZERO_PATTERN);
   KSPSetTolerances(ksp,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
@@ -98,7 +102,8 @@ int psi_petsc_init(psi_t * obj){
  *  psi_petsc_compute_matrix
  *
  *  Creates the matrix for KSP solver. 
- *  Note that the matrix ought to be pre-allocated to achieve good performance.
+ *  Note that this routine uses a PETSc stencil structure which permits
+ *  local assembly of the matrix.
  *
  *****************************************************************************/
 
@@ -108,17 +113,22 @@ int psi_petsc_compute_matrix(psi_t * obj) {
   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
   PetscInt    nx,ny,nz;
   PetscScalar v[7];
-  MatStencil  row, col[3];
+  MatStencil  row, col[7];
 
   assert(obj);
 
-  DMDAGetInfo(da,0,&nx,&ny,&nz,0,0,0,0,0,0,0,0,0);
+  /* Get details of the distributed array data structure.
+     The PETSc directives return global indices, but 
+     every process works only on its local copy. */
+
+  DMDAGetInfo(da,NULL,&nx,&ny,&nz,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
   DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
 
   xe = xs + xw;
   ye = ys + yw;
   ze = zs + zw;
 
+  /* 3D-Laplacian with periodic BCs */
   for(k=zs; k<ze; k++){
     for(j=ys; j<ye; j++){
       for(i=xs; i<xe; i++){
@@ -127,27 +137,24 @@ int psi_petsc_compute_matrix(psi_t * obj) {
 	row.j = j;
 	row.k = k;
 
-	if (i==0 || j==0 || k==0 || i==nx-1 || j==ny-1 || k==nz-1) {
-	  v[0] = 2.0;
-	  MatSetValuesStencil(A,1,&row,1,&row,v,INSERT_VALUES);
-	}
-	else{
-	  col[0].i = i; col[0].j = j; col[0].k = k-1; v[0] = -1.0;
-	  col[1].i = i; col[1].j = j-1; col[1].k = k; v[1] = -1.0;
-	  col[2].i = i-1; col[2].j = j; col[2].k = k; v[2] = -1.0;
-	  col[3].i = row.i; col[3].j = row.j; col[3].k = row.k; v[3] = 2.0;
-	  col[4].i = i+1; col[4].j = j; col[4].k = k; v[4] = -1.0;
-	  col[5].i = i; col[5].j = j+1; col[5].k = k; v[5] = -1.0;
-	  col[6].i = i; col[6].j = j; col[6].k = k+1; v[6] = -1.0;
-	  MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
-	}
+	col[0].i = i;     col[0].j = j;     col[0].k = k-1;   v[0] = -1.0;
+	col[1].i = i;     col[1].j = j-1;   col[1].k = k;     v[1] = -1.0;
+	col[2].i = i-1;   col[2].j = j;     col[2].k = k;     v[2] = -1.0;
+	col[3].i = row.i; col[3].j = row.j; col[3].k = row.k; v[3] =  6.0;
+	col[4].i = i+1;   col[4].j = j;     col[4].k = k;     v[4] = -1.0;
+	col[5].i = i;     col[5].j = j+1;   col[5].k = k;     v[5] = -1.0;
+	col[6].i = i;     col[6].j = j;     col[6].k = k+1;   v[6] = -1.0;
+	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
 
       }
     }
   }
 
+  /* Non-local copies are communicated during the assemby stage */
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
+
+//  MatView(A,PETSC_VIEWER_STDOUT_WORLD);
 
   return 0;
 }
@@ -196,7 +203,7 @@ int psi_petsc_poisson(psi_t * obj) {
  *
  *  psi_petsc_finish
  *
- *  Destroys the solver context and distributed matrix and vectors.
+ *  Destroys the solver context, distributed array, matrix and vectors.
  *
  *****************************************************************************/
 
