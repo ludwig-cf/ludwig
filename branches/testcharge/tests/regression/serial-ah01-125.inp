@@ -1,25 +1,20 @@
 ##############################################################################
 #
-#  Lees Edwards + symmetric 2d smoke test
+#  Calibration ah: input radius a0 = 1.25 eta = 1/6
+#  Key/value "calibration on" requests the calibration
 #
 ##############################################################################
 
-##############################################################################
-#
-#  Run duration
-#
-###############################################################################
-
-N_cycles 200
+N_cycles 10000
 
 ##############################################################################
 #
-#  System
-#
+#  System and MPI
+# 
 ##############################################################################
 
-size 64_64_1
-grid 2_4_1
+size 16_16_16
+reduced_halo no
 
 ##############################################################################
 #
@@ -27,7 +22,7 @@ grid 2_4_1
 #
 ##############################################################################
 
-viscosity 0.1
+isothermal_fluctuations off
 ghost_modes off
 
 ##############################################################################
@@ -36,19 +31,7 @@ ghost_modes off
 #
 ###############################################################################
 
-free_energy symmetric
-
-A -0.0625
-B 0.0625
-K 0.04
-C 0.000
-
-phi0 0.0
-phi_initialisation    spinodal
-mobility 0.15
-
-fd_gradient_calculation 3d_27pt_fluid
-fd_advection_scheme_order 3
+free_energy none
 
 ###############################################################################
 #
@@ -56,7 +39,21 @@ fd_advection_scheme_order 3
 #
 ###############################################################################
 
-colloid_init        no_colloids
+colloid_type        inactive
+colloid_init        random
+
+colloid_random_no   1
+colloid_random_dh   0.4
+
+colloid_random_a0   1.25
+colloid_random_ah   1.25
+colloid_random_r0   6.1_6.1_6.1
+colloid_random_v0   0.0_0.0_0.0
+colloid_random_s0   1.0_0.0_0.0
+colloid_random_m0   1.0_0.0_0.0
+
+colloid_cell_min 4.0
+colloid_gravity  0.0_0.0_0.0
 
 ###############################################################################
 #
@@ -73,24 +70,21 @@ periodicity 1_1_1
 #
 ###############################################################################
 
-freq_statistics 200
+calibration on
+
+freq_statistics 10000
+freq_measure    10000000
+freq_config     10000000
+colloid_io_freq 10000000
 config_at_end no
-
-###############################################################################
-#
-#  Lees-Edwards planes
-#
-###############################################################################
-
-N_LE_plane 2
-LE_plane_vel 0.05
-LE_init_profile 1
 
 ###############################################################################
 #
 #  Miscellaneous
 #
+#  random_seed  +ve integer is the random number generator seed
+#
 ###############################################################################
 
-random_seed -7361237
-#random_seed 8361235
+random_seed 8361235
+

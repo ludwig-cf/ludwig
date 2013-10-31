@@ -24,7 +24,7 @@ Parameters:
 Electrokinetic species:     2
 Boltzmann factor:           3.0000300e+04 (T =  3.3333000e-05)
 Unit charge:                1.0000000e+00
-Reference permeativity:     3.3000000e+03
+Reference permittivity:     3.3000000e+03
 Bjerrum length:             7.2343879e-01
 Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
@@ -129,12 +129,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      6.960      6.960      6.960   6.960000 (1 call)
-      Time step loop:      0.000      0.010      6.960   0.006960 (1000 calls)
-         Propagation:      0.000      0.010      0.010   0.000010 (1000 calls)
-           Collision:      0.000      0.010      0.450   0.000450 (1000 calls)
+               Total:      7.370      7.370      7.370   7.370000 (1 call)
+      Time step loop:      0.000      0.010      7.370   0.007370 (1000 calls)
+         Propagation:      0.000      0.000      0.000   0.000000 (1000 calls)
+           Collision:      0.000      0.010      0.530   0.000530 (1000 calls)
        Lattice halos:      0.000      0.010      0.010   0.000010 (1000 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
-                 BBL:      0.000      0.010      0.010   0.000010 (1000 calls)
-   Force calculation:      0.000      0.010      0.020   0.000010 (2000 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (1000 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (2000 calls)
 Ludwig finished normally.

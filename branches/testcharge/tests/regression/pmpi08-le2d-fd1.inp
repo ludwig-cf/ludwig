@@ -1,6 +1,7 @@
 ##############################################################################
 #
-#  Lees Edwards + symmetric_lb 2d smoke test
+#  Lees Edwards + symmetric 2d smoke test
+#  Longer run of serial-le2d-fd1.inp to test periodic wrapping of LE.
 #
 ##############################################################################
 
@@ -28,10 +29,7 @@ grid 2_4_1
 ##############################################################################
 
 viscosity 0.1
-temperature 0.00002133333
-
 ghost_modes off
-force 0.0_0.00_0.0
 
 ##############################################################################
 #
@@ -83,14 +81,6 @@ config_at_end no
 #
 #  Lees-Edwards planes
 #
-#  These parameters set up a number of equally spaced planes
-#  with constant velocity.
-#
-#  N_LE_plane       the number of planes
-#  LE_plane_vel     the y-component of the plane velocity
-#  LE_init_profile  set the initial velocity profile to be consistent with
-#                   desired shear rate. (Only valid at t = 0). [0|1]
-#
 ###############################################################################
 
 N_LE_plane 2
@@ -100,8 +90,6 @@ LE_init_profile 1
 ###############################################################################
 #
 #  Miscellaneous
-#
-#  random_seed  +ve integer is the random number generator seed
 #
 ###############################################################################
 
