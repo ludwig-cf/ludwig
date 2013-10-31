@@ -441,9 +441,6 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
 #ifdef PETSC
-      /* Note: For performance analysis the matrix is recomputed at every timestep.  
-         Optimise no matrix recomputation for constant permittivity */
-      psi_petsc_compute_matrix(ludwig->psi);
       psi_petsc_solve(ludwig->psi, ludwig->epsilon);
 #else
       psi_sor_solve(ludwig->psi, ludwig->epsilon);

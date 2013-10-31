@@ -49,6 +49,8 @@ KSP            ksp;           /* linear solver context */
 PetscReal      norm;          /* norm of solution error */
 PetscInt       i,j,its;
 
+int viewer = 0;
+
 /*****************************************************************************
  *
  *  psi_petsc_init
@@ -59,11 +61,27 @@ PetscInt       i,j,its;
 
 int psi_petsc_init(psi_t * obj){
 
-  int nhalo;
+  MPI_Comm new_comm;
+  int new_rank, nhalo;
 
   info("\nUsing PETSc Kyrlov Subspace Solver\n");
 
   assert(obj);
+
+  /* In order for the DMDA and the Cartesian MPI communicator 
+     to share the same part of the domain decomposition it is 
+     necessary to renumber the process ranks of the default 
+     PETSc communicator */
+
+  /* Set new rank according to PETSc ordering */
+  new_rank = cart_coords(Z)*cart_size(Y)*cart_size(X) \
+	+ cart_coords(Y)*cart_size(X) + cart_coords(X);
+
+  /* Create communicator with new ranks according to PETSc ordering */
+  MPI_Comm_split(PETSC_COMM_WORLD, 1, new_rank, &new_comm);
+
+  /* Override default PETSc communicator */
+  PETSC_COMM_WORLD = new_comm;
 
  /* Create 3D distributed array */ 
  /* Optimise DMDA_STENCIL_STAR */ 
@@ -111,7 +129,6 @@ int psi_petsc_compute_matrix(psi_t * obj) {
 
   PetscInt    i,j,k;
   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
-  PetscInt    nx,ny,nz;
   PetscScalar v[7];
   MatStencil  row, col[7];
 
@@ -121,7 +138,6 @@ int psi_petsc_compute_matrix(psi_t * obj) {
      The PETSc directives return global indices, but 
      every process works only on its local copy. */
 
-  DMDAGetInfo(da,NULL,&nx,&ny,&nz,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
   DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
 
   xe = xs + xw;
@@ -154,10 +170,109 @@ int psi_petsc_compute_matrix(psi_t * obj) {
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
 
-//  MatView(A,PETSC_VIEWER_STDOUT_WORLD);
+  if (viewer) MatView(A,PETSC_VIEWER_STDOUT_WORLD);
 
   return 0;
 }
+/*****************************************************************************
+ *
+ *  psi_petsc_psi_to_da
+ *
+ *****************************************************************************/
+
+int psi_petsc_psi_to_da(psi_t * obj) {
+
+  PetscInt    ic,jc,kc,index;
+  PetscInt    noffset[3];
+  PetscInt    i,j,k;
+  PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
+  PetscScalar *** psi_3d;
+
+  assert(obj);
+  coords_nlocal_offset(noffset);
+
+  DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
+  DMDAVecGetArray(da, x, &psi_3d);
+
+  xe = xs + xw;
+  ye = ys + yw;
+  ze = zs + zw;
+
+  for (k=zs; k<ze; k++) {
+    kc = k - noffset[Z];
+    for (j=ys; j<ye; j++) {
+      jc = j - noffset[Y];
+      for (i=xs; i<xe; i++) {
+	ic = i - noffset[X];
+
+	index = coords_index(ic,jc,kc);
+	psi_3d[k][j][i] = obj->psi[index];
+
+      }
+    }
+  }
+
+  DMDAVecRestoreArray(da, x, &psi_3d);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_petsc_da_to_psi
+ *
+ *****************************************************************************/
+
+int psi_petsc_da_to_psi(psi_t * obj) {
+
+  PetscInt    ic,jc,kc,index;
+  PetscInt    noffset[3];
+  PetscInt    i,j,k;
+  PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
+  PetscScalar *** psi_3d;
+
+  assert(obj);
+  coords_nlocal_offset(noffset);
+
+  DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
+  DMDAVecGetArray(da, x, &psi_3d);
+
+  xe = xs + xw;
+  ye = ys + yw;
+  ze = zs + zw;
+
+  for (k=zs; k<ze; k++) {
+    kc = k - noffset[Z];
+    for (j=ys; j<ye; j++) {
+      jc = j - noffset[Y];
+      for (i=xs; i<xe; i++) {
+	ic = i - noffset[X];
+
+	index = coords_index(ic,jc,kc);
+	obj->psi[index] = psi_3d[k][j][i];
+
+      }
+    }
+  }
+
+  DMDAVecRestoreArray(da, x, &psi_3d);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_petsc_set_rhs
+ *
+ *****************************************************************************/
+
+int psi_petsc_set_rhs(psi_t * obj) {
+
+  assert(obj);
+
+  return 0;
+}
+
 /*****************************************************************************
  *
  *  psi_petsc_solve
@@ -171,7 +286,11 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
 
   assert(obj);
 
+  psi_petsc_compute_matrix(obj);
+  psi_petsc_set_rhs(obj);
+  psi_petsc_psi_to_da(obj);
   if (fepsilon == NULL) psi_petsc_poisson(obj);
+  psi_petsc_da_to_psi(obj);
 
   return 0;
 }
