@@ -26,8 +26,8 @@ static int t_steps   = 0;
 static int t_current = 0;
 
 static int freq_statistics = 100;
-static int freq_measure    = 1000;
-static int freq_config     = 10000;
+static int freq_measure    = 100000000;
+static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
 static int freq_psi        = 100000000;
 static int freq_vel        = 100000000;
