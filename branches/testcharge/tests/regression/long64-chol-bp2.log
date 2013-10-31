@@ -1,0 +1,134 @@
+Welcome to Ludwig (MPI version running on 64 processes)
+
+The SVN revision details are: 
+Note assertions via standard C assert() are on.
+
+Read 23 user parameters from ../tests/regression/long64-chol-bp2.inp
+
+System details
+--------------
+System size:    32 32 32
+Decomposition:  4 4 4
+Local domain:   8 8 8
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  6.9000000e-03
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  1.9634950e-01
+... gives pitch length     =  3.2000007e+01
+Elastic constant kappa0    =  2.0000000e-02
+Elastic constant kappa1    =  2.0000000e-02
+Amplitude (uniaxial) order =  3.0000000e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  2.0057255e+00
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  9.1000000e-01
+Dynamic redshift update    =             no
+LC activity constant zeta  =  0.0000000e+00
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  1.0000000e-01
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66667e+00
+Bulk viscosity                1.66667e+00
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    5.50000e+00
+Bulk relaxation time:     5.50000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Advection scheme order:  1 (default)
+Gradient calcaulation: 3d_7pt_fluid
+
+
+Initialising Q_ab using O2 (BPII)
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[phi]  1.1368684e-13  3.4694470e-18 8.9999982e-02 -6.0000000e-01 6.0000000e-01
+[phi] -4.0156292e-04 -1.2254728e-08 4.5000009e-02 -3.0000000e-01 3.0000000e-01
+[phi] -4.0156293e-04 -1.2254728e-08 4.5000009e-02 -3.0000000e-01 3.0000000e-01
+[phi]  9.6633812e-13  2.9490299e-17 8.9999982e-02 -6.0000000e-01 6.0000000e-01
+[phi] -4.0156291e-04 -1.2254727e-08 4.5000009e-02 -3.0000000e-01 3.0000000e-01
+
+Momentum - x y z
+[total   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
+[fluid   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000 1.1629897e-10  0.99998760476 1.00002796095
+[phi]  5.0448534e-13  1.5395671e-17 1.8974269e-02 -1.7420184e-01 3.3686462e-01
+[phi] -2.1867716e-06 -6.6734973e-11 1.0496069e-02 -2.5072308e-01 2.5072308e-01
+[phi] -2.1867714e-06 -6.6734966e-11 1.0496069e-02 -2.5072308e-01 2.5072308e-01
+[phi]  5.6843419e-13  1.7347235e-17 1.8974269e-02 -1.7420184e-01 3.3686462e-01
+[phi] -2.1867716e-06 -6.6734972e-11 1.0496069e-02 -2.5072308e-01 2.5072308e-01
+
+Free energy density - timestep total fluid
+[fed]          20000 -3.1263312546e-05 -3.1263312546e-05
+
+Momentum - x y z
+[total   ]  5.4114352e-13  2.2606222e-13  1.3559293e-13
+[fluid   ]  5.4114352e-13  2.2606222e-13  1.3559293e-13
+
+Velocity - x y z
+[minimum ] -2.0393528e-07 -2.0393528e-07 -2.0393528e-07
+[maximum ]  2.0393543e-07  2.0393543e-07  2.0393543e-07
+
+Completed cycle 20000
+
+Timer resolution: 0.001 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:    135.549    135.549    135.549 135.549092 (1 call)
+      Time step loop:      0.006      0.375    135.438   0.006772 (20000 calls)
+         Propagation:      0.000      0.003      0.910   0.000045 (20000 calls)
+           Collision:      0.001      0.089     26.725   0.001336 (20000 calls)
+       Lattice halos:      0.000      0.370     26.192   0.001310 (20000 calls)
+       phi gradients:      0.000      0.369     11.682   0.000584 (20000 calls)
+                 BBL:      0.000      0.000      0.008   0.000000 (20000 calls)
+   Force calculation:      0.002      0.046     38.073   0.001904 (20000 calls)
+Ludwig finished normally.
