@@ -28,6 +28,7 @@
 #
 ###############################################################################
 
+
 if [ $# -lt 2 ]
 then
     echo "Usage: $0 referece-file test-file"
@@ -52,15 +53,20 @@ if [ ! -e $1 -o ! -e $2 ]; then
     exit -1
 fi
 
-# Get rid of the run time information, which will not match
-# This is done by looking for the string "call"
+# Get rid of:
+#   - timer statistics identified via "call)" or "calls)"
+#   - SVN revision information identified via "SVN revision"
+#   - exact location of the input file via "user parameters"
 
-# Get rid of SVN information
+sed '/call)/d' $1 > test-diff-tmp.ref
+sed -i '/calls)/d' test-diff-tmp.ref
+sed -i '/SVN.revision/d' test-diff-tmp.ref
+sed -i '/user.parameters.from/d' test-diff-tmp.ref
 
-grep -v call $1 > test-diff-tmp.tmp
-sed '/SVN/d' test-diff-tmp.tmp > test-diff-tmp.ref
-grep -v call $2 > test-diff-tmp.tmp
-sed '/SVN/d' test-diff-tmp.tmp > test-diff-tmp.log
+sed '/call)/d' $2 > test-diff-tmp.log
+sed -i '/calls)/d' test-diff-tmp.log
+sed -i '/SVN.revision/d' test-diff-tmp.log
+sed -i '/user.parameters.from/d' test-diff-tmp.log
 
 var=`diff test-diff-tmp.ref test-diff-tmp.log | wc -l`
 
@@ -70,7 +76,7 @@ if [ $is_verbose -eq 1 ]
     echo "$c"
 fi
 
-rm -rf test-diff-tmp.ref test-diff-tmp.log test-diff-tmp.tmp
+rm -rf test-diff-tmp.ref test-diff-tmp.log
 
 exit $var
 
