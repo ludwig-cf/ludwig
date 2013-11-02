@@ -38,6 +38,7 @@
 #include "psi.h"
 #include "psi_sor.h"
 #include "map.h"
+#include "util.h"
 #include "psi_petsc.h"
 #include "petscksp.h"
 #include "petscdmda.h"
@@ -49,7 +50,8 @@ KSP            ksp;           /* linear solver context */
 PetscReal      norm;          /* norm of solution error */
 PetscInt       i,j,its;
 
-int viewer = 0;
+int view_matrix = 0;
+int view_vector = 0;
 
 /*****************************************************************************
  *
@@ -94,18 +96,18 @@ int psi_petsc_init(psi_t * obj){
 	cart_size(X), cart_size(Y), cart_size(Z), 1, nhalo, \
 	NULL, NULL, NULL, &da);
 
-  /* Create global vectors */
+  /* Create global vectors on DM */
   DMCreateGlobalVector(da,&u);
   VecDuplicate(u,&b);
   VecDuplicate(u,&x);
 
-  /* Create matrix pre-allocated according to distributed array structure */
+  /* Create matrix on DM pre-allocated according to distributed array structure */
   DMCreateMatrix(da,MATAIJ,&A);
 
   /* Initialise solver context and preconditioner */
   /* Optimise SAME_NONZERO_PATTERN */
   KSPCreate(PETSC_COMM_WORLD,&ksp);	
-  KSPSetOperators(ksp,A,A,DIFFERENT_NONZERO_PATTERN);
+  KSPSetOperators(ksp,A,A,SAME_NONZERO_PATTERN);
   KSPSetTolerances(ksp,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
   KSPSetFromOptions(ksp);
   KSPSetUp(ksp);
@@ -120,7 +122,7 @@ int psi_petsc_init(psi_t * obj){
  *  psi_petsc_compute_matrix
  *
  *  Creates the matrix for KSP solver. 
- *  Note that this routine uses a PETSc stencil structure which permits
+ *  Note that this routine uses the PETSc stencil structure, which permits
  *  local assembly of the matrix.
  *
  *****************************************************************************/
@@ -132,7 +134,11 @@ int psi_petsc_compute_matrix(psi_t * obj) {
   PetscScalar v[7];
   MatStencil  row, col[7];
 
+  info("\nComputing matrix\n");
+
   assert(obj);
+
+  MatZeroEntries(A);
 
   /* Get details of the distributed array data structure.
      The PETSc directives return global indices, but 
@@ -153,24 +159,31 @@ int psi_petsc_compute_matrix(psi_t * obj) {
 	row.j = j;
 	row.k = k;
 
-	col[0].i = i;     col[0].j = j;     col[0].k = k-1;   v[0] = -1.0;
-	col[1].i = i;     col[1].j = j-1;   col[1].k = k;     v[1] = -1.0;
-	col[2].i = i-1;   col[2].j = j;     col[2].k = k;     v[2] = -1.0;
-	col[3].i = row.i; col[3].j = row.j; col[3].k = row.k; v[3] =  6.0;
-	col[4].i = i+1;   col[4].j = j;     col[4].k = k;     v[4] = -1.0;
-	col[5].i = i;     col[5].j = j+1;   col[5].k = k;     v[5] = -1.0;
-	col[6].i = i;     col[6].j = j;     col[6].k = k+1;   v[6] = -1.0;
+	col[0].i = i;     col[0].j = j;     col[0].k = k-1;   v[0] = 1.0;
+	col[1].i = i;     col[1].j = j-1;   col[1].k = k;     v[1] = 1.0;
+	col[2].i = i-1;   col[2].j = j;     col[2].k = k;     v[2] = 1.0;
+	col[3].i = row.i; col[3].j = row.j; col[3].k = row.k; v[3] = -6.0;
+	col[4].i = i+1;   col[4].j = j;     col[4].k = k;     v[4] = 1.0;
+	col[5].i = i;     col[5].j = j+1;   col[5].k = k;     v[5] = 1.0;
+	col[6].i = i;     col[6].j = j;     col[6].k = k+1;   v[6] = 1.0;
 	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
 
       }
     }
   }
 
-  /* Non-local copies are communicated during the assemby stage */
+  /* Matrix assembly - halo swap */
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
 
-  if (viewer) MatView(A,PETSC_VIEWER_STDOUT_WORLD);
+  if (view_matrix) {
+    info("\nPETSc output matrix\n");
+    PetscViewer viewer;
+    PetscViewerASCIIOpen(PETSC_COMM_WORLD, "matrix.log", &viewer);
+    PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+    MatView(A,viewer);;
+    PetscViewerDestroy(&viewer);
+  }
 
   return 0;
 }
@@ -180,7 +193,7 @@ int psi_petsc_compute_matrix(psi_t * obj) {
  *
  *****************************************************************************/
 
-int psi_petsc_psi_to_da(psi_t * obj) {
+int psi_petsc_copy_psi_to_da(psi_t * obj) {
 
   PetscInt    ic,jc,kc,index;
   PetscInt    noffset[3];
@@ -199,11 +212,11 @@ int psi_petsc_psi_to_da(psi_t * obj) {
   ze = zs + zw;
 
   for (k=zs; k<ze; k++) {
-    kc = k - noffset[Z];
+    kc = k - noffset[Z] + 1;
     for (j=ys; j<ye; j++) {
-      jc = j - noffset[Y];
+      jc = j - noffset[Y] + 1;
       for (i=xs; i<xe; i++) {
-	ic = i - noffset[X];
+	ic = i - noffset[X] + 1;
 
 	index = coords_index(ic,jc,kc);
 	psi_3d[k][j][i] = obj->psi[index];
@@ -214,6 +227,15 @@ int psi_petsc_psi_to_da(psi_t * obj) {
 
   DMDAVecRestoreArray(da, x, &psi_3d);
 
+  if (view_vector) {
+    info("\nPETSc output DA vector\n");
+    PetscViewer viewer;
+    PetscViewerASCIIOpen(PETSC_COMM_WORLD, "da.log", &viewer);
+    PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+    VecView(x,viewer);
+    PetscViewerDestroy(&viewer);
+  }
+
   return 0;
 }
 
@@ -223,7 +245,7 @@ int psi_petsc_psi_to_da(psi_t * obj) {
  *
  *****************************************************************************/
 
-int psi_petsc_da_to_psi(psi_t * obj) {
+int psi_petsc_copy_da_to_psi(psi_t * obj) {
 
   PetscInt    ic,jc,kc,index;
   PetscInt    noffset[3];
@@ -242,11 +264,11 @@ int psi_petsc_da_to_psi(psi_t * obj) {
   ze = zs + zw;
 
   for (k=zs; k<ze; k++) {
-    kc = k - noffset[Z];
+    kc = k - noffset[Z] + 1;
     for (j=ys; j<ye; j++) {
-      jc = j - noffset[Y];
-      for (i=xs; i<xe; i++) {
-	ic = i - noffset[X];
+      jc = j - noffset[Y] + 1;
+      for (i=xs; i<xe; i++)  {
+	ic = i - noffset[X] + 1;
 
 	index = coords_index(ic,jc,kc);
 	obj->psi[index] = psi_3d[k][j][i];
@@ -256,6 +278,8 @@ int psi_petsc_da_to_psi(psi_t * obj) {
   }
 
   DMDAVecRestoreArray(da, x, &psi_3d);
+
+  psi_halo_psi(obj);
 
   return 0;
 }
@@ -268,9 +292,53 @@ int psi_petsc_da_to_psi(psi_t * obj) {
 
 int psi_petsc_set_rhs(psi_t * obj) {
 
-  assert(obj);
+   PetscInt    ic,jc,kc,index;
+   PetscInt    noffset[3];
+   PetscInt    i,j,k;
+   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
+   PetscScalar *** rho_3d;
+   PetscScalar epsilon, r_epsilon, rho_elec;
+ 
+   assert(obj);
+   coords_nlocal_offset(noffset);
+ 
+   DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
+   DMDAVecGetArray(da, b, &rho_3d);
+ 
+   xe = xs + xw;
+   ye = ys + yw;
+   ze = zs + zw;
 
-  return 0;
+   psi_epsilon(obj, &epsilon); 
+   r_epsilon = 1/epsilon;
+
+   for (k=zs; k<ze; k++) {
+     kc = k - noffset[Z] + 1;
+     for (j=ys; j<ye; j++) {
+       jc = j - noffset[Y] + 1;
+       for (i=xs; i<xe; i++) {
+         ic = i - noffset[X] + 1;
+ 
+         index = coords_index(ic,jc,kc);
+	 psi_rho_elec(obj, index, &rho_elec);
+         rho_3d[k][j][i] = -rho_elec * r_epsilon;
+ 
+       }
+     }
+   }
+ 
+   DMDAVecRestoreArray(da, b, &rho_3d);
+
+  if (view_vector) {
+    info("\nPETSc output RHS\n");
+    PetscViewer viewer;
+    PetscViewerASCIIOpen(PETSC_COMM_WORLD, "rhs.log", &viewer);
+    PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+    VecView(b,viewer);;
+    PetscViewerDestroy(&viewer);
+  }
+ 
+   return 0;
 }
 
 /*****************************************************************************
@@ -286,11 +354,11 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
 
   assert(obj);
 
-  psi_petsc_compute_matrix(obj);
+  if (fepsilon != NULL) psi_petsc_compute_matrix(obj);
   psi_petsc_set_rhs(obj);
-  psi_petsc_psi_to_da(obj);
+  psi_petsc_copy_psi_to_da(obj);
   if (fepsilon == NULL) psi_petsc_poisson(obj);
-  psi_petsc_da_to_psi(obj);
+  psi_petsc_copy_da_to_psi(obj);
 
   return 0;
 }
@@ -298,6 +366,9 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
 /*****************************************************************************
  *
  *  psi_petsc_poisson
+ *
+ *  Solves the Poisson equation for constant permittivity.
+ *  The vectors b, x are distributed arrays (DA).
  *
  *****************************************************************************/
 
@@ -309,11 +380,11 @@ int psi_petsc_poisson(psi_t * obj) {
   KSPSolve(ksp,b,x);
 
   /* Error check */
-  VecAXPY(x,-1.,u);
-  VecNorm(x,NORM_2,&norm);
-  KSPGetIterationNumber(ksp,&its);
+//  VecAXPY(x,-1.,u);
+//  VecNorm(x,NORM_2,&norm);
+//  KSPGetIterationNumber(ksp,&its);
 
-  PetscPrintf(PETSC_COMM_WORLD,"Norm of error %G iterations %D\n",norm,its);
+//  PetscPrintf(PETSC_COMM_WORLD,"Norm of error %G iterations %D\n",norm,its);
 
   return 0;
 }

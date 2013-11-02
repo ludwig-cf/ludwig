@@ -22,8 +22,8 @@
 #include "psi.h"
 
 int psi_petsc_init(psi_t * obj);
-int psi_petsc_psi_to_da(psi_t * obj);
-int psi_petsc_da_to_psi(psi_t * obj);
+int psi_petsc_copy_psi_to_da(psi_t * obj);
+int psi_petsc_copy_da_to_psi(psi_t * obj);
 int psi_petsc_set_rhs(psi_t * obj);
 int psi_petsc_compute_matrix(psi_t * obj);
 int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon);
