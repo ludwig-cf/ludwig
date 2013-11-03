@@ -73,7 +73,8 @@ int psi_petsc_init(psi_t * obj){
   /* In order for the DMDA and the Cartesian MPI communicator 
      to share the same part of the domain decomposition it is 
      necessary to renumber the process ranks of the default 
-     PETSc communicator */
+     PETSc communicator. Default PETSc is column major decomposition. 
+  */
 
   /* Set new rank according to PETSc ordering */
   new_rank = cart_coords(Z)*cart_size(Y)*cart_size(X) \
@@ -86,26 +87,22 @@ int psi_petsc_init(psi_t * obj){
   PETSC_COMM_WORLD = new_comm;
 
  /* Create 3D distributed array */ 
- /* Optimise DMDA_STENCIL_STAR */ 
-
   nhalo = coords_nhalo();
 
   DMDACreate3d(PETSC_COMM_WORLD, \
 	DMDA_BOUNDARY_PERIODIC,	DMDA_BOUNDARY_PERIODIC, DMDA_BOUNDARY_PERIODIC,	\
-	DMDA_STENCIL_BOX, N_total(X), N_total(Y), N_total(Z), \
+	DMDA_STENCIL_STAR, N_total(X), N_total(Y), N_total(Z), \
 	cart_size(X), cart_size(Y), cart_size(Z), 1, nhalo, \
 	NULL, NULL, NULL, &da);
 
   /* Create global vectors on DM */
-  DMCreateGlobalVector(da,&u);
-  VecDuplicate(u,&b);
-  VecDuplicate(u,&x);
+  DMCreateGlobalVector(da,&x);
+  VecDuplicate(x,&b);
 
   /* Create matrix on DM pre-allocated according to distributed array structure */
   DMCreateMatrix(da,MATAIJ,&A);
 
   /* Initialise solver context and preconditioner */
-  /* Optimise SAME_NONZERO_PATTERN */
   KSPCreate(PETSC_COMM_WORLD,&ksp);	
   KSPSetOperators(ksp,A,A,SAME_NONZERO_PATTERN);
   KSPSetTolerances(ksp,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
@@ -113,7 +110,8 @@ int psi_petsc_init(psi_t * obj){
   KSPSetUp(ksp);
 
   psi_petsc_compute_matrix(obj);
-
+  MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
+ 
   return 0;
 }
 
@@ -172,7 +170,7 @@ int psi_petsc_compute_matrix(psi_t * obj) {
     }
   }
 
-  /* Matrix assembly - halo swap */
+  /* Matrix assembly & halo swap */
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
 
@@ -380,10 +378,8 @@ int psi_petsc_poisson(psi_t * obj) {
   KSPSolve(ksp,b,x);
 
   /* Error check */
-//  VecAXPY(x,-1.,u);
 //  VecNorm(x,NORM_2,&norm);
 //  KSPGetIterationNumber(ksp,&its);
-
 //  PetscPrintf(PETSC_COMM_WORLD,"Norm of error %G iterations %D\n",norm,its);
 
   return 0;
@@ -400,7 +396,6 @@ int psi_petsc_poisson(psi_t * obj) {
 int psi_petsc_finish() {
 
   KSPDestroy(&ksp);
-  VecDestroy(&u);
   VecDestroy(&x);
   VecDestroy(&b);
   MatDestroy(&A);
