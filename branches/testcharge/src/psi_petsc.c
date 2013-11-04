@@ -33,6 +33,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "control.h"
 #include "physics.h"
 #include "psi_s.h"
 #include "psi.h"
@@ -65,8 +66,9 @@ int psi_petsc_init(psi_t * obj){
 
   MPI_Comm new_comm;
   int new_rank, nhalo;
-
-  info("\nUsing PETSc Kyrlov Subspace Solver\n");
+  KSPType solver_type;
+  PetscReal rtol, abstol, dtol;
+  PetscInt maxits;
 
   assert(obj);
 
@@ -105,9 +107,16 @@ int psi_petsc_init(psi_t * obj){
   /* Initialise solver context and preconditioner */
   KSPCreate(PETSC_COMM_WORLD,&ksp);	
   KSPSetOperators(ksp,A,A,SAME_NONZERO_PATTERN);
-  KSPSetTolerances(ksp,1.e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
+  KSPSetTolerances(ksp,1.0e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
   KSPSetFromOptions(ksp);
   KSPSetUp(ksp);
+  
+  KSPGetType(ksp, &solver_type);
+  KSPGetTolerances(ksp, &rtol, &abstol, &dtol, &maxits);
+  info("\nUsing Krylov subspace solver\n");
+  info("----------------------------\n");
+  info("Solver type %s\n", solver_type);
+  info("Tolerances rtol %g  abstol %g  maxits %d\n", rtol, abstol, maxits);
 
   psi_petsc_compute_matrix(obj);
   MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
@@ -131,8 +140,6 @@ int psi_petsc_compute_matrix(psi_t * obj) {
   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
   PetscScalar v[7];
   MatStencil  row, col[7];
-
-  info("\nComputing matrix\n");
 
   assert(obj);
 
@@ -377,10 +384,11 @@ int psi_petsc_poisson(psi_t * obj) {
   KSPSetInitialGuessNonzero(ksp,PETSC_TRUE);
   KSPSolve(ksp,b,x);
 
-  /* Error check */
-//  VecNorm(x,NORM_2,&norm);
-//  KSPGetIterationNumber(ksp,&its);
-//  PetscPrintf(PETSC_COMM_WORLD,"Norm of error %G iterations %D\n",norm,its);
+  if (is_statistics_step()) {
+    KSPGetResidualNorm(ksp,&norm);
+    KSPGetIterationNumber(ksp,&its);
+    info("\nKrylov solver\nNorm of residual %g at %d iterations\n",norm,its);
+  }
 
   return 0;
 }
