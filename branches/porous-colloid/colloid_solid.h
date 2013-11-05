@@ -18,5 +18,7 @@
 
 void solid_lubrication(colloid_t * pc, double force[3]);
 double cylinder_lubrication(const int dim, const double r[3], const double ah);
+double cylinder_lubrication_force(const double r[3], const double ah, double rhatij[3]);
+double porous_wall_lubrication_force(const int dim, const double r[3], const double ah);
 
 #endif

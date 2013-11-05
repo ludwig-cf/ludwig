@@ -229,5 +229,93 @@ double cylinder_lubrication(const int dim, const double r[3], const double ah) {
   return force;
 }
     
-    
-    
+/******************************************************************************
+ *
+ *  cylinder_lubrication_force
+ *
+ * This gives the magnitude of the lubrication correction for colloid of hydrodynamic
+ * radius ah at position near a cylinder wall (circular confinement in 2D)
+ * Top and bottom are taken care of by wall lubrication.
+ *
+ * The correction is based on sphere-wall correction:
+ * wall_lubrication (in wall.c)
+ *
+ *
+ *****************************************************************************/
+  
+double cylinder_lubrication_force(const double r[3], const double ah, double rhatij[3]) {
+  
+  double force;
+  double hlub;
+  double h[3] = {0.0, 0.0, 0.0};
+  double hlength, gap;
+  double h1, h2;
+  double centre[3];
+  double eta;
+  int i;
+  double lubrication_rcnormal_ = 0.5;
+  
+  double cylinder_radius_ = 10.0;
+  int long_axis_ = Z; /*X, Y or Z */
+
+  hlub = lubrication_rcnormal_;
+  eta = get_eta_shear();
+
+  force = 0.0;
+  rhatij[0] = 0.0;
+  rhatij[1] = 0.0;
+  rhatij[2] = 0.0;
+ 
+  hlength = 0.0;
+  
+  for (i = 0; i < 3; i++ ) {
+    if (i == long_axis_ )continue;
+      
+    centre[i] = Lmin(i) + 0.5*L(i);
+    h[i] = centre[i] - r[i];
+    hlength += h[i] * h[i];
+  }
+  
+  hlength = sqrt(hlength);
+  
+  for (i = 0; i < 3; i++) {
+    rhatij[i] = -1.0*h[i]/hlength;
+  }
+  
+  gap = cylinder_radius_ - (hlength + ah);
+  
+  assert(gap > 0.0);
+  
+  if (gap < hlub) {
+    force = -6.0*pi_*eta*ah*ah*(1.0/gap - 1.0/hlub);
+  }
+  
+  return force;
+}
+
+double porous_wall_lubrication_force(const int dim, const double r[3], const double ah)
+{
+
+  double force;
+  double hlub;
+  double h;
+  double lubrication_rcnormal_ = 0.5;
+  int long_axis_ = Z; /*X, Y or Z */
+  
+  force = 0.0;
+  hlub = lubrication_rcnormal_;
+  
+  if (dim == long_axis_){
+    /*lower boundary*/
+    h = r[dim] - (Lmin(dim) + 1.0) - ah;
+    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+    /*upper boundary */
+    h = L(dim) - Lmin(dim) -r[dim] - ah;
+    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+  }
+  
+  return(force);
+}
+  
+  
+
