@@ -16,7 +16,9 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
+
 
 #include "pe.h"
 #include "coords.h"
@@ -727,6 +729,235 @@ static void update_colloids() {
 
   return;
 }
+
+static void update_colloids_new() {
+
+  colloid_t * pc;
+
+  int ia;
+  int ic, jc, kc;
+  int i, j, k;
+  int ifail = 0;
+
+  double xb[6];
+  double a[6*6];
+  
+  double mass;
+  double moment;
+  double rho0 = colloid_rho0();
+  int util_gauss_jordan(const int n, double * a, double * b);
+
+  /* Loop round cells and update each particle velocity */
+
+  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
+    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
+      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+
+	while (pc) {
+
+	  /* Set up the matrix problem and solve it here. */
+
+	  /* Mass and moment of inertia are those of a hard sphere
+	   * with the input radius */
+
+	  mass = (4.0/3.0)*pi_*rho0*pow(pc->s.a0, 3);
+	  moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
+
+	  /* Add inertial terms to diagonal elements */
+
+	  a[6*0 + 0] = mass +   pc->zeta[0];
+	  a[6*0 + 1] =          pc->zeta[1];
+	  a[6*0 + 2] =          pc->zeta[2];
+	  a[6*0 + 3] =          pc->zeta[3];
+	  a[6*0 + 4] =          pc->zeta[4];
+	  a[6*0 + 5] =          pc->zeta[5];
+	  a[6*1 + 1] = mass +   pc->zeta[6];
+	  a[6*1 + 2] =          pc->zeta[7];
+	  a[6*1 + 3] =          pc->zeta[8];
+	  a[6*1 + 4] =          pc->zeta[9];
+	  a[6*1 + 5] =          pc->zeta[10];
+	  a[6*2 + 2] = mass +   pc->zeta[11];
+	  a[6*2 + 3] =          pc->zeta[12];
+	  a[6*2 + 4] =          pc->zeta[13];
+	  a[6*2 + 5] =          pc->zeta[14];
+	  a[6*3 + 3] = moment + pc->zeta[15];
+	  a[6*3 + 4] =          pc->zeta[16];
+	  a[6*3 + 5] =          pc->zeta[17];
+	  a[6*4 + 4] = moment + pc->zeta[18];
+	  a[6*4 + 5] =          pc->zeta[19];
+	  a[6*5 + 5] = moment + pc->zeta[20];
+
+	  for (k = 0; k < 3; k++) {
+	    a[6*k + k] -= wall_lubrication(k, pc->s.r, pc->s.ah);
+	  }
+
+	  /* Lower triangle */
+
+	  for (i = 1; i < 6; i++) {
+	    for (j = 0; j < i; j++) {
+	      a[6*i + j] = a[6*j + i];
+	    }
+	  }
+
+	  /* Form the right-hand side */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    xb[ia] = mass*pc->s.v[ia] + pc->f0[ia] + pc->force[ia];
+	    xb[3+ia] = moment*pc->s.w[ia] + pc->t0[ia] + pc->torque[ia];
+	  }
+
+	 /* Contribution to mass conservation from squirmer */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    xb[ia] += pc->fc0[ia];
+	    xb[3+ia] += pc->tc0[ia];
+	  }
+
+	  ifail = util_gauss_jordan(6, a, xb);
+	  if (ifail != 0) fatal("Gaussian elimination failed\n");
+
+	  /* Set the position update, but don't actually move
+	   * the particles. This is deferred until the next
+	   * call to coll_update() and associated cell list
+	   * update.
+	   * We use mean of old and new velocity. */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+	    pc->s.v[ia] = xb[ia];
+	    pc->s.w[ia] = xb[3+ia];
+	  }
+
+	  rotate_vector(pc->s.m, xb + 3);
+	  rotate_vector(pc->s.s, xb + 3);
+
+	  /* Record the actual hyrdrodynamic force on the particle */
+
+	  pc->force[X] = pc->f0[X]
+	    -(pc->zeta[0]*pc->s.v[X] +
+	      pc->zeta[1]*pc->s.v[Y] +
+	      pc->zeta[2]*pc->s.v[Z] +
+	      pc->zeta[3]*pc->s.w[X] +
+	      pc->zeta[4]*pc->s.w[Y] +
+	      pc->zeta[5]*pc->s.w[Z]);
+          pc->force[Y] = pc->f0[Y]
+	    -(pc->zeta[ 1]*pc->s.v[X] +
+	      pc->zeta[ 6]*pc->s.v[Y] +
+	      pc->zeta[ 7]*pc->s.v[Z] +
+	      pc->zeta[ 8]*pc->s.w[X] +
+	      pc->zeta[ 9]*pc->s.w[Y] +
+	      pc->zeta[10]*pc->s.w[Z]);
+          pc->force[Z] = pc->f0[Z]
+	    -(pc->zeta[ 2]*pc->s.v[X] +
+	      pc->zeta[ 7]*pc->s.v[Y] +
+	      pc->zeta[11]*pc->s.v[Z] +
+	      pc->zeta[12]*pc->s.w[X] +
+	      pc->zeta[13]*pc->s.w[Y] +
+	      pc->zeta[14]*pc->s.w[Z]);
+
+	  pc = pc->next;
+	}
+      }
+    }
+  }
+
+  /* As the lubrication force is based on the updated velocity, but
+   * the old position, we can account for the total momentum here. */
+
+  bbl_wall_lubrication_account();
+
+  return;
+}
+
+int util_gauss_jordan(const int n, double * a, double * b) {
+
+  int i, j, k, ia, ib;
+  int irow, icol;
+  int * ipivot = NULL;
+
+  double rpivot, tmp;
+
+  assert(a);
+  assert(b);
+
+  ipivot = calloc(n, sizeof(int));
+  if (ipivot == NULL) return -3;
+
+  icol = -1;
+  irow = -1;
+
+  for (j = 0; j < n; j++) {
+    ipivot[j] = -1;
+  }
+
+  for (i = 0; i < n; i++) {
+    tmp = 0.0;
+    for (j = 0; j < n; j++) {
+      if (ipivot[j] != 0) {
+        for (k = 0; k < n; k++) {
+
+          if (ipivot[k] == -1) {
+            if (fabs(a[j*n + k]) >= tmp) {
+              tmp = fabs(a[j*n + k]);
+              irow = j;
+              icol = k;
+            }
+          }
+        }
+      }
+    }
+
+    assert(icol != -1);
+    assert(irow != -1);
+
+    ipivot[icol] += 1;
+
+    if (irow != icol) {
+      for (ia = 0; ia < n; ia++) {
+        tmp = a[irow*n + ia];
+        a[irow*n + ia] = a[icol*n + ia];
+        a[icol*n + ia] = tmp;
+      }
+      tmp = b[irow];
+      b[irow] = b[icol];
+      b[icol] = tmp;
+    }
+
+    if (a[icol*n + icol] == 0.0) {
+      free(ipivot);
+      return -1;
+    }
+
+    rpivot = 1.0/a[icol*n + icol];
+    a[icol*n + icol] = 1.0;
+
+    for (ia = 0; ia < n; ia++) {
+      a[icol*n + ia] *= rpivot;
+    }
+    b[icol] *= rpivot;
+
+    for (ia = 0; ia < n; ia++) {
+      if (ia != icol) {
+        tmp = a[ia*n + icol];
+        a[ia*n + icol] = 0.0;
+        for (ib = 0; ib < n; ib++) {
+          a[ia*n + ib] -= a[icol*n + ib]*tmp;
+        }
+        b[ia] -= b[icol]*tmp;
+      }
+    }
+  }
+
+  /* Could recover the inverse here if required. */
+
+  free(ipivot);
+
+  return 0;
+}
+
+
 
 /*****************************************************************************
  *
