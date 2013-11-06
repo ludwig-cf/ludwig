@@ -31,11 +31,13 @@
 #include "phi.h"
 #include "bbl.h"
 #include "colloid_solid.h"
+#include "interaction.h"
 
 static void bounce_back_pass1(void);
 static void bounce_back_pass2(void);
 static void mass_conservation_compute_force(void);
 static void update_colloids(void);
+static void update_colloids_new(void);
 static  int bbl_wall_lubrication_account(void);
 
 static int bbl_active_ = 0;  /* Flag for active particles. */
@@ -77,7 +79,7 @@ void bounce_back_on_links() {
     colloid_sums_halo(COLLOID_SUM_ACTIVE);
   }
 
-  update_colloids();
+  update_colloids_new();
   bounce_back_pass2();
 
   return;
@@ -535,13 +537,16 @@ static void update_colloids() {
   double a[6][6];
   int   ipivot[6];
   int   iprow = 0;                 /* The pivot row */
-  int   idash, j, k;
+  int   idash, i, j, k;
   
   double mass;
   double moment;
   double tmp;
   double rho0 = colloid_rho0();
 
+  double rhat[3] = {0.0, 0.0, 0.0};
+  double fmod; 
+  
   /* Loop round cells and update each particle velocity */
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
@@ -586,8 +591,16 @@ static void update_colloids() {
 
 	  for (k = 0; k < 3; k++) {
 	    a[k][k] -= wall_lubrication(k, pc->s.r, pc->s.ah);
+	    a[k][k] -= porous_wall_lubrication_force(k, pc->s.r, pc->s.ah);
 	  }
 
+	  fmod = cylinder_lubrication_force(pc->s.r, pc->s.ah, rhat);
+	  for (i = 0; i < 3; i++) {
+	    for (j = 0; j < 3; j++) {
+	      a[i][j] -= fmod*rhat[i]*rhat[j];
+	    }
+	  }
+	  
 	  /* Lower triangle */
 
 	  a[1][0] = a[0][1];
@@ -747,6 +760,9 @@ static void update_colloids_new() {
   double rho0 = colloid_rho0();
   int util_gauss_jordan(const int n, double * a, double * b);
 
+  double rhat[3] = {0.0, 0.0, 0.0};
+  double fmod = 0.0;
+
   /* Loop round cells and update each particle velocity */
 
   for (ic = 0; ic <= Ncell(X) + 1; ic++) {
@@ -791,8 +807,16 @@ static void update_colloids_new() {
 
 	  for (k = 0; k < 3; k++) {
 	    a[6*k + k] -= wall_lubrication(k, pc->s.r, pc->s.ah);
+	    a[6*k + k] -= porous_wall_lubrication_force(k, pc->s.r, pc->s.ah);
 	  }
 
+	  /* cylinder lubrication */
+	  fmod = cylinder_lubrication_force(pc->s.r, pc->s.ah, rhat);
+	  for (i = 0; i < 3; i++) {
+	    for (j = 0; j < 3; j++) {
+	      a[6*i +j] -= fmod*rhat[i]*rhat[j];
+	    }
+	  }
 	  /* Lower triangle */
 
 	  for (i = 1; i < 6; i++) {
@@ -974,9 +998,11 @@ int util_gauss_jordan(const int n, double * a, double * b) {
 
 static int bbl_wall_lubrication_account(void) {
 
-  int ic, jc, kc, ia;
+  int ic, jc, kc, ia, ib;
   double f[3] = {0.0, 0.0, 0.0};
-
+  double rhat[3] = {0.0, 0.0, 0.0};
+  double fmod, g[3];
+  
   colloid_t * pc = NULL;
 
   for (ic = 1; ic <= Ncell(X); ic++) {
@@ -988,13 +1014,29 @@ static int bbl_wall_lubrication_account(void) {
 	while (pc) {
 	  for (ia = 0; ia < 3; ia++) {
 	    f[ia] -= pc->s.v[ia]*wall_lubrication(ia, pc->s.r, pc->s.ah);
+	    f[ia] -= pc->s.v[ia]*porous_wall_lubrication_force(ia, pc->s.r, pc->s.ah);
+	  }
+	  
+	  fmod = cylinder_lubrication_force(pc->s.r, pc->s.ah, rhat);
+	  /*fmod = 0.0;*/
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      f[ia] -= pc->s.v[ib]*fmod*rhat[ia]*rhat[ib];
+	    }
 	  }
 	  pc = pc->next;
 	}
       }
     }
   }
-
+  
+  
+  colloid_gravity(g);
+  
+  f[X] -= g[X]*colloid_ntotal();
+  f[Y] -= g[Y]*colloid_ntotal();
+  f[Z] -= g[Z]*colloid_ntotal();
+  
   wall_accumulate_force(f);
 
   return 0;
