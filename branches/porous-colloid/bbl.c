@@ -1033,9 +1033,9 @@ static int bbl_wall_lubrication_account(void) {
   
   colloid_gravity(g);
   
-  f[X] -= g[X]*colloid_ntotal();
-  f[Y] -= g[Y]*colloid_ntotal();
-  f[Z] -= g[Z]*colloid_ntotal();
+  f[X] -= g[X]*colloid_nlocal();
+  f[Y] -= g[Y]*colloid_nlocal();
+  f[Z] -= g[Z]*colloid_nlocal();
   
   wall_accumulate_force(f);
 
