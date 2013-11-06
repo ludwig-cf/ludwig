@@ -30,6 +30,8 @@
 #include "colloids_halo.h"
 #include "colloids_init.h"
 #include "wall.h"
+#include "util.h"
+#include "site_map.h"
 
 static void colloids_init_check_state(double hmax);
 static void colloids_init_random_set(int n, const colloid_state_t * s,
@@ -233,3 +235,82 @@ static int colloids_init_check_wall(double dh) {
 
   return 0;
 }
+
+int colloids_init_check_solid() {
+  
+  int N[3], offset[3];
+  int ic, jc, kc;
+  int i, j, k;
+  int i_min, i_max;
+  int j_min, j_max;
+  int k_min, k_max;
+  int index;
+  double r0[3], rsite[3], r12[3];
+  double rsep;
+  char status;
+  
+  colloid_t * pc = NULL;
+
+  int ifailocal = 0;
+  int ifail;
+
+  coords_nlocal(N);
+  coords_nlocal_offset(offset);
+
+  for (ic = 1; ic <= Ncell(X); ic++) {
+    for (jc = 1; jc <= Ncell(Y); jc++) {
+      for (kc = 1; kc <= Ncell(Z); kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+
+	while (pc) {
+	  
+	  /* centre of the colloid in local coordinates */
+	  r0[X] = pc->s.r[X] - 1.0*offset[X];
+	  r0[Y] = pc->s.r[Y] - 1.0*offset[Y];
+	  r0[Z] = pc->s.r[Z] - 1.0*offset[Z];
+
+	  /* cube aroung the colloid */
+	  i_min = imax(1,    (int) floor(r0[X] - pc->s.ah));
+	  i_max = imin(N[X], (int) ceil (r0[X] + pc->s.ah));
+	  j_min = imax(1,    (int) floor(r0[Y] - pc->s.ah));
+	  j_max = imin(N[Y], (int) ceil (r0[Y] + pc->s.ah));
+	  k_min = imax(1,    (int) floor(r0[Z] - pc->s.ah));
+	  k_max = imin(N[Z], (int) ceil (r0[Z] + pc->s.ah));
+
+	  for (i = i_min; i <= i_max; i++) {
+	    for (j = j_min; j <= j_max; j++) {
+	      for (k = k_min; k <= k_max; k++) {
+
+		index = coords_index(i, j, k);
+		status = site_map_get_status_index(index);
+		
+		if (status != BOUNDARY) continue;
+	
+		rsite[X] = 1.0*i;
+		rsite[Y] = 1.0*j;
+		rsite[Z] = 1.0*k;
+		coords_minimum_distance(rsite, r0, r12);
+		
+		rsep = modulus(r12);
+		
+		if(rsep < pc->s.ah) ifailocal = 1;
+	      }
+	    }
+	  }
+	  pc = pc->next;
+	}
+      }
+    }
+  }
+
+  MPI_Allreduce(&ifailocal, &ifail, 1, MPI_INT, MPI_SUM, pe_comm());
+
+  if( ifail ) {
+    info("There appears to be at least one colloid-solid overlap.\n");
+    info("Please check colloid and/or solid input\n");
+    fatal("Stop.\n");
+  }
+  return 0;
+}
+  

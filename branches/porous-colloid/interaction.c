@@ -240,6 +240,9 @@ void COLL_init() {
 
       free(state0);
     }
+        
+    /*check overlap with solid (includes porous media and walls) */
+    colloids_init_check_solid();
 
     n = RUN_get_double_parameter_vector("colloid_gravity", g);
     if (n != 0) {
@@ -395,11 +398,6 @@ static void colloid_forces_zero_set(void) {
 	    pc->torque[ia] = 0.0;
 	  }
 
-	  {
-	    double force[3];
-	    solid_lubrication(pc, force);
-	  }
-
 	  pc = pc->next;
 	}
       }
@@ -428,9 +426,8 @@ static void colloid_forces_single_particle_set(void) {
       for (kc = 1; kc <= Ncell(Z); kc++) {
 
 	pc = colloids_cell_list(ic, jc, kc);
-
+	
 	while (pc) {
-
 	  magnetic_field_torque(pc->s.s,  btorque);
 
 	  for (ia = 0; ia < 3; ia++) {

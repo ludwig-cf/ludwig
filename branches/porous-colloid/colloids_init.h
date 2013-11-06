@@ -15,5 +15,6 @@
 #ifndef COLLOIDS_INIT_H
 
 void colloids_init_random(int n, const colloid_state_t * state0, double dh);
+int colloids_init_check_solid();
 
 #endif
