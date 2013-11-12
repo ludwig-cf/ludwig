@@ -62,7 +62,7 @@ int view_vector = 0;
  *
  *****************************************************************************/
 
-int psi_petsc_init(psi_t * obj){
+int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
 
   MPI_Comm new_comm;
   int new_rank, nhalo;
@@ -118,7 +118,8 @@ int psi_petsc_init(psi_t * obj){
   info("Solver type %s\n", solver_type);
   info("Tolerances rtol %g  abstol %g  maxits %d\n", rtol, abstol, maxits);
 
-  psi_petsc_compute_laplacian(obj);
+  if (fepsilon == NULL) psi_petsc_compute_laplacian(obj);
+  if (fepsilon != NULL) psi_petsc_compute_matrix(obj,fepsilon);
   MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
  
   return 0;
@@ -128,7 +129,7 @@ int psi_petsc_init(psi_t * obj){
  *
  *  psi_petsc_compute_laplacian
  *
- *  Creates the matrix for KSP solver. 
+ *  Computes the Laplacian for KSP solver. 
  *  Note that this routine uses the PETSc stencil structure, which permits
  *  local assembly of the matrix.
  *
@@ -200,13 +201,13 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
  *
  *  psi_petsc_compute_matrix
  *
- *  Creates the matrix for KSP solver. 
+ *  Computes the matrix for KSP solver. 
  *  Note that this routine uses the PETSc stencil structure, which permits
  *  local assembly of the matrix.
  *
  *****************************************************************************/
 
-int psi_petsc_compute_matrix(psi_t * obj) {
+int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 
   PetscInt    i,j,k;
   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
@@ -270,7 +271,7 @@ int psi_petsc_compute_matrix(psi_t * obj) {
 
 /*****************************************************************************
  *
- *  psi_petsc_psi_to_da
+ *  psi_petsc_copy_psi_to_da
  *
  *****************************************************************************/
 
@@ -322,7 +323,7 @@ int psi_petsc_copy_psi_to_da(psi_t * obj) {
 
 /*****************************************************************************
  *
- *  psi_petsc_da_to_psi
+ *  psi_petsc_copy_da_to_psi
  *
  *****************************************************************************/
 
@@ -432,10 +433,10 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
 
   assert(obj);
 
-  if (fepsilon != NULL) psi_petsc_compute_matrix(obj);
+  if(fepsilon != NULL) psi_petsc_compute_matrix(obj,fepsilon);
   psi_petsc_set_rhs(obj);
   psi_petsc_copy_psi_to_da(obj);
-  if (fepsilon == NULL) psi_petsc_poisson(obj);
+  psi_petsc_poisson(obj);
   psi_petsc_copy_da_to_psi(obj);
 
   return 0;

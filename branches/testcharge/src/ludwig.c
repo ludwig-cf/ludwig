@@ -1105,7 +1105,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
          (p == 0) ? "psi grad mu method" : "Divergence method");
 
 #ifdef PETSC
-    psi_petsc_init(ludwig->psi);
+    psi_petsc_init(ludwig->psi, ludwig->epsilon);
 #endif
 
     /* Free energy object */
