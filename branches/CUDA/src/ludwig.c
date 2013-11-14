@@ -405,6 +405,11 @@ void ludwig_run(const char * inputfile) {
 
 
 
+    //get_all_fields_from_gpu();
+    //#undef _GPU_
+
+    //put_site_map_on_gpu();
+
     int async=0;
     // get environment variable
     char* tmpstr;
@@ -420,7 +425,9 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_COLLIDE);
 
     if (async==1){
-      switch_f_and_ftmp_on_gpu();
+        copy_f_to_ftmp_on_gpu();
+      //switch_f_and_ftmp_on_gpu();
+
       collide_edges_gpu();
       //collide_bulk_gpu(async);
     }
@@ -442,6 +449,10 @@ void ludwig_run(const char * inputfile) {
 #endif
 
     }
+
+    //put_all_fields_on_gpu();
+    //#define _GPU_
+
 
 
     model_le_apply_boundary_conditions();

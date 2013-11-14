@@ -296,9 +296,9 @@ void collide_gpu(int async=0) {
 
 
   /* copy f to ftmp on accelerator */
-  //copy_f_to_ftmp_on_gpu();
+  copy_f_to_ftmp_on_gpu();
 
-  switch_f_and_ftmp_on_gpu();
+  //switch_f_and_ftmp_on_gpu();
   //double *tmpptr=ftmp_d;
   //ftmp_d=f_d;
   //f_d=tmpptr;
@@ -775,11 +775,12 @@ __global__ static void collision_edge_gpu_d(int nhalo,
       else if (colltype==MULTIRELAXATION)
 	{
 
-	  
+	  if (site_map_status_d[index] == FLUID){	  
 	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, ftmp_d, 
 					       site_map_status_d, 
 					       force_d, velocity_d, nsite, 
 					       index);
+	  }
 
 	}
 
@@ -810,11 +811,13 @@ __global__ static void collision_edge_gpu_d(int nhalo,
       else if (colltype==MULTIRELAXATION)
 	{
 
+	  if (site_map_status_d[index] == FLUID){	  
 	  
 	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, ftmp_d, 
 					       site_map_status_d, 
 					       force_d, velocity_d, nsite, 
 					       index);
+	  }
 
 	}
 
@@ -923,11 +926,12 @@ __global__ void collision_lb_gpu_d(int ndist, int nhalo, int N[3],
       else if (colltype==MULTIRELAXATION)
 	{
 
-	  
-	  collision_multirelaxation_site_gpu_d(force_global_d, f_d, ftmp_d, 
-					       site_map_status_d, 
-					       force_d, velocity_d, nsite, 
-					       index);
+	  if (site_map_status_d[index] == FLUID){	  
+	    collision_multirelaxation_site_gpu_d(force_global_d, f_d, ftmp_d, 
+						 site_map_status_d, 
+						 force_d, velocity_d, nsite, 
+						 index);
+	    }
 
 	}
 
