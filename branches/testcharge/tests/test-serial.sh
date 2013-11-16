@@ -31,20 +31,24 @@ make clean
 cd ../src
 make serial
 
-for f in ../tests/regression/serial*inp
+# We are going to run from the regression test directory
+
+cd ../tests/regression
+
+for f in ./serial*inp
 do
     input=$f
     stub=`echo $f | sed 's/.inp//'`
     echo
-    ./Ludwig.exe $f > $stub.new
+    ../../src/Ludwig.exe $f > $stub.new
 
     # Get difference via the difference script
-    ../tests/test-diff.sh $stub.new $stub.log
+    ../test-diff.sh $stub.new $stub.log
 
     if [ $? -ne 0 ]
 	then
 	echo "    FAIL $f"
-	../tests/test-diff.sh -v $stub.log $stub.new
+	../test-diff.sh -v $stub.log $stub.new
 	else
 	echo "PASS     $f"
     fi
@@ -52,6 +56,7 @@ done
 
 # Clean up all directories and finish
 
+cd ../../src
 make clean
 
 cd ../mpi_s
