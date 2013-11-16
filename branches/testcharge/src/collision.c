@@ -384,6 +384,7 @@ int collision_binary_lb(hydro_t * hydro, map_t * map, noise_t * noise) {
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
   int noise_on = 0;                  /* Fluctuations switch */
+  int status;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -485,12 +486,14 @@ int collision_binary_lb(hydro_t * hydro, map_t * map, noise_t * noise) {
 	/* loop over SIMD vector of lattice sites */
 	for (iv = 0; iv < nv; iv++) {
 	  
+	  index = base_index + iv;
+	  map_status(map, index, &status);
+	  if (status != MAP_FLUID) continue;
+	  
 	  for (m = 0; m < nmodes_; m++) { 
 	    mode[m] = mode_v[m][iv];
 	  }
 
-	  index = base_index + iv;
-	  
 	  /* For convenience, write out the physical modes. */
 	  
 	  rho = mode[0];
