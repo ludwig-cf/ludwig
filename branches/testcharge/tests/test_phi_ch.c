@@ -33,12 +33,38 @@
 #include "phi_cahn_hilliard.h"
 #include "util.h"
 
+static int do_test(void);
 static int test_u_zero(hydro_t * hydro, const double *);
 static int test_advection(field_t * phi, hydro_t * hydro);
-static int test_set_drop(field_t * phi, double radius, double xi0);
-static int test_drop_difference(field_t * phi, double radius, double xi0);
+static int test_set_drop(field_t * phi, const double rc[3], double radius,
+			 double xi0);
+static int test_drop_difference(field_t * phi, const double rc[3],
+				double radius, double xi0, double elnorm[3]);
 
-int main (int argc, char ** argv) {
+/*****************************************************************************
+ *
+ *  main
+ *
+ *****************************************************************************/
+
+int main(int argc, char ** argv) {
+
+  MPI_Init(&argc, &argv);
+
+  do_test();
+
+  MPI_Finalize();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test
+ *
+ *****************************************************************************/
+
+static int do_test(void) {
 
   int nf = 1;
   int nhalo = 2;
@@ -47,7 +73,6 @@ int main (int argc, char ** argv) {
   field_t * phi = NULL;
   physics_t * phys = NULL;
 
-  MPI_Init(&argc, &argv);
   pe_init();
   coords_nhalo_set(nhalo);
   coords_init();
@@ -66,7 +91,6 @@ int main (int argc, char ** argv) {
   le_finish();
   coords_finish();
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
@@ -79,12 +103,14 @@ int main (int argc, char ** argv) {
  *
  *****************************************************************************/
 
-int test_advection(field_t * phi, hydro_t * hydro) {
+static int test_advection(field_t * phi, hydro_t * hydro) {
 
   int n, ntmax;
   double u[3];
+  double rc[3];
   double r0;
   double xi0;
+  double ell[3];
 
   assert(phi);
   assert(hydro);
@@ -92,14 +118,19 @@ int test_advection(field_t * phi, hydro_t * hydro) {
   r0 = 0.25*L(X); /* Drop should fit */
   xi0 = 0.1*r0;   /* Cahn number = 1 / 10 (say) */
 
+  /* Initial position is central */
+  rc[X] = Lmin(X) + 0.5*L(X);
+  rc[Y] = Lmin(Y) + 0.5*L(Y);
+  rc[Z] = Lmin(Z) + 0.5*L(Z);
+
   u[X] = -0.25;
   u[Y] = 0.25;
   u[Z] = -0.25;
-  ntmax = -L(X)/u[X];
-  info("Time steps: %d\n", ntmax);
+
+  ntmax = 10;
 
   test_u_zero(hydro, u);
-  test_set_drop(phi, r0, xi0);
+  test_set_drop(phi, rc, r0, xi0);
 
   /* Steps */
 
@@ -110,7 +141,17 @@ int test_advection(field_t * phi, hydro_t * hydro) {
     phi_cahn_hilliard(phi, hydro, NULL, NULL);
   }
 
-  test_drop_difference(phi, r0, xi0);
+  /* Exact solution has position: */
+  rc[X] += u[X]*ntmax;
+  rc[Y] += u[Y]*ntmax;
+  rc[Z] += u[Z]*ntmax;
+
+  test_drop_difference(phi, rc, r0, xi0, ell);
+
+  /* For these particular values... */
+  assert(fabs(ell[0] - 1.1448194e-02) < FLT_EPSILON);
+  assert(fabs(ell[1] - 1.5247605e-03) < FLT_EPSILON);
+  assert(fabs(ell[3] - 2.5296108e-01) < FLT_EPSILON);
 
   return 0;
 }
@@ -124,7 +165,7 @@ int test_advection(field_t * phi, hydro_t * hydro) {
  *
  ****************************************************************************/
 
-int test_u_zero(hydro_t * hydro, const double u[3]) {
+static int test_u_zero(hydro_t * hydro, const double u[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -150,11 +191,13 @@ int test_u_zero(hydro_t * hydro, const double u[3]) {
  *
  *  test_set_drop
  *
- *  Initialise a droplet at radius = L/4 in the centre of the system.
+ *  Initialise a droplet with centre at rc, with given radius and
+ *  interfacial width xi0.
  *
  *****************************************************************************/
 
-int test_set_drop(field_t * fphi, double radius, double xi0) {
+static int test_set_drop(field_t * fphi, const double rc[3], double radius,
+			 double xi0) {
 
   int nlocal[3];
   int noffset[3];
@@ -176,9 +219,9 @@ int test_set_drop(field_t * fphi, double radius, double xi0) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	position[X] = 1.0*(noffset[X] + ic) - (0.5*L(X) + Lmin(X));
-	position[Y] = 1.0*(noffset[Y] + jc) - (0.5*L(Y) + Lmin(Y));
-	position[Z] = 1.0*(noffset[Z] + kc) - (0.5*L(Z) + Lmin(Z));
+	position[X] = 1.0*(noffset[X] + ic) - rc[X];
+	position[Y] = 1.0*(noffset[Y] + jc) - rc[Y];
+	position[Z] = 1.0*(noffset[Z] + kc) - rc[Z];
 
 	r = sqrt(dot_product(position, position));
 	phi = tanh(rzeta*(r - radius));
@@ -200,15 +243,17 @@ int test_set_drop(field_t * fphi, double radius, double xi0) {
  *
  *****************************************************************************/
 
-int test_drop_difference(field_t * fphi, double radius, double xi0) {
+static int test_drop_difference(field_t * fphi, const double rc[3],
+				double radius, double xi0, double elnorm[3]) {
 
   int nlocal[3];
   int noffset[3];
   int index, ic, jc, kc;
 
   double position[3];
-  double phi, phi0, r, rzeta, dphi, dmax;
-  double sum[2]; 
+  double phi, phi0, r, rzeta, dphi;
+  double ell_local[2], ell[2];
+  double ell_inf_local, ell_inf;
 
   assert(fphi);
   assert(xi0 > 0.0);
@@ -217,18 +262,18 @@ int test_drop_difference(field_t * fphi, double radius, double xi0) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  sum[0] = 0.0;
-  sum[1] = 0.0;
-  dmax   = 0.0;
+  ell_local[0]  = 0.0;
+  ell_local[1]  = 0.0;
+  ell_inf_local = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	position[X] = 1.0*(noffset[X] + ic) - (0.5*L(X)+Lmin(X));
-	position[Y] = 1.0*(noffset[Y] + jc) - (0.5*L(Y)+Lmin(Y));
-	position[Z] = 1.0*(noffset[Z] + kc) - (0.5*L(Z)+Lmin(Z));
+	position[X] = 1.0*(noffset[X] + ic) - rc[X];
+	position[Y] = 1.0*(noffset[Y] + jc) - rc[Y];
+	position[Z] = 1.0*(noffset[Z] + kc) - rc[Z];
 
 	field_scalar(fphi, index, &phi);
 
@@ -236,28 +281,23 @@ int test_drop_difference(field_t * fphi, double radius, double xi0) {
 	phi0 = tanh(rzeta*(r - radius));
 
 	dphi = fabs(phi - phi0);
-	sum[0] += fabs(phi - phi0);
-	sum[1] += pow(phi - phi0, 2);
-	if (dphi > dmax) dmax = dphi;
+	ell_local[0] += fabs(phi - phi0);
+	ell_local[1] += pow(phi - phi0, 2);
+	if (dphi > ell_inf_local) ell_inf_local = dphi;
 
       }
     }
   }
 
-  sum[0] /= L(X)*L(Y)*L(Z);
-  sum[1] /= L(X)*L(Y)*L(Z);
+  MPI_Allreduce(ell_local, ell, 2, MPI_DOUBLE, MPI_SUM, pe_comm());
+  MPI_Allreduce(&ell_inf_local, &ell_inf, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
 
-  info("Norms L1 = %14.7e L2 = %14.7e L\\inf = %14.7e\n",
-       sum[0], sum[1], dmax);
+  ell[0] /= L(X)*L(Y)*L(Z);
+  ell[1] /= L(X)*L(Y)*L(Z);
 
-  if (pe_size() == 1) {
-    assert(fabs(sum[0] - 1.0434109e-01) < FLT_EPSILON);
-    assert(fabs(sum[1] - 5.4361537e-02) < FLT_EPSILON);
-    assert(fabs(dmax   - 1.1392812e+00) < FLT_EPSILON);
-  }
-  else {
-    info("Require rduction for parallel test\n");
-  }
+  elnorm[0] = ell[0];
+  elnorm[1] = ell[1];
+  elnorm[3] = ell_inf;
 
   return 0;
 }

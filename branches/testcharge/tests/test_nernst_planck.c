@@ -108,7 +108,7 @@ static int do_test_gouy_chapman(void) {
   int ntotal[3] = {64, 4, 4};  /* Quasi-one-dimensional system */
   int grid[3];                 /* Processor decomposition */
 
-  int tmax = 20000;
+  int tmax = 200;
 
   map_t * map = NULL;
   psi_t * psi = NULL;
@@ -236,20 +236,12 @@ static int do_test_gouy_chapman(void) {
   psi_bjerrum_length(psi, &lb);
   psi_debye_length(psi, rho_b, &ldebye);
   psi_surface_potential(psi, rho_w, rho_b, &yd);
-  info("Bjerrum length is %le\n", lb);
-  info("Debye length is %le\n", ldebye);
-  info("Surface potential is %le\n", yd);
 
-  /* These are the reference answers. */
-
-  assert(tmax == 20000);
+  assert(tmax == 200);
   assert(ntotal[X] == 64);
-  /*assert(fabs((lb - 7.234316e-01)/0.723431) < FLT_EPSILON);
-  assert(fabs((ldebye - 6.420075)/6.420075) < FLT_EPSILON);
-  assert(fabs((yd - 5.451449e-05)/5.45e-05) < FLT_EPSILON);*/
-  assert(fabs((lb - 7.234316e-01)/0.723431) < FLT_EPSILON);
-  assert(fabs((ldebye - 6.420068)/6.420068) < FLT_EPSILON);
-  assert(fabs((yd - 5.451444e-05)/5.45e-05) < FLT_EPSILON);
+  assert(fabs(lb     - 7.2343156e-01) < FLT_EPSILON);
+  assert(fabs(ldebye - 6.0648554e+00) < FLT_EPSILON);
+  assert(fabs(yd     - 5.1997576e-05) < FLT_EPSILON);
 
   map_free(map);
   psi_free(psi);
