@@ -48,6 +48,7 @@ DM             da;            /* distributed array */
 Vec            x,b,u;         /* approx solution, RHS, exact solution */
 Mat            A;             /* linear system matrix */
 KSP            ksp;           /* linear solver context */
+PC             pc;            /* preconditioner context */
 PetscReal      norm;          /* norm of solution error */
 PetscInt       i,j,its;
 
@@ -67,6 +68,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   MPI_Comm new_comm;
   int new_rank, nhalo;
   KSPType solver_type;
+  PCType pc_type;
   PetscReal rtol, abstol, dtol;
   PetscInt maxits;
 
@@ -113,10 +115,14 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   
   KSPGetType(ksp, &solver_type);
   KSPGetTolerances(ksp, &rtol, &abstol, &dtol, &maxits);
+  KSPGetPC(ksp, &pc);
+  PCGetType(pc, &pc_type);
+
   info("\nUsing Krylov subspace solver\n");
   info("----------------------------\n");
   info("Solver type %s\n", solver_type);
   info("Tolerances rtol %g  abstol %g  maxits %d\n", rtol, abstol, maxits);
+  info("Preconditioner type %s\n", pc_type);
 
   if (fepsilon == NULL) psi_petsc_compute_laplacian(obj);
   if (fepsilon != NULL) psi_petsc_compute_matrix(obj,fepsilon);
