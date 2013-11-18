@@ -98,15 +98,15 @@ int psi_init_param_rt(psi_t * obj) {
 
   /* Tolerances. */
 
-  n = RUN_get_double_parameter("electrokinetics_sor_rel_tol", &tolerance);
+  n = RUN_get_double_parameter("electrokinetics_rel_tol", &tolerance);
   if (n == 1) psi_reltol_set(obj, tolerance);
-  n = RUN_get_double_parameter("electrokinetics_sor_abs_tol", &tolerance);
+  n = RUN_get_double_parameter("electrokinetics_abs_tol", &tolerance);
   if (n == 1) psi_abstol_set(obj, tolerance);
 
   psi_reltol(obj, &tolerance);
-  info("Relative tolerance (SOR):  %14.7e\n", tolerance);
+  info("Relative tolerance:  %20.7e\n", tolerance);
   psi_abstol(obj, &tolerance);
-  info("Absolute Tolerance (SOR):  %14.7e\n", tolerance);
+  info("Absolute Tolerance:  %20.7e\n", tolerance);
 
   /* I/O */
 

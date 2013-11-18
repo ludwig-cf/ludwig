@@ -67,6 +67,8 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
 
   MPI_Comm new_comm;
   int new_rank, nhalo;
+  double tol_rel;              /* Relative tolerance */
+  double tol_abs;              /* Absolute tolerance */
   KSPType solver_type;
   PCType pc_type;
   PetscReal rtol, abstol, dtol;
@@ -107,9 +109,13 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   DMCreateMatrix(da,MATAIJ,&A);
 
   /* Initialise solver context and preconditioner */
+
+  psi_reltol(obj, &tol_rel);
+  psi_abstol(obj, &tol_abs);
+
   KSPCreate(PETSC_COMM_WORLD,&ksp);	
   KSPSetOperators(ksp,A,A,SAME_NONZERO_PATTERN);
-  KSPSetTolerances(ksp,1.0e-5,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
+  KSPSetTolerances(ksp,tol_rel,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
   KSPSetFromOptions(ksp);
   KSPSetUp(ksp);
   
