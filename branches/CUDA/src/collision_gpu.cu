@@ -58,15 +58,10 @@ void collide_edges_gpu() {
   double mobility;
   int N[3];
 
-  int Nall[3];
 
   ndist = distribution_ndist();
   nhalo = coords_nhalo();
   coords_nlocal(N); 
-
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
 
   collision_relaxation_times_set_gpu();
 
@@ -171,7 +166,6 @@ void collide_bulk_gpu() {
   double mobility;
   int N[3];
 
-  int Nall[3];
 
   int async=0;
   // get environment variable
@@ -185,9 +179,6 @@ void collide_bulk_gpu() {
   nhalo = coords_nhalo();
   coords_nlocal(N); 
 
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
 
   collision_relaxation_times_set_gpu();
 
@@ -354,130 +345,132 @@ __device__ void collision_multirelaxation_site_gpu_d(
   /* int threadIndex, nsite, Nall[3], ii, jj, kk, xfac, yfac; */
 
   
+  rdim = 1.0/NDIM;	  
 	  
-	  
-	  /* Compute all the modes */
-	  
-	  for (m = 0; m < NVEL; m++) {
-	   double dtmp = 0.;
-	  for (p = 0; p < NVEL; p++) {
-	    dtmp += ftmp_d[nsite*p + index]*ma_cd[m][p];
-	  }
-	  mode[m] = dtmp;
-	  }
-	  
-
-	  /* For convenience, write out the physical modes, that is,
-	   * rho, NDIM components of velocity, independent components
-	   * of stress (upper triangle), and lower triangle. */
-	  
-	  rho = mode[0];
-	  for (ia = 0; ia < NDIM; ia++) {
-	    u[ia] = mode[1 + ia];
-	  }
-	  
-	  
-	  m = 0;
-	  for (ia = 0; ia < NDIM; ia++) {
-	    for (ib = ia; ib < NDIM; ib++) {
-	      s[ia][ib] = mode[1 + NDIM + m++];
-	    }
-	  }
-	  
-	  for (ia = 1; ia < NDIM; ia++) {
-	    for (ib = 0; ib < ia; ib++) {
-	      s[ia][ib] = s[ib][ia];
-	    }
-	  }
-	  
-	  
-	  
-	  /* Compute the local velocity, taking account of any body force */
-	  
-	  rrho = 1.0/rho;
-	  /* hydrodynamics_get_force_local(index, force_local); */
-	  for (ia = 0; ia < 3; ia++) {
-	    force_local[ia] = force_d[ia*nsite+index];
-	  }
-	  
-	  for (ia = 0; ia < NDIM; ia++) {
-	    force[ia] = (force_global_d[ia] + force_local[ia]);
-	    u[ia] = rrho*(u[ia] + 0.5*force[ia]);
-	  }
-	  
-	  /* hydrodynamics_set_velocity(index, u); */
-	  for (ia = 0; ia < 3; ia++) {
-	    velocity_d[ia*nsite+index] = u[ia];
-	  }
-	  
-	  /* Relax stress with different shear and bulk viscosity */
-	  
-	  tr_s   = 0.0;
-	  tr_seq = 0.0;
-	  
-	  for (ia = 0; ia < NDIM; ia++) {
-	    /* Set equilibrium stress */
-	    for (ib = 0; ib < NDIM; ib++) {
-	      seq[ia][ib] = rho*u[ia]*u[ib];
-	    }
-	    /* Compute trace */
-	    tr_s   += s[ia][ia];
-	    tr_seq += seq[ia][ia];
-	  }
-	  
-	  /* Form traceless parts */
-	  for (ia = 0; ia < NDIM; ia++) {
-	    s[ia][ia]   -= rdim*tr_s;
-	    seq[ia][ia] -= rdim*tr_seq;
-	  }
-	  
-	  /* Relax each mode */
-	  tr_s = tr_s - rtau_bulk_d*(tr_s - tr_seq);
-	  
-	  for (ia = 0; ia < NDIM; ia++) {
-	    for (ib = 0; ib < NDIM; ib++) {
-	      s[ia][ib] -= rtau_shear_d*(s[ia][ib] - seq[ia][ib]);
-	      s[ia][ib] += d_cd[ia][ib]*rdim*tr_s;
-	      
-	      /* Correction from body force (assumes equal relaxation times) */
-	      
-	      s[ia][ib] += (2.0-rtau_shear_d)*(u[ia]*force[ib] + force[ia]*u[ib]);
-	    }
-	  }
-	  
-	  //if (isothermal_fluctuations_) 	    collision_fluctuations(index, shat, ghat);
-	  
-	  /* Now reset the hydrodynamic modes to post-collision values:
+  /* Compute all the modes */
+  
+  for (m = 0; m < NVEL; m++) {
+    double dtmp = 0.;
+    for (p = 0; p < NVEL; p++) {
+      dtmp += ftmp_d[nsite*p + index]*ma_cd[m][p];
+    }
+    mode[m] = dtmp;
+    ghat[m] = 0.0;
+  }
+  
+  
+  /* For convenience, write out the physical modes, that is,
+   * rho, NDIM components of velocity, independent components
+   * of stress (upper triangle), and lower triangle. */
+  
+  rho = mode[0];
+  for (ia = 0; ia < NDIM; ia++) {
+    u[ia] = mode[1 + ia];
+  }
+  
+  
+  m = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      s[ia][ib] = mode[1 + NDIM + m++];
+      shat[ia][ib] = 0.0;
+    }
+  }
+  
+  for (ia = 1; ia < NDIM; ia++) {
+    for (ib = 0; ib < ia; ib++) {
+      s[ia][ib] = s[ib][ia];
+    }
+  }
+  
+  
+  
+  /* Compute the local velocity, taking account of any body force */
+  
+  rrho = 1.0/rho;
+  /* hydrodynamics_get_force_local(index, force_local); */
+  for (ia = 0; ia < 3; ia++) {
+    force_local[ia] = force_d[ia*nsite+index];
+  }
+  
+  for (ia = 0; ia < NDIM; ia++) {
+    force[ia] = (force_global_d[ia] + force_local[ia]);
+    u[ia] = rrho*(u[ia] + 0.5*force[ia]);
+  }
+  
+  /* hydrodynamics_set_velocity(index, u); */
+  for (ia = 0; ia < 3; ia++) {
+    velocity_d[ia*nsite+index] = u[ia];
+  }
+  
+  /* Relax stress with different shear and bulk viscosity */
+  
+  tr_s   = 0.0;
+  tr_seq = 0.0;
+  
+  for (ia = 0; ia < NDIM; ia++) {
+    /* Set equilibrium stress */
+    for (ib = 0; ib < NDIM; ib++) {
+      seq[ia][ib] = rho*u[ia]*u[ib];
+    }
+    /* Compute trace */
+    tr_s   += s[ia][ia];
+    tr_seq += seq[ia][ia];
+  }
+  
+  /* Form traceless parts */
+  for (ia = 0; ia < NDIM; ia++) {
+    s[ia][ia]   -= rdim*tr_s;
+    seq[ia][ia] -= rdim*tr_seq;
+  }
+  
+  /* Relax each mode */
+  tr_s = tr_s - rtau_bulk_d*(tr_s - tr_seq);
+  
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = 0; ib < NDIM; ib++) {
+      s[ia][ib] -= rtau_shear_d*(s[ia][ib] - seq[ia][ib]);
+      s[ia][ib] += d_cd[ia][ib]*rdim*tr_s;
+      
+      /* Correction from body force (assumes equal relaxation times) */
+      
+      s[ia][ib] += (2.0-rtau_shear_d)*(u[ia]*force[ib] + force[ia]*u[ib]);
+    }
+  }
+  
+  //if (isothermal_fluctuations_) 	    collision_fluctuations(index, shat, ghat);
+  
+  /* Now reset the hydrodynamic modes to post-collision values:
 	   * rho is unchanged, velocity unchanged if no force,
 	   * independent components of stress, and ghosts. */
-	  
-	  for (ia = 0; ia < NDIM; ia++) {
-	    mode[1 + ia] += force[ia];
-	  }
-
-	  
-	  m = 0;
-	  for (ia = 0; ia < NDIM; ia++) {
-	    for (ib = ia; ib < NDIM; ib++) {
-	      mode[1 + NDIM + m++] = s[ia][ib] + shat[ia][ib];
-	    }
-	  }
-	  
-	  /* Ghost modes are relaxed toward zero equilibrium. */
-	  
-	  for (m = NHYDRO; m < NVEL; m++) {
-	    mode[m] = mode[m] - rtau_d[m]*(mode[m] - 0.0) + ghat[m];
-	  }
-	  
-	  /* Project post-collision modes back onto the distribution */
-	  
-	  for (p = 0; p < NVEL; p++) {
-	   double dtmp = 0.;
-	  for (m = 0; m < NVEL; m++) {
-	    dtmp += mi_cd[p][m]*mode[m];
-	  }
-	  f_d[nsite*p + index] = dtmp;
-	  }
+  
+  for (ia = 0; ia < NDIM; ia++) {
+    mode[1 + ia] += force[ia];
+  }
+  
+  
+  m = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      mode[1 + NDIM + m++] = s[ia][ib] + shat[ia][ib];
+    }
+  }
+  
+  /* Ghost modes are relaxed toward zero equilibrium. */
+  
+  for (m = NHYDRO; m < NVEL; m++) {
+    mode[m] = mode[m] - rtau_d[m]*(mode[m] - 0.0) + ghat[m];
+  }
+  
+  /* Project post-collision modes back onto the distribution */
+  
+  for (p = 0; p < NVEL; p++) {
+    double dtmp = 0.;
+    for (m = 0; m < NVEL; m++) {
+      dtmp += mi_cd[p][m]*mode[m];
+    }
+    f_d[nsite*p + index] = dtmp;
+  }
   
   
   return;
@@ -532,6 +525,7 @@ __device__ void collision_binary_lb_site_gpu_d(const double* __restrict__ force_
     for(m = 0; m < NDIST; m++) {
       f_loc[NVEL*m+p] = ftmp_d[nsite*NDIST*p + nsite*m + index];
     }
+    ghat[p]=0.0;
   }
   
   
@@ -748,7 +742,7 @@ __global__ static void collision_edge_gpu_d(int nhalo,
   }
 
 
-  int p,m, index,ii,jj,kk,ii_,jj_,kk_;
+  int index,ii,jj,kk,ii_,jj_,kk_;
  
   int threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   
@@ -842,40 +836,11 @@ __global__ void collision_lb_gpu_d(int ndist, int nhalo, int N[3],
 {
 
   int       index;                   /* site indices */
-  int       p, m;                    /* velocity index */
-  int       i, j;                    /* summed over indices ("alphabeta") */
 
-  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
-  double    rho, rrho;               /* Density, reciprocal density */
-  double    u[3];                    /* Velocity */
-  double    s[3][3];                 /* Stress */
-  double    seq[3][3];               /* equilibrium stress */
-  double    shat[3][3];              /* random stress */
-  double    ghat[NVEL];              /* noise for ghosts */
-
-  double    force[3];                /* External force */
-  double    tr_s, tr_seq;
-
-  double    force_local[3];
-
-  double f_loc[2*NVEL]; /* thread local copy of f_ data */
-
-  const double   r3     = (1.0/3.0);
-
-  double    phi, jdotc, sphidotq;    /* modes */
-  double    jphi[3];
-  double    sth[3][3], sphi[3][3];
-  double    mu;                      /* Chemical potential */
-  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
-
-
-  int threadIndex, nsite, Nall[3], ii, jj, kk, xfac, yfac, ii_,jj_,kk_;
+  int threadIndex, nsite, Nall[3], ii, jj, kk;
 
   /* ndist is always 2 in this routine. Use of hash define may help compiler */
 #define NDIST 2
-
-
-  fluctuations_off_gpu_d(shat, ghat); 
 
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;

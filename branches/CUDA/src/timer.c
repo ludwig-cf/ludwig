@@ -175,7 +175,8 @@ void TIMER_statistics() {
   r = MPI_Wtick();
 
   info("\nTimer resolution: %g second\n", r);
-  info("\nTimer statistics **ON MPI ROOT TASK**\n");
+  //  info("\nTimer statistics **ON MPI ROOT TASK**\n");
+  info("\nTimer statistics\n");
   info("%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
 
   for (n = 0; n < NTIMERS; n++) {

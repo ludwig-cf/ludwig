@@ -48,6 +48,12 @@ CFUNC void copy_f_to_ftmp_on_gpu(void);
 CFUNC void update_colloid_force_from_gpu();
 CFUNC void init_field_gpu();
 CFUNC void finalise_field_gpu();
+CFUNC double sum_f_from_gpu();
+CFUNC double sum_phi_from_gpu();
+CFUNC double sum_grad_phi_from_gpu();
+CFUNC double sum_delsq_phi_from_gpu();
+CFUNC double sum_force_from_gpu();
+CFUNC double sum_velocity_from_gpu();
 
 #endif
 

@@ -327,7 +327,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(PHIHALO);
       phi_halo_gpu();
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
+  //MPI_Barrier(cart_comm());
 
       TIMER_stop(PHIHALO);
       
@@ -359,7 +359,7 @@ void ludwig_run(const char * inputfile) {
 #endif
 
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
+  //MPI_Barrier(cart_comm());
 
 
       TIMER_stop(TIMER_PHI_GRADIENTS);
@@ -388,7 +388,7 @@ void ludwig_run(const char * inputfile) {
 #endif
 	
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
+  //MPI_Barrier(cart_comm());
 
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
@@ -396,7 +396,7 @@ void ludwig_run(const char * inputfile) {
 	TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 	phi_update_dynamics();
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
+  //MPI_Barrier(cart_comm());
 
 	TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
 
@@ -436,7 +436,7 @@ void ludwig_run(const char * inputfile) {
     }
 
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
+  //MPI_Barrier(cart_comm());
 
     TIMER_stop(TIMER_COLLIDE);
 
@@ -462,7 +462,7 @@ void ludwig_run(const char * inputfile) {
     distribution_halo_gpu();
     //collide_bulk_gpu(1);
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
+  //MPI_Barrier(cart_comm());
 
     TIMER_stop(TIMER_HALO_LATTICE);
 
@@ -470,7 +470,7 @@ void ludwig_run(const char * inputfile) {
     //collide_bulk_gpu(async);
     collide_wait_gpu(async);
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
+  //MPI_Barrier(cart_comm());
 
     TIMER_stop(TIMER_COLLIDE_WAIT);
 
@@ -524,7 +524,7 @@ void ludwig_run(const char * inputfile) {
 #endif
 
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
+  //MPI_Barrier(cart_comm());
 
     TIMER_stop(TIMER_PROPAGATE);
 
@@ -537,7 +537,7 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_stop(TIMER_STEPS);
 
-    TIMER_statistics_last();
+    //TIMER_statistics_last();
     /* Configuration dump */
 
     if (is_config_step()) {

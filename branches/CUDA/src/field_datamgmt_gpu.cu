@@ -979,3 +979,96 @@ void update_colloid_force_from_gpu()
 
 
 
+double sum_f_from_gpu(){
+
+  get_f_from_gpu();
+
+  int i;
+  double sum=0;
+  for (i=0;i<ndata;i++){
+    sum+=f_[i];
+  }
+
+  return sum;
+    
+    
+
+
+}
+
+
+double sum_phi_from_gpu(){
+
+  get_phi_from_gpu();
+
+  int i;
+  double sum=0;
+  for (i=0;i<nop*nsites;i++){
+    sum+=phi_site_temp[i];
+  }
+
+  return sum;
+    
+
+}
+
+double sum_grad_phi_from_gpu(){
+
+  get_grad_phi_from_gpu();
+
+  int i;
+  double sum=0;
+  for (i=0;i<nop*nsites*3;i++){
+    sum+=grad_phi_site_temp[i];
+  }
+
+  return sum;
+    
+
+}
+
+double sum_delsq_phi_from_gpu(){
+
+  get_delsq_phi_from_gpu();
+
+  int i;
+  double sum=0;
+  for (i=0;i<nop*nsites;i++){
+    sum+=delsq_phi_site_temp[i];
+  }
+
+  return sum;
+    
+
+}
+
+double sum_force_from_gpu(){
+
+  get_force_from_gpu();
+
+  int i;
+  double sum=0;
+  for (i=0;i<nsites*3;i++){
+    sum+=force_temp[i];
+  }
+
+  return sum;
+    
+
+}
+
+double sum_velocity_from_gpu(){
+
+  get_velocity_from_gpu();
+
+  int i;
+  double sum=0;
+  for (i=0;i<nsites*3;i++){
+    sum+=velocity_temp[i];
+  }
+
+  return sum;
+    
+
+}
+
