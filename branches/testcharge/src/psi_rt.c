@@ -106,7 +106,7 @@ int psi_init_param_rt(psi_t * obj) {
   psi_reltol(obj, &tolerance);
   info("Relative tolerance:  %20.7e\n", tolerance);
   psi_abstol(obj, &tolerance);
-  info("Absolute Tolerance:  %20.7e\n", tolerance);
+  info("Absolute tolerance:  %20.7e\n", tolerance);
 
   /* I/O */
 
