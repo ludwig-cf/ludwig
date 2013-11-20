@@ -3,7 +3,7 @@ Welcome to Ludwig (Serial version running on 1 process)
 The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 130 user parameters from ../tests/regression/serial-elec-gc1.inp
+Read 130 user parameters from ./serial-elec-gc1.inp
 
 System details
 --------------
@@ -30,8 +30,8 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-02
-Relative tolerance (SOR):   1.1920929e-07
-Absolute Tolerance (SOR):   1.1920929e-09
+Relative tolerance:         1.1920929e-07
+Absolute tolerance:         1.1920929e-09
 I/O decomposition:          1 1 1
 I/O format:                 BINARY
 Force calculation:          psi grad mu method
@@ -117,12 +117,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     20.660     20.660     20.660  20.660000 (1 call)
-      Time step loop:      0.010      0.030     20.660   0.020660 (1000 calls)
-         Propagation:      0.000      0.010      0.060   0.000060 (1000 calls)
-           Collision:      0.000      0.010      1.890   0.001890 (1000 calls)
-       Lattice halos:      0.000      0.010      0.060   0.000060 (1000 calls)
+               Total:     20.730     20.730     20.730  20.730000 (1 call)
+      Time step loop:      0.010      0.030     20.730   0.020730 (1000 calls)
+         Propagation:      0.000      0.010      0.020   0.000020 (1000 calls)
+           Collision:      0.000      0.010      1.910   0.001910 (1000 calls)
+       Lattice halos:      0.000      0.010      0.030   0.000030 (1000 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
-                 BBL:      0.000      0.000      0.000   0.000000 (1000 calls)
+                 BBL:      0.000      0.010      0.010   0.000010 (1000 calls)
    Force calculation:      0.000      0.010      0.030   0.000015 (2000 calls)
 Ludwig finished normally.
