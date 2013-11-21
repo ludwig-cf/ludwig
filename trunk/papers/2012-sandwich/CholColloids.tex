@@ -25,10 +25,10 @@ M. E. Cates, D. Marenduzzo \\
 \maketitle
 
 {\bf Colloidal particles dispersed in liquid crystals can form new materials with tunable elastic and electro-optic properties~\cite{stark}. In a host comprising  a periodic `blue phase' chiral liquid crystal~\cite{mermin}, the particles should template into colloidal crystals \cite{miha} with potential uses in photonics, metamaterials, and transformational optics~\cite{lavrentovich}. 
-Here we show by computer simulation that colloid/cholesteric mixtures can give rise to a much wider range of soft-solid composites than previously anticipated. These include regular crystals, glasses, percolating gels, isolated clusters, twisted rings and undulating colloidal ropes. The final structure can be tuned through the particle concentration, and by varying the surface interactions of the cholesteric host with both the colloids and any confining walls. 
+Here we show by computer simulation that colloid/cholesteric mixtures can give rise to a much wider range of soft-solid composites than previously anticipated. These include regular crystals, glasses, percolating gels, isolated clusters, twisted rings and undulating colloidal ropes. The final structure can be tuned via the particle concentration, and by varying the surface interactions of the cholesteric host with both the colloids and any confining walls. 
 Remarkably, we find that many of these new materials are metastable: two or more structures can arise under identical thermodynamic conditions. The observed structure depends not only on the formulation protocol,
 but also on the history of an applied electric field.  
-This new class of soft materials should thus be relevant to the design of switchable, multistable devices for optical technologies including, for example, e-paper~\cite{epaper}.}
+This new class of soft materials should thus be relevant to the design of switchable, multistable devices for optical technologies including, for example, smart glass and e-paper~\cite{epaper}.}
 
 When spherical colloidal particles are mixed into a nematic liquid crystal, 
 they disrupt the orientational order in the fluid and create defects (disclination lines) in the nematic close to their surfaces. To minimize the free energy cost, it is generally advantageous for defects to be shared:
@@ -36,7 +36,7 @@ therefore the colloidal particles have a generic tendency to aggregate. Such agg
 self-assemble into lines~\cite{wiresmiha}, 2D crystals~\cite{zumer}, 
 planar structures~\cite{tanaka}, or 3D amorphous glasses~\cite{tiffany}.
 Besides being of fundamental interest to materials science, these
-structures have tunable elastic and optical properties~\cite{stark}. Hence 
+structures may have tunable elastic and optical properties~\cite{stark}. Hence 
 they offer exciting prospects for applications as biosensors~\cite{abbott}, or
 as new devices~\cite{colloiddevice,tanakanatmat}.
 
@@ -49,14 +49,19 @@ is the pitch, $p$. The periodicity can however become fully three dimensional in
 the cartoon in Fig. S1). Such double twist 
 regions (generally cylinders: DTCs) are energetically favoured at high enough molecular chirality, but
 lead to geometric frustration because it is impossible to tile the whole 3D
-space with DTCs without also introducing disclination lines: singular topological defects on which the director field is undefined. In blue phases these disclination lines themselves either form a 3D periodic regular lattice (in so called BPI and BPII), or remain disordered (BPIII)~\cite{bp3}. 
+space with DTCs without also introducing ``disclination lines'' 
+(These are singular topological defects on which the director field is 
+undefined.) In blue phases these disclination lines themselves either form a 3D periodic regular lattice (in so called BPI and BPII), or remain disordered (BPIII)~\cite{bp3}. 
 %
 BPs are stabilised by the tendency of chiral molecules to twist, but destabilised by the cost of forming topological defects (which locally diminish the molecular alignment). In conventional cholesteric materials~\cite{mermin} this balance is only achievable in a narrow temperature range of a few degrees, around the onset of liquid crystalline ordering. However, recent advances in formulation have widened this stability range enormously (up to 250K) paving the way to
 applications of BPs in display devices~\cite{kikuchi,bplasers,coleswidetrange,bpdevice,coles}.
 
 Besides being remarkable materials in themselves, BPs offer significant promise as hosts for dispersing colloidal particles. Because BPs contain a disclination network even in the absence of
 particles, they can potentially template colloidal self-assembly. 
-This was proved recently by simulations of BP-dispersed nanoparticles which interact only weakly with the molecules of a BP (to give a so-called `weak anchoring' regime)~\cite{miha}. Such particles are attracted to the disclination network in BPs: by covering up the defect cores, the high elastic energy cost of those regions is avoided. The pre-existing order of the defect network then templates particles into a regular colloidal crystal of the same periodicity. 
+This was proved recently by simulations of BP-dispersed nanoparticles which 
+exclude the surrounding liquid crystal but otherwise have negligible surface 
+interaction with it (to give a so-called `weak anchoring' regime)~\cite{miha}. 
+Such particles are attracted to the disclination network in BPs: by covering up the defect cores, the high elastic energy cost of those regions is avoided. The pre-existing order of the defect network then templates particles into a regular colloidal crystal of the same periodicity. 
 Because this structure has a wavelength in the visible range, 
 the resulting material should inherit (and likely enhance) the incomplete photonic bandgap of the parent blue phase, as exploited for instance in laser devices~\cite{bplasers}; for related possibilities see \cite{lavrentovich}.
 
@@ -66,7 +71,7 @@ corresponding to different topologies of the defect network~\cite{adriano,fukuda
 Adding particles is likely to further enrich the free energy landscape, creating composites that might be promising candidates for bistable or multistable devices, in which energy is needed only to switch optical properties and not to maintain them. (This is the e-paper paradigm~\cite{epaper}, and can lead to huge energy savings.)
 To explore such metastability, and switching strategies between states, we require multi-unit-cell, time-dependent simulations. These go beyond previous studies of colloid-BP composites~\cite{miha} but follow comparable simulations of pure BPs~\cite{bp3,henrichfield,domaingrowth}, and isolated and dimeric colloids in cholesterics~\cite{juho1,juho2}. Our methodology and simulation parameters are summarized in the Supplementary Information.
 
-We show in Fig.~1 A-D the final state structures of four simulations in which we first equilibrated a stable BPI disclination network in bulk (with periodic boundary conditions) and then dispersed colloidal particles within it. Among dimensionless control parameters are the colloid volume fraction $\phi$  ($\phi = 1\%$ or $5\%$); the ratio $r = R/\lambda$ of particle radius to the BP lattice parameter $\lambda$ (here $r\simeq 0.14$) and the ratio $w = WR/K$ where $W$ is the anchoring strength of the cholesteric at the particle surface, and $K$ is the elastic constant of the liquid crystal (defined such that $W>0$ gives preferential perpendicular orientation of the director field at the particle surface). For the latter we choose $w = 0.23, 2.3$ which are within typical experimental range~\cite{tiffany}. This parameter can be viewed as the ratio of the anchoring energy, $WR^2$, to the elastic energy scale for distortion $KR$. 
+We show in Fig.~1 A-D the final state structures of four simulations in which we first equilibrated a stable BPI disclination network in bulk (with periodic boundary conditions) and then dispersed colloidal particles at random within it. Among dimensionless control parameters are the colloid volume fraction $\phi$  ($\phi = 1\%$ or $5\%$); the ratio $r = R/\lambda$ of particle radius to the BP lattice parameter $\lambda$ (here $r\simeq 0.14$) and the ratio $w = WR/K$ where $W$ is the anchoring strength of the cholesteric at the particle surface, and $K$ is the elastic constant of the liquid crystal. (This is defined such that $W>0$ gives preferential perpendicular orientation of the director field at the particle surface.) For the latter we choose $w = 0.23, 2.3$ which are within typical experimental range~\cite{tiffany}. This parameter can be viewed as the ratio of the anchoring energy, $WR^2$, to the elastic energy scale for distortion $KR$. 
 
 For a single colloidal particle in a nematic fluid, $w$ controls the formation of a local topological defect at the particle surface~\cite{stark}, with weak distortion of the nearby fluid at small $w$. In the colloid-BP system, $w$ also plays a determining role in the final composite structure. When $w$ is small (Fig.~ 1A,B; Suppl. Movie 1,2), the attraction of particles to the disclination lattice causes
  the lattice to become covered by particles, with little disruption of its
@@ -79,7 +84,8 @@ network completely, destroying the long range order of
 the original BPI topology. Most notably, particle aggregation favours
 the formation of defect junctions, where four disclinations meet. This structural motif is present in the unit cell of BPII rather than BPI (and also seen in the amorphous BPIII~\cite{bp3}). The particle clusters are disjoint at low volume fractions ($\phi\simeq 1\%$) but they interact elastically via the connecting disclinations. At larger $\phi$, the aggregates join up to form a percolating colloidal cluster which essentially templates the disclinations rather than vice versa. 
 
-All the structures in Fig.~1A-D should be soft solids, of nonzero elastic 
+As colloid-nematic composites~\cite{tiffany}, all the structures in Fig.~1A-D 
+should be soft solids, of nonzero elastic 
 modulus $G$ at low frequency. This contrasts with pure BPs, where
 $G=0$ as the fluid can flow with a finite
 viscosity via permeation of molecules through a fixed defect lattice~\cite{permeation1,permeation2}. We expect the
@@ -92,7 +98,7 @@ structure is now akin to that of the self-quenched glass found in
 colloid-nematic composites~\cite{tiffany} at much higher volume 
 fraction (over 20\% as opposed to below 5\% here), for which $G\sim 10^3$ Pa.
 
-A more practical protocol for including particles in a BPI phase is to disperse the particles in an isotropic phase, and then quenching this into the temperature range where BPI is stable. Here we know that, without particles, the kinetics can favour disordered (BPIII-like) intermediates which may be long lived or even metastable~\cite{domaingrowth}. Fig.~1E-H shows outcomes of such a quench protocol with the same parameter sets as in Fig.~1A-D. For small $w$, the particles again decorate the disclination lines, but are this time templated onto an amorphous network rather than an ordered one.
+A more practical protocol for including particles in a BPI phase is to disperse the particles at random in an isotropic phase, and then quenching this into the temperature range where BPI is stable. Here we know that, without particles, the kinetics can favour disordered (BPIII-like) intermediates which may be long lived or even metastable~\cite{domaingrowth}. Fig.~1E-H shows outcomes of such a quench protocol with the same parameter sets as in Fig.~1A-D. For small $w$, the particles again decorate the disclination lines, but are this time templated onto an amorphous network rather than an ordered one.
 Increasing the volume fraction (Fig.~1F) leads to a more even coverage with
 a better defined particle spacing. 
 For large $w$, on the other hand, strong interparticle forces again dictate
@@ -106,7 +112,8 @@ Fig. S4 and Ref.~\cite{stark,lavrentovich}).
 In display devices and other optical applications, it is typical for liquid crystals to be strongly confined (and subject to strong boundary effects), in contrast to the bulk geometries considered above. We therefore next describe how colloidal suspensions self assemble in thin sandwiches (thickness $h = 1.75 \lambda$), whose confining walls can favour either tangential (planar degenerate) or normal (homeotropic) orientation of the director field. For simplicity we here impose one or the other as a strict boundary condition.
 
 Fig.~2A-D shows the case of normal wall anchoring on varying $\phi$ and $w$. We quench from the isotropic to the ordered phase as was done in Fig.~1E-H, and again find a metastable, amorphous disclination network (see Supplementary Information). The resulting colloid-cholesteric composites are somewhat similar to those seen in the bulk: for small $w$ the particles are templated by the network (Fig.~2A,B), whereas for large $w$ we observe isolated clusters (Fig.~2C) and percolated colloidal gels (Fig.~2D), for $\phi = 1\%$ and $4\%$ respectively. There are, however, significant effects of the confining walls.
-First, the normal anchoring at the wall recruits particles there,  giving (for the chosen $h$) a density enhancement of the colloids at both walls and also in the midplane (see side-views in Fig.~2A-D). Second, the clusters formed at large $w$ are themselves anisotropic with an oblate habit. These clusters
+First, the normal anchoring at the wall recruits particles there,  giving (for the chosen $h$) a density enhancement of the colloids at both walls 
+(see side-views in Fig.~2A-D). Second, the clusters formed at large $w$ are themselves anisotropic with an oblate habit. These clusters
 are similar to those reported experimentally for large colloids in a
 cholesteric (but non-BP) host~\cite{niek}.
  
@@ -138,9 +145,9 @@ structure (Fig. S7), with residual anisotropy along the field switching
 direction. Cycling the field along the $x$ and $y$ directions leads to
 distinct metastable structures, which are retained after field removal
 (Fig. S8 and S9).
-The resulting multistability is a prerequisite for new generation 
-switchable electrooptic devices for use in energy-saving electronics-free
-appliances, smart glass, and e-paper to cite just a few examples.
+%The resulting multistability is a prerequisite for new generation 
+%switchable electrooptic devices for use in energy-saving electronics-free
+%appliances, smart glass, and e-paper to cite just a few examples.
 
 %FIELD SWITCHING PARA HERE
 \if{The existence of several locally stable competing solids with 
@@ -154,21 +161,22 @@ appliances, smart glass, and e-paper to cite just a few examples.
 }\fi
 
 The surprising wealth of colloid-BP composites obtained in Figs.~1-3 is the complex consequence of a simple competition between two self-assembly principles. 
-First, blue phases provide a three-dimensional template onto which colloidal particles are attracted so as to reduce the elastic stresses arising at the disclination cores~\cite{miha}. Second, colloidal intrusions in a liquid crystal raise the free energy locally; sharing this cost creates a generic tendency to aggregate into clusters~\cite{tiffany}. Which of these factors dominates depends on $w$, a dimensionless measure of the anchoring strength of the director field at the colloidal surface. For $w\ll 1$, the templating principle dominates. Colloidal crystals, gels or twisted rings can then arise. For $w \gg 1$, interparticle attractions defeat the templating tendency, and we predict disconnected aggregates, percolating gels, or helical colloidal ropes. In both cases, control is offered by the process route, colloid concentration, and the anchoring conditions at sample walls. We have also shown that electric fields can be used to switch between metastable states, providing a route to future multistable energy-saving devices. 
+First, blue phases provide a three-dimensional template onto which colloidal particles are attracted so as to reduce the elastic stresses arising at the disclination cores~\cite{miha}. Second, colloidal intrusions in a liquid crystal raise the free energy locally; sharing this cost creates a generic tendency to aggregate into clusters~\cite{tiffany}. Which of these factors dominates depends on $w$, a dimensionless measure of the anchoring strength of the director field at the colloidal surface. For $w\ll 1$, the templating principle dominates. Colloidal crystals, gels or twisted rings can then arise. For $w \gg 1$, interparticle attractions defeat the templating tendency, and we predict disconnected aggregates, percolating gels, or helical colloidal ropes. In both cases, control is offered by the process route, colloid concentration, and the anchoring conditions at sample walls. We have also shown that electric fields can be used to switch between metastable states, providing a possible route to future multistable device applications.
 %This variety of metastable structures, with tunable properties that can combine the mechanical and optical features of colloids and liquid crystals~\cite{lavrentovich}, offers promise for the design of multistable liquid crystal devices, which are at the forefront of current technological developments in this field. 
-We have not explored in this work their switchability by flow \cite{flowswitch}, but this could again be inherited from the underlying BP dynamics \cite{adriano,permeation2}, in which case they may also be relevant to the emerging technology of optofluidics~\cite{optofluidics}.
+We have not explored in this work switchability by flow \cite{flowswitch}, but this could again be inherited from the underlying BP dynamics \cite{adriano,permeation2}, in which case the same materials may also be relevant to the emerging technology of optofluidics~\cite{optofluidics}.
 
 \bigskip
 \textbf{Acknowledgements}
-KS, OH, and JSL are supported by UK EPSRC grants EP/J007404/1, EP/G036136/1,
-and EP/F054750/1, respectively. MEC is supported by the Royal Society.
+We acknowledge support by UK EPSRC grants EP/J007404/1 (KS and JSL), 
+EP/G036136/1 (OH), and EP/F054750/1 (KS), respectively. 
+MEC is supported by the Royal Society.
 We thank both Hector and PRACE for computational resources.
 
 \begin{thebibliography}{99}
 \bibitem{stark} H. Stark. Physics of
 colloidal dispersions in nematic liquid crystals. 
 {\it Phys. Rep.} {\bf 351}, 387-474 (2001).
-\bibitem{mermin} Wright D.~C., Mermin, N.~D. Crystalline liquids: The blue phases. {\it Rev. Mod. Phys.} {\bf 61}, 385–432 (1989).
+\bibitem{mermin} D.~C. Wright, Mermin, N.~D. Crystalline liquids: The blue phases. {\it Rev. Mod. Phys.} {\bf 61}, 385–432 (1989).
 \bibitem{miha} M. Ravnik, G.~P. Alexander, J.~M. Yeomans,  
 S. Zumer.  Three-dimensional colloidal crystals in liquid crystalline 
 blue phases. {\it Proc. Natl. Acad. Sci. USA} {\bf 108}, 5188-5192 (2011).
