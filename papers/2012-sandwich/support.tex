@@ -23,8 +23,11 @@
 \begin{document}
 
 
-{\bf Supplementary Information for: Self-assembly of colloid-cholesteric
-composites: A route to switchable optical materials}
+{\bf
+Self-assembly of colloid-cholesteric
+composites: A route to switchable optical materials.
+
+Supplementary Information}
 
 Here, we give more details of the simulation method, protocol, and parameters used. We also provide additional figures complementing the main text, and discuss the matching of simulation units to physical units. 
 
@@ -38,7 +41,7 @@ whose density is written as $f$:
 \end{eqnarray}
 This free energy density $f = f({\bf Q})$ may be expanded in powers of the
 order parameter ${\bf Q}$ and its gradients; ${\bf Q}$ is a traceless 
-and symmetric tensor which we will denote from now on in subscript
+and symmetric tensor which is denoted from now on in subscript
 notation as $Q_{\alpha\beta}$.
 The largest eigenvalue $q$ and corresponding eigenvector $n_\alpha$
 of $Q_{\alpha\beta}$ describe the local strength and major orientation axis
@@ -305,15 +308,15 @@ is performed in which the order parameter is initialised via a
 locally chosen random director, and
 Eq.~\ref{eq:surf_q} employed with a small amplitude $q^0 = 10^{-7}$ to
 provide an order parameter.
-We avoid the mean-field spinodal point at $\gamma = 3.0$:
+The mean-field spinodal point at $\gamma = 3.0$ is avoided and
 the parameters are the same as for the initial simulations with
 pitch $p = 32\sqrt{2}$. The chirality and reduced temperature (see
 Table~\ref{table:params}) remain appropriate for BPI.
 Colloids are added as before and the simulations run for 2 million
 simulation steps.
 
-For simplicity, we do not allow the size of the BPI unit cell to 
-dynamically readjust to minimize free energy (there is no 
+For simplicity,  the size of the BPI unit cell is not allowed to 
+readjust dynamically to minimize free energy (there is no 
 ``redshift''~\cite{blue1}): this would lead to quantitatively different 
 values of the free energy, but qualitatively similar structures. 
 
@@ -399,23 +402,29 @@ unambiguously identifies the disclinations.
 
 {\bf 4.4 Computation of the structure factor}
 
-In order to demonstrate structural information about the field-aligned 
-states and the residual anisotropy after switch off we followed a 
-procedure similar to the one described in \cite{oliver-bp3}.
-The structure factor in the current approach is defined via
-the Fourier transform of the colloid density:
+To provide structural information about the field-aligned 
+states and the residual anisotropy after switch off a 
+procedure similar to the one described in \cite{oliver-bp3} is
+followed.
+The structure factor $S(\mathbf{k})$ in the current approach is
+defined via the Fourier transform of the colloid density $F(\mathbf{k})$:
 
-\begin{eqnarray}
-S({\bf k})&=&|F({\bf k})|^2\\
-F({\bf k})&=&\int_V d{\bf r} \rho({\bf r}) e^{i {\bf k r}}
-\end{eqnarray}
+%\begin{eqnarray}
+%S({\bf k})&=&|F({\bf k})|^2,\\
+%F({\bf k})&=&\int d^3{\bf r} \rho({\bf r}) e^{i {\bf k. r}}.
+%\end{eqnarray}
+
+\begin{equation}
+S({\bf k}) =  |F({\bf k})|^2, \mathrm{with}\
+F({\bf k}) = \int d^3{\bf r} \rho({\bf r}) e^{i {\bf k. r}}.
+\end{equation}
 
 The colloid density $\rho({\bf r})$ is a discretised density and taken to be
 $\rho({\bf r})=1$ if a lattice site at ${\bf r}$ is part of a colloid
 and $\rho({\bf r})=0$ otherwise. This definition, which deviates from the 
 standard definition of a structure factor and does not consider the colloids 
-as pointlike objects, allows to gain the same structural information
-in a simpler way.
+as point-like objects, allows the same structural information
+to be obtained in a simple way.
 
 {\bf 5. Parameter mapping to physical units}
 
@@ -492,11 +501,11 @@ density being close to 10~nm, 10~ns, and 100~MPa respectively.
 \begin{thebibliography}{99}
 
 \bibitem{blue1}
-D.C. Wright and N.D. Mermin,
+D.C. Wright and N.D. Morin,
 %  Crystalline liquids -- the blue phases.
 {\it Rev. Mod. Phys.} {\bf 61,} 385-432 (1989).
 \bibitem{deGennes}
-P.-G. de Gennes, J. Prost,
+P.-G. DEC Gunner's, J. Poorest,
 {\it The Physics of Liquid Crystals} (Oxford Univ. Press, New York, 1993).
 %\bibitem{marendu1}
 %D. Marenduzzo, E.  Orlandini, M. E. Cates, J. M. Yeomans,
@@ -555,7 +564,7 @@ O. Henrich, K. Stratford, D. Marenduzzo, M. E. Cates,
 \vfill\pagebreak
 
 
-{\bf Supplementry Figures and Animations}
+{\bf Supplementary Figures and Animations}
 
 \begin{figure}[!h]
 \begin{center}
