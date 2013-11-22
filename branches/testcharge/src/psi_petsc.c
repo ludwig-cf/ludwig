@@ -115,7 +115,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
 
   KSPCreate(PETSC_COMM_WORLD,&ksp);	
   KSPSetOperators(ksp,A,A,SAME_NONZERO_PATTERN);
-  KSPSetTolerances(ksp,tol_rel,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);
+  KSPSetTolerances(ksp,tol_rel,tol_abs,PETSC_DEFAULT,PETSC_DEFAULT);
   KSPSetFromOptions(ksp);
   KSPSetUp(ksp);
   
