@@ -1070,7 +1070,7 @@ int build_colloid_wall_links(colloid_t * p_colloid, map_t * map) {
 
 	  index0 = coords_index(ii, jj, kk);
 	  map_status(map, index0, &status);
-	  if (status == MAP_BOUNDARY) continue;
+	  if (status != MAP_BOUNDARY) continue;
 
 	  /* Add a link */
 
