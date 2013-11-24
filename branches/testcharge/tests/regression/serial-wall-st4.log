@@ -1,0 +1,124 @@
+Welcome to Ludwig (Serial version running on 1 process)
+
+The SVN revision details are: 
+Note assertions via standard C assert() are on.
+
+Read 30 user parameters from ./serial-wall-st4.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    24 24 24
+Decomposition:  1 1 1
+Local domain:   24 24 24
+Periodic:       0 0 0
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Boundary walls
+--------------
+Boundary walls:                  X Y Z
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  5.0000000e-01
+Wall boundary links allocated:   16992
+Memory (total, bytes):           543744
+Boundary shear initialise:       0
+
+Colloid I/O settings
+--------------------
+Decomposition:   1  1  1
+Input format:       ascii serial
+Output format:      ascii
+
+Requested   1 colloid from input
+Initialised 1 colloid
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+Sedimentation force on:   yes
+Sedimentation force:      -1.0000000e-03  0.0000000e+00  0.0000000e+00
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       13776.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+
+Momentum - x y z
+[total   ]  1.9118040e-13  0.0000000e+00  0.0000000e+00
+[fluid   ]  1.9118040e-13  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Colloid velocities - x y z
+[minimum ] -2.0209384e-05 -3.7930030e-18  1.6306864e-18
+[maximum ] -2.0209384e-05 -3.7930030e-18  1.6306864e-18
+
+Scalars - total mean variance min max
+[rho]       13776.00  1.00000000000 2.6150193e-12  0.99999219665 1.00004209590
+
+Momentum - x y z
+[total   ]  5.0503005e-13  1.1535793e-15  2.0893727e-14
+[fluid   ]  5.5064038e-03 -1.6587773e-13  7.3403089e-14
+[colloids] -1.0389339e-03 -4.3889690e-16  8.0515179e-17
+[walls   ] -4.4674698e-03  1.6747020e-13 -5.2589877e-14
+
+Velocity - x y z
+[minimum ] -1.4521515e-05 -1.0655409e-05 -1.0655409e-05
+[maximum ]  3.8469117e-06  1.0655409e-05  1.0655409e-05
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.280      0.280      0.280   0.280000 (1 call)
+      Time step loop:      0.020      0.030      0.280   0.028000 (10 calls)
+         Propagation:      0.000      0.000      0.000   0.000000 (10 calls)
+           Collision:      0.020      0.030      0.240   0.024000 (10 calls)
+       Lattice halos:      0.000      0.000      0.000   0.000000 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (10 calls)
+             Rebuild:      0.000      0.010      0.040   0.004000 (10 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (10 calls)
+      Particle halos:      0.000      0.000      0.000   0.000000 (10 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (10 calls)
+Ludwig finished normally.
