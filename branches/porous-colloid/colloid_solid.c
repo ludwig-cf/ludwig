@@ -249,7 +249,6 @@ double cylinder_lubrication_force(const double r[3], const double ah, double rha
   double hlub;
   double h[3] = {0.0, 0.0, 0.0};
   double hlength, gap;
-  double h1, h2;
   double centre[3];
   double eta;
   int i;
@@ -319,3 +318,61 @@ double porous_wall_lubrication_force(const int dim, const double r[3], const dou
   
   
 
+void cylinder_wall_soft_force(const double r[3], const double ah, double force[3]) {
+  
+  double fmod;
+  double h[3] = {0.0, 0.0, 0.0};
+  double hlength, gap;
+  double centre[3];
+  int i;
+  
+  double cylinder_radius_ = 11.0;
+  int long_axis_ = Z; /*X, Y or Z */
+
+  hlength = 0.0;
+  
+  for (i = 0; i < 3; i++ ) {
+    force[i] = 0.0;
+    if (i == long_axis_ )continue;
+
+    centre[i] = Lmin(i) + 0.5*L(i);
+    h[i] = centre[i] - r[i];
+    hlength += h[i] * h[i];
+  }
+  
+  hlength = sqrt(hlength);
+  
+  gap = cylinder_radius_ - (hlength + ah);
+  
+  assert(gap > 0.0);
+  fmod = soft_sphere_force(gap);
+  
+  for (i = 0; i < 3; i++ ){
+    force[i] = fmod*h[i]/hlength;
+  }
+    
+}
+
+void cylinder_bottom_soft_force(const double r[3], const double ah, double force[3]) {
+
+  double h;
+    
+  int long_axis_ = Z;
+  int dim;
+  
+  dim = long_axis_;
+  
+  force[0] = 0.0;
+  force[1] = 0.0;
+  force[2] = 0.0;
+  
+  /*lower boundary*/
+  h = r[dim] - (Lmin(dim) + 1.0) - ah;
+  assert(h > 0.0);
+  force[dim] = soft_sphere_force(h);
+  
+  /*upper boundary */
+  h = L(dim) - Lmin(dim) - r[dim] - ah;
+  assert(h > 0.0);
+  force[dim] -= soft_sphere_force(h);
+}
