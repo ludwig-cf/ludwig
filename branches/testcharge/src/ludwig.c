@@ -217,7 +217,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* To be called before wall_init() */
-  if (ludwig->psi) psi_init_rho_rt(ludwig->psi, ludwig->map);
+  if (ludwig->psi) {
+    psi_init_rho_rt(ludwig->psi, ludwig->map);
+    advection_run_time();
+  }
 
   wall_init(ludwig->map);
   COLL_init(ludwig->map);
