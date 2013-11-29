@@ -63,6 +63,7 @@ void lubrication_sphere_sphere(double a1, double a2,
 static void    coll_position_update(void);
 static void    lubrication_init(void);
 static void    colloid_forces_check(void);
+static int     colloid_size_check(void);
 
 static int    cell_list_interactions_ = 1;
 static int    gravity_ = 0;            /* Switch */
@@ -253,6 +254,7 @@ void COLL_init() {
     soft_sphere_init();
     lennard_jones_init();
     yukawa_init();
+    colloid_size_check();
     colloid_forces_check();
 
     COLL_init_coordinates();
@@ -593,6 +595,51 @@ static void colloid_forces_pairwise(double * hmin, double * epot) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_size_check
+ *
+ *  The particle radius must not exceed (nlocal - nhalo) for the
+ *  parallelisation to work. This ensures neighbouring processes
+ *  do not miss colloid-occupied sites in their halo regions.
+ *
+ *  In addition, the cell width must be at least a.
+ *
+ *  This is independent of any colloid-colloid interactions.
+ *
+ *****************************************************************************/
+
+static int colloid_size_check(void) {
+
+  int ifail = 0;
+  int nlocal[3];
+  int nhalo;
+  double ahmax;
+
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+
+  ahmax = colloid_forces_ahmax();
+
+  if (ahmax >= 1.0*(nlocal[X] - nhalo)) ifail = 1;
+  if (ahmax >= 1.0*(nlocal[Y] - nhalo)) ifail = 1;
+  if (ahmax >= 1.0*(nlocal[Z] - nhalo)) ifail = 1;
+
+  if (colloid_ntotal() > 0 && ifail == 1) {
+    fatal("Particle radius > local domain - nhalo (amax: %6.2f) \n", ahmax);
+  }
+
+  if (colloids_lcell(X) < ahmax) ifail = 1;
+  if (colloids_lcell(Y) < ahmax) ifail = 1;
+  if (colloids_lcell(Z) < ahmax) ifail = 1;
+
+  if (colloid_ntotal > 0 && ifail == 1) {
+    fatal("Must increase cell_min to at least particle radius\n");
+  }
+
+  return 0;
 }
 
 /*****************************************************************************
