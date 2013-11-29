@@ -738,6 +738,7 @@ void blue_phase_nematic_init(const double n[3]) {
 
   int ic, jc, kc;
   int nlocal[3];
+  int noffset[3];
   int ia, index;
 
   double nhat[3];
@@ -745,6 +746,7 @@ void blue_phase_nematic_init(const double n[3]) {
 
   assert(modulus(n) > 0.0);
   coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
   for (ia = 0; ia < 3; ia++) {
     nhat[ia] = n[ia] / modulus(n);
@@ -761,6 +763,142 @@ void blue_phase_nematic_init(const double n[3]) {
       }
     }
   }
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_active_nematic_init
+ *
+ *  Initialise a uniform uniaxial nematic with a kink in the centre.
+ *
+ *  This is like the above initialisation in blue_phase_nematic_init
+ *  apart from the symmetry-breaking kinks in the middle of the system.
+ *
+ *****************************************************************************/
+
+void blue_phase_active_nematic_init(const double n[3]) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int ia, index;
+
+  double nhat[3];
+  double q[3][3];
+
+  double nkink1[3], nkink2[3];
+  double qkink1[3][3], qkink2[3][3];
+
+  double x, y, z;
+  double ang=pi_/180.0*10.0;
+
+  assert(modulus(n) > 0.0);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ia = 0; ia < 3; ia++) {
+    nhat[ia] = n[ia] / modulus(n);
+  }
+
+  /* 2 kinks depending on the primary alignment */
+
+  /* Kink for primary alignment along x */	 
+  if (nhat[0] == 1.0) {
+    nkink1[0] = nhat[0]*sin(ang);
+    nkink1[1] = nhat[1];
+    nkink1[2] = nhat[0]*cos(ang);
+
+    nkink2[0] = -nhat[0]*sin(ang);
+    nkink2[1] =  nhat[1];
+    nkink2[2] =  nhat[0]*cos(ang);
+  }
+  /* Kink for primary alignment along y */	 
+
+  if (nhat[1] == 1.0) {
+    nkink1[0] = nhat[0];
+    nkink1[1] = nhat[1]*sin(ang);
+    nkink1[2] = nhat[1]*cos(ang);
+
+    nkink2[0] =  nhat[0];
+    nkink2[1] = -nhat[1]*sin(ang);
+    nkink2[2] =  nhat[1]*cos(ang);
+  }
+
+  /* Kink for primary alignment along z */	 
+/*
+  if (nhat[2] == 1.0) {
+    nkink1[0] = nhat[2]*cos(ang);
+    nkink1[1] = nhat[1];
+    nkink1[2] = nhat[2]*sin(ang);
+
+    nkink2[0] =  nhat[2]*cos(ang);
+    nkink2[1] =  nhat[1];
+    nkink2[2] = -nhat[2]*sin(ang);
+  }
+*/
+  blue_phase_q_uniaxial(amplitude0_, nhat, q);
+  blue_phase_q_uniaxial(amplitude0_, nkink1, qkink1);
+  blue_phase_q_uniaxial(amplitude0_, nkink2, qkink2);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = coords_index(ic, jc, kc);
+	phi_set_q_tensor(index, q);
+
+        /* If alignment along x region around 
+	   z=N_total(Z)/2 is being replaced */
+ 
+	if(nhat[0] == 1.0) {
+	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
+	    if(x<=N_total(X)/2.0) {
+	      phi_set_q_tensor(index, qkink1);
+	    }
+	    else {
+	      phi_set_q_tensor(index, qkink2);
+	    }
+	  }
+	}
+
+        /* If alignment along y region around 
+	   z=N_total(Z)/2 is being replaced */
+
+	if(nhat[1] == 1.0){
+	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
+	    if(y<=N_total(Y)/2.0) {
+	      phi_set_q_tensor(index, qkink1);
+	    }
+	    else {
+	      phi_set_q_tensor(index, qkink2);
+	    }
+	  }
+	}
+
+        /* If alignment along z region around 
+	   x=N_total(X)/2 is being replaced */
+/*
+	if(nhat[2] == 1.0){
+	  if(x==N_total(X)/2.0 || x==(N_total(X)-1)/2.0) {
+	    if(z<=N_total(Z)/2.0) {
+	      phi_set_q_tensor(index, qkink1);
+	    }
+	    else {
+	      phi_set_q_tensor(index, qkink2);
+	    }
+	  }
+	}
+*/
+
+      }
+    }
+  }
+
+
   return;
 }
 
@@ -835,15 +973,9 @@ void blue_set_random_q_init(void) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
   
-#ifdef TITAN
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-#else
   for (ic = 1; ic <= N_total(X); ic++) {
     for (jc = 1; jc <= N_total(Y); jc++) {
       for (kc = 1; kc <= N_total(Z); kc++) {
-#endif
 
 	phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
 	phase2 = acos(2.0*ran_serial_uniform() - 1.0);
@@ -899,15 +1031,9 @@ void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
   coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
   
-#ifdef TITAN
-  for (i = 1; i <= nlocal[X]; i++) {
-    for (j = 1; j <= nlocal[Y]; j++) {
-      for (k = 1; k <= nlocal[Z]; k++) {
-#else
-  for (i = 1; i <= N_total(X); i++) {
-    for (j = 1; j <= N_total(Y); j++) {
-      for (k = 1; k <= N_total(Z); k++) {
-#endif
+  for (i = 1; i<=N_total(X); i++) {
+    for (j = 1; j<=N_total(Y); j++) {
+      for (k = 1; k<=N_total(Z); k++) {
 
 	if((i>xmin) && (i<xmax) &&
 	   (j>ymin) && (j<ymax) &&

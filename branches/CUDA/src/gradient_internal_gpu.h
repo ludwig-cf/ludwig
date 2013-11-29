@@ -22,6 +22,7 @@ extern "C" double blue_phase_kappa1(void);
 extern "C" double colloids_q_tensor_w(void);
 extern "C" void coords_nlocal_offset(int n[3]);
 extern "C" double blue_phase_amplitude_compute(void);
+extern "C" void blue_phase_coll_w12(double*,double*);
 
 extern "C" void checkCUDAError(const char *msg);
 
@@ -51,7 +52,7 @@ __device__ static void gradient_bcs_gpu_d(const double kappa0,
 					  const int dn[3],
 					  double dq[NOP][3], 
 					  double bc[NOP][NOP][3]);
-__device__ static int util_gaussian_gpu_d(double a[NOP][NOP], double xb[NOP]);
+__device__ static int util_gaussian_gpu_d(double a[6][6], double xb[6]);
 
 __device__ void colloids_q_boundary_normal_gpu_d(const int di[3],
 						 double dn[3], int Nall[3], int nhalo, int nextra, int ii, int jj, int kk, const char* __restrict__ site_map_status_d,					    const char* __restrict__ colloid_map_d,
@@ -68,7 +69,8 @@ __constant__ double q_0_cd;
 __constant__ double kappa0_cd;
 __constant__ double kappa1_cd;
 __constant__ double kappa2_cd;
-__constant__ double w_cd;
+__constant__ double w1_coll_cd;
+__constant__ double w2_coll_cd;
 __constant__ double amplitude_cd;
 __constant__ double e_cd[3][3][3];
 __constant__ int noffset_cd[3];

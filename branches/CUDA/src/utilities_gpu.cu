@@ -165,7 +165,9 @@ static void allocate_memory_on_gpu()
 
   /* temp arrays for staging data on  host */
   site_map_status_temp = (char *) malloc(nsites*sizeof(char));
-  colloid_map_temp = (char *) calloc(nsites,sizeof(char));
+  colloid_map_temp = (char *) malloc(nsites*sizeof(char));
+  char minusone=-1;
+  memset(colloid_map_temp,minusone,nsites*sizeof(char));
   
   cudaMalloc((void **) &site_map_status_d, nsites*sizeof(char));
   cudaMalloc((void **) &colloid_map_d, nsites*sizeof(char));
