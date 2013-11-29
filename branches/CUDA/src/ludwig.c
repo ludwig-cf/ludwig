@@ -296,10 +296,7 @@ void ludwig_run(const char * inputfile) {
     hydrodynamics_zero_force();
 #endif
 
-
-    printf("before coll_update %d\n",get_step());
     COLL_update();
-    printf("after coll_update %d\n",get_step());
 
 
 
@@ -492,11 +489,9 @@ void ludwig_run(const char * inputfile) {
     else {
       TIMER_start(TIMER_BBL);
 
-      printf("before BBL %d\n",get_step());
-      //wall_update();
+      wall_update();
       bounce_back_on_links();
-      //wall_bounce_back();
-      printf("after BBL %d\n",get_step());
+      wall_bounce_back();
 
       TIMER_stop(TIMER_BBL);
     }

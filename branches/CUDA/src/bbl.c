@@ -72,12 +72,9 @@ void bounce_back_on_links() {
 
   if (colloid_ntotal() == 0) return;
 
-  printf("starting BBL %d\n");
  
   colloid_sums_halo(COLLOID_SUM_STRUCTURE);
-  printf("before BBL P1 %d\n");
   bounce_back_pass1();
-  printf("after BBL P1 %d\n");
   colloid_sums_halo(COLLOID_SUM_DYNAMICS);
 
   if (bbl_active_) {
@@ -87,9 +84,8 @@ void bounce_back_on_links() {
 
   update_colloids();
 
-  printf("before BBL P2 %d\n");
+
   bounce_back_pass2();
-  printf("after BBL P2 %d\n");
 
 
   //bbl_surface_stress();

@@ -189,25 +189,3 @@ void phi_fluctuations_site(int n, double var, double * jsite) {
 
   return;
 }
-
-/*****************************************************************************
- *
- *  phi_fluctuations_qab
- *
- *****************************************************************************/
-
-int phi_fluctuations_qab(int index, double var, double xi[5]) {
-
-  int n;
-  double reap[NFLUCTUATION];
-
-  assert(fluctuations_on_);
-
-  fluctuations_reap(fl_, index, reap);
-
-  for (n = 0; n < 5; n++) {
-    xi[n] = var*reap[n];
-  }
-  
-  return 0;
-}

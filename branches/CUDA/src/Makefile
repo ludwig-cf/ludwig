@@ -74,7 +74,7 @@ GPUCC = nvcc
 GPUCPPFLAG = -D_GPU_
 GPUOPTS = $(OPTS) $(GPUCPPFLAG) -Xptxas -v #,-abi=no
 GPUCFLAGS = -O3 -arch=sm_35
-#GPUCFLAGS = -arch=sm_35 -g -G 
+#GPUCFLAGS = -arch=sm_21 -g -G 
 GPUINC = $(INC) -I$(MPIDIR)
 
 # -I ../mpi_s

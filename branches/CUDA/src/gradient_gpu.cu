@@ -133,7 +133,7 @@ __global__ void gradient_3d_7pt_fluid_operator_gpu_d(const double* __restrict__ 
 }
 
 
-#define NMAX_ITERATION 400
+#define NITERATION 40
 
 
 __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo, 
@@ -163,16 +163,14 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
  double c[6][3][3];                        /* Constant terms in BC. */
  double q0[3][3];                          /* Prefered surface Q_ab */
  double qs[3][3];                          /* 'Surface' Q_ab */
- double b[6];                            /* RHS / unknown */
- double a[6][6];                       /* Matrix for linear system */
- double dq[6][3];                        /* normal/tangential gradients */
- double bc[6][6][3];                   /* Terms in boundary condition */
- double gradn[6][3][2];                  /* Partial gradients */
+ double b[NOP];                            /* RHS / unknown */
+ double a[NOP][NOP];                       /* Matrix for linear system */
+ double dq[NOP][3];                        /* normal/tangential gradients */
+ double bc[NOP][NOP][3];                   /* Terms in boundary condition */
+ double gradn[NOP][3][2];                  /* Partial gradients */
   double dn[3];                             /* Unit normal. */
  double tmp;
-  double qtilde[3][3];                      /* For planar anchoring */
-  double del2m1[NOP];
-  double del2diff;
+
 
   Nall[X]=N_d[X]+2*nhalo;
   Nall[Y]=N_d[Y]+2*nhalo;
@@ -201,6 +199,7 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
       get_coords_from_index_gpu_d(&ii,&jj,&kk,threadIndex,Ngradcalc);
       index = get_linear_index_gpu_d(ii+nhalo-nextra,jj+nhalo-nextra,
 				     kk+nhalo-nextra,Nall);      
+      
 
       if (site_map_status_d[index] == FLUID){
 
@@ -229,7 +228,7 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	status[5]=site_map_status_d[index1];
 	
 	
-	for (n1 = 0; n1 < NOP; n1++) { 
+	for (n1 = 0; n1 < nop; n1++) { 
 	  for (ia = 0; ia < 3; ia++) {
 	    gradn[n1][ia][0] =  
 	      field_d[nsites*n1+index+str[ia]]- field_d[nsites*n1+index];
@@ -237,17 +236,11 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	      field_d[nsites*n1+index]- field_d[nsites*n1+index-str[ia]];
 	  }
 	}
-
-	for (ia = 0; ia < 3; ia++) {
-	  gradn[ZZ][ia][0] = -gradn[XX][ia][0] - gradn[YY][ia][0];
-	  gradn[ZZ][ia][1] = -gradn[XX][ia][1] - gradn[YY][ia][1];
-	}
-
 	
-	for (n1 = 0; n1 < NOP; n1++) { 
+	for (n1 = 0; n1 < nop; n1++) { 
 	  del2_d[n1*nsites+index] = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
-	    grad_d[ia*nsites*NOP+n1*nsites+index]=
+	    grad_d[ia*nsites*nop+n1*nsites+index]=
 	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
 	    del2_d[n1*nsites+index]+= gradn[n1][ia][0] - gradn[n1][ia][1];
 	  }
@@ -259,7 +252,6 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	  mask[n] = (status[n] != FLUID);
 	  ns += mask[n];
 	}
-
 
 	if (ns !=0 ){
 
@@ -278,33 +270,17 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	  qs[Z][Z] = -field_d[nsites*0+index] - field_d[nsites*3+index]; 
 
 
-	/* For planar anchoring we require qtilde_ab of Fournier and
-	 * Galatola, and its square */
-
-	  double q2 = 0.0;
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude_cd*d_cd[ia][ib];
-	      q2 += qtilde[ia][ib]*qtilde[ia][ib]; 
-	    }
-	  }
-
-
-
-
 	  for (n = 0; n < 6; n++) {
 	  if (status[n] != FLUID) {
-
 
 
 	    //TO DO
 	    colloids_q_boundary_normal_gpu_d(bcs[n], dn, Nall, nhalo, nextra, ii, jj, kk, site_map_status_d,colloid_map_d, colloid_r_d);
 	      //colloids_q_boundary(dn, qs, q0, status[n]);
-	    
+
 	    for (ia = 0; ia < 3; ia++) {
 	      for (ib = 0; ib < 3; ib++) {
 		q0[ia][ib] = 0.5*amplitude_cd*(3.0*dn[ia]*dn[ib] - d_cd[ia][ib]);
-		
 	      }
 	    }
 
@@ -326,16 +302,13 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	    	          (e_cd[ia][ig][ih]*qs[ih][ib] + e_cd[ib][ig][ih]*qs[ih][ia]);
 	    	    }
 	    	  }
-		  c[n][ia][ib] +=
-		  -w1_coll_cd*(qs[ia][ib] - q0[ia][ib]);
-		  -w2_coll_cd*(2.0*q2 - 4.5*amplitude_cd*amplitude_cd)*qtilde[ia][ib];
-
+	    	  c[n][ia][ib] -= w_cd*(qs[ia][ib] - q0[ia][ib]);
 	    	}
 	      }
 	  }
 	  }
 	    
-	  /* Set up initial approximation to grad using partial gradients
+	    /* Set up initial approximation to grad using partial gradients
 	 /* where solid sites are involved (or zero where none available) */
 
 	for (n1 = 0; n1 < NOP; n1++) {
@@ -349,23 +322,11 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	}
 
 
-	for (ia = 0; ia < 3; ia++) {
-	  gradn[ZZ][ia][0] = - gradn[XX][ia][0] - gradn[YY][ia][0];
-	  gradn[ZZ][ia][1] = - gradn[XX][ia][1] - gradn[YY][ia][1];
-	}
-
-
-
-
 	/* Iterate to a solution. */
 
-	for (niterate = 0; niterate < NMAX_ITERATION; niterate++) {
+	for (niterate = 0; niterate < NITERATION; niterate++) {
 
-	  for (n1 = 0; n1 < NOP; n1++) {
-	    del2m1[n1] = del2_d[n1*nsites+index];
-	  }	  
-
-
+	  
 	  for (n = 0; n < 6; n++) {
 	    
 	    if (status[n] != FLUID) {
@@ -376,13 +337,7 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 		}
 		dq[n1][normal[n]] = 1.0;
 	      }
-	      
-	      for (ia = 0; ia < 3; ia++) {
-		dq[ZZ][ia] = - dq[XX][ia] - dq[YY][ia];
-	      }
-	      dq[ZZ][normal[n]] = 1.0;
-	      
-	      
+
 	      
 	      /* Construct boundary condition terms. */
 	      
@@ -488,32 +443,10 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	      bc[YZ][YZ][Z] =  kappa2_cd*bcs_cd[n][Z]*dq[YZ][Z];
 	      
 
-	      /* ZZ equation */
 	      
-	      bc[ZZ][XX][X] = 0.0;
-	      bc[ZZ][XY][X] = 0.0;
-	      bc[ZZ][XZ][X] = kappa0_cd*bcs_cd[n][Z]*dq[XZ][X];
-	      bc[ZZ][YY][X] = 0.0;
-	      bc[ZZ][YZ][X] = 0.0;
-	      bc[ZZ][ZZ][X] = kappa1_cd*bcs_cd[n][X]*dq[ZZ][X];
-	      
-	      bc[ZZ][XX][Y] = 0.0;
-	      bc[ZZ][XY][Y] = 0.0;
-	      bc[ZZ][XZ][Y] = 0.0;
-	      bc[ZZ][YY][Y] = 0.0;
-	      bc[ZZ][YZ][Y] = kappa0_cd*bcs_cd[n][Z]*dq[YZ][Y];
-	      bc[ZZ][ZZ][Y] = kappa1_cd*bcs_cd[n][Y]*dq[ZZ][Y];
-	      
-	      bc[ZZ][XX][Z] =  0.0;
-	      bc[ZZ][XY][Z] =  0.0;
-	      bc[ZZ][XZ][Z] = -kappa1_cd*bcs_cd[n][X]*dq[XZ][Z];
-	      bc[ZZ][YY][Z] =  0.0;
-	      bc[ZZ][YZ][Z] = -kappa1_cd*bcs_cd[n][Y]*dq[YZ][Z];
-	      bc[ZZ][ZZ][Z] =  kappa0_cd*bcs_cd[n][Z]*dq[ZZ][Z];
-	      
-	      for (n1 = 0; n1 < 6; n1++) {
+	      for (n1 = 0; n1 < NOP; n1++) {
 	  	b[n1] = 0.0;
-	  	for (n2 = 0; n2 < 6; n2++) {
+	  	for (n2 = 0; n2 < NOP; n2++) {
 	  	  a[n1][n2] = bc[n1][n2][normal[n]];
 	  	  b[n1] -= bc[n1][n2][normal[n]];
 	  	  for (ia = 0; ia < 3; ia++) {
@@ -522,28 +455,16 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	  	}
 	      }
 	      
-	      
 	      b[XX] = -(b[XX] +     c[n][X][X]);
 	      b[XY] = -(b[XY] + 2.0*c[n][X][Y]);
 	      b[XZ] = -(b[XZ] + 2.0*c[n][X][Z]);
 	      b[YY] = -(b[YY] +     c[n][Y][Y]);
 	      b[YZ] = -(b[YZ] + 2.0*c[n][Y][Z]);
-	      b[ZZ] = -(b[ZZ] +     c[n][Z][Z]);
-	      
 	      
 	      util_gaussian_gpu_d(a, b);
 	      
-	      double trace;
-	      
-	      const double r3_ = (1.0/3.0);
-	      trace = r3_*(b[XX] + b[YY] + b[ZZ]);
-	      b[XX] -= trace;
-	      b[YY] -= trace;
-	      b[ZZ] -= trace;
-	      
-	      
-	      for (n1 = 0; n1 < 6; n1++) {
-		gradn[n1][normal[n]][nsolid[n]] = b[n1];
+	      for (n1 = 0; n1 < NOP; n1++) {
+	  	gradn[n1][normal[n]][nsolid[n]] = b[n1];
 	      }
 	    }
 	  }
@@ -551,40 +472,25 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 	  /* Do not update gradients if solid neighbours in both directions */
 	  for (ia = 0; ia < 3; ia++) {
 	    tmp = 1.0*(1 - (mask[2*ia] && mask[2*ia+1]));
-	    for (n1 = 0; n1 < 6; n1++) {
+	    for (n1 = 0; n1 < NOP; n1++) {
 	      gradn[n1][ia][0] *= tmp;
 	      gradn[n1][ia][1] *= tmp;
 	    }
 	  }
-	  
+
 	  /* Now recompute gradients */
-	  
+
 	  for (n1 = 0; n1 < NOP; n1++) {
 	    del2_d[n1*nsites+index] = 0.0;
 	    for (ia = 0; ia < 3; ia++) {
 	      grad_d[ia*nsites*nop+n1*nsites+index] =
-		0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
 	      del2_d[n1*nsites+index] += gradn[n1][ia][0] - gradn[n1][ia][1];
 	    }
 	  }
-	  
-	  
+
 	  /* No iteration required if only one boundary. */
 	  if (ns < 2) break;
-	  
-	  
-	  del2diff = 0.0;
-	  for (n1 = 0; n1 < NOP; n1++) {
-	    del2diff += fabs(del2_d[n1*nsites+index] - del2m1[n1]);
-	  }
-	  
-#define FLT_EPSILON 1.19209290E-07F 
-	  
-	  
-	  if (del2diff < FLT_EPSILON) break;
-	  
-	  	  
-
 	}
 
 
@@ -598,8 +504,6 @@ __global__ void gradient_3d_7pt_solid_gpu_d(int nop, int nhalo,
 
       
     }
-
-
   return;
 }
 
@@ -711,25 +615,25 @@ __device__ static void gradient_bcs_gpu_d(const double kappa0, const double kapp
 }
 
 
-__device__ static int util_gaussian_gpu_d(double a[6][6], double xb[6]) {
+__device__ static int util_gaussian_gpu_d(double a[NOP][NOP], double xb[NOP]) {
 
   int i, j, k;
   int ifail = 0;
   int iprow;
-  int ipivot[6];
+  int ipivot[NOP];
 
   double tmp;
 
   iprow = -1;
-  for (k = 0; k < 6; k++) {
+  for (k = 0; k < NOP; k++) {
     ipivot[k] = -1;
   }
 
-  for (k = 0; k < 6; k++) {
+  for (k = 0; k < NOP; k++) {
 
     /* Find pivot row */
     tmp = 0.0;
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < NOP; i++) {
       if (ipivot[i] == -1) {
 	if (fabs(a[i][k]) >= tmp) {
 	  tmp = fabs(a[i][k]);
@@ -747,17 +651,17 @@ __device__ static int util_gaussian_gpu_d(double a[6][6], double xb[6]) {
     // }
 
     tmp = 1.0 / a[iprow][k];
-    for (j = k; j < 6; j++) {
+    for (j = k; j < NOP; j++) {
       a[iprow][j] *= tmp;
     }
     xb[iprow] *= tmp;
 
     /* Subtract the pivot row (scaled) from remaining rows */
 
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < NOP; i++) {
       if (ipivot[i] == -1) {
 	tmp = a[i][k];
-	for (j = k; j < 6; j++) {
+	for (j = k; j < NOP; j++) {
 	  a[i][j] -= tmp*a[iprow][j];
 	}
 	xb[i] -= tmp*xb[iprow];
@@ -767,10 +671,10 @@ __device__ static int util_gaussian_gpu_d(double a[6][6], double xb[6]) {
 
   /* Now do the back substitution */
 
-  for (i = 6 - 1; i > -1; i--) {
+  for (i = NOP - 1; i > -1; i--) {
     iprow = ipivot[i];
     tmp = xb[iprow];
-    for (k = i + 1; k < 6; k++) {
+    for (k = i + 1; k < NOP; k++) {
       tmp -= a[iprow][k]*xb[ipivot[k]];
     }
     xb[iprow] = tmp;
@@ -805,13 +709,12 @@ __device__ void colloids_q_boundary_normal_gpu_d(const int di[3],
 	dn[ia] -= colloid_r_d[3*colloid_map_d[index1]+ia];
       }
 
+    rd=sqrt(dn[X]*dn[X] + dn[Y]*dn[Y] + dn[Z]*dn[Z]);
+    rd = 1.0/rd;
 
-      rd=sqrt(dn[X]*dn[X] + dn[Y]*dn[Y] + dn[Z]*dn[Z]);
-      rd = 1.0/rd;
-
-      for (ia = 0; ia < 3; ia++) {
+    for (ia = 0; ia < 3; ia++) {
       dn[ia] *= rd;
-      }
+    }
   }
   else {
     /* Assume di is the true outward normal (e.g., flat wall) */
@@ -820,6 +723,9 @@ __device__ void colloids_q_boundary_normal_gpu_d(const int di[3],
     }
   }
 
+  //if (index==127332) printf("YYY %f %f %f\n",dn[X],dn[Y],dn[Z]);
+
+  //if (index==127332) printf("YYY %d %f\n",colloid_map_d[index],colloid_r_d[colloid_map_d[index]]);
 
 
 
@@ -879,10 +785,8 @@ cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice);
   kappa0_=blue_phase_kappa0();
   kappa1_=blue_phase_kappa1();
   kappa2_=kappa0_+kappa1_;
+  w = colloids_q_tensor_w();
   amplitude = blue_phase_amplitude_compute();
-
-  double w1_coll,w2_coll;
-  blue_phase_coll_w12(&w1_coll, &w2_coll);
 
   int noffset[3];
   coords_nlocal_offset(noffset);
@@ -896,8 +800,7 @@ cudaMemcpyToSymbol(kappa0_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevic
 cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
 cudaMemcpyToSymbol(noffset_cd, noffset, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
 
- cudaMemcpyToSymbol(w1_coll_cd, &w1_coll, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(w2_coll_cd, &w2_coll, sizeof(double), 0, cudaMemcpyHostToDevice); 
+ cudaMemcpyToSymbol(w_cd, &w, sizeof(double), 0, cudaMemcpyHostToDevice); 
  cudaMemcpyToSymbol(amplitude_cd, &amplitude, sizeof(double), 0, cudaMemcpyHostToDevice); 
 cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
 cudaMemcpyToSymbol(bcs_cd, bcs, 6*3*sizeof(char), 0, cudaMemcpyHostToDevice); 

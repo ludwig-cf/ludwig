@@ -80,11 +80,9 @@ static double * recv_;                          /* Receive buffer */
 
 void colloid_sums_halo(const int mtype) {
 
- printf("starting colloid_sums_halo\n");
   colloid_sums_dim(X, mtype);
   colloid_sums_dim(Y, mtype);
   colloid_sums_dim(Z, mtype);
- printf("ending colloid_sums_halo \n");
 
   return;
 }
