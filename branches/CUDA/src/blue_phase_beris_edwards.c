@@ -34,19 +34,19 @@
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 #include "phi_fluctuations.h"
+#include "timer.h"
 
 static double Gamma_;     /* Collective rotational diffusion constant */
 
-/* static double * fluxe; */
-/* static double * fluxw; */
-/* static double * fluxy; */
-/* static double * fluxz; */
-
-//expose these for GPU version
 double * fluxe;
 double * fluxw;
 double * fluxy;
 double * fluxz;
+
+//static double * fluxe;
+//static double * fluxw;
+//static double * fluxy;
+//static double * fluxz;
 
 static const double r3 = (1.0/3.0);   /* Fraction 1/3 */
 
@@ -74,6 +74,43 @@ void blue_phase_beris_edwards(void) {
   nsites = coords_nsites();
   nop = phi_nop();
 
+
+#ifdef _GPU_
+
+
+
+  //to do - GPU implement commented out stuff below
+  TIMER_start(TIMER_HALO_VELOCITY);
+  velocity_halo_gpu();
+  /* sync MPI tasks for timing purposes */
+  MPI_Barrier(cart_comm());
+
+  TIMER_stop(TIMER_HALO_VELOCITY);
+  colloids_fix_swd();
+  
+  //hydrodynamics_leesedwards_transformation();
+
+  TIMER_start(TIMER_PHI_UPDATE_UPWIND);
+  advection_upwind_gpu();
+  TIMER_stop(TIMER_PHI_UPDATE_UPWIND);
+
+  TIMER_start(TIMER_PHI_UPDATE_ADVEC);
+  advection_bcs_no_normal_flux_gpu();
+  TIMER_stop(TIMER_PHI_UPDATE_ADVEC);
+  int async=0;
+
+  // get environment variable
+  char* tmpstr;
+  tmpstr = getenv ("ASYNC");
+  if (tmpstr!=NULL)
+      async=atoi(tmpstr);
+
+  TIMER_start(TIMER_PHI_UPDATE_BE);
+  blue_phase_be_update_gpu(async);
+  TIMER_stop(TIMER_PHI_UPDATE_BE);
+
+#else
+
   fluxe = (double *) malloc(nop*nsites*sizeof(double));
   fluxw = (double *) malloc(nop*nsites*sizeof(double));
   fluxy = (double *) malloc(nop*nsites*sizeof(double));
@@ -95,6 +132,8 @@ void blue_phase_beris_edwards(void) {
   free(fluxw);
   free(fluxy);
   free(fluxz);
+
+#endif
 
   return;
 }

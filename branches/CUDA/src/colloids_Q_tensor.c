@@ -330,6 +330,12 @@ void colloids_q_boundary(const double nhat[3], double qs[3][3],
  *
  *****************************************************************************/
 
+
+#ifdef _GPU_
+extern char* mask_;
+#endif 
+
+
 void colloids_fix_swd(void) {
 
   int ic, jc, kc, index;
@@ -385,6 +391,26 @@ void colloids_fix_swd(void) {
       }
     }
   }
+
+#ifdef _GPU_
+  int nhalo=coords_nhalo();
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;
+  Nall[Y]=nlocal[Y]+2*nhalo;
+  Nall[Z]=nlocal[Z]+2*nhalo;
+  int nsites=Nall[X]*Nall[Y]*Nall[Z];
+
+  memset(mask_,0,nsites*sizeof(char));
+   for (index=0; index<nsites; index++) { 
+     if (site_map_get_status_index(index) != FLUID || 
+	 colloid_at_site_index(index) ) 
+       mask_[index]=1; 
+
+   }    
+
+      put_velocity_partial_on_gpu(0);
+      
+#endif
 
   return;
 }
