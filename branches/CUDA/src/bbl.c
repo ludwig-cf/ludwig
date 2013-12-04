@@ -1211,11 +1211,11 @@ static void update_colloids() {
 	  /* Set the position update, but don't actually move
 	   * the particles. This is deferred until the next
 	   * call to coll_update() and associated cell list
-	   * update.
+	   * update. (Move also resets dr to zero.)
 	   * We use mean of old and new velocity. */
 
 	  for (ia = 0; ia < 3; ia++) {
-	    pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+	    pc->s.dr[ia] += 0.5*(pc->s.v[ia] + xb[ia]);
 	    pc->s.v[ia] = xb[ia];
 	    pc->s.w[ia] = xb[3+ia];
 	  }

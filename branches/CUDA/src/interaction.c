@@ -96,31 +96,36 @@ struct lubrication_struct {
 
 void COLL_update() {
 
+  int ifreq;
+
   if (colloid_ntotal() == 0) return;
 
+  control_freq_rebuild(&ifreq);
 
-  TIMER_start(TIMER_PARTICLE_HALO);
-
-  coll_position_update();
-  colloids_cell_update();
-  colloids_halo_state();
-
-  TIMER_stop(TIMER_PARTICLE_HALO);
-
-  if (subgrid_on()) {
+  if ( get_step() % ifreq != 0 ) {
     colloid_forces();
-    subgrid_force_from_particles();
   }
   else {
 
-    /* Removal or replacement of fluid requires a lattice halo update */
+    TIMER_start(TIMER_PARTICLE_HALO);
 
-    //#define INFQ_REBUILD
-#ifdef INFQ_REBUILD
-    /* Only do this every 10 timesteps, since colloids move slowly */
-    if ( (get_step()-1)%10 == 0 )
-#endif
-      {
+    coll_position_update();
+    colloids_cell_update();
+    colloids_halo_state();
+
+    TIMER_stop(TIMER_PARTICLE_HALO);
+
+    if (subgrid_on()) {
+      assert(0); /* refector me to deal with infrequent rebuild */
+      colloid_forces();
+      subgrid_force_from_particles();
+    }
+    else {
+
+      /* Removal or replacement of fluid requires a lattice halo update */
+
+      /* Only do this every 10 timesteps, since colloids move slowly */
+
 	
       TIMER_start(TIMER_HALO_LATTICE);
 
@@ -140,13 +145,9 @@ void COLL_update() {
       COLL_update_links();
       
       TIMER_stop(TIMER_REBUILD);
-      
 
+      colloid_forces();
     }
-
-
-    colloid_forces();
-
 
   }
 
@@ -834,7 +835,7 @@ void coll_position_update(void) {
   int ic, jc, kc;
   int ifail;
 
-  const double drmax[3] = {0.8, 0.8, 0.8};
+  const double vmax[3] = {0.8, 0.8, 0.8};
 
   colloid_t * p_colloid;
 
@@ -847,14 +848,16 @@ void coll_position_update(void) {
 	  while (p_colloid) {
 
 	    ifail = 0;
+
 	    for (ia = 0; ia < 3; ia++) {
-	      if (p_colloid->s.dr[ia] > drmax[ia]) ifail = 1;
+	      if (p_colloid->s.v[ia] > vmax[ia]) ifail = 1;
 	      p_colloid->s.r[ia] += p_colloid->s.dr[ia];
+	      p_colloid->s.dr[ia] = 0.0;
 	    }
 
 	    if (ifail == 1) {
 	      verbose("Colloid velocity exceeded maximum %7.3f %7.3f %7.3f\n",
-		      drmax[X], drmax[Y], drmax[Z]);
+		      vmax[X], vmax[Y], vmax[Z]);
 	      colloid_state_write_ascii(p_colloid->s, stdout);
 	      fatal("Stopping\n");
 	    }
