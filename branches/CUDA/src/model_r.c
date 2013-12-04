@@ -842,7 +842,7 @@ static int distributions_read(FILE * fp, const int ic, const int jc,
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < ndist_; n++) {
       nread += fread(f_ + p*ndist_*nsite_ + n*nsite_ + index,
-		     sizeof(double), ndist_*NVEL, fp);
+		     sizeof(double), 1, fp);
     }
   }
 
