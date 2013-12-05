@@ -853,13 +853,12 @@ void update_colloid_force_from_gpu()
 
   memset(mask_,0,nsites*sizeof(char));
 
-  for (ic=nhalo; ic<Nall[X]-nhalo; ic++){
-    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++){
-      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++){
+  for (ic=1; ic<Nall[X]-1; ic++){
+    for (jc=1; jc<Nall[Y]-1; jc++){
+      for (kc=1; kc<Nall[Z]-1; kc++){
 	
   	index = get_linear_index(ic, jc, kc, Nall);
 
-	
   	if (colloid_at_site_index(index)){
 	  
   	  index1=get_linear_index(ic+1, jc, kc, Nall);
@@ -889,8 +888,8 @@ void update_colloid_force_from_gpu()
   	}
 	  
       }
-    }
-  }
+      }
+      }
   
 
 
@@ -904,12 +903,15 @@ void update_colloid_force_from_gpu()
   
     get_field_partial_from_gpu(nfields1,nfields2,include_neighbours,data_d,access_function);
 
-  for (ic=nhalo; ic<Nall[X]-nhalo; ic++)
-    for (jc=nhalo; jc<Nall[Y]-nhalo; jc++)
-      for (kc=nhalo; kc<Nall[Z]-nhalo; kc++)
-	{
+  for (ic=1; ic<Nall[X]-1; ic++)
+    for (jc=1; jc<Nall[Y]-1; jc++)
+      for (kc=1; kc<Nall[Z]-1; kc++){
+
 	  
 	  index = get_linear_index(ic, jc, kc, Nall); 	      
+
+
+
 
 	  if (!mask_[index]) continue;
 
