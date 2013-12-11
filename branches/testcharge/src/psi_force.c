@@ -42,7 +42,7 @@
  *
  ****************************************************************************/
 
-int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
+int psi_force_grad_mu(psi_t * psi, hydro_t * hydro, double dt) {
 
   int ic, jc, kc, index;
   int zs, ys, xs;
@@ -76,15 +76,15 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
 
 	/* "Internal" field */
 
-	f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs]);
-	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys]);
-	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs]);
+	f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs])*dt;
+	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys])*dt;
+	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs])*dt;
 
 	/* External field */
 
-	f[X] += rho_elec*e0[X];
-	f[Y] += rho_elec*e0[Y];
-	f[Z] += rho_elec*e0[Z];
+	f[X] += rho_elec*e0[X]*dt;
+	f[Y] += rho_elec*e0[Y]*dt;
+	f[Z] += rho_elec*e0[Z]*dt;
 
 	hydro_f_local_add(hydro, index, f);
       }
@@ -110,7 +110,7 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-int psi_force_external_field(psi_t * psi, hydro_t * hydro) {
+int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -136,9 +136,9 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro) {
         index = coords_index(ic, jc, kc);
 	psi_rho_elec(psi, index, &rho_elec);
 
-	f[X] = rho_elec*e0[X];
-	f[Y] = rho_elec*e0[Y];
-	f[Z] = rho_elec*e0[Z];
+	f[X] = rho_elec*e0[X]*dt;
+	f[Y] = rho_elec*e0[Y]*dt;
+	f[Z] = rho_elec*e0[Z]*dt;
 
 	hydro_f_local_add(hydro, index, f);
       }

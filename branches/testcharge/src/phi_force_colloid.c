@@ -55,7 +55,7 @@
 #include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 
-static int phi_force_interpolation(hydro_t * hydro, map_t * map);
+static int phi_force_interpolation(hydro_t * hydro, map_t * map, double dt);
 
 /*****************************************************************************
  *
@@ -65,7 +65,7 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map);
  *
  *****************************************************************************/
 
-int phi_force_colloid(hydro_t * hydro, map_t * map) {
+int phi_force_colloid(hydro_t * hydro, map_t * map, double dt) {
 
   int required;
 
@@ -76,7 +76,7 @@ int phi_force_colloid(hydro_t * hydro, map_t * map) {
     phi_force_stress_allocate();
 
     phi_force_stress_compute();
-    phi_force_interpolation(hydro, map);
+    phi_force_interpolation(hydro, map, dt);
 
     phi_force_stress_free();
   }
@@ -92,7 +92,7 @@ int phi_force_colloid(hydro_t * hydro, map_t * map) {
  *
  *****************************************************************************/
 
-static int phi_force_interpolation(hydro_t * hydro, map_t * map) {
+static int phi_force_interpolation(hydro_t * hydro, map_t * map, double dt) {
 
   int ia, ic, jc, kc;
   int index, index1;
@@ -141,23 +141,23 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map) {
 	if (p_c) {
 	  /* Compute the fluxes at solid/fluid boundary */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -pth0[ia][X];
-	    p_c->force[ia] += pth0[ia][X];
+	    force[ia] = -pth0[ia][X]*dt;
+	    p_c->force[ia] += pth0[ia][X]*dt;
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] = -pth0[ia][X];
-	      fw[ia] = pth0[ia][X];
+	      force[ia] = -pth0[ia][X]*dt;
+	      fw[ia] = pth0[ia][X]*dt;
 	    }
 	  }
 	  else {
 	    /* This flux is fluid-fluid */ 
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+	      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X])*dt;
 	    }
 	  }
 	}
@@ -168,23 +168,23 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map) {
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][X];
-	    p_c->force[ia] -= pth0[ia][X];
+	    force[ia] += pth0[ia][X]*dt;
+	    p_c->force[ia] -= pth0[ia][X]*dt;
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += pth0[ia][X];
-	      fw[ia] -= pth0[ia][X];
+	      force[ia] += pth0[ia][X]*dt;
+	      fw[ia] -= pth0[ia][X]*dt;
 	    }
 	  }
 	  else {
 	    /* Fluid - fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+	      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X])*dt;
 	    }
 	  }
 	}
@@ -195,23 +195,23 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map) {
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Y];
-	    p_c->force[ia] += pth0[ia][Y];
+	    force[ia] -= pth0[ia][Y]*dt;
+	    p_c->force[ia] += pth0[ia][Y]*dt;
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] -= pth0[ia][Y];
-	      fw[ia] += pth0[ia][Y];
+	      force[ia] -= pth0[ia][Y]*dt;
+	      fw[ia] += pth0[ia][Y]*dt;
 	    }
 	  }
 	  else {
 	    /* Fluid-fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y])*dt;
 	    }
 	  }
 	}
@@ -222,23 +222,23 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map) {
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Y];
-	    p_c->force[ia] -= pth0[ia][Y];
+	    force[ia] += pth0[ia][Y]*dt;
+	    p_c->force[ia] -= pth0[ia][Y]*dt;
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += pth0[ia][Y];
-	      fw[ia] -= pth0[ia][Y];
+	      force[ia] += pth0[ia][Y]*dt;
+	      fw[ia] -= pth0[ia][Y]*dt;
 	    }
 	  }
 	  else {
 	    /* Fluid-fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y])*dt;
 	    }
 	  }
 	}
@@ -249,23 +249,23 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map) {
 	if (p_c) {
 	  /* Fluid-solid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Z];
-	    p_c->force[ia] += pth0[ia][Z];
+	    force[ia] -= pth0[ia][Z]*dt;
+	    p_c->force[ia] += pth0[ia][Z]*dt;
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] -= pth0[ia][Z];
-	      fw[ia] += pth0[ia][Z];
+	      force[ia] -= pth0[ia][Z]*dt;
+	      fw[ia] += pth0[ia][Z]*dt;
 	    }
 	  }
 	  else {
 	    /* Fluid-fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z])*dt;
 	    }
 	  }
 	}
@@ -276,23 +276,23 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map) {
 	if (p_c) {
 	  /* Fluid-solid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Z];
-	    p_c->force[ia] -= pth0[ia][Z];
+	    force[ia] += pth0[ia][Z]*dt;
+	    p_c->force[ia] -= pth0[ia][Z]*dt;
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += pth0[ia][Z];
-	      fw[ia] -= pth0[ia][Z];
+	      force[ia] += pth0[ia][Z]*dt;
+	      fw[ia] -= pth0[ia][Z]*dt;
 	    }
 	  }
 	  else {
 	    /* Fluid-fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z])*dt;
 	    }
 	  }
 	}

@@ -218,8 +218,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* To be called before wall_init() */
   if (ludwig->psi) {
-    psi_init_rho_rt(ludwig->psi, ludwig->map);
     advection_run_time();
+    psi_init_rho_rt(ludwig->psi, ludwig->map);
   }
 
   wall_init(ludwig->map);
@@ -350,6 +350,9 @@ void ludwig_run(const char * inputfile) {
   int     is_subgrid = 0;
   int     is_pm = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
+  int     im, multisteps;
+  static double  dt = 1.0; /* Timestep size for multistepping */ 
+
   io_info_t * iohandler = NULL;
 
   ludwig_t * ludwig = NULL;
@@ -375,7 +378,11 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
   if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
   if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
-  if (ludwig->psi) psi_stats_info(ludwig->psi);
+  if (ludwig->psi) {
+    psi_stats_info(ludwig->psi);
+    psi_multisteps(ludwig->psi, &multisteps);
+    dt = 1.0/multisteps;
+  }
   ludwig_report_momentum(ludwig);
 
   /* Main time stepping loop */
@@ -419,43 +426,55 @@ void ludwig_run(const char * inputfile) {
      * gradients for phi) */
 
     if (ludwig->psi) {
-      psi_colloid_rho_set(ludwig->psi);
-      psi_halo_psi(ludwig->psi);
-      psi_halo_rho(ludwig->psi);
 
-      /* Force for this step before update. Note that nhalo = 1
-       * is indicating grad mu method and nhalo = 2 the divergence
-       * method. */
-
-      TIMER_start(TIMER_FORCE_CALCULATION);
-      if (coords_nhalo() == 1) {
-	psi_force_grad_mu(ludwig->psi, ludwig->hydro);
+      if (ludwig->hydro) {
+	TIMER_start(TIMER_HALO_LATTICE);
+	hydro_u_halo(ludwig->hydro);
+	TIMER_stop(TIMER_HALO_LATTICE);
       }
-      else {
-	if (colloid_ntotal() == 0) {
-	  psi_force_external_field(ludwig->psi, ludwig->hydro);
-	  phi_force_calculation(ludwig->phi, ludwig->hydro);
+
+      for (im = 0; im < multisteps; im++) {
+
+	psi_colloid_rho_set(ludwig->psi);
+	TIMER_start(TIMER_HALO_LATTICE);
+	psi_halo_psi(ludwig->psi);
+	psi_halo_rho(ludwig->psi);
+	TIMER_stop(TIMER_HALO_LATTICE);
+
+	/* Force for this step before update. Note that nhalo = 1
+	 * is indicating grad mu method and nhalo = 2 the divergence
+	 * method. */
+
+	TIMER_start(TIMER_FORCE_CALCULATION);
+	if (coords_nhalo() == 1) {
+	  psi_force_grad_mu(ludwig->psi, ludwig->hydro, dt);
 	}
 	else {
-	  psi_force_external_field(ludwig->psi, ludwig->hydro);
-	  phi_force_colloid(ludwig->hydro, ludwig->map);
+	  if (colloid_ntotal() == 0) {
+	    psi_force_external_field(ludwig->psi, ludwig->hydro, dt);
+	    phi_force_calculation(ludwig->phi, ludwig->hydro, dt);
+	  }
+	  else {
+	    psi_force_external_field(ludwig->psi, ludwig->hydro, dt);
+	    phi_force_colloid(ludwig->hydro, ludwig->map, dt);
+	  }
 	}
-      }
-      TIMER_stop(TIMER_FORCE_CALCULATION);
+	TIMER_stop(TIMER_FORCE_CALCULATION);
 
-      TIMER_start(TIMER_ELECTRO_POISSON);
+	TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
-      psi_petsc_solve(ludwig->psi, ludwig->epsilon);
+	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
 #else
-      psi_sor_solve(ludwig->psi, ludwig->epsilon);
+	psi_sor_solve(ludwig->psi, ludwig->epsilon);
 #endif
-      TIMER_stop(TIMER_ELECTRO_POISSON);
+	TIMER_stop(TIMER_ELECTRO_POISSON);
 
-      if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
+	TIMER_start(TIMER_ELECTRO_NPEQ);
+	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
+	TIMER_stop(TIMER_ELECTRO_NPEQ);
 
-      TIMER_start(TIMER_ELECTRO_NPEQ);
-      nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
-      TIMER_stop(TIMER_ELECTRO_NPEQ);
+      }
+
     }
 
     /* order parameter dynamics (not if symmetric_lb) */
@@ -472,10 +491,10 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	if (colloid_ntotal() == 0) {
-	  phi_force_calculation(ludwig->phi, ludwig->hydro);
+	  phi_force_calculation(ludwig->phi, ludwig->hydro, dt);
 	}
 	else {
-	  phi_force_colloid(ludwig->hydro, ludwig->map);
+	  phi_force_colloid(ludwig->hydro, ludwig->map, dt);
 	}
       }
 

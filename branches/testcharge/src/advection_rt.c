@@ -41,7 +41,7 @@ void advection_run_time(void) {
   }
   else {
 
-    info("Advection scheme order: ");
+    info("\nAdvection scheme order: ");
 
     n = RUN_get_int_parameter("fd_advection_scheme_order", &order);
 

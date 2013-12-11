@@ -81,7 +81,7 @@
 static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 				double * fz);
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
-				double * fz);
+				double * fz, double dt);
 
 /*****************************************************************************
  *
@@ -95,7 +95,7 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
  *
  *****************************************************************************/
 
-int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
+int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt) {
 
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
@@ -125,7 +125,7 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
 
   if (map) advective_bcs_no_flux(nk, fe, fy, fz, map);
 
-  nernst_planck_update(psi, fe, fy, fz);
+  nernst_planck_update(psi, fe, fy, fz, dt);
 
   free(fz);
   free(fy);
@@ -250,7 +250,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
  *****************************************************************************/
 
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
-				double * fz) {
+				double * fz, double dt) {
   int ic, jc, kc, index;
   int nlocal[3];
   int nhalo;
@@ -281,7 +281,7 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 	  psi->rho[nk*index + n]
 	    -= (+ fe[nk*index + n] - fe[nk*(index-xs) + n]
 		+ fy[nk*index + n] - fy[nk*(index-ys) + n]
-		+ fz[nk*index + n] - fz[nk*(index-zs) + n]);
+		+ fz[nk*index + n] - fz[nk*(index-zs) + n])*dt;
 	}
       }
     }

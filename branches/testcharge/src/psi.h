@@ -59,4 +59,7 @@ int psi_abstol(psi_t * obj, double * abstol);
 int psi_reltol_set(psi_t * obj, double reltol);
 int psi_abstol_set(psi_t * obj, double abstol);
 
+int psi_multisteps(psi_t * obj, int * multisteps);
+int psi_multisteps_set(psi_t * obj, int multisteps);
+
 #endif

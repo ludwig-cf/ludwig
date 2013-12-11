@@ -54,6 +54,7 @@ int psi_init_param_rt(psi_t * obj) {
   int io_format_out = IO_FORMAT_DEFAULT;
   char value[BUFSIZ] = "BINARY";
 
+  int multisteps=1;
 
   psi_nk(obj, &nk);
   assert(nk == 2); /* nk must be two for the time being */
@@ -96,7 +97,13 @@ int psi_init_param_rt(psi_t * obj) {
     info("Diffusivity species %d:     %14.7e\n", n, diffusivity[n]);
   }
 
-  /* Tolerances. */
+  /* Multisteps */
+
+  n = RUN_get_int_parameter("electrokinetics_multisteps", &multisteps);
+  psi_multisteps_set(obj, multisteps);
+  info("Number of multisteps:       %d\n", multisteps);
+
+  /* Tolerances */
 
   n = RUN_get_double_parameter("electrokinetics_rel_tol", &tolerance);
   if (n == 1) psi_reltol_set(obj, tolerance);

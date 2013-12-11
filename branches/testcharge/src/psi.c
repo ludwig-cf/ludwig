@@ -758,3 +758,36 @@ int psi_abstol_set(psi_t * obj, double abstol) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  psi_multisteps_set
+ *
+ *****************************************************************************/
+
+int psi_multisteps_set(psi_t * obj, int multisteps) {
+
+  assert(obj);
+  assert(multisteps);
+
+  obj->multisteps = multisteps;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_multisteps
+ *
+ *****************************************************************************/
+
+int psi_multisteps(psi_t * obj, int * multisteps) {
+
+  assert(obj);
+  assert(multisteps);
+
+  *multisteps = obj->multisteps;
+
+  return 0;
+}
+

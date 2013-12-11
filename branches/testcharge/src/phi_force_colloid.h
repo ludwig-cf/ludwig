@@ -18,6 +18,6 @@
 #include "hydro.h"
 #include "map.h"
 
-int phi_force_colloid(hydro_t * hydro, map_t * map);
+int phi_force_colloid(hydro_t * hydro, map_t * map, double dt);
 
 #endif

@@ -19,6 +19,6 @@
 #include "hydro.h"
 #include "map.h"
 
-int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map);
+int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt);
 
 #endif

@@ -546,6 +546,8 @@ electrokinetics_init_sigma 0.0125
 electrokinetics_rel_tol 0.0002
 electrokinetics_abs_tol 0.0000000003
 
+electrokinetics_multisteps 1
+
 electrosymmetric_epsilon2   2000.0
 electrosymmetric_delta_mu0  1.0
 electrosymmetric_delta_mu1  2.0
