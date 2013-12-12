@@ -107,7 +107,7 @@ This yields
 
 In order to satisfy the condition of mechanical equilibrium $\nabla_j \sigma_{ij}=0$ a symmetric contribution has to be added to the above stress tensor. The following lines try to elucidate this.\\
 
-Taking the gradient of the stress tensor gives
+Taking the divergence of the stress tensor gives
 
 \beqa
 \nabla_j\sigma_{i j}&=& (\nabla_j \varepsilon E_j) E_i + \varepsilon E_j \nabla_j E_i + \nabla_i\left( \tilde{F} - \phi \frac{\delta \tilde{\cal F}}{\delta\phi} - \sum_{\alpha=\pm} \rho_\alpha \frac{\delta \tilde{\cal F}}{\delta\rho_\alpha}\right)\\
@@ -507,6 +507,17 @@ While the scaling for the Nernst Planck part of the calulcation are reasonable,
 it can be seen that the SOR routine used to solve the Poisson equation deviates
 strongly from ideal behaviour.} 
 \label{fig5} 
+\end{figure}
+
+\subsubsection{Scaling with Krylov Subspace Solver}
+
+We use a Krylov subspace solver from the Portable Extendabl Toolkit for Scientific Computation (PETSc. 
+
+\begin{figure}[htpb]
+\includegraphics[width=0.9\textwidth]{./pics/petsc_scaling.pdf}
+\caption{Scaling of a system of $128^3$ lattice sites on up to 4096 MPI tasks. 
+The scaling of both the Nernst Planck part as well as the Poisson solver are only limited by the overhead of communication to computation at very small decompositions.} 
+\label{fig6} 
 \end{figure}
 \clearpage
 
