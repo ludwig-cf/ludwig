@@ -154,7 +154,6 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 				double * fz) {
   int ic, jc, kc, index;
   int nlocal[3];
-  int nhalo;
   int zs, ys, xs;
   int n, nk;
 
@@ -171,13 +170,8 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
   assert(fy);
   assert(fz);
 
-  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
-  assert(nhalo >= 1);
-
-  zs = 1;
-  ys = zs*(nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
+  coords_strides(&xs, &ys, &zs);
 
   psi_nk(psi, &nk);
   psi_unit_charge(psi, &eunit);
@@ -202,35 +196,40 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 
 	  fe_mu_solv(index, n, &mu_s0);
 	  mu0 = mu_s0 + psi->valency[n]*eunit*psi->psi[index];
-	  rho0 = psi->rho[nk*index + n]*exp(beta*mu0);
-	  b0 = exp(-beta*mu0);
+	  rho0 = psi->rho[nk*index + n];
 
 	  /* x-direction (between ic and ic+1) */
 
 	  fe_mu_solv(index + xs, n, &mu_s1);
 	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + xs] - e0[X]);
-	  rho1 = psi->rho[nk*(index + xs) + n]*exp(beta*mu1);
-	  b1 = exp(-beta*mu1);
 
-	  fe[nk*index + n] -= psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  b0 = exp(-beta*(mu1 - mu0));
+	  b1 = exp(+beta*(mu1 - mu0));
+	  rho1 = psi->rho[nk*(index + xs) + n]*b1;
+
+	  fe[nk*index + n] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0);
 
 	  /* y-direction (between jc and jc+1) */
 
 	  fe_mu_solv(index + ys, n, &mu_s1);
 	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + ys] - e0[Y]);
-	  rho1 = psi->rho[nk*(index + ys) + n]*exp(beta*mu1);
-	  b1 = exp(-beta*mu1);
 
-	  fy[nk*index + n] -= psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  b0 = exp(-beta*(mu1 - mu0));
+	  b1 = exp(+beta*(mu1 - mu0));
+	  rho1 = psi->rho[nk*(index + ys) + n]*b1;
+
+	  fy[nk*index + n] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0);
 
 	  /* z-direction (between kc and kc+1) */
 
 	  fe_mu_solv(index + zs, n, &mu_s1);
 	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + zs] - e0[Z]);
-	  rho1 = psi->rho[nk*(index + zs) + n]*exp(beta*mu1);
-	  b1 = exp(-beta*mu1);
 
-	  fz[nk*index + n] -= psi->diffusivity[n]*0.5*(b0 + b1)*(rho1 - rho0);
+	  b0 = exp(-beta*(mu1 - mu0));
+	  b1 = exp(+beta*(mu1 - mu0));
+	  rho1 = psi->rho[nk*(index + zs) + n]*b1;
+
+	  fz[nk*index + n] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0);
 	}
 
 	/* Next face */
