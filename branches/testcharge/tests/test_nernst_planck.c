@@ -104,6 +104,7 @@ static int do_test_gouy_chapman(void) {
   double ldebye;               /* Debye length */
   double rho_el = 1.0e-3;      /* charge density */
   double yd;                   /* Dimensionless surface potential */
+  double dt = 1.0;             /* Timestep */
 
   int ntotal[3] = {64, 4, 4};  /* Quasi-one-dimensional system */
   int grid[3];                 /* Processor decomposition */
@@ -202,7 +203,7 @@ static int do_test_gouy_chapman(void) {
     psi_sor_poisson(psi);
     psi_halo_rho(psi);
     /* The test is run with no hydrodynamics, hence NULL here. */
-    nernst_planck_driver(psi, NULL, map);
+    nernst_planck_driver(psi, NULL, map, dt);
 
     if (tstep % 1000 == 0) {
 
