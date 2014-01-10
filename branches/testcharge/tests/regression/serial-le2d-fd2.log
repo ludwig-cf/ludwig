@@ -1,9 +1,9 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 2190M
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 27 user parameters from serial-le2d-fd2.inp
+Read 27 user parameters from ./serial-le2d-fd2.inp
 
 System details
 --------------
@@ -77,6 +77,7 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+
 Advection scheme order: 5
 Gradient calcaulation: 2d_5pt_fluid
 Initial conditions.
@@ -112,13 +113,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.930      2.930      2.930   2.930152 (1 call)
-      Time step loop:      0.014      0.019      2.923   0.014615 (200 calls)
-         Propagation:      0.000      0.000      0.051   0.000256 (200 calls)
-           Collision:      0.003      0.003      0.518   0.002588 (200 calls)
-       Lattice halos:      0.000      0.001      0.073   0.000366 (200 calls)
-       phi gradients:      0.002      0.003      0.337   0.001687 (200 calls)
-     Lees Edwards BC:      0.000      0.000      0.024   0.000119 (200 calls)
-                 BBL:      0.000      0.000      0.000   0.000001 (200 calls)
-   Force calculation:      0.003      0.005      0.698   0.003488 (200 calls)
+               Total:      6.460      6.460      6.460   6.460000 (1 call)
+      Time step loop:      0.010      0.050      6.460   0.032300 (200 calls)
+         Propagation:      0.000      0.010      0.080   0.000400 (200 calls)
+           Collision:      0.000      0.010      1.200   0.006000 (200 calls)
+       Lattice halos:      0.000      0.010      0.150   0.000750 (200 calls)
+       phi gradients:      0.000      0.010      0.700   0.003500 (200 calls)
+     Lees Edwards BC:      0.000      0.010      0.040   0.000200 (200 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (200 calls)
+   Force calculation:      0.000      0.030      1.710   0.008550 (200 calls)
 Ludwig finished normally.

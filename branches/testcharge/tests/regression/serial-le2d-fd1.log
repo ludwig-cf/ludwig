@@ -3,7 +3,7 @@ Welcome to Ludwig (Serial version running on 1 process)
 The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 24 user parameters from ../tests/regression/serial-le2d-fd1.inp
+Read 24 user parameters from ./serial-le2d-fd1.inp
 
 System details
 --------------
@@ -77,6 +77,7 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+
 Advection scheme order: 3
 Initialising shear profile
 Gradient calcaulation: 3d_27pt_fluid
@@ -113,13 +114,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.680      3.680      3.680   3.680000 (1 call)
-      Time step loop:      0.010      0.030      3.670   0.018350 (200 calls)
-         Propagation:      0.000      0.010      0.080   0.000400 (200 calls)
-           Collision:      0.000      0.010      0.770   0.003850 (200 calls)
-       Lattice halos:      0.000      0.010      0.070   0.000350 (200 calls)
-       phi gradients:      0.000      0.010      0.670   0.003350 (200 calls)
+               Total:      5.280      5.280      5.280   5.280000 (1 call)
+      Time step loop:      0.010      0.040      5.280   0.026400 (200 calls)
+         Propagation:      0.000      0.010      0.180   0.000900 (200 calls)
+           Collision:      0.000      0.010      1.110   0.005550 (200 calls)
+       Lattice halos:      0.000      0.010      0.300   0.001500 (200 calls)
+       phi gradients:      0.000      0.010      0.780   0.003900 (200 calls)
      Lees Edwards BC:      0.000      0.010      0.030   0.000150 (200 calls)
                  BBL:      0.000      0.000      0.000   0.000000 (200 calls)
-   Force calculation:      0.000      0.010      0.820   0.004100 (200 calls)
+   Force calculation:      0.000      0.020      1.250   0.006250 (200 calls)
 Ludwig finished normally.

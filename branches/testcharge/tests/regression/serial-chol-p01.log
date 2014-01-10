@@ -3,7 +3,7 @@ Welcome to Ludwig (Serial version running on 1 process)
 The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 99 user parameters from ../tests/regression/serial-chol-p01.inp
+Read 99 user parameters from ./serial-chol-p01.inp
 
 System details
 --------------
@@ -89,6 +89,7 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   BINARY
 I/O decomposition:            1 1 1
+
 Advection scheme order: 1
 
 Colloid I/O settings
@@ -156,14 +157,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      7.470      7.470      7.470   7.470000 (1 call)
-      Time step loop:      1.430      1.460      7.190   1.438000 (5 calls)
-         Propagation:      0.020      0.030      0.120   0.024000 (5 calls)
-           Collision:      0.470      0.470      2.350   0.470000 (5 calls)
-       Lattice halos:      0.000      0.010      0.010   0.001000 (10 calls)
-       phi gradients:      0.070      0.090      0.380   0.076000 (5 calls)
-             Rebuild:      0.010      0.010      0.050   0.010000 (5 calls)
+               Total:      9.960      9.960      9.960   9.960000 (1 call)
+      Time step loop:      1.840      2.030      9.540   1.908000 (5 calls)
+         Propagation:      0.030      0.070      0.240   0.048000 (5 calls)
+           Collision:      0.560      0.630      2.920   0.584000 (5 calls)
+       Lattice halos:      0.000      0.010      0.030   0.003000 (10 calls)
+       phi gradients:      0.100      0.150      0.570   0.114000 (5 calls)
+             Rebuild:      0.010      0.020      0.080   0.016000 (5 calls)
                  BBL:      0.000      0.010      0.010   0.002000 (5 calls)
       Particle halos:      0.000      0.000      0.000   0.000000 (5 calls)
-   Force calculation:      0.420      0.430      2.130   0.426000 (5 calls)
+   Force calculation:      0.520      0.570      2.720   0.544000 (5 calls)
 Ludwig finished normally.

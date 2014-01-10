@@ -1,9 +1,9 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 2190M
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 27 user parameters from serial-pola-r01.inp
+Read 27 user parameters from ./serial-pola-r01.inp
 
 System details
 --------------
@@ -69,6 +69,7 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+
 Advection scheme order: 3
 Gradient calcaulation: 3d_7pt_fluid
 Initialise standard aster
@@ -109,12 +110,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      5.753      5.753      5.753   5.753331 (1 call)
-      Time step loop:      0.547      0.581      5.526   0.552615 (10 calls)
-         Propagation:      0.020      0.021      0.201   0.020104 (10 calls)
-           Collision:      0.248      0.253      2.492   0.249197 (10 calls)
-       Lattice halos:      0.001      0.002      0.015   0.001545 (10 calls)
-       phi gradients:      0.023      0.034      0.240   0.023988 (10 calls)
-                 BBL:      0.000      0.000      0.000   0.000002 (10 calls)
-   Force calculation:      0.086      0.093      0.867   0.086685 (10 calls)
+               Total:     11.750     11.750     11.750  11.750000 (1 call)
+      Time step loop:      1.070      1.240     11.510   1.151000 (10 calls)
+         Propagation:      0.030      0.050      0.420   0.042000 (10 calls)
+           Collision:      0.550      0.630      5.960   0.596000 (10 calls)
+       Lattice halos:      0.000      0.010      0.070   0.007000 (10 calls)
+       phi gradients:      0.030      0.060      0.500   0.050000 (10 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (10 calls)
+   Force calculation:      0.120      0.170      1.450   0.145000 (10 calls)
 Ludwig finished normally.

@@ -1,9 +1,9 @@
 Welcome to Ludwig (Serial version running on 1 process)
 
-The SVN revision details are: 2191M
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 21 user parameters from serial-spin-fd2.inp
+Read 21 user parameters from ./serial-spin-fd2.inp
 
 System details
 --------------
@@ -70,6 +70,7 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+
 Advection scheme order: 1
 
 Boundary walls
@@ -117,12 +118,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      6.059      6.059      6.059   6.058845 (1 call)
-      Time step loop:      0.569      0.589      5.796   0.579575 (10 calls)
-         Propagation:      0.019      0.021      0.206   0.020607 (10 calls)
-           Collision:      0.149      0.156      1.522   0.152227 (10 calls)
-       Lattice halos:      0.001      0.002      0.013   0.001268 (10 calls)
-       phi gradients:      0.201      0.208      2.041   0.204128 (10 calls)
-                 BBL:      0.002      0.002      0.019   0.001938 (10 calls)
-   Force calculation:      0.094      0.105      0.962   0.096249 (10 calls)
+               Total:     11.480     11.480     11.480  11.480000 (1 call)
+      Time step loop:      1.050      1.180     11.170   1.117000 (10 calls)
+         Propagation:      0.030      0.070      0.480   0.048000 (10 calls)
+           Collision:      0.280      0.350      3.150   0.315000 (10 calls)
+       Lattice halos:      0.000      0.010      0.010   0.001000 (10 calls)
+       phi gradients:      0.310      0.400      3.600   0.360000 (10 calls)
+                 BBL:      0.000      0.010      0.060   0.006000 (10 calls)
+   Force calculation:      0.140      0.240      1.870   0.187000 (10 calls)
 Ludwig finished normally.

@@ -30,6 +30,7 @@ Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-02
+Number of multisteps:       1
 Relative tolerance:         1.1920929e-07
 Absolute tolerance:         1.1920929e-09
 I/O decomposition:          1 1 1
@@ -69,6 +70,8 @@ Ghost relaxation time:    1.00000e+00
 Hydrodynamics
 -------------
 Hydrodynamics: on
+
+Advection scheme order: 3
 
 Initial charge densities
 ------------------------
@@ -117,12 +120,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     20.730     20.730     20.730  20.730000 (1 call)
-      Time step loop:      0.010      0.030     20.730   0.020730 (1000 calls)
-         Propagation:      0.000      0.010      0.020   0.000020 (1000 calls)
-           Collision:      0.000      0.010      1.910   0.001910 (1000 calls)
-       Lattice halos:      0.000      0.010      0.030   0.000030 (1000 calls)
+               Total:     27.230     27.230     27.230  27.230000 (1 call)
+      Time step loop:      0.010      0.040     27.230   0.027230 (1000 calls)
+         Propagation:      0.000      0.010      0.130   0.000130 (1000 calls)
+           Collision:      0.000      0.010      2.580   0.002580 (1000 calls)
+       Lattice halos:      0.000      0.010      0.550   0.000183 (3000 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
-                 BBL:      0.000      0.010      0.010   0.000010 (1000 calls)
-   Force calculation:      0.000      0.010      0.030   0.000015 (2000 calls)
+                 BBL:      0.000      0.010      0.050   0.000050 (1000 calls)
+   Force calculation:      0.000      0.010      0.070   0.000035 (2000 calls)
+    Poisson equation:      0.010      0.040     22.310   0.022310 (1000 calls)
+       Nernst Planck:      0.000      0.010      1.460   0.001460 (1000 calls)
 Ludwig finished normally.

@@ -3,7 +3,7 @@ Welcome to Ludwig (Serial version running on 1 process)
 The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 23 user parameters from ../tests/regression/serial-init-bp2.inp
+Read 23 user parameters from ./serial-init-bp2.inp
 
 System details
 --------------
@@ -77,6 +77,7 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+
 Advection scheme order:  1 (default)
 Gradient calcaulation: 3d_7pt_fluid
 
@@ -123,12 +124,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.210      0.210      0.210   0.210000 (1 call)
-      Time step loop:      0.190      0.190      0.190   0.190000 (1 call)
+               Total:      0.240      0.240      0.240   0.240000 (1 call)
+      Time step loop:      0.200      0.200      0.200   0.200000 (1 call)
          Propagation:      0.000      0.000      0.000   0.000000 (1 call)
-           Collision:      0.060      0.060      0.060   0.060000 (1 call)
+           Collision:      0.070      0.070      0.070   0.070000 (1 call)
        Lattice halos:      0.000      0.000      0.000   0.000000 (1 call)
-       phi gradients:      0.010      0.010      0.010   0.010000 (1 call)
+       phi gradients:      0.000      0.000      0.000   0.000000 (1 call)
                  BBL:      0.000      0.000      0.000   0.000000 (1 call)
    Force calculation:      0.060      0.060      0.060   0.060000 (1 call)
 Ludwig finished normally.
