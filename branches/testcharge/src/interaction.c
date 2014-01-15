@@ -149,6 +149,7 @@ int COLL_init(map_t * map) {
   int init_random;
   int ncell[3];
   int gravity;
+  char stub[FILENAME_MAX];
   char filename[FILENAME_MAX];
   char subdirectory[FILENAME_MAX];
   char keyvalue[128];
@@ -211,11 +212,16 @@ int COLL_init(map_t * map) {
     colloid_io_run_time();
 
     if (init_from_file) {
+
       if (get_step() == 0) {
-	sprintf(filename, "%s%s", subdirectory, "config.cds.init");
+	strcpy(stub, "config.cds.init");
+	RUN_get_string_parameter("colloid_file_stub", stub, FILENAME_MAX);
+	sprintf(filename, "%s%s", subdirectory, stub);
       }
       else {
-	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", get_step());
+	strcpy(stub, "config.cds");
+	RUN_get_string_parameter("colloid_file_stub", stub, FILENAME_MAX);
+	sprintf(filename, "%s%s%8.8d", subdirectory, stub, get_step());
       }
 
       colloid_io_read(filename);
