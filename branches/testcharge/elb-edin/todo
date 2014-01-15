@@ -1,0 +1,8 @@
+TODO
+
+TO COMMMIT
+
+- Fixed colloid movement as find_twin was broken. Now code ends ok single jump and 
+  placing 3 parts same charge starting from different positions R=3 and 4, see Tests dir.
+
+- Added preliminary code for dispersion forces (formula from Ricard: Ludiwig's files)

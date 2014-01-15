@@ -1,0 +1,56 @@
+# RUN PARAMETERS
+numsteps    0
+Nx          30
+Ny          30
+Nz          30
+seed        8888
+
+# RESTART 
+restart     no
+# GREENKUBO
+GreenKubo   0
+move        yes
+
+# WALL 
+width       -2
+wall_vel    0.0
+ch_wall     0.0 
+
+# OBJECTS 
+num_obj     3
+r_eff       3.0
+r_pair      1.0
+ch_objects  30.0
+ch_distype  u
+
+# FLUID PROPERTIES
+rho0        24         # density at each node. 24 is hardcoded, but DO NOT CHANGE AS SOME FORMULAS ASSUME THIS
+nu          0.1667     # kinetic viscosity
+kbt         1.0     # as in Holm JPCM 2004
+ch_bjl      1.0     # Bjerrun length as in Holm JPCM 2004
+ch_lambda   0.0     # Debye length l_D (used to decide how much salt)
+
+# ITERATION ROUTINES PARAMETERS
+max_eq_fluxes   10000000.0
+diffusion_acc   0.0001
+poisson_acc     0.0001
+multisteps  1
+D_therm     0.05
+D_plus      0.02
+D_minus     0.02
+f_accuracy  0.0004  # not used
+
+# VELOCITY OF PUSHING FLUID 
+u_x         0.0
+u_y         0.0
+u_z         0.0
+
+# EXTERNAL ELEC FIELD
+e_slope_x   0.0
+e_slope_y   0.0
+e_slope_z   0.0
+
+# OUTPUT OPTIONS
+outfreq     500
+output      3colls_nosalt_R3_opp
+inf_colloids 3colls_opp

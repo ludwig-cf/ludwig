@@ -1,0 +1,108 @@
+##############################################################################
+#
+#  Ludwig input file
+#
+#  Lines indroduced with # and blank lines are ignored.
+#
+##############################################################################
+
+N_cycles 100000
+#t_start 5
+#input_config config.out000005
+
+#size 100_100_400
+size 60_60_180
+#grid 5_5_10
+grid 2_2_6
+
+random_seed 923388
+
+A -0.00125
+B 0.00125
+K 0.0008
+C 0.0
+H 0.0
+temperature 0.0
+viscosity 0.5
+mobility 2.5
+#noise 0.0
+
+# Default situation is for ghost modes on. Don't switch off unless
+# you're sure you know what you're doing.
+#ghost_modes off
+#ginzburg-dhumieres off
+
+###############################################################################
+#
+#  Colloid parameters
+#
+#  colloid_init:  no_colloids [default]
+#                 fixed_number_monodisperse
+#                 fixed_volume_fraction_monodisperse
+#
+###############################################################################
+
+colloid_init        fixed_volume_fraction_monodisperse
+colloid_mc_steps    0
+colloid_a0          2.2
+colloid_ah          2.2
+colloid_vf          0.05
+colloid_no          1
+
+# Active particles
+#
+# colloid_type:     inactive [default]
+#                   active1_bipolar
+#                   active1_quadrupolar
+
+colloid_type        active2
+colloid_cone_angle  90
+colloid_dp          0.008
+
+# Constant body force on all colloids ("gravity")
+
+colloid_gravity 0.00_0.00_0.02
+
+# Colloid-colloid lubrication corrections
+
+lubrication_on 0
+lubrication_normal_cutoff 0.2
+lubrication_tangential_cutoff 0.0
+
+# Colloid-colloid soft-sphere potential parameters
+
+soft_sphere_on 1
+soft_sphere_epsilon 1.0
+soft_sphere_sigma 0.5
+soft_sphere_nu 2.0
+soft_sphere_cutoff 0.5
+
+# Cell list minimum allowable width
+
+cell_list_lmin 6.0
+
+###############################################################################
+# Periodic conditions / boundaries
+###############################################################################
+
+boundary_walls_on yes
+periodicity 1_1_1
+boundary_speed_bottom 0.0
+boundary_speed_top    0.0
+
+###############################################################################
+# Output frequency and type
+###############################################################################
+
+freq_statistics 1000000
+freq_measure 2000000
+freq_config 5000000
+config_at_end no
+
+output_format ASCII
+input_format  ASCII
+n_io_nodes 1
+
+# Lees-Edwards planes
+#N_LE_plane 8
+#LE_plane_vel 0.008
