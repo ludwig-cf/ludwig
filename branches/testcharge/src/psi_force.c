@@ -169,7 +169,7 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
  *
  *****************************************************************************/
 
-int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro) {
+int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
 
   int ic, jc, kc, index;
   int zs, ys, xs;
@@ -218,15 +218,15 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro) {
 
         /* "Internal" field */
 
-        f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs]);
-        f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys]);
-        f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs]);
+        f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs])*dt;
+        f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys])*dt;
+        f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs])*dt;
 
         /* External field */
 
-        f[X] += rho_elec*e0[X];
-        f[Y] += rho_elec*e0[Y];
-        f[Z] += rho_elec*e0[Z];
+        f[X] += rho_elec*e0[X]*dt;
+        f[Y] += rho_elec*e0[Y]*dt;
+        f[Z] += rho_elec*e0[Z]*dt;
 
 	/* Accumulate */
 
@@ -249,8 +249,8 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro) {
 	pc = colloids_cell_list(ic, jc, kc);
 	while (pc) {
 	  for (ia = 0; ia < 3; ia++) {
-	    flocal[ia] += pc->s.q0*v[0]*e0[ia];
-	    flocal[ia] += pc->s.q1*v[1]*e0[ia];
+	    flocal[ia] += pc->s.q0*v[0]*e0[ia]*dt;
+	    flocal[ia] += pc->s.q1*v[1]*e0[ia]*dt;
 	  }
 	  pc = pc->next;
 	}
@@ -279,15 +279,15 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro) {
 
         /* "Internal" field */
 
-        f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs]);
-        f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys]);
-        f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs]);
+        f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs])*dt;
+        f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys])*dt;
+        f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs])*dt;
 
         /* External field, and correction */
 
-        f[X] += rho_elec*e0[X] - fsum[X];
-        f[Y] += rho_elec*e0[Y] - fsum[Y];
-        f[Z] += rho_elec*e0[Z] - fsum[Z];
+        f[X] += rho_elec*e0[X]*dt - fsum[X];
+        f[Y] += rho_elec*e0[Y]*dt - fsum[Y];
+        f[Z] += rho_elec*e0[Z]*dt - fsum[Z];
 
 	hydro_f_local_add(hydro, index, f);
       }
