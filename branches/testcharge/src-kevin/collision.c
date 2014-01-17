@@ -469,7 +469,7 @@ int collision_binary_lb(hydro_t * hydro, map_t * map, noise_t * noise) {
 	else {
 	  distribution_multi_index_part(base_index, 0, f_v, nv);
 	}
-
+	
 	/* matrix multiplication for full SIMD vector */
 
 	for (m = 0; m < nmodes_; m++) {

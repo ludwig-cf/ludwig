@@ -43,9 +43,12 @@ static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
  *  and there is an additional calculation for different types of
  *  solid surface.
  *
+ *  The mechanism to compute surface free energy contributions requires
+ *  much reworking and generalisation; it only really covers LC at present.
+ *
  ****************************************************************************/
 
-int stats_free_energy_density(field_t * q, map_t * map) {
+int stats_free_energy_density(field_t * q, map_t * map, int ncolloid) {
 
 #define NSTAT 5
 
@@ -104,7 +107,7 @@ int stats_free_energy_density(field_t * q, map_t * map) {
 	 get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
 	 fe_total[3], fe_total[4]);
   }
-  else if (colloid_ntotal() > 0) {
+  else if (ncolloid > 0) {
 
     if (q) stats_free_energy_colloid(q, map, fe_local + 3);
 

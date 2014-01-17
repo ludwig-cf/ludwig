@@ -20,7 +20,13 @@
 
 enum colloid_anchoring {ANCHORING_PLANAR, ANCHORING_NORMAL, ANCHORING_FIXED};
 
+#ifdef OLD_ONLY
 int colloids_fix_swd(hydro_t * hydro, map_t * map);
+#else
+#include "colloids.h"
+int colloids_q_cinfo_set(colloids_info_t * cinfo);
+int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map);
+#endif
 int colloids_q_boundary(const double n[3], double qs[3][3], double q0[3][3],
 			int map_status);
 

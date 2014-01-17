@@ -17,12 +17,14 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <math.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
 #include "psi_s.h"
 #include "colloids.h"
+#include "free_energy.h"
 #include "psi_force.h"
 
 /*****************************************************************************
@@ -152,20 +154,26 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
  *
  *  psi_force_gradmu_conserve
  *
- *  This routine computes the force on the fluid via the gradient
- *  of the chemical potential.
+ *  Following Capuani et al J. Chem. Phys. 121, 973--986 (2004),
+ *  we compute the force in the hydrodynamic sector by considering
+ *  the fluxes in the Nernst Planck equation.
  *
- *  First, we compute a correction which ensures global net momentum
- *  is unchanged. This must take account of colloids, if present.
- *  (There is no direct force on the colloid in this approach.)
+ *  If the interfacial fluxes of charge are j_k for charge species
+ *  n, we write
  *
- *  This requires MPI_Allreduce().
+ *     j_n = -D_n [grad rho_n + rho_n grad (beta mu_n) ]
  *
- *  The resultant force is accumulated to the hydrodynamic sector.
- *  No action is required if hydro is NULL.
+ *  where mu_n is the excess chemical potential.
  *
- *  One is relying on overall electroneutrality for this to be a
- *  sensible procedure.
+ *  We write a force contribution associated with the flux as
+ *     f(i + 1/2, j, k) = \sum_n
+ *     [ j_n(i + 1/2, j, k) / D_n - (rho_n(i+1, j, k) - rho_n(i,j,k))/dx ]
+ *
+ *  From this contribution 1/2 is accumulated to (i,j,k) and -1/2 to
+ *  (i+1,j,k) ensuring conservation.
+ *
+ *  The terms in grad rho_n cancel and one is left with a force
+ *      rho grad mu.
  *
  *****************************************************************************/
 
@@ -173,18 +181,18 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int zs, ys, xs;
-  int nk, ia;
+  int n, nk, ia;
   int nlocal[3];
-  int ncell[3];
   int v[2];
 
-  double rho_elec;
-  double f[3];
-  double flocal[4] = {0.0, 0.0, 0.0, 0.0};
-  double fsum[4];
+  double rho0, rho1;
+  double mu0, mu_s0, mu1, mu_s1;
+  double b0, b1;
+  double f[3], ftot[3];
   double e0[3];
+  double beta;
+  double eunit;
 
-  colloid_t * pc = NULL;
   MPI_Comm comm;
 
   if (hydro == NULL) return 0;
@@ -201,98 +209,100 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro) {
 
   psi_valency(psi, 0, v);
   psi_valency(psi, 1, v + 1);
-
-
-  /* Compute force without correction. */
+  psi_unit_charge(psi, &eunit);
+  psi_beta(psi, &beta);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+	index = coords_index(ic, jc, kc);
 
-	pc = colloid_at_site_index(index);
-	if (pc) continue;
+	f[X] = 0.0; f[Y] = 0.0; f[Z] = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  ftot[ia] = 0.0;
+	}
 
-	psi_rho_elec(psi, index, &rho_elec);
+	for (n = 0; n < nk; n++) {
 
-        /* "Internal" field */
+	  fe_mu_solv(index, n, &mu_s0);
+	  mu0 = mu_s0 + psi->valency[n]*eunit*psi->psi[index];
+	  rho0 = psi->rho[nk*index + n]*exp(beta*mu0);
+	  b0 = exp(-beta*mu0);
 
-        f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs]);
-        f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys]);
-        f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs]);
+	  /* x-direction (between ic and ic+1) */
 
-        /* External field */
+	  fe_mu_solv(index + xs, n, &mu_s1);
+	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + xs] - e0[X]);
+	  rho1 = psi->rho[nk*(index + xs) + n]*exp(beta*mu1);
+	  b1 = exp(-beta*mu1);
 
-        f[X] += rho_elec*e0[X];
-        f[Y] += rho_elec*e0[Y];
-        f[Z] += rho_elec*e0[Z];
+	  f[X] -= 0.5*(b0 + b1)*(rho1 - rho0);
+	  f[X] -= (psi->rho[nk*(index + xs) + n] - psi->rho[nk*index + n]);
 
-	/* Accumulate */
+	  /* x-direction (ic-1 and ic) */
 
-	flocal[X] += f[X];
-	flocal[Y] += f[Y];
-	flocal[Z] += f[Z];
-	flocal[3] += 1.0; /* fluid volume */
-      }
-    }
-  }
+	  fe_mu_solv(index - xs, n, &mu_s1);
+	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index - xs] - e0[X]);
+	  rho1 = psi->rho[nk*(index - xs) + n]*exp(beta*mu1);
+	  b1 = exp(-beta*mu1);
 
-  /* Colloid contribution */
+	  f[X] += 0.5*(b0 + b1)*(rho1 - rho0);
+	  f[X] += (psi->rho[nk*(index - xs) + n] - psi->rho[nk*index + n]);
 
-  ncell[X] = Ncell(X); ncell[Y] = Ncell(Y); ncell[Z] = Ncell(Z);
+          /* y-direction (between jc and jc+1) */
 
-  for (ic = 1; ic <= ncell[X]; ic++) {
-    for (jc = 1; jc <= ncell[Y]; jc++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
+          fe_mu_solv(index + ys, n, &mu_s1);
+          mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + ys] - e0[Y]);
+          rho1 = psi->rho[nk*(index + ys) + n]*exp(beta*mu1);
+          b1 = exp(-beta*mu1);
 
-	pc = colloids_cell_list(ic, jc, kc);
-	while (pc) {
+          f[Y] -= 0.5*(b0 + b1)*(rho1 - rho0);
+	  f[Y] -= (psi->rho[nk*(index + ys) + n] - psi->rho[nk*index + n]);
+
+	  /* y-direction (jc-1 and jc) */
+
+          fe_mu_solv(index - ys, n, &mu_s1);
+          mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index - ys] - e0[Y]);
+          rho1 = psi->rho[nk*(index - ys) + n]*exp(beta*mu1);
+          b1 = exp(-beta*mu1);
+
+          f[Y] += 0.5*(b0 + b1)*(rho1 - rho0);
+	  f[Y] += (psi->rho[nk*(index - ys) + n] - psi->rho[nk*index + n]);
+
+
+          /* z-direction (between kc and kc+1) */
+
+          fe_mu_solv(index + zs, n, &mu_s1);
+          mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + zs] - e0[Z]);
+          rho1 = psi->rho[nk*(index + zs) + n]*exp(beta*mu1);
+          b1 = exp(-beta*mu1);
+
+          f[Z] -= 0.5*(b0 + b1)*(rho1 - rho0);
+	  f[Z] -= (psi->rho[nk*(index + zs) + n] - psi->rho[nk*index + n]);
+
+          /* z-direction (kc-1 -> kc) */
+
+          fe_mu_solv(index - zs, n, &mu_s1);
+          mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index - zs] - e0[Z]);
+          rho1 = psi->rho[nk*(index - zs) + n]*exp(beta*mu1);
+          b1 = exp(-beta*mu1);
+
+          f[Z] += 0.5*(b0 + b1)*(rho1 - rho0);
+	  f[Z] += (psi->rho[nk*(index - zs) + n] - psi->rho[nk*index + n]);
+
 	  for (ia = 0; ia < 3; ia++) {
-	    flocal[ia] += pc->s.q0*v[0]*e0[ia];
-	    flocal[ia] += pc->s.q1*v[1]*e0[ia];
+	    f[ia] = 0.5*f[ia];
+	    ftot[ia] += f[ia];
 	  }
-	  pc = pc->next;
+
 	}
       }
     }
   }
 
-  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
+  printf("FTOT %14.7e %14.7e %14.7e\n", ftot[X], ftot[Y], ftot[Z]);
 
-  fsum[X] /= fsum[3];
-  fsum[Y] /= fsum[3];
-  fsum[Z] /= fsum[3];
-
-  /* Now actually compute the force with the correction and store */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        index = coords_index(ic, jc, kc);
-
-	pc = colloid_at_site_index(index);
-	if (pc) continue;
-
-        psi_rho_elec(psi, index, &rho_elec);
-
-        /* "Internal" field */
-
-        f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs]);
-        f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys]);
-        f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs]);
-
-        /* External field, and correction */
-
-        f[X] += rho_elec*e0[X] - fsum[X];
-        f[Y] += rho_elec*e0[Y] - fsum[Y];
-        f[Z] += rho_elec*e0[Z] - fsum[Z];
-
-	hydro_f_local_add(hydro, index, f);
-      }
-    }
-  }
 
   return 0;
 }
