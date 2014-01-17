@@ -56,16 +56,19 @@ fi
 # Get rid of:
 #   - timer statistics identified via "call)" or "calls)"
 #   - SVN revision information identified via "SVN revision"
-#   - exact location of the input file via "user parameters"
+#   - blank lines
+#   - exact location of the input file via "user parameters"  
 
 sed '/call)/d' $1 > test-diff-tmp.ref
 sed -i~ '/calls)/d' test-diff-tmp.ref
 sed -i~ '/SVN.revision/d' test-diff-tmp.ref
+sed -i~ '/^$/d' test-diff-tmp.ref
 sed -i~ '/user.parameters.from/d' test-diff-tmp.ref
 
 sed '/call)/d' $2 > test-diff-tmp.log
 sed -i~ '/calls)/d' test-diff-tmp.log
 sed -i~ '/SVN.revision/d' test-diff-tmp.log
+sed -i~ '/^$/d' test-diff-tmp.log
 sed -i~ '/user.parameters.from/d' test-diff-tmp.log
 
 var=`diff test-diff-tmp.ref test-diff-tmp.log | wc -l`

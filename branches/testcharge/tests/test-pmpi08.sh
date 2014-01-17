@@ -12,7 +12,8 @@ make clean
 make libmpi
 
 cd ../tests
-make do_tests
+make clean
+make do_tests_mpi
 make clean
 
 cd ../src

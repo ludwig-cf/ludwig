@@ -12,6 +12,7 @@
 # Unit tests
 
 cd ../mpi_s
+make clean
 make libc
 make testc
 
@@ -20,6 +21,7 @@ make clean
 make lib
 
 cd ../tests
+make clean
 make do_tests
 make clean
 
