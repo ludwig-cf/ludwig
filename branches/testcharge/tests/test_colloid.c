@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "mpi.h"
 #include "colloid.h"
 
 #define TOLERANCE 1.0e-14
@@ -58,6 +59,8 @@ int main(int argc, char ** argv) {
   char * tmp_ascii = NULL;
   char * tmp_binary = NULL;
 
+  MPI_Init(&argc, &argv);
+
   /* Use a unique temporary file to prevent i/o collisions if this
    * serial code is started in parallel. */
 
@@ -75,6 +78,8 @@ int main(int argc, char ** argv) {
 
   test_colloid_ascii_io(sref, tmp_ascii);
   test_colloid_binary_io(sref, tmp_binary);
+
+  MPI_Finalize();
 
   return 0;
 }

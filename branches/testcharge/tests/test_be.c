@@ -10,6 +10,7 @@
 #include <float.h>
 #include <math.h>
 
+#include "mpi.h"
 #include "blue_phase_beris_edwards.h"
 
 static int do_test_be_tmatrix(void);
@@ -23,7 +24,11 @@ static int do_test_be_tmatrix(void);
 
 int main(int argc, char ** argv) {
 
+  MPI_Init(&argc, &argv);
+
   do_test_be_tmatrix();
+
+  MPI_Finalize();
 
   return 0;
 }

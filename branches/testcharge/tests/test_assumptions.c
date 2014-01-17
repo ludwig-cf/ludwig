@@ -22,6 +22,7 @@
 #include <float.h>
 #include <assert.h>
 
+#include "mpi.h"
 #include "tests.h"
 #include "util.h"
 
@@ -34,6 +35,8 @@ int main(int argc, char ** argv) {
 
   int n;
   int * p_int;
+
+  MPI_Init(&argc, &argv);
 
   printf("Testing assumptions...\n");
 
@@ -107,6 +110,8 @@ int main(int argc, char ** argv) {
   printf("Host appears to be %s-endian\n", is_bigendian() ? "big" : "little");
 
   printf("All assumptions ok!\n");
+
+  MPI_Finalize();
 
   return 0;
 }
