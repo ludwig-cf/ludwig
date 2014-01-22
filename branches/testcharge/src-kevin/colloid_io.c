@@ -225,7 +225,7 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
 
   /* Write the local colloid state. */
 
-  colloids_info_nlocal(cio->info, ncell);
+  colloids_info_ncell(cio->info, ncell);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     for (jc = 1; jc <= ncell[Y]; jc++) {
