@@ -14,14 +14,9 @@
 
 #ifndef COLLOIDS_INIT_H
 
-#ifdef OLD_ONLY
-void colloids_init_random(int n, const colloid_state_t * state0, double dh);
-#else
-
 #include "colloids.h"
 
 int colloids_init_random(colloids_info_t * cinfo, int n,
 			 const colloid_state_t * state0, double dh);
-#endif
 
 #endif

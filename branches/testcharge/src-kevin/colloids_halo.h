@@ -15,12 +15,6 @@
 #ifndef COLLOIDS_HALO_H
 #define COLLOIDS_HALO_H
 
-#ifdef OLD_ONLY
-void colloids_halo_state(void);
-void colloids_halo_dim(int dim);
-void colloids_halo_send_count(int dim, int nsend[2]);
-#else
-
 #include "colloids.h"
 
 typedef struct colloid_halo_s colloid_halo_t;
@@ -30,7 +24,6 @@ void colloids_halo_free(colloid_halo_t * halo);
 int colloids_halo_state(colloids_info_t * cinfo);
 int colloids_halo_dim(colloid_halo_t * halo, int dim);
 int colloids_halo_send_count(colloid_halo_t * halo, int dim);
-#endif
 
 #endif
  

@@ -34,53 +34,7 @@
  *  purpose of output statistics via info().
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-void stats_colloid_momentum(double g[3]) {
 
-  int ic, jc, kc;
-
-  double glocal[3];
-  double mass;
-
-  colloid_t * p_colloid;
-
-  glocal[X] = 0.0;
-  glocal[Y] = 0.0;
-  glocal[Z] = 0.0;
-
-  if (colloid_ntotal() == 0) {
-    /* do nothing */
-  }
-  else {
-
-    for (ic = 1; ic <= Ncell(X); ic++) {
-      for (jc = 1; jc <= Ncell(Y); jc++) {
-	for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	  p_colloid = colloids_cell_list(ic, jc, kc);
-
-	  while (p_colloid) {
-	    mass = 4.0*pi_*pow(p_colloid->s.a0, 3)/3.0;
-
-	    glocal[X] += mass*p_colloid->s.v[X];
-	    glocal[Y] += mass*p_colloid->s.v[Y];
-	    glocal[Z] += mass*p_colloid->s.v[Z];
-
-	    /* Next colloid */
-	    p_colloid = p_colloid->next;
-	  }
-
-	  /* Next cell */
-	}
-      }
-    }
-
-    MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-  }
-
-  return;
-}
-#else
 int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
 
   int ic, jc, kc;
@@ -128,7 +82,7 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
 
   return 0;
 }
-#endif
+
 /****************************************************************************
  *
  *  stats_colloid_velocity_minmax
@@ -136,45 +90,7 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
  *  Report stats on particle speeds. Accumulate min(-v) for maximum.
  *
  ****************************************************************************/ 
-#ifdef OLD_ONLY
-void stats_colloid_velocity_minmax(void) {
 
-  int ia;
-  int ic, jc, kc;
-  double vmin[6];
-  double vminlocal[6];
-  colloid_t * pc;
-
-  for (ia = 0; ia < 6; ia++) {
-    vminlocal[ia] = FLT_MAX;
-  }
-
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
-
-	pc = colloids_cell_list(ic, jc, kc);
-
-	while (pc) {
-	  for (ia = 0; ia < 3; ia++) {
-	    vminlocal[ia] = dmin(vminlocal[ia], pc->s.v[ia]);
-	    vminlocal[3+ia] = dmin(vminlocal[3+ia], -pc->s.v[ia]);
-	  }
-	  pc = pc->next;
-	}
-      }
-    }
-  }
-
-  MPI_Reduce(vminlocal, vmin, 6, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-
-  info("Colloid velocities - x y z\n");
-  info("[minimum ] %14.7e %14.7e %14.7e\n", vmin[X], vmin[Y], vmin[Z]);
-  info("[maximum ] %14.7e %14.7e %14.7e\n", -vmin[3+X],-vmin[3+Y],-vmin[3+Z]);
-
-  return;
-}
-#else
 int stats_colloid_velocity_minmax(colloids_info_t * cinfo) {
 
   int ia;
@@ -216,4 +132,3 @@ int stats_colloid_velocity_minmax(colloids_info_t * cinfo) {
 
   return 0;
 }
-#endif

@@ -19,11 +19,7 @@
 #include "hydro.h"
 #include "map.h"
 
-#ifdef OLD_ONLY
-
-int phi_force_colloid(hydro_t * hydro, map_t * map, double dt);
-#else
-int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map);
-#endif
+int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
+		      double dt);
 
 #endif

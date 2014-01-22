@@ -1,4 +1,3 @@
-#ifdef PETSC
 /*****************************************************************************
  *
  *  psi_petsc.c
@@ -30,6 +29,8 @@
 #include <float.h>
 #include <math.h>
 #include <mpi.h>
+
+#ifdef PETSC
 
 #include "pe.h"
 #include "coords.h"

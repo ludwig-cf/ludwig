@@ -48,7 +48,7 @@ LIBRARY = libludwig.a
 
 CC = gcc -g
 MPICC = mpicc
-OPTS = -D_D3Q19_ -DOLD_ONLY # and cio.c <-> colloid_io.c
+OPTS = -D_D3Q19_
 CFLAGS = -Wall -O3
 
 INC = -I.
@@ -84,7 +84,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
      brazovskii.o brazovskii_rt.o \
-     cio.o colloids_init.o \
+     colloid_io.o colloids_init.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o \
      coords.o coords_field.o coords_rt.o \

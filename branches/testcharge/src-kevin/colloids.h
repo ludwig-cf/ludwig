@@ -49,40 +49,6 @@ struct colloid {
   colloid_t * next;     /* colloid is a linked list */
 
 };
-#ifdef OLD_ONLY
-
-void        colloids_init(void);
-void        colloids_finish(void);
-void        colloids_info(void);
-void        colloids_ntotal_set(void);
-void        colloids_cell_ncell_set(const int ncell[3]);
-void        colloids_cell_ncell(int ncell[3]);
-void        colloids_cell_coords(const double r[3], int icell[3]);
-void        colloids_cell_insert_colloid(colloid_t *);
-void        colloids_cell_update(void);
-int         colloids_cell_count(const int ic, const int jc, const int kc);
-int         colloids_nalloc(void);
-int         Ncell(const int dim);
-double      colloids_lcell(const int dim);
-
-colloid_t * colloids_cell_list(const int, const int, const int);
-colloid_t * colloid_allocate(void);
-colloid_t * colloid_add_local(const int index, const double r[3]);
-colloid_t * colloid_add(const int index, const double r[3]);
-
-double      colloid_rho0(void);
-int         colloid_ntotal(void);
-int         colloid_nlocal(void);
-
-int         colloids_q_local(double q[2]);
-int         colloids_v_local(double * v);
-void        colloid_free(colloid_t *);
-/* This is actually in build.c but should be here! */
-colloid_t * colloid_at_site_index(int index);
-int colloids_map_new(int index, colloid_t ** pc);
-int colloids_map_old(int index, colloid_t ** pc);
-#else
-/* REFACTOR */
 
 typedef struct colloids_info_s colloids_info_t;
 
@@ -118,5 +84,4 @@ int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int jc, int kc,
 int colloids_info_map_update(colloids_info_t * cinfo);
 int colloids_info_map_set(colloids_info_t * cinfo, int index,
 			      colloid_t * pc);
-#endif
 #endif

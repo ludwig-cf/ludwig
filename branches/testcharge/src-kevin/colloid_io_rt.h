@@ -15,14 +15,9 @@
 #ifndef COLLOID_IO_RT_H
 #define COLLOID_IO_RT_H
 
-#ifdef OLD_ONLY
-void colloid_io_run_time(void);
-#else
-
 #include "colloids.h"
 #include "colloid_io.h"
 
 int colloid_io_run_time(colloids_info_t * cinfo, colloid_io_t ** pcio);
 
-#endif
 #endif

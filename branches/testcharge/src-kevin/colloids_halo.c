@@ -24,8 +24,6 @@
 #include "colloids.h"
 #include "colloids_halo.h"
 
-#ifndef OLD_ONLY
-
 struct colloid_halo_s {
   colloids_info_t * cinfo;
   colloid_state_t * send;
@@ -34,23 +32,9 @@ struct colloid_halo_s {
   int nrecv[2];
 };
 
-#else
-
-static colloid_state_t * send_;   /* Send buffer */
-static colloid_state_t * recv_;   /* Recv buffer */
-#endif
 static const int tagf_ = 1061;
 static const int tagb_ = 1062;
 
-#ifdef OLD_ONLY
-static void colloids_halo_load(int dim, const int nsend[2]);
-static void colloids_halo_unload(int nrecv);
-static void colloids_halo_number(int dim, int nsend[2], int nrecv[2]);
-static void colloids_halo_irecv(int dim, int nrecv[2], MPI_Request req[2]);
-static void colloids_halo_isend(int dim, int nsend[2], MPI_Request req[2]);
-static  int colloids_halo_load_list(int ic, int jc, int kc,
-				    const double rperiod[3], int noff);
-#else
 static int colloids_halo_load(colloid_halo_t * halo, int dim);
 static int colloids_halo_unload(colloid_halo_t * halo, int nrecv);
 static int colloids_halo_number(colloid_halo_t * halo, int dim);
@@ -59,30 +43,6 @@ static int colloids_halo_isend(colloid_halo_t * halo, int dim, MPI_Request req[2
 static int colloids_halo_load_list(colloid_halo_t * halo,
 				   int ic, int jc, int kc,
 				   const double rperiod[3], int noff);
-#endif
-
-/*****************************************************************************
- *
- *  colloids_halo_state
- *
- *  A limited choice of periodic conditions is available:
- *    {1, 1, 1}, {1, 1, 0}, {1, 0, 0}, or {0, 0, 0}
- *
- *  These are trapped explicitly in serial here. In parallel,
- *  communications at the boundaries involve MPI_PROC_NULL and are
- *  trapped later by setting the number of incoming colloids to zero.
- *
- *****************************************************************************/
-#ifdef OLD_ONLY
-void colloids_halo_state(void) {
-
-  colloids_halo_dim(X);
-  colloids_halo_dim(Y);
-  colloids_halo_dim(Z);
-
-  return;
-}
-#else
 
 /*****************************************************************************
  *
@@ -125,6 +85,19 @@ void colloids_halo_free(colloid_halo_t * halo) {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  colloids_halo_state
+ *
+ *  A limited choice of periodic conditions is available:
+ *    {1, 1, 1}, {1, 1, 0}, {1, 0, 0}, or {0, 0, 0}
+ *
+ *  These are trapped explicitly in serial here. In parallel,
+ *  communications at the boundaries involve MPI_PROC_NULL and are
+ *  trapped later by setting the number of incoming colloids to zero.
+ *
+ *****************************************************************************/
+
 int colloids_halo_state(colloids_info_t * cinfo) {
 
   colloid_halo_t * halo = NULL;
@@ -144,7 +117,6 @@ int colloids_halo_state(colloids_info_t * cinfo) {
 
   return 0;
 }
-#endif
 
 /*****************************************************************************
  *
@@ -153,52 +125,7 @@ int colloids_halo_state(colloids_info_t * cinfo) {
  *  Swap in one dimension 'dim'.
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-void colloids_halo_dim(int dim) {
 
-  int n;
-  int nsend[2];
-  int nrecv[2];
-
-  MPI_Request request_send[2];
-  MPI_Request request_recv[2];
-  MPI_Status  status[2];
-
-  /* Work out how many are currently in the 'send' region, and
-   * communicate the information to work out recv count */
-
-  colloids_halo_send_count(dim, nsend);
-  colloids_halo_number(dim, nsend, nrecv);
-
-  /* Allocate the send and recv buffer, and post recvs */
-
-  n = nsend[FORWARD] + nsend[BACKWARD];
-  send_ = (colloid_state_t *) malloc(n*sizeof(colloid_state_t));
-  n = nrecv[FORWARD] + nrecv[BACKWARD];
-  recv_ = (colloid_state_t *) malloc(n*sizeof(colloid_state_t));
-
-  if (send_ == NULL) fatal("colloids halo malloc(send_) failed\n");
-  if (recv_ == NULL) fatal("colloids halo malloc(recv_) failed\n");
-
-  colloids_halo_irecv(dim, nrecv, request_recv);
-
-  /* Load the send buffer and send */
-
-  colloids_halo_load(dim, nsend);
-  colloids_halo_isend(dim, nsend, request_send);
-
-  /* Wait for the receives, unload the recv buffer, and finish */
-
-  MPI_Waitall(2, request_recv, status);
-  colloids_halo_unload(n);
-  free(recv_);
-
-  MPI_Waitall(2, request_send, status);
-  free(send_);
-
-  return;
-}
-#else
 int colloids_halo_dim(colloid_halo_t * halo, int dim) {
 
   int n;
@@ -244,53 +171,13 @@ int colloids_halo_dim(colloid_halo_t * halo, int dim) {
 
   return 0;
 }
-#endif
+
 /*****************************************************************************
  *
  *  colloids_halo_send_count
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-void colloids_halo_send_count(int dim, int nsend[2]) {
 
-  int ic, jc, kc;
-  int ncell[3];
-
-  colloids_cell_ncell(ncell);
-
-  nsend[BACKWARD] = 0;
-  nsend[FORWARD] = 0;
-
-  if (dim == X) {
-    for (jc = 1; jc <= ncell[Y]; jc++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
-	nsend[BACKWARD] += colloids_cell_count(1, jc, kc);
-	nsend[FORWARD] += colloids_cell_count(ncell[X], jc, kc); 
-      }
-    }
-  }
-
-  if (dim == Y) {
-    for (ic = 0; ic <= ncell[X] + 1; ic++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
-	nsend[BACKWARD] += colloids_cell_count(ic, 1, kc);
-	nsend[FORWARD] += colloids_cell_count(ic, ncell[Y], kc); 
-      }
-    }
-  }
-
-  if (dim == Z) {
-    for (ic = 0; ic <= ncell[X] + 1; ic++) {
-      for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-	nsend[BACKWARD] += colloids_cell_count(ic, jc, 1);
-	nsend[FORWARD] += colloids_cell_count(ic, jc, ncell[Z]); 
-      }
-    }
-  }
-
-  return;
-}
-#else
 int colloids_halo_send_count(colloid_halo_t * halo, int dim) {
 
   int ic, jc, kc;
@@ -340,80 +227,13 @@ int colloids_halo_send_count(colloid_halo_t * halo, int dim) {
 
   return 0;
 }
-#endif
+
 /*****************************************************************************
  *
  *  colloids_halo_load
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-static void colloids_halo_load(int dim, const int nsend[2]) {
 
-  int p;
-  int ic, jc, kc;
-  int noff;         /* Offset in the send buffer to fill */
-  int nsent_forw;   /* Counter for particles put into send forw buffer */
-  int nsent_back;   /* Counter for particles put into send back buffer */
-  int ncell[3];
-  double rforw[3];
-  double rback[3];
-
-  colloids_cell_ncell(ncell);
-
-  nsent_forw = 0;
-  nsent_back = 0;
-
-  for (p = 0; p < 3; p++) {
-    rback[p] = 0.0;
-    rforw[p] = 0.0;
-  }
-
-  /* The factor (1-epsilon) here is to prevent problems associated
-   * with a colloid position *exactly* on a cell boundary. */
-
-  p = cart_coords(dim);
-  if (p == 0) rback[dim] = (1.0-DBL_EPSILON)*L(dim);
-  if (p == cart_size(dim) - 1) rforw[dim] = -L(dim);
-
-  if (dim == X) {
-    for (jc = 1; jc <= ncell[Y]; jc++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
-	noff = nsent_back;
-	nsent_back += colloids_halo_load_list(1, jc, kc, rback, noff);
-	noff = nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(ncell[X], jc, kc, rforw, noff);
-      }
-    }
-  }
-
-  if (dim == Y) {
-    for (ic = 0; ic <= ncell[X] + 1; ic++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
-	noff = nsent_back;
-	nsent_back += colloids_halo_load_list(ic, 1, kc, rback, noff);
-	noff = nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(ic, ncell[Y], kc, rforw, noff); 
-      }
-    }
-  }
-
-  if (dim == Z) {
-    for (ic = 0; ic <= ncell[X] + 1; ic++) {
-      for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-	noff = nsent_back;
-	nsent_back += colloids_halo_load_list(ic, jc, 1, rback, noff);
-	noff = nsend[BACKWARD] + nsent_forw;
-	nsent_forw += colloids_halo_load_list(ic, jc, ncell[Z], rforw, noff); 
-      }
-    }
-  }
-
-  assert(nsent_forw == nsend[FORWARD]);
-  assert(nsent_back == nsend[BACKWARD]);
-
-  return;
-}
-#else
 static int colloids_halo_load(colloid_halo_t * halo, int dim) {
 
   int p;
@@ -482,7 +302,7 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
 
   return 0;
 }
-#endif
+
 /*****************************************************************************
  *
  *  colloids_halo_load_list
@@ -494,32 +314,10 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
  *  Return the number of particles loaded.
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-static int colloids_halo_load_list(int ic, int jc, int kc,
-				    const double * rperiod, int noff) {
-  int n;
-  colloid_t * pc;
 
-  n = 0;
-  pc = colloids_cell_list(ic, jc, kc);
-
-  while (pc) {
-    send_[noff + n] = pc->s;
-    send_[noff + n].r[X] = pc->s.r[X] + rperiod[X];
-    send_[noff + n].r[Y] = pc->s.r[Y] + rperiod[Y];
-    send_[noff + n].r[Z] = pc->s.r[Z] + rperiod[Z];
-    /* Because delta phi is accumulated across copies at each time step,
-     * we must zero the outgoing copy here to avoid overcounting */
-    send_[noff + n].deltaphi = 0.0;
-    n++;
-    pc = pc->next;
-  }
-
-  return n;
-}
-#else
-static int colloids_halo_load_list(colloid_halo_t * halo, int ic, int jc, int kc,
-				    const double * rperiod, int noff) {
+static int colloids_halo_load_list(colloid_halo_t * halo,
+				   int ic, int jc, int kc,
+				   const double * rperiod, int noff) {
   int n;
   colloid_t * pc = NULL;
 
@@ -542,7 +340,7 @@ static int colloids_halo_load_list(colloid_halo_t * halo, int ic, int jc, int kc
 
   return n;
 }
-#endif
+
 /*****************************************************************************
  *
  *  colloids_halo_unload
@@ -553,45 +351,7 @@ static int colloids_halo_load_list(colloid_halo_t * halo, int ic, int jc, int kc
  *  add the incoming particle to the list.
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-static void colloids_halo_unload(int nrecv) {
 
-  int n;
-  int exists;
-  int cell[3];
-  colloid_t * pc;
-
-  for (n = 0; n < nrecv; n++) {
-
-    colloids_cell_coords(recv_[n].r, cell);
-    exists = 0;
-    pc = colloids_cell_list(cell[X], cell[Y], cell[Z]);
-
-    while (pc) {
-
-      if (pc->s.index == recv_[n].index) {
-	/* kludge: don't update deltaphi */
-	double phi;
-	phi = pc->s.deltaphi;
-	pc->s = recv_[n];
-	pc->s.deltaphi = phi;
-	exists = 1;
-      }
-
-      pc = pc->next;
-    }
-
-    if (exists == 0) {
-      pc = colloid_add(recv_[n].index, recv_[n].r);
-      assert(pc);
-      pc->s = recv_[n];
-      pc->s.rebuild = 1;
-    }
-  }
-
-  return;
-}
-#else
 static int colloids_halo_unload(colloid_halo_t * halo, int nrecv) {
 
   int n;
@@ -631,39 +391,13 @@ static int colloids_halo_unload(colloid_halo_t * halo, int nrecv) {
 
   return 0;
 }
-#endif
+
 /*****************************************************************************
  *
  *  colloids_halo_irecv
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-static void colloids_halo_irecv(int dim, int nrecv[2], MPI_Request req[2]) {
 
-  int n;
-  int pforw;
-  int pback;
-
-  MPI_Comm comm;
-
-  req[0] = MPI_REQUEST_NULL;
-  req[1] = MPI_REQUEST_NULL;
-
-  if (cart_size(dim) > 1) {
-    comm  = cart_comm();
-    pforw = cart_neighb(FORWARD, dim);
-    pback = cart_neighb(BACKWARD, dim);
-
-    n = nrecv[FORWARD]*sizeof(colloid_state_t);
-    MPI_Irecv(recv_, n, MPI_BYTE, pforw, tagb_, comm, req);
-
-    n = nrecv[BACKWARD]*sizeof(colloid_state_t);
-    MPI_Irecv(recv_ + nrecv[FORWARD], n, MPI_BYTE, pback, tagf_, comm, req+1);
-  }
-
-  return;
-}
-#else
 static int colloids_halo_irecv(colloid_halo_t * halo, int dim,
 			       MPI_Request req[2]) {
   int n;
@@ -692,7 +426,7 @@ static int colloids_halo_irecv(colloid_halo_t * halo, int dim,
 
   return 0;
 }
-#endif
+
 /*****************************************************************************
  *
  *  colloids_halo_isend
@@ -700,41 +434,7 @@ static int colloids_halo_irecv(colloid_halo_t * halo, int dim,
  *  This 'progresses the message' in serial (for periodic boundaries).
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-static void colloids_halo_isend(int dim, int nsend[2], MPI_Request req[2]) {
 
-  int n;
-  int pforw;
-  int pback;
-
-  MPI_Comm comm;
-
-  if (cart_size(dim) == 1) {
-
-    if (is_periodic(dim)) {
-      n = nsend[FORWARD] + nsend[BACKWARD];
-      memcpy(recv_, send_, n*sizeof(colloid_state_t));
-    }
-
-    req[0] = MPI_REQUEST_NULL;
-    req[1] = MPI_REQUEST_NULL;
-  }
-  else {
-
-    comm = cart_comm();
-    pforw = cart_neighb(FORWARD, dim);
-    pback = cart_neighb(BACKWARD, dim);
-
-    n = nsend[FORWARD]*sizeof(colloid_state_t);
-    MPI_Issend(send_ + nsend[BACKWARD], n, MPI_BYTE, pforw, tagf_, comm, req);
-
-    n = nsend[BACKWARD]*sizeof(colloid_state_t);
-    MPI_Issend(send_, n, MPI_BYTE, pback, tagb_, comm, req + 1);
-  }
-
-  return;
-}
-#else
 static int colloids_halo_isend(colloid_halo_t * halo, int dim,
 			       MPI_Request req[2]) {
   int n;
@@ -771,50 +471,13 @@ static int colloids_halo_isend(colloid_halo_t * halo, int dim,
 
   return 0;
 }
-#endif
+
 /*****************************************************************************
  *
  *  colloids_halo_number
  *
  *****************************************************************************/
-#ifdef OLD_ONLY
-static void colloids_halo_number(int dim, int nsend[2], int nrecv[2]) {
 
-  int       pforw, pback;
-
-  MPI_Comm    comm;
-  MPI_Request request[4];
-  MPI_Status  status[4];
-
-  if (cart_size(dim) == 1) {
-    nrecv[BACKWARD] = nsend[FORWARD];
-    nrecv[FORWARD] = nsend[BACKWARD];
-  }
-  else {
-
-    comm = cart_comm();
-    pforw = cart_neighb(FORWARD, dim);
-    pback = cart_neighb(BACKWARD, dim);
-
-    MPI_Irecv(nrecv + FORWARD, 1, MPI_INT, pforw, tagb_, comm, request);
-    MPI_Irecv(nrecv + BACKWARD, 1, MPI_INT, pback, tagf_, comm, request + 1);
-
-    MPI_Issend(nsend + FORWARD, 1, MPI_INT, pforw, tagf_, comm, request + 2);
-    MPI_Issend(nsend + BACKWARD, 1, MPI_INT, pback, tagb_, comm, request + 3);
-
-    MPI_Waitall(4, request, status);
-  }
-
-  /* Non periodic boundaries receive no particles */
-
-  if (is_periodic(dim) == 0) {
-    if (cart_coords(dim) == 0) nrecv[BACKWARD] = 0;
-    if (cart_coords(dim) == cart_size(dim) - 1) nrecv[FORWARD] = 0;
-  }
-
-  return;
-}
-#else
 static int colloids_halo_number(colloid_halo_t * halo, int dim) {
 
   int pforw, pback;
@@ -856,4 +519,3 @@ static int colloids_halo_number(colloid_halo_t * halo, int dim) {
 
   return 0;
 }
-#endif

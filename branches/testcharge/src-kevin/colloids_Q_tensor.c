@@ -47,8 +47,7 @@ static double w1_colloid_ = 0.0;
 static double w2_colloid_ = 0.0;
 static double w1_wall_ = 0.0;
 static double w2_wall_ = 0.0;
-#ifdef OLD_ONLY
-#else
+
 static colloids_info_t * cinfo_ = NULL; /* Temporary solution to getting map */
 
 /*****************************************************************************
@@ -64,7 +63,6 @@ int colloids_q_cinfo_set(colloids_info_t * cinfo) {
   cinfo_ = cinfo;
   return 0;
 }
-#endif
 
 /*****************************************************************************
  *
@@ -92,12 +90,10 @@ void colloids_q_boundary_normal(const int index, const int di[3],
   coords_index_to_ijk(index, isite);
 
   index1 = coords_index(isite[X] - di[X], isite[Y] - di[Y], isite[Z] - di[Z]);
-#ifdef OLD_ONLY
-  pc = colloid_at_site_index(index1);
-#else
+
   assert(cinfo_);
   colloids_info_map(cinfo_, index1, &pc);
-#endif
+
   if (pc) {
     coords_nlocal_offset(noffset);
     for (ia = 0; ia < 3; ia++) {
@@ -196,74 +192,11 @@ int colloids_q_boundary(const double nhat[3], double qs[3][3],
  *  inside particles. Here we set the lattice velocity based on
  *  the solid body rotation u = v + Omega x rb
  *
+ *  Issues: this routines is doing towo things: solid and colloid.
+ *  these could be separate.
+ *
  *****************************************************************************/
-#ifdef OLD_ONLY
-int colloids_fix_swd(hydro_t * hydro, map_t * map) {
 
-  int ic, jc, kc, index;
-  int nlocal[3];
-  int noffset[3];
-  int status;
-  const int nextra = 1;
-
-  double u[3];
-  double rb[3];
-  double x, y, z;
-
-  colloid_t * p_c;
-  colloid_t * colloid_at_site_index(int);
-
-  assert(hydro);
-  assert(map);
-
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    x = noffset[X] + ic;
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      y = noffset[Y] + jc;
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-	z = noffset[Z] + kc;
-
-	index = coords_index(ic, jc, kc);
-	map_status(map, index, &status);
-
-	if (status != MAP_FLUID) {
-	  u[X] = 0.0;
-	  u[Y] = 0.0;
-	  u[Z] = 0.0;
-	  hydro_u_set(hydro, index, u);
-	}
-
-	p_c = colloid_at_site_index(index);
-
-	if (p_c) {
-	  /* Set the lattice velocity here to the solid body
-	   * rotational velocity */
-
-	  rb[X] = x - p_c->s.r[X];
-	  rb[Y] = y - p_c->s.r[Y];
-	  rb[Z] = z - p_c->s.r[Z];
-
-	  cross_product(p_c->s.w, rb, u);
-
-	  u[X] += p_c->s.v[X];
-	  u[Y] += p_c->s.v[Y];
-	  u[Z] += p_c->s.v[Z];
-
-	  hydro_u_set(hydro, index, u);
-
-	}
-      }
-    }
-  }
-
-  return 0;
-}
-#else
-
-/* There are two things here which could sapearate: solid and colloid */
 int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
   int ic, jc, kc, index;
@@ -328,7 +261,7 @@ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
   return 0;
 }
-#endif
+
 /*****************************************************************************
  *
  *  colloids_q_tensor_anchoring_set

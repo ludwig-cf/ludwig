@@ -15,16 +15,9 @@
 #ifndef STATS_COLLOID_H
 #define STATS_COLLOID_H
 
-#ifdef OLD_ONLY
-void stats_colloid_momentum(double g[3]);
-void stats_colloid_velocity_minmax(void);
-#else
-
 #include "colloids.h"
 
 int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]);
 int stats_colloid_velocity_minmax(colloids_info_t * cinfo);
  
-#endif
-
 #endif

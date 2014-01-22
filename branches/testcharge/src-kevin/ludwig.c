@@ -84,11 +84,7 @@
 #include "colloid_sums.h"
 #include "colloids_halo.h"
 #include "colloids_Q_tensor.h"
-#ifdef OLD_ONLY
-#include "cio.h"
-#else
 #include "colloid_io.h"
-#endif
 #include "build.h"
 #include "subgrid.h"
 
@@ -133,12 +129,9 @@ struct ludwig_s {
   noise_t * noise;          /* Lattice fluctuation generator */
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
 
-#ifdef OLD_ONLY
-#else
   colloids_info_t * collinfo;  /* Colloid information */
   colloid_io_t * cio;          /* Colloid I/O harness */
   ewald_t * ewald;             /* Ewald sum for dipoles */
-#endif
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -238,13 +231,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   wall_init(ludwig->map);
-#ifdef OLD_ONLY
-  COLL_init(ludwig->map);
-#else
+
   colloids_init_rt(&ludwig->collinfo, &ludwig->cio, ludwig->map);
   colloids_init_ewald_rt(ludwig->collinfo, &ludwig->ewald);
   colloids_q_cinfo_set(ludwig->collinfo);
-#endif
 
   /* NOW INITIAL CONDITIONS */
 
@@ -323,11 +313,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   nstat = 0;
   n = RUN_get_string_parameter("calibration", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
-#ifdef OLD_ONLY
-  stats_calibration_init(nstat);
-#else
+
   stats_calibration_init(ludwig->collinfo, nstat);
-#endif
+
   /* Calibration of surface tension required (symmetric only) */
 
   nstat = 0;
@@ -352,13 +340,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (get_step() == 0 && ludwig->psi) {
     info("Arranging initial charge neutrality.\n\n");
-#ifdef OLD_ONLY
-    psi_colloid_rho_set(ludwig->psi);
-    psi_colloid_electroneutral(ludwig->psi);
-#else
     psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
     psi_colloid_electroneutral(ludwig->psi, ludwig->collinfo);
-#endif
   }
 
   return 0;
@@ -384,7 +367,6 @@ void ludwig_run(const char * inputfile) {
   static double  dt = 1.0; /* Timestep size for multistepping */ 
 
   io_info_t * iohandler = NULL;
-
   ludwig_t * ludwig = NULL;
 
   ludwig = calloc(1, sizeof(ludwig_t));
@@ -426,14 +408,9 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_STEPS);
     step = get_step();
     if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
-#ifdef OLD_ONLY
-    ncolloid = colloid_ntotal();
-    COLL_update(ludwig->hydro, ludwig->map, ludwig->phi, ludwig->p,
-		ludwig->q, ludwig->psi);
-#else
+
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
     ludwig_colloids_update(ludwig);
-#endif
 
     /* Order parameter gradients */
 
@@ -462,11 +439,7 @@ void ludwig_run(const char * inputfile) {
      * gradients for phi) */
 
     if (ludwig->psi) {
-#ifdef OLD_ONLY
-      psi_colloid_rho_set(ludwig->psi);
-#else
       psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
-#endif
 
       if (ludwig->hydro) {
 	TIMER_start(TIMER_HALO_LATTICE);
@@ -492,19 +465,14 @@ void ludwig_run(const char * inputfile) {
 	  psi_force_grad_mu(ludwig->psi, ludwig->hydro, dt);
 	}
 	else {
-#ifdef OLD_ONLY
-	  if (colloid_ntotal() == 0) {
+	  if (ncolloid == 0) {
 	    psi_force_external_field(ludwig->psi, ludwig->hydro, dt);
 	    phi_force_calculation(ludwig->phi, ludwig->hydro, dt);
 	  }
 	  else {
 	    psi_force_external_field(ludwig->psi, ludwig->hydro, dt);
-	    phi_force_colloid(ludwig->hydro, ludwig->map, dt);
+	    phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map, dt);
 	  }
-#else
-	  /* TODO Require above with collinfo */
-	  assert(0);
-#endif
 	}
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
@@ -541,12 +509,7 @@ void ludwig_run(const char * inputfile) {
 	  phi_force_calculation(ludwig->phi, ludwig->hydro, dt);
 	}
 	else {
-
-#ifdef OLD_ONLY
-	  phi_force_colloid(ludwig->hydro, ludwig->map, dt);
-#else
-	  phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map);
-#endif
+	  phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map, dt);
 	}
       }
 
@@ -557,11 +520,7 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
       if (ludwig->q) {
 	if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
-#ifdef OLD_ONLY
-	colloids_fix_swd(ludwig->hydro, ludwig->map);
-#else
 	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-#endif
 	blue_phase_beris_edwards(ludwig->q, ludwig->hydro,
 				 ludwig->map, ludwig->noise);
       }
@@ -589,20 +548,12 @@ void ludwig_run(const char * inputfile) {
      * propagation steps. */
 
     if (is_subgrid) {
-#ifdef OLD_ONLY
-      subgrid_update(ludwig->hydro);
-#else
       subgrid_update(ludwig->collinfo, ludwig->hydro);
-#endif
     }
     else {
       TIMER_start(TIMER_BBL);
       wall_update();
-#ifdef OLD_ONLY
-      bounce_back_on_links();
-#else
       bounce_back_on_links(ludwig->collinfo);
-#endif
       wall_bounce_back(ludwig->map);
       TIMER_stop(TIMER_BBL);
     }
@@ -638,11 +589,7 @@ void ludwig_run(const char * inputfile) {
       if (ncolloid > 0) {
 	info("Writing colloid output at step %d!\n", step);
 	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
-#ifdef OLD_ONLY
-	colloid_io_write(filename);
-#else
 	colloid_io_write(ludwig->cio, filename);
-#endif
       }
     }
 
@@ -710,21 +657,14 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
       if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
       if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
+
       if (ludwig->psi) {
 	double psi_zeta;
-#ifdef OLD_ONLY
-	psi_colloid_rho_set(ludwig->psi);
-	psi_stats_info(ludwig->psi);
-	/* Zeta potential for one colloid only to follow psi_stats()*/
-	psi_colloid_zetapotential(ludwig->psi, &psi_zeta);
-	if (ncolloid == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
-#else
 	psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
 	psi_stats_info(ludwig->psi);
 	/* Zeta potential for one colloid only to follow psi_stats()*/
 	psi_colloid_zetapotential(ludwig->psi, ludwig->collinfo, &psi_zeta);
 	if (ncolloid == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
-#endif
       }
 
       stats_free_energy_density(ludwig->q, ludwig->map, ncolloid);
@@ -739,12 +679,10 @@ void ludwig_run(const char * inputfile) {
 
       info("\nCompleted cycle %d\n", step);
     }
-#ifdef OLD_ONLY
-    stats_calibration_accumulate(step, ludwig->hydro, ludwig->map);
-#else
+
     stats_calibration_accumulate(ludwig->collinfo, step, ludwig->hydro,
 				 ludwig->map);
-#endif
+
     /* Next time step */
   }
 
@@ -759,11 +697,7 @@ void ludwig_run(const char * inputfile) {
     sprintf(filename, "%sdist-%8.8d", subdirectory, step);
     io_write(filename, distribution_io_info());
     sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
-#ifdef OLD_ONLY
-    colloid_io_write(filename);
-#else
     colloid_io_write(ludwig->cio, filename);
-#endif
 
     if (ludwig->phi) {
       field_io_info(ludwig->phi, &iohandler);
@@ -810,9 +744,9 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->phi)      field_free(ludwig->phi);
   if (ludwig->p)        field_free(ludwig->p);
   if (ludwig->q)        field_free(ludwig->q);
-#ifndef OLD_ONLY
+
   colloids_info_free(ludwig->collinfo);
-#endif
+
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
 
@@ -847,13 +781,9 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   }
 
   stats_distribution_momentum(ludwig->map, g);
-#ifdef OLD_ONLY
-  stats_colloid_momentum(gc);
-  ncolloid = colloid_ntotal();
-#else
   stats_colloid_momentum(ludwig->collinfo, gc);
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
-#endif
+
   if (wall_present()) wall_net_momentum(gwall);
 
   for (n = 0; n < 3; n++) {
@@ -1407,7 +1337,7 @@ int map_init_rt(map_t ** pmap) {
 
   return 0;
 }
-#ifndef OLD_ONLY
+
 /*****************************************************************************
  *
  *  ludwig_colloids_update
@@ -1477,4 +1407,3 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   return 0;
 }
-#endif
