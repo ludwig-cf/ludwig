@@ -48,7 +48,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids.h"
 #include "wall.h"
 #include "free_energy.h"
 #include "phi_force.h"
@@ -63,15 +62,20 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
  *  phi_force_colloid
  *
  *  Driver routine. For fractional timesteps, dt < 1.
+ *  If no colloids, and no hydrodynamics, no action is required.
  *
  *****************************************************************************/
 
 int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
 		      double dt) {
 
+  int ncolloid;
   int required;
 
   phi_force_required(&required);
+  colloids_info_ntotal(cinfo, &ncolloid);
+
+  if (hydro == NULL && ncolloid == 0) required = 0;
 
   if (required) {
 
@@ -91,6 +95,9 @@ int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
  *  phi_force_interpolation
  *
  *  At solid interfaces use P^th from the adjacent fluid site.
+ *
+ *  hydro may be null, in which case fluid force is ignored;
+ *  however, we still compute the colloid force.
  *
  *****************************************************************************/
 
@@ -112,7 +119,6 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(cinfo);
-  assert(hydro);
   assert(map);
 
   coords_nlocal(nlocal);
@@ -307,7 +313,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	  force[ia] *= dt;
 	}
 
-	hydro_f_local_add(hydro, index, force);
+	if (hydro) hydro_f_local_add(hydro, index, force);
 	wall_accumulate_force(fw);
 
 	/* Next site */
