@@ -21,8 +21,7 @@
 
 #include "util.h"
 #include "coords.h"
-#include "psi.h"
-#include "colloids.h"
+#include "psi_colloid.h"
 
 static int psi_colloid_charge_accum(psi_t * psi, colloids_info_t * cinfo,
 				    int index, double * rho, double * weight);
@@ -235,6 +234,7 @@ int psi_colloid_replace_charge(psi_t * psi, colloids_info_t * cinfo,
   }
 
   /* Look at SIX neighbours */
+
   psi_colloid_charge_accum(psi, cinfo, index - xs, rho, &weight); 
   psi_colloid_charge_accum(psi, cinfo, index + xs, rho, &weight);
   psi_colloid_charge_accum(psi, cinfo, index - ys, rho, &weight);
@@ -256,8 +256,6 @@ int psi_colloid_replace_charge(psi_t * psi, colloids_info_t * cinfo,
 
   colloid->s.deltaq0 -= rho[0];
   colloid->s.deltaq1 -= rho[1];
-
-  assert(0);
 
   return 0;
 }

@@ -610,7 +610,7 @@ int build_remove_replace(colloids_info_t * cinfo, field_t * phi, field_t * p,
 	  if (!is_halo) {
 	    build_remove_fluid(index, pcnew);
 	    if (phi) build_remove_order_parameter(phi, index, pcnew);
-	    if (psi)  psi_colloid_remove_charge(psi, cinfo, pcnew, index);
+	    if (psi)  psi_colloid_remove_charge(psi, pcnew, index);
 	  }
 	}
 
@@ -1231,9 +1231,9 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
   assert(cinfo);
   colloids_info_ncell(cinfo, ncell);
 
-  for (ic = 1; ic <= ncell[X]; ic++) {
-    for (jc = 1; jc <= ncell[Y]; jc++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &colloid);
 
