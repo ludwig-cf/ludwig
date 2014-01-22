@@ -86,7 +86,7 @@ int colloids_init_rt(colloids_info_t ** pinfo, colloid_io_t ** pcio,
   char keyvalue[128];
   double dh = 0.0;
   double width;
-  double g[3];
+  double g[3] = {0.0, 0.0, 0.0};
 
   colloid_state_t * state0;
 
