@@ -24,6 +24,9 @@
 #include "psi_s.h"
 #include "colloids.h"
 #include "psi_force.h"
+#include "psi.h"
+#include "model.h"
+
 
 /*****************************************************************************
  *
@@ -63,9 +66,7 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro, double dt) {
   physics_e0(e0);
 
   /* Memory strides */
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
-  xs = (nlocal[Y] + 2*nhalo)*ys;
+  coords_strides(&xs, &ys, &zs);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -114,11 +115,10 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
 
   int ic, jc, kc, index;
   int nlocal[3];
-
   double rho_elec, e2;
   double f[3];
   double e0[3];
-
+  
   if (hydro == NULL) return 0;
 
   physics_e0(e0);
@@ -249,8 +249,9 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
 	pc = colloids_cell_list(ic, jc, kc);
 	while (pc) {
 	  for (ia = 0; ia < 3; ia++) {
-	    flocal[ia] += pc->s.q0*v[0]*e0[ia]*dt;
-	    flocal[ia] += pc->s.q1*v[1]*e0[ia]*dt;
+//	    flocal[ia] += pc->s.q0*v[0]*e0[ia]*dt;
+//	    flocal[ia] += pc->s.q1*v[1]*e0[ia]*dt;
+	    flocal[ia] += pc->force[ia]*dt;
 	  }
 	  pc = pc->next;
 	}
@@ -296,3 +297,71 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
 
   return 0;
 }
+
+int psi_force_colloid(psi_t * psi, double dt) {
+
+  int ic, jc, kc, index, ia;
+  int zs, ys, xs;
+  double flocal[3], ftotal[3];
+  int nlocal[3];
+  int ncell[3];
+  double rho_elec;
+  double e[3], e0[3];
+
+  colloid_t * pc = NULL;
+  MPI_Comm comm;
+
+  assert(psi);
+
+  physics_e0(e0);
+  coords_nlocal(nlocal);
+  coords_strides(&xs, &ys, &zs);
+
+  comm = cart_comm();
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+
+	pc = colloid_at_site_index(index);
+
+	while (pc) {
+
+	 psi_rho_elec(psi, index, &rho_elec);
+	 psi_electric_field(psi, index, e);
+
+	 flocal[X] += rho_elec*(e[X]+e0[X]);
+	 flocal[Y] += rho_elec*(e[Y]+e0[Y]);
+	 flocal[Z] += rho_elec*(e[Z]+e0[Z]);
+
+         pc = pc->next;
+
+	}
+      }
+    }
+  }
+
+  MPI_Allreduce(flocal, ftotal, 3, MPI_DOUBLE, MPI_SUM, comm);
+
+  ncell[X] = Ncell(X); ncell[Y] = Ncell(Y); ncell[Z] = Ncell(Z);
+
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
+
+	pc = colloids_cell_list(ic, jc, kc);
+	while (pc) {
+	  for (ia = 0; ia < 3; ia++) {
+	    pc->force[ia] = ftotal[ia];
+	  }
+	  pc = pc->next;
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
