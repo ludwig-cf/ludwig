@@ -23,10 +23,8 @@
 #include "physics.h"
 #include "psi_s.h"
 #include "colloids.h"
+#include "fe_electro.h"
 #include "psi_force.h"
-#include "psi.h"
-#include "model.h"
-
 
 /*****************************************************************************
  *
@@ -147,7 +145,7 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
 
   return 0;
 }
-
+#ifdef DONT_TRY_THIS
 /*****************************************************************************
  *
  *  psi_force_gradmu_conserve
@@ -365,3 +363,233 @@ int psi_force_colloid(psi_t * psi, double dt) {
   return 0;
 }
 
+#else /* TRY THIS */
+
+/*****************************************************************************
+ *
+ *  psi_force_gradmu_conserve
+ *
+ *  This routine computes the force on the fluid via the gradient
+ *  of the chemical potential.
+ *
+ *  First, we compute a correction which ensures global net momentum
+ *  is unchanged. This must take account of colloids, if present.
+ *  (There is no direct force on the colloid in this approach.)
+ *
+ *  This requires MPI_Allreduce().
+ *
+ *  The resultant force is accumulated to the hydrodynamic sector.
+ *  If hydro is NULL, this routine is a bit over-the-top, but will
+ *  compute the force on colloids.
+ *
+ *  The same formulation is used at the same time to compute the
+ *  net force on the colloid. As this includes terms related to
+ *  fluid properties near the edge of the particle, the force is
+ *  not exactly qE. This is apparently significant, particularly
+ *  at higher q, e.g., in getting the correct electrophoretic
+ *  colloid speeds cf O'Brien and White. (Just using qE tends to
+ *  give a higher forces and higher speeds.)
+ *
+ *  One is relying on overall electroneutrality for this to be a
+ *  sensible procedure (ie., there should in principle be zero
+ *  net force on the system).
+ *
+ *****************************************************************************/
+
+int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
+
+  int ic, jc, kc, index;
+  int zs, ys, xs;
+  int nk;
+  int nlocal[3];
+
+  double rho_elec;
+  double f[3];
+  double flocal[4] = {0.0, 0.0, 0.0, 0.0};
+  double fsum[4];
+  double e0[3];
+  double elocal[3];
+
+  colloid_t * pc = NULL;
+  MPI_Comm comm;
+
+  assert(psi);
+
+  physics_e0(e0);
+
+  coords_nlocal(nlocal);
+  coords_strides(&xs, &ys, &zs);
+  comm = cart_comm();
+
+  psi_nk(psi, &nk);
+  assert(nk == 2);              /* This rountine is not completely general */
+
+  /* Compute force without correction. */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+	pc = colloid_at_site_index(index);
+
+	psi_rho_elec(psi, index, &rho_elec);
+	psi_electric_field(psi, index, elocal);
+
+        f[X] = rho_elec*(e0[X] + elocal[X]);
+	f[Y] = rho_elec*(e0[Y] + elocal[Y]);
+        f[Z] = rho_elec*(e0[Z] + elocal[Z]);
+
+	/* If solid, accumulate contribution to colloid;
+	   else count a fluid node */
+
+	if (pc) {
+	  pc->force[X] += dt*f[X];
+	  pc->force[Y] += dt*f[Y];
+	  pc->force[Z] += dt*f[Z];
+	}
+	else {
+	  flocal[3] += 1.0;
+	}
+
+	/* Accumulate contribution to total force on system */
+
+	flocal[X] += f[X];
+	flocal[Y] += f[Y];
+	flocal[Z] += f[Z];
+      }
+    }
+  }
+
+  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
+
+  fsum[X] /= fsum[3];
+  fsum[Y] /= fsum[3];
+  fsum[Z] /= fsum[3];
+
+  /* Now actually compute the force on the fluid with the correction
+     (based on number of fluid nodes) and store */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+
+	pc = colloid_at_site_index(index);
+	if (pc) continue;
+
+        psi_rho_elec(psi, index, &rho_elec);
+	psi_electric_field(psi, index, elocal);
+
+        f[X] = dt*(rho_elec*(e0[X] + elocal[X]) - fsum[X]);
+        f[Y] = dt*(rho_elec*(e0[Y] + elocal[Y]) - fsum[Y]);
+        f[Z] = dt*(rho_elec*(e0[Z] + elocal[Z]) - fsum[Z]);
+
+	if (hydro) hydro_f_local_add(hydro, index, f);
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_force_divstress
+ *
+ *  A test routine for force via divergence of stress, allowing
+ *  the stress to be computed inside the colloids.
+ *
+ *  The stress is to include the full electric field.
+ *
+ *****************************************************************************/
+
+int psi_force_divstress(psi_t * psi, hydro_t * hydro, double dt) {
+
+  int ic, jc, kc;
+  int index, index1;
+  int ia;
+  int nlocal[3];
+
+  double force[3];
+  double pth0[3][3];
+  double pth1[3][3];
+
+  colloid_t * pc = NULL;
+  void (* chemical_stress)(const int index, double s[3][3]);
+
+  coords_nlocal(nlocal);
+  chemical_stress = fe_electro_stress;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	pc = colloid_at_site_index(index);
+
+	/* Compute pth at current point */
+
+	chemical_stress(index, pth0);
+
+	/* Compute differences */
+        
+	index1 = coords_index(ic+1, jc, kc);
+	chemical_stress(index1, pth1);
+
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+	}
+
+	index1 = coords_index(ic-1, jc, kc);
+        chemical_stress(index1, pth1);
+        for (ia = 0; ia < 3; ia++) {
+          force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+        }
+
+        index1 = coords_index(ic, jc+1, kc);
+        chemical_stress(index1, pth1);
+        for (ia = 0; ia < 3; ia++) {
+          force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+        }
+
+        index1 = coords_index(ic, jc-1, kc);
+        chemical_stress(index1, pth1);
+        for (ia = 0; ia < 3; ia++) {
+          force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+        }
+
+        index1 = coords_index(ic, jc, kc+1);
+        chemical_stress(index1, pth1);
+        for (ia = 0; ia < 3; ia++) {
+          force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+        }
+
+        index1 = coords_index(ic, jc, kc-1);
+        chemical_stress(index1, pth1);
+        for (ia = 0; ia < 3; ia++) {
+          force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+        }
+
+        /* Store the force on lattice */
+	if (pc) {
+	  pc->force[X] += dt*force[X];
+	  pc->force[Y] += dt*force[Y];
+	  pc->force[Z] += dt*force[Z];
+	}
+	else {
+	  force[X] *= dt;
+	  force[Y] *= dt;
+	  force[Z] *= dt;
+	  hydro_f_local_add(hydro, index, force);
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+#endif

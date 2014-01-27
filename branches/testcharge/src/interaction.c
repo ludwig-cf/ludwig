@@ -473,8 +473,12 @@ static void colloid_forces_single_particle_set(psi_t * psi) {
 
 	  for (ia = 0; ia < 3; ia++) {
 	    pc->force[ia] += g[ia];                /* Gravity */
+#ifndef DONT_TRY_THIS
+	    /* exclude qE calculation */
+#else
 	    pc->force[ia] += pc->s.q0*v[0]*e0[ia]; /* Electric field */
 	    pc->force[ia] += pc->s.q1*v[1]*e0[ia]; /* Electric field */
+#endif
 	    pc->torque[ia] += btorque[ia];         /* Magnetic field */
 	  }
 

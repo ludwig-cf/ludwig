@@ -192,7 +192,7 @@ void fe_electro_stress(const int index, double s[3][3]) {
   double epsilon;    /* Permittivity */
   double e[3];       /* Electric field */
   double e2;         /* Magnitude squared */
-
+#ifdef DONT_TRY_THIS
   assert(fe);
 
   psi_epsilon(fe->psi, &epsilon);
@@ -203,6 +203,22 @@ void fe_electro_stress(const int index, double s[3][3]) {
   for (ia = 0; ia < 3; ia++) {
     e2 += e[ia]*e[ia];
   }
+#else /* INCLUDE EXTERNAL FIELD */
+
+  double e0[3];
+  assert(fe);
+
+  psi_epsilon(fe->psi, &epsilon);
+  psi_electric_field(fe->psi, index, e);
+  physics_e0(e0);
+
+  e2 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    e[ia] += e0[ia];
+    e2 += e[ia]*e[ia];
+  }
+#endif
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {

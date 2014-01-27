@@ -433,6 +433,8 @@ void ludwig_run(const char * inputfile) {
 	TIMER_stop(TIMER_HALO_LATTICE);
       }
 
+      /* Time splitting for high electrokinetic diffusions in Nernst Planck */
+      
       for (im = 0; im < multisteps; im++) {
 
 	psi_colloid_rho_set(ludwig->psi);
@@ -444,22 +446,24 @@ void ludwig_run(const char * inputfile) {
 	/* Force for this step before update. Note that nhalo = 1
 	 * is indicating grad mu method and nhalo = 2 the divergence
 	 * method. */
-
-	TIMER_start(TIMER_FORCE_CALCULATION);
-	if (coords_nhalo() == 1) {
-	  psi_force_grad_mu(ludwig->psi, ludwig->hydro, dt);
-	}
-	else {
-	  if (colloid_ntotal() == 0) {
-	    psi_force_external_field(ludwig->psi, ludwig->hydro, dt);
-	    phi_force_calculation(ludwig->phi, ludwig->hydro, dt);
+#ifdef DONT_TRY_THIS
+#else
+	if (im == 0) {
+	  TIMER_start(TIMER_FORCE_CALCULATION);
+	  if (coords_nhalo() == 1) {
+	    psi_force_gradmu_conserve(ludwig->psi, ludwig->hydro, 1.0);
 	  }
 	  else {
-	    psi_force_external_field(ludwig->psi, ludwig->hydro, dt);
-	    phi_force_colloid(ludwig->hydro, ludwig->map, dt);
+	    if (colloid_ntotal() == 0) {
+	      phi_force_calculation(ludwig->phi, ludwig->hydro, 1.0);
+	    }
+	    else {
+	      psi_force_divstress(ludwig->psi, ludwig->hydro, 1.0);
+	    }
 	  }
+	  TIMER_stop(TIMER_FORCE_CALCULATION);
 	}
-	TIMER_stop(TIMER_FORCE_CALCULATION);
+#endif
 
 	TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC

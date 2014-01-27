@@ -22,6 +22,9 @@
 int psi_force_grad_mu(psi_t * psi, hydro_t * hydro, double dt);
 int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt);
 int psi_force_gradmu_conserve(psi_t * psi,  hydro_t * hydro, double dt);
+#ifdef DONT_TRY_THIS
 int psi_force_colloid(psi_t * psi, double dt);
-
+#else
+int psi_force_divstress(psi_t * psi, hydro_t * hydro, double dt);
+#endif
 #endif
