@@ -154,6 +154,7 @@ int psi_init_rho_rt(psi_t * obj, map_t * map) {
   double rho_el;              /* Charge density */
   double delta_el;            /* Relative difference in charge densities */
   double sigma;               /* Surface charge density */
+  double ld;                  /* Debye length */
 
   /* Initial charge densities */
 
@@ -169,6 +170,8 @@ int psi_init_rho_rt(psi_t * obj, map_t * map) {
     n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el:  %14.7e\n", rho_el);
+    psi_debye_length(obj, rho_el, &ld);
+    info("Debye length:             %14.7e\n", ld);
 
     n = RUN_get_double_parameter("electrokinetics_init_sigma", &sigma);
     if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
@@ -183,6 +186,8 @@ int psi_init_rho_rt(psi_t * obj, map_t * map) {
     n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el: %14.7e\n", rho_el);
+    psi_debye_length(obj, rho_el, &ld);
+    info("Debye length:             %14.7e\n", ld);
 
     n = RUN_get_double_parameter("electrokinetics_init_delta_el", &delta_el);
     if (n == 0) fatal("... please set electrokinetics_init_delta_el\n");
@@ -197,6 +202,8 @@ int psi_init_rho_rt(psi_t * obj, map_t * map) {
     n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el: %14.7e\n", rho_el);
+    psi_debye_length(obj, rho_el, &ld);
+    info("Debye length:             %14.7e\n", ld);
 
     psi_init_uniform(obj, rho_el);
   }
