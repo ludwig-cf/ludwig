@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-#  test-dif.sh [options] file1 file2
+#  test-diff.sh [options] file1 file2
 #
 #  Examines the two log files for differences to check regression.
 #  These files are assumed to be Ludwig stdout log information.
@@ -24,10 +24,17 @@
 #
 #  Contributing Authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2013 The University of Edinburgh
+#  (c) 2013-2014 The University of Edinburgh
 #
 ###############################################################################
 
+# Slightly flaky. We assume location of tests to find the floating
+# point 'diff' script
+
+FPDIFF=../awk-fp-diff.sh
+TESTDIFF=test-diff.sh
+
+# Check input
 
 if [ $# -lt 2 ]
 then
@@ -48,8 +55,17 @@ if [ $is_verbose -eq 1 ]; then
     shift
 fi
 
-if [ ! -e $1 -o ! -e $2 ]; then
-    echo "File arguments incorrect: $1 $2"
+if [ ! -e $1 ]; then
+    if [ $is_verbose -eq 1 ]; then
+	echo "$TESTDIFF: File argument missing: $1"
+    fi
+    exit -1
+fi
+
+if [ ! -e $2 ]; then
+    if [ $is_verbose -eq 1 ]; then
+	echo "$TESTDIFF: File argument missing: $2"
+    fi
     exit -1
 fi
 
@@ -71,11 +87,14 @@ sed -i~ '/SVN.revision/d' test-diff-tmp.log
 sed -i~ '/^$/d' test-diff-tmp.log
 sed -i~ '/user.parameters.from/d' test-diff-tmp.log
 
-var=`diff test-diff-tmp.ref test-diff-tmp.log | wc -l`
+# Here we use the floating point diff to measure "success"
 
-if [ $is_verbose -eq 1 ]
+var=`$FPDIFF test-diff-tmp.ref test-diff-tmp.log | wc -l`
+
+
+if [ $is_verbose -eq 1 -a $var -gt 0 ]
     then
-    c=`diff test-diff-tmp.ref test-diff-tmp.log`
+    c=`$FPDIFF test-diff-tmp.ref test-diff-tmp.log`
     echo "$c"
 fi
 
