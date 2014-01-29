@@ -441,23 +441,13 @@ static void colloid_forces_zero_set(void) {
 static void colloid_forces_single_particle_set(psi_t * psi) {
 
   int ic, jc, kc, ia;
-  int nk;
-  int v[2] = {0, 0};     /* valancies for charged species, if present */
   double g[3];           /* 'Gravity' */
-  double e0[3], b0[3];   /* external fields */
+  double b0[3];          /* external fields */
   double btorque[3];
   colloid_t * pc;
 
-  physics_e0(e0);
   physics_b0(b0);
   physics_fgrav(g);
-
-  if (psi) {
-    psi_nk(psi, &nk);
-    assert(nk == 2);
-    psi_valency(psi, 0, v);
-    psi_valency(psi, 1, v + 1);
-  }
 
   for (ic = 1; ic <= Ncell(X); ic++) {
     for (jc = 1; jc <= Ncell(Y); jc++) {
@@ -473,12 +463,6 @@ static void colloid_forces_single_particle_set(psi_t * psi) {
 
 	  for (ia = 0; ia < 3; ia++) {
 	    pc->force[ia] += g[ia];                /* Gravity */
-#ifndef DONT_TRY_THIS
-	    /* exclude qE calculation */
-#else
-	    pc->force[ia] += pc->s.q0*v[0]*e0[ia]; /* Electric field */
-	    pc->force[ia] += pc->s.q1*v[1]*e0[ia]; /* Electric field */
-#endif
 	    pc->torque[ia] += btorque[ia];         /* Magnetic field */
 	  }
 

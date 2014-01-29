@@ -445,9 +445,8 @@ void ludwig_run(const char * inputfile) {
 
 	/* Force for this step before update. Note that nhalo = 1
 	 * is indicating grad mu method and nhalo = 2 the divergence
-	 * method. */
-#ifdef DONT_TRY_THIS
-#else
+	 * method. Once per large time step with dt = 1.0. */
+
 	if (im == 0) {
 	  TIMER_start(TIMER_FORCE_CALCULATION);
 	  if (coords_nhalo() == 1) {
@@ -463,7 +462,6 @@ void ludwig_run(const char * inputfile) {
 	  }
 	  TIMER_stop(TIMER_FORCE_CALCULATION);
 	}
-#endif
 
 	TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
