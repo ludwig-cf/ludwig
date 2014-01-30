@@ -627,7 +627,6 @@ int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
   double lb;
 
   assert(obj);
-  assert(rho_b > 0.0);
   assert(ld);
 
   psi_bjerrum_length(obj, &lb);
