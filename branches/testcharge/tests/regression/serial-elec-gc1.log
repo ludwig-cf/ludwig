@@ -77,6 +77,7 @@ Initial charge densities
 ------------------------
 Initial conditions:         Gouy Chapman
 Initial condition rho_el:   1.0000000e-03
+Debye length:              7.4161985e+00
 Initial condition sigma:    3.1250000e-02
 Porous media boundary links allocated:  160
 Arranging initial charge neutrality.
@@ -98,10 +99,10 @@ Starting time step loop.
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000 1.4765966e-14  0.99999988100 1.00000032304
-[psi]  3.6580764e-14 -4.0248702e-05  8.1507272e-05
+[psi] -1.9560606e-14 -4.0248702e-05  8.1507272e-05
 [rho]  1.9920000e+00  4.5245968e-04  3.1250000e-02
 [rho]  1.9920000e+00  0.0000000e+00  3.8175240e-03
-[elc] -5.5511151e-16 -3.3650643e-03  3.1250000e-02
+[elc] -1.3322676e-15 -3.3650643e-03  3.1250000e-02
 
 Free energy density - timestep total fluid
 [fed]           1000 -8.3267244555e-07 -7.5055681141e-07
@@ -120,14 +121,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     27.230     27.230     27.230  27.230000 (1 call)
-      Time step loop:      0.010      0.040     27.230   0.027230 (1000 calls)
-         Propagation:      0.000      0.010      0.130   0.000130 (1000 calls)
-           Collision:      0.000      0.010      2.580   0.002580 (1000 calls)
-       Lattice halos:      0.000      0.010      0.550   0.000183 (3000 calls)
+               Total:     20.340     20.340     20.340  20.340000 (1 call)
+      Time step loop:      0.010      0.030     20.340   0.020340 (1000 calls)
+         Propagation:      0.000      0.010      0.090   0.000090 (1000 calls)
+           Collision:      0.000      0.010      1.860   0.001860 (1000 calls)
+       Lattice halos:      0.000      0.010      0.240   0.000080 (3000 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
-                 BBL:      0.000      0.010      0.050   0.000050 (1000 calls)
-   Force calculation:      0.000      0.010      0.070   0.000035 (2000 calls)
-    Poisson equation:      0.010      0.040     22.310   0.022310 (1000 calls)
-       Nernst Planck:      0.000      0.010      1.460   0.001460 (1000 calls)
+                 BBL:      0.000      0.010      0.010   0.000010 (1000 calls)
+   Force calculation:      0.000      0.010      0.080   0.000040 (2000 calls)
+    Poisson equation:      0.010      0.020     16.620   0.016620 (1000 calls)
+       Nernst Planck:      0.000      0.010      1.420   0.001420 (1000 calls)
 Ludwig finished normally.

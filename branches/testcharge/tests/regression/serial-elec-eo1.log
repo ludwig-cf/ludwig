@@ -77,6 +77,7 @@ Initial charge densities
 ------------------------
 Initial conditions:         Gouy Chapman
 Initial condition rho_el:   0.0000000e+00
+Debye length:                        inf
 Initial condition sigma:    1.2500000e-02
 
 Boundary walls
@@ -109,10 +110,10 @@ Starting time step loop.
 
 Scalars - total mean variance min max
 [rho]         248.00  1.00000000000 1.8873791e-15  0.99999997436 1.00000004914
-[psi]  3.0374873e-15 -2.0125292e-05  3.8697114e-05
+[psi]  2.1776268e-15 -2.0125292e-05  3.8697114e-05
 [rho]  1.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  1.0000000e-01  0.0000000e+00  5.4240246e-04
-[elc]  6.5919492e-17 -5.4240246e-04  1.2500000e-02
+[elc]  5.2041704e-17 -5.4240246e-04  1.2500000e-02
 
 Free energies - timestep f v f/v f_s1 fs_s2 
 [fe]           1000 -2.9366587039e-05  2.4800000000e+02 -1.1841365742e-07  0.0000000000e+00  0.0000000000e+00
@@ -132,14 +133,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      9.240      9.240      9.240   9.240000 (1 call)
-      Time step loop:      0.000      0.020      9.240   0.009240 (1000 calls)
+               Total:      6.990      6.990      6.990   6.990000 (1 call)
+      Time step loop:      0.000      0.010      6.990   0.006990 (1000 calls)
          Propagation:      0.000      0.010      0.010   0.000010 (1000 calls)
-           Collision:      0.000      0.010      0.590   0.000590 (1000 calls)
-       Lattice halos:      0.000      0.010      0.220   0.000073 (3000 calls)
+           Collision:      0.000      0.010      0.660   0.000660 (1000 calls)
+       Lattice halos:      0.000      0.010      0.070   0.000023 (3000 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
-                 BBL:      0.000      0.000      0.000   0.000000 (1000 calls)
+                 BBL:      0.000      0.010      0.010   0.000010 (1000 calls)
    Force calculation:      0.000      0.010      0.020   0.000010 (2000 calls)
-    Poisson equation:      0.000      0.020      7.560   0.007560 (1000 calls)
-       Nernst Planck:      0.000      0.010      0.830   0.000830 (1000 calls)
+    Poisson equation:      0.000      0.010      5.910   0.005910 (1000 calls)
+       Nernst Planck:      0.000      0.010      0.310   0.000310 (1000 calls)
 Ludwig finished normally.
