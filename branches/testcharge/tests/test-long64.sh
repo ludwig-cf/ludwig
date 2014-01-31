@@ -16,7 +16,7 @@ make clean
 make libmpi
 make mpi
 
-cd $DIR_TST
+cd $DIR_REG
 
 for f in ./long64*inp
 do
