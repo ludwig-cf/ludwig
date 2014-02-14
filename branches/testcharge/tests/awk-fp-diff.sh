@@ -62,7 +62,6 @@ BEGIN {
 
 END {
   fp_lcs_compute()
-  fp_print_diff(nlines1, nlines2)
 }
 
 ###############################################################################
@@ -110,7 +109,7 @@ function fp_lines_equal(line1, line2) {
       }
   }
 
-  return 1;
+  return 1
 }
 
 ##############################################################################
@@ -162,7 +161,7 @@ function fp_lcs_compute() {
     nfile1_end = nlines1
     nfile2_end = nlines2
 
-    # Remove matching lines at beginning
+    # Remove matching lines at beginning, and end, to save table space
 
     while (start <= nfile1_end && start <= nfile2_end \
 	   && file1[start] == file2[start]) start += 1
@@ -194,6 +193,7 @@ function fp_lcs_compute() {
     }
 
     # We have the lcslen array
+    fp_print_diff(start-1, nfile1_end, nfile2_end);
 }
 
 ##############################################################################
@@ -204,6 +204,7 @@ function fp_lcs_compute() {
 #  the 'diff'-style output.
 #
 #  The routine should be invoked with i = nlines1 and j = nlines2.
+#  "st" is the first relevant position in the table, often zero.
 #
 #  Note on usual diff output format, which has three cases e.g.,
 #   1. 8a12,15   => Append lines 12-15 of file 2 after line 8 of file 1
@@ -214,18 +215,18 @@ function fp_lcs_compute() {
 #
 ###############################################################################
 
-function fp_print_diff(i, j) {
+function fp_print_diff(st, i, j) {
 
-    if (i > 0 && j > 0 && fp_lines_equal(file1[i], file2[j])) {
-	fp_print_diff(i-1,j-1)
+    if (i > st && j > st && fp_lines_equal(file1[i], file2[j])) {
+	fp_print_diff(st, i-1,j-1)
 	# print shared lines here, if required
     }
-    else if (j > 0 && (i == 0 || lcslen[i "," j-1] >= lcslen[i-1 "," j])) {
-	fp_print_diff(i, j-1)
+    else if (j > st && (i == st || lcslen[i "," j-1] >= lcslen[i-1 "," j])) {
+	fp_print_diff(st, i, j-1)
 	print j, "> " file2[j]
     }
-    else if (i > 0 && (j == 0 || lcslen[i "," j-1] < lcslen[i-1 "," j])) {
-	fp_print_diff(i-1, j)
+    else if (i > st && (j == st || lcslen[i "," j-1] < lcslen[i-1 "," j])) {
+	fp_print_diff(st, i-1, j)
 	print i, "< " file1[i]
     }
     else {
