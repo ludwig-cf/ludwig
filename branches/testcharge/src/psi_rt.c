@@ -46,8 +46,9 @@ int psi_init_param_rt(psi_t * obj) {
   double eunit = 1.0;         /* Unit charge */
   double temperature, beta;   /* Temperature (set by fluctuations) */
   double epsilon = 0.0;       /* Permittivity */
-  double lb;                  /* Bjerrum length; derived, not input. */
-  double tolerance;           /* Numerical tolerance for SOR. */
+  double lb;                  /* Bjerrum length; derived, not input */
+  double tolerance;           /* Numerical tolerance for SOR and Krylov subspace solver */
+  int    niteration;          /* Max. number of iterations */ 
 
   int io_grid[3] = {1,1,1};
   int io_format_in = IO_FORMAT_DEFAULT;
@@ -103,17 +104,21 @@ int psi_init_param_rt(psi_t * obj) {
   psi_multisteps_set(obj, multisteps);
   info("Number of multisteps:       %d\n", multisteps);
 
-  /* Tolerances */
+  /* Tolerances and Iterations */
 
   n = RUN_get_double_parameter("electrokinetics_rel_tol", &tolerance);
   if (n == 1) psi_reltol_set(obj, tolerance);
   n = RUN_get_double_parameter("electrokinetics_abs_tol", &tolerance);
   if (n == 1) psi_abstol_set(obj, tolerance);
+  n = RUN_get_int_parameter("electrokinetics_maxits", &niteration);
+  if (n == 1) psi_maxits_set(obj, niteration);
 
   psi_reltol(obj, &tolerance);
   info("Relative tolerance:  %20.7e\n", tolerance);
   psi_abstol(obj, &tolerance);
   info("Absolute tolerance:  %20.7e\n", tolerance);
+  psi_maxits(obj, &niteration);
+  info("Max. no. of iterations:  %16d\n", niteration);
 
   /* I/O */
 

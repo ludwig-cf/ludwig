@@ -29,10 +29,12 @@
 #include "util.h"
 #include "psi.h"
 #include "psi_s.h"
+#include "model.h"
 
-static const double e_unit_default = 1.0; /* Default unit charge */
-static const double reltol_default = FLT_EPSILON; /* Solver tolerance */
+static const double e_unit_default = 1.0;              /* Default unit charge */
+static const double reltol_default = FLT_EPSILON;      /* Solver tolerance */
 static const double abstol_default = 0.01*FLT_EPSILON;
+static const double maxits_default = 10000;            /* Default number of iterations */
 
 static int psi_read(FILE * fp, int index, void * self);
 static int psi_write(FILE * fp, int index, void * self);
@@ -730,6 +732,47 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
 
 /*****************************************************************************
  *
+ *  psi_electric_field_nnn
+ *
+ *  Return the electric field associated with the current potential.
+ *
+ *  The gradient of the potential is differenced with wider stencil 
+ *  that includes nearest and next-to-nearest neighbours.
+ *
+ *****************************************************************************/
+
+int psi_electric_field_nnn(psi_t * psi, int index, double e[3]) {
+
+  int p;
+  int coords[3], coords_nbr[3], index_nbr;
+
+  assert(psi);
+
+  coords_index_to_ijk(index, coords);
+
+  e[X] = 0;  
+  e[Y] = 0;
+  e[Z] = 0;
+
+  for (p = 1; p < NVEL; p++) {
+
+    coords_nbr[X] = coords[X] + cv[p][X];
+    coords_nbr[Y] = coords[Y] + cv[p][Y];
+    coords_nbr[Z] = coords[Z] + cv[p][Z];
+
+    index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
+
+    e[X] -= wv[p]* rcs2 * psi->psi[index_nbr] * cv[p][X]; 
+    e[Y] -= wv[p]* rcs2 * psi->psi[index_nbr] * cv[p][Y];  
+    e[Z] -= wv[p]* rcs2 * psi->psi[index_nbr] * cv[p][Z];  
+
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_reltol_set
  *
  *****************************************************************************/
@@ -790,3 +833,34 @@ int psi_multisteps(psi_t * obj, int * multisteps) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  psi_maxits_set
+ *
+ *****************************************************************************/
+
+int psi_maxits_set(psi_t * obj, int maxits) {
+
+  assert(obj);
+  assert(maxits);
+
+  obj->maxits = maxits;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_maxits
+ *
+ *****************************************************************************/
+
+int psi_maxits(psi_t * obj, int * maxits) {
+
+  assert(obj);
+  assert(maxits);
+
+  *maxits = obj->maxits;
+
+  return 0;
+}

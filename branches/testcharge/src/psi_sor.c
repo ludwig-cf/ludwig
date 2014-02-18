@@ -35,6 +35,7 @@
 #include "physics.h"
 #include "psi_s.h"
 #include "psi_sor.h"
+#include "control.h"
 
 /*****************************************************************************
  *
@@ -91,7 +92,7 @@ int psi_sor_solve(psi_t * obj, f_vare_t fepsilon) {
 
 int psi_sor_poisson(psi_t * obj) {
 
-  const int niteration = 1000; /* Maximum number of iterations */
+  int niteration = 1000;       /* Maximum number of iterations */
   const int ncheck = 5;        /* Check global residual every n iterations */
   
   int ic, jc, kc, index;
@@ -141,6 +142,7 @@ int psi_sor_poisson(psi_t * obj) {
   psi_epsilon(obj, &epsilon);
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
+  psi_maxits(obj, &niteration);
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -206,9 +208,25 @@ int psi_sor_poisson(psi_t * obj) {
 
     if ((n % ncheck) == 0) {
       /* Compare residual and exit if small enough */
+
       MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
-      if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) break;
+
+      if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
+
+	if (is_statistics_step()) {
+	  info("\nSOR solver\nNorm of residual %g at %d iterations\n",rnorm[1],n);
+	}
+	break;
+      }
+
+      if (n == niteration-1) {
+	info("\nSOR solver\n");
+	info("Exceeded %d iterations\n", n+1);
+	info("Norm of residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
+      }
+
     }
+
   }
 
   return 0;
@@ -258,7 +276,7 @@ int psi_sor_poisson(psi_t * obj) {
 
 int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
-  const int niteration = 2000; /* Maximum number of iterations */
+  int niteration = 2000;       /* Maximum number of iterations */
   const int ncheck = 5;        /* Check global residual every n iterations */
   
   int ic, jc, kc, index;
@@ -311,6 +329,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
+  psi_maxits(obj, &niteration);
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -432,9 +451,26 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
     if ((n % ncheck) == 0) {
       /* Compare residual and exit if small enough */
+
       MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
-      if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) break;
+
+      if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
+
+	if (is_statistics_step()) {
+	  info("\nSOR solver\nNorm of residual %g at %d iterations\n",rnorm[1],n);
+	}
+	break;
+      }
+
+      if (n == niteration-1) {
+	info("\nSOR solver\n");
+	info("Exceeded %d iterations\n", n+1);
+	info("Norm of residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
+      }
+
     }
+
+
   }
 
   return 0;

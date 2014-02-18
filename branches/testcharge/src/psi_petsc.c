@@ -69,6 +69,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   int new_rank, nhalo;
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
+  int niteration = 10000;      /* Number of iterations */
   KSPType solver_type;
   PCType pc_type;
   PetscReal rtol, abstol, dtol;
@@ -112,10 +113,11 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
 
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
+  psi_maxits(obj, &niteration);
 
   KSPCreate(PETSC_COMM_WORLD,&ksp);	
   KSPSetOperators(ksp,A,A,SAME_NONZERO_PATTERN);
-  KSPSetTolerances(ksp,tol_rel,tol_abs,PETSC_DEFAULT,PETSC_DEFAULT);
+  KSPSetTolerances(ksp,tol_rel,tol_abs,PETSC_DEFAULT,niteration);
   KSPSetFromOptions(ksp);
   KSPSetUp(ksp);
   
