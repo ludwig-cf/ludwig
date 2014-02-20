@@ -1,0 +1,227 @@
+Date: Mon, 17 Feb 2014 04:37:57 -0500
+From: c.huang@nature.com
+To: dmarendu@ph.ed.ac.uk
+Subject: Decision on manuscript NCOMMS-14-00180-T
+
+** Please ensure you delete the link to your author home page in this e-mail
+if you wish to forward it to your coauthors **
+
+Dear Dr Marenduzzo,
+
+Your manuscript entitled "Self-assembly of colloid-cholesteric composites: A
+route to switchable optical materials" has now been seen by 2 referees,
+whose comments are appended below. You
+will see that, while they find your work of interest, they have raised
+points that need to be addressed before we can make a decision on
+publication.
+
+We therefore invite you to revise and resubmit your manuscript, taking into
+account the points raised. At the same time, we ask that you ensure your
+manuscript complies with our format
+requirements, which are summarized in the following checklist:
+http://www.nature.com/ncomms/authors/ncomms_manuscript_checklist.pdf
+
+Please use the following link to submit your revised manuscript, completed
+checklist and point-by-point response to the referees' comments (which
+should be in a separate document to any
+cover letter):
+http://mts-ncomms.nature.com/cgi-bin/main.plex?el=A6S2Lka4A1DfBL5I4A9v6k5dsV
+e8yORLGQzsElBAZ
+
+
+** This url links to your confidential home page and associated information
+about manuscripts you may have submitted or be reviewing for us. If you wish
+to forward this email to co-authors,
+please delete the link to your homepage first **
+
+We hope to receive your revised paper within two months; please let us know
+if you aren't able to submit it within this time so that we can discuss the
+best way forward. If we don't hear
+from you, and the revision process takes significantly longer, we will close
+your file. In this event, we will still be happy to reconsider your paper at
+a later date, as long as nothing
+similar has been accepted for publication at Nature Communications or
+published elsewhere in the meantime.
+
+We look forward to hearing from you soon.
+
+Best regards,
+
+Congcong Huang, PhD
+
+Associate Editor
+Nature Communications
+
+Unit 10-11, 42F, The Center
+989 Changle Road, Xuhui District
+Shanghai, China, 200031
+Tel: +86-21-2422-5011
+Fax: +86-21-2422-5015
+www.nature.com/naturecommunications
+
+
+Reviewers' comments:
+
+Reviewer #1 (Remarks to the Author):
+
+The authors describe the results of a study of colloidal particles dispersed
+in cholesteric blue phases (BP) focusing on the effects of particle
+concentration and distribution. Additionally
+effects of confinement and external fields are investigated. The use of the
+lattice Boltzmann approach allows to follow dynamics after the thermal
+quench and electric field application. The
+study is an important step in modeling of BPs and should deserve a
+publication in Nature Communications. Nevertheless there are some weak
+points that need improvement before the publication.
+Below is the list of remarks.
+
+General remarks:
+
+The term colloid is by the definition a dispersion of particles in a fluid.
+Using the term also for the particles my lead to a confusion. In the
+manuscript often also a more appropriate word
+colloidal particle is used.
+
+It would be important to add comments that would help experimentalist in
+designing experiments with colloidal blue phases and perhaps stimulate
+development of applications on the base of
+these materials.
+
+Particular remarks:
+
+Page 2
+
+In the discussion of the physical understanding of trapping of colloidal
+particles in BP disclination networks it would be useful to refer to the
+initial study by Ravnik et al. in Faraday
+Discussions 2009 devoted to this topic.
+
+250 K is more than the total mesophase stability range!
+
+Page 3
+
+The statement "This is defined such that W > 0 gives preferential
+perpendicular orientation of the director field at the particle surface." is
+not consistent with the interaction form
+described in the Supplement.
+
+For potential readers it would be useful to specify the particle radius in
+nanometers in the main text. How it compares to the nematic correlation
+length? How the radius influences the
+structures? How tiny the particles can still be that the method based on the
+Landau-de Gennes free energy is justified.
+
+Is WR/K = 2.8 justified for nanoparticles used in the study?
+
+Page 4:
+
+Can the G elastic modulus be estimated for modeled structures?
+
+Page 5:
+
+Can annealing of the structures obtained with the thermal quench lead to
+ordered colloidal structures?
+
+Is also in case of the disordered structures observed a change in the
+stability range of the colloidal BPs?
+
+In the discussion of colloidal particles in BP thin layers it would be good
+to comment the study of
+Ravnik et al. in Soft Matter 2011 devoted the ordered structures of such a
+system.
+
+Page 6:
+
+It would be good to comment the difference between structures in the bulk
+and thin layer for particles with strong anchoring. Does this depend on the
+visualization or is more behind?
+
+Are the electric field induced changes irreversible only in case of
+colloidal dispersions?
+
+Page 7
+
+Reference 2 has a mistake.
+
+Supplement
+
+Segment 4.2:
+
+The statement "Wall anchoring is either normal or planar with W=K = 1 in
+simulation units" is unclear.
+
+References of the Supplement:
+There are mistakes in references 1 and 2.
+
+
+
+Reviewer #2 (Remarks to the Author):
+
+This paper, "Self-assembly of colloid-cholesteric composities: A route to
+switchable optical materials" reports simulations of the formation of
+particle networks in a cholesteric host and in
+particular in the blue phase of the cholesteric host. It reports the
+influence of various physical parameters and in particular the surface
+anchoring and concentration of the colloidal
+particles. The paper also reports how external fields can be employed to
+change the morphology of these colloidal composites and how this may be
+employed in practical optical devices.
+
+The paper builds on a body of previous research, both theoretical and
+experimental that has explored the effects of dispersing particles in a
+liquid crystal host. The novelty of the paper is
+to model the effect of particles in the blue phases of a cholesteric host
+ahd to postulate how these colloids may be employed in specific
+appilcations.
+
+I am not a theorteical physiscist and therefore will not comment on the
+methodology but rather will take the perspective of an experimentalist and
+how useful this paper is in understanding
+these materials and more importantly how useful the paper is in suggesting
+and designing experimental procedures and developing the actual materials.
+
+The paper provides insight into the effectiveness of including particles
+into the blue phase as a means of controlling and adjusting the structure
+and stability of the materials. The paper
+is clearly written and the figures, paricularly the included 3D videos,
+provide clear perspective on the modeled phases of these materials. The
+results are of interest and useful to
+experimentalists working in the field. The paper would be even more useful
+if it included references to actual materials, both the liquid crystal host
+and the added particles and perhaps
+even suggested a model system that would be a good starting point to study
+experimentally. In a similar vein, it would also be useful to address the
+practical issue of reproducibility, which
+has been a major problem with these materials. The theoretical results
+clearly indicate how important the formation conditions are to the final
+result. What is the authors sense of how easy
+it will be to reproducibly fabricate a device
+with a specific morphology and optical properties. This seems a likely
+practical issue particularly with the rich variety of structures reported in
+the simulations.
+
+
+
+
+
+** See NPG's author and referees' website at www.nature.com/authors for
+information about policies, services and author benefits
+
+
+This email has been sent through the NPG Manuscript Tracking System
+NY-610A-NPG&MTS
+
+Confidentiality Statement:
+
+This e-mail is confidential and subject to copyright. Any unauthorised use
+or disclosure of its contents is prohibited. If you have received this email
+in error please notify our Manuscript
+Tracking System Helpdesk team at http://npgapps.custhelp.com/app/ask.
+
+Details of the confidentiality and pre-publicity policy may be found here
+http://www.nature.com/authors/policies/confidentiality.html
+
+Privacy Policy | Update Profile
+
+
+
