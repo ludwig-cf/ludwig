@@ -6,6 +6,8 @@
 %
 %  The supporting material text is support.tex
 %
+%  Submitted version was SVN 2259.
+%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \documentclass[12pt]{article}
@@ -14,22 +16,50 @@
 
 \begin{document}
 
-\title{Self-assembly of colloid-cholesteric composites: A route to switchable optical materials}
+
+\title{Self-assembly of colloid-cholesteric composites provides
+a route to switchable optical materials}
+
 \author{K. Stratford$^{*}$, O. Henrich$^{*}$, J.~S. Lintuvuori$^{*}$,\\
-M. E. Cates, D. Marenduzzo \\ 
-{\small SUPA, School of Physics and Astronomy, Edinburgh University,} \\
-\small{Edinburgh, EJ9 3JZ, UK}\\
-\small{$^{*}$ equally contributed to this work}}
+M. E. Cates, D. Marenduzzo$^\dagger$ \\ 
+SUPA, School of Physics and Astronomy, The King's Buildings,\\
+The University of Edinburgh, Edinburgh, EJ9 3JZ, UK\\
+\small{$^{*}$ equally contributed to this work}\\
+\small{$^\dagger$ Corresponding author: dmarendu@ph.ed.ac.uk}
+}
 \date{}
 
 \maketitle
 
-{\bf Colloidal particles dispersed in liquid crystals can form new materials with tunable elastic and electro-optic properties~\cite{stark}. In a host comprising  a periodic `blue phase' chiral liquid crystal~\cite{mermin}, the particles should template into colloidal crystals \cite{miha} with potential uses in photonics, metamaterials, and transformational optics~\cite{lavrentovich}. 
-Here we show by computer simulation that colloid/cholesteric mixtures can give rise to a much wider range of soft-solid composites than previously anticipated. These include regular crystals, glasses, percolating gels, isolated clusters, twisted rings and undulating colloidal ropes. The final structure can be tuned via the particle concentration, and by varying the surface interactions of the cholesteric host with both the colloids and any confining walls. 
-Remarkably, we find that many of these new materials are metastable: two or more structures can arise under identical thermodynamic conditions. The observed structure depends not only on the formulation protocol,
-but also on the history of an applied electric field.  
-This new class of soft materials should thus be relevant to the design of switchable, multistable devices for optical technologies including, for example, smart glass and e-paper~\cite{epaper}.}
+\noindent
 
+%% ABSTRACT 150 WORDS MAX NO REFERENCES
+\noindent
+{\bf
+Colloidal particles dispersed in liquid crystals can form new materials
+with tunable elastic and electro-optic properties. In a periodic `blue
+phase' host, particles should template into colloidal crystals with
+potential uses in photonics, metamaterials, and transformational optics.
+Here we show by computer simulation that colloid/cholesteric mixtures can
+give rise to regular crystals, glasses, percolating gels, isolated clusters,
+twisted rings and undulating colloidal ropes. This structure can be tuned
+via particle concentration, and by varying the surface interactions of the
+cholesteric host with both
+the particles and confining walls. Many of these new materials are metastable:
+two or more structures can arise under identical thermodynamic conditions.
+The observed structure depends not only on the formulation protocol, but also
+on the history of an applied electric field. This new class of soft materials
+should thus be relevant to design of switchable, multistable devices for
+optical technologies such as smart glass and e-paper.
+}
+%% EXACTLY 150
+
+
+\bigskip
+\noindent
+%% [Introduction: Max 1000 words; we have about 650]
+
+\noindent
 When spherical colloidal particles are mixed into a nematic liquid crystal, 
 they disrupt the orientational order in the fluid and create defects (disclination lines) in the nematic close to their surfaces. To minimize the free energy cost, it is generally advantageous for defects to be shared:
 therefore the colloidal particles have a generic tendency to aggregate. Such aggregates may further 
@@ -46,45 +76,73 @@ chiral, and this causes their average orientation (described by a director field
 a helical fashion, rather than remain uniform as in nematics. 
 This typically creates a 1-dimensional periodic structure, called the cholesteric phase, whose wavelength 
 is the pitch, $p$. The periodicity can however become fully three dimensional in the so-called blue phases (BPs)~\cite{mermin}. BPs arise because the director field can twist around more than one direction at once (see 
-the cartoon in Fig. S1). Such double twist 
-regions (generally cylinders: DTCs) are energetically favoured at high enough molecular chirality, but
+the cartoon in Supplementary Fig.~1). Such double twist 
+regions (generally cylinders) are energetically favoured at high enough molecular chirality, but
 lead to geometric frustration because it is impossible to tile the whole 3D
-space with DTCs without also introducing ``disclination lines'' 
+space with double twist cylinders without also introducing ``disclination lines'' 
 (These are singular topological defects on which the director field is 
 undefined.) In blue phases these disclination lines themselves either form a 3D periodic regular lattice (in so called BPI and BPII), or remain disordered (BPIII)~\cite{bp3}. 
 %
-BPs are stabilised by the tendency of chiral molecules to twist, but destabilised by the cost of forming topological defects (which locally diminish the molecular alignment). In conventional cholesteric materials~\cite{mermin} this balance is only achievable in a narrow temperature range of a few degrees, around the onset of liquid crystalline ordering. However, recent advances in formulation have widened this stability range enormously (up to 250K) paving the way to
-applications of BPs in display devices~\cite{kikuchi,bplasers,coleswidetrange,bpdevice,coles}.
+BPs are stabilised by the tendency of chiral molecules to twist, but destabilised by the cost of forming topological defects (which locally diminish the molecular alignment). In conventional cholesteric materials~\cite{mermin} this balance is only achievable in a narrow temperature range of a few degrees, around the onset of liquid crystalline ordering.
+\textcolor{red}{
+However, recent advances in formulation have widened this stability
+range enormously~\cite{kikuchi,bplasers,coleswidetrange,bpdevice}. Most
+recently, templated BPs with a stability range of -125
+to~125$^\circ$C have been reported \cite{coles}, paving the way to
+applications of BPs in operational display devices.}
 
 Besides being remarkable materials in themselves, BPs offer significant promise as hosts for dispersing colloidal particles. Because BPs contain a disclination network even in the absence of
 particles, they can potentially template colloidal self-assembly. 
 This was proved recently by simulations of BP-dispersed nanoparticles which 
 exclude the surrounding liquid crystal but otherwise have negligible surface 
-interaction with it (to give a so-called `weak anchoring' regime)~\cite{miha}. 
+interaction with it (to give a so-called `weak anchoring' regime)~\cite{extrareference1,miha}. 
 Such particles are attracted to the disclination network in BPs: by covering up the defect cores, the high elastic energy cost of those regions is avoided. The pre-existing order of the defect network then templates particles into a regular colloidal crystal of the same periodicity. 
 Because this structure has a wavelength in the visible range, 
 the resulting material should inherit (and likely enhance) the incomplete photonic bandgap of the parent blue phase, as exploited for instance in laser devices~\cite{bplasers}; for related possibilities see \cite{lavrentovich}.
 
-A second compelling reason to study colloid-BP composites is that, even without particles, BPs can show several competing metastable free energy minima,
+A second compelling reason to study colloidal-BP composites is that, even without particles, BPs can show several competing metastable free energy minima,
 corresponding to different topologies of the defect network~\cite{adriano,fukuda}, with a strong dependence on applied electric or magnetic fields~\cite{henrichfield}.
 % 
 Adding particles is likely to further enrich the free energy landscape, creating composites that might be promising candidates for bistable or multistable devices, in which energy is needed only to switch optical properties and not to maintain them. (This is the e-paper paradigm~\cite{epaper}, and can lead to huge energy savings.)
-To explore such metastability, and switching strategies between states, we require multi-unit-cell, time-dependent simulations. These go beyond previous studies of colloid-BP composites~\cite{miha} but follow comparable simulations of pure BPs~\cite{bp3,henrichfield,domaingrowth}, and isolated and dimeric colloids in cholesterics~\cite{juho1,juho2}. Our methodology and simulation parameters are summarized in the Supplementary Information.
+To explore such metastability, and switching strategies between states, we require multi-unit-cell, time-dependent simulations. These go beyond previous studies of colloidal-BP composites~\cite{miha} but follow comparable simulations of pure BPs~\cite{bp3,henrichfield,domaingrowth}, and isolated and dimeric colloidal particles in cholesterics~\cite{juho1,juho2}. Our methodology and simulation parameters are summarized in the Supplementary Information.
 
-We show in Fig.~1 A-D the final state structures of four simulations in which we first equilibrated a stable BPI disclination network in bulk (with periodic boundary conditions) and then dispersed colloidal particles at random within it. Among dimensionless control parameters are the colloid volume fraction $\phi$  ($\phi = 1\%$ or $5\%$); the ratio $r = R/\lambda$ of particle radius to the BP lattice parameter $\lambda$ (here $r\simeq 0.14$) and the ratio $w = WR/K$ where $W$ is the anchoring strength of the cholesteric at the particle surface, and $K$ is the elastic constant of the liquid crystal. (This is defined such that $W>0$ gives preferential perpendicular orientation of the director field at the particle surface.) For the latter we choose $w = 0.23, 2.3$ which are within typical experimental range~\cite{tiffany}. This parameter can be viewed as the ratio of the anchoring energy, $WR^2$, to the elastic energy scale for distortion $KR$. 
+SHORT SUMMARY OF RESULTS AND CONCLUSIONS (PRESENT TENSE). To include a
+statement about confined systems with reference to \cite{extrareference2}.
+The simulations represent a liquid crystal
+blue phase with unit cell size in the range of 100--500~nm \cite{mermin},
+and particles with a radius of around 50~nm.
 
-For a single colloidal particle in a nematic fluid, $w$ controls the formation of a local topological defect at the particle surface~\cite{stark}, with weak distortion of the nearby fluid at small $w$. In the colloid-BP system, $w$ also plays a determining role in the final composite structure. When $w$ is small (Fig.~ 1A,B; Suppl. Movie 1,2), the attraction of particles to the disclination lattice causes
+\bigskip
+\noindent
+\textbf{\large Results} [Currently about 1400 words]
+
+\noindent
+\textbf{Structure in bulk BPI.}
+We show in Fig.~1 A-D the final state structures of four simulations in which we first equilibrated a stable BPI disclination network in bulk (with periodic boundary conditions) and then dispersed colloidal particles at random within it. Among dimensionless control parameters are the particle solid volume fraction $\phi$  ($\phi = 1\%$ or $5\%$); the ratio $r = R/\lambda$ of particle radius to the BP lattice parameter $\lambda$ (here $r\simeq 0.14$) and the ratio $w = WR/K$ where $W$ is the anchoring strength of the cholesteric at the particle surface, and $K$ is the elastic constant of the liquid crystal.
+\textcolor{red}{
+The anchoring strength is defined such that $W > 0$ imparts a preferred
+orientation to the director field at the particle surface. This orientation
+can be either normal to the surface or in a plane tengential to the surface,
+a property related to surface chemistry in experimental systems but which
+can be imposed at will in simulations.
+We choose} $w = 0.23, 2.3$ which are within typical experimental range~\cite{tiffany}. This parameter can be viewed as the ratio of the anchoring energy, $WR^2$, to the elastic energy scale for distortion $KR$. 
+
+
+For a single colloidal particle in a nematic fluid, $w$ controls the formation of a local topological defect at the particle surface~\cite{stark}, with weak distortion of the nearby fluid at small $w$. In the colloidal-BP system, $w$ also plays a determining role in the final composite structure. When $w$ is small (Fig.~ 1A,B; Supplementary Movies~1 and~2), the attraction of particles to the disclination lattice causes
  the lattice to become covered by particles, with little disruption of its
- long-range order. Thus a templated colloidal crystal is created, as first reported in~\cite{miha}. Interestingly, the weak but finite anchoring apparently creates an elastic force between the colloids which leads to very slow dynamics (Fig. S4) and the formation of small colloidal lines within disclinations, especially for dilute samples (Fig. 1A). It seems likely that polymer-stabilised  blue phases~\cite{kikuchi} work by a similar principle to this small $w$ case, with a weak segregation of monomers towards the defect regions.
+ long-range order. Thus a templated colloidal crystal is created, as first reported in~\cite{miha}. Interestingly, the weak but finite anchoring apparently creates an elastic force between the colloidal particles which leads to very slow dynamics
+(Supplementary Fig.~4) and the formation of small colloidal lines within disclinations, especially for dilute samples (Fig. 1A). It seems likely that polymer-stabilised  blue phases~\cite{kikuchi} work by a similar principle to this small $w$ case, with a weak segregation of monomers towards the defect regions.
 
-For large $w$ (Fig.~1C,D; Suppl. Movie 3,4), the picture changes dramatically.
+For large $w$ (Fig.~1C,D; Supplementary Movies~3 and~4), the picture changes
+dramatically.
 Each colloidal particle now disrupts significantly the order of the nearby fluid, with defect formation close to its surface~\cite{stark}. The resulting strong disruption of local liquid crystalline order around each particle leads now to 
 a strong interparticle attraction. This restructures the disclination
 network completely, destroying the long range order of
 the original BPI topology. Most notably, particle aggregation favours
 the formation of defect junctions, where four disclinations meet. This structural motif is present in the unit cell of BPII rather than BPI (and also seen in the amorphous BPIII~\cite{bp3}). The particle clusters are disjoint at low volume fractions ($\phi\simeq 1\%$) but they interact elastically via the connecting disclinations. At larger $\phi$, the aggregates join up to form a percolating colloidal cluster which essentially templates the disclinations rather than vice versa. 
 
-As colloid-nematic composites~\cite{tiffany}, all the structures in Fig.~1A-D 
+As colloidal-nematic composites~\cite{tiffany}, all the structures in
+Fig.~1A-D 
 should be soft solids, of nonzero elastic 
 modulus $G$ at low frequency. This contrasts with pure BPs, where
 $G=0$ as the fluid can flow with a finite
@@ -95,59 +153,66 @@ in~\cite{lubensky} (with $G<1$ Pa). In contrast, the colloidal gel
 structure in Fig.~1D should be much more resistant mechanically, 
 due to the formation of a thick percolating particle network. The 
 structure is now akin to that of the self-quenched glass found in 
-colloid-nematic composites~\cite{tiffany} at much higher volume 
+colloidal-nematic composites~\cite{tiffany} at much higher volume 
 fraction (over 20\% as opposed to below 5\% here), for which $G\sim 10^3$ Pa.
 
 A more practical protocol for including particles in a BPI phase is to disperse the particles at random in an isotropic phase, and then quenching this into the temperature range where BPI is stable. Here we know that, without particles, the kinetics can favour disordered (BPIII-like) intermediates which may be long lived or even metastable~\cite{domaingrowth}. Fig.~1E-H shows outcomes of such a quench protocol with the same parameter sets as in Fig.~1A-D. For small $w$, the particles again decorate the disclination lines, but are this time templated onto an amorphous network rather than an ordered one.
 Increasing the volume fraction (Fig.~1F) leads to a more even coverage with
 a better defined particle spacing. 
 For large $w$, on the other hand, strong interparticle forces again dictate
-the self-assembly. At low concentrations, discrete particle clusters decorate an amorphous defect lattice (Fig.~1G) whereas at higher $\phi$ a percolating network of colloid strands (the gel in Fig.~1H) is again seen. 
+the self-assembly. At low concentrations, discrete particle clusters decorate an amorphous defect lattice (Fig.~1G) whereas at higher $\phi$ a percolating network of colloidal strands (the gel in Fig.~1H) is again seen. 
 The structures in Fig. 1A-H have been followed for $\sim$20 ms 
-(see Fig. S4); they correspond to either very slowly evolving states or 
-deep metastable minima (elastic interactions are of
+(see Supplementary Fig.~4); they correspond to either very slowly evolving
+states or  deep metastable minima (elastic interactions are of
 order $KR$ and dwarf thermal motion, see
-Fig. S4 and Ref.~\cite{stark,lavrentovich}).
+Supplementary Fig.~4 and Ref.~\cite{stark,lavrentovich}).
 
+\medskip
+\noindent
+\textbf{Structures in confined BPI.}
 In display devices and other optical applications, it is typical for liquid crystals to be strongly confined (and subject to strong boundary effects), in contrast to the bulk geometries considered above. We therefore next describe how colloidal suspensions self assemble in thin sandwiches (thickness $h = 1.75 \lambda$), whose confining walls can favour either tangential (planar degenerate) or normal (homeotropic) orientation of the director field. For simplicity we here impose one or the other as a strict boundary condition.
 
-Fig.~2A-D shows the case of normal wall anchoring on varying $\phi$ and $w$. We quench from the isotropic to the ordered phase as was done in Fig.~1E-H, and again find a metastable, amorphous disclination network (see Supplementary Information). The resulting colloid-cholesteric composites are somewhat similar to those seen in the bulk: for small $w$ the particles are templated by the network (Fig.~2A,B), whereas for large $w$ we observe isolated clusters (Fig.~2C) and percolated colloidal gels (Fig.~2D), for $\phi = 1\%$ and $4\%$ respectively. There are, however, significant effects of the confining walls.
-First, the normal anchoring at the wall recruits particles there,  giving (for the chosen $h$) a density enhancement of the colloids at both walls 
+Fig.~2A-D shows the case of normal wall anchoring on varying $\phi$ and $w$. We quench from the isotropic to the ordered phase as was done in Fig.~1E-H, and again find a metastable, amorphous disclination network (see Supplementary Information). The resulting colloidal-cholesteric composites are somewhat similar to those seen in the bulk: for small $w$ the particles are templated by the network (Fig.~2A,B), whereas for large $w$ we observe isolated clusters (Fig.~2C) and percolated colloidal gels (Fig.~2D), for $\phi = 1\%$ and $4\%$ respectively. There are, however, significant effects of the confining walls.
+First, the normal anchoring at the wall recruits particles there,  giving (for the chosen $h$) a density enhancement of the colloid particless at both walls 
 (see side-views in Fig.~2A-D). Second, the clusters formed at large $w$ are themselves anisotropic with an oblate habit. These clusters
-are similar to those reported experimentally for large colloids in a
+are similar to those reported experimentally for large colloid particles in a
 cholesteric (but non-BP) host~\cite{niek}.
  
 Fig.~2E-H shows comparable simulations for planar wall anchoring. 
-Without colloids, planar anchoring results in a regular cholesteric helix,
+Without colloidal particles, planar anchoring results in a regular
+cholesteric helix,
 with axis perpendicular to the boundary walls. 
 This twisted texture develops via a set of defect loops,
 which shrink and disappear to leave a defect-free sample. However,
 dispersing particles with small $w$ arrests the loop shrinking process,
 stabilising twisted rings (Fig.~2E) at small $\phi$, and more complicated 
 double-stranded structures at larger $\phi$ (Fig.~2F).
-For larger $w$, we observe thick colloidal ``ropes" about 5 colloids across
+For larger $w$, we observe thick colloidal ``ropes" about 5 particles across
 (Fig.~2G,H). These ropes undulate to follow the chiral structure of the 
-underlying fluid. On increasing the density they develop branch points and finally again approach a percolating gel morphology. Note that planar wall anchoring is incompatible with the normal anchoring on the colloids (for $w>0$), which are thus repelled from both walls (see the side views in Fig.~2E-H).
+underlying fluid. On increasing the density they develop branch points and finally again approach a percolating gel morphology. Note that planar wall anchoring is incompatible with the normal anchoring on the colloidal particles (for $w>0$), which are thus repelled from both walls (see the side views in Fig.~2E-H).
 
+\medskip
+\noindent
+\textbf{Switching in electric field.}
 An interesting question, relevant for applications to devices, is whether 
 these structures can be modified, or switched, with electric fields.
 Fig.~3 addresses this question, starting from amorphous Blue Phase III,
-this time at a higher chirality. Dispersing colloids in this networks
+this time at a higher chirality. Dispersing colloidal particles in this networks
 results in the particle occupying the available nodes, where the order
-parameter is low (Fig.~3A; Suppl. Movie 5). Applying a high enough field 
+parameter is low (Fig.~3A; Supplementary Movie~5). Applying a high enough
+field 
 along the $x$ direction leads to a switching to a new phase, where colloidal 
 arrays fit within a network with distorted hexagonal cells (Fig.~3B 
-and Fig. S7; Suppl. Movie 6). 
+and Supplementary Fig.~7; Supplementary Movie~6). 
 Remarkably, upon field removal this honeycomb structure does not find its 
 way back to the 
 configuration before switching on the field, but gets stuck into a metastable 
-structure (Fig. S7), with residual anisotropy along the field switching 
+structure (Supplementary Fig.~7), with residual anisotropy along the field
+switching 
 direction. Cycling the field along the $x$ and $y$ directions leads to
 distinct metastable structures, which are retained after field removal
-(Fig. S8 and S9).
-%The resulting multistability is a prerequisite for new generation 
-%switchable electrooptic devices for use in energy-saving electronics-free
-%appliances, smart glass, and e-paper to cite just a few examples.
+(Suplementary Fig.~8 and Fig.~9).
+
 
 %FIELD SWITCHING PARA HERE
 \if{The existence of several locally stable competing solids with 
@@ -160,112 +225,689 @@ electrooptic devices for use in energy-saving electronics-free
 appliances, smart glass, and e-paper to cite just a few examples.
 }\fi
 
-The surprising wealth of colloid-BP composites obtained in Figs.~1-3 is the complex consequence of a simple competition between two self-assembly principles. 
-First, blue phases provide a three-dimensional template onto which colloidal particles are attracted so as to reduce the elastic stresses arising at the disclination cores~\cite{miha}. Second, colloidal intrusions in a liquid crystal raise the free energy locally; sharing this cost creates a generic tendency to aggregate into clusters~\cite{tiffany}. Which of these factors dominates depends on $w$, a dimensionless measure of the anchoring strength of the director field at the colloidal surface. For $w\ll 1$, the templating principle dominates. Colloidal crystals, gels or twisted rings can then arise. For $w \gg 1$, interparticle attractions defeat the templating tendency, and we predict disconnected aggregates, percolating gels, or helical colloidal ropes. In both cases, control is offered by the process route, colloid concentration, and the anchoring conditions at sample walls. We have also shown that electric fields can be used to switch between metastable states, providing a possible route to future multistable device applications.
-%This variety of metastable structures, with tunable properties that can combine the mechanical and optical features of colloids and liquid crystals~\cite{lavrentovich}, offers promise for the design of multistable liquid crystal devices, which are at the forefront of current technological developments in this field. 
+\medskip
+\noindent
+\textbf{\large Discussion} [Currently about 260 words]
+
+\noindent
+The surprising wealth of colloidal-BP composites obtained in Figs.~1-3 is the complex consequence of a simple competition between two self-assembly principles. 
+First, blue phases provide a three-dimensional template onto which colloidal particles are attracted so as to reduce the elastic stresses arising at the disclination cores~\cite{miha}. Second, colloidal intrusions in a liquid crystal raise the free energy locally; sharing this cost creates a generic tendency to aggregate into clusters~\cite{tiffany}. Which of these factors dominates depends on $w$, a dimensionless measure of the anchoring strength of the director field at the colloidal surface. For $w\ll 1$, the templating principle dominates. Colloidal crystals, gels or twisted rings can then arise. For $w \gg 1$, interparticle attractions defeat the templating tendency, and we predict disconnected aggregates, percolating gels, or helical colloidal ropes. In both cases, control is offered by the process route, colloidal concentration, and the anchoring conditions at sample walls. We have also shown that electric fields can be used to switch between metastable states, providing a possible route to future multistable device applications.
+%This variety of metastable structures, with tunable properties that can combine the mechanical and optical features of colloid particles and liquid crystals~\cite{lavrentovich}, offers promise for the design of multistable liquid crystal devices, which are at the forefront of current technological developments in this field. 
 We have not explored in this work switchability by flow \cite{flowswitch}, but this could again be inherited from the underlying BP dynamics \cite{adriano,permeation2}, in which case the same materials may also be relevant to the emerging technology of optofluidics~\cite{optofluidics}.
 
+
 \bigskip
-\textbf{Acknowledgements}
+\noindent
+\textbf{\large Methods}
+
+INTRODUCTORY STATEMENT
+
+\noindent
+\textbf{Theromdynamics.}
+The thermodynamics of the cholesteric liquid crystal can be described
+by means of a  Landau-de Gennes free energy functional $\cal F$,
+whose density is written as $f$:
+\begin{eqnarray}
+{\cal F}[{\bf Q}]&=&\int d^3{\bf r} f({\bf Q}({\bf r})).
+\end{eqnarray}
+This free energy density $f = f({\bf Q})$ may be expanded in powers of the
+order parameter ${\bf Q}$ and its gradients; ${\bf Q}$ is a traceless 
+and symmetric tensor which is denoted from now on in subscript
+notation as $Q_{\alpha\beta}$.
+The largest eigenvalue $q$ and corresponding eigenvector $n_\alpha$
+of $Q_{\alpha\beta}$ describe the local strength and major orientation axis
+of molecular order.
+The theory based on the tensor $Q_{\alpha\beta}$, rather than a theory based
+solely
+on the director field $n_\alpha ({\bf r})$, allows treatment of disclinations
+(defect lines) in whose cores $n_\alpha$ is undefined.
+
+Explicitly, the free energy density is:
+\begin{eqnarray}
+f(Q_{\alpha\beta}) &=& {\textstyle \frac{1}{2}} A_0
+ \left(1- {\textstyle \frac{1}{3}}\gamma \right)Q^2_{\alpha \beta}
+-{\textstyle \frac{1}{3}}A_0\gamma Q_{\alpha \beta} Q_{\beta \gamma}Q_{\gamma \alpha} 
++ {\textstyle \frac{1}{4}} A_0\gamma (Q^2_{\alpha \beta})^2  \nonumber\\
+&+& {\textstyle \frac{1}{2}} K(\varepsilon_{\alpha \gamma \delta}
+\partial_\gamma Q_{\delta \beta} + 2 q_0 Q_{\alpha \beta})^2
++ {\textstyle \frac{1}{2}} K (\partial_\beta Q_{\alpha \beta})^2.
+\label{free}
+\end{eqnarray}
+Here, repeated indices are summed over, while terms of the form
+$Q^2_{\alpha\beta}$ should be expanded to read $Q_{\alpha\beta}Q_{\alpha\beta}$;
+$\varepsilon_{\alpha\gamma\delta}$ is the permutation tensor.
+The first three terms are a bulk free energy density whose overall scale
+is set by $A_0$ (discussed further below); $\gamma$ is a control parameter
+related to a reduced temperature. Varying the latter in the absence of
+chiral terms ($q_0=0$) gives an isotropic-nematic transition at
+$\gamma = 2.7$ with a mean-field spinodal instability at $\gamma = 3$.
+
+The remaining two terms of the free energy density in Eq.~\ref{free} describe
+distortions of the order parameter field. In theoretical work and when
+describing a generic rather than a specific system, it is 
+conventional~\cite{mermin,deGennes} to
+assume that splay, bend and twist deformations of the director are equally
+costly, that is, there is a single elastic constant $K$. The parameter $q_0$
+is related to the helical pitch length $p$ via $q_0=2\pi/p$,
+describing one full turn of the director in the cholesteric phase.
+
+There are two dimensionless numbers, which are commonly referred to as
+$\kappa$, the chirality, and  $\tau$, the reduced temperature
+\cite{mermin} which can be used to characterise the system. In terms of
+the parameters in the free energy density, these are:
+\begin{eqnarray}\label{cntrl-param} 
+\tau&=&\frac{27(1-\gamma/3)}{\gamma}\label{tau}\\
+\kappa&=&\sqrt{\frac{108\ K\, q_0^2}{A_0\, \gamma}}\label{kappa}.
+\end{eqnarray}
+If the free energy density Eq.~\ref{free} is made dimensionless, $\tau$
+appears as prefactor of the term  quadratic in $Q_{\alpha\beta}$,
+whereas $\kappa$
+quantifies the ratio between bulk and  gradient free energy terms. The
+chirality and reduced temperature may be used to characterise an equilibrium
+phase diagram of the blue phases in bulk cholesteric liquid crystals
+\cite{mermin,henrichfield}.
+
+The effect of an electric field can be modelled by including the following
+term in the bulk free energy density:
+\begin{equation}
+-\frac{\epsilon_a}{12\pi} E_{\alpha}Q_{\alpha\beta}E_{\beta},
+\end{equation} 
+where $E_{\alpha}$ are the components of the electric field, and 
+$\epsilon_a$ (here assumed positive) is the dielectric anisotropy of the liquid
+crystal. The strength of the electric field is quantified via
+one further dimensionless number
+\begin{equation}
+{\cal E}^2 = \frac{27 \epsilon_a}{32 \pi A_0 \gamma} E_\alpha E_\alpha.
+\end{equation}
+The quantity ${\cal E}$ will be referred to as the reduced field strength.
+
+
+\medskip
+\noindent
+\textbf{Surface free energy.}
+In addition to the fluid free energy density $f(Q_{\alpha\beta})$, a surface
+free energy density is also present to represent the energetic cost of
+anchoring at a solid surface. If the preferred order parameter tensor
+at the solid surface is $Q^0_{\alpha\beta}$, then the surface free energy
+density (per unit area) is
+\begin{equation}
+f_s(Q_{\alpha\beta}, Q^0_{\alpha\beta})
+= {\textstyle \frac{1}{2}}W(Q_{\alpha\beta} - Q^0_{\alpha\beta})^2,
+\end{equation}
+where $W$ is a constant determining the strength of the anchoring.
+The determination of $Q^0_{\alpha\beta}$ for normal and planar anchoring is
+discussed below. For a colloidal particle of radius $R$, the strength of
+the surface
+anchoring compared which the bulk fluid elastic constant may be quantified
+by the dimensionless parameter $WR/K$. For small values of this parameter,
+the presence of a particle surface should have little impact on the local
+fluid LC ordering.
+
+\medskip
+\noindent
+\textbf{Dynamics of the order parameter.}
+A framework for the dynamics of liquid crystals is provided by the 
+Beris-Edwards model \cite{beris}, in which the time evolution of the
+tensor order parameter obeys
+\begin{equation}
+\label{eom}
+\left(\partial_t+ u_\nu \partial_\nu \right) Q_{\alpha\beta} - S_{\alpha\beta}
+= \Gamma H_{\alpha\beta}.
+\end{equation}
+In the absence of flow, Eq.~\ref{eom} describes a relaxation towards
+equilibrium on a timescale determined by a collective rotational diffusion 
+constant $\Gamma$. This relaxation is driven by the molecular field
+$H_{\alpha\beta}$, which is the functional derivative of the free energy
+with respect to the order parameter \cite{beris}:
+\begin{equation}
+H_{\alpha\beta} = -\frac{\delta {\cal F}} {\delta Q_{\alpha\beta}} 
++ {\textstyle \frac{1}{3}} \delta_{\alpha\beta} 
+\mathrm{Tr}\left(\frac{\delta {\cal F}}{\delta Q_{\alpha\beta}}\right).
+\end{equation}
+
+The tensor $S_{\alpha\beta}$ in Eq.~\ref{eom} completes the material
+derivative for rod-like molecules \cite{beris}. It couples the order
+parameter to the symmetric and antisymmetric parts of the velocity 
+gradient tensor $W_{\alpha \beta}\equiv\partial_\beta u_\alpha$.
+The symmetric part $A_{\alpha\beta}$ and the antisymmetric part
+$\Omega_{\alpha\beta}$ are defined as 
+\begin{equation}
+A_{\alpha\beta} = {\textstyle \frac{1}{2}} (W_{\alpha\beta} + W_{\beta\alpha}),
+\end{equation}
+and
+\begin{equation}
+\Omega_{\alpha\beta} = {\textstyle \frac{1}{2}} (W_{\alpha\beta} - W_{\beta\alpha}).
+\end{equation}
+This full coupling term is then
+\begin{eqnarray}
+\label{coupling-term}
+S_{\alpha\beta}  &=&
+(\xi A_{\alpha\nu} + \Omega_{\alpha\nu})
+(Q_{\nu\beta} + {\textstyle \frac{1}{3}}\delta_{\nu\beta})
++
+(Q_{\alpha\nu} + {\textstyle \frac{1}{3}} \delta_{\alpha\nu})
+(\xi A_{\nu\beta} - \Omega_{\nu\beta})
+\nonumber\\ 
+&-&2 \xi ({Q_{\alpha\beta} + {\textstyle \frac{1}{3}}\delta_{\alpha\beta}})
+Q_{\nu\nu} W_{\nu\nu}.
+\end{eqnarray}
+Here, $\xi$ is a material-dependent that controls the
+relative importance of rotational and elongational flow for molecular
+alignment, and determines in practice how the orientational order
+responds to a local shear flow. 
+In all cases, the value used here is $\xi = 0.7$, which is within
+the `flow aligning' regime, where molecules align at a fixed angle
+(the Leslie angle) to the flow direction in weak simple shear \cite{deGennes}.
+The value of the collective rotational diffusion used in all simulations is
+$\Gamma = 0.5$ in simulation units.
+
+\medskip
+\noindent
+\textbf{Hydrodynamics.}
+The momentum evolution obeys a Navier-Stokes equation driven by the divergence
+of a generalised stress $P_{\alpha\beta}$:
+\begin{equation}
+\label{nse}
+\rho\,\partial_tu_\alpha +\rho \,u_\beta \partial_\beta u_\alpha
+=\partial_\beta P_{\alpha\beta}.
+\end{equation}
+The pressure tensor $P_{\alpha\beta}$ is, in general, asymmetric and includes
+both viscous and thermodynamic components:
+\begin{eqnarray}
+P_{\alpha \beta}&=&
+- p_0 \delta_{\alpha \beta} 
++ \eta \{ \partial_\alpha u_\beta + \partial_\beta u_\alpha\}
+\nonumber\\
+&-&  \xi H_{\alpha \gamma}\left(Q_{\gamma \beta}
++ {\textstyle \frac{1}{3}} \delta_{\gamma \beta} \right)
+-\xi \left(Q_{\alpha \gamma}
++ { \textstyle \frac{1}{3}} \delta_{\alpha \gamma}\right) H_{\gamma \beta}
+\nonumber\\ 
+&+& 2 \xi  \left(Q_{\alpha \beta}
++ {\textstyle \frac{1}{3}} \delta_{\alpha \beta}\right) Q_{\gamma \nu} H_{\gamma \nu}
+-\partial_\alpha Q_{\gamma \nu}
+\frac{\delta{\cal F}}{\delta \partial_{\beta} Q_{\gamma \nu}}\nonumber\\
+&+& Q_{\alpha \gamma}H_{\gamma \beta}-H_{\alpha \gamma} Q_{\gamma \beta}.
+\end{eqnarray}
+A lattice Boltzmann (LB) flow solver is used, where the isotropic pressure
+$p_0$
+and viscous terms are managed directly by the solver (as in a simple Newtonian
+fluid, of viscosity $\eta$), whereas the divergence of the remaining terms
+is treated as a local force density on the fluid. In all simulations
+reported the mean fluid density $\rho = 1$ and the viscosity
+$\eta = 0.01$ (simulations in confined geometry also used enhanced
+bulk viscosity $\zeta = 10\eta$ to ensure numerical stability).
+
+\medskip
+\noindent
+\textbf{Surface boundary conditions for particles.}
+Hydrodynamic boundary conditions for solid objects are handled via
+the lattice Boltzmann solver. In particular, the standard method of
+bounce-back on links is used for both particles and confining walls
+\cite{ladd94,nguyen2002}. Boundary conditions for the order parameter
+are set out in \cite{juho}.
+
+In all the simulations reported here the preferred orientation of the
+director field at the particle surface is normal to the surface. The
+required nematic director at the particle surface in a given location
+$\hat{n}^0_\alpha$ may then be determined from geometry alone,
+and a preferred order parameter $Q_{\alpha\beta}^0$ is computed via
+\begin{equation}
+Q^0_{\alpha\beta} = q^0(\hat{n}_\alpha^0 \hat{n}_\beta^0 
+- {\textstyle \frac{1}{3}} \delta_{\alpha\beta}).
+\label{eq:surf_q}
+\end{equation}
+The magnitude of surface order $q^0$ is set by
+\begin{equation}
+q^0 = {\textstyle \frac{2}{3}} \left( {\textstyle \frac{1}{4}} 
++ {\textstyle \frac{3}{4}} \sqrt{1 + (8/3\gamma)} \right)
+\label{eq:surf_q0}
+\end{equation}
+which corresponds to the bulk order in a defect-free nematically ordered 
+sample~\cite{denniston} (this is also very close to the value of the order 
+parameter in a cholesteric or in a blue phase away from disclinations).
+
+In all simulations the colloidal (hard sphere) radius is $R = 2.3$. To
+prevent particles overlapping at the hard sphere radius, an additional
+short range soft potential is included. This takes the form of
+$V(h) = \epsilon (\sigma/h)$ where $h$ is the surface to surface separation.
+The parameters are $\epsilon = 0.0004$ and $\sigma = 0.1$ in simulation
+units. Both potential and resulting force are smoothly matched to zero at
+a cut-off distance of $h_c = 0.25$ simulation units.
+
+\medskip
+\noindent
+\textbf{Surface boundary conditions for walls.}
+The confining solid walls, which are flat and stationary, have the
+same normal boundary condition as at the particle surface. In addition,
+degenerate planar anchoring is applied at the walls, where the
+preferred nematic director may adopt any orientation parallel
+to the surface. The preferred direction is determined explicitly
+by projecting the local fluid order parameter to the plane of the
+wall \cite{fournier2005}. Eq.~\ref{eq:surf_q} and Eq.~\ref{eq:surf_q0}
+are then used as before.
+
+To prevent the particles being forced into the wall, a correction
+to the lubrication force on the colloidal particle is added for very low
+particle
+surface to wall surface separations $h < 0.5$ lattice spacing. The
+correction is based on the analytic expression for the lubrication
+between a sphere and a flat surface.
+
+\medskip
+\noindent
+\textbf{Protocol and parameter details for bulk BPI.}
+The parameters for the free energy are chosen to be representative
+of blue phase I: chirality $\kappa \sim 0.7$ and reduced temperature
+$\tau = -0.25$.
+The full free energy parameters are shown in Table~\ref{table:params}.
+The order parameter tensor $Q_{\alpha\beta}$ for bulk blue phase I is
+initialised from an approximation in high chirality limit
+\cite{mermin,henrichfield}. Systems of 128$^3$ lattice sites are
+used with a pitch length of $p = 32\sqrt{2}$, which accommodates 4$^3$
+unit cells with fully periodic boundary conditions.
+Simulations at different solid volume fractions (1\% and 4\%), and different 
+surface anchoring strengths ($WR/K = 0.23$ and $WR/K = 2.3$) representing
+``weak'' and ``strong'' anchoring are run for two million simulation
+time steps.
+The initial distribution of the particle positions is set at random
+for the required solid volume fraction; the particles are initially
+at rest.
+
+\medskip
+\noindent
+\textbf{Parameter details for confined BPI.}
+Here, a narrow sandwich of fluid is placed between flat walls in
+perpendicular to the narrow coordinate direction, and with periodic
+boundaries in the other two directions. The system size used in all
+cases is 256$^2 \times$56 lattice sites. Each simulation is a ``quench''
+in a similar manner to that used in the bulk: the order parameter is
+initialised randomly. The free energy parameters (see Table~\ref{table:params})
+are again appropriate for (equilibrium) blue phase I
+(chirality $\kappa = 0.8$ and
+reduced temperature $\tau = -0.25$). The cholesteric pitch is set
+to be $p = 64$, providing a slightly better resolution than the bulk
+simulations.
+
+The surface anchoring for colloidal particles is as before: always normal,
+but with
+$WR/K = 0.23$ and $WR/K = 2.3$. The solid volume fractions are
+1\% and 4\%.
+\textcolor{red}{For both normal and planar anchoring at the walls,
+values of $W$ and $K$ are used which are the same as for the
+strongly anchoring particles.}
+All simulations are run for two million simulation
+time steps.
+
+\medskip
+\noindent
+\textbf{Parameters for external electric field.}
+For the simulations of BPIII with colloidal particles a system size of
+$128^3$ is used with a cholesteric pitch of $p=32$ in lattice units. 
+The simulations are
+performed at chirality $\kappa=2.6$ and reduced temperature $\tau=-0.25$.  
+An initial configuration of
+randomly oriented and positioned double twist cylinders is used,
+from which an amorphous BPIII network emerges \cite{bp3}. This structure
+is equilibrated for $6\times10^{5}$ LB time steps until no significant
+further evolution is observed. 
+
+The colloidal particles with weak
+normal anchoring ($WR / K= 0.23$), are then inserted with randomly chosen positions,
+and the composite system is equilibrated for another $1.2\times10^{6}$
+time steps.
+At the end of the equilibration phase the uniform electric field
+with reduced field strength ${\cal E} = 0.8$ 
+is switched on (oriented along the $z$-direction), and the simulation
+run for a further $1.2\times10^{6}$ time steps.
+This is found to be sufficiently long for a hexagonal structure to
+emerge and saturate.
+If the electric field is then switched off, and the system quickly relaxes
+to a metastable state which shows a residual anisotropy in the
+colloidal distribution. The total length of this final relaxation phase
+is $1\times10^6$ LB time steps.
+
+\medskip
+\noindent
+\textbf{Disclination rendering.}
+In all cases visualisation of the defect lines is carried out via
+an isosurface of the scalar order parameter $q$ determined from the
+largest eigenvalue of the local order parameter tensor. A low value
+of the scalar order parameter $q$ (typically in the range 0.12--0.14)
+unambiguously identifies the disclinations.
+
+\medskip
+\noindent
+\textbf{Computation of the structure factor.}
+To provide structural information about the field-aligned 
+states and the residual anisotropy after switch off a 
+procedure similar to the one described in \cite{bp3} is
+followed.
+The structure factor $S(\mathbf{k})$ in the current approach is
+defined via the Fourier transform of the particle density $F(\mathbf{k})$:
+
+\begin{equation}
+S({\bf k}) =  |F({\bf k})|^2, \mathrm{with}\
+F({\bf k}) = \int d^3{\bf r} \rho({\bf r}) e^{i {\bf k. r}}.
+\end{equation}
+The colloidal density $\rho({\bf r})$ is a discretised density and taken to be
+$\rho({\bf r})=1$ if a lattice site at ${\bf r}$ is part of a solid particle
+and $\rho({\bf r})=0$ otherwise. This definition, which deviates from the 
+standard definition of a structure factor and does not consider the particles 
+as point-like objects, allows the same structural information
+to be obtained in a simple way.
+
+\medskip
+\noindent
+\textbf{Parameter mapping to physical units.}
+To get from simulation to physical units, a calibration of scales of
+length, energy and time in the simulations is required. For similar
+mappings see, e.g.~\cite{denniston2}.
+
+The length scale can be set by mapping the half pitch to a realistic blue
+phase unit cell size, which is in the 100--500~nm range \cite{mermin}. 
+For bulk simulations (Fig.~1 and Fig.~3 in the main text), a suitable choice
+is one where one simulation unit (lattice site) corresponds to 10~nm. Therefore
+the colloidal size in Figs.~1 and~3 corresponds to $\sim$ 50~nm. 
+
+To obtain an energy scale, it is possible to choose $A_0 \simeq 10^6$~Pa,
+which is reasonable following Ref.~\cite{mermin} (this is also the choice in
+Ref.~\cite{domaingrowth}). This choice leads to a simulation unit of
+free energy (or stress) equal to $10^{8}$~Pa in Figs.~1 and~3.
+From the energy and length scales one can map elastic constants to
+physical units: for instance, the simulation in Fig.~1 corresponds to
+a liquid crystal with splay, bend and twist (Frank) elastic constants
+equal to 35 pN (or equivalently $K=70$~pN).
+
+The timescale calibration may be obtained from (see e.g.~\cite{denniston})
+\begin{equation}
+\gamma_1=\frac{2q^2}{\Gamma},
+\end{equation}
+which relates the rotational viscosity $\gamma_1$ to the ordering strength
+$q$ and the order parameter mobility $\Gamma$.
+In the present simulations, $\Gamma = 0.5$ and the value of $\gamma$
+for the simulation in Fig.~1 leads to $q=1/2$.   
+For real liquid crystalline materials, $\gamma_1$ usually lies in range
+$10^{-2}$--$1$~Pa~s~\cite{deGennes}; for definiteness say
+$\gamma_1 = 1$~Pa~s (equivalently 10 poise). Given the previous mapping for
+free energy (or stress) units, this leads to a simulation unit of time equal
+to $10^{-8}$~s. The total simulated time in Figs.~1--3 is therefore in the
+millisecond range. 
+
+To calibrate the electric field strength 
+one can equate the value of the dimensionless parameter ${\cal E}$ in the 
+simulations with that of a hypothetical experiment.
+Given the previous value for $A_0$, and a dielectric anisotropy of 20
+(or equivalently $\epsilon_a=20\epsilon_0$, with $\epsilon_0$ the
+dielectric permittivity of vacuum), an electric field
+of 100 V~$\mu$m$^{-1}$ is obtained. This corresponds to a value of
+${\cal E}\sim 0.4$ (considering a value of $\gamma=3.0857$ as in
+Fig.~3 of the main text).
+
+Given these mappings, all quantities can be easily transformed from
+simulation to physical units and vice versa. For example Figs.~1 and~2
+use an isotropic viscosity $\eta \simeq$~0.01 and~0.1 in simulation units,
+which translate into $0.01$--$0.1$~Pa~s respectively. This is sensible (if 
+slightly low) for a molecular nematogen in the isotropic phase. 
+The effective viscosity in ordered phases is higher, but this is ensured
+in our model by the coupling to the order parameter.
+Note that the density is set to unity in the simulations: this
+corresponds to a fluid density which is about a thousand times larger
+than in experiments. This makes no difference in practice as
+the Reynolds number $= \rho V\Lambda/\eta$ (where $V$ is a typical
+velocity, in our simulations around $10^{-5}$ in lattice units, 
+and $\Lambda$ is a typical length scale, e.g. the size of a unit cell) 
+remains small enough~\cite{codef}. 
+
+To summarise, the simulations represent BP-forming materials, with the
+interpretation of the simulation units for length, time, and energy
+density being close to 10~nm, 10~ns, and 100~MPa respectively.
+
+
+
+\pagebreak
+
+\begin{thebibliography}{99}
+
+\bibitem{wiresmiha} M. Ravnik, M. Skarabot, S. Zumer, U. Tkalec, I. Poberaj,
+D. Babic, N. Osterman, I. Musevic,
+Entangled nematic colloidal dimers and wires, 
+{\it Phys. Rev. Lett.} {\bf 99}, 247801 (2007).
+
+\bibitem{zumer}
+I. Musevic, M. Skarabot, U. Tkalec, M. Ravnik, S. Zumer,
+Two-dimensional nematic colloidal crystals self-assembled by topological
+defects,
+{\it Science} {\bf 313}, 954--958 (2006).
+
+\bibitem{tanaka} T. Araki, H. Tanaka,
+Colloidal aggregation in a nematic liquid crystal: Topological arrest of
+particles by a single-stroke disclination line,
+{\it Phys. Rev. Lett.} {\bf 97}, 127801 (2006).
+
+\bibitem{tiffany}
+T.~A. Wood, J.~S. Lintuvuori, A.~B. Schofield, D. Marenduzzo, W.~C.~K. Poon,
+A Self-Quenched Defect Glass in a Colloid-Nematic Liquid Crystal Composite,
+{\it Science} {\bf 333}, 79--83 (2011).
+
+\bibitem{stark} H. Stark,
+Physics of colloidal dispersions in nematic liquid crystals,
+{\it Phys. Rep.} {\bf 351}, 387--474 (2001).
+
+\bibitem{abbott}
+I.~H. Lin, D.~S. Miller, P.~J. Bertics, C.~J. Murphy, J.~J. de Pablo,
+N.~L. Abbott,
+Endotoxin-Induced Structural Transformations in Liquid Crystalline Droplet,
+{\it Science} {\bf 332}, 1297--1300 (2011).
+
+\bibitem{colloiddevice}
+K. Chari, C. M. Rankin, D. M. Johnson, T. N. Blanton, R. G. Capurso,
+Single-substrate cholesteric liquid crystal displays by colloidal
+self-assembly,
+{\it Appl. Phys. Lett.} {\bf 88}, 043502 (2006).
+
+\bibitem{tanakanatmat} T. Araki, M. Buscaglia, T. Bellini, H. Tanaka,
+Memory and topological frustration in nematic liquid crystals confined
+in porous materials, {\it Nat. Mat.} {\bf 10}, 303--309 (2011).
+
+\bibitem{mermin} D.~C. Wright, Mermin, N.~D.,
+Crystalline liquids: The blue phases, {\it Rev. Mod. Phys.} {\bf 61},
+\textcolor{red}{385--432} (1989).
+
+\bibitem{bp3} O. Henrich, K. Stratford, M.~E. Cates, D. Marenduzzo,
+ Structure of Blue Phase III of Cholesteric Liquid Crystals,
+{\it Phys. Rev. Lett.} {\bf 106}, 107802 (2011).
+
+\bibitem{kikuchi}
+H. Kikuchi, M. Yokota, Y. Hisakado, H. Yang, T. Kajiyama,
+Polymer-stabilized liquid crystal blue phases,
+{\it Nat. Mat.} {\bf 1}, 64--68 (2002).
+
+\bibitem{bplasers}
+W. Y. Cao, A. Munoz, P. Palffy-Muhoray, B. Taheri,
+Lasing in a three-dimensional photonic crystal of the liquid crystal blue 
+phase II,
+{\it Nat. Mat.} {\bf 1}, 111--113 (2002).
+
+\bibitem{coleswidetrange}
+H.~J. Coles, M.~N. Pivnenko,
+Liquid crystal 'blue phases' with a wide temperature range,
+{\it Nature} {\bf 436}, 997--1000 (2005).
+
+\bibitem{bpdevice}
+Z.~B. Ge, S. Gauza, M.~Z. Jiao, H.~Q. Xianyu, S.~T. Wu,
+ Electro-optics of polymer-stabilized blue phase liquid crystal displays,
+{\it Appl. Phys. Lett.} {\bf 94}, 101104 (2009).
+
+\bibitem{coles}
+F. Castles, F.~V. Day, S.~M. Morris, D-H. Ko, D.~J. Gardiner, M.~M. Qasim,
+S. Nosheen, P.~J.~W. Hands, S.~S. Choi, R.~H. Friend, H.~J. Coles,
+Blue-phase templated fabrication of three-dimensional nanostructures for
+photonic applications, {\it Nat. Mat.} {\bf 11}, 599--603 (2012).
+
+\bibitem{extrareference1}
+\textcolor{red}{M. Ravnik, G.P. Alexander, J.M. Yeomans, S. Zumer,
+Mesoscopic modelling of colloids in chiral nematics,
+{\it Faraday Discuss.} {\bf 144}, 159--169 (2010).}
+
+\bibitem{miha}
+M. Ravnik, G.~P. Alexander, J.~M. Yeomans, S. Zumer,
+Three-dimensional colloidal crystals in liquid crystalline 
+blue phases, {\it Proc. Natl. Acad. Sci. USA} {\bf 108}, 5188--5192 (2011).
+
+\bibitem{lavrentovich} O.~D. Lavrentovich,
+ Liquid crystals, photonic crystals, metamaterials and transformation optics, 
+{\it Proc. Natl. Acad. Sci. USA} {\bf 108}, 5143--5144 (2011).
+
+\bibitem{adriano}
+A. Tiribocchi, G. Gonnella, D. Marenduzzo, E. Orlandini, F. Salvadore,
+Bistable Defect Structures In Blue Phase Devices,
+ {\it Phys. Rev. Lett.} {\bf 107}, 237803 (2011).
+
+\bibitem{fukuda}
+J.-I. Fukuda, S. Zumer,
+Quasi-two-dimensional Skyrmion lattices in a chiral nematic liquid crystal,
+{\it Nat. Commun.} {\bf 2}, doi:10.1038/ncomms1250 (2011).
+
+\bibitem{henrichfield} 
+O. Henrich, D. Marenduzzo, K. Stratford, M. E. Cates,
+Thermodynamics of blue phases in electric fields,
+{\it Phys. Rev. E} {\bf 81}, 031706 (2010).
+
+\bibitem{epaper} J. Heikenfeld, P. Drzaic,  J.~S. Yeo, T. Koch,
+A critical review of the present and future prospects for electronic paper,
+{\it J. Soc. Inf. Display} {\bf 19}, 129--156 (2011).
+
+\bibitem{domaingrowth}
+O. Henrich, K. Stratford, D. Marenduzzo, M.~E. Cates,
+Ordering dynamics of blue phases entails kinetic stabilization of amorphous
+networks, {\it Proc. Natl. Acad. Sci. USA} {\bf 107}, 13212--13215 (2010).
+
+\bibitem{juho1}
+J. S. Lintuvuori, K. Stratford, M. E. Cates, D. Marenduzzo,
+Colloids in cholesterics: size-dependent defects and non-Stokesian
+microrheology, {\it Phys. Rev. Lett.} {\bf 105}, 178302 (2010).
+
+\bibitem{juho2}
+J. S. Lintuvuori, K. Stratford, M. E. Cates, D. Marenduzzo,
+Self-assembly and nonlinear dynamics of dimeric colloidal rotors in 
+cholesterics, {\it Phys. Rev. Lett.} {\bf 107}, 267802 (2011).
+
+\bibitem{extrareference2}
+\textcolor{red}{M. Ravnik, J. Fukuda, J.M. Yeomans, S. Zumer,
+Confining blue phase colloids to thin layers,
+{\it Soft Matter} {\bf 7}, 10144--10150 (2011).}
+
+\bibitem{permeation1} 	W. Helfrich,
+Capillary flow of cholesteric and smectic liquid crystals,
+{\it Phys. Rev. Lett.} {\bf 23}, 372--374 (1969).
+
+\bibitem{permeation2}
+A. Dupuis, D. Marenduzzo, E. Orlandini, J.~M. Yeomans,
+Rheology of cholesteric blue phases,
+{\it Phys. Rev. Lett.} {\bf 95}, 097801 (2005).
+
+\bibitem{lubensky}
+M. Zapotocky, L. Ramos, P. Poulin, T.~C. Lubensky,  D.~A. Weitz,
+Particle-stabilized defect gel in cholesteric liquid crystals,
+{\it Science} {\bf 283}, 209--212 (1999).
+
+\bibitem{niek} N. Hijnen, T. A. Wood, D. Wilson, P. S. Clegg, 
+Self-organization of particles with planar surface anchoring in a cholesteric
+liquid crystal, {\it Langmuir} {\bf 26}, 13502--13510 (2010).
+
+\bibitem{flowswitch}
+O. Henrich, K. Stratford, P.V. Coveney, M.E. Cates, D. Marenduzzo,
+Rheology of cubic blue phases,
+{\it Soft Matter} doi:10.1039/C3SM50228G (2013).
+
+\bibitem{optofluidics} D. Psaltis, S. R. Quake, C. Yang,
+Developing optofluidic technology through the fusion of microfluidics and
+optics {\it Nature} {\bf 442}, 381--386 (2006).
+
+\bibitem{deGennes}
+\textcolor{red}{P.-G. de Gennes, J. Prost,
+{\it The Physics of Liquid Crystals} (Clarendon Press, 1995).}
+
+\bibitem{beris}
+A. N. Beris, B. J. Edwards, 
+{\it Thermodynamics of Flowing Systems with Internal Microstructure}
+(Oxford University Press, 1994).
+
+\bibitem{ladd94}
+A.J.C. Ladd,
+\textit{J. Fluid Mech.} Numerical simulation of particulate suspensions via a
+discretized Boltzmann equation. Part 1. Theoretical foundation,
+\textbf{271}, 285--309 (1994).
+
+\bibitem{nguyen2002}
+N.-Q. Nguyen and A.J.C. Ladd,
+Lubrication corrections for lattice Boltzmann simulations of particle
+suspensions,
+\textit{Phys. Rev. E} \textbf{66} 046708 (2002).
+
+\bibitem{fournier2005}
+J.-B. Fournier and P. Galatola,
+Modeling planar degenerate wetting and anchoring in nematic liquid
+crystals,
+\textit{Europhys. Lett.} \textbf{72}, 403--409 (2005).
+
+\bibitem{juho}
+J.S. Lintuvuori, D. Marenduzzo, K. Stratford, and M.E. Cates,
+Colloids in liquid crystals: a lattice Boltzmann study,
+\textit{J. Mater. Chem.} \textbf{20}, 10547--10552 (2010).
+
+\bibitem{denniston}
+C. Denniston, E. Orlandini, J. M. Yeomans,
+Lattice Boltzmann simulations of liquid crystal hydrodynamics,
+\textit{Phys. Rev. E} \textbf{63}, 056702 (2001).
+
+\bibitem{denniston2}
+C. Denniston, D. Marenduzzo, E. Orlandini, J.M. Yeomans,
+Lattice Boltzmann algorithm for three-dimensional liquid-crystal
+hydrodynamics,
+\textit{Philos. Trans. R. Soc. London, Ser. A} \textbf{362}, 1745--1754 (2004).
+
+\bibitem{codef} M. E. Cates, K. Stratford, R. Adhikari, P. Stansell,
+J.-C. Desplat, I. Pagonabarraga, A.J. Wagner,
+Simulating colloid hydrodynamics with lattice Boltzmann methods, 
+\textit{J. Phys. Condens. Matter} \textbf{16},  3903--3915 (2004).
+
+
+\end{thebibliography}
+\noindent
+\textbf{\large Acknowledgements}
+
+\noindent
 We acknowledge support by UK EPSRC grants EP/J007404/1 (KS and JSL), 
 EP/G036136/1 (OH), and EP/I030298/1 (KS and JSL).
 MEC is supported by the Royal Society.
 We thank both Hector and PRACE for computational resources.
 
-\begin{thebibliography}{99}
-\bibitem{stark} H. Stark. Physics of
-colloidal dispersions in nematic liquid crystals. 
-{\it Phys. Rep.} {\bf 351}, 387-474 (2001).
-\bibitem{mermin} D.~C. Wright, Mermin, N.~D. Crystalline liquids: The blue phases. {\it Rev. Mod. Phys.} {\bf 61}, 385–432 (1989).
-\bibitem{miha} M. Ravnik, G.~P. Alexander, J.~M. Yeomans,  
-S. Zumer.  Three-dimensional colloidal crystals in liquid crystalline 
-blue phases. {\it Proc. Natl. Acad. Sci. USA} {\bf 108}, 5188-5192 (2011).
-\bibitem{lavrentovich} O.~D. Lavrentovich.
- Liquid crystals, photonic crystals, metamaterials and transformation optics. 
-{\it Proc. Natl. Acad. Sci. USA} {\bf 108}, 5143-5144 (2011).
-\bibitem{epaper} J. Heikenfeld, P. Drzaic,  J.~S. Yeo, T. Koch.
-A critical review of the present and future prospects for electronic paper.
-{\it J. Soc. Inf. Display} {\bf 19}, 129-156 (2011).
-\bibitem{wiresmiha} M. Ravnik, M. Skarabot, S. Zumer, U. Tkalec, I. Poberaj, D. Babic, N. Osterman, I. Musevic.  Entangled nematic colloidal dimers and wires. 
-{\it Phys. Rev. Lett.} {\bf 99}, 247801 (2007).
-\bibitem{zumer} I. Musevic, M. Skarabot, U. Tkalec, M. Ravnik,
-S. Zumer. Two-dimensional nematic colloidal crystals self-assembled by topological defects. {\it Science} {\bf 313}, 954-958 (2006).
-\bibitem{tanaka} T. Araki, H. Tanaka.  Colloidal aggregation in a nematic liquid crystal: Topological arrest of particles by a single-stroke disclination line. {\it Phys. Rev. Lett.} {\bf 97}, 127801 (2006).
-\bibitem{tiffany} T.~A. Wood, J.~S. Lintuvuori, A.~B. Schofield, D. Marenduzzo,
-W.~C.~K. Poon. A Self-Quenched Defect Glass in a Colloid-Nematic Liquid Crystal Composite. {\it Science} {\bf 333}, 79-83 (2011).
-\bibitem{abbott} I.~H. Lin, D.~S. Miller, P.~J. Bertics, C.~J. Murphy, J.~J. de Pablo, N.~L. Abbott. Endotoxin-Induced Structural Transformations in Liquid Crystalline Droplet. {\it Science} {\bf 332}, 1297-1300 (2011).
-\bibitem{colloiddevice} K. Chari, C. M. Rankin, D. M. Johnson, T. N. Blanton,
-R. G. Capurso. Single-substrate cholesteric liquid crystal displays by colloidal self-assembly. {\it Appl. Phys. Lett.} {\bf 88}, 043502 (2006).
-\bibitem{tanakanatmat} T. Araki, M. Buscaglia, T. Bellini, H. Tanaka.
-Memory and topological frustration in nematic liquid crystals confined in porous materials. {\it Nat. Mat.} {\bf 10}, 303-309 (2011).
-%\bibitem{electrophoresis}  O. D. Lavrentovich,	I. Lazo, O. P. Pishnyak.
-%Nonlinear electrophoresis of dielectric and metal spheres in a nematic liquid 
-%crystal. {\it Nature} {\bf 467}, 947-950 (2010).
-%D.-K. Yang, X.-Y. Huang, Y.-M. Zhu. 
-%Bistable cholesteric reflective displays: Materials and Drive Schemes,
-%{\it Annu. Rev. Mater. Sci.} {\bf 27}, 117-146 (1997).
-%\bibitem{crooker} D. K. Yang and P. P. Crooker, {\it Phys. Rev. A}
-%{\bf 35}, 4419 (1987).
-\bibitem{bp3} O. Henrich, K. Stratford, M.~E. Cates, D. Marenduzzo.
- Structure of Blue Phase III of Cholesteric Liquid Crystals.
-{\it Phys. Rev. Lett.} {\bf 106}, 107802 (2011).
-\bibitem{kikuchi} H. Kikuchi, M. Yokota, Y. Hisakado, H. Yang, T. Kajiyama.
-Polymer-stabilized liquid crystal blue phases.
-{\it Nat. Mat.} {\bf 1}, 64-68 (2002).
-\bibitem{bplasers} W. Y. Cao, A. Munoz, P. Palffy-Muhoray, B. Taheri.
-Lasing in a three-dimensional photonic crystal of the liquid crystal blue 
-phase II. {\it Nat. Mat.} {\bf 1}, 111-113 (2002).
-\bibitem{coleswidetrange} H.~J. Coles, M.~N. Pivnenko.
-Liquid crystal 'blue phases' with a wide temperature range.
-{\it Nature} {\bf 436}, 997-1000 (2005).
-\bibitem{bpdevice} Z.~B. Ge, S. Gauza, M.~Z. Jiao, H.~Q. Xianyu, S.~T. Wu.
- Electro-optics of polymer-stabilized blue phase liquid crystal displays.
-{\it Appl. Phys. Lett.} {\bf 94}, 101104 (2009).
-\bibitem{coles} F. Castles, F.~V. Day, S.~M. Morris, D-H. Ko, D.~J. Gardiner, M.~M. Qasim, S. Nosheen, P.~J.~W. Hands, S.~S. Choi, R.~H. Friend, H.~J. Coles.
-Blue-phase templated fabrication of three-dimensional nanostructures for photonic applications. {\it Nat. Mat.} {\bf 11}, 599-603 (2012).
-\bibitem{adriano} A. Tiribocchi, G. Gonnella, D. Marenduzzo, E. Orlandini,
-F. Salvadore. Bistable Defect Structures In Blue Phase Devices. 
- {\it Phys. Rev. Lett.} {\bf 107}, 237803 (2011).
-\bibitem{fukuda} J.-I. Fukuda, S. Zumer.
-Quasi-two-dimensional Skyrmion lattices in a chiral nematic liquid crystal. 
-{\it Nat. Comm.} {\bf 2}, 246 (2011).
-\bibitem{henrichfield}  O. Henrich, D. Marenduzzo, K. Stratford, 
-M. E. Cates. Thermodynamics of blue phases in electric fields.
-{\it Phys. Rev. E} {\bf 81}, 031706 (2010).
-\bibitem{domaingrowth} O. Henrich, K. Stratford, D. Marenduzzo, M.~E. Cates.
- Ordering dynamics of blue phases entails kinetic stabilization of amorphous networks. {\it Proc. Natl. Acad. Sci. USA} {\bf 107}, 13212-13215 (2010).
-\bibitem{juho1} J. S. Lintuvuori, K. Stratford, M. E. Cates,
-D. Marenduzzo.   Colloids in Cholesterics: Size-Dependent Defects and Non-Stokesian Microrheology. {\it Phys. Rev. Lett.} {\bf 105}, 178302 (2010).
-\bibitem{juho2}  J. S. Lintuvuori, K. Stratford, M. E. Cates,
-D. Marenduzzo. 
-Self-Assembly and Nonlinear Dynamics of Dimeric Colloidal Rotors in 
-Cholesterics. {\it Phys. Rev. Lett.} {\bf 107}, 267802 (2011).
-\bibitem{permeation1} 	W. Helfrich. Capillary flow of cholesteric
-and smectic liquid crystals. {\it Phys. Rev. Lett.} {\bf 23}, 372-374 (1969).
-\bibitem{permeation2} A. Dupuis, D. Marenduzzo, E. Orlandini, J.~M. Yeomans.
-Rheology of cholesteric blue phases. {\it Phys. Rev. Lett.} {\bf 95},
-097801 (2005).
-\bibitem{lubensky} M. Zapotocky, L. Ramos, P. Poulin, T.~C. Lubensky, 
-D.~A. Weitz.Particle-stabilized defect gel in cholesteric liquid crystals.  {\it Science} {\bf 283}, 209-212 (1999).
-%\bibitem{fukuda} J.-I. Fukuda, S. Zumer.
-%Quasi-two-dimensional Skyrmion lattices in a chiral nematic liquid crystal. 
-%{\it Nat. Comm.} {\bf 2}, 246 (2011).
-\bibitem{niek} N. Hijnen, T. A. Wood, D. Wilson, P. S. Clegg, 
-Self-Organization of Particles with Planar Surface Anchoring in a Cholesteric
- Liquid Crystal. {\it Langmuir} {\bf 26}, 13502-13510 (2010).
-\bibitem{flowswitch} O. Henrich, K. Stratford, P.V. Coveney, M.E. Cates, D. Marenduzzo,
-Rheology of cubic blue phases. {\it Soft Matter} (2013), DOI: 10.1039/C3SM50228G 
-\bibitem{optofluidics} D. Psaltis, S. R. Quake, C. Yang, Developing optofluidic technology through the fusion of microfluidics and optics {\it Nature} {\bf 442}, 381-386 (2006).
-%\bibitem{tanakanatmat} T. Araki, M. Buscaglia, T. Bellini, H. Tanaka.
-%Memory and topological frustration in nematic liquid crystals confined in porous materials. {\it Nat. Mat.} {\bf 10}, 303-309 (2011).
-\end{thebibliography}
+\bigskip
+\noindent
+\textbf{\large Author Contributions}
+
+\noindent
+KS, OH and JSL contributed to the code base for simulation and performed
+simulations. All authors helped to analyse the results and write the
+manuscript.
+
+\bigskip
+\noindent
+\textbf{\large Additional Information}
+
+\noindent
+\textbf{Competing financial interests:} The authors declare no competing
+financial interests.
 
 \newpage
 
 \begin{figure}
 
 \centerline{\includegraphics[width=\textwidth]{text-fig1.jpg}}
-\caption{Snapshots of the states obtained after dispersing
+\caption{\textbf{Bulk blue phase structures.} Snapshots of the states
+obtained after dispersing
 a suspension of colloidal nanoparticles within a cholesteric liquid
 crystal in the BPI-forming region. (A-D) correspond to the case
 of a dispersion of particles in a pre-equilibrated BPI phase;
@@ -280,21 +922,22 @@ The anchoring of the director field to the colloidal surface is normal.
 [For the full parameter list used to generate Figs.~1-3 see Supplementary
 Information.] For clarity, only a portion of the simulation box is shown
 (one eighth of the total volume); the full structures are shown in
-Supplementary Fig. S2 and~S3.}
+Supplementary Figs.~2 and~3.}
 \end{figure}
 
 
 \begin{figure}
 \centerline{\includegraphics[width=\textwidth]{text-fig2.jpg}}
-\caption{Snapshots of the steady states obtained when a dispersion of colloids in the isotropic phase is placed in a sandwich geometry, 
+\caption{\textbf{Confined blue phase structures.}
+Snapshots of the steady states obtained when a dispersion of colloids in the isotropic phase is placed in a sandwich geometry, 
 and then quenched into a regime where BPI is stable in the bulk. Both top and side views are provided.
 The anchoring of the director field at the walls is normal for (A-D) and planar for (E-H). 
 Structures correspond to (A,E) $w=0.23$ and $\phi=1\%$, 
 (B,F) $w=0.23$ and $\phi=2\%$, 
 (C,G) $w=2.3$ and $\phi=1\%$,
 (D,H) $w=2.3$ and $\phi=2\%$.
-As in Fig. 1, only one quarter of the simulation box is shown for clarity;
-the full structures are shown in Supplementary Fig. S5 and S6.}
+As in Fig.~1, only one quarter of the simulation box is shown for clarity;
+the full structures are shown in Supplementary Figs.~5 and~6.}
 \end{figure}
 
 
@@ -305,7 +948,8 @@ the full structures are shown in Supplementary Fig. S5 and S6.}
 \includegraphics[width=0.5\textwidth]{col_disc_x_run1341.png}
 \includegraphics[width=0.45\textwidth]{sq_x_run1341.png}
 \end{center}
-\caption{Steady states obtained when a dispersion of colloids is inserted
+\caption{\textbf{Structure in electric field.}
+Steady states obtained when a dispersion of colloids is inserted
 into a thermodynamically stable bulk BPIII with and without applied
 external electric field. Panel A shows the situation in zero field, and panel
 C the situation when the applied field is in the $x$-direction
@@ -319,5 +963,31 @@ Simulations use weakly anchoring particles $w=0.23$, and a volume
 fraction of $\phi=5\%$ (see Supplementary Information for full list of
 parameters). }
 \end{figure}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|c|c|c|}
+\hline
+         & $A_0$ & $\gamma$ & $K$ & $p$ & $\kappa$ & $\tau$ & $WR/K$\\
+\hline 
+Bulk BPI & 0.01 & 3.086 & 0.007061 & 32$\sqrt{2}$ & 0.6902 & -0.2500 &
+0.23, 2.3\\
+\hline
+Bulk Quench & 0.01 & 3.086 & 0.007061 & 32$\sqrt{2}$ & 0.6902 & -0.2500 &
+0.23, 2.3 \\
+\hline
+Confined & 0.01 & 3.086 & 0.01897 & 64 & 0.8 & -0.2500 & 0.23, 2.3\\
+\hline
+External field & 0.004& 3.086 & 0.02 & 32 & 2.6 & -0.2500 & 0.23\\ 
+\hline
+\end{tabular}
+\end{center}
+\caption{\textbf{Free energy parameters used in the simulations.}
+Bulk BPI
+correspond to Fig.~1 (A-D), bulk quench to Fig.~1 (E--H); confined
+geometries are shown in Fig.~2; and the external field case is
+relevant for Fig.~3.}
+\label{table:params}
+\end{table}
 
 \end{document}

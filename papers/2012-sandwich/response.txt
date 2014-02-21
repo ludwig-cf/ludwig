@@ -1,63 +1,6 @@
-Date: Mon, 17 Feb 2014 04:37:57 -0500
-From: c.huang@nature.com
-To: dmarendu@ph.ed.ac.uk
-Subject: Decision on manuscript NCOMMS-14-00180-T
 
-** Please ensure you delete the link to your author home page in this e-mail
-if you wish to forward it to your coauthors **
+Point by point response
 
-Dear Dr Marenduzzo,
-
-Your manuscript entitled "Self-assembly of colloid-cholesteric composites: A
-route to switchable optical materials" has now been seen by 2 referees,
-whose comments are appended below. You
-will see that, while they find your work of interest, they have raised
-points that need to be addressed before we can make a decision on
-publication.
-
-We therefore invite you to revise and resubmit your manuscript, taking into
-account the points raised. At the same time, we ask that you ensure your
-manuscript complies with our format
-requirements, which are summarized in the following checklist:
-http://www.nature.com/ncomms/authors/ncomms_manuscript_checklist.pdf
-
-Please use the following link to submit your revised manuscript, completed
-checklist and point-by-point response to the referees' comments (which
-should be in a separate document to any
-cover letter):
-http://mts-ncomms.nature.com/cgi-bin/main.plex?el=A6S2Lka4A1DfBL5I4A9v6k5dsV
-e8yORLGQzsElBAZ
-
-
-** This url links to your confidential home page and associated information
-about manuscripts you may have submitted or be reviewing for us. If you wish
-to forward this email to co-authors,
-please delete the link to your homepage first **
-
-We hope to receive your revised paper within two months; please let us know
-if you aren't able to submit it within this time so that we can discuss the
-best way forward. If we don't hear
-from you, and the revision process takes significantly longer, we will close
-your file. In this event, we will still be happy to reconsider your paper at
-a later date, as long as nothing
-similar has been accepted for publication at Nature Communications or
-published elsewhere in the meantime.
-
-We look forward to hearing from you soon.
-
-Best regards,
-
-Congcong Huang, PhD
-
-Associate Editor
-Nature Communications
-
-Unit 10-11, 42F, The Center
-989 Changle Road, Xuhui District
-Shanghai, China, 200031
-Tel: +86-21-2422-5011
-Fax: +86-21-2422-5015
-www.nature.com/naturecommunications
 
 
 Reviewers' comments:
@@ -82,6 +25,9 @@ Using the term also for the particles my lead to a confusion. In the
 manuscript often also a more appropriate word
 colloidal particle is used.
 
+RESPONSE: We have standardised on "colloidal particle(s)" or simply
+"particle(s)" where appropriate.
+
 It would be important to add comments that would help experimentalist in
 designing experiments with colloidal blue phases and perhaps stimulate
 development of applications on the base of
@@ -96,7 +42,22 @@ particles in BP disclination networks it would be useful to refer to the
 initial study by Ravnik et al. in Faraday
 Discussions 2009 devoted to this topic.
 
+RESPONSE: Citition for Ranvik et al Faraday Discuss. 2010 (sic) is added
+[current reference 16].
+
+
 250 K is more than the total mesophase stability range!
+
+RESPONSE: A stability range for templated blue phases of -125 to
++125 degrees Celsius is reported by Castles et al. Nat. Mat. 2012.
+We have made this connection more clear by rewriting the relevant
+sentence: "However, recent advances in formalation have widened
+this stability range enormously [11,12,13,14]. Most recently,
+templated blue phases with a stability range of -125 to 125$^\circ$C
+have been reported [Castles], paving the way to applications of BPs
+in operational display devices."
+
+
 
 Page 3
 
@@ -105,6 +66,15 @@ perpendicular orientation of the director field at the particle surface." is
 not consistent with the interaction form
 described in the Supplement.
 
+RESPONSE: We agree this statement is confusing. It has been replaced by
+a clearer statement: "The anchoring strength is defined such that
+W > 0 imparts a preferred orientation to the director field at the
+particle surface. This orientation can be either normal to the
+surface or in a plane tengential to the surface, a property related
+to surface chemistry in experimental systems but which can be imposed
+at will in simulations."
+
+
 For potential readers it would be useful to specify the particle radius in
 nanometers in the main text. How it compares to the nematic correlation
 length? How the radius influences the
@@ -112,6 +82,14 @@ structures? How tiny the particles can still be that the method based on the
 Landau-de Gennes free energy is justified.
 
 Is WR/K = 2.8 justified for nanoparticles used in the study?
+
+RESPONSE: We have added in the main text (last para. introduction) a
+summary of the relevant
+dimensions in physical units: "The simulations represent a liquid crystal
+blue phase with unit cell size in the range of 100--500~nm \cite{mermin},
+and particles with a radius of around 50~nm."
+
+...
 
 Page 4:
 
@@ -130,6 +108,10 @@ to comment the study of
 Ravnik et al. in Soft Matter 2011 devoted the ordered structures of such a
 system.
 
+REESPONSE: A citition for Ravnik et al (2011) has been added [current
+reference 26].
+
+
 Page 6:
 
 It would be good to comment the difference between structures in the bulk
@@ -143,6 +125,9 @@ Page 7
 
 Reference 2 has a mistake.
 
+RESPONSE: The corrent punctuation in the page numbers has been
+inserted in the reference for Wright and Mermin [current reference 9].
+
 Supplement
 
 Segment 4.2:
@@ -150,9 +135,18 @@ Segment 4.2:
 The statement "Wall anchoring is either normal or planar with W=K = 1 in
 simulation units" is unclear.
 
+RESPONSE: This text has been replaced by a statement which is
+transparent: "For both normal and planar anchoring at the walls,
+values of $W$ and $K$ are used which are the same as for the
+strongly anchoring particles."
+
 References of the Supplement:
 There are mistakes in references 1 and 2.
 
+REPSONSE: Reference 1, Wright and Mermin, was correct in
+the original supplement. Reference 2 has been updated to reflect
+the 2nd edition of de Gennes and Prost, which now appears in the
+main text [current reference 33].
 
 
 Reviewer #2 (Remarks to the Author):
@@ -203,25 +197,57 @@ the simulations.
 
 
 
+* ADDITIONAL CHANGES TO MEET FORMAT REQUIREMENTS
 
-** See NPG's author and referees' website at www.nature.com/authors for
-information about policies, services and author benefits
+A number of other rearrangements have taken place to meet the
+format requirements as set out the manuscript checklist.
+
+Title
+
+- The title has been adjusted to remove punctuation
+
+Authors
+
+- The full postal address has been added
+- The corresponding author has been identified (Marenduzzo).
+
+Abstract
+
+- The abstract has been shorted to meet the 150 word limit.
+  Citations have been removed to the main text.
+
+Main text
+
+- Symbols and units have been adjusted in places to come into style.
+
+Results
+
+- Subheadings of < 60 characters have been added
+
+- References to supplementary items have been adjusted to come into style.
 
 
-This email has been sent through the NPG Manuscript Tracking System
-NY-610A-NPG&MTS
+Methods
 
-Confidentiality Statement:
+- All "methods" material (originally in supplementary information) is now
+contained within the main paper. This includes relevant references.
 
-This e-mail is confidential and subject to copyright. Any unauthorised use
-or disclosure of its contents is prohibited. If you have received this email
-in error please notify our Manuscript
-Tracking System Helpdesk team at http://npgapps.custhelp.com/app/ask.
+- Dividing subheadings of < 60 characters have been added.
 
-Details of the confidentiality and pre-publicity policy may be found here
-http://www.nature.com/authors/policies/confidentiality.html
+References
 
-Privacy Policy | Update Profile
+- Formatting is adjusted to come into style.
 
+End notes
 
+- A statement of author contributions has been added.
 
+- A statement on conflicts of interest has been added.
+
+Legends
+
+- Figure legends have been adjusted to include a brief title.
+
+Tables
+
+- A title has been included.
