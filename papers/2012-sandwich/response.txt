@@ -33,6 +33,9 @@ designing experiments with colloidal blue phases and perhaps stimulate
 development of applications on the base of
 these materials.
 
+RESPONSE: We added comments and references specifying experimental model systems
+(see also response to comment of Reviewer #2).
+
 Particular remarks:
 
 Page 2
@@ -42,7 +45,7 @@ particles in BP disclination networks it would be useful to refer to the
 initial study by Ravnik et al. in Faraday
 Discussions 2009 devoted to this topic.
 
-RESPONSE: Citition for Ranvik et al Faraday Discuss. 2010 (sic) is added
+RESPONSE: Citition for Ravnik et al Faraday Discuss. 2010 (sic) is added
 [current reference 16].
 
 
@@ -70,10 +73,9 @@ RESPONSE: We agree this statement is confusing. It has been replaced by
 a clearer statement: "The anchoring strength is defined such that
 W > 0 imparts a preferred orientation to the director field at the
 particle surface. This orientation can be either normal to the
-surface or in a plane tengential to the surface, a property related
+surface or in a plane tangential to the surface, a property related
 to surface chemistry in experimental systems but which can be imposed
 at will in simulations."
-
 
 For potential readers it would be useful to specify the particle radius in
 nanometers in the main text. How it compares to the nematic correlation
@@ -81,28 +83,50 @@ length? How the radius influences the
 structures? How tiny the particles can still be that the method based on the
 Landau-de Gennes free energy is justified.
 
+RESPONSE: We have added in the main text (last pararagraph introduction) a
+summary of the relevant dimensions in physical units: 
+"The simulations represent a liquid crystal blue phase with unit cell 
+size in the range of 100--500~nm \cite{mermin}, and particles with 
+a radius of around 50~nm." 
+A coarse-grained description of the mesophase like the Landau-de Gennes 
+theory is appropriate as long as the size of the colloidal particle is much 
+larger than the size of the mesogen, which are typically in the 
+range of 10^-9 m. Hence the Landau-de Gennes approach allows to 
+describe defects down to extremely small length scales. 
+
 Is WR/K = 2.8 justified for nanoparticles used in the study?
 
-RESPONSE: We have added in the main text (last para. introduction) a
-summary of the relevant
-dimensions in physical units: "The simulations represent a liquid crystal
-blue phase with unit cell size in the range of 100--500~nm \cite{mermin},
-and particles with a radius of around 50~nm."
-
-...
+RESPONSE: The ration WR/K = 2.8 is justified for nanoparticles
+in the strong anchoring regime.
 
 Page 4:
 
 Can the G elastic modulus be estimated for modeled structures?
+
+RESPONSE: We added a comment that gives an estimate of the elastic modulus.
+Esitmates are in the kPa range.
 
 Page 5:
 
 Can annealing of the structures obtained with the thermal quench lead to
 ordered colloidal structures?
 
+RESPONSE: Our results suggest that this is difficult to achieve, but
+generally possible. It depends sensitively on the 
+anchoring strength and the size of the colloidal particles. 
+Strong anchoring conditions lead to a significant 
+distortion of the disclination lines, whereas in the weak anchoring 
+regime the forces that drive the particles towards the 
+disclination lines remain rather small.  
+
 Is also in case of the disordered structures observed a change in the
 stability range of the colloidal BPs?
 
+RESPONSE: Determining the stability range of the composite
+phases was beyond the scope of this paper. This would have required 
+an optimisation of the pitch length, which requires a large number 
+of additional simulations for each individual parameter set.
+ 
 In the discussion of colloidal particles in BP thin layers it would be good
 to comment the study of
 Ravnik et al. in Soft Matter 2011 devoted the ordered structures of such a
@@ -118,8 +142,17 @@ It would be good to comment the difference between structures in the bulk
 and thin layer for particles with strong anchoring. Does this depend on the
 visualization or is more behind?
 
+RESPONSE: Due to the anchoring conditions the colloidal particles are 
+attracted or repelled from the walls in the thin layer geometry. This leads to a more
+two-dimensional structure compated to the situation without wall confinement. 
+
 Are the electric field induced changes irreversible only in case of
 colloidal dispersions?
+
+RESPONSE: For the given parameters the field induced changes are only
+irreversible when colloids with sufficiently strong 
+anchoring conditions are present. The mesophase without colloids 
+undergoes a reversible ordering transition as described in reference [10].
 
 Page 7
 
@@ -146,7 +179,7 @@ There are mistakes in references 1 and 2.
 REPSONSE: Reference 1, Wright and Mermin, was correct in
 the original supplement. Reference 2 has been updated to reflect
 the 2nd edition of de Gennes and Prost, which now appears in the
-main text [current reference 33].
+main text [current reference 34].
 
 
 Reviewer #2 (Remarks to the Author):
@@ -180,21 +213,31 @@ and stability of the materials. The paper
 is clearly written and the figures, paricularly the included 3D videos,
 provide clear perspective on the modeled phases of these materials. The
 results are of interest and useful to
-experimentalists working in the field. The paper would be even more useful
-if it included references to actual materials, both the liquid crystal host
-and the added particles and perhaps
+experimentalists working in the field. 
+
+The paper would be even more useful if it included references to actual 
+materials, both the liquid crystal host and the added particles and perhaps
 even suggested a model system that would be a good starting point to study
-experimentally. In a similar vein, it would also be useful to address the
-practical issue of reproducibility, which
-has been a major problem with these materials. The theoretical results
-clearly indicate how important the formation conditions are to the final
-result. What is the authors sense of how easy
-it will be to reproducibly fabricate a device
+experimentally. 
+
+RESPONSE: We added some details and references of experimental
+realisations of these systems (see also comment from Reviewer #1).
+
+In a similar vein, it would also be useful to address the
+practical issue of reproducibility, which has been a major problem 
+with these materials. The theoretical results clearly indicate how important 
+the formation conditions are to the final result. 
+
+What is the authors sense of how easy it will be to reproducibly fabricate a device
 with a specific morphology and optical properties. This seems a likely
 practical issue particularly with the rich variety of structures reported in
 the simulations.
 
-
+RESPONSE: Our feeling is that control mechanisms beyond simple anchoring 
+will be necessary for a device that features reproducable optical properties. 
+This could be for instance achieved with external electric fields as shown in 
+this publication. Alternative routes could be microfluidic flow or
+patterned, multidomain anchoring conditions.
 
 
 * ADDITIONAL CHANGES TO MEET FORMAT REQUIREMENTS
