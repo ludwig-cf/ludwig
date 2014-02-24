@@ -79,6 +79,33 @@ void copyFromTarget(void *data,const void* targetData,size_t size){
 
 }
 
+void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
+			size_t nfields,char* siteMask){
+
+  int i,j;
+  for (i=0;i<nfields;i++){
+    for (j=0;j<nsites;j++){
+      if(siteMask[j]) targetData[i*nsites+j]=data[i*nsites+j];
+    }
+  }
+  return;
+  
+}
+
+void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
+			size_t nfields,char* siteMask){
+
+  int i, j;
+  for (i=0;i<nfields;i++){
+    for (j=0;j<nsites;j++){
+       if(siteMask[j]) data[i*nsites+j]=targetData[i*nsites+j];
+    }
+  }
+  return;
+
+}
+
+
 void syncTarget(){
   return;
 }

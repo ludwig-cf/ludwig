@@ -57,6 +57,7 @@ ifeq ($(PROGMODEL),CUDA)
 
  CC=	nvcc
  CFLAGS_BASE= -DCUDA -O3 -arch=sm_35 #-save-temps
+# CFLAGS_BASE= -DCUDA -g -G -arch=sm_35 #-save-temps
  LFLAGS=$(CFLAGS_BASE)
  CFLAGS= $(CFLAGS_BASE) -dc
  LIBS= -L/usr/lib/gcc/x86_64-redhat-linux/4.4.4 -lgomp

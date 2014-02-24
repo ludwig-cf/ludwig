@@ -23,7 +23,7 @@ enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
 
 
-void readData(int datasize, char* filename, double* targetData);
+void readData(int nsites, int nfields, char* filename, double* targetData);
 void compData(double *data, double *dataRef, int size);
 
 

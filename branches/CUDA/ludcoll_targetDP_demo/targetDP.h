@@ -72,6 +72,10 @@ void checkTargetError(const char *msg);
 void targetMalloc(void **address_of_ptr,size_t size);
 void copyToTarget(void *targetData,const void* data,size_t size);
 void copyFromTarget(void *data,const void* targetData,size_t size);
+void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
+			size_t nfields,char* siteMask);
+void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
+			size_t nfields,char* siteMask);
 void syncTarget();
 void targetFree(void *ptr);
 void checkTargetError(const char *msg);

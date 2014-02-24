@@ -48,6 +48,10 @@ double * grad_phi_site_d;
 double * delsq_phi_site_d;
 
 
+char *siteMask;
+
+
+
 /* workspace for benchmark setup and validation */
 
 double fieldtemp[NDATA], fieldtemp2[NDATA], fieldtemp3[NDATA];
@@ -55,6 +59,7 @@ double fieldtemp[NDATA], fieldtemp2[NDATA], fieldtemp3[NDATA];
 int main() {
 
   double t1, t2;
+  int i,j,k;
 
   /* lattice parameters */
   int nhalo=1;
@@ -64,13 +69,15 @@ int main() {
   Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
 
   int nsites=Nall[X]*Nall[Y]*Nall[Z];
-  int ndata=nsites*NVEL*NDIST;
+
+  int nFieldsDist=NVEL*NDIST;
+  //int ndata=nsites*nFieldsDist;
 
 
 
   /* Allocate memory on target */
-  targetCalloc((void **) &f_d, ndata*sizeof(double));
-  targetCalloc((void **) &ftmp_d, ndata*sizeof(double));
+  targetCalloc((void **) &f_d, nsites*nFieldsDist*sizeof(double));
+  targetCalloc((void **) &ftmp_d, nsites*nFieldsDist*sizeof(double));
   targetCalloc((void **) &phi_site_d, nsites*sizeof(double));
   targetCalloc((void **) &delsq_phi_site_d, nsites*sizeof(double));
   targetCalloc((void **) &grad_phi_site_d, nsites*3*sizeof(double));
@@ -79,16 +86,32 @@ int main() {
   checkTargetError("malloc");
 
   
+  //set up site mask
+  siteMask = (char*) calloc(nsites,sizeof(char));
+  if(!siteMask){
+    printf("siteMask malloc failed\n");
+    exit(1);
+  }
+
+  // set all non-halo sites to 1
+  for (i=nhalo;i<(Nall[X]-nhalo);i++)
+    for (j=nhalo;j<(Nall[Y]-nhalo);j++)
+      for (k=nhalo;k<(Nall[Z]-nhalo);k++)
+	siteMask[i*Nall[Z]*Nall[Y]+j*Nall[Z]+k]=1;
+
+
+
+
 
   /* read input data from disk and copy to target */
   FILE *fileptr;
   int datasize;
 
-  readData(NDATA*sizeof(double),"f_input.bin",f_d);
-  readData(NALL*NALL*NALL*sizeof(double),"phi_site_input.bin",phi_site_d);
-  readData(NALL*NALL*NALL*3*sizeof(double),"grad_phi_site_input.bin",grad_phi_site_d);
-  readData(NALL*NALL*NALL*sizeof(double),"delsq_phi_site_input.bin",delsq_phi_site_d);
-  readData(NALL*NALL*NALL*3*sizeof(double),"force_input.bin",force_d);
+  readData(nsites,nFieldsDist,"f_input.bin",f_d);
+  readData(nsites,1,"phi_site_input.bin",phi_site_d);
+  readData(nsites,3,"grad_phi_site_input.bin",grad_phi_site_d);
+  readData(nsites,1,"delsq_phi_site_input.bin",delsq_phi_site_d);
+  readData(nsites,3,"force_input.bin",force_d);
 
   checkTargetError("memcpy");
 
@@ -162,7 +185,8 @@ int main() {
   printf("Starting Kernel Launch...\n");
   t1=omp_get_wtime();
 
-  collision TARGET_LAUNCH(N[X]*N[Y]*N[Z]) (f_d, ftmp_d,
+  //  collision TARGET_LAUNCH(N[X]*N[Y]*N[Z]) (f_d, ftmp_d,
+  collision TARGET_LAUNCH(nsites) (f_d, ftmp_d,
 					   phi_site_d,
 					   grad_phi_site_d,
 					   delsq_phi_site_d,
@@ -180,15 +204,19 @@ int main() {
 
   /* collect results from target */
 
-  datasize=NDATA*sizeof(double);
-  copyFromTarget(fieldtemp, f_d, datasize);
+  datasize=nsites*nFieldsDist*sizeof(double);
+  //copyFromTarget(fieldtemp, f_d, datasize);
+
+  copyFromTargetMasked(fieldtemp, f_d, nsites,nFieldsDist,siteMask);
 
   fileptr=fopen("f_output.bin","wb");
   fwrite(fieldtemp, datasize, 1, fileptr);
   fclose(fileptr);
 
   datasize=NALL*NALL*NALL*3*sizeof(double);
-  copyFromTarget(fieldtemp, velocity_d, datasize);
+  //copyFromTarget(fieldtemp, velocity_d, datasize);
+  copyFromTargetMasked(fieldtemp, velocity_d, nsites,3,siteMask);
+
   fileptr=fopen("v_output.bin","wb");
       fwrite(fieldtemp, datasize, 1, fileptr);
   fclose(fileptr);
@@ -197,14 +225,16 @@ int main() {
   /* validate results */
 
   printf("\n\nValidating distribution:\n");
-  datasize=NDATA*sizeof(double);
+
+
+  datasize=nsites*nFieldsDist*sizeof(double);
   fileptr=fopen("f_output.bin","rb");
   fread(fieldtemp2, datasize, 1, fileptr);
   fclose(fileptr);
   fileptr=fopen("f_outputref.bin","rb");
   fread(fieldtemp3, datasize, 1, fileptr);
   fclose(fileptr);
-  compData(fieldtemp2, fieldtemp3,NDATA);
+  compData(fieldtemp2, fieldtemp3,nsites*nFieldsDist);
 
   printf("\n\nValidating velocity:\n");
   datasize=NALL*NALL*NALL*3*sizeof(double);
@@ -228,7 +258,7 @@ int main() {
   targetFree(force_d);
   targetFree(velocity_d);
 
-
+  free(siteMask);
 
   return 0;
 }
@@ -249,16 +279,18 @@ TARGET_ENTRY void collision( double* __restrict__ f_d,
   
   /* thread parallel code section */
   int tpIndex;
-  TARGET_TLP(tpIndex,N_cd[X]*N_cd[Y]*N_cd[Z])
+  //TARGET_TLP(tpIndex,N_cd[X]*N_cd[Y]*N_cd[Z]) 
+        TARGET_TLP(tpIndex,Nall_cd[X]*Nall_cd[Y]*Nall_cd[Z])
     {
       
       int ii,jj,kk, siteIndex;
       
   
       /* get latttice site index from thread parallel index */
-      get_coords_from_index(&ii,&jj,&kk,tpIndex,N_cd);      
-      siteIndex = get_linear_index(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
-      
+      //get_coords_from_index(&ii,&jj,&kk,tpIndex,N_cd);      
+      //siteIndex = get_linear_index(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+      siteIndex=tpIndex;
+
       /* execute collision kernel for this thread (lattice site) */
       collision_site
 	(f_d, ftmp_d,
@@ -277,17 +309,19 @@ TARGET_ENTRY void collision( double* __restrict__ f_d,
 
 
 /* benchmark data input */
-void readData(int datasize, char* filename, double* targetData){
+void readData(int nsites,int nfields, char* filename, double* targetData){
 
   FILE *fileptr;
   
   printf("Reading %s ...\n",filename);
   fileptr=fopen(filename,"rb");
-  fread(fieldtemp, datasize, 1, fileptr);
+  fread(fieldtemp, nsites*nfields*sizeof(double), 1, fileptr);
   fclose(fileptr);
   printf("... Done\n");
 
-  copyToTarget(targetData,fieldtemp, datasize);
+  //copyToTarget(targetData,fieldtemp, nsites*nfields*sizeof(double));
+
+  copyToTargetMasked(targetData,fieldtemp,nsites,nfields,siteMask);
 
 }
 
