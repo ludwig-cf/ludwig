@@ -13,7 +13,8 @@
 #ifdef CUDA /* CUDA */
 
 /* default threads per block */
-#define DEFAULT_TPB 256
+//#define DEFAULT_TPB 256
+#define DEFAULT_TPB 32
 
 /* kernel function specifiers */
 #define TARGET __device__ 
@@ -22,19 +23,21 @@
 /* constant data specifier */
 #define TARGET_CONST __constant__
 
+/* Instruction-level-parallelism vector length */
+#define NILP 2
+
+
 /* special kernel launch syntax */
 #define TARGET_LAUNCH(extent) \
-  <<<(extent+DEFAULT_TPB-1)/DEFAULT_TPB,DEFAULT_TPB>>>
+  <<<((extent/NILP)+DEFAULT_TPB-1)/DEFAULT_TPB,DEFAULT_TPB>>>
 
-/* Instruction-level-parallelism vector length */
-#define NILP 1
 
 /* Instruction-level-parallelism execution macro */
-#define TARGET_ILP(simdIndex) simdIndex=0; 
+#define TARGET_ILP(simdIndex) for (simdIndex = 0; simdIndex < NILP; simdIndex++)  
 
 /* Thread-level-parallelism execution macro */
 #define TARGET_TLP(simtIndex,extent) \
-  simtIndex = blockIdx.x*blockDim.x+threadIdx.x;	\
+  simtIndex = NILP*(blockIdx.x*blockDim.x+threadIdx.x);	\
   if (simtIndex < extent)
 
 
