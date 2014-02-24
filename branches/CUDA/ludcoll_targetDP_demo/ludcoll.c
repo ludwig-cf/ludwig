@@ -69,13 +69,13 @@ int main() {
 
 
   /* Allocate memory on target */
-  targetMalloc((void **) &f_d, ndata*sizeof(double));
-  targetMalloc((void **) &ftmp_d, ndata*sizeof(double));
-  targetMalloc((void **) &phi_site_d, nsites*sizeof(double));
-  targetMalloc((void **) &delsq_phi_site_d, nsites*sizeof(double));
-  targetMalloc((void **) &grad_phi_site_d, nsites*3*sizeof(double));
-  targetMalloc((void **) &force_d, nsites*3*sizeof(double));
-  targetMalloc((void **) &velocity_d, nsites*3*sizeof(double));
+  targetCalloc((void **) &f_d, ndata*sizeof(double));
+  targetCalloc((void **) &ftmp_d, ndata*sizeof(double));
+  targetCalloc((void **) &phi_site_d, nsites*sizeof(double));
+  targetCalloc((void **) &delsq_phi_site_d, nsites*sizeof(double));
+  targetCalloc((void **) &grad_phi_site_d, nsites*3*sizeof(double));
+  targetCalloc((void **) &force_d, nsites*3*sizeof(double));
+  targetCalloc((void **) &velocity_d, nsites*3*sizeof(double));
   checkTargetError("malloc");
 
   

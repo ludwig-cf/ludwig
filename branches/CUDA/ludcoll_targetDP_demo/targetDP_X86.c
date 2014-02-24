@@ -36,6 +36,26 @@ void targetMalloc(void **address_of_ptr,size_t size){
   
 }
 
+void targetCalloc(void **address_of_ptr,size_t size){
+
+  void* ptr;
+  ptr = calloc(1,size);
+
+  if(!ptr){
+    printf("calloc failed\n");
+    exit(1);
+  }
+    
+
+  *address_of_ptr=ptr;
+
+
+
+  return;
+  
+}
+
+
 
 void targetFree(void *ptr){
   

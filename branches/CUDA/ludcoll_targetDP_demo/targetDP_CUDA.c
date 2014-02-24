@@ -26,9 +26,18 @@ void targetMalloc(void **address_of_ptr,size_t size){
 
  
   cudaMalloc(address_of_ptr,size);
+  checkTargetError("targetMalloc");
+
+  return;
+}
+
+void targetCalloc(void **address_of_ptr,size_t size){
+
+ 
+  cudaMalloc(address_of_ptr,size);
   double ZERO=0.;
   cudaMemset(*address_of_ptr, ZERO, size);
-  checkTargetError("targetMalloc");
+  checkTargetError("targetCalloc");
 
   return;
 }

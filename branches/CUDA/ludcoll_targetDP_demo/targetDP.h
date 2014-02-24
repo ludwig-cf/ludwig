@@ -76,6 +76,7 @@ void syncTarget();
 void targetFree(void *ptr);
 void checkTargetError(const char *msg);
 void targetMalloc(void **address_of_ptr,size_t size);
+void targetCalloc(void **address_of_ptr,size_t size);
 void targetFree(void *ptr);
 void copyConstantIntToTarget(int *data_d, int *data, int size);
 void copyConstantInt1DArrayToTarget(int *data_d, int *data, int size);
