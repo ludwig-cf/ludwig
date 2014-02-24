@@ -46,9 +46,9 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = gcc -g
+CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q19_ 
+OPTS = -D_D3Q19_ -DNDEBUG
 CFLAGS = -Wall -O3
 
 INC = -I.
@@ -105,7 +105,10 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      phi_lb_coupler.o phi_stats.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
-     psi_force.o psi_colloid.o nernst_planck.o psi_petsc.o \
+     psi_force.o psi_colloid.o \
+     nernst_planck.o \
+     nernst_planck_d3q18.o \
+     psi_petsc.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o subgrid.o \

@@ -332,7 +332,8 @@ void fe_es_stress(const int index, double s[3][3]) {
   /* Coupling part, requires phi, total field */
 
   field_scalar(fe->phi, index, &phi);
-  psi_electric_field(fe->psi, index, e);
+//  psi_electric_field(fe->psi, index, e);
+  psi_electric_field_nnn(fe->psi, index, e);
 
   e2 = 0.0;
   for (ia = 0; ia < 3; ia++) {

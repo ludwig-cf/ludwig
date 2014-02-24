@@ -36,6 +36,8 @@
 #include "psi_s.h"
 #include "psi_sor.h"
 #include "control.h"
+#include "model.h"
+#include "util.h"
 
 /*****************************************************************************
  *
@@ -93,7 +95,7 @@ int psi_sor_solve(psi_t * obj, f_vare_t fepsilon) {
 int psi_sor_poisson(psi_t * obj) {
 
   int niteration = 1000;       /* Maximum number of iterations */
-  const int ncheck = 5;        /* Check global residual every n iterations */
+  const int ncheck = 1;        /* Check global residual every n iterations */
   
   int ic, jc, kc, index;
   int nhalo;
@@ -116,6 +118,9 @@ int psi_sor_poisson(psi_t * obj) {
 
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
+
+  int p;
+  int index_nbr, coords_nbr[3];
 
   MPI_Comm comm;               /* Cartesian communicator */
 
@@ -143,6 +148,7 @@ int psi_sor_poisson(psi_t * obj) {
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
   psi_maxits(obj, &niteration);
+
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -152,10 +158,32 @@ int psi_sor_poisson(psi_t * obj) {
 	index = coords_index(ic, jc, kc);
 
 	psi_rho_elec(obj, index, &rho_elec);
+
+        /* Stencil of discrete D3Q19 Laplacian */
+
+	dpsi = 0.0;
+
+	for (p = 1; p < NVEL; p++) {
+
+	  coords_nbr[X] = ic + cv[p][X];
+	  coords_nbr[Y] = jc + cv[p][Y];
+	  coords_nbr[Z] = kc + cv[p][Z];
+
+	  index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
+       
+	  dpsi += 6.0 * wv[p] * obj->psi[index_nbr];
+	}
+
+        dpsi -= 4.0 * obj->psi[index]; 
+
+        /* 6-point stencil */
+/*
 	dpsi = obj->psi[index + xs] + obj->psi[index - xs]
 	     + obj->psi[index + ys] + obj->psi[index - ys]
 	     + obj->psi[index + zs] + obj->psi[index - zs]
 	     - 6.0*obj->psi[index];
+*/
+
 	rnorm_local[0] += fabs(epsilon*dpsi + rho_elec);
       }
     }
@@ -181,10 +209,32 @@ int psi_sor_poisson(psi_t * obj) {
 	    index = coords_index(ic, jc, kc);
 
 	    psi_rho_elec(obj, index, &rho_elec);
+
+	    /* Stencil of discrete D3Q19 Laplacian */
+
+	    dpsi = 0.0;
+
+	    for (p = 1; p < NVEL; p++) {
+
+	      coords_nbr[X] = ic + cv[p][X];
+	      coords_nbr[Y] = jc + cv[p][Y];
+	      coords_nbr[Z] = kc + cv[p][Z];
+
+	      index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
+	   
+	      dpsi += 6.0 * wv[p] * obj->psi[index_nbr];
+	    }
+
+	    dpsi -= 4.0 * obj->psi[index]; 
+
+	    /* 6-point stencil */
+/*
 	    dpsi = obj->psi[index + xs] + obj->psi[index - xs]
 	         + obj->psi[index + ys] + obj->psi[index - ys]
 	         + obj->psi[index + zs] + obj->psi[index - zs]
 	      - 6.0*obj->psi[index];
+*/
+
 	    residual = epsilon*dpsi + rho_elec;
 	    obj->psi[index] -= omega*residual / (-6.0*epsilon);
 	    rnorm_local[1] += fabs(residual);
@@ -219,7 +269,7 @@ int psi_sor_poisson(psi_t * obj) {
 	break;
       }
 
-      if (n == niteration-1) {
+      if (is_statistics_step() && n == niteration-1) {
 	info("\nSOR solver\n");
 	info("Exceeded %d iterations\n", n+1);
 	info("Norm of residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);

@@ -95,6 +95,7 @@
 #include "psi_force.h"
 #include "psi_colloid.h"
 #include "nernst_planck.h"
+#include "nernst_planck_d3q18.h"
 #include "psi_petsc.h"
 
 /* Statistics */
@@ -385,7 +386,23 @@ void ludwig_run(const char * inputfile) {
   }
   ludwig_report_momentum(ludwig);
 
-  /* Main time stepping loop */
+	TIMER_start(TIMER_ELECTRO_POISSON);
+#ifdef PETSC
+	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
+#else
+	psi_sor_solve(ludwig->psi, ludwig->epsilon);
+#endif
+	TIMER_stop(TIMER_ELECTRO_POISSON);
+
+
+  if (ludwig->psi) {
+    psi_io_info(ludwig->psi, &iohandler);
+    info("\nWriting psi file at step 0!\n");
+    sprintf(filename,"%spsi-%8.8d", subdirectory, 0);
+    io_write_data(iohandler, filename, ludwig->psi);
+  }
+
+/* Main time stepping loop */
 
   info("\n");
   info("Starting time step loop.\n");
@@ -463,6 +480,20 @@ void ludwig_run(const char * inputfile) {
 	  TIMER_stop(TIMER_FORCE_CALCULATION);
 	}
 
+        /* Charge dynamics only due to advective fluxes */
+	TIMER_start(TIMER_ELECTRO_NPEQ);
+	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
+	TIMER_stop(TIMER_ELECTRO_NPEQ);
+
+	TIMER_start(TIMER_HALO_LATTICE);
+	psi_halo_rho(ludwig->psi);
+	TIMER_stop(TIMER_HALO_LATTICE);
+      
+	/* Charge dynamics only due to diffusive fluxes */
+	TIMER_start(TIMER_ELECTRO_NPEQ);
+	nernst_planck_driver_d3q18(ludwig->psi, ludwig->hydro, ludwig->map, dt);
+	TIMER_stop(TIMER_ELECTRO_NPEQ);
+
 	TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
 	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
@@ -471,11 +502,9 @@ void ludwig_run(const char * inputfile) {
 #endif
 	TIMER_stop(TIMER_ELECTRO_POISSON);
 
-	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
-	TIMER_stop(TIMER_ELECTRO_NPEQ);
-
       }
+
+      psi_sor_offset(ludwig->psi);
 
     }
 

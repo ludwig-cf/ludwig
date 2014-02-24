@@ -98,7 +98,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
 
   DMDACreate3d(PETSC_COMM_WORLD, \
 	DMDA_BOUNDARY_PERIODIC,	DMDA_BOUNDARY_PERIODIC, DMDA_BOUNDARY_PERIODIC,	\
-	DMDA_STENCIL_STAR, N_total(X), N_total(Y), N_total(Z), \
+	DMDA_STENCIL_BOX, N_total(X), N_total(Y), N_total(Z), \
 	cart_size(X), cart_size(Y), cart_size(Z), 1, nhalo, \
 	NULL, NULL, NULL, &da);
 
@@ -154,9 +154,15 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   PetscInt    i,j,k;
   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
   PetscScalar epsilon;
+///*
+  PetscScalar v[19];
+  MatStencil  row, col[19];
+//*/
+/*
   PetscScalar v[7];
   MatStencil  row, col[7];
-
+*/
+  double r3 = 0.333333333333333, r6 = 0.166666666666667;
   assert(obj);
 
   MatZeroEntries(A);
@@ -182,6 +188,8 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	row.j = j;
 	row.k = k;
 
+	/* 6-point stencil */
+/*
 	col[0].i = i;     col[0].j = j;     col[0].k = k-1;   v[0] = - epsilon;
 	col[1].i = i;     col[1].j = j-1;   col[1].k = k;     v[1] = - epsilon;
 	col[2].i = i-1;   col[2].j = j;     col[2].k = k;     v[2] = - epsilon;
@@ -190,6 +198,30 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	col[5].i = i;     col[5].j = j+1;   col[5].k = k;     v[5] = - epsilon;
 	col[6].i = i;     col[6].j = j;     col[6].k = k+1;   v[6] = - epsilon;
 	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
+*/
+
+	/* D3Q19 stencil */
+
+	col[0].i  = i+1;   col[0].j  = j;     col[0].k  = k;     v[0]  = - r3 * epsilon;
+	col[1].i  = i-1;   col[1].j  = j;     col[1].k  = k;     v[1]  = - r3 * epsilon;
+	col[2].i  = i;     col[2].j  = j+1;   col[2].k  = k;     v[2]  = - r3 * epsilon;
+	col[3].i  = i;     col[3].j  = j-1;   col[3].k  = k;     v[3]  = - r3 * epsilon;
+	col[4].i  = i;     col[4].j  = j;     col[4].k  = k+1;   v[4]  = - r3 * epsilon;
+	col[5].i  = i;     col[5].j  = j;     col[5].k  = k-1;   v[5]  = - r3 * epsilon;
+	col[6].i  = row.i; col[6].j  = row.j; col[6].k  = row.k; v[6]  =  4.0 * epsilon;
+	col[7].i  = i+1;   col[7].j  = j+1;   col[7].k  = k;     v[7]  = - r6 * epsilon;
+	col[8].i  = i-1;   col[8].j  = j-1;   col[8].k  = k;     v[8]  = - r6 * epsilon;
+	col[9].i  = i+1;   col[9].j  = j-1;   col[9].k  = k;     v[9]  = - r6 * epsilon;
+	col[10].i = i-1;   col[10].j = j+1;   col[10].k = k;     v[10] = - r6 * epsilon;
+	col[11].i = i+1;   col[11].j = j;     col[11].k = k+1;   v[11] = - r6 * epsilon;
+	col[12].i = i-1;   col[12].j = j;     col[12].k = k-1;   v[12] = - r6 * epsilon;
+	col[13].i = i+1;   col[13].j = j;     col[13].k = k-1;   v[13] = - r6 * epsilon;
+	col[14].i = i-1;   col[14].j = j;     col[14].k = k+1;   v[14] = - r6 * epsilon;
+	col[15].i = i;     col[15].j = j+1;   col[15].k = k+1;   v[15] = - r6 * epsilon;
+	col[16].i = i;     col[16].j = j-1;   col[16].k = k-1;   v[16] = - r6 * epsilon;
+	col[17].i = i;     col[17].j = j+1;   col[17].k = k-1;   v[17] = - r6 * epsilon;
+	col[18].i = i;     col[18].j = j-1;   col[18].k = k+1;   v[18] = - r6 * epsilon;
+	MatSetValuesStencil(A,1,&row,19,col,v,INSERT_VALUES);
 
       }
     }

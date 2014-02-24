@@ -23,4 +23,6 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map);
 int advection_bcs_wall(field_t * phi);
 int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 			  map_t * map);
+int advective_bcs_no_flux_d3q18(int nf, double ** flx, map_t * map);
+
 #endif

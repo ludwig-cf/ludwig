@@ -15,6 +15,7 @@
  ****************************************************************************/
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "wall.h"
@@ -22,6 +23,7 @@
 #include "coords_field.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
+#include "model.h"
 
 /*****************************************************************************
  *
@@ -130,10 +132,12 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 	mask = (status == MAP_FLUID);
 
 	for (n = 0;  n < nf; n++) {
+
 	  coords_field_index(index, n, nf, &indexf);
 	  fx[indexf] *= mask*maskx;
 	  fy[indexf] *= mask*masky;
 	  fz[indexf] *= mask*maskz;
+
 	}
 
       }
@@ -143,6 +147,57 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  advective_bcs_no_flux_d3q18
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+int advective_bcs_no_flux_d3q18(int nf, double ** flx, map_t * map) {
+
+  int n;
+  int nlocal[3];
+  int ic, jc, kc, index0, index1;
+  int status;
+  int c;
+  double * mask;
+
+  assert(nf > 0);
+  assert(f);
+  assert(map);
+
+  mask = calloc(NVEL, sizeof(double)); 
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(ic, jc, kc);
+	map_status(map, index0, &status);
+	mask[0] = (status == MAP_FLUID);
+
+	for (c = 1; c < NVEL; c++) {
+
+	  index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	  map_status(map, index1, &status);
+	  mask[c] = (status == MAP_FLUID);
+
+	  for (n = 0;  n < nf; n++) {
+	    flx[nf*index0 + n][c - 1] *= mask[0]*mask[c];
+	  }
+
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
 /*****************************************************************************
  *
  *  advection_bcs_wall
