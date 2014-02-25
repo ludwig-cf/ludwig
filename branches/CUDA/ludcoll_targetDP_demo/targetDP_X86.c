@@ -17,6 +17,16 @@ void checkTargetError(const char *msg){
 
 }
 
+void targetInit(size_t nsites,size_t nfieldsmax){
+  return;
+}
+
+void targetFinalize(){
+  return;
+}
+
+
+
 void targetMalloc(void **address_of_ptr,size_t size){
 
   void* ptr;

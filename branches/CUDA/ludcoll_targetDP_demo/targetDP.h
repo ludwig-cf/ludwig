@@ -68,6 +68,8 @@
 
 /* API */
 
+void targetInit(size_t nsites, size_t nfieldsmax);
+void targetFinalize();
 void checkTargetError(const char *msg);
 void targetMalloc(void **address_of_ptr,size_t size);
 void copyToTarget(void *targetData,const void* data,size_t size);

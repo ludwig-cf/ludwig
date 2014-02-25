@@ -73,6 +73,7 @@ int main() {
   int nFieldsDist=NVEL*NDIST;
   //int ndata=nsites*nFieldsDist;
 
+  targetInit(nsites,nFieldsDist);
 
 
   /* Allocate memory on target */
@@ -260,6 +261,7 @@ int main() {
 
   free(siteMask);
 
+  targetFinalize();
   return 0;
 }
 
