@@ -60,7 +60,7 @@ void copyFromTarget(void *data,const void* targetData,size_t size){
 }
 
 
-__global__ static void copy_field_partial_gpu_d(double* f_out, const double* f_in, int nsites, int nfields, char *mask_d, int *packedindex_d, int packedsize, int inpack) {
+__global__ static void copy_field_partial_gpu_d(double* f_out, const double* f_in, int nsites, int nfields, int *fullindex_d, int packedsize, int inpack) {
 
   int threadIndex;
   int i;
@@ -74,7 +74,9 @@ __global__ static void copy_field_partial_gpu_d(double* f_out, const double* f_i
   
 
   //Avoid going beyond problem domain
-  if ((threadIndex < nsites) && mask_d[threadIndex])
+  //if ((threadIndex < nsites) && mask_d[threadIndex])
+
+  if ((threadIndex < packedsize))
     {
 
 
@@ -82,11 +84,11 @@ __global__ static void copy_field_partial_gpu_d(double* f_out, const double* f_i
 	{
 	    
 	  if (inpack)
-	    f_out[i*nsites+threadIndex]
-	    =f_in[i*packedsize+packedindex_d[threadIndex]];
+	    f_out[i*nsites+fullindex_d[threadIndex]]
+	    =f_in[i*packedsize+threadIndex];
 	  else
-	   f_out[i*packedsize+packedindex_d[threadIndex]]
-	      =f_in[i*nsites+threadIndex];
+	   f_out[i*packedsize+threadIndex]
+	      =f_in[i*nsites+fullindex_d[threadIndex]];
 	  
 	}
     }
@@ -94,6 +96,40 @@ __global__ static void copy_field_partial_gpu_d(double* f_out, const double* f_i
 
   return;
 }
+/* __global__ static void copy_field_partial_gpu_d(double* f_out, const double* f_in, int nsites, int nfields, char *mask_d, int *packedindex_d, int packedsize, int inpack) { */
+
+/*   int threadIndex; */
+/*   int i; */
+
+
+  
+
+/*   /\* CUDA thread index *\/ */
+/*   threadIndex = blockIdx.x*blockDim.x+threadIdx.x; */
+
+  
+
+/*   //Avoid going beyond problem domain */
+/*   if ((threadIndex < nsites) && mask_d[threadIndex]) */
+/*     { */
+
+
+/*       for (i=0;i<nfields;i++) */
+/* 	{ */
+	    
+/* 	  if (inpack) */
+/* 	    f_out[i*nsites+threadIndex] */
+/* 	    =f_in[i*packedsize+packedindex_d[threadIndex]]; */
+/* 	  else */
+/* 	   f_out[i*packedsize+packedindex_d[threadIndex]] */
+/* 	      =f_in[i*nsites+threadIndex]; */
+	  
+/* 	} */
+/*     } */
+
+
+/*   return; */
+/* } */
 
 
 
@@ -106,22 +142,19 @@ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 
 
   //allocate space TO BE  OPTIMISED
+  int* fullindex;
+  fullindex=(int*) malloc(nsites*sizeof(int));
 
-  char* siteMask_d;
-  cudaMalloc(&siteMask_d,nsites*sizeof(char));
-
-  int* packedindex;
-  packedindex=(int*) malloc(nsites*sizeof(int));
-
-  int* packedindex_d;
-  cudaMalloc(&packedindex_d,nsites*sizeof(int));
+  int* fullindex_d;
+  cudaMalloc(&fullindex_d,nsites*sizeof(int));
 
 
   //get compression mapping
   int j=0;
   for (i=0; i<nsites; i++){
     if(siteMask[i]){
-      packedindex[i]=j;
+      fullindex[j]=i;
+      //packedindex[i]=j;
       j++;
     }
     
@@ -139,8 +172,7 @@ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 
 
   //copy compresssion info to GPU
-  cudaMemcpy(siteMask_d, siteMask, nsites*sizeof(char), cudaMemcpyHostToDevice);
-  cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
 
 
     
@@ -166,20 +198,18 @@ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 
 
   //uncompress grid on GPU
-  int nblocks=(nsites+DEFAULT_TPB-1)/DEFAULT_TPB;
+  int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
   copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(targetData,tmpGrid_d,nsites,
 						    nfields,
-						    siteMask_d,
-						    packedindex_d, packedsize, 1);
+						    fullindex_d, packedsize, 1);
   cudaThreadSynchronize();
 
   
 
 
-  cudaFree(siteMask_d);
-  cudaFree(packedindex_d);
+  cudaFree(fullindex_d);
   cudaFree(tmpGrid_d);
-  free(packedindex);
+  free(fullindex);
   free(tmpGrid);
 
 
@@ -201,21 +231,19 @@ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 
   //allocate space TO BE  OPTIMISED
 
-  char* siteMask_d;
-  cudaMalloc(&siteMask_d,nsites*sizeof(char));
 
-  int* packedindex;
-  packedindex=(int*) malloc(nsites*sizeof(int));
+  int* fullindex;
+  fullindex=(int*) malloc(nsites*sizeof(int));
 
-  int* packedindex_d;
-  cudaMalloc(&packedindex_d,nsites*sizeof(int));
+  int* fullindex_d;
+  cudaMalloc(&fullindex_d,nsites*sizeof(int));
 
 
   //get compression mapping
   int j=0;
   for (i=0; i<nsites; i++){
     if(siteMask[i]){
-      packedindex[i]=j;
+      fullindex[j]=i;
       j++;
     }
     
@@ -233,16 +261,14 @@ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 
 
   //copy compresssion info to GPU
-  cudaMemcpy(siteMask_d, siteMask, nsites*sizeof(char), cudaMemcpyHostToDevice);
-  cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
 
   
   //compress grid on GPU
-  int nblocks=(nsites+DEFAULT_TPB-1)/DEFAULT_TPB;
+  int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
   copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(tmpGrid_d,targetData,nsites,
 						    nfields,
-						    siteMask_d,
-						    packedindex_d, packedsize, 0);
+						    fullindex_d, packedsize, 0);
   cudaThreadSynchronize();
 
   //get compressed grid from GPU
@@ -265,10 +291,9 @@ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
   
 
 
-  cudaFree(siteMask_d);
-  cudaFree(packedindex_d);
+  cudaFree(fullindex_d);
   cudaFree(tmpGrid_d);
-  free(packedindex);
+  free(fullindex);
   free(tmpGrid);
 
   return;
