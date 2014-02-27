@@ -3,9 +3,9 @@
 #
 
 
-PROGMODEL=X86
+#PROGMODEL=X86
 #PROGMODEL=X86_MIC
-#PROGMODEL=CUDA
+PROGMODEL=CUDA
 
 
 MF= Makefile
@@ -56,10 +56,10 @@ ifeq ($(PROGMODEL),CUDA)
  SRC += $(UTILSRC_CUDA)	
 
  CC=	nvcc
- CFLAGS_BASE= -DCUDA -O3 -arch=sm_35 #-save-temps
+ CFLAGS_BASE= -DCUDA -O3 -arch=sm_35  #-save-temps
 # CFLAGS_BASE= -DCUDA -g -G -arch=sm_35 #-save-temps
  LFLAGS=$(CFLAGS_BASE)
- CFLAGS= $(CFLAGS_BASE) -dc
+ CFLAGS= $(CFLAGS_BASE) -dc -x cu
  LIBS= -L/usr/lib/gcc/x86_64-redhat-linux/4.4.4 -lgomp
 
 endif
@@ -69,9 +69,8 @@ endif
 #NVIDIA compiler can only deal with .cu suffixes
 ifeq ($(PROGMODEL),CUDA)		
 .c.o: 
-	cp $< $<u
-	$(CC) $(CFLAGS) -c $<u
-	rm $<u
+	$(CC) $(CFLAGS) -c $<
+
 else
 .cu.o:
 	$(CC) $(CFLAGS) -c $<
