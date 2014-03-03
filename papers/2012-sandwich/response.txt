@@ -33,8 +33,8 @@ designing experiments with colloidal blue phases and perhaps stimulate
 development of applications on the base of
 these materials.
 
-RESPONSE: We added comments and references specifying experimental model systems
-(see also response to comment of Reviewer #2).
+RESPONSE: The issue of experimental guidance is addressed in detail
+in our reply to reviewer 2 below.
 
 Particular remarks:
 
@@ -45,7 +45,7 @@ particles in BP disclination networks it would be useful to refer to the
 initial study by Ravnik et al. in Faraday
 Discussions 2009 devoted to this topic.
 
-RESPONSE: Citition for Ravnik et al Faraday Discuss. 2010 (sic) is added
+RESPONSE: Citation for Ravnik et al Faraday Discuss. 2010 (sic) is added
 [current reference 16].
 
 
@@ -54,7 +54,7 @@ RESPONSE: Citition for Ravnik et al Faraday Discuss. 2010 (sic) is added
 RESPONSE: A stability range for templated blue phases of -125 to
 +125 degrees Celsius is reported by Castles et al. Nat. Mat. 2012.
 We have made this connection more clear by rewriting the relevant
-sentence: "However, recent advances in formalation have widened
+sentence: "However, recent advances in formulation have widened
 this stability range enormously [11,12,13,14]. Most recently,
 templated blue phases with a stability range of -125 to 125$^\circ$C
 have been reported [Castles], paving the way to applications of BPs
@@ -83,28 +83,47 @@ length? How the radius influences the
 structures? How tiny the particles can still be that the method based on the
 Landau-de Gennes free energy is justified.
 
-RESPONSE: We have added in the main text (last pararagraph introduction) a
-summary of the relevant dimensions in physical units: 
-"The simulations represent a liquid crystal blue phase with unit cell 
-size in the range of 100--500~nm \cite{mermin}, and particles with 
-a radius of around 50~nm." 
-A coarse-grained description of the mesophase like the Landau-de Gennes 
-theory is appropriate as long as the size of the colloidal particle is much 
-larger than the size of the mesogen, which are typically in the 
-range of 10^-9 m. Hence the Landau-de Gennes approach allows to 
-describe defects down to extremely small length scales. 
+RESPONSE: We have added in the main text (last paragraph introduction) a
+summary of the relevant dimensions in physical units:  "The simulations
+presented here are representative of a liquid crystal blue phase with unit
+cell size in the range of 100--500~nm and particles with a radius of
+around 50~nm." This new paragraph also serves the requirement for a brief
+summary of the results as set out in the manuscript checklist.
+
+RESPONSE (cont.): As a coarse-grained description of the mesophase, the
+Landau-de Gennes  theory is appropriate as long as the size of the
+colloidal particle is much larger than the size of the mesogen,
+the latter being typically in the range of 1--10 nanometres. Our
+simulations meet this criteria (particle size about 50 nm) and the
+use of Landau-de Gennes is therefore justified.
 
 Is WR/K = 2.8 justified for nanoparticles used in the study?
 
-RESPONSE: The ration WR/K = 2.8 is justified for nanoparticles
-in the strong anchoring regime.
+RESPONSE: The choice of WR/K = 2.3 in the simulations (not 2.8)
+is used to separate clearly a strong anchoring regime from a
+weak anchoring regime (w = 0.23). While typical experimental
+values for particles of this size may mean the weak regime is
+more common, we do not see that this precludes interest in a
+strong anchoring regime.
+
 
 Page 4:
 
 Can the G elastic modulus be estimated for modeled structures?
 
-RESPONSE: We added a comment that gives an estimate of the elastic modulus.
-Esitmates are in the kPa range.
+RESPONSE: We note we did have, in the original manuscript, a
+paragraph which discusses estimates of the elastic modulus G
+based on analogy with experimentally observed systems. To the
+existing paragraph we have appended:
+"This figure is consistent with an estimate obtained by comparing
+the mechanical properties of the network of defects stabilised by
+colloidal particles with those of rubber [Ramos et al 2002] for
+the relevant simulation parameters (see Supplementary Information)."
+To the supplementary information we append: "For a Frank elastic
+constant of $K = 70$~pN and unit cell sizes in the range
+$\lambda =$100--500~nm, a corresponding shear modulus $G \simeq
+K/\lambda^2 =$0.3--7~kPa." The relevant reference is added.
+
 
 Page 5:
 
@@ -117,7 +136,7 @@ anchoring strength and the size of the colloidal particles.
 Strong anchoring conditions lead to a significant 
 distortion of the disclination lines, whereas in the weak anchoring 
 regime the forces that drive the particles towards the 
-disclination lines remain rather small.  
+disclination lines remain rather small.
 
 Is also in case of the disordered structures observed a change in the
 stability range of the colloidal BPs?
@@ -132,7 +151,7 @@ to comment the study of
 Ravnik et al. in Soft Matter 2011 devoted the ordered structures of such a
 system.
 
-REESPONSE: A citition for Ravnik et al (2011) has been added [current
+RESPONSE: A citation for Ravnik et al (2011) has been added [current
 reference 26].
 
 
@@ -142,9 +161,20 @@ It would be good to comment the difference between structures in the bulk
 and thin layer for particles with strong anchoring. Does this depend on the
 visualization or is more behind?
 
-RESPONSE: Due to the anchoring conditions the colloidal particles are 
-attracted or repelled from the walls in the thin layer geometry. This leads to a more
-two-dimensional structure compated to the situation without wall confinement. 
+RESPONSE: We have added the following at the end of the section
+describing the confined geometry: "The degree of similarity between
+the bulk and confined structures is somewhat masked by the local
+change in particle density in the confined case. If one allows for
+this, Figs.~1 and~2 show the individual structural motifs are actually
+rather similar: templated lines for weak anchoring and clusters for
+strong anchoring."
+
+RESPONSE (cont.): One potential visualisation ambiguity is that the
+displayed box sizes are different in each of the figures (cf. particle
+size). An explicit statement has been added to each caption to make
+this more clear to the reader. ADD CAPTIONS?
+
+
 
 Are the electric field induced changes irreversible only in case of
 colloidal dispersions?
@@ -153,12 +183,13 @@ RESPONSE: For the given parameters the field induced changes are only
 irreversible when colloids with sufficiently strong 
 anchoring conditions are present. The mesophase without colloids 
 undergoes a reversible ordering transition as described in reference [10].
+CHECK REFERENCE
 
 Page 7
 
 Reference 2 has a mistake.
 
-RESPONSE: The corrent punctuation in the page numbers has been
+RESPONSE: The correct punctuation in the page numbers has been
 inserted in the reference for Wright and Mermin [current reference 9].
 
 Supplement
@@ -170,21 +201,23 @@ simulation units" is unclear.
 
 RESPONSE: This text has been replaced by a statement which is
 transparent: "For both normal and planar anchoring at the walls,
-values of $W$ and $K$ are used which are the same as for the
+the value of $W$ is the same as that used for the
 strongly anchoring particles."
 
 References of the Supplement:
 There are mistakes in references 1 and 2.
 
-REPSONSE: Reference 1, Wright and Mermin, was correct in
+RESPONSE: Reference 1, Wright and Mermin, was correct in
 the original supplement. Reference 2 has been updated to reflect
 the 2nd edition of de Gennes and Prost, which now appears in the
 main text [current reference 34].
+CHECK REFERENCE
+
 
 
 Reviewer #2 (Remarks to the Author):
 
-This paper, "Self-assembly of colloid-cholesteric composities: A route to
+This paper, "Self-assembly of colloid-cholesteric composites: A route to
 switchable optical materials" reports simulations of the formation of
 particle networks in a cholesteric host and in
 particular in the blue phase of the cholesteric host. It reports the
@@ -199,7 +232,7 @@ experimental that has explored the effects of dispersing particles in a
 liquid crystal host. The novelty of the paper is
 to model the effect of particles in the blue phases of a cholesteric host
 ahd to postulate how these colloids may be employed in specific
-appilcations.
+applications.
 
 I am not a theorteical physiscist and therefore will not comment on the
 methodology but rather will take the perspective of an experimentalist and
@@ -220,8 +253,11 @@ materials, both the liquid crystal host and the added particles and perhaps
 even suggested a model system that would be a good starting point to study
 experimentally. 
 
-RESPONSE: We added some details and references of experimental
-realisations of these systems (see also comment from Reviewer #1).
+RESPONSE: In a new paragraph in the discussion section, we include six
+new references specifically aimed at recent studies on experimental
+nanoparticle liquid crystal composites. These are currently [34-39].
+The paragraph also discusses the issue of a model system, and suggests
+properties such a system may have to help match experiment and simulation.
 
 In a similar vein, it would also be useful to address the
 practical issue of reproducibility, which has been a major problem 
@@ -233,14 +269,20 @@ with a specific morphology and optical properties. This seems a likely
 practical issue particularly with the rich variety of structures reported in
 the simulations.
 
-RESPONSE: Our feeling is that control mechanisms beyond simple anchoring 
-will be necessary for a device that features reproducable optical properties. 
-This could be for instance achieved with external electric fields as shown in 
-this publication. Alternative routes could be microfluidic flow or
-patterned, multidomain anchoring conditions.
+RESPONSE: Clearly the issue of experimental reproducibility is a difficult
+one to be addressed by, of necessity idealised, simulation. However, one
+point our simulations do show is that careful characterisation of not
+only the particles and host fluid is required, but also of possible
+confinement effects and associated anchoring conditions. This we also
+address in our updated discussion.
+
+The entire paragraph reads: ADD WHEN FINALISED
+
+
 
 
 * ADDITIONAL CHANGES TO MEET FORMAT REQUIREMENTS
+  cf Manuscript checklist
 
 A number of other rearrangements have taken place to meet the
 format requirements as set out the manuscript checklist.
