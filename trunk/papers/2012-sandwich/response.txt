@@ -1,13 +1,24 @@
+Dear Dr Huang,
 
-Point by point response
+many thanks for sending us the referee reports on our manuscript, 
+"Self-assembly of colloid-cholesteric composites: A route to switchable 
+optical materials". We are glad that both referees found our work interesting.
+We are also grateful for the suggestions for improvement, all of which
+we have now implemented in the revised version. We hope the revised
+manuscript can now be accepted for publication in Nature Communication. 
 
+With best wishes,
 
+K. Stratford, O. Henrich, J. S. Lintuvuori, M. E. Cates and D. Marenduzzo
 
-Reviewers' comments:
+------------------------------------------------------------------
 
-Reviewer #1 (Remarks to the Author):
+Point by point response to referees' comments
 
-The authors describe the results of a study of colloidal particles dispersed
+Reply to Reviewer #1:
+
+COMMENT:
+"The authors describe the results of a study of colloidal particles dispersed
 in cholesteric blue phases (BP) focusing on the effects of particle
 concentration and distribution. Additionally
 effects of confinement and external fields are investigated. The use of the
@@ -16,72 +27,76 @@ quench and electric field application. The
 study is an important step in modeling of BPs and should deserve a
 publication in Nature Communications. Nevertheless there are some weak
 points that need improvement before the publication.
-Below is the list of remarks.
+Below is the list of remarks."
 
-General remarks:
+RESPONSE:
+We thank the reviewer for her/his generally encouraging comments, and for
+recommending publication in Nature Communication subject to the resolution
+of some points. Below are our detailed reply to each of the reviewer's
+question, together with a description of how the comment has been dealt with
+in the revision. 
 
-The term colloid is by the definition a dispersion of particles in a fluid.
+COMMENT:
+"The term colloid is by the definition a dispersion of particles in a fluid.
 Using the term also for the particles my lead to a confusion. In the
 manuscript often also a more appropriate word
-colloidal particle is used.
+colloidal particle is used."
 
 RESPONSE: We have standardised on "colloidal particle(s)" or simply
 "particle(s)" where appropriate.
 
-It would be important to add comments that would help experimentalist in
+COMMENT:
+"It would be important to add comments that would help experimentalist in
 designing experiments with colloidal blue phases and perhaps stimulate
 development of applications on the base of
-these materials.
+these materials."
 
 RESPONSE: The issue of experimental guidance is addressed in detail
-in our reply to reviewer 2 below.
+in our reply to reviewer 2 below. In particular we have added a full
+paragraph in the discussion (page 3, highlighted in red), with explicit 
+reference to experimental studies on nanoparticle liquid crystal composites 
+(currently Refs. [34-39]).
 
-Particular remarks:
-
-Page 2
-
-In the discussion of the physical understanding of trapping of colloidal
-particles in BP disclination networks it would be useful to refer to the
+COMMENT:
+"Page 2: In the discussion of the physical understanding of trapping of colloidal particles in BP disclination networks it would be useful to refer to the
 initial study by Ravnik et al. in Faraday
-Discussions 2009 devoted to this topic.
+Discussions 2009 devoted to this topic."
 
 RESPONSE: Citation for Ravnik et al Faraday Discuss. 2010 (sic) is added
 [current reference 16].
 
-
-250 K is more than the total mesophase stability range!
+COMMENT: "250 K is more than the total mesophase stability range!"
 
 RESPONSE: A stability range for templated blue phases of -125 to
 +125 degrees Celsius is reported by Castles et al. Nat. Mat. 2012.
 We have made this connection more clear by rewriting the relevant
-sentence: "However, recent advances in formulation have widened
+sentence, which now reads (see page 2, highlighted in red): 
+"However, recent advances in formulation have widened
 this stability range enormously [11,12,13,14]. Most recently,
 templated blue phases with a stability range of -125 to 125$^\circ$C
 have been reported [Castles], paving the way to applications of BPs
 in operational display devices."
 
-
-
-Page 3
-
-The statement "This is defined such that W > 0 gives preferential
+COMMENT: The statement "This is defined such that W > 0 gives preferential
 perpendicular orientation of the director field at the particle surface." is
 not consistent with the interaction form
 described in the Supplement.
 
-RESPONSE: We agree this statement is confusing. It has been replaced by
-a clearer statement: "The anchoring strength is defined such that
+RESPONSE: We agree this statement was confusing. It has been replaced by
+a clearer statement (on page 4, highlighted in red): 
+"The anchoring strength is defined such that
 W > 0 imparts a preferred orientation to the director field at the
 particle surface. This orientation can be either normal to the
 surface or in a plane tangential to the surface, a property related
 to surface chemistry in experimental systems but which can be imposed
 at will in simulations."
 
-For potential readers it would be useful to specify the particle radius in
+COMMENT:
+"For potential readers it would be useful to specify the particle radius in
 nanometers in the main text. How it compares to the nematic correlation
-length? How the radius influences the
-structures? How tiny the particles can still be that the method based on the
-Landau-de Gennes free energy is justified.
+length? How the radius influences the structures? How tiny the particles can 
+still be that the method based on the Landau-de Gennes free energy is 
+justified."
 
 RESPONSE: We have added in the main text (last paragraph introduction) a
 summary of the relevant dimensions in physical units:  "The simulations
@@ -97,7 +112,7 @@ the latter being typically in the range of 1--10 nanometres. Our
 simulations meet this criteria (particle size about 50 nm) and the
 use of Landau-de Gennes is therefore justified.
 
-Is WR/K = 2.8 justified for nanoparticles used in the study?
+COMMENT: "Is WR/K = 2.8 justified for nanoparticles used in the study?"
 
 RESPONSE: The choice of WR/K = 2.3 in the simulations (not 2.8)
 is used to separate clearly a strong anchoring regime from a
@@ -106,10 +121,8 @@ values for particles of this size may mean the weak regime is
 more common, we do not see that this precludes interest in a
 strong anchoring regime.
 
-
-Page 4:
-
-Can the G elastic modulus be estimated for modeled structures?
+COMMENT: "Page 4:
+Can the G elastic modulus be estimated for modeled structures?"
 
 RESPONSE: We note we did have, in the original manuscript, a
 paragraph which discusses estimates of the elastic modulus G
@@ -124,42 +137,38 @@ constant of $K = 70$~pN and unit cell sizes in the range
 $\lambda =$100--500~nm, a corresponding shear modulus $G \simeq
 K/\lambda^2 =$0.3--7~kPa." The relevant reference is added.
 
-
-Page 5:
-
+COMMENT: "Page 5:
 Can annealing of the structures obtained with the thermal quench lead to
-ordered colloidal structures?
+ordered colloidal structures?"
 
-RESPONSE: Our results suggest that this is difficult to achieve, but
-generally possible. It depends sensitively on the 
-anchoring strength and the size of the colloidal particles. 
-Strong anchoring conditions lead to a significant 
-distortion of the disclination lines, whereas in the weak anchoring 
-regime the forces that drive the particles towards the 
-disclination lines remain rather small.
+RESPONSE: Our results suggest that this is probably not the case,
+although it is difficult to systematically explore all the possible
+quench protocol. That said, our data suggest that even starting with
+colloidal particles randomly dispersed in an *ordered* blue phase
+particles are able to distort the structure (see Fig. 1A, 1B); this
+suggests that time evolution if anything may lead to more disorder,
+rather than order. 
 
-Is also in case of the disordered structures observed a change in the
-stability range of the colloidal BPs?
+COMMENT: "Is also in case of the disordered structures observed a change in the
+stability range of the colloidal BPs?"
 
 RESPONSE: Determining the stability range of the composite
 phases was beyond the scope of this paper. This would have required 
 an optimisation of the pitch length, which requires a large number 
 of additional simulations for each individual parameter set.
  
-In the discussion of colloidal particles in BP thin layers it would be good
-to comment the study of
-Ravnik et al. in Soft Matter 2011 devoted the ordered structures of such a
-system.
+COMMENT:
+"In the discussion of colloidal particles in BP thin layers it would be good
+to comment the study of Ravnik et al. in Soft Matter 2011 devoted 
+the ordered structures of such a system."
 
 RESPONSE: A citation for Ravnik et al (2011) has been added [current
 reference 26].
 
-
-Page 6:
-
-It would be good to comment the difference between structures in the bulk
-and thin layer for particles with strong anchoring. Does this depend on the
-visualization or is more behind?
+COMMENT:
+"Page 6: It would be good to comment the difference between structures in the 
+bulk and thin layer for particles with strong anchoring. Does this depend on the
+visualization or is more behind?"
 
 RESPONSE: We have added the following at the end of the section
 describing the confined geometry: "The degree of similarity between
@@ -174,38 +183,31 @@ displayed box sizes are different in each of the figures (cf. particle
 size). An explicit statement has been added to each caption to make
 this more clear to the reader. ADD CAPTIONS?
 
-
-
-Are the electric field induced changes irreversible only in case of
-colloidal dispersions?
+COMMENT:
+"Are the electric field induced changes irreversible only in case of
+colloidal dispersions?"
 
 RESPONSE: For the given parameters the field induced changes are only
 irreversible when colloids with sufficiently strong 
 anchoring conditions are present. The mesophase without colloids 
 undergoes a reversible ordering transition as described in reference [10].
-CHECK REFERENCE
 
-Page 7
-
-Reference 2 has a mistake.
+COMMENT: "Page 7 Reference 2 has a mistake."
 
 RESPONSE: The correct punctuation in the page numbers has been
 inserted in the reference for Wright and Mermin [current reference 9].
 
-Supplement
-
-Segment 4.2:
-
+COMMENT: "Supplement Segment 4.2:
 The statement "Wall anchoring is either normal or planar with W=K = 1 in
-simulation units" is unclear.
+simulation units" is unclear."
 
 RESPONSE: This text has been replaced by a statement which is
 transparent: "For both normal and planar anchoring at the walls,
 the value of $W$ is the same as that used for the
 strongly anchoring particles."
 
-References of the Supplement:
-There are mistakes in references 1 and 2.
+COMMENT:"References of the Supplement:
+There are mistakes in references 1 and 2."
 
 RESPONSE: Reference 1, Wright and Mermin, was correct in
 the original supplement. Reference 2 has been updated to reflect
@@ -213,11 +215,12 @@ the 2nd edition of de Gennes and Prost, which now appears in the
 main text [current reference 34].
 CHECK REFERENCE
 
+------------------------------------------------------------------------
 
+Reply to Reviewer 2 
 
-Reviewer #2 (Remarks to the Author):
-
-This paper, "Self-assembly of colloid-cholesteric composites: A route to
+COMMENT:
+"This paper, "Self-assembly of colloid-cholesteric composites: A route to
 switchable optical materials" reports simulations of the formation of
 particle networks in a cholesteric host and in
 particular in the blue phase of the cholesteric host. It reports the
@@ -245,41 +248,47 @@ into the blue phase as a means of controlling and adjusting the structure
 and stability of the materials. The paper
 is clearly written and the figures, paricularly the included 3D videos,
 provide clear perspective on the modeled phases of these materials. The
-results are of interest and useful to
-experimentalists working in the field. 
+results are of interest and useful to experimentalists working in the field. "
 
-The paper would be even more useful if it included references to actual 
+RESPONSE:
+We are grateful to the reviewer for her/his overall positive view of our
+work. We also found her/his comments constructive and useful to improve
+our paper. We have addressed them as follows.
+
+COMMENT:
+"The paper would be even more useful if it included references to actual 
 materials, both the liquid crystal host and the added particles and perhaps
 even suggested a model system that would be a good starting point to study
-experimentally. 
+experimentally. "
 
-RESPONSE: In a new paragraph in the discussion section, we include six
+RESPONSE: 
+"We have fully taken this point on board.
+In a new paragraph in the discussion section, we include six
 new references specifically aimed at recent studies on experimental
 nanoparticle liquid crystal composites. These are currently [34-39].
 The paragraph also discusses the issue of a model system, and suggests
-properties such a system may have to help match experiment and simulation.
+properties such a system may have to help match experiment and simulation."
 
-In a similar vein, it would also be useful to address the
+COMMENT:
+"In a similar vein, it would also be useful to address the
 practical issue of reproducibility, which has been a major problem 
 with these materials. The theoretical results clearly indicate how important 
 the formation conditions are to the final result. 
 
-What is the authors sense of how easy it will be to reproducibly fabricate a device
-with a specific morphology and optical properties. This seems a likely
+What is the authors sense of how easy it will be to reproducibly fabricate a 
+device with a specific morphology and optical properties. This seems a likely
 practical issue particularly with the rich variety of structures reported in
-the simulations.
+the simulations."
 
 RESPONSE: Clearly the issue of experimental reproducibility is a difficult
 one to be addressed by, of necessity idealised, simulation. However, one
 point our simulations do show is that careful characterisation of not
 only the particles and host fluid is required, but also of possible
 confinement effects and associated anchoring conditions. This we also
-address in our updated discussion.
+address in our updated discussion, see the full paragraph highlighted in
+red on pages 7-8.
 
-The entire paragraph reads: ADD WHEN FINALISED
-
-
-
+Authors' note:
 
 * ADDITIONAL CHANGES TO MEET FORMAT REQUIREMENTS
   cf Manuscript checklist
@@ -310,7 +319,6 @@ Results
 - Subheadings of < 60 characters have been added
 
 - References to supplementary items have been adjusted to come into style.
-
 
 Methods
 
