@@ -180,8 +180,8 @@ strong anchoring."
 
 RESPONSE (cont.): One potential visualisation ambiguity is that the
 displayed box sizes are different in each of the figures (cf. particle
-size). An explicit statement has been added to each caption to make
-this more clear to the reader. ADD CAPTIONS?
+size). An explicit statement has been added to each caption in the main
+text to make this more clear to the reader.
 
 COMMENT:
 "Are the electric field induced changes irreversible only in case of
@@ -212,8 +212,7 @@ There are mistakes in references 1 and 2."
 RESPONSE: Reference 1, Wright and Mermin, was correct in
 the original supplement. Reference 2 has been updated to reflect
 the 2nd edition of de Gennes and Prost, which now appears in the
-main text [current reference 34].
-CHECK REFERENCE
+main text [current reference 40].
 
 ------------------------------------------------------------------------
 
