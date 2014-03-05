@@ -1,15 +1,54 @@
 Dear Dr Huang,
 
-many thanks for sending us the referee reports on our manuscript, 
+Many thanks for sending us the referee reports on our manuscript, 
 "Self-assembly of colloid-cholesteric composites: A route to switchable 
 optical materials". We are glad that both referees found our work interesting.
 We are also grateful for the suggestions for improvement, all of which
 we have now implemented in the revised version. We hope the revised
-manuscript can now be accepted for publication in Nature Communication. 
+manuscript can now be accepted for publication in Nature Communications. 
+
 
 With best wishes,
 
 K. Stratford, O. Henrich, J. S. Lintuvuori, M. E. Cates and D. Marenduzzo
+
+
+As per the manuscript checklist, we include the captions for
+Supplementary Movies here:
+
+
+Supplementary Movie 1:
+The final state of the simulation as shown in Fig.~1A. The movie
+rotates the configuration to reveal more clearly its structure.
+
+Supplementary Movie 2:
+The final state of the simulation as shown in Fig.~1B. The movie
+rotates the configuration to reveal more clearly its structure.
+
+
+Supplementary Movie 3:
+The final state of the simulation as shown in Fig.~1C. The movie
+rotates the configuration to reveal more clearly its structure.
+
+Supplementary Movie 4:
+The final state of the simulation as shown in Fig.~1D. The movie
+rotates the configuration to reveal more clearly its structure.
+
+Supplementary Movie 5:
+The configuration after the initial relaxation phase in Fig.~3. The movie
+shows a rotation of the configuration. The distribution of the colloidal
+particles is isotropic, with the particles forming clusters and having a
+tendency to occupy positions at the intersection of the BPIII disclination
+lines.
+
+Supplementary Movie 6:
+Configuration in a homogeneous electric field with strength
+corresponding to ${\cal E}=0.8$. The movie
+shows a rotation of the configuration.
+A hexagonal pattern emerges where the particles form chains
+situated at the vertices of the honeycomb-like structure. \\
+
+
 
 ------------------------------------------------------------------
 
@@ -261,12 +300,12 @@ even suggested a model system that would be a good starting point to study
 experimentally. "
 
 RESPONSE: 
-"We have fully taken this point on board.
+We have fully taken this point on board.
 In a new paragraph in the discussion section, we include six
 new references specifically aimed at recent studies on experimental
 nanoparticle liquid crystal composites. These are currently [34-39].
 The paragraph also discusses the issue of a model system, and suggests
-properties such a system may have to help match experiment and simulation."
+properties such a system may have to help match experiment and simulation.
 
 COMMENT:
 "In a similar vein, it would also be useful to address the
