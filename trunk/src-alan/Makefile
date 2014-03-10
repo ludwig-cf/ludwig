@@ -50,6 +50,7 @@ CC = gcc
 MPICC = mpicc
 OPTS = -D_D3Q19_
 CFLAGS = -Wall -O3
+#CFLAGS = -g
 
 
 INC = -I.
@@ -63,7 +64,7 @@ ARFLAGS = -cru
 #
 ###############################################################################
 
-OBJS=d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o collision.o \
+OBJS=d2q9.o d3q15.o d3q19.o model_r.o propagation.o propagation_ode.o collision.o \
      physics.o \
      advection.o advection_bcs.o advection_rt.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
@@ -122,8 +123,8 @@ verbose:
 code:	svn $(OBJS)
 	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
 serial:
-	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi" "OBJS=$(OBJS) $(MAIN).o"
+	$(MAKE) code "INC=$(INC) -I../mpi_s -I../targetDP" "LIBS=$(LIBS) \
+	-L../mpi_s -lmpi -L../targetDP -ltargetDP_X86" "OBJS=$(OBJS) $(MAIN).o"
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) $(MAIN).o" "CC=$(MPICC)"
 
