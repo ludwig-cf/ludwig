@@ -24,6 +24,7 @@ void yukawa_init(void);
 double soft_sphere_energy(const double);
 double soft_sphere_force(const double);
 double lennard_jones_energy(const double);
+double lennard_jones_force(const double );
 double hard_sphere_energy(const double);
 double yukawa_potential(const double);
 double yukawa_force(const double);

@@ -225,13 +225,36 @@ double soft_sphere_force(const double h) {
 double lennard_jones_energy(const double r) {
 
   double e = 0.0;
-
+  double ecutoff;
+  double sigmar, sigmarct;
+  
   if (lennard_jones.on && r < lennard_jones.cutoff) {
-    double sigmar = pow(lennard_jones.sigma/r, 6.0);
+    sigmar = pow(lennard_jones.sigma/r, 6.0);
+    sigmarct = pow(lennard_jones.sigma/lennard_jones.cutoff, 6.0);
+    
     e = 4.0*lennard_jones.epsilon*(sigmar*sigmar - sigmar);
+    ecutoff = 4.0*lennard_jones.epsilon*(sigmarct*sigmarct - sigmarct);
+    e -= ecutoff;
+    e += 24.0*lennard_jones.epsilon*(2.0*sigmarct*sigmarct - sigmarct)*(r - lennard_jones.cutoff)/r;
   }
 
   return e;
+}
+
+double lennard_jones_force(const double r) {
+  
+  double f = 0.0;
+  double sigmar, sigmarct;
+  
+  if(lennard_jones.on && r < lennard_jones.cutoff) {
+    sigmar = pow(lennard_jones.sigma/r, 6.0);
+    sigmarct = pow(lennard_jones.sigma/lennard_jones.cutoff, 6.0);
+    
+    f = 24.0*lennard_jones.epsilon*(2.0*sigmar*sigmar - sigmar)/r;
+    f -= 24.0*lennard_jones.epsilon*(2.0*sigmarct*sigmarct - sigmarct)/r;
+  }
+  
+  return f;
 }
 
 /*****************************************************************************
