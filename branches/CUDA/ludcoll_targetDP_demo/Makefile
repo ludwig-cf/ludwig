@@ -3,10 +3,11 @@
 #
 
 
-#PROGMODEL=X86
+PROGMODEL=X86
 #PROGMODEL=X86_MIC
-PROGMODEL=CUDA
+#PROGMODEL=CUDA
 
+TARGETDPDIR=../../../trunk/targetDP
 
 MF= Makefile
 
@@ -14,8 +15,8 @@ EXE= ludcoll
 
 SRC= ludcoll.c ludcoll_site.c 
 
-UTILSRC_X86= targetDP_X86.c 
-UTILSRC_CUDA= targetDP_CUDA.c 
+#UTILSRC_X86= $(TARGETDPDIR)/targetDP_X86.c 
+#UTILSRC_CUDA= $(TARGETDPDIR)/targetDP_CUDA.c 
 
 
 
@@ -29,39 +30,41 @@ OBJ=	$(SRC:.c=.o)
 
 ifeq ($(PROGMODEL),X86)
 
- SRC += $(UTILSRC_X86)	
+# SRC += $(UTILSRC_X86)	
 
  CC=	gcc
-CFLAGS_BASE= -O3 -fopenmp #-save-temps
+CFLAGS_BASE= -O3 -fopenmp -I $(TARGETDPDIR) #-save-temps
 #CFLAGS_BASE= -g -fopenmp
  #CC= icc
  #CFLAGS_BASE= -O3 -openmp -save-temps #-mmic -vec-report=2
- LFLAGS=$(CFLAGS_BASE)
+ LFLAGS=$(CFLAGS_BASE) 
  CFLAGS=$(CFLAGS_BASE)
+ LIBS= -L $(TARGETDPDIR) -ltargetDP_X86
 endif
 
 ifeq ($(PROGMODEL),X86_MIC)
 
- SRC += $(UTILSRC_X86)	
+# SRC += $(UTILSRC_X86)	
 
  CC= icc
- CFLAGS_BASE= -O3 -openmp -mmic #-vec-report=2
- LFLAGS=$(CFLAGS_BASE)
+ CFLAGS_BASE= -O3 -openmp -mmic -I $(TARGETDPDIR) #-vec-report=2
+ LFLAGS=$(CFLAGS_BASE) 
  CFLAGS=$(CFLAGS_BASE)
+ LIBS= -L $(TARGETDPDIR) -ltargetDP_X86
 endif
 
 
 ifeq ($(PROGMODEL),CUDA)
 
- SRC += $(UTILSRC_CUDA)	
+# SRC += $(UTILSRC_CUDA)	
 
  CC=	nvcc
- CFLAGS_BASE= -DCUDA -O3 -arch=sm_35  #-save-temps
+ CFLAGS_BASE= -DCUDA -O3 -arch=sm_35 -I $(TARGETDPDIR) #-save-temps
 # CFLAGS_BASE= -DCUDA -g -G -arch=sm_35 #-save-temps
  LFLAGS=$(CFLAGS_BASE)
  CFLAGS= $(CFLAGS_BASE) -dc -x cu
  LIBS= -L/usr/lib/gcc/x86_64-redhat-linux/4.4.4 -lgomp
-
+ LIBS += -L $(TARGETDPDIR) -ltargetDP_CUDA
 endif
 
 
