@@ -48,7 +48,7 @@ LIBRARY = libludwig.a
 
 CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q19_ -DNDEBUG
+OPTS = -D_D3Q19_
 CFLAGS = -Wall -O3
 
 INC = -I.
@@ -65,11 +65,11 @@ ARFLAGS = -cru
 #
 ###############################################################################
 
-PETSC =
+PETSC = 
 ifdef PETSC
 OPTS += -DPETSC
 INC  += -I/Users/ohenrich/petsc-3.4.3/include -I/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/include -I/opt/X11/include -I/opt/local/include -I/usr/local/include
-LIBS += -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -L/opt/X11/lib -lX11 -lpthread -L/usr/local/lib -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/5.0/lib/darwin -lclang_rt.osx -lmpi_cxx -lstdc++ -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/5.0/lib/darwin -lclang_rt.osx -ldl -lmpi -lopen-rte -lopen-pal -lutil -lSystem -lclang_rt.osx -ldl
+LIBS += -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -L/opt/X11/lib -lX11 -lpthread -L/usr/local/lib -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/5.1/lib/darwin -lclang_rt.osx -lmpi_cxx -lc++ -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/5.1/lib/darwin -lclang_rt.osx -ldl -lmpi -lopen-rte -lopen-pal -lutil -lSystem -lclang_rt.osx -ldl
 endif 
 ###############################################################################
 
@@ -107,7 +107,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
      psi_force.o psi_colloid.o \
      nernst_planck.o \
-     nernst_planck_d3q18.o \
+     nernst_planck_d3q19.o \
      psi_petsc.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \

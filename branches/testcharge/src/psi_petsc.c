@@ -154,14 +154,14 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   PetscInt    i,j,k;
   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
   PetscScalar epsilon;
-/*
+///*
   PetscScalar v[19];
   MatStencil  row, col[19];
-*/
-///*
+//*/
+/*
   PetscScalar v[7];
   MatStencil  row, col[7];
-//*/
+*/
   double r3 = 0.333333333333333, r6 = 0.166666666666667;
   assert(obj);
 
