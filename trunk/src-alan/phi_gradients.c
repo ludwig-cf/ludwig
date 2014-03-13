@@ -27,12 +27,21 @@
 static int      level_required_ = 2;
 static int      dyadic_required_ = 0;
 
-static double * phi_delsq_;
-static double * phi_grad_;
-static double * phi_delsq_delsq_;
-static double * phi_grad_delsq_;
-static double * phi_delsq_pp_;
-static double * phi_dpp_;
+
+/* static double * phi_delsq_; */
+/* static double * phi_grad_; */
+/* static double * phi_delsq_delsq_; */
+/* static double * phi_grad_delsq_; */
+/* static double * phi_delsq_pp_; */
+/* static double * phi_dpp_; */
+
+//need to expose these for targetDP
+ double * phi_delsq_;
+ double * phi_grad_;
+ double * phi_delsq_delsq_;
+ double * phi_grad_delsq_;
+ double * phi_delsq_pp_;
+ double * phi_dpp_;
 
 
 /****************************************************************************

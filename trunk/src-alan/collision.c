@@ -376,7 +376,7 @@ void collision_binary_lb() {
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
-  double    u[3];                    /* Velocity */
+  double    uloc[3];                    /* Velocity */
   double    s[3][3];                 /* Stress */
   double    seq[3][3];               /* equilibrium stress */
   double    shat[3][3];              /* random stress */
@@ -405,11 +405,10 @@ void collision_binary_lb() {
 #define NDIST 2 //for binary collision
 
 
-  double f2_[NVEL*NDIST];
+  double floc[NVEL*NDIST];
 
 
   assert (NDIM == 3);
-
   coords_nlocal(N);
   fluid_body_force(force_global);
 
@@ -429,8 +428,21 @@ void collision_binary_lb() {
   int nhalo=coords_nhalo();
   int nSites=(N[X]+2*nhalo)*(N[Y]+2*nhalo)*(N[Z]+2*nhalo);
 
-  double *f_t; // target version of f
+  // target copies of fields 
+  double *f_t; 
+  double *phi_t; 
+  double *delsqphi_t; 
+  double *gradphi_t; 
+  double *force_t; 
+  double *velocity_t; 
+
   targetCalloc((void **) &f_t, nSites*nFields*sizeof(double));
+  targetCalloc((void **) &phi_t, nSites*sizeof(double));
+  targetCalloc((void **) &delsqphi_t, nSites*sizeof(double));
+  targetCalloc((void **) &gradphi_t, nSites*3*sizeof(double));
+  targetCalloc((void **) &force_t, nSites*3*sizeof(double));
+  targetCalloc((void **) &velocity_t, nSites*3*sizeof(double));
+
   checkTargetError("Binary Collision Allocation");
 
 
@@ -452,7 +464,18 @@ void collision_binary_lb() {
   }
 
   extern double* f_;
+  extern double* phi_site;
+  extern double* phi_delsq_;
+  extern double* phi_grad_;
+  extern double* f;
+  extern double* u;
+  
   copyToTargetMasked(f_t,f_,nSites,nFields,siteMask); 
+  copyToTargetMasked(phi_t,phi_site,nSites,1,siteMask); 
+  copyToTargetMasked(delsqphi_t,phi_delsq_,nSites,1,siteMask); 
+  copyToTargetMasked(gradphi_t,phi_grad_,nSites,3,siteMask); 
+  copyToTargetMasked(force_t,f,nSites,3,siteMask); 
+  copyToTargetMasked(velocity_t,u,nSites,3,siteMask); 
   
   // end lattice operation setup
 
@@ -471,19 +494,15 @@ void collision_binary_lb() {
 	/* load data */
 	for(p = 0; p < NVEL; p++) {
 	  for(m = 0; m < NDIST; m++) {
-	    f2_[NVEL*m+p] = 
+	    floc[NVEL*m+p] = 
 	      f_t[nSites*NDIST*p + nSites*m + index];
 	  }
 	}
 	
-	
-	//distribution_index(index, 0, f2_);
-	
-	
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += f2_[p]*ma_[m][p];
+	    mode[m] += floc[p]*ma_[m][p];
 	  }
 	  
 	}
@@ -492,7 +511,7 @@ void collision_binary_lb() {
 	  
       rho = mode[0];
       for (i = 0; i < 3; i++) {
-	u[i] = mode[1 + i];
+	uloc[i] = mode[1 + i];
       }
       s[X][X] = mode[4];
       s[X][Y] = mode[5];
@@ -507,14 +526,18 @@ void collision_binary_lb() {
       /* Compute the local velocity, taking account of any body force */
       
       rrho = 1.0/rho;
-      hydrodynamics_get_force_local(index, force_local);
-      
-      for (i = 0; i < 3; i++) {
-	force[i] = (force_global[i] + force_local[i]);
-	u[i] = rrho*(u[i] + 0.5*force[i]);  
+
+
+      for (i = 0; i < 3; i++) {	
+	force[i] = (force_global[i] + force_t[index*3+i]);
+	uloc[i] = rrho*(uloc[i] + 0.5*force[i]);  
       }
-      hydrodynamics_set_velocity(index, u);
-      
+
+      //      hydrodynamics_set_velocity(index, u);
+      for (i = 0; i < 3; i++) 
+	velocity_t[index*3+i]=uloc[i];
+
+
       /* Compute the thermodynamic component of the stress */
       
       chemical_stress(index, sth);
@@ -527,7 +550,7 @@ void collision_binary_lb() {
       for (i = 0; i < 3; i++) {
 	/* Set equilibrium stress, which includes thermodynamic part */
 	for (j = 0; j < 3; j++) {
-	  seq[i][j] = rho*u[i]*u[j] + sth[i][j];
+	  seq[i][j] = rho*uloc[i]*uloc[j] + sth[i][j];
 	}
 	/* Compute trace */
 	tr_s   += s[i][i];
@@ -550,7 +573,7 @@ void collision_binary_lb() {
 	  
 	  /* Correction from body force (assumes equal relaxation times) */
 	  
-	  s[i][j] += (2.0-rtau_shear)*(u[i]*force[j] + force[i]*u[j]);
+	  s[i][j] += (2.0-rtau_shear)*(uloc[i]*force[j] + force[i]*uloc[j]);
 	  shat[i][j] = 0.0;
 	}
       }
@@ -590,14 +613,10 @@ void collision_binary_lb() {
 	f_t[nSites*NDIST*p + index] = ftmp;
       }
       
-
-      //      distribution_index_set(index, 0, f2_);
-			     
-      //distribution_index(index, 1, f2_);
       
       /* Now, the order parameter distribution */
       
-      phi = phi_get_phi_site(index);
+      phi =  phi_t[index];;
       mu = chemical_potential(index, 0);
       
       jphi[X] = 0.0;
@@ -605,7 +624,7 @@ void collision_binary_lb() {
       jphi[Z] = 0.0;
       for (p = 1; p < NVEL; p++) {
 	for (i = 0; i < 3; i++) {
-	  jphi[i] += f2_[NVEL+p]*cv[p][i];
+	  jphi[i] += floc[NVEL+p]*cv[p][i];
 	}
       }
       
@@ -614,11 +633,11 @@ void collision_binary_lb() {
       
       for (i = 0; i < 3; i++) {
 	for (j = 0; j < 3; j++) {
-	  sphi[i][j] = phi*u[i]*u[j] + mu*d_[i][j];
-	  /* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
+	  sphi[i][j] = phi*uloc[i]*uloc[j] + mu*d_[i][j];
+	  /* sphi[i][j] = phi*uloc[i]*uloc[j] + cs2*mobility*mu*d_[i][j];*/
 	}
-	jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*u[i]);
-	/* jphi[i] = phi*u[i];*/
+	jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*uloc[i]);
+	/* jphi[i] = phi*uloc[i];*/
       }
 	  
       /* Now update the distribution */
@@ -644,8 +663,6 @@ void collision_binary_lb() {
       }
       
     
-      //distribution_index_set(index, 1, f2_);
-      
 	/* Next site */
       }
     }
@@ -655,7 +672,13 @@ void collision_binary_lb() {
   
   //start lattice operation cleanup
   copyFromTargetMasked(f_,f_t,nSites,nFields,siteMask); 
+  copyFromTargetMasked(u,velocity_t,nSites,3,siteMask); 
   targetFree(f_t);
+  targetFree(phi_t);
+  targetFree(delsqphi_t);
+  targetFree(gradphi_t);
+  targetFree(force_t);
+  targetFree(velocity_t);
   checkTargetError("Binary Collision Free");
   //end lattice operation cleanup
 
