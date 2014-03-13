@@ -34,8 +34,14 @@ struct io_info_t * io_info_velocity_;
 
 struct vector {double c[3];};
 
-static struct vector * f;               /* Force on fluid nodes. */
-static struct vector * u;               /* The fluid velocity field. */
+
+/* static struct vector * f;               /\* Force on fluid nodes. *\/ */
+/* static struct vector * u;               /\* The fluid velocity field. *\/ */
+
+//need to expose these for targetDP
+struct vector * f;               /* Force on fluid nodes. */
+struct vector * u;               /* The fluid velocity field. */
+
 static const int       nhalolocal = 1;  /* Actual halo swap extent */
 static MPI_Datatype    mpi_vector_t;    /* For vector halo type */
 static MPI_Datatype    halo_xy_t;
