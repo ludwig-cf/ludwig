@@ -27,6 +27,9 @@
 #include "blue_phase.h"
 #include "symmetric.h"
 #include "lc_droplet.h"
+#include "hydro.h"
+#include "leesedwards.h"
+#include "colloids.h"
 
 static double gamma0_; /* \gamma(\phi) = gamma0_ + delta(1 + \phi)*/
 static double delta_;  /* For above */
@@ -355,7 +358,8 @@ void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
   double gamma;
   double phi;
   int ia, ib;
-  
+  double f;
+
   assert(phi_);
   
   field_scalar(phi_, index, &phi);
@@ -375,13 +379,361 @@ void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
   /* This has an additional -ve sign so the divergence of the stress
    * can be computed with the correct sign (see blue phase). */
 
+  f = lc_droplet_chemical_potential_lc(index);
+  
   for (ia = 0; ia < 3; ia++){
     for(ib = 0; ib < 3; ib++){
-      sth[ia][ib] = -1.0*(-s1[ia][ib] + s2[ia][ib]
+      sth[ia][ib] = -1.0*(-s1[ia][ib] - s2[ia][ib] - f*phi*d_[ia][ib]/*i'm fiddling with -ve here*/
 			  - 2.0*W_*dphi[ia]*dphi[ib]*q[ia][ib]);
     }
   }
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  lc_droplet_bodyforce
+ *
+ *  This computes and stores the force on the fluid via
+ *    f_a = - H_gn \nabla_a Q_gn - phi \nabla_a mu
+ *
+ *  this is appropriate for the LC droplets including symmtric and blue_phase 
+ *  free energies.
+ *
+ *  The gradient of the chemical potential is computed as
+ *    grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
+ *  Lees-Edwards planes are allowed for.
+ *
+ *****************************************************************************/
   
+void lc_droplet_bodyforce(hydro_t * hydro, double dt) {
+
+  double h[3][3];
+  double q[3][3];
+  double dq[3][3][3];
+  double phi;
+    
+  int ic, jc, kc, icm1, icp1;
+  int ia, ib;
+  int index0, indexm1, indexp1;
+  int nhalo;
+  int nlocal[3];
+  int zs, ys;
+  double mum1, mup1;
+  double force[3];
+  
+  assert(phi_);
+  
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  assert(nhalo >= 2);
+
+  /* Memory strides */
+
+  zs = 1;
+  ys = (nlocal[Z] + 2*nhalo)*zs;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = le_site_index(ic, jc, kc);
+	
+	field_scalar(phi_, index0, &phi);
+	field_tensor(q_, index0, q);
+  
+	field_grad_tensor_grad(grad_q_, index0, dq);
+	lc_droplet_molecular_field(index0, h);
+  
+        indexm1 = le_site_index(icm1, jc, kc);
+        indexp1 = le_site_index(icp1, jc, kc);
+
+        mum1 = lc_droplet_chemical_potential(indexm1, 0);
+        mup1 = lc_droplet_chemical_potential(indexp1, 0);
+	
+	/* X */
+
+	force[X] = - phi*0.5*(mup1 - mum1)*dt;
+	
+	for (ia = 0; ia < 3; ia++ ) {
+	  for(ib = 0; ib < 3; ib++ ) {
+	    force[X] -= h[ia][ib]*dq[X][ia][ib]*dt;
+	  }
+	}
+	
+	/* Y */
+
+	mum1 = lc_droplet_chemical_potential(index0 - ys, 0);
+        mup1 = lc_droplet_chemical_potential(index0 + ys, 0);
+
+        force[Y] = -phi*0.5*(mup1 - mum1)*dt;
+	
+	for (ia = 0; ia < 3; ia++ ) {
+	  for(ib = 0; ib < 3; ib++ ) {
+	    force[Y] -= h[ia][ib]*dq[Y][ia][ib]*dt;
+	  }
+	}
+
+	/* Z */
+
+	mum1 = lc_droplet_chemical_potential(index0 - zs, 0);
+        mup1 = lc_droplet_chemical_potential(index0 + zs, 0);
+
+        force[Z] = -phi*0.5*(mup1 - mum1)*dt;
+	
+	for (ia = 0; ia < 3; ia++ ) {
+	  for(ib = 0; ib < 3; ib++ ) {
+	    force[Z] -= h[ia][ib]*dq[Z][ia][ib]*dt;
+	  }
+	}
+
+	/* Store the force on lattice */
+
+	hydro_f_local_add(hydro, index0, force);
+	
+      }
+    }
+  }
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  lc_droplet_chemical_stress_lc
+ *
+ *  Returns the LC component of the LC droplet  
+ *  chemical stress sth[3][3] at lattice site index.
+ *
+ *****************************************************************************/
+
+void lc_droplet_chemical_stress_lc(const int index, double sth[3][3]) {
+  
+  double phi, gamma;
+  
+  assert(phi_);
+  
+  field_scalar(phi_, index, &phi);
+  gamma = lc_droplet_gamma_calculate(phi);
+  blue_phase_set_gamma(gamma);
+
+  /* This will be returned with additional -ve sign */
+  blue_phase_chemical_stress(index, sth);
+  
+  return;
+}
+
+
+void blue_phase_symmetric_stress(const int index, double sth[3][3]){
+
+  double q[3][3], dq[3][3][3];
+  double h[3][3], dsq[3][3];
+  double phi;
+  int ia, ib, ic;
+  double q0;
+  double kappa0;
+  double kappa1;
+  double qh;
+  double gamma;
+  double xi_, zeta_;
+  
+  xi_ = blue_phase_get_xi();
+  zeta_ = blue_phase_get_zeta();
+  
+  /*No redshift at the moment*/
+  /*
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
+  */
+  q0 = blue_phase_q0();
+  kappa0 = blue_phase_kappa0();
+  kappa1 = blue_phase_kappa1();
+  
+  field_scalar(phi_, index, &phi);
+  field_tensor(q_, index, q);
+
+  gamma = lc_droplet_gamma_calculate(phi);
+  blue_phase_set_gamma(gamma);
+  
+  field_grad_tensor_grad(grad_q_, index, dq);
+  field_grad_tensor_delsq(grad_q_, index, dsq);
+
+  blue_phase_compute_h(q, dq, dsq, h);
+  
+  qh = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      qh += q[ia][ib]*h[ia][ib];
+    }
+  }
+
+  /* The term in the isotropic pressure, plus that in qh */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] = 2.0*xi_*(q[ia][ib] + r3_*d_[ia][ib])*qh;
+    }
+  }
+
+  /* Remaining two terms in xi and molecular field */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] +=
+	  -xi_*h[ia][ic]*(q[ib][ic] + r3_*d_[ib][ic])
+	  -xi_*(q[ia][ic] + r3_*d_[ia][ic])*h[ib][ic];
+      }
+    }
+  }
+
+  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] -= zeta_*(q[ia][ib] + r3_*d_[ia][ib]);
+    }
+  }
+
+  /* This is the minus sign. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = sth[ia][ib];
+    }
+  }
+
+  return;
+}
+
+void blue_phase_antisymmetric_stress(const int index, double sth[3][3]) {
+
+  double q[3][3], dq[3][3][3];
+  double h[3][3], dsq[3][3];
+  double phi;
+  int ia, ib, ic;
+  double q0;
+  double kappa0;
+  double kappa1;
+  double gamma;
+  
+  /*No redshift at the moment*/
+  /*
+  q0 = q0_*rredshift_;
+  kappa0 = kappa0_*redshift_*redshift_;
+  kappa1 = kappa1_*redshift_*redshift_;
+  */
+  q0 = blue_phase_q0();
+  kappa0 = blue_phase_kappa0();
+  kappa1 = blue_phase_kappa1();
+  
+  field_scalar(phi_, index, &phi);
+  field_tensor(q_, index, q);
+
+  gamma = lc_droplet_gamma_calculate(phi);
+  blue_phase_set_gamma(gamma);
+  
+  field_grad_tensor_grad(grad_q_, index, dq);
+  field_grad_tensor_delsq(grad_q_, index, dsq);
+
+  blue_phase_compute_h(q, dq, dsq, h);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] = 0.0;
+    }
+  }
+  /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
+   * rewrite it as q_ac h_bc - h_ac q_bc. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
+      }
+    }
+  }
+  
+  /* This is the minus sign. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
+  return;
+}
+
+int lc_droplet_extract_total_force(hydro_t * hydro) {
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  double f[3];
+  double flocal[4] = {0.0, 0.0, 0.0, 0.0};
+  double fsum[4];
+  
+  colloid_t * pc = NULL;
+  MPI_Comm comm;
+
+  coords_nlocal(nlocal);
+  comm = cart_comm();
+
+  /* Compute force without correction. */
+  
+  if (hydro) {
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+	  
+	  index = coords_index(ic, jc, kc);
+	  pc = colloid_at_site_index(index);
+	  
+	  if (pc) continue;
+	  
+	  hydro_f_local(hydro, index, f);
+	  flocal[X] += f[X];
+	  flocal[Y] += f[Y];
+	  flocal[Z] += f[Z];
+	  flocal[3] += 1.0;
+	  
+	}
+      }
+    }
+    
+    /*calculate the total force per fluid node */
+    MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
+    fsum[X] /= fsum[3];
+    fsum[Y] /= fsum[3];
+    fsum[Z] /= fsum[3];
+
+    /* Now actually compute the force on the fluid with the correction
+       f[ia] = f[ia] - fsum[ia] and store */
+
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(ic, jc, kc);
+	  pc = colloid_at_site_index(index);
+	  if (pc) continue;
+	  
+	  /*hydro_f_local(hydro, index, f);*/
+	  f[X] = -fsum[X];
+	  f[Y] = -fsum[Y];
+	  f[Z] = -fsum[Z];
+	  
+	  /* add the correction */
+	  hydro_f_local_add(hydro, index, f);
+	}
+      }
+    }
+  }
+  
+  return 0;
+}
