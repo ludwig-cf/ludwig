@@ -53,7 +53,7 @@ int psi_debye_length(psi_t * obj, double rho_b, double * ld);
 int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
 			  double * sp);
 int psi_electric_field(psi_t * psi, int index, double e[3]);
-int psi_electric_field_nnn(psi_t * psi, int index, double e[3]);
+int psi_electric_field_d3q19(psi_t * psi, int index, double e[3]);
 
 int psi_reltol(psi_t * obj, double * reltol);
 int psi_abstol(psi_t * obj, double * abstol);

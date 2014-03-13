@@ -95,7 +95,7 @@
 #include "psi_force.h"
 #include "psi_colloid.h"
 #include "nernst_planck.h"
-#include "nernst_planck_d3q18.h"
+#include "nernst_planck_d3q19.h"
 #include "psi_petsc.h"
 
 /* Statistics */
@@ -397,7 +397,7 @@ void ludwig_run(const char * inputfile) {
 
   if (ludwig->psi) {
     psi_io_info(ludwig->psi, &iohandler);
-    info("\nWriting psi file at step 0!\n");
+    info("\nWriting initial psi file (time step 0)!\n");
     sprintf(filename,"%spsi-%8.8d", subdirectory, 0);
     io_write_data(iohandler, filename, ludwig->psi);
   }
@@ -480,7 +480,12 @@ void ludwig_run(const char * inputfile) {
 	  TIMER_stop(TIMER_FORCE_CALCULATION);
 	}
 
-        /* Charge dynamics only due to advective fluxes */
+	/* Note: The charges evolve currently by means of a hybrid scheme:   * 
+         * The advective change is calculated with a simple 6-point stencil, *
+         * whereas for the diffusive change a D3Q19 scheme without rest      *
+         * particle is used.                                                 */
+
+        /* Advective fluxes / 6-point stencil */
 	TIMER_start(TIMER_ELECTRO_NPEQ);
 	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
@@ -489,9 +494,9 @@ void ludwig_run(const char * inputfile) {
 	psi_halo_rho(ludwig->psi);
 	TIMER_stop(TIMER_HALO_LATTICE);
       
-	/* Charge dynamics only due to diffusive fluxes */
+	/* Diffusive fluxes / D3Q19 stencil */
 	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver_d3q18(ludwig->psi, ludwig->hydro, ludwig->map, dt);
+	nernst_planck_driver_d3q19(ludwig->psi, ludwig->hydro, ludwig->map, dt);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
 
 	TIMER_start(TIMER_ELECTRO_POISSON);

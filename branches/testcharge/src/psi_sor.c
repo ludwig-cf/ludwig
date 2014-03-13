@@ -95,7 +95,7 @@ int psi_sor_solve(psi_t * obj, f_vare_t fepsilon) {
 int psi_sor_poisson(psi_t * obj) {
 
   int niteration = 1000;       /* Maximum number of iterations */
-  const int ncheck = 1;        /* Check global residual every n iterations */
+  const int ncheck = 5;        /* Check global residual every n iterations */
   
   int ic, jc, kc, index;
   int nhalo;
@@ -159,7 +159,7 @@ int psi_sor_poisson(psi_t * obj) {
 
 	psi_rho_elec(obj, index, &rho_elec);
 
-        /* Stencil of discrete D3Q19 Laplacian */
+        /* D3Q19 stencil of Laplacian */
 
 	dpsi = 0.0;
 
@@ -176,7 +176,7 @@ int psi_sor_poisson(psi_t * obj) {
 
         dpsi -= 4.0 * obj->psi[index]; 
 
-        /* 6-point stencil */
+        /* 6-point stencil of Laplacian */
 /*
 	dpsi = obj->psi[index + xs] + obj->psi[index - xs]
 	     + obj->psi[index + ys] + obj->psi[index - ys]
@@ -210,7 +210,7 @@ int psi_sor_poisson(psi_t * obj) {
 
 	    psi_rho_elec(obj, index, &rho_elec);
 
-	    /* Stencil of discrete D3Q19 Laplacian */
+	    /* D3Q19 stencil of Laplacian */
 
 	    dpsi = 0.0;
 
@@ -227,7 +227,7 @@ int psi_sor_poisson(psi_t * obj) {
 
 	    dpsi -= 4.0 * obj->psi[index]; 
 
-	    /* 6-point stencil */
+	    /* 6-point stencil of Laplacian */
 /*
 	    dpsi = obj->psi[index + xs] + obj->psi[index - xs]
 	         + obj->psi[index + ys] + obj->psi[index - ys]

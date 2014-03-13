@@ -35,6 +35,7 @@ static const double e_unit_default = 1.0;              /* Default unit charge */
 static const double reltol_default = FLT_EPSILON;      /* Solver tolerance */
 static const double abstol_default = 0.01*FLT_EPSILON;
 static const double maxits_default = 10000;            /* Default number of iterations */
+static const double multisteps_default = 1;            /* Default number of iterations */
 
 static int psi_read(FILE * fp, int index, void * self);
 static int psi_write(FILE * fp, int index, void * self);
@@ -114,6 +115,8 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->e = e_unit_default;
   psi->reltol = reltol_default;
   psi->abstol = abstol_default;
+  psi->maxits = maxits_default;
+  psi->multisteps = multisteps_default;
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
   coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
@@ -732,7 +735,7 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
 
 /*****************************************************************************
  *
- *  psi_electric_field_nnn
+ *  psi_electric_field_d3q19
  *
  *  Return the electric field associated with the current potential.
  *
@@ -741,7 +744,7 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
  *
  *****************************************************************************/
 
-int psi_electric_field_nnn(psi_t * psi, int index, double e[3]) {
+int psi_electric_field_d3q19(psi_t * psi, int index, double e[3]) {
 
   int p;
   int coords[3], coords_nbr[3], index_nbr;

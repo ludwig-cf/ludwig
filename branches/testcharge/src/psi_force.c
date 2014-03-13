@@ -216,7 +216,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
 
 	psi_rho_elec(psi, index, &rho_elec);
 //	psi_electric_field(psi, index, elocal);
-	psi_electric_field_nnn(psi, index, elocal);
+	psi_electric_field_d3q19(psi, index, elocal);
 
         f[X] = rho_elec*(e0[X] + elocal[X]);
 	f[Y] = rho_elec*(e0[Y] + elocal[Y]);
@@ -263,7 +263,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
 
         psi_rho_elec(psi, index, &rho_elec);
 //	psi_electric_field(psi, index, elocal);
-	psi_electric_field_nnn(psi, index, elocal);
+	psi_electric_field_d3q19(psi, index, elocal);
 
         f[X] = dt*(rho_elec*(e0[X] + elocal[X]) - fsum[X]);
         f[Y] = dt*(rho_elec*(e0[Y] + elocal[Y]) - fsum[Y]);
