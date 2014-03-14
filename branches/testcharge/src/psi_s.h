@@ -46,6 +46,7 @@ struct psi_s {
   double abstol;            /* Absolute tolerance for Poisson solver */
   int maxits;               /* Maximum number of iterations */
   int multisteps;           /* Number of substeps in charge dynamics */
+  double diffacc;           /* Number of substeps in charge dynamics */
   MPI_Datatype psihalo[3];  /* psi field halo */
   MPI_Datatype rhohalo[3];  /* charge densities halo */
   io_info_t * info;         /* I/O informtation */

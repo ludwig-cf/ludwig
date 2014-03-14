@@ -543,9 +543,10 @@ electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 0.0
 electrokinetics_init_sigma 0.0125
 
-electrokinetics_rel_tol 0.0002
-electrokinetics_abs_tol 0.0000000003
-electrokinetics_maxits  1000
+electrokinetics_rel_tol  0.0002
+electrokinetics_abs_tol  0.0000000003
+electrokinetics_maxits   1000
+electrokinetics_diff_acc 0.1
 
 electrokinetics_multisteps 1
 

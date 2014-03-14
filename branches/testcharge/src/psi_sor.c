@@ -160,7 +160,7 @@ int psi_sor_poisson(psi_t * obj) {
 	psi_rho_elec(obj, index, &rho_elec);
 
         /* D3Q19 stencil of Laplacian */
-
+/*
 	dpsi = 0.0;
 
 	for (p = 1; p < NVEL; p++) {
@@ -175,14 +175,14 @@ int psi_sor_poisson(psi_t * obj) {
 	}
 
         dpsi -= 4.0 * obj->psi[index]; 
-
+*/
         /* 6-point stencil of Laplacian */
-/*
+///*
 	dpsi = obj->psi[index + xs] + obj->psi[index - xs]
 	     + obj->psi[index + ys] + obj->psi[index - ys]
 	     + obj->psi[index + zs] + obj->psi[index - zs]
 	     - 6.0*obj->psi[index];
-*/
+//*/
 
 	rnorm_local[0] += fabs(epsilon*dpsi + rho_elec);
       }
@@ -211,7 +211,7 @@ int psi_sor_poisson(psi_t * obj) {
 	    psi_rho_elec(obj, index, &rho_elec);
 
 	    /* D3Q19 stencil of Laplacian */
-
+/*
 	    dpsi = 0.0;
 
 	    for (p = 1; p < NVEL; p++) {
@@ -226,14 +226,14 @@ int psi_sor_poisson(psi_t * obj) {
 	    }
 
 	    dpsi -= 4.0 * obj->psi[index]; 
-
+*/
 	    /* 6-point stencil of Laplacian */
-/*
+///*
 	    dpsi = obj->psi[index + xs] + obj->psi[index - xs]
 	         + obj->psi[index + ys] + obj->psi[index - ys]
 	         + obj->psi[index + zs] + obj->psi[index - zs]
 	      - 6.0*obj->psi[index];
-*/
+//*/
 
 	    residual = epsilon*dpsi + rho_elec;
 	    obj->psi[index] -= omega*residual / (-6.0*epsilon);

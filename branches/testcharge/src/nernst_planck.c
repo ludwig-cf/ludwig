@@ -75,6 +75,7 @@
 #include "advection_bcs.h"
 #include "free_energy.h"
 #include "physics.h"
+#include "d3q19.h"
 #include "nernst_planck.h"
 
 
@@ -82,6 +83,11 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 				double * fz);
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 				double * fz, double dt);
+
+static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t *map);
+static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, map_t * map, double dt);
+
+static double max_acc; 
 
 /*****************************************************************************
  *
@@ -293,5 +299,209 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
     }
   }
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  nernst_planck_d3q19_driver
+ *
+ *  The hydro object is allowed to be NULL, in which case there is
+ *  no advection.
+ *
+ *  The map object is allowed to be NULL, in which case no boundary
+ *  condition corrections are attempted.
+ *
+ *****************************************************************************/
+
+int nernst_planck_d3q19_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt) {
+
+  int nk;              /* Number of electrolyte species */
+  int nsites;          /* Number of lattice sites */
+  int ia;
+
+  double ** flx = NULL;
+
+  psi_nk(psi, &nk);
+  nsites = coords_nsites();
+
+  /* Allocate fluxes and initialise to zero */
+  flx = (double **) calloc(nsites*nk, sizeof(double));
+  for (ia = 0; ia < nsites*nk; ia++) {
+    flx[ia] = (double *) calloc(NVEL-1, sizeof(double));
+  }
+  if (flx == NULL) fatal("calloc(flx) failed\n");
+
+  /* Add diffusive fluxes */
+  nernst_planck_d3q19_fluxes(psi, flx, map);
+  
+  /* Apply no-flux BC */
+  if (map) advective_bcs_no_flux_d3q19(nk, flx, map);
+
+  /* Update charges */
+  nernst_planck_d3q19_update(psi, flx, map, dt);
+
+  for (ia = 0; ia < nsites*nk; ia++) {
+    free(flx[ia]);
+  }
+  free(flx);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  nernst_planck_d3q19_fluxes
+ *
+ *****************************************************************************/
+
+static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t * map) {
+
+  int ic, jc, kc; 
+  int index0, index1;
+  int status0, status1;
+  int nlocal[3];
+  int n, nk; /* Number of charged species */
+  int c;
+  double delta[18];
+
+  double eunit;
+  double beta;
+  double b0, b1;
+  double mu0, mu1;
+  double rho0, rho1;
+  double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
+  double e0[3];
+
+  assert(psi);
+  assert(flx);
+
+  coords_nlocal(nlocal);
+
+  psi_nk(psi, &nk);
+  psi_unit_charge(psi, &eunit);
+  psi_beta(psi, &beta);
+
+  physics_e0(e0);
+
+  /* Lattice spacing */
+  delta[0] = sqrt(2.0);
+  delta[1] = sqrt(2.0);
+  delta[2] = 1.0;
+  delta[3] = sqrt(2.0);
+  delta[4] = sqrt(2.0);
+  delta[5] = sqrt(2.0);
+  delta[6] = 1.0;
+  delta[7] = sqrt(2.0);
+  delta[8] = 1.0;
+  delta[9] = 1.0;
+  delta[10] = sqrt(2.0);
+  delta[11] = 1.0;
+  delta[12] = sqrt(2.0);
+  delta[13] = sqrt(2.0);
+  delta[14] = sqrt(2.0);
+  delta[15] = 1.0;
+  delta[16] = sqrt(2.0);
+  delta[17] = sqrt(2.0);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(ic, jc, kc);
+        map_status(map, index0, &status0);
+
+        for (c = 1; c < NVEL; c++) {
+
+	  index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	  map_status(map, index1, &status1);
+
+	  for (n = 0; n < nk; n++) {
+
+	    fe_mu_solv(index0, n, &mu_s0);
+	    mu0 = mu_s0 + psi->valency[n]*eunit*psi->psi[index0];
+	    rho0 = psi->rho[nk*index0 + n];
+
+	    fe_mu_solv(index1, n, &mu_s1);
+	    mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index1] - cv[c][X]*e0[X] - cv[c][Y]*e0[Y] - cv[c][Z]*e0[Z]);
+	    b0 = exp(-beta*(mu1 - mu0));
+	    b1 = exp(+beta*(mu1 - mu0));
+	    rho1 = psi->rho[nk*(index1) + n]*b1;
+
+	    flx[(nk*index0 + n)][c - 1] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0) / delta[c - 1];
+
+	  }
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  nernst_planck_d3q19_update
+ *
+ *****************************************************************************/
+
+static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, map_t * map, double dt) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int nhalo;
+  int n, nk;
+  int c;
+  int status;
+  double acc, maxacc=0.0;
+
+  assert(psi);
+  assert(flx);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+
+  psi_nk(psi, &nk);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+        map_status(map, index, &status);
+
+        if (status == MAP_FLUID) {
+	  for (n = 0; n < nk; n++) {
+
+	    acc = 0.0;
+
+	    for (c = 1; c < NVEL; c++) {
+	      psi->rho[nk*index + n] -= flx[nk*index + n][c - 1] * dt;
+	      acc += fabs(flx[nk*index + n][c - 1] * dt);
+	    }
+
+	    acc /= fabs(psi->rho[nk*index + n]);
+	    if (maxacc < acc) maxacc = acc; 
+
+	  }
+	}
+
+      }
+    }
+  }
+
+  nernst_planck_maxacc_set(maxacc);
+
+  return 0;
+}
+
+int nernst_planck_maxacc(double * acc) {
+  * acc = max_acc;
+  return 0;
+}
+
+int nernst_planck_maxacc_set(double acc) {
+  max_acc = acc;
   return 0;
 }

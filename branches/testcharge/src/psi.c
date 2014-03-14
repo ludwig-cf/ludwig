@@ -31,11 +31,12 @@
 #include "psi_s.h"
 #include "model.h"
 
-static const double e_unit_default = 1.0;              /* Default unit charge */
-static const double reltol_default = FLT_EPSILON;      /* Solver tolerance */
-static const double abstol_default = 0.01*FLT_EPSILON;
-static const double maxits_default = 10000;            /* Default number of iterations */
-static const double multisteps_default = 1;            /* Default number of iterations */
+static const double  e_unit_default = 1.0;              /* Default unit charge */
+static const double  reltol_default = FLT_EPSILON;      /* Solver tolerance */
+static const double  abstol_default = 0.01*FLT_EPSILON;
+static const int     maxits_default = 10000;            /* Default number of iterations */
+static const int multisteps_default = 1;                /* Default number of iterations */
+static const double diffacc_default = 1.0e9;            /* Default accuracy in NPE, disables adaptation */
 
 static int psi_read(FILE * fp, int index, void * self);
 static int psi_write(FILE * fp, int index, void * self);
@@ -117,6 +118,7 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->abstol = abstol_default;
   psi->maxits = maxits_default;
   psi->multisteps = multisteps_default;
+  psi->diffacc = diffacc_default;
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
   coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
@@ -867,3 +869,36 @@ int psi_maxits(psi_t * obj, int * maxits) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  psi_diffacc_set
+ *
+ *****************************************************************************/
+
+int psi_diffacc_set(psi_t * obj, double diffacc) {
+
+  assert(obj);
+  assert(diffacc);
+
+  obj->diffacc = diffacc;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_diffacc
+ *
+ *****************************************************************************/
+
+int psi_diffacc(psi_t * obj, double * diffacc) {
+
+  assert(obj);
+  assert(diffacc);
+
+  *diffacc = obj->diffacc;
+
+  return 0;
+}
+

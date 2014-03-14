@@ -64,5 +64,7 @@ int psi_maxits_set(psi_t * obj, int maxits);
 
 int psi_multisteps(psi_t * obj, int * multisteps);
 int psi_multisteps_set(psi_t * obj, int multisteps);
+int psi_diffacc(psi_t * obj, double * diffacc);
+int psi_diffacc_set(psi_t * obj, double diffacc);
 
 #endif

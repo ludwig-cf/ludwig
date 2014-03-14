@@ -352,6 +352,7 @@ void ludwig_run(const char * inputfile) {
   int     is_pm = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
   int     im, multisteps;
+  double  maxacc_local[1], maxacc[1], diffacc;
   static double  dt = 1.0; /* Timestep size for multistepping */ 
 
   io_info_t * iohandler = NULL;
@@ -362,6 +363,7 @@ void ludwig_run(const char * inputfile) {
   assert(ludwig);
 
   pe_init();
+
   RUN_read_input_file(inputfile);
 
   ludwig_rt(ludwig);
@@ -385,22 +387,6 @@ void ludwig_run(const char * inputfile) {
     dt = 1.0/multisteps;
   }
   ludwig_report_momentum(ludwig);
-
-	TIMER_start(TIMER_ELECTRO_POISSON);
-#ifdef PETSC
-	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
-#else
-	psi_sor_solve(ludwig->psi, ludwig->epsilon);
-#endif
-	TIMER_stop(TIMER_ELECTRO_POISSON);
-
-
-  if (ludwig->psi) {
-    psi_io_info(ludwig->psi, &iohandler);
-    info("\nWriting initial psi file (time step 0)!\n");
-    sprintf(filename,"%spsi-%8.8d", subdirectory, 0);
-    io_write_data(iohandler, filename, ludwig->psi);
-  }
 
 /* Main time stepping loop */
 
@@ -450,7 +436,10 @@ void ludwig_run(const char * inputfile) {
 	TIMER_stop(TIMER_HALO_LATTICE);
       }
 
-      /* Time splitting for high electrokinetic diffusions in Nernst Planck */
+      /* Time stepping for high electrokinetic diffusions in Nernst Planck */
+
+      psi_multisteps(ludwig->psi, &multisteps);
+      dt = 1.0/multisteps;
       
       for (im = 0; im < multisteps; im++) {
 
@@ -496,7 +485,7 @@ void ludwig_run(const char * inputfile) {
       
 	/* Diffusive fluxes / D3Q19 stencil */
 	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver_d3q19(ludwig->psi, ludwig->hydro, ludwig->map, dt);
+	nernst_planck_d3q19_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
 
 	TIMER_start(TIMER_ELECTRO_POISSON);
@@ -509,7 +498,30 @@ void ludwig_run(const char * inputfile) {
 
       }
 
-      psi_sor_offset(ludwig->psi);
+      /* Adaptation of multistep number */      
+      psi_diffacc(ludwig->psi, &diffacc);
+      nernst_planck_maxacc(&maxacc_local[0]);
+
+      MPI_Allreduce(maxacc_local, maxacc, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
+
+      /* Compare maximal accuracy with preset value for diffusion */
+      /* Increase no. of multisteps */
+      if (* maxacc >= diffacc) {
+	psi_multisteps(ludwig->psi, &multisteps);
+	multisteps *= 2;
+	psi_multisteps_set(ludwig->psi, multisteps);
+	info("Changing no. of multisteps to %d\n", multisteps);
+      }
+      /* Decrease no. of multisteps */
+      /* The factor 0.1 prevents too frequent changes */
+      if (* maxacc < 0.1*diffacc) {
+	psi_multisteps(ludwig->psi, &multisteps);
+	if (multisteps >= 2) {
+	  multisteps *= 0.5;
+	  psi_multisteps_set(ludwig->psi, multisteps);
+	  info("Changing no. of multisteps to %d\n", multisteps);
+	}
+      }
 
     }
 

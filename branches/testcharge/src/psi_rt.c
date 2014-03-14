@@ -55,7 +55,8 @@ int psi_init_param_rt(psi_t * obj) {
   int io_format_out = IO_FORMAT_DEFAULT;
   char value[BUFSIZ] = "BINARY";
 
-  int multisteps=1;
+  int multisteps;             /* Number of substeps in NPE */
+  double diffacc;             /* Relative accuracy of diffusion in NPE */
 
   psi_nk(obj, &nk);
   assert(nk == 2); /* nk must be two for the time being */
@@ -98,11 +99,17 @@ int psi_init_param_rt(psi_t * obj) {
     info("Diffusivity species %d:     %14.7e\n", n, diffusivity[n]);
   }
 
-  /* Multisteps */
+  /* Multisteps and diffusive accuracy in NPE */
 
   n = RUN_get_int_parameter("electrokinetics_multisteps", &multisteps);
-  psi_multisteps_set(obj, multisteps);
+  if (n == 1) psi_multisteps_set(obj, multisteps);
+  n = RUN_get_double_parameter("electrokinetics_diffacc", &diffacc);
+  if (n == 1) psi_diffacc_set(obj, diffacc);
+
+  psi_multisteps(obj, &multisteps);
   info("Number of multisteps:       %d\n", multisteps);
+  psi_diffacc(obj, &diffacc);
+  info("Diffusive accuracy in NPE: %14.7e\n", diffacc);
 
   /* Tolerances and Iterations */
 

@@ -20,5 +20,8 @@
 #include "map.h"
 
 int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt);
+int nernst_planck_d3q19_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt);
+int nernst_planck_maxacc(double * acc);
+int nernst_planck_maxacc_set(double acc);
 
 #endif
