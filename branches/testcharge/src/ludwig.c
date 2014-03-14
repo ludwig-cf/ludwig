@@ -95,7 +95,6 @@
 #include "psi_force.h"
 #include "psi_colloid.h"
 #include "nernst_planck.h"
-#include "nernst_planck_d3q19.h"
 #include "psi_petsc.h"
 
 /* Statistics */
