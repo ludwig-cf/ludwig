@@ -65,7 +65,7 @@ ARFLAGS = -cru
 #
 ###############################################################################
 
-PETSC = 1 
+PETSC = 
 ifdef PETSC
 OPTS += -DPETSC
 INC  += -I/Users/ohenrich/petsc-3.4.3/include -I/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/include -I/opt/X11/include -I/opt/local/include -I/usr/local/include
