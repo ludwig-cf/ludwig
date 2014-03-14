@@ -65,7 +65,7 @@ ARFLAGS = -cru
 #
 ###############################################################################
 
-PETSC = 
+PETSC = 1 
 ifdef PETSC
 OPTS += -DPETSC
 INC  += -I/Users/ohenrich/petsc-3.4.3/include -I/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/include -I/opt/X11/include -I/opt/local/include -I/usr/local/include
@@ -107,7 +107,6 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
      psi_force.o psi_colloid.o \
      nernst_planck.o \
-     nernst_planck_d3q19.o \
      psi_petsc.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
