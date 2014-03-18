@@ -563,7 +563,7 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
   /*   diffusion and adjust number of multisteps    */
 
   /* Increase no. of multisteps */
-  if (* maxacc > diffacc && diffacc < 1.0) {
+  if (* maxacc > diffacc && diffacc > 0.0) {
     psi_multisteps(psi, &multisteps);
     multisteps *= 2;
     psi_multisteps_set(psi, multisteps);
@@ -572,7 +572,7 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
 
   /* Reduce no. of multisteps */
   /* The factor 0.1 prevents too frequent changes. */
-  if (* maxacc < 0.1*diffacc && diffacc < 1.0) {
+  if (* maxacc < 0.1*diffacc && diffacc > 0.0) {
   
     psi_multisteps(psi, &multisteps);
     psi_nk(psi, &nk);

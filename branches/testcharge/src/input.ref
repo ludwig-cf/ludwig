@@ -529,8 +529,8 @@ qs_dir_format BINARY
 #  electrokinetics_maxits       maximal number of iteration steps
 #  electrokinetics_diffacc      diffusive accuracy in Nernst-Planck equation
 #                               This parameter controls the adaptation of the 
-#                               number of multisteps: 0 < diffacc < 1.
-#                               A value >= 1 deactivates this feature.
+#                               number of multisteps: 0 < diffacc.
+#                               A value = 0 deactivates this feature.
 #  electrokinetics_multisteps   number of fractional LB timesteps in NPE
 #
 #  fe_electrosymmetric has a number of additional coupling parameters
@@ -555,7 +555,7 @@ electrokinetics_init_sigma 0.0125
 electrokinetics_rel_tol  0.0002
 electrokinetics_abs_tol  0.0000000003
 electrokinetics_maxits   1000
-electrokinetics_diff_acc 1
+electrokinetics_diff_acc 0
 
 electrokinetics_multisteps 1
 
