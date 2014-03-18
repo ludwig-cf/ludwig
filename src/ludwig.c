@@ -397,7 +397,7 @@ void ludwig_run(const char * inputfile) {
       io_write(filename, io_info_velocity_);
     }
 
-    if (is_fed_output_step()) {
+    if (phi_nop() == 5 && is_fed_output_step()) {
       info("Writing free energy density output at step %d!\n", step);
       sprintf(filename, "%sfed-%8.8d", subdirectory, step);
       io_write(filename, io_info_fed);
