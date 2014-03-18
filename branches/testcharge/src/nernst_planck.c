@@ -71,6 +71,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_s.h"
+#include "psi.h"
 #include "advection.h"
 #include "advection_bcs.h"
 #include "free_energy.h"
@@ -85,7 +86,8 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 				double * fz, double dt);
 
 static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t *map);
-static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, map_t * map, double dt);
+static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, 
+				map_t * map, double dt);
 
 static double max_acc; 
 
@@ -353,6 +355,16 @@ int nernst_planck_d3q19_driver(psi_t * psi, hydro_t * hydro, map_t * map, double
  *
  *  nernst_planck_d3q19_fluxes
  *
+ *  Compute diffusive fluxes.
+ *
+ *  We assume we can accumulate the diffusive and advective fluxes separately.
+ *  The while the diffusive fluxes use a D3Q19 stencil here, the advective
+ *  fluxes are still based on the Cartesian fluxes fe, fw, fy, and fz.
+ *
+ *  As we compute rho(n+1) = rho(n) - div.flux in the update routine,
+ *  there is an extra minus sign in the fluxes here. This conincides
+ *  with the sign of the advective fluxes, if present.
+ *
  *****************************************************************************/
 
 static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t * map) {
@@ -444,6 +456,8 @@ static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t * map) {
  *
  *  nernst_planck_d3q19_update
  *
+ *  Update the rho_k from the fluxes (D3Q19 stencil). Euler forward step.
+ *
  *****************************************************************************/
 
 static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, map_t * map, double dt) {
@@ -496,12 +510,86 @@ static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, map_t * map, d
   return 0;
 }
 
-int nernst_planck_maxacc(double * acc) {
-  * acc = max_acc;
-  return 0;
-}
+/*****************************************************************************
+ *
+ *  nernst_planck_maxacc_set
+ *
+ *  Setter function for the local maximal accuracy in the Nernst-Planck 
+ *  equation. This is defined as the absolut value of the ratio of the change 
+ *  during one fractional LB timestep (multistep dt) and the charge 
+ *  density itself.
+ *  
+ *****************************************************************************/
 
 int nernst_planck_maxacc_set(double acc) {
   max_acc = acc;
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  nernst_planck_maxacc
+ *
+ *  Getter function for the local maximal accuracy 
+ *  in the Nernst-Planck equation.
+ *
+ *****************************************************************************/
+
+int nernst_planck_maxacc(double * acc) {
+  * acc = max_acc;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  nernst_planck_adjust_multistep
+ *
+ *  
+ *****************************************************************************/
+
+int nernst_planck_adjust_multistep(psi_t * psi) {
+
+  double maxacc_local[1], maxacc[1], diffacc; /* actual and preset value of diffusive accuracy */
+  double diff, diffmax=0.0;                   /* diffusivity of species and maximal value      */ 
+  int n, nk, multisteps;
+
+  psi_diffacc(psi, &diffacc);
+
+  /* Take local maximum and reduce for global maximum */
+  nernst_planck_maxacc(&maxacc_local[0]);
+  MPI_Allreduce(maxacc_local, maxacc, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
+
+  /* Compare maximal accuracy with preset value for */ 
+  /*   diffusion and adjust number of multisteps    */
+
+  /* Increase no. of multisteps */
+  if (* maxacc > diffacc && diffacc < 1.0) {
+    psi_multisteps(psi, &multisteps);
+    multisteps *= 2;
+    psi_multisteps_set(psi, multisteps);
+    info("\nMaxacc > diffacc: changing no. of multisteps to %d\n", multisteps);
+  }    
+
+  /* Reduce no. of multisteps */
+  /* The factor 0.1 prevents too frequent changes. */
+  if (* maxacc < 0.1*diffacc && diffacc < 1.0) {
+  
+    psi_multisteps(psi, &multisteps);
+    psi_nk(psi, &nk);
+
+    for (n = 0; n < nk; n++) {
+	psi_diffusivity(psi, n, &diff);
+	if (diff > diffmax) diffmax = diff;
+    }
+    
+    /* Only reduce if sanity criteria fulfilled */  
+    if (multisteps > 1 && diffmax/multisteps < 0.044) { 
+      multisteps *= 0.5; 
+      psi_multisteps_set(psi, multisteps);
+      info("\nMaxacc << diffacc: changing no. of multisteps to %d\n", multisteps);
+    }    
+
+  }    
+
+  return 0;
+} 

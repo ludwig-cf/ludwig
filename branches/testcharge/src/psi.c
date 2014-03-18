@@ -34,9 +34,9 @@
 static const double  e_unit_default = 1.0;              /* Default unit charge */
 static const double  reltol_default = FLT_EPSILON;      /* Solver tolerance */
 static const double  abstol_default = 0.01*FLT_EPSILON;
-static const int     maxits_default = 10000;            /* Default number of iterations */
-static const int multisteps_default = 1;                /* Default number of iterations */
-static const double diffacc_default = 1.0e9;            /* Default accuracy in NPE, disables adaptation */
+static const int     maxits_default = 10000;            /* Default number of iterations in Poisson solver */
+static const int multisteps_default = 1;                /* Default number of multisteps in NPE */
+static const double diffacc_default = 1;                /* Default diffusive accuracy in NPE for constant no. of multisteps */ 
 
 static int psi_read(FILE * fp, int index, void * self);
 static int psi_write(FILE * fp, int index, void * self);

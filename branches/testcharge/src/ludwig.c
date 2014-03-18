@@ -351,7 +351,6 @@ void ludwig_run(const char * inputfile) {
   int     is_pm = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
   int     im, multisteps;
-  double  maxacc_local[1], maxacc[1], diffacc;
   static double  dt = 1.0; /* Timestep size for multistepping */ 
 
   io_info_t * iohandler = NULL;
@@ -497,30 +496,7 @@ void ludwig_run(const char * inputfile) {
 
       }
 
-      /* Adaptation of multistep number */      
-      psi_diffacc(ludwig->psi, &diffacc);
-      nernst_planck_maxacc(&maxacc_local[0]);
-
-      MPI_Allreduce(maxacc_local, maxacc, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
-
-      /* Compare maximal accuracy with preset value for diffusion */
-      /* Increase no. of multisteps */
-      if (* maxacc >= diffacc) {
-	psi_multisteps(ludwig->psi, &multisteps);
-	multisteps *= 2;
-	psi_multisteps_set(ludwig->psi, multisteps);
-	info("Changing no. of multisteps to %d\n", multisteps);
-      }
-      /* Decrease no. of multisteps */
-      /* The factor 0.1 prevents too frequent changes */
-      if (* maxacc < 0.1*diffacc) {
-	psi_multisteps(ludwig->psi, &multisteps);
-	if (multisteps >= 2) {
-	  multisteps *= 0.5;
-	  psi_multisteps_set(ludwig->psi, multisteps);
-	  info("Changing no. of multisteps to %d\n", multisteps);
-	}
-      }
+      nernst_planck_adjust_multistep(ludwig->psi);
 
     }
 
