@@ -1,0 +1,68 @@
+
+We thank reviewer 1 for making the ambiguities in the manuscript
+absolutely clear.
+
+
+Reviewers' comments:
+
+Reviewer #1 (Remarks to the Author):
+
+Point 1:
+
+We stress that the appropriate Fournier and Galatola formulation
+for planar generate anchoring *is* used [existing reference 44]
+where necessary, and this is in addition to the normal anchring
+described by Eq. 7.
+
+We have updated two sections of text to make this absolutely
+explicit and to avoid confusion.
+
+a. On page 10 [highlighted in blue] we have rewritten the text
+accompanying Eq. 7:
+
+"In the case of normal anchoring, the surface free energy density
+(per unit area) is
+$f_s = ...$,
+where $Q^0_{\alpha\beta}$ is the preferred order parameter tensor
+at the solid surface, and $W$ is a constant determining the strength
+of anchoring. In the case of planar anchoring a slightly
+more complicated expression is required to allow for degeneracy
+(see, e.g., [Fournier and Galatola]). The determination of ..."
+
+b. On the first page of the supplement, we replace
+
+"For both normal and planar anchoring at the walls, the value of W is the
+same as that used for the strongly anchoring particles." 
+
+by
+
+"For both normal and planar anchoring at the walls,
+the strength of anchoring is adjusted to correspond to that used for
+the strongly anchoring particles."
+
+
+Point 2:
+We have added the statements requested with some textual changes
+to aid clarity and continuity in the main text.
+
+
+A statement on annealing has been added on page 5 (highlighted in red):
+
+"It may be possible to anneal the structures obtained via the quech route,
+although we have not attempted this in simulation. The results presented
+suggest that even when starting with colloidal particles randomly dispersed
+in an ordered blue phase, the particles are able to distort the structure
+(Fig.~1A-B). This suggests that it would be difficult to identify a quench
+protocol which would lead to less, rather than more, disorder."
+
+A statement on electric field is added on page 7 (highlighted in red):
+
+"We note that for the fluid parameters used here, the field induced
+changes are irreversible with the weakly anchoring colloid particles.
+The mesophase without colloid particles undergoes
+a reversible ordering transition~\cite{bp3}; the reversibility is
+retained in the presence of particles only if their anchoring is
+very weak."
+
+
+
