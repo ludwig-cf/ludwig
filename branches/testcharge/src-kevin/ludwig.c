@@ -80,11 +80,10 @@
 #include "blue_phase_beris_edwards.h"
 
 /* Colloids */
-#include "colloids.h"
+#include "colloids_rt.h"
 #include "colloid_sums.h"
 #include "colloids_halo.h"
 #include "colloids_Q_tensor.h"
-#include "colloid_io.h"
 #include "build.h"
 #include "subgrid.h"
 
@@ -132,6 +131,7 @@ struct ludwig_s {
   colloids_info_t * collinfo;  /* Colloid information */
   colloid_io_t * cio;          /* Colloid I/O harness */
   ewald_t * ewald;             /* Ewald sum for dipoles */
+  interact_t * interact;       /* Colloid-colloid interaction handler */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -232,7 +232,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   wall_init(ludwig->map);
 
-  colloids_init_rt(&ludwig->collinfo, &ludwig->cio, ludwig->map);
+  colloids_init_rt(&ludwig->collinfo, &ludwig->cio, &ludwig->interact,
+		   ludwig->map);
   colloids_init_ewald_rt(ludwig->collinfo, &ludwig->ewald);
   colloids_q_cinfo_set(ludwig->collinfo);
 
@@ -1362,15 +1363,16 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
-  colloids_update_position(ludwig->collinfo);
+  colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
+  colloids_info_update_lists(ludwig->collinfo); /* TODO CHECKME */
   colloids_halo_state(ludwig->collinfo);
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
   if (is_subgrid) {
-    colloids_update_forces(ludwig->collinfo, ludwig->map, ludwig->psi,
-			   ludwig->ewald);
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
     subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);    
   }
   else {
@@ -1401,8 +1403,12 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     }
     TIMER_stop(TIMER_FREE1);
 
-    colloids_update_forces(ludwig->collinfo, ludwig->map, ludwig->psi,
-			   ludwig->ewald);
+    TIMER_start(TIMER_FORCES);
+
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+
+    TIMER_stop(TIMER_FORCES);
   }
 
   return 0;

@@ -87,6 +87,7 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      colloid_io.o colloids_init.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o \
+     colloids_rt.o lubrication.o \
      coords.o coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      ewald.o field.o field_grad.o \
@@ -98,7 +99,8 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      hydro.o hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o \
      lc_droplet.o lc_droplet_rt.o model_le.o map.o \
-     noise.o potential.o \
+     noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
+     angle_cosine.o bond_fene.o \
      phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_force_stress.o \
      phi_lb_coupler.o phi_stats.o \

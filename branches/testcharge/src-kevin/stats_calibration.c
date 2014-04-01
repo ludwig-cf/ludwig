@@ -23,8 +23,6 @@
 #include "util.h"
 #include "coords.h"
 #include "physics.h"
-#include "colloids.h"
-#include "interaction.h"
 #include "stats_calibration.h"
 
 #define TARGET_REYNOLDS_NUMBER 0.05
@@ -97,7 +95,8 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
     length = 1.0*L(Z);
     physics_rho0(&rho);
     physics_eta_shear(&eta);
-    colloids_forces_ahmax(cinfo, &a);
+
+    colloids_info_ahmax(cinfo, &a);
 
     calib_.a0 = a;
     calib_.utarget = eta*TARGET_REYNOLDS_NUMBER/(a*rho);

@@ -48,6 +48,13 @@ struct colloid {
   colloid_link_t * lnk; /* Pointer to the list of links defining surface */
   colloid_t * next;     /* colloid is a linked list */
 
+  colloid_t * nextall;  /* List of all local colloids (incl. halo) */
+  colloid_t * nextlocal;/* List of local colloids (excl. halo) */
+
+  /* Bonded neighbours cf. colloid.h */
+
+  colloid_t * bonded[NBOND_MAX];
+
 };
 
 typedef struct colloids_info_s colloids_info_t;
@@ -67,6 +74,8 @@ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t ** pc);
 int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc);
 int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll);
 int colloids_info_cell_list_clean(colloids_info_t * cinfo);
+int colloids_info_all_head(colloids_info_t * cinfo, colloid_t ** pc);
+int colloids_info_local_head(colloids_info_t * cinfo, colloid_t ** pc);
 int colloids_info_cell_list_head(colloids_info_t * info,
 				 int ic, int jc, int kc, colloid_t ** pc);
 int colloids_info_cell_coords(colloids_info_t * cinfo, const double r[3],
@@ -82,6 +91,14 @@ int colloids_info_lcell(colloids_info_t * cinfo, double lcell[3]);
 int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int jc, int kc,
 			     int * ncount);
 int colloids_info_map_update(colloids_info_t * cinfo);
+int colloids_info_position_update(colloids_info_t * cinfo);
 int colloids_info_map_set(colloids_info_t * cinfo, int index,
 			      colloid_t * pc);
+int colloids_info_update_lists(colloids_info_t * cinfo);
+int colloids_info_list_all_build(colloids_info_t * cinfo);
+int colloids_info_list_local_build(colloids_info_t * cinfo);
+int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic, int * lim);
+int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
+int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
+
 #endif

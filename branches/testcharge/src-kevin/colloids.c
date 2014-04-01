@@ -25,6 +25,7 @@
 #include "colloids.h"
 
 #define RHO_DEFAULT 1.0
+#define DRMAX_DEFAULT 0.8
 
 struct colloids_info_s {
   int nhalo;                  /* Halo extent in cell list */
@@ -33,11 +34,15 @@ struct colloids_info_s {
   int ncell[3];               /* Number of cells (excluding  2*halo) */
   int str[3];                 /* Strides for cell list */
   int nsites;                 /* Total number of map sites */
+  int ncells;                 /* Total number of cells */
   double rho0;                /* Mean density (usually matches fluid) */
+  double drmax;               /* Maximum movement per time step */
 
   colloid_t ** clist;         /* Cell list pointers */
   colloid_t ** map_old;       /* Map (previous time step) pointers */
   colloid_t ** map_new;       /* Map (current time step) pointers */
+  colloid_t * headall;        /* All colloid list (incl. halo) head */
+  colloid_t * headlocal;      /* Local list (excl. halo) head */
 };
 
 int colloid_create(colloids_info_t * cinfo, colloid_t ** pc);
@@ -75,7 +80,9 @@ int colloids_info_create(int ncell[3], colloids_info_t ** pinfo) {
   obj->clist = calloc(nlist, sizeof(colloid_t *));
   if (obj->clist == NULL) fatal("calloc(nlist, colloid_t *) failed\n");
 
+  obj->ncells = nlist;
   obj->rho0 = RHO_DEFAULT;
+  obj->drmax = DRMAX_DEFAULT;
 
   *pinfo = obj;
 
@@ -615,6 +622,7 @@ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
     }
   }
 
+  colloids_info_update_lists(cinfo);
   return 0;
 }
 
@@ -829,6 +837,305 @@ int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int jc, int kc,
   *ncount = 0;
   colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
   for (; pc; pc = pc->next) *ncount += 1;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_local_head
+ *
+ *****************************************************************************/
+
+int colloids_info_local_head(colloids_info_t * cinfo, colloid_t ** pc) {
+
+  assert(cinfo);
+  assert(pc);
+
+  *pc = cinfo->headlocal;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_all_head
+ *
+ *****************************************************************************/
+
+int colloids_info_all_head(colloids_info_t * cinfo, colloid_t ** pc) {
+
+  assert(cinfo);
+  assert(pc);
+
+  *pc = cinfo->headall;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_position_update
+ *
+ *  Update the colloid positions (all cells).
+ *
+ *  Moving a particle more than 1 lattice unit in any direction can
+ *  cause it to leave the cell list entirely, which ends in
+ *  catastrophe. We therefore have a check here against a maximum
+ *  velocity (effectively drmax) and stop if the check fails.
+ *
+ *****************************************************************************/
+
+int colloids_info_position_update(colloids_info_t * cinfo) {
+
+  int ia;
+  int ic, jc, kc;
+  int ncell[3];
+  int nhalo;
+  int ifail;
+
+  colloid_t * coll;
+
+  assert(cinfo);
+
+  colloids_info_ncell(cinfo, ncell);
+  colloids_info_nhalo(cinfo, &nhalo);
+
+  for (ic = 1 - nhalo; ic <= ncell[X] + nhalo; ic++) {
+    for (jc = 1 - nhalo; jc <= ncell[Y] + nhalo; jc++) {
+      for (kc = 1 - nhalo; kc <= ncell[Z] + nhalo; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &coll);
+
+	while (coll) {
+
+	  if (coll->s.isfixedr == 0) {
+	    ifail = 0;
+	    for (ia = 0; ia < 3; ia++) {
+	      if (coll->s.dr[ia] > cinfo->drmax) ifail = 1;
+	      coll->s.r[ia] += coll->s.dr[ia];
+	      /* This should trap NaNs */
+	      if (coll->s.dr[ia] != coll->s.dr[ia]) ifail = 1;
+	    }
+
+	    if (ifail == 1) {
+	      verbose("Colloid velocity exceeded max %14.7e\n", cinfo->drmax);
+	      colloid_state_write_ascii(coll->s, stdout);
+	      fatal("Stopping\n");
+	    }
+	  }
+
+	  coll = coll->next;
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_update_lists
+ *
+ *****************************************************************************/
+
+int colloids_info_update_lists(colloids_info_t * cinfo) {
+
+  colloids_info_list_local_build(cinfo);
+  colloids_info_list_all_build(cinfo);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_list_all_build
+ *
+ *  Update the linear 'all' list from the current cell list.
+ *
+ *****************************************************************************/
+
+int colloids_info_list_all_build(colloids_info_t * cinfo) {
+
+  int n;
+  colloid_t * pc;
+  colloid_t * lastcell = NULL;  /* Last colloid, last cell */
+
+  assert(cinfo);
+
+  /* Nullify the entire list and locate the first colloid. */
+
+  cinfo->headall = NULL;
+
+  for (n = 0; n < cinfo->ncells; n++) {
+    for (pc = cinfo->clist[n]; pc; pc = pc->next) {
+      if (cinfo->headall == NULL) cinfo->headall = pc;
+      pc->nextall = NULL;
+    }
+  }
+
+  /* Now link up the all the individual cell lists via nextall */
+
+  for (n = 0; n < cinfo->ncells; n++) {
+
+    for (pc = cinfo->clist[n]; pc; pc = pc->next) {
+      if (lastcell) {
+	lastcell->nextall = pc;
+	lastcell = NULL;
+      }
+
+      if (pc->next) {
+	pc->nextall = pc->next;
+      }
+      else {
+	lastcell = pc;
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_list_local_build
+ *
+ *  Update the linear 'local' list from the current cell list.
+ *
+ *****************************************************************************/
+
+int colloids_info_list_local_build(colloids_info_t * cinfo) {
+
+  int ic, jc, kc;
+  colloid_t * pc;
+  colloid_t * lastcell = NULL;
+
+  assert(cinfo);
+
+  /* Find first local colloid; nullify any existing list */
+
+  cinfo->headlocal = NULL;
+
+  for (ic = 1; ic <= cinfo->ncell[X]; ic++) {
+    for (jc = 1; jc <= cinfo->ncell[Y]; jc++) {
+      for (kc = 1; kc <= cinfo->ncell[Z]; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+
+	for (; pc; pc = pc->next) {
+	  if (cinfo->headlocal == NULL) cinfo->headlocal = pc;
+	  pc->nextlocal = NULL;
+	}
+      }
+    }
+  }
+
+  /* Now link up the list via nextlocal */
+
+  lastcell = NULL;
+
+  for (ic = 1; ic <= cinfo->ncell[X]; ic++) {
+    for (jc = 1; jc <= cinfo->ncell[Y]; jc++) {
+      for (kc = 1; kc <= cinfo->ncell[Z]; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+
+	for (; pc; pc = pc->next) {
+	  if (lastcell) {
+	    lastcell->nextlocal = pc;
+	    lastcell = NULL;
+	  }
+
+	  if (pc->next) {
+	    pc->nextlocal = pc->next;
+	  }
+	  else {
+	    lastcell = pc;
+	  }
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_climits
+ *
+ *****************************************************************************/
+
+int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic,
+			  int * lim) {
+
+  int irange, halo;
+
+  assert(cinfo);
+  assert(ia == X || ia == Y || ia == Z);
+
+  irange = 1 + (cinfo->ncell[ia] == 2);
+  halo = (cart_size(ia) > 1 || irange == 1);
+
+  lim[0] = imax(1 - halo, ic - irange);
+  lim[1] = imin(ic + irange, cinfo->ncell[ia] + halo);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_a0max
+ *
+ *  Find the largest input radius a0 currently present and return.
+ *
+ *****************************************************************************/
+
+int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) {
+
+  double a0_local = 0.0;
+  colloid_t * pc = NULL;
+
+  assert(cinfo);
+  assert(a0max);
+
+  /* Make sure lists are up-to-date */
+  colloids_info_update_lists(cinfo);
+
+  colloids_info_local_head(cinfo, &pc);
+  for (; pc; pc = pc->next) a0_local = dmax(a0_local, pc->s.a0);
+
+  MPI_Allreduce(&a0_local, a0max, 1, MPI_DOUBLE, MPI_MAX, cart_comm());
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_ahmax
+ *
+ *  Find the largest ah present and return.
+ *
+ *****************************************************************************/
+
+int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) {
+
+  double ahmax_local;
+  colloid_t * pc = NULL;
+
+  assert(cinfo);
+
+  ahmax_local = 0.0;
+
+  /* Make sure lists are up-to-date */
+  colloids_info_update_lists(cinfo);
+
+  colloids_info_local_head(cinfo, &pc);
+  for (; pc; pc = pc->next) ahmax_local = dmax(ahmax_local, pc->s.ah);
+
+  MPI_Allreduce(&ahmax_local, ahmax, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
 
   return 0;
 }
