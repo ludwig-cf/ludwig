@@ -23,7 +23,7 @@ int colloids_halo_create(colloids_info_t * cinfo, colloid_halo_t ** phalo);
 void colloids_halo_free(colloid_halo_t * halo);
 int colloids_halo_state(colloids_info_t * cinfo);
 int colloids_halo_dim(colloid_halo_t * halo, int dim);
-int colloids_halo_send_count(colloid_halo_t * halo, int dim);
+int colloids_halo_send_count(colloid_halo_t * halo, int dim, int * nreturn);
 
 #endif
  

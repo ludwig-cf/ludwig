@@ -140,7 +140,7 @@ int colloids_halo_dim(colloid_halo_t * halo, int dim) {
   /* Work out how many are currently in the 'send' region, and
    * communicate the information to work out recv count */
 
-  colloids_halo_send_count(halo, dim);
+  colloids_halo_send_count(halo, dim, NULL);
   colloids_halo_number(halo, dim);
 
   /* Allocate the send and recv buffer, and post recvs */
@@ -176,9 +176,12 @@ int colloids_halo_dim(colloid_halo_t * halo, int dim) {
  *
  *  colloids_halo_send_count
  *
+ *  The array nreturn is available to return the count to an outside
+ *  concern. It may be NULL.
+ *
  *****************************************************************************/
 
-int colloids_halo_send_count(colloid_halo_t * halo, int dim) {
+int colloids_halo_send_count(colloid_halo_t * halo, int dim, int * nreturn) {
 
   int ic, jc, kc;
   int nback, nforw;
@@ -223,6 +226,11 @@ int colloids_halo_send_count(colloid_halo_t * halo, int dim) {
 	halo->nsend[FORWARD]  += nforw;
       }
     }
+  }
+
+  if (nreturn) {
+    nreturn[BACKWARD] = halo->nsend[BACKWARD];
+    nreturn[FORWARD]  = halo->nsend[FORWARD];
   }
 
   return 0;
