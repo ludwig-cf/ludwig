@@ -14,7 +14,9 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
+#include <float.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -25,12 +27,13 @@
 
 static int dim_; /* Current direction */
 
-static void test_colloid_sums_1d(void);
-static void test_colloid_sums_reference_set(colloid_t * cref, int seed);
-static void test_colloid_sums_copy(colloid_t ref, colloid_t * pc);
-static void test_colloid_sums_assert(colloid_t c1, colloid_t * c2);
-static void test_colloid_sums_edge(const int ncell[3], const double r0[3]);
-static void test_colloid_sums_move(void);
+static int test_colloid_sums_1d(void);
+static int test_colloid_sums_reference_set(colloid_t * cref, int seed);
+static int test_colloid_sums_copy(colloid_t ref, colloid_t * pc);
+static int test_colloid_sums_assert(colloid_t c1, colloid_t * c2);
+static int test_colloid_sums_edge(int ncell[3], const double r0[3]);
+static int test_colloid_sums_move(void);
+static int test_colloid_sums_conservation(void);
 
 /*****************************************************************************
  *
@@ -46,6 +49,7 @@ int main(int argc, char ** argv) {
 
   test_colloid_sums_1d();
   test_colloid_sums_move();
+  test_colloid_sums_conservation();
 
   info("Tests complete\n");
   pe_finalise();
@@ -63,7 +67,7 @@ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-static void test_colloid_sums_1d(void) {
+static int test_colloid_sums_1d(void) {
 
   int ntotal[3] = {1024, 512, 256};
   int nlocal[3];
@@ -112,7 +116,7 @@ static void test_colloid_sums_1d(void) {
 
   coords_finish();
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -123,51 +127,56 @@ static void test_colloid_sums_1d(void) {
  *
  *****************************************************************************/
 
-static void test_colloid_sums_edge(const int ncell[3], const double r0[3]) {
+static int test_colloid_sums_edge(int ncell[3], const double r0[3]) {
 
   int index;
   int ic, jc, kc;
 
-  colloid_t * pc;
+  colloid_t * pc = NULL;
   colloid_t   cref1;   /* All ranks get the same reference colloids */
   colloid_t   cref2;
+  colloid_sum_t * halosum = NULL;
+  colloids_info_t * cinfo = NULL;
 
   test_colloid_sums_reference_set(&cref1, 1);
   test_colloid_sums_reference_set(&cref2, 2);
-  colloids_cell_ncell_set(ncell);
 
-  colloids_init();
+  colloids_info_create(ncell, &cinfo);
+  assert(cinfo);
+  colloid_sums_create(cinfo, &halosum);
+  assert(halosum);
 
   /* This must work in parallel to initialise only a single particle
    * which only gets swapped in the x-direction. */
 
   index = 1;
-  pc = colloid_add_local(index, r0);
+  colloids_info_add_local(cinfo, index, r0, &pc);
   if (pc) {
     test_colloid_sums_copy(cref1, pc);
   }
 
   index = 2;
-  pc = colloid_add_local(index, r0);
+  colloids_info_add_local(cinfo, index, r0, &pc);
   if (pc) {
     test_colloid_sums_copy(cref2, pc);
   }
 
-  colloids_halo_state();
-  colloid_sums_dim(X, COLLOID_SUM_STRUCTURE);
-  colloid_sums_dim(X, COLLOID_SUM_DYNAMICS);
-  colloid_sums_dim(X, COLLOID_SUM_ACTIVE);
+  MPI_Barrier(MPI_COMM_WORLD);
+  colloids_halo_state(cinfo);
+  colloid_sums_1d(halosum, X, COLLOID_SUM_STRUCTURE);
+  colloid_sums_1d(halosum, X, COLLOID_SUM_DYNAMICS);
+  colloid_sums_1d(halosum, X, COLLOID_SUM_ACTIVE);
 
   if (dim_ == Y || dim_ == Z) {
-    colloid_sums_dim(Y, COLLOID_SUM_STRUCTURE);
-    colloid_sums_dim(Y, COLLOID_SUM_DYNAMICS);
-    colloid_sums_dim(Y, COLLOID_SUM_ACTIVE);
+    colloid_sums_1d(halosum, Y, COLLOID_SUM_STRUCTURE);
+    colloid_sums_1d(halosum, Y, COLLOID_SUM_DYNAMICS);
+    colloid_sums_1d(halosum, Y, COLLOID_SUM_ACTIVE);
   }
 
   if (dim_ == Z) {
-    colloid_sums_dim(Z, COLLOID_SUM_STRUCTURE);
-    colloid_sums_dim(Z, COLLOID_SUM_DYNAMICS);
-    colloid_sums_dim(Z, COLLOID_SUM_ACTIVE);
+    colloid_sums_1d(halosum, Z, COLLOID_SUM_STRUCTURE);
+    colloid_sums_1d(halosum, Z, COLLOID_SUM_DYNAMICS);
+    colloid_sums_1d(halosum, Z, COLLOID_SUM_ACTIVE);
   }
 
   /* Everywhere check colloid index = 1 has the correct sum */
@@ -176,7 +185,7 @@ static void test_colloid_sums_edge(const int ncell[3], const double r0[3]) {
     for (jc = 0; jc <= ncell[Y] + 1; jc++) {
       for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-	pc = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	if (pc) {
 	  /* Check the totals */
@@ -190,9 +199,10 @@ static void test_colloid_sums_edge(const int ncell[3], const double r0[3]) {
 
   /* Finish */
 
-  colloids_finish();
+  colloid_sums_free(halosum);
+  colloids_info_free(cinfo);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -201,14 +211,16 @@ static void test_colloid_sums_edge(const int ncell[3], const double r0[3]) {
  *
  *****************************************************************************/
 
-static void test_colloid_sums_reference_set(colloid_t * pc, int seed) {
+static int test_colloid_sums_reference_set(colloid_t * pc, int seed) {
 
   int ia;
   int ivalue;
 
+  assert(pc);
+
   ivalue = seed;
 
-  /* STURCTURE */
+  /* STRUCTURE MESSAGE TYPE */
   /* Note, we haven't included s.deltaphi as this is part of the
    * state, which is involved in the halo swap, as well as the sum. */
 
@@ -242,7 +254,7 @@ static void test_colloid_sums_reference_set(colloid_t * pc, int seed) {
     pc->tc0[ia] = 1.0*ivalue++;
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -253,9 +265,11 @@ static void test_colloid_sums_reference_set(colloid_t * pc, int seed) {
  *
  *****************************************************************************/
 
-static void test_colloid_sums_copy(colloid_t ref, colloid_t * pc) {
+static int test_colloid_sums_copy(colloid_t ref, colloid_t * pc) {
 
   int ia;
+
+  assert(pc);
 
   pc->sumw = ref.sumw;
   pc->sump = ref.sump;
@@ -275,7 +289,7 @@ static void test_colloid_sums_copy(colloid_t ref, colloid_t * pc) {
     pc->zeta[ia] = ref.zeta[ia];
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -286,9 +300,11 @@ static void test_colloid_sums_copy(colloid_t ref, colloid_t * pc) {
  *
  *****************************************************************************/
 
-static void test_colloid_sums_assert(colloid_t c1, colloid_t * c2) {
+static int test_colloid_sums_assert(colloid_t c1, colloid_t * c2) {
 
   int ia;
+
+  assert(c2);
 
   /* STRUCTURE */
 
@@ -321,17 +337,19 @@ static void test_colloid_sums_assert(colloid_t c1, colloid_t * c2) {
     test_assert(fabs(c1.tc0[ia] - c2->tc0[ia]) < TEST_DOUBLE_TOLERANCE);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  test_colloid_sums_move
  *
+ *  Here we move the particle across the lattice as a smoke test,
+ *  so success is just getting to the end.
+ *
  *****************************************************************************/
 
-static void test_colloid_sums_move(void) {
-
+static int test_colloid_sums_move(void) {
 
   int index;
   int ic, jc, kc;
@@ -342,20 +360,21 @@ static void test_colloid_sums_move(void) {
   double dx;
 
   colloid_t * pc;
+  colloids_info_t * cinfo = NULL;
 
   coords_ntotal_set(ntotal);
   coords_init();
-  colloids_cell_ncell_set(ncell);
-  colloids_init();
+
+  colloids_info_create(ncell, &cinfo);
+  assert(cinfo);
 
   dx = 1.0*ntotal[X]/nstep;
 
   index = 1;
-  pc = colloid_add_local(index, r0);
-  if (pc) info("Test single particle at (0.5,0.5,0.5)\n");
+  colloids_info_add_local(cinfo, index, r0, &pc);
 
-  colloids_halo_state();
-  colloid_sums_halo(COLLOID_SUM_STRUCTURE);
+  colloids_halo_state(cinfo);
+  colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
   for (n = 0; n < 2*nstep; n++) {
 
@@ -364,7 +383,8 @@ static void test_colloid_sums_move(void) {
     for (ic = 0; ic <= ncell[X] + 1; ic++) {
       for (jc = 0; jc <= ncell[Y] + 1; jc++) {
 	for (kc = 0; kc <= ncell[Z] + 1; kc++) {
-	  pc = colloids_cell_list(ic, jc, kc);
+
+	  colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	  while (pc) {
 	    pc->s.r[Y] -= dx;
@@ -375,13 +395,84 @@ static void test_colloid_sums_move(void) {
       }
     }
 
-    colloids_cell_update();
-    colloids_halo_state();
-    colloid_sums_halo(COLLOID_SUM_STRUCTURE);
+    colloids_info_update_cell_list(cinfo);
+    colloids_halo_state(cinfo);
+    colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
   }
 
-  colloids_finish();
+  /* Success */
+
+  colloids_info_free(cinfo);
   coords_finish();
 
-  return;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_colloid_sums_conservation
+ *
+ *  Test conservation meesage. This is not a real test in that
+ *  no particle is built and/or moved.
+ *
+ *****************************************************************************/
+
+int test_colloid_sums_conservation(void) {
+
+  int index;
+  int ic, jc, kc;
+  int ntotal[3] = {64, 64, 64};
+  int ncell[3] = {8, 8, 8};
+  double r0[3] = {32.0, 32.0, 32.0};
+
+  colloid_t * pc;
+  colloids_info_t * cinfo = NULL;
+
+  coords_ntotal_set(ntotal);
+  coords_init();
+
+  colloids_info_create(ncell, &cinfo);
+  assert(cinfo);
+
+  index = 1;
+  colloids_info_add_local(cinfo, index, r0, &pc);
+
+  /* Swap the halo with zero information before setting the
+   * test quantities locally. */
+
+  colloids_halo_state(cinfo);
+
+  if (pc) {
+    pc->s.deltaphi = 1.0;
+    pc->s.deltaq0  = 10.0;
+    pc->s.deltaq1  = 100.0;    
+  }
+
+  /* Make the sum, and check all copies. */
+
+  colloid_sums_halo(cinfo, COLLOID_SUM_CONSERVATION);
+
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+
+	while (pc) {
+	  assert(fabs(pc->s.deltaphi - 1.0) < DBL_EPSILON);
+	  assert(fabs(pc->s.deltaq0  - 10.0) < DBL_EPSILON);
+	  assert(fabs(pc->s.deltaq1  - 100.0) < DBL_EPSILON);
+	  pc = pc->next;
+	}
+	  
+      }
+    }
+  }
+
+  /* Success */
+
+  colloids_info_free(cinfo);
+  coords_finish();
+
+  return 0;
 }

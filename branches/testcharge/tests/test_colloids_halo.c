@@ -14,6 +14,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 #include <float.h>
 
@@ -23,9 +24,9 @@
 #include "colloids_halo.h"
 #include "tests.h"
 
-static void test_colloids_halo111(void);
-static void test_colloids_halo211(void);
-static void test_colloids_halo_repeat(void);
+int test_colloids_halo111(void);
+int test_colloids_halo211(void);
+int test_colloids_halo_repeat(void);
 static void test_position(const double * r1, const double * r2);
 
 /*****************************************************************************
@@ -39,26 +40,20 @@ int main(int argc, char ** argv) {
   int ntotal[3] = {1024, 1024, 1024};
 
   MPI_Init(&argc, &argv);
+
   pe_init();
   coords_ntotal_set(ntotal);
   coords_init();
 
   info("Colloid state halo swap test\n");
 
-  colloids_init();
   test_colloids_halo111();
-  colloids_finish();
-
-  colloids_init();
   test_colloids_halo211();
-  colloids_finish();
-
-  colloids_init();
   test_colloids_halo_repeat();
-  colloids_finish();
 
   coords_finish();
   pe_finalise();
+
   MPI_Finalize();
 
   return 0;
@@ -73,15 +68,25 @@ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-void test_colloids_halo111(void) {
+int test_colloids_halo111(void) {
 
+  int ncell[3] = {2, 2, 2};
   int noffset[3];
   int ncount[2];
   int index;
+  int ncolloid;
   double r0[3];
   double r1[3];
 
   colloid_t * pc;
+  colloids_info_t * cinfo = NULL;
+  colloid_halo_t * halo = NULL;
+
+  colloids_info_create(ncell, &cinfo);
+  assert(cinfo);
+
+  colloids_halo_create(cinfo, &halo);
+  assert(halo);
 
   coords_nlocal_offset(noffset);
 
@@ -90,31 +95,38 @@ void test_colloids_halo111(void) {
   r0[Z] = Lmin(Z) + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_rank();
-  colloid_add_local(index, r0);
+  colloids_info_add_local(cinfo, index, r0, &pc);
+  assert(pc);
 
-  colloids_halo_send_count(X, ncount);
+  colloids_halo_send_count(halo, X, ncount);
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 1);
 
-  colloids_halo_send_count(Y, ncount);
+  colloids_halo_send_count(halo, Y, ncount);
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 1);
 
-  colloids_halo_send_count(Z, ncount);
+  colloids_halo_send_count(halo, Z, ncount);
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 1);
 
-  colloids_halo_dim(X);
+  colloids_halo_dim(halo, X);
 
   /* All process should now have one particle in upper x halo region,
    * and the send count in Y (back) should be 2 */
 
-  test_assert(colloids_cell_count(Ncell(X)+1, 1, 1) == 1);
-  test_assert(colloid_nlocal() == 1);
-  test_assert(colloids_nalloc() == 2);
+  colloids_info_cell_count(cinfo, ncell[X] + 1, 1, 1, &ncolloid);
+  test_assert(ncolloid == 1);
 
-  pc = colloids_cell_list(Ncell(X)+1, 1, 1);
+  colloids_info_nlocal(cinfo, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nallocated(cinfo, &ncolloid);
+  test_assert(ncolloid == 2);
+
+  colloids_info_cell_list_head(cinfo, ncell[X] + 1, 1, 1, &pc);
   test_assert(pc != NULL);
+
 
   r1[X] = r0[X] + 1.0*N_total(X)/cart_size(X);
   r1[Y] = r0[Y];
@@ -122,45 +134,70 @@ void test_colloids_halo111(void) {
 
   test_position(r1, pc->s.r);
 
-  colloids_halo_send_count(Y, ncount);
+  colloids_halo_send_count(halo, Y, ncount);
 
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 2);
 
-  colloids_halo_dim(Y);
+  colloids_halo_dim(halo, Y);
 
   /* There should now be two additional images, and the send count
    * goes up to 4 */
 
-  test_assert(colloids_cell_count(1, Ncell(Y)+1, 1) == 1);
-  test_assert(colloids_cell_count(Ncell(X)+1, Ncell(Y)+1, 1) == 1);
-  test_assert(colloid_nlocal() == 1);
-  test_assert(colloids_nalloc() == 4);
+  colloids_info_cell_count(cinfo, 1, ncell[Y] + 1, 1, &ncolloid);
+  test_assert(ncolloid == 1);
 
-  pc = colloids_cell_list(1, Ncell(Y)+1, 1);
+  colloids_info_cell_count(cinfo, ncell[X] + 1, ncell[Y] + 1, 1, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nlocal(cinfo, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nallocated(cinfo, &ncolloid);
+  test_assert(ncolloid == 4);
+
+  colloids_info_cell_list_head(cinfo, 1, ncell[Y] + 1, 1, &pc);
   test_assert(pc != NULL);
+
+
   r1[X] = r0[X];
   r1[Y] = r0[Y] + 1.0*N_total(Y)/cart_size(Y);
   r1[Z] = r0[Z];
+
   test_position(r1, pc->s.r);
 
-  colloids_halo_send_count(Z, ncount);
+  colloids_halo_send_count(halo, Z, ncount);
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 4);
 
-  colloids_halo_dim(Z);
+  colloids_halo_dim(halo, Z);
 
   /* We should end up with eight in total, seven of which are
    * periodic images. */
 
-  test_assert(colloids_cell_count(1, 1, Ncell(Z)+1) == 1);
-  test_assert(colloids_cell_count(Ncell(X)+1, 1, Ncell(Z)+1) == 1);
-  test_assert(colloids_cell_count(1, Ncell(Y)+1, Ncell(Z)+1) == 1);
-  test_assert(colloids_cell_count(Ncell(X)+1, Ncell(Y)+1, Ncell(Z)+1) == 1);
-  test_assert(colloid_nlocal() == 1);
-  test_assert(colloids_nalloc() == 8);
+  colloids_info_cell_count(cinfo, 1, 1, ncell[Z] + 1, &ncolloid);
+  test_assert(ncolloid == 1);
 
-  return;
+  colloids_info_cell_count(cinfo, ncell[X] + 1, 1, ncell[Z] + 1, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_cell_count(cinfo, 1, ncell[Y] + 1, ncell[Z] + 1, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_cell_count(cinfo, ncell[X] + 1, ncell[Y] + 1, ncell[Z] + 1,
+			   &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nlocal(cinfo, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nallocated(cinfo, &ncolloid);
+  test_assert(ncolloid == 8);
+
+  colloids_halo_free(halo);
+  colloids_info_free(cinfo);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -171,90 +208,131 @@ void test_colloids_halo111(void) {
  *
  *****************************************************************************/
 
-void test_colloids_halo211(void) {
+int test_colloids_halo211(void) {
 
+  int ncell[3] = {2, 2, 2};
   int noffset[3];
   int ncount[2];
   int index;
+  int ncolloid;
   double r0[3];
   double r1[3];
+  double lcell[3];
 
-  colloid_t * pc;
+  colloid_t * pc = NULL;
+  colloid_halo_t * halo = NULL;
+  colloids_info_t * cinfo = NULL;
+
+  colloids_info_create(ncell, &cinfo);
+  assert(cinfo);
+
+  colloids_halo_create(cinfo, &halo);
+  assert(halo);
 
   coords_nlocal_offset(noffset);
+  colloids_info_lcell(cinfo, lcell);
 
-  r0[X] = Lmin(X) + 1.0*noffset[X] + colloids_lcell(X);
+  r0[X] = Lmin(X) + 1.0*noffset[X] + lcell[X];
   r0[Y] = Lmin(Y) + 1.0*(noffset[Y] + 1);
   r0[Z] = Lmin(Z) + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_rank();
-  colloid_add_local(index, r0);
- 
-  colloids_halo_send_count(X, ncount);
+  colloids_info_add_local(cinfo, index, r0, &pc);
+  assert(pc);
+
+  colloids_halo_send_count(halo, X, ncount);
   test_assert(ncount[FORWARD] == 1);
   test_assert(ncount[BACKWARD] == 0);
 
-  colloids_halo_send_count(Y, ncount);
+  colloids_halo_send_count(halo, Y, ncount);
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 1);
 
-  colloids_halo_send_count(Z, ncount);
+  colloids_halo_send_count(halo, Z, ncount);
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 1);
 
-  colloids_halo_dim(X);
+  colloids_halo_dim(halo, X);
 
   /* All process should now have one particle in lower x halo region,
    * and the send count in Y (back) should be 2 */
 
-  test_assert(colloids_cell_count(0, 1, 1) == 1);
-  test_assert(colloid_nlocal() == 1);
-  test_assert(colloids_nalloc() == 2);
+  colloids_info_cell_count(cinfo, 0, 1, 1, &ncolloid);
+  test_assert(ncolloid == 1);
 
-  pc = colloids_cell_list(0, 1, 1);
+  colloids_info_nlocal(cinfo, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nallocated(cinfo, &ncolloid);
+  test_assert(ncolloid == 2);
+
+  colloids_info_cell_list_head(cinfo, 0, 1, 1, &pc);
   test_assert(pc != NULL);
+
   r1[X] = r0[X] - 1.0*N_total(X)/cart_size(X);
   r1[Y] = r0[Y];
   r1[Z] = r0[Z];
   test_position(r1, pc->s.r);
 
-  colloids_halo_send_count(Y, ncount);
+  colloids_halo_send_count(halo, Y, ncount);
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 2);
 
-  colloids_halo_dim(Y);
+  colloids_halo_dim(halo, Y);
 
   /* There should now be two additional images, and the send count
    * goes up to 4 */
 
-  test_assert(colloids_cell_count(2, Ncell(Y)+1, 1) == 1);
-  test_assert(colloids_cell_count(0, Ncell(Y)+1, 1) == 1);
-  test_assert(colloid_nlocal() == 1);
-  test_assert(colloids_nalloc() == 4);
+  colloids_info_cell_count(cinfo, 2, ncell[Y] + 1, 1, &ncolloid);
+  test_assert(ncolloid == 1);
 
-  pc = colloids_cell_list(2, Ncell(Y)+1, 1);
+  colloids_info_cell_count(cinfo, 0, ncell[Y] + 1, 1, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nlocal(cinfo, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nallocated(cinfo, &ncolloid);
+  test_assert(ncolloid == 4);
+
+  colloids_info_cell_list_head(cinfo, 2, ncell[Y] + 1, 1, &pc);
   test_assert(pc != NULL);
+
   r1[X] = r0[X];
   r1[Y] = r0[Y] + 1.0*N_total(Y)/cart_size(Y);
   r1[Z] = r0[Z];
   test_position(r1, pc->s.r);
 
-  colloids_halo_send_count(Z, ncount);
+  colloids_halo_send_count(halo, Z, ncount);
   test_assert(ncount[FORWARD] == 0);
   test_assert(ncount[BACKWARD] == 4);
 
-  colloids_halo_dim(Z);
+  colloids_halo_dim(halo, Z);
 
   /* We should end up with eight in total (locally) */
 
-  test_assert(colloids_cell_count(2, 1, Ncell(Z)+1) == 1);
-  test_assert(colloids_cell_count(0, 1, Ncell(Z)+1) == 1);
-  test_assert(colloids_cell_count(2, Ncell(Y)+1, Ncell(Z)+1) == 1);
-  test_assert(colloids_cell_count(0, Ncell(Y)+1, Ncell(Z)+1) == 1);
-  test_assert(colloid_nlocal() == 1);
-  test_assert(colloids_nalloc() == 8);
+  colloids_info_cell_count(cinfo, 2, 1, ncell[Z] + 1, &ncolloid);
+  test_assert(ncolloid == 1);
 
-  return;
+  colloids_info_cell_count(cinfo, 0, 1, ncell[Z] + 1, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_cell_count(cinfo, 2, ncell[Y] + 1, ncell[Z] + 1, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_cell_count(cinfo, 0, ncell[Y] + 1, ncell[Z] + 1, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nlocal(cinfo, &ncolloid);
+  test_assert(ncolloid == 1);
+
+  colloids_info_nallocated(cinfo, &ncolloid);
+  test_assert(ncolloid == 8);
+
+  colloids_halo_free(halo);
+  colloids_info_free(cinfo);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -265,11 +343,19 @@ void test_colloids_halo211(void) {
  *
  *****************************************************************************/
 
-void test_colloids_halo_repeat(void) {
+int test_colloids_halo_repeat(void) {
 
+  int ncell[3] = {2, 2, 2};
   int noffset[3];
   int index;
+  int ncolloid;
   double r0[3];
+
+  colloid_t * pc = NULL;
+  colloids_info_t * cinfo = NULL;
+
+  colloids_info_create(ncell, &cinfo);
+  assert(cinfo);
 
   coords_nlocal_offset(noffset);
 
@@ -278,19 +364,26 @@ void test_colloids_halo_repeat(void) {
   r0[Z] = Lmin(Z) + 1.0*(noffset[Z] + 1);
 
   index = 1 + pe_rank();
-  colloid_add_local(index, r0);
+  colloids_info_add_local(cinfo, index, r0, &pc);
+  assert(pc);
+
   index = 1 + pe_size() + pe_rank();
-  colloid_add_local(index, r0);
+  colloids_info_add_local(cinfo, index, r0, &pc);
   index = 1 + 2*pe_size() + pe_rank();
-  colloid_add_local(index, r0);
+  colloids_info_add_local(cinfo, index, r0, &pc);
 
-  colloids_halo_state();
-  colloids_halo_state();
+  colloids_halo_state(cinfo);
+  colloids_halo_state(cinfo);
 
-  test_assert(colloid_nlocal() == 3);
-  test_assert(colloids_nalloc() == 24);
+  colloids_info_nlocal(cinfo, &ncolloid);
+  test_assert(ncolloid == 3);
 
-  return;
+  colloids_info_nallocated(cinfo, &ncolloid);
+  test_assert(ncolloid == 24);
+
+  colloids_info_free(cinfo);
+
+  return 0;
 }
 
 /*****************************************************************************

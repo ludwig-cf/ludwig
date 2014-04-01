@@ -28,7 +28,23 @@
 
 #define TOLERANCE 1.0e-07
 
+int test_ewald1(void);
+
 int main (int argc, char ** argv) {
+
+  MPI_Init(&argc, &argv);
+
+  test_ewald1();
+
+  MPI_Finalize();
+
+  return 0;
+}
+
+
+int test_ewald1(void) {
+
+  int ncell[3] = {2, 2, 2};
 
   double mu = 0.285;  /* dipole strength */
   double rc = 32.0;   /* real space cut off (default L / 2) */
@@ -40,18 +56,18 @@ int main (int argc, char ** argv) {
   double ereal;
   double efourier;
   double eself;
+  double kappa;
 
   colloid_t * p_c1;
   colloid_t * p_c2;
+  colloids_info_t * cinfo = NULL;
+  ewald_t * ewald = NULL;
 
-  MPI_Init(&argc, &argv);
   pe_init();
 
   if (pe_size() > 1) {
-
     info("No Ewald sum test in parallel\n");
     pe_finalise();
-    MPI_Finalize();
     return 0;
   }
 
@@ -61,14 +77,18 @@ int main (int argc, char ** argv) {
   test_assert(fabs(L(Y) - 64.0) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(L(Z) - 64.0) < TEST_DOUBLE_TOLERANCE);
 
-  colloids_init();
-  ewald_init(mu, rc);
+  colloids_info_create(ncell, &cinfo);
+  test_assert(cinfo != NULL);
+
+  ewald_create(mu, rc, cinfo, &ewald);
+  test_assert(ewald != NULL);
+  ewald_kappa(ewald, &kappa);
 
   /* First test */
 
   test_assert(fabs(rc - 32.0) < TOLERANCE);
   test_assert(fabs(mu - 0.285) < TOLERANCE);
-  test_assert(fabs(ewald_kappa() - 0.078125) < TOLERANCE);
+  test_assert(fabs(kappa - 0.078125) < TOLERANCE);
 
   r1[X] = 3.0;
   r1[Y] = 3.0;
@@ -78,11 +98,11 @@ int main (int argc, char ** argv) {
   r2[Y] = 3.0;
   r2[Z] = 13.0;
 
-  p_c1 = colloid_add_local(1, r1);
-  p_c2 = colloid_add_local(2, r2);
+  colloids_info_add_local(cinfo, 1, r1, &p_c1);
+  colloids_info_add_local(cinfo, 2, r2, &p_c2);
   test_assert(p_c1 != NULL);
   test_assert(p_c2 != NULL);
-  colloids_ntotal_set();
+  colloids_info_ntotal_set(cinfo);
 
   /* First colloid .... */
 
@@ -113,17 +133,17 @@ int main (int argc, char ** argv) {
   coords_minimum_distance(r1, r2, r12);
 
 
-  e = ewald_real_space_energy(p_c1->s.s, p_c2->s.s, r12);
+  ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);
 
   info("Real space energy: %g\n", e);
   test_assert(fabs(e - 0.000168995) < TOLERANCE);
 
-  e = ewald_fourier_space_energy();
+  ewald_fourier_space_energy(ewald, &e);
 
   info("Fourier space energy: %g\n", e);
   test_assert(fabs(e - 2.25831e-05) < TOLERANCE);
 
-  e = ewald_self_energy();
+  ewald_self_energy(ewald, &e);
 
   info("Self energy term: %g\n", e);
   test_assert(fabs(e - -2.91356e-05) < TOLERANCE);
@@ -132,8 +152,8 @@ int main (int argc, char ** argv) {
 
   info("Computing force and torque...\n");
 
-  ewald_real_space_sum();
-  ewald_total_energy(&ereal, &efourier, &eself);
+  ewald_real_space_sum(ewald);
+  ewald_total_energy(ewald, &ereal, &efourier, &eself);
 
   info("Real space energy: %g\n", ereal);
   test_assert(fabs(ereal - 0.000168995) < TOLERANCE);
@@ -176,8 +196,8 @@ int main (int argc, char ** argv) {
   p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
   p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
 
-  ewald_fourier_space_sum();
-  ewald_total_energy(&ereal, &efourier, &eself);
+  ewald_fourier_space_sum(ewald);
+  ewald_total_energy(ewald, &ereal, &efourier, &eself);
 
   info("Fourier space energy: %g\n", efourier);
   test_assert(fabs(efourier - 2.25831e-05) < TOLERANCE);
@@ -234,26 +254,26 @@ int main (int argc, char ** argv) {
        p_c2->s.s[X], p_c2->s.s[Y], p_c2->s.s[Z]);
 
   /* Energy */
-
-  e = ewald_real_space_energy(p_c1->s.s, p_c2->s.s, r12);
+  
+  ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);
 
   info("Real space energy: %g\n", e);
   test_assert(fabs(e - 0.0) < TOLERANCE);
 
-  e = ewald_fourier_space_energy();
+  ewald_fourier_space_energy(ewald, &e);
 
   info("Fourier space energy: %g\n", e);
   test_assert(fabs(e - 2.76633e-05) < TOLERANCE);
 
-  e = ewald_self_energy();
+  ewald_self_energy(ewald, &e);
 
   info("Self energy term: %g\n", e);
   test_assert(fabs(e - -2.91356e-05) < TOLERANCE);
 
   /* Forces */
 
-  ewald_real_space_sum();
-  ewald_total_energy(&ereal, &efourier, &eself);
+  ewald_real_space_sum(ewald);
+  ewald_total_energy(ewald, &ereal, &efourier, &eself);
 
   info("Real space energy: %g\n", ereal);
   test_assert(fabs(ereal - 0.0) < TOLERANCE);
@@ -299,8 +319,8 @@ int main (int argc, char ** argv) {
   p_c2->torque[X] = 0.0; p_c2->torque[Y] = 0.0; p_c2->torque[Z] = 0.0;
 
 
-  ewald_fourier_space_sum();
-  ewald_total_energy(&ereal, &efourier, &eself);
+  ewald_fourier_space_sum(ewald);
+  ewald_total_energy(ewald, &ereal, &efourier, &eself);
 
   info("Fourier space energy: %g\n", efourier);
   test_assert(fabs(efourier - 2.76633e-05) < TOLERANCE);
@@ -371,8 +391,8 @@ int main (int argc, char ** argv) {
        p_c2->s.r[X], p_c2->s.r[Y], p_c2->s.r[Z],
        p_c2->s.s[X], p_c2->s.s[Y], p_c2->s.s[Z]);
 
-  ewald_real_space_sum();
-  ewald_total_energy(&ereal, &efourier, &eself);
+  ewald_real_space_sum(ewald);
+  ewald_total_energy(ewald, &ereal, &efourier, &eself);
 
   info("Real space energy: %g\n", ereal);
 
@@ -392,7 +412,7 @@ int main (int argc, char ** argv) {
   p_c1->force[X] = 0.0; p_c1->force[Y] = 0.0; p_c1->force[Z] = 0.0;
   p_c2->force[X] = 0.0; p_c2->force[Y] = 0.0; p_c2->force[Z] = 0.0;
 
-  ewald_fourier_space_sum();
+  ewald_fourier_space_sum(ewald);
 
   info("Fourier space force on particle 1: %g %g %g\n",
        p_c1->force[X], p_c1->force[Y], p_c1->force[Z]);
@@ -406,37 +426,38 @@ int main (int argc, char ** argv) {
   info("Fourier space torque on particle 2: %g %g %g\n",
        p_c2->torque[X], p_c2->torque[Y], p_c2->torque[Z]);
 
-  ewald_finish();
+  ewald_free(ewald);
+  ewald = NULL;
 
 
 
   /* Now set cut-off = 8.0. */
 
-  ewald_init(0.285, 8.0);
+  ewald_create(0.285, 8.0, cinfo, &ewald);
+  test_assert(ewald != NULL);
 
-  e = ewald_real_space_energy(p_c1->s.s, p_c2->s.s, r12);
+  ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);
 
   info("Real space energy: %g\n", e);
   test_assert(fabs(e - 0.0) < TOLERANCE);
 
-  e = ewald_fourier_space_energy();
+  ewald_fourier_space_energy(ewald, &e);
 
   info("Fourier space energy: %g\n", e);
   /* test_assert(fabs(e - 0.000265242) < TOLERANCE);*/
 
-  e = ewald_self_energy();
+  ewald_self_energy(ewald, &e);
 
   info("Self energy term: %g\n", e);
   /* test_assert(fabs(e - -0.00186468) < TOLERANCE);*/
 
-  ewald_finish();
+  ewald_free(ewald);
 
   info("Ewald tests ok\n");
 
-  colloids_finish();
+  colloids_info_free(cinfo);
   coords_finish();
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
