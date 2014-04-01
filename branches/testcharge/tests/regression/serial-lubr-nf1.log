@@ -1,0 +1,125 @@
+Welcome to Ludwig (Serial version running on 1 process)
+
+The SVN revision details are: 2301M
+Note assertions via standard C assert() are on.
+
+Read 23 user parameters from serial-lubr-nf1.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               2.00000e-02
+Bulk viscosity                2.00000e-02
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    5.60000e-01
+Bulk relaxation time:     5.60000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:   1  1  1
+Input format:  ascii
+Input file:    serial single file
+Output format:      ascii
+Output format: ascii
+
+colloid_io_read: reading from single file colloids-serial-lubr-nf1.001-001
+Read a total of 1000 colloids from file
+
+Colloid-colloid lubrication corrections
+Lubrication corrections are switched on
+[User   ] Normal force cutoff is 0.500000
+[Default] Tangential force cutoff is 0.000000
+RANGE CHECK
+Cells:                  4 4  4
+Max range: 6.730000 16.000000
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      135767.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+
+Momentum - x y z
+[total   ]  1.8821333e-12 -5.1694760e-16  1.5439039e-15
+[fluid   ]  1.8841456e-12  0.0000000e+00  0.0000000e+00
+[colloids] -2.0122792e-15 -5.1694760e-16  1.5439039e-15
+
+Starting time step loop.
+
+Particle statistics:
+Inter-particle minimum h is: 1.60864e-01
+Potential energy is:         0.00000e+00
+Colloid velocities - x y z
+[minimum ] -1.1543862e-04 -1.1561800e-04 -1.2125634e-04
+[maximum ]  1.0710609e-04  1.3350087e-04  1.0831255e-04
+
+Scalars - total mean variance min max
+[rho]      135761.00  1.00000000000 5.8184904e-09  0.99941858898 1.00034593438
+
+Momentum - x y z
+[total   ] -7.6838449e-13 -4.9044796e-13 -2.8806818e-14
+[fluid   ]  3.8232331e-03  2.5050603e-02  1.1828021e-02
+[colloids] -3.8232331e-03 -2.5050603e-02 -1.1828021e-02
+
+Velocity - x y z
+[minimum ] -2.5211882e-04 -2.5614711e-04 -3.0606205e-04
+[maximum ]  2.6276587e-04  2.5741916e-04  2.4949153e-04
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      5.512      5.512      5.512   5.512187 (1 call)
+      Time step loop:      0.494      0.537      5.068   0.506799 (10 calls)
+         Propagation:      0.018      0.021      0.187   0.018666 (10 calls)
+           Collision:      0.233      0.256      2.394   0.239381 (10 calls)
+       Lattice halos:      0.001      0.002      0.029   0.001475 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
+              Forces:      0.018      0.021      0.188   0.018776 (10 calls)
+             Rebuild:      0.061      0.064      0.622   0.062244 (10 calls)
+                 BBL:      0.157      0.171      1.608   0.160827 (10 calls)
+      Particle halos:      0.001      0.001      0.014   0.001383 (10 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (20 calls)
+Ludwig finished normally.
