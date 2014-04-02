@@ -22,14 +22,11 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "field.h"
-#include "field_grad.h"
 #include "blue_phase.h"
 #include "symmetric.h"
-#include "lc_droplet.h"
-#include "hydro.h"
 #include "leesedwards.h"
-#include "colloids.h"
+#include "lc_droplet.h"
+
 
 static double gamma0_; /* \gamma(\phi) = gamma0_ + delta(1 + \phi)*/
 static double delta_;  /* For above */
@@ -383,7 +380,7 @@ void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
   
   for (ia = 0; ia < 3; ia++){
     for(ib = 0; ib < 3; ib++){
-      sth[ia][ib] = -1.0*(-s1[ia][ib] - s2[ia][ib] - f*phi*d_[ia][ib]/*i'm fiddling with -ve here*/
+      sth[ia][ib] = -1.0*(-s1[ia][ib] - s2[ia][ib] - f*phi*d_[ia][ib]
 			  - 2.0*W_*dphi[ia]*dphi[ib]*q[ia][ib]);
     }
   }
@@ -670,67 +667,64 @@ void blue_phase_antisymmetric_stress(const int index, double sth[3][3]) {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  lc_droplet_extract_total_force
+ *
+ *****************************************************************************/
+
 int lc_droplet_extract_total_force(hydro_t * hydro) {
+
   int ic, jc, kc, index;
   int nlocal[3];
 
   double f[3];
-  double flocal[4] = {0.0, 0.0, 0.0, 0.0};
-  double fsum[4];
+  double flocal[3] = {0.0, 0.0, 0.0};
+  double fsum[3];
+  double rv;
   
-  colloid_t * pc = NULL;
   MPI_Comm comm;
+
+  if (hydro == NULL) return 0;
 
   coords_nlocal(nlocal);
   comm = cart_comm();
 
   /* Compute force without correction. */
   
-  if (hydro) {
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  
-	  index = coords_index(ic, jc, kc);
-	  pc = colloid_at_site_index(index);
+	index = coords_index(ic, jc, kc);
+	hydro_f_local(hydro, index, f);
+
+	flocal[X] += f[X];
+	flocal[Y] += f[Y];
+	flocal[Z] += f[Z];
 	  
-	  if (pc) continue;
-	  
-	  hydro_f_local(hydro, index, f);
-	  flocal[X] += f[X];
-	  flocal[Y] += f[Y];
-	  flocal[Z] += f[Z];
-	  flocal[3] += 1.0;
-	  
-	}
       }
     }
+  }
     
-    /*calculate the total force per fluid node */
-    MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
-    fsum[X] /= fsum[3];
-    fsum[Y] /= fsum[3];
-    fsum[Z] /= fsum[3];
+  /* calculate the total force per fluid node */
 
-    /* Now actually compute the force on the fluid with the correction
-       f[ia] = f[ia] - fsum[ia] and store */
+  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
 
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
+  rv = 1.0/(L(X)*L(Y)*L(Z));
+  f[X] = -fsum[X]*rv;
+  f[Y] = -fsum[Y]*rv;
+  f[Z] = -fsum[Z]*rv;
 
-	  index = coords_index(ic, jc, kc);
-	  pc = colloid_at_site_index(index);
-	  if (pc) continue;
-	  
-	  /*hydro_f_local(hydro, index, f);*/
-	  f[X] = -fsum[X];
-	  f[Y] = -fsum[Y];
-	  f[Z] = -fsum[Z];
-	  
-	  /* add the correction */
-	  hydro_f_local_add(hydro, index, f);
-	}
+  /* Now add correction */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	hydro_f_local_add(hydro, index, f);
+
       }
     }
   }

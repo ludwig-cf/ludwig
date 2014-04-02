@@ -1,4 +1,3 @@
-#ifdef PETSC
 /*****************************************************************************
  *
  *  psi_petsc.c
@@ -30,6 +29,8 @@
 #include <float.h>
 #include <math.h>
 #include <mpi.h>
+
+#ifdef PETSC
 
 #include "pe.h"
 #include "coords.h"
@@ -158,10 +159,10 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   PetscScalar v[19];
   MatStencil  row, col[19];
 */
-///*
+
   PetscScalar v[7];
   MatStencil  row, col[7];
-//*/
+
   double r3 = 0.333333333333333, r6 = 0.166666666666667;
   assert(obj);
 
@@ -189,7 +190,7 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	row.k = k;
 
 	/* 6-point stencil */
-///*
+
 	col[0].i = i;     col[0].j = j;     col[0].k = k-1;   v[0] = - epsilon;
 	col[1].i = i;     col[1].j = j-1;   col[1].k = k;     v[1] = - epsilon;
 	col[2].i = i-1;   col[2].j = j;     col[2].k = k;     v[2] = - epsilon;
@@ -198,7 +199,7 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	col[5].i = i;     col[5].j = j+1;   col[5].k = k;     v[5] = - epsilon;
 	col[6].i = i;     col[6].j = j;     col[6].k = k+1;   v[6] = - epsilon;
 	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
-//*/
+
 
 	/* D3Q19 stencil */
 /*

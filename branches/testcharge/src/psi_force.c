@@ -17,12 +17,12 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <math.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
 #include "psi_s.h"
-#include "colloids.h"
 #include "fe_electro.h"
 #include "psi_force.h"
 
@@ -177,7 +177,8 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
  *
  *****************************************************************************/
 
-int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
+int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
+			      colloids_info_t * cinfo, double dt) {
 
   int ic, jc, kc, index;
   int zs, ys, xs;
@@ -195,6 +196,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
   MPI_Comm comm;
 
   assert(psi);
+  assert(cinfo);
 
   physics_e0(e0);
 
@@ -212,11 +214,11 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	pc = colloid_at_site_index(index);
+	colloids_info_map(cinfo, index, &pc);
 
 	psi_rho_elec(psi, index, &rho_elec);
 	psi_electric_field(psi, index, elocal);
-//	psi_electric_field_d3q19(psi, index, elocal);
+	/* pending	psi_electric_field_d3q19(psi, index, elocal); */
 
         f[X] = rho_elec*(e0[X] + elocal[X]);
 	f[Y] = rho_elec*(e0[Y] + elocal[Y]);
@@ -258,12 +260,12 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
 
         index = coords_index(ic, jc, kc);
 
-	pc = colloid_at_site_index(index);
+	colloids_info_map(cinfo, index, &pc);
 	if (pc) continue;
 
         psi_rho_elec(psi, index, &rho_elec);
 	psi_electric_field(psi, index, elocal);
-//	psi_electric_field_d3q19(psi, index, elocal);
+	/* pending	psi_electric_field_d3q19(psi, index, elocal); */
 
         f[X] = dt*(rho_elec*(e0[X] + elocal[X]) - fsum[X]);
         f[Y] = dt*(rho_elec*(e0[Y] + elocal[Y]) - fsum[Y]);
@@ -288,7 +290,8 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro, double dt) {
  *
  *****************************************************************************/
 
-int psi_force_divstress(psi_t * psi, hydro_t * hydro, double dt) {
+int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo,
+			double dt) {
 
   int ic, jc, kc;
   int index, index1;
@@ -302,6 +305,9 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, double dt) {
   colloid_t * pc = NULL;
   void (* chemical_stress)(const int index, double s[3][3]);
 
+  assert(psi);
+  assert(cinfo);
+
   coords_nlocal(nlocal);
   chemical_stress = fe_electro_stress;
 
@@ -310,7 +316,7 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, double dt) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	pc = colloid_at_site_index(index);
+	colloids_info_map(cinfo, index, &pc);
 
 	/* Compute pth at current point */
 

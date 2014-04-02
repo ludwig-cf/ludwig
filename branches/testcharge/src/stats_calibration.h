@@ -15,11 +15,13 @@
 #ifndef STATS_CALIBRATION_H
 #define STATS_CALIBRATION_H
 
+#include "colloids.h"
 #include "hydro.h"
 #include "map.h"
 
-void stats_calibration_init(int nswitch);
-int  stats_calibration_accumulate(int ntimestep, hydro_t * hydro, map_t * map);
-void stats_calibration_finish(void);
+int stats_calibration_init(colloids_info_t * cinfo, int nswitch);
+int stats_calibration_accumulate(colloids_info_t * cinfo, int ntimestep,
+				 hydro_t * hydro, map_t * map);
+int stats_calibration_finish(void);
 
 #endif

@@ -15,7 +15,11 @@
 #ifndef BBL_H
 #define BBL_H
 
-void bounce_back_on_links(void);
+#include "colloids.h"
+
+int bounce_back_on_links(colloids_info_t * cinfo);
+int bbl_pass0(colloids_info_t * cinfo);
+
 void bbl_surface_stress(void);
 void bbl_active_on_set(void);
 int  bbl_active_on(void);

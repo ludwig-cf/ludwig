@@ -29,7 +29,7 @@
 #include "subgrid.h"
 
 static double d_peskin(double);
-static int subgrid_interpolation(hydro_t * hydro);
+static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
 static int subgrid_on_ = 0;  /* Subgrid particle flag */
 
@@ -42,31 +42,34 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
  *
  *****************************************************************************/
 
-int subgrid_force_from_particles(hydro_t * hydro) {
+int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
-  int N[3], offset[3];
+  int nlocal[3], offset[3];
+  int ncell[3];
 
   double r[3], r0[3], force[3], g[3];
   double dr;
   colloid_t * p_colloid;
 
+  assert(cinfo);
   assert(hydro);
 
-  coords_nlocal(N);
+  coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
+  colloids_info_ncell(cinfo, ncell);
 
   physics_fgrav(g);
 
   /* Loop through all cells (including the halo cells) */
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-        p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 
@@ -81,12 +84,12 @@ int subgrid_force_from_particles(hydro_t * hydro) {
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
 
-          i_min = imax(1,    (int) floor(r0[X] - drange_));
-          i_max = imin(N[X], (int) ceil (r0[X] + drange_));
-          j_min = imax(1,    (int) floor(r0[Y] - drange_));
-          j_max = imin(N[Y], (int) ceil (r0[Y] + drange_));
-          k_min = imax(1,    (int) floor(r0[Z] - drange_));
-          k_max = imin(N[Z], (int) ceil (r0[Z] + drange_));
+          i_min = imax(1,         (int) floor(r0[X] - drange_));
+          i_max = imin(nlocal[X], (int) ceil (r0[X] + drange_));
+          j_min = imax(1,         (int) floor(r0[Y] - drange_));
+          j_max = imin(nlocal[Y], (int) ceil (r0[Y] + drange_));
+          k_min = imax(1,         (int) floor(r0[Z] - drange_));
+          k_max = imin(nlocal[Z], (int) ceil (r0[Z] + drange_));
 
           for (i = i_min; i <= i_max; i++) {
             for (j = j_min; j <= j_max; j++) {
@@ -133,31 +136,35 @@ int subgrid_force_from_particles(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-int subgrid_update(hydro_t * hydro) {
+int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
   int ia;
   int ic, jc, kc;
+  int ncell[3];
   double drag, reta;
   double g[3];
   double eta;
   colloid_t * p_colloid;
 
+  assert(cinfo);
   assert(hydro);
 
-  subgrid_interpolation(hydro);
-  colloid_sums_halo(COLLOID_SUM_SUBGRID);
+  colloids_info_ncell(cinfo, ncell);
+
+  subgrid_interpolation(cinfo, hydro);
+  colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
 
   physics_eta_shear(&eta);
-  reta = 1.0/(6.0*pi_*eta);
   physics_fgrav(g);
+  reta = 1.0/(6.0*pi_*eta);
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-        p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 
@@ -187,30 +194,33 @@ int subgrid_update(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static int subgrid_interpolation(hydro_t * hydro) {
+static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
-  int N[3], offset[3];
+  int nlocal[3], offset[3];
+  int ncell[3];
 
   double r0[3], r[3], u[3];
   double dr;
   colloid_t * p_colloid;
 
+  assert(cinfo);
   assert(hydro);
 
-  coords_nlocal(N);
+  coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
+  colloids_info_ncell(cinfo, ncell);
 
   /* Loop through all cells (including the halo cells) and set
    * the velocity at each particle to zero for this step. */
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-        p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 	  p_colloid->fc0[X] = 0.0;
@@ -224,11 +234,11 @@ static int subgrid_interpolation(hydro_t * hydro) {
 
   /* And add up the contributions to the velocity from the lattice. */
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-        p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 
@@ -243,12 +253,12 @@ static int subgrid_interpolation(hydro_t * hydro) {
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
 
-          i_min = imax(1,    (int) floor(r0[X] - drange_));
-          i_max = imin(N[X], (int) ceil (r0[X] + drange_));
-          j_min = imax(1,    (int) floor(r0[Y] - drange_));
-          j_max = imin(N[Y], (int) ceil (r0[Y] + drange_));
-          k_min = imax(1,    (int) floor(r0[Z] - drange_));
-          k_max = imin(N[Z], (int) ceil (r0[Z] + drange_));
+          i_min = imax(1,         (int) floor(r0[X] - drange_));
+          i_max = imin(nlocal[X], (int) ceil (r0[X] + drange_));
+          j_min = imax(1,         (int) floor(r0[Y] - drange_));
+          j_max = imin(nlocal[Y], (int) ceil (r0[Y] + drange_));
+          k_min = imax(1,         (int) floor(r0[Z] - drange_));
+          k_max = imin(nlocal[Z], (int) ceil (r0[Z] + drange_));
 
           for (i = i_min; i <= i_max; i++) {
             for (j = j_min; j <= j_max; j++) {

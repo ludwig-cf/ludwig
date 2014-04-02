@@ -29,6 +29,8 @@
 #include <stdio.h>
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
+			COLLOID_TYPE_ACTIVE,
+			COLLOID_TYPE_SUBGRID,
 			COLLOID_TYPE_JANUS};
 
 typedef struct colloid_state_type colloid_state_t;

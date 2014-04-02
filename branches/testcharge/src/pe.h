@@ -2,23 +2,25 @@
  *
  *  pe.h
  *
- *  $Id$
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
- *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef PE_H
 #define PE_H
 
+#include "../version.h"
 #include <mpi.h>
+
+typedef struct pe_s pe_t;
 
 void pe_init(void);
 void pe_finalise(void);
+int  pe_init_quiet(void);
 int  pe_rank(void);
 int  pe_size(void);
 void pe_parent_comm_set(const MPI_Comm parent);

@@ -9,7 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Squimer code from Isaac Llopis and Ricard Matas Navarro (U Barcelona).
+ *
  *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
@@ -28,11 +31,11 @@
 #include "wall.h"
 #include "bbl.h"
 
-static void bounce_back_pass1(void);
-static void bounce_back_pass2(void);
-static void mass_conservation_compute_force(void);
-static void update_colloids(void);
-static  int bbl_wall_lubrication_account(void);
+static int bbl_pass1(colloids_info_t * cinfo);
+static int bbl_pass2(colloids_info_t * cinfo);
+static int bbl_mass_conservation_compute_force(colloids_info_t * cinfo);
+static int bbl_update_colloids(colloids_info_t * cinfo);
+static int bbl_wall_lubrication_account(colloids_info_t * cinfo);
 
 static int bbl_active_ = 0;  /* Flag for active particles. */
 static double deltag_ = 0.0; /* Excess or deficit of phi between steps */
@@ -60,56 +63,66 @@ static double stress_[3][3]; /* Surface stress */
  *
  *****************************************************************************/
 
-void bounce_back_on_links() {
+int bounce_back_on_links(colloids_info_t * cinfo) {
 
-  if (colloid_ntotal() == 0) return;
+  int ntotal;
 
-  colloid_sums_halo(COLLOID_SUM_STRUCTURE);
-  bounce_back_pass1();
-  colloid_sums_halo(COLLOID_SUM_DYNAMICS);
+  assert(cinfo);
+
+  colloids_info_ntotal(cinfo, &ntotal);
+  if (ntotal == 0) return 0;
+
+  colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
+  bbl_pass0(cinfo);
+  bbl_pass1(cinfo);
+  colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
 
   if (bbl_active_) {
-    mass_conservation_compute_force();
-    colloid_sums_halo(COLLOID_SUM_ACTIVE);
+    bbl_mass_conservation_compute_force(cinfo);
+    colloid_sums_halo(cinfo, COLLOID_SUM_ACTIVE);
   }
 
-  update_colloids();
-  bounce_back_pass2();
+  bbl_update_colloids(cinfo);
+  bbl_pass2(cinfo);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
-*
-*  mass_conservation_compute_force
-*
-******************************************************************************/
+ *
+ *  mass_conservation_compute_force
+ *
+ *****************************************************************************/
 
-static void mass_conservation_compute_force() {
+static int bbl_mass_conservation_compute_force(colloids_info_t * cinfo) {
 
-  int    ia;
-  int    ic, jc, kc;
+  int ia;
+  int ic, jc, kc;
+  int ncell[3];
   double dm;
   double c[3];
   double rbxc[3];
 
-  colloid_t      * p_colloid;
+  colloid_t * pc;
   colloid_link_t * p_link;
 
-  for (ic = 0; ic <= Ncell(X)+1 ; ic++) {
-    for (jc = 0; jc <= Ncell(Y)+1 ; jc++) {
-      for (kc = 0; kc <= Ncell(Z)+1 ; kc++) {
+  assert(cinfo);
+  colloids_info_ncell(cinfo, ncell);
 
-	p_colloid = colloids_cell_list(ic, jc, kc);
+  for (ic = 0; ic <= ncell[X] + 1 ; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1 ; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1 ; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	/* For each colloid in the list */
 
-	while (p_colloid != NULL) {
+	for ( ; pc; pc = pc->next) {
 
-	  p_colloid->sump /= p_colloid->sumw;
-	  p_link = p_colloid->lnk;
+	  pc->sump /= pc->sumw;
+	  p_link = pc->lnk;
 
-	  while (p_link != NULL) {
+	  for (; p_link; p_link = p_link->next) {
 
 	    if (p_link->status == LINK_UNUSED) {
 	      /* ignore */
@@ -118,7 +131,7 @@ static void mass_conservation_compute_force() {
 		
 	      if (p_link->status == LINK_FLUID) {
 
-		dm = -wv[p_link->p]*p_colloid->sump;
+		dm = -wv[p_link->p]*pc->sump;
 
 		for (ia = 0; ia < 3; ia++) {
 		  c[ia] = 1.0*cv[p_link->p][ia];
@@ -127,55 +140,124 @@ static void mass_conservation_compute_force() {
 		cross_product(p_link->rb, c, rbxc);
 
 		for (ia = 0; ia < 3; ia++) {
-		  p_colloid->fc0[ia] += dm*c[ia];
-		  p_colloid->tc0[ia] += dm*rbxc[ia];
+		  pc->fc0[ia] += dm*c[ia];
+		  pc->tc0[ia] += dm*rbxc[ia];
 		}
 	      }
 	    }
 
 	    /* Next link */
-	    p_link = p_link->next;
 	  }
-
 	  /* Next colloid */
-	  p_colloid = p_colloid->next;
 	}
         /* Next cell */
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  bounce_back_pass1
+ *  bbl_pass0
+ *
+ *  Set missing 'internal' distributions
  *
  *****************************************************************************/
 
-static void bounce_back_pass1() {
+int bbl_pass0(colloids_info_t * cinfo) {
 
-  colloid_t      * p_colloid;
+  int ic, jc, kc, index;
+  int ia, ib, p;
+  int nextra = 1;
+  int nlocal[3];
+  int noffset[3];
+
+  double r[3], r0[3], rb[3], ub[3], wxrb[3];
+  double udotc, sdotq;
+
+  colloid_t * pc = NULL;
+
+  assert(cinfo);
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    r[X] = 1.0*ic;
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      r[Y] = 1.0*jc;
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+	r[Z] = 1.0*kc;
+
+	index = coords_index(ic, jc, kc);
+	colloids_info_map(cinfo, index, &pc);
+	if (pc == NULL) continue;
+
+	r0[X] = pc->s.r[X] - 1.0*noffset[X];
+	r0[Y] = pc->s.r[Y] - 1.0*noffset[Y];
+	r0[Z] = pc->s.r[Z] - 1.0*noffset[Z];
+	coords_minimum_distance(r, r0, rb);
+	cross_product(pc->s.w, rb, wxrb);
+	ub[X] = pc->s.v[X] + wxrb[X];
+	ub[Y] = pc->s.v[Y] + wxrb[Y];
+	ub[Z] = pc->s.v[Z] + wxrb[Z];
+
+	for (p = 1; p < NVEL; p++) {
+	  udotc = cv[p][X]*ub[X] + cv[p][Y]*ub[Y] + cv[p][Z]*ub[Z];
+	  sdotq = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      sdotq += q_[p][ia][ib]*ub[ia]*ub[ib];
+	    }
+	  }
+	  distribution_f_set(index, p, 0,
+			     wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq));
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_pass1
+ *
+ *  Work out the velocity independent terms before actual BBL takes place.
+ *
+ *****************************************************************************/
+
+static int bbl_pass1(colloids_info_t * cinfo) {
+
+  int ia;
+  int ic, jc, kc;
+  int i, j, ij, ji;
+  int ncell[3];
+
+  double dm;
+  double delta;
+  double rsumw;
+  double c[3];
+  double rbxc[3];
+  double rho0;
+
+  colloid_t * p_colloid;
   colloid_link_t * p_link;
 
-  double    c[3];
-  double    rbxc[3];
+  assert(cinfo);
 
-  int       ia;
-  int       i, j, ij, ji;
-  double     dm;
-  double     delta;
-  double     rsumw;
-  double rho0 = colloid_rho0();
+  physics_rho0(&rho0);
+  colloids_info_ncell(cinfo, ncell);
 
-  int       ic, jc, kc;
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++)
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++)
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
-
-	p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	/* For each colloid in the list */
 
@@ -318,6 +400,7 @@ static void bounce_back_pass1() {
 	      p_colloid->zeta[19] += delta*rbxc[Y]*rbxc[Z];
 
 	      p_colloid->zeta[20] += delta*rbxc[Z]*rbxc[Z];
+
 	    }
 
 	    /* Next link */
@@ -330,14 +413,15 @@ static void bounce_back_pass1() {
 
 	/* Next cell */
       }
+    }
+  }
 
-  return;
+  return 0;
 }
-
 
 /*****************************************************************************
  *
- *  COLL_bounce_back_pass2
+ *  bbl_pass2
  *
  *  Implement bounce-back on links having updated the colloid
  *  velocities via the implicit method.
@@ -348,25 +432,30 @@ static void bounce_back_pass1() {
  *
  *****************************************************************************/
 
-static void bounce_back_pass2() {
+static int bbl_pass2(colloids_info_t * cinfo) {
 
   colloid_t      * p_colloid;
   colloid_link_t * p_link;
 
+  int i, j, ij, ji;
+  int ic, jc, kc;
+  int ia;
+  int ncell[3];
+
+  double dm;
+  double vdotc;
+  double dms;
+  double df, dg;
+  double fdist;
   double wxrb[3];
 
-  int       i, j, ij, ji;
-  double     dm;
-  double     vdotc;
-  double     dms;
-  double     df, dg;
-  double    fdist;
+  double dgtm1;
+  double rho0;
 
-  double     dgtm1;
-  double rho0 = colloid_rho0();
+  assert(cinfo);
 
-  int       ic, jc, kc;
-  int ia;
+  physics_rho0(&rho0);
+  colloids_info_ncell(cinfo, ncell);
 
   /* Account the current phi deficit */
   deltag_ = 0.0;
@@ -379,11 +468,11 @@ static void bounce_back_pass2() {
     }
   }
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++)
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++)
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-	p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	/* Update solid -> fluid links for each colloid in the list */
 
@@ -504,13 +593,15 @@ static void bounce_back_pass2() {
 
 	/* Next cell */
       }
+    }
+  }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  update_colloids
+ *  bbl_update_colloids
  *
  *  Update the velocity and position of each particle.
  *
@@ -520,12 +611,13 @@ static void bounce_back_pass2() {
  *
  *****************************************************************************/
 
-static void update_colloids() {
+static int bbl_update_colloids(colloids_info_t * cinfo) {
 
   colloid_t * pc;
 
   int ia;
   int ic, jc, kc;
+  int ncell[3];
 
   double xb[6];
   double a[6][6];
@@ -536,15 +628,18 @@ static void update_colloids() {
   double mass;
   double moment;
   double tmp;
-  double rho0 = colloid_rho0();
+  double rho0 = 1.0; /* Colloid density always unity at present */
+
+  assert(cinfo);
+  colloids_info_ncell(cinfo, ncell);
 
   /* Loop round cells and update each particle velocity */
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-	pc = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	while (pc) {
 
@@ -688,7 +783,7 @@ static void update_colloids() {
 	  rotate_vector(pc->s.m, xb + 3);
 	  rotate_vector(pc->s.s, xb + 3);
 
-	  /* Record the actual hyrdrodynamic force on the particle */
+	  /* Record the actual hydrodynamic force on the particle */
 
 	  pc->force[X] = pc->f0[X]
 	    -(pc->zeta[0]*pc->s.v[X] +
@@ -721,9 +816,9 @@ static void update_colloids() {
   /* As the lubrication force is based on the updated velocity, but
    * the old position, we can account for the total momentum here. */
 
-  bbl_wall_lubrication_account();
+  bbl_wall_lubrication_account(cinfo);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -739,18 +834,22 @@ static void update_colloids() {
  *
  *****************************************************************************/
 
-static int bbl_wall_lubrication_account(void) {
+static int bbl_wall_lubrication_account(colloids_info_t * cinfo) {
 
   int ic, jc, kc, ia;
+  int ncell[3];
   double f[3] = {0.0, 0.0, 0.0};
 
   colloid_t * pc = NULL;
 
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+  assert(cinfo);
+  colloids_info_ncell(cinfo, ncell);
 
-	pc = colloids_cell_list(ic, jc, kc);
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	while (pc) {
 	  for (ia = 0; ia < 3; ia++) {

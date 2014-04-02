@@ -48,35 +48,41 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids.h"
 #include "wall.h"
 #include "free_energy.h"
 #include "phi_force.h"
 #include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 
-static int phi_force_interpolation(hydro_t * hydro, map_t * map, double dt);
+static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
+				   map_t * map, double dt);
 
 /*****************************************************************************
  *
  *  phi_force_colloid
  *
- *  Driver routine.
+ *  Driver routine. For fractional timesteps, dt < 1.
+ *  If no colloids, and no hydrodynamics, no action is required.
  *
  *****************************************************************************/
 
-int phi_force_colloid(hydro_t * hydro, map_t * map, double dt) {
+int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
+		      double dt) {
 
+  int ncolloid;
   int required;
 
   phi_force_required(&required);
+  colloids_info_ntotal(cinfo, &ncolloid);
+
+  if (hydro == NULL && ncolloid == 0) required = 0;
 
   if (required) {
 
     phi_force_stress_allocate();
 
     phi_force_stress_compute();
-    phi_force_interpolation(hydro, map, dt);
+    phi_force_interpolation(cinfo, hydro, map, dt);
 
     phi_force_stress_free();
   }
@@ -90,10 +96,13 @@ int phi_force_colloid(hydro_t * hydro, map_t * map, double dt) {
  *
  *  At solid interfaces use P^th from the adjacent fluid site.
  *
+ *  hydro may be null, in which case fluid force is ignored;
+ *  however, we still compute the colloid force.
+ *
  *****************************************************************************/
 
-static int phi_force_interpolation(hydro_t * hydro, map_t * map, double dt) {
-
+static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
+				   map_t * map, double dt) {
   int ia, ic, jc, kc;
   int index, index1;
   int nlocal[3];
@@ -109,7 +118,7 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map, double dt) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  assert(hydro);
+  assert(cinfo);
   assert(map);
 
   coords_nlocal(nlocal);
@@ -123,7 +132,8 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map, double dt) {
 	index = coords_index(ic, jc, kc);
 
 	/* If this is solid, then there's no contribution here. */
-	p_c = colloid_at_site_index(index);
+
+	colloids_info_map(cinfo, index, &p_c);
 	if (p_c) continue;
 
 	/* Compute pth at current point */
@@ -136,170 +146,174 @@ static int phi_force_interpolation(hydro_t * hydro, map_t * map, double dt) {
 	/* Compute differences */
 	
 	index1 = coords_index(ic+1, jc, kc);
-	p_c = colloid_at_site_index(index1);
+	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
 	  /* Compute the fluxes at solid/fluid boundary */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -pth0[ia][X]*dt;
-	    p_c->force[ia] += pth0[ia][X]*dt;
+	    force[ia] = -pth0[ia][X];
+	    p_c->force[ia] += pth0[ia][X];
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] = -pth0[ia][X]*dt;
-	      fw[ia] = pth0[ia][X]*dt;
+	      force[ia] = -pth0[ia][X];
+	      fw[ia] = pth0[ia][X];
 	    }
 	  }
 	  else {
 	    /* This flux is fluid-fluid */ 
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X])*dt;
+	      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	    }
 	  }
 	}
 
 	index1 = coords_index(ic-1, jc, kc);
-	p_c = colloid_at_site_index(index1);
+	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][X]*dt;
-	    p_c->force[ia] -= pth0[ia][X]*dt;
+	    force[ia] += pth0[ia][X];
+	    p_c->force[ia] -= pth0[ia][X];
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += pth0[ia][X]*dt;
-	      fw[ia] -= pth0[ia][X]*dt;
+	      force[ia] += pth0[ia][X];
+	      fw[ia] -= pth0[ia][X];
 	    }
 	  }
 	  else {
 	    /* Fluid - fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X])*dt;
+	      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	    }
 	  }
 	}
 
 	index1 = coords_index(ic, jc+1, kc);
-	p_c = colloid_at_site_index(index1);
+	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Y]*dt;
-	    p_c->force[ia] += pth0[ia][Y]*dt;
+	    force[ia] -= pth0[ia][Y];
+	    p_c->force[ia] += pth0[ia][Y];
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] -= pth0[ia][Y]*dt;
-	      fw[ia] += pth0[ia][Y]*dt;
+	      force[ia] -= pth0[ia][Y];
+	      fw[ia] += pth0[ia][Y];
 	    }
 	  }
 	  else {
 	    /* Fluid-fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y])*dt;
+	      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	    }
 	  }
 	}
 
 	index1 = coords_index(ic, jc-1, kc);
-	p_c = colloid_at_site_index(index1);
+	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
 	  /* Solid-fluid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Y]*dt;
-	    p_c->force[ia] -= pth0[ia][Y]*dt;
+	    force[ia] += pth0[ia][Y];
+	    p_c->force[ia] -= pth0[ia][Y];
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += pth0[ia][Y]*dt;
-	      fw[ia] -= pth0[ia][Y]*dt;
+	      force[ia] += pth0[ia][Y];
+	      fw[ia] -= pth0[ia][Y];
 	    }
 	  }
 	  else {
 	    /* Fluid-fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y])*dt;
+	      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	    }
 	  }
 	}
 	
 	index1 = coords_index(ic, jc, kc+1);
-	p_c = colloid_at_site_index(index1);
+	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
 	  /* Fluid-solid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Z]*dt;
-	    p_c->force[ia] += pth0[ia][Z]*dt;
+	    force[ia] -= pth0[ia][Z];
+	    p_c->force[ia] += pth0[ia][Z];
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] -= pth0[ia][Z]*dt;
-	      fw[ia] += pth0[ia][Z]*dt;
+	      force[ia] -= pth0[ia][Z];
+	      fw[ia] += pth0[ia][Z];
 	    }
 	  }
 	  else {
 	    /* Fluid-fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z])*dt;
+	      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	    }
 	  }
 	}
 
 	index1 = coords_index(ic, jc, kc-1);
-	p_c = colloid_at_site_index(index1);
+	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
 	  /* Fluid-solid */
 	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Z]*dt;
-	    p_c->force[ia] -= pth0[ia][Z]*dt;
+	    force[ia] += pth0[ia][Z];
+	    p_c->force[ia] -= pth0[ia][Z];
 	  }
 	}
 	else {
 	  map_status(map, index1, &status);
 	  if (status == MAP_BOUNDARY) {
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += pth0[ia][Z]*dt;
-	      fw[ia] -= pth0[ia][Z]*dt;
+	      force[ia] += pth0[ia][Z];
+	      fw[ia] -= pth0[ia][Z];
 	    }
 	  }
 	  else {
 	    /* Fluid-fluid */
 	    chemical_stress(index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
-	      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z])*dt;
+	      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	    }
 	  }
 	}
 
 	/* Store the force on lattice */
 
-	hydro_f_local_add(hydro, index, force);
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] *= dt;
+	}
+
+	if (hydro) hydro_f_local_add(hydro, index, force);
 	wall_accumulate_force(fw);
 
 	/* Next site */

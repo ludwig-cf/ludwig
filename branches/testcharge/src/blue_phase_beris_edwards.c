@@ -85,8 +85,6 @@ int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map,
   advflux_create(nf, &flux);
 
   if (hydro) {
-    hydro_u_halo(hydro); /* Can move this to main to make more obvious? */
-    colloids_fix_swd(hydro, map);
 
     hydro_lees_edwards(hydro);
 

@@ -26,15 +26,14 @@
 #include "pe.h"
 #include "ran.h"
 #include "coords.h"
-#include "colloids.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
 #include "wall.h"
 
-static void colloids_init_check_state(double hmax);
-static void colloids_init_random_set(int n, const colloid_state_t * s,
-				     double amax);
-static int  colloids_init_check_wall(double dh);
+static int colloids_init_check_state(colloids_info_t * cinfo, double hmax);
+static int colloids_init_random_set(colloids_info_t * cinfo, int n,
+				    const colloid_state_t * s,  double amax);
+static int colloids_init_check_wall(colloids_info_t * cinfo, double dh);
 
 /*****************************************************************************
  *
@@ -46,14 +45,17 @@ static int  colloids_init_check_wall(double dh);
  *
  *****************************************************************************/
 
-void colloids_init_random(int np, const colloid_state_t * s0, double dh) {
+int colloids_init_random(colloids_info_t * cinfo, int np,
+			 const colloid_state_t * s0, double dh) {
 
   double amax;
   double hmax;
   colloid_t * pc;
 
+  assert(cinfo);
+
   if (np == 1) {
-    pc = colloid_add_local(1, s0->r);
+    colloids_info_add_local(cinfo, 1, s0->r, &pc);
     if (pc) {
       pc->s = *s0;
       pc->s.index = 1;
@@ -65,15 +67,15 @@ void colloids_init_random(int np, const colloid_state_t * s0, double dh) {
     amax = s0->ah + dh;
     hmax = 2.0*s0->ah + dh;
 
-    colloids_init_random_set(np, s0, amax);
-    colloids_halo_state();
-    colloids_init_check_state(hmax);
+    colloids_init_random_set(cinfo, np, s0, amax);
+    colloids_halo_state(cinfo);
+    colloids_init_check_state(cinfo, hmax);
   }
 
-  if (wall_present()) colloids_init_check_wall(dh);
-  colloids_ntotal_set();
+  if (wall_present()) colloids_init_check_wall(cinfo, dh);
+  colloids_info_ntotal_set(cinfo);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -85,8 +87,8 @@ void colloids_init_random(int np, const colloid_state_t * s0, double dh) {
  *
  *****************************************************************************/
 
-static void colloids_init_random_set(int npart, const colloid_state_t * s,
-				     double amax) {
+static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
+				    const colloid_state_t * s,  double amax) {
   int n;
   double r0[3];
   double lex[3];
@@ -102,7 +104,7 @@ static void colloids_init_random_set(int npart, const colloid_state_t * s,
     r0[X] = Lmin(X) + lex[X] + ran_serial_uniform()*(L(X) - 2.0*lex[X]);
     r0[Y] = Lmin(Y) + lex[Y] + ran_serial_uniform()*(L(Y) - 2.0*lex[Y]);
     r0[Z] = Lmin(Z) + lex[Z] + ran_serial_uniform()*(L(Z) - 2.0*lex[Z]);
-    pc = colloid_add_local(n, r0);
+    colloids_info_add_local(cinfo, n, r0, &pc);
 
     if (pc) {
       /* Copy the state in, except the index and position, and rebuild */
@@ -115,7 +117,7 @@ static void colloids_init_random_set(int npart, const colloid_state_t * s,
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -127,24 +129,28 @@ static void colloids_init_random_set(int npart, const colloid_state_t * s,
  *
  *****************************************************************************/
 
-static void colloids_init_check_state(double hmax) {
+static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
 
   int noverlap_local;
   int noverlap;
   int ic, jc, kc, id, jd, kd, dx, dy, dz;
+  int ncell[3];
   double hh;
   double r12[3];
 
   colloid_t * p_c1;
   colloid_t * p_c2;
 
+  assert(cinfo);
+  colloids_info_ncell(cinfo, ncell);
+
   noverlap_local = 0;
 
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
 
-	p_c1 = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_c1);
 
 	while (p_c1) {
 	  for (dx = -1; dx <= +1; dx++) {
@@ -154,7 +160,7 @@ static void colloids_init_check_state(double hmax) {
 		id = ic + dx;
 		jd = jc + dy;
 		kd = kc + dz;
-		p_c2 = colloids_cell_list(id, jd, kd);
+		colloids_info_cell_list_head(cinfo, id, jd, kd, &p_c2);
 
 		while (p_c2) {
 		  if (p_c2 != p_c1) {
@@ -185,7 +191,7 @@ static void colloids_init_check_state(double hmax) {
     fatal("Stop.\n");
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -199,21 +205,24 @@ static void colloids_init_check_state(double hmax) {
  *
  *****************************************************************************/
 
-static int colloids_init_check_wall(double dh) {
+static int colloids_init_check_wall(colloids_info_t * cinfo, double dh) {
 
   int ic, jc, kc, ia;
+  int ncell[3];
   int ifailocal = 0;
   int ifail;
 
   colloid_t * pc = NULL;
 
+  assert(cinfo);
   assert(dh >= 0.0);
+  colloids_info_ncell(cinfo, ncell);
 
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
 
-	pc = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	while (pc) {
 	  for (ia = 0; ia < 3; ia++) {
@@ -233,3 +242,4 @@ static int colloids_init_check_wall(double dh) {
 
   return 0;
 }
+

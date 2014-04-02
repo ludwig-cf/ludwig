@@ -48,6 +48,22 @@ static double w2_colloid_ = 0.0;
 static double w1_wall_ = 0.0;
 static double w2_wall_ = 0.0;
 
+static colloids_info_t * cinfo_ = NULL; /* Temporary solution to getting map */
+
+/*****************************************************************************
+ *
+ *  colloids_q_cinfo_set
+ *
+ *****************************************************************************/
+
+int colloids_q_cinfo_set(colloids_info_t * cinfo) {
+
+  assert(cinfo);
+
+  cinfo_ = cinfo;
+  return 0;
+}
+
 /*****************************************************************************
  *
  *  colloids_q_boundary_normal
@@ -74,7 +90,9 @@ void colloids_q_boundary_normal(const int index, const int di[3],
   coords_index_to_ijk(index, isite);
 
   index1 = coords_index(isite[X] - di[X], isite[Y] - di[Y], isite[Z] - di[Z]);
-  pc = colloid_at_site_index(index1);
+
+  assert(cinfo_);
+  colloids_info_map(cinfo_, index1, &pc);
 
   if (pc) {
     coords_nlocal_offset(noffset);
@@ -174,9 +192,12 @@ int colloids_q_boundary(const double nhat[3], double qs[3][3],
  *  inside particles. Here we set the lattice velocity based on
  *  the solid body rotation u = v + Omega x rb
  *
+ *  Issues: this routines is doing towo things: solid and colloid.
+ *  these could be separate.
+ *
  *****************************************************************************/
 
-int colloids_fix_swd(hydro_t * hydro, map_t * map) {
+int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -189,10 +210,11 @@ int colloids_fix_swd(hydro_t * hydro, map_t * map) {
   double x, y, z;
 
   colloid_t * p_c;
-  colloid_t * colloid_at_site_index(int);
 
-  assert(hydro);
+  assert(cinfo);
   assert(map);
+
+  if (hydro == NULL) return 0;
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -214,7 +236,7 @@ int colloids_fix_swd(hydro_t * hydro, map_t * map) {
 	  hydro_u_set(hydro, index, u);
 	}
 
-	p_c = colloid_at_site_index(index);
+	colloids_info_map(cinfo, index, &p_c);
 
 	if (p_c) {
 	  /* Set the lattice velocity here to the solid body

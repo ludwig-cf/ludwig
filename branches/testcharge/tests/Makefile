@@ -57,7 +57,9 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_psi.c test_psi_sor.c test_hydro.c \
               test_field.c test_field_grad.c test_nernst_planck.c \
               test_fe_electro.c test_fe_electro_symm.c test_be.c \
-              test_noise.c
+              test_noise.c test_build.c test_bonds.c test_lubrication.c \
+              test_pair_lj_cut.c test_pair_ss_cut.c test_pair_yukawa.c \
+              test_angle_cosine.c test_bond_fene.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}
@@ -83,7 +85,7 @@ tests_mpi:
 
 do_tests: tests
 	checks='$(TESTS)'; \
-	for file in $$checks; do ./$$file; echo "Test was $$file"; done
+	for file in $$checks; do ./$$file; done
 
 do_tests_mpi: tests_mpi
 	checks='$(TESTS)'; \

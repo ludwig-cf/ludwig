@@ -49,7 +49,7 @@ LIBRARY = libludwig.a
 CC = gcc
 MPICC = mpicc
 OPTS = -D_D3Q19_
-CFLAGS = -Wall -O3
+CFLAGS = -Wall -O3 -pedantic-errors
 
 INC = -I.
 LIBS = -lm
@@ -68,10 +68,9 @@ ARFLAGS = -cru
 PETSC = 
 ifdef PETSC
 OPTS += -DPETSC
-INC  += -I/Users/ohenrich/petsc-3.4.3/include -I/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/include -I/opt/X11/include -I/opt/local/include -I/usr/local/include
-LIBS += -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.4.3/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -L/opt/X11/lib -lX11 -lpthread -L/usr/local/lib -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/5.1/lib/darwin -lclang_rt.osx -lmpi_cxx -lc++ -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/5.1/lib/darwin -lclang_rt.osx -ldl -lmpi -lopen-rte -lopen-pal -lutil -lSystem -lclang_rt.osx -ldl
+INC  +=
+LIBS +=
 endif 
-###############################################################################
 
 ###############################################################################
 #
@@ -85,9 +84,10 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
      brazovskii.o brazovskii_rt.o \
-     cio.o colloids_init.o \
+     colloid_io.o colloids_init.o \
      colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o \
+     colloids_rt.o lubrication.o \
      coords.o coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      ewald.o field.o field_grad.o \
@@ -99,7 +99,8 @@ OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o propagation_ode.o \
      hydro.o hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o \
      lc_droplet.o lc_droplet_rt.o model_le.o map.o \
-     noise.o potential.o \
+     noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
+     angle_cosine.o bond_fene.o \
      phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_force_stress.o \
      phi_lb_coupler.o phi_stats.o \
