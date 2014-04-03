@@ -601,7 +601,7 @@ void blue_phase_symmetric_stress(const int index, double sth[3][3]){
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-	sth[ia][ib] = sth[ia][ib];
+	sth[ia][ib] = -sth[ia][ib];
     }
   }
 
