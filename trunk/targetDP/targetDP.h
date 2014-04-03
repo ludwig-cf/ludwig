@@ -34,6 +34,7 @@
 
 /* Instruction-level-parallelism execution macro */
 #define TARGET_ILP(simdIndex) for (simdIndex = 0; simdIndex < NILP; simdIndex++)  
+#define TARGET_ILP_(baseIndex,fullIndex) for (fullIndex = baseIndex; fullIndex < baseIndex+NILP; fullIndex++)  
 
 /* Thread-level-parallelism execution macro */
 #define TARGET_TLP(simtIndex,extent) \
@@ -58,6 +59,8 @@
 
 /* Instruction-level-parallelism execution macro */
 #define TARGET_ILP(simdIndex)  for (simdIndex = 0; simdIndex < NILP; simdIndex++) 
+
+#define TARGET_ILP_(baseIndex,fullIndex) for (fullIndex = baseIndex; fullIndex < baseIndex+NILP; fullIndex++)  
 
 /* Thread-level-parallelism execution macro */
 #define TARGET_TLP(simtIndex,extent)    _Pragma("omp parallel for")	\
