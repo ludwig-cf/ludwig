@@ -19,232 +19,19 @@
 \setlength{\parskip}{\medskipamount}
 \pagestyle{empty}
 
+% Prepend ``Supplementary'' Fig/Table caption headings
+\usepackage{caption}
+\captionsetup[table]{name=Supplementary Table}
+\captionsetup[figure]{name=Supplementary Figure}
+
+% Likewise...
+\renewcommand\refname{Supplementary References}
 
 \begin{document}
 
 
-{\bf
-Self-assembly of colloid-cholesteric
-composites provides a possible route to switchable optical materials.
 
-Supplementary Information}
-
-Here, we give more details of the simulation method, protocol, and parameters used. We also provide additional figures complementing the main text, and discuss the matching of simulation units to physical units. 
-
-\noindent
-\textbf{Parameter details for bulk BPI.}
-The parameters for the free energy are chosen to be representative
-of blue phase I: chirality $\kappa \sim 0.7$ and reduced temperature
-$\tau = -0.25$.
-The full free energy parameters are shown in Table~\ref{table:params}.
-The order parameter tensor $Q_{\alpha\beta}$ for bulk blue phase I is
-initialised from an approximation in high chirality limit
-\cite{blue1,oliver1}. Systems of 128$^3$ lattice sites are
-used with a pitch length of $p = 32\sqrt{2}$, which accommodates 4$^3$
-unit cells with fully periodic boundary conditions.
-Simulations at different solid volume fractions (1\% and 4\%), and different 
-surface anchoring strengths ($WR/K = 0.23$ and $WR/K = 2.3$) representing
-``weak'' and ``strong'' anchoring are run for two million simulation
-time steps.
-The initial distribution of the colloid positions is set at random
-for the required solid volume fraction; the colloids are initially
-at rest.
-
-To generate a disordered network of disclination lines, a ``quench''
-is performed in which the order parameter is initialised via a
-locally chosen random director, and
-%Eq.~\ref{eq:surf_q} MAIN TEXT Q_0 = .... 
-Eq.~15
-employed with a small amplitude $q^0 = 10^{-7}$ to
-provide an order parameter.
-The mean-field spinodal point at $\gamma = 3.0$ is avoided and
-the parameters are the same as for the initial simulations with
-pitch $p = 32\sqrt{2}$. The chirality and reduced temperature (see
-Table~\ref{table:params}) remain appropriate for BPI.
-Colloids are added as before and the simulations run for 2 million
-simulation steps.
-
-For simplicity,  the size of the BPI unit cell is not allowed to 
-readjust dynamically to minimise free energy (there is no 
-``redshift''~\cite{blue1}): this would lead to quantitatively different 
-values of the free energy, but qualitatively similar structures. 
-
-\noindent
-\textbf{Parameters for confined BPI.}
-Here, a narrow sandwich of fluid is placed between flat walls in
-perpendicular to the narrow coordinate direction, and with periodic
-boundaries in the other two directions. The system size used in all
-cases is 256$^2 \times$56 lattice sites. Each simulation is a ``quench''
-in a similar manner to that used in the bulk: the order parameter is
-initialised randomly. The free energy parameters (see Table~\ref{table:params})
-are again appropriate for (equilibrium) blue phase I
-(chirality $\kappa = 0.8$ and
-reduced temperature $\tau = -0.25$). The cholesteric pitch is set
-to be $p = 64$, providing a slightly better resolution than the bulk
-simulations.
-
-The surface anchoring for colloids is as before: always normal, but with
-$WR/K = 0.23$ and $WR/K = 2.3$. The colloid solid volume fractions are
-1\% and 4\%.
-\textcolor{red}{For both normal and planar anchoring at the walls,
-the strength is adjusted to correspond to that used for the strongly
-anchoring particles.}
-All simulations are run for two million simulation time steps.
-
-\noindent
-\textbf{External electric field.}
-For the simulations of BPIII with colloidal particles a system size of
-$128^3$ is used with a cholesteric pitch of $p=32$ in lattice units. 
-The simulations are
-performed at chirality $\kappa=2.6$ and reduced temperature $\tau=-0.25$.  
-An initial configuration of
-randomly oriented and positioned double twist cylinders is used,
-from which an amorphous BPIII network emerges \cite{oliver-bp3}. This structure
-is equilibrated for $6\times10^{5}$ LB time steps until no significant
-further evolution is observed. 
-
-The colloidal particles with weak
-normal anchoring ($WR / K= 0.23$), are then inserted with randomly chosen positions,
-and the composite system is equilibrated for another $1.2\times10^{6}$
-time steps.
-At the end of the equilibration phase the uniform electric field
-with reduced field strength ${\cal E} = 0.8$ 
-is switched on (oriented along the $z$-direction), and the simulation
-run for a further $1.2\times10^{6}$ time steps.
-This is found to be sufficiently long for a hexagonal structure to
-emerge and saturate.
-If the electric field is then switched off, and the system quickly relaxes
-to a metastable state which shows a residual anisotropy in the
-colloidal distribution. The total length of this final relaxation phase
-is $1\times10^6$ LB time steps.
-
-\begin{table}[h]
-\begin{center}
-\begin{tabular}{|l|c|c|c|c|c|c|c|}
-\hline
-         & $A_0$ & $\gamma$ & $K$ & $p$ & $\kappa$ & $\tau$ & $WR/K$\\
-\hline 
-Bulk BPI & 0.01 & 3.086 & 0.007061 & 32$\sqrt{2}$ & 0.6902 & -0.2500 &
-0.23, 2.3\\
-\hline
-Bulk Quench & 0.01 & 3.086 & 0.007061 & 32$\sqrt{2}$ & 0.6902 & -0.2500 &
-0.23, 2.3 \\
-\hline
-Confined & 0.01 & 3.086 & 0.01897 & 64 & 0.8 & -0.2500 & 0.23, 2.3\\
-\hline
-External field & 0.004& 3.086 & 0.02 & 32 & 2.6 & -0.2500 & 0.23\\ 
-\hline
-\end{tabular}
-\end{center}
-\caption{\textbf{Free energy parameters used in the simulations.} Bulk BPI
-correspond to Fig.~1 (A-D), bulk quench to Fig.~1 (E--H); confined
-geometries are shown in Fig.~2; and the external field case is
-relevant for Fig.~3.}
-\label{table:params}
-\end{table}
-
-\noindent
-\textbf{Disclination rendering.}
-In all cases visualisation of the defect lines is carried out via
-an isosurface of the scalar order parameter $q$ determined from the
-largest eigenvalue of the local order parameter tensor. A low value
-of the scalar order parameter $q$ (typically in the range 0.12--0.14)
-unambiguously identifies the disclinations.
-
-\noindent
-\textbf{Computation of the structure factor.}
-To provide structural information about the field-aligned 
-states and the residual anisotropy after switch off a 
-procedure similar to the one described in \cite{oliver-bp3} is
-followed.
-The structure factor $S(\mathbf{k})$ in the current approach is
-defined via the Fourier transform of the colloid density $F(\mathbf{k})$:
-\begin{equation}
-S({\bf k}) =  |F({\bf k})|^2, \mathrm{with}\
-F({\bf k}) = \int d^3{\bf r} \rho({\bf r}) e^{i {\bf k. r}}.
-\end{equation}
-The colloid density $\rho({\bf r})$ is a discretised density and taken to be
-$\rho({\bf r})=1$ if a lattice site at ${\bf r}$ is part of a colloid
-and $\rho({\bf r})=0$ otherwise. This definition, which deviates from the 
-standard definition of a structure factor and does not consider the colloids 
-as point-like objects, allows the same structural information
-to be obtained in a simple way.
-
-\noindent
-\textbf{Parameter mapping to physical units.}
-To get from simulation to physical units, a calibration of scales of
-length, energy and time in the simulations is required. For similar
-mappings see,
-e.g.~\cite{denniston2}.
-
-The length scale can be set by mapping the half pitch to a realistic blue
-phase unit cell size, which is in the 100--500~nm range \cite{blue1}. 
-For bulk simulations (Fig.~1 and Fig.~3 in the main text), a suitable choice
-is one where one simulation unit (lattice site) corresponds to 10~nm. Therefore
-the colloidal size in Figs.~1 and~3 corresponds to $\sim$ 50~nm. 
-
-To obtain an energy scale, it is possible to choose $A_0 \simeq 10^6$~Pa,
-which is reasonable following Ref.~\cite{blue1} (this is also the choice in
-Ref.~\cite{oliver2}). This choice leads to a simulation unit of
-free energy (or stress) equal to $10^{8}$~Pa in Figs.~1 and~3.
-From the energy and length scales one can map elastic constants to
-physical units: for instance, the simulation in Fig.~1 corresponds to
-a liquid crystal with splay, bend and twist (Frank) elastic constants
-equal to 35 pN (or equivalently $K=70$~pN).
-
-The timescale calibration may be obtained from (see e.g.~\cite{denniston})
-\begin{equation}
-\gamma_1=\frac{2q^2}{\Gamma},
-\end{equation}
-which relates the rotational viscosity $\gamma_1$ to the ordering strength
-$q$ and the order parameter mobility $\Gamma$.
-In the present simulations, $\Gamma = 0.5$ and the value of $\gamma$
-for the simulation in Fig.~1 leads to $q=1/2$.   
-For real liquid crystalline materials, $\gamma_1$ usually lies in range
-$10^{-2}-1$ Pa s~\cite{deGennes}; for definiteness say
-$\gamma_1 = 1$~Pa~s (equivalently 10 poise). Given the previous mapping for
-free energy (or stress) units, this leads to a simulation unit of time equal
-to $10^{-8}$~s. The total simulated time in Figs. 1-3 is therefore in the
-millisecond range. 
-
-To calibrate the electric field strength 
-one can equate the value of the dimensionless parameter ${\cal E}$ in the 
-simulations with that of a hypothetical experiment.
-Given the previous value for $A_0$, and a dielectric anisotropy of 20
-(or equivalently $\epsilon_a=20\epsilon_0$, with $\epsilon_0$ the
-dielectric permittivity of vacuum), an electric field
-of 100 V~$\mu$m$^{-1}$ is obtained. This corresponds to a value of
-${\cal E}\sim 0.4$ (considering a value of $\gamma=3.0857$ as in
-Fig.~3 of the main text).
-
-Given these mappings, all quantities can be easily transformed from
-simulation to physical units and vice versa. For example Figs.~1 and~2
-use an isotropic viscosity $\eta \simeq$~0.01 and~0.1 in simulation units,
-which translate into $0.01-0.1$~Pa~s respectively. This is sensible (if 
-slightly low) for a molecular nematogen in the isotropic phase. 
-The effective viscosity in ordered phases is higher, but this is ensured
-in our model by the coupling to the order parameter.
-Note that the density is set to unity in the simulations: this
-corresponds to a fluid density which is about a thousand times larger
-than in experiments. This makes no difference in practice as
-the Reynolds number $= \rho V\Lambda/\eta$ (where $V$ is a typical
-velocity, in our simulations around $10^{-5}$ in lattice units, 
-and $\Lambda$ is a typical length scale, e.g. the size of a unit cell) 
-remains small enough~\cite{codef}. 
-
-To summarise, the simulations represent BP-forming materials, with the
-interpretation of the simulation units for length, time, and energy
-density being close to 10~nm, 10~ns, and 100~MPa respectively.
-For a Frank eleastic
-constant of $K = 70$~pN and unit cell sizes in the range
-$\lambda =$100--500~nm, a corresponding shear modulus $G \simeq
-K/\lambda^2 =$0.3--7~kPa.
-
-
-\vfill\pagebreak
-
-
-{\bf Supplementary Figures and Animations}
+{\bf Supplementary Figures}
 
 \begin{figure}[!h]
 \begin{center}
@@ -413,6 +200,226 @@ direction are energetically degenerate,
 and the actual orientation of the hexagon emerges spontaneously during
 switching. }
 \end{figure}
+
+
+\vfill\pagebreak
+
+
+{\bf Supplementary Table}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|c|c|c|}
+\hline
+         & $A_0$ & $\gamma$ & $K$ & $p$ & $\kappa$ & $\tau$ & $WR/K$\\
+\hline 
+Bulk BPI & 0.01 & 3.086 & 0.007061 & 32$\sqrt{2}$ & 0.6902 & -0.2500 &
+0.23, 2.3\\
+\hline
+Bulk Quench & 0.01 & 3.086 & 0.007061 & 32$\sqrt{2}$ & 0.6902 & -0.2500 &
+0.23, 2.3 \\
+\hline
+Confined & 0.01 & 3.086 & 0.01897 & 64 & 0.8 & -0.2500 & 0.23, 2.3\\
+\hline
+External field & 0.004& 3.086 & 0.02 & 32 & 2.6 & -0.2500 & 0.23\\ 
+\hline
+\end{tabular}
+\end{center}
+\caption{\textbf{Free energy parameters used in the simulations.} Bulk BPI
+correspond to Fig.~1 (A-D), bulk quench to Fig.~1 (E--H); confined
+geometries are shown in Fig.~2; and the external field case is
+relevant for Fig.~3.}
+\label{table:params}
+\end{table}
+
+\vfill
+\pagebreak
+
+{\bf Supplementary Methods}
+
+\noindent
+\textbf{Parameter details for bulk BPI.}
+The parameters for the free energy are chosen to be representative
+of blue phase I: chirality $\kappa \sim 0.7$ and reduced temperature
+$\tau = -0.25$.
+The full free energy parameters are shown in Table~\ref{table:params}.
+The order parameter tensor $Q_{\alpha\beta}$ for bulk blue phase I is
+initialised from an approximation in high chirality limit
+\cite{blue1,oliver1}. Systems of 128$^3$ lattice sites are
+used with a pitch length of $p = 32\sqrt{2}$, which accommodates 4$^3$
+unit cells with fully periodic boundary conditions.
+Simulations at different solid volume fractions (1\% and 4\%), and different 
+surface anchoring strengths ($WR/K = 0.23$ and $WR/K = 2.3$) representing
+``weak'' and ``strong'' anchoring are run for two million simulation
+time steps.
+The initial distribution of the colloid positions is set at random
+for the required solid volume fraction; the colloids are initially
+at rest.
+
+To generate a disordered network of disclination lines, a ``quench''
+is performed in which the order parameter is initialised via a
+locally chosen random director, and
+%Eq.~\ref{eq:surf_q} MAIN TEXT Q_0 = .... 
+Eq.~15
+employed with a small amplitude $q^0 = 10^{-7}$ to
+provide an order parameter.
+The mean-field spinodal point at $\gamma = 3.0$ is avoided and
+the parameters are the same as for the initial simulations with
+pitch $p = 32\sqrt{2}$. The chirality and reduced temperature (see
+Table~\ref{table:params}) remain appropriate for BPI.
+Colloids are added as before and the simulations run for 2 million
+simulation steps.
+
+For simplicity,  the size of the BPI unit cell is not allowed to 
+readjust dynamically to minimise free energy (there is no 
+``redshift''~\cite{blue1}): this would lead to quantitatively different 
+values of the free energy, but qualitatively similar structures. 
+
+\noindent
+\textbf{Parameters for confined BPI.}
+Here, a narrow sandwich of fluid is placed between flat walls in
+perpendicular to the narrow coordinate direction, and with periodic
+boundaries in the other two directions. The system size used in all
+cases is 256$^2 \times$56 lattice sites. Each simulation is a ``quench''
+in a similar manner to that used in the bulk: the order parameter is
+initialised randomly. The free energy parameters (see Table~\ref{table:params})
+are again appropriate for (equilibrium) blue phase I
+(chirality $\kappa = 0.8$ and
+reduced temperature $\tau = -0.25$). The cholesteric pitch is set
+to be $p = 64$, providing a slightly better resolution than the bulk
+simulations.
+
+The surface anchoring for colloids is as before: always normal, but with
+$WR/K = 0.23$ and $WR/K = 2.3$. The colloid solid volume fractions are
+1\% and 4\%.
+For both normal and planar anchoring at the walls,
+the strength is adjusted to correspond to that used for the strongly
+anchoring particles.
+All simulations are run for two million simulation time steps.
+
+\noindent
+\textbf{External electric field.}
+For the simulations of BPIII with colloidal particles a system size of
+$128^3$ is used with a cholesteric pitch of $p=32$ in lattice units. 
+The simulations are
+performed at chirality $\kappa=2.6$ and reduced temperature $\tau=-0.25$.  
+An initial configuration of
+randomly oriented and positioned double twist cylinders is used,
+from which an amorphous BPIII network emerges \cite{oliver-bp3}. This structure
+is equilibrated for $6\times10^{5}$~LB time steps until no significant
+further evolution is observed. 
+
+The colloidal particles with weak
+normal anchoring ($WR / K= 0.23$), are then inserted with randomly chosen positions,
+and the composite system is equilibrated for another $1.2\times10^{6}$
+time steps.
+At the end of the equilibration phase the uniform electric field
+with reduced field strength ${\cal E} = 0.8$ 
+is switched on (oriented along the $z$-direction), and the simulation
+run for a further $1.2\times10^{6}$ time steps.
+This is found to be sufficiently long for a hexagonal structure to
+emerge and saturate.
+If the electric field is then switched off, and the system quickly relaxes
+to a metastable state which shows a residual anisotropy in the
+colloidal distribution. The total length of this final relaxation phase
+is $1\times10^6$ LB time steps.
+
+\noindent
+\textbf{Disclination rendering.}
+In all cases visualisation of the defect lines is carried out via
+an isosurface of the scalar order parameter~$q$ determined from the
+largest eigenvalue of the local order parameter tensor. A low value
+of the scalar order parameter~$q$ (typically in the range~0.12--0.14)
+unambiguously identifies the disclinations.
+
+\noindent
+\textbf{Computation of the structure factor.}
+To provide structural information about the field-aligned 
+states and the residual anisotropy after switch off a 
+procedure similar to the one described in \cite{oliver-bp3} is
+followed.
+The structure factor $S(\mathbf{k})$ in the current approach is
+defined via the Fourier transform of the colloid density $F(\mathbf{k})$:
+\begin{equation}
+S({\bf k}) =  |F({\bf k})|^2, \mathrm{with}\
+F({\bf k}) = \int d^3{\bf r} \rho({\bf r}) e^{i {\bf k. r}}.
+\end{equation}
+The colloid density $\rho({\bf r})$ is a discretised density and taken to be
+$\rho({\bf r})=1$ if a lattice site at ${\bf r}$ is part of a colloid
+and $\rho({\bf r})=0$ otherwise. This definition, which deviates from the 
+standard definition of a structure factor and does not consider the colloids 
+as point-like objects, allows the same structural information
+to be obtained in a simple way.
+
+\noindent
+\textbf{Parameter mapping to physical units.}
+To get from simulation to physical units, a calibration of scales of
+length, energy and time in the simulations is required. For similar
+mappings see,
+e.g.~\cite{denniston2}.
+
+The length scale can be set by mapping the half pitch to a realistic blue
+phase unit cell size, which is in the 100--500~nm range \cite{blue1}. 
+For bulk simulations (Fig.~1 and Fig.~3 in the main text), a suitable choice
+is one where one simulation unit (lattice site) corresponds to 10~nm. Therefore
+the colloidal size in Figs.~1 and~3 corresponds to $\sim$ 50~nm. 
+
+To obtain an energy scale, it is possible to choose $A_0 \simeq 10^6$~Pa,
+which is reasonable following Ref.~\cite{blue1} (this is also the choice in
+Ref.~\cite{oliver2}). This choice leads to a simulation unit of
+free energy (or stress) equal to $10^{8}$~Pa in Figs.~1 and~3.
+From the energy and length scales one can map elastic constants to
+physical units: for instance, the simulation in Fig.~1 corresponds to
+a liquid crystal with splay, bend and twist (Frank) elastic constants
+equal to 35 pN (or equivalently $K=70$~pN).
+
+The timescale calibration may be obtained from (see e.g.~\cite{denniston})
+\begin{equation}
+\gamma_1=\frac{2q^2}{\mathit{\Gamma}},
+\end{equation}
+which relates the rotational viscosity $\gamma_1$ to the ordering strength
+$q$ and the order parameter mobility $\mathit{\Gamma}$.
+In the present simulations, $\mathit{\Gamma} = 0.5$ and the value of $\gamma$
+for the simulation in Fig.~1 leads to $q=1/2$.   
+For real liquid crystalline materials, $\gamma_1$ usually lies in range
+$10^{-2}-1$ Pa s~\cite{deGennes}; for definiteness say
+$\gamma_1 = 1$~Pa~s (equivalently 10 poise). Given the previous mapping for
+free energy (or stress) units, this leads to a simulation unit of time equal
+to $10^{-8}$~s. The total simulated time in Figs. 1-3 is therefore in the
+millisecond range. 
+
+To calibrate the electric field strength 
+one can equate the value of the dimensionless parameter ${\cal E}$ in the 
+simulations with that of a hypothetical experiment.
+Given the previous value for $A_0$, and a dielectric anisotropy of 20
+(or equivalently $\epsilon_\mathrm{a}=20\epsilon_0$, with $\epsilon_0$ the
+dielectric permittivity of vacuum), an electric field
+of 100 V~$\mu$m$^{-1}$ is obtained. This corresponds to a value of
+${\cal E}\sim 0.4$ (considering a value of $\gamma=3.0857$ as in
+Fig.~3 of the main text).
+
+Given these mappings, all quantities can be easily transformed from
+simulation to physical units and vice versa. For example Figs.~1 and~2
+use an isotropic viscosity $\eta \simeq$~0.01 and~0.1 in simulation units,
+which translate into $0.01-0.1$~Pa~s respectively. This is sensible (if 
+slightly low) for a molecular nematogen in the isotropic phase. 
+The effective viscosity in ordered phases is higher, but this is ensured
+in our model by the coupling to the order parameter.
+Note that the density is set to unity in the simulations: this
+corresponds to a fluid density which is about a thousand times larger
+than in experiments. This makes no difference in practice as
+the Reynolds number $= \rho V\Lambda/\eta$ (where $V$ is a typical
+velocity, in our simulations around $10^{-5}$ in lattice units, 
+and $\Lambda$ is a typical length scale, e.g. the size of a unit cell) 
+remains small enough~\cite{codef}. 
+
+To summarise, the simulations represent BP-forming materials, with the
+interpretation of the simulation units for length, time, and energy
+density being close to 10~nm, 10~ns, and 100~MPa respectively.
+For a Frank eleastic
+constant of $K = 70$~pN and unit cell sizes in the range
+$\lambda =$100--500~nm, a corresponding shear modulus $G \simeq
+K/\lambda^2 =$ 0.3--7~kPa.
 
 \vfill
 \pagebreak
