@@ -1,0 +1,37 @@
+
+Corrections in response to Editor's comments
+
+Main text
+
+In 3 main figures, labels have been adjusted to lower case bold;
+corresponding adjustments have been applied to the main text and
+to the Figure captions.
+
+In two references DOI information is replaced by article/page numbers
+[references 20 and 38].
+
+References to "Supplementary Information" in the main text have been
+replaced by specific references to "Supplementary Methods" or
+"Supplementary Table 1" as appropriate.
+
+Subscript in symbol for dielectric anisotropy $\epsilon_a$ has
+been converted for roman font throughout (similarly for $h_c$).
+
+Upper case $\Gamma$ is changed to $\mathit{\Gamma}$ throughout.
+
+
+
+Supporting material
+
+The highlighted title and preamble have been removed
+
+The sections have been re-ordered: Figures, Table, Methods, References.
+
+The methods section has been titled "Supplementary Methods".
+
+The table caption has been headed "Supplementary Table"
+
+The Supplementary table captions have been headed "Supplementary Figure".
+
+The references have been entitled "Supplementary References"
+
