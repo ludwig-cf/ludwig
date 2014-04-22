@@ -541,6 +541,8 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
+      TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
+
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
 					 ludwig->map, ludwig->noise);
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
@@ -550,6 +552,8 @@ void ludwig_run(const char * inputfile) {
 	blue_phase_beris_edwards(ludwig->q, ludwig->hydro,
 				 ludwig->map, ludwig->noise);
       }
+
+      TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
     }
 
     /* Collision stage (ODE collision is combined with propagation) */
@@ -723,7 +727,8 @@ void ludwig_run(const char * inputfile) {
     sprintf(filename, "%sdist-%8.8d", subdirectory, step);
     io_write(filename, distribution_io_info());
     sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
-    colloid_io_write(ludwig->cio, filename);
+
+    if (ncolloid > 0) colloid_io_write(ludwig->cio, filename);
 
     if (ludwig->phi) {
       field_io_info(ludwig->phi, &iohandler);
