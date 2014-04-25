@@ -155,15 +155,18 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   PetscInt    i,j,k;
   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
   PetscScalar epsilon;
-/*
-  PetscScalar v[19];
-  MatStencil  row, col[19];
-*/
 
+#ifndef OLIVER_NP
   PetscScalar v[7];
   MatStencil  row, col[7];
+#endif
 
+#ifdef OLIVER_NP
+  PetscScalar v[19];
+  MatStencil  row, col[19];
   double r3 = 0.333333333333333, r6 = 0.166666666666667;
+#endif
+
   assert(obj);
 
   MatZeroEntries(A);
@@ -189,8 +192,8 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	row.j = j;
 	row.k = k;
 
+#ifndef OLIVER_NP
 	/* 6-point stencil */
-
 	col[0].i = i;     col[0].j = j;     col[0].k = k-1;   v[0] = - epsilon;
 	col[1].i = i;     col[1].j = j-1;   col[1].k = k;     v[1] = - epsilon;
 	col[2].i = i-1;   col[2].j = j;     col[2].k = k;     v[2] = - epsilon;
@@ -199,10 +202,10 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	col[5].i = i;     col[5].j = j+1;   col[5].k = k;     v[5] = - epsilon;
 	col[6].i = i;     col[6].j = j;     col[6].k = k+1;   v[6] = - epsilon;
 	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
+#endif
 
-
+#ifdef OLIVER_NP
 	/* D3Q19 stencil */
-/*
 	col[0].i  = i+1;   col[0].j  = j;     col[0].k  = k;     v[0]  = - r3 * epsilon;
 	col[1].i  = i-1;   col[1].j  = j;     col[1].k  = k;     v[1]  = - r3 * epsilon;
 	col[2].i  = i;     col[2].j  = j+1;   col[2].k  = k;     v[2]  = - r3 * epsilon;
@@ -223,7 +226,8 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	col[17].i = i;     col[17].j = j+1;   col[17].k = k-1;   v[17] = - r6 * epsilon;
 	col[18].i = i;     col[18].j = j-1;   col[18].k = k+1;   v[18] = - r6 * epsilon;
 	MatSetValuesStencil(A,1,&row,19,col,v,INSERT_VALUES);
-*/
+#endif
+
       }
     }
   }
