@@ -101,8 +101,8 @@ int bond_fene_info(bond_fene_t * obj) {
   assert(obj);
 
   info("FENE bond\n");
-  info("Spring constant:         %14.7e\n", obj->k);
-  info("Equilibrium separation:  %14.7\n", obj->r0);
+  info("Spring constant:             %14.7e\n", obj->k);
+  info("Equilibrium separation:      %14.7e\n", obj->r0);
 
   return 0;
 }
@@ -120,6 +120,7 @@ int bond_fene_register(bond_fene_t * obj, interact_t * parent) {
 
   interact_potential_add(parent, INTERACT_BOND, obj, bond_fene_compute);
   interact_statistic_add(parent, INTERACT_BOND, obj, bond_fene_stats);
+  interact_rc_set(parent, INTERACT_BOND, obj->r0);
 
   return 0;
 }

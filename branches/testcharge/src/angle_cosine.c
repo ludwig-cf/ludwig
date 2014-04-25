@@ -97,8 +97,8 @@ int angle_cosine_info(angle_cosine_t * obj) {
   assert(obj);
 
   info("Bond angle\n");
-  info("Type:         cosine\n");
-  info("kappa:        %14.7e\n", obj->kappa);
+  info("Type:                         cosine\n");
+  info("kappa:                       %14.7e\n", obj->kappa);
 
   return 0;
 }
@@ -222,6 +222,9 @@ int angle_cosine_stats(void * self, double * stats) {
   assert(stats);
 
   stats[INTERACT_STAT_VLOCAL] = obj->vlocal;
+  /* "rmax" "rmin" here are radians */
+  stats[INTERACT_STAT_RMINLOCAL] = acos(obj->cosine_min);
+  stats[INTERACT_STAT_RMAXLOCAL] = acos(obj->cosine_max);
 
   return 0;
 }

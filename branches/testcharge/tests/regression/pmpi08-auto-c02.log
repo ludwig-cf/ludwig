@@ -1,9 +1,9 @@
-Welcome to Ludwig (MPI version running on 8 processes)
+Welcome to Ludwig v0.1.2 (MPI version running on 8 processes)
 
-The SVN revision details are: 
+The SVN revision details are: 2365M
 Note assertions via standard C assert() are on.
 
-Read 43 user parameters from ../tests/regression/pmpi08-auto-c02.inp
+Read 40 user parameters from ./pmpi08-auto-c02.inp
 
 No free energy selected
 
@@ -51,17 +51,30 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
+Colloid information
+-------------------
+
 Colloid I/O settings
 --------------------
 Decomposition:   1  1  1
 Input format:  binary
 Output format: binary
 
-Requested   1 colloid from input
+Requested one colloid via input:
+colloid_one_a0                2.3000000e+00
+colloid_one_ah                2.3000000e+00
+colloid_one_r                 6.4000000e+01  6.4000000e+01  3.2000000e+01
+colloid_one_v                 4.3478261e-02  0.0000000e+00  0.0000000e+00
+colloid_one_w                 0.0000000e+00  0.0000000e+00  0.0000000e+00
+colloid_one_s                 1.0000000e+00  0.0000000e+00  0.0000000e+00
+
 Initialised 1 colloid
-Colloid  radius a0 = 2.300000e+00
-Hydrodyn radius ah = 2.300000e+00
-Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Final cell list:              11 11 11
+Final cell lengths:           2.9090909e+00  2.9090909e+00  2.9090909e+00
 
 Initial conditions.
 
@@ -76,6 +89,7 @@ Momentum - x y z
 Starting time step loop.
 
 Particle statistics:
+
 Colloid velocities - x y z
 [minimum ]  1.3675763e-03 -5.6482729e-04  5.1186310e-04
 [maximum ]  1.3675763e-03 -5.6482729e-04  5.1186310e-04
@@ -84,7 +98,7 @@ Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 6.3519338e-05  0.96361208587 1.03533858441
 
 Momentum - x y z
-[total   ]  2.2158700e+00  1.7273726e-14  4.0794625e-14
+[total   ]  2.2158700e+00  1.7107192e-14  4.0711358e-14
 [fluid   ]  2.1321758e+00  1.3760202e-03 -3.8498072e-03
 [colloids]  8.3694239e-02 -1.3760202e-03  3.8498072e-03
 
@@ -98,18 +112,21 @@ Isothermal fluctuations
 
 Completed cycle 40
 
-Timer resolution: 0.001 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.871      2.871      2.871   2.871440 (1 call)
-      Time step loop:      0.070      0.079      2.823   0.070586 (40 calls)
-         Propagation:      0.002      0.004      0.097   0.002424 (40 calls)
-           Collision:      0.062      0.067      2.484   0.062090 (40 calls)
-       Lattice halos:      0.001      0.007      0.148   0.001856 (80 calls)
+               Total:      3.071      3.071      3.071   3.071305 (1 call)
+      Time step loop:      0.074      0.083      3.019   0.075464 (40 calls)
+         Propagation:      0.008      0.011      0.346   0.008657 (40 calls)
+           Collision:      0.056      0.063      2.296   0.057391 (40 calls)
+       Lattice halos:      0.001      0.008      0.188   0.002351 (80 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (40 calls)
-             Rebuild:      0.001      0.001      0.038   0.000959 (40 calls)
-                 BBL:      0.000      0.000      0.009   0.000217 (40 calls)
-      Particle halos:      0.000      0.002      0.032   0.000810 (40 calls)
-   Force calculation:      0.000      0.000      0.000   0.000001 (40 calls)
+              Forces:      0.000      0.000      0.001   0.000028 (40 calls)
+             Rebuild:      0.002      0.005      0.085   0.002123 (40 calls)
+                 BBL:      0.001      0.002      0.057   0.001429 (40 calls)
+      Particle halos:      0.000      0.004      0.020   0.000509 (40 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (40 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (40 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (80 calls)
 Ludwig finished normally.

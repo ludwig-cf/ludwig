@@ -312,40 +312,49 @@ leslie_ericksen_swim  0.0
 #  Colloid parameters
 #
 #  colloid_init:  no_colloids [default]
-#                 from_file
-#                 random (see below)
-#  colloid_type:  inactive bbl [default]
-#                 active   Include active terms in BBL
-#                 subgrid  No bbl ("unresolved particles")
+#                 from_file         see also "colloid_file_stub"
+#                 input_one         specify exactly one
+#                 input_two         specify two
+#                 input_three       specify three
 #
-#  colloid_cell_min:
-#                 This MUST be set if colloids are present: it specifies
-#                 the minimum cell list width, and must be at least 2ah
-#                 + delta, where delta catches any colloid-colloid
-#                 interactions. 
+#                 input_random      random selection with additional keys:
+#                 colloid_random_no number
+#                 colloid_random_dh 'grace' spacing
+#
+#  For each type specify at least two radii and a position, e.g.,
+#
+#                 colloid_one_a0   2.3
+#                 colloid_one_ah   2.4
+#                 colloid_one_r    12.0_12.0_12.0
+#
+#  Other quantities default to zero. For random initialisation position
+#  is ignored. Full list matches the structure in colloid.h, including
+#
+#  colloid_one_type:  inactive bbl [default]
+#                     active   Include active terms in BBL
+#                     janus    two-sided wetting in binary fluid
+#                     subgrid  No bbl ("unresolved particles")
 #
 ###############################################################################
 
 colloid_init        none
 colloid_type        inactive
 
-colloid_random_no   1
+colloid_random_no   5
 colloid_random_dh   0.4
 
+colloid_random_type default
 colloid_random_a0   2.3
 colloid_random_ah   2.3
-colloid_random_r0   64.0_64.0_32.0
-colloid_random_v0   0.0_0.0_0.0
-colloid_random_s0   1.0_0.0_0.0
-colloid_random_m0   1.0_0.0_0.0
+colloid_random_v    0.0_0.0_0.0
+colloid_random_s    1.0_0.0_0.0
+colloid_random_m    1.0_0.0_0.0
 colloid_random_c    0.0
 colloid_random_h    0.0
 
 # Constant body force on all colloids ("gravity") [default is zero]
 # Uniform magnetic field [default is zero]
 
-colloid_cell_list_interactions yes
-colloid_cell_min 8.0
 colloid_gravity  0.0_0.0_0.0
 magnetic_b0      0.0_0.0_0.0
 
@@ -463,6 +472,7 @@ fed_format    ASCII
 #  colloid_io_grid           io grid for colloids
 #  colloid_io_format_input   ASCII ASCII_SERIAL BINARY BINARY_SERIAL
 #  colloid_io_format_output  ASCII BINARY
+#  colloid_file_stub         a string used as stub of file names
 #
 #  Note that the output is always parallel. A SERIAL input file must
 #  be a single serial file.

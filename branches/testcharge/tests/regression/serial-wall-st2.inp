@@ -43,24 +43,15 @@ free_energy none
 #
 ###############################################################################
 
-colloid_init        random
-colloid_type        inactive
+colloid_init     input_one
 
-colloid_random_no   1
-colloid_random_dh   0.4
-
-colloid_random_a0   2.3
-colloid_random_ah   2.3
-colloid_random_r0   13.3_12.5_12.5
-colloid_random_v0   0.0_0.0_0.0
-colloid_random_s0   1.0_0.0_0.0
-colloid_random_m0   1.0_0.0_0.0
-colloid_random_c    0.0
-colloid_random_h    0.0
+colloid_one_a0   2.3
+colloid_one_ah   2.3
+colloid_one_r    13.3_12.5_12.5
+colloid_one_v    0.0_0.0_0.0
 
 # Constant body force on all colloids ("gravity") [default is zero]
 
-colloid_cell_min 8.0
 colloid_gravity  -0.001_0.0_0.0
 
 ###############################################################################

@@ -61,6 +61,7 @@ typedef struct colloids_info_s colloids_info_t;
 
 int colloids_info_create(int ncell[3], colloids_info_t ** pinfo);
 void colloids_info_free(colloids_info_t * info);
+int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo);
 int colloids_info_nallocated(colloids_info_t * cinfo, int * nallocated);
 int colloids_info_rho0(colloids_info_t * cinfo, double * rho0);
 int colloids_info_map_init(colloids_info_t * info);
@@ -100,5 +101,7 @@ int colloids_info_list_local_build(colloids_info_t * cinfo);
 int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic, int * lim);
 int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
 int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
+int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
+			      int * count);
 
 #endif

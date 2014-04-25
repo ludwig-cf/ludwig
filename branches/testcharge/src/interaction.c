@@ -190,6 +190,8 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 
     if (nc > 1) {
       interact_pairwise(interact, cinfo);
+      interact_bonds(interact, cinfo);
+      interact_angles(interact, cinfo);
       if (ewald) ewald_sum(ewald);
     }
 
@@ -198,6 +200,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
       info("\nParticle statistics:\n");
 
       interact_stats(interact, cinfo);
+      info("\n");
       stats_colloid_velocity_minmax(cinfo);
     }
   }
@@ -217,6 +220,8 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
   void * intr = NULL;
   double stats[INTERACT_STAT_MAX];
   double hminlocal, hmin;
+  double rminlocal, rmin;
+  double rmaxlocal, rmax;
   double vlocal, v;
 
   colloids_info_ntotal(cinfo, &nc);
@@ -248,6 +253,45 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
     info("Pair potential minimum h is: %14.7e\n", hmin);
     info("Pair potential energy is:    %14.7e\n", v);
   }
+
+  intr = obj->abstr[INTERACT_BOND];
+
+  if (intr) {
+
+    obj->stats[INTERACT_BOND](intr, stats);
+
+    rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+    rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+    vlocal = stats[INTERACT_STAT_VLOCAL];
+
+    MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+    MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
+    MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+    info("Bond potential minimum r is: %14.7e\n", rmin);
+    info("Bond potential maximum r is: %14.7e\n", rmax);
+    info("Bond potential energy is:    %14.7e\n", v);
+  }
+
+  intr = obj->abstr[INTERACT_ANGLE];
+
+  if (intr) {
+
+    obj->stats[INTERACT_ANGLE](intr, stats);
+
+    rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+    rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+    vlocal = stats[INTERACT_STAT_VLOCAL];
+
+    MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+    MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
+    MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+    info("Angle minimum angle is:      %14.7e\n", rmin);
+    info("Angle maximum angle is:      %14.7e\n", rmax);
+    info("Angle potential energy is:   %14.7e\n", v);
+  }
+
 
   return 0;
 }
@@ -413,6 +457,7 @@ int interact_bonds(interact_t * obj, colloids_info_t * cinfo) {
   assert(cinfo);
 
   intr = obj->abstr[INTERACT_BOND];
+  if (intr) interact_find_bonds(obj, cinfo);
   if (intr) obj->compute[INTERACT_BOND](cinfo, intr);
 
   return 0;
@@ -461,9 +506,6 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
 
   assert(obj);
   assert(cinfo);
-
-  /* Angle test has no bonds */
-  /*  if (obj->abstr[INTERACT_BOND] == NULL) return 0; */
 
   colloids_info_ncell(cinfo, ncell);
 
@@ -518,6 +560,55 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
 
 /*****************************************************************************
  *
+ *  interact_rcmax
+ *
+ *  Return maximum centre-centre potential cut off
+ *
+ *****************************************************************************/
+
+int interact_rcmax(interact_t * obj, double * rcmax) {
+
+  int n;
+  double rc = 0.0;
+
+  assert(obj);
+
+  for (n = 0; n < INTERACT_MAX; n++) {
+    if (obj->rcset[n]) rc = dmax(rc, obj->rc[n]);
+  }
+
+  *rcmax = rc;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  interaact_hcmax
+ *
+ *  Return maximum surface-surface cut off registered.
+ *
+ *****************************************************************************/
+
+int interact_hcmax(interact_t * obj, double * hcmax) {
+
+  int n;
+  double hc = 0.0;
+
+  assert(obj);
+  assert(hcmax);
+
+  for (n = 0; n < INTERACT_MAX; n++) {
+    if (obj->hcset[n]) hc = dmax(hc, obj->hc[n]);
+  }
+
+  *hcmax = hc;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  interact_range_check
  *
  *  Check the cell list width against the current interaction cut-off
@@ -531,40 +622,30 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
 
 int interact_range_check(interact_t * obj, colloids_info_t * cinfo) {
 
-  int nhalo;
-  int ntotal;
-  int nlocal[3];
+  int nc;
   int ncell[3];
 
   double ahmax;
   double rmax = 0.0;
   double lmin = DBL_MAX;
-  double rc;
+  double hc, rc;
 
   double lcell[3];
 
   assert(obj);
   assert(cinfo);
 
-  colloids_info_ntotal(cinfo, &ntotal);
+  colloids_info_ntotal(cinfo, &nc);
+  if (nc < 2) return 0;
+
   colloids_info_lcell(cinfo, lcell);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  /* Work out the maximum cut-off range rmax */
+
   colloids_info_ahmax(cinfo, &ahmax);
-
-  /* Work out the maximum cut-off range */
-  /* Lubrication invovles hydrodynamic radius */
-  /* Interactions may be centre-centre or surface-surface */
-
-  rc = 2.0*ahmax + obj->rc[INTERACT_LUBR];
-  rmax = dmax(rmax, rc);
-
-  rc = 2.0*ahmax + obj->hc[INTERACT_PAIR];
-  rmax = dmax(rmax, rc);
-
-  rc = obj->rc[INTERACT_PAIR];
-  rmax = dmax(rmax, rc);
+  interact_rcmax(obj, &rc);
+  interact_hcmax(obj, &hc);
+  rmax = dmax(2.0*ahmax + hc, rc);
 
   /* Check against the cell list */
 
@@ -574,11 +655,7 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo) {
   lmin = dmin(lmin, lcell[Y]);
   lmin = dmin(lmin, lcell[Z]);
 
-  info("RANGE CHECK\n");
-  info("Cells:                  %d %d %2d\n", ncell[X], ncell[Y], ncell[Z]);
-  info("Max range / cell length: %f %f\n", rmax, lmin);
-
-  if (ntotal > 1 && rmax > lmin) {
+  if (rmax > lmin) {
     info("Cell list width too small to capture specified interactions!\n");
     info("The maximum interaction range is: %f\n", rmax);
     info("The minumum cell width is only:   %f\n", lmin);

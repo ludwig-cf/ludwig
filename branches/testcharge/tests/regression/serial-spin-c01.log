@@ -1,9 +1,9 @@
-Welcome to Ludwig (Serial version running on 1 process)
+Welcome to Ludwig v0.1.2 (Serial version running on 1 process)
 
-The SVN revision details are: 2192:2193M
+The SVN revision details are: 2365M
 Note assertions via standard C assert() are on.
 
-Read 33 user parameters from serial-spin-c01.inp
+Read 30 user parameters from ./serial-spin-c01.inp
 
 System details
 --------------
@@ -69,24 +69,39 @@ Order parameter I/O
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
 
+Colloid information
+-------------------
+
 Colloid I/O settings
 --------------------
 Decomposition:   1  1  1
 Input format:       ascii serial
 Output format:      ascii
 
-Requested   20 colloids from input
-Initialised 20 colloids
+colloid_random                default
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
 Colloid  radius a0 = 2.300000e+00
 Hydrodyn radius ah = 2.300000e+00
 Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
 
-Colloid-colloid soft-sphere potential
-Soft sphere potential is switched on
-[User   ] Soft-sphere energy (epsilon) is 0.000400 (inf kT)
-[User   ] Soft-sphere width (sigma) is 0.100000
-[User   ] Soft-sphere exponent (nu) is 1.000000
-[User   ] Soft-sphere cutoff range is 0.250000
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              13 13 13
+Final cell lengths:           4.9230769e+00  4.9230769e+00  4.9230769e+00
 
 Gradient calcaulation: 3d_27pt_solid
 Initial conditions.
@@ -103,8 +118,9 @@ Momentum - x y z
 Starting time step loop.
 
 Particle statistics:
-Inter-particle minimum h is: 3.25212e+00
-Potential energy is:         0.00000e+00
+Pair potential minimum h is:  3.2521156e+00
+Pair potential energy is:     0.0000000e+00
+
 Colloid velocities - x y z
 [minimum ] -6.0969749e-06 -4.9960487e-06 -4.1328774e-06
 [maximum ]  3.3139516e-06  5.2392256e-06  6.5290419e-06
@@ -131,13 +147,15 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      5.694      5.694      5.694   5.693972 (1 call)
-      Time step loop:      0.534      0.548      5.393   0.539293 (10 calls)
-         Propagation:      0.039      0.040      0.395   0.039474 (10 calls)
-           Collision:      0.284      0.292      2.866   0.286604 (10 calls)
-       Lattice halos:      0.002      0.004      0.039   0.001966 (20 calls)
-       phi gradients:      0.197      0.204      1.990   0.199033 (10 calls)
-             Rebuild:      0.006      0.006      0.061   0.006056 (10 calls)
-                 BBL:      0.002      0.002      0.017   0.001669 (10 calls)
-      Particle halos:      0.000      0.000      0.000   0.000036 (10 calls)
+               Total:      5.689      5.689      5.689   5.689169 (1 call)
+      Time step loop:      0.531      0.551      5.391   0.539094 (10 calls)
+         Propagation:      0.035      0.036      0.356   0.035625 (10 calls)
+           Collision:      0.278      0.287      2.829   0.282903 (10 calls)
+       Lattice halos:      0.002      0.004      0.040   0.001979 (20 calls)
+       phi gradients:      0.197      0.205      2.006   0.200621 (10 calls)
+              Forces:      0.000      0.000      0.001   0.000086 (10 calls)
+             Rebuild:      0.008      0.009      0.080   0.008046 (10 calls)
+                 BBL:      0.005      0.005      0.052   0.005186 (10 calls)
+      Particle halos:      0.000      0.000      0.001   0.000140 (10 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (20 calls)
 Ludwig finished normally.

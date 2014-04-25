@@ -217,8 +217,11 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	colloids_info_map(cinfo, index, &pc);
 
 	psi_rho_elec(psi, index, &rho_elec);
+#ifdef OLIVER_NP
+	psi_electric_field_d3q19(psi, index, elocal);
+#else
 	psi_electric_field(psi, index, elocal);
-	/* pending	psi_electric_field_d3q19(psi, index, elocal); */
+#endif
 
         f[X] = rho_elec*(e0[X] + elocal[X]);
 	f[Y] = rho_elec*(e0[Y] + elocal[Y]);
@@ -264,8 +267,11 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	if (pc) continue;
 
         psi_rho_elec(psi, index, &rho_elec);
+#ifdef OLIVER_NP
+	psi_electric_field_d3q19(psi, index, elocal);
+#else
 	psi_electric_field(psi, index, elocal);
-	/* pending	psi_electric_field_d3q19(psi, index, elocal); */
+#endif
 
         f[X] = dt*(rho_elec*(e0[X] + elocal[X]) - fsum[X]);
         f[Y] = dt*(rho_elec*(e0[Y] + elocal[Y]) - fsum[Y]);

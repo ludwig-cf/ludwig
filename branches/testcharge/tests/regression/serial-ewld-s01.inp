@@ -49,14 +49,12 @@ ewald_rc  16.0
 #
 ###############################################################################
 
-colloid_type        inactive
-colloid_init        random
+colloid_init        input_random
 
+colloid_type        inactive
+colloid_random_no   20
 colloid_random_a0   2.3
 colloid_random_ah   2.3
-colloid_random_no   20
-
-colloid_cell_min    8.0
 
 # Constant body force on all colloids ("gravity")
 

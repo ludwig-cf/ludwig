@@ -1,9 +1,9 @@
-Welcome to Ludwig (MPI version running on 8 processes)
+Welcome to Ludwig v0.1.2 (MPI version running on 8 processes)
 
-The SVN revision details are: 
+The SVN revision details are: 2365M
 Note assertions via standard C assert() are on.
 
-Read 43 user parameters from ../tests/regression/pmpi08-auto-c01.inp
+Read 40 user parameters from ./pmpi08-auto-c01.inp
 
 No free energy selected
 
@@ -51,17 +51,30 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
+Colloid information
+-------------------
+
 Colloid I/O settings
 --------------------
 Decomposition:   1  1  1
 Input format:  binary
 Output format: binary
 
-Requested   1 colloid from input
+Requested one colloid via input:
+colloid_one_a0                2.3000000e+00
+colloid_one_ah                2.3000000e+00
+colloid_one_r                 6.4000000e+01  6.4000000e+01  3.2000000e+01
+colloid_one_v                 4.3478261e-02  0.0000000e+00  0.0000000e+00
+colloid_one_w                 0.0000000e+00  0.0000000e+00  0.0000000e+00
+colloid_one_s                 1.0000000e+00  0.0000000e+00  0.0000000e+00
+
 Initialised 1 colloid
-Colloid  radius a0 = 2.300000e+00
-Hydrodyn radius ah = 2.300000e+00
-Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Final cell list:              11 11 11
+Final cell lengths:           2.9090909e+00  2.9090909e+00  2.9090909e+00
 
 Initial conditions.
 
@@ -76,6 +89,7 @@ Momentum - x y z
 Starting time step loop.
 
 Particle statistics:
+
 Colloid velocities - x y z
 [minimum ]  2.2940581e-03  5.4917032e-18 -2.4809345e-17
 [maximum ]  2.2940581e-03  5.4917032e-18 -2.4809345e-17
@@ -84,8 +98,8 @@ Scalars - total mean variance min max
 [rho]      262091.00  1.00000000000 6.5539134e-09  0.99967850437 1.00032051415
 
 Momentum - x y z
-[total   ]  2.2158700e+00 -9.5225741e-13 -2.1395060e-14
-[fluid   ]  2.1013425e+00 -9.5290442e-13 -2.0705659e-14
+[total   ]  2.2158700e+00 -9.5242394e-13 -2.1395060e-14
+[fluid   ]  2.1013425e+00 -9.5307096e-13 -2.0705659e-14
 [colloids]  1.1452756e-01  6.4701247e-16 -6.8940056e-16
 
 Velocity - x y z
@@ -94,18 +108,21 @@ Velocity - x y z
 
 Completed cycle 40
 
-Timer resolution: 0.001 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.906      2.906      2.906   2.905808 (1 call)
-      Time step loop:      0.068      0.092      2.867   0.071664 (40 calls)
-         Propagation:      0.002      0.006      0.109   0.002725 (40 calls)
-           Collision:      0.059      0.077      2.421   0.060522 (40 calls)
-       Lattice halos:      0.001      0.020      0.231   0.002892 (80 calls)
+               Total:      2.906      2.906      2.906   2.905560 (1 call)
+      Time step loop:      0.069      0.089      2.864   0.071598 (40 calls)
+         Propagation:      0.004      0.010      0.346   0.008639 (40 calls)
+           Collision:      0.052      0.072      2.130   0.053260 (40 calls)
+       Lattice halos:      0.001      0.020      0.198   0.002473 (80 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (40 calls)
-             Rebuild:      0.001      0.001      0.040   0.000996 (40 calls)
-                 BBL:      0.000      0.001      0.008   0.000191 (40 calls)
-      Particle halos:      0.000      0.004      0.042   0.001057 (40 calls)
-   Force calculation:      0.000      0.000      0.000   0.000001 (40 calls)
+              Forces:      0.000      0.000      0.001   0.000028 (40 calls)
+             Rebuild:      0.002      0.004      0.085   0.002116 (40 calls)
+                 BBL:      0.001      0.011      0.057   0.001436 (40 calls)
+      Particle halos:      0.000      0.004      0.022   0.000549 (40 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (40 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (40 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (80 calls)
 Ludwig finished normally.

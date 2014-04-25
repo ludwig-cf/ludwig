@@ -40,7 +40,6 @@ free_energy none
 colloid_type        inactive
 colloid_init        from_file
 
-colloid_cell_min 16.0
 colloid_gravity  0.0_0.0_0.0
 
 lubrication_on 0

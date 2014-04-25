@@ -58,14 +58,12 @@ int interact_bonds(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles(interact_t * obj, colloids_info_t * cinfo);
 int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo);
 int interact_stats(interact_t * obj, colloids_info_t * cinfo);
+int interact_hcmax(interact_t * obj, double * hcmax);
+int interact_rcmax(interact_t * obj, double * rcmax);
 
 int colloids_update_forces_zero(colloids_info_t * cinfo);
 int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi);
 int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo, map_t * map);
-
-int colloids_init_ewald_rt(colloids_info_t * cinfo, ewald_t ** pewald);
-
-int colloids_init_halo_range_check(colloids_info_t * cinfo);
 
 
 #endif

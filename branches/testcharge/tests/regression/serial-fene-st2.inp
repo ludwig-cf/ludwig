@@ -1,11 +1,12 @@
 ##############################################################################
 #
-#  Cholesteric normal anchoring test.
-#  Longer version of serial-chol-n01.inp
+#  Fene smoke test 2
+#
+#  From input, three particles, two bonds, no angle.
 #
 ##############################################################################
 
-N_cycles 1000
+N_cycles 20
 
 ##############################################################################
 #
@@ -13,8 +14,7 @@ N_cycles 1000
 # 
 ##############################################################################
 
-size 64_64_64
-grid 2_2_2
+size 16_16_16
 reduced_halo no
 
 ##############################################################################
@@ -23,8 +23,8 @@ reduced_halo no
 #
 ##############################################################################
 
-viscosity 1.0
 isothermal_fluctuations off
+ghost_modes off
 
 ##############################################################################
 #
@@ -32,30 +32,7 @@ isothermal_fluctuations off
 #
 ###############################################################################
 
-free_energy lc_blue_phase
-
-fd_advection_scheme_order 1
-fd_gradient_calculation 3d_7pt_solid
-
-lc_a0      0.01
-lc_gamma   3.0
-lc_q0      0.19635
-lc_kappa0  0.000648456
-lc_kappa1  0.000648456
-lc_xi      0.7
-
-lc_Gamma   0.5
-lc_active_zeta 0.0
-
-lc_q_initialisation twist
-lc_q_init_amplitude 0.333333333333333
-lc_init_redshift 1.0
-lc_init_nematic 1.0_0.0_0.0
-
-lc_anchoring_method two
-lc_wall_anchoring normal
-lc_coll_anchoring normal
-lc_anchoring_strength_colloid 0.002593824
+free_energy none
 
 ###############################################################################
 #
@@ -63,19 +40,30 @@ lc_anchoring_strength_colloid 0.002593824
 #
 ###############################################################################
 
-colloid_init     input_one
+colloid_init        input_three
 
-colloid_one_type default
-colloid_one_a0   7.25
-colloid_one_ah   7.25
-colloid_one_r    32.0_32.0_32.0
-colloid_one_v    0.0_0.0_0.0
-colloid_one_s    1.0_0.0_0.0
-colloid_one_m0   1.0_0.0_0.0
+colloid_one_a0      1.25
+colloid_one_ah      1.25
+colloid_one_r       6.0_6.0_6.0
+colloid_one_nbonds  2
+colloid_one_bond1   2
+colloid_one_bond2   3
 
-# Constant body force on all colloids ("gravity")
+colloid_two_a0      1.25
+colloid_two_ah      1.25
+colloid_two_r       6.0_6.0_3.1
+colloid_two_nbonds  1
+colloid_two_bond1   1
 
-colloid_gravity 0.0_0.0_0.0
+colloid_three_a0     1.25
+colloid_three_ah     1.25
+colloid_three_r      6.0_6.0_8.8
+colloid_three_nbonds 1
+colloid_three_bond1  1
+
+bond_fene_on        1
+bond_fene_k         0.0001
+bond_fene_r0        3.0
 
 ###############################################################################
 #
@@ -92,14 +80,19 @@ periodicity 1_1_1
 #
 ###############################################################################
 
-freq_statistics 1000
-colloid_io_freq 2000
+freq_statistics 20
+freq_measure    10000000
+freq_config     10000000
+colloid_io_freq 10000000
 config_at_end no
 
 ###############################################################################
 #
 #  Miscellaneous
 #
+#  random_seed  +ve integer is the random number generator seed
+#
 ###############################################################################
 
 random_seed 8361235
+

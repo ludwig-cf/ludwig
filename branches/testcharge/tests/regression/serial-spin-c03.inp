@@ -67,7 +67,6 @@ colloid_file_stub colloids-serial-spin-c03
 # Constant body force on all colloids ("gravity")
 
 colloid_gravity 0.0_0.0_0.0
-colloid_cell_min 8.0
 
 lubrication_on 0
 soft_sphere_on 1

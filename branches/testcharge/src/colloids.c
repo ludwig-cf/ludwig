@@ -111,6 +111,43 @@ void colloids_info_free(colloids_info_t * info) {
 
 /*****************************************************************************
  *
+ *  colloids_info_recreate
+ *
+ *  Move the contents of an existing cell list to a new size.
+ *
+ *****************************************************************************/
+
+int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
+
+  colloids_info_t * newinfo = NULL;
+  colloid_t * pc;
+  colloid_t * pcnew;
+
+  assert(pinfo);
+
+  colloids_info_create(newcell, &newinfo);
+
+  colloids_info_list_local_build(*pinfo);
+  colloids_info_local_head(*pinfo, &pc);
+
+  /* Need to copy all colloid state across */
+
+  for ( ; pc; pc = pc->nextlocal) {
+    colloids_info_add_local(newinfo, pc->s.index, pc->s.r, &pcnew);
+    pcnew->s = pc->s;
+  }
+
+  colloids_info_ntotal_set(newinfo);
+  assert(newinfo->ntotal == (*pinfo)->ntotal);
+
+  colloids_info_free(*pinfo);
+  *pinfo = newinfo;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  colloids_info_nallocated
  *
  *  Return number of colloid_t allocated.
@@ -1136,6 +1173,40 @@ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) {
   for (; pc; pc = pc->next) ahmax_local = dmax(ahmax_local, pc->s.ah);
 
   MPI_Allreduce(&ahmax_local, ahmax, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_count_local
+ *
+ *  Return number of local colloids of given type.
+ *
+ *****************************************************************************/
+
+int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
+			      int * count) {
+
+  int nlocal = 0;
+  int ic, jc, kc;
+  colloid_t * pc = NULL;
+
+  assert(cinfo);
+
+  for (ic = 1; ic <= cinfo->ncell[X]; ic++) {
+    for (jc = 1; jc <= cinfo->ncell[Y]; jc++) {
+      for (kc = 1; kc <= cinfo->ncell[Z]; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+	for (; pc; pc = pc->next) {
+	  if (pc->s.type == it) nlocal += 1;
+	}
+      }
+    }
+  }
+
+  *count = nlocal;
 
   return 0;
 }

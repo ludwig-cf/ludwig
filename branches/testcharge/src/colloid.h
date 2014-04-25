@@ -33,6 +33,7 @@ enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
 			COLLOID_TYPE_SUBGRID,
 			COLLOID_TYPE_JANUS};
 
+typedef enum colloid_type_enum colloid_type_enum_t;
 typedef struct colloid_state_type colloid_state_t;
 
 struct colloid_state_type {

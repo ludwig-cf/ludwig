@@ -130,11 +130,10 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt) {
   /* Add advective fluxes based on six-point stencil */
   if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
 
-  /* The diffusive fluxes are based on D3Q19 stencil */
-  /* and are currently in nernst_planck_d3q19.c */
-  /*
+#ifdef OLIVER_NP
+#else
   nernst_planck_fluxes(psi, fe, fy, fz);
-  */
+#endif
 
   /* Apply no flux BC for six-point stencil */
   if (map) advective_bcs_no_flux(nk, fe, fy, fz, map);

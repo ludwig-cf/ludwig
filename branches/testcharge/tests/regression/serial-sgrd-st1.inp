@@ -41,20 +41,16 @@ free_energy none
 #
 ###############################################################################
 
-colloid_type        subgrid
-colloid_init        random
+colloid_init        input_one
 
-colloid_random_no   1
-colloid_random_dh   0.4
+colloid_one_type    subgrid
+colloid_one_a0      0.20
+colloid_one_ah      0.20
+colloid_one_r       6.1_6.1_6.1
+colloid_one_v       0.0_0.0_0.0
+colloid_one_s       1.0_0.0_0.0
+colloid_one_m       1.0_0.0_0.0
 
-colloid_random_a0   0.20
-colloid_random_ah   0.20
-colloid_random_r0   6.1_6.1_6.1
-colloid_random_v0   0.0_0.0_0.0
-colloid_random_s0   1.0_0.0_0.0
-colloid_random_m0   1.0_0.0_0.0
-
-colloid_cell_min 4.0
 colloid_gravity  0.0_0.0_0.0
 
 ###############################################################################

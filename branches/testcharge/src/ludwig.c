@@ -399,7 +399,7 @@ void ludwig_run(const char * inputfile) {
   }
   ludwig_report_momentum(ludwig);
 
-/* Main time stepping loop */
+  /* Main time stepping loop */
 
   info("\n");
   info("Starting time step loop.\n");
@@ -484,7 +484,7 @@ void ludwig_run(const char * inputfile) {
 	  }
 	  TIMER_stop(TIMER_FORCE_CALCULATION);
 	}
-
+#ifdef OLIVER_NP
 	/* Note: The charges evolve currently by means of a hybrid scheme:   * 
          * The advective change is calculated with a simple 6-point stencil, *
          * whereas for the diffusive change a D3Q19 scheme without rest      *
@@ -503,7 +503,7 @@ void ludwig_run(const char * inputfile) {
 	TIMER_start(TIMER_ELECTRO_NPEQ);
 	nernst_planck_d3q19_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
-
+#endif
 	TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
 	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
@@ -512,10 +512,16 @@ void ludwig_run(const char * inputfile) {
 #endif
 	TIMER_stop(TIMER_ELECTRO_POISSON);
 
+#ifndef OLIVER_NP
+	TIMER_start(TIMER_ELECTRO_NPEQ);
+	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
+	TIMER_stop(TIMER_ELECTRO_NPEQ);
+#endif
+
       }
-
+#ifdef OLIVER_NP
       nernst_planck_adjust_multistep(ludwig->psi);
-
+#endif
     }
 
     /* order parameter dynamics (not if symmetric_lb) */
@@ -1395,7 +1401,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
-  colloids_info_update_lists(ludwig->collinfo); /* TODO CHECKME */
+  colloids_info_update_lists(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
 
   TIMER_stop(TIMER_PARTICLE_HALO);

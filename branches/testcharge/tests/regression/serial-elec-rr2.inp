@@ -38,26 +38,20 @@ fd_force_divergence 0
 #
 ###############################################################################
 
-colloid_init        random
-colloid_type        inactive
+colloid_init        input_one
 
-colloid_random_no   1
-colloid_random_dh   0.4
+colloid_one_type    default
+colloid_one_a0      2.3
+colloid_one_ah      2.3
+colloid_one_r       16.0_16.0_16.299
+colloid_one_v       0.0_0.0_0.01
+colloid_one_s       1.0_0.0_0.0
+colloid_one_m       1.0_0.0_0.0
+colloid_one_c       0.0
+colloid_one_h       0.0
 
-colloid_random_a0   2.3
-colloid_random_ah   2.3
-colloid_random_r0   16.0_16.0_16.299
-colloid_random_v0   0.0_0.0_0.01
-colloid_random_s0   1.0_0.0_0.0
-colloid_random_m0   1.0_0.0_0.0
-colloid_random_c    0.0
-colloid_random_h    0.0
-
-colloid_random_q0  +0.01
-colloid_random_q1   0.0000
-
-colloid_cell_min    8.0
-
+colloid_one_q0     +0.01
+colloid_one_q1      0.0000
 
 ###############################################################################
 #

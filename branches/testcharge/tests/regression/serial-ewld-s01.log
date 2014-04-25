@@ -1,6 +1,6 @@
-Welcome to Ludwig (Serial version running on 1 process)
+Welcome to Ludwig v0.1.2 (Serial version running on 1 process)
 
-The SVN revision details are: 2246:2247M
+The SVN revision details are: 2365M
 Note assertions via standard C assert() are on.
 
 Read 27 user parameters from ./serial-ewld-s01.inp
@@ -60,18 +60,29 @@ Decomposition:   1  1  1
 Input format:       ascii serial
 Output format:      ascii
 
-Requested   20 colloids from input
-Initialised 20 colloids
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
 Colloid  radius a0 = 2.300000e+00
 Hydrodyn radius ah = 2.300000e+00
 Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
 
-Colloid-colloid soft-sphere potential
-Soft sphere potential is switched on
-[User   ] Soft-sphere energy (epsilon) is 0.000400 (inf kT)
-[User   ] Soft-sphere width (sigma) is 0.100000
-[User   ] Soft-sphere exponent (nu) is 1.000000
-[User   ] Soft-sphere cutoff range is 0.250000
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              13 13 13
+Final cell lengths:           4.9230769e+00  4.9230769e+00  4.9230769e+00
 
 
 Ewald sum
@@ -98,8 +109,9 @@ Momentum - x y z
 Starting time step loop.
 
 Particle statistics:
-Inter-particle minimum h is: 2.57956e+00
-Potential energy is:         0.00000e+00
+Pair potential minimum h is:  2.5795578e+00
+Pair potential energy is:     0.0000000e+00
+
 Colloid velocities - x y z
 [minimum ] -2.0342172e-17 -7.6015470e-18 -4.1525044e-18
 [maximum ]  2.1840808e-17 -1.2082261e-19  2.1003666e-17
@@ -122,18 +134,20 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.253      3.253      3.253   3.252650 (1 call)
-      Time step loop:      0.302      0.316      3.058   0.305842 (10 calls)
-         Propagation:      0.018      0.019      0.188   0.018847 (10 calls)
-           Collision:      0.266      0.274      2.693   0.269260 (10 calls)
-       Lattice halos:      0.001      0.003      0.031   0.001550 (20 calls)
+               Total:      2.708      2.708      2.708   2.707654 (1 call)
+      Time step loop:      0.251      0.259      2.523   0.252323 (10 calls)
+         Propagation:      0.017      0.018      0.175   0.017513 (10 calls)
+           Collision:      0.214      0.217      2.146   0.214611 (10 calls)
+       Lattice halos:      0.001      0.002      0.029   0.001473 (20 calls)
        phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
-             Rebuild:      0.008      0.009      0.084   0.008374 (10 calls)
-                 BBL:      0.001      0.002      0.014   0.001448 (10 calls)
-      Particle halos:      0.000      0.000      0.001   0.000053 (10 calls)
-     Ewald Sum total:      0.002      0.002      0.021   0.002104 (10 calls)
-          Ewald Real:      0.000      0.000      0.000   0.000017 (10 calls)
-       Ewald_Fourier:      0.002      0.002      0.021   0.002085 (10 calls)
+              Forces:      0.002      0.002      0.021   0.002053 (10 calls)
+             Rebuild:      0.008      0.009      0.079   0.007860 (10 calls)
+                 BBL:      0.005      0.005      0.047   0.004731 (10 calls)
+      Particle halos:      0.000      0.000      0.001   0.000142 (10 calls)
+     Ewald Sum total:      0.002      0.002      0.020   0.001968 (10 calls)
+          Ewald Real:      0.000      0.000      0.000   0.000031 (10 calls)
+       Ewald_Fourier:      0.002      0.002      0.019   0.001935 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
-               Free1:      0.000      0.000      0.000   0.000001 (20 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (10 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (20 calls)
 Ludwig finished normally.
