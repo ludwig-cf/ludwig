@@ -136,6 +136,22 @@ void colloid_io_finish(colloid_io_t * cio) {
 
 /*****************************************************************************
  *
+ *  colloid_io_info_set
+ *
+ *****************************************************************************/
+
+int colloid_io_info_set(colloid_io_t * cio, colloids_info_t * info) {
+
+  assert(cio);
+  assert(info);
+
+  cio->info = info;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  colloid_io_count_colloids
  *
  *  Count the local number of (physical, not halo) colloids and

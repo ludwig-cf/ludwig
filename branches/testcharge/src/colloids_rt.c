@@ -135,6 +135,10 @@ int colloids_init_rt(colloids_info_t ** pinfo, colloid_io_t ** pcio,
   colloids_init_halo_range_check(*pinfo);
   if (nc > 1) interact_range_check(*interact, *pinfo);
 
+  /* As the cell list has potentially changed, update I/O reference */
+
+  colloid_io_info_set(*pcio, *pinfo);
+
   /* Transfer any particles in the halo regions, initialise the
    * colloid map and build the particles for the first time. */
 
