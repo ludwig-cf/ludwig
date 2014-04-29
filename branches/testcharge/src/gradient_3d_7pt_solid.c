@@ -862,13 +862,14 @@ static int gradient_no_iteration(const double * field, double * grad,
 	}
 
 	if (n - nunknown == 2) {
-	  for (n = 0; n1 < NQAB; n1++) {
+	  for (n1 = 0; n1 < NQAB; n1++) {
 	    gradn[n1][Z][0] = 0.0;
 	    gradn[n1][Z][1] = 0.0;
 	  }
 	  n -= 2;
 	}
 	nunknown = n;
+        assert(nunknown >= 0);
 
 	if (nunknown == 0) {
 	  /* No boundaries, so fall through to compute fainal answer */
