@@ -99,8 +99,9 @@ void phi_cahn_hilliard() {
     phi_ch_diffusive_flux();
   }
 
-  advection_bcs_wall();
   if (phi_fluctuations_on()) phi_ch_random_flux();
+
+  advection_bcs_no_normal_flux(1, fluxe, fluxw, fluxy, fluxz);
 
   phi_ch_le_fix_fluxes();
   phi_ch_update_forward_step();
