@@ -74,6 +74,7 @@ fi
 #   - timer statistics identified via "call)" or "calls)"
 #   - SVN revision information identified via "SVN revision"
 #   - blank lines
+#   - "Timer resolution"
 #   - exact location of the input file via "user parameters"  
 
 sed '/call)/d' $1 > test-diff-tmp.ref
@@ -81,6 +82,7 @@ sed -i~ '/calls)/d' test-diff-tmp.ref
 sed -i~ '/Welcome/d' test-diff-tmp.ref
 sed -i~ '/SVN.revision/d' test-diff-tmp.ref
 sed -i~ '/^$/d' test-diff-tmp.ref
+sed -i~ '/Timer/d' test-diff-tmp.ref
 sed -i~ '/user.parameters.from/d' test-diff-tmp.ref
 
 sed '/call)/d' $2 > test-diff-tmp.log
@@ -88,6 +90,7 @@ sed -i~ '/calls)/d' test-diff-tmp.log
 sed -i~ '/Welcome/d' test-diff-tmp.log
 sed -i~ '/SVN.revision/d' test-diff-tmp.log
 sed -i~ '/^$/d' test-diff-tmp.log
+sed -i~ '/Timer/d' test-diff-tmp.log
 sed -i~ '/user.parameters.from/d' test-diff-tmp.log
 
 # Here we use the floating point diff to measure "success"

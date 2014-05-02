@@ -34,7 +34,7 @@ NPROCS = 8
 SRC     = ../src
 INCLUDE = -I$(SRC)
 OPTS    = -D_D3Q19_
-CFLAGS  = -Wall -pedantic-errors
+CFLAGS  = -Wall
 
 MPI_STUB_INCLUDE = -I../mpi_s
 MPI_STUB_LIB = -L../mpi_s -lmpi

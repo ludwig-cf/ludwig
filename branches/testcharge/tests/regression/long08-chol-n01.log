@@ -1,9 +1,9 @@
-Welcome to Ludwig (MPI version running on 8 processes)
+Welcome to Ludwig v0.1.4 (MPI version running on 8 processes)
 
 The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 44 user parameters from ../tests/regression/long08-chol-n01.inp
+Read 40 user parameters from ./long08-chol-n01.inp
 
 System details
 --------------
@@ -89,7 +89,11 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+
 Advection scheme order: 1
+
+Colloid information
+-------------------
 
 Colloid I/O settings
 --------------------
@@ -97,11 +101,21 @@ Decomposition:   1  1  1
 Input format:       ascii serial
 Output format:      ascii
 
-Requested   1 colloid from input
+Requested one colloid via input:
+colloid_one                   default
+colloid_one_a0                7.2500000e+00
+colloid_one_ah                7.2500000e+00
+colloid_one_r                 3.2000000e+01  3.2000000e+01  3.2000000e+01
+colloid_one_v                 0.0000000e+00  0.0000000e+00  0.0000000e+00
+colloid_one_s                 1.0000000e+00  0.0000000e+00  0.0000000e+00
+
 Initialised 1 colloid
-Colloid  radius a0 = 7.250000e+00
-Hydrodyn radius ah = 7.250000e+00
-Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         7.2500000e+00
+Final cell list:              4 4 4
+Final cell lengths:           8.0000000e+00  8.0000000e+00  8.0000000e+00
 
 Gradient calcaulation: 3d_7pt_solid
 
@@ -126,6 +140,7 @@ Momentum - x y z
 Starting time step loop.
 
 Particle statistics:
+
 Colloid velocities - x y z
 [minimum ] -2.3183665e-17  1.7079699e-17  1.1139120e-11
 [maximum ] -2.3183665e-17  1.7079699e-17  1.1139120e-11
@@ -156,14 +171,17 @@ Timer resolution: 0.001 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    198.888    198.888    198.888 198.888149 (1 call)
-      Time step loop:      0.195      0.256    198.803   0.198803 (1000 calls)
-         Propagation:      0.002      0.008      4.136   0.004136 (1000 calls)
-           Collision:      0.059      0.074     59.392   0.059392 (1000 calls)
-       Lattice halos:      0.002      0.036      6.299   0.003150 (2000 calls)
-       phi gradients:      0.011      0.015     12.081   0.012081 (1000 calls)
-             Rebuild:      0.001      0.002      1.414   0.001414 (1000 calls)
-                 BBL:      0.000      0.001      0.452   0.000452 (1000 calls)
-      Particle halos:      0.000      0.007      1.732   0.001732 (1000 calls)
-   Force calculation:      0.053      0.075     54.091   0.054091 (1000 calls)
+               Total:    321.592    321.593    321.592 321.592441 (1 call)
+      Time step loop:      0.270      0.450    321.435   0.321435 (1000 calls)
+         Propagation:      0.003      0.037      9.696   0.009696 (1000 calls)
+           Collision:      0.065      0.128     77.755   0.077755 (1000 calls)
+       Lattice halos:      0.002      0.133     30.794   0.015397 (2000 calls)
+       phi gradients:      0.013      0.044     18.381   0.018381 (1000 calls)
+              Forces:      0.000      0.003      0.007   0.000007 (1000 calls)
+             Rebuild:      0.001      0.004      2.038   0.002038 (1000 calls)
+                 BBL:      0.001      0.009      2.098   0.002098 (1000 calls)
+      Particle halos:      0.000      0.034      5.829   0.005829 (1000 calls)
+   Force calculation:      0.059      0.181     76.897   0.076897 (1000 calls)
+          phi update:      0.064      0.207     97.132   0.097132 (1000 calls)
+               Free1:      0.000      0.000      0.001   0.000000 (2000 calls)
 Ludwig finished normally.
