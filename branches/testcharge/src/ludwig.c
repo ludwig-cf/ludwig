@@ -38,7 +38,6 @@
 
 #include "collision.h"
 #include "propagation.h"
-#include "propagation_ode.h"
 #include "distribution_rt.h"
 #include "collision_rt.h"
 
@@ -174,8 +173,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   physics_init_rt(ludwig->param);
   physics_info(ludwig->param);
-
-  if (is_propagation_ode()) propagation_ode_init();
 
   distribution_run_time();
   collision_run_time(ludwig->noise);
@@ -562,15 +559,11 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
     }
 
-    /* Collision stage (ODE collision is combined with propagation) */
+    /* Collision stage */
 
-    if (is_propagation_ode() == 0) {
-
-      TIMER_start(TIMER_COLLIDE);
-      collide(ludwig->hydro, ludwig->map, ludwig->noise);
-      TIMER_stop(TIMER_COLLIDE);
-
-    }
+    TIMER_start(TIMER_COLLIDE);
+    collide(ludwig->hydro, ludwig->map, ludwig->noise);
+    TIMER_stop(TIMER_COLLIDE);
 
     /* Boundary coniditions */
 
@@ -599,12 +592,7 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_PROPAGATE);
 
-    if(is_propagation_ode()) {
-      propagation_ode(ludwig->hydro);
-    }
-    else {
-      propagation();
-    }
+    propagation();
 
     TIMER_stop(TIMER_PROPAGATE);
 

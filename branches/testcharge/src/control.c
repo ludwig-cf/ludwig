@@ -36,7 +36,6 @@ static int freq_shear_io   = 100000000;
 static int freq_shear_meas = 100000000;
 static int freq_colloid_io = 100000000;
 static int config_at_end   = 1;
-static int propagation_ode = 0;
 
 
 /*****************************************************************************
@@ -54,9 +53,6 @@ void init_control() {
 
   n = RUN_get_int_parameter("N_start", &t_start);
   n = RUN_get_int_parameter("N_cycles", &t_steps);
-
-  n = RUN_get_string_parameter("propagation_ode", tmp, 128);
-  if (n ==1 && strcmp(tmp, "on") == 0) propagation_ode = 1;
 
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
@@ -189,14 +185,4 @@ int is_shear_measurement_step() {
 
 int is_shear_output_step() {
   return ((t_current % freq_shear_io) == 0);
-}
-
-/*****************************************************************************
- *
- *  is_propagation_ode
- *
- *****************************************************************************/
-
-int is_propagation_ode() {
-  return propagation_ode;
 }
