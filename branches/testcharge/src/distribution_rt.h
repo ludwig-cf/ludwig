@@ -15,7 +15,9 @@
 #ifndef DISTRIBUTION_RT_H
 #define DISTRIBUTION_RT_H
 
+#include "physics.h"
+
 void distribution_run_time(void);
-void distribution_rt_initial_conditions(void);
+int distribution_rt_initial_conditions(physics_t * phys);
 
 #endif

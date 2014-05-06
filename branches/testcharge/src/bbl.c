@@ -628,10 +628,11 @@ static int bbl_update_colloids(colloids_info_t * cinfo) {
   double mass;
   double moment;
   double tmp;
-  double rho0 = 1.0; /* Colloid density always unity at present */
+  double rho0;
 
   assert(cinfo);
   colloids_info_ncell(cinfo, ncell);
+  colloids_info_rho0(cinfo, &rho0);
 
   /* Loop round cells and update each particle velocity */
 

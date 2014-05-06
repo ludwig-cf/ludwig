@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.2 (Serial version running on 1 process)
+Welcome to Ludwig v0.1.6 (Serial version running on 1 process)
 
-The SVN revision details are: 2365M
+The SVN revision details are: 2371M
 Note assertions via standard C assert() are on.
 
-Read 25 user parameters from ./serial-sgrd-st1.inp
+Read 24 user parameters from ./serial-sgrd-st1.inp
 
 No free energy selected
 
@@ -74,8 +74,8 @@ Initialised 1 colloid
 Colloid cell list information
 -----------------------------
 Input radius maximum:         1.0000000e+00
-Final cell list:              10 10 10
-Final cell lengths:           1.6000000e+00  1.6000000e+00  1.6000000e+00
+Final cell list:              8 8 8
+Final cell lengths:           2.0000000e+00  2.0000000e+00  2.0000000e+00
 
 
 
@@ -137,13 +137,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      5.020      5.020      5.020   5.019909 (1 call)
-      Time step loop:      0.002      0.003      4.978   0.002489 (2000 calls)
-         Propagation:      0.000      0.000      0.311   0.000156 (2000 calls)
-           Collision:      0.002      0.002      4.045   0.002022 (2000 calls)
-       Lattice halos:      0.000      0.000      0.098   0.000049 (2000 calls)
+               Total:      5.539      5.539      5.539   5.538828 (1 call)
+      Time step loop:      0.003      0.003      5.500   0.002750 (2000 calls)
+         Propagation:      0.000      0.000      0.311   0.000155 (2000 calls)
+           Collision:      0.002      0.003      4.739   0.002370 (2000 calls)
+       Lattice halos:      0.000      0.000      0.097   0.000049 (2000 calls)
        phi gradients:      0.000      0.000      0.001   0.000000 (2000 calls)
-      Particle halos:      0.000      0.000      0.123   0.000062 (2000 calls)
+      Particle halos:      0.000      0.000      0.059   0.000030 (2000 calls)
    Force calculation:      0.000      0.000      0.001   0.000001 (2000 calls)
           phi update:      0.000      0.000      0.001   0.000000 (2000 calls)
 Ludwig finished normally.

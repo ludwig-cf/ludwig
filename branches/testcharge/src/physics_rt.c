@@ -64,6 +64,7 @@ int physics_init_rt(void) {
 
   double kt;
   double eta;
+  double rho0;
   double phi0;
   double vector[3];
 
@@ -80,6 +81,10 @@ int physics_init_rt(void) {
 
   if (RUN_get_double_parameter("temperature", &kt)) {
     physics_kt_set(kt);
+  }
+
+  if (RUN_get_double_parameter("fluid_rho0", &rho0)) {
+    physics_rho0_set(rho0);
   }
 
   if (RUN_get_double_parameter("phi0", &phi0)) {

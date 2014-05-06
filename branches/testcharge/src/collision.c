@@ -31,7 +31,6 @@
 #include "model.h"
 #include "free_energy.h"
 #include "control.h"
-#include "propagation_ode.h"
 #include "collision.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
@@ -74,14 +73,8 @@ int collide(hydro_t * hydro, map_t * map, noise_t * noise) {
   ndist = distribution_ndist();
   collision_relaxation_times_set(noise);
 
-  if (ndist == 1 || is_propagation_ode() == 1) {
-    collision_mrt(hydro, map, noise);
-  }
-
-
-  if (ndist == 2 && is_propagation_ode() == 0) {
-    collision_binary_lb(hydro, map, noise);
-  }
+  if (ndist == 1) collision_mrt(hydro, map, noise);
+  if (ndist == 2) collision_binary_lb(hydro, map, noise);
 
   return 0;
 }
@@ -850,6 +843,15 @@ void collision_relaxation_set(const int nrelax) {
  *
  *  collision_relaxation_times_set
  *
+ *  We have:
+ *     Shear viscosity eta = -rho c_s^2 dt ( 1 / lambda + 1 / 2 )
+ *
+ *  where lambda is the eigenvalue so that the mode relaxation is
+ *
+ *     m_k^* = m_k + lambda (m_k - m_k^eq)
+ *
+ *  Bulk viscosity = -rho0 c_s^2 dt (1/3) ( 2 / lambda + 1 )
+ *
  *  Note there is an extra normalisation in the lattice fluctuations
  *  which would otherwise give effective kT = cs2
  *
@@ -859,33 +861,26 @@ int collision_relaxation_times_set(noise_t * noise) {
 
   int p;
   int noise_on = 0;
+  double rho0;
   double kt;
   double eta_shear;
   double eta_bulk;
+  double tau, rtau;
   double tau_s;
   double tau_b;
   double tau_g;
-  double dt_ode = 1.0;
-
-  extern int is_propagation_ode(void);
 
   assert(noise);
   noise_present(noise, NOISE_RHO, &noise_on);
+  physics_rho0(&rho0);
 
   /* Initialise the relaxation times */
  
   physics_eta_shear(&eta_shear);
   physics_eta_bulk(&eta_bulk);
 
-  if (is_propagation_ode()) dt_ode = propagation_ode_get_tstep();
-  if (is_propagation_ode()) {
-    rtau_shear = 1.0 / (3.0*eta_shear);
-    rtau_bulk  = 1.0 / (3.0*eta_bulk);
-  }
-  else {
-    rtau_shear = 2.0 / (1.0 + 6.0*eta_shear);
-    rtau_bulk  = 2.0 / (1.0 + 6.0*eta_bulk);
-  }
+  rtau_shear = 1.0/(0.5 + eta_shear / (rho0*cs2));
+  rtau_bulk  = 1.0/(0.5 + eta_bulk / (rho0*cs2));
 
   if (nrelax_ == RELAXATION_M10) {
     for (p = NHYDRO; p < NVEL; p++) {
@@ -903,13 +898,15 @@ int collision_relaxation_times_set(noise_t * noise) {
 
     assert(NVEL != 9);
 
-    tau_g = 2.0/(1.0 + (3.0/8.0)*rtau_shear);
+    tau  = eta_shear / (rho0*cs2);
+    rtau = 0.5 + 2.0*tau/(tau + 3.0/8.0);
+    if (rtau > 2.0) rtau = 2.0;
 
     if (NVEL == 15) {
       rtau_[10] = rtau_shear;
-      rtau_[11] = tau_g;
-      rtau_[12] = tau_g;
-      rtau_[13] = tau_g;
+      rtau_[11] = rtau;
+      rtau_[12] = rtau;
+      rtau_[13] = rtau;
       rtau_[14] = rtau_shear;
     }
 
@@ -918,12 +915,12 @@ int collision_relaxation_times_set(noise_t * noise) {
       rtau_[14] = rtau_shear;
       rtau_[18] = rtau_shear;
 
-      rtau_[11] = tau_g;
-      rtau_[12] = tau_g;
-      rtau_[13] = tau_g;
-      rtau_[15] = tau_g;
-      rtau_[16] = tau_g;
-      rtau_[17] = tau_g;
+      rtau_[11] = rtau;
+      rtau_[12] = rtau;
+      rtau_[13] = rtau;
+      rtau_[15] = rtau;
+      rtau_[16] = rtau;
+      rtau_[17] = rtau;
     }
   }
 

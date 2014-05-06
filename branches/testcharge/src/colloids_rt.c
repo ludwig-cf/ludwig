@@ -437,12 +437,15 @@ int colloids_rt_state_stub(colloids_info_t * cinfo, const char * stub,
  *
  *  colloids_rt_gravity
  *
+ *  Sedimentation force and density
+ *
  *****************************************************************************/
 
 int colloids_rt_gravity(colloids_info_t * cinfo) {
 
   int nc;
   int isgrav = 0;
+  double rho0;
   double g[3] = {0.0, 0.0, 0.0};
 
   assert(cinfo);
@@ -460,6 +463,14 @@ int colloids_rt_gravity(colloids_info_t * cinfo) {
     info("Sedimentation force on:       yes\n");
     info("Sedimentation force:         %14.7e %14.7e %14.7e\n",
 	 g[X], g[Y], g[Z]);
+  }
+
+  nc = RUN_get_double_parameter("colloid_rho0", &rho0);
+
+  if (nc) {
+    colloids_info_rho0_set(cinfo, rho0);
+    info("Sedimentation force on:       yes\n");
+    info("Colloid density:             %14.7e\n", rho0);    
   }
 
   return 0;
@@ -500,13 +511,14 @@ int colloids_rt_cell_list_checks(colloids_info_t ** pinfo,
 
   /* The 0.5 is required for BBL to identify fluid-solid links,
    * and a0max cannot drop below 1.0 (e.g., for subgrid the
-   * net minimum is 1.5 for drange = 1). */
+   * net minimum is 1.0 for drange = 1). Absolution minimum is
+   * 2.0 units. */
 
   a0max = dmax(1.0, a0max);
 
-  nbest[X] = (int) floor(1.0*(nlocal[X]) / (a0max + 0.5));
-  nbest[Y] = (int) floor(1.0*(nlocal[Y]) / (a0max + 0.5));
-  nbest[Z] = (int) floor(1.0*(nlocal[Z]) / (a0max + 0.5));
+  nbest[X] = (int) floor(1.0*(nlocal[X]) / (dmax(a0max + 0.5, 2.0)));
+  nbest[Y] = (int) floor(1.0*(nlocal[Y]) / (dmax(a0max + 0.5, 2.0)));
+  nbest[Z] = (int) floor(1.0*(nlocal[Z]) / (dmax(a0max + 0.5, 2.0)));
 
   info("\n");
   info("Colloid cell list information\n");

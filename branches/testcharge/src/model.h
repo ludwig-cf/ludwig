@@ -44,7 +44,7 @@ enum {MODEL, MODEL_R};
 extern const double cs2;
 extern const double rcs2;
 
-void   distribution_init(void);
+int distribution_init(void);
 void   distribution_finish(void);
 void   distribution_halo(void);
 
@@ -64,7 +64,7 @@ void   distribution_first_moment(const int index, const int n, double g[3]);
 void   distribution_get_stress_at_site(int index, double s[3][3]);
 void   distribution_halo_set_complete(void);
 void   distribution_halo_set_reduced(void);
-void   distribution_init_f(void);
+int distribution_init_f(double rho0);
 void   distribution_index(const int index, const int n, double f[NVEL]);
 void distribution_multi_index(const int index, const int n, 
 			      double f_vec[NVEL][SIMDVL]);

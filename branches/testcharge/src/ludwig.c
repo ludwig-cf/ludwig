@@ -243,7 +243,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (get_step() == 0) {
     n = 0;
-    distribution_rt_initial_conditions();
+    distribution_rt_initial_conditions(ludwig->param);
     RUN_get_int_parameter("LE_init_profile", &n);
 
     if (n != 0) model_le_init_shear_profile();
@@ -1401,7 +1401,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
-  colloids_info_update_lists(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
 
   TIMER_stop(TIMER_PARTICLE_HALO);

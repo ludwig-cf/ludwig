@@ -71,6 +71,7 @@ reduced_halo no
 #
 #  Fluid parameters
 #
+#  fluid_rho0     mean density (default 1.0)
 #  viscosity      shear viscosity [default is 1/6, ie., relaxation time 1]
 #  viscosity_bulk bulk viscosity  [default = shear viscosity]
 #
@@ -87,6 +88,8 @@ reduced_halo no
 #                                 2d_shear_wave
 #  
 ##############################################################################
+
+fluid_rho0 1.0
 
 viscosity 0.1
 viscosity_bulk 0.1
@@ -327,6 +330,8 @@ leslie_ericksen_swim  0.0
 #                 colloid_one_ah   2.4
 #                 colloid_one_r    12.0_12.0_12.0
 #
+#  colloid_rho0   density of all colloids (default 1.0 as for fluid)
+#
 #  Other quantities default to zero. For random initialisation position
 #  is ignored. Full list matches the structure in colloid.h, including
 #
@@ -339,6 +344,7 @@ leslie_ericksen_swim  0.0
 
 colloid_init        none
 colloid_type        inactive
+colloid_rho0        1.0
 
 colloid_random_no   5
 colloid_random_dh   0.4

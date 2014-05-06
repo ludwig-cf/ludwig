@@ -12,6 +12,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -95,11 +96,18 @@ void distribution_run_time(void) {
  *
  *****************************************************************************/
 
-void distribution_rt_initial_conditions(void) {
+int distribution_rt_initial_conditions(physics_t * phys) {
 
   char key[FILENAME_MAX];
-  double rho0 = 1.0;
+  double rho0;
   double u0[3] = {0.0, 0.0, 0.0};
+
+  assert(phys);
+  physics_rho0(&rho0);
+
+  /* Default */
+
+  distribution_init_f(rho0);
 
   RUN_get_string_parameter("distribution_initialisation", key, FILENAME_MAX);
 
@@ -121,7 +129,7 @@ void distribution_rt_initial_conditions(void) {
     distribution_init_poiseuille(rho0, u0);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

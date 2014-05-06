@@ -64,6 +64,7 @@ void colloids_info_free(colloids_info_t * info);
 int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo);
 int colloids_info_nallocated(colloids_info_t * cinfo, int * nallocated);
 int colloids_info_rho0(colloids_info_t * cinfo, double * rho0);
+int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0);
 int colloids_info_map_init(colloids_info_t * info);
 int colloids_info_ncell(colloids_info_t * info, int ncell[3]);
 int colloids_info_nhalo(colloids_info_t * info, int * nhalo);

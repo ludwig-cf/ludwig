@@ -183,6 +183,21 @@ int colloids_info_rho0(colloids_info_t * cinfo, double * rho0) {
 
 /*****************************************************************************
  *
+ *  colloids_info_rho0_set
+ *
+ *****************************************************************************/
+
+int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0) {
+
+  assert(cinfo);
+
+  cinfo->rho0 = rho0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  colloids_info_map_init
  *
  *  Allocated separately from the main structure, as not always
@@ -660,6 +675,7 @@ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
   }
 
   colloids_info_update_lists(cinfo);
+
   return 0;
 }
 

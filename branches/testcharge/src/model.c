@@ -71,7 +71,7 @@ static int distributions_write(FILE *, const int, const int, const int);
  *
  ***************************************************************************/
  
-void distribution_init(void) {
+int distribution_init(void) {
 
   int nlocal[3];
   int nx, ny, nz;
@@ -117,9 +117,8 @@ void distribution_init(void) {
   initialised_ = 1;
 
   distribution_halo_set_complete();
-  distribution_init_f();
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -130,7 +129,7 @@ void distribution_init(void) {
  *
  *****************************************************************************/
 
-void distribution_init_f(void) {
+int distribution_init_f(double rho0) {
 
   int nlocal[3];
   int ic, jc, kc, index;
@@ -145,13 +144,12 @@ void distribution_init_f(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	/* should be rho0 */
-	distribution_zeroth_moment_set_equilibrium(index, 0, 1.0);
+	distribution_zeroth_moment_set_equilibrium(index, 0, rho0);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
