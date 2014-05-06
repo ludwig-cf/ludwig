@@ -559,32 +559,42 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
     }
 
-    /* Collision stage */
 
-    TIMER_start(TIMER_COLLIDE);
-    collide(ludwig->hydro, ludwig->map, ludwig->noise);
-    TIMER_stop(TIMER_COLLIDE);
+    if (ludwig->hydro) {
 
-    /* Boundary coniditions */
+      /* Collision stage */
 
-    model_le_apply_boundary_conditions();
+      TIMER_start(TIMER_COLLIDE);
+      collide(ludwig->hydro, ludwig->map, ludwig->noise);
+      TIMER_stop(TIMER_COLLIDE);
 
-    TIMER_start(TIMER_HALO_LATTICE);
-    distribution_halo();
-    TIMER_stop(TIMER_HALO_LATTICE);
+      /* Boundary coniditions */
 
-    /* Colloid bounce-back applied between collision and
-     * propagation steps. */
+      model_le_apply_boundary_conditions();
 
-    if (is_subgrid) {
-      subgrid_update(ludwig->collinfo, ludwig->hydro);
+      TIMER_start(TIMER_HALO_LATTICE);
+      distribution_halo();
+      TIMER_stop(TIMER_HALO_LATTICE);
+
+      /* Colloid bounce-back applied between collision and
+       * propagation steps. */
+
+      if (is_subgrid) {
+	subgrid_update(ludwig->collinfo, ludwig->hydro);
+      }
+      else {
+	TIMER_start(TIMER_BBL);
+	wall_update();
+	bounce_back_on_links(ludwig->collinfo);
+	wall_bounce_back(ludwig->map);
+	TIMER_stop(TIMER_BBL);
+      }
     }
     else {
-      TIMER_start(TIMER_BBL);
-      wall_update();
-      bounce_back_on_links(ludwig->collinfo);
-      wall_bounce_back(ludwig->map);
-      TIMER_stop(TIMER_BBL);
+      /* No hydrodynamics, but update colloids in response to
+       * external forces. */
+
+      bbl_update_colloids(ludwig->collinfo);
     }
 
     /* There must be no halo updates between bounce back

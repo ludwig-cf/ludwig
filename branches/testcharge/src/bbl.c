@@ -34,7 +34,6 @@
 static int bbl_pass1(colloids_info_t * cinfo);
 static int bbl_pass2(colloids_info_t * cinfo);
 static int bbl_mass_conservation_compute_force(colloids_info_t * cinfo);
-static int bbl_update_colloids(colloids_info_t * cinfo);
 static int bbl_wall_lubrication_account(colloids_info_t * cinfo);
 
 static int bbl_active_ = 0;  /* Flag for active particles. */
@@ -611,7 +610,7 @@ static int bbl_pass2(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-static int bbl_update_colloids(colloids_info_t * cinfo) {
+int bbl_update_colloids(colloids_info_t * cinfo) {
 
   colloid_t * pc;
 
@@ -776,13 +775,15 @@ static int bbl_update_colloids(colloids_info_t * cinfo) {
 	   * We use mean of old and new velocity. */
 
 	  for (ia = 0; ia < 3; ia++) {
-	    pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
-	    pc->s.v[ia] = xb[ia];
-	    pc->s.w[ia] = xb[3+ia];
+	    if (pc->s.isfixedr == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+	    if (pc->s.isfixedv == 0) pc->s.v[ia] = xb[ia];
+	    if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
 	  }
 
-	  rotate_vector(pc->s.m, xb + 3);
-	  rotate_vector(pc->s.s, xb + 3);
+	  if (pc->s.isfixeds == 0) {
+	    rotate_vector(pc->s.m, xb + 3);
+	    rotate_vector(pc->s.s, xb + 3);
+	  }
 
 	  /* Record the actual hydrodynamic force on the particle */
 

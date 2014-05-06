@@ -19,6 +19,7 @@
 
 int bounce_back_on_links(colloids_info_t * cinfo);
 int bbl_pass0(colloids_info_t * cinfo);
+int bbl_update_colloids(colloids_info_t * cinfo);
 
 void bbl_surface_stress(void);
 void bbl_active_on_set(void);
