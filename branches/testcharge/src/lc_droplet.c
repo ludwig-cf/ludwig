@@ -237,13 +237,16 @@ void lc_droplet_anchoring_molecular_field(const int index, double h[3][3]) {
   double dphi[3];
   double delsq_phi;
   int ia, ib;
+  double dphi2;
   
   field_grad_scalar_grad(grad_phi_, index, dphi);
   field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
   
+  dphi2 = dphi[X]*dphi[X] + dphi[Y]*dphi[Y] + dphi[Z]*dphi[Z];
+
   for (ia = 0; ia < 3; ia++){
     for (ib = 0; ib < 3; ib++){
-      h[ia][ib] = -W_*(dphi[ia]*dphi[ib] - r3_*d_[ia][ib]*delsq_phi);
+      h[ia][ib] = -W_*(dphi[ia]*dphi[ib] - r3_*d_[ia][ib]*dphi2);
     }
   }
 
