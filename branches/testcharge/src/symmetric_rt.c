@@ -20,6 +20,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "noise.h"
 #include "runtime.h"
 #include "free_energy.h"
 #include "symmetric.h"
@@ -28,9 +29,16 @@
 #include "ran.h"
 #include "util.h"
 
-static int symmetric_init_drop(field_t * fphi, double radius, double xi0);
+#define  DEFAULT_NOISE      0.1
+#define  DEFAULT_PATCH_SIZE 1
+#define  DEFAULT_PATCH_VOL  0.5
+#define  DEFAULT_RADIUS     8.0
+
 static int symmetric_init_block(field_t * phi, double xi0);
 static int symmetric_init_bath(field_t * phi);
+int symmetric_init_spinodal(field_t * phi);
+int symmetric_init_spinodal_patches(field_t * phi);
+int symmetric_init_drop(field_t * fphi, double xi0);
 
 /****************************************************************************
  *
@@ -82,48 +90,22 @@ void symmetric_run_time(void) {
 int symmetric_rt_initial_conditions(field_t * phi) {
 
   int p;
-  int ic, jc, kc, index;
-  int ntotal[3], nlocal[3];
-  int offset[3];
-  double phi0, phi1;
-  double noise0 = 0.1; /* Default value. */
   char value[BUFSIZ];
 
   assert(phi);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
-  ntotal[X] = N_total(X);
-  ntotal[Y] = N_total(Y);
-  ntotal[Z] = N_total(Z);
+  p = RUN_get_string_parameter("phi_initialisation", value, BUFSIZ);
 
-  physics_phi0(&phi0);
-  RUN_get_double_parameter("noise", &noise0);
-
-  /* Default initialisation (always?) Note serial nature of this,
-   * which could be replaced. */
-
-  for (ic = 1; ic <= ntotal[X]; ic++) {
-    for (jc = 1; jc <= ntotal[Y]; jc++) {
-      for (kc = 1; kc <= ntotal[Z]; kc++) {
-
-	phi1 = phi0 + noise0*(ran_serial_uniform() - 0.5);
-
-	/* For computation with single fluid and no noise */
-	/* Only set values if within local box */
-	if ( (ic > offset[X]) && (ic <= offset[X] + nlocal[X]) &&
-	     (jc > offset[Y]) && (jc <= offset[Y] + nlocal[Y]) &&
-	     (kc > offset[Z]) && (kc <= offset[Z] + nlocal[Z]) ) {
-
-	    index = coords_index(ic-offset[X], jc-offset[Y], kc-offset[Z]);
-	    field_scalar_set(phi, index, phi1);
-	    
-	}
-      }
-    }
+  /* Default is spinodal */
+  if (p == 0 || strcmp(value, "spinodal") == 0) {
+    info("Initialising phi for spinodal\n");
+    symmetric_init_spinodal(phi);
   }
 
-  p = RUN_get_string_parameter("phi_initialisation", value, BUFSIZ);
+  if (p != 0 && strcmp(value, "patches") == 0) {
+    info("Initialising phi in patches\n");
+    symmetric_init_spinodal_patches(phi);
+  }
 
   if (p != 0 && strcmp(value, "block") == 0) {
     info("Initialisng phi as block\n");
@@ -137,8 +119,7 @@ int symmetric_rt_initial_conditions(field_t * phi) {
 
   if (p != 0 && strcmp(value, "drop") == 0) {
     info("Initialising droplet\n");
-    /* Could do with a drop radius */
-    symmetric_init_drop(phi, 0.4*L(X), symmetric_interfacial_width());
+    symmetric_init_drop(phi, symmetric_interfacial_width());
   }
 
   if (p != 0 && strcmp(value, "from_file") == 0) {
@@ -158,17 +139,20 @@ int symmetric_rt_initial_conditions(field_t * phi) {
  *
  *****************************************************************************/
 
-static int symmetric_init_drop(field_t * fphi, double radius, double xi0) {
+int symmetric_init_drop(field_t * fphi, double xi0) {
 
   int nlocal[3];
   int noffset[3];
   int index, ic, jc, kc;
 
+  double radius = DEFAULT_RADIUS;
   double position[3];
   double centre[3];
   double phi, r, rxi0;
 
   assert(fphi);
+
+  RUN_get_double_parameter("phi_init_drop_radius", &radius);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -279,6 +263,135 @@ static int symmetric_init_bath(field_t * phi) {
       }
     }
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  symmetric_init_spinodal
+ *
+ *  Some random noise is required to initiate spinodal decomposition.
+ *
+ *****************************************************************************/
+
+int symmetric_init_spinodal(field_t * phi) {
+
+  int seed = 13;
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  double ran;
+  double phi0;                        /* Mean of phi */
+  double phi1;                        /* Final phi value */
+  double noise0 = DEFAULT_NOISE;      /* Amplitude of random noise */
+
+  noise_t * rng = NULL;
+
+  assert(phi);
+
+  coords_nlocal(nlocal);
+  physics_phi0(&phi0);
+
+  RUN_get_int_parameter("random_seed", &seed);
+  RUN_get_double_parameter("noise", &noise0);
+
+  noise_create(&rng);
+  noise_init(rng, seed);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	noise_uniform_double_reap(rng, index, &ran);
+	phi1 = phi0 + noise0*(ran - 0.5);
+	field_scalar_set(phi, index, phi1);
+
+      }
+    }
+  }
+
+  noise_free(rng);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  symmetric_init_spinodal_patches
+ *
+ *  Also for spinodal, but a slightly different strategy of patches,
+ *  which is better for large composition ratios.
+ *
+ *  Generally, the further away from 50:50 one moves, the larger
+ *  the patch size must be to prevent diffusion (via the mobility)
+ *  washing out the spinodal decomposition.
+ *
+ *****************************************************************************/
+
+int symmetric_init_spinodal_patches(field_t * phi) {
+
+  int ic, jc, kc, index;
+  int ip, jp, kp;
+  int nlocal[3];
+  int ipatch, jpatch, kpatch;
+  int seed;
+  int count = 0;
+  int patch = DEFAULT_PATCH_SIZE;
+
+  double volminus1 = DEFAULT_PATCH_VOL;
+  double phi1;
+  double ran_uniform;
+
+  noise_t * rng = NULL;
+
+  assert(phi);
+
+  coords_nlocal(nlocal);
+
+  RUN_get_int_parameter("random_seed", &seed);
+  RUN_get_int_parameter("phi_init_patch_size", &patch);
+  RUN_get_double_parameter("phi_init_patch_vol", &volminus1);
+
+  noise_create(&rng);
+  noise_init(rng, seed);
+
+  for (ic = 1; ic <= nlocal[X]; ic += patch) {
+    for (jc = 1; jc <= nlocal[Y]; jc += patch) {
+      for (kc = 1; kc <= nlocal[Z]; kc += patch) {
+
+	index = coords_index(ic, jc, kc);
+
+	/* Uniform patch */
+	phi1 = 1.0;
+	noise_uniform_double_reap(rng, index, &ran_uniform);
+	if (ran_uniform < volminus1) phi1 = -1.0;
+
+	ipatch = dmin(nlocal[X], ic + patch - 1);
+	jpatch = dmin(nlocal[Y], jc + patch - 1);
+	kpatch = dmin(nlocal[Z], kc + patch - 1);
+
+	for (ip = ic; ip <= ipatch; ip++) {
+	  for (jp = jc; jp <= jpatch; jp++) {
+	    for (kp = kc; kp <= kpatch; kp++) {
+
+	      index = coords_index(ip, jp, kp);
+	      field_scalar_set(phi, index, phi1);
+	      count += 1;
+	    }
+	  }
+	}
+
+	/* Next patch */
+      }
+    }
+  }
+
+  noise_free(rng);
+
+  assert(count == nlocal[X]*nlocal[Y]*nlocal[Z]);
 
   return 0;
 }

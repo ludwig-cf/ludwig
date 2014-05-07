@@ -1,6 +1,6 @@
-Welcome to Ludwig (Serial version running on 1 process)
+Welcome to Ludwig v0.1.10 (Serial version running on 1 process)
 
-The SVN revision details are: 
+The SVN revision details are: 2374M
 Note assertions via standard C assert() are on.
 
 Read 22 user parameters from ./serial-spin-n01.inp
@@ -72,12 +72,13 @@ Order parameter I/O format:
 I/O decomposition:            1 1 1
 
 Advection scheme order: 1
+Initialising phi for spinodal
 Gradient calcaulation: 3d_27pt_solid
 Initial conditions.
 
 Scalars - total mean variance min max
 [rho]      262144.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
-[phi] -2.2902996e+01 -8.7367996e-05 8.3184864e-04 -4.9998611e-02 4.9999983e-02
+[phi]  3.1484764e+00  1.2010484e-05 8.3289934e-04 -4.9999916e-02 4.9999705e-02
 
 Momentum - x y z
 [total   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
@@ -86,19 +87,19 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]      262144.00  1.00000000000 3.7259973e-11  0.99997003904 1.00002383580
-[phi] -2.2902996e+01 -8.7367996e-05 7.1742535e-04 -6.8718340e-02 6.7033753e-02
+[rho]      262144.00  1.00000000000 3.7280401e-11  0.99996954373 1.00002445592
+[phi]  3.1484764e+00  1.2010484e-05 7.1975260e-04 -6.7789560e-02 6.5361110e-02
 
 Free energy density - timestep total fluid
-[fed]             10 -1.9805865565e-06 -1.9805865565e-06
+[fed]             10 -1.9878858893e-06 -1.9878858893e-06
 
 Momentum - x y z
-[total   ]  3.6412401e-12 -1.6854573e-14  2.6201263e-14
-[fluid   ]  3.6412401e-12 -1.6854573e-14  2.6201263e-14
+[total   ]  3.6521688e-12 -2.2652019e-14  2.6145752e-14
+[fluid   ]  3.6521688e-12 -2.2652019e-14  2.6145752e-14
 
 Velocity - x y z
-[minimum ] -1.8240742e-05 -1.9649189e-05 -1.9693060e-05
-[maximum ]  1.7788291e-05  1.8273510e-05  1.8852025e-05
+[minimum ] -1.7826905e-05 -2.0378340e-05 -1.9130957e-05
+[maximum ]  1.8425370e-05  2.0153446e-05  1.7579813e-05
 
 Completed cycle 10
 
@@ -106,12 +107,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     11.440     11.440     11.440  11.440000 (1 call)
-      Time step loop:      1.080      1.170     11.230   1.123000 (10 calls)
-         Propagation:      0.040      0.060      0.490   0.049000 (10 calls)
-           Collision:      0.290      0.350      3.190   0.319000 (10 calls)
-       Lattice halos:      0.000      0.010      0.020   0.002000 (10 calls)
-       phi gradients:      0.390      0.450      4.260   0.426000 (10 calls)
-                 BBL:      0.000      0.000      0.000   0.000000 (10 calls)
-   Force calculation:      0.100      0.140      1.170   0.117000 (10 calls)
+               Total:      6.090      6.090      6.090   6.090299 (1 call)
+      Time step loop:      0.583      0.605      5.877   0.587742 (10 calls)
+         Propagation:      0.018      0.018      0.180   0.017988 (10 calls)
+           Collision:      0.151      0.156      1.518   0.151756 (10 calls)
+       Lattice halos:      0.001      0.003      0.016   0.001563 (10 calls)
+       phi gradients:      0.230      0.240      2.325   0.232532 (10 calls)
+                 BBL:      0.000      0.000      0.000   0.000002 (10 calls)
+   Force calculation:      0.068      0.080      0.698   0.069850 (10 calls)
+          phi update:      0.110      0.113      1.115   0.111546 (10 calls)
 Ludwig finished normally.

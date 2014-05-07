@@ -1,9 +1,9 @@
-Welcome to Ludwig (Serial version running on 1 process)
+Welcome to Ludwig v0.1.10 (Serial version running on 1 process)
 
-The SVN revision details are: 2190M
+The SVN revision details are: 2374M
 Note assertions via standard C assert() are on.
 
-Read 22 user parameters from serial-spin-lb2.inp
+Read 22 user parameters from ./serial-spin-lb2.inp
 
 System details
 --------------
@@ -68,6 +68,7 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+Initialising phi for spinodal
 
 Boundary walls
 --------------
@@ -83,7 +84,7 @@ Initial conditions.
 
 Scalars - total mean variance min max
 [rho]       32768.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
-[phi] -9.9683936e+00 -3.0421123e-04 8.2805904e-04 -4.9998083e-02 4.9997346e-02
+[phi] -5.9892076e+00 -1.8277611e-04 8.3100414e-04 -4.9989121e-02 4.9997941e-02
 
 Momentum - x y z
 [total   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
@@ -93,20 +94,20 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 8.1703311e-11  0.99996762461 1.00002317040
-[phi] -9.9683936e+00 -3.0421123e-04 4.7832212e-04 -5.3169094e-02 5.4899355e-02
+[rho]       32768.00  1.00000000000 8.3601570e-11  0.99996729891 1.00002317848
+[phi] -5.9892076e+00 -1.8277611e-04 4.8107467e-04 -5.4252546e-02 5.3888958e-02
 
 Free energies - timestep f v f/v f_s1 fs_s2 
-[fe]             40 -4.1095632978e-02  3.2768000000e+04 -1.2541391900e-06  0.0000000000e+00  0.0000000000e+00
+[fe]             40 -4.1390835011e-02  3.2768000000e+04 -1.2631480411e-06  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
-[total   ] -1.5848434e-14 -4.6490589e-15  5.2735594e-15
-[fluid   ]  1.1741789e-03 -4.4439427e-04  7.2255789e-04
-[walls   ] -1.1741789e-03  4.4439427e-04 -7.2255789e-04
+[total   ] -3.3837516e-14  1.2150003e-14  1.3544721e-14
+[fluid   ]  1.1410526e-04 -9.7604906e-04 -1.7379322e-04
+[walls   ] -1.1410526e-04  9.7604906e-04  1.7379322e-04
 
 Velocity - x y z
-[minimum ] -1.5772858e-05 -1.6309456e-05 -1.4323996e-05
-[maximum ]  1.2528527e-05  2.0617176e-05  1.4120773e-05
+[minimum ] -1.5629928e-05 -1.4460037e-05 -1.5091671e-05
+[maximum ]  1.8897739e-05  1.4357452e-05  1.3674644e-05
 
 Completed cycle 40
 
@@ -114,11 +115,11 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.779      2.779      2.779   2.778613 (1 call)
-      Time step loop:      0.067      0.070      2.729   0.068214 (40 calls)
-         Propagation:      0.004      0.005      0.172   0.004300 (40 calls)
-           Collision:      0.035      0.037      1.437   0.035925 (40 calls)
+               Total:      2.721      2.721      2.721   2.720816 (1 call)
+      Time step loop:      0.066      0.071      2.671   0.066770 (40 calls)
+         Propagation:      0.004      0.005      0.165   0.004119 (40 calls)
+           Collision:      0.034      0.037      1.374   0.034353 (40 calls)
        Lattice halos:      0.000      0.000      0.000   0.000001 (40 calls)
-       phi gradients:      0.025      0.025      1.007   0.025175 (40 calls)
-                 BBL:      0.002      0.003      0.101   0.002516 (40 calls)
+       phi gradients:      0.025      0.027      1.021   0.025516 (40 calls)
+                 BBL:      0.002      0.003      0.099   0.002472 (40 calls)
 Ludwig finished normally.

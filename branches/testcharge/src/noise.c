@@ -26,6 +26,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -311,6 +312,29 @@ int noise_reap_n(noise_t * obj, int index, int nmax, double * reap) {
     reap[ia] = obj->rtable[iuniform & 7];
     iuniform >>= 3;
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  noise_uniform_double_reap
+ *
+ *  Return a single double a full precission.
+ *
+ *****************************************************************************/
+
+int noise_uniform_double_reap(noise_t * obj, int index, double * reap) {
+
+  unsigned int iuniform;
+
+  assert(obj);
+  assert(index >= 0);
+  assert(index < obj->nsites);
+
+  iuniform = noise_uniform(obj->state + NNOISE_STATE*index);
+
+  *reap = (1.0/UINT_MAX)*iuniform;
 
   return 0;
 }

@@ -1,9 +1,9 @@
-Welcome to Ludwig (MPI version running on 8 processes)
+Welcome to Ludwig v0.1.10 (MPI version running on 8 processes)
 
-The SVN revision details are: 
+The SVN revision details are: 2374M
 Note assertions via standard C assert() are on.
 
-Read 24 user parameters from ../tests/regression/pmpi08-le2d-fd1.inp
+Read 24 user parameters from ./pmpi08-le2d-fd1.inp
 
 System details
 --------------
@@ -77,14 +77,16 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+
 Advection scheme order: 3
+Initialising phi for spinodal
 Initialising shear profile
 Gradient calcaulation: 3d_27pt_fluid
 Initial conditions.
 
 Scalars - total mean variance min max
 [rho]        4096.00  1.00000000000 0.0000000e+00  1.00000000000 1.00000000000
-[phi] -2.7646190e+00 -6.7495581e-04 8.2924942e-04 -4.9948973e-02 4.9996627e-02
+[phi] -1.1802440e-02 -2.8814551e-06 8.2680383e-04 -4.9977721e-02 4.9988335e-02
 
 Momentum - x y z
 [total   ]  1.5099033e-14 -1.5543122e-14  0.0000000e+00
@@ -93,33 +95,34 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]        4096.00  1.00000000000 1.2637731e-04  0.97195301828 1.03502102628
-[phi] -2.7646190e+00 -6.7495581e-04 5.5822331e-01 -9.2039867e-01 9.9720625e-01
+[rho]        4096.00  1.00000000000 1.3881438e-04  0.96982251571 1.03118844301
+[phi] -1.1802440e-02 -2.8814551e-06 5.5602790e-01 -9.2950802e-01 9.2222634e-01
 
 Free energy density - timestep total fluid
-[fed]           2600 -1.0417241531e-02 -1.0417241531e-02
+[fed]           2600 -1.0366557113e-02 -1.0366557113e-02
 
 Momentum - x y z
-[total   ]  4.4408921e-16  7.2721665e-02  0.0000000e+00
-[fluid   ]  4.4408921e-16  7.2721665e-02  0.0000000e+00
+[total   ] -8.4376950e-14  5.7940610e-03  0.0000000e+00
+[fluid   ] -8.4376950e-14  5.7940610e-03  0.0000000e+00
 
 Velocity - x y z
-[minimum ] -3.1747224e-02 -5.1157186e-02  0.0000000e+00
-[maximum ]  2.2841937e-02  6.4016863e-02  1.1754944e-38
+[minimum ] -3.1858603e-02 -5.6674469e-02  0.0000000e+00
+[maximum ]  3.5624468e-02  7.7532494e-02  1.1754944e-38
 
 Completed cycle 2600
 
-Timer resolution: 0.001 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      6.855      6.855      6.855   6.854548 (1 call)
-      Time step loop:      0.002      0.004      6.840   0.002631 (2600 calls)
-         Propagation:      0.000      0.000      0.092   0.000035 (2600 calls)
-           Collision:      0.000      0.001      1.250   0.000481 (2600 calls)
-       Lattice halos:      0.000      0.001      0.514   0.000198 (2600 calls)
-       phi gradients:      0.000      0.001      1.332   0.000512 (2600 calls)
-     Lees Edwards BC:      0.000      0.000      0.218   0.000084 (2600 calls)
-                 BBL:      0.000      0.000      0.001   0.000000 (2600 calls)
-   Force calculation:      0.000      0.001      1.166   0.000448 (2600 calls)
+               Total:     10.921     10.921     10.921  10.921356 (1 call)
+      Time step loop:      0.003      0.016     10.910   0.004196 (2600 calls)
+         Propagation:      0.000      0.002      0.170   0.000065 (2600 calls)
+           Collision:      0.000      0.003      1.688   0.000649 (2600 calls)
+       Lattice halos:      0.000      0.006      0.802   0.000308 (2600 calls)
+       phi gradients:      0.001      0.006      2.071   0.000796 (2600 calls)
+     Lees Edwards BC:      0.000      0.005      0.183   0.000070 (2600 calls)
+                 BBL:      0.000      0.000      0.003   0.000001 (2600 calls)
+   Force calculation:      0.001      0.006      2.090   0.000804 (2600 calls)
+          phi update:      0.001      0.009      3.850   0.001481 (2600 calls)
 Ludwig finished normally.
