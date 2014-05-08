@@ -29,12 +29,8 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]);
 int blue_phase_nematic_init(field_t * fq, const double n[3]);
 int blue_phase_active_nematic_init(field_t * fq, const double n[3]);
 int blue_phase_chi_edge(field_t * fq, int N, double z0, double x0);
-int blue_set_random_q_init(field_t * fq);
-int blue_set_random_q_rectangle_init(field_t * q,
-				     const double xmin, const double xmax,
-				     const double ymin,const double ymax,
-				     const double zmin,const double zmax);
-
+int blue_phase_random_q_init(field_t * fq);
+int blue_phase_random_q_rectangle(field_t * q, int rmin[3], int rmax[3]);
 void blue_phase_M_rot(double M[3][3], int dim, double alpha);
 void blue_phase_init_amplitude_set(const double amplitude);
 double blue_phase_init_amplitude(void);

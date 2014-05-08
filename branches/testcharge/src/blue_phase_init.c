@@ -30,6 +30,9 @@
 #include "blue_phase_init.h"
 
 #include "ran.h"
+#include "noise.h"
+
+#define DEFAULT_SEED 13
 
 static double amplitude0_ = 0.0; /* Magnitude of order (initial) */
 
@@ -968,7 +971,7 @@ int blue_phase_chi_edge(field_t * fq, int N, double z0, double x0) {
 
 /*****************************************************************************
  *
- *  blue_set_random_q_init
+ *  blue_phase_random_q_init
  *
  *  Set a decomposition-independent random initial Q tensor
  *  based on the initial order amplitude0_ and a randomly
@@ -976,54 +979,56 @@ int blue_phase_chi_edge(field_t * fq, int N, double z0, double x0) {
  *
  *****************************************************************************/
 
-int blue_set_random_q_init(field_t * fq) {
+int blue_phase_random_q_init(field_t * fq) {
 
-  int ic, jc, kc;
+  int ic, jc, kc, index;
   int nlocal[3];
-  int offset[3];
-  int index;
+  int seed = DEFAULT_SEED;
 
-  double n[3];
-  double q[3][3];
+  double n[3];            /* random director */
+  double q[3][3];         /* resulting unixial q */
   double phase1, phase2;
+
+  double ran1, ran2;
+  noise_t * rng = NULL;
 
   assert(fq);
   
   coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
-  
-  for (ic = 1; ic <= N_total(X); ic++) {
-    for (jc = 1; jc <= N_total(Y); jc++) {
-      for (kc = 1; kc <= N_total(Z); kc++) {
 
-	phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
-	phase2 = acos(2.0*ran_serial_uniform() - 1.0);
+  noise_create(&rng);
+  noise_init(rng, seed);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 	    
-	/* Only set values if within local subdomain */
+	index = coords_index(ic, jc, kc);
 
-	if((ic > offset[X]) && (ic <= offset[X] + nlocal[X]) &&
-	   (jc > offset[Y]) && (jc <= offset[Y] + nlocal[Y]) &&
-	   (kc > offset[Z]) && (kc <= offset[Z] + nlocal[Z])) {
+	noise_uniform_double_reap(rng, index, &ran1);
+	noise_uniform_double_reap(rng, index, &ran2);
 
-	  index = coords_index(ic-offset[X], jc-offset[Y], kc-offset[Z]);
-	      
-	  n[X] = cos(phase1)*sin(phase2);
-	  n[Y] = sin(phase1)*sin(phase2);
-	  n[Z] = cos(phase2);
+	phase1 = 2.0*pi_*(0.5 - ran1);
+	phase2 = acos(2.0*ran2 - 1.0);
 
-	  blue_phase_q_uniaxial(amplitude0_, n, q);
-	  field_tensor_set(fq, index, q);
-	}
+	n[X] = cos(phase1)*sin(phase2);
+	n[Y] = sin(phase1)*sin(phase2);
+	n[Z] = cos(phase2);
+
+	blue_phase_q_uniaxial(amplitude0_, n, q);
+	field_tensor_set(fq, index, q);
       }
     }
   }
+
+  noise_free(rng);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  blue_set_random_q_rectangle_init
+ *  blue_phase_random_q_rectangle
  *
  *  Within the limits of the rectanular box provided, set the initial
  *  Q tensor to a random value. The idea here is to 'melt' the order
@@ -1034,54 +1039,62 @@ int blue_set_random_q_init(field_t * fq) {
  * 
  *****************************************************************************/
 
-int blue_set_random_q_rectangle_init(field_t * fq,
-				     const double xmin, const double xmax,
-				     const double ymin, const double ymax,
-				     const double zmin, const double zmax) {
-  int i, j, k;
+int blue_phase_random_q_rectangle(field_t * fq, int rmin[3], int rmax[3]) {
+
+  int ic, jc, kc, index;
   int nlocal[3];
-  int offset[3];
-  int index;
+  int noffset[3];
+  int seed = DEFAULT_SEED;
 
   double n[3];
   double q[3][3];
   double phase1, phase2;
-  double a0 = 0.000001;   /* Initial amplitude of order in 'box' */
+  double a0 = 0.01;             /* Initial amplitude of order in 'box' */
+
+  double ran1, ran2;
+  noise_t * rng = NULL;
 
   assert(fq);
 
   coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
-  
-  for (i = 1; i<=N_total(X); i++) {
-    for (j = 1; j<=N_total(Y); j++) {
-      for (k = 1; k<=N_total(Z); k++) {
+  coords_nlocal_offset(noffset);
 
-	if((i>xmin) && (i<xmax) &&
-	   (j>ymin) && (j<ymax) &&
-	   (k>zmin) && (k<zmax))
-	  {
-	    phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
-	    phase2 = acos(2.0*ran_serial_uniform() - 1.0);
+  noise_create(&rng);
+  noise_init(rng, seed);
+
+  /* Adjust min, max to allow for parallel offset of box */
+
+  rmin[X] -= noffset[X]; rmax[X] -= noffset[X];
+  rmin[Y] -= noffset[Y]; rmax[Y] -= noffset[Y];
+  rmin[Z] -= noffset[Z]; rmax[Z] -= noffset[Z];
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	if (ic < rmin[X] || ic > rmax[X] || jc < rmin[Y] || jc > rmax[Y] ||
+	    kc < rmin[Z] || kc > rmax[Z]) continue;
+
+	index = coords_index(ic, jc, kc);
+
+	noise_uniform_double_reap(rng, index, &ran1);
+	noise_uniform_double_reap(rng, index, &ran2);
+
+	phase1 = 2.0*pi_*(0.5 - ran1);
+	phase2 = acos(2.0*ran2 - 1.0);
 	    
-	    /* Only set values if within local box */
-	    if((i>offset[X]) && (i<=offset[X] + nlocal[X]) &&
-	       (j>offset[Y]) && (j<=offset[Y] + nlocal[Y]) &&
-	       (k>offset[Z]) && (k<=offset[Z] + nlocal[Z]))
-	      {
-		index = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
-	      
-		n[X] = cos(phase1)*sin(phase2);
-		n[Y] = sin(phase1)*sin(phase2);
-		n[Z] = cos(phase2);
+	n[X] = cos(phase1)*sin(phase2);
+	n[Y] = sin(phase1)*sin(phase2);
+	n[Z] = cos(phase2);
 
-		blue_phase_q_uniaxial(a0, n, q);
-		field_tensor_set(fq, index, q);
-	      }
-	  }
+	blue_phase_q_uniaxial(a0, n, q);
+	field_tensor_set(fq, index, q);
+
       }
     }
   }
+
+  noise_free(rng);
 
   return 0;
 }

@@ -60,19 +60,25 @@ void blue_phase_run_time(void) {
   /* PARAMETERS */
 
   n = RUN_get_double_parameter("lc_a0", &a0);
-  assert(n == 1);
+  if (n != 1) fatal("Please specify lc_a0 <value>\n");
+
   n = RUN_get_double_parameter("lc_gamma", &gamma);
-  assert(n == 1);
+  if (n != 1) fatal("Please specify lc_gamma <value>\n");
+
   n = RUN_get_double_parameter("lc_q0", &q0);
-  assert(n == 1);
+  if (n != 1) fatal("Please specify lc_q0 <value>\n");
+
   n = RUN_get_double_parameter("lc_kappa0", &kappa0);
-  assert(n == 1);
+  if (n != 1) fatal("Please specify lc_kappa0 <value>\n");
+
   n = RUN_get_double_parameter("lc_kappa1", &kappa1);
-  assert(n == 1);
+  if (n != 1) fatal("Please specify lc_kappa1 <value>\n");
+
   n = RUN_get_double_parameter("lc_xi", &xi);
-  assert(n == 1);
+  if (n != 1) fatal("Please specify lc_xi <value>\n");
+
   n = RUN_get_double_parameter("lc_q_init_amplitude", &amplitude);
-  assert(n == 1);
+  if (n != 1) fatal("Please specify lc_q_init_amplitude <value>\n");
 
   /* Use a default redshift of 1 */
   redshift = 1.0;
@@ -257,7 +263,8 @@ void blue_phase_run_time(void) {
 
 int blue_phase_rt_initial_conditions(field_t * q) {
 
-  int  n;
+  int  n1, n2;
+  int  rmin[3], rmax[3];
   char key1[FILENAME_MAX];
 
   double nhat[3] = {1.0, 0.0, 0.0};
@@ -265,8 +272,8 @@ int blue_phase_rt_initial_conditions(field_t * q) {
 
   info("\n");
 
-  n = RUN_get_string_parameter("lc_q_initialisation", key1, FILENAME_MAX);
-  assert(n == 1);
+  n1 = RUN_get_string_parameter("lc_q_initialisation", key1, FILENAME_MAX);
+  if (n1 != 1) fatal("Please specify lc_q_initialisation <value>\n");
 
   info("\n");
 
@@ -355,7 +362,17 @@ int blue_phase_rt_initial_conditions(field_t * q) {
 
   if (strcmp(key1, "random") == 0) {
     info("Initialising Q_ab randomly\n");
-    blue_set_random_q_init(q);
+    blue_phase_random_q_init(q);
+  }
+
+  /* Superpose a rectangle of random Q_ab on whatever was above */
+
+  n1 = RUN_get_int_parameter_vector("lc_q_init_rectangle_min", rmin);
+  n2 = RUN_get_int_parameter_vector("lc_q_init_rectangle_max", rmax);
+
+  if (n1 == 1 && n2 == 1) {
+    info("Superposing random rectangle\n");
+    blue_phase_random_q_rectangle(q, rmin, rmax);
   }
 
   return 0;

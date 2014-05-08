@@ -26,7 +26,6 @@
 #include "symmetric.h"
 
 #include "physics.h"
-#include "ran.h"
 #include "util.h"
 
 #define  DEFAULT_NOISE      0.1
