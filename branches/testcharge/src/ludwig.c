@@ -244,14 +244,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
     RUN_get_int_parameter("LE_init_profile", &n);
 
     if (n != 0) model_le_init_shear_profile();
-
-    /* SPECIAL */
-    /*
-    sprintf(filename, "%sphi-%8.8d", subdirectory, 0);
-    io_info_set_processor_independent(io_info_phi);
-    io_read(filename, io_info_phi);
-    io_info_set_processor_dependent(io_info_phi);
-    */
   }
   else {
     /* Distributions */

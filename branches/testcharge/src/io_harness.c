@@ -252,6 +252,7 @@ void io_read(char * filename_stub, io_info_t * io_info) {
   MPI_Status status;
 
   assert(io_info);
+  assert(io_info->read_function);
 
   coords_nlocal(nlocal);
 

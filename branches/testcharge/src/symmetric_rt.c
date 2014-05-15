@@ -37,7 +37,7 @@ static int symmetric_init_block(field_t * phi, double xi0);
 static int symmetric_init_bath(field_t * phi);
 int symmetric_init_spinodal(field_t * phi);
 int symmetric_init_spinodal_patches(field_t * phi);
-int symmetric_init_drop(field_t * fphi, double xi0);
+int symmetric_init_drop(field_t * fphi, double xi0, double radius);
 
 /****************************************************************************
  *
@@ -90,6 +90,10 @@ int symmetric_rt_initial_conditions(field_t * phi) {
 
   int p;
   char value[BUFSIZ];
+  char filestub[FILENAME_MAX];
+  double radius;
+
+  io_info_t * iohandler = NULL;
 
   assert(phi);
 
@@ -117,16 +121,20 @@ int symmetric_rt_initial_conditions(field_t * phi) {
   }
 
   if (p != 0 && strcmp(value, "drop") == 0) {
-    info("Initialising droplet\n");
-    symmetric_init_drop(phi, symmetric_interfacial_width());
+    radius = DEFAULT_RADIUS;
+    RUN_get_double_parameter("phi_init_drop_radius", &radius);
+    info("Initialising droplet radius:     %14.7e\n", radius);
+    symmetric_init_drop(phi, symmetric_interfacial_width(), radius);
   }
 
   if (p != 0 && strcmp(value, "from_file") == 0) {
     info("Initial order parameter requested from file\n");
-    info("Reading phi from serial file\n");
+    strcpy(filestub, "phi.init"); /* A default */
+    RUN_get_string_parameter("phi_file_stub", filestub, FILENAME_MAX);
+    info("Attempting to read phi from file: %s\n", filestub);
 
-    fatal("Not reading from file\n");
-    /* need to do something! */
+    field_io_info(phi, &iohandler);
+    io_read_data(iohandler, filestub, phi);
   }
 
   return 0;
@@ -138,20 +146,17 @@ int symmetric_rt_initial_conditions(field_t * phi) {
  *
  *****************************************************************************/
 
-int symmetric_init_drop(field_t * fphi, double xi0) {
+int symmetric_init_drop(field_t * fphi, double xi0, double radius) {
 
   int nlocal[3];
   int noffset[3];
   int index, ic, jc, kc;
 
-  double radius = DEFAULT_RADIUS;
   double position[3];
   double centre[3];
   double phi, r, rxi0;
 
   assert(fphi);
-
-  RUN_get_double_parameter("phi_init_drop_radius", &radius);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
