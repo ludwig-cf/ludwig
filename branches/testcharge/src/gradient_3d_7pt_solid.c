@@ -223,7 +223,8 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	  known[ia] = 1;
 	  normal[ia] = ia;
 
-	  /* Look for ouward normals is bcs[] */
+	  /* Look for outward normals is bcs[] with ib 2*ia + 1
+	   * status at 2*ia, which is what we want */
 
 	  ib = 2*ia + 1;
 	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];

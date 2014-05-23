@@ -69,6 +69,7 @@ void blue_phase_set_active_region_gamma_zeta(const int index);
 
 void fed_io_info_set(io_info_t * info);
 int  fed_io_info(io_info_t ** info);
+int blue_phase_scalar_ops(double q[3][3], double qs[5]);
 
 #endif
  

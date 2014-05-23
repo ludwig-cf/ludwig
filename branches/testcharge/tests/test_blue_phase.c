@@ -16,6 +16,7 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -35,17 +36,43 @@ static void multiply_gradient(double [3][3][3], double);
 static void multiply_delsq(double [3][3], double);
 static int test_o8m_struct(field_t * fq, field_grad_t * fqgrad);
 
+int test_bp_suite(void);
+int test_bp_nonfield(void);
+
+/*****************************************************************************
+ *
+ *  main
+ *
+ *****************************************************************************/
+
 int main(int argc, char ** argv) {
+
+  MPI_Init(&argc, &argv);
+
+  test_bp_suite();
+
+  MPI_Finalize();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_bp_suite
+ *
+ *****************************************************************************/
+
+int test_bp_suite(void) {
 
   int nhalo = 1;
   field_t * fq = NULL;
   field_grad_t * fqgrad = NULL;
 
-  MPI_Init(&argc, &argv);
-
   pe_init();
   coords_init();
   le_init(); /* Must be initialised to compute gradients. */
+
+  test_bp_nonfield();
 
   field_create(NQAB, "q", &fq);
   field_init(fq, nhalo);
@@ -62,7 +89,36 @@ int main(int argc, char ** argv) {
   coords_finish();
   pe_finalise();
 
-  MPI_Finalize();
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_bp_nonfield
+ *
+ *****************************************************************************/
+
+int test_bp_nonfield(void) {
+
+  double q[3][3];
+  double q5[NQAB];
+
+  /* Artificial example */
+
+  q[X][X] = 1.0;
+  q[Y][Y] = -1.0;
+  q[X][Y] = 2.0;
+  q[Y][X] = 2.0;
+  q[Y][Z] = 1.5;
+  q[Z][Y] = 1.5;
+
+  blue_phase_scalar_ops(q, q5);
+
+  assert(fabs(q5[0] - 2.5214385 ) < FLT_EPSILON);
+  assert(fabs(q5[4] - 0.95411133) < FLT_EPSILON);
+  assert(fabs(q5[1] - 0.74879672) < FLT_EPSILON);
+  assert(fabs(q5[2] - 0.56962409) < FLT_EPSILON);
+  assert(fabs(q5[3] - 0.33886852) < FLT_EPSILON);
 
   return 0;
 }

@@ -1162,3 +1162,56 @@ static int fed_write(FILE * fp, const int ic, const int jc, const int kc) {
 
   return n;
 }
+
+/*****************************************************************************
+ *
+ *  blue_phase_scalar_ops
+ *
+ *  For symmetric traceless q[3][3], return the associated scalar
+ *  order parameter, biaxial order parameter and director:
+ *
+ *  qs[0]  scalar order parameter: largest eigenvalue
+ *  qs[1]  director[X] (associated eigenvector)
+ *  qs[2]  director[Y]
+ *  qs[3]  director[Z]
+ *  qs[4]  biaxial order parameter b = sqrt(1 - 6 (Tr(QQQ))^2 / Tr(QQ)^3)
+ *         related to the two largest eigenvalues...
+ *
+ *  If we write Q = ((s, 0, 0), (0, t, 0), (0, 0, -s -t)) then
+ *
+ *    Tr(QQ)  = s^2 + t^2 + (s + t)^2
+ *    Tr(QQQ) = 3 s t (s + t)
+ *
+ *  If no diagonalisation is possible, all the results are set to zero.
+ *
+ *****************************************************************************/
+
+int blue_phase_scalar_ops(double q[3][3], double qs[5]) {
+
+  int ifail;
+  double eigenvalue[3];
+  double eigenvector[3][3];
+  double s, t;
+  double q2, q3;
+
+  ifail = util_jacobi_sort(q, eigenvalue, eigenvector);
+
+  qs[0] = 0.0; qs[1] = 0.0; qs[2] = 0.0; qs[3] = 0.0; qs[4] = 0.0;
+
+  if (ifail == 0) {
+
+    qs[0] = eigenvalue[0];
+    qs[1] = eigenvector[X][0];
+    qs[2] = eigenvector[Y][0];
+    qs[3] = eigenvector[Z][0];
+
+    s = eigenvalue[0];
+    t = eigenvalue[1];
+
+    q2 = s*s + t*t + (s + t)*(s + t);
+    q3 = 3.0*s*t*(s + t);
+    qs[4] = sqrt(1 - 6.0*q3*q3 / (q2*q2*q2));
+  }
+
+  return ifail;
+}
