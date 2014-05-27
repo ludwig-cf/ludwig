@@ -171,7 +171,7 @@ static void stats_free_energy_wallx(double * fs) {
   fs[1] = 0.0;
 
   coords_nlocal(nlocal);
-  w = wall_w_get();
+  w = wall_w1();
   assert(phi_nop() == 5);
 
   dn[Y] = 0.0;
@@ -246,7 +246,7 @@ static void stats_free_energy_wally(double * fs) {
   fs[1] = 0.0;
 
   coords_nlocal(nlocal);
-  w = wall_w_get();
+  w = wall_w1();
 
   assert(phi_nop() == 5);
 
@@ -322,7 +322,7 @@ static void stats_free_energy_wallz(double * fs) {
   fs[1] = 0.0;
 
   coords_nlocal(nlocal);
-  w = wall_w_get();
+  w = wall_w1();
 
   assert(phi_nop() == 5);
 
@@ -399,7 +399,7 @@ static void stats_free_energy_colloid(double * fs) {
   double w;
 
   coords_nlocal(nlocal);
-  w = colloids_q_tensor_w();
+  w = colloids_q_tensor_w1();
 
   fs[0] = 0.0;
   fs[1] = 0.0;

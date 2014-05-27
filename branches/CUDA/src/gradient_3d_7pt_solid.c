@@ -65,7 +65,7 @@
 /* Only tensor order parameter relevant */
 
 #define NOP 5
-#define NITERATION 40
+#define NITERATION 1
 
 static void gradient_bcs(double kappa0, double kappa1, const int dn[3],
 			 double dq[NOP][3], double bc[NOP][NOP][3]);
@@ -175,7 +175,7 @@ static void gradient_general(const double * field, double * grad,
   kappa1 = fe_kappa(); /* One elastic constant */ 
 
   q_0 = blue_phase_q0();
-  w = colloids_q_tensor_w();
+  w = colloids_q_tensor_w1();
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -230,8 +230,8 @@ static void gradient_general(const double * field, double * grad,
 	  colloids_q_boundary(dn, qs, q0, status[n]);
 
 	  /* Check for wall/colloid */
-	  if (status[n] == COLLOID) w = colloids_q_tensor_w();
-	  if (status[n] == BOUNDARY) w = wall_w_get();
+	  if (status[n] == COLLOID) w = colloids_q_tensor_w1();
+	  if (status[n] == BOUNDARY) w = wall_w1();
 	  assert(status[n] == COLLOID || status[n] == BOUNDARY);
 
 	  /* Compute c[n][a][b] */

@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <assert.h>
 
@@ -37,8 +38,10 @@ struct io_info_t * io_info_scalar_q_;
 static int anchoring_coll_ = ANCHORING_NORMAL;
 static int anchoring_wall_ = ANCHORING_NORMAL;
 static int anchoring_method_ = ANCHORING_METHOD_NONE;
-static double w_surface_ = 0.0; /* Anchoring strength in free energy */
-static double w_surface_wall_ = 0.0; /* Anchoring strength in free energy */
+static double w1_surface_ = 0.0; /* Anchoring strength in free energy */
+static double w1_surface_wall_ = 0.0; /* Anchoring strength in free energy */
+static double w2_surface_ = 0.0; /* Anchoring strength in free energy */
+static double w2_surface_wall_ = 0.0; /* Anchoring strength in free energy */
 
 static int scalar_q_dir_write(FILE * fp, const int i, const int j, const int k);
 static int scalar_q_dir_write_ascii(FILE *, const int, const int, const int);
@@ -559,6 +562,16 @@ void colloids_q_tensor_anchoring_set(const int type) {
   return;
 }
 
+int colloids_q_anchoring(void) {
+
+  return anchoring_coll_;
+}
+
+int wall_anchoring(void) {
+
+  return anchoring_wall_;
+}
+
 /*****************************************************************************
  *
  *  wall_anchoring_set
@@ -581,9 +594,14 @@ void wall_anchoring_set(const int type) {
  *
  *****************************************************************************/
 
-double colloids_q_tensor_w(void) {
+double colloids_q_tensor_w1(void) {
 
-  return w_surface_;
+  return w1_surface_;
+}
+
+double colloids_q_tensor_w2(void) {
+
+  return w2_surface_;
 }
 
 /*****************************************************************************
@@ -592,9 +610,14 @@ double colloids_q_tensor_w(void) {
  *
  *****************************************************************************/
 
-double wall_w_get(void) {
+double wall_w1(void) {
 
-  return w_surface_wall_;
+  return w1_surface_wall_;
+}
+
+double wall_w2(void) {
+
+  return w2_surface_wall_;
 }
 
 /*****************************************************************************
@@ -603,21 +626,33 @@ double wall_w_get(void) {
  *
  *****************************************************************************/
 
-void colloids_q_tensor_w_set(double w) {
+void colloids_q_tensor_w1_set(double w1) {
 
-  w_surface_ = w;
+  w1_surface_ = w1;
+  return;
+}
+
+void colloids_q_tensor_w2_set(double w2) {
+
+  w2_surface_ = w2;
   return;
 }
 
 /*****************************************************************************
  *
- *  wall_w_set
+ *  wall_w1_set
  *
  *****************************************************************************/
 
-void wall_w_set(double w) {
+void wall_w1_set(double w1) {
 
-  w_surface_wall_ = w;
+  w1_surface_wall_ = w1;
+  return;
+}
+
+void wall_w2_set(double w2) {
+
+  w2_surface_wall_ = w2;
   return;
 }
 

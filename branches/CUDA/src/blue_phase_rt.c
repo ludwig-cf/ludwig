@@ -49,7 +49,8 @@ void blue_phase_run_time(void) {
   double amplitude;
   double xi;
   double zeta;
-  double w,w_wall;
+  double w1,w1_wall;
+  double w2, w2_wall;
   double redshift;
   double epsilon;
   double electric[3];
@@ -178,7 +179,7 @@ void blue_phase_run_time(void) {
 
     /* Surface free energy parameter (method two only) */
 
-    RUN_get_double_parameter("lc_anchoring_strength", &w);
+    RUN_get_double_parameter("lc_anchoring_strength", &w1);
     
     info("\n");
     info("Liquid crystal anchoring\n");
@@ -204,22 +205,30 @@ void blue_phase_run_time(void) {
       }
 
       /* Set the anchoring strength the same for colloid and wall */
-      colloids_q_tensor_w_set(w);
-      w_wall = w;
-      wall_w_set(w_wall);
+      colloids_q_tensor_w1_set(w1);
+      w1_wall = w1;
+      wall_w1_set(w1_wall);
       
       /* Try if the specific parameter for colloid/wall exists */
-      n =  RUN_get_double_parameter("lc_anchoring_strength_colloid", &w);
-      if ( n == 1 ) colloids_q_tensor_w_set(w);
+      n =  RUN_get_double_parameter("lc_anchoring_strength_colloid", &w1);
+      if ( n == 1 ) colloids_q_tensor_w1_set(w1);
+
+      if (strcmp(type, "planar") == 0) colloids_q_tensor_w2_set(w1);
       
-      n =  RUN_get_double_parameter("lc_anchoring_strength_wall", &w_wall);
-      if( n == 1 ) wall_w_set(w_wall);
-      
+      n =  RUN_get_double_parameter("lc_anchoring_strength_wall", &w1_wall);
+      if( n == 1 ) wall_w1_set(w1_wall);
+
+      w2 = colloids_q_tensor_w2();
+      w1_wall = wall_w1();
+      w2_wall = wall_w2();
+
       info("Anchoring type (walls):          = %14s\n", type_wall);
-      info("Surface free energy (colloid) w: = %14.7e\n", w);
-      info("Surface free energy (wall) w:    = %14.7e\n", w_wall);
-      info("Ratio (colloid) w/kappa0:        = %14.7e\n", w/kappa0);
-      info("Ratio (wall) w/kappa0:           = %14.7e\n", w_wall/kappa0);
+      info("Surface free energy (colloid) w1: = %14.7e\n", w1);
+      info("Surface free energy (colloid) w2: = %14.7e\n", w2);
+      info("Surface free energy (wall) w1:    = %14.7e\n", w1_wall);
+      info("Surface free energy (wall) w2:    = %14.7e\n", w2_wall);
+      info("Ratio (colloid) w/kappa0:        = %14.7e\n", w1/kappa0);
+      info("Ratio (wall) w/kappa0:           = %14.7e\n", w1_wall/kappa0);
       info("Computed surface order f(gamma)  = %14.7e\n",
 	   blue_phase_amplitude_compute());
 
