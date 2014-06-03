@@ -43,5 +43,6 @@ int    util_matrix_create(int m, int n, double *** p);
 int    util_vector_create(int m, double ** p);
 int    util_matrix_free(int m, double *** p);
 int    util_vector_free(double ** p);
+int util_matrix_invert(int n, double ** a);
 
 #endif

@@ -80,6 +80,8 @@ static int gradient_6x5_svd(const double * field, double * grad,
 			    double * del2, const int nextra);
 static int gradient_6x6_gauss_elim(const double * field, double * grad,
 				   double * del2, const int nextra);
+static int gradient_6x6_gpu(const double * field, double * grad,
+				   double * del2, const int nextra);
 
 static void util_q5_to_qab(double q[3][3], const double * phi);
 
@@ -123,10 +125,10 @@ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
 
   if (method == 1) gradient_6x5_svd(field, grad, delsq, nextra);
   if (method == 2) gradient_6x6_gauss_elim(field, grad, delsq, nextra);
+  if (method == 3) gradient_6x6_gpu(field, grad, delsq, nextra);
 
   return 0;
 }
-
 /*****************************************************************************
  *
  *  gradient_6x5_svd
@@ -374,6 +376,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 
 	if (nunknown > 0) {
 	  ifail = util_svd_solve(6*nunknown, NQAB*nunknown, a18, b18, x15);
+	  assert(ifail == 0);
 	}
 
 	for (n = 0; n < nunknown; n++) {
@@ -598,7 +601,6 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 	    }
 	  }
 
-
 	  /* Now set up the system */
 	  /* Initialise whole rows of A and b */
 
@@ -656,8 +658,10 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 	  xb18[NSYMM*n + ZZ] = -(xb18[NSYMM*n + ZZ] +     c[Z][Z]);
 	}
 
-	if (nunknown > 0) ifail =
-	    util_gauss_solve(NSYMM*nunknown, a18, xb18, pivot18);
+	if (nunknown > 0) {
+	  ifail = util_gauss_solve(NSYMM*nunknown, a18, xb18, pivot18);
+	  assert(ifail == 0);
+	}
 
 	for (n = 0; n < nunknown; n++) {
 
@@ -694,6 +698,405 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  gpu version
+ *
+ *  This solves the boundary condition equation by pre-computing
+ *  the inverse of the system matrix for a number of cases.
+ *
+ *****************************************************************************/
+
+static int gradient_6x6_gpu(const double * field, double * grad,
+			    double * del2, const int nextra) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int str[3];
+  int ia, ib, n1, n2;
+  int ih, ig;
+  int n, nunknown;
+  int status0, status[6];
+  int normal[3];
+  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+  const double bcsign[6] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
+
+  double gradn[6][3][2];          /* one-sided partial gradients */
+  double dq;
+  double qs[3][3];
+  double c[3][3];
+
+  double bc[6][6][3];
+  double b18[18];
+  double x18[18];
+  double tr;
+  const double r3 = (1.0/3.0);
+
+  double kappa0;
+  double kappa1;
+  double a6inv[3][6];
+  double ** a12inv[3];
+  double ** a18inv;
+
+  assert(field);
+
+  coords_nlocal(nlocal);
+  coords_strides(str + X, str + Y, str + Z);
+
+  kappa0 = blue_phase_kappa0();
+  kappa1 = blue_phase_kappa1();
+
+  /* Compute inverse matrices */
+
+  util_matrix_create(12, 12, &(a12inv[0]));
+  util_matrix_create(12, 12, &(a12inv[1]));
+  util_matrix_create(12, 12, &(a12inv[2]));
+  util_matrix_create(18, 18, &a18inv);
+
+  for (ia = 0; ia < 3; ia++) {
+    gradient_bcs6x6_coeff(kappa0, kappa1, bcs[2*ia + 1], bc); /* +ve sign */
+    for (n1 = 0; n1 < NSYMM; n1++) {
+      a6inv[ia][n1] = 1.0/bc[n1][n1][ia];
+    }
+
+    for (n1 = 0; n1 < NSYMM; n1++) {
+      for (n2 = 0; n2 < NSYMM; n2++) {
+	a18inv[ia*NSYMM + n1][0*NSYMM + n2] = 0.5*(1+d_[ia][X])*bc[n1][n2][X];
+	a18inv[ia*NSYMM + n1][1*NSYMM + n2] = 0.5*(1+d_[ia][Y])*bc[n1][n2][Y];
+	a18inv[ia*NSYMM + n1][2*NSYMM + n2] = 0.5*(1+d_[ia][Z])*bc[n1][n2][Z];
+
+      }
+    }
+  }
+
+  for (n1 = 0; n1 < 12; n1++) {
+    for (n2 = 0; n2 < 12; n2++) {
+      a12inv[0][n1][n2] = a18inv[n1][n2];
+      a12inv[2][n1][n2] = a18inv[6+n1][6+n2];
+    }
+  }
+
+  for (n1 = 0; n1 < 6; n1++) {
+    for (n2 = 0; n2 < 6; n2++) {
+      a12inv[1][n1][n2] = a18inv[n1][n2];
+      a12inv[1][n1][6+n2] = a18inv[n1][12+n2];
+    }
+  }
+
+  for (n1 = 6; n1 < 12; n1++) {
+    for (n2 = 0; n2 < 6; n2++) {
+      a12inv[1][n1][n2] = a18inv[6+n1][n2];
+      a12inv[1][n1][6+n2] = a18inv[6+n1][12+n2];
+    }
+  }
+
+  ia = util_matrix_invert(12, a12inv[0]);
+  assert(ia == 0);
+  ia = util_matrix_invert(12, a12inv[1]);
+  assert(ia == 0);
+  ia = util_matrix_invert(12, a12inv[2]);
+  assert(ia == 0);
+  ia = util_matrix_invert(18, a18inv);
+  assert(ia == 0);
+
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	map_status(map_, index, &status0);
+
+	if (status0 != MAP_FLUID) continue;
+
+	/* Set up partial gradients and identify solid neighbours
+	 * (unknowns) in various directions. If both neighbours
+	 * in one coordinate direction are solid, treat as known. */
+
+	nunknown = 0;
+
+	for (ia = 0; ia < 3; ia++) {
+
+	  normal[ia] = ia;
+
+	  /* Look for ouward normals is bcs[] */
+
+	  ib = 2*ia + 1;
+	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
+	  map_status(map_, index + ib, status + 2*ia);
+
+	  ib = 2*ia;
+	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
+	  map_status(map_, index + ib, status + 2*ia + 1);
+
+	  ig = (status[2*ia    ] != MAP_FLUID);
+	  ih = (status[2*ia + 1] != MAP_FLUID);
+
+	  /* Calculate half-gradients assuming they are all knowns */
+
+	  for (n1 = 0; n1 < NQAB; n1++) {
+	    gradn[n1][ia][0] =
+	      field[NQAB*(index + str[ia]) + n1] - field[NQAB*index + n1];
+	    gradn[n1][ia][1] =
+	      field[NQAB*index + n1] - field[NQAB*(index - str[ia]) + n1];
+	  }
+
+	  gradn[ZZ][ia][0] = -gradn[XX][ia][0] - gradn[YY][ia][0];
+	  gradn[ZZ][ia][1] = -gradn[XX][ia][1] - gradn[YY][ia][1];
+
+	  /* Set unknown, with direction, or treat as known (zero grad) */
+
+	  if (ig + ih == 1) {
+	    normal[nunknown] = 2*ia + ih;
+	    nunknown += 1;
+	  }
+	  else if (ig && ih) {
+	    for (n1 = 0; n1 < NSYMM; n1++) {
+	      gradn[n1][ia][0] = 0.0;
+	      gradn[n1][ia][1] = 0.0;
+	    }
+	  }
+
+	}
+
+
+	/* Boundary condition constant terms */
+
+	if (nunknown > 0) {
+
+	  /* Fluid Qab at surface */
+
+	  util_q5_to_qab(qs, field + NQAB*index);
+
+	  q_boundary_constants(ic, jc, kc, qs, bcs[normal[0]],
+			       status[normal[0]], c);
+
+	  /* Constant terms all move to RHS (hence -ve sign). Factors
+	   * of two in off-diagonals agree with matrix coefficients. */
+
+	  b18[XX] = -1.0*c[X][X];
+	  b18[XY] = -2.0*c[X][Y];
+	  b18[XZ] = -2.0*c[X][Z];
+	  b18[YY] = -1.0*c[Y][Y];
+	  b18[YZ] = -2.0*c[Y][Z];
+	  b18[ZZ] = -1.0*c[Z][Z];
+
+	  /* Fill a a known value in unknown position so we
+	   * and compute a gradient as 0.5*(grad[][][0] + gradn[][][1]) */
+	  ig = normal[0]/2;
+	  ih = normal[0]%2;
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    gradn[n1][ig][ih] = gradn[n1][ig][1 - ih];
+	  }
+	}
+
+	if (nunknown > 1) {
+
+	  q_boundary_constants(ic, jc, kc, qs, bcs[normal[1]],
+			       status[normal[1]], c);
+
+	  b18[1*NSYMM + XX] = -1.0*c[X][X];
+	  b18[1*NSYMM + XY] = -2.0*c[X][Y];
+	  b18[1*NSYMM + XZ] = -2.0*c[X][Z];
+	  b18[1*NSYMM + YY] = -1.0*c[Y][Y];
+	  b18[1*NSYMM + YZ] = -2.0*c[Y][Z];
+	  b18[1*NSYMM + ZZ] = -1.0*c[Z][Z];
+
+	  ig = normal[1]/2;
+	  ih = normal[1]%2;
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    gradn[n1][ig][ih] = gradn[n1][ig][1 - ih];
+	  }
+
+	}
+
+	if (nunknown > 2) {
+
+	  q_boundary_constants(ic, jc, kc, qs, bcs[normal[2]],
+			       status[normal[2]], c);
+
+	  b18[2*NSYMM + XX] = -1.0*c[X][X];
+	  b18[2*NSYMM + XY] = -2.0*c[X][Y];
+	  b18[2*NSYMM + XZ] = -2.0*c[X][Z];
+	  b18[2*NSYMM + YY] = -1.0*c[Y][Y];
+	  b18[2*NSYMM + YZ] = -2.0*c[Y][Z];
+	  b18[2*NSYMM + ZZ] = -1.0*c[Z][Z];
+
+	  ig = normal[2]/2;
+	  ih = normal[2]%2;
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    gradn[n1][ig][ih] = gradn[n1][ig][1 - ih];
+	  }
+	}
+
+
+	if (nunknown == 1) {
+
+	  /* Special case A matrix is diagonal. */
+	  /* Subtract all three gradient terms from the RHS and then cancel
+	   * the one unknown contribution ... works for any normal[0] */
+
+	  gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    for (n2 = 0; n2 < NSYMM; n2++) {
+	      for (ia = 0; ia < 3; ia++) {
+		dq = 0.5*(gradn[n2][ia][0] + gradn[n2][ia][1]);
+		b18[n1] -= bc[n1][n2][ia]*dq;
+	      }
+	      dq = 0.5*(gradn[n2][normal[0]/2][0] + gradn[n2][normal[0]/2][1]);
+	      b18[n1] += bc[n1][n2][normal[0]/2]*dq;
+	    }
+
+	    b18[n1] *= bcsign[normal[0]];
+	    x18[n1] = a6inv[normal[0]/2][n1]*b18[n1];
+	  }
+	}
+
+	if (nunknown == 2) {
+
+	  if (normal[0]/2 == X && normal[1]/2 == Y) normal[2] = Z;
+	  if (normal[0]/2 == X && normal[1]/2 == Z) normal[2] = Y;
+	  if (normal[0]/2 == Y && normal[1]/2 == Z) normal[2] = X;
+
+	  /* Compute the RHS for two unknowns and one known */
+
+	  gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    for (n2 = 0; n2 < NSYMM; n2++) {
+
+	      dq = 0.5*(gradn[n2][normal[1]/2][0] + gradn[n2][normal[1]/2][1]);
+	      b18[n1] -= 0.5*bc[n1][n2][normal[1]/2]*dq;
+
+	      dq = 0.5*(gradn[n2][normal[2]][0] + gradn[n2][normal[2]][1]);
+	      b18[n1] -= bc[n1][n2][normal[2]]*dq;
+
+	    }
+	  }
+
+	  gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[1]], bc);
+
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    for (n2 = 0; n2 < NSYMM; n2++) {
+
+	      dq = 0.5*(gradn[n2][normal[0]/2][0] + gradn[n2][normal[0]/2][1]);
+	      b18[NSYMM + n1] -= 0.5*bc[n1][n2][normal[0]/2]*dq;
+
+	      dq = 0.5*(gradn[n2][normal[2]][0] + gradn[n2][normal[2]][1]);
+	      b18[NSYMM + n1] -= bc[n1][n2][normal[2]]*dq;
+
+	    }
+	  }
+
+	  /* Solve x = A^-1 b depending on unknown conbination */
+	  /* XY => ia = 0 XZ => ia = 1 YZ => ia = 2 ... */
+
+	  ia = normal[0]/2 + normal[1]/2 - 1;
+	  assert(ia == 0 || ia == 1 || ia == 2);
+
+	  for (n1 = 0; n1 < 2*NSYMM; n1++) {
+	    x18[n1] = 0.0;
+	    for (n2 = 0; n2 < NSYMM; n2++) {
+	      x18[n1] += bcsign[normal[0]]*a12inv[ia][n1][n2]*b18[n2];
+	    }
+	    for (n2 = NSYMM; n2 < 2*NSYMM; n2++) {
+	      x18[n1] += bcsign[normal[1]]*a12inv[ia][n1][n2]*b18[n2];
+	    }
+	  }
+	}
+
+	if (nunknown == 3) {
+
+	  gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
+
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    for (n2 = 0; n2 < NSYMM; n2++) {
+	      dq = 0.5*(gradn[n2][normal[1]/2][0] + gradn[n2][normal[1]/2][1]);
+	      b18[n1] -= 0.5*bc[n1][n2][normal[1]/2]*dq;
+
+	      dq = 0.5*(gradn[n2][normal[2]/2][0] + gradn[n2][normal[2]/2][1]);
+	      b18[n1] -= 0.5*bc[n1][n2][normal[2]/2]*dq;
+	    }
+	    b18[n1] *= bcsign[normal[0]];
+	  }
+
+	  gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[1]], bc);
+
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    for (n2 = 0; n2 < NSYMM; n2++) {
+	      dq = 0.5*(gradn[n2][normal[0]/2][0] + gradn[n2][normal[0]/2][1]);
+	      b18[NSYMM + n1] -= 0.5*bc[n1][n2][normal[0]/2]*dq;
+
+	      dq = 0.5*(gradn[n2][normal[2]/2][0] + gradn[n2][normal[2]/2][1]);
+	      b18[NSYMM + n1] -= 0.5*bc[n1][n2][normal[2]/2]*dq;
+	    }
+	    b18[NSYMM + n1] *= bcsign[normal[1]];
+	  }
+
+	  gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[2]], bc);
+
+	  for (n1 = 0; n1 < NSYMM; n1++) {
+	    for (n2 = 0; n2 < NSYMM; n2++) {
+	      dq = 0.5*(gradn[n2][normal[0]/2][0] + gradn[n2][normal[0]/2][1]);
+	      b18[2*NSYMM + n1] -= 0.5*bc[n1][n2][normal[0]/2]*dq;
+
+	      dq = 0.5*(gradn[n2][normal[1]/2][0] + gradn[n2][normal[1]/2][1]);
+	      b18[2*NSYMM + n1] -= 0.5*bc[n1][n2][normal[1]/2]*dq;
+	    }
+	    b18[2*NSYMM + n1] *= bcsign[normal[2]];
+	  }
+
+	  /* Solve x = A^-1 b */
+
+	  for (n1 = 0; n1 < 3*NSYMM; n1++) {
+	    x18[n1] = 0.0;
+	    for (n2 = 0; n2 < 3*NSYMM; n2++) {
+	      x18[n1] += a18inv[n1][n2]*b18[n2];
+	    }
+	  }
+	}
+
+	/* Fix the trace (don't care about Qzz in the end) */
+
+	for (n = 0; n < nunknown; n++) {
+
+	  tr = r3*(x18[NSYMM*n + XX] + x18[NSYMM*n + YY] + x18[NSYMM*n + ZZ]);
+	  x18[NSYMM*n + XX] -= tr;
+	  x18[NSYMM*n + YY] -= tr;
+
+	  /* Store missing half gradients */
+
+	  for (n1 = 0; n1 < NQAB; n1++) {
+	    gradn[n1][normal[n]/2][normal[n] % 2] = x18[NSYMM*n + n1];
+	  }
+	}
+
+	/* The final answer is the sum of partial gradients */
+
+	for (n1 = 0; n1 < NQAB; n1++) {
+	  del2[NQAB*index + n1] = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad[3*(NQAB*index + n1) + ia] =
+	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	    del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	  }
+	}
+
+	/* Next site */
+      }
+    }
+  }
+
+  util_matrix_free(18, &a18inv);
+  util_matrix_free(12, &(a12inv[2]));
+  util_matrix_free(12, &(a12inv[1]));
+  util_matrix_free(12, &(a12inv[0]));
+
+  return 0;
+}
+
 
 /*****************************************************************************
  *

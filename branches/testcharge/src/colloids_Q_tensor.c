@@ -418,3 +418,140 @@ int blue_phase_fs(const double dn[3], double qs[3][3], char status,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  q_boundary_constants
+ *
+ *  Compute the comstant term in the cholesteric boundary condition.
+ *  Fluid point is (ic, jc, kc) with fluid Q_ab = qs
+ *  The outward normal is di[3], and the map status is as given.
+ *
+ *****************************************************************************/
+
+int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
+			 const int di[3], int status, double c[3][3]) {
+
+  int index;
+  int noffset[3];
+
+  int ia, ib, ig, ih;
+  int anchor;
+
+  double w1, w2;
+  double dnhat[3];
+  double qtilde[3][3];
+  double q0[3][3];
+  double q2 = 0.0;
+  double rd;
+
+  double kappa0;
+  double kappa1;
+  double q0_chl;
+  double amp;
+
+  colloid_t * pc = NULL;
+
+  assert(cinfo_);
+
+  kappa0 = blue_phase_kappa0();
+  kappa1 = blue_phase_kappa1();
+  q0_chl = blue_phase_q0();
+  amp    = blue_phase_amplitude_compute();
+
+  /* Default -> outward normal, ie., flat wall */
+
+  w1 = w1_wall_;
+  w2 = w2_wall_;
+  anchor = anchoring_wall_;
+
+  dnhat[X] = 1.0*di[X];
+  dnhat[Y] = 1.0*di[Y];
+  dnhat[Z] = 1.0*di[Z];
+
+  if (status == MAP_COLLOID) {
+
+    index = coords_index(ic - di[X], jc - di[Y], kc - di[Z]);
+    colloids_info_map(cinfo_, index, &pc);
+    assert(pc);
+
+    coords_nlocal_offset(noffset);
+
+    w1 = w1_colloid_;
+    w2 = w2_colloid_;
+    anchor = anchoring_coll_;
+
+    dnhat[X] = 1.0*(noffset[X] + ic) - pc->s.r[X];
+    dnhat[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
+    dnhat[Z] = 1.0*(noffset[Z] + kc) - pc->s.r[Z];
+
+    /* unit vector */
+    rd = 1.0/sqrt(dnhat[X]*dnhat[X] + dnhat[Y]*dnhat[Y] + dnhat[Z]*dnhat[Z]);
+    dnhat[X] *= rd;
+    dnhat[Y] *= rd;
+    dnhat[Z] *= rd;
+  }
+
+
+  if (anchor == ANCHORING_NORMAL) {
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+        q0[ia][ib] = 0.5*amp*(3.0*dnhat[ia]*dnhat[ib] - d_[ia][ib]);
+	qtilde[ia][ib] = 0.0;
+      }
+    }
+  }
+  else { /* PLANAR */
+
+    q2 = 0.0;
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+        qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d_[ia][ib];
+        q2 += qtilde[ia][ib]*qtilde[ia][ib];
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+        q0[ia][ib] = 0.0;
+        for (ig = 0; ig < 3; ig++) {
+          for (ih = 0; ih < 3; ih++) {
+            q0[ia][ib] += (d_[ia][ig] - dnhat[ia]*dnhat[ig])*qtilde[ig][ih]
+              *(d_[ih][ib] - dnhat[ih]*dnhat[ib]);
+          }
+        }
+
+        q0[ia][ib] -= 0.5*amp*d_[ia][ib];
+      }
+    }
+  }
+
+  /* Compute c[a][b] */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+
+      c[ia][ib] = 0.0;
+
+      for (ig = 0; ig < 3; ig++) {
+        for (ih = 0; ih < 3; ih++) {
+          c[ia][ib] -= kappa1*q0_chl*di[ig]*
+	    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+        }
+      }
+
+      /* Normal anchoring: w2 must be zero and q0 is preferred Q
+       * Planar anchoring: in w1 term q0 is effectively
+       *                   (Qtilde^perp - 0.5S_0) while in w2 we
+       *                   have Qtilde appearing explicitly.
+       *                   See colloids_q_boundary() etc */
+
+      c[ia][ib] +=
+	-w1*(qs[ia][ib] - q0[ia][ib])
+	-w2*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
+    }
+  }
+
+  return 0;
+}

@@ -32,6 +32,8 @@ int  colloids_q_tensor_anchoring(void);
 
 void colloids_q_boundary_normal(const int index, const int di[3],
 				double dn[3]);
+int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
+			 const int di[3], int status, double c[3][3]);
 
 void wall_anchoring_set(const int type);
 
