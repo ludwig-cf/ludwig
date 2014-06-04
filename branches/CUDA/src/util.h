@@ -15,6 +15,12 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#ifndef __NVCC__
+#define __extern_c__
+#else
+#define __extern_c__ extern "C"
+#endif
+
 extern const double d_[3][3];
 extern const double e_[3][3][3];
 extern const double pi_;
@@ -34,5 +40,9 @@ double dmax(const double a, const double b);
 
 int    util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
 int    util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
+
+__extern_c__ int util_matrix_create(int mrow, int ncol, double *** a);
+__extern_c__ int util_matrix_free(int mrow, double *** a);
+__extern_c__ int util_matrix_invert(int n, double ** a);
 
 #endif
