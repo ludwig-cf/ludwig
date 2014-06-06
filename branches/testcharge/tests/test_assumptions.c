@@ -39,6 +39,7 @@ int main(int argc, char ** argv) {
   MPI_Init(&argc, &argv);
 
   printf("Testing assumptions...\n");
+  printf("This code compiled at %s on %s\n", __TIME__, __DATE__);
 
   /* All integers in the code should be declared 'int', which
    * we expect to be (at the least) 4 bytes. */
