@@ -17,13 +17,16 @@
 
 #include "colloids.h"
 
-int bounce_back_on_links(colloids_info_t * cinfo);
-int bbl_pass0(colloids_info_t * cinfo);
-int bbl_update_colloids(colloids_info_t * cinfo);
+typedef struct bbl_s bbl_t;
 
-void bbl_surface_stress(void);
-void bbl_active_on_set(void);
-int  bbl_active_on(void);
-int bbl_order_parameter_deficit(double * delta);
+int bbl_create(bbl_t ** pobj);
+int bbl_free(bbl_t * obj);
+int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo);
+int bounce_back_on_links(bbl_t * bbl, colloids_info_t * cinfo);
+int bbl_pass0(bbl_t * bbl, colloids_info_t * cinfo);
+int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo);
+
+int bbl_surface_stress(bbl_t * bbl, double slocal[3][3]);
+int bbl_order_parameter_deficit(bbl_t * bbl, double * delta);
 
 #endif

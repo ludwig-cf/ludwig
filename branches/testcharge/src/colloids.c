@@ -674,8 +674,6 @@ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
     }
   }
 
-  colloids_info_update_lists(cinfo);
-
   return 0;
 }
 

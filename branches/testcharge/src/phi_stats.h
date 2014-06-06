@@ -18,11 +18,10 @@
 #include <mpi.h>
 #include "field.h"
 #include "map.h"
-
-void phi_set_mean_phi(double);
-void phi_stats_print_stats(void);
+#include "bbl.h"
 
 int stats_field_info(field_t * obj, map_t * map);
+int stats_fielf_info(field_t * obj, map_t * map, bbl_t * bbl);
 int stats_field_reduce(field_t * obj, map_t * map, double * fmin,
 		       double * fmax, double * fsum, double * fvar,
 		       double * fvol, int rank, MPI_Comm comm);

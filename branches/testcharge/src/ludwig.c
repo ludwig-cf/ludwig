@@ -131,6 +131,7 @@ struct ludwig_s {
   colloid_io_t * cio;          /* Colloid I/O harness */
   ewald_t * ewald;             /* Ewald sum for dipoles */
   interact_t * interact;       /* Colloid-colloid interaction handler */
+  bbl_t * bbl;                 /* Bounce-back on links boundary condition */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -233,6 +234,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
 		   ludwig->map);
   colloids_init_ewald_rt(ludwig->collinfo, &ludwig->ewald);
   colloids_q_cinfo_set(ludwig->collinfo);
+
+  bbl_create(&ludwig->bbl);
+  bbl_active_set(ludwig->bbl, ludwig->collinfo);
 
   /* NOW INITIAL CONDITIONS */
 
@@ -377,8 +381,13 @@ void ludwig_run(const char * inputfile) {
 
   stats_distribution_print(ludwig->map);
 
-  if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
-  if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
+  if (distribution_ndist() == 2) {
+    phi_lb_to_field(ludwig->phi);
+    stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
+  }
+  else {
+    if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
+  }
   if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
   if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
   if (ludwig->psi) {
@@ -577,7 +586,7 @@ void ludwig_run(const char * inputfile) {
       else {
 	TIMER_start(TIMER_BBL);
 	wall_update();
-	bounce_back_on_links(ludwig->collinfo);
+	bounce_back_on_links(ludwig->bbl, ludwig->collinfo);
 	wall_bounce_back(ludwig->map);
 	TIMER_stop(TIMER_BBL);
       }
@@ -586,7 +595,7 @@ void ludwig_run(const char * inputfile) {
       /* No hydrodynamics, but update colloids in response to
        * external forces. */
 
-      bbl_update_colloids(ludwig->collinfo);
+      bbl_update_colloids(ludwig->bbl, ludwig->collinfo);
     }
 
     /* There must be no halo updates between bounce back
@@ -679,8 +688,13 @@ void ludwig_run(const char * inputfile) {
     if (is_statistics_step()) {
       stats_distribution_print(ludwig->map);
 
-      if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
-      if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
+      if (distribution_ndist() == 2) {
+	phi_lb_to_field(ludwig->phi);
+	stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
+      }
+      else {
+	if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
+      }
       if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
       if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
 
@@ -772,6 +786,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->p)        field_free(ludwig->p);
   if (ludwig->q)        field_free(ludwig->q);
 
+  bbl_free(ludwig->bbl);
   colloids_info_free(ludwig->collinfo);
 
   TIMER_stop(TIMER_TOTAL);
@@ -1392,6 +1407,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
+  colloids_info_update_lists(ludwig->collinfo);
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 

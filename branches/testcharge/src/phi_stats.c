@@ -21,7 +21,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "bbl.h"
 #include "util.h"
 #include "phi_stats.h"
 
@@ -51,6 +50,63 @@ int stats_field_info(field_t * obj, map_t * map) {
 
   comm = pe_comm();
   stats_field_reduce(obj, map, fmin, fmax, fsum, fvar, &fvol, 0, comm);
+
+  rvol = 1.0 / fvol;
+
+  for (n = 0; n < nf; n++) {
+
+    fbar = rvol*fsum[n];                 /* mean */
+    f2   = rvol*fvar[n]  - fbar*fbar;    /* variance */
+
+    info("[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n", fsum[n], fbar, f2,
+	 fmin[n], fmax[n]);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  stats_field_info_bbl
+ *
+ *  With correction for bbl for conserved order parameters (largely
+ *  for binary fluid).
+ *
+ *****************************************************************************/
+
+int stats_field_info_bbl(field_t * obj, map_t * map, bbl_t * bbl) {
+
+  int n, nf;
+  MPI_Comm comm;
+
+  double fmin[NQAB];
+  double fmax[NQAB];
+  double fsum[NQAB];
+  double fvar[NQAB];
+  double fbbl[NQAB];
+  double fbbl_local[NQAB];
+  double fvol, rvol;
+  double fbar, f2;
+
+  assert(obj);
+  assert(map);
+  assert(bbl);
+
+  field_nf(obj, &nf);
+  assert(nf <= NQAB);
+
+  comm = pe_comm();
+  stats_field_reduce(obj, map, fmin, fmax, fsum, fvar, &fvol, 0, comm);
+
+  /* BBL corrections to be added */
+  for (n = 0; n < nf; n++) {
+    fbbl_local[n] = 0.0;
+  }
+  bbl_order_parameter_deficit(bbl, fbbl_local);
+  MPI_Reduce(fbbl_local, fbbl, nf, MPI_DOUBLE, MPI_SUM, 0, comm);
+  for (n = 0; n < nf; n++) {
+    fsum[n] += fbbl[n];
+  }
 
   rvol = 1.0 / fvol;
 
@@ -152,11 +208,7 @@ int stats_field_local(field_t * obj, map_t * map, double * fmin, double * fmax,
     fvar[n] = 0.0;
   }
 
-  /* This is really the special case of binary fluid via
-   * lb with particles; must account for BBL deficit at
-   * last time step. For other cases the correction is zero. */
-
-  bbl_order_parameter_deficit(fsum);
+  /* Local sum */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
