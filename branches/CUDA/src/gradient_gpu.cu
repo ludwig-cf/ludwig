@@ -54,8 +54,8 @@ struct gradient_gpu_d_s {
   double a18inv[18][18];
 };
 
-static  __constant__ gradient_gpu_t dev;
-int gradient_gpu_init_h(gradient_gpu_t * host);
+static __constant__ gradient_gpu_t dev;
+static gradient_gpu_t host;
 
 __global__ void gradient_fluid_d(const double* __restrict__ field_d,
                                  double * __restrict__ grad_d,
@@ -70,6 +70,8 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
                                  double * __restrict__ colloid_r_d);
 
 __device__ static int coords_index_gpu_d(int ic, int jc, int kc, int * index);
+__device__ static void coords_from_index_gpu_d(int index,
+	int *ic, int *jc, int *kc);
 
 __host__ __device__ static void gradient_bcs6x6_coeff_d(double kappa0,
 	                                       double kappa1, const int dn[3],
@@ -91,14 +93,6 @@ int phi_gradients_compute_gpu() {
   int nblocks;
   int ndefault;
   dim3 nblock;
-
-  gradient_gpu_t host;
-
-  put_gradient_constants_on_gpu(); /* for d_cd, e_cd constants */
-  gradient_gpu_init_h(&host);
-
-  cudaMemcpyToSymbol(dev, &host, sizeof(gradient_gpu_t), 0,
-	             cudaMemcpyHostToDevice);
 
   /* Points required and thread blocks */
 
@@ -134,7 +128,7 @@ int phi_gradients_compute_gpu() {
  *
  *****************************************************************************/
 
-int gradient_gpu_init_h(gradient_gpu_t * host) {
+int gradient_gpu_init_h(void) {
 
   int ia, n1, n2;
   const int bcs[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
@@ -142,33 +136,33 @@ int gradient_gpu_init_h(gradient_gpu_t * host) {
   double ** a12inv[3];
   double ** a18inv;
 
-  host->nhalo = coords_nhalo();
-  host->nextra = host->nhalo - 1;
-  coords_nlocal(host->nlocal);
-  coords_nlocal_offset(host->noffset);
+  host.nhalo = coords_nhalo();
+  host.nextra = host.nhalo - 1;
+  coords_nlocal(host.nlocal);
+  coords_nlocal_offset(host.noffset);
 
-  host->nxtent[X] = host->nlocal[X] + 2*host->nextra;
-  host->nxtent[Y] = host->nlocal[Y] + 2*host->nextra;
-  host->nxtent[Z] = host->nlocal[Z] + 2*host->nextra;
-  host->npoints = host->nxtent[X]*host->nxtent[Y]*host->nxtent[Z];
+  host.nxtent[X] = host.nlocal[X] + 2*host.nextra;
+  host.nxtent[Y] = host.nlocal[Y] + 2*host.nextra;
+  host.nxtent[Z] = host.nlocal[Z] + 2*host.nextra;
+  host.npoints = host.nxtent[X]*host.nxtent[Y]*host.nxtent[Z];
 
-  host->nall[X] = host->nlocal[X] + 2*host->nhalo;
-  host->nall[Y] = host->nlocal[Y] + 2*host->nhalo;
-  host->nall[Z] = host->nlocal[Z] + 2*host->nhalo;
-  host->nsites = host->nall[X]*host->nall[Y]*host->nall[Z];
+  host.nall[X] = host.nlocal[X] + 2*host.nhalo;
+  host.nall[Y] = host.nlocal[Y] + 2*host.nhalo;
+  host.nall[Z] = host.nlocal[Z] + 2*host.nhalo;
+  host.nsites = host.nall[X]*host.nall[Y]*host.nall[Z];
 
   /* Anchoring */
-  host->amp    = blue_phase_amplitude_compute();
-  host->kappa0 = blue_phase_kappa0();
-  host->kappa1 = blue_phase_kappa1();
-  host->q0     = blue_phase_q0();
+  host.amp    = blue_phase_amplitude_compute();
+  host.kappa0 = blue_phase_kappa0();
+  host.kappa1 = blue_phase_kappa1();
+  host.q0     = blue_phase_q0();
 
-  host->ntype_coll = colloids_q_anchoring();
-  host->ntype_wall = wall_anchoring();
-  host->w1_coll = colloids_q_tensor_w1();
-  host->w2_coll = colloids_q_tensor_w2();
-  host->w1_wall = wall_w1();
-  host->w2_wall = wall_w2();
+  host.ntype_coll = colloids_q_anchoring();
+  host.ntype_wall = wall_anchoring();
+  host.w1_coll = colloids_q_tensor_w1();
+  host.w2_coll = colloids_q_tensor_w2();
+  host.w1_wall = wall_w1();
+  host.w2_wall = wall_w2();
 
   /* Boundary condition inverse matrices */
 
@@ -178,10 +172,10 @@ int gradient_gpu_init_h(gradient_gpu_t * host) {
   util_matrix_create(3*NSYMM, 3*NSYMM, &a18inv);
 
   for (ia = 0; ia < 3; ia ++) {
-    gradient_bcs6x6_coeff_d(host->kappa0, host->kappa1, bcs[ia], bc);
+    gradient_bcs6x6_coeff_d(host.kappa0, host.kappa1, bcs[ia], bc);
 
     for (n1 = 0; n1 < NSYMM; n1++) {
-      host->a6inv[ia][n1] = 1.0/bc[n1][n1][ia];
+      host.a6inv[ia][n1] = 1.0/bc[n1][n1][ia];
     }
 
     for (n1 = 0; n1 < NSYMM; n1++) {
@@ -238,14 +232,14 @@ int gradient_gpu_init_h(gradient_gpu_t * host) {
   for (ia = 0; ia < 3; ia++) {
     for (n1 = 0; n1 < 2*NSYMM; n1++) {
       for (n2 = 0; n2 < 2*NSYMM; n2++) {
-        host->a12inv[ia][n1][n2] = a12inv[ia][n1][n2];
+        host.a12inv[ia][n1][n2] = a12inv[ia][n1][n2];
       }
     }
   }
 
   for (n1 = 0; n1 < 3*NSYMM; n1++) {
     for (n2 = 0; n2 < 3*NSYMM; n2++) {
-      host->a18inv[n1][n2] = a18inv[n1][n2];
+      host.a18inv[n1][n2] = a18inv[n1][n2];
     }
   }
 
@@ -253,6 +247,12 @@ int gradient_gpu_init_h(gradient_gpu_t * host) {
   util_matrix_free(2*NSYMM, &(a12inv[2]));
   util_matrix_free(2*NSYMM, &(a12inv[1]));
   util_matrix_free(2*NSYMM, &(a12inv[0]));
+
+  cudaMemcpyToSymbol(dev, &host, sizeof(gradient_gpu_t), 0,
+	             cudaMemcpyHostToDevice);
+
+  cudaMemcpyToSymbol(e_cd, e_, 27*sizeof(double), 0, cudaMemcpyHostToDevice); 
+  cudaMemcpyToSymbol(d_cd, d_, 9*sizeof(double), 0, cudaMemcpyHostToDevice); 
 
   return 0;
 }
@@ -281,7 +281,7 @@ __global__ void gradient_fluid_d(const double* __restrict__ field_d,
 
   /* calculate index from CUDA thread index */
 
-  get_coords_from_index_gpu_d(&ic, &jc, &kc, threadIndex, dev.nxtent);
+  coords_from_index_gpu_d(threadIndex, &ic, &jc, &kc);
   coords_index_gpu_d(ic, jc, kc, &index);
 
 
@@ -351,7 +351,7 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
   str[Y] = str[Z]*dev.nall[Z];
   str[X] = str[Y]*dev.nall[Y];
 
-  get_coords_from_index_gpu_d(&ic, &jc, &kc, threadIndex, dev.nxtent);
+  coords_from_index_gpu_d(threadIndex, &ic, &jc, &kc);
   coords_index_gpu_d(ic, jc, kc, &index);
 
   if (site_map_status_d[index] != FLUID) return;
@@ -942,78 +942,17 @@ void set_gradient_option_gpu(char option){
 
 }
 
-void put_gradient_constants_on_gpu(){
-  // FROM blue_phase.c
-  double q0_;        /* Pitch = 2pi / q0_ */
-  double kappa0_;    /* Elastic constant \kappa_0 */
-  double kappa1_;    /* Elastic constant \kappa_1 */
-  double kappa2_;
-
-
-  double w;                                 /* Anchoring strength parameter */
-  double amplitude;
-
-  int N[3],nhalo,Nall[3];
-  
-  nhalo = coords_nhalo();
-  coords_nlocal(N); 
-
-
-  Nall[X]=N[X]+2*nhalo;
-  Nall[Y]=N[Y]+2*nhalo;
-  Nall[Z]=N[Z]+2*nhalo;
-
-  
-  int nsites=Nall[X]*Nall[Y]*Nall[Z];
-  int nop = phi_nop();
-  /* copy to constant memory on device */
-  cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-
-  cudaMemcpyToSymbol(Nall_cd, Nall, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nhalo_cd, &nhalo, sizeof(int), 0, cudaMemcpyHostToDevice); 
-cudaMemcpyToSymbol(nop_cd, &nop, sizeof(int), 0, cudaMemcpyHostToDevice); 
-  cudaMemcpyToSymbol(nsites_cd, &nsites, sizeof(int), 0, cudaMemcpyHostToDevice); 
-
-
-  q0_=blue_phase_q0();
-  kappa0_=blue_phase_kappa0();
-  kappa1_=blue_phase_kappa1();
-  kappa2_=kappa0_+kappa1_;
-  w = colloids_q_tensor_w1();
-  amplitude = blue_phase_amplitude_compute();
-
-  int noffset[3];
-  coords_nlocal_offset(noffset);
-
-  char bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
-
- cudaMemcpyToSymbol(q_0_cd, &q0_, sizeof(double), 0, cudaMemcpyHostToDevice);  
-cudaMemcpyToSymbol(kappa0_cd, &kappa0_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa1_cd, &kappa1_, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(kappa2_cd, &kappa2_, sizeof(double), 0, cudaMemcpyHostToDevice); 
-cudaMemcpyToSymbol(e_cd, e_, 3*3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
-cudaMemcpyToSymbol(noffset_cd, noffset, 3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-
- cudaMemcpyToSymbol(w_cd, &w, sizeof(double), 0, cudaMemcpyHostToDevice); 
- cudaMemcpyToSymbol(amplitude_cd, &amplitude, sizeof(double), 0, cudaMemcpyHostToDevice); 
-cudaMemcpyToSymbol(d_cd, d_, 3*3*sizeof(double), 0, cudaMemcpyHostToDevice); 
-cudaMemcpyToSymbol(bcs_cd, bcs, 6*3*sizeof(char), 0, cudaMemcpyHostToDevice); 
-
- return;
-
-}
-
 /* get 3d coordinates from the index on the accelerator */
-__device__ static void get_coords_from_index_gpu_d(int *ii,int *jj,int *kk,int index,int N_d[3])
 
-{
+__device__
+static void coords_from_index_gpu_d(int index, int *ic, int *jc, int *kc) {
+
+  int yfac = dev.nxtent[Z];
+  int xfac = dev.nxtent[Y]*yfac;
   
-  int yfac = N_d[Z];
-  int xfac = N_d[Y]*yfac;
-  
-  *ii = index/xfac;
-  *jj = ((index-xfac*(*ii))/yfac);
-  *kk = (index-(*ii)*xfac-(*jj)*yfac);
+  *ic = index/xfac;
+  *jc = (index - xfac*(*ic))/yfac;
+  *kc = index - (*ic)*xfac - (*jc)*yfac;
 
   return;
 

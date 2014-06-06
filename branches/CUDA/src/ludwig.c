@@ -237,20 +237,20 @@ void ludwig_run(const char * inputfile) {
     polar_active_rt_initial_conditions();
   }
 
-#ifndef TITAN
   if (step == 0 && phi_nop() == 5) {
     blue_phase_rt_initial_conditions();
+#ifndef TITAN
     info("Writing scalar order parameter file at step %d!\n", step);
     sprintf(filename,"%sqs_dir-%8.8d", subdirectory, step);
     io_write(filename, io_info_scalar_q_);
-  }
 #endif
+  }
 
   info("Initial conditions.\n");
 
-  #ifndef TITAN
+
   stats_distribution_print();
-  #endif
+
   phi_stats_print_stats();
   ludwig_report_momentum();
 
@@ -280,7 +280,6 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef _GPU_
   /* sync MPI tasks for timing purposes */
-  MPI_Barrier(cart_comm());
 #endif
 
 
@@ -292,6 +291,7 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef _GPU_
     zero_force_on_gpu();
+    gradient_gpu_init_h();
 #else
     hydrodynamics_zero_force();
 #endif
@@ -556,11 +556,6 @@ void ludwig_run(const char * inputfile) {
 
     if (is_config_step() || is_measurement_step() || is_colloid_io_step()) {
 
-#ifdef _GPU_
-      get_velocity_from_gpu();
-      get_f_from_gpu();
-#endif
-
       if (colloid_ntotal() > 0) {
 	info("Writing colloid output at step %d!\n", step);
 	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
@@ -588,8 +583,7 @@ void ludwig_run(const char * inputfile) {
     if (is_measurement_step()) {	  
 
 #ifdef _GPU_
-      get_velocity_from_gpu();
-      get_f_from_gpu();
+      get_phi_from_gpu();
 #endif
 
       if (phi_nop() == 5) {
@@ -640,6 +634,10 @@ void ludwig_run(const char * inputfile) {
 #ifdef _GPU_
       get_velocity_from_gpu();
       get_f_from_gpu();
+      /* kevin added ... */
+      get_phi_from_gpu();
+      phi_halo();
+      phi_gradients_compute();
 #endif
 
       stats_distribution_print();

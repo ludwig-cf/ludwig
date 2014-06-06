@@ -9,14 +9,16 @@
 #ifndef _GRADIENT_GPU_H
 #define _GRADIENT_GPU_H
 
-#ifdef CSRC
-#define CFUNC 
-#else
-#define CFUNC extern "C"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-/* expose routines in this module to outside routines */
-CFUNC void phi_gradients_compute_gpu(void);
-CFUNC void set_gradient_option_gpu(char option);
+int phi_gradients_compute_gpu(void);
+void set_gradient_option_gpu(char option);
+int gradient_gpu_init_h(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
