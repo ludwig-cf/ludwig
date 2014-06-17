@@ -49,4 +49,5 @@ void   coords_index_to_ijk(const int index, int coords[3]);
 
 void coords_active_region_radius_set(const double r);
 double coords_active_region(const int index);
+int coords_nsite_local(int nsite[3]);
 #endif

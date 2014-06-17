@@ -278,6 +278,17 @@ void coords_nlocal(int n[3]) {
   return;
 }
 
+int coords_nsite_local(int nsite[3]) {
+
+  assert(initialised_);
+
+  nsite[X] = n_local[X] + 2*nhalo_;
+  nsite[Y] = n_local[Y] + 2*nhalo_;
+  nsite[Z] = n_local[Z] + 2*nhalo_;
+
+  return 0;
+}
+
 /*****************************************************************************
  *
  *  coords_nsites

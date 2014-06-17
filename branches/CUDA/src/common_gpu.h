@@ -27,7 +27,7 @@ enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
 //default number of threads per block in each dir
 #define DEFAULT_TPB_X 4
-#define DEFAULT_TPB_Y 8 
+#define DEFAULT_TPB_Y 8
 #define DEFAULT_TPB_Z 8 
 
 //default number of threads per block
@@ -35,6 +35,7 @@ enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
 /* declarations for required external (host) routines */
 extern "C" void coords_nlocal(int n[3]);
+extern "C" int coords_nsite_local(int nsite[3]);
 extern "C" int coords_nhalo(void);
 extern "C" int coords_index(int,int,int);
 extern "C" void   coords_index_to_ijk(const int index, int coords[3]);

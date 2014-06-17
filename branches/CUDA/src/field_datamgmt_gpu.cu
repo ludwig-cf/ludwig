@@ -717,8 +717,12 @@ void velocity_halo_gpu(){
 }
 
 void distribution_halo_gpu(){
-
+#ifdef KEVIN_GPU
+  extern int dist_halo_gpu(double *);
+  dist_halo_gpu(f_d);
+#else
   halo_gpu(NVEL,ndist,1,f_d);
+#endif
 
 }
 
