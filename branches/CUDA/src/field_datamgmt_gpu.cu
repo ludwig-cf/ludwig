@@ -704,22 +704,23 @@ void put_velocity_on_gpu()
 
 
 void phi_halo_gpu(){
-
   halo_gpu(1,nop,0,phi_site_d);
-
 }
 
 extern double * velocity_d;
 void velocity_halo_gpu(){
-
+#ifdef KEVIN_GPU
+  extern int dist_halo_gpu(int, double *);
+  dist_halo_gpu(3, velocity_d);
+#else
   halo_gpu(1,3,0,velocity_d);
-
+#endif
 }
 
 void distribution_halo_gpu(){
 #ifdef KEVIN_GPU
-  extern int dist_halo_gpu(double *);
-  dist_halo_gpu(f_d);
+  extern int dist_halo_gpu(int, double *);
+  dist_halo_gpu(NVEL, f_d);
 #else
   halo_gpu(NVEL,ndist,1,f_d);
 #endif

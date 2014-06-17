@@ -1272,12 +1272,12 @@ static double * fzlo, * hzlo, * fzlo_d, * hzlo_d;
 static double * fzhi, * hzhi, * fzhi_d, * hzhi_d;
 
 __global__
-static void dist_pack_gpu_d(int id,
+static void dist_pack_gpu_d(int id, int nfel, 
 		            double * edgeLOW_d,
 			    double * edgeHIGH_d, 
 			    double * f_d);
 __global__
-static void dist_unpack_gpu_d(int id,
+static void dist_unpack_gpu_d(int id, int nfel,
 		              double * f_d,
                               double * haloLOW_d,
 			      double * haloHIGH_d);
@@ -1298,8 +1298,8 @@ int dist_init_extra(void) {
   coords_nsite_local(host.nsites);
   host.nsite = host.nsites[X]*host.nsites[Y]*host.nsites[Z];
 
-  /* Halo extents:  hext[X] = {1, nlocal[Y], nlocal[Z]}
-                    hext[Y] = {nsites[X], 1, nlocal[Z]}
+  /* Halo extents:  hext[X] = {1, nsites[Y], nsites[Z]}
+                    hext[Y] = {nsites[X], 1, nsites[Z]}
                     hext[Z] = {nsites[X], nsites[Y], 1} */
 
   host.hext[X][X] = host.nhalodist;
@@ -1369,9 +1369,12 @@ int dist_init_extra(void) {
  *   (there appears to be no benefit defering the wait on the
  *   sends).
  *
+ *  Despite the name, can be used for velocity field as well,
+ *  which is also nhalo = 1
+ *
  *****************************************************************************/
 
-int dist_halo_gpu(double * f_d) {
+int dist_halo_gpu(int nfel, double * f_d) {
 
   int ic, jc, kc;
   int ih, jh, kh;
@@ -1410,23 +1413,23 @@ int dist_halo_gpu(double * f_d) {
   }
 
   if (cart_size(X) > 1) {
-    MPI_Irecv(hxlo, hsz[X]*NVEL, MPI_DOUBLE,
+    MPI_Irecv(hxlo, hsz[X]*nfel, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,X), ftagx, comm, req_x);
-    MPI_Irecv(hxhi, hsz[X]*NVEL, MPI_DOUBLE,
+    MPI_Irecv(hxhi, hsz[X]*nfel, MPI_DOUBLE,
 	      cart_neighb(FORWARD,X), btagx, comm, req_x + 1);
   }
 
   if (cart_size(Y) > 1) {
-    MPI_Irecv(hylo, hsz[Y]*NVEL, MPI_DOUBLE,
+    MPI_Irecv(hylo, hsz[Y]*nfel, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Y), ftagy, comm, req_y);
-    MPI_Irecv(hyhi, hsz[Y]*NVEL, MPI_DOUBLE,
+    MPI_Irecv(hyhi, hsz[Y]*nfel, MPI_DOUBLE,
 	      cart_neighb(FORWARD,Y), btagy, comm, req_y + 1);
   }
 
   if (cart_size(Z) > 1) {
-    MPI_Irecv(hzlo, hsz[Z]*NVEL, MPI_DOUBLE,
+    MPI_Irecv(hzlo, hsz[Z]*nfel, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Z), ftagz, comm, req_z);
-    MPI_Irecv(hzhi, hsz[Z]*NVEL, MPI_DOUBLE,
+    MPI_Irecv(hzhi, hsz[Z]*nfel, MPI_DOUBLE,
 	      cart_neighb(FORWARD,Z), btagz, comm, req_z + 1);
   }
 
@@ -1435,27 +1438,27 @@ int dist_halo_gpu(double * f_d) {
   /* pack Z edges on accelerator */
 
   nblocks = (hsz[X] + DEFAULT_TPB - 1) / DEFAULT_TPB;
-  dist_pack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(X, fxlo_d, fxhi_d, f_d);
+  dist_pack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(X,nfel, fxlo_d, fxhi_d, f_d);
 
-  cudaMemcpyAsync(fxlo, fxlo_d, hsz[X]*NVEL*sizeof(double),
+  cudaMemcpyAsync(fxlo, fxlo_d, hsz[X]*nfel*sizeof(double),
 		  cudaMemcpyDeviceToHost, streamX);
-  cudaMemcpyAsync(fxhi, fxhi_d, hsz[X]*NVEL*sizeof(double),
+  cudaMemcpyAsync(fxhi, fxhi_d, hsz[X]*nfel*sizeof(double),
 		  cudaMemcpyDeviceToHost, streamX);
 
   nblocks = (hsz[Y] + DEFAULT_TPB - 1) / DEFAULT_TPB;
-  dist_pack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(Y, fylo_d, fyhi_d, f_d);
+  dist_pack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(Y, nfel,fylo_d, fyhi_d, f_d);
 
-  cudaMemcpyAsync(fylo, fylo_d, hsz[Y]*NVEL*sizeof(double),
+  cudaMemcpyAsync(fylo, fylo_d, hsz[Y]*nfel*sizeof(double),
 		  cudaMemcpyDeviceToHost, streamY);
-  cudaMemcpyAsync(fyhi, fyhi_d, hsz[Y]*NVEL*sizeof(double),
+  cudaMemcpyAsync(fyhi, fyhi_d, hsz[Y]*nfel*sizeof(double),
 		  cudaMemcpyDeviceToHost, streamY);
 
   nblocks = (hsz[Z] + DEFAULT_TPB - 1) / DEFAULT_TPB;
-  dist_pack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(Z,	fzlo_d, fzhi_d, f_d);
+  dist_pack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(Z,	nfel,fzlo_d, fzhi_d, f_d);
 
-  cudaMemcpyAsync(fzlo, fzlo_d, hsz[Z]*NVEL*sizeof(double),
+  cudaMemcpyAsync(fzlo, fzlo_d, hsz[Z]*nfel*sizeof(double),
 		  cudaMemcpyDeviceToHost, streamZ);
-  cudaMemcpyAsync(fzhi, fzhi_d, hsz[Z]*NVEL*sizeof(double),
+  cudaMemcpyAsync(fzhi, fzhi_d, hsz[Z]*nfel*sizeof(double),
 		  cudaMemcpyDeviceToHost, streamZ);
 
 
@@ -1465,31 +1468,31 @@ int dist_halo_gpu(double * f_d) {
 
   if (cart_size(X) == 1) {
     /* fxhi -> hxlo */
-    memcpy(hxlo, fxhi, hsz[X]*NVEL*sizeof(double)); 
-    cudaMemcpyAsync(hxlo_d, hxlo, hsz[X]*NVEL*sizeof(double),
+    memcpy(hxlo, fxhi, hsz[X]*nfel*sizeof(double)); 
+    cudaMemcpyAsync(hxlo_d, hxlo, hsz[X]*nfel*sizeof(double),
 		    cudaMemcpyHostToDevice, streamX);
     /* fxlo -> hxhi */
-    memcpy(hxhi, fxlo, hsz[X]*NVEL*sizeof(double));
-    cudaMemcpyAsync(hxhi_d, hxhi, hsz[X]*NVEL*sizeof(double),
+    memcpy(hxhi, fxlo, hsz[X]*nfel*sizeof(double));
+    cudaMemcpyAsync(hxhi_d, hxhi, hsz[X]*nfel*sizeof(double),
 		    cudaMemcpyHostToDevice, streamX);
   }
   else {
-    MPI_Isend(fxhi, hsz[X]*NVEL, MPI_DOUBLE,
+    MPI_Isend(fxhi, hsz[X]*nfel, MPI_DOUBLE,
 	      cart_neighb(FORWARD,X), ftagx, comm, req_x + 2);
-    MPI_Isend(fxlo, hsz[X]*NVEL, MPI_DOUBLE,
+    MPI_Isend(fxlo, hsz[X]*nfel, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,X), btagx, comm, req_x + 3);
 
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_x, &mc, status);
-      if (mc == 0) cudaMemcpyAsync(hxlo_d, hxlo, hsz[X]*NVEL*sizeof(double),
+      if (mc == 0) cudaMemcpyAsync(hxlo_d, hxlo, hsz[X]*nfel*sizeof(double),
 		                   cudaMemcpyHostToDevice, streamX);
-      if (mc == 1) cudaMemcpyAsync(hxhi_d, hxhi, hsz[X]*NVEL*sizeof(double),
+      if (mc == 1) cudaMemcpyAsync(hxhi_d, hxhi, hsz[X]*nfel*sizeof(double),
 		                   cudaMemcpyHostToDevice, streamX);
     }
   }
 
   nblocks = (hsz[X] + DEFAULT_TPB - 1) / DEFAULT_TPB;
-  dist_unpack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(X, f_d, hxlo_d, hxhi_d);
+  dist_unpack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(X, nfel, f_d, hxlo_d, hxhi_d);
 
   /* Now wait for Y data to arrive from device */
   /* Fill in 4 corners of Y edge data from X halo */
@@ -1507,7 +1510,7 @@ int dist_halo_gpu(double * f_d) {
     ixhi = get_linear_index(ih + ic,      jc, kc, host.hext[Y]);
     iyhi = get_linear_index(ic,      jh + jc, kc, host.hext[X]);
 
-    for (p = 0; p < NVEL; p++) {
+    for (p = 0; p < nfel; p++) {
       fylo[hsz[Y]*p + iylo] = hxlo[hsz[X]*p + ixlo];
       fyhi[hsz[Y]*p + iylo] = hxlo[hsz[X]*p + iyhi];
       fylo[hsz[Y]*p + ixhi] = hxhi[hsz[X]*p + ixlo];
@@ -1520,32 +1523,32 @@ int dist_halo_gpu(double * f_d) {
 
   if (cart_size(Y) == 1) {
     /* fyhi -> hylo */
-    memcpy(hylo, fyhi, hsz[Y]*NVEL*sizeof(double));
-    cudaMemcpyAsync(hylo_d, hylo, hsz[Y]*NVEL*sizeof(double),
+    memcpy(hylo, fyhi, hsz[Y]*nfel*sizeof(double));
+    cudaMemcpyAsync(hylo_d, hylo, hsz[Y]*nfel*sizeof(double),
 		  cudaMemcpyHostToDevice, streamY);
     /* fylo -> hyhi */
-    memcpy(hyhi, fylo, hsz[Y]*NVEL*sizeof(double));
-    cudaMemcpyAsync(hyhi_d, hyhi, hsz[Y]*NVEL*sizeof(double),
+    memcpy(hyhi, fylo, hsz[Y]*nfel*sizeof(double));
+    cudaMemcpyAsync(hyhi_d, hyhi, hsz[Y]*nfel*sizeof(double),
 		  cudaMemcpyHostToDevice, streamY);
   }
   else {
-    MPI_Isend(fyhi, hsz[Y]*NVEL, MPI_DOUBLE,
+    MPI_Isend(fyhi, hsz[Y]*nfel, MPI_DOUBLE,
 	      cart_neighb(FORWARD,Y), ftagy, comm, req_y + 2);
-    MPI_Isend(fylo, hsz[Y]*NVEL, MPI_DOUBLE,
+    MPI_Isend(fylo, hsz[Y]*nfel, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Y), btagy, comm, req_y + 3);
 
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_y, &mc, status);
-      if (mc == 0) cudaMemcpyAsync(hylo_d, hylo, hsz[Y]*NVEL*sizeof(double),
+      if (mc == 0) cudaMemcpyAsync(hylo_d, hylo, hsz[Y]*nfel*sizeof(double),
 		   	           cudaMemcpyHostToDevice, streamY);
-      if (mc == 1) cudaMemcpyAsync(hyhi_d, hyhi, hsz[Y]*NVEL*sizeof(double),
+      if (mc == 1) cudaMemcpyAsync(hyhi_d, hyhi, hsz[Y]*nfel*sizeof(double),
 			           cudaMemcpyHostToDevice, streamY);
     }
   }
 
 
   nblocks = (hsz[Y] + DEFAULT_TPB - 1) / DEFAULT_TPB;
-  dist_unpack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(Y, f_d, hylo_d, hyhi_d);
+  dist_unpack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(Y, nfel, f_d, hylo_d, hyhi_d);
 
   /* Wait for Z data from device */
   /* Fill in 4 corners of Z edge data from X halo  */
@@ -1563,7 +1566,7 @@ int dist_halo_gpu(double * f_d) {
     ixhi = get_linear_index(     ic, jc, kh + kc, host.hext[X]);
     izhi = get_linear_index(ih + ic, jc,      kc, host.hext[Z]);
 
-     for (p = 0; p < NVEL; p++) {
+     for (p = 0; p < nfel; p++) {
       fzlo[hsz[Z]*p + izlo] = hxlo[hsz[X]*p + ixlo];
       fzhi[hsz[Z]*p + izlo] = hxlo[hsz[X]*p + ixhi];
       fzlo[hsz[Z]*p + izhi] = hxhi[hsz[X]*p + ixlo];
@@ -1584,7 +1587,7 @@ int dist_halo_gpu(double * f_d) {
      iyhi = get_linear_index(ic,      jc, kh + kc, host.hext[Y]);
      izhi = get_linear_index(ic, jh + jc,      kc, host.hext[Z]);
 
-     for (p = 0; p < NVEL; p++) {
+     for (p = 0; p < nfel; p++) {
       fzlo[hsz[Z]*p + izlo] = hylo[hsz[Y]*p + iylo];
       fzhi[hsz[Z]*p + izlo] = hylo[hsz[Y]*p + iyhi];
       fzlo[hsz[Z]*p + izhi] = hyhi[hsz[Y]*p + iylo];
@@ -1596,31 +1599,31 @@ int dist_halo_gpu(double * f_d) {
 
   if (cart_size(Z) == 1) {
     /* fzhi -> hzlo */
-    memcpy(hzlo, fzhi, hsz[Z]*NVEL*sizeof(double));
-    cudaMemcpyAsync(hzlo_d, hzlo, hsz[Z]*NVEL*sizeof(double),
+    memcpy(hzlo, fzhi, hsz[Z]*nfel*sizeof(double));
+    cudaMemcpyAsync(hzlo_d, hzlo, hsz[Z]*nfel*sizeof(double),
 		  cudaMemcpyHostToDevice, streamZ);
     /* fzlo -> hzhi */
-    memcpy(hzhi, fzlo, hsz[Z]*NVEL*sizeof(double));
-    cudaMemcpyAsync(hzhi_d, hzhi, hsz[Z]*NVEL*sizeof(double),
+    memcpy(hzhi, fzlo, hsz[Z]*nfel*sizeof(double));
+    cudaMemcpyAsync(hzhi_d, hzhi, hsz[Z]*nfel*sizeof(double),
 		  cudaMemcpyHostToDevice, streamZ);
   }
   else {
-    MPI_Isend(fzhi, hsz[Z]*NVEL, MPI_DOUBLE,
+    MPI_Isend(fzhi, hsz[Z]*nfel, MPI_DOUBLE,
 	      cart_neighb(FORWARD,Z), ftagz, comm, req_z + 2);
-    MPI_Isend(fzlo,  hsz[Z]*NVEL, MPI_DOUBLE,
+    MPI_Isend(fzlo,  hsz[Z]*nfel, MPI_DOUBLE,
 	      cart_neighb(BACKWARD,Z), btagz, comm, req_z + 3);
 
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_z, &mc, status);
-      if (mc == 0) cudaMemcpyAsync(hzlo_d, hzlo, hsz[Z]*NVEL*sizeof(double),
+      if (mc == 0) cudaMemcpyAsync(hzlo_d, hzlo, hsz[Z]*nfel*sizeof(double),
 		                   cudaMemcpyHostToDevice, streamZ);
-      if (mc == 1) cudaMemcpyAsync(hzhi_d, hzhi, hsz[Z]*NVEL*sizeof(double),
+      if (mc == 1) cudaMemcpyAsync(hzhi_d, hzhi, hsz[Z]*nfel*sizeof(double),
 		                   cudaMemcpyHostToDevice, streamZ);
     }
   }
 
   nblocks = (hsz[Z] + DEFAULT_TPB - 1) / DEFAULT_TPB;
-  dist_unpack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(Z, f_d, hzlo_d, hzhi_d);
+  dist_unpack_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(Z, nfel, f_d, hzlo_d, hzhi_d);
 
   cudaStreamSynchronize(streamX);
   cudaStreamSynchronize(streamY);
@@ -1639,7 +1642,7 @@ int dist_halo_gpu(double * f_d) {
  *****************************************************************************/
 
 __global__
-static void dist_pack_gpu_d(int id,
+static void dist_pack_gpu_d(int id, int nfel,
 		            double * flo_d,
 			    double * fhi_d, 
 			    double * f_d) {
@@ -1676,11 +1679,11 @@ static void dist_pack_gpu_d(int id,
 
   /* Low end, and high end */
 
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < nfel; p++) {
     flo_d[dev.hsz[id]*p + threadIndex] = f_d[dev.nsite*p + indexl];
   }
 
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < nfel; p++) {
     fhi_d[dev.hsz[id]*p + threadIndex] = f_d[dev.nsite*p + indexh];
   }
 
@@ -1696,7 +1699,7 @@ static void dist_pack_gpu_d(int id,
  *****************************************************************************/
 
 __global__
-static void dist_unpack_gpu_d(int id,
+static void dist_unpack_gpu_d(int id, int nfel,
 		              double * f_d,
                               double * hlo_d,
 			      double * hhi_d) {
@@ -1737,11 +1740,11 @@ static void dist_unpack_gpu_d(int id,
 
   /* Low end, then high end */
 
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < nfel; p++) {
     f_d[dev.nsite*p + indexl] = hlo_d[dev.hsz[id]*p + threadIndex];
   }
 
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < nfel; p++) {
     f_d[dev.nsite*p + indexh] = hhi_d[dev.hsz[id]*p + threadIndex];
   }
 
