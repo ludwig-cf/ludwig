@@ -879,7 +879,7 @@ int psi_maxits(psi_t * obj, int * maxits) {
 int psi_diffacc_set(psi_t * obj, double diffacc) {
 
   assert(obj);
-  assert(diffacc);
+  assert(diffacc>=0);
 
   obj->diffacc = diffacc;
 

@@ -267,13 +267,12 @@ int psi_sor_poisson(psi_t * obj) {
 	}
 	break;
       }
-
-      if (is_statistics_step() && n == niteration-1) {
-	info("\nSOR solver\n");
-	info("Exceeded %d iterations\n", n+1);
-	info("Norm of residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
-      }
-
+    }
+ 
+    if (n == niteration-1) {
+      info("\nSOR solver\n");
+      info("Exceeded %d iterations\n", n+1);
+      info("Norm of residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
     }
 
   }

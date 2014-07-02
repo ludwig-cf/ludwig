@@ -570,8 +570,8 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
   }    
 
   /* Reduce no. of multisteps */
-  /* The factor 0.1 prevents too frequent changes. */
-  if (* maxacc < 0.1*diffacc && diffacc > 0.0) {
+  /* The factor 0.25 prevents too frequent changes. */
+  if (* maxacc < 0.25*diffacc && diffacc > 0.0) {
   
     psi_multisteps(psi, &multisteps);
     psi_nk(psi, &nk);
