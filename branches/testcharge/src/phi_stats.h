@@ -21,10 +21,11 @@
 #include "bbl.h"
 
 int stats_field_info(field_t * obj, map_t * map);
-int stats_fielf_info(field_t * obj, map_t * map, bbl_t * bbl);
 int stats_field_reduce(field_t * obj, map_t * map, double * fmin,
 		       double * fmax, double * fsum, double * fvar,
 		       double * fvol, int rank, MPI_Comm comm);
 int stats_field_local(field_t * obj, map_t * map, double * fmin, double * fmax,
 		      double * fsum, double * fvar, double * fvol);
+int stats_field_info_bbl(field_t * obj, map_t * map, bbl_t * bbl);
+
 #endif

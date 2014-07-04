@@ -631,6 +631,8 @@ static int colloid_sums_m3(colloid_sum_t * sum, int ic, int jc, int kc,
  *  See comments for m1 above.
  *
  *  This is for conserved order parameters and related information.
+ *  Note there is a slight mix of state information and non-state
+ *  information in this sum; should prbably all be 'non state'.
  *
  *****************************************************************************/
 
@@ -650,8 +652,8 @@ static int colloid_sums_m4(colloid_sum_t * sum, int ic, int jc, int kc,
     if (sum->mload == MESSAGE_LOAD) {
       sum->send[n++] = 1.0*pc->s.index;
       sum->send[n++] = pc->s.deltaphi;
-      sum->send[n++] = pc->s.deltaq0;
-      sum->send[n++] = pc->s.deltaq1;
+      sum->send[n++] = pc->dq[0];
+      sum->send[n++] = pc->dq[1];
       sum->send[n++] = pc->s.sa;
       sum->send[n++] = pc->s.saf;
 
@@ -664,8 +666,8 @@ static int colloid_sums_m4(colloid_sum_t * sum, int ic, int jc, int kc,
       if (index != pc->s.index) fatal("Sum mismatch m4 (%d)\n", index);
 
       pc->s.deltaphi += sum->recv[n++];
-      pc->s.deltaq0  += sum->recv[n++];
-      pc->s.deltaq1  += sum->recv[n++];
+      pc->dq[0]      += sum->recv[n++];
+      pc->dq[1]      += sum->recv[n++];
       pc->s.sa       += sum->recv[n++];
       pc->s.saf      += sum->recv[n++];
 

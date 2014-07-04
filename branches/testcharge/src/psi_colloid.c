@@ -66,8 +66,11 @@ int psi_colloid_rho_set(psi_t * obj, colloids_info_t * cinfo) {
 
 	if (pc) {
 	  util_discrete_volume_sphere(pc->s.r, pc->s.a0, &volume);
-	  rho0 = pc->s.q0/volume;
-	  rho1 = pc->s.q1/volume;
+
+          /* The dmax() here prevents -ve dq dropping density below zero */
+	  rho0 = dmax(0.0, pc->s.q0 + pc->s.deltaq0) / volume;
+	  rho1 = dmax(0.0, pc->s.q1 + pc->s.deltaq1) / volume;
+
 	  psi_rho_set(obj, index, 0, rho0);
 	  psi_rho_set(obj, index, 1, rho1);
 	}
@@ -196,9 +199,9 @@ int psi_colloid_remove_charge(psi_t * psi, colloid_t * colloid, int index) {
   assert(colloid);
 
   psi_rho(psi, index, 0, &rho);
-  colloid->s.deltaq0 += rho;
+  colloid->dq[0] += rho;
   psi_rho(psi, index, 1, &rho);
-  colloid->s.deltaq1 += rho;
+  colloid->dq[1] += rho;
 
   return 0;
 }
@@ -254,8 +257,8 @@ int psi_colloid_replace_charge(psi_t * psi, colloids_info_t * cinfo,
 
   /* Set corrections arising from addition of charge density to fluid */
 
-  colloid->s.deltaq0 -= rho[0];
-  colloid->s.deltaq1 -= rho[1];
+  colloid->dq[0] -= rho[0];
+  colloid->dq[1] -= rho[1];
 
   return 0;
 }

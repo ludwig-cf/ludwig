@@ -42,6 +42,7 @@ struct colloid {
   double fc0[3];        /* total force on squirmer for mass conservation */
   double tc0[3];        /* total torque on squirmer for mass conservation */
   double sump;          /* flux through squirmer surface */ 
+  double dq[2];         /* charge remove/replace mismatch for 2 charges */
 
   /* Pointers */
 

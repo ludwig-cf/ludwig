@@ -24,6 +24,7 @@
 #include "physics.h"
 #include "model.h"
 
+#include "colloid_sums.h"
 #include "psi_colloid.h"
 #include "util.h"
 #include "wall.h"
@@ -1218,68 +1219,84 @@ int build_count_faces_local(colloid_t * colloid, double * sa, double * saf) {
 
 int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
 
-  int ic, jc, kc;
-  int ncell[3];
   int p;
 
   double value;
   double dphi, dq0, dq1;
+  double sa_local, saf_local;
 
   colloid_t * colloid = NULL;
   colloid_link_t * pl = NULL;
 
   assert(cinfo);
-  colloids_info_ncell(cinfo, ncell);
 
-  for (ic = 0; ic <= ncell[X] + 1; ic++) {
-    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
-      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
+  colloids_info_all_head(cinfo, &colloid);
 
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &colloid);
+  for (; colloid != NULL; colloid = colloid->nextall) {
 
-        /* For each colloid in this cell, check solid/fluid status */
+    /* Add any contribution form previous steps (all copies);
+     * work out what should be put back. */
 
-        for (; colloid != NULL; colloid = colloid->next) {
+    colloid->dq[0] += colloid->s.deltaq0;
+    colloid->dq[1] += colloid->s.deltaq1;
 
-          dphi = colloid->s.deltaphi / colloid->s.saf;
-          dq0  = colloid->s.deltaq0  / colloid->s.saf;
-          dq1  = colloid->s.deltaq1  / colloid->s.saf;
+    dphi = colloid->s.deltaphi / colloid->s.saf;
+    dq0  = colloid->dq[0]  / colloid->s.saf;
+    dq1  = colloid->dq[1]  / colloid->s.saf;
 
-	  if (dq0 == 0.0 && dq1 == 0.0) break;
+    if (dq0 == 0.0 && dq1 == 0.0) break;
 
-          for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
+    /* Locally, the total we expect to put back is: */
 
-	    if (pl->status == LINK_UNUSED) continue;
+    build_count_faces_local(colloid, &sa_local, &saf_local);
 
-            p = pl->p;
-            p = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+    assert(colloid->s.saf > 0.0);
+    colloid->dq[0] *= saf_local/colloid->s.saf;
+    colloid->dq[1] *= saf_local/colloid->s.saf;
 
-            if (p == 1) {
-              /* Replace */
-              if (phi) {
-                field_scalar(phi, pl->i, &value);
-                field_scalar_set(phi, pl->i, value + dphi);
-              }
-	      /* For charge, do not drop densities below zero. */
-              if (psi) {
-                psi_rho(psi, pl->i, 0, &value);
-                if ((value + dq0) >= 0.0) {
-		  colloid->s.deltaq0 -= dq0;
-		  psi_rho_set(psi, pl->i, 0, value + dq0);
-		}
-                psi_rho(psi, pl->i, 1, &value);
-                if ((value + dq1) >=  0.0) {
-		  colloid->s.deltaq1 -= dq1;
-		  psi_rho_set(psi, pl->i, 1, value + dq1);
-		}
-              }
-            }
-          }
-        }
+    for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
 
-        /* Next cell */
+      if (pl->status != LINK_FLUID) continue;
+
+      p = pl->p;
+      p = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+
+      if (p == 1) {
+	/* Replace */
+	if (phi) {
+	  field_scalar(phi, pl->i, &value);
+	  field_scalar_set(phi, pl->i, value + dphi);
+	}
+	/* For charge, do not drop densities below zero. */
+	if (psi) {
+	  psi_rho(psi, pl->i, 0, &value);
+	  if ((value + dq0) >= 0.0) {
+	    colloid->dq[0] -= dq0;
+	    psi_rho_set(psi, pl->i, 0, value + dq0);
+	  }
+	  psi_rho(psi, pl->i, 1, &value);
+	  if ((value + dq1) >=  0.0) {
+	    colloid->dq[1] -= dq1;
+	    psi_rho_set(psi, pl->i, 1, value + dq1);
+	  }
+	}
       }
     }
+  }
+
+  /* Now, repeat the sum of dq so that all copies have a copy
+   * of any shortfall in what we have tried to put back.
+   * Record this in the state so it is always retained. */
+
+  colloid_sums_halo(cinfo, COLLOID_SUM_CONSERVATION);
+
+  colloids_info_all_head(cinfo, &colloid);
+
+  for (; colloid; colloid = colloid->nextall) {
+    colloid->s.deltaq0 = colloid->dq[0];
+    colloid->s.deltaq1 = colloid->dq[1];
+    colloid->dq[0] = 0.0;
+    colloid->dq[1] = 0.0;
   }
 
   return 0;
