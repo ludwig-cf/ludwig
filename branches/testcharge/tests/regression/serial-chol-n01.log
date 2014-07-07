@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.2 (Serial version running on 1 process)
+Welcome to Ludwig v0.1.20 (Serial version running on 1 process)
 
-The SVN revision details are: 2365M
+The SVN revision details are: 2391:2392M
 Note assertions via standard C assert() are on.
 
-Read 40 user parameters from ./serial-chol-n01.inp
+Read 38 user parameters from ./serial-chol-n01.inp
 
 System details
 --------------
@@ -112,8 +112,8 @@ Initialised 1 colloid
 Colloid cell list information
 -----------------------------
 Input radius maximum:         7.2500000e+00
-Final cell list:              8 8 8
-Final cell lengths:           8.0000000e+00  8.0000000e+00  8.0000000e+00
+Final cell list:              7 7 7
+Final cell lengths:           9.1428571e+00  9.1428571e+00  9.1428571e+00
 
 Gradient calcaulation: 3d_7pt_solid
 
@@ -140,24 +140,24 @@ Starting time step loop.
 Particle statistics:
 
 Colloid velocities - x y z
-[minimum ]  1.5301519e-17  2.0534559e-20 -8.4308337e-11
-[maximum ]  1.5301519e-17  2.0534559e-20 -8.4308337e-11
+[minimum ]  1.4645441e-17  8.6604788e-19 -8.4308337e-11
+[maximum ]  1.4645441e-17  8.6604788e-19 -8.4308337e-11
 
 Scalars - total mean variance min max
 [rho]      260569.00  1.00000000000 1.3737886e-08  0.99540262959 1.00081057824
 [phi]  2.1552657e+04  8.2713819e-02 3.1264223e-02 -1.6677639e-01 3.3397529e-01
 [phi]  2.5514676e-02  9.7919077e-08 3.1231097e-02 -2.5040446e-01 2.5040445e-01
-[phi]  3.4416094e-15  1.3208054e-20 1.3263027e-08 -7.0686683e-03 7.0686683e-03
+[phi]  3.4251024e-15  1.3144704e-20 1.3263027e-08 -7.0686683e-03 7.0686683e-03
 [phi]  2.1863610e+04  8.3907181e-02 3.1263429e-02 -1.6726082e-01 3.3376209e-01
-[phi]  1.2651418e-15  4.8553042e-21 1.6878684e-08 -7.5822286e-03 7.5822286e-03
+[phi]  1.4626427e-15  5.6132646e-21 1.6878684e-08 -7.5822286e-03 7.5822286e-03
 
 Free energies - timestep f v f/v f_s a f_s/a
 [fe]              5 -1.7258433555e+01  2.6056900000e+05 -6.6233640822e-05  4.2196306291e-01  1.0140000000e+03  4.1613714291e-04
 
 Momentum - x y z
-[total   ]  9.9282248e-14 -1.1401857e-12 -1.7041279e-13
-[fluid   ]  8.7915786e-14 -1.1404662e-12  1.4917796e-07
-[colloids]  1.1366462e-14  2.8047655e-16 -1.4917813e-07
+[total   ]  1.1017398e-13 -1.1396058e-12 -1.7016748e-13
+[fluid   ]  8.8436203e-14 -1.1412052e-12  1.4917796e-07
+[colloids]  2.1737776e-14  1.5993744e-15 -1.4917813e-07
 
 Velocity - x y z
 [minimum ] -1.0175863e-03 -1.2001098e-03 -1.2149393e-03
@@ -169,17 +169,17 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      5.363      5.363      5.363   5.362754 (1 call)
-      Time step loop:      1.002      1.049      5.068   1.013549 (5 calls)
-         Propagation:      0.018      0.019      0.093   0.018642 (5 calls)
-           Collision:      0.216      0.222      1.093   0.218528 (5 calls)
-       Lattice halos:      0.001      0.002      0.015   0.001550 (10 calls)
-       phi gradients:      0.054      0.073      0.292   0.058314 (5 calls)
-              Forces:      0.000      0.000      0.000   0.000011 (5 calls)
-             Rebuild:      0.008      0.009      0.043   0.008598 (5 calls)
-                 BBL:      0.004      0.004      0.021   0.004145 (5 calls)
-      Particle halos:      0.000      0.000      0.000   0.000050 (5 calls)
-   Force calculation:      0.343      0.349      1.728   0.345678 (5 calls)
-          phi update:      0.350      0.364      1.769   0.353700 (5 calls)
-               Free1:      0.000      0.000      0.000   0.000000 (10 calls)
+               Total:      5.867      5.867      5.867   5.866962 (1 call)
+      Time step loop:      1.103      1.149      5.570   1.114037 (5 calls)
+         Propagation:      0.018      0.018      0.089   0.017824 (5 calls)
+           Collision:      0.236      0.238      1.182   0.236413 (5 calls)
+       Lattice halos:      0.001      0.003      0.015   0.001540 (10 calls)
+       phi gradients:      0.052      0.073      0.283   0.056648 (5 calls)
+              Forces:      0.000      0.000      0.000   0.000010 (5 calls)
+             Rebuild:      0.008      0.009      0.043   0.008557 (5 calls)
+                 BBL:      0.004      0.004      0.019   0.003762 (5 calls)
+      Particle halos:      0.000      0.000      0.000   0.000042 (5 calls)
+   Force calculation:      0.378      0.387      1.904   0.380844 (5 calls)
+          phi update:      0.400      0.411      2.018   0.403564 (5 calls)
+               Free1:      0.000      0.000      0.000   0.000001 (10 calls)
 Ludwig finished normally.

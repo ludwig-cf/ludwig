@@ -493,6 +493,7 @@ int colloids_rt_cell_list_checks(colloids_info_t ** pinfo,
   int nc;
   int nlocal[3];
   int nbest[3];
+  int nhalo;
 
   double a0max, ahmax;  /* maximum radii */
   double rcmax, hcmax;  /* Interaction ranges */
@@ -507,18 +508,21 @@ int colloids_rt_cell_list_checks(colloids_info_t ** pinfo,
   if (nc == 0) return 0;
 
   coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
   colloids_info_a0max(*pinfo, &a0max);
 
-  /* The 0.5 is required for BBL to identify fluid-solid links,
-   * and a0max cannot drop below 1.0 (e.g., for subgrid the
-   * net minimum is 1.0 for drange = 1). Absolution minimum is
-   * 2.0 units. */
+  /* For nhalo = 1, we require an additional + 0.5 to identify BBL;
+   * for nhalo > 1, the constraint is on the colloid map in the
+   * halo region, begin an additional nhalo - 0.5.
+   * The aboslute minimum is 2 units to accomodate subgrid partciles
+   * an associated interpolations onto lattice. */
 
   a0max = dmax(1.0, a0max);
 
-  nbest[X] = (int) floor(1.0*(nlocal[X]) / (dmax(a0max + 0.5, 2.0)));
-  nbest[Y] = (int) floor(1.0*(nlocal[Y]) / (dmax(a0max + 0.5, 2.0)));
-  nbest[Z] = (int) floor(1.0*(nlocal[Z]) / (dmax(a0max + 0.5, 2.0)));
+  nbest[X] = (int) floor(1.0*(nlocal[X]) / (dmax(a0max + nhalo - 0.5, 2.0)));
+  nbest[Y] = (int) floor(1.0*(nlocal[Y]) / (dmax(a0max + nhalo - 0.5, 2.0)));
+  nbest[Z] = (int) floor(1.0*(nlocal[Z]) / (dmax(a0max + nhalo - 0.5, 2.0)));
+
 
   info("\n");
   info("Colloid cell list information\n");
@@ -881,6 +885,18 @@ int colloids_init_halo_range_check(colloids_info_t * cinfo) {
 
   if (ifail == 1) {
     fatal("Must have two cells minimum\n");
+  }
+
+  /* Halo region colloid map constraint */
+
+  nhalo = coords_nhalo();
+
+  if (lcell[X] < (a0max + nhalo - 0.5)) ifail = 1;
+  if (lcell[Y] < (a0max + nhalo - 0.5)) ifail = 1;
+  if (lcell[Z] < (a0max + nhalo - 0.5)) ifail = 1;
+
+  if (ifail == 1) {
+    fatal("Must have cell width > a0_max + nhalo\n");
   }
 
   return ifail;
