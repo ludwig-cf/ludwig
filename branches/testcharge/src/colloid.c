@@ -131,8 +131,8 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   int nwrite = 0;
   int ifail = 0;
 
-  const char * sformat = "%22.15e\n";
-  const char * vformat = "%22.15e %22.15e %22.15e\n";
+  const char * sformat = "%22le\n";
+  const char * vformat = "%22le %22le %22le\n";
 
   assert(fp);
 

@@ -94,7 +94,7 @@ int stats_distribution_print(map_t * map) {
   rhovar  = (stat_total[2]/stat_total[0]) - rhomean*rhomean;
 
   info("\nScalars - total mean variance min max\n");
-  info("[rho] %14.2f %14.11f%14.7e %14.11f%14.11f\n",
+  info("[rho] %14.2f %14.11f %14.7e %14.11f %14.11f\n",
        stat_total[1], rhomean, fabs(rhovar), stat_total[3], stat_total[4]); 
 
   return 0;
