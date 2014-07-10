@@ -17,6 +17,10 @@
 #ifndef COLLOIDS_H
 #define COLLOIDS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "colloid.h"
 #include "colloid_link.h"
 
@@ -73,5 +77,9 @@ void        colloid_free(colloid_t *);
 double      colloid_rho0(void);
 int         colloid_ntotal(void);
 int         colloid_nlocal(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

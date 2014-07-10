@@ -103,6 +103,7 @@ void COLL_update() {
   control_freq_rebuild(&ifreq);
 
   if ( get_step() % ifreq != 0 ) {
+    coll_position_update();
     colloid_forces();
   }
   else {
@@ -149,12 +150,10 @@ void COLL_update() {
       colloid_forces();
     }
 
+#ifdef KEVIN_GPU
+    colloids_to_gpu();
+#endif
   }
-
-
-
-
-
 
   return;
 }
@@ -286,8 +285,9 @@ void COLL_init() {
     soft_sphere_init();
     lennard_jones_init();
     yukawa_init();
+#ifdef DUFF_CELL_LIST
     colloid_forces_check();
-
+#endif
     COLL_init_coordinates();
 
     /* Transfer any particles in the halo regions, initialise the
@@ -559,7 +559,7 @@ static void colloid_forces_pairwise(double * hmin, double * epot) {
 	p_c1 = colloids_cell_list(ic, jc, kc);
 
 	while (p_c1) {
-
+#ifdef DUFF_CELL_LIST
 	  for (dx = -dxm; dx <= +dxp; dx++) {
 	    for (dy = -dym; dy <= +dyp; dy++) {
 	      for (dz = -dzm; dz <= +dzp; dz++) {
@@ -567,7 +567,11 @@ static void colloid_forces_pairwise(double * hmin, double * epot) {
 		id = ic + dx;
 		jd = jc + dy;
 		kd = kc + dz;
-
+#else
+	  for (id = 0; id <= Ncell(X)  + 1; id++) {
+	    for (jd = 0; jd <= Ncell(Y) + 1; jd++) {
+	      for (kd = 0; kd <= Ncell(Z) + 1; kd++) {
+#endif
 		p_c2 = colloids_cell_list(id, jd, kd);
 
 		while (p_c2) {

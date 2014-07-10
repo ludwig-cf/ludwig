@@ -11,7 +11,10 @@
 #include <math.h>
 
 #include "common_gpu.h"
+
 #include "pe.h"
+#include "coords.h"
+
 #include "utilities_gpu.h"
 #include "utilities_internal_gpu.h"
 #include "field_datamgmt_gpu.h"
@@ -19,6 +22,11 @@
 #include "util.h"
 #include "model.h"
 #include "timer.h"
+
+
+extern "C" char site_map_get_status(int,int,int);
+extern "C" char site_map_get_status_index(int);
+
 
 /* external pointers to data on host*/
 extern const double ma_[NVEL][NVEL];
@@ -71,6 +79,10 @@ static  int Nall[3];
 
 extern double * colloid_force_d;
 
+#ifdef KEVIN_GPU
+int utilities_init_extra(void);
+#endif
+
 
 /* Perform tasks necessary to initialise accelerator */
 void initialise_gpu()
@@ -118,6 +130,10 @@ void initialise_gpu()
 
   checkCUDAError("Init GPU");  
 
+#ifdef KEVIN_GPU
+  utilities_init_extra();
+  colloids_to_gpu(); /* to match call to put site_map on GPU above */
+#endif
 
 }
 
@@ -505,3 +521,292 @@ void checkCUDAError(const char *msg)
 		exit(EXIT_FAILURE);
 	}                         
 }
+
+#ifdef KEVIN_GPU
+
+/*****************************************************************************
+ *
+ *  There a whole load of stuff here related to colloids.
+ *
+ *  The aim would be to re-encapsulate the coords stuff in coords.c
+ *  and the colloid stuff to e.g., colloids.c
+ *
+ *****************************************************************************/
+
+typedef struct coords_s coords_t;
+
+struct coords_s {
+  int nhalo;
+  int nlocal[3];
+  int noffset[3];
+};
+
+__constant__ coords_t coord;
+
+__host__   int coords_kernel_blocks_1d(int nextra, int * nblocks);
+__device__ int coords_nkthreads_gpu(int nextra, int * nkthreads);
+__device__ int coords_from_threadindex_gpu(int nextra, int threadindex,
+                                           int * ic, int * jc, int * kc);
+__device__ int coords_index_gpu(int ic, int jc, int kc, int * index);
+
+static coll_array_t * carry;
+coll_array_t * carry_d;
+
+__global__ void colloid_update_map_gpu(int nextra, coll_array_t * carry_d,
+                                       char * __restrict__ map);
+
+/*****************************************************************************
+ *
+ *  utilities_init_extra
+ *
+ *****************************************************************************/
+
+int utilities_init_extra(void) {
+
+  coords_t host;
+
+  /* coords */
+
+  host.nhalo = coords_nhalo();
+  coords_nlocal(host.nlocal);
+  coords_nlocal_offset(host.noffset);
+
+  cudaMemcpyToSymbol(coord, &host, sizeof(coords_t), 0,
+                     cudaMemcpyHostToDevice);
+
+  /* colloid */
+
+  carry = (coll_array_t *) calloc(1, sizeof(coll_array_t));
+  cudaMalloc((void **) &carry_d, sizeof(coll_array_t));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_to_gpu
+ *
+ *****************************************************************************/
+
+int colloids_to_gpu(void) {
+
+  int ic, jc, kc;
+  int idc, jdc, kdc;
+  int ncnew = 0;
+  int n = 0;
+  int nblocks;
+  int nextra;
+  colloid_t * pc;
+  colloid_state_t * tmp = NULL;
+
+  /* Count up all local colloids; only then, add any 'true' halo
+   * colloids (not periodic images) */
+
+  idc = 1 - (cart_size(X) == 1);
+  jdc = 1 - (cart_size(Y) == 1);
+  kdc = 1 - (cart_size(Z) == 1);
+
+  for (ic = 1 - idc; ic <= Ncell(X) + idc; ic++) {
+    for (jc = 1 - jdc; jc <= Ncell(Y) + jdc; jc++) {
+      for (kc = 1 - kdc; kc <= Ncell(Z) + kdc; kc++) {
+
+         pc = colloids_cell_list(ic, jc, kc);
+         for ( ; pc; pc = pc->next) ncnew += 1;
+      }
+    }
+  }
+
+  /* Push colloid states into the temporary array on host  */
+
+  tmp = (colloid_state_t *) calloc(ncnew, sizeof(colloid_state_t));
+
+  for (ic = 1 - idc; ic <= Ncell(X) + idc; ic++) {
+    for (jc = 1 - jdc; jc <= Ncell(Y) + jdc; jc++) {
+      for (kc = 1 - kdc; kc <= Ncell(Z) + kdc; kc++) {
+
+        pc = colloids_cell_list(ic, jc, kc);
+        for ( ; pc; pc = pc->next) tmp[n++] = pc->s;
+      }
+    }
+  }
+
+  /* Increase device memory as required */
+
+  if (ncnew > carry->nc) {
+    if (carry->nc > 0) cudaFree((void *) carry->s);
+    cudaMalloc((void **) &carry->s, ncnew*sizeof(colloid_state_t));
+  }
+
+  /* Copy */
+
+  carry->nc = ncnew;
+  cudaMemcpy(carry->s, tmp, ncnew*sizeof(colloid_state_t),
+             cudaMemcpyHostToDevice);
+  cudaMemcpy(carry_d, carry, sizeof(coll_array_t), cudaMemcpyHostToDevice);
+
+  free(tmp);
+
+  /* Update map */
+
+  nextra = coords_nhalo();
+  coords_kernel_blocks_1d(nextra, &nblocks);
+  colloid_update_map_gpu<<<nblocks, DEFAULT_TPB>>>
+	(nextra, carry_d, colloid_map_d);
+
+  cudaThreadSynchronize();
+  checkCUDAError("COLLOIDS TO GPU");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  coords_kernel_blocks_1d
+ *
+ *****************************************************************************/
+
+__host__
+int coords_kernel_blocks_1d(int nextra, int * nblocks) {
+
+  int nlocal[3];
+  int nh = 2*nextra;
+  int npoints;
+
+  coords_nlocal(nlocal);
+  npoints = (nlocal[X] + nh)*(nlocal[Y] + nh)*(nlocal[Z] + nh);
+
+  *nblocks = (npoints + DEFAULT_TPB - 1) / DEFAULT_TPB;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_update_map_gpu
+ *
+ *****************************************************************************/
+
+__global__
+void colloid_update_map_gpu(int nextra, coll_array_t * cary,
+                            char * __restrict__ map) {
+
+  int threadIndex;
+  int ic, jc, kc, index;   /* Lattice position */
+  int nkthreads;           /* Threads required for this kernel */
+  int n;
+
+  double a2;
+  double rsq;
+  double x, y, z;
+
+  threadIndex = blockIdx.x*blockDim.x + threadIdx.x;
+  coords_nkthreads_gpu(nextra, &nkthreads);
+
+  if (threadIndex >= nkthreads) return;
+
+  coords_from_threadindex_gpu(nextra, threadIndex, &ic, &jc, &kc);
+  coords_index_gpu(ic, jc, kc, &index);
+
+  /* The index is the position in the array; -1 is no colloid */
+
+  map[index] = -1;
+
+  for (n = 0; n < cary->nc; n++) {
+    a2 = cary->s[n].a0*cary->s[n].a0;
+    x = 1.0*(coord.noffset[X] + ic) - cary->s[n].r[X];
+    y = 1.0*(coord.noffset[Y] + jc) - cary->s[n].r[Y];
+    z = 1.0*(coord.noffset[Z] + kc) - cary->s[n].r[Z];
+	/*
+    if (threadIndex == 0) printf("Kernel: %d %f %f %f %f\n", n, cary->s[n].r[X],
+	cary->s[n].r[Y], cary->s[n].r[Z], a2);
+*/
+    /* Minimum distance */
+    if (x > 64.0) x -= 128.0; if (x < -64.0) x += 128.0;
+    if (y > 64.0) y -= 128.0; if (y < -64.0) y += 128.0;
+    if (z > 64.0) z -= 128.0; if (z < -64.0) z += 128.0;
+    rsq = x*x + y*y + z*z;
+    if (rsq < a2) map[index] = n;
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_nkthreads_gpu
+ *
+ *  Number of threads required to execute kernel data parallel across
+ *  lattice sites a function of additional halo points required:
+ *
+ *****************************************************************************/
+
+__device__
+int coords_nkthreads_gpu(int nextra, int * nkthreads) {
+
+  *nkthreads = (coord.nlocal[X] + 2*nextra)
+             * (coord.nlocal[Y] + 2*nextra)
+             * (coord.nlocal[Z] + 2*nextra);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  coords_from_threadindex_gpu
+ *
+ *  Return (ic, jc, kc) as function of threadIndex 0...nkthreads
+ *
+ *  The values returned are offset so that the (ic, jc, kc) are
+ *  the 'true' coordinates in the local domain, i.e., those
+ *  required by a call to coords_index().
+ *
+ *  This depends on the width of the additional halo region at
+ *  which computation takes place in the kernel 'nextra'.
+ *
+ *****************************************************************************/
+
+__device__
+int coords_from_threadindex_gpu(int nextra, int threadindex,
+                                int * ic, int * jc, int * kc) {
+
+  int zs = 1;
+  int ys = zs*(coord.nlocal[Z] + 2*nextra);  /* y stride in kernel extent */
+  int xs = ys*(coord.nlocal[Y] + 2*nextra);  /* x stride in kernel extent */
+
+  *ic = threadindex / xs;
+  *jc = (threadindex - xs*(*ic)) / ys;
+  *kc = threadindex - xs*(*ic) - ys*(*jc);
+
+  /* This leaves us with ic = 0 ... etc; 0 must map to 1 - nhalo */
+
+  *ic += (1 - coord.nhalo);
+  *jc += (1 - coord.nhalo);
+  *kc += (1 - coord.nhalo);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  coords_index_gpu
+ *
+ *  A direct analogy of coords_index(ic, jc, kc) with the ordinates
+ *  in the 'true' local coordinate system.
+ *
+ *****************************************************************************/
+
+__device__
+int coords_index_gpu(int ic, int jc, int kc, int * index) {
+
+  int zs = 1;
+  int ys = zs*(coord.nlocal[Z] + 2*coord.nhalo);
+  int xs = ys*(coord.nlocal[Y] + 2*coord.nhalo);
+
+  *index = xs*(coord.nhalo + ic - 1)
+         + ys*(coord.nhalo + jc - 1)
+         + zs*(coord.nhalo + kc - 1);
+
+  return 0;
+}
+
+#endif

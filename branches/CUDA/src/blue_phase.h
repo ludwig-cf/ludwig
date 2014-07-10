@@ -17,6 +17,10 @@
 
 /* 'Extension' of free energy (pending free_energy_tensor.h) */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "free_energy.h"
 
 void   blue_phase_set_free_energy_parameters(double, double, double, double);
@@ -59,6 +63,10 @@ void blue_phase_redshift_compute(void);
 void blue_phase_q_uniaxial(double amplitude, const double n[3], double q[3][3]);
 
 void blue_phase_set_active_region_gamma_zeta(const int index);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
  

@@ -291,7 +291,7 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef _GPU_
     zero_force_on_gpu();
-    gradient_gpu_init_h();
+    gradient_gpu_init_h(); /* Can this be outside loop? */
 #else
     hydrodynamics_zero_force();
 #endif
@@ -332,11 +332,18 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(PHIHALO);
       
 
-      TIMER_start(PHIGRADCOMP);
+      TIMER_start(TIMER_FREE2);
 
+#ifdef KEVIN_GPU
+      /* colloids_to_gpu(); is called in COLL_update() */
+#else
       put_colloid_map_on_gpu();
       put_colloid_properties_on_gpu();
+#endif
+      TIMER_stop(TIMER_FREE2);
 
+
+      TIMER_start(PHIGRADCOMP);
       phi_gradients_compute_gpu();
       TIMER_stop(PHIGRADCOMP);
 
@@ -410,12 +417,12 @@ void ludwig_run(const char * inputfile) {
 
     //put_site_map_on_gpu();
 
-    int async=0;
+    int async=0; /* KS not correct answer if 1 ?? */
     // get environment variable
-    char* tmpstr;
+    /*    char* tmpstr;
     tmpstr = getenv ("ASYNC");
     if (tmpstr!=NULL)
-      async=atoi(tmpstr);
+    async=atoi(tmpstr);*/
 
 
     if(is_propagation_ode() == 0) {
@@ -459,7 +466,9 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef _GPU_
     TIMER_start(TIMER_HALO_LATTICE);
+
     distribution_halo_gpu();
+
     //collide_bulk_gpu(1);
   /* sync MPI tasks for timing purposes */
   //MPI_Barrier(cart_comm());

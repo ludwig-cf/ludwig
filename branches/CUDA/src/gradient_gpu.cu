@@ -13,14 +13,27 @@
 #include "colloids.h"
 #include "site_map.h"
 #include "gradient_gpu.h"
-#include "gradient_internal_gpu.h"
+#include "utilities_gpu.h"
+#include "utilities_internal_gpu.h"
 #include "util.h"
 
+#include "blue_phase.h"
 #include "colloids_Q_tensor.h"
+
+enum gradent_options_gpu {OPTION_3D_7PT_FLUID,OPTION_3D_7PT_SOLID};
 
 /* scheme in use */
 static char gradient_gpu=-1;
 
+__constant__ double e_cd[3][3][3];
+__constant__ double d_cd[3][3];
+
+extern double * phi_site_d;
+extern double * grad_phi_site_d;
+extern double * delsq_phi_site_d;
+extern char * site_map_status_d;
+extern char * colloid_map_d;
+extern double * colloid_r_d;
 
 #define NQAB 5
 #define NSYMM 6
@@ -61,14 +74,23 @@ __global__ void gradient_fluid_d(const double* __restrict__ field_d,
                                  double * __restrict__ grad_d,
                                  double* __restrict__ del2_d);
 
-
+#ifdef KEVIN_GPU
+extern coll_array_t * carry_d;
+__global__ void gradient_solid_d(const double * __restrict__ field_d,
+                                 double * __restrict__ grad_d,
+		 		 double * __restrict__ del2_d,
+			 	 char * __restrict__ site_map_status_d,
+                                 char * __restrict__ colloid_map_d,
+                                 double * __restrict__ colloid_r_d,
+                                 coll_array_t * __restrict__ carry_d);
+#else
 __global__ void gradient_solid_d(const double * __restrict__ field_d,
                                  double * __restrict__ grad_d,
 		 		 double * __restrict__ del2_d,
 			 	 char * __restrict__ site_map_status_d,
                                  char * __restrict__ colloid_map_d,
                                  double * __restrict__ colloid_r_d);
-
+#endif
 __device__ static int coords_index_gpu_d(int ic, int jc, int kc, int * index);
 __device__ static void coords_from_index_gpu_d(int index,
 	int *ic, int *jc, int *kc);
@@ -77,11 +99,18 @@ __host__ __device__ static void gradient_bcs6x6_coeff_d(double kappa0,
 	                                       double kappa1, const int dn[3],
                                                double bc[6][6][3]);
 
+#ifdef KEVIN_GPU
+__device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
+                                       const int di[3],
+                                       int status, char * colloid_map_d,
+                                       double * colloid_r_d,
+                                       coll_array_t * carry_d, double c[3][3]);
+#else
 __device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
                                        const int di[3],
                                        int status, char * colloid_map_d,
                                        double * colloid_r_d, double c[3][3]);
-
+#endif
 /*****************************************************************************
  *
  *  phi_gradients_compute_gpu
@@ -107,6 +136,16 @@ int phi_gradients_compute_gpu() {
 
 
   }
+#ifdef KEVIN_GPU
+  if (gradient_gpu == OPTION_3D_7PT_SOLID) {
+    gradient_solid_d<<<nblocks,ndefault>>>(phi_site_d,
+                                     	      grad_phi_site_d,
+		 		              delsq_phi_site_d,
+			 	              site_map_status_d,
+                                              colloid_map_d,
+                                              colloid_r_d, carry_d);
+  }
+#else
   if (gradient_gpu == OPTION_3D_7PT_SOLID) {
     gradient_solid_d<<<nblocks,ndefault>>>(phi_site_d,
                                      	      grad_phi_site_d,
@@ -115,7 +154,7 @@ int phi_gradients_compute_gpu() {
                                               colloid_map_d,
                                               colloid_r_d);
   }
-
+#endif
   cudaThreadSynchronize();
   checkCUDAError("gradient_3d_7pt");  
 
@@ -313,14 +352,22 @@ __global__ void gradient_fluid_d(const double* __restrict__ field_d,
  *  elimination followed by explicit control for trace.
  *
  *****************************************************************************/
-
+#ifdef KEVIN_GPU
+__global__ void gradient_solid_d(const double * __restrict__ field_d,
+                                 double * __restrict__ grad_d,
+		 		 double * __restrict__ del2_d,
+			 	 char * __restrict__ site_map_status_d,
+				 char * __restrict__ colloid_map_d,
+                                 double * __restrict__ colloid_r_d,
+                                 coll_array_t * __restrict__ carry_d) {
+#else
 __global__ void gradient_solid_d(const double * __restrict__ field_d,
                                  double * __restrict__ grad_d,
 		 		 double * __restrict__ del2_d,
 			 	 char * __restrict__ site_map_status_d,
 				 char * __restrict__ colloid_map_d,
                                  double * __restrict__ colloid_r_d) {
-
+#endif
   int ic, jc, kc, index;
   int threadIndex;
   int str[3];
@@ -419,10 +466,13 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
     qs[Z][X] = qs[X][Z]; 
     qs[Z][Y] = qs[Y][Z]; 
     qs[Z][Z] = -qs[X][X] - qs[Y][Y];
-
+#ifdef KEVIN_GPU
+    q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[0]], status[normal[0]],
+	colloid_map_d, colloid_r_d, carry_d, c);
+#else
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[0]], status[normal[0]],
 	colloid_map_d, colloid_r_d, c);
-
+#endif
     /* Constant terms all move to RHS (hence -ve sign). Factors
      * of two in off-diagonals agree with matrix coefficients. */
 
@@ -445,10 +495,13 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
   }
 
   if (nunknown > 1) {
-
+#ifdef KEVIN_GPU
+    q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[1]], status[normal[1]],
+	colloid_map_d, colloid_r_d, carry_d, c);
+#else
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[1]], status[normal[1]],
 	colloid_map_d, colloid_r_d, c);
-
+#endif
     b18[1*NSYMM + XX] = -1.0*c[X][X];
     b18[1*NSYMM + XY] = -2.0*c[X][Y];
     b18[1*NSYMM + XZ] = -2.0*c[X][Z];
@@ -465,10 +518,13 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
   }
 
   if (nunknown > 2) {
-
+#ifdef KEVIN_GPU
+    q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[2]], status[normal[2]],
+	colloid_map_d, colloid_r_d, carry_d, c);
+#else
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[2]], status[normal[2]],
 	colloid_map_d, colloid_r_d, c);
-
+#endif
     b18[2*NSYMM + XX] = -1.0*c[X][X];
     b18[2*NSYMM + XY] = -2.0*c[X][Y];
     b18[2*NSYMM + XZ] = -2.0*c[X][Z];
@@ -642,12 +698,18 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
  *  Compute constant terms in boundary condition equation.
  *
  *****************************************************************************/
-
+#ifdef KEVIN_GPU
+__device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
+                                       const int di[3],
+                                       int status, char * colloid_map_d,
+                                       double * colloid_r_d,
+               coll_array_t * carry_d, double c[3][3]) {
+#else
 __device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
                                        const int di[3],
                                        int status, char * colloid_map_d,
                                        double * colloid_r_d, double c[3][3]) {
-
+#endif
   int index;
   int cid;
 
@@ -679,11 +741,16 @@ __device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
     w2 = dev.w2_coll;
     anchor = dev.ntype_coll;
     cid = colloid_map_d[index];
-
+#ifdef KEVIN_GPU
+    if (cid == -1) printf("index: bad %3d %3d %3d %d\n", ic - di[X], jc - di[Y], kc - di[Z], index);
+    dnhat[X] = 1.0*(dev.noffset[X] + ic) - carry_d->s[cid].r[X];
+    dnhat[Y] = 1.0*(dev.noffset[Y] + jc) - carry_d->s[cid].r[Y];
+    dnhat[Z] = 1.0*(dev.noffset[Z] + kc) - carry_d->s[cid].r[Z];
+#else
     dnhat[X] = 1.0*(dev.noffset[X] + ic) - colloid_r_d[3*cid + X];
     dnhat[Y] = 1.0*(dev.noffset[Y] + jc) - colloid_r_d[3*cid + Y];
     dnhat[Z] = 1.0*(dev.noffset[Z] + kc) - colloid_r_d[3*cid + Z];
-
+#endif
     /* unit vector */
     rd = 1.0/sqrt(dnhat[X]*dnhat[X] + dnhat[Y]*dnhat[Y] + dnhat[Z]*dnhat[Z]);
     dnhat[X] *= rd;

@@ -15,6 +15,10 @@
 #ifndef COORDS_H
 #define COORDS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
@@ -50,4 +54,9 @@ void   coords_index_to_ijk(const int index, int coords[3]);
 void coords_active_region_radius_set(const double r);
 double coords_active_region(const int index);
 int coords_nsite_local(int nsite[3]);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
