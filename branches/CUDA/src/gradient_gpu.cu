@@ -80,8 +80,6 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
                                  double * __restrict__ grad_d,
 		 		 double * __restrict__ del2_d,
 			 	 char * __restrict__ site_map_status_d,
-                                 char * __restrict__ colloid_map_d,
-                                 double * __restrict__ colloid_r_d,
                                  coll_array_t * __restrict__ carry_d);
 #else
 __global__ void gradient_solid_d(const double * __restrict__ field_d,
@@ -102,8 +100,7 @@ __host__ __device__ static void gradient_bcs6x6_coeff_d(double kappa0,
 #ifdef KEVIN_GPU
 __device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
                                        const int di[3],
-                                       int status, char * colloid_map_d,
-                                       double * colloid_r_d,
+                                       int status,
                                        coll_array_t * carry_d, double c[3][3]);
 #else
 __device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
@@ -142,8 +139,7 @@ int phi_gradients_compute_gpu() {
                                      	      grad_phi_site_d,
 		 		              delsq_phi_site_d,
 			 	              site_map_status_d,
-                                              colloid_map_d,
-                                              colloid_r_d, carry_d);
+                                              carry_d);
   }
 #else
   if (gradient_gpu == OPTION_3D_7PT_SOLID) {
@@ -357,8 +353,6 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
                                  double * __restrict__ grad_d,
 		 		 double * __restrict__ del2_d,
 			 	 char * __restrict__ site_map_status_d,
-				 char * __restrict__ colloid_map_d,
-                                 double * __restrict__ colloid_r_d,
                                  coll_array_t * __restrict__ carry_d) {
 #else
 __global__ void gradient_solid_d(const double * __restrict__ field_d,
@@ -468,7 +462,7 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
     qs[Z][Z] = -qs[X][X] - qs[Y][Y];
 #ifdef KEVIN_GPU
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[0]], status[normal[0]],
-	colloid_map_d, colloid_r_d, carry_d, c);
+	                   carry_d, c);
 #else
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[0]], status[normal[0]],
 	colloid_map_d, colloid_r_d, c);
@@ -497,7 +491,7 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
   if (nunknown > 1) {
 #ifdef KEVIN_GPU
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[1]], status[normal[1]],
-	colloid_map_d, colloid_r_d, carry_d, c);
+	                   carry_d, c);
 #else
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[1]], status[normal[1]],
 	colloid_map_d, colloid_r_d, c);
@@ -520,7 +514,7 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
   if (nunknown > 2) {
 #ifdef KEVIN_GPU
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[2]], status[normal[2]],
-	colloid_map_d, colloid_r_d, carry_d, c);
+			   carry_d, c);
 #else
     q_boundary_constants_d(ic, jc, kc, qs, bcs[normal[2]], status[normal[2]],
 	colloid_map_d, colloid_r_d, c);
@@ -701,8 +695,7 @@ __global__ void gradient_solid_d(const double * __restrict__ field_d,
 #ifdef KEVIN_GPU
 __device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
                                        const int di[3],
-                                       int status, char * colloid_map_d,
-                                       double * colloid_r_d,
+                                       int status,
                coll_array_t * carry_d, double c[3][3]) {
 #else
 __device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
@@ -740,13 +733,14 @@ __device__ void q_boundary_constants_d(int ic, int jc, int kc, double qs[3][3],
     w1 = dev.w1_coll;
     w2 = dev.w2_coll;
     anchor = dev.ntype_coll;
-    cid = colloid_map_d[index];
 #ifdef KEVIN_GPU
+    cid = carry_d->mapd[index];
     if (cid == -1) printf("index: bad %3d %3d %3d %d\n", ic - di[X], jc - di[Y], kc - di[Z], index);
     dnhat[X] = 1.0*(dev.noffset[X] + ic) - carry_d->s[cid].r[X];
     dnhat[Y] = 1.0*(dev.noffset[Y] + jc) - carry_d->s[cid].r[Y];
     dnhat[Z] = 1.0*(dev.noffset[Z] + kc) - carry_d->s[cid].r[Z];
 #else
+    cid = colloid_map_d[index];
     dnhat[X] = 1.0*(dev.noffset[X] + ic) - colloid_r_d[3*cid + X];
     dnhat[Y] = 1.0*(dev.noffset[Y] + jc) - colloid_r_d[3*cid + Y];
     dnhat[Z] = 1.0*(dev.noffset[Z] + kc) - colloid_r_d[3*cid + Z];

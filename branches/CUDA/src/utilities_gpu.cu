@@ -538,7 +538,8 @@ typedef struct coords_s coords_t;
 struct coords_s {
   int nhalo;
   int nlocal[3];
-  int noffset[3];
+  int noffset[3];  /* Local offset */
+  double sl[3];    /* System length */
 };
 
 __constant__ coords_t coord;
@@ -548,6 +549,7 @@ __device__ int coords_nkthreads_gpu(int nextra, int * nkthreads);
 __device__ int coords_from_threadindex_gpu(int nextra, int threadindex,
                                            int * ic, int * jc, int * kc);
 __device__ int coords_index_gpu(int ic, int jc, int kc, int * index);
+__device__ int coords_minimum_distance_gpu(double r[3]);
 
 static coll_array_t * carry;
 coll_array_t * carry_d;
@@ -563,6 +565,7 @@ __global__ void colloid_update_map_gpu(int nextra, coll_array_t * carry_d,
 
 int utilities_init_extra(void) {
 
+  int nsites;
   coords_t host;
 
   /* coords */
@@ -570,6 +573,7 @@ int utilities_init_extra(void) {
   host.nhalo = coords_nhalo();
   coords_nlocal(host.nlocal);
   coords_nlocal_offset(host.noffset);
+  host.sl[X] = L(X); host.sl[Y] = L(Y); host.sl[Z] = L(Z);
 
   cudaMemcpyToSymbol(coord, &host, sizeof(coords_t), 0,
                      cudaMemcpyHostToDevice);
@@ -578,6 +582,11 @@ int utilities_init_extra(void) {
 
   carry = (coll_array_t *) calloc(1, sizeof(coll_array_t));
   cudaMalloc((void **) &carry_d, sizeof(coll_array_t));
+
+  /* Allocate device memory for map */
+
+  nsites = coords_nsites();
+  cudaMalloc((void **) &carry->mapd, nsites*sizeof(int));
 
   return 0;
 }
@@ -697,7 +706,7 @@ void colloid_update_map_gpu(int nextra, coll_array_t * cary,
 
   double a2;
   double rsq;
-  double x, y, z;
+  double r[3];
 
   threadIndex = blockIdx.x*blockDim.x + threadIdx.x;
   coords_nkthreads_gpu(nextra, &nkthreads);
@@ -710,25 +719,42 @@ void colloid_update_map_gpu(int nextra, coll_array_t * cary,
   /* The index is the position in the array; -1 is no colloid */
 
   map[index] = -1;
+  cary->mapd[index] = -1;
 
   for (n = 0; n < cary->nc; n++) {
     a2 = cary->s[n].a0*cary->s[n].a0;
-    x = 1.0*(coord.noffset[X] + ic) - cary->s[n].r[X];
-    y = 1.0*(coord.noffset[Y] + jc) - cary->s[n].r[Y];
-    z = 1.0*(coord.noffset[Z] + kc) - cary->s[n].r[Z];
-	/*
-    if (threadIndex == 0) printf("Kernel: %d %f %f %f %f\n", n, cary->s[n].r[X],
-	cary->s[n].r[Y], cary->s[n].r[Z], a2);
-*/
-    /* Minimum distance */
-    if (x > 64.0) x -= 128.0; if (x < -64.0) x += 128.0;
-    if (y > 64.0) y -= 128.0; if (y < -64.0) y += 128.0;
-    if (z > 64.0) z -= 128.0; if (z < -64.0) z += 128.0;
-    rsq = x*x + y*y + z*z;
-    if (rsq < a2) map[index] = n;
+    r[X] = 1.0*(coord.noffset[X] + ic) - cary->s[n].r[X];
+    r[Y] = 1.0*(coord.noffset[Y] + jc) - cary->s[n].r[Y];
+    r[Z] = 1.0*(coord.noffset[Z] + kc) - cary->s[n].r[Z];
+
+    coords_minimum_distance_gpu(r);
+    rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
+    if (rsq < a2) {
+      map[index] = n;
+      cary->mapd[index] = n;
+    }
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_minimum_distance_gpu
+ *
+ *****************************************************************************/
+
+__device__
+int coords_minimum_distance_gpu(double r[3]) {
+
+  if (r[X] >  0.5*coord.sl[X]) r[X] -= coord.sl[X];
+  if (r[X] < -0.5*coord.sl[X]) r[X] += coord.sl[X];
+  if (r[Y] >  0.5*coord.sl[Y]) r[Y] -= coord.sl[Y];
+  if (r[Y] < -0.5*coord.sl[Y]) r[Y] += coord.sl[Y];
+  if (r[Z] >  0.5*coord.sl[Z]) r[Z] -= coord.sl[Z];
+  if (r[Z] < -0.5*coord.sl[Z]) r[Z] += coord.sl[Z];
+
+  return 0;
 }
 
 /*****************************************************************************
