@@ -439,7 +439,18 @@ void ludwig_run(const char * inputfile) {
      * gradients for phi) */
 
     if (ludwig->psi) {
+    /* Set charge distribution according to updated map */     
       psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
+
+    /* Poisson solve */
+    TIMER_start(TIMER_ELECTRO_POISSON);
+#ifdef PETSC
+    psi_petsc_solve(ludwig->psi, ludwig->epsilon);
+#else
+    psi_sor_solve(ludwig->psi, ludwig->epsilon);
+#endif
+    TIMER_stop(TIMER_ELECTRO_POISSON);
+
 
       if (ludwig->hydro) {
 	TIMER_start(TIMER_HALO_LATTICE);
@@ -465,6 +476,7 @@ void ludwig_run(const char * inputfile) {
 	 * method. Once per large time step with dt = 1.0. */
 
 	if (im == 0) {
+
 	  TIMER_start(TIMER_FORCE_CALCULATION);
 
 	  if (coords_nhalo() == 1) {
@@ -502,13 +514,6 @@ void ludwig_run(const char * inputfile) {
 	nernst_planck_d3q19_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
 #endif
-	TIMER_start(TIMER_ELECTRO_POISSON);
-#ifdef PETSC
-	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
-#else
-	psi_sor_solve(ludwig->psi, ludwig->epsilon);
-#endif
-	TIMER_stop(TIMER_ELECTRO_POISSON);
 
 #ifndef OLIVER_NP
 	TIMER_start(TIMER_ELECTRO_NPEQ);
@@ -520,6 +525,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef OLIVER_NP
       nernst_planck_adjust_multistep(ludwig->psi);
 #endif
+      psi_sor_offset(ludwig->psi);
     }
 
     /* order parameter dynamics (not if symmetric_lb) */

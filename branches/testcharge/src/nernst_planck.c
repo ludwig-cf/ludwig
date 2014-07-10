@@ -370,7 +370,6 @@ static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t * map) {
 
   int ic, jc, kc; 
   int index0, index1;
-  int status0, status1;
   int nlocal[3];
   int n, nk; /* Number of charged species */
   int c;
@@ -420,12 +419,10 @@ static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t * map) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = coords_index(ic, jc, kc);
-        map_status(map, index0, &status0);
 
         for (c = 1; c < NVEL; c++) {
 
 	  index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
-	  map_status(map, index1, &status1);
 
 	  for (n = 0; n < nk; n++) {
 
