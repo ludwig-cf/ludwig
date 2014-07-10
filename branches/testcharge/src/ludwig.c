@@ -525,7 +525,6 @@ void ludwig_run(const char * inputfile) {
 #ifdef OLIVER_NP
       nernst_planck_adjust_multistep(ludwig->psi);
 #endif
-      psi_sor_offset(ludwig->psi);
     }
 
     /* order parameter dynamics (not if symmetric_lb) */
