@@ -29,12 +29,17 @@ int get_linear_index(int ii,int jj,int kk,int N[3]);
 /* KEVIN */
 
 int colloids_to_gpu(void);
+int colloids_gpu_force_reduction(void);
 
 typedef struct coll_array_s coll_array_t;
 
 struct coll_array_s {
   int nc;                        /* Current number of local colloids */
+  int ncmax;                     /* High water mark */
+  int nblock[3];                 /* No. thread blocks */
+  int * mapd;                    /* Site -> colloid index map */
   colloid_state_t * s;           /* Array of states */
+  double * fblockd;              /* Reduction data for force on colloids. */
 };
 
 

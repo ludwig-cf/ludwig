@@ -332,15 +332,12 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(PHIHALO);
       
 
-      TIMER_start(TIMER_FREE2);
-
 #ifdef KEVIN_GPU
       /* colloids_to_gpu(); is called in COLL_update() */
 #else
       put_colloid_map_on_gpu();
       put_colloid_properties_on_gpu();
 #endif
-      TIMER_stop(TIMER_FREE2);
 
 
       TIMER_start(PHIGRADCOMP);
@@ -379,9 +376,17 @@ void ludwig_run(const char * inputfile) {
 	  phi_force_calculation_gpu();
 	}
 	else {
+
+
+#ifdef KEVIN_GPU1
+          phi_force_colloid_gpu();
+	  colloids_gpu_force_reduction();
+#else
 	  zero_colloid_force_on_gpu();
 	  phi_force_colloid_gpu();
 	  update_colloid_force_from_gpu();
+#endif
+
 	}
 #else
 	
@@ -393,7 +398,7 @@ void ludwig_run(const char * inputfile) {
 	}
 	
 #endif
-	
+
   /* sync MPI tasks for timing purposes */
   //MPI_Barrier(cart_comm());
 

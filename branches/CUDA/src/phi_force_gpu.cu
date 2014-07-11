@@ -28,9 +28,9 @@
 #include "wall.h"
 #include "phi_force_stress.h"
 #include "colloids_Q_tensor.h"
-// FROM util.c
+
 #include "util.h"
-//static const double r3_ = (1.0/3.0);
+
 
 
 dim3 nblocks, threadsperblock;
@@ -195,9 +195,17 @@ void phi_force_colloid_gpu(void) {
   nblocks.z=(N[X]+DEFAULT_TPB_X-1)/DEFAULT_TPB_X;
 
   cudaFuncSetCacheConfig(phi_force_colloid_gpu_d,cudaFuncCachePreferL1);      
+
+#ifdef KEVIN_GPU1
+  phi_force_colloid_gpu_d<<<nblocks,threadsperblock>>>(
+	site_map_status_d,
+	stress_site_d,
+	force_d,
+        carry_d);
+#else
   phi_force_colloid_gpu_d<<<nblocks,threadsperblock>>>
     (le_index_real_to_buffer_d,site_map_status_d,phi_site_d,phi_site_full_d,grad_phi_site_d,delsq_phi_site_d,h_site_d,stress_site_d,force_d,colloid_force_d);
-      
+#endif
   cudaThreadSynchronize();
   checkCUDAError("phi_force_colloid_gpu_d");
 
@@ -686,6 +694,176 @@ __global__ void phi_force_calculation_fluid_gpu_d(const int* __restrict__ le_ind
 }
 
 
+#ifdef KEVIN_GPU1
+__global__
+void phi_force_colloid_gpu_d(const char * __restrict__ site_map_status_d,
+			     const double* __restrict__ stress_site_d,
+			     double* __restrict__ force_d,
+			     coll_array_t * __restrict__ cinfo_d) {
+
+  int ia, ib;
+  int index, index1;
+  int ii, jj, kk;
+  double pth0[3][3];
+  double pth1;
+  double force[3];
+  double flux;
+  double w0, w1; /* weight */
+
+  /* shared memory reduction for colloid force. */
+
+  int tid;
+  __shared__ double fx[DEFAULT_TPB];
+  __shared__ double fy[DEFAULT_TPB];
+  __shared__ double fz[DEFAULT_TPB];
+
+
+  kk = blockIdx.x*blockDim.x + threadIdx.x;
+  jj = blockIdx.y*blockDim.y + threadIdx.y;
+  ii = blockIdx.z*blockDim.z + threadIdx.z;
+
+  /* Initialise all shared memory before any possible return;
+     tid is 1-d thread index in block. */
+
+  tid = threadIdx.x*blockDim.z*blockDim.y + threadIdx.y*blockDim.z
+      + threadIdx.z;
+
+  fx[tid] = 0.0; fy[tid] = 0.0; fz[tid] = 0.0;
+
+  /* Avoid going beyond problem domain */
+
+  if (ii >= N_cd[X] || jj >= N_cd[Y] || kk >= N_cd[Z]) return;
+
+  force[X] = 0.0; force[Y] = 0.0; force[Z] = 0.0;
+
+  /* Central point */
+
+  index = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+
+  w0 = 1.0;
+  if (site_map_status_d[index] == COLLOID) w0 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      pth0[ia][ib] = stress_site_d[3*nsites_cd*ia+nsites_cd*ib+index];
+    }
+  }
+
+  /* Compute differences */
+
+  /* ic + 1 */
+  index1 = get_linear_index_gpu_d(ii+nhalo_cd+1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+
+  w1 = 1.0;
+  if (site_map_status_d[index1] == COLLOID) w1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    pth1 = stress_site_d[3*nsites_cd*ia+nsites_cd*X+index1];
+    flux = 0.5*(2.0 - w1)*(w0*pth0[ia][X] + w1*pth1);
+    force[ia] -= flux;
+  }
+
+  /* ic - 1 */
+  index1 = get_linear_index_gpu_d(ii+nhalo_cd-1,jj+nhalo_cd,kk+nhalo_cd,Nall_cd);
+
+  w1 = 1.0;
+  if (site_map_status_d[index1] == COLLOID) w1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    pth1 = stress_site_d[3*nsites_cd*ia+nsites_cd*X+index1];
+    flux = 0.5*(2.0 - w1)*(w0*pth0[ia][X] + w1*pth1);
+    force[ia] += flux; 
+  }
+
+  /* jc + 1 */
+  index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd+1,kk+nhalo_cd,Nall_cd);
+
+  w1 = 1.0;
+  if (site_map_status_d[index1] == COLLOID) w1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    pth1 = stress_site_d[3*nsites_cd*ia+nsites_cd*Y+index1];
+    flux = 0.5*(2.0 - w1)*(w0*pth0[ia][Y] + w1*pth1);
+    force[ia] -= flux;
+  }
+
+  /* jc - 1 */
+  index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd-1,kk+nhalo_cd,Nall_cd);
+
+  w1 = 1.0;
+  if (site_map_status_d[index1] == COLLOID) w1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    pth1 = stress_site_d[3*nsites_cd*ia+nsites_cd*Y+index1];
+    flux = 0.5*(2.0 - w1)*(w0*pth0[ia][Y] + w1*pth1);
+    force[ia] += flux;
+  }
+
+  /* kc + 1 */
+  index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd+1,Nall_cd);
+
+  w1 = 1.0;
+  if (site_map_status_d[index1] == COLLOID) w1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    pth1 = stress_site_d[3*nsites_cd*ia+nsites_cd*Z+index1];
+    flux = 0.5*(2.0 - w1)*(w0*pth0[ia][Z] + w1*pth1);
+    force[ia] -= flux;
+  }
+
+  /* kc - 1 */
+  index1 = get_linear_index_gpu_d(ii+nhalo_cd,jj+nhalo_cd,kk+nhalo_cd-1,Nall_cd);
+
+  w1 = 1.0;
+  if (site_map_status_d[index1] == COLLOID) w1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    pth1 = stress_site_d[3*nsites_cd*ia+nsites_cd*Z+index1];
+    flux = 0.5*(2.0 - w1)*(w0*pth0[ia][Z] + w1*pth1);
+    force[ia] += flux;
+  }
+
+  /* Store the force on lattice */
+  for (ia = 0; ia < 3; ia++) {
+    force_d[ia*nsites_cd + index] += force[ia];
+  }
+
+  /* Per block reduction (factor of 2 is because the above logic
+   * is a factor of two out if this is a solid site) */
+
+  fx[tid] = 2.0*(1.0 - w0)*force[X];
+  fy[tid] = 2.0*(1.0 - w0)*force[Y];
+  fz[tid] = 2.0*(1.0 - w0)*force[Z];
+
+  for (ia = DEFAULT_TPB/2; ia > 0; ia /= 2) {
+    __syncthreads();
+    if (tid < ia) {
+      fx[tid] += fx[tid + ia];
+      fy[tid] += fy[tid + ia];
+      fz[tid] += fz[tid + ia];
+    }
+  }
+
+  /* store result for blockidx on thread 0. ONE COLLOID */
+
+  ia = blockIdx.x*cinfo_d->nblock[Z]*cinfo_d->nblock[Y]
+     + blockIdx.y*cinfo_d->nblock[Z] + blockIdx.z;
+  ib = cinfo_d->nblock[X]*cinfo_d->nblock[Y]*cinfo_d->nblock[Z];
+
+  if (tid == 0) {
+    cinfo_d->fblockd[X*ib + ia] = fx[0];
+    cinfo_d->fblockd[Y*ib + ia] = fy[0];
+    cinfo_d->fblockd[Z*ib + ia] = fz[0];
+  }
+
+  return;
+}
+
+
+#else
+
+/* ALAN'S VERSION
+
 __global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					const char * __restrict__ site_map_status_d,
 					const double* __restrict__ phi_site_d,
@@ -888,7 +1066,7 @@ __global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_t
   
   return;
 }
-
+#endif
 
 __device__ void blue_phase_compute_q2_eq_site_gpu_d( const double* __restrict__ phi_site_d,
 						 const double* __restrict__ phi_site_full_d,
@@ -1329,12 +1507,8 @@ __global__ void blue_phase_be_update_edge_gpu_d(const int * __restrict__ le_inde
 					   const int dirn
 					   ){
 
-  int icm1, icp1;
-  int index, indexm1, indexp1;
   int ii, jj, kk;
-
   int Nedge[3];
-  int edgeoffset; 
 
   if (dirn == X){
     Nedge[X]=nhalo_cd;
@@ -1551,12 +1725,6 @@ __global__ void blue_phase_compute_q2_eq_all_gpu_d( const double* __restrict__ p
 						 double* __restrict__ q2_site_d,
 						    double* __restrict__ eq_site_d){
 
-  int ia, ib, ic;
-  int index;
-  double q[3][3];
-  double dq[3][3][3];
-  double dsq[3][3];
-
   int ii, jj, kk;
  
  /* CUDA thread index */
@@ -1582,13 +1750,6 @@ __global__ void blue_phase_compute_h_all_gpu_d(  const double* __restrict__ phi_
 						 const double* __restrict__ q2_site_d,
 						 const double* __restrict__ eq_site_d
 						 ){
-
-  int ia, ib, ic, id;
-  int index;
-  double q[3][3];
-  double dq[3][3][3];
-  double dsq[3][3];
-  double htmp;
 
   int ii, jj, kk;
  

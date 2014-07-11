@@ -545,6 +545,7 @@ struct coords_s {
 __constant__ coords_t coord;
 
 __host__   int coords_kernel_blocks_1d(int nextra, int * nblocks);
+__host__   int coords_kernel_blocks_3d(int nextra, int * nblocks);
 __device__ int coords_nkthreads_gpu(int nextra, int * nkthreads);
 __device__ int coords_from_threadindex_gpu(int nextra, int threadindex,
                                            int * ic, int * jc, int * kc);
@@ -581,6 +582,8 @@ int utilities_init_extra(void) {
   /* colloid */
 
   carry = (coll_array_t *) calloc(1, sizeof(coll_array_t));
+  coords_kernel_blocks_3d(0, carry->nblock);
+
   cudaMalloc((void **) &carry_d, sizeof(coll_array_t));
 
   /* Allocate device memory for map */
@@ -639,11 +642,16 @@ int colloids_to_gpu(void) {
     }
   }
 
-  /* Increase device memory as required */
+  /* Increase device memory as required (colloids, and force
+   * block reduction) */
 
   if (ncnew > carry->nc) {
     if (carry->nc > 0) cudaFree((void *) carry->s);
     cudaMalloc((void **) &carry->s, ncnew*sizeof(colloid_state_t));
+
+    nblocks = carry->nblock[X]*carry->nblock[Y]*carry->nblock[Z];
+    if (carry->nc > 0) cudaFree((void *) carry->fblockd);
+    cudaMalloc((void **) &carry->fblockd, 3*ncnew*nblocks*sizeof(double));
   }
 
   /* Copy */
@@ -670,6 +678,71 @@ int colloids_to_gpu(void) {
 
 /*****************************************************************************
  *
+ *  colloids_gpu_force_reduction
+ *
+ *****************************************************************************/
+
+__host__
+int colloids_gpu_force_reduction(void) {
+
+  int nc;
+  int n, nblocks;
+  int ic, jc, kc, idc, jdc, kdc;
+  double f1[3];
+  double * ftmp = NULL;
+  colloid_t * pc = NULL;
+
+  nc = carry->nc;
+  nblocks = carry->nblock[X]*carry->nblock[Y]*carry->nblock[Z];
+
+  ftmp = (double *) calloc(3*nc*nblocks, sizeof(double));
+  if (ftmp == NULL) printf("calloc(ftmp) failed\n");
+
+  cudaMemcpy(ftmp, carry->fblockd, 3*nc*nblocks*sizeof(double),
+             cudaMemcpyDeviceToHost);
+
+  f1[X] = 0.0; f1[Y] = 0.0; f1[Z] = 0.0;
+
+  for (n = 0; n < nblocks; n++) {
+    f1[X] += ftmp[X*nblocks + n];
+    f1[Y] += ftmp[Y*nblocks + n];
+    f1[Z] += ftmp[Z*nblocks + n];
+  }
+
+ /* printf("FORCE REDUCTION %14.7e %14.7e %14.7e\n", f1[X], f1[Y], f1[Z]);*/
+
+
+  /* List */
+
+  idc = 1 - (cart_size(X) == 1);
+  jdc = 1 - (cart_size(Y) == 1);
+  kdc = 1 - (cart_size(Z) == 1);
+
+  for (ic = 1 - idc; ic <= Ncell(X) + idc; ic++) {
+    for (jc = 1 - jdc; jc <= Ncell(Y) + jdc; jc++) {
+      for (kc = 1 - kdc; kc <= Ncell(Z) + kdc; kc++) {
+
+         pc = colloids_cell_list(ic, jc, kc);
+         for ( ; pc; pc = pc->next) {
+           pc->force[X] = f1[X];
+           pc->force[Y] = f1[Y];
+           pc->force[Z] = f1[Z];
+
+ /* printf("ALAN            %14.7e %14.7e %14.7e\n", pc->force[X], pc->force[Y], pc->force[Z]);*/
+
+         }
+      }
+    }
+  }
+
+
+  free(ftmp);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  coords_kernel_blocks_1d
  *
  *****************************************************************************/
@@ -685,6 +758,30 @@ int coords_kernel_blocks_1d(int nextra, int * nblocks) {
   npoints = (nlocal[X] + nh)*(nlocal[Y] + nh)*(nlocal[Z] + nh);
 
   *nblocks = (npoints + DEFAULT_TPB - 1) / DEFAULT_TPB;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  coords_kernel_blocks_3d
+ *
+ *****************************************************************************/
+
+__host__
+int coords_kernel_blocks_3d(int nextra, int * nblocks) {
+
+  int nlocal[3];
+  int nh = 2*nextra;
+
+  coords_nlocal(nlocal);
+
+ /* ALERT! This 'transpose' matches that in phi_force_gpu.cu,
+  * the reason for which Alan may know. */
+
+  nblocks[X] = (nlocal[Z] + nh + DEFAULT_TPB_Z - 1) / DEFAULT_TPB_Z;
+  nblocks[Y] = (nlocal[Y] + nh + DEFAULT_TPB_Y - 1) / DEFAULT_TPB_Y;
+  nblocks[Z] = (nlocal[X] + nh + DEFAULT_TPB_X - 1) / DEFAULT_TPB_X;
 
   return 0;
 }

@@ -81,6 +81,16 @@ __global__ void phi_force_calculation_fluid_gpu_d(const int* __restrict__ le_ind
 						  const double* __restrict__ stress_site_d,
 						  double* __restrict__ force_d);
 
+#ifdef KEVIN_GPU1
+#include "utilities_gpu.h"
+extern coll_array_t * carry_d;
+
+__global__
+void phi_force_colloid_gpu_d(const char * __restrict__ site_map_status_d,
+			     const double * __restrict__ stress_site_d,
+			     double * __restrict__ force_d,
+			     coll_array_t * __restrict__ cinfo_d);
+#else
 __global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					const char * __restrict__ site_map_status_d,
 					const double* __restrict__ phi_site_d,
@@ -91,7 +101,7 @@ __global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_t
 					const double* __restrict__ stress_site_d,
 					double* __restrict__ force_d,
 					double* __restrict__ colloid_force_d);
-
+#endif
 
 __global__ void blue_phase_be_update_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					   double* __restrict__ phi_site_d,
