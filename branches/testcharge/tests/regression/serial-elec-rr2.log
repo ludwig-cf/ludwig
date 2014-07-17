@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.2 (Serial version running on 1 process)
+Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
 
-The SVN revision details are: 2365M
+The SVN revision details are: 2399M
 Note assertions via standard C assert() are on.
 
-Read 39 user parameters from ./serial-elec-rr2.inp
+Read 38 user parameters from ./serial-elec-rr2.inp
 
 System details
 --------------
@@ -86,9 +86,11 @@ Colloid information
 
 Colloid I/O settings
 --------------------
-Decomposition:   1  1  1
-Input format:       ascii serial
-Output format:      ascii
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
 
 Requested one colloid via input:
 colloid_one                   default
@@ -116,7 +118,7 @@ Arranging initial charge neutrality.
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]       32715.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[rho]       32715.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 [psi]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [rho]  3.2725000e+01  1.8867925e-04  1.0000000e-03
 [rho]  3.2725000e+01  0.0000000e+00  1.0003057e-03
@@ -139,7 +141,7 @@ SOR solver
 Norm of residual 1.50314e-09 at 105 iterations
 
 Scalars - total mean variance min max
-[rho]       32715.00  1.00000000000 1.9422049e-08  0.99561998273 1.00525602072
+[rho]       32715.00  1.00000000000  1.9422049e-08  0.99561998273  1.00525602072
 [psi]  3.3406425e-08 -6.0174176e-09  1.3556519e-07
 [rho]  3.2725000e+01  1.8867925e-04  1.0000001e-03
 [rho]  3.2725000e+01  0.0000000e+00  1.0003646e-03
@@ -150,43 +152,43 @@ Free energies - timestep f v f/v f_s a f_s/a
 [fe]              1 -5.1747350386e-03  3.2715000000e+04 -1.5817622004e-07  0.0000000000e+00
 
 Momentum - x y z
-[total   ] -2.6364490e-16 -2.2692476e-13  5.0965010e-01
-[fluid   ] -3.1918912e-16 -2.2682550e-13  2.4177695e-01
-[colloids]  5.5544217e-17 -9.9252673e-17  2.6787315e-01
+[total   ]  4.3514363e-13  5.6464705e-16  5.0965010e-01
+[fluid   ]  4.3444415e-13  5.6551985e-16  2.4177695e-01
+[colloids]  6.9947927e-16 -8.7279976e-19  2.6787315e-01
 
 Velocity - x y z
-[minimum ]  1.3877788e-17  0.0000000e+00  0.0000000e+00
-[maximum ]  1.3877788e-17  1.1754944e-38  1.1754944e-38
+[minimum ] -4.5293448e-15 -4.5432226e-15 -5.0547465e-15
+[maximum ]  4.5571004e-15  4.5432226e-15  4.6200616e-15
 
 Completed cycle 1
 
 Particle statistics:
 
 Colloid velocities - x y z
-[minimum ]  1.0898500e-18 -1.9474669e-18  5.2560207e-03
-[maximum ]  1.0898500e-18 -1.9474669e-18  5.2560207e-03
+[minimum ]  1.3724696e-17 -1.7125470e-20  5.2560207e-03
+[maximum ]  1.3724696e-17 -1.7125470e-20  5.2560207e-03
 
 SOR solver
 Norm of residual 4.97238e-10 at 95 iterations
 
 Scalars - total mean variance min max
-[rho]       32716.00  1.00000000000 3.1603348e-08  0.99563728266 1.00516207987
+[rho]       32716.00  1.00000000000  3.1603349e-08  0.99563728266  1.00516207987
 [psi]  3.8958957e-08 -6.0137926e-09  1.3603548e-07
 [rho]  3.2725000e+01  1.9230769e-04  1.0000002e-03
-[rho]  3.2725000e+01  0.0000000e+00  1.0003058e-03
-[elc]  2.5966642e-15 -5.2686841e-07  1.9230769e-04
+[rho]  3.2725000e+01  2.1697075e-20  1.0003058e-03
+[elc]  2.6116262e-15 -5.2686841e-07  1.9230769e-04
 [psi_zeta]  8.4047552e-08
 
 Free energies - timestep f v f/v f_s a f_s/a
 [fe]              2 -5.1747548773e-03  3.2716000000e+04 -1.5817199160e-07  0.0000000000e+00
 
 Momentum - x y z
-[total   ]  1.5572342e-14 -2.1013470e-13  5.0965010e-01
-[fluid   ]  1.4845764e-14 -2.0999869e-13  2.8404307e-01
-[colloids]  7.2657855e-16 -1.3601465e-16  2.2560704e-01
+[total   ]  4.3920646e-13 -3.9912179e-15  5.0965010e-01
+[fluid   ]  4.3806278e-13 -3.7643499e-15  2.8404307e-01
+[colloids]  1.1436840e-15 -2.2686798e-16  2.2560704e-01
 
 Velocity - x y z
-[minimum ] -8.7985724e-04 -8.7985724e-04 -2.9859306e-15
+[minimum ] -8.7985724e-04 -8.7985724e-04 -8.6805512e-15
 [maximum ]  8.7985724e-04  8.7985724e-04  5.2285394e-03
 
 Completed cycle 2
@@ -195,19 +197,19 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.317      0.317      0.317   0.317166 (1 call)
-      Time step loop:      0.129      0.138      0.267   0.133414 (2 calls)
-         Propagation:      0.002      0.002      0.003   0.001618 (2 calls)
-           Collision:      0.027      0.027      0.053   0.026732 (2 calls)
-       Lattice halos:      0.000      0.001      0.003   0.000393 (8 calls)
+               Total:      0.331      0.331      0.331   0.331081 (1 call)
+      Time step loop:      0.135      0.147      0.281   0.140581 (2 calls)
+         Propagation:      0.002      0.002      0.004   0.001810 (2 calls)
+           Collision:      0.032      0.032      0.064   0.032139 (2 calls)
+       Lattice halos:      0.000      0.001      0.003   0.000390 (8 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (2 calls)
-              Forces:      0.000      0.000      0.000   0.000049 (2 calls)
-             Rebuild:      0.001      0.001      0.002   0.001164 (2 calls)
-                 BBL:      0.001      0.001      0.001   0.000740 (2 calls)
-      Particle halos:      0.000      0.000      0.000   0.000088 (2 calls)
-   Force calculation:      0.000      0.002      0.004   0.001081 (4 calls)
-          phi update:      0.000      0.000      0.000   0.000000 (2 calls)
-    Poisson equation:      0.082      0.091      0.173   0.086425 (2 calls)
-       Nernst Planck:      0.011      0.012      0.023   0.011653 (2 calls)
-               Free1:      0.000      0.000      0.001   0.000178 (4 calls)
+              Forces:      0.000      0.000      0.000   0.000046 (2 calls)
+             Rebuild:      0.001      0.001      0.003   0.001264 (2 calls)
+                 BBL:      0.001      0.001      0.001   0.000645 (2 calls)
+      Particle halos:      0.000      0.000      0.000   0.000069 (2 calls)
+   Force calculation:      0.000      0.002      0.004   0.001055 (4 calls)
+          phi update:      0.000      0.000      0.000   0.000001 (2 calls)
+    Poisson equation:      0.083      0.093      0.176   0.087891 (2 calls)
+       Nernst Planck:      0.011      0.012      0.024   0.011753 (2 calls)
+               Free1:      0.000      0.000      0.001   0.000218 (4 calls)
 Ludwig finished normally.

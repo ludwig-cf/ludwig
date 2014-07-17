@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.2 (Serial version running on 1 process)
+Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
 
-The SVN revision details are: 2365M
+The SVN revision details are: 2399M
 Note assertions via standard C assert() are on.
 
-Read 27 user parameters from ./serial-ewld-s01.inp
+Read 26 user parameters from ./serial-ewld-s01.inp
 
 No free energy selected
 
@@ -56,9 +56,11 @@ Colloid information
 
 Colloid I/O settings
 --------------------
-Decomposition:   1  1  1
-Input format:       ascii serial
-Output format:      ascii
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
 
 colloid_random_a0             2.3000000e+00
 colloid_random_ah             2.3000000e+00
@@ -99,7 +101,7 @@ Total terms kept in Fourier space sum:    1152
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]      261128.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[rho]      261128.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 
 Momentum - x y z
 [total   ]  3.6238790e-12  0.0000000e+00  0.0000000e+00
@@ -117,7 +119,7 @@ Colloid velocities - x y z
 [maximum ]  2.1840808e-17 -1.2082261e-19  2.1003666e-17
 
 Scalars - total mean variance min max
-[rho]      261128.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[rho]      261128.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 
 Momentum - x y z
 [total   ] -1.7016464e-15 -1.8174504e-12  2.4727209e-15
@@ -134,20 +136,20 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.708      2.708      2.708   2.707654 (1 call)
-      Time step loop:      0.251      0.259      2.523   0.252323 (10 calls)
-         Propagation:      0.017      0.018      0.175   0.017513 (10 calls)
-           Collision:      0.214      0.217      2.146   0.214611 (10 calls)
-       Lattice halos:      0.001      0.002      0.029   0.001473 (20 calls)
-       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
-              Forces:      0.002      0.002      0.021   0.002053 (10 calls)
-             Rebuild:      0.008      0.009      0.079   0.007860 (10 calls)
-                 BBL:      0.005      0.005      0.047   0.004731 (10 calls)
-      Particle halos:      0.000      0.000      0.001   0.000142 (10 calls)
-     Ewald Sum total:      0.002      0.002      0.020   0.001968 (10 calls)
-          Ewald Real:      0.000      0.000      0.000   0.000031 (10 calls)
-       Ewald_Fourier:      0.002      0.002      0.019   0.001935 (10 calls)
+               Total:      3.160      3.160      3.160   3.159649 (1 call)
+      Time step loop:      0.294      0.307      2.976   0.297589 (10 calls)
+         Propagation:      0.019      0.020      0.199   0.019857 (10 calls)
+           Collision:      0.254      0.263      2.574   0.257432 (10 calls)
+       Lattice halos:      0.001      0.002      0.030   0.001503 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (10 calls)
+              Forces:      0.002      0.002      0.021   0.002123 (10 calls)
+             Rebuild:      0.008      0.009      0.082   0.008221 (10 calls)
+                 BBL:      0.004      0.005      0.043   0.004312 (10 calls)
+      Particle halos:      0.000      0.000      0.001   0.000114 (10 calls)
+     Ewald Sum total:      0.002      0.002      0.020   0.002040 (10 calls)
+          Ewald Real:      0.000      0.000      0.000   0.000028 (10 calls)
+       Ewald_Fourier:      0.002      0.002      0.020   0.002010 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
-          phi update:      0.000      0.000      0.000   0.000000 (10 calls)
-               Free1:      0.000      0.000      0.000   0.000000 (20 calls)
+          phi update:      0.000      0.000      0.000   0.000001 (10 calls)
+               Free1:      0.000      0.000      0.000   0.000001 (20 calls)
 Ludwig finished normally.

@@ -29,6 +29,7 @@ struct colloid_io_s {
   int index;                     /* Index of current IO group */
   int rank;                      /* Rank of PE in IO group */
   int single_file_read;          /* 'serial' input flag */
+  int nd[3];                     /* Cartesian dimensions */
   int coords[3];                 /* Cartesian position of this group */
 
   MPI_Comm comm;                 /* Communicator */
@@ -95,6 +96,7 @@ int colloid_io_create(int io_grid[3], colloids_info_t * info,
       fatal("Bad colloid io grid (dim %d = %d)\n", ia, io_grid[ia]);
     }
 
+    obj->nd[ia] = io_grid[ia];
     obj->n_io *= io_grid[ia];
     obj->coords[ia] = io_grid[ia]*cart_coords(ia)/ncart;
   }
@@ -146,6 +148,42 @@ int colloid_io_info_set(colloid_io_t * cio, colloids_info_t * info) {
   assert(info);
 
   cio->info = info;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_io_info
+ *
+ *  Send current state in human-readable form to given file.
+ *
+ *****************************************************************************/
+
+int colloid_io_info(colloid_io_t * cio) {
+
+  char fin[BUFSIZ];
+  char fout[BUFSIZ];
+
+  assert(cio);
+
+  strcpy(fin, "unset");
+  if (cio->f_header_read == colloid_io_read_header_ascii) strcpy(fin, "ascii");
+  if (cio->f_header_read == colloid_io_read_header_binary) strcpy(fin, "binary");
+  strcpy(fout, "unset");
+  if (cio->f_header_write == colloid_io_write_header_ascii) strcpy(fout, "ascii");
+  if (cio->f_header_write == colloid_io_write_header_binary) strcpy(fout, "binary");
+
+  info("\n");
+  info("Colloid I/O settings\n");
+  info("--------------------\n");
+  info("Decomposition:               %2d %2d %2d\n",
+       cio->nd[X], cio->nd[Y], cio->nd[Z]);
+  info("Number of files:              %d\n", cio->n_io);
+  info("Input format:                 %s\n", fin);
+  info("Output format:                %s\n", fout);
+  info("Single file read flag:        %d\n", cio->single_file_read);
+  info("\n");
 
   return 0;
 }
@@ -420,6 +458,7 @@ static int colloid_io_write_list_ascii(colloid_io_t * cio,
 
 static int colloid_io_read_list_ascii(colloid_io_t * cio, int ndata,
 				      FILE * fp) {
+  int ifail = 0;
   int nread;
   int nlocal = 0;
 
@@ -430,7 +469,7 @@ static int colloid_io_read_list_ascii(colloid_io_t * cio, int ndata,
   assert(fp);
 
   for (nread = 0; nread < ndata; nread++) {
-    colloid_state_read_ascii(&s, fp);
+    ifail += colloid_state_read_ascii(&s, fp);
     colloids_info_add_local(cio->info, s.index, s.r, &p_colloid);
     if (p_colloid) {
       p_colloid->s = s;
@@ -438,7 +477,10 @@ static int colloid_io_read_list_ascii(colloid_io_t * cio, int ndata,
     }
   }
 
-  return 0;
+  /* Deliver a warning, but continue */
+  if (ifail) verbose("Possible error in colloid_io_read_list_ascii\n");
+
+  return ifail;
 }
 
 /*****************************************************************************

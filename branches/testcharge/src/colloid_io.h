@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2013 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,6 +23,7 @@ int  colloid_io_create(int io_grid[3], colloids_info_t * info,
 		       colloid_io_t ** cio);
 void colliod_io_free(colloid_io_t * cio);
 int colloid_io_info_set(colloid_io_t * cio, colloids_info_t * info);
+int colloid_io_info(colloid_io_t * cio);
 
 int colloid_io_read(colloid_io_t * cio, const char * filename);
 int colloid_io_write(colloid_io_t * cio, const char * filename);

@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.17 (Serial version running on 1 process)
+Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
 
-The SVN revision details are: 2382:2383M
+The SVN revision details are: 2399M
 Note assertions via standard C assert() are on.
 
-Read 24 user parameters from input_test
+Read 24 user parameters from ./serial-sqmr-st1.inp
 
 No free energy selected
 
@@ -56,9 +56,11 @@ Colloid information
 
 Colloid I/O settings
 --------------------
-Decomposition:   1  1  1
-Input format:       ascii serial
-Output format:      ascii
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
 
 Requested one colloid via input:
 colloid_one                   active
@@ -81,7 +83,7 @@ Final cell lengths:           8.0000000e+00  8.0000000e+00  8.0000000e+00
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]       31193.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[rho]       31193.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 
 Momentum - x y z
 [total   ]  4.3288984e-13  0.0000000e+00  0.0000000e+00
@@ -97,7 +99,7 @@ Colloid velocities - x y z
 [maximum ]  2.1404693e-02  8.3210720e-19  1.1207995e-17
 
 Scalars - total mean variance min max
-[rho]       31173.00  1.00000000000 5.0838964e-07  0.99225554160 1.00513736852
+[rho]       31173.00  1.00000000000  5.0838964e-07  0.99225554160  1.00513736852
 
 Momentum - x y z
 [total   ]  5.0448534e-13 -6.7497612e-14  4.1036083e-14
@@ -114,17 +116,17 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      1.892      1.892      1.892   1.892434 (1 call)
-      Time step loop:      0.037      0.039      1.866   0.037323 (50 calls)
-         Propagation:      0.002      0.002      0.082   0.001636 (50 calls)
-           Collision:      0.031      0.033      1.569   0.031377 (50 calls)
-       Lattice halos:      0.000      0.001      0.024   0.000239 (100 calls)
+               Total:      2.056      2.056      2.056   2.056186 (1 call)
+      Time step loop:      0.038      0.042      2.030   0.040602 (50 calls)
+         Propagation:      0.002      0.002      0.102   0.002047 (50 calls)
+           Collision:      0.032      0.035      1.689   0.033785 (50 calls)
+       Lattice halos:      0.000      0.001      0.030   0.000304 (100 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (50 calls)
               Forces:      0.000      0.000      0.000   0.000002 (50 calls)
-             Rebuild:      0.001      0.002      0.079   0.001571 (50 calls)
-                 BBL:      0.002      0.002      0.097   0.001943 (50 calls)
+             Rebuild:      0.001      0.002      0.086   0.001726 (50 calls)
+                 BBL:      0.002      0.002      0.105   0.002097 (50 calls)
       Particle halos:      0.000      0.000      0.001   0.000019 (50 calls)
-   Force calculation:      0.000      0.000      0.000   0.000000 (50 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (50 calls)
           phi update:      0.000      0.000      0.000   0.000000 (50 calls)
                Free1:      0.000      0.000      0.000   0.000000 (100 calls)
 Ludwig finished normally.

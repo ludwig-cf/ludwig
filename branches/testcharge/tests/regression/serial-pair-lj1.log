@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.2 (Serial version running on 1 process)
+Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
 
-The SVN revision details are: 2365M
+The SVN revision details are: 2399M
 Note assertions via standard C assert() are on.
 
-Read 25 user parameters from ./serial-pair-lj1.inp
+Read 24 user parameters from ./serial-pair-lj1.inp
 
 No free energy selected
 
@@ -56,11 +56,11 @@ Colloid information
 
 Colloid I/O settings
 --------------------
-Decomposition:   1  1  1
-Input format:  ascii
-Input file:    serial single file
-Output format:      ascii
-Output format: ascii
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        1
 
 colloid_io_read: reading from single file colloids-serial-pair-yk1.001-001
 Read a total of 1000 colloids from file
@@ -83,7 +83,7 @@ Final cell lengths:           8.0000000e+00  8.0000000e+00  8.0000000e+00
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]      202992.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[rho]      202992.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 
 Momentum - x y z
 [total   ]  2.8170799e-12  0.0000000e+00  0.0000000e+00
@@ -101,7 +101,7 @@ Colloid velocities - x y z
 [maximum ]  1.4448915e-04  1.1697111e-04  9.4027798e-05
 
 Scalars - total mean variance min max
-[rho]      202993.00  1.00000000000 1.7821353e-09  0.99986599851 1.00019737478
+[rho]      202993.00  1.00000000000  1.7821353e-09  0.99986599851  1.00019737478
 
 Momentum - x y z
 [total   ] -6.3813755e-13 -6.9587175e-13 -5.0615328e-14
@@ -118,16 +118,16 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      4.037      4.037      4.037   4.037244 (1 call)
-      Time step loop:      0.369      0.378      3.704   0.370408 (10 calls)
-         Propagation:      0.019      0.019      0.190   0.018998 (10 calls)
-           Collision:      0.208      0.212      2.086   0.208603 (10 calls)
-       Lattice halos:      0.001      0.002      0.029   0.001463 (20 calls)
+               Total:      4.333      4.333      4.333   4.333185 (1 call)
+      Time step loop:      0.396      0.407      3.999   0.399896 (10 calls)
+         Propagation:      0.020      0.021      0.200   0.020013 (10 calls)
+           Collision:      0.249      0.258      2.529   0.252886 (10 calls)
+       Lattice halos:      0.001      0.003      0.030   0.001487 (20 calls)
        phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
-              Forces:      0.002      0.002      0.016   0.001648 (10 calls)
-             Rebuild:      0.038      0.039      0.383   0.038316 (10 calls)
-                 BBL:      0.097      0.097      0.968   0.096783 (10 calls)
-      Particle halos:      0.001      0.001      0.007   0.000698 (10 calls)
+              Forces:      0.002      0.002      0.017   0.001699 (10 calls)
+             Rebuild:      0.038      0.040      0.392   0.039226 (10 calls)
+                 BBL:      0.079      0.081      0.798   0.079809 (10 calls)
+      Particle halos:      0.001      0.001      0.007   0.000705 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
           phi update:      0.000      0.000      0.000   0.000001 (10 calls)
                Free1:      0.000      0.000      0.000   0.000001 (20 calls)

@@ -84,7 +84,10 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
     nread += fscanf(fp, sformat, &ps->dpad[n]);
   }
 
-  if (nread != NTOT_VAR) ifail = -1;
+  if (nread != NTOT_VAR) ifail = 1;
+
+  /* If assertions are off, we may want to catch this failure elsewhere */
+  assert(ifail == 0);
 
   /* Always set the rebuild flag (even if file has zero) */
 
@@ -131,8 +134,8 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   int nwrite = 0;
   int ifail = 0;
 
-  const char * sformat = "%22le\n";
-  const char * vformat = "%22le %22le %22le\n";
+  const char * sformat = "%22.15e\n";
+  const char * vformat = "%22.15e %22.15e %22.15e\n";
 
   assert(fp);
 
@@ -182,7 +185,10 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
 
   /* ... should be NTOT_VAR items of 23 characters */
 
-  if (nwrite != NTOT_VAR*23) ifail = -1;
+  if (nwrite != NTOT_VAR*23) ifail = 1;
+
+  /* If assertions are off, responsibility passes to caller */
+  assert(ifail == 0);
 
   return ifail;
 }
