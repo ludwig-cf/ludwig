@@ -17,6 +17,11 @@
 #ifndef COLLOID_H
 #define COLLOID_H
 
+/* Tag to describe I/O format version appearing in files */
+
+typedef enum colloid_io_version colloid_io_version_t;
+enum colloid_io_version {COLLOID_IO_VERSION = 122};
+
 /* These describe the padding etc, and are really for internal
  * unit test consumption. The total number of variables is
  * useful to know to check the ASCII read/write. */

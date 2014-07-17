@@ -34,27 +34,28 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   int nread = 0;
   int ifail = 0;
 
-  const char * sformat = "%22le\n";
-  const char * vformat = "%22le %22le %22le\n";
+  const char * isformat = "%24d\n";
+  const char * sformat  = "%24le\n";
+  const char * vformat  = "%24le %24le %24le\n";
 
   assert(ps);
   assert(fp);
 
-  nread += fscanf(fp, "%22d\n", &ps->index);
-  nread += fscanf(fp, "%22d\n", &ps->rebuild);
-  nread += fscanf(fp, "%22d\n", &ps->nbonds);
-  nread += fscanf(fp, "%22d\n", &ps->nangles);
-  nread += fscanf(fp, "%22d\n", &ps->isfixedr);
-  nread += fscanf(fp, "%22d\n", &ps->isfixedv);
-  nread += fscanf(fp, "%22d\n", &ps->isfixedw);
-  nread += fscanf(fp, "%22d\n", &ps->isfixeds);
-  nread += fscanf(fp, "%22d\n", &ps->type);
+  nread += fscanf(fp, isformat, &ps->index);
+  nread += fscanf(fp, isformat, &ps->rebuild);
+  nread += fscanf(fp, isformat, &ps->nbonds);
+  nread += fscanf(fp, isformat, &ps->nangles);
+  nread += fscanf(fp, isformat, &ps->isfixedr);
+  nread += fscanf(fp, isformat, &ps->isfixedv);
+  nread += fscanf(fp, isformat, &ps->isfixedw);
+  nread += fscanf(fp, isformat, &ps->isfixeds);
+  nread += fscanf(fp, isformat, &ps->type);
 
   for (n = 0; n < NBOND_MAX; n++) {
-    nread += fscanf(fp, "%22d\n", &ps->bond[n]);
+    nread += fscanf(fp, isformat, &ps->bond[n]);
   }
   for (n = 0; n < NPAD_INT; n++) {
-    nread += fscanf(fp, "%22d\n", &ps->intpad[n]);
+    nread += fscanf(fp, isformat, &ps->intpad[n]);
   }
 
   nread += fscanf(fp, sformat, &ps->a0);
@@ -134,26 +135,27 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   int nwrite = 0;
   int ifail = 0;
 
-  const char * sformat = "%22.15e\n";
-  const char * vformat = "%22.15e %22.15e %22.15e\n";
+  const char * isformat = "%24d\n";
+  const char * sformat  = "%24.15e\n";
+  const char * vformat  = "%24.15e %24.15e %24.15e\n";
 
   assert(fp);
 
-  nwrite += fprintf(fp, "%22d\n", s.index);
-  nwrite += fprintf(fp, "%22d\n", s.rebuild);
-  nwrite += fprintf(fp, "%22d\n", s.nbonds);
-  nwrite += fprintf(fp, "%22d\n", s.nangles);
-  nwrite += fprintf(fp, "%22d\n", s.isfixedr);
-  nwrite += fprintf(fp, "%22d\n", s.isfixedv);
-  nwrite += fprintf(fp, "%22d\n", s.isfixedw);
-  nwrite += fprintf(fp, "%22d\n", s.isfixeds);
-  nwrite += fprintf(fp, "%22d\n", s.type);
+  nwrite += fprintf(fp, isformat, s.index);
+  nwrite += fprintf(fp, isformat, s.rebuild);
+  nwrite += fprintf(fp, isformat, s.nbonds);
+  nwrite += fprintf(fp, isformat, s.nangles);
+  nwrite += fprintf(fp, isformat, s.isfixedr);
+  nwrite += fprintf(fp, isformat, s.isfixedv);
+  nwrite += fprintf(fp, isformat, s.isfixedw);
+  nwrite += fprintf(fp, isformat, s.isfixeds);
+  nwrite += fprintf(fp, isformat, s.type);
 
   for (n = 0; n < NBOND_MAX; n++) {
-    nwrite += fprintf(fp, "%22d\n", s.bond[n]);
+    nwrite += fprintf(fp, isformat, s.bond[n]);
   }
   for (n = 0; n < NPAD_INT; n++) {
-    nwrite += fprintf(fp, "%22d\n", s.intpad[n]);
+    nwrite += fprintf(fp, isformat, s.intpad[n]);
   }
 
   nwrite += fprintf(fp, sformat, s.a0);
@@ -183,9 +185,9 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
     nwrite += fprintf(fp, sformat, s.dpad[n]);
   }
 
-  /* ... should be NTOT_VAR items of 23 characters */
+  /* ... should be NTOT_VAR items of format + 1 characters */
 
-  if (nwrite != NTOT_VAR*23) ifail = 1;
+  if (nwrite != NTOT_VAR*25) ifail = 1;
 
   /* If assertions are off, responsibility passes to caller */
   assert(ifail == 0);

@@ -1,0 +1,176 @@
+Welcome to Ludwig v0.1.22 (Serial version running on 1 process)
+
+The SVN revision details are: 2399:2400M
+Note assertions via standard C assert() are on.
+
+Read 36 user parameters from ./serial-rest-ec2.inp
+
+System details
+--------------
+System size:    32 32 32
+Decomposition:  1 1 1
+Local domain:   32 32 32
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Electrokinetics (single fluid) selected
+
+Parameters:
+Electrokinetic species:     2
+Boltzmann factor:           1.0000000e+05 (T =  1.0000000e-05)
+Unit charge:                1.0000000e+00
+Reference permittivity:     3.3000000e+03
+Bjerrum length:             2.4114385e+00
+Valency species 0:          1
+Diffusivity species 0:      1.0000000e-02
+Valency species 1:         -1
+Diffusivity species 1:      1.0000000e-02
+Number of multisteps:       1
+Diffusive accuracy in NPE:  0.0000000e+00
+Relative tolerance:         1.1920929e-07
+Absolute tolerance:         1.1920929e-09
+Max. no. of iterations:             10000
+I/O decomposition:          1 1 1
+I/O format:                 BINARY
+Force calculation:          psi grad mu method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   1.00000e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Advection scheme order: 2
+
+Initial charge densities
+------------------------
+Initial conditions:         Uniform
+Initial condition rho_el:  1.0000000e-03
+Debye length:              4.0620192e+00
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_io_read: reading from config.cds00000020.001-001 etc
+Read a total of 1 colloids from file
+
+Initialised 1 colloid
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Final cell list:              11 11 11
+Final cell lengths:           2.9090909e+00  2.9090909e+00  2.9090909e+00
+
+Re-starting simulation at step 20 with data read from config
+file(s) dist-00000020
+hydro files(s) vel-00000020
+electrokinetics files(s) psi-00000020
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       32715.00  1.00000000000  5.7030056e-09  0.99976080725  1.00025312238
+[psi]  3.3983575e-08 -5.9491640e-09  1.3481725e-07
+[rho]  3.2726000e+01  1.8867925e-04  1.0413963e-03
+[rho]  3.2726000e+01  0.0000000e+00  1.0436820e-03
+[elc]  2.3917500e-15 -2.2857042e-06  1.8867925e-04
+
+Momentum - x y z
+[total   ]  4.1745393e-13  3.4425166e-14  5.0965010e-01
+[fluid   ]  4.1611853e-13  3.4972025e-14  4.5904331e-01
+[colloids]  1.3354049e-15 -5.4685919e-16  5.0606799e-02
+
+Starting time step loop.
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  6.4302806e-18  2.6297952e-17  5.3437475e-04
+[maximum ]  6.4302806e-18  2.6297952e-17  5.3437475e-04
+
+SOR solver
+Norm of residual 4.49661e-10 at 70 iterations
+
+Scalars - total mean variance min max
+[rho]       32715.00  1.00000000000  2.7668474e-09  0.99980584626  1.00019621357
+[psi]  4.0063501e-05 -4.6570935e-09  1.3533562e-07
+[rho]  3.2726000e+01  1.8867925e-04  1.0421620e-03
+[rho]  3.2726000e+01  0.0000000e+00  1.0451127e-03
+[elc]  2.4635242e-15 -3.6490067e-06  1.8867925e-04
+[psi_zeta]  8.3028724e-08
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]             40 -5.1748727568e-03  3.2715000000e+04 -1.5818042967e-07  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.3175455e-13  6.4176761e-14  5.0965010e-01
+[fluid   ]  4.3294882e-13  6.2748418e-14  4.8276501e-01
+[colloids] -1.1942616e-15  1.4283438e-15  2.6885095e-02
+
+Velocity - x y z
+[minimum ] -1.0708508e-04 -1.0708508e-04 -4.9689535e-05
+[maximum ]  1.0708508e-04  1.0708508e-04  5.5336477e-04
+
+Completed cycle 40
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      2.294      2.294      2.294   2.293797 (1 call)
+      Time step loop:      0.111      0.130      2.255   0.112744 (20 calls)
+         Propagation:      0.002      0.002      0.033   0.001634 (20 calls)
+           Collision:      0.031      0.032      0.634   0.031690 (20 calls)
+       Lattice halos:      0.000      0.001      0.025   0.000311 (80 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (20 calls)
+              Forces:      0.000      0.000      0.000   0.000014 (20 calls)
+             Rebuild:      0.001      0.001      0.021   0.001055 (20 calls)
+                 BBL:      0.001      0.001      0.012   0.000606 (20 calls)
+      Particle halos:      0.000      0.000      0.001   0.000067 (20 calls)
+   Force calculation:      0.000      0.002      0.042   0.001044 (40 calls)
+          phi update:      0.000      0.000      0.000   0.000001 (20 calls)
+    Poisson equation:      0.061      0.078      1.238   0.061878 (20 calls)
+       Nernst Planck:      0.011      0.012      0.227   0.011373 (20 calls)
+               Free1:      0.000      0.000      0.009   0.000216 (40 calls)
+Ludwig finished normally.
