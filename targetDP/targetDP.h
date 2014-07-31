@@ -81,16 +81,16 @@ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 void syncTarget();
 void targetFree(void *ptr);
 void checkTargetError(const char *msg);
-void targetMalloc(void **address_of_ptr,size_t size);
-void targetCalloc(void **address_of_ptr,size_t size);
+void targetMalloc(void **address_of_ptr,const size_t size);
+void targetCalloc(void **address_of_ptr,const size_t size);
 void targetFree(void *ptr);
-void copyConstantIntToTarget(int *data_d, int *data, int size);
-void copyConstantInt1DArrayToTarget(int *data_d, int *data, int size);
-void copyConstantInt2DArrayToTarget(int **data_d, int *data, int size);
-void copyConstantDoubleToTarget(double *data_d, double *data, int size);
-void copyConstantDouble1DArrayToTarget(double *data_d, double *data, int size);
-void copyConstantDouble2DArrayToTarget(double **data_d, double *data, int size);
-void copyConstantDouble3DArrayToTarget(double ***data_d, double *data, int size);
+void copyConstantIntToTarget(int *data_d, const int *data, const int size);
+void copyConstantInt1DArrayToTarget(int *data_d, const int *data, const int size);
+void copyConstantInt2DArrayToTarget(int **data_d, const int *data, const int size);
+void copyConstantDoubleToTarget(double *data_d, const double *data, const int size);
+void copyConstantDouble1DArrayToTarget(double *data_d, const double *data, const int size);
+void copyConstantDouble2DArrayToTarget(double **data_d, const double *data, const int size);
+void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, const int size);
 
 
 

@@ -75,22 +75,22 @@ void targetFree(void *ptr){
 }
 
 
-void copyToTarget(void *targetData,const void* data,size_t size){
+void copyToTarget(void *targetData,const void* data,const size_t size){
 
   memcpy(targetData,data,size);
   return;
 
 }
 
-void copyFromTarget(void *data,const void* targetData,size_t size){
+void copyFromTarget(void *data,const void* targetData,const size_t size){
 
   memcpy(data,targetData,size);
   return;
 
 }
 
-void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
-			size_t nfields,char* siteMask){
+void copyToTargetMasked(double *targetData,const double* data,const size_t nsites,
+			const size_t nfields,char* siteMask){
 
   int i,j;
   for (i=0;i<nfields;i++){
@@ -102,8 +102,8 @@ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
   
 }
 
-void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
-			size_t nfields,char* siteMask){
+void copyFromTargetMasked(double *data,const double* targetData,const size_t nsites,
+			const size_t nfields,char* siteMask){
 
   int i, j;
   for (i=0;i<nfields;i++){
@@ -120,31 +120,31 @@ void syncTarget(){
   return;
 }
 
-void copyConstantIntToTarget(int *data_d, int *data, int size){
+void copyConstantIntToTarget(int *data_d, const int *data, const int size){
   memcpy(data_d, data, size); 
   return;
 } 
-void copyConstantInt1DArrayToTarget(int *data_d, int *data, int size){
+void copyConstantInt1DArrayToTarget(int *data_d, const int *data, const int size){
   memcpy(data_d, data, size); 
   return;
 } 
-void copyConstantInt2DArrayToTarget(int **data_d, int *data, int size){
+void copyConstantInt2DArrayToTarget(int **data_d, const int *data, const int size){
   memcpy(data_d, data, size); 
   return;
 } 
-void copyConstantDoubleToTarget(double *data_d, double *data, int size){
+void copyConstantDoubleToTarget(double *data_d, const double *data, const int size){
   memcpy(data_d, data, size); 
   return;
 } 
-void copyConstantDouble1DArrayToTarget(double *data_d, double *data, int size){
+void copyConstantDouble1DArrayToTarget(double *data_d, const double *data, const int size){
   memcpy(data_d, data, size); 
   return;
 } 
-void copyConstantDouble2DArrayToTarget(double **data_d, double *data, int size){
+void copyConstantDouble2DArrayToTarget(double **data_d, const double *data, const int size){
   memcpy(data_d, data, size); 
   return;
 } 
-void copyConstantDouble3DArrayToTarget(double ***data_d, double *data, int size){
+void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, const int size){
   memcpy(data_d, data, size); 
   return;
 }
