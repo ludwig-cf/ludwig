@@ -368,25 +368,17 @@ void collision_multirelaxation() {
 
 /* Constants*/
 
-TARGET_CONST int N_cd[3];
-TARGET_CONST int Nall_cd[3];
-TARGET_CONST int nhalo_cd;
-TARGET_CONST int nSites_cd;
-TARGET_CONST int nop_cd;
-TARGET_CONST double rtau_shear_d;
-TARGET_CONST double rtau_bulk_d;
-TARGET_CONST double rtau_d[NVEL];
-TARGET_CONST double wv_cd[NVEL];
-TARGET_CONST double ma_cd[NVEL][NVEL];
-TARGET_CONST double mi_cd[NVEL][NVEL];
-TARGET_CONST double q_cd[NVEL][3][3];
-TARGET_CONST int cv_cd[NVEL][3];
-TARGET_CONST double d_cd[3][3];
-TARGET_CONST double a_d;
-TARGET_CONST double b_d;
-TARGET_CONST double rtau2_d;
-TARGET_CONST double rcs2_d;
-TARGET_CONST double force_global_cd[3];
+TARGET_CONST int tc_nSites;
+TARGET_CONST double tc_rtau_shear;
+TARGET_CONST double tc_rtau_bulk;
+TARGET_CONST double tc_rtau[NVEL];
+TARGET_CONST double tc_wv[NVEL];
+TARGET_CONST double tc_ma[NVEL][NVEL];
+TARGET_CONST double tc_mi[NVEL][NVEL];
+TARGET_CONST int tc_cv[NVEL][3];
+TARGET_CONST double tc_rtau2;
+TARGET_CONST double tc_rcs2;
+TARGET_CONST double tc_force_global[3];
 
 
 
@@ -409,17 +401,12 @@ void collision_binary_lb_site( double* __restrict__ f_t,
   double    force[3];                /* External force */
   double    tr_s, tr_seq;
 
-  //  double    force_local[3];
-  double    force_global[3];
-
   const double   r3     = (1.0/3.0);
-
 
   double    phi, jdotc, sphidotq;    /* modes */
   double    jphi[3];
   double    sth[3][3], sphi[3][3];
   double    mu;                      /* Chemical potential */
-  double    rtau2;
   //  double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
@@ -434,14 +421,14 @@ void collision_binary_lb_site( double* __restrict__ f_t,
 	for(p = 0; p < NVEL; p++) {
 	  for(m = 0; m < NDIST; m++) {
 	    floc[NVEL*m+p] = 
-	      f_t[nSites_cd*NDIST*p + nSites_cd*m + index];
+	      f_t[tc_nSites*NDIST*p + tc_nSites*m + index];
 	  }
 	}
 	
 	for (m = 0; m < nmodes_; m++) {
 	  mode[m] = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    mode[m] += floc[p]*ma_[m][p];
+	    mode[m] += floc[p]*tc_ma[m][p];
 	  }
 	  
 	}
@@ -468,7 +455,7 @@ void collision_binary_lb_site( double* __restrict__ f_t,
 
 
       for (i = 0; i < 3; i++) {	
-	force[i] = (force_global[i] + force_t[index*3+i]);
+	force[i] = (tc_force_global[i] + force_t[index*3+i]);
 	uloc[i] = rrho*(uloc[i] + 0.5*force[i]);  
       }
 
@@ -503,16 +490,16 @@ void collision_binary_lb_site( double* __restrict__ f_t,
       }
       
       /* Relax each mode */
-      tr_s = tr_s - rtau_bulk*(tr_s - tr_seq);
+      tr_s = tr_s - tc_rtau_bulk*(tr_s - tr_seq);
       
       for (i = 0; i < 3; i++) {
 	for (j = 0; j < 3; j++) {
-	  s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
+	  s[i][j] -= tc_rtau_shear*(s[i][j] - seq[i][j]);
 	  s[i][j] += d_[i][j]*r3*tr_s;
 	  
 	  /* Correction from body force (assumes equal relaxation times) */
 	  
-	  s[i][j] += (2.0-rtau_shear)*(uloc[i]*force[j] + force[i]*uloc[j]);
+	  s[i][j] += (2.0-tc_rtau_shear)*(uloc[i]*force[j] + force[i]*uloc[j]);
 	  shat[i][j] = 0.0;
 	}
       }
@@ -538,7 +525,7 @@ void collision_binary_lb_site( double* __restrict__ f_t,
       /* Ghost modes are relaxed toward zero equilibrium. */
       
       for (m = NHYDRO; m < nmodes_; m++) {
-	mode[m] = mode[m] - rtau_[m]*(mode[m] - 0.0) + ghat[m];
+	mode[m] = mode[m] - tc_rtau[m]*(mode[m] - 0.0) + ghat[m];
       }
       	
 	
@@ -547,9 +534,9 @@ void collision_binary_lb_site( double* __restrict__ f_t,
       for (p = 0; p < NVEL; p++) {
 	  double ftmp = 0.0;
 	for (m = 0; m < nmodes_; m++) {
-	    ftmp += mi_[p][m]*mode[m];
+	    ftmp += tc_mi[p][m]*mode[m];
 	}
-	f_t[nSites_cd*NDIST*p + index] = ftmp;
+	f_t[tc_nSites*NDIST*p + index] = ftmp;
       }
       
       
@@ -563,7 +550,7 @@ void collision_binary_lb_site( double* __restrict__ f_t,
       jphi[Z] = 0.0;
       for (p = 1; p < NVEL; p++) {
 	for (i = 0; i < 3; i++) {
-	  jphi[i] += floc[NVEL+p]*cv[p][i];
+	  jphi[i] += floc[NVEL+p]*tc_cv[p][i];
 	}
       }
       
@@ -575,7 +562,7 @@ void collision_binary_lb_site( double* __restrict__ f_t,
 	  sphi[i][j] = phi*uloc[i]*uloc[j] + mu*d_[i][j];
 	  /* sphi[i][j] = phi*uloc[i]*uloc[j] + cs2*mobility*mu*d_[i][j];*/
 	}
-	jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*uloc[i]);
+	jphi[i] = jphi[i] - tc_rtau2*(jphi[i] - phi*uloc[i]);
 	/* jphi[i] = phi*uloc[i];*/
       }
 	  
@@ -597,8 +584,8 @@ void collision_binary_lb_site( double* __restrict__ f_t,
 	/* Project all this back to the distributions. The magic
 	 * here is to move phi into the non-propagating distribution. */
 	
-	f_t[nSites_cd*NDIST*p + nSites_cd + index] = 
-		  wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0;
+	f_t[tc_nSites*NDIST*p + tc_nSites + index] = 
+		  tc_wv[p]*(jdotc*tc_rcs2 + sphidotq*r2rcs4) + phi*dp0;
       }
 
       return;
@@ -612,41 +599,19 @@ void collision_binary_lb() {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
-  int       p, m;                    /* velocity index */
-  int       i, j;                    /* summed over indices ("alphabeta") */
 
-  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
-  double    rho, rrho;               /* Density, reciprocal density */
-  double    uloc[3];                    /* Velocity */
-  double    s[3][3];                 /* Stress */
-  double    seq[3][3];               /* equilibrium stress */
   double    shat[3][3];              /* random stress */
   double    ghat[NVEL];              /* noise for ghosts */
 
-  double    force[3];                /* External force */
-  double    tr_s, tr_seq;
+  double    force_global[3]; 
 
-  double    force_local[3];
-  double    force_global[3];
-
-  const double   r3     = (1.0/3.0);
-
-
-  double    phi, jdotc, sphidotq;    /* modes */
-  double    jphi[3];
-  double    sth[3][3], sphi[3][3];
-  double    mu;                      /* Chemical potential */
   double    rtau2;
   double    mobility;
-  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   double (* chemical_potential)(const int index, const int nop);
   void   (* chemical_stress)(const int index, double s[3][3]);
 
 #define NDIST 2 //for binary collision
-
-
-  double floc[NVEL*NDIST];
 
 
   assert (NDIM == 3);
@@ -728,22 +693,17 @@ void collision_binary_lb() {
   //start constant setup
 
 
-  copyConstantDoubleToTarget(&rtau_shear_d, &rtau_shear, sizeof(double)); 
-  copyConstantDoubleToTarget(&rtau_bulk_d, &rtau_bulk, sizeof(double));
-  copyConstantDouble1DArrayToTarget(rtau_d, rtau_, NVEL*sizeof(double)); 
-  copyConstantDouble1DArrayToTarget(wv_cd, wv, NVEL*sizeof(double));
-  copyConstantDouble2DArrayToTarget( (double **) ma_cd, ma_, NVEL*NVEL*sizeof(double));
-  copyConstantDouble2DArrayToTarget((double **) mi_cd, mi_, NVEL*NVEL*sizeof(double));
-  copyConstantDouble2DArrayToTarget((double **) d_cd, d_, 3*3*sizeof(double));
-  copyConstantInt2DArrayToTarget((int **) cv_cd,cv, NVEL*3*sizeof(int)); 
-  copyConstantDouble3DArrayToTarget((double ***) q_cd, q_, NVEL*3*3*sizeof(double)); 
-  copyConstantDoubleToTarget(&rtau2_d, &rtau2, sizeof(double));
-  copyConstantDoubleToTarget(&rcs2_d, &rcs2, sizeof(double));
-  copyConstantInt1DArrayToTarget(N_cd,N, 3*sizeof(int)); 
-  copyConstantInt1DArrayToTarget(Nall_cd,Nall, 3*sizeof(int)); 
-  copyConstantIntToTarget(&nhalo_cd,&nhalo, sizeof(int)); 
-  copyConstantIntToTarget(&nSites_cd,&nSites, sizeof(int)); 
-  copyConstantDouble1DArrayToTarget(force_global_cd,force_global, 3*sizeof(double)); 
+  copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
+  copyConstantDoubleToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
+  copyConstantDouble1DArrayToTarget(tc_rtau, rtau_, NVEL*sizeof(double)); 
+  copyConstantDouble1DArrayToTarget(tc_wv, wv, NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget( (double **) tc_ma, (double*) ma_, NVEL*NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget((double **) tc_mi, (double*) mi_, NVEL*NVEL*sizeof(double));
+  copyConstantInt2DArrayToTarget((int **) tc_cv,(int*) cv, NVEL*3*sizeof(int)); 
+  copyConstantDoubleToTarget(&tc_rtau2, &rtau2, sizeof(double));
+  copyConstantDoubleToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  copyConstantDouble1DArrayToTarget(tc_force_global,force_global, 3*sizeof(double)); 
 
   checkTargetError("constants");
   //end constant setup
@@ -753,194 +713,27 @@ void collision_binary_lb() {
 
 
 
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
+  /* for (ic = 1; ic <= N[X]; ic++) { */
+  /*   for (jc = 1; jc <= N[Y]; jc++) { */
+  /*     for (kc = 1; kc <= N[Z]; kc++) { */
 	
-	index=coords_index(ic, jc, kc);
+  /* 	index=coords_index(ic, jc, kc); */
 	
 
-	collision_binary_lb_site( f_t, force_t, velocity_t,index);
-
-      /* 	/\* Compute all the modes *\/ */
-	
-	
-      /* 	/\* load data *\/ */
-      /* 	for(p = 0; p < NVEL; p++) { */
-      /* 	  for(m = 0; m < NDIST; m++) { */
-      /* 	    floc[NVEL*m+p] =  */
-      /* 	      f_t[nSites*NDIST*p + nSites*m + index]; */
-      /* 	  } */
-      /* 	} */
-	
-      /* 	for (m = 0; m < nmodes_; m++) { */
-      /* 	  mode[m] = 0.0; */
-      /* 	  for (p = 0; p < NVEL; p++) { */
-      /* 	    mode[m] += floc[p]*ma_[m][p]; */
-      /* 	  } */
-	  
-      /* 	} */
-	
-      /* /\* For convenience, write out the physical modes. *\/ */
-	  
-      /* rho = mode[0]; */
-      /* for (i = 0; i < 3; i++) { */
-      /* 	uloc[i] = mode[1 + i]; */
-      /* } */
-      /* s[X][X] = mode[4]; */
-      /* s[X][Y] = mode[5]; */
-      /* s[X][Z] = mode[6]; */
-      /* s[Y][X] = s[X][Y]; */
-      /* s[Y][Y] = mode[7]; */
-      /* s[Y][Z] = mode[8]; */
-      /* s[Z][X] = s[X][Z]; */
-      /* s[Z][Y] = s[Y][Z]; */
-      /* s[Z][Z] = mode[9]; */
-      
-      /* /\* Compute the local velocity, taking account of any body force *\/ */
-      
-      /* rrho = 1.0/rho; */
-
-
-      /* for (i = 0; i < 3; i++) {	 */
-      /* 	force[i] = (force_global[i] + force_t[index*3+i]); */
-      /* 	uloc[i] = rrho*(uloc[i] + 0.5*force[i]);   */
-      /* } */
-
-      /* //      hydrodynamics_set_velocity(index, u); */
-      /* for (i = 0; i < 3; i++)  */
-      /* 	velocity_t[index*3+i]=uloc[i]; */
-
-
-      /* /\* Compute the thermodynamic component of the stress *\/ */
-      
-      /* chemical_stress(index, sth); */
-      
-      /* /\* Relax stress with different shear and bulk viscosity *\/ */
-      
-      /* tr_s   = 0.0; */
-      /* tr_seq = 0.0; */
-      
-      /* for (i = 0; i < 3; i++) { */
-      /* 	/\* Set equilibrium stress, which includes thermodynamic part *\/ */
-      /* 	for (j = 0; j < 3; j++) { */
-      /* 	  seq[i][j] = rho*uloc[i]*uloc[j] + sth[i][j]; */
-      /* 	} */
-      /* 	/\* Compute trace *\/ */
-      /* 	tr_s   += s[i][i]; */
-      /* 	tr_seq += seq[i][i]; */
-      /* } */
-      
-      /* /\* Form traceless parts *\/ */
-      /* for (i = 0; i < 3; i++) { */
-      /* 	s[i][i]   -= r3*tr_s; */
-      /* 	seq[i][i] -= r3*tr_seq; */
-      /* } */
-      
-      /* /\* Relax each mode *\/ */
-      /* tr_s = tr_s - rtau_bulk*(tr_s - tr_seq); */
-      
-      /* for (i = 0; i < 3; i++) { */
-      /* 	for (j = 0; j < 3; j++) { */
-      /* 	  s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]); */
-      /* 	  s[i][j] += d_[i][j]*r3*tr_s; */
-	  
-      /* 	  /\* Correction from body force (assumes equal relaxation times) *\/ */
-	  
-      /* 	  s[i][j] += (2.0-rtau_shear)*(uloc[i]*force[j] + force[i]*uloc[j]); */
-      /* 	  shat[i][j] = 0.0; */
-      /* 	} */
-      /* } */
-      
-      /* if (isothermal_fluctuations_) { */
-      /* 	collision_fluctuations(index, shat, ghat); */
-      /* } */
-      
-      /* /\* Now reset the hydrodynamic modes to post-collision values *\/ */
-      
-      /* mode[1] = mode[1] + force[X];    /\* Conserved if no force *\/ */
-      /* mode[2] = mode[2] + force[Y];    /\* Conserved if no force *\/ */
-      /* mode[3] = mode[3] + force[Z];    /\* Conserved if no force *\/ */
-      /* mode[4] = s[X][X] + shat[X][X]; */
-      /* mode[5] = s[X][Y] + shat[X][Y]; */
-      /* mode[6] = s[X][Z] + shat[X][Z]; */
-      /* mode[7] = s[Y][Y] + shat[Y][Y]; */
-      /* mode[8] = s[Y][Z] + shat[Y][Z]; */
-      /* mode[9] = s[Z][Z] + shat[Z][Z]; */
-      
-      
-      
-      /* /\* Ghost modes are relaxed toward zero equilibrium. *\/ */
-      
-      /* for (m = NHYDRO; m < nmodes_; m++) { */
-      /* 	mode[m] = mode[m] - rtau_[m]*(mode[m] - 0.0) + ghat[m]; */
-      /* } */
-      	
-	
-      /* /\* Project post-collision modes back onto the distribution *\/ */
-      /* /\* matrix multiplication for full SIMD vector *\/ */
-      /* for (p = 0; p < NVEL; p++) { */
-      /* 	  double ftmp = 0.0; */
-      /* 	for (m = 0; m < nmodes_; m++) { */
-      /* 	    ftmp += mi_[p][m]*mode[m]; */
-      /* 	} */
-      /* 	f_t[nSites*NDIST*p + index] = ftmp; */
-      /* } */
-      
-      
-      /* /\* Now, the order parameter distribution *\/ */
-      
-      /* phi =  phi_t[index];; */
-      /* mu = chemical_potential(index, 0); */
-      
-      /* jphi[X] = 0.0; */
-      /* jphi[Y] = 0.0; */
-      /* jphi[Z] = 0.0; */
-      /* for (p = 1; p < NVEL; p++) { */
-      /* 	for (i = 0; i < 3; i++) { */
-      /* 	  jphi[i] += floc[NVEL+p]*cv[p][i]; */
-      /* 	} */
-      /* } */
-      
-	  
-      /* /\* Relax order parameters modes. See the comments above. *\/ */
-      
-      /* for (i = 0; i < 3; i++) { */
-      /* 	for (j = 0; j < 3; j++) { */
-      /* 	  sphi[i][j] = phi*uloc[i]*uloc[j] + mu*d_[i][j]; */
-      /* 	  /\* sphi[i][j] = phi*uloc[i]*uloc[j] + cs2*mobility*mu*d_[i][j];*\/ */
-      /* 	} */
-      /* 	jphi[i] = jphi[i] - rtau2*(jphi[i] - phi*uloc[i]); */
-      /* 	/\* jphi[i] = phi*uloc[i];*\/ */
-      /* } */
-	  
-      /* /\* Now update the distribution *\/ */
-      
-      /* for (p = 0; p < NVEL; p++) { */
-	
-      /* 	int dp0 = (p == 0); */
-      /* 	jdotc    = 0.0; */
-      /* 	sphidotq = 0.0; */
-	
-      /* 	for (i = 0; i < 3; i++) { */
-      /* 	  jdotc += jphi[i]*cv[p][i]; */
-      /* 	  for (j = 0; j < 3; j++) { */
-      /* 	    sphidotq += sphi[i][j]*q_[p][i][j]; */
-      /* 	  } */
-      /* 	} */
-	
-      /* 	/\* Project all this back to the distributions. The magic */
-      /* 	 * here is to move phi into the non-propagating distribution. *\/ */
-	
-      /* 	f_t[nSites*NDIST*p + nSites + index] = */
-      /* 	  wv[p]*(jdotc*rcs2 + sphidotq*r2rcs4) + phi*dp0; */
-      /* } */
-      
+  /* 	collision_binary_lb_site( f_t, force_t, velocity_t,index); */
     
-	/* Next site */
-      }
+  /* 	/\* Next site *\/ */
+  /*     } */
+  /*   } */
+  /* } */
+
+  int tpIndex;
+  TARGET_TLP(tpIndex,nSites)
+    {
+	
+	collision_binary_lb_site( f_t, force_t, velocity_t,tpIndex);
+
     }
-  }
 
   // end lattice operation
   
