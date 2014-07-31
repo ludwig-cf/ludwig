@@ -15,7 +15,7 @@ AR = ar -cru
 .SUFFIXES:
 .SUFFIXES: .c  .o
 
- CC=	gcc
+ CC=	gcc-4.9
  CFLAGS = -O3 -fopenmp  #-save-temps
 
 #mic
