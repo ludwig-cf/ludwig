@@ -647,7 +647,6 @@ void collision_binary_lb_site( double* __restrict__ f_t,
     /* Project all this back to the distributions. The magic
      * here is to move phi into the non-propagating distribution. */
     
-    // TODO r2rcs4 -> target const 
     TARGET_ILP(vecIndex) f_t[tc_nSites*NDIST*p + tc_nSites + baseIndex + vecIndex] = 
       tc_wv[p]*(jdotc[vecIndex]*tc_rcs2 + sphidotq[vecIndex]*r2rcs4) + phi[vecIndex]*dp0;
   }
@@ -658,8 +657,23 @@ void collision_binary_lb_site( double* __restrict__ f_t,
 
 
 
+TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t, 
+				  const double* __restrict__ force_t, 
+					       double* __restrict__ velocity_t,
+					       const int nSites){
 
-void collision_binary_lb() {
+  int tpIndex;
+  TARGET_TLP(tpIndex,nSites)
+    {
+	
+  	collision_binary_lb_site( f_t, force_t, velocity_t,tpIndex);
+
+    }
+
+}
+
+
+ void collision_binary_lb() {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
@@ -711,7 +725,9 @@ void collision_binary_lb() {
   double *force_t; 
   double *velocity_t; 
 
-  targetCalloc((void **) &f_t, nSites*nFields*sizeof(double));
+  //targetCalloc((void **) &f_t, nSites*nFields*sizeof(double));
+
+  f_t=calloc(1, nSites*nFields*sizeof(double));
   targetCalloc((void **) &phi_t, nSites*sizeof(double));
   targetCalloc((void **) &delsqphi_t, nSites*sizeof(double));
   targetCalloc((void **) &gradphi_t, nSites*3*sizeof(double));
@@ -792,25 +808,42 @@ void collision_binary_lb() {
   /*   } */
   /* } */
 
-  int tpIndex;
-  TARGET_TLP(tpIndex,nSites)
-    {
+  printf("hello1\n");
+
+  /* int tpIndex; */
+  /* TARGET_TLP(tpIndex,nSites) */
+  /*   { */
 	
-	collision_binary_lb_site( f_t, force_t, velocity_t,tpIndex);
+  /* 	collision_binary_lb_site( f_t, force_t, velocity_t,tpIndex); */
 
-    }
+  /*   } */
 
-  // end lattice operation
+
+  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,nSites);
+
+
+  //  end lattice operation
+
+
+  printf("hello2\n");
   
   //start lattice operation cleanup
   copyFromTargetMasked(f_,f_t,nSites,nFields,siteMask); 
+  printf("hello3\n");
   copyFromTargetMasked(u,velocity_t,nSites,3,siteMask); 
+  printf("hello4\n");
   targetFree(f_t);
+  printf("hello5\n");
   targetFree(phi_t);
+  printf("hello6\n");
   targetFree(delsqphi_t);
+  printf("hello7\n");
   targetFree(gradphi_t);
+  printf("hello8\n");
   targetFree(force_t);
+  printf("hello9\n");
   targetFree(velocity_t);
+  printf("hello10\n");
   checkTargetError("Binary Collision Free");
   //end lattice operation cleanup
 
