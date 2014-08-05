@@ -1,4 +1,7 @@
 
+
+#define INCLUDED_FROM_TARGET
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,59 +9,60 @@
 
 #include "targetDP.h"
 #include "pe.h"
-//#include "util.h"
+#include "util.h"
 #include "coords.h"
-//#include "physics.h"
-//#include "lattice.h"
+#include "physics.h"
+#include "lattice.h"
 #include "model.h"
-//#include "site_map.h"
+#include "site_map.h"
 #include "collision.h"
-//#include "fluctuations.h"
+#include "fluctuations.h"
 
-/* #include "phi.h" */
-/* #include "free_energy.h" */
-/* #include "phi_cahn_hilliard.h" */
+#include "phi.h"
+#include "free_energy.h"
+#include "phi_cahn_hilliard.h"
 
-/* #include "control.h" */
-/* #include "propagation_ode.h" */
+#include "control.h"
+#include "propagation_ode.h"
 
-//static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
-//static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
+
+static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
+static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
-//static int isothermal_fluctuations_ = 0; /* Flag for noise. */
+static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
-/* static double rtau_shear;       /\* Inverse relaxation time for shear modes *\/ */
-/* static double rtau_bulk;        /\* Inverse relaxation time for bulk modes *\/ */
-/* static double var_shear;        /\* Variance for shear mode fluctuations *\/ */
-/* static double var_bulk;         /\* Variance for bulk mode fluctuations *\/ */
-/* static double rtau_[NVEL];      /\* Inverse relaxation times *\/ */
-/* static double noise_var[NVEL];  /\* Noise variances *\/ */
+static double rtau_shear;       /* Inverse relaxation time for shear modes */
+static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
+static double var_shear;        /* Variance for shear mode fluctuations */
+static double var_bulk;         /* Variance for bulk mode fluctuations */
+static double rtau_[NVEL];      /* Inverse relaxation times */
+static double noise_var[NVEL];  /* Noise variances */
 
-//static fluctuations_t * fl_;
+static fluctuations_t * fl_;
 
-/* static void collision_multirelaxation(void); */
-/* static void collision_binary_lb(void); */
-/* static void collision_bgk(void); */
+static void collision_multirelaxation(void);
+static void collision_binary_lb(void);
+static void collision_bgk(void);
 
-/* static void fluctuations_off(double shat[3][3], double ghat[NVEL]); */
-/*        void collision_fluctuations(int index, double shat[3][3], */
-/* 				   double ghat[NVEL]); */
+extern "C" void fluctuations_off(double shat[3][3], double ghat[NVEL]);
+       void collision_fluctuations(int index, double shat[3][3],
+				   double ghat[NVEL]);
 
 /* Constants*/
 
-extern TARGET_CONST int tc_nSites;
-extern TARGET_CONST double tc_rtau_shear;
-extern TARGET_CONST double tc_rtau_bulk;
-extern TARGET_CONST double tc_rtau[NVEL];
-extern TARGET_CONST double tc_wv[NVEL];
-extern TARGET_CONST double tc_ma[NVEL][NVEL];
-extern TARGET_CONST double tc_mi[NVEL][NVEL];
-extern TARGET_CONST int tc_cv[NVEL][3];
-extern TARGET_CONST double tc_rtau2;
-extern TARGET_CONST double tc_rcs2;
-extern TARGET_CONST double tc_force_global[3];
-extern TARGET_CONST double tc_d[3][3];
-extern TARGET_CONST double tc_q[NVEL][3][3];
+TARGET_CONST int tc_nSites;
+TARGET_CONST double tc_rtau_shear;
+TARGET_CONST double tc_rtau_bulk;
+TARGET_CONST double tc_rtau[NVEL];
+TARGET_CONST double tc_wv[NVEL];
+TARGET_CONST double tc_ma[NVEL][NVEL];
+TARGET_CONST double tc_mi[NVEL][NVEL];
+TARGET_CONST int tc_cv[NVEL][3];
+TARGET_CONST double tc_rtau2;
+TARGET_CONST double tc_rcs2;
+TARGET_CONST double tc_force_global[3];
+TARGET_CONST double tc_d[3][3];
+TARGET_CONST double tc_q[NVEL][3][3];
 
 
 TARGET void collision_binary_lb_site( double* __restrict__ f_t, 
@@ -350,3 +354,150 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 
 }
 
+
+//TODO sort this out
+//extern "C" void   coords_nlocal(int n[3]);
+//extern "C" void   fluid_body_force(double f[3]);
+//extern "C" double phi_cahn_hilliard_mobility(void);
+//extern "C" int    coords_nhalo(void);
+//extern "C" int    coords_index(const int ic, const int jc, const int kc);
+
+
+extern "C" void collision_binary_lb_target() {
+
+  int       N[3];
+  int       ic, jc, kc, index;       /* site indices */
+
+  double    shat[3][3];              /* random stress */
+  double    ghat[NVEL];              /* noise for ghosts */
+
+  double    force_global[3]; 
+
+  double    rtau2;
+  double    mobility;
+
+  //  double (* chemical_potential)(const int index, const int nop);
+  //void   (* chemical_stress)(const int index, double s[3][3]);
+
+#define NDIST 2 //for binary collision
+
+
+  assert (NDIM == 3);
+  coords_nlocal(N);
+  fluid_body_force(force_global);
+
+  //  chemical_potential = fe_chemical_potential_function();
+  //chemical_stress = fe_chemical_stress_function();
+
+  /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
+   * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
+
+  mobility = phi_cahn_hilliard_mobility();
+  rtau2 = 2.0 / (1.0 + 2.0*mobility);
+  fluctuations_off(shat, ghat);
+
+
+  // start lattice operation setup
+  int nFields=NVEL*NDIST;
+  int nhalo=coords_nhalo();
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+  // target copies of fields 
+  double *f_t; 
+  double *phi_t; 
+  double *delsqphi_t; 
+  double *gradphi_t; 
+  double *force_t; 
+  double *velocity_t; 
+
+  targetCalloc((void **) &f_t, nSites*nFields*sizeof(double));
+  targetCalloc((void **) &phi_t, nSites*sizeof(double));
+  targetCalloc((void **) &delsqphi_t, nSites*sizeof(double));
+  targetCalloc((void **) &gradphi_t, nSites*3*sizeof(double));
+  targetCalloc((void **) &force_t, nSites*3*sizeof(double));
+  targetCalloc((void **) &velocity_t, nSites*3*sizeof(double));
+
+  checkTargetError("Binary Collision Allocation");
+
+
+  //set up site mask
+  char* siteMask = (char*) calloc(nSites,sizeof(char));
+  if(!siteMask){
+    printf("siteMask malloc failed\n");
+    exit(1);
+  }
+
+  // set all non-halo sites to 1
+  for (ic = 1; ic <= N[X]; ic++) {
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+  	index=coords_index(ic, jc, kc);
+  	siteMask[index]=1;
+      }
+    }
+  }
+
+  extern double* f_;
+  extern double* phi_site;
+  extern double* phi_delsq_;
+  extern double* phi_grad_;
+  extern double* f;
+  extern double* u;
+  
+  copyToTargetMasked(f_t,f_,nSites,nFields,siteMask); 
+  copyToTargetMasked(phi_t,phi_site,nSites,1,siteMask); 
+  copyToTargetMasked(delsqphi_t,phi_delsq_,nSites,1,siteMask); 
+  copyToTargetMasked(gradphi_t,phi_grad_,nSites,3,siteMask); 
+  copyToTargetMasked(force_t,f,nSites,3,siteMask); 
+  copyToTargetMasked(velocity_t,u,nSites,3,siteMask); 
+  
+  // end lattice operation setup
+
+  //start constant setup
+
+
+  copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
+  copyConstantDoubleToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
+  copyConstantDouble1DArrayToTarget(tc_rtau, rtau_, NVEL*sizeof(double)); 
+  copyConstantDouble1DArrayToTarget(tc_wv, wv, NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget( (double **) tc_ma, (double*) ma_, NVEL*NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget((double **) tc_mi, (double*) mi_, NVEL*NVEL*sizeof(double));
+  copyConstantInt2DArrayToTarget((int **) tc_cv,(int*) cv, NVEL*3*sizeof(int)); 
+  copyConstantDoubleToTarget(&tc_rtau2, &rtau2, sizeof(double));
+  copyConstantDoubleToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  copyConstantDouble1DArrayToTarget(tc_force_global,force_global, 3*sizeof(double)); 
+  copyConstantDouble2DArrayToTarget((double **) tc_d, (double*) d_, 3*3*sizeof(double));
+  copyConstantDouble3DArrayToTarget((double ***) tc_q, (double *)q_, NVEL*3*3*sizeof(double)); 
+  checkTargetError("constants");
+  //end constant setup
+
+
+  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,nSites);
+
+
+  //  end lattice operation
+
+
+  printf("hello2\n");
+  
+  //start lattice operation cleanup
+  copyFromTargetMasked(f_,f_t,nSites,nFields,siteMask); 
+  copyFromTargetMasked(u,velocity_t,nSites,3,siteMask); 
+  targetFree(f_t);
+  targetFree(phi_t);
+  targetFree(delsqphi_t);
+  targetFree(gradphi_t);
+  targetFree(force_t);
+  targetFree(velocity_t);
+  checkTargetError("Binary Collision Free");
+  //end lattice operation cleanup
+
+
+  return;
+}
