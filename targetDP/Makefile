@@ -15,8 +15,10 @@ AR = ar -cru
 .SUFFIXES:
 .SUFFIXES: .c  .o
 
- CC=	gcc-4.9
- CFLAGS = -O3 -fopenmp  #-save-temps
+# CC=	gcc-4.9
+ CC=	gcc
+# CFLAGS = -O3 -fopenmp  #-save-temps
+ CFLAGS = -g -fopenmp  #-save-temps
 
 #mic
 # CC= icc
@@ -26,7 +28,8 @@ AR = ar -cru
 #endif
 
  CC_CUDA=	nvcc
- CFLAGS_CUDA= -DCUDA -O3 -arch=sm_35 -I $(TARGETDPDIR) -dc -x cu #-save-temps
+# CFLAGS_CUDA= -DCUDA -O3 -arch=sm_35 -I $(TARGETDPDIR) -dc -x cu #-save-temps
+ CFLAGS_CUDA= -DCUDA -g -G -arch=sm_21 -I $(TARGETDPDIR) -dc -x cu #-save-temps
 
 
 all: targetDP_CUDA targetDP_X86
