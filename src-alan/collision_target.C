@@ -6,43 +6,43 @@
 
 #include "targetDP.h"
 #include "pe.h"
-#include "util.h"
+//#include "util.h"
 #include "coords.h"
-#include "physics.h"
-#include "lattice.h"
+//#include "physics.h"
+//#include "lattice.h"
 #include "model.h"
-#include "site_map.h"
+//#include "site_map.h"
 #include "collision.h"
-#include "fluctuations.h"
+//#include "fluctuations.h"
 
-#include "phi.h"
-#include "free_energy.h"
-#include "phi_cahn_hilliard.h"
+/* #include "phi.h" */
+/* #include "free_energy.h" */
+/* #include "phi_cahn_hilliard.h" */
 
-#include "control.h"
-#include "propagation_ode.h"
+/* #include "control.h" */
+/* #include "propagation_ode.h" */
 
-static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
-static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
+//static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
+//static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
-static int isothermal_fluctuations_ = 0; /* Flag for noise. */
+//static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
-static double rtau_shear;       /* Inverse relaxation time for shear modes */
-static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
-static double var_shear;        /* Variance for shear mode fluctuations */
-static double var_bulk;         /* Variance for bulk mode fluctuations */
-static double rtau_[NVEL];      /* Inverse relaxation times */
-static double noise_var[NVEL];  /* Noise variances */
+/* static double rtau_shear;       /\* Inverse relaxation time for shear modes *\/ */
+/* static double rtau_bulk;        /\* Inverse relaxation time for bulk modes *\/ */
+/* static double var_shear;        /\* Variance for shear mode fluctuations *\/ */
+/* static double var_bulk;         /\* Variance for bulk mode fluctuations *\/ */
+/* static double rtau_[NVEL];      /\* Inverse relaxation times *\/ */
+/* static double noise_var[NVEL];  /\* Noise variances *\/ */
 
-static fluctuations_t * fl_;
+//static fluctuations_t * fl_;
 
-static void collision_multirelaxation(void);
-static void collision_binary_lb(void);
-static void collision_bgk(void);
+/* static void collision_multirelaxation(void); */
+/* static void collision_binary_lb(void); */
+/* static void collision_bgk(void); */
 
-static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
-       void collision_fluctuations(int index, double shat[3][3],
-				   double ghat[NVEL]);
+/* static void fluctuations_off(double shat[3][3], double ghat[NVEL]); */
+/*        void collision_fluctuations(int index, double shat[3][3], */
+/* 				   double ghat[NVEL]); */
 
 /* Constants*/
 
@@ -125,7 +125,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   }
 
   
-  for (m = 0; m < nmodes_; m++) {
+  for (m = 0; m < NVEL; m++) {
     TARGET_ILP(vecIndex) mode[ILPIDX(m)] = 0.0;
     for (p = 0; p < NVEL; p++) {
       TARGET_ILP(vecIndex) mode[ILPIDX(m)] += floc[ILPIDX(p)]*tc_ma[m][p];
@@ -249,7 +249,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   
   /* Ghost modes are relaxed toward zero equilibrium. */
   
-  for (m = NHYDRO; m < nmodes_; m++) {
+  for (m = NHYDRO; m < NVEL; m++) {
     TARGET_ILP(vecIndex)
       mode[ILPIDX(m)] = mode[ILPIDX(m)] 
       - tc_rtau[ILPIDX(m)]*(mode[ILPIDX(m)] - 0.0) + ghat[ILPIDX(m)];
@@ -263,7 +263,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   
   for (p = 0; p < NVEL; p++) {
     TARGET_ILP(vecIndex) ftmp[vecIndex] = 0.0;
-    for (m = 0; m < nmodes_; m++) {
+    for (m = 0; m < NVEL; m++) {
       TARGET_ILP(vecIndex) ftmp[vecIndex] += tc_mi[p][m]*mode[ILPIDX(m)];
     }
     TARGET_ILP(vecIndex) f_t[tc_nSites*NDIST*p + baseIndex + vecIndex] = ftmp[vecIndex];
