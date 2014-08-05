@@ -100,7 +100,10 @@ OBJS=d2q9.o d3q15.o d3q19.o model_r.o propagation.o propagation_ode.o collision.
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
-     timer.o util.o wall.o colloids_Q_tensor.o ludwig.o collision_target.o
+     timer.o util.o wall.o colloids_Q_tensor.o ludwig.o 
+
+
+TARGET_OBJS = collision_target.o
 
 ###############################################################################
 #
@@ -121,16 +124,16 @@ verbose:
             "\t make libmpi \t builds parallel library\n"\
             "\t Check the Makefile for further details\n"	
 
-code:	svn $(OBJS)
-	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
+code:	svn $(OBJS) $(TARGET_OBJS)
+	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(TARGET_OBJS) $(LIBS)
 serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s -I../targetDP" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi -L../targetDP -ltargetDP_X86" "OBJS=$(OBJS) $(MAIN).o"
 mpi:
-	$(MAKE) code "OBJS=$(OBJS) $(MAIN).o" "CC=$(MPICC)"
+	$(MAKE) code "OBJS=$(OBJS) $(TARGET_OBJS) $(MAIN).o" "CC=$(MPICC)"
 
-libar:	$(OBJS)
-	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS)
+libar:	$(OBJS) $(TARGET_OBJS)
+	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS) $(TARGET_OBJS)
 lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
@@ -157,7 +160,10 @@ svn:
 .c.o :
 	$(CC) $(OPTS) $(CFLAGS) $(INC) -c $?
 
+.C.o :
+	$(CC) -x c $(OPTS) $(CFLAGS) $(INC) -c $?
+
 
 .PHONY : clean
 clean:
-	-rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) $(MAIN).o
+	-rm -f $(OBJS) $(TARGET_OBJS) $(EXECUTABLE) $(LIBRARY) $(MAIN).o
