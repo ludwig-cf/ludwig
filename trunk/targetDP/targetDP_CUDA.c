@@ -267,38 +267,38 @@ void targetFree(void *ptr){
   return;
   
 }
-void copyConstantIntToTarget(int *data_d, int *data, int size){
+void copyConstantIntToTarget(int *data_d, const int *data, const int size){
   cudaMemcpyToSymbol(*data_d, data, size, 0,cudaMemcpyHostToDevice);
   checkTargetError("copyConstantIntToTarget");
   return;
 } 
-void copyConstantInt1DArrayToTarget(int *data_d, int *data, int size){
+void copyConstantInt1DArrayToTarget(int *data_d, const int *data, const int size){
   cudaMemcpyToSymbol(*data_d, data, size, 0,cudaMemcpyHostToDevice);
   checkTargetError("copyConstantInt1DArrayToTarget");
   return;
 } 
-void copyConstantInt2DArrayToTarget(int **data_d, int *data, int size){
+void copyConstantInt2DArrayToTarget(int **data_d, const int *data, const int size){
   cudaMemcpyToSymbol(*data_d, data, size, 0,cudaMemcpyHostToDevice);
   checkTargetError("copyConstantInt2DArrayToTarget");
   return;
 } 
-void copyConstantDoubleToTarget(double *data_d, double *data, int size){
+void copyConstantDoubleToTarget(double *data_d, const double *data, const int size){
   cudaMemcpyToSymbol(*data_d, data, size, 0,cudaMemcpyHostToDevice);
   checkTargetError("copyConstantDoubleToTarget");
   return;
 } 
-void copyConstantDouble1DArrayToTarget(double *data_d, double *data, int size){
+void copyConstantDouble1DArrayToTarget(double *data_d, const double *data, const int size){
   cudaMemcpyToSymbol(*data_d, data, size, 0,cudaMemcpyHostToDevice);
   checkTargetError("copyConstantDouble1DArrayToTarget");
   return;
 } 
 
-void copyConstantDouble2DArrayToTarget(double **data_d, double *data, int size){
+void copyConstantDouble2DArrayToTarget(double **data_d, const double *data, const int size){
   cudaMemcpyToSymbol(*data_d, data, size, 0,cudaMemcpyHostToDevice);
   checkTargetError("copyConstantDouble2DArrayToTarget");
   return;
 } 
-void copyConstantDouble3DArrayToTarget(double ***data_d, double *data, int size){
+void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, const int size){
   cudaMemcpyToSymbol(*data_d, data, size, 0,cudaMemcpyHostToDevice);
   checkTargetError("copyConstantDouble3DArrayToTarget");
   return;
