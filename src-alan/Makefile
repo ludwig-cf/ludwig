@@ -49,10 +49,12 @@ LIBRARY = libludwig.a
 #CC = gcc-4.9
 CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q19_ -save-temps
+OPTS = -D_D3Q19_ -DCUDA #-save-temps
 #CFLAGS = -Wall -O3
 CFLAGS = -g
 
+TARGETCC = gcc
+TARGETOPTS = -x c -D_D3Q19_ -DCUDA
 
 INC = -I.
 LIBS = -lm
@@ -161,7 +163,7 @@ svn:
 	$(CC) $(OPTS) $(CFLAGS) $(INC) -c $?
 
 .C.o :
-	$(CC) -x c $(OPTS) $(CFLAGS) $(INC) -c $?
+	$(TARGETCC) $(TARGETOPTS) $(CFLAGS) $(INC) -c $?
 
 
 .PHONY : clean
