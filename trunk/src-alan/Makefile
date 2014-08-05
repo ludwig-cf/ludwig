@@ -57,7 +57,7 @@ TARGETCC = gcc
 TARGETOPTS = -x c -D_D3Q19_ #-DCUDA
 
 TARGETCC = nvcc -arch=sm_21
-TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA
+TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G
 
 
 INC = -I.

@@ -415,6 +415,8 @@ extern "C" void collision_binary_lb_target() {
   double *force_t; 
   double *velocity_t; 
 
+  targetInit(nSites, nFields);
+
   targetCalloc((void **) &f_t, nSites*nFields*sizeof(double));
   targetCalloc((void **) &phi_t, nSites*sizeof(double));
   targetCalloc((void **) &delsqphi_t, nSites*sizeof(double));
@@ -498,6 +500,7 @@ extern "C" void collision_binary_lb_target() {
   checkTargetError("Binary Collision Free");
   //end lattice operation cleanup
 
+  targetFinalize();
 
   return;
 }
