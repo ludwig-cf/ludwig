@@ -54,7 +54,11 @@ OPTS = -D_D3Q19_ -DCUDA #-save-temps
 CFLAGS = -g
 
 TARGETCC = gcc
-TARGETOPTS = -x c -D_D3Q19_ -DCUDA
+TARGETOPTS = -x c -D_D3Q19_ #-DCUDA
+
+TARGETCC = nvcc -arch=sm_21
+TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA
+
 
 INC = -I.
 LIBS = -lm
@@ -127,10 +131,10 @@ verbose:
             "\t Check the Makefile for further details\n"	
 
 code:	svn $(OBJS) $(TARGET_OBJS)
-	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(TARGET_OBJS) $(LIBS)
+	$(TARGETCC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(TARGET_OBJS) $(LIBS)
 serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s -I../targetDP" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi -L../targetDP -ltargetDP_X86" "OBJS=$(OBJS) $(MAIN).o"
+	-L../mpi_s -lmpi -L../targetDP -ltargetDP_CUDA" "OBJS=$(OBJS) $(MAIN).o"
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) $(TARGET_OBJS) $(MAIN).o" "CC=$(MPICC)"
 

@@ -15,8 +15,14 @@
 #ifndef PHI_CAHN_HILLIARD_H
 #define PHI_CAHN_HILLIARD_H
 
+#ifdef INCLUDED_FROM_TARGET
+#define HOST extern "C"
+#else
+#define HOST
+#endif
+
 void   phi_cahn_hilliard(void);
 void   phi_cahn_hilliard_mobility_set(const double);
-double phi_cahn_hilliard_mobility(void);
+HOST double phi_cahn_hilliard_mobility(void);
 
 #endif

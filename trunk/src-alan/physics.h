@@ -15,6 +15,13 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
+
+#ifdef INCLUDED_FROM_TARGET
+#define HOST extern "C"
+#else
+#define HOST
+#endif
+
 void   init_physics(void);
 
 double get_eta_shear(void);
@@ -26,7 +33,7 @@ double get_phi0(void);
 void set_eta(const double);
 
 double fluid_kt(void);
-void   fluid_body_force(double f[3]);
+HOST void   fluid_body_force(double f[3]);
 void   fluid_body_force_set(const double f[3]);
 
 #endif
