@@ -49,15 +49,15 @@ LIBRARY = libludwig.a
 #CC = gcc-4.9
 CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q19_ -DCUDA #-save-temps
+OPTS = -D_D3Q19_ #-DCUDA #-save-temps
 #CFLAGS = -Wall -O3
 CFLAGS = -g
 
 TARGETCC = gcc
 TARGETOPTS = -x c -D_D3Q19_ #-DCUDA
 
-TARGETCC = nvcc -arch=sm_21
-TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G
+#TARGETCC = nvcc -arch=sm_21
+#TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G
 
 
 INC = -I.
@@ -134,7 +134,7 @@ code:	svn $(OBJS) $(TARGET_OBJS)
 	$(TARGETCC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(TARGET_OBJS) $(LIBS)
 serial:
 	$(MAKE) code "INC=$(INC) -I../mpi_s -I../targetDP" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi -L../targetDP -ltargetDP_CUDA" "OBJS=$(OBJS) $(MAIN).o"
+	-L../mpi_s -lmpi -L../targetDP -ltargetDP_X86" "OBJS=$(OBJS) $(MAIN).o"
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) $(TARGET_OBJS) $(MAIN).o" "CC=$(MPICC)"
 

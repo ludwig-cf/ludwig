@@ -25,6 +25,11 @@
 #include "control.h"
 #include "propagation_ode.h"
 
+#define HOST
+#ifdef CUDA
+#define HOST extern "C"
+#endif
+
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
@@ -44,7 +49,7 @@ static void collision_multirelaxation(void);
 static void collision_binary_lb(void);
 static void collision_bgk(void);
 
-extern "C" void fluctuations_off(double shat[3][3], double ghat[NVEL]);
+HOST void fluctuations_off(double shat[3][3], double ghat[NVEL]);
        void collision_fluctuations(int index, double shat[3][3],
 				   double ghat[NVEL]);
 
@@ -66,9 +71,10 @@ TARGET_CONST double tc_q[NVEL][3][3];
 
 
 TARGET void collision_binary_lb_site( double* __restrict__ f_t, 
-			   const double* __restrict__ force_t, 
-			   double* __restrict__ velocity_t, 
-			   const int baseIndex){
+				      const double* __restrict__ force_t, 
+				      double* __restrict__ velocity_t,
+				      double (* chemical_potential)(const int index, const int nop),
+				      const int baseIndex){
 
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
@@ -93,7 +99,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   //  double    mobility;
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
-  //double (* chemical_potential)(const int index, const int nop);
+  //  double (* chemical_potential)(const int index, const int nop);
   //void   (* chemical_stress)(const int index, double s[3][3]);
   
 #define NDIST 2 //for binary collision
@@ -281,8 +287,11 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
     mu[vecIndex]=0;
   }
 
+
+
   //phi =  phi_t[baseIndex];;
-  //mu = chemical_potential(baseIndex, 0);
+  TARGET_ILP(vecIndex) mu[vecIndex] 
+    = chemical_potential(baseIndex+vecIndex, 0);
   
   TARGET_ILP(vecIndex){
     jphi[ILPIDX(X)] = 0.0;
@@ -342,13 +351,14 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t, 
 				  const double* __restrict__ force_t, 
 					       double* __restrict__ velocity_t,
+					       double (* chemical_potential)(const int index, const int nop),
 					       const int nSites){
 
   int tpIndex;
   TARGET_TLP(tpIndex,nSites)
     {
 	
-  	collision_binary_lb_site( f_t, force_t, velocity_t,tpIndex);
+      collision_binary_lb_site( f_t, force_t, velocity_t,chemical_potential,tpIndex);
 
     }
 
@@ -363,7 +373,7 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 //extern "C" int    coords_index(const int ic, const int jc, const int kc);
 
 
-extern "C" void collision_binary_lb_target() {
+HOST void collision_binary_lb_target() {
 
   int       N[3];
   int       ic, jc, kc, index;       /* site indices */
@@ -376,7 +386,7 @@ extern "C" void collision_binary_lb_target() {
   double    rtau2;
   double    mobility;
 
-  //  double (* chemical_potential)(const int index, const int nop);
+  double (* chemical_potential)(const int index, const int nop);
   //void   (* chemical_stress)(const int index, double s[3][3]);
 
 #define NDIST 2 //for binary collision
@@ -386,7 +396,7 @@ extern "C" void collision_binary_lb_target() {
   coords_nlocal(N);
   fluid_body_force(force_global);
 
-  //  chemical_potential = fe_chemical_potential_function();
+  chemical_potential = fe_chemical_potential_function();
   //chemical_stress = fe_chemical_stress_function();
 
   /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
@@ -480,7 +490,7 @@ extern "C" void collision_binary_lb_target() {
   //end constant setup
 
 
-  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,nSites);
+  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,chemical_potential,nSites);
 
 
   //  end lattice operation
