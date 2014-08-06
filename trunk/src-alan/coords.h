@@ -15,10 +15,11 @@
 #ifndef COORDS_H
 #define COORDS_H
 
-#ifdef INCLUDED_FROM_TARGET
-#define HOST extern "C"
-#else
 #define HOST
+#ifdef INCLUDED_FROM_TARGET
+#ifdef CUDA
+#define HOST extern "C"
+#endif
 #endif
 
 enum cartesian_directions {X, Y, Z};
