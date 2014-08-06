@@ -373,6 +373,9 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 //extern "C" int    coords_index(const int ic, const int jc, const int kc);
 
 
+//TODO HACK
+double symmetric_chemical_potential(const int index, const int nop);
+
 HOST void collision_binary_lb_target() {
 
   int       N[3];
@@ -396,7 +399,9 @@ HOST void collision_binary_lb_target() {
   coords_nlocal(N);
   fluid_body_force(force_global);
 
-  chemical_potential = fe_chemical_potential_function();
+  //  chemical_potential = fe_chemical_potential_function();
+  //HACK TODO
+  chemical_potential = symmetric_chemical_potential;
   //chemical_stress = fe_chemical_stress_function();
 
   /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
