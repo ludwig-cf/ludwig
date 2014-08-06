@@ -2,6 +2,8 @@
 #define INCLUDED_FROM_TARGET
 
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "targetDP.h"
@@ -24,7 +26,7 @@ static double kappa_ = +0.002;
  *
  ****************************************************************************/
 
-TARGET double symmetric_chemical_potential(const int index, const int nop) {
+TARGET double symmetric_chemical_potential2(const int index, const int nop) {
 
   double phi;
   double delsq_phi;
@@ -52,7 +54,7 @@ TARGET double symmetric_chemical_potential(const int index, const int nop) {
  *
  ****************************************************************************/
 
-TARGET void symmetric_chemical_stress(const int index, double s[3][3]) {
+TARGET void symmetric_chemical_stress2(const int index, double s[3][3]) {
 
   int ia, ib;
   double phi;
