@@ -109,7 +109,7 @@ OBJS=d2q9.o d3q15.o d3q19.o model_r.o propagation.o propagation_ode.o collision.
      timer.o util.o wall.o colloids_Q_tensor.o ludwig.o 
 
 
-TARGET_OBJS = collision_target.o
+TARGET_OBJS = collision_target.o symmetric_target.o
 
 ###############################################################################
 #
