@@ -344,7 +344,7 @@ static void colloid_forces(void) {
   if (nc > 0) {
     colloid_forces_zero_set();
     colloid_forces_single_particle_set();
-    /*colloid_forces_fluid_gravity_set();*/
+    /* colloid_forces_fluid_gravity_set();*/
 
     if (nc > 1) {
       colloid_forces_pairwise(&hminlocal, &elocal);
@@ -397,7 +397,6 @@ static void colloid_forces_zero_set(void) {
 	    pc->force[ia] = 0.0;
 	    pc->torque[ia] = 0.0;
 	  }
-
 	  pc = pc->next;
 	}
       }

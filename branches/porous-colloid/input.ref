@@ -39,7 +39,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 4000
+N_cycles 1000
 propagation_ode off
 propagation_ode_tstep 1.0
 propagation_ode_integrator rk2
@@ -63,7 +63,7 @@ propagation_ode_integrator rk2
 
 size 24_24_24
 #grid 1_2_1
-periodicity 0_0_0
+periodicity 1_1_0
 reduced_halo no
 
 ##############################################################################
@@ -218,6 +218,7 @@ surf_psi_b 0.01
 #                       cubic: o8m (BPI), o2 (BPII), o5
 #                       hexagonal BPs: h2d, h3da, h3db
 #                       amorphous BP: bp3
+#			active_nematic
 #
 #  lc_q_init_amplitude  scalar order parameter amplitude for initialisation
 #
@@ -323,7 +324,7 @@ colloid_random_dh   0.4
 colloid_random_a0   2.3
 colloid_random_ah   2.3
 #colloid_random_r0  15.2935_23.36198_8.348894
-colloid_random_r0   12.2_12.7_4.0
+colloid_random_r0   12.0_12.0_4.6
 #colloid_random_r0   3.3_12.2_3.2
 colloid_random_v0   0.0_0.0_0.0
 colloid_random_s0   0.0_0.0_0.
@@ -405,6 +406,7 @@ porous_media_type   status_only
 #                           N steps (can be large!)
 #  freq_phi        N        phi data output frequency
 #  freq_vel        N        velocity data output frequency
+#  freq_fed        N        free energy density output frequency
 #  freq_shear_measurement   stress profile accumulator
 #  freq_shear_output        stress profile output
 #  config_at_end            [yes|no] write full configuration at end of run
@@ -421,11 +423,12 @@ porous_media_type   status_only
 #
 ###############################################################################
 
-freq_statistics 100
+freq_statistics 1
 freq_measure 200000
 freq_config 100000
 freq_phi    10000
 freq_vel    10000
+freq_fed    100000
 freq_shear_measurement 100000
 freq_shear_output      100000
 config_at_end yes
@@ -438,6 +441,7 @@ distribution_io_input_format BINARY
 phi_io_grid 1_1_1
 phi_format    BINARY
 vel_format    BINARY
+fed_format    ASCII
 
 ##############################################################################
 #
@@ -453,7 +457,7 @@ vel_format    BINARY
 #
 ##############################################################################
 
-colloid_io_freq 100
+colloid_io_freq 100000
 colloid_io_grid 1_1_1
 colloid_io_format_input  ASCII
 colloid_io_format_output ASCII

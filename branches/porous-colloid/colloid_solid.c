@@ -95,7 +95,7 @@ void solid_lubrication(colloid_t * pc, double force[3]) {
 
 	if (h < hcut ){
 
-	  if(h<0.0)fatal("Stopping");
+	  if(h<0.0)fatal("Stopping in solid_lubrication\n");
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    rhat[ia] = r12[ia]/rsep;

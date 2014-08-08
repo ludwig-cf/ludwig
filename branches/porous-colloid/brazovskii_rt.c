@@ -33,7 +33,6 @@
 
 void brazovskii_run_time(void) {
 
-  int n;
   double a;
   double b;
   double c;
@@ -52,10 +51,10 @@ void brazovskii_run_time(void) {
 
   /* Parameters */
 
-  n = RUN_get_double_parameter("A", &a);
-  n = RUN_get_double_parameter("B", &b);
-  n = RUN_get_double_parameter("K", &kappa);
-  n = RUN_get_double_parameter("C", &c);
+  RUN_get_double_parameter("A", &a);
+  RUN_get_double_parameter("B", &b);
+  RUN_get_double_parameter("K", &kappa);
+  RUN_get_double_parameter("C", &c);
 
   info("Brazovskii free energy parameters:\n");
   info("Bulk parameter A      = %12.5e\n", a);

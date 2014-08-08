@@ -49,7 +49,7 @@ LIBRARY = libludwig.a
 CC = gcc 
 MPICC = mpicc
 OPTS = -D_D3Q19_
-CFLAGS = -Wall -O3 -DNDEBUG
+CFLAGS = -Wall -O3
 
 
 INC = -I.
