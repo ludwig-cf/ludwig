@@ -4,17 +4,18 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.h,v 1.9 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
+ *  (c) 2008-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Ronojoy Adhikari computed this D3Q19 basis.
  *
  *****************************************************************************/
 
-#ifdef _D3Q19_
+#ifndef D3Q19_MODEL_H
+#define D3Q19_MODEL_H
 
 enum {NDIM = 3};
 enum {NVEL = 19};

@@ -2,27 +2,21 @@
  *
  *  model.h
  *
- *  $Id$
+ *  This includes "model_s.h" which should be the specific
+ *  model d2q9, d3q15, or d3q19 (see Makefile).
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef MODEL_H
 #define MODEL_H
 
-#include "d2q9.h"
-#include "d3q15.h"
-#include "d3q19.h"
-
-#if !defined (_D2Q9_) && !defined (_D3Q15_) && !defined (_D3Q19_)
-#error "You must define -D_D2Q9_, -D_D3Q15_ or -D_D3Q19_ in the Makefile" 
-#endif
-
+#include "model_s.h"
 #include "io_harness.h"
 
 /* Vector length for SIMD auto-vectorisation over lattice sites. */

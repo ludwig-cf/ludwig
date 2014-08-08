@@ -6,19 +6,13 @@
 #  make do_tests            compiles and runs all tests in serial
 #  make do_tests_mpi        compiles and runs all tests on NPROCS processors
 #
-#  Or you can compile and run each test separately. You need to set
-#  -D_D3Q15_ or -D_D3Q19_ to be consistent with the choice in ../src
-#  in COPTS.
-#
 #  Compilers etc will depend on your platform
-#
-#  $Id: Makefile,v 1.14 2010-11-02 17:51:22 kevin Exp $
 #
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2010 The University of Edinburgh
+#  (c) 2010-2015 The University of Edinburgh
 #
 ###############################################################################
 
@@ -33,7 +27,6 @@ NPROCS = 8
 
 SRC     = ../src
 INCLUDE = -I$(SRC)
-OPTS    = -D_D3Q19_
 CFLAGS  = -Wall
 
 MPI_STUB_INCLUDE = -I../mpi_s

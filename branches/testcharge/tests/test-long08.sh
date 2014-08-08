@@ -15,7 +15,6 @@ DIR_REG=`pwd`/regression
 
 cd $DIR_SRC
 make clean
-make libmpi
 make mpi
 
 cd $DIR_REG

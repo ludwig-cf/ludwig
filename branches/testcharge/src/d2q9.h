@@ -4,17 +4,16 @@
  *
  *  D2Q9 definitions.
  *
- *  $Id: d2q9.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifdef _D2Q9_
+#ifndef D2Q9_MODEL_H
+#define D2Q9_MODEL_H
 
 enum {NDIM = 2};
 enum {NVEL = 9};

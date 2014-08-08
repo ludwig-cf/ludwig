@@ -4,12 +4,6 @@
 #
 # Preprocessor flags.
 #
-#  One of:
-#
-# -D_D2Q9_               Use D2Q9  or
-# -D_D3Q15_              Use D3Q15 or
-# -D_D3Q19_              Use D3Q19
-#
 # Please use the following for any production run
 #
 # -DNDEBUG               Switch off standard C assert()
@@ -20,8 +14,11 @@
 #                        depend on hardware: try 2, 4, 8, and 16.
 #                        For 2d systems, use SIMDVL=1.
 #
-# make serial            for serial code
-# make mpi               for parallel code
+# make serial            for serial code (default model is D3Q19)
+# make mpi               for parallel code (default model is D3Q19)
+#
+# make serial-d2q9       etc for serial D2Q19 or D3Q15 or D3Q19
+# make mpi-d2q9          etc for parallel ditto
 #
 # Compiler flags.
 #
@@ -32,13 +29,11 @@
 # MPICC     C compiler (make mpi)
 # LDFLAGS   Link time flags [-lm included by default]
 #
-# $Id$
-#
 # Edinburgh Soft Matter and Statistical Physics Group and
 # Edinburgh Parallel Computing Centre
 #
 # Kevin Stratford (kevin@epcc.ed.ac.uk)
-# (c) 2010 The University of Edinburgh
+# (c) 2010-2014 The University of Edinburgh
 #
 ###############################################################################
 
@@ -48,7 +43,7 @@ LIBRARY = libludwig.a
 
 CC = gcc
 MPICC = mpicc
-OPTS = -D_D3Q19_
+OPTS =
 CFLAGS = -Wall -O3
 
 INC = -I.
@@ -78,7 +73,7 @@ endif
 #
 ###############################################################################
 
-OBJS = d2q9.o d3q15.o d3q19.o model.o propagation.o \
+OBJS = model.o propagation.o \
      collision.o physics.o physics_rt.o \
      advection.o advection_bcs.o advection_rt.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
@@ -131,19 +126,59 @@ default:
 
 verbose:
 	echo -e "LUDWIG make options ...\n"\
-	    "\t make serial \t builds serial implementation (no assertions)\n"\
-	    "\t make mpi \t builds parallel implementation based on MPI\n"\
-	    "\t make lib \t builds serial library\n"\
-            "\t make libmpi \t builds parallel library\n"\
+	    "\t make serial \t\t builds serial implementation (D3Q19)\n"\
+	    "\t make serial-d2q9 etc \t builds specific serial version\n" \
+	    "\t make mpi \t\t builds MPI implementation (D3Q19)\n"\
+	    "\t make mpi-d2q9 etc \t builds specific parallel version\n" \
             "\t Check the Makefile for further details\n"	
 
 code:	svn $(OBJS)
 	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
+
+# Serial versions
+
 serial:
+	$(MAKE) serial-d3q19
+
+serial-d2q9:
+	cp d2q9.h model_s.h
+	$(MAKE) serial-model "OBJS=d2q9.o $(OBJS)"
+
+serial-d3q15:
+	cp d3q15.h model_s.h
+	$(MAKE) serial-model "OBJS=d3q15.o $(OBJS)"
+
+serial-d3q19:
+	cp d3q19.h model_s.h
+	$(MAKE) serial-model "OBJS=d3q19.o $(OBJS)"
+
+serial-model:
+	$(MAKE) lib
 	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
 	-L../mpi_s -lmpi" "OBJS=$(OBJS) $(MAIN).o"
+
+# MPI versions
+
 mpi:
+	$(MAKE) mpi-d3q19
+
+mpi-d2q9:
+	cp d2q9.h model_s.h
+	$(MAKE) mpi-model "OBJS=d2q9.o $(OBJS)"
+
+mpi-d3q15:
+	cp d3q15.h model_s.h
+	$(MAKE) mpi-model "OBJS=d3q15.o $(OBJS)"
+
+mpi-d3q19:
+	cp d3q19.h model_s.h
+	$(MAKE) mpi-model "OBJS=d3q19.o $(OBJS)"
+
+mpi-model:
+	$(MAKE) libmpi
 	$(MAKE) code "OBJS=$(OBJS) $(MAIN).o" "CC=$(MPICC)"
+
+# Libraries
 
 libar:	$(OBJS)
 	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS)
@@ -176,4 +211,5 @@ svn:
 
 .PHONY : clean
 clean:
-	-rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) $(MAIN).o
+	rm -f model_s.h d2q9.o d3q15.o d3q19.o
+	rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) $(MAIN).o

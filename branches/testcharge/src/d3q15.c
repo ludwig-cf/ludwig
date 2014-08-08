@@ -4,16 +4,20 @@
  *
  *  D3Q15 model definitions.
  *
- *  $Id: d3q15.c,v 1.8 2009-04-09 14:53:29 kevin Exp $
- *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2008-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Ronojoy Adhikari computed this D3Q15 basis.
  *
  *****************************************************************************/
 
 #include "pe.h"
 #include "d3q15.h"
-
-#ifdef _D3Q15_
 
 /*****************************************************************************
  *
@@ -151,5 +155,3 @@ const int ydisp_bwd_cv[CVYBLOCK] = {4, 9, 13};
 const int zblocklen_cv[CVZBLOCK] = {1, 1, 1, 1, 1};
 const int zdisp_fwd_cv[CVZBLOCK] = {1, 4, 7, 10, 13};
 const int zdisp_bwd_cv[CVZBLOCK] = {2, 5, 8, 11, 14};
-
-#endif

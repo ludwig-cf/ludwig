@@ -76,7 +76,7 @@
 #include "advection_bcs.h"
 #include "free_energy.h"
 #include "physics.h"
-#include "d3q19.h"
+#include "model.h"
 #include "nernst_planck.h"
 
 

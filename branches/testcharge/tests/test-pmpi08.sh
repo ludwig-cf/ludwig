@@ -19,7 +19,6 @@ make clean
 
 cd $DIR_SRC
 make clean
-make libmpi
 make mpi
 
 cd $DIR_TST

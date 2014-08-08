@@ -24,7 +24,7 @@ make testc
 
 cd $DIR_SRC
 make clean
-make lib
+make serial
 
 cd $DIR_TST
 make clean
@@ -35,9 +35,6 @@ make clean
 # The naming convention for the files is "serial-xxxx-xxx.inp"
 # for the input and with extension ".log" for the reference
 # output.
-
-cd $DIR_SRC
-make serial
 
 # We are going to run from the regression test directory
 
