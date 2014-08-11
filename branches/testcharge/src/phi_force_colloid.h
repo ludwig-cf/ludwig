@@ -19,7 +19,6 @@
 #include "hydro.h"
 #include "map.h"
 
-int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
-		      double dt);
+int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map);
 
 #endif

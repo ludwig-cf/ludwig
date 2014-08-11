@@ -358,7 +358,6 @@ void ludwig_run(const char * inputfile) {
   int ncolloid = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
   int     im, multisteps;
-  static double  dt = 1.0; /* Timestep size for multistepping */ 
 
   io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
@@ -392,8 +391,6 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
   if (ludwig->psi) {
     psi_stats_info(ludwig->psi);
-    psi_multisteps(ludwig->psi, &multisteps);
-    dt = 1.0/multisteps;
   }
   ludwig_report_momentum(ludwig);
 
@@ -451,80 +448,68 @@ void ludwig_run(const char * inputfile) {
 #endif
     TIMER_stop(TIMER_ELECTRO_POISSON);
 
+    if (ludwig->hydro) {
+      TIMER_start(TIMER_HALO_LATTICE);
+      hydro_u_halo(ludwig->hydro);
+      TIMER_stop(TIMER_HALO_LATTICE);
+    }
 
-      if (ludwig->hydro) {
-	TIMER_start(TIMER_HALO_LATTICE);
-	hydro_u_halo(ludwig->hydro);
-	TIMER_stop(TIMER_HALO_LATTICE);
-      }
+    /* Time splitting for high electrokinetic diffusions in Nernst Planck */
 
-
-      /* Time splitting for high electrokinetic diffusions in Nernst Planck */
-
-      psi_multisteps(ludwig->psi, &multisteps);
-      dt = 1.0/multisteps;
+    psi_multisteps(ludwig->psi, &multisteps);
       
-      for (im = 0; im < multisteps; im++) {
+    for (im = 0; im < multisteps; im++) {
 
-	TIMER_start(TIMER_HALO_LATTICE);
-	psi_halo_psi(ludwig->psi);
-	psi_halo_rho(ludwig->psi);
-	TIMER_stop(TIMER_HALO_LATTICE);
+      TIMER_start(TIMER_HALO_LATTICE);
+      psi_halo_psi(ludwig->psi);
+      psi_halo_rho(ludwig->psi);
+      TIMER_stop(TIMER_HALO_LATTICE);
 
-	/* Force for this step before update. Note that nhalo = 1
-	 * is indicating grad mu method and nhalo = 2 the divergence
-	 * method. Once per large time step with dt = 1.0. */
+      /* Force for this step before update. Note that nhalo = 1
+       * is indicating grad mu method and nhalo = 2 the divergence
+       * method. Once per large time step with dt = 1.0. */
 
-	if (im == 0) {
+      if (im == 0) {
 
-	  TIMER_start(TIMER_FORCE_CALCULATION);
+	TIMER_start(TIMER_FORCE_CALCULATION);
 
-	  if (coords_nhalo() == 1) {
-	    psi_force_gradmu_conserve(ludwig->psi, ludwig->hydro,
-				      ludwig->collinfo, 1.0);
+	if (coords_nhalo() == 1) {
+	  psi_force_gradmu_conserve(ludwig->psi, ludwig->hydro,
+					    ludwig->collinfo);
+	}
+	else {
+	  if (ncolloid == 0) {
+	    phi_force_calculation(ludwig->phi, ludwig->hydro);
 	  }
 	  else {
-	    if (ncolloid == 0) {
-	      phi_force_calculation(ludwig->phi, ludwig->hydro, 1.0);
-	    }
-	    else {
-	      psi_force_divstress(ludwig->psi, ludwig->hydro,
-				  ludwig->collinfo, 1.0);
-	    }
+	    psi_force_divstress(ludwig->psi, ludwig->hydro,
+					ludwig->collinfo);
 	  }
-	  TIMER_stop(TIMER_FORCE_CALCULATION);
 	}
-#ifdef OLIVER_NP
-	/* Note: The charges evolve currently by means of a hybrid scheme:   * 
-         * The advective change is calculated with a simple 6-point stencil, *
-         * whereas for the diffusive change a D3Q19 scheme without rest      *
-         * particle is used.                                                 */
-
-        /* Advective fluxes / 6-point stencil */
-	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
-	TIMER_stop(TIMER_ELECTRO_NPEQ);
-
-	TIMER_start(TIMER_HALO_LATTICE);
-	psi_halo_rho(ludwig->psi);
-	TIMER_stop(TIMER_HALO_LATTICE);
-      
-	/* Diffusive fluxes / D3Q19 stencil */
-	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_d3q19_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
-	TIMER_stop(TIMER_ELECTRO_NPEQ);
-#endif
-
-#ifndef OLIVER_NP
-	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map, dt);
-	TIMER_stop(TIMER_ELECTRO_NPEQ);
-#endif
+	TIMER_stop(TIMER_FORCE_CALCULATION);
 
       }
-#ifdef OLIVER_NP
+
+#ifdef NP_D3Q18
+	TIMER_start(TIMER_ELECTRO_NPEQ);
+	nernst_planck_driver_d3q18(ludwig->psi, ludwig->hydro, ludwig->map, ludwig->collinfo);
+	TIMER_stop(TIMER_ELECTRO_NPEQ);
+#endif
+
+#ifndef NP_D3Q18
+	TIMER_start(TIMER_ELECTRO_NPEQ);
+	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
+	TIMER_stop(TIMER_ELECTRO_NPEQ);
+#endif
+      }
+#ifdef NP_D3Q18
       nernst_planck_adjust_multistep(ludwig->psi);
 #endif
+      if (is_statistics_step()) info("%d multisteps\n",im);
+
+      /* Offset correction for potential left as comment for now */
+//      psi_sor_offset(ludwig->psi);
+
     }
 
     /* order parameter dynamics (not if symmetric_lb) */
@@ -541,10 +526,10 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	if (ncolloid == 0) {
-	  phi_force_calculation(ludwig->phi, ludwig->hydro, dt);
+	  phi_force_calculation(ludwig->phi, ludwig->hydro);
 	}
 	else {
-	  phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map, dt);
+	  phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map);
 	}
       }
 
@@ -574,7 +559,7 @@ void ludwig_run(const char * inputfile) {
       collide(ludwig->hydro, ludwig->map, ludwig->noise);
       TIMER_stop(TIMER_COLLIDE);
 
-      /* Boundary coniditions */
+      /* Boundary conditions */
 
       model_le_apply_boundary_conditions();
 

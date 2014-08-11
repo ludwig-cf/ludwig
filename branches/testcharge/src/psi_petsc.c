@@ -156,12 +156,12 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   PetscInt    xs,ys,zs,xw,yw,zw,xe,ye,ze;
   PetscScalar epsilon;
 
-#ifndef OLIVER_NP
+#ifndef NP_D3Q18
   PetscScalar v[7];
   MatStencil  row, col[7];
 #endif
 
-#ifdef OLIVER_NP
+#ifdef NP_D3Q18
   PetscScalar v[19];
   MatStencil  row, col[19];
   double r3 = 0.333333333333333, r6 = 0.166666666666667;
@@ -192,7 +192,7 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	row.j = j;
 	row.k = k;
 
-#ifndef OLIVER_NP
+#ifndef NP_D3Q18
 	/* 6-point stencil */
 	col[0].i = i;     col[0].j = j;     col[0].k = k-1;   v[0] = - epsilon;
 	col[1].i = i;     col[1].j = j-1;   col[1].k = k;     v[1] = - epsilon;
@@ -204,7 +204,7 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
 #endif
 
-#ifdef OLIVER_NP
+#ifdef NP_D3Q18
 	/* D3Q19 stencil */
 	col[0].i  = i+1;   col[0].j  = j;     col[0].k  = k;     v[0]  = - r3 * epsilon;
 	col[1].i  = i-1;   col[1].j  = j;     col[1].k  = k;     v[1]  = - r3 * epsilon;

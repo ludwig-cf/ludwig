@@ -737,7 +737,7 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
 
 /*****************************************************************************
  *
- *  psi_electric_field_d3q19
+ *  psi_electric_field_d3q18
  *
  *  Return the electric field associated with the current potential.
  *
@@ -746,7 +746,7 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
  *
  *****************************************************************************/
 
-int psi_electric_field_d3q19(psi_t * psi, int index, double e[3]) {
+int psi_electric_field_d3q18(psi_t * psi, int index, double e[3]) {
 
   int p;
   int coords[3], coords_nbr[3], index_nbr;
@@ -834,6 +834,21 @@ int psi_multisteps(psi_t * obj, int * multisteps) {
   assert(multisteps);
 
   *multisteps = obj->multisteps;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_multistep_timestep
+ *
+ *****************************************************************************/
+
+int psi_multistep_timestep(psi_t * obj, double * dt) {
+
+  assert(obj);
+
+  *dt = 1.0/obj->multisteps;
 
   return 0;
 }

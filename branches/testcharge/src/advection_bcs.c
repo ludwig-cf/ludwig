@@ -149,13 +149,13 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 
 /*****************************************************************************
  *
- *  advective_bcs_no_flux_d3q19
+ *  advective_bcs_no_flux_d3q18
  *
  *  Set normal fluxes at solid fluid interfaces to zero.
  *
  *****************************************************************************/
 
-int advective_bcs_no_flux_d3q19(int nf, double ** flx, map_t * map) {
+int advective_bcs_no_flux_d3q18(int nf, double ** flx, map_t * map) {
 
   int n;
   int nlocal[3];

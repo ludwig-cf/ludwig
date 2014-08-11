@@ -53,7 +53,7 @@ int psi_debye_length(psi_t * obj, double rho_b, double * ld);
 int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
 			  double * sp);
 int psi_electric_field(psi_t * psi, int index, double e[3]);
-int psi_electric_field_d3q19(psi_t * psi, int index, double e[3]);
+int psi_electric_field_d3q18(psi_t * psi, int index, double e[3]);
 
 int psi_reltol(psi_t * obj, double * reltol);
 int psi_abstol(psi_t * obj, double * abstol);
@@ -64,6 +64,7 @@ int psi_maxits_set(psi_t * obj, int maxits);
 
 int psi_multisteps(psi_t * obj, int * multisteps);
 int psi_multisteps_set(psi_t * obj, int multisteps);
+int psi_multistep_timestep(psi_t * obj, double * dt);
 int psi_diffacc(psi_t * obj, double * diffacc);
 int psi_diffacc_set(psi_t * obj, double diffacc);
 

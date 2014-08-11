@@ -25,9 +25,13 @@ void advflux_free(advflux_t * obj);
 int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field);
 
 int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
-		     double * fy, double * fz);
+			double * fy, double * fz);
 int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
-			 double * fy, double * fz);
+			double * fy, double * fz);
+int advective_fluxes_d3q18(hydro_t * hydro, int nf, double * f, 
+			double ** flx);
+int advective_fluxes_2nd_d3q18(hydro_t * hydro, int nf, double * f, 
+			double ** flx);
 
 int advection_order_set(const int order);
 int advection_order(int * order);

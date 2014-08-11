@@ -43,7 +43,7 @@
  *
  ****************************************************************************/
 
-int psi_force_grad_mu(psi_t * psi, hydro_t * hydro, double dt) {
+int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int zs, ys, xs;
@@ -75,15 +75,15 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro, double dt) {
 
 	/* "Internal" field */
 
-	f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs])*dt;
-	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys])*dt;
-	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs])*dt;
+	f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs]);
+	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys]);
+	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs]);
 
 	/* External field */
 
-	f[X] += rho_elec*e0[X]*dt;
-	f[Y] += rho_elec*e0[Y]*dt;
-	f[Z] += rho_elec*e0[Z]*dt;
+	f[X] += rho_elec*e0[X];
+	f[Y] += rho_elec*e0[Y];
+	f[Z] += rho_elec*e0[Z];
 
 	hydro_f_local_add(hydro, index, f);
       }
@@ -109,7 +109,7 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro, double dt) {
  *
  *****************************************************************************/
 
-int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
+int psi_force_external_field(psi_t * psi, hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -134,9 +134,9 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
         index = coords_index(ic, jc, kc);
 	psi_rho_elec(psi, index, &rho_elec);
 
-	f[X] = rho_elec*e0[X]*dt;
-	f[Y] = rho_elec*e0[Y]*dt;
-	f[Z] = rho_elec*e0[Z]*dt;
+	f[X] = rho_elec*e0[X];
+	f[Y] = rho_elec*e0[Y];
+	f[Z] = rho_elec*e0[Z];
 
 	hydro_f_local_add(hydro, index, f);
       }
@@ -178,10 +178,9 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro, double dt) {
  *****************************************************************************/
 
 int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
-			      colloids_info_t * cinfo, double dt) {
+			      colloids_info_t * cinfo) {
 
   int ic, jc, kc, index;
-  int zs, ys, xs;
   int nk;
   int nlocal[3];
 
@@ -201,11 +200,10 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
   physics_e0(e0);
 
   coords_nlocal(nlocal);
-  coords_strides(&xs, &ys, &zs);
   comm = cart_comm();
 
   psi_nk(psi, &nk);
-  assert(nk == 2);              /* This rountine is not completely general */
+  assert(nk == 2); /* This routine is not completely general */
 
   /* Compute force without correction. */
 
@@ -217,8 +215,8 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	colloids_info_map(cinfo, index, &pc);
 
 	psi_rho_elec(psi, index, &rho_elec);
-#ifdef OLIVER_NP
-	psi_electric_field_d3q19(psi, index, elocal);
+#ifdef NP_D3Q18
+	psi_electric_field_d3q18(psi, index, elocal);
 #else
 	psi_electric_field(psi, index, elocal);
 #endif
@@ -227,13 +225,15 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	f[Y] = rho_elec*(e0[Y] + elocal[Y]);
         f[Z] = rho_elec*(e0[Z] + elocal[Z]);
 
+
+
 	/* If solid, accumulate contribution to colloid;
 	   else count a fluid node */
 
 	if (pc) {
-	  pc->force[X] += dt*f[X];
-	  pc->force[Y] += dt*f[Y];
-	  pc->force[Z] += dt*f[Z];
+	  pc->force[X] += f[X];
+	  pc->force[Y] += f[Y];
+	  pc->force[Z] += f[Z];
 	}
 	else {
 	  flocal[3] += 1.0;
@@ -267,15 +267,15 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	if (pc) continue;
 
         psi_rho_elec(psi, index, &rho_elec);
-#ifdef OLIVER_NP
-	psi_electric_field_d3q19(psi, index, elocal);
+#ifdef NP_D3Q18
+	psi_electric_field_d3q18(psi, index, elocal);
 #else
 	psi_electric_field(psi, index, elocal);
 #endif
 
-        f[X] = dt*(rho_elec*(e0[X] + elocal[X]) - fsum[X]);
-        f[Y] = dt*(rho_elec*(e0[Y] + elocal[Y]) - fsum[Y]);
-        f[Z] = dt*(rho_elec*(e0[Z] + elocal[Z]) - fsum[Z]);
+        f[X] = rho_elec*(e0[X] + elocal[X]) - fsum[X];
+        f[Y] = rho_elec*(e0[Y] + elocal[Y]) - fsum[Y];
+        f[Z] = rho_elec*(e0[Z] + elocal[Z]) - fsum[Z];
 
 	if (hydro) hydro_f_local_add(hydro, index, f);
       }
@@ -296,8 +296,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo,
-			double dt) {
+int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
 
   int ic, jc, kc;
   int index, index1;
@@ -369,14 +368,11 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo,
 
         /* Store the force on lattice */
 	if (pc) {
-	  pc->force[X] += dt*force[X];
-	  pc->force[Y] += dt*force[Y];
-	  pc->force[Z] += dt*force[Z];
+	  pc->force[X] += force[X];
+	  pc->force[Y] += force[Y];
+	  pc->force[Z] += force[Z];
 	}
 	else {
-	  force[X] *= dt;
-	  force[Y] *= dt;
-	  force[Z] *= dt;
 	  hydro_f_local_add(hydro, index, force);
 	}
 

@@ -83,12 +83,13 @@
 static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 				double * fz);
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
-				double * fz, double dt);
-
-static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t *map);
-static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, 
-				map_t * map, double dt);
-
+				double * fz);
+static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro, 
+		map_t * map, colloids_info_t * cinfo, double ** flx);
+static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro, 
+		map_t * map, colloids_info_t * cinfo, double ** flx);
+static int nernst_planck_update_d3q18(psi_t * psi, 
+				map_t * map, double ** flx);
 static double max_acc; 
 
 /*****************************************************************************
@@ -103,7 +104,7 @@ static double max_acc;
  *
  *****************************************************************************/
 
-int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt) {
+int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
 
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
@@ -130,16 +131,15 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt) {
   /* Add advective fluxes based on six-point stencil */
   if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
 
-#ifdef OLIVER_NP
-#else
+  /* Add diffusive fluxes based on six-point stencil */
   nernst_planck_fluxes(psi, fe, fy, fz);
-#endif
 
   /* Apply no flux BC for six-point stencil */
   if (map) advective_bcs_no_flux(nk, fe, fy, fz, map);
   
   /* Update charge distribution */
-  nernst_planck_update(psi, fe, fy, fz, dt);
+  nernst_planck_update(psi, fe, fy, fz);
+
 
   free(fz);
   free(fy);
@@ -263,12 +263,14 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
  *****************************************************************************/
 
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
-				double * fz, double dt) {
+				double * fz) {
   int ic, jc, kc, index;
   int nlocal[3];
   int nhalo;
   int zs, ys, xs;
   int n, nk;
+  
+  double dt;
 
   assert(psi);
   assert(fe);
@@ -283,6 +285,7 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
   xs = ys*(nlocal[Y] + 2*nhalo);
 
   psi_nk(psi, &nk);
+  psi_multistep_timestep(psi, &dt);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -305,7 +308,7 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 
 /*****************************************************************************
  *
- *  nernst_planck_d3q19_driver
+ *  nernst_planck_driver_d3q18
  *
  *  The hydro object is allowed to be NULL, in which case there is
  *  no advection.
@@ -315,7 +318,8 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
  *
  *****************************************************************************/
 
-int nernst_planck_d3q19_driver(psi_t * psi, hydro_t * hydro, map_t * map, double dt) {
+int nernst_planck_driver_d3q18(psi_t * psi, hydro_t * hydro, 
+		map_t * map, colloids_info_t * cinfo) {
 
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
@@ -333,14 +337,17 @@ int nernst_planck_d3q19_driver(psi_t * psi, hydro_t * hydro, map_t * map, double
   }
   if (flx == NULL) fatal("calloc(flx) failed\n");
 
+  /* Add advective fluxes */
+  if (hydro) advective_fluxes_d3q18(hydro, nk, psi->rho, flx);
+
   /* Add diffusive fluxes */
-  nernst_planck_d3q19_fluxes(psi, flx, map);
+  nernst_planck_fluxes_d3q18(psi, hydro, map, cinfo, flx);
   
   /* Apply no-flux BC */
-  if (map) advective_bcs_no_flux_d3q19(nk, flx, map);
+  if (map) advective_bcs_no_flux_d3q18(nk, flx, map);
 
   /* Update charges */
-  nernst_planck_d3q19_update(psi, flx, map, dt);
+  nernst_planck_update_d3q18(psi, map, flx);
 
   for (ia = 0; ia < nsites*nk; ia++) {
     free(flx[ia]);
@@ -352,13 +359,11 @@ int nernst_planck_d3q19_driver(psi_t * psi, hydro_t * hydro, map_t * map, double
 
 /*****************************************************************************
  *
- *  nernst_planck_d3q19_fluxes
+ *  nernst_planck_fluxes_d3q18
  *
  *  Compute diffusive fluxes.
  *
  *  We assume we can accumulate the diffusive and advective fluxes separately.
- *  The while the diffusive fluxes use a D3Q19 stencil here, the advective
- *  fluxes are still based on the Cartesian fluxes fe, fw, fy, and fz.
  *
  *  As we compute rho(n+1) = rho(n) - div.flux in the update routine,
  *  there is an extra minus sign in the fluxes here. This conincides
@@ -366,22 +371,28 @@ int nernst_planck_d3q19_driver(psi_t * psi, hydro_t * hydro, map_t * map, double
  *
  *****************************************************************************/
 
-static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t * map) {
+static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro, 
+	map_t * map, colloids_info_t * cinfo, double ** flx) {
 
   int ic, jc, kc; 
   int index0, index1;
   int nlocal[3];
   int n, nk; /* Number of charged species */
   int c;
-  double delta[18];
+  int status1;
 
   double eunit;
-  double beta;
+  double beta, rbeta;
   double b0, b1;
   double mu0, mu1;
   double rho0, rho1;
   double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
+  
   double e0[3];
+  double delta[18], rsqrt2;
+  double dt;
+
+  colloid_t * pc = NULL;
 
   assert(psi);
   assert(flx);
@@ -391,55 +402,75 @@ static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t * map) {
   psi_nk(psi, &nk);
   psi_unit_charge(psi, &eunit);
   psi_beta(psi, &beta);
+  psi_multistep_timestep(psi, &dt);
 
   physics_e0(e0);
 
+  rbeta = 1.0/beta;
+  rsqrt2 = 1.0/sqrt(2.0);
+
   /* Lattice spacing */
-  delta[0] = sqrt(2.0);
-  delta[1] = sqrt(2.0);
+  delta[0] = rsqrt2;
+  delta[1] = rsqrt2;
   delta[2] = 1.0;
-  delta[3] = sqrt(2.0);
-  delta[4] = sqrt(2.0);
-  delta[5] = sqrt(2.0);
+  delta[3] = rsqrt2;
+  delta[4] = rsqrt2;
+  delta[5] = rsqrt2;
   delta[6] = 1.0;
-  delta[7] = sqrt(2.0);
+  delta[7] = rsqrt2;
   delta[8] = 1.0;
   delta[9] = 1.0;
-  delta[10] = sqrt(2.0);
+  delta[10] = rsqrt2;
   delta[11] = 1.0;
-  delta[12] = sqrt(2.0);
-  delta[13] = sqrt(2.0);
-  delta[14] = sqrt(2.0);
+  delta[12] = rsqrt2;
+  delta[13] = rsqrt2;
+  delta[14] = rsqrt2;
   delta[15] = 1.0;
-  delta[16] = sqrt(2.0);
-  delta[17] = sqrt(2.0);
+  delta[16] = rsqrt2;
+  delta[17] = rsqrt2;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = coords_index(ic, jc, kc);
+        colloids_info_map(cinfo, index0, &pc);
 
-        for (c = 1; c < NVEL; c++) {
+	if (pc) {
+	  continue;
+	}
+	else {
 
-	  index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	  for (c = 1; c < NVEL; c++) {
 
-	  for (n = 0; n < nk; n++) {
+	    index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	    map_status(map, index1, &status1);
 
-	    fe_mu_solv(index0, n, &mu_s0);
-	    mu0 = mu_s0 + psi->valency[n]*eunit*psi->psi[index0];
-	    rho0 = psi->rho[nk*index0 + n];
+	    if (status1 == MAP_FLUID) {
 
-	    fe_mu_solv(index1, n, &mu_s1);
-	    mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index1] - cv[c][X]*e0[X] - cv[c][Y]*e0[Y] - cv[c][Z]*e0[Z]);
-	    b0 = exp(-beta*(mu1 - mu0));
-	    b1 = exp(+beta*(mu1 - mu0));
-	    rho1 = psi->rho[nk*(index1) + n]*b1;
+	      for (n = 0; n < nk; n++) {
 
-	    flx[(nk*index0 + n)][c - 1] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0) / delta[c - 1];
+		fe_mu_solv(index0, n, &mu_s0);
+		mu0 = mu_s0 + psi->valency[n]*eunit*psi->psi[index0];
+		rho0 = psi->rho[nk*index0 + n];
+
+		fe_mu_solv(index1, n, &mu_s1);
+/* TODO: Check if field gradient correct - the lattice spacing might be missing */ 
+		mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index1] - 
+				    cv[c][X]*e0[X] - cv[c][Y]*e0[Y] - cv[c][Z]*e0[Z]);
+		b0 = exp(-beta*(mu1 - mu0));
+		b1 = exp(+beta*(mu1 - mu0));
+		rho1 = psi->rho[nk*(index1) + n]*b1;
+
+		flx[(nk*index0 + n)][c - 1] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0) * delta[c - 1];
+
+	      }
+
+	    }
 
 	  }
-	}
+
+        }   
 
       }
     }
@@ -450,13 +481,225 @@ static int nernst_planck_d3q19_fluxes(psi_t * psi, double ** flx, map_t * map) {
 
 /*****************************************************************************
  *
- *  nernst_planck_d3q19_update
+ *  nernst_planck_fluxes_force_d3q18
  *
- *  Update the rho_k from the fluxes (D3Q19 stencil). Euler forward step.
+ *  Compute diffusive fluxes and link-flux force on fluid.
+ *
+ *  We assume we can accumulate the diffusive and advective fluxes separately.
+ *
+ *  As we compute rho(n+1) = rho(n) - div.flux in the update routine,
+ *  there is an extra minus sign in the fluxes here. This conincides
+ *  with the sign of the advective fluxes, if present.
  *
  *****************************************************************************/
 
-static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, map_t * map, double dt) {
+static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro, 
+	map_t * map, colloids_info_t * cinfo, double ** flx) {
+
+  int ic, jc, kc; 
+  int index0, index1;
+  int nlocal[3];
+  int n, nk; /* Number of charged species */
+  int c;
+  int status1;
+
+  double eunit;
+  double beta, rbeta;
+  double b0, b1;
+  double mu0, mu1;
+  double rho0, rho1;
+  double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
+  
+  double rho_elec;
+  double e0[3], elocal[3];
+  double delta[18], rsqrt2;
+  double flocal[4] = {0.0, 0.0, 0.0, 0.0}, fsum[4], f[3]; 
+  double flxtmp[2];
+  double dt;
+
+  MPI_Comm comm;
+  colloid_t * pc = NULL;
+
+  assert(psi);
+  assert(flx);
+
+  coords_nlocal(nlocal);
+  comm = cart_comm();
+
+  psi_nk(psi, &nk);
+  psi_unit_charge(psi, &eunit);
+  psi_beta(psi, &beta);
+  psi_multistep_timestep(psi, &dt);
+
+  physics_e0(e0);
+
+  rbeta = 1.0/beta;
+  rsqrt2 = 1.0/sqrt(2.0);
+
+  /* Lattice spacing */
+  delta[0] = rsqrt2;
+  delta[1] = rsqrt2;
+  delta[2] = 1.0;
+  delta[3] = rsqrt2;
+  delta[4] = rsqrt2;
+  delta[5] = rsqrt2;
+  delta[6] = 1.0;
+  delta[7] = rsqrt2;
+  delta[8] = 1.0;
+  delta[9] = 1.0;
+  delta[10] = rsqrt2;
+  delta[11] = 1.0;
+  delta[12] = rsqrt2;
+  delta[13] = rsqrt2;
+  delta[14] = rsqrt2;
+  delta[15] = 1.0;
+  delta[16] = rsqrt2;
+  delta[17] = rsqrt2;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(ic, jc, kc);
+        colloids_info_map(cinfo, index0, &pc);
+
+	f[X] = 0.0;
+	f[Y] = 0.0;
+	f[Z] = 0.0;
+
+	psi_rho_elec(psi, index0, &rho_elec);
+
+	/* Total electrostatic force on colloid */
+	if (pc) {
+#ifdef NP_D3Q18
+	  psi_electric_field_d3q18(psi, index0, elocal);
+#else
+	  psi_electric_field(psi, index0, elocal);
+#endif
+
+	  f[X] = rho_elec * (e0[X] + elocal[X]) * dt;
+	  f[Y] = rho_elec * (e0[Y] + elocal[Y]) * dt;
+	  f[Z] = rho_elec * (e0[Z] + elocal[Z]) * dt;
+
+	  pc->force[X] += f[X];
+	  pc->force[Y] += f[Y];
+	  pc->force[Z] += f[Z];
+
+	}
+	else {
+
+	/* Internal electrostatic force on fluid */
+	  for (c = 1; c < NVEL; c++) {
+
+	    index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	    map_status(map, index1, &status1);
+
+	    if (status1 == MAP_FLUID) {
+
+	      for (n = 0; n < nk; n++) {
+
+		fe_mu_solv(index0, n, &mu_s0);
+		mu0 = mu_s0 + psi->valency[n]*eunit*psi->psi[index0];
+		rho0 = psi->rho[nk*index0 + n];
+
+		fe_mu_solv(index1, n, &mu_s1);
+/* TODO: Check if field gradient correct - the lattice spacing might be missing */ 
+		mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index1] - 
+				    cv[c][X]*e0[X] - cv[c][Y]*e0[Y] - cv[c][Z]*e0[Z]);
+		b0 = exp(-beta*(mu1 - mu0));
+		b1 = exp(+beta*(mu1 - mu0));
+		rho1 = psi->rho[nk*(index1) + n]*b1;
+
+		/* Auxiliary terms */
+		flxtmp[0] = - 0.5*(1.0 + b0)*(rho1 - rho0) * delta[c - 1];
+
+
+
+		flxtmp[1] = (psi->rho[nk*(index1) + n] - psi->rho[nk*index0 + n]) * delta[c - 1];
+
+		/* Link flux */
+		flx[(nk*index0 + n)][c - 1] += psi->diffusivity[n]*flxtmp[0];
+
+		/* Force on fluid including ideal gas part in chemical potential */
+		f[X] -= rcs2 * wv[c] * cv[c][X] * (flxtmp[0]) * rbeta;
+		f[Y] -= rcs2 * wv[c] * cv[c][Y] * (flxtmp[0]) * rbeta;
+		f[Z] -= rcs2 * wv[c] * cv[c][Z] * (flxtmp[0]) * rbeta;
+
+	      }
+
+	    }
+
+	  }
+
+	  /* Electrostatic force in external field */
+	  f[X] += rho_elec * e0[X];
+	  f[Y] += rho_elec * e0[Y];
+	  f[Z] += rho_elec * e0[Z];
+
+	  f[X] *= dt;
+	  f[Y] *= dt;
+	  f[Z] *= dt;
+
+	  /* Count number of fluid sites */
+	  flocal[3] += 1.0;
+
+          if (hydro) hydro_f_local_add(hydro, index0, f);
+
+        }   
+
+	/* Accumulate contribution to total force on system */ 
+	flocal[X] += f[X];
+	flocal[Y] += f[Y];
+	flocal[Z] += f[Z];
+
+      }
+    }
+  }
+
+  /* On fluid sites apply correction for momentum conservation */
+
+  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
+ 
+  fsum[X] /= fsum[3];
+  fsum[Y] /= fsum[3];
+  fsum[Z] /= fsum[3];
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(ic, jc, kc);
+        colloids_info_map(cinfo, index0, &pc);
+
+	if (pc) {
+	  continue;
+	} 
+	else {
+
+	  f[X] = -fsum[X];
+	  f[Y] = -fsum[Y];
+	  f[Z] = -fsum[Z];
+
+          if (hydro) hydro_f_local_add(hydro, index0, f);
+
+        }   
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  nernst_planck_update_d3q18
+ *
+ *  Update the rho_k from the fluxes (D3Q18 stencil). Euler forward step.
+ *
+ *****************************************************************************/
+
+static int nernst_planck_update_d3q18(psi_t * psi, map_t * map, double ** flx) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -465,6 +708,7 @@ static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, map_t * map, d
   int c;
   int status;
   double acc, maxacc=0.0;
+  double dt;
 
   assert(psi);
   assert(flx);
@@ -473,6 +717,7 @@ static int nernst_planck_d3q19_update(psi_t * psi, double ** flx, map_t * map, d
   coords_nlocal(nlocal);
 
   psi_nk(psi, &nk);
+  psi_multistep_timestep(psi, &dt);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -567,8 +812,8 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
   }    
 
   /* Reduce no. of multisteps */
-  /* The factor 0.25 prevents too frequent changes. */
-  if (* maxacc < 0.25*diffacc && diffacc > 0.0) {
+  /* The factor 0.1 prevents too frequent changes. */
+  if (* maxacc < 0.1*diffacc && diffacc > 0.0) {
   
     psi_multisteps(psi, &multisteps);
     psi_nk(psi, &nk);

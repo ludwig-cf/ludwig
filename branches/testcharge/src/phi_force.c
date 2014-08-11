@@ -31,7 +31,7 @@
 #include "wall.h"
 #include "phi_force_stress.h"
 
-static int phi_force_calculation_fluid(hydro_t * hydro, double dt);
+static int phi_force_calculation_fluid(hydro_t * hydro);
 static int phi_force_compute_fluxes(double * fe, double * fw, double * fy,
 				    double * fz);
 static int phi_force_flux_divergence(hydro_t * hydro, double * fe,
@@ -45,7 +45,7 @@ static int phi_force_wallx(double * fe, double * fw);
 static int phi_force_wally(double * fy);
 static int phi_force_wallz(double * fz);
 
-static int phi_force_fluid_phi_gradmu(field_t * phi, hydro_t * hydro, double dt);
+static int phi_force_fluid_phi_gradmu(field_t * phi, hydro_t * hydro);
 
 static int force_required_ = 1;
 static int force_divergence_ = 1;
@@ -100,7 +100,7 @@ int phi_force_divergence_set(const int flag) {
  *
  *****************************************************************************/
 
-int phi_force_calculation(field_t * phi, hydro_t * hydro, double dt) {
+int phi_force_calculation(field_t * phi, hydro_t * hydro) {
 
   if (force_required_ == 0) return 0;
   if (hydro == NULL) return 0;
@@ -112,11 +112,11 @@ int phi_force_calculation(field_t * phi, hydro_t * hydro, double dt) {
   }
   else {
     if (force_divergence_) {
-      phi_force_calculation_fluid(hydro, dt);
+      phi_force_calculation_fluid(hydro);
    }
     else {
       assert(phi);
-      phi_force_fluid_phi_gradmu(phi, hydro, dt);
+      phi_force_fluid_phi_gradmu(phi, hydro);
     }
   }
 
@@ -136,7 +136,7 @@ int phi_force_calculation(field_t * phi, hydro_t * hydro, double dt) {
  *
  *****************************************************************************/
 
-static int phi_force_calculation_fluid(hydro_t * hydro, double dt) {
+static int phi_force_calculation_fluid(hydro_t * hydro) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
@@ -172,32 +172,32 @@ static int phi_force_calculation_fluid(hydro_t * hydro, double dt) {
 	index1 = le_site_index(icp1, jc, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X])*dt;
+	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 	index1 = le_site_index(icm1, jc, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X])*dt;
+	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 	index1 = le_site_index(ic, jc+1, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y])*dt;
+	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	index1 = le_site_index(ic, jc-1, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y])*dt;
+	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	index1 = le_site_index(ic, jc, kc+1);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z])*dt;
+	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 	index1 = le_site_index(ic, jc, kc-1);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z])*dt;
+	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 
 	/* Store the force on lattice */
@@ -230,7 +230,7 @@ static int phi_force_calculation_fluid(hydro_t * hydro, double dt) {
  *
  *****************************************************************************/
 
-static int phi_force_fluid_phi_gradmu(field_t * fphi, hydro_t * hydro, double dt) {
+static int phi_force_fluid_phi_gradmu(field_t * fphi, hydro_t * hydro) {
 
   int ic, jc, kc, icm1, icp1;
   int index0, indexm1, indexp1;
@@ -271,17 +271,17 @@ static int phi_force_fluid_phi_gradmu(field_t * fphi, hydro_t * hydro, double dt
         mum1 = chemical_potential(indexm1, 0);
         mup1 = chemical_potential(indexp1, 0);
 
-        force[X] = -phi*0.5*(mup1 - mum1)*dt;
+        force[X] = -phi*0.5*(mup1 - mum1);
 
         mum1 = chemical_potential(index0 - ys, 0);
         mup1 = chemical_potential(index0 + ys, 0);
 
-        force[Y] = -phi*0.5*(mup1 - mum1)*dt;
+        force[Y] = -phi*0.5*(mup1 - mum1);
 
         mum1 = chemical_potential(index0 - zs, 0);
         mup1 = chemical_potential(index0 + zs, 0);
 
-        force[Z] = -phi*0.5*(mup1 - mum1)*dt;
+        force[Z] = -phi*0.5*(mup1 - mum1);
 
 	/* Store the force on lattice */
 

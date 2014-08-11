@@ -55,7 +55,7 @@
 #include "phi_force_colloid.h"
 
 static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
-				   map_t * map, double dt);
+				   map_t * map);
 
 /*****************************************************************************
  *
@@ -66,8 +66,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
-		      double dt) {
+int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
   int ncolloid;
   int required;
@@ -82,7 +81,7 @@ int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
     phi_force_stress_allocate();
 
     phi_force_stress_compute();
-    phi_force_interpolation(cinfo, hydro, map, dt);
+    phi_force_interpolation(cinfo, hydro, map);
 
     phi_force_stress_free();
   }
@@ -102,7 +101,7 @@ int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
  *****************************************************************************/
 
 static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
-				   map_t * map, double dt) {
+				   map_t * map) {
   int ia, ic, jc, kc;
   int index, index1;
   int nlocal[3];
@@ -308,10 +307,6 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	}
 
 	/* Store the force on lattice */
-
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] *= dt;
-	}
 
 	if (hydro) hydro_f_local_add(hydro, index, force);
 	wall_accumulate_force(fw);
