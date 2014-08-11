@@ -1,7 +1,7 @@
 ###############################################################################
 #
 #  Makefile
-#  Test programs for Ludwig (Serial and MPI)
+#  Unit tests for Ludwig (Serial and MPI)
 #
 #  make do_tests            compiles and runs all tests in serial
 #  make do_tests_mpi        compiles and runs all tests on NPROCS processors
@@ -12,7 +12,7 @@
 #  Edinburgh Parallel Computing Centre
 #
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2010-2015 The University of Edinburgh
+#  (c) 2010-2014 The University of Edinburgh
 #
 ###############################################################################
 
@@ -25,12 +25,12 @@ MPICC  = mpicc
 MPIRUN = mpirun -np
 NPROCS = 8
 
-SRC     = ../src
+SRC     = ../../src
 INCLUDE = -I$(SRC)
 CFLAGS  = -Wall
 
-MPI_STUB_INCLUDE = -I../mpi_s
-MPI_STUB_LIB = -L../mpi_s -lmpi
+MPI_STUB_INCLUDE = -I../../mpi_s
+MPI_STUB_LIB = -L../../mpi_s -lmpi
 
 CLIBS  = -lm
 MPILIB = -lmpi

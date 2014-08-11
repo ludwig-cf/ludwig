@@ -11,6 +11,7 @@ DIR_TST=`pwd`
 DIR_MPI=`pwd`/../mpi_s
 DIR_SRC=`pwd`/../src
 DIR_REG=`pwd`/regression
+DIR_UNT=`pwd`/unit
 
 # Unit tests (make sure there is no stub mpi hanging around first)
 
@@ -21,7 +22,7 @@ cd $DIR_SRC
 make clean
 make mpi
 
-cd $DIR_TST
+cd $DIR_UNT
 make clean
 make do_tests_mpi
 make clean
