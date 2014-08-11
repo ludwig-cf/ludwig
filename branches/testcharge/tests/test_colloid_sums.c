@@ -444,8 +444,8 @@ int test_colloid_sums_conservation(void) {
 
   if (pc) {
     pc->s.deltaphi = 1.0;
-    pc->s.deltaq0  = 10.0;
-    pc->s.deltaq1  = 100.0;    
+    pc->dq[0]  = 10.0;
+    pc->dq[1]  = 100.0;    
   }
 
   /* Make the sum, and check all copies. */
@@ -460,8 +460,8 @@ int test_colloid_sums_conservation(void) {
 
 	while (pc) {
 	  assert(fabs(pc->s.deltaphi - 1.0) < DBL_EPSILON);
-	  assert(fabs(pc->s.deltaq0  - 10.0) < DBL_EPSILON);
-	  assert(fabs(pc->s.deltaq1  - 100.0) < DBL_EPSILON);
+	  assert(fabs(pc->dq[0]  - 10.0) < DBL_EPSILON);
+	  assert(fabs(pc->dq[1]  - 100.0) < DBL_EPSILON);
 	  pc = pc->next;
 	}
 	  
