@@ -177,15 +177,15 @@ static void ludwig_init(void) {
 
     io_read(filename, distribution_io_info());
 
-    if (phi_is_finite_difference()) {
+    if (phi_nop() > 0 && phi_is_finite_difference()) {
       sprintf(filename,"%sphi-%8.8d", subdirectory, get_step());
       info("Reading phi state from %s\n", filename);
       io_read(filename, io_info_phi);
+      /* Required for consistent restart if order parameter dynamics */
+      sprintf(filename, "%svel-%8.8d", subdirectory, get_step());
+      info("Reading velocity field for restart %s\n", filename);
+      io_read(filename, io_info_velocity_);
     }
-    /* Required for consistent restart if order parameter dynamics */
-    sprintf(filename, "%svel-%8.8d", subdirectory, get_step());
-    info("Reading velocity field for restart %s\n", filename);
-    io_read(filename, io_info_velocity_);
   }
 
   phi_gradients_init();
