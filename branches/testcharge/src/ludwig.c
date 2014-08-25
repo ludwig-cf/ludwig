@@ -358,6 +358,7 @@ void ludwig_run(const char * inputfile) {
   int ncolloid = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
   int     im, multisteps;
+  int	  flag;
 
   io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
@@ -472,12 +473,14 @@ void ludwig_run(const char * inputfile) {
       if (im == 0) {
 
 	TIMER_start(TIMER_FORCE_CALCULATION);
+        psi_force_is_divergence(&flag);
 
-	if (coords_nhalo() == 1) {
+	if (flag == 0) {
 	  psi_force_gradmu_conserve(ludwig->psi, ludwig->hydro,
-					ludwig->map, ludwig->collinfo);
+				ludwig->map, ludwig->collinfo);
 	}
-	else {
+
+	if (flag == 1) {
 	  if (ncolloid == 0) {
 	    phi_force_calculation(ludwig->phi, ludwig->hydro);
 	  }
@@ -1174,12 +1177,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Single fluid electrokinetic free energy */
 
-    p = 1; /* Default is to use divergence method for force, requires ... */
-    nhalo = 2;
-
-    /* If not, use nhalo = 1 and psi grad mu method */
+    /* Default method is divergence of stress tensor */
+    p = 1;
     RUN_get_int_parameter("fd_force_divergence", &p);
+    psi_force_divergence_set(p);
+
     if (p == 0) nhalo = 1;
+    if (p == 1) nhalo = 2;
 
     coords_nhalo_set(nhalo);
     coords_run_time();
@@ -1196,7 +1200,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_create(nk, &ludwig->psi);
     psi_init_param_rt(ludwig->psi);
 
-    if (nhalo == 2) phi_force_required_set(1);
+    if (p == 1) phi_force_required_set(1);
 
     info("Force calculation:          %s\n",
          (p == 0) ? "psi grad mu method" : "Divergence method");

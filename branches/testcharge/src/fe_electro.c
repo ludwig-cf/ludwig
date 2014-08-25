@@ -188,11 +188,14 @@ double fe_electro_mu(const int index, const int n) {
 
 void fe_electro_stress(const int index, double s[3][3]) {
 
-  int ia, ib;
+  int ia, ib, in;
   double epsilon;    /* Permittivity */
   double e[3];       /* Electric field */
   double e2;         /* Magnitude squared */
   double e0[3];      /* External field */
+  int nk;
+  double rho;
+  double kt;
 
   assert(fe);
 
@@ -209,6 +212,8 @@ void fe_electro_stress(const int index, double s[3][3]) {
 #endif
 
   physics_e0(e0);
+  physics_kt(&kt);
+  psi_nk(fe->psi, &nk);
 
   e2 = 0.0;
 
@@ -220,6 +225,13 @@ void fe_electro_stress(const int index, double s[3][3]) {
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
+      /* Ideal gas contribution */
+/*
+      for (in = 0; in < nk; in++) {
+	psi_rho(fe->psi, index, in, &rho);
+	s[ia][ib] += d_[ia][ib] * kt * rho;
+      }
+*/
     }
   }
 

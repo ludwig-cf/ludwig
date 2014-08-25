@@ -26,6 +26,8 @@
 #include "fe_electro.h"
 #include "psi_force.h"
 
+static int psi_force_divergence_ = 1;
+
 /*****************************************************************************
  *
  *  psi_force_grad_mu
@@ -252,10 +254,10 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	    psi_grad_rho(psi, map, index, n, grad_rho);
 #endif
 #ifdef NP_D3Q18
-	    psi_grad_rho_d3q18(psi, map, index, n, grad_rho);
+	    psi_grad_rho_d3qx(psi, map, index, n, grad_rho);
 #endif
 #ifdef NP_D3Q26
-	    psi_grad_rho_d3q18(psi, map, index, n, grad_rho);
+	    psi_grad_rho_d3qx(psi, map, index, n, grad_rho);
 #endif
 
 	    f[X] -= kt*grad_rho[X];
@@ -406,3 +408,33 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
 
   return 0;
 }
+
+
+/*****************************************************************************
+ *
+ *  psi_force_divergence_set
+ *
+ *****************************************************************************/
+
+int psi_force_divergence_set(const int flag) {
+ 
+  psi_force_divergence_ = flag;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_force_is_divergence
+ *
+ *****************************************************************************/
+
+int psi_force_is_divergence(int * flag) {
+
+  assert(flag);
+  * flag = psi_force_divergence_;
+
+  return 0;
+}
+
+
