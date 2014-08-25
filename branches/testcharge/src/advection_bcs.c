@@ -23,7 +23,7 @@
 #include "coords_field.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
-#include "model.h"
+#include "psi_gradients.h"
 
 /*****************************************************************************
  *
@@ -149,13 +149,13 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 
 /*****************************************************************************
  *
- *  advective_bcs_no_flux_d3q18
+ *  advective_bcs_no_flux_d3qx
  *
  *  Set normal fluxes at solid fluid interfaces to zero.
  *
  *****************************************************************************/
 
-int advective_bcs_no_flux_d3q18(int nf, double ** flx, map_t * map) {
+int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
 
   int n;
   int nlocal[3];
@@ -168,7 +168,7 @@ int advective_bcs_no_flux_d3q18(int nf, double ** flx, map_t * map) {
   assert(flx);
   assert(map);
 
-  mask = calloc(NVEL, sizeof(double)); 
+  mask = calloc(PSI_NGRAD, sizeof(double)); 
 
   coords_nlocal(nlocal);
 
@@ -180,9 +180,9 @@ int advective_bcs_no_flux_d3q18(int nf, double ** flx, map_t * map) {
 	map_status(map, index0, &status);
 	mask[0] = (status == MAP_FLUID);
 
-	for (c = 1; c < NVEL; c++) {
+	for (c = 1; c < PSI_NGRAD; c++) {
 
-	  index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	  index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	  map_status(map, index1, &status);
 	  mask[c] = (status == MAP_FLUID);
 
