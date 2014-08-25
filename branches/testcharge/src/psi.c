@@ -27,9 +27,10 @@
 #include "coords_field.h"
 #include "io_harness.h"
 #include "util.h"
+#include "map.h"
 #include "psi.h"
 #include "psi_s.h"
-#include "model.h"
+#include "psi_gradients.h"
 
 static const double  e_unit_default = 1.0;              /* Default unit charge */
 static const double  reltol_default = FLT_EPSILON;      /* Solver tolerance */
@@ -737,7 +738,7 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
 
 /*****************************************************************************
  *
- *  psi_electric_field_d3q18
+ *  psi_electric_field_d3qx
  *
  *  Return the electric field associated with the current potential.
  *
@@ -746,10 +747,11 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
  *
  *****************************************************************************/
 
-int psi_electric_field_d3q18(psi_t * psi, int index, double e[3]) {
+int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
 
   int p;
   int coords[3], coords_nbr[3], index_nbr;
+  double aux;
 
   assert(psi);
 
@@ -759,17 +761,19 @@ int psi_electric_field_d3q18(psi_t * psi, int index, double e[3]) {
   e[Y] = 0;
   e[Z] = 0;
 
-  for (p = 1; p < NVEL; p++) {
+  for (p = 1; p < PSI_NGRAD; p++) {
 
-    coords_nbr[X] = coords[X] + cv[p][X];
-    coords_nbr[Y] = coords[Y] + cv[p][Y];
-    coords_nbr[Z] = coords[Z] + cv[p][Z];
+    coords_nbr[X] = coords[X] + psi_gr_cv[p][X];
+    coords_nbr[Y] = coords[Y] + psi_gr_cv[p][Y];
+    coords_nbr[Z] = coords[Z] + psi_gr_cv[p][Z];
 
     index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
 
-    e[X] -= wv[p]* rcs2 * psi->psi[index_nbr] * cv[p][X]; 
-    e[Y] -= wv[p]* rcs2 * psi->psi[index_nbr] * cv[p][Y];  
-    e[Z] -= wv[p]* rcs2 * psi->psi[index_nbr] * cv[p][Z];  
+    aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->psi[index_nbr];
+
+    e[X] -= aux * psi_gr_cv[p][X]; 
+    e[Y] -= aux * psi_gr_cv[p][Y];  
+    e[Z] -= aux * psi_gr_cv[p][Z];  
 
   }
 
@@ -913,6 +917,205 @@ int psi_diffacc(psi_t * obj, double * diffacc) {
   assert(diffacc);
 
   *diffacc = obj->diffacc;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_grad_rho
+ *
+ *  Returns the gradient of the charge densities of each species.
+ *
+ *  The gradient of the potential is differenced as
+ *    grad_rho_x = (1/2) [ psi->rho(i+1,j,k) - psi->rho(i-1,j,k)]
+ *  etc.
+ *
+ *  If we are next to a boundary site we use one-sided derivatives.
+ *
+ *  Boundary to the left:
+ *    grad_rho_x = -3/2*psi->rho(i,j,k)+2*psi->rho(i+1,k,j)-1/2*psi->rho(i+2,k,j)
+ *  etc.
+ *  Boundary to the right:
+ *    grad_rho_x = 3/2*psi->rho(i,j,k)-2*psi->rho(i-1,k,j)+1/2*psi->rho(i-2,k,j)
+ *  etc.
+ *
+ *****************************************************************************/
+
+int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]) {
+
+  int xs, ys, zs;
+  int index0, index1;
+  int status0, status1;
+
+  assert(psi);
+  assert(n < psi->nk);
+  assert(grad_rho);
+
+  coords_strides(&xs, &ys, &zs);
+
+  grad_rho[X] = 0.0;
+  grad_rho[Y] = 0.0;
+  grad_rho[Z] = 0.0;
+
+  /* x-direction */
+  index0 = index - xs;
+  map_status(map, index0, &status0);
+  index1 = index + xs;
+  map_status(map, index1, &status1);
+
+  if (status0 == MAP_FLUID && status1 == MAP_FLUID){
+    grad_rho[X] = 0.5*(psi->rho[psi->nk*(index + xs) + n] - 
+		  psi->rho[psi->nk*(index - xs) + n]);
+  } 
+  if (status0 != MAP_FLUID && status1 == MAP_FLUID){
+    grad_rho[X] = - 1.5*psi->rho[psi->nk*index + n] 
+		  + 2.0*psi->rho[psi->nk*(index + xs) + n]
+		  - 0.5*psi->rho[psi->nk*(index + 2*xs) + n]; 
+  }
+  if (status0 == MAP_FLUID && status1 != MAP_FLUID){
+    grad_rho[X] = + 1.5*psi->rho[psi->nk*index + n]
+                  - 2.0*psi->rho[psi->nk*(index - xs) + n]
+                  + 0.5*psi->rho[psi->nk*(index - 2*xs) + n];
+  }
+
+  /* y-direction */
+  index0 = index - ys;
+  map_status(map, index0, &status0);
+  index1 = index + ys;
+  map_status(map, index1, &status1);
+
+  if (status0 == MAP_FLUID && status1 == MAP_FLUID){
+    grad_rho[Y] = 0.5*(psi->rho[psi->nk*(index+ys) + n] - 
+		  psi->rho[psi->nk*(index-ys) + n]);
+  }
+  if (status0 != MAP_FLUID && status1 == MAP_FLUID){
+    grad_rho[Y] = - 1.5*psi->rho[psi->nk*index + n] 
+		  + 2.0*psi->rho[psi->nk*(index + ys) + n]
+		  - 0.5*psi->rho[psi->nk*(index + 2*ys) + n]; 
+  }
+  if (status0 == MAP_FLUID && status1 != MAP_FLUID){
+    grad_rho[Y] = + 1.5*psi->rho[psi->nk*index + n]
+                  - 2.0*psi->rho[psi->nk*(index - ys) + n]
+                  + 0.5*psi->rho[psi->nk*(index - 2*ys) + n];
+  }
+
+  /* z-direction */
+  index0 = index - zs;
+  map_status(map, index0, &status0);
+  index1 = index + zs;
+  map_status(map, index1, &status1);
+
+  if (status0 == MAP_FLUID && status1 == MAP_FLUID){
+    grad_rho[Z] = 0.5*(psi->rho[psi->nk*(index+zs) + n] - 
+		  psi->rho[psi->nk*(index-zs) + n]);
+  }
+  if (status0 != MAP_FLUID && status1 == MAP_FLUID){
+    grad_rho[Z] = - 1.5*psi->rho[psi->nk*index + n] 
+		  + 2.0*psi->rho[psi->nk*(index + zs) + n]
+		  - 0.5*psi->rho[psi->nk*(index + 2*zs) + n]; 
+  }
+  if (status0 == MAP_FLUID && status1 != MAP_FLUID){
+    grad_rho[Z] = + 1.5*psi->rho[psi->nk*index + n]
+                  - 2.0*psi->rho[psi->nk*(index - zs) + n]
+                  + 0.5*psi->rho[psi->nk*(index - 2*zs) + n];
+  }
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  psi_grad_rho_d3qx
+ *
+ *  Returns the gradient of the charge densities of each species.
+ *
+ *  The gradient of the potential is differenced as
+ *    grad_rho_x = (1/2) [ psi->rho(i+1,j,k) - psi->rho(i-1,j,k)]
+ *  etc.
+ *
+ *  If we are next to a boundary site we use one-sided derivatives.
+ *
+ *  Boundary to the left:
+ *    grad_rho_x = -3/2*psi->rho(i,j,k)+2*psi->rho(i+1,k,j)-1/2*psi->rho(i+2,k,j)
+ *  etc.
+ *  Boundary to the right:
+ *    grad_rho_x = 3/2*psi->rho(i,j,k)-2*psi->rho(i-1,k,j)+1/2*psi->rho(i-2,k,j)
+ *  etc.
+ *
+ *****************************************************************************/
+
+int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]) {
+
+  int p;
+  int coords[3], coords1[3], coords2[3]; 
+  int index1, index2;
+  int status, status1, status2;
+  double aux;
+
+  assert(psi);
+  assert(n < psi->nk);
+  assert(grad_rho);
+
+  coords_index_to_ijk(index, coords);
+  map_status(map, index, &status);
+
+  grad_rho[X] = 0;  
+  grad_rho[Y] = 0;
+  grad_rho[Z] = 0;
+
+  for (p = 1; p < PSI_NGRAD; p++) {
+
+    coords1[X] = coords[X] + psi_gr_cv[p][X];
+    coords1[Y] = coords[Y] + psi_gr_cv[p][Y];
+    coords1[Z] = coords[Z] + psi_gr_cv[p][Z];
+
+    index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+    map_status(map, index1, &status1);
+
+    if(status == MAP_FLUID && status1 == MAP_FLUID) { 
+
+      aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->rho[psi->nk*index1 + n];
+
+      grad_rho[X] += aux * psi_gr_cv[p][X]; 
+      grad_rho[Y] += aux * psi_gr_cv[p][Y];  
+      grad_rho[Z] += aux * psi_gr_cv[p][Z];  
+
+    }
+    else {
+
+      coords1[X] = coords[X] - psi_gr_cv[p][X];
+      coords1[Y] = coords[Y] - psi_gr_cv[p][Y];
+      coords1[Z] = coords[Z] - psi_gr_cv[p][Z];
+      index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+      map_status(map, index1, &status1);
+
+      coords2[X] = coords[X] - 2*psi_gr_cv[p][X];
+      coords2[Y] = coords[Y] - 2*psi_gr_cv[p][Y];
+      coords2[Z] = coords[Z] - 2*psi_gr_cv[p][Z];
+      index2 = coords_index(coords2[X], coords2[Y], coords2[Z]);
+      map_status(map, index2, &status2);
+	
+      if(status == MAP_FLUID && status1 == MAP_FLUID && status2 == MAP_FLUID) {
+
+      grad_rho[X] += psi_gr_wv[p] * psi_gr_rcs2 * (3.0*psi->rho[psi->nk*index  + n] 
+                                         - 4.0*psi->rho[psi->nk*index1 + n] 
+	             		         + 1.0*psi->rho[psi->nk*index2 + n]) * psi_gr_cv[p][X];
+
+      grad_rho[Y] += psi_gr_wv[p] * psi_gr_rcs2 * (3.0*psi->rho[psi->nk*index  + n] 
+			                 - 4.0*psi->rho[psi->nk*index1 + n] 
+			                 + 1.0*psi->rho[psi->nk*index2 + n]) * psi_gr_cv[p][Y];
+
+      grad_rho[Z] += psi_gr_wv[p] * psi_gr_rcs2 * (3.0*psi->rho[psi->nk*index  + n] 
+		                         - 4.0*psi->rho[psi->nk*index1 + n] 
+			                 + 1.0*psi->rho[psi->nk*index2 + n]) * psi_gr_cv[p][Z];
+
+      }
+
+    }
+
+  }
 
   return 0;
 }

@@ -43,7 +43,7 @@ LIBRARY = libludwig.a
 
 CC = gcc
 MPICC = mpicc
-OPTS =
+OPTS = -DNP_D3Q6
 CFLAGS = -Wall -O3
 
 INC = -I.
@@ -60,7 +60,7 @@ ARFLAGS = -cru
 #
 ###############################################################################
 
-PETSC = 
+PETSC =
 ifdef PETSC
 OPTS += -DPETSC
 INC  +=
@@ -103,7 +103,7 @@ OBJS = model.o propagation.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
      psi_force.o psi_colloid.o \
      nernst_planck.o \
-     psi_petsc.o \
+     psi_petsc.o psi_gradients.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric.o symmetric_rt.o subgrid.o \

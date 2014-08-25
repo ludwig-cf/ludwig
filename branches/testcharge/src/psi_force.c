@@ -178,18 +178,20 @@ int psi_force_external_field(psi_t * psi, hydro_t * hydro) {
  *****************************************************************************/
 
 int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
-			      colloids_info_t * cinfo) {
+		map_t * map, colloids_info_t * cinfo) {
 
-  int ic, jc, kc, index;
-  int nk;
+  int ic, jc, kc;
+  int n, nk;
   int nlocal[3];
+  int index;
 
   double rho_elec;
   double f[3];
   double flocal[4] = {0.0, 0.0, 0.0, 0.0};
   double fsum[4];
-  double e0[3];
-  double elocal[3];
+  double e0[3], elocal[3];
+  double grad_rho[3];
+  double kt;
 
   colloid_t * pc = NULL;
   MPI_Comm comm;
@@ -197,8 +199,8 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
   assert(psi);
   assert(cinfo);
 
-  physics_e0(e0);
-
+  physics_e0(e0); 
+  physics_kt(&kt); 
   coords_nlocal(nlocal);
   comm = cart_comm();
 
@@ -215,28 +217,56 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	colloids_info_map(cinfo, index, &pc);
 
 	psi_rho_elec(psi, index, &rho_elec);
-#ifdef NP_D3Q18
-	psi_electric_field_d3q18(psi, index, elocal);
-#else
+
+#ifdef NP_D3Q6
 	psi_electric_field(psi, index, elocal);
 #endif
-
-        f[X] = rho_elec*(e0[X] + elocal[X]);
-	f[Y] = rho_elec*(e0[Y] + elocal[Y]);
-        f[Z] = rho_elec*(e0[Z] + elocal[Z]);
-
-
+#ifdef NP_D3Q18
+	psi_electric_field_d3qx(psi, index, elocal);
+#endif
+#ifdef NP_D3Q26
+	psi_electric_field_d3qx(psi, index, elocal);
+#endif
 
 	/* If solid, accumulate contribution to colloid;
-	   else count a fluid node */
+	   otherwise to fluid node */
+
+	f[X] = rho_elec*(e0[X] + elocal[X]);
+	f[Y] = rho_elec*(e0[Y] + elocal[Y]);
+	f[Z] = rho_elec*(e0[Z] + elocal[Z]);
 
 	if (pc) {
+
 	  pc->force[X] += f[X];
 	  pc->force[Y] += f[Y];
 	  pc->force[Z] += f[Z];
+
 	}
 	else {
+
+          /* Include ideal gas contribution */   
+/*
+	  for (n = 0; n < nk; n++) {
+
+#ifdef NP_D3Q6
+	    psi_grad_rho(psi, map, index, n, grad_rho);
+#endif
+#ifdef NP_D3Q18
+	    psi_grad_rho_d3q18(psi, map, index, n, grad_rho);
+#endif
+#ifdef NP_D3Q26
+	    psi_grad_rho_d3q18(psi, map, index, n, grad_rho);
+#endif
+
+	    f[X] -= kt*grad_rho[X];
+	    f[Y] -= kt*grad_rho[Y];
+	    f[Z] -= kt*grad_rho[Z];
+	  }
+*/
+	  if (hydro) hydro_f_local_add(hydro, index, f);
+
 	  flocal[3] += 1.0;
+
 	}
 
 	/* Accumulate contribution to total force on system */
@@ -254,6 +284,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
   fsum[Y] /= fsum[3];
   fsum[Z] /= fsum[3];
 
+
   /* Now actually compute the force on the fluid with the correction
      (based on number of fluid nodes) and store */
 
@@ -266,16 +297,9 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	colloids_info_map(cinfo, index, &pc);
 	if (pc) continue;
 
-        psi_rho_elec(psi, index, &rho_elec);
-#ifdef NP_D3Q18
-	psi_electric_field_d3q18(psi, index, elocal);
-#else
-	psi_electric_field(psi, index, elocal);
-#endif
-
-        f[X] = rho_elec*(e0[X] + elocal[X]) - fsum[X];
-        f[Y] = rho_elec*(e0[Y] + elocal[Y]) - fsum[Y];
-        f[Z] = rho_elec*(e0[Z] + elocal[Z]) - fsum[Z];
+        f[X] = - fsum[X];
+        f[Y] = - fsum[Y];
+        f[Z] = - fsum[Z];
 
 	if (hydro) hydro_f_local_add(hydro, index, f);
       }

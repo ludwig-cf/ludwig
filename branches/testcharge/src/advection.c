@@ -36,7 +36,7 @@
 #include "leesedwards.h"
 #include "field_s.h"
 #include "advection_s.h"
-#include "d3q19.h"
+#include "psi_gradients.h"
 
 static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f);
@@ -882,7 +882,7 @@ int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
 
 /*****************************************************************************
  *
- *  advective_fluxes_d3q18
+ *  advective_fluxes_d3qx
  *
  *  General routine for nf fields at starting address f.
  *  No Lees Edwards boundaries.
@@ -892,7 +892,7 @@ int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
  *
  *****************************************************************************/
 
-int advective_fluxes_d3q18(hydro_t * hydro, int nf, double * f, 
+int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f, 
 					double ** flx) {
 
   assert(hydro);
@@ -901,14 +901,14 @@ int advective_fluxes_d3q18(hydro_t * hydro, int nf, double * f,
   assert(flx);
   assert(le_get_nplane_total() == 0);
 
-  advective_fluxes_2nd_d3q18(hydro, nf, f, flx);
+  advective_fluxes_2nd_d3qx(hydro, nf, f, flx);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  advective_fluxes_2nd_d3q18
+ *  advective_fluxes_2nd_d3qx
  *
  *  'Centred difference' advective fluxes. No LE planes.
  *
@@ -916,7 +916,7 @@ int advective_fluxes_d3q18(hydro_t * hydro, int nf, double * f,
  *
  *****************************************************************************/
 
-int advective_fluxes_2nd_d3q18(hydro_t * hydro, int nf, double * f, 
+int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f, 
 					double ** flx) {
 
   int nlocal[3];
@@ -941,12 +941,12 @@ int advective_fluxes_2nd_d3q18(hydro_t * hydro, int nf, double * f,
 	index0 = coords_index(ic, jc, kc);
 	hydro_u(hydro, index0, u0);
 
-        for (c = 1; c < NVEL; c++) {
+        for (c = 1; c < PSI_NGRAD; c++) {
 
-	  index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	  index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	  hydro_u(hydro, index1, u1);
 
-	  u = 0.5*((u0[X] + u1[X])*cv[c][X] + (u0[Y] + u1[Y])*cv[c][Y] + (u0[Z] + u1[Z])*cv[c][Z]);
+	  u = 0.5*((u0[X] + u1[X])*psi_gr_cv[c][X] + (u0[Y] + u1[Y])*psi_gr_cv[c][Y] + (u0[Z] + u1[Z])*psi_gr_cv[c][Z]);
 
 	  for (n = 0; n < nf; n++) {
 	    flx[nf*index0 + n][c - 1] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);

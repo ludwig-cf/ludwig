@@ -197,11 +197,17 @@ void fe_electro_stress(const int index, double s[3][3]) {
   assert(fe);
 
   psi_epsilon(fe->psi, &epsilon);
-#ifdef NP_D3Q18
-  psi_electric_field_d3q18(fe->psi, index, e);
-#else
+
+#ifdef NP_D3Q6
   psi_electric_field(fe->psi, index, e);
 #endif
+#ifdef NP_D3Q18
+  psi_electric_field_d3qx(fe->psi, index, e);
+#endif
+#ifdef NP_D3Q26
+  psi_electric_field_d3qx(fe->psi, index, e);
+#endif
+
   physics_e0(e0);
 
   e2 = 0.0;

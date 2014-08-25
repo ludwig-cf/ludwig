@@ -76,19 +76,18 @@
 #include "advection_bcs.h"
 #include "free_energy.h"
 #include "physics.h"
-#include "model.h"
 #include "nernst_planck.h"
-
+#include "psi_gradients.h"
 
 static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 				double * fz);
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 				double * fz);
-static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro, 
+static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro, 
 		map_t * map, colloids_info_t * cinfo, double ** flx);
-static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro, 
+static int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro, 
 		map_t * map, colloids_info_t * cinfo, double ** flx);
-static int nernst_planck_update_d3q18(psi_t * psi, 
+static int nernst_planck_update_d3qx(psi_t * psi, 
 				map_t * map, double ** flx);
 static double max_acc; 
 
@@ -308,7 +307,7 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 
 /*****************************************************************************
  *
- *  nernst_planck_driver_d3q18
+ *  nernst_planck_driver_d3qx
  *
  *  The hydro object is allowed to be NULL, in which case there is
  *  no advection.
@@ -318,7 +317,7 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
  *
  *****************************************************************************/
 
-int nernst_planck_driver_d3q18(psi_t * psi, hydro_t * hydro, 
+int nernst_planck_driver_d3qx(psi_t * psi, hydro_t * hydro, 
 		map_t * map, colloids_info_t * cinfo) {
 
   int nk;              /* Number of electrolyte species */
@@ -333,21 +332,21 @@ int nernst_planck_driver_d3q18(psi_t * psi, hydro_t * hydro,
   /* Allocate fluxes and initialise to zero */
   flx = (double **) calloc(nsites*nk, sizeof(double));
   for (ia = 0; ia < nsites*nk; ia++) {
-    flx[ia] = (double *) calloc(NVEL-1, sizeof(double));
+    flx[ia] = (double *) calloc(PSI_NGRAD-1, sizeof(double));
   }
   if (flx == NULL) fatal("calloc(flx) failed\n");
 
   /* Add advective fluxes */
-  if (hydro) advective_fluxes_d3q18(hydro, nk, psi->rho, flx);
+  if (hydro) advective_fluxes_d3qx(hydro, nk, psi->rho, flx);
 
   /* Add diffusive fluxes */
-  nernst_planck_fluxes_d3q18(psi, hydro, map, cinfo, flx);
+  nernst_planck_fluxes_d3qx(psi, hydro, map, cinfo, flx);
   
   /* Apply no-flux BC */
-  if (map) advective_bcs_no_flux_d3q18(nk, flx, map);
+  if (map) advective_bcs_no_flux_d3qx(nk, flx, map);
 
   /* Update charges */
-  nernst_planck_update_d3q18(psi, map, flx);
+  nernst_planck_update_d3qx(psi, map, flx);
 
   for (ia = 0; ia < nsites*nk; ia++) {
     free(flx[ia]);
@@ -359,7 +358,7 @@ int nernst_planck_driver_d3q18(psi_t * psi, hydro_t * hydro,
 
 /*****************************************************************************
  *
- *  nernst_planck_fluxes_d3q18
+ *  nernst_planck_fluxes_d3qx
  *
  *  Compute diffusive fluxes.
  *
@@ -371,7 +370,7 @@ int nernst_planck_driver_d3q18(psi_t * psi, hydro_t * hydro,
  *
  *****************************************************************************/
 
-static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro, 
+static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro, 
 	map_t * map, colloids_info_t * cinfo, double ** flx) {
 
   int ic, jc, kc; 
@@ -389,7 +388,6 @@ static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro,
   double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
   
   double e0[3];
-  double delta[18], rsqrt2;
   double dt;
 
   colloid_t * pc = NULL;
@@ -405,29 +403,7 @@ static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro,
   psi_multistep_timestep(psi, &dt);
 
   physics_e0(e0);
-
   rbeta = 1.0/beta;
-  rsqrt2 = 1.0/sqrt(2.0);
-
-  /* Lattice spacing */
-  delta[0] = rsqrt2;
-  delta[1] = rsqrt2;
-  delta[2] = 1.0;
-  delta[3] = rsqrt2;
-  delta[4] = rsqrt2;
-  delta[5] = rsqrt2;
-  delta[6] = 1.0;
-  delta[7] = rsqrt2;
-  delta[8] = 1.0;
-  delta[9] = 1.0;
-  delta[10] = rsqrt2;
-  delta[11] = 1.0;
-  delta[12] = rsqrt2;
-  delta[13] = rsqrt2;
-  delta[14] = rsqrt2;
-  delta[15] = 1.0;
-  delta[16] = rsqrt2;
-  delta[17] = rsqrt2;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -441,9 +417,9 @@ static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro,
 	}
 	else {
 
-	  for (c = 1; c < NVEL; c++) {
+	  for (c = 1; c < PSI_NGRAD; c++) {
 
-	    index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	    index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	    map_status(map, index1, &status1);
 
 	    if (status1 == MAP_FLUID) {
@@ -455,14 +431,13 @@ static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro,
 		rho0 = psi->rho[nk*index0 + n];
 
 		fe_mu_solv(index1, n, &mu_s1);
-/* TODO: Check if field gradient correct - the lattice spacing might be missing */ 
-		mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index1] - 
-				    cv[c][X]*e0[X] - cv[c][Y]*e0[Y] - cv[c][Z]*e0[Z]);
+		mu1 = mu_s1 + psi->valency[n]*eunit * (psi->psi[index1] - 
+	    		psi_gr_cv[c][X]*e0[X] - psi_gr_cv[c][Y]*e0[Y] - psi_gr_cv[c][Z]*e0[Z]);
 		b0 = exp(-beta*(mu1 - mu0));
 		b1 = exp(+beta*(mu1 - mu0));
 		rho1 = psi->rho[nk*(index1) + n]*b1;
 
-		flx[(nk*index0 + n)][c - 1] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0) * delta[c - 1];
+		flx[(nk*index0 + n)][c - 1] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0) * psi_gr_rnorm[c];
 
 	      }
 
@@ -481,7 +456,7 @@ static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro,
 
 /*****************************************************************************
  *
- *  nernst_planck_fluxes_force_d3q18
+ *  nernst_planck_fluxes_force_d3qx
  *
  *  Compute diffusive fluxes and link-flux force on fluid.
  *
@@ -493,7 +468,7 @@ static int nernst_planck_fluxes_d3q18(psi_t * psi, hydro_t * hydro,
  *
  *****************************************************************************/
 
-static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro, 
+static int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro, 
 	map_t * map, colloids_info_t * cinfo, double ** flx) {
 
   int ic, jc, kc; 
@@ -512,10 +487,10 @@ static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro,
   
   double rho_elec;
   double e0[3], elocal[3];
-  double delta[18], rsqrt2;
   double flocal[4] = {0.0, 0.0, 0.0, 0.0}, fsum[4], f[3]; 
   double flxtmp[2];
   double dt;
+  double aux;  
 
   MPI_Comm comm;
   colloid_t * pc = NULL;
@@ -532,29 +507,7 @@ static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro,
   psi_multistep_timestep(psi, &dt);
 
   physics_e0(e0);
-
   rbeta = 1.0/beta;
-  rsqrt2 = 1.0/sqrt(2.0);
-
-  /* Lattice spacing */
-  delta[0] = rsqrt2;
-  delta[1] = rsqrt2;
-  delta[2] = 1.0;
-  delta[3] = rsqrt2;
-  delta[4] = rsqrt2;
-  delta[5] = rsqrt2;
-  delta[6] = 1.0;
-  delta[7] = rsqrt2;
-  delta[8] = 1.0;
-  delta[9] = 1.0;
-  delta[10] = rsqrt2;
-  delta[11] = 1.0;
-  delta[12] = rsqrt2;
-  delta[13] = rsqrt2;
-  delta[14] = rsqrt2;
-  delta[15] = 1.0;
-  delta[16] = rsqrt2;
-  delta[17] = rsqrt2;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -571,10 +524,15 @@ static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro,
 
 	/* Total electrostatic force on colloid */
 	if (pc) {
-#ifdef NP_D3Q18
-	  psi_electric_field_d3q18(psi, index0, elocal);
-#else
+
+#ifdef NP_D3Q6
 	  psi_electric_field(psi, index0, elocal);
+#endif
+#ifdef NP_D3Q18
+	  psi_electric_field_d3qx(psi, index0, elocal);
+#endif
+#ifdef NP_D3Q26
+	  psi_electric_field_d3qx(psi, index0, elocal);
 #endif
 
 	  f[X] = rho_elec * (e0[X] + elocal[X]) * dt;
@@ -589,9 +547,9 @@ static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro,
 	else {
 
 	/* Internal electrostatic force on fluid */
-	  for (c = 1; c < NVEL; c++) {
+	  for (c = 1; c < PSI_NGRAD; c++) {
 
-	    index1 = coords_index(ic + cv[c][X], jc + cv[c][Y], kc + cv[c][Z]);
+	    index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	    map_status(map, index1, &status1);
 
 	    if (status1 == MAP_FLUID) {
@@ -603,27 +561,26 @@ static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro,
 		rho0 = psi->rho[nk*index0 + n];
 
 		fe_mu_solv(index1, n, &mu_s1);
-/* TODO: Check if field gradient correct - the lattice spacing might be missing */ 
 		mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index1] - 
-				    cv[c][X]*e0[X] - cv[c][Y]*e0[Y] - cv[c][Z]*e0[Z]);
+			psi_gr_cv[c][X]*e0[X] - psi_gr_cv[c][Y]*e0[Y] - psi_gr_cv[c][Z]*e0[Z]);
 		b0 = exp(-beta*(mu1 - mu0));
 		b1 = exp(+beta*(mu1 - mu0));
 		rho1 = psi->rho[nk*(index1) + n]*b1;
 
 		/* Auxiliary terms */
-		flxtmp[0] = - 0.5*(1.0 + b0)*(rho1 - rho0) * delta[c - 1];
-
-
-
-		flxtmp[1] = (psi->rho[nk*(index1) + n] - psi->rho[nk*index0 + n]) * delta[c - 1];
+		/* Adding flxtmp[1] to flxtmp[0] below subtracts the ideal gas part */
+		flxtmp[0] = - 0.5*(1.0 + b0)*(rho1 - rho0) * psi_gr_rnorm[c];
+		flxtmp[1] = (psi->rho[nk*(index1) + n] - psi->rho[nk*index0 + n]) * psi_gr_rnorm[c];
 
 		/* Link flux */
 		flx[(nk*index0 + n)][c - 1] += psi->diffusivity[n]*flxtmp[0];
 
 		/* Force on fluid including ideal gas part in chemical potential */
-		f[X] -= rcs2 * wv[c] * cv[c][X] * (flxtmp[0]) * rbeta;
-		f[Y] -= rcs2 * wv[c] * cv[c][Y] * (flxtmp[0]) * rbeta;
-		f[Z] -= rcs2 * wv[c] * cv[c][Z] * (flxtmp[0]) * rbeta;
+		aux = psi_gr_rcs2 * psi_gr_wv[c] * flxtmp[0] * rbeta;	
+
+		f[X] -= aux * psi_gr_cv[c][X];
+		f[Y] -= aux * psi_gr_cv[c][Y];
+		f[Z] -= aux * psi_gr_cv[c][Z];
 
 	      }
 
@@ -693,13 +650,13 @@ static int nernst_planck_fluxes_force_d3q18(psi_t * psi, hydro_t * hydro,
 
 /*****************************************************************************
  *
- *  nernst_planck_update_d3q18
+ *  nernst_planck_update_d3qx
  *
- *  Update the rho_k from the fluxes (D3Q18 stencil). Euler forward step.
+ *  Update the rho_k from the fluxes (D3QX stencil). Euler forward step.
  *
  *****************************************************************************/
 
-static int nernst_planck_update_d3q18(psi_t * psi, map_t * map, double ** flx) {
+static int nernst_planck_update_d3qx(psi_t * psi, map_t * map, double ** flx) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -731,7 +688,7 @@ static int nernst_planck_update_d3q18(psi_t * psi, map_t * map, double ** flx) {
 
 	    acc = 0.0;
 
-	    for (c = 1; c < NVEL; c++) {
+	    for (c = 1; c < PSI_NGRAD; c++) {
 	      psi->rho[nk*index + n] -= flx[nk*index + n][c - 1] * dt;
 	      acc += fabs(flx[nk*index + n][c - 1] * dt);
 	    }

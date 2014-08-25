@@ -332,11 +332,17 @@ void fe_es_stress(const int index, double s[3][3]) {
   /* Coupling part, requires phi, total field */
 
   field_scalar(fe->phi, index, &phi);
-#ifdef NP_D3Q18
-  psi_electric_field_d3q18(fe->psi, index, e);
-#else
+
+#ifdef NP_D3Q6
   psi_electric_field(fe->psi, index, e);
 #endif
+#ifdef NP_D3Q18
+  psi_electric_field_d3qx(fe->psi, index, e);
+#endif
+#ifdef NP_D3Q26
+  psi_electric_field_d3qx(fe->psi, index, e);
+#endif
+
   e2 = 0.0;
   for (ia = 0; ia < 3; ia++) {
     e2 += e[ia]*e[ia];

@@ -475,7 +475,7 @@ void ludwig_run(const char * inputfile) {
 
 	if (coords_nhalo() == 1) {
 	  psi_force_gradmu_conserve(ludwig->psi, ludwig->hydro,
-					    ludwig->collinfo);
+					ludwig->map, ludwig->collinfo);
 	}
 	else {
 	  if (ncolloid == 0) {
@@ -490,21 +490,28 @@ void ludwig_run(const char * inputfile) {
 
       }
 
-#ifdef NP_D3Q18
-	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver_d3q18(ludwig->psi, ludwig->hydro, ludwig->map, ludwig->collinfo);
-	TIMER_stop(TIMER_ELECTRO_NPEQ);
-#endif
-
-#ifndef NP_D3Q18
+#ifdef NP_D3Q6
 	TIMER_start(TIMER_ELECTRO_NPEQ);
 	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
 #endif
-      }
+
 #ifdef NP_D3Q18
-      nernst_planck_adjust_multistep(ludwig->psi);
+	TIMER_start(TIMER_ELECTRO_NPEQ);
+	nernst_planck_driver_d3qx(ludwig->psi, ludwig->hydro, ludwig->map, ludwig->collinfo);
+	TIMER_stop(TIMER_ELECTRO_NPEQ);
 #endif
+
+#ifdef NP_D3Q26
+	TIMER_start(TIMER_ELECTRO_NPEQ);
+	nernst_planck_driver_d3qx(ludwig->psi, ludwig->hydro, ludwig->map, ludwig->collinfo);
+	TIMER_stop(TIMER_ELECTRO_NPEQ);
+#endif
+
+      }
+
+      nernst_planck_adjust_multistep(ludwig->psi);
+
       if (is_statistics_step()) info("%d multisteps\n",im);
 
       /* Offset correction for potential left as comment for now */
