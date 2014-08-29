@@ -27,6 +27,10 @@ int psi_force_gradmu_conserve(psi_t * psi,  hydro_t * hydro,
 			map_t * map, colloids_info_t * cinfo);
 int psi_force_divstress(psi_t * psi, hydro_t * hydro, 
 			colloids_info_t * cinfo);
+int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, 
+			map_t * map, colloids_info_t * cinfo);
+int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, 
+			map_t * map, colloids_info_t * cinfo);
 int psi_force_divergence_set(const int flag);
 int psi_force_is_divergence(int * flag);
 #endif

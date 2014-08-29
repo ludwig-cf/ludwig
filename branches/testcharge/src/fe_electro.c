@@ -179,10 +179,11 @@ double fe_electro_mu(const int index, const int n) {
  *
  *  fe_electro_stress
  *
- *  The stress is S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2)
+ *  The stress is S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2) + d_ab kt sum_k rho_k
  *  where epsilon is the (uniform) permittivity.
- *
- *  This does not include the external field.
+ *
+ *  The last term is the ideal gas contribution which is excluded in the 
+ *  excess stress tensor.
  *
  *****************************************************************************/
 
@@ -225,13 +226,67 @@ void fe_electro_stress(const int index, double s[3][3]) {
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
+
       /* Ideal gas contribution */
-/*
       for (in = 0; in < nk; in++) {
 	psi_rho(fe->psi, index, in, &rho);
 	s[ia][ib] += d_[ia][ib] * kt * rho;
       }
-*/
+
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  fe_electro_stress_ex
+ *
+ *  The excess stress is S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2)
+ *  where epsilon is the (uniform) permittivity.
+ *
+ *****************************************************************************/
+
+void fe_electro_stress_ex(const int index, double s[3][3]) {
+
+  int ia, ib, in;
+  double epsilon;    /* Permittivity */
+  double e[3];       /* Electric field */
+  double e2;         /* Magnitude squared */
+  double e0[3];      /* External field */
+  int nk;
+  double rho;
+  double kt;
+
+  assert(fe);
+
+  psi_epsilon(fe->psi, &epsilon);
+
+#ifdef NP_D3Q6
+  psi_electric_field(fe->psi, index, e);
+#endif
+#ifdef NP_D3Q18
+  psi_electric_field_d3qx(fe->psi, index, e);
+#endif
+#ifdef NP_D3Q26
+  psi_electric_field_d3qx(fe->psi, index, e);
+#endif
+
+  physics_e0(e0);
+  physics_kt(&kt);
+  psi_nk(fe->psi, &nk);
+
+  e2 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    e[ia] += e0[ia];
+    e2 += e[ia]*e[ia];
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
     }
   }
 

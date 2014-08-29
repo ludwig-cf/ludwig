@@ -485,8 +485,18 @@ void ludwig_run(const char * inputfile) {
 	    phi_force_calculation(ludwig->phi, ludwig->hydro);
 	  }
 	  else {
+#ifdef NP_D3Q6
 	    psi_force_divstress(ludwig->psi, ludwig->hydro,
 					ludwig->collinfo);
+#endif
+#ifdef NP_D3Q18
+	    psi_force_divstress_d3qx(ludwig->psi, ludwig->hydro,
+				ludwig->map, ludwig->collinfo);
+#endif
+#ifdef NP_D3Q26
+	    psi_force_divstress_d3qx(ludwig->psi, ludwig->hydro,
+				ludwig->map, ludwig->collinfo);
+#endif
 	  }
 	}
 	TIMER_stop(TIMER_FORCE_CALCULATION);

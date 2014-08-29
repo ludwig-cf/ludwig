@@ -1035,7 +1035,8 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
  *    grad_rho_x = (1/2) [ psi->rho(i+1,j,k) - psi->rho(i-1,j,k)]
  *  etc.
  *
- *  If we are next to a boundary site we use one-sided derivatives.
+ *  If we are next to a boundary site we use one-sided derivatives based on 
+ *  Lagrange interpolating polynomials.
  *
  *  Boundary to the left:
  *    grad_rho_x = -3/2*psi->rho(i,j,k)+2*psi->rho(i+1,k,j)-1/2*psi->rho(i+2,k,j)
@@ -1083,6 +1084,7 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
       grad_rho[Z] += aux * psi_gr_cv[p][Z];  
 
     }
+
     else {
 
       coords1[X] = coords[X] - psi_gr_cv[p][X];
@@ -1099,17 +1101,32 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
 	
       if(status == MAP_FLUID && status1 == MAP_FLUID && status2 == MAP_FLUID) {
 
-      grad_rho[X] += psi_gr_wv[p] * psi_gr_rcs2 * (3.0*psi->rho[psi->nk*index  + n] 
-                                         - 4.0*psi->rho[psi->nk*index1 + n] 
-	             		         + 1.0*psi->rho[psi->nk*index2 + n]) * psi_gr_cv[p][X];
+        /* Subtract the above 'fluid' half of the incomplete two-point formula. */
+        /* Note: subtracting means adding here because of inverse lattice vectors. */
+	aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->rho[psi->nk*index1 + n];
 
-      grad_rho[Y] += psi_gr_wv[p] * psi_gr_rcs2 * (3.0*psi->rho[psi->nk*index  + n] 
-			                 - 4.0*psi->rho[psi->nk*index1 + n] 
-			                 + 1.0*psi->rho[psi->nk*index2 + n]) * psi_gr_cv[p][Y];
+	grad_rho[X] += aux * psi_gr_cv[p][X]; 
+	grad_rho[Y] += aux * psi_gr_cv[p][Y];  
+	grad_rho[Z] += aux * psi_gr_cv[p][Z];  
 
-      grad_rho[Z] += psi_gr_wv[p] * psi_gr_rcs2 * (3.0*psi->rho[psi->nk*index  + n] 
-		                         - 4.0*psi->rho[psi->nk*index1 + n] 
-			                 + 1.0*psi->rho[psi->nk*index2 + n]) * psi_gr_cv[p][Z];
+        /* Use one-sided derivative instead */
+	grad_rho[X] += psi_gr_wv[p] * psi_gr_rcs2 * 
+			(3.0*psi->rho[psi->nk*index  + n] 
+		       - 4.0*psi->rho[psi->nk*index1 + n] 
+                       + 1.0*psi->rho[psi->nk*index2 + n]) 
+		       * psi_gr_rnorm[p]* psi_gr_cv[p][X];
+
+	grad_rho[Y] += psi_gr_wv[p] * psi_gr_rcs2 * 
+			(3.0*psi->rho[psi->nk*index  + n] 
+		       - 4.0*psi->rho[psi->nk*index1 + n] 
+	               + 1.0*psi->rho[psi->nk*index2 + n]) 
+		       * psi_gr_rnorm[p] * psi_gr_cv[p][Y];
+
+	grad_rho[Z] += psi_gr_wv[p] * psi_gr_rcs2 * 
+			(3.0*psi->rho[psi->nk*index  + n] 
+                       - 4.0*psi->rho[psi->nk*index1 + n] 
+	               + 1.0*psi->rho[psi->nk*index2 + n]) 
+		       * psi_gr_rnorm[p] * psi_gr_cv[p][Z];
 
       }
 

@@ -25,6 +25,7 @@
 #include "psi_s.h"
 #include "fe_electro.h"
 #include "psi_force.h"
+#include "psi_gradients.h"
 
 static int psi_force_divergence_ = 1;
 
@@ -330,7 +331,6 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
   int nlocal[3];
 
   double force[3];
-  double pth0[3][3];
   double pth1[3][3];
 
   colloid_t * pc = NULL;
@@ -346,51 +346,139 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
-	colloids_info_map(cinfo, index, &pc);
+        index = coords_index(ic, jc, kc);
+ 
+        /* Calculate divergence based on 6-pt stencil */
 
-	/* Compute pth at current point */
-
-	chemical_stress(index, pth0);
-
-	/* Compute differences */
-        
 	index1 = coords_index(ic+1, jc, kc);
 	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+	  force[ia] = -0.5*(pth1[ia][X]);
 	}
 
 	index1 = coords_index(ic-1, jc, kc);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
-          force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+          force[ia] += 0.5*(pth1[ia][X]);
         }
 
         index1 = coords_index(ic, jc+1, kc);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
-          force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+          force[ia] -= 0.5*(pth1[ia][Y]);
         }
 
         index1 = coords_index(ic, jc-1, kc);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
-          force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+          force[ia] += 0.5*(pth1[ia][Y]);
         }
 
         index1 = coords_index(ic, jc, kc+1);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
-          force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+          force[ia] -= 0.5*(pth1[ia][Z]);
         }
 
         index1 = coords_index(ic, jc, kc-1);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
-          force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+          force[ia] += 0.5*(pth1[ia][Z]);
         }
+
+        /* Store the force on lattice */
+	if (pc) {
+	  pc->force[X] += force[X];
+	  pc->force[Y] += force[Y];
+	  pc->force[Z] += force[Z];
+	}
+	else {
+	  hydro_f_local_add(hydro, index, force);
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  psi_force_divstress_d3qx
+ *
+ *  A routine for force via divergence of stress, allowing
+ *  the stress to be computed inside the colloids. The 
+ *  calculation of the divergence is based on the D3QX stencil
+ *  with X=6, 18 or 26. The stress is to include the full 
+ *  electric field.
+ *
+ *****************************************************************************/
+
+int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids_info_t * cinfo) {
+
+  int ic, jc, kc;
+  int index, index_nb;
+  int index1, index2;
+  int status, status_nb;
+  int ia, ib;
+  int nlocal[3];
+
+  double force[3];
+  double pth[3][3], pth_nb[3][3];
+  double pth1[3][3], pth2[3][3];
+
+  colloid_t * pc = NULL;
+  void (* chemical_stress)   (const int index, double s[3][3]);
+  void (* chemical_stress_ex)(const int index, double s[3][3]);
+
+  int p;
+  int coords[3], coords_nb[3], coords1[3], coords2[3];
+  double aux; 
+
+  assert(psi);
+  assert(cinfo);
+
+  coords_nlocal(nlocal);
+  chemical_stress    = fe_electro_stress;
+  chemical_stress_ex = fe_electro_stress_ex;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	colloids_info_map(cinfo, index, &pc);
+
+	coords_index_to_ijk(index, coords);
+
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] = 0.0;
+	}
+
+	/* Calculate divergence based on D3QX stencil */
+	for (p = 1; p < PSI_NGRAD; p++) {
+
+	  coords_nb[X] = coords[X] + psi_gr_cv[p][X];
+	  coords_nb[Y] = coords[Y] + psi_gr_cv[p][Y];
+	  coords_nb[Z] = coords[Z] + psi_gr_cv[p][Z];
+
+	  index_nb = coords_index(coords_nb[X], coords_nb[Y], coords_nb[Z]);
+	  map_status(map, index_nb, &status_nb);
+
+
+	  chemical_stress_ex(index_nb, pth_nb);
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth_nb[ia][ib] * psi_gr_cv[p][ib];
+	    }
+	  }
+
+	}
 
         /* Store the force on lattice */
 	if (pc) {
@@ -433,6 +521,158 @@ int psi_force_is_divergence(int * flag) {
 
   assert(flag);
   * flag = psi_force_divergence_;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_force_divstress_one_sided_d3qx
+ *
+ *  A routine for force via divergence of stress, allowing
+ *  the stress to be computed inside the colloids. 
+ *  This is the attempt to use one-sided derivatives at the
+ *  surface of the particles.
+ *  The calculation of the divergence is based on the D3QX stencil
+ *  with X=6, 18 or 26. The stress is to include the full 
+ *  electric field. 
+ *
+ *****************************************************************************/
+
+int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids_info_t * cinfo) {
+
+  int ic, jc, kc;
+  int index, index_nb;
+  int index1, index2;
+  int status, status_nb;
+  int ia, ib;
+  int nlocal[3];
+
+  double force[3];
+  double pth[3][3], pth_nb[3][3];
+  double pth1[3][3], pth2[3][3];
+
+  colloid_t * pc = NULL;
+  void (* chemical_stress)   (const int index, double s[3][3]);
+  void (* chemical_stress_ex)(const int index, double s[3][3]);
+
+  int p;
+  int coords[3], coords_nb[3], coords1[3], coords2[3];
+  double aux; 
+
+  assert(psi);
+  assert(cinfo);
+
+  coords_nlocal(nlocal);
+  chemical_stress    = fe_electro_stress;
+  chemical_stress_ex = fe_electro_stress_ex;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	colloids_info_map(cinfo, index, &pc);
+
+	coords_index_to_ijk(index, coords);
+
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] = 0.0;
+	}
+
+	/* Calculate divergence based on D3QX stencil */
+	for (p = 1; p < PSI_NGRAD; p++) {
+
+	  coords_nb[X] = coords[X] + psi_gr_cv[p][X];
+	  coords_nb[Y] = coords[Y] + psi_gr_cv[p][Y];
+	  coords_nb[Z] = coords[Z] + psi_gr_cv[p][Z];
+
+	  index_nb = coords_index(coords_nb[X], coords_nb[Y], coords_nb[Z]);
+	  map_status(map, index_nb, &status_nb);
+
+          if (status != MAP_FLUID) {
+
+	    chemical_stress_ex(index_nb, pth_nb);
+
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth_nb[ia][ib] * psi_gr_cv[p][ib];
+	      }
+	    }
+
+	  }
+
+          if (status == MAP_FLUID && status_nb == MAP_FLUID) {
+
+	    chemical_stress(index_nb, pth_nb);
+
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth_nb[ia][X] * psi_gr_cv[p][X];
+	      force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth_nb[ia][Y] * psi_gr_cv[p][Y];
+	      force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth_nb[ia][Z] * psi_gr_cv[p][Z];
+	    }
+	  }
+
+          if (status == MAP_FLUID && status_nb != MAP_FLUID) {
+
+	    // Current site r 
+	    chemical_stress(index, pth);
+
+	    // Site r - cv
+	    coords1[X] = coords[X] - psi_gr_cv[p][X];
+	    coords1[Y] = coords[Y] - psi_gr_cv[p][Y];
+	    coords1[Z] = coords[Z] - psi_gr_cv[p][Z];
+
+	    index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+
+	    chemical_stress(index1, pth1);
+
+	    /* Subtract the above 'fluid' half of the incomplete two-point formula. */
+	    /* Note: subtracting means adding here because of inverse lattice vectors. */
+	    for (ia = 0; ia < 3; ia++) {
+	      force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth1[ia][X] * psi_gr_cv[p][X];
+	      force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth1[ia][Y] * psi_gr_cv[p][Y];
+	      force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth1[ia][Z] * psi_gr_cv[p][Z];
+	    }
+
+	    // Site r - 2*cv
+	    coords2[X] = coords[X] - 2*psi_gr_cv[p][X];
+	    coords2[Y] = coords[Y] - 2*psi_gr_cv[p][Y];
+	    coords2[Z] = coords[Z] - 2*psi_gr_cv[p][Z];
+
+	    index2 = coords_index(coords2[X], coords2[Y], coords2[Z]);
+
+	    chemical_stress(index2, pth2);
+
+	   /* Use one-sided derivative instead */
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * 
+			(3.0*pth[ia][ib] - 4.0*pth1[ia][ib] + 1.0*pth2[ia][ib]) 
+				* psi_gr_rnorm[p]* psi_gr_cv[p][ib];
+	      }
+	    }
+
+	  }
+
+
+	}
+
+
+        /* Store the force on lattice */
+	if (pc) {
+	  pc->force[X] += force[X];
+	  pc->force[Y] += force[Y];
+	  pc->force[Z] += force[Z];
+	}
+	else {
+	  hydro_f_local_add(hydro, index, force);
+	}
+
+      }
+    }
+  }
 
   return 0;
 }

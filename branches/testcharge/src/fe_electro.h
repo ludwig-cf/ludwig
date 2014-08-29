@@ -26,5 +26,6 @@ int fe_electro_ext_set(double ext_field[3]);
 double fe_electro_fed(const int index);
 double fe_electro_mu(const int index, const int n);
 void fe_electro_stress(const int index, double s[3][3]);
+void fe_electro_stress_ex(const int index, double s[3][3]);
 
 #endif
