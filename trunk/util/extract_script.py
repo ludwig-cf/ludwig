@@ -1,21 +1,15 @@
-# Script for creating ASCII data file with io_sort.c
-# and creating vtk-data files for visualization
-
-# input as follows: 
-# size; NOTE: correct system size has to be also given in io_sort.c 
-# type: 1 scalar, 2 vector
-# no of files in output grouping
-# selected columns for output into vtk-file starting with 1
-# filelist name (default filelist)
+# Script for creating ASCII data file with
+# with extract.c and extract_colloids.c 
+# and vtk-data files for visualization
 
 import sys, os, re, math
 Lx=32
 Ly=32
 Lz=32
 
-nstart=1000
-nint=1000
-nend=1000
+nstart=100
+nint=100
+nend=500
 ngroup=1
 
 op=0
@@ -23,8 +17,10 @@ vel=0
 dir=0
 phi=0
 biaxop=0
-colloid=0
+colloid=1
 psi=0
+rho_el_p=0
+rho_el_m=0
 fed=0
 bfed=0
 gfed=0
@@ -51,30 +47,8 @@ if op==1:
 	for i in range(nstart,nend+nint,nint):
 		os.system('ls -t1 qs_dir-%08.0d.00%d-001 >> filelist_op' % (i,ngroup))
 
-if vel==1:
-	type.append('2')
-	x.append('1')
-	y.append('2')
-	z.append('3')
-	metafile.append('vel.00%d-001.meta' % ngroup)
-	filelist.append('filelist_vel')
-	os.system('rm filelist_vel')
-	for i in range(nstart,nend+nint,nint):
-		os.system('ls -t1 vel-%08.0d.00%d-001 >> filelist_vel' % (i,ngroup))
-
-if dir==1:
-	type.append('3')
-	x.append('2')
-	y.append('3')
-	z.append('4')
-	metafile.append('qs_dir.00%d-001.meta' % ngroup)
-	filelist.append('filelist_dir')
-	os.system('rm filelist_dir')
-	for i in range(nstart,nend+nint,nint):
-		os.system('ls -t1 qs_dir-%08.0d.00%d-001 >> filelist_dir' % (i,ngroup))
-
 if phi==1:
-	type.append('4')
+	type.append('2')
 	x.append('1')
 	y.append('0')
 	z.append('0')
@@ -85,7 +59,7 @@ if phi==1:
 		os.system('ls -t1 phi-%08.0d.%03.0d-001 >> filelist_phi' % (i,ngroup))
 
 if biaxop==1:
-	type.append('5')
+	type.append('3')
 	x.append('5')
 	y.append('0')
 	z.append('0')
@@ -96,7 +70,7 @@ if biaxop==1:
 		os.system('ls -t1 qs_dir-%08.0d.00%d-001 >> filelist_biaxop' % (i,ngroup))
 
 if psi==1:
-        type.append('6')
+        type.append('4')
         x.append('1')
         y.append('0')
         z.append('0')
@@ -105,6 +79,28 @@ if psi==1:
         os.system('rm filelist_psi')
         for i in range(nstart,nend+nint,nint):
                 os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_psi' % (i,ngroup))
+
+if rho_el_p==1:
+        type.append('5')
+        x.append('2')
+        y.append('0')
+        z.append('0')
+        metafile.append('psi.%03.0d-001.meta' % ngroup)
+        filelist.append('filelist_rho_el_p')
+        os.system('rm filelist_rho_el_p')
+        for i in range(nstart,nend+nint,nint):
+                os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_rho_el_p' % (i,ngroup))
+
+if rho_el_m==1:
+        type.append('6')
+        x.append('3')
+        y.append('0')
+        z.append('0')
+        metafile.append('psi.%03.0d-001.meta' % ngroup)
+        filelist.append('filelist_rho_el_m')
+        os.system('rm filelist_rho_el_m')
+        for i in range(nstart,nend+nint,nint):
+                os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_rho_el_m' % (i,ngroup))
 
 if fed==1:
         type.append('7')
@@ -138,6 +134,28 @@ if gfed==1:
         os.system('rm filelist_gfed')
         for i in range(nstart,nend+nint,nint):
                 os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_gfed' % (i,ngroup))
+
+if vel==1:
+	type.append('20')
+	x.append('1')
+	y.append('2')
+	z.append('3')
+	metafile.append('vel.00%d-001.meta' % ngroup)
+	filelist.append('filelist_vel')
+	os.system('rm filelist_vel')
+	for i in range(nstart,nend+nint,nint):
+		os.system('ls -t1 vel-%08.0d.00%d-001 >> filelist_vel' % (i,ngroup))
+
+if dir==1:
+	type.append('30')
+	x.append('2')
+	y.append('3')
+	z.append('4')
+	metafile.append('qs_dir.00%d-001.meta' % ngroup)
+	filelist.append('filelist_dir')
+	os.system('rm filelist_dir')
+	for i in range(nstart,nend+nint,nint):
+		os.system('ls -t1 qs_dir-%08.0d.00%d-001 >> filelist_dir' % (i,ngroup))
 
 os.system('gcc -o extract extract.c -lm')
 
@@ -199,6 +217,14 @@ if create_paraview_file==1:
                 os.system('rm filelist_psi')
                 for i in range(nstart,nend+nint,nint):
                                 os.system('ls -t1 psi-%08.0d >> filelist_psi' % i)
+        if rho_el_p==1:
+                os.system('rm filelist_rho_el_p')
+                for i in range(nstart,nend+nint,nint):
+                                os.system('ls -t1 psi-%08.0d >> filelist_rho_el_p' % i)
+        if rho_el_m==1:
+                os.system('rm filelist_rho_el_m')
+                for i in range(nstart,nend+nint,nint):
+                                os.system('ls -t1 psi-%08.0d >> filelist_rho_el_m' % i)
         if fed==1:
                 os.system('rm filelist_fed')
                 for i in range(nstart,nend+nint,nint):
@@ -231,10 +257,10 @@ if create_paraview_file==1:
 			headerlines.append('ORIGIN 0 0 0')
 			headerlines.append('SPACING 1 1 1')
 			headerlines.append('POINT_DATA %d' %(Lx*Ly*Lz))
-		if type[i]=='1' or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9':
+		if type[i] =='1' or type[i]=='2' or type[i]=='3' or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9':
 			headerlines.append('SCALARS scalar%d float 1' %i)
 			headerlines.append('LOOKUP_TABLE default')
-		if type[i]=='2' or type[i]=='3':
+		if type[i]=='20' or type[i]=='30':
 			headerlines.append('VECTORS velocity float')
 
 		print('# creating paraview-files')
@@ -254,27 +280,27 @@ if create_paraview_file==1:
 			if type[i]=='2':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-velo.vtk'
+				outputfilename= datafilename + '.dat-phi.vtk'
 
 			if type[i]=='3':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-dir.vtk'
+				outputfilename= datafilename + '.dat-biaxop.vtk'
 
 			if type[i]=='4':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-phi.vtk'
+				outputfilename= datafilename + '.dat-psi.vtk'
 
 			if type[i]=='5':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-biaxop.vtk'
+				outputfilename= datafilename + '.dat-rho_el_p.vtk'
 
 			if type[i]=='6':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-psi.vtk'
+				outputfilename= datafilename + '.dat-rho_el_m.vtk'
 
 			if type[i]=='7':
 				linestring=line.split()
@@ -291,10 +317,20 @@ if create_paraview_file==1:
 				datafilename=linestring[0]
 				outputfilename= datafilename + '.dat-gfed.vtk'
 
-			if type[i]=='99':
+			if type[i]=='20':
 				linestring=line.split()
 				datafilename=linestring[0]
-				linestring=line.split('.')
+				outputfilename= datafilename + '.dat-velo.vtk'
+
+			if type[i]=='30':
+				linestring=line.split()
+				datafilename=linestring[0]
+				outputfilename= datafilename + '.dat-dir.vtk'
+
+			if type[i]=='99':
+				linestring=line.split('.',2) 
+				datafilename=linestring[0] + '.' + linestring[1] 
+				print '%s\n' % datafilename
 				outputfilename= 'colloid-' + linestring[1] + '.csv'
 
 			print '# processing %s' % outputfilename
@@ -318,11 +354,11 @@ if create_paraview_file==1:
 
 					datastring=line.split()
 
-					if type[i]=='1' or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9':
+					if type[i]=='1' or type[i]=='2' or type[i]=='3'  or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9':
 						xdata=float(datastring[x[i]])
 #						if abs(xdata)<1e-25: xdata=1e-25
 						out.write('%12.5le\n' % xdata)
-					if type[i]=='2' or type[i]=='3':
+					if type[i]=='20' or type[i]=='30':
 						xdata=float(datastring[x[i]])
 						ydata=float(datastring[y[i]])
 						zdata=float(datastring[z[i]])
@@ -332,7 +368,8 @@ if create_paraview_file==1:
 				file.close
 
 			if type[i]=='99':
-				os.system('./extract_colloids %s %s' % (datafilename,outputfilename))
+
+				os.system('./extract_colloids %s %d %s' % (datafilename,ngroup,outputfilename))
 
 		datafilenames.close
 
