@@ -525,15 +525,7 @@ static int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
 	/* Total electrostatic force on colloid */
 	if (pc) {
 
-#ifdef NP_D3Q6
-	  psi_electric_field(psi, index0, elocal);
-#endif
-#ifdef NP_D3Q18
 	  psi_electric_field_d3qx(psi, index0, elocal);
-#endif
-#ifdef NP_D3Q26
-	  psi_electric_field_d3qx(psi, index0, elocal);
-#endif
 
 	  f[X] = rho_elec * (e0[X] + elocal[X]) * dt;
 	  f[Y] = rho_elec * (e0[Y] + elocal[Y]) * dt;
@@ -781,7 +773,7 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
     }
     
     /* Only reduce if sanity criteria fulfilled */  
-    if (multisteps > 1 && diffmax/multisteps < 0.044) { 
+    if (multisteps > 1 && diffmax/multisteps < 0.05) { 
       multisteps *= 0.5; 
       psi_multisteps_set(psi, multisteps);
       info("\nMaxacc << diffacc: changing no. of multisteps to %d\n", multisteps);

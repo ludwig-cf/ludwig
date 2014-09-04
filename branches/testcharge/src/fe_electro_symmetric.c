@@ -100,7 +100,7 @@ int fe_es_create(field_t * phi, field_grad_t * gradphi, psi_t * psi) {
   fe_electro_create(psi);
   fe_mu_solv_set(fe_es_mu_solv);
   fe_chemical_potential_set(fe_es_mu);
-  fe_chemical_stress_set(fe_es_stress);
+  fe_chemical_stress_set(fe_es_stress_ex);
 
   return 0;
 }
@@ -289,7 +289,7 @@ int fe_es_var_epsilon(int index, double * epsilon) {
 
 /*****************************************************************************
  *
- *  fe_es_stress
+ *  fe_es_stress_ex
  *
  *  The full stress has three parts:
  *
@@ -317,7 +317,7 @@ int fe_es_var_epsilon(int index, double * epsilon) {
  *
  *****************************************************************************/
 
-void fe_es_stress(const int index, double s[3][3]) {
+void fe_es_stress_ex(const int index, double s[3][3]) {
 
   int ia, ib;
 
@@ -333,15 +333,7 @@ void fe_es_stress(const int index, double s[3][3]) {
 
   field_scalar(fe->phi, index, &phi);
 
-#ifdef NP_D3Q6
-  psi_electric_field(fe->psi, index, e);
-#endif
-#ifdef NP_D3Q18
   psi_electric_field_d3qx(fe->psi, index, e);
-#endif
-#ifdef NP_D3Q26
-  psi_electric_field_d3qx(fe->psi, index, e);
-#endif
 
   e2 = 0.0;
   for (ia = 0; ia < 3; ia++) {

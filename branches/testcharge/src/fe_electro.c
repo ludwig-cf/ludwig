@@ -79,7 +79,7 @@ int fe_electro_create(psi_t * psi) {
 
   fe_density_set(fe_electro_fed);
   fe_chemical_potential_set(fe_electro_mu);
-  fe_chemical_stress_set(fe_electro_stress);
+  fe_chemical_stress_set(fe_electro_stress_ex);
 
   return 0;
 }
@@ -202,15 +202,7 @@ void fe_electro_stress(const int index, double s[3][3]) {
 
   psi_epsilon(fe->psi, &epsilon);
 
-#ifdef NP_D3Q6
-  psi_electric_field(fe->psi, index, e);
-#endif
-#ifdef NP_D3Q18
   psi_electric_field_d3qx(fe->psi, index, e);
-#endif
-#ifdef NP_D3Q26
-  psi_electric_field_d3qx(fe->psi, index, e);
-#endif
 
   physics_e0(e0);
   physics_kt(&kt);
@@ -263,18 +255,9 @@ void fe_electro_stress_ex(const int index, double s[3][3]) {
 
   psi_epsilon(fe->psi, &epsilon);
 
-#ifdef NP_D3Q6
-  psi_electric_field(fe->psi, index, e);
-#endif
-#ifdef NP_D3Q18
   psi_electric_field_d3qx(fe->psi, index, e);
-#endif
-#ifdef NP_D3Q26
-  psi_electric_field_d3qx(fe->psi, index, e);
-#endif
 
   physics_e0(e0);
-  physics_kt(&kt);
   psi_nk(fe->psi, &nk);
 
   e2 = 0.0;

@@ -30,6 +30,6 @@ int fe_es_var_epsilon(int index, double * epsilon);
 
 double fe_es_fed(const int index);
 double fe_es_mu(const int index, const int nop);
-void fe_es_stress(const int index, double s[3][3]);
+void fe_es_stress_ex(const int index, double s[3][3]);
 
 #endif
