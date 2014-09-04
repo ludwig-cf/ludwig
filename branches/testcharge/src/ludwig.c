@@ -407,7 +407,6 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_STEPS);
     step = get_step();
     if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
-    if (ludwig->hydro) hydro_u_zero(ludwig->hydro, uzero);
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
     ludwig_colloids_update(ludwig);
@@ -547,6 +546,11 @@ void ludwig_run(const char * inputfile) {
 
 
     if (ludwig->hydro) {
+      /* Zero velocity field here, as velocity at collision is used
+       * at next time step for FD above. Strictly, we only need to
+       * do this if velocity output is required in presence of
+       * colloids to present non-zero u inside particles. */
+      hydro_u_zero(ludwig->hydro, uzero);
 
       /* Collision stage */
 
