@@ -256,11 +256,11 @@ int hydro_u(hydro_t * obj, int index, double u[3]) {
 
 /*****************************************************************************
  *
- *  hydro_f_zero
+ *  hydro_u_zero
  *
  *****************************************************************************/
 
-int hydro_f_zero(hydro_t * obj, const double uzero[3]) {
+int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -274,7 +274,37 @@ int hydro_f_zero(hydro_t * obj, const double uzero[3]) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	hydro_f_local_set(obj, index, uzero);
+	hydro_u_set(obj, index, uzero);
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  hydro_f_zero
+ *
+ *****************************************************************************/
+
+int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  assert(obj);
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	hydro_f_local_set(obj, index, fzero);
 
       }
     }

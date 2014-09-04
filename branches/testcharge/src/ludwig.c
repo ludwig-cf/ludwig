@@ -357,6 +357,7 @@ void ludwig_run(const char * inputfile) {
   int     is_pm = 0;
   int ncolloid = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
+  double  uzero[3] = {0.0, 0.0, 0.0};
   int     im, multisteps;
   int	  flag;
 
@@ -406,6 +407,7 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_STEPS);
     step = get_step();
     if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
+    if (ludwig->hydro) hydro_u_zero(ludwig->hydro, uzero);
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
     ludwig_colloids_update(ludwig);
@@ -485,50 +487,23 @@ void ludwig_run(const char * inputfile) {
 	    phi_force_calculation(ludwig->phi, ludwig->hydro);
 	  }
 	  else {
-#ifdef NP_D3Q6
-	    psi_force_divstress(ludwig->psi, ludwig->hydro,
-					ludwig->collinfo);
-#endif
-#ifdef NP_D3Q18
 	    psi_force_divstress_d3qx(ludwig->psi, ludwig->hydro,
 				ludwig->map, ludwig->collinfo);
-#endif
-#ifdef NP_D3Q26
-	    psi_force_divstress_d3qx(ludwig->psi, ludwig->hydro,
-				ludwig->map, ludwig->collinfo);
-#endif
 	  }
 	}
 	TIMER_stop(TIMER_FORCE_CALCULATION);
 
       }
 
-#ifdef NP_D3Q6
-	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver(ludwig->psi, ludwig->hydro, ludwig->map);
-	TIMER_stop(TIMER_ELECTRO_NPEQ);
-#endif
-
-#ifdef NP_D3Q18
 	TIMER_start(TIMER_ELECTRO_NPEQ);
 	nernst_planck_driver_d3qx(ludwig->psi, ludwig->hydro, ludwig->map, ludwig->collinfo);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
-#endif
-
-#ifdef NP_D3Q26
-	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver_d3qx(ludwig->psi, ludwig->hydro, ludwig->map, ludwig->collinfo);
-	TIMER_stop(TIMER_ELECTRO_NPEQ);
-#endif
 
       }
 
       nernst_planck_adjust_multistep(ludwig->psi);
 
       if (is_statistics_step()) info("%d multisteps\n",im);
-
-      /* Offset correction for potential left as comment for now */
-//      psi_sor_offset(ludwig->psi);
 
     }
 
@@ -1223,9 +1198,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     fe_electro_create(ludwig->psi);
 
-    fe_density_set(fe_electro_fed);
-    fe_chemical_potential_set(fe_electro_mu);
-    fe_chemical_stress_set(fe_electro_stress);
   }
   else if(strcmp(description, "fe_electro_symmetric") == 0) {
 
