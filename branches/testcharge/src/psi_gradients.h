@@ -1,3 +1,17 @@
+/****************************************************************************
+ *
+ *  psi_gradients.h
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
+ *  (c) 2014 The University of Edinburgh
+ *
+ ****************************************************************************/
+
 #ifndef  PSI_GRADIENTS_H
 #define  PSI_GRADIENTS_H
 

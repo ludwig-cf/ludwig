@@ -1,3 +1,20 @@
+/****************************************************************************
+ *
+ *  psi_gradients.c
+ *
+ *  Finite difference stencils used in the 
+ *  electrokinetic routines.
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
+ *  (c) 2014 The University of Edinburgh
+ *
+ ****************************************************************************/
+
 #include "psi_gradients.h"
 
 #ifdef NP_D3Q6

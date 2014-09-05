@@ -252,7 +252,7 @@ int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
   io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
   io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
 
-  io_info_set_bytesize(obj->info, (1 + obj->nk)*sizeof(double));
+  io_info_set_bytesize(obj->info, (2 + obj->nk)*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
 
@@ -301,6 +301,7 @@ void psi_free(psi_t * obj) {
 static int psi_write_ascii(FILE * fp, int index, void * self) {
 
   int n, nwrite;
+  double rho_el;
   psi_t * obj = self;
 
   assert(obj);
@@ -311,8 +312,12 @@ static int psi_write_ascii(FILE * fp, int index, void * self) {
 
   for (n = 0; n < obj->nk; n++) {
     nwrite = fprintf(fp, "%22.15e ", obj->rho[obj->nk*index + n]);
-    if (nwrite != 23) fatal("fprintf(psi) failed at index %d %d\n", index, n);
+    if (nwrite != 23) fatal("fprintf(rho) failed at index %d %d\n", index, n);
   }
+  
+  psi_rho_elec(obj, index, &rho_el);
+  nwrite = fprintf(fp, "%22.15e ", rho_el);
+  if (nwrite != 23) fatal("fprintf(rho_el) failed at index %d\n", index);
 
   nwrite = fprintf(fp, "\n");
   if (nwrite != 1) fatal("fprintf() failed at index %d\n", index);
@@ -331,6 +336,7 @@ static int psi_write_ascii(FILE * fp, int index, void * self) {
 static int psi_read_ascii(FILE * fp, int index, void * self) {
 
   int n, nread;
+  double rho_el;
   psi_t * obj = self;
 
   assert(fp);
@@ -343,6 +349,9 @@ static int psi_read_ascii(FILE * fp, int index, void * self) {
     nread = fscanf(fp, "%le", obj->rho + obj->nk*index + n);
     if (nread != 1) fatal("fscanf(rho) failed for %d %d\n", index, n);
   }
+
+  nread = fscanf(fp, "%le", &rho_el);
+  if (nread != 1) fatal("fscanf(rho_el) failed for %d %d\n", index, n);
 
   return 0;
 }
@@ -358,6 +367,7 @@ static int psi_read_ascii(FILE * fp, int index, void * self) {
 static int psi_write(FILE * fp, int index, void * self) {
 
   int n;
+  double rho_el;
   psi_t * obj = self;
 
   assert(fp);
@@ -368,6 +378,10 @@ static int psi_write(FILE * fp, int index, void * self) {
 
   n = fwrite(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
   if (n != obj->nk) fatal("fwrite(rho) failed at index %d", index);
+
+  psi_rho_elec(obj, index, &rho_el);
+  n = fwrite(&rho_el, sizeof(double), 1, fp);
+  if (n != 1) fatal("fwrite(rho_el) failed at index %d", index);
 
   return 0;
 }
@@ -383,6 +397,7 @@ static int psi_write(FILE * fp, int index, void * self) {
 static int psi_read(FILE * fp, int index, void * self) {
 
   int n;
+  double rho_el;
   psi_t * obj = self;
 
   assert(fp);
@@ -393,6 +408,9 @@ static int psi_read(FILE * fp, int index, void * self) {
 
   n = fread(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
   if (n != obj->nk) fatal("fread(rho) failed at index %d\n", index);
+
+  n = fread(&rho_el, sizeof(double), 1, fp);
+  if (n != 1) fatal("fread(rho_el) failed at index %d\n", index);
 
   return 0;
 }
