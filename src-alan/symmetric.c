@@ -22,17 +22,25 @@
  *
  ****************************************************************************/
 
+#define INCLUDED_FROM_TARGET
+
+
 #include <assert.h>
 #include <math.h>
+#include <stdlib.h>
+
+#include "targetDP.h"
 
 #include "phi.h"
 #include "phi_gradients.h"
 #include "util.h"
 #include "symmetric.h"
 
-static double a_     = -0.003125;
-static double b_     = +0.003125;
-static double kappa_ = +0.002;
+
+//static double a_     = -0.003125;
+static TARGET_CONST double a_     = -0.003125;
+static TARGET_CONST double b_     = +0.003125;
+static TARGET_CONST double kappa_ = +0.002;
 
 /****************************************************************************
  *
@@ -45,10 +53,17 @@ static double kappa_ = +0.002;
 
 void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
 
-  a_ = a;
-  b_ = b;
-  kappa_ = kappa;
+  //a_ = a;
+  //b_ = b;
+  //kappa_ = kappa;
+
+  copyConstantDoubleToTarget(&a_, &a, sizeof(double));
+  copyConstantDoubleToTarget(&b_, &b, sizeof(double));
+  copyConstantDoubleToTarget(&kappa_, &kappa, sizeof(double));
+
+  //TO DO TARGET
   fe_kappa_set(kappa);
+
 
   return;
 }
