@@ -293,8 +293,8 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 
 
   //phi =  phi_t[baseIndex];;
-  TARGET_ILP(vecIndex) mu[vecIndex] 
-    = chemical_potential(baseIndex+vecIndex, 0, phi_t, delsqphi_t);
+    TARGET_ILP(vecIndex) mu[vecIndex] 
+  = chemical_potential(baseIndex+vecIndex, 0, phi_t, delsqphi_t);
   
   TARGET_ILP(vecIndex){
     jphi[ILPIDX(X)] = 0.0;
@@ -357,7 +357,7 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 					       double* __restrict__ phi_t,
 					       double* __restrict__ gradphi_t,
 					       double* __restrict__ delsqphi_t,
-					       double (* chemical_potential)(const int index, const int nop),
+					       double (* chemical_potential)(const int index, const int nop, double* phi_t, double* delsqphi_t),
 					       const int nSites){
 
   int tpIndex;
@@ -380,7 +380,23 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 
 
 //TODO HACK
-double symmetric_chemical_potential(const int index, const int nop, double* t_phi, double* t_delsqphi);
+
+
+//typedef void (*fntype)(double* x);
+//extern __device__ void fn(double* d_array);
+//__device__ fntype pfn = fn;
+
+
+typedef double (*fntype)(const int index, const int nop, double* t_phi, double* t_delsqphi);
+extern __device__ double symmetric_chemical_potential_target(const int index, const int nop, double* t_phi, double* t_delsqphi);
+__device__ fntype pfn = symmetric_chemical_potential_target;
+
+
+//typedef void (*fntype)(const int index, const int nop, double* t_phi, double* t_delsqphi);
+
+//extern TARGET double symmetric_chemical_potential_target(const int index, const int nop, double* t_phi, double* t_delsqphi);
+
+//TARGET fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
 
 HOST void collision_binary_lb_target() {
 
@@ -395,7 +411,7 @@ HOST void collision_binary_lb_target() {
   double    rtau2;
   double    mobility;
 
-  double (* chemical_potential)(const int index, const int nop, 
+   double (* chemical_potential)(const int index, const int nop, 
 				double* t_phi, double* t_delsq_phi);
   //void   (* chemical_stress)(const int index, double s[3][3]);
 
@@ -408,7 +424,21 @@ HOST void collision_binary_lb_target() {
 
   //  chemical_potential = fe_chemical_potential_function();
   //HACK TODO
-  chemical_potential = symmetric_chemical_potential;
+  //chemical_potential = symmetric_chemical_potential_target;
+
+  //fntype* h_chemical_potential;
+  //fntype* t_chemical_potential;
+
+  //h_chemical_potential=(fntype*) malloc(sizeof(fntype));
+  //cudaMalloc(&t_chemical_potential, sizeof(fntype));
+
+  //  cudaMemcpyFromSymbol( h_chemical_potential, p_symmetric_chemical_potential_target, sizeof(fntype));
+
+
+  //cudaMemcpy( t_chemical_potential, h_chemical_potential,sizeof(fntype),cudaMemcpyHostToDevice);
+
+
+
   //chemical_stress = fe_chemical_stress_function();
 
   /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
@@ -502,8 +532,10 @@ HOST void collision_binary_lb_target() {
   //end constant setup
 
 
-  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,chemical_potential,nSites);
+  //  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,chemical_potential,nSites);
 
+  syncTarget();
+  checkTargetError("Binary Collision Kernel");
 
   //  end lattice operation
 

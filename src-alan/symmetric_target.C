@@ -37,6 +37,13 @@
 #include "symmetric.h"
 
 
+
+#define HOST
+#ifdef CUDA
+#define HOST extern "C"
+#endif
+
+
 //static double a_     = -0.003125;
 static TARGET_CONST double a_     = -0.003125;
 static TARGET_CONST double b_     = +0.003125;
@@ -51,7 +58,7 @@ static TARGET_CONST double kappa_ = +0.002;
  *
  ****************************************************************************/
 
-void symmetric_free_energy_parameters_set_target(double a, double b, double kappa) {
+HOST void symmetric_free_energy_parameters_set_target(double a, double b, double kappa) {
 
   //a_ = a;
   //b_ = b;
@@ -180,13 +187,14 @@ void symmetric_free_energy_parameters_set_target(double a, double b, double kapp
  *
  ****************************************************************************/
 
-double symmetric_chemical_potential(const int index, const int nop, double* t_phi, double* t_delsqphi) {
+TARGET double symmetric_chemical_potential_target(const int index, const int nop, double* t_phi, double* t_delsqphi) {
 
   double phi;
   double delsq_phi;
   double mu;
 
-  assert(nop == 0);
+  //TODO
+  //assert(nop == 0);
 
   //phi = phi_get_phi_site(index);
   //delsq_phi = phi_gradients_delsq(index);

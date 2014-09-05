@@ -176,33 +176,31 @@ double symmetric_isotropic_pressure(const int index) {
 }
 
 
-/* /\**************************************************************************** */
-/*  * */
-/*  *  symmetric_chemical_potential */
-/*  * */
-/*  *  The chemical potential \mu = \delta F / \delta \phi */
-/*  *                             = a\phi + b\phi^3 - \kappa\nabla^2 \phi */
-/*  * */
-/*  ****************************************************************************\/ */
+//TODO get rid of this non-target version 
+/****************************************************************************
+ *
+ *  symmetric_chemical_potential
+ *
+ *  The chemical potential \mu = \delta F / \delta \phi
+ *                             = a\phi + b\phi^3 - \kappa\nabla^2 \phi
+ *
+ ****************************************************************************/
 
-/* double symmetric_chemical_potential(const int index, const int nop, double* t_phi, double* t_delsqphi) { */
+double symmetric_chemical_potential(const int index, const int nop) {
 
-/*   double phi; */
-/*   double delsq_phi; */
-/*   double mu; */
+  double phi;
+  double delsq_phi;
+  double mu;
 
-/*   assert(nop == 0); */
+  assert(nop == 0);
 
-/*   //phi = phi_get_phi_site(index); */
-/*   //delsq_phi = phi_gradients_delsq(index); */
+  phi = phi_get_phi_site(index);
+  delsq_phi = phi_gradients_delsq(index);
 
-/*   phi=t_phi[index]; */
-/*   delsq_phi=t_delsqphi[index]; */
+  mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi;
 
-/*   mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi; */
-
-/*   return mu; */
-/* } */
+  return mu;
+}
 
 /****************************************************************************
  *
