@@ -11,32 +11,40 @@
 #  (c) 2010-2014 The University of Edinburgh
 #
 ##############################################################################
-#!/bin/bash
+#!/bin/bash --login
 
-thisdir=`pwd`
-testdir=branches/testcharge/tests
-testscript=test-serial.sh
+# Despite --login we still need to get appropriate paths, etc:
+. /etc/profile
+eval `/usr/bin/modulecmd bash load PMPI`
+
+
+# This is the local directory for the nightly stuff
+thisdir=/home/w02/kevin/nightly
+cd $thisdir
+
+testdir=ludwig/branches/testcharge/tests
+summary=$thisdir/summary-testcharge.log
 
 # Log file
 
-record=`date +%F-%T`.log
+record=$thisdir/`date +%F-%T`.log
+
+# Start a new summary file which will overwrite anything present
+echo "Summary of $record" > $summary
+echo $SHELL >> $summary
+echo $PATH >> $summary
 
 # Checkout the SVN (and send the report to the record)
 
-svn co --username stratford http://ccpforge.cse.rl.ac.uk/svn/ludwig \
-    &> $record
+#svn co --username stratford http://ccpforge.cse.rl.ac.uk/svn/ludwig &> $record
 
-# Move to the test directory and run the script, sending stdout and
-# stderr to record file
+# start via bsub (indy0.epcc.ed.ac.uk)
 
 cd $testdir
-./$testscript &> $record
+bsub -o $record -e $record -n 64 -W 1:00 -q normal -J test-all < test-all.sh
 
-# Recover the output to the present directory
+# Wait for the tests to finish, and clean up
 
 cd $thisdir
-mv $testdir/$record .
+#bsub -w "done(test-all)" -o $record -e $record -n 1 -q normal "rm -rf ludwig"
 
-# Remove the evidence
-
-rm -rf ludwig
