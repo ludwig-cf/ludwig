@@ -29,7 +29,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "targetDP.h"
+//#include "targetDP.h"
 
 #include "phi.h"
 #include "phi_gradients.h"
@@ -37,10 +37,14 @@
 #include "symmetric.h"
 
 
-//static double a_     = -0.003125;
-static TARGET_CONST double a_     = -0.003125;
-static TARGET_CONST double b_     = +0.003125;
-static TARGET_CONST double kappa_ = +0.002;
+static double a_     = -0.003125;
+static double b_     = +0.003125;
+static double kappa_ = +0.002;
+
+
+//static TARGET_CONST double a_     = -0.003125;
+//static TARGET_CONST double b_     = +0.003125;
+//static TARGET_CONST double kappa_ = +0.002;
 
 /****************************************************************************
  *
@@ -53,17 +57,18 @@ static TARGET_CONST double kappa_ = +0.002;
 
 void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
 
-  //a_ = a;
-  //b_ = b;
-  //kappa_ = kappa;
+  a_ = a;
+  b_ = b;
+  kappa_ = kappa;
 
-  copyConstantDoubleToTarget(&a_, &a, sizeof(double));
-  copyConstantDoubleToTarget(&b_, &b, sizeof(double));
-  copyConstantDoubleToTarget(&kappa_, &kappa, sizeof(double));
+  //copyConstantDoubleToTarget(&a_, &a, sizeof(double));
+  //copyConstantDoubleToTarget(&b_, &b, sizeof(double));
+  //copyConstantDoubleToTarget(&kappa_, &kappa, sizeof(double));
 
   //TO DO TARGET
   fe_kappa_set(kappa);
 
+   symmetric_free_energy_parameters_set_target(a_, b_, kappa_);
 
   return;
 }
@@ -171,33 +176,33 @@ double symmetric_isotropic_pressure(const int index) {
 }
 
 
-/****************************************************************************
- *
- *  symmetric_chemical_potential
- *
- *  The chemical potential \mu = \delta F / \delta \phi
- *                             = a\phi + b\phi^3 - \kappa\nabla^2 \phi
- *
- ****************************************************************************/
+/* /\**************************************************************************** */
+/*  * */
+/*  *  symmetric_chemical_potential */
+/*  * */
+/*  *  The chemical potential \mu = \delta F / \delta \phi */
+/*  *                             = a\phi + b\phi^3 - \kappa\nabla^2 \phi */
+/*  * */
+/*  ****************************************************************************\/ */
 
-double symmetric_chemical_potential(const int index, const int nop, double* t_phi, double* t_delsqphi) {
+/* double symmetric_chemical_potential(const int index, const int nop, double* t_phi, double* t_delsqphi) { */
 
-  double phi;
-  double delsq_phi;
-  double mu;
+/*   double phi; */
+/*   double delsq_phi; */
+/*   double mu; */
 
-  assert(nop == 0);
+/*   assert(nop == 0); */
 
-  //phi = phi_get_phi_site(index);
-  //delsq_phi = phi_gradients_delsq(index);
+/*   //phi = phi_get_phi_site(index); */
+/*   //delsq_phi = phi_gradients_delsq(index); */
 
-  phi=t_phi[index];
-  delsq_phi=t_delsqphi[index];
+/*   phi=t_phi[index]; */
+/*   delsq_phi=t_delsqphi[index]; */
 
-  mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi;
+/*   mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi; */
 
-  return mu;
-}
+/*   return mu; */
+/* } */
 
 /****************************************************************************
  *
