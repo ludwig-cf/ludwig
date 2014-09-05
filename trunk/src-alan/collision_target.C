@@ -73,7 +73,10 @@ TARGET_CONST double tc_q[NVEL][3][3];
 TARGET void collision_binary_lb_site( double* __restrict__ f_t, 
 				      const double* __restrict__ force_t, 
 				      double* __restrict__ velocity_t,
-				      double (* chemical_potential)(const int index, const int nop),
+				      double* __restrict__ phi_t,
+				      double* __restrict__ gradphi_t,
+				      double* __restrict__ delsqphi_t,
+				      double (* chemical_potential)(const int index, const int nop, double* phi_t, double* delsqphi_t),
 				      const int baseIndex){
 
   int       p, m;                    /* velocity index */
@@ -291,7 +294,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 
   //phi =  phi_t[baseIndex];;
   TARGET_ILP(vecIndex) mu[vecIndex] 
-    = chemical_potential(baseIndex+vecIndex, 0);
+    = chemical_potential(baseIndex+vecIndex, 0, phi_t, delsqphi_t);
   
   TARGET_ILP(vecIndex){
     jphi[ILPIDX(X)] = 0.0;
@@ -349,8 +352,11 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 
 
 TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t, 
-				  const double* __restrict__ force_t, 
+					       const double* __restrict__ force_t, 
 					       double* __restrict__ velocity_t,
+					       double* __restrict__ phi_t,
+					       double* __restrict__ gradphi_t,
+					       double* __restrict__ delsqphi_t,
 					       double (* chemical_potential)(const int index, const int nop),
 					       const int nSites){
 
@@ -358,7 +364,7 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
   TARGET_TLP(tpIndex,nSites)
     {
 	
-      collision_binary_lb_site( f_t, force_t, velocity_t,chemical_potential,tpIndex);
+      collision_binary_lb_site( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,chemical_potential,tpIndex);
 
     }
 
@@ -374,7 +380,7 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 
 
 //TODO HACK
-double symmetric_chemical_potential(const int index, const int nop);
+double symmetric_chemical_potential(const int index, const int nop, double* t_phi, double* t_delsqphi);
 
 HOST void collision_binary_lb_target() {
 
@@ -389,7 +395,8 @@ HOST void collision_binary_lb_target() {
   double    rtau2;
   double    mobility;
 
-  double (* chemical_potential)(const int index, const int nop);
+  double (* chemical_potential)(const int index, const int nop, 
+				double* t_phi, double* t_delsq_phi);
   //void   (* chemical_stress)(const int index, double s[3][3]);
 
 #define NDIST 2 //for binary collision
@@ -495,7 +502,7 @@ HOST void collision_binary_lb_target() {
   //end constant setup
 
 
-  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,chemical_potential,nSites);
+  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,chemical_potential,nSites);
 
 
   //  end lattice operation
