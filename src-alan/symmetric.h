@@ -23,7 +23,8 @@ double symmetric_b(void);
 double symmetric_interfacial_tension(void);
 double symmetric_interfacial_width(void);
 double symmetric_free_energy_density(const int index);
-double symmetric_chemical_potential(const int index, const int nop);
+//double symmetric_chemical_potential(const int index, const int nop);
+double symmetric_chemical_potential(const int index, const int nop, double* t_phi, double* t_delsqphi);
 double symmetric_isotropic_pressure(const int index);
 void   symmetric_chemical_stress(const int index, double s[3][3]);
 

@@ -180,7 +180,7 @@ double symmetric_isotropic_pressure(const int index) {
  *
  ****************************************************************************/
 
-double symmetric_chemical_potential(const int index, const int nop) {
+double symmetric_chemical_potential(const int index, const int nop, double* t_phi, double* t_delsqphi) {
 
   double phi;
   double delsq_phi;
@@ -188,8 +188,11 @@ double symmetric_chemical_potential(const int index, const int nop) {
 
   assert(nop == 0);
 
-  phi = phi_get_phi_site(index);
-  delsq_phi = phi_gradients_delsq(index);
+  //phi = phi_get_phi_site(index);
+  //delsq_phi = phi_gradients_delsq(index);
+
+  phi=t_phi[index];
+  delsq_phi=t_delsqphi[index];
 
   mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi;
 
