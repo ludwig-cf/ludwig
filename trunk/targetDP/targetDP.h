@@ -6,6 +6,7 @@
 #ifndef _DATA_PARALLEL_INCLUDED
 #define _DATA_PARALLEL_INCLUDED
 
+typedef double (*mu_fntype)(const int, const int, const double*, const double*);
 
 /* Language "extensions", implemented through preprocessor */
 
@@ -55,7 +56,7 @@
 #define TARGET_LAUNCH(extent)
 
 /* Instruction-level-parallelism vector length */
-#define NILP 2
+#define NILP 1
 
 /* Instruction-level-parallelism execution macro */
 #define TARGET_ILP(simdIndex)  for (simdIndex = 0; simdIndex < NILP; simdIndex++) 
@@ -93,6 +94,7 @@ void copyConstantDouble1DArrayToTarget(double *data_d, const double *data, const
 void copyConstantDouble2DArrayToTarget(double **data_d, const double *data, const int size);
 void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, const int size);
 
+void  copyConstantMufnFromTarget(mu_fntype* data_d, mu_fntype* data, const int size );
 
 
 #endif
