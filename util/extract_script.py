@@ -1,5 +1,4 @@
-# Script for creating ASCII data file with
-# with extract.c and extract_colloids.c 
+# Script for creating ASCII data file with extract.c
 # and vtk-data files for visualization
 
 import sys, os, re, math
@@ -9,18 +8,19 @@ Lz=32
 
 nstart=100
 nint=100
-nend=500
+nend=5000
 ngroup=1
 
 op=0
-vel=0
+vel=1
 dir=0
 phi=0
 biaxop=0
-colloid=1
-psi=0
-rho_el_p=0
-rho_el_m=0
+colloid=0
+psi=1
+rho_p=0
+rho_m=0
+rho_el=1
 fed=0
 bfed=0
 gfed=0
@@ -80,30 +80,41 @@ if psi==1:
         for i in range(nstart,nend+nint,nint):
                 os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_psi' % (i,ngroup))
 
-if rho_el_p==1:
+if rho_p==1:
         type.append('5')
         x.append('2')
         y.append('0')
         z.append('0')
         metafile.append('psi.%03.0d-001.meta' % ngroup)
-        filelist.append('filelist_rho_el_p')
-        os.system('rm filelist_rho_el_p')
+        filelist.append('filelist_rho_p')
+        os.system('rm filelist_rho_p')
         for i in range(nstart,nend+nint,nint):
-                os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_rho_el_p' % (i,ngroup))
+                os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_rho_p' % (i,ngroup))
 
-if rho_el_m==1:
+if rho_m==1:
         type.append('6')
         x.append('3')
         y.append('0')
         z.append('0')
         metafile.append('psi.%03.0d-001.meta' % ngroup)
-        filelist.append('filelist_rho_el_m')
-        os.system('rm filelist_rho_el_m')
+        filelist.append('filelist_rho_m')
+        os.system('rm filelist_rho_m')
         for i in range(nstart,nend+nint,nint):
-                os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_rho_el_m' % (i,ngroup))
+                os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_rho_m' % (i,ngroup))
+
+if rho_el==1:
+        type.append('7')
+        x.append('4')
+        y.append('0')
+        z.append('0')
+        metafile.append('psi.%03.0d-001.meta' % ngroup)
+        filelist.append('filelist_rho_el')
+        os.system('rm filelist_rho_el')
+        for i in range(nstart,nend+nint,nint):
+                os.system('ls -t1 psi-%08.0d.%03.0d-001 >> filelist_rho_el' % (i,ngroup))
 
 if fed==1:
-        type.append('7')
+        type.append('8')
         x.append('1')
         y.append('0')
         z.append('0')
@@ -114,7 +125,7 @@ if fed==1:
                 os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_fed' % (i,ngroup))
 
 if bfed==1:
-        type.append('8')
+        type.append('9')
         x.append('2')
         y.append('0')
         z.append('0')
@@ -125,7 +136,7 @@ if bfed==1:
                 os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_bfed' % (i,ngroup))
 
 if gfed==1:
-        type.append('9')
+        type.append('10')
         x.append('3')
         y.append('0')
         z.append('0')
@@ -217,14 +228,18 @@ if create_paraview_file==1:
                 os.system('rm filelist_psi')
                 for i in range(nstart,nend+nint,nint):
                                 os.system('ls -t1 psi-%08.0d >> filelist_psi' % i)
-        if rho_el_p==1:
-                os.system('rm filelist_rho_el_p')
+        if rho_p==1:
+                os.system('rm filelist_rho_p')
                 for i in range(nstart,nend+nint,nint):
-                                os.system('ls -t1 psi-%08.0d >> filelist_rho_el_p' % i)
-        if rho_el_m==1:
-                os.system('rm filelist_rho_el_m')
+                                os.system('ls -t1 psi-%08.0d >> filelist_rho_p' % i)
+        if rho_m==1:
+                os.system('rm filelist_rho_m')
                 for i in range(nstart,nend+nint,nint):
-                                os.system('ls -t1 psi-%08.0d >> filelist_rho_el_m' % i)
+                                os.system('ls -t1 psi-%08.0d >> filelist_rho_m' % i)
+        if rho_el==1:
+                os.system('rm filelist_rho_el')
+                for i in range(nstart,nend+nint,nint):
+                                os.system('ls -t1 psi-%08.0d >> filelist_rho_el' % i)
         if fed==1:
                 os.system('rm filelist_fed')
                 for i in range(nstart,nend+nint,nint):
@@ -257,7 +272,7 @@ if create_paraview_file==1:
 			headerlines.append('ORIGIN 0 0 0')
 			headerlines.append('SPACING 1 1 1')
 			headerlines.append('POINT_DATA %d' %(Lx*Ly*Lz))
-		if type[i] =='1' or type[i]=='2' or type[i]=='3' or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9':
+		if type[i] =='1' or type[i]=='2' or type[i]=='3' or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9' or type[i]=='10':
 			headerlines.append('SCALARS scalar%d float 1' %i)
 			headerlines.append('LOOKUP_TABLE default')
 		if type[i]=='20' or type[i]=='30':
@@ -295,24 +310,29 @@ if create_paraview_file==1:
 			if type[i]=='5':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-rho_el_p.vtk'
+				outputfilename= datafilename + '.dat-rho_p.vtk'
 
 			if type[i]=='6':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-rho_el_m.vtk'
+				outputfilename= datafilename + '.dat-rho_m.vtk'
 
 			if type[i]=='7':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-fed.vtk'
+				outputfilename= datafilename + '.dat-rho_el.vtk'
 
 			if type[i]=='8':
 				linestring=line.split()
 				datafilename=linestring[0]
-				outputfilename= datafilename + '.dat-bfed.vtk'
+				outputfilename= datafilename + '.dat-fed.vtk'
 
 			if type[i]=='9':
+				linestring=line.split()
+				datafilename=linestring[0]
+				outputfilename= datafilename + '.dat-bfed.vtk'
+
+			if type[i]=='10':
 				linestring=line.split()
 				datafilename=linestring[0]
 				outputfilename= datafilename + '.dat-gfed.vtk'
@@ -354,7 +374,7 @@ if create_paraview_file==1:
 
 					datastring=line.split()
 
-					if type[i]=='1' or type[i]=='2' or type[i]=='3'  or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9':
+					if type[i]=='1' or type[i]=='2' or type[i]=='3'  or type[i]=='4' or type[i]=='5' or type[i]=='6' or type[i]=='7' or type[i]=='8' or type[i]=='9' or type[i]=='10':
 						xdata=float(datastring[x[i]])
 #						if abs(xdata)<1e-25: xdata=1e-25
 						out.write('%12.5le\n' % xdata)
