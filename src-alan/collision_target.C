@@ -69,10 +69,19 @@ TARGET_CONST double tc_force_global[3];
 TARGET_CONST double tc_d[3][3];
 TARGET_CONST double tc_q[NVEL][3][3];
 
-typedef double (*fntype)(const int index, const int nop, double* t_phi, double* t_delsqphi);
-extern __device__ double symmetric_chemical_potential_target(const int index, const int nop, double* t_phi, double* t_delsqphi);
-__device__ fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
+// type for chemical potential function
+// TODO This is generic fine here
+typedef double (*cp_fntype)(const int index, const int nop, double* t_phi, double* t_delsqphi);
 
+
+
+// TEMP TODO forward declaration for actual function
+//extern TARGET double symmetric_chemical_potential_target(const int index, const int nop, double* t_phi, double* t_delsqphi);
+
+// pointer to above device function. 
+//TARGET cp_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
+
+HOST void get_symmetric_chemical_potential_target(cp_fntype* h_chemical_potential);
 
 TARGET void collision_binary_lb_site( double* __restrict__ f_t, 
 				      const double* __restrict__ force_t, 
@@ -80,8 +89,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 				      double* __restrict__ phi_t,
 				      double* __restrict__ gradphi_t,
 				      double* __restrict__ delsqphi_t,
-				      //double (* chemical_potential)(const int index, const int nop, double* phi_t, double* delsqphi_t),
-				      fntype* chemical_potential,
+				      cp_fntype* chemical_potential,
 				      const int baseIndex){
 
   int       p, m;                    /* velocity index */
@@ -362,7 +370,7 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 					       double* __restrict__ phi_t,
 					       double* __restrict__ gradphi_t,
 					       double* __restrict__ delsqphi_t,
-					       fntype* chemical_potential,
+					       cp_fntype* chemical_potential,
 					       //       double (* chemical_potential)(const int index, const int nop, double* phi_t, double* delsqphi_t),
 					       const int nSites){
 
@@ -376,30 +384,6 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 
 }
 
-
-//TODO sort this out
-//extern "C" void   coords_nlocal(int n[3]);
-//extern "C" void   fluid_body_force(double f[3]);
-//extern "C" double phi_cahn_hilliard_mobility(void);
-//extern "C" int    coords_nhalo(void);
-//extern "C" int    coords_index(const int ic, const int jc, const int kc);
-
-
-//TODO HACK
-
-
-//typedef void (*fntype)(double* x);
-//extern __device__ void fn(double* d_array);
-//__device__ fntype pfn = fn;
-
-
-
-
-//typedef void (*fntype)(const int index, const int nop, double* t_phi, double* t_delsqphi);
-
-//extern TARGET double symmetric_chemical_potential_target(const int index, const int nop, double* t_phi, double* t_delsqphi);
-
-//TARGET fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
 
 HOST void collision_binary_lb_target() {
 
@@ -429,16 +413,24 @@ HOST void collision_binary_lb_target() {
   //HACK TODO
   //chemical_potential = symmetric_chemical_potential_target;
 
-  fntype* h_chemical_potential;
-  fntype* t_chemical_potential;
+  cp_fntype* h_chemical_potential; //host copy of fn addess
+  cp_fntype* t_chemical_potential; //device (global mem) cpy of fn address
 
-  h_chemical_potential=(fntype*) malloc(sizeof(fntype));
-  cudaMalloc(&t_chemical_potential, sizeof(fntype));
+  h_chemical_potential=(cp_fntype*) malloc(sizeof(cp_fntype)); 
+  cudaMalloc(&t_chemical_potential, sizeof(cp_fntype));
 
-  cudaMemcpyFromSymbol( h_chemical_potential, p_symmetric_chemical_potential_target, sizeof(fntype));
+  
+  //get host copy from fn on device
+  // the problem is that this in non-generic. THIS STEP is chemical_potential = symmetric_chemical_potential_target;
+  // need to do this as  h_chemical_potential = fe_chemical_potential_function();
+  //  cudaMemcpyFromSymbol( h_chemical_potential, p_symmetric_chemical_potential_target, sizeof(cp_fntype));
 
+  get_symmetric_chemical_potential_target(h_chemical_potential);
 
-  cudaMemcpy( t_chemical_potential, h_chemical_potential,sizeof(fntype),cudaMemcpyHostToDevice);
+  // -- end this step
+
+  //put back on device.
+  cudaMemcpy( t_chemical_potential, h_chemical_potential,sizeof(cp_fntype),cudaMemcpyHostToDevice);
 
 
 

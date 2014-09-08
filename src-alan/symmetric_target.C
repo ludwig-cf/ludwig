@@ -178,6 +178,29 @@ HOST void symmetric_free_energy_parameters_set_target(double a, double b, double
 // }
 
 
+// type for chemical potential function
+// TODO This is generic fine here
+typedef double (*cp_fntype)(const int index, const int nop, double* t_phi, double* t_delsqphi);
+
+
+
+// TEMP TODO forward declaration for actual function
+extern TARGET double symmetric_chemical_potential_target(const int index, const int nop, double* t_phi, double* t_delsqphi);
+
+// pointer to above device function. 
+TARGET cp_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
+
+
+
+HOST void get_symmetric_chemical_potential_target(cp_fntype* h_chemical_potential){
+
+  cudaMemcpyFromSymbol( h_chemical_potential, p_symmetric_chemical_potential_target, sizeof(cp_fntype));
+
+  return;
+
+
+}
+
 /****************************************************************************
  *
  *  symmetric_chemical_potential
