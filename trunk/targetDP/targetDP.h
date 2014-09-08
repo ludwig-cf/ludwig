@@ -7,6 +7,7 @@
 #define _DATA_PARALLEL_INCLUDED
 
 typedef double (*mu_fntype)(const int, const int, const double*, const double*);
+typedef void (*pth_fntype)(const int, double*, const double*, const double*, const double*);
 
 /* Language "extensions", implemented through preprocessor */
 
@@ -95,6 +96,7 @@ void copyConstantDouble2DArrayToTarget(double **data_d, const double *data, cons
 void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, const int size);
 
 void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int size );
+void  copyConstantPthfnFromTarget(pth_fntype* data, pth_fntype* data_d, const int size );
 
 
 #endif
