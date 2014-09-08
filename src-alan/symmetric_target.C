@@ -181,7 +181,7 @@ HOST void symmetric_free_energy_parameters_set_target(double a, double b, double
 // type for chemical potential function
 // TODO This is generic fine here
 //typedef double (*cp_fntype)(const int index, const int nop, double* t_phi, double* t_delsqphi);
-typedef double (*mu_fntype)(const int, const int, const double*, const double*);
+//typedef double (*mu_fntype)(const int, const int, const double*, const double*);
 
 
 /****************************************************************************
@@ -213,29 +213,20 @@ TARGET double symmetric_chemical_potential_target(const int index, const int nop
   return mu;
 }
 
-// pointer to above device function. 
+// pointer to above target function. 
 TARGET mu_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
 
 
 
 HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential){
 
-  mu_fntype* h_chemical_potential; //host copy of fn addess
-  h_chemical_potential=(mu_fntype*) malloc(sizeof(mu_fntype)); 
+  mu_fntype h_chemical_potential; //temp host copy of fn addess
 
-  //get host copy from fn on device
-  //    cudaMemcpyFromSymbol( h_chemical_potential, p_symmetric_chemical_potential_target, sizeof(mu_fntype));
+  //get host copy of function pointer
+  copyConstantMufnFromTarget(&h_chemical_potential, &p_symmetric_chemical_potential_target,sizeof(mu_fntype) );
 
-  copyConstantMufnFromTarget(h_chemical_potential, &p_symmetric_chemical_potential_target,sizeof(mu_fntype) );
-
-  //  double dl=3.0;
-  //copyConstantMufnFromTarget(&dl, p_symmetric_chemical_potential_target,sizeof(mu_fntype) );
-
-
-  //put back on target.
-  copyToTarget( t_chemical_potential, h_chemical_potential,sizeof(mu_fntype));
-
-  free(h_chemical_potential);
+  //and put back on target, now in an accessible location
+  copyToTarget( t_chemical_potential, &h_chemical_potential,sizeof(mu_fntype));
 
   return;
 
