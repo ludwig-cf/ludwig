@@ -310,3 +310,11 @@ void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int s
   checkTargetError("copyConstantMufnFromTarget");
   return;
 }
+
+
+void  copyConstantPthfnFromTarget(pth_fntype* data, pth_fntype* data_d, const int size ){
+
+  cudaMemcpyFromSymbol( data, *data_d, sizeof(pth_fntype));
+  checkTargetError("copyConstantPthfnFromTarget");
+  return;
+}

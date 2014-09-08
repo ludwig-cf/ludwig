@@ -153,4 +153,8 @@ void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int s
   memcpy(data, data_d, size);
   return;
 }
+void  copyConstantPthfnFromTarget(pth_fntype* data, pth_fntype* data_d, const int size ){
+  memcpy(data, data_d, size);
+  return;
+}
 
