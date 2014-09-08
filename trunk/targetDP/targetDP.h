@@ -94,7 +94,7 @@ void copyConstantDouble1DArrayToTarget(double *data_d, const double *data, const
 void copyConstantDouble2DArrayToTarget(double **data_d, const double *data, const int size);
 void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, const int size);
 
-void  copyConstantMufnFromTarget(mu_fntype* data_d, mu_fntype* data, const int size );
+void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int size );
 
 
 #endif

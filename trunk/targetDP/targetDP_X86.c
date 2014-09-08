@@ -9,6 +9,7 @@
 #include <string.h>
 #include <omp.h>
 #include <math.h>
+#include "targetDP.h"
 
 
 void checkTargetError(const char *msg){
@@ -148,5 +149,8 @@ void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, con
   memcpy(data_d, data, size); 
   return;
 }
-
+void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int size ){
+  memcpy(data, data_d, size);
+  return;
+}
 
