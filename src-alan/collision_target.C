@@ -71,17 +71,10 @@ TARGET_CONST double tc_q[NVEL][3][3];
 
 // type for chemical potential function
 // TODO This is generic fine here
-typedef double (*cp_fntype)(const int index, const int nop, double* t_phi, double* t_delsqphi);
+typedef double (*mu_fntype)(const int, const int, const double*, const double*);
 
 
-
-// TEMP TODO forward declaration for actual function
-//extern TARGET double symmetric_chemical_potential_target(const int index, const int nop, double* t_phi, double* t_delsqphi);
-
-// pointer to above device function. 
-//TARGET cp_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
-
-HOST void get_symmetric_chemical_potential_target(cp_fntype* h_chemical_potential);
+HOST void get_chemical_potential_target(mu_fntype* h_chemical_potential);
 
 TARGET void collision_binary_lb_site( double* __restrict__ f_t, 
 				      const double* __restrict__ force_t, 
@@ -89,7 +82,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 				      double* __restrict__ phi_t,
 				      double* __restrict__ gradphi_t,
 				      double* __restrict__ delsqphi_t,
-				      cp_fntype* chemical_potential,
+				      mu_fntype* chemical_potential,
 				      const int baseIndex){
 
   int       p, m;                    /* velocity index */
@@ -370,7 +363,7 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 					       double* __restrict__ phi_t,
 					       double* __restrict__ gradphi_t,
 					       double* __restrict__ delsqphi_t,
-					       cp_fntype* chemical_potential,
+					       mu_fntype* chemical_potential,
 					       //       double (* chemical_potential)(const int index, const int nop, double* phi_t, double* delsqphi_t),
 					       const int nSites){
 
@@ -409,29 +402,15 @@ HOST void collision_binary_lb_target() {
   coords_nlocal(N);
   fluid_body_force(force_global);
 
-  //  chemical_potential = fe_chemical_potential_function();
-  //HACK TODO
-  //chemical_potential = symmetric_chemical_potential_target;
 
-  cp_fntype* h_chemical_potential; //host copy of fn addess
-  cp_fntype* t_chemical_potential; //device (global mem) cpy of fn address
+  mu_fntype* t_chemical_potential; 
+  targetMalloc((void**) &t_chemical_potential, sizeof(mu_fntype));
 
-  h_chemical_potential=(cp_fntype*) malloc(sizeof(cp_fntype)); 
-  cudaMalloc(&t_chemical_potential, sizeof(cp_fntype));
-
-  
-  //get host copy from fn on device
-  // the problem is that this in non-generic. THIS STEP is chemical_potential = symmetric_chemical_potential_target;
-  // need to do this as  h_chemical_potential = fe_chemical_potential_function();
-  //  cudaMemcpyFromSymbol( h_chemical_potential, p_symmetric_chemical_potential_target, sizeof(cp_fntype));
-
-  get_symmetric_chemical_potential_target(h_chemical_potential);
-
-  // -- end this step
-
-  //put back on device.
-  cudaMemcpy( t_chemical_potential, h_chemical_potential,sizeof(cp_fntype),cudaMemcpyHostToDevice);
-
+  //TODO  
+  //chemical_potential = fe_chemical_potential_function();
+  //the below is currently hardwired in symmetric module. Need to
+  // abstract in fe interface
+  get_chemical_potential_target(t_chemical_potential);
 
 
   //chemical_stress = fe_chemical_stress_function();
@@ -546,6 +525,9 @@ HOST void collision_binary_lb_target() {
   targetFree(gradphi_t);
   targetFree(force_t);
   targetFree(velocity_t);
+
+  targetFree(t_chemical_potential);
+
   checkTargetError("Binary Collision Free");
   //end lattice operation cleanup
 
