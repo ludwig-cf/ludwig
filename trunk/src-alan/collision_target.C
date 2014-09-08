@@ -71,7 +71,7 @@ TARGET_CONST double tc_q[NVEL][3][3];
 
 // type for chemical potential function
 // TODO This is generic fine here
-typedef double (*mu_fntype)(const int, const int, const double*, const double*);
+//typedef double (*mu_fntype)(const int, const int, const double*, const double*);
 
 
 HOST void get_chemical_potential_target(mu_fntype* h_chemical_potential);
