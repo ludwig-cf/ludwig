@@ -408,7 +408,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	rho_s += e[Z]*ep1;
 	fepsilon(index - zs, &ep1);
 	depsi += (ep0 + ep1)*(obj->psi[index - zs] - obj->psi[index]);
-	rho_s += e[Z]*ep1;
+	rho_s -= e[Z]*ep1;
 
 	rnorm_local[0] += fabs(0.5*depsi + rho_elec + 0.5*rho_s);
       }
