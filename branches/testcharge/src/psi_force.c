@@ -24,6 +24,7 @@
 #include "physics.h"
 #include "psi_s.h"
 #include "fe_electro.h"
+#include "fe_electro_symmetric.h"
 #include "psi_force.h"
 #include "psi_gradients.h"
 

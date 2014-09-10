@@ -247,7 +247,6 @@ void fe_electro_stress_ex(const int index, double s[3][3]) {
   double e[3];       /* Electric field */
   double e2;         /* Magnitude squared */
   double e0[3];      /* External field */
-  int nk;
   double rho;
   double kt;
 
@@ -258,7 +257,6 @@ void fe_electro_stress_ex(const int index, double s[3][3]) {
   psi_electric_field_d3qx(fe->psi, index, e);
 
   physics_e0(e0);
-  psi_nk(fe->psi, &nk);
 
   e2 = 0.0;
 

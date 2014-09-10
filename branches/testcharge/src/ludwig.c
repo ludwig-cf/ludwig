@@ -438,61 +438,56 @@ void ludwig_run(const char * inputfile) {
      * gradients for phi) */
 
     if (ludwig->psi) {
-    /* Set charge distribution according to updated map */     
+      /* Set charge distribution according to updated map */     
       psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
 
-    /* Poisson solve */
-    TIMER_start(TIMER_ELECTRO_POISSON);
+      /* Poisson solve */
+      TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
-    psi_petsc_solve(ludwig->psi, ludwig->epsilon);
+      psi_petsc_solve(ludwig->psi, ludwig->epsilon);
 #else
-    psi_sor_solve(ludwig->psi, ludwig->epsilon);
+      psi_sor_solve(ludwig->psi, ludwig->epsilon);
 #endif
-    TIMER_stop(TIMER_ELECTRO_POISSON);
+      TIMER_stop(TIMER_ELECTRO_POISSON);
 
-    if (ludwig->hydro) {
-      TIMER_start(TIMER_HALO_LATTICE);
-      hydro_u_halo(ludwig->hydro);
-      TIMER_stop(TIMER_HALO_LATTICE);
-    }
-
-    /* Time splitting for high electrokinetic diffusions in Nernst Planck */
-
-    psi_multisteps(ludwig->psi, &multisteps);
-      
-    for (im = 0; im < multisteps; im++) {
-
-      TIMER_start(TIMER_HALO_LATTICE);
-      psi_halo_psi(ludwig->psi);
-      psi_halo_rho(ludwig->psi);
-      TIMER_stop(TIMER_HALO_LATTICE);
-
-      /* Force for this step before update. Note that nhalo = 1
-       * is indicating grad mu method and nhalo = 2 the divergence
-       * method. Once per large time step with dt = 1.0. */
-
-      if (im == 0) {
-
-	TIMER_start(TIMER_FORCE_CALCULATION);
-        psi_force_is_divergence(&flag);
-
-	if (flag == 0) {
-	  psi_force_gradmu_conserve(ludwig->psi, ludwig->hydro,
-				ludwig->map, ludwig->collinfo);
-	}
-
-	if (flag == 1) {
-	  if (ncolloid == 0) {
-	    phi_force_calculation(ludwig->phi, ludwig->hydro);
-	  }
-	  else {
-	    psi_force_divstress_d3qx(ludwig->psi, ludwig->hydro,
-				ludwig->map, ludwig->collinfo);
-	  }
-	}
-	TIMER_stop(TIMER_FORCE_CALCULATION);
-
+      if (ludwig->hydro) {
+	TIMER_start(TIMER_HALO_LATTICE);
+	hydro_u_halo(ludwig->hydro);
+	TIMER_stop(TIMER_HALO_LATTICE);
       }
+
+      /* Time splitting for high electrokinetic diffusions in Nernst Planck */
+
+      psi_multisteps(ludwig->psi, &multisteps);
+      
+      for (im = 0; im < multisteps; im++) {
+
+	TIMER_start(TIMER_HALO_LATTICE);
+	psi_halo_psi(ludwig->psi);
+	psi_halo_rho(ludwig->psi);
+	TIMER_stop(TIMER_HALO_LATTICE);
+
+	/* Force for this step before update. Note that nhalo = 1
+	 * is indicating grad mu method and nhalo = 2 the divergence
+	 * method. Once per large time step with dt = 1.0. */
+
+	if (im == 0) {
+
+	  TIMER_start(TIMER_FORCE_CALCULATION);
+	  psi_force_is_divergence(&flag);
+
+	  if (flag == 0) {
+	    psi_force_gradmu_conserve(ludwig->psi, ludwig->hydro,
+				  ludwig->map, ludwig->collinfo);
+	  }
+
+	  if (flag == 1) {
+	    psi_force_divstress_d3qx(ludwig->psi, ludwig->hydro,
+				  ludwig->map, ludwig->collinfo);
+	  }
+	  TIMER_stop(TIMER_FORCE_CALCULATION);
+
+	}
 
 	TIMER_start(TIMER_ELECTRO_NPEQ);
 	nernst_planck_driver_d3qx(ludwig->psi, ludwig->hydro, ludwig->map, ludwig->collinfo);
@@ -516,7 +511,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_FORCE_CALCULATION);
 
       if (ludwig->psi) {
-	/* Force is computed above */
+	/* Force in electrokinetic models is computed above */
       }
       else {
 	if (ncolloid == 0) {
@@ -1171,6 +1166,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     RUN_get_int_parameter("fd_force_divergence", &p);
     psi_force_divergence_set(p);
 
+    if (p == 1) phi_force_required_set(1);
+
+    info("Force calculation:          %s\n",
+         (p == 0) ? "psi grad mu method" : "Divergence method");
+
     if (p == 0) nhalo = 1;
     if (p == 1) nhalo = 2;
 
@@ -1188,11 +1188,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     psi_create(nk, &ludwig->psi);
     psi_init_param_rt(ludwig->psi);
-
-    if (p == 1) phi_force_required_set(1);
-
-    info("Force calculation:          %s\n",
-         (p == 0) ? "psi grad mu method" : "Divergence method");
 
 #ifdef PETSC
     psi_petsc_init(ludwig->psi, ludwig->epsilon);
@@ -1214,6 +1209,16 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nk = 2;      /* Two charge species */
     nhalo = 2;   /* Require stress divergence. */
     ngrad = 2;   /* \nabla^2 phi */
+
+    /* Default method is divergence of stress tensor */
+    p = 1;
+    RUN_get_int_parameter("fd_force_divergence", &p);
+    psi_force_divergence_set(p);
+
+    if (p == 1) phi_force_required_set(1);
+
+    info("Force calculation:          %s\n",
+         (p == 0) ? "psi grad mu method" : "Divergence method");
 
     /* First, the symmetric part. */
 
@@ -1252,6 +1257,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     psi_create(nk, &ludwig->psi);
     psi_init_param_rt(ludwig->psi);
+
+#ifdef PETSC
+    psi_petsc_init(ludwig->psi, ludwig->epsilon);
+#endif
 
     /* Coupling part */
 

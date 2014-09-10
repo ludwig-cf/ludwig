@@ -312,8 +312,7 @@ int fe_es_var_epsilon(int index, double * epsilon) {
  *  stress is already accounted for in the relevant functions.
  *
  *  Finally, the true Maxwell stress includes the total electric
- *  field. Here the external field is dealt with separately in that
- *  a force is computed via rho E_0 explicitly.
+ *  field. 
  *
  *****************************************************************************/
 
@@ -324,7 +323,8 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   double phi, rho;
   double s_couple;
   double s_el;
-  double e[3];          /* Electric field. */
+  double epsloc;
+  double e0[3], e[3]; /* External and 'internal' electric field. */
   double e2;
 
   symmetric_chemical_stress(index, s); 
@@ -332,11 +332,13 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   /* Coupling part, requires phi, total field */
 
   field_scalar(fe->phi, index, &phi);
-
   psi_electric_field_d3qx(fe->psi, index, e);
+  physics_e0(e0);
 
   e2 = 0.0;
+
   for (ia = 0; ia < 3; ia++) {
+    e[ia] += e0[ia];
     e2 += e[ia]*e[ia];
   }
 
@@ -347,10 +349,13 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
     s_couple += 0.5*phi*rho*fe->deltamu[ia];
   }
 
+  /* Local permittivity, requires phi */
+  epsloc = fe->epsilonbar*(1.0-fe->gamma*phi);
+
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s_el = (1.0 - fe->gamma*phi)*e[ia]*e[ib] - 0.5*d_[ia][ib]*e2;
-      s[ia][ib] += -fe->epsilonbar*s_el + d_[ia][ib]*s_couple;
+      s_el = -epsloc*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
+      s[ia][ib] += s_el + d_[ia][ib]*s_couple;
     }
   }
 
