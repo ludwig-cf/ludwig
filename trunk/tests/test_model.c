@@ -29,6 +29,7 @@ static void test_model_distributions(void);
 static void test_model_halo_swap(void);
 static void test_model_reduced_halo_swap(void);
 static  int test_model_is_domain(const int ic, const int jc, const int kc);
+static  int test_d3q19_ghosts(void);
 
 int main(int argc, char ** argv) {
 
@@ -334,7 +335,78 @@ static void test_model_velocity_set(void) {
   }
   info("ok\n");
 
+  if (NVEL == 19) test_d3q19_ghosts();
+
   return;
+}
+
+/*****************************************************************************
+ *
+ *  test_d3q19_ghosts
+ *
+ *  In comparison with Chen and Ladd (2007) we have
+ *
+ *   chi1  (2cs^2 - 3)(3c_z^2 - cs^2)           mode[10]
+ *   chi2  (2cs^2 - 3)(c_y^2 - c_x^2)           mode[14]
+ *   chi3  3cs^4 - 6cs^2 + 1                    mode[18]
+ *
+ *   jchi1 is in fact rho chi3 cv 
+ *   jchi1[X] (3*cs^4 - 6cs^2 + 1) cx           mode[11]
+ *   jchi1[Y] (3*cs^4 - 6cs^2 + 1) cy           mode[12]
+ *   jchi1[Z] (3*cs^4 - 6cs^2 + 1) cz           mode[13]
+ *
+ *   jchi2 is rho chi2 cv
+ *   jchi2[X]  (2cs^2 - 3)(c_y^2 - c_x^2) c_x   mode[15]
+ *   jchi2[Y]  (2cs^2 - 3)(c_y^2 - c_x^2) c_y   mode[16]
+ *   jchi2[Z]  (2cs^2 - 3)(c_y^2 - c_x^2) c_z   mode[17]
+ *
+ *   The expressions for the ghost currents appearing in Chun and Ladd
+ *   are not quite consistent; the reason for this is unclear.
+ *   Note that c_x and c_z are transposed in chi1 and chi2 cf Chun and Ladd.
+ *
+ *****************************************************************************/
+
+int test_d3q19_ghosts(void) {
+
+  int p;
+  double rho = 1.0;
+  double cs2, chi1, chi2, chi3;
+  double jchi1[3], jchi2[3];
+
+  test_assert(NVEL == 19);
+  info("D3Q19 ghost tests...");
+
+  for (p = 0; p < NVEL; p++) {
+
+    cs2 = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+    chi1 = (2.0*cs2 - 3.0)*(3.0*cv[p][Z]*cv[p][Z] - cs2);
+    chi2 = (2.0*cs2 - 3.0)*(cv[p][Y]*cv[p][Y] - cv[p][X]*cv[p][X]);
+    chi3 = 3.0*cs2*cs2 - 6.0*cs2 + 1;
+
+    jchi1[X] = rho*chi1*cv[p][X];
+    jchi1[Y] = rho*chi1*cv[p][Y];
+    jchi1[Z] = rho*chi1*cv[p][Z];
+
+    jchi2[X] = rho*chi2*cv[p][X];
+    jchi2[Y] = rho*chi2*cv[p][Y];
+    jchi2[Z] = rho*chi2*cv[p][Z];
+
+    test_assert(fabs(ma_[10][p] - chi1) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(ma_[14][p] - chi2) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(ma_[18][p] - chi3) < TEST_DOUBLE_TOLERANCE);
+
+    test_assert(fabs(ma_[11][p] - jchi1[X]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(ma_[12][p] - jchi1[Y]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(ma_[13][p] - jchi1[Z]) < TEST_DOUBLE_TOLERANCE);
+
+    test_assert(fabs(ma_[15][p] - jchi2[X]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(ma_[16][p] - jchi2[Y]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(ma_[17][p] - jchi2[Z]) < TEST_DOUBLE_TOLERANCE);
+  }
+
+  info("ok\n");
+
+  return 0;
 }
 
 /*****************************************************************************

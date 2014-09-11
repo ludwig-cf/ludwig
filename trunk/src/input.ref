@@ -97,9 +97,9 @@ temperature 0.00002133333
 # ghost_modes off
 # force 0.00_0.0_0.0
 
-# distribution_initialisation 3d_uniform_u
-# distribution_uniform_u      0.0_0.0_0.0
-
+distribution_initialisation   1d_poiseuille
+distribution_uniform_u        0.0_0.0_0.00
+distribution_poiseuille_umax  0.0_0.0_0.01
 ##############################################################################
 #
 #  Free energy parameters

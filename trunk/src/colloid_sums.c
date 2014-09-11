@@ -102,6 +102,9 @@ void colloid_sums_dim(const int dim, const int mtype) {
   MPI_Request send_req[2];
   MPI_Status  status[2];
 
+  send_ = NULL;
+  recv_ = NULL;
+
   assert(mtype >=0 && mtype < 3);
   mtype_ = mtype;
   nsize = msize_[mtype];

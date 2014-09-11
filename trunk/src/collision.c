@@ -463,11 +463,12 @@ void collision_binary_lb() {
 	/* loop over SIMD vector of lattice sites */
 	for (iv = 0; iv < nv; iv++) {
 	  
+	  index = base_index + iv;	
+	  if (site_map_get_status_index(index) != FLUID) continue;
+	  
 	  for (m = 0; m < nmodes_; m++) 
 	    mode[m]=mode_v[m][iv];
 
-	  index=base_index+iv;
-	  
 	  /* For convenience, write out the physical modes. */
 	  
 	  rho = mode[0];
@@ -558,7 +559,7 @@ void collision_binary_lb() {
 	  for (m = NHYDRO; m < nmodes_; m++) {
 	    mode[m] = mode[m] - rtau_[m]*(mode[m] - 0.0) + ghat[m];
 	  }
-	  
+
 	  for (m = 0; m < nmodes_; m++) {
 	    mode_v[m][iv]=mode[m];
 	  }
@@ -1142,6 +1143,9 @@ void collision_finish(void) {
  *  There are NDIM*(NDIM+1)/2 independent stress modes, and
  *  NVEL - NHYDRO ghost modes.
  *
+ *  Note: the trace needs to be corrected if this is really 2d,
+ *  hence the assertion.
+ *
  *****************************************************************************/
 
 void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
@@ -1154,6 +1158,7 @@ void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
   assert(fl_);
   assert(NFLUCTUATION >= NDIM*(NDIM+1)/2);
   assert(NFLUCTUATION >= (NVEL - NHYDRO));
+  assert(NDIM == 3);
 
   /* Set symetric random stress matrix (elements with unit variance) */
 

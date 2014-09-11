@@ -57,8 +57,8 @@ const int zmax = 32;
 /* CROSS SECTION */
 /* You can choose a square or circular cross section */
 
-enum {CIRCLE, SQUARE};
-const int xsection = CIRCLE;
+enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL};
+const int xsection = SQUARE;
 
 /* FREE ENRGY PARAMETERS */
 /* Set the fluid and solid free energy parameters. The fluid parameters
@@ -81,7 +81,7 @@ const int z2 = 16;
  * or one which includes the wetting parameter H. */
 
 enum {STATUS_ONLY, STATUS_WITH_H};
-const int output_type = STATUS_WITH_H;
+const int output_type = STATUS_ONLY;
 
 /* OUTPUT FILENAME */
 
@@ -129,8 +129,8 @@ int main(int argc, char ** argv) {
   map_h = (double *) malloc(xmax*ymax*zmax*sizeof(double));
   if (map_h == NULL) exit(-1);
 
-  if (xsection == CIRCLE) {
-
+  switch (xsection) {
+  case CIRCLE:
     for (i = 0; i < xmax; i++) {
       x = 1.0 + i - x0;
       for (j = 0; j < ymax; j++) {
@@ -156,8 +156,10 @@ int main(int argc, char ** argv) {
       }
     }
 
-  }
-  else {
+    break;
+
+  case SQUARE:
+
     /* Square */
 
     for (i = 0; i < xmax; i++) {
@@ -181,6 +183,60 @@ int main(int argc, char ** argv) {
 	}
       }
     }
+
+    break;
+  case XWALL:
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	for (k = 0; k < zmax; k++) {
+	  n = ymax*zmax*i + zmax*j + k;
+	  map_in[n] = FLUID;
+	  if (i == 0 || i == xmax - 1) {
+	    map_in[n] = BOUNDARY;
+	    ++nsolid;
+	  }
+	}
+      }
+    }
+
+    break;
+
+  case YWALL:
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	for (k = 0; k < zmax; k++) {
+	  n = ymax*zmax*i + zmax*j + k;
+	  map_in[n] = FLUID;
+	  if (j == 0 || j == ymax - 1) {
+	    map_in[n] = BOUNDARY;
+	    ++nsolid;
+	  }
+	}
+      }
+    }
+    break;
+
+  case ZWALL:
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	for (k = 0; k < zmax; k++) {
+	  n = ymax*zmax*i + zmax*j + k;
+	  map_in[n] = FLUID;
+	  if (k == 0 || k == zmax - 1) {
+	    map_in[n] = BOUNDARY;
+	    ++nsolid;
+	  }
+	}
+      }
+    }
+
+    break;
+  default:
+    printf("No cross-section!\n");
+    /* End switch */
   }
 
   /* picture */
