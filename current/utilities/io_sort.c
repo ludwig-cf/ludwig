@@ -71,7 +71,7 @@ int main (int argc, char ** argv) {
 
   id_type = atoi(argv[1]);
   nio_     = atoi(argv[2]);
-  sprintf(file_stub, argv[3]);
+  sprintf(file_stub, "%s", argv[3]);
 
   printf("Input type is %d\n", id_type);
   printf("Input number I/O groups is %d\n", nio_);
@@ -80,7 +80,7 @@ int main (int argc, char ** argv) {
   /* nio must divide lx_ here, i.e., each parallel file contains
    * 1/nio of the total data (disclinations excluded) */
   if (lx_ % nio_) {
-      printf("lx_ % nio is not zero\n");
+      printf("lx_ mod nio is not zero\n");
       exit(-1);
   }
 
@@ -161,7 +161,7 @@ void read_disclination(const char * file_name) {
   FILE * fp;
 
   fp = fopen(file_name, "r");
-  if (fp == NULL) printf("fopen(%s) failed\n");
+  if (fp == NULL) printf("fopen(%s) failed\n", file_name);
 
   while (!feof(fp)) {
     /* Check the number of data items read in case the file is empty... */
@@ -284,12 +284,14 @@ void write_order_velo(const char * file_name) {
 //      for (kc = 0; kc < lz_; kc++) {
 
 	index = 10*get_global_index(ic, jc, kc);
-
+	/*
 	fprintf(fp, "%d %d %d %g %g %g %g %g %g %g %g %g %g\n",
 		ic, jc, kc, data_out_[index], data_out_[index+1],
 		data_out_[index+2], data_out_[index+3], data_out_[index+4],
 		data_out_[index+5], data_out_[index+6], data_out_[index+7],
 		data_out_[index+8], data_out_[index+9]);
+	*/
+	fwrite(data_out_ + index + 8, sizeof(double), 1, fp);
       }
     }
   }
@@ -322,7 +324,7 @@ void read_stress(const char * file_name) {
   FILE * fp;
 
   fp = fopen(file_name, "r");
-  if (fp == NULL) printf("fopen(%s) failed\n");
+  if (fp == NULL) printf("fopen(%s) failed\n", file_name);
 
   for (ic = 0; ic < lx_/nio_; ic++) {
     for (jc = 0; jc < ly_; jc++) {
@@ -366,7 +368,7 @@ void write_stress(const char * file_name) {
 
 	index = 9*get_global_index(ic, jc, kc);
 
-	fprintf(fp, "%d %d %d %g %g %g %g %g %g %g %g %g %g\n",
+	fprintf(fp, "%d %d %d %g %g %g %g %g %g %g %g %g\n",
 		ic, jc, kc, data_out_[index], data_out_[index+1],
 		data_out_[index+2], data_out_[index+3], data_out_[index+4],
 		data_out_[index+5], data_out_[index+6], data_out_[index+7],
@@ -403,7 +405,7 @@ void read_director(const char * file_name) {
   FILE * fp;
 
   fp = fopen(file_name, "r");
-  if (fp == NULL) printf("fopen(%s) failed\n");
+  if (fp == NULL) printf("fopen(%s) failed\n", file_name);
 
   for (ic = 0; ic < lx_/nio_; ic++) {
     for (jc = 0; jc < ly_; jc++) {
