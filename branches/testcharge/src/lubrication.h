@@ -35,6 +35,6 @@ int lubrication_rch_set(lubr_t * obj, lubr_ss_enum_t type, double rch);
 int lubrication_rchmax(lubr_t * obj, double * rchmax);
 int lubrication_single(lubr_t * obj, double a1, double a2,
 		       const double u1[3], const double u2[3],
-		       const double r12[3], double f[3]);
+		       const double r12[3], const double ran[2], double f[3]);
 
 #endif

@@ -213,8 +213,7 @@ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
   io_info_set_bytesize(obj->info, NNOISE_STATE*sizeof(unsigned int));
 
   io_info_format_set(obj->info, form_in, form_out);
-  io_write_metadata("noise", obj->info);
-
+  io_info_metadata_filestub_set(obj->info, "noise");
 
   return 0;
 }

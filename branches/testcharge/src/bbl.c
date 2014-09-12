@@ -4,16 +4,14 @@
  *
  *  Bounce back on links.
  *
- *  $Id: bbl.c,v 1.11 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  Squimer code from Isaac Llopis and Ricard Matas Navarro (U Barcelona).
+ *  Squimer code from Isaac Llopis and Ricard Matas Navarro (U. Barcelona).
  *
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -33,12 +31,13 @@
 
 struct bbl_s {
   int active;           /* Global flag for active particles. */
+  int ndist;            /* Number of LB distributions active */
   double deltag;        /* Excess or deficit of phi between steps */
   double stress[3][3];  /* Surface stress diagnostic */
 };
 
-static int bbl_pass1(bbl_t * bbl, colloids_info_t * cinfo);
-static int bbl_pass2(bbl_t * bbl, colloids_info_t * cinfo);
+static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
+static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo);
 static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo);
 
@@ -46,14 +45,21 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo);
  *
  *  bbl_create
  *
+ *  The lattice Boltzmann distributions must be available.
+ *
  *****************************************************************************/
 
-int bbl_create(bbl_t ** pobj) {
+int bbl_create(lb_t * lb, bbl_t ** pobj) {
 
   bbl_t * bbl = NULL;
 
+  assert(lb);
+  assert(pobj);
+
   bbl = (bbl_t *) calloc(1, sizeof(bbl_t));
   if (bbl == NULL) fatal("calloc(bbl_t) failed\n");
+
+  lb_ndist(lb, &bbl->ndist);
 
   *pobj = bbl;
 
@@ -120,19 +126,20 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int bounce_back_on_links(bbl_t * bbl, colloids_info_t * cinfo) {
+int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int ntotal;
 
   assert(bbl);
+  assert(lb);
   assert(cinfo);
 
   colloids_info_ntotal(cinfo, &ntotal);
   if (ntotal == 0) return 0;
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
-  bbl_pass0(bbl, cinfo);
-  bbl_pass1(bbl, cinfo);
+  bbl_pass0(bbl, lb, cinfo);
+  bbl_pass1(bbl, lb, cinfo);
   colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
 
   if (bbl->active) {
@@ -141,7 +148,7 @@ int bounce_back_on_links(bbl_t * bbl, colloids_info_t * cinfo) {
   }
 
   bbl_update_colloids(bbl, cinfo);
-  bbl_pass2(bbl, cinfo);
+  bbl_pass2(bbl, lb, cinfo);
 
   return 0;
 }
@@ -204,7 +211,7 @@ static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int bbl_pass0(bbl_t * bbl, colloids_info_t * cinfo) {
+int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int ic, jc, kc, index;
   int ia, ib, p;
@@ -218,6 +225,7 @@ int bbl_pass0(bbl_t * bbl, colloids_info_t * cinfo) {
   colloid_t * pc = NULL;
 
   assert(bbl);
+  assert(lb);
   assert(cinfo);
 
   coords_nlocal(nlocal);
@@ -251,8 +259,8 @@ int bbl_pass0(bbl_t * bbl, colloids_info_t * cinfo) {
 	      sdotq += q_[p][ia][ib]*ub[ia]*ub[ib];
 	    }
 	  }
-	  distribution_f_set(index, p, 0,
-			     wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq));
+	  lb_f_set(lb, index, p, 0,
+		   wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq));
 	}
 
       }
@@ -270,7 +278,7 @@ int bbl_pass0(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-static int bbl_pass1(bbl_t * bbl, colloids_info_t * cinfo) {
+static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int ia;
   int i, j, ij, ji;
@@ -281,11 +289,15 @@ static int bbl_pass1(bbl_t * bbl, colloids_info_t * cinfo) {
   double c[3];
   double rbxc[3];
   double rho0;
+  double mod, rmod, dm_a, cost, plegendre, sint;
+  double tans[3], vector1[3];
+  double fdist;
 
   colloid_t * pc;
   colloid_link_t * p_link;
 
   assert(bbl);
+  assert(lb);
   assert(cinfo);
 
   physics_rho0(&rho0);
@@ -335,14 +347,12 @@ static int bbl_pass1(bbl_t * bbl, colloids_info_t * cinfo) {
 	 * arising from changes in shape at previous step.
 	 * Note minus sign. */
 
-	dm =  2.0*distribution_f(i, ij, 0) - wv[ij]*pc->deltam;
+	lb_f(lb, i, ij, 0, &fdist);
+	dm =  2.0*fdist - wv[ij]*pc->deltam;
 	delta = 2.0*rcs2*wv[ij]*rho0;
 
 	/* Squirmer section */
 	if (pc->s.type == COLLOID_TYPE_ACTIVE) {
-	  double mod, rmod, dm_a, cost, plegendre, sint;
-	  double tans[3], vector1[3];
-	  double fdist;
 
 	  /* We expect s.m to be a unit vector, but for floating
 	   * point purposes, we must make sure here. */
@@ -368,9 +378,9 @@ static int bbl_pass1(bbl_t * bbl, colloids_info_t * cinfo) {
 	    dm_a += -delta*plegendre*rmod*tans[ia]*cv[ij][ia];
 	  }
 
-	  fdist = distribution_f(i, ij, 0);
+	  lb_f(lb, i, ij, 0, &fdist);
 	  fdist += dm_a;
-	  distribution_f_set(i, ij, 0, fdist);
+	  lb_f_set(lb, i, ij, 0, fdist);
 
 	  dm += dm_a;
 
@@ -382,7 +392,10 @@ static int bbl_pass1(bbl_t * bbl, colloids_info_t * cinfo) {
 	/* Virtual momentum transfer for solid->solid links,
 	 * but no contribution to drag maxtrix */
 
-	dm = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
+	lb_f(lb, i, ij, 0, &fdist);
+	dm = fdist;
+	lb_f(lb, j, ji, 0, &fdist);
+	dm += fdist;
 	delta = 0.0;
       }
 
@@ -451,10 +464,11 @@ static int bbl_pass1(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-static int bbl_pass2(bbl_t * bbl, colloids_info_t * cinfo) {
+static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int i, j, ij, ji;
   int ia;
+  int ndist;
 
   double dm;
   double vdotc;
@@ -470,9 +484,11 @@ static int bbl_pass2(bbl_t * bbl, colloids_info_t * cinfo) {
   colloid_link_t * p_link;
 
   assert(bbl);
+  assert(lb);
   assert(cinfo);
 
   physics_rho0(&rho0);
+  lb_ndist(lb, &ndist);
 
   /* Account the current phi deficit */
   bbl->deltag = 0.0;
@@ -521,7 +537,8 @@ static int bbl_pass2(bbl_t * bbl, colloids_info_t * cinfo) {
 
       if (p_link->status == LINK_FLUID) {
 
-	dm =  2.0*distribution_f(i, ij, 0) - wv[ij]*pc->deltam;
+	lb_f(lb, i, ij, 0, &fdist);
+	dm =  2.0*fdist - wv[ij]*pc->deltam;
 
 	/* Compute the self-consistent boundary velocity,
 	 * and add the correction term for changes in shape. */
@@ -545,20 +562,22 @@ static int bbl_pass2(bbl_t * bbl, colloids_info_t * cinfo) {
 
 	/* The outside site actually undergoes BBL. */
 
-	fdist = distribution_f(i, ij, 0);
+	lb_f(lb, i, ij, LB_RHO, &fdist);
 	fdist = fdist - df;
-	distribution_f_set(j, ji, 0, fdist);
+	lb_f_set(lb, j, ji, LB_RHO, fdist);
 
 	/* This is slightly clunky. If the order parameter is
 	 * via LB, bounce back with correction. */
-	if (distribution_ndist() > 1) {
-	  dg = distribution_zeroth_moment(i, 1)*vdotc;
+
+	if (ndist > 1) {
+	  lb_0th_moment(lb, i, LB_PHI, &dg);
+	  dg *= vdotc;
 	  pc->s.deltaphi += dg;
 	  dg -= wv[ij]*dgtm1;
 
-	  fdist = distribution_f(i, ij, 1);
+	  lb_f(lb, i, ij, LB_PHI, &fdist);
 	  fdist = fdist - dg;
-	  distribution_f_set(j, ji, 1, fdist);
+	  lb_f_set(lb, j, ji, LB_PHI, fdist);
 	}
 
 	/* The stress is r_b f_b */
@@ -572,7 +591,10 @@ static int bbl_pass2(bbl_t * bbl, colloids_info_t * cinfo) {
 
 	/* The stress should include the solid->solid term */
 
-	dm = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
+	lb_f(lb, i, ij, 0, &fdist);
+	dm = fdist;
+	lb_f(lb, j, ji, 0, &fdist);
+	dm += fdist;
 
 	for (ia = 0; ia < 3; ia++) {
 	  bbl->stress[ia][X] += p_link->rb[X]*dm*cv[ij][ia];
@@ -855,7 +877,7 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo) {
  *  get_order_parameter_deficit
  *
  *  Returns the current order parameter deficit owing to BBL.
- *  This is only relevant for full binary LB.
+ *  This is only relevant for full binary LB (ndist == 2).
  *  This is a local value for the local subdomain in parallel.
  *
  *****************************************************************************/
@@ -866,7 +888,7 @@ int bbl_order_parameter_deficit(bbl_t * bbl, double * delta) {
   assert(delta);
 
   delta[0] = 0.0;
-  if (distribution_ndist() == 2) delta[0] = bbl->deltag;
+  if (bbl->ndist == 2) delta[0] = bbl->deltag;
 
   return 0;
 }

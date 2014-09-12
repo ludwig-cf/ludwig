@@ -4,13 +4,11 @@
  *
  *  Unit test for electrokinetic quantities.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Oliver Henrich (o.henrich@ucl.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,31 +21,34 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
+#include "control.h"
 #include "map.h"
 #include "psi.h"
 #include "psi_s.h"
 #include "psi_sor.h"
 #include "psi_stats.h"
+#include "fe_electro.h"
 #include "nernst_planck.h"
+#include "tests.h"
 
 static int do_test_gouy_chapman(void);
 static int test_io(psi_t * psi, int tstep);
 
 /*****************************************************************************
  *
- *  main
+ *  test_nernst_planck_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_nernst_planck_suite(void) {
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
+  control_time_set(-1); /* Kludge to avoid SOR output */
 
   do_test_gouy_chapman();
 
+  info("PASS     ./unit/test_nernst_planck\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
@@ -140,6 +141,8 @@ static int do_test_gouy_chapman(void) {
   psi_unit_charge_set(psi, eunit);
   psi_epsilon_set(psi, epsilon);
   psi_beta_set(psi, beta);
+
+  fe_electro_create(psi);
 
   /* wall charge density */
   rho_w = 1.e+0 / (2.0*L(Y)*L(Z));
@@ -244,6 +247,7 @@ static int do_test_gouy_chapman(void) {
   assert(fabs(yd     - 5.1997576e-05) < FLT_EPSILON);
 
   map_free(map);
+  fe_electro_free();
   psi_free(psi);
   coords_finish();
   physics_free();

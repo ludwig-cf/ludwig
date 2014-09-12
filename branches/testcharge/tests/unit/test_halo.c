@@ -5,16 +5,16 @@
  *  This is a more rigourous test of the halo swap code for the
  *  distributions than appears in test model.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,29 +22,50 @@
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
-#include "tests.h"
 #include "control.h"
+#include "tests.h"
 
-static void test_halo_null(void);
-static void test_halo(const int dim, const int reduced);
+int do_test_const_blocks(void);
+int do_test_halo_null(lb_halo_enum_t halo);
+int do_test_halo(int dim, const lb_halo_enum_t halo);
 
-int main(int argc, char ** argv) {
+/*****************************************************************************
+ *
+ *  test_halo_suite
+ *
+ *****************************************************************************/
+
+int test_halo_suite(void) {
+
+  pe_init_quiet();
+  coords_init();
+
+  do_test_const_blocks();
+
+  do_test_halo_null(LB_HALO_FULL);
+  do_test_halo_null(LB_HALO_REDUCED);
+
+  do_test_halo(X, LB_HALO_FULL);
+  do_test_halo(Y, LB_HALO_FULL);
+  do_test_halo(Z, LB_HALO_FULL);
+
+  if (pe_size() == 1) {
+    do_test_halo(X, LB_HALO_REDUCED);
+    do_test_halo(Y, LB_HALO_REDUCED);
+    do_test_halo(Z, LB_HALO_REDUCED);
+  }
+
+  info("PASS     ./unit/test_halo\n");
+  coords_finish();
+  pe_finalise();
+
+  return 0;
+}
+
+int do_test_const_blocks(void) {
 
   int i, k;
 
-  MPI_Init(&argc, &argv);
-  pe_init();
-
-  info("Checking distribution halo swaps...\n\n");
-
-  init_control();
-  coords_init();
-  distribution_init();
-
-  /* Check the reduced halo blocks. */
-
-  info("Checking the reduced halo blocks...");
-    
   for (i = 0; i < CVXBLOCK; i++) {
     for (k = 0; k < xblocklen_cv[i]; k++) {
       test_assert(cv[xdisp_fwd_cv[i] + k][X] == +1);
@@ -66,66 +87,6 @@ int main(int argc, char ** argv) {
     }
   }
 
-  info("ok\n");
-
-  info("The halo width nhalo = %d\n", coords_nhalo());
-  info("Test for null leakage...\n");
-
-  distribution_halo_set_complete();
-  info("Full halo...");
-  test_halo_null();
-  info("ok\n");
-
-  info("Reduced halo...");
-  distribution_halo_set_reduced();
-  test_halo_null();
-  info("ok\n");
-
-
-  info("Testing x-direction swap...\n");
-
-  distribution_halo_set_complete();
-  info("Full halo...");
-  test_halo(X, 0);
-  info("ok\n");
-
-  distribution_halo_set_reduced();
-  info("Reduced halo...");
-  test_halo(X, 1);
-  info("ok\n");
-
-
-  info("Testing y-direction swap...\n");
-
-  distribution_halo_set_complete();
-  info("Full halo...");
-  test_halo(Y, 0);
-  info("ok\n");
-
-  distribution_halo_set_reduced();
-  info("Reduced halo...");
-  test_halo(Y, 1);
-  info("ok\n");
-
-
-  info("Testing z-direction swap...\n");
-
-  distribution_halo_set_complete();
-  info("Full halo...");
-  test_halo(Z, 0);
-  info("ok\n");
-
-  distribution_halo_set_reduced();
-  info("Reduced halo...");
-  test_halo(Z, 1);
-  info("ok\n");
-
-  
-  distribution_finish();
-  coords_finish();
-  pe_finalise();
-  MPI_Finalize();
-
   return 0;
 }
 
@@ -138,32 +99,38 @@ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-void test_halo_null() {
+int do_test_halo_null(lb_halo_enum_t halo) {
 
-  int n_local[3], n[3];
+  int nlocal[3], n[3];
   int index, nd, p;
-  int ndist;
-  double f_actual;
-  int nextra = coords_nhalo() - 1;
-
+  int ndist = 2;
   int rank;
+  int nextra = coords_nhalo() - 1;
+  double f_actual;
+
   MPI_Comm comm = MPI_COMM_WORLD;
+  lb_t * lb = NULL;
+
   MPI_Comm_rank(comm, &rank);
 
-  coords_nlocal(n_local);
-  ndist = distribution_ndist();
+  lb_create(&lb);
+  lb_ndist_set(lb, ndist);
+  lb_init(lb);
+  lb_halo_set(lb, halo);
+
+  coords_nlocal(nlocal);
 
   /* Set entire distribution (all sites including halos) to 1.0 */
 
-  for (n[X] = 1 - nextra; n[X] <= n_local[X] + nextra; n[X]++) {
-    for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
-      for (n[Z] = 1 - nextra; n[Z] <= n_local[Z] + nextra; n[Z]++) {
+  for (n[X] = 1 - nextra; n[X] <= nlocal[X] + nextra; n[X]++) {
+    for (n[Y] = 1 - nextra; n[Y] <= nlocal[Y] + nextra; n[Y]++) {
+      for (n[Z] = 1 - nextra; n[Z] <= nlocal[Z] + nextra; n[Z]++) {
 
 	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
-	    distribution_f_set(index, p, nd, 1.0);
+	    lb_f_set(lb, index, p, nd, 1.0);
 	  }
 	}
 
@@ -173,15 +140,15 @@ void test_halo_null() {
 
   /* Zero interior */
 
-  for (n[X] = 1; n[X] <= n_local[X]; n[X]++) {
-    for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
-      for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
+  for (n[X] = 1; n[X] <= nlocal[X]; n[X]++) {
+    for (n[Y] = 1; n[Y] <= nlocal[Y]; n[Y]++) {
+      for (n[Z] = 1; n[Z] <= nlocal[Z]; n[Z]++) {
 
 	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
-	    distribution_f_set(index, p, nd, 0.0);
+	    lb_f_set(lb, index, p, nd, 0.0);
 	  }
 	}
 
@@ -191,22 +158,22 @@ void test_halo_null() {
 
   /* Swap */
 
-  distribution_halo();
+  lb_halo(lb);
 
   /* Check everywhere in the interior still zero */
 
-  for (n[X] = 1; n[X] <= n_local[X]; n[X]++) {
-    for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
-      for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
+  for (n[X] = 1; n[X] <= nlocal[X]; n[X]++) {
+    for (n[Y] = 1; n[Y] <= nlocal[Y]; n[Y]++) {
+      for (n[Z] = 1; n[Z] <= nlocal[Z]; n[Z]++) {
 
 	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
-	    f_actual = distribution_f(index, p, nd);
+	    lb_f(lb, index, p, nd, &f_actual);
 
 	    /* everything should still be zero inside the lattice */
-	    test_assert(fabs(f_actual - 0.0) < TEST_DOUBLE_TOLERANCE);
+	    assert(fabs(f_actual - 0.0) < DBL_EPSILON);
 	  }
 	}
 
@@ -214,12 +181,14 @@ void test_halo_null() {
     }
   }
 
-  return;
+  lb_free(lb);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  test_halo
+ *  do_test_halo
  *
  *  Test the halo swap for the distributions for coordinate direction dim.
  *
@@ -228,38 +197,45 @@ void test_halo_null() {
  *
  *****************************************************************************/
 
-void test_halo(int dim, int reduced) {
+int do_test_halo(int dim, lb_halo_enum_t halo) {
 
   int nhalo;
-  int n_local[3], n[3];
+  int nlocal[3], n[3];
   int offset[3];
   int ic, jc, kc;
-  int nd, ndist;
+  int nd;
+  int ndist = 2;
   int nextra;
   int index, p, d;
 
   double f_expect, f_actual;
+  lb_t * lb = NULL;
 
   test_assert(dim == X || dim == Y || dim == Z);
+
+
+  lb_create(&lb);
+  lb_ndist_set(lb, ndist);
+  lb_init(lb);
+  lb_halo_set(lb, halo);
 
   nhalo = coords_nhalo();
   nextra = nhalo;
 
-  coords_nlocal(n_local);
+  coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
-  ndist = distribution_ndist();
 
   /* Zero entire distribution (all sites including halos) */
 
-  for (n[X] = 1 - nextra; n[X] <= n_local[X] + nextra; n[X]++) {
-    for (n[Y] = 1 - nextra; n[Y] <= n_local[Y] + nextra; n[Y]++) {
-      for (n[Z] = 1 - nextra; n[Z] <= n_local[Z] + nextra; n[Z]++) {
+  for (n[X] = 1 - nextra; n[X] <= nlocal[X] + nextra; n[X]++) {
+    for (n[Y] = 1 - nextra; n[Y] <= nlocal[Y] + nextra; n[Y]++) {
+      for (n[Z] = 1 - nextra; n[Z] <= nlocal[Z] + nextra; n[Z]++) {
 
 	index = coords_index(n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
-	    distribution_f_set(index, p, nd, -1.0);
+	    lb_f_set(lb, index, p, nd, -1.0);
 	  }
 	}
 
@@ -270,19 +246,19 @@ void test_halo(int dim, int reduced) {
   /* Set the interior sites to get swapped with a value related to
    * absolute position */
 
-  for (n[X] = 1; n[X] <= n_local[X]; n[X]++) {
-    for (n[Y] = 1; n[Y] <= n_local[Y]; n[Y]++) {
-      for (n[Z] = 1; n[Z] <= n_local[Z]; n[Z]++) {
+  for (n[X] = 1; n[X] <= nlocal[X]; n[X]++) {
+    for (n[Y] = 1; n[Y] <= nlocal[Y]; n[Y]++) {
+      for (n[Z] = 1; n[Z] <= nlocal[Z]; n[Z]++) {
 
 	index = coords_index(n[X], n[Y], n[Z]);
 
-	if (n[X] <= nhalo || n[X] > n_local[X] - nhalo ||
-	    n[Y] <= nhalo || n[Y] > n_local[Y] - nhalo ||
-	    n[Z] <= nhalo || n[Z] > n_local[Z] - nhalo) {
+	if (n[X] <= nhalo || n[X] > nlocal[X] - nhalo ||
+	    n[Y] <= nhalo || n[Y] > nlocal[Y] - nhalo ||
+	    n[Z] <= nhalo || n[Z] > nlocal[Z] - nhalo) {
 
 	  for (nd = 0; nd < ndist; nd++) {
 	    for (p = 0; p < NVEL; p++) {
-	      distribution_f_set(index, p, nd, 1.0*(offset[dim] + n[dim]));
+	      lb_f_set(lb, index, p, nd, 1.0*(offset[dim] + n[dim]));
 	    }
 	  }
 	}
@@ -291,7 +267,7 @@ void test_halo(int dim, int reduced) {
     }
   }
 
-  distribution_halo();
+  lb_halo(lb);
 
   /* Check the results (all sites for distribution halo).
    * The halo regions should contain a copy of the above, while the
@@ -300,9 +276,9 @@ void test_halo(int dim, int reduced) {
   /* Note the distribution halo swaps are always width 1, irrespective
    * of nhalo */
 
-  for (n[X] = 0; n[X] <= n_local[X] + 1; n[X]++) {
-    for (n[Y] = 0; n[Y] <= n_local[Y] + 1; n[Y]++) {
-      for (n[Z] = 0; n[Z] <= n_local[Z] + 1; n[Z]++) {
+  for (n[X] = 0; n[X] <= nlocal[X] + 1; n[X]++) {
+    for (n[Y] = 0; n[Y] <= nlocal[Y] + 1; n[Y]++) {
+      for (n[Z] = 0; n[Z] <= nlocal[Z] + 1; n[Z]++) {
 
 	index = coords_index(n[X], n[Y], n[Z]);
 
@@ -316,28 +292,20 @@ void test_halo(int dim, int reduced) {
 	      if (cart_coords(dim) == 0) f_expect = L(dim);
 
 	      for (p = 0; p < NVEL; p++) {
-		f_actual = distribution_f(index, p, nd);
-		if (reduced) {
-		}
-		else {
-		  test_assert(fabs(f_actual-f_expect) < TEST_DOUBLE_TOLERANCE);
-		}
+		lb_f(lb, index, p, nd, &f_actual);
+		assert(fabs(f_actual-f_expect) < DBL_EPSILON);
 	      }
 	    }
 
 	    /* 'Right' side */
-	    if (dim == d && n[d] == n_local[d] + 1) {
+	    if (dim == d && n[d] == nlocal[d] + 1) {
 
-	      f_expect = offset[dim] + n_local[dim] + 1.0;
+	      f_expect = offset[dim] + nlocal[dim] + 1.0;
 	      if (cart_coords(dim) == cart_size(dim) - 1) f_expect = 1.0;
 
 	      for (p = 0; p < NVEL; p++) {
-		if (reduced) {
-		}
-		else {
-		  f_actual = distribution_f(index, p, nd);
-		  test_assert(fabs(f_actual-f_expect) < TEST_DOUBLE_TOLERANCE);
-		}
+		lb_f(lb, index, p, nd, &f_actual);
+		assert(fabs(f_actual-f_expect) < DBL_EPSILON);
 	      }
 	    }
 	  }
@@ -354,17 +322,17 @@ void test_halo(int dim, int reduced) {
    * missed. The true test is therefore in the propagation
    * (see test_prop.c). */
    
-  if (reduced && dim == X && cart_size(X) > 1) {
+  if (halo == LB_HALO_REDUCED && dim == X && cart_size(X) > 1) {
 
-    for (jc = 0; jc <= n_local[Y] + 1; jc++) {
-      for (kc = 0; kc <= n_local[Z] + 1; kc++) {
+    for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
+      for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
 
 	/* left hand edge */
 	index = coords_index(0, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
-	    f_actual = distribution_f(index, p, nd);
+	    lb_f(lb, index, p, nd, &f_actual);
 	    f_expect = -1.0;
 
 	    if (cv[p][X] > 0) {
@@ -375,11 +343,11 @@ void test_halo(int dim, int reduced) {
 	  }
 
 	  /* right hand edge */
-	  ic = n_local[X] + 1;
+	  ic = nlocal[X] + 1;
 	  index = coords_index(ic, jc, kc);
 
 	  for (p = 0; p < NVEL; p++) {
-	    f_actual = distribution_f(index, p, nd);
+	    lb_f(lb, index, p, nd, &f_actual);
 	    f_expect = -1.0;
 
 	    if (cv[p][X] < 0) {
@@ -397,17 +365,17 @@ void test_halo(int dim, int reduced) {
 
   /* Y-DIRECTION */
 
-  if (reduced && dim == Y && cart_size(Y) > 1) {
+  if (halo == LB_HALO_REDUCED && dim == Y && cart_size(Y) > 1) {
 
-    for (ic = 0; ic <= n_local[X] + 1; ic++) {
-      for (kc = 0; kc <= n_local[Z] + 1; kc++) {
+    for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+      for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
 
 	/* left hand edge */
 	index = coords_index(ic, 0, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
-	    f_actual = distribution_f(index, p, nd);
+	    lb_f(lb, index, p, nd, &f_actual);
 	    f_expect = -1.0;
 
 	    if (cv[p][Y] > 0) {
@@ -417,11 +385,11 @@ void test_halo(int dim, int reduced) {
 	  }
 
 	  /* right hand edge */
-	  jc = n_local[Y] + 1;
+	  jc = nlocal[Y] + 1;
 	  index = coords_index(ic, jc, kc);
 
 	  for (p = 0; p < NVEL; p++) {
-	    f_actual = distribution_f(index, p, nd);
+	    lb_f(lb, index, p, nd, &f_actual);
 	    f_expect = -1.0;
 
 	    if (cv[p][Y] < 0) {
@@ -440,5 +408,7 @@ void test_halo(int dim, int reduced) {
     /* Finished reduced check */
   }
 
-  return;
+  lb_free(lb);
+
+  return 0;
 }

@@ -4,13 +4,11 @@
  *
  *  Unit test for electrokinetic quantities.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -25,6 +23,7 @@
 #include "psi_s.h"
 
 #include "test_coords_field.h"
+#include "tests.h"
 
 static int testf2(int ic, int jc, int kc, int n, void * ref);
 static int do_test1(void);
@@ -37,14 +36,13 @@ static int do_test_io1(void);
 
 /*****************************************************************************
  *
- *  main
+ *  test_psi_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_psi_suite(void) {
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
 
   do_test1();
   do_test2();
@@ -54,8 +52,8 @@ int main(int argc, char ** argv) {
   do_test_bjerrum();
   do_test_ionic_strength();
 
+  info("PASS     ./unit/test_psi\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }

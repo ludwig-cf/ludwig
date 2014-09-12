@@ -7,6 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2013-2014 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -14,30 +19,12 @@
 #include <math.h>
 
 #include "pe.h"
-#include "ran.h"
 #include "coords.h"
 #include "lubrication.h"
+#include "tests.h"
 
-int test_lubrication_suite(void);
 int test_lubrication_ss_fnorm(void);
 int test_lubrication_ss_ftang(void);
-
-/*****************************************************************************
- *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
-
-  test_lubrication_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -49,14 +36,14 @@ int test_lubrication_suite(void) {
 
   physics_t * physics = NULL;
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
   physics_ref(&physics);
-  ran_init();
 
   test_lubrication_ss_fnorm();
   test_lubrication_ss_ftang();
 
+  info("PASS     ./unit/test_lubrication\n");
   coords_finish();
   pe_finalise();
 
@@ -83,6 +70,7 @@ int test_lubrication_ss_fnorm(void) {
   double a2 = 2.3;
   double u1[3] = {0.0, 0.0, 0.0};
   double u2[3] = {0.0, 0.0, 0.0};
+  double ran[2] = {0.0, 0.0};
   double r12[3] = {0.0, 0.0, 4.0};
   double factual[3];
   double fexpect[3];
@@ -98,7 +86,7 @@ int test_lubrication_ss_fnorm(void) {
 
   fexpect[X] = 0.0; fexpect[Y] = 0.0; fexpect[Z] = 0.0;
 
-  lubrication_single(lubr, a1, a2, u1, u2, r12, factual);
+  lubrication_single(lubr, a1, a2, u1, u2, r12, ran, factual);
   assert(fabs(factual[X] - fexpect[X]) < FLT_EPSILON);
   assert(fabs(factual[Y] - fexpect[Y]) < FLT_EPSILON);
   assert(fabs(factual[Z] - fexpect[Z]) < FLT_EPSILON);
@@ -108,7 +96,7 @@ int test_lubrication_ss_fnorm(void) {
   u1[Z] = 0.5;
   fexpect[Z] = -1.0035643;
 
-  lubrication_single(lubr, a1, a2, u1, u2, r12, factual);
+  lubrication_single(lubr, a1, a2, u1, u2, r12, ran, factual);
   assert(fabs(factual[Z] - fexpect[Z]) < FLT_EPSILON);
 
   lubrication_free(lubr);
@@ -137,6 +125,7 @@ int test_lubrication_ss_ftang(void) {
   double u1[3] = {0.0, 0.0, 0.0};
   double u2[3] = {0.0, 0.0, 0.0};
   double r12[3] = {0.0, 0.0, 3.65};
+  double ran[2] = {0.0, 0.0};
   double fexpect[3] = {0.0, 0.0, 0.0};
   double factual[3];
 
@@ -149,7 +138,7 @@ int test_lubrication_ss_ftang(void) {
 
   /* Both zero velocity */
 
-  lubrication_single(lubr, a1, a2, u1, u2, r12, factual);
+  lubrication_single(lubr, a1, a2, u1, u2, r12, ran, factual);
   assert(fabs(fexpect[X] - factual[X]) < FLT_EPSILON);
   assert(fabs(fexpect[Y] - factual[Y]) < FLT_EPSILON);
   assert(fabs(fexpect[Z] - factual[Z]) < FLT_EPSILON);
@@ -159,7 +148,7 @@ int test_lubrication_ss_ftang(void) {
   u1[X] = 0.5;
   fexpect[X] = -0.40893965;
 
-  lubrication_single(lubr, a1, a2, u1, u2, r12, factual);
+  lubrication_single(lubr, a1, a2, u1, u2, r12, ran, factual);
   assert(fabs(fexpect[X] - factual[X]) < FLT_EPSILON);
 
   lubrication_free(lubr);

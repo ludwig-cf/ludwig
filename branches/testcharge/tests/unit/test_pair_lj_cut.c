@@ -25,29 +25,10 @@
 #define PAIR_SIGMA   1.0
 #define PAIR_RC      3.0
 
-int test_pair_lj_cut_suite(void);
 int test_pair_lj_cut1(void);
 int test_pair_lj_cut2(void);
 int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 		      pair_lj_cut_t * lj);
-
-/*****************************************************************************
- *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-
-  MPI_Init(&argc, &argv);
-
-  test_pair_lj_cut_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -57,12 +38,13 @@ int main(int argc, char ** argv) {
 
 int test_pair_lj_cut_suite(void) {
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
 
   test_pair_lj_cut1();
   test_pair_lj_cut2();
 
+  info("PASS     ./unit/test_pair_lj_cut\n");
   coords_finish();
   pe_finalise();
 

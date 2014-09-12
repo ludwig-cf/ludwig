@@ -54,8 +54,6 @@
  *  which just appears as -eE in the calculation of grad psi.
  *
  *
- *  $Id$
- *
  *  Edinbrugh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -79,13 +77,15 @@
 #include "nernst_planck.h"
 #include "psi_gradients.h"
 
+/* This needs an input switch to make it active. */
+int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro, 
+		map_t * map, colloids_info_t * cinfo, double ** flx);
+
 static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 				double * fz);
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 				double * fz);
 static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro, 
-		map_t * map, colloids_info_t * cinfo, double ** flx);
-static int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro, 
 		map_t * map, colloids_info_t * cinfo, double ** flx);
 static int nernst_planck_update_d3qx(psi_t * psi, 
 				map_t * map, double ** flx);
@@ -468,7 +468,7 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
  *
  *****************************************************************************/
 
-static int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro, 
+int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro, 
 	map_t * map, colloids_info_t * cinfo, double ** flx) {
 
   int ic, jc, kc; 

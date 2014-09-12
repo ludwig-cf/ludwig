@@ -173,7 +173,7 @@ int field_init_io_info(field_t * obj, int grid[3], int form_in,
   io_info_set_bytesize(obj->info, obj->nf*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
-  io_write_metadata(obj->name, obj->info);
+  io_info_metadata_filestub_set(obj->info, obj->name);
 
   return 0;
 }

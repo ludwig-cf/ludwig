@@ -9,13 +9,11 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.10 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -293,7 +291,7 @@ void stats_rheology_stress_profile_zero(void) {
  *
  *****************************************************************************/
 
-int stats_rheology_stress_profile_accumulate(hydro_t * hydro) {
+int stats_rheology_stress_profile_accumulate(lb_t * lb, hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -305,6 +303,7 @@ int stats_rheology_stress_profile_accumulate(hydro_t * hydro) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(initialised_);
+  assert(lb);
   assert(hydro);
   coords_nlocal(nlocal);
 
@@ -318,16 +317,16 @@ int stats_rheology_stress_profile_accumulate(hydro_t * hydro) {
 
 	/* Set up the (inverse) density, velocity */
 
-	rho = distribution_zeroth_moment(index, 0);
+	lb_0th_moment(lb, index, LB_RHO, &rho);
 	rrho = 1.0/rho;
-	distribution_first_moment(index, 0, u);
+	lb_1st_moment(lb, index, LB_RHO, u);
 
 	/* Work out the vicous stress and accumulate. The factor
 	 * which relates the distribution \sum_i f_ c_ia c_ib
 	 * to the viscous stress is not included until output
 	 * is required. (See output routine.) */
 
-	distribution_get_stress_at_site(index, s);
+	lb_2nd_moment(lb, index, LB_RHO, s);
 
 	sxy_[NSTAT1*(ic-1)] += s[X][Y];
 
@@ -669,7 +668,7 @@ void stats_rheology_stress_section(const char * filename) {
  *
  *****************************************************************************/
 
-void stats_rheology_mean_stress(const char * filename) {
+int stats_rheology_mean_stress(lb_t * lb, const char * filename) {
 
 #define NCOMP 27
 
@@ -687,6 +686,8 @@ void stats_rheology_mean_stress(const char * filename) {
   FILE * fp;
 
   void (* chemical_stress)(const int index, double s[3][3]);
+
+  assert(lb);
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
@@ -713,9 +714,9 @@ void stats_rheology_mean_stress(const char * filename) {
 
         index = coords_index(ic, jc, kc);
 
-	rho = distribution_zeroth_moment(index, 0);
-	distribution_first_moment(index, 0, u);
-	distribution_get_stress_at_site(index, s);
+	lb_0th_moment(lb, index, LB_RHO, &rho);
+	lb_1st_moment(lb, index, LB_RHO, u);
+	lb_2nd_moment(lb, index, LB_RHO, s);
         chemical_stress(index, plocal);
 
 	rrho = 1.0/rho;
@@ -777,7 +778,7 @@ void stats_rheology_mean_stress(const char * filename) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /****************************************************************************

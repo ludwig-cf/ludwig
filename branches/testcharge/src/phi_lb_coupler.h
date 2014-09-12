@@ -2,13 +2,11 @@
  *
  *  phi_lb_coupler.h
  *
- *  $Id: phi_lb_coupler.h,v 1.4 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2014 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
  *
  *****************************************************************************/
 
@@ -16,8 +14,9 @@
 #define PHI_LB_COUPLER_H
 
 #include "field.h"
+#include "model.h"
 
-int phi_lb_to_field(field_t * phi);
-int phi_lb_from_field(field_t * phi);
+int phi_lb_to_field(field_t * phi, lb_t * lb);
+int phi_lb_from_field(field_t * phi, lb_t * lb);
 
 #endif

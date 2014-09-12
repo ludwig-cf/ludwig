@@ -13,7 +13,7 @@
  *****************************************************************************/
 
 #ifndef D3Q15_MODEL_H
-#define D3Q19_MODEL_H
+#define D3Q15_MODEL_H
 
 enum {NDIM = 3};
 enum {NVEL = 15};

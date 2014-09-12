@@ -136,7 +136,7 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
   io_info_set_bytesize(obj->info, obj->nf*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
-  io_write_metadata("vel", obj->info);
+  io_info_metadata_filestub_set(obj->info, "vel");
 
   return 0;
 }

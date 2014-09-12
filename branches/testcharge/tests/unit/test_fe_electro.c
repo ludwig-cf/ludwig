@@ -4,12 +4,10 @@
  *
  *  Unit test for the electrokinetic free energy.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2013)
+ *  (c) 2014 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -25,6 +23,7 @@
 #include "coords.h"
 #include "physics.h"
 #include "fe_electro.h"
+#include "tests.h"
 
 static int do_test1(void);
 static int do_test2(void);
@@ -32,16 +31,15 @@ static int do_test3(void);
 
 /*****************************************************************************
  *
- *  main
+ *  test_fe_electro_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_fe_electro_suite(void) {
 
   physics_t * param = NULL;
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
   coords_init();
   physics_ref(&param);
 
@@ -49,9 +47,9 @@ int main(int argc, char ** argv) {
   do_test2();
   do_test3();
 
+  info("PASS     ./unit/test_fe_electro\n");
   coords_finish();
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }

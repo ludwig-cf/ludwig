@@ -11,13 +11,11 @@
  *  the statistical tests. Larger samples might have stricter
  *  tolerance.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -31,18 +29,23 @@
 #define NLARGE         10000000
 #define STAT_TOLERANCE 0.001
 
-int main(int argc, char ** argv) {
+/*****************************************************************************
+ *
+ *  test_random_suite
+ *
+ *****************************************************************************/
+
+int test_random_suite(void) {
 
   double r;
   double rtot, rvar, rmin, rmax;
   double rhat[3], rmean[3];
   int    n;
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
 
-  info("Testing random number generators (may take a minute...)\n");
-  info("Random sample size is %d\n\n", NLARGE);
+  /* info("Testing random number generators (may take a minute...)\n");
+     info("Random sample size is %d\n\n", NLARGE);*/
 
   ran_init();
 
@@ -63,7 +66,7 @@ int main(int argc, char ** argv) {
 
   /* Check serial uniform statistics */
 
-  info("Checking statistics for serial_uniform()...");
+  /* info("Checking statistics for serial_uniform()...");*/
 
   rtot = 0.0;
   rmin = 1.0;
@@ -75,24 +78,24 @@ int main(int argc, char ** argv) {
     if (r < rmin) rmin = r;
     if (r > rmax) rmax = r;
   }
-  info("\n");
+  /* info("\n");*/
   rtot = rtot/NLARGE;
-  info("The mean is %g ", rtot);
+  /*info("The mean is %g ", rtot);*/
   test_assert(fabs(rtot - 0.5) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /* info("(ok)\n");*/
 
-  info("The minimum is %g ", rmin);
+  /* info("The minimum is %g ", rmin);*/
   test_assert(fabs(rmin - 0.0) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /* info("(ok)\n");*/
 
-  info("The maximum is %g ", rmax);
+  /* info("The maximum is %g ", rmax);*/
   test_assert(fabs(rmax - 1.0) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /* info("(ok)\n");*/
 
   /* Check serial Gaussian statistics. Note that the variance is
    * computed by assuming the mean is indeed exactly zero. */
 
-  info("Checking statistics for serial_gaussian()...");
+  /* info("Checking statistics for serial_gaussian()...");*/
 
   rtot = 0.0;
   rvar = 0.0;
@@ -107,28 +110,28 @@ int main(int argc, char ** argv) {
     if (r > rmax) rmax = r;
   }
 
-  info("\n");
+  /* info("\n");*/
   rtot = rtot/NLARGE;
-  info("The mean is %g ", rtot);
+  /* info("The mean is %g ", rtot);*/
   test_assert(fabs(rtot - 0.0) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /* info("(ok)\n");*/
 
-  info("The minimum is %g ", rmin);
+  /*info("The minimum is %g ", rmin);*/
   test_assert(rmin < -4.0);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
-  info("The maximum is %g ", rmax);
+  /*info("The maximum is %g ", rmax);*/
   test_assert(rmax > 4.0);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
   rvar = rvar/NLARGE;
-  info("The variance is %g ", rvar);
+  /*info("The variance is %g ", rvar);*/
   test_assert(fabs(rvar - 1.0) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
   /* Check the parallel uniform generator. */
 
-  info("Checking statistics for parallel_uniform()...");
+  /*info("Checking statistics for parallel_uniform()...");*/
 
   rtot = 0.0;
   rmin = 1.0;
@@ -140,23 +143,23 @@ int main(int argc, char ** argv) {
     if (r < rmin) rmin = r;
     if (r > rmax) rmax = r;
   }
-  info("\n");
+  /*info("\n");*/
   rtot = rtot/NLARGE;
-  info("The mean is %g ", rtot);
+  /*info("The mean is %g ", rtot);*/
   test_assert(fabs(rtot - 0.5) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
-  info("The minimum is %g ", rmin);
+  /*info("The minimum is %g ", rmin);*/
   test_assert(fabs(rmin - 0.0) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
-  info("The maximum is %g ", rmax);
+  /*info("The maximum is %g ", rmax);*/
   test_assert(fabs(rmax - 1.0) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
   /* Parallel Gaussian */
 
-  info("Checking statistics for parallel_gaussian()...");
+  /*info("Checking statistics for parallel_gaussian()...");*/
 
   rtot = 0.0;
   rvar = 0.0;
@@ -171,28 +174,28 @@ int main(int argc, char ** argv) {
     if (r > rmax) rmax = r;
   }
 
-  info("\n");
+  /*info("\n");*/
   rtot = rtot/NLARGE;
-  info("The mean is %g ", rtot);
+  /*info("The mean is %g ", rtot);*/
   test_assert(fabs(rtot - 0.0) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
-  info("The minimum is %g ", rmin);
+  /*info("The minimum is %g ", rmin);*/
   test_assert(rmin < -4.0);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
-  info("The maximum is %g ", rmax);
+  /*info("The maximum is %g ", rmax);*/
   test_assert(rmax > 4.0);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
   rvar = rvar/NLARGE;
-  info("The variance is %g ", rvar);
+  /*info("The variance is %g ", rvar);*/
   test_assert(fabs(rvar - 1.0) < STAT_TOLERANCE);
-  info("(ok)\n");
+  /*info("(ok)\n");*/
 
   /* The serial unit vector routine */
 
-  info("Testing serial_unit_vector()...\n");
+  /*info("Testing serial_unit_vector()...\n");*/
 
   rmin = 0.0;
   rmax = 0.0;
@@ -215,28 +218,28 @@ int main(int argc, char ** argv) {
     rmax = dmax(rmax, rhat[2]);
   }
 
-  info("Unit vector modulus is %f (ok)\n", rvar);
+  /*info("Unit vector modulus is %f (ok)\n", rvar);*/
 
   test_assert(rmin >= -1.0);
-  info("Component min is %g (ok)\n", rmin);
+  /*info("Component min is %g (ok)\n", rmin);*/
   
   test_assert(rmax <= +1.0);
-  info("Component max is %g (ok)\n", rmax);
+  /*info("Component max is %g (ok)\n", rmax);*/
 
   rmean[0] /= NLARGE;
   rmean[1] /= NLARGE;
   rmean[2] /= NLARGE;
 
   test_assert(fabs(rmean[0]) < STAT_TOLERANCE);
-  info("Component <X> is %g (ok)\n", rmean[0]);
+  /*info("Component <X> is %g (ok)\n", rmean[0]);*/
   test_assert(fabs(rmean[1]) < STAT_TOLERANCE);
-  info("Component <Y> is %g (ok)\n", rmean[1]);
+  /*info("Component <Y> is %g (ok)\n", rmean[1]);*/
   test_assert(fabs(rmean[2]) < STAT_TOLERANCE);
-  info("Component <Z> is %g (ok)\n", rmean[2]);
+  /*info("Component <Z> is %g (ok)\n", rmean[2]);*/
 
   /* Repeat for the parallel version. */
 
-  info("Testing parallel_unit_vector()...\n");
+  /*info("Testing parallel_unit_vector()...\n");*/
 
   rmin = 0.0;
   rmax = 0.0;
@@ -259,30 +262,29 @@ int main(int argc, char ** argv) {
     rmax = dmax(rmax, rhat[2]);
   }
 
-  info("Unit vector modulus is %f (ok)\n", rvar);
+  /*info("Unit vector modulus is %f (ok)\n", rvar);*/
 
   test_assert(rmin >= -1.0);
-  info("Component min is %g (ok)\n", rmin);
+  /*info("Component min is %g (ok)\n", rmin);*/
   
   test_assert(rmax <= +1.0);
-  info("Component max is %g (ok)\n", rmax);
+  /*info("Component max is %g (ok)\n", rmax);*/
 
   rmean[0] /= NLARGE;
   rmean[1] /= NLARGE;
   rmean[2] /= NLARGE;
 
   test_assert(fabs(rmean[0]) < STAT_TOLERANCE);
-  info("Component <X> is %g (ok)\n", rmean[0]);
+  /* info("Component <X> is %g (ok)\n", rmean[0]);*/
   test_assert(fabs(rmean[1]) < STAT_TOLERANCE);
-  info("Component <Y> is %g (ok)\n", rmean[1]);
+  /* info("Component <Y> is %g (ok)\n", rmean[1]);*/
   test_assert(fabs(rmean[2]) < STAT_TOLERANCE);
-  info("Component <Z> is %g (ok)\n", rmean[2]);
+  /* info("Component <Z> is %g (ok)\n", rmean[2]);*/
 
 
-  info("\nRandom number tests ok\n\n");
+  info("PASS     ./unit/test_random\n");
 
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }

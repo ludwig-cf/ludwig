@@ -2,14 +2,13 @@
  *
  *  test_leesedwards.c
  *
- *
- *  $Id$
+ *  Lees Edwards structure
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2104 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -24,18 +23,23 @@
 static void test_parallel1(void);
 static void test_le_parallel2(void);
 
-int main (int argc, char ** argv) {
+/*****************************************************************************
+ *
+ *  test_le_suite
+ *
+ *****************************************************************************/
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+int test_le_suite(void) {
+
+  pe_init_quiet();
   coords_init();
 
   test_parallel1();
   test_le_parallel2();
 
-  info("\nLees Edwards tests completed ok.\n");
+  info("PASS     ./unit/test_le\n");
+  coords_finish();
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
@@ -74,20 +78,20 @@ void test_parallel1(void) {
   le_set_plane_uymax(uy_set);
   le_init();
 
-  info("\nLees Edwards test (constant speed)...\n");
-  info("Total number of planes in set correctly... ");
+  /*info("\nLees Edwards test (constant speed)...\n");
+    info("Total number of planes in set correctly... ");*/
   test_assert(le_get_nplane_total() == nplane);
-  info("yes\n");
+  /*info("yes\n");*/
 
-  info("Local number of planes set correctly... ");
+  /* info("Local number of planes set correctly... ");*/
   nplane_local = nplane / cart_size(X);
   test_assert(le_get_nplane_local() == nplane_local);
-  info("yes\n");
+  /* info("yes\n");*/
 
-  info("Plane maximum velocity set correctly... ");
+  /* info("Plane maximum velocity set correctly... ");*/
   uy = le_plane_uy_max();
   test_assert(fabs(uy - uy_set) < TEST_DOUBLE_TOLERANCE);
-  info("yes\n");
+  /* info("yes\n");*/
 
 
   /* Check displacement calculations. Run to a displacement which is

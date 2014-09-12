@@ -4,13 +4,11 @@
  *
  *  Halo swap test.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -31,30 +29,25 @@ static void test_position(const double * r1, const double * r2);
 
 /*****************************************************************************
  *
- *  main
+ *  test_colloids_halo_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_colloids_halo_suite(void) {
 
   int ntotal[3] = {1024, 1024, 1024};
 
-  MPI_Init(&argc, &argv);
-
-  pe_init();
+  pe_init_quiet();
   coords_ntotal_set(ntotal);
   coords_init();
-
-  info("Colloid state halo swap test\n");
 
   test_colloids_halo111();
   test_colloids_halo211();
   test_colloids_halo_repeat();
 
+  info("PASS     ./unit/test_colloids_halo\n");
   coords_finish();
   pe_finalise();
-
-  MPI_Finalize();
 
   return 0;
 }

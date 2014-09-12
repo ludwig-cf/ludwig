@@ -44,7 +44,7 @@ LIBRARY = libludwig.a
 CC = gcc
 MPICC = mpicc
 OPTS = -DNP_D3Q6
-CFLAGS = -Wall -O3
+CFLAGS = -Wall -O2
 
 INC = -I.
 LIBS = -lm
@@ -128,12 +128,13 @@ verbose:
 	echo -e "LUDWIG make options ...\n"\
 	    "\t make serial \t\t builds serial implementation (D3Q19)\n"\
 	    "\t make serial-d2q9 etc \t builds specific serial version\n" \
-	    "\t make mpi \t\t builds MPI implementation (D3Q19)\n"\
+	    "\t make serial-d2q9r etc \t SOA data order\n" \
+	    "\t make mpi \t\t builds MPI implementation (D3Q19)\n" \
 	    "\t make mpi-d2q9 etc \t builds specific parallel version\n" \
             "\t Check the Makefile for further details\n"	
 
-code:	svn $(OBJS)
-	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
+code:	$(MAIN).o
+	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(MAIN).o $(LIBRARY) $(LIBS)
 
 # Serial versions
 
@@ -141,21 +142,27 @@ serial:
 	$(MAKE) serial-d3q19
 
 serial-d2q9:
-	cp d2q9.h model_s.h
-	$(MAKE) serial-model "OBJS=d2q9.o $(OBJS)"
+	$(MAKE) serial-model "LB=-D_D2Q9_" "LBOBJ=d2q9.o"
 
 serial-d3q15:
-	cp d3q15.h model_s.h
-	$(MAKE) serial-model "OBJS=d3q15.o $(OBJS)"
+	$(MAKE) serial-model "LB=-D_D3Q15_" "LBOBJ=d3q15.o"
 
 serial-d3q19:
-	cp d3q19.h model_s.h
-	$(MAKE) serial-model "OBJS=d3q19.o $(OBJS)"
+	$(MAKE) serial-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
+
+serial-d2q9r:
+	$(MAKE) serial-d2q9 "OPTS= -DLB_DATA_SOA $(OPTS)"
+
+serial-d3q15r:
+	$(MAKE) serial-d3q15 "OPTS= -DLB_DATA_SOA $(OPTS)"
+
+serial-d3q19r:
+	$(MAKE) serial-d3q19 "OPTS= -DLB_DATA_SOA $(OPTS)"
+
 
 serial-model:
 	$(MAKE) lib
-	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi" "OBJS=$(OBJS) $(MAIN).o"
+	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) -L../mpi_s -lmpi"
 
 # MPI versions
 
@@ -163,25 +170,32 @@ mpi:
 	$(MAKE) mpi-d3q19
 
 mpi-d2q9:
-	cp d2q9.h model_s.h
-	$(MAKE) mpi-model "OBJS=d2q9.o $(OBJS)"
+	$(MAKE) mpi-model "LB=-D_D2Q9_" "LBOBJ=d2q9.o"
 
 mpi-d3q15:
-	cp d3q15.h model_s.h
-	$(MAKE) mpi-model "OBJS=d3q15.o $(OBJS)"
+	$(MAKE) mpi-model "LB=-D_D3Q15_" "LBOBJ=d3q15.o"
 
 mpi-d3q19:
-	cp d3q19.h model_s.h
-	$(MAKE) mpi-model "OBJS=d3q19.o $(OBJS)"
+	$(MAKE) mpi-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
+
+mpi-d2q9r:
+	$(MAKE) mpi-d2q9 "OPTS= -DLB_DATA_SOA $(OPTS)"
+
+mpi-d3q15r:
+	$(MAKE) mpi-d3q15 "OPTS= -DLB_DATA_SOA $(OPTS)"
+
+mpi-d3q19r:
+	$(MAKE) mpi-d3q19 "OPTS= -DLB_DATA_SOA $(OPTS)"
+
 
 mpi-model:
 	$(MAKE) libmpi
-	$(MAKE) code "OBJS=$(OBJS) $(MAIN).o" "CC=$(MPICC)"
+	$(MAKE) code "CC=$(MPICC)"
 
 # Libraries
 
-libar:	$(OBJS)
-	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS)
+libar:	$(OBJS) $(LBOBJ)
+	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS) $(LBOBJ)
 lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
@@ -192,7 +206,7 @@ libmpi:
 # although compilation should procede. The result should be double
 # quoted, e.g. "1191", hence the apostrophe armageddon.
 
-svn:
+svn.o:
 	$(CC) -D SVN_REVISION='"'`svnversion`'"' -c svn.c
 
 ###############################################################################
@@ -206,10 +220,10 @@ svn:
 #  Default rule for compilation in the current directory.
 #
 .c.o :
-	$(CC) $(OPTS) $(CFLAGS) $(INC) -c $?
+	$(CC) $(LB) $(OPTS) $(CFLAGS) $(INC) -c $?
 
 
 .PHONY : clean
 clean:
-	rm -f model_s.h d2q9.o d3q15.o d3q19.o
+	rm -f d2q9.o d3q15.o d3q19.o
 	rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) $(MAIN).o

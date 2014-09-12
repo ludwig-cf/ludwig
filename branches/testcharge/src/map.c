@@ -129,7 +129,7 @@ int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
   io_info_set_bytesize(obj->info, sz);
 
   io_info_format_set(obj->info, form_in, form_out);
-  io_write_metadata("map", obj->info);
+  io_info_metadata_filestub_set(obj->info, "map");
 
   return 0;
 }

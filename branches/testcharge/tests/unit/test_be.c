@@ -4,31 +4,35 @@
  *
  *  Test for Beris Edwards solver.
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2013-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
 #include <float.h>
 #include <math.h>
 
-#include "mpi.h"
 #include "blue_phase_beris_edwards.h"
+#include "tests.h"
 
 static int do_test_be_tmatrix(void);
 
-
 /*****************************************************************************
  *
- *  main
+ *  test_be_suite
+ *
+ *  Just test of noise constants.
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
+int test_be_suite(void) {
 
   do_test_be_tmatrix();
-
-  MPI_Finalize();
 
   return 0;
 }

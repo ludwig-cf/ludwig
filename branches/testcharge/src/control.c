@@ -186,3 +186,25 @@ int is_shear_measurement_step() {
 int is_shear_output_step() {
   return ((t_current % freq_shear_io) == 0);
 }
+
+/*****************************************************************************
+ *
+ *  control_freq_set
+ *
+ *  Control needs refactoring as object; until that time:
+ *
+ *****************************************************************************/
+
+int control_freq_set(int freq) {
+
+  freq_statistics = freq;
+
+  return 0;
+}
+
+int control_time_set(int it) {
+
+  t_current = it;
+
+  return 0;
+}

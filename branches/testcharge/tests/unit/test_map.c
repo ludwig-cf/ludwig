@@ -4,8 +4,6 @@
  *
  *  Unit test for map object.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -25,6 +23,7 @@
 #include "map_s.h"
 
 #include "test_coords_field.h"
+#include "tests.h"
 
 static int do_test1(void);
 static int do_test2(void);
@@ -33,16 +32,15 @@ static int do_test_io(int ndata, int io_format);
 
 /*****************************************************************************
  *
- *  main
+ *  test_map_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_map_suite(void) {
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
 
-  info("Map tests\n\n");
+  /*info("Map tests\n\n");*/
 
   do_test1();
   do_test2();
@@ -54,8 +52,8 @@ int main(int argc, char ** argv) {
   do_test_io(2, IO_FORMAT_BINARY);
   do_test_io(2, IO_FORMAT_ASCII);
 
+  info("PASS     ./unit/test_map\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
@@ -152,7 +150,7 @@ int do_test2(void) {
   int ndataref = 2;
   int ndata;
   int nlocal[3];
-  int index;
+  int index = 0;
 
   double dataref[2] = {1.0, 2.0};
   double data[2];

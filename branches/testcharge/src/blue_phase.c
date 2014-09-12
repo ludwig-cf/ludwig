@@ -51,8 +51,9 @@ static field_t * q_ = NULL;
 static field_grad_t * grad_q_ = NULL;
 
 static io_info_t * io_info_fed;
-static int  fed_write(FILE *, const int, const int, const int);
-static int  fed_write_ascii(FILE *, const int, const int, const int);
+
+static int fed_write(FILE *, int index, void * self);
+static int fed_write_ascii(FILE *, int index, void * self);
 
 /*****************************************************************************
  *
@@ -1095,38 +1096,41 @@ int fed_io_info(io_info_t ** info) {
  *
  *****************************************************************************/
 
-void fed_io_info_set(io_info_t * info) {
+int fed_io_info_set(io_info_t * info) {
 
   assert(info);
   io_info_fed = info;
 
   io_info_set_name(io_info_fed, "Free energy density");
-  io_info_set_write_ascii(io_info_fed, fed_write_ascii);
-  io_info_set_write_binary(io_info_fed, fed_write);
+  io_info_write_set(io_info_fed, IO_FORMAT_BINARY, fed_write);
+  io_info_write_set(io_info_fed, IO_FORMAT_ASCII, fed_write_ascii);
   io_info_set_bytesize(io_info_fed, 3*sizeof(double));
  
-  io_info_set_format_binary(io_info_fed);
-  io_write_metadata("fed", io_info_fed);
+  io_info_format_out_set(io_info_fed, IO_FORMAT_BINARY);
+  io_info_metadata_filestub_set(io_info_fed, "fed");
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
-*
-*  fed_write_ascii
-*
-*****************************************************************************/
+ *
+ *  fed_write_ascii
+ *
+ *  The "self" pointer is not required here.
+ *
+ *****************************************************************************/
 
-static int fed_write_ascii(FILE * fp, const int ic, const int jc, const int kc) {
+static int fed_write_ascii(FILE * fp, int index, void * self) {
 
+  int n;
   double q[3][3], dq[3][3][3];
   double fed[3];
-  int index, n;
-  
-  index = le_site_index(ic, jc, kc);
+
+  assert(fp);
 
   field_tensor(q_, index, q);
   field_grad_tensor_grad(grad_q_, index, dq);
+
   fed[0] = blue_phase_compute_fed(q, dq);
   fed[1] = blue_phase_compute_bulk_fed(q);
   fed[2] = blue_phase_compute_gradient_fed(q, dq);
@@ -1138,18 +1142,20 @@ static int fed_write_ascii(FILE * fp, const int ic, const int jc, const int kc) 
 }
 
 /*****************************************************************************
-*
-*  fed_write
-*
-*****************************************************************************/
+ *
+ *  fed_write
+ *
+ *  The "self" object is not required.
+ *
+ *****************************************************************************/
 
-static int fed_write(FILE * fp, const int ic, const int jc, const int kc) {
+static int fed_write(FILE * fp, int index, void * self) {
 
+  int n;
   double q[3][3], dq[3][3][3];
   double fed[3];
-  int index, n;
-  
-  index = le_site_index(ic, jc, kc);
+
+  assert(fp);
 
   field_tensor(q_, index, q);
   field_grad_tensor_grad(grad_q_, index, dq);

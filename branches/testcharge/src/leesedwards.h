@@ -2,13 +2,11 @@
  *
  *  leesedwards.h
  *
- *  $Id: leesedwards.h,v 1.7 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,6 +16,7 @@
 void le_init(void);
 void le_finish(void);
 
+int le_info(void);
 int le_get_nxbuffer(void);
 int le_index_real_to_buffer(const int, const int);
 int le_index_buffer_to_real(const int);

@@ -22,8 +22,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "model.h"
-
 #include "colloid_sums.h"
 #include "psi_colloid.h"
 #include "util.h"
@@ -31,22 +29,20 @@
 #include "build.h"
 
 
-static int build_remove_order_parameter(field_t * f, int index,
+static int build_remove_fluid(lb_t * lb, int index, colloid_t * pc);
+static int build_replace_fluid(lb_t * lb, colloids_info_t * info, int index,
+			       colloid_t * pc);
+static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 					colloid_t * pc);
+static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
+					 field_t * f, int index,
+					 colloid_t * pc);
+static int build_reset_links(colloid_t * pc, map_t * map);
 static int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * pc,
 				   map_t * map);
-static int build_replace_fluid(colloids_info_t * info, int index, colloid_t *);
-static int build_replace_order_parameter(colloids_info_t * cinfo, field_t * f,
-					 int index,
-					 colloid_t * pc);
+static void build_link_mean(colloid_t * pc, int p, const double rb[3]);
 static int build_colloid_wall_links(colloids_info_t * cinfo, colloid_t * pc,
 				    map_t * map);
-
-static void build_link_mean(colloid_t * pc, int p, const double rb[3]);
-static void build_virtual_distribution_set(int index, int p,
-					   const double u[3]);
-static int build_reset_links(colloid_t * pc, map_t * map);
-static int build_remove_fluid(int index, colloid_t *);
 
 /*****************************************************************************
  *
@@ -55,8 +51,6 @@ static int build_remove_fluid(int index, colloid_t *);
  *  This routine is responsible for setting the solid/fluid status
  *  of all nodes in the presence on colloids. This must be complete
  *  before attempting to build the colloid links.
- *
- *  Issues:
  *
  ****************************************************************************/
 
@@ -293,9 +287,7 @@ int build_update_links(colloids_info_t * cinfo, map_t * map) {
  *  new shape contains fewer links, then flag the excess links
  *  as solid.
  *
- *  Issues
- *
- ****************************************************************************/
+  ****************************************************************************/
 
 int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * p_colloid,
 			    map_t * map) {
@@ -401,15 +393,7 @@ int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * p_colloid,
 	      build_link_mean(p_colloid, p, p_link->rb);
 	    }
 	    else {
-	      double ub[3];
-	      double wxrb[3];
 	      p_link->status = LINK_COLLOID;
-
-	      cross_product(p_colloid->s.w, p_link->rb, wxrb);
-	      ub[X] = p_colloid->s.v[X] + wxrb[X];
-	      ub[Y] = p_colloid->s.v[Y] + wxrb[Y];
-	      ub[Z] = p_colloid->s.v[Z] + wxrb[Z];
-	      build_virtual_distribution_set(p_link->j, p_link->p, ub);
 	    }
 
 	    /* Next link */
@@ -435,15 +419,7 @@ int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * p_colloid,
 	      build_link_mean(p_colloid, p, p_link->rb);
 	    }
 	    else {
-	      double ub[3];
-	      double wxrb[3];
 	      p_link->status = LINK_COLLOID;
-
-	      cross_product(p_colloid->s.w, p_link->rb, wxrb);
-	      ub[X] = p_colloid->s.v[X] + wxrb[X];
-	      ub[Y] = p_colloid->s.v[Y] + wxrb[Y];
-	      ub[Z] = p_colloid->s.v[Z] + wxrb[Z];
-	      build_virtual_distribution_set(p_link->j, p_link->p, ub);
 	    }
 
 	    if (p_colloid->lnk == NULL) {
@@ -485,9 +461,6 @@ int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * p_colloid,
  *    so the separation is recomputed. For Euler update, one could just
  *    subtract the current velocity to get the new boundary link vector
  *    from the old one; however, no assumption is prefered.
- *
- *    Note that setting virtual fluid properties for boundary sites
- *    is done elseehere.
  *
  ****************************************************************************/
 
@@ -541,17 +514,8 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
 	build_link_mean(p_colloid, p_link->p, p_link->rb);
       }
       else {
-	double ub[3];
-	double wxrb[3];
-
 	if (status == MAP_COLLOID) p_link->status = LINK_COLLOID;
 	if (status == MAP_BOUNDARY) p_link->status = LINK_BOUNDARY;
-
-	cross_product(p_colloid->s.w, p_link->rb, wxrb);
-	ub[X] = p_colloid->s.v[X] + wxrb[X];
-	ub[Y] = p_colloid->s.v[Y] + wxrb[Y];
-	ub[Z] = p_colloid->s.v[Z] + wxrb[Z];
-	build_virtual_distribution_set(p_link->j, p_link->p, ub);
       }
     }
 
@@ -564,7 +528,7 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
 
 /*****************************************************************************
  *
- *  build_remove_or_replace_fluid
+ *  build_remove_replace_fluid
  *
  *  Compare the current coll_map with the one from the previous time
  *  step and act on changes:
@@ -577,8 +541,8 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
  *
  *****************************************************************************/
 
-int build_remove_replace(colloids_info_t * cinfo, field_t * phi, field_t * p,
-			 field_t * q, psi_t * psi) {
+int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
+			 field_t * p, field_t * q, psi_t * psi) {
 
   int ic, jc, kc, index;
   int is_halo;
@@ -587,6 +551,7 @@ int build_remove_replace(colloids_info_t * cinfo, field_t * phi, field_t * p,
   colloid_t * pcold;
   colloid_t * pcnew;
 
+  assert(lb);
   assert(cinfo);
 
   coords_nlocal(nlocal);
@@ -609,8 +574,8 @@ int build_remove_replace(colloids_info_t * cinfo, field_t * phi, field_t * p,
 	  pcnew->s.rebuild = 1;
 
 	  if (!is_halo) {
-	    build_remove_fluid(index, pcnew);
-	    if (phi) build_remove_order_parameter(phi, index, pcnew);
+	    build_remove_fluid(lb, index, pcnew);
+	    if (phi) build_remove_order_parameter(lb, phi, index, pcnew);
 	    if (psi)  psi_colloid_remove_charge(psi, pcnew, index);
 	  }
 	}
@@ -620,10 +585,10 @@ int build_remove_replace(colloids_info_t * cinfo, field_t * phi, field_t * p,
 	  pcold->s.rebuild = 1;
 
 	  if (!is_halo) {
-	    build_replace_fluid(cinfo, index, pcold);
-	    if (phi) build_replace_order_parameter(cinfo, phi, index, pcold);
-	    if (p) build_replace_order_parameter(cinfo, p, index, pcold);
-	    if (q) build_replace_order_parameter(cinfo, q, index, pcold);
+	    build_replace_fluid(lb, cinfo, index, pcold);
+	    if (phi) build_replace_order_parameter(lb, cinfo, phi, index, pcold);
+	    if (p) build_replace_order_parameter(lb, cinfo, p, index, pcold);
+	    if (q) build_replace_order_parameter(lb, cinfo, q, index, pcold);
 	    if (psi) psi_colloid_replace_charge(psi, cinfo, pcold, index);
 	  }
 	}
@@ -649,7 +614,7 @@ int build_remove_replace(colloids_info_t * cinfo, field_t * phi, field_t * p,
  *
  *****************************************************************************/
 
-static int build_remove_fluid(int index, colloid_t * p_colloid) {
+static int build_remove_fluid(lb_t * lb, int index, colloid_t * p_colloid) {
 
   int    ia;
   int    ib[3];
@@ -662,6 +627,8 @@ static int build_remove_fluid(int index, colloid_t * p_colloid) {
   double rtmp[3];
   double rho0;
 
+  assert(lb);
+
   coords_nlocal_offset(noffset);
   coords_index_to_ijk(index, ib);
 
@@ -669,8 +636,8 @@ static int build_remove_fluid(int index, colloid_t * p_colloid) {
 
   /* Get the properties of the old fluid at inode */
 
-  rho = distribution_zeroth_moment(index, 0);
-  distribution_first_moment(index, 0, g);
+  lb_0th_moment(lb, index, LB_RHO, &rho);
+  lb_1st_moment(lb, index, LB_RHO, g);
 
   /* Set the corrections for colloid motion. This requires
    * the local boundary vector rb for the torque */
@@ -702,20 +669,25 @@ static int build_remove_fluid(int index, colloid_t * p_colloid) {
  *  Remove order parameter(s) at the site inode. The old site information
  *  can be lost inside the particle, but we must record the correction.
  *
+ *  A rather cross-cutting routine.
+ *
  *****************************************************************************/
 
-static int build_remove_order_parameter(field_t * f, int index,
+static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 					colloid_t * pc) {
+  int ndist;
   double phi;
   double phi0;
 
   assert(f);
+  assert(lb);
   assert(pc);
 
   physics_phi0(&phi0);
+  lb_ndist(lb, &ndist);
 
-  if (distribution_ndist() == 2) {
-    phi = distribution_zeroth_moment(index, 1);
+  if (ndist == 2) {
+    lb_0th_moment(lb, index, LB_PHI, &phi);
   }
   else {
     field_scalar(f, index, &phi);
@@ -735,7 +707,7 @@ static int build_remove_order_parameter(field_t * f, int index,
  *
  *****************************************************************************/
 
-static int build_replace_fluid(colloids_info_t * cinfo, int index,
+static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
 			       colloid_t * p_colloid) {
 
   int indexn, p, pdash;
@@ -754,6 +726,7 @@ static int build_replace_fluid(colloids_info_t * cinfo, int index,
 
   colloid_t * pc = NULL;
 
+  assert(lb);
   assert(p_colloid);
 
   coords_nlocal_offset(noffset);
@@ -786,7 +759,8 @@ static int build_replace_fluid(colloids_info_t * cinfo, int index,
     if (pc) continue;
 
     for (pdash = 0; pdash < NVEL; pdash++) {
-      newf[pdash] += wv[p]*distribution_f(indexn, pdash, 0);
+      lb_f(lb, indexn, pdash, 0, rtmp);
+      newf[pdash] += wv[p]*rtmp[0];
     }
     weight += wv[p];
   }
@@ -797,7 +771,7 @@ static int build_replace_fluid(colloids_info_t * cinfo, int index,
 
   for (p = 0; p < NVEL; p++) {
     newf[p] *= weight;
-    distribution_f_set(index, p, 0, newf[p]);
+    lb_f_set(lb, index, p, 0, newf[p]);
 
     /* ... and remember the new fluid properties */
     newrho += newf[p];
@@ -840,13 +814,15 @@ static int build_replace_fluid(colloids_info_t * cinfo, int index,
  *
  *****************************************************************************/
 
-static int build_replace_order_parameter(colloids_info_t * cinfo,
+static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
 					 field_t * f, int index,
 					 colloid_t * pc) {
   int indexn, n, p, pdash;
   int ri[3];
   int nf;
+  int ndist;
 
+  double g;
   double weight = 0.0;
   double newg[NVEL];
   double phi[NQAB];
@@ -854,6 +830,9 @@ static int build_replace_order_parameter(colloids_info_t * cinfo,
   double phi0;
 
   colloid_t * pcmap = NULL;
+
+  assert(lb);
+  lb_ndist(lb, &ndist);
 
   field_nf(f, &nf);
   assert(nf <= NQAB);
@@ -868,7 +847,7 @@ static int build_replace_order_parameter(colloids_info_t * cinfo,
     newg[p] = 0.0;
   }
 
-  if (distribution_ndist() == 2) {
+  if (ndist == 2) {
 
     /* Reset the distribution (distribution index 1) */
 
@@ -884,7 +863,8 @@ static int build_replace_order_parameter(colloids_info_t * cinfo,
       if (pcmap) continue;
 
       for (pdash = 0; pdash < NVEL; pdash++) {
-	newg[pdash] += wv[p]*distribution_f(indexn, pdash, 1);
+	lb_f(lb, indexn, pdash, LB_PHI, &g);
+	newg[pdash] += wv[p]*g;
       }
       weight += wv[p];
     }
@@ -896,7 +876,7 @@ static int build_replace_order_parameter(colloids_info_t * cinfo,
 
     for (p = 0; p < NVEL; p++) {
       newg[p] *= weight;
-      distribution_f_set(index, p, 1, newg[p]);
+      lb_f_set(lb, index, p, LB_PHI, newg[p]);
 
       /* ... and remember the new fluid properties */
       phi[0] += newg[p];
@@ -940,25 +920,6 @@ static int build_replace_order_parameter(colloids_info_t * cinfo,
   pc->s.deltaphi -= (phi[0] - phi0);
 
   return 0;
-}
-
-/****************************************************************************
- *
- *  build_virtual_distribution_set
- *
- *  Set f_p at inode to an equilibrium value for a given velocity.
- *  rho = 1.
- *
- ****************************************************************************/
-
-static void build_virtual_distribution_set(int index, int p,
-					   const double u[3]) {
-  double udotc;
-
-  udotc = u[X]*cv[p][X] + u[Y]*cv[p][Y] + u[Z]*cv[p][Z];
-  distribution_f_set(index, p, 0, wv[p]*(1.0 + 3.0*udotc));
-
-  return;
 }
 
 /*****************************************************************************

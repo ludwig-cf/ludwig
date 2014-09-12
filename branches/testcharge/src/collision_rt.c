@@ -2,13 +2,11 @@
  *
  *  collision_rt.c
  *
- *  $Id: collision_rt.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -55,7 +53,7 @@ int collision_run_time(noise_t * noise) {
     collision_ghost_modes_off();
   }
 
-  collision_relaxation_times_set(noise);
+  lb_collision_relaxation_times_set(noise);
   collision_relaxation_times(rtau);
 
   info("\n");

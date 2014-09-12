@@ -2,6 +2,13 @@
  *
  *  test_angle_cosine.c
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) The University of Edinburgh 2014
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -13,31 +20,14 @@
 #include "coords.h"
 #include "colloids_halo.h"
 #include "angle_cosine.h"
+#include "tests.h"
 
 #define ANGLE_KAPPA 2.0
 
-int test_angle_cosine_suite(void);
 int test_angle_cosine1(void);
 int test_angle_cosine2(void);
 int test_create_trimer(colloids_info_t * cinfo, double a, double r1[3],
 		       double r2[3], double r3[3], colloid_t * pc[3]);
-
-/*****************************************************************************
- *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
-
-  test_angle_cosine_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -47,12 +37,13 @@ int main(int argc, char ** argv) {
 
 int test_angle_cosine_suite(void) {
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
 
   test_angle_cosine1();
   test_angle_cosine2();
 
+  info("PASS     ./unit/test_angle_cosine\n");
   coords_finish();
   pe_finalise();
 

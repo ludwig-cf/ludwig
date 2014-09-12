@@ -7,13 +7,11 @@
  *  In principle, this really is advection only; there is
  *  a default chemical potential (i.e., everywhere zero).
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -30,10 +28,11 @@
 #include "map.h"
 #include "field.h"
 #include "gradient_3d_7pt_fluid.h"
+#include "free_energy.h"
 #include "phi_cahn_hilliard.h"
 #include "util.h"
+#include "tests.h"
 
-static int do_test(void);
 static int test_u_zero(hydro_t * hydro, const double *);
 static int test_advection(field_t * phi, hydro_t * hydro);
 static int test_set_drop(field_t * phi, const double rc[3], double radius,
@@ -43,28 +42,11 @@ static int test_drop_difference(field_t * phi, const double rc[3],
 
 /*****************************************************************************
  *
- *  main
+ *  test_ph_ch_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
-
-  do_test();
-
-  MPI_Finalize();
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  do_test
- *
- *****************************************************************************/
-
-static int do_test(void) {
+int test_phi_ch_suite(void) {
 
   int nf = 1;
   int nhalo = 2;
@@ -73,21 +55,26 @@ static int do_test(void) {
   field_t * phi = NULL;
   physics_t * phys = NULL;
 
-  pe_init();
+  pe_init_quiet();
   coords_nhalo_set(nhalo);
   coords_init();
   physics_ref(&phys);
   le_init();
 
   field_create(nf, "phi", &phi);
+  assert(phi);
   field_init(phi, nhalo);
+  fe_create();
 
   hydro_create(1, &hydro);
+  assert(hydro);
+
   test_advection(phi, hydro);
 
   hydro_free(hydro);
   field_free(phi);
 
+  info("PASS     ./unit/test_phi_ch\n");
   le_finish();
   coords_finish();
   pe_finalise();

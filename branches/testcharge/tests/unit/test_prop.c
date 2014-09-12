@@ -4,16 +4,16 @@
  *
  *  Test propagation stage.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  * 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 Ths University of Edinburgh
+ *  (c) 2010-2014 Ths University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
+#include <float.h>
 #include <math.h>
 
 #include "pe.h"
@@ -22,72 +22,74 @@
 #include "propagation.h"
 #include "tests.h"
 
-static void test_velocity(void);
-static void test_source_destination(void);
+static int do_test_velocity(lb_halo_enum_t halo);
+static int do_test_source_destination(lb_halo_enum_t halo);
 
-int main(int argc, char ** argv) {
+/*****************************************************************************
+ *
+ *  test_lb_prop_suite
+ *
+ *****************************************************************************/
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+int test_lb_prop_suite(void) {
+
+  pe_init_quiet();
   coords_init();
-  distribution_init();
 
-  info("Testing propagation...\n");
-  info("Number of distributions is %d\n", distribution_ndist());
+  do_test_velocity(LB_HALO_FULL);
+  do_test_velocity(LB_HALO_REDUCED);
 
-  info("\nFull halos...\n");
+  do_test_source_destination(LB_HALO_FULL);
+  do_test_source_destination(LB_HALO_REDUCED);
 
-  distribution_halo_set_complete();
-  test_velocity();
-  test_source_destination();
-
-  info("Full halo ok\n");
-
-  info("Repeat with reduced halos...\n");
-
-  distribution_halo_set_reduced();
-  test_velocity();
-  test_source_destination();
-
-  info("Propagation ok\n");
-
-  distribution_finish();
+  info("PASS     ./unit/test_prop\n");
+  coords_finish();
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  test_velocity
+ *  do_test_velocity
  *
  *  Check each distribution ends up with the same velocity index.
  *  This relies on the halo exchange working properly.
  *
  *****************************************************************************/
 
-void test_velocity() {
+int do_test_velocity(lb_halo_enum_t halo) {
 
-  int n_local[3];
+  int nlocal[3];
   int ic, jc, kc, index, p;
-  int nd, ndist;
+  int nd;
+  int nvel;
+  int ndist = 2;
   double f_actual;
 
-  coords_nlocal(n_local);
-  ndist = distribution_ndist();
+  lb_t * lb = NULL;
+
+  lb_create(&lb);
+  assert(lb);
+
+  lb_ndist_set(lb, ndist);
+  lb_init(lb);
+  lb_halo_set(lb, halo);
+  lb_nvel(lb, &nvel);
+
+  coords_nlocal(nlocal);
 
   /* Set test values */
 
-  for (ic = 1; ic <= n_local[X]; ic++) {
-    for (jc = 1; jc <= n_local[Y]; jc++) {
-      for (kc = 1; kc <= n_local[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
-	    distribution_f_set(index, p, nd, 1.0*(p + nd));
+	  for (p = 0; p < nvel; p++) {
+	    lb_f_set(lb, index, p, nd, 1.0*(p + nd));
 	  }
 	}
 
@@ -95,34 +97,35 @@ void test_velocity() {
     }
   }
 
-  distribution_halo();
-  propagation();
+  lb_halo(lb);
+  lb_propagation(lb);
 
   /* Test */
 
-  for (ic = 1; ic <= n_local[X]; ic++) {
-    for (jc = 1; jc <= n_local[Y]; jc++) {
-      for (kc = 1; kc <= n_local[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
-	    f_actual = distribution_f(index, p, nd);
-	    test_assert(fabs(f_actual - 1.0*(p + nd)) < TEST_DOUBLE_TOLERANCE);
+	  for (p = 0; p < nvel; p++) {
+	    lb_f(lb, index, p, nd, &f_actual);
+	    assert(fabs(f_actual - 1.0*(p + nd)) < DBL_EPSILON);
 	  }
 	}
-
       }
     }
   }
 
-  return;
+  lb_free(lb);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  test_source_destination
+ *  do_test_source_destination
  *
  *  Check each element of the distribution has propagated exactly one
  *  lattice spacing in the appropriate direction.
@@ -131,23 +134,33 @@ void test_velocity() {
  *  
  *****************************************************************************/
 
-void test_source_destination() {
+int do_test_source_destination(lb_halo_enum_t halo) {
 
-  int n_local[3], offset[3];
+  int nlocal[3], offset[3];
   int ic, jc, kc, index, p;
-  int nd, ndist;
+  int nd;
+  int ndist = 2;
+  int nvel;
   int isource, jsource, ksource;
   double f_actual, f_expect;
 
-  coords_nlocal(n_local);
+  lb_t * lb = NULL;
+
+  lb_create(&lb);
+  assert(lb);
+  lb_ndist_set(lb, ndist);
+  lb_init(lb);
+  lb_halo_set(lb, halo);
+  lb_nvel(lb, &nvel);
+
+  coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
-  ndist = distribution_ndist();
 
   /* Set test values */
 
-  for (ic = 1; ic <= n_local[X]; ic++) {
-    for (jc = 1; jc <= n_local[Y]; jc++) {
-      for (kc = 1; kc <= n_local[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
@@ -155,8 +168,8 @@ void test_source_destination() {
 	  (offset[Z] + kc);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
-	    distribution_f_set(index, p, nd, f_actual);
+	  for (p = 0; p < nvel; p++) {
+	    lb_f_set(lb, index, p, nd, f_actual);
 	  }
 	}
 
@@ -164,19 +177,19 @@ void test_source_destination() {
     }
   }
 
-  distribution_halo();
-  propagation();
+  lb_halo(lb);
+  lb_propagation(lb);
 
   /* Test */
 
-  for (ic = 1; ic <= n_local[X]; ic++) {
-    for (jc = 1; jc <= n_local[Y]; jc++) {
-      for (kc = 1; kc <= n_local[Z]; kc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
+	  for (p = 0; p < nvel; p++) {
 	    isource = offset[X] + ic - cv[p][X];
 	    if (isource == 0) isource += N_total(X);
 	    if (isource == N_total(X) + 1) isource = 1;
@@ -188,12 +201,12 @@ void test_source_destination() {
 	    if (ksource == N_total(Z) + 1) ksource = 1;
 
 	    f_expect = L(Y)*L(Z)*isource + L(Z)*jsource + ksource;
-	    f_actual = distribution_f(index, p, nd);
+	    lb_f(lb, index, p, nd, &f_actual);
 
 	    /* In case of d2q9, propagation is only for kc = 1 */
 	    if (NDIM == 2 && kc > 1) f_actual = f_expect;
 
-	    test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	    assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 	  }
 	}
 
@@ -201,7 +214,8 @@ void test_source_destination() {
       }
     }
   }
-  
 
-  return;
+  lb_free(lb);
+
+  return 0;
 }

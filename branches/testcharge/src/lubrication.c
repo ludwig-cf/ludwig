@@ -82,6 +82,7 @@ int lubrication_compute(colloids_info_t * cinfo, void * self) {
   int di[2], dj[2], dk[2];
   int ncell[3];
 
+  double ran[2];  /* Random numbers for fluctuation dissipation correction */
   double r12[3];
   double f[3];
 
@@ -114,8 +115,10 @@ int lubrication_compute(colloids_info_t * cinfo, void * self) {
                   if (pc1->s.index >= pc2->s.index) continue;
 
                   coords_minimum_distance(pc1->s.r, pc2->s.r, r12);
+		  util_ranlcg_reap_gaussian(&pc1->s.rng, ran);
+
 		  lubrication_single(obj, pc1->s.ah, pc2->s.ah, pc1->s.v,
-				     pc2->s.v, r12, f);
+				     pc2->s.v, r12, ran, f);
 
 		  pc1->force[X] += f[X];
 		  pc1->force[Y] += f[Y];
@@ -222,13 +225,11 @@ int lubrication_rchmax(lubr_t * obj, double * rchmax) {
  *  random component depends on the "temperature", and is just
  *  added to the lubrication contribution.
  *
- *  TODO: the f-d random numbers are not decomposition independent.
- *
  *****************************************************************************/
 
 int lubrication_single(lubr_t * lubr, double a1, double a2,
 		       const double u1[3], const double u2[3],
-		       const double r12[3], double f[3]) {
+		       const double r12[3], const double ran[2], double f[3]) {
   int ia;
   double h;        /* Separation */
   double hr;       /* Reduced separation */
@@ -259,7 +260,7 @@ int lubrication_single(lubr_t * lubr, double a1, double a2,
     fmod = -6.0*pi_*eta*a1*a1*a2*a2*(rhr - rrc)/((a1 + a1)*(a2 + a2));
 
     /* Fluctuation/dissipation contribution */
-    fmod += ran_parallel_gaussian()*sqrt(-2.0*kt*fmod);
+    fmod += ran[0]*sqrt(-2.0*kt*fmod);
 
     rh = 1.0/h;
     rdotdu = 0.0;
@@ -287,6 +288,8 @@ int lubrication_single(lubr_t * lubr, double a1, double a2,
 
     fmod = -(24.0/15.0)*pi_*eta*a1*a2*(2.0*a1*a1 + a1*a2 + 2.0*a2*a2)
       *(log(rh) - log(rrc)) / ((a1+a2)*(a1+a2)*(a1+a2));
+
+    fmod += ran[1]*sqrt(-2.0*kt*fmod);
 
     rh = 1.0/h;
     rdotdu = 0.0;

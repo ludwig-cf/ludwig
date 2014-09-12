@@ -20,34 +20,17 @@
 #include "coords.h"
 #include "colloids_halo.h"
 #include "pair_ss_cut.h"
+#include "tests.h"
 
 #define PAIR_EPSILON 0.001
 #define PAIR_SIGMA   0.8
 #define PAIR_NU      2
 #define PAIR_HC      0.25
 
-int test_pair_ss_cut_suite(void);
-int test_pair_ss_cut1(void);
-int test_pair_ss_cut2(void);
-int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
-		      pair_ss_cut_t * pair);
-
-/*****************************************************************************
- *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
-
-  test_pair_ss_cut_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
+static int test_pair_ss_cut1(void);
+static int test_pair_ss_cut2(void);
+static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
+			     pair_ss_cut_t * pair);
 
 /*****************************************************************************
  *
@@ -57,12 +40,13 @@ int main(int argc, char ** argv) {
 
 int test_pair_ss_cut_suite(void) {
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
 
   test_pair_ss_cut1();
   test_pair_ss_cut2();
 
+  info("PASS     ./unit/test_pair_ss_cut\n");
   coords_finish();
   pe_finalise();
 
@@ -75,7 +59,7 @@ int test_pair_ss_cut_suite(void) {
  *
  *****************************************************************************/
 
-int test_pair_ss_cut1(void) {
+static int test_pair_ss_cut1(void) {
 
   pair_ss_cut_t * pair = NULL;
   double h, f, v;
@@ -106,7 +90,7 @@ int test_pair_ss_cut1(void) {
  *
  *****************************************************************************/
 
-int test_pair_ss_cut2(void) {
+static int test_pair_ss_cut2(void) {
 
   int ncell[3] = {2, 2, 2};
 
@@ -142,8 +126,8 @@ int test_pair_ss_cut2(void) {
  *
  *****************************************************************************/
 
-int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
-		      pair_ss_cut_t * pair) {
+static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
+			     pair_ss_cut_t * pair) {
 
   int nc;
   double a0 = 2.3;

@@ -2,12 +2,12 @@
  *
  *  test_fe_electro_symm.c
  *
- *  $Id$
+ *  Electrokinetic + symetric free energy
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2013)
+ *  (c) 2013-2014 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -22,28 +22,28 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "fe_electro_symmetric.h"
+#include "tests.h"
 
 static int do_test1(void);
 
 /*****************************************************************************
  *
- *  main
+ *  test_fe_electro_symm_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_fe_electro_symm_suite(void) {
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
   coords_nhalo_set(2);
   coords_init();
   le_init();
 
   do_test1();
 
+  info("PASS     ./unit/test_fe_electro_symm\n");
   coords_finish();
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }

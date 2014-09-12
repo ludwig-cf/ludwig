@@ -6,13 +6,11 @@
  *  the coordinate transformations required by the Lees Edwards
  *  sliding periodic boundaries.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -33,6 +31,8 @@ static void le_init_tables(void);
 
 static struct le_parameters {
   /* Global parameters */
+  int    period;            /* for oscillatory */
+  int    nt0;               /* time0 (input as integer) */
   double uy_plane;          /* u[Y] for all planes */
   double dx_min;            /* Position first plane */
   double dx_sep;            /* Plane separation */
@@ -69,8 +69,6 @@ void le_init() {
 
   int n;
   int ntotal;
-  int period;
-  int time_zero;
 
   /* initialise the state from input */
 
@@ -79,25 +77,25 @@ void le_init() {
 
   n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
 
-  n = RUN_get_int_parameter("LE_oscillation_period", &period);
+  n = RUN_get_int_parameter("LE_oscillation_period", &le_params_.period);
 
-  if (n == 1 && period > 0) {
+  if (n == 1 && le_params_.period > 0) {
     le_type_ = OSCILLATORY;
-    le_params_.omega = 2.0*4.0*atan(1.0)/period;
+    le_params_.omega = 2.0*4.0*atan(1.0)/le_params_.period;
   }
 
   /* The time offset is taken from LE_time_offset which is an integer, but
    * store in le_params as a double (below). */
 
-  time_zero = 0;
-  n = RUN_get_int_parameter("LE_time_offset", &time_zero);
+  le_params_.nt0 = 0;
+  n = RUN_get_int_parameter("LE_time_offset", &le_params_.nt0);
 
   initialised_ = 1;
   ntotal = le_get_nplane_total();
 
   if (le_get_nplane_total() != 0) {
 
-    info("\nLees-Edwards boundary conditions are active:\n");
+    /*info("\nLees-Edwards boundary conditions are active:\n");*/
 
     if (N_total(X) % ntotal) {
       info("System size x-direction: %d\n", N_total(X));
@@ -107,7 +105,7 @@ void le_init() {
 
     le_params_.dx_sep = L(X) / ntotal;
     le_params_.dx_min = 0.5*le_params_.dx_sep;
-
+    /*
     for (n = 0; n < ntotal; n++) {
       info("LE plane %d is at x = %d with speed %f\n", n+1,
 	   (int)(le_params_.dx_min + n*le_params_.dx_sep),
@@ -121,10 +119,10 @@ void le_init() {
       info("Oscillation period: %d time steps\n", period);
       info("Maximum shear rate = %f\n", le_shear_rate());
     }
-
-    le_params_.time0 = 1.0*time_zero;
-    info("\n");
-    info("Lees-Edwards time offset (time steps): %8d\n", time_zero);
+    */
+    le_params_.time0 = 1.0*le_params_.nt0;
+    /*info("\n");
+      info("Lees-Edwards time offset (time steps): %8d\n", time_zero);*/
   }
 
   le_checks();
@@ -151,7 +149,50 @@ void le_finish() {
   le_type_ = LINEAR;
   initialised_ = 0;
 
+  le_params_.index_buffer_to_real = NULL;
+  le_params_.index_real_to_buffer = NULL;
+  le_params_.buffer_duy = NULL;
+
   return;
+}
+
+/*****************************************************************************
+ *
+ *  le_info
+ *
+ *  A human-readable summary of Lees Edwards information.
+ *
+ *****************************************************************************/
+
+int le_info(void) {
+
+  int n, ntotal;
+
+  ntotal = le_get_nplane_total();
+
+  if (ntotal != 0) {
+
+    info("\nLees-Edwards boundary conditions are active:\n");
+
+    for (n = 0; n < ntotal; n++) {
+      info("LE plane %d is at x = %d with speed %f\n", n+1,
+	   (int)(le_params_.dx_min + n*le_params_.dx_sep),
+	   le_plane_uy_max());
+    }
+
+    if (le_type_ == LINEAR) {
+      info("Overall shear rate = %f\n", le_shear_rate());
+    }
+    else {
+      info("Oscillation period: %d time steps\n", le_params_.period);
+      info("Maximum shear rate = %f\n", le_shear_rate());
+    }
+
+    info("\n");
+    info("Lees-Edwards time offset (time steps): %8d\n", le_params_.nt0);
+  }
+
+  return 0;
 }
 
 /*****************************************************************************

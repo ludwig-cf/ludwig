@@ -185,7 +185,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 		map_t * map, colloids_info_t * cinfo) {
 
   int ic, jc, kc;
-  int n, nk;
+  int nk;
   int nlocal[3];
   int index;
 
@@ -194,7 +194,6 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
   double flocal[4] = {0.0, 0.0, 0.0, 0.0};
   double fsum[4];
   double e0[3], elocal[3];
-  double grad_rho[3];
   double kt;
 
   colloid_t * pc = NULL;
@@ -406,21 +405,18 @@ int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids
 
   int ic, jc, kc;
   int index, index_nb;
-  int index1, index2;
   int status, status_nb;
   int ia, ib;
   int nlocal[3];
 
   double force[3];
-  double pth[3][3], pth_nb[3][3];
-  double pth1[3][3], pth2[3][3];
+  double pth_nb[3][3];
 
   colloid_t * pc = NULL;
   void (* chemical_stress)(const int index, double s[3][3]);
 
   int p;
-  int coords[3], coords_nb[3], coords1[3], coords2[3];
-  double aux; 
+  int coords[3], coords_nb[3];
 
   assert(psi);
   assert(cinfo);
@@ -525,23 +521,20 @@ int psi_force_is_divergence(int * flag) {
 int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids_info_t * cinfo) {
 
   int ic, jc, kc;
-  int index, index_nb;
-  int index1, index2;
+  int index, index_nb, index1, index2;
   int status, status_nb;
   int ia, ib;
   int nlocal[3];
+  int p;
+  int coords[3], coords_nb[3], coords1[3], coords2[3];
 
   double force[3];
-  double pth[3][3], pth_nb[3][3];
   double pth1[3][3], pth2[3][3];
+  double pth[3][3], pth_nb[3][3];
 
   colloid_t * pc = NULL;
   void (* chemical_stress)   (const int index, double s[3][3]);
   void (* chemical_stress_ex)(const int index, double s[3][3]);
-
-  int p;
-  int coords[3], coords_nb[3], coords1[3], coords2[3];
-  double aux; 
 
   assert(psi);
   assert(cinfo);
@@ -599,10 +592,10 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 
           if (status == MAP_FLUID && status_nb != MAP_FLUID) {
 
-	    // Current site r 
+	    /* Current site r */
 	    chemical_stress(index, pth);
 
-	    // Site r - cv
+	    /* Site r - cv */
 	    coords1[X] = coords[X] - psi_gr_cv[p][X];
 	    coords1[Y] = coords[Y] - psi_gr_cv[p][Y];
 	    coords1[Z] = coords[Z] - psi_gr_cv[p][Z];
@@ -619,7 +612,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 	      force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * pth1[ia][Z] * psi_gr_cv[p][Z];
 	    }
 
-	    // Site r - 2*cv
+	    /* Site r - 2*cv */
 	    coords2[X] = coords[X] - 2*psi_gr_cv[p][X];
 	    coords2[Y] = coords[Y] - 2*psi_gr_cv[p][Y];
 	    coords2[Z] = coords[Z] - 2*psi_gr_cv[p][Z];
@@ -628,7 +621,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 
 	    chemical_stress(index2, pth2);
 
-	   /* Use one-sided derivative instead */
+	    /* Use one-sided derivative instead */
 	    for (ia = 0; ia < 3; ia++) {
 	      for (ib = 0; ib < 3; ib++) {
 		force[ia] -= psi_gr_wv[p] * psi_gr_rcs2 * 
@@ -659,5 +652,3 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 
   return 0;
 }
-
-

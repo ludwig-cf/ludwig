@@ -1,12 +1,16 @@
 ###############################################################################
 #
 #  Makefile
+#
 #  Unit tests for Ludwig (Serial and MPI)
 #
-#  make do_tests            compiles and runs all tests in serial
-#  make do_tests_mpi        compiles and runs all tests on NPROCS processors
+#  The targets follow those in the src directory and the appropriate
+#  model library must be available. In addition:
 #
-#  Compilers etc will depend on your platform
+#  make run-serial
+#  make run-mpi
+#
+#  with compile and run the tests (MPI using NPROCS set below)
 #
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
@@ -20,14 +24,14 @@
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
-CC     = gcc -g
+CC     = gcc
 MPICC  = mpicc
 MPIRUN = mpirun -np
 NPROCS = 8
 
 SRC     = ../../src
 INCLUDE = -I$(SRC)
-CFLAGS  = -Wall
+CFLAGS  = -g -O2 -Wall
 
 MPI_STUB_INCLUDE = -I../../mpi_s
 MPI_STUB_LIB = -L../../mpi_s -lmpi
@@ -61,32 +65,55 @@ TESTOBJECTS = ${TESTSOURCES:.c=.o}
 #  Rules
 #------------------------------------------------------------------------------
 
-base: $(TESTOBJECTS) tests.o test_coords_field.o
-	test_sources='$(TESTS)'; \
-	for file in $$test_sources; \
-	do $(CC) $$file.o -o $$file tests.o test_coords_field.o \
-	-L$(SRC) -lludwig $(CLIBS); \
-	done
+base-me: $(TESTOBJECTS) tests.o test_coords_field.o
+	$(CC) $(LB) -L$(SRC) $(TESTOBJECTS) tests.o test_coords_field.o \
+        -L$(SRC) -lludwig $(CLIBS)
 
-tests:	
-	$(MAKE) base "INCLUDE = $(INCLUDE) $(MPI_STUB_INCLUDE)" \
+serial:
+	$(MAKE) serial-d3q19
+
+serial-d2q9:
+	$(MAKE) serial-test "LB=-D_D2Q9_"
+serial-d3q15:
+	$(MAKE) serial-test "LB=-D_D3Q15_"
+serial-d3q19:
+	$(MAKE) serial-test "LB=-D_D3Q19_"
+
+serial-d2q9r:	serial-d2q9
+serial-d3q15r:	serial-d3q15
+serial-d3q19r:	serial-d3q19
+
+serial-test:	
+	$(MAKE) base-me "INCLUDE = $(INCLUDE) $(MPI_STUB_INCLUDE)" \
 	"CLIBS=$(CLIBS) $(MPI_STUB_LIB) $(LBLIBS)"
 
-tests_mpi:
-	$(MAKE) base "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS)"
+mpi:	
+	$(MAKE) mpi-d3q19
+
+mpi-d2q9:
+	$(MAKE) mpi-test "LB=-D_D2Q9_"
+mpi-d3q15:
+	$(MAKE) mpi-test "LB=-D_D3Q15_"
+mpi-d3q19:
+	$(MAKE) mpi-test "LB=-D_D3Q19_"
+
+mpi-d2q9r:	mpi-d2q9
+mpi-d3q15r:	mpi-d3q15
+mpi-d3q19r:	mpi-d3q19
+
+mpi-test:
+	$(MAKE) base-me "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS)"
 
 
-do_tests: tests
-	checks='$(TESTS)'; \
-	for file in $$checks; do ./$$file; done
+run-serial: serial
+	./a.out
 
-do_tests_mpi: tests_mpi
-	checks='$(TESTS)'; \
-	for file in $$checks; do $(MPIRUN) $(NPROCS) ./$$file; echo; done
+run-mpi: mpi
+	$(MPIRUN) $(NPROCS) ./a.out
 
 
 clean:
-	$(RM) core *.o $(TESTS)
+	$(RM) core *.o a.out
 
 #------------------------------------------------------------------------------
 # Other dependencies
@@ -102,5 +129,5 @@ tests.o:	Makefile
 .SUFFIXES: .c .o
 
 .c.o:
-	$(CC) $(OPTS) $(CFLAGS) $(INCLUDE) -c $*.c
+	$(CC) $(LB) $(OPTS) $(CFLAGS) $(INCLUDE) -c $*.c
 

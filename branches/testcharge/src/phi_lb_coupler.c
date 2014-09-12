@@ -3,15 +3,13 @@
  *  phi_lb_coupler.c
  *
  *  In cases where the order parameter is via "full LB", this couples
- *  the scalar order parameter phi_site[] to the distributions.
- *
- *  $Id: phi_lb_coupler.c,v 1.3 2010-10-15 12:40:03 kevin Exp $
+ *  the scalar order parameter field to the 'g' distribution.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2014 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -28,7 +26,7 @@
  *
  *****************************************************************************/
 
-int phi_lb_to_field(field_t * phi) {
+int phi_lb_to_field(field_t * phi, lb_t  *lb) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -36,7 +34,7 @@ int phi_lb_to_field(field_t * phi) {
   double phi0;
 
   assert(phi);
-  assert(distribution_ndist() == 2);
+  assert(lb);
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -45,7 +43,7 @@ int phi_lb_to_field(field_t * phi) {
 
 	index = coords_index(ic, jc, kc);
 
-	phi0 = distribution_zeroth_moment(index, 1);
+	lb_0th_moment(lb, index, 1, &phi0);
 	field_scalar_set(phi, index, phi0);
 
       }
@@ -65,7 +63,7 @@ int phi_lb_to_field(field_t * phi) {
  *
  *****************************************************************************/
 
-int phi_lb_from_field(field_t * phi) {
+int phi_lb_from_field(field_t * phi, lb_t * lb) {
 
   int p;
   int ic, jc, kc, index;
@@ -74,7 +72,7 @@ int phi_lb_from_field(field_t * phi) {
   double phi0;
 
   assert(phi);
-  assert(distribution_ndist() == 2);
+  assert(lb);
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -85,9 +83,9 @@ int phi_lb_from_field(field_t * phi) {
 
 	field_scalar(phi, index, &phi0);
 
-	distribution_f_set(index, 0, 1, phi0);
+	lb_f_set(lb, index, 0, 1, phi0);
 	for (p = 1; p < NVEL; p++) {
-	  distribution_f_set(index, p, 1, 0.0);
+	  lb_f_set(lb, index, p, 1, 0.0);
 	}
 
       }

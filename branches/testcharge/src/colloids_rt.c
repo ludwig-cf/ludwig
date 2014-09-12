@@ -146,7 +146,6 @@ int colloids_init_rt(colloids_info_t ** pinfo, colloid_io_t ** pcio,
   colloids_halo_state(*pinfo);
 
   colloids_rt_dynamics(*pinfo, map);
-
   colloids_rt_gravity(*pinfo);
   info("\n");
   
@@ -374,6 +373,10 @@ int colloids_rt_state_stub(colloids_info_t * cinfo, const char * stub,
   if (strcmp(value, "subgrid") == 0) state->type = COLLOID_TYPE_SUBGRID;
   if (nrt) info(format_s1, stub, value);
 
+  sprintf(key, "%s_%s", stub, "rng");
+  nrt = RUN_get_int_parameter(key, &state->rng);
+  if (nrt) info(format_i1, key, state->rng);
+
   sprintf(key, "%s_%s", stub, "a0");
   nrt = RUN_get_double_parameter(key, &state->a0);
   if (nrt) info(format_e1, key, state->a0);
@@ -469,7 +472,6 @@ int colloids_rt_gravity(colloids_info_t * cinfo) {
 
   if (nc) {
     colloids_info_rho0_set(cinfo, rho0);
-    info("Sedimentation force on:       yes\n");
     info("Colloid density:             %14.7e\n", rho0);    
   }
 

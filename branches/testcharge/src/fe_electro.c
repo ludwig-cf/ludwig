@@ -24,8 +24,6 @@
  *  Faraday Discussions \textbf{14}, 223--243 (2010).
  *
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -77,6 +75,7 @@ int fe_electro_create(psi_t * psi) {
   fe->psi = psi;
   physics_ref(&fe->param);
 
+  fe_create();
   fe_density_set(fe_electro_fed);
   fe_chemical_potential_set(fe_electro_mu);
   fe_chemical_stress_set(fe_electro_stress_ex);
@@ -179,9 +178,10 @@ double fe_electro_mu(const int index, const int n) {
  *
  *  fe_electro_stress
  *
- *  The stress is S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2) + d_ab kt sum_k rho_k
+ *  The stress is
+ *    S_ab = -epsilon ( E_a E_b - (1/2) d_ab E^2) + d_ab kt sum_k rho_k
  *  where epsilon is the (uniform) permittivity.
- *
+ *
  *  The last term is the ideal gas contribution which is excluded in the 
  *  excess stress tensor.
  *
@@ -242,13 +242,11 @@ void fe_electro_stress(const int index, double s[3][3]) {
 
 void fe_electro_stress_ex(const int index, double s[3][3]) {
 
-  int ia, ib, in;
+  int ia, ib;
   double epsilon;    /* Permittivity */
   double e[3];       /* Electric field */
   double e2;         /* Magnitude squared */
   double e0[3];      /* External field */
-  double rho;
-  double kt;
 
   assert(fe);
 

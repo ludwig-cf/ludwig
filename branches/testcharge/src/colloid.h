@@ -4,13 +4,11 @@
  *
  *  The implementation is exposed for the time being.
  *
- *  $Id: colloid.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,15 +17,15 @@
 
 /* Tag to describe I/O format version appearing in files */
 
+enum colloid_io_version {COLLOID_IO_VERSION = 0200};
 typedef enum colloid_io_version colloid_io_version_t;
-enum colloid_io_version {COLLOID_IO_VERSION = 122};
 
 /* These describe the padding etc, and are really for internal
  * unit test consumption. The total number of variables is
  * useful to know to check the ASCII read/write. */
 
 #define NTOT_VAR (32+48)
-#define NPAD_INT  21
+#define NPAD_INT  20
 #define NPAD_DBL  16
 #define NBOND_MAX  2
 
@@ -55,6 +53,8 @@ struct colloid_state_type {
 
   int type;             /* Particle type */
   int bond[NBOND_MAX];  /* Bonded neighbours ids (index) */
+
+  int rng;              /* Random number state */
 
   int intpad[NPAD_INT]; /* I'm going to pad to 32 ints to allow for future
 			 * expansion. Additions should be appended here,

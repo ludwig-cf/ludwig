@@ -31,4 +31,7 @@ int  is_fed_output_step(void);
 int  is_shear_measurement_step(void);
 int  is_shear_output_step(void);
 
+int control_freq_set(int freq);
+int control_time_set(int it);
+
 #endif

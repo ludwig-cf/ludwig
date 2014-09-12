@@ -2,13 +2,12 @@
  *
  *  distribution_rt.c
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -21,32 +20,31 @@
 #include "util.h"
 #include "runtime.h"
 #include "coords.h"
-#include "model.h"
 #include "io_harness.h"
 #include "distribution_rt.h"
 
-static void distribution_rt_2d_kelvin_helmholtz(void);
-static void distribution_rt_2d_shear_wave(void);
-static int distribution_init_uniform(double rho0, const double u0[3]);
-static int distribution_init_poiseuille(double rho0, const double umax[3]);
+static int lb_rt_2d_kelvin_helmholtz(lb_t * lb);
+static int lb_rt_2d_shear_wave(lb_t * lb);
+static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]);
+static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]);
 
 /*****************************************************************************
  *
- *  distribution_run_time
+ *  lb_run_time
  *
  *****************************************************************************/
 
-void distribution_run_time(void) {
+int lb_run_time(lb_t * lb) {
 
+  int ndist;
   int nreduced;
   int io_grid[3] = {1, 1, 1};
   char string[FILENAME_MAX];
   char memory = ' '; 
 
-  io_info_t * io_info;
+  io_info_t * io_info = NULL;
 
-  RUN_get_string_parameter("free_energy", string, FILENAME_MAX);
-  if (strcmp(string, "symmetric_lb") == 0) distribution_ndist_set(2);
+  assert(lb);
 
   nreduced = 0;
   RUN_get_string_parameter("reduced_halo", string, FILENAME_MAX);
@@ -54,13 +52,14 @@ void distribution_run_time(void) {
 
   RUN_get_int_parameter_vector("distribution_io_grid", io_grid);
   io_info = io_info_create_with_grid(io_grid);
-  distribution_io_info_set(io_info);
+  lb_io_info_set(lb, io_info);
 
   RUN_get_string_parameter("distribution_io_format_input", string,
 			   FILENAME_MAX);
 
   /* Append R to the record if the model is the reverse implementation */ 
-  if (distribution_order() == MODEL_R) memory = 'R';
+  if (lb_order(lb) == MODEL_R) memory = 'R';
+  lb_ndist(lb, &ndist);
 
   info("\n");
   info("Lattice Boltzmann distributions\n");
@@ -68,7 +67,7 @@ void distribution_run_time(void) {
 
   info("Model:            d%dq%d %c\n", NDIM, NVEL, memory);
   info("SIMD vector len:  %d\n", SIMDVL);
-  info("Number of sets:   %d\n", distribution_ndist());
+  info("Number of sets:   %d\n", ndist);
   info("Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
 
   if (strcmp("BINARY_SERIAL", string) == 0) {
@@ -82,51 +81,52 @@ void distribution_run_time(void) {
   info("Output format:    binary\n");
   info("I/O grid:         %d %d %d\n", io_grid[0], io_grid[1], io_grid[2]);
 
-  distribution_init();
+  lb_init(lb);
 
-  io_write_metadata("dist", distribution_io_info());
-  if (nreduced == 1) distribution_halo_set_reduced();
+  io_info_metadata_filestub_set(io_info, "dist");
+  if (nreduced == 1) lb_halo_set(lb, LB_HALO_REDUCED);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  distribution_rt_initial_conditions
+ *  lb_rt_initial_conditions
  *
  *****************************************************************************/
 
-int distribution_rt_initial_conditions(physics_t * phys) {
+int lb_rt_initial_conditions(lb_t * lb, physics_t * phys) {
 
   char key[FILENAME_MAX];
   double rho0;
   double u0[3] = {0.0, 0.0, 0.0};
 
+  assert(lb);
   assert(phys);
   physics_rho0(&rho0);
 
   /* Default */
 
-  distribution_init_f(rho0);
+  lb_init_rest_f(lb, rho0);
 
   RUN_get_string_parameter("distribution_initialisation", key, FILENAME_MAX);
 
   if (strcmp("2d_kelvin_helmholtz", key) == 0) {
-    distribution_rt_2d_kelvin_helmholtz();
+    lb_rt_2d_kelvin_helmholtz(lb);
   }
 
   if (strcmp("2d_shear_wave", key) == 0) {
-    distribution_rt_2d_shear_wave();
+    lb_rt_2d_shear_wave(lb);
   }
 
   if (strcmp("3d_uniform_u", key) == 0) {
     RUN_get_double_parameter_vector("distribution_uniform_u", u0);
-    distribution_init_uniform(rho0, u0);
+    lb_init_uniform(lb, rho0, u0);
   }
 
   if (strcmp("1d_poiseuille", key) == 0) {
     RUN_get_double_parameter_vector("distribution_poiseuille_umax", u0);
-    distribution_init_poiseuille(rho0, u0);
+    lb_init_poiseuille(lb, rho0, u0);
   }
 
   return 0;
@@ -134,7 +134,7 @@ int distribution_rt_initial_conditions(physics_t * phys) {
 
 /*****************************************************************************
  *
- *  distribution_rt_2d_kelvin_helmholtz
+ *  lb_rt_2d_kelvin_helmholtz
  *
  *  A test problem put forward by Brown and Minion
  *  J. Comp. Phys. \textbf{122} 165--183 (1995)
@@ -160,7 +160,7 @@ int distribution_rt_initial_conditions(physics_t * phys) {
  *
  *****************************************************************************/
 
-static void distribution_rt_2d_kelvin_helmholtz(void) {
+static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -174,6 +174,7 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
 
   double x, y;
 
+  assert(lb);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -190,7 +191,7 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-        distribution_rho_u_set_equilibrium(index, rho, u);
+        lb_1st_moment_equilib_set(lb, index, rho, u);
       }
     }
   }
@@ -202,12 +203,12 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
   info("Perturbation delta:   %14.7e\n", delta);
   info("\n");
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  distribution_rt_2d_shear_wave
+ *  lb_rt_2d_shear_wave
  *
  *  The system in (x, y) is scaled to 0 <= x,y < 1 and then
  *
@@ -218,7 +219,7 @@ static void distribution_rt_2d_kelvin_helmholtz(void) {
  *
  *****************************************************************************/
 
-static void distribution_rt_2d_shear_wave(void) {
+static int lb_rt_2d_shear_wave(lb_t * lb) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -231,6 +232,7 @@ static void distribution_rt_2d_shear_wave(void) {
 
   double y;
 
+  assert(lb);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -247,7 +249,7 @@ static void distribution_rt_2d_shear_wave(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-        distribution_rho_u_set_equilibrium(index, rho, u);
+        lb_1st_moment_equilib_set(lb, index, rho, u);
       }
     }
   }
@@ -258,22 +260,23 @@ static void distribution_rt_2d_shear_wave(void) {
   info("Shear layer kappa:    %14.7e\n", kappa);
   info("\n");
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  distribution_init_uniform
+ *  lb_init_uniform
  *
  *  Set the initial distribution consistent with fixed (rho_0, u_0).
  *
  *****************************************************************************/
 
-static int distribution_init_uniform(double rho0, const double u0[3]) {
+static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
 
+  assert(lb);
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -281,7 +284,7 @@ static int distribution_init_uniform(double rho0, const double u0[3]) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	distribution_rho_u_set_equilibrium(index, rho0, u0);
+	lb_1st_moment_equilib_set(lb, index, rho0, u0);
 
       }
     }
@@ -298,7 +301,7 @@ static int distribution_init_uniform(double rho0, const double u0[3]) {
 
 /*****************************************************************************
  *
- *  distribution_init_poiseuille
+ *  lb_init_poiseuille
  *
  *  A 1-d Poiseuille parabolic profile based on, e.g.,
  *    u(x) ~ umax[X] x (Lx - x)
@@ -307,7 +310,7 @@ static int distribution_init_uniform(double rho0, const double u0[3]) {
  *
  *****************************************************************************/
 
-static int distribution_init_poiseuille(double rho0, const double umax[3]) {
+static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -316,6 +319,7 @@ static int distribution_init_poiseuille(double rho0, const double umax[3]) {
   double u0[3];
   double x, y, z;
 
+  assert(lb);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -338,7 +342,7 @@ static int distribution_init_poiseuille(double rho0, const double umax[3]) {
 	u0[Z] = umax[Z]*z*(L(Z) - z)*4.0/(L(Z)*L(Z));
 
 	index = coords_index(ic, jc, kc);
-	distribution_rho_u_set_equilibrium(index, rho0, u0);
+	lb_1st_moment_equilib_set(lb, index, rho0, u0);
 
       }
     }

@@ -116,17 +116,17 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      8.792      8.792      8.792   8.792128 (1 call)
-      Time step loop:      0.208      0.220      8.569   0.214229 (40 calls)
-         Propagation:      0.010      0.011      0.424   0.010612 (40 calls)
-           Collision:      0.178      0.188      7.329   0.183228 (40 calls)
-       Lattice halos:      0.001      0.002      0.118   0.001478 (80 calls)
+               Total:      8.779      8.779      8.779   8.778708 (1 call)
+      Time step loop:      0.211      0.230      8.556   0.213899 (40 calls)
+         Propagation:      0.010      0.011      0.424   0.010599 (40 calls)
+           Collision:      0.180      0.198      7.313   0.182821 (40 calls)
+       Lattice halos:      0.001      0.002      0.119   0.001485 (80 calls)
        phi gradients:      0.000      0.000      0.000   0.000001 (40 calls)
-              Forces:      0.000      0.000      0.004   0.000100 (40 calls)
-             Rebuild:      0.007      0.009      0.304   0.007606 (40 calls)
-                 BBL:      0.003      0.004      0.140   0.003499 (40 calls)
-      Particle halos:      0.000      0.001      0.021   0.000518 (40 calls)
+              Forces:      0.000      0.000      0.004   0.000098 (40 calls)
+             Rebuild:      0.007      0.009      0.305   0.007623 (40 calls)
+                 BBL:      0.003      0.004      0.143   0.003577 (40 calls)
+      Particle halos:      0.000      0.001      0.021   0.000516 (40 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (40 calls)
-          phi update:      0.000      0.000      0.000   0.000001 (40 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (40 calls)
                Free1:      0.000      0.000      0.000   0.000001 (80 calls)
 Ludwig finished normally.

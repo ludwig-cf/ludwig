@@ -22,7 +22,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2007-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -52,9 +52,12 @@ struct io_decomposition_t {
 struct io_info_s {
   struct io_decomposition_t * io_comm;
   size_t bytesize;
+  int metadata_written;
   int processor_independent;
   int single_file_read;
+  char metadata_stub[FILENAME_MAX];
   char name[FILENAME_MAX];
+
   int (* write_function)   (FILE *, const int, const int, const int);
   int (* read_function)    (FILE *, const int, const int, const int);
   int (* write_function_a) (FILE *, const int, const int, const int);
@@ -157,157 +160,6 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
   MPI_Comm_size(p->comm, &p->size);
 
   return p;
-}
-
-/*****************************************************************************
- *
- *  io_write
- *
- *  This is the driver to write lattice quantities on the lattice.
- *  The arguments are the filename stub and the io_info struct
- *  describing which quantity we are dealing with.
- *
- *  All writes are processor decomposition dependent at the moment.
- *
- *****************************************************************************/
-
-void io_write(char * filename_stub, io_info_t * io_info) {
-
-  FILE *    fp_state;
-  char      filename_io[FILENAME_MAX];
-  int       token = 0;
-  int       ic, jc, kc;
-  int       nlocal[3];
-  const int io_tag = 140;
-
-  MPI_Status status;
-
-  assert(io_info);
-  assert(io_info->write_function);
-
-  coords_nlocal(nlocal);
-  io_set_group_filename(filename_io, filename_stub, io_info);
-
-  if (io_info->io_comm->rank == 0) {
-    /* Open the file anew */
-    fp_state = fopen(filename_io, "wb");
-  }
-  else {
-
-    /* Non-io-root process. Block until we receive the token from the
-     * previous process, after which we can re-open the file and write
-     * our own data. */
-
-    MPI_Recv(&token, 1, MPI_INT, io_info->io_comm->rank - 1, io_tag,
-	     io_info->io_comm->comm, &status);
-    fp_state = fopen(filename_io, "ab");
-  }
-
-  if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	io_info->write_function(fp_state, ic, jc, kc);
-      }
-    }
-  }
-
-  /* Check the error indicator on the stream and close */
-
-  if (ferror(fp_state)) {
-    perror("perror: ");
-    fatal("File error on writing %s\n", filename_io);
-  }
-  fclose(fp_state);
-
-  /* Pass the token to the next process to write */
-
-  if (io_info->io_comm->rank < io_info->io_comm->size - 1) {
-    MPI_Ssend(&token, 1, MPI_INT, io_info->io_comm->rank + 1, io_tag,
-	      io_info->io_comm->comm);
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  io_read
- *
- *  Driver for reads. Comments as for io_write.
- *
- *****************************************************************************/
-
-void io_read(char * filename_stub, io_info_t * io_info) {
-
-  FILE *    fp_state;
-  char      filename_io[FILENAME_MAX];
-  long int  token = 0;
-  int       ic, jc, kc;
-  int       nlocal[3];
-  long int  offset;
-  const int io_tag = 141;
-
-  MPI_Status status;
-
-  assert(io_info);
-  assert(io_info->read_function);
-
-  coords_nlocal(nlocal);
-
-  io_set_group_filename(filename_io, filename_stub, io_info);
-
-  if (io_info->io_comm->rank == 0) {
-
-    fp_state = fopen(filename_io, "r");
-  }
-  else {
-
-    /* Non-io-root process. Block until we receive the token from the
-     * previous process, after which we can re-open the file and read. */
-
-    MPI_Recv(&token, 1, MPI_LONG, io_info->io_comm->rank - 1, io_tag,
-	     io_info->io_comm->comm, &status);
-    fp_state = fopen(filename_io, "r");
-  }
-
-  if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
-  fseek(fp_state, token, SEEK_SET);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-
-      /* Work out where the read comes from if required */
-      offset = io_file_offset(ic, jc, io_info);
-      if (io_info->processor_independent) fseek(fp_state, offset, SEEK_SET);
-
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	io_info->read_function(fp_state, ic, jc, kc);
-      }
-    }
-  }
-
-  /* The token is the current offset for processor-dependent output */
-
-  token = ftell(fp_state);
-
-  /* Check the error indicator on the stream and close */
-
-  if (ferror(fp_state)) {
-    perror("perror: ");
-    fatal("File error on reading %s\n", filename_io);
-  }
-  fclose(fp_state);
-
-  /* Pass the token to the next process to read */
-
-  if (io_info->io_comm->rank < io_info->io_comm->size - 1) {
-    MPI_Ssend(&token, 1, MPI_LONG, io_info->io_comm->rank + 1, io_tag,
-	      io_info->io_comm->comm);
-  }
-
-  return;
 }
 
 /*****************************************************************************
@@ -438,97 +290,6 @@ void io_info_set_read(io_info_t * p,
 
 /*****************************************************************************
  *
- *  io_info_set_write_ascii
- *
- *****************************************************************************/
-
-void io_info_set_write_ascii(io_info_t * p,
-			     int (* writer) (FILE *, int, int, int)) {
-
-  assert(p);
-  p->write_function_a = writer;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  io_info_set_read_ascii
- *
- *****************************************************************************/
-
-void io_info_set_read_ascii(io_info_t * p,
-			    int (* reader) (FILE *, int, int, int)) {
-
-  assert(p);
-  p->read_function_a = reader;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  io_info_set_write_binary
- *
- *****************************************************************************/
-
-void io_info_set_write_binary(io_info_t * p,
-			      int (* writer) (FILE *, int, int, int)) {
-
-  assert(p);
-  p->write_function_b = writer;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  io_info_set_read_binary
- *
- *****************************************************************************/
-
-void io_info_set_read_binary(io_info_t * p,
-			     int (* reader) (FILE *, int, int, int)) {
-  assert(p);
-  p->read_function_b = reader;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  io_info_set_format_ascii
- *
- *****************************************************************************/
-
-void io_info_set_format_ascii(io_info_t * p) {
-
-  assert(p);
-  assert(p->processor_independent == 0);
-
-  p->read_function = p->read_function_a;
-  p->write_function = p->write_function_a;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  io_info_set_format_binary
- *
- *****************************************************************************/
-
-void io_info_set_format_binary(io_info_t * p) {
-
-  assert(p);
-  p->read_function = p->read_function_b;
-  p->write_function = p->write_function_b;
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  io_info_set_name
  *
  *****************************************************************************/
@@ -627,12 +388,27 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
  *
  *  io_write_metadata
  *
+ *****************************************************************************/
+
+int io_write_metadata(io_info_t * info) {
+
+  assert(info);
+
+  io_write_metadata_file(info, info->metadata_stub);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_write_metadata_file
+ *
  *  This describes, in human-readable form, the contents of the set
  *  of 1 or more files produced by a call to io_write.
  *
  *****************************************************************************/
 
-void io_write_metadata(char * filename_stub, io_info_t * info) {
+int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   FILE * fp_meta;
   char filename_io[FILENAME_MAX];
@@ -657,7 +433,7 @@ void io_write_metadata(char * filename_stub, io_info_t * info) {
   io_set_group_filename(filename, filename_stub, info);
   sprintf(filename_io, "%s%s.meta", subdirectory, filename);
 
-  if(info->io_comm->rank == 0) {
+  if (info->io_comm->rank == 0) {
     /* Write the information stub */
 
     nx = info->io_comm->ngroup[X];
@@ -713,7 +489,9 @@ void io_write_metadata(char * filename_stub, io_info_t * info) {
 	     info->io_comm->comm);
  }
 
-  return;
+ info->metadata_written = 1;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -928,6 +706,8 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
   assert(data);
   assert(obj->write_data);
 
+  if (obj->metadata_written == 0) io_write_metadata(obj);
+
   coords_nlocal(nlocal);
   io_set_group_filename(filename_io, filename_stub, obj);
 
@@ -1069,4 +849,21 @@ void io_info_single_file_set(io_info_t * info) {
   info->single_file_read = 1;
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_metadata_filestub_set
+ *
+ *****************************************************************************/
+
+int io_info_metadata_filestub_set(io_info_t * info, char * stub) {
+
+  assert(info);
+  assert(stub);
+  assert(strlen(stub) < FILENAME_MAX);
+
+  strncpy(info->metadata_stub, stub, FILENAME_MAX);
+
+  return 0;
 }

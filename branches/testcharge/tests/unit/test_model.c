@@ -4,16 +4,16 @@
  *
  *  Unit test for the currently compiled model (D3Q15 or D3Q19).
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2010)
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -25,17 +25,23 @@
 
 static void test_model_constants(void);
 static void test_model_velocity_set(void);
-static void test_model_distributions(void);
-static void test_model_halo_swap(void);
-static void test_model_reduced_halo_swap(void);
+
+int do_test_model_distributions(void);
+int do_test_model_halo_swap(void);
+int do_test_model_reduced_halo_swap(void);
+int do_test_lb_model_io(void);
 static  int test_model_is_domain(const int ic, const int jc, const int kc);
 
-int main(int argc, char ** argv) {
+/*****************************************************************************
+ *
+ *  test_model_suite
+ *
+ *****************************************************************************/
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+int test_model_suite(void) {
 
-  info("Testing D%1dQ%d\n", NDIM, NVEL);
+  pe_init_quiet();
+  coords_init();
 
   /* Test model structure (coordinate-independent stuff) */
 
@@ -44,17 +50,14 @@ int main(int argc, char ** argv) {
 
   /* Now test actual distributions */
 
-  coords_init();
+  do_test_model_distributions();
+  do_test_model_halo_swap();
+  do_test_model_reduced_halo_swap();
+  do_test_lb_model_io();
 
-  test_model_distributions();
-  test_model_halo_swap();
-  test_model_reduced_halo_swap();
-
-  info("\nModel tests passed ok.\n\n");
-
+  info("PASS     ./unit/test_model\n");
   coords_finish();
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
@@ -104,7 +107,7 @@ static void test_model_constants(void) {
     }
   }
 
-  info("Model constants ok.\n");
+  /* info("Model constants ok.\n"); */
 
   return;
 }
@@ -124,22 +127,24 @@ static void test_model_velocity_set(void) {
   double dij;
   double sum, sumx, sumy, sumz;
 
+  /*
   info("Checking velocities cv etc...\n\n");
 
   info("The number of dimensions appears to be NDIM = %d\n", NDIM);
   info("The model appears to have NVEL = %d\n", NVEL);
   info("Number of hydrodynamic modes: %d\n", 1 + NDIM + NDIM*(NDIM+1)/2);
+  */
+
   test_assert(NHYDRO == (1 + NDIM + NDIM*(NDIM+1)/2));
 
   /* Speed of sound */
 
-  info("The speed of sound is 1/3... ");
+  /* info("The speed of sound is 1/3... ");*/
   test_assert(fabs(rcs2 - 3.0) < TEST_DOUBLE_TOLERANCE);
-  info("ok\n");
 
   /* Kronecker delta */
 
-  info("Checking Kronecker delta d_ij...");
+  /* info("Checking Kronecker delta d_ij...");*/
 
   for (i = 0; i < NDIM; i++) {
     for (j = 0; j < NDIM; j++) {
@@ -151,18 +156,14 @@ static void test_model_velocity_set(void) {
       }
     }
   }
-  info("ok\n");
 
-  info("Checking cv[0][X] = 0 etc...");
+  /* info("Checking cv[0][X] = 0 etc...");*/
 
   test_assert(cv[0][X] == 0);
   test_assert(cv[0][Y] == 0);
   test_assert(cv[0][Z] == 0);
 
-  info("ok\n");
-
-
-  info("Checking cv[p][X] = -cv[NVEL-p][X] (p != 0) etc...");
+  /* info("Checking cv[p][X] = -cv[NVEL-p][X] (p != 0) etc..."); */
 
   for (p = 1; p < NVEL; p++) {
     test_assert(cv[p][X] == -cv[NVEL-p][X]);
@@ -170,11 +171,9 @@ static void test_model_velocity_set(void) {
     test_assert(cv[p][Z] == -cv[NVEL-p][Z]);
   }
 
-  info("ok\n");
-
   /* Sum of quadrature weights, velcoities */
 
-  info("Checking sum of wv[p]... ");
+  /* info("Checking sum of wv[p]... ");*/
 
   sum = 0.0; sumx = 0.0; sumy = 0.0; sumz = 0.0;
 
@@ -186,20 +185,16 @@ static void test_model_velocity_set(void) {
   }
 
   test_assert(fabs(sum - 1.0) < TEST_DOUBLE_TOLERANCE);
-  info("ok\n"); 
-  info("Checking sum of wv[p]*cv[p][X]... ");
+  /* info("Checking sum of wv[p]*cv[p][X]... "); */
   test_assert(fabs(sumx) < TEST_DOUBLE_TOLERANCE);
-  info("ok\n");
-  info("Checking sum of wv[p]*cv[p][Y]... ");
+  /* info("Checking sum of wv[p]*cv[p][Y]... "); */
   test_assert(fabs(sumy) < TEST_DOUBLE_TOLERANCE);
-  info("ok\n");
-  info("Checking sum of wv[p]*cv[p][Z]... ");
+  /* info("Checking sum of wv[p]*cv[p][Z]... "); */
   test_assert(fabs(sumz) < TEST_DOUBLE_TOLERANCE);
-  info("ok\n");
 
   /* Quadratic terms = cs^2 d_ij */
 
-  info("Checking wv[p]*cv[p][i]*cv[p][j]...");
+  /* info("Checking wv[p]*cv[p][i]*cv[p][j]...");*/
 
   for (i = 0; i < NDIM; i++) {
     for (j = 0; j < NDIM; j++) {
@@ -210,12 +205,8 @@ static void test_model_velocity_set(void) {
       test_assert(fabs(sum - d_[i][j]/rcs2) < TEST_DOUBLE_TOLERANCE);
     }
   }
-  info("ok\n");
 
-
-  /* Check q_ */
-
-  info("Checking q_[p][i][j] = cv[p][i]*cv[p][j] - c_s^2*d_[i][j]...");
+  /* info("Checking q_[p][i][j] = cv[p][i]*cv[p][j] - c_s^2*d_[i][j]...");*/
 
   for (p = 0; p < NVEL; p++) {
     for (i = 0; i < NDIM; i++) {
@@ -226,10 +217,7 @@ static void test_model_velocity_set(void) {
     }
   }
 
-  info("ok\n");
-
-
-  info("Checking wv[p]*q_[p][i][j]...");
+  /* info("Checking wv[p]*q_[p][i][j]...");*/
 
   for (i = 0; i < NDIM; i++) {
     for (j = 0; j < NDIM; j++) {
@@ -240,9 +228,8 @@ static void test_model_velocity_set(void) {
       test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);
     }
   }
-  info("ok\n");
 
-  info("Checking wv[p]*cv[p][i]*q_[p][j][k]...");
+  /* info("Checking wv[p]*cv[p][i]*q_[p][j][k]...");*/
 
   for (i = 0; i < NDIM; i++) {
     for (j = 0; j < NDIM; j++) {
@@ -255,10 +242,9 @@ static void test_model_velocity_set(void) {
       }
     }
   }
-  info("ok\n");
 
   /* No actual test here yet. Requires a theoretical answer. */
-  info("Checking d_[i][j]*q_[p][i][j]...");
+  /* info("Checking d_[i][j]*q_[p][i][j]...");*/
 
   for (p = 0; p < NVEL; p++) {
     sum = 0.0;
@@ -270,10 +256,8 @@ static void test_model_velocity_set(void) {
     /* test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);*/
     /* info("p = %d sum = %f\n", p, sum);*/
   }
-  info("ok\n");
 
-
-  info("Check ma_ against rho, cv ... ");
+  /* info("Check ma_ against rho, cv ... ");*/
 
   for (p = 0; p < NVEL; p++) {
     test_assert(fabs(ma_[0][p] - 1.0) < TEST_DOUBLE_TOLERANCE);
@@ -282,9 +266,7 @@ static void test_model_velocity_set(void) {
     }
   }
 
-  info("ok\n");
-
-  info("Check ma_ against q_ ...");
+  /* info("Check ma_ against q_ ...");*/
 
   for (p = 0; p < NVEL; p++) {
     k = 0;
@@ -294,19 +276,9 @@ static void test_model_velocity_set(void) {
 		    < TEST_DOUBLE_TOLERANCE);
       }
     }
-    /*
-    test_assert(fabs(ma_[4][p] - q_[p][X][X]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[5][p] - q_[p][X][Y]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[6][p] - q_[p][X][Z]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[7][p] - q_[p][Y][Y]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[8][p] - q_[p][Y][Z]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(ma_[9][p] - q_[p][Z][Z]) < TEST_DOUBLE_TOLERANCE);
-    */
   }
 
-  info("ok\n");
-
-  info("Checking normalisers norm_[i]*wv[p]*ma_[i][p]*ma_[j][p] = dij... ");
+  /* info("Checking normalisers norm_[i]*wv[p]*ma_[i][p]*ma_[j][p] = dij.");*/
 
   for (i = 0; i < NVEL; i++) {
     for (j = 0; j < NVEL; j++) {
@@ -318,9 +290,8 @@ static void test_model_velocity_set(void) {
       test_assert(fabs(sum - dij) < TEST_DOUBLE_TOLERANCE);
     }
   }
-  info("ok\n");
 
-  info("Checking ma_[i][p]*mi_[p][j] = dij ... ");
+  /* info("Checking ma_[i][p]*mi_[p][j] = dij ... ");*/
 
   for (i = 0; i < NVEL; i++) {
     for (j = 0; j < NVEL; j++) {
@@ -332,103 +303,97 @@ static void test_model_velocity_set(void) {
       test_assert(fabs(sum - dij) < TEST_DOUBLE_TOLERANCE);
     }
   }
-  info("ok\n");
 
   return;
 }
 
 /*****************************************************************************
  *
- *  test_model_distributions
+ *  do_test_model_distributions
  *
  *  Test the distribution interface.
  *
  *****************************************************************************/
 
-static void test_model_distributions(void) {
+int do_test_model_distributions(void) {
 
   int i, n, p;
-  int index;
-  int ndist;
+  int index = 1;
+  int ndist = 2;
   double fvalue, fvalue_expected;
-  double u[NDIM];
+  double u[3];
+
+  lb_t * lb;
 
   /* Tests of the basic distribution functions. */
 
-  info("\n\n\nDistribution functions:\n");
-  info("Allocate lattice sites...\n");
+  lb_create(&lb);
+  assert(lb);
+  lb_ndist(lb, &n);
+  assert(n == 1); /* Default */
 
-  distribution_init();
-  index = 0;
-
-  info("Allocated 1 site\n");
+  lb_ndist_set(lb, ndist);
+  lb_init(lb);
 
   /* Report the number of distributions */
 
-  ndist = distribution_ndist();
-
-  info("Number of distributions: %d\n", ndist);
-  test_assert(ndist == 1);
+  lb_ndist(lb, &n);
+  test_assert(n == ndist);
 
   for (n = 0; n < ndist; n++) {
-
-    info("\n");
-    info("Distribution %2d\n\n", n);
-
-    info("Check individual distributions... ");
-
     for (p = 0; p < NVEL; p++) {
-      fvalue_expected = 1.0*n + wv[p];
-      distribution_f_set(index, p, n, fvalue_expected);
-      fvalue = distribution_f(index, p, n);
-      test_assert(fabs(fvalue - fvalue_expected) < TEST_DOUBLE_TOLERANCE);
+      fvalue_expected = 0.01*n + wv[p];
+      lb_f_set(lb, index, p, n, fvalue_expected);
+      lb_f(lb, index, p, n, &fvalue);
+      assert(fabs(fvalue - fvalue_expected) < DBL_EPSILON);
     }
-    info("ok\n");
 
-    info("Check zeroth moment... ");
+    /* info("Check zeroth moment... ");*/
 
-    fvalue_expected = 1.0*n*NVEL + 1.0;
-    fvalue = distribution_zeroth_moment(index, n);
-    test_assert(fabs(fvalue - fvalue_expected) < TEST_DOUBLE_TOLERANCE);
-    info("ok\n");
+    fvalue_expected = 0.01*n*NVEL + 1.0;
+    lb_0th_moment(lb, index, (lb_dist_enum_t) n, &fvalue);
+    assert(fabs(fvalue - fvalue_expected) <= DBL_EPSILON);
 
-    info("Check first moment... ");
+    /* info("Check first moment... ");*/
 
-    distribution_first_moment(index, n, u);
+    lb_1st_moment(lb, index, n, u);
+
     for (i = 0; i < NDIM; i++) {
-      test_assert(fabs(u[i] - 0.0) < TEST_DOUBLE_TOLERANCE);
+      assert(fabs(u[i] - 0.0) < DBL_EPSILON);
     }
-    info("ok\n");
   }
 
-  distribution_finish();
+  /* info("passed 1st lb check\n");*/
+  lb_free(lb);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  test_model_halo_swap
+ *  do_test_model_halo_swap
  *
  *  Test full halo swap.
  *
  *****************************************************************************/
 
-static void test_model_halo_swap() {
+int do_test_model_halo_swap() {
 
   int i, j, k, p;
-  int n, ndist;
+  int n, ndist = 2;
   int index, nlocal[3];
   const int nextra = 1;  /* Distribution halo width always 1 */
   double f_expect;
   double f_actual;
 
-  info("\nHalo swap (full distributions)...\n\n");
+  lb_t * lb = NULL;
 
-  distribution_init();
-  distribution_halo_set_complete();
+  lb_create(&lb);
+  assert(lb);
+  lb_ndist_set(lb, ndist);
+  lb_init(lb);
+
   coords_nlocal(nlocal);
-  ndist = distribution_ndist();
 
   /* The test relies on a uniform decomposition in parallel:
    *
@@ -444,19 +409,19 @@ static void test_model_halo_swap() {
 	index = coords_index(i, j, k);
 
 	for (n = 0; n < ndist; n++) {
-	  distribution_f_set(index, X, n, (double) (i));
-	  distribution_f_set(index, Y, n, (double) (j));
-	  distribution_f_set(index, Z, n, (double) (k));
+	  lb_f_set(lb, index, X, n, (double) (i));
+	  lb_f_set(lb, index, Y, n, (double) (j));
+	  lb_f_set(lb, index, Z, n, (double) (k));
 
 	  for (p = 3; p < NVEL; p++) {
-	    distribution_f_set(index, p, n, (double) p);
+	    lb_f_set(lb, index, p, n, (double) p);
 	  }
 	}
       }
     }
   }
 
-  distribution_halo();
+  lb_halo(lb);
 
   /* Test all the sites not in the interior */
 
@@ -472,54 +437,59 @@ static void test_model_halo_swap() {
 	for (n = 0; n < ndist; n++) {
 
 	  f_expect = fabs(i - nlocal[X]);
-	  f_actual = distribution_f(index, X, n);
-	  test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	  lb_f(lb, index, X, n, &f_actual);
+	  assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 
 	  f_expect = fabs(j - nlocal[Y]);
-	  f_actual = distribution_f(index, Y, n);
-	  test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	  lb_f(lb, index, Y, n, &f_actual);
+	  assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 
 	  f_expect = fabs(k - nlocal[Z]);
-	  f_actual = distribution_f(index, Z, n);
-	  test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	  lb_f(lb, index, Z, n, &f_actual);
+	  assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 
 	  for (p = 3; p < NVEL; p++) {
-	    f_actual = distribution_f(index, p, n);
+	    lb_f(lb, index, p, n, &f_actual);
 	    f_expect = (double) p;
-	    test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	    assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 	  }
 	}
       }
     }
   }
 
-  info("Halo swap ok\n");
-  distribution_finish();
+  /* info("lb check halo swap\n");*/
+  lb_free(lb);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  test_model_reduced_halo_swap
+ *  do_test_model_reduced_halo_swap
  *
  *****************************************************************************/
 
-static void test_model_reduced_halo_swap() {  
+int do_test_model_reduced_halo_swap(void) {  
 
   int i, j, k, p;
   int icdt, jcdt, kcdt;
   int index, nlocal[3];
-  int n, ndist;
+  int n, ndist = 2;
   const int nextra = 1;
 
   double f_expect;
   double f_actual;
 
-  info("\nHalo swap (reduced)...\n\n");
+  lb_t * lb = NULL;
 
-  distribution_init();
-  distribution_halo_set_reduced();
+  lb_create(&lb);
+  assert(lb);
+  lb_ndist_set(lb, ndist);
+  lb_init(lb);
+  lb_halo_set(lb, LB_HALO_REDUCED);
+
   coords_nlocal(nlocal);
-  ndist = distribution_ndist();
 
   /* Set everything which is NOT in a halo */
 
@@ -530,14 +500,14 @@ static void test_model_reduced_halo_swap() {
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
 	    f_expect = 1.0*(n*NVEL + p);
-	    distribution_f_set(index, p, n, f_expect);
+	    lb_f_set(lb, index, p, n, f_expect);
 	  }
 	}
       }
     }
   }
 
-  distribution_halo();
+  lb_halo(lb);
 
   /* Now check that the interior sites are unchanged */
 
@@ -547,9 +517,9 @@ static void test_model_reduced_halo_swap() {
 	index = coords_index(i, j, k);
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
-	    f_actual = distribution_f(index, p, n);
+	    lb_f(lb, index, p, n, &f_actual);
 	    f_expect = 1.0*(n*NVEL +  p);
-	    test_assert(fabs(f_expect - f_actual) < TEST_DOUBLE_TOLERANCE);
+	    assert(fabs(f_expect - f_actual) < DBL_EPSILON);
 	  }
 	}
       }
@@ -572,7 +542,7 @@ static void test_model_reduced_halo_swap() {
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
 
-	    f_actual = distribution_f(index, p, n);
+	    lb_f(lb, index, p, n, &f_actual);
 	    f_expect = 1.0*(n*NVEL + p);
 
 	    icdt = i + cv[p][X];
@@ -580,7 +550,7 @@ static void test_model_reduced_halo_swap() {
 	    kcdt = k + cv[p][Z];
 
 	    if (test_model_is_domain(icdt, jcdt, kcdt)) {
-	      test_assert(fabs(f_actual - f_expect) < TEST_DOUBLE_TOLERANCE);
+	      assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 	    }
 	  }
 	}
@@ -590,10 +560,10 @@ static void test_model_reduced_halo_swap() {
     }
   }
 
-  info("Reduced halo swapping... ok");
-  distribution_finish();
+  /* info("lb check reduced\n");*/
+  lb_free(lb);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -619,4 +589,37 @@ static int test_model_is_domain(const int ic, const int jc, const int kc) {
   if (kc > nlocal[Z]) iam = 0;
 
   return iam;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_lb_model_io
+ *
+ *****************************************************************************/
+
+int do_test_lb_model_io(void) {
+
+  int ndist = 2;
+  lb_t * lbrd = NULL;
+  lb_t * lbwr = NULL;
+
+  lb_create_ndist(ndist, &lbrd);
+  lb_create_ndist(ndist, &lbwr);
+
+  lb_init(lbwr);
+  lb_init(lbrd);
+  /* lb_io_info_set(lbwr, info);*/
+
+  /* Write */
+
+  /* test_lb_model_write1(lbwr);*/
+
+  /* Read */
+
+  /* Compare */
+
+  lb_free(lbwr);
+  lb_free(lbrd);
+
+  return 0;
 }

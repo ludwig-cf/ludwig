@@ -4,13 +4,11 @@
  *
  *  Test of the various sum routines.
  *
- *  $Id: test_colloid_sums.c,v 1.2 2010-11-02 17:51:22 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -37,23 +35,20 @@ static int test_colloid_sums_conservation(void);
 
 /*****************************************************************************
  *
- *  main
+ *  test_colloid_sums_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_colloid_sums_suite(void) {
 
-  MPI_Init(&argc, &argv);
-  pe_init();
-  info("Checking colloid sum messages\n");
+  pe_init_quiet();
 
   test_colloid_sums_1d();
   test_colloid_sums_move();
   test_colloid_sums_conservation();
 
-  info("Tests complete\n");
+  info("PASS     ./unit/test_colloid_sums\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }

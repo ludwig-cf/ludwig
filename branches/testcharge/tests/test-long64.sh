@@ -1,43 +1,103 @@
+###############################################################################
+#
+#  Even longer parallel regression tests for 64 MPI tasks
+#
+#  Edinburgh Soft Matter and Statistical Physics Group and
+#  Edinburgh Parallel Computing Centre
+#
+#  (c) 2014 The University of Edinburgh
+#  Kevin Stratford (kevin@epcc.ed.ac.uk)
+#
+###############################################################################
 #!/bin/bash
 
-###############################################################################
-#
-# Even longer parallel regression tests
-# All run on 64 MPI tasks
-#
-###############################################################################
-
 DIR_TST=`pwd`
+DIR_MPI=`pwd`/../mpi_s
 DIR_SRC=`pwd`/../src
 DIR_REG=`pwd`/regression
+DIR_UNT=`pwd`/unit
 
-cd $DIR_SRC
-make clean
-make mpi
+MPIRUN=mpirun
+NPROCS=64
 
-cd $DIR_REG
+if [ $# -lt 2 ]
+then
+    echo "Usage: $0 -r [d2q9 | d3q15 | ...] test-stub"
+    exit -1
+fi
 
-for f in ./long64*inp
-do
+##############################################################################
+#
+#  test_regr [d2q9 | ...] test-stub
+#
+##############################################################################
+
+function test_regr {
+
+  cd $DIR_MPI
+  make clean
+
+  cd $DIR_SRC
+  make clean
+  make mpi-$1
+
+  # Smoke tests
+  # The naming convention for the files is "test-stub-xxxx-xxx.inp"
+  # for the input and with extension ".log" for the reference
+  # output.
+
+  # We are going to run from the regression test directory
+  # for the appropriate argument
+
+  cd $DIR_REG/$1
+
+  for f in $2*inp
+  do
     input=$f
-    stub=`echo $f | sed 's/.inp//'`
+    stub=`echo $input | sed 's/.inp//'`
     echo
-    mpirun -np 64 $DIR_SRC/Ludwig.exe $f > $stub.new
+    $MPIRUN -np $NPROCS $DIR_SRC/Ludwig.exe $input > $stub.new
 
+    # Get difference via the difference script
     $DIR_TST/test-diff.sh $stub.new $stub.log
 
     if [ $? -ne 0 ]
-    then
-	echo "    FAIL $f"
+	then
+	echo "    FAIL ./$1/$f"
 	$DIR_TST/test-diff.sh -v $stub.log $stub.new
 	else
-	echo "PASS     $f"
+	echo "PASS     ./$1/$f"
     fi
+  done
+
+  # Clean up all directories and finish
+
+  cd $DIR_SRC
+  make clean
+
+  cd $DIR_MPI
+  make clean
+
+  cd $DIR_TST
+}
+
+
+# Run the regression tests
+
+run_regr=0
+
+while getopts ru opt
+do
+case "$opt" in
+    r)
+	    run_regr=1
+	    ;;
+esac
 done
 
-# Clean up all directories and finish
+shift $((OPTIND-1))
 
-cd $DIR_SRC
-make clean
-
-cd $DIR_TST
+if [ $run_regr -eq 1 ]
+then
+    test_regr $1 $2
+fi

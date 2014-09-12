@@ -8,13 +8,15 @@
  *  not u*(t-1) returned by le_get_displacement().
  *  This is for reasons of backwards compatability.
  *
- *  $Id$
+ *  Issue: a 'MODEL_R' implementation of communication is required
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    J.-C. Desplat and Ronojoy Adhikari worked on the reprojection method.
  * 
  *****************************************************************************/
 
@@ -26,17 +28,18 @@
 #include "timer.h"
 #include "coords.h"
 #include "control.h"
-#include "model.h"
+#include "lb_model_s.h"
 #include "physics.h"
 #include "leesedwards.h"
 
-static void le_reproject(void);
-static void le_displace_and_interpolate(void);
-static void le_displace_and_interpolate_parallel(void);
+
+static int le_reproject(lb_t * lb);
+static int le_displace_and_interpolate(lb_t * lb);
+static int le_displace_and_interpolate_parallel(lb_t * lb);
 
 /*****************************************************************************
  *
- *  model_le_apply_boundary_conditions
+ *  lb_le_apply_boundary_conditions
  *
  *  This is the driver to apply the LE conditions to the distributions
  *  (applied to the post-collision distributions). There are two
@@ -53,25 +56,28 @@ static void le_displace_and_interpolate_parallel(void);
  *
  *****************************************************************************/
 
-void model_le_apply_boundary_conditions(void) {
+int lb_le_apply_boundary_conditions(lb_t * lb) {
+
+  assert(lb);
 
   if (le_get_nplane_local() > 0) {
 
     TIMER_start(TIMER_LE);
+    if (lb_order(lb) != MODEL) fatal("LE planes must use MODEL order\n");
 
-    le_reproject();
+    le_reproject(lb);
 
     if (cart_size(Y) > 1) {
-      le_displace_and_interpolate_parallel();
+      le_displace_and_interpolate_parallel(lb);
     }
     else {
-      le_displace_and_interpolate();
+      le_displace_and_interpolate(lb);
     }
 
     TIMER_stop(TIMER_LE);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -94,7 +100,7 @@ void model_le_apply_boundary_conditions(void) {
  * 	    	  
  *****************************************************************************/
 
-static void le_reproject(void) {
+static int le_reproject(lb_t * lb) {
 
   int    ic, jc, kc, index;
   int    nplane, plane, side;
@@ -110,9 +116,10 @@ static void le_reproject(void) {
 
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
+  assert(lb);
   assert(CVXBLOCK == 1);
 
-  ndist  = distribution_ndist(); 
+  lb_ndist(lb, &ndist);
   nplane = le_get_nplane_local();
 
   t = 1.0*get_step();
@@ -147,8 +154,8 @@ static void le_reproject(void) {
 
 	    /* Compute 0th and 1st moments */
 
-	    rho = distribution_zeroth_moment(index, n);
-	    distribution_first_moment(index, n, g);
+	    lb_0th_moment(lb, index, n, &rho);
+	    lb_1st_moment(lb, index, n, g);
 
 	    for (ia = 0; ia < 3; ia++) {
 	      for (ib = 0; ib < 3; ib++) {
@@ -174,9 +181,9 @@ static void le_reproject(void) {
 
 	      /* Project all this back to the distribution. */
 
-	      fnew = distribution_f(index, p, n);
+	      lb_f(lb, index, p, n, &fnew);
 	      fnew += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
-	      distribution_f_set(index, p, n, fnew);
+	      lb_f_set(lb, index, p, n, fnew);
 	    }
 	  }
 	  /* next site */
@@ -185,7 +192,7 @@ static void le_reproject(void) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -198,7 +205,7 @@ static void le_reproject(void) {
  *
  *****************************************************************************/
 
-void le_displace_and_interpolate(void) {
+int le_displace_and_interpolate(lb_t * lb) {
 
   int    ic, jc, kc;
   int    index0, index1, i0, i1;
@@ -214,8 +221,6 @@ void le_displace_and_interpolate(void) {
   double t;
   double * recv_buff;
 
-  extern double * f_;
-
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   nplane = le_get_nplane_local();
@@ -227,7 +232,7 @@ void le_displace_and_interpolate(void) {
    * determined by the size of the local domain, and the number
    * of plane-crossing distributions. */
 
-  ndist = distribution_ndist();
+  lb_ndist(lb, &ndist);
   nprop = xblocklen_cv[0];
   ndata = ndist*nprop*nlocal[Y]*nlocal[Z];
   recv_buff = (double *) malloc(ndata*sizeof(double));
@@ -259,7 +264,7 @@ void le_displace_and_interpolate(void) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
 	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_fwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
-	    recv_buff[ndata++] = (1.0 - fr)*f_[i0 + p] + fr*f_[i1 + p];
+	    recv_buff[ndata++] = (1.0 - fr)*lb->f[i0 + p] + fr*lb->f[i1 + p];
 	  }
 	}
 	/* Next site */
@@ -277,7 +282,7 @@ void le_displace_and_interpolate(void) {
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
-	    f_[i0 + p] = recv_buff[ndata++];
+	    lb->f[i0 + p] = recv_buff[ndata++];
 	  }
 	}
 	/* Next site */
@@ -309,7 +314,7 @@ void le_displace_and_interpolate(void) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
 	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_bwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
-	    recv_buff[ndata++] = (1.0 - fr)*f_[i0 + p] + fr*f_[i1 + p];
+	    recv_buff[ndata++] = (1.0 - fr)*lb->f[i0 + p] + fr*lb->f[i1 + p];
 	  }
 	}
 	/* Next site */
@@ -327,7 +332,7 @@ void le_displace_and_interpolate(void) {
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
-	    f_[i0 + p] = recv_buff[ndata++];
+	    lb->f[i0 + p] = recv_buff[ndata++];
 	  }
 	}
       }
@@ -338,7 +343,7 @@ void le_displace_and_interpolate(void) {
 
   free(recv_buff);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -359,7 +364,7 @@ void le_displace_and_interpolate(void) {
  *
  *****************************************************************************/
 
-static void le_displace_and_interpolate_parallel() {
+static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
   int ic, jc, kc;
   int j1, j1mod;
@@ -389,8 +394,7 @@ static void le_displace_and_interpolate_parallel() {
   MPI_Request req[4];
   MPI_Status status[4];
 
-  extern double * f_;
-
+  assert(lb);
   assert(CVXBLOCK == 1);
 
   coords_nlocal(nlocal);
@@ -401,7 +405,7 @@ static void le_displace_and_interpolate_parallel() {
   comm = le_communicator();
 
   t = 1.0*get_step();
-  ndist = distribution_ndist();
+  lb_ndist(lb, &ndist);
   nprop = xblocklen_cv[0];
 
   ndata = ndist*nprop*nlocal[Y]*nlocal[Z];
@@ -453,7 +457,7 @@ static void le_displace_and_interpolate_parallel() {
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index + n*NVEL + xdisp_fwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
-	    send_buff[ndata++] = f_[i0 + p];
+	    send_buff[ndata++] = lb->f[i0 + p];
 	  }
 	}
 	/* Next site */
@@ -482,7 +486,7 @@ static void le_displace_and_interpolate_parallel() {
 	  ind1 = ind0 + n*nprop;
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
 	  for (p = 0; p < nprop; p++) {
-	    f_[i0 + p] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
+	    lb->f[i0 + p] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
 	  }
 	}
 	/* Next site */
@@ -535,7 +539,7 @@ static void le_displace_and_interpolate_parallel() {
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index + n*NVEL + xdisp_bwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
-	    send_buff[ndata++] = f_[i0 + p];
+	    send_buff[ndata++] = lb->f[i0 + p];
 	  }
 	}
 	/* Next site */
@@ -564,7 +568,7 @@ static void le_displace_and_interpolate_parallel() {
 	  ind1 = ind0 + n*nprop;
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
 	  for (p = 0; p < nprop; p++) {
-	    f_[i0 + p] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
+	    lb->f[i0 + p] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
 	  }
 	}
 	/* Next site */
@@ -578,7 +582,7 @@ static void le_displace_and_interpolate_parallel() {
   free(send_buff);
   free(recv_buff);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -590,13 +594,15 @@ static void le_displace_and_interpolate_parallel() {
  *
  *****************************************************************************/
 
-void model_le_init_shear_profile() {
+int lb_le_init_shear_profile(lb_t * lb) {
 
   int ic, jc, kc, index;
   int i, j, p;
-  int N[3];
+  int nlocal[3];
   double rho0, u[NDIM], gradu[NDIM][NDIM];
   double eta;
+
+  assert(lb);
 
   info("Initialising shear profile\n");
 
@@ -605,7 +611,7 @@ void model_le_init_shear_profile() {
   physics_rho0(&rho0);
   physics_eta_shear(&eta);
 
-  coords_nlocal(N);
+  coords_nlocal(nlocal);
 
   for (i = 0; i< NDIM; i++) {
     u[i] = 0.0;
@@ -618,14 +624,14 @@ void model_le_init_shear_profile() {
 
   /* Loop trough the sites */
 
-  for (ic = 1; ic <= N[X]; ic++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
       
     u[Y] = le_get_steady_uy(ic);
 
     /* We can now project the physical quantities to the distribution */
 
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
 
@@ -641,12 +647,12 @@ void model_le_init_shear_profile() {
 	    }
 	  }
 	  f = wv[p]*(rho0 + rcs2*rho0*cdotu + 0.5*rcs2*rcs2*sdotq);
-	  distribution_f_set(index, p, 0, f);
+	  lb_f_set(lb, index, p, 0, f);
 	}
 	/* Next site */
       }
     }
   }
 
-  return;
+  return 0;
 }

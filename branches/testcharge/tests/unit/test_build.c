@@ -4,6 +4,13 @@
  *
  *  Test colloid build process, and integrity of links.
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2013-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -15,30 +22,12 @@
 #include "coords.h"
 #include "colloids_halo.h"
 #include "colloid_sums.h"
-#include "model.h"
 #include "build.h"
+#include "tests.h"
 
-int test_build_suite(void);
 static int test_build_links_model_c1(double a0, double r0[3]);
 static int test_build_links_model_c2(double a0, double r0[3]);
 static int test_build_rebuild_c1(double a0, double r0[3]);
-
-/*****************************************************************************
- *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
-
-  test_build_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -52,14 +41,8 @@ int test_build_suite(void) {
   double r0[3];
   double delta = 1.0;        /* A small lattice offset */
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
-
-  /* Distributions should not be required, but build_update() sets
-   * 'internal velocity'; this should be split of as separate
-   * concern. */
-
-  distribution_init();
 
   a0 = 2.3;
   r0[X] = 0.5*L(X); r0[Y] = 0.5*L(Y); r0[Z] = 0.5*L(Z);
@@ -82,7 +65,7 @@ int test_build_suite(void) {
   /* Some known cases: place the colloid in the centre and test only
    * in serial, as there is no quick way to compute in parallel. */
 
-  distribution_finish();
+  info("PASS     ./unit/test_build\n");
   coords_finish();
   pe_finalise();
 

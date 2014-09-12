@@ -1,5 +1,3 @@
-#!/bin/bash
-
 ###############################################################################
 #
 #  test-diff.sh [options] file1 file2
@@ -27,11 +25,13 @@
 #  (c) 2013-2014 The University of Edinburgh
 #
 ###############################################################################
+#!/bin/bash
+
 
 # Slightly flaky. We assume location of tests to find the floating
 # point 'diff' script
 
-FPDIFF=../awk-fp-diff.sh
+FPDIFF=../../awk-fp-diff.sh
 TESTDIFF=test-diff.sh
 
 # Check input
@@ -57,14 +57,14 @@ fi
 
 if [ ! -e $1 ]; then
     if [ $is_verbose -eq 1 ]; then
-	echo "$TESTDIFF: File argument missing: $1"
+	echo "$TESTDIFF: $1: No such file or directory"
     fi
     exit -1
 fi
 
 if [ ! -e $2 ]; then
     if [ $is_verbose -eq 1 ]; then
-	echo "$TESTDIFF: File argument missing: $2"
+	echo "$TESTDIFF: $2: No such file or directory"
     fi
     exit -1
 fi

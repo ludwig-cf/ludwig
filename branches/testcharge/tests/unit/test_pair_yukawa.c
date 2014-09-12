@@ -20,33 +20,16 @@
 #include "coords.h"
 #include "colloids_halo.h"
 #include "pair_yukawa.h"
+#include "tests.h"
 
 #define PAIR_EPSILON 2.0
 #define PAIR_KAPPA   0.1
 #define PAIR_RC      10.0
 
-int test_pair_yukawa_suite(void);
 int test_pair_yukawa1(void);
 int test_pair_yukawa2(void);
 int test_pair_yukawa_config1(colloids_info_t * cinfo, interact_t * interact,
 			     pair_yukawa_t * pair);
-
-/*****************************************************************************
- *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
-
-  test_pair_yukawa_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -56,12 +39,13 @@ int main(int argc, char ** argv) {
 
 int test_pair_yukawa_suite(void) {
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
 
   test_pair_yukawa1();
   test_pair_yukawa2();
 
+  info("PASS     ./unit/test_pair_yakawa\n");
   coords_finish();
   pe_finalise();
 

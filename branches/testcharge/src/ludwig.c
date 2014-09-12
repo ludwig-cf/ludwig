@@ -115,6 +115,7 @@
 typedef struct ludwig_s ludwig_t;
 struct ludwig_s {
   physics_t * param;        /* Physical parameters */
+  lb_t * lb;                /* Lattice Botlzmann */
   hydro_t * hydro;          /* Hydrodynamic quantities */
   field_t * phi;            /* Scalar order parameter */
   field_t * p;              /* Vector order parameter */
@@ -175,7 +176,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   physics_init_rt(ludwig->param);
   physics_info(ludwig->param);
 
-  distribution_run_time();
+  lb_run_time(ludwig->lb);
   collision_run_time(ludwig->noise);
   map_init_rt(&ludwig->map);
 
@@ -219,7 +220,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Can we move this down to t = 0 initialisation? */
   if (ludwig->phi) {
     symmetric_rt_initial_conditions(ludwig->phi);
-    if (distribution_ndist() == 2) phi_lb_from_field(ludwig->phi);
+    lb_ndist(ludwig->lb, &n);
+    if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
   }
 
   /* To be called before wall_init() */
@@ -228,14 +230,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
     psi_init_rho_rt(ludwig->psi, ludwig->map);
   }
 
-  wall_init(ludwig->map);
-
+  wall_init(ludwig->lb, ludwig->map);
   colloids_init_rt(&ludwig->collinfo, &ludwig->cio, &ludwig->interact,
 		   ludwig->map);
   colloids_init_ewald_rt(ludwig->collinfo, &ludwig->ewald);
   colloids_q_cinfo_set(ludwig->collinfo);
 
-  bbl_create(&ludwig->bbl);
+  bbl_create(ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
 
   /* NOW INITIAL CONDITIONS */
@@ -244,10 +245,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (get_step() == 0) {
     n = 0;
-    distribution_rt_initial_conditions(ludwig->param);
-    RUN_get_int_parameter("LE_init_profile", &n);
+    lb_rt_initial_conditions(ludwig->lb, ludwig->param);
 
-    if (n != 0) model_le_init_shear_profile();
+    RUN_get_int_parameter("LE_init_profile", &n);
+    if (n != 0) lb_le_init_shear_profile(ludwig->lb);
   }
   else {
     /* Distributions */
@@ -256,7 +257,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
     info("Re-starting simulation at step %d with data read from "
 	 "config\nfile(s) %s\n", get_step(), filename);
 
-    io_read(filename, distribution_io_info());
+    lb_io_info(ludwig->lb, &iohandler);
+    io_read_data(iohandler, filename, ludwig->lb);
 
     /* Restart t != 0 for order parameter */
 
@@ -318,7 +320,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (get_step() == 0) {
     stats_sigma_init(ludwig->phi, nstat);
-    if (distribution_ndist() == 2) phi_lb_from_field(ludwig->phi); 
+    lb_ndist(ludwig->lb, &n);
+    if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
   }
 
   /* Initial Q_ab field required, apparently More GENERAL? */
@@ -380,10 +383,11 @@ void ludwig_run(const char * inputfile) {
   info("Initial conditions.\n");
   wall_pm(&is_porous_media);
 
-  stats_distribution_print(ludwig->map);
+  stats_distribution_print(ludwig->lb, ludwig->map);
 
-  if (distribution_ndist() == 2) {
-    phi_lb_to_field(ludwig->phi);
+  lb_ndist(ludwig->lb, &im);
+  if (im == 2) {
+    phi_lb_to_field(ludwig->phi, ludwig->lb);
     stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
   }
   else {
@@ -416,7 +420,9 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_PHI_GRADIENTS);
 
     /* if symmetric_lb store phi to field */
-    if (distribution_ndist() == 2) phi_lb_to_field(ludwig->phi);
+
+    lb_ndist(ludwig->lb, &im);
+    if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
 
     if (ludwig->phi) {
       field_halo(ludwig->phi);
@@ -503,7 +509,8 @@ void ludwig_run(const char * inputfile) {
 
     /* order parameter dynamics (not if symmetric_lb) */
 
-    if (distribution_ndist() == 2) {
+    lb_ndist(ludwig->lb, &im);
+    if (im == 2) {
       /* dynamics are dealt with at the collision stage (below) */
     }
     else {
@@ -550,15 +557,15 @@ void ludwig_run(const char * inputfile) {
       /* Collision stage */
 
       TIMER_start(TIMER_COLLIDE);
-      collide(ludwig->hydro, ludwig->map, ludwig->noise);
+      lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise);
       TIMER_stop(TIMER_COLLIDE);
 
       /* Boundary conditions */
 
-      model_le_apply_boundary_conditions();
+      lb_le_apply_boundary_conditions(ludwig->lb);
 
       TIMER_start(TIMER_HALO_LATTICE);
-      distribution_halo();
+      lb_halo(ludwig->lb);
       TIMER_stop(TIMER_HALO_LATTICE);
 
       /* Colloid bounce-back applied between collision and
@@ -569,9 +576,9 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	TIMER_start(TIMER_BBL);
-	wall_update();
-	bounce_back_on_links(ludwig->bbl, ludwig->collinfo);
-	wall_bounce_back(ludwig->map);
+	wall_set_wall_velocity(ludwig->lb);
+	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->collinfo);
+	wall_bounce_back(ludwig->lb, ludwig->map);
 	TIMER_stop(TIMER_BBL);
       }
     }
@@ -586,9 +593,7 @@ void ludwig_run(const char * inputfile) {
      * and propagation, as the halo regions are active */
 
     TIMER_start(TIMER_PROPAGATE);
-
-    propagation();
-
+    lb_propagation(ludwig->lb);
     TIMER_stop(TIMER_PROPAGATE);
 
     TIMER_stop(TIMER_STEPS);
@@ -598,7 +603,8 @@ void ludwig_run(const char * inputfile) {
     if (is_config_step()) {
       info("Writing distribution output at step %d!\n", step);
       sprintf(filename, "%sdist-%8.8d", subdirectory, step);
-      io_write(filename, distribution_io_info());
+      lb_io_info(ludwig->lb, &iohandler);
+      io_write_data(iohandler, filename, ludwig->lb);
     }
 
     /* is_measurement_step() is here to prevent 'breaking' old input
@@ -644,7 +650,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_shear_measurement_step()) {
-      stats_rheology_stress_profile_accumulate(ludwig->hydro);
+      stats_rheology_stress_profile_accumulate(ludwig->lb, ludwig->hydro);
     }
 
     if (is_shear_output_step()) {
@@ -664,16 +670,17 @@ void ludwig_run(const char * inputfile) {
       fed_io_info(&iohandler);
       info("Writing free energy density output at step %d!\n", step);
       sprintf(filename, "%sfed-%8.8d", subdirectory, step);
-      io_write(filename, iohandler);
+      io_write_data(iohandler, filename, NULL);
     }
 
     /* Print progress report */
 
     if (is_statistics_step()) {
-      stats_distribution_print(ludwig->map);
 
-      if (distribution_ndist() == 2) {
-	phi_lb_to_field(ludwig->phi);
+      stats_distribution_print(ludwig->lb, ludwig->map);
+      lb_ndist(ludwig->lb, &im);
+      if (im == 2) {
+	phi_lb_to_field(ludwig->phi, ludwig->lb);
 	stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
       }
       else {
@@ -699,7 +706,7 @@ void ludwig_run(const char * inputfile) {
 	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
       }
 
-      collision_stats_kt(ludwig->noise, ludwig->map);
+      lb_collision_stats_kt(ludwig->lb, ludwig->noise, ludwig->map);
 
       info("\nCompleted cycle %d\n", step);
     }
@@ -719,7 +726,8 @@ void ludwig_run(const char * inputfile) {
 
   if (is_config_at_end()) {
     sprintf(filename, "%sdist-%8.8d", subdirectory, step);
-    io_write(filename, distribution_io_info());
+    lb_io_info(ludwig->lb, &iohandler);
+    io_write_data(iohandler, filename, ludwig->lb);
     sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
 
     if (ncolloid > 0) colloid_io_write(ludwig->cio, filename);
@@ -806,7 +814,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
     gwall[n] = 0.0;
   }
 
-  stats_distribution_momentum(ludwig->map, g);
+  stats_distribution_momentum(ludwig->lb, ludwig->map, g);
   stats_colloid_momentum(ludwig->collinfo, gc);
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
 
@@ -868,6 +876,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   assert(ludwig);
 
   physics_ref(&ludwig->param);
+
+  lb_create(&ludwig->lb);
+
   noise_create(&ludwig->noise);
 
   n = RUN_get_string_parameter("free_energy", description, BUFSIZ);
@@ -882,6 +893,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
   }
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
@@ -901,6 +913,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -943,6 +956,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Symmetric free energy via full lattice kintic equation */
 
+    lb_ndist_set(ludwig->lb, 2);
+
     nf = 1;      /* 1 scalar order parameter */
     nhalo = 1;   /* Require one piont for LB. */
     ngrad = 2;   /* \nabla^2 required */
@@ -950,6 +965,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -981,6 +997,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -1023,6 +1040,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
 
     field_create(nf, "q", &ludwig->q);
     field_init(ludwig->q, nhalo);
@@ -1061,6 +1079,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
 
     field_create(nf, "p", &ludwig->p);
     field_init(ludwig->p, nhalo);
@@ -1099,6 +1118,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
         
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -1168,15 +1188,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     if (p == 1) phi_force_required_set(1);
 
-    info("Force calculation:          %s\n",
-         (p == 0) ? "psi grad mu method" : "Divergence method");
-
     if (p == 0) nhalo = 1;
     if (p == 1) nhalo = 2;
 
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
 
     info("\n");
     info("Free energy details\n");
@@ -1188,6 +1206,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     psi_create(nk, &ludwig->psi);
     psi_init_param_rt(ludwig->psi);
+
+    /* P should still hold ... */
+    info("Force calculation:          %s\n",
+         (p == 0) ? "psi grad mu method" : "Divergence method");
 
 #ifdef PETSC
     psi_petsc_init(ludwig->psi, ludwig->epsilon);
@@ -1225,6 +1247,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
+    le_info();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -1386,6 +1409,7 @@ int map_init_rt(map_t ** pmap) {
 
 int ludwig_colloids_update(ludwig_t * ludwig) {
 
+  int ndist;
   int ncolloid;
   int iconserve;         /* switch for finite-difference conservation */
   int is_subgrid = 0;    /* subgrid particle switch */
@@ -1396,7 +1420,9 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   if (ncolloid == 0) return 0;
 
   subgrid_on(&is_subgrid);
-  iconserve = (ludwig->psi || (ludwig->phi && distribution_ndist() == 1));
+
+  lb_ndist(ludwig->lb, &ndist);
+  iconserve = (ludwig->psi || (ludwig->phi && ndist == 1));
 
   TIMER_start(TIMER_PARTICLE_HALO);
 
@@ -1415,8 +1441,9 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   else {
 
     /* Removal or replacement of fluid requires a lattice halo update */
+
     TIMER_start(TIMER_HALO_LATTICE);
-    distribution_halo();
+    lb_halo(ludwig->lb);
     TIMER_stop(TIMER_HALO_LATTICE);
 
     TIMER_start(TIMER_FREE1);
@@ -1427,7 +1454,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     TIMER_start(TIMER_REBUILD);
 
     build_update_map(ludwig->collinfo, ludwig->map);
-    build_remove_replace(ludwig->collinfo, ludwig->phi, ludwig->p,
+    build_remove_replace(ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi);
     build_update_links(ludwig->collinfo, ludwig->map);
 

@@ -2,13 +2,13 @@
  *
  *  util.h
  *
- *  $Id$
+ *  Utilities with no state to be stored locally.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk) 
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *  
  ****************************************************************************/
 
@@ -44,5 +44,8 @@ int    util_vector_create(int m, double ** p);
 int    util_matrix_free(int m, double *** p);
 int    util_vector_free(double ** p);
 int util_matrix_invert(int n, double ** a);
+
+int util_ranlcg_reap_uniform(int * state, double * r);
+int util_ranlcg_reap_gaussian(int * state, double r[2]);
 
 #endif

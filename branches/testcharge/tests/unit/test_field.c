@@ -4,13 +4,11 @@
  *
  *  Unit test for field structure.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -25,6 +23,7 @@
 #include "field_s.h"
 
 #include "test_coords_field.h"
+#include "tests.h"
 
 static int do_test1(void);
 static int do_test3(void);
@@ -34,16 +33,15 @@ static int test_field_halo(field_t * phi);
 
 /*****************************************************************************
  *
- *  main
+ *  test_field_suite
  *
  *****************************************************************************/
 
-int main (int argc, char ** argv) {
+int test_field_suite(void) {
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
 
-  info("\nOrder parameter tests...\n");
+  /* info("\nOrder parameter tests...\n");*/
 
   do_test1();
   do_test3();
@@ -54,8 +52,8 @@ int main (int argc, char ** argv) {
   do_test_io(5, IO_FORMAT_ASCII);
   do_test_io(5, IO_FORMAT_BINARY);
 
+  info("PASS     ./unit/test_field\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }

@@ -5,13 +5,11 @@
  *  This tests the mechanics of the field_grad object rather than
  *  any real implementation.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,6 +24,7 @@
 #include "leesedwards.h"
 #include "field.h"
 #include "field_grad.h"
+#include "tests.h"
 
 enum encode {ENCODE_GRAD = 1, ENCODE_DELSQ, ENCODE_GRAD4, ENCODE_DELSQ4,
              ENCODE_DAB};
@@ -41,24 +40,23 @@ static double test_encode(int code, int nf, int n, int iv);
 
 /*****************************************************************************
  *
- *  main
+ *  test_field_grad_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_field_grad_suite(void) {
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
 
-  info("Field gradient object test\n");
+  /* info("Field gradient object test\n");*/
 
   do_test1();
   do_test3();
   do_test5();
   do_test_dab();
 
+  info("PASS     ./unit/test_field_grad\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }

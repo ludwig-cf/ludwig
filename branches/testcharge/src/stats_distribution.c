@@ -8,13 +8,11 @@
  *  If there is more than one distribution, it is assumed the relevant
  *  statistics are produced in the order parameter sector.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -37,7 +35,7 @@
  *
  *****************************************************************************/
 
-int stats_distribution_print(map_t * map) {
+int stats_distribution_print(lb_t * lb, map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -51,6 +49,7 @@ int stats_distribution_print(map_t * map) {
 
   MPI_Comm comm;
 
+  assert(lb);
   assert(map);
 
   coords_nlocal(nlocal);
@@ -70,7 +69,7 @@ int stats_distribution_print(map_t * map) {
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
-	rho = distribution_zeroth_moment(index, 0);
+	lb_0th_moment(lb, index, LB_RHO, &rho);
 	stat_local[0] += 1.0;
 	stat_local[1] += rho;
 	stat_local[2] += rho*rho;
@@ -108,7 +107,7 @@ int stats_distribution_print(map_t * map) {
  *
  *****************************************************************************/
 
-int stats_distribution_momentum(map_t * map, double g[3]) {
+int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -117,6 +116,7 @@ int stats_distribution_momentum(map_t * map, double g[3]) {
   double g_local[3];
   double g_site[3];
 
+  assert(lb);
   assert(map);
   assert(g);
 
@@ -134,7 +134,7 @@ int stats_distribution_momentum(map_t * map, double g[3]) {
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
-	distribution_first_moment(index, 0, g_site);
+	lb_1st_moment(lb, index, LB_RHO, g_site);
 	g_local[X] += g_site[X];
 	g_local[Y] += g_site[Y];
 	g_local[Z] += g_site[Z];
@@ -146,3 +146,4 @@ int stats_distribution_momentum(map_t * map, double g[3]) {
 
   return 0;
 }
+

@@ -5,13 +5,11 @@
  *  State type for particles including bounce-back on links, wetting,
  *  magnetic dipoles, and squirmers.
  *
- *  $Id: colloid.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -54,6 +52,9 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   for (n = 0; n < NBOND_MAX; n++) {
     nread += fscanf(fp, isformat, &ps->bond[n]);
   }
+
+  nread += fscanf(fp, isformat, &ps->rng);
+
   for (n = 0; n < NPAD_INT; n++) {
     nread += fscanf(fp, isformat, &ps->intpad[n]);
   }
@@ -154,6 +155,9 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   for (n = 0; n < NBOND_MAX; n++) {
     nwrite += fprintf(fp, isformat, s.bond[n]);
   }
+
+  nwrite += fprintf(fp, isformat, s.rng);
+
   for (n = 0; n < NPAD_INT; n++) {
     nwrite += fprintf(fp, isformat, s.intpad[n]);
   }

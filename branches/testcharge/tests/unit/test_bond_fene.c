@@ -20,32 +20,15 @@
 #include "coords.h"
 #include "colloids_halo.h"
 #include "bond_fene.h"
+#include "tests.h"
 
 #define BOND_K    3.0
 #define BOND_R0   7.0
 
-int test_bond_fene_suite(void);
 int test_bond_fene1(void);
 int test_bond_fene2(void);
 int test_create_dimer(colloids_info_t * cinfo, double a, double r1[3],
 		      double r2[3], colloid_t * pc[2]);
-
-/*****************************************************************************
- *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
-
-  test_bond_fene_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -55,13 +38,14 @@ int main(int argc, char ** argv) {
 
 int test_bond_fene_suite(void) {
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
 
   test_bond_fene1();
   test_bond_fene2();
 
   coords_finish();
+  info("PASS     ./unit/test_bond_fene\n");
   pe_finalise();
 
   return 0;

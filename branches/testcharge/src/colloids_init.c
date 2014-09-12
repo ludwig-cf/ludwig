@@ -59,6 +59,7 @@ int colloids_init_random(colloids_info_t * cinfo, int np,
     if (pc) {
       pc->s = *s0;
       pc->s.index = 1;
+      pc->s.rng = pc->s.index;
       pc->s.rebuild = 1;
     }
   }
@@ -110,6 +111,7 @@ static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
       /* Copy the state in, except the index and position, and rebuild */
       pc->s = *s;
       pc->s.index = n;
+      pc->s.rng = n;
       pc->s.rebuild = 1;
       pc->s.r[X] = r0[X];
       pc->s.r[Y] = r0[Y];

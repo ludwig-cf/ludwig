@@ -1,12 +1,8 @@
 ##############################################################################
 #
-#  Driver script for serial unit/smoke regression tests
-#  These tests should run within a few minutes.
+#  Driver script for parallel unit/smoke regression tests
 #
-#  Intended to be invoked from the test directory.
-#
-#  Use e.g., ./test-serial -u -r d2q9
-#  to run unit tests and regreesion tests for d2q9 compilation
+#  Use e.g., ./test-mpix08 -u -r d2q9 test-stub
 #
 #  Edinburgh Soft Matter and Statisical Physics Group and
 #  Edinburgh Parallel Computing Centre
@@ -23,9 +19,12 @@ DIR_SRC=`pwd`/../src
 DIR_REG=`pwd`/regression
 DIR_UNT=`pwd`/unit
 
-if [ $# -lt 1 ]
+MPIRUN=mpirun
+NPROCS=8
+
+if [ $# -lt 2 ]
 then
-    echo "Usage: $0 -r -u [d2q9 | d3q15 | ...]"
+    echo "Usage: $0 -r -u [d2q9 | d3q15 | ...] test-stub"
     exit -1
 fi
 
@@ -37,19 +36,18 @@ fi
 
 function test_unit {
 
+  # Make sure no stub mpi hanging around
   cd $DIR_MPI
   make clean
-  make libc
-  make testc
 
   cd $DIR_SRC
   make clean
-  make serial-$1
+  make mpi-$1
 
   cd $DIR_UNT
   make clean
-  make serial-$1
-  make run-serial
+  make mpi-$1
+  make run-mpi
   make clean
 
   # Clean up all directories and finish
@@ -65,7 +63,7 @@ function test_unit {
 
 ##############################################################################
 #
-#  test_regr [d2q9 | ...]
+#  test_regr [d2q9 | ...] test-stub
 #
 ##############################################################################
 
@@ -73,15 +71,13 @@ function test_regr {
 
   cd $DIR_MPI
   make clean
-  make libc
-  make testc
 
   cd $DIR_SRC
   make clean
-  make serial-$1
+  make mpi-$1
 
   # Smoke tests
-  # The naming convention for the files is "serial-xxxx-xxx.inp"
+  # The naming convention for the files is "test-stub-xxxx-xxx.inp"
   # for the input and with extension ".log" for the reference
   # output.
 
@@ -90,12 +86,12 @@ function test_regr {
 
   cd $DIR_REG/$1
 
-  for f in serial*inp
+  for f in $2*inp
   do
     input=$f
     stub=`echo $input | sed 's/.inp//'`
     echo
-    $DIR_SRC/Ludwig.exe $input > $stub.new
+    $MPIRUN -np $NPROCS $DIR_SRC/Ludwig.exe $input > $stub.new
 
     # Get difference via the difference script
     $DIR_TST/test-diff.sh $stub.new $stub.log
@@ -147,5 +143,5 @@ fi
 
 if [ $run_regr -eq 1 ]
 then
-    test_regr $1
+    test_regr $1 $2
 fi

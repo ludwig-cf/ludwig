@@ -4,13 +4,11 @@
  *
  *  Unit test for colloid structure.
  *
- *  $Id: test_colloid.c,v 1.2 2010-11-02 17:51:22 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -21,6 +19,7 @@
 
 #include "mpi.h"
 #include "colloid.h"
+#include "tests.h"
 
 #define TOLERANCE 1.0e-14
 
@@ -32,15 +31,18 @@ void test_colloid_binary_io(colloid_state_t s, const char * filename);
 
 /*****************************************************************************
  *
- *  main
+ *  test_colloid_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_colloid_suite(void) {
+
+  int rank;
 
   colloid_state_t sref = {1, 3, 2, 4, 5, 6, 7, 8, 9,
 			  {10, 11},
-			  {12, 13, 14, 15, 16,
+			  12, 
+			  {13, 14, 15, 16,
 			   17, 18, 19, 20, 21, 22, 23, 24,
 			   25, 26, 27, 28, 29, 30, 31, 32},
 			  1.0, 2.0,
@@ -59,8 +61,6 @@ int main(int argc, char ** argv) {
   char * tmp_ascii = NULL;
   char * tmp_binary = NULL;
 
-  MPI_Init(&argc, &argv);
-
   /* Use a unique temporary file to prevent i/o collisions if this
    * serial code is started in parallel. */
 
@@ -70,7 +70,7 @@ int main(int argc, char ** argv) {
   assert(tmp_ascii);
   assert(tmp_binary);
 
-  printf("sizeof(colloid_state_t) = %ld\n", sizeof(colloid_state_t));
+  /* printf("sizeof(colloid_state_t) = %ld\n", sizeof(colloid_state_t));*/
 
   /* I assert that the colloid struct is 512 bytes. I.e., don't
    * change it without sorting out the padding. */
@@ -79,7 +79,8 @@ int main(int argc, char ** argv) {
   test_colloid_ascii_io(sref, tmp_ascii);
   test_colloid_binary_io(sref, tmp_binary);
 
-  MPI_Finalize();
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0) printf("PASS     ./unit/test_colloid\n");
 
   return 0;
 }
@@ -104,7 +105,7 @@ void test_colloid_ascii_io(colloid_state_t sref, const char * filename) {
   else {
     n = colloid_state_write_ascii(sref, fp);
     fclose(fp);
-    printf("wrote ref ascii item to %s\n", filename);
+    /* printf("wrote ref ascii item to %s\n", filename);*/
     assert(n == 0);
   }
 
@@ -116,12 +117,12 @@ void test_colloid_ascii_io(colloid_state_t sref, const char * filename) {
   else {
     n = colloid_state_read_ascii(&s, fp);
     fclose(fp);
-    printf("read ref ascii item from %s\n", filename);
+    /* printf("read ref ascii item from %s\n", filename);*/
     assert(n == 0);
   }
 
   test_colloid_compare(s, sref);
-  printf("ascii write/read correct\n");
+  /* printf("ascii write/read correct\n");*/
 
   return;
 }
@@ -145,7 +146,7 @@ void test_colloid_binary_io(colloid_state_t sref, const char * filename) {
   else {
     n = colloid_state_write_binary(sref, fp);
     fclose(fp);
-    printf("wrote ref binary item to %s\n", filename);
+    /* printf("wrote ref binary item to %s\n", filename);*/
     assert(n == 0);
   }
 
@@ -157,12 +158,12 @@ void test_colloid_binary_io(colloid_state_t sref, const char * filename) {
     n = colloid_state_read_binary(&s, fp);
     fclose(fp);
     assert(s.rebuild == 1);
-    printf("read binary item from %s\n", filename);
+    /* printf("read binary item from %s\n", filename);*/
     assert(n == 0);
   }
 
   test_colloid_compare(s, sref);
-  printf("binary write/read correct\n");
+  /* printf("binary write/read correct\n");*/
 
   return;
 }

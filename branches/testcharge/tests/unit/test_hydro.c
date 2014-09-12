@@ -5,6 +5,11 @@
  *  Unit test for hydrodynamics object. Tests for the Lees Edwards
  *  transformations are sadly lacking.
  *
+ *  Edinburgh Soft Matter and Statisitical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2014 The University of Edinburgh
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -20,6 +25,7 @@
 #include "hydro_s.h"
 
 #include "test_coords_field.h"
+#include "tests.h"
 
 static int do_test1(void);
 static int do_test_halo1(int nhalo, int nhcomm);
@@ -27,14 +33,13 @@ static int do_test_io1(void);
 
 /*****************************************************************************
  *
- *  main
+ *  test_hydro_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_hydro_suite(void) {
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
 
   do_test1();
   do_test_halo1(1, 1);
@@ -42,8 +47,8 @@ int main(int argc, char ** argv) {
   do_test_halo1(2, 1);
   do_test_io1();
 
+  info("PASS     ./unit/test_hydro\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }

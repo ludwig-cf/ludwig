@@ -4,6 +4,13 @@
  *
  *  Test of bonded interactions, and associated angles.
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2013-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -16,8 +23,8 @@
 #include "coords.h"
 #include "colloids_halo.h"
 #include "colloids.h"
+#include "tests.h"
 
-int test_bonds_suite(void);
 int test_bonds_dimers(void);
 int test_bonds_trimers(void);
 int test_bonds_dimer_instance(double a0, double r1[3], double r2[3]);
@@ -30,35 +37,19 @@ int colloid_forces_bonds_check(colloids_info_t * cinfo, int * nbondfound,
 
 /*****************************************************************************
  *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-  MPI_Init(&argc, &argv);
-
-  test_bonds_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  test_bonds_suite
  *
  *****************************************************************************/
 
 int test_bonds_suite(void) {
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
 
   test_bonds_dimers();
   test_bonds_trimers();
 
+  info("PASS     ./unit/test_bonds\n");
   coords_finish();
   pe_finalise();
 

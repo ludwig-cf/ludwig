@@ -4,13 +4,11 @@
  *
  *  Colloid cell list et al.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,28 +21,9 @@
 #include "colloids.h"
 #include "tests.h"
 
-int test_colloids_info_suite(void);
 int test_colloids_info_with_ncell(int ncellref[3]);
 int test_colloids_info_add_local(colloids_info_t * cinfo);
 int test_colloids_info_cell_coords(colloids_info_t * cinfo);
-
-/*****************************************************************************
- *
- *  main
- *
- *****************************************************************************/
-
-int main(int argc, char ** argv) {
-
-
-  MPI_Init(&argc, &argv);
-
-  test_colloids_info_suite();
-
-  MPI_Finalize();
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -56,7 +35,7 @@ int test_colloids_info_suite(void) {
 
   int ncell[3];
 
-  pe_init();
+  pe_init_quiet();
   coords_init();
 
   ncell[X] = 2;
@@ -80,7 +59,7 @@ int test_colloids_info_suite(void) {
   ncell[Z] = 8;
   test_colloids_info_with_ncell(ncell);
 
-  info("Completed colloids test\n");
+  info("PASS     ./unit/test_colloids\n");
 
   coords_finish();
   pe_finalise();

@@ -2,13 +2,13 @@
  *
  *  test_psi_sor.c
  *
- *  $Id$
+ *  This is specifically SOR.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -21,11 +21,13 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
+#include "control.h"
 #include "psi_s.h"
 #include "psi_sor.h"
 
 #include "util.h"
 #include "psi_stats.h"
+#include "tests.h"
 
 static int do_test_sor1(void);
 static int test_charge1_set(psi_t * psi);
@@ -37,22 +39,23 @@ static int fepsilon_sinz(int index, double * epsilon);
 
 /*****************************************************************************
  *
- *  main
+ *  test_psi_sor_suite
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_psi_sor_suite(void) {
 
   physics_t * phys = NULL;
 
-  MPI_Init(&argc, &argv);
-  pe_init();
+  pe_init_quiet();
   physics_ref(&phys);
+
+  control_time_set(-1); /* Kludge to avoid SOR iteration output */
 
   do_test_sor1();
 
+  info("PASS     ./unit/test_psi_sor\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
@@ -319,6 +322,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   psi_abstol(obj, &tolerance);
   rhotot = 0.0;
+  psi0 = 0.0;
 
   for (k = 0; k < n; k++) {
     index = coords_index(1, 1, 1+k);

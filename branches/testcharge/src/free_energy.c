@@ -51,6 +51,25 @@ static double kappa_ = 1.0;
 
 /****************************************************************************
  *
+ *  fe_create
+ *
+ *  No actual allocation, but just set pointers to default position.
+ *
+ ****************************************************************************/
+
+int fe_create(void) {
+
+  fp_fed = fe_fed_null;
+  fp_mu  = fe_mu_null;
+  fp_iso = fe_iso_null;
+  fp_pth = fe_pth_null;
+  fp_mus = fe_mu_solv_null;
+
+  return 0;
+}
+
+/****************************************************************************
+ *
  *  fe_set
  *
  *  Return 0 if there is no free energy

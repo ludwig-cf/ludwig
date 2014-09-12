@@ -7,13 +7,11 @@
  *  Little / big endian stuff based on suggestions by Harsha S.
  *  Adiga from IBM.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -1075,4 +1073,150 @@ int util_dpythag(double a, double b, double * p) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  Linear congruential generator for uniform random numbers based
+ *  on one by L'Ecuyer and Simard. See, for example the testu01
+ *  packages (v1.2.2)
+ *  http://www.iro.umontreal.ca/~simardr/testu01/tu01.html
+ *
+ *  No state here.
+ *
+ ****************************************************************************/
+
+#include <inttypes.h>
+
+static long int util_ranlcg_multiply(long a, long s, long c, long m);
+
+#define RANLCG_A 1389796
+#define RANLCG_C 0
+#define RANLCG_M 2147483647
+
+#if LONG_MAX == 2147483647
+#define RANLCG_HLIMIT   32768
+#else
+#define RANLCG_HLIMIT   2147483648
+#endif
+
+/*****************************************************************************
+ *
+ *  util_ranlcg_reap_gaussian
+ *
+ *  Box-Mueller. Caller responisble for maintaining state.
+ *
+ *  Returns two Gaussian deviates per call.
+ *
+ *****************************************************************************/
+
+int util_ranlcg_reap_gaussian(int * state, double r[2]) {
+
+  double ranu[2];
+  double f, rsq;
+
+  assert(state);
+  assert(*state > 0);
+
+  do {
+    util_ranlcg_reap_uniform(state, ranu);
+    util_ranlcg_reap_uniform(state, ranu + 1);
+    ranu[0] = 2.0*ranu[0] - 1.0;
+    ranu[1] = 2.0*ranu[1] - 1.0;
+    rsq = ranu[0]*ranu[0] + ranu[1]*ranu[1];
+  } while (rsq >= 1.0 || rsq <= 0.0);
+
+  f = sqrt(-2.0*log(rsq)/rsq);
+  r[0] = f*ranu[0];
+  r[1] = f*ranu[1];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_ranlcg_reap_uniform
+ *
+ *  Return one uniform on [0,1). The state is updated and returned
+ *  to caller.
+ *
+ *  Returns zero.
+ *
+ *****************************************************************************/
+
+int util_ranlcg_reap_uniform(int * state, double * r) {
+
+  long int sl;
+
+  assert(state);
+  assert(*state > 0);
+
+  sl = *state;
+  sl = util_ranlcg_multiply(RANLCG_A, sl, RANLCG_C, RANLCG_M);
+  *r = sl*(1.0/RANLCG_M);
+
+  *state = sl;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_ranlcg_multiply
+ *
+ *  A safe multplication: returned value is (a*s + c) % m
+ *
+ *****************************************************************************/
+
+static long int util_ranlcg_multiply(long a, long s, long c, long m) {
+
+  long a0, a1, q, qh, rh, k, p;
+
+  if (a < RANLCG_HLIMIT) {
+    a0 = a;
+    p = 0;
+  }
+  else {
+    a1 = a / RANLCG_HLIMIT;
+    a0 = a - RANLCG_HLIMIT * a1;
+    qh = m / RANLCG_HLIMIT;
+    rh = m - RANLCG_HLIMIT * qh;
+
+    if (a1 >= RANLCG_HLIMIT) {
+      a1 = a1 - RANLCG_HLIMIT;
+      k = s / qh;
+      p = RANLCG_HLIMIT * (s - k * qh) - k * rh;
+      if (p < 0) p = (p + 1) % m + m - 1;
+    }
+    else {
+      p = 0;
+    }
+
+    if (a1 != 0) {
+      q = m / a1;
+      k = s / q;
+      p -= k * (m - a1 * q);
+      if (p > 0) p -= m;
+      p += a1 * (s - k * q);
+      if (p < 0) p = (p + 1) % m + m - 1;
+    }
+
+    k = p / qh;
+    p = RANLCG_HLIMIT * (p - k * qh) - k * rh;
+    if (p < 0) p = (p + 1) % m + m - 1;
+  }
+
+  if (a0 != 0) {
+    q = m / a0;
+    k = s / q;
+    p -= k * (m - a0 * q);
+    if (p > 0) p -= m;
+    p += a0 * (s - k * q);
+    if (p < 0) p = (p + 1) % m + m - 1;
+  }
+
+  p = (p - m) + c;
+  if (p < 0) p += m;
+
+  return p;
 }

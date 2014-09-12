@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2013 The University of Edinburgh
+ *  (c) 2013-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,6 +20,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "noise.h"
+#include "tests.h"
 
 static int do_test_noise1(void);
 static int do_test_noise2(void);
@@ -27,24 +28,22 @@ static int do_test_noise3(void);
 
 /*****************************************************************************
  *
- *  main.c
+ *  test_noise_suite
  * 
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+int test_noise_suite(void) {
 
+  pe_init_quiet();
 
-  MPI_Init(&argc, &argv);
-  pe_init();
-
-  info("Noise tests\n\n");
+  /* info("Noise tests\n\n");*/
 
   do_test_noise1();
   do_test_noise2();
   do_test_noise3();
 
+  info("PASS     ./unit/test_noise\n");
   pe_finalise();
-  MPI_Finalize();
 
   return 0;
 }
