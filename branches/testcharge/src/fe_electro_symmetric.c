@@ -350,7 +350,7 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   }
 
   /* Local permittivity, requires phi */
-  epsloc = fe->epsilonbar*(1.0-fe->gamma*phi);
+  fe_es_var_epsilon(index, &epsloc);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
