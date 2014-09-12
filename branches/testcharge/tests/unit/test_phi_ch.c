@@ -138,7 +138,7 @@ static int test_advection(field_t * phi, hydro_t * hydro) {
   /* For these particular values... */
   assert(fabs(ell[0] - 1.1448194e-02) < FLT_EPSILON);
   assert(fabs(ell[1] - 1.5247605e-03) < FLT_EPSILON);
-  assert(fabs(ell[3] - 2.5296108e-01) < FLT_EPSILON);
+  assert(fabs(ell[2] - 2.5296108e-01) < FLT_EPSILON);
 
   return 0;
 }
@@ -284,7 +284,7 @@ static int test_drop_difference(field_t * fphi, const double rc[3],
 
   elnorm[0] = ell[0];
   elnorm[1] = ell[1];
-  elnorm[3] = ell_inf;
+  elnorm[2] = ell_inf;
 
   return 0;
 }
