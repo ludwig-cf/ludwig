@@ -1,0 +1,143 @@
+\section{Introduction}
+
+\subsection{Overview}
+
+We aim to provide a robust and portable code, written in C, which
+can be used to perform serial and scalable parallel simulations of
+complex fluid systems based around hydrodynamics via the Lattice
+Boltzmann method. Complex fluids are introduced via a free energy,
+of which a number of different examples are available. The preferred
+method of dealing with the corresponding order parameter equations
+is now by using finite difference. However, for the case of a binary
+fluid, the `full LB' approach, using two distributions, is retained
+as an option for the time being.
+
+\subsection{Availability}
+
+Under the auspices of the CCPs (Collaborative Computational Projects),
+and in particular CCP5, we have a CCPForge project account at
+
+\texttt{http://ccpforge.cse.rl.ac.uk/}
+
+This provides controlled access to known persons and uses version
+control via SVN, and includes bug
+tracking, and so on. The CCPForge SVN is not available to the public
+at the present time. You need to create an account at CCPForge, and
+let me or Juho know the username so you can be added to the access list.
+
+To download the entire code, you need
+\begin{verbatim}
+svn checkout --username <user> http://ccpforge.cse.rl.ac.uk/svn/ludwig
+\end{verbatim}
+where \texttt{<user>} is replaced by your CCPForge user name.
+Note that this will download all the existing tags and branches
+into a new directory named \texttt{ludwig}, as well as the main code!
+On success, you should see three directories
+\begin{verbatim}
+$ ls ludwig
+branches  tags      trunk
+\end{verbatim}
+The main code is in the \texttt{trunk} subdirectory. This documentation is
+found in the file \texttt{trunk/htdocs/ludwig.tex}, unit tests are in
+the directory \texttt{trunk/tests}, and the utilities are in
+\texttt{trunk/util}, and so on.
+
+If you do not want all the tags and branches (which take up a certain amount
+of space), you can specify that you
+want only the trunk, e.g.,
+\begin{verbatim}
+svn co --username <user> http://ccpforge.cse.rl.ac.uk/svn/ludwig/trunk
+\end{verbatim}
+in which case you will get a new directory called \texttt{trunk} containing
+the source files. All the instructions below refer to paths relative to
+this trunk directory.
+
+If you have problems, it may be worth while looking at the issue
+tracker on the project web page. It would be useful if all issues
+could be reported via this mechanism. If you e-mail me, I will just
+insert your e-mail into the issue tracker!
+
+\subsection{Compilation}
+
+Locate your local C compiler. The following example uses \texttt{gcc}
+in serial, and \texttt{mpicc} in parallel. For MPI in particular,
+local details may vary.
+
+The other thing required by the Makefile is the utility
+\texttt{svnversion}, which allows the compile-time SVN version number to
+be included in the executable (and hence the output of the program). This
+is useful to remember which version you were using when looking at
+results at a later date. If
+\texttt{svnversion} is not available (and it
+should be if you have downloaded the code via SVN), you may get an
+error message, but the code should still compile.
+
+\subsubsection{Serial}
+
+First, compile the MPI stub library in the \texttt{mpi\_s}
+directory. Do this by editing the Makefile, and checking the compiler
+is appropriate. You should be able to build the library and run the
+tests using, e.g.,:
+
+\begin{verbatim}
+$ make libc
+gcc -Wall -I.  -c mpi_serial.c
+ar -cru libmpi.a mpi_serial.o
+$ make testc
+gcc -Wall   mpi_tests.c -L. -lmpi
+./a.out
+Running mpi_s tests...
+Finished mpi_s tests ok.
+\end{verbatim}
+
+Now compile the main code in the \texttt{src} directory. Again
+edit the Makefile to check the compiler. At this stage, you also
+need to choose the LB model using exactly one of the preprocessor
+options for D2Q9 (fluid only problems), D3Q15, or D3Q19. Now type,
+e.g., using D3Q19:
+
+\begin{verbatim}
+$ make serial
+gcc  -D SVN_REVISION='"'`svnversion`'"' -c svn.c
+gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d2q9.c
+gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d3q15.c
+gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c d3q19.c
+gcc  -D_D3Q19_ -O3 -Wall -I. -I../mpi_s -c model.c
+...
+\end{verbatim}
+
+This should provide an executable \texttt{Ludwig.exe} which is linked
+against the MPI stub library.
+
+\subsubsection{Parallel}
+
+Here, you do not need to compile the stub library. Simply compile
+the main code with, e.g.,:
+\begin{verbatim}
+$ make mpi
+mpicc -D_D3Q19_ -O3 -Wall -I. -c d2q9.c
+mpicc -D_D3Q19_ -O3 -Wall -I. -c d3q15.c
+mpicc -D_D3Q19_ -O3 -Wall -I. -c d3q19.c
+mpicc -D_D3Q19_ -O3 -Wall -I. -c model.c
+...
+\end{verbatim}
+
+Invoke the executable with the MPI launcher in the usual way for your
+system, e.g., \texttt{mpirun -np 8 ./Ludwig.exe} for 8 processors,
+and so on.
+
+\subsubsection{ANSI C}
+
+The code is ANSI C (1989), with the single exception of calls to the
+library function \texttt{erfc()} in the Ewald sum code. This
+can sometimes cause a problem, which can usually be solved with
+a compiler-specific work-around.
+
+\subsubsection{C assertions}
+
+The code makes quite a lot of use of standard C assertions, which
+are useful to prevent errors. They do result in a considerably
+slower execution in some instances, so production runs should
+switch off the assertions with the standard \texttt{NDEBUG}
+preprocessor flag.
+

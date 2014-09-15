@@ -1,0 +1,408 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  porous.tex
+%
+%  Some considerations for porous media.
+%
+%  $Id$
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  Kevin Stratford (kevin@epcc.ed.ac.uk)
+%  (c) 2011 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\section{Porous Media}
+
+Porous media calculations can be undertaken when appropriate
+solid/fluid status information is supplied. The are a number
+of switches available in the input file:
+
+\inputkey{porous\_media\_file}
+
+specifies the file stub name to be read at the start of execution.
+(If the stub name is \texttt{file} then the code will expect to
+find \texttt{file.001-001} in the current directory.
+
+\inputkey{porous\_media\_format}
+
+is either \texttt{ASCII} or \texttt{BINARY} as appropriate. Note that
+in parallel, a single data file can be supplied, but it must be binary.
+The default is \texttt{BINARY}.
+
+\inputkey{porous\_media\_type}
+
+is either \texttt{status\_only} (the default) or \texttt{status\_with\_h}.
+
+\subsection{File format}
+
+In all cases the status (fluid/solid) information is represented by a
+single \texttt{char} (or integer), which must be supplied via the
+porous media file. A single file should contain data matching the
+current system size, and have the $z-$direction running fastest,
+followed by the $y-$direction. Note that in non-periodic directions,
+the structure must be 'closed', i.e., all the points at the edge
+should be solid.
+
+Fluid sites are designated by \texttt{0} and boundary or solid sites
+by \texttt{1}. These data should be of type \texttt{char} in binary,
+and may be integer in ASCII.
+
+Where wetting information is required, the free energy parameter $H$
+can be supplied by using the \texttt{status\_with\_h} switch. In this
+case, the \texttt{char} status is augmented by a single \texttt{double}
+value which is the local value of $H$. The order is then
+$s_1,h_1, s_2, h_2, \ldots$.
+
+An example of how to construct a porous media file is provided in
+\texttt{util/capillary.c}, which builds an appropriate file for
+a square or circular capillary tube. Please see the comments in
+the file for further details. Note that the allowed
+solid/fluid status values are defined in \texttt{src/site\_map.h}.
+A solid boundary is \texttt{BOUNDARY}, while fluid is \texttt{FLUID}.
+
+\subsection{Permeability calculations}
+
+Single fluid permeability calculations for a given proous structure
+can be undertaken by driving a flow via the fluid body force. Note
+that the structure must be periodic in the direction of the force
+(this may mean duplicating a 'reflected' version of a given sample
+to create the correct input). The body force can be specified so
+that, e.g., to drive a flow in the positive $x-$direction
+
+\texttt{force 0.001\_0.000\_0.000}
+
+The force should not be so large that the maximum velocity generated
+threatens the Mach number constraint. To get a measurement of the
+flow at equilibrium, the calculation should be run at least the
+momentum diffusion time for the system ($L^2/\eta$ in LB time steps).
+
+The net flow can be measured by combining the statistics for the
+total momemtum and the total density (which is equal to the volume
+with $\rho_0 = 1$).
+
+Note that in the case of porous media with narrow channels at the grid
+scale, the wall velocity can be dependent on the viscosity of the fluid.
+This is an artefact of the bounce-back on links and will result in a
+viscosity-dependent permeability (see, e.g., \cite{lipanmiller}).
+To minimise this effect, e.g.,  Ginzburg and d'Humi\`eres \cite{ginzburg}
+corrects the viscosity-dependence of the apparent boundary position
+using a three relaxation time scheme. This is currently under
+investigation.
+
+
+\subsection{Circular and rectangular capillaries}
+
+\label{section:exact_conductance}
+
+For an infinite  capillary of circular cross section radius $a$,
+the conductance is known analytically\cite{papanastasiou}. The
+flow per unit area $J$ is given by
+\begin{equation}
+J = - \frac{1}{8\eta} \frac{\partial p}{ \partial x} a^2. 
+\end{equation}
+If the pressure gradient is replaced by a uniform body force
+$-\partial p/ \partial x = \rho g$, then one can define a
+viscosity-independent conductance $C$ via $ J = C \rho g / \eta$,
+i.e., $C = a^2/8$. So, by measuring the volume flux at steady state
+for a fixed applied body force, one can compute an estimate of the
+conductance to compare with this result.
+
+An analtyical expression is also available for the conductance
+of a square or rectugular capillary. For an infinite capillary
+of square cross section width $w \times h$ (where $h$ is the
+longer),
+the volume flux per unit area $J$ is expected to be
+\cite{papanastasiou,edo1}
+\begin{equation}
+J = - \frac{1}{3\eta} \frac{\partial p}{\partial x} (h/2)^2
+\left[
+1 - 6(h/w) \sum_{k=1}^{\infty} \frac{\tanh(\alpha_k w/h)}{\alpha_k^5} 
+\right]
+\end{equation}
+where $\alpha_k = (2k - 1)\pi/2$. The pressure gradient
+$-\partial p / \partial x$ is replaced by the body force $\rho g$ and
+one can difine the viscosity-independnet conductance $C$ via
+$J = C\rho g / \eta$. The calculation procedes as above.
+
+\subsection{Worked example}
+
+\subsubsection{Setting up the structure}
+
+We will work out the conductance of a simple one-dimensional capillary
+of circular cross section. We can set up the structure using the
+utility program found in \texttt{util/capillary.c}.
+
+We set the system size to be $(10,10,32)$ in the $x-$, $y-$, and
+$z-$directions, respectively. The cross section in $x-y$ will be
+a discrete  approximation to a circle. The nominal radius is
+$a = 4$ lattice units (allowing for solid sites at each edge).
+In \texttt{capillary.c} we
+set
+\begin{verbatim}
+const int xmax = 10;
+const int ymax = 10;
+const int zmax = 32;
+\end{verbatim}
+Note that the conductance should be independent of the length of the
+capillary in the $z-$direction. We will check this later.
+
+We choose a circular cross section via:
+\begin{verbatim}
+enum {CIRCLE, SQUARE};
+const int xsection = CIRCLE;
+\end{verbatim}
+For this problem, the wetting parameters are irrelevant, and can be
+ignored. In addition we set
+\begin{verbatim}
+enum {STATUS_ONLY, STATUS_WITH_H};
+const int output_type = STATUS_ONLY;
+\end{verbatim}
+to specify that the output will contain only the structural information.
+The output filename containing the structure is set via
+\begin{verbatim}
+const char * filename = "capillary.001-001";
+\end{verbatim}
+
+The program may be compiled and run via
+\begin{verbatim}
+$ gcc capillary.c -lm
+$ ./a.out
+\end{verbatim}
+The output provides a simple representation of the cross section,
+and a count of the number of solid sites, the number of fluid sites,
+and the total. Again, the wetting parameters are irrelevant. For this
+case we have
+\begin{verbatim}
+Cross section (0 = fluid, 1 = solid)
+ 1 1 1 1 1 1 1 1 1 1
+ 1 1 1 0 0 0 0 1 1 1
+ 1 1 0 0 0 0 0 0 1 1
+ 1 0 0 0 0 0 0 0 0 1
+ 1 0 0 0 0 0 0 0 0 1
+ 1 0 0 0 0 0 0 0 0 1
+ 1 0 0 0 0 0 0 0 0 1
+ 1 1 0 0 0 0 0 0 1 1
+ 1 1 1 0 0 0 0 1 1 1
+ 1 1 1 1 1 1 1 1 1 1
+n = 3200 nsolid = 1536 nfluid = 1664
+\end{verbatim}
+Note that the outermost sites in each direction here are solid. There
+should be a file \texttt{capillary.001-001} in the current directory.
+This should be moved to the executable directory.
+
+
+\subsubsection{Setting up the input}
+
+Assuming we have compiled the serial code, we must now set up the
+input file to be consistent with the capillary structure we want
+to use. The \texttt{src/input.ref} file can be used as a template.
+We should set the system size
+\begin{verbatim}
+size 10_10_32
+\end{verbatim}
+The location of the porous media file is specified using
+\begin{verbatim}
+porous_media_format BINARY
+porous_media_file   capillary
+porous_media_type   status_only
+\end{verbatim}
+Note that the extension \texttt{.001-001} of the filename has been
+removed in the input file (it gets added back automatically by the
+main code at run time).
+
+As this is a single fluid calculation with no free energy involved
+we must set
+\begin{verbatim}
+free_energy none
+\end{verbatim}
+What are the fluid parameters? We will set the viscosity to
+$1/6$ in lattice units (and the bulk viscosity to the default
+value by commenting it out; the default value is the same as
+the shear viscosity):
+\begin{verbatim}
+viscosity 0.16666666666666666
+#bulk_viscosity 0.1
+\end{verbatim}
+We expect that the number of time steps to reach a steady state
+will be of order $t \approx a^2/\eta$, which we estimate using
+$a=4$ so $t \approx 100$ LB time steps. We will try
+\begin{verbatim}
+N_cycles 200
+\end{verbatim}
+Note that we will need output on the total momentum of the system
+as a function of time, so we set
+\begin{verbatim}
+freq_statistics 50
+\end{verbatim}
+
+Finally, we need to set a force in the $z-$direction to drive the
+flow. Again, the final conductance should be indpendent of this
+force providing the force is small enough that both the Mach number
+and the Reynolds number are small compared to unity in steady stead.
+We will set
+\begin{verbatim}
+force 0.00_0.00_0.0000001
+\end{verbatim}
+
+\subsubsection{Extracting the conductance}
+
+With these parameters specified, we can run the code. The output
+should reflect the parameters in the input file, and the time step
+loop should start if the parameters, and the \texttt{capillary.001-001}
+file has been read successfully. The code reports various fluid
+properties. The density is \texttt{[rho]}, and we see that the
+total is the same as the number of fluid sites reported by the
+\texttt{capillary.c} program:
+\begin{verbatim}
+Scalars - total mean variance min max
+[rho]    1664.00  1.00000000000-2.2204460e-16  1.00000000000 1.00000000000
+\end{verbatim}
+Note that the total density (ie., mass) should remain exactly unchanged
+for the duration of the run; if not, there is something wrong.
+
+The total momentum of the fluid in each coordinate direction is
+reported, and we should see, as a function of time
+\begin{verbatim}
+Momentum - x y z
+...
+[fluid   ]  1.5321078e-14  1.8207658e-14  1.8529405e-03
+[fluid   ] -8.2378548e-14  2.8865799e-15  1.9422398e-03
+[fluid   ]  1.1302070e-13  6.1950445e-14  1.9467213e-03
+[fluid   ]  2.4091840e-14  1.1102230e-16  1.9469462e-03
+\end{verbatim}
+Note as we have applied an external force in the $z-$direction,
+the $z-$momentum increases with time while the momenutm in the
+other two directions is constant (to machine accuracy, which is
+around $10^{-16}$). Further, the $z-$momentum
+is still changing slightly after 200 time steps, so we have
+not run long enough to reach a steady state. If we run for
+400 steps, we should see that the $z-$momentum is unchanged
+over the last 100 time steps.
+\begin{verbatim}
+Momentum - x y z
+...
+[fluid   ]  1.0424994e-13  1.6098234e-14  1.9469580e-03
+[fluid   ]  3.2973624e-14  3.2862602e-14  1.9469580e-03
+\end{verbatim}
+Finally, note the maximum velocity in the flow direction
+is small compared with unity, and so both Mach number and
+Reynolds number are also small in this case.
+
+
+The figure we are interested in is the total momentum in the
+$z-$direction which is $1.947\times 10^{-3}$. As the mean
+density is unity, this is also the average total volume flux $J_v$.
+The volume flux per unit area $J = J_v / a^2 L_z$, where $a^2 L_z$
+is the volume of the discrete system (1664 in lattice units).
+Following section \ref{section:exact_conductance},
+we can write a viscosity independent conductance
+$C = J\eta / \rho g$, with $g$ the force in the $z-$direction.
+Putting all this together, we have $C = (1.947\times 10^{-3} / 1664)
+\times (1/6) / (1.0 \times 1\times 10^{-7}) = 1.950$. The theoretical
+figure is $C = 2$, so the simulation is correct to within a discretisation
+error of about 3\%. Better accuracy may be acheived by increasing the
+resolution of the circle; e.g., for $a = 8$, the result is 8.043 versus
+an exact result of $C = 8$ --- an error of around 0.5\%.
+
+\subsubsection{In parallel}
+
+We can run the same calculation using the parallel code (recompile
+with \texttt{make mpi}). In the input file we set
+\begin{verbatim}
+size 10_10_32
+grid 1_1_2
+\end{verbatim}
+to set the parallel decomposition explicitly to two MPI tasks in the
+$z-$direction. We also set
+\begin{verbatim}
+porous_media_format BINARY_SERIAL
+porous_media_file   capillary
+porous_media_type   status_only
+\end{verbatim}
+to ensure the structure file is read correctly in parallel.
+We should run this on 2 MPI tasks, e.g.,
+\begin{verbatim}
+$ mpirun -np 2 ./Ludwig.exe input
+\end{verbatim}
+The final result should be exactly the same as the serial version
+to machine accuracy. You may also be able to spot that the execution
+time is approximately half that for the serial version (although this
+problem is a little small for efficient parallelisation).
+
+\subsubsection{General porous media}
+
+For a general porous media, we can make use of Darcy's Law which
+defines a permeability $k$ (with dimensions of area) via
+\begin{equation}
+J_v = - \frac{k A}{\eta} \frac{\partial P}{\partial z}
+\end{equation}
+where $J_v$ is the volume flux, $A$ is the cross-sectional area
+of the sample, and $\partial P / \partial z$ is the pressure gradient
+as before. 
+
+
+\subsubsection{Matching lattice and real units in porous media}
+
+
+Following Succi \cite{succi} (Chapter~8) the following argument
+can be made to match lattice quantities and real physical
+quantities for a given system of interest.
+Dimensionless lattice Boltzmann units set the lattice spacing
+$\Delta x = 1$, the lattice time step $\Delta t = 1$ and the
+mean density of the fluid to $\rho_0 = 1$. The speed of sound
+in lattice units is $c_s = 1/ \sqrt{3}$. How do we match these
+units to physical ones?
+
+Suppose we have discretised an X-ray tomography image with a resolution
+of 1 voxel equal to 1 $\mu$m. If we represent one voxel by one cubic
+lattice with width $\Delta x$, then we can match $\Delta x = 1\mu$m. A
+large data set might provide 1000 voxels on a side, giving
+1000 lattice sites, which would represent 1 mm.
+Similarly, if our real system is water at room temperature with density
+$\rho = 1000$kg~m$^{-3}$, then we may equate the lattice density
+$\rho_0 = 1$ to be equivalent to 1000~kg~m$^{-3}$. (This means the
+mass of fluid at one lattice site of volume $\Delta x^3 = 1 \mu$m$^{3}$
+is then 10$^{-15}$~kg, although this is not a very useful number.)
+
+This leaves time. This is matched via the speed of sound. For the real
+system, we take the speed of sound in water at 20$^o$C to be
+1480 m~s$^{-1}$. So the speed of sound on the lattice
+$(1/\sqrt{3}) \Delta x$ per $\Delta t$ matches 1480~m~s$^{-1}$,
+or $\Delta t = 1/\sqrt{3} \times 10^{-6} / 1480 \approx 3.9 \times 10^{-10}$s.
+Note that this is a small unit, i.e., it would require very many time
+steps to reach a `macroscopic' time in any simulation.
+
+We should also consider the Reynolds number $Re = \rho U L / \eta$.
+Suppose our real structure has a characteristic pore size which is
+just at the resolution of the X-ray tomography image: $L = h = 1\mu$m.
+If the fluid (water) has viscosity $\eta = 10^{-3}$ Pa s, and
+a typical flow is $U \sim 10^{-3}$ m~s$^{-1}$, then the pore scale
+Reynolds number is $Re_h \sim 10^{-3}$. In the LB, if we choose a
+lattice viscosity $\eta = 1/6$, and generate a typical flow in
+lattice units of $10^{-4}$, then the Reynolds number in the
+simulation (with $\rho_0 = 1$ and $L = \Delta x = 1$) is
+$Re \sim 6 \times 10^{-4}$, which is similar.
+
+
+There is one potential problem if we wish to study transport
+phemonema where we might want to run a simulation long enough
+for the flow to cross the whole sample. With $U \sim 10^{-4}$
+in lattice units and a large sample size of, say,  1024$^3$ the
+flow would take around 10$^7$ simulation time steps to propagate
+information across the system. This is computationally expensive.
+One solution is
+to artificially raise the flow speed (and hence the Reynolds
+number). This is acceptable as long as the Reynolds number
+remains small compared with unity (all Reynolds numbers $< 0.1$
+can be regarded as neglible \cite{batchelor}.) Here, for example,
+if we raise the flow by two orders of magnitude to $10^{-2}$ in
+lattice units,
+the Reynolds number is still acceptable at $Re = 6\times 10^{-2}$,
+and the number of simulation time steps is reduced to a more
+managable $10^5$ (see also \cite{cates_scaling}).
+
