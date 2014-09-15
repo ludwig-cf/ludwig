@@ -25,7 +25,7 @@ DIR_UNT=`pwd`/unit
 MPIRUN=mpirun
 NPROCS=8
 
-if [ $# -lt 2 ]
+if [ $# -lt 3 ]
 then
     echo "Usage: $0 -r -u [d2q9 | d3q15 | ...] test-stub"
     exit -1

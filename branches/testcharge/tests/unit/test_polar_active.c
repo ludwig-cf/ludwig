@@ -54,6 +54,7 @@ int test_polar_active_suite(void) {
   if (pe_size() > 1) {
     info("SKIP     ./unit/test_polar_active\n");
     pe_finalise();
+    return 0;
   }
 
   coords_nhalo_set(nhalo);
