@@ -34,16 +34,30 @@
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
-static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
-static double rtau_shear;       /* Inverse relaxation time for shear modes */
-static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
-static double var_shear;        /* Variance for shear mode fluctuations */
-static double var_bulk;         /* Variance for bulk mode fluctuations */
-static double rtau_[NVEL];      /* Inverse relaxation times */
-static double noise_var[NVEL];  /* Noise variances */
 
-static fluctuations_t * fl_;
+// static int isothermal_fluctuations_ = 0; /* Flag for noise. */
+
+// static double rtau_shear;       /* Inverse relaxation time for shear modes */
+// static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
+// static double var_shear;        /* Variance for shear mode fluctuations */
+// static double var_bulk;         /* Variance for bulk mode fluctuations */
+// static double rtau_[NVEL];      /* Inverse relaxation times */
+// static double noise_var[NVEL];  /* Noise variances */
+
+// static fluctuations_t * fl_;
+
+extern int isothermal_fluctuations_ = 0; /* Flag for noise. */
+
+extern double rtau_shear;       /* Inverse relaxation time for shear modes */
+extern double rtau_bulk;        /* Inverse relaxation time for bulk modes */
+extern double var_shear;        /* Variance for shear mode fluctuations */
+extern double var_bulk;         /* Variance for bulk mode fluctuations */
+extern double rtau_[NVEL];      /* Inverse relaxation times */
+extern double noise_var[NVEL];  /* Noise variances */
+
+extern fluctuations_t * fl_;
+
 
 static void collision_multirelaxation(void);
 static void collision_binary_lb(void);
@@ -74,6 +88,7 @@ TARGET_CONST double tc_q[NVEL][3][3];
 //typedef double (*mu_fntype)(const int, const int, const double*, const double*);
 
 
+HOST void get_chemical_stress_target(pth_fntype* h_chemical_stress);
 HOST void get_chemical_potential_target(mu_fntype* h_chemical_potential);
 
 TARGET void collision_binary_lb_site( double* __restrict__ f_t, 
@@ -82,6 +97,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 				      double* __restrict__ phi_t,
 				      double* __restrict__ gradphi_t,
 				      double* __restrict__ delsqphi_t,
+				      pth_fntype* chemical_stress,
 				      mu_fntype* chemical_potential,
 				      const int baseIndex){
 
@@ -199,7 +215,8 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
     for(j=0;j<3;j++)
       TARGET_ILP(vecIndex) sth[i][ILPIDX(j)]=0;
   
-  //chemical_stress(baseIndex, sth);
+    (*chemical_stress)(baseIndex, sth);
+  //symmetric_chemical_stress(baseIndex, sth);
   
   /* Relax stress with different shear and bulk viscosity */
   
@@ -363,6 +380,7 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
 					       double* __restrict__ phi_t,
 					       double* __restrict__ gradphi_t,
 					       double* __restrict__ delsqphi_t,
+					       pth_fntype* chemical_stress,
 					       mu_fntype* chemical_potential,
 					       //       double (* chemical_potential)(const int index, const int nop, double* phi_t, double* delsqphi_t),
 					       const int nSites){
@@ -371,7 +389,7 @@ TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t,
   TARGET_TLP(tpIndex,nSites)
     {
 	
-      collision_binary_lb_site( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,chemical_potential,tpIndex);
+      collision_binary_lb_site( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,chemical_stress,chemical_potential,tpIndex);
 
     }
 
@@ -411,6 +429,11 @@ HOST void collision_binary_lb_target() {
   //the below is currently hardwired in symmetric module. Need to
   // abstract in fe interface
   get_chemical_potential_target(t_chemical_potential);
+
+
+  pth_fntype* t_chemical_stress; 
+  targetMalloc((void**) &t_chemical_stress, sizeof(pth_fntype));
+  get_chemical_stress_target(t_chemical_stress);
 
 
   //chemical_stress = fe_chemical_stress_function();
@@ -506,7 +529,7 @@ HOST void collision_binary_lb_target() {
   //end constant setup
 
 
-    collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,t_chemical_potential,nSites);
+  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,t_chemical_stress,t_chemical_potential,nSites);
 
   syncTarget();
   checkTargetError("Binary Collision Kernel");

@@ -48,14 +48,27 @@ static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
 static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
-static double rtau_shear;       /* Inverse relaxation time for shear modes */
-static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
-static double var_shear;        /* Variance for shear mode fluctuations */
-static double var_bulk;         /* Variance for bulk mode fluctuations */
-static double rtau_[NVEL];      /* Inverse relaxation times */
-static double noise_var[NVEL];  /* Noise variances */
 
-static fluctuations_t * fl_;
+/* static double rtau_shear;       /\* Inverse relaxation time for shear modes *\/ */
+/* static double rtau_bulk;        /\* Inverse relaxation time for bulk modes *\/ */
+/* static double var_shear;        /\* Variance for shear mode fluctuations *\/ */
+/* static double var_bulk;         /\* Variance for bulk mode fluctuations *\/ */
+/* static double rtau_[NVEL];      /\* Inverse relaxation times *\/ */
+/* static double noise_var[NVEL];  /\* Noise variances *\/ */
+
+/* static fluctuations_t * fl_; */
+
+/* static int isothermal_fluctuations_ = 0; /\* Flag for noise. *\/ */
+
+
+double rtau_shear;       /* Inverse relaxation time for shear modes */
+double rtau_bulk;        /* Inverse relaxation time for bulk modes */
+double var_shear;        /* Variance for shear mode fluctuations */
+double var_bulk;         /* Variance for bulk mode fluctuations */
+double rtau_[NVEL];      /* Inverse relaxation times */
+double noise_var[NVEL];  /* Noise variances */
+
+fluctuations_t * fl_;
 
 static void collision_multirelaxation(void);
 static void collision_binary_lb(void);

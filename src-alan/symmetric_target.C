@@ -234,38 +234,63 @@ HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential){
 }
 
 
-// /****************************************************************************
-//  *
-//  *  symmetric_chemical_stress
-//  *
-//  *  Return the chemical stress tensor for given position index.
-//  *
-//  *  P_ab = [1/2 A phi^2 + 3/4 B phi^4 - kappa phi \nabla^2 phi
-//  *       -  1/2 kappa (\nbla phi)^2] \delta_ab
-//  *       +  kappa \nalba_a phi \nabla_b phi
-//  *
-//  ****************************************************************************/
+/****************************************************************************
+ *
+ *  symmetric_chemical_stress
+ *
+ *  Return the chemical stress tensor for given position index.
+ *
+ *  P_ab = [1/2 A phi^2 + 3/4 B phi^4 - kappa phi \nabla^2 phi
+ *       -  1/2 kappa (\nbla phi)^2] \delta_ab
+ *       +  kappa \nalba_a phi \nabla_b phi
+ *
+ ****************************************************************************/
 
-// void symmetric_chemical_stress(const int index, double s[3][3]) {
+void symmetric_chemical_stress_target(const int index, double s[3][3*NILP]) {
 
-//   int ia, ib;
-//   double phi;
-//   double delsq_phi;
-//   double grad_phi[3];
-//   double p0;
+  int ia, ib;
+  double phi;
+  double delsq_phi;
+  double grad_phi[3];
+  double p0;
 
-//   phi = phi_get_phi_site(index);
-//   phi_gradients_grad(index, grad_phi);
-//   delsq_phi = phi_gradients_delsq(index);
+  int vecIndex=0;
+  //HACK
+  TARGET_ILP(vecIndex){
 
-//   p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
-//     - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
+  phi = phi_get_phi_site(index+vecIndex);
+  phi_gradients_grad(index+vecIndex, grad_phi);
+  delsq_phi = phi_gradients_delsq(index+vecIndex);
 
-//   for (ia = 0; ia < 3; ia++) {
-//     for (ib = 0; ib < 3; ib++) {
-//       s[ia][ib] = p0*d_[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
-//     }
-//   }
+  p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
+    - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
 
-//   return;
-// }
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      s[ia][ib+vecIndex] = p0*d_[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
+    }
+  }
+
+  }
+
+  return;
+}
+
+// pointer to above target function. 
+TARGET pth_fntype p_symmetric_chemical_stress_target = symmetric_chemical_stress_target;
+
+
+HOST void get_chemical_stress_target(pth_fntype* t_chemical_stress){
+
+  pth_fntype h_chemical_stress; //temp host copy of fn addess
+
+  //get host copy of function pointer
+  copyConstantPthfnFromTarget(&h_chemical_stress, &p_symmetric_chemical_stress_target,sizeof(pth_fntype) );
+
+  //and put back on target, now in an accessible location
+  copyToTarget( t_chemical_stress, &h_chemical_stress,sizeof(pth_fntype));
+
+  return;
+
+
+}
