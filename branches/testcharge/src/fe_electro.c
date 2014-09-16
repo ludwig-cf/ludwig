@@ -42,6 +42,7 @@
 #include "physics.h"
 #include "util.h"
 #include "psi_s.h"
+#include "psi_gradients.h"
 #include "fe_electro.h"
 
 typedef struct fe_electro_s fe_electro_t;

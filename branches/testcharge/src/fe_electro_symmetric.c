@@ -49,6 +49,7 @@
 #include "symmetric.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
+#include "psi_gradients.h"
 
 typedef struct fe_electro_symmetric_s fe_es_t;
 
