@@ -47,12 +47,6 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
   int nsites;
   hydro_t * obj = NULL;
 
-  int nhalo;
-  int nlocal[3];
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
   assert(pobj);
 
   obj = calloc(1, sizeof(hydro_t));

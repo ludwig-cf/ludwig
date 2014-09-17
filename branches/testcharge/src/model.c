@@ -1186,7 +1186,6 @@ int lb_halo_via_copy(lb_t * lb) {
   int ic, jc, kc;
   int n, p;
   int pforw, pback;
-  int ihalo, ireal;
   int index, indexhalo, indexreal;
   int nsend, count;
   int nlocal[3];
@@ -1222,16 +1221,13 @@ int lb_halo_via_copy(lb_t * lb) {
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
-      ireal = p*lb->ndist*lb->nsite + n*lb->nsite;
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  /* indexreal = ireal + coords_index(nlocal[X], jc, kc);*/
 	  index = coords_index(nlocal[X], jc, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendforw[count] = lb->f[indexreal];
 
-	  /* indexreal = ireal + coords_index(1, jc, kc);*/
 	  index = coords_index(1, jc, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendback[count] = lb->f[indexreal];
@@ -1264,16 +1260,13 @@ int lb_halo_via_copy(lb_t * lb) {
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
-      ihalo = p*lb->ndist*lb->nsite + n*lb->nsite;
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  /* indexhalo = ihalo + coords_index(0, jc, kc);*/
 	  index = coords_index(0, jc, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvback[count];
 
-	  /* indexhalo = ihalo + coords_index(nlocal[X]+1, jc, kc);*/
 	  index = coords_index(nlocal[X] + 1, jc, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvforw[count];
@@ -1311,16 +1304,13 @@ int lb_halo_via_copy(lb_t * lb) {
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
-      ireal = p*lb->ndist*lb->nsite + n*lb->nsite;
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  /* indexreal = ireal + coords_index(ic, nlocal[Y], kc);*/
 	  index = coords_index(ic, nlocal[Y], kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendforw[count] = lb->f[indexreal];
 
-	  /* indexreal = ireal + coords_index(ic, 1, kc);*/
 	  index = coords_index(ic, 1, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendback[count] = lb->f[indexreal];
@@ -1354,16 +1344,13 @@ int lb_halo_via_copy(lb_t * lb) {
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
-      ihalo = p*lb->ndist*lb->nsite + n*lb->nsite;
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  /* indexhalo = ihalo + coords_index(ic, 0, kc);*/
 	  index = coords_index(ic, 0, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvback[count];
 
-	  /* indexhalo = ihalo + coords_index(ic, nlocal[Y] + 1, kc);*/
 	  index = coords_index(ic, nlocal[Y] + 1, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvforw[count];
@@ -1399,16 +1386,13 @@ int lb_halo_via_copy(lb_t * lb) {
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
-      ireal = p*lb->ndist*lb->nsite + n*lb->nsite;
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 
-	  /* indexreal = ireal + coords_index(ic, jc, nlocal[Z]);*/
 	  index = coords_index(ic, jc, nlocal[Z]);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendforw[count] = lb->f[indexreal];
 
-	  /* indexreal = ireal + coords_index(ic, jc, 1);*/
 	  index = coords_index(ic, jc, 1);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendback[count] = lb->f[indexreal];
@@ -1441,16 +1425,13 @@ int lb_halo_via_copy(lb_t * lb) {
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
-      ihalo = p*lb->ndist*lb->nsite + n*lb->nsite;
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 
-	  /* indexhalo = ihalo + coords_index(ic, jc, 0);*/
 	  index = coords_index(ic, jc, 0);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvback[count];
 
-	  /* indexhalo = ihalo + coords_index(ic, jc, nlocal[Z] + 1);*/
 	  index = coords_index(ic, jc, nlocal[Z] + 1);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvforw[count];

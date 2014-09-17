@@ -533,9 +533,6 @@ void blue_phase_symmetric_stress(const int index, double sth[3][3]){
   double h[3][3], dsq[3][3];
   double phi;
   int ia, ib, ic;
-  double q0;
-  double kappa0;
-  double kappa1;
   double qh;
   double gamma;
   double xi_, zeta_;
@@ -543,15 +540,7 @@ void blue_phase_symmetric_stress(const int index, double sth[3][3]){
   xi_ = blue_phase_get_xi();
   zeta_ = blue_phase_get_zeta();
   
-  /*No redshift at the moment*/
-  /*
-  q0 = q0_*rredshift_;
-  kappa0 = kappa0_*redshift_*redshift_;
-  kappa1 = kappa1_*redshift_*redshift_;
-  */
-  q0 = blue_phase_q0();
-  kappa0 = blue_phase_kappa0();
-  kappa1 = blue_phase_kappa1();
+  /* No redshift at the moment */
   
   field_scalar(phi_, index, &phi);
   field_tensor(q_, index, q);
@@ -617,20 +606,9 @@ void blue_phase_antisymmetric_stress(const int index, double sth[3][3]) {
   double h[3][3], dsq[3][3];
   double phi;
   int ia, ib, ic;
-  double q0;
-  double kappa0;
-  double kappa1;
   double gamma;
   
-  /*No redshift at the moment*/
-  /*
-  q0 = q0_*rredshift_;
-  kappa0 = kappa0_*redshift_*redshift_;
-  kappa1 = kappa1_*redshift_*redshift_;
-  */
-  q0 = blue_phase_q0();
-  kappa0 = blue_phase_kappa0();
-  kappa1 = blue_phase_kappa1();
+  /* No redshift at the moment */
   
   field_scalar(phi_, index, &phi);
   field_tensor(q_, index, q);

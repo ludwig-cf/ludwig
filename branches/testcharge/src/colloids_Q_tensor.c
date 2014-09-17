@@ -445,7 +445,6 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
   double q2 = 0.0;
   double rd;
 
-  double kappa0;
   double kappa1;
   double q0_chl;
   double amp;
@@ -454,7 +453,6 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
 
   assert(cinfo_);
 
-  kappa0 = blue_phase_kappa0();
   kappa1 = blue_phase_kappa1();
   q0_chl = blue_phase_q0();
   amp    = blue_phase_amplitude_compute();

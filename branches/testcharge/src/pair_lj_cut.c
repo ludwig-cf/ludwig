@@ -144,7 +144,6 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
   int ncell[3];
 
   double r2;
-  double rc2;
   double r;
   double rr;
   double rs;
@@ -170,7 +169,6 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
 
   vcut = 4.0*obj->epsilon*(rs*rs - rs);
   dvcut = -24.0*rr*obj->epsilon*(2.0*rs*rs - rs);
-  rc2 = obj->rc*obj->rc;
 
   for (ic1 = 1; ic1 <= ncell[X]; ic1++) {
     colloids_info_climits(cinfo, X, ic1, di); 

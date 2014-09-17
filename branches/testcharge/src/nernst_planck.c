@@ -381,7 +381,7 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   int status1;
 
   double eunit;
-  double beta, rbeta;
+  double beta;
   double b0, b1;
   double mu0, mu1;
   double rho0, rho1;
@@ -403,7 +403,6 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   psi_multistep_timestep(psi, &dt);
 
   physics_e0(e0);
-  rbeta = 1.0/beta;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -652,7 +651,6 @@ static int nernst_planck_update_d3qx(psi_t * psi, map_t * map, double ** flx) {
 
   int ic, jc, kc, index;
   int nlocal[3];
-  int nhalo;
   int n, nk;
   int c;
   int status;
@@ -662,7 +660,6 @@ static int nernst_planck_update_d3qx(psi_t * psi, map_t * map, double ** flx) {
   assert(psi);
   assert(flx);
 
-  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
   psi_nk(psi, &nk);

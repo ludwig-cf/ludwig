@@ -61,7 +61,6 @@ int build_update_map(colloids_info_t * cinfo, map_t * map) {
   int ncell[3];
   int ic, jc, kc;
 
-  int nsites;
   int i, j, k;
   int i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
@@ -94,8 +93,6 @@ int build_update_map(colloids_info_t * cinfo, map_t * map) {
   colloids_info_ncell(cinfo, ncell);
 
   /* First, set any existing colloid sites to fluid */
-
-  nsites = coords_nsites();
 
   for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
     for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {

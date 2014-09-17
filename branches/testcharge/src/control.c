@@ -53,6 +53,7 @@ void init_control() {
 
   n = RUN_get_int_parameter("N_start", &t_start);
   n = RUN_get_int_parameter("N_cycles", &t_steps);
+  if (n == 0) fatal("Please set N_cycles in input\n");
 
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
   n = RUN_get_int_parameter("freq_measure", &freq_measure);

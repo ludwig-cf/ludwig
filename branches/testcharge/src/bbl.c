@@ -898,7 +898,7 @@ int bbl_order_parameter_deficit(bbl_t * bbl, double * delta) {
  *  bbl_surface_stress
  *
  *  Return the current local surface stress total.
- *  This is normalise by the volume of the system.
+ *  This is normalised by the volume of the system.
  *
  *****************************************************************************/
 
@@ -913,7 +913,7 @@ int bbl_surface_stress(bbl_t * bbl, double slocal[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      slocal[ia][ib] = bbl->stress[ia][ib];
+      slocal[ia][ib] = rv*bbl->stress[ia][ib];
     }
   }
 

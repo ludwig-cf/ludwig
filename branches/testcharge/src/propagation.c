@@ -277,13 +277,11 @@ static int lb_propagate_d2q9_r(lb_t * lb) {
 
   int ic, jc, kc, index, n, p, q;
   int xstr, ystr, zstr;
-  int nhalo;
   int nlocal[3];
 
   assert(lb);
   assert(NVEL == 9);
 
-  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
   /* Stride in memory for velocities, and space */
