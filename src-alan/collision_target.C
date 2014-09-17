@@ -211,16 +211,6 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   
   (*chemical_stress)(baseIndex, sth,  phi_t, gradphi_t, delsqphi_t);
 
-   // TARGET_ILP(vecIndex){
-   //   double sth2[3][3];
-   //   symmetric_chemical_stress(baseIndex+vecIndex,sth2);
-   //   for (i = 0; i < 3; i++) {
-   //     for (j = 0; j < 3; j++) {
-   // 	 sth[i][ILPIDX(j)]=sth2[i][j];
-   //     }
-   //   }
-   // }
-
   
   /* Relax stress with different shear and bulk viscosity */
   
@@ -505,12 +495,25 @@ HOST void collision_binary_lb_target() {
   extern double* u;
   
   copyToTargetMasked(f_t,f_,nSites,nFields,siteMask); 
-  copyToTargetMasked(phi_t,phi_site,nSites,1,siteMask); 
-  copyToTargetMasked(delsqphi_t,phi_delsq_,nSites,1,siteMask); 
-  copyToTargetMasked(gradphi_t,phi_grad_,nSites,3,siteMask); 
-  copyToTargetMasked(force_t,f,nSites,3,siteMask); 
-  copyToTargetMasked(velocity_t,u,nSites,3,siteMask); 
+  copyToTargetMaskedAoS(phi_t,phi_site,nSites,1,siteMask); 
+  copyToTargetMaskedAoS(delsqphi_t,phi_delsq_,nSites,1,siteMask); 
+  copyToTargetMaskedAoS(gradphi_t,phi_grad_,nSites,3,siteMask); 
+  copyToTargetMaskedAoS(force_t,f,nSites,3,siteMask); 
+  copyToTargetMaskedAoS(velocity_t,u,nSites,3,siteMask); 
   
+
+  //  copyToTarget(gradphi_t,phi_grad_,nSites*3*sizeof(double)); 
+
+  // double grad_phi[3];
+
+  //   phi_gradients_grad(9701, grad_phi);
+  //   int ia;
+  //   for (ia=0;ia<3;ia++){
+  //     printf("XX %d %d %1.16e %1.16e \n",siteMask[9701],ia,grad_phi[ia],gradphi_t[3*(9701)+ia]);
+	
+  //   }
+
+
   // end lattice operation setup
 
   //start constant setup
@@ -545,7 +548,7 @@ HOST void collision_binary_lb_target() {
   
   //start lattice operation cleanup
   copyFromTargetMasked(f_,f_t,nSites,nFields,siteMask); 
-  copyFromTargetMasked(u,velocity_t,nSites,3,siteMask); 
+  copyFromTargetMaskedAoS(u,velocity_t,nSites,3,siteMask); 
   targetFree(f_t);
   targetFree(phi_t);
   targetFree(delsqphi_t);
