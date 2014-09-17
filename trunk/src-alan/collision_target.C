@@ -500,6 +500,7 @@ HOST void collision_binary_lb_target() {
   copyToTargetMaskedAoS(gradphi_t,phi_grad_,nSites,3,siteMask); 
   copyToTargetMaskedAoS(force_t,f,nSites,3,siteMask); 
   copyToTargetMaskedAoS(velocity_t,u,nSites,3,siteMask); 
+
   
 
   //  copyToTarget(gradphi_t,phi_grad_,nSites*3*sizeof(double)); 

@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "targetDP.h"
 
@@ -48,6 +49,8 @@
 static TARGET_CONST double a_     = -0.003125;
 static TARGET_CONST double b_     = +0.003125;
 static TARGET_CONST double kappa_ = +0.002;
+
+extern TARGET_CONST double tc_d[3][3];
 
 /****************************************************************************
  *
@@ -272,12 +275,20 @@ TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP
     delsq_phi=t_delsqphi[index+vecIndex];
     
     
-    p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
-      - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
+    //    p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
+    //- kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
+
+        p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
+    - kappa_*phi*delsq_phi 
+	  - 0.5*kappa_
+	  *(grad_phi[0]*grad_phi[0]+grad_phi[1]*grad_phi[1]
+	    +grad_phi[2]*grad_phi[2]);
     
+
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	s[ia][ILPIDX(ib)] = p0*d_[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
+	s[ia][ILPIDX(ib)] = p0*tc_d[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
       }
     }
 
@@ -285,6 +296,8 @@ TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP
 
   }
 
+  //  printf("%1.16e %1.16e\n",d_[0][0],tc_d[0][0]);
+  //printf("%1.16e \n",tc_d[0][0]);
 
 
   return;
