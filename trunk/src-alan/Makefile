@@ -42,6 +42,9 @@
 #
 ###############################################################################
 
+USEGPU=
+#USEGPU=0
+
 MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
@@ -53,17 +56,23 @@ OPTS = -D_D3Q19_ #-DCUDA #-save-temps
 #CFLAGS = -Wall -O3
 CFLAGS = -g
 
+ifdef USEGPU
+TARGETCC = nvcc -arch=sm_21
+TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
+LIBS = -lm -L../targetDP -ltargetDP_CUDA
+else
 TARGETCC = gcc
 TARGETOPTS = -x c -D_D3Q19_ #-DCUDA
+LIBS = -lm -L../targetDP -ltargetDP_X86
+endif
 
-#TARGETCC = nvcc -arch=sm_21
-#TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
 
 
-INC = -I.
-LIBS = -lm
+
+INC = -I. -I../targetDP
 AR = ar
 ARFLAGS = -cru
+
 
 ###############################################################################
 #
@@ -133,8 +142,8 @@ verbose:
 code:	svn $(OBJS) $(TARGET_OBJS)
 	$(TARGETCC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJS) $(TARGET_OBJS) $(LIBS)
 serial:
-	$(MAKE) code "INC=$(INC) -I../mpi_s -I../targetDP" "LIBS=$(LIBS) \
-	-L../mpi_s -lmpi -L../targetDP -ltargetDP_X86" "OBJS=$(OBJS) $(MAIN).o"
+	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) \
+	-L../mpi_s -lmpi " "OBJS=$(OBJS) $(MAIN).o"
 mpi:
 	$(MAKE) code "OBJS=$(OBJS) $(TARGET_OBJS) $(MAIN).o" "CC=$(MPICC)"
 
