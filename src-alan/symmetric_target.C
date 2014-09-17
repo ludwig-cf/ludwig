@@ -246,7 +246,7 @@ HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential){
  *
  ****************************************************************************/
 
-void symmetric_chemical_stress_target(const int index, double s[3][3*NILP]) {
+void symmetric_chemical_stress_target(const int index, double s[3][3*NILP], const double* t_phi,  const double* t_gradphi, const double* t_delsqphi) {
 
   int ia, ib;
   double phi;
@@ -258,20 +258,35 @@ void symmetric_chemical_stress_target(const int index, double s[3][3*NILP]) {
   //HACK
   TARGET_ILP(vecIndex){
 
-  phi = phi_get_phi_site(index+vecIndex);
-  phi_gradients_grad(index+vecIndex, grad_phi);
-  delsq_phi = phi_gradients_delsq(index+vecIndex);
+    phi = phi_get_phi_site(index+vecIndex);
+      phi_gradients_grad(index+vecIndex, grad_phi);
+      delsq_phi = phi_gradients_delsq(index+vecIndex);
 
-  p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
-    - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      s[ia][ib+vecIndex] = p0*d_[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
+    for (ia=0;ia<3;ia++){
+      //  grad_phi[ia]=t_gradphi[3*(index+vecIndex)+ia];
+      
     }
-  }
+    
+    //phi=t_phi[index];
+    //delsq_phi=t_delsqphi[index];
+    
+    
+    p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
+      - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
+    
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	s[ia][ILPIDX(ib)] = p0*d_[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
+
+	//	s[ia][ILPIDX(ib)] = 0.1;
+      }
+    }
+
+
 
   }
+
+
 
   return;
 }
