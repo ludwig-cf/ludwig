@@ -134,8 +134,6 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   
   double floc[NVEL*NDIST*NILP];
   
-#define ILPIDX(instrn) (instrn)*NILP+vecIndex 
-
 
   //TO DO HACK
 
@@ -210,13 +208,19 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   
   
   /* Compute the thermodynamic component of the stress */
-  //HACK
-  for(i=0;i<3;i++)
-    for(j=0;j<3;j++)
-      TARGET_ILP(vecIndex) sth[i][ILPIDX(j)]=0;
   
-    (*chemical_stress)(baseIndex, sth);
-  //symmetric_chemical_stress(baseIndex, sth);
+  (*chemical_stress)(baseIndex, sth,  phi_t, gradphi_t, delsqphi_t);
+
+   // TARGET_ILP(vecIndex){
+   //   double sth2[3][3];
+   //   symmetric_chemical_stress(baseIndex+vecIndex,sth2);
+   //   for (i = 0; i < 3; i++) {
+   //     for (j = 0; j < 3; j++) {
+   // 	 sth[i][ILPIDX(j)]=sth2[i][j];
+   //     }
+   //   }
+   // }
+
   
   /* Relax stress with different shear and bulk viscosity */
   
@@ -287,8 +291,8 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   
   for (m = NHYDRO; m < NVEL; m++) {
     TARGET_ILP(vecIndex)
-      mode[ILPIDX(m)] = mode[ILPIDX(m)] 
-      - tc_rtau[ILPIDX(m)]*(mode[ILPIDX(m)] - 0.0) + ghat[ILPIDX(m)];
+    mode[ILPIDX(m)] = mode[ILPIDX(m)] 
+     - tc_rtau[m]*(mode[ILPIDX(m)] - 0.0) + ghat[ILPIDX(m)];
   }
   
   
@@ -316,8 +320,8 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 
 
   //phi =  phi_t[baseIndex];;
-    TARGET_ILP(vecIndex) mu[vecIndex] 
-      = (*chemical_potential)(baseIndex+vecIndex, 0, phi_t, delsqphi_t);
+  TARGET_ILP(vecIndex) mu[vecIndex] 
+        = (*chemical_potential)(baseIndex+vecIndex, 0, phi_t, delsqphi_t);
   
   TARGET_ILP(vecIndex){
     jphi[ILPIDX(X)] = 0.0;
@@ -336,7 +340,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       TARGET_ILP(vecIndex) sphi[i][ILPIDX(j)] = phi[vecIndex]*uloc[ILPIDX(i)]
-	*uloc[ILPIDX(j)] + mu[vecIndex]*tc_d[i][j];
+  	*uloc[ILPIDX(j)] + mu[vecIndex]*tc_d[i][j];
       /* sphi[i][j] = phi*uloc[i]*uloc[j] + cs2*mobility*mu*d_[i][j];*/
     }
     TARGET_ILP(vecIndex) jphi[ILPIDX(i)] = jphi[ILPIDX(i)] 
@@ -357,7 +361,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
     for (i = 0; i < 3; i++) {
       TARGET_ILP(vecIndex) jdotc[vecIndex] += jphi[ILPIDX(i)]*tc_cv[p][i];
       for (j = 0; j < 3; j++) {
-	TARGET_ILP(vecIndex) sphidotq[vecIndex] += sphi[i][ILPIDX(j)]*tc_q[p][i][j];
+  	TARGET_ILP(vecIndex) sphidotq[vecIndex] += sphi[i][ILPIDX(j)]*tc_q[p][i][j];
       }
     }
     
