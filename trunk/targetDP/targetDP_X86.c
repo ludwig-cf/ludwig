@@ -103,6 +103,23 @@ void copyToTargetMasked(double *targetData,const double* data,const size_t nsite
   
 }
 
+
+void copyToTargetMaskedAoS(double *targetData,const double* data,const size_t nsites,
+			const size_t nfields,char* siteMask){
+
+  int i,j;
+  for (j=0;j<nsites;j++){
+    if(siteMask[j]){
+      for (i=0;i<nfields;i++){
+	targetData[j*nfields+i]=data[j*nfields+i];
+      }
+    }
+  }
+
+  return;
+  
+}
+
 void copyFromTargetMasked(double *data,const double* targetData,const size_t nsites,
 			const size_t nfields,char* siteMask){
 
@@ -114,6 +131,22 @@ void copyFromTargetMasked(double *data,const double* targetData,const size_t nsi
   }
   return;
 
+}
+
+
+void copyFromTargetMaskedAoS(double *data,const double* targetData,const size_t nsites,
+			const size_t nfields,char* siteMask){
+
+  int i, j;
+  for (j=0;j<nsites;j++){
+    if(siteMask[j]){
+      for (i=0;i<nfields;i++){
+	data[j*nfields+i]=targetData[j*nfields+i];
+      }
+    }
+  }
+  return;
+    
 }
 
 

@@ -6,8 +6,6 @@
 #ifndef _DATA_PARALLEL_INCLUDED
 #define _DATA_PARALLEL_INCLUDED
 
-typedef double (*mu_fntype)(const int, const int, const double*, const double*);
-typedef void (*pth_fntype)(const int, double*, const double*, const double*, const double*);
 
 /* Language "extensions", implemented through preprocessor */
 
@@ -57,7 +55,7 @@ typedef void (*pth_fntype)(const int, double*, const double*, const double*, con
 #define TARGET_LAUNCH(extent)
 
 /* Instruction-level-parallelism vector length */
-#define NILP 1
+#define NILP 2
 
 /* Instruction-level-parallelism execution macro */
 #define TARGET_ILP(simdIndex)  for (simdIndex = 0; simdIndex < NILP; simdIndex++) 
@@ -69,7 +67,15 @@ typedef void (*pth_fntype)(const int, double*, const double*, const double*, con
 #endif
 
 
+#define ILPIDX(instrn) (instrn)*NILP+vecIndex 
+
+
+
 /* API */
+
+typedef double (*mu_fntype)(const int, const int, const double*, const double*);
+typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
+
 
 void targetInit(size_t nsites, size_t nfieldsmax);
 void targetFinalize();
@@ -80,6 +86,10 @@ void copyFromTarget(void *data,const void* targetData,size_t size);
 void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask);
 void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
+			size_t nfields,char* siteMask);
+void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
+			size_t nfields,char* siteMask);
+void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask);
 void syncTarget();
 void targetFree(void *ptr);
