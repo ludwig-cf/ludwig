@@ -91,12 +91,12 @@ TARGET_CONST double tc_q[NVEL][3][3];
 HOST void get_chemical_stress_target(pth_fntype* h_chemical_stress);
 HOST void get_chemical_potential_target(mu_fntype* h_chemical_potential);
 
-TARGET void collision_binary_lb_site( double* __restrict__ f_t, 
-				      const double* __restrict__ force_t, 
-				      double* __restrict__ velocity_t,
-				      double* __restrict__ phi_t,
-				      double* __restrict__ gradphi_t,
-				      double* __restrict__ delsqphi_t,
+TARGET void collision_binary_lb_site( double* __restrict__ t_f, 
+				      const double* __restrict__ t_force, 
+				      double* __restrict__ t_velocity,
+				      double* __restrict__ t_phi,
+				      double* __restrict__ t_gradphi,
+				      double* __restrict__ t_delsqphi,
 				      pth_fntype* chemical_stress,
 				      mu_fntype* chemical_potential,
 				      const int baseIndex){
@@ -153,7 +153,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
   for(p = 0; p < NVEL; p++) {
     for(m = 0; m < NDIST; m++) {
       TARGET_ILP(vecIndex) floc[ILPIDX(NVEL*m+p)] = 
-	f_t[tc_nSites*NDIST*p + tc_nSites*m + baseIndex + vecIndex];
+	t_f[tc_nSites*NDIST*p + tc_nSites*m + baseIndex + vecIndex];
     }
   }
 
@@ -197,19 +197,19 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
     //TODO NEED TO TRANSPOSE FORCE, VELOCITY
 
     TARGET_ILP(vecIndex){
-      force[ILPIDX(i)] = (tc_force_global[i] + force_t[(baseIndex+vecIndex)*3+i]);
+      force[ILPIDX(i)] = (tc_force_global[i] + t_force[(baseIndex+vecIndex)*3+i]);
       uloc[ILPIDX(i)] = rrho[vecIndex]*(uloc[ILPIDX(i)] + 0.5*force[ILPIDX(i)]);  
     }
   }
   
   //      hydrodynamics_set_velocity(baseIndex, u);
   for (i = 0; i < 3; i++) 
-    TARGET_ILP(vecIndex) velocity_t[(baseIndex+vecIndex)*3+i]=uloc[ILPIDX(i)];
+    TARGET_ILP(vecIndex) t_velocity[(baseIndex+vecIndex)*3+i]=uloc[ILPIDX(i)];
   
   
   /* Compute the thermodynamic component of the stress */
   
-  (*chemical_stress)(baseIndex, sth,  phi_t, gradphi_t, delsqphi_t);
+  (*chemical_stress)(baseIndex, sth,  t_phi, t_gradphi, t_delsqphi);
 
   
   /* Relax stress with different shear and bulk viscosity */
@@ -296,7 +296,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
     for (m = 0; m < NVEL; m++) {
       TARGET_ILP(vecIndex) ftmp[vecIndex] += tc_mi[p][m]*mode[ILPIDX(m)];
     }
-    TARGET_ILP(vecIndex) f_t[tc_nSites*NDIST*p + baseIndex + vecIndex] = ftmp[vecIndex];
+    TARGET_ILP(vecIndex) t_f[tc_nSites*NDIST*p + baseIndex + vecIndex] = ftmp[vecIndex];
   }
   
   
@@ -309,9 +309,9 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 
 
 
-  //phi =  phi_t[baseIndex];;
+  //phi =  t_phi[baseIndex];;
   TARGET_ILP(vecIndex) mu[vecIndex] 
-        = (*chemical_potential)(baseIndex+vecIndex, 0, phi_t, delsqphi_t);
+        = (*chemical_potential)(baseIndex+vecIndex, 0, t_phi, t_delsqphi);
   
   TARGET_ILP(vecIndex){
     jphi[ILPIDX(X)] = 0.0;
@@ -358,7 +358,7 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
     /* Project all this back to the distributions. The magic
      * here is to move phi into the non-propagating distribution. */
     
-    TARGET_ILP(vecIndex) f_t[tc_nSites*NDIST*p + tc_nSites + baseIndex + vecIndex] = 
+    TARGET_ILP(vecIndex) t_f[tc_nSites*NDIST*p + tc_nSites + baseIndex + vecIndex] = 
       tc_wv[p]*(jdotc[vecIndex]*tc_rcs2 + sphidotq[vecIndex]*r2rcs4) + phi[vecIndex]*dp0;
   }
   
@@ -368,24 +368,184 @@ TARGET void collision_binary_lb_site( double* __restrict__ f_t,
 
 
 
-TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ f_t, 
-					       const double* __restrict__ force_t, 
-					       double* __restrict__ velocity_t,
-					       double* __restrict__ phi_t,
-					       double* __restrict__ gradphi_t,
-					       double* __restrict__ delsqphi_t,
+TARGET_ENTRY void collision_binary_lb_lattice( double* __restrict__ t_f, 
+					       const double* __restrict__ t_force, 
+					       double* __restrict__ t_velocity,
+					       double* __restrict__ t_phi,
+					       double* __restrict__ t_gradphi,
+					       double* __restrict__ t_delsqphi,
 					       pth_fntype* chemical_stress,
 					       mu_fntype* chemical_potential,
-					       //       double (* chemical_potential)(const int index, const int nop, double* phi_t, double* delsqphi_t),
 					       const int nSites){
 
   int tpIndex;
   TARGET_TLP(tpIndex,nSites)
     {
 	
-      collision_binary_lb_site( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,chemical_stress,chemical_potential,tpIndex);
+      collision_binary_lb_site( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,chemical_stress,chemical_potential,tpIndex);
 
     }
+
+}
+
+
+// host copies of fields
+extern double* f_;
+extern double* phi_site;
+extern double* phi_delsq_;
+extern double* phi_grad_;
+extern double* f;
+extern double* u;
+
+// target copies of fields 
+static double *t_f; 
+static double *t_phi; 
+static double *t_delsqphi; 
+static double *t_gradphi; 
+static double *t_force; 
+static double *t_velocity; 
+
+
+void init_fields_target(){
+
+  int N[3];
+  coords_nlocal(N);
+
+  int nFields=NVEL*NDIST;
+  int nhalo=coords_nhalo();
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+
+  targetInit(nSites, nFields);
+
+  targetCalloc((void **) &t_f, nSites*nFields*sizeof(double));
+  targetCalloc((void **) &t_phi, nSites*sizeof(double));
+  targetCalloc((void **) &t_delsqphi, nSites*sizeof(double));
+  targetCalloc((void **) &t_gradphi, nSites*3*sizeof(double));
+  targetCalloc((void **) &t_force, nSites*3*sizeof(double));
+  targetCalloc((void **) &t_velocity, nSites*3*sizeof(double));
+
+  checkTargetError("Binary Collision Allocation");
+
+
+  
+}
+
+
+void finalise_fields_target(){
+
+  targetFree(t_f);
+  targetFree(t_phi);
+  targetFree(t_delsqphi);
+  targetFree(t_gradphi);
+  targetFree(t_force);
+  targetFree(t_velocity);
+
+  checkTargetError("Binary Collision Free");
+
+  targetFinalize();
+
+
+}
+
+void put_fields_on_target_masked(){
+
+  int       ic, jc, kc, index;       /* site indices */
+
+  int N[3];
+  coords_nlocal(N);
+
+  int nFields=NVEL*NDIST;
+  int nhalo=coords_nhalo();
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+
+
+//set up site mask
+  char* siteMask = (char*) calloc(nSites,sizeof(char));
+  if(!siteMask){
+    printf("siteMask malloc failed\n");
+    exit(1);
+  }
+
+  // set all non-halo sites to 1
+  for (ic = 1; ic <= N[X]; ic++) {
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+  	index=coords_index(ic, jc, kc);
+  	siteMask[index]=1;
+      }
+    }
+  }
+
+  copyToTargetMasked(t_f,f_,nSites,nFields,siteMask); 
+  copyToTargetMaskedAoS(t_phi,phi_site,nSites,1,siteMask); 
+  copyToTargetMaskedAoS(t_delsqphi,phi_delsq_,nSites,1,siteMask); 
+  copyToTargetMaskedAoS(t_gradphi,phi_grad_,nSites,3,siteMask); 
+  copyToTargetMaskedAoS(t_force,f,nSites,3,siteMask); 
+  copyToTargetMaskedAoS(t_velocity,u,nSites,3,siteMask); 
+
+
+  free(siteMask);
+
+
+}
+
+
+void get_fields_from_target_masked(){
+
+  int       ic, jc, kc, index;       /* site indices */
+
+  int N[3];
+  coords_nlocal(N);
+
+  int nFields=NVEL*NDIST;
+  int nhalo=coords_nhalo();
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  
+
+//set up site mask
+  char* siteMask = (char*) calloc(nSites,sizeof(char));
+  if(!siteMask){
+    printf("siteMask malloc failed\n");
+    exit(1);
+  }
+
+  // set all non-halo sites to 1
+  for (ic = 1; ic <= N[X]; ic++) {
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+  	index=coords_index(ic, jc, kc);
+  	siteMask[index]=1;
+      }
+    }
+  }
+
+  copyFromTargetMasked(f_,t_f,nSites,nFields,siteMask); 
+  copyFromTargetMaskedAoS(phi_site,t_phi,nSites,1,siteMask); 
+  copyFromTargetMaskedAoS(phi_delsq_,t_delsqphi,nSites,1,siteMask); 
+  copyFromTargetMaskedAoS(phi_grad_,t_gradphi,nSites,3,siteMask); 
+  copyFromTargetMaskedAoS(f,t_force,nSites,3,siteMask); 
+  copyFromTargetMaskedAoS(u,t_velocity,nSites,3,siteMask); 
+
+
+  free(siteMask);
+
+
 
 }
 
@@ -441,6 +601,75 @@ HOST void collision_binary_lb_target() {
 
 
   // start lattice operation setup
+
+
+   int nFields=NVEL*NDIST;
+   int nhalo=coords_nhalo();
+
+   int Nall[3];
+   Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+   int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+   init_fields_target();
+
+
+
+
+  put_fields_on_target_masked();
+  
+  //start constant setup
+
+
+  copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
+  copyConstantDoubleToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
+  copyConstantDouble1DArrayToTarget(tc_rtau, rtau_, NVEL*sizeof(double)); 
+  copyConstantDouble1DArrayToTarget(tc_wv, wv, NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget( (double **) tc_ma, (double*) ma_, NVEL*NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget((double **) tc_mi, (double*) mi_, NVEL*NVEL*sizeof(double));
+  copyConstantInt2DArrayToTarget((int **) tc_cv,(int*) cv, NVEL*3*sizeof(int)); 
+  copyConstantDoubleToTarget(&tc_rtau2, &rtau2, sizeof(double));
+  copyConstantDoubleToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  copyConstantDouble1DArrayToTarget(tc_force_global,force_global, 3*sizeof(double)); 
+  copyConstantDouble2DArrayToTarget((double **) tc_d, (double*) d_, 3*3*sizeof(double));
+  copyConstantDouble3DArrayToTarget((double ***) tc_q, (double *)q_, NVEL*3*3*sizeof(double)); 
+  checkTargetError("constants");
+  //end constant setup
+
+
+  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,nSites);
+
+  syncTarget();
+  checkTargetError("Binary Collision Kernel");
+
+  //  end lattice operation
+
+
+  get_fields_from_target_masked();
+
+  finalise_fields_target();
+
+  targetFree(t_chemical_potential);
+  targetFree(t_chemical_stress);
+
+
+
+
+  return;
+}
+
+
+HOST void collision_binary_lb_target2() {
+
+
+
+  //---
+  int       ic, jc, kc, index;       /* site indices */
+
+  int N[3];
+  coords_nlocal(N);
+
   int nFields=NVEL*NDIST;
   int nhalo=coords_nhalo();
 
@@ -448,29 +677,9 @@ HOST void collision_binary_lb_target() {
   Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  
 
-
-  // target copies of fields 
-  double *f_t; 
-  double *phi_t; 
-  double *delsqphi_t; 
-  double *gradphi_t; 
-  double *force_t; 
-  double *velocity_t; 
-
-  targetInit(nSites, nFields);
-
-  targetCalloc((void **) &f_t, nSites*nFields*sizeof(double));
-  targetCalloc((void **) &phi_t, nSites*sizeof(double));
-  targetCalloc((void **) &delsqphi_t, nSites*sizeof(double));
-  targetCalloc((void **) &gradphi_t, nSites*3*sizeof(double));
-  targetCalloc((void **) &force_t, nSites*3*sizeof(double));
-  targetCalloc((void **) &velocity_t, nSites*3*sizeof(double));
-
-  checkTargetError("Binary Collision Allocation");
-
-
-  //set up site mask
+//set up site mask
   char* siteMask = (char*) calloc(nSites,sizeof(char));
   if(!siteMask){
     printf("siteMask malloc failed\n");
@@ -487,34 +696,106 @@ HOST void collision_binary_lb_target() {
     }
   }
 
-  extern double* f_;
-  extern double* phi_site;
-  extern double* phi_delsq_;
-  extern double* phi_grad_;
-  extern double* f;
-  extern double* u;
+  //---
+
+
+  //int       N[3];
+  //int       ic, jc, kc, index;       /* site indices */
+
+
+
+
+
+  //coords_nlocal(N);
+
+  //int nFields=NVEL*NDIST;
+  //int nhalo=coords_nhalo();
+
+
+  //int Nall[3];
+  //Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+  //int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+  double    shat[3][3];              /* random stress */
+  double    ghat[NVEL];              /* noise for ghosts */
+
+  double    force_global[3]; 
+
+  double    rtau2;
+  double    mobility;
+
+#define NDIST 2 //for binary collision
+
+
+  assert (NDIM == 3);
+  coords_nlocal(N);
+  fluid_body_force(force_global);
+
+
+  mu_fntype* t_chemical_potential; 
+  targetMalloc((void**) &t_chemical_potential, sizeof(mu_fntype));
+
+  //TODO  
+  //chemical_potential = fe_chemical_potential_function();
+  //the below is currently hardwired in symmetric module. Need to
+  // abstract in fe interface
+  get_chemical_potential_target(t_chemical_potential);
+
+  //chemical_stress = fe_chemical_stress_function();
+  pth_fntype* t_chemical_stress; 
+  targetMalloc((void**) &t_chemical_stress, sizeof(pth_fntype));
+  get_chemical_stress_target(t_chemical_stress);
+
+
+  //  fluctuations_off(shat, ghat);
+
+
+  // start lattice operation setup
+
+// host copies of fields
+extern double* f_;
+extern double* phi_site;
+extern double* phi_delsq_;
+extern double* phi_grad_;
+extern double* f;
+extern double* u;
+
+// target copies of fields 
+double *t_f; 
+double *t_phi; 
+double *t_delsqphi; 
+double *t_gradphi; 
+double *t_force; 
+double *t_velocity; 
+
+
+
+  targetInit(nSites, nFields);
+
+  targetCalloc((void **) &t_f, nSites*nFields*sizeof(double));
+  targetCalloc((void **) &t_phi, nSites*sizeof(double));
+  targetCalloc((void **) &t_delsqphi, nSites*sizeof(double));
+  targetCalloc((void **) &t_gradphi, nSites*3*sizeof(double));
+  targetCalloc((void **) &t_force, nSites*3*sizeof(double));
+  targetCalloc((void **) &t_velocity, nSites*3*sizeof(double));
+
+  checkTargetError("Binary Collision Allocation");
+
+
+
+  //  init_fields_target();
   
-  copyToTargetMasked(f_t,f_,nSites,nFields,siteMask); 
-  copyToTargetMaskedAoS(phi_t,phi_site,nSites,1,siteMask); 
-  copyToTargetMaskedAoS(delsqphi_t,phi_delsq_,nSites,1,siteMask); 
-  copyToTargetMaskedAoS(gradphi_t,phi_grad_,nSites,3,siteMask); 
-  copyToTargetMaskedAoS(force_t,f,nSites,3,siteMask); 
-  copyToTargetMaskedAoS(velocity_t,u,nSites,3,siteMask); 
 
-  
+  copyToTargetMasked(t_f,f_,nSites,nFields,siteMask); 
+  copyToTargetMaskedAoS(t_phi,phi_site,nSites,1,siteMask); 
+  copyToTargetMaskedAoS(t_delsqphi,phi_delsq_,nSites,1,siteMask); 
+  copyToTargetMaskedAoS(t_gradphi,phi_grad_,nSites,3,siteMask); 
+  copyToTargetMaskedAoS(t_force,f,nSites,3,siteMask); 
+  copyToTargetMaskedAoS(t_velocity,u,nSites,3,siteMask); 
 
-  //  copyToTarget(gradphi_t,phi_grad_,nSites*3*sizeof(double)); 
-
-  // double grad_phi[3];
-
-  //   phi_gradients_grad(9701, grad_phi);
-  //   int ia;
-  //   for (ia=0;ia<3;ia++){
-  //     printf("XX %d %d %1.16e %1.16e \n",siteMask[9701],ia,grad_phi[ia],gradphi_t[3*(9701)+ia]);
-	
-  //   }
-
-
+  //  put_fields_on_target_masked();
   // end lattice operation setup
 
   //start constant setup
@@ -537,7 +818,7 @@ HOST void collision_binary_lb_target() {
   //end constant setup
 
 
-  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( f_t, force_t, velocity_t,phi_t,gradphi_t,delsqphi_t,t_chemical_stress,t_chemical_potential,nSites);
+  collision_binary_lb_lattice TARGET_LAUNCH(nSites) ( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,nSites);
 
   syncTarget();
   checkTargetError("Binary Collision Kernel");
@@ -548,14 +829,17 @@ HOST void collision_binary_lb_target() {
   printf("hello2\n");
   
   //start lattice operation cleanup
-  copyFromTargetMasked(f_,f_t,nSites,nFields,siteMask); 
-  copyFromTargetMaskedAoS(u,velocity_t,nSites,3,siteMask); 
-  targetFree(f_t);
-  targetFree(phi_t);
-  targetFree(delsqphi_t);
-  targetFree(gradphi_t);
-  targetFree(force_t);
-  targetFree(velocity_t);
+    copyFromTargetMasked(f_,t_f,nSites,nFields,siteMask); 
+  copyFromTargetMaskedAoS(u,t_velocity,nSites,3,siteMask); 
+
+  //  get_fields_from_target_masked();
+
+  targetFree(t_f);
+  targetFree(t_phi);
+  targetFree(t_delsqphi);
+  targetFree(t_gradphi);
+  targetFree(t_force);
+  targetFree(t_velocity);
 
   targetFree(t_chemical_potential);
 
