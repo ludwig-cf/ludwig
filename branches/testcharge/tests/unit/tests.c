@@ -84,6 +84,7 @@ int tests_create() {
   test_random_suite();
   test_rt_suite();
   test_timer_suite();
+  test_util_suite();
 
   return 0;
 }

@@ -56,7 +56,7 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
               test_fe_electro.c test_fe_electro_symm.c test_be.c \
               test_noise.c test_build.c test_bonds.c test_lubrication.c \
               test_pair_lj_cut.c test_pair_ss_cut.c test_pair_yukawa.c \
-              test_angle_cosine.c test_bond_fene.c
+              test_angle_cosine.c test_bond_fene.c test_util.c
 
 TESTS = ${TESTSOURCES:.c=}
 TESTOBJECTS = ${TESTSOURCES:.c=.o}

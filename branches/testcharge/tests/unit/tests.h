@@ -58,5 +58,6 @@ int test_psi_sor_suite(void);
 int test_random_suite(void);
 int test_rt_suite(void);
 int test_timer_suite(void);
+int test_util_suite(void);
 
 #endif

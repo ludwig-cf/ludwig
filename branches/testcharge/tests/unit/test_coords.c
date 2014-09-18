@@ -25,6 +25,7 @@ static void test_coords_decomposition(const int decomp_request[3]);
 static void test_coords_communicator(void);
 static void test_coords_cart_info(void);
 static void test_coords_sub_communicator(void);
+static int test_coords_periodic_comm(void);
 static int neighbour_rank(int, int, int);
 
 /*****************************************************************************
@@ -93,6 +94,7 @@ int test_coords_suite(void) {
   test_coords_communicator();
   test_coords_cart_info();
   test_coords_sub_communicator();
+  test_coords_periodic_comm();
   coords_finish();
 
   info("PASS     ./unit/test_coords\n");
@@ -445,4 +447,46 @@ int neighbour_rank(int nx, int ny, int nz) {
   if (pe_size() == 1) rank = 0;
 
   return rank;
+}
+
+/*****************************************************************************
+ *
+ *  test_coords_periodic_comm
+ *
+ *****************************************************************************/
+
+static int test_coords_periodic_comm(void) {
+
+  int rank;
+  int pforw, pback;
+  int nsource, ndest;
+  int coords[3];
+  MPI_Comm pcomm;
+
+  coords_periodic_comm(&pcomm);
+  MPI_Comm_rank(pcomm, &rank);
+  MPI_Cart_coords(pcomm, rank, 3, coords);
+
+  coords_cart_shift(pcomm, X, FORWARD, &pforw);
+  coords_cart_shift(pcomm, X, BACKWARD, &pback);
+
+  MPI_Cart_shift(pcomm, X, 1, &nsource, &ndest);
+  test_assert(pforw == ndest);
+  test_assert(pback == nsource);
+
+  coords_cart_shift(pcomm, Y, FORWARD, &pforw);
+  coords_cart_shift(pcomm, Y, BACKWARD, &pback);
+
+  MPI_Cart_shift(pcomm, Y, 1, &nsource, &ndest);
+  test_assert(pforw == ndest);
+  test_assert(pback == nsource);
+
+  coords_cart_shift(pcomm, Z, FORWARD, &pforw);
+  coords_cart_shift(pcomm, Z, BACKWARD, &pback);
+
+  MPI_Cart_shift(pcomm, Z, 1, &nsource, &ndest);
+  test_assert(pforw == ndest);
+  test_assert(pback == nsource);
+
+  return 0;
 }
