@@ -801,11 +801,14 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
 
   int n;
   int ncolloid;
+  int is_pm;
 
   double g[3];         /* Fluid momentum (total) */
   double gc[3];        /* Colloid momentum (total) */
   double gwall[3];     /* Wall momentum (for accounting purposes only) */
   double gtotal[3];
+
+  wall_pm(&is_pm);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = 0.0;
@@ -818,7 +821,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   stats_colloid_momentum(ludwig->collinfo, gc);
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
 
-  if (wall_present()) wall_net_momentum(gwall);
+  if (wall_present() || is_pm) wall_net_momentum(gwall);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = g[n] + gc[n] + gwall[n];
@@ -831,7 +834,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   if (ncolloid > 0) {
     info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
   }
-  if (wall_present()) {
+  if (wall_present() || is_pm) {
     info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
 

@@ -85,6 +85,7 @@ OBJS = model.o propagation.o \
      colloids_rt.o lubrication.o \
      coords.o coords_field.o coords_rt.o \
      control.o distribution_rt.o \
+     driven_colloid.o driven_colloid_rt.o \
      ewald.o field.o field_grad.o \
      free_energy.o free_energy_vector.o fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \

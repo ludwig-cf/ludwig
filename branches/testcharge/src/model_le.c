@@ -32,8 +32,8 @@
 #include "physics.h"
 #include "leesedwards.h"
 
-
 static int le_reproject(lb_t * lb);
+static int le_reproject_all(lb_t * lb);
 static int le_displace_and_interpolate(lb_t * lb);
 static int le_displace_and_interpolate_parallel(lb_t * lb);
 
@@ -59,13 +59,15 @@ static int le_displace_and_interpolate_parallel(lb_t * lb);
 int lb_le_apply_boundary_conditions(lb_t * lb) {
 
   assert(lb);
+  const int irepro = 0;
 
   if (le_get_nplane_local() > 0) {
 
     TIMER_start(TIMER_LE);
     if (lb_order(lb) != MODEL) fatal("LE planes must use MODEL order\n");
 
-    le_reproject(lb);
+    if (irepro == 0) le_reproject(lb);
+    if (irepro != 0) le_reproject_all(lb);
 
     if (cart_size(Y) > 1) {
       le_displace_and_interpolate_parallel(lb);
@@ -95,8 +97,8 @@ int lb_le_apply_boundary_conditions(lb_t * lb) {
  *
  *  with analogous expressions for order parameter moments.
  * 
- *  The change to the distribution is then computed by a reprojection
- *  assuming the ghost modes are zero.
+ *  The change to the distribution is then computed by a reprojection.
+ *  Ghost modes are unchanged.
  * 	    	  
  *****************************************************************************/
 
@@ -186,6 +188,110 @@ static int le_reproject(lb_t * lb) {
 	      lb_f_set(lb, index, p, n, fnew);
 	    }
 	  }
+	  /* next site */
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+/****************************************************************************
+ *
+ *  le_reproject_all
+ *
+ *  An experiemental routine to reproject the ghost currents in
+ *  addition to the hydrodynamic modes.
+ *
+ *  D3Q19, single fluid
+ *
+ *  jchi1[Y] = chi1 rho u_y -> chi1 (rho u_y +/- rho u_le)
+ *  jchi2[Y] = chi2 rho u_y -> chi2 (rho u_y +/- rho u_le)
+ *
+ ****************************************************************************/
+ 
+static int le_reproject_all(lb_t * lb) {
+
+  int    ic, jc, kc, index;
+  int    nplane, plane, side;
+  int    nlocal[3];
+  int    p, m, np;
+  int    poffset, ndist;
+
+  double mode[NVEL];
+  double rho;
+  double g[3], du[3];
+  double t;
+
+  assert(lb);
+  assert(CVXBLOCK == 1);
+
+  lb_ndist(lb, &ndist);
+  nplane = le_get_nplane_local();
+
+  t = 1.0*get_step();
+  coords_nlocal(nlocal);
+
+  for (plane = 0; plane < nplane; plane++) {
+    for (side = 0; side < 2; side++) {
+
+      du[X] = 0.0;
+      du[Y] = 0.0; 
+      du[Z] = 0.0;
+
+      if (side == 0) {
+	/* Start with plane below Lees-Edwards BC */
+	du[Y] = -le_plane_uy(t);
+	ic = le_plane_location(plane);
+	poffset = xdisp_fwd_cv[0];
+      }
+      else {
+	/* Finally, deal with plane above LEBC */
+	du[Y] = +le_plane_uy(t);
+	ic = le_plane_location(plane) + 1;
+	poffset = xdisp_bwd_cv[0];
+      }
+
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+	  
+	  index = le_site_index(ic, jc, kc);
+
+	  /* Compute modes */
+
+	  for (m = 0; m < NVEL; m++) {
+	    mode[m] = 0.0;
+	    for (p = 0; p < NVEL; p++) {
+	      mode[m] += lb->f[ndist*NVEL*index + 0 + p]*ma_[m][p];
+	    }
+	  }
+
+	  /* Transform */
+
+	  rho = mode[0];
+	  g[X] = mode[1];
+	  g[Y] = mode[2];
+	  g[Z] = mode[3];
+
+	  mode[2] = mode[2] + rho*du[Y];
+	  mode[5] = mode[5] + g[X]*du[Y];
+	  mode[7] = mode[7] + 2.0*g[Y]*du[Y] + rho*du[Y]*du[Y];
+	  mode[8] = mode[8] + g[Z]*du[Y];
+
+	  /* All ghosts unaltered */
+
+	  /* Reproject */
+
+	  for (np = 0; np < xblocklen_cv[0]; np++) {
+	    p = poffset + np;
+	    lb->f[ndist*NVEL*index + 0 + p] = 0.0;
+	    for (m = 0; m < NVEL; m++) {
+	      lb->f[ndist*NVEL*index + 0 + p] += mode[m]*mi_[p][m];
+	    }
+	  }
+
 	  /* next site */
 	}
       }

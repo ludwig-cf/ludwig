@@ -577,7 +577,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	  for (m = NHYDRO; m < nmodes_; m++) {
 	    mode[m] = mode[m] - rtau_[m]*(mode[m] - 0.0) + ghat[m];
 	  }
-	  
+
 	  for (m = 0; m < nmodes_; m++) {
 	    mode_v[m][iv] = mode[m];
 	  }
@@ -1014,6 +1014,9 @@ void collision_relaxation_times(double * tau) {
  *  There are NDIM*(NDIM+1)/2 independent stress modes, and
  *  NVEL - NHYDRO ghost modes.
  *
+ *  Note: the trace needs to be corrected if this is really 2d,
+ *  hence the assertion.
+ *
  *****************************************************************************/
 
 static int collision_fluctuations(noise_t * noise, int index,
@@ -1025,6 +1028,7 @@ static int collision_fluctuations(noise_t * noise, int index,
   assert(noise);
   assert(NNOISE_MAX >= NDIM*(NDIM+1)/2);
   assert(NNOISE_MAX >= (NVEL - NHYDRO));
+  assert(NDIM == 3);
 
   /* Set symetric random stress matrix (elements with unit variance);
    * in practice always 3d (= 6 elements) required */
