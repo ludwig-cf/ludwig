@@ -1202,7 +1202,7 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
     dq0  = colloid->dq[0]  / colloid->s.saf;
     dq1  = colloid->dq[1]  / colloid->s.saf;
 
-    if (dq0 == 0.0 && dq1 == 0.0) break;
+    if (dq0 == 0.0 && dq1 == 0.0) continue;
 
     /* Locally, the total we expect to put back is: */
 
@@ -1254,7 +1254,7 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
     colloid->s.deltaq0 = colloid->dq[0];
     colloid->s.deltaq1 = colloid->dq[1];
     colloid->dq[0] = 0.0;
-    colloid->dq[1] = 0.0;
+    colloid->dq[1] = 0.0; 
   }
 
   return 0;
