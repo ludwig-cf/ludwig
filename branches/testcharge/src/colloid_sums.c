@@ -71,8 +71,7 @@ static int colloid_sums_m4(colloid_sum_t * sum, int, int, int, int);
 
 /* Message sizes (doubles) */
 
-enum message_type_enum {MTYPE_MAX = 4};
-static const int msize_[MTYPE_MAX] = {10, 35, 7, 6};
+static const int msize_[COLLOID_SUM_MAX] = {10, 35, 7, 6};
 
 /* The following are used for internal communication */
 
@@ -163,7 +162,7 @@ int colloid_sums_1d(colloid_sum_t * sum, int dim, colloid_sum_enum_t mtype) {
 
   assert(sum);
   assert(sum->cinfo);
-  assert(mtype >=0 && mtype < MTYPE_MAX);
+  assert(mtype >=0 && mtype < COLLOID_SUM_MAX);
 
   /* Count how many colloids are relevant */
 
