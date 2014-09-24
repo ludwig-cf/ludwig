@@ -1,0 +1,375 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  plan.tex
+%
+%  Software Configuration Management Plan
+%
+%  $Id$
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  Kevin Stratford (kevin@epcc.ed.ac.uk)
+%  (c) 2011 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[11pt,twoside]{article}
+
+\usepackage{amsmath}
+\usepackage{moreverb}
+\usepackage{lscape}
+\usepackage{epic}
+\usepackage[pdftex]{graphicx}
+\usepackage{bm}
+\usepackage{hyperref}
+\usepackage{color}
+
+\setlength{\hoffset}{-1in}
+\setlength{\voffset}{-1in}
+
+\setlength{\topmargin}{2cm}
+\setlength{\evensidemargin}{3.1cm}
+\setlength{\oddsidemargin}{3.1cm}
+
+\setlength{\textwidth}{14.8cm}
+\setlength{\textheight}{23cm}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{\smallskipamount}
+
+
+\newcommand{\inputkey}[1]{\framebox{\textbf{\texttt{#1}}}}
+\newcommand{\e}[1]{\cdot10^{#1}}
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+\newcommand{\beqa}{\begin{eqnarray}}
+\newcommand{\eeqa}{\end{eqnarray}}
+\newcommand{\com}[1]{\textcolor{red}{#1}}
+\newcommand{\cur}[1]{{\textit{#1}}}
+
+\begin{document}
+
+\setcounter{page}{1}
+
+\tableofcontents
+
+\newpage
+
+\setcounter{page}{1}
+
+\section{Software Configuration Management Plan}
+
+\subsection{Introduction}
+
+\subsubsection{Purpose}
+
+This section contains information on the \textit{Software Configuration
+Management Plan} for the \textit{Ludwig} code.
+It is to provide users of the code a background on the way in which
+the code is developed, how bugs are dealt with, the way in which
+new features may be added, and so on. It is therefore a part
+of the process by which the code is maintained. The Software Configuration
+Management Plan will be referred to as `The Plan' throughout the remainder
+of the section.
+
+\subsubsection{Scope}
+
+The \textit{Ludwig} code is designed to study the hydrodynamic properties
+of simple and complex fluids based around the numerical solution of the
+Navier-Stokes equations. Complex fluids are dealt with via a free-energy
+based finite difference approach, which couples explicitly to the
+hydrodynamics. Examples of complex fluids include binary mixtures,
+surfactants, liquid crystals, and active gels. Solid objects such as
+porous media may be included, as well as moving particles (colloids).
+Components of \textit{Ludwig} include the main program, unit and
+regression tests, and a small number of utility programs used to prepare
+input and post-process output. The Plan is limited to these
+software components.
+
+\textit{Ludwig} is specifically designed for parallel computers and
+relies on the Message Passing Interface \cite{mpi-standard}. The
+code will also run in serial, and is designed to be independent of
+the platform it is run on. The Plan is therefore not concerned with
+hardware or system management activities.
+
+This document is meant to be fairly informal, but will be updated as
+the need arises. 
+\textit{Ludwig} is an on-going research project, and relies mainly
+on funding for the United Kingdom Engineering and Physical Sciences Research
+Council to provide support for staff time to work on maintenance and
+development. As such, we cannot commit to any and all user requests!
+
+\subsubsection{Definition of key terms}
+
+\subsubsection{References}
+
+This section is based on the IEEE standard for Software Configuration
+Management Plans IEEE 828-2005 \cite{ieee-208}, and follows the format
+set out therein.
+Relevant references are included and can be found in the main References
+section at the end of the document.
+
+\subsection{Management}
+
+\subsubsection{Organisations}
+
+\textit{Ludwig} is developed by a team based in the School of Physics at
+The University of Edinburgh. This involves two groups: the Soft Matter
+Physics Group under the leadership of Prof. Mike Cates FRS, and EPCC in
+the person of Kevin Stratford. We collaborate with a number of workers at
+different Universities around the world on different aspects of the code.
+
+\subsubsection{Responsibilities}
+
+While the Soft Matter Physics Group is responsible for the overall
+scientific direction and development of the code and concomitant
+priorities, all
+the Software Configuration Management activities will be the
+responsibility of EPCC.
+
+\subsubsection{Procedures}
+
+There are currently no external constraints on The Plan.
+
+\subsubsection{Process Management}
+
+EPCC is responsible for the Software Configuration Management process.
+It is anticipated that the cost of this process will be negligible, and
+will not require monitoring. There is currently no independent
+surveillance of activities to ensure compliance with The Plan.
+
+\subsection{Activities}
+
+\subsubsection{Identification}
+
+The material under control of the project includes three sets of files:
+this documentation, the source code, and the test suite which is used
+to monitor the status of the code.
+Control of project files is via a single on-line repository which
+uses the subversion (SVN) revision control system. The SVN repository
+is currently located at
+
+\texttt{http://ccpforge.cse.rl.ac.uk/}
+
+which is maintained at the Rutherford Appleton Laboratory on behalf
+of Collaborative Computational Physics 5 (The Computer Simulation of
+Condensed Phases). Subversion identifies different revisions by a
+unique revision number. A given version of a file is then uniquely
+identified by its path in the repository as it exists at a given
+revision number. For example, SVN revision 1416 contains the
+following directories:
+
+\texttt{/trunk/current} a precursor code not under control
+
+\texttt{/trunk/htdocs} source files for this documentation
+
+\texttt{/trunk/mpi\_s} MPI stub library (scheduled to move)
+
+\texttt{/trunk/src} source code
+
+\texttt{/trunk/tests} unit and regression test suite
+
+\texttt{/trunk/util} utility programs
+
+At present access is restricted. However, we have committed to making
+the code available to the public by October 2014. We expect this to
+be via the same repository, referred to as CCPForge.
+All members of the \textit{Ludwig} project are currently registered with
+a CCPForge user account, and fall into one of three categories:
+Administrator, Developer, and User. Only the first two categories have
+permission to change files in the repository. Users have read-only
+access. The exact mechanism for public access is yet to be decided,
+but may still require users to register with CCPForge.
+
+As CCPForge is not physically under our control, we undertake a
+complete dump of the repository itself to a local resource on a
+weekly basis for security.
+
+\subsubsection{Control}
+
+Requests for changes or additions to the code should be made via
+the issue tracker at CCPForge. The project team will then decide
+whether the change is possible. If so, the implementation and
+testing of the change will take place, and the new code committed
+back to the repository.
+
+
+\subsubsection{Status}
+
+Can we account for the status of the code and tests?
+
+\subsubsection{Evaluation and review}
+
+How do we evaluate and audit the code?
+
+\subsubsection{Interface control}
+
+At the moment, we do not explicitly interface to any code outside The
+Plan (except MPI). We could extend coverage to include data export
+to e.g., Paraview \cite{paraview}.
+
+\subsubsection{Subcontractor / vendor control}
+
+None required.
+
+\subsubsection{Release management and delivery}
+
+There is currently no formal release mechanism. If such a mechanism were
+introduced, management and  delivery would be via the SVN repository.
+
+\subsection{Schedules}
+
+Sequence of events for SCM process.
+
+\subsection{Resources}
+
+For each active, state what resources (infrastructure, software tools,
+personnel etc) are required.
+
+
+\subsection{Plan Maintenance}
+
+The Plan is currently in a draft form. A complete version of The Plan
+will be in place to coincide with the public release.
+
+\newpage
+\section{Coordination Meetings}
+
+We may want to keep a log here of various issues and points we discussed.
+
+\subsection{Meeting 16 April 2013}
+
+Alan, Kevin, Davide and Oliver were participating.
+We had a general discussion about the scientific agenda for the 
+next years, the status quo of the code, necessary development 
+steps and open issues.
+
+\subsubsection{Scientific Agenda}
+
+The scientific agenda with Ludwig for the next few years could look like this:
+
+\begin{itemize}
+\item Colloids:\\
+On the CPU colloids in LC are fully supported and the boundary condition for 
+the anchoring has been recently corrected. This functionality should 
+not require any further work on the CPU.
+
+The GPU version could be interesting for very large colloids with respect to 
+the pitch length. An upper limit of currently $2048^3$ lattice sites was mentioned.  
+
+The GPU version could be also interesting for hydrodynamic aspects of 
+glass formers. The typical model system would be a 20:80 Kob-Anderson 
+mixture of radii 1:1.4.
+
+\item Liquid crystal droplets and emulsions:\\
+LC-emulsions are currently being developed in the hybrid code as Ludwig 
+proved to be unstable. This may be due to spurious currents that do not
+occur in the hybrid code as some terms are not modelled as divergence of a stress tensor.  
+It would be maybe necessary to merge the models with Ludwig if possible 
+once clarity has been gained how 3D-droplets can be modelled and
+what causes the instability in Ludwig.
+
+\item Electrokinetic phenomena:\\
+The electrokinetics branch is currently emerging. A first project will be
+on spinodal decomposition in the presence of charges. We will continure
+with asymmetrically charged ionic liquids. Modelling the electrophoretic
+behaviour of bacteria via colloids that have a conducting cell wall will
+be another line of research.
+
+\item Polymers:\\
+Polymers are currently not supported, but are on the agenda. 
+At the moment we don't have connectivity between the colloids,
+which could form a polymer-bead-spring model. As Ludwig supports subgrid particles 
+having polymers consisting of pointlike particles would be an interesting 
+alternative in more dilute regimes.
+ 
+A possible route to polymers in Ludwig could be Burkhard Duenweg's 
+approach (reference missing here).
+
+Another possible realisation could be to develp an add-on for 
+LAMMPS which is based on Ludwig and LAMMPS would be used for the entire MD-part. 
+At the moment it is not clear how the coupling could be achieved. Similar 
+ideas have already surfaced (see F.E. Mackay, C. Denniston, 
+'Coupling MD particles to a lattice-Boltzman fluid through the use of 
+conservative forces', J. Comput. Phys. 237, 289-298 (2013).)  
+
+\end{itemize}
+
+\subsubsection{Status Quo and Open Issues}
+
+There are currently three major branches in the repository:
+
+\begin{itemize}
+\item Main branch:\\
+We are still working on fixes for a few issues with main branch. 
+More precisely the anchoring of the LC at the 
+surface of the colloids resulted in anisotropic states and cyclic permutation 
+of the Cartesian coordinates did not lead to the same results. 
+This issue has been fixed and appropriate unit test were suggested.
+The question has been raised how we want to test new functionalities in general.
+A possible solution might be to think about a test case against which
+the new functionality can be tested, e.g. isotropy of the free energy density 
+against permutation of the coordinates in the above case.
+ 
+Another issue was the bug in the trace calculation which also has been removed.  
+Also, incompressibility is now enforced after each time step.
+
+We are still in the process of comparing Ludwig's output 
+with Davide's hybrid code. This flagged 
+up another problem related to the predictor-corrector algorithm which is 
+currently not implemented in Ludwig, resulting in different convergence 
+behaviour of specific test case presumable due to a lack of accuracy.  
+Possible solutions are RK2, RK4 or semi-implicit methods.
+
+The fluid-solid interaction via bounce-back is perhaps not state-of-the-art
+anymore. In a discussion with Ignacio Pagonabarraga earlier this year
+it turned out that alternative realisations like Yamamoto's approach 
+(Y. Nakayama, R. Yamamoto, PRE 71, 036707 (2005).) with
+a smooth profile may have advantages, but could make it more difficult 
+to impose a variety of boundary conditions. Immersed boundary conditions
+are generally unsuitable for complex fluids. 
+
+\item GPU branch:\\
+The GPU branch has diverged from the main branch during summer 2012.
+We are currently thinking how it can be merged with the other branches.
+
+\item Testcharge branch:\\
+The testcharge branch with its electrokinetic functionality is still 
+in statu nascendi. We have derived a Maxwell stress tensor whose divergence
+is giving the force input into Ludwig. This still has to be tested.
+
+The testcharge branch has seen a major technology refresh and will be merged with
+the main branch.
+
+\end{itemize}
+
+\subsubsection{Upcoming Development Steps}
+
+\begin{itemize}
+\item We need to improve the accuracy in the finite difference part of the code. 
+A first approach will use an RK2 or RK4 integrator because of simplicity.
+
+\item The solution of the Poisson equation in the electrokinetic branch needs to be generalised
+so that non-homogeneous dielectric permittivities can be used. We are currently
+trying to identify possible solutions. An iterative procedure will have to be
+found. 
+Moreover, we need to test the implementation of the Maxwell stress tensor against the 
+force input via gradients of the chemical potential.
+
+Later this year the testcharge branch will be merged with the main branch in a major
+technical update.
+
+\item The merging of the GPU and the main branch requires suitable and coherent concepts
+of abstraction to avoid code duplication. The dummy approach used for the serial
+version of the code, which replaces MPI directives with a MPI neutral dummy, will
+prove difficult to copy as CUDA C has some limitations.
+
+\item It would be desireable to increase the internal user base so that issues 
+can be spotted more easily.
+
+\item For the planned public release in 2014/2015 we need to think about an appropriate
+license.
+
+\end{itemize} 
+
+\end{document}
