@@ -22,6 +22,6 @@
 
 . ./test-mpix08.sh -u d3q15 pmpi08
 . ./test-mpix08.sh -u -r d3q19 pmpi08
-#. ./test-mpix08.sh -u d3q19 long08
+. ./test-mpix08.sh -u d3q19 long08
 
-#. ./test-long64.sh -r d3q19 long64
+. ./test-long64.sh -r d3q19 long64
