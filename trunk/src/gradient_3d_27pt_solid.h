@@ -2,7 +2,7 @@
  *
  *  gradient_3d_27pt_solid.h
  *
- *  $Id: gradient_3d_27pt_solid.h,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,12 +15,9 @@
 #ifndef GRADIENT_3D_27PT_SOLID_H
 #define GRADIENT_3D_27PT_SOLID_H
 
-void gradient_3d_27pt_solid_init(void);
-void gradient_3d_27pt_solid_d2(const int nop, const double * field,
-			       double * grad, double * delsq);
-void gradient_3d_27pt_solid_d4(const int nop, const double * field,
-			       double * grad, double * delsq);
-void gradient_3d_27pt_solid_dyadic(const int nop, const double * field,
-				   double * grad, double * delsq);
+#include "map.h"
 
+int gradient_3d_27pt_solid_map_set(map_t * map);
+int gradient_3d_27pt_solid_d2(const int nop, const double * field,
+			      double * grad, double * delsq);
 #endif

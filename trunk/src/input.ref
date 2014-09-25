@@ -41,10 +41,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 1
-propagation_ode off
-propagation_ode_tstep 1.0
-propagation_ode_integrator rk2
+N_cycles 100001
 
 ##############################################################################
 #
@@ -63,20 +60,22 @@ propagation_ode_integrator rk2
 # 
 ##############################################################################
 
-size 32_32_32
-#grid 1_2_1
-periodicity 1_1_1
+size 64_2_2
+grid 4_1_1
+periodicity 0_1_1
 reduced_halo no
 
 ##############################################################################
 #
 #  Fluid parameters
 #
+#  fluid_rho0     mean density (default 1.0)
 #  viscosity      shear viscosity [default is 1/6, ie., relaxation time 1]
 #  viscosity_bulk bulk viscosity  [default = shear viscosity]
 #
 #  isothermal_fluctuations  [on|off] Default is off.
-#  temperature              isothermal fluctuation 'temperature'
+#  temperature              isothermal fluctuation 'temperature' &
+#			    beta = k_B T in electrokinetics	
 #
 #  ghost_modes           [on|off] Default is on.
 #  force FX_FY_FZ        Uniform body force on fluid (default zero)
@@ -88,11 +87,13 @@ reduced_halo no
 #  
 ##############################################################################
 
+fluid_rho0 1.0
+
 viscosity 0.1
 viscosity_bulk 0.1
 
 isothermal_fluctuations off
-temperature 0.00002133333
+temperature 3.33333333333333333e-5
 
 # ghost_modes off
 # force 0.00_0.0_0.0
@@ -113,6 +114,10 @@ distribution_poiseuille_umax  0.0_0.0_0.01
 #                                 surfactant
 #                                 polar_active
 #                                 lc_blue_phase
+#				  fe_electro	
+#
+#                                 fe_electro
+#                                 fe_electrosymmetric
 #
 #                                 symmetric_lb symmetric with 2 distributions
 #
@@ -127,21 +132,24 @@ distribution_poiseuille_umax  0.0_0.0_0.01
 #                                 3d_27pt_fluid
 #                                 3d_27pt_solid
 #
-#  fd_phi_fluctuations            [0/1] Cahn Hilliard only at the moment
-#  fd_phi_fluctuations_seed       RNG seed for order parameter fluctuations
+#  fd_phi_fluctuations            [0/1] Cahn Hilliard fluctuations
+#  fd_force_divergence		  [0/1] method for force calculation in
+#					electrokinetic module
+#					0 = gradient of chemical potential
+#					1 = divergence of Maxwell stress tensor
 #
 #  Note: only parameters for the currently selected free energy at
 #  run time are meaningful; you don't have to comment out all the others.
 #
 ###############################################################################
 
-free_energy lc_blue_phase
+free_energy fe_electro
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
-fd_phi_fluctuations_seed 17
 
+fd_force_divergence 1
 
 ###############################################################################
 #
@@ -264,6 +272,7 @@ lc_kappa1  0.01
 lc_xi      0.7
 
 lc_Gamma   0.3
+lc_noise   0
 lc_active_zeta 0.0
 
 lc_q_initialisation o8m
@@ -272,7 +281,8 @@ lc_init_redshift 0.83
 lc_redshift_update 0
 lc_init_nematic 1.0_0.0_0.0
 lc_dielectric_anisotropy 41.4
-# electric_e0 0.0_0.0_0.0
+
+electric_e0 0.0_1.0e-6_0.0
 
 lc_anchoring_method none
 lc_wall_anchoring fixed
@@ -303,40 +313,52 @@ leslie_ericksen_swim  0.0
 #  Colloid parameters
 #
 #  colloid_init:  no_colloids [default]
-#                 from_file
-#                 random (see below)
-#  colloid_type:  inactive bbl [default]
-#                 active   Include active terms in BBL
-#                 subgrid  No bbl ("unresolved particles")
+#                 from_file         see also "colloid_file_stub"
+#                 input_one         specify exactly one
+#                 input_two         specify two
+#                 input_three       specify three
 #
-#  colloid_cell_min:
-#                 This MUST be set if colloids are present: it specifies
-#                 the minimum cell list width, and must be at least 2ah
-#                 + delta, where delta catches any colloid-colloid
-#                 interactions. 
+#                 input_random      random selection with additional keys:
+#                 colloid_random_no number
+#                 colloid_random_dh 'grace' spacing
+#
+#  For each type specify at least two radii and a position, e.g.,
+#
+#                 colloid_one_a0   2.3
+#                 colloid_one_ah   2.4
+#                 colloid_one_r    12.0_12.0_12.0
+#
+#  colloid_rho0   density of all colloids (default 1.0 as for fluid)
+#
+#  Other quantities default to zero. For random initialisation position
+#  is ignored. Full list matches the structure in colloid.h, including
+#
+#  colloid_one_type:  inactive bbl [default]
+#                     active   Include active terms in BBL
+#                     janus    two-sided wetting in binary fluid
+#                     subgrid  No bbl ("unresolved particles")
 #
 ###############################################################################
 
 colloid_init        none
 colloid_type        inactive
+colloid_rho0        1.0
 
-colloid_random_no   1
+colloid_random_no   5
 colloid_random_dh   0.4
 
+colloid_random_type default
 colloid_random_a0   2.3
 colloid_random_ah   2.3
-colloid_random_r0   64.0_64.0_32.0
-colloid_random_v0   0.0_0.0_0.0
-colloid_random_s0   1.0_0.0_0.0
-colloid_random_m0   1.0_0.0_0.0
+colloid_random_v    0.0_0.0_0.0
+colloid_random_s    1.0_0.0_0.0
+colloid_random_m    1.0_0.0_0.0
 colloid_random_c    0.0
 colloid_random_h    0.0
 
 # Constant body force on all colloids ("gravity") [default is zero]
 # Uniform magnetic field [default is zero]
 
-colloid_cell_list_interactions yes
-colloid_cell_min 8.0
 colloid_gravity  0.0_0.0_0.0
 magnetic_b0      0.0_0.0_0.0
 
@@ -386,7 +408,7 @@ lj_epsilon 0.0003
 #
 ###############################################################################
 
-boundary_walls 0_0_0
+boundary_walls 1_0_0
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
 boundary_shear_init 0
@@ -423,14 +445,16 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics 50
+freq_statistics 500
 freq_measure 200000
+
 freq_config 5000000
 freq_phi    100000
+freq_psi    100000
 freq_vel    100000
 freq_fed    100000
-freq_shear_measurement 100000
-freq_shear_output      100000
+freq_shear_measurement 1000000
+freq_shear_output      1000000
 config_at_end no
 
 default_io_grid 1_1_1
@@ -439,8 +463,9 @@ distribution_io_grid 1_1_1
 distribution_io_input_format BINARY
 
 phi_io_grid 1_1_1
-phi_format    ASCII
-vel_format    ASCII
+phi_format    BINARY
+psi_format    BINARY
+vel_format    BINARY
 fed_format    ASCII
 
 ##############################################################################
@@ -451,6 +476,7 @@ fed_format    ASCII
 #  colloid_io_grid           io grid for colloids
 #  colloid_io_format_input   ASCII ASCII_SERIAL BINARY BINARY_SERIAL
 #  colloid_io_format_output  ASCII BINARY
+#  colloid_file_stub         a string used as stub of file names
 #
 #  Note that the output is always parallel. A SERIAL input file must
 #  be a single serial file.
@@ -493,6 +519,63 @@ qs_dir_format BINARY
 #LE_init_profile 1
 #LE_oscillation_period 0
 #LE_time_offset 0
+
+###############################################################################
+#
+#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
+#
+#  electrokinetics_z0         valency species 0  default +1
+#  electrokinetics_z1         valency species 1  default -1
+#  electrokinetics_d0         diffusivity 0      default 0.0
+#  electrokinetics_d1         diffusivity 1      default 0.0
+#  electrokinetics_eunit      unit charge        default +1.0
+#  electrokinetics_epsilon    permeativity (ref) default 0.0
+#
+#  electrokinetics_init		[gouy_chapman|liquid_junction|uniform]
+#  electrokinetics_init_rho_el	electrolyte concentration
+#  electrokinetics_init_sigma	surface charge density
+#
+#  Also important:
+#  temperature			sets Boltzmann factor beta
+#
+#  electrokinetics_rel_tol      relative tolerance in Poisson solver
+#  electrokinetics_abs_tol      absolute tolerance in Poisson solver
+#  electrokinetics_maxits       maximal number of iteration steps
+#  electrokinetics_diffacc      diffusive accuracy in Nernst-Planck equation
+#                               This parameter controls the adaptation of the 
+#                               number of multisteps: 0 < diffacc.
+#                               A value = 0 deactivates this feature.
+#  electrokinetics_multisteps   number of fractional LB timesteps in NPE
+#
+#  fe_electrosymmetric has a number of additional coupling parameters
+#                      for the binary problem:
+#
+#  electrosymmetric_epsilon2      additional permeativity to set contrast
+#  electrosymmetric_delta_mu0     solvation free energy diff species 0
+#  electrosymmetric_delta_mu1     solvation free energy diff species 1
+#
+###############################################################################
+
+electrokinetics_z0      +1
+electrokinetics_z1      -1
+electrokinetics_d0      0.01
+electrokinetics_d1      0.01
+electrokinetics_eunit   1.0
+electrokinetics_epsilon 3.3e3
+electrokinetics_init    gouy_chapman
+electrokinetics_init_rho_el 0.0
+electrokinetics_init_sigma 0.0125
+
+electrokinetics_rel_tol  0.0002
+electrokinetics_abs_tol  0.0000000003
+electrokinetics_maxits   1000
+electrokinetics_diffacc  0
+
+electrokinetics_multisteps 1
+
+electrosymmetric_epsilon2   2000.0
+electrosymmetric_delta_mu0  1.0
+electrosymmetric_delta_mu1  2.0
 
 ###############################################################################
 #

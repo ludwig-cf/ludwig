@@ -388,7 +388,6 @@ static int is_ok_decomposition() {
 
 int coords_index(const int ic, const int jc, const int kc) {
 
-
   assert(initialised_);
   assert(ic >= 1-nhalo_);
   assert(jc >= 1-nhalo_);
@@ -424,6 +423,23 @@ void coords_nhalo_set(const int n) {
 int coords_nhalo(void) {
 
   return nhalo_;
+}
+
+/*****************************************************************************
+ *
+ *  coords_ntotal
+ *
+ *****************************************************************************/
+
+int coords_ntotal(int ntotal[3]) {
+
+  assert(ntotal);
+
+  ntotal[X] = ntotal_[X];
+  ntotal[Y] = ntotal_[Y];
+  ntotal[Z] = ntotal_[Z];
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -535,6 +551,21 @@ void coords_index_to_ijk(const int index, int coords[3]) {
   assert(coords_index(coords[X], coords[Y], coords[Z]) == index);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  coords_strides
+ *
+ *****************************************************************************/
+
+int coords_strides(int * xs, int * ys, int * zs) {
+
+  *xs = xfac_;
+  *ys = yfac_;
+  *zs = 1;
+
+  return 0;
 }
 
 /*****************************************************************************

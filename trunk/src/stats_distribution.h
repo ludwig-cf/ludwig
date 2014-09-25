@@ -2,20 +2,21 @@
  *
  *  stats_distribution.h
  *
- *  $Id: stats_distribution.h,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef STATS_DISTRIBUTION_H
 #define STATS_DISTRIBUTION_H
 
-void stats_distribution_print(void);
-void stats_distribution_momentum(double g[3]);
+#include "model.h"
+#include "map.h"
+
+int stats_distribution_print(lb_t * lb, map_t * map);
+int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]);
 
 #endif

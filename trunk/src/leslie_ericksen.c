@@ -20,22 +20,18 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "lattice.h"
 #include "free_energy_vector.h"
-#include "phi.h"
-#include "advection.h"
+#include "field.h"
+#include "advection_s.h"
 #include "leslie_ericksen.h"
 
 static double Gamma_;       /* Rotational diffusion constant */
 static double swim_ = 0.0;  /* Self-advection parameter */
 
-static double * fluxe;
-static double * fluxw;
-static double * fluxy;
-static double * fluxz;
-
-static void leslie_ericksen_update_fluid(void);
-static void leslie_ericksen_add_swimming_velocity(void);
+static int leslie_ericksen_update_fluid(field_t * p, hydro_t * hydro,
+					advflux_t * flux);
+static int leslie_ericksen_add_swimming_velocity(field_t * p,
+						 hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -43,10 +39,10 @@ static void leslie_ericksen_add_swimming_velocity(void);
  *
  *****************************************************************************/
 
-void leslie_ericksen_gamma_set(const double gamma) {
+int leslie_ericksen_gamma_set(const double gamma) {
 
   Gamma_ = gamma;
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -55,59 +51,59 @@ void leslie_ericksen_gamma_set(const double gamma) {
  *
  *****************************************************************************/
 
-void leslie_ericksen_swim_set(const double s) {
+int leslie_ericksen_swim_set(const double s) {
 
   swim_ = s;
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  leslie_ericksen_update
  *
+ *  The hydro is allowed to be NULL, in which case the dynamics is
+ *  purely relaxational.
+ *
  *  Note there is a side effect on the velocity field here if the
  *  self-advection term is not zero.
  *
  *****************************************************************************/
 
-void leslie_ericksen_update(void) {
+int leslie_ericksen_update(field_t * p, hydro_t * hydro) {
 
-  int nsites;
+  int nf;
+  advflux_t * flux = NULL;
 
-  assert(phi_nop() == 3); /* Vector order parameters only */
+  assert(p);
 
-  nsites = coords_nsites();
+  field_nf(p, &nf);
+  assert(nf == NVECTOR);
+  advflux_create(nf, &flux);
 
-  fluxe = (double *) malloc(3*nsites*sizeof(double));
-  fluxw = (double *) malloc(3*nsites*sizeof(double));
-  fluxy = (double *) malloc(3*nsites*sizeof(double));
-  fluxz = (double *) malloc(3*nsites*sizeof(double));
-  if (fluxe == NULL) fatal("malloc(fluxe) failed\n");
-  if (fluxw == NULL) fatal("malloc(fluxw) failed\n");
-  if (fluxy == NULL) fatal("malloc(fluxy) failed\n");
-  if (fluxz == NULL) fatal("malloc(fluxz) failed\n");
+  if (hydro) {
+    if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(p, hydro);
+    hydro_u_halo(hydro);
+    advection_x(flux, hydro, p);
+  }
 
-  if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity();
-  hydrodynamics_halo_u();
-  advection_order_n(fluxe, fluxw, fluxy, fluxz);
-  leslie_ericksen_update_fluid();
+  leslie_ericksen_update_fluid(p, hydro, flux);
 
-  free(fluxz);
-  free(fluxy);
-  free(fluxw);
-  free(fluxe);
+  advflux_free(flux);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
  * leslie_ericksen_update_fluid
  *
+ *  hydro is allowed to be NULL, in which case there is relaxational
+ *  dynmaics only.
+ *
  *****************************************************************************/
 
-static void leslie_ericksen_update_fluid(void) {
-
+static int leslie_ericksen_update_fluid(field_t * fp, hydro_t * hydro,
+					advflux_t * flux) {
   int ic, jc, kc, index;
   int indexj, indexk;
   int ia, ib;
@@ -125,19 +121,27 @@ static void leslie_ericksen_update_fluid(void) {
 
   void (* fe_molecular_field_function)(int index, double h[3]);
 
+  assert(fp);
+  assert(flux);
+
   coords_nlocal(nlocal);
   fe_molecular_field_function = fe_v_molecular_field();
   lambda = fe_v_lambda();
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      w[ia][ib] = 0.0;
+    }
+  }
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-
-	phi_vector(index, p);
+	field_vector(fp, index, p);
 	fe_molecular_field_function(index, h);
-	hydrodynamics_velocity_gradient_tensor(ic, jc, kc, w);
+	if (hydro) hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
 
 	/* Note that the convection for Leslie Ericksen is that
 	 * w_ab = d_a u_b, which is the transpose of what the
@@ -163,20 +167,20 @@ static void leslie_ericksen_update_fluid(void) {
 	    sum += lambda*d[ia][ib]*p[ib] - omega[ia][ib]*p[ib];
 	  }
 
-	  p[ia] += dt*(-fluxe[3*index + ia] + fluxw[3*index  + ia]
-		       -fluxy[3*index + ia] + fluxy[3*indexj + ia]
-		       -fluxz[3*index + ia] + fluxz[3*indexk + ia]
+	  p[ia] += dt*(-flux->fe[3*index + ia] + flux->fw[3*index  + ia]
+		       -flux->fy[3*index + ia] + flux->fy[3*indexj + ia]
+		       -flux->fz[3*index + ia] + flux->fz[3*indexk + ia]
 		       + sum + Gamma_*h[ia]);
 	}
 
-	phi_vector_set(index, p);
+	field_vector_set(fp, index, p);
 
 	/* Next lattice site */
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -185,14 +189,17 @@ static void leslie_ericksen_update_fluid(void) {
  *
  *****************************************************************************/
 
-static void leslie_ericksen_add_swimming_velocity(void) {
-
+static int leslie_ericksen_add_swimming_velocity(field_t * fp,
+						 hydro_t * hydro) {
   int ic, jc, kc, index;
   int ia;
   int nlocal[3];
 
   double p[3];
   double u[3];
+
+  assert(fp);
+  assert(hydro);
 
   coords_nlocal(nlocal);
 
@@ -201,17 +208,16 @@ static void leslie_ericksen_add_swimming_velocity(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-
-	phi_vector(index, p);
-	hydrodynamics_get_velocity(index, u);
+	field_vector(fp, index, p);
+	hydro_u(hydro, index, u);
 
 	for (ia = 0; ia < 3; ia++) {
 	  u[ia] += swim_*p[ia];
 	}
-	hydrodynamics_set_velocity(index, u);
+	hydro_u_set(hydro, index, u);
       }
     }
   }
 
-  return;
+  return 0;
 }

@@ -15,9 +15,12 @@
 #ifndef SUBGRID_H
 #define SUBGRID_H
 
-void subgrid_update(void);
-void subgrid_force_from_particles(void);
-void subgrid_on_set(void);
-int  subgrid_on(void);
+#include "colloids.h"
+#include "hydro.h"
+
+int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro);
+int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro);
+int subgrid_on_set(void);
+int subgrid_on(int * flag);
 
 #endif

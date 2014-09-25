@@ -2,8 +2,6 @@
  *
  *  wall.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -15,10 +13,14 @@
 #ifndef WALL_H
 #define WALL_H
 
-void wall_init(void);
-void wall_bounce_back(void);
+#include "model.h"
+#include "map.h"
+
+int wall_init(lb_t * lb, map_t * map);
+int wall_bounce_back(lb_t * lb, map_t * map);
+int wall_set_wall_velocity(lb_t * lb);
+
 void wall_finish(void);
-void wall_update(void);
 
 void wall_accumulate_force(const double f[3]);
 void wall_net_momentum(double g[3]);

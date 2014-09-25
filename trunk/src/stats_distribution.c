@@ -8,23 +8,21 @@
  *  If there is more than one distribution, it is assumed the relevant
  *  statistics are produced in the order parameter sector.
  *
- *  $Id: stats_distribution.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <float.h>
 #include <math.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
-#include "site_map.h"
 #include "util.h"
 #include "stats_distribution.h"
 
@@ -37,10 +35,11 @@
  *
  *****************************************************************************/
 
-void stats_distribution_print(void) {
+int stats_distribution_print(lb_t * lb, map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int status;
 
   double stat_local[5];
   double stat_total[5];
@@ -49,6 +48,9 @@ void stats_distribution_print(void) {
   double rhovar;
 
   MPI_Comm comm;
+
+  assert(lb);
+  assert(map);
 
   coords_nlocal(nlocal);
   comm = pe_comm();
@@ -63,10 +65,11 @@ void stats_distribution_print(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        if (site_map_get_status(ic, jc, kc) != FLUID) continue;
         index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
-	rho = distribution_zeroth_moment(index, 0);
+	lb_0th_moment(lb, index, LB_RHO, &rho);
 	stat_local[0] += 1.0;
 	stat_local[1] += rho;
 	stat_local[2] += rho*rho;
@@ -83,14 +86,17 @@ void stats_distribution_print(void) {
   /* Compute mean density, and the variance, and print. We
    * assume the fluid volume (stat_total[0]) is not zero... */ 
 
+  /* In a uniform state the variance can be a truncation error
+   * below zero, hence fabs(rhovar) */
+
   rhomean = stat_total[1]/stat_total[0];
   rhovar  = (stat_total[2]/stat_total[0]) - rhomean*rhomean;
 
   info("\nScalars - total mean variance min max\n");
-  info("[rho] %14.2f %14.11f%14.7e %14.11f%14.11f\n",
-       stat_total[1], rhomean, rhovar, stat_total[3], stat_total[4]); 
+  info("[rho] %14.2f %14.11f %14.7e %14.11f %14.11f\n",
+       stat_total[1], rhomean, fabs(rhovar), stat_total[3], stat_total[4]); 
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -101,13 +107,18 @@ void stats_distribution_print(void) {
  *
  *****************************************************************************/
 
-void stats_distribution_momentum(double g[3]) {
+int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int status;
 
   double g_local[3];
   double g_site[3];
+
+  assert(lb);
+  assert(map);
+  assert(g);
 
   coords_nlocal(nlocal);
 
@@ -119,10 +130,11 @@ void stats_distribution_momentum(double g[3]) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        if (site_map_get_status(ic, jc, kc) != FLUID) continue;
         index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
-	distribution_first_moment(index, 0, g_site);
+	lb_1st_moment(lb, index, LB_RHO, g_site);
 	g_local[X] += g_site[X];
 	g_local[Y] += g_site[Y];
 	g_local[Z] += g_site[Z];
@@ -132,5 +144,6 @@ void stats_distribution_momentum(double g[3]) {
 
   MPI_Reduce(g_local, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
-  return;
+  return 0;
 }
+

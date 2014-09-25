@@ -15,6 +15,8 @@
 #ifndef STATS_SURFACTANT_H
 #define STATS_SURFACTANT_H
 
-void stats_surfactant_1d(void);
+#include "field.h"
+
+int stats_surfactant_1d(field_t * fphi);
 
 #endif

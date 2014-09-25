@@ -15,9 +15,15 @@
 #ifndef SURFACTANT_H
 #define SURFACTANT_H
 
-void   surfactant_fluid_parameters_set(double a, double b, double kappa);
-void   surfactant_parameters_set(double kt, double epsilon, double beta,
-				 double w);
+#include "field.h"
+#include "field_grad.h"
+
+int fe_surfactant_create(field_t * phi, field_grad_t * grad);
+void fe_surfactant_free(void);
+
+int surfactant_fluid_parameters_set(double a, double b, double kappa);
+int surfactant_parameters_set(double kt, double eps, double beta, double w);
+
 double surfactant_interfacial_tension(void);
 double surfactant_interfacial_width(void);
 double surfactant_langmuir_isotherm(void);

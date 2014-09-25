@@ -26,16 +26,16 @@ static int t_steps   = 0;
 static int t_current = 0;
 
 static int freq_statistics = 100;
-static int freq_measure    = 1000;
-static int freq_config     = 10000;
+static int freq_measure    = 100000000;
+static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
+static int freq_psi        = 100000000;
 static int freq_vel        = 100000000;
 static int freq_fed        = 100000000;
 static int freq_shear_io   = 100000000;
 static int freq_shear_meas = 100000000;
 static int freq_colloid_io = 100000000;
 static int config_at_end   = 1;
-static int propagation_ode = 0;
 
 
 /*****************************************************************************
@@ -53,14 +53,13 @@ void init_control() {
 
   n = RUN_get_int_parameter("N_start", &t_start);
   n = RUN_get_int_parameter("N_cycles", &t_steps);
-
-  n = RUN_get_string_parameter("propagation_ode", tmp, 128);
-  if (n ==1 && strcmp(tmp, "on") == 0) propagation_ode = 1;
+  if (n == 0) fatal("Please set N_cycles in input\n");
 
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
   n = RUN_get_int_parameter("freq_config", &freq_config);
   n = RUN_get_int_parameter("freq_phi", &freq_phi);
+  n = RUN_get_int_parameter("freq_psi", &freq_psi);
   n = RUN_get_int_parameter("freq_vel", &freq_vel);
   n = RUN_get_int_parameter("freq_fed", &freq_fed);
   n = RUN_get_int_parameter("freq_shear_measurement", &freq_shear_meas);
@@ -131,6 +130,16 @@ int is_phi_output_step() {
 
 /*****************************************************************************
  *
+ *  is_psi_output_step
+ *
+ *****************************************************************************/
+
+int is_psi_output_step() {
+  return ((t_current % freq_psi) == 0);
+}
+
+/*****************************************************************************
+ *
  *  is_vel_output_step
  *
  *****************************************************************************/
@@ -181,11 +190,22 @@ int is_shear_output_step() {
 
 /*****************************************************************************
  *
- *  is_propagation_ode
+ *  control_freq_set
+ *
+ *  Control needs refactoring as object; until that time:
  *
  *****************************************************************************/
 
-int is_propagation_ode() {
-  return propagation_ode;
+int control_freq_set(int freq) {
+
+  freq_statistics = freq;
+
+  return 0;
 }
 
+int control_time_set(int it) {
+
+  t_current = it;
+
+  return 0;
+}

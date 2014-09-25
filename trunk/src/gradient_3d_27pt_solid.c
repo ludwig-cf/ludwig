@@ -6,6 +6,8 @@
  *  general porous media). If there are no solid sites nearby it
  *  reduces to the fluid 27pt stencil.
  *
+ *  For scalar order parameters with or without wetting.
+ *
  *  This is the 'predictor corrector' method described by Desplat et al.
  *  Comp. Phys. Comm. 134, 273--290 (2000).
  *
@@ -21,7 +23,7 @@
  *  If one only needs a set contact angle, can have C = 0. C only comes
  *  into play when consdiering wetting phase transitions.
  *
- *  $Id: gradient_3d_27pt_solid.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -35,10 +37,10 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "site_map.h"
 #include "free_energy.h"
-#include "gradient.h"
 #include "gradient_3d_27pt_solid.h"
+
+static map_t * map = NULL;
 
 /* These are the 'links' used to form the gradients at boundaries. */
 
@@ -62,15 +64,24 @@ static void gradient_3d_27pt_solid_op(const int nop,
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_solid_init
+ *  gradient_3d_27pt_solid_map_set
  *
  *****************************************************************************/
 
-void gradient_3d_27pt_solid_init(void) {
+int gradient_3d_27pt_solid_map_set(map_t * map_in) {
 
-  gradient_d2_set(gradient_3d_27pt_solid_d2);
+  int ndata;
+  assert(map_in);
 
-  return;
+  map = map_in;
+
+  /* We expect at most two wetting parameters; if present
+   * first should be C, second H. Default to zero. */
+
+  map_ndata(map, &ndata);
+  if (ndata > 2) fatal("Two many wetting parameters for gradient %d\n", ndata);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -79,8 +90,8 @@ void gradient_3d_27pt_solid_init(void) {
  *
  *****************************************************************************/
 
-void gradient_3d_27pt_solid_d2(const int nop, const double * field,
-			       double * grad, double * delsq) {
+int gradient_3d_27pt_solid_d2(const int nop, const double * field,
+			      double * grad, double * delsq) {
 
   int nextra;
 
@@ -89,7 +100,7 @@ void gradient_3d_27pt_solid_d2(const int nop, const double * field,
 
   gradient_3d_27pt_solid_op(nop, field, grad, delsq, nextra);
 
-  return;
+  return 0;
 }
 
 /****************************************************************************
@@ -118,6 +129,9 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
   double rk;
   double c, h, phi_b;
 
+  int status;
+  double wet[2] = {0.0, 0.0};
+
   const double r9 = (1.0/9.0);     /* normaliser for grad */
   const double r18 = (1.0/18.0);   /* normaliser for delsq */
 
@@ -130,7 +144,8 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	if (site_map_get_status_index(index) != FLUID) continue;
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	/* Set solid/fluid flag to index neighbours */
 
@@ -140,7 +155,8 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 	  kc1 = kc + bs_cv[p][Z];
 
 	  isite[p] = coords_index(ic1, jc1, kc1);
-	  if (site_map_get_status_index(isite[p]) != FLUID) isite[p] = -1;
+	  map_status(map, isite[p], &status);
+	  if (status != MAP_FLUID) isite[p] = -1;
 	}
 
 	for (n = 0; n < nop; n++) {
@@ -179,9 +195,9 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 
 	      ia = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
 				 kc + bs_cv[p][Z]);
-
-	      c = site_map_C(ia);
-	      h = site_map_H(ia);
+	      map_data(map, ia, wet);
+	      c = wet[0];
+	      h = wet[1];
 
 	      /* kludge: if nop is 2, set h[1] = 0 */
 	      /* This is for Langmuir Hinshelwood */

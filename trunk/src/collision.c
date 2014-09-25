@@ -10,13 +10,13 @@
  *  The relaxation times can be set to give either 'm10', BGK or
  *  'two-relaxation' time (TRT) models.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Alan Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -28,23 +28,14 @@
 #include "util.h"
 #include "coords.h"
 #include "physics.h"
-#include "lattice.h"
 #include "model.h"
-#include "site_map.h"
-#include "collision.h"
-#include "fluctuations.h"
-
-#include "phi.h"
 #include "free_energy.h"
-#include "phi_cahn_hilliard.h"
-
 #include "control.h"
-#include "propagation_ode.h"
+#include "collision.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
-static int isothermal_fluctuations_ = 0; /* Flag for noise. */
 
 static double rtau_shear;       /* Inverse relaxation time for shear modes */
 static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
@@ -53,43 +44,43 @@ static double var_bulk;         /* Variance for bulk mode fluctuations */
 static double rtau_[NVEL];      /* Inverse relaxation times */
 static double noise_var[NVEL];  /* Noise variances */
 
-static fluctuations_t * fl_;
+static int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
+static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
+static int fluctuations_off(double shat[3][3], double ghat[NVEL]);
+static int collision_fluctuations(noise_t * noise, int index,
+				  double shat[3][3], double ghat[NVEL]);
 
-static void collision_multirelaxation(void);
-static void collision_binary_lb(void);
-static void collision_bgk(void);
-
-static void fluctuations_off(double shat[3][3], double ghat[NVEL]);
-       void collision_fluctuations(int index, double shat[3][3],
-				   double ghat[NVEL]);
 /*****************************************************************************
  *
- *  collide
+ *  lb_collide
  *
  *  Driver routine for the collision stage.
  *
- *  Note that the ODE propagation currently uses ndist == 2, as
- *  well as the LB binary, hence the logic.
- *
+ *  We allow hydro to be NULL, in which case there is no hydrodynamics!
+ * 
  *****************************************************************************/
 
-void collide(void) {
+int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   int ndist;
 
-  ndist = distribution_ndist();
-  collision_relaxation_times_set();
+  if (hydro == NULL) return 0;
 
-  if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_M10) collision_multirelaxation();
-  if  (ndist == 2 && is_propagation_ode() == 0) collision_binary_lb();
-  if ((ndist == 1 || is_propagation_ode() == 1 ) && nrelax_ == RELAXATION_BGK) collision_bgk();
+  assert(lb);
+  assert(map);
 
-  return;
+  lb_ndist(lb, &ndist);
+  lb_collision_relaxation_times_set(noise);
+
+  if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
+  if (ndist == 2) lb_collision_binary(lb, hydro, map, noise);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  collision_multirelaxation
+ *  lb_collision_mrt
  *
  *  Collision with (potentially) different relaxation times for each
  *  different mode.
@@ -106,12 +97,14 @@ void collide(void) {
  *
  *****************************************************************************/
 
-void collision_multirelaxation() {
+int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
-  int       N[3];
+  int       nlocal[3];
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       ia, ib;                  /* indices ("alphabeta") */
+  int       status;
+  int       noise_on = 0;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -128,9 +121,20 @@ void collision_multirelaxation() {
   double    force_local[3];
   double    force_global[3];
 
-  coords_nlocal(N);
+  /* SIMD stuff */
+  int iv,base_index;
+  int nv,full_vec;
+  
+  double f_v[NVEL][SIMDVL];
+  double mode_v[NVEL][SIMDVL];
+
+  assert(lb);
+  assert(hydro);
+  assert(map);
+
+  coords_nlocal(nlocal);
   fluctuations_off(shat, ghat);
-  fluid_body_force(force_global);
+  physics_fbody(force_global);
 
   rdim = 1.0/NDIM;
 
@@ -138,41 +142,42 @@ void collision_multirelaxation() {
     u[ia] = 0.0;
   }
 
-  int iv,base_index;
-  int nv,full_vec;
-  
-  /* temporary structures for holding SIMD vectors */
-  double f_v[NVEL][SIMDVL];
-  double mode_v[NVEL][SIMDVL];
-  
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
+  noise_present(noise, NOISE_RHO, &noise_on);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+
       /* loop over Z index in steps of size SIMDVL */
-      for (kc = 1; kc <= N[Z]; kc+=SIMDVL) {
+
+      for (kc = 1; kc <= nlocal[Z]; kc += SIMDVL) {
 	
 	/* nv is the number of SIMD iterations: i.e. SIMDVL unless
 	 * this overflows the dimension, in which it becomes the number of
 	 * remaining valid sites. Note that, we need to use the CPP variable
 	 * SIMDVL rather than the runtime nv where possible in key loops to
 	 * help compiler optimisation */
-	nv=SIMDVL;
-	full_vec=1;
-	if ( kc > N[Z]-SIMDVL+1 ){
-	  full_vec=0;
-	  nv=N[Z]+1-kc;
+
+	nv = SIMDVL;
+	full_vec = 1;
+	if ( kc > nlocal[Z] - SIMDVL + 1 ) {
+	  full_vec = 0;
+	  nv = nlocal[Z] + 1 - kc;
 	}
 	
-	base_index=coords_index(ic, jc, kc);	
+	base_index = coords_index(ic, jc, kc);	
 	
-	/* Compute all the modes */
-	
+	/* Compute all the modes */	
 	/* load SIMD vector of lattice sites */
-	if ( full_vec )
-	  distribution_multi_index(base_index, 0, f_v);
-	else
-	  distribution_multi_index_part(base_index, 0, f_v, nv);
-	
+
+	if ( full_vec ) {
+	  lb_f_multi_index(lb, base_index, 0, f_v);
+	}
+	else {
+	  lb_f_multi_index_part(lb, base_index, 0, f_v, nv);
+	}
+
 	/* matrix multiplication for full SIMD vector */
+
 	for (m = 0; m < nmodes_; m++) {
 	  for (iv = 0; iv < SIMDVL; iv++)
 	    mode_v[m][iv] = 0.0;
@@ -184,12 +189,13 @@ void collision_multirelaxation() {
 	  
 	}
 	
-	
 	/* loop over SIMD vector of lattice sites */
+
 	for (iv = 0; iv < nv; iv++) {
 	  
-	  index = base_index + iv;	
-	  if (site_map_get_status_index(index) != FLUID) continue;
+	  index = base_index + iv;
+	  map_status(map, index, &status);
+	  if (status != MAP_FLUID) continue;
 
 	  for (m = 0; m < nmodes_; m++) { 
 	    mode[m] = mode_v[m][iv];
@@ -220,13 +226,13 @@ void collision_multirelaxation() {
 	  /* Compute the local velocity, taking account of any body force */
 	  
 	  rrho = 1.0/rho;
-	  hydrodynamics_get_force_local(index, force_local);
+	  hydro_f_local(hydro, index, force_local);
 	  
 	  for (ia = 0; ia < NDIM; ia++) {
 	    force[ia] = (force_global[ia] + force_local[ia]);
 	    u[ia] = rrho*(u[ia] + 0.5*force[ia]);
 	  }
-	  hydrodynamics_set_velocity(index, u);
+	  hydro_u_set(hydro, index, u);
 	  
 	  /* Relax stress with different shear and bulk viscosity */
 	  
@@ -263,9 +269,7 @@ void collision_multirelaxation() {
 	    }
 	  }
 	  
-	  if (isothermal_fluctuations_) {
-	    collision_fluctuations(index, shat, ghat);
-	  }
+	  if (noise_on) collision_fluctuations(noise, index, shat, ghat);
 	  
 	  /* Now reset the hydrodynamic modes to post-collision values:
 	   * rho is unchanged, velocity unchanged if no force,
@@ -289,14 +293,15 @@ void collision_multirelaxation() {
 	  }
 	  
 	  for (m = 0; m < nmodes_; m++) {
-	    mode_v[m][iv]=mode[m];
+	    mode_v[m][iv] = mode[m];
 	  }
 	  
-	  
-	} /* end loop over SIMD vector */
+	  /* next SIMD vector */
+	}
 	
 	/* Project post-collision modes back onto the distribution */
 	/* matrix multiplication for full SIMD vector */
+
 	for (p = 0; p < NVEL; p++) {
 	  for (iv = 0; iv < SIMDVL; iv++) 
 	    f_v[p][iv] = 0.0;
@@ -306,24 +311,26 @@ void collision_multirelaxation() {
 	  }
 	}
 	
-	/* store SIMD vector of lattice sites */
-	if ( full_vec )
-	  distribution_multi_index_set(base_index, 0, f_v);
-	else
-	  distribution_multi_index_set_part(base_index, 0, f_v, nv);
-	
+	/* Store SIMD vector of lattice sites */
+
+	if ( full_vec ) {
+	  lb_f_multi_index_set(lb, base_index, 0, f_v);
+	}
+	else {
+	  lb_f_multi_index_set_part(lb, base_index, 0, f_v, nv);
+	}
 	
 	/* Next site */
       }
     }
   }
   
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  collision_binary_lb
+ *  lb_collision_binary
  *
  *  Binary LB collision stage (here we are progressing toward
  *  decoupled version).
@@ -363,12 +370,14 @@ void collision_multirelaxation() {
  *
  *****************************************************************************/
 
-void collision_binary_lb() {
+int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
-  int       N[3];
+  int       nlocal[3];
   int       ic, jc, kc, index;       /* site indices */
   int       p, m;                    /* velocity index */
   int       i, j;                    /* summed over indices ("alphabeta") */
+  int noise_on = 0;                  /* Fluctuations switch */
+  int status;
 
   double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
   double    rho, rrho;               /* Density, reciprocal density */
@@ -383,9 +392,6 @@ void collision_binary_lb() {
 
   double    force_local[3];
   double    force_global[3];
-
-  const double   r3     = (1.0/3.0);
-
 
   double    phi, jdotc, sphidotq;    /* modes */
   double    jphi[3];
@@ -407,9 +413,12 @@ void collision_binary_lb() {
   double u_v[3][SIMDVL];
 
   assert (NDIM == 3);
+  assert(lb);
+  assert(hydro);
+  assert(map);
 
-  coords_nlocal(N);
-  fluid_body_force(force_global);
+  coords_nlocal(nlocal);
+  physics_fbody(force_global);
 
   chemical_potential = fe_chemical_potential_function();
   chemical_stress = fe_chemical_stress_function();
@@ -417,38 +426,46 @@ void collision_binary_lb() {
   /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
    * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
 
-  mobility = phi_cahn_hilliard_mobility();
+  physics_mobility(&mobility);
   rtau2 = 2.0 / (1.0 + 2.0*mobility);
+
+  noise_present(noise, NOISE_RHO, &noise_on);
   fluctuations_off(shat, ghat);
 
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+
       /* loop over Z index in steps of size SIMDVL */
-      for (kc = 1; kc <= N[Z]; kc+=SIMDVL) {
+
+      for (kc = 1; kc <= nlocal[Z]; kc += SIMDVL) {
 		
 	/* nv is the number of SIMD iterations: i.e. SIMDVL unless
 	 * this overflows the dimension, in which it becomes the number of
 	 * remaining valid sites. Note that, we need to use the CPP variable
 	 * SIMDVL rather than the runtime nv where possible in key loops to
 	 * help compiler optimisation */
-	nv=SIMDVL;
-	full_vec=1;
-	if ( kc > N[Z]-SIMDVL+1 ){
-	  full_vec=0;
-	  nv=N[Z]+1-kc;
+
+	nv = SIMDVL;
+	full_vec = 1;
+	if ( kc > nlocal[Z] - SIMDVL + 1 ) {
+	  full_vec = 0;
+	  nv = nlocal[Z] + 1 - kc;
 	}
 	
-	base_index=coords_index(ic, jc, kc);
+	base_index = coords_index(ic, jc, kc);
 	
 	/* Compute all the modes */
-	
 	/* load SIMD vector of lattice sites */
-	if ( full_vec )
-	  distribution_multi_index(base_index, 0, f_v);
-	else
-	  distribution_multi_index_part(base_index, 0, f_v, nv);
+
+	if ( full_vec ) {
+	  lb_f_multi_index(lb, base_index, 0, f_v);
+	}
+	else {
+	  lb_f_multi_index_part(lb, base_index, 0, f_v, nv);
+	}
 	
 	/* matrix multiplication for full SIMD vector */
+
 	for (m = 0; m < nmodes_; m++) {
 	  for (iv = 0; iv < SIMDVL; iv++)
 	    mode_v[m][iv] = 0.0;
@@ -463,11 +480,13 @@ void collision_binary_lb() {
 	/* loop over SIMD vector of lattice sites */
 	for (iv = 0; iv < nv; iv++) {
 	  
-	  index = base_index + iv;	
-	  if (site_map_get_status_index(index) != FLUID) continue;
+	  index = base_index + iv;
+	  map_status(map, index, &status);
+	  if (status != MAP_FLUID) continue;
 	  
-	  for (m = 0; m < nmodes_; m++) 
-	    mode[m]=mode_v[m][iv];
+	  for (m = 0; m < nmodes_; m++) { 
+	    mode[m] = mode_v[m][iv];
+	  }
 
 	  /* For convenience, write out the physical modes. */
 	  
@@ -475,6 +494,7 @@ void collision_binary_lb() {
 	  for (i = 0; i < 3; i++) {
 	    u[i] = mode[1 + i];
 	  }
+
 	  s[X][X] = mode[4];
 	  s[X][Y] = mode[5];
 	  s[X][Z] = mode[6];
@@ -488,13 +508,13 @@ void collision_binary_lb() {
 	  /* Compute the local velocity, taking account of any body force */
 	  
 	  rrho = 1.0/rho;
-	  hydrodynamics_get_force_local(index, force_local);
+	  hydro_f_local(hydro, index, force_local);
 	  
 	  for (i = 0; i < 3; i++) {
 	    force[i] = (force_global[i] + force_local[i]);
 	    u[i] = rrho*(u[i] + 0.5*force[i]);  
 	  }
-	  hydrodynamics_set_velocity(index, u);
+	  hydro_u_set(hydro, index, u);
 	  
 	  /* Compute the thermodynamic component of the stress */
 	  
@@ -517,8 +537,8 @@ void collision_binary_lb() {
 	  
 	  /* Form traceless parts */
 	  for (i = 0; i < 3; i++) {
-	    s[i][i]   -= r3*tr_s;
-	    seq[i][i] -= r3*tr_seq;
+	    s[i][i]   -= r3_*tr_s;
+	    seq[i][i] -= r3_*tr_seq;
 	  }
 	  
 	/* Relax each mode */
@@ -527,7 +547,7 @@ void collision_binary_lb() {
 	  for (i = 0; i < 3; i++) {
 	    for (j = 0; j < 3; j++) {
 	      s[i][j] -= rtau_shear*(s[i][j] - seq[i][j]);
-	      s[i][j] += d_[i][j]*r3*tr_s;
+	      s[i][j] += d_[i][j]*r3_*tr_s;
 	      
 	      /* Correction from body force (assumes equal relaxation times) */
 	      
@@ -536,9 +556,7 @@ void collision_binary_lb() {
 	    }
 	  }
 	  
-	  if (isothermal_fluctuations_) {
-	    collision_fluctuations(index, shat, ghat);
-	  }
+	  if (noise_on) collision_fluctuations(noise, index, shat, ghat);
 	  
 	  /* Now reset the hydrodynamic modes to post-collision values */
 	  
@@ -561,11 +579,11 @@ void collision_binary_lb() {
 	  }
 
 	  for (m = 0; m < nmodes_; m++) {
-	    mode_v[m][iv]=mode[m];
+	    mode_v[m][iv] = mode[m];
 	  }
 	  	  
 	  for (i = 0; i < 3; i++) {	    
-	    u_v[i][iv]=u[i];
+	    u_v[i][iv] = u[i];
 	  }
 
 	} /* end loop over SIMD vector */
@@ -573,6 +591,7 @@ void collision_binary_lb() {
 	
 	/* Project post-collision modes back onto the distribution */
 	/* matrix multiplication for full SIMD vector */
+
 	for (p = 0; p < NVEL; p++) {
 	  for (iv = 0; iv < SIMDVL; iv++) 
 	    f_v[p][iv] = 0.0;
@@ -582,37 +601,43 @@ void collision_binary_lb() {
 	  }
 	}
 	
-	/* store SIMD vector of lattice sites */
-	if ( full_vec )
-	  distribution_multi_index_set(base_index, 0, f_v);
-	else
-	  distribution_multi_index_set_part(base_index, 0, f_v, nv);
-	
-	/* load SIMD vector of lattice sites */
-	if ( full_vec )
-	  distribution_multi_index(base_index, 1, f_v);
-	else
-	  distribution_multi_index_part(base_index, 1, f_v, nv);
-	
+	/* Store SIMD vector of lattice sites for density */
+
+	if ( full_vec ) {
+	  lb_f_multi_index_set(lb, base_index, 0, f_v);
+	}
+	else {
+	  lb_f_multi_index_set_part(lb, base_index, 0, f_v, nv);
+	}
+
+	/* Now load SIMD vector of lattice sites for composition */
+
+	if ( full_vec ) {
+	  lb_f_multi_index(lb, base_index, 1, f_v);
+	}
+	else {
+	  lb_f_multi_index_part(lb, base_index, 1, f_v, nv);
+	}
 	
 	/* start loop over SIMD vector of lattice sites */ 
 	for (iv = 0; iv < nv; iv++) {
 	  
-	  index=base_index+iv;
+	  index = base_index+iv;
 
 	  for (i = 0; i < 3; i++) {	    
-	    u[i]=u_v[i][iv];
+	    u[i] = u_v[i][iv];
 	  }
 	  
 	  /* Now, the order parameter distribution */
 	  
-	  phi = phi_get_phi_site(index);
+	  phi = f_v[0][iv];
 	  mu = chemical_potential(index, 0);
 	  
 	  jphi[X] = 0.0;
 	  jphi[Y] = 0.0;
 	  jphi[Z] = 0.0;
 	  for (p = 1; p < NVEL; p++) {
+	    phi += f_v[p][iv];
 	    for (i = 0; i < 3; i++) {
 	      jphi[i] += f_v[p][iv]*cv[p][i];
 	    }
@@ -654,96 +679,12 @@ void collision_binary_lb() {
 	} /* end loop over SIMD vector */ 
 	
 	/* store SIMD vector of lattice sites */
-	if ( full_vec )
-	  distribution_multi_index_set(base_index, 1, f_v);
-	else
-	  distribution_multi_index_set_part(base_index, 1, f_v, nv);
-	
 
-	/* Next site */
-      }
-    }
-  }
-  
-  return;
-}
-
-/*****************************************************************************
- *
- *  collision_bgk
- *
- *  Standard version of BGK collision kernel with the same relaxation 
- *  time for all modes.
- *
- *  Note: There is no transform onto the moment basis.
- *  The collision is directly performed in the distribution basis.
- *
- *****************************************************************************/
-
-void collision_bgk() {
-
-  int       N[3];
-  int       ic, jc, kc, index;       /* site indices */
-  int       p;                       /* velocity index */
-  int       ia, ib;                  /* indices ("alphabeta") */
-
-  double    rho, rrho;               /* Density, reciprocal density */
-  double    u[3];                    /* Velocity */
-
-  double    f[NVEL];
-  double    feq[NVEL];
-  double    ftemp;
-  double    udotc, sdotq;
-
-  coords_nlocal(N);
-
-  for (ia = 0; ia < 3; ia++) {
-    u[ia] = 0.0;
-  }
-
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
-	
-	index=coords_index(ic, jc, kc);	
-	
-	/* Compute density and velocity */
-
-	rho = distribution_zeroth_moment(index,0);
-	distribution_first_moment(index,0,u);
-
-	/* Compute the local velocity, taking account of any body force */
-	  
-	rrho = 1.0/rho;
-	
-	for (ia = 0; ia < NDIM; ia++) {
-	  u[ia] = rrho*(u[ia]);
+	if ( full_vec ) {
+	  lb_f_multi_index_set(lb, base_index, 1, f_v);
 	}
-	hydrodynamics_set_velocity(index, u);
-
-	for (p = 0; p < NVEL; p++) {
-
-	/* Determine equilibrium distribution */
-
-	  udotc = 0.0;
-	  sdotq = 0.0;
-	  for (ia = 0; ia < 3; ia++) {
-	    udotc += u[ia]*cv[p][ia];
-	    for (ib = 0; ib < 3; ib++) {
-	      sdotq += q_[p][ia][ib]*u[ia]*u[ib];
-	    }
-	  }
-	  feq[p] = rho*wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
-
-	  /* Collide */
-
-	  f[p] = distribution_f(index,p,0);
-	  ftemp = f[p] - rtau_shear * (f[p] - feq[p]);
-
-	  /* Set post-collision values of distribution */
-
-	  distribution_f_set(index, p, 0, ftemp);
-
+	else {
+	  lb_f_multi_index_set_part(lb, base_index, 1, f_v, nv);
 	}
 
 	/* Next site */
@@ -751,7 +692,7 @@ void collision_bgk() {
     }
   }
   
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -762,7 +703,7 @@ void collision_bgk() {
  *
  *****************************************************************************/
 
-static void fluctuations_off(double shat[3][3], double ghat[NVEL]) {
+static int fluctuations_off(double shat[3][3], double ghat[NVEL]) {
 
   int ia, ib;
 
@@ -776,30 +717,37 @@ static void fluctuations_off(double shat[3][3], double ghat[NVEL]) {
     ghat[ia] = 0.0;
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  test_isothermal_fluctuations
+ *  collision_stats_kt
  *
  *  Reports the equipartition of momentum, and the actual temperature
  *  cf. the expected (input) temperature.
  *
  *****************************************************************************/
 
-void test_isothermal_fluctuations(void) {
+int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   int n;
+  int status;
 
   double glocal[4];
   double gtotal[4];
   double rrho;
   double gsite[3];
+  double kt;
 
-  if (isothermal_fluctuations_ == 0) return;
+  assert(lb);
+  assert(map);
+  assert(noise);
+
+  noise_present(noise, NOISE_RHO, &status);
+  if (status == 0) return 0;
 
   coords_nlocal(nlocal);
 
@@ -813,10 +761,12 @@ void test_isothermal_fluctuations(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	if (site_map_get_status_index(index) != FLUID) continue;
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
-	rrho = 1.0/distribution_zeroth_moment(index, 0);
-	distribution_first_moment(index, 0, gsite);
+	lb_0th_moment(lb, index, LB_RHO, &rrho);
+	rrho = 1.0/rrho;
+	lb_1st_moment(lb, index, LB_RHO, gsite);
 
 	for (n = 0; n < 3; n++) {
 	  glocal[n] += gsite[n]*gsite[n]*rrho;
@@ -841,10 +791,12 @@ void test_isothermal_fluctuations(void) {
   info("\n");
   info("Isothermal fluctuations\n");
   info("[eqipart.] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
-  info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z],
-       get_kT()*NDIM);
 
-  return;
+  physics_kt(&kt);
+  kt *= NDIM;
+  info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z], kt);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -875,32 +827,6 @@ void collision_ghost_modes_off(void) {
 
 /*****************************************************************************
  *
- *  collision_fluctuations_on
- *
- *****************************************************************************/
-
-void collision_fluctuations_on(void) {
-
-  isothermal_fluctuations_ = 1;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  collision_fluctuations_off
- *
- *****************************************************************************/
-
-void collision_fluctuations_off(void) {
-
-  isothermal_fluctuations_ = 0;
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  collision_relaxation_set
  *
  *****************************************************************************/
@@ -918,33 +844,47 @@ void collision_relaxation_set(const int nrelax) {
 
 /*****************************************************************************
  *
- *  collision_relaxation_times_set
+ *  lb_collision_relaxation_times_set
+ *
+ *  We have:
+ *     Shear viscosity eta = -rho c_s^2 dt ( 1 / lambda + 1 / 2 )
+ *
+ *  where lambda is the eigenvalue so that the mode relaxation is
+ *
+ *     m_k^* = m_k + lambda (m_k - m_k^eq)
+ *
+ *  Bulk viscosity = -rho0 c_s^2 dt (1/3) ( 2 / lambda + 1 )
  *
  *  Note there is an extra normalisation in the lattice fluctuations
  *  which would otherwise give effective kT = cs2
  *
  *****************************************************************************/
 
-void collision_relaxation_times_set(void) {
+
+int lb_collision_relaxation_times_set(noise_t * noise) {
 
   int p;
+  int noise_on = 0;
+  double rho0;
   double kt;
+  double eta_shear;
+  double eta_bulk;
+  double tau, rtau;
   double tau_s;
   double tau_b;
   double tau_g;
 
-  extern int is_propagation_ode(void);
- 
-  if (is_propagation_ode()) {
-    rtau_shear = 1.0 / (3.0*get_eta_shear());
-    rtau_bulk  = 1.0 / (3.0*get_eta_bulk());
-  }
-  else {
-    rtau_shear = 2.0 / (1.0 + 6.0*get_eta_shear());
-    rtau_bulk  = 2.0 / (1.0 + 6.0*get_eta_bulk());
-  }
+  assert(noise);
+  noise_present(noise, NOISE_RHO, &noise_on);
+  physics_rho0(&rho0);
 
   /* Initialise the relaxation times */
+ 
+  physics_eta_shear(&eta_shear);
+  physics_eta_bulk(&eta_bulk);
+
+  rtau_shear = 1.0/(0.5 + eta_shear / (rho0*cs2));
+  rtau_bulk  = 1.0/(0.5 + eta_bulk / (rho0*cs2));
 
   if (nrelax_ == RELAXATION_M10) {
     for (p = NHYDRO; p < NVEL; p++) {
@@ -962,13 +902,15 @@ void collision_relaxation_times_set(void) {
 
     assert(NVEL != 9);
 
-    tau_g = 2.0/(1.0 + (3.0/8.0)*rtau_shear);
+    tau  = eta_shear / (rho0*cs2);
+    rtau = 0.5 + 2.0*tau/(tau + 3.0/8.0);
+    if (rtau > 2.0) rtau = 2.0;
 
     if (NVEL == 15) {
       rtau_[10] = rtau_shear;
-      rtau_[11] = tau_g;
-      rtau_[12] = tau_g;
-      rtau_[13] = tau_g;
+      rtau_[11] = rtau;
+      rtau_[12] = rtau;
+      rtau_[13] = rtau;
       rtau_[14] = rtau_shear;
     }
 
@@ -977,23 +919,23 @@ void collision_relaxation_times_set(void) {
       rtau_[14] = rtau_shear;
       rtau_[18] = rtau_shear;
 
-      rtau_[11] = tau_g;
-      rtau_[12] = tau_g;
-      rtau_[13] = tau_g;
-      rtau_[15] = tau_g;
-      rtau_[16] = tau_g;
-      rtau_[17] = tau_g;
+      rtau_[11] = rtau;
+      rtau_[12] = rtau;
+      rtau_[13] = rtau;
+      rtau_[15] = rtau;
+      rtau_[16] = rtau;
+      rtau_[17] = rtau;
     }
   }
 
-  if (isothermal_fluctuations_) {
+  if (noise_on) {
 
     tau_s = 1.0/rtau_shear;
     tau_b = 1.0/rtau_bulk;
 
     /* Initialise the stress variances */
 
-    kt = fluid_kt();
+    physics_kt(&kt);
     kt = kt*rcs2; /* Without normalisation kT = cs^2 */
 
     var_bulk =
@@ -1010,7 +952,7 @@ void collision_relaxation_times_set(void) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -1064,77 +1006,6 @@ void collision_relaxation_times(double * tau) {
 
 /*****************************************************************************
  *
- *  collision_init
- *
- *  Set up the noise generator.
- *
- *****************************************************************************/
-
-void collision_init(void) {
-
-  int nsites;
-  int ic, jc, kc, index;
-  int is_local;
-  int nlocal[3];
-  int noffset[3];
-  int ntotal[3];
-
-  unsigned int serial[4] = {13, 829, 2441, 22383979};
-  unsigned int state[4];
-
-  ntotal[X] = N_total(X);
-  ntotal[Y] = N_total(Y);
-  ntotal[Z] = N_total(Z);
-
-  nsites = coords_nsites();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-
-  /* This is slightly incestuous; we are going to use the uniform
-   * generator from fluctuations to generate, in serial, the
-   * initial states for the fluctuation generator. The initialisation
-   * of the serial state is absolutely fixed, as above. */
-
-  fl_ = fluctuations_create(nsites);
-
-  for (ic = 1; ic <= ntotal[X]; ic++) {
-    for (jc = 1; jc <= ntotal[Y]; jc++) {
-      for (kc = 1; kc <= ntotal[Z]; kc++) {
-	state[0] = fluctuations_uniform(serial);
-	state[1] = fluctuations_uniform(serial);
-	state[2] = fluctuations_uniform(serial);
-	state[3] = fluctuations_uniform(serial);
-	is_local = 1;
-	if (ic <= noffset[X] || ic > noffset[X] + nlocal[X]) is_local = 0;
-	if (jc <= noffset[Y] || jc > noffset[Y] + nlocal[Y]) is_local = 0;
-	if (kc <= noffset[Z] || kc > noffset[Z] + nlocal[Z]) is_local = 0;
-	if (is_local) {
-	  index = coords_index(ic-noffset[X], jc-noffset[Y], kc-noffset[Z]);
-	  fluctuations_state_set(fl_, index, state);
-	}
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  collision_finish
- *
- *****************************************************************************/
-
-void collision_finish(void) {
-
-  assert(fl_);
-  fluctuations_destroy(fl_);
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  collision_fluctuations
  *
  *  Compute that fluctuating contributions to the distribution at
@@ -1148,21 +1019,21 @@ void collision_finish(void) {
  *
  *****************************************************************************/
 
-void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
-
+static int collision_fluctuations(noise_t * noise, int index,
+				  double shat[3][3], double ghat[NVEL]) {
   int ia;
   double tr;
-  double random[NFLUCTUATION];
-  const double r3 = (1.0/3.0);
+  double random[NNOISE_MAX];
 
-  assert(fl_);
-  assert(NFLUCTUATION >= NDIM*(NDIM+1)/2);
-  assert(NFLUCTUATION >= (NVEL - NHYDRO));
+  assert(noise);
+  assert(NNOISE_MAX >= NDIM*(NDIM+1)/2);
+  assert(NNOISE_MAX >= (NVEL - NHYDRO));
   assert(NDIM == 3);
 
-  /* Set symetric random stress matrix (elements with unit variance) */
+  /* Set symetric random stress matrix (elements with unit variance);
+   * in practice always 3d (= 6 elements) required */
 
-  fluctuations_reap(fl_, index, random);
+  noise_reap_n(noise, index, 6, random);
 
   shat[X][X] = random[0];
   shat[X][Y] = random[1];
@@ -1178,7 +1049,7 @@ void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
 
   /* Compute the trace and the traceless part */
 
-  tr = r3*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
+  tr = r3_*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
   shat[X][X] -= tr;
   shat[Y][Y] -= tr;
   shat[Z][Z] -= tr;
@@ -1208,11 +1079,11 @@ void collision_fluctuations(int index, double shat[3][3], double ghat[NVEL]) {
   /* Ghost modes */
 
   if (nmodes_ == NVEL) {
-    fluctuations_reap(fl_, index, random);
+    noise_reap_n(noise, index, NVEL-NHYDRO, random);
     for (ia = NHYDRO; ia < nmodes_; ia++) {
       ghat[ia] = noise_var[ia]*random[ia - NHYDRO];
     }
   }
 
-  return;
+  return 0;
 }

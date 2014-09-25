@@ -16,6 +16,9 @@
 #define SYMMETRIC_H
 
 #include "free_energy.h"
+#include "field.h"
+#include "field_grad.h"
+int symmetric_phi_set(field_t * phi, field_grad_t * dphi);
 
 void   symmetric_free_energy_parameters_set(double a, double b, double kappa);
 double symmetric_a(void);

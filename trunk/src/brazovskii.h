@@ -15,6 +15,11 @@
 #ifndef BRAZOVSKII_H
 #define BRAZOVSKII_H
 
+#include "field.h"
+#include "field_grad.h"
+
+int brazovskii_phi_set(field_t * phi, field_grad_t * phi_grad);
+
 void   brazovskii_free_energy_parameters_set(double a, double b, double kappa,
 					     double c);
 double brazovskii_amplitude(void);

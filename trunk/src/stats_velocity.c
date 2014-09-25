@@ -19,8 +19,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "site_map.h"
-#include "lattice.h"
 #include "util.h"
 #include "stats_velocity.h"
 
@@ -37,16 +35,21 @@
  *
  ****************************************************************************/
 
-int stats_velocity_minmax(int print_volume_flux) {
+int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
 
   int ic, jc, kc, ia, index;
   int nlocal[3];
+  int status;
+
   double umin[3];
   double umax[3];
   double utmp[3];
   double usum_local[3], usum[3];
 
   MPI_Comm comm;
+
+  assert(hydro);
+  assert(map);
 
   coords_nlocal(nlocal);
   comm = pe_comm();
@@ -62,9 +65,11 @@ int stats_velocity_minmax(int print_volume_flux) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
 
-	if (site_map_get_status_index(index) == FLUID) {
-	  hydrodynamics_get_velocity(index, utmp);
+	if (status == MAP_FLUID) {
+
+	  hydro_u(hydro, index, utmp);
 
 	  for (ia = 0; ia < 3; ia++) {
 	    umin[ia] = dmin(umin[ia], utmp[ia]);
@@ -95,7 +100,7 @@ int stats_velocity_minmax(int print_volume_flux) {
   info("[minimum ] %14.7e %14.7e %14.7e\n", umin[X], umin[Y], umin[Z]);
   info("[maximum ] %14.7e %14.7e %14.7e\n", umax[X], umax[Y], umax[Z]);
 
-  if (print_volume_flux) {
+  if (print_vol_flux) {
     info("[vol flux] %14.7e %14.7e %14.7e\n", usum[X], usum[Y], usum[Z]);
   }
 

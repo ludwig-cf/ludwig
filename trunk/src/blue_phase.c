@@ -23,8 +23,8 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "phi.h"
-#include "phi_gradients.h"
+#include "field.h"
+#include "field_grad.h"
 #include "blue_phase.h"
 #include "io_harness.h"
 #include "leesedwards.h"
@@ -47,9 +47,33 @@ static double electric_[3] = {0.0, 0.0, 0.0}; /* Electric field */
 
 static const double redshift_min_ = 0.00000000001; 
 
-struct io_info_t * io_info_fed;
-static int  fed_write(FILE *, const int, const int, const int);
-static int  fed_write_ascii(FILE *, const int, const int, const int);
+static field_t * q_ = NULL;
+static field_grad_t * grad_q_ = NULL;
+
+static io_info_t * io_info_fed;
+
+static int fed_write(FILE *, int index, void * self);
+static int fed_write_ascii(FILE *, int index, void * self);
+
+/*****************************************************************************
+ *
+ *  blue_phase_q_set
+ *
+ *  Attach a reference to the order parameter field object, and the
+ *  associated gradient object.
+ *
+ *****************************************************************************/
+
+int blue_phase_q_set(field_t * q, field_grad_t * dq) {
+
+  assert(q);
+  assert(dq);
+
+  q_ = q;
+  grad_q_ = dq;
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -185,9 +209,9 @@ double blue_phase_free_energy_density(const int index) {
   double q[3][3];
   double dq[3][3][3];
 
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
+
   e = blue_phase_compute_fed(q, dq);
 
   return e;
@@ -423,9 +447,9 @@ void blue_phase_molecular_field(int index, double h[3][3]) {
 
   assert(kappa0_ == kappa1_);
 
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
+  field_grad_tensor_delsq(grad_q_, index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
 
@@ -537,9 +561,9 @@ void blue_phase_chemical_stress(int index, double sth[3][3]) {
   double dq[3][3][3];
   double dsq[3][3];
 
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
-  phi_gradients_tensor_delsq(index, dsq);
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
+  field_grad_tensor_delsq(grad_q_, index, dsq);
 
   blue_phase_compute_h(q, dq, dsq, h);
   blue_phase_compute_stress(q, dq, h, sth);
@@ -929,8 +953,8 @@ void blue_phase_redshift_compute(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	phi_get_q_tensor(index, q);
-	phi_gradients_tensor_gradient(index, dq);
+	field_tensor(q_, index, q);
+	field_grad_tensor_grad(grad_q_, index, dq);
 
 	/* kappa0 (d_b Q_ab)^2 */
 
@@ -1053,68 +1077,88 @@ void blue_phase_set_active_region_gamma_zeta(const int index) {
 
 /*****************************************************************************
  *
+ *  fed_io_info
+ *
+ *****************************************************************************/
+
+int fed_io_info(io_info_t ** info) {
+
+  assert(info);
+
+  *info = io_info_fed;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  fed_io_info_set
  *
  *****************************************************************************/
 
-void fed_io_info_set(struct io_info_t * info) {
+int fed_io_info_set(io_info_t * info) {
 
   assert(info);
   io_info_fed = info;
 
   io_info_set_name(io_info_fed, "Free energy density");
-  io_info_set_write_ascii(io_info_fed, fed_write_ascii);
-  io_info_set_write_binary(io_info_fed, fed_write);
+  io_info_write_set(io_info_fed, IO_FORMAT_BINARY, fed_write);
+  io_info_write_set(io_info_fed, IO_FORMAT_ASCII, fed_write_ascii);
   io_info_set_bytesize(io_info_fed, 3*sizeof(double));
  
-  io_info_set_format_binary(io_info_fed);
-  io_write_metadata("fed", io_info_fed);
+  io_info_format_out_set(io_info_fed, IO_FORMAT_BINARY);
+  io_info_metadata_filestub_set(io_info_fed, "fed");
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
-*
-*  fed_write_ascii
-*
-*****************************************************************************/
+ *
+ *  fed_write_ascii
+ *
+ *  The "self" pointer is not required here.
+ *
+ *****************************************************************************/
 
-static int fed_write_ascii(FILE * fp, const int ic, const int jc, const int kc) {
+static int fed_write_ascii(FILE * fp, int index, void * self) {
 
+  int n;
   double q[3][3], dq[3][3][3];
   double fed[3];
-  int index, n;
-  
-  index = le_site_index(ic, jc, kc);
 
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  assert(fp);
+
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
+
   fed[0] = blue_phase_compute_fed(q, dq);
   fed[1] = blue_phase_compute_bulk_fed(q);
   fed[2] = blue_phase_compute_gradient_fed(q, dq);
 
-  n = fprintf(fp, "%22.15le  %22.15le  %22.15le\n", fed[0], fed[1], fed[2]);
+  n = fprintf(fp, "%22.15e  %22.15e  %22.15e\n", fed[0], fed[1], fed[2]);
   if (n < 0) fatal("fprintf(fed) failed at index %d\n", index);
 
   return n;
 }
 
 /*****************************************************************************
-*
-*  fed_write
-*
-*****************************************************************************/
+ *
+ *  fed_write
+ *
+ *  The "self" object is not required.
+ *
+ *****************************************************************************/
 
-static int fed_write(FILE * fp, const int ic, const int jc, const int kc) {
+static int fed_write(FILE * fp, int index, void * self) {
 
+  int n;
   double q[3][3], dq[3][3][3];
   double fed[3];
-  int index, n;
-  
-  index = le_site_index(ic, jc, kc);
 
-  phi_get_q_tensor(index, q);
-  phi_gradients_tensor_gradient(index, dq);
+  assert(fp);
+
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
   fed[0] = blue_phase_compute_fed(q, dq);
   fed[1] = blue_phase_compute_bulk_fed(q);
   fed[2] = blue_phase_compute_gradient_fed(q, dq);
@@ -1123,4 +1167,57 @@ static int fed_write(FILE * fp, const int ic, const int jc, const int kc) {
   if (n != 3) fatal("fwrite(fed) failed at index %d\n", index);
 
   return n;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_scalar_ops
+ *
+ *  For symmetric traceless q[3][3], return the associated scalar
+ *  order parameter, biaxial order parameter and director:
+ *
+ *  qs[0]  scalar order parameter: largest eigenvalue
+ *  qs[1]  director[X] (associated eigenvector)
+ *  qs[2]  director[Y]
+ *  qs[3]  director[Z]
+ *  qs[4]  biaxial order parameter b = sqrt(1 - 6 (Tr(QQQ))^2 / Tr(QQ)^3)
+ *         related to the two largest eigenvalues...
+ *
+ *  If we write Q = ((s, 0, 0), (0, t, 0), (0, 0, -s -t)) then
+ *
+ *    Tr(QQ)  = s^2 + t^2 + (s + t)^2
+ *    Tr(QQQ) = 3 s t (s + t)
+ *
+ *  If no diagonalisation is possible, all the results are set to zero.
+ *
+ *****************************************************************************/
+
+int blue_phase_scalar_ops(double q[3][3], double qs[5]) {
+
+  int ifail;
+  double eigenvalue[3];
+  double eigenvector[3][3];
+  double s, t;
+  double q2, q3;
+
+  ifail = util_jacobi_sort(q, eigenvalue, eigenvector);
+
+  qs[0] = 0.0; qs[1] = 0.0; qs[2] = 0.0; qs[3] = 0.0; qs[4] = 0.0;
+
+  if (ifail == 0) {
+
+    qs[0] = eigenvalue[0];
+    qs[1] = eigenvector[X][0];
+    qs[2] = eigenvector[Y][0];
+    qs[3] = eigenvector[Z][0];
+
+    s = eigenvalue[0];
+    t = eigenvalue[1];
+
+    q2 = s*s + t*t + (s + t)*(s + t);
+    q3 = 3.0*s*t*(s + t);
+    qs[4] = sqrt(1 - 6.0*q3*q3 / (q2*q2*q2));
+  }
+
+  return ifail;
 }

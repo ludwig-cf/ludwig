@@ -22,11 +22,8 @@
 #include "ran.h"
 #include "util.h"
 #include "coords.h"
-#include "lattice.h"
 #include "physics.h"
-#include "colloids.h"
-#include "site_map.h"
-#include "interaction.h"
+#include "stats_calibration.h"
 
 #define TARGET_REYNOLDS_NUMBER 0.05
 #define MEASUREMENTS_PER_STOKES_TIME 50
@@ -47,7 +44,8 @@ typedef struct stats_calibration_type stats_calibration_t;
 
 static stats_calibration_t calib_;
 static double stats_calibration_hasimoto(double a, double length);
-static void   stats_calibration_measure(void);
+static int stats_calibration_measure(colloids_info_t * cinfo, hydro_t * hydro,
+				     map_t * map);
 
 /*****************************************************************************
  *
@@ -67,9 +65,10 @@ static void   stats_calibration_measure(void);
  *
  *****************************************************************************/
 
-void stats_calibration_init(int nswitch) {
+int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
 
   int ia;
+  int ntotal;
   double a;
   double rho;
   double eta;
@@ -84,16 +83,20 @@ void stats_calibration_init(int nswitch) {
   }
   else {
 
+    assert(cinfo);
+
     /* Make sure we have a cubic system with one particle */
 
     assert(N_total(X) == N_total(Y));
     assert(N_total(Y) == N_total(Z));
-    assert(colloid_ntotal() == 1);
+    colloids_info_ntotal(cinfo, &ntotal);
+    if (ntotal != 1) fatal("Calibration requires exactly one colloid\n");
 
     length = 1.0*L(Z);
-    rho = get_rho0();
-    eta = get_eta_shear();
-    a = colloid_forces_ahmax();
+    physics_rho0(&rho);
+    physics_eta_shear(&eta);
+
+    colloids_info_ahmax(cinfo, &a);
 
     calib_.a0 = a;
     calib_.utarget = eta*TARGET_REYNOLDS_NUMBER/(a*rho);
@@ -117,7 +120,7 @@ void stats_calibration_init(int nswitch) {
     }
     calib_.ndata = 0;
 
-    colloid_gravity_set(f);
+    physics_fgrav_set(f);
 
     info("\n\n");
     info("Calibration information:\n");
@@ -130,25 +133,31 @@ void stats_calibration_init(int nswitch) {
     info("\n\n");
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  stats_calibration_accumulate
  *
+ *  All arguments may be NULL if calibration is not active.
+ *
  *****************************************************************************/
 
-void stats_calibration_accumulate(int ntime) {
+int stats_calibration_accumulate(colloids_info_t * cinfo, int ntime,
+				 hydro_t * hydro, map_t * map) {
+
+  if (cinfo == NULL) return 0;
+  if (hydro == NULL) return 0;
 
   if (ntime >= calib_.nstart) {
     if ((ntime % calib_.nfreq) == 0) {
       ++calib_.ndata;
-      stats_calibration_measure();
+      stats_calibration_measure(cinfo, hydro, map);
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -160,7 +169,7 @@ void stats_calibration_accumulate(int ntime) {
  *
  *****************************************************************************/
 
-void stats_calibration_finish(void) {
+int stats_calibration_finish(void) {
 
   int ia;
   double eta;
@@ -175,7 +184,7 @@ void stats_calibration_finish(void) {
 
   if (calib_.nstart < INT_MAX) {
 
-    eta = get_eta_shear();
+    physics_eta_shear(&eta);
     t = 1.0*calib_.ndata*calib_.nfreq/calib_.nstokes;
 
     info("\n\n");
@@ -223,7 +232,7 @@ void stats_calibration_finish(void) {
     info("Stokes equation lhs:       %11.4e\n", f0*fhasimoto);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -261,17 +270,22 @@ static double stats_calibration_hasimoto(double a, double len) {
  *
  *****************************************************************************/
 
-static void stats_calibration_measure(void) {
-
+static int stats_calibration_measure(colloids_info_t * cinfo,
+				     hydro_t * hydro, map_t * map) {
   int ic, jc, kc, ia, index;
   int nlocal[3];
   int ncell[3];
+  int status;
 
   double volume;
+  double u[3];
   double upart[3];
   double ulocal[3];
   double datalocal[7], datasum[7];
   colloid_t * pc;
+
+  assert(hydro);
+  assert(map);
 
   volume = 0.0;
   for (ia = 0; ia < 3; ia++) {
@@ -281,13 +295,15 @@ static void stats_calibration_measure(void) {
 
   /* Find the particle, and record the force and velocity. */
 
-  colloids_cell_ncell(ncell);
+  assert(cinfo);
+  colloids_info_ncell(cinfo, ncell);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     for (jc = 1; jc <= ncell[Y]; jc++) {
       for (kc = 1; kc <= ncell[Z]; kc++) {
 
-	pc = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+
 	if (pc) {
 	  for (ia = 0; ia < 3; ia++) {
 	    calib_.fbar[ia] += pc->force[ia];
@@ -307,10 +323,14 @@ static void stats_calibration_measure(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        if (site_map_get_status(ic, jc, kc) != FLUID) continue;
         index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
-	hydrodynamics_get_velocity(index, ulocal);
+	hydro_u(hydro, index, u);
+	ulocal[X] += u[X];
+	ulocal[Y] += u[Y];
+	ulocal[Z] += u[Z];
 	volume = volume + 1.0;
       }
     }
@@ -336,5 +356,5 @@ static void stats_calibration_measure(void) {
     calib_.ubar[ia] += (upart[ia] - ulocal[ia]);
   }
 
-  return;
+  return 0;
 }

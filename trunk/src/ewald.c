@@ -46,7 +46,11 @@ static double * cosx_;   /* The term C(k) for each k */
 static double * sinkr_;  /* Table for sin(kr) values */
 static double * coskr_;  /* Table for cos(kr) values */
 
-static void ewald_sum_sin_cos_terms(void);
+struct ewald_s {
+  colloids_info_t * cinfo;   /* Retain a reference to colloids_info_t */
+};
+
+static int ewald_sum_sin_cos_terms(ewald_t * ewald);
 static int  ewald_get_number_fourier_terms(void);
 static void ewald_set_kr_table(double []);
 
@@ -62,9 +66,18 @@ static void ewald_set_kr_table(double []);
  *
  *****************************************************************************/
 
-void ewald_init(double mu_input, double rc_input) {
-
+int ewald_create(double mu_input, double rc_input,
+		 colloids_info_t * cinfo, ewald_t ** pewald) {
   int nk;
+  ewald_t * ewald = NULL;
+
+  assert(pewald);
+  assert(cinfo);
+
+  ewald = (ewald_t *) calloc(1, sizeof(ewald_t));
+  if (ewald == NULL) fatal("calloc(ewald) failed");
+
+  ewald->cinfo = cinfo;
 
   /* Set constants */
 
@@ -76,22 +89,12 @@ void ewald_init(double mu_input, double rc_input) {
 
   nk = ceil(kappa_*kappa_*ewald_rc_*L(X)/pi_);
 
-  info("\nThe Ewald sum:\n");
-  info("Real space cut off is     %f\n", ewald_rc_);
-  info("Ewald parameter kappa is  %f\n", kappa_);
-  info("Dipole strength mu is     %f\n", mu_);
-  info("Self energy (constant)    %f\n", ewald_self_energy());
-  info("Max. term retained in Fourier space sum is %d\n", nk);
-
   nk_[X] = nk;
   nk_[Y] = nk;
   nk_[Z] = nk;
   kmax_ = pow(2.0*pi_*nk/L(X), 2);
   nkmax_ = nk + 1;
   nktot_ = ewald_get_number_fourier_terms();
-
-  info("maximum square wavevector is %g\n", kmax_);
-  info("Total terms retained in Fourier space sum is %d\n\n", nktot_);
 
   sinx_ = (double *) malloc(nktot_*sizeof(double));
   cosx_ = (double *) malloc(nktot_*sizeof(double));
@@ -105,7 +108,54 @@ void ewald_init(double mu_input, double rc_input) {
   if (sinkr_ == NULL) fatal("Ewald sum malloc(sinx_) failed\n");
   if (coskr_ == NULL) fatal("Ewald sum malloc(cosx_) failed\n");
 
+  *pewald = ewald;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  ewald_free
+ *
+ *****************************************************************************/
+
+void ewald_free(ewald_t * ewald) {
+
+  assert(ewald);
+  free(ewald);
+
   return;
+}
+
+/*****************************************************************************
+ *
+ *  ewald_info
+ *
+ *****************************************************************************/
+
+int ewald_info(ewald_t * ewald) {
+
+  int ncolloid;
+  double eself;
+
+  assert(ewald);
+
+  colloids_info_ntotal(ewald->cinfo, &ncolloid);
+  ewald_self_energy(ewald, &eself);
+
+  info("\n");
+  info("Ewald sum\n");
+  info("---------\n");
+  info("Number of particles:                      %d\n", ncolloid);
+  info("Real space cut off:                      %14.7e\n", ewald_rc_);
+  info("Dipole strength mu:                      %14.7e\n", mu_);
+  info("Ewald parameter kappa:                   %14.7e\n", kappa_);
+  info("Self energy (constant):                  %14.7e\n", eself);
+  info("Maximum square wavevector:               %14.7e\n", kmax_);
+  info("Max. term retained in Fourier space sum:  %d\n", nkmax_);
+  info("Total terms kept in Fourier space sum:    %d\n\n", nktot_);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -116,10 +166,14 @@ void ewald_init(double mu_input, double rc_input) {
  *
  *****************************************************************************/
 
-double ewald_kappa(void) {
+int ewald_kappa(ewald_t * ewald, double * kappa) {
 
-  assert(ewald_on_);
-  return kappa_;
+  assert(ewald);
+  assert(kappa);
+
+  *kappa = kappa_;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -138,7 +192,7 @@ void ewald_finish() {
   }
 
   ewald_on_ = 0;
-
+  assert(0); /* TODO clear me up */
   return;
 }
 
@@ -152,18 +206,18 @@ void ewald_finish() {
  *
  *****************************************************************************/
 
-void ewald_sum() {
+int ewald_sum(ewald_t * ewald) {
 
-  if (ewald_on_) {
-    TIMER_start(TIMER_EWALD_TOTAL);
+  if (ewald == NULL) return 0;
 
-    ewald_fourier_space_sum();
-    ewald_real_space_sum();
+  TIMER_start(TIMER_EWALD_TOTAL);
 
-    TIMER_stop(TIMER_EWALD_TOTAL);
-  }
+  ewald_fourier_space_sum(ewald);
+  ewald_real_space_sum(ewald);
 
-  return;
+  TIMER_stop(TIMER_EWALD_TOTAL);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -174,12 +228,16 @@ void ewald_sum() {
  *
  *****************************************************************************/
 
-double ewald_real_space_energy(const double u1[3], const double u2[3],
-			       const double r12[3]) {
-
-  double e = 0.0;
+int ewald_real_space_energy(ewald_t * ewald, const double u1[3],
+			    const double u2[3], const double r12[3],
+			    double * ereal) {
   double r;
   double erfc(double); /* ANSI C does not define erfc() in math.h. */
+
+  assert(ewald);
+  assert(ereal);
+
+  *ereal = 0.0;
 
   r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
 
@@ -193,10 +251,10 @@ double ewald_real_space_energy(const double u1[3], const double u2[3],
     b = b1 + b2;
     c = 3.0*b1*rr*rr + (2.0*kappa_*kappa_ + 3.0*rr*rr)*b2;
 
-    e = dot_product(u1,u2)*b - dot_product(u1,r12)*dot_product(u2,r12)*c;
+    *ereal = dot_product(u1,u2)*b - dot_product(u1,r12)*dot_product(u2,r12)*c;
   }
 
-  return e;
+  return 0;
 }
 
 /*****************************************************************************
@@ -207,7 +265,7 @@ double ewald_real_space_energy(const double u1[3], const double u2[3],
  *
  *****************************************************************************/
 
-double ewald_fourier_space_energy() {
+int ewald_fourier_space_energy(ewald_t * ewald, double * ef) {
 
   double e = 0.0;
   double k[3], ksq;
@@ -216,7 +274,7 @@ double ewald_fourier_space_energy() {
   double r4kappa_sq;
   int kx, ky, kz, kn = 0;
 
-  ewald_sum_sin_cos_terms();
+  ewald_sum_sin_cos_terms(ewald);
 
   fkx = 2.0*pi_/L(X);
   fky = 2.0*pi_/L(Y);
@@ -249,7 +307,9 @@ double ewald_fourier_space_energy() {
     }
   }
 
-  return e;
+  *ef = e;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -262,7 +322,7 @@ double ewald_fourier_space_energy() {
  *
  *****************************************************************************/
 
-static void ewald_sum_sin_cos_terms() {
+static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
   double k[3], ksq;
   double fkx, fky, fkz;
@@ -273,13 +333,12 @@ static void ewald_sum_sin_cos_terms() {
   double * subsin;
   double * subcos;
 
+  assert(ewald);
+  colloids_info_ncell(ewald->cinfo, ncell);
+
   fkx = 2.0*pi_/L(X);
   fky = 2.0*pi_/L(Y);
   fkz = 2.0*pi_/L(Z);
-
-  ncell[X] = Ncell(X);
-  ncell[Y] = Ncell(Y);
-  ncell[Z] = Ncell(Z);
 
   /* Comupte S(k) and C(k) from sum over particles */
 
@@ -294,7 +353,7 @@ static void ewald_sum_sin_cos_terms() {
 
 	colloid_t * p_colloid;
 
-	p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 
@@ -327,10 +386,6 @@ static void ewald_sum_sin_cos_terms() {
 
 		udotk = dot_product(p_colloid->s.s, k);
 
-		/*
-		sinx_[kn] += udotk*sin(kdotr);
-		cosx_[kn] += udotk*cos(kdotr);
-		*/
 		kdotr = skr[X]*ckr[Y]*ckr[Z] + ckr[X]*skr[Y]*ckr[Z]
 		  + ckr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*skr[Z];
 		sinx_[kn] += udotk*kdotr;
@@ -366,7 +421,7 @@ static void ewald_sum_sin_cos_terms() {
   free(subsin);
   free(subcos);
 
-  return ;
+  return 0;
 }
 
 /*****************************************************************************
@@ -377,13 +432,16 @@ static void ewald_sum_sin_cos_terms() {
  *
  *****************************************************************************/
 
-double ewald_self_energy() {
+int ewald_self_energy(ewald_t * ewald, double * eself) {
 
-  double eself;
+  int ntotal;
 
-  eself = -2.0*mu_*mu_*(kappa_*kappa_*kappa_/(3.0*sqrt(pi_)))*colloid_ntotal();
+  assert(ewald);
+  colloids_info_ntotal(ewald->cinfo, &ntotal);
 
-  return eself;
+  *eself = -2.0*mu_*mu_*(kappa_*kappa_*kappa_/(3.0*sqrt(pi_)))*ntotal;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -394,12 +452,13 @@ double ewald_self_energy() {
  *
  *****************************************************************************/
 
-void ewald_total_energy(double * ereal, double * efour, double * eself) {
+int ewald_total_energy(ewald_t * ewald, double * ereal, double * efour,
+		       double * eself) {
 
-  if (ewald_on_) {
+  if (ewald) {
     *ereal = ereal_;
     *efour = efourier_;
-    *eself = ewald_self_energy();
+    ewald_self_energy(ewald, eself);
   }
   else {
     *ereal = 0.0;
@@ -407,7 +466,7 @@ void ewald_total_energy(double * ereal, double * efour, double * eself) {
     *eself = 0.0;
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -419,12 +478,13 @@ void ewald_total_energy(double * ereal, double * efour, double * eself) {
  *
  *****************************************************************************/
 
-void ewald_real_space_sum() {
+int ewald_real_space_sum(ewald_t * ewald) {
 
   colloid_t * p_c1;
   colloid_t * p_c2;
 
-  int    ic, jc, kc, id, jd, kd, dx, dy, dz;
+  int ic, jc, kc, id, jd, kd, dx, dy, dz;
+  int ncell[3];
 
   double r12[3];
 
@@ -432,13 +492,16 @@ void ewald_real_space_sum() {
 
   TIMER_start(TIMER_EWALD_REAL_SPACE);
 
+  assert(ewald);
+  colloids_info_ncell(ewald->cinfo, ncell);
+
   ereal_ = 0.0;
 
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
 
-	p_c1 = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_c1);
 
 	while (p_c1) {
 
@@ -450,7 +513,7 @@ void ewald_real_space_sum() {
 		jd = jc + dy;
 		kd = kc + dz;
 
-		p_c2 = colloids_cell_list(id, jd, kd);
+		colloids_info_cell_list_head(ewald->cinfo, id, jd, kd, &p_c2);
 
 		while (p_c2) {
 		  if (p_c1->s.index < p_c2->s.index) {
@@ -537,7 +600,7 @@ void ewald_real_space_sum() {
 
   TIMER_stop(TIMER_EWALD_REAL_SPACE);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -549,7 +612,7 @@ void ewald_real_space_sum() {
  *
  *****************************************************************************/
 
-void ewald_fourier_space_sum() {
+int ewald_fourier_space_sum(ewald_t * ewald) {
 
   double k[3], ksq;
   double b0, b;
@@ -561,7 +624,8 @@ void ewald_fourier_space_sum() {
 
   TIMER_start(TIMER_EWALD_FOURIER_SPACE);
 
-  ewald_sum_sin_cos_terms();
+  assert(ewald);
+  ewald_sum_sin_cos_terms(ewald);
 
   fkx = 2.0*pi_/L(X);
   fky = 2.0*pi_/L(Y);
@@ -569,9 +633,7 @@ void ewald_fourier_space_sum() {
   r4kappa_sq = 1.0/(4.0*kappa_*kappa_);
   b0 = (4.0*pi_/(L(X)*L(Y)*L(Z)))*mu_*mu_;
 
-  ncell[X] = Ncell(X);
-  ncell[Y] = Ncell(Y);
-  ncell[Z] = Ncell(Z);
+  colloids_info_ncell(ewald->cinfo, ncell);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     for (jc = 1; jc <= ncell[Y]; jc++) {
@@ -579,7 +641,7 @@ void ewald_fourier_space_sum() {
 
 	colloid_t * p_colloid;
 
-	p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 
@@ -669,7 +731,7 @@ void ewald_fourier_space_sum() {
 
   TIMER_stop(TIMER_EWALD_FOURIER_SPACE);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

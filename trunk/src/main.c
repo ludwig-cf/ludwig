@@ -18,6 +18,9 @@
 
 #include "pe.h"
 #include "ludwig.h"
+#ifdef PETSC
+  #include "petscksp.h"
+#endif
 
 /*****************************************************************************
  *
@@ -29,12 +32,18 @@ int main(int argc, char ** argv) {
 
   char inputfile[FILENAME_MAX] = "input";
 
-  MPI_Init(&argc, &argv);
 
+  MPI_Init(&argc, &argv);
+#ifdef PETSC
+  PetscInitialize(&argc, &argv, (char*) 0, NULL); 
+#endif 
   if (argc > 1) sprintf(inputfile, "%s", argv[1]);
 
   ludwig_run(inputfile);
 
+#ifdef PETSC
+  PetscFinalize();
+#endif
   MPI_Finalize();
 
   return 0;

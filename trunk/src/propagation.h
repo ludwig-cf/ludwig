@@ -2,15 +2,21 @@
  *
  *  propagation.h
  *
- *  $Id: propagation.h,v 1.1 2006-10-12 13:56:45 kevin Exp $
+ *  Edinburgh Solft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2005-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Sean Murphy worked on optimisation for original propagation code.
  *
  *****************************************************************************/
 
-#ifndef _PROPAGATION_H
-#define _PROPAGATION_H
+#ifndef PROPAGATION_H
+#define PROPAGATION_H
 
-void propagation(void);
+#include "model.h"
+
+int lb_propagation(lb_t * lb);
 
 #endif

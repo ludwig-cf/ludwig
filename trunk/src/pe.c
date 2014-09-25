@@ -10,11 +10,12 @@
  *
  *  $Id$
  *
+ *  (c) 2010-2014 The University of Edinburgh
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -27,11 +28,54 @@
 #include "svn.h"
 #include "pe.h"
 
-static int pe_world_rank;
-static int pe_world_size;
-static MPI_Comm pe_parent_comm_ = MPI_COMM_WORLD;
-static MPI_Comm pe_comm_;
-static char subdirectory_[FILENAME_MAX] = "";
+struct pe_s {
+  int unquiet;                       /* Print version information etc */
+  int mpi_rank;                      /* Rank in dup'd comm */
+  int mpi_size;                      /* Size of comm */
+  MPI_Comm parent_comm;              /* Reference to parrent entering dup */
+  MPI_Comm comm;                     /* Communicator for pe */
+  char subdirectory[FILENAME_MAX];
+};
+
+static pe_t * pe = NULL;
+static int pe_create(MPI_Comm parent);
+
+/*****************************************************************************
+ *
+ *  pe_create
+ *
+ *  Single static instance. MPI must be initialised.
+ *
+ *****************************************************************************/
+
+static int pe_create(MPI_Comm parent) {
+
+  int ifail_local = 0;
+  int ifail;
+
+  assert(pe == NULL);
+
+  MPI_Initialized(&ifail);
+
+  if (ifail == 0) {
+    printf("Please make sure MPI is initialised!\n");
+    exit(0);
+  }
+
+  pe = (pe_t *) calloc(1, sizeof(pe_t));
+  if (pe == NULL) ifail_local = 1;
+  MPI_Allreduce(&ifail_local, &ifail, 1, MPI_INT, MPI_SUM, parent);
+
+  if (ifail != 0) {
+    printf("calloc(pe_t) failed\n");
+    exit(0);
+  }
+
+  pe->parent_comm = parent;
+  strcpy(pe->subdirectory, "");
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -44,32 +88,40 @@ static char subdirectory_[FILENAME_MAX] = "";
 
 void pe_init(void) {
 
-  int ifail;
+  pe_init_quiet();
+  pe->unquiet = 1;
 
-  MPI_Initialized(&ifail);
+  info("Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n\n",
+       LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
+       (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
+       (pe->mpi_size == 1) ? "" : "es");
 
-  if (ifail == 0) {
-    printf("Please make sure MPI is initialised!\n");
-    exit(0);
-  }
-
-  MPI_Comm_dup(pe_parent_comm_, &pe_comm_);
-
-  MPI_Errhandler_set(pe_comm_, MPI_ERRORS_ARE_FATAL);
-
-  MPI_Comm_size(pe_comm_, &pe_world_size);
-  MPI_Comm_rank(pe_comm_, &pe_world_rank);
-
-  info("Welcome to Ludwig (%s version running on %d process%s)\n\n",
-       (pe_world_size > 1) ? "MPI" : "Serial", pe_world_size,
-       (pe_world_size == 1) ? "" : "es");
-
-  if (pe_world_rank == 0) {
+  if (pe->mpi_rank == 0) {
     printf("The SVN revision details are: %s\n", svn_revision());
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  pe_init_quiet
+ *
+ *****************************************************************************/
+
+int pe_init_quiet(void) {
+
+  if (pe == NULL) pe_create(MPI_COMM_WORLD);
+
+  MPI_Comm_dup(pe->parent_comm, &pe->comm);
+
+  MPI_Errhandler_set(pe->comm, MPI_ERRORS_ARE_FATAL);
+
+  MPI_Comm_size(pe->comm, &pe->mpi_size);
+  MPI_Comm_rank(pe->comm, &pe->mpi_rank);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -82,8 +134,13 @@ void pe_init(void) {
 
 void pe_finalise() {
 
-  MPI_Comm_free(&pe_comm_);
-  info("Ludwig finished normally.\n");
+  assert(pe);
+
+  MPI_Comm_free(&pe->comm);
+  if (pe->unquiet) info("Ludwig finished normally.\n");
+
+  free(pe);
+  pe = NULL;
 
   return;
 }
@@ -99,7 +156,9 @@ void pe_redirect_stdout(const char * filename) {
   int rank;
   FILE * stream;
 
-  MPI_Comm_rank(pe_parent_comm_, &rank);
+  assert(pe);
+
+  MPI_Comm_rank(pe->parent_comm, &rank);
 
   if (rank == 0) {
     printf("Redirecting stdout to file %s\n", filename);
@@ -122,7 +181,8 @@ void pe_redirect_stdout(const char * filename) {
 
 MPI_Comm pe_comm(void) {
 
-  return pe_comm_;
+  assert(pe);
+  return pe->comm;
 }
 
 /*****************************************************************************
@@ -134,11 +194,13 @@ MPI_Comm pe_comm(void) {
  *****************************************************************************/
 
 int pe_rank() {
-  return pe_world_rank;
+  assert(pe);
+  return pe->mpi_rank;
 }
 
 int pe_size() {
-  return pe_world_size;
+  assert(pe);
+  return pe->mpi_size;
 }
 
 /*****************************************************************************
@@ -153,7 +215,9 @@ void info(const char * fmt, ...) {
 
   va_list args;
 
-  if (pe_world_rank == 0) {
+  assert(pe);
+
+  if (pe->mpi_rank == 0) {
     va_start(args, fmt);
     vprintf(fmt, args);
     va_end(args);
@@ -174,14 +238,17 @@ void fatal(const char * fmt, ...) {
 
   va_list args;
 
-  printf("[%d] ", pe_world_rank);
+  assert(pe);
+
+  printf("[%d] ", pe->mpi_rank);
+
   va_start(args, fmt);
   vprintf(fmt, args);
   va_end(args);
 
   /* Considered a successful exit (code 0). */
 
-  MPI_Abort(pe_comm_, 0);
+  MPI_Abort(pe->comm, 0);
 
   return;
 }
@@ -198,7 +265,9 @@ void verbose(const char * fmt, ...) {
 
   va_list args;
 
-  printf("[%d] ", pe_world_rank);
+  assert(pe);
+
+  printf("[%d] ", pe->mpi_rank);
 
   va_start(args, fmt);
   vprintf(fmt, args);
@@ -215,7 +284,9 @@ void verbose(const char * fmt, ...) {
 
 void pe_parent_comm_set(MPI_Comm parent) {
 
-  pe_parent_comm_ = parent;
+  assert(pe);
+  pe->parent_comm = parent;
+
   return;
 }
 
@@ -227,7 +298,8 @@ void pe_parent_comm_set(MPI_Comm parent) {
 
 void pe_subdirectory_set(const char * name) {
 
-  if (name != NULL) sprintf(subdirectory_, "%s/", name);
+  assert(pe);
+  if (name != NULL) sprintf(pe->subdirectory, "%s/", name);
 
   return;
 }
@@ -240,7 +312,10 @@ void pe_subdirectory_set(const char * name) {
 
 void pe_subdirectory(char * name) {
 
-  sprintf(name, "%s", subdirectory_);
+  assert(pe);
+  assert(name);
+
+  sprintf(name, "%s", pe->subdirectory);
 
   return;
 }

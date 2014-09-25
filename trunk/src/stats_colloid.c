@@ -14,6 +14,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <float.h>
 #include <math.h>
 
@@ -34,50 +35,52 @@
  *
  *****************************************************************************/
 
-void stats_colloid_momentum(double g[3]) {
+int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
 
   int ic, jc, kc;
+  int ntotal;
+  int ncell[3];
 
-  double glocal[3];
+  double glocal[3] = {0.0, 0.0, 0.0};
+  double rho0;
   double mass;
 
-  colloid_t * p_colloid;
+  colloid_t * pc = NULL;
 
-  glocal[X] = 0.0;
-  glocal[Y] = 0.0;
-  glocal[Z] = 0.0;
+  assert(cinfo);
 
-  if (colloid_ntotal() == 0) {
-    /* do nothing */
-  }
-  else {
+  colloids_info_ntotal(cinfo, &ntotal);
+  if (ntotal == 0) return 0;
 
-    for (ic = 1; ic <= Ncell(X); ic++) {
-      for (jc = 1; jc <= Ncell(Y); jc++) {
-	for (kc = 1; kc <= Ncell(Z); kc++) {
+  colloids_info_ncell(cinfo, ncell);
+  colloids_info_rho0(cinfo, &rho0);
 
-	  p_colloid = colloids_cell_list(ic, jc, kc);
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
 
-	  while (p_colloid) {
-	    mass = 4.0*pi_*pow(p_colloid->s.a0, 3)/3.0;
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
-	    glocal[X] += mass*p_colloid->s.v[X];
-	    glocal[Y] += mass*p_colloid->s.v[Y];
-	    glocal[Z] += mass*p_colloid->s.v[Z];
+	while (pc) {
+	  mass = 4.0*pi_*pow(pc->s.a0, 3)*rho0/3.0;
+	  if (pc->s.type == COLLOID_TYPE_SUBGRID) mass = 0.0; /* No inertia */
 
-	    /* Next colloid */
-	    p_colloid = p_colloid->next;
-	  }
+	  glocal[X] += mass*pc->s.v[X];
+	  glocal[Y] += mass*pc->s.v[Y];
+	  glocal[Z] += mass*pc->s.v[Z];
 
-	  /* Next cell */
+	  /* Next colloid */
+	  pc = pc->next;
 	}
+
+	/* Next cell */
       }
     }
-
-    MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
   }
 
-  return;
+  MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+  return 0;
 }
 
 /****************************************************************************
@@ -88,10 +91,11 @@ void stats_colloid_momentum(double g[3]) {
  *
  ****************************************************************************/ 
 
-void stats_colloid_velocity_minmax(void) {
+int stats_colloid_velocity_minmax(colloids_info_t * cinfo) {
 
   int ia;
   int ic, jc, kc;
+  int ncell[3];
   double vmin[6];
   double vminlocal[6];
   colloid_t * pc;
@@ -100,11 +104,14 @@ void stats_colloid_velocity_minmax(void) {
     vminlocal[ia] = FLT_MAX;
   }
 
-  for (ic = 1; ic <= Ncell(X); ic++) {
-    for (jc = 1; jc <= Ncell(Y); jc++) {
-      for (kc = 1; kc <= Ncell(Z); kc++) {
+  assert(cinfo);
+  colloids_info_ncell(cinfo, ncell);
 
-	pc = colloids_cell_list(ic, jc, kc);
+  for (ic = 1; ic <= ncell[X]; ic++) {
+    for (jc = 1; jc <= ncell[Y]; jc++) {
+      for (kc = 1; kc <= ncell[Z]; kc++) {
+
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	while (pc) {
 	  for (ia = 0; ia < 3; ia++) {
@@ -123,5 +130,5 @@ void stats_colloid_velocity_minmax(void) {
   info("[minimum ] %14.7e %14.7e %14.7e\n", vmin[X], vmin[Y], vmin[Z]);
   info("[maximum ] %14.7e %14.7e %14.7e\n", -vmin[3+X],-vmin[3+Y],-vmin[3+Z]);
 
-  return;
+  return 0;
 }

@@ -4,20 +4,18 @@
  *
  *  D3Q19 definitions.
  *
- *  $Id: d3q19.c,v 1.9 2009-04-09 14:53:29 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
+ *  (c) 2008-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Ronojoy Adhikari computed this D3Q19 basis.
  *
  *****************************************************************************/
 
 #include "pe.h"
 #include "d3q19.h"
-
-#ifdef _D3Q19_
 
 /*****************************************************************************
  *
@@ -208,6 +206,3 @@ const int ydisp_bwd_cv[CVYBLOCK] = {5, 11, 18};
 const int zblocklen_cv[CVZBLOCK] = {1, 1, 1, 1, 1};
 const int zdisp_fwd_cv[CVZBLOCK] = {2, 6, 9, 11, 15};
 const int zdisp_bwd_cv[CVZBLOCK] = {4, 8, 10, 13, 17};
-
-#endif
-

@@ -4,7 +4,7 @@
  *
  *  Advection boundary conditions.
  *
- *  $Id: advection_bcs.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,12 +15,15 @@
  ****************************************************************************/
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "wall.h"
 #include "coords.h"
-#include "site_map.h"
-#include "phi.h"
+#include "coords_field.h"
+#include "advection_s.h"
+#include "advection_bcs.h"
+#include "psi_gradients.h"
 
 /*****************************************************************************
  *
@@ -30,18 +33,18 @@
  *
  *****************************************************************************/
 
-void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
-				  double * fluxy, double * fluxz) {
+int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
+  int n;
   int nlocal[3];
-  int ic, jc, kc, index, n;
+  int ic, jc, kc, index, indexf;
+  int status;
 
   double mask, maskw, maske, masky, maskz;
 
-  assert(fluxe);
-  assert(fluxw);
-  assert(fluxy);
-  assert(fluxz);
+  assert(nf > 0);
+  assert(flux);
+  assert(map);
 
   coords_nlocal(nlocal);
 
@@ -49,28 +52,152 @@ void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(ic-1, jc, kc);
+	map_status(map, index, &status);
+	maskw = (status == MAP_FLUID);
 
-	mask  = (site_map_get_status_index(index)  == FLUID);
-	maske = (site_map_get_status(ic+1, jc, kc) == FLUID);
-	maskw = (site_map_get_status(ic-1, jc, kc) == FLUID);
-	masky = (site_map_get_status(ic, jc+1, kc) == FLUID);
-	maskz = (site_map_get_status(ic, jc, kc+1) == FLUID);
+	index = coords_index(ic+1, jc, kc);
+	map_status(map, index, &status);
+	maske = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc+1, kc);
+	map_status(map, index, &status);
+	masky = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc, kc+1);
+	map_status(map, index, &status);
+	maskz = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	mask = (status == MAP_FLUID);
 
 	for (n = 0;  n < nf; n++) {
-	  fluxw[nf*index + n] *= mask*maskw;
-	  fluxe[nf*index + n] *= mask*maske;
-	  fluxy[nf*index + n] *= mask*masky;
-	  fluxz[nf*index + n] *= mask*maskz;
+	  coords_field_index(index, n, nf, &indexf);
+	  flux->fw[indexf] *= mask*maskw;
+	  flux->fe[indexf] *= mask*maske;
+	  flux->fy[indexf] *= mask*masky;
+	  flux->fz[indexf] *= mask*maskz;
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advective_bcs_no_flux
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
+			  map_t * map) {
+  int n;
+  int nlocal[3];
+  int ic, jc, kc, index, indexf;
+  int status;
+
+  double mask, maskx, masky, maskz;
+
+  assert(nf > 0);
+  assert(fx);
+  assert(fy);
+  assert(fz);
+  assert(map);
+
+  coords_nlocal(nlocal);
+
+  for (ic = 0; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic + 1, jc, kc);
+	map_status(map, index, &status);
+	maskx = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc + 1, kc);
+	map_status(map, index, &status);
+	masky = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc, kc + 1);
+	map_status(map, index, &status);
+	maskz = (status == MAP_FLUID);
+
+	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	mask = (status == MAP_FLUID);
+
+	for (n = 0;  n < nf; n++) {
+
+	  coords_field_index(index, n, nf, &indexf);
+	  fx[indexf] *= mask*maskx;
+	  fy[indexf] *= mask*masky;
+	  fz[indexf] *= mask*maskz;
+
 	}
 
       }
     }
   }
 
-  return;
+  return 0;
 }
 
+/*****************************************************************************
+ *
+ *  advective_bcs_no_flux_d3qx
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
+
+  int n;
+  int nlocal[3];
+  int ic, jc, kc, index0, index1;
+  int status;
+  int c;
+  double * mask;
+
+  assert(nf > 0);
+  assert(flx);
+  assert(map);
+
+  mask = calloc(PSI_NGRAD, sizeof(double)); 
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(ic, jc, kc);
+	map_status(map, index0, &status);
+	mask[0] = (status == MAP_FLUID);
+
+	for (c = 1; c < PSI_NGRAD; c++) {
+
+	  index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	  map_status(map, index1, &status);
+	  mask[c] = (status == MAP_FLUID);
+
+	  for (n = 0;  n < nf; n++) {
+	    flx[nf*index0 + n][c - 1] *= mask[0]*mask[c];
+	  }
+
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
 /*****************************************************************************
  *
  *  advection_bcs_wall
@@ -81,22 +208,26 @@ void advection_bcs_no_normal_flux(int nf, double * fluxe, double * fluxw,
  *  The official explanation is this may be viewed as a no gradient
  *  condition on the order parameter near the wall.
  *
- *  This will be effective for fluxes up to fourth order.
+ *  This allows third and fourth order (x-direction) advective fluxes
+ *  to be computed at interface one cell away from wall. Fluxes at
+ *  the wall will always be zero.
  *
  ****************************************************************************/
 
-void advection_bcs_wall(void) {
+int advection_bcs_wall(field_t * fphi) {
 
   int ic, jc, kc, index, index1;
   int nlocal[3];
-  int n, nop;
+  int nf;
+  double q[NQAB];
 
-  extern double * phi_site;
+  if (wall_at_edge(X) == 0) return 0;
 
-  if (wall_at_edge(X) == 0) return;
+  assert(fphi);
 
+  field_nf(fphi, &nf);
   coords_nlocal(nlocal);
-  nop = phi_nop();
+  assert(nf <= NQAB);
 
   if (cart_coords(X) == 0) {
     ic = 1;
@@ -107,9 +238,8 @@ void advection_bcs_wall(void) {
 	index  = coords_index(ic, jc, kc);
 	index1 = coords_index(ic-1, jc, kc);
 
-	for (n = 0; n < nop; n++) {
-	  phi_site[nop*index1 + n] = phi_site[nop*index + n];
-	}
+	field_scalar_array(fphi, index, q);
+	field_scalar_array_set(fphi, index1, q);
       }
     }
   }
@@ -124,12 +254,12 @@ void advection_bcs_wall(void) {
 	index = coords_index(ic, jc, kc);
 	index1 = coords_index(ic+1, jc, kc);
 
-	for (n = 0; n < nop; n++) {
-	  phi_site[nop*index1 + n] = phi_site[nop*index + n];
-	}
+	field_scalar_array(fphi, index, q);
+	field_scalar_array_set(fphi, index1, q);
+
       }
     }
   }
 
-  return;
+  return 0;
 }

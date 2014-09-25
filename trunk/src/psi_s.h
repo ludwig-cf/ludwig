@@ -20,7 +20,7 @@
 #include "psi.h"
 
 /*
- * We store here the unit charge, the electric permeativity, and the
+ * We store here the unit charge, the electric permittivity, and the
  * temperature, all in lattice units. This allows us to work out the
  * Bjerrum length,
  *   l_B = e^2 / (4 \pi epsilon_0 epsilon_r kT)
@@ -40,17 +40,18 @@ struct psi_s {
   double * diffusivity;     /* Diffusivity for each species */
   int * valency;            /* Valency for each species */
   double e;                 /* unit charge */
-  double epsilon;           /* reference permeativity */
+  double epsilon;           /* reference permittivity */
   double beta;              /* Boltzmann factor (1 / k_B T) */
+  double reltol;            /* Relative tolerance for Poisson solver */
+  double abstol;            /* Absolute tolerance for Poisson solver */
+  int maxits;               /* Maximum number of iterations */
+  int multisteps;           /* Number of substeps in charge dynamics */
+  double diffacc;           /* Number of substeps in charge dynamics */
   MPI_Datatype psihalo[3];  /* psi field halo */
   MPI_Datatype rhohalo[3];  /* charge densities halo */
-  struct io_info_t * info;  /* I/O informtation */
+  io_info_t * info;         /* I/O informtation */
 };
 
 int psi_halo(int nf, double * f, MPI_Datatype halo[3]);
-
-/* Here for now. psi_ is providing the (opaque) object for the main code. */
-
-extern psi_t * psi_;
 
 #endif
