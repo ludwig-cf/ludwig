@@ -4,20 +4,18 @@
  *
  *  D2Q9 definitions.
  *
- *  $Id: d2q9.c,v 1.3 2010-11-29 17:11:31 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Ronojoy Adhikari computed this D2Q9 basis.
  *
  *****************************************************************************/
 
 #include "pe.h"
 #include "d2q9.h"
-
-#ifdef _D2Q9_
 
 /*****************************************************************************
  *
@@ -62,6 +60,7 @@
  *
  *****************************************************************************/
 
+#include "d2q9.h"
 
 const int cv[NVEL][3] = {{ 0,  0,  0},
 			 { 1,  1,  0}, { 1,  0,  0},
@@ -136,6 +135,4 @@ const int ydisp_bwd_cv[CVYBLOCK] = {3, 5, 8};
 const int zblocklen_cv[CVZBLOCK] = {0};
 const int zdisp_fwd_cv[CVZBLOCK] = {0};
 const int zdisp_bwd_cv[CVZBLOCK] = {0};
-
-#endif
 

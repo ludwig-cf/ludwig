@@ -34,22 +34,59 @@
 #include "free_energy.h"
 
 
+static int set_ = 0;
 static double fe_fed_null(const int index);
 static double fe_mu_null(const int index, const int nop);
 static double fe_iso_null(const int index);
 static void   fe_pth_null(const int index, double s[3][3]);
+static int    fe_mu_solv_null(int index, int n, double * mu);
 
 static double (* fp_fed)(const int index) = fe_fed_null;
 static double (* fp_mu)(const int index, const int nop) = fe_mu_null;
 static double (* fp_iso)(const int index) = fe_iso_null;
 static void   (* fp_pth)(const int index, double sth[3][3]) = fe_pth_null;
+static int    (* fp_mus)(int index, int n, double * mu) = fe_mu_solv_null;
+
 static double kappa_ = 1.0;
+
+/****************************************************************************
+ *
+ *  fe_create
+ *
+ *  No actual allocation, but just set pointers to default position.
+ *
+ ****************************************************************************/
+
+int fe_create(void) {
+
+  fp_fed = fe_fed_null;
+  fp_mu  = fe_mu_null;
+  fp_iso = fe_iso_null;
+  fp_pth = fe_pth_null;
+  fp_mus = fe_mu_solv_null;
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  fe_set
+ *
+ *  Return 0 if there is no free energy
+ *
+ ****************************************************************************/
+
+int fe_set(void) {
+
+  return set_;
+}
 
 /****************************************************************************
  *
  *  fe_density_set
  *
  *  Set the function pointer for the required free_energy density.
+ *  Sets the 'set' flag' to say there is a free energy.
  *
  ****************************************************************************/
 
@@ -57,6 +94,7 @@ void fe_density_set(double (* f)(const int)) {
 
   assert(f);
   fp_fed = f;
+  set_ = 1;
   return;
 }
 
@@ -230,4 +268,46 @@ void fe_kappa_set(const double kappa) {
 
   kappa_ = kappa;
   return;
+}
+
+/*****************************************************************************
+ *
+ *  fe_mu_solv_set
+ *
+ *****************************************************************************/
+
+int fe_mu_solv_set(f_mu_solv_t function) {
+
+  assert(function);
+  fp_mus = function;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_mu_solv_null
+ *
+ *****************************************************************************/
+
+static int fe_mu_solv_null(int index, int n, double * mu) {
+
+  assert(mu);
+
+  *mu = 0.0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_mu_solv
+ *
+ *****************************************************************************/
+
+int fe_mu_solv(int index, int n, double * mu) {
+
+  assert(fp_mus);
+
+  return fp_mus(index, n, mu);
 }

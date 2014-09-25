@@ -2,26 +2,35 @@
  *
  *  model.h
  *
- *  $Id$
+ *  This includes the appropriate lattice Boltzmann
+ *  model d2q9, d3q15, or d3q19 (see Makefile).
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef MODEL_H
 #define MODEL_H
 
-#include "d2q9.h"
-#include "d3q15.h"
-#include "d3q19.h"
+/* Here is the choice of model (and it's here only). */
 
-#if !defined (_D2Q9_) && !defined (_D3Q15_) && !defined (_D3Q19_)
-#error "You must define -D_D2Q9_, -D_D3Q15_ or -D_D3Q19_ in the Makefile" 
+#ifdef _D2Q9_
+#include "d2q9.h"
 #endif
+
+#ifdef _D3Q15_
+#include "d3q15.h"
+#endif
+
+#ifdef _D3Q19_
+#include "d3q19.h"
+#endif
+
+#include "io_harness.h"
 
 /* Vector length for SIMD auto-vectorisation over lattice sites. */
 /* If not set in the Makefile, it defaults to 1, as larger values
@@ -42,40 +51,42 @@ enum {MODEL, MODEL_R};
 extern const double cs2;
 extern const double rcs2;
 
-void   distribution_init(void);
-void   distribution_finish(void);
-void   distribution_halo(void);
+typedef enum lb_dist_enum_type{LB_RHO = 0, LB_PHI = 1} lb_dist_enum_t;
 
-int    distribution_ndist(void);
-int    distribution_order(void);
-void   distribution_ndist_set(const int ndist);
-double distribution_f(const int index, const int p, const int n);
-void   distribution_f_set(const int index, const int p, const int n,
-			  const double fvalue);
-double distribution_zeroth_moment(const int index, const int n);
-void   distribution_zeroth_moment_set_equilibrium(const int index, const int n,
-						  const double rho);
-void   distribution_rho_u_set_equilibrium(const int index, const double rho,
-					  const double u[3]);
-void   distribution_first_moment(const int index, const int n, double g[3]);
+typedef struct lb_data_s lb_t;
+typedef enum lb_halo_enum_type {LB_HALO_FULL, LB_HALO_REDUCED} lb_halo_enum_t;
 
-void   distribution_get_stress_at_site(int index, double s[3][3]);
-void   distribution_halo_set_complete(void);
-void   distribution_halo_set_reduced(void);
-void   distribution_init_f(void);
-void   distribution_index(const int index, const int n, double f[NVEL]);
-void distribution_multi_index(const int index, const int n, 
-			      double f_vec[NVEL][SIMDVL]);
-void distribution_multi_index_part(const int index, const int n, 
-				   double f_vec[NVEL][SIMDVL],int nv);
-void   distribution_index_set(const int index, const int n,
-			      const double f[NVEL]);
-void distribution_multi_index_set(const int index, const int n,
-				  double f_vec[NVEL][SIMDVL]);
-void distribution_multi_index_set_part(const int index, const int n,
-				       double f_vec[NVEL][SIMDVL], int nv);
-
-struct io_info_t * distribution_io_info(void);
-void   distribution_io_info_set(struct io_info_t * io_info);
+int lb_create_ndist(int ndist, lb_t ** lb);
+int lb_create(lb_t ** lb);
+void lb_free(lb_t * lb);
+int lb_nvel(lb_t * lb, int * nvel);
+int lb_ndim(lb_t * lb, int * ndim);
+int lb_nblock(lb_t * lb, int dim, int * nblock);
+int lb_init(lb_t * lb);
+int lb_init_rest_f(lb_t * lb, double rho0);
+int lb_halo(lb_t * lb);
+int lb_halo_via_copy(lb_t * lb);
+int lb_halo_via_struct(lb_t * lb);
+int lb_ndist(lb_t * lb, int * ndist);
+int lb_order(lb_t * lb);
+int lb_ndist_set(lb_t * lb, int ndist);
+int lb_f(lb_t * lb, int index, int p, int n, double * f);
+int lb_f_set(lb_t * lb, int index, int p, int n, double fval);
+int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho);
+int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
+int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]);
+int lb_0th_moment_equilib_set(lb_t * lb, int index, int n, double rho);
+int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]);
+int lb_halo_set(lb_t * lb, lb_halo_enum_t halo);
+int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]);
+int lb_f_multi_index(lb_t * lb, int index, int n, double f[NVEL][SIMDVL]);
+int lb_f_index_set(lb_t * lb, int index, int n, double f[NVEL]);
+int lb_f_multi_index_set(lb_t * lb, int index, int n, double f[NVEL][SIMDVL]);
+int lb_f_multi_index_part(lb_t * lb, int index, int n, double f[NVEL][SIMDVL],
+			  int nv);
+int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
+			      double f[NVEL][SIMDVL], int nv);
+int lb_io_info(lb_t * lb, io_info_t ** io_info);
+int lb_io_info_set(lb_t * lb, io_info_t * io_info);
 
 #endif

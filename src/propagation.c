@@ -4,13 +4,11 @@
  *
  *  Propagation schemes for the different models.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,63 +16,65 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
+#include "propagation.h"
+#include "lb_model_s.h"
 
-static void propagate_d2q9(void);
-static void propagate_d3q15(void);
-static void propagate_d3q19(void);
-static void propagate_d3q19_r(void);
+static int lb_propagate_d2q9(lb_t * lb);
+static int lb_propagate_d3q15(lb_t * lb);
+static int lb_propagate_d3q19(lb_t * lb);
+static int lb_propagate_d2q9_r(lb_t * lb);
+static int lb_propagate_d3q15_r(lb_t * lb);
+static int lb_propagate_d3q19_r(lb_t * lb);
 
 /*****************************************************************************
  *
- *  propagation
+ *  lb_propagation
  *
  *  Driver routine for the propagation stage.
  *
  *****************************************************************************/
 
-void propagation() {
+int lb_propagation(lb_t * lb) {
 
-  if (distribution_order() == MODEL) {
-    if (NVEL == 9) propagate_d2q9();
-    if (NVEL == 15) propagate_d3q15();
-    if (NVEL == 19) propagate_d3q19();
+  assert(lb);
+
+  if (lb_order(lb) == MODEL) {
+    if (NVEL == 9)  lb_propagate_d2q9(lb);
+    if (NVEL == 15) lb_propagate_d3q15(lb);
+    if (NVEL == 19) lb_propagate_d3q19(lb);
   }
   else {
     /* Reverse implementation */
-    assert(NVEL != 9);
-    assert(NVEL != 15);
-    if (NVEL == 19) propagate_d3q19_r();
+    if (NVEL == 9)  lb_propagate_d2q9_r(lb);
+    if (NVEL == 15) lb_propagate_d3q15_r(lb);
+    if (NVEL == 19) lb_propagate_d3q19_r(lb);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  propagate_d2q9
+ *  lb_propagate_d2q9
  *
  *  Follows the definition of the velocities in d2q9.c
  *
  *****************************************************************************/
 
-static void propagate_d2q9(void) {
+static int lb_propagate_d2q9(lb_t * lb) {
 
   int ic, jc, kc, index, n, p;
   int xstr, ystr, zstr;
   int nhalo;
-  int ndist;
   int nlocal[3];
 
-  extern double * f_;
-
+  assert(lb);
   assert(NVEL == 9);
 
   nhalo = coords_nhalo();
-  ndist = distribution_ndist();
   coords_nlocal(nlocal);
 
-  zstr = ndist*NVEL;
+  zstr = lb->ndist*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
   xstr = ystr*(nlocal[Y] + 2*nhalo);
 
@@ -86,12 +86,12 @@ static void propagate_d2q9(void) {
       kc = 1;
       index = coords_index(ic, jc, kc);
 
-      for (n = 0; n < ndist; n++) {
-	p = ndist*NVEL*index + n*NVEL;
-	f_[p + 4] = f_[p +             (-1)*ystr + 4];
-	f_[p + 3] = f_[p + (-1)*xstr + (+1)*ystr + 3];
-	f_[p + 2] = f_[p + (-1)*xstr             + 2];
-	f_[p + 1] = f_[p + (-1)*xstr + (-1)*ystr + 1];
+      for (n = 0; n < lb->ndist; n++) {
+	p = lb->ndist*NVEL*index + n*NVEL;
+	lb->f[p + 4] = lb->f[p +             (-1)*ystr + 4];
+	lb->f[p + 3] = lb->f[p + (-1)*xstr + (+1)*ystr + 3];
+	lb->f[p + 2] = lb->f[p + (-1)*xstr             + 2];
+	lb->f[p + 1] = lb->f[p + (-1)*xstr + (-1)*ystr + 1];
       }
     }
   }
@@ -104,44 +104,41 @@ static void propagate_d2q9(void) {
       kc = 1;
       index = coords_index(ic, jc, kc);
 
-      for (n = 0; n < ndist; n++) {
-	p = ndist*NVEL*index + n*NVEL;
-	f_[p + 5] = f_[p             + (+1)*ystr + 5];
-	f_[p + 6] = f_[p + (+1)*xstr + (-1)*ystr + 6];
-	f_[p + 7] = f_[p + (+1)*xstr             + 7];
-	f_[p + 8] = f_[p + (+1)*xstr + (+1)*ystr + 8];
+      for (n = 0; n < lb->ndist; n++) {
+	p = lb->ndist*NVEL*index + n*NVEL;
+	lb->f[p + 5] = lb->f[p             + (+1)*ystr + 5];
+	lb->f[p + 6] = lb->f[p + (+1)*xstr + (-1)*ystr + 6];
+	lb->f[p + 7] = lb->f[p + (+1)*xstr             + 7];
+	lb->f[p + 8] = lb->f[p + (+1)*xstr + (+1)*ystr + 8];
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  propagate_d3q15
+ *  lb_propagate_d3q15
  *
  *  Follows the definition of the velocities in d3q15.c
  *
  *****************************************************************************/
 
-static void propagate_d3q15(void) {
+static int lb_propagate_d3q15(lb_t * lb) {
 
   int ic, jc, kc, index, n, p;
   int xstr, ystr, zstr;
   int nhalo;
-  int ndist;
   int nlocal[3];
 
-  extern double * f_;
-
+  assert(lb);
   assert(NVEL == 15);
 
   nhalo = coords_nhalo();
-  ndist = distribution_ndist();
   coords_nlocal(nlocal);
 
-  zstr = ndist*NVEL;
+  zstr = lb->ndist*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
   xstr = ystr*(nlocal[Y] + 2*nhalo);
 
@@ -153,15 +150,15 @@ static void propagate_d3q15(void) {
 
         index = coords_index(ic, jc, kc);
 
-	for (n = 0; n < ndist; n++) {
-	  p = ndist*NVEL*index + n*NVEL;
-	  f_[p + 7] = f_[p                         + (-1)*zstr + 7];
-	  f_[p + 6] = f_[p             + (-1)*ystr             + 6];
-	  f_[p + 5] = f_[p + (-1)*xstr + (+1)*ystr + (+1)*zstr + 5];
-	  f_[p + 4] = f_[p + (-1)*xstr + (+1)*ystr + (-1)*zstr + 4];
-	  f_[p + 3] = f_[p + (-1)*xstr                         + 3];
-	  f_[p + 2] = f_[p + (-1)*xstr + (-1)*ystr + (+1)*zstr + 2];
-	  f_[p + 1] = f_[p + (-1)*xstr + (-1)*ystr + (-1)*zstr + 1];
+	for (n = 0; n < lb->ndist; n++) {
+	  p = lb->ndist*NVEL*index + n*NVEL;
+	  lb->f[p + 7] = lb->f[p                         + (-1)*zstr + 7];
+	  lb->f[p + 6] = lb->f[p             + (-1)*ystr             + 6];
+	  lb->f[p + 5] = lb->f[p + (-1)*xstr + (+1)*ystr + (+1)*zstr + 5];
+	  lb->f[p + 4] = lb->f[p + (-1)*xstr + (+1)*ystr + (-1)*zstr + 4];
+	  lb->f[p + 3] = lb->f[p + (-1)*xstr                         + 3];
+	  lb->f[p + 2] = lb->f[p + (-1)*xstr + (-1)*ystr + (+1)*zstr + 2];
+	  lb->f[p + 1] = lb->f[p + (-1)*xstr + (-1)*ystr + (-1)*zstr + 1];
 	}
       }
     }
@@ -175,48 +172,45 @@ static void propagate_d3q15(void) {
 
         index = coords_index(ic, jc, kc);
 
-	for (n = 0; n < ndist; n++) {
-	  p = ndist*NVEL*index + n*NVEL;
-	  f_[p +  8] = f_[p                         + (+1)*zstr +  8];
-	  f_[p +  9] = f_[p             + (+1)*ystr             +  9];
-	  f_[p + 10] = f_[p + (+1)*xstr + (-1)*ystr + (-1)*zstr + 10];
-	  f_[p + 11] = f_[p + (+1)*xstr + (-1)*ystr + (+1)*zstr + 11];
-	  f_[p + 12] = f_[p + (+1)*xstr                         + 12];
-	  f_[p + 13] = f_[p + (+1)*xstr + (+1)*ystr + (-1)*zstr + 13];
-	  f_[p + 14] = f_[p + (+1)*xstr + (+1)*ystr + (+1)*zstr + 14];
+	for (n = 0; n < lb->ndist; n++) {
+	  p = lb->ndist*NVEL*index + n*NVEL;
+	  lb->f[p +  8] = lb->f[p                         + (+1)*zstr +  8];
+	  lb->f[p +  9] = lb->f[p             + (+1)*ystr             +  9];
+	  lb->f[p + 10] = lb->f[p + (+1)*xstr + (-1)*ystr + (-1)*zstr + 10];
+	  lb->f[p + 11] = lb->f[p + (+1)*xstr + (-1)*ystr + (+1)*zstr + 11];
+	  lb->f[p + 12] = lb->f[p + (+1)*xstr                         + 12];
+	  lb->f[p + 13] = lb->f[p + (+1)*xstr + (+1)*ystr + (-1)*zstr + 13];
+	  lb->f[p + 14] = lb->f[p + (+1)*xstr + (+1)*ystr + (+1)*zstr + 14];
 	}
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  propagate_d3q19
+ *  lb_propagate_d3q19
  *
  *  Follows the velocities defined in d3q19.c
  *
  *****************************************************************************/
 
-static void propagate_d3q19(void) {
+static int lb_propagate_d3q19(lb_t * lb) {
 
   int ic, jc, kc, index, n, p;
   int xstr, ystr, zstr;
   int nhalo;
-  int ndist;
   int nlocal[3];
 
-  extern double * f_;
-
+  assert(lb);
   assert(NVEL == 19);
 
   nhalo = coords_nhalo();
-  ndist = distribution_ndist();
   coords_nlocal(nlocal);
 
-  zstr = ndist*NVEL;
+  zstr = lb->ndist*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
   xstr = ystr*(nlocal[Y] + 2*nhalo);
 
@@ -228,17 +222,17 @@ static void propagate_d3q19(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	for (n = 0; n < ndist; n++) {
-	  p = ndist*NVEL*index + n*NVEL;
-	  f_[p + 9] = f_[p                         + (-1)*zstr + 9];
-	  f_[p + 8] = f_[p             + (-1)*ystr + (+1)*zstr + 8];
-	  f_[p + 7] = f_[p             + (-1)*ystr             + 7];
-	  f_[p + 6] = f_[p             + (-1)*ystr + (-1)*zstr + 6];
-	  f_[p + 5] = f_[p + (-1)*xstr + (+1)*ystr             + 5];
-	  f_[p + 4] = f_[p + (-1)*xstr             + (+1)*zstr + 4];
-	  f_[p + 3] = f_[p + (-1)*xstr                         + 3];
-	  f_[p + 2] = f_[p + (-1)*xstr             + (-1)*zstr + 2];
-	  f_[p + 1] = f_[p + (-1)*xstr + (-1)*ystr             + 1];
+	for (n = 0; n < lb->ndist; n++) {
+	  p = lb->ndist*NVEL*index + n*NVEL;
+	  lb->f[p + 9] = lb->f[p                         + (-1)*zstr + 9];
+	  lb->f[p + 8] = lb->f[p             + (-1)*ystr + (+1)*zstr + 8];
+	  lb->f[p + 7] = lb->f[p             + (-1)*ystr             + 7];
+	  lb->f[p + 6] = lb->f[p             + (-1)*ystr + (-1)*zstr + 6];
+	  lb->f[p + 5] = lb->f[p + (-1)*xstr + (+1)*ystr             + 5];
+	  lb->f[p + 4] = lb->f[p + (-1)*xstr             + (+1)*zstr + 4];
+	  lb->f[p + 3] = lb->f[p + (-1)*xstr                         + 3];
+	  lb->f[p + 2] = lb->f[p + (-1)*xstr             + (-1)*zstr + 2];
+	  lb->f[p + 1] = lb->f[p + (-1)*xstr + (-1)*ystr             + 1];
 	}
       }
     }
@@ -252,59 +246,180 @@ static void propagate_d3q19(void) {
 
 	index = coords_index(ic, jc, kc);
 
-	for (n = 0; n < ndist; n++) {
-	  p = ndist*NVEL*index + n*NVEL;
-	  f_[p + 10] = f_[p                         + (+1)*zstr + 10];
-	  f_[p + 11] = f_[p             + (+1)*ystr + (-1)*zstr + 11];
-	  f_[p + 12] = f_[p             + (+1)*ystr             + 12];
-	  f_[p + 13] = f_[p             + (+1)*ystr + (+1)*zstr + 13];
-	  f_[p + 14] = f_[p + (+1)*xstr + (-1)*ystr             + 14];
-	  f_[p + 15] = f_[p + (+1)*xstr             + (-1)*zstr + 15];
-	  f_[p + 16] = f_[p + (+1)*xstr                         + 16];
-	  f_[p + 17] = f_[p + (+1)*xstr             + (+1)*zstr + 17];
-	  f_[p + 18] = f_[p + (+1)*xstr + (+1)*ystr             + 18];
+	for (n = 0; n < lb->ndist; n++) {
+	  p = lb->ndist*NVEL*index + n*NVEL;
+	  lb->f[p + 10] = lb->f[p                         + (+1)*zstr + 10];
+	  lb->f[p + 11] = lb->f[p             + (+1)*ystr + (-1)*zstr + 11];
+	  lb->f[p + 12] = lb->f[p             + (+1)*ystr             + 12];
+	  lb->f[p + 13] = lb->f[p             + (+1)*ystr + (+1)*zstr + 13];
+	  lb->f[p + 14] = lb->f[p + (+1)*xstr + (-1)*ystr             + 14];
+	  lb->f[p + 15] = lb->f[p + (+1)*xstr             + (-1)*zstr + 15];
+	  lb->f[p + 16] = lb->f[p + (+1)*xstr                         + 16];
+	  lb->f[p + 17] = lb->f[p + (+1)*xstr             + (+1)*zstr + 17];
+	  lb->f[p + 18] = lb->f[p + (+1)*xstr + (+1)*ystr             + 18];
 	}
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  propagate_d3q19_r
+ *  lb_propagate_d3q19_r
  *
  *  Reverse storage implementation.
  *
  *****************************************************************************/
 
-static void propagate_d3q19_r(void) {
+static int lb_propagate_d2q9_r(lb_t * lb) {
 
   int ic, jc, kc, index, n, p, q;
   int xstr, ystr, zstr;
-  int nhalo;
-  int ndist;
-  int nsite;
   int nlocal[3];
 
-  extern double * f_;
+  assert(lb);
+  assert(NVEL == 9);
 
-  assert(NVEL == 19);
-
-  nhalo = coords_nhalo();
-  nsite = coords_nsites();
-  ndist = distribution_ndist();
   coords_nlocal(nlocal);
 
   /* Stride in memory for velocities, and space */
-  p = ndist*nsite;
 
-  zstr = 1;
-  ystr = zstr*(nlocal[Z] + 2*nhalo);
-  xstr = ystr*(nlocal[Y] + 2*nhalo);
+  p = lb->ndist*lb->nsite;
+  coords_strides(&xstr, &ystr, &zstr);
+  kc = 1;
 
-  for (n = 0; n < ndist; n++) {
+  for (n = 0; n < lb->ndist; n++) {
+
+    /* Distributions moving forward in memory. */
+  
+    for (ic = nlocal[X]; ic >= 1; ic--) {
+      for (jc = nlocal[Y]; jc >= 1; jc--) {
+
+	index = coords_index(ic, jc, kc);
+	q = n*lb->nsite + index;
+
+	lb->f[4*p + q] = lb->f[4*p + q +             (-1)*ystr];
+	lb->f[3*p + q] = lb->f[3*p + q + (-1)*xstr + (+1)*ystr];
+	lb->f[2*p + q] = lb->f[2*p + q + (-1)*xstr            ];
+	lb->f[1*p + q] = lb->f[1*p + q + (-1)*xstr + (-1)*ystr];
+      }
+    }
+  
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+	index = coords_index(ic, jc, kc);
+	q = n*lb->nsite + index;
+
+	lb->f[5*p + q] = lb->f[5*p + q             + (+1)*ystr];
+	lb->f[6*p + q] = lb->f[6*p + q + (+1)*xstr + (-1)*ystr];
+	lb->f[7*p + q] = lb->f[7*p + q + (+1)*xstr            ];
+	lb->f[8*p + q] = lb->f[8*p + q + (+1)*xstr + (+1)*ystr];
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_propagate_d3q15_r
+ *
+ *  Reverse memeory order implementation
+ *
+ *****************************************************************************/
+
+static int lb_propagate_d3q15_r(lb_t * lb) {
+
+  int ic, jc, kc, index, n, p, q;
+  int xstr, ystr, zstr;
+  int nlocal[3];
+
+  assert(lb);
+  assert(NVEL == 15);
+
+  coords_nlocal(nlocal);
+
+  /* Stride in memory for velocities, and space */
+
+  p = lb->ndist*lb->nsite;
+  coords_strides(&xstr, &ystr, &zstr);
+
+  for (n = 0; n < lb->ndist; n++) {
+
+    /* Distributions moving forward in memory. */
+  
+    for (ic = nlocal[X]; ic >= 1; ic--) {
+      for (jc = nlocal[Y]; jc >= 1; jc--) {
+	for (kc = nlocal[Z]; kc >= 1; kc--) {
+
+	  index = coords_index(ic, jc, kc);
+	  q = n*lb->nsite + index;
+
+	  lb->f[7*p + q] = lb->f[7*p + q                         + (-1)*zstr];
+	  lb->f[6*p + q] = lb->f[6*p + q             + (-1)*ystr            ];
+	  lb->f[5*p + q] = lb->f[5*p + q + (-1)*xstr + (+1)*ystr + (+1)*zstr];
+	  lb->f[4*p + q] = lb->f[4*p + q + (-1)*xstr + (+1)*ystr + (-1)*zstr];
+	  lb->f[3*p + q] = lb->f[3*p + q + (-1)*xstr                        ];
+	  lb->f[2*p + q] = lb->f[2*p + q + (-1)*xstr + (-1)*ystr + (+1)*zstr];
+	  lb->f[1*p + q] = lb->f[1*p + q + (-1)*xstr + (-1)*ystr + (-1)*zstr];
+
+	}
+      }
+    }
+
+    /* Distributions mvoing backward in memory. */
+  
+    for (ic = 1; ic <= nlocal[X]; ic++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(ic, jc, kc);
+	  q = n*lb->nsite + index;
+
+	  lb->f[ 8*p + q] = lb->f[ 8*p+q                         + (+1)*zstr];
+	  lb->f[ 9*p + q] = lb->f[ 9*p+q             + (+1)*ystr            ];
+	  lb->f[10*p + q] = lb->f[10*p+q + (+1)*xstr + (-1)*ystr + (-1)*zstr];
+	  lb->f[11*p + q] = lb->f[11*p+q + (+1)*xstr + (-1)*ystr + (+1)*zstr];
+	  lb->f[12*p + q] = lb->f[12*p+q + (+1)*xstr                        ];
+	  lb->f[13*p + q] = lb->f[13*p+q + (+1)*xstr + (+1)*ystr + (-1)*zstr];
+	  lb->f[14*p + q] = lb->f[14*p+q + (+1)*xstr + (+1)*ystr + (+1)*zstr];
+	}
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_propagate_d3q19_r
+ *
+ *  MODEL_R implmentation
+ *
+ *****************************************************************************/
+
+static int lb_propagate_d3q19_r(lb_t * lb) {
+
+  int ic, jc, kc, index, n, p, q;
+  int xstr, ystr, zstr;
+  int nlocal[3];
+
+  assert(lb);
+  assert(NVEL == 19);
+
+  coords_nlocal(nlocal);
+
+  /* Stride in memory for velocities, and space */
+
+  p = lb->ndist*lb->nsite;
+  coords_strides(&xstr, &ystr, &zstr);
+
+  for (n = 0; n < lb->ndist; n++) {
 
     /* Distributions moving forward in memory. */
   
@@ -314,16 +429,16 @@ static void propagate_d3q19_r(void) {
 
 	  index = coords_index(ic, jc, kc);
 
-	  q = n*nsite + index;
-	  f_[9*p + q] = f_[9*p + q                         + (-1)*zstr];
-	  f_[8*p + q] = f_[8*p + q             + (-1)*ystr + (+1)*zstr];
-	  f_[7*p + q] = f_[7*p + q             + (-1)*ystr            ];
-	  f_[6*p + q] = f_[6*p + q             + (-1)*ystr + (-1)*zstr];
-	  f_[5*p + q] = f_[5*p + q + (-1)*xstr + (+1)*ystr            ];
-	  f_[4*p + q] = f_[4*p + q + (-1)*xstr             + (+1)*zstr];
-	  f_[3*p + q] = f_[3*p + q + (-1)*xstr                        ];
-	  f_[2*p + q] = f_[2*p + q + (-1)*xstr             + (-1)*zstr];
-	  f_[1*p + q] = f_[1*p + q + (-1)*xstr + (-1)*ystr            ];
+	  q = n*lb->nsite + index;
+	  lb->f[9*p + q] = lb->f[9*p + q                         + (-1)*zstr];
+	  lb->f[8*p + q] = lb->f[8*p + q             + (-1)*ystr + (+1)*zstr];
+	  lb->f[7*p + q] = lb->f[7*p + q             + (-1)*ystr            ];
+	  lb->f[6*p + q] = lb->f[6*p + q             + (-1)*ystr + (-1)*zstr];
+	  lb->f[5*p + q] = lb->f[5*p + q + (-1)*xstr + (+1)*ystr            ];
+	  lb->f[4*p + q] = lb->f[4*p + q + (-1)*xstr             + (+1)*zstr];
+	  lb->f[3*p + q] = lb->f[3*p + q + (-1)*xstr                        ];
+	  lb->f[2*p + q] = lb->f[2*p + q + (-1)*xstr             + (-1)*zstr];
+	  lb->f[1*p + q] = lb->f[1*p + q + (-1)*xstr + (-1)*ystr            ];
 	}
       }
     }
@@ -336,20 +451,20 @@ static void propagate_d3q19_r(void) {
 
 	  index = coords_index(ic, jc, kc);
 
-	  q = n*nsite + index;
-	  f_[10*p + q] = f_[10*p + q                         + (+1)*zstr];
-	  f_[11*p + q] = f_[11*p + q             + (+1)*ystr + (-1)*zstr];
-	  f_[12*p + q] = f_[12*p + q             + (+1)*ystr            ];
-	  f_[13*p + q] = f_[13*p + q             + (+1)*ystr + (+1)*zstr];
-	  f_[14*p + q] = f_[14*p + q + (+1)*xstr + (-1)*ystr            ];
-	  f_[15*p + q] = f_[15*p + q + (+1)*xstr             + (-1)*zstr];
-	  f_[16*p + q] = f_[16*p + q + (+1)*xstr                        ];
-	  f_[17*p + q] = f_[17*p + q + (+1)*xstr             + (+1)*zstr];
-	  f_[18*p + q] = f_[18*p + q + (+1)*xstr + (+1)*ystr            ];
+	  q = n*lb->nsite + index;
+	  lb->f[10*p + q] = lb->f[10*p + q                         + (+1)*zstr];
+	  lb->f[11*p + q] = lb->f[11*p + q             + (+1)*ystr + (-1)*zstr];
+	  lb->f[12*p + q] = lb->f[12*p + q             + (+1)*ystr            ];
+	  lb->f[13*p + q] = lb->f[13*p + q             + (+1)*ystr + (+1)*zstr];
+	  lb->f[14*p + q] = lb->f[14*p + q + (+1)*xstr + (-1)*ystr            ];
+	  lb->f[15*p + q] = lb->f[15*p + q + (+1)*xstr             + (-1)*zstr];
+	  lb->f[16*p + q] = lb->f[16*p + q + (+1)*xstr                        ];
+	  lb->f[17*p + q] = lb->f[17*p + q + (+1)*xstr             + (+1)*zstr];
+	  lb->f[18*p + q] = lb->f[18*p + q + (+1)*xstr + (+1)*ystr            ];
 	}
       }
     }
   }
 
-  return;
+  return 0;
 }

@@ -15,7 +15,10 @@
 #ifndef POLAR_ACTIVE_RT_H
 #define POLAR_ACTIVE_RT_H
 
+#include "field.h"
+
 void polar_active_run_time(void);
-void polar_active_rt_initial_conditions(void);
+int polar_active_rt_initial_conditions(field_t * p);
+int polar_active_init_aster(field_t * p);
 
 #endif

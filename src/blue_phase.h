@@ -2,13 +2,16 @@
  *
  *  blue_phase.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Oliver Henrich (ohenrich@epcc.ed.ac.uk)
+ *    Juho Lintuvuori
+ *    Davide Marenduzzo
  *
  *****************************************************************************/
 
@@ -18,6 +21,11 @@
 /* 'Extension' of free energy (pending free_energy_tensor.h) */
 
 #include "free_energy.h"
+#include "field.h"
+#include "field_grad.h"
+#include "io_harness.h"
+
+int blue_phase_q_set(field_t * q, field_grad_t * dq);
 
 void   blue_phase_set_free_energy_parameters(double, double, double, double);
 void   blue_phase_set_xi(double);
@@ -62,8 +70,9 @@ void blue_phase_q_uniaxial(double amplitude, const double n[3], double q[3][3]);
 
 void blue_phase_set_active_region_gamma_zeta(const int index);
 
-extern struct io_info_t * io_info_fed;
-void   fed_io_info_set(struct io_info_t * info);
+int fed_io_info_set(io_info_t * info);
+int  fed_io_info(io_info_t ** info);
+int blue_phase_scalar_ops(double q[3][3], double qs[5]);
 
 #endif
  

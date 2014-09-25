@@ -14,12 +14,12 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "pe.h"
 #include "runtime.h"
-#include "gradient.h"
 #include "gradient_2d_5pt_fluid.h"
 #include "gradient_2d_tomita_fluid.h"
 #include "gradient_3d_7pt_fluid.h"
@@ -30,59 +30,77 @@
 
 /*****************************************************************************
  *
- *  gradient_run_time
+ *  gradient_rt_init
+ *
+ *  For the given field gradient object, set the call back to
+ *  function do the computation.
+ *
+ *  TODO: one could try to filter at this stage valid methods,
+ *  but a bit of a pain (what works in what situation?).
  *
  *****************************************************************************/
 
-void gradient_run_time(void) {
+int gradient_rt_init(field_grad_t * grad, map_t * map) {
 
   int n;
-  char key1[FILENAME_MAX];
+  char keyvalue[BUFSIZ];
 
-  n = RUN_get_string_parameter("free_energy", key1, FILENAME_MAX);
+  int (*f2) (int nf, const double * data, double * grad, double * d2) = NULL;
+  int (*f4) (int nf, const double * data, double * grad, double * d2) = NULL;
 
-  if (n == 0 || strcmp(key1, "none") == 0) return;
+  assert(grad);
 
-  n = RUN_get_string_parameter("fd_gradient_calculation", key1, FILENAME_MAX);
+  n = RUN_get_string_parameter("fd_gradient_calculation", keyvalue, BUFSIZ);
 
   if (n == 0) {
-    info("You must specify the key fd_gradient_calculation\n");
+    info("You must specify the keyvalue fd_gradient_calculation\n");
     fatal("Please check and try again\n");
   }
   else {
     info("Gradient calcaulation: ");
-    if (strcmp(key1, "2d_5pt_fluid") == 0) {
+    if (strcmp(keyvalue, "2d_5pt_fluid") == 0) {
       info("2d_5pt_fluid\n");
-      gradient_2d_5pt_fluid_init();
+      f2 = gradient_2d_5pt_fluid_d2;
+      f4 = gradient_2d_5pt_fluid_d4;
     }
-    else if (strcmp(key1, "2d_tomita_fluid") == 0) {
+    else if (strcmp(keyvalue, "2d_tomita_fluid") == 0) {
       info("2d_tomita_fluid\n");
-      gradient_2d_tomita_fluid_init();
+      f2 = gradient_2d_tomita_fluid_d2;
+      f4 = gradient_2d_tomita_fluid_d4;
     }
-    else if (strcmp(key1, "3d_7pt_fluid") == 0) {
+    else if (strcmp(keyvalue, "3d_7pt_fluid") == 0) {
       info("3d_7pt_fluid\n");
-      gradient_3d_7pt_fluid_init();
+      f2 = gradient_3d_7pt_fluid_d2;
+      f4 = gradient_3d_7pt_fluid_d4;
+      field_grad_dab_set(grad, gradient_3d_7pt_fluid_dab);
     }
-    else if (strcmp(key1, "3d_7pt_solid") == 0) {
+    else if (strcmp(keyvalue, "3d_7pt_solid") == 0) {
       info("3d_7pt_solid\n");
-      gradient_3d_7pt_solid_init();
+      f2 = gradient_3d_7pt_solid_d2;
+      f4 = NULL;
+      assert(map);
+      gradient_3d_7pt_solid_map_set(map);
     }
-    else if (strcmp(key1, "3d_27pt_fluid") == 0) {
+    else if (strcmp(keyvalue, "3d_27pt_fluid") == 0) {
       info("3d_27pt_fluid\n");
-      gradient_3d_27pt_fluid_init();
+      f2 = gradient_3d_27pt_fluid_d2;
+      f4 = gradient_3d_27pt_fluid_d4;
     }
-    else if (strcmp(key1, "3d_27pt_solid") == 0) {
+    else if (strcmp(keyvalue, "3d_27pt_solid") == 0) {
       info("3d_27pt_solid\n");
-      gradient_3d_27pt_solid_init();
+      f2 = gradient_3d_27pt_solid_d2;
+      f4 = NULL;
+      assert(map);
+      gradient_3d_27pt_solid_map_set(map);
     }
     else {
       /* Not recognised */
-      info("\nfd_gradient_calculation %s not recognised\n", key1);
+      info("\nfd_gradient_calculation %s not recognised\n", keyvalue);
       fatal("Please check and try again\n");
     }
   }
 
-  info("\n");
+  field_grad_set(grad, f2, f4);
 
-  return;
+  return 0;
 }

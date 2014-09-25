@@ -37,20 +37,80 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdlib.h>
 
-#include "phi.h"
-#include "phi_gradients.h"
+#include "pe.h"
 #include "util.h"
 #include "surfactant.h"
 
-static double a_       = -0.0208333;
-static double b_       = +0.0208333;
-static double kappa_   = +0.12;
+/* Some values might be
+ * a_       = -0.0208333;
+ * b_       = +0.0208333;
+ * kappa_   = +0.12;
+ * 
+ * kt_      = 0.00056587;
+ * epsilon_ = 0.03;
+ * beta_    = 0.0;
+ * w_       = 0.0;
+ */
 
-static double kt_      = 0.00056587;
-static double epsilon_ = 0.03;
-static double beta_    = 0.0;
-static double w_       = 0.0;
+typedef struct fe_surfactant_s fe_surfactant_t;
+
+struct fe_surfactant_s {
+
+  field_t * phi;         /* Single field object with two components */
+  field_grad_t * grad;   /* gradients thereof */
+
+  double a;              /* Symmetric a */
+  double b;              /* Symmetric b */
+  double kappa;          /* Symmetric kappa */
+
+  double kt;             /* Not to be confused with physics_kt(). */
+  double epsilon;        /* Surfactant epsilon */
+  double beta;           /* Frumpkin isotherm */
+  double w;              /* Surfactant w */
+
+};
+
+static fe_surfactant_t * fe = NULL;
+
+
+/****************************************************************************
+ *
+ *  fe_surfactant_create
+ *
+ *  A single static instance
+ *
+ ****************************************************************************/
+
+int fe_surfactant_create(field_t * phi, field_grad_t * grad) {
+
+  assert(fe == NULL);
+  assert(phi);
+  assert(grad);
+
+  fe = calloc(1, sizeof(fe_surfactant_t));
+  if (fe == NULL) fatal("calloc(fe_surfactant) failed\n");
+
+  fe->phi = phi;
+  fe->grad = grad;
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  fe_surfactant_free
+ *
+ ****************************************************************************/
+
+void fe_surfactant_free(void) {
+
+  if (fe) free(fe);
+  fe = NULL;
+
+  return;
+}
 
 /****************************************************************************
  *
@@ -58,13 +118,15 @@ static double w_       = 0.0;
  *
  ****************************************************************************/
 
-void surfactant_fluid_parameters_set(double a, double b, double kappa) {
+int surfactant_fluid_parameters_set(double a, double b, double kappa) {
 
-  a_ = a;
-  b_ = b;
-  kappa_ = kappa;
+  assert(fe);
 
-  return;
+  fe->a = a;
+  fe->b = b;
+  fe->kappa = kappa;
+
+  return 0;
 }
 
 /****************************************************************************
@@ -73,14 +135,16 @@ void surfactant_fluid_parameters_set(double a, double b, double kappa) {
  *
  ****************************************************************************/
 
-void surfactant_parameters_set(double kt, double e, double beta, double w) {
+int surfactant_parameters_set(double kt, double e, double beta, double w) {
 
-  kt_ = kt;
-  epsilon_ = e;
-  beta_ = beta;
-  w_ = w;
+  assert(fe);
 
-  return;
+  fe->kt = kt;
+  fe->epsilon = e;
+  fe->beta = beta;
+  fe->w = w;
+
+  return 0;
 }
 
 
@@ -94,9 +158,15 @@ void surfactant_parameters_set(double kt, double e, double beta, double w) {
 
 double surfactant_interfacial_tension(void) {
 
+  double a, b;
   double sigma;
 
-  sigma = sqrt(-8.0*kappa_*a_*a_*a_/(9.0*b_*b_));
+  assert(fe);
+
+  a = fe->a;
+  b = fe->b;
+
+  sigma = sqrt(-8.0*fe->kappa*a*a*a/(9.0*b*b));
 
   return sigma;
 }
@@ -111,7 +181,9 @@ double surfactant_interfacial_width(void) {
 
   double xi;
 
-  xi = sqrt(-2.0*kappa_/a_);
+  assert(fe);
+
+  xi = sqrt(-2.0*fe->kappa/fe->a);
 
   return xi;
 }
@@ -133,9 +205,11 @@ double surfactant_langmuir_isotherm(void) {
 
   double psi_c;
   double xi0;
-  
+
+  assert(fe);
+
   xi0 = surfactant_interfacial_width();
-  psi_c = exp(0.5*epsilon_ / (kt_*xi0*xi0));
+  psi_c = exp(0.5*fe->epsilon / (fe->kt*xi0*xi0));
 
   return psi_c;
 }
@@ -155,26 +229,31 @@ double surfactant_langmuir_isotherm(void) {
 double surfactant_free_energy_density(const int index) {
 
   double e;
+  double field[2];
   double phi;
   double psi;
-  double dphi[3];
-  double dphisq;
+  double dphi[3] = {0.0, 0.0, 0.0};
+  double dphisq = 0.0;
 
-  phi = phi_op_get_phi_site(index, 0);
-  psi = phi_op_get_phi_site(index, 1);
-  phi_gradients_grad(index, dphi);
+  assert(fe);
+  assert(0); /* Gradient needs work */
+
+  field_scalar_array(fe->phi, index, field);
+  phi = field[0];
+  psi = field[1];
 
   dphisq = dot_product(dphi, dphi);
 
   /* We have the symmetric piece followed by terms in psi */
 
-  e = 0.5*a_*phi*phi + 0.25*b_*phi*phi*phi*phi + 0.5*kappa_*dphisq;
+  e = 0.5*fe->a*phi*phi + 0.25*fe->b*phi*phi*phi*phi + 0.5*fe->kappa*dphisq;
 
   assert(psi > 0.0);
   assert(psi < 1.0);
 
-  e += kt_*(psi*log(psi) + (1.0 - psi)*log(1.0 - psi))
-    -0.5*epsilon_*psi*dphisq - 0.5*beta_*psi*psi*dphisq + 0.5*w_*psi*phi*phi;
+  e += fe->kt*(psi*log(psi) + (1.0 - psi)*log(1.0 - psi))
+    - 0.5*fe->epsilon*psi*dphisq
+    - 0.5*fe->beta*psi*psi*dphisq + 0.5*fe->w*psi*phi*phi;
 
   return e;
 }
@@ -198,38 +277,40 @@ double surfactant_chemical_potential(const int index, const int nop) {
 
   double phi;
   double psi;
-  double dphi[3];
-  double dpsi[3];
-  double delsq_phi;
+  double field[2];
+  double dphi[3] = {0.0, 0.0, 0.0};
+  double dpsi[3] = {0.0, 0.0, 0.0};
+  double delsq_phi = 0.0;
   double mu;
 
   assert(nop == 0 || nop == 1);
 
-  phi = phi_op_get_phi_site(index, 0);
-  psi = phi_op_get_phi_site(index, 1);
-  phi_gradients_grad_n(index, 0, dphi);
+  assert(fe);
+  assert(0); /* Gradient needs work */
+
+  field_scalar_array(fe->phi, index, field);
+  phi = field[0];
+  psi = field[1];
 
   /* There's a rather ugly switch here... */
 
   if (nop == 0) {
     /* mu_phi */
-    delsq_phi = phi_gradients_delsq_n(index, 0);
-    phi_gradients_grad_n(index, 1, dpsi);
 
-    mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi
-      + w_*phi*psi
-      + epsilon_*(psi*delsq_phi + dot_product(dphi, dpsi))
-      + beta_*psi*(psi*delsq_phi + 2.0*dot_product(dphi, dpsi));
+    mu = fe->a*phi + fe->b*phi*phi*phi - fe->kappa*delsq_phi
+      + fe->w*phi*psi
+      + fe->epsilon*(psi*delsq_phi + dot_product(dphi, dpsi))
+      + fe->beta*psi*(psi*delsq_phi + 2.0*dot_product(dphi, dpsi));
   }
   else {
     /* mu_psi */
     assert(psi > 0.0);
     assert(psi < 1.0);
 
-    mu = kt_*(log(psi) - log(1.0-psi))
-      + 0.5*w_*phi*phi
-      - 0.5*epsilon_*dot_product(dphi, dphi)
-      - beta_*psi*dot_product(dphi, dphi);
+    mu = fe->kt*(log(psi) - log(1.0 - psi))
+      + 0.5*fe->w*phi*phi
+      - 0.5*fe->epsilon*dot_product(dphi, dphi)
+      - fe->beta*psi*dot_product(dphi, dphi);
   }
 
   return mu;
@@ -245,27 +326,24 @@ double surfactant_chemical_potential(const int index, const int nop) {
 
 double surfactant_isotropic_pressure(const int index) {
 
-  double phi;
-  double psi;
-  double delsq_phi;
-  double dphi[3];
-  double dpsi[3];
+  double phi = 0.0;
+  double psi = 0.0;
+  double delsq_phi = 0.0;
+  double dphi[3] = {0.0, 0.0, 0.0};
+  double dpsi[3] = {0.0, 0.0, 0.0};
   double p0;
 
-  phi = phi_op_get_phi_site(index, 0);
-  psi = phi_op_get_phi_site(index, 1);
-  delsq_phi = phi_gradients_delsq_n(index, 0);
-  phi_gradients_grad_n(index, 0, dphi);
-  phi_gradients_grad_n(index, 1, dpsi);
+  assert(fe);
+  assert(0); /* Sort values */
 
   assert(psi < 1.0);
 
-  p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
-    - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(dphi, dphi)
-    - kt_*log(1.0 - psi) + w_*psi*phi*phi
-    + epsilon_*phi*(dot_product(dphi, dpsi) + psi*delsq_phi)
-    + beta_*psi*(2.0*phi*dot_product(dphi, dpsi) + phi*psi*delsq_phi
-		 - 0.5*psi*dot_product(dphi, dphi));
+  p0 = 0.5*fe->a*phi*phi + 0.75*fe->b*phi*phi*phi*phi
+    - fe->kappa*phi*delsq_phi - 0.5*fe->kappa*dot_product(dphi, dphi)
+    - fe->kt*log(1.0 - psi) + fe->w*psi*phi*phi
+    + fe->epsilon*phi*(dot_product(dphi, dpsi) + psi*delsq_phi)
+    + fe->beta*psi*(2.0*phi*dot_product(dphi, dpsi) + phi*psi*delsq_phi
+		    - 0.5*psi*dot_product(dphi, dphi));
 
   return p0;
 }
@@ -293,32 +371,29 @@ double surfactant_isotropic_pressure(const int index) {
 void surfactant_chemical_stress(const int index, double s[3][3]) {
 
   int ia, ib;
-  double phi;
-  double psi;
-  double delsq_phi;
+  double phi = 0.5;
+  double psi = 0.5;
+  double delsq_phi = 0.0;
   double dphi[3];
   double dpsi[3];
   double p0;
 
-  phi = phi_op_get_phi_site(index, 0);
-  psi = phi_op_get_phi_site(index, 1);
-  delsq_phi = phi_gradients_delsq_n(index, 0);
-  phi_gradients_grad_n(index, 0, dphi);
-  phi_gradients_grad_n(index, 1, dpsi);
+  assert(fe);
+  assert(0);
 
   assert(psi < 1.0);
 
-  p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
-    - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(dphi, dphi)
-    - kt_*log(1.0 - psi) + w_*psi*phi*phi
-    + epsilon_*phi*(dot_product(dphi, dpsi) + psi*delsq_phi)
-    + beta_*psi*(2.0*phi*dot_product(dphi, dpsi) + phi*psi*delsq_phi
-		 - 0.5*psi*dot_product(dphi, dphi));
+  p0 = 0.5*fe->a*phi*phi + 0.75*fe->b*phi*phi*phi*phi
+    - fe->kappa*phi*delsq_phi - 0.5*fe->kappa*dot_product(dphi, dphi)
+    - fe->kt*log(1.0 - psi) + fe->w*psi*phi*phi
+    + fe->epsilon*phi*(dot_product(dphi, dpsi) + psi*delsq_phi)
+    + fe->beta*psi*(2.0*phi*dot_product(dphi, dpsi) + phi*psi*delsq_phi
+		    - 0.5*psi*dot_product(dphi, dphi));
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       s[ia][ib] = p0*d_[ia][ib]
-	+ (kappa_ - epsilon_*psi - beta_*psi*psi)*dphi[ia]*dphi[ib];
+	+ (fe->kappa - fe->epsilon*psi - fe->beta*psi*psi)*dphi[ia]*dphi[ib];
     }
   }
 

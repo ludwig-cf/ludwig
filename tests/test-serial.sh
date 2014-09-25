@@ -1,79 +1,154 @@
+##############################################################################
+#
+#  Driver script for serial unit/smoke regression tests
+#  These tests should run within a few minutes.
+#
+#  Intended to be invoked from the test directory.
+#
+#  Use e.g., ./test-serial -u -r d2q9
+#  to run unit tests and regreesion tests for d2q9 compilation
+#
+#  Edinburgh Soft Matter and Statisical Physics Group and
+#  Edinburgh Parallel Computing Centre
+#
+#  (c) 2014 The University of Edinburgh
+#  Kevin Stratford (kevin@epcce.ed.ac.uk)
+#
+##############################################################################
 #!/bin/bash
 
-# Serial unit/regression tests
-# We start in ../..
+echo $0 $@
+OPTIND=1
 
-cd trunk/mpi_s
-make libc
-make testc
+DIR_TST=`pwd`
+DIR_MPI=`pwd`/../mpi_s
+DIR_SRC=`pwd`/../src
+DIR_REG=`pwd`/regression
+DIR_UNT=`pwd`/unit
 
-cd ../src
-make lib
+if [ $# -lt 1 ]
+then
+    echo "Usage: $0 -r -u [d2q9 | d3q15 | ...]"
+    exit -1
+fi
 
-cd ../tests
-make do_tests
-make clean
+##############################################################################
+#
+#  test_unit [d2q9 | d2q9r | d3q15 | d3q15r | d3q19 | d3q19r]
+#
+##############################################################################
 
-cd ../src
-make serial
+function test_unit {
 
-echo Running autocorrelation test
-./Ludwig.exe ../tests/regression/test_auto1_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_auto1_srl_d3q19.ref
+  cd $DIR_MPI
+  make clean
+  make libc
+  make testc
+
+  cd $DIR_SRC
+  make clean
+  make serial-$1
+
+  cd $DIR_UNT
+  make clean
+  make serial-$1
+  make run-serial
+  make clean
+
+  # Clean up all directories and finish
+
+  cd $DIR_SRC
+  make clean
+
+  cd $DIR_MPI
+  make clean
+
+  cd $DIR_TST
+}
+
+##############################################################################
+#
+#  test_regr [d2q9 | ...]
+#
+##############################################################################
+
+function test_regr {
+
+  cd $DIR_MPI
+  make clean
+  make libc
+  make testc
+
+  cd $DIR_SRC
+  make clean
+  make serial-$1
+
+  # Smoke tests
+  # The naming convention for the files is "serial-xxxx-xxx.inp"
+  # for the input and with extension ".log" for the reference
+  # output.
+
+  # We are going to run from the regression test directory
+  # for the appropriate argument
+
+  cd $DIR_REG/$1
+
+  for f in serial*inp
+  do
+    input=$f
+    stub=`echo $input | sed 's/.inp//'`
+    echo
+    $DIR_SRC/Ludwig.exe $input > $stub.new
+
+    # Get difference via the difference script
+    $DIR_TST/test-diff.sh $stub.new $stub.log
+
+    if [ $? -ne 0 ]
+	then
+	echo "    FAIL ./$1/$f"
+	$DIR_TST/test-diff.sh -v $stub.log $stub.new
+	else
+	echo "PASS     ./$1/$f"
+    fi
+  done
+
+  # Clean up all directories and finish
+
+  cd $DIR_SRC
+  make clean
+
+  cd $DIR_MPI
+  make clean
+
+  cd $DIR_TST
+}
 
 
-echo Running LE1 test
-./Ludwig.exe ../tests/regression/test_le1_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_le1_srl_d3q19.ref
+# Run the tests
 
-echo Running LE2 test
-./Ludwig.exe ../tests/regression/test_le2_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_le2_srl_d3q19.ref1
+run_unit=0
+run_regr=0
 
-echo Running LE3 test
-./Ludwig.exe ../tests/regression/test_le3_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_le3_srl_d3q19.ref
+while getopts ru opt
+do
+case "$opt" in
+    r)
+	    run_regr=1
+	    ;;
+    u)
+	    run_unit=1
+	    ;;
+esac
+done
 
-echo Running LE4 test
-./Ludwig.exe ../tests/regression/test_le4_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_le4_srl_d3q19.ref
+shift $((OPTIND-1))
 
-echo Running LE5 test
-./Ludwig.exe ../tests/regression/test_le5_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_le5_srl_d3q19.ref
+if [ $run_unit -eq 1 ]
+then
+    test_unit $1
+fi
 
-echo Running LE6 test
-./Ludwig.exe ../tests/regression/test_le6_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_le6_srl_d3q19.ref
-
-echo Running spin03 serial test
-./Ludwig.exe ../tests/regression/test_spin03_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_spin03_d3q19_srl.ref
-
-echo Running spin04 serial test
-./Ludwig.exe ../tests/regression/test_spin04_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_spin04_d3q19_srl.ref1
-
-echo Running spin solid1 serial test
-./Ludwig.exe ../tests/regression/test_spin_solid1_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_spin_solid1_d3q19.ref1
-
-echo Running Yukawa test
-cp ../tests/regression/test_yukawa_cds.001-001 ./config.cds.init.001-001
-./Ludwig.exe ../tests/regression/test_yukawa_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_yukawa_d3q19.ref1
-
-echo Running Cholesteric normal anchoring test
-./Ludwig.exe ../tests/regression/test_chol_normal_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_chol_normal_d3q19.ref1
-
-echo Running Cholesteric planar anchoring test
-./Ludwig.exe ../tests/regression/test_chol_planar_input > /tmp/junk
-diff /tmp/junk ../tests/regression/test_chol_planar_d3q19.ref1
-
-# Clean up all directories
-
-make clean
-
-cd ../mpi_s
-make clean
+if [ $run_regr -eq 1 ]
+then
+    test_regr $1
+fi

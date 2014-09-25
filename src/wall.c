@@ -2,17 +2,15 @@
  *
  *  wall.c
  *
- *  Static solid objects.
+ *  Static solid objects (porous media).
  *
  *  Special case: boundary walls.
- *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2014 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -27,7 +25,6 @@
 #include "model.h"
 #include "util.h"
 #include "wall.h"
-#include "site_map.h"
 #include "runtime.h"
 
 typedef struct B_link_struct B_link;
@@ -50,12 +47,12 @@ static double fnet_[3];              /* Accumulated net force on walls */
 static double lubrication_rcnormal_; /* Wall normal lubrication cut off */
 
 static B_link * allocate_link(void);
-static void     init_links(void);
-static void     init_boundary_site_map(void);
+
+static int wall_init_links(map_t * map);
+static int wall_init_boundary_site_map(map_t * map);
 static void     init_boundary_speeds(const double, const double);
-static void     set_wall_velocity(void);
-static void     wall_shear_init(double utop, double ubottom);
 static void     wall_checks(void);
+static int wall_shear_init(lb_t * lb, double utop, double ubottom);
 
 /*****************************************************************************
  *
@@ -63,16 +60,14 @@ static void     wall_checks(void);
  *
  ****************************************************************************/
 
-void wall_init(void) {
+int wall_init(lb_t * lb, map_t * map) {
 
   int init_shear = 0;
   int ntotal;
-  int n;
+  int porous_media = 0;
   double ux_bottom = 0.0;
   double ux_top = 0.0;
   double rc = 0.0;
-
-  char filename[FILENAME_MAX];
 
   RUN_get_double_parameter("boundary_speed_bottom", &ux_bottom);
   RUN_get_double_parameter("boundary_speed_top", &ux_top);
@@ -92,13 +87,14 @@ void wall_init(void) {
     info("--------------\n");
 
     wall_checks();
-    init_boundary_site_map();
-    init_links();
+    wall_init_boundary_site_map(map);
+    wall_init_links(map);
+
     init_boundary_speeds(ux_bottom, ux_top);
     lubrication_rcnormal_ = rc;
 
     RUN_get_int_parameter("boundary_shear_init", &init_shear);
-    if (init_shear) wall_shear_init(ux_top, ux_bottom);
+    if (init_shear) wall_shear_init(lb, ux_top, ux_bottom);
 
     info("Boundary walls:                  %1s %1s %1s\n",
 	 (is_boundary_[X] == 1) ? "X" : "-",
@@ -109,34 +105,26 @@ void wall_init(void) {
     info("Boundary normal lubrication rc: %14.7e\n", lubrication_rcnormal_);
 
     MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
-    info("Boundary links allocated:        %d\n", ntotal);
+    info("Wall boundary links allocated:   %d\n", ntotal);
     info("Memory (total, bytes):           %d\n", ntotal*sizeof(B_link));
     info("Boundary shear initialise:       %d\n", init_shear);
   }
 
-  /* Porous media */
-  /* Care here. At this point we should have loaded the porous
-   * media data, so we may have initialised the links above. */
+  /* Porous media from file */
 
-  n = RUN_get_string_parameter("porous_media_file", filename, FILENAME_MAX);
+  map_pm(map, &porous_media);
 
-  if (n != 0) {
-    is_pm_ = 1;
-    if (wall_present()) {
-      info("Includes porous media links:     yes\n");
-    }
-    else {
-      init_links();
-      MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
-      info("Porous media boundary links allocated:  %d\n", ntotal);
-    }
+  if (porous_media) {
+    wall_init_links(map);
+    MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
+    info("Porous media boundary links allocated:  %d\n", ntotal);
   }
 
   fnet_[X] = 0.0;
   fnet_[Y] = 0.0;
   fnet_[Z] = 0.0;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -228,21 +216,6 @@ int wall_at_edge(const int d) {
 
 /*****************************************************************************
  *
- *  wall_update
- *
- *  Call once per time step to provide any update to wall parameters.
- *
- *****************************************************************************/
-
-void wall_update() {
-
-  set_wall_velocity();
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  wall_finish
  *
  *****************************************************************************/
@@ -272,18 +245,22 @@ void wall_finish() {
  *
  *****************************************************************************/
 
-void wall_bounce_back(void) {
+int wall_bounce_back(lb_t * lb, map_t * map) {
 
   B_link * p_link;
   int      i, j, ij, ji, ia;
   int      n, ndist;
-  char     status;
+  int     status;
+
   double   rho, cdotu;
-  double   fp;
+  double   fp, fp0, fp1;
   double   force;
 
+  assert(lb);
+  assert(map);
+
   p_link = link_list_;
-  ndist = distribution_ndist();
+  lb_ndist(lb, &ndist);
 
   while (p_link) {
 
@@ -293,15 +270,16 @@ void wall_bounce_back(void) {
     ji = NVEL - ij;   /* Opposite direction index */
 
     cdotu = cv[ij][X]*p_link->ux;
+    map_status(map, i, &status);
 
-    status = site_map_get_status_index(i);
-
-    if (status == COLLOID) {
+    if (status == MAP_COLLOID) {
 
       /* This matches the momentum exchange in colloid BBL. */
       /* This only affects the accounting (via anomaly, as below) */
 
-      fp = distribution_f(i, ij, 0) + distribution_f(j, ji, 0);
+      lb_f(lb, i, ij, 0, &fp0);
+      lb_f(lb, j, ji, 0, &fp1);
+      fp = fp0 + fp1;
       for (ia = 0; ia < 3; ia++) {
 	fnet_[ia] += (fp - 2.0*wv[ij])*cv[ij][ia];
       }
@@ -311,8 +289,8 @@ void wall_bounce_back(void) {
 
       for (n = 0; n < ndist; n++) {
 
-	fp = distribution_f(i, ij, n);
-	rho = distribution_zeroth_moment(i, n);
+	lb_f(lb, i, ij, n, &fp);
+	lb_0th_moment(lb, i, n, &rho);
 
 	if (n == 0) {
 	  /* This is the momentum. To prevent accumulation of round-off
@@ -327,7 +305,7 @@ void wall_bounce_back(void) {
 	}
 
 	fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-	distribution_f_set(j, ji, n, fp);
+	lb_f_set(lb, j, ji, n, fp);
 
       }
     }
@@ -335,25 +313,28 @@ void wall_bounce_back(void) {
     p_link = p_link->next;
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  init_links
+ *  wall_init_links
  *
  *  Look at the site map to determine fluid (strictly, non-solid)
  *  to solid links. Set once at the start of execution.
  *
  ****************************************************************************/
 
-static void init_links() {
+static int wall_init_links(map_t * map) {
 
-  int ic, jc, kc;
+  int ic, jc, kc, index;
   int ic1, jc1, kc1, p;
   int n[3];
+  int status;
 
   B_link * tmp;
+
+  assert(map);
 
   coords_nlocal(n);
 
@@ -361,7 +342,9 @@ static void init_links() {
     for (jc = 1; jc <= n[Y]; jc++) {
       for (kc = 1; kc <= n[Z]; kc++) {
 
-	if (site_map_get_status(ic, jc, kc) != FLUID) continue;
+	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
 	/* Look for non-solid -> solid links */
 
@@ -370,8 +353,10 @@ static void init_links() {
 	  ic1 = ic + cv[p][X];
 	  jc1 = jc + cv[p][Y];
 	  kc1 = kc + cv[p][Z];
+	  index = coords_index(ic1, jc1, kc1);
+	  map_status(map, index, &status);
 
-	  if (site_map_get_status(ic1, jc1, kc1) == BOUNDARY) {
+	  if (status == MAP_BOUNDARY) {
 
 	    /* Add a link to head of the list */
 
@@ -391,24 +376,26 @@ static void init_links() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  init_boundary_site_map
+ *  wall_init_boundary_site_map
  *
  *  Set the site map to BOUNDARY for the boundary walls.
  *
  *****************************************************************************/
 
-static void init_boundary_site_map() {
+static int wall_init_boundary_site_map(map_t * map) {
 
-  int ic, jc, kc;
+  int ic, jc, kc, index;
   int ic_global, jc_global, kc_global;
   int nlocal[3];
   int noffset[3];
   int nextra;
+
+  assert(map);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -426,19 +413,22 @@ static void init_boundary_site_map() {
 
 	if (is_boundary_[Z]) {
 	  if (kc_global == 0 || kc_global == N_total(Z) + 1) {
-	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	    index = coords_index(ic, jc, kc);
+	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 
 	if (is_boundary_[Y]) {
 	  if (jc_global == 0 || jc_global == N_total(Y) + 1) {
-	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	    index = coords_index(ic, jc, kc);
+	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 
 	if (is_boundary_[X]) {
 	  if (ic_global == 0 || ic_global == N_total(X) + 1) {
-	    site_map_set_status(ic, jc, kc, BOUNDARY);
+	    index = coords_index(ic, jc, kc);
+	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 	/* next site */
@@ -446,7 +436,7 @@ static void init_boundary_site_map() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /****************************************************************************
@@ -512,25 +502,26 @@ B_link * allocate_link() {
  *
  *****************************************************************************/
 
-static void set_wall_velocity() {
+int wall_set_wall_velocity(lb_t * lb) {
 
   B_link * p_link;
   double   fp;
   double   rho;
   int      p;
 
-  rho = get_rho0();
+  assert(lb);
+  physics_rho0(&rho);
   p_link = link_list_;
 
   while (p_link) {
     p = NVEL - p_link->p; /* Want the outward going component */
     fp = wv[p]*(rho + rcs2*p_link->ux*cv[p][X]);
-    distribution_f_set(p_link->j, p, 0, fp);
+    lb_f_set(lb, p_link->j, p, 0, fp);
 
     p_link = p_link->next;
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -583,7 +574,7 @@ void wall_net_momentum(double g[3]) {
  *
  *****************************************************************************/
 
-static void wall_shear_init(double uxtop, double uxbottom) {
+static int wall_shear_init(lb_t * lb, double uxtop, double uxbottom) {
 
   int ic, jc, kc, index;
   int ia, ib, p;
@@ -596,6 +587,8 @@ static void wall_shear_init(double uxtop, double uxbottom) {
   double cdotu;
   double sdotq;
 
+  assert(lb);
+
   /* Shear rate */
   gammadot = (uxtop - uxbottom)/L(Z);
 
@@ -606,8 +599,9 @@ static void wall_shear_init(double uxtop, double uxbottom) {
 
   /* Initialise the density, velocity, gradu; ghost modes are zero */
 
-  rho = get_rho0();
-  eta = get_eta_shear();
+  physics_rho0(&rho);
+  physics_eta_shear(&eta);
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -644,14 +638,14 @@ static void wall_shear_init(double uxtop, double uxbottom) {
             }
           }
           f = wv[p]*rho*(1.0 + rcs2*cdotu + 0.5*rcs2*rcs2*sdotq);
-          distribution_f_set(index, p, 0, f);
+          lb_f_set(lb, index, p, 0, f);
         }
         /* Next site */
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /******************************************************************************
@@ -681,16 +675,18 @@ double wall_lubrication(const int dim, const double r[3], const double ah) {
   double force;
   double hlub;
   double h;
+  double eta;
 
+  physics_eta_shear(&eta);
   force = 0.0;
   hlub = lubrication_rcnormal_;
 
   if (is_boundary_[dim]) {
     /* Lower, then upper */
     h = r[dim] - Lmin(dim) - ah; 
-    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+    if (h < hlub) force = -6.0*pi_*eta*ah*ah*(1.0/h - 1.0/hlub);
     h = Lmin(dim) + L(dim) - r[dim] - ah;
-    if (h < hlub) force = -6.0*pi_*get_eta_shear()*ah*ah*(1.0/h - 1.0/hlub);
+    if (h < hlub) force = -6.0*pi_*eta*ah*ah*(1.0/h - 1.0/hlub);
   }
 
   return force;

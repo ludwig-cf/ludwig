@@ -24,10 +24,15 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "phi.h"
+#include "field.h"
+#include "field_grad.h"
 #include "blue_phase.h"
 #include "blue_phase_init.h"
+
 #include "ran.h"
+#include "noise.h"
+
+#define DEFAULT_SEED 13
 
 static double amplitude0_ = 0.0; /* Magnitude of order (initial) */
 
@@ -64,7 +69,7 @@ void blue_phase_init_amplitude_set(const double a) {
  *
  *****************************************************************************/
 
-void blue_phase_O8M_init(void) {
+int blue_phase_O8M_init(field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -76,6 +81,8 @@ void blue_phase_O8M_init(void) {
   double r2;
   double cosx, cosy, cosz, sinx, siny, sinz;
   double q0;
+
+  assert(fq);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -109,13 +116,13 @@ void blue_phase_O8M_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
-	phi_set_q_tensor(index, q);
+	field_tensor_set(fq, index, q);
 
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -126,7 +133,7 @@ void blue_phase_O8M_init(void) {
  *
  *****************************************************************************/
 
-void blue_phase_O2_init(void) {
+int blue_phase_O2_init(field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -136,6 +143,8 @@ void blue_phase_O2_init(void) {
   double q[3][3];
   double x, y, z;
   double q0;
+
+  assert(fq);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -160,13 +169,12 @@ void blue_phase_O2_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
-	phi_set_q_tensor(index, q);
-
+	field_tensor_set(fq, index, q);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -177,7 +185,7 @@ void blue_phase_O2_init(void) {
  *
  *****************************************************************************/
 
-void blue_phase_H2D_init(void) {
+int blue_phase_H2D_init(field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -188,6 +196,8 @@ void blue_phase_H2D_init(void) {
   double x, y;
   double r3;
   double q0;
+
+  assert(fq);
 
   r3 = sqrt(3.0);
   q0 = blue_phase_q0();
@@ -213,13 +223,12 @@ void blue_phase_H2D_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
-	phi_set_q_tensor(index, q);
-
+	field_tensor_set(fq, index, q);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -230,7 +239,7 @@ void blue_phase_H2D_init(void) {
  *
  *****************************************************************************/
 
-void blue_phase_H3DA_init(void) {
+int blue_phase_H3DA_init(field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -241,6 +250,8 @@ void blue_phase_H3DA_init(void) {
   double x, y, z;
   double r3;
   double q0;
+
+  assert(fq);
 
   r3 = sqrt(3.0);
   q0 = blue_phase_q0();
@@ -270,13 +281,12 @@ void blue_phase_H3DA_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
-	phi_set_q_tensor(index, q);
-
+	field_tensor_set(fq, index, q);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -287,7 +297,7 @@ void blue_phase_H3DA_init(void) {
  *
  *****************************************************************************/
 
-void blue_phase_H3DB_init(void) {
+int blue_phase_H3DB_init(field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -298,6 +308,8 @@ void blue_phase_H3DB_init(void) {
   double x, y, z;
   double r3;
   double q0;
+
+  assert(fq);
 
   r3 = sqrt(3.0);
   q0 = blue_phase_q0();
@@ -327,13 +339,12 @@ void blue_phase_H3DB_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
-	phi_set_q_tensor(index, q);
-
+	field_tensor_set(fq, index, q);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -344,7 +355,7 @@ void blue_phase_H3DB_init(void) {
  *
  *****************************************************************************/
 
-void blue_phase_O5_init(void) {
+int blue_phase_O5_init(field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -354,6 +365,8 @@ void blue_phase_O5_init(void) {
   double q[3][3];
   double x, y, z;
   double q0;
+
+  assert(fq);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -394,14 +407,14 @@ void blue_phase_O5_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
-	phi_set_q_tensor(index, q);
-
+	field_tensor_set(fq, index, q);
       }
     }
   }
 
-  return;
+  return 0;
 }
+
 /*****************************************************************************
  *
  *  blue_phase_DTC_init
@@ -410,7 +423,7 @@ void blue_phase_O5_init(void) {
  *
  *****************************************************************************/
 
-void blue_phase_DTC_init(void) {
+int blue_phase_DTC_init(field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -420,6 +433,8 @@ void blue_phase_DTC_init(void) {
   double q[3][3];
   double x, y;
   double q0;
+
+  assert(fq);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -444,15 +459,13 @@ void blue_phase_DTC_init(void) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
-	phi_set_q_tensor(index, q);
-
+	field_tensor_set(fq, index, q);
       }
     }
   }
 
-  return;
+  return 0;
 }
-
 
 /*****************************************************************************
  *
@@ -467,7 +480,7 @@ void blue_phase_DTC_init(void) {
  *        
  *****************************************************************************/
 
-void blue_phase_BPIII_init(const double specs[3]) {
+int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
 
   int ic, jc, kc;
   int ir, jr, kr; 	/* indices for rotated output */
@@ -486,6 +499,9 @@ void blue_phase_BPIII_init(const double specs[3]) {
   double phase1, phase2;
   double n[3]={0.0,0.0,0.0};
   double q0_pitch;      /* Just q0 scalar */
+
+  assert(fq);
+  assert(specs);
 
   N = (int) specs[0];
   R = (int) specs[1];
@@ -556,8 +572,7 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	}
 
 	index = coords_index(ic, jc, kc);
-	phi_set_q_tensor(index, q);
-
+	field_tensor_set(fq, index, q);
       }
     }
   }
@@ -633,7 +648,7 @@ void blue_phase_BPIII_init(const double specs[3]) {
 	      q[Z][Z] = - q[X][X] - q[Y][Y];
 
 	      index = coords_index(ir, jr, kr);
-	      phi_set_q_tensor(index, q);
+	      field_tensor_set(fq, index, q);
 	    }
 
 	  }
@@ -644,13 +659,11 @@ void blue_phase_BPIII_init(const double specs[3]) {
 
   }
 
-  phi_halo();
-
   free(a);
   free(b);
   free(C);
 
-  return;
+  return 0;
 }
 
 
@@ -665,8 +678,8 @@ void blue_phase_BPIII_init(const double specs[3]) {
  *
  *****************************************************************************/
 
-void blue_phase_twist_init(const int helical_axis) {
-  
+int blue_phase_twist_init(field_t * fq, const int helical_axis) {
+
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -676,13 +689,14 @@ void blue_phase_twist_init(const int helical_axis) {
   double q[3][3];
   double x, y, z;
   double q0;
- 
+
+  assert(fq);
+  assert(helical_axis == X || helical_axis == Y || helical_axis == Z);
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
   q0 = blue_phase_q0();
-
-  assert(helical_axis == X || helical_axis == Y || helical_axis == Z);
  
   n[X] = 0.0;
   n[Y] = 0.0;
@@ -715,12 +729,12 @@ void blue_phase_twist_init(const int helical_axis) {
 	}
 
 	blue_phase_q_uniaxial(amplitude0_, n, q);
-	phi_set_q_tensor(index, q);
+	field_tensor_set(fq, index, q);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -734,7 +748,7 @@ void blue_phase_twist_init(const int helical_axis) {
  *
  *****************************************************************************/
 
-void blue_phase_nematic_init(const double n[3]) {
+int blue_phase_nematic_init(field_t * fq, const double n[3]) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -744,6 +758,8 @@ void blue_phase_nematic_init(const double n[3]) {
   double nhat[3];
   double q[3][3];
 
+  assert(fq);
+  assert(n);
   assert(modulus(n) > 0.0);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -759,11 +775,12 @@ void blue_phase_nematic_init(const double n[3]) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	phi_set_q_tensor(index, q);
+	field_tensor_set(fq, index, q);
       }
     }
   }
-  return;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -777,7 +794,7 @@ void blue_phase_nematic_init(const double n[3]) {
  *
  *****************************************************************************/
 
-void blue_phase_active_nematic_init(const double n[3]) {
+int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -849,7 +866,7 @@ void blue_phase_active_nematic_init(const double n[3]) {
 	z = noffset[Z] + kc;
 
 	index = coords_index(ic, jc, kc);
-	phi_set_q_tensor(index, q);
+	field_tensor_set(fq, index, q);
 
         /* If alignment along x region around 
 	   z=N_total(Z)/2 is being replaced */
@@ -857,10 +874,10 @@ void blue_phase_active_nematic_init(const double n[3]) {
 	if(nhat[0] == 1.0) {
 	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
 	    if(x<=N_total(X)/2.0) {
-	      phi_set_q_tensor(index, qkink1);
+	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
-	      phi_set_q_tensor(index, qkink2);
+	      field_tensor_set(fq, index, qkink2);
 	    }
 	  }
 	}
@@ -871,10 +888,10 @@ void blue_phase_active_nematic_init(const double n[3]) {
 	if(nhat[1] == 1.0){
 	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
 	    if(y<=N_total(Y)/2.0) {
-	      phi_set_q_tensor(index, qkink1);
+	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
-	      phi_set_q_tensor(index, qkink2);
+	      field_tensor_set(fq, index, qkink2);
 	    }
 	  }
 	}
@@ -899,7 +916,7 @@ void blue_phase_active_nematic_init(const double n[3]) {
   }
 
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -907,10 +924,11 @@ void blue_phase_active_nematic_init(const double n[3]) {
  *  blue_phase_chi_edge
  *  Setting  chi edge disclination
  *  Using the current free energy parameter q0 (P=2pi/q0)
+ *
  *****************************************************************************/
 
-void blue_phase_chi_edge(int N, double z0, double x0) {
-  
+int blue_phase_chi_edge(field_t * fq, int N, double z0, double x0) {
+
   int ic, jc, kc;
   int nlocal[3];
   int noffset[3];
@@ -921,7 +939,9 @@ void blue_phase_chi_edge(int N, double z0, double x0) {
   double n[3];
   double theta;
   double q0;
-  
+
+  assert(fq);
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -941,17 +961,17 @@ void blue_phase_chi_edge(int N, double z0, double x0) {
 	n[Z] = 0.0;
 
 	blue_phase_q_uniaxial(amplitude0_, n, q);
-	phi_set_q_tensor(index, q);
+	field_tensor_set(fq, index, q);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  blue_set_random_q_init
+ *  blue_phase_random_q_init
  *
  *  Set a decomposition-independent random initial Q tensor
  *  based on the initial order amplitude0_ and a randomly
@@ -959,52 +979,56 @@ void blue_phase_chi_edge(int N, double z0, double x0) {
  *
  *****************************************************************************/
 
-void blue_set_random_q_init(void) {
+int blue_phase_random_q_init(field_t * fq) {
 
-  int ic, jc, kc;
+  int ic, jc, kc, index;
   int nlocal[3];
-  int offset[3];
-  int index;
+  int seed = DEFAULT_SEED;
 
-  double n[3];
-  double q[3][3];
+  double n[3];            /* random director */
+  double q[3][3];         /* resulting unixial q */
   double phase1, phase2;
+
+  double ran1, ran2;
+  noise_t * rng = NULL;
+
+  assert(fq);
   
   coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
-  
-  for (ic = 1; ic <= N_total(X); ic++) {
-    for (jc = 1; jc <= N_total(Y); jc++) {
-      for (kc = 1; kc <= N_total(Z); kc++) {
 
-	phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
-	phase2 = acos(2.0*ran_serial_uniform() - 1.0);
+  noise_create(&rng);
+  noise_init(rng, seed);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
 	    
-	/* Only set values if within local subdomain */
+	index = coords_index(ic, jc, kc);
 
-	if((ic > offset[X]) && (ic <= offset[X] + nlocal[X]) &&
-	   (jc > offset[Y]) && (jc <= offset[Y] + nlocal[Y]) &&
-	   (kc > offset[Z]) && (kc <= offset[Z] + nlocal[Z])) {
+	noise_uniform_double_reap(rng, index, &ran1);
+	noise_uniform_double_reap(rng, index, &ran2);
 
-	  index = coords_index(ic-offset[X], jc-offset[Y], kc-offset[Z]);
-	      
-	  n[X] = cos(phase1)*sin(phase2);
-	  n[Y] = sin(phase1)*sin(phase2);
-	  n[Z] = cos(phase2);
+	phase1 = 2.0*pi_*(0.5 - ran1);
+	phase2 = acos(2.0*ran2 - 1.0);
 
-	  blue_phase_q_uniaxial(amplitude0_, n, q);
-	  phi_set_q_tensor(index, q);
-	}
+	n[X] = cos(phase1)*sin(phase2);
+	n[Y] = sin(phase1)*sin(phase2);
+	n[Z] = cos(phase2);
+
+	blue_phase_q_uniaxial(amplitude0_, n, q);
+	field_tensor_set(fq, index, q);
       }
     }
   }
-  
-  return;
+
+  noise_free(rng);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  blue_set_random_q_rectangle_init
+ *  blue_phase_random_q_rectangle
  *
  *  Within the limits of the rectanular box provided, set the initial
  *  Q tensor to a random value. The idea here is to 'melt' the order
@@ -1015,53 +1039,64 @@ void blue_set_random_q_init(void) {
  * 
  *****************************************************************************/
 
-void blue_set_random_q_rectangle_init(const double xmin, const double xmax,
-				      const double ymin, const double ymax,
-				      const double zmin, const double zmax) {
-  int i, j, k;
+int blue_phase_random_q_rectangle(field_t * fq, int rmin[3], int rmax[3]) {
+
+  int ic, jc, kc, index;
   int nlocal[3];
-  int offset[3];
-  int index;
+  int noffset[3];
+  int seed = DEFAULT_SEED;
 
   double n[3];
   double q[3][3];
   double phase1, phase2;
-  double a0 = 0.000001;   /* Initial amplitude of order in 'box' */
+  double a0 = 0.01;             /* Initial amplitude of order in 'box' */
+
+  double ran1, ran2;
+  noise_t * rng = NULL;
+
+  assert(fq);
 
   coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
-  
-  for (i = 1; i<=N_total(X); i++) {
-    for (j = 1; j<=N_total(Y); j++) {
-      for (k = 1; k<=N_total(Z); k++) {
+  coords_nlocal_offset(noffset);
 
-	if((i>xmin) && (i<xmax) &&
-	   (j>ymin) && (j<ymax) &&
-	   (k>zmin) && (k<zmax))
-	  {
-	    phase1 = 2.0*pi_*(0.5 - ran_serial_uniform());
-	    phase2 = acos(2.0*ran_serial_uniform() - 1.0);
+  noise_create(&rng);
+  noise_init(rng, seed);
+
+  /* Adjust min, max to allow for parallel offset of box */
+
+  rmin[X] -= noffset[X]; rmax[X] -= noffset[X];
+  rmin[Y] -= noffset[Y]; rmax[Y] -= noffset[Y];
+  rmin[Z] -= noffset[Z]; rmax[Z] -= noffset[Z];
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	if (ic < rmin[X] || ic > rmax[X] || jc < rmin[Y] || jc > rmax[Y] ||
+	    kc < rmin[Z] || kc > rmax[Z]) continue;
+
+	index = coords_index(ic, jc, kc);
+
+	noise_uniform_double_reap(rng, index, &ran1);
+	noise_uniform_double_reap(rng, index, &ran2);
+
+	phase1 = 2.0*pi_*(0.5 - ran1);
+	phase2 = acos(2.0*ran2 - 1.0);
 	    
-	    /* Only set values if within local box */
-	    if((i>offset[X]) && (i<=offset[X] + nlocal[X]) &&
-	       (j>offset[Y]) && (j<=offset[Y] + nlocal[Y]) &&
-	       (k>offset[Z]) && (k<=offset[Z] + nlocal[Z]))
-	      {
-		index = coords_index(i-offset[X], j-offset[Y], k-offset[Z]);
-	      
-		n[X] = cos(phase1)*sin(phase2);
-		n[Y] = sin(phase1)*sin(phase2);
-		n[Z] = cos(phase2);
+	n[X] = cos(phase1)*sin(phase2);
+	n[Y] = sin(phase1)*sin(phase2);
+	n[Z] = cos(phase2);
 
-		blue_phase_q_uniaxial(a0, n, q);
-		phi_set_q_tensor(index, q);
-	      }
-	  }
+	blue_phase_q_uniaxial(a0, n, q);
+	field_tensor_set(fq, index, q);
+
       }
     }
   }
 
-  return;
+  noise_free(rng);
+
+  return 0;
 }
 
 

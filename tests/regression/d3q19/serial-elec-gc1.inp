@@ -1,0 +1,120 @@
+##############################################################################
+#
+#  Guoy-Chapman electrokinetics
+#
+##############################################################################
+
+##############################################################################
+#
+#  Run duration
+#
+###############################################################################
+
+N_start  0
+N_cycles 1000
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size 64_4_4
+grid 1_1_2
+periodicity 1_1_1
+reduced_halo yes
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.1
+viscosity_bulk 0.1
+
+isothermal_fluctuations off
+temperature 3.33333333333333333e-5
+
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy fe_electro
+
+fd_advection_scheme_order 3
+fd_gradient_calculation 3d_7pt_fluid
+fd_phi_fluctuations 0
+fd_phi_fluctuations_seed 17
+fd_force_divergence 0
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        none
+colloid_gravity  0.0_0.0_0.0
+magnetic_b0      0.0_0.0_0.0
+
+###############################################################################
+#
+#  Walls / boundaries
+#
+###############################################################################
+
+boundary_walls 0_0_0
+boundary_speed_bottom 0.0
+boundary_speed_top    0.0
+boundary_shear_init 0
+boundary_lubrication_rcnormal 0.0
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 1000
+config_at_end no
+
+colloid_io_freq 1000
+
+###############################################################################
+#
+#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
+#
+#  electrokinetics_z0         valency species 0  default +1
+#  electrokinetics_z1         valency species 1  default -1
+#  electrokinetics_d0         diffusivity 0      default 0.0
+#  electrokinetics_d1         diffusivity 1      default 0.0
+#  electrokinetics_eunit      unit charge        default +1.0
+#  electrokinetics_epsilon    permeativity (ref) default 0.0
+#
+#  Also important
+#
+#  temperature                sets Boltzmann factor beta
+#
+###############################################################################
+
+electrokinetics_z0      +1
+electrokinetics_z1      -1
+electrokinetics_d0      0.01
+electrokinetics_d1      0.01
+electrokinetics_eunit   1.0
+electrokinetics_epsilon 3.3e3
+electrokinetics_init    gouy_chapman
+electrokinetics_init_rho_el 0.001
+electrokinetics_init_sigma 0.03125
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235

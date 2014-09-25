@@ -2,8 +2,8 @@
  *
  *  psi.c
  *
- *  Note most of this has been coded  int function(...) in
- *  anticipation of exception handling.
+ *  Electrokinetics: field quantites for potential and charge densities,
+ *  and a number of other relevant quantities.
  *
  *  $Id$
  *
@@ -19,46 +19,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <float.h>
 #include <mpi.h>
 
 #include "pe.h"
 #include "coords.h"
+#include "coords_field.h"
 #include "io_harness.h"
 #include "util.h"
+#include "map.h"
 #include "psi.h"
 #include "psi_s.h"
+#include "psi_gradients.h"
 
-static const double e_unit_default = 1.0; /* Default unit charge */
+static const double  e_unit_default = 1.0;              /* Default unit charge */
+static const double  reltol_default = FLT_EPSILON;      /* Solver tolerance */
+static const double  abstol_default = 0.01*FLT_EPSILON;
+static const int     maxits_default = 10000;            /* Default number of iterations in Poisson solver */
+static const int multisteps_default = 1;                /* Default number of multisteps in NPE */
+static const double diffacc_default = 0;                /* Default diffusive accuracy in NPE for constant no. of multisteps */ 
 
-psi_t * psi_ = NULL;
-
-static int psi_init_mpi_indexed(psi_t * obj);
-static int psi_read(FILE * fp, const int ic, const int jc, const int kc);
-static int psi_write(FILE * fp, const int ic, const int jc, const int kc);
-static int psi_read_ascii(FILE * fp, const int, const int, const int);
-static int psi_write_ascii(FILE * fp, const int, const int, const int);
-
-/*****************************************************************************
- *
- *  psi_init
- *
- *  Initialise psi_
- *
- *****************************************************************************/
-
-void psi_init(int nk, double * valency, double * diffusivity) {
-
-  int n;
-
-  psi_create(nk, &psi_);
-
-  for (n = 0; n < nk; n++) {
-    psi_valency_set(psi_, n, valency[n]);
-    psi_diffusivity_set(psi_, n, diffusivity[n]);
-  }
-
-  return;
-}
+static int psi_read(FILE * fp, int index, void * self);
+static int psi_write(FILE * fp, int index, void * self);
+static int psi_read_ascii(FILE * fp, int index, void * self);
+static int psi_write_ascii(FILE * fp, int index, void * self);
 
 /*****************************************************************************
  *
@@ -68,9 +52,11 @@ void psi_init(int nk, double * valency, double * diffusivity) {
 
 int psi_halo_psi(psi_t * psi) {
 
+  int nhalo;
   assert(psi);
 
-  psi_halo(1, psi->psi, psi->psihalo);
+  nhalo = coords_nhalo();
+  coords_field_halo(nhalo, 1, psi->psi, MPI_DOUBLE, psi->psihalo);
 
   return 0;
 }
@@ -83,9 +69,11 @@ int psi_halo_psi(psi_t * psi) {
 
 int psi_halo_rho(psi_t * psi) {
 
+  int nhalo;
   assert(psi);
 
-  psi_halo(psi->nk, psi->rho, psi->rhohalo);
+  nhalo = coords_nhalo();
+  coords_field_halo(nhalo, psi->nk, psi->rho, MPI_DOUBLE, psi->rhohalo);
 
   return 0;
 }
@@ -101,12 +89,14 @@ int psi_halo_rho(psi_t * psi) {
 int psi_create(int nk, psi_t ** pobj) {
 
   int nsites;
+  int nhalo;
   psi_t * psi = NULL;
 
   assert(pobj);
   assert(nk > 1);
 
   nsites = coords_nsites();
+  nhalo = coords_nhalo();
 
   psi = calloc(1, sizeof(psi_t));
   if (psi == NULL) fatal("Allocation of psi failed\n");
@@ -125,9 +115,31 @@ int psi_create(int nk, psi_t ** pobj) {
   if (psi->valency == NULL) fatal("calloc(psi->valency) failed\n");
 
   psi->e = e_unit_default;
+  psi->reltol = reltol_default;
+  psi->abstol = abstol_default;
+  psi->maxits = maxits_default;
+  psi->multisteps = multisteps_default;
+  psi->diffacc = diffacc_default;
 
-  psi_init_mpi_indexed(psi);
+  coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
+  coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
   *pobj = psi; 
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_io_info
+ *
+ *****************************************************************************/
+
+int psi_io_info(psi_t * obj, io_info_t ** info) {
+
+  assert(obj);
+  assert(info);
+
+  *info = obj->info;
 
   return 0;
 }
@@ -215,178 +227,16 @@ int psi_diffusivity(psi_t * obj, int n, double * diff) {
 
 /*****************************************************************************
  *
- *  psi_init_mpi_indexed
- *
- *  Here we define MPI_Type_indexed structures to take care of the
- *  halo swaps. These structures may be understood by comparing
- *  the extents and strides with the loops in the 'serial' halo swap
- *  in psi_halo().
- *
- *  The indexed structures are used so that the recieves in the
- *  different coordinate directions do not overlap anywhere. The
- *  receives may then all be posted independently.
- *
- *  Assumes the field storage is f[index][nk] where index is the
- *  usual spatial index returned by coords_index(), and nk is the
- *  number of fields (always 1 for psi, and usually 2 for rho).
- *
- *****************************************************************************/
-
-static int psi_init_mpi_indexed(psi_t * obj) {
-
-  int nk;
-  int nhalo;
-  int nlocal[3], nh[3];
-  int ic, jc, n;
-
-  int ncount;        /* Count for the indexed type */
-  int * blocklen;    /* Array of block lengths */
-  int * displace;    /* Array of displacements */
-
-  assert(obj);
-
-  nk = obj->nk;
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  nh[X] = nlocal[X] + 2*nhalo;
-  nh[Y] = nlocal[Y] + 2*nhalo;
-  nh[Z] = nlocal[Z] + 2*nhalo;
-
-  /* X direction */
-  /* For psi, we require nlocal[Y] contiguous strips of length nlocal[Z],
-   * repeated for each halo layer. The strides start at zero, and
-   * increment nh[Z] for each strip. */
-
-  ncount = nhalo*nlocal[Y];
-
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] = nlocal[Z];
-  }
-
-  for (n = 0; n < nhalo; n++) {
-    for (jc = 0; jc < nlocal[Y]; jc++) {
-      displace[n*nlocal[Y] + jc] = n*nh[Y]*nh[Z] + jc*nh[Z];
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->psihalo[X]);
-  MPI_Type_commit(&obj->psihalo[X]);
-
-  /* For rho, just multiply block lengths and displacements by nk */
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] *= nk;
-  }
-
-  for (n = 0; n < nhalo; n++) {
-    for (jc = 0; jc < nlocal[Y]; jc++) {
-      displace[n*nlocal[Y] + jc] *= nk;
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->rhohalo[X]);
-  MPI_Type_commit(&obj->rhohalo[X]);
-
-  free(displace);
-  free(blocklen);
-
-  /* Y direction */
-  /* We can use nh[X] contiguous strips of nlocal[Z], repeated for
-   * each halo region. The strides start at zero, and increment by
-   * nh[Y]*nh[Z] for each strip. */
-
-  ncount = nhalo*nh[X];
-
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] = nlocal[Z];
-  }
-
-  for (n = 0; n < nhalo; n++) {
-    for (ic = 0; ic < nh[X] ; ic++) {
-      displace[n*nh[X] + ic] = n*nh[Z] + ic*nh[Y]*nh[Z];
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->psihalo[Y]);
-  MPI_Type_commit(&obj->psihalo[Y]);
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] *= nk;
-  }
-
-  for (n = 0; n < nhalo; n++) {
-    for (ic = 0; ic < nh[X] ; ic++) {
-      displace[n*nh[X] + ic] *= nk;
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->rhohalo[Y]);
-  MPI_Type_commit(&obj->rhohalo[Y]);
-
-  free(displace);
-  free(blocklen);
-
-  /* Z direction */
-  /* Here, we need nh[X]*nh[Y] small contiguous strips of nhalo, with
-   * a stride between each of nh[Z]. */
-
-  ncount = nh[X]*nh[Y];
-
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] = nhalo;
-  }
-
-  for (ic = 0; ic < nh[X]; ic++) {
-    for (jc = 0; jc < nh[Y]; jc++) {
-      displace[ic*nh[Y] + jc] = ic*nh[Y]*nh[Z]+ jc*nh[Z];
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->psihalo[Z]);
-  MPI_Type_commit(&obj->psihalo[Z]);
-
-  for (n = 0; n < ncount; n++) {
-    blocklen[n] *= nk;
-  }
-
-  for (ic = 0; ic < nh[X]; ic++) {
-    for (jc = 0; jc < nh[Y]; jc++) {
-      displace[ic*nh[Y] + jc] *= nk;
-    }
-  }
-
-  MPI_Type_indexed(ncount, blocklen, displace, MPI_DOUBLE, &obj->rhohalo[Z]);
-  MPI_Type_commit(&obj->rhohalo[Z]);
-
-  free(displace);
-  free(blocklen);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  psi_init_io_info
  *
+ *  The I/O grid will be requested with Cartesian extent as given.
+ *
+ *  Register all the I/O functions, and set the input/output format
+ *  appropriately.
+ *
  *****************************************************************************/
 
-int psi_init_io_info(psi_t * obj, int grid[3]) {
+int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
 
   assert(obj);
   assert(grid);
@@ -396,13 +246,16 @@ int psi_init_io_info(psi_t * obj, int grid[3]) {
   if (obj->info == NULL) fatal("io_info_create(psi) failed\n");
 
   io_info_set_name(obj->info, "Potential and charge densities");
-  io_info_set_read_binary(obj->info, psi_read);
-  io_info_set_write_binary(obj->info, psi_write);
-  io_info_set_read_ascii(obj->info, psi_read_ascii);
-  io_info_set_write_ascii(obj->info, psi_write_ascii);
-  io_info_set_bytesize(obj->info, (1 + obj->nk)*sizeof(double));
 
-  io_info_set_format_binary(obj->info);
+  io_info_read_set(obj->info, IO_FORMAT_BINARY, psi_read);
+  io_info_read_set(obj->info, IO_FORMAT_ASCII, psi_read_ascii);
+  io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
+  io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
+
+  io_info_set_bytesize(obj->info, (2 + obj->nk)*sizeof(double));
+
+  io_info_format_set(obj->info, form_in, form_out);
+  io_info_metadata_filestub_set(obj->info, "psi");
 
   return 0;
 }
@@ -438,260 +291,127 @@ void psi_free(psi_t * obj) {
 
 /*****************************************************************************
  *
- *  psi_halo
+ *  psi_write_ascii
  *
- *  A general halo swap where:
- *    nf is the number of 3-D fields
- *    f is the base address of the field
- *    halo are thre X, Y, Z MPI datatypes for the swap
+ *  Returns 0 on success.
  *
  *****************************************************************************/
 
-int psi_halo(int nf, double * f, MPI_Datatype halo[3]) {
+static int psi_write_ascii(FILE * fp, int index, void * self) {
 
-  int n, nh;
-  int nhalo;
-  int nlocal[3];
-  int ic, jc, kc;
-  int pback, pforw;          /* MPI ranks of 'left' and 'right' neighbours */
-  int ihalo, ireal;          /* Indices of halo and 'real' lattice regions */
-  MPI_Comm comm;             /* Cartesian communicator */
-  MPI_Request req_recv[6];
-  MPI_Request req_send[6];
-  MPI_Status  status[6];
+  int n, nwrite;
+  double rho_el;
+  psi_t * obj = self;
 
-  const int btagx = 639, btagy = 640, btagz = 641;
-  const int ftagx = 642, ftagy = 643, ftagz = 644;
+  assert(obj);
+  assert(fp);
 
-  assert(f);
+  nwrite = fprintf(fp, "%22.15e ", obj->psi[index]);
+  if (nwrite != 23) fatal("fprintf(psi) failed at index %d\n", index);
 
-  comm = cart_comm();
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  for (n = 0; n < 6; n++) {
-    req_send[n] = MPI_REQUEST_NULL;
-    req_recv[n] = MPI_REQUEST_NULL;
+  for (n = 0; n < obj->nk; n++) {
+    nwrite = fprintf(fp, "%22.15e ", obj->rho[obj->nk*index + n]);
+    if (nwrite != 23) fatal("fprintf(rho) failed at index %d %d\n", index, n);
   }
+  
+  psi_rho_elec(obj, index, &rho_el);
+  nwrite = fprintf(fp, "%22.15e ", rho_el);
+  if (nwrite != 23) fatal("fprintf(rho_el) failed at index %d\n", index);
 
-  /* Post all recieves */
-
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
-    ihalo = nf*coords_index(nlocal[X] + 1, 1, 1);
-    MPI_Irecv(f + ihalo,  1, halo[X], pforw, btagx, comm, req_recv);
-    ihalo = nf*coords_index(1 - nhalo, 1, 1);
-    MPI_Irecv(f + ihalo,  1, halo[X], pback, ftagx, comm, req_recv + 1);
-  }
-
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
-    ihalo = nf*coords_index(1 - nhalo, nlocal[Y] + 1, 1);
-    MPI_Irecv(f + ihalo,  1, halo[Y], pforw, btagy, comm, req_recv + 2);
-    ihalo = nf*coords_index(1 - nhalo, 1 - nhalo, 1);
-    MPI_Irecv(f + ihalo,  1, halo[Y], pback, ftagy, comm, req_recv + 3);
-  }
-
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
-    ihalo = nf*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
-    MPI_Irecv(f + ihalo,  1, halo[Z], pforw, btagz, comm, req_recv + 4);
-    ihalo = nf*coords_index(1 - nhalo, 1 - nhalo, 1 - nhalo);
-    MPI_Irecv(f + ihalo,  1, halo[Z], pback, ftagz, comm, req_recv + 5);
-  }
-
-  /* Now the sends */
-
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
-    ireal = nf*coords_index(1, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[X], pback, btagx, comm, req_send);
-    ireal = nf*coords_index(nlocal[X] - nhalo + 1, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[X], pforw, ftagx, comm, req_send + 1);
-  }
-  else {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-        for (kc = 1 ; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(0 - nh, jc, kc);
-            ireal = n + nf*coords_index(nlocal[X] - nh, jc, kc);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(nlocal[X] + 1 + nh, jc,kc);
-	    ireal = n + nf*coords_index(1 + nh, jc, kc);
-	    f[ihalo] = f[ireal];
-          }
-        }
-      }
-    }
-  }
-
-  /* X recvs to be complete before Y sends */
-  MPI_Waitall(2, req_recv, status);
-
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
-    ireal = nf*coords_index(1 - nhalo, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[Y], pback, btagy, comm, req_send + 2);
-    ireal = nf*coords_index(1 - nhalo, nlocal[Y] - nhalo + 1, 1);
-    MPI_Issend(f + ireal, 1, halo[Y], pforw, ftagy, comm, req_send + 3);
-  }
-  else {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (ic = 1-nhalo; ic <= nlocal[X] + nhalo; ic++) {
-        for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, 0 - nh, kc);
-	    ireal = n + nf*coords_index(ic, nlocal[Y] - nh, kc);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(ic, nlocal[Y] + 1 + nh, kc);
-	    ireal = n + nf*coords_index(ic, 1 + nh, kc);
-	    f[ihalo] = f[ireal];
-	  }
-        }
-      }
-    }
-  }
-
-  /* Y recvs to be complete before Z sends */
-  MPI_Waitall(2, req_recv + 2, status);
-
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
-    ireal = nf*coords_index(1 - nhalo, 1 - nhalo, 1);
-    MPI_Issend(f + ireal, 1, halo[Z], pback, btagz, comm, req_send + 4);
-    ireal = nf*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] - nhalo + 1);
-    MPI_Issend(f + ireal, 1, halo[Z], pforw, ftagz, comm, req_send + 5);
-  }
-  else {
-    for (nh = 0; nh < nhalo; nh++) {
-      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
-        for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, jc, 0 - nh);
-	    ireal = n + nf*coords_index(ic, jc, nlocal[Z] - nh);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(ic, jc, nlocal[Z] + 1 + nh);
-	    ireal = n + nf*coords_index(ic, jc, 1 + nh);
-	    f[ihalo] = f[ireal];
-	  }
-	}
-      }
-    }
-  }
-
-  /* Finish */
-  MPI_Waitall(2, req_recv + 4, status);
-  MPI_Waitall(6, req_send, status);
+  nwrite = fprintf(fp, "\n");
+  if (nwrite != 1) fatal("fprintf() failed at index %d\n", index);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  psi_write_ascii
- *
- *****************************************************************************/
-
-static int psi_write_ascii(FILE * fp, const int ic, const int jc,
-			   const int kc) {
-  int index;
-  int n, nwrite;
-
-  assert(fp);
-
-  index = coords_index(ic, jc, kc);
-
-  nwrite = fprintf(fp, "%22.15e ", psi_->psi[index]);
-  if (nwrite != 23) fatal("fprintf(psi) failed at index %d\n", index);
-
-  for (n = 0; n < psi_->nk; n++) {
-    nwrite = fprintf(fp, "%22.15e ", psi_->rho[psi_->nk*index + n]);
-    if (nwrite != 23) fatal("fprintf(psi) failed at index %d %d\n", index, n);
-  }
-
-  nwrite = fprintf(fp, "\n");
-  if (nwrite != 1) fatal("fprintf() failed at index %d\n", index);
-
-  return n;
-}
-
-/*****************************************************************************
- *
  *  psi_read_ascii
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_read_ascii(FILE * fp, const int ic, const int jc,
-			  const int kc) {
-  int index;
+static int psi_read_ascii(FILE * fp, int index, void * self) {
+
   int n, nread;
+  double rho_el;
+  psi_t * obj = self;
 
   assert(fp);
+  assert(self);
 
-  index = coords_index(ic, jc, kc);
-
-  nread = fscanf(fp, "%le", psi_->psi + index);
+  nread = fscanf(fp, "%le", obj->psi + index);
   if (nread != 1) fatal("fscanf(psi) failed for %d\n", index);
 
-  for (n = 0; n < psi_->nk; n++) {
-    nread = fscanf(fp, "%le", psi_->rho + psi_->nk*index + n);
+  for (n = 0; n < obj->nk; n++) {
+    nread = fscanf(fp, "%le", obj->rho + obj->nk*index + n);
     if (nread != 1) fatal("fscanf(rho) failed for %d %d\n", index, n);
   }
 
-  return n;
+  nread = fscanf(fp, "%le", &rho_el);
+  if (nread != 1) fatal("fscanf(rho_el) failed for %d %d\n", index, n);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  psi_write
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_write(FILE * fp, const int ic, const int jc, const int kc) {
+static int psi_write(FILE * fp, int index, void * self) {
 
-  int index;
   int n;
+  double rho_el;
+  psi_t * obj = self;
 
   assert(fp);
+  assert(obj);
 
-  index = coords_index(ic, jc, kc);
-  n = fwrite(psi_->psi + index, sizeof(double), 1, fp);
+  n = fwrite(obj->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fwrite(psi) failed at index %d\n", index);
 
-  n = fwrite(psi_->rho + psi_->nk*index, sizeof(double), psi_->nk, fp);
-  if (n != psi_->nk) fatal("fwrite(rho) failed at index %d", index);
+  n = fwrite(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
+  if (n != obj->nk) fatal("fwrite(rho) failed at index %d", index);
 
-  return n;
+  psi_rho_elec(obj, index, &rho_el);
+  n = fwrite(&rho_el, sizeof(double), 1, fp);
+  if (n != 1) fatal("fwrite(rho_el) failed at index %d", index);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  psi_read
  *
+ *  Returns 0 on success.
+ *
  *****************************************************************************/
 
-static int psi_read(FILE * fp, const int ic, const int jc, const int kc) {
+static int psi_read(FILE * fp, int index, void * self) {
 
-  int index;
   int n;
+  double rho_el;
+  psi_t * obj = self;
 
   assert(fp);
+  assert(obj);
 
-  index = coords_index(ic, jc, kc);
-  n = fread(psi_->psi + index, sizeof(double), 1, fp);
+  n = fread(obj->psi + index, sizeof(double), 1, fp);
   if (n != 1) fatal("fread(psi) failed at index %d\n", index);
 
-  n = fread(psi_->rho + psi_->nk*index, sizeof(double), psi_->nk, fp);
-  if (n != psi_->nk) fatal("fread(rho) failed at index %d\n", index);
+  n = fread(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
+  if (n != obj->nk) fatal("fread(rho) failed at index %d\n", index);
 
-  return n;
+  n = fread(&rho_el, sizeof(double), 1, fp);
+  if (n != 1) fatal("fread(rho_el) failed at index %d\n", index);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -878,9 +598,32 @@ int psi_epsilon_set(psi_t * obj, double epsilon) {
 
 /*****************************************************************************
  *
+ *  psi_ionic_strength
+ *
+ *  This is (1/2) \sum_k z_k^2 rho_k. This is a number density, and
+ *  doesn't contain the unit charge.
+ *
+ *****************************************************************************/
+
+int psi_ionic_strength(psi_t * psi, int index, double * sion) {
+
+  int n;
+  assert(psi);
+  assert(sion);
+
+  *sion = 0.0;
+  for (n = 0; n < psi->nk; n++) {
+    *sion += 0.5*psi->valency[n]*psi->valency[n]*psi->rho[psi->nk*index + n];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_bjerrum_length
  *
- *  This is really just for information.
+ *  Is equal to e^2 / 4 pi epsilon k_B T
  *
  *****************************************************************************/
 
@@ -890,6 +633,236 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
   assert(lb);
 
   *lb = obj->e*obj->e*obj->beta / (4.0*pi_*obj->epsilon);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_debye_length
+ *
+ *  Returns the Debye length for a simple, symmetric electrolyte.
+ *  An ionic strength is required as input (see above); this
+ *  accounts for the factor of 8 in the denominator.
+ *
+ *****************************************************************************/
+
+int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
+
+  double lb;
+
+  assert(obj);
+  assert(ld);
+
+  psi_bjerrum_length(obj, &lb);
+  *ld = 1.0 / sqrt(8.0*pi_*lb*rho_b);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_surface_potential
+ *
+ *  Returns the surface potential of a double layer for a simple,
+ *  symmetric electrolyte. The surface charge sigma and bulk ionic
+ *  strength rho_b of one species are required as input.
+ *
+ *  See, e.g., Lyklema "Fundamentals of Interface and Colloid Science"
+ *             Volume II Eqs. 3.5.13 and 3.5.14.
+ *
+ *****************************************************************************/
+
+int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
+			  double *sp) {
+  double p;
+
+  assert(obj);
+  assert(sp);
+  assert(obj->nk == 2);
+  assert(obj->valency[0] == -obj->valency[1]);
+
+  p = 1.0 / sqrt(8.0*obj->epsilon*rho_b / obj->beta);
+
+  *sp = fabs(2.0 / (obj->valency[0]*obj->e*obj->beta)
+	     *log(-p*sigma + sqrt(p*p*sigma*sigma + 1.0)));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_reltol
+ *
+ *  Only returns the default value; there is no way to set as yet; no test.
+ *
+ *****************************************************************************/
+
+int psi_reltol(psi_t * obj, double * reltol) {
+
+  assert(obj);
+  assert(reltol);
+
+  *reltol = obj->reltol;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_abstol
+ *
+ *  Only returns the default value; there is no way to set as yet; no test.
+ *
+ *****************************************************************************/
+
+int psi_abstol(psi_t * obj, double * abstol) {
+
+  assert(obj);
+  assert(abstol);
+
+  *abstol = obj->abstol;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_reltol_set
+ *
+ *****************************************************************************/
+
+int psi_reltol_set(psi_t * obj, double reltol) {
+
+  assert(obj);
+
+  obj->reltol = reltol;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_abstol_set
+ *
+ *****************************************************************************/
+
+int psi_abstol_set(psi_t * obj, double abstol) {
+
+  assert(obj);
+
+  obj->abstol = abstol;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_multisteps_set
+ *
+ *****************************************************************************/
+
+int psi_multisteps_set(psi_t * obj, int multisteps) {
+
+  assert(obj);
+  assert(multisteps);
+
+  obj->multisteps = multisteps;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_multisteps
+ *
+ *****************************************************************************/
+
+int psi_multisteps(psi_t * obj, int * multisteps) {
+
+  assert(obj);
+  assert(multisteps);
+
+  *multisteps = obj->multisteps;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_multistep_timestep
+ *
+ *****************************************************************************/
+
+int psi_multistep_timestep(psi_t * obj, double * dt) {
+
+  assert(obj);
+
+  *dt = 1.0/obj->multisteps;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_maxits_set
+ *
+ *****************************************************************************/
+
+int psi_maxits_set(psi_t * obj, int maxits) {
+
+  assert(obj);
+  assert(maxits);
+
+  obj->maxits = maxits;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_maxits
+ *
+ *****************************************************************************/
+
+int psi_maxits(psi_t * obj, int * maxits) {
+
+  assert(obj);
+  assert(maxits);
+
+  *maxits = obj->maxits;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_diffacc_set
+ *
+ *****************************************************************************/
+
+int psi_diffacc_set(psi_t * obj, double diffacc) {
+
+  assert(obj);
+  assert(diffacc>=0);
+
+  obj->diffacc = diffacc;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_diffacc
+ *
+ *****************************************************************************/
+
+int psi_diffacc(psi_t * obj, double * diffacc) {
+
+  assert(obj);
+  assert(diffacc);
+
+  *diffacc = obj->diffacc;
 
   return 0;
 }

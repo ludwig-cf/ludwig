@@ -15,21 +15,24 @@
 #ifndef ADVECTION_H
 #define ADVECTION_H
 
-void advection_order_set(const int order);
-int  advection_order(void);
-void advection_order_n(double * fluxe, double * fluxw, double * fluxy,
-		       double * fluxz);
-void advection_upwind(double * fluxe, double * fluxw, double * fluxy,
-		      double * fluxz);
-void advection_second_order(double * fluxe, double * fluxw, double * fluxy,
-			    double * fluxz);
-void advection_fourth_order(double * fluxe, double * fluxw, double * fluxy,
-			    double * fluxz);
-void advection_upwind_third_order(double * fluxe, double * fluxw,
-				  double * fluxy, double * fluxz);
-void advection_upwind_fifth_order(double * fluxe, double * fluxw,
-				  double * fluxy, double * fluxz);
-void advection_upwind_seventh_order(double * fluxe, double * fluxw,
-				    double * fluxy, double * fluxz);
+#include "hydro.h"
+#include "field.h"
 
+typedef struct advflux_s advflux_t;
+
+int advflux_create(int nf, advflux_t ** pobj);
+void advflux_free(advflux_t * obj);
+int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field);
+
+int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
+			double * fy, double * fz);
+int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
+			double * fy, double * fz);
+int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f, 
+			double ** flx);
+int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f, 
+			double ** flx);
+
+int advection_order_set(const int order);
+int advection_order(int * order);
 #endif

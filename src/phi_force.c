@@ -24,27 +24,28 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "lattice.h"
-#include "phi.h"
-#include "site_map.h"
+#include "hydro.h"
+#include "field.h"
 #include "leesedwards.h"
 #include "free_energy.h"
 #include "wall.h"
 #include "phi_force_stress.h"
 
-static void phi_force_calculation_fluid(void);
-static void phi_force_fluid_phi_gradmu(void);
-static void phi_force_compute_fluxes(double * fe, double * fw, double * fy,
-				     double * fz);
-static void phi_force_flux_divergence(double * fe, double * fw, double * fy,
-				      double * fz);
-static void phi_force_flux_fix_local(double * fluxe, double * fluxw);
-static void phi_force_flux_divergence_with_fix(double * fe, double * fw,
-					       double * fy, double * fz);
-static void phi_force_flux(void);
-static void phi_force_wallx(double * fe, double * fw);
-static void phi_force_wally(double * fy);
-static void phi_force_wallz(double * fz);
+static int phi_force_calculation_fluid(hydro_t * hydro);
+static int phi_force_compute_fluxes(double * fe, double * fw, double * fy,
+				    double * fz);
+static int phi_force_flux_divergence(hydro_t * hydro, double * fe,
+				     double * fw, double * fy, double * fz);
+static int phi_force_flux_fix_local(double * fluxe, double * fluxw);
+static int phi_force_flux_divergence_with_fix(hydro_t * hydro, double * fe,
+					      double * fw,
+					      double * fy, double * fz);
+static int phi_force_flux(hydro_t * hydro);
+static int phi_force_wallx(double * fe, double * fw);
+static int phi_force_wally(double * fy);
+static int phi_force_wallz(double * fz);
+
+static int phi_force_fluid_phi_gradmu(field_t * phi, hydro_t * hydro);
 
 static int force_required_ = 1;
 static int force_divergence_ = 1;
@@ -55,10 +56,25 @@ static int force_divergence_ = 1;
  *
  *****************************************************************************/
 
-void phi_force_required_set(const int flag) {
+int phi_force_required_set(const int flag) {
 
   force_required_ = flag;
-  return;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_required
+ *
+ *****************************************************************************/
+
+int phi_force_required(int * flag) {
+
+  assert(flag);
+
+  *flag = force_required_;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -67,10 +83,10 @@ void phi_force_required_set(const int flag) {
  *
  *****************************************************************************/
 
-void phi_force_divergence_set(const int flag) {
+int phi_force_divergence_set(const int flag) {
 
   force_divergence_ = flag;
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -79,27 +95,32 @@ void phi_force_divergence_set(const int flag) {
  *
  *  Driver routine to compute the body force on fluid from phi sector.
  *
+ *  If hydro is NULL, we assume hydroynamics is not present, so there
+ *  is no force.
+ *
  *****************************************************************************/
 
-void phi_force_calculation(void) {
+int phi_force_calculation(field_t * phi, hydro_t * hydro) {
 
-  if (force_required_ == 0) return;
+  if (force_required_ == 0) return 0;
+  if (hydro == NULL) return 0;
 
   if (le_get_nplane_total() > 0 || wall_present()) {
     /* Must use the flux method for LE planes */
     /* Also convenient for plane walls */
-    phi_force_flux();
+    phi_force_flux(hydro);
   }
   else {
     if (force_divergence_) {
-      phi_force_calculation_fluid();
-    }
+      phi_force_calculation_fluid(hydro);
+   }
     else {
-      phi_force_fluid_phi_gradmu();
+      assert(phi);
+      phi_force_fluid_phi_gradmu(phi, hydro);
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -115,7 +136,7 @@ void phi_force_calculation(void) {
  *
  *****************************************************************************/
 
-static void phi_force_calculation_fluid(void) {
+static int phi_force_calculation_fluid(hydro_t * hydro) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
@@ -125,6 +146,8 @@ static void phi_force_calculation_fluid(void) {
   double force[3];
 
   void (* chemical_stress)(const int index, double s[3][3]);
+
+  assert(hydro);
 
   coords_nlocal(nlocal);
 
@@ -156,8 +179,6 @@ static void phi_force_calculation_fluid(void) {
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
-
-	
 	index1 = le_site_index(ic, jc+1, kc);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
@@ -168,7 +189,6 @@ static void phi_force_calculation_fluid(void) {
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
-	
 	index1 = le_site_index(ic, jc, kc+1);
 	chemical_stress(index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
@@ -182,7 +202,7 @@ static void phi_force_calculation_fluid(void) {
 
 	/* Store the force on lattice */
 
-	hydrodynamics_add_force_local(index, force);
+	hydro_f_local_add(hydro, index, force);
 
 	/* Next site */
       }
@@ -191,7 +211,7 @@ static void phi_force_calculation_fluid(void) {
 
   phi_force_stress_free();
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -210,7 +230,7 @@ static void phi_force_calculation_fluid(void) {
  *
  *****************************************************************************/
 
-static void phi_force_fluid_phi_gradmu(void) {
+static int phi_force_fluid_phi_gradmu(field_t * fphi, hydro_t * hydro) {
 
   int ic, jc, kc, icm1, icp1;
   int index0, indexm1, indexp1;
@@ -221,6 +241,10 @@ static void phi_force_fluid_phi_gradmu(void) {
   double force[3];
 
   double (* chemical_potential)(const int index, const int nop);
+
+  assert(fphi);
+  assert(hydro);
+  /* Could check nf == 1 sclar field. */
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -239,8 +263,7 @@ static void phi_force_fluid_phi_gradmu(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-
-	phi = phi_get_phi_site(index0);
+	field_scalar(fphi, index0, &phi);
 
         indexm1 = le_site_index(icm1, jc, kc);
         indexp1 = le_site_index(icp1, jc, kc);
@@ -262,14 +285,14 @@ static void phi_force_fluid_phi_gradmu(void) {
 
 	/* Store the force on lattice */
 
-	hydrodynamics_add_force_local(index0, force);
+	hydro_f_local_add(hydro, index0, force);
 
 	/* Next site */
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -284,7 +307,7 @@ static void phi_force_fluid_phi_gradmu(void) {
  *
  *****************************************************************************/
 
-static void phi_force_flux(void) {
+static int phi_force_flux(hydro_t * hydro) {
 
   int n;
   int fix_fluxes = 1;
@@ -293,6 +316,8 @@ static void phi_force_flux(void) {
   double * fluxw;
   double * fluxy;
   double * fluxz;
+
+  assert(hydro);
 
   n = coords_nsites();
 
@@ -314,10 +339,10 @@ static void phi_force_flux(void) {
 
   if (fix_fluxes || wall_present()) {
     phi_force_flux_fix_local(fluxe, fluxw);
-    phi_force_flux_divergence(fluxe, fluxw, fluxy, fluxz);
+    phi_force_flux_divergence(hydro, fluxe, fluxw, fluxy, fluxz);
   }
   else {
-    phi_force_flux_divergence_with_fix(fluxe, fluxw, fluxy, fluxz);
+    phi_force_flux_divergence_with_fix(hydro, fluxe, fluxw, fluxy, fluxz);
   }
 
   free(fluxz);
@@ -325,7 +350,7 @@ static void phi_force_flux(void) {
   free(fluxw);
   free(fluxe);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -337,8 +362,8 @@ static void phi_force_flux(void) {
  *
  *****************************************************************************/
 
-static void phi_force_compute_fluxes(double * fluxe, double * fluxw,
-				     double * fluxy, double * fluxz) {
+static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
+				    double * fluxy, double * fluxz) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
@@ -401,7 +426,7 @@ static void phi_force_compute_fluxes(double * fluxe, double * fluxw,
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -413,13 +438,19 @@ static void phi_force_compute_fluxes(double * fluxe, double * fluxw,
  *
  *****************************************************************************/
 
-static void phi_force_flux_divergence(double * fluxe, double * fluxw,
-				      double * fluxy, double * fluxz) {
-
+static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
+				     double * fluxw,
+				     double * fluxy, double * fluxz) {
   int nlocal[3];
   int ic, jc, kc, ia;
   int index, indexj, indexk;
   double f[3];
+
+  assert(hydro);
+  assert(fluxe);
+  assert(fluxw);
+  assert(fluxy);
+  assert(fluxz);
 
   coords_nlocal(nlocal);
 
@@ -438,13 +469,13 @@ static void phi_force_flux_divergence(double * fluxe, double * fluxw,
 		     + fluxz[3*index + ia] - fluxz[3*indexk + ia]);
 	}
 
-	hydrodynamics_add_force_local(index, f);
+	hydro_f_local_add(hydro, index, f);
 
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -460,9 +491,10 @@ static void phi_force_flux_divergence(double * fluxe, double * fluxw,
  *
  *****************************************************************************/
 
-static void phi_force_flux_divergence_with_fix(double * fluxe, double * fluxw,
-					       double * fluxy,
-					       double * fluxz) {
+static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
+					      double * fluxe, double * fluxw,
+					      double * fluxy,
+					      double * fluxz) {
   int nlocal[3];
   int ic, jc, kc, index, ia;
   int indexj, indexk;
@@ -471,6 +503,12 @@ static void phi_force_flux_divergence_with_fix(double * fluxe, double * fluxw,
   double fsum_local[3];
   double fsum[3];
   double rv;
+
+  assert(hydro);
+  assert(fluxe);
+  assert(fluxw);
+  assert(fluxy);
+  assert(fluxz);
 
   coords_nlocal(nlocal);
 
@@ -518,12 +556,12 @@ static void phi_force_flux_divergence_with_fix(double * fluxe, double * fluxw,
 		     + fluxz[3*index + ia] - fluxz[3*indexk + ia]);
 	  f[ia] -= fsum[ia];
 	}
-	hydrodynamics_add_force_local(index, f);
+	hydro_f_local_add(hydro, index, f);
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -538,7 +576,7 @@ static void phi_force_flux_divergence_with_fix(double * fluxe, double * fluxw,
  *
  *****************************************************************************/
 
-static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
+static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
 
   int nlocal[3];
   int nplane;
@@ -553,7 +591,7 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
   coords_nlocal(nlocal);
   nplane = le_get_nplane_local();
 
-  if (nplane == 0) return;
+  if (nplane == 0) return 0;
 
   comm = le_plane_comm();
 
@@ -604,7 +642,7 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
   free(fcor);
   free(fbar);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -618,7 +656,7 @@ static void phi_force_flux_fix_local(double * fluxe, double * fluxw) {
  *
  *****************************************************************************/
 
-static void phi_force_wallx(double * fluxe, double * fluxw) {
+static int phi_force_wallx(double * fluxe, double * fluxw) {
 
   int ic, jc, kc;
   int index, ia;
@@ -670,7 +708,7 @@ static void phi_force_wallx(double * fluxe, double * fluxw) {
 
   wall_accumulate_force(fw);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -684,7 +722,7 @@ static void phi_force_wallx(double * fluxe, double * fluxw) {
  *
  *****************************************************************************/
 
-static void phi_force_wally(double * fluxy) {
+static int phi_force_wally(double * fluxy) {
 
   int ic, jc, kc;
   int index, index1, ia;
@@ -739,7 +777,7 @@ static void phi_force_wally(double * fluxy) {
 
   wall_accumulate_force(fy);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -753,7 +791,7 @@ static void phi_force_wally(double * fluxy) {
  *
  *****************************************************************************/
 
-static void phi_force_wallz(double * fluxz) {
+static int phi_force_wallz(double * fluxz) {
 
   int ic, jc, kc;
   int index, index1, ia;
@@ -808,5 +846,5 @@ static void phi_force_wallz(double * fluxz) {
 
   wall_accumulate_force(fz);
 
-  return;
+  return 0;
 }

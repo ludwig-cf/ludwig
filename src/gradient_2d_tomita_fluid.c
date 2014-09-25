@@ -45,7 +45,6 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
-#include "gradient.h"
 #include "gradient_2d_tomita_fluid.h"
 
 static const double epsilon_ = 0.5;
@@ -69,27 +68,12 @@ static void gradient_2d_tomita_fluid_wall_correction(const int nop,
 
 /*****************************************************************************
  *
- *  gradient_2d_tomita_fluid_init
- *
- *****************************************************************************/
-
-void gradient_2d_tomita_fluid_init(void) {
-
-  gradient_d2_set(gradient_2d_tomita_fluid_d2);
-  gradient_d4_set(gradient_2d_tomita_fluid_d4);
-  gradient_d2_dyadic_set(gradient_2d_tomita_fluid_dyadic);
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  gradient_2d_tomita_fluid_d2
  *
  *****************************************************************************/
 
-void gradient_2d_tomita_fluid_d2(const int nop, const double * field,
-				 double * grad, double * delsq) {
+int gradient_2d_tomita_fluid_d2(const int nop, const double * field,
+				double * grad, double * delsq) {
 
   int nextra;
 
@@ -104,7 +88,7 @@ void gradient_2d_tomita_fluid_d2(const int nop, const double * field,
   gradient_2d_tomita_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_2d_tomita_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -113,8 +97,8 @@ void gradient_2d_tomita_fluid_d2(const int nop, const double * field,
  *
  *****************************************************************************/
 
-void gradient_2d_tomita_fluid_d4(const int nop, const double * field,
-				 double * grad, double * delsq) {
+int gradient_2d_tomita_fluid_d4(const int nop, const double * field,
+				double * grad, double * delsq) {
 
   int nextra;
 
@@ -129,7 +113,7 @@ void gradient_2d_tomita_fluid_d4(const int nop, const double * field,
   gradient_2d_tomita_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_2d_tomita_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -419,110 +403,5 @@ static void gradient_2d_tomita_fluid_wall_correction(const int nop,
   free(c);
   free(h);
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  gradient_2d_tomita_fluid_dyadic
- *
- *  To compute d_c P_a P_b for vector order parameters P_a
- *
- *****************************************************************************/
-
-void gradient_2d_tomita_fluid_dyadic(const int nop,
-				  const double * field,
-				  double * grad,
-				  double * delsq) {
-  int nlocal[3];
-  int nhalo;
-  int nextra;
-  int ic, jc;
-  int ys;
-  int icm1, icp1;
-  int index, indexm1, indexp1;
-
-  nhalo = coords_nhalo();
-  nextra = nhalo - 1;
-
-  assert(0); /* NOT IMPLEMENTED */
-  coords_nlocal(nlocal);
-
-  assert(nlocal[Z] == 1);   /* 2d */
-  assert(nop == 3);         /* vector order parameter */
-  assert(field);            /* order parameter field */
-  assert(grad);             /* gradient of dyadic tensor */
-  assert(delsq);            /* delsq of dyadic tensor */
-
-  ys = nlocal[Z] + 2*nhalo;
-
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-
-      index = le_site_index(ic, jc, 1);
-      indexm1 = le_site_index(icm1, jc, 1);
-      indexp1 = le_site_index(icp1, jc, 1);
-
-      grad[18*index + 6*X + XX] = 0.5*
-	(+ field[nop*indexp1 + X]*field[nop*indexp1 + X]
-	 - field[nop*indexm1 + X]*field[nop*indexm1 + X]);
-      grad[18*index + 6*X + XY] = 0.5*
-	(+ field[nop*indexp1 + X]*field[nop*indexp1 + Y]
-	 - field[nop*indexm1 + X]*field[nop*indexm1 + Y]);
-      grad[18*index + 6*X + XZ] = 0.0;
-      grad[18*index + 6*X + YY] = 0.5*
-	(+ field[nop*indexp1 + Y]*field[nop*indexp1 + Y]
-	 - field[nop*indexm1 + Y]*field[nop*indexm1 + Y]);
-      grad[18*index + 6*X + YZ] = 0.0;
-      grad[18*index + 6*X + ZZ] = 0.0;
-
-      grad[18*index + 6*Y + XX] = 0.5*
-	(+ field[nop*(index+ys) + X]*field[nop*(index+ys) + X]
-	 - field[nop*(index-ys) + X]*field[nop*(index-ys) + X]);
-      grad[18*index + 6*Y + XY] = 0.5*
-	(+ field[nop*(index+ys) + X]*field[nop*(index+ys) + Y]
-	 - field[nop*(index-ys) + X]*field[nop*(index-ys) + Y]);
-      grad[18*index + 6*Y + XZ] = 0.0;
-      grad[18*index + 6*Y + YY] = 0.5*
-	(+ field[nop*(index+ys) + Y]*field[nop*(index+ys) + Y]
-	 - field[nop*(index-ys) + Y]*field[nop*(index-ys) + Y]);
-      grad[18*index + 6*Y + YZ] = 0.0;
-      grad[18*index + 6*Y + ZZ] = 0.0;
-
-      grad[18*index + 6*Z + XX] = 0.0;
-      grad[18*index + 6*Z + XY] = 0.0;
-      grad[18*index + 6*Z + XZ] = 0.0;
-      grad[18*index + 6*Z + YY] = 0.0;
-      grad[18*index + 6*Z + YZ] = 0.0;
-      grad[18*index + 6*Z + ZZ] = 0.0;
-
-      delsq[6*index + XX] =
-	+ field[nop*indexm1      + X]*field[nop*indexm1      + X]
-	+ field[nop*indexp1      + X]*field[nop*indexp1      + X]
-	+ field[nop*(index - ys) + X]*field[nop*(index - ys) + X]
-	+ field[nop*(index + ys) + X]*field[nop*(index + ys) + X]
-	- 4.0*field[nop*index + X]*field[nop*index + X];
-      delsq[6*index + XY] =
-	+ field[nop*indexm1      + X]*field[nop*indexm1      + Y]
-	+ field[nop*indexp1      + X]*field[nop*indexp1      + Y]
-	+ field[nop*(index - ys) + X]*field[nop*(index - ys) + Y]
-	+ field[nop*(index + ys) + X]*field[nop*(index + ys) + Y]
-	- 4.0*field[nop*index + X]*field[nop*index + Y];
-      delsq[6*index + XZ] = 0.0;
-      delsq[6*index + YY] =
-	+ field[nop*indexm1      + Y]*field[nop*indexm1      + Y]
-	+ field[nop*indexp1      + Y]*field[nop*indexp1      + Y]
-	+ field[nop*(index - ys) + Y]*field[nop*(index - ys) + Y]
-	+ field[nop*(index + ys) + Y]*field[nop*(index + ys) + Y]
-	- 4.0*field[nop*index + Y]*field[nop*index + Y];
-      delsq[6*index + YZ] = 0.0;
-      delsq[6*index + ZZ] = 0.0;
-
-      /* Next site */
-    }
-  }
-  
   return;
 }

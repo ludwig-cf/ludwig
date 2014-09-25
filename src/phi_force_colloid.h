@@ -15,6 +15,10 @@
 #ifndef PHI_FORCE_COLLOID_H
 #define PHI_FORCE_COLLOID_H
 
-void phi_force_colloid(void);
+#include "colloids.h"
+#include "hydro.h"
+#include "map.h"
+
+int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map);
 
 #endif

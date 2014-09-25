@@ -9,13 +9,11 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
- *  $Id: stats_rheology.c,v 1.10 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -29,7 +27,6 @@
 #include "model.h"
 #include "util.h"
 #include "control.h"
-#include "lattice.h"
 #include "physics.h"
 #include "leesedwards.h"
 #include "free_energy.h"
@@ -294,7 +291,7 @@ void stats_rheology_stress_profile_zero(void) {
  *
  *****************************************************************************/
 
-void stats_rheology_stress_profile_accumulate(void) {
+int stats_rheology_stress_profile_accumulate(lb_t * lb, hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -306,6 +303,8 @@ void stats_rheology_stress_profile_accumulate(void) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(initialised_);
+  assert(lb);
+  assert(hydro);
   coords_nlocal(nlocal);
 
   chemical_stress = fe_chemical_stress_function();
@@ -318,16 +317,16 @@ void stats_rheology_stress_profile_accumulate(void) {
 
 	/* Set up the (inverse) density, velocity */
 
-	rho = distribution_zeroth_moment(index, 0);
+	lb_0th_moment(lb, index, LB_RHO, &rho);
 	rrho = 1.0/rho;
-	distribution_first_moment(index, 0, u);
+	lb_1st_moment(lb, index, LB_RHO, u);
 
 	/* Work out the vicous stress and accumulate. The factor
 	 * which relates the distribution \sum_i f_ c_ia c_ib
 	 * to the viscous stress is not included until output
 	 * is required. (See output routine.) */
 
-	distribution_get_stress_at_site(index, s);
+	lb_2nd_moment(lb, index, LB_RHO, s);
 
 	sxy_[NSTAT1*(ic-1)] += s[X][Y];
 
@@ -377,7 +376,7 @@ void stats_rheology_stress_profile_accumulate(void) {
 
 	assert(ndata == NSTAT2);
 
-	hydrodynamics_velocity_gradient_tensor(ic, jc,  kc, s);
+	hydro_u_gradient_tensor(hydro, ic, jc, kc, s);
 	sxy_[NSTAT1*(ic-1) + 6] += (s[X][Y] + s[Y][X]);
       }
     }
@@ -385,7 +384,7 @@ void stats_rheology_stress_profile_accumulate(void) {
 
   counter_sxy_++;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -419,7 +418,7 @@ void stats_rheology_stress_profile(const char * filename) {
   double * sxymean;
   double rmean;
   double uy;
-  double eta = get_eta_shear();
+  double eta;
 
   const int tag_token = 728;
   int rank;
@@ -431,6 +430,8 @@ void stats_rheology_stress_profile(const char * filename) {
   assert(initialised_);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
+
+  physics_eta_shear(&eta);
 
   sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxymean == NULL) fatal("malloc(sxymean) failed\n");
@@ -547,7 +548,7 @@ void stats_rheology_stress_section(const char * filename) {
   assert(initialised_);
   coords_nlocal(nlocal);
 
-  eta = get_eta_shear();
+  physics_eta_shear(&eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
@@ -667,7 +668,7 @@ void stats_rheology_stress_section(const char * filename) {
  *
  *****************************************************************************/
 
-void stats_rheology_mean_stress(const char * filename) {
+int stats_rheology_mean_stress(lb_t * lb, const char * filename) {
 
 #define NCOMP 27
 
@@ -686,9 +687,11 @@ void stats_rheology_mean_stress(const char * filename) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
+  assert(lb);
+
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
-  eta = get_eta_shear();
+  physics_eta_shear(&eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   coords_nlocal(nlocal);
@@ -711,9 +714,9 @@ void stats_rheology_mean_stress(const char * filename) {
 
         index = coords_index(ic, jc, kc);
 
-	rho = distribution_zeroth_moment(index, 0);
-	distribution_first_moment(index, 0, u);
-	distribution_get_stress_at_site(index, s);
+	lb_0th_moment(lb, index, LB_RHO, &rho);
+	lb_1st_moment(lb, index, LB_RHO, u);
+	lb_2nd_moment(lb, index, LB_RHO, s);
         chemical_stress(index, plocal);
 
 	rrho = 1.0/rho;
@@ -775,7 +778,7 @@ void stats_rheology_mean_stress(const char * filename) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /****************************************************************************

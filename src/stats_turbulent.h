@@ -15,10 +15,12 @@
 #ifndef STATS_TURBULENT_H
 #define STATS_TURBULENT_H
 
+#include "hydro.h"
+
 void stats_turbulent_init(void);
 void stats_turbulent_finish(void);
 void stats_turbulent_ubar_zero(void);
-void stats_turbulent_ubar_accumulate(void);
+int  stats_turbulent_ubar_accumulate(hydro_t * hydro);
 void stats_turbulent_ubar_output(const char *);
 
 #endif

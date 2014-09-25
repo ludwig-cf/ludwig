@@ -38,7 +38,6 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
-#include "gradient.h"
 #include "gradient_3d_7pt_fluid.h"
 
 
@@ -56,20 +55,8 @@ static void gradient_3d_7pt_fluid_wall_correction(const int nop,
 						  double * delsq,
 						  const int nextra);
 
-/*****************************************************************************
- *
- *  gradient_3d_7pt_fluid_init
- *
- *****************************************************************************/
-
-void gradient_3d_7pt_fluid_init(void) {
-
-  gradient_d2_set(gradient_3d_7pt_fluid_d2);
-  gradient_d4_set(gradient_3d_7pt_fluid_d4);
-  gradient_d2_dyadic_set(gradient_3d_7pt_fluid_dyadic);
-
-  return;
-}
+static int gradient_dab_le_correct(int nf, const double * field, double * dab);
+static int gradient_dab_compute(int nf, const double * field, double * dab);
 
 /*****************************************************************************
  *
@@ -77,8 +64,8 @@ void gradient_3d_7pt_fluid_init(void) {
  *
  *****************************************************************************/
 
-void gradient_3d_7pt_fluid_d2(const int nop, const double * field,
-			      double * grad, double * delsq) {
+int gradient_3d_7pt_fluid_d2(const int nop, const double * field,
+			     double * grad, double * delsq) {
 
   int nextra;
 
@@ -93,7 +80,7 @@ void gradient_3d_7pt_fluid_d2(const int nop, const double * field,
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -105,8 +92,8 @@ void gradient_3d_7pt_fluid_d2(const int nop, const double * field,
  *
  *****************************************************************************/
 
-void gradient_3d_7pt_fluid_d4(const int nop, const double * field,
-			      double * grad, double * delsq) {
+int gradient_3d_7pt_fluid_d4(const int nop, const double * field,
+			     double * grad, double * delsq) {
 
   int nextra;
 
@@ -121,7 +108,36 @@ void gradient_3d_7pt_fluid_d4(const int nop, const double * field,
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
-  return;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  gradient_3d_7pt_fluid_dab
+ *
+ *  This is the full gradient tensor, which actually requires more
+ *  than the 7-point stencil advertised.
+ *
+ *  d_x d_x phi = phi(ic+1,jc,kc) - 2phi(ic,jc,kc) + phi(ic-1,jc,kc)
+ *  d_x d_y phi = 0.25*[ phi(ic+1,jc+1,kc) - phi(ic+1,jc-1,kc)
+ *                     - phi(ic-1,jc+1,kc) + phi(ic-1,jc-1,kc) ]
+ *  d_x d_z phi = 0.25*[ phi(ic+1,jc,kc+1) - phi(ic+1,jc,kc-1)
+ *                     - phi(ic-1,jc,kc+1) + phi(ic-1,jc,kc-1) ]
+ *  and so on.
+ *
+ *  The tensor is symmetric. The 1-d compressed storage is
+ *      dab[NSYMM*index + XX] etc.
+ *
+ *****************************************************************************/
+
+int gradient_3d_7pt_fluid_dab(int nf, const double * field, double * dab) {
+
+  assert(nf == 1); /* Scalars only */
+
+  gradient_dab_compute(nf, field, dab);
+  gradient_dab_le_correct(nf, field, dab);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -390,32 +406,30 @@ static void gradient_3d_7pt_fluid_wall_correction(const int nop,
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_fluid_dyadic
- *
- *  Computes the gradient, and \nabla^2, of P_a P_b for vector order
- *  parameter P_a.
+ *  gradient_dab_compute
  *
  *****************************************************************************/
 
-void gradient_3d_7pt_fluid_dyadic(const int nop, const double * field,
-				  double * grad, double * delsq) {
+static int gradient_dab_compute(int nf, const double * field, double * dab) {
+
   int nlocal[3];
   int nhalo;
   int nextra;
+  int n;
   int ic, jc, kc;
   int ys;
   int icm1, icp1;
   int index, indexm1, indexp1;
 
+  assert(nf == 1);
+  assert(field);
+  assert(dab);
+
+  nextra = coords_nhalo() - 1;
+  assert(nextra >= 0);
+
   nhalo = coords_nhalo();
-  nextra = nhalo - 1;
-
   coords_nlocal(nlocal);
-
-  assert(nop == 3);         /* vector order parameter */
-  assert(field);            /* order parameter field */
-  assert(grad);             /* gradient of dyadic tensor */
-  assert(delsq);            /* delsq of dyadic tensor */
 
   ys = nlocal[Z] + 2*nhalo;
 
@@ -429,117 +443,150 @@ void gradient_3d_7pt_fluid_dyadic(const int nop, const double * field,
 	indexm1 = le_site_index(icm1, jc, kc);
 	indexp1 = le_site_index(icp1, jc, kc);
 
-	grad[18*index + 6*X + XX] = 0.5*
-	  (+ field[nop*indexp1 + X]*field[nop*indexp1 + X]
-	   - field[nop*indexm1 + X]*field[nop*indexm1 + X]);
-	grad[18*index + 6*X + XY] = 0.5*
-	  (+ field[nop*indexp1 + X]*field[nop*indexp1 + Y]
-	   - field[nop*indexm1 + X]*field[nop*indexm1 + Y]);
-	grad[18*index + 6*X + XZ] = 0.5*
-	  (+ field[nop*indexp1 + X]*field[nop*indexp1 + Z]
-	   - field[nop*indexm1 + X]*field[nop*indexm1 + Z]);
-	grad[18*index + 6*X + YY] = 0.5*
-	  (+ field[nop*indexp1 + Y]*field[nop*indexp1 + Y]
-	   - field[nop*indexm1 + Y]*field[nop*indexm1 + Y]);
-	grad[18*index + 6*X + YZ] = 0.5*
-	  (+ field[nop*indexp1 + Y]*field[nop*indexp1 + Z]
-	   - field[nop*indexm1 + Y]*field[nop*indexm1 + Z]);
-	grad[18*index + 6*X + ZZ] = 0.5*
-	  (+ field[nop*indexp1 + Z]*field[nop*indexp1 + Z]
-	   - field[nop*indexm1 + Z]*field[nop*indexm1 + Z]);
+	for (n = 0; n < nf; n++) {
+	  dab[NSYMM*(nf*index + n) + XX]
+	    = field[nf*indexp1 + n] + field[nf*indexm1 + n]
+	    - 2.0*field[nf*index + n];
+	  dab[NSYMM*(nf*index + n) + XY] = 0.25*
+	    (field[nf*(indexp1 + ys) + n] - field[nf*(indexp1 - ys) + n]
+	     - field[nf*(indexm1 + ys) + n] + field[nf*(indexm1 - ys) + n]);
+	  dab[NSYMM*(nf*index + n) + XZ] = 0.25*
+	    (field[nf*(indexp1 + 1) + n] - field[nf*(indexp1 - 1) + n]
+	     - field[nf*(indexm1 + 1) + n] + field[nf*(indexm1 - 1) + n]);
 
-	grad[18*index + 6*Y + XX] = 0.5*
-	  (+ field[nop*(index+ys) + X]*field[nop*(index+ys) + X]
-	   - field[nop*(index-ys) + X]*field[nop*(index-ys) + X]);
-	grad[18*index + 6*Y + XY] = 0.5*
-	  (+ field[nop*(index+ys) + X]*field[nop*(index+ys) + Y]
-	   - field[nop*(index-ys) + X]*field[nop*(index-ys) + Y]);
-	grad[18*index + 6*Y + XZ] = 0.5*
-	  (+ field[nop*(index+ys) + X]*field[nop*(index+ys) + Z]
-	   - field[nop*(index-ys) + X]*field[nop*(index-ys) + Z]);
-	grad[18*index + 6*Y + YY] = 0.5*
-	  (+ field[nop*(index+ys) + Y]*field[nop*(index+ys) + Y]
-	   - field[nop*(index-ys) + Y]*field[nop*(index-ys) + Y]);
-	grad[18*index + 6*Y + YZ] = 0.5*
-	  (+ field[nop*(index+ys) + Y]*field[nop*(index+ys) + Z]
-	   - field[nop*(index-ys) + Y]*field[nop*(index-ys) + Z]);
-	grad[18*index + 6*Y + ZZ] = 0.5*
-	  (+ field[nop*(index+ys) + Z]*field[nop*(index+ys) + Z]
-	   - field[nop*(index-ys) + Z]*field[nop*(index-ys) + Z]);
+	  dab[NSYMM*(nf*index + n) + YY]
+	    = field[nf*(index + ys) + n] + field[nf*(index - ys) + n]
+	    - 2.0*field[nf*index + n];
+	  dab[NSYMM*(nf*index + n) + YZ] = 0.25*
+	    (field[nf*(index + ys + 1) + n] - field[nf*(index + ys - 1) + n]
+	   - field[nf*(index - ys + 1) + n] + field[nf*(index - ys - 1) + n]
+	     );
 
-	grad[18*index + 6*Z + XX] = 0.5*
-	  (+ field[nop*(index+1) + X]*field[nop*(index+1) + X]
-	   - field[nop*(index-1) + X]*field[nop*(index-1) + X]);
-	grad[18*index + 6*Z + XY] = 0.5*
-	  (+ field[nop*(index+1) + X]*field[nop*(index+1) + Y]
-	   - field[nop*(index-1) + X]*field[nop*(index-1) + Y]);
-	grad[18*index + 6*Z + XZ] = 0.5*
-	  (+ field[nop*(index+1) + X]*field[nop*(index+1) + Z]
-	   - field[nop*(index-1) + X]*field[nop*(index-1) + Z]);
-	grad[18*index + 6*Z + YY] = 0.5*
-	  (+ field[nop*(index+1) + Y]*field[nop*(index+1) + Y]
-	   - field[nop*(index-1) + Y]*field[nop*(index-1) + Y]);
-	grad[18*index + 6*Z + YZ] = 0.5*
-	  (+ field[nop*(index+1) + Y]*field[nop*(index+1) + Z]
-	   - field[nop*(index-1) + Y]*field[nop*(index-1) + Z]);
-	grad[18*index + 6*Z + ZZ] = 0.5*
-	  (+ field[nop*(index+1) + Z]*field[nop*(index+1) + Z]
-	   - field[nop*(index-1) + Z]*field[nop*(index-1) + Z]);
-
-	delsq[6*index + XX] =
-	  + field[nop*indexm1      + X]*field[nop*indexm1      + X]
-	  + field[nop*indexp1      + X]*field[nop*indexp1      + X]
-	  + field[nop*(index - ys) + X]*field[nop*(index - ys) + X]
-	  + field[nop*(index + ys) + X]*field[nop*(index + ys) + X]
-	  + field[nop*(index - 1)  + X]*field[nop*(index - 1)  + X]
-	  + field[nop*(index + 1)  + X]*field[nop*(index + 1)  + X]
-	  - 6.0*field[nop*index + X]*field[nop*index + X];
-	delsq[6*index + XY] =
-	  + field[nop*indexm1      + X]*field[nop*indexm1      + Y]
-	  + field[nop*indexp1      + X]*field[nop*indexp1      + Y]
-	  + field[nop*(index - ys) + X]*field[nop*(index - ys) + Y]
-	  + field[nop*(index + ys) + X]*field[nop*(index + ys) + Y]
-	  + field[nop*(index - 1)  + X]*field[nop*(index - 1)  + Y]
-	  + field[nop*(index + 1)  + X]*field[nop*(index + 1)  + Y]
-	  - 6.0*field[nop*index + X]*field[nop*index + Y];
-	delsq[6*index + XZ] =
-	  + field[nop*indexm1      + X]*field[nop*indexm1      + Z]
-	  + field[nop*indexp1      + X]*field[nop*indexp1      + Z]
-	  + field[nop*(index - ys) + X]*field[nop*(index - ys) + Z]
-	  + field[nop*(index + ys) + X]*field[nop*(index + ys) + Z]
-	  + field[nop*(index - 1)  + X]*field[nop*(index - 1)  + Z]
-	  + field[nop*(index + 1)  + X]*field[nop*(index + 1)  + Z]
-	  - 6.0*field[nop*index + X]*field[nop*index + Z];
-	delsq[6*index + YY] =
-	  + field[nop*indexm1      + Y]*field[nop*indexm1      + Y]
-	  + field[nop*indexp1      + Y]*field[nop*indexp1      + Y]
-	  + field[nop*(index - ys) + Y]*field[nop*(index - ys) + Y]
-	  + field[nop*(index + ys) + Y]*field[nop*(index + ys) + Y]
-	  + field[nop*(index - 1)  + Y]*field[nop*(index - 1)  + Y]
-	  + field[nop*(index + 1)  + Y]*field[nop*(index + 1)  + Y]
-	  - 6.0*field[nop*index + Y]*field[nop*index + Y];
-	delsq[6*index + YZ] =
-	  + field[nop*indexm1      + Y]*field[nop*indexm1      + Z]
-	  + field[nop*indexp1      + Y]*field[nop*indexp1      + Z]
-	  + field[nop*(index - ys) + Y]*field[nop*(index - ys) + Z]
-	  + field[nop*(index + ys) + Y]*field[nop*(index + ys) + Z]
-	  + field[nop*(index - 1)  + Y]*field[nop*(index - 1)  + Z]
-	  + field[nop*(index + 1)  + Y]*field[nop*(index + 1)  + Z]
-	  - 6.0*field[nop*index + Y]*field[nop*index + Z];
-	delsq[6*index + ZZ] =
-	  + field[nop*indexm1      + Z]*field[nop*indexm1      + Z]
-	  + field[nop*indexp1      + Z]*field[nop*indexp1      + Z]
-	  + field[nop*(index - ys) + Z]*field[nop*(index - ys) + Z]
-	  + field[nop*(index + ys) + Z]*field[nop*(index + ys) + Z]
-	  + field[nop*(index - 1)  + Z]*field[nop*(index - 1)  + Z]
-	  + field[nop*(index + 1)  + Z]*field[nop*(index + 1)  + Z]
-	  - 6.0*field[nop*index + Z]*field[nop*index + Z];
-
-	/* Next site */
+	  dab[NSYMM*(nf*index + n) + ZZ]
+	    = field[nf*(index + 1)  + n] + field[nf*(index - 1)  + n]
+	    - 2.0*field[nf*index + n];
+	}
       }
     }
   }
 
-  return;
+  return 0;
 }
 
+/*****************************************************************************
+ *
+ *  gradient_dab_le_correct
+ *
+ *****************************************************************************/
+
+static int gradient_dab_le_correct(int nf, const double * field,
+				   double * dab) {
+
+  int nlocal[3];
+  int nhalo;
+  int nextra;
+  int nh;                                 /* counter over halo extent */
+  int n;
+  int nplane;                             /* Number LE planes */
+  int ic, jc, kc;
+  int ic0, ic1, ic2;                      /* x indices involved */
+  int index, indexm1, indexp1;            /* 1d addresses involved */
+  int ys;                                 /* y-stride for 1d address */
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  ys = (nlocal[Z] + 2*nhalo);
+
+  nextra = nhalo - 1;
+  assert(nextra >= 0);
+
+  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
+
+    ic = le_plane_location(nplane);
+
+    /* Looking across in +ve x-direction */
+    for (nh = 1; nh <= nextra; nh++) {
+      ic0 = le_index_real_to_buffer(ic, nh-1);
+      ic1 = le_index_real_to_buffer(ic, nh  );
+      ic2 = le_index_real_to_buffer(ic, nh+1);
+
+      for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	  indexm1 = le_site_index(ic0, jc, kc);
+	  index   = le_site_index(ic1, jc, kc);
+	  indexp1 = le_site_index(ic2, jc, kc);
+
+	  for (n = 0; n < nf; n++) {
+	    dab[NSYMM*(nf*index + n) + XX]
+	      = field[nf*indexp1 + n] + field[nf*indexm1 + n]
+	      - 2.0*field[nf*index + n];
+	    dab[NSYMM*(nf*index + n) + XY] = 0.25*
+	      (field[nf*(indexp1 + ys) + n] - field[nf*(indexp1 - ys) + n]
+	       - field[nf*(indexm1 + ys) + n] + field[nf*(indexm1 - ys) + n]);
+	    dab[NSYMM*(nf*index + n) + XZ] = 0.25*
+	      (field[nf*(indexp1 + 1) + n] - field[nf*(indexp1 - 1) + n]
+	       - field[nf*(indexm1 + 1) + n] + field[nf*(indexm1 - 1) + n]);
+
+	    dab[NSYMM*(nf*index + n) + YY]
+	      = field[nf*(index + ys) + n] + field[nf*(index - ys) + n]
+	      - 2.0*field[nf*index + n];
+	    dab[NSYMM*(nf*index + n) + YZ] = 0.25*
+	      (field[nf*(index + ys + 1) + n] - field[nf*(index + ys - 1) + n]
+	     - field[nf*(index - ys + 1) + n] + field[nf*(index - ys - 1) + n]
+	       );
+
+	    dab[NSYMM*(nf*index + n) + ZZ]
+	      = field[nf*(index + 1)  + n] + field[nf*(index - 1)  + n]
+	      - 2.0*field[nf*index + n];
+	  }
+	}
+      }
+    }
+
+    /* Looking across the plane in the -ve x-direction. */
+    ic += 1;
+
+    for (nh = 1; nh <= nextra; nh++) {
+      ic2 = le_index_real_to_buffer(ic, -nh+1);
+      ic1 = le_index_real_to_buffer(ic, -nh  );
+      ic0 = le_index_real_to_buffer(ic, -nh-1);
+
+      for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	  indexm1 = le_site_index(ic0, jc, kc);
+	  index   = le_site_index(ic1, jc, kc);
+	  indexp1 = le_site_index(ic2, jc, kc);
+
+	  for (n = 0; n < nf; n++) {
+	    dab[NSYMM*(nf*index + n) + XX]
+	      = field[nf*indexp1 + n] + field[nf*indexm1 + n]
+	      - 2.0*field[nf*index + n];
+	    dab[NSYMM*(nf*index + n) + XY] = 0.25*
+	      (field[nf*(indexp1 + ys) + n] - field[nf*(indexp1 - ys) + n]
+	       - field[nf*(indexm1 + ys) + n] + field[nf*(indexm1 - ys) + n]);
+	    dab[NSYMM*(nf*index + n) + XZ] = 0.25*
+	      (field[nf*(indexp1 + 1) + n] - field[nf*(indexp1 - 1) + n]
+	       - field[nf*(indexm1 + 1) + n] + field[nf*(indexm1 - 1) + n]);
+
+	    dab[NSYMM*(nf*index + n) + YY]
+	      = field[nf*(index + ys) + n] + field[nf*(index - ys) + n]
+	      - 2.0*field[nf*index + n];
+	    dab[NSYMM*(nf*index + n) + YZ] = 0.25*
+	      (field[nf*(index + ys + 1) + n] - field[nf*(index + ys - 1) + n]
+	     - field[nf*(index - ys + 1) + n] + field[nf*(index - ys - 1) + n]
+	       );
+
+	    dab[NSYMM*(nf*index + n) + ZZ]
+	      = field[nf*(index + 1)  + n] + field[nf*(index - 1)  + n]
+	      - 2.0*field[nf*index + n];
+	  }
+	}
+      }
+    }
+    /* Next plane */
+  }
+
+  return 0;
+}

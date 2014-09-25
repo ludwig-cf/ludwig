@@ -2,7 +2,8 @@
  *
  *  physics.c
  *
- *  Basic physical quantities for fluid.
+ *  These data are broadly physical properties of the fluid, constant
+ *  external fields, and so on.
  *
  *  $Id: physics.c,v 1.4 2010-10-15 12:40:03 kevin Exp $
  *
@@ -14,171 +15,441 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
+#include <stdlib.h>
+
 #include "pe.h"
-#include "runtime.h"
 #include "physics.h"
 
+#define ETA_DEFAULT (1.0/6.0)
+#define RHO_DEFAULT 1.0
 
-static double eta_shear = 1.0/6.0;   /* Shear viscosity */
-static double eta_bulk  = 1.0/6.0;   /* Bulk viscosity */
-static double kt_ = 0.0;             /* Isothermal "temperature" */
+struct physics_s {
+  double eta_shear;   /* Shear viscosity */
+  double eta_bulk;    /* Bulk viscosity */
+  double kt;          /* Isothermal "temperature" */
+  double rho0;        /* Mean fluid density */
+  double phi0;        /* Mean fluid composition (binary fluid) */
+  double phi_noise0;  /* Initial order parameter noise amplitude */
+  double fbody[3];    /* External body force on fluid */
+  double e0[3];       /* External electric field */
+  double b0[3];       /* External magnetic field */
+  double fgravity[3]; /* Gravitational force (on objects) */
 
-static double rho0 = 1.0;            /* Average simulation density */
-static double phi0 = 0.0;            /* Average order parameter    */
+  double mobility;    /* Order parameter mobility (binary fluid) */
+  double lc_gamma_rot;/* Liquid crystal rotational diffusion coefficient */
+};
 
-static double bodyforce_[3] = {0.0, 0.0, 0.0};
+static physics_t * phys = NULL;
+static int physics_create(void);
 
 /*****************************************************************************
  *
- *  init_physics
- *
- *  Set physical parameters
+ *  physics_ref
  *
  *****************************************************************************/
 
-void init_physics() {
+int physics_ref(physics_t ** ref) {
 
-  int p;
-  double vector[3];
+  assert(ref);
 
-  p = RUN_get_double_parameter("viscosity", &eta_shear);
-  eta_bulk = eta_shear;
+  if (phys == NULL) physics_create();
 
-  p = RUN_get_double_parameter("viscosity_bulk", &eta_bulk);
-  p = RUN_get_double_parameter("phi0", &phi0);
+  *ref = phys;
 
-  p = RUN_get_double_parameter_vector("force", vector);
+  return 0;
+}
 
-  if (p != 0) {
-    bodyforce_[0] = vector[0];
-    bodyforce_[1] = vector[1];
-    bodyforce_[2] = vector[2];
-  }
+/*****************************************************************************
+ *
+ *  physics_create
+ *
+ *  A single static object.
+ *
+ *****************************************************************************/
 
-  p = RUN_get_double_parameter("temperature", &kt_);
+static int physics_create(void) {
 
-  info("\n");
-  info("Fluid properties\n");
-  info("----------------\n");
-  info("Mean density:      %12.5e\n", rho0);
-  info("Shear viscosity    %12.5e\n", eta_shear);
-  info("Bulk viscosity     %12.5e\n", eta_bulk);
-  info("Temperature        %12.5e\n", kt_);
-  info("Body force density %12.5e %12.5e %12.5e\n", 
-       bodyforce_[0], bodyforce_[1], bodyforce_[2]); 
+  assert(phys == NULL);
 
-  return;
+  phys = (physics_t *) calloc(1, sizeof(physics_t));
+  if (phys == NULL) fatal("calloc(physics_t) failed\n");
+
+  phys->eta_shear = ETA_DEFAULT;
+  phys->eta_bulk  = ETA_DEFAULT;
+  phys->rho0      = RHO_DEFAULT;
+
+  /* Everything else defaults to zero. */
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_free
+ *
+ *****************************************************************************/
+
+int physics_free(void) {
+
+  assert(phys);
+
+  free(phys);
+  phys = NULL;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_eta_shear
+ *
+ *****************************************************************************/
+
+int physics_eta_shear(double * eta) {
+
+  assert(phys);
+  assert(eta);
+
+  *eta = phys->eta_shear;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_eta_shear_set
+ *
+ *****************************************************************************/
+
+int physics_eta_shear_set(double eta) {
+
+  assert(phys);
+
+  phys->eta_shear = eta;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_eta_bulk
+ *
+ *****************************************************************************/
+
+int physics_eta_bulk(double * eta) {
+
+  assert(phys);
+  assert(eta);
+
+  *eta = phys->eta_bulk;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_eta_bulk_set
+ *
+ *****************************************************************************/
+
+int physics_eta_bulk_set(double eta) {
+
+  assert(phys);
+
+  phys->eta_bulk = eta;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_rho0
+ *
+ *****************************************************************************/
+
+int physics_rho0(double * rho0) {
+
+  assert(phys);
+  assert(rho0);
+
+  *rho0 = phys->rho0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_rho0_set
+ *
+ *****************************************************************************/
+
+int physics_rho0_set(double rho0) {
+
+  assert(phys);
+
+  phys->rho0 = rho0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_kt
+ *
+ *****************************************************************************/
+
+int physics_kt(double * kt) {
+
+  assert(phys);
+  assert(kt);
+
+  *kt = phys->kt;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_kt_set
+ *
+ *****************************************************************************/
+
+int physics_kt_set(double kt) {
+
+  assert(phys);
+
+  phys->kt = kt;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_phi0
+ *
+ *****************************************************************************/
+
+int physics_phi0(double * phi0) {
+
+  assert(phys);
+  assert(phi0);
+
+  *phi0 = phys->phi0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_phi0_set
+ *
+ *****************************************************************************/
+
+int physics_phi0_set(double phi0) {
+
+  assert(phys);
+
+  phys->phi0 = phi0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_b0
+ *
+ *****************************************************************************/
+
+int physics_b0(double b0[3]) {
+
+  assert(phys);
+
+  b0[0] = phys->b0[0];
+  b0[1] = phys->b0[1];
+  b0[2] = phys->b0[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_b0_set
+ *
+ *****************************************************************************/
+
+int physics_b0_set(double b0[3]) {
+
+  assert(phys);
+
+  phys->b0[0] = b0[0];
+  phys->b0[1] = b0[1];
+  phys->b0[2] = b0[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_e0
+ *
+ *****************************************************************************/
+
+int physics_e0(double e0[3]) {
+
+  assert(phys);
+
+  e0[0] = phys->e0[0];
+  e0[1] = phys->e0[1];
+  e0[2] = phys->e0[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_e0_set
+ *
+ *****************************************************************************/
+
+int physics_e0_set(double e0[3]) {
+
+  assert(phys);
+
+  phys->e0[0] = e0[0];
+  phys->e0[1] = e0[1];
+  phys->e0[2] = e0[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_fbody
+ *
+ *****************************************************************************/
+
+int physics_fbody(double f[3]) {
+
+  assert(phys);
+
+  f[0] = phys->fbody[0];
+  f[1] = phys->fbody[1];
+  f[2] = phys->fbody[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_fbody_set
+ *
+ *****************************************************************************/
+
+int physics_fbody_set(double f[3]) {
+
+  assert(phys);
+
+  phys->fbody[0] = f[0];
+  phys->fbody[1] = f[1];
+  phys->fbody[2] = f[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_mobility
+ *
+ *****************************************************************************/
+
+int physics_mobility(double * mobility) {
+
+  assert(phys);
+  assert(mobility);
+
+  *mobility = phys->mobility;
+ 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_mobility_set
+ *
+ *****************************************************************************/
+
+int physics_mobility_set(double mobility) {
+
+  assert(mobility);
+
+  phys->mobility = mobility;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_lc_gamma_rot
+ *
+ *****************************************************************************/
+
+int physics_lc_gamma_rot(double * gamma) {
+
+  assert(phys);
+  assert(gamma);
+
+  *gamma = phys->lc_gamma_rot;
+
+  return 0;
 }
 
 
 /*****************************************************************************
  *
- *  get_eta_shear
- *
- *  Return the shear viscosity.
+ *  physics_lc_gamma_rot_set
  *
  *****************************************************************************/
 
-double get_eta_shear() {
+int physics_lc_gamma_rot_set(double gamma) {
 
-  return eta_shear;
-}
+  assert(phys);
 
-void set_eta(double eta) {
-  eta_shear = eta;
-  eta_bulk = eta;
-  return;
+  phys->lc_gamma_rot = gamma;
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  get_eta_bulk
- *
- *  Return the bulk viscosity
+ *  physics_fgrav
  *
  *****************************************************************************/
 
-double get_eta_bulk() {
+int physics_fgrav(double g[3]) {
 
-  return eta_bulk;
+  assert(phys);
+
+  g[0] = phys->fgravity[0];
+  g[1] = phys->fgravity[1];
+  g[2] = phys->fgravity[2];
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  get_kt
- *
- *  Access function for the isothermal temperature.
+ *  physics_fgrav_set
  *
  *****************************************************************************/
 
-double get_kT() {
+int physics_fgrav_set(double g[3]) {
 
-  return kt_;
-}
+  assert(phys);
 
-/*****************************************************************************
- *
- *  get_rho0
- *
- *  Access function for the mean fluid density.
- *
- *****************************************************************************/
+  phys->fgravity[0] = g[0];
+  phys->fgravity[1] = g[1];
+  phys->fgravity[2] = g[2];
 
-double get_rho0() {
-
-  return rho0;
-}
-
-/*****************************************************************************
- *
- *  get_phi0
- *
- *  Access function for the mean order parameter.
- *
- *****************************************************************************/
-
-double get_phi0() {
-
-  return phi0;
-}
-
-/*****************************************************************************
- *
- *  fluid_body_force
- *
- *****************************************************************************/
-
-void fluid_body_force(double f[3]) {
-
-  f[0] = bodyforce_[0];
-  f[1] = bodyforce_[1];
-  f[2] = bodyforce_[2];
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  fluid_body_force_set
- *
- *****************************************************************************/
-
-void fluid_body_force_set(const double f[3]) {
-
-  bodyforce_[0] = f[0];
-  bodyforce_[1] = f[1];
-  bodyforce_[2] = f[2];
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  fluid_kt
- *
- *****************************************************************************/
-
-double fluid_kt(void) {
-
-  return kt_;
+  return 0;
 }

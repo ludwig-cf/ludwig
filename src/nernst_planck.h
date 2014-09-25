@@ -16,7 +16,14 @@
 #define NERNST_PLANCK_H
 
 #include "psi.h"
+#include "hydro.h"
+#include "map.h"
+#include "colloids.h"
 
-int nernst_planck_driver(psi_t * psi);
+int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map);
+int nernst_planck_driver_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids_info_t * cinfo);
+int nernst_planck_adjust_multistep(psi_t * psi);
 
+int nernst_planck_maxacc(double * acc);
+int nernst_planck_maxacc_set(double acc);
 #endif

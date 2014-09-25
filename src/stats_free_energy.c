@@ -21,20 +21,17 @@
 #include "control.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
-#include "phi.h"
-#include "phi_gradients.h"
-#include "site_map.h"
 #include "wall.h"
 #include "free_energy.h"
 #include "stats_free_energy.h"
 #include "blue_phase.h"
 #include "util.h"
 
-static void stats_free_energy_wall(double * fs);
-static void stats_free_energy_wallx(double * fs);
-static void stats_free_energy_wally(double * fs);
-static void stats_free_energy_wallz(double * fs);
-static void stats_free_energy_colloid(double * fs);
+static int stats_free_energy_wall(field_t * q, double * fs);
+static int stats_free_energy_wallx(field_t * q, double * fs);
+static int stats_free_energy_wally(field_t * q, double * fs);
+static int stats_free_energy_wallz(field_t * q, double * fs);
+static int stats_free_energy_colloid(field_t * q, map_t * map, double * fs);
 
 static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
 
@@ -46,19 +43,29 @@ static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
  *  and there is an additional calculation for different types of
  *  solid surface.
  *
+ *  The mechanism to compute surface free energy contributions requires
+ *  much reworking and generalisation; it only really covers LC at present.
+ *
  ****************************************************************************/
 
-void stats_free_energy_density(void) {
+int stats_free_energy_density(field_t * q, map_t * map, int ncolloid) {
+
+#define NSTAT 5
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int status;
 
   double fed;
-  double fe_local[5];
-  double fe_total[5];
+  double fe_local[NSTAT];
+  double fe_total[NSTAT];
   double rv;
 
   double (* free_energy_density)(const int index);
+
+  assert(map);
+
+  if (fe_set() == 0) return 0;
 
   coords_nlocal(nlocal);
   free_energy_density = fe_density_function();
@@ -74,10 +81,12 @@ void stats_free_energy_density(void) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
 
 	fed = free_energy_density(index);
 	fe_local[0] += fed;
-	if (site_map_get_status_index(index) == FLUID) {
+
+	if (status == MAP_FLUID) {
 	    fe_local[1] += fed;
 	    fe_local[2] += 1.0;
 	}
@@ -89,20 +98,20 @@ void stats_free_energy_density(void) {
 
   if (wall_present()) {
 
-    stats_free_energy_wall(fe_local + 3);
+    if (q) stats_free_energy_wall(q, fe_local + 3);
 
-    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
     info("\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
     info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
 	 get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
 	 fe_total[3], fe_total[4]);
   }
-  else if (colloid_ntotal() > 0) {
+  else if (ncolloid > 0) {
 
-    stats_free_energy_colloid(fe_local + 3);
+    if (q) stats_free_energy_colloid(q, map, fe_local + 3);
 
-    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
     info("\nFree energies - timestep f v f/v f_s a f_s/a\n");
 
@@ -127,7 +136,9 @@ void stats_free_energy_density(void) {
 	 fe_total[1]/fe_total[2]);
   }
 
-  return;
+#undef NSTAT
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -138,15 +149,15 @@ void stats_free_energy_density(void) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_wall(double * fs) {
+static int stats_free_energy_wall(field_t * q, double * fs) {
 
-  if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
+  assert(q);
 
-  if (wall_at_edge(X)) stats_free_energy_wallx(fs);
-  if (wall_at_edge(Y)) stats_free_energy_wally(fs);
-  if (wall_at_edge(Z)) stats_free_energy_wallz(fs);
+  if (wall_at_edge(X)) stats_free_energy_wallx(q, fs);
+  if (wall_at_edge(Y)) stats_free_energy_wally(q, fs);
+  if (wall_at_edge(Z)) stats_free_energy_wallz(q, fs);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -157,7 +168,7 @@ static void stats_free_energy_wall(double * fs) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_wallx(double * fs) {
+static int stats_free_energy_wallx(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -169,8 +180,10 @@ static void stats_free_energy_wallx(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
+  assert(q);
+  assert(fs);
+
   coords_nlocal(nlocal);
-  assert(phi_nop() == 5);
 
   dn[Y] = 0.0;
   dn[Z] = 0.0;
@@ -184,12 +197,11 @@ static void stats_free_energy_wallx(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
-	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	field_tensor(q, index, qs);
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
       }
     }
-
   }
 
   if (cart_coords(X) == cart_size(X) - 1) {
@@ -201,14 +213,14 @@ static void stats_free_energy_wallx(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
-	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	field_tensor(q, index, qs);
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
       }
     }
-
   }
-  return;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -219,7 +231,7 @@ static void stats_free_energy_wallx(double * fs) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_wally(double * fs) {
+static int stats_free_energy_wally(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -231,9 +243,10 @@ static void stats_free_energy_wally(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  coords_nlocal(nlocal);
-  assert(phi_nop() == 5);
+  assert(q);
+  assert(fs);
 
+  coords_nlocal(nlocal);
   dn[X] = 0.0;
   dn[Z] = 0.0;
 
@@ -246,12 +259,11 @@ static void stats_free_energy_wally(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
-	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	field_tensor(q, index, qs);
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
       }
     }
-
   }
 
   if (cart_coords(Y) == cart_size(Y) - 1) {
@@ -263,14 +275,14 @@ static void stats_free_energy_wally(double * fs) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
-	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	field_tensor(q, index, qs);
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
       }
     }
-
   }
-  return;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -281,7 +293,7 @@ static void stats_free_energy_wally(double * fs) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_wallz(double * fs) {
+static int stats_free_energy_wallz(field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -293,9 +305,10 @@ static void stats_free_energy_wallz(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  coords_nlocal(nlocal);
-  assert(phi_nop() == 5);
+  assert(q);
+  assert(fs);
 
+  coords_nlocal(nlocal);
   dn[X] = 0.0;
   dn[Y] = 0.0;
 
@@ -308,12 +321,11 @@ static void stats_free_energy_wallz(double * fs) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
-	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	field_tensor(q, index, qs);
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
       }
     }
-
   }
 
   if (cart_coords(Z) == cart_size(Z) - 1) {
@@ -325,14 +337,14 @@ static void stats_free_energy_wallz(double * fs) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
         index = coords_index(ic, jc, kc);
-	phi_get_q_tensor(index, qs);
-	blue_phase_fs(dn, qs, BOUNDARY, &fes);
+	field_tensor(q, index, qs);
+	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
       }
     }
-
   }
-  return;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -346,11 +358,12 @@ static void stats_free_energy_wallz(double * fs) {
  *
  *****************************************************************************/
 
-static void stats_free_energy_colloid(double * fs) {
+static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
 
-  int ic, jc, kc, index;
+  int ic, jc, kc, index, index1;
   int nhat[3];
   int nlocal[3];
+  int status;
 
   double dn[3];
   double qs[3][3];
@@ -361,34 +374,41 @@ static void stats_free_energy_colloid(double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
-  if (colloids_q_anchoring_method() != ANCHORING_METHOD_TWO) return;
-
-  assert(phi_nop() == 5);
+  assert(q);
+  assert(fs);
+  assert(map);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-        if (site_map_get_status_index(index) != FLUID) continue;
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
-	phi_get_q_tensor(index, qs);
+	field_tensor(q, index, qs);
 
         nhat[Y] = 0;
         nhat[Z] = 0;
 
-        if (site_map_get_status(ic+1, jc, kc) == COLLOID) {
+	index1 = coords_index(ic+1, jc, kc);
+	map_status(map, index1, &status);
+
+	if (status == MAP_COLLOID) {
           nhat[X] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
 	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 
-        if (site_map_get_status(ic-1, jc, kc) == COLLOID) {
+	index1 = coords_index(ic-1, jc, kc);
+	map_status(map, index1, &status);
+
+        if (status == MAP_COLLOID) {
           nhat[X] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
 	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
@@ -396,18 +416,24 @@ static void stats_free_energy_colloid(double * fs) {
 	nhat[X] = 0;
 	nhat[Z] = 0;
 
-        if (site_map_get_status(ic, jc+1, kc) == COLLOID) {
+	index1 = coords_index(ic, jc+1, kc);
+	map_status(map, index1, &status);
+
+        if (status == MAP_COLLOID) {
           nhat[Y] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
 	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 
-        if (site_map_get_status(ic, jc-1, kc) == COLLOID) {
+	index1 = coords_index(ic, jc-1, kc);
+	map_status(map, index1, &status);
+
+        if (status == MAP_COLLOID) {
           nhat[Y] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
 	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
@@ -415,18 +441,24 @@ static void stats_free_energy_colloid(double * fs) {
 	nhat[X] = 0;
 	nhat[Y] = 0;
 
-        if (site_map_get_status(ic, jc, kc+1) == COLLOID) {
+	index1 = coords_index(ic, jc, kc+1);
+	map_status(map, index1, &status);
+
+        if (status == MAP_COLLOID) {
           nhat[Z] = -1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
 	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
 
-        if (site_map_get_status(ic, jc, kc-1) == COLLOID) {
+	index1 = coords_index(ic, jc, kc-1);
+	map_status(map, index1, &status);
+
+        if (status == MAP_COLLOID) {
           nhat[Z] = +1;
           colloids_q_boundary_normal(index, nhat, dn);
-	  blue_phase_fs(dn, qs, COLLOID, &fes);
+	  blue_phase_fs(dn, qs, MAP_COLLOID, &fes);
 	  fs[0] += fes;
 	  fs[1] += 1.0;
         }
@@ -435,7 +467,7 @@ static void stats_free_energy_colloid(double * fs) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -449,11 +481,13 @@ static void stats_free_energy_colloid(double * fs) {
  *
  *****************************************************************************/
 
-void blue_phase_stats(int nstep) {
+int blue_phase_stats(field_t * qf, field_grad_t * dqf, map_t * map,
+		     int nstep) {
 
   int ic, jc, kc, index;
   int ia, ib, id, ig;
   int nlocal[3];
+  int status;
 
   double q0, redshift, rredshift, a0, gamma, kappa0, kappa1;
   double q[3][3], dq[3][3][3], dsq[3][3], h[3][3], sth[3][3];
@@ -464,6 +498,10 @@ void blue_phase_stats(int nstep) {
   double rv;
 
   FILE * fp_output;
+
+  assert(qf);
+  assert(dqf);
+  assert(map);
 
   coords_nlocal(nlocal);
   rv = 1.0/(L(X)*L(Y)*L(Z));
@@ -494,12 +532,13 @@ void blue_phase_stats(int nstep) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	if (site_map_get_status_index(index) != FLUID) continue;
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
 
-	phi_get_q_tensor(index, q);
-	phi_gradients_tensor_gradient(index, dq);
-	phi_gradients_tensor_delsq(index, dsq);
-  
+	field_tensor(qf, index, q);
+	field_grad_tensor_grad(dqf, index, dq);
+	field_grad_tensor_delsq(dqf, index, dsq);
+
 	blue_phase_compute_h(q, dq, dsq, h);
 	blue_phase_compute_stress(q, dq, h, sth);
 
@@ -598,15 +637,15 @@ void blue_phase_stats(int nstep) {
        if (fp_output == NULL) fatal("fopen(free_energy.dat) failed\n");
 
        /* timestep, total FE, gradient FE, redhsift */
-       fprintf(fp_output, "%d %12.6le %12.6le %12.6le ", nstep, 
+       fprintf(fp_output, "%d %12.6e %12.6e %12.6e ", nstep, 
 	       etotal[0] + etotal[1] + etotal[2] + etotal[3] + etotal[4],
 	       etotal[3] + etotal[4], redshift);
        /* Stress xx, xy, xz, ... */
-       fprintf(fp_output, "%12.6le %12.6le %12.6le ",
+       fprintf(fp_output, "%12.6e %12.6e %12.6e ",
 	       etotal[5], etotal[6], etotal[7]);
-       fprintf(fp_output, "%12.6le %12.6le %12.6le ",
+       fprintf(fp_output, "%12.6e %12.6e %12.6e ",
 	       etotal[8], etotal[9], etotal[10]);
-       fprintf(fp_output, "%12.6le %12.6le %12.6le\n",
+       fprintf(fp_output, "%12.6e %12.6e %12.6e\n",
 	       etotal[11], etotal[12], etotal[13]);
        
        fclose(fp_output);
@@ -630,6 +669,6 @@ void blue_phase_stats(int nstep) {
 	  etotal[0] + etotal[1] + etotal[2] + etotal[3] + etotal[4]);
    }
 
-  return;
+  return 0;
 }
 

@@ -15,7 +15,9 @@
 #ifndef BLUE_PHASE_RT_H
 #define BLUE_PHASE_RT_H
 
+#include "field.h"
+
+int blue_phase_rt_initial_conditions(field_t * q);
 void blue_phase_run_time(void);
-void blue_phase_rt_initial_conditions(void);
 
 #endif

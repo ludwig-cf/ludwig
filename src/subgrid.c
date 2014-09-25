@@ -23,15 +23,13 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "interaction.h"
-#include "lattice.h"
 #include "colloids.h"
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
 
 static double d_peskin(double);
-static void   subgrid_interpolation(void);
+static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
 static int subgrid_on_ = 0;  /* Subgrid particle flag */
 
@@ -44,29 +42,34 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
  *
  *****************************************************************************/
 
-void subgrid_force_from_particles() {
+int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
-  int N[3], offset[3];
+  int nlocal[3], offset[3];
+  int ncell[3];
 
   double r[3], r0[3], force[3], g[3];
   double dr;
   colloid_t * p_colloid;
 
-  coords_nlocal(N);
-  coords_nlocal_offset(offset);
+  assert(cinfo);
+  assert(hydro);
 
-  colloid_gravity(g);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(offset);
+  colloids_info_ncell(cinfo, ncell);
+
+  physics_fgrav(g);
 
   /* Loop through all cells (including the halo cells) */
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-        p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 
@@ -81,12 +84,12 @@ void subgrid_force_from_particles() {
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
 
-          i_min = imax(1,    (int) floor(r0[X] - drange_));
-          i_max = imin(N[X], (int) ceil (r0[X] + drange_));
-          j_min = imax(1,    (int) floor(r0[Y] - drange_));
-          j_max = imin(N[Y], (int) ceil (r0[Y] + drange_));
-          k_min = imax(1,    (int) floor(r0[Z] - drange_));
-          k_max = imin(N[Z], (int) ceil (r0[Z] + drange_));
+          i_min = imax(1,         (int) floor(r0[X] - drange_));
+          i_max = imin(nlocal[X], (int) ceil (r0[X] + drange_));
+          j_min = imax(1,         (int) floor(r0[Y] - drange_));
+          j_max = imin(nlocal[Y], (int) ceil (r0[Y] + drange_));
+          k_min = imax(1,         (int) floor(r0[Z] - drange_));
+          k_max = imin(nlocal[Z], (int) ceil (r0[Z] + drange_));
 
           for (i = i_min; i <= i_max; i++) {
             for (j = j_min; j <= j_max; j++) {
@@ -106,7 +109,7 @@ void subgrid_force_from_particles() {
 		force[X] = g[X]*dr;
 		force[Y] = g[Y]*dr;
 		force[Z] = g[Z]*dr;
-		hydrodynamics_add_force_local(index, force);
+		hydro_f_local_add(hydro, index, force);
 	      }
 	    }
 	  }
@@ -120,7 +123,7 @@ void subgrid_force_from_particles() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -133,27 +136,35 @@ void subgrid_force_from_particles() {
  *
  *****************************************************************************/
 
-void subgrid_update() {
+int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
   int ia;
   int ic, jc, kc;
+  int ncell[3];
   double drag, reta;
   double g[3];
+  double eta;
   colloid_t * p_colloid;
 
-  subgrid_interpolation();
-  colloid_sums_halo(COLLOID_SUM_SUBGRID);
+  assert(cinfo);
+  assert(hydro);
+
+  colloids_info_ncell(cinfo, ncell);
+
+  subgrid_interpolation(cinfo, hydro);
+  colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
 
-  reta = 1.0/(6.0*pi_*get_eta_shear());
-  colloid_gravity(g);
+  physics_eta_shear(&eta);
+  physics_fgrav(g);
+  reta = 1.0/(6.0*pi_*eta);
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-        p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 
@@ -171,7 +182,7 @@ void subgrid_update() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -183,28 +194,33 @@ void subgrid_update() {
  *
  *****************************************************************************/
 
-static void subgrid_interpolation() {
+static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
-  int N[3], offset[3];
+  int nlocal[3], offset[3];
+  int ncell[3];
 
   double r0[3], r[3], u[3];
   double dr;
   colloid_t * p_colloid;
 
-  coords_nlocal(N);
+  assert(cinfo);
+  assert(hydro);
+
+  coords_nlocal(nlocal);
   coords_nlocal_offset(offset);
+  colloids_info_ncell(cinfo, ncell);
 
   /* Loop through all cells (including the halo cells) and set
    * the velocity at each particle to zero for this step. */
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-        p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 	  p_colloid->fc0[X] = 0.0;
@@ -218,11 +234,11 @@ static void subgrid_interpolation() {
 
   /* And add up the contributions to the velocity from the lattice. */
 
-  for (ic = 0; ic <= Ncell(X) + 1; ic++) {
-    for (jc = 0; jc <= Ncell(Y) + 1; jc++) {
-      for (kc = 0; kc <= Ncell(Z) + 1; kc++) {
+  for (ic = 0; ic <= ncell[X] + 1; ic++) {
+    for (jc = 0; jc <= ncell[Y] + 1; jc++) {
+      for (kc = 0; kc <= ncell[Z] + 1; kc++) {
 
-        p_colloid = colloids_cell_list(ic, jc, kc);
+	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
 
@@ -237,12 +253,12 @@ static void subgrid_interpolation() {
 	  /* Work out which local lattice sites are involved
 	   * and loop around */
 
-          i_min = imax(1,    (int) floor(r0[X] - drange_));
-          i_max = imin(N[X], (int) ceil (r0[X] + drange_));
-          j_min = imax(1,    (int) floor(r0[Y] - drange_));
-          j_max = imin(N[Y], (int) ceil (r0[Y] + drange_));
-          k_min = imax(1,    (int) floor(r0[Z] - drange_));
-          k_max = imin(N[Z], (int) ceil (r0[Z] + drange_));
+          i_min = imax(1,         (int) floor(r0[X] - drange_));
+          i_max = imin(nlocal[X], (int) ceil (r0[X] + drange_));
+          j_min = imax(1,         (int) floor(r0[Y] - drange_));
+          j_max = imin(nlocal[Y], (int) ceil (r0[Y] + drange_));
+          k_min = imax(1,         (int) floor(r0[Z] - drange_));
+          k_max = imin(nlocal[Z], (int) ceil (r0[Z] + drange_));
 
           for (i = i_min; i <= i_max; i++) {
             for (j = j_min; j <= j_max; j++) {
@@ -258,7 +274,7 @@ static void subgrid_interpolation() {
 		r[Z] = r0[Z] - 1.0*k;
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
-		hydrodynamics_get_velocity(index, u);
+		hydro_u(hydro, index, u);
 
 		p_colloid->fc0[X] += u[X]*dr;
 		p_colloid->fc0[Y] += u[Y]*dr;
@@ -276,7 +292,7 @@ static void subgrid_interpolation() {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -312,10 +328,10 @@ static double d_peskin(double r) {
  *
  *****************************************************************************/
 
-void subgrid_on_set(void) {
+int subgrid_on_set(void) {
 
   subgrid_on_ = 1;
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -324,7 +340,10 @@ void subgrid_on_set(void) {
  *
  *****************************************************************************/
 
-int subgrid_on(void) {
+int subgrid_on(int * flag) {
 
-  return subgrid_on_;
+  assert(flag);
+
+  *flag = subgrid_on_;
+  return 0;
 }

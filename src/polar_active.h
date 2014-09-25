@@ -18,6 +18,10 @@
 /* This is an implementation of the abstract 'class' ... */ 
 
 #include "free_energy_vector.h"
+#include "field.h"
+#include "field_grad.h"
+
+int polar_active_p_set(field_t * p, field_grad_t * p_grad);
 
 double polar_active_free_energy_density(const int index);
 void   polar_active_chemical_stress(const int index, double s[3][3]);

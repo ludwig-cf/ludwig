@@ -15,6 +15,10 @@
 #ifndef COORDS_H
 #define COORDS_H
 
+#include <mpi.h>
+
+#define NSYMM 6      /* Elements for general symmetric tensor */
+
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
@@ -37,6 +41,7 @@ void   coords_nlocal(int n[3]);
 void   coords_nlocal_offset(int n[3]);
 void   coords_nhalo_set(const int nhalo);
 int    coords_nhalo(void);
+int    coords_ntotal(int ntotal[3]);
 void   coords_ntotal_set(const int n[3]);
 void   coords_decomposition_set(const int p[3]);
 void   coords_reorder_set(const int);
@@ -46,6 +51,7 @@ int    coords_index(const int ic, const int jc, const int kc);
 void   coords_minimum_distance(const double r1[3], const double r2[3],
 			       double r12[3]);
 void   coords_index_to_ijk(const int index, int coords[3]);
+int    coords_strides(int * xs, int * ys, int * zs);
 
 void coords_active_region_radius_set(const double r);
 double coords_active_region(const int index);

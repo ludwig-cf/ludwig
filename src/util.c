@@ -7,17 +7,17 @@
  *  Little / big endian stuff based on suggestions by Harsha S.
  *  Adiga from IBM.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <float.h>
 #include <stdio.h>
@@ -353,6 +353,156 @@ static void util_swap(int ia, int ib, double a[3], double b[3][3]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  util_discrete_volume_sphere
+ *
+ *  What is the discrete volume of a sphere radius a0 at position
+ *  r0 on the unit lattice?
+ *
+ *  Lattice sites are assumed to be at integer positions. Points
+ *  exactly at a0 from r0 are deemed to be outside. This is
+ *  coincides with the criteria for colloid construction.
+ *
+ *  I don't think there's any way to do this except draw a box
+ *  round the outside and count each site.
+ *
+ *  Result vn returned as a double. Returns zero on success.
+ *
+ *****************************************************************************/
+
+int util_discrete_volume_sphere(double r0[3], double a0, double * vn) {
+
+  int ic, jc, kc, nr;
+  double x0, y0, z0;    /* Reduced coordinate of argument r0 */
+  double rsq;           /* test radius (squared) */
+  assert(vn);
+
+  *vn = 0.0;
+
+  /* Reduce the coordinates to 0 <= x < 1 etc */
+  x0 = r0[X] - floor(r0[X]);
+  y0 = r0[Y] - floor(r0[Y]);
+  z0 = r0[Z] - floor(r0[Z]);
+  assert(x0 < 1.0);
+  assert(0.0 <= x0);
+
+  nr = ceil(a0);
+
+  for (ic = -nr; ic <= nr; ic++) {
+    for (jc = -nr; jc <= nr; jc++) {
+      for (kc = -nr; kc <= nr; kc++) {
+	rsq = pow(1.0*ic - x0, 2) + pow(1.0*jc - y0, 2) + pow(1.0*kc - z0, 2);
+	if (rsq < a0*a0) *vn += 1.0;
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_gauss_jordan
+ *
+ *  Solve linear system via Gauss Jordan elimination with full pivoting.
+ *  See, e.g., Press et al page 39.
+ *
+ *  A is the n by n matrix, b is rhs on input and solution on output.
+ *  We assume storage of A[i*n + j].
+ *  A is column-scrambled inverse on exit. At the moment we don't bother
+ *  to recover the inverse.
+ *
+ *  Returns 0 on success.
+ *
+ *****************************************************************************/
+
+int util_gauss_jordan(const int n, double * a, double * b) {
+
+  int i, j, k, ia, ib;
+  int irow, icol;
+  int * ipivot = NULL;
+
+  double rpivot, tmp;
+
+  assert(a);
+  assert(b);
+
+  ipivot = calloc(n, sizeof(int));
+  if (ipivot == NULL) return -3;
+
+  icol = -1;
+  irow = -1;
+
+  for (j = 0; j < n; j++) {
+    ipivot[j] = -1;
+  }
+
+  for (i = 0; i < n; i++) {
+    tmp = 0.0;
+    for (j = 0; j < n; j++) {
+      if (ipivot[j] != 0) {
+	for (k = 0; k < n; k++) {
+
+	  if (ipivot[k] == -1) {
+	    if (fabs(a[j*n + k]) >= tmp) {
+	      tmp = fabs(a[j*n + k]);
+	      irow = j;
+	      icol = k;
+	    }
+	  }
+	}
+      }
+    }
+
+    assert(icol != -1);
+    assert(irow != -1);
+
+    ipivot[icol] += 1;
+
+    if (irow != icol) {
+      for (ia = 0; ia < n; ia++) {
+	tmp = a[irow*n + ia];
+	a[irow*n + ia] = a[icol*n + ia];
+	a[icol*n + ia] = tmp;
+      }
+      tmp = b[irow];
+      b[irow] = b[icol];
+      b[icol] = tmp;
+    }
+
+    if (a[icol*n + icol] == 0.0) {
+      free(ipivot);
+      return -1;
+    }
+
+    rpivot = 1.0/a[icol*n + icol];
+    a[icol*n + icol] = 1.0;
+
+    for (ia = 0; ia < n; ia++) {
+      a[icol*n + ia] *= rpivot;
+    }
+    b[icol] *= rpivot;
+
+    for (ia = 0; ia < n; ia++) {
+      if (ia != icol) {
+	tmp = a[ia*n + icol];
+	a[ia*n + icol] = 0.0;
+	for (ib = 0; ib < n; ib++) {
+	  a[ia*n + ib] -= a[icol*n + ib]*tmp;
+	}
+	b[ia] -= b[icol]*tmp;
+      }
+    }
+  }
+
+  /* Could recover the inverse here if required. */
+
+  free(ipivot);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -778,6 +928,122 @@ int util_svd(int m, int n, double ** a, double * w, double ** v) {
 
 /*****************************************************************************
  *
+ *  util_matrix_invert
+ *
+ *  For n x n matrix, compute and return inverse. This is the same
+ *  as the Gauss Jordan routine, but we don't bother with a RHS.
+ *
+ *  This is done in place.
+ *
+ *****************************************************************************/
+
+int util_matrix_invert(int n, double ** a) {
+
+  int i, j, k, ia, ib;
+  int irow, icol;
+
+  int * indexcol = NULL;
+  int * indexrow = NULL;
+  int * ipivot = NULL;
+
+  double rpivot, tmp;
+
+  assert(a);
+
+  indexcol = calloc(n, sizeof(int));
+  indexrow = calloc(n, sizeof(int));
+  ipivot = calloc(n, sizeof(int));
+
+  if (indexcol == NULL) return -3;
+  if (indexrow == NULL) return -3;
+  if (ipivot == NULL) return -3;
+
+  icol = -1;
+  irow = -1;
+
+  for (j = 0; j < n; j++) {
+    ipivot[j] = -1;
+  }
+
+  for (i = 0; i < n; i++) {
+    tmp = 0.0;
+    for (j = 0; j < n; j++) {
+      if (ipivot[j] != 0) {
+	for (k = 0; k < n; k++) {
+
+	  if (ipivot[k] == -1) {
+	    if (fabs(a[j][k]) >= tmp) {
+	      tmp = fabs(a[j][k]);
+	      irow = j;
+	      icol = k;
+	    }
+	  }
+	}
+      }
+    }
+
+    assert(icol != -1);
+    assert(irow != -1);
+
+    ipivot[icol] += 1;
+
+    if (irow != icol) {
+      for (ia = 0; ia < n; ia++) {
+	tmp = a[irow][ia];
+	a[irow][ia] = a[icol][ia];
+	a[icol][ia] = tmp;
+      }
+    }
+
+    indexrow[i] = irow;
+    indexcol[i] = icol;
+
+    if (a[icol][icol] == 0.0) {
+      free(ipivot);
+      free(indexrow);
+      free(indexcol);
+      return -1;
+    }
+
+    rpivot = 1.0/a[icol][icol];
+    a[icol][icol] = 1.0;
+
+    for (ia = 0; ia < n; ia++) {
+      a[icol][ia] *= rpivot;
+    }
+
+    for (ia = 0; ia < n; ia++) {
+      if (ia != icol) {
+	tmp = a[ia][icol];
+	a[ia][icol] = 0.0;
+	for (ib = 0; ib < n; ib++) {
+	  a[ia][ib] -= a[icol][ib]*tmp;
+	}
+      }
+    }
+  }
+
+  /* Recover the inverse. */
+
+  for (i = n - 1; i >= 0; i--) {
+    if (indexrow[i] != indexcol[i]) {
+      for (j = 0; j < n; j++) {
+	tmp = a[j][indexrow[i]];
+	a[j][indexrow[i]] = a[j][indexcol[i]];
+	a[j][indexcol[i]] = tmp;
+      }
+    }
+  }
+
+  free(ipivot);
+  free(indexrow);
+  free(indexcol);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  util_dpythag
  *
  *  Compute sqrt(a^2 + b^2) with care to avoid underflow or overflow
@@ -807,4 +1073,150 @@ int util_dpythag(double a, double b, double * p) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  Linear congruential generator for uniform random numbers based
+ *  on one by L'Ecuyer and Simard. See, for example the testu01
+ *  packages (v1.2.2)
+ *  http://www.iro.umontreal.ca/~simardr/testu01/tu01.html
+ *
+ *  No state here.
+ *
+ ****************************************************************************/
+
+#include <inttypes.h>
+
+static long int util_ranlcg_multiply(long a, long s, long c, long m);
+
+#define RANLCG_A 1389796
+#define RANLCG_C 0
+#define RANLCG_M 2147483647
+
+#if LONG_MAX == 2147483647
+#define RANLCG_HLIMIT   32768
+#else
+#define RANLCG_HLIMIT   2147483648
+#endif
+
+/*****************************************************************************
+ *
+ *  util_ranlcg_reap_gaussian
+ *
+ *  Box-Mueller. Caller responisble for maintaining state.
+ *
+ *  Returns two Gaussian deviates per call.
+ *
+ *****************************************************************************/
+
+int util_ranlcg_reap_gaussian(int * state, double r[2]) {
+
+  double ranu[2];
+  double f, rsq;
+
+  assert(state);
+  assert(*state > 0);
+
+  do {
+    util_ranlcg_reap_uniform(state, ranu);
+    util_ranlcg_reap_uniform(state, ranu + 1);
+    ranu[0] = 2.0*ranu[0] - 1.0;
+    ranu[1] = 2.0*ranu[1] - 1.0;
+    rsq = ranu[0]*ranu[0] + ranu[1]*ranu[1];
+  } while (rsq >= 1.0 || rsq <= 0.0);
+
+  f = sqrt(-2.0*log(rsq)/rsq);
+  r[0] = f*ranu[0];
+  r[1] = f*ranu[1];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_ranlcg_reap_uniform
+ *
+ *  Return one uniform on [0,1). The state is updated and returned
+ *  to caller.
+ *
+ *  Returns zero.
+ *
+ *****************************************************************************/
+
+int util_ranlcg_reap_uniform(int * state, double * r) {
+
+  long int sl;
+
+  assert(state);
+  assert(*state > 0);
+
+  sl = *state;
+  sl = util_ranlcg_multiply(RANLCG_A, sl, RANLCG_C, RANLCG_M);
+  *r = sl*(1.0/RANLCG_M);
+
+  *state = sl;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_ranlcg_multiply
+ *
+ *  A safe multplication: returned value is (a*s + c) % m
+ *
+ *****************************************************************************/
+
+static long int util_ranlcg_multiply(long a, long s, long c, long m) {
+
+  long a0, a1, q, qh, rh, k, p;
+
+  if (a < RANLCG_HLIMIT) {
+    a0 = a;
+    p = 0;
+  }
+  else {
+    a1 = a / RANLCG_HLIMIT;
+    a0 = a - RANLCG_HLIMIT * a1;
+    qh = m / RANLCG_HLIMIT;
+    rh = m - RANLCG_HLIMIT * qh;
+
+    if (a1 >= RANLCG_HLIMIT) {
+      a1 = a1 - RANLCG_HLIMIT;
+      k = s / qh;
+      p = RANLCG_HLIMIT * (s - k * qh) - k * rh;
+      if (p < 0) p = (p + 1) % m + m - 1;
+    }
+    else {
+      p = 0;
+    }
+
+    if (a1 != 0) {
+      q = m / a1;
+      k = s / q;
+      p -= k * (m - a1 * q);
+      if (p > 0) p -= m;
+      p += a1 * (s - k * q);
+      if (p < 0) p = (p + 1) % m + m - 1;
+    }
+
+    k = p / qh;
+    p = RANLCG_HLIMIT * (p - k * qh) - k * rh;
+    if (p < 0) p = (p + 1) % m + m - 1;
+  }
+
+  if (a0 != 0) {
+    q = m / a0;
+    k = s / q;
+    p -= k * (m - a0 * q);
+    if (p > 0) p -= m;
+    p += a0 * (s - k * q);
+    if (p < 0) p = (p + 1) % m + m - 1;
+  }
+
+  p = (p - m) + c;
+  if (p < 0) p += m;
+
+  return p;
 }
