@@ -46,7 +46,7 @@ MPICC = mpicc
 OPTS = -DNP_D3Q6
 CFLAGS = -Wall -O2
 
-INC = -I.
+INC = -I. -I ../targetDP
 LIBS = -lm
 AR = ar
 ARFLAGS = -cru
@@ -163,7 +163,8 @@ serial-d3q19r:
 
 serial-model:
 	$(MAKE) lib
-	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) -L../mpi_s -lmpi"
+#	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) -L../mpi_s -lmpi"
+	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) -L../mpi_s -lmpi -L../targetDP -ltargetDP_X86"
 
 # MPI versions
 
